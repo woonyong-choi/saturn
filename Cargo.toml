@@ -1,11 +1,11 @@
 [workspace]
 resolver = "3"
 members = [
-    "protocol",
-    "terminal/core",
-    "terminal/engine",
-    "terminal/tui",
-    "terminal/cli",
+    "saturn-protocol",
+    "saturn-terminal/core",
+    "saturn-terminal/engine",
+    "saturn-terminal/tui",
+    "saturn-terminal/cli",
 ]
 
 [workspace.package]
@@ -15,6 +15,6 @@ license = "UNLICENSED"
 publish = false
 
 [workspace.dependencies]
-saturn-protocol = { path = "protocol" }
-saturn-core = { path = "terminal/core" }
-saturn-tui = { path = "terminal/tui" }
+saturn-protocol = { path = "saturn-protocol" }
+saturn-core = { path = "saturn-terminal/core" }
+saturn-tui = { path = "saturn-terminal/tui" }
