@@ -1,0 +1,18 @@
+[package]
+name = "saturn-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "saturn_engine"
+path = "src/lib.rs"
+
+[[bin]]
+name = "saturn-engine"
+path = "src/main.rs"
+
+[dependencies]
+saturn-protocol.workspace = true
+saturn-core.workspace = true

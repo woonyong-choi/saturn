@@ -9,3 +9,4 @@ out/
 .env.*
 *.log
 .DS_Store
+/target/
