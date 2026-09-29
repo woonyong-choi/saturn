@@ -1,0 +1,11 @@
+docs/archive/
+.gradle/
+.kotlin/
+.idea/
+build/
+out/
+.saturn/
+.env
+.env.*
+*.log
+.DS_Store
