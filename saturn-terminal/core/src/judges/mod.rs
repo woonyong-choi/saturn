@@ -19,6 +19,9 @@ pub enum JudgeError {
     /// 보낸 뒤 시간 초과. `cost-unknown`으로 기록하고 다시 보내지 않는다.
     #[error("judge timed out after send")]
     TimedOutAfterSend,
+    /// 키가 없거나 거절됐다. 연결 실패와 구분해 키 입력 창을 띄운다.
+    #[error("judge rejected the key")]
+    Unauthorized,
     /// 속도 제한. 기다렸다가 다시 보낸다.
     #[error("judge rate limited")]
     RateLimited,

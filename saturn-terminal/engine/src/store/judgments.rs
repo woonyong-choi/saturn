@@ -13,20 +13,8 @@ use saturn_protocol::ids::{ChatId, InputId, JudgmentId, SettingsRevision};
 use super::{Store, StoreError};
 use crate::secrets::Masked;
 
-/// 판단 호출 결과 분류. judge.md 오류 처리 표의 기록 값이다.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum JudgmentOutcome {
-    /// 형식 검사를 통과한 답.
-    Ok,
-    /// 후보 밖 선택, NaN, 확률 누락(`invalid`). 대체 규칙을 적용했다.
-    Invalid,
-    /// 판단 중 채팅 revision이 바뀌었다(`superseded`).
-    Superseded,
-    /// 보낸 뒤 시간 초과(`cost-unknown`). 비용 칸은 NULL이고 다시 보내지 않았다.
-    CostUnknown,
-    /// 응답 없음이나 보내기 전 실패. 건너뛴 판단을 사유와 함께 남긴다.
-    NoResponse,
-}
+/// 판단 호출 결과 분류. core가 정본이다.
+pub use saturn_core::judges::JudgmentOutcome;
 
 /// 저장할 판단 한 건.
 #[derive(Debug, Clone)]
@@ -61,6 +49,12 @@ pub struct NewJudgment {
     pub elapsed: Duration,
     /// 결과 분류.
     pub outcome: JudgmentOutcome,
+    /// 판단 때 judge 버전(모델, 보정값, 질문별 목표 틀림 비율 묶음). 기준값 조정 계산을 다시 하는 데 쓴다.
+    pub judge_version: String,
+    /// 질문 id별 그때 기준값.
+    pub thresholds: Vec<(String, f64)>,
+    /// 피드백 질문을 한 확률 q. 계산 때 1/q로 가중한다.
+    pub asked_with: Option<f64>,
 }
 
 /// 판단 기록 전용 정리 요청. 일반 정리와 같이 `yes`가 거짓이면 미리보기만 한다.

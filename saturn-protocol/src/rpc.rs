@@ -17,8 +17,10 @@ use crate::state::{Disposition, InputState, QueueReason, TaskState};
 pub enum Request {
     /// 채팅에 붙는다. `chat`이 없으면 새 채팅. engine은 `StartInfo`, 최근 기록, 보관한 허가 요청 순서로 보낸다.
     /// `overrides`는 실행 층(`-c key=value`)이다. 이 접속의 입력에만 적용한다.
+    /// `workdir`는 TUI의 작업 폴더다. 폴더 설정 층 검색과 새 작업의 실행 위치가 된다.
     Attach {
         chat: Option<ChatId>,
+        workdir: String,
         overrides: Vec<(String, String)>,
     },
     /// 대화 기록 이전 부분(위로 스크롤). `before`보다 앞 기록을 `limit`개.
@@ -252,6 +254,8 @@ pub enum ChatNotice {
     },
     /// 멈춤 결과. 보류된 이름표 목록.
     Stopped { held: Vec<TaskLabel> },
+    /// 크래시 뒤 증명되지 않은 실행을 보류했다. 보류 줄과 함께 `/continue` 제안을 보인다.
+    ResumeSuggested { held: Vec<TaskLabel> },
     /// 멈춤 뒤 provider 프로세스 묶음 밖에 남은 프로세스 수.
     StopUnconfirmed { remaining: u32 },
     /// 모든 작업이 끝난 순간의 합계(`이번 요청 · ...`).
