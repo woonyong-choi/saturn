@@ -57,7 +57,7 @@ pub(crate) struct TrainArgs {
     /// 기준값을 1차 영점으로 되돌린다.
     #[arg(long)]
     pub(crate) reset_thresholds: bool,
-    /// 이 judge 버전에서 다시 학습한다. TODO(#46): protocol `Train` 요청에 시작 버전 필드가 없다
+    /// 이 judge 버전에서 다시 학습한다(`Request::Train`의 `from`).
     #[arg(long, value_name = "VERSION")]
     pub(crate) from: Option<String>,
 }

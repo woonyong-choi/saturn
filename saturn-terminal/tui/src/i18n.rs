@@ -193,8 +193,9 @@ pub enum Lang {
 }
 
 impl Lang {
-    /// 운영체제 언어로 고른다. `LC_ALL` → `LC_MESSAGES` → `LANG` 순으로 처음 비어 있지 않은 값을 보고,
-    /// `ko`로 시작하면 `Ko`, 그 밖(값 없음, `C`, `POSIX` 포함)은 `En`.
+    /// 운영체제 언어로 고른다. 언어 환경 변수를 차례로 보고 처음 비어 있지 않은 값이
+    /// `ko`로 시작하면 `Ko`, 그 밖(값 없음, `C`, `POSIX` 포함)은 `En`. 변수 순서는 초안이다(설계에 없음).
+    /// TODO(#92): 값 미정, 초안 `LC_ALL` → `LC_MESSAGES` → `LANG`
     pub fn detect() -> Self {
         todo!("#92")
     }

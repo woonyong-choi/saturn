@@ -92,6 +92,7 @@ impl Store {
     /// 판단 기록을 `path`에 JSONL로 쓴다. 한 줄에 한 건, 채점하지 않은 기록도 모두 포함한다. 쓴 건수를 돌려준다.
     /// 필드: id, chat, input, method, judge, model, question_sets(`name@major.minor`), settings, sent, received, answers,
     /// fallbacks, tokens(없으면 null), started_at(unix 밀리초), elapsed_ms, outcome. 파일은 새로 만들고 권한 0600.
+    /// TODO(#82): 값 미정, 초안 위 필드 목록과 파일 권한 0600(설계는 JSONL 한 줄 한 건만 정함)
     ///
     /// # Errors
     /// 파일 쓰기 실패면 `Export`, 직렬화 실패면 `Json`.

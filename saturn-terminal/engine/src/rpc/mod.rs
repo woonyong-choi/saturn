@@ -25,7 +25,9 @@ use tokio::sync::mpsc;
 
 pub use lock::EngineLock;
 
-/// 소켓 파일 이름. `~/.saturn/` 아래에 둔다. TUI `EngineClient::default_socket`과 같은 경로. TODO(#49): 경로 설정 키
+/// 소켓 파일 이름. `~/.saturn/` 아래에 둔다. TUI `EngineClient::default_socket`과 같은 경로. 이름은 초안이다(설계에 없음).
+/// TODO(#89): 값 미정, 초안 `engine.sock`
+/// TODO(#49): 경로 설정 키
 pub const SOCKET_FILE: &str = "engine.sock";
 
 /// 접속, 잠금, 메시지 오류.
@@ -115,7 +117,7 @@ pub struct RpcServer {
 
 impl RpcServer {
     /// 잠금을 넘겨받아 `home/engine.sock`을 연다. 남은 소켓 파일은 잠금을 잡은 뒤에만 지운다(다른 engine의 소켓이 아니다).
-    /// 소켓 파일 권한은 0600.
+    /// 소켓 파일 권한은 초안이다(설계에 없음). TODO(#89): 값 미정, 초안 0600
     ///
     /// # Errors
     /// 소켓을 열지 못하면 `Bind`.

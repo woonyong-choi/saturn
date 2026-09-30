@@ -227,7 +227,8 @@ impl Engine {
     /// 시작 4단계. judge 시작 확인.
     /// 1. `SecretStore::open`(설정의 저장 방식)과 `Judges::select`(판단 방식).
     /// 2. `Judges::check`. `Ready`나 `Skipped`면 끝.
-    /// 3. `KeyRequired`면 키를 받는다: 환경 변수, 관리자 명령 설정, 표준 입력, 숨김 입력 순으로 쓸 수 있는 것.
+    /// 3. `KeyRequired`면 키를 받는다: 네 방법 중 쓸 수 있는 것. 순서는 초안이다(설계에 없음).
+    ///    TODO(#84): 값 미정, 초안 환경 변수 → 관리자 명령 설정 → 표준 입력 → 숨김 입력
     ///    입력할 수 없는 환경(`secrets::can_prompt`가 거짓)이면 환경 변수와 표준 입력 방식을 안내하고 끝낸다.
     /// 4. `Judges::accept_key`: 다시 확인하고 저장한다.
     ///
@@ -273,8 +274,7 @@ impl Engine {
     }
 
     /// 복구 3단계. 증명되지 않은 실행을 보류로 기록하고 session도 보류(`SessionState::Held`)로 둔다.
-    /// 보류마다 `/continue <이름표>` 제안 한 줄을 채팅 기록에 남겨 TUI가 붙으면 보이게 한다.
-    /// TODO(#90): `/continue` 제안을 담을 `ChatNotice` variant가 protocol에 없다
+    /// 보류마다 `/continue <이름표>` 제안 한 줄(`ChatNotice::ResumeSuggested`)을 채팅 기록에 남겨 TUI가 붙으면 보이게 한다.
     ///
     /// # Errors
     /// 기록 실패면 `Store`.
@@ -481,7 +481,7 @@ impl Engine {
     /// # Errors
     /// 설정 조회 실패면 `Settings`.
     async fn on_last_detach(&mut self) -> Result<(), EngineError> {
-        todo!("#70")
+        todo!("#90")
     }
 
     /// TUI 없이 계속한다.

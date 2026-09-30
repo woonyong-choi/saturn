@@ -1,7 +1,7 @@
 //! 시작 화면. 로고, Saturn 버전, provider 버전, judge와 judge 버전, 폴더.
 //!
 //! 설계: docs/design/tui.md(영역 시작 화면). 실행 때 보이고, 첫 결과가 오면 대화 기록 맨 위 머리 셀로 바뀐다.
-//! TODO(#46): provider 버전과 judge 정보를 받는 메서드가 protocol에 없다
+//! 값은 `Notification::StartInfo`로 받는다.
 
 use std::path::PathBuf;
 

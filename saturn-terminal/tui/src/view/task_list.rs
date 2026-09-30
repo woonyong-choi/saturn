@@ -4,7 +4,8 @@
 //! - 행: 묶음, 채팅, 폴더, 상태, 작업과 그 아래 subagent와 자식 채팅. 허가 필요 작업은 `!`, 결과 확인 필요 작업은 `?`.
 //! - 다른 Saturn 프로세스가 실행 중인 채팅은 `다른 Saturn에서 실행 중`이고 읽기 전용(`c`, `d`, `s`, `r`, `g` 무시).
 //! - engine 상태가 바뀌어 목록을 다시 받아도 선택한 작업을 유지한다.
-//! TODO(#46): `Request::ListTasks`의 응답 알림이 protocol에 없다. 새 채팅, 이름 변경, 묶음 변경 요청도 없다
+//! 목록은 `Request::ListTasks` → `Notification::TaskList`. 새 채팅은 `Request::Attach { chat: None }`,
+//! 이름 변경은 `Request::RenameChat`, 묶음 변경은 `Request::SetChatGroup`.
 
 use std::path::PathBuf;
 

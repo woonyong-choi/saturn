@@ -113,7 +113,8 @@ pub struct LayerSource {
     pub layer: Layer,
     /// 파일 층이면 경로.
     pub path: Option<PathBuf>,
-    /// 파일 층이면 읽은 내용의 지문(SHA-256 hex).
+    /// 파일 층이면 읽은 내용의 지문(hex). 해시는 초안이다(설계는 지문만 정함).
+    /// TODO(#83): 값 미정, 초안 SHA-256
     pub fingerprint: Option<String>,
     /// 폴더 층에서 `USER_ONLY`라 무시한 점 경로 키.
     pub ignored: Vec<String>,
@@ -197,7 +198,9 @@ pub struct SettingsSnapshot {
 }
 
 impl SettingsSnapshot {
-    /// 같은 내용 판정 값. 키를 정렬한 `settings` JSON의 SHA-256 hex. 층 목록은 넣지 않는다(값이 같으면 같은 번호).
+    /// 같은 내용 판정 값. 키를 정렬한 `settings` JSON의 해시 hex. 층 목록은 넣지 않는다(값이 같으면 같은 번호).
+    /// 해시는 초안이다(설계에 없음).
+    /// TODO(#83): 값 미정, 초안 SHA-256
     pub fn digest(&self) -> String {
         todo!("#83")
     }

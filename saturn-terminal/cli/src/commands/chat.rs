@@ -35,7 +35,7 @@ fn detect_mode() -> ScreenMode {
 
 /// 실행 층 설정을 engine에 넘긴다.
 ///
-/// TODO(#49): 실행 층을 engine에 넘기는 요청이 protocol에 없다. `Attach`에 실을지 따로 둘지
+/// `Request::Attach`의 `overrides`로 넘긴다.
 ///
 /// # Errors
 /// engine에 보내지 못하면 오류.

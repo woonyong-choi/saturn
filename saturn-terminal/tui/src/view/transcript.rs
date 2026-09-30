@@ -2,7 +2,7 @@
 //!
 //! 설계: docs/design/tui.md(영역 대화 기록, 피드백 질문, 상태 표시).
 //! 갱신 시점: 판단 확정(에코), 작업 종료(작업별 출력 칸 내용과 결과 머리줄), 다시 실행할 때 기록 저장소에서 최근 부분부터 로드,
-//! 위로 스크롤할 때 이전 부분 로드. TODO(#46): 기록 로드 요청과 응답 메서드가 protocol에 없다
+//! 위로 스크롤할 때 이전 부분 로드(`Request::LoadHistory` → `Notification::HistoryChunk`).
 //! 각 셀의 글은 `TranscriptCell::lines`가 만들고 plain 출력도 같은 함수를 쓴다.
 
 use std::time::Duration;

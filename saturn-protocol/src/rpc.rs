@@ -73,6 +73,8 @@ pub enum Request {
         fingerprint: String,
         apply: bool,
     },
+    /// 채팅 판단 기록 켜기와 끄기(`/record on`, `/record off`). 끄면 그 채팅의 판단 기록을 저장하지 않는다.
+    SetRecording { chat: ChatId, on: bool },
     /// 사용량 조회(`/usage`).
     Usage { scope: UsageRange },
     /// 작업 목록 조회(`/tasks`).

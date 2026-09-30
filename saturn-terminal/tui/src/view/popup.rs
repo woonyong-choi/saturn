@@ -22,7 +22,7 @@ pub enum PopupKind {
     Value,
     /// `@` 작업 폴더 파일 목록.
     File,
-    /// `$` 메인 에이전트 provider의 스킬 목록. 다른 provider는 `$공급자 이름`. TODO(#46): 스킬 목록을 받는 메서드가 없다
+    /// `$` 메인 에이전트 provider의 스킬 목록. 다른 provider는 `$공급자 이름`. 목록은 `Notification::Commands`의 `is_skill` 항목.
     Skill,
 }
 

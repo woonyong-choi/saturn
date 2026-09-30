@@ -2,7 +2,7 @@
 //!
 //! 설계: docs/design/tui.md(영역 judge 키 입력 창, 키), docs/design/judge-key-security.md(받은 키의 처리).
 //! 키 글은 화면, 로그, 오류, 디버그 출력, 입력 기록 어디에도 원문으로 남기지 않는다. engine에 보낸 뒤 바로 지운다.
-//! TODO(#46): 키를 engine에 넘기는 요청이 protocol에 없다
+//! 키는 `Request::SubmitJudgeKey`로 engine에 넘긴다.
 
 use std::fmt;
 

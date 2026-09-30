@@ -3,7 +3,7 @@
 //! 설계: docs/design/tui.md(허가 요청 창, 키), docs/design/engine-lifecycle.md(TUI가 없는 동안 보관, 다시 붙으면 가장 먼저).
 //! - 제목에 작업 이름표와 provider, 본문에 요청 내용과 이유, 선택지 네 개, 허가를 기다리는 다른 작업 수를 보인다.
 //! - 창이 뜬 뒤 1초 동안 키 입력을 받지 않는다(모르고 누른 키로 허가하지 않게).
-//! - 여러 TUI가 붙어 있을 때 다른 클라이언트가 먼저 답하면 창을 지운다. TODO(#46): 답 완료 알림이 protocol에 없다
+//! - 여러 TUI가 붙어 있을 때 다른 클라이언트가 먼저 답하면(`Notification::PermissionResolved`) 창을 지운다.
 //! - `Esc`(다르게 하라고 말하기) 뒤 입력. TODO(#56): 접두 초안으로 받을지, 창 안 입력칸으로 받을지, judge에 맡길지
 
 use std::collections::VecDeque;

@@ -46,16 +46,19 @@ use crate::processes::{ProcessGroupId, Supervisor};
 pub(crate) const STEER_VERIFIED: bool = false;
 
 /// Saturn 명령 이름과 app-server 메서드 대응표. 여기 있는 명령과 `skills/list` 결과만 명령 목록에 넣는다.
-/// 화면 전용 명령과 Saturn session 명령이 대신하는 명령(새 대화, 재개, 종료)은 표에 넣지 않는다.
+/// 화면 전용 명령과 Saturn session 명령이 대신하는 명령(새 대화, 재개, 종료)은 표에 넣지 않는다. 표 내용은 후보다.
+/// TODO(#86): 값 미정, 초안 `compact`, `review`
 pub(crate) const COMMAND_METHODS: &[(&str, &str)] = &[
     ("compact", "thread/compact/start"),
     ("review", "review/start"),
 ];
 
-/// 명령 목록에서 뺄 이름. 대응표에 없는 이름이 스킬 목록에 섞여 올 때를 대비한다.
+/// 명령 목록에서 뺄 이름. 대응표에 없는 이름이 스킬 목록에 섞여 올 때를 대비한다. 목록은 후보다(설계에 목록 없음).
+/// TODO(#86): 값 미정, 초안 `new`, `resume`, `fork`, `quit`, `exit`
 pub(crate) const EXCLUDED_COMMANDS: &[&str] = &["new", "resume", "fork", "quit", "exit"];
 
-/// 권한 기본값 인자(수정 허용). 사용자 설정에 권한 값이 없을 때만 넣는다.
+/// 권한 기본값 인자(수정 허용). 사용자 설정에 권한 값이 없을 때만 넣는다. 인자 값은 초안이다(설계는 수정 허용만 정함).
+/// TODO(#86): 값 미정, 초안 `-c sandbox_mode="workspace-write"`
 const PERMISSION_ARGS: &[&str] = &["-c", "sandbox_mode=\"workspace-write\""];
 
 /// 자동 압축 안전망 설정 키. `-c model_auto_compact_token_limit=<T_hard>`로 넘긴다.
@@ -210,6 +213,7 @@ pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec
 /// `$CODEX_HOME/config.toml`(기본 `~/.codex/config.toml`)과 선택된 프로필에서
 /// `approval_policy`·`sandbox_mode` → 권한, `model_auto_compact_token_limit` → 자동 압축.
 /// 파일을 못 읽으면 값 없음으로 본다. 작업 공간에 TOML 파서가 없어 키 존재만 줄 단위로 본다.
+/// TODO(#86): 값 미정, 초안 위 파일·키 목록(Codex 규약에서 확인)
 pub(crate) fn read_user_config(launch: &LaunchSpec) -> UserProviderConfig {
     todo!("#86")
 }

@@ -39,7 +39,8 @@ use crate::view::train_confirm::TrainConfirm;
 use crate::view::transcript::Transcript;
 use crate::view::usage::UsageScreen;
 
-/// 틱 간격. 스피너, 경과 시간, 피드백 8초, 허가 1초 보호를 갱신한다. 설계 값이 없어 정한 값이다.
+/// 틱 간격. 스피너, 경과 시간, 피드백 8초, 허가 1초 보호를 갱신한다. 초안 값이다(설계에 없음).
+/// TODO(#92): 값 미정, 초안 100ms
 pub const TICK: Duration = Duration::from_millis(100);
 /// 피드백 질문이 답 없이 떠 있는 시간.
 pub const FEEDBACK_TIMEOUT: Duration = Duration::from_secs(8);
@@ -190,7 +191,7 @@ impl App {
     }
 
     /// 상태판 버튼. `Send` → `SendNow`, `CancelInput`/`CancelHeldInput` → `CancelInput`,
-    /// `ContinueTask` → `Continue { task: Some }`, `ContinueInput` → `Continue { task: None }`, `CloseHeld` → 확인 줄.
+    /// `ContinueTask` → `Continue { task: Some }`, `ContinueInput` → `Request::ContinueInput`, `CloseHeld` → 확인 줄.
     fn on_button(&mut self, button: Button) -> Vec<Effect> {
         todo!("#92")
     }

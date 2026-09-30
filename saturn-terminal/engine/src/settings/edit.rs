@@ -14,7 +14,8 @@ use crate::secrets::KeyInfo;
 pub struct FileVersion {
     /// 파일 경로.
     pub path: PathBuf,
-    /// 내용 지문(SHA-256 hex). 파일이 없었으면 `None`.
+    /// 내용 지문(hex). 파일이 없었으면 `None`. 해시는 초안이다(설계는 지문만 정함).
+    /// TODO(#83): 값 미정, 초안 SHA-256
     pub fingerprint: Option<String>,
     /// 수정 시각. 지문 비교 전에 빠른 확인용.
     pub modified: Option<SystemTime>,

@@ -8,7 +8,7 @@ use crate::args::JudgeVersionArgs;
 
 /// 확인 한 줄을 받은 뒤 고른 judge 버전을 현재 버전으로 쓴다.
 ///
-/// TODO(#46): 버전 전환 요청이 protocol에 없다
+/// 전환은 `Request::UseJudgeVersion`으로 보낸다.
 /// TODO(#93): 입력할 수 없는 환경(파이프, CI)에서 확인 한 줄을 받는 방식
 ///
 /// # Errors

@@ -53,7 +53,8 @@ pub struct TaskView {
     /// 작업 상태.
     pub state: TaskState,
     /// 마지막으로 답한 provider. 결과 머리줄과 실행 줄에 쓴다.
-    /// protocol에 작업 provider를 알리는 값이 없어 `ChatNotice::ProviderSwitched`의 `to`로만 채운다.
+    /// protocol `TaskChanged`에 `provider`가 있으나 `apply_task`가 받지 않아 지금은 `ChatNotice::ProviderSwitched`의 `to`로만 채운다.
+    /// TODO(#92): `apply_task`가 `TaskChanged::provider`를 받게 보완
     pub provider: Option<Provider>,
     /// 사용량 보고의 모델 이름. 보고가 없으면 `None`(작업 상세 `모델 미보고`).
     pub model: Option<String>,
@@ -78,7 +79,8 @@ pub struct InputView {
     pub id: InputId,
     /// 판단 줄·대기 줄·에코의 이름표. 끼워 넣기면 합쳐진 작업의 이름표.
     pub label: Option<TaskLabel>,
-    /// 원문. 이 TUI가 보낸 입력만 안다(protocol 알림에 원문이 없다). 판단 줄·대기 줄 끝과 에코에 쓴다.
+    /// 원문. 판단 줄·대기 줄 끝과 에코에 쓴다. protocol `InputChanged`에 `text`가 있으나 `apply_input`이 받지 않아 지금은 이 TUI가 보낸 입력만 안다.
+    /// TODO(#92): `apply_input`이 `InputChanged::text`를 받게 보완
     pub text: Option<String>,
     /// 전달 상태.
     pub state: InputState,
@@ -92,7 +94,7 @@ pub struct InputView {
     pub seq: u64,
 }
 
-/// `/train` 진행. protocol에 알림이 없어 채울 곳이 아직 없다. TODO(#46): 학습 진행 알림 메서드
+/// `/train` 진행. `Notification::TrainProgress`로 채운다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrainingProgress {
     /// 단계 이름(원문 그대로).
@@ -186,7 +188,8 @@ pub struct ChatState {
     pub context: Option<ContextSize>,
     /// 적용된 설정 번호와 경고(`폴더 설정 오류 · 이전 설정 번호 12로 계속 · 줄 7: ...`).
     pub settings: Option<(SettingsRevision, Option<String>)>,
-    /// 보낸 원문. 다음 `InputChanged`(`Judging`)의 새 입력에 붙인다. protocol에 제출 응답이 없어 순서로 짝짓는다.
+    /// 보낸 원문. 다음 `InputChanged`(`Judging`)의 새 입력에 붙인다. 지금은 순서로 짝짓는다.
+    /// TODO(#92): `Notification::InputAccepted`의 `client_ref`로 짝짓게 보완
     pub pending_texts: std::collections::VecDeque<String>,
     next_seq: u64,
 }

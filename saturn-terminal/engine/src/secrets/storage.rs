@@ -32,7 +32,8 @@ pub enum StorageMode {
 enum Backend {
     /// macOS 키체인.
     Keychain,
-    /// 키체인을 쓸 수 없을 때 `~/.saturn/judge.key`(권한 0600).
+    /// 키체인을 쓸 수 없을 때 권한 0600 파일. 경로는 초안이다(설계에 없음).
+    /// TODO(#84): 값 미정, 초안 `~/.saturn/judge.key`
     File(PathBuf),
 }
 
@@ -48,7 +49,7 @@ pub struct SecretStore {
 }
 
 impl SecretStore {
-    /// 키체인을 쓸 수 있으면 `Keychain`, 없으면 `home/judge.key` 파일 백엔드로 연다. 키를 읽지는 않는다.
+    /// 키체인을 쓸 수 있으면 `Keychain`, 없으면 파일 백엔드(초안 경로 `home/judge.key`)로 연다. 키를 읽지는 않는다.
     pub fn open(home: &Path, mode: StorageMode) -> Self {
         todo!("#84")
     }
@@ -96,7 +97,8 @@ impl SecretStore {
     }
 
     /// 강화 방식에서 마지막 사용 뒤 `HARDENED_IDLE_LOCK` 또는 풀린 뒤 `HARDENED_MAX_UNLOCK`이 지났으면 `current`를 버리고 잠근다.
-    /// 잠갔으면 참. engine 타이머가 1분마다 부른다.
+    /// 잠갔으면 참. engine 타이머가 주기적으로 부른다.
+    /// TODO(#84): 값 미정, 초안 1분 주기
     pub fn lock_if_expired(&mut self, now: Instant) -> bool {
         todo!("#84")
     }

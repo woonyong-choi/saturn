@@ -11,7 +11,8 @@ use std::collections::BTreeMap;
 use saturn_protocol::ids::{InputId, TaskId, TaskLabel};
 use saturn_protocol::state::TaskState;
 
-/// 이름표 글자 범위. `A`부터 `Z`까지.
+/// 이름표 글자 범위. 초안 값이다(설계는 `[A]` 예시만 있음).
+/// TODO(#92): 값 미정, 초안 `A`부터 `Z`까지
 pub const LABEL_RANGE: std::ops::RangeInclusive<char> = 'A'..='Z';
 
 /// engine이 알린 이름표를 작업과 입력별로 기억한다.

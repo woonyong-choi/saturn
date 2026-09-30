@@ -5,7 +5,7 @@
 //! - 상세(`Enter`): 질문별 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수.
 //! - `r` 1차 영점 복귀(`/train --reset-thresholds`), `t` 고른 버전에서 다시 학습(`/train --from`),
 //!   `u` 확인 한 줄 뒤 고른 버전 사용(`saturn judge version`).
-//! TODO(#46): 버전 목록 응답과 버전 사용 요청이 protocol에 없다
+//! 목록은 `Request::ListJudgeVersions` → `Notification::JudgeVersions`, 사용은 `Request::UseJudgeVersion`.
 
 use ratatui::Frame;
 use ratatui::layout::Rect;
@@ -52,7 +52,7 @@ pub struct JudgeVersionRow {
 pub enum JudgeVersionCommand {
     /// `r` → `Request::Train { reset_thresholds: true }`.
     ResetThresholds,
-    /// `t` → 고른 버전에서 학습. `Request::Train`에 버전 칸이 없다(TODO(#46)).
+    /// `t` → 고른 버전에서 학습(`Request::Train { from: Some(버전) }`).
     TrainFrom(String),
     /// `u` 확인 뒤 고른 버전 사용.
     Use(String),

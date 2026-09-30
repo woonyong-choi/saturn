@@ -55,7 +55,8 @@ pub fn suspend(screen: &mut Screen) -> Result<(), TerminalError> {
     todo!("#92")
 }
 
-/// `Ctrl+G`: 초안을 임시 파일에 쓰고 `$VISUAL` → `$EDITOR` → `vi` 순으로 띄운다. 에디터가 끝나면 파일 내용을 돌려준다.
+/// `Ctrl+G`: 초안을 임시 파일에 쓰고 외부 에디터를 띄운다. 에디터가 끝나면 파일 내용을 돌려준다. 에디터 순서는 초안이다(설계에 없음).
+/// TODO(#92): 값 미정, 초안 `$VISUAL` → `$EDITOR` → `vi`
 /// 에디터가 도는 동안은 `leave` 상태이고 끝나면 `enter`한다. 끝에 붙은 줄바꿈 하나는 지운다.
 ///
 /// # Errors

@@ -28,10 +28,12 @@ use super::{JudgeExchange, JudgesError, SharedSecrets};
 /// 허용 호스트. judge 키는 이 호스트로만 간다.
 pub const ALLOWED_HOST: &str = "api.typesafe.ai";
 
-/// 요청 하나의 크기 한도. 넘으면 나눠 보낸다. TODO(#88): 단위(토큰, 바이트)와 1K 크기 미정
+/// 요청 하나의 크기 한도. 넘으면 나눠 보낸다. 설계는 64K만 정하고 단위(토큰, 바이트)와 1K 크기는 정하지 않았다.
+/// TODO(#88): 값 미정, 초안 64 × 1024(단위 미정)
 pub const REQUEST_SPLIT_LIMIT: usize = 64 * 1024;
 
 /// `state`와 가장 긴 질문의 합 한도. 넘으면 나눠 보낸다. 단위는 `REQUEST_SPLIT_LIMIT`와 같다.
+/// TODO(#88): 값 미정, 초안 32 × 1024(단위 미정)
 pub const STATE_SPLIT_LIMIT: usize = 32 * 1024;
 
 /// `choice` 선택지 최대 수. 넘으면 계층 선택으로 나눈다.
@@ -84,7 +86,7 @@ impl RemoteJudge {
     /// `GET /v1/models`. 키가 맞는지와 고정한 모델이 목록에 있는지 본다.
     ///
     /// # Errors
-    /// 연결 실패, 인증 실패, 모델 없음 모두 `NoResponse`. TODO(#88): core `JudgeError`에 인증 실패를 가를 variant가 없다
+    /// 인증 실패(키 없음, 거절)는 `Unauthorized`, 연결 실패와 모델 없음은 `NoResponse`.
     pub async fn list_models(&self) -> Result<Vec<String>, JudgeError> {
         todo!("#88")
     }
@@ -162,7 +164,7 @@ pub(crate) fn split_request(request: JudgeRequest) -> Vec<JudgeRequest> {
 /// 선택지가 `MAX_CHOICES`를 넘는 `choice` 질문을 계층 선택으로 나눈다(묶음 고르기 → 묶음 안에서 고르기).
 /// 넘지 않으면 그대로 하나를 돌려준다. TODO(#68): 계층 질문의 묶음 나누기와 2차 질문 방식 미정
 pub(crate) fn split_choices(question: &Question) -> Vec<Question> {
-    todo!("#68")
+    todo!("#88")
 }
 
 /// 조각 응답을 질문 id 순서대로 합치고 토큰을 더한다. 계층 선택은 원래 선택지 확률로 되돌린다.

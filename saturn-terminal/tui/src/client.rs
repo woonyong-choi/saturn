@@ -35,7 +35,7 @@ pub struct EngineClient {
 }
 
 impl EngineClient {
-    /// 사용자 소켓 경로(`~/.saturn/engine.sock`). TODO(#49): 경로 설정 키
+    /// 사용자 소켓 경로(초안 `~/.saturn/engine.sock`, engine `rpc::SOCKET_FILE`과 같은 값). TODO(#49): 경로 설정 키
     pub fn default_socket() -> PathBuf {
         todo!("#89")
     }

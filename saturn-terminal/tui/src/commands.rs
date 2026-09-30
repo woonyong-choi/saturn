@@ -86,6 +86,9 @@ pub const SATURN_COMMANDS: &[CommandSpec] = &[
 pub enum SlashCommand {
     /// `/help` 도움말.
     Help,
+    /// `/record on|off` 이 채팅의 판단 기록 켜기와 끄기(`Request::SetRecording`).
+    /// TODO(#92): `SATURN_COMMANDS` 목록과 `/` 팝업에 추가
+    Record { on: bool },
     /// `/send [이름표]` 대기 입력을 지금 보낸다(`Request::SendNow`). 이름표가 없으면 가장 최근 대기 입력.
     Send { target: Option<TaskLabel> },
     /// `/cancel [이름표]` 보내기 전 입력 취소(`Request::CancelInput`), 보류면 보류 닫기 확인. 없으면 가장 최근 대기 입력.
@@ -110,7 +113,7 @@ pub enum SlashCommand {
 }
 
 /// 제출한 줄을 명령으로 해석한다. `/`로 시작하지 않으면 `Ok(None)`(일반 입력).
-/// 앞뒤 공백은 무시하고, 이름표 인자는 대문자 한 글자(`A`–`Z`)만 받는다.
+/// 앞뒤 공백은 무시하고, 이름표 인자는 `labels::LABEL_RANGE`(초안 `A`–`Z`)의 한 글자만 받는다.
 ///
 /// # Errors
 /// 알 수 없는 Saturn 명령이면 `Unknown`, 인자가 틀리면 `InvalidArgument`.

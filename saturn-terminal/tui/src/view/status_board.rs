@@ -108,7 +108,7 @@ pub enum StatusLine {
     Alert(Alert),
     /// 알림 줄 `멈춤 확인 안 됨 · N개 남음`.
     StopUnconfirmed { remaining: u32 },
-    /// 알림 줄 `판단기 연결 없음 · 차례에 보냅니다`. `[보내기]`를 눌렀으나 judge 실패. TODO(#46): 알릴 메서드가 없다
+    /// 알림 줄 `판단기 연결 없음 · 차례에 보냅니다`. `[보내기]`를 눌렀으나 judge 실패(`Alert::JudgeDownSendingInOrder`).
     JudgeUnavailableSend,
     /// 알림 줄 `폴더 설정 오류 · 이전 설정 번호 12로 계속 · 줄 7: ...`(`SettingsApplied`의 경고).
     SettingsError { previous: u64, detail: String },
@@ -140,7 +140,7 @@ pub enum Button {
     CancelInput(InputId),
     /// 보류 줄 `[이어서]` = `/continue` → `Request::Continue { task: Some }`.
     ContinueTask(TaskId),
-    /// 보류 입력 줄 `[이어서]`. 보류 입력만 재개하는 요청이 없어 채팅 전체 `Continue { task: None }`을 쓴다(가정).
+    /// 보류 입력 줄 `[이어서]` → `Request::ContinueInput`(그 입력만 대기열로 되돌린다).
     ContinueInput(InputId),
     /// 보류 줄 `[취소]` = `/cancel` → 보류 닫기 확인 줄을 띄운다.
     CloseHeld(TaskId),

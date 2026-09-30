@@ -2,7 +2,7 @@
 //!
 //! 설계: docs/design/tui.md(영역 학습 확인 창, 키), docs/design/judge-training.md.
 //! 조건을 못 채우면 창 대신 대화 기록에 `채점할 판단 83 / 200건 · 200건이 쌓이면 실행할 수 있습니다`.
-//! TODO(#46): 학습 확인에 필요한 값을 받는 알림이 protocol에 없다
+//! 값은 `Notification::TrainPreview`로 받고 답은 `Request::ConfirmTrain`으로 보낸다.
 
 use ratatui::Frame;
 use ratatui::layout::Rect;

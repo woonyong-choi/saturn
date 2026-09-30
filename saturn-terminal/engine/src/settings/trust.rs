@@ -2,7 +2,8 @@
 //!
 //! 설계: docs/design/settings.md(폴더 설정 신뢰). 신뢰 창(TUI)의 키: `1`·`y` 적용하고 계속, `↑`·`↓` 이동, `Enter` 확정,
 //! `3`·`q`·`Esc`·`Ctrl+C` 종료. 실행 중 폴더 설정이 바뀌면 다음 입력을 접수하기 전에 창을 연다.
-//! TODO(#83): 신뢰 기록 위치(설계에 없음). 초안은 `~/.saturn/trusted.json`(경로 → 지문), 권한 0600
+//! 신뢰 기록 위치와 형식은 초안이다(설계에 없음).
+//! TODO(#83): 값 미정, 초안 `~/.saturn/trusted.json`(경로 → 지문), 권한 0600
 
 use std::path::{Path, PathBuf};
 
@@ -24,7 +25,8 @@ pub enum TrustStatus {
 pub struct FolderTrustPrompt {
     /// 폴더 설정 파일 경로.
     pub path: PathBuf,
-    /// 지금 내용의 지문(SHA-256 hex).
+    /// 지금 내용의 지문(hex). 해시는 초안이다(설계는 지문만 정함).
+    /// TODO(#83): 값 미정, 초안 SHA-256
     pub fingerprint: String,
     /// 적용되는 점 경로 키.
     pub applied: Vec<String>,

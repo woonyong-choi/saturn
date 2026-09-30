@@ -22,7 +22,8 @@ pub struct MigrationNotice {
     pub from: u32,
     /// 이관 뒤 버전(`SCHEMA_VERSION`).
     pub to: u32,
-    /// 만든 백업 파일. `~/.saturn/backup/saturn-v<from>-<unix초>.db`. 14일 뒤 지운다.
+    /// 만든 백업 파일. `~/.saturn/backup/` 아래에 두고 14일 뒤 지운다. 파일 이름은 초안이다(설계에 없음).
+    /// TODO(#82): 값 미정, 초안 `saturn-v<from>-<unix초>.db`
     pub backup: PathBuf,
 }
 

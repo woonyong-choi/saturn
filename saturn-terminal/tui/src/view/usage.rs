@@ -2,7 +2,7 @@
 //!
 //! 설계: docs/design/tui.md(영역 사용량 화면, 키 사용량 화면), docs/design/providers-and-sessions.md(사용량 보고).
 //! 보고하지 않은 값은 0으로 채우지 않고 `-`로 보인다.
-//! TODO(#46): `Request::Usage`의 응답 알림이 protocol에 없다
+//! `Request::Usage`의 응답은 `Notification::Usage`다.
 
 use ratatui::Frame;
 use ratatui::layout::Rect;

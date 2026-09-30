@@ -241,7 +241,8 @@ pub fn task_list(key: KeyEvent) -> Option<Action> {
     todo!("#92")
 }
 
-/// 전체 기록: `Esc` → `Close`, `↑`/`↓` → `Up`/`Down`(스크롤). 설계 표에는 `Ctrl+T` 표시만 있어 닫기 키는 가정이다.
+/// 전체 기록: `Esc` → `Close`, `↑`/`↓` → `Up`/`Down`(스크롤). 설계 표에는 `Ctrl+T` 표시만 있어 닫기와 스크롤 키는 초안이다.
+/// TODO(#92): 값 미정, 초안 `Esc` 닫기, `↑`/`↓` 스크롤
 pub fn full_transcript(key: KeyEvent) -> Option<Action> {
     todo!("#92")
 }

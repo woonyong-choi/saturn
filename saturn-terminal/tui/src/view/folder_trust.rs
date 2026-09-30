@@ -2,7 +2,7 @@
 //!
 //! 설계: docs/design/tui.md(영역 폴더 설정 신뢰 창, 키), docs/design/settings.md(신뢰 규칙).
 //! 실행 중에 만나면 다음 입력 접수 전에 띄운다.
-//! TODO(#46): 신뢰 요청 알림과 답 요청이 protocol에 없다
+//! 요청은 `Notification::FolderTrustRequested`, 답은 `Request::AnswerFolderTrust`.
 
 use std::path::PathBuf;
 

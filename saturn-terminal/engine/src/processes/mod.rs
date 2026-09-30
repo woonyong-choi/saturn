@@ -7,7 +7,7 @@
 //! 1. `providers`가 `ProcessSpec`을 만들어 `Supervisor::spawn`을 부른다. `env`는 engine이 `secrets::scrub`으로 한 번 거른 환경이다.
 //! 2. `spawn`은 `env_clear` 뒤 `secrets::scrub`을 다시 거친 환경만 넣고(두 번째 제거), 중첩 표지를 더해 새 묶음의 리더로 실행한다.
 //! 3. 멈춤: 호출자가 provider 멈춤 신호를 모두 보낸 뒤 `stop_tree`를 부른다.
-//!    `STOP_GRACE`(10초) 안에 끝나지 않으면 묶음에 중지 신호(SIGTERM), `KILL_GRACE` 뒤에도 남으면 강제 종료(SIGKILL).
+//!    `STOP_GRACE`(10초) 안에 끝나지 않으면 묶음에 중지 신호(SIGTERM), `KILL_GRACE`(초안 5초) 뒤에도 남으면 강제 종료(SIGKILL).
 //! 4. `stop_tree`는 묶음과 묶음 밖으로 빠져나간 자손이 모두 끝난 것을 확인할 때만 `StopOutcome::Stopped`를 돌려준다.
 //!
 //! 작업 공간에 `libc`, `nix`가 없다. 묶음 신호(`kill(-pgid, sig)`)와 프로세스 표 조회는 구현 때 방법을 정한다
@@ -24,8 +24,8 @@ use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 /// 멈춤 신호 뒤 묶음에 중지 신호를 보내기 전까지 기다리는 시간.
 pub const STOP_GRACE: Duration = Duration::from_secs(10);
 
-/// 중지 신호(SIGTERM) 뒤 강제 종료(SIGKILL) 전까지 기다리는 시간.
-/// TODO(#85): 설계 문서에 값이 없다. 정하면 providers-and-sessions.md 트리 전체 중지 절에 적는다
+/// 중지 신호(SIGTERM) 뒤 강제 종료(SIGKILL) 전까지 기다리는 시간. 초안 값이다(설계에 없음).
+/// TODO(#85): 값 미정, 초안 5초
 pub const KILL_GRACE: Duration = Duration::from_secs(5);
 
 /// 자식 환경에 넣는 중첩 표지. 에이전트가 작업 중 실행한 `saturn`은 이 변수가 있으면 거절한다(판정은 `cli`).
@@ -157,7 +157,8 @@ impl Supervisor {
     ///
     /// `env_clear` 뒤 `secrets::scrub(spec.env)` 결과와 `NESTED_MARKER_ENV=1`만 넣는다. 제외 목록(`secrets::CHILD_ENV_DENYLIST`)은 여기서 다시 보지 않고 `scrub`에 맡긴다.
     /// `process_group(0)`으로 새 묶음을 만들고 stdin, stdout, stderr를 파이프로 잇는다.
-    /// 등록 뒤 자손 목록 갱신과 리더 종료 수거를 백그라운드 작업으로 돌린다. 갱신 주기는 1초 이하로 둔다.
+    /// 등록 뒤 자손 목록 갱신과 리더 종료 수거를 백그라운드 작업으로 돌린다. 갱신 주기는 초안 값이다.
+    /// TODO(#85): 값 미정, 초안 1초 이하
     ///
     /// # Errors
     /// 실행 파일이 없거나 실행 권한이 없으면 `Spawn`.

@@ -1,7 +1,8 @@
 //! 실행별 원시 기록(provider가 보낸 줄 그대로): 실행 중 이어 쓰기, 끝나면 gzip 압축, 읽을 때 자동 해제.
 //!
 //! 설계: docs/design/records.md(원시 기록 압축). 해시와 크기는 압축 전 값으로 기록해 압축이 대조 값을 바꾸지 않게 한다.
-//! TODO(#82): gzip은 `flate2`(작업 공간 의존성 추가 필요), 해시는 SHA-256 hex로 구현한다
+//! TODO(#82): gzip은 `flate2`(작업 공간 의존성 추가 필요)로 구현한다
+//! TODO(#82): 값 미정, 초안 해시 SHA-256 hex
 
 use saturn_protocol::ids::RunId;
 

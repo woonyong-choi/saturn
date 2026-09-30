@@ -50,16 +50,19 @@ pub(crate) const STEER_VERIFIED: bool = false;
 const SUBAGENT_TOOLS: &[&str] = &["Task", "Agent"];
 
 /// `slash_commands`에서 뺄 이름. 화면 전용 명령과 Saturn session 명령이 대신하는 명령(대화 비우기, 재개, 종료).
-/// 설정을 바꾸는 명령(`model`, `permissions` 등)은 빼지 않는다.
+/// 설정을 바꾸는 명령(`model`, `permissions` 등)은 빼지 않는다. 목록은 후보다(설계에 목록 없음).
+/// TODO(#87): 값 미정, 초안 `clear`, `resume`, `exit`, `quit`
 pub(crate) const EXCLUDED_COMMANDS: &[&str] = &["clear", "resume", "exit", "quit"];
 
-/// 권한 기본값 인자(수정 허용). 사용자 설정에 권한 값이 없을 때만 넣는다.
+/// 권한 기본값 인자(수정 허용). 사용자 설정에 권한 값이 없을 때만 넣는다. 인자 값은 초안이다(설계는 수정 허용만 정함).
+/// TODO(#87): 값 미정, 초안 `--permission-mode acceptEdits`
 const PERMISSION_ARGS: &[&str] = &["--permission-mode", "acceptEdits"];
 
-/// 자동 압축 안전망 인자. `--autocompact <T_hard>`로 넘긴다. Claude 최솟값은 100,000 토큰이라 그보다 작으면 100,000으로 올린다.
+/// 자동 압축 안전망 인자. `--autocompact <T_hard>`로 넘긴다. `T_hard`가 `AUTO_COMPACT_MIN`보다 작으면 그 값으로 올린다.
 const AUTO_COMPACT_FLAG: &str = "--autocompact";
 
-/// `--autocompact` 최솟값(토큰).
+/// `--autocompact` 최솟값(토큰). 초안 값이다(설계에 없고 Claude 규약 확인 전).
+/// TODO(#87): 값 미정, 초안 100,000
 const AUTO_COMPACT_MIN: u64 = 100_000;
 
 /// session(프로세스) 하나의 변환 상태. 읽기 작업과 연결이 `Arc<Mutex<_>>`로 같이 쓴다.
@@ -205,6 +208,7 @@ pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec
 /// `~/.claude/settings.json`, `<작업 폴더>/.claude/settings.json`, `<작업 폴더>/.claude/settings.local.json`의
 /// `permissions.defaultMode` → 권한, `autoCompactEnabled` → 자동 압축.
 /// 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있어도 자동 압축 값이 있는 것으로 본다. 파일을 못 읽으면 값 없음.
+/// TODO(#87): 값 미정, 초안 위 파일·키·환경 변수 목록(Claude 규약에서 확인)
 pub(crate) fn read_user_config(launch: &LaunchSpec) -> UserProviderConfig {
     todo!("#87")
 }

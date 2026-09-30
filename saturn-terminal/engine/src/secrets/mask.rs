@@ -1,7 +1,8 @@
 //! 출력 마스킹: judge 키와 일치하는 문자열을 로그, 오류, 디버그 출력, 판단 기록 저장 전에 가린다. Authorization 헤더는 기록하지 않는다.
 //!
 //! 설계: docs/design/judge-key-security.md(출력 마스킹, 키를 저장하지 않는 곳).
-//! 가린 자리는 `[redacted]`로 바꾼다(끝 4자리도 남기지 않는다).
+//! 가린 자리는 치환 문자열로 바꾼다(끝 4자리도 남기지 않는다). 치환 문자열과 헤더 목록은 초안이다(설계에 없음).
+//! TODO(#84): 값 미정, 초안 치환 문자열 `[redacted]`, 헤더 `authorization`, `proxy-authorization`, `x-api-key`
 
 use std::io::Write;
 
@@ -28,7 +29,7 @@ impl Masker {
         todo!("#84")
     }
 
-    /// `text`의 모든 대상 문자열을 `[redacted]`로 바꾼다. 긴 대상부터 바꿔 겹친 대상이 남지 않게 한다.
+    /// `text`의 모든 대상 문자열을 치환 문자열(초안 `[redacted]`)로 바꾼다. 긴 대상부터 바꿔 겹친 대상이 남지 않게 한다.
     /// `Authorization: ...`, `x-api-key: ...` 헤더 줄은 값 전체를 가린다.
     pub fn mask(&self, text: &str) -> Masked {
         todo!("#84")
@@ -74,7 +75,7 @@ impl<W: Write> Write for MaskingWriter<W> {
     }
 }
 
-/// 기록하면 안 되는 HTTP 헤더인지. `authorization`, `proxy-authorization`, `x-api-key`(대소문자 무시)면 참.
+/// 기록하면 안 되는 HTTP 헤더인지. 설계는 Authorization만 정한다. 초안 목록 `authorization`, `proxy-authorization`, `x-api-key`(대소문자 무시)면 참.
 /// judge 요청과 응답을 기록할 때 이 헤더는 이름만 남기고 값을 버린다.
 pub fn is_sensitive_header(name: &str) -> bool {
     todo!("#84")
