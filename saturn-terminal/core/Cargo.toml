@@ -7,3 +7,6 @@ publish.workspace = true
 
 [dependencies]
 saturn-protocol.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
