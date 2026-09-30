@@ -1,0 +1,17 @@
+shape: sequence_diagram
+user: Developer
+engine: Saturn engine
+store: Record store
+claude: Claude Code
+codex: Codex
+user -> engine: request in chat
+engine -> store: input recorded first
+engine -> claude: input to Claude session
+claude -> engine: events and result
+engine -> store: result recorded
+user -> engine: switch chat to Codex
+engine -> store: read record for packet
+engine -> codex: new session with packet
+codex -> engine: events and result
+engine -> store: result recorded
+engine -> user: both results in one chat

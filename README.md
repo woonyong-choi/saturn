@@ -1,15 +1,27 @@
-# Saturn
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.png">
+    <img src="docs/assets/logo-light.png" alt="Saturn logo" width="160">
+  </picture>
+</p>
 
-English | [한국어](README.ko.md)
+<h1 align="center">Saturn</h1>
 
-A terminal tool that continues one conversation across Codex and Claude Code.
+<p align="center">
+  A terminal tool that continues one conversation across Codex and Claude Code.
+</p>
+
+<p align="center">
+  English | <a href="README.ko.md">한국어</a><br>
+  <a href="#how-it-works">How it works</a> · <a href="#status">Status</a> · <a href="#roadmap">Roadmap</a> · <a href="#documentation">Documentation</a>
+</p>
 
 Developers who use Codex and Claude Code together lose context each time they switch, because each provider keeps its own sessions and compacts them in its own way. Saturn records every input locally before sending it and gives each provider session only the context it needs from that record. Unlike running each tool in a separate terminal, one chat keeps its history and task state across provider switches, parallel tasks, and fresh sessions.
 
 > [!NOTE]
 > Design stage. There is no runnable code yet.
 
-![Design: the TUI and CLI talk only to the engine, which drives Codex, Claude Code, and the judge](docs/assets/architecture.svg)
+![Design: after you switch the chat from Claude Code to Codex, the new Codex session gets a packet from the Saturn record and both results stay in one chat](docs/assets/provider-switch.svg)
 
 ## How it works
 
