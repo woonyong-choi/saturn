@@ -5,23 +5,23 @@
 | 날짜 | 2026-09-29 |
 | 상태 | 채택 |
 | 대체 | 없음 |
-| 관련 문서 | [아키텍처](../architecture.md), [핵심 규칙 설계](../components/core.md), [엔진 설계](../components/engine.md) |
+| 관련 문서 | [아키텍처](../architecture.md), [engine 수명과 복구](../design/engine-lifecycle.md) |
 
 ## 배경
 
-Saturn은 전달 여부가 불확실한 입력을 자동으로 다시 보내지 않는 원칙을 따랐다. 크래시 뒤 로컬 작업을 자동으로 재개하는 규칙은 이 원칙과 충돌했다. 공급자와 하위 에이전트는 네트워크나 외부 도구로 작업 폴더 밖에 효과를 낼 수 있었다. Saturn은 공급자 설정을 바꾸지 않기로 했다.
+Saturn은 전달 여부가 불확실한 입력을 자동으로 다시 보내지 않는 원칙을 따른다. 크래시 뒤 로컬 작업을 자동으로 재개하는 규칙은 이 원칙과 충돌한다. provider와 subagent는 네트워크나 외부 도구로 작업 폴더 밖에 효과를 낼 수 있다. Saturn은 provider 설정을 바꾸지 않는다.
 
 ## 선택지
 
 | 선택지 | 장점 | 단점 |
 |---|---|---|
-| 증명 기반 자동 재개(`effect_scope` 4단계) | 외부 효과 작업의 중복 실행 방지, 공급자 설정 유지 | 증명하지 못한 작업은 사용자의 `/continue` 필요 |
+| 증명 기반 자동 재개(`effect_scope` 4단계) | 외부 효과 작업의 중복 실행 방지, provider 설정 유지 | 증명하지 못한 작업은 사용자의 `/continue` 필요 |
 | 로컬 작업 자동 재개 | 사용자 개입 없는 재개 | 로컬 여부의 추정, 외부 효과 중복 가능 |
-| Saturn이 공급자 네트워크 차단 설정 고정 | 설정으로 로컬 전용 보장 | 사용자 공급자 설정 변경 |
+| Saturn이 provider 네트워크 차단 설정 고정 | 설정으로 로컬 전용 보장 | 사용자 provider 설정 변경 |
 
 ## 결정
 
-증명 기반 자동 재개(`effect_scope` 4단계)를 골랐다. 결과 불명 입력의 재전송 금지, 공급자 설정 유지가 기준이었다.
+증명 기반 자동 재개(`effect_scope` 4단계)를 쓴다. 결과 불명 입력의 재전송 금지, provider 설정 유지를 가장 중요하게 본다.
 
 ## 결과
 
@@ -31,5 +31,5 @@ Saturn은 전달 여부가 불확실한 입력을 자동으로 다시 보내지 
 
 ## 다시 볼 조건
 
-- [공급자 적용 설정 보고 실험](https://github.com/woonyong-choi/saturn/issues/4)에서 적용 설정 확인 불가
-- [하위 에이전트 외부 효과 실험](https://github.com/woonyong-choi/saturn/issues/22)에서 증명 규칙이 놓친 경로 발견
+- [provider 적용 설정 보고 실험](https://github.com/woonyong-choi/saturn/issues/4)에서 적용 설정 확인 불가
+- [subagent 외부 효과 실험](https://github.com/woonyong-choi/saturn/issues/22)에서 증명 규칙이 놓친 경로 발견

@@ -9,22 +9,22 @@
 
 ## 배경
 
-Saturn은 약속, 핵심 규칙, 엔진, 화면, 명령으로 이루어졌다. 약속(`saturn-protocol`)은 엔진과 화면이 함께 따르는 규약이었다. 나중에는 데스크톱 앱과 학습 도구가 더해질 수 있었다. Codex(`openai/codex`)는 저장소 하나에 여러 모듈을 두었다. Cargo 작업 공간은 목록의 crate를 `target/` 하나와 `Cargo.lock` 하나로 함께 빌드했다.
+Saturn은 `protocol`, `core`, engine, TUI, `cli`로 이루어진다. `protocol`(`saturn-protocol`)은 engine과 TUI가 함께 따르는 규약이다. 나중에는 데스크톱 앱과 학습 도구가 더해질 수 있다. Codex(`openai/codex`)는 저장소 하나에 여러 모듈을 둔다. Cargo 작업 공간은 목록의 crate를 `target/` 하나와 `Cargo.lock` 하나로 함께 빌드한다.
 
 ## 선택지
 
 | 선택지 | 장점 | 단점 |
 |---|---|---|
-| 저장소 하나, 제품별 폴더(`saturn-protocol/`, `saturn-terminal/`) | 약속 변경과 사용처 수정을 한 PR로 처리, 빌드와 잠금 파일 하나 | 구성 요소별 저장소 권한 분리 불가, 저장소 크기 증가 |
-| 구성 요소별 저장소 | 구성 요소별 권한, 독립 릴리스 | 약속 변경 때 여러 저장소 동시 수정, 버전 맞춤 부담 |
+| 저장소 하나, 제품별 폴더(`saturn-protocol/`, `saturn-terminal/`) | `protocol` 변경과 사용처 수정을 한 PR로 처리, 빌드와 잠금 파일 하나 | 구성 요소별 저장소 권한 분리 불가, 저장소 크기 증가 |
+| 구성 요소별 저장소 | 구성 요소별 권한, 독립 릴리스 | `protocol` 변경 때 여러 저장소 동시 수정, 버전 맞춤 부담 |
 
 ## 결정
 
-저장소 하나, 제품별 폴더(`saturn-protocol/`, `saturn-terminal/`)를 골랐다. 약속과 사용처의 동시 변경이 기준이었다.
+저장소 하나, 제품별 폴더(`saturn-protocol/`, `saturn-terminal/`)를 쓴다. `protocol`과 사용처의 동시 변경을 가장 중요하게 본다.
 
 ## 결과
 
-- 약속, 엔진, 화면 변경을 한 PR로 검토
+- `protocol`, engine, TUI 변경을 한 PR로 검토
 - 의존 방향을 한 작업 공간의 Cargo로 강제
 - 공개하지 않을 구성 요소는 별도 저장소로 분리
 

@@ -1,25 +1,25 @@
 direction: right
-user: 개발자 {shape: person}
+user: Developer {shape: person}
 system: Saturn {
-  cli: 명령
-  tui: 화면
-  engine: 엔진
-  core: 핵심 규칙
-  protocol: 약속
-  database: 기록 저장소 {shape: cylinder}
-  cli -> engine: 엔진 시작
-  cli -> tui: 화면 실행
+  cli: cli
+  tui: tui
+  engine: engine
+  core: core
+  protocol: protocol
+  database: SQLite record store {shape: cylinder}
+  cli -> engine: starts
+  cli -> tui: launches
   tui -> engine: JSON-RPC
-  tui -> protocol: 메시지 타입
-  engine -> core: 대기열, 세션, 판단 규칙
-  engine -> protocol: 메시지 타입
-  engine -> database: 기록
+  tui -> protocol: message types
+  engine -> core: queue, sessions, judgment rules
+  engine -> protocol: message types
+  engine -> database: records
 }
 codex-cli: Codex CLI {style.stroke-dash: 4}
 claude-code: Claude Code {style.stroke-dash: 4}
-judge-api: 판단기 API {style.stroke-dash: 4}
-user -> system.cli: 명령
-user -> system.tui: 입력
-system.engine -> codex-cli: app-server 요청
-system.engine -> claude-code: stream-json 입력
-system.engine -> judge-api: 판단 질문
+judge-api: Judge API {style.stroke-dash: 4}
+user -> system.cli: commands
+user -> system.tui: input
+system.engine -> codex-cli: app-server requests
+system.engine -> claude-code: stream-json input
+system.engine -> judge-api: judgment questions
