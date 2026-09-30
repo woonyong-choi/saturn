@@ -1,15 +1,27 @@
-# Saturn
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.png">
+    <img src="docs/assets/logo-light.png" alt="Saturn logo" width="160">
+  </picture>
+</p>
 
-[English](README.md) | 한국어
+<h1 align="center">Saturn</h1>
 
-Codex와 Claude Code를 하나의 대화로 이어 쓰는 터미널 도구입니다.
+<p align="center">
+  Codex와 Claude Code를 하나의 대화로 이어 쓰는 터미널 도구입니다.
+</p>
+
+<p align="center">
+  <a href="README.md">English</a> | 한국어<br>
+  <a href="#작동-방식">작동 방식</a> · <a href="#상태">상태</a> · <a href="#로드맵">로드맵</a> · <a href="#문서">문서</a>
+</p>
 
 Codex와 Claude Code를 함께 쓰는 개발자는 provider마다 session과 압축 방식이 달라서 도구를 바꿀 때마다 맥락을 잃습니다. Saturn은 모든 입력을 보내기 전에 로컬에 기록하고, 그 기록에서 각 provider session에 필요한 맥락만 골라 넘깁니다. 도구마다 터미널을 따로 띄우는 방식과 달리, provider를 바꾸거나 작업을 병렬로 돌리거나 새 session을 열어도 한 채팅의 기록과 작업 상태가 이어집니다.
 
 > [!NOTE]
 > 설계 단계입니다. 실행할 수 있는 코드는 아직 없습니다.
 
-![설계: TUI와 CLI는 engine에만 붙고, engine이 Codex, Claude Code, judge를 다룹니다](docs/assets/architecture.svg)
+![설계: 채팅을 Claude Code에서 Codex로 바꾸면 새 Codex session이 Saturn 기록으로 만든 패킷을 받고, 두 결과가 한 채팅에 남습니다](docs/assets/provider-switch.svg)
 
 ## 작동 방식
 
