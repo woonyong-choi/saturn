@@ -20,4 +20,5 @@
 | 패킷 | 새 session에 넘기는 맥락 묶음이다. Saturn 기록 원문에서 고른다. | handoff packet, `packet` |
 | 효과 범위 | 크래시 뒤 자동으로 이어 가도 되는지 가르는 실행 기록 값이다. | `effect_scope` |
 | judge | 입력마다 뜻을 확률로 판단하는 작은 모델이다. 외부 API인 기준 judge와 로컬의 Saturn 모델이 있다. | `judge` |
+| judge 사슬 | 앞 judge 호출의 답으로 다음 호출의 state나 선택지를 정하는 2단 이하의 판단이다. 한 호출 안에서 병렬로 묻는 질문 세트와 다르다. | judge chain, `chain` |
 | Saturn 모델 | 판단 기록으로 학습한 로컬 judge다. | student model, `student` |

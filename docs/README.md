@@ -9,6 +9,7 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [provider 연결과 session](design/providers-and-sessions.md) | provider 연결, session 수명과 전환, subagent 추적, 사용량 |
 | [맥락 정리](design/context-management.md) | 맥락 크기 측정, 정리 판정, 패킷 구성 |
 | [judge](design/judge.md) | 판단 질문, 답 형식, 기준값과 대체 규칙, 판단 기록 |
+| [judge 사슬](design/judge-chains.md) | 다단 판단의 모양, 발동 조건, 사슬 기록과 효과 측정 |
 | [judge 키 보호](design/judge-key-security.md) | judge 키 입력, 저장, 자식 프로세스 차단 |
 | [judge 학습](design/judge-training.md) | 기준값 조정, 채점, 로컬 모델 승격 |
 | [설정](design/settings.md) | 설정 층, 폴더 설정 신뢰, 설정 번호 |

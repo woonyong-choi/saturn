@@ -43,6 +43,7 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 
 - 기계적으로 판단할 수 있는 것은 코드가, 뜻을 이해해야 하는 것은 judge가 정한다. judge를 뜻 판단에만 쓰기 위해서다.
 - 제어 명령이 아닌 입력마다 judge를 한 번 부르고 필요한 질문을 요청 한 건에 묶는다. 입력당 호출 수를 한 번으로 줄이기 위해서다.
+- 앞 답으로 다음 호출의 state나 선택지가 바뀌는 판단만 2단까지 잇는다. 사슬의 모양과 발동 조건은 [judge 사슬](judge-chains.md)에 있다.
 - 사용자가 모델을 고정한 입력이면 judge 호출을 생략한다.
 - judge는 앞 입력의 판단 결과를 state에 넣은 요청으로 판단한다. 판단 차례와 적용 직전 revision 비교는 [입력 처리](input-handling.md)에 있다.
 - `keep_current`를 `is_actionable`보다 먼저 읽는다. 이어 가는 입력이 파일 탐색으로 빠지는 일을 막기 위해서다.
@@ -190,7 +191,6 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 
 ## 미해결 질문
 
-- 질문을 상위 범주에서 하위 판단으로 내려가는 계층 트리로 나눌지, 단계마다 호출할지, 지금처럼 한 번에 고를지 ([#68](https://github.com/woonyong-choi/saturn/issues/68))
 - 판단 방식 `collect`를 기준 judge가 결정하고 Saturn 모델은 기록만 하는 방식으로 할지, 반대로 할지 ([#40](https://github.com/woonyong-choi/saturn/issues/40))
 - 통과한 후보가 없거나 provider가 비정상 종료했을 때 사용자에게 확인할지, 현재 에이전트를 유지할지 ([#39](https://github.com/woonyong-choi/saturn/issues/39))
 - judge에 넘기는 state에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))
