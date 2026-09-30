@@ -1,0 +1,17 @@
+---
+name: experiment
+about: 측정·실측 필요
+labels: [experiment]
+---
+
+## 확인할 것
+
+{측정할 것 한 문장}
+
+## 실험 문서
+
+- [{실험}]({design.md 전체 URL})
+
+## 관련
+
+- {이슈나 문서 링크}
