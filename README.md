@@ -1,41 +1,56 @@
-# saturn
+# Saturn
 
-Codex와 Claude Code를 하나의 대화로 이어 쓰는 터미널 도구
+English | [한국어](README.ko.md)
 
-Saturn은 Codex와 Claude Code 같은 구독형 코딩 에이전트를 하나의 화면과 워크플로우에서 전환·병렬 관리하는 로컬 우선 에이전트 오케스트레이션 시스템입니다.
+A terminal tool that continues one conversation across Codex and Claude Code.
 
-사용자의 입력과 실행 상태를 먼저 기록하고, 작업에 적합한 에이전트 선택, 재귀·병렬 실행, 공급자 전환 과정에서 필요한 맥락만 인계해 맥락 손실을 줄이는 구조를 설계하고 있습니다. 공급자 기본 세션과 압축 방식보다 품질을 떨어뜨리지 않으면서 전체 토큰과 비용을 줄이는 것이 목표입니다.
-
-초기 판단기로 Jev를 연결하고, 판단·행동·사후 결과를 검증 가능한 데이터로 축적할 계획입니다. 장기적으로는 이 데이터를 활용해 Jev 없이도 같은 수준 이상의 판단을 수행하는 개인화 로컬 판단 모델을 구축하는 것을 목표로 합니다.
-
-현재는 Rust 기반 터미널 제품을 설계하는 단계이며, 이후 동의 기반 데이터 수집과 원격 API·인증·인프라를 갖춘 서비스로 확장할 계획입니다.
+Developers who use Codex and Claude Code together lose context each time they switch, because each provider keeps its own sessions and compacts them in its own way. Saturn records every input locally before sending it and gives each provider session only the context it needs from that record. Unlike running each tool in a separate terminal, one chat keeps its history and task state across provider switches, parallel tasks, and fresh sessions.
 
 > [!NOTE]
-> 설계 단계입니다. 실행할 수 있는 코드는 아직 없습니다.
+> Design stage. There is no runnable code yet.
 
-![설계: 화면과 명령은 엔진에만 붙고, 엔진이 핵심 규칙으로 공급자와 판단기를 다룹니다](docs/assets/architecture.svg)
+![Design: the TUI and CLI talk only to the engine, which drives Codex, Claude Code, and the judge](docs/assets/architecture.svg)
 
-## 로드맵
+## How it works
 
-- 입력 접수: 모든 입력을 로컬 기록에 접수한 뒤 에이전트로 전송
-- 실행 중 입력 처리: 실행 중 새 입력을 끼워 넣기, 새 작업, 대기 중 하나로 처리
-- 대기와 보류: 대기 입력의 전송과 취소, 멈춘 작업의 보류와 재개
-- 공급자 전환: 한 채팅 안에서 Codex와 Claude 세션을 바꿔 가며 작업
-- 맥락 관리: 턴마다 맥락 크기 기록, 기준 도달 때 정리 뒤 새 세션
-- 하위 에이전트 추적: 공급자 하위 에이전트의 시작, 끝, 사용량 기록
-- 판단기: 입력마다 이어 가기, 새 작업, 모델을 확률로 판단
-- 판단 모델 학습: 판단 기록 채점, 로컬 판단 모델 학습과 승격
-- 전체 화면: 채팅 기록, 실행 영역, 상태판, 입력창, 슬래시 메뉴
-- 데이터 관리: 사용량 조회, 기록 정리와 삭제, 판단 기록 내보내기
+The following is the designed behavior.
 
-## 문서
+1. You run `saturn` in a repository and type a request. A background engine process stores the input in a local SQLite database before it sends anything to Codex or Claude Code.
+2. While the agent works, you type a follow-up. A judge, a small model that answers yes-or-no, multiple-choice, and rating questions about your input, decides whether to add it to the running turn, start a separate task, or queue it.
+3. When the context of a session passes a set token limit and no work is running, Saturn either lets the provider compact the session or, when that costs less, starts a new session. The new session gets a packet with the goal, recent turns, and open items taken from Saturn's own record.
+4. You switch the chat from Claude Code to Codex. A chat is the conversation you see, and provider sessions open and close behind it. The new session receives only what changed since it last saw the chat.
+5. You close the terminal. The engine keeps processing the inputs you already sent, and you can attach again later.
 
-| 문서 | 내용 |
-|---|---|
-| [요구사항](docs/requirements.md) | 목표, 범위, 기능별 요구사항 |
-| [용어](docs/glossary.md) | 문서와 코드에서 쓰는 용어 |
-| [아키텍처](docs/architecture.md) | 구성 요소, 실행 흐름, 공통 규칙 |
-| [핵심 규칙 설계](docs/components/core.md) | 핵심 규칙의 모듈과 동작 |
-| [엔진 설계](docs/components/engine.md) | 엔진의 모듈과 동작 |
-| [화면](docs/ui.md) | 화면 영역, 키 입력, 상태 표시 |
-| [결정 기록](docs/decisions/README.md) | 설계를 정한 이유와 버린 선택지 |
+The full design is in the [design documents](docs/README.md), which are written in Korean.
+
+## Status
+
+Saturn is in the design stage. The design documents, decision records, and experiment plans are public, and there is no code yet. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
+
+## Comparison
+
+- Codex CLI or Claude Code on its own: each keeps its own sessions and compaction and needs no extra layer. Use one of them directly if you stay with one provider.
+- Both tools in separate terminals: you can run them in parallel, but each keeps its own context and you carry context between them by hand. Saturn keeps one record and passes the needed context between providers.
+
+## Roadmap
+
+The order after the design stage is not fixed yet.
+
+1. Design: design documents, decision records, and experiments on provider behavior. (in progress)
+2. Core loop: accept inputs before sending, queue and hold inputs, keep one session per chat. (later)
+3. Provider switching and context: switch between Codex and Claude Code in one chat, hand over context packets, track subagents and usage. (later)
+4. Judge: judge every input with Jev, an external judgment API, as the first judge, and fall back to fixed per-question rules when it fails. (later)
+5. Full-screen TUI and data management: status board, usage view, record cleanup, judgment export. (later)
+6. Local judge model: train a personal judge model from recorded judgments and switch to it only when it is not worse than the current judge on the same evaluation set. (later)
+7. Service: consent-based data collection, remote API, authentication, and infrastructure. (later)
+
+## Documentation
+
+The design documents are written in Korean.
+
+- [Architecture](docs/architecture.md): code map and invariants
+- [Input handling](docs/design/input-handling.md): accepting, queuing, holding, and resuming inputs
+- [Provider connections and sessions](docs/design/providers-and-sessions.md): provider connections, session switching, subagent tracking
+- [Context management](docs/design/context-management.md): measuring context and continuing in a new session
+- [Decision records](docs/decisions/README.md): why each design choice was made
+- [All documents](docs/README.md)

@@ -1,146 +1,115 @@
 # 아키텍처
 
-Saturn은 6개 구성 요소로 이루어진다. 화면과 명령은 사용자당 하나인 엔진에 Unix 소켓 위 JSON-RPC로 붙고, 엔진이 공급자와 판단기와 기록 저장소를 잇는다.
+Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 터미널 도구다. 구성 요소는 코드 다섯과 기록 저장소 하나이고, `tui`와 `cli`는 사용자당 하나인 `engine`에 Unix 소켓 위 JSON-RPC로 붙는다.
 
 ## 맥락
 
-![사용자 입력은 Saturn을 거쳐 Codex와 Claude Code로 가고, 판단은 판단기에 묻는다](assets/context.svg)
+![사용자 입력은 Saturn을 거쳐 Codex와 Claude Code로 가고, 뜻 판단은 judge에 묻는다](assets/context.svg)
 
 | 외부 요소 | 종류 | 주고받는 것 |
 |---|---|---|
 | Codex CLI | 외부 프로그램 | app-server 요청, 이벤트, 사용량 보고 |
 | Claude Code | 외부 프로그램 | stream-json 입력, 이벤트, 사용량 보고 |
-| 판단기 API | 외부 서비스 | 판단 질문과 선택지별 확률 |
-| 로컬 판단 모델 | 외부 프로그램 | 판단 질문과 선택지별 확률 |
-| macOS 키체인 | 운영체제 | 판단기 키 |
+| judge API | 외부 서비스 | 판단 질문과 선택지별 확률 |
+| 로컬 Saturn 모델 | 외부 프로그램 | 판단 질문과 선택지별 확률 |
+| macOS 키체인 | 운영체제 | judge 키 |
 | 설정 파일 | 파일 | 사용자 설정과 폴더 설정 |
 
-## 구성 요소
+## 코드 지도
 
-![화면과 명령은 엔진에만 붙고, 엔진이 핵심 규칙으로 공급자와 판단기를 다룬다](assets/architecture.svg)
+![TUI와 CLI는 engine에만 붙고, engine이 core 규칙으로 provider와 judge를 다룬다](assets/architecture.svg)
 
-| 구성 요소 | 식별자 | 하는 일 | 기술 | 위치 |
-|---|---|---|---|---|
-| 약속 | `protocol` | 엔진과 화면이 주고받는 메시지 타입 정의 | Rust, `schemars`, `ts-rs` | `saturn-protocol` |
-| 핵심 규칙 | `core` | 대기열, 세션, 에이전트 트리, 판단 규칙과 외부 연결 trait | Rust | `saturn-terminal/core` |
-| 엔진 | `engine` | 공급자 연결, 판단기 호출, 기록 저장, 화면 접속을 맡는 상주 프로세스 | Rust, `tokio` | `saturn-terminal/engine` |
-| 화면 | `tui` | 채팅 기록, 실행 영역, 상태판, 입력창을 그리는 전체 화면 | Rust, `ratatui`, `crossterm` | `saturn-terminal/tui` |
-| 명령 | `cli` | `saturn` 실행 파일, 명령줄 처리와 엔진 시작 | Rust, `clap` | `saturn-terminal/cli` |
-| 기록 저장소 | `database` | 입력, 실행, 세션, 사용량, 판단 기록, 설정 스냅샷 보관 | SQLite | `~/.saturn/saturn.db` |
+| 구성 요소 | 하는 일 | 기술 | 위치 |
+|---|---|---|---|
+| `protocol` | engine과 TUI가 주고받는 메시지 타입 정의 | Rust, `schemars`, `ts-rs` | `saturn-protocol` |
+| `core` | 대기열, session, 에이전트 트리, 판단 규칙과 외부 연결 trait | Rust | `saturn-terminal/core` |
+| `engine` | provider 연결, judge 호출, 기록 저장, TUI 접속을 맡는 상주 프로세스 | Rust, `tokio` | `saturn-terminal/engine` |
+| `tui` | 채팅 기록, 실행 영역, 상태판, 입력창을 그리는 전체 화면 | Rust, `ratatui`, `crossterm` | `saturn-terminal/tui` |
+| `cli` | `saturn` 실행 파일, 명령줄 처리와 engine 시작 | Rust, `clap` | `saturn-terminal/cli` |
+| `database` | 기록 저장소. 입력, 실행, session, 사용량, 판단 기록, 설정 스냅샷 보관 | SQLite | `~/.saturn/saturn.db` |
+
+의존 방향은 한쪽이다. `tui`와 `cli`는 `protocol`만 알고, `engine`은 `core`의 trait을 구현한다. `core`는 파일, 네트워크, 프로세스를 직접 다루지 않는다.
+
+| 구성 요소 | 모듈과 주요 타입 | 위치 |
+|---|---|---|
+| `core` | `providers`(`ProviderClient` trait), `judges`(`JudgeClient` trait), `agents`(`AgentTracker`), `sessions`(`SessionManager`), `queue`(`Queue`) | `saturn-terminal/core/src/{모듈}/mod.rs` |
+| `engine` | `secrets`(`SecretStore`), `store`(`Store`), `settings`(`SettingsManager`), `processes`(`Supervisor`), `providers`(`CodexClient`, `ClaudeClient`), `judges`(`RemoteJudge`, `LocalJudge`), `rpc`(`RpcServer`) | `saturn-terminal/engine/src/{모듈}/` |
+
+기능별 동작은 설계 문서에 있다.
+
+| 찾는 것 | 문서 |
+|---|---|
+| 입력 접수, 대기, 보류와 재개, 쓰기 규칙 | [입력 처리](design/input-handling.md) |
+| provider 연결, session, subagent 추적, 사용량 | [provider 연결과 session](design/providers-and-sessions.md) |
+| 맥락 크기 측정과 새 session으로 이어 가기 | [맥락 정리](design/context-management.md) |
+| 판단 질문, 기준값, 대체 규칙 | [judge](design/judge.md) |
+| judge 키 입력, 저장, 차단 | [judge 키 보호](design/judge-key-security.md) |
+| 채점, 기준값 조정, 로컬 모델 승격 | [judge 학습](design/judge-training.md) |
+| 설정 층과 설정 번호 | [설정](design/settings.md) |
+| 스키마 이관, 보존, 삭제 | [기록 저장과 보존](design/records.md) |
+| engine 시작, TUI 종료 뒤 계속, 크래시 뒤 복구 | [engine 수명과 복구](design/engine-lifecycle.md) |
+| 화면 배치, 키, 상태 표시 | [TUI](design/tui.md) |
 
 ## 실행 흐름
 
-### 입력 접수와 전송
+### 입력 하나의 처리
 
-1. 화면: 입력을 엔진에 전송
-2. 엔진: 입력을 기록 저장소에 접수(ACK)
-3. 핵심 규칙: 같은 채팅 입력의 판단 차례를 접수 순서로 배정
-4. 엔진: 판단기에 질의
-5. 핵심 규칙: 판단 결과로 대상 에이전트와 처리 방식 결정
-6. 엔진: 보내는 순간 대상 세션을 골라 공급자에 전달
-7. 엔진: 공급자 이벤트와 사용량 보고를 기록 저장소에 기록
-8. 화면: 엔진이 보낸 결과 줄 표시
+1. TUI가 입력을 engine에 보낸다.
+2. engine이 입력을 기록 저장소에 접수한다.
+3. `core`가 같은 채팅 입력의 판단 차례를 접수 순서로 정한다.
+4. engine이 judge에 묻고, `core`가 판단 결과로 대상 에이전트와 처리 방식을 정한다.
+5. engine이 보내는 순간 대상 session을 골라 provider에 전달한다.
+6. engine이 provider 이벤트와 사용량 보고를 기록하고 TUI에 결과 줄을 보낸다.
 
-### 실행 중 새 입력
+### TUI를 닫은 뒤
 
-1. 화면: 실행 중 입력을 엔진에 전송
-2. 엔진: 입력 접수
-3. 핵심 규칙: 하던 작업과의 관계를 판단해 끼워 넣기, 새 작업, 대기 중 하나 선택
-4. 엔진: 끼워 넣기면 진행 중인 턴에 입력 추가
-5. 엔진: 끼워 넣기가 활성 턴 없음으로 실패하면 같은 세션의 다음 턴으로 전송
+1. TUI가 끝나면 engine은 접수된 입력을 순서대로 계속 처리한다.
+2. 허가 요청은 TUI가 다시 붙을 때까지 보관한다.
+3. 모든 에이전트가 끝나고 5분이 지나면 engine은 session을 닫고 종료한다.
 
-### 맥락 정리와 세션 교체
+## 불변 조건
 
-1. 엔진: 턴이 끝날 때 맥락 크기 기록
-2. 핵심 규칙: 트리 유휴이고 합칠 대기 입력이 없을 때 유휴 복귀 조건이나 기준 도달 조건으로 정리 결정
-3. 핵심 규칙: 기록 저장소 원문에서 패킷 구성
-4. 엔진: 공급자별 방식으로 새 세션에 패킷 전달이나 공급자 압축 요청
-5. 엔진: 세션을 바꾸면 옛 세션 종료, 세션 기록 교체
-6. 화면: `맥락 정리 후 이어서 진행` 한 줄 표시
-
-### 멈춤과 보류
-
-1. 화면: 멈춤 요청 전송
-2. 핵심 규칙: 실행 중 작업과 보내지 않은 입력 보류
-3. 엔진: 추적된 하위 에이전트부터 멈춤 신호 전송
-4. 엔진: 10초 뒤 남은 공급자 프로세스 묶음에 중지 신호, 그래도 남으면 강제 종료
-5. 화면: 보류 줄 표시
-
-### 엔진 비정상 종료 뒤 복구
-
-1. 명령: 엔진이 없으면 엔진 시작
-2. 엔진: 끝나지 않은 실행의 효과 범위 확인
-3. 핵심 규칙: 설정이나 관찰로 증명된 실행만 자동 재개
-4. 핵심 규칙: 나머지 실행은 보류
-5. 화면: 보류 목록과 `/continue` 제안 표시
-
-### 화면 종료 뒤 계속
-
-1. 화면: 종료, 엔진 연결 해제
-2. 엔진: 접수된 대기 입력을 순서대로 계속 처리
-3. 엔진: 허가 요청은 사용자 확인 대기로 보관
-4. 엔진: 트리 유휴 뒤 5분 유예가 지나면 세션을 닫고 종료
-
-### 판단 모델 학습
-
-1. 명령: `saturn train` 실행
-2. 엔진: 채점 후보와 예상 토큰 표시
-3. 엔진: 채점 모델로 후보 채점, 품질 게이트 통과 라벨 저장
-4. 엔진: 로컬 학습기로 판단 모델 학습
-5. 엔진: 같은 평가 세트에서 현재 모델과 비교해 승격 여부 결정
+- 입력은 기록 저장소에 접수된 뒤에만 provider로 보낸다. 전달 여부를 잃지 않기 위해서다.
+- 보내기 전에 확정된 실패만 다시 보낸다. 같은 작업이 두 번 실행되는 것을 막기 위해서다.
+- 판단 결과는 적용 직전에 채팅 revision을 비교한다. 두 입력이 같은 상태를 보고 함께 끼워 넣어지는 것을 막기 위해서다.
+- engine은 사용자당 하나이고 잠금으로 지킨다. 두 engine이 같은 기록에 쓰는 것을 막기 위해서다.
+- 기록 저장소는 파일 하나이고 쓰는 쪽은 engine 하나다. 한 변경은 한 거래로 처리하고, provider가 보고하지 않은 값은 NULL로 둔다. 쓰기 충돌과 지어낸 값을 막기 위해서다.
+- `core`는 파일, 네트워크, 프로세스를 직접 다루지 않는다. 규칙을 외부 연결 없이 테스트하기 위해서다.
+- provider 고유 이름은 `providers/codex`, `providers/claude` 안에서만 쓴다. TUI가 provider를 몰라도 그릴 수 있게 하기 위해서다.
+- 에이전트끼리 직접 통신하지 않는다. 맥락 전달을 기록 번호 하나로 맞추기 위해서다.
+- provider의 설정과 subagent 사용은 막거나 바꾸지 않고 추적만 한다. 예외는 judge 키 보호 하나다.
+- judge는 engine만 부른다. judge 전송은 HTTPS만 쓰고 TLS 검증을 끄지 않는다. judge 키가 자식 프로세스나 다른 호스트로 새는 것을 막기 위해서다.
+- judge 키와 일치하는 문자열은 로그, 오류, 디버그 출력에서 가리고, Authorization 헤더는 기록하지 않는다. 키가 기록이나 화면으로 새는 것을 막기 위해서다.
+- 스키마는 새 버전을 처음 실행할 때 자동으로 옮기고, 옮기기 직전 백업 하나를 14일 둔다. 판단 기록에는 질문 버전과 설정 번호를 남긴다. 버전이 바뀐 뒤에도 옛 기록을 다시 해석하기 위해서다.
 
 ## 배치
 
+지원 환경은 Apple Silicon macOS다. Rust 2024 edition으로 빌드하고, 실행에는 Codex CLI나 Claude Code 중 하나 이상과 judge API 키나 로컬 Saturn 모델이 필요하다.
+
 | 프로세스 | 시작 주체 | 수명 |
 |---|---|---|
-| `saturn` | 사용자 | 명령 실행이나 화면을 닫을 때까지 |
-| `saturn-engine` | `saturn` | 화면이 모두 떨어지고 트리 유휴 뒤 5분 유예까지, 사용자당 하나 |
-| Codex app-server | `saturn-engine` | 연결 창구로 유지, 세션은 턴 끝 뒤 5분 유예에 정리 |
+| `saturn` | 사용자 | 명령이 끝나거나 TUI를 닫을 때까지 |
+| `saturn-engine` | `saturn` | 모든 TUI가 떨어지고 트리 유휴 뒤 5분 유예까지, 사용자당 하나 |
+| Codex app-server | `saturn-engine` | 연결 창구로 유지, session은 턴 끝 뒤 5분 유예에 정리 |
 | Claude Code | `saturn-engine` | 턴 진행 중과 턴 끝 뒤 5분 유예까지 |
 
 | 경로 | 내용 | 쓰는 구성 요소 |
 |---|---|---|
-| `~/.saturn/config.toml` | 사용자 설정 | 엔진 |
-| `<작업 폴더>/.saturn/config.toml` | 폴더 설정 | 엔진 |
-| `~/.saturn/backup/` | 스키마를 올리기 전 백업 | 엔진 |
-| `~/.saturn/history` | 입력 기록 | 화면 |
-
-## 공통 규칙
-
-### 오류 처리
-
-보내기 전에 확정된 실패만 다시 보낸다. 보낸 뒤 결과가 불명이면 사용자 확인으로 넘긴다. 같은 작업이 두 번 실행되는 것을 막기 위해서다.
-
-### 로그
-
-판단기 키와 일치하는 문자열은 로그, 오류, 디버그 출력에서 가린다. Authorization 헤더는 기록하지 않는다. 키가 공급자 기록이나 화면으로 새는 것을 막기 위해서다.
-
-### 동시성
-
-엔진은 사용자당 하나이고 잠금으로 지킨다. 판단 결과는 적용 직전에 채팅 revision을 비교한다. 두 입력이 같은 상태를 보고 함께 끼워 넣어지는 것을 막기 위해서다.
-
-### 저장
-
-기록 저장소는 파일 하나이고 쓰는 쪽은 엔진 하나다. 한 번의 변경은 한 거래로 처리하고, 공급자가 보고하지 않은 값은 NULL로 둔다. 쓰기 충돌과 지어낸 값을 막기 위해서다.
-
-### 보안
-
-판단기는 엔진만 부른다. 판단기 전송은 HTTPS만 쓰고 TLS 검증을 끄지 않는다. 판단기 키가 자식 프로세스나 다른 호스트로 새는 것을 막기 위해서다.
-
-### 버전 호환
-
-스키마는 새 버전을 처음 실행할 때 자동으로 옮기고, 옮기기 직전 백업 하나를 14일 둔다. 판단 기록에는 질문 버전과 설정 번호를 남긴다. 버전이 바뀐 뒤에도 옛 기록을 다시 해석하기 위해서다.
+| `~/.saturn/config.toml` | 사용자 설정 | `engine` |
+| `<작업 폴더>/.saturn/config.toml` | 폴더 설정 | `engine` |
+| `~/.saturn/backup/` | 스키마를 옮기기 전 백업 | `engine` |
+| `~/.saturn/history` | 입력 기록 | `tui` |
 
 ## 기술 선택
 
 | 영역 | 선택 | 고른 이유 |
 |---|---|---|
-| 언어 | Rust | 화면이 가장 큰 작업이고 가벼운 실행 파일이 기준이다([결정 기록](decisions/2026-09-29-rust-for-all-components.md)). |
-| 화면 | `ratatui`, `crossterm` | Codex 화면과 같은 라이브러리라 그 코드를 본보기로 쓴다. |
-| 구성 요소 연결 | Unix 소켓 위 JSON-RPC | 여러 화면이 한 엔진에 동시에 붙는다([결정 기록](decisions/2026-09-29-engine-centered-json-rpc.md)). |
-| 공급자 연결 | Codex app-server, Claude stream-json | 실행 중 입력을 끼워 넣을 수 있다([결정 기록](decisions/2026-09-29-persistent-provider-connections.md)). |
-| 비동기 실행 | `tokio` | 공급자 연결과 화면 접속을 한 엔진에서 동시에 처리한다. |
+| 언어 | Rust | TUI가 가장 큰 작업이고 가벼운 실행 파일이 기준이다([결정 기록](decisions/2026-09-29-rust-for-all-components.md)). |
+| TUI | `ratatui`, `crossterm` | Codex TUI와 같은 라이브러리라 그 코드를 본보기로 쓴다. |
+| 구성 요소 연결 | Unix 소켓 위 JSON-RPC | 여러 TUI가 한 engine에 동시에 붙는다([결정 기록](decisions/2026-09-29-engine-centered-json-rpc.md)). |
+| provider 연결 | Codex app-server, Claude stream-json | 실행 중 입력을 끼워 넣을 수 있다([결정 기록](decisions/2026-09-29-persistent-provider-connections.md)). |
+| 비동기 실행 | `tokio` | provider 연결과 TUI 접속을 한 engine에서 동시에 처리한다. |
 | 기록 저장소 | SQLite, `sqlx` | 단일 파일과 원자 거래로 입력을 먼저 기록한다. |
 | 설정 편집 | `toml_edit` | 명령으로 설정 파일을 고칠 때 주석을 보존한다. |
-| 판단기 키 저장 | `keyring` | macOS 키체인을 OS API로 직접 쓴다([결정 기록](decisions/2026-09-29-engine-as-judge-proxy.md)). |
-| 판단 모델 학습 | Python, MLX | Apple Silicon에서 로컬 학습을 실행한다. |
+| judge 키 저장 | `keyring` | macOS 키체인을 OS API로 직접 쓴다([결정 기록](decisions/2026-09-29-engine-as-judge-proxy.md)). |
+| judge 학습 | Python, MLX | Apple Silicon에서 로컬 학습을 실행한다. |

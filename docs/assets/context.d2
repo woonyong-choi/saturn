@@ -1,16 +1,16 @@
 direction: right
-user: 개발자 {shape: person}
+user: Developer {shape: person}
 system: Saturn
 codex-cli: Codex CLI {style.stroke-dash: 4}
 claude-code: Claude Code {style.stroke-dash: 4}
-judge-api: 판단기 API {style.stroke-dash: 4}
-local-judge: 로컬 판단 모델 {style.stroke-dash: 4}
-macos-keychain: macOS 키체인 {style.stroke-dash: 4}
-config-files: 설정 파일 {shape: cylinder}
-user -> system: 입력, 명령
-system -> codex-cli: app-server 요청
-system -> claude-code: stream-json 입력
-system -> judge-api: 판단 질문
-system -> local-judge: 판단 질문
-system -> macos-keychain: 판단기 키 조회
-system -> config-files: 설정 조회
+judge-api: Judge API {style.stroke-dash: 4}
+local-judge: Local Saturn model {style.stroke-dash: 4}
+macos-keychain: macOS Keychain {style.stroke-dash: 4}
+config-files: Config files {shape: cylinder}
+user -> system: input, commands
+system -> codex-cli: app-server requests
+system -> claude-code: stream-json input
+system -> judge-api: judgment questions
+system -> local-judge: judgment questions
+system -> macos-keychain: judge key lookup
+system -> config-files: config lookup
