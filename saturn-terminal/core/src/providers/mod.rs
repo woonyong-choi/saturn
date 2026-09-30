@@ -79,37 +79,58 @@ pub trait ProviderClient: Send {
     ///
     /// # Errors
     /// 연결 실패는 `ConnectionLost`, 재개 불가는 `NotSent`.
-    fn open_session(&mut self, spec: SessionSpec) -> impl Future<Output = Result<SessionHandle, ProviderError>> + Send;
+    fn open_session(
+        &mut self,
+        spec: SessionSpec,
+    ) -> impl Future<Output = Result<SessionHandle, ProviderError>> + Send;
 
     /// 새 턴으로 입력을 보낸다(Codex `turn/start`, Claude 스트림 입력).
     ///
     /// # Errors
     /// `NotSent`면 다시 보내도 되고 `Unknown`이면 보내지 않는다.
-    fn send_turn(&mut self, session: &ProviderSessionId, text: &str) -> impl Future<Output = Result<(), ProviderError>> + Send;
+    fn send_turn(
+        &mut self,
+        session: &ProviderSessionId,
+        text: &str,
+    ) -> impl Future<Output = Result<(), ProviderError>> + Send;
 
     /// 진행 중인 턴에 입력을 더한다(Codex `turn/steer`, Claude 스트림 입력 추가).
     ///
     /// # Errors
     /// 활성 턴이 없으면 `NoActiveTurn`. 호출자는 다시 판단하지 않고 `send_turn`으로 보낸다.
-    fn steer(&mut self, session: &ProviderSessionId, text: &str) -> impl Future<Output = Result<(), ProviderError>> + Send;
+    fn steer(
+        &mut self,
+        session: &ProviderSessionId,
+        text: &str,
+    ) -> impl Future<Output = Result<(), ProviderError>> + Send;
 
     /// 멈춤 신호를 보낸다. 트리 전체 중지는 호출자가 subagent부터 차례로 부른다.
     ///
     /// # Errors
     /// 연결이 끊겼으면 `ConnectionLost`. 호출자는 프로세스 묶음 중지로 넘어간다.
-    fn interrupt(&mut self, session: &ProviderSessionId, target: InterruptTarget) -> impl Future<Output = Result<(), ProviderError>> + Send;
+    fn interrupt(
+        &mut self,
+        session: &ProviderSessionId,
+        target: InterruptTarget,
+    ) -> impl Future<Output = Result<(), ProviderError>> + Send;
 
     /// provider 압축을 요청한다(Codex `thread/compact/start`, Claude `/compact`).
     ///
     /// # Errors
     /// provider가 거절하면 `NotSent`.
-    fn compact(&mut self, session: &ProviderSessionId) -> impl Future<Output = Result<(), ProviderError>> + Send;
+    fn compact(
+        &mut self,
+        session: &ProviderSessionId,
+    ) -> impl Future<Output = Result<(), ProviderError>> + Send;
 
     /// session을 닫는다. provider session id는 호출자가 보관해 재개에 쓴다.
     ///
     /// # Errors
     /// 연결이 끊겼으면 `ConnectionLost`.
-    fn close_session(&mut self, session: &ProviderSessionId) -> impl Future<Output = Result<(), ProviderError>> + Send;
+    fn close_session(
+        &mut self,
+        session: &ProviderSessionId,
+    ) -> impl Future<Output = Result<(), ProviderError>> + Send;
 
     /// 다음 이벤트를 기다린다. 연결이 끝나면 `None`.
     fn next_event(&mut self) -> impl Future<Output = Option<ProviderEvent>> + Send;

@@ -31,10 +31,10 @@ pub enum JudgeError {
 }
 
 /// 질문 세트 이름과 버전. 기록에 `route@3.1`처럼 남는다.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct QuestionSetId {
     /// `route`, `relation`, `send-opt`, `file-rank`, `context-select`, `compact`, `doc-filter`, `loop`, `feedback`.
-    pub name: &'static str,
+    pub name: String,
     /// 주 버전. 뜻이나 선택지가 바뀌면 올리고 옛 선택지 → 새 선택지 대응표를 함께 둔다.
     pub major: u16,
     /// 소수 버전. 뜻이 같은 작은 변경. 옛 답과 라벨을 그대로 쓴다.
@@ -64,7 +64,7 @@ pub enum AnswerKind {
 }
 
 /// judge 답 하나.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Answer {
     /// 선택지별 확률. 순서는 `options`와 같다.
     Choice(Vec<f64>),
@@ -79,6 +79,21 @@ impl Answer {
     pub fn confidence(&self) -> f64 {
         todo!("#80")
     }
+}
+
+/// 판단 호출 하나의 결과 종류. 판단 기록에 남는다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum JudgmentOutcome {
+    /// 정상 답.
+    Ok,
+    /// 형식 오류. 대체 규칙을 적용했다.
+    Invalid,
+    /// 판단 중 채팅 revision이 바뀌었다.
+    Superseded,
+    /// 보낸 뒤 시간 초과. 비용을 모른다.
+    CostUnknown,
+    /// 응답 없음.
+    NoResponse,
 }
 
 /// judge 요청 한 건. 입력당 한 번 부르고 필요한 질문을 모두 묶는다.
@@ -115,7 +130,10 @@ pub trait JudgeClient: Send + Sync {
     ///
     /// # Errors
     /// `JudgeError` 종류별로 호출자가 대기, 대체 규칙, 재전송을 고른다.
-    fn judge(&self, request: JudgeRequest) -> impl Future<Output = Result<JudgeResponse, JudgeError>> + Send;
+    fn judge(
+        &self,
+        request: JudgeRequest,
+    ) -> impl Future<Output = Result<JudgeResponse, JudgeError>> + Send;
 }
 
 /// 판단 방식. 판단 기록은 방식과 관계없이 전부 남긴다.
@@ -181,13 +199,23 @@ pub struct RouteDecision {
 
 /// 입력 판단에 필요한 질문을 고른다. 제어 명령이 아닌 입력만. 사용자가 모델을 고정했으면 `target_model`을 뺀다.
 /// 실행 중이면 `relation`과 `send-opt`를 더한다.
-pub fn questions_for_input(running: bool, model_pinned: bool, has_held: bool) -> Vec<(QuestionSetId, Vec<Question>)> {
+pub fn questions_for_input(
+    running: bool,
+    model_pinned: bool,
+    has_held: bool,
+) -> Vec<(QuestionSetId, Vec<Question>)> {
     todo!("#80")
 }
 
 /// judge 답을 행동으로 바꾼다. `keep_current`를 `is_actionable`보다 먼저 읽는다(이어 가는 입력이 파일 탐색으로 빠지지 않게).
 /// 답이 없거나 확신도가 낮거나 `invalid`면 질문별 대체 규칙을 쓴다. `Saturn` 방식이면 확신도 미달 시 행동하지 않는다.
-pub fn decide_route(answers: Option<&JudgeResponse>, thresholds: &Thresholds, method: Method, revision: ChatRevision, settings: SettingsRevision) -> RouteDecision {
+pub fn decide_route(
+    answers: Option<&JudgeResponse>,
+    thresholds: &Thresholds,
+    method: Method,
+    revision: ChatRevision,
+    settings: SettingsRevision,
+) -> RouteDecision {
     todo!("#80")
 }
 

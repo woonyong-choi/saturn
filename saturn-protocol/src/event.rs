@@ -10,17 +10,43 @@ use crate::ids::{AgentId, SubagentId};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ProviderEvent {
     /// 모델 글 조각.
-    Text { agent: AgentId, subagent: Option<SubagentId>, text: String },
+    Text {
+        agent: AgentId,
+        subagent: Option<SubagentId>,
+        text: String,
+    },
     /// 도구 호출 시작. `activity`는 상태판 실행 줄의 하는 일이다.
-    ToolCall { agent: AgentId, subagent: Option<SubagentId>, call_id: String, activity: Activity },
+    ToolCall {
+        agent: AgentId,
+        subagent: Option<SubagentId>,
+        call_id: String,
+        activity: Activity,
+    },
     /// 도구 결과.
-    ToolResult { agent: AgentId, subagent: Option<SubagentId>, call_id: String, output: String },
+    ToolResult {
+        agent: AgentId,
+        subagent: Option<SubagentId>,
+        call_id: String,
+        output: String,
+    },
     /// provider가 subagent를 띄웠다. 부모가 `None`이면 메인 에이전트 바로 아래다.
-    SubagentStarted { agent: AgentId, subagent: SubagentId, parent: Option<SubagentId> },
+    SubagentStarted {
+        agent: AgentId,
+        subagent: SubagentId,
+        parent: Option<SubagentId>,
+    },
     /// subagent가 끝났다.
-    SubagentEnded { agent: AgentId, subagent: SubagentId },
+    SubagentEnded {
+        agent: AgentId,
+        subagent: SubagentId,
+    },
     /// 허가 요청. 사용자 답이 올 때까지 경과 시간을 멈춘다.
-    PermissionRequested { agent: AgentId, request_id: String, summary: String, reason: String },
+    PermissionRequested {
+        agent: AgentId,
+        request_id: String,
+        summary: String,
+        reason: String,
+    },
     /// 부모 턴 완료. Codex는 부모 작업의 `turn/completed`만 여기로 온다.
     TurnCompleted { agent: AgentId, origin: TurnOrigin },
     /// 사용량 보고 한 건. 원값과 범위를 그대로 담고 0으로 채우지 않는다.
@@ -29,6 +55,11 @@ pub enum ProviderEvent {
     ContextSize { agent: AgentId, tokens: Option<u64> },
     /// provider 흐름이 완료 신호 없이 끝났다. 효과 범위를 `Unobserved`로 바꾼다.
     StreamLost { agent: AgentId },
+    /// provider 명령으로 바뀐 적용 설정 값. 막지 않고 기록만 한다.
+    SettingsApplied {
+        agent: AgentId,
+        values: Vec<(String, String)>,
+    },
 }
 
 /// 실행 줄의 하는 일.

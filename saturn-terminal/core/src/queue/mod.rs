@@ -123,7 +123,12 @@ impl Queue {
     ///
     /// # Errors
     /// revision이 다르면 `RevisionConflict`, 없는 입력이면 `NotFound`.
-    pub fn apply(&mut self, input: InputId, decision: &RouteDecision, current: ChatRevision) -> Result<Disposition, QueueError> {
+    pub fn apply(
+        &mut self,
+        input: InputId,
+        decision: &RouteDecision,
+        current: ChatRevision,
+    ) -> Result<Disposition, QueueError> {
         todo!("#76")
     }
 

@@ -68,7 +68,12 @@ impl ThresholdState {
 
 /// 판단 하나에 피드백 질문을 할 확률 q. 기준값 근처에서 높고 확실한 판단에서 낮되 0이 아니다.
 /// 전체 빈도는 판단 20번에 1번을 넘지 않는다.
-pub fn ask_probability(probability: f64, threshold: f64, recent_asks: u32, recent_judgments: u32) -> f64 {
+pub fn ask_probability(
+    probability: f64,
+    threshold: f64,
+    recent_asks: u32,
+    recent_judgments: u32,
+) -> f64 {
     todo!("#81")
 }
 

@@ -39,7 +39,9 @@ pub struct ProviderSessionId(pub String);
 pub struct RunId(pub u64);
 
 /// 채팅 트리 전체 기록에 매긴 하나의 연속 번호. session마다 전달받은 번호를 기억한다.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
+)]
 pub struct LedgerSeq(pub u64);
 
 /// 설정 스냅샷 번호. 입력은 접수 때 고정한 번호로 끝까지 처리한다.
