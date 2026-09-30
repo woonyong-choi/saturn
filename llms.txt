@@ -1,0 +1,18 @@
+# saturn
+
+> Codex와 Claude Code를 하나의 대화로 이어 쓰는 터미널 도구
+
+Saturn은 Codex와 Claude Code 같은 구독형 코딩 에이전트를 하나의 화면과 워크플로우에서 전환·병렬 관리하는 로컬 우선 에이전트 오케스트레이션 시스템입니다.
+
+## 문서
+
+- [요구사항](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/requirements.md): 목표, 범위, 기능별 요구사항
+- [용어](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/glossary.md): 문서와 코드에서 쓰는 용어
+- [아키텍처](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/architecture.md): 구성 요소, 실행 흐름, 공통 규칙
+- [핵심 규칙 설계](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/components/core.md): 핵심 규칙의 모듈과 동작
+- [엔진 설계](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/components/engine.md): 엔진의 모듈과 동작
+- [화면](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/ui.md): 화면 영역, 키 입력, 상태 표시
+
+## Optional
+
+- [결정 기록](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/decisions/README.md): 설계를 정한 이유와 버린 선택지
