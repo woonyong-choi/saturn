@@ -17,4 +17,15 @@ publish = false
 [workspace.dependencies]
 saturn-protocol = { path = "saturn-protocol" }
 saturn-core = { path = "saturn-terminal/core" }
+saturn-engine = { path = "saturn-terminal/engine" }
 saturn-tui = { path = "saturn-terminal/tui" }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+crossterm = "0.28"
+ratatui = "0.29"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "process", "sync", "time", "signal", "io-util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
