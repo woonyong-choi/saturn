@@ -16,7 +16,6 @@ impl Masked {
         &self.0
     }
 
-    /// 테스트에서 이미 가렸다고 보는 문자열.
     #[cfg(test)]
     pub(crate) fn assume_masked(text: &str) -> Self {
         Self(text.to_owned())

@@ -1,9 +1,5 @@
-//! 보존과 정리: 기본 무제한 보존, 설정으로 켜면 시작 때 한 번 자동 정리, `--yes` 없으면 미리보기, 열린 항목 제외, 삭제 흔적.
-//!
-//! 설계: docs/design/records.md(보존과 정리, 삭제 대상 제외, 삭제 절차).
-//! 삭제 절차(`--yes`일 때 한 번에): `PRAGMA secure_delete=ON` → 대상 채팅 행 삭제와 삭제 흔적 기록(한 거래)
-//! → `PRAGMA wal_checkpoint(TRUNCATE)` → `VACUUM`. 판단 기록은 지우지 않는다(전용 정리는 `prune_judgments`).
-//! `~/.claude`, `~/.codex`의 provider 기록은 지우지 않는다.
+//! 보존과 정리. 판단 기록과 `~/.claude`, `~/.codex`의 provider 기록은 지우지 않는다.
+//! 설계: docs/design/records.md
 
 use std::time::{Duration, SystemTime};
 
@@ -13,85 +9,72 @@ use sqlx::Row;
 use super::records::FINAL_INPUT_STATES;
 use super::{Store, StoreError, from_millis, from_sql_int, sha256_hex, to_millis, to_sql_int};
 
-/// 채팅의 마지막 활동 시각(unix 밀리초). 채팅 생성, 입력 접수, 실행 시작과 끝, 이벤트 중 가장 늦은 것.
+/// 채팅 생성, 입력 접수, 실행 시작과 끝, 이벤트 중 가장 늦은 시각(unix 밀리초).
 const LAST_ACTIVE: &str = "MAX(c.created_at, \
      COALESCE((SELECT MAX(accepted_at) FROM inputs WHERE chat_id = c.id), 0), \
      COALESCE((SELECT MAX(MAX(started_at, COALESCE(ended_at, 0))) FROM runs WHERE chat_id = c.id), 0), \
      COALESCE((SELECT MAX(at) FROM events WHERE chat_id = c.id), 0))";
 
-/// 정리 대상 행 수에 넣는 표. 판단 기록과 설정 스냅샷은 넣지 않는다.
+/// 판단 기록과 설정 스냅샷은 넣지 않는다.
 const COUNTED_TABLES: [&str; 5] = ["inputs", "runs", "events", "usage", "sessions"];
 
-/// 자동 정리 정책. 설정 층에서 읽는다. 기본값은 무제한 보존(자동 정리 꺼짐). TODO(#49): 설정 키 이름과 기본값
+/// 기본값은 무제한 보존. TODO(#49): 설정 키 이름과 기본값
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct RetentionPolicy {
-    /// 마지막 활동 뒤 이 기간이 지난 채팅을 시작 때 정리한다. `None`이면 자동 정리하지 않는다.
+    /// `None`이면 자동 정리하지 않는다.
     pub max_age: Option<Duration>,
 }
 
-/// 정리 대상 범위.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PruneScope {
-    /// 지정한 채팅들.
     Chats(Vec<ChatId>),
     /// 마지막 활동이 이 시각보다 이른 채팅 전부.
     InactiveBefore(SystemTime),
 }
 
-/// 정리 요청. `yes`가 거짓이면 아무것도 지우지 않고 계획만 돌려준다(`Request::Prune { yes }`).
+/// `yes`가 거짓이면 아무것도 지우지 않고 계획만 돌려준다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PruneRequest {
-    /// 대상 범위.
     pub scope: PruneScope,
-    /// `--yes`. 참일 때만 지운다.
     pub yes: bool,
 }
 
-/// 대상에서 뺀 이유. 어떤 명령으로 지워도 이 항목은 남긴다. 사용자는 먼저 그 작업을 끝내거나 멈춰야 한다.
+/// 어떤 명령으로 지워도 이 이유가 있는 항목은 남긴다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SkipReason {
-    /// 끝 상태가 아닌 입력이 있다.
     OpenInput,
-    /// 끝나지 않은 실행이 있다.
     OpenRun,
-    /// 처리 중인 중지 요청이 있다(`begin_stop` 뒤 `end_stop` 전).
+    /// `begin_stop` 뒤 `end_stop` 전.
     PendingStop,
-    /// 활성 session(`Open`)이 있다.
+    /// `Open` session.
     ActiveSession,
-    /// 대기 session(`ClosedResumable`, `Held`)이 있다.
+    /// `ClosedResumable`, `Held` session.
     WaitingSession,
 }
 
-/// 정리 계획. 미리보기와 실제 삭제 모두 같은 계획으로 만든다.
+/// 미리보기와 실제 삭제 모두 같은 계획으로 만든다.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PrunePlan {
-    /// 지울(지운) 채팅.
     pub chats: Vec<ChatId>,
-    /// 범위 안이지만 뺀 채팅과 이유. 이유가 여럿이면 모두.
+    /// 이유가 여럿이면 모두.
     pub skipped: Vec<(ChatId, Vec<SkipReason>)>,
-    /// 지울 행 수(입력, 실행, 이벤트, 사용량, session 합). 판단 기록과 설정 스냅샷은 세지 않는다.
+    /// 판단 기록과 설정 스냅샷은 세지 않는다.
     pub rows: u64,
 }
 
-/// 지운 채팅의 삭제 흔적. 같은 id가 다시 들어오면 알아본다.
+/// 같은 id가 다시 들어오면 알아보는 데 쓴다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tombstone {
-    /// 지운 채팅.
     pub chat: ChatId,
-    /// 지우기 직전 채팅 내용(입력 원문과 이벤트를 순서대로)의 해시(hex).
+    /// 지우기 직전 입력 원문과 이벤트의 해시(hex).
     pub hash: String,
-    /// 삭제 시각.
     pub deleted_at: SystemTime,
 }
 
-/// 정리 결과.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PruneOutcome {
-    /// `yes`가 거짓. 아무것도 지우지 않았다.
     Preview(PrunePlan),
-    /// 지웠다. 계획과 남긴 삭제 흔적.
     Deleted {
-        /// 실행한 계획.
         plan: PrunePlan,
         /// 지운 채팅마다 하나.
         tombstones: Vec<Tombstone>,
@@ -99,10 +82,7 @@ pub enum PruneOutcome {
 }
 
 impl Store {
-    /// 범위 안 채팅에서 `SkipReason`에 걸리는 채팅을 빼고 계획을 만든다. 쓰지 않는다.
-    ///
-    /// # Errors
-    /// 조회 실패면 `Database`.
+    /// 쓰지 않는다.
     pub async fn plan_prune(&self, scope: &PruneScope) -> Result<PrunePlan, StoreError> {
         let mut conn = self.pool.acquire().await?;
         let candidates: Vec<i64> = match scope {
@@ -147,10 +127,10 @@ impl Store {
         Ok(plan)
     }
 
-    /// 정리. `yes`가 거짓이면 `Preview`. 참이면 계획을 다시 만든 뒤(미리보기 이후 열린 항목이 생겼을 수 있다) 모듈 문서의 삭제 절차대로 지운다.
+    /// 미리보기 이후 열린 항목이 생겼을 수 있어 지우기 전에 계획을 다시 만든다.
     ///
     /// # Errors
-    /// 삭제, `wal_checkpoint`, `VACUUM` 실패면 `Database`. 삭제 거래가 끝난 뒤 정리 단계만 실패하면 삭제와 흔적은 남는다.
+    /// 삭제 거래가 끝난 뒤 정리 단계만 실패하면 `Database`이고 삭제와 흔적은 남는다.
     pub async fn prune(&self, request: &PruneRequest) -> Result<PruneOutcome, StoreError> {
         let plan = self.plan_prune(&request.scope).await?;
         if !request.yes {
@@ -167,7 +147,7 @@ impl Store {
         let mut tx = self.pool.begin().await?;
         for chat in &plan.chats {
             let hash = chat_hash(&mut tx, chat.0).await?;
-            // 입력, 실행, 원시 기록, 이벤트, 사용량, session, 중지 요청은 외래 키 `ON DELETE CASCADE`로 함께 지운다
+            // 나머지 행은 외래 키 `ON DELETE CASCADE`로 함께 지운다
             sqlx::query("DELETE FROM chats WHERE id = ?")
                 .bind(to_sql_int(chat.0))
                 .execute(&mut *tx)
@@ -191,10 +171,7 @@ impl Store {
         Ok(PruneOutcome::Deleted { plan, tombstones })
     }
 
-    /// 시작 때 한 번 부른다. `policy.max_age`가 `None`이면 아무것도 하지 않고 `None`. 있으면 `InactiveBefore(now - max_age)`로 `yes: true` 정리.
-    ///
-    /// # Errors
-    /// `prune`과 같다.
+    /// 시작 때 한 번 부른다. `policy.max_age`가 `None`이면 아무것도 하지 않는다.
     pub async fn prune_on_start(
         &self,
         policy: RetentionPolicy,
@@ -211,10 +188,6 @@ impl Store {
         Ok(Some(self.prune(&request).await?))
     }
 
-    /// 채팅의 삭제 흔적. 새로 들어온 채팅 id가 지운 것과 같은지 확인할 때 쓴다.
-    ///
-    /// # Errors
-    /// 조회 실패면 `Database`.
     pub async fn tombstone(&self, chat: ChatId) -> Result<Option<Tombstone>, StoreError> {
         let row = sqlx::query("SELECT hash, deleted_at FROM tombstones WHERE chat_id = ?")
             .bind(to_sql_int(chat.0))
@@ -230,10 +203,7 @@ impl Store {
         .transpose()
     }
 
-    /// 삭제 절차의 뒷 단계. WAL을 비우고 `VACUUM`으로 지운 자리를 파일에서 없앤다. `secure_delete=ON`은 연결 옵션에 있다.
-    ///
-    /// # Errors
-    /// `wal_checkpoint`나 `VACUUM` 실패면 `Database`.
+    /// `secure_delete=ON`은 연결 옵션에 있다.
     pub(crate) async fn compact_file(&self) -> Result<(), StoreError> {
         sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)")
             .execute(&self.pool)
@@ -243,7 +213,7 @@ impl Store {
     }
 }
 
-/// 채팅이 정리 대상에서 빠지는 이유. 비어 있으면 지워도 된다.
+/// 비어 있으면 지워도 된다.
 async fn skip_reasons(
     conn: &mut sqlx::SqliteConnection,
     chat: i64,
@@ -284,8 +254,7 @@ async fn skip_reasons(
     Ok(reasons)
 }
 
-/// 삭제 흔적 해시. 입력 원문을 접수 순서로, 이어서 이벤트 JSON을 번호 순서로 SHA-256에 넣는다.
-/// 항목마다 종류 글자와 길이를 앞에 붙여 경계가 섞이지 않게 한다(초안, 설계는 해시만 정함).
+/// 항목마다 종류 글자와 길이를 앞에 붙여 경계가 섞이지 않게 한다. 초안 형식.
 async fn chat_hash(conn: &mut sqlx::SqliteConnection, chat: u64) -> Result<String, StoreError> {
     let inputs: Vec<String> =
         sqlx::query_scalar("SELECT text FROM inputs WHERE chat_id = ? ORDER BY id")
@@ -322,7 +291,7 @@ mod tests {
     use crate::store::records::tests::{chat_with_run, session_record};
     use crate::store::tests::temp_store;
 
-    /// 입력, 실행, session을 모두 끝낸 채팅. 지울 수 있다.
+    /// 입력, 실행, session을 모두 끝내 지울 수 있는 채팅.
     async fn closed_chat(store: &Store) -> ChatId {
         let (chat, input, session, run) = chat_with_run(store).await;
         store.finish_run(run, RunEnd::Completed).await.unwrap();
