@@ -265,7 +265,7 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 | compaction 방식은 provider 기본 압축보다 품질을 낮추지 않는다. | [#7](https://github.com/woonyong-choi/saturn/issues/7) |
 | provider별 `T`와 방식이 품질을 지키며 토큰을 줄인다. | [#7](https://github.com/woonyong-choi/saturn/issues/7) |
 | `H`가 subagent의 맥락 증가를 덮는다. | [#25](https://github.com/woonyong-choi/saturn/issues/25) |
-| 판단 전체 패킷이 새 session의 이전 작업 질문 정답률을 패킷 없음보다 10%p 이상 높인다. | [패킷 전환 품질 실험 결과](../experiments/handoff-packet-quality/report.md): 정답률 차이 +8.4%p [6.1, 10.8]로 보류 |
+| 판단 전체 패킷이 새 session의 이전 작업 질문 정답률을 패킷 없음보다 10%p 이상 높인다. | [새 패킷 규칙의 전환 품질 재측정](../experiments/handoff-packet-quality-v2/report.md): 정답률 차이 +51.4%p [45.2, 57.3]로 채택. 기준값 0.5 규칙은 [+8.4%p로 보류](../experiments/handoff-packet-quality/report.md)였다. |
 
 ## 단점
 
@@ -274,7 +274,7 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 - `A`를 잴 수 없는 경로는 provider 자동 압축에 기댄다.
 - 정리 모드마다 전달 경로가 달라 두 경로를 함께 유지해야 한다.
 - 제약이 아주 길면 맥락 정리를 미루고 안전망에 기댄다.
-- 항목마다 표기가 붙어 같은 예산에 드는 항목 수가 줄어든다. 줄어드는 정도와 날짜가 필요한 질문의 정답률 변화는 측정 전이다.
+- 항목마다 표기가 붙어 같은 예산에 드는 항목 수가 줄어든다. 순위 순서 패킷의 포함 항목은 평균 24.2개에서 20.2개로 줄었다. 날짜가 필요한 질문의 `judge-all` 정답률은 `temporal` 0.0%에서 42.2%, `multi-session` 0.0%에서 78.1%로 올랐다([재측정 결과](../experiments/handoff-packet-quality-v2/report.md)).
 
 ## 대안
 

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": {
+    "text": "정답률 차이",
+    "subtitle": "n=960. 점은 차이, 막대는 시나리오 군집 부트스트랩 95% 신뢰구간, 기준선은 +10%p"
+  },
+  "width": 420,
+  "height": 120,
+  "data": {
+    "values": [
+      {
+        "comparison": "judge-all − no-packet (A)",
+        "diff": 51.354166666666664,
+        "low": 45.208333333333336,
+        "high": 57.291666666666664
+      },
+      {
+        "comparison": "judge-all − rrf-fallback (B)",
+        "diff": 50.72916666666667,
+        "low": 44.6875,
+        "high": 56.666666666666664
+      }
+    ]
+  },
+  "layer": [
+    {
+      "mark": {
+        "type": "errorbar"
+      },
+      "encoding": {
+        "y": {
+          "field": "comparison",
+          "type": "nominal",
+          "sort": [
+            "judge-all − no-packet (A)",
+            "judge-all − rrf-fallback (B)"
+          ],
+          "title": null,
+          "axis": {
+            "labelLimit": 300
+          }
+        },
+        "x": {
+          "field": "low",
+          "type": "quantitative",
+          "title": "정답률 차이(%p)"
+        },
+        "x2": {
+          "field": "high"
+        }
+      }
+    },
+    {
+      "mark": {
+        "type": "point",
+        "filled": true
+      },
+      "encoding": {
+        "y": {
+          "field": "comparison",
+          "type": "nominal",
+          "sort": [
+            "judge-all − no-packet (A)",
+            "judge-all − rrf-fallback (B)"
+          ],
+          "title": null,
+          "axis": {
+            "labelLimit": 300
+          }
+        },
+        "x": {
+          "field": "diff",
+          "type": "quantitative"
+        }
+      }
+    },
+    {
+      "mark": "rule",
+      "encoding": {
+        "x": {
+          "datum": 10
+        }
+      }
+    }
+  ]
+}
