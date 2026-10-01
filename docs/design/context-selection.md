@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [judge가 후보 전체를 판단하고 코드 순위는 대체 순서로만 쓴다](../decisions/2026-10-01-judge-all-candidates.md), [후보 순위는 임베딩 없이 단어 기반과 용어 카탈로그로 시작한다](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md) |
+| 관련 결정 | [judge가 후보 전체를 판단하고 코드 순위는 대체 순서로만 쓴다](../decisions/2026-10-01-judge-all-candidates.md), [같은 뜻 찾기는 judge에 맡기고 용어 카탈로그를 두지 않는다](../decisions/2026-10-01-judge-decides-synonyms.md) |
 
 ## 요약
 
@@ -71,7 +71,6 @@
 1. 글을 유니코드 NFC로 정규화한다. macOS 파일 이름처럼 자모로 풀린 한글을 음절로 합쳐야 한글 구간으로 읽기 때문이다.
 2. 글자마다 유니코드 범위로 종류를 정하고, 종류가 바뀌는 곳에서 나눈다. `로그인login`은 `로그인`과 `login`이 된다.
 3. 종류마다 다음 표대로 조각을 만든다.
-4. [용어 카탈로그](term-catalog.md)에서 확인된 짝이 있는 조각은 짝의 조각을 더한다. `로그인`에는 `login`의 조각이 붙는다.
 
 | 종류 | 예 | 조각 |
 |---|---|---|
@@ -90,7 +89,7 @@
 - 한 글자뿐인 한글, 한자, 가나 구간은 그 글자 하나를 조각으로 둔다. 한 글자 단어를 버리지 않기 위해서다.
 - 라틴 밖 알파벳 문자(키릴, 그리스 문자 등)는 라틴 문자와 같은 규칙으로 자르되 다른 종류로 본다.
 - 오타는 오타 글자가 든 조각만 빠지므로 점수가 낮아질 뿐 0이 되지 않는다.
-- 같은 뜻의 다른 말과 번역어는 용어 카탈로그, 파일 겹침 채널, judge가 맡는다. 임베딩 채널은 두지 않는다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)). 작은 다국어 모델 두 개로 잰 결과, 한국어 설명 질의의 정답 코드 묶음을 상위 10개에 올린 비율은 단어 기반과 같은 0.0%였고, 단어가 겹치는 질의의 상위 10개 재현율은 10.5%p 이상 낮아졌다([실험 보고서](../experiments/embedding-synonym/report.md)). 설치 크기 342.5MB 이상과 상주 메모리 287.4MB 이상도 든다.
+- 같은 뜻의 다른 말과 번역어는 judge가 후보 전체를 판단하면서 직접 판단한다. 용어 카탈로그와 임베딩 채널은 두지 않는다([결정 기록](../decisions/2026-10-01-judge-decides-synonyms.md)). 작은 다국어 모델 두 개로 잰 결과, 한국어 설명 질의의 정답 코드 묶음을 상위 10개에 올린 비율은 단어 기반과 같은 0.0%였고, 단어가 겹치는 질의의 상위 10개 재현율은 10.5%p 이상 낮아졌다([실험 보고서](../experiments/embedding-synonym/report.md)). 설치 크기 342.5MB 이상과 상주 메모리 287.4MB 이상도 든다.
 - 한글을 자모 3개 단위로 자르지 않는다. 오타 질의 재현율 이득이 0.9%p [−0.8, 2.6]에 그치고 오타 없는 질의의 1위 정밀도가 10.0%p 떨어졌기 때문이다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
 - 영문 식별자 단어를 글자 4개 단위로 바꾸지 않는다. 오타 질의 재현율은 11.6%p 올랐지만 오타 없는 질의의 1위 정밀도가 5.2%p 떨어졌기 때문이다([실험 결과](../experiments/wordpiece-typo-recall/report.md)). 영문 글자 n-gram의 근거는 McNamee & Mayfield, Information Retrieval 2004다.
 
@@ -192,7 +191,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 ## 단점
 
-- 순위 채널은 같은 뜻의 다른 말을 모르므로 용어 카탈로그가 자랄 때까지 같은 뜻을 놓칠 수 있다.
+- 순위 채널은 같은 뜻의 다른 말을 모르므로 judge가 모두 실패하면 대체 순서에서 같은 뜻의 후보를 놓칠 수 있다.
 - RRF 상위 40개는 judge 전체 판단이 남긴 항목의 절반 이상을 놓친다([실험 결과](../experiments/rrf-k-top-n/report.md)).
 - 영문 단어 사이 공백이 빠지면 소문자 단어가 하나로 붙어 단어 겹침을 놓친다. 이 오타의 상위 10개 재현율은 56.4%였다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
 - 후보가 150개면 질문이 300개라 judge 입력 토큰과 지연이 후보 수에 비례한다. 큰 요청은 여러 건으로 나뉜다.
@@ -204,7 +203,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 - RRF 상위 N개만 judge에 묻는 방식은 judge가 남길 항목을 상위 10개에서 12.0%, 상위 40개에서도 44.5%만 담아 버렸다([결정 기록](../decisions/2026-10-01-judge-all-candidates.md)).
 - 채널 점수의 가중합은 단위가 다른 점수의 가중치를 따로 학습해야 해 버렸다([결정 기록](../decisions/2026-10-01-ranked-candidates-before-judge.md)).
-- 임베딩 채널을 기본으로 넣는 방식은 같은 뜻 질의에서 이득이 없고 단어가 겹치는 질의의 재현율과 설치 크기, 상주 메모리를 잃어 버렸다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md), [실험 보고서](../experiments/embedding-synonym/report.md)).
+- 임베딩 채널을 기본으로 넣는 방식은 같은 뜻 질의에서 이득이 없고 단어가 겹치는 질의의 재현율과 설치 크기, 상주 메모리를 잃어 버렸다([결정 기록](../decisions/2026-10-01-judge-decides-synonyms.md), [실험 보고서](../experiments/embedding-synonym/report.md)).
 - 입력마다 LLM으로 사실 문장을 뽑는 방식은 호출과 출력 비용이 들고 원문 대신 생성문을 저장해 버렸다.
 
 ## 미해결 질문

@@ -3,9 +3,9 @@
 | 항목 | 값 |
 |---|---|
 | 날짜 | 2026-10-01 |
-| 상태 | 채택 |
-| 대체 | 없음 |
-| 관련 문서 | [맥락 고르기](../design/context-selection.md), [용어 카탈로그](../design/term-catalog.md) |
+| 상태 | 대체됨 |
+| 대체 | 대체된 결정: [같은 뜻 찾기는 judge에 맡기고 용어 카탈로그를 두지 않는다](2026-10-01-judge-decides-synonyms.md) |
+| 관련 문서 | [맥락 고르기](../design/context-selection.md), [용어 카탈로그](https://github.com/woonyong-choi/saturn/blob/6fda8f610b49d8febe162bf7ec36114513b2e741/docs/design/term-catalog.md) |
 
 ## 배경
 
