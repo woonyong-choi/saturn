@@ -1,0 +1,460 @@
+{
+  "source_run_ids": [
+    "20261001T105302Z-0069654"
+  ],
+  "params": {
+    "T": 100000,
+    "base_tokens": 500,
+    "item_token_cap": 1000,
+    "questions_per_call": 2,
+    "bytes_per_token": 4,
+    "request_limit_bytes": 64000,
+    "judge_latency_ms": 241,
+    "starts": [
+      0.0,
+      0.25,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9
+    ],
+    "bootstrap": 10000,
+    "seed": 119,
+    "tok_ratio_limit": 1.5,
+    "event_cut_limit_pct": 50.0
+  },
+  "lazy": {
+    "q_total": 368580,
+    "tok_total": 156960556,
+    "requests": 10552,
+    "events": 1572,
+    "event_stats": {
+      "events": 1572,
+      "pending_q_mean": 234.466,
+      "pending_q_median": 146.0,
+      "pending_q_p95": 724.0,
+      "pending_q_max": 8312,
+      "pieces_mean": 6.712,
+      "pieces_p95": 21.0,
+      "pieces_max": 170,
+      "events_over_one_piece_pct": 91.9,
+      "latency_ms_mean": 1617.705,
+      "latency_ms_median": 964.0,
+      "latency_ms_p95": 5061.0,
+      "latency_ms_max": 40970.0
+    }
+  },
+  "conditions": [
+    {
+      "s": 0.0,
+      "q_total": 408206,
+      "q_event": 140554,
+      "q_wasted": 39626,
+      "tok_total": 175426974,
+      "requests": 15832,
+      "q_ratio": 1.108,
+      "q_ratio_ci": [
+        1.078,
+        1.15
+      ],
+      "tok_ratio": 1.118,
+      "tok_ratio_ci": [
+        1.088,
+        1.161
+      ],
+      "request_ratio": 1.5,
+      "event_cut_pct": 61.9,
+      "event_cut_pct_ci": [
+        58.3,
+        64.5
+      ],
+      "latency_cut_pct": 56.0,
+      "latency_cut_pct_ci": [
+        51.6,
+        59.0
+      ],
+      "wasted_pct_of_pre_q": 9.7,
+      "wasted_pct_of_pre_q_ci": [
+        7.3,
+        13.1
+      ],
+      "event_stats": {
+        "events": 1572,
+        "pending_q_mean": 89.411,
+        "pending_q_median": 49.0,
+        "pending_q_p95": 266.9,
+        "pending_q_max": 7086,
+        "pieces_mean": 2.951,
+        "pieces_p95": 8.0,
+        "pieces_max": 154,
+        "events_over_one_piece_pct": 63.4,
+        "latency_ms_mean": 711.195,
+        "latency_ms_median": 482.0,
+        "latency_ms_p95": 1928.0,
+        "latency_ms_max": 37114.0
+      },
+      "meets_criteria": true
+    },
+    {
+      "s": 0.25,
+      "q_total": 398854,
+      "q_event": 201732,
+      "q_wasted": 30274,
+      "tok_total": 170902304,
+      "requests": 14679,
+      "q_ratio": 1.082,
+      "q_ratio_ci": [
+        1.06,
+        1.115
+      ],
+      "tok_ratio": 1.089,
+      "tok_ratio_ci": [
+        1.067,
+        1.121
+      ],
+      "request_ratio": 1.391,
+      "event_cut_pct": 45.3,
+      "event_cut_pct_ci": [
+        41.9,
+        48.5
+      ],
+      "latency_cut_pct": 40.8,
+      "latency_cut_pct_ci": [
+        37.5,
+        43.6
+      ],
+      "wasted_pct_of_pre_q": 7.6,
+      "wasted_pct_of_pre_q_ci": [
+        5.6,
+        10.3
+      ],
+      "event_stats": {
+        "events": 1572,
+        "pending_q_mean": 128.328,
+        "pending_q_median": 70.0,
+        "pending_q_p95": 416.7,
+        "pending_q_max": 7086,
+        "pieces_mean": 3.971,
+        "pieces_p95": 13.0,
+        "pieces_max": 154,
+        "events_over_one_piece_pct": 71.0,
+        "latency_ms_mean": 957.101,
+        "latency_ms_median": 482.0,
+        "latency_ms_p95": 3133.0,
+        "latency_ms_max": 37114.0
+      },
+      "meets_criteria": false
+    },
+    {
+      "s": 0.5,
+      "q_total": 389034,
+      "q_event": 245832,
+      "q_wasted": 20454,
+      "tok_total": 166741543,
+      "requests": 13282,
+      "q_ratio": 1.055,
+      "q_ratio_ci": [
+        1.039,
+        1.081
+      ],
+      "tok_ratio": 1.062,
+      "tok_ratio_ci": [
+        1.045,
+        1.087
+      ],
+      "request_ratio": 1.259,
+      "event_cut_pct": 33.3,
+      "event_cut_pct_ci": [
+        30.3,
+        36.4
+      ],
+      "latency_cut_pct": 30.3,
+      "latency_cut_pct_ci": [
+        27.2,
+        33.1
+      ],
+      "wasted_pct_of_pre_q": 5.3,
+      "wasted_pct_of_pre_q_ci": [
+        3.7,
+        7.5
+      ],
+      "event_stats": {
+        "events": 1572,
+        "pending_q_mean": 156.382,
+        "pending_q_median": 88.0,
+        "pending_q_p95": 528.0,
+        "pending_q_max": 7086,
+        "pieces_mean": 4.68,
+        "pieces_p95": 15.0,
+        "pieces_max": 154,
+        "events_over_one_piece_pct": 80.9,
+        "latency_ms_mean": 1127.886,
+        "latency_ms_median": 723.0,
+        "latency_ms_p95": 3615.0,
+        "latency_ms_max": 37114.0
+      },
+      "meets_criteria": false
+    },
+    {
+      "s": 0.6,
+      "q_total": 382322,
+      "q_event": 268282,
+      "q_wasted": 13742,
+      "tok_total": 163735097,
+      "requests": 12598,
+      "q_ratio": 1.037,
+      "q_ratio_ci": [
+        1.027,
+        1.053
+      ],
+      "tok_ratio": 1.043,
+      "tok_ratio_ci": [
+        1.032,
+        1.06
+      ],
+      "request_ratio": 1.194,
+      "event_cut_pct": 27.2,
+      "event_cut_pct_ci": [
+        24.9,
+        29.6
+      ],
+      "latency_cut_pct": 24.8,
+      "latency_cut_pct_ci": [
+        22.2,
+        27.2
+      ],
+      "wasted_pct_of_pre_q": 3.6,
+      "wasted_pct_of_pre_q_ci": [
+        2.6,
+        5.0
+      ],
+      "event_stats": {
+        "events": 1572,
+        "pending_q_mean": 170.663,
+        "pending_q_median": 104.0,
+        "pending_q_p95": 562.7,
+        "pending_q_max": 7086,
+        "pieces_mean": 5.05,
+        "pieces_p95": 16.0,
+        "pieces_max": 154,
+        "events_over_one_piece_pct": 83.6,
+        "latency_ms_mean": 1216.958,
+        "latency_ms_median": 723.0,
+        "latency_ms_p95": 3856.0,
+        "latency_ms_max": 37114.0
+      },
+      "meets_criteria": false
+    },
+    {
+      "s": 0.7,
+      "q_total": 377758,
+      "q_event": 292788,
+      "q_wasted": 9178,
+      "tok_total": 161612610,
+      "requests": 12050,
+      "q_ratio": 1.025,
+      "q_ratio_ci": [
+        1.017,
+        1.036
+      ],
+      "tok_ratio": 1.03,
+      "tok_ratio_ci": [
+        1.021,
+        1.042
+      ],
+      "request_ratio": 1.142,
+      "event_cut_pct": 20.6,
+      "event_cut_pct_ci": [
+        17.9,
+        23.5
+      ],
+      "latency_cut_pct": 18.9,
+      "latency_cut_pct_ci": [
+        16.3,
+        21.6
+      ],
+      "wasted_pct_of_pre_q": 2.4,
+      "wasted_pct_of_pre_q_ci": [
+        1.7,
+        3.5
+      ],
+      "event_stats": {
+        "events": 1572,
+        "pending_q_mean": 186.252,
+        "pending_q_median": 111.0,
+        "pending_q_p95": 632.9,
+        "pending_q_max": 8258,
+        "pieces_mean": 5.447,
+        "pieces_p95": 18.0,
+        "pieces_max": 169,
+        "events_over_one_piece_pct": 85.8,
+        "latency_ms_mean": 1312.622,
+        "latency_ms_median": 723.0,
+        "latency_ms_p95": 4338.0,
+        "latency_ms_max": 40729.0
+      },
+      "meets_criteria": false
+    },
+    {
+      "s": 0.8,
+      "q_total": 374946,
+      "q_event": 313740,
+      "q_wasted": 6366,
+      "tok_total": 160245291,
+      "requests": 11602,
+      "q_ratio": 1.017,
+      "q_ratio_ci": [
+        1.011,
+        1.026
+      ],
+      "tok_ratio": 1.021,
+      "tok_ratio_ci": [
+        1.014,
+        1.031
+      ],
+      "request_ratio": 1.1,
+      "event_cut_pct": 14.9,
+      "event_cut_pct_ci": [
+        12.4,
+        17.7
+      ],
+      "latency_cut_pct": 13.8,
+      "latency_cut_pct_ci": [
+        11.4,
+        16.6
+      ],
+      "wasted_pct_of_pre_q": 1.7,
+      "wasted_pct_of_pre_q_ci": [
+        1.1,
+        2.5
+      ],
+      "event_stats": {
+        "events": 1572,
+        "pending_q_mean": 199.58,
+        "pending_q_median": 116.0,
+        "pending_q_p95": 652.9,
+        "pending_q_max": 8300,
+        "pieces_mean": 5.784,
+        "pieces_p95": 18.0,
+        "pieces_max": 169,
+        "events_over_one_piece_pct": 87.8,
+        "latency_ms_mean": 1394.029,
+        "latency_ms_median": 964.0,
+        "latency_ms_p95": 4338.0,
+        "latency_ms_max": 40729.0
+      },
+      "meets_criteria": false
+    },
+    {
+      "s": 0.9,
+      "q_total": 371090,
+      "q_event": 339162,
+      "q_wasted": 2510,
+      "tok_total": 158262478,
+      "requests": 11063,
+      "q_ratio": 1.007,
+      "q_ratio_ci": [
+        1.003,
+        1.012
+      ],
+      "tok_ratio": 1.008,
+      "tok_ratio_ci": [
+        1.005,
+        1.014
+      ],
+      "request_ratio": 1.048,
+      "event_cut_pct": 8.0,
+      "event_cut_pct_ci": [
+        6.3,
+        9.9
+      ],
+      "latency_cut_pct": 7.1,
+      "latency_cut_pct_ci": [
+        5.4,
+        9.0
+      ],
+      "wasted_pct_of_pre_q": 0.7,
+      "wasted_pct_of_pre_q_ci": [
+        0.3,
+        1.2
+      ],
+      "event_stats": {
+        "events": 1572,
+        "pending_q_mean": 215.752,
+        "pending_q_median": 130.0,
+        "pending_q_p95": 686.5,
+        "pending_q_max": 8312,
+        "pieces_mean": 6.235,
+        "pieces_p95": 20.0,
+        "pieces_max": 170,
+        "events_over_one_piece_pct": 89.6,
+        "latency_ms_mean": 1502.571,
+        "latency_ms_median": 964.0,
+        "latency_ms_p95": 4820.0,
+        "latency_ms_max": 40970.0
+      },
+      "meets_criteria": false
+    }
+  ],
+  "previous_top10": [
+    {
+      "s": 0.0,
+      "q_ratio": 9.091,
+      "tok_ratio": 8.395,
+      "pending_cut_pct": 50.5,
+      "wasted_pct_of_pre_q": 14.0
+    },
+    {
+      "s": 0.25,
+      "q_ratio": 6.926,
+      "tok_ratio": 6.394,
+      "pending_cut_pct": 40.5,
+      "wasted_pct_of_pre_q": 14.0
+    },
+    {
+      "s": 0.5,
+      "q_ratio": 5.305,
+      "tok_ratio": 4.967,
+      "pending_cut_pct": 29.4,
+      "wasted_pct_of_pre_q": 12.4
+    },
+    {
+      "s": 0.6,
+      "q_ratio": 4.428,
+      "tok_ratio": 4.153,
+      "pending_cut_pct": 23.5,
+      "wasted_pct_of_pre_q": 10.0
+    },
+    {
+      "s": 0.7,
+      "q_ratio": 3.544,
+      "tok_ratio": 3.35,
+      "pending_cut_pct": 18.5,
+      "wasted_pct_of_pre_q": 8.3
+    },
+    {
+      "s": 0.8,
+      "q_ratio": 2.833,
+      "tok_ratio": 2.716,
+      "pending_cut_pct": 13.2,
+      "wasted_pct_of_pre_q": 7.2
+    },
+    {
+      "s": 0.9,
+      "q_ratio": 1.954,
+      "tok_ratio": 1.86,
+      "pending_cut_pct": 7.2,
+      "wasted_pct_of_pre_q": 4.1
+    }
+  ],
+  "previous_top10_lazy": {
+    "q_total": 31136,
+    "events": 1572,
+    "q_pending_per_event": 19.807,
+    "all_candidates_q_multiple": 11.838
+  },
+  "criteria_met_starts": [
+    0.0
+  ]
+}
