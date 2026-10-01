@@ -1,7 +1,5 @@
-//! 층 찾기, 층 병합, 사용자 전용 항목 거르기, 병합 결과 검사, 다른 폴더 설정 참고 읽기.
-//!
-//! 설계: docs/design/settings.md(설정 층, 폴더 층에서 바꿀 수 없는 항목, 병합과 설정 번호).
-//! TOML은 `toml_edit`로 읽어 JSON 표로 옮긴 뒤 합친다. 키 이름, 기본값, 검사 표는 초안이다(TODO(#49)).
+//! 층 찾기, 병합, 사용자 전용 항목 거르기, 병합 결과 검사. 키 이름, 기본값, 검사 표는 초안이다(TODO(#49)).
+//! 설계: docs/design/settings.md
 
 use std::path::{Path, PathBuf};
 
@@ -10,23 +8,20 @@ use serde_json::{Map, Value};
 use super::{CONFIG_FILE, Layer, LayerSource, Settings, SettingsError, SettingsSnapshot};
 use crate::store::sha256_hex;
 
-/// 폴더 설정 폴더 이름. `<폴더>/.saturn/config.toml`.
 const FOLDER_DIR: &str = ".saturn";
 
-/// 실행 층 오류의 경로 표시.
 const RUN_LAYER_PATH: &str = "-c";
 
-/// 되돌릴 수 없는 행동의 기준값. 0.8 미만으로 둘 수 없다(docs/design/judge-training.md). 목록은 초안이다(설계는 원칙만 정함).
+/// 목록은 초안이다(설계는 원칙만 정함).
 const IRREVERSIBLE_THRESHOLDS: &[&str] = &[
     "judge.thresholds.keep_current",
     "judge.thresholds.resume_held",
 ];
 
-/// 되돌릴 수 없는 행동 기준값의 최저값.
+/// docs/design/judge-training.md
 const IRREVERSIBLE_MIN: f64 = 0.8;
 
-/// 기본값 층. 질문별 기준값은 docs/design/judge.md 표, 맥락 창 크기는 결정 기록의 확인 값이다.
-/// 키 이름과 나머지 값은 초안이다(TODO(#49), 맥락 기준값은 #7 실측 전 초안).
+/// 질문별 기준값과 맥락 창 크기 외의 값은 초안이다(TODO(#49), 맥락 기준값은 #7 실측 전).
 const DEFAULT_LAYER: &str = r#"# Saturn 기본값
 on_exit = "background"
 
@@ -72,16 +67,11 @@ cache_write = 1.25
 cache_ttl_secs = 300
 "#;
 
-/// 값 검사 종류.
 #[derive(Debug, Clone, Copy)]
 enum Kind {
-    /// 문자열.
     Text,
-    /// 정해진 문자열 중 하나.
     OneOf(&'static [&'static str]),
-    /// 문자열 배열.
     TextList,
-    /// 참·거짓.
     Flag,
     /// 0~1 실수.
     Unit,
@@ -93,7 +83,7 @@ enum Kind {
     Percent,
 }
 
-/// 아는 키와 값 종류. 이 밖의 키는 모르는 키로 검사에 실패한다(초안, TODO(#49)).
+/// 이 밖의 키는 모르는 키로 검사에 실패한다. 초안 목록(TODO(#49)).
 const SCHEMA: &[(&str, Kind)] = &[
     ("on_exit", Kind::OneOf(&["background", "stop", "ask"])),
     ("judge.method", Kind::OneOf(&["jev", "saturn", "collect"])),
@@ -136,24 +126,18 @@ const SCHEMA: &[(&str, Kind)] = &[
     ("context.claude.cache_ttl_secs", Kind::Positive),
 ];
 
-/// 폴더 층에서 바꿀 수 없는 사용자 전용 항목.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UserOnly {
-    /// judge 주소.
     JudgeEndpoint,
-    /// judge 키 참조(키 정보, 관리자 명령, 저장 방식).
+    /// 키 정보, 관리자 명령, 저장 방식.
     JudgeKeyRef,
-    /// 채점 모델.
     GradingModel,
-    /// 데이터 공유 동의.
     DataSharingConsent,
-    /// 판단 방식.
     Method,
 }
 
 impl UserOnly {
-    /// 이 항목의 점 경로 키 접두사. 이 접두사와 같거나 `접두사.`로 시작하는 키는 모두 사용자 전용이다.
-    /// 키 이름은 초안이다(TODO(#49)).
+    /// 이 접두사와 같거나 `접두사.`로 시작하는 키는 모두 사용자 전용이다.
     pub fn key_prefix(self) -> &'static str {
         match self {
             Self::JudgeEndpoint => "judge.endpoint",
@@ -164,7 +148,6 @@ impl UserOnly {
         }
     }
 
-    /// 점 경로 키가 이 항목에 속하는지.
     fn covers(self, key: &str) -> bool {
         let prefix = self.key_prefix();
         key == prefix
@@ -174,7 +157,6 @@ impl UserOnly {
     }
 }
 
-/// 사용자 전용 항목 전부.
 pub const USER_ONLY: &[UserOnly] = &[
     UserOnly::JudgeEndpoint,
     UserOnly::JudgeKeyRef,
@@ -183,8 +165,7 @@ pub const USER_ONLY: &[UserOnly] = &[
     UserOnly::Method,
 ];
 
-/// `workdir`에서 부모로 올라가며 `.saturn/config.toml`을 찾아 처음 만난 것을 돌려준다. git 맨 위(`.git`이 있는 폴더)에서 멈춘다.
-/// git 저장소가 아니면 `workdir` 하나만 본다. `~/.saturn/config.toml`(사용자 층)은 폴더 층으로 잡지 않는다.
+/// git 맨 위(`.git`이 있는 폴더)에서 멈추고, git 저장소가 아니면 `workdir` 하나만 본다.
 ///
 /// # Errors
 /// 폴더를 읽지 못하면 `Io`.
@@ -216,9 +197,7 @@ pub async fn find_folder_config(
     Ok(None)
 }
 
-/// 층을 순서대로 합치고 검사한다. `layers`는 `(출처, TOML 원문)`이고 `Layer` 순서로 정렬돼 있어야 한다.
-/// 폴더 층의 `USER_ONLY` 키는 버리고 `LayerSource::ignored`에 적는다. 표는 키 단위로 합치고 나머지는 뒤 층 값으로 바꾼다.
-/// 검사: 모르는 키, 타입 불일치, 기준값 0~1 밖, 되돌릴 수 없는 행동 기준값 0.8 미만이면 실패.
+/// `layers`는 `Layer` 순서로 정렬돼 있어야 한다.
 ///
 /// # Errors
 /// 문법 오류면 `Parse`, 검사 실패면 `Invalid`.
@@ -248,7 +227,6 @@ pub fn merge(mut layers: Vec<(LayerSource, String)>) -> Result<SettingsSnapshot,
     })
 }
 
-/// 실행 `-c key=value` 목록을 실행 층 TOML 원문으로 바꾼다. 값은 TOML 값 문법(`"문자열"`, `0.7`, `true`)으로 읽는다.
 /// 같은 키가 여러 번 오면 뒤 값이 이긴다.
 ///
 /// # Errors
@@ -274,15 +252,11 @@ pub fn run_layer(overrides: &[String]) -> Result<String, SettingsError> {
     Ok(doc.to_string())
 }
 
-/// 기본값 층 원문. 실행 파일에 넣은 TOML.
 pub fn default_layer() -> &'static str {
     DEFAULT_LAYER
 }
 
-/// 작업 폴더가 아닌 폴더의 설정을 참고 자료로만 읽는다. 병합하지 않고 신뢰도 묻지 않으며 원문만 돌려준다.
-///
-/// # Errors
-/// 읽기 실패면 `Io`.
+/// 병합하지 않고 신뢰도 묻지 않으며 원문만 돌려준다.
 pub async fn read_reference(path: &Path) -> Result<String, SettingsError> {
     std::fs::read_to_string(path).map_err(|source| SettingsError::Io {
         path: path.to_path_buf(),
@@ -290,9 +264,7 @@ pub async fn read_reference(path: &Path) -> Result<String, SettingsError> {
     })
 }
 
-/// 병합 결과에서 사용자 전용 키가 사용자 층(또는 기본값) 값인지 확인한다. 테스트와 디버그 검사용.
-/// `merge`는 폴더 층의 사용자 전용 키를 병합 전에 버리므로, 폴더 파일의 사용자 전용 키가 모두 그 층의 `ignored`에
-/// 있으면 병합 결과의 사용자 전용 값은 폴더에서 오지 않았다. 폴더 파일을 다시 읽지 못하면 거짓.
+/// 폴더 파일의 사용자 전용 키가 모두 그 층의 `ignored`에 있는지 본다. 파일을 다시 읽지 못하면 거짓.
 pub(crate) fn user_only_from_user_layer(_settings: &Settings, layers: &[LayerSource]) -> bool {
     layers
         .iter()
@@ -315,7 +287,6 @@ pub(crate) fn user_only_from_user_layer(_settings: &Settings, layers: &[LayerSou
         })
 }
 
-/// 층 출처 하나를 만든다. 파일 층이면 내용 지문을 함께 계산한다.
 pub(crate) fn source(layer: Layer, path: Option<PathBuf>, content: &str) -> LayerSource {
     let fingerprint = path.as_ref().map(|_| fingerprint(content));
     LayerSource {
@@ -326,17 +297,16 @@ pub(crate) fn source(layer: Layer, path: Option<PathBuf>, content: &str) -> Laye
     }
 }
 
-/// 내용 지문. SHA-256 hex(초안, 설계는 지문만 정함).
+/// SHA-256 hex. 초안(설계는 지문만 정함).
 pub(crate) fn fingerprint(content: &str) -> String {
     sha256_hex(content.as_bytes())
 }
 
-/// 사용자 전용 키인지.
 pub(crate) fn is_user_only(key: &str) -> bool {
     USER_ONLY.iter().any(|item| item.covers(key))
 }
 
-/// TOML 원문을 JSON 표로. 오류 줄은 1부터.
+/// 오류 줄은 1부터.
 ///
 /// # Errors
 /// 문법 오류면 `Parse`.
@@ -360,7 +330,6 @@ pub(crate) fn parse_toml(content: &str, path: &Path) -> Result<Value, SettingsEr
     Ok(table_to_json(doc.as_table()))
 }
 
-/// 표 안 모든 값의 점 경로 키.
 pub(crate) fn leaf_keys(value: &Value, prefix: &str, out: &mut Vec<String>) {
     let Value::Object(map) = value else {
         if !prefix.is_empty() {
@@ -374,18 +343,16 @@ pub(crate) fn leaf_keys(value: &Value, prefix: &str, out: &mut Vec<String>) {
     }
 }
 
-/// 점 경로 키로 값 찾기.
 pub(crate) fn get_path<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
     key.split('.')
         .try_fold(value, |current, segment| current.as_object()?.get(segment))
 }
 
-/// 점 경로 키를 `toml_edit` 키 목록으로.
 pub(crate) fn parse_key(key: &str) -> Result<Vec<toml_edit::Key>, String> {
     toml_edit::Key::parse(key).map_err(|error| error.message().to_owned())
 }
 
-/// 표 안 점 경로에 값을 넣는다. 중간 표가 없거나 표가 아니면 새 표로 바꾼다. 주석과 다른 키는 그대로 둔다.
+/// 중간 표가 없거나 표가 아니면 새 표로 바꾸고, 주석과 다른 키는 그대로 둔다.
 pub(crate) fn set_path(
     table: &mut toml_edit::Table,
     keys: &[toml_edit::Key],
@@ -429,7 +396,7 @@ pub(crate) fn set_path(
     }
 }
 
-/// 오류 메시지에 쓸 층 경로. 파일 층은 파일 경로, 나머지는 층 이름.
+/// 파일 층은 파일 경로, 나머지는 층 이름.
 fn layer_path(source: &LayerSource) -> PathBuf {
     match (&source.path, source.layer) {
         (Some(path), _) => path.clone(),
@@ -441,7 +408,6 @@ fn layer_path(source: &LayerSource) -> PathBuf {
     }
 }
 
-/// 사용자 전용 키를 지우고 지운 키를 돌려준다.
 fn strip_user_only(values: &mut Value) -> Vec<String> {
     let mut keys = Vec::new();
     leaf_keys(values, "", &mut keys);
@@ -455,7 +421,7 @@ fn strip_user_only(values: &mut Value) -> Vec<String> {
     ignored
 }
 
-/// 점 경로 키 값을 지운다. 비게 된 표는 남겨 둔다(병합에 영향이 없다).
+/// 비게 된 표는 병합에 영향이 없어 남겨 둔다.
 fn remove_path(value: &mut Value, key: &str) {
     let Some((parent, last)) = key.rsplit_once('.') else {
         if let Value::Object(map) = value {
@@ -471,7 +437,7 @@ fn remove_path(value: &mut Value, key: &str) {
     }
 }
 
-/// 뒤 층 값을 앞 층 위에 합친다. 표는 키 단위로, 나머지는 통째로 바꾼다.
+/// 표는 키 단위로, 나머지는 통째로 바꾼다.
 fn merge_into(base: &mut Map<String, Value>, layer: &Value) {
     let Value::Object(layer) = layer else {
         return;
@@ -486,7 +452,6 @@ fn merge_into(base: &mut Map<String, Value>, layer: &Value) {
     }
 }
 
-/// 병합 결과 검사. 실패하면 점 경로 키와 이유.
 fn validate(merged: &Map<String, Value>) -> Result<(), (String, String)> {
     let mut keys = Vec::new();
     leaf_keys(&Value::Object(merged.clone()), "", &mut keys);
@@ -522,7 +487,6 @@ fn validate(merged: &Map<String, Value>) -> Result<(), (String, String)> {
     Ok(())
 }
 
-/// 값 종류 검사.
 fn check_kind(kind: Kind, value: &Value) -> Result<(), String> {
     let ok = match kind {
         Kind::Text => value.is_string(),
@@ -555,7 +519,6 @@ fn check_kind(kind: Kind, value: &Value) -> Result<(), String> {
     }
 }
 
-/// 오류 메시지의 종류 이름.
 fn kind_name(kind: Kind) -> &'static str {
     match kind {
         Kind::Text | Kind::OneOf(_) => "a string",
@@ -629,7 +592,7 @@ fn value_to_json(value: &toml_edit::Value) -> Value {
     }
 }
 
-/// 심볼릭 링크를 푼 경로. 없는 경로면 그대로.
+/// 없는 경로면 그대로.
 fn canonical(path: &Path) -> PathBuf {
     path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
 }

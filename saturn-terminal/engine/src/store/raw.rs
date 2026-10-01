@@ -1,8 +1,5 @@
-//! 실행별 원시 기록(provider가 보낸 줄 그대로): 실행 중 이어 쓰기, 끝나면 gzip 압축, 읽을 때 자동 해제.
-//!
-//! 설계: docs/design/records.md(원시 기록 압축). 해시와 크기는 압축 전 값으로 기록해 압축이 대조 값을 바꾸지 않게 한다.
-//! 실행 중 조각은 `raw_chunks` 표에 이어 쓰고, 끝나면 `runs.raw_gzip` 한 칸으로 합쳐 압축한 뒤 조각을 지운다.
-//! 해시는 SHA-256 hex다(초안, 설계에 없음).
+//! 실행별 원시 기록: 실행 중 이어 쓰기, 끝나면 gzip 압축, 읽을 때 자동 해제.
+//! 설계: docs/design/records.md
 
 use std::io::{Read, Write};
 
@@ -15,17 +12,16 @@ use sqlx::Row;
 use super::records::not_found;
 use super::{Store, StoreError, from_sql_int, sha256_hex, to_sql_int};
 
-/// 원시 기록 대조 값. 항상 압축 전 바이트로 계산한다.
+/// 압축이 대조 값을 바꾸지 않게 항상 압축 전 바이트로 계산한다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RawDigest {
-    /// 압축 전 바이트의 해시(hex).
+    /// SHA-256 hex. 초안 값.
     pub hash: String,
-    /// 압축 전 바이트 수.
     pub size: u64,
 }
 
 impl Store {
-    /// 실행 중 원시 기록 조각을 압축하지 않고 이어 쓴다. provider가 보낸 줄에 judge 키가 있을 수 없으므로 마스킹하지 않는다.
+    /// provider가 보낸 줄에 judge 키가 있을 수 없어 마스킹하지 않는다.
     ///
     /// # Errors
     /// 없는 실행이면 `NotFound`, 이미 압축한(끝난) 실행이면 `Database`.
@@ -50,10 +46,7 @@ impl Store {
         Ok(())
     }
 
-    /// 끝난 실행의 원시 기록을 압축 전 해시와 크기를 먼저 기록한 뒤 gzip으로 바꿔 한 거래로 저장한다. 이미 압축됐으면 그대로 둔다.
-    ///
-    /// # Errors
-    /// 압축 실패면 `Compression`, 없는 실행이면 `NotFound`.
+    /// 이미 압축됐으면 그대로 둔다.
     pub(crate) async fn compress_run(&self, run: RunId) -> Result<RawDigest, StoreError> {
         let mut tx = self.pool.begin().await?;
         let row = sqlx::query(
@@ -89,7 +82,7 @@ impl Store {
         Ok(digest)
     }
 
-    /// 원시 기록 전체. 압축된 것은 풀어서 돌려주고, 푼 결과를 기록된 `RawDigest`와 대조한다.
+    /// 푼 결과를 기록된 `RawDigest`와 대조한다.
     ///
     /// # Errors
     /// 해제 실패면 `Compression`, 대조가 다르면 `DigestMismatch`, 없는 실행이면 `NotFound`.
@@ -117,10 +110,7 @@ impl Store {
         Ok(raw)
     }
 
-    /// 기록된 압축 전 대조 값. 실행 중이면 지금까지 쓴 바이트로 계산한다.
-    ///
-    /// # Errors
-    /// 없는 실행이면 `NotFound`.
+    /// 실행 중이면 지금까지 쓴 바이트로 계산한다.
     pub async fn raw_digest(&self, run: RunId) -> Result<RawDigest, StoreError> {
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query(
@@ -140,7 +130,6 @@ impl Store {
     }
 }
 
-/// 실행 중 조각을 쓴 순서대로 이어 붙인다.
 async fn chunks(conn: &mut sqlx::SqliteConnection, run: RunId) -> Result<Vec<u8>, StoreError> {
     let parts: Vec<Vec<u8>> =
         sqlx::query_scalar("SELECT bytes FROM raw_chunks WHERE run_id = ? ORDER BY id")
@@ -150,7 +139,6 @@ async fn chunks(conn: &mut sqlx::SqliteConnection, run: RunId) -> Result<Vec<u8>
     Ok(parts.concat())
 }
 
-/// 압축 전 바이트의 대조 값.
 fn digest_of(raw: &[u8]) -> RawDigest {
     RawDigest {
         hash: sha256_hex(raw),

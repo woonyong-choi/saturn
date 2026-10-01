@@ -1,8 +1,5 @@
-//! 폴더 설정 신뢰: 경로와 지문으로 기록하고, 처음 보거나 내용이 바뀐 폴더 설정은 한 번 묻는다.
-//!
-//! 설계: docs/design/settings.md(폴더 설정 신뢰). 신뢰 창(TUI)의 키: `1`·`y` 적용하고 계속, `↑`·`↓` 이동, `Enter` 확정,
-//! `3`·`q`·`Esc`·`Ctrl+C` 종료. 실행 중 폴더 설정이 바뀌면 다음 입력을 접수하기 전에 창을 연다.
-//! 신뢰 기록 위치와 형식(`~/.saturn/trusted.json`, 경로 → 지문 JSON 객체, 권한 0600)은 초안이다(설계에 없음).
+//! 폴더 설정 신뢰: 처음 보거나 내용이 바뀐 폴더 설정은 한 번 묻는다. 기록 위치와 형식은 초안이다.
+//! 설계: docs/design/settings.md
 
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -12,40 +9,34 @@ use std::path::{Path, PathBuf};
 use super::SettingsError;
 use super::layers::{fingerprint, is_user_only, leaf_keys, parse_toml};
 
-/// 신뢰 기록 파일 이름. `~/.saturn/` 아래에 둔다.
 const TRUST_FILE: &str = "trusted.json";
 
-/// 신뢰 기록 파일 권한.
+/// 소유자만 읽고 쓴다.
 const TRUST_FILE_MODE: u32 = 0o600;
 
-/// 폴더 설정의 신뢰 상태.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrustStatus {
-    /// 같은 경로, 같은 지문으로 신뢰했다. 병합한다.
+    /// 같은 경로, 같은 지문으로 신뢰했다.
     Trusted,
-    /// 처음 본다. 묻기 전에는 병합하지 않는다.
+    /// 묻기 전에는 병합하지 않는다.
     Unknown(FolderTrustPrompt),
-    /// 신뢰한 뒤 내용이 바뀌었다. 다시 묻기 전에는 병합하지 않는다(옛 지문 내용도 쓰지 않는다).
+    /// 다시 묻기 전에는 옛 지문 내용도 병합하지 않는다.
     Changed(FolderTrustPrompt),
 }
 
-/// 신뢰 창에 보일 내용.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FolderTrustPrompt {
-    /// 폴더 설정 파일 경로.
     pub path: PathBuf,
-    /// 지금 내용의 지문(hex). 해시 SHA-256은 초안이다(설계는 지문만 정함).
+    /// 해시 SHA-256은 초안이다.
     pub fingerprint: String,
-    /// 적용되는 점 경로 키.
     pub applied: Vec<String>,
-    /// 무시되는 점 경로 키(`USER_ONLY`).
+    /// `USER_ONLY`라 무시되는 키.
     pub ignored: Vec<String>,
-    /// 바뀐 줄(`Changed`일 때만). 신뢰할 때 내용을 모르므로 줄 번호와 새 줄만 보인다.
-    /// 옛 내용을 두지 않아 비교할 수 없으니 빈 줄과 주석을 뺀 모든 줄을 보인다(초안).
+    /// `Changed`일 때만. 옛 내용을 두지 않아 빈 줄과 주석을 뺀 모든 줄을 보인다(초안).
     pub changed_lines: Vec<(usize, String)>,
 }
 
-/// 신뢰 기록. 경로마다 마지막으로 신뢰한 지문 하나.
+/// 경로마다 마지막으로 신뢰한 지문 하나.
 #[derive(Debug, Default)]
 pub struct TrustStore {
     path: PathBuf,
@@ -53,7 +44,7 @@ pub struct TrustStore {
 }
 
 impl TrustStore {
-    /// 신뢰 기록 파일을 읽는다. 없으면 빈 기록.
+    /// 없으면 빈 기록.
     ///
     /// # Errors
     /// 읽기 실패면 `Io`, 형식이 깨졌으면 `Parse`.
@@ -81,7 +72,7 @@ impl TrustStore {
         })
     }
 
-    /// 폴더 설정 `path`의 지금 내용 `content`로 상태를 판정한다. 경로는 정규화(심볼릭 링크 해제)해 비교한다.
+    /// 경로는 심볼릭 링크를 풀어 비교한다.
     pub fn status(&self, path: &Path, content: &str) -> TrustStatus {
         let path = canonical(path);
         let current = fingerprint(content);
@@ -109,10 +100,7 @@ impl TrustStore {
         }
     }
 
-    /// 사용자가 `y`로 확정했을 때 경로와 지문을 기록하고 파일에 쓴다. 같은 경로의 옛 지문은 바꾼다.
-    ///
-    /// # Errors
-    /// 쓰기 실패면 `Io`.
+    /// 같은 경로의 옛 지문은 바꾼다.
     pub async fn trust(&mut self, path: &Path, fingerprint: &str) -> Result<(), SettingsError> {
         let path = canonical(path);
         match self
@@ -136,7 +124,7 @@ impl TrustStore {
     }
 }
 
-/// 신뢰 창 내용. 적용되는 키와 무시되는 키를 나눈다. 문법 오류면 둘 다 비운다(병합에서 오류로 보인다).
+/// 문법 오류면 둘 다 비운다(병합에서 오류로 보인다).
 fn prompt(path: PathBuf, fingerprint: String, content: &str) -> FolderTrustPrompt {
     let mut keys = Vec::new();
     if let Ok(values) = parse_toml(content, &path) {
@@ -169,14 +157,13 @@ pub(crate) fn write_private(path: &Path, body: &[u8]) -> std::io::Result<()> {
     std::fs::rename(&partial, path)
 }
 
-/// 갈아 끼우기 전 쓰는 파일 `<이름>.partial`.
 pub(crate) fn partial_path(path: &Path) -> PathBuf {
     let mut name = path.file_name().unwrap_or_default().to_os_string();
     name.push(".partial");
     path.with_file_name(name)
 }
 
-/// 심볼릭 링크를 푼 경로. 없는 경로면 그대로.
+/// 없는 경로면 그대로.
 fn canonical(path: &Path) -> PathBuf {
     path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
 }
