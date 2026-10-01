@@ -28,7 +28,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | `cli` | `saturn` 실행 파일, 명령줄 처리와 engine 시작 | Rust, `clap` | `saturn-terminal/cli` |
 | `database` | 기록 저장소. 입력, 실행, session, 사용량, 판단 기록, 설정 스냅샷 보관 | SQLite | `~/.saturn/saturn.db` |
 
-의존 방향은 한쪽이다. `tui`와 `cli`는 `protocol`만 알고, `engine`은 `core`의 trait을 구현한다. `core`는 파일, 네트워크, 프로세스를 직접 다루지 않는다.
+의존 방향은 한쪽이다. `tui`와 `cli`는 `protocol`만 알고, `engine`은 `core`의 trait을 구현한다. `core`는 파일, 네트워크, 프로세스를 직접 다루지 않는다. 예외로 `cli`의 개발용 `packet` 명령(도움말에 보이지 않음)은 `core`의 패킷 구성과 후보 순위를 직접 불러 실험 수집기가 `SATURN_PACKET_CMD`로 쓰게 한다. engine에 붙지 않고 judge도 부르지 않으며, judge 판단은 파일로 받고 없으면 RRF 순서로 채운다.
 
 | 구성 요소 | 모듈과 주요 타입 | 위치 |
 |---|---|---|

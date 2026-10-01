@@ -12,6 +12,9 @@ mod args;
 mod commands;
 mod launch;
 
+// cost: time O(L), heap O(L), stack O(1), io 1
+// vars: L = 입출력 글자 수
+// basis: estimate
 // TODO(#47): 종료 코드. 지금은 `anyhow` 기본(실패 1)
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -21,6 +24,9 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cli = Cli::parse();
+    if let Some(Command::Packet(args)) = &cli.command {
+        return commands::packet::run(args);
+    }
     launch::ensure_not_nested()?;
     let mut client = launch::connect_or_start().await?;
 
@@ -33,5 +39,8 @@ async fn main() -> anyhow::Result<()> {
             command: JudgeCommand::Version(args),
         }) => commands::judge::use_version(&mut client, &args).await,
         Some(Command::Usage(args)) => commands::usage::run(&mut client, &args).await,
+        Some(Command::Packet(_)) => {
+            unreachable!("packet should return before connecting to engine")
+        }
     }
 }

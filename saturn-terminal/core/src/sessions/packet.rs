@@ -76,6 +76,10 @@ pub struct Packet {
     pub up_to: LedgerSeq,
     /// 고정 구역이 `P_max`를 넘어 `P_hard`까지 허용했다. engine이 초과를 기록한다.
     pub is_over_limit: bool,
+    /// 경쟁 구역에 든 기록 번호. 기록 번호 순이고 provider 요약은 `up_to`가 아니라 요약 항목의 번호로 들어간다.
+    pub included: Vec<LedgerSeq>,
+    /// 요약이 경쟁 구역 예산에 들어가 첫 항목이 됐다. 요약을 주지 않았거나 예산을 넘어 원문으로 채웠으면 거짓.
+    pub is_summary_used: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -98,6 +102,25 @@ struct Section {
 // basis: estimate
 /// 고정 구역이 `P_max`를 넘으면 최근 턴을 줄이고, 그래도 넘으면 `P_hard`까지 허용하며 경쟁 구역은 비운다.
 pub fn build_packet(source: &PacketSource, budget: &ContextBudget) -> PacketOutcome {
+    build(source, budget, None)
+}
+
+// cost: time O(t·L + m log m), heap O(L), stack O(1)
+// vars: t = 최근 턴 수(3 이하), L = 패킷 재료 글자 수, m = 경쟁 항목 수
+// basis: estimate
+/// provider 압축 요약을 경쟁 구역 첫 항목으로 넣고 나머지는 `source.competitors`로 채운다. 호출하는 쪽이 요약 시점 뒤의 항목만 `competitors`에 둔다. 요약이 경쟁 구역 예산에 들어가지 않으면 요약 없이 `build_packet`과 같다.
+pub fn build_packet_with_summary(
+    source: &PacketSource,
+    budget: &ContextBudget,
+    summary: &Entry,
+) -> PacketOutcome {
+    build(source, budget, Some(summary))
+}
+
+// cost: time O(t·L + m log m), heap O(L), stack O(1)
+// vars: t = 최근 턴 수(3 이하), L = 패킷 재료 글자 수, m = 경쟁 항목 수
+// basis: estimate
+fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>) -> PacketOutcome {
     let soft_chars = to_chars(budget.packet_limit());
     let hard_chars = to_chars(budget.packet_hard_limit());
     let mut sections = fit_fixed_zone(source, soft_chars);
@@ -112,9 +135,17 @@ pub fn build_packet(source: &PacketSource, budget: &ContextBudget) -> PacketOutc
         .chars()
         .count();
     let competing_chars = soft_chars.saturating_sub(fixed_chars + header_chars);
+    let summary = summary.filter(|entry| item_chars(&entry.text) <= competing_chars);
+    let mut chosen: Vec<(LedgerSeq, String)> = Vec::new();
+    let mut rest_chars = competing_chars;
+    if let Some(entry) = summary {
+        rest_chars -= item_chars(&entry.text);
+        chosen.push((entry.seq, entry.text.clone()));
+    }
+    chosen.extend(fill_competing_zone(&source.competitors, rest_chars));
     sections.push(Section {
         title: COMPETING_TITLE,
-        items: fill_competing_zone(&source.competitors, competing_chars),
+        items: chosen.iter().map(|(_, form)| form.clone()).collect(),
     });
     let text = render(&sections);
     let tokens = estimate_tokens(&text);
@@ -123,6 +154,8 @@ pub fn build_packet(source: &PacketSource, budget: &ContextBudget) -> PacketOutc
         tokens,
         up_to: source.up_to,
         is_over_limit,
+        included: chosen.iter().map(|(seq, _)| *seq).collect(),
+        is_summary_used: summary.is_some(),
     })
 }
 
@@ -181,7 +214,7 @@ fn fixed_sections(source: &PacketSource, turns: &[RecentTurn]) -> Vec<Section> {
 // vars: L = 경쟁 항목 글자 수, m = 경쟁 항목 수
 // basis: estimate
 /// 고른 순서대로 원문, 축약본, 경로 중 처음 들어가는 형태를 넣고 기록 번호 순으로 돌려준다.
-fn fill_competing_zone(items: &[CompetingItem], budget_chars: usize) -> Vec<String> {
+fn fill_competing_zone(items: &[CompetingItem], budget_chars: usize) -> Vec<(LedgerSeq, String)> {
     let item_cap = budget_chars * ITEM_SHARE_PERCENT / 100;
     let mut remaining = budget_chars;
     let mut chosen: Vec<(LedgerSeq, String)> = Vec::new();
@@ -200,7 +233,7 @@ fn fill_competing_zone(items: &[CompetingItem], budget_chars: usize) -> Vec<Stri
         chosen.push((item.seq, form));
     }
     chosen.sort_by_key(|(seq, _)| *seq);
-    chosen.into_iter().map(|(_, form)| form).collect()
+    chosen
 }
 
 // cost: time O(l), heap O(l), stack O(1), alloc 1
@@ -651,5 +684,63 @@ mod tests {
         }
         assert!(!packet.text.contains(&format!("#{:03}.", ranked[3].0)));
         assert!(packet.text.contains("#012."));
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 테스트 데이터 크기
+    // basis: estimate
+    #[test]
+    fn build_packet_included_lists_competing_seqs_in_seq_order() {
+        let source = PacketSource {
+            competitors: vec![item(12, "twelve", None), item(10, "ten", None)],
+            ..PacketSource::default()
+        };
+
+        let packet = ready(build_packet(&source, &budget()));
+
+        assert_eq!(packet.included, vec![LedgerSeq(10), LedgerSeq(12)]);
+        assert!(!packet.is_summary_used);
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 테스트 데이터 크기
+    // basis: estimate
+    #[test]
+    fn build_packet_with_summary_puts_summary_first_in_competing_zone() {
+        let source = PacketSource {
+            competitors: vec![item(20, "after summary", None)],
+            ..PacketSource::default()
+        };
+
+        let packet = ready(build_packet_with_summary(
+            &source,
+            &budget(),
+            &entry(9, "summary body"),
+        ));
+
+        assert!(packet.is_summary_used);
+        assert_eq!(packet.included, vec![LedgerSeq(9), LedgerSeq(20)]);
+        assert!(packet.text.find("summary body") < packet.text.find("after summary"));
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 테스트 데이터 크기
+    // basis: estimate
+    #[test]
+    fn build_packet_with_summary_over_competing_budget_falls_back_to_records() {
+        let source = PacketSource {
+            competitors: vec![item(20, "after summary", None)],
+            ..PacketSource::default()
+        };
+
+        let packet = ready(build_packet_with_summary(
+            &source,
+            &budget(),
+            &entry(9, &filler("S", 1_600)),
+        ));
+
+        assert!(!packet.is_summary_used);
+        assert_eq!(packet.included, vec![LedgerSeq(20)]);
+        assert!(!packet.text.contains("SSS"));
     }
 }
