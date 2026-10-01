@@ -59,6 +59,9 @@
 | 최근성 | 후보의 기록 번호 | 클수록 위 |
 
 - 기준 파일은 마지막 입력에 나온 경로와 메인 session이 최근 3턴에 건드린 파일이다.
+- 경로는 NFC로 정규화하고 앞의 `./`를 떼고 비교한다. 같은 파일이 표기 차이로 어긋나지 않게 하기 위해서다.
+- 단어 겹침의 BM25는 `k1 = 1.2`, `b = 0.75`(초안)이고 마지막 입력의 조각은 중복 없이 한 번씩 센다.
+- 한 채널 안에서 값이 같은 후보는 같은 순위다. 값이 같은데 순서만으로 점수가 갈리지 않게 하기 위해서다.
 - 채널에 값이 없는 후보는 그 채널 순위에서 빠진다. 최근성은 모든 후보에 있다.
 - 세 채널 모두 기록에 이미 있는 값을 계산만 한다. 라벨링이나 모델 호출이 없어 `core`가 파일, 네트워크, 프로세스를 다루지 않고 계산하기 위해서다.
 - 셸 명령처럼 경로가 인자에 따로 없는 도구 호출은 경로 모양의 글자만 꺼낸다(초안).
@@ -83,6 +86,9 @@
 - 한자와 가나를 글자 2개 단위로 자르는 것은 중국어와 일본어도 띄어쓰기가 단어 경계가 아니기 때문이다. 버리면 그 언어 사용자는 단어 겹침 채널을 쓰지 못한다.
 - 기호를 경계로만 쓰는 것은 `auth/login.rs`의 `/`와 `.`처럼 식별자 경계 역할을 하지만 그 자체로는 뜻이 없기 때문이다.
 - 영문을 식별자 경계에서 나누는 것은 기록의 영문 대부분이 코드 식별자와 경로이기 때문이다.
+- 한자와 가나는 한 종류로 본다. 일본어는 한자와 가나를 섞어 한 단어를 쓰기 때문이다.
+- 한 글자뿐인 한글, 한자, 가나 구간은 그 글자 하나를 조각으로 둔다. 한 글자 단어를 버리지 않기 위해서다.
+- 라틴 밖 알파벳 문자(키릴, 그리스 문자 등)는 라틴 문자와 같은 규칙으로 자르되 다른 종류로 본다.
 - 오타는 오타 글자가 든 조각만 빠지므로 점수가 낮아질 뿐 0이 되지 않는다.
 - 같은 뜻의 다른 말과 번역어는 용어 카탈로그, 파일 겹침 채널, judge가 맡는다. 임베딩 채널은 두지 않는다. 식별자와 경로가 많은 기록에서는 단어 기반 채널이 강하고, 임베딩은 설치 크기, 상주 메모리, 계산 시간이 드는데 이득이 측정되지 않았기 때문이다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)). RRF는 목록 수와 무관하게 합치므로, 실측으로 이득이 확인되면 채널 하나를 더하는 것으로 넣는다.
 - 한글을 자모 3개 단위로 자르지 않는다. 오타 질의 재현율 이득이 0.9%p [−0.8, 2.6]에 그치고 오타 없는 질의의 1위 정밀도가 10.0%p 떨어졌기 때문이다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
@@ -108,6 +114,7 @@
 3. 최종 순서는 judge가 남기라고 한 항목을 확률이 높은 순으로, 그 뒤에 judge가 보지 않은 항목을 RRF 순으로 둔다.
 4. judge가 버리라고 한 항목은 뺀다.
 5. judge가 답하지 못하면 RRF 상위 N개를 남기라고 한 항목으로 본다.
+6. 답은 왔지만 일부 항목의 답이 빠졌으면 그 항목은 남기고, 답이 있는 남긴 항목 뒤에 RRF 순으로 둔다.
 
 - judge 요청 크기를 후보 수와 무관하게 두기 위해서다. 관련 없는 큰 state는 judge 판단을 흐리고, 64K를 넘는 요청은 나눠 보내야 한다.
 - judge 실패 때 순위로 고르는 것은 확실히 관련 있는 항목까지 잃지 않기 위해서다.
@@ -165,12 +172,12 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 | 요구사항 | 검증 계획 |
 |---|---|
-| 후보가 N개보다 많으면 RRF 상위 N개만 judge에 묻는다. | 후보 150개에서 judge 요청의 질문이 N개 몫인지 확인한다. |
-| judge가 답하지 못하면 RRF 상위 N개를 남긴 항목으로 본다. | judge 무응답에서 경쟁 구역이 RRF 순서로 채워지는지 확인한다. |
-| 띄어쓰기와 조사가 달라도 같은 한글 조각을 만든다. | `로그인 실패`와 `로그인실패를`의 조각이 겹치는지 확인한다. |
-| 영문 식별자는 식별자 경계에서 나눈다. | `authLogin.rs`와 `auth_login`이 `auth`, `login`을 공유하는지 확인한다. |
-| 자모로 풀린 한글도 음절 한글과 같은 조각을 만든다. | NFD로 저장된 `로그인.md`와 `로그인`의 조각이 같은지 확인한다. |
-| 같은 결과에서 늘 같은 메모를 만든다. | 같은 도구 결과로 두 번 만든 메모가 같은지 확인한다. |
+| 후보가 N개보다 많으면 RRF 상위 N개만 judge에 묻는다. | `saturn-terminal/core/src/judges/mod.rs`의 `compact_questions_150_candidates_ask_only_top_n` |
+| judge가 답하지 못하면 RRF 상위 N개를 남긴 항목으로 본다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_judge_no_response_fills_in_rrf_order` |
+| 띄어쓰기와 조사가 달라도 같은 한글 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_spacing_and_particle_share_hangul_bigrams` |
+| 영문 식별자는 식별자 경계에서 나눈다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_identifier_splits_at_case_and_symbols` |
+| 자모로 풀린 한글도 음절 한글과 같은 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_nfd_hangul_matches_nfc` |
+| 같은 결과에서 늘 같은 메모를 만든다. | `saturn-terminal/core/src/sessions/memo.rs`의 `tool_memo_same_result_gives_same_memo` |
 | 대체된 제약 원문은 기록에 남고 패킷에서만 빠진다. | 대체 뒤 기록에 두 원문이 있고 패킷에는 새 원문과 대체 표시만 있는지 확인한다. |
 | `k`와 N이 judge 전체 판단의 95% 이상을 덮는다. | [#116](https://github.com/woonyong-choi/saturn/issues/116) |
 | RRF 상위 N + judge가 judge 단독보다 전환 품질을 낮추지 않는다. | [#117](https://github.com/woonyong-choi/saturn/issues/117) |

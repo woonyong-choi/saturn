@@ -1,22 +1,10 @@
-//! compaction 판정과 패킷 구성.
-//! 설계: docs/design/context-management.md
+//! compaction 판정과 보관 session으로 돌아갈 때의 재개 판정.
+//! 설계: docs/design/context-management.md, docs/design/providers-and-sessions.md#그-provider로-돌아가기
 
-use std::path::Path;
 use std::time::Duration;
-
-use saturn_protocol::ids::LedgerSeq;
 
 /// 기대 잔여 턴을 모를 때 쓰는 값.
 pub const DEFAULT_EXPECTED_TURNS: u32 = 3;
-
-/// 도구 결과에서 남기는 앞부분 글자 수.
-pub const TOOL_RESULT_CHARS: usize = 300;
-
-// 초안
-const CHARS_PER_TOKEN: usize = 4;
-
-/// provider가 스스로 읽으므로 패킷에 넣지 않는다.
-const PROVIDER_DOCS: [&str; 2] = ["AGENTS.md", "CLAUDE.md"];
 
 /// TODO(#49): 설정 키 이름과 기본값
 #[derive(Debug, Clone, Copy)]
@@ -53,6 +41,11 @@ impl ContextBudget {
     pub fn packet_limit(&self) -> u64 {
         self.threshold() / 10
     }
+
+    /// 고정 구역이 `packet_limit`을 넘는 패킷에만 쓴다(초안).
+    pub fn packet_hard_limit(&self) -> u64 {
+        self.threshold() / 5
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -66,6 +59,14 @@ pub struct ContextMeasure {
     pub since_last_turn: Duration,
     /// 모르면 `DEFAULT_EXPECTED_TURNS`로 본다.
     pub expected_turns: Option<u32>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReturnDecision {
+    /// 보관 session을 재개하고 마지막으로 받은 기록 번호 뒤의 변경분만 붙인다.
+    Resume,
+    /// 새 session을 열고 패킷을 넘긴다.
+    NewSession,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -112,163 +113,24 @@ pub fn break_even_turns(budget: &ContextBudget, active: u64, packet: u64) -> f64
     turns.max(0.0)
 }
 
-/// provider 요약은 정본이 아니므로 모두 Saturn 기록 원문에서 고른다.
-#[derive(Debug, Clone, Default)]
-pub struct PacketSource {
-    /// 사용자가 명시한 제약과 결정 원문.
-    pub pinned: Vec<String>,
-    pub goal_and_last_input: Vec<String>,
-    /// 끝나지 않은 항목과 효과를 모르는 항목.
-    pub open_items: Vec<String>,
-    /// 최근 3턴.
-    pub recent_turns: Vec<String>,
-    /// `(결과 원문, 한 줄 메모)`이고 `compact` 질문이 남기라고 한 것만 들어온다.
-    pub kept_tool_calls: Vec<(String, String)>,
-    /// 파일은 내용 대신 경로만.
-    pub file_paths: Vec<String>,
-    pub up_to: LedgerSeq,
-}
-
-#[derive(Debug, Clone)]
-pub struct Packet {
-    pub text: String,
-    /// 추정치.
-    pub tokens: u64,
-    /// 새 session의 `delivered`가 된다.
-    pub up_to: LedgerSeq,
-}
-
-// cost: time O(m·L), heap O(L), stack O(1)
-// vars: m = 패킷 항목 수, L = 패킷 원문 글자 수
-// basis: estimate
-// alt: 항목별 토큰 수를 한 번 세어 두고 빼기. time O(L). 잃는 것: 절 머리 줄 계산이 따로 필요
-/// `max_tokens`를 넘으면 뒤 절의 끝 항목부터 줄이고, 고정 항목도 예외가 아니다.
-pub fn build_packet(source: &PacketSource, max_tokens: u64) -> Packet {
-    let mut sections = packet_sections(source);
-    let mut text = render(&sections);
-    let mut tokens = estimate_tokens(&text);
-    while tokens > max_tokens {
-        let Some(index) = sections
-            .iter()
-            .rposition(|section| !section.items.is_empty())
-        else {
-            break;
-        };
-        shrink_last_item(&mut sections[index], tokens - max_tokens);
-        text = render(&sections);
-        tokens = estimate_tokens(&text);
+/// `budget`은 돌아갈 provider의 것이고, `since_last_turn`이 `cache_ttl` 이하면 캐시 유지 시간 안으로 본다.
+pub fn decide_return(
+    budget: &ContextBudget,
+    since_last_turn: Duration,
+    active: u64,
+    packet: u64,
+) -> ReturnDecision {
+    let is_cache_warm = since_last_turn <= budget.cache_ttl;
+    if is_cache_warm && active < budget.threshold() {
+        return ReturnDecision::Resume;
     }
-    Packet {
-        text,
-        tokens,
-        up_to: source.up_to,
+    if is_cache_warm {
+        return ReturnDecision::NewSession;
     }
-}
-
-#[derive(Debug, Clone)]
-struct Section {
-    title: &'static str,
-    items: Vec<String>,
-}
-
-// cost: time O(L), heap O(L), stack O(1)
-// vars: L = 패킷 재료 글자 수
-// basis: estimate
-fn packet_sections(source: &PacketSource) -> Vec<Section> {
-    let tool_calls = source
-        .kept_tool_calls
-        .iter()
-        .map(|(result, memo)| {
-            let memo = memo.lines().next().unwrap_or_default();
-            let head: String = result.chars().take(TOOL_RESULT_CHARS).collect();
-            format!("{memo}\n{head}")
-        })
-        .collect();
-    let file_paths = source
-        .file_paths
-        .iter()
-        .filter(|path| !is_provider_doc(path))
-        .cloned()
-        .collect();
-    vec![
-        Section {
-            title: "Constraints and decisions",
-            items: source.pinned.clone(),
-        },
-        Section {
-            title: "Goal and last input",
-            items: source.goal_and_last_input.clone(),
-        },
-        Section {
-            title: "Open items",
-            items: source.open_items.clone(),
-        },
-        Section {
-            title: "Recent turns",
-            items: source.recent_turns.clone(),
-        },
-        Section {
-            title: "Earlier tool calls",
-            items: tool_calls,
-        },
-        Section {
-            title: "Files",
-            items: file_paths,
-        },
-    ]
-}
-
-// cost: time O(L), heap O(L), stack O(1)
-// vars: L = 패킷 원문 글자 수
-// basis: estimate
-fn render(sections: &[Section]) -> String {
-    let mut text = String::new();
-    for section in sections.iter().filter(|section| !section.items.is_empty()) {
-        text.push_str("## ");
-        text.push_str(section.title);
-        text.push_str("\n\n");
-        for item in &section.items {
-            text.push_str(item);
-            text.push_str("\n\n");
-        }
+    if packet < active {
+        return ReturnDecision::NewSession;
     }
-    text
-}
-
-// cost: time O(l), heap O(l), stack O(1), alloc 1
-// vars: l = 끝 항목 글자 수
-// basis: estimate
-fn shrink_last_item(section: &mut Section, excess_tokens: u64) {
-    let Some(item) = section.items.last_mut() else {
-        return;
-    };
-    let excess_chars = usize::try_from(excess_tokens)
-        .unwrap_or(usize::MAX)
-        .saturating_mul(CHARS_PER_TOKEN);
-    let item_chars = item.chars().count();
-    if item_chars <= excess_chars {
-        section.items.pop();
-        return;
-    }
-    *item = item.chars().take(item_chars - excess_chars).collect();
-}
-
-// cost: time O(L), heap O(1), stack O(1)
-// vars: L = 글자 수
-// basis: estimate
-fn estimate_tokens(text: &str) -> u64 {
-    let tokens = text.chars().count().div_ceil(CHARS_PER_TOKEN);
-    u64::try_from(tokens).expect("token count should fit in u64")
-}
-
-// cost: time O(l), heap O(1), stack O(1)
-// vars: l = 경로 글자 수
-// basis: estimate
-fn is_provider_doc(path: &str) -> bool {
-    Path::new(path)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .is_some_and(|name| PROVIDER_DOCS.contains(&name))
+    ReturnDecision::Resume
 }
 
 #[cfg(test)]
@@ -295,13 +157,6 @@ mod tests {
             since_last_turn: Duration::from_secs(10),
             expected_turns: None,
         }
-    }
-
-    // cost: time O(n), heap O(n), stack O(1)
-    // vars: n = 테스트 원문 글자 수
-    // basis: estimate
-    fn words(count: usize, word: &str) -> String {
-        vec![word; count].join(" ")
     }
 
     #[test]
@@ -472,125 +327,34 @@ mod tests {
         assert_eq!(break_even_turns(&budget(), 100_000, 1_000), 0.0);
     }
 
-    // cost: time O(n), heap O(n), stack O(1)
-    // vars: n = 테스트 원문 글자 수
-    // basis: estimate
     #[test]
-    fn build_packet_puts_sections_in_order() {
-        let source = PacketSource {
-            pinned: vec!["keep api stable".into()],
-            goal_and_last_input: vec!["add login".into()],
-            open_items: vec!["tests pending".into()],
-            recent_turns: vec!["turn 3".into()],
-            kept_tool_calls: vec![("cargo test output".into(), "ran tests".into())],
-            file_paths: vec!["src/login.rs".into()],
-            up_to: LedgerSeq(42),
-        };
-
-        let packet = build_packet(&source, 10_000);
-
-        let order = [
-            "keep api stable",
-            "add login",
-            "tests pending",
-            "turn 3",
-            "ran tests",
-            "src/login.rs",
-        ]
-        .map(|needle| packet.text.find(needle).expect("item should be in packet"));
-        assert!(order.windows(2).all(|pair| pair[0] < pair[1]));
-        assert_eq!(packet.up_to, LedgerSeq(42));
+    fn packet_hard_limit_is_fifth_of_threshold() {
+        assert_eq!(budget().packet_hard_limit(), 20_000);
     }
 
     // cost: time O(n), heap O(n), stack O(1)
-    // vars: n = 테스트 원문 글자 수
+    // vars: n = 테스트 데이터 크기
     // basis: estimate
     #[test]
-    fn build_packet_tool_result_keeps_head_and_one_line_memo() {
-        let source = PacketSource {
-            kept_tool_calls: vec![("x".repeat(1_000), "first line\nsecond line".into())],
-            ..PacketSource::default()
-        };
+    fn decide_return_matches_rule_table() {
+        let warm = Duration::from_secs(300);
+        let cold = Duration::from_secs(301);
+        // (경과 시간, A, P, 기대 판정). T = 100_000
+        let cases = [
+            (warm, 99_999, 5_000, ReturnDecision::Resume),
+            (warm, 99_999, 200_000, ReturnDecision::Resume),
+            (warm, 100_000, 5_000, ReturnDecision::NewSession),
+            (warm, 100_000, 200_000, ReturnDecision::NewSession),
+            (cold, 20_000, 5_000, ReturnDecision::NewSession),
+            (cold, 150_000, 5_000, ReturnDecision::NewSession),
+            (cold, 5_000, 5_000, ReturnDecision::Resume),
+            (cold, 4_000, 5_000, ReturnDecision::Resume),
+        ];
 
-        let packet = build_packet(&source, 10_000);
+        for (since, active, packet, expected) in cases {
+            let result = decide_return(&budget(), since, active, packet);
 
-        assert!(
-            packet
-                .text
-                .contains(&format!("first line\n{}", "x".repeat(300)))
-        );
-        assert!(!packet.text.contains(&"x".repeat(301)));
-        assert!(!packet.text.contains("second line"));
-    }
-
-    // cost: time O(n), heap O(n), stack O(1)
-    // vars: n = 테스트 원문 글자 수
-    // basis: estimate
-    #[test]
-    fn build_packet_skips_provider_docs() {
-        let source = PacketSource {
-            file_paths: vec![
-                "AGENTS.md".into(),
-                "docs/CLAUDE.md".into(),
-                "src/a.rs".into(),
-            ],
-            ..PacketSource::default()
-        };
-
-        let packet = build_packet(&source, 10_000);
-
-        assert!(packet.text.contains("src/a.rs"));
-        assert!(!packet.text.contains("AGENTS.md"));
-        assert!(!packet.text.contains("CLAUDE.md"));
-    }
-
-    // cost: time O(n), heap O(n), stack O(1)
-    // vars: n = 테스트 원문 글자 수
-    // basis: estimate
-    #[test]
-    fn build_packet_over_limit_shrinks_from_the_back() {
-        let source = PacketSource {
-            pinned: vec!["PINNED".into()],
-            goal_and_last_input: vec!["GOAL".into()],
-            recent_turns: vec![words(200, "turn")],
-            file_paths: (0..100).map(|n| format!("src/file_{n}.rs")).collect(),
-            ..PacketSource::default()
-        };
-
-        let packet = build_packet(&source, 300);
-
-        assert!(packet.tokens <= 300);
-        assert_eq!(packet.tokens, estimate_tokens(&packet.text));
-        assert!(packet.text.contains("PINNED"));
-        assert!(packet.text.contains("GOAL"));
-        assert!(packet.text.contains("turn turn"));
-        assert!(packet.text.contains("src/file_0.rs"));
-        assert!(!packet.text.contains("src/file_99.rs"));
-    }
-
-    #[test]
-    fn build_packet_tiny_limit_still_fits() {
-        let source = PacketSource {
-            pinned: vec![words(100, "rule")],
-            goal_and_last_input: vec![words(100, "goal")],
-            ..PacketSource::default()
-        };
-
-        let packet = build_packet(&source, 5);
-
-        assert!(packet.tokens <= 5);
-    }
-
-    #[test]
-    fn build_packet_zero_limit_is_empty() {
-        let source = PacketSource {
-            pinned: vec!["rule".into()],
-            ..PacketSource::default()
-        };
-
-        let packet = build_packet(&source, 0);
-
-        assert_eq!(packet.text, "");
-        assert_eq!(packet.tokens, 0);
+            assert_eq!(result, expected, "since={since:?} A={active} P={packet}");
+        }
     }
 }
