@@ -2,6 +2,7 @@
 
 mod attach;
 mod requests;
+mod sessions;
 mod start;
 
 use std::future::Future;

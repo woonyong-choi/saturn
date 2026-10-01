@@ -47,7 +47,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 |---|---|
 | 입력 | 접수한 입력과 전달 상태 |
 | 실행 | 실행마다의 `effect_scope`, 원시 기록 |
-| session | 닫은 session의 provider session ID |
+| session | 닫은 session의 provider session ID, 마지막 턴의 활성 맥락과 끝 시각 |
 | 사용량 | 사용량 보고 원값, 범위, 대상 에이전트, 모델 |
 | 판단 기록 | judge 호출의 보낸 원문, 받은 원문, 질문별 답, 비용, 시간 |
 | 설정 스냅샷 | 설정 번호별 병합 결과와 층 목록 |
@@ -59,6 +59,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - TUI의 입력 기록 `~/.saturn/history`는 기록 저장소 밖의 권한 0600 파일이고 TUI가 쓴다.
 - 첫 스키마(V1)는 옛 스키마 위 변경분이 아니라 전체 정의로 쓴다. 공개 저장소만으로 스키마 전체를 읽기 위해서다.
 - 표 이름은 `chats`, `inputs`, `runs`, `sessions`, `events`, `usage`이고 Saturn 용어(채팅, 입력, 실행, session)를 따른다.
+- `sessions` 표는 마지막 활성 맥락 `last_active`(토큰)와 마지막 턴 끝 시각 `last_turn_ended_at`(unix 밀리초) 열을 둔다. engine이 턴이 끝날 때 쓰고 시작할 때 읽어 보관 session의 재개 판정을 재시작 뒤에도 같게 한다([provider 연결과 session](providers-and-sessions.md#그-provider로-돌아가기)). 두 열은 스키마 V2에서 더했고 이관 전 행은 NULL이며, NULL이면 재개로 판정한다.
 - 기록 저장소 파일 권한은 0600이다(초안). 입력 원문과 판단 기록이 들어 있기 때문이다.
 
 ### 사용량 조회 범위
@@ -150,6 +151,8 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 기록 저장소에는 engine 하나만 쓴다. | 두 번째 engine이 잠금을 얻지 못해 쓰지 못하는지 확인한다. |
 | provider가 보고하지 않은 값은 NULL로 남는다. | 사용량 일부가 빠진 보고를 넣어 빈 값이 0이 아닌 NULL인지 확인한다. |
 | 스키마를 올리기 전 백업 하나를 남긴다. | 옛 스키마 파일로 새 버전을 실행해 백업 1개와 이관된 스키마가 생기는지 확인한다. |
+| 스키마 V2 이관은 session 행을 보존하고 마지막 턴 열을 NULL로 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v1_file_migrates_to_last_turn_columns_keeping_sessions`, `migration_keeps_only_latest_backup_and_removes_old_ones` |
+| 마지막 턴 값은 저장하고 되살린다. | `saturn-terminal/engine/src/store/sessions.rs`의 `record_last_turn_round_trips_through_live_mains`, `record_last_turn_overwrites_and_survives_session_upsert` |
 | 이관 백업은 14일이 지나면 지운다. | 만든 지 14일이 지난 백업이 다음 시작 때 사라지는지 확인한다. |
 | 원시 기록의 해시와 크기는 압축 전 값이다. | 압축 뒤 기록한 해시가 원본의 해시와 같은지 확인한다. |
 | 열린 입력, 열린 실행, 활성 session은 어떤 명령으로도 지우지 않는다. | 열린 항목이 있는 채팅을 지워 그 항목이 남는지 확인한다. |

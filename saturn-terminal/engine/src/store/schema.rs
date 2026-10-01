@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 pub const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,7 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1];
+pub(crate) const MIGRATIONS: &[&str] = &[V1, V2];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -150,6 +150,12 @@ CREATE TABLE tombstones (
     hash TEXT NOT NULL,
     deleted_at INTEGER NOT NULL
 );
+"#;
+
+/// 보관 session의 마지막 턴 값. 값이 없는 옛 행은 NULL로 두고 재개로 판정한다.
+const V2: &str = r#"
+ALTER TABLE sessions ADD COLUMN last_active INTEGER;
+ALTER TABLE sessions ADD COLUMN last_turn_ended_at INTEGER;
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -294,7 +300,7 @@ mod tests {
     use std::fs::File;
 
     use super::*;
-    use crate::store::tests::temp_store;
+    use crate::store::tests::{temp_store, temp_store_at_v1};
 
     #[tokio::test]
     async fn backup_keeps_only_latest_file() {
@@ -354,7 +360,7 @@ mod tests {
 
     #[tokio::test]
     async fn failed_migration_rolls_back_whole_transaction() {
-        let (_dir, store) = temp_store().await;
+        let (_dir, store) = temp_store_at_v1().await;
         let steps = [
             MIGRATIONS[0],
             "CREATE TABLE half_done (id INTEGER); INSERT INTO missing_table VALUES (1);",
@@ -374,5 +380,46 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(tables, 0);
+    }
+
+    #[tokio::test]
+    async fn v1_file_migrates_to_last_turn_columns_keeping_sessions() {
+        let (dir, store) = temp_store_at_v1().await;
+        sqlx::raw_sql(
+            "INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0); \
+             INSERT INTO sessions (id, chat_id, agent_id, role, provider, provider_session, state, delivered) \
+             VALUES (7, 1, 1, 'Main', 'Codex', 'thread-7', 'ClosedResumable', 3)",
+        )
+        .execute(&store.pool)
+        .await
+        .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (1, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
+        let live = store.live_mains().await.unwrap();
+        assert_eq!(live.len(), 1);
+        assert_eq!(live[0].0.delivered.0, 3);
+        assert_eq!(live[0].1, None);
+    }
+
+    #[tokio::test]
+    async fn migration_keeps_only_latest_backup_and_removes_old_ones() {
+        let (dir, store) = temp_store_at_v1().await;
+        let stale = store.backup_before_migration(1).await.unwrap();
+        let older = stale.with_file_name("saturn-v0-1.db");
+        std::fs::rename(&stale, &older).unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let backup = notice.unwrap().backup;
+        assert!(backup.exists());
+        assert!(!older.exists());
+        assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
     }
 }

@@ -7,6 +7,7 @@ mod raw;
 mod records;
 mod retention;
 mod schema;
+mod sessions;
 mod snapshots;
 mod usage;
 
@@ -246,6 +247,18 @@ mod tests {
         (dir, store)
     }
 
+    /// 첫 스키마(V1)까지만 만든 옛 파일. 이관 시험의 출발점이다.
+    pub(crate) async fn temp_store_at_v1() -> (tempfile::TempDir, Store) {
+        let dir = tempfile::tempdir().unwrap();
+        let (store, notice) =
+            Store::open_with(dir.path(), &schema::MIGRATIONS[..1], SystemTime::now())
+                .await
+                .unwrap();
+        assert!(notice.is_none());
+        assert_eq!(store.schema_version().await.unwrap(), 1);
+        (dir, store)
+    }
+
     #[tokio::test]
     async fn open_creates_schema_without_backup_or_notice() {
         let (dir, store) = temp_store().await;
@@ -297,18 +310,22 @@ mod tests {
     async fn open_older_schema_backs_up_then_migrates() {
         let (dir, store) = temp_store().await;
         store.pool.close().await;
-        let steps = [schema::MIGRATIONS[0], "CREATE TABLE extra (id INTEGER)"];
+        let steps = [
+            schema::MIGRATIONS[0],
+            schema::MIGRATIONS[1],
+            "CREATE TABLE extra (id INTEGER)",
+        ];
 
         let (store, notice) = Store::open_with(dir.path(), &steps, SystemTime::now())
             .await
             .unwrap();
 
         let notice = notice.unwrap();
-        assert_eq!((notice.from, notice.to), (1, 2));
+        assert_eq!((notice.from, notice.to), (2, 3));
         assert!(notice.backup.starts_with(store.backup_dir()));
         assert!(notice.backup.exists());
-        assert!(notice.line().contains("1 → 2"));
-        assert_eq!(store.schema_version().await.unwrap(), 2);
+        assert!(notice.line().contains("2 → 3"));
+        assert_eq!(store.schema_version().await.unwrap(), 3);
         let backups = std::fs::read_dir(store.backup_dir()).unwrap().count();
         assert_eq!(backups, 1);
     }
