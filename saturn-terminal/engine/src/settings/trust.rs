@@ -148,8 +148,7 @@ pub(crate) fn write_private(path: &Path, body: &[u8]) -> std::io::Result<()> {
     let partial = partial_path(path);
     let mut file = std::fs::OpenOptions::new()
         .write(true)
-        .create(true)
-        .truncate(true)
+        .create_new(true)
         .mode(TRUST_FILE_MODE)
         .open(&partial)?;
     file.write_all(body)?;
@@ -170,7 +169,7 @@ fn canonical(path: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use std::os::unix::fs::PermissionsExt;
+    use std::os::unix::fs::{PermissionsExt, symlink};
 
     use super::*;
 
@@ -211,5 +210,17 @@ mod tests {
         let error = TrustStore::load(home.path()).await.unwrap_err();
 
         assert!(matches!(error, SettingsError::Parse { .. }));
+    }
+
+    #[test]
+    fn partial_symlink_is_not_followed() {
+        let home = tempfile::tempdir().unwrap();
+        let path = home.path().join(TRUST_FILE);
+        let other = home.path().join("other");
+        std::fs::write(&other, "keep").unwrap();
+        symlink(&other, partial_path(&path)).unwrap();
+
+        assert!(write_private(&path, b"overwrite").is_err());
+        assert_eq!(std::fs::read_to_string(other).unwrap(), "keep");
     }
 }

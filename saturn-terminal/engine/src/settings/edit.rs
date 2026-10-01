@@ -2,6 +2,7 @@
 //! 설계: docs/design/settings.md
 
 use std::io::Write;
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -141,7 +142,11 @@ fn replace_file(path: &Path, body: &[u8]) -> std::io::Result<()> {
         std::fs::create_dir_all(parent)?;
     }
     let partial = partial_path(path);
-    let mut file = std::fs::File::create(&partial)?;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&partial)?;
     if let Ok(meta) = std::fs::metadata(path) {
         file.set_permissions(meta.permissions())?;
     }
@@ -152,6 +157,8 @@ fn replace_file(path: &Path, body: &[u8]) -> std::io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::os::unix::fs::{PermissionsExt, symlink};
+
     use super::*;
     use crate::secrets::KeySource;
     use crate::store::Store;
@@ -242,5 +249,22 @@ mod tests {
         let applied = manager.apply(&store, None).await.unwrap();
         let settings = manager.at(&store, applied.revision).await.unwrap();
         assert_eq!(settings.key_info(), Some(info));
+    }
+
+    #[test]
+    fn new_file_is_private_and_partial_symlink_is_not_followed() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(CONFIG_FILE);
+        replace_file(&path, b"on_exit = \"ask\"\n").unwrap();
+        assert_eq!(
+            std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+
+        let other = dir.path().join("other");
+        std::fs::write(&other, "keep").unwrap();
+        symlink(&other, partial_path(&path)).unwrap();
+        assert!(replace_file(&path, b"overwrite").is_err());
+        assert_eq!(std::fs::read_to_string(other).unwrap(), "keep");
     }
 }
