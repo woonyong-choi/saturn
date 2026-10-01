@@ -1,0 +1,285 @@
+//! 창과 화면의 키 동작.
+//! 설계: docs/design/tui.md
+
+use saturn_protocol::ids::ChatId;
+use saturn_protocol::rpc::Request;
+
+use super::{App, Effect, Window};
+use crate::keys::Action;
+use crate::state::ChatState;
+use crate::view::folder_trust::TrustChoice;
+use crate::view::judge_version::JudgeVersionCommand;
+use crate::view::live_area::LiveArea;
+use crate::view::permission::PermissionQueue;
+use crate::view::resume_prompt::ResumeOutcome;
+use crate::view::status_board::Button;
+use crate::view::task_list::TaskListCommand;
+use crate::view::train_confirm::TrainChoice;
+use crate::view::transcript::{Transcript, TranscriptCell};
+
+impl App {
+    pub(super) fn on_button(&mut self, button: Button) -> Vec<Effect> {
+        let request = match button {
+            Button::Send(input) => Request::SendNow { input },
+            Button::CancelInput(input) | Button::CancelHeldInput(input) => {
+                Request::CancelInput { input }
+            }
+            Button::ContinueTask(task) => {
+                let Some(chat) = self.chat.chat else {
+                    return Vec::new();
+                };
+                Request::Continue {
+                    chat,
+                    task: Some(task),
+                }
+            }
+            Button::ContinueInput(input) => Request::ContinueInput { input },
+            Button::CloseHeld(task) => {
+                self.chat.close_held_confirm = Some(task);
+                return Vec::new();
+            }
+        };
+        vec![Effect::Send(request)]
+    }
+
+    pub(super) fn close_held(&mut self) -> Vec<Effect> {
+        let Some(task) = self.chat.close_held_confirm.take() else {
+            return Vec::new();
+        };
+        let Some(chat) = self.chat.chat else {
+            return Vec::new();
+        };
+        if let Some(view) = self.chat.tasks.get(&task) {
+            let label = view.label;
+            self.push_cell(TranscriptCell::HeldClosed { label });
+        }
+        vec![Effect::Send(Request::CloseHeld { chat, task })]
+    }
+
+    pub(super) fn on_judge_key_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(Window::JudgeKey(prompt)) = &mut self.window else {
+            return Vec::new();
+        };
+        match action {
+            Action::Insert(c) => prompt.input.push(c),
+            Action::Backspace => prompt.input.pop(),
+            Action::Confirm if !prompt.input.is_empty() => {
+                let key = prompt.input.take();
+                self.window = None;
+                return vec![Effect::Send(Request::SubmitJudgeKey { key })];
+            }
+            _ => {}
+        }
+        Vec::new()
+    }
+
+    pub(super) fn on_trust_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(Window::FolderTrust(trust)) = &mut self.window else {
+            return Vec::new();
+        };
+        match action {
+            Action::TrustApply => trust.selected = TrustChoice::Apply,
+            Action::Up => trust.up(),
+            Action::Down => trust.down(),
+            Action::Confirm => {
+                let apply = match trust.selected {
+                    TrustChoice::Apply => true,
+                    TrustChoice::Second => false,
+                    TrustChoice::Quit => return self.quit_effects(),
+                };
+                let request = Request::AnswerFolderTrust {
+                    path: trust.path.display().to_string(),
+                    fingerprint: trust.fingerprint.clone(),
+                    apply,
+                };
+                self.window = None;
+                return vec![Effect::Send(request)];
+            }
+            _ => {}
+        }
+        Vec::new()
+    }
+
+    // cost: time O(h), heap O(h), stack O(1)
+    // vars: h = 보류 작업 수
+    // basis: estimate
+    pub(super) fn on_resume_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(Window::Resume(prompt)) = &mut self.window else {
+            return Vec::new();
+        };
+        let outcome = match action {
+            Action::Up => {
+                prompt.up();
+                return Vec::new();
+            }
+            Action::Down => {
+                prompt.down();
+                return Vec::new();
+            }
+            Action::Confirm => prompt.confirm(),
+            _ => return Vec::new(),
+        };
+        let Some(chat) = self.chat.chat else {
+            return Vec::new();
+        };
+        let requests = match outcome {
+            ResumeOutcome::Pending => return Vec::new(),
+            ResumeOutcome::ContinueAll => vec![Request::Continue { chat, task: None }],
+            ResumeOutcome::Continue(tasks) => tasks
+                .into_iter()
+                .map(|task| Request::Continue {
+                    chat,
+                    task: Some(task),
+                })
+                .collect(),
+            ResumeOutcome::Leave => Vec::new(),
+        };
+        self.window = None;
+        requests.into_iter().map(Effect::Send).collect()
+    }
+
+    pub(super) fn on_task_list_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(Window::TaskList(list)) = &mut self.window else {
+            return Vec::new();
+        };
+        let command = match action {
+            Action::Up => {
+                list.up();
+                None
+            }
+            Action::Down => {
+                list.down();
+                None
+            }
+            Action::NextFilter => {
+                list.set_filter(list.filter.next());
+                None
+            }
+            Action::PrevFilter => {
+                list.set_filter(list.filter.prev());
+                None
+            }
+            Action::Close => {
+                if !list.cancel() {
+                    self.window = None;
+                }
+                None
+            }
+            other => list.command(&other),
+        };
+        match command {
+            Some(command) => self.on_task_list_command(command),
+            None => Vec::new(),
+        }
+    }
+
+    pub(super) fn on_task_list_command(&mut self, command: TaskListCommand) -> Vec<Effect> {
+        let request = match command {
+            TaskListCommand::Open { chat, .. } => {
+                self.window = None;
+                if self.chat.chat == Some(chat) {
+                    return Vec::new();
+                }
+                return self.reattach(Some(chat));
+            }
+            TaskListCommand::NewChat => {
+                self.window = None;
+                return self.reattach(None);
+            }
+            TaskListCommand::Continue { chat, task } => Request::Continue {
+                chat,
+                task: Some(task),
+            },
+            TaskListCommand::CancelInput(input) => Request::CancelInput { input },
+            TaskListCommand::CloseHeld { chat, task } => Request::CloseHeld { chat, task },
+            TaskListCommand::SendNow(input) => Request::SendNow { input },
+            TaskListCommand::Rename { chat, name } => Request::RenameChat { chat, name },
+            TaskListCommand::Regroup { chat, group } => Request::SetChatGroup {
+                chat,
+                group: (!group.is_empty()).then_some(group),
+            },
+        };
+        vec![Effect::Send(request), Effect::Send(Request::ListTasks)]
+    }
+
+    /// 입력창, 입력 기록, provider 명령 목록은 채팅을 옮겨도 유지한다.
+    pub(super) fn reattach(&mut self, chat: Option<ChatId>) -> Vec<Effect> {
+        self.chat = ChatState::new();
+        self.transcript = Transcript::new();
+        self.live = LiveArea::new();
+        self.popup = None;
+        self.permissions = PermissionQueue::new();
+        self.window = None;
+        self.start = None;
+        self.resume_asked = false;
+        self.pending_attachments.clear();
+        self.attach_chat = chat;
+        self.history_loaded = false;
+        self.history_loading = false;
+        self.history_has_more = true;
+        vec![
+            Effect::Send(Request::Detach),
+            Effect::Send(self.attach_request()),
+        ]
+    }
+
+    pub(super) fn on_screen_action(&mut self, action: Action) -> Vec<Effect> {
+        match (&mut self.window, action) {
+            (Some(Window::FullTranscript(full)), Action::Up) => full.up(),
+            (Some(Window::FullTranscript(full)), Action::Down) => full.down(),
+            (Some(Window::Usage(usage)), Action::Confirm) => usage.toggle_detail(),
+            (Some(Window::JudgeVersion(screen)), Action::Up) => screen.up(),
+            (Some(Window::JudgeVersion(screen)), Action::Down) => screen.down(),
+            (Some(Window::JudgeVersion(screen)), Action::Close) => {
+                let cancelled = screen.cancel();
+                if !cancelled {
+                    self.window = None;
+                }
+            }
+            (Some(Window::JudgeVersion(screen)), other) => {
+                return match screen.command(&other) {
+                    Some(command) => vec![Effect::Send(judge_version_request(command))],
+                    None => Vec::new(),
+                };
+            }
+            (_, Action::Close) => self.window = None,
+            _ => {}
+        }
+        Vec::new()
+    }
+
+    pub(super) fn on_train_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(Window::TrainConfirm(confirm)) = &mut self.window else {
+            return Vec::new();
+        };
+        let proceed = match action {
+            Action::Up => {
+                confirm.up();
+                return Vec::new();
+            }
+            Action::Down => {
+                confirm.down();
+                return Vec::new();
+            }
+            Action::Confirm => confirm.selected == TrainChoice::Run,
+            Action::Close => false,
+            _ => return Vec::new(),
+        };
+        self.window = None;
+        vec![Effect::Send(Request::ConfirmTrain { proceed })]
+    }
+}
+
+fn judge_version_request(command: JudgeVersionCommand) -> Request {
+    match command {
+        JudgeVersionCommand::ResetThresholds => Request::Train {
+            reset_thresholds: true,
+            from: None,
+        },
+        JudgeVersionCommand::TrainFrom(version) => Request::Train {
+            reset_thresholds: false,
+            from: Some(version),
+        },
+        JudgeVersionCommand::Use(version) => Request::UseJudgeVersion { version },
+    }
+}

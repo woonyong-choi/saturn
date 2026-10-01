@@ -11,4 +11,4 @@ crossterm.workspace = true
 ratatui.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["io-std"] }
