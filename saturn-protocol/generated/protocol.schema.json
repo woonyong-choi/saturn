@@ -48,8 +48,8 @@
           "type": "string"
         },
         {
-          "const": "IntakeStopped",
-          "description": "연속 3회 실패로 새 입력 접수를 멈췄다.",
+          "const": "JudgeDisconnected",
+          "description": "연속 3회 실패로 판단 모델 연결이 끊겼다. 입력은 계속 접수하고 현재 모델로 보낸다.",
           "type": "string"
         },
         {

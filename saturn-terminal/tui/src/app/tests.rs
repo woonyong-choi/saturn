@@ -172,20 +172,20 @@ fn submit_before_chat_known_keeps_draft() {
 }
 
 #[test]
-fn submit_while_intake_stopped_keeps_draft() {
+fn submit_while_judge_disconnected_still_sends_input() {
     let mut app = attached();
     notify(
         &mut app,
         Notification::Alert {
-            alert: Alert::IntakeStopped,
+            alert: Alert::JudgeDisconnected,
         },
     );
     type_text(&mut app, "hi");
 
     let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
 
-    assert!(effects.is_empty());
-    assert_eq!(app.composer.text(), "hi");
+    assert!(matches!(sent(&effects)[0], Request::SubmitInput { .. }));
+    assert!(app.composer.is_empty());
 }
 
 // cost: time O(1), heap O(1), stack O(1)

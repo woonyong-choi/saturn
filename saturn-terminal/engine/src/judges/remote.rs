@@ -7,6 +7,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
+use saturn_core::judges::failure::retry_delay;
 use saturn_core::judges::{
     Answer, AnswerKind, JudgeClient, JudgeError, JudgeRequest, JudgeResponse, Question,
 };
@@ -31,29 +32,22 @@ const JUDGE_PATH: &str = "/v1/systemone";
 
 const MODELS_PATH: &str = "/v1/models";
 
-/// 넘으면 `RateLimited`로 포기한다. 초안 값.
-const RATE_LIMIT_ATTEMPTS: u32 = 3;
-
 /// 계층 선택 조각의 "이 조각에 없음" 선택지 이름.
 const OTHER_CHUNK_OPTION: &str = "none of these";
 
+/// 재시도 횟수와 간격은 `saturn_core::judges::failure`가 정한다.
 /// TODO(#49): 설정 키 이름과 기본값
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RetryPolicy {
-    pub pre_send_attempts: u32,
     /// 보낸 뒤 이 시간이 지나면 `TimedOutAfterSend`.
     pub response_timeout: Duration,
-    /// 속도 제한 응답이 기다릴 시간을 주지 않을 때 기다리는 시간.
-    pub rate_limit_wait: Duration,
 }
 
 impl Default for RetryPolicy {
     /// 초안 값.
     fn default() -> Self {
         Self {
-            pre_send_attempts: 3,
             response_timeout: Duration::from_secs(30),
-            rate_limit_wait: Duration::from_secs(2),
         }
     }
 }
@@ -270,11 +264,13 @@ impl RemoteJudge {
         let mut received = Vec::new();
         let mut parts = Vec::new();
         let mut failure = None;
+        let mut unknown_cost_calls = 0;
         for part in split_request(expanded) {
-            let (body, reply, result) = self.send_with_retry(&part).await;
-            sent.push(body);
-            received.extend(reply);
-            match result {
+            let attempt = self.send_with_retry(&part).await;
+            sent.push(attempt.body);
+            received.extend(attempt.reply);
+            unknown_cost_calls += attempt.unknown_cost_calls;
+            match attempt.result {
                 Ok(response) => parts.push(response),
                 Err(error) => {
                     failure = Some(error);
@@ -292,41 +288,23 @@ impl RemoteJudge {
             result,
             started_at,
             elapsed: clock.elapsed(),
+            unknown_cost_calls,
         }
     }
 
-    /// 보내기 전 실패와 속도 제한만 다시 보내고, 보낸 뒤 시간 초과는 다시 보내지 않는다.
-    async fn send_with_retry(
-        &self,
-        request: &JudgeRequest,
-    ) -> (String, Option<String>, Result<JudgeResponse, JudgeError>) {
+    // cost: time O(r·t), heap O(b), stack O(1), io r
+    // vars: r = 시도 수(최대 3), t = 시도 하나의 응답 대기, b = 요청과 응답 본문 크기
+    // basis: estimate
+    /// 보내기 전 실패, 응답 없음, 속도 제한은 5초 간격으로 두 번까지 다시 보낸다. judge 판단은 부작용이 없는 조회라 보낸 뒤 시간 초과도 다시 보내고, 그 호출의 비용은 모른다고 센다.
+    async fn send_with_retry(&self, request: &JudgeRequest) -> SentPart {
         let body = judge_body(request).to_string();
-        let mut pre_send_failures = 0;
-        let mut rate_limited = 0;
+        let mut failures = 0;
+        let mut unknown_cost_calls = 0;
         loop {
-            let result = self.send_once(&body).await;
-            let error = match result {
+            let error = match self.send_once(&body).await {
                 Ok(reply) => {
-                    let parsed = parse_judge_reply(request, &reply);
-                    return (body, Some(reply), parsed);
-                }
-                Err(SendFailure::BeforeSend) => {
-                    pre_send_failures += 1;
-                    if pre_send_failures > self.retry.pre_send_attempts {
-                        JudgeError::NoResponse
-                    } else {
-                        continue;
-                    }
-                }
-                Err(SendFailure::TimedOutAfterSend) => JudgeError::TimedOutAfterSend,
-                Err(SendFailure::RateLimited { retry_after }) => {
-                    rate_limited += 1;
-                    if rate_limited > RATE_LIMIT_ATTEMPTS {
-                        JudgeError::RateLimited
-                    } else {
-                        tokio::time::sleep(retry_after.unwrap_or(self.retry.rate_limit_wait)).await;
-                        continue;
-                    }
+                    let result = parse_judge_reply(request, &reply);
+                    return SentPart::new(body, Some(reply), result, unknown_cost_calls);
                 }
                 Err(SendFailure::Rejected {
                     status,
@@ -338,10 +316,21 @@ impl RemoteJudge {
                             reason: format!("judge returned status {status}"),
                         },
                     };
-                    return (body, Some(reply), Err(error));
+                    return SentPart::new(body, Some(reply), Err(error), unknown_cost_calls);
                 }
+                Err(SendFailure::BeforeSend) => JudgeError::NoResponse,
+                Err(SendFailure::TimedOutAfterSend) => {
+                    unknown_cost_calls += 1;
+                    JudgeError::TimedOutAfterSend
+                }
+                Err(SendFailure::RateLimited) => JudgeError::RateLimited,
             };
-            return (body, None, Err(error));
+            failures += 1;
+            let Some(delay) = retry_delay(failures) else {
+                return SentPart::new(body, None, Err(error), unknown_cost_calls);
+            };
+            tracing::warn!(failures, error = %error, "judge call failed, retrying");
+            tokio::time::sleep(delay).await;
         }
     }
 
@@ -400,14 +389,39 @@ impl JudgeClient for RemoteJudge {
     }
 }
 
+/// 조각 하나를 재시도까지 마친 결과.
+struct SentPart {
+    body: String,
+    reply: Option<String>,
+    result: Result<JudgeResponse, JudgeError>,
+    /// 보낸 뒤 시간 초과로 비용을 모르는 호출 수.
+    unknown_cost_calls: u32,
+}
+
+impl SentPart {
+    fn new(
+        body: String,
+        reply: Option<String>,
+        result: Result<JudgeResponse, JudgeError>,
+        unknown_cost_calls: u32,
+    ) -> Self {
+        Self {
+            body,
+            reply,
+            result,
+            unknown_cost_calls,
+        }
+    }
+}
+
 /// 재시도 판단에만 쓴다.
 enum SendFailure {
-    /// 전달되지 않은 것이 확정이라 다시 보내도 된다.
+    /// 전달되지 않은 것이 확정이다.
     BeforeSend,
-    /// 다시 보내지 않는다.
+    /// 이미 처리됐을 수 있다. 판단은 조회라 다시 보낸다.
     TimedOutAfterSend,
-    /// `retry_after`가 없으면 `RetryPolicy::rate_limit_wait`만큼 기다린다.
-    RateLimited { retry_after: Option<Duration> },
+    /// 429, 529. 기다림은 응답의 `retry-after`와 무관하게 재시도 간격으로 통일한다.
+    RateLimited,
     /// 본문은 가리기 전 값이다.
     Rejected { status: u16, body: String },
 }
@@ -425,11 +439,7 @@ impl From<TransportError> for SendFailure {
 fn classify(reply: HttpReply) -> Result<String, SendFailure> {
     match reply.status {
         200..=299 => Ok(reply.body),
-        429 | 529 => Err(SendFailure::RateLimited {
-            retry_after: header(&reply, "retry-after")
-                .and_then(|value| value.trim().parse::<u64>().ok())
-                .map(Duration::from_secs),
-        }),
+        429 | 529 => Err(SendFailure::RateLimited),
         status => Err(SendFailure::Rejected {
             status,
             body: reply.body,
@@ -804,9 +814,7 @@ pub(crate) mod tests {
 
     pub(crate) fn judge(secrets: SharedSecrets, transport: Arc<FakeTransport>) -> RemoteJudge {
         let retry = RetryPolicy {
-            pre_send_attempts: 2,
             response_timeout: Duration::from_secs(1),
-            rate_limit_wait: Duration::from_millis(1),
         };
         RemoteJudge::with_transport(
             "https://api.typesafe.ai",
@@ -928,58 +936,117 @@ pub(crate) mod tests {
         assert!(!format!("{judge:?}").contains(KEY));
     }
 
-    #[tokio::test]
-    async fn only_pre_send_failures_are_retried() {
+    #[tokio::test(start_paused = true)]
+    async fn failures_retry_twice_five_seconds_apart_then_give_up() {
         let dir = tempfile::tempdir().unwrap();
         let secrets = secrets_with_key(dir.path()).await;
-        let retried = FakeTransport::new(vec![
+        let recovered = FakeTransport::new(vec![
             Err(TransportError::BeforeSend),
             Err(TransportError::BeforeSend),
             ok(ANSWER),
         ]);
-        let timed_out = FakeTransport::new(vec![Err(TransportError::AfterSend), ok(ANSWER)]);
         let gave_up = FakeTransport::new(vec![Err(TransportError::BeforeSend); 3]);
 
-        let first = judge(Arc::clone(&secrets), Arc::clone(&retried))
+        let started = tokio::time::Instant::now();
+        let first = judge(Arc::clone(&secrets), Arc::clone(&recovered))
             .exchange(request())
             .await;
-        let second = judge(Arc::clone(&secrets), Arc::clone(&timed_out))
+        let after_recovery = started.elapsed();
+        let second = judge(Arc::clone(&secrets), Arc::clone(&gave_up))
             .exchange(request())
             .await;
-        let third = judge(Arc::clone(&secrets), Arc::clone(&gave_up))
+        let after_give_up = started.elapsed() - after_recovery;
+
+        assert!(first.result.is_ok());
+        assert_eq!(recovered.calls().len(), 3);
+        assert_eq!(after_recovery, Duration::from_secs(10));
+        assert!(matches!(second.result, Err(JudgeError::NoResponse)));
+        assert_eq!(gave_up.calls().len(), 3);
+        assert_eq!(after_give_up, Duration::from_secs(10));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn first_retry_waits_five_seconds_before_sending() {
+        let dir = tempfile::tempdir().unwrap();
+        let transport = FakeTransport::new(vec![Err(TransportError::BeforeSend), ok(ANSWER)]);
+        let judge = judge(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+
+        let started = tokio::time::Instant::now();
+        let exchange = judge.exchange(request()).await;
+
+        assert!(exchange.result.is_ok());
+        assert_eq!(transport.calls().len(), 2);
+        assert_eq!(started.elapsed(), Duration::from_secs(5));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn timeout_after_send_is_retried_and_counted_as_unknown_cost() {
+        let dir = tempfile::tempdir().unwrap();
+        let secrets = secrets_with_key(dir.path()).await;
+        let recovered = FakeTransport::new(vec![Err(TransportError::AfterSend), ok(ANSWER)]);
+        let timed_out = FakeTransport::new(vec![Err(TransportError::AfterSend); 3]);
+
+        let first = judge(Arc::clone(&secrets), Arc::clone(&recovered))
+            .exchange(request())
+            .await;
+        let second = judge(secrets, Arc::clone(&timed_out))
             .exchange(request())
             .await;
 
         assert!(first.result.is_ok());
-        assert_eq!(retried.calls().len(), 3);
+        assert_eq!(first.unknown_cost_calls, 1);
+        assert_eq!(recovered.calls().len(), 2);
         assert!(matches!(second.result, Err(JudgeError::TimedOutAfterSend)));
-        assert_eq!(timed_out.calls().len(), 1);
+        assert_eq!(second.unknown_cost_calls, 3);
+        assert_eq!(timed_out.calls().len(), 3);
         assert!(second.received.is_none());
-        assert!(matches!(third.result, Err(JudgeError::NoResponse)));
-        assert_eq!(gave_up.calls().len(), 3);
     }
 
-    #[tokio::test]
-    async fn rate_limit_waits_and_auth_failure_is_unauthorized() {
+    #[tokio::test(start_paused = true)]
+    async fn rate_limit_retries_on_the_same_interval_ignoring_retry_after() {
         let dir = tempfile::tempdir().unwrap();
         let secrets = secrets_with_key(dir.path()).await;
         let limited = FakeTransport::new(vec![
-            status(429, "{}", vec![("retry-after", "0")]),
+            status(429, "{}", vec![("retry-after", "60")]),
             status(529, "{}", Vec::new()),
             ok(ANSWER),
         ]);
-        let rejected = FakeTransport::new(vec![status(401, "{\"error\":\"bad key\"}", Vec::new())]);
+        let exhausted = FakeTransport::new(vec![status(429, "{}", Vec::new()); 3]);
 
+        let started = tokio::time::Instant::now();
         let first = judge(Arc::clone(&secrets), Arc::clone(&limited))
             .exchange(request())
             .await;
-        let second = judge(Arc::clone(&secrets), rejected)
+        let after_recovery = started.elapsed();
+        let second = judge(secrets, Arc::clone(&exhausted))
             .exchange(request())
             .await;
 
         assert!(first.result.is_ok());
         assert_eq!(limited.calls().len(), 3);
-        assert!(matches!(second.result, Err(JudgeError::Unauthorized)));
+        assert_eq!(after_recovery, Duration::from_secs(10));
+        assert!(matches!(second.result, Err(JudgeError::RateLimited)));
+        assert_eq!(exhausted.calls().len(), 3);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn auth_failure_and_invalid_status_are_not_retried() {
+        let dir = tempfile::tempdir().unwrap();
+        let secrets = secrets_with_key(dir.path()).await;
+        let rejected = FakeTransport::new(vec![status(401, "{\"error\":\"bad key\"}", Vec::new())]);
+        let broken = FakeTransport::new(vec![status(500, "{}", Vec::new())]);
+
+        let first = judge(Arc::clone(&secrets), Arc::clone(&rejected))
+            .exchange(request())
+            .await;
+        let second = judge(secrets, Arc::clone(&broken))
+            .exchange(request())
+            .await;
+
+        assert!(matches!(first.result, Err(JudgeError::Unauthorized)));
+        assert_eq!(rejected.calls().len(), 1);
+        assert!(matches!(second.result, Err(JudgeError::Invalid { .. })));
+        assert_eq!(broken.calls().len(), 1);
     }
 
     #[tokio::test]

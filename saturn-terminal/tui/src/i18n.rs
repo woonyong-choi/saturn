@@ -47,7 +47,7 @@ pub const HELD_CLOSED: &str = "보류를 닫았습니다";
 
 // 상태판 알림 줄
 pub const JUDGE_PAUSED: &str = "자동 판단 일시 중단";
-pub const INTAKE_STOPPED: &str = "새 입력 접수 중단 · 판단기 연결을 확인하세요";
+pub const JUDGE_DISCONNECTED: &str = "판단 모델 연결 끊김";
 pub const STEER_NOT_READY: &str = "바로 반영: 준비 중";
 pub const JUDGE_UNAVAILABLE_SEND: &str = "판단기 연결 없음 · 차례에 보냅니다";
 pub const BUSY_ELSEWHERE: &str = "다른 Saturn에서 실행 중";
@@ -232,10 +232,7 @@ const ENGLISH: &[(&str, &str)] = &[
     ("보류를 닫을까요?", "close this hold?"),
     ("보류를 닫았습니다", "hold closed"),
     ("자동 판단 일시 중단", "auto judgment paused"),
-    (
-        "새 입력 접수 중단 · 판단기 연결을 확인하세요",
-        "new input paused · check the judge connection",
-    ),
+    ("판단 모델 연결 끊김", "judge model disconnected"),
     ("바로 반영: 준비 중", "steer: not ready"),
     (
         "판단기 연결 없음 · 차례에 보냅니다",

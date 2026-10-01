@@ -325,8 +325,8 @@ pub enum ChatNotice {
 pub enum Alert {
     /// 질문별 대체 규칙을 적용 중.
     JudgePaused,
-    /// 연속 3회 실패로 새 입력 접수를 멈췄다.
-    IntakeStopped,
+    /// 연속 3회 실패로 판단 모델 연결이 끊겼다. 입력은 계속 접수하고 현재 모델로 보낸다.
+    JudgeDisconnected,
     /// 끼워 넣기 실측 전이라 대기로 처리한다.
     SteerNotReady {
         provider: crate::ids::Provider,
