@@ -287,9 +287,7 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
-    use crate::sessions::ranking::{
-        Candidate, DEFAULT_JUDGE_TOP, DEFAULT_RRF_K, order_after_judge, rank_candidates,
-    };
+    use crate::sessions::ranking::{Candidate, DEFAULT_RRF_K, order_after_judge, rank_candidates};
 
     // T = 4_000 → P_max = 400 토큰(1_600자), P_hard = 800 토큰(3_200자)
     fn budget() -> ContextBudget {
@@ -637,7 +635,7 @@ mod tests {
             "로그인 실패 고쳐 줘",
             DEFAULT_RRF_K,
         );
-        let ordered = order_after_judge(&ranked, DEFAULT_JUDGE_TOP, None, 0.5);
+        let ordered = order_after_judge(&ranked, &[], 0.5);
         let source = PacketSource {
             competitors: ordered
                 .iter()

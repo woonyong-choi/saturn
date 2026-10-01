@@ -831,8 +831,12 @@ if __name__ == "__main__":
     command = sys.argv[1] if len(sys.argv) > 1 else ""
     if command == "cost-child":
         cost_child(sys.argv[2], sys.argv[3])
-        sys.exit(0)
-    actions = {"collect": collect, "cost": cost, "seal": seal, "verify": verify, "plan": plan}
-    if command not in actions:
-        sys.exit("사용법: 01-collect.py collect|cost|seal|verify|plan")
-    actions[command]()
+    else:
+        actions = {"collect": collect, "cost": cost, "seal": seal, "verify": verify, "plan": plan}
+        if command not in actions:
+            sys.exit("사용법: 01-collect.py collect|cost|seal|verify|plan")
+        actions[command]()
+    # ONNX Runtime이 인터프리터 종료 중 잠금 오류로 프로세스를 끝내는 것을 피한다.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)

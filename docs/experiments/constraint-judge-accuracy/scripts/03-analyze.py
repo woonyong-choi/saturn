@@ -58,6 +58,27 @@ def answer(row: dict) -> float | None:
     return float(row["answer"]) if row["answer"] else None
 
 
+def percentile(values: list[float], q: float) -> float:
+    """선형 보간 분위수. statistics.quantiles의 inclusive 방식과 같다."""
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * q
+    lower = math.floor(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * (position - lower)
+
+
+def latency_summary(rows: list[dict]) -> dict:
+    values = [float(x["latency_ms"]) for x in rows if x.get("latency_ms")]
+    if not values:
+        return {"n": 0}
+    mean = sum(values) / len(values)
+    sd = math.sqrt(sum((v - mean) ** 2 for v in values) / (len(values) - 1)) if len(values) > 1 else 0.0
+    return {
+        "n": len(values), "mean": r(mean), "sd": r(sd), "median": r(percentile(values, 0.5)),
+        "p5": r(percentile(values, 0.05)), "p95": r(percentile(values, 0.95)), "max": r(max(values)),
+    }
+
+
 def main() -> int:
     if not (PROCESSED / "inputs.csv").exists():
         print("data/processed/가 없다: ./run.sh process를 먼저 실행한다", file=sys.stderr)
@@ -157,17 +178,31 @@ def main() -> int:
     for name, rows in (("inputs", inputs), ("pairs", pairs)):
         statuses[name] = {status: sum(x["status"] == status for x in rows) for status in sorted({x["status"] for x in rows})}
 
+    category_bands = []
+    for category in sorted({x["category"] for x in pairs}):
+        members = [x for x in pairs if x["category"] == category]
+        category_bands.append({
+            "category": category, "n": len(members),
+            "replace": sum(x["band"] == "replace" for x in members),
+            "possible": sum(x["band"] == "possible" for x in members),
+            "none": sum(x["band"] == "none" for x in members),
+        })
+
+    latency = {"all": latency_summary(inputs + pairs), "inputs": latency_summary(inputs), "pairs": latency_summary(pairs)}
+
     summary = {
         "hypotheses": hypotheses,
         "is_constraint_sweep": sweep,
         "replaces_bands": bands,
         "categories": categories,
+        "pair_category_bands": category_bands,
         "statuses": statuses,
+        "latency_ms": latency,
     }
     (RESULTS / "tables").mkdir(parents=True, exist_ok=True)
     (RESULTS / "figures").mkdir(parents=True, exist_ok=True)
     (RESULTS / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    for name, rows in (("hypotheses", hypotheses), ("is-constraint-sweep", sweep), ("replaces-bands", bands), ("categories", categories)):
+    for name, rows in (("hypotheses", hypotheses), ("is-constraint-sweep", sweep), ("replaces-bands", bands), ("categories", categories), ("pair-category-bands", category_bands)):
         with (RESULTS / "tables" / f"{name}.csv").open("w", encoding="utf-8", newline="") as file:
             writer = csv.DictWriter(file, fieldnames=list(rows[0]), lineterminator="\r\n")
             writer.writeheader()
@@ -175,18 +210,26 @@ def main() -> int:
 
     figure = {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "description": "가설별 비율과 95% Wilson 신뢰구간, 채택 기준",
+        "title": {
+            "text": "가설별 비율과 95% Wilson 신뢰구간",
+            "subtitle": "n=" + ", ".join(f"{h['hypothesis']} {h['n']}" for h in hypotheses) + ". 세로선은 가설별 채택 기준",
+        },
+        "width": 420,
+        "height": 220,
         "data": {"values": [
             {"hypothesis": h["hypothesis"], "value": h["value"], "low": h["ci95_low"], "high": h["ci95_high"], "criterion": h["criterion"]}
             for h in hypotheses
         ]},
         "encoding": {"y": {"field": "hypothesis", "type": "nominal", "title": None}},
         "layer": [
+            {"mark": "bar", "encoding": {
+                "x": {"field": "value", "type": "quantitative", "scale": {"domain": [0, 1]}, "title": "비율"}}},
+            {"mark": "errorbar", "encoding": {
+                "x": {"field": "low", "type": "quantitative"}, "x2": {"field": "high"}}},
             {"mark": "rule", "encoding": {
-                "x": {"field": "low", "type": "quantitative", "scale": {"domain": [0, 1]}, "title": "비율"},
-                "x2": {"field": "high"}}},
-            {"mark": {"type": "point", "filled": True}, "encoding": {"x": {"field": "value", "type": "quantitative"}}},
-            {"mark": {"type": "tick", "color": "#888888"}, "encoding": {"x": {"field": "criterion", "type": "quantitative"}}},
+                "x": {"field": "criterion", "type": "quantitative"},
+                "y": {"field": "hypothesis", "type": "nominal", "bandPosition": 0},
+                "y2": {"field": "hypothesis", "bandPosition": 1}}},
         ],
     }
     (RESULTS / "figures" / "hypotheses.vl.json").write_text(json.dumps(figure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
