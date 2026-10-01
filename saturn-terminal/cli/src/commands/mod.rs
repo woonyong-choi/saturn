@@ -1,4 +1,4 @@
-//! 하위 명령별 실행. 명령마다 engine 요청을 보내고 결과를 stdout에 쓴다. 진단은 stderr(`tracing`).
+//! 하위 명령별 실행. 결과는 stdout, 진단은 stderr.
 
 pub(crate) mod chat;
 pub(crate) mod export;

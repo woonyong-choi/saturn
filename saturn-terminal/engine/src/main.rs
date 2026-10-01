@@ -1,8 +1,5 @@
-//! `saturn-engine` 실행 파일. cli(`saturn`)가 engine이 없을 때 띄운다.
-//!
-//! 설계: docs/design/engine-lifecycle.md(engine 시작 순서, 프로세스 배치와 수명).
-//! 인자: `--home <폴더>`(기본 `$HOME/.saturn`), `-c key=value`(여러 번). 작업 폴더는 띄운 위치다.
-//! 로그는 stderr이고 레벨은 `RUST_LOG`로 정한다.
+//! `saturn-engine` 실행 파일. engine이 없을 때 `saturn`이 띄운다.
+//! 설계: docs/design/engine-lifecycle.md
 
 use std::path::PathBuf;
 
@@ -20,7 +17,6 @@ async fn main() -> anyhow::Result<()> {
     Engine::run(options).await.context("engine stopped")
 }
 
-/// 명령 인자를 읽는다. 모르는 인자는 오류다.
 fn parse_options(args: impl Iterator<Item = String>) -> anyhow::Result<EngineOptions> {
     let mut home = None;
     let mut run_overrides = Vec::new();
@@ -44,7 +40,7 @@ fn parse_options(args: impl Iterator<Item = String>) -> anyhow::Result<EngineOpt
     })
 }
 
-/// `$HOME/.saturn`. TODO(#49): 경로 설정 키
+/// TODO(#49): 경로 설정 키
 fn default_home() -> anyhow::Result<PathBuf> {
     let home = std::env::var_os("HOME").context("HOME should be set")?;
     Ok(PathBuf::from(home).join(".saturn"))
