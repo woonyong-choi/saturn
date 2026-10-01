@@ -1,7 +1,6 @@
 //! 스키마 버전 확인, 이관 직전 백업, 자동 이관, 오래된 백업 삭제.
 //! 설계: docs/design/records.md
 //! TODO(#29): 첫 스키마를 전체 정의로 쓸지, 옛 스키마 위 변경분으로 쓸지
-//! TODO(#30): 옛 구현 v8 기록 파일을 만나면 가져오지 않을지, 명령으로 가져올지
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};

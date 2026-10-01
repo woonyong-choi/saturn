@@ -6,7 +6,6 @@ use std::time::Duration;
 /// 기대 잔여 턴을 모를 때 쓰는 값.
 pub const DEFAULT_EXPECTED_TURNS: u32 = 3;
 
-/// TODO(#49): 설정 키 이름과 기본값
 #[derive(Debug, Clone, Copy)]
 pub struct ContextBudget {
     /// 절대 기준(토큰).

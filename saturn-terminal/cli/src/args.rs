@@ -14,7 +14,7 @@ use saturn_protocol::rpc::UsageRange;
     about = "Codex와 Claude Code를 하나의 대화로 이어 쓰는 터미널 도구"
 )]
 pub(crate) struct Cli {
-    /// 이번 실행의 설정 값(`-c key=value`, 여러 번). 설정의 실행 층이 된다. TODO(#49): 설정 키 목록
+    /// 이번 실행의 설정 값(`-c key=value`, 여러 번). 설정의 실행 층이 된다.
     #[arg(short = 'c', value_name = "KEY=VALUE")]
     pub(crate) config: Vec<ConfigOverride>,
     /// 하위 명령. 없으면 대화 화면(터미널이면 전체 화면, 파이프나 CI면 plain)을 연다.

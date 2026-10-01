@@ -159,6 +159,4 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 ## 미해결 질문
 
 - 첫 SQLite 스키마를 전체 정의로 새로 쓸지, 옛 스키마 위 변경분으로 쓸지 ([#29](https://github.com/woonyong-choi/saturn/issues/29))
-- 옛 구현의 v8 기록을 가져오지 않을지, 명령으로 가져올지 ([#30](https://github.com/woonyong-choi/saturn/issues/30))
 - 기록 저장소의 표 이름을 용어 표의 채팅, 입력, 턴에 맞출지, 초안 이름을 유지할지 ([#31](https://github.com/woonyong-choi/saturn/issues/31))
-- 자동 정리 같은 설정의 키 이름과 기본값을 지금 항목마다 확정할지, 측정이 끝난 항목부터 확정할지 ([#49](https://github.com/woonyong-choi/saturn/issues/49))
