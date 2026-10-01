@@ -267,9 +267,9 @@ impl RpcServer {
         }
     }
 
+    /// 강제 종료하지 않는다. 쌓인 응답(`Detach`의 응답 포함)을 다 쓴 뒤 쓰기 작업이 끝난다.
     fn disconnect(&mut self, client: ClientId) -> Option<RpcEvent> {
-        let handle = self.clients.remove(&client)?;
-        handle.outbox.kill.notify_one();
+        self.clients.remove(&client)?;
         self.last_detached_due = self.clients.is_empty();
         Some(RpcEvent::Disconnected(client))
     }
