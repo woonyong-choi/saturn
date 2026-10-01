@@ -10,7 +10,8 @@ use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
 use saturn_protocol::event::{
-    Activity, ProviderEvent, ToolDetail, TurnOrigin, UsageReport, UsageScope,
+    Activity, LineChange, ProviderEvent, ToolCategory, ToolDetail, TurnOrigin, UsageReport,
+    UsageScope,
 };
 use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
 use serde_json::{Value, json};
@@ -18,6 +19,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::{mpsc, oneshot};
 
+use super::tool_detail::classify_command;
 use super::{AppliedSettings, LaunchSpec, TurnOriginTracker, UserProviderConfig};
 use crate::processes::{ProcessGroupId, ProcessSpec, Supervisor};
 use crate::secrets::Masker;
@@ -642,7 +644,7 @@ fn convert_notification(
                 subagent,
                 call_id: id.to_owned(),
                 activity,
-                detail: ToolDetail::default(),
+                detail: detail_of(&params["item"]),
             })
             .into_iter()
             .collect(),
@@ -653,7 +655,7 @@ fn convert_notification(
                 subagent,
                 call_id: id.to_owned(),
                 output,
-                exit_code: None,
+                exit_code: exit_code_of(&params["item"]),
             })
             .into_iter()
             .collect(),
@@ -849,9 +851,118 @@ fn tool_output(item: &Value) -> Option<String> {
             Value::Null => item["error"].to_string(),
             result => result.to_string(),
         },
+        "fileChange" => patch_text(item),
         _ => String::new(),
     };
     Some(output)
+}
+
+// cost: time O(a + p), heap O(a + p), stack O(1), alloc 1
+// vars: a = commandActions 수, p = 패치 글자 수
+// basis: estimate
+/// `commandActions`의 경로와 `fileChange`의 경로, 바뀐 줄 수를 옮긴다. 다른 항목은 기본값이다.
+fn detail_of(item: &Value) -> ToolDetail {
+    match item["type"].as_str() {
+        Some("commandExecution") => {
+            let actions = item["commandActions"].as_array();
+            let paths = actions
+                .into_iter()
+                .flatten()
+                .filter_map(|action| action["path"].as_str().map(str::to_owned))
+                .collect();
+            let command = item["command"].as_str().unwrap_or_default();
+            let category = if matches!(activity_of(item), Some(Activity::ReadingFile)) {
+                ToolCategory::FileRead
+            } else {
+                classify_command(command)
+            };
+            ToolDetail {
+                category,
+                paths,
+                ..ToolDetail::default()
+            }
+        }
+        Some("fileChange") => {
+            let changes = item["changes"].as_array().map_or(&[][..], Vec::as_slice);
+            let total = changes.iter().map(change_lines).fold(
+                LineChange {
+                    added: 0,
+                    removed: 0,
+                },
+                |total, change| LineChange {
+                    added: total.added.saturating_add(change.added),
+                    removed: total.removed.saturating_add(change.removed),
+                },
+            );
+            ToolDetail {
+                category: ToolCategory::FileEdit,
+                paths: changes
+                    .iter()
+                    .filter_map(|change| change["path"].as_str().map(str::to_owned))
+                    .collect(),
+                read_lines: None,
+                changed: Some(total),
+            }
+        }
+        _ => ToolDetail::default(),
+    }
+}
+
+// cost: time O(d), heap O(1), stack O(1)
+// vars: d = diff 글자 수
+// basis: estimate
+/// 새 파일은 글 전체를 더한 줄로, 지운 파일은 지운 줄로 세고, 고친 파일은 diff의 `+`와 `-` 줄을 센다.
+fn change_lines(change: &Value) -> LineChange {
+    let diff = change["diff"].as_str().unwrap_or_default();
+    let lines = || u32::try_from(diff.lines().count()).unwrap_or(u32::MAX);
+    match change["kind"]["type"].as_str() {
+        Some("add") => LineChange {
+            added: lines(),
+            removed: 0,
+        },
+        Some("delete") => LineChange {
+            added: 0,
+            removed: lines(),
+        },
+        _ => {
+            let count = |sign: &str, header: &str| {
+                let count = diff
+                    .lines()
+                    .filter(|line| line.starts_with(sign) && !line.starts_with(header))
+                    .count();
+                u32::try_from(count).unwrap_or(u32::MAX)
+            };
+            LineChange {
+                added: count("+", "+++"),
+                removed: count("-", "---"),
+            }
+        }
+    }
+}
+
+/// 파일마다 경로 줄과 diff를 이어 붙인다.
+fn patch_text(item: &Value) -> String {
+    item["changes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|change| {
+            format!(
+                "{}\n{}",
+                change["path"].as_str().unwrap_or_default(),
+                change["diff"].as_str().unwrap_or_default()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// 명령이 코드로 끝났을 때만 값이 있다.
+fn exit_code_of(item: &Value) -> Option<i32> {
+    if item["type"] != "commandExecution" {
+        return None;
+    }
+    i32::try_from(item["exitCode"].as_i64()?).ok()
 }
 
 /// 새 입력은 캐시 포함 입력에서 캐시 읽기를 뺀 값이다.
@@ -1077,7 +1188,7 @@ while (my $line = <STDIN>) {
     note("turn/started", { threadId => "thr_child", turn => { id => "turn_c", status => "inProgress", items => [] } });
     note("item/agentMessage/delta", { threadId => "thr_child", turnId => "turn_c", itemId => "m1", delta => "looking" });
     note("item/started", { threadId => $tid, turnId => "turn_1", startedAtMs => 1, item => { type => "commandExecution", id => "item_1", command => "cargo test", cwd => "/w", status => "inProgress", commandActions => [ { type => "unknown", command => "cargo test" } ] } });
-    note("item/completed", { threadId => $tid, turnId => "turn_1", completedAtMs => 2, item => { type => "commandExecution", id => "item_1", command => "cargo test", cwd => "/w", status => "completed", aggregatedOutput => "ok", commandActions => [] } });
+    note("item/completed", { threadId => $tid, turnId => "turn_1", completedAtMs => 2, item => { type => "commandExecution", id => "item_1", command => "cargo test", cwd => "/w", status => "completed", aggregatedOutput => "ok", exitCode => 0, commandActions => [] } });
     out({ id => "srv-1", method => "item/commandExecution/requestApproval", params => { threadId => $tid, turnId => "turn_1", itemId => "item_2", command => "rm -rf build", reason => "needs write", startedAtMs => 3 } });
     note("thread/tokenUsage/updated", { threadId => $tid, turnId => "turn_1", tokenUsage => { modelContextWindow => 272000,
       total => { inputTokens => 1200, cachedInputTokens => 200, outputTokens => 50, reasoningOutputTokens => 10, totalTokens => 1250 },
@@ -1192,14 +1303,17 @@ while (my $line = <STDIN>) {
                     activity: Activity::RunningCommand {
                         command: "cargo test".to_owned(),
                     },
-                    detail: ToolDetail::default(),
+                    detail: ToolDetail {
+                        category: ToolCategory::TestRun,
+                        ..ToolDetail::default()
+                    },
                 },
                 ProviderEvent::ToolResult {
                     agent,
                     subagent: None,
                     call_id: "item_1".to_owned(),
                     output: "ok".to_owned(),
-                    exit_code: None,
+                    exit_code: Some(0),
                 },
                 ProviderEvent::PermissionRequested {
                     agent,
@@ -1458,6 +1572,99 @@ while (my $line = <STDIN>) {
         assert_eq!(activity_of(&json!({ "type": "agentMessage" })), None);
         assert!(is_no_active_turn(&json!({ "message": "No active turn" })));
         assert!(!is_no_active_turn(&json!({ "message": "invalid input" })));
+    }
+
+    #[test]
+    fn detail_of_read_command_keeps_action_paths() {
+        let item = json!({
+            "type": "commandExecution",
+            "command": "/bin/zsh -lc 'cat notes/a.txt'",
+            "commandActions": [
+                { "type": "read", "command": "cat notes/a.txt", "name": "a.txt", "path": "/work/notes/a.txt" }
+            ],
+        });
+
+        let detail = detail_of(&item);
+
+        assert_eq!(detail.category, ToolCategory::FileRead);
+        assert_eq!(detail.paths, vec!["/work/notes/a.txt".to_owned()]);
+    }
+
+    #[test]
+    fn detail_of_test_command_is_test_run_without_paths() {
+        let item = json!({
+            "type": "commandExecution",
+            "command": "/bin/zsh -lc 'python3 -m unittest tests.test_rules'",
+            "commandActions": [{ "type": "unknown", "command": "python3 -m unittest tests.test_rules" }],
+        });
+
+        let detail = detail_of(&item);
+
+        assert_eq!(detail.category, ToolCategory::TestRun);
+        assert!(detail.paths.is_empty());
+    }
+
+    #[test]
+    fn detail_of_file_change_counts_diff_lines() {
+        let item = json!({
+            "type": "fileChange",
+            "changes": [{
+                "path": "/work/config/app.cfg",
+                "kind": { "type": "update", "move_path": null },
+                "diff": "@@ -1,4 +1,4 @@\n name=demo\n-mode=draft\n-retries=1\n+mode=harbor\n+retries=tundra\n level=2\n",
+            }],
+        });
+
+        let detail = detail_of(&item);
+
+        assert_eq!(detail.category, ToolCategory::FileEdit);
+        assert_eq!(detail.paths, vec!["/work/config/app.cfg".to_owned()]);
+        assert_eq!(
+            detail.changed,
+            Some(LineChange {
+                added: 2,
+                removed: 2
+            })
+        );
+    }
+
+    #[test]
+    fn detail_of_file_change_added_file_counts_whole_text() {
+        let item = json!({
+            "type": "fileChange",
+            "changes": [{ "path": "/work/new.txt", "kind": { "type": "add" }, "diff": "a\nb\nc\n" }],
+        });
+
+        let changed = detail_of(&item).changed;
+
+        assert_eq!(
+            changed,
+            Some(LineChange {
+                added: 3,
+                removed: 0
+            })
+        );
+    }
+
+    #[test]
+    fn tool_output_file_change_is_path_and_diff() {
+        let item = json!({
+            "type": "fileChange",
+            "changes": [{ "path": "/work/a.cfg", "kind": { "type": "update" }, "diff": "-a\n+b\n" }],
+        });
+
+        assert_eq!(tool_output(&item).as_deref(), Some("/work/a.cfg\n-a\n+b\n"));
+    }
+
+    #[test]
+    fn exit_code_of_command_reads_code_and_ignores_other_items() {
+        let failed = json!({ "type": "commandExecution", "exitCode": 3 });
+        let running = json!({ "type": "commandExecution", "exitCode": null });
+        let patch = json!({ "type": "fileChange", "exitCode": 1 });
+
+        assert_eq!(exit_code_of(&failed), Some(3));
+        assert_eq!(exit_code_of(&running), None);
+        assert_eq!(exit_code_of(&patch), None);
     }
 
     #[test]
