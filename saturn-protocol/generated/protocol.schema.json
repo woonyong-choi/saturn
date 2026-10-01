@@ -1169,6 +1169,45 @@
       "minimum": 0,
       "type": "integer"
     },
+    "LineChange": {
+      "properties": {
+        "added": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "removed": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "added",
+        "removed"
+      ],
+      "type": "object"
+    },
+    "LineRange": {
+      "description": "1부터 세는 닫힌 범위.",
+      "properties": {
+        "first": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "last": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "first",
+        "last"
+      ],
+      "type": "object"
+    },
     "Notification": {
       "description": "TUI는 이것만으로 화면을 그린다.",
       "oneOf": [
@@ -2850,6 +2889,16 @@
                 "call_id": {
                   "type": "string"
                 },
+                "detail": {
+                  "$ref": "#/$defs/ToolDetail",
+                  "default": {
+                    "category": "Other",
+                    "changed": null,
+                    "paths": [],
+                    "read_lines": null
+                  },
+                  "description": "구조로 얻은 값만 담는다. 얻지 못한 값은 비운다."
+                },
                 "subagent": {
                   "anyOf": [
                     {
@@ -2884,6 +2933,15 @@
                 },
                 "call_id": {
                   "type": "string"
+                },
+                "exit_code": {
+                  "default": null,
+                  "description": "셸 명령이 코드로 끝났을 때만 값이 있다. 신호로 끝났거나 셸 명령이 아니면 `None`.",
+                  "format": "int32",
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
                 },
                 "output": {
                   "type": "string"
@@ -3342,6 +3400,58 @@
           "type": "string"
         }
       ]
+    },
+    "ToolCategory": {
+      "enum": [
+        "Shell",
+        "TestRun",
+        "FileRead",
+        "FileEdit",
+        "Other"
+      ],
+      "type": "string"
+    },
+    "ToolDetail": {
+      "description": "provider 도구 이름을 Saturn 도구 종류로 바꾼 값.",
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/ToolCategory"
+        },
+        "changed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LineChange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "파일 수정에서 줄 수를 알 때만."
+        },
+        "paths": {
+          "description": "provider가 낸 경로 그대로. 없으면 빈 목록.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "read_lines": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LineRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "읽은 범위를 알 때만."
+        }
+      },
+      "required": [
+        "category",
+        "paths"
+      ],
+      "type": "object"
     },
     "TurnOrigin": {
       "oneOf": [

@@ -1,7 +1,7 @@
 //! Claude Code 연결: session마다 `claude` 프로세스 하나를 stream-json 입출력으로 켜 둔다.
 //! 설계: docs/design/providers-and-sessions.md
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -10,7 +10,10 @@ use std::time::Duration;
 use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
-use saturn_protocol::event::{Activity, ProviderEvent, UsageReport, UsageScope};
+use saturn_protocol::event::{
+    Activity, LineChange, LineRange, ProviderEvent, ToolCategory, ToolDetail, UsageReport,
+    UsageScope,
+};
 use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -18,6 +21,7 @@ use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::{mpsc, oneshot};
 
 use super::codex::mask_values;
+use super::tool_detail::{classify_command, line_change};
 use super::{AppliedSettings, LaunchSpec, TurnOriginTracker, UserProviderConfig};
 use crate::processes::{ProcessGroupId, ProcessSpec, StopScope, Supervisor};
 use crate::secrets::Masker;
@@ -29,6 +33,8 @@ pub(crate) const DISPLAY_NAME: &str = "claude";
 pub(crate) const STEER_VERIFIED: bool = false;
 
 const SUBAGENT_TOOLS: &[&str] = &["Task", "Agent"];
+
+const SHELL_TOOL: &str = "Bash";
 
 /// 설정을 바꾸는 명령(`model`, `permissions` 등)은 빼지 않는다. 초안 목록.
 pub(crate) const EXCLUDED_COMMANDS: &[&str] = &["clear", "resume", "exit", "quit"];
@@ -73,6 +79,8 @@ struct SessionState {
     origin: TurnOriginTracker,
     /// 키는 Task/Agent `tool_use` id, 값은 부모 subagent.
     running: HashMap<SubagentId, Option<SubagentId>>,
+    /// 결과를 기다리는 `Bash` 호출 id. 종료 코드를 결과 글에서 읽는 대상이다.
+    shell_calls: HashSet<String>,
     applied: AppliedSettings,
     /// 거르기 전 목록.
     commands: Vec<ProviderCommand>,
@@ -91,6 +99,7 @@ impl SessionState {
             turn_active: false,
             origin: TurnOriginTracker::default(),
             running: HashMap::new(),
+            shell_calls: HashSet::new(),
             applied: AppliedSettings::default(),
             commands: Vec::new(),
             initialized: false,
@@ -614,11 +623,15 @@ fn convert_assistant(state: &mut SessionState, line: &Value) -> Vec<ProviderEven
                         parent: parent.clone(),
                     });
                 } else {
+                    if name == SHELL_TOOL {
+                        state.shell_calls.insert(id.to_owned());
+                    }
                     events.push(ProviderEvent::ToolCall {
                         agent,
                         subagent: parent.clone(),
                         call_id: id.to_owned(),
                         activity: activity_of(name, &item["input"]),
+                        detail: detail_of(name, &item["input"]),
                     });
                 }
             }
@@ -645,11 +658,18 @@ fn convert_tool_results(state: &mut SessionState, line: &Value) -> Vec<ProviderE
             events.push(ProviderEvent::SubagentEnded { agent, subagent });
             continue;
         }
+        let output = tool_result_text(&item["content"]);
+        let exit_code = if state.shell_calls.remove(id) {
+            shell_exit_code(item["is_error"].as_bool().unwrap_or(false), &output)
+        } else {
+            None
+        };
         events.push(ProviderEvent::ToolResult {
             agent,
             subagent: parent.clone(),
             call_id: id.to_owned(),
-            output: tool_result_text(&item["content"]),
+            output,
+            exit_code,
         });
     }
     events
@@ -669,10 +689,105 @@ fn activity_of(name: &str, input: &Value) -> Activity {
         return Activity::EditingFile;
     }
     let command = match name {
-        "Bash" => input["command"].as_str().unwrap_or_default().to_owned(),
+        SHELL_TOOL => input["command"].as_str().unwrap_or_default().to_owned(),
         other => other.to_owned(),
     };
     Activity::RunningCommand { command }
+}
+
+// cost: time O(i), heap O(i), stack O(1), alloc 1
+// vars: i = 입력 글자 수
+// basis: estimate
+fn detail_of(name: &str, input: &Value) -> ToolDetail {
+    let path_of = |key: &str| input[key].as_str().map(str::to_owned).into_iter().collect();
+    if name == SHELL_TOOL {
+        let command = input["command"].as_str().unwrap_or_default();
+        return ToolDetail {
+            category: classify_command(command),
+            ..ToolDetail::default()
+        };
+    }
+    if name == "Read" {
+        return ToolDetail {
+            category: ToolCategory::FileRead,
+            paths: path_of("file_path"),
+            read_lines: read_range(input),
+            changed: None,
+        };
+    }
+    if READ_TOOLS.contains(&name) {
+        return ToolDetail {
+            category: ToolCategory::FileRead,
+            paths: path_of("path"),
+            ..ToolDetail::default()
+        };
+    }
+    if EDIT_TOOLS.contains(&name) {
+        let key = if name == "NotebookEdit" {
+            "notebook_path"
+        } else {
+            "file_path"
+        };
+        return ToolDetail {
+            category: ToolCategory::FileEdit,
+            paths: path_of(key),
+            read_lines: None,
+            changed: edit_change(name, input),
+        };
+    }
+    ToolDetail::default()
+}
+
+/// 시작 줄과 줄 수가 모두 있을 때만 범위를 낸다. 한쪽만 있으면 전체 범위를 알 수 없다.
+fn read_range(input: &Value) -> Option<LineRange> {
+    let first = u32::try_from(input["offset"].as_u64()?).ok()?;
+    let limit = u32::try_from(input["limit"].as_u64()?).ok()?;
+    let last = first.checked_add(limit)?.checked_sub(1)?;
+    (first >= 1 && first <= last).then_some(LineRange { first, last })
+}
+
+// cost: time O(i), heap O(i), stack O(1), alloc 2
+// vars: i = 입력 글자 수
+// basis: estimate
+/// `Edit`와 `MultiEdit`만 센다. `Write`는 덮어쓴 줄을 입력으로 알 수 없어 `None`이다.
+fn edit_change(name: &str, input: &Value) -> Option<LineChange> {
+    let one = |edit: &Value| -> Option<LineChange> {
+        Some(line_change(
+            edit["old_string"].as_str()?,
+            edit["new_string"].as_str()?,
+        ))
+    };
+    let edits: Vec<Option<LineChange>> = match name {
+        "Edit" => vec![one(input)],
+        "MultiEdit" => input["edits"].as_array()?.iter().map(one).collect(),
+        _ => return None,
+    };
+    edits.into_iter().try_fold(
+        LineChange {
+            added: 0,
+            removed: 0,
+        },
+        |total, change| {
+            let change = change?;
+            Some(LineChange {
+                added: total.added.saturating_add(change.added),
+                removed: total.removed.saturating_add(change.removed),
+            })
+        },
+    )
+}
+
+/// 실패한 `Bash` 결과는 `Exit code N`으로 시작하고, 성공은 0이다. 중단처럼 코드가 없으면 `None`.
+fn shell_exit_code(is_error: bool, output: &str) -> Option<i32> {
+    if !is_error {
+        return Some(0);
+    }
+    output
+        .strip_prefix("Exit code ")?
+        .split(|c: char| !c.is_ascii_digit() && c != '-')
+        .next()?
+        .parse()
+        .ok()
 }
 
 /// 문자열이거나 `text` 항목 배열이다.
@@ -885,6 +1000,87 @@ while (my $line = <STDIN>) {
         events
     }
 
+    #[test]
+    fn detail_of_edit_counts_changed_lines_and_keeps_path() {
+        let input = json!({
+            "file_path": "/w/app.cfg",
+            "old_string": "mode=draft\nretries=1",
+            "new_string": "mode=harbor\nretries=tundra"
+        });
+
+        let detail = detail_of("Edit", &input);
+
+        assert_eq!(detail.category, ToolCategory::FileEdit);
+        assert_eq!(detail.paths, vec!["/w/app.cfg".to_owned()]);
+        assert_eq!(
+            detail.changed,
+            Some(LineChange {
+                added: 2,
+                removed: 2
+            })
+        );
+    }
+
+    #[test]
+    fn detail_of_multi_edit_sums_every_edit() {
+        let input = json!({
+            "file_path": "/w/a.rs",
+            "edits": [
+                { "old_string": "a", "new_string": "b\nc" },
+                { "old_string": "x\ny", "new_string": "z" }
+            ]
+        });
+
+        let changed = detail_of("MultiEdit", &input).changed;
+
+        assert_eq!(
+            changed,
+            Some(LineChange {
+                added: 3,
+                removed: 3
+            })
+        );
+    }
+
+    #[test]
+    fn detail_of_write_has_no_line_change() {
+        let input = json!({ "file_path": "/w/a.rs", "content": "fn main() {}" });
+
+        let detail = detail_of("Write", &input);
+
+        assert_eq!(detail.category, ToolCategory::FileEdit);
+        assert_eq!(detail.changed, None);
+    }
+
+    #[test]
+    fn detail_of_read_range_needs_offset_and_limit() {
+        let ranged = json!({ "file_path": "/w/a.rs", "offset": 10, "limit": 5 });
+        let partial = json!({ "file_path": "/w/a.rs", "limit": 5 });
+
+        assert_eq!(
+            detail_of("Read", &ranged).read_lines,
+            Some(LineRange {
+                first: 10,
+                last: 14
+            })
+        );
+        assert_eq!(detail_of("Read", &partial).read_lines, None);
+    }
+
+    #[test]
+    fn detail_of_test_command_is_test_run() {
+        let input = json!({ "command": "python3 -m unittest tests.test_rules" });
+
+        assert_eq!(detail_of("Bash", &input).category, ToolCategory::TestRun);
+    }
+
+    #[test]
+    fn shell_exit_code_reads_prefix_only_for_errors() {
+        assert_eq!(shell_exit_code(false, "ok"), Some(0));
+        assert_eq!(shell_exit_code(true, "Exit code 3\nboom"), Some(3));
+        assert_eq!(shell_exit_code(true, "interrupted"), None);
+    }
+
     #[tokio::test]
     async fn stdout_hides_judge_key_before_emitting_events() {
         let dir = tempfile::tempdir().unwrap();
@@ -934,12 +1130,17 @@ while (my $line = <STDIN>) {
                     activity: Activity::RunningCommand {
                         command: "ls -la".to_owned()
                     },
+                    detail: ToolDetail {
+                        category: ToolCategory::Shell,
+                        ..ToolDetail::default()
+                    },
                 },
                 ProviderEvent::ToolResult {
                     agent,
                     subagent: None,
                     call_id: "toolu_bash".to_owned(),
                     output: "total 0".to_owned(),
+                    exit_code: Some(0),
                 },
                 ProviderEvent::SubagentStarted {
                     agent,
@@ -951,12 +1152,18 @@ while (my $line = <STDIN>) {
                     subagent: Some(task.clone()),
                     call_id: "toolu_read".to_owned(),
                     activity: Activity::ReadingFile,
+                    detail: ToolDetail {
+                        category: ToolCategory::FileRead,
+                        paths: vec!["/w/a.rs".to_owned()],
+                        ..ToolDetail::default()
+                    },
                 },
                 ProviderEvent::ToolResult {
                     agent,
                     subagent: Some(task.clone()),
                     call_id: "toolu_read".to_owned(),
                     output: "fn main".to_owned(),
+                    exit_code: None,
                 },
                 ProviderEvent::SubagentEnded {
                     agent,

@@ -54,7 +54,7 @@
 
 | 채널 | 쓰는 값 | 순위 |
 |---|---|---|
-| 파일 겹침 | 후보가 건드린 파일 경로. engine이 기록한 도구 호출 인자에서 꺼낸다. | 기준 파일과 겹치는 경로 수가 많을수록 위 |
+| 파일 겹침 | 후보가 건드린 파일 경로. 도구 호출 이벤트의 경로 목록(`detail.paths`)에서 꺼낸다. | 기준 파일과 겹치는 경로 수가 많을수록 위 |
 | 단어 겹침 | 후보의 글과 마지막 입력을 단어 조각으로 나눈 것 | BM25 점수가 높을수록 위 |
 | 최근성 | 후보의 기록 번호 | 클수록 위 |
 
@@ -134,7 +134,7 @@
 | 웹 요청 | 주소 · 상태 코드 |
 | 그 밖 | 메모 없음 |
 
-engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바꾼다. provider 고유 이름을 `providers/codex`, `providers/claude` 안에만 두기 위해서다.
+engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바꾸고, 경로, 읽은 줄 범위, 바뀐 줄 수, 종료 코드를 이벤트에 싣는다. provider 고유 이름을 `providers/codex`, `providers/claude` 안에만 두기 위해서다. 이벤트 필드는 [provider 연결과 session](providers-and-sessions.md#이벤트-수신과-변환)에 있다.
 
 ### 제약 식별
 
@@ -175,7 +175,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 | 요구사항 | 검증 계획 |
 |---|---|
-| 도구 결과 메모의 종료 코드, 경로, 줄 수를 provider와 무관하게 얻는다. | [기록 변환 충실도와 전환 품질](../experiments/record-fidelity/report.md): 현재 이벤트에 이 값이 없다. [#204](https://github.com/woonyong-choi/saturn/issues/204) |
+| 도구 결과 메모의 종료 코드, 경로, 줄 수를 provider와 무관하게 이벤트에서 얻는다. | [provider 연결과 session](providers-and-sessions.md#요구사항)의 도구 호출 값 행. Codex는 [#203](https://github.com/woonyong-choi/saturn/issues/203) |
 | 후보 전체를 judge에 묻는다. | `saturn-terminal/core/src/judges/mod.rs`의 `compact_questions_150_candidates_ask_all` |
 | 요청이 크기 한도를 넘으면 질문 단위로 나누고 조각마다 같은 state를 싣는다. | `saturn-terminal/core/src/judges/split.rs`의 `split_request_over_limit_splits_by_question_with_same_state`, `saturn-terminal/core/src/judges/mod.rs`의 `compact_requests_large_state_splits_and_every_piece_carries_state` |
 | 최종 순서는 남긴 항목의 확률 순이고 같은 확률이면 RRF 순이다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_judge_kept_by_probability_and_drops_rejected`, `order_after_judge_same_probability_follows_rrf_order` |

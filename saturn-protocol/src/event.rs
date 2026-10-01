@@ -19,12 +19,18 @@ pub enum ProviderEvent {
         subagent: Option<SubagentId>,
         call_id: String,
         activity: Activity,
+        /// 구조로 얻은 값만 담는다. 얻지 못한 값은 비운다.
+        #[serde(default)]
+        detail: ToolDetail,
     },
     ToolResult {
         agent: AgentId,
         subagent: Option<SubagentId>,
         call_id: String,
         output: String,
+        /// 셸 명령이 코드로 끝났을 때만 값이 있다. 신호로 끝났거나 셸 명령이 아니면 `None`.
+        #[serde(default)]
+        exit_code: Option<i32>,
     },
     /// `parent`가 `None`이면 메인 에이전트 바로 아래.
     SubagentStarted {
@@ -72,6 +78,41 @@ pub enum Activity {
     RunningCommand { command: String },
     Compacting,
     SwitchingProvider,
+}
+
+/// provider 도구 이름을 Saturn 도구 종류로 바꾼 값.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema, TS)]
+pub struct ToolDetail {
+    pub category: ToolCategory,
+    /// provider가 낸 경로 그대로. 없으면 빈 목록.
+    pub paths: Vec<String>,
+    /// 읽은 범위를 알 때만.
+    pub read_lines: Option<LineRange>,
+    /// 파일 수정에서 줄 수를 알 때만.
+    pub changed: Option<LineChange>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ToolCategory {
+    Shell,
+    TestRun,
+    FileRead,
+    FileEdit,
+    #[default]
+    Other,
+}
+
+/// 1부터 세는 닫힌 범위.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct LineRange {
+    pub first: u32,
+    pub last: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct LineChange {
+    pub added: u32,
+    pub removed: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

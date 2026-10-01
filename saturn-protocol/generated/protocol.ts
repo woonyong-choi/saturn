@@ -36,6 +36,10 @@ export type JudgmentId = number;
 
 export type LedgerSeq = number;
 
+export type LineChange = { added: number, removed: number, };
+
+export type LineRange = { first: number, last: number, };
+
 export type Notification = { "method": "StartInfo", "params": { saturn_version: string, providers: Array<[Provider, string]>, judge: string, judge_version: string, folder: string, } } | { "method": "InputAccepted", "params": { client_ref: number, input: InputId, } } | { "method": "InputChanged", "params": { input: InputId, text: string, label: TaskLabel | null, state: InputState, disposition: Disposition | null, reason: QueueReason | null, } } | { "method": "TaskChanged", "params": { task: TaskId, label: TaskLabel, state: TaskState, provider: Provider | null, elapsed_ms: number, failure: string | null, } } | { "method": "HistoryChunk", "params": { chat: ChatId, entries: Array<Notification>, has_more: boolean, } } | { "method": "PermissionRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, summary: string, reason: string, waiting: number, } } | { "method": "PermissionResolved", "params": { request_id: string, } } | { "method": "FolderTrustRequested", "params": { path: string, fingerprint: string, applied: Array<string>, ignored: Array<string>, changed_lines: Array<string>, } } | { "method": "JudgeKeyRequired", "params": { reason: string, } } | { "method": "Commands", "params": { provider: Provider, commands: Array<CommandInfo>, } } | { "method": "TaskList", "params": { items: Array<TaskListItem>, } } | { "method": "Usage", "params": { range: UsageRange, rows: Array<UsageRow>, } } | { "method": "JudgeVersions", "params": { current: string, versions: Array<JudgeVersionInfo>, } } | { "method": "TrainPreview", "params": { candidates: number, grader: string, estimated_tokens: number, threshold_targets: Array<string>, retrain_model: boolean, } } | { "method": "TrainProgress", "params": { stage: string, labeled: number, elapsed_ms: number, tokens: number, } } | { "method": "TaskEvent", "params": { task: TaskId, event: ProviderEvent, } } | { "method": "ChatNotice", "params": { chat: ChatId, task: TaskId | null, notice: ChatNotice, } } | { "method": "FeedbackQuestion", "params": { judgment: JudgmentId, input: InputId, label: TaskLabel, disposition: Disposition, } } | { "method": "ContextSize", "params": { chat: ChatId, tokens: number | null, threshold: number, } } | { "method": "SettingsApplied", "params": { revision: SettingsRevision, warning: string | null, } } | { "method": "Alert", "params": { alert: Alert, } };
 
 export type NotificationMessage = { jsonrpc: JsonRpcVersion, } & ({ "method": "StartInfo", "params": { saturn_version: string, providers: Array<[Provider, string]>, judge: string, judge_version: string, folder: string, } } | { "method": "InputAccepted", "params": { client_ref: number, input: InputId, } } | { "method": "InputChanged", "params": { input: InputId, text: string, label: TaskLabel | null, state: InputState, disposition: Disposition | null, reason: QueueReason | null, } } | { "method": "TaskChanged", "params": { task: TaskId, label: TaskLabel, state: TaskState, provider: Provider | null, elapsed_ms: number, failure: string | null, } } | { "method": "HistoryChunk", "params": { chat: ChatId, entries: Array<Notification>, has_more: boolean, } } | { "method": "PermissionRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, summary: string, reason: string, waiting: number, } } | { "method": "PermissionResolved", "params": { request_id: string, } } | { "method": "FolderTrustRequested", "params": { path: string, fingerprint: string, applied: Array<string>, ignored: Array<string>, changed_lines: Array<string>, } } | { "method": "JudgeKeyRequired", "params": { reason: string, } } | { "method": "Commands", "params": { provider: Provider, commands: Array<CommandInfo>, } } | { "method": "TaskList", "params": { items: Array<TaskListItem>, } } | { "method": "Usage", "params": { range: UsageRange, rows: Array<UsageRow>, } } | { "method": "JudgeVersions", "params": { current: string, versions: Array<JudgeVersionInfo>, } } | { "method": "TrainPreview", "params": { candidates: number, grader: string, estimated_tokens: number, threshold_targets: Array<string>, retrain_model: boolean, } } | { "method": "TrainProgress", "params": { stage: string, labeled: number, elapsed_ms: number, tokens: number, } } | { "method": "TaskEvent", "params": { task: TaskId, event: ProviderEvent, } } | { "method": "ChatNotice", "params": { chat: ChatId, task: TaskId | null, notice: ChatNotice, } } | { "method": "FeedbackQuestion", "params": { judgment: JudgmentId, input: InputId, label: TaskLabel, disposition: Disposition, } } | { "method": "ContextSize", "params": { chat: ChatId, tokens: number | null, threshold: number, } } | { "method": "SettingsApplied", "params": { revision: SettingsRevision, warning: string | null, } } | { "method": "Alert", "params": { alert: Alert, } });
@@ -44,7 +48,15 @@ export type PermissionAnswer = "Allow" | "AllowForTask" | "Deny" | "DenyAndRedir
 
 export type Provider = "Codex" | "Claude";
 
-export type ProviderEvent = { "Text": { agent: AgentId, subagent: SubagentId | null, text: string, } } | { "ToolCall": { agent: AgentId, subagent: SubagentId | null, call_id: string, activity: Activity, } } | { "ToolResult": { agent: AgentId, subagent: SubagentId | null, call_id: string, output: string, } } | { "SubagentStarted": { agent: AgentId, subagent: SubagentId, parent: SubagentId | null, } } | { "SubagentEnded": { agent: AgentId, subagent: SubagentId, } } | { "PermissionRequested": { agent: AgentId, request_id: string, summary: string, reason: string, } } | { "TurnCompleted": { agent: AgentId, origin: TurnOrigin, } } | { "Usage": UsageReport } | { "ContextSize": { agent: AgentId, tokens: number | null, } } | { "StreamLost": { agent: AgentId, } } | { "SettingsApplied": { agent: AgentId, values: Array<[string, string]>, } };
+export type ProviderEvent = { "Text": { agent: AgentId, subagent: SubagentId | null, text: string, } } | { "ToolCall": { agent: AgentId, subagent: SubagentId | null, call_id: string, activity: Activity, 
+/**
+ * 구조로 얻은 값만 담는다. 얻지 못한 값은 비운다.
+ */
+detail: ToolDetail, } } | { "ToolResult": { agent: AgentId, subagent: SubagentId | null, call_id: string, output: string, 
+/**
+ * 셸 명령이 코드로 끝났을 때만 값이 있다. 신호로 끝났거나 셸 명령이 아니면 `None`.
+ */
+exit_code: number | null, } } | { "SubagentStarted": { agent: AgentId, subagent: SubagentId, parent: SubagentId | null, } } | { "SubagentEnded": { agent: AgentId, subagent: SubagentId, } } | { "PermissionRequested": { agent: AgentId, request_id: string, summary: string, reason: string, } } | { "TurnCompleted": { agent: AgentId, origin: TurnOrigin, } } | { "Usage": UsageReport } | { "ContextSize": { agent: AgentId, tokens: number | null, } } | { "StreamLost": { agent: AgentId, } } | { "SettingsApplied": { agent: AgentId, values: Array<[string, string]>, } };
 
 export type QueueReason = { "AfterTask": TaskLabel } | "JudgeOrder" | "JudgeConnection" | "WriteTurn" | "AfterCompaction" | "AfterAllTasks";
 
@@ -81,6 +93,22 @@ busy_elsewhere: boolean,
 children: number, };
 
 export type TaskState = "Running" | "AnsweredTreeRunning" | "AwaitingPermission" | "Held" | "NeedsCheck" | "Done" | "Failed";
+
+export type ToolCategory = "Shell" | "TestRun" | "FileRead" | "FileEdit" | "Other";
+
+export type ToolDetail = { category: ToolCategory, 
+/**
+ * provider가 낸 경로 그대로. 없으면 빈 목록.
+ */
+paths: Array<string>, 
+/**
+ * 읽은 범위를 알 때만.
+ */
+read_lines: LineRange | null, 
+/**
+ * 파일 수정에서 줄 수를 알 때만.
+ */
+changed: LineChange | null, };
 
 export type TurnOrigin = "User" | "ProviderWake";
 

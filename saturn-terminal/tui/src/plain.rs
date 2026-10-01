@@ -286,7 +286,7 @@ impl<W: Write> PlainOutput<W> {
 
 #[cfg(test)]
 mod tests {
-    use saturn_protocol::event::{Activity, ProviderEvent};
+    use saturn_protocol::event::{Activity, ProviderEvent, ToolDetail};
     use saturn_protocol::ids::{AgentId, InputId, Provider};
     use saturn_protocol::state::{InputState, TaskState};
 
@@ -339,6 +339,7 @@ mod tests {
                     subagent: None,
                     call_id: "c".to_string(),
                     activity: Activity::ReadingFile,
+                    detail: ToolDetail::default(),
                 },
             },
             Notification::TaskEvent {
