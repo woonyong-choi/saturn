@@ -17,6 +17,11 @@ impl Masked {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    #[cfg(test)]
+    pub(crate) fn assume_masked(text: &str) -> Self {
+        Self(text.to_owned())
+    }
 }
 
 /// 대상이 키 원문이라 `Debug`는 개수만 보인다.
