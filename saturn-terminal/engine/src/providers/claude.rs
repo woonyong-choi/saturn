@@ -1,38 +1,5 @@
-//! Claude Code 연결. session마다 `claude` 프로세스 하나를 stream-json 입출력으로 켜 둔다.
-//!
-//! 설계: docs/design/providers-and-sessions.md(provider 연결, 이벤트 수신과 변환, subagent 트리 추적, 트리 전체 중지),
-//! docs/design/judge-key-security.md(Saturn 소유 PreToolUse 훅).
-//!
-//! 실행 인자는 순서대로 `-p --input-format stream-json --output-format stream-json --verbose`,
-//! `--resume <session_id>`(재개일 때) 또는 `--session-id <새 UUID>`(새 session일 때), `--model <모델>`(지정일 때),
-//! `default_args`, `--settings <hook_settings JSON 문자열>`(있을 때)이다.
-//! 새 session은 Saturn이 만든 UUID를 `--session-id`로 넘겨 첫 입력 전에도 session id를 안다(Claude Code 2.1.285 `--help`로 확인).
-//!
-//! 프로세스 수명은 턴 진행 중과 턴 끝 뒤 5분 유예까지이고, 유예 뒤 닫기는 `sessions`가 `close_session`으로 부른다.
-//!
-//! | Saturn 동작 | Claude stream-json |
-//! |---|---|
-//! | 새 턴 | stdin에 `{"type":"user","message":{"role":"user","content":[{"type":"text","text":...}]}}` 한 줄 |
-//! | 끼워 넣기 | 턴 진행 중에 같은 모양 한 줄 추가. 턴 끝과 겹치면 provider가 다음 턴에 처리한다 |
-//! | 멈춤 신호 | `{"type":"control_request","request_id":...,"request":{"subtype":"interrupt"}}` |
-//! | compaction | 새 턴으로 `/compact` 전송 |
-//! | 명령과 스킬 | 프롬프트에 `/이름 인자`를 그대로 넣어 새 턴으로 전송 |
-//! | session 닫기 | stdin을 닫고 프로그램 종료를 기다린다 |
-//! | session 재개 | 새 프로세스를 `--resume <session_id>`로 띄운다 |
-//!
-//! 이벤트 변환(stdout 한 줄에 JSON 하나):
-//! - `system/init` → 처음에는 이벤트 없음. 다시 와서 모델이나 권한 방식이 바뀌었으면 `SettingsApplied`. `session_id`, `slash_commands`, `model`, `permissionMode`를 읽어 session 상태에 둔다.
-//!   턴마다 다시 오면 적용값과 명령 목록을 새 값으로 바꾼다(설정을 바꾸는 명령의 결과도 여기서 읽는다).
-//! - `assistant`의 글 → `Text`, `tool_use` → `ToolCall`, `user`의 `tool_result` → `ToolResult`.
-//!   `parent_tool_use_id`가 있으면 그 id로 찾은 subagent를 `subagent`에 채운다.
-//! - 이름이 `Task` 또는 `Agent`인 `tool_use` → `SubagentStarted { subagent: SubagentId(tool_use id), parent }`.
-//!   parent는 그 호출의 `parent_tool_use_id`가 가리키는 subagent, 없으면 `None`. 같은 id의 `tool_result` → `SubagentEnded`.
-//! - 허가 요청 → `PermissionRequested`. 초안으로 `control_request`의 `can_use_tool` 요청을 허가 요청으로 본다.
-//!   스트림에서 오는 모양은 #26 실측으로 확인한다.
-//! - `result` → `Usage { scope: UsageScope::MainTurn }`, `ContextSize`, `TurnCompleted { origin }` 순서.
-//!   맥락 크기는 마지막 메인 `assistant` 메시지 `usage`의 입력, 캐시 읽기, 캐시 쓰기 합이다(초안).
-//!   origin은 `TurnOriginTracker`로 정한다(Saturn 입력 없이 끝난 턴이면 `ProviderWake`).
-//! - `result` 없이 stdout이 닫힘, 읽기 오류, 프로세스 종료, `tool_result` 없이 끝난 subagent → `StreamLost`.
+//! Claude Code 연결: session마다 `claude` 프로세스 하나를 stream-json 입출력으로 켜 둔다.
+//! 설계: docs/design/providers-and-sessions.md
 
 use std::collections::HashMap;
 use std::io::Read;
@@ -54,70 +21,62 @@ use super::{AppliedSettings, LaunchSpec, TurnOriginTracker, UserProviderConfig};
 use crate::processes::{ProcessGroupId, ProcessSpec, StopScope, Supervisor};
 use crate::secrets::Masker;
 
-/// 끼워 넣기(스트림 입력 추가) 실측(#5, #27) 통과 여부. 거짓이면 `SessionHandle::steer_verified`가 거짓이 되어 끼워 넣기를 대기로 바꾼다.
+/// 끼워 넣기 실측(#5, #27) 통과 전이라 거짓이고, 거짓이면 끼워 넣기를 대기로 바꾼다.
 pub(crate) const STEER_VERIFIED: bool = false;
 
-/// subagent를 띄우는 도구 이름.
 const SUBAGENT_TOOLS: &[&str] = &["Task", "Agent"];
 
-/// `slash_commands`에서 뺄 이름. 화면 전용 명령과 Saturn session 명령이 대신하는 명령(대화 비우기, 재개, 종료).
-/// 설정을 바꾸는 명령(`model`, `permissions` 등)은 빼지 않는다. 목록 `clear`, `resume`, `exit`, `quit`는 초안이다(설계에 목록 없음).
+/// 설정을 바꾸는 명령(`model`, `permissions` 등)은 빼지 않는다. 초안 목록.
 pub(crate) const EXCLUDED_COMMANDS: &[&str] = &["clear", "resume", "exit", "quit"];
 
-/// 권한 기본값 인자(수정 허용). 사용자 설정에 권한 값이 없을 때만 넣는다.
-/// 인자 값 `--permission-mode acceptEdits`는 초안이다(설계는 수정 허용만 정함, 값은 Claude Code `--help`의 선택지).
+/// 사용자 설정에 권한 값이 없을 때만 넣는다. 초안 값(설계는 수정 허용만 정함).
 const PERMISSION_ARGS: &[&str] = &["--permission-mode", "acceptEdits"];
 
-/// 자동 압축 안전망 인자. `--autocompact <T_hard>`로 넘긴다. `T_hard`는 `AUTO_COMPACT_MIN`~`AUTO_COMPACT_MAX`로 맞춘다.
 const AUTO_COMPACT_FLAG: &str = "--autocompact";
 
-/// `--autocompact` 최솟값(토큰). Claude Code 2.1.285 `--help`의 허용 범위 100k~1M에서 가져왔다.
+/// Claude Code 2.1.285 `--help`의 허용 범위 100k~1M에서 가져왔다.
 const AUTO_COMPACT_MIN: u64 = 100_000;
 
-/// `--autocompact` 최댓값(토큰). 같은 허용 범위의 위 끝.
+/// 같은 허용 범위의 위 끝.
 const AUTO_COMPACT_MAX: u64 = 1_000_000;
 
-/// 재개 실패를 가르는 대기 시간. `--resume` 뒤 이 안에 끝나면 재개 실패로 본다. 값은 초안이다(설계에 없음).
+/// `--resume` 뒤 이 안에 끝나면 재개 실패로 본다. 초안 값.
 const RESUME_SETTLE: Duration = Duration::from_millis(500);
 
-/// interrupt 제어 응답을 기다리는 시간. 넘으면 기다리지 않고 돌아가 호출자가 프로세스 묶음 중지로 넘어간다. 값은 초안이다.
+/// 넘으면 기다리지 않고 돌아가 호출자가 프로세스 묶음 중지로 넘어간다. 초안 값.
 const CONTROL_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// stdin을 닫은 뒤 프로그램 종료를 기다리는 시간. 넘으면 묶음을 멈춘다. 값은 초안이다.
+/// 넘으면 묶음을 멈춘다. 초안 값.
 const CLOSE_GRACE: Duration = Duration::from_secs(5);
 
-/// 이벤트 채널 크기.
 const EVENT_BUFFER: usize = 1024;
 
-/// 읽기 도구 이름. `ReadingFile`로 보인다.
+/// `ReadingFile`로 보인다.
 const READ_TOOLS: &[&str] = &["Read", "Glob", "Grep", "LS"];
 
-/// 편집 도구 이름. `EditingFile`로 보인다.
+/// `EditingFile`로 보인다.
 const EDIT_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write", "NotebookEdit"];
 
-/// 자동 압축 값이 있는 것으로 보는 환경 변수.
+/// 있으면 자동 압축 값이 있는 것으로 본다.
 const AUTO_COMPACT_ENV: &[&str] = &["CLAUDE_CODE_AUTO_COMPACT_WINDOW", "DISABLE_COMPACT"];
 
-/// session(프로세스) 하나의 변환 상태. 읽기 작업과 연결이 `Arc<Mutex<_>>`로 같이 쓴다.
+/// 읽기 작업과 연결이 `Arc<Mutex<_>>`로 같이 쓴다.
 #[derive(Debug)]
 struct SessionState {
-    /// 이 session을 쓰는 Saturn 에이전트.
     agent: AgentId,
-    /// 턴 진행 중인지. 새 턴 입력을 쓴 때 참, `result`를 받은 때 거짓.
+    /// 새 턴 입력을 쓴 때 참, `result`를 받은 때 거짓.
     turn_active: bool,
-    /// 턴 시작 주체 판정.
     origin: TurnOriginTracker,
-    /// 끝나지 않은 subagent. 키는 Task/Agent `tool_use` id, 값은 부모 subagent.
+    /// 키는 Task/Agent `tool_use` id, 값은 부모 subagent.
     running: HashMap<SubagentId, Option<SubagentId>>,
-    /// `system/init`에서 읽은 적용값.
     applied: AppliedSettings,
-    /// `system/init`의 `slash_commands`(거르기 전).
+    /// 거르기 전 목록.
     commands: Vec<ProviderCommand>,
-    /// `system/init`을 한 번이라도 받았는지. 두 번째부터 바뀐 적용값을 `SettingsApplied`로 알린다.
+    /// 두 번째 `system/init`부터 바뀐 적용값을 `SettingsApplied`로 알린다.
     initialized: bool,
     /// 마지막 메인 `assistant` 메시지의 맥락 크기.
     context_tokens: Option<u64>,
-    /// 응답을 기다리는 제어 요청. 키는 `request_id`.
+    /// 키는 `request_id`.
     control_waiters: HashMap<String, oneshot::Sender<Value>>,
 }
 
@@ -137,38 +96,31 @@ impl SessionState {
     }
 }
 
-/// session 하나의 프로세스와 입력 창구.
 #[derive(Debug)]
 struct SessionLink {
-    /// 이 프로세스의 묶음.
     group: ProcessGroupId,
-    /// 입력을 쓰는 쪽. 닫으면 프로그램이 끝난다.
+    /// 닫으면 프로그램이 끝난다.
     stdin: ChildStdin,
-    /// 읽기 작업과 같이 쓰는 변환 상태.
     state: Arc<Mutex<SessionState>>,
 }
 
-/// Claude Code 연결. session마다 프로세스 하나.
 #[derive(Debug)]
 pub struct ClaudeClient {
-    /// 프로세스 감시자.
     supervisor: Supervisor,
-    /// 실행 준비값. session을 열 때마다 이 값으로 프로세스를 띄운다.
+    /// session을 열 때마다 이 값으로 프로세스를 띄운다.
     launch: LaunchSpec,
-    /// session별 연결. 키는 `--session-id`로 넘긴 id(새 session) 또는 `--resume` id.
+    /// 키는 `--session-id`로 넘긴 id(새 session) 또는 `--resume` id.
     sessions: HashMap<ProviderSessionId, SessionLink>,
-    /// 모든 session 읽기 작업이 보내는 이벤트 채널의 받는 쪽.
     events: mpsc::Receiver<ProviderEvent>,
-    /// 새 session 읽기 작업에 복제해 주는 보내는 쪽.
+    /// 새 session 읽기 작업에 복제해 준다.
     events_tx: mpsc::Sender<ProviderEvent>,
-    /// 다음 제어 요청 id.
     next_request_id: u64,
-    /// 가장 최근 `system/init`의 명령 목록(거르기 전). 읽기 작업이 갱신한다.
+    /// 거르기 전 목록. 읽기 작업이 갱신한다.
     latest_commands: Arc<Mutex<Vec<ProviderCommand>>>,
 }
 
 impl ClaudeClient {
-    /// 연결을 만든다. 프로세스는 `open_session`에서 띄운다.
+    /// 프로세스는 `open_session`에서 띄운다.
     pub fn new(launch: LaunchSpec, supervisor: Supervisor) -> Self {
         let (events_tx, events) = mpsc::channel(EVENT_BUFFER);
         Self {
@@ -182,20 +134,19 @@ impl ClaudeClient {
         }
     }
 
-    /// session 프로세스의 묶음. 모르는 session이면 `None`.
+    /// 모르는 session이면 `None`.
     pub fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId> {
         self.sessions.get(session).map(|link| link.group)
     }
 
-    /// session에 적용된 설정. `system/init`을 받기 전이면 `None`.
+    /// `system/init`을 받기 전이면 `None`.
     pub fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
         let link = self.sessions.get(session)?;
         let state = lock(&link.state);
         state.initialized.then(|| state.applied.clone())
     }
 
-    /// 사용자 메시지 한 줄을 stdin에 쓴다. 쓰기 전 실패는 `NotSent`, 쓰는 중 실패(끊긴 파이프)는 `Unknown`.
-    /// 쓰기 전 실패: 모르는 session이거나 프로세스가 이미 끝났다.
+    /// 모르는 session이거나 프로세스가 이미 끝났으면 `NotSent`, 쓰는 중 실패(끊긴 파이프)는 `Unknown`.
     async fn write_user_message(
         &mut self,
         session: &ProviderSessionId,
@@ -208,7 +159,7 @@ impl ClaudeClient {
         self.write_line(session, &message).await
     }
 
-    /// 메시지 한 줄. 실패 구분은 `write_user_message`와 같다.
+    /// 실패 구분은 `write_user_message`와 같다.
     async fn write_line(
         &mut self,
         session: &ProviderSessionId,
@@ -237,7 +188,6 @@ impl ClaudeClient {
         })
     }
 
-    /// 실행 인자.
     fn launch_args(&self, spec: &SessionSpec, session: &SessionArg) -> Vec<String> {
         let mut args: Vec<String> = [
             "-p",
@@ -270,19 +220,14 @@ impl ClaudeClient {
     }
 }
 
-/// `--resume`인지 `--session-id`인지.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum SessionArg {
-    /// 보관한 session 재개.
     Resume(String),
     /// Saturn이 만든 새 session id.
     New(String),
 }
 
 impl ProviderClient for ClaudeClient {
-    /// 프로세스를 띄우고(`--resume`은 `spec.resume`이 있을 때, 아니면 새 UUID로 `--session-id`) session id를 돌려준다.
-    /// `packet`이 있으면 첫 턴으로 보낸다. `steer_verified`는 `STEER_VERIFIED`.
-    ///
     /// 실행 실패는 `ConnectionLost`, 재개 실패(`--resume` 뒤 `RESUME_SETTLE` 안에 종료)는 `NotSent`.
     async fn open_session(&mut self, spec: SessionSpec) -> Result<SessionHandle, ProviderError> {
         let session_arg = match &spec.resume {
@@ -342,8 +287,7 @@ impl ProviderClient for ClaudeClient {
         })
     }
 
-    /// 사용자 메시지 한 줄. 보내기 전 `TurnOriginTracker::on_user_send`, `turn_active = true`.
-    /// 보내기 전 실패면 둘 다 되돌린다.
+    /// 보내기 전 실패면 `on_user_send`와 `turn_active`를 되돌린다.
     async fn send_turn(
         &mut self,
         session: &ProviderSessionId,
@@ -370,7 +314,6 @@ impl ProviderClient for ClaudeClient {
         written
     }
 
-    /// `turn_active`가 거짓이면 쓰지 않고 `NoActiveTurn`. 참이면 사용자 메시지 한 줄을 더 쓴다.
     /// 쓰는 사이 턴이 끝나도 provider가 다음 턴에 처리하므로 `Ok`.
     async fn steer(
         &mut self,
@@ -390,9 +333,7 @@ impl ProviderClient for ClaudeClient {
         self.write_user_message(session, text).await
     }
 
-    /// `Main`이면 interrupt 제어 요청을 쓰고 `control_response`를 `CONTROL_TIMEOUT`(초안 10초)까지 기다린다.
     /// `Subagent`는 따로 멈출 경로가 없어 보내지 않고 `Ok`.
-    /// 백그라운드 subagent까지 멈추는지는 #18 실측으로 확인한다. 남은 프로세스는 호출자가 `Supervisor::stop_tree`로 정리한다.
     async fn interrupt(
         &mut self,
         session: &ProviderSessionId,
@@ -434,7 +375,7 @@ impl ProviderClient for ClaudeClient {
         }
     }
 
-    /// `/compact`를 새 턴으로 보낸다. 턴 진행 중이면 `NotSent`(턴 끝 경계에서만 보낸다).
+    /// 턴 끝 경계에서만 보내므로 턴 진행 중이면 `NotSent`.
     async fn compact(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
         let active = self
             .sessions
@@ -448,8 +389,6 @@ impl ProviderClient for ClaudeClient {
         self.send_turn(session, "/compact").await
     }
 
-    /// stdin을 닫고 `Supervisor::wait`로 종료를 `CLOSE_GRACE`(초안 5초)까지 기다린다.
-    /// 끝나지 않으면 `Supervisor::stop_tree(StopScope::Whole)`. session 상태를 뺀다.
     /// `session_id`는 호출자가 보관해 `--resume`에 쓴다. 모르는 session이면 아무것도 하지 않는다.
     async fn close_session(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
         let Some(link) = self.sessions.remove(session) else {
@@ -471,20 +410,17 @@ impl ProviderClient for ClaudeClient {
         Ok(())
     }
 
-    /// 이벤트 채널에서 받는다. 모든 session이 닫혀도 채널은 남으므로 `None`은 연결을 버릴 때만.
+    /// 모든 session이 닫혀도 채널은 남으므로 `None`은 연결을 버릴 때만.
     async fn next_event(&mut self) -> Option<ProviderEvent> {
         self.events.recv().await
     }
 
-    /// 가장 최근 `system/init`의 `slash_commands`를 `EXCLUDED_COMMANDS`로 거른 목록.
-    /// `system/init`에 스킬 이름 목록(`skills`)이 따로 오면 그 이름은 `is_skill = true`, 아니면 모두 거짓. 설명이 없으면 빈 문자열.
+    /// `system/init`에 스킬 이름 목록(`skills`)이 따로 오면 그 이름만 `is_skill = true`.
     fn commands(&self) -> Vec<ProviderCommand> {
         super::filter_commands(lock(&self.latest_commands).clone(), EXCLUDED_COMMANDS)
     }
 }
 
-/// Saturn 기본값 인자. `user.has_permission`이 거짓이면 `PERMISSION_ARGS`,
-/// `user.has_auto_compact`가 거짓이면 `--autocompact clamp(auto_compact_tokens, AUTO_COMPACT_MIN, AUTO_COMPACT_MAX)`.
 pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec<String> {
     let mut args = Vec::new();
     if !user.has_permission {
@@ -501,11 +437,8 @@ pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec
     args
 }
 
-/// 사용자 Claude 설정에 권한과 자동 압축 값이 있는지 본다.
-/// `$HOME/.claude/settings.json`, `<작업 폴더>/.claude/settings.json`, `<작업 폴더>/.claude/settings.local.json`의
-/// `permissions.defaultMode` → 권한, `autoCompactEnabled` → 자동 압축.
-/// 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있어도 자동 압축 값이 있는 것으로 본다. 파일을 못 읽으면 값 없음.
-/// `HOME`과 환경 변수는 부모 환경이 아니라 `launch.env`에서 읽는다. 파일, 키, 환경 변수 목록은 초안이다.
+/// 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있어도 자동 압축 값이 있는 것으로 본다.
+/// `HOME`과 환경 변수는 부모 환경이 아니라 `launch.env`에서 읽고, 파일을 못 읽으면 값 없음. 초안 목록.
 pub(crate) fn read_user_config(launch: &LaunchSpec) -> UserProviderConfig {
     let env = |name: &str| {
         launch
@@ -535,13 +468,13 @@ pub(crate) fn read_user_config(launch: &LaunchSpec) -> UserProviderConfig {
     found
 }
 
-/// JSON 파일을 읽는다. 없거나 깨졌으면 `None`.
+/// 없거나 깨졌으면 `None`.
 fn read_json(path: &Path) -> Option<Value> {
     let text = std::fs::read_to_string(path).ok()?;
     serde_json::from_str(&text).ok()
 }
 
-/// stdout 한 줄을 이벤트로 바꾼다. subagent 등록과 `turn_active`, 적용값, 명령 목록 갱신도 여기서 한다. 버릴 줄이면 빈 목록.
+/// subagent 등록과 `turn_active`, 적용값, 명령 목록 갱신도 여기서 한다. 버릴 줄이면 빈 목록.
 fn convert_line(state: &mut SessionState, line: &serde_json::Value) -> Vec<ProviderEvent> {
     let agent = state.agent;
     match line["type"].as_str() {
@@ -593,7 +526,7 @@ fn convert_line(state: &mut SessionState, line: &serde_json::Value) -> Vec<Provi
     }
 }
 
-/// `system/init`을 적용한다. 두 번째부터 모델이나 권한 방식이 바뀌었으면 `SettingsApplied`.
+/// 두 번째부터 모델이나 권한 방식이 바뀌었으면 `SettingsApplied`.
 fn apply_init(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
     let applied = AppliedSettings {
         model: line["model"].as_str().map(str::to_owned),
@@ -635,7 +568,7 @@ fn apply_init(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
     }]
 }
 
-/// `assistant` 메시지의 글과 도구 호출. Task/Agent 호출은 subagent 시작으로 등록한다.
+/// Task/Agent 호출은 subagent 시작으로 등록한다.
 fn convert_assistant(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
     let agent = state.agent;
     let parent = parent_subagent(line);
@@ -690,7 +623,7 @@ fn convert_assistant(state: &mut SessionState, line: &Value) -> Vec<ProviderEven
     events
 }
 
-/// `user` 메시지의 도구 결과. subagent 호출의 결과는 subagent 끝이다.
+/// subagent 호출의 결과는 subagent 끝이다.
 fn convert_tool_results(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
     let agent = state.agent;
     let parent = parent_subagent(line);
@@ -717,14 +650,12 @@ fn convert_tool_results(state: &mut SessionState, line: &Value) -> Vec<ProviderE
     events
 }
 
-/// `parent_tool_use_id`가 가리키는 subagent.
 fn parent_subagent(line: &Value) -> Option<SubagentId> {
     line["parent_tool_use_id"]
         .as_str()
         .map(|id| SubagentId(id.to_owned()))
 }
 
-/// 도구 이름과 입력으로 정한 하는 일.
 fn activity_of(name: &str, input: &Value) -> Activity {
     if READ_TOOLS.contains(&name) {
         return Activity::ReadingFile;
@@ -739,7 +670,7 @@ fn activity_of(name: &str, input: &Value) -> Activity {
     Activity::RunningCommand { command }
 }
 
-/// `tool_result.content`의 글. 문자열이거나 `text` 항목 배열이다.
+/// 문자열이거나 `text` 항목 배열이다.
 fn tool_result_text(content: &Value) -> String {
     match content {
         Value::String(text) => text.clone(),
@@ -752,7 +683,7 @@ fn tool_result_text(content: &Value) -> String {
     }
 }
 
-/// stdout을 읽어 제어 응답은 대기자에게, 나머지는 이벤트로 넘긴다. 끝나면 턴이나 subagent가 남았을 때 `StreamLost`.
+/// 끝나면 턴이나 subagent가 남았을 때 `StreamLost`.
 async fn read_loop(
     stdout: ChildStdout,
     state: Arc<Mutex<SessionState>>,
@@ -799,7 +730,6 @@ async fn read_loop(
     }
 }
 
-/// stderr 줄을 가린 뒤 진단 로그로 남긴다.
 async fn log_stderr(stderr: ChildStderr, masker: Masker) {
     let mut lines = BufReader::new(stderr).lines();
     while let Ok(Some(line)) = lines.next_line().await {
@@ -807,7 +737,7 @@ async fn log_stderr(stderr: ChildStderr, masker: Masker) {
     }
 }
 
-/// 새 session id. `/dev/urandom` 16바이트로 만든 UUID v4.
+/// `/dev/urandom` 16바이트로 만든 UUID v4.
 fn new_session_uuid() -> std::io::Result<String> {
     let mut bytes = [0u8; 16];
     std::fs::File::open("/dev/urandom")?.read_exact(&mut bytes)?;
@@ -842,7 +772,7 @@ mod tests {
     use super::*;
     use crate::providers::SaturnDefaults;
 
-    /// 기록한 stream-json 줄을 돌려주는 가짜 Claude Code. 받은 사용자 메시지 글에 따라 정해진 줄을 낸다.
+    /// 받은 사용자 메시지 글에 따라 정해진 줄을 낸다.
     const FAKE_CLAUDE: &str = r#"#!/usr/bin/perl
 use strict; use warnings; use JSON::PP;
 $| = 1;
