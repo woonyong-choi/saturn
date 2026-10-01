@@ -5,6 +5,7 @@
 
 mod claude;
 mod codex;
+mod tool_detail;
 
 use std::ffi::OsString;
 use std::path::PathBuf;

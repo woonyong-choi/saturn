@@ -9,7 +9,9 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
-use saturn_protocol::event::{Activity, ProviderEvent, TurnOrigin, UsageReport, UsageScope};
+use saturn_protocol::event::{
+    Activity, ProviderEvent, ToolDetail, TurnOrigin, UsageReport, UsageScope,
+};
 use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -640,6 +642,7 @@ fn convert_notification(
                 subagent,
                 call_id: id.to_owned(),
                 activity,
+                detail: ToolDetail::default(),
             })
             .into_iter()
             .collect(),
@@ -650,6 +653,7 @@ fn convert_notification(
                 subagent,
                 call_id: id.to_owned(),
                 output,
+                exit_code: None,
             })
             .into_iter()
             .collect(),
@@ -1188,12 +1192,14 @@ while (my $line = <STDIN>) {
                     activity: Activity::RunningCommand {
                         command: "cargo test".to_owned(),
                     },
+                    detail: ToolDetail::default(),
                 },
                 ProviderEvent::ToolResult {
                     agent,
                     subagent: None,
                     call_id: "item_1".to_owned(),
                     output: "ok".to_owned(),
+                    exit_code: None,
                 },
                 ProviderEvent::PermissionRequested {
                     agent,
