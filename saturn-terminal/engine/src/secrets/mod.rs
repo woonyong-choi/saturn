@@ -21,9 +21,13 @@ use std::path::PathBuf;
 
 pub use env::{CHILD_ENV_DENYLIST, is_denied, scrub, scrub_command};
 pub use hook::{HookPolicy, HookVerdict, ToolCall};
-pub use keys::{JUDGE_KEY_ENV, JudgeKey, KeyInfo, KeyInput, KeySource, acquire, can_prompt};
-pub use mask::{Masked, Masker, MaskingWriter, is_sensitive_header};
-pub use storage::{HARDENED_IDLE_LOCK, HARDENED_MAX_UNLOCK, SecretStore, StorageMode};
+pub use keys::{
+    JUDGE_KEY_ENV, JudgeKey, KeyInfo, KeyInput, KeySource, acquire, can_prompt, input_order,
+};
+pub use mask::{Masked, Masker, MaskingWriter, REDACTED, is_sensitive_header};
+pub use storage::{
+    HARDENED_IDLE_LOCK, HARDENED_MAX_UNLOCK, LOCK_CHECK_INTERVAL, SecretStore, StorageMode,
+};
 
 /// 키 입력, 저장, 조회 오류. 메시지와 원인 어디에도 키 문자열을 넣지 않는다.
 #[derive(Debug, thiserror::Error)]
@@ -43,7 +47,8 @@ pub enum SecretsError {
         /// 종료 코드와 가린 stderr 첫 줄.
         detail: String,
     },
-    /// OS 키체인 호출 실패. TODO(#84): 원인을 `keyring::Error`로 바꾼다
+    /// OS 키체인 호출 실패. 원인은 `keyring::Error`다. 저장된 바이트를 담는 `BadEncoding`만 바이트를 버린 문장으로 바꾼다
+    /// (`Debug` 출력으로 키가 새지 않게 하기 위해서다).
     #[error("keychain operation failed")]
     Keychain(#[source] Box<dyn std::error::Error + Send + Sync>),
     /// 강화 방식에서 잠금 상태다. session 시작 때 키체인 암호를 다시 받아야 한다.

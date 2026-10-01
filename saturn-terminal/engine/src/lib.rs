@@ -227,8 +227,8 @@ impl Engine {
     /// 시작 4단계. judge 시작 확인.
     /// 1. `SecretStore::open`(설정의 저장 방식)과 `Judges::select`(판단 방식).
     /// 2. `Judges::check`. `Ready`나 `Skipped`면 끝.
-    /// 3. `KeyRequired`면 키를 받는다: 네 방법 중 쓸 수 있는 것. 순서는 초안이다(설계에 없음).
-    ///    TODO(#84): 값 미정, 초안 환경 변수 → 관리자 명령 설정 → 표준 입력 → 숨김 입력
+    /// 3. `KeyRequired`면 키를 받는다: 네 방법 중 쓸 수 있는 것. 순서는 `secrets::input_order`(초안, 설계에 없음)로
+    ///    환경 변수 → 관리자 명령 설정 → 표준 입력 → 숨김 입력이다.
     ///    입력할 수 없는 환경(`secrets::can_prompt`가 거짓)이면 환경 변수와 표준 입력 방식을 안내하고 끝낸다.
     /// 4. `Judges::accept_key`: 다시 확인하고 저장한다.
     ///
