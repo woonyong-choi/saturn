@@ -21,6 +21,10 @@ pub enum SessionError {
     NotAtTurnBoundary,
     #[error("session not found: {0:?}")]
     NotFound(SessionId),
+    #[error("session id already exists: {0:?}")]
+    DuplicateId(SessionId),
+    #[error("replacement must belong to the same chat and role")]
+    InvalidReplacement,
     #[error("invalid session state transition: {from:?} -> {to:?}")]
     InvalidTransition {
         from: SessionState,
@@ -100,8 +104,11 @@ impl SessionManager {
     // vars: s = session 수
     // basis: estimate
     /// # Errors
-    /// 끝나지 않은 메인이 있으면 `MainAlreadyOpen`.
+    /// 중복 ID면 `DuplicateId`, 끝나지 않은 메인이 있으면 `MainAlreadyOpen`.
     pub fn register(&mut self, record: SessionRecord) -> Result<(), SessionError> {
+        if self.get(record.id).is_some() {
+            return Err(SessionError::DuplicateId(record.id));
+        }
         if record.role == AgentRole::Main
             && record.state != SessionState::Ended
             && self.live_main(record.chat).is_some()
@@ -118,10 +125,16 @@ impl SessionManager {
     /// 새 session의 전달 번호는 이전 session이 받은 번호보다 작아지지 않는다.
     ///
     /// # Errors
-    /// 없는 session이면 `NotFound`, 턴 경계가 아니면 `NotAtTurnBoundary`, 다른 살아 있는 메인이 있으면 `MainAlreadyOpen`.
+    /// 없는 session이면 `NotFound`, 중복 ID면 `DuplicateId`, 채팅·역할이 다르면 `InvalidReplacement`, 턴 경계가 아니면 `NotAtTurnBoundary`, 다른 살아 있는 메인이 있으면 `MainAlreadyOpen`.
     pub fn replace(&mut self, old: SessionId, mut new: SessionRecord) -> Result<(), SessionError> {
         let index = self.index_of(old)?;
         let previous = &self.sessions[index];
+        if self.get(new.id).is_some() {
+            return Err(SessionError::DuplicateId(new.id));
+        }
+        if previous.chat != new.chat || previous.role != new.role {
+            return Err(SessionError::InvalidReplacement);
+        }
         let is_turn_running = previous.state == SessionState::Open && previous.idle_since.is_none();
         if is_turn_running {
             return Err(SessionError::NotAtTurnBoundary);
@@ -401,6 +414,18 @@ mod tests {
     }
 
     #[test]
+    fn register_duplicate_id_returns_error() {
+        let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Ended)]);
+
+        let result = manager.register(record(1, Provider::Codex, SessionState::Open));
+
+        assert!(matches!(
+            result,
+            Err(SessionError::DuplicateId(SessionId(1)))
+        ));
+    }
+
+    #[test]
     fn register_sub_beside_main_succeeds() {
         let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
         let mut sub = record(2, Provider::Codex, SessionState::Open);
@@ -473,6 +498,31 @@ mod tests {
         let result = manager.replace(SessionId(9), record(2, Provider::Codex, SessionState::Open));
 
         assert!(matches!(result, Err(SessionError::NotFound(SessionId(9)))));
+    }
+
+    #[test]
+    fn replace_other_chat_keeps_original_session() {
+        let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Held)]);
+        let mut other_chat = record(2, Provider::Codex, SessionState::Open);
+        other_chat.chat = ChatId(2);
+
+        let result = manager.replace(SessionId(1), other_chat);
+
+        assert!(matches!(result, Err(SessionError::InvalidReplacement)));
+        assert_eq!(manager.get(SessionId(1)).unwrap().state, SessionState::Held);
+    }
+
+    #[test]
+    fn replace_duplicate_id_keeps_original_session() {
+        let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Held)]);
+
+        let result = manager.replace(SessionId(1), record(1, Provider::Codex, SessionState::Open));
+
+        assert!(matches!(
+            result,
+            Err(SessionError::DuplicateId(SessionId(1)))
+        ));
+        assert_eq!(manager.get(SessionId(1)).unwrap().state, SessionState::Held);
     }
 
     #[test]
