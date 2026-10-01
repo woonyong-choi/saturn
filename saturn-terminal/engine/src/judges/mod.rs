@@ -1,18 +1,5 @@
-//! judge 연결 구현과 engine 쪽 판단 흐름: judge 선택(판단 방식), 시작 확인, 키 요청과 재확인, 호출, 연속 실패 집계, 판단 기록.
-//!
-//! 설계: docs/design/judge.md(판단 방식, judge 시작 확인, judge 호출, 판단 기록, 오류 처리),
-//! docs/design/judge-key-security.md(키 입력, 전송, 출력 마스킹).
-//! 규칙:
-//! - judge는 engine만 부른다. 모든 judge는 `saturn_core::judges::JudgeClient` 구현(`RemoteJudge`, `LocalJudge`)으로만 붙는다.
-//! - 질문 구성과 답 해석은 `saturn_core::judges`가 한다. 여기는 전송, 확인, 기록만 한다.
-//! - 판단 기록은 판단 방식과 관계없이 전부 남긴다. 원문은 `secrets::Masker`로 가린 뒤 `store`에 넘기고, `/record off` 채팅은 `store`가 거른다.
-//! - 보내기 전에 확정된 실패만 다시 보낸다. 보낸 뒤 시간 초과는 `cost-unknown`으로 기록하고 다시 보내지 않는다.
-//!
-//! 시작 확인 흐름(engine 시작 4단계):
-//! 1. `Judges::select`가 판단 방식으로 judge를 고른다.
-//! 2. `Judges::check`로 확인한다. 외부는 `GET /v1/models`와 실제 판단 1건, 로컬은 모델 로드나 API 서버 응답.
-//! 3. 실패하면 engine이 키를 받아 `Judges::accept_key`를 부른다: 키 받기 → 다시 확인 → `SecretStore::save` → `KeyInfo` 기록.
-//! 4. 그래도 실패하면 engine은 원인 한 줄을 보이고 실행하지 않는다.
+//! judge 연결 구현과 engine 쪽 판단 흐름: judge 선택, 시작 확인, 키 재확인, 호출, 연속 실패 집계, 판단 기록.
+//! 설계: docs/design/judge.md
 
 mod local;
 mod remote;
@@ -37,68 +24,63 @@ pub use remote::{
     ALLOWED_HOST, MAX_CHOICES, REQUEST_SPLIT_LIMIT, RemoteJudge, RetryPolicy, STATE_SPLIT_LIMIT,
 };
 
-/// 외부 judge의 기록용 중립 이름(초안).
+/// 기록용 중립 이름. 초안 값.
 pub const REMOTE_JUDGE_ID: &str = "jev";
 
-/// 로컬 Saturn 모델의 기록용 중립 이름(초안).
+/// 기록용 중립 이름. 초안 값.
 pub const LOCAL_JUDGE_ID: &str = "saturn-local";
 
-/// 시작 확인 판단 1건의 질문 id.
 const CHECK_QUESTION: &str = "saturn_check";
 
-/// 로컬 judge 버전 설정이 없을 때의 이름(초안).
+/// 로컬 judge 버전 설정이 없을 때. 초안 값.
 const UNVERSIONED_LOCAL: &str = "unversioned";
 
-/// state에서 절대 경로를 바꾼 자리 표시. 끝 이름만 남긴다(초안).
+/// 끝 이름만 남긴다. 초안 값.
 const ABSOLUTE_PATH_MARK: &str = "[abs]/";
 
-/// 연속 호출 실패가 이만큼 쌓이면 새 입력 접수를 멈추고 연결 복구를 안내한다(`Alert::IntakeStopped`).
+/// 이만큼 쌓이면 새 입력 접수를 멈추고 연결 복구를 안내한다.
 pub const CONSECUTIVE_FAILURE_LIMIT: u32 = 3;
 
-/// engine과 judge가 함께 쓰는 키 보관소. 키를 메모리에 들고 있는 곳은 `SecretStore` 하나뿐이라 `RemoteJudge`도 이것을 빌려 쓴다.
+/// 키를 메모리에 들고 있는 곳은 `SecretStore` 하나뿐이라 `RemoteJudge`도 이것을 빌려 쓴다.
 pub type SharedSecrets = Arc<Mutex<SecretStore>>;
 
-/// judge 선택, 시작 확인, 키 처리, 판단 기록 오류. 메시지와 원인 어디에도 키 문자열을 넣지 않는다.
+/// 메시지와 원인 어디에도 키 문자열을 넣지 않는다.
 #[derive(Debug, thiserror::Error)]
 pub enum JudgesError {
-    /// judge 주소가 HTTPS가 아니거나 허용 호스트(`api.typesafe.ai`)가 아니다. 키를 보내지 않는다.
+    /// HTTPS가 아니거나 허용 호스트가 아니라 키를 보내지 않는다.
     #[error("judge endpoint is not allowed: {endpoint}")]
     DisallowedEndpoint {
         /// 설정의 judge 주소.
         endpoint: String,
     },
-    /// 판단 방식에 맞는 judge 설정이 없다(`saturn` 방식인데 로컬 모델이 없는 등).
+    /// 예: `saturn` 방식인데 로컬 모델이 없다.
     #[error("no judge configured for method {method:?}")]
     NotConfigured {
         /// 판단 방식.
         method: Method,
     },
-    /// 시작 확인 실패. 호출자는 키를 받아 `accept_key`로 다시 확인하거나 실행하지 않는다.
+    /// 호출자는 키를 받아 `accept_key`로 다시 확인하거나 실행하지 않는다.
     #[error("judge check failed")]
     Check(#[source] JudgeError),
-    /// 키 받기, 저장, 조회 실패.
     #[error("judge key handling failed")]
     Secrets(#[from] SecretsError),
-    /// 키 정보(`KeyInfo`)를 사용자 설정에 쓰지 못했다.
     #[error("failed to record judge key info")]
     Settings(#[from] SettingsError),
-    /// 판단 기록 저장 실패.
     #[error("failed to record judgment")]
     Store(#[from] StoreError),
 }
 
-/// 판단 방식이 고른 judge. `JudgeClient`는 `impl Future`를 돌려 dyn으로 못 쓰므로 enum으로 나눈다.
+/// `JudgeClient`는 `impl Future`를 돌려 dyn으로 못 쓰므로 enum으로 나눈다.
 #[derive(Debug)]
 pub enum ActiveJudge {
-    /// 기준 judge(외부 API). `jev` 방식.
+    /// `jev` 방식.
     Remote(RemoteJudge),
-    /// Saturn 모델(로컬). `saturn` 방식.
+    /// `saturn` 방식.
     Local(LocalJudge),
 }
 
 impl ActiveJudge {
-    /// 기록에 쓰는 중립 이름(`judge_id`). 예: `jev`, `saturn-local`. 실제 모델과 버전은 설정 매핑과 `judge_manifest`에만 둔다.
-    /// 값 `jev`, `saturn-local`은 초안이다.
+    /// 실제 모델과 버전은 설정 매핑과 `judge_manifest`에만 둔다.
     pub fn judge_id(&self) -> &str {
         match self {
             Self::Remote(_) => REMOTE_JUDGE_ID,
@@ -106,7 +88,7 @@ impl ActiveJudge {
         }
     }
 
-    /// 요청과 응답 원문을 함께 돌려주는 판단 호출. 판단 기록에 원문이 필요해 trait의 `judge` 대신 engine은 이것을 쓴다.
+    /// 판단 기록에 원문이 필요해 engine은 trait의 `judge` 대신 이것을 쓴다.
     pub async fn exchange(&self, request: JudgeRequest) -> JudgeExchange {
         match self {
             Self::Remote(judge) => judge.exchange(request).await,
@@ -114,7 +96,7 @@ impl ActiveJudge {
         }
     }
 
-    /// 요청 모델 이름. 외부는 고정 모델, 로컬은 judge 버전.
+    /// 외부는 고정 모델, 로컬은 judge 버전.
     fn model(&self) -> &str {
         match self {
             Self::Remote(judge) => judge.model(),
@@ -124,7 +106,6 @@ impl ActiveJudge {
 }
 
 impl JudgeClient for ActiveJudge {
-    /// 고른 judge에 그대로 넘긴다.
     async fn check(&self) -> Result<(), JudgeError> {
         match self {
             Self::Remote(judge) => judge.check().await,
@@ -132,7 +113,6 @@ impl JudgeClient for ActiveJudge {
         }
     }
 
-    /// 고른 judge에 그대로 넘긴다.
     async fn judge(&self, request: JudgeRequest) -> Result<JudgeResponse, JudgeError> {
         match self {
             Self::Remote(judge) => judge.judge(request).await,
@@ -141,17 +121,16 @@ impl JudgeClient for ActiveJudge {
     }
 }
 
-/// 판단 호출 한 건의 원문과 결과. 원문은 가리기 전 값이라 로그에 남기지 않고 `record`에서만 가린 뒤 쓴다.
+/// 원문은 가리기 전 값이라 로그에 남기지 않고 `record`에서만 가린 뒤 쓴다.
 pub struct JudgeExchange {
-    /// 보낸 요청 본문(나눠 보냈으면 조각을 순서대로 이은 것). Authorization 헤더는 넣지 않는다.
+    /// 나눠 보냈으면 조각을 순서대로 이은 것. Authorization 헤더는 넣지 않는다.
     pub sent: String,
-    /// 받은 응답 본문. 응답이 없으면 `None`.
+    /// 응답이 없으면 `None`.
     pub received: Option<String>,
-    /// 해석한 결과. 형식 검사(`saturn_core::judges::validate`)는 호출자가 한다.
+    /// 형식 검사는 호출자가 한다.
     pub result: Result<JudgeResponse, JudgeError>,
-    /// 요청 시작 시각.
     pub started_at: SystemTime,
-    /// 걸린 시간. 응답이 없으면 포기할 때까지.
+    /// 응답이 없으면 포기할 때까지.
     pub elapsed: Duration,
 }
 
@@ -171,47 +150,41 @@ impl std::fmt::Debug for JudgeExchange {
     }
 }
 
-/// 시작 확인 결과.
 #[derive(Debug)]
 pub enum StartCheck {
-    /// 확인 통과. 소켓 접속을 받아도 된다.
+    /// 소켓 접속을 받아도 된다.
     Ready,
-    /// 확인 실패. engine은 키를 받아 `accept_key`로 넘긴다. `reason`은 화면과 stderr에 보일 한 줄.
+    /// engine은 키를 받아 `accept_key`로 넘긴다.
     KeyRequired {
-        /// 실패 원인 한 줄.
+        /// 화면과 stderr에 보일 한 줄.
         reason: String,
     },
-    /// 설치 검증 전용 설정으로 확인을 건너뛰었다. 도움말에 보이지 않는 설정이다. TODO(#49): 설정 키 이름
+    /// 도움말에 보이지 않는 설치 검증 전용 설정으로 건너뛰었다. TODO(#49): 설정 키 이름
     Skipped,
 }
 
-/// 판단 기록 한 건에 붙는 문맥. 원문과 결과는 `JudgeExchange`에서 온다.
+/// 원문과 결과는 `JudgeExchange`에서 온다.
 #[derive(Debug, Clone)]
 pub struct RecordContext {
-    /// 채팅. `/record off`인지 `store`가 이것으로 본다.
+    /// `/record off`인지 `store`가 이것으로 본다.
     pub chat: ChatId,
-    /// 판단 대상 입력. 입력과 무관한 호출(`compact`, `loop` 등)은 `None`.
+    /// 입력과 무관한 호출(`compact`, `loop` 등)은 `None`.
     pub input: Option<InputId>,
-    /// 물은 질문 세트와 버전.
     pub question_sets: Vec<QuestionSetId>,
-    /// 판단 때 쓴 설정 번호.
     pub settings: SettingsRevision,
-    /// 대체 규칙을 적용한 질문 id와 사유.
     pub fallbacks: Vec<(String, String)>,
-    /// 결과 분류. revision이 바뀌었으면 호출자가 `Superseded`로 바꿔 넘긴다.
+    /// revision이 바뀌었으면 호출자가 `Superseded`로 바꿔 넘긴다.
     pub outcome: JudgmentOutcome,
 }
 
-/// 연속 호출 실패 집계. 성공 한 번이면 0으로 돌아간다.
+/// 성공 한 번이면 0으로 돌아간다.
 #[derive(Debug, Default)]
 struct FailureTracker {
-    /// 연속 실패 수.
     consecutive: u32,
 }
 
 impl FailureTracker {
-    /// 호출 결과를 반영하고 알릴 경고를 돌려준다. 실패가 `CONSECUTIVE_FAILURE_LIMIT`번 이어지면 `IntakeStopped`,
-    /// 그 전 실패는 `JudgePaused`(질문별 대체 규칙 적용 중), 성공이면 `None`.
+    /// 한도 전 실패는 `JudgePaused`, 한도에 닿으면 `IntakeStopped`, 성공이면 `None`.
     fn observe(&mut self, ok: bool) -> Option<Alert> {
         if ok {
             self.consecutive = 0;
@@ -225,13 +198,11 @@ impl FailureTracker {
         }
     }
 
-    /// 새 입력 접수를 멈춘 상태인지.
     fn intake_stopped(&self) -> bool {
         self.consecutive >= CONSECUTIVE_FAILURE_LIMIT
     }
 }
 
-/// engine이 쓰는 judge 묶음. 판단 방식이 고른 judge 하나와 연속 실패 집계, 기록용 가림을 가진다.
 #[derive(Debug)]
 pub struct Judges {
     active: ActiveJudge,
@@ -241,9 +212,7 @@ pub struct Judges {
 }
 
 impl Judges {
-    /// 판단 방식으로 judge를 고른다. `jev`는 `RemoteJudge`(주소는 `settings.judge_endpoint()`, 허용 호스트 검사),
-    /// `saturn`은 `LocalJudge`(설정 `judge.local.endpoint`가 있으면 서버, 버전은 `judge.local.version`, 키 이름은 초안).
-    /// 외부 judge 모델은 설정 `judge.model`(초안 기본값 `jev-1.13.0`), 재시도는 `RetryPolicy::default()`(초안).
+    /// 외부 judge 모델 기본값과 재시도 정책, 로컬 설정 키 이름은 초안이다.
     /// TODO(#40): `collect` 방식이 어떤 judge를 쓰는지 미정. 정해지기 전에는 `NotConfigured`
     ///
     /// # Errors
@@ -289,7 +258,6 @@ impl Judges {
         Ok(Self::with_active(active, method, masker))
     }
 
-    /// 고른 judge로 만든다.
     pub(crate) fn with_active(active: ActiveJudge, method: Method, masker: Masker) -> Self {
         Self {
             active,
@@ -299,18 +267,15 @@ impl Judges {
         }
     }
 
-    /// 판단 방식.
     pub fn method(&self) -> Method {
         self.method
     }
 
-    /// 고른 judge.
     pub fn active(&self) -> &ActiveJudge {
         &self.active
     }
 
-    /// 시작 확인 1회. 실패하면 원인을 가린 한 줄과 함께 `KeyRequired`를 돌려준다(오류가 아니다).
-    /// 설치 검증 전용 설정(`judge.skip_check = true`, 키 이름 초안)이 켜져 있으면 확인 없이 `Skipped`.
+    /// 실패는 오류가 아니라 원인을 가린 한 줄과 함께 `KeyRequired`로 돌려준다.
     pub async fn check(&self, settings: &Settings) -> StartCheck {
         let skip = settings
             .get("judge.skip_check")
@@ -327,11 +292,7 @@ impl Judges {
         }
     }
 
-    /// 받은 키로 다시 확인하고 저장한다.
-    /// 1. `secrets::acquire`로 키를 받는다(숨김 입력, 표준 입력, 환경 변수, 관리자 명령 네 방법만).
-    /// 2. 가림 대상을 새 키로 다시 만든다.
-    /// 3. `JudgeClient::check`로 다시 확인한다.
-    /// 4. 통과하면 `SecretStore::save`(관리자 명령과 환경 변수 키는 저장하지 않고 메모리에만), `SettingsManager::record_key_info`.
+    /// 관리자 명령과 환경 변수 키는 저장하지 않고 메모리에만 둔다.
     ///
     /// # Errors
     /// 키를 못 받으면 `Secrets`, 다시 확인이 실패하면 `Check`, 키 정보 기록 실패면 `Settings`.
@@ -359,8 +320,6 @@ impl Judges {
         Ok(())
     }
 
-    /// 판단 호출 한 건. 결과로 연속 실패를 집계하고, 알릴 경고가 있으면 함께 돌려준다.
-    /// 무응답이면 호출자가 입력을 대기로 보내고, 실행 중 일시 실패면 질문별 대체 규칙을 적용한다.
     /// 형식 오류(`Invalid`)와 revision 변경은 judge가 답한 것이라 연속 실패로 세지 않는다.
     pub async fn call(&mut self, request: JudgeRequest) -> (JudgeExchange, Option<Alert>) {
         let exchange = self.active.exchange(request).await;
@@ -372,19 +331,12 @@ impl Judges {
         (exchange, alert)
     }
 
-    /// 연속 3회 실패로 새 입력 접수를 멈춘 상태인지. 참이면 engine은 `SubmitInput`을 접수하지 않는다.
+    /// 참이면 engine은 `SubmitInput`을 접수하지 않는다.
     pub fn intake_stopped(&self) -> bool {
         self.failures.intake_stopped()
     }
 
-    /// 판단 기록을 쓴다.
-    /// 1. 보낸 원문과 받은 원문을 `Masker`로 가린다.
-    /// 2. `store.record_judgment`에 넘긴다. `/record off` 채팅이면 `store`가 쓰지 않고 `None`을 돌려준다.
-    ///
-    /// 비용 칸은 `CostUnknown`이거나 보고되지 않았으면 NULL이다.
-    ///
-    /// # Errors
-    /// 저장 실패면 `Store`.
+    /// 원문은 `Masker`로 가린 뒤 넘기고, `/record off` 채팅이면 `store`가 쓰지 않는다.
     pub async fn record(
         &self,
         store: &Store,
@@ -396,7 +348,6 @@ impl Judges {
     }
 }
 
-/// 시작 확인 판단 1건의 요청.
 pub(crate) fn check_request(model: String) -> JudgeRequest {
     JudgeRequest {
         model,
@@ -416,9 +367,7 @@ pub(crate) fn check_request(model: String) -> JudgeRequest {
     }
 }
 
-/// 요청 `state`에서 비밀값, 절대 경로, 다른 대화 원문을 뺀다. 비밀값은 `Masker`로 가린다.
-/// 절대 경로(공백, 따옴표, 괄호 뒤에서 `/`나 `~/`로 시작하고 `/`가 둘 이상인 낱말)는 끝 이름만 남겨 `[abs]/이름`으로 바꾼다(초안).
-/// 다른 대화 원문은 state를 만드는 `core`가 넣지 않는다. 여기서는 찾지 않는다(초안).
+/// 절대 경로는 끝 이름만 남기고, 다른 대화 원문은 `core`가 넣지 않아 찾지 않는다. 초안 규칙.
 pub fn sanitize_state(state: &str, masker: &Masker) -> String {
     let masked = masker.mask(state);
     let mut out = String::with_capacity(masked.as_str().len());
@@ -436,7 +385,6 @@ pub fn sanitize_state(state: &str, masker: &Masker) -> String {
     out
 }
 
-/// 경로 낱말의 경계 글자.
 fn is_word_boundary(ch: char) -> bool {
     ch.is_whitespace()
         || matches!(
@@ -445,7 +393,7 @@ fn is_word_boundary(ch: char) -> bool {
         )
 }
 
-/// 절대 경로 낱말이면 `[abs]/끝이름`, 아니면 그대로.
+/// 아니면 그대로.
 fn replace_absolute(word: &str) -> String {
     let path = word.strip_prefix('~').unwrap_or(word);
     let is_absolute = path.starts_with('/') && path.matches('/').count() >= 2;
@@ -460,8 +408,7 @@ fn replace_absolute(word: &str) -> String {
     format!("{ABSOLUTE_PATH_MARK}{name}")
 }
 
-/// 호출 결과를 판단 기록 분류로 바꾼다. 보낸 뒤 시간 초과는 `CostUnknown`, 무응답과 속도 제한 포기는 `NoResponse`,
-/// 형식 오류는 `Invalid`, revision 변경은 `Superseded`.
+/// 보낸 뒤 시간 초과는 `CostUnknown`, 무응답과 속도 제한 포기는 `NoResponse`.
 pub fn outcome_of(result: &Result<JudgeResponse, JudgeError>) -> JudgmentOutcome {
     match result {
         Ok(_) => JudgmentOutcome::Ok,
@@ -474,8 +421,7 @@ pub fn outcome_of(result: &Result<JudgeResponse, JudgeError>) -> JudgmentOutcome
     }
 }
 
-/// 판단 기록 한 건을 만든다. 원문은 여기서 가린다. `record`가 쓴다.
-/// 기준값과 피드백 확률은 `RecordContext`에 없어 빈 목록과 `None`으로 둔다(초안, 호출자 #90이 채울 자리).
+/// 기준값과 피드백 확률은 `RecordContext`에 없어 빈 값으로 둔다(초안, #90 호출자가 채울 자리).
 fn new_judgment(judges: &Judges, context: RecordContext, exchange: &JudgeExchange) -> NewJudgment {
     let response = exchange.result.as_ref().ok();
     let tokens = match context.outcome {
