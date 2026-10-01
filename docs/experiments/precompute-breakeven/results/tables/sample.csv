@@ -1,0 +1,4 @@
+provider,sessions,turns,tool_calls,turns_median,turns_p95,max_ctx_median,max_ctx_p95,sessions_reaching_event_pct,sessions_with_provider_compaction_pct,events
+all,1154,11330,204103,1.0,45.35,84752.0,244524.45,43.9,16.2,1572
+claude,658,1268,21910,1.0,4.0,60344.0,292904.6,30.2,0.5,270
+codex,496,10062,182193,2.0,107.25,131351.0,238499.5,62.1,37.1,1302
