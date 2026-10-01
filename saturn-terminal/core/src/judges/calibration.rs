@@ -9,8 +9,8 @@ pub const IRREVERSIBLE_FLOOR: f64 = 0.8;
 /// 빠른 조정이 중심값에서 벗어날 수 있는 폭.
 pub const FAST_RANGE: f64 = 0.05;
 
-/// 느린 조정에 필요한 질문별 쓰인 결과 수(행동한 판단 + 물은 답)이고, 3% 조건에서 중심값이 하한·상한에 닿는 비율이 10% 이하가 되는 값이다.
-pub const MIN_RECENTER_RESULTS: usize = 3_000;
+/// 느린 조정에 필요한 질문별 쓰인 결과 수(행동한 판단 + 물은 답)이고, 한 번의 이동을 `FAST_RANGE`로 제한하므로 일찍 적용한다.
+pub const MIN_RECENTER_RESULTS: usize = 300;
 
 pub const MAX_ASK_RATE: f64 = 0.05;
 
@@ -133,7 +133,7 @@ impl ThresholdState {
     // cost: time O(n log n), heap O(n), stack O(1), alloc 1
     // vars: n = 판단 기록 수
     // basis: estimate
-    /// `/train` 때 모든 판단 기록으로 부르며, 쓰인 결과가 `MIN_RECENTER_RESULTS`건 미만이면 하지 않는다.
+    /// `/train` 때 모든 판단 기록으로 부르며, 쓰인 결과가 `MIN_RECENTER_RESULTS`건 미만이면 하지 않고 중심값은 한 번에 이전 값 `±FAST_RANGE`까지만 움직인다.
     pub fn recenter(&mut self, records: &[Observation]) {
         let mut results = 0;
         let mut samples: Vec<(f64, f64)> = Vec::new();
@@ -151,8 +151,12 @@ impl ThresholdState {
         samples.sort_by(|left, right| right.0.total_cmp(&left.0));
         let new_center = lowest_safe_threshold(&samples, self.bounds, self.target_wrong_rate)
             .unwrap_or(self.bounds.1);
-        self.previous = Some((self.center, self.fast_offset));
-        self.center = new_center.clamp(self.bounds.0, self.bounds.1);
+        let previous_center = self.center;
+        self.previous = Some((previous_center, self.fast_offset));
+        self.center = new_center
+            .clamp(self.bounds.0, self.bounds.1)
+            .clamp(previous_center - FAST_RANGE, previous_center + FAST_RANGE)
+            .clamp(self.bounds.0, self.bounds.1);
         self.fast_offset = 0.0;
     }
 
@@ -685,7 +689,7 @@ mod tests {
     // basis: estimate
     #[test]
     fn recenter_picks_lowest_threshold_meeting_target() {
-        let mut state = state();
+        let mut state = ThresholdState::new(QUESTION, 0.71, (0.5, 0.95));
         state.fast_offset = 0.03;
         // 0.9는 모두 맞고, 0.7은 절반이 틀린다.
         let mut records = results(1_500, 0.9, Signal::Unconfirmed);
@@ -715,18 +719,19 @@ mod tests {
 
         state.recenter(&records);
 
-        assert_eq!(state.center, 0.95);
+        // 하한·상한은 0.95이고, 한 번에 0.05만 움직인다.
+        assert!((state.center - 0.85).abs() < 1e-12);
     }
 
     #[test]
     fn recenter_acted_without_reaction_counts_as_not_wrong() {
         let mut state = state();
         let mut records = results(MIN_RECENTER_RESULTS, 0.92, Signal::Unconfirmed);
-        records.extend(results(100, 0.92, Signal::Wrong));
+        records.extend(results(10, 0.92, Signal::Wrong));
 
         state.recenter(&records);
 
-        assert_eq!(state.center, 0.5);
+        assert_eq!(state.center, 0.75);
     }
 
     // cost: time O(n), heap O(n), stack O(1)
@@ -747,15 +752,15 @@ mod tests {
             }));
             records
         };
-        let mut few_wrong = state();
-        let mut many_wrong = state();
+        let mut few_wrong = ThresholdState::new(QUESTION, 0.6, (0.5, 0.95));
+        let mut many_wrong = ThresholdState::new(QUESTION, 0.6, (0.5, 0.95));
 
         // 틀림 10건 x 10 = 100 / 3,000 = 3.3%, 20건 x 10 = 200 / 3,000 = 6.7%
         few_wrong.recenter(&skipped(10));
         many_wrong.recenter(&skipped(20));
 
-        assert_eq!(few_wrong.center, 0.5);
-        assert_eq!(many_wrong.center, 0.705);
+        assert!((few_wrong.center - 0.55).abs() < 1e-12);
+        assert!((many_wrong.center - 0.65).abs() < 1e-12);
     }
 
     // cost: time O(n), heap O(n), stack O(1)
@@ -769,8 +774,8 @@ mod tests {
 
         state.recenter(&records);
 
-        // 0.6 판단은 결과가 없어 틀림 가중 0으로 분모에만 들어가므로 평균이 낮아져 하한까지 내려간다.
-        assert_eq!(state.center, 0.5);
+        // 0.6 판단은 결과가 없어 틀림 가중 0으로 분모에만 들어가므로 평균이 낮아져 한 번에 갈 수 있는 곳까지 내려간다.
+        assert_eq!(state.center, 0.75);
     }
 
     #[test]
@@ -785,11 +790,46 @@ mod tests {
 
     #[test]
     fn recenter_matches_simulation_s1q_on_same_records() {
-        let mut state = state();
+        let mut state = ThresholdState::new(QUESTION, 0.7, (0.5, 0.95));
 
         state.recenter(&simulated_records());
 
         assert_eq!(state.center, 0.695);
+    }
+
+    #[test]
+    fn recenter_matches_simulation_t1_on_same_records() {
+        // S1q가 0.695를 고르고, 시작값 0.8에서 한 번에 0.05만 내려간다.
+        let mut state = state();
+
+        state.recenter(&simulated_records());
+
+        assert_eq!(state.center, 0.75);
+    }
+
+    #[test]
+    fn recenter_at_min_results_acts_and_below_does_not() {
+        let mut below = state();
+        let mut at = state();
+
+        below.recenter(&results(MIN_RECENTER_RESULTS - 1, 0.9, Signal::Unconfirmed));
+        at.recenter(&results(MIN_RECENTER_RESULTS, 0.9, Signal::Unconfirmed));
+
+        assert_eq!(below.center, 0.8);
+        assert_eq!(at.center, 0.75);
+    }
+
+    #[test]
+    fn recenter_moves_at_most_fast_range_per_call() {
+        let mut state = state();
+        let records = results(MIN_RECENTER_RESULTS, 0.9, Signal::Unconfirmed);
+
+        state.recenter(&records);
+        assert_eq!(state.center, 0.75);
+        state.recenter(&records);
+        assert_eq!(state.center, 0.7);
+        state.recenter(&results(MIN_RECENTER_RESULTS, 0.9, Signal::Wrong));
+        assert_eq!(state.center, 0.75);
     }
 
     // cost: time O(1), heap O(1), stack O(1)
@@ -821,7 +861,7 @@ mod tests {
     fn rollback_if_worse_restores_previous_on_many_wrongs() {
         let mut state = state();
         state.recenter(&results(MIN_RECENTER_RESULTS, 0.9, Signal::Unconfirmed));
-        assert_eq!(state.center, 0.5);
+        assert_eq!(state.center, 0.75);
         let recent: Vec<Observation> = (0..20)
             .map(|_| Observation {
                 threshold: 0.5,
@@ -852,7 +892,7 @@ mod tests {
         let rolled_back = state.rollback_if_worse(&recent);
 
         assert!(!rolled_back);
-        assert_eq!(state.center, 0.5);
+        assert_eq!(state.center, 0.75);
     }
 
     #[test]
