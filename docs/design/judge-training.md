@@ -144,6 +144,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 7. engine이 로컬 학습기로 Saturn 모델을 학습하고 승격 게이트로 비교한다.
 
 - `/train`은 지난 실행 뒤 채점 안 된 판단이 200건 이상일 때만 실행한다([#16](https://github.com/woonyong-choi/saturn/issues/16)). 적은 라벨로 한 조정은 잡음 수준이기 때문이다.
+- 7단계의 모델 학습은 누적 학습용 라벨이 1,000건 이상이고 평가용 라벨이 200건 이상일 때만 한다. 모자라면 채점과 기준값 조정까지만 하고 학습은 건너뛴다. 기준값 하나를 맞추는 것보다 모델 가중치를 학습하는 데 라벨이 더 많이 필요하기 때문이다([#16](https://github.com/woonyong-choi/saturn/issues/16)).
 - Saturn 모델 학습은 Python과 MLX로 한다. Apple Silicon에서 로컬로 학습하기 위해서다.
 - 판단 기록은 로컬에 쌓고, 사용자가 동의한 레코드만 서버로 올린다([결정 기록](../decisions/2026-09-29-local-first-judgment-collection.md)).
 
@@ -176,6 +177,7 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 | 전체 묻는 빈도는 판단 20번에 1번을 넘지 않는다. | 많은 판단을 흘려 물은 비율이 상한 안인지 확인한다. |
 | 판단 기록마다 judge 버전, 기준값, q를 남긴다. | 판단 뒤 기록에 세 값이 모두 있는지 확인한다. |
 | `/train`은 채점 안 된 판단이 200건 미만이면 실행하지 않는다. | 199건에서 실행을 거절하고 200건에서 시작하는지 확인한다. |
+| 모델 학습은 학습용 라벨 1,000건 이상, 평가용 라벨 200건 이상일 때만 한다. | 학습용 999건에서 학습을 건너뛰고 채점과 기준값 조정만 하는지 확인한다. |
 | 품질 게이트를 통과하지 못한 라벨은 학습용과 평가용에 들어가지 않는다. | 순서를 바꾼 두 답이 다른 판단이 라벨에서 빠지는지 확인한다. |
 | 새 모델은 같은 평가 세트에서 현재 모델보다 나쁘지 않을 때만 승격한다. | [#11](https://github.com/woonyong-choi/saturn/issues/11) 실험으로 후보별 정확도와 Brier를 확인한다. |
 | 채점 흐름은 채점 모델 사이 일치도를 확인한 뒤 쓴다. | [#12](https://github.com/woonyong-choi/saturn/issues/12) 실험으로 채점 모델 사이 일치도를 확인한다. |
@@ -194,4 +196,5 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 - 기준 judge와 채점 모델의 출력을 비교와 평가에만 쓸지, 허용된 범위에서 학습에도 쓸지 ([#45](https://github.com/woonyong-choi/saturn/issues/45))
 - 학습 레코드에서 subagent 출력을 출처로 구분할지, 그 턴을 빼거나 구분 없이 둘지 ([#64](https://github.com/woonyong-choi/saturn/issues/64))
 - 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
+- 빠른 조정에서 기준값을 내리는 신호를 놓침으로 둘지, 행동한 판단의 맞음 응답으로 바꿀지 ([#124](https://github.com/woonyong-choi/saturn/issues/124))
 - 라벨 품질 게이트의 결과 신호 일치를 사후 판정으로 볼지, 원래 판단의 답과 결과 신호로 볼지 ([#105](https://github.com/woonyong-choi/saturn/issues/105))

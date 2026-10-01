@@ -15,3 +15,6 @@
 | 2026-09-29 | [저장소 하나에 제품별 폴더로 구성 요소를 둔다](2026-09-29-single-repository.md) | 채택 |
 | 2026-09-29 | [쓰기 에이전트는 기본으로 한 번에 하나만 실행한다](2026-09-29-single-writer-default.md) | 채택 |
 | 2026-09-29 | [판단 규격은 Saturn이 정하고 judge는 중립 이름과 출처로 기록한다](2026-09-29-vendor-neutral-judge-spec.md) | 채택 |
+| 2026-10-01 | [맥락 정리는 Saturn 방식을 기본으로 두고 provider 압축 모드를 설정으로 연다](2026-10-01-context-mode-setting.md) | 채택 |
+| 2026-10-01 | [관련 항목 후보는 코드 순위로 좁힌 뒤 judge가 고른다](2026-10-01-ranked-candidates-before-judge.md) | 채택 |
+| 2026-10-01 | [후보 순위는 임베딩 없이 단어 기반과 용어 카탈로그로 시작한다](2026-10-01-lexical-ranking-with-term-catalog.md) | 채택 |

@@ -21,8 +21,16 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트를 바꿀 때마
 2. 사용자는 다음 입력의 모델을 Codex로 고정해 보낸다.
 3. `sessions`는 Claude 턴이 끝난 경계에서 Codex 메인 에이전트를 새로 시작한다.
 4. engine은 Saturn 기록 원문에서 고른 패킷을 새 Codex session에 넘긴다.
-5. 인수가 끝나면 engine은 이전 Claude 메인 에이전트를 종료한다.
+5. 인수가 끝나면 engine은 이전 Claude 메인 session을 닫고 provider session ID를 보관한다.
 6. 대기열과 기록은 채팅에 있으므로, 사용자는 같은 채팅에서 Codex로 작업을 이어 간다.
+
+### Codex로 갔다가 Claude로 돌아오기
+
+1. 사용자는 Claude로 40턴 작업한 뒤 Codex로 바꿔 짧게 작업한다.
+2. 사용자가 다음 입력의 모델을 다시 Claude로 고정해 보낸다.
+3. 보관한 Claude session의 마지막 턴 뒤 경과 시간이 캐시 유지 시간 안이고 활성 맥락이 발동 기준보다 작다.
+4. `sessions`는 새 session 대신 보관한 Claude session을 재개하고, 그 session이 받은 기록 번호 뒤의 변경분만 붙여 보낸다.
+5. Claude는 원래 맥락과 캐시를 그대로 쓰며 Codex가 한 일을 이어받는다.
 
 ### 보조 에이전트 결과를 메인 에이전트가 받기
 
@@ -123,21 +131,35 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 ### 메인 에이전트와 보조 에이전트
 
 1. `sessions`는 채팅마다 메인 에이전트 하나를 유지한다.
-2. 모델이나 provider가 바뀌면 `sessions`는 새 메인 에이전트를 시작하고, 이전 메인 에이전트는 인수 뒤 종료한다.
+2. 모델이나 provider가 바뀌면 `sessions`는 대상 provider의 메인 session을 재개하거나 새로 시작하고, 이전 메인 session은 인수 뒤 닫고 provider session ID를 보관한다.
 3. judge가 무관한 작업으로 판단하면 `queue`는 채팅에 속한 보조 에이전트를 시작한다.
 4. 보조 에이전트는 끝나면 결과를 전달한 뒤 바로 종료한다.
 
-살아 있는 메인 session은 `종료`가 아닌 메인 session이다. 같은 provider면 열린 session에 그대로 보내고, `닫힘·재개 가능`이나 `보류`면 보관한 provider session ID로 재개한다. 보관한 ID가 없거나 provider가 다르면 새 session을 연다. 보조 에이전트는 작업마다 새 session을 연다. 끝나면 바로 종료하므로 재개할 session이 없기 때문이다.
+살아 있는 메인 session은 `종료`가 아닌 메인 session이다. 열린 메인 session은 채팅마다 하나이고, `닫힘·재개 가능` 메인 session은 provider마다 하나까지 보관한다. 같은 provider의 더 오래된 보관 session은 `종료`로 둔다. 같은 provider면 열린 session에 그대로 보내고, `닫힘·재개 가능`이나 `보류`면 보관한 provider session ID로 재개한다. provider가 다르면 그 provider로 돌아가기 규칙으로 재개와 새 session을 가른다. 보관한 ID가 없으면 새 session을 연다. 보조 에이전트는 작업마다 새 session을 연다. 끝나면 바로 종료하므로 재개할 session이 없기 때문이다.
 
 보조 에이전트가 물려받는 설정 층은 [설정](settings.md)에 있다. judge가 무엇을 묻는지는 [judge](judge.md)에 있다.
 
 ### provider 전환
 
-한 채팅 안에서 Codex와 Claude를 바꿔 가도 채팅은 하나로 이어진다. 채팅마다 살아 있는 session은 하나다. `sessions`는 입력을 보내는 순간 대상 session을 정한다.
+한 채팅 안에서 Codex와 Claude를 바꿔 가도 채팅은 하나로 이어진다. 채팅마다 열린 메인 session은 하나다. `sessions`는 입력을 보내는 순간 대상 session을 정한다.
 
 session 교체는 같은 채팅·역할 안에서 턴이 끝난 경계에만 한다. 진행 중인 턴이 교체로 끊기는 일을 막기 위해서다. session ID는 재사용하지 않는다. 대기열은 에이전트 session이 아니라 채팅에 둔다. 교체 중 들어온 입력이 옛 session을 가리키는 일을 막기 위해서다. 교체 중 들어온 입력은 새 session에 들어온 순서대로 보낸다. 입력 순서를 교체와 무관하게 지키기 위해서다.
 
 새 session에는 패킷을 넘기고, 그 뒤로는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. 새 session의 전달 기록 번호는 이전 session이 받은 번호보다 작아지지 않는다. 패킷이 그 번호까지의 기록을 담으므로 같은 결과를 두 번 붙이지 않기 위해서다. 패킷을 어떻게 고르는지는 [맥락 정리](context-management.md)에 있다.
+
+### 그 provider로 돌아가기
+
+provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 `sessions`는 다음 순서로 판정한다.
+
+1. 보관 session의 마지막 턴 뒤 경과 시간이 그 provider의 캐시 유지 시간 안이고, 그 session의 마지막 활성 맥락 `A`가 발동 기준 `T`보다 작으면 재개한다.
+2. 캐시 유지 시간 안이지만 `A ≥ T`면 새 session을 열고 패킷을 넘긴다.
+3. 캐시 유지 시간이 지났으면 패킷 크기 `P < A`일 때 새 session을 열고, 아니면 재개한다.
+
+- 재개하면 그 session이 마지막으로 받은 기록 번호 뒤의 변경분만 붙인다. 앞부분이 그대로인 맥락 뒤에 덧붙여 캐시와 원문 맥락을 함께 지키기 위해서다.
+- 변경분이 많으면 [맥락 고르기](context-selection.md) 순서로 고른다.
+- 2단계는 재개해도 곧 맥락 정리가 필요하기 때문이고, 3단계는 [맥락 정리](context-management.md)의 유휴 복귀 조건과 같은 식이다.
+- 판정은 경과 시간, `A`, `T`, `P`, 설정의 캐시 유지 시간만 쓰는 `sessions` 코드다. Codex 원격 압축 요약처럼 맥락 내용을 볼 수 없어도 같은 규칙으로 판정하기 위해서다.
+- 재개한 session의 첫 턴 캐시 적중은 [#10](https://github.com/woonyong-choi/saturn/issues/10)에서 잰다.
 
 ### session 닫기와 재개
 
@@ -151,7 +173,7 @@ session 교체는 같은 채팅·역할 안에서 턴이 끝난 경계에만 한
 
 1. `sessions`는 session마다 마지막으로 전달받은 기록 번호를 기록한다.
 2. 다음 입력 때 `sessions`는 그 기록 번호 뒤에 쌓인 다른 에이전트의 결과 요약과 수정 파일 경로를 붙인다.
-3. 쌓인 양이 많을 때만 judge가 관련 항목을 고른다.
+3. 쌓인 항목이 judge 상위 N개보다 많으면 [맥락 고르기](context-selection.md) 순서로 좁힌 뒤 judge가 관련 항목을 고른다.
 
 에이전트끼리 직접 통신하지 않는다. 보조 에이전트 결과로 쉬는 메인 에이전트를 깨우지 않고, 메인 에이전트의 다음 입력 때 전달한다. 두 규칙 모두 맥락 전달을 Saturn 기록 번호 하나로 맞추기 위해서다.
 
@@ -200,9 +222,9 @@ session 교체는 같은 채팅·역할 안에서 턴이 끝난 경계에만 한
 | 상태 | 뜻 | 다음 상태 |
 |---|---|---|
 | `열림` | provider 대화에 연결 중인 session | `닫힘·재개 가능`, `보류`, `종료` |
-| `닫힘·재개 가능` | 유예 뒤 닫고 provider session ID를 보관한 session | `열림`, `종료` |
+| `닫힘·재개 가능` | 유예 뒤나 provider 전환 뒤 닫고 provider session ID를 보관한 session | `열림`, `종료` |
 | `보류` | 멈춤이나 증명되지 않은 크래시로 보류한 session | `열림`, `종료` |
-| `종료` | 교체나 보류 종료로 끝난 session | 없음 |
+| `종료` | 새 session으로 교체됐거나, 같은 provider의 새 보관 session에 밀렸거나, 보류 종료로 끝난 session | 없음 |
 
 크래시 뒤 session을 어떻게 나누는지는 [engine 수명과 복구](engine-lifecycle.md)에 있다.
 
@@ -223,7 +245,8 @@ session 교체는 같은 채팅·역할 안에서 턴이 끝난 경계에만 한
 
 | 요구사항 | 검증 계획 |
 |---|---|
-| 채팅마다 살아 있는 session은 하나다. | provider를 바꾼 뒤 한 채팅에 열린 session이 하나뿐인지 확인한다. |
+| 채팅마다 열린 메인 session은 하나이고, 보관 session은 provider마다 하나까지다. | provider를 두 번 바꾼 뒤 열린 session이 하나이고 provider마다 보관 session이 하나 이하인지 확인한다. |
+| 캐시 유지 시간 안이고 `A < T`인 보관 session으로 돌아가면 재개하고 변경분만 붙인다. | 경과 시간, `A`, `T`, `P` 조합마다 재개와 새 session 판정이 규칙과 같은지 확인한다. |
 | session 교체 뒤 새 session에는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. | 교체 뒤 첫 입력에 이미 받은 기록 번호의 결과가 다시 붙지 않는지 확인한다. |
 | Saturn 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. | 사용자 설정에 값이 있는 항목의 인자가 실행 명령에 없는지 확인한다. |
 | 작업 끝은 메인 에이전트와 모든 subagent가 끝난 때로 판정한다. | 답이 먼저 나오고 subagent가 남은 경우 트리 유휴가 되지 않는지 확인한다. |
