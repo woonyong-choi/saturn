@@ -668,7 +668,7 @@ mod tests {
             "로그인 실패 고쳐 줘",
             DEFAULT_RRF_K,
         );
-        let ordered = order_after_judge(&ranked, &[], 0.5);
+        let ordered = order_after_judge(&ranked, &[]);
         let source = PacketSource {
             competitors: ordered
                 .iter()

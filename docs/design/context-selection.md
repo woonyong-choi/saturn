@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [judge가 후보 전체를 판단하고 코드 순위는 대체 순서로만 쓴다](../decisions/2026-10-01-judge-all-candidates.md), [같은 뜻 찾기는 judge에 맡기고 용어 카탈로그를 두지 않는다](../decisions/2026-10-01-judge-decides-synonyms.md) |
+| 관련 결정 | [judge가 후보 전체를 판단하고 코드 순위는 대체 순서로만 쓴다](../decisions/2026-10-01-judge-all-candidates.md), [같은 뜻 찾기는 judge에 맡기고 용어 카탈로그를 두지 않는다](../decisions/2026-10-01-judge-decides-synonyms.md), [경쟁 구역은 기준값 없이 judge 남김 확률 순으로 예산까지 채운다](../decisions/2026-10-02-fill-packet-by-probability.md) |
 
 ## 요약
 
@@ -21,7 +21,7 @@
 2. `sessions`는 도구 호출 150개에 파일 겹침, 단어 겹침, 최근성 순위를 매기고 RRF로 합친다.
 3. 12턴의 `/v2/auth` 응답은 `auth/` 경로와 `로그인` 단어가 겹쳐 상위에 든다.
 4. engine은 150개 전체를 `compact` 질문으로 judge에 묻는다. 질문 300개와 state가 요청 한 건의 크기 한도를 넘으면 질문 단위로 나눠 보낸다.
-5. `sessions`는 judge가 남기라고 한 항목을 확률이 높은 순으로, 같은 확률이면 순위 순으로 패킷의 경쟁 구역에 채운다.
+5. `sessions`는 항목을 남김 확률이 높은 순으로, 같은 확률이면 순위 순으로 패킷의 경쟁 구역에 예산이 찰 때까지 채운다.
 
 ### judge가 답하지 않을 때
 
@@ -112,14 +112,15 @@
 
 1. 후보 전체를 judge에 묻는다. 후보 수로 줄이지 않는다.
 2. 요청이 크기 한도를 넘으면 질문 단위로 나눠 여러 요청으로 병렬 전송하고, 조각마다 같은 state를 싣는다. 동시 수와 한도는 [judge 호출](judge.md#judge-호출)에 있다.
-3. 최종 순서는 judge가 남기라고 한 항목을 확률이 높은 순으로 두고, 같은 확률이면 RRF 순으로 둔다.
-4. judge가 버리라고 한 항목은 뺀다.
-5. judge가 답하지 못한 항목은 남기고, 답이 있는 남긴 항목 뒤에 RRF 순으로 둔다. 실패한 조각의 항목도 같다.
+3. 항목의 남김 확률은 `call_<id>_keep`과 `result_<id>_keep` 중 큰 값이다. 하나만 답했으면 그 값이다.
+4. 최종 순서는 답이 있는 항목을 남김 확률이 높은 순으로 두고, 같은 확률이면 RRF 순으로 둔다. 기준값은 없고 확률이 낮은 항목도 빼지 않는다.
+5. judge가 답하지 못한 항목은 답이 있는 항목 뒤에 RRF 순으로 둔다. 실패한 조각의 항목도 같다.
 6. judge가 전부 답하지 못하면 RRF 순서로 경쟁 구역의 예산까지 채운다.
 
 - judge가 남길 항목을 순위로 미리 자르지 않기 위해서다. 후보 전체를 판단한 측정에서 남은 항목 중 RRF 상위 10개에 든 비율은 12.0% [9.2, 15.6]였고 무작위 기대값은 8.7%였다. 상위 40개도 44.5% [39.7, 49.4]였고, 95%에 닿으려면 후보 중앙값 127개보다 많은 132~133개가 필요했다([#116](https://github.com/woonyong-choi/saturn/issues/116) 측정).
 - 전체를 묻는 비용은 낮다. 기준 judge의 입력 비용은 100만 토큰당 $0.042이고 같은 질문의 일치율은 98.4%였다([#116](https://github.com/woonyong-choi/saturn/issues/116) 측정).
-- RRF 순위는 judge 판단을 보조하는 값이다. judge가 답하지 못할 때의 순서와 같은 확률일 때의 순서만 정하므로, 순위가 낮아도 judge가 남기라고 하면 들어간다.
+- 기준값을 두지 않는다. 근거 항목의 남김 확률은 평균 0.372, 최댓값 0.65여서 기준값 0.5가 근거 항목 624개 중 549개(88.0%)를 버렸고, 기준값 없이 확률 순으로 채우면 필요한 근거가 모두 든 질문이 11.7%에서 65.6%가 됐다. 확률은 근거와 비근거를 잘 가르므로(AUC 0.940) 순서에만 쓴다([결정 기록](../decisions/2026-10-02-fill-packet-by-probability.md), [후속 분석](../experiments/handoff-packet-quality/report.md#후속-분석-원인)).
+- RRF 순위는 judge 판단을 보조하는 값이다. judge가 답하지 못할 때의 순서와 같은 확률일 때의 순서만 정하므로, 순위가 낮아도 judge가 답하면 먼저 들어간다.
 - 나누는 규칙은 `core`가 요청 목록을 만드는 순수 함수이고, 전송과 응답 모으기는 engine이 한다. `core`가 네트워크를 다루지 않기 위해서다.
 
 ### 도구 결과 메모
@@ -179,7 +180,8 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 도구 결과 메모의 종료 코드, 경로, 줄 수를 provider와 무관하게 이벤트에서 얻는다. | [provider 연결과 session](providers-and-sessions.md#요구사항)의 도구 호출 값 행 |
 | 후보 전체를 judge에 묻는다. | `saturn-terminal/core/src/judges/mod.rs`의 `compact_questions_150_candidates_ask_all` |
 | 요청이 크기 한도를 넘으면 질문 단위로 나누고 조각마다 같은 state를 싣는다. | `saturn-terminal/core/src/judges/split.rs`의 `split_request_over_limit_splits_by_question_with_same_state`, `saturn-terminal/core/src/judges/mod.rs`의 `compact_requests_large_state_splits_and_every_piece_carries_state` |
-| 최종 순서는 남긴 항목의 확률 순이고 같은 확률이면 RRF 순이다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_judge_kept_by_probability_and_drops_rejected`, `order_after_judge_same_probability_follows_rrf_order` |
+| 최종 순서는 답이 있는 항목의 남김 확률 순이고 같은 확률이면 RRF 순이며 확률이 낮은 항목도 빼지 않는다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_judge_orders_by_probability_and_keeps_low`, `order_after_judge_same_probability_follows_rrf_order` |
+| 항목의 남김 확률은 호출과 결과 중 큰 값이다. | `saturn-terminal/core/src/judges/mod.rs`의 `compact_verdicts_takes_larger_of_call_and_result` |
 | 답이 없는 항목(실패한 조각 포함)은 RRF 순으로 뒤에 둔다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_judge_unanswered_follow_answered_in_rrf_order`, `saturn-terminal/core/src/judges/mod.rs`의 `compact_verdicts_merges_pieces_and_skips_failed_piece` |
 | judge가 전부 답하지 못하면 RRF 순서로 예산까지 채운다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_judge_no_verdicts_keeps_rrf_order`, `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_judge_no_response_fills_in_rrf_order` |
 | 띄어쓰기와 조사가 달라도 같은 한글 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_spacing_and_particle_share_hangul_bigrams` |
@@ -208,6 +210,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 - RRF 상위 N개만 judge에 묻는 방식은 judge가 남길 항목을 상위 10개에서 12.0%, 상위 40개에서도 44.5%만 담아 버렸다([결정 기록](../decisions/2026-10-01-judge-all-candidates.md)).
 - 채널 점수의 가중합은 단위가 다른 점수의 가중치를 따로 학습해야 해 버렸다([결정 기록](../decisions/2026-10-01-ranked-candidates-before-judge.md)).
+- 남김 확률 0.5 이상만 경쟁 구역에 넣는 방식은 근거 항목의 88.0%를 버려 버렸다([결정 기록](../decisions/2026-10-02-fill-packet-by-probability.md)).
 - 임베딩 채널을 기본으로 넣는 방식은 같은 뜻 질의에서 이득이 없고 단어가 겹치는 질의의 재현율과 설치 크기, 상주 메모리를 잃어 버렸다([결정 기록](../decisions/2026-10-01-judge-decides-synonyms.md), [실험 보고서](../experiments/embedding-synonym/report.md)).
 - 입력마다 LLM으로 사실 문장을 뽑는 방식은 호출과 출력 비용이 들고 원문 대신 생성문을 저장해 버렸다.
 

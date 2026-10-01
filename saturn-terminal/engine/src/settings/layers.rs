@@ -44,7 +44,6 @@ resume_held = 0.85
 file_present = 0.7
 file_absent = 0.35
 context_gate = 0.3
-compact_keep = 0.5
 injection = 0.7
 progressing = 0.2
 feedback_cause = 0.7
@@ -106,7 +105,6 @@ const SCHEMA: &[(&str, Kind)] = &[
     ("judge.thresholds.file_present", Kind::Unit),
     ("judge.thresholds.file_absent", Kind::Unit),
     ("judge.thresholds.context_gate", Kind::Unit),
-    ("judge.thresholds.compact_keep", Kind::Unit),
     ("judge.thresholds.injection", Kind::Unit),
     ("judge.thresholds.progressing", Kind::Unit),
     ("judge.thresholds.feedback_cause", Kind::Unit),

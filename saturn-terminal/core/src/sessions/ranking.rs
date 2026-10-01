@@ -55,26 +55,19 @@ pub fn rank_candidates(
     fused.into_iter().map(|(_, seq)| seq).collect()
 }
 
-// cost: time O(c + j log j), heap O(c), stack O(1), alloc 2
-// vars: c = 후보 수, j = judge가 남긴 후보 수
+// cost: time O(c log c), heap O(c), stack O(1), alloc 2
+// vars: c = 후보 수
 // basis: estimate
-/// judge가 남기라고 한 항목을 확률 높은 순으로 두고, 같은 확률이면 RRF 순이다.
-/// judge가 버리라고 한 항목은 뺀다. 답이 없는 항목(실패한 조각 포함)은 RRF 순으로 뒤에 둔다.
+/// judge가 답한 항목을 남길 확률이 높은 순으로 두고, 같은 확률이면 RRF 순이다.
+/// 기준값이 없어 확률이 낮아도 빼지 않는다. 답이 없는 항목(실패한 조각 포함)은 RRF 순으로 뒤에 둔다.
 /// `verdicts`가 비면 judge가 전부 답하지 못한 것이라 RRF 순서 그대로다.
-pub fn order_after_judge(
-    ranked: &[LedgerSeq],
-    verdicts: &[(LedgerSeq, f64)],
-    keep_threshold: f64,
-) -> Vec<LedgerSeq> {
+pub fn order_after_judge(ranked: &[LedgerSeq], verdicts: &[(LedgerSeq, f64)]) -> Vec<LedgerSeq> {
     let answered: HashMap<LedgerSeq, f64> = verdicts.iter().copied().collect();
     let mut kept: Vec<(usize, f64, LedgerSeq)> = Vec::new();
     let mut unanswered: Vec<LedgerSeq> = Vec::new();
     for (position, seq) in ranked.iter().enumerate() {
         match answered.get(seq) {
-            Some(&probability) if probability >= keep_threshold => {
-                kept.push((position, probability, *seq));
-            }
-            Some(_) => {}
+            Some(&probability) => kept.push((position, probability, *seq)),
             None => unanswered.push(*seq),
         }
     }
@@ -293,11 +286,11 @@ mod tests {
     fn order_after_judge_no_verdicts_keeps_rrf_order() {
         let ranked = seqs(&[5, 4, 3, 2, 1]);
 
-        assert_eq!(order_after_judge(&ranked, &[], 0.5), ranked);
+        assert_eq!(order_after_judge(&ranked, &[]), ranked);
     }
 
     #[test]
-    fn order_after_judge_kept_by_probability_and_drops_rejected() {
+    fn order_after_judge_orders_by_probability_and_keeps_low() {
         let ranked = seqs(&[5, 4, 3, 2, 1]);
         let verdicts = [
             (LedgerSeq(5), 0.6),
@@ -307,9 +300,9 @@ mod tests {
             (LedgerSeq(1), 0.8),
         ];
 
-        let ordered = order_after_judge(&ranked, &verdicts, 0.5);
+        let ordered = order_after_judge(&ranked, &verdicts);
 
-        assert_eq!(ordered, seqs(&[4, 1, 2, 5]));
+        assert_eq!(ordered, seqs(&[4, 1, 2, 5, 3]));
     }
 
     #[test]
@@ -321,7 +314,7 @@ mod tests {
             (LedgerSeq(5), 0.8),
         ];
 
-        let ordered = order_after_judge(&ranked, &verdicts, 0.5);
+        let ordered = order_after_judge(&ranked, &verdicts);
 
         assert_eq!(ordered, seqs(&[5, 4, 3]));
     }
@@ -331,8 +324,8 @@ mod tests {
         let ranked = seqs(&[5, 4, 3, 2, 1]);
         let verdicts = [(LedgerSeq(2), 0.7), (LedgerSeq(4), 0.1)];
 
-        let ordered = order_after_judge(&ranked, &verdicts, 0.5);
+        let ordered = order_after_judge(&ranked, &verdicts);
 
-        assert_eq!(ordered, seqs(&[2, 5, 3, 1]));
+        assert_eq!(ordered, seqs(&[2, 4, 5, 3, 1]));
     }
 }

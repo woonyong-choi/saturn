@@ -20,3 +20,4 @@
 | 2026-10-01 | [후보 순위는 임베딩 없이 단어 기반과 용어 카탈로그로 시작한다](2026-10-01-lexical-ranking-with-term-catalog.md) | 대체됨 |
 | 2026-10-01 | [judge가 후보 전체를 판단하고 코드 순위는 대체 순서로만 쓴다](2026-10-01-judge-all-candidates.md) | 채택 |
 | 2026-10-01 | [같은 뜻 찾기는 judge에 맡기고 용어 카탈로그를 두지 않는다](2026-10-01-judge-decides-synonyms.md) | 채택 |
+| 2026-10-02 | [경쟁 구역은 기준값 없이 judge 남김 확률 순으로 예산까지 채운다](2026-10-02-fill-packet-by-probability.md) | 채택 |
