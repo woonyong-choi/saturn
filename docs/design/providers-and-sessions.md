@@ -158,7 +158,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 - 재개하면 그 session이 마지막으로 받은 기록 번호 뒤의 변경분만 붙인다. 앞부분이 그대로인 맥락 뒤에 덧붙여 캐시와 원문 맥락을 함께 지키기 위해서다.
 - 변경분이 많으면 [맥락 고르기](context-selection.md) 순서로 고른다.
 - 2단계는 재개해도 곧 맥락 정리가 필요하기 때문이고, 3단계는 [맥락 정리](context-management.md)의 유휴 복귀 조건과 같은 식이다.
-- `sessions`는 보관 session마다 마지막 턴의 `A`와 끝 시각을 `record_last_turn`으로 받아 두고, 전송 대상을 정할 때 돌아갈 provider의 설정과 패킷 크기 `P`, 현재 시각(`ReturnInputs`)으로 `decide_return`을 부른다. 값을 저장하고 되살리는 일은 `store`의 몫이다. 마지막 턴 값이 없는 보관 session은 재개한다. 잴 수 없는 맥락을 이유로 새 session을 열지 않기 위해서다.
+- `sessions`는 보관 session마다 마지막 턴의 `A`와 끝 시각을 `record_last_turn`으로 받아 두고, 전송 대상을 정할 때 돌아갈 provider의 설정과 패킷 크기 `P`, 현재 시각(`ReturnInputs`)으로 `decide_return`을 부른다. 값을 저장하고 되살리는 일은 `store`의 몫이다. `engine`은 턴이 끝날 때 `store`의 `sessions` 표에 마지막 활성 맥락과 끝 시각을 먼저 쓰고 그다음 `record_last_turn`을 부른다. 시작할 때는 끝나지 않은 메인 session을 `register`하고 저장한 값으로 `record_last_turn`을 불러 재시작 전과 같은 판정을 낸다. 끝나지 않은 메인을 모두 되살리는 것은 다른 provider로 돌아갈 때 열려 있던 메인을 알아야 판정이 어긋나지 않기 때문이다. provider를 바꿀 때 `engine`은 떠나는 메인을 `set_state(ClosedResumable)`로 보관하고 새 session을 `register`하며, 그때 바뀐 같은 채팅의 session 상태를 한 거래로 저장한다. `Resume` 판정이면 `set_state(Open)`으로 돌리고 `attach_from`부터 붙인다. 마지막 턴 값이 없는 보관 session은 재개한다. 잴 수 없는 맥락을 이유로 새 session을 열지 않기 위해서다.
 - 판정은 경과 시간, `A`, `T`, `P`, 설정의 캐시 유지 시간만 쓰는 `sessions` 코드다. Codex 원격 압축 요약처럼 맥락 내용을 볼 수 없어도 같은 규칙으로 판정하기 위해서다.
 - 재개한 session의 첫 턴 캐시 적중은 [#10](https://github.com/woonyong-choi/saturn/issues/10)에서 잰다.
 
@@ -248,6 +248,8 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 |---|---|
 | 채팅마다 열린 메인 session은 하나이고, 보관 session은 provider마다 하나까지다. | `saturn-terminal/core/src/sessions/mod.rs`의 `provider_switches_keep_one_open_and_one_archive_per_provider`, `register_second_archive_ends_older_one_and_drops_its_last_turn` |
 | 캐시 유지 시간 안이고 `A < T`인 보관 session으로 돌아가면 재개하고 변경분만 붙인다. | `saturn-terminal/core/src/sessions/context.rs`의 `decide_return_matches_rule_table`, `saturn-terminal/core/src/sessions/mod.rs`의 `target_for_send_warm_below_threshold_resumes_archive` |
+| 재시작 뒤에도 보관 session의 재개 판정이 같다. | `saturn-terminal/engine/src/lifecycle/sessions.rs`의 `restart_resumes_archived_session_within_cache_ttl`, `restart_keeps_new_session_when_active_context_reaches_threshold`, `restart_keeps_new_session_when_cache_expired_and_packet_is_smaller`, `restart_resumes_when_cache_expired_and_packet_is_not_smaller`, `restart_without_last_turn_resumes_archived_session` |
+| provider를 바꿀 때 떠나는 메인은 보관하고, 보관과 재개 상태를 저장한다. | `saturn-terminal/engine/src/lifecycle/sessions.rs`의 `archive_main_ends_older_archive_and_saves_both_states`, `resume_main_opens_archive_and_returns_delivered_number` |
 | session 교체 뒤 새 session에는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. | 교체 뒤 첫 입력에 이미 받은 기록 번호의 결과가 다시 붙지 않는지 확인한다. |
 | Saturn 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. | 사용자 설정에 값이 있는 항목의 인자가 실행 명령에 없는지 확인한다. |
 | 작업 끝은 메인 에이전트와 모든 subagent가 끝난 때로 판정한다. | 답이 먼저 나오고 subagent가 남은 경우 트리 유휴가 되지 않는지 확인한다. |

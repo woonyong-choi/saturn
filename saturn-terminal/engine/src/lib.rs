@@ -15,6 +15,7 @@ pub mod training;
 
 mod chat_env;
 mod requests;
+mod sessions;
 mod usage;
 
 #[cfg(test)]
@@ -237,6 +238,7 @@ impl Engine {
         Self::ensure_not_nested(env.nested_marker.as_deref())?;
         let lock = Self::acquire_lock(&options)?;
         let (store, migration) = Self::open_store(&options).await?;
+        let sessions = sessions::restore_sessions(&store).await?;
         let settings = Self::merge_settings(&options, &store).await?;
         let verified = Self::verify_judge(&options, &store, &settings, env).await?;
         let rpc = Self::listen(&options, lock).await?;
@@ -255,7 +257,7 @@ impl Engine {
             chats: HashMap::new(),
             notices: StartNotices { migration },
             queue: Queue::new(),
-            sessions: SessionManager::new(),
+            sessions,
             agents: AgentTracker::new(),
             runs: Runs::default(),
             presence: Presence::Background { idle_since: None },

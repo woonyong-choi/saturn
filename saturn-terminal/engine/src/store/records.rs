@@ -331,22 +331,31 @@ impl Store {
 
     /// `idle_since`(`Instant`)는 저장하지 않는다.
     pub async fn upsert_session(&self, session: &SessionRecord) -> Result<(), StoreError> {
-        sqlx::query(
-            "INSERT INTO sessions (id, chat_id, agent_id, role, provider, provider_session, state, delivered) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET \
-             provider_session = excluded.provider_session, state = excluded.state, \
-             delivered = excluded.delivered",
-        )
-        .bind(to_sql_int(session.id.0))
-        .bind(to_sql_int(session.chat.0))
-        .bind(to_sql_int(session.agent.0))
-        .bind(role_text(session.role))
-        .bind(enum_text(&session.provider)?)
-        .bind(session.provider_session.as_ref().map(|id| id.0.clone()))
-        .bind(enum_text(&session.state)?)
-        .bind(to_sql_int(session.delivered.0))
-        .execute(&self.pool)
-        .await?;
+        self.upsert_sessions(std::slice::from_ref(session)).await
+    }
+
+    /// 모두 한 거래로 쓴다. 한 변경이 여러 session의 상태를 함께 바꾸기 때문이다.
+    pub async fn upsert_sessions(&self, sessions: &[SessionRecord]) -> Result<(), StoreError> {
+        let mut tx = self.pool.begin().await?;
+        for session in sessions {
+            sqlx::query(
+                "INSERT INTO sessions (id, chat_id, agent_id, role, provider, provider_session, state, delivered) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET \
+                 provider_session = excluded.provider_session, state = excluded.state, \
+                 delivered = excluded.delivered",
+            )
+            .bind(to_sql_int(session.id.0))
+            .bind(to_sql_int(session.chat.0))
+            .bind(to_sql_int(session.agent.0))
+            .bind(role_text(session.role))
+            .bind(enum_text(&session.provider)?)
+            .bind(session.provider_session.as_ref().map(|id| id.0.clone()))
+            .bind(enum_text(&session.state)?)
+            .bind(to_sql_int(session.delivered.0))
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
         Ok(())
     }
 
@@ -359,23 +368,7 @@ impl Store {
         .bind(to_sql_int(chat.0))
         .fetch_all(&self.pool)
         .await?;
-        rows.iter()
-            .map(|row| {
-                Ok(SessionRecord {
-                    id: SessionId(from_sql_int(row.try_get("id")?)),
-                    chat: ChatId(from_sql_int(row.try_get("chat_id")?)),
-                    agent: AgentId(from_sql_int(row.try_get("agent_id")?)),
-                    role: parse_role(row.try_get("role")?)?,
-                    provider: parse_enum(row.try_get("provider")?)?,
-                    provider_session: row
-                        .try_get::<Option<String>, _>("provider_session")?
-                        .map(ProviderSessionId),
-                    state: parse_enum(row.try_get("state")?)?,
-                    delivered: LedgerSeq(from_sql_int(row.try_get("delivered")?)),
-                    idle_since: None,
-                })
-            })
-            .collect()
+        rows.iter().map(session_from_row).collect()
     }
 
     /// 번호는 채팅 트리 전체에서 1부터 1씩 늘어난다. `Usage` 이벤트는 `record_usage`로 쓴다.
@@ -525,6 +518,22 @@ async fn spans_turns(
     Ok(pairs
         .iter()
         .any(|pair| matches!(pair, (Some(old), Some(new)) if new < old)))
+}
+
+pub(super) fn session_from_row(row: &SqliteRow) -> Result<SessionRecord, StoreError> {
+    Ok(SessionRecord {
+        id: SessionId(from_sql_int(row.try_get("id")?)),
+        chat: ChatId(from_sql_int(row.try_get("chat_id")?)),
+        agent: AgentId(from_sql_int(row.try_get("agent_id")?)),
+        role: parse_role(row.try_get("role")?)?,
+        provider: parse_enum(row.try_get("provider")?)?,
+        provider_session: row
+            .try_get::<Option<String>, _>("provider_session")?
+            .map(ProviderSessionId),
+        state: parse_enum(row.try_get("state")?)?,
+        delivered: LedgerSeq(from_sql_int(row.try_get("delivered")?)),
+        idle_since: None,
+    })
 }
 
 fn run_record(row: &SqliteRow) -> Result<RunRecord, StoreError> {
