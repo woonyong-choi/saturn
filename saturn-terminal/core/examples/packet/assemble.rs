@@ -11,8 +11,8 @@ use saturn_core::sessions::ranking::{Candidate, order_after_judge, rank_candidat
 use saturn_protocol::ids::LedgerSeq;
 use serde::Deserialize;
 
-use super::records::{Body, Record};
 use crate::args::PacketCondition;
+use crate::records::{Body, Record};
 
 /// `T`는 `P_max`의 10배다(`P_max = T / 10`).
 const BUDGET_TO_THRESHOLD: u64 = 10;
@@ -27,44 +27,44 @@ struct Tool<'a> {
 
 /// `--judgments` 파일. 둘 다 없어도 된다.
 #[derive(Debug, Default, Deserialize)]
-pub(super) struct Judgments {
+pub(crate) struct Judgments {
     /// `compact` 판단. 후보 기록 번호와 남길 확률.
     #[serde(default)]
-    pub(super) compact: Vec<Verdict>,
+    pub(crate) compact: Vec<Verdict>,
     /// 대체되지 않은 제약으로 판단한 사용자 입력의 기록 번호.
     #[serde(default)]
-    pub(super) constraints: Vec<u64>,
+    pub(crate) constraints: Vec<u64>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
-pub(super) struct Verdict {
-    pub(super) seq: u64,
-    pub(super) probability: f64,
+pub(crate) struct Verdict {
+    pub(crate) seq: u64,
+    pub(crate) probability: f64,
 }
 
 /// 순서를 정하는 규칙.
 #[derive(Debug, Clone, Copy)]
-pub(super) struct OrderRule {
-    pub(super) condition: PacketCondition,
-    pub(super) k: u32,
-    pub(super) top_n: usize,
-    pub(super) keep_threshold: f64,
+pub(crate) struct OrderRule {
+    pub(crate) condition: PacketCondition,
+    pub(crate) k: u32,
+    pub(crate) top_n: usize,
+    pub(crate) keep_threshold: f64,
 }
 
 #[derive(Debug)]
-pub(super) struct Assembled {
-    pub(super) source: PacketSource,
+pub(crate) struct Assembled {
+    pub(crate) source: PacketSource,
     /// 후보 전체의 RRF 순서.
-    pub(super) rrf_order: Vec<LedgerSeq>,
+    pub(crate) rrf_order: Vec<LedgerSeq>,
     /// 순서를 정하는 데 쓴 judge 판단 수.
-    pub(super) judged: usize,
+    pub(crate) judged: usize,
 }
 
 // cost: time O(L + c log c), heap O(L), stack O(1)
 // vars: L = 기록 글자 수, c = 후보 수
 // basis: estimate
 /// `after`가 있으면 그 번호 뒤의 도구 호출만 후보로 둔다(provider 요약 모드). 고정 구역은 기록 전체에서 만든다.
-pub(super) fn assemble(
+pub(crate) fn assemble(
     records: &[Record],
     after: Option<u64>,
     judgments: &Judgments,
@@ -106,7 +106,7 @@ pub(super) fn assemble(
 }
 
 /// `P_max = budget_tokens`가 되는 예산. 안전 비율은 100%, 창 크기는 `T`와 같게 둬 `T`가 그대로 기준이 된다.
-pub(super) fn budget_for(budget_tokens: u64) -> ContextBudget {
+pub(crate) fn budget_for(budget_tokens: u64) -> ContextBudget {
     let threshold = budget_tokens.saturating_mul(BUDGET_TO_THRESHOLD);
     ContextBudget {
         t_abs: threshold,

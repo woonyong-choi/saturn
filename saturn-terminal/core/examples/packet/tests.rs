@@ -1,42 +1,19 @@
-//! 개발용 `packet` 명령. 두 실험 설계의 입력 예로 패킷이 나오는지 본다.
-
-use std::io::Write;
-use std::process::{Command, Output, Stdio};
+//! 개발용 패킷 생성 예제. 두 실험 설계의 입력 예로 패킷이 나오는지 본다.
 
 use serde_json::{Value, json};
 use tempfile::TempDir;
 
-// cost: time O(L), heap O(L), stack O(1), io 1
+use clap::Parser;
+
+use crate::args::PacketArgs;
+use crate::{Rendered, run};
+
+// cost: time O(L), heap O(L), stack O(1)
 // vars: L = 입출력 글자 수
 // basis: estimate
-fn saturn() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_saturn"))
-}
-
-fn run_with_stdin(args: &[&str], stdin: &str) -> Output {
-    let mut child = saturn()
-        .arg("packet")
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(stdin.as_bytes())
-        .unwrap();
-    child.wait_with_output().unwrap()
-}
-
-fn stdout(output: &Output) -> String {
-    String::from_utf8(output.stdout.clone()).unwrap()
-}
-
-fn stderr(output: &Output) -> String {
-    String::from_utf8(output.stderr.clone()).unwrap()
+fn run_with_stdin(args: &[&str], stdin: &str) -> anyhow::Result<Rendered> {
+    let args = PacketArgs::try_parse_from(std::iter::once("packet").chain(args.iter().copied()))?;
+    run(&args, &mut stdin.as_bytes())
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -97,23 +74,12 @@ fn stream_events() -> Vec<Value> {
 // vars: n = 입력 항목 수
 // basis: estimate
 #[test]
-fn packet_help_does_not_list_dev_command() {
-    let output = saturn().arg("--help").output().unwrap();
-
-    assert!(!stdout(&output).contains("packet"));
-}
-
-// cost: time O(n), heap O(n), stack O(1)
-// vars: n = 입력 항목 수
-// basis: estimate
-#[test]
 fn packet_stream_input_prints_packet_text() {
     let input = stream_lines(&stream_events());
 
-    let output = run_with_stdin(&["--mode", "saturn", "--budget-tokens", "800"], &input);
+    let rendered = run_with_stdin(&["--mode", "saturn", "--budget-tokens", "800"], &input).unwrap();
 
-    assert!(output.status.success());
-    let text = stdout(&output);
+    let text = rendered.output;
     assert!(text.contains("## Goal and last input\n\nfix login in src/auth.rs"));
     assert!(text.contains("User: fix login in src/auth.rs\nAgent: fixed it"));
     assert!(text.contains("## Earlier records"));
@@ -129,7 +95,7 @@ fn packet_provider_mode_puts_summary_first_and_uses_records_after_it() {
     let summary = write(&dir, "summary.txt", "SUMMARY of the early work");
     let input = stream_lines(&stream_events());
 
-    let output = run_with_stdin(
+    let rendered = run_with_stdin(
         &[
             "--mode",
             "provider",
@@ -141,13 +107,13 @@ fn packet_provider_mode_puts_summary_first_and_uses_records_after_it() {
             "3",
         ],
         &input,
-    );
+    )
+    .unwrap();
 
-    assert!(output.status.success());
-    let text = stdout(&output);
+    let text = rendered.output;
     assert!(text.find("SUMMARY of the early work") < text.find("auth file body"));
     assert!(!text.contains("old file body"));
-    assert!(!stderr(&output).contains("summary_fallback"));
+    assert!(!rendered.is_summary_fallback);
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -159,7 +125,7 @@ fn packet_provider_mode_oversized_summary_falls_back_to_records() {
     let summary = write(&dir, "summary.txt", &"S".repeat(4_000));
     let input = stream_lines(&stream_events());
 
-    let output = run_with_stdin(
+    let rendered = run_with_stdin(
         &[
             "--mode",
             "provider",
@@ -171,12 +137,12 @@ fn packet_provider_mode_oversized_summary_falls_back_to_records() {
             "3",
         ],
         &input,
-    );
+    )
+    .unwrap();
 
-    assert!(output.status.success());
-    assert!(stderr(&output).contains("summary_fallback"));
-    assert!(!stdout(&output).contains("SSSS"));
-    assert!(stdout(&output).contains("auth file body"));
+    assert!(rendered.is_summary_fallback);
+    assert!(!rendered.output.contains("SSSS"));
+    assert!(rendered.output.contains("auth file body"));
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -184,10 +150,9 @@ fn packet_provider_mode_oversized_summary_falls_back_to_records() {
 // basis: estimate
 #[test]
 fn packet_provider_mode_without_summary_returns_error() {
-    let output = run_with_stdin(&["--mode", "provider", "--budget-tokens", "800"], "");
+    let error = run_with_stdin(&["--mode", "provider", "--budget-tokens", "800"], "").unwrap_err();
 
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("--summary-file"));
+    assert!(error.to_string().contains("--summary-file"));
 }
 
 fn tool_record(seq: u64, path: &str, result: &str) -> Value {
@@ -222,9 +187,8 @@ fn run_scenario(scenarios: &str, extra: &[&str]) -> Value {
         "60",
     ];
     args.extend_from_slice(extra);
-    let output = saturn().arg("packet").args(&args).output().unwrap();
-    assert!(output.status.success(), "{}", stderr(&output));
-    serde_json::from_str(&stdout(&output)).unwrap()
+    let rendered = run_with_stdin(&args, "").unwrap();
+    serde_json::from_str(&rendered.output).unwrap()
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -382,19 +346,18 @@ fn packet_missing_scenario_returns_error() {
     let dir = TempDir::new().unwrap();
     let scenarios = scenario_file(&dir);
 
-    let output = saturn()
-        .args([
-            "packet",
+    let error = run_with_stdin(
+        &[
             "--scenarios",
             &scenarios,
             "--scenario-id",
             "nope",
             "--budget",
             "250",
-        ])
-        .output()
-        .unwrap();
+        ],
+        "",
+    )
+    .unwrap_err();
 
-    assert!(!output.status.success());
-    assert!(stderr(&output).contains("scenario not found: nope"));
+    assert!(error.to_string().contains("scenario not found: nope"));
 }

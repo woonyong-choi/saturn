@@ -1,36 +1,40 @@
-//! 개발용 `packet` 명령. 실험 수집기가 `SATURN_PACKET_CMD`로 불러 `build_packet`과 후보 순위를 쓴다. engine에 붙지 않는다.
+//! 개발용 패킷 생성 예제. 실험 수집기가 `SATURN_PACKET_CMD`로 불러 `build_packet`과 후보 순위를 쓴다. engine에 붙지 않는다.
+//! 실행: `cargo run -q -p saturn-core --example packet -- <인자>`
 //! 설계: docs/experiments/ranked-handoff-quality/design.md, docs/experiments/claude-summary-handoff/design.md
 
+mod args;
 mod assemble;
 mod providers;
 mod records;
+#[cfg(test)]
+mod tests;
 
 use std::io::{Read, Write};
 use std::path::Path;
 
 use anyhow::{Context, bail};
+use clap::Parser;
 use saturn_core::sessions::packet::{
     Entry, PacketOutcome, build_packet, build_packet_with_summary,
 };
 use saturn_protocol::ids::LedgerSeq;
 use serde_json::json;
 
-use self::assemble::{Judgments, OrderRule, assemble, budget_for};
-use self::records::Record;
 use crate::args::{PacketArgs, PacketCondition, PacketFormat, PacketMode};
+use crate::assemble::{Judgments, OrderRule, assemble, budget_for};
+use crate::records::Record;
 
 // cost: time O(L), heap O(L), stack O(1), io 1
 // vars: L = 입출력 글자 수
 // basis: estimate
-/// 패킷을 표준 출력에 쓴다. 요약이 예산을 넘어 원문으로 채웠으면 표준 오류에 `summary_fallback`을 쓴다.
-///
-/// # Errors
-/// 입력을 읽을 수 없거나, `provider` 모드에 요약이 없거나, 고정 구역이 `P_hard`도 넘으면 오류.
-pub(crate) fn run(args: &PacketArgs) -> anyhow::Result<()> {
-    let records = read_records(args)?;
-    let judgments = read_judgments(args.judgments.as_deref())?;
-    let summary = read_summary(args)?;
-    let rendered = render(args, &records, &judgments, summary)?;
+fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_writer(std::io::stderr)
+        .init();
+
+    let args = PacketArgs::parse();
+    let rendered = run(&args, &mut std::io::stdin().lock())?;
     if rendered.is_summary_fallback {
         eprintln!("summary_fallback");
     }
@@ -40,6 +44,21 @@ pub(crate) fn run(args: &PacketArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
+// cost: time O(L), heap O(L), stack O(1), io 1
+// vars: L = 입출력 글자 수
+// basis: estimate
+/// 패킷 글을 만든다. `--scenarios`가 없을 때만 `stdin`에서 기록을 읽는다.
+///
+/// # Errors
+/// 입력을 읽을 수 없거나, `provider` 모드에 요약이 없거나, 고정 구역이 `P_hard`도 넘으면 오류.
+fn run(args: &PacketArgs, stdin: &mut dyn Read) -> anyhow::Result<Rendered> {
+    let records = read_records(args, stdin)?;
+    let judgments = read_judgments(args.judgments.as_deref())?;
+    let summary = read_summary(args)?;
+    render(args, &records, &judgments, summary)
+}
+
+#[derive(Debug)]
 struct Rendered {
     output: String,
     is_summary_fallback: bool,
@@ -110,14 +129,14 @@ fn seqs(seqs: &[LedgerSeq]) -> Vec<u64> {
 // cost: time O(L), heap O(L), stack O(1), io 1
 // vars: L = 입출력 글자 수
 // basis: estimate
-fn read_records(args: &PacketArgs) -> anyhow::Result<Vec<Record>> {
+fn read_records(args: &PacketArgs, stdin: &mut dyn Read) -> anyhow::Result<Vec<Record>> {
     if let (Some(path), Some(id)) = (&args.scenarios, &args.scenario_id) {
         let text = std::fs::read_to_string(path)
             .with_context(|| format!("failed to read scenarios: {}", path.display()))?;
         return records::from_scenarios(&text, id);
     }
     let mut text = String::new();
-    std::io::stdin()
+    stdin
         .read_to_string(&mut text)
         .context("failed to read records from stdin")?;
     providers::claude::from_stream(&text)

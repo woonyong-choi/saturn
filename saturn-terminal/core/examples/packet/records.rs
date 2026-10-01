@@ -7,13 +7,13 @@ use serde_json::Value;
 
 /// 기록 한 건. 번호는 입력이 정한 것을 그대로 쓴다.
 #[derive(Debug, Clone, PartialEq)]
-pub(super) struct Record {
-    pub(super) seq: u64,
-    pub(super) body: Body,
+pub(crate) struct Record {
+    pub(crate) seq: u64,
+    pub(crate) body: Body,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub(super) enum Body {
+pub(crate) enum Body {
     User(String),
     Agent(String),
     /// `result`가 `None`이면 끝나지 않은 호출이다.
@@ -47,7 +47,7 @@ struct ScenarioRecord {
 ///
 /// # Errors
 /// 줄을 읽을 수 없거나, 시나리오가 없거나, 모르는 `kind`면 오류.
-pub(super) fn from_scenarios(text: &str, scenario_id: &str) -> anyhow::Result<Vec<Record>> {
+pub(crate) fn from_scenarios(text: &str, scenario_id: &str) -> anyhow::Result<Vec<Record>> {
     for (index, line) in text
         .lines()
         .enumerate()
