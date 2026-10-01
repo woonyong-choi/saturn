@@ -24,9 +24,6 @@ pub(crate) struct PacketArgs {
     /// RRF 합치기 상수.
     #[arg(long, value_name = "K", default_value_t = DEFAULT_RRF_K)]
     pub(crate) k: u32,
-    /// judge가 남기는 확률의 하한.
-    #[arg(long, value_name = "P", default_value_t = 0.5)]
-    pub(crate) keep_threshold: f64,
     /// judge 판단 JSON(`compact`, `constraints`). 없으면 RRF 순서로 채운다.
     #[arg(long, value_name = "FILE")]
     pub(crate) judgments: Option<PathBuf>,

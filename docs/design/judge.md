@@ -95,7 +95,7 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 | `send-opt` | `steer_or_spawn` | `choice` | `target_model`과 함께 질문 | 확신도 0.6 미만이면 현재 에이전트에 대기 뒤 전송 |
 | `file-rank` | `file_<n>_relevant` | `noul` | 후보 파일 전체와 `answer_present`를 함께 질문. 0.7 이상은 존재, 0.35 미만은 없음 | 판단이 없으면 후보 순위 그대로 |
 | `context-select` | `pick` | `choice` | 게이트 `noul` 3개 평균이 0.3 미만이면 없음. 2차로 `fits_<n>` 질문 | 판단이 없으면 힌트 생략 |
-| `compact` | `call_<id>_keep` | `noul` | 후보 호출 전체에 `result_<id>_keep`과 함께 질문. 0.5 이상이면 유지, 남긴 항목은 확률이 높은 순, 같은 확률이면 후보 순위 순 | 답이 없는 항목은 후보 순위 순으로 남긴 항목 뒤에 두고, 판단이 전부 없으면 후보 순위 순서로 예산까지 채움 |
+| `compact` | `call_<id>_keep` | `noul` | 후보 호출 전체에 `result_<id>_keep`과 함께 질문. 기준값 없음. 항목의 확률은 두 답 중 큰 값이고, 확률이 높은 순, 같은 확률이면 후보 순위 순으로 예산까지 채움 | 답이 없는 항목은 후보 순위 순으로 답이 있는 항목 뒤에 두고, 판단이 전부 없으면 후보 순위 순서로 예산까지 채움 |
 | `doc-filter` | `injection` | `noul` | 조각마다 `relevant`, `evidence`, `contradiction`과 함께 질문. 0.7 이상이면 제외 | 판단이 없으면 문서 조각 생략 |
 | `loop` | `is_progressing` | `noul` | 0.2 미만이면 루프 | 판단이 없으면 멈춤과 사용자 알림 |
 | `feedback` | `wrong_doc` | `noul` | `misunderstood_intent`, `code_error`와 함께 질문. 0.7 이상인 원인만 사용 | 판단이 없으면 원문 그대로 전달 |

@@ -82,7 +82,6 @@ fn render(
         }),
         k: args.k,
         top_n: args.top_n,
-        keep_threshold: args.keep_threshold,
     };
     let assembled = assemble(records, after, judgments, &rule);
     let budget = budget_for(args.budget_tokens);

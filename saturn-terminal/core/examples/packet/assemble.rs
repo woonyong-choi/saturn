@@ -48,7 +48,6 @@ pub(crate) struct OrderRule {
     pub(crate) condition: PacketCondition,
     pub(crate) k: u32,
     pub(crate) top_n: usize,
-    pub(crate) keep_threshold: f64,
 }
 
 #[derive(Debug)]
@@ -77,7 +76,7 @@ pub(crate) fn assemble(
     let base_files = base_files(records, &turns, last_input);
     let rrf_order = rank_candidates(&candidates, &base_files, last_input, rule.k);
     let verdicts = usable_verdicts(&rrf_order, judgments, rule);
-    let ordered = order_after_judge(&rrf_order, &verdicts, rule.keep_threshold);
+    let ordered = order_after_judge(&rrf_order, &verdicts);
     let competitors = ordered
         .iter()
         .filter_map(|seq| tools.iter().find(|tool| tool.seq == seq.0))

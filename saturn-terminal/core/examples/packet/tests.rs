@@ -176,13 +176,17 @@ fn scenario_file(dir: &TempDir) -> String {
 }
 
 fn run_scenario(scenarios: &str, extra: &[&str]) -> Value {
+    run_scenario_with_budget(scenarios, "250", extra)
+}
+
+fn run_scenario_with_budget(scenarios: &str, budget: &str, extra: &[&str]) -> Value {
     let mut args = vec![
         "--scenarios",
         scenarios,
         "--scenario-id",
         "s01",
         "--budget",
-        "250",
+        budget,
         "--k",
         "60",
     ];
@@ -243,19 +247,22 @@ fn packet_without_judgments_fills_in_rrf_order() {
 // vars: n = 입력 항목 수
 // basis: estimate
 #[test]
-fn packet_judgments_drop_item_judge_rejected() {
+fn packet_judgments_put_low_probability_item_before_unanswered() {
     let dir = TempDir::new().unwrap();
     let scenarios = scenario_file(&dir);
-    let top = seqs(&run_scenario(&scenarios, &[])["rrf_order"])[0];
+    let baseline = run_scenario_with_budget(&scenarios, "150", &[]);
+    let last = *seqs(&baseline["rrf_order"]).last().unwrap();
     let judgments = write(
         &dir,
         "judgments.json",
-        &json!({"compact": [{"seq": top, "probability": 0.1}]}).to_string(),
+        &json!({"compact": [{"seq": last, "probability": 0.1}]}).to_string(),
     );
 
-    let result = run_scenario(&scenarios, &["--judgments", &judgments]);
+    let result = run_scenario_with_budget(&scenarios, "150", &["--judgments", &judgments]);
 
-    assert!(!seqs(&result["included"]).contains(&top));
+    let note = format!("cache note {last} ");
+    assert!(!baseline["packet"].as_str().unwrap().contains(&note));
+    assert!(result["packet"].as_str().unwrap().contains(&note));
     assert_eq!(result["judged"], 1);
 }
 
@@ -286,11 +293,12 @@ fn packet_rrf_only_condition_ignores_judgments() {
 fn packet_rrf_judge_ignores_verdicts_outside_top_n() {
     let dir = TempDir::new().unwrap();
     let scenarios = scenario_file(&dir);
-    let rrf = seqs(&run_scenario(&scenarios, &[])["rrf_order"]);
+    let rrf = seqs(&run_scenario_with_budget(&scenarios, "150", &[])["rrf_order"]);
+    let last = *rrf.last().unwrap();
     let judgments = write(
         &dir,
         "judgments.json",
-        &json!({"compact": [{"seq": rrf[0], "probability": 0.1}]}).to_string(),
+        &json!({"compact": [{"seq": last, "probability": 0.1}]}).to_string(),
     );
     let outside = [
         "--judgments",
@@ -299,15 +307,16 @@ fn packet_rrf_judge_ignores_verdicts_outside_top_n() {
         "rrf-judge",
     ];
 
-    let mut args_top = outside.to_vec();
-    args_top.extend(["--top-n", "1"]);
+    let mut args_all = outside.to_vec();
+    args_all.extend(["--top-n", "6"]);
     let mut args_none = outside.to_vec();
     args_none.extend(["--top-n", "0"]);
-    let used = run_scenario(&scenarios, &args_top);
-    let skipped = run_scenario(&scenarios, &args_none);
+    let used = run_scenario_with_budget(&scenarios, "150", &args_all);
+    let skipped = run_scenario_with_budget(&scenarios, "150", &args_none);
 
-    assert!(!seqs(&used["included"]).contains(&rrf[0]));
-    assert!(seqs(&skipped["included"]).contains(&rrf[0]));
+    let note = format!("cache note {last} ");
+    assert!(used["packet"].as_str().unwrap().contains(&note));
+    assert!(!skipped["packet"].as_str().unwrap().contains(&note));
 }
 
 // cost: time O(n), heap O(n), stack O(1)

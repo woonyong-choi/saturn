@@ -126,7 +126,6 @@ impl Settings {
             resume_held: value("resume_held"),
             file_relevant: (value("file_present"), value("file_absent")),
             context_gate: value("context_gate"),
-            compact_keep: value("compact_keep"),
             injection: value("injection"),
             progressing: value("progressing"),
             feedback_cause: value("feedback_cause"),

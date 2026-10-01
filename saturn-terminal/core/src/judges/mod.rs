@@ -216,7 +216,6 @@ pub struct Thresholds {
     pub file_relevant: (f64, f64),
     /// `context-select` 게이트 평균 없음 기준.
     pub context_gate: f64,
-    pub compact_keep: f64,
     /// `doc-filter`의 `injection` 제외 기준.
     pub injection: f64,
     /// `loop`의 `is_progressing`이 이 값 미만이면 루프.
@@ -233,7 +232,6 @@ impl Default for Thresholds {
             resume_held: 0.85,
             file_relevant: (0.7, 0.35),
             context_gate: 0.3,
-            compact_keep: 0.5,
             injection: 0.7,
             progressing: 0.2,
             feedback_cause: 0.7,
@@ -328,7 +326,7 @@ pub fn compact_questions(candidates: &[LedgerSeq]) -> (QuestionSetId, Vec<Questi
                     &format!("Should tool call {} stay in the handoff context?", seq.0),
                 ),
                 noul(
-                    &format!("result_{}_keep", seq.0),
+                    &compact_result_id(*seq),
                     &format!(
                         "Should the result of tool call {} stay in the handoff context?",
                         seq.0
@@ -362,23 +360,32 @@ pub fn compact_requests(
 // cost: time O(n·r·a), heap O(n), stack O(1)
 // vars: n = 후보 수, r = 응답 수, a = 응답당 답 수
 // basis: estimate
-/// 조각마다 받은 응답에서 `call_<id>_keep` 답을 `(기록 번호, P(yes))`로 모은다.
-/// 실패한 조각의 응답은 넘기지 않으며, 답이 없거나 `noul`이 아닌 후보는 뺀다.
+/// 조각마다 받은 응답에서 `call_<id>_keep`과 `result_<id>_keep` 답 중 큰 값을 `(기록 번호, P(yes))`로 모은다.
+/// 실패한 조각의 응답은 넘기지 않으며, 두 답이 모두 없거나 `noul`이 아닌 후보는 뺀다.
 pub fn compact_verdicts(
     candidates: &[LedgerSeq],
     responses: &[JudgeResponse],
 ) -> Vec<(LedgerSeq, f64)> {
+    let answers: Vec<&(String, Answer)> = responses
+        .iter()
+        .flat_map(|response| &response.answers)
+        .collect();
+    let yes_of = |id: &str| {
+        answers.iter().find_map(|(answer_id, answer)| match answer {
+            Answer::Noul(yes) if answer_id == id => Some(*yes),
+            _ => None,
+        })
+    };
     candidates
         .iter()
         .filter_map(|seq| {
-            let id = compact_call_id(*seq);
-            responses
-                .iter()
-                .flat_map(|response| &response.answers)
-                .find_map(|(answer_id, answer)| match answer {
-                    Answer::Noul(yes) if *answer_id == id => Some((*seq, *yes)),
-                    _ => None,
-                })
+            let call = yes_of(&compact_call_id(*seq));
+            let result = yes_of(&compact_result_id(*seq));
+            match (call, result) {
+                (Some(call), Some(result)) => Some((*seq, call.max(result))),
+                (Some(yes), None) | (None, Some(yes)) => Some((*seq, yes)),
+                (None, None) => None,
+            }
         })
         .collect()
 }
@@ -621,6 +628,10 @@ fn compact_call_id(seq: LedgerSeq) -> String {
     format!("call_{}_keep", seq.0)
 }
 
+fn compact_result_id(seq: LedgerSeq) -> String {
+    format!("result_{}_keep", seq.0)
+}
+
 fn set_id(name: &str) -> QuestionSetId {
     QuestionSetId {
         name: name.to_string(),
@@ -793,7 +804,6 @@ mod tests {
         assert_eq!(thresholds.resume_held, 0.85);
         assert_eq!(thresholds.file_relevant, (0.7, 0.35));
         assert_eq!(thresholds.context_gate, 0.3);
-        assert_eq!(thresholds.compact_keep, 0.5);
         assert_eq!(thresholds.injection, 0.7);
         assert_eq!(thresholds.progressing, 0.2);
         assert_eq!(thresholds.feedback_cause, 0.7);
@@ -1148,6 +1158,20 @@ mod tests {
         let verdicts = compact_verdicts(&candidates, &[first, second]);
 
         assert_eq!(verdicts, vec![(LedgerSeq(7), 0.9), (LedgerSeq(1), 0.4)]);
+    }
+
+    #[test]
+    fn compact_verdicts_takes_larger_of_call_and_result() {
+        let candidates = [LedgerSeq(7), LedgerSeq(3)];
+        let answers = response(vec![
+            ("call_7_keep", Answer::Noul(0.2)),
+            ("result_7_keep", Answer::Noul(0.65)),
+            ("result_3_keep", Answer::Noul(0.3)),
+        ]);
+
+        let verdicts = compact_verdicts(&candidates, &[answers]);
+
+        assert_eq!(verdicts, vec![(LedgerSeq(7), 0.65), (LedgerSeq(3), 0.3)]);
     }
 
     #[test]
