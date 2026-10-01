@@ -156,7 +156,7 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 - 속도 제한(429, 529)을 받으면 다른 실패와 같이 5초 뒤 다시 보내고, 남은 요청은 동시 수를 줄여 보낸다. 줄이는 폭은 정하지 않았다(초안).
 - 크기 한도는 토큰을 셀 수 없어 본문 바이트로 잰다(초안, 바이트 수는 토큰 수 이상이다). 나눌 때는 질문 단위로 나누고 조각마다 `state`를 그대로 싣는다. `core`의 `split_request`가 나눈 요청 목록을 만들고 `engine`이 보낸다. `state`와 질문 하나만으로 한도를 넘으면 나누지 못해 오류다.
 - 255개를 넘는 선택지는 254개씩 나누고 조각마다 `none of these`를 더해 한 요청에 묻고, 조각의 `none of these`가 아닌 확률로 조각 무게를 정해 원래 분포로 합친다(초안, [#68](https://github.com/woonyong-choi/saturn/issues/68) 전).
-- 응답 대기는 30초(초안)이고, 재시도 간격과 횟수는 [judge 실패](#judge-실패)에 있다. 리다이렉트는 허용 주소로 한 번만 인증 헤더를 뺀 채 따른다.
+- 응답 대기는 시도마다 5초(초안, 첫 시도 포함)이고, 재시도 간격과 횟수, 전체 마감은 [judge 실패](#judge-실패)에 있다. 리다이렉트는 허용 주소로 한 번만 인증 헤더를 뺀 채 따른다.
 - 연속 실패는 응답이 없는 실패(무응답, 보낸 뒤 시간 초과, 속도 제한 포기, 키 거절)만 센다. `invalid`와 `superseded`는 judge가 답한 것이라 세지 않는다.
 - state의 비밀값은 가리고, 절대 경로는 끝 이름만 남겨 `[abs]/이름`으로 바꾼다(초안). 다른 대화 원문은 state를 만드는 `core`가 넣지 않는다.
 
@@ -177,11 +177,11 @@ judge 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 
 1. 호출이 실패하면 5초 뒤 한 번 다시 보낸다.
 2. 다시 실패하면 5초 뒤 한 번 더 보낸다.
-3. 10초가 지나도 실패하면 로그에 `판단 모델 실패로 모델 선택을 건너뜁니다`를 남기고 현재 모델로 진행한다.
+3. 첫 실패부터 10초가 지나도 실패하면 진행 중인 시도도 끊고 로그에 `판단 모델 실패로 모델 선택을 건너뜁니다`를 남기고 현재 모델로 진행한다.
 
 - 다시 보내는 실패는 보내기 전에 확정된 실패, 응답 없음, 보낸 뒤 시간 초과, 속도 제한(429, 529)이다. 키 거절과 `invalid`는 judge가 답했거나 다시 보내도 같으므로 다시 보내지 않는다.
 - 보낸 뒤 시간 초과는 이미 처리됐을 수 있다. judge 판단은 부작용이 없는 조회라 다시 보내고, 처리됐을 수 있는 호출의 비용은 `cost-unknown`으로 기록한다. provider 입력의 재전송 규칙([입력 처리](input-handling.md))과 다른 이유다.
-- 간격은 응답의 `retry-after`와 무관하게 5초다. 속도 제한 규칙을 다른 실패와 하나로 맞추기 위해서다. 기다림은 10초이고 응답 대기(30초)는 시도마다 따로 쓰므로, 호출 하나는 최대 100초 뒤에 포기한다.
+- 간격은 응답의 `retry-after`와 무관하게 5초다. 속도 제한 규칙을 다른 실패와 하나로 맞추기 위해서다. 시도마다 응답을 5초까지 기다리되 첫 실패 시각부터 10초가 전체 마감이다. 마감까지 남은 시간이 5초보다 짧으면 그만큼만 기다리고, 마감에 걸린 시도는 끊는다. 응답 대기를 끊은 호출은 `cost-unknown`으로 센다. 응답이 아예 없으면 첫 시도 5초, 재시도 5초 대기 뒤 마지막 시도가 마감까지 5초를 기다려 첫 시도부터 최대 15초 뒤에 포기한다.
 - 입력 처리 판단(`route`, `relation`, `send-opt`)이 실패하면 모델 선택과 끼워 넣기·대기·새 작업 판단을 건너뛰고 현재 에이전트와 현재 모델로 보낸다. 실행 중이면 현재 에이전트의 턴에 끼워 넣고, 아니면 바로 보낸다. 입력을 대기로 보내지 않는다. judge 장애가 입력을 멈추지 않게 하기 위해서다.
 - 패킷의 `compact` 판단이 실패했을 때 judge가 시작한 전환(judge가 고른 모델이 현재와 달라 시작한 전환)은 건너뛰고 현재 모델로 진행한다. 순위 순서로 채운 패킷은 패킷 없음과 정답률이 같아(20.6%와 20.0%) 그 전환의 이득이 없기 때문이다([재측정 결과](../experiments/handoff-packet-quality-v2/report.md)).
 - 사용자가 모델을 고정했거나 맥락 크기 규칙이 시작한 전환은 `compact` 판단이 실패해도 전환한다. 경쟁 구역은 순위 순서로 채우고 로그에 `판단 모델 실패로 기록 선택을 건너뜁니다`를 남긴다.
@@ -195,8 +195,8 @@ judge 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 |---|---|
 | 판단 방식에 맞는 judge를 만들 수 없음 | 원인 한 줄을 보이고 실행하지 않고 끝낸다. |
 | 시작 확인 실패 | TUI에 키를 요청하고, 확인하기 전에는 일반 요청을 거절한다. |
-| 호출 실패(보내기 전 실패, 응답 없음, 보낸 뒤 시간 초과, 속도 제한) | 5초 간격으로 두 번 다시 보낸다. |
-| 재시도 10초 뒤에도 실패 | 로그를 남기고 현재 에이전트와 현재 모델로 진행하며 건너뛴 판단을 사유와 함께 기록한다. 입력을 대기로 보내지 않는다. |
+| 호출 실패(보내기 전 실패, 응답 없음, 보낸 뒤 시간 초과, 속도 제한) | 5초 간격으로 두 번 다시 보낸다. 시도마다 응답을 5초까지 기다린다. |
+| 첫 실패부터 10초 뒤에도 실패 | 로그를 남기고 현재 에이전트와 현재 모델로 진행하며 건너뛴 판단을 사유와 함께 기록한다. 입력을 대기로 보내지 않는다. |
 | 답의 후보 밖 선택, NaN, 확률 누락 | 판단을 `invalid`로 기록하고 질문별 대체 규칙을 적용한다. |
 | 판단 중 revision 변경 | 판단을 `superseded`로 기록한다. |
 | 연속 3회 호출 실패 | 입력 접수를 계속하고 상태판에 `판단 모델 연결 끊김`을 보인다. |
@@ -210,7 +210,7 @@ judge 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 |---|---|
 | judge를 확인하기 전에는 일반 요청을 받지 않는다. | judge 확인이 실패하는 환경에서 일반 요청이 거절되고, 키를 다시 확인한 뒤에는 처리되는지 확인한다. |
 | `invalid` 답이면 질문별 대체 규칙을 적용한다. | 질문마다 `invalid` 답을 주고 표의 대체 규칙이 적용되는지 확인한다. |
-| 호출이 실패하면 5초 뒤 한 번, 다시 5초 뒤 한 번 더 보내고 10초 뒤에도 실패하면 포기한다. | `saturn-terminal/core/src/judges/failure.rs`의 `retry_delay_waits_five_seconds_twice_then_gives_up`, `saturn-terminal/engine/src/judges/remote.rs`의 `failures_retry_twice_five_seconds_apart_then_give_up`, `first_retry_waits_five_seconds_before_sending` |
+| 호출이 실패하면 5초 뒤 한 번, 다시 5초 뒤 한 번 더 보내고 첫 실패부터 10초 뒤에도 실패하면 진행 중인 시도도 끊고 포기한다. 시도마다 응답 대기는 5초이고 응답이 없으면 15초 안에 포기한다. | `saturn-terminal/core/src/judges/failure.rs`의 `retry_delay_waits_five_seconds_twice_then_gives_up`, `retry_delay_gives_up_when_waiting_would_pass_the_deadline`, `saturn-terminal/engine/src/judges/remote.rs`의 `failures_retry_twice_five_seconds_apart_then_give_up`, `first_retry_waits_five_seconds_before_sending`, `no_response_at_all_gives_up_within_fifteen_seconds`, `immediate_failure_retries_at_five_and_ten_seconds_then_gives_up_at_the_deadline`, `attempt_after_a_slow_first_failure_is_cut_at_the_new_deadline` |
 | 보낸 뒤 시간 초과와 속도 제한도 같은 간격으로 다시 보내고, 키 거절과 `invalid`는 다시 보내지 않는다. | `saturn-terminal/engine/src/judges/remote.rs`의 `timeout_after_send_is_retried_and_counted_as_unknown_cost`, `rate_limit_retries_on_the_same_interval_ignoring_retry_after`, `auth_failure_and_invalid_status_are_not_retried` |
 | 입력 처리 판단이 실패하면 현재 에이전트와 현재 모델로 보내고 입력을 대기로 보내지 않는다. | `saturn-terminal/core/src/judges/failure.rs`의 `route_after_failure_idle_sends_to_current_agent_and_model`, `route_after_failure_running_steers_instead_of_queueing`, `route_after_failure_records_every_skipped_question` |
 | `compact` 판단이 실패하면 judge가 시작한 전환은 건너뛰고 강제한 전환은 순위 순서로 채운다. | `saturn-terminal/core/src/judges/failure.rs`의 `compact_failure_skips_judge_transition_and_fills_forced_one`, `compact_failure_forced_transition_orders_competing_zone_by_rank` |
@@ -229,7 +229,7 @@ judge 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 ## 단점
 
 - 입력마다 외부 judge를 부르므로 호출 비용과 지연이 입력 수에 비례한다.
-- judge가 실패하면 모델 선택과 처리 방식 판단 없이 현재 모델로 진행해 입력에 맞는 모델을 고르지 못하고, 재시도 때문에 입력 처리가 최대 10초 더 늦어진다.
+- judge가 실패하면 모델 선택과 처리 방식 판단 없이 현재 모델로 진행해 입력에 맞는 모델을 고르지 못하고, 재시도 때문에 입력 처리가 최대 15초 더 늦어진다.
 - judge 규격과 `judge_id` 매핑을 Saturn이 직접 정의하고 유지한다.
 - 큰 변경마다 옛 선택지에서 새 선택지로 가는 대응표를 코드에 함께 관리한다.
 - state에 앞 입력의 제약 등록 여부를 넣어도 judge는 그 값을 거의 쓰지 않아 간접 지시 입력 정확도가 오르지 않았다([간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)). 질문 문장에 규칙을 더하면 올랐지만 일반 제약 입력의 재현율이 떨어졌다.

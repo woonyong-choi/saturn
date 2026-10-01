@@ -7,11 +7,12 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
-use saturn_core::judges::failure::retry_delay;
+use saturn_core::judges::failure::{remaining_until_deadline, retry_delay};
 use saturn_core::judges::{
     Answer, AnswerKind, JudgeClient, JudgeError, JudgeRequest, JudgeResponse, Question,
 };
 use serde_json::{Map, Value, json};
+use tokio::time::Instant as TokioInstant;
 
 use super::{JudgeExchange, JudgesError, SharedSecrets};
 use crate::secrets::is_sensitive_header;
@@ -39,7 +40,7 @@ const OTHER_CHUNK_OPTION: &str = "none of these";
 /// TODO(#49): 설정 키 이름과 기본값
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RetryPolicy {
-    /// 보낸 뒤 이 시간이 지나면 `TimedOutAfterSend`.
+    /// 시도마다(첫 시도 포함) 보낸 뒤 이 시간이 지나면 `TimedOutAfterSend`.
     pub response_timeout: Duration,
 }
 
@@ -47,7 +48,7 @@ impl Default for RetryPolicy {
     /// 초안 값.
     fn default() -> Self {
         Self {
-            response_timeout: Duration::from_secs(30),
+            response_timeout: Duration::from_secs(5),
         }
     }
 }
@@ -293,15 +294,27 @@ impl RemoteJudge {
     }
 
     // cost: time O(r·t), heap O(b), stack O(1), io r
-    // vars: r = 시도 수(최대 3), t = 시도 하나의 응답 대기, b = 요청과 응답 본문 크기
+    // vars: r = 시도 수(최대 3), t = 시도 하나의 응답 대기(5초), b = 요청과 응답 본문 크기
     // basis: estimate
     /// 보내기 전 실패, 응답 없음, 속도 제한은 5초 간격으로 두 번까지 다시 보낸다. judge 판단은 부작용이 없는 조회라 보낸 뒤 시간 초과도 다시 보내고, 그 호출의 비용은 모른다고 센다.
+    ///
+    /// 첫 실패 시각부터 10초가 전체 마감이다. 시도는 응답을 5초까지 기다리되 마감까지 남은 시간을 넘기지 않고, 마감에 걸린 시도는 끊는다.
     async fn send_with_retry(&self, request: &JudgeRequest) -> SentPart {
         let body = judge_body(request).to_string();
         let mut failures = 0;
+        let mut first_failure = None;
         let mut unknown_cost_calls = 0;
         loop {
-            let error = match self.send_once(&body).await {
+            let since_first_failure =
+                first_failure.map_or(Duration::ZERO, |at: TokioInstant| at.elapsed());
+            let wait = self
+                .retry
+                .response_timeout
+                .min(remaining_until_deadline(since_first_failure));
+            let outcome = tokio::time::timeout(wait, self.send_once(&body))
+                .await
+                .unwrap_or(Err(SendFailure::TimedOutAfterSend));
+            let error = match outcome {
                 Ok(reply) => {
                     let result = parse_judge_reply(request, &reply);
                     return SentPart::new(body, Some(reply), result, unknown_cost_calls);
@@ -326,7 +339,8 @@ impl RemoteJudge {
                 Err(SendFailure::RateLimited) => JudgeError::RateLimited,
             };
             failures += 1;
-            let Some(delay) = retry_delay(failures) else {
+            let first = *first_failure.get_or_insert_with(TokioInstant::now);
+            let Some(delay) = retry_delay(failures, first.elapsed()) else {
                 return SentPart::new(body, None, Err(error), unknown_cost_calls);
             };
             tracing::warn!(failures, error = %error, "judge call failed, retrying");
@@ -977,6 +991,136 @@ pub(crate) mod tests {
         assert!(exchange.result.is_ok());
         assert_eq!(transport.calls().len(), 2);
         assert_eq!(started.elapsed(), Duration::from_secs(5));
+    }
+
+    /// 답을 정한 순서대로 주되 `None`인 호출은 끝내 응답하지 않는다. 호출 시각을 남긴다.
+    #[derive(Debug)]
+    struct ScriptedTransport {
+        script: StdMutex<VecDeque<Option<Result<HttpReply, TransportError>>>>,
+        started: tokio::time::Instant,
+        called_at: StdMutex<Vec<Duration>>,
+    }
+
+    impl ScriptedTransport {
+        fn new(script: Vec<Option<Result<HttpReply, TransportError>>>) -> Arc<Self> {
+            Arc::new(Self {
+                script: StdMutex::new(script.into()),
+                started: tokio::time::Instant::now(),
+                called_at: StdMutex::default(),
+            })
+        }
+
+        fn called_at_seconds(&self) -> Vec<u64> {
+            let times = self.called_at.lock().unwrap();
+            times.iter().map(Duration::as_secs).collect()
+        }
+    }
+
+    impl Transport for ScriptedTransport {
+        fn send<'a>(
+            &'a self,
+            _url: &'a str,
+            _headers: Vec<(String, String)>,
+            _body: Option<String>,
+            _timeout: Duration,
+        ) -> TransportFuture<'a> {
+            self.called_at.lock().unwrap().push(self.started.elapsed());
+            let step = self.script.lock().unwrap().pop_front().flatten();
+            Box::pin(async move {
+                match step {
+                    Some(reply) => reply,
+                    None => std::future::pending().await,
+                }
+            })
+        }
+    }
+
+    fn scripted_judge(secrets: SharedSecrets, transport: Arc<ScriptedTransport>) -> RemoteJudge {
+        RemoteJudge::with_transport(
+            "https://api.typesafe.ai",
+            "jev-1.13.0".to_owned(),
+            secrets,
+            RetryPolicy::default(),
+            transport,
+        )
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn no_response_at_all_gives_up_within_fifteen_seconds() {
+        let dir = tempfile::tempdir().unwrap();
+        let transport = ScriptedTransport::new(vec![None, None, None]);
+        let judge = scripted_judge(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+
+        let started = tokio::time::Instant::now();
+        let exchange = judge.exchange(request()).await;
+
+        assert!(matches!(
+            exchange.result,
+            Err(JudgeError::TimedOutAfterSend)
+        ));
+        assert_eq!(started.elapsed(), Duration::from_secs(15));
+        assert_eq!(transport.called_at_seconds(), vec![0, 10]);
+        assert_eq!(exchange.unknown_cost_calls, 2);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn immediate_failure_retries_at_five_and_ten_seconds_then_gives_up_at_the_deadline() {
+        let dir = tempfile::tempdir().unwrap();
+        let transport = ScriptedTransport::new(vec![
+            Some(Err(TransportError::BeforeSend)),
+            Some(Err(TransportError::BeforeSend)),
+            None,
+        ]);
+        let judge = scripted_judge(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+
+        let started = tokio::time::Instant::now();
+        let exchange = judge.exchange(request()).await;
+
+        assert!(matches!(
+            exchange.result,
+            Err(JudgeError::TimedOutAfterSend)
+        ));
+        assert_eq!(started.elapsed(), Duration::from_secs(10));
+        assert_eq!(transport.called_at_seconds(), vec![0, 5, 10]);
+        assert_eq!(exchange.unknown_cost_calls, 1);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn attempt_started_near_the_deadline_waits_only_the_remaining_time() {
+        let dir = tempfile::tempdir().unwrap();
+        let transport =
+            ScriptedTransport::new(vec![Some(Err(TransportError::BeforeSend)), None, None]);
+        let judge = scripted_judge(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+
+        let started = tokio::time::Instant::now();
+        let exchange = judge.exchange(request()).await;
+
+        assert!(matches!(
+            exchange.result,
+            Err(JudgeError::TimedOutAfterSend)
+        ));
+        assert_eq!(started.elapsed(), Duration::from_secs(10));
+        assert_eq!(transport.called_at_seconds(), vec![0, 5]);
+        assert_eq!(exchange.unknown_cost_calls, 1);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn attempt_after_a_slow_first_failure_is_cut_at_the_new_deadline() {
+        let dir = tempfile::tempdir().unwrap();
+        let transport =
+            ScriptedTransport::new(vec![None, Some(Err(TransportError::BeforeSend)), None]);
+        let judge = scripted_judge(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+
+        let started = tokio::time::Instant::now();
+        let exchange = judge.exchange(request()).await;
+
+        assert!(matches!(
+            exchange.result,
+            Err(JudgeError::TimedOutAfterSend)
+        ));
+        assert_eq!(started.elapsed(), Duration::from_secs(15));
+        assert_eq!(transport.called_at_seconds(), vec![0, 10, 15]);
+        assert_eq!(exchange.unknown_cost_calls, 2);
     }
 
     #[tokio::test(start_paused = true)]
