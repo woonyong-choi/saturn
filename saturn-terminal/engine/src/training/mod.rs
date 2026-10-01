@@ -112,12 +112,19 @@ pub async fn run(
     todo!("#91")
 }
 
-/// 느린 조정. 쓰인 결과가 `MIN_RECENTER_RESULTS` 미만인 질문은 그대로 둔다.
+/// 느린 조정. 결과 신호를 확정한 모든 판단 기록으로 `Observation` 목록을 만들어 질문마다 `recenter`에 넘긴다. 쓰인 결과가 `MIN_RECENTER_RESULTS` 미만인 질문은 그대로 둔다. 중심값과 최저값·최고값이 든 상태는 호출하는 쪽이 만든다.
+///
+/// # Errors
+/// 기록 조회 실패면 `Store`.
 pub async fn recenter_thresholds(
     store: &Store,
-    targets: &[String],
+    mut states: Vec<ThresholdState>,
 ) -> Result<Vec<ThresholdState>, TrainingError> {
-    todo!("#91")
+    let observations = store.observations().await?;
+    for state in &mut states {
+        state.recenter(&observations);
+    }
+    Ok(states)
 }
 
 /// `reset`이면 1차 영점으로 되돌린다.
@@ -156,4 +163,67 @@ pub async fn approve_swap(store: &Store, version: &str) -> Result<(), TrainingEr
 /// 승격된 모델도 버전별로 둔다. TODO(#91): 경로 미정
 pub fn models_dir(home: &std::path::Path) -> PathBuf {
     todo!("#91")
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use saturn_core::judges::calibration::{MIN_RECENTER_RESULTS, Signal};
+
+    use super::*;
+    use crate::store::test_judgment;
+    use crate::store::tests::temp_store;
+
+    const QUESTION: &str = "keep_current";
+
+    /// 행동한 판단(p = 0.9) 중 모두 틀림 신호를 받은 `count`건.
+    async fn store_with_wrong_actions(count: usize) -> (tempfile::TempDir, Store) {
+        let (dir, store) = temp_store().await;
+        let chat = store.create_chat(PathBuf::from("/work")).await.unwrap();
+        for _ in 0..count {
+            let id = store
+                .record_judgment(&test_judgment(chat))
+                .await
+                .unwrap()
+                .unwrap();
+            store.record_signal(id, Signal::Wrong).await.unwrap();
+        }
+        (dir, store)
+    }
+
+    fn state() -> ThresholdState {
+        ThresholdState::new(QUESTION, 0.8, (0.5, 0.95))
+    }
+
+    #[tokio::test]
+    async fn recenter_thresholds_with_enough_recorded_results_moves_center() {
+        let (_dir, store) = store_with_wrong_actions(MIN_RECENTER_RESULTS).await;
+
+        let states = recenter_thresholds(&store, vec![state()]).await.unwrap();
+
+        assert!(states[0].center > 0.8);
+    }
+
+    #[tokio::test]
+    async fn recenter_thresholds_below_min_results_keeps_center() {
+        let (_dir, store) = store_with_wrong_actions(MIN_RECENTER_RESULTS - 1).await;
+
+        let states = recenter_thresholds(&store, vec![state()]).await.unwrap();
+
+        assert_eq!(states[0].center, 0.8);
+    }
+
+    #[tokio::test]
+    async fn recenter_thresholds_ignores_judgments_still_being_observed() {
+        let (_dir, store) = temp_store().await;
+        let chat = store.create_chat(PathBuf::from("/work")).await.unwrap();
+        for _ in 0..MIN_RECENTER_RESULTS {
+            store.record_judgment(&test_judgment(chat)).await.unwrap();
+        }
+
+        let states = recenter_thresholds(&store, vec![state()]).await.unwrap();
+
+        assert_eq!(states[0].center, 0.8);
+    }
 }

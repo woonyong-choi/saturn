@@ -1,6 +1,7 @@
 //! engine 시작 순서, 요청 분배, 채팅 붙기 테스트. 가짜 judge 전송과 임시 폴더만 쓴다.
 
 mod attach;
+mod outcomes;
 mod requests;
 mod sessions;
 mod start;

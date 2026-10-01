@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 3;
 
 pub const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,7 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1, V2];
+pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -156,6 +156,12 @@ CREATE TABLE tombstones (
 const V2: &str = r#"
 ALTER TABLE sessions ADD COLUMN last_active INTEGER;
 ALTER TABLE sessions ADD COLUMN last_turn_ended_at INTEGER;
+"#;
+
+/// 판단 기록의 결과 신호와 물은 답. NULL은 관찰 중이거나 묻지 않았다는 뜻이다. 물은 확률 q는 V1의 `asked_with`다.
+const V3: &str = r#"
+ALTER TABLE judgments ADD COLUMN signal TEXT;
+ALTER TABLE judgments ADD COLUMN asked_answer TEXT;
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -300,7 +306,7 @@ mod tests {
     use std::fs::File;
 
     use super::*;
-    use crate::store::tests::{temp_store, temp_store_at_v1};
+    use crate::store::tests::{temp_store, temp_store_at};
 
     #[tokio::test]
     async fn backup_keeps_only_latest_file() {
@@ -360,7 +366,7 @@ mod tests {
 
     #[tokio::test]
     async fn failed_migration_rolls_back_whole_transaction() {
-        let (_dir, store) = temp_store_at_v1().await;
+        let (_dir, store) = temp_store_at(1).await;
         let steps = [
             MIGRATIONS[0],
             "CREATE TABLE half_done (id INTEGER); INSERT INTO missing_table VALUES (1);",
@@ -384,7 +390,7 @@ mod tests {
 
     #[tokio::test]
     async fn v1_file_migrates_to_last_turn_columns_keeping_sessions() {
-        let (dir, store) = temp_store_at_v1().await;
+        let (dir, store) = temp_store_at(1).await;
         sqlx::raw_sql(
             "INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0); \
              INSERT INTO sessions (id, chat_id, agent_id, role, provider, provider_session, state, delivered) \
@@ -409,7 +415,7 @@ mod tests {
 
     #[tokio::test]
     async fn migration_keeps_only_latest_backup_and_removes_old_ones() {
-        let (dir, store) = temp_store_at_v1().await;
+        let (dir, store) = temp_store_at(1).await;
         let stale = store.backup_before_migration(1).await.unwrap();
         let older = stale.with_file_name("saturn-v0-1.db");
         std::fs::rename(&stale, &older).unwrap();
@@ -421,5 +427,33 @@ mod tests {
         assert!(backup.exists());
         assert!(!older.exists());
         assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
+    }
+
+    #[tokio::test]
+    async fn v2_file_migrates_to_outcome_columns_keeping_judgments() {
+        let (dir, store) = temp_store_at(2).await;
+        sqlx::raw_sql(
+            "INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0); \
+             INSERT INTO judgments (id, chat_id, method, judge, model, question_sets, settings_revision, \
+             sent, answers, fallbacks, started_at, elapsed_ms, outcome, judge_version, thresholds, asked_with) \
+             VALUES (5, 1, 'jev', 'jev', 'm', '[]', 1, '{}', '[]', '[]', 0, 1, 'Ok', 'v1', '[]', 0.2)",
+        )
+        .execute(&store.pool)
+        .await
+        .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (2, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
+        let (asked_with, signal, answer): (f64, Option<String>, Option<String>) =
+            sqlx::query_as("SELECT asked_with, signal, asked_answer FROM judgments WHERE id = 5")
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        assert_eq!((asked_with, signal, answer), (0.2, None, None));
     }
 }

@@ -566,7 +566,7 @@ pub(crate) fn not_found(what: String) -> StoreError {
 }
 
 /// 이 실행 파일이 쓰지 않은 값이다.
-fn unknown_value(column: &str, text: &str) -> StoreError {
+pub(super) fn unknown_value(column: &str, text: &str) -> StoreError {
     StoreError::Database(sqlx::Error::Decode(
         format!("unknown {column} value: {text}").into(),
     ))
