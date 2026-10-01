@@ -9,4 +9,4 @@
 | [ranked-handoff-quality](ranked-handoff-quality/design.md) | 후보 순위와 judge 결합의 전환 품질 | [맥락 고르기](../design/context-selection.md) | 측정 전 |
 | [wordpiece-typo-recall](wordpiece-typo-recall/design.md) | 단어 조각 단위별 오타 재현율 | [맥락 고르기](../design/context-selection.md) | 측정 전 |
 | [term-catalog-precision](term-catalog-precision/design.md) | 용어 카탈로그 짝 정밀도와 묶음 확인 비용 | [용어 카탈로그](../design/term-catalog.md) | 측정 전 |
-| [constraint-judge-accuracy](constraint-judge-accuracy/design.md) | 제약 식별과 대체 판정 정확도 | [맥락 고르기](../design/context-selection.md), [judge](../design/judge.md) | 측정 전 |
+| [constraint-judge-accuracy](constraint-judge-accuracy/report.md) | 제약 식별과 대체 판정 정확도 | [맥락 고르기](../design/context-selection.md), [judge](../design/judge.md) | H1 채택: 정밀도 91.6% [84.8, 95.5], H2 채택: 재현율 93.3% [86.9, 96.7], H3~H6 보류 |

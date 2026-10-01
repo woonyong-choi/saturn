@@ -1,0 +1,110 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": {
+    "text": "가설별 비율과 95% Wilson 신뢰구간",
+    "subtitle": "n=H1 107, H2 105, H3 48, H4 92, H5 50, H6 30. 세로선은 가설별 채택 기준"
+  },
+  "width": 420,
+  "height": 220,
+  "data": {
+    "values": [
+      {
+        "hypothesis": "H1",
+        "value": 0.915888,
+        "low": 0.847831,
+        "high": 0.955118,
+        "criterion": 0.8
+      },
+      {
+        "hypothesis": "H2",
+        "value": 0.933333,
+        "low": 0.868744,
+        "high": 0.967334,
+        "criterion": 0.8
+      },
+      {
+        "hypothesis": "H3",
+        "value": 0.9375,
+        "low": 0.831646,
+        "high": 0.978517,
+        "criterion": 0.9
+      },
+      {
+        "hypothesis": "H4",
+        "value": 0.76087,
+        "low": 0.664379,
+        "high": 0.836449,
+        "criterion": 0.8
+      },
+      {
+        "hypothesis": "H5",
+        "value": 0.8,
+        "low": 0.669629,
+        "high": 0.887562,
+        "criterion": 0.8
+      },
+      {
+        "hypothesis": "H6",
+        "value": 0.866667,
+        "low": 0.703187,
+        "high": 0.946903,
+        "criterion": 0.7
+      }
+    ]
+  },
+  "encoding": {
+    "y": {
+      "field": "hypothesis",
+      "type": "nominal",
+      "title": null
+    }
+  },
+  "layer": [
+    {
+      "mark": "bar",
+      "encoding": {
+        "x": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": {
+            "domain": [
+              0,
+              1
+            ]
+          },
+          "title": "비율"
+        }
+      }
+    },
+    {
+      "mark": "errorbar",
+      "encoding": {
+        "x": {
+          "field": "low",
+          "type": "quantitative"
+        },
+        "x2": {
+          "field": "high"
+        }
+      }
+    },
+    {
+      "mark": "rule",
+      "encoding": {
+        "x": {
+          "field": "criterion",
+          "type": "quantitative"
+        },
+        "y": {
+          "field": "hypothesis",
+          "type": "nominal",
+          "bandPosition": 0
+        },
+        "y2": {
+          "field": "hypothesis",
+          "bandPosition": 1
+        }
+      }
+    }
+  ]
+}
