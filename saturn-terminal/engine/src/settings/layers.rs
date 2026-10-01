@@ -1,4 +1,4 @@
-//! 층 찾기, 병합, 사용자 전용 항목 거르기, 병합 결과 검사. 키 이름, 기본값, 검사 표는 초안이다(TODO(#49)).
+//! 층 찾기, 병합, 사용자 전용 항목 거르기, 병합 결과 검사.
 //! 설계: docs/design/settings.md
 
 use std::path::{Path, PathBuf};
@@ -21,9 +21,12 @@ const IRREVERSIBLE_THRESHOLDS: &[&str] = &[
 /// docs/design/judge-training.md
 const IRREVERSIBLE_MIN: f64 = 0.8;
 
-/// 질문별 기준값과 맥락 창 크기 외의 값은 초안이다(TODO(#49), 맥락 기준값은 #7 실측 전).
+/// 질문별 기준값과 맥락 창 크기 외의 값은 초안이다(맥락 기준값은 #7 실측 전).
 const DEFAULT_LAYER: &str = r#"# Saturn 기본값
 on_exit = "background"
+
+[agents]
+worktree = false
 
 [judge]
 method = "jev"
@@ -83,14 +86,15 @@ enum Kind {
     Percent,
 }
 
-/// 이 밖의 키는 모르는 키로 검사에 실패한다. 초안 목록(TODO(#49)).
+/// 이 밖의 키는 모르는 키로 검사에 실패한다.
 const SCHEMA: &[(&str, Kind)] = &[
     ("on_exit", Kind::OneOf(&["background", "stop", "ask"])),
+    ("agents.worktree", Kind::Flag),
     ("judge.method", Kind::OneOf(&["jev", "saturn", "collect"])),
     ("judge.endpoint", Kind::Text),
     (
         "judge.key.info.source",
-        Kind::OneOf(&["Stored", "Stdin", "Env", "Command"]),
+        Kind::OneOf(&["Stored", "Env", "Command"]),
     ),
     ("judge.key.info.last4", Kind::Text),
     ("judge.key.command", Kind::TextList),
@@ -701,6 +705,47 @@ mod tests {
             assert_eq!(key, expected);
             assert_eq!(layer, Layer::Chat);
         }
+    }
+
+    #[test]
+    fn agents_worktree_defaults_off_and_takes_only_booleans() {
+        let worktree = |settings: &Settings| {
+            settings
+                .lookup("agents.worktree")
+                .and_then(serde_json::Value::as_bool)
+        };
+        let off = merge(vec![layer(Layer::Default, default_layer())]).unwrap();
+        let on = merge(vec![
+            layer(Layer::Default, default_layer()),
+            layer(Layer::Folder, "[agents]\nworktree = true\n"),
+        ])
+        .unwrap();
+        let bad = merge(vec![
+            layer(Layer::Default, default_layer()),
+            layer(Layer::Chat, "agents.worktree = \"yes\"\n"),
+        ])
+        .unwrap_err();
+
+        assert_eq!(worktree(&off.settings), Some(false));
+        assert_eq!(worktree(&on.settings), Some(true));
+        assert!(matches!(bad, SettingsError::Invalid { key, .. } if key == "agents.worktree"));
+    }
+
+    #[test]
+    fn key_info_source_stdin_is_rejected() {
+        let layers = vec![
+            layer(Layer::Default, default_layer()),
+            layer(
+                Layer::User,
+                "[judge.key.info]\nsource = \"Stdin\"\nlast4 = \"abcd\"\n",
+            ),
+        ];
+
+        let error = merge(layers).unwrap_err();
+
+        assert!(
+            matches!(error, SettingsError::Invalid { key, .. } if key == "judge.key.info.source")
+        );
     }
 
     #[test]

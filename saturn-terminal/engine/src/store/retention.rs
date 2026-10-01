@@ -18,7 +18,7 @@ const LAST_ACTIVE: &str = "MAX(c.created_at, \
 /// 판단 기록과 설정 스냅샷은 넣지 않는다.
 const COUNTED_TABLES: [&str; 5] = ["inputs", "runs", "events", "usage", "sessions"];
 
-/// 기본값은 무제한 보존. TODO(#49): 설정 키 이름과 기본값
+/// 기본값은 무제한 보존.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct RetentionPolicy {
     /// `None`이면 자동 정리하지 않는다.

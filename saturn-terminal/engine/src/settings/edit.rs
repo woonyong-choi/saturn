@@ -12,7 +12,6 @@ use super::trust::partial_path;
 use super::{CONFIG_FILE, SettingsError, SettingsManager};
 use crate::secrets::KeyInfo;
 
-/// 초안 키(TODO(#49)).
 const KEY_INFO_KEY: &str = "judge.key.info";
 
 /// 쓰기 직전에 다시 재서 다르면 쓰지 않는다.
@@ -165,10 +164,9 @@ mod tests {
 
     async fn manager(home: &Path) -> (Store, SettingsManager) {
         let (store, _) = Store::open(home).await.unwrap();
-        let manager =
-            SettingsManager::new(home.to_path_buf(), home.to_path_buf(), Vec::new(), &store)
-                .await
-                .unwrap();
+        let manager = SettingsManager::new(home.to_path_buf(), Vec::new(), &store)
+            .await
+            .unwrap();
         (store, manager)
     }
 
@@ -246,7 +244,7 @@ mod tests {
 
         let text = std::fs::read_to_string(&path).unwrap();
         assert!(text.starts_with("# 사용자 설정\n"), "{text}");
-        let applied = manager.apply(&store, None).await.unwrap();
+        let applied = manager.apply_user(&store).await.unwrap();
         let settings = manager.at(&store, applied.revision).await.unwrap();
         assert_eq!(settings.key_info(), Some(info));
     }

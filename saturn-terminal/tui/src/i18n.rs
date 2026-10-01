@@ -51,6 +51,8 @@ pub const INTAKE_STOPPED: &str = "새 입력 접수 중단 · 판단기 연결�
 pub const STEER_NOT_READY: &str = "바로 반영: 준비 중";
 pub const JUDGE_UNAVAILABLE_SEND: &str = "판단기 연결 없음 · 차례에 보냅니다";
 pub const BUSY_ELSEWHERE: &str = "다른 Saturn에서 실행 중";
+/// `{to}`는 이관한 스키마 버전.
+pub const SCHEMA_MIGRATED: &str = "기록 저장소 v{to}로 옮김";
 pub const SETTINGS_ERROR: &str = "폴더 설정 오류";
 pub const SETTINGS_PREVIOUS: &str = "이전 설정 번호";
 pub const SETTINGS_CONTINUE_SUFFIX: &str = "로 계속";
@@ -154,6 +156,8 @@ pub const USAGE_JUDGE_CALLS: &str = "판단기 호출";
 pub const USAGE_COST: &str = "예상 비용";
 pub const USAGE_COMPACTIONS: &str = "맥락 정리";
 pub const USAGE_LABELS: &str = "채점";
+pub const USAGE_TOKENS: &str = "토큰";
+pub const USAGE_TURNS: &str = "턴";
 pub const JUDGE_VERSION_TITLE: &str = "판단기 버전";
 pub const JUDGE_VERSION_ACTIVE: &str = "사용 중";
 pub const JUDGE_VERSION_QUESTION: &str = "질문";
@@ -238,6 +242,7 @@ const ENGLISH: &[(&str, &str)] = &[
         "judge unavailable · sending in order",
     ),
     ("다른 Saturn에서 실행 중", "running in another Saturn"),
+    ("기록 저장소 v{to}로 옮김", "record store migrated to v{to}"),
     ("폴더 설정 오류", "folder settings error"),
     ("이전 설정 번호", "continuing with settings revision"),
     ("로 계속", ""),
@@ -337,6 +342,8 @@ const ENGLISH: &[(&str, &str)] = &[
     ("예상 비용", "estimated cost"),
     ("채점", "labels"),
     ("맥락 정리", "compactions"),
+    ("토큰", "tokens"),
+    ("턴", "turns"),
     ("판단기 버전", "judge versions"),
     ("사용 중", "in use"),
     ("질문", "question"),

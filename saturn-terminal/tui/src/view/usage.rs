@@ -124,7 +124,12 @@ fn table_lines(lang: Lang, table: &UsageTable, detail: bool) -> Vec<Line<'static
             Some(value) => i18n::format_count(value),
             None => "-".to_string(),
         });
-        Line::from(table_row(&row.who, &cells, who_width))
+        let mut text = table_row(&row.who, &cells, who_width);
+        if let Some(turns) = turns_text(lang, row) {
+            text.push_str("  ");
+            text.push_str(&turns);
+        }
+        Line::from(text)
     }));
     lines.push(Line::from(""));
     lines.push(Line::from(totals_line(lang, &table.rows)));
@@ -164,27 +169,52 @@ fn table_row(who: &str, cells: &[String; 5], who_width: usize) -> String {
     row
 }
 
+// cost: time O(1), heap O(1), stack O(1)
+// basis: estimate
+/// 여러 턴의 합계인 행만 `n 토큰 · n 턴`. 토큰은 보고된 칸만 더한다.
+fn turns_text(lang: Lang, row: &UsageRow) -> Option<String> {
+    let turns = row.turns.filter(|turns| *turns > 1)?;
+    let tokens: u64 = row.tokens.iter().flatten().sum();
+    Some(format!(
+        "{} {} · {turns} {}",
+        i18n::format_count(tokens),
+        lang.tr(i18n::USAGE_TOKENS),
+        lang.tr(i18n::USAGE_TURNS)
+    ))
+}
+
 // cost: time O(r), heap O(r), stack O(1)
 // vars: r = 행 수
 // basis: estimate
-/// 비용은 아는 값만 더한다.
+/// 비용, 맥락 정리, 채점은 아는 값만 더하고 하나도 없으면 `-`.
 fn totals_line(lang: Lang, rows: &[UsageRow]) -> String {
     let calls: u32 = rows.iter().map(|row| row.judge_calls).sum();
-    let costs: Vec<u64> = rows
-        .iter()
-        .filter_map(|row| row.estimated_cost_micros)
-        .collect();
-    let cost = (!costs.is_empty()).then(|| costs.iter().sum());
-    let compactions: u32 = rows.iter().map(|row| row.compactions).sum();
-    let labels: u32 = rows.iter().map(|row| row.labels).sum();
+    let cost = known_sum(rows.iter().map(|row| row.estimated_cost_micros));
+    let compactions = known_sum(rows.iter().map(|row| row.compactions.map(u64::from)));
+    let labels = known_sum(rows.iter().map(|row| row.labels.map(u64::from)));
     format!(
-        "{} {calls} · {} {} · {} {compactions} · {} {labels}",
+        "{} {calls} · {} {} · {} {} · {} {}",
         lang.tr(i18n::USAGE_JUDGE_CALLS),
         lang.tr(i18n::USAGE_COST),
         cost_text(cost),
         lang.tr(i18n::USAGE_COMPACTIONS),
-        lang.tr(i18n::USAGE_LABELS)
+        count_text(compactions),
+        lang.tr(i18n::USAGE_LABELS),
+        count_text(labels)
     )
+}
+
+// cost: time O(r), heap O(1), stack O(1)
+// vars: r = 값 수
+// basis: estimate
+fn known_sum(values: impl Iterator<Item = Option<u64>>) -> Option<u64> {
+    values.flatten().reduce(|sum, value| sum + value)
+}
+
+// cost: time O(1), heap O(1), stack O(1)
+// basis: estimate
+fn count_text(count: Option<u64>) -> String {
+    count.map_or_else(|| "-".to_string(), |count| count.to_string())
 }
 
 #[cfg(test)]
@@ -200,8 +230,9 @@ mod tests {
             tokens,
             judge_calls,
             estimated_cost_micros: (judge_calls > 0).then_some(12_000),
-            compactions: 1,
-            labels: 0,
+            compactions: (judge_calls == 0).then_some(1),
+            labels: None,
+            turns: None,
         }
     }
 
@@ -222,7 +253,7 @@ mod tests {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     fn content(screen: &UsageScreen) -> String {
-        let mut terminal = Terminal::new(TestBackend::new(80, 12)).unwrap();
+        let mut terminal = Terminal::new(TestBackend::new(100, 12)).unwrap();
         let view = UsageView {
             screen,
             lang: Lang::En,
@@ -247,8 +278,25 @@ mod tests {
 
         assert!(content.contains("1,200"));
         assert!(content.contains("-"));
-        assert!(content.contains("judge calls 3 · estimated cost $0.0120 · compactions 2"));
+        assert!(
+            content.contains("judge calls 3 · estimated cost $0.0120 · compactions 1 · labels -")
+        );
         assert!(!content.contains("  judge-model ·"));
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    #[test]
+    fn render_multi_turn_row_shows_tokens_and_turns() {
+        let mut screen = screen(false);
+        let table = screen.table.as_mut().unwrap();
+        table.rows[0].turns = Some(3);
+        table.rows[1].turns = Some(1);
+
+        let content = content(&screen);
+
+        assert!(content.contains("1,500 tokens · 3 turns"));
+        assert_eq!(content.matches("turns").count(), 1);
     }
 
     // cost: time O(1), heap O(1), stack O(1)

@@ -1,6 +1,5 @@
 //! 설정: 다섯 층 병합, 폴더 설정 신뢰, 병합 결과 검사, 스냅샷과 설정 번호, 설정 파일 편집.
 //! 설계: docs/design/settings.md
-//! TODO(#49): 설정 키 이름과 기본값
 
 mod edit;
 mod layers;
@@ -145,7 +144,6 @@ impl Settings {
     }
 
     /// 사용자 전용.
-    /// TODO(#32): 키 이름 `judge.key.command`(초안) 확정
     pub fn key_command(&self) -> Option<Vec<String>> {
         let items = self.get("judge.key.command")?.as_array()?;
         let command: Vec<String> = items

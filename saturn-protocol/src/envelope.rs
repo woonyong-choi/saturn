@@ -198,7 +198,7 @@ impl Response {
     }
 }
 
-/// TODO(#46): 조회 결과를 알림 대신 `result`로 돌려줄지
+/// TODO(#177): 조회 결과를 알림 대신 `result`로 돌려줄지
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum Outcome {
     #[serde(rename = "result")]

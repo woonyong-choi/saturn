@@ -1,13 +1,14 @@
 //! 기록 저장소: SQLite 파일 하나에 입력, 실행, 판단 기록, 설정 스냅샷을 쓴다.
 //! 설계: docs/design/records.md
-//! TODO(#30): 옛 구현 v8 기록을 가져오지 않을지, 명령으로 가져올지
 
+mod history;
 mod judgments;
 mod raw;
 mod records;
 mod retention;
 mod schema;
 mod snapshots;
+mod usage;
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -18,6 +19,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
+pub use history::HistoryEntry;
 pub use judgments::{JudgmentOutcome, JudgmentPruneRequest, NewJudgment};
 pub use raw::RawDigest;
 pub use records::{NewInput, NewRun, RunEnd, RunRecord, UsageRow};
@@ -25,6 +27,7 @@ pub use retention::{
     PruneOutcome, PrunePlan, PruneRequest, PruneScope, RetentionPolicy, SkipReason, Tombstone,
 };
 pub use schema::{BACKUP_RETENTION, MigrationNotice, SCHEMA_VERSION};
+pub use usage::JudgeUsage;
 
 pub const DB_FILE: &str = "saturn.db";
 

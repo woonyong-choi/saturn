@@ -97,7 +97,7 @@ impl ActiveJudge {
     }
 
     /// 외부는 고정 모델, 로컬은 judge 버전.
-    fn model(&self) -> &str {
+    pub fn model(&self) -> &str {
         match self {
             Self::Remote(judge) => judge.model(),
             Self::Local(judge) => judge.version(),
@@ -164,7 +164,7 @@ pub enum StartCheck {
         /// 화면과 stderr에 보일 한 줄.
         reason: String,
     },
-    /// 도움말에 보이지 않는 설치 검증 전용 설정으로 건너뛰었다. TODO(#49): 설정 키 이름
+    /// 도움말에 보이지 않는 설치 검증 전용 설정으로 건너뛰었다.
     Skipped,
 }
 
@@ -180,6 +180,10 @@ pub struct RecordContext {
     pub fallbacks: Vec<(String, String)>,
     /// revision이 바뀌었으면 호출자가 `Superseded`로 바꿔 넘긴다.
     pub outcome: JudgmentOutcome,
+    /// 이 판단에 쓴 질문별 기준값.
+    pub thresholds: Vec<(String, f64)>,
+    /// 피드백 질문을 한 확률 q. 묻지 않았으면 `None`.
+    pub asked_with: Option<f64>,
 }
 
 /// 성공 한 번이면 0으로 돌아간다.
@@ -426,7 +430,6 @@ pub fn outcome_of(result: &Result<JudgeResponse, JudgeError>) -> JudgmentOutcome
     }
 }
 
-/// 기준값과 피드백 확률은 `RecordContext`에 없어 빈 값으로 둔다(초안, #90 호출자가 채울 자리).
 fn new_judgment(judges: &Judges, context: RecordContext, exchange: &JudgeExchange) -> NewJudgment {
     let response = exchange.result.as_ref().ok();
     let tokens = match context.outcome {
@@ -459,9 +462,16 @@ fn new_judgment(judges: &Judges, context: RecordContext, exchange: &JudgeExchang
         elapsed: exchange.elapsed,
         outcome: context.outcome,
         judge_version: model,
-        thresholds: Vec::new(),
-        asked_with: None,
+        thresholds: context.thresholds,
+        asked_with: context.asked_with,
     }
+}
+
+/// 다른 모듈 테스트가 가짜 전송으로 judge를 만든다.
+#[cfg(test)]
+pub(crate) mod test_support {
+    pub(crate) use super::remote::tests::{FakeTransport, KEY, judge, ok, status};
+    pub(crate) use super::remote::{HttpReply, TransportError};
 }
 
 #[cfg(test)]
@@ -493,7 +503,34 @@ mod tests {
             settings: SettingsRevision(1),
             fallbacks: Vec::new(),
             outcome,
+            thresholds: vec![("keep_current".to_owned(), 0.8)],
+            asked_with: Some(0.25),
         }
+    }
+
+    #[tokio::test]
+    async fn new_judgment_carries_caller_thresholds_and_probability() {
+        let dir = tempfile::tempdir().unwrap();
+        let judges = judges(
+            secrets_with_key(dir.path()).await,
+            FakeTransport::new(Vec::new()),
+        );
+        let exchange = JudgeExchange {
+            sent: String::new(),
+            received: None,
+            result: Err(JudgeError::NoResponse),
+            started_at: SystemTime::now(),
+            elapsed: Duration::ZERO,
+        };
+
+        let judgment = new_judgment(
+            &judges,
+            context(ChatId(1), JudgmentOutcome::NoResponse),
+            &exchange,
+        );
+
+        assert_eq!(judgment.thresholds, vec![("keep_current".to_owned(), 0.8)]);
+        assert_eq!(judgment.asked_with, Some(0.25));
     }
 
     #[test]
@@ -590,10 +627,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let home = dir.path().join("home");
         let (store, _) = Store::open(&home).await.unwrap();
-        let settings =
-            SettingsManager::new(home.clone(), dir.path().to_path_buf(), Vec::new(), &store)
-                .await
-                .unwrap();
+        let settings = SettingsManager::new(home.clone(), Vec::new(), &store)
+            .await
+            .unwrap();
         let key_file = dir.path().join("judge.key");
         let empty = SecretStore::with_key_file(key_file.clone(), StorageMode::Standard);
         let secrets: SharedSecrets = Arc::new(Mutex::new(empty));
@@ -640,11 +676,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let home = dir.path().join("home");
         let (store, _) = Store::open(&home).await.unwrap();
-        let mut manager =
-            SettingsManager::new(home.clone(), dir.path().to_path_buf(), Vec::new(), &store)
-                .await
-                .unwrap();
-        let normal = manager.apply(&store, None).await.unwrap().revision;
+        let mut manager = SettingsManager::new(home.clone(), Vec::new(), &store)
+            .await
+            .unwrap();
+        let normal = manager.apply_user(&store).await.unwrap().revision;
         let settings = manager.at(&store, normal).await.unwrap();
         let transport = FakeTransport::new(vec![status(401, "{}", Vec::new())]);
         let judges = judges(secrets_with_key(dir.path()).await, transport);
@@ -655,7 +690,7 @@ mod tests {
             matches!(failed, StartCheck::KeyRequired { ref reason } if reason == "judge rejected the key")
         );
         std::fs::write(home.join("config.toml"), "[judge]\nskip_check = true\n").unwrap();
-        let skip = manager.apply(&store, None).await.unwrap().revision;
+        let skip = manager.apply_user(&store).await.unwrap().revision;
         let skipping = manager.at(&store, skip).await.unwrap();
         assert!(matches!(judges.check(&skipping).await, StartCheck::Skipped));
     }
@@ -665,10 +700,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let home = dir.path().join("home");
         let (store, _) = Store::open(&home).await.unwrap();
-        let mut manager =
-            SettingsManager::new(home.clone(), dir.path().to_path_buf(), Vec::new(), &store)
-                .await
-                .unwrap();
+        let mut manager = SettingsManager::new(home.clone(), Vec::new(), &store)
+            .await
+            .unwrap();
         let secrets = secrets_with_key(dir.path()).await;
         let jev = load(&mut manager, &store, &home, "").await;
         let chosen = Judges::select(&jev, Arc::clone(&secrets), Masker::default()).unwrap();
@@ -714,7 +748,7 @@ mod tests {
         content: &str,
     ) -> Settings {
         std::fs::write(home.join("config.toml"), content).unwrap();
-        let revision = manager.apply(store, None).await.unwrap().revision;
+        let revision = manager.apply_user(store).await.unwrap().revision;
         manager.at(store, revision).await.unwrap()
     }
 

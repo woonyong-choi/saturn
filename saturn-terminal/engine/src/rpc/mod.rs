@@ -1,5 +1,4 @@
 //! 사용자당 engine 잠금과 Unix 소켓 JSON-RPC 서버. 설계: docs/design/engine-lifecycle.md
-//! TODO(#46): 메서드 이름과 목록 확정
 //! 잠금 없이 소켓을 열지 않는다.
 
 mod connection;

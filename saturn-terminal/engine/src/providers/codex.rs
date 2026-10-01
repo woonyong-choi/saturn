@@ -20,6 +20,9 @@ use super::{AppliedSettings, LaunchSpec, TurnOriginTracker, UserProviderConfig};
 use crate::processes::{ProcessGroupId, ProcessSpec, Supervisor};
 use crate::secrets::Masker;
 
+/// `/usage` 행 이름 앞부분.
+pub(crate) const DISPLAY_NAME: &str = "codex";
+
 /// 끼워 넣기 실측(#5, #27) 통과 전이라 거짓이고, 거짓이면 끼워 넣기를 대기로 바꾼다.
 pub(crate) const STEER_VERIFIED: bool = false;
 

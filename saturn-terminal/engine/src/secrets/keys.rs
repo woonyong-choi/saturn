@@ -1,16 +1,13 @@
-//! judge 키 값과 네 가지 입력 방법. 명령 인자로는 받지 않는다.
+//! judge 키 값과 세 가지 입력 방법. 명령 인자와 표준 입력으로는 받지 않는다.
 //! 설계: docs/design/judge-key-security.md
-//! TODO(#32): 환경 변수와 관리자 명령 설정 키 이름을 확정할지, 벤더 이름을 유지할지
 
-use std::io::{BufRead, IsTerminal};
 use std::process::Stdio;
 
 use serde::{Deserialize, Serialize};
 
 use super::{SecretsError, scrub_command};
 
-/// TODO(#32): 이름 확정
-pub const JUDGE_KEY_ENV: &str = "SATURN_JUDGE_KEY";
+pub const JUDGE_KEY_ENV: &str = "SATURN_KEY";
 
 /// 저장이나 출력으로 새지 않게 `Serialize`, `Display`가 없고, 버릴 때 메모리를 0으로 덮는다.
 pub struct JudgeKey {
@@ -64,8 +61,6 @@ impl Drop for JudgeKey {
 pub enum KeyInput {
     /// TUI는 받은 즉시 engine에 보내고 자기 기억과 입력 기록에 남기지 않는다.
     Hidden(String),
-    /// 비대화 환경용.
-    Stdin,
     Env,
     /// 셸 없이 실행하고 받은 키는 메모리에만 둔다.
     Command {
@@ -79,7 +74,6 @@ impl std::fmt::Debug for KeyInput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Hidden(_) => f.write_str("Hidden(..)"),
-            Self::Stdin => f.write_str("Stdin"),
             Self::Env => f.write_str("Env"),
             Self::Command { .. } => f.write_str("Command(..)"),
         }
@@ -91,7 +85,6 @@ impl std::fmt::Debug for KeyInput {
 pub enum KeySource {
     /// 키체인(또는 0600 파일)에 저장했다.
     Stored,
-    Stdin,
     /// 저장하지 않는다.
     Env,
     /// 메모리에만 둔다.
@@ -108,7 +101,7 @@ pub struct KeyInfo {
 /// 관리자 명령의 자식 환경에서도 키 변수를 지운다. 키 확인은 호출자가 한다.
 ///
 /// # Errors
-/// 값이 없으면 `NotFound`, 비었으면 `Empty`, 명령 실패면 `Command`, 표준 입력 실패면 `Io`.
+/// 값이 없으면 `NotFound`, 비었으면 `Empty`, 명령 실패면 `Command`.
 pub async fn acquire(input: KeyInput) -> Result<(JudgeKey, KeySource), SecretsError> {
     acquire_with_env(input, std::env::var(JUDGE_KEY_ENV).ok()).await
 }
@@ -120,12 +113,6 @@ pub(crate) async fn acquire_with_env(
 ) -> Result<(JudgeKey, KeySource), SecretsError> {
     match input {
         KeyInput::Hidden(value) => Ok((JudgeKey::new(value)?, KeySource::Stored)),
-        KeyInput::Stdin => {
-            let line = tokio::task::spawn_blocking(|| read_key_line(std::io::stdin().lock()))
-                .await
-                .map_err(std::io::Error::other)??;
-            Ok((JudgeKey::new(line)?, KeySource::Stdin))
-        }
         KeyInput::Env => {
             let value = env_value.ok_or(SecretsError::NotFound)?;
             Ok((JudgeKey::new(value)?, KeySource::Env))
@@ -135,29 +122,12 @@ pub(crate) async fn acquire_with_env(
 }
 
 /// 숨김 입력은 TUI가 값을 보내야 해서 넣지 않는다. 초안 순서.
-pub fn input_order(key_command: Option<Vec<String>>, interactive: bool) -> Vec<KeyInput> {
+pub fn input_order(key_command: Option<Vec<String>>) -> Vec<KeyInput> {
     let mut order = vec![KeyInput::Env];
     if let Some(argv) = key_command {
         order.push(KeyInput::Command { argv });
     }
-    if !interactive {
-        order.push(KeyInput::Stdin);
-    }
     order
-}
-
-/// stdin과 stdout이 모두 TTY이고 TUI가 붙어 있을 때만 참.
-pub fn can_prompt(tui_attached: bool) -> bool {
-    tui_attached && std::io::stdin().is_terminal() && std::io::stdout().is_terminal()
-}
-
-/// 아무것도 없으면 `NotFound`.
-fn read_key_line(mut reader: impl BufRead) -> Result<String, SecretsError> {
-    let mut line = String::new();
-    if reader.read_line(&mut line)? == 0 {
-        return Err(SecretsError::NotFound);
-    }
-    Ok(line)
 }
 
 /// 셸 없이 실행하고 자식 환경에서 키 변수를 지운다.
@@ -240,32 +210,17 @@ mod tests {
     }
 
     #[test]
-    fn stdin_line_is_read_once() {
-        let line = read_key_line("sk-line\nnext\n".as_bytes()).unwrap();
-
-        assert_eq!(JudgeKey::new(line).unwrap().expose(), "sk-line");
-        assert!(matches!(
-            read_key_line("".as_bytes()),
-            Err(SecretsError::NotFound)
-        ));
-    }
-
-    #[test]
-    fn input_order_is_env_command_then_stdin() {
+    fn input_order_is_env_then_command_and_never_stdin() {
         let command = argv(&["op", "read", "x"]);
 
-        let piped = input_order(Some(command.clone()), false);
-        let terminal = input_order(None, true);
+        let with_command = input_order(Some(command.clone()));
+        let without_command = input_order(None);
 
         assert_eq!(
-            piped,
-            vec![
-                KeyInput::Env,
-                KeyInput::Command { argv: command },
-                KeyInput::Stdin
-            ]
+            with_command,
+            vec![KeyInput::Env, KeyInput::Command { argv: command }]
         );
-        assert_eq!(terminal, vec![KeyInput::Env]);
+        assert_eq!(without_command, vec![KeyInput::Env]);
     }
 
     #[tokio::test]

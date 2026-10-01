@@ -59,17 +59,18 @@
 
 ### 설정 키
 
-키 이름과 기본값은 초안이다([#49](https://github.com/woonyong-choi/saturn/issues/49)). 병합 결과에 아래 표에 없는 키가 있으면 검사에 실패한다.
+아래 표가 키 이름과 기본값의 1판이다. 측정으로 정할 값은 초안 표시를 유지한다. 병합 결과에 아래 표에 없는 키가 있으면 검사에 실패한다.
 
 | 키 | 값 | 기본값 |
 |---|---|---|
 | `on_exit` | `background`, `stop`, `ask` | `background` |
+| `agents.worktree` | 참·거짓 | 거짓 |
 | `judge.method` | `jev`, `saturn`, `collect` | `jev` |
 | `judge.endpoint` | 문자열 | `https://api.typesafe.ai` |
 | `judge.model` | 문자열 | `jev-1.13.0` |
 | `judge.local.endpoint`, `judge.local.version` | 문자열 | 없음 |
 | `judge.skip_check` | 참·거짓(도움말에 없음) | 없음 |
-| `judge.key.info` | `source`(`Stored`, `Stdin`, `Env`, `Command`), `last4` | 없음 |
+| `judge.key.info` | `source`(`Stored`, `Env`, `Command`), `last4` | 없음 |
 | `judge.key.command` | 문자열 배열 | 없음 |
 | `judge.key.storage` | `standard`, `hardened` | `standard` |
 | `judge.thresholds.<이름>` | 0~1 실수 | [judge](judge.md) 표의 값 |
@@ -86,6 +87,7 @@
 | `context.item_cap_percent` | 1~100 정수 | 30 |
 | `context.select.rrf_k` | 0 이상 정수 | 60 |
 
+- `agents.worktree`가 거짓이면 보조 에이전트는 같은 폴더에서 한 번에 하나씩 쓴다. 참이면 git 저장소일 때만 보조 에이전트의 쓰기를 별도 worktree에서 병렬로 하고, git 저장소가 아니면 거짓일 때와 같다. 쓰기 격리를 사용자가 켠 뒤에만 하기 위해서다. 규칙은 [입력 처리](input-handling.md)에 있다.
 - `context.select.rrf_k`는 judge가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
 - 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `compact_keep`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_replace`, `constraint_conflict`다.
 - 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
@@ -106,7 +108,7 @@
 
 ### 병합과 설정 번호
 
-engine이 시작하면 사용자당 잠금을 얻고 스키마 이관을 마친 뒤 설정을 병합한다. judge 시작 확인은 설정 번호가 확정된 뒤에 한다.
+engine이 시작하면 사용자당 잠금을 얻고 스키마 이관을 마친 뒤 기본값, 사용자, 실행 층을 병합한다. judge 시작 확인은 이 설정 번호가 확정된 뒤에 한다. 폴더 층과 채팅 층은 TUI가 채팅에 붙을 때 채팅마다 병합한다. 채팅은 처음 만든 폴더에 묶이므로, 이미 있는 채팅에 다른 폴더의 TUI가 붙어도 처음 폴더로 병합한다. 아래 절차의 3~5단계가 그때 돈다.
 
 1. `settings`가 기본값 층을 읽는다.
 2. `settings`가 사용자 층 `~/.saturn/config.toml`을 읽는다.
@@ -134,6 +136,7 @@ engine이 시작하면 사용자당 잠금을 얻고 스키마 이관을 마친 
 폴더 설정은 저장소와 함께 들어오므로 사용자가 한 번 확인한 뒤에만 적용한다. `settings`는 신뢰를 설정 파일의 경로와 지문으로 기록한다.
 
 - 신뢰한 폴더 설정의 내용이 바뀌면 다시 묻고 새 지문으로 신뢰를 기록한다. 확인하지 않은 변경이 적용되는 일을 막기 위해서다.
+- 폴더 설정 신뢰는 채팅마다, 그 채팅을 처음 만든 폴더 기준으로 묻는다. 적용을 고르지 않으면 그 채팅은 폴더 설정 없이 계속한다.
 - 실행 중에 폴더 설정이 바뀌면 신뢰 창은 다음 입력을 접수하기 전에 열린다.
 - 신뢰 기록은 `~/.saturn/trusted.json`(경로 → 지문, 권한 0600)에 두고, 지문은 파일 내용의 SHA-256 hex다(초안).
 - 신뢰한 뒤 내용이 바뀐 파일은 옛 내용을 두지 않으므로, 바뀐 줄로 빈 줄과 주석을 뺀 모든 줄을 보인다(초안).
@@ -178,7 +181,3 @@ Saturn 설정은 provider 설정 파일을 바꾸지 않는다. Saturn 기본값
 | 검사에 실패한 설정은 적용하지 않고 이전 설정 번호를 쓴다. | 잘못된 폴더 설정으로 바꾼 뒤 이전 설정 번호가 유지되는지 확인한다. |
 | 명령으로 설정 파일을 고쳐도 주석이 남는다. | 주석이 있는 파일을 명령으로 고친 뒤 주석이 그대로인지 확인한다. |
 | 설정 파일은 읽은 버전을 확인한 뒤 쓴다. | 읽기와 쓰기 사이에 파일을 고쳐도 그 변경이 사라지지 않는지 확인한다. |
-
-## 미해결 질문
-
-- 설정 키 이름과 기본값을 항목마다 지금 확정할지, 측정이 끝난 항목부터 확정할지 ([#49](https://github.com/woonyong-choi/saturn/issues/49))

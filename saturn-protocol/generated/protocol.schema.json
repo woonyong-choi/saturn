@@ -97,6 +97,35 @@
           "const": "JudgeDownSendingInOrder",
           "description": "judge 실패로 `[보내기]` 입력을 차례에 보낸다.",
           "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "시작할 때 기록 저장소 스키마를 이관했다. 첫 TUI에만 보낸다.",
+          "properties": {
+            "SchemaMigrated": {
+              "properties": {
+                "from": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "to": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "from",
+                "to"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "SchemaMigrated"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -267,7 +296,7 @@
     "ClientMessage": {
       "oneOf": [
         {
-          "description": "`chat`이 `None`이면 새 채팅.\n`overrides`(`-c key=value`)는 이 접속의 입력에만 적용한다.\n`workdir`는 폴더 설정 층 검색 위치이자 새 작업의 실행 위치.",
+          "description": "`chat`이 `None`이면 새 채팅.\n`overrides`(`-c key=value`)는 이 접속의 입력에만 적용한다.\n`workdir`는 폴더 설정 층 검색 위치이자 새 작업의 실행 위치.\n`env`는 이 TUI의 환경 변수(`ATTACH_ENV_NAMES`만)로, engine이 이 채팅의 provider 실행 환경으로 쓴다.",
           "properties": {
             "method": {
               "const": "Attach",
@@ -284,6 +313,22 @@
                       "type": "null"
                     }
                   ]
+                },
+                "env": {
+                  "items": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "type": "array"
+                  },
+                  "type": "array"
                 },
                 "overrides": {
                   "items": {
@@ -307,6 +352,7 @@
               },
               "required": [
                 "workdir",
+                "env",
                 "overrides"
               ],
               "type": "object"
@@ -3396,9 +3442,13 @@
     "UsageRow": {
       "properties": {
         "compactions": {
+          "description": "기록에 없으면 `None`.",
           "format": "uint32",
           "minimum": 0,
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "estimated_cost_micros": {
           "description": "단위: 마이크로 달러.",
@@ -3415,9 +3465,13 @@
           "type": "integer"
         },
         "labels": {
+          "description": "기록에 없으면 `None`.",
           "format": "uint32",
           "minimum": 0,
-          "type": "integer"
+          "type": [
+            "integer",
+            "null"
+          ]
         },
         "tokens": {
           "description": "새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론 순. 보고되지 않았으면 `None`.",
@@ -3433,17 +3487,24 @@
           "minItems": 5,
           "type": "array"
         },
+        "turns": {
+          "description": "여러 턴의 합계인 행만 턴 수를 채운다. 한 턴이면 `None`.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "who": {
-          "description": "에이전트 이름이나 judge.",
+          "description": "provider·모델이나 judge. 예: `codex · gpt-5.6-terra`, `judge · jev`.",
           "type": "string"
         }
       },
       "required": [
         "who",
         "tokens",
-        "judge_calls",
-        "compactions",
-        "labels"
+        "judge_calls"
       ],
       "type": "object"
     },
