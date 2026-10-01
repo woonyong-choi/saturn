@@ -100,6 +100,10 @@ tokens: [number | null, number | null, number | null, number | null, number | nu
 /**
  * 단위: 마이크로 달러.
  */
-estimated_cost_micros: number | null, compactions: number, labels: number, };
+estimated_cost_micros: number | null, compactions: number, labels: number, 
+/**
+ * 여러 턴의 합계인 행만 턴 수를 채운다. 한 턴이면 `None`.
+ */
+turns: number | null, };
 
 export type UsageScope = "MainTurn" | "TreeTotal" | "ThreadCumulative";

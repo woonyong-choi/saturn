@@ -3433,6 +3433,15 @@
           "minItems": 5,
           "type": "array"
         },
+        "turns": {
+          "description": "여러 턴의 합계인 행만 턴 수를 채운다. 한 턴이면 `None`.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "who": {
           "description": "에이전트 이름이나 judge.",
           "type": "string"

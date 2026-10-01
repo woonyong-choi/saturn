@@ -154,6 +154,8 @@ pub const USAGE_JUDGE_CALLS: &str = "판단기 호출";
 pub const USAGE_COST: &str = "예상 비용";
 pub const USAGE_COMPACTIONS: &str = "맥락 정리";
 pub const USAGE_LABELS: &str = "채점";
+pub const USAGE_TOKENS: &str = "토큰";
+pub const USAGE_TURNS: &str = "턴";
 pub const JUDGE_VERSION_TITLE: &str = "판단기 버전";
 pub const JUDGE_VERSION_ACTIVE: &str = "사용 중";
 pub const JUDGE_VERSION_QUESTION: &str = "질문";
@@ -337,6 +339,8 @@ const ENGLISH: &[(&str, &str)] = &[
     ("예상 비용", "estimated cost"),
     ("채점", "labels"),
     ("맥락 정리", "compactions"),
+    ("토큰", "tokens"),
+    ("턴", "turns"),
     ("판단기 버전", "judge versions"),
     ("사용 중", "in use"),
     ("질문", "question"),

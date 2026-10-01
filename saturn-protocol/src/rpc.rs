@@ -350,6 +350,8 @@ pub struct UsageRow {
     pub estimated_cost_micros: Option<u64>,
     pub compactions: u32,
     pub labels: u32,
+    /// 여러 턴의 합계인 행만 턴 수를 채운다. 한 턴이면 `None`.
+    pub turns: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
