@@ -120,30 +120,45 @@ impl ProviderConnection {
         launch: LaunchSpec,
         supervisor: Supervisor,
     ) -> Result<Self, ProviderError> {
-        todo!("#86")
+        match launch.provider {
+            Provider::Codex => Ok(Self::Codex(CodexClient::start(launch, supervisor).await?)),
+            Provider::Claude => Ok(Self::Claude(ClaudeClient::new(launch, supervisor))),
+        }
     }
 
     /// provider 종류.
     pub fn provider(&self) -> Provider {
-        todo!("#86")
+        match self {
+            Self::Codex(_) => Provider::Codex,
+            Self::Claude(_) => Provider::Claude,
+        }
     }
 
     /// session의 프로세스 묶음. 트리 전체 중지에서 멈춤 신호 뒤 `Supervisor::stop_tree`에 넘긴다.
     /// Codex는 모든 session이 app-server 묶음 하나를 같이 쓴다.
     pub fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId> {
-        todo!("#86")
+        match self {
+            Self::Codex(client) => Some(client.process_group()),
+            Self::Claude(client) => client.process_group(session),
+        }
     }
 
     /// session에 provider가 적용한 설정. 적용값을 받기 전이면 `None`.
     pub fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
-        todo!("#86")
+        match self {
+            Self::Codex(client) => client.applied_settings(session),
+            Self::Claude(client) => client.applied_settings(session),
+        }
     }
 }
 
 impl ProviderClient for ProviderConnection {
     /// 종류별 연결에 그대로 넘긴다.
     async fn open_session(&mut self, spec: SessionSpec) -> Result<SessionHandle, ProviderError> {
-        todo!("#86")
+        match self {
+            Self::Codex(client) => client.open_session(spec).await,
+            Self::Claude(client) => client.open_session(spec).await,
+        }
     }
 
     /// 종류별 연결에 그대로 넘긴다.
@@ -152,7 +167,10 @@ impl ProviderClient for ProviderConnection {
         session: &ProviderSessionId,
         text: &str,
     ) -> Result<(), ProviderError> {
-        todo!("#86")
+        match self {
+            Self::Codex(client) => client.send_turn(session, text).await,
+            Self::Claude(client) => client.send_turn(session, text).await,
+        }
     }
 
     /// 종류별 연결에 그대로 넘긴다. 호출 전에 `steer_route`로 경로를 고른다.
@@ -161,7 +179,10 @@ impl ProviderClient for ProviderConnection {
         session: &ProviderSessionId,
         text: &str,
     ) -> Result<(), ProviderError> {
-        todo!("#86")
+        match self {
+            Self::Codex(client) => client.steer(session, text).await,
+            Self::Claude(client) => client.steer(session, text).await,
+        }
     }
 
     /// 종류별 연결에 그대로 넘긴다.
@@ -170,27 +191,42 @@ impl ProviderClient for ProviderConnection {
         session: &ProviderSessionId,
         target: InterruptTarget,
     ) -> Result<(), ProviderError> {
-        todo!("#86")
+        match self {
+            Self::Codex(client) => client.interrupt(session, target).await,
+            Self::Claude(client) => client.interrupt(session, target).await,
+        }
     }
 
     /// 종류별 연결에 그대로 넘긴다.
     async fn compact(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
-        todo!("#86")
+        match self {
+            Self::Codex(client) => client.compact(session).await,
+            Self::Claude(client) => client.compact(session).await,
+        }
     }
 
     /// 종류별 연결에 그대로 넘긴다.
     async fn close_session(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
-        todo!("#86")
+        match self {
+            Self::Codex(client) => client.close_session(session).await,
+            Self::Claude(client) => client.close_session(session).await,
+        }
     }
 
     /// 종류별 연결에 그대로 넘긴다.
     async fn next_event(&mut self) -> Option<ProviderEvent> {
-        todo!("#86")
+        match self {
+            Self::Codex(client) => client.next_event().await,
+            Self::Claude(client) => client.next_event().await,
+        }
     }
 
     /// 종류별 연결에 그대로 넘긴다.
     fn commands(&self) -> Vec<ProviderCommand> {
-        todo!("#86")
+        match self {
+            Self::Codex(client) => client.commands(),
+            Self::Claude(client) => client.commands(),
+        }
     }
 }
 
@@ -204,18 +240,31 @@ pub(crate) struct TurnOriginTracker {
 impl TurnOriginTracker {
     /// Saturn이 새 턴 입력을 보냈다. 끼워 넣기는 부르지 않는다.
     pub(crate) fn on_user_send(&mut self) {
-        todo!("#86")
+        self.pending_user_turns = self.pending_user_turns.saturating_add(1);
+    }
+
+    /// 보내려던 새 턴 입력이 보내기 전에 실패했다. `on_user_send`로 센 것을 되돌린다.
+    pub(crate) fn cancel_user_send(&mut self) {
+        self.pending_user_turns = self.pending_user_turns.saturating_sub(1);
     }
 
     /// provider가 턴을 시작했다. 보낸 입력이 남아 있으면 하나 줄이고 `User`, 없으면 `ProviderWake`.
     pub(crate) fn on_turn_started(&mut self) -> TurnOrigin {
-        todo!("#86")
+        if self.pending_user_turns == 0 {
+            return TurnOrigin::ProviderWake;
+        }
+        self.pending_user_turns -= 1;
+        TurnOrigin::User
     }
 }
 
 /// 끼워 넣기 경로를 고른다. `handle.steer_verified`가 거짓(끼워 넣기 실측 #5, #27 통과 전)이면 `Queue`.
 pub fn steer_route(handle: &SessionHandle) -> SteerRoute {
-    todo!("#86")
+    if handle.steer_verified {
+        SteerRoute::Steer
+    } else {
+        SteerRoute::Queue
+    }
 }
 
 /// 명령 목록에서 `excluded`(화면 전용 명령, Saturn session 명령이 대신하는 명령)를 뺀다. 이름 비교는 `/` 없이 대소문자 그대로.
@@ -225,5 +274,61 @@ pub(crate) fn filter_commands(
     all: Vec<ProviderCommand>,
     excluded: &[&str],
 ) -> Vec<ProviderCommand> {
-    todo!("#86")
+    all.into_iter()
+        .filter(|command| !excluded.contains(&command.name.trim_start_matches('/')))
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn command(name: &str) -> ProviderCommand {
+        ProviderCommand {
+            name: name.to_owned(),
+            description: String::new(),
+            is_skill: false,
+        }
+    }
+
+    #[test]
+    fn origin_counts_sent_turns() {
+        let mut tracker = TurnOriginTracker::default();
+
+        assert_eq!(tracker.on_turn_started(), TurnOrigin::ProviderWake);
+        tracker.on_user_send();
+        tracker.on_user_send();
+        tracker.cancel_user_send();
+
+        assert_eq!(tracker.on_turn_started(), TurnOrigin::User);
+        assert_eq!(tracker.on_turn_started(), TurnOrigin::ProviderWake);
+    }
+
+    #[test]
+    fn unverified_steer_goes_to_queue() {
+        let handle = |steer_verified| SessionHandle {
+            provider_session: ProviderSessionId("s".to_owned()),
+            steer_verified,
+        };
+
+        assert_eq!(steer_route(&handle(false)), SteerRoute::Queue);
+        assert_eq!(steer_route(&handle(true)), SteerRoute::Steer);
+    }
+
+    #[test]
+    fn filter_drops_only_excluded_names() {
+        let all = vec![
+            command("compact"),
+            command("resume"),
+            command("model"),
+            command("Resume"),
+        ];
+
+        let names: Vec<String> = filter_commands(all, &["resume"])
+            .into_iter()
+            .map(|command| command.name)
+            .collect();
+
+        assert_eq!(names, vec!["compact", "model", "Resume"]);
+    }
 }

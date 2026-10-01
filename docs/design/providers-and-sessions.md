@@ -58,6 +58,16 @@ engine은 provider마다 켜 둔 채 입력을 받는 연결을 둔다. Codex는
 | session 재개 | app-server 하나를 창구로 재개 | stream-json 방식 `--resume` |
 | 프로세스 수명 | 연결 창구로 유지, session은 턴 끝 뒤 5분 유예에 정리 | 턴 진행 중과 턴 끝 뒤 5분 유예까지 |
 
+Codex app-server 규약은 codex-cli 0.158.0의 `codex app-server generate-json-schema` 결과로 확인했다.
+
+- 메시지는 한 줄에 JSON 하나이고 `jsonrpc` 필드가 없다. 초기화는 `initialize` 요청 뒤 `initialized` 알림이다.
+- session 닫기는 `thread/unsubscribe`다. 기록을 지우는 `thread/archive`, `thread/delete`는 쓰지 않는다.
+- 자식 작업은 `thread/started` 알림의 `thread.parentThreadId`로 부모 thread에 잇는다.
+- 활성 턴 없음은 오류 코드가 따로 없어 `turn/steer` 오류 문구로 판정한다(초안).
+- 맥락 크기는 `thread/tokenUsage/updated`의 `last.totalTokens`이고 메인 턴 끝에 보낸다. 누적 사용량의 새 입력은 `total.inputTokens - cachedInputTokens`다.
+- 명령 대응표는 `compact` → `thread/compact/start`, `review` → `review/start`(대상 `uncommittedChanges`)이고, 명령 목록에서 `new`, `resume`, `fork`, `quit`, `exit`를 뺀다(초안). 스킬은 `turn/start` 입력에 `{"type":"skill","name","path"}` 항목으로 넣는다.
+- 권한 기본값 인자는 `-c sandbox_mode="workspace-write"`이고(초안), 사용자 설정은 `$CODEX_HOME/config.toml`(기본 `~/.codex/config.toml`)의 루트와 선택된 프로필에서 `approval_policy`, `sandbox_mode`, `model_auto_compact_token_limit` 키가 있는지만 본다.
+
 끼워 넣기 실측을 통과하기 전의 provider에서는 끼워 넣기를 대기로 바꿔 처리한다. 끼워 넣기 경로가 문서대로 동작하는지 실측으로 확인해야 하기 때문이다([#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27)). 이때 TUI는 `바로 반영: 준비 중`을 보인다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다. 입력을 어디로 보낼지는 [입력 처리](input-handling.md)가 정한다.
 
 ### provider 실행과 기본값 인자
