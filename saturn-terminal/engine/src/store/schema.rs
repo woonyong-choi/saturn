@@ -3,10 +3,11 @@
 //! TODO(#29): 첫 스키마를 전체 정의로 쓸지, 옛 스키마 위 변경분으로 쓸지
 //! TODO(#30): 옛 구현 v8 기록 파일을 만나면 가져오지 않을지, 명령으로 가져올지
 
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use super::{Store, StoreError, schema_target, to_millis};
+use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
 pub const SCHEMA_VERSION: u32 = 1;
@@ -197,10 +198,14 @@ impl Store {
             move |source| StoreError::Backup { path, source }
         };
         std::fs::create_dir_all(&dir).map_err(backup_error(&dir))?;
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700))
+            .map_err(backup_error(&dir))?;
         sqlx::query("VACUUM INTO ?")
             .bind(path.to_string_lossy().into_owned())
             .execute(&self.pool)
             .await?;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(DB_FILE_MODE))
+            .map_err(backup_error(&path))?;
         for old in backup_files(&dir).map_err(backup_error(&dir))? {
             if old != path {
                 std::fs::remove_file(&old).map_err(backup_error(&old))?;
@@ -304,6 +309,18 @@ mod tests {
         assert!(!first.exists());
         assert!(second.exists());
         assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
+        assert_eq!(
+            std::fs::metadata(&second).unwrap().permissions().mode() & 0o777,
+            DB_FILE_MODE
+        );
+        assert_eq!(
+            std::fs::metadata(store.backup_dir())
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
     }
 
     #[tokio::test]
