@@ -1,0 +1,8 @@
+condition,signal_model,wrong_rate_before,wrong_rate_after,delta_before,delta_after,oracle_threshold_after,balance_threshold_after,wrong_rate_at_low_after,wrong_rate_at_high_after
+behavior-3,behavior,0.03,0.03,-1.251982,-1.251982,0.64299,0.6943,0.036825,0.022831
+behavior-5,behavior,0.05,0.05,-0.712096,-0.712096,0.799999,0.755502,0.060922,0.038333
+behavior-10,behavior,0.1,0.1,0.056318,0.056318,0.907959,0.824984,0.119732,0.07807
+behavior-shift,behavior,0.03,0.1,-1.251982,0.056318,0.907959,0.824984,0.119732,0.07807
+asked-3,asked,0.03,0.03,-1.251982,-1.251982,0.64299,0.764039,0.036825,0.022831
+asked-5,asked,0.05,0.05,-0.712096,-0.712096,0.799999,0.817879,0.060922,0.038333
+asked-10,asked,0.1,0.1,0.056318,0.056318,0.907959,0.875254,0.119732,0.07807

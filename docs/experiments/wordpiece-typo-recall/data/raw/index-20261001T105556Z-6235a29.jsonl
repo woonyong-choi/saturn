@@ -1,0 +1,7 @@
+{"run_id": "20261001T105556Z-6235a29", "ts_utc": "2026-10-01T10:56:09Z", "trial_id": null, "condition": "base", "vocab_size": 6527, "postings": 83494, "total_tokens": 150044}
+{"run_id": "20261001T105556Z-6235a29", "ts_utc": "2026-10-01T10:56:09Z", "trial_id": null, "condition": "ko-jamo3", "vocab_size": 5467, "postings": 133327, "total_tokens": 234937}
+{"run_id": "20261001T105556Z-6235a29", "ts_utc": "2026-10-01T10:56:09Z", "trial_id": null, "condition": "en-char4", "vocab_size": 7881, "postings": 133970, "total_tokens": 270214}
+{"run_id": "20261001T105556Z-6235a29", "ts_utc": "2026-10-01T10:56:09Z", "trial_id": null, "condition": "ko-jamo2", "vocab_size": 2898, "postings": 118806, "total_tokens": 265726}
+{"run_id": "20261001T105556Z-6235a29", "ts_utc": "2026-10-01T10:56:09Z", "trial_id": null, "condition": "ko-jamo4", "vocab_size": 8881, "postings": 123869, "total_tokens": 206569}
+{"run_id": "20261001T105556Z-6235a29", "ts_utc": "2026-10-01T10:56:09Z", "trial_id": null, "condition": "ko-union", "vocab_size": 9802, "postings": 173324, "total_tokens": 287705}
+{"run_id": "20261001T105556Z-6235a29", "ts_utc": "2026-10-01T10:56:09Z", "trial_id": null, "condition": "en-union", "vocab_size": 9920, "postings": 175560, "total_tokens": 364121}
