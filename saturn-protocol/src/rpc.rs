@@ -1,6 +1,5 @@
 //! TUI, CLI → engine 요청과 engine → TUI 알림. 메서드 이름은 variant 이름, `params`는 필드.
 //! 설계: docs/design/engine-lifecycle.md, docs/design/tui.md
-//! TODO(#46): 메서드 이름과 목록 확정
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -12,15 +11,38 @@ use crate::ids::{
 };
 use crate::state::{Disposition, InputState, QueueReason, TaskState};
 
+/// TUI가 `Attach`의 `env`에 담는 변수 이름. 이 밖의 변수는 보내지 않는다. 초안 목록.
+pub const ATTACH_ENV_NAMES: &[&str] = &[
+    "PATH",
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "SHELL",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+    "TERM",
+    "TMPDIR",
+    "SSH_AUTH_SOCK",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+    "ALL_PROXY",
+];
+
 #[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "method", content = "params")]
 pub enum Request {
     /// `chat`이 `None`이면 새 채팅.
     /// `overrides`(`-c key=value`)는 이 접속의 입력에만 적용한다.
     /// `workdir`는 폴더 설정 층 검색 위치이자 새 작업의 실행 위치.
+    /// `env`는 이 TUI의 환경 변수(`ATTACH_ENV_NAMES`만)로, engine이 이 채팅의 provider 실행 환경으로 쓴다.
     Attach {
         chat: Option<ChatId>,
         workdir: String,
+        env: Vec<(String, String)>,
         overrides: Vec<(String, String)>,
     },
     /// `before`보다 앞 기록 `limit`개.

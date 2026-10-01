@@ -1,3 +1,5 @@
+use std::ffi::OsString;
+
 use saturn_core::queue::Permission;
 use saturn_core::sessions::{AgentRole, SessionRecord};
 use saturn_protocol::envelope::INVALID_PARAMS;
@@ -9,14 +11,23 @@ use saturn_protocol::rpc::Alert;
 use saturn_protocol::state::{EffectScope, InputState, SessionState};
 
 use super::*;
+use crate::secrets::JUDGE_KEY_ENV;
 use crate::store::{MigrationNotice, NewInput, NewRun};
 
 fn attach_to(chat: ChatId, workdir: &Path) -> Request {
     Request::Attach {
         chat: Some(chat),
         workdir: workdir.display().to_string(),
+        env: tui_env(),
         overrides: vec![("model".to_owned(), "fast".to_owned())],
     }
+}
+
+fn tui_env() -> Vec<(String, String)> {
+    vec![
+        ("PATH".to_owned(), "/opt/tui/bin:/usr/bin".to_owned()),
+        (JUDGE_KEY_ENV.to_owned(), "sk-from-tui".to_owned()),
+    ]
 }
 
 fn permission() -> Notification {
@@ -89,14 +100,12 @@ async fn chat_with_history(engine: &Engine, workdir: &Path) -> ChatId {
 async fn attach_sends_start_info_then_history_then_permissions() {
     let fixture = Fixture::new();
     let mut engine = fixture.ready().await;
-    let chat = chat_with_history(&engine, &fixture.options.workdir).await;
+    let chat = chat_with_history(&engine, &fixture.workdir).await;
     engine.rpc.offer_permission(chat, permission()).await;
     let mut client = Client::connect(&fixture.socket()).await;
 
     let received = drive(&mut engine, async {
-        client
-            .attach(1, attach_to(chat, &fixture.options.workdir))
-            .await
+        client.attach(1, attach_to(chat, &fixture.workdir)).await
     })
     .await;
 
@@ -112,7 +121,7 @@ async fn attach_sends_start_info_then_history_then_permissions() {
     };
     assert_eq!(judge, "jev");
     assert_eq!(judge_version, "jev-1.13.0");
-    assert_eq!(folder, &fixture.options.workdir.display().to_string());
+    assert_eq!(folder, &fixture.workdir.display().to_string());
     let Notification::HistoryChunk {
         chat: history_chat,
         entries,
@@ -141,6 +150,83 @@ async fn attach_sends_start_info_then_history_then_permissions() {
         attachment.overrides,
         vec![("model".to_owned(), "fast".to_owned())]
     );
+    let chat_env = engine.chat_env(chat).unwrap();
+    assert_eq!(chat_env.workdir(), fixture.workdir);
+    assert_eq!(
+        chat_env.provider_env(),
+        vec![(
+            OsString::from("PATH"),
+            OsString::from("/opt/tui/bin:/usr/bin")
+        )]
+    );
+}
+
+#[tokio::test]
+async fn attach_keeps_env_and_workdir_per_chat_and_latest_tui_wins() {
+    let fixture = Fixture::new();
+    let other = fixture.root.path().join("other");
+    std::fs::create_dir_all(other.join(".git")).unwrap();
+    let mut engine = fixture.ready().await;
+    let first_chat = engine
+        .store
+        .create_chat(fixture.workdir.clone())
+        .await
+        .unwrap();
+    let second_chat = engine.store.create_chat(other.clone()).await.unwrap();
+    let mut first = Client::connect(&fixture.socket()).await;
+    let mut second = Client::connect(&fixture.socket()).await;
+    let mut third = Client::connect(&fixture.socket()).await;
+    let moved = Request::Attach {
+        chat: Some(first_chat),
+        workdir: other.display().to_string(),
+        env: vec![("PATH".to_owned(), "/second/bin".to_owned())],
+        overrides: Vec::new(),
+    };
+
+    drive(&mut engine, async {
+        first
+            .attach(1, attach_to(first_chat, &fixture.workdir))
+            .await;
+        second.attach(1, attach_to(second_chat, &other)).await;
+        third.attach(1, moved).await;
+    })
+    .await;
+
+    assert_eq!(engine.chat_env(first_chat).unwrap().workdir(), other);
+    assert_eq!(
+        engine.chat_env(first_chat).unwrap().provider_env(),
+        vec![(OsString::from("PATH"), OsString::from("/second/bin"))]
+    );
+    assert_eq!(engine.chat_env(second_chat).unwrap().workdir(), other);
+    assert!(engine.chat_env(ChatId(99)).is_none());
+}
+
+#[tokio::test]
+async fn folder_trust_is_asked_per_chat_workdir() {
+    let fixture = Fixture::new();
+    fixture.write_folder_config("[judge.thresholds]\ninjection = 0.9\n");
+    let other = fixture.root.path().join("other");
+    std::fs::create_dir_all(other.join(".git")).unwrap();
+    let mut engine = fixture.ready().await;
+    let mut with_config = Client::connect(&fixture.socket()).await;
+    let mut without_config = Client::connect(&fixture.socket()).await;
+
+    let (asked, not_asked) = drive(&mut engine, async {
+        let asked = with_config.attach(1, new_chat(&fixture.workdir)).await;
+        let not_asked = without_config.attach(1, new_chat(&other)).await;
+        (asked, not_asked)
+    })
+    .await;
+
+    assert!(matches!(
+        asked.last(),
+        Some(Notification::FolderTrustRequested { .. })
+    ));
+    assert!(
+        !not_asked
+            .iter()
+            .any(|notification| matches!(notification, Notification::FolderTrustRequested { .. }))
+    );
 }
 
 #[tokio::test]
@@ -150,7 +236,7 @@ async fn attach_without_chat_creates_new_chat() {
     let mut client = Client::connect(&fixture.socket()).await;
 
     let received = drive(&mut engine, async {
-        client.attach(1, new_chat(&fixture.options.workdir)).await
+        client.attach(1, new_chat(&fixture.workdir)).await
     })
     .await;
 
@@ -170,7 +256,7 @@ async fn attach_missing_chat_returns_error() {
 
     let response = drive(&mut engine, async {
         client
-            .send(1, attach_to(ChatId(42), &fixture.options.workdir))
+            .send(1, attach_to(ChatId(42), &fixture.workdir))
             .await;
         client.response().await
     })
@@ -187,7 +273,7 @@ async fn attach_while_waiting_for_key_asks_for_key_after_greeting() {
     let mut client = Client::connect(&fixture.socket()).await;
 
     let received = drive(&mut engine, async {
-        client.attach(1, new_chat(&fixture.options.workdir)).await
+        client.attach(1, new_chat(&fixture.workdir)).await
     })
     .await;
 
@@ -212,7 +298,7 @@ async fn attach_asks_folder_trust_and_answer_applies_folder_settings() {
     let mut client = Client::connect(&fixture.socket()).await;
 
     let (prompt, applied) = drive(&mut engine, async {
-        let received = client.attach(1, new_chat(&fixture.options.workdir)).await;
+        let received = client.attach(1, new_chat(&fixture.workdir)).await;
         let prompt = received.last().unwrap().clone();
         let Notification::FolderTrustRequested {
             path, fingerprint, ..
@@ -243,7 +329,12 @@ async fn attach_asks_folder_trust_and_answer_applies_folder_settings() {
     assert_ne!(revision, before);
     let settings = engine.settings.at(&engine.store, revision).await.unwrap();
     assert_eq!(settings.thresholds().injection, 0.9);
-    assert!(engine.notices.folder_trust.is_none());
+    assert!(
+        engine
+            .attachments
+            .values()
+            .all(|attachment| attachment.folder_trust.is_none())
+    );
 }
 
 #[tokio::test]
@@ -283,8 +374,8 @@ async fn attach_sends_schema_migration_alert_to_first_tui_only() {
     let mut second = Client::connect(&fixture.socket()).await;
 
     let (first_seen, second_seen) = drive(&mut engine, async {
-        let first_seen = first.attach(1, new_chat(&fixture.options.workdir)).await;
-        let second_seen = second.attach(1, new_chat(&fixture.options.workdir)).await;
+        let first_seen = first.attach(1, new_chat(&fixture.workdir)).await;
+        let second_seen = second.attach(1, new_chat(&fixture.workdir)).await;
         (first_seen, second_seen)
     })
     .await;

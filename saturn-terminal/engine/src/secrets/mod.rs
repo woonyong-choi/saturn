@@ -11,9 +11,7 @@ use std::path::PathBuf;
 
 pub use env::{CHILD_ENV_DENYLIST, is_denied, scrub, scrub_command};
 pub use hook::{HookPolicy, HookVerdict, ToolCall};
-pub use keys::{
-    JUDGE_KEY_ENV, JudgeKey, KeyInfo, KeyInput, KeySource, acquire, can_prompt, input_order,
-};
+pub use keys::{JUDGE_KEY_ENV, JudgeKey, KeyInfo, KeyInput, KeySource, acquire, input_order};
 pub use mask::{Masked, Masker, MaskingWriter, REDACTED, is_sensitive_header};
 pub use storage::{
     HARDENED_IDLE_LOCK, HARDENED_MAX_UNLOCK, LOCK_CHECK_INTERVAL, SecretStore, StorageMode,
@@ -25,7 +23,7 @@ pub enum SecretsError {
     /// 호출자는 숨김 입력을 요청한다.
     #[error("judge key not found")]
     NotFound,
-    /// 호출자는 환경 변수와 표준 입력 방식을 안내하고 끝낸다.
+    /// 호출자는 `SATURN_KEY` 환경 변수와 `judge.key.command` 설정 방법을 안내하고 끝낸다.
     #[error("cannot prompt for judge key in a non-interactive environment")]
     NonInteractive,
     /// 앞뒤 공백과 끝 줄바꿈을 먼저 지운 뒤 판단한다.

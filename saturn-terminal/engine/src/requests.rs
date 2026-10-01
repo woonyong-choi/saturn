@@ -48,7 +48,8 @@ impl Engine {
     }
 
     /// 키 창이 떠 있으면 신뢰 창은 키를 받은 뒤 보낸다. TUI 창은 하나씩 뜬다.
-    pub(super) async fn send_start_notices(&mut self, client: ClientId) {
+    /// `applied`는 이 채팅의 설정 병합 결과로, 경고가 있을 때만 보낸다.
+    pub(super) async fn send_start_notices(&mut self, client: ClientId, applied: Applied) {
         if let Some(notice) = self.notices.migration.take() {
             let alert = Alert::SchemaMigrated {
                 from: notice.from,
@@ -56,7 +57,7 @@ impl Engine {
             };
             self.send(client, Notification::Alert { alert }).await;
         }
-        if let Some(applied) = self.notices.settings.take() {
+        if applied.warning.is_some() {
             self.send(client, settings_notification(applied)).await;
         }
         if let JudgeGate::KeyRequired { reason } = &self.judge_gate {
@@ -65,9 +66,16 @@ impl Engine {
                 .await;
             return;
         }
-        if let Some(prompt) = &self.notices.folder_trust {
-            let request = trust_notification(prompt);
-            self.send(client, request).await;
+        self.send_folder_trust(client).await;
+    }
+
+    async fn send_folder_trust(&self, client: ClientId) {
+        let prompt = self
+            .attachments
+            .get(&client)
+            .and_then(|attachment| attachment.folder_trust.as_ref());
+        if let Some(prompt) = prompt {
+            self.send(client, trust_notification(prompt)).await;
         }
     }
 
@@ -116,14 +124,12 @@ impl Engine {
         self.masker = Masker::new(self.secrets.lock().await.mask_needles());
         self.judge_gate = JudgeGate::Open;
         tracing::info!("judge key accepted");
-        if let Some(prompt) = &self.notices.folder_trust {
-            let request = trust_notification(prompt);
-            self.send(client, request).await;
-        }
+        self.send_folder_trust(client).await;
         Ok(())
     }
 
-    /// 묻은 경로와 지문만 받는다. 적용을 고르지 않으면 이번 실행 동안 폴더 설정 없이 계속한다.
+    /// 그 TUI에 묻은 경로와 지문만 받는다. 적용을 고르지 않으면 그 채팅은 폴더 설정 없이 계속한다.
+    /// 적용하면 그 채팅의 작업 폴더로 다시 병합해 같은 채팅에 붙은 모든 TUI에 `SettingsApplied`를 보낸다.
     ///
     /// # Errors
     /// 묻지 않은 경로나 지문이면 `UnexpectedAnswer`.
@@ -134,30 +140,61 @@ impl Engine {
         fingerprint: String,
         apply: bool,
     ) -> Result<(), EngineError> {
-        let asked = self.notices.folder_trust.as_ref().is_some_and(|prompt| {
-            prompt.path == Path::new(&path) && prompt.fingerprint == fingerprint
-        });
-        if !asked {
+        let asked = self
+            .attachments
+            .get(&client)
+            .and_then(|attachment| {
+                attachment
+                    .folder_trust
+                    .as_ref()
+                    .map(|prompt| (attachment.chat, prompt))
+            })
+            .filter(|(_, prompt)| {
+                prompt.path == Path::new(&path) && prompt.fingerprint == fingerprint
+            })
+            .map(|(chat, _)| chat);
+        let Some(chat) = asked else {
             return Err(EngineError::UnexpectedAnswer {
                 what: "folder trust prompt",
             });
-        }
-        self.notices.folder_trust = None;
+        };
+        self.set_folder_trust(client, None);
         if !apply {
             return Ok(());
         }
         self.settings
             .trust_folder(Path::new(&path), &fingerprint)
             .await?;
-        let (applied, changed) = self.settings.apply_trusted(&self.store, None).await?;
-        self.rpc
-            .broadcast(None, settings_notification(applied))
-            .await;
+        let workdir = self
+            .chat_env(chat)
+            .expect("attached chat should have an environment")
+            .workdir()
+            .to_path_buf();
+        let (applied, changed) = self
+            .settings
+            .apply_trusted(&self.store, Some(chat), &workdir)
+            .await?;
+        let peers: Vec<ClientId> = self
+            .attachments
+            .iter()
+            .filter(|(_, attachment)| attachment.chat == chat)
+            .map(|(peer, _)| *peer)
+            .collect();
+        for peer in peers {
+            self.send(peer, settings_notification(applied.clone()))
+                .await;
+        }
         if let Some(prompt) = changed {
             self.send(client, trust_notification(&prompt)).await;
-            self.notices.folder_trust = Some(prompt);
+            self.set_folder_trust(client, Some(prompt));
         }
         Ok(())
+    }
+
+    fn set_folder_trust(&mut self, client: ClientId, prompt: Option<FolderTrustPrompt>) {
+        if let Some(attachment) = self.attachments.get_mut(&client) {
+            attachment.folder_trust = prompt;
+        }
     }
 }
 

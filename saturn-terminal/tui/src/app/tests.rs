@@ -100,19 +100,21 @@ fn sent(effects: &[Effect]) -> Vec<&Request> {
 }
 
 #[test]
-fn attach_request_carries_chat_and_workdir() {
-    let app = App::new(
+fn attach_request_carries_chat_workdir_and_env() {
+    let mut app = App::new(
         Lang::Ko,
         "/work".into(),
         InputHistory::with_entries(&[]),
         Some(ChatId(3)),
     );
+    app.env = vec![("PATH".to_string(), "/usr/bin".to_string())];
 
     assert_eq!(
         app.attach_request(),
         Request::Attach {
             chat: Some(ChatId(3)),
             workdir: "/work".to_string(),
+            env: vec![("PATH".to_string(), "/usr/bin".to_string())],
             overrides: Vec::new(),
         }
     );

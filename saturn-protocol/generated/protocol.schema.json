@@ -296,7 +296,7 @@
     "ClientMessage": {
       "oneOf": [
         {
-          "description": "`chat`이 `None`이면 새 채팅.\n`overrides`(`-c key=value`)는 이 접속의 입력에만 적용한다.\n`workdir`는 폴더 설정 층 검색 위치이자 새 작업의 실행 위치.",
+          "description": "`chat`이 `None`이면 새 채팅.\n`overrides`(`-c key=value`)는 이 접속의 입력에만 적용한다.\n`workdir`는 폴더 설정 층 검색 위치이자 새 작업의 실행 위치.\n`env`는 이 TUI의 환경 변수(`ATTACH_ENV_NAMES`만)로, engine이 이 채팅의 provider 실행 환경으로 쓴다.",
           "properties": {
             "method": {
               "const": "Attach",
@@ -313,6 +313,22 @@
                       "type": "null"
                     }
                   ]
+                },
+                "env": {
+                  "items": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "type": "array"
+                  },
+                  "type": "array"
                 },
                 "overrides": {
                   "items": {
@@ -336,6 +352,7 @@
               },
               "required": [
                 "workdir",
+                "env",
                 "overrides"
               ],
               "type": "object"

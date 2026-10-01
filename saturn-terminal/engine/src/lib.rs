@@ -13,6 +13,7 @@ pub mod settings;
 pub mod store;
 pub mod training;
 
+mod chat_env;
 mod requests;
 mod usage;
 
@@ -21,7 +22,6 @@ mod lifecycle;
 
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
-use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -39,12 +39,13 @@ use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, RunId, TaskId};
 use saturn_protocol::rpc::Request;
 use tokio::sync::Mutex;
 
+use crate::chat_env::ChatEnv;
 use crate::judges::{ActiveJudge, Judges, JudgesError, SharedSecrets, StartCheck};
 use crate::processes::{NESTED_MARKER_ENV, ProcessError, Supervisor};
 use crate::providers::ProviderConnection;
 use crate::rpc::{ClientId, EngineLock, RpcError, RpcEvent, RpcServer};
 use crate::secrets::{KeyInput, Masker, SecretStore, SecretsError, input_order};
-use crate::settings::{Applied, FolderTrustPrompt, Settings, SettingsError, SettingsManager};
+use crate::settings::{FolderTrustPrompt, Settings, SettingsError, SettingsManager};
 use crate::store::{MigrationNotice, RunRecord, Store, StoreError};
 use crate::training::{TrainPlan, TrainingError};
 
@@ -116,8 +117,6 @@ impl EngineError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EngineOptions {
     pub home: PathBuf,
-    /// 폴더 설정 층 검색의 시작점.
-    pub workdir: PathBuf,
     pub run_overrides: Vec<String>,
 }
 
@@ -163,9 +162,6 @@ struct VerifiedJudge {
 #[derive(Debug, Default)]
 struct StartNotices {
     migration: Option<MigrationNotice>,
-    settings: Option<Applied>,
-    /// 답을 받을 때까지 붙는 TUI마다 보낸다.
-    folder_trust: Option<FolderTrustPrompt>,
 }
 
 #[derive(Debug)]
@@ -173,6 +169,8 @@ struct Attachment {
     chat: ChatId,
     /// 이 접속의 입력에만 적용하는 실행 층.
     overrides: Vec<(String, String)>,
+    /// 이 TUI에 묻고 답을 기다리는 폴더 설정. 폴더는 채팅마다 달라 TUI마다 따로 묻는다.
+    folder_trust: Option<FolderTrustPrompt>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -206,6 +204,8 @@ pub struct Engine {
     judge_gate: JudgeGate,
     rpc: RpcServer,
     attachments: HashMap<ClientId, Attachment>,
+    /// 채팅마다 가장 나중에 붙은 TUI가 넘긴 작업 폴더와 환경.
+    chats: HashMap<ChatId, ChatEnv>,
     notices: StartNotices,
     queue: Queue,
     sessions: SessionManager,
@@ -237,7 +237,7 @@ impl Engine {
         Self::ensure_not_nested(env.nested_marker.as_deref())?;
         let lock = Self::acquire_lock(&options)?;
         let (store, migration) = Self::open_store(&options).await?;
-        let (settings, applied, folder_trust) = Self::merge_settings(&options, &store).await?;
+        let settings = Self::merge_settings(&options, &store).await?;
         let verified = Self::verify_judge(&options, &store, &settings, env).await?;
         let rpc = Self::listen(&options, lock).await?;
         Ok(Self {
@@ -252,11 +252,8 @@ impl Engine {
             judge_gate: verified.gate,
             rpc,
             attachments: HashMap::new(),
-            notices: StartNotices {
-                migration,
-                settings: applied.warning.is_some().then_some(applied),
-                folder_trust,
-            },
+            chats: HashMap::new(),
+            notices: StartNotices { migration },
             queue: Queue::new(),
             sessions: SessionManager::new(),
             agents: AgentTracker::new(),
@@ -291,26 +288,22 @@ impl Engine {
         Ok((store, notice))
     }
 
-    /// 신뢰하지 않은 폴더 설정은 빼고 시작하고 첫 TUI가 붙을 때 신뢰 창을 연다.
+    /// 채팅이 붙기 전이라 폴더 층과 채팅 층 없이 병합한다. 그 층은 TUI가 붙을 때 채팅마다 병합한다.
     ///
     /// # Errors
     /// 검사 실패이고 이전 설정 번호도 없으면 `Settings(NoPreviousRevision)`.
     async fn merge_settings(
         options: &EngineOptions,
         store: &Store,
-    ) -> Result<(SettingsManager, Applied, Option<FolderTrustPrompt>), EngineError> {
-        let mut settings = SettingsManager::new(
-            options.home.clone(),
-            options.workdir.clone(),
-            options.run_overrides.clone(),
-            store,
-        )
-        .await?;
-        let (applied, folder_trust) = settings.apply_trusted(store, None).await?;
+    ) -> Result<SettingsManager, EngineError> {
+        let mut settings =
+            SettingsManager::new(options.home.clone(), options.run_overrides.clone(), store)
+                .await?;
+        let applied = settings.apply_user(store).await?;
         if let Some(warning) = &applied.warning {
             tracing::warn!(%warning, "settings applied with warning");
         }
-        Ok((settings, applied, folder_trust))
+        Ok(settings)
     }
 
     /// 확인이 실패하면 환경 변수, 비밀번호 관리자 명령 순서로 키를 받아 다시 확인하고,
@@ -356,7 +349,7 @@ impl Engine {
         };
         let inputs = env
             .key_inputs
-            .unwrap_or_else(|| input_order(current.key_command(), std::io::stdin().is_terminal()));
+            .unwrap_or_else(|| input_order(current.key_command()));
         for input in inputs {
             match judges.accept_key(input, &secrets, settings).await {
                 Ok(()) => {
@@ -438,7 +431,6 @@ impl Engine {
         Ok(())
     }
 
-    /// TODO(#46): RPC 메서드 이름과 목록이 확정되면 여기 분배표를 맞춘다
     async fn route(&mut self, client: ClientId, request: Request) -> Result<(), EngineError> {
         if let JudgeGate::KeyRequired { reason } = &self.judge_gate
             && !matches!(
@@ -454,10 +446,16 @@ impl Engine {
             Request::Attach {
                 chat,
                 workdir,
+                env,
                 overrides,
             } => {
-                self.attach(client, chat, PathBuf::from(workdir), overrides)
-                    .await
+                self.attach(
+                    client,
+                    chat,
+                    ChatEnv::new(PathBuf::from(workdir), env),
+                    overrides,
+                )
+                .await
             }
             Request::LoadHistory {
                 chat,
@@ -520,6 +518,7 @@ impl Engine {
     }
 
     /// 순서: `StartInfo` → `HistoryChunk` → 답을 기다리는 허가 요청 → 시작 안내와 키·신뢰 창.
+    /// 이 채팅의 폴더 설정 층은 `chat_env`의 작업 폴더로 병합하고, 그 폴더와 환경은 채팅에 저장한다.
     /// `overrides`는 이 접속의 입력에만 적용하는 실행 층이다.
     ///
     /// # Errors
@@ -528,7 +527,7 @@ impl Engine {
         &mut self,
         client: ClientId,
         chat: Option<ChatId>,
-        workdir: PathBuf,
+        chat_env: ChatEnv,
         overrides: Vec<(String, String)>,
     ) -> Result<(), EngineError> {
         let chat = match chat {
@@ -536,15 +535,30 @@ impl Engine {
                 self.store.chat_layer(chat).await?;
                 chat
             }
-            None => self.store.create_chat(workdir.clone()).await?,
+            None => {
+                self.store
+                    .create_chat(chat_env.workdir().to_path_buf())
+                    .await?
+            }
         };
-        let start = self.start_info(&workdir);
+        let (applied, folder_trust) = self
+            .settings
+            .apply_trusted(&self.store, Some(chat), chat_env.workdir())
+            .await?;
+        let start = self.start_info(chat_env.workdir());
         let history = self.history_chunk(chat, ATTACH_HISTORY).await?;
         self.rpc.greet(client, chat, start, history).await?;
-        self.attachments
-            .insert(client, Attachment { chat, overrides });
+        self.chats.insert(chat, chat_env);
+        self.attachments.insert(
+            client,
+            Attachment {
+                chat,
+                overrides,
+                folder_trust,
+            },
+        );
         self.presence = Presence::Attached;
-        self.send_start_notices(client).await;
+        self.send_start_notices(client, applied).await;
         Ok(())
     }
 

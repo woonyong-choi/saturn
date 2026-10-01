@@ -32,10 +32,8 @@ fn parse_options(args: impl Iterator<Item = String>) -> anyhow::Result<EngineOpt
         Some(home) => home,
         None => default_home()?,
     };
-    let workdir = std::env::current_dir().context("failed to read current directory")?;
     Ok(EngineOptions {
         home,
-        workdir,
         run_overrides,
     })
 }

@@ -21,7 +21,7 @@ async fn usage_request_answers_rows_for_attached_chat() {
             )
             .await;
         let unattached = client.response().await;
-        client.attach(2, new_chat(&fixture.options.workdir)).await;
+        client.attach(2, new_chat(&fixture.workdir)).await;
         client
             .send(
                 3,
@@ -75,7 +75,7 @@ async fn requests_wait_for_judge_key_and_key_is_not_recorded() {
     let mut engine = fixture.waiting_for_key(replies).await;
     let chat = engine
         .store
-        .create_chat(fixture.options.workdir.clone())
+        .create_chat(fixture.workdir.clone())
         .await
         .unwrap();
     let mut client = Client::connect(&fixture.socket()).await;
@@ -128,7 +128,7 @@ async fn requests_each_get_one_response_in_order() {
     let mut engine = fixture.ready().await;
     let chat = engine
         .store
-        .create_chat(fixture.options.workdir.clone())
+        .create_chat(fixture.workdir.clone())
         .await
         .unwrap();
     let export = fixture.root.path().join("judgments.jsonl");

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use saturn_protocol::envelope::{
     self, ClientMessage, CodecError, Outcome, RequestId, ServerMessage,
 };
-use saturn_protocol::rpc::{Notification, Request};
+use saturn_protocol::rpc::{ATTACH_ENV_NAMES, Notification, Request};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
 use tokio::net::UnixStream;
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
@@ -34,6 +34,18 @@ pub struct EngineClient {
     lines: Lines<BufReader<OwnedReadHalf>>,
     writer: OwnedWriteHalf,
     next_request: u64,
+}
+
+/// 이 TUI의 환경 변수 중 `Attach`로 넘길 것. 없는 변수와 문자열이 아닌 값은 뺀다.
+pub fn attach_env() -> Vec<(String, String)> {
+    collect_attach_env(|name| std::env::var(name).ok())
+}
+
+fn collect_attach_env(lookup: impl Fn(&str) -> Option<String>) -> Vec<(String, String)> {
+    ATTACH_ENV_NAMES
+        .iter()
+        .filter_map(|name| lookup(name).map(|value| ((*name).to_owned(), value)))
+        .collect()
 }
 
 impl EngineClient {
@@ -123,6 +135,27 @@ mod tests {
             tokens: Some(10),
             threshold: 100,
         }
+    }
+
+    #[test]
+    fn attach_env_takes_only_listed_names_and_never_the_judge_key() {
+        let process = [
+            ("PATH", "/opt/bin:/usr/bin"),
+            ("SATURN_KEY", "sk-secret"),
+            ("AWS_SECRET_ACCESS_KEY", "other"),
+        ];
+
+        let env = collect_attach_env(|name| {
+            process
+                .iter()
+                .find(|(key, _)| *key == name)
+                .map(|(_, value)| (*value).to_owned())
+        });
+
+        assert_eq!(
+            env,
+            vec![("PATH".to_owned(), "/opt/bin:/usr/bin".to_owned())]
+        );
     }
 
     #[tokio::test]

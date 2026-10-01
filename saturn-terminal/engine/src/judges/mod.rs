@@ -164,7 +164,7 @@ pub enum StartCheck {
         /// 화면과 stderr에 보일 한 줄.
         reason: String,
     },
-    /// 도움말에 보이지 않는 설치 검증 전용 설정으로 건너뛰었다. TODO(#49): 설정 키 이름
+    /// 도움말에 보이지 않는 설치 검증 전용 설정으로 건너뛰었다.
     Skipped,
 }
 
@@ -627,10 +627,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let home = dir.path().join("home");
         let (store, _) = Store::open(&home).await.unwrap();
-        let settings =
-            SettingsManager::new(home.clone(), dir.path().to_path_buf(), Vec::new(), &store)
-                .await
-                .unwrap();
+        let settings = SettingsManager::new(home.clone(), Vec::new(), &store)
+            .await
+            .unwrap();
         let key_file = dir.path().join("judge.key");
         let empty = SecretStore::with_key_file(key_file.clone(), StorageMode::Standard);
         let secrets: SharedSecrets = Arc::new(Mutex::new(empty));
@@ -677,11 +676,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let home = dir.path().join("home");
         let (store, _) = Store::open(&home).await.unwrap();
-        let mut manager =
-            SettingsManager::new(home.clone(), dir.path().to_path_buf(), Vec::new(), &store)
-                .await
-                .unwrap();
-        let normal = manager.apply(&store, None).await.unwrap().revision;
+        let mut manager = SettingsManager::new(home.clone(), Vec::new(), &store)
+            .await
+            .unwrap();
+        let normal = manager.apply_user(&store).await.unwrap().revision;
         let settings = manager.at(&store, normal).await.unwrap();
         let transport = FakeTransport::new(vec![status(401, "{}", Vec::new())]);
         let judges = judges(secrets_with_key(dir.path()).await, transport);
@@ -692,7 +690,7 @@ mod tests {
             matches!(failed, StartCheck::KeyRequired { ref reason } if reason == "judge rejected the key")
         );
         std::fs::write(home.join("config.toml"), "[judge]\nskip_check = true\n").unwrap();
-        let skip = manager.apply(&store, None).await.unwrap().revision;
+        let skip = manager.apply_user(&store).await.unwrap().revision;
         let skipping = manager.at(&store, skip).await.unwrap();
         assert!(matches!(judges.check(&skipping).await, StartCheck::Skipped));
     }
@@ -702,10 +700,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let home = dir.path().join("home");
         let (store, _) = Store::open(&home).await.unwrap();
-        let mut manager =
-            SettingsManager::new(home.clone(), dir.path().to_path_buf(), Vec::new(), &store)
-                .await
-                .unwrap();
+        let mut manager = SettingsManager::new(home.clone(), Vec::new(), &store)
+            .await
+            .unwrap();
         let secrets = secrets_with_key(dir.path()).await;
         let jev = load(&mut manager, &store, &home, "").await;
         let chosen = Judges::select(&jev, Arc::clone(&secrets), Masker::default()).unwrap();
@@ -751,7 +748,7 @@ mod tests {
         content: &str,
     ) -> Settings {
         std::fs::write(home.join("config.toml"), content).unwrap();
-        let revision = manager.apply(store, None).await.unwrap().revision;
+        let revision = manager.apply_user(store).await.unwrap().revision;
         manager.at(store, revision).await.unwrap()
     }
 

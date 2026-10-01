@@ -1,6 +1,7 @@
 //! 설정 적용과 입력별 고정 번호 조회. 검사가 실패하면 이전 번호를 유지하고 경고한다.
 //! 설계: docs/design/settings.md
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use saturn_protocol::ids::{ChatId, SettingsRevision};
@@ -20,17 +21,16 @@ pub struct Applied {
     pub warning: Option<String>,
 }
 
-/// engine에 하나. 작업 폴더와 실행 `-c`는 engine 시작 때 정한다.
+/// engine에 하나. 실행 `-c`는 engine 시작 때 정하고, 작업 폴더는 채팅마다 호출 때 받는다.
 #[derive(Debug)]
 pub struct SettingsManager {
     home: PathBuf,
-    workdir: PathBuf,
     run_overrides: Vec<String>,
     trust: TrustStore,
     /// 검사 실패 때 돌아갈 번호.
     current: Option<SettingsRevision>,
-    /// 마지막 `apply` 때 본 설정 파일과 지문. 없던 파일은 `None`.
-    seen: Option<Vec<(PathBuf, Option<String>)>>,
+    /// 작업 폴더마다 마지막 `apply` 때 본 설정 파일과 지문. 없던 파일은 `None`.
+    seen: HashMap<PathBuf, Vec<(PathBuf, Option<String>)>>,
 }
 
 impl SettingsManager {
@@ -38,7 +38,6 @@ impl SettingsManager {
     /// 신뢰 기록 읽기 실패면 `Io`/`Parse`, 스냅샷 조회 실패면 `Store`.
     pub async fn new(
         home: PathBuf,
-        workdir: PathBuf,
         run_overrides: Vec<String>,
         store: &Store,
     ) -> Result<Self, SettingsError> {
@@ -46,17 +45,19 @@ impl SettingsManager {
         let current = store.latest_settings_revision().await?;
         Ok(Self {
             home,
-            workdir,
             run_overrides,
             trust,
             current,
-            seen: None,
+            seen: HashMap::new(),
         })
     }
 
     /// 폴더 설정이 없으면 `None`. `Unknown`·`Changed`면 호출자가 신뢰 창을 열고 답을 `trust_folder`로 넘긴다.
-    pub async fn folder_status(&self) -> Result<Option<(PathBuf, TrustStatus)>, SettingsError> {
-        let Some(path) = find_folder_config(&self.workdir, &self.home).await? else {
+    pub async fn folder_status(
+        &self,
+        workdir: &Path,
+    ) -> Result<Option<(PathBuf, TrustStatus)>, SettingsError> {
+        let Some(path) = find_folder_config(workdir, &self.home).await? else {
             return Ok(None);
         };
         let content = read_file(&path)?.unwrap_or_default();
@@ -81,8 +82,9 @@ impl SettingsManager {
         &mut self,
         store: &Store,
         chat: Option<ChatId>,
+        workdir: &Path,
     ) -> Result<Applied, SettingsError> {
-        let (layers, untrusted) = self.collect_layers(store, chat).await?;
+        let (layers, untrusted) = self.collect_layers(store, chat, Some(workdir)).await?;
         if let Some(prompt) = untrusted {
             return Err(SettingsError::Untrusted { path: prompt.path });
         }
@@ -97,16 +99,27 @@ impl SettingsManager {
         &mut self,
         store: &Store,
         chat: Option<ChatId>,
+        workdir: &Path,
     ) -> Result<(Applied, Option<FolderTrustPrompt>), SettingsError> {
-        let (layers, untrusted) = self.collect_layers(store, chat).await?;
+        let (layers, untrusted) = self.collect_layers(store, chat, Some(workdir)).await?;
         let applied = self.merge_and_save(store, layers).await?;
         Ok((applied, untrusted))
+    }
+
+    /// 폴더 층과 채팅 층 없이 병합한다. 채팅이 붙기 전인 engine 시작 때 쓴다.
+    ///
+    /// # Errors
+    /// 이전 번호 없이 검사 실패면 `NoPreviousRevision`, 저장 실패면 `Store`.
+    pub async fn apply_user(&mut self, store: &Store) -> Result<Applied, SettingsError> {
+        let (layers, _) = self.collect_layers(store, None, None).await?;
+        self.merge_and_save(store, layers).await
     }
 
     async fn collect_layers(
         &mut self,
         store: &Store,
         chat: Option<ChatId>,
+        workdir: Option<&Path>,
     ) -> Result<(Vec<(LayerSource, String)>, Option<FolderTrustPrompt>), SettingsError> {
         let user_path = self.user_config_path();
         let mut layers = vec![(
@@ -120,7 +133,9 @@ impl SettingsManager {
         if let Some(content) = user {
             layers.push((source(Layer::User, Some(user_path), &content), content));
         }
-        if let Some((path, status)) = self.folder_status().await? {
+        if let Some(workdir) = workdir
+            && let Some((path, status)) = self.folder_status(workdir).await?
+        {
             let content = read_file(&path)?.unwrap_or_default();
             seen.push((path.clone(), Some(fingerprint(&content))));
             match status {
@@ -137,7 +152,9 @@ impl SettingsManager {
         {
             layers.push((source(Layer::Chat, None, &content), content));
         }
-        self.seen = Some(seen);
+        if let Some(workdir) = workdir {
+            self.seen.insert(workdir.to_path_buf(), seen);
+        }
         Ok((layers, untrusted))
     }
 
@@ -200,12 +217,12 @@ impl SettingsManager {
         Ok(store.settings_snapshot(revision).await?.settings)
     }
 
-    /// 바뀌었으면 호출자가 다음 입력 접수 전에 `apply`한다. 한 번도 적용하지 않았으면 참.
+    /// 바뀌었으면 호출자가 다음 입력 접수 전에 `apply`한다. 이 작업 폴더로 한 번도 적용하지 않았으면 참.
     ///
     /// # Errors
     /// 파일 읽기 실패면 `Io`.
-    pub async fn changed(&self) -> Result<bool, SettingsError> {
-        let Some(seen) = &self.seen else {
+    pub async fn changed(&self, workdir: &Path) -> Result<bool, SettingsError> {
+        let Some(seen) = self.seen.get(workdir) else {
             return Ok(true);
         };
         let mut now = Vec::new();
@@ -214,7 +231,7 @@ impl SettingsManager {
             user_path.clone(),
             read_file(&user_path)?.as_deref().map(fingerprint),
         ));
-        if let Some(path) = find_folder_config(&self.workdir, &self.home).await? {
+        if let Some(path) = find_folder_config(workdir, &self.home).await? {
             let content = read_file(&path)?;
             now.push((path, content.as_deref().map(fingerprint)));
         }
@@ -309,14 +326,9 @@ mod tests {
 
         async fn manager(&self, overrides: &[&str]) -> SettingsManager {
             let overrides = overrides.iter().map(|item| (*item).to_owned()).collect();
-            SettingsManager::new(
-                self.home.clone(),
-                self.workdir.clone(),
-                overrides,
-                &self.store,
-            )
-            .await
-            .unwrap()
+            SettingsManager::new(self.home.clone(), overrides, &self.store)
+                .await
+                .unwrap()
         }
 
         fn write_user(&self, content: &str) {
@@ -350,10 +362,19 @@ mod tests {
         fixture.write_user("[judge.thresholds]\ninjection = 0.9\n");
         let mut manager = fixture.manager(&[]).await;
 
-        let first = manager.apply(&fixture.store, None).await.unwrap();
-        let second = manager.apply(&fixture.store, None).await.unwrap();
+        let first = manager
+            .apply(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
+        let second = manager
+            .apply(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
         let mut other = fixture.manager(&[]).await;
-        let third = other.apply(&fixture.store, None).await.unwrap();
+        let third = other
+            .apply(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
 
         assert_eq!(first.revision, SettingsRevision(1));
         assert_eq!(second.revision, first.revision);
@@ -373,10 +394,14 @@ mod tests {
         );
         let mut manager = fixture.manager(&[]).await;
 
-        let error = manager.apply(&fixture.store, None).await.unwrap_err();
+        let error = manager
+            .apply(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap_err();
         assert!(matches!(error, SettingsError::Untrusted { .. }));
 
-        let Some((found, TrustStatus::Unknown(prompt))) = manager.folder_status().await.unwrap()
+        let Some((found, TrustStatus::Unknown(prompt))) =
+            manager.folder_status(&fixture.workdir).await.unwrap()
         else {
             panic!("folder config should be unknown");
         };
@@ -385,7 +410,10 @@ mod tests {
             .trust_folder(&path, &prompt.fingerprint)
             .await
             .unwrap();
-        let applied = manager.apply(&fixture.store, None).await.unwrap();
+        let applied = manager
+            .apply(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
 
         let settings = manager.at(&fixture.store, applied.revision).await.unwrap();
         assert_eq!(settings.thresholds().injection, 0.9);
@@ -399,20 +427,70 @@ mod tests {
         let path = fixture.write_folder("[judge.thresholds]\ninjection = 0.9\n");
         let mut manager = fixture.manager(&[]).await;
 
-        let (applied, prompt) = manager.apply_trusted(&fixture.store, None).await.unwrap();
+        let (applied, prompt) = manager
+            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
 
         let settings = manager.at(&fixture.store, applied.revision).await.unwrap();
         assert_ne!(settings.thresholds().injection, 0.9);
         let prompt = prompt.unwrap();
         assert_eq!(prompt.path, std::fs::canonicalize(&path).unwrap());
-        assert!(!manager.changed().await.unwrap());
+        assert!(!manager.changed(&fixture.workdir).await.unwrap());
         manager
             .trust_folder(&path, &prompt.fingerprint)
             .await
             .unwrap();
-        let (trusted, none) = manager.apply_trusted(&fixture.store, None).await.unwrap();
+        let (trusted, none) = manager
+            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
         let settings = manager.at(&fixture.store, trusted.revision).await.unwrap();
         assert_eq!(settings.thresholds().injection, 0.9);
+        assert!(none.is_none());
+    }
+
+    #[tokio::test]
+    async fn folder_layer_follows_the_workdir_given_per_call() {
+        let fixture = Fixture::new().await;
+        let path = fixture.write_folder("[judge.thresholds]\ninjection = 0.9\n");
+        let other = fixture._root.path().join("other");
+        std::fs::create_dir_all(other.join(".git")).unwrap();
+        let mut manager = fixture.manager(&[]).await;
+        let (_, prompt) = manager
+            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
+        manager
+            .trust_folder(&path, &prompt.unwrap().fingerprint)
+            .await
+            .unwrap();
+
+        let (here, _) = manager
+            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
+        let (there, none) = manager
+            .apply_trusted(&fixture.store, None, &other)
+            .await
+            .unwrap();
+        let user_only = manager.apply_user(&fixture.store).await.unwrap();
+
+        let injection = |revision| {
+            let store = &fixture.store;
+            let manager = &manager;
+            async move {
+                manager
+                    .at(store, revision)
+                    .await
+                    .unwrap()
+                    .thresholds()
+                    .injection
+            }
+        };
+        assert_eq!(injection(here.revision).await, 0.9);
+        assert_ne!(injection(there.revision).await, 0.9);
+        assert_eq!(there.revision, user_only.revision);
         assert!(none.is_none());
     }
 
@@ -420,10 +498,16 @@ mod tests {
     async fn invalid_settings_keep_previous_revision() {
         let fixture = Fixture::new().await;
         let mut manager = fixture.manager(&[]).await;
-        let first = manager.apply(&fixture.store, None).await.unwrap();
+        let first = manager
+            .apply(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
         fixture.write_user("\n\n\n\n\n\nbroken = = 1\n");
 
-        let applied = manager.apply(&fixture.store, None).await.unwrap();
+        let applied = manager
+            .apply(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
 
         assert_eq!(applied.revision, first.revision);
         let warning = applied.warning.unwrap();
@@ -441,7 +525,10 @@ mod tests {
             .manager(&["judge.thresholds.keep_current=0.5"])
             .await;
 
-        let error = manager.apply(&fixture.store, None).await.unwrap_err();
+        let error = manager
+            .apply(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap_err();
 
         assert!(matches!(error, SettingsError::NoPreviousRevision));
     }
@@ -461,16 +548,16 @@ mod tests {
             .unwrap();
         let mut manager = fixture.manager(&["on_exit=\"ask\""]).await;
         let fixed = manager
-            .apply(&fixture.store, Some(chat))
+            .apply(&fixture.store, Some(chat), &fixture.workdir)
             .await
             .unwrap()
             .revision;
-        assert!(!manager.changed().await.unwrap());
+        assert!(!manager.changed(&fixture.workdir).await.unwrap());
 
         fixture.write_user("[judge.thresholds]\ninjection = 0.95\nprogressing = 0.4\n");
-        assert!(manager.changed().await.unwrap());
+        assert!(manager.changed(&fixture.workdir).await.unwrap());
         let newer = manager
-            .apply(&fixture.store, Some(chat))
+            .apply(&fixture.store, Some(chat), &fixture.workdir)
             .await
             .unwrap()
             .revision;

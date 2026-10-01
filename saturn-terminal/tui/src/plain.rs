@@ -24,6 +24,8 @@ pub struct PlainOutput<W: Write> {
     /// 아직 줄바꿈이 오지 않은 모델 글 조각.
     partial: BTreeMap<TaskId, String>,
     alerts_written: usize,
+    /// engine가 키를 요청한 원인. 화면이 없어 묻지 않는다.
+    key_required: Option<String>,
 }
 
 impl<W: Write> PlainOutput<W> {
@@ -37,7 +39,13 @@ impl<W: Write> PlainOutput<W> {
             finished: false,
             partial: BTreeMap::new(),
             alerts_written: 0,
+            key_required: None,
         }
+    }
+
+    /// engine가 judge 키를 요청했으면 그 원인. 호출자는 묻지 않고 안내하고 끝낸다.
+    pub fn key_required(&self) -> Option<&str> {
+        self.key_required.as_deref()
     }
 
     /// 원문은 engine이 `InputChanged`로 돌려주므로 여기서 쓰지 않는다.
@@ -134,6 +142,7 @@ impl<W: Write> PlainOutput<W> {
                 self.chat.apply_alert(alert);
                 self.write_new_alerts()?;
             }
+            Notification::JudgeKeyRequired { reason } => self.key_required = Some(reason),
             _ => {}
         }
         Ok(())
@@ -359,6 +368,23 @@ mod tests {
              이번 요청 · codex Token 4,120 · 판단기 0회 Token 0 · 45초\n"
         );
         assert!(finished);
+    }
+
+    #[test]
+    fn judge_key_request_is_kept_for_the_caller_and_writes_nothing() {
+        let mut plain = PlainOutput::new(Vec::new(), Lang::Ko);
+
+        plain
+            .apply(
+                Notification::JudgeKeyRequired {
+                    reason: "judge rejected the key".to_owned(),
+                },
+                Instant::now(),
+            )
+            .unwrap();
+
+        assert_eq!(plain.key_required(), Some("judge rejected the key"));
+        assert!(plain.out.is_empty());
     }
 
     #[test]

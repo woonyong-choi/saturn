@@ -17,7 +17,7 @@ pub mod state;
 pub mod terminal;
 pub mod view;
 
-pub(crate) const JUDGE_KEY_ENV: &str = "SATURN_JUDGE_KEY";
+pub(crate) const JUDGE_KEY_ENV: &str = "SATURN_KEY";
 
 use std::collections::VecDeque;
 use std::path::PathBuf;
@@ -43,6 +43,11 @@ pub enum TuiError {
     History(#[from] history::HistoryError),
     #[error("plain output failed")]
     Plain(#[source] std::io::Error),
+    /// 화면이 없어 키를 묻지 않고 방법을 안내하고 끝낸다.
+    #[error(
+        "judge key required ({reason}): set the SATURN_KEY environment variable or the judge.key.command setting"
+    )]
+    JudgeKeyRequired { reason: String },
 }
 
 #[derive(Debug, Clone)]
@@ -67,6 +72,7 @@ pub async fn run(client: &mut EngineClient, options: RunOptions) -> Result<(), T
     let lang = options.lang.unwrap_or_else(Lang::detect);
     let history = InputHistory::load(&options.history)?;
     let mut app = App::new(lang, options.workdir, history, options.chat);
+    app.env = client::attach_env();
     let mut screen = terminal::enter()?;
     let result = app::run_loop(&mut app, client, &mut screen).await;
     let restored = terminal::leave();
@@ -90,6 +96,7 @@ pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result
         .send(Request::Attach {
             chat: options.chat,
             workdir: options.workdir.display().to_string(),
+            env: client::attach_env(),
             overrides: Vec::new(),
         })
         .await?;
@@ -129,6 +136,11 @@ pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result
                     .map_err(TuiError::Plain)?,
                 None => return Err(ClientError::Closed.into()),
             },
+        }
+        if let Some(reason) = output.key_required() {
+            return Err(TuiError::JudgeKeyRequired {
+                reason: reason.to_owned(),
+            });
         }
     }
 }

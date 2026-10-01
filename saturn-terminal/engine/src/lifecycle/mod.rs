@@ -37,6 +37,8 @@ const CHECK_OK: &str = r#"{"model":"jev-1.13.0","answers":{"saturn_check":{"noul
 struct Fixture {
     root: tempfile::TempDir,
     options: EngineOptions,
+    /// TUI가 붙을 때 넘기는 작업 폴더.
+    workdir: PathBuf,
 }
 
 impl Fixture {
@@ -46,10 +48,13 @@ impl Fixture {
         std::fs::create_dir_all(workdir.join(".git")).unwrap();
         let options = EngineOptions {
             home: root.path().join("home"),
-            workdir,
             run_overrides: Vec::new(),
         };
-        Self { root, options }
+        Self {
+            root,
+            options,
+            workdir,
+        }
     }
 
     fn key_file(&self) -> PathBuf {
@@ -66,7 +71,7 @@ impl Fixture {
     }
 
     fn write_folder_config(&self, content: &str) {
-        let dir = self.options.workdir.join(".saturn");
+        let dir = self.workdir.join(".saturn");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("config.toml"), content).unwrap();
     }
@@ -184,6 +189,7 @@ fn new_chat(workdir: &Path) -> Request {
     Request::Attach {
         chat: None,
         workdir: workdir.display().to_string(),
+        env: Vec::new(),
         overrides: Vec::new(),
     }
 }

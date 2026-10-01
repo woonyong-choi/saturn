@@ -29,7 +29,6 @@ pub(crate) const KEY_FILE: &str = "judge.key";
 /// 소유자만 읽고 쓴다.
 const KEY_FILE_MODE: u32 = 0o600;
 
-/// TODO(#49): 설정 키 이름과 기본값
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum StorageMode {
     #[default]
@@ -106,12 +105,12 @@ impl SecretStore {
         Ok(&self.current.insert((key, KeySource::Stored)).0)
     }
 
-    /// `Stored`와 `Stdin` 출처만 백엔드에 쓰고, `Env`와 `Command`는 메모리에만 둔다.
+    /// `Stored` 출처만 백엔드에 쓰고, `Env`와 `Command`는 메모리에만 둔다.
     ///
     /// # Errors
     /// 키체인 실패면 `Keychain`, 파일 실패면 `Io`.
     pub async fn save(&mut self, key: JudgeKey, source: KeySource) -> Result<(), SecretsError> {
-        if matches!(source, KeySource::Stored | KeySource::Stdin) {
+        if source == KeySource::Stored {
             self.write_backend(&key)?;
         }
         self.current = Some((key, source));
@@ -123,13 +122,13 @@ impl SecretStore {
         self.current = Some((key, source));
     }
 
-    /// `Stored`, `Stdin` 출처만 쓴다.
+    /// `Stored` 출처만 쓴다.
     ///
     /// # Errors
     /// 키체인 실패면 `Keychain`, 파일 실패면 `Io`.
     pub(crate) fn persist_current(&mut self) -> Result<(), SecretsError> {
         match &self.current {
-            Some((key, KeySource::Stored | KeySource::Stdin)) => self.write_backend(key),
+            Some((key, KeySource::Stored)) => self.write_backend(key),
             _ => Ok(()),
         }
     }
@@ -209,10 +208,7 @@ impl SecretStore {
             return false;
         }
         self.unlocked = None;
-        if matches!(
-            self.current,
-            Some((_, KeySource::Stored | KeySource::Stdin))
-        ) {
+        if matches!(self.current, Some((_, KeySource::Stored))) {
             self.current = None;
         }
         true

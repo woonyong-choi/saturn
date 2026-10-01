@@ -6,7 +6,6 @@ use std::ffi::{OsStr, OsString};
 use super::keys::JUDGE_KEY_ENV;
 
 /// 새 비밀 변수를 만들면 여기에 더한다.
-/// TODO(#32): 벤더 이름 변수를 함께 지울지와 최종 이름
 pub const CHILD_ENV_DENYLIST: &[&str] = &[JUDGE_KEY_ENV];
 
 /// macOS 환경 변수처럼 대소문자를 구분한다.
