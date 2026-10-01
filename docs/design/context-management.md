@@ -68,7 +68,7 @@ session이 길어지면 맥락이 쌓여 토큰이 늘고 답의 품질이 떨�
 
 ### 맥락 크기 측정
 
-`sessions`는 턴이 끝날 때마다 활성 맥락 크기 `A`를 잰다. `A`는 session에 쌓인 활성 맥락의 토큰 수다. engine은 턴이 끝날 때 `A`를 기록한다. 사용량 보고의 범위와 턴 값 계산은 [provider 연결과 session](providers-and-sessions.md)에 있다.
+`sessions`는 턴이 끝날 때마다 활성 맥락 크기 `A`를 잰다. `A`는 session에 쌓인 활성 맥락의 토큰 수이고 루트(메인) 에이전트 메시지로만 계산한다. engine은 턴이 끝날 때 `A`를 기록한다. 사용량 보고의 범위와 턴 값 계산은 [provider 연결과 session](providers-and-sessions.md)에 있다.
 
 `A`를 잴 수 없으면 Saturn은 새 session을 열지 않고 provider 자동 압축에 맡긴다. 측정하지 못한 맥락으로 재시작을 판정하지 않기 위해서다.
 
@@ -241,5 +241,4 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 
 ## 미해결 질문
 
-- `A`를 루트 에이전트 메시지로만 계산할지, 마지막으로 보고된 메시지로 계산할지 ([#62](https://github.com/woonyong-choi/saturn/issues/62))
 - 도구 출력 자르기를 패킷을 만들 때만 할지, provider 훅으로 실행 중에 할지 ([#37](https://github.com/woonyong-choi/saturn/issues/37))
