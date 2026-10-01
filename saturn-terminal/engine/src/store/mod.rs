@@ -11,6 +11,7 @@ mod records;
 mod retention;
 mod schema;
 mod snapshots;
+mod usage;
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -29,6 +30,7 @@ pub use retention::{
     PruneOutcome, PrunePlan, PruneRequest, PruneScope, RetentionPolicy, SkipReason, Tombstone,
 };
 pub use schema::{BACKUP_RETENTION, MigrationNotice, SCHEMA_VERSION};
+pub use usage::JudgeUsage;
 
 pub const DB_FILE: &str = "saturn.db";
 

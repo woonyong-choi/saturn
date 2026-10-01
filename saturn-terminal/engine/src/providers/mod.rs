@@ -221,6 +221,14 @@ impl TurnOriginTracker {
     }
 }
 
+/// 사용량 화면처럼 사용자에게 provider를 이름으로 보일 때 쓴다.
+pub fn display_name(provider: Provider) -> &'static str {
+    match provider {
+        Provider::Codex => codex::DISPLAY_NAME,
+        Provider::Claude => claude::DISPLAY_NAME,
+    }
+}
+
 /// `handle.steer_verified`가 거짓(끼워 넣기 실측 #5, #27 통과 전)이면 `Queue`.
 pub fn steer_route(handle: &SessionHandle) -> SteerRoute {
     if handle.steer_verified {

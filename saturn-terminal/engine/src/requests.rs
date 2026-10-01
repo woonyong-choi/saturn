@@ -3,7 +3,7 @@
 use std::path::Path;
 
 use saturn_protocol::ids::{ChatId, LedgerSeq, Provider};
-use saturn_protocol::rpc::Notification;
+use saturn_protocol::rpc::{Alert, Notification};
 
 use crate::rpc::ClientId;
 use crate::secrets::{KeyInput, Masker};
@@ -49,6 +49,13 @@ impl Engine {
 
     /// 키 창이 떠 있으면 신뢰 창은 키를 받은 뒤 보낸다. TUI 창은 하나씩 뜬다.
     pub(super) async fn send_start_notices(&mut self, client: ClientId) {
+        if let Some(notice) = self.notices.migration.take() {
+            let alert = Alert::SchemaMigrated {
+                from: notice.from,
+                to: notice.to,
+            };
+            self.send(client, Notification::Alert { alert }).await;
+        }
         if let Some(applied) = self.notices.settings.take() {
             self.send(client, settings_notification(applied)).await;
         }

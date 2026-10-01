@@ -14,6 +14,7 @@ pub mod store;
 pub mod training;
 
 mod requests;
+mod usage;
 
 #[cfg(test)]
 mod lifecycle;
@@ -161,7 +162,6 @@ struct VerifiedJudge {
 /// 첫 TUI에 한 번 보낸다.
 #[derive(Debug, Default)]
 struct StartNotices {
-    /// TODO(#46): 이관 안내를 TUI로 보낼 알림
     migration: Option<MigrationNotice>,
     settings: Option<Applied>,
     /// 답을 받을 때까지 붙는 TUI마다 보낸다.
@@ -464,7 +464,7 @@ impl Engine {
                 before,
                 limit,
             } => self.load_history(client, chat, before, limit).await,
-            // TODO(#90): 채팅 이름과 묶음을 기록할 자리
+            // TODO(#161): 채팅 이름과 묶음
             Request::RenameChat { .. } => Err(unsupported("RenameChat")),
             Request::SetChatGroup { .. } => Err(unsupported("SetChatGroup")),
             // 서버가 응답하고 끊김으로 바꿔 여기까지 오지 않는다.
@@ -489,7 +489,7 @@ impl Engine {
             Request::ContinueInput { .. } => Err(unsupported("ContinueInput")),
             Request::CloseHeld { .. } => Err(unsupported("CloseHeld")),
             Request::AnswerPermission { .. } => Err(unsupported("AnswerPermission")),
-            // TODO(#91): 피드백 답과 학습, judge 버전 요청
+            // TODO(#91): 피드백 답
             Request::AnswerFeedback { .. } => Err(unsupported("AnswerFeedback")),
             Request::SubmitJudgeKey { key } => self.submit_judge_key(client, key).await,
             Request::AnswerFolderTrust {
@@ -501,15 +501,15 @@ impl Engine {
                     .await
             }
             Request::SetRecording { chat, on } => Ok(self.store.set_recording(chat, on).await?),
-            // TODO(#90): `/usage` 행을 에이전트별로 묶는 규칙
-            Request::Usage { .. } => Err(unsupported("Usage")),
-            // TODO(#90): 작업 목록을 대기열과 기록에서 만드는 규칙
+            Request::Usage { scope } => self.send_usage(client, scope).await,
+            // TODO(#161): 작업 목록
             Request::ListTasks => Err(unsupported("ListTasks")),
+            // TODO(#91): 학습과 judge 버전
             Request::Train { .. } => Err(unsupported("Train")),
             Request::ConfirmTrain { .. } => Err(unsupported("ConfirmTrain")),
             Request::ListJudgeVersions => Err(unsupported("ListJudgeVersions")),
             Request::UseJudgeVersion { .. } => Err(unsupported("UseJudgeVersion")),
-            // TODO(#46): 정리 미리보기를 보낼 알림
+            // TODO(#161): 기록 정리 미리보기
             Request::Prune { .. } => Err(unsupported("Prune")),
             Request::ExportJudgments { path } => {
                 let count = self.store.export_judgments(Path::new(&path)).await?;

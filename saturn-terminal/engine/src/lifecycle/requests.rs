@@ -1,8 +1,50 @@
 use saturn_protocol::envelope::{INVALID_PARAMS, METHOD_NOT_FOUND};
 use saturn_protocol::ids::ChatId;
+use saturn_protocol::rpc::UsageRange;
 
 use super::*;
 use crate::{JUDGE_KEY_REQUIRED, JudgeGate};
+
+#[tokio::test]
+async fn usage_request_answers_rows_for_attached_chat() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.ready().await;
+    let mut client = Client::connect(&fixture.socket()).await;
+
+    let (unattached, usage) = drive(&mut engine, async {
+        client
+            .send(
+                1,
+                Request::Usage {
+                    scope: UsageRange::Chat,
+                },
+            )
+            .await;
+        let unattached = client.response().await;
+        client.attach(2, new_chat(&fixture.options.workdir)).await;
+        client
+            .send(
+                3,
+                Request::Usage {
+                    scope: UsageRange::Chat,
+                },
+            )
+            .await;
+        let usage = client.notification().await;
+        assert_eq!(client.response().await, Response::ok(RequestId(3)));
+        (unattached, usage)
+    })
+    .await;
+
+    assert_eq!(error_code(&unattached), INVALID_PARAMS);
+    assert_eq!(
+        usage,
+        Notification::Usage {
+            range: UsageRange::Chat,
+            rows: Vec::new(),
+        }
+    );
+}
 
 fn set_recording(chat: u64) -> Request {
     Request::SetRecording {

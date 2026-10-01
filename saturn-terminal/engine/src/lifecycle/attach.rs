@@ -5,10 +5,11 @@ use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{
     AgentId, ChatId, LedgerSeq, Provider, SessionId, SettingsRevision, TaskId, TaskLabel,
 };
+use saturn_protocol::rpc::Alert;
 use saturn_protocol::state::{EffectScope, InputState, SessionState};
 
 use super::*;
-use crate::store::{NewInput, NewRun};
+use crate::store::{MigrationNotice, NewInput, NewRun};
 
 fn attach_to(chat: ChatId, workdir: &Path) -> Request {
     Request::Attach {
@@ -267,4 +268,30 @@ async fn folder_trust_answer_for_unasked_path_is_refused() {
     .await;
 
     assert_eq!(error_code(&response), INVALID_PARAMS);
+}
+
+#[tokio::test]
+async fn attach_sends_schema_migration_alert_to_first_tui_only() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.ready().await;
+    engine.notices.migration = Some(MigrationNotice {
+        from: 1,
+        to: 2,
+        backup: fixture.root.path().join("backup.db"),
+    });
+    let mut first = Client::connect(&fixture.socket()).await;
+    let mut second = Client::connect(&fixture.socket()).await;
+
+    let (first_seen, second_seen) = drive(&mut engine, async {
+        let first_seen = first.attach(1, new_chat(&fixture.options.workdir)).await;
+        let second_seen = second.attach(1, new_chat(&fixture.options.workdir)).await;
+        (first_seen, second_seen)
+    })
+    .await;
+
+    let alert = Notification::Alert {
+        alert: Alert::SchemaMigrated { from: 1, to: 2 },
+    };
+    assert_eq!(first_seen.last(), Some(&alert));
+    assert!(!second_seen.contains(&alert));
 }

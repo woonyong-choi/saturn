@@ -1,0 +1,425 @@
+//! `/usage` 응답 행: provider·모델마다 한 행과 judge마다 한 행, 각 행은 고른 범위의 합계.
+//! 설계: docs/design/tui.md
+
+use std::collections::hash_map::Entry;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+
+use saturn_protocol::event::UsageScope;
+use saturn_protocol::ids::{AgentId, ChatId, RunId, SessionId, SubagentId};
+use saturn_protocol::rpc::{Notification, UsageRange, UsageRow};
+
+use crate::providers::display_name;
+use crate::rpc::ClientId;
+use crate::store::{Store, StoreError, UsageRow as StoredUsage};
+use crate::{Engine, EngineError};
+
+const JUDGE_PREFIX: &str = "judge";
+
+/// 같은 session에서 같은 에이전트와 subagent의 누적 보고 계열.
+type Series = (SessionId, AgentId, Option<SubagentId>);
+
+/// 보고 하나의 턴 값과 그 값이 걸친 실행.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TurnValue {
+    tokens: [Option<u64>; 5],
+    run: RunId,
+    session: SessionId,
+    /// 누적 보고면 같은 계열의 직전 누적 보고 실행. 그 뒤부터 `run`까지가 이 값에 합쳐졌다.
+    previous_run: Option<Option<RunId>>,
+}
+
+#[derive(Debug, Default)]
+struct Group {
+    tokens: [Option<u64>; 5],
+    runs: BTreeSet<RunId>,
+}
+
+impl Engine {
+    /// `Chat` 범위는 이 클라이언트가 붙은 채팅이다.
+    ///
+    /// # Errors
+    /// `Chat`인데 붙은 채팅이 없으면 `Store(NotFound)`.
+    pub(super) async fn send_usage(
+        &self,
+        client: ClientId,
+        range: UsageRange,
+    ) -> Result<(), EngineError> {
+        let chat = self
+            .attachments
+            .get(&client)
+            .map(|attachment| attachment.chat);
+        let rows = usage_rows(&self.store, range, chat).await?;
+        self.send(client, Notification::Usage { range, rows }).await;
+        Ok(())
+    }
+}
+
+/// 기록에 없는 비용, 맥락 정리, 채점은 `None`이다. 여러 턴을 합친 행만 `turns`를 채운다.
+async fn usage_rows(
+    store: &Store,
+    range: UsageRange,
+    chat: Option<ChatId>,
+) -> Result<Vec<UsageRow>, StoreError> {
+    let in_range = store.usage_rows(range, chat).await?;
+    let turn_values = turn_values(&store.usage_rows(UsageRange::All, None).await?);
+    let mut session_runs: HashMap<SessionId, Vec<RunId>> = HashMap::new();
+    let mut groups: BTreeMap<String, Group> = BTreeMap::new();
+    for row in &in_range {
+        let Some(value) = turn_values.get(&row.id) else {
+            continue;
+        };
+        let group = groups.entry(who(row)).or_default();
+        for (sum, value) in group.tokens.iter_mut().zip(value.tokens) {
+            if let Some(value) = value {
+                *sum = Some(sum.unwrap_or(0) + value);
+            }
+        }
+        match value.previous_run {
+            None => {
+                group.runs.insert(value.run);
+            }
+            Some(previous) => {
+                let runs = match session_runs.entry(value.session) {
+                    Entry::Occupied(entry) => entry.into_mut(),
+                    Entry::Vacant(entry) => entry.insert(store.session_runs(value.session).await?),
+                };
+                let covered = runs
+                    .iter()
+                    .filter(|run| previous.is_none_or(|previous| **run > previous))
+                    .filter(|run| **run <= value.run);
+                group.runs.extend(covered);
+            }
+        }
+    }
+    let mut rows: Vec<UsageRow> = groups
+        .into_iter()
+        .map(|(who, group)| {
+            let turns = u32::try_from(group.runs.len()).unwrap_or(u32::MAX);
+            UsageRow {
+                who,
+                tokens: group.tokens,
+                judge_calls: 0,
+                estimated_cost_micros: None,
+                compactions: None,
+                labels: None,
+                turns: (turns > 1).then_some(turns),
+            }
+        })
+        .collect();
+    rows.extend(
+        store
+            .judge_usage(range, chat)
+            .await?
+            .into_iter()
+            .map(|judge| UsageRow {
+                who: format!("{JUDGE_PREFIX} · {}", judge.judge),
+                tokens: [judge.input, None, None, judge.output, None],
+                judge_calls: judge.calls,
+                estimated_cost_micros: None,
+                compactions: None,
+                labels: None,
+                turns: None,
+            }),
+    );
+    Ok(rows)
+}
+
+/// 모델을 보고하지 않았으면 provider 이름만.
+fn who(row: &StoredUsage) -> String {
+    let provider = display_name(row.provider);
+    match &row.report.model {
+        Some(model) => format!("{provider} · {model}"),
+        None => provider.to_owned(),
+    }
+}
+
+/// 누적 보고는 같은 계열의 칸마다 가장 가까운 앞 값을 빼고, 앞 값보다 작으면 그 칸을 `None`으로 둔다.
+fn turn_values(all: &[StoredUsage]) -> HashMap<u64, TurnValue> {
+    let mut last: HashMap<Series, ([Option<u64>; 5], RunId)> = HashMap::new();
+    let mut values = HashMap::with_capacity(all.len());
+    for row in all {
+        let raw = tokens_of(row);
+        if row.report.scope != UsageScope::ThreadCumulative {
+            values.insert(row.id, turn_value(row, raw, None));
+            continue;
+        }
+        let series = (row.session, row.report.agent, row.report.subagent.clone());
+        let (seen, previous_run) = match last.get(&series) {
+            Some((seen, run)) => (*seen, Some(*run)),
+            None => ([None; 5], None),
+        };
+        let mut tokens = [None; 5];
+        let mut updated = seen;
+        for slot in 0..5 {
+            let Some(value) = raw[slot] else { continue };
+            tokens[slot] = match seen[slot] {
+                Some(before) => value.checked_sub(before),
+                None => Some(value),
+            };
+            updated[slot] = Some(value);
+        }
+        last.insert(series, (updated, row.run));
+        values.insert(row.id, turn_value(row, tokens, Some(previous_run)));
+    }
+    values
+}
+
+fn turn_value(
+    row: &StoredUsage,
+    tokens: [Option<u64>; 5],
+    previous_run: Option<Option<RunId>>,
+) -> TurnValue {
+    TurnValue {
+        tokens,
+        run: row.run,
+        session: row.session,
+        previous_run,
+    }
+}
+
+/// 순서는 protocol `UsageRow::tokens`와 같다.
+fn tokens_of(row: &StoredUsage) -> [Option<u64>; 5] {
+    let report = &row.report;
+    [
+        report.input,
+        report.cache_read,
+        report.cache_write,
+        report.output,
+        report.reasoning,
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+    use std::time::{Duration, SystemTime};
+
+    use saturn_core::judges::{Method, QuestionSetId};
+    use saturn_core::queue::Permission;
+    use saturn_core::sessions::{AgentRole, SessionRecord};
+    use saturn_protocol::event::UsageReport;
+    use saturn_protocol::ids::{LedgerSeq, Provider, SettingsRevision, TaskId};
+    use saturn_protocol::state::{EffectScope, SessionState};
+
+    use super::*;
+    use crate::secrets::Masker;
+    use crate::store::{JudgmentOutcome, NewInput, NewJudgment, NewRun};
+
+    struct Fixture {
+        _dir: tempfile::TempDir,
+        store: Store,
+        chat: ChatId,
+    }
+
+    impl Fixture {
+        async fn new() -> Self {
+            let dir = tempfile::tempdir().unwrap();
+            let (store, _) = Store::open(dir.path()).await.unwrap();
+            let chat = store.create_chat(PathBuf::from("/work")).await.unwrap();
+            Self {
+                _dir: dir,
+                store,
+                chat,
+            }
+        }
+
+        async fn session(&self, id: u64, provider: Provider) -> SessionId {
+            let session = SessionId(id);
+            self.store
+                .upsert_session(&SessionRecord {
+                    id: session,
+                    chat: self.chat,
+                    agent: AgentId(1),
+                    role: AgentRole::Main,
+                    provider,
+                    provider_session: None,
+                    state: SessionState::Open,
+                    delivered: LedgerSeq(0),
+                    idle_since: None,
+                })
+                .await
+                .unwrap();
+            session
+        }
+
+        async fn run(&self, session: SessionId, provider: Provider) -> RunId {
+            let input = self
+                .store
+                .accept_input(&NewInput {
+                    chat: self.chat,
+                    text: "go".to_owned(),
+                    settings: SettingsRevision(1),
+                    permission: Permission::Write,
+                    workdir: PathBuf::from("/work"),
+                    pinned_model: None,
+                    skip_relation: false,
+                })
+                .await
+                .unwrap();
+            self.store
+                .start_run(&NewRun {
+                    input: Some(input),
+                    task: TaskId(1),
+                    agent: AgentId(1),
+                    session,
+                    provider,
+                    effect_scope: EffectScope::NetworkPossible,
+                })
+                .await
+                .unwrap()
+        }
+
+        async fn report(
+            &self,
+            run: RunId,
+            session: SessionId,
+            scope: UsageScope,
+            model: &str,
+            input: u64,
+            output: Option<u64>,
+        ) {
+            let report = UsageReport {
+                agent: AgentId(1),
+                subagent: None,
+                model: Some(model.to_owned()),
+                scope,
+                input: Some(input),
+                cache_read: None,
+                cache_write: None,
+                output,
+                reasoning: None,
+            };
+            self.store
+                .record_usage(run, session, &report)
+                .await
+                .unwrap();
+        }
+
+        async fn judgment(&self, tokens: (u64, u64)) {
+            let masker = Masker::default();
+            self.store
+                .record_judgment(&NewJudgment {
+                    chat: self.chat,
+                    input: None,
+                    method: Method::Jev,
+                    judge: "jev".to_owned(),
+                    model: ("jev-1.13.0".to_owned(), None),
+                    question_sets: vec![QuestionSetId {
+                        name: "route".to_owned(),
+                        major: 1,
+                        minor: 0,
+                    }],
+                    settings: SettingsRevision(1),
+                    sent: masker.mask("{}"),
+                    received: None,
+                    answers: Vec::new(),
+                    fallbacks: Vec::new(),
+                    tokens: Some(tokens),
+                    started_at: SystemTime::now(),
+                    elapsed: Duration::ZERO,
+                    outcome: JudgmentOutcome::Ok,
+                    judge_version: "jev-1.13.0".to_owned(),
+                    thresholds: Vec::new(),
+                    asked_with: None,
+                })
+                .await
+                .unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn usage_rows_group_by_provider_model_and_judge() {
+        let fixture = Fixture::new().await;
+        let codex = fixture.session(1, Provider::Codex).await;
+        let first = fixture.run(codex, Provider::Codex).await;
+        fixture
+            .report(
+                first,
+                codex,
+                UsageScope::ThreadCumulative,
+                "gpt-5.6-terra",
+                100,
+                Some(10),
+            )
+            .await;
+        let silent = fixture.run(codex, Provider::Codex).await;
+        let third = fixture.run(codex, Provider::Codex).await;
+        fixture
+            .report(
+                third,
+                codex,
+                UsageScope::ThreadCumulative,
+                "gpt-5.6-terra",
+                250,
+                None,
+            )
+            .await;
+        let claude = fixture.session(2, Provider::Claude).await;
+        let turn = fixture.run(claude, Provider::Claude).await;
+        fixture
+            .report(turn, claude, UsageScope::MainTurn, "opus", 40, Some(4))
+            .await;
+        fixture.judgment((30, 3)).await;
+        fixture.judgment((20, 2)).await;
+
+        let rows = usage_rows(&fixture.store, UsageRange::Chat, Some(fixture.chat))
+            .await
+            .unwrap();
+
+        assert_eq!(silent.0 + 1, third.0);
+        let who: Vec<&str> = rows.iter().map(|row| row.who.as_str()).collect();
+        assert_eq!(
+            who,
+            vec!["claude · opus", "codex · gpt-5.6-terra", "judge · jev"]
+        );
+        assert_eq!(rows[0].tokens, [Some(40), None, None, Some(4), None]);
+        assert_eq!(rows[0].turns, None);
+        assert_eq!(rows[1].tokens, [Some(250), None, None, Some(10), None]);
+        assert_eq!(rows[1].turns, Some(3));
+        assert_eq!(rows[1].compactions, None);
+        assert_eq!(rows[1].estimated_cost_micros, None);
+        assert_eq!(rows[2].tokens, [Some(50), None, None, Some(5), None]);
+        assert_eq!(rows[2].judge_calls, 2);
+        assert_eq!(rows[2].labels, None);
+    }
+
+    #[tokio::test]
+    async fn usage_rows_chat_range_without_chat_is_not_found() {
+        let fixture = Fixture::new().await;
+
+        let error = usage_rows(&fixture.store, UsageRange::Chat, None)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error, StoreError::NotFound { .. }));
+    }
+
+    #[test]
+    fn turn_values_drop_slot_when_cumulative_shrinks() {
+        let row = |id: u64, run: u64, input: u64| StoredUsage {
+            id,
+            run: RunId(run),
+            session: SessionId(1),
+            provider: Provider::Codex,
+            report: UsageReport {
+                agent: AgentId(1),
+                subagent: None,
+                model: None,
+                scope: UsageScope::ThreadCumulative,
+                input: Some(input),
+                cache_read: None,
+                cache_write: None,
+                output: None,
+                reasoning: None,
+            },
+            at: SystemTime::now(),
+            spans_turns: false,
+        };
+
+        let values = turn_values(&[row(1, 1, 100), row(2, 2, 60)]);
+
+        assert_eq!(values[&1].tokens[0], Some(100));
+        assert_eq!(values[&2].tokens[0], None);
+        assert_eq!(values[&2].previous_run, Some(Some(RunId(1))));
+    }
+}

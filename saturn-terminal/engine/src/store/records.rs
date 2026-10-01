@@ -12,7 +12,6 @@ use saturn_protocol::ids::{
     AgentId, ChatId, InputId, LedgerSeq, Provider, ProviderSessionId, RunId, SessionId,
     SettingsRevision, TaskId,
 };
-use saturn_protocol::rpc::UsageRange;
 use saturn_protocol::state::{EffectScope, InputState, QueueReason};
 use sqlx::Row;
 use sqlx::sqlite::SqliteRow;
@@ -74,9 +73,13 @@ pub struct RunRecord {
 /// 보고하지 않은 칸은 `None`이고 합계에서 0으로 세지 않는다.
 #[derive(Debug, Clone)]
 pub struct UsageRow {
+    /// 기록 순서.
+    pub id: u64,
     pub run: RunId,
     /// `ThreadCumulative`는 같은 session의 직전 누적을 빼서 턴 값을 구한다.
     pub session: SessionId,
+    /// 그 실행의 provider.
+    pub provider: Provider,
     pub report: UsageReport,
     pub at: SystemTime,
     /// 중간 보고가 빠져 이 값의 차이가 여러 턴에 걸친다. `/usage` 응답은 protocol `UsageRow::turns`로 턴 수를 싣는다.
@@ -464,60 +467,6 @@ impl Store {
         tx.commit().await?;
         Ok(())
     }
-
-    /// `Today`는 로컬 오늘 0시부터, `Week`는 로컬 이번 주 월요일 0시부터다. 초안 값.
-    ///
-    /// # Errors
-    /// `Chat`인데 `chat`이 없으면 `NotFound`.
-    pub async fn usage_rows(
-        &self,
-        range: UsageRange,
-        chat: Option<ChatId>,
-    ) -> Result<Vec<UsageRow>, StoreError> {
-        const COLUMNS: &str = "SELECT run_id, session_id, body, at, spans_turns FROM usage";
-        let query = match range {
-            UsageRange::Chat => {
-                let chat = chat.ok_or_else(|| not_found("chat for usage range".to_owned()))?;
-                sqlx::query(&format!("{COLUMNS} WHERE chat_id = ? ORDER BY id"))
-                    .bind(to_sql_int(chat.0))
-                    .fetch_all(&self.pool)
-                    .await?
-            }
-            UsageRange::Today => {
-                sqlx::query(&format!(
-                    "{COLUMNS} WHERE at >= CAST(strftime('%s', 'now', 'localtime', 'start of day', 'utc') \
-                     AS INTEGER) * 1000 ORDER BY id"
-                ))
-                .fetch_all(&self.pool)
-                .await?
-            }
-            UsageRange::Week => {
-                sqlx::query(&format!(
-                    "{COLUMNS} WHERE at >= CAST(strftime('%s', 'now', 'localtime', 'start of day', \
-                     'weekday 0', '-6 days', 'utc') AS INTEGER) * 1000 ORDER BY id"
-                ))
-                .fetch_all(&self.pool)
-                .await?
-            }
-            UsageRange::All => {
-                sqlx::query(&format!("{COLUMNS} ORDER BY id"))
-                    .fetch_all(&self.pool)
-                    .await?
-            }
-        };
-        query
-            .iter()
-            .map(|row| {
-                Ok(UsageRow {
-                    run: RunId(from_sql_int(row.try_get("run_id")?)),
-                    session: SessionId(from_sql_int(row.try_get("session_id")?)),
-                    report: serde_json::from_str(row.try_get("body")?)?,
-                    at: from_millis(row.try_get("at")?),
-                    spans_turns: row.try_get("spans_turns")?,
-                })
-            })
-            .collect()
-    }
 }
 
 /// 직전 누적보다 작은 칸이 있거나, 직전 누적 보고 뒤에 보고 없는 실행이 있으면 참.
@@ -652,6 +601,7 @@ fn parse_run_end(text: &str) -> Result<RunEnd, StoreError> {
 #[cfg(test)]
 pub(crate) mod tests {
     use saturn_protocol::event::TurnOrigin;
+    use saturn_protocol::rpc::UsageRange;
     use saturn_protocol::state::SessionState;
 
     use super::*;
