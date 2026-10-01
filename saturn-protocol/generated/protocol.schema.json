@@ -3402,14 +3402,23 @@
       ]
     },
     "ToolCategory": {
-      "enum": [
-        "Shell",
-        "TestRun",
-        "FileRead",
-        "FileEdit",
-        "Other"
-      ],
-      "type": "string"
+      "oneOf": [
+        {
+          "enum": [
+            "Shell",
+            "TestRun",
+            "FileRead",
+            "FileEdit",
+            "Other"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "Reasoning",
+          "description": "도구가 아닌 추론. 도구 결과 후보가 아니다.",
+          "type": "string"
+        }
+      ]
     },
     "ToolDetail": {
       "description": "provider 도구 이름을 Saturn 도구 종류로 바꾼 값.",

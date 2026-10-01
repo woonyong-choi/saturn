@@ -131,12 +131,12 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 9. `store`는 이벤트, subagent, 사용량 보고 원값을 기록한다.
 
 - Saturn 도구 종류는 셸, 테스트 실행, 파일 읽기, 파일 수정, 그 밖이다. 명령의 낱말이 `unittest`, `pytest`, `cargo test` 같은 알려진 테스트 도구와 맞으면 테스트 실행이고, 그 밖의 명령은 셸이다.
-- provider가 구조로 주지 않은 값은 비운다. 추측으로 채우면 메모가 틀리기 때문이다.
-- 파일 경로는 provider가 낸 글자 그대로 싣고, 메모를 만드는 쪽이 작업 폴더 기준으로 바꾼다.
-- Claude는 `Edit`와 `MultiEdit` 입력의 바뀌기 전과 후 글에서 앞뒤 공통 줄을 빼고 더한 줄과 지운 줄을 센다. `Write`는 덮어쓴 줄을 입력으로 알 수 없어 줄 수를 비운다.
-- Claude 읽기 범위는 시작 줄과 줄 수를 모두 받은 `Read`에서만 채운다.
+- provider가 구조로 주지 않은 값은 비운다. 추측으로 채우면 메모가 틀리기 때문이다. 경로는 provider가 낸 글자 그대로 싣고, 작업 폴더 기준으로 바꾸는 일은 메모를 만드는 쪽이 한다.
+- Claude는 `Edit`와 `MultiEdit` 입력의 바뀌기 전과 후 글에서 앞뒤 공통 줄을 빼고 줄 수를 센다. `Write`의 줄 수와 시작 줄만 있는 `Read`의 범위는 알 수 없어 비운다.
 - Codex는 `commandActions`의 경로를 경로 목록에 싣고, 모든 동작이 읽기, 목록, 검색이면 파일 읽기로 본다. 종료 코드는 `commandExecution`의 `exitCode`에서 읽는다.
 - Codex 파일 수정은 `fileChange`의 `changes`에서 경로를 모으고, 고친 파일은 diff의 `+`와 `-` 줄을, 새 파일은 글 전체를 더한 줄로, 지운 파일은 지운 줄로 센다. 결과 글은 파일마다 경로 줄과 diff를 이어 붙인 것이다.
+- Codex 추론 항목은 `Thinking` 활동과 `Reasoning` 종류로 남긴다. 실행 줄의 `생각 중` 표시에 쓰고, 도구 결과 후보에서는 뺀다. 추론은 도구가 아니고 결과가 없기 때문이다.
+- `/bin/zsh -lc '...'`처럼 셸이 감싼 명령은 안쪽 명령을 명령 글로 싣는다. 사용자가 보낸 명령이 provider마다 다르게 기록되지 않게 하기 위해서다.
 - Claude는 실패한 `Bash` 결과 첫머리의 `Exit code N`에서 종료 코드를 읽고, 실패가 아닌 결과는 0으로 둔다. 중단처럼 코드가 없는 실패는 비운다.
 
 ### 메인 에이전트와 보조 에이전트
@@ -276,7 +276,8 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | Claude Code 도구 호출의 도구 종류, 경로, 읽은 줄 범위, 바뀐 줄 수와 셸 종료 코드를 이벤트에 싣는다. | `saturn-terminal/engine/src/providers/claude.rs`의 `detail_of_edit_counts_changed_lines_and_keeps_path`, `detail_of_multi_edit_sums_every_edit`, `detail_of_write_has_no_line_change`, `detail_of_read_range_needs_offset_and_limit`, `detail_of_test_command_is_test_run`, `shell_exit_code_reads_prefix_only_for_errors` |
 | 명령이 테스트 실행인지 셸인지 가르고, 바뀐 줄 수에서 앞뒤 공통 줄을 뺀다. | `saturn-terminal/engine/src/providers/tool_detail.rs`의 `classify_command_test_runners_are_test_runs`, `classify_command_other_commands_are_shell`, `line_change_replaced_lines_count_both_sides`, `line_change_common_lines_are_not_counted`, `line_change_empty_old_counts_only_added` |
 | Codex 명령의 경로와 종료 코드, 파일 수정의 경로와 바뀐 줄 수와 수정 내용을 같은 칸에 싣는다. | `saturn-terminal/engine/src/providers/codex.rs`의 `detail_of_read_command_keeps_action_paths`, `detail_of_test_command_is_test_run_without_paths`, `detail_of_file_change_counts_diff_lines`, `detail_of_file_change_added_file_counts_whole_text`, `tool_output_file_change_is_path_and_diff`, `exit_code_of_command_reads_code_and_ignores_other_items`, `turn_events_are_converted_in_order` |
-| Codex 추론 항목과 명령 감싸기를 도구 기록으로 남기지 않는다. | [#205](https://github.com/woonyong-choi/saturn/issues/205) |
+| Codex 추론 항목은 `Reasoning` 종류로 남기고 도구 결과 후보에서 뺀다. | `saturn-terminal/engine/src/providers/codex.rs`의 `detail_of_reasoning_is_not_a_candidate`, `saturn-protocol/src/event.rs`의 `is_candidate_only_reasoning_is_excluded` |
+| 셸이 감싼 명령은 안쪽 명령으로 기록한다. | `saturn-terminal/engine/src/providers/tool_detail.rs`의 `unwrap_shell_login_shell_wrapper_gives_inner_command`, `unwrap_shell_escaped_single_quote_stays_in_inner_command`, `unwrap_shell_plain_or_unbalanced_command_is_unchanged`, `saturn-terminal/engine/src/providers/codex.rs`의 `activity_of_wrapped_command_is_inner_command` |
 | Codex와 Claude Code의 도구 결과를 같은 충실도로 기록으로 바꾼다. | [기록 변환 충실도와 전환 품질](../experiments/record-fidelity/report.md)의 원시 줄을 재생해 경로, 메모, 도구 종류 정확도가 두 provider에서 같은지 다시 잰다. |
 
 ## 단점

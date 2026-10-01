@@ -94,7 +94,7 @@ children: number, };
 
 export type TaskState = "Running" | "AnsweredTreeRunning" | "AwaitingPermission" | "Held" | "NeedsCheck" | "Done" | "Failed";
 
-export type ToolCategory = "Shell" | "TestRun" | "FileRead" | "FileEdit" | "Other";
+export type ToolCategory = "Shell" | "TestRun" | "FileRead" | "FileEdit" | "Reasoning" | "Other";
 
 export type ToolDetail = { category: ToolCategory, 
 /**

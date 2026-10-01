@@ -98,8 +98,17 @@ pub enum ToolCategory {
     TestRun,
     FileRead,
     FileEdit,
+    /// 도구가 아닌 추론. 도구 결과 후보가 아니다.
+    Reasoning,
     #[default]
     Other,
+}
+
+impl ToolCategory {
+    /// 기록에는 남기되 도구 결과 후보에서는 `Reasoning`을 뺀다.
+    pub fn is_candidate(self) -> bool {
+        self != Self::Reasoning
+    }
 }
 
 /// 1부터 세는 닫힌 범위.
@@ -143,4 +152,16 @@ pub enum UsageScope {
     TreeTotal,
     /// Codex `tokenUsage`. 턴 값은 직전 누적과의 차이.
     ThreadCumulative,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_candidate_only_reasoning_is_excluded() {
+        assert!(!ToolCategory::Reasoning.is_candidate());
+        assert!(ToolCategory::Shell.is_candidate());
+        assert!(ToolCategory::Other.is_candidate());
+    }
 }
