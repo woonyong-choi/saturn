@@ -18,12 +18,10 @@ saturn-protocol.workspace = true
 saturn-core.workspace = true
 anyhow.workspace = true
 keyring.workspace = true
+tempfile.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true
