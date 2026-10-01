@@ -195,7 +195,7 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 | 요청이 크기 한도를 넘으면 나눠 보낸다. | 64K 초과 요청과 255개 초과 선택지가 나뉘어 전송되는지 확인한다. |
 | `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [#6](https://github.com/woonyong-choi/saturn/issues/6) 실험으로 한국어 평가 세트의 오분류율을 확인한다. |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
-| 후보가 상위 N개보다 많으면 순위로 좁힌 뒤 묻는다. | 후보 150개의 `compact` 요청에 N개 몫의 질문만 있는지 확인한다. |
+| 후보가 상위 N개보다 많으면 순위로 좁힌 뒤 묻는다. | `saturn-terminal/core/src/judges/mod.rs`의 `compact_questions_150_candidates_ask_only_top_n` |
 | `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [#121](https://github.com/woonyong-choi/saturn/issues/121) |
 
 ## 단점

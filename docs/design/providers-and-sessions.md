@@ -246,7 +246,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | 요구사항 | 검증 계획 |
 |---|---|
 | 채팅마다 열린 메인 session은 하나이고, 보관 session은 provider마다 하나까지다. | provider를 두 번 바꾼 뒤 열린 session이 하나이고 provider마다 보관 session이 하나 이하인지 확인한다. |
-| 캐시 유지 시간 안이고 `A < T`인 보관 session으로 돌아가면 재개하고 변경분만 붙인다. | 경과 시간, `A`, `T`, `P` 조합마다 재개와 새 session 판정이 규칙과 같은지 확인한다. |
+| 캐시 유지 시간 안이고 `A < T`인 보관 session으로 돌아가면 재개하고 변경분만 붙인다. | `saturn-terminal/core/src/sessions/context.rs`의 `decide_return_matches_rule_table` |
 | session 교체 뒤 새 session에는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. | 교체 뒤 첫 입력에 이미 받은 기록 번호의 결과가 다시 붙지 않는지 확인한다. |
 | Saturn 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. | 사용자 설정에 값이 있는 항목의 인자가 실행 명령에 없는지 확인한다. |
 | 작업 끝은 메인 에이전트와 모든 subagent가 끝난 때로 판정한다. | 답이 먼저 나오고 subagent가 남은 경우 트리 유휴가 되지 않는지 확인한다. |
