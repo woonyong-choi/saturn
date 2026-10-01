@@ -30,16 +30,16 @@
 
 ## 저장소 밖 실행 로그
 
-비공개 경로다. 사용자 로컬 장치의 `~/workspace/woon/.local/orchestration/saturn-build/` 안에만 있고 저장소와 GitHub에 올라가 있지 않다. 이 경로의 파일은 다른 장치에서 읽을 수 없다.
+비공개 경로다. 저장소 루트 기준 `.local/experiments/provider-permission-gating/`(git 제외 비공개 폴더) 안에만 있고 저장소와 GitHub에 올라가 있지 않다. 사용자 로컬 장치의 작업본에만 있어 다른 장치에서는 읽을 수 없다.
 
 | 실험 | 파일 | 크기 | SHA-256 |
 |---|---|---|---|
-| 5. 전용 `CODEX_HOME` | `~/workspace/woon/.local/orchestration/saturn-build/codex-194-home.log` | 3,070,349바이트 | `3cd4606bd74735c2fc13b8e26ecc1ef9009b1fb7d7036711c11a654ec1d37551` |
-| 6. 구멍 막기 | `~/workspace/woon/.local/orchestration/saturn-build/codex-194-plug.log` | 2,963,403바이트 | `f4999c9ac27e862c94b2a76e1884d1c2d48f379a5fb585fe25811f7fe3067eec` |
-| 7. MCP 준비 시점 | `~/workspace/woon/.local/orchestration/saturn-build/codex-194-mcp.log` | 3,393,037바이트 | `ddcfa97f84e1f53cbf68cddd9faadd4886b12dd9064b991eb8044592958a146b` |
-| 8. MCP 묻기 경로 | `~/workspace/woon/.local/orchestration/saturn-build/codex-194-prompt-path.log` | 3,402,504바이트 | `a4fe82296bb2c8fe0e54abd4650b907a6c6aa6848ce18e53c0677f5963f71d18` |
+| 5. 전용 `CODEX_HOME` | `.local/experiments/provider-permission-gating/codex-194-home.log` | 3,070,349바이트 | `3cd4606bd74735c2fc13b8e26ecc1ef9009b1fb7d7036711c11a654ec1d37551` |
+| 6. 구멍 막기 | `.local/experiments/provider-permission-gating/codex-194-plug.log` | 2,963,403바이트 | `f4999c9ac27e862c94b2a76e1884d1c2d48f379a5fb585fe25811f7fe3067eec` |
+| 7. MCP 준비 시점 | `.local/experiments/provider-permission-gating/codex-194-mcp.log` | 3,393,037바이트 | `ddcfa97f84e1f53cbf68cddd9faadd4886b12dd9064b991eb8044592958a146b` |
+| 8. MCP 묻기 경로 | `.local/experiments/provider-permission-gating/codex-194-prompt-path.log` | 3,402,504바이트 | `a4fe82296bb2c8fe0e54abd4650b907a6c6aa6848ce18e53c0677f5963f71d18` |
 
-로그는 Codex 에이전트(`gpt-5.6-luna`)의 실행 전체 기록이다. 에이전트가 읽은 파일, 실행한 명령, 만든 드라이버 코드, 드라이버 출력이 들어 있다. 로그에서 확인한 시험 thread의 모델 이름은 [env.json](../env.json)에 적었다. 같은 폴더의 `codex-194-rootcause-*`는 실험 9(원인 찾기, 진행 중)의 기록이라 이 폴더에 넣지 않았다.
+로그는 Codex 에이전트(`gpt-5.6-luna`)의 실행 전체 기록이다. 에이전트가 읽은 파일, 실행한 명령, 만든 드라이버 코드, 드라이버 출력이 들어 있다. 로그에서 확인한 시험 thread의 모델 이름은 [env.json](../env.json)에 적었다. `codex-194-rootcause-*`는 실험 9(원인 찾기, 진행 중)의 기록이라 이 폴더에 넣지 않았다.
 
 ## 파일
 
