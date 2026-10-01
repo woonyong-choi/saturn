@@ -1,4 +1,4 @@
-//! 후보 순위(파일·단어·최근성 채널과 RRF)와 judge에 넘길 상위 N개 고르기.
+//! 후보 순위(파일·단어·최근성 채널과 RRF)와 judge 판단 뒤의 최종 순서.
 //! 설계: docs/design/context-selection.md
 
 use std::cmp::Ordering;
@@ -11,9 +11,6 @@ use super::fragments::fragments;
 
 /// RRF 합치기 상수 `k`의 기본값(Cormack, Clarke, Büttcher 2009).
 pub const DEFAULT_RRF_K: u32 = 60;
-
-/// judge에 묻는 후보 수 N의 기본값(초안).
-pub const DEFAULT_JUDGE_TOP: usize = 10;
 
 const BM25_K1: f64 = 1.2;
 const BM25_B: f64 = 0.75;
@@ -58,45 +55,33 @@ pub fn rank_candidates(
     fused.into_iter().map(|(_, seq)| seq).collect()
 }
 
-// cost: time O(1), heap O(1), stack O(1)
-// basis: estimate
-/// `ranked`가 N개 이하면 전부다.
-pub fn judge_shortlist(ranked: &[LedgerSeq], top: usize) -> &[LedgerSeq] {
-    &ranked[..ranked.len().min(top)]
-}
-
 // cost: time O(c + j log j), heap O(c), stack O(1), alloc 2
-// vars: c = 후보 수, j = judge가 본 후보 수
+// vars: c = 후보 수, j = judge가 남긴 후보 수
 // basis: estimate
-/// judge가 남기라고 한 항목을 확률 순으로, 그 뒤에 judge가 보지 않은 항목을 RRF 순으로 둔다.
-/// `verdicts`가 `None`(무응답)이면 상위 N개를 모두 남긴 것으로 보고, 답이 빠진 항목도 남긴다.
+/// judge가 남기라고 한 항목을 확률 높은 순으로 두고, 같은 확률이면 RRF 순이다.
+/// judge가 버리라고 한 항목은 뺀다. 답이 없는 항목(실패한 조각 포함)은 RRF 순으로 뒤에 둔다.
+/// `verdicts`가 비면 judge가 전부 답하지 못한 것이라 RRF 순서 그대로다.
 pub fn order_after_judge(
     ranked: &[LedgerSeq],
-    top: usize,
-    verdicts: Option<&[(LedgerSeq, f64)]>,
+    verdicts: &[(LedgerSeq, f64)],
     keep_threshold: f64,
 ) -> Vec<LedgerSeq> {
-    let shortlist = judge_shortlist(ranked, top);
-    let unseen = &ranked[shortlist.len()..];
-    let Some(verdicts) = verdicts else {
-        return ranked.to_vec();
-    };
     let answered: HashMap<LedgerSeq, f64> = verdicts.iter().copied().collect();
-    let mut kept: Vec<(usize, f64, LedgerSeq)> = shortlist
-        .iter()
-        .enumerate()
-        .filter_map(|(position, seq)| match answered.get(seq) {
+    let mut kept: Vec<(usize, f64, LedgerSeq)> = Vec::new();
+    let mut unanswered: Vec<LedgerSeq> = Vec::new();
+    for (position, seq) in ranked.iter().enumerate() {
+        match answered.get(seq) {
             Some(&probability) if probability >= keep_threshold => {
-                Some((position, probability, *seq))
+                kept.push((position, probability, *seq));
             }
-            Some(_) => None,
-            None => Some((position, f64::NEG_INFINITY, *seq)),
-        })
-        .collect();
+            Some(_) => {}
+            None => unanswered.push(*seq),
+        }
+    }
     kept.sort_by(|left, right| right.1.total_cmp(&left.1).then(left.0.cmp(&right.0)));
     kept.into_iter()
         .map(|(_, _, seq)| seq)
-        .chain(unseen.iter().copied())
+        .chain(unanswered)
         .collect()
 }
 
@@ -304,60 +289,50 @@ mod tests {
         assert_eq!(ranks, vec![Some(1), None, Some(1), Some(3)]);
     }
 
-    // cost: time O(n), heap O(n), stack O(1)
-    // vars: n = 테스트 데이터 크기
-    // basis: estimate
     #[test]
-    fn judge_shortlist_150_candidates_keeps_top_n() {
-        let mut candidates = noise(150);
-        candidates[12] = candidate(12, "로그인 실패", &["src/auth/login.rs"]);
-        let ranked = rank_candidates(&candidates, &["src/auth/login.rs".into()], "로그인", 60);
-
-        let shortlist = judge_shortlist(&ranked, DEFAULT_JUDGE_TOP);
-
-        assert_eq!(shortlist.len(), DEFAULT_JUDGE_TOP);
-        assert_eq!(shortlist, &ranked[..DEFAULT_JUDGE_TOP]);
-        assert!(shortlist.contains(&LedgerSeq(12)));
-    }
-
-    #[test]
-    fn judge_shortlist_fewer_than_n_keeps_all() {
-        let ranked = seqs(&[3, 2, 1]);
-
-        assert_eq!(
-            judge_shortlist(&ranked, DEFAULT_JUDGE_TOP),
-            ranked.as_slice()
-        );
-    }
-
-    #[test]
-    fn order_after_judge_no_response_keeps_rrf_order() {
+    fn order_after_judge_no_verdicts_keeps_rrf_order() {
         let ranked = seqs(&[5, 4, 3, 2, 1]);
 
-        assert_eq!(order_after_judge(&ranked, 2, None, 0.5), ranked);
+        assert_eq!(order_after_judge(&ranked, &[], 0.5), ranked);
     }
 
     #[test]
-    fn order_after_judge_kept_by_probability_then_unseen_and_drops_rejected() {
+    fn order_after_judge_kept_by_probability_and_drops_rejected() {
         let ranked = seqs(&[5, 4, 3, 2, 1]);
         let verdicts = [
             (LedgerSeq(5), 0.6),
             (LedgerSeq(4), 0.9),
             (LedgerSeq(3), 0.2),
+            (LedgerSeq(2), 0.7),
+            (LedgerSeq(1), 0.8),
         ];
 
-        let ordered = order_after_judge(&ranked, 3, Some(&verdicts), 0.5);
+        let ordered = order_after_judge(&ranked, &verdicts, 0.5);
 
-        assert_eq!(ordered, seqs(&[4, 5, 2, 1]));
+        assert_eq!(ordered, seqs(&[4, 1, 2, 5]));
     }
 
     #[test]
-    fn order_after_judge_missing_answer_is_kept_after_answered() {
+    fn order_after_judge_same_probability_follows_rrf_order() {
         let ranked = seqs(&[5, 4, 3]);
-        let verdicts = [(LedgerSeq(4), 0.7)];
+        let verdicts = [
+            (LedgerSeq(3), 0.8),
+            (LedgerSeq(4), 0.8),
+            (LedgerSeq(5), 0.8),
+        ];
 
-        let ordered = order_after_judge(&ranked, 3, Some(&verdicts), 0.5);
+        let ordered = order_after_judge(&ranked, &verdicts, 0.5);
 
-        assert_eq!(ordered, seqs(&[4, 5, 3]));
+        assert_eq!(ordered, seqs(&[5, 4, 3]));
+    }
+
+    #[test]
+    fn order_after_judge_unanswered_follow_answered_in_rrf_order() {
+        let ranked = seqs(&[5, 4, 3, 2, 1]);
+        let verdicts = [(LedgerSeq(2), 0.7), (LedgerSeq(4), 0.1)];
+
+        let ordered = order_after_judge(&ranked, &verdicts, 0.5);
+
+        assert_eq!(ordered, seqs(&[2, 5, 3, 1]));
     }
 }
