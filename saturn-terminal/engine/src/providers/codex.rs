@@ -137,6 +137,7 @@ impl CodexClient {
             Arc::clone(&pending),
             Arc::clone(&threads),
             tx,
+            launch.masker.clone(),
         ));
         tokio::spawn(log_stderr(spawned.io.stderr, launch.masker.clone()));
         let mut client = Self {
@@ -879,13 +880,15 @@ async fn read_loop(
     pending: Pending,
     threads: Threads,
     events: mpsc::Sender<ProviderEvent>,
+    masker: Masker,
 ) {
     let mut lines = BufReader::new(stdout).lines();
     while let Ok(Some(line)) = lines.next_line().await {
-        let Ok(message) = serde_json::from_str::<Value>(&line) else {
+        let Ok(mut message) = serde_json::from_str::<Value>(&line) else {
             tracing::debug!("skipping non-json line from codex app-server");
             continue;
         };
+        mask_values(&mut message, &masker);
         for event in route_message(&message, &pending, &threads) {
             let _ = events.send(event).await; // 받는 쪽이 연결을 버렸다
         }
@@ -904,6 +907,23 @@ async fn read_loop(
     };
     for agent in lost {
         let _ = events.send(ProviderEvent::StreamLost { agent }).await; // 받는 쪽이 연결을 버렸다
+    }
+}
+
+fn mask_values(value: &mut Value, masker: &Masker) {
+    match value {
+        Value::String(text) => *text = masker.mask(text).as_str().to_owned(),
+        Value::Array(items) => {
+            for item in items {
+                mask_values(item, masker);
+            }
+        }
+        Value::Object(fields) => {
+            for item in fields.values_mut() {
+                mask_values(item, masker);
+            }
+        }
+        _ => {}
     }
 }
 
@@ -1429,5 +1449,20 @@ while (my $line = <STDIN>) {
         assert_eq!(activity_of(&json!({ "type": "agentMessage" })), None);
         assert!(is_no_active_turn(&json!({ "message": "No active turn" })));
         assert!(!is_no_active_turn(&json!({ "message": "invalid input" })));
+    }
+
+    #[test]
+    fn app_server_values_hide_judge_key_before_routing() {
+        let key = "sk-secret-1234";
+        let mut message = json!({
+            "id": 1,
+            "error": { "message": format!("bad key {key}") },
+            "params": { "item": { "aggregatedOutput": [key] } },
+        });
+
+        mask_values(&mut message, &Masker::new(vec![key.to_owned()]));
+
+        assert!(!message.to_string().contains(key));
+        assert_eq!(message["error"]["message"], "bad key [redacted]");
     }
 }

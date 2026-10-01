@@ -256,10 +256,14 @@ fn write_key_file(path: &Path, value: &str) -> std::io::Result<()> {
     let mut name = path.file_name().unwrap_or_default().to_os_string();
     name.push(".partial");
     let partial = path.with_file_name(name);
+    match std::fs::remove_file(&partial) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error),
+    }
     let mut file = std::fs::OpenOptions::new()
         .write(true)
-        .create(true)
-        .truncate(true)
+        .create_new(true)
         .mode(KEY_FILE_MODE)
         .open(&partial)?;
     file.set_permissions(std::fs::Permissions::from_mode(KEY_FILE_MODE))?;
@@ -324,6 +328,20 @@ mod tests {
         let error = store.load_with_env(None).await.unwrap_err();
 
         assert!(matches!(error, SecretsError::FilePermission { .. }));
+    }
+
+    #[test]
+    fn stale_partial_symlink_does_not_overwrite_target() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("other");
+        let key_path = dir.path().join(KEY_FILE);
+        std::fs::write(&target, "keep this").unwrap();
+        std::os::unix::fs::symlink(&target, dir.path().join("judge.key.partial")).unwrap();
+
+        write_key_file(&key_path, "sk-new").unwrap();
+
+        assert_eq!(std::fs::read_to_string(&target).unwrap(), "keep this");
+        assert_eq!(std::fs::read_to_string(&key_path).unwrap(), "sk-new");
     }
 
     #[tokio::test]
