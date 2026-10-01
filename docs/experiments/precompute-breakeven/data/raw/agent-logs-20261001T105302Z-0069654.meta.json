@@ -1,0 +1,24 @@
+{
+  "claude": {
+    "bad_lines": 0,
+    "excluded_duplicate": 0,
+    "excluded_no_tokens": 0,
+    "excluded_no_turns": 9,
+    "excluded_subagent_files": 96,
+    "failed_files": 0,
+    "files": 667,
+    "sessions": 658
+  },
+  "codex": {
+    "bad_lines": 0,
+    "excluded_duplicate": 1,
+    "excluded_no_tokens": 67,
+    "excluded_no_turns": 2,
+    "excluded_subagent_files": 752,
+    "failed_files": 0,
+    "files": 1318,
+    "sessions": 496
+  },
+  "run_id": "20261001T105302Z-0069654",
+  "ts_utc": "2026-10-01T10:53:02Z"
+}

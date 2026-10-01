@@ -147,6 +147,15 @@ def describe(values):
     }
 
 
+def wilson(k, n, z=1.959964):
+    if not n:
+        return None
+    p = k / n
+    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    return [pct(centre - half), pct(centre + half)]
+
+
 def holm(pvalues):
     order = sorted(pvalues, key=pvalues.get)
     passed, m, ok = {}, len(order), True
@@ -212,6 +221,14 @@ def main():
             with open(path, encoding="utf-8") as f:
                 meta = json.load(f)
             flow = {p: meta[p] for p in ("claude", "codex") if p in meta}
+    if flow:
+        # 01-collect counts Claude subagent files before "files" and Codex subagent files inside it.
+        claude, codex = flow.get("claude", {}), flow.get("codex", {})
+        keys = ("excluded_subagent_files", "excluded_no_turns", "excluded_no_tokens", "excluded_duplicate",
+                "failed_files", "bad_lines", "sessions")
+        flow["total"] = {k: claude.get(k, 0) + codex.get(k, 0) for k in keys}
+        flow["total"]["files_read"] = claude.get("files", 0) + claude.get("excluded_subagent_files", 0) + codex.get(
+            "files", 0)
 
     mats = {"lazy": matrix(sessions, T_MAIN, None, CAP_MAIN)}
     for s in STARTS:
@@ -304,8 +321,10 @@ def main():
             "max_context_tokens": describe(max_ctx),
             "sessions_reaching_event": reached,
             "sessions_reaching_event_pct": pct(reached / len(ss)),
+            "sessions_reaching_event_pct_ci": wilson(reached, len(ss)),
             "sessions_with_provider_compaction": compacted,
             "sessions_with_provider_compaction_pct": pct(compacted / len(ss)),
+            "sessions_with_provider_compaction_pct_ci": wilson(compacted, len(ss)),
             "events": int(per_session["lazy"][idx, 4].sum()),
         }
 

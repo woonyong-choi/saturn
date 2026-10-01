@@ -1,0 +1,8 @@
+hypothesis,condition,metric,value,ci95_low,ci95_high,n,p,p_holm,verdict
+H1,behavior-5,late_wrong_rate,0.055889,0.055058,0.056721,100,1.57153e-22,7.85765e-22,채택
+H2,behavior-3,late_wrong_rate,0.035753,0.035049,0.036457,100,4.26976e-58,2.98883e-57,채택
+H2,behavior-10,late_wrong_rate,0.09381,0.092637,0.094983,100,2.47556e-25,1.48534e-24,채택
+H3,behavior-3,late_window_range,0.030238,0.028643,0.031834,100,1.0,1.0,기각
+H3,behavior-5,late_window_range,0.05111,0.050043,0.052177,100,1.0,1.0,기각
+H3,behavior-10,late_window_range,0.052562,0.051622,0.053503,100,1.0,1.0,기각
+H4,behavior-shift,reached_within_limit,1.0,0.963007,1.0,100,2.86652e-07,1.14661e-06,채택

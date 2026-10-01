@@ -155,7 +155,7 @@ P_max = T / 10
 경쟁 구역은 `P_max`에서 고정 구역을 뺀 예산으로 채운다. `sessions`는 고른 순서대로 항목마다 다음 중 처음으로 들어가는 형태를 넣고, 어느 형태도 들어가지 않으면 건너뛴다.
 
 1. 원문. 단, 한 항목이 경쟁 구역 예산의 30%(초안)를 넘으면 원문을 넣지 않는다.
-2. 축약본(앞부분 300자와 한 줄 메모). 메모 틀은 [맥락 고르기](context-selection.md)에 있다.
+2. 축약본(앞부분 300자와 한 줄 메모). 메모 틀은 [맥락 고르기](context-selection.md)에 있다. 메모가 없으면 앞부분만 넣는다.
 3. 파일 경로.
 
 - 관련도가 높은 작은 항목을 관련도가 낮은 큰 항목보다 먼저 넣기 위해서다.
@@ -164,14 +164,16 @@ P_max = T / 10
 
 고정 구역만으로 `P_max`를 넘으면 `sessions`는 다음 순서로 줄인다.
 
-1. 최근 3턴 중 오래된 턴부터 에이전트 답을 앞부분만 남긴다.
+1. 최근 3턴 중 오래된 턴부터 에이전트 답을 앞부분 300자만 남긴다.
 2. 최근 턴 수를 3, 2, 1로 줄인다.
-3. 이 패킷에 한해 `P_hard = T / 5`(초안)까지 허용하고 초과를 기록한다.
+3. 이 패킷에 한해 `P_hard = T / 5`(초안)까지 허용하고 초과를 기록한다. 경쟁 구역은 비운다. 허용한 초과분을 고정 구역에만 쓰기 위해서다.
 4. `P_hard`도 넘으면 새 session으로 옮기지 않고 그대로 이어 가며, TUI에 `고정 제약이 길어 맥락 정리를 미룹니다`와 제약 목록을 보인다.
 
 고정 구역이 넘칠 때 provider 압축으로 대신하지 않는다. provider가 들고 있는 맥락과 Saturn 기록이 달라지고, Codex 원격 압축 요약은 무엇이 남았는지 볼 수 없기 때문이다. 4단계 뒤 맥락이 `T_hard`를 넘으면 provider 자동 압축 안전망이 받는다.
 
 `saturn` 모드에서 이어 갈 내용은 provider 요약이 아니라 맥락의 정본인 Saturn 기록 원문에서 고른다. provider 압축 요약은 읽을 수 있을 때만 경쟁 구역의 후보 하나로 쓴다. 기록 원문을 정본으로 두기 위해서다. `provider` 모드에서 Claude 압축 요약을 넘길 때는 그 요약을 경쟁 구역의 첫 항목으로 두고, 나머지 경쟁 구역은 요약 시점 뒤의 기록에서 고른다. 요약이 경쟁 구역 예산을 넘으면 요약을 쓰지 않고 Saturn 기록 원문으로 채운다. 어느 모드든 고정 구역은 Saturn 기록 원문으로 넣고, 패킷에 제약이 요약보다 우선한다고 적는다. 요약이 대체되기 전의 제약을 담고 있을 수 있기 때문이다. provider가 스스로 읽는 문서(`AGENTS.md`, `CLAUDE.md`)는 패킷에 넣지 않는다. 중복을 막기 위해서다.
+
+`compact` 판단은 패킷을 만들 때 한 번만 묻고, 턴마다 미리 묻지 않는다. 미리 판단은 judge 요청량을 키우는 만큼 정리 시점의 대기를 줄이지 못하기 때문이다. 맥락이 `T`의 50%를 넘은 뒤부터 미리 판단해도 추정 입력 토큰은 4.967배로 늘고, 정리 시점에 남는 질문은 29.4%만 줄었다([실험 결과](../experiments/precompute-breakeven/report.md)).
 
 `compact` 질문의 기준값과 judge가 답하지 못할 때의 대체 규칙은 [judge](judge.md)에 있다.
 
@@ -208,12 +210,14 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 |---|---|
 | compaction은 트리 유휴이고 합칠 대기 입력이 없을 때만 한다. | subagent가 남았거나 대기 입력이 있을 때 판정이 미뤄지는지 확인한다. |
 | 유휴 복귀 조건과 기준 도달 조건에서만 새 session으로 이어 간다. | `A`, `T`, `P`, `k*`, 경과 시간 조합마다 판정 결과가 규칙과 같은지 확인한다. |
-| 고정 구역이 넘치지 않으면 패킷 크기는 `T`의 10분의 1을 넘지 않는다. | 큰 기록으로 만든 패킷이 `P_max` 안에 드는지 확인한다. |
-| 고정 구역은 정한 순서로 모두 들어가고 최근 턴에는 도구 결과가 없다. | 제약, 목표, 미완 항목, 최근 3턴 대화 순서이고 도구 결과가 경쟁 구역에만 있는지 확인한다. |
-| 경쟁 구역은 고른 순서대로 원문, 축약본, 경로 중 들어가는 형태로 채운다. | 작은 상위 항목이 큰 하위 항목보다 먼저 원문으로 들어가는지 확인한다. |
-| 한 항목은 경쟁 구역 예산의 30%를 넘는 원문으로 들어가지 않는다. | 큰 로그가 축약본으로 들어가는지 확인한다. |
-| 패킷은 구역마다 기록 번호 순서로 쓴다. | 순위가 뒤인 이른 항목이 앞에 쓰이는지 확인한다. |
-| 고정 구역이 넘쳐도 provider 압축으로 대신하지 않는다. | `P_hard`를 넘는 제약 목록에서 provider 압축 요청이 없는지 확인한다. |
+| 고정 구역이 넘치지 않으면 패킷 크기는 `T`의 10분의 1을 넘지 않는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_large_record_stays_within_packet_limit` |
+| 고정 구역은 정한 순서로 모두 들어가고 최근 턴에는 도구 결과가 없다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_fixed_zone_in_order_and_tool_results_only_in_competing` |
+| 경쟁 구역은 고른 순서대로 원문, 축약본, 경로 중 들어가는 형태로 채운다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_small_top_item_goes_raw_before_large_lower_item`, `build_packet_fills_competing_in_chosen_order_raw_then_digest`, `build_packet_falls_back_to_path_then_skips` |
+| 한 항목은 경쟁 구역 예산의 30%를 넘는 원문으로 들어가지 않는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_item_over_cap_goes_as_digest` |
+| 패킷은 구역마다 기록 번호 순서로 쓴다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_writes_competing_in_seq_order` |
+| `compact` 질문은 패킷을 만들 때만 judge에 보낸다. | 패킷을 만들지 않은 턴 경계에서 `compact` 요청이 없는지 확인한다. |
+| 고정 구역이 `P_max`를 넘으면 오래된 턴의 답부터 줄이고, 최근 턴 수를 줄인 뒤 `P_hard`까지 허용한다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_fixed_overflow_trims_oldest_answer_first`, `build_packet_fixed_overflow_drops_oldest_turns`, `build_packet_fixed_over_limit_allows_hard_limit_without_competing` |
+| 고정 구역이 넘쳐도 provider 압축으로 대신하지 않는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_fixed_over_hard_limit_defers_with_constraints` |
 | `provider` 모드에서는 compaction을 판정하지 않고 안전망 값을 넣지 않는다. | `provider` 모드의 실행 인자와 판정 기록을 확인한다. |
 | 떠나는 provider의 압축 요약을 읽을 수 있으면 요약과 요약 뒤 기록으로 패킷을 만든다. | [#122](https://github.com/woonyong-choi/saturn/issues/122) |
 | 사용자가 자동 압축 값을 정했으면 안전망 값을 넣지 않는다. | 사용자 설정에 자동 압축 값이 있을 때 안전망 인자가 빠지는지 확인한다. |
@@ -239,4 +243,3 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 
 - `A`를 루트 에이전트 메시지로만 계산할지, 마지막으로 보고된 메시지로 계산할지 ([#62](https://github.com/woonyong-choi/saturn/issues/62))
 - 도구 출력 자르기를 패킷을 만들 때만 할지, provider 훅으로 실행 중에 할지 ([#37](https://github.com/woonyong-choi/saturn/issues/37))
-- `compact` 판단을 턴마다 미리 할지, 패킷을 만들 때 한 번 할지 ([#119](https://github.com/woonyong-choi/saturn/issues/119))
