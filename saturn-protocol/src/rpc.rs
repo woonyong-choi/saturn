@@ -12,7 +12,7 @@ use crate::ids::{
 };
 use crate::state::{Disposition, InputState, QueueReason, TaskState};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "method", content = "params")]
 pub enum Request {
     /// `chat`이 `None`이면 새 채팅.
@@ -124,6 +124,12 @@ pub enum Request {
     ExportJudgments {
         path: String,
     },
+}
+
+impl std::fmt::Debug for Request {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Request { .. }")
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

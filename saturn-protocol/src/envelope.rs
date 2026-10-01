@@ -434,4 +434,16 @@ mod tests {
             assert!(!shown.contains("sk-secret"), "{shown}");
         }
     }
+
+    #[test]
+    fn request_debug_hides_judge_key() {
+        let message = ClientMessage::new(
+            RequestId(1),
+            Request::SubmitJudgeKey {
+                key: "sk-secret".into(),
+            },
+        );
+
+        assert!(!format!("{message:?} {:?}", message.request).contains("sk-secret"));
+    }
 }
