@@ -23,6 +23,7 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 crossterm = "0.28"
 flate2 = "1"
+keyring = { version = "3", features = ["apple-native"] }
 ratatui = "0.29"
 schemars = "1"
 serde = { version = "1", features = ["derive"] }

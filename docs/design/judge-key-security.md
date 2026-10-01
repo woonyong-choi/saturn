@@ -47,6 +47,9 @@ judge 키 보호는 외부 judge API 키를 provider와 subagent가 어떤 경�
 4. 확인에 성공하면 `secrets`가 키를 저장한다.
 
 - judge 키는 명령 인자로 받지 않는다. 키 입력 방법을 위 네 가지로 한정하기 위해서다.
+- 키를 받는 순서는 환경 변수 → 비밀번호 관리자 명령 → 표준 입력(입력할 수 없는 환경일 때만) → 숨김 입력이다(초안).
+- 비밀번호 관리자 명령은 셸 없이 실행하고 stdout 첫 줄을 키로 쓴다. 실패하면 종료 코드만 보인다.
+- 받은 값은 앞뒤 공백과 끝 줄바꿈을 지우고, 버릴 때 메모리를 0으로 덮는다.
 - 시작 확인이 실패하면 그 자리에서 키를 요청한다. 시작 확인 절차는 [judge](judge.md)에 있다.
 
 ### 키 저장
@@ -61,6 +64,11 @@ judge 키 보호는 외부 judge API 키를 provider와 subagent가 어떤 경�
 - 강화 방식이면 session 시작 때 키체인 암호를 한 번 요청한다.
 - 강화 방식이면 비활성 10분이나 최대 12시간 뒤 키를 잠금 상태로 바꾼다.
 - 설정에는 키의 출처와 끝 4자리만 적는다.
+- 키체인 항목의 서비스 이름은 `saturn`, 계정 이름은 `judge-key`다(초안, [#32](https://github.com/woonyong-choi/saturn/issues/32)).
+- 대체 파일은 `~/.saturn/judge.key`이고(초안), 권한이 0600이 아니면 읽지 않는다.
+- 대체 파일은 같은 폴더에 새 임시 파일을 0600으로 만든 뒤 교체한다.
+- engine은 강화 방식의 잠금 조건을 1분마다 확인한다(초안).
+- `keyring`은 항목의 신뢰 앱 목록을 정하지 못한다. 강화 방식 항목을 어떤 API로 만들지는 [#102](https://github.com/woonyong-choi/saturn/issues/102)에서 정하고, 그 전에는 표준 방식 항목에 잠금 시계만 더한다.
 - judge 주소와 키 참조는 폴더 층에서 바꿀 수 없다. 사용자 전용 항목이기 때문이다.
 
 ### `security` 명령을 쓰지 않는 이유
@@ -86,6 +94,7 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 
 - 훅은 키 저장소 조회 명령, 대체 파일 읽기, Saturn 비밀 파일 접근을 막는다. subagent가 저장된 키를 찾아가 읽는 일을 막기 위해서다.
 - 사용자의 기존 훅은 감싸거나 지우지 않는다. provider 설정은 사용자에게 맡기기 때문이다.
+- 훅 명령은 `saturn hook pre-tool-use`이고 모든 도구에 건다(초안). 막는 명령은 `security`의 `find-generic-password`, `find-internet-password`, `dump-keychain`, `export`이고, 막는 경로는 `~/.saturn/judge.key`, `~/Library/Keychains/`, `/Library/Keychains/` 아래다(초안). 셸 연결 기호로 나뉜 부분마다 보고, 경로는 심볼릭 링크를 푼 뒤 비교한다.
 - 훅이 키 저장소 접근을 실제로 막는지는 [#3](https://github.com/woonyong-choi/saturn/issues/3), subagent까지 적용되는지는 [#23](https://github.com/woonyong-choi/saturn/issues/23) 실험으로 확인한다.
 
 ### 전송
@@ -99,6 +108,8 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 
 - judge 키와 일치하는 문자열은 로그, 오류, 디버그 출력에서 가린다. 키가 provider 기록이나 TUI로 새는 일을 막기 위해서다.
 - 판단 기록을 저장하기 전에 `secrets`가 보낸 원문과 받은 원문의 비밀값을 가린다.
+- 가린 자리는 `[redacted]`로 바꾸고 끝 4자리도 남기지 않는다. `Authorization`, `Proxy-Authorization`, `X-Api-Key` 헤더 줄은 이름만 남기고 값을 가린다(초안).
+- 출력 가림 버퍼는 줄바꿈 전의 조각을 `flush`나 `Debug`로 내보내지 않는다.
 
 ### 오류 처리
 
