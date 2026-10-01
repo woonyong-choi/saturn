@@ -10,3 +10,4 @@ saturn-protocol.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+unicode-normalization.workspace = true
