@@ -85,7 +85,6 @@
 | `context.packet_hard_divisor` | 1 이상 정수 | 5 |
 | `context.item_cap_percent` | 1~100 정수 | 30 |
 | `context.select.rrf_k` | 0 이상 정수 | 60 |
-| `context.select.synonyms` | 용어마다 사용자가 정한 짝의 문자열 배열. 용어 카탈로그의 자동 짝보다 우선 | 없음 |
 
 - `context.select.rrf_k`는 judge가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
 - 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `compact_keep`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_replace`, `constraint_conflict`, `term_same`, `term_reject`다.

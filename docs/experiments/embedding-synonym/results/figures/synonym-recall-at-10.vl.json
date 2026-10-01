@@ -1,0 +1,107 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": {
+    "text": "같은 뜻 질의의 상위 10개 재현율",
+    "subtitle": "n=60. 정답 짝이 same인 한국어 설명 질의, 정답은 주석을 뺀 코드 묶음"
+  },
+  "width": 420,
+  "height": 160,
+  "data": {
+    "values": [
+      {
+        "model": "multilingual-e5-small",
+        "ranking": "단어 기반",
+        "value": 0.0,
+        "lo": 0.0,
+        "hi": 6.0
+      },
+      {
+        "model": "multilingual-e5-small",
+        "ranking": "단어 기반 + 임베딩",
+        "value": 0.0,
+        "lo": 0.0,
+        "hi": 6.0
+      },
+      {
+        "model": "paraphrase-multilingual-MiniLM-L12-v2",
+        "ranking": "단어 기반",
+        "value": 0.0,
+        "lo": 0.0,
+        "hi": 6.0
+      },
+      {
+        "model": "paraphrase-multilingual-MiniLM-L12-v2",
+        "ranking": "단어 기반 + 임베딩",
+        "value": 0.0,
+        "lo": 0.0,
+        "hi": 6.0
+      }
+    ]
+  },
+  "layer": [
+    {
+      "mark": "bar",
+      "encoding": {
+        "x": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "재현율(%)",
+          "scale": {
+            "domain": [
+              0,
+              100
+            ]
+          }
+        },
+        "y": {
+          "field": "model",
+          "type": "nominal",
+          "title": null,
+          "sort": null
+        },
+        "yOffset": {
+          "field": "ranking",
+          "sort": [
+            "단어 기반",
+            "단어 기반 + 임베딩"
+          ]
+        },
+        "color": {
+          "field": "ranking",
+          "type": "nominal",
+          "title": "순위",
+          "sort": [
+            "단어 기반",
+            "단어 기반 + 임베딩"
+          ]
+        }
+      }
+    },
+    {
+      "mark": "errorbar",
+      "encoding": {
+        "x": {
+          "field": "lo",
+          "type": "quantitative",
+          "title": "재현율(%)"
+        },
+        "x2": {
+          "field": "hi"
+        },
+        "y": {
+          "field": "model",
+          "type": "nominal",
+          "title": null,
+          "sort": null
+        },
+        "yOffset": {
+          "field": "ranking",
+          "sort": [
+            "단어 기반",
+            "단어 기반 + 임베딩"
+          ]
+        }
+      }
+    }
+  ]
+}
