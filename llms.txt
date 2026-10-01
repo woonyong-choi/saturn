@@ -24,4 +24,4 @@ Developers who use Codex and Claude Code together lose context each time they sw
 ## Optional
 
 - [결정 기록](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/decisions/README.md): 설계를 정한 이유와 버린 선택지
-- [실험](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/README.md): 설계 값을 확인한 실험
+- [실험](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/README.md): 설계 값을 확인하는 실험과 결론
