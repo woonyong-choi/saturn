@@ -1,0 +1,4 @@
+receiver,n,codex_k,claude_k,diff,boot_low,boot_high,newcombe_low,newcombe_high,verdict
+claude,312,308,308,0.0,0.0,0.0,-0.0134,0.0134,채택
+codex,312,308,308,0.0,0.0,0.0,-0.0134,0.0134,채택
+pooled,624,616,616,0.0,0.0,0.0,-0.0067,0.0067,채택
