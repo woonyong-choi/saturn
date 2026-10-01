@@ -175,6 +175,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 | 요구사항 | 검증 계획 |
 |---|---|
+| 도구 결과 메모의 종료 코드, 경로, 줄 수를 provider와 무관하게 얻는다. | [기록 변환 충실도와 전환 품질](../experiments/record-fidelity/report.md): 현재 이벤트에 이 값이 없다. [#204](https://github.com/woonyong-choi/saturn/issues/204) |
 | 후보 전체를 judge에 묻는다. | `saturn-terminal/core/src/judges/mod.rs`의 `compact_questions_150_candidates_ask_all` |
 | 요청이 크기 한도를 넘으면 질문 단위로 나누고 조각마다 같은 state를 싣는다. | `saturn-terminal/core/src/judges/split.rs`의 `split_request_over_limit_splits_by_question_with_same_state`, `saturn-terminal/core/src/judges/mod.rs`의 `compact_requests_large_state_splits_and_every_piece_carries_state` |
 | 최종 순서는 남긴 항목의 확률 순이고 같은 확률이면 RRF 순이다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_judge_kept_by_probability_and_drops_rejected`, `order_after_judge_same_probability_follows_rrf_order` |

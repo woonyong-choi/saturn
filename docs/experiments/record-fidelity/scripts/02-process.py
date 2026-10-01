@@ -124,6 +124,20 @@ def saturn_records(task, provider, rows, item_facts):
     return records, associated, evidence
 
 
+def activity_counts(task_id, provider, records):
+    """탐색 분석용: 기록의 도구 종류별 수와 셸 명령 감싸기 수."""
+    tools = [r for r in records if r["type"] == "tool"]
+    return {
+        "task_id": task_id, "provider": provider,
+        "reading": sum(1 for r in tools if r["activity"] == "ReadingFile"),
+        "editing": sum(1 for r in tools if r["activity"] == "EditingFile"),
+        "command": sum(1 for r in tools if r["command"] is not None),
+        "thinking": sum(1 for r in tools if r["activity"] == "Thinking"),
+        "wrapped_command": sum(1 for r in tools if (r["command"] or "").startswith("/bin/zsh -lc")),
+        "edit_output_empty": sum(1 for r in tools if r["activity"] == "EditingFile" and not r["output"]),
+    }
+
+
 def write_csv(path, rows, fields):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8", newline="") as handle:
@@ -144,7 +158,7 @@ def main():
     seed = 1990 if args.source == "pilot" else cfg["seed"]
     task_ids = sorted({task_id for _, task_id in sessions})
     out_dir = os.path.join(common.ORCH, "pilot", "processed") if args.source == "pilot" else os.path.join(common.EXP, "data", "processed")
-    fact_rows, item_rows, packet_rows, flow = [], [], [], []
+    fact_rows, item_rows, packet_rows, flow, activity_rows = [], [], [], [], []
     if not args.facts_only:
         subprocess.run(["cargo", "build", "-q", "-p", "saturn-core", "--example", "packet"], cwd=common.REPO, check=True)
     for task_id in task_ids:
@@ -170,6 +184,7 @@ def main():
             item_facts.setdefault(fact["item"], []).append(fact)
         for provider in common.PROVIDERS:
             records, associated, evidence = saturn_records(task, provider, sessions[(provider, task_id)]["rows"], item_facts)
+            activity_rows.append(activity_counts(task_id, provider, records))
             packets = {cond: make_packet(provider, task_id, task, records, evidence, args.budget or cfg["packet_budget_tokens"], cond)
                        for cond in ("rrf-only", "judge-only")}
             for cond, packet in packets.items():
@@ -204,6 +219,7 @@ def main():
         return
     write_csv(os.path.join(out_dir, "facts.csv"), fact_rows, ["task_id", "provider", "fact", "item", "captured", "in_packet_rrf_only", "in_packet_judge_only"])
     write_csv(os.path.join(out_dir, "items.csv"), item_rows, ["task_id", "provider", "item", "truth_kind", "captured", "kind_ok", "path_ok", "memo_ok"])
+    write_csv(os.path.join(out_dir, "activity.csv"), activity_rows, ["task_id", "provider", "reading", "editing", "command", "thinking", "wrapped_command", "edit_output_empty"])
     write_csv(os.path.join(out_dir, "packets.csv"), packet_rows, ["task_id", "provider", "condition", "tokens", "included", "records"])
 
 

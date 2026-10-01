@@ -1,0 +1,263 @@
+{
+ "activity": {
+  "claude": {
+   "command": 72,
+   "edit_output_empty": 0,
+   "editing": 24,
+   "reading": 118,
+   "thinking": 0,
+   "wrapped_command": 0
+  },
+  "codex": {
+   "command": 72,
+   "edit_output_empty": 24,
+   "editing": 24,
+   "reading": 96,
+   "thinking": 53,
+   "wrapped_command": 72
+  }
+ },
+ "c1": {
+  "metrics": {
+   "capture": {
+    "bootstrap_ci": [
+     0.0,
+     0.0
+    ],
+    "claude": {
+     "k": 312,
+     "rate": 1.0,
+     "wilson": [
+      0.9878373824167911,
+      0.9999999999999999
+     ]
+    },
+    "codex": {
+     "k": 312,
+     "rate": 1.0,
+     "wilson": [
+      0.9878373824167911,
+      0.9999999999999999
+     ]
+    },
+    "label": "근거 항목 포착률",
+    "n": 312,
+    "paired": {
+     "a": 312,
+     "b": 0,
+     "c": 0,
+     "d": 0,
+     "diff": 0.0,
+     "lower": -0.012162617583208912,
+     "n": 312,
+     "upper": 0.012162617583208912
+    },
+    "verdict": "채택",
+    "verdict_bootstrap": "채택",
+    "verdict_newcombe": "채택"
+   },
+   "kind": {
+    "bootstrap_ci": [
+     0.0,
+     0.0
+    ],
+    "claude": {
+     "k": 168,
+     "rate": 0.875,
+     "wilson": [
+      0.8207453578533951,
+      0.9145432823690091
+     ]
+    },
+    "codex": {
+     "k": 168,
+     "rate": 0.875,
+     "wilson": [
+      0.8207453578533951,
+      0.9145432823690091
+     ]
+    },
+    "label": "도구 종류 변환 정확도",
+    "n": 192,
+    "paired": {
+     "a": 168,
+     "b": 0,
+     "c": 0,
+     "d": 24,
+     "diff": 0.0,
+     "lower": -0.017848986727083845,
+     "n": 192,
+     "upper": 0.017848986727083845
+    },
+    "verdict": "채택",
+    "verdict_bootstrap": "채택",
+    "verdict_newcombe": "채택"
+   },
+   "memo": {
+    "bootstrap_ci": [
+     -0.25,
+     -0.25
+    ],
+    "claude": {
+     "k": 48,
+     "rate": 0.25,
+     "wilson": [
+      0.1940606516688278,
+      0.3157469215162362
+     ]
+    },
+    "codex": {
+     "k": 0,
+     "rate": 0.0,
+     "wilson": [
+      0.0,
+      0.019615146370127873
+     ]
+    },
+    "label": "메모 필드 정확도",
+    "n": 192,
+    "paired": {
+     "a": 0,
+     "b": 0,
+     "c": 48,
+     "d": 144,
+     "diff": -0.25,
+     "lower": -0.3157469215162362,
+     "n": 192,
+     "upper": -0.1907212967513816
+    },
+    "verdict": "기각",
+    "verdict_bootstrap": "기각",
+    "verdict_newcombe": "기각"
+   },
+   "path": {
+    "bootstrap_ci": [
+     -0.2,
+     -0.2
+    ],
+    "claude": {
+     "k": 24,
+     "rate": 0.2,
+     "wilson": [
+      0.13824476437820654,
+      0.28036673575751825
+     ]
+    },
+    "codex": {
+     "k": 0,
+     "rate": 0.0,
+     "wilson": [
+      0.0,
+      0.03101916689287469
+     ]
+    },
+    "label": "파일 경로 추출 정확도",
+    "n": 120,
+    "paired": {
+     "a": 0,
+     "b": 0,
+     "c": 24,
+     "d": 96,
+     "diff": -0.2,
+     "lower": -0.28036673575751825,
+     "n": 120,
+     "upper": -0.13089212894733887
+    },
+    "verdict": "기각",
+    "verdict_bootstrap": "기각",
+    "verdict_newcombe": "기각"
+   }
+  },
+  "verdict": "기각"
+ },
+ "descriptive": {
+  "packet_oracle": {
+   "bootstrap_ci": [
+    0.0,
+    0.019230769230769232
+   ],
+   "claude": {
+    "k": 142,
+    "rate": 0.4551282051282051,
+    "wilson": [
+     0.4007516267555435,
+     0.5105963004634624
+    ]
+   },
+   "codex": {
+    "k": 144,
+    "rate": 0.46153846153846156,
+    "wilson": [
+     0.4070255198216918,
+     0.5169869892231705
+    ]
+   },
+   "label": "oracle 패킷 포함률",
+   "n": 312,
+   "paired": {
+    "a": 130,
+    "b": 14,
+    "c": 12,
+    "d": 156,
+    "diff": 0.006410256410256443,
+    "lower": -0.026061999412113603,
+    "n": 312,
+    "upper": 0.03883984202340431
+   },
+   "verdict": "채택",
+   "verdict_bootstrap": "채택",
+   "verdict_newcombe": "채택"
+  },
+  "packet_rrf": {
+   "bootstrap_ci": [
+    0.019230769230769232,
+    0.07051282051282051
+   ],
+   "claude": {
+    "k": 130,
+    "rate": 0.4166666666666667,
+    "wilson": [
+     0.3632998994470518,
+     0.4720605368168163
+    ]
+   },
+   "codex": {
+    "k": 144,
+    "rate": 0.46153846153846156,
+    "wilson": [
+     0.4070255198216918,
+     0.5169869892231705
+    ]
+   },
+   "label": "RRF 패킷 포함률",
+   "n": 312,
+   "paired": {
+    "a": 124,
+    "b": 20,
+    "c": 6,
+    "d": 162,
+    "diff": 0.04487179487179488,
+    "lower": 0.012639563202867667,
+    "n": 312,
+    "upper": 0.0768350485399473
+   },
+   "verdict": "채택",
+   "verdict_bootstrap": "채택",
+   "verdict_newcombe": "채택"
+  }
+ },
+ "flow": {
+  "failed": 0,
+  "sessions": 48,
+  "tasks_evaluable": 24
+ },
+ "gate": {
+  "a_c1_rejected": true,
+  "b_enough_facts": true,
+  "common_facts_mean_per_task": 13.0,
+  "common_facts_total": 312,
+  "stage2": "defer-until-fix"
+ },
+ "margin": 0.05,
+ "stage": 1
+}

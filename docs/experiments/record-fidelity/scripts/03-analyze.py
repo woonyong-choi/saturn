@@ -154,10 +154,16 @@ def main():
     total_common = sum(len(v) for v in per_task.values())
     mean_common = total_common / len(per_task) if per_task else 0.0
     enough = (mean_common >= cfg["gate_min_facts_per_task"] and total_common >= cfg["gate_min_facts_total"] and len(per_task) >= 20)
+    totals = defaultdict(lambda: defaultdict(int))
+    for row in read(os.path.join(args.processed, "activity.csv")):
+        for key, value in row.items():
+            if key not in ("task_id", "provider"):
+                totals[row["provider"]][key] += int(value)
     failed = [row for row in data["flow.csv"] if row["status"] != "ok"]
     summary = {
         "stage": 1, "margin": margin, "c1": {"verdict": c1_verdict, "metrics": c1},
         "descriptive": descriptive,
+        "activity": {provider: dict(values) for provider, values in totals.items()},
         "flow": {"sessions": len(data["flow.csv"]), "failed": len(failed), "tasks_evaluable": len(per_task)},
         "gate": {"a_c1_rejected": c1_verdict == "기각", "b_enough_facts": enough, "common_facts_total": total_common,
                  "common_facts_mean_per_task": mean_common, "stage2": stage2_route(c1_verdict, enough)},
