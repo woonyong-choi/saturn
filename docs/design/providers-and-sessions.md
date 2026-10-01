@@ -262,6 +262,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | Claude 백그라운드 subagent까지 멈춘다. | [#18](https://github.com/woonyong-choi/saturn/issues/18) |
 | Claude 사용량 보고의 범위를 올바르게 표시한다. | [#19](https://github.com/woonyong-choi/saturn/issues/19) |
 | Claude 스트림에서 provider 명령 결과와 허가 요청을 받는다. | [#26](https://github.com/woonyong-choi/saturn/issues/26) |
+| Codex와 Claude Code의 도구 결과를 같은 충실도로 기록으로 바꾼다. | [기록 변환 충실도와 전환 품질](../experiments/record-fidelity/report.md): 두 provider 모두 경로와 종료 코드를 얻지 못하고 Codex는 종료 코드와 수정 내용을 버린다. [#203](https://github.com/woonyong-choi/saturn/issues/203), [#204](https://github.com/woonyong-choi/saturn/issues/204), [#205](https://github.com/woonyong-choi/saturn/issues/205) |
 
 ## 단점
 
