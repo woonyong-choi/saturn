@@ -13,15 +13,66 @@ pub const CHILD_ENV_DENYLIST: &[&str] = &[JUDGE_KEY_ENV];
 
 /// `name`이 `CHILD_ENV_DENYLIST`에 있는지. 대소문자를 구분한다(macOS 환경 변수는 구분한다).
 pub fn is_denied(name: &OsStr) -> bool {
-    todo!("#84")
+    CHILD_ENV_DENYLIST
+        .iter()
+        .any(|denied| OsStr::new(denied) == name)
 }
 
 /// 환경 목록에서 제외 목록의 변수를 뺀 새 목록. `Supervisor`가 자식에 줄 환경을 `env_clear` 뒤 이것으로 채울 때 쓴다.
 pub fn scrub(env: impl IntoIterator<Item = (OsString, OsString)>) -> Vec<(OsString, OsString)> {
-    todo!("#84")
+    env.into_iter()
+        .filter(|(name, _)| !is_denied(name))
+        .collect()
 }
 
 /// 실행할 명령에 제외 목록의 변수마다 `env_remove`를 건다. 부모 환경을 물려받는 명령에 쓴다.
 pub fn scrub_command(command: &mut tokio::process::Command) {
-    todo!("#84")
+    for name in CHILD_ENV_DENYLIST {
+        command.env_remove(name);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn denylist_holds_judge_key_variable() {
+        assert!(CHILD_ENV_DENYLIST.contains(&JUDGE_KEY_ENV));
+        assert!(is_denied(OsStr::new(JUDGE_KEY_ENV)));
+        assert!(!is_denied(OsStr::new("PATH")));
+        assert!(!is_denied(OsStr::new(&JUDGE_KEY_ENV.to_lowercase())));
+    }
+
+    #[test]
+    fn scrub_removes_every_denied_name() {
+        let mut env: Vec<(OsString, OsString)> = CHILD_ENV_DENYLIST
+            .iter()
+            .map(|name| (OsString::from(name), OsString::from("secret-value")))
+            .collect();
+        env.push(("PATH".into(), "/usr/bin".into()));
+        env.push(("HOME".into(), "/Users/me".into()));
+
+        let child = scrub(env);
+
+        assert!(child.iter().all(|(name, _)| !is_denied(name)));
+        assert!(child.iter().all(|(_, value)| value != "secret-value"));
+        assert_eq!(child.len(), 2);
+    }
+
+    #[test]
+    fn scrub_command_removes_inherited_and_explicit_values() {
+        let mut command = tokio::process::Command::new("/usr/bin/true");
+        command.env(JUDGE_KEY_ENV, "secret-value").env("KEEP", "1");
+
+        scrub_command(&mut command);
+
+        let envs: Vec<(OsString, Option<OsString>)> = command
+            .as_std()
+            .get_envs()
+            .map(|(name, value)| (name.to_owned(), value.map(OsStr::to_owned)))
+            .collect();
+        assert!(envs.contains(&(OsString::from(JUDGE_KEY_ENV), None)));
+        assert!(envs.contains(&(OsString::from("KEEP"), Some(OsString::from("1")))));
+    }
 }
