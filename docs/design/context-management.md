@@ -162,6 +162,7 @@ P_max = T / 10
 - 관련도가 높은 작은 항목을 관련도가 낮은 큰 항목보다 먼저 넣기 위해서다.
 - 한 항목 상한은 큰 로그 하나가 경쟁 구역을 혼자 차지하지 않게 하기 위해서다.
 - 패킷에 쓸 때는 구역마다 기록 번호 순서로 다시 정렬한다. 순위는 무엇을 넣을지만 정하고, 새 session은 일이 일어난 순서를 알아야 하기 때문이다.
+- 최근 턴과 경쟁 구역은 session별 제목 아래에 묶고 항목마다 기록 번호와 시각을 적는다. 형식은 [패킷 표기](#패킷-표기)에 있다.
 
 고정 구역만으로 `P_max`를 넘으면 `sessions`는 다음 순서로 줄인다.
 
@@ -177,6 +178,40 @@ P_max = T / 10
 `compact` 판단은 패킷을 만들 때 한 번 묻는다. 턴마다 미리 묻지 않는다. 나눈 요청을 병렬로 보내면 후보 전체 판단의 지연이 조각 수와 거의 무관하게 약 0.3초이기 때문이다. 질문 40개와 약 7KB state 요청을 4개 동시에 보내면 0.26초, 8개 동시에 보내면 0.27초, 4개를 차례로 보내면 0.97초였다([#179](https://github.com/woonyong-choi/saturn/issues/179) 실측). 미리 판단은 후보 전체를 묻는 조건에서 패킷 때 물을 질문을 앞당길 뿐이다. 첫 턴부터 미리 판단하면 추정 입력 토큰이 1.118배 [1.088, 1.161]로 늘고, 사건에 닿지 않아 버려지는 질문이 9.7% [7.3, 13.1]이며, 미리 한 판단이 패킷 때 목표와 어긋날 위험이 남는다. 지연을 줄이는 이득은 순차 전송을 가정한 값이라 병렬 전송에서는 사라진다([후속 분석](../experiments/precompute-breakeven/report.md#후속-분석-후보-전체-판단-조건)). 이 기준은 사전 등록 판정이 아니라 설계 판단용이다.
 
 `compact` 질문의 확률 읽기와 judge가 답하지 못할 때의 대체 규칙은 [judge](judge.md)에 있다.
+
+### 패킷 표기
+
+최근 턴과 경쟁 구역은 session별 제목 아래에 묶고, 항목마다 기록 번호와 기록 시각을 적는다. 패킷 96개에 날짜, session, 기록 번호 표시가 없어 날짜가 필요한 질문(384개 중 96개, 25.0%)은 근거가 모두 들어도 풀 수 없었고 `multi-session`과 `temporal` 질문은 세 조건 모두 정답률이 0%였기 때문이다([후속 분석](../experiments/handoff-packet-quality/report.md#후속-분석-원인)).
+
+```text
+## Recent turns
+
+### Session 2
+
+#190 2026-09-13T09:00Z User: finish the cache module
+Agent: done
+
+## Earlier records
+
+### Session 1
+
+#41 2026-09-12T10:00Z Read {"file_path":"src/auth.rs"}
+auth file body
+
+#44 2026-09-12T10:05Z src/cache.rs
+
+### Session 2
+
+#185 2026-09-13T08:30Z Bash {"command":"cargo test"}
+test result: ok
+```
+
+- 항목 앞에 `#<기록 번호> <기록 시각>`을 적는다. 시각은 UTC 분 단위 `YYYY-MM-DDTHH:MMZ`(17글자)다. 초와 시간대 이름을 빼 토큰을 아끼고, 기록 저장소의 unix 밀리초 값을 바꿔 쓰므로 provider별 변환을 거치지 않는다.
+- session 제목은 `### Session <번호>`이고 session마다 한 번 쓴다. 날짜와 session 경계를 항목마다 되풀이하지 않기 위해서다. 기록 번호 순으로 놓으면 같은 session의 항목이 이어진다.
+- 최근 턴은 사용자 입력의 기록 번호와 시각을 적는다. 제약, 목표와 마지막 입력, 끝나지 않은 항목은 표기를 붙이지 않는다.
+- 항목 앞 표기와 session의 첫 항목이 쓰는 제목은 경쟁 구역 예산에 든다. 표기까지 넣은 원문이 들어가지 않으면 축약본, 경로 순으로 시도한다.
+- provider 압축 요약은 기록 한 건이 아니므로 표기 없이 경쟁 구역의 첫 항목으로 제목 앞에 둔다.
+- 기록 저장소의 행은 모두 시각이 있다. 시각이 없는 입력(실험 예제의 표준 입력)은 `#<기록 번호>`만 적는다.
 
 ### compaction 방식
 
@@ -216,6 +251,9 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 | 경쟁 구역은 기준값 없이 judge 남김 확률 순으로 예산이 찰 때까지 채운다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_judge_orders_by_probability_and_keeps_low`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_judgments_put_low_probability_item_before_unanswered` |
 | 경쟁 구역은 고른 순서대로 원문, 축약본, 경로 중 들어가는 형태로 채운다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_small_top_item_goes_raw_before_large_lower_item`, `build_packet_fills_competing_in_chosen_order_raw_then_digest`, `build_packet_falls_back_to_path_then_skips` |
 | 한 항목은 경쟁 구역 예산의 30%를 넘는 원문으로 들어가지 않는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_item_over_cap_goes_as_digest` |
+| 최근 턴과 경쟁 구역은 session별 제목 아래에 묶고 항목마다 기록 번호와 기록 시각을 적는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_competing_groups_by_session_with_seq_and_time`, `build_packet_recent_turns_carry_session_title_seq_and_time`, `saturn-terminal/core/src/sessions/stamp.rs`의 `label_formats_seq_and_utc_minute`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_scenario_session_and_time_appear_before_items` |
+| 시각이 없는 입력은 기록 번호만 적는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_without_time_writes_seq_only`, `saturn-terminal/core/src/sessions/stamp.rs`의 `label_without_time_is_seq_only` |
+| 표기와 session 제목의 글자도 경쟁 구역 예산에 들어 패킷은 `P_max`를 넘지 않는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_many_sessions_stay_within_packet_limit` |
 | 패킷은 구역마다 기록 번호 순서로 쓴다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_writes_competing_in_seq_order` |
 | `compact` 질문은 패킷을 만들 때 후보 전체를 한 번 judge에 보내고 턴이 끝날 때는 보내지 않는다. | 턴 종료에서 judge 호출이 없는지, 패킷을 만들 때 후보 전체가 한 번 묻히는지 확인한다. |
 | 고정 구역이 `P_max`를 넘으면 오래된 턴의 답부터 줄이고, 최근 턴 수를 줄인 뒤 `P_hard`까지 허용한다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_fixed_overflow_trims_oldest_answer_first`, `build_packet_fixed_overflow_drops_oldest_turns`, `build_packet_fixed_over_limit_allows_hard_limit_without_competing` |
@@ -236,6 +274,7 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 - `A`를 잴 수 없는 경로는 provider 자동 압축에 기댄다.
 - 정리 모드마다 전달 경로가 달라 두 경로를 함께 유지해야 한다.
 - 제약이 아주 길면 맥락 정리를 미루고 안전망에 기댄다.
+- 항목마다 표기가 붙어 같은 예산에 드는 항목 수가 줄어든다. 줄어드는 정도와 날짜가 필요한 질문의 정답률 변화는 측정 전이다.
 
 ## 대안
 

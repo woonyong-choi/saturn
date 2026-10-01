@@ -1,4 +1,4 @@
-//! claude-summary-handoff 설계의 표준 입력: 줄마다 `{"record_no", "event"}`. `event`는 Claude Code stream-json 이벤트이거나 `saturn_user_input`.
+//! claude-summary-handoff 설계의 표준 입력: 줄마다 `{"record_no", "event"}`와 선택 필드 `session`, `ts`. `event`는 Claude Code stream-json 이벤트이거나 `saturn_user_input`.
 //! 설계: docs/experiments/claude-summary-handoff/design.md
 
 use std::collections::HashMap;
@@ -8,11 +8,15 @@ use serde::Deserialize;
 use serde_json::Value;
 use tracing::warn;
 
-use crate::records::{Body, Record};
+use crate::records::{Body, Record, parse_utc_ms};
 
 #[derive(Debug, Deserialize)]
 struct Line {
     record_no: u64,
+    /// 없으면 1이다.
+    session: Option<u64>,
+    /// `2026-09-12T10:00:00Z` 꼴. 없으면 시각 없이 기록 번호만 적힌다.
+    ts: Option<String>,
     event: Value,
 }
 
@@ -37,12 +41,9 @@ pub(crate) fn from_stream(text: &str) -> anyhow::Result<Vec<Record>> {
         match line.event["type"].as_str() {
             Some("saturn_user_input") => {
                 let text = line.event["text"].as_str().unwrap_or_default();
-                records.push(Record {
-                    seq: line.record_no,
-                    body: Body::User(text.to_owned()),
-                });
+                records.push(record_of(&line, Body::User(text.to_owned()))?);
             }
-            Some("assistant") => add_assistant(&mut records, &mut pending, &line),
+            Some("assistant") => add_assistant(&mut records, &mut pending, &line)?,
             Some("user") => add_results(&mut records, &pending, &line.event),
             _ => {}
         }
@@ -53,7 +54,11 @@ pub(crate) fn from_stream(text: &str) -> anyhow::Result<Vec<Record>> {
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = 입력 항목 수
 // basis: estimate
-fn add_assistant(records: &mut Vec<Record>, pending: &mut HashMap<String, usize>, line: &Line) {
+fn add_assistant(
+    records: &mut Vec<Record>,
+    pending: &mut HashMap<String, usize>,
+    line: &Line,
+) -> anyhow::Result<()> {
     let parts = line.event["message"]["content"]
         .as_array()
         .map_or(&[][..], Vec::as_slice);
@@ -63,14 +68,11 @@ fn add_assistant(records: &mut Vec<Record>, pending: &mut HashMap<String, usize>
         .filter_map(|part| part["text"].as_str())
         .collect();
     if !answer.is_empty() {
-        records.push(Record {
-            seq: line.record_no,
-            body: Body::Agent(answer),
-        });
+        records.push(record_of(line, Body::Agent(answer))?);
     }
     let mut calls = parts.iter().filter(|part| part["type"] == "tool_use");
     let Some(call) = calls.next() else {
-        return;
+        return Ok(());
     };
     if calls.next().is_some() {
         warn!(
@@ -80,14 +82,26 @@ fn add_assistant(records: &mut Vec<Record>, pending: &mut HashMap<String, usize>
     }
     let id = call["id"].as_str().unwrap_or_default().to_owned();
     pending.insert(id, records.len());
-    records.push(Record {
-        seq: line.record_no,
-        body: Body::Tool {
+    records.push(record_of(
+        line,
+        Body::Tool {
             name: call["name"].as_str().unwrap_or_default().to_owned(),
             args: call["input"].clone(),
             result: None,
         },
-    });
+    )?);
+    Ok(())
+}
+
+// cost: time O(1), heap O(1), stack O(1)
+// basis: estimate
+fn record_of(line: &Line, body: Body) -> anyhow::Result<Record> {
+    Ok(Record {
+        seq: line.record_no,
+        session: line.session.unwrap_or(1),
+        at_ms: line.ts.as_deref().map(parse_utc_ms).transpose()?,
+        body,
+    })
 }
 
 // cost: time O(n), heap O(n), stack O(1)

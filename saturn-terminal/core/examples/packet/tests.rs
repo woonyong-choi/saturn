@@ -370,3 +370,42 @@ fn packet_missing_scenario_returns_error() {
 
     assert!(error.to_string().contains("scenario not found: nope"));
 }
+
+// cost: time O(n), heap O(n), stack O(1)
+// vars: n = 입력 항목 수
+// basis: estimate
+#[test]
+fn packet_scenario_session_and_time_appear_before_items() {
+    let dir = TempDir::new().unwrap();
+    let scenarios = write(
+        &dir,
+        "scenarios.jsonl",
+        &(json!({"scenario_id": "s01", "record": [
+            {"seq": 1, "session": 1, "ts": "2026-09-12T10:00:00Z", "kind": "user", "text": "fix the cache module"},
+            {"seq": 2, "session": 1, "ts": "2026-09-12T10:05:30Z", "kind": "tool", "tool": "read", "args": {"path": "src/a.rs"}, "result": "cache body"},
+            {"seq": 3, "session": 2, "ts": "2026-09-13T09:00:00Z", "kind": "user", "text": "finish the cache module"}
+        ]})
+        .to_string()
+            + "\n"),
+    );
+
+    let result = run_scenario(&scenarios, &[]);
+
+    let packet = result["packet"].as_str().unwrap();
+    assert!(packet.contains("### Session 1\n\n#2 2026-09-12T10:05Z read"));
+    assert!(packet.contains("### Session 2\n\n#3 2026-09-13T09:00Z User: finish the cache module"));
+}
+
+// cost: time O(n), heap O(n), stack O(1)
+// vars: n = 입력 항목 수
+// basis: estimate
+#[test]
+fn packet_stream_without_time_writes_seq_only() {
+    let input = stream_lines(&stream_events());
+
+    let rendered = run_with_stdin(&["--mode", "saturn", "--budget-tokens", "800"], &input).unwrap();
+
+    let text = rendered.output;
+    assert!(text.contains("#5 User: fix login in src/auth.rs\nAgent: fixed it"));
+    assert!(text.contains("### Session 1\n\n#2 Read "));
+}

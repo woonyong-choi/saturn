@@ -6,6 +6,7 @@ pub mod fragments;
 pub mod memo;
 pub mod packet;
 pub mod ranking;
+pub mod stamp;
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant, SystemTime};
