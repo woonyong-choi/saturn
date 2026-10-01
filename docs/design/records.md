@@ -57,6 +57,8 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - 한 번의 변경은 한 거래로 처리하고, provider가 보고하지 않은 값은 0이 아닌 NULL로 둔다. 쓰기 충돌과 지어낸 값을 막기 위해서다.
 - 설정 원본은 파일이고 기록 저장소에는 적용된 설정의 스냅샷만 둔다([설정](settings.md)).
 - TUI의 입력 기록 `~/.saturn/history`는 기록 저장소 밖의 권한 0600 파일이고 TUI가 쓴다.
+- 첫 스키마(V1)는 옛 스키마 위 변경분이 아니라 전체 정의로 쓴다. 공개 저장소만으로 스키마 전체를 읽기 위해서다.
+- 표 이름은 `chats`, `inputs`, `runs`, `sessions`, `events`, `usage`이고 Saturn 용어(채팅, 입력, 실행, session)를 따른다.
 - 기록 저장소 파일 권한은 0600이다(초안). 입력 원문과 판단 기록이 들어 있기 때문이다.
 
 ### 사용량 조회 범위
@@ -159,7 +161,5 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 
 ## 미해결 질문
 
-- 첫 SQLite 스키마를 전체 정의로 새로 쓸지, 옛 스키마 위 변경분으로 쓸지 ([#29](https://github.com/woonyong-choi/saturn/issues/29))
 - 옛 구현의 v8 기록을 가져오지 않을지, 명령으로 가져올지 ([#30](https://github.com/woonyong-choi/saturn/issues/30))
-- 기록 저장소의 표 이름을 용어 표의 채팅, 입력, 턴에 맞출지, 초안 이름을 유지할지 ([#31](https://github.com/woonyong-choi/saturn/issues/31))
 - 자동 정리 같은 설정의 키 이름과 기본값을 지금 항목마다 확정할지, 측정이 끝난 항목부터 확정할지 ([#49](https://github.com/woonyong-choi/saturn/issues/49))

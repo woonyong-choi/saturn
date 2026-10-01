@@ -51,7 +51,7 @@ impl ContextBudget {
 #[derive(Debug, Clone, Copy)]
 pub struct ContextMeasure {
     /// 잴 수 없으면 `None`이고 provider 자동 압축에 맡긴다.
-    /// TODO(#62): 루트 메시지로만 계산할지
+    /// 루트(메인) 에이전트 메시지 기준이다.
     pub active: Option<u64>,
     pub packet: u64,
     pub tree_idle: bool,
