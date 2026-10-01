@@ -58,6 +58,25 @@ engine은 provider마다 켜 둔 채 입력을 받는 연결을 둔다. Codex는
 | session 재개 | app-server 하나를 창구로 재개 | stream-json 방식 `--resume` |
 | 프로세스 수명 | 연결 창구로 유지, session은 턴 끝 뒤 5분 유예에 정리 | 턴 진행 중과 턴 끝 뒤 5분 유예까지 |
 
+Codex app-server 규약은 codex-cli 0.158.0의 `codex app-server generate-json-schema` 결과로 확인했다.
+
+- 메시지는 한 줄에 JSON 하나이고 `jsonrpc` 필드가 없다. 초기화는 `initialize` 요청 뒤 `initialized` 알림이다.
+- session 닫기는 `thread/unsubscribe`다. 기록을 지우는 `thread/archive`, `thread/delete`는 쓰지 않는다.
+- 자식 작업은 `thread/started` 알림의 `thread.parentThreadId`로 부모 thread에 잇는다.
+- 활성 턴 없음은 오류 코드가 따로 없어 `turn/steer` 오류 문구로 판정한다(초안).
+- 맥락 크기는 `thread/tokenUsage/updated`의 `last.totalTokens`이고 메인 턴 끝에 보낸다. 누적 사용량의 새 입력은 `total.inputTokens - cachedInputTokens`다.
+- 명령 대응표는 `compact` → `thread/compact/start`, `review` → `review/start`(대상 `uncommittedChanges`)이고, 명령 목록에서 `new`, `resume`, `fork`, `quit`, `exit`를 뺀다(초안). 스킬은 `turn/start` 입력에 `{"type":"skill","name","path"}` 항목으로 넣는다.
+- 권한 기본값 인자는 `-c sandbox_mode="workspace-write"`이고(초안), 사용자 설정은 `$CODEX_HOME/config.toml`(기본 `~/.codex/config.toml`)의 루트와 선택된 프로필에서 `approval_policy`, `sandbox_mode`, `model_auto_compact_token_limit` 키가 있는지만 본다.
+
+Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
+
+- 새 session은 Saturn이 만든 UUID를 `--session-id`로 넘긴다. stream-json은 첫 입력 전에 `system/init`을 내지 않으므로 session id를 미리 알기 위해서다. 재개는 `--resume <id>`이고, 500ms(초안) 안에 프로그램이 끝나면 재개 실패로 본다.
+- 권한 기본값 인자는 `--permission-mode acceptEdits`이고(초안), 안전망 `--autocompact` 값은 허용 범위 100000~1000000으로 맞춘다.
+- 사용자 설정은 `~/.claude/settings.json`, `<작업 폴더>/.claude/settings.json`, `settings.local.json`의 `permissions.defaultMode`, `autoCompactEnabled`와 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있는지만 본다(초안).
+- 명령 목록에서 `clear`, `resume`, `exit`, `quit`를 뺀다(초안). 허가 요청은 `control_request`의 `can_use_tool`로 본다(초안, [#26](https://github.com/woonyong-choi/saturn/issues/26) 실측 전).
+- 맥락 크기는 마지막 메인 `assistant` 메시지 `usage`의 입력, 캐시 읽기, 캐시 쓰기 합이다(초안).
+- interrupt 제어 응답은 10초, session 닫기 뒤 종료는 5초까지 기다리고, 넘으면 프로세스 묶음 중지로 넘어간다(초안).
+
 끼워 넣기 실측을 통과하기 전의 provider에서는 끼워 넣기를 대기로 바꿔 처리한다. 끼워 넣기 경로가 문서대로 동작하는지 실측으로 확인해야 하기 때문이다([#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27)). 이때 TUI는 `바로 반영: 준비 중`을 보인다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다. 입력을 어디로 보낼지는 [입력 처리](input-handling.md)가 정한다.
 
 ### provider 실행과 기본값 인자
@@ -108,19 +127,21 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 3. judge가 무관한 작업으로 판단하면 `queue`는 채팅에 속한 보조 에이전트를 시작한다.
 4. 보조 에이전트는 끝나면 결과를 전달한 뒤 바로 종료한다.
 
+살아 있는 메인 session은 `종료`가 아닌 메인 session이다. 같은 provider면 열린 session에 그대로 보내고, `닫힘·재개 가능`이나 `보류`면 보관한 provider session ID로 재개한다. 보관한 ID가 없거나 provider가 다르면 새 session을 연다. 보조 에이전트는 작업마다 새 session을 연다. 끝나면 바로 종료하므로 재개할 session이 없기 때문이다.
+
 보조 에이전트가 물려받는 설정 층은 [설정](settings.md)에 있다. judge가 무엇을 묻는지는 [judge](judge.md)에 있다.
 
 ### provider 전환
 
 한 채팅 안에서 Codex와 Claude를 바꿔 가도 채팅은 하나로 이어진다. 채팅마다 살아 있는 session은 하나다. `sessions`는 입력을 보내는 순간 대상 session을 정한다.
 
-session 교체는 턴이 끝난 경계에서만 한다. 진행 중인 턴이 교체로 끊기는 일을 막기 위해서다. 대기열은 에이전트 session이 아니라 채팅에 둔다. 교체 중 들어온 입력이 옛 session을 가리키는 일을 막기 위해서다. 교체 중 들어온 입력은 새 session에 들어온 순서대로 보낸다. 입력 순서를 교체와 무관하게 지키기 위해서다.
+session 교체는 같은 채팅·역할 안에서 턴이 끝난 경계에만 한다. 진행 중인 턴이 교체로 끊기는 일을 막기 위해서다. session ID는 재사용하지 않는다. 대기열은 에이전트 session이 아니라 채팅에 둔다. 교체 중 들어온 입력이 옛 session을 가리키는 일을 막기 위해서다. 교체 중 들어온 입력은 새 session에 들어온 순서대로 보낸다. 입력 순서를 교체와 무관하게 지키기 위해서다.
 
-새 session에는 패킷을 넘기고, 그 뒤로는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. 패킷을 어떻게 고르는지는 [맥락 정리](context-management.md)에 있다.
+새 session에는 패킷을 넘기고, 그 뒤로는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. 새 session의 전달 기록 번호는 이전 session이 받은 번호보다 작아지지 않는다. 패킷이 그 번호까지의 기록을 담으므로 같은 결과를 두 번 붙이지 않기 위해서다. 패킷을 어떻게 고르는지는 [맥락 정리](context-management.md)에 있다.
 
 ### session 닫기와 재개
 
-1. 트리 유휴 뒤 5분 유예가 지나면 `sessions`는 session을 닫는다.
+1. 트리 유휴 뒤 5분 유예가 지나면 `sessions`는 session을 닫는다. 유예 중 새 턴이 시작되면 유예 시계를 멈춘다.
 2. `store`는 닫은 session의 provider session ID를 보관한다.
 3. 새 입력이 오면 `sessions`는 보관한 ID로 session을 재개한다.
 
@@ -145,6 +166,8 @@ session 교체는 턴이 끝난 경계에서만 한다. 진행 중인 턴이 교
 
 작업 끝은 메인 에이전트와 모든 subagent가 끝난 때로 판정한다. 멈춤, 쓰기 잠금, compaction 경계는 subagent까지 끝났는지 알아야 정할 수 있기 때문이다. Codex 작업 끝은 부모 작업의 `turn/completed`로만 판정한다. 자식 작업의 끝을 작업 끝으로 잘못 보지 않기 위해서다. Claude subagent 이벤트와 Codex 자식 session 신호는 실측으로 확인한다([#17](https://github.com/woonyong-choi/saturn/issues/17), [#20](https://github.com/woonyong-choi/saturn/issues/20)).
 
+부모 턴이 끝난 뒤 메인 에이전트의 글이나 도구 호출이 오면 새 턴이 시작된 것으로 본다. 입력 없이 provider가 시작한 턴도 트리 유휴로 잘못 보지 않기 위해서다. 흐름이 완료 신호 없이 끝나면 트리를 끝난 것으로 두고 관찰 끊김으로 기록한다. 더 받을 이벤트가 없는 트리를 실행 중으로 남겨 두지 않기 위해서다. 멈춤 신호 순서는 깊은 subagent부터이고, 깊이가 같으면 subagent id 순서, 마지막이 메인이다.
+
 ### 사용량 보고와 턴 값
 
 1. `agents`는 사용량 보고의 원값, 범위, 대상 에이전트, 모델을 한 행으로 기록한다.
@@ -154,6 +177,8 @@ session 교체는 턴이 끝난 경계에서만 한다. 진행 중인 턴이 교
 5. 턴 범위면 보고값을 그대로 턴 값으로 쓴다.
 6. session이 바뀌면 누적 계산을 새로 시작한다.
 
+누적 범위의 직전 누적은 같은 session에서 같은 에이전트와 subagent의 앞 누적 보고에서 칸마다 찾는다. 바로 앞 보고에 그 칸이 없었거나 두 보고 사이에 부모 턴이 둘 이상 끝났으면 차이가 여러 턴에 걸친다고 표시한다. 누적이 직전보다 작으면 그 칸의 턴 값은 NULL로 두고 여러 턴에 걸친다고 표시한다. 계산할 수 없는 턴 값을 지어내지 않기 위해서다. `tree-total`은 그 턴의 트리 합계이므로 턴 범위처럼 그대로 쓴다.
+
 사용량 보고는 원값과 범위를 그대로 넘기고 0으로 채우지 않는다. Codex session 누적을 그대로 더하면 중복 계산되기 때문이다. provider가 보고하지 않은 값은 NULL로 둔다. 지어낸 값을 막기 위해서다. Claude 사용량 보고의 범위는 실측으로 확인한다([#19](https://github.com/woonyong-choi/saturn/issues/19)).
 
 ### 트리 전체 중지
@@ -161,8 +186,12 @@ session 교체는 턴이 끝난 경계에서만 한다. 진행 중인 턴이 교
 1. `agents`는 추적된 subagent부터 멈춤 신호 대상 순서를 정한다.
 2. `providers`는 Codex에는 자식 session별 `turn/interrupt`를, Claude에는 멈춤 제어 신호를 보낸다.
 3. 10초 뒤 남은 프로세스가 있으면 `processes`는 provider 프로세스 묶음에 중지 신호를 보낸다.
-4. 그래도 남으면 `processes`는 강제 종료한다.
+4. 중지 신호 뒤 5초(초안)가 지나도 남으면 `processes`는 강제 종료한다.
 5. `processes`는 트리 전체의 종료를 확인한 뒤 완료를 보고한다.
+
+- provider는 새 프로세스 묶음의 리더로 실행한다. 자식 환경은 비운 뒤 제외 목록 변수를 지운 환경과 중첩 표지만 넣는다. 실행 명세의 환경 값은 디버그 출력에 담지 않는다.
+- `processes`는 1초(초안)마다 프로세스 표를 읽어 리더의 자손을 기억한다. 묶음 밖으로 빠져나간 자손에는 신호를 보내지 않고, 살아 있으면 남은 수로 센다.
+- 리더를 남기는 중지(Codex app-server처럼 session을 이어 쓸 때)는 리더를 뺀 묶음 구성원에만 신호를 보낸다.
 
 멈춤은 Saturn session의 모든 에이전트와 subagent에 닿는다. 에이전트 하나만 멈추는 기능은 취소와 모델 교체 같은 내부 처리에서만 쓰기 때문이다. 트리 전체 종료를 확인하기 전에는 완료라고 하지 않는다. subagent가 남은 채 멈췄다고 보이는 일을 막기 위해서다. Claude 백그라운드 subagent의 중지는 실측으로 확인한다([#18](https://github.com/woonyong-choi/saturn/issues/18)). 멈춘 작업의 보류와 재개는 [입력 처리](input-handling.md)에 있다.
 
