@@ -20,7 +20,14 @@ mod retention;
 mod schema;
 mod snapshots;
 
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
 pub use judgments::{JudgmentOutcome, JudgmentPruneRequest, NewJudgment};
 pub use raw::RawDigest;
@@ -36,6 +43,12 @@ pub const DB_FILE: &str = "saturn.db";
 /// 이관 직전 백업 폴더 이름. `~/.saturn/` 아래에 둔다.
 pub const BACKUP_DIR: &str = "backup";
 
+/// 다른 연결이 쓰는 중일 때 기다리는 시간. 쓰는 쪽은 engine 하나라 길게 기다릴 일이 없다. 값은 초안이다(설계에 없음).
+const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// 기록 저장소 파일 권한. 입력 원문과 판단 기록이 들어 있어 소유자만 읽고 쓴다. 값은 초안이다(설계에 없음).
+const DB_FILE_MODE: u32 = 0o600;
+
 /// 기록 저장소 오류. 호출자는 variant로 재시도 여부를 고르지 않는다(보내기 전 확정된 실패만 재전송하는 규칙은 호출자 몫).
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
@@ -48,9 +61,15 @@ pub enum StoreError {
         #[source]
         source: std::io::Error,
     },
-    /// SQLite 질의나 거래 실패. 거래는 전부 되돌려졌다. TODO(#82): 원인을 `sqlx::Error`로 바꾼다
+    /// SQLite 질의나 거래 실패. 거래는 전부 되돌려졌다.
     #[error("database operation failed")]
-    Database(#[source] Box<dyn std::error::Error + Send + Sync>),
+    Database(#[from] sqlx::Error),
+    /// 이미 끝나 압축한 실행의 원시 기록에 이어 쓰려 했다. 끝난 실행은 원시 기록을 바꾸지 않는다.
+    #[error("raw log of run {run} is already sealed")]
+    RawSealed {
+        /// 실행 id 숫자.
+        run: u64,
+    },
     /// 파일의 스키마 버전이 이 실행 파일이 아는 버전보다 높다. 옛 실행 파일로 새 기록을 열었으니 쓰지 않고 끝낸다.
     #[error("schema version {found} is newer than supported {supported}")]
     NewerSchema {
@@ -111,7 +130,8 @@ pub enum StoreError {
 pub struct Store {
     /// `~/.saturn`. 백업 폴더와 DB 경로의 기준.
     home: PathBuf,
-    // TODO(#82): sqlx `SqlitePool` 필드. 연결 옵션: WAL 저널, `foreign_keys=ON`, `busy_timeout`, 쓰기 연결 하나
+    /// 연결 하나짜리 pool. WAL 저널, `foreign_keys=ON`, `secure_delete=ON`, `busy_timeout`.
+    pool: SqlitePool,
 }
 
 impl Store {
@@ -122,16 +142,211 @@ impl Store {
     /// # Errors
     /// 파일을 못 열면 `Open`, 파일 버전이 더 높으면 `NewerSchema`, 백업 실패면 `Backup`, 이관 실패면 `Migration`.
     pub async fn open(home: &Path) -> Result<(Self, Option<MigrationNotice>), StoreError> {
-        todo!("#82")
+        Self::open_with(home, schema::MIGRATIONS, SystemTime::now()).await
+    }
+
+    /// `open`의 본문. 테스트가 이관 단계와 시각을 바꿔 넣는다.
+    pub(crate) async fn open_with(
+        home: &Path,
+        migrations: &[&str],
+        now: SystemTime,
+    ) -> Result<(Self, Option<MigrationNotice>), StoreError> {
+        let store = Self::connect(home).await?;
+        let target = schema_target(migrations);
+        let found = store.schema_version().await?;
+        if found > target {
+            return Err(StoreError::NewerSchema {
+                found,
+                supported: target,
+            });
+        }
+        let mut notice = None;
+        if found < target {
+            if found > 0 {
+                let backup = store.backup_before_migration(found).await?;
+                notice = Some(MigrationNotice {
+                    from: found,
+                    to: target,
+                    backup,
+                });
+            }
+            store.migrate_with(found, migrations).await?;
+        }
+        store.sweep_backups(now).await?;
+        Ok((store, notice))
     }
 
     /// DB 파일 경로 `home/saturn.db`.
     pub fn db_path(&self) -> PathBuf {
-        todo!("#82")
+        self.home.join(DB_FILE)
     }
 
     /// 백업 폴더 경로 `home/backup`.
     pub fn backup_dir(&self) -> PathBuf {
-        todo!("#82")
+        self.home.join(BACKUP_DIR)
+    }
+
+    /// `home`을 만들고 DB 파일을 연다. 스키마는 건드리지 않는다.
+    async fn connect(home: &Path) -> Result<Self, StoreError> {
+        let path = home.join(DB_FILE);
+        let open_error = |source| StoreError::Open {
+            path: path.clone(),
+            source,
+        };
+        std::fs::create_dir_all(home).map_err(open_error)?;
+        let options = SqliteConnectOptions::from_str("sqlite:")?
+            .filename(&path)
+            .create_if_missing(true)
+            .journal_mode(SqliteJournalMode::Wal)
+            .foreign_keys(true)
+            .busy_timeout(BUSY_TIMEOUT)
+            .pragma("secure_delete", "ON");
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(options)
+            .await?;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(DB_FILE_MODE))
+            .map_err(open_error)?;
+        Ok(Self {
+            home: home.to_path_buf(),
+            pool,
+        })
+    }
+}
+
+/// 이관 단계 목록이 만드는 스키마 버전. 단계 하나가 버전 하나다.
+fn schema_target(migrations: &[&str]) -> u32 {
+    u32::try_from(migrations.len()).expect("migration steps should fit in u32")
+}
+
+/// 시각을 unix 밀리초로. 기록 저장소의 모든 시각 칸은 이 값이다.
+fn to_millis(at: SystemTime) -> i64 {
+    let millis = at
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    i64::try_from(millis).unwrap_or(i64::MAX)
+}
+
+/// unix 밀리초를 시각으로.
+fn from_millis(millis: i64) -> SystemTime {
+    UNIX_EPOCH + Duration::from_millis(u64::try_from(millis).unwrap_or_default())
+}
+
+/// id와 개수 같은 `u64`를 SQLite 정수로. 범위를 넘는 값은 만들지 않는다.
+fn to_sql_int(value: u64) -> i64 {
+    i64::try_from(value).expect("stored integers should fit in i64")
+}
+
+/// SQLite 정수를 `u64`로. 음수는 쓰지 않는다.
+fn from_sql_int(value: i64) -> u64 {
+    u64::try_from(value).expect("stored integers should be non-negative")
+}
+
+/// 값 없는 enum을 variant 이름 문자열로. SQL 조건에서 비교하려고 JSON 따옴표 없이 쓴다.
+fn enum_text<T: Serialize>(value: &T) -> Result<String, StoreError> {
+    match serde_json::to_value(value)? {
+        serde_json::Value::String(text) => Ok(text),
+        other => Ok(other.to_string()),
+    }
+}
+
+/// `enum_text`로 쓴 문자열을 다시 enum으로.
+fn parse_enum<T: DeserializeOwned>(text: &str) -> Result<T, StoreError> {
+    Ok(serde_json::from_value(serde_json::Value::String(
+        text.to_owned(),
+    ))?)
+}
+
+/// 바이트의 SHA-256 hex.
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    use std::fmt::Write;
+
+    let digest = Sha256::digest(bytes);
+    let mut hex = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        let _ = write!(hex, "{byte:02x}"); // String에 쓰기는 실패하지 않는다
+    }
+    hex
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 자동 삭제 폴더에 새 기록 저장소를 연다. 폴더가 살아 있는 동안만 쓴다.
+    pub(crate) async fn temp_store() -> (tempfile::TempDir, Store) {
+        let dir = tempfile::tempdir().unwrap();
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+        assert!(notice.is_none());
+        (dir, store)
+    }
+
+    #[tokio::test]
+    async fn open_creates_schema_without_backup_or_notice() {
+        let (dir, store) = temp_store().await;
+
+        assert_eq!(store.schema_version().await.unwrap(), SCHEMA_VERSION);
+        assert_eq!(store.db_path(), dir.path().join(DB_FILE));
+        assert!(!store.backup_dir().exists());
+        let mode = std::fs::metadata(store.db_path())
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, DB_FILE_MODE);
+    }
+
+    #[tokio::test]
+    async fn reopen_same_version_does_not_migrate() {
+        let dir = tempfile::tempdir().unwrap();
+        let (store, _) = Store::open(dir.path()).await.unwrap();
+        drop(store);
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        assert!(notice.is_none());
+        assert_eq!(store.schema_version().await.unwrap(), SCHEMA_VERSION);
+        assert!(!store.backup_dir().exists());
+    }
+
+    #[tokio::test]
+    async fn open_newer_schema_is_rejected() {
+        let (dir, store) = temp_store().await;
+        sqlx::raw_sql("PRAGMA user_version = 99")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let error = Store::open(dir.path()).await.unwrap_err();
+
+        assert!(matches!(
+            error,
+            StoreError::NewerSchema {
+                found: 99,
+                supported: SCHEMA_VERSION
+            }
+        ));
+    }
+
+    #[tokio::test]
+    async fn open_older_schema_backs_up_then_migrates() {
+        let (dir, store) = temp_store().await;
+        store.pool.close().await;
+        let steps = [schema::MIGRATIONS[0], "CREATE TABLE extra (id INTEGER)"];
+
+        let (store, notice) = Store::open_with(dir.path(), &steps, SystemTime::now())
+            .await
+            .unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (1, 2));
+        assert!(notice.backup.starts_with(store.backup_dir()));
+        assert!(notice.backup.exists());
+        assert!(notice.line().contains("1 → 2"));
+        assert_eq!(store.schema_version().await.unwrap(), 2);
+        let backups = std::fs::read_dir(store.backup_dir()).unwrap().count();
+        assert_eq!(backups, 1);
     }
 }
