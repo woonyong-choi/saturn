@@ -68,6 +68,15 @@ Codex app-server 규약은 codex-cli 0.158.0의 `codex app-server generate-json-
 - 명령 대응표는 `compact` → `thread/compact/start`, `review` → `review/start`(대상 `uncommittedChanges`)이고, 명령 목록에서 `new`, `resume`, `fork`, `quit`, `exit`를 뺀다(초안). 스킬은 `turn/start` 입력에 `{"type":"skill","name","path"}` 항목으로 넣는다.
 - 권한 기본값 인자는 `-c sandbox_mode="workspace-write"`이고(초안), 사용자 설정은 `$CODEX_HOME/config.toml`(기본 `~/.codex/config.toml`)의 루트와 선택된 프로필에서 `approval_policy`, `sandbox_mode`, `model_auto_compact_token_limit` 키가 있는지만 본다.
 
+Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
+
+- 새 session은 Saturn이 만든 UUID를 `--session-id`로 넘긴다. stream-json은 첫 입력 전에 `system/init`을 내지 않으므로 session id를 미리 알기 위해서다. 재개는 `--resume <id>`이고, 500ms(초안) 안에 프로그램이 끝나면 재개 실패로 본다.
+- 권한 기본값 인자는 `--permission-mode acceptEdits`이고(초안), 안전망 `--autocompact` 값은 허용 범위 100000~1000000으로 맞춘다.
+- 사용자 설정은 `~/.claude/settings.json`, `<작업 폴더>/.claude/settings.json`, `settings.local.json`의 `permissions.defaultMode`, `autoCompactEnabled`와 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있는지만 본다(초안).
+- 명령 목록에서 `clear`, `resume`, `exit`, `quit`를 뺀다(초안). 허가 요청은 `control_request`의 `can_use_tool`로 본다(초안, [#26](https://github.com/woonyong-choi/saturn/issues/26) 실측 전).
+- 맥락 크기는 마지막 메인 `assistant` 메시지 `usage`의 입력, 캐시 읽기, 캐시 쓰기 합이다(초안).
+- interrupt 제어 응답은 10초, session 닫기 뒤 종료는 5초까지 기다리고, 넘으면 프로세스 묶음 중지로 넘어간다(초안).
+
 끼워 넣기 실측을 통과하기 전의 provider에서는 끼워 넣기를 대기로 바꿔 처리한다. 끼워 넣기 경로가 문서대로 동작하는지 실측으로 확인해야 하기 때문이다([#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27)). 이때 TUI는 `바로 반영: 준비 중`을 보인다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다. 입력을 어디로 보낼지는 [입력 처리](input-handling.md)가 정한다.
 
 ### provider 실행과 기본값 인자

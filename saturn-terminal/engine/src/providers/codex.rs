@@ -251,7 +251,8 @@ impl CodexClient {
     async fn write_line(&mut self, message: &Value) -> std::io::Result<()> {
         let mut line = message.to_string();
         line.push('\n');
-        self.stdin.write_all(line.as_bytes()).await
+        self.stdin.write_all(line.as_bytes()).await?;
+        self.stdin.flush().await
     }
 
     /// `Subagent(id)`는 `id.0`인 자식 thread.
@@ -909,7 +910,7 @@ async fn read_loop(
     }
 }
 
-fn mask_values(value: &mut Value, masker: &Masker) {
+pub(super) fn mask_values(value: &mut Value, masker: &Masker) {
     match value {
         Value::String(text) => *text = masker.mask(text).as_str().to_owned(),
         Value::Array(items) => {

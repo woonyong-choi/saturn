@@ -1,219 +1,1238 @@
-//! Claude Code 연결. session마다 `claude` 프로세스 하나를 stream-json 입출력으로 켜 둔다.
-//!
-//! 설계: docs/design/providers-and-sessions.md(provider 연결, 이벤트 수신과 변환, subagent 트리 추적, 트리 전체 중지),
-//! docs/design/judge-key-security.md(Saturn 소유 PreToolUse 훅).
-//!
-//! 실행 인자: `-p --input-format stream-json --output-format stream-json --verbose`
-//! + `--resume <session_id>`(재개일 때) + `--model <모델>`(지정일 때) + `default_args` + `--settings <hook_settings JSON 문자열>`(있을 때).
-//! 프로세스 수명은 턴 진행 중과 턴 끝 뒤 5분 유예까지이고, 유예 뒤 닫기는 `sessions`가 `close_session`으로 부른다.
-//!
-//! | Saturn 동작 | Claude stream-json |
-//! |---|---|
-//! | 새 턴 | stdin에 `{"type":"user","message":{"role":"user","content":[{"type":"text","text":...}]}}` 한 줄 |
-//! | 끼워 넣기 | 턴 진행 중에 같은 모양 한 줄 추가. 턴 끝과 겹치면 provider가 다음 턴에 처리한다 |
-//! | 멈춤 신호 | `{"type":"control_request","request_id":...,"request":{"subtype":"interrupt"}}` |
-//! | compaction | 새 턴으로 `/compact` 전송 |
-//! | 명령과 스킬 | 프롬프트에 `/이름 인자`를 그대로 넣어 새 턴으로 전송 |
-//! | session 닫기 | stdin을 닫고 프로그램 종료를 기다린다 |
-//! | session 재개 | 새 프로세스를 `--resume <session_id>`로 띄운다 |
-//!
-//! 이벤트 변환(stdout 한 줄에 JSON 하나):
-//! - `system/init` → 이벤트 없음. `session_id`, `slash_commands`, `model`, `permissionMode`를 읽어 session 상태에 둔다.
-//!   턴마다 다시 오면 적용값과 명령 목록을 새 값으로 바꾼다(설정을 바꾸는 명령의 결과도 여기서 읽는다).
-//! - `assistant`의 글 → `Text`, `tool_use` → `ToolCall`, `user`의 `tool_result` → `ToolResult`.
-//!   `parent_tool_use_id`가 있으면 그 id로 찾은 subagent를 `subagent`에 채운다.
-//! - 이름이 `Task` 또는 `Agent`인 `tool_use` → `SubagentStarted { subagent: SubagentId(tool_use id), parent }`.
-//!   parent는 그 호출의 `parent_tool_use_id`가 가리키는 subagent, 없으면 `None`. 같은 id의 `tool_result` → `SubagentEnded`.
-//! - 허가 요청 → `PermissionRequested`. 스트림에서 오는 모양은 #26 실측으로 확인한다.
-//! - `result` → `Usage { scope: UsageScope::MainTurn }`, `ContextSize`, `TurnCompleted { origin }` 순서.
-//!   origin은 `TurnOriginTracker`로 정한다(Saturn 입력 없이 끝난 턴이면 `ProviderWake`).
-//! - `result` 없이 stdout이 닫힘, 읽기 오류, 프로세스 종료, `tool_result` 없이 끝난 subagent → `StreamLost`.
+//! Claude Code 연결: session마다 `claude` 프로세스 하나를 stream-json 입출력으로 켜 둔다.
+//! 설계: docs/design/providers-and-sessions.md
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::io::Read;
+use std::path::Path;
+use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::Duration;
 
 use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
-use saturn_protocol::event::ProviderEvent;
+use saturn_protocol::event::{Activity, ProviderEvent, UsageReport, UsageScope};
 use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
-use tokio::process::ChildStdin;
-use tokio::sync::mpsc;
+use serde_json::{Value, json};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
+use tokio::sync::{mpsc, oneshot};
 
+use super::codex::mask_values;
 use super::{AppliedSettings, LaunchSpec, TurnOriginTracker, UserProviderConfig};
-use crate::processes::{ProcessGroupId, Supervisor};
+use crate::processes::{ProcessGroupId, ProcessSpec, StopScope, Supervisor};
+use crate::secrets::Masker;
 
-/// 끼워 넣기(스트림 입력 추가) 실측(#5, #27) 통과 여부. 거짓이면 `SessionHandle::steer_verified`가 거짓이 되어 끼워 넣기를 대기로 바꾼다.
+/// 끼워 넣기 실측(#5, #27) 통과 전이라 거짓이고, 거짓이면 끼워 넣기를 대기로 바꾼다.
 pub(crate) const STEER_VERIFIED: bool = false;
 
-/// subagent를 띄우는 도구 이름.
 const SUBAGENT_TOOLS: &[&str] = &["Task", "Agent"];
 
-/// `slash_commands`에서 뺄 이름. 화면 전용 명령과 Saturn session 명령이 대신하는 명령(대화 비우기, 재개, 종료).
-/// 설정을 바꾸는 명령(`model`, `permissions` 등)은 빼지 않는다. 목록은 후보다(설계에 목록 없음).
-/// TODO(#87): 값 미정, 초안 `clear`, `resume`, `exit`, `quit`
+/// 설정을 바꾸는 명령(`model`, `permissions` 등)은 빼지 않는다. 초안 목록.
 pub(crate) const EXCLUDED_COMMANDS: &[&str] = &["clear", "resume", "exit", "quit"];
 
-/// 권한 기본값 인자(수정 허용). 사용자 설정에 권한 값이 없을 때만 넣는다. 인자 값은 초안이다(설계는 수정 허용만 정함).
-/// TODO(#87): 값 미정, 초안 `--permission-mode acceptEdits`
+/// 사용자 설정에 권한 값이 없을 때만 넣는다. 초안 값(설계는 수정 허용만 정함).
 const PERMISSION_ARGS: &[&str] = &["--permission-mode", "acceptEdits"];
 
-/// 자동 압축 안전망 인자. `--autocompact <T_hard>`로 넘긴다. `T_hard`가 `AUTO_COMPACT_MIN`보다 작으면 그 값으로 올린다.
 const AUTO_COMPACT_FLAG: &str = "--autocompact";
 
-/// `--autocompact` 최솟값(토큰). 초안 값이다(설계에 없고 Claude 규약 확인 전).
-/// TODO(#87): 값 미정, 초안 100,000
+/// Claude Code 2.1.285 `--help`의 허용 범위 100k~1M에서 가져왔다.
 const AUTO_COMPACT_MIN: u64 = 100_000;
 
-/// session(프로세스) 하나의 변환 상태. 읽기 작업과 연결이 `Arc<Mutex<_>>`로 같이 쓴다.
+/// 같은 허용 범위의 위 끝.
+const AUTO_COMPACT_MAX: u64 = 1_000_000;
+
+/// `--resume` 뒤 이 안에 끝나면 재개 실패로 본다. 초안 값.
+const RESUME_SETTLE: Duration = Duration::from_millis(500);
+
+/// 넘으면 기다리지 않고 돌아가 호출자가 프로세스 묶음 중지로 넘어간다. 초안 값.
+const CONTROL_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// 넘으면 묶음을 멈춘다. 초안 값.
+const CLOSE_GRACE: Duration = Duration::from_secs(5);
+
+const EVENT_BUFFER: usize = 1024;
+
+/// `ReadingFile`로 보인다.
+const READ_TOOLS: &[&str] = &["Read", "Glob", "Grep", "LS"];
+
+/// `EditingFile`로 보인다.
+const EDIT_TOOLS: &[&str] = &["Edit", "MultiEdit", "Write", "NotebookEdit"];
+
+/// 있으면 자동 압축 값이 있는 것으로 본다.
+const AUTO_COMPACT_ENV: &[&str] = &["CLAUDE_CODE_AUTO_COMPACT_WINDOW", "DISABLE_COMPACT"];
+
+/// 읽기 작업과 연결이 `Arc<Mutex<_>>`로 같이 쓴다.
 #[derive(Debug)]
 struct SessionState {
-    /// 이 session을 쓰는 Saturn 에이전트.
     agent: AgentId,
-    /// 턴 진행 중인지. 새 턴 입력을 쓴 때 참, `result`를 받은 때 거짓.
+    /// 새 턴 입력을 쓴 때 참, `result`를 받은 때 거짓.
     turn_active: bool,
-    /// 턴 시작 주체 판정.
     origin: TurnOriginTracker,
-    /// 끝나지 않은 subagent. 키는 Task/Agent `tool_use` id, 값은 부모 subagent.
+    /// 키는 Task/Agent `tool_use` id, 값은 부모 subagent.
     running: HashMap<SubagentId, Option<SubagentId>>,
-    /// `system/init`에서 읽은 적용값.
     applied: AppliedSettings,
-    /// `system/init`의 `slash_commands`(거르기 전).
+    /// 거르기 전 목록.
     commands: Vec<ProviderCommand>,
+    /// 두 번째 `system/init`부터 바뀐 적용값을 `SettingsApplied`로 알린다.
+    initialized: bool,
+    /// 마지막 메인 `assistant` 메시지의 맥락 크기.
+    context_tokens: Option<u64>,
+    /// 키는 `request_id`.
+    control_waiters: HashMap<String, oneshot::Sender<Value>>,
 }
 
-/// session 하나의 프로세스와 입력 창구.
+impl SessionState {
+    fn new(agent: AgentId) -> Self {
+        Self {
+            agent,
+            turn_active: false,
+            origin: TurnOriginTracker::default(),
+            running: HashMap::new(),
+            applied: AppliedSettings::default(),
+            commands: Vec::new(),
+            initialized: false,
+            context_tokens: None,
+            control_waiters: HashMap::new(),
+        }
+    }
+}
+
 #[derive(Debug)]
 struct SessionLink {
-    /// 이 프로세스의 묶음.
     group: ProcessGroupId,
-    /// 입력을 쓰는 쪽. 닫으면 프로그램이 끝난다.
+    /// 닫으면 프로그램이 끝난다.
     stdin: ChildStdin,
-    /// 읽기 작업과 같이 쓰는 변환 상태.
     state: Arc<Mutex<SessionState>>,
 }
 
-/// Claude Code 연결. session마다 프로세스 하나.
 #[derive(Debug)]
 pub struct ClaudeClient {
-    /// 프로세스 감시자.
     supervisor: Supervisor,
-    /// 실행 준비값. session을 열 때마다 이 값으로 프로세스를 띄운다.
+    /// session을 열 때마다 이 값으로 프로세스를 띄운다.
     launch: LaunchSpec,
-    /// session별 연결. 키는 `system/init`의 `session_id`.
+    /// 키는 `--session-id`로 넘긴 id(새 session) 또는 `--resume` id.
     sessions: HashMap<ProviderSessionId, SessionLink>,
-    /// 모든 session 읽기 작업이 보내는 이벤트 채널의 받는 쪽.
     events: mpsc::Receiver<ProviderEvent>,
-    /// 새 session 읽기 작업에 복제해 주는 보내는 쪽.
+    /// 새 session 읽기 작업에 복제해 준다.
     events_tx: mpsc::Sender<ProviderEvent>,
-    /// 다음 제어 요청 id.
     next_request_id: u64,
+    /// 거르기 전 목록. 읽기 작업이 갱신한다.
+    latest_commands: Arc<Mutex<Vec<ProviderCommand>>>,
 }
 
 impl ClaudeClient {
-    /// 연결을 만든다. 프로세스는 `open_session`에서 띄운다.
+    /// 프로세스는 `open_session`에서 띄운다.
     pub fn new(launch: LaunchSpec, supervisor: Supervisor) -> Self {
-        todo!("#87")
+        let (events_tx, events) = mpsc::channel(EVENT_BUFFER);
+        Self {
+            supervisor,
+            launch,
+            sessions: HashMap::new(),
+            events,
+            events_tx,
+            next_request_id: 1,
+            latest_commands: Arc::default(),
+        }
     }
 
-    /// session 프로세스의 묶음. 모르는 session이면 `None`.
+    /// 모르는 session이면 `None`.
     pub fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId> {
-        todo!("#87")
+        self.sessions.get(session).map(|link| link.group)
     }
 
-    /// session에 적용된 설정. `system/init`을 받기 전이면 `None`.
+    /// `system/init`을 받기 전이면 `None`.
     pub fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
-        todo!("#87")
+        let link = self.sessions.get(session)?;
+        let state = lock(&link.state);
+        state.initialized.then(|| state.applied.clone())
     }
 
-    /// 사용자 메시지 한 줄을 stdin에 쓴다. 쓰기 전 실패는 `NotSent`, 쓰는 중 실패(끊긴 파이프)는 `Unknown`.
+    /// 모르는 session이거나 프로세스가 이미 끝났으면 `NotSent`, 쓰는 중 실패(끊긴 파이프)는 `Unknown`.
     async fn write_user_message(
         &mut self,
         session: &ProviderSessionId,
         text: &str,
     ) -> Result<(), ProviderError> {
-        todo!("#87")
+        let message = json!({
+            "type": "user",
+            "message": { "role": "user", "content": [{ "type": "text", "text": text }] },
+        });
+        self.write_line(session, &message).await
+    }
+
+    /// 실패 구분은 `write_user_message`와 같다.
+    async fn write_line(
+        &mut self,
+        session: &ProviderSessionId,
+        message: &Value,
+    ) -> Result<(), ProviderError> {
+        let link = self
+            .sessions
+            .get_mut(session)
+            .ok_or_else(|| ProviderError::NotSent {
+                reason: format!("unknown session {}", session.0),
+            })?;
+        if !self.supervisor.is_running(link.group) {
+            return Err(ProviderError::NotSent {
+                reason: "claude process has exited".to_owned(),
+            });
+        }
+        let mut line = message.to_string();
+        line.push('\n');
+        let written = async {
+            link.stdin.write_all(line.as_bytes()).await?;
+            link.stdin.flush().await
+        };
+        written.await.map_err(|error| {
+            tracing::warn!(error = %error.kind(), "failed to write to claude");
+            ProviderError::Unknown
+        })
+    }
+
+    fn launch_args(&self, spec: &SessionSpec, session: &SessionArg) -> Vec<String> {
+        let mut args: Vec<String> = [
+            "-p",
+            "--input-format",
+            "stream-json",
+            "--output-format",
+            "stream-json",
+            "--verbose",
+        ]
+        .iter()
+        .map(|arg| (*arg).to_owned())
+        .collect();
+        match session {
+            SessionArg::Resume(id) => args.extend(["--resume".to_owned(), id.clone()]),
+            SessionArg::New(id) => args.extend(["--session-id".to_owned(), id.clone()]),
+        }
+        if let Some(model) = &spec.model {
+            args.extend(["--model".to_owned(), model.clone()]);
+        }
+        let found = read_user_config(&self.launch);
+        let user = UserProviderConfig {
+            has_permission: self.launch.user_config.has_permission || found.has_permission,
+            has_auto_compact: self.launch.user_config.has_auto_compact || found.has_auto_compact,
+        };
+        args.extend(default_args(user, &self.launch));
+        if let Some(settings) = &self.launch.hook_settings {
+            args.extend(["--settings".to_owned(), settings.to_string()]);
+        }
+        args
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SessionArg {
+    Resume(String),
+    /// Saturn이 만든 새 session id.
+    New(String),
+}
+
 impl ProviderClient for ClaudeClient {
-    /// 프로세스를 띄우고(`--resume`은 `spec.resume`이 있을 때) `system/init`을 기다려 `session_id`를 돌려준다.
-    /// `packet`이 있으면 첫 턴으로 보낸다. `steer_verified`는 `STEER_VERIFIED`.
-    /// stream-json은 첫 입력 전에 `system/init`을 내지 않을 수 있어, 그때는 `packet` 또는 재개 id로 session을 식별한다.
-    ///
-    /// 재개 실패(`--resume` 뒤 오류로 종료)는 `NotSent`.
+    /// 실행 실패는 `ConnectionLost`, 재개 실패(`--resume` 뒤 `RESUME_SETTLE` 안에 종료)는 `NotSent`.
     async fn open_session(&mut self, spec: SessionSpec) -> Result<SessionHandle, ProviderError> {
-        todo!("#87")
+        let session_arg = match &spec.resume {
+            Some(id) => SessionArg::Resume(id.0.clone()),
+            None => SessionArg::New(new_session_uuid().map_err(|error| {
+                tracing::warn!(error = %error, "failed to make claude session id");
+                ProviderError::ConnectionLost
+            })?),
+        };
+        let session = match &session_arg {
+            SessionArg::Resume(id) | SessionArg::New(id) => ProviderSessionId(id.clone()),
+        };
+        let spawned = self
+            .supervisor
+            .spawn(ProcessSpec {
+                program: self.launch.program.clone(),
+                args: self.launch_args(&spec, &session_arg),
+                workdir: spec.workdir.clone(),
+                env: self.launch.env.clone(),
+            })
+            .map_err(|error| {
+                tracing::warn!(error = %error, "failed to start claude");
+                ProviderError::ConnectionLost
+            })?;
+        let group = spawned.group;
+        let state = Arc::new(Mutex::new(SessionState::new(spec.agent)));
+        tokio::spawn(read_loop(
+            spawned.io.stdout,
+            Arc::clone(&state),
+            self.events_tx.clone(),
+            Arc::clone(&self.latest_commands),
+            self.launch.masker.clone(),
+        ));
+        tokio::spawn(log_stderr(spawned.io.stderr, self.launch.masker.clone()));
+        if matches!(session_arg, SessionArg::Resume(_))
+            && let Ok(Ok(exit)) =
+                tokio::time::timeout(RESUME_SETTLE, self.supervisor.wait(group)).await
+        {
+            self.supervisor.release(group);
+            return Err(ProviderError::NotSent {
+                reason: format!("claude resume failed with {exit:?}"),
+            });
+        }
+        self.sessions.insert(
+            session.clone(),
+            SessionLink {
+                group,
+                stdin: spawned.io.stdin,
+                state,
+            },
+        );
+        if let Some(packet) = &spec.packet {
+            self.send_turn(&session, packet).await?;
+        }
+        Ok(SessionHandle {
+            provider_session: session,
+            steer_verified: STEER_VERIFIED,
+        })
     }
 
-    /// 사용자 메시지 한 줄. 보내기 전 `TurnOriginTracker::on_user_send`, `turn_active = true`.
+    /// 보내기 전 실패면 `on_user_send`와 `turn_active`를 되돌린다.
     async fn send_turn(
         &mut self,
         session: &ProviderSessionId,
         text: &str,
     ) -> Result<(), ProviderError> {
-        todo!("#87")
+        let state = self
+            .sessions
+            .get(session)
+            .map(|link| Arc::clone(&link.state))
+            .ok_or_else(|| ProviderError::NotSent {
+                reason: format!("unknown session {}", session.0),
+            })?;
+        let was_active = {
+            let mut state = lock(&state);
+            state.origin.on_user_send();
+            std::mem::replace(&mut state.turn_active, true)
+        };
+        let written = self.write_user_message(session, text).await;
+        if let Err(ProviderError::NotSent { .. }) = &written {
+            let mut state = lock(&state);
+            state.origin.cancel_user_send();
+            state.turn_active = was_active;
+        }
+        written
     }
 
-    /// `turn_active`가 거짓이면 쓰지 않고 `NoActiveTurn`. 참이면 사용자 메시지 한 줄을 더 쓴다.
     /// 쓰는 사이 턴이 끝나도 provider가 다음 턴에 처리하므로 `Ok`.
     async fn steer(
         &mut self,
         session: &ProviderSessionId,
         text: &str,
     ) -> Result<(), ProviderError> {
-        todo!("#87")
+        let active = self
+            .sessions
+            .get(session)
+            .map(|link| lock(&link.state).turn_active)
+            .ok_or_else(|| ProviderError::NotSent {
+                reason: format!("unknown session {}", session.0),
+            })?;
+        if !active {
+            return Err(ProviderError::NoActiveTurn);
+        }
+        self.write_user_message(session, text).await
     }
 
-    /// `Main`이면 interrupt 제어 요청을 쓰고 `control_response`를 기다린다. `Subagent`는 따로 멈출 경로가 없어 보내지 않고 `Ok`.
-    /// 백그라운드 subagent까지 멈추는지는 #18 실측으로 확인한다. 남은 프로세스는 호출자가 `Supervisor::stop_tree`로 정리한다.
+    /// `Subagent`는 따로 멈출 경로가 없어 보내지 않고 `Ok`.
     async fn interrupt(
         &mut self,
         session: &ProviderSessionId,
         target: InterruptTarget,
     ) -> Result<(), ProviderError> {
-        todo!("#87")
+        if matches!(target, InterruptTarget::Subagent(_)) {
+            return Ok(());
+        }
+        let Some(state) = self
+            .sessions
+            .get(session)
+            .map(|link| Arc::clone(&link.state))
+        else {
+            return Ok(());
+        };
+        let request_id = format!("saturn-{}", self.next_request_id);
+        self.next_request_id += 1;
+        let (reply, receive) = oneshot::channel();
+        lock(&state)
+            .control_waiters
+            .insert(request_id.clone(), reply);
+        let message = json!({
+            "type": "control_request",
+            "request_id": request_id,
+            "request": { "subtype": "interrupt" },
+        });
+        if self.write_line(session, &message).await.is_err() {
+            lock(&state).control_waiters.remove(&request_id);
+            return Err(ProviderError::ConnectionLost);
+        }
+        match tokio::time::timeout(CONTROL_TIMEOUT, receive).await {
+            Ok(Ok(_)) => Ok(()),
+            Ok(Err(_)) => Err(ProviderError::ConnectionLost),
+            Err(_) => {
+                lock(&state).control_waiters.remove(&request_id);
+                tracing::warn!("claude interrupt response timed out");
+                Ok(())
+            }
+        }
     }
 
-    /// `/compact`를 새 턴으로 보낸다. 턴 진행 중이면 `NotSent`(턴 끝 경계에서만 보낸다).
+    /// 턴 끝 경계에서만 보내므로 턴 진행 중이면 `NotSent`.
     async fn compact(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
-        todo!("#87")
+        let active = self
+            .sessions
+            .get(session)
+            .map(|link| lock(&link.state).turn_active);
+        if active == Some(true) {
+            return Err(ProviderError::NotSent {
+                reason: "turn in progress".to_owned(),
+            });
+        }
+        self.send_turn(session, "/compact").await
     }
 
-    /// stdin을 닫고 `Supervisor::wait`로 종료를 기다린다. 끝나지 않으면 `Supervisor::stop_tree(StopScope::Whole)`.
-    /// session 상태를 뺀다. `session_id`는 호출자가 보관해 `--resume`에 쓴다.
+    /// `session_id`는 호출자가 보관해 `--resume`에 쓴다. 모르는 session이면 아무것도 하지 않는다.
     async fn close_session(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
-        todo!("#87")
+        let Some(link) = self.sessions.remove(session) else {
+            return Ok(());
+        };
+        let group = link.group;
+        drop(link.stdin);
+        let exited = tokio::time::timeout(CLOSE_GRACE, self.supervisor.wait(group)).await;
+        if !matches!(exited, Ok(Ok(_))) {
+            match self.supervisor.stop_tree(group, StopScope::Whole).await {
+                Ok(outcome) => tracing::debug!(?outcome, "stopped claude process group"),
+                Err(error) => {
+                    tracing::warn!(error = %error, "failed to stop claude process group");
+                    return Err(ProviderError::ConnectionLost);
+                }
+            }
+        }
+        self.supervisor.release(group);
+        Ok(())
     }
 
-    /// 이벤트 채널에서 받는다. 모든 session이 닫혀도 채널은 남으므로 `None`은 연결을 버릴 때만.
+    /// 모든 session이 닫혀도 채널은 남으므로 `None`은 연결을 버릴 때만.
     async fn next_event(&mut self) -> Option<ProviderEvent> {
-        todo!("#87")
+        self.events.recv().await
     }
 
-    /// 가장 최근 `system/init`의 `slash_commands`를 `EXCLUDED_COMMANDS`로 거른 목록.
-    /// `system/init`에 스킬 이름 목록이 따로 오면 그 이름은 `is_skill = true`, 아니면 모두 거짓. 설명이 없으면 빈 문자열.
+    /// `system/init`에 스킬 이름 목록(`skills`)이 따로 오면 그 이름만 `is_skill = true`.
     fn commands(&self) -> Vec<ProviderCommand> {
-        todo!("#87")
+        super::filter_commands(lock(&self.latest_commands).clone(), EXCLUDED_COMMANDS)
     }
 }
 
-/// Saturn 기본값 인자. `user.has_permission`이 거짓이면 `PERMISSION_ARGS`,
-/// `user.has_auto_compact`가 거짓이면 `--autocompact max(auto_compact_tokens, AUTO_COMPACT_MIN)`.
 pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec<String> {
-    todo!("#87")
+    let mut args = Vec::new();
+    if !user.has_permission {
+        args.extend(PERMISSION_ARGS.iter().map(|arg| (*arg).to_owned()));
+    }
+    if !user.has_auto_compact {
+        let tokens = launch
+            .defaults
+            .auto_compact_tokens
+            .clamp(AUTO_COMPACT_MIN, AUTO_COMPACT_MAX);
+        args.push(AUTO_COMPACT_FLAG.to_owned());
+        args.push(tokens.to_string());
+    }
+    args
 }
 
-/// 사용자 Claude 설정에 권한과 자동 압축 값이 있는지 본다.
-/// `~/.claude/settings.json`, `<작업 폴더>/.claude/settings.json`, `<작업 폴더>/.claude/settings.local.json`의
-/// `permissions.defaultMode` → 권한, `autoCompactEnabled` → 자동 압축.
-/// 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있어도 자동 압축 값이 있는 것으로 본다. 파일을 못 읽으면 값 없음.
-/// TODO(#87): 값 미정, 초안 위 파일·키·환경 변수 목록(Claude 규약에서 확인)
+/// 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있어도 자동 압축 값이 있는 것으로 본다.
+/// `HOME`과 환경 변수는 부모 환경이 아니라 `launch.env`에서 읽고, 파일을 못 읽으면 값 없음. 초안 목록.
 pub(crate) fn read_user_config(launch: &LaunchSpec) -> UserProviderConfig {
-    todo!("#87")
+    let env = |name: &str| {
+        launch
+            .env
+            .iter()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| value)
+    };
+    let mut files = Vec::new();
+    if let Some(home) = env("HOME") {
+        files.push(Path::new(home).join(".claude").join("settings.json"));
+    }
+    let project = launch.workdir.join(".claude");
+    files.push(project.join("settings.json"));
+    files.push(project.join("settings.local.json"));
+    let mut found = UserProviderConfig {
+        has_permission: false,
+        has_auto_compact: AUTO_COMPACT_ENV.iter().any(|name| env(name).is_some()),
+    };
+    for file in files {
+        let Some(settings) = read_json(&file) else {
+            continue;
+        };
+        found.has_permission |= !settings["permissions"]["defaultMode"].is_null();
+        found.has_auto_compact |= !settings["autoCompactEnabled"].is_null();
+    }
+    found
 }
 
-/// stdout 한 줄을 이벤트로 바꾼다. subagent 등록과 `turn_active`, 적용값, 명령 목록 갱신도 여기서 한다. 버릴 줄이면 빈 목록.
+/// 없거나 깨졌으면 `None`.
+fn read_json(path: &Path) -> Option<Value> {
+    let text = std::fs::read_to_string(path).ok()?;
+    serde_json::from_str(&text).ok()
+}
+
+/// subagent 등록과 `turn_active`, 적용값, 명령 목록 갱신도 여기서 한다. 버릴 줄이면 빈 목록.
 fn convert_line(state: &mut SessionState, line: &serde_json::Value) -> Vec<ProviderEvent> {
-    todo!("#87")
+    let agent = state.agent;
+    match line["type"].as_str() {
+        Some("system") if line["subtype"] == "init" => apply_init(state, line),
+        Some("assistant") => convert_assistant(state, line),
+        Some("user") => convert_tool_results(state, line),
+        Some("result") => {
+            state.turn_active = false;
+            let origin = state.origin.on_turn_started();
+            let usage = &line["usage"];
+            vec![
+                ProviderEvent::Usage(UsageReport {
+                    agent,
+                    subagent: None,
+                    model: state.applied.model.clone(),
+                    scope: UsageScope::MainTurn,
+                    input: usage["input_tokens"].as_u64(),
+                    cache_read: usage["cache_read_input_tokens"].as_u64(),
+                    cache_write: usage["cache_creation_input_tokens"].as_u64(),
+                    output: usage["output_tokens"].as_u64(),
+                    reasoning: None,
+                }),
+                ProviderEvent::ContextSize {
+                    agent,
+                    tokens: state.context_tokens,
+                },
+                ProviderEvent::TurnCompleted { agent, origin },
+            ]
+        }
+        Some("control_request") if line["request"]["subtype"] == "can_use_tool" => {
+            let request = &line["request"];
+            let tool = request["tool_name"].as_str().unwrap_or_default();
+            let target = request["input"]["command"]
+                .as_str()
+                .or_else(|| request["input"]["file_path"].as_str());
+            let summary =
+                target.map_or_else(|| tool.to_owned(), |target| format!("{tool}: {target}"));
+            vec![ProviderEvent::PermissionRequested {
+                agent,
+                request_id: line["request_id"].as_str().unwrap_or_default().to_owned(),
+                summary,
+                reason: request["decision_reason"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .to_owned(),
+            }]
+        }
+        _ => Vec::new(),
+    }
+}
+
+/// 두 번째부터 모델이나 권한 방식이 바뀌었으면 `SettingsApplied`.
+fn apply_init(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
+    let applied = AppliedSettings {
+        model: line["model"].as_str().map(str::to_owned),
+        permission: line["permissionMode"].as_str().map(str::to_owned),
+    };
+    let skills: Vec<&str> = line["skills"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|skill| skill.as_str().or_else(|| skill["name"].as_str()))
+        .collect();
+    state.commands = line["slash_commands"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .map(|name| ProviderCommand {
+            name: name.trim_start_matches('/').to_owned(),
+            description: String::new(),
+            is_skill: skills.contains(&name),
+        })
+        .collect();
+    let changed = state.initialized && applied != state.applied;
+    state.initialized = true;
+    state.applied = applied;
+    if !changed {
+        return Vec::new();
+    }
+    let values = [
+        ("model", state.applied.model.clone()),
+        ("permission_mode", state.applied.permission.clone()),
+    ]
+    .into_iter()
+    .filter_map(|(key, value)| value.map(|value| (key.to_owned(), value)))
+    .collect();
+    vec![ProviderEvent::SettingsApplied {
+        agent: state.agent,
+        values,
+    }]
+}
+
+/// Task/Agent 호출은 subagent 시작으로 등록한다.
+fn convert_assistant(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
+    let agent = state.agent;
+    let parent = parent_subagent(line);
+    if parent.is_none() {
+        let usage = &line["message"]["usage"];
+        let parts = [
+            "input_tokens",
+            "cache_read_input_tokens",
+            "cache_creation_input_tokens",
+        ]
+        .map(|key| usage[key].as_u64());
+        if parts.iter().any(Option::is_some) {
+            state.context_tokens = Some(parts.iter().flatten().sum());
+        }
+    }
+    let mut events = Vec::new();
+    for item in line["message"]["content"].as_array().into_iter().flatten() {
+        match item["type"].as_str() {
+            Some("text") => {
+                if let Some(text) = item["text"].as_str() {
+                    events.push(ProviderEvent::Text {
+                        agent,
+                        subagent: parent.clone(),
+                        text: text.to_owned(),
+                    });
+                }
+            }
+            Some("tool_use") => {
+                let (Some(id), Some(name)) = (item["id"].as_str(), item["name"].as_str()) else {
+                    continue;
+                };
+                if SUBAGENT_TOOLS.contains(&name) {
+                    let subagent = SubagentId(id.to_owned());
+                    state.running.insert(subagent.clone(), parent.clone());
+                    events.push(ProviderEvent::SubagentStarted {
+                        agent,
+                        subagent,
+                        parent: parent.clone(),
+                    });
+                } else {
+                    events.push(ProviderEvent::ToolCall {
+                        agent,
+                        subagent: parent.clone(),
+                        call_id: id.to_owned(),
+                        activity: activity_of(name, &item["input"]),
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+    events
+}
+
+/// subagent 호출의 결과는 subagent 끝이다.
+fn convert_tool_results(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
+    let agent = state.agent;
+    let parent = parent_subagent(line);
+    let mut events = Vec::new();
+    for item in line["message"]["content"].as_array().into_iter().flatten() {
+        if item["type"] != "tool_result" {
+            continue;
+        }
+        let Some(id) = item["tool_use_id"].as_str() else {
+            continue;
+        };
+        let subagent = SubagentId(id.to_owned());
+        if state.running.remove(&subagent).is_some() {
+            events.push(ProviderEvent::SubagentEnded { agent, subagent });
+            continue;
+        }
+        events.push(ProviderEvent::ToolResult {
+            agent,
+            subagent: parent.clone(),
+            call_id: id.to_owned(),
+            output: tool_result_text(&item["content"]),
+        });
+    }
+    events
+}
+
+fn parent_subagent(line: &Value) -> Option<SubagentId> {
+    line["parent_tool_use_id"]
+        .as_str()
+        .map(|id| SubagentId(id.to_owned()))
+}
+
+fn activity_of(name: &str, input: &Value) -> Activity {
+    if READ_TOOLS.contains(&name) {
+        return Activity::ReadingFile;
+    }
+    if EDIT_TOOLS.contains(&name) {
+        return Activity::EditingFile;
+    }
+    let command = match name {
+        "Bash" => input["command"].as_str().unwrap_or_default().to_owned(),
+        other => other.to_owned(),
+    };
+    Activity::RunningCommand { command }
+}
+
+/// 문자열이거나 `text` 항목 배열이다.
+fn tool_result_text(content: &Value) -> String {
+    match content {
+        Value::String(text) => text.clone(),
+        Value::Array(items) => items
+            .iter()
+            .filter_map(|item| item["text"].as_str())
+            .collect::<Vec<_>>()
+            .join("\n"),
+        _ => String::new(),
+    }
+}
+
+/// 끝나면 턴이나 subagent가 남았을 때 `StreamLost`.
+async fn read_loop(
+    stdout: ChildStdout,
+    state: Arc<Mutex<SessionState>>,
+    events: mpsc::Sender<ProviderEvent>,
+    latest_commands: Arc<Mutex<Vec<ProviderCommand>>>,
+    masker: Masker,
+) {
+    let mut lines = BufReader::new(stdout).lines();
+    while let Ok(Some(line)) = lines.next_line().await {
+        let Ok(mut message) = serde_json::from_str::<Value>(&line) else {
+            tracing::debug!("skipping non-json line from claude");
+            continue;
+        };
+        mask_values(&mut message, &masker);
+        let converted = {
+            let mut state = lock(&state);
+            if message["type"] == "control_response" {
+                let id = message["response"]["request_id"]
+                    .as_str()
+                    .unwrap_or_default();
+                if let Some(waiter) = state.control_waiters.remove(id) {
+                    let _ = waiter.send(message["response"].clone()); // 기다리던 쪽이 시간을 넘겨 포기했다
+                }
+                continue;
+            }
+            let converted = convert_line(&mut state, &message);
+            if message["type"] == "system" && message["subtype"] == "init" {
+                *lock(&latest_commands) = state.commands.clone();
+            }
+            converted
+        };
+        for event in converted {
+            let _ = events.send(event).await; // 받는 쪽이 연결을 버렸다
+        }
+    }
+    let lost = {
+        let mut state = lock(&state);
+        state.control_waiters.clear();
+        let lost = state.turn_active || !state.running.is_empty();
+        state.turn_active = false;
+        state.running.clear();
+        lost.then_some(state.agent)
+    };
+    if let Some(agent) = lost {
+        let _ = events.send(ProviderEvent::StreamLost { agent }).await; // 받는 쪽이 연결을 버렸다
+    }
+}
+
+async fn log_stderr(stderr: ChildStderr, masker: Masker) {
+    let mut lines = BufReader::new(stderr).lines();
+    while let Ok(Some(line)) = lines.next_line().await {
+        tracing::debug!(line = %masker.mask(&line).as_str(), "claude stderr");
+    }
+}
+
+/// `/dev/urandom` 16바이트로 만든 UUID v4.
+fn new_session_uuid() -> std::io::Result<String> {
+    let mut bytes = [0u8; 16];
+    std::fs::File::open("/dev/urandom")?.read_exact(&mut bytes)?;
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    let hex: String = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
+    Ok(format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    ))
+}
+
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    // 잠금을 쥔 채 panic하는 코드가 없으니 독이 든 잠금도 내용은 온전하다
+    mutex
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsString;
+    use std::os::unix::fs::PermissionsExt;
+
+    use saturn_protocol::event::TurnOrigin;
+    use saturn_protocol::ids::{Provider, SettingsRevision};
+
+    use super::*;
+    use crate::providers::SaturnDefaults;
+
+    /// 받은 사용자 메시지 글에 따라 정해진 줄을 낸다.
+    const FAKE_CLAUDE: &str = r#"#!/usr/bin/perl
+use strict; use warnings; use JSON::PP;
+$| = 1;
+my $json = JSON::PP->new->canonical;
+my %arg; for (my $i = 0; $i < @ARGV; $i++) { $arg{$ARGV[$i]} = $ARGV[$i + 1] if $ARGV[$i] =~ /^--/; }
+exit 3 if ($arg{"--resume"} // "") eq "missing";
+my $sid = $arg{"--resume"} // $arg{"--session-id"};
+my $model = "claude-test";
+my $init = 0;
+sub out { print $json->encode($_[0]), "\n"; }
+sub init { out({ type => "system", subtype => "init", session_id => $sid, model => $model, permissionMode => "acceptEdits", cwd => "/w", tools => ["Bash"], slash_commands => ["compact", "review", "clear", "lint"], skills => ["lint"] }); }
+sub assistant { my ($content, $parent, $usage) = @_; out({ type => "assistant", session_id => $sid, parent_tool_use_id => $parent, message => { role => "assistant", model => $model, content => $content, usage => $usage // { input_tokens => 10, cache_read_input_tokens => 1000, cache_creation_input_tokens => 200, output_tokens => 5 } } }); }
+sub tool_result { my ($id, $text, $parent) = @_; out({ type => "user", session_id => $sid, parent_tool_use_id => $parent, message => { role => "user", content => [ { type => "tool_result", tool_use_id => $id, content => $text } ] } }); }
+sub result { out({ type => "result", subtype => $_[0] // "success", is_error => JSON::PP::false, session_id => $sid, usage => { input_tokens => 30, cache_read_input_tokens => 2000, cache_creation_input_tokens => 200, output_tokens => 40 } }); }
+while (my $line = <STDIN>) {
+  my $m = eval { $json->decode($line) } or next;
+  if ($m->{type} eq "control_request") {
+    out({ type => "control_response", response => { subtype => "success", request_id => $m->{request_id}, response => {} } });
+    result("error_during_execution");
+    next;
+  }
+  my $text = $m->{message}{content}[0]{text};
+  if (!$init) { init(); $init = 1; }
+  if ($text eq "hello") {
+    assistant([ { type => "text", text => "hi" }, { type => "tool_use", id => "toolu_bash", name => "Bash", input => { command => "ls -la" } } ], undef);
+    tool_result("toolu_bash", "total 0", undef);
+    assistant([ { type => "tool_use", id => "toolu_task", name => "Task", input => { prompt => "look" } } ], undef);
+    assistant([ { type => "tool_use", id => "toolu_read", name => "Read", input => { file_path => "/w/a.rs" } } ], "toolu_task", { input_tokens => 1 });
+    tool_result("toolu_read", [ { type => "text", text => "fn main" } ], "toolu_task");
+    tool_result("toolu_task", "found it", undef);
+    assistant([ { type => "text", text => "done" } ], undef, { input_tokens => 20, cache_read_input_tokens => 3000, cache_creation_input_tokens => 100, output_tokens => 7 });
+    result();
+  } elsif ($text eq "wait") {
+    assistant([ { type => "text", text => "working" } ], undef);
+  } elsif ($text eq "more") {
+    assistant([ { type => "text", text => "got more" } ], undef);
+    result();
+  } elsif ($text eq "ask") {
+    out({ type => "control_request", request_id => "perm-1", request => { subtype => "can_use_tool", tool_name => "Bash", input => { command => "rm -rf build" }, decision_reason => "outside workdir" } });
+  } elsif ($text eq "secret") {
+    assistant([ { type => "text", text => "sk-secret-1234" } ], undef);
+    result();
+  } elsif ($text eq "/compact") {
+    $model = "claude-other";
+    init();
+    result();
+  } elsif ($text eq "orphan") {
+    assistant([ { type => "tool_use", id => "toolu_bg", name => "Agent", input => {} } ], undef);
+    result();
+    exit 0;
+  } elsif ($text eq "crash") {
+    exit 1;
+  }
+}
+"#;
+
+    fn launch(dir: &Path, env: Vec<(OsString, OsString)>) -> LaunchSpec {
+        let program = dir.join("fake-claude");
+        std::fs::write(&program, FAKE_CLAUDE).unwrap();
+        std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
+        // 새로 만든 실행 파일의 첫 실행은 macOS 검사로 수백 ms 늦다. 재개 실패 판정 시간에 걸리지 않게 한 번 미리 실행한다
+        let warmed = std::process::Command::new(&program)
+            .args(["--resume", "missing"])
+            .status()
+            .unwrap();
+        assert_eq!(warmed.code(), Some(3));
+        LaunchSpec {
+            provider: Provider::Claude,
+            program,
+            workdir: dir.to_path_buf(),
+            settings: SettingsRevision(1),
+            user_config: UserProviderConfig::default(),
+            defaults: SaturnDefaults {
+                allow_edits: true,
+                auto_compact_tokens: 60_000,
+            },
+            env,
+            hook_settings: Some(json!({ "hooks": { "PreToolUse": [] } })),
+            masker: Masker::new(Vec::new()),
+        }
+    }
+
+    fn spec(dir: &Path, resume: Option<&str>) -> SessionSpec {
+        SessionSpec {
+            agent: AgentId(3),
+            workdir: dir.to_path_buf(),
+            model: Some("sonnet".to_owned()),
+            settings: SettingsRevision(1),
+            resume: resume.map(|id| ProviderSessionId(id.to_owned())),
+            packet: None,
+        }
+    }
+
+    async fn take(client: &mut ClaudeClient, count: usize) -> Vec<ProviderEvent> {
+        let mut events = Vec::new();
+        for _ in 0..count {
+            let event = tokio::time::timeout(Duration::from_secs(5), client.next_event())
+                .await
+                .expect("event should arrive")
+                .expect("stream should be open");
+            events.push(event);
+        }
+        events
+    }
+
+    #[tokio::test]
+    async fn stdout_hides_judge_key_before_emitting_events() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = launch(dir.path(), Vec::new());
+        config.masker = Masker::new(vec!["sk-secret-1234".to_owned()]);
+        let mut client = ClaudeClient::new(config, Supervisor::new());
+        let session = client
+            .open_session(spec(dir.path(), None))
+            .await
+            .unwrap()
+            .provider_session;
+
+        client.send_turn(&session, "secret").await.unwrap();
+        let events = take(&mut client, 4).await;
+
+        assert!(matches!(&events[0], ProviderEvent::Text { text, .. } if text == "[redacted]"));
+        assert!(!format!("{events:?}").contains("sk-secret-1234"));
+        client.close_session(&session).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn stream_input_converts_tree_and_usage() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+        let handle = client.open_session(spec(dir.path(), None)).await.unwrap();
+        let session = handle.provider_session.clone();
+        assert_eq!(session.0.len(), 36);
+        assert!(!handle.steer_verified);
+
+        client.send_turn(&session, "hello").await.unwrap();
+        let events = take(&mut client, 11).await;
+
+        let agent = AgentId(3);
+        let task = SubagentId("toolu_task".to_owned());
+        assert_eq!(
+            events,
+            vec![
+                ProviderEvent::Text {
+                    agent,
+                    subagent: None,
+                    text: "hi".to_owned()
+                },
+                ProviderEvent::ToolCall {
+                    agent,
+                    subagent: None,
+                    call_id: "toolu_bash".to_owned(),
+                    activity: Activity::RunningCommand {
+                        command: "ls -la".to_owned()
+                    },
+                },
+                ProviderEvent::ToolResult {
+                    agent,
+                    subagent: None,
+                    call_id: "toolu_bash".to_owned(),
+                    output: "total 0".to_owned(),
+                },
+                ProviderEvent::SubagentStarted {
+                    agent,
+                    subagent: task.clone(),
+                    parent: None
+                },
+                ProviderEvent::ToolCall {
+                    agent,
+                    subagent: Some(task.clone()),
+                    call_id: "toolu_read".to_owned(),
+                    activity: Activity::ReadingFile,
+                },
+                ProviderEvent::ToolResult {
+                    agent,
+                    subagent: Some(task.clone()),
+                    call_id: "toolu_read".to_owned(),
+                    output: "fn main".to_owned(),
+                },
+                ProviderEvent::SubagentEnded {
+                    agent,
+                    subagent: task
+                },
+                ProviderEvent::Text {
+                    agent,
+                    subagent: None,
+                    text: "done".to_owned()
+                },
+                ProviderEvent::Usage(UsageReport {
+                    agent,
+                    subagent: None,
+                    model: Some("claude-test".to_owned()),
+                    scope: UsageScope::MainTurn,
+                    input: Some(30),
+                    cache_read: Some(2000),
+                    cache_write: Some(200),
+                    output: Some(40),
+                    reasoning: None,
+                }),
+                ProviderEvent::ContextSize {
+                    agent,
+                    tokens: Some(3120)
+                },
+                ProviderEvent::TurnCompleted {
+                    agent,
+                    origin: TurnOrigin::User
+                },
+            ]
+        );
+        assert_eq!(
+            client.applied_settings(&session),
+            Some(AppliedSettings {
+                model: Some("claude-test".to_owned()),
+                permission: Some("acceptEdits".to_owned()),
+            })
+        );
+        let commands: Vec<(String, bool)> = client
+            .commands()
+            .into_iter()
+            .map(|command| (command.name, command.is_skill))
+            .collect();
+        assert_eq!(
+            commands,
+            vec![
+                ("compact".to_owned(), false),
+                ("review".to_owned(), false),
+                ("lint".to_owned(), true),
+            ]
+        );
+        client.close_session(&session).await.unwrap();
+        assert!(client.process_group(&session).is_none());
+    }
+
+    #[tokio::test]
+    async fn steer_needs_active_turn_and_interrupt_waits_for_response() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+        let session = client
+            .open_session(spec(dir.path(), None))
+            .await
+            .unwrap()
+            .provider_session;
+        let agent = AgentId(3);
+
+        assert!(matches!(
+            client.steer(&session, "early").await,
+            Err(ProviderError::NoActiveTurn)
+        ));
+        client.send_turn(&session, "wait").await.unwrap();
+        assert_eq!(
+            take(&mut client, 1).await,
+            vec![ProviderEvent::Text {
+                agent,
+                subagent: None,
+                text: "working".to_owned()
+            }]
+        );
+        assert!(matches!(
+            client.compact(&session).await,
+            Err(ProviderError::NotSent { .. })
+        ));
+        client.steer(&session, "more").await.unwrap();
+        let steered = take(&mut client, 4).await;
+        assert_eq!(
+            steered[3],
+            ProviderEvent::TurnCompleted {
+                agent,
+                origin: TurnOrigin::User
+            }
+        );
+
+        client.send_turn(&session, "wait").await.unwrap();
+        take(&mut client, 1).await;
+        client
+            .interrupt(
+                &session,
+                InterruptTarget::Subagent(SubagentId("x".to_owned())),
+            )
+            .await
+            .unwrap();
+        client
+            .interrupt(&session, InterruptTarget::Main)
+            .await
+            .unwrap();
+        let stopped = take(&mut client, 3).await;
+        assert_eq!(
+            stopped[2],
+            ProviderEvent::TurnCompleted {
+                agent,
+                origin: TurnOrigin::User
+            }
+        );
+
+        client.compact(&session).await.unwrap();
+        let compacted = take(&mut client, 4).await;
+        assert_eq!(
+            compacted[0],
+            ProviderEvent::SettingsApplied {
+                agent,
+                values: vec![
+                    ("model".to_owned(), "claude-other".to_owned()),
+                    ("permission_mode".to_owned(), "acceptEdits".to_owned()),
+                ],
+            }
+        );
+        client.close_session(&session).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn permission_request_and_stream_loss() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+        let session = client
+            .open_session(spec(dir.path(), None))
+            .await
+            .unwrap()
+            .provider_session;
+        let agent = AgentId(3);
+
+        client.send_turn(&session, "ask").await.unwrap();
+        assert_eq!(
+            take(&mut client, 1).await,
+            vec![ProviderEvent::PermissionRequested {
+                agent,
+                request_id: "perm-1".to_owned(),
+                summary: "Bash: rm -rf build".to_owned(),
+                reason: "outside workdir".to_owned(),
+            }]
+        );
+        client.send_turn(&session, "crash").await.unwrap();
+        assert_eq!(
+            take(&mut client, 1).await,
+            vec![ProviderEvent::StreamLost { agent }]
+        );
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        assert!(matches!(
+            client.send_turn(&session, "again").await,
+            Err(ProviderError::NotSent { .. })
+        ));
+        client.close_session(&session).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn subagent_without_result_is_stream_loss() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+        let session = client
+            .open_session(spec(dir.path(), None))
+            .await
+            .unwrap()
+            .provider_session;
+
+        client.send_turn(&session, "orphan").await.unwrap();
+        let events = take(&mut client, 5).await;
+
+        assert_eq!(events[4], ProviderEvent::StreamLost { agent: AgentId(3) });
+        client.close_session(&session).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn resume_failure_is_not_sent() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+
+        let error = client
+            .open_session(spec(dir.path(), Some("missing")))
+            .await
+            .unwrap_err();
+        let resumed = client
+            .open_session(spec(dir.path(), Some("kept-session")))
+            .await
+            .unwrap();
+
+        assert!(matches!(error, ProviderError::NotSent { .. }));
+        assert_eq!(resumed.provider_session.0, "kept-session");
+        client
+            .close_session(&resumed.provider_session)
+            .await
+            .unwrap();
+    }
+
+    #[test]
+    fn launch_args_add_defaults_and_hook_settings() {
+        let dir = tempfile::tempdir().unwrap();
+        let client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+
+        let args = client.launch_args(&spec(dir.path(), None), &SessionArg::New("id-1".to_owned()));
+
+        assert_eq!(
+            args,
+            vec![
+                "-p",
+                "--input-format",
+                "stream-json",
+                "--output-format",
+                "stream-json",
+                "--verbose",
+                "--session-id",
+                "id-1",
+                "--model",
+                "sonnet",
+                "--permission-mode",
+                "acceptEdits",
+                "--autocompact",
+                "100000",
+                "--settings",
+                "{\"hooks\":{\"PreToolUse\":[]}}",
+            ]
+        );
+    }
+
+    #[test]
+    fn user_settings_suppress_defaults() {
+        let dir = tempfile::tempdir().unwrap();
+        let home = dir.path().join("home");
+        std::fs::create_dir_all(home.join(".claude")).unwrap();
+        std::fs::write(
+            home.join(".claude").join("settings.json"),
+            r#"{"permissions":{"defaultMode":"plan"}}"#,
+        )
+        .unwrap();
+        let env = vec![
+            ("HOME".into(), home.into_os_string()),
+            ("DISABLE_COMPACT".into(), "1".into()),
+        ];
+        let launch = launch(dir.path(), env);
+
+        let found = read_user_config(&launch);
+
+        assert_eq!(
+            found,
+            UserProviderConfig {
+                has_permission: true,
+                has_auto_compact: true,
+            }
+        );
+        assert!(default_args(found, &launch).is_empty());
+        let mut big = launch.clone();
+        big.defaults.auto_compact_tokens = 5_000_000;
+        assert_eq!(
+            default_args(
+                UserProviderConfig {
+                    has_permission: true,
+                    has_auto_compact: false
+                },
+                &big
+            ),
+            vec!["--autocompact", "1000000"]
+        );
+    }
+
+    #[test]
+    fn session_uuid_is_version_four() {
+        let id = new_session_uuid().unwrap();
+
+        assert_eq!(id.len(), 36);
+        assert_eq!(&id[14..15], "4");
+        assert!(matches!(&id[19..20], "8" | "9" | "a" | "b"));
+    }
 }
