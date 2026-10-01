@@ -72,7 +72,7 @@ def corpus_paths():
     paths = git("ls-tree", "-r", "--full-tree", "--name-only", CORPUS_COMMIT).splitlines()
     picked = []
     for path in paths:
-        if path.startswith("docs/archive/"):
+        if path.startswith((".local/", "docs/archive/")):
             continue
         is_doc = path.endswith(".md") and (path.startswith("docs/") or "/" not in path)
         if is_doc or path.endswith(".rs"):
