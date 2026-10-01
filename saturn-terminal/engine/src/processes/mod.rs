@@ -447,7 +447,9 @@ fn descendants(group: ProcessGroupId, rows: &[ProcessRow]) -> Vec<u32> {
 
 /// 좀비(`Z`)는 끝난 것으로 보고 뺀다.
 async fn process_table() -> Result<Vec<ProcessRow>, ProcessError> {
-    let output = tokio::process::Command::new("/bin/ps")
+    let mut command = tokio::process::Command::new("/bin/ps");
+    secrets::scrub_command(&mut command);
+    let output = command
         .args(["-A", "-o", "pid=,ppid=,pgid=,stat="])
         .stdin(Stdio::null())
         .stderr(Stdio::null())

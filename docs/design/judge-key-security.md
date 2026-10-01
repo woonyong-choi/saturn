@@ -67,6 +67,7 @@ judge 키 보호는 외부 judge API 키를 provider와 subagent가 어떤 경�
 - 키체인 항목의 서비스 이름은 `saturn`, 계정 이름은 `judge-key`다(초안, [#32](https://github.com/woonyong-choi/saturn/issues/32)).
 - 대체 파일은 `~/.saturn/judge.key`이고(초안), 권한이 0600이 아니면 읽지 않는다.
 - 대체 파일은 같은 폴더에 새 임시 파일을 0600으로 만든 뒤 교체한다.
+- 임시 파일은 고유 이름으로 만들고 기존 `.partial` 경로의 심볼릭 링크를 따라가지 않는다.
 - engine은 강화 방식의 잠금 조건을 1분마다 확인한다(초안).
 - `keyring`은 항목의 신뢰 앱 목록을 정하지 못한다. 강화 방식 항목을 어떤 API로 만들지는 [#102](https://github.com/woonyong-choi/saturn/issues/102)에서 정하고, 그 전에는 표준 방식 항목에 잠금 시계만 더한다.
 - judge 주소와 키 참조는 폴더 층에서 바꿀 수 없다. 사용자 전용 항목이기 때문이다.
@@ -87,6 +88,7 @@ judge 키 보호는 외부 judge API 키를 provider와 subagent가 어떤 경�
 
 - 제외 목록은 `secrets` 모듈 한 곳에 두고 Saturn 내부 비밀 변수도 같은 목록으로 처리한다. 제거 대상을 한 곳에서 테스트로 고정하기 위해서다.
 - 두 단계 모두에서 지운다. judge 키 환경 변수가 자식 프로세스에 그대로 전달되는 일을 막기 위해서다.
+- 프로세스 표를 읽는 `/bin/ps`에도 같은 제외 목록을 적용한다.
 
 ### Saturn 소유 PreToolUse 훅
 
@@ -107,6 +109,7 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 ### 출력 마스킹
 
 - judge 키와 일치하는 문자열은 로그, 오류, 디버그 출력에서 가린다. 키가 provider 기록이나 TUI로 새는 일을 막기 위해서다.
+- Codex app-server stdout의 JSON 문자열 값은 오류와 이벤트로 바꾸기 전에 가린다.
 - 판단 기록을 저장하기 전에 `secrets`가 보낸 원문과 받은 원문의 비밀값을 가린다.
 - 가린 자리는 `[redacted]`로 바꾸고 끝 4자리도 남기지 않는다. `Authorization`, `Proxy-Authorization`, `X-Api-Key` 헤더 줄은 이름만 남기고 값을 가린다(초안).
 - 출력 가림 버퍼는 줄바꿈 전의 조각을 `flush`나 `Debug`로 내보내지 않는다.
