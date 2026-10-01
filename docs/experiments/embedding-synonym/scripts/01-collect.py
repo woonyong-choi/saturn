@@ -221,7 +221,7 @@ def sample_pair_queries(described):
 def corpus_paths():
     picked = []
     for path in tracked_paths():
-        if path.startswith("docs/archive/") or path.startswith("docs/experiments/"):
+        if path.startswith((".local/", "docs/archive/", "docs/experiments/")):
             continue
         is_doc = path.endswith(".md") and (path.startswith("docs/") or "/" not in path)
         if is_doc or path.endswith(".rs"):
