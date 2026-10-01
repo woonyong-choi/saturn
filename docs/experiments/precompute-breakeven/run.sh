@@ -22,6 +22,7 @@ process() {
 analyze() {
   process
   python3 scripts/03-analyze.py
+  python3 scripts/04-reanalyze-all-candidates.py
 }
 
 case "${1:-}" in
