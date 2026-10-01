@@ -2,6 +2,10 @@
 //! 설계: docs/design/providers-and-sessions.md
 
 pub mod context;
+pub mod fragments;
+pub mod memo;
+pub mod packet;
+pub mod ranking;
 
 use std::time::{Duration, Instant};
 
