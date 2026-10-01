@@ -7,7 +7,7 @@ use std::process::Stdio;
 
 use serde::{Deserialize, Serialize};
 
-use super::{Masker, SecretsError, scrub_command};
+use super::{SecretsError, scrub_command};
 
 /// TODO(#32): 이름 확정
 pub const JUDGE_KEY_ENV: &str = "SATURN_JUDGE_KEY";
@@ -81,7 +81,7 @@ impl std::fmt::Debug for KeyInput {
             Self::Hidden(_) => f.write_str("Hidden(..)"),
             Self::Stdin => f.write_str("Stdin"),
             Self::Env => f.write_str("Env"),
-            Self::Command { argv } => f.debug_struct("Command").field("argv", argv).finish(),
+            Self::Command { .. } => f.write_str("Command(..)"),
         }
     }
 }
@@ -172,7 +172,7 @@ async fn run_key_command(argv: &[String]) -> Result<JudgeKey, SecretsError> {
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::null())
         .kill_on_drop(true);
     scrub_command(&mut command);
     let output = command
@@ -184,16 +184,13 @@ async fn run_key_command(argv: &[String]) -> Result<JudgeKey, SecretsError> {
     let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
     let first_line = stdout.lines().next().unwrap_or_default().to_owned();
     if !output.status.success() {
-        let masker = Masker::new(vec![first_line.trim().to_owned()]);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stderr_line = stderr.lines().next().unwrap_or_default();
         let code = output
             .status
             .code()
             .map_or_else(|| "signal".to_owned(), |code| code.to_string());
         wipe(stdout);
         return Err(SecretsError::Command {
-            detail: format!("exit {code}: {}", masker.mask(stderr_line).as_str()),
+            detail: format!("exit {code}"),
         });
     }
     wipe(stdout);
@@ -236,6 +233,10 @@ mod tests {
         let input = KeyInput::Hidden("sk-secret".to_owned());
 
         assert_eq!(format!("{input:?}"), "Hidden(..)");
+        let command = KeyInput::Command {
+            argv: vec!["echo".to_owned(), "sk-secret".to_owned()],
+        };
+        assert_eq!(format!("{command:?}"), "Command(..)");
     }
 
     #[test]
@@ -296,8 +297,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn failed_command_masks_key_in_stderr() {
-        let script = "echo sk-leaked; echo \"bad sk-leaked\" >&2; exit 3";
+    async fn failed_command_does_not_expose_stderr() {
+        let script = "echo \"bad sk-leaked\" >&2; exit 3";
         let input = KeyInput::Command {
             argv: argv(&["/bin/sh", "-c", script]),
         };
@@ -307,7 +308,7 @@ mod tests {
         let SecretsError::Command { detail } = error else {
             panic!("command failure expected");
         };
-        assert_eq!(detail, "exit 3: bad [redacted]");
+        assert_eq!(detail, "exit 3");
         let empty = run_key_command(&[]).await.unwrap_err();
         assert!(matches!(empty, SecretsError::Command { .. }));
     }

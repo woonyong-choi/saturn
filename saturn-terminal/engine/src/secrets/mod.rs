@@ -33,12 +33,12 @@ pub enum SecretsError {
     Empty,
     #[error("key command failed: {detail}")]
     Command {
-        /// 종료 코드와 가린 stderr 첫 줄.
+        /// 종료 코드만 담는다.
         detail: String,
     },
-    /// `BadEncoding`은 `Debug`로 키가 새지 않게 저장된 바이트를 버린 문장으로 바꾼다.
+    /// 원인 객체에 키가 담길 수 있어 오류 종류만 남긴다.
     #[error("keychain operation failed")]
-    Keychain(#[source] Box<dyn std::error::Error + Send + Sync>),
+    Keychain,
     /// 강화 방식에서 session 시작 때 키체인 암호를 다시 받아야 한다.
     #[error("judge key is locked")]
     Locked,
