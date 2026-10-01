@@ -9,7 +9,8 @@ Developers who use Codex and Claude Code together lose context each time they sw
 - [아키텍처](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/architecture.md): 구성 요소, 코드 지도, 불변 조건
 - [입력 처리](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/input-handling.md): 입력 접수, 실행 중 새 입력, 대기, 보류와 재개, 쓰기 규칙
 - [provider 연결과 session](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/providers-and-sessions.md): provider 연결, session 수명과 전환, subagent 추적, 사용량
-- [맥락 정리](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/context-management.md): 맥락 크기 측정, 정리 판정, 패킷 구성
+- [맥락 정리](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/context-management.md): 맥락 크기 측정, 정리 판정, 정리 모드, 패킷 구성
+- [맥락 고르기](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/context-selection.md): 후보 순위, 단어 조각, 도구 결과 메모, 제약 식별과 대체
 - [judge](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/judge.md): 판단 질문, 답 형식, 기준값과 대체 규칙, 판단 기록
 - [judge 키 보호](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/judge-key-security.md): judge 키 입력, 저장, 자식 프로세스 차단
 - [judge 학습](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/judge-training.md): 기준값 조정, 채점, 로컬 모델 승격

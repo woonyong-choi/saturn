@@ -81,8 +81,14 @@
 | `context.<codex\|claude>.window` | 1 이상 정수 | codex 272000, claude 1000000 |
 | `context.<codex\|claude>.cache_read`, `cache_write` | 0 이상 실수 | 0.1, codex 1.0 · claude 1.25 |
 | `context.<codex\|claude>.cache_ttl_secs` | 1 이상 정수 | 300 |
+| `context.mode` | `saturn`, `provider` | `saturn` |
+| `context.packet_hard_divisor` | 1 이상 정수 | 5 |
+| `context.item_cap_percent` | 1~100 정수 | 30 |
+| `context.select.rrf_k` | 0 이상 정수 | 60 |
+| `context.select.judge_top_n` | 1 이상 정수 | 10 |
+| `context.select.synonyms` | 용어마다 대응하는 말의 문자열 배열 | 없음 |
 
-- 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `compact_keep`, `injection`, `progressing`, `feedback_cause`다.
+- 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `compact_keep`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_replace`, `constraint_conflict`다.
 - 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
 - 실행 층 `-c key=value`의 값은 TOML 값 문법으로 읽고, 같은 키가 여러 번 오면 뒤 값이 이긴다.
 

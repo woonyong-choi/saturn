@@ -44,6 +44,8 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 - 기계적으로 판단할 수 있는 것은 코드가, 뜻을 이해해야 하는 것은 judge가 정한다. judge를 뜻 판단에만 쓰기 위해서다.
 - 제어 명령이 아닌 입력마다 judge를 한 번 부르고 필요한 질문을 요청 한 건에 묶는다. 입력당 호출 수를 한 번으로 줄이기 위해서다.
 - 사용자가 모델을 고정한 입력이면 judge 호출을 생략한다.
+- 후보를 고르는 질문(`compact`, `file-rank`)은 후보가 상위 N개보다 많으면 `core`가 순위로 좁힌 뒤 묻는다. judge 요청 크기를 후보 수와 무관하게 두기 위해서다. 순위 규칙은 [맥락 고르기](context-selection.md)에 있다.
+- 뜻 판단이 새로 필요하면 입력마다 보내는 요청에 질문을 더하는 방식을 먼저 쓴다. judge는 state를 한 번 읽고 모든 질문에 답하므로 호출 수가 늘지 않기 때문이다. 개수 세기, 날짜 비교, 앞 말을 가리키는 간접 지시처럼 judge가 약한 판단은 코드로 하거나 두 원문을 나란히 놓는 질문으로 바꾼다.
 - judge는 앞 입력의 판단 결과를 state에 넣은 요청으로 판단한다. 판단 차례와 적용 직전 revision 비교는 [입력 처리](input-handling.md)에 있다.
 - `keep_current`를 `is_actionable`보다 먼저 읽는다. 이어 가는 입력이 파일 탐색으로 빠지는 일을 막기 위해서다.
 - `keep_current`가 이어 가는 입력으로 답하면 하던 에이전트로 보낸다. 새 작업이면 `is_actionable`, 모델 선택 순서로 판정한다.
@@ -87,11 +89,13 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 | `route` | `difficulty` | `score` | 3단계로 답 | 확신도 0.6 미만이면 미사용 |
 | `route` | `skills` | `choice` | 선택지에 `none` 포함 | 확신도 0.6 미만이면 힌트 생략 |
 | `route` | `resume_held` | `noul` | 0.85 이상에서만 보류 작업 재개 | 0.85 미만이면 무시 횟수 1 증가 |
+| `route` | `is_constraint` | `noul` | 0.7 이상이면 입력 원문을 제약으로 등록 | 판단이 없으면 미등록 |
+| `constraint` | `replaces_<n>` | `noul` | 기존 제약 최대 10개와 함께 질문. 0.8 이상이면 대체, 0.5 이상 0.8 미만이면 충돌 가능 | 판단이 없으면 대체와 충돌 가능 기록 생략 |
 | `relation` | `relation_to_running` | `choice` | `refines`, `continues`, `independent`, `conflicts` 중 선택 | 확신도 0.6 미만이면 대기 |
 | `send-opt` | `steer_or_spawn` | `choice` | `target_model`과 함께 질문 | 확신도 0.6 미만이면 현재 에이전트에 대기 뒤 전송 |
-| `file-rank` | `file_<n>_relevant` | `noul` | 파일 20개와 `answer_present`를 함께 질문. 0.7 이상은 존재, 0.35 미만은 없음 | 판단이 없으면 코드 검색 순서 그대로 |
+| `file-rank` | `file_<n>_relevant` | `noul` | 순위 상위 파일 20개와 `answer_present`를 함께 질문. 0.7 이상은 존재, 0.35 미만은 없음 | 판단이 없으면 후보 순위 그대로 |
 | `context-select` | `pick` | `choice` | 게이트 `noul` 3개 평균이 0.3 미만이면 없음. 2차로 `fits_<n>` 질문 | 판단이 없으면 힌트 생략 |
-| `compact` | `call_<id>_keep` | `noul` | 호출마다 `result_<id>_keep`과 함께 질문. 0.5 이상이면 유지 | 판단이 없으면 최근 3턴과 고정 항목만 넣고 나머지 도구 결과는 경로만 |
+| `compact` | `call_<id>_keep` | `noul` | 순위 상위 N개 호출마다 `result_<id>_keep`과 함께 질문. 0.5 이상이면 유지 | 판단이 없으면 후보 순위 상위 N개를 유지 |
 | `doc-filter` | `injection` | `noul` | 조각마다 `relevant`, `evidence`, `contradiction`과 함께 질문. 0.7 이상이면 제외 | 판단이 없으면 문서 조각 생략 |
 | `loop` | `is_progressing` | `noul` | 0.2 미만이면 루프 | 판단이 없으면 멈춤과 사용자 알림 |
 | `feedback` | `wrong_doc` | `noul` | `misunderstood_intent`, `code_error`와 함께 질문. 0.7 이상인 원인만 사용 | 판단이 없으면 원문 그대로 전달 |
@@ -100,7 +104,7 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 - 실행 중이면 처리 방식을 `relation_to_running`과 `steer_or_spawn`으로 정한다. `refines`, `continues`면 `steer_or_spawn`의 `steer`, `queue`, `spawn`을 끼워 넣기, 대기, 새 작업으로 옮기고, `independent`면 새 작업이다. `conflicts`는 미해결 질문이 정해지기 전까지 대기로 둔다. 실행 중이 아니면 `keep_current`로 현재 에이전트 대기와 새 작업을 가른다.
 - `target_model`의 선택지는 허용 후보와 `other`이고, `other`를 고르면 대체 규칙을 따른다. 후보가 없으면 묻지 않는다.
 - `difficulty`와 `skills`는 답을 쓰는 곳이 생기기 전까지 묻지 않고 대체 규칙(미사용, 힌트 생략)으로 둔다. 쓰지 않는 질문으로 판단 비용을 늘리지 않기 위해서다.
-- 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다.
+- 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `is_constraint`를 더한 `route`는 `route@1.1`이고, `constraint`는 `constraint@1.0`에서 시작한다. 기존 질문의 뜻은 바뀌지 않기 때문이다.
 - 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다.
 - 기준값을 판단 기록으로 자동 조정하는 규칙은 [judge 학습](judge-training.md)에 있다.
 
@@ -188,6 +192,8 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 | 요청이 크기 한도를 넘으면 나눠 보낸다. | 64K 초과 요청과 255개 초과 선택지가 나뉘어 전송되는지 확인한다. |
 | `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [#6](https://github.com/woonyong-choi/saturn/issues/6) 실험으로 한국어 평가 세트의 오분류율을 확인한다. |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
+| 후보가 상위 N개보다 많으면 순위로 좁힌 뒤 묻는다. | 후보 150개의 `compact` 요청에 N개 몫의 질문만 있는지 확인한다. |
+| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [#121](https://github.com/woonyong-choi/saturn/issues/121) |
 
 ## 단점
 
