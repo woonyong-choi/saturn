@@ -8,4 +8,4 @@
 | [fast-adjust-convergence](fast-adjust-convergence/design.md) | 빠른 조정의 수렴과 진동 | [judge 학습](../design/judge-training.md) | 측정 전 |
 | [ranked-handoff-quality](ranked-handoff-quality/design.md) | 후보 순위와 judge 결합의 전환 품질 | [맥락 고르기](../design/context-selection.md) | 측정 전 |
 | [wordpiece-typo-recall](wordpiece-typo-recall/design.md) | 단어 조각 단위별 오타 재현율 | [맥락 고르기](../design/context-selection.md) | 측정 전 |
-| [term-catalog-precision](term-catalog-precision/design.md) | 용어 카탈로그 짝 정밀도와 묶음 확인 비용 | [용어 카탈로그](../design/term-catalog.md) | 측정 전 |
+| [term-catalog-precision](term-catalog-precision/report.md) | 용어 카탈로그 짝 정밀도와 묶음 확인 비용 | [용어 카탈로그](../design/term-catalog.md) | H1 기각: 괄호 표기 정밀도 1.5% [0.5, 4.3] |
