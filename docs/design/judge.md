@@ -90,7 +90,6 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 | `route` | `skills` | `choice` | 선택지에 `none` 포함 | 확신도 0.6 미만이면 힌트 생략 |
 | `route` | `resume_held` | `noul` | 0.85 이상에서만 보류 작업 재개 | 0.85 미만이면 무시 횟수 1 증가 |
 | `route` | `is_constraint` | `noul` | 0.7 이상이면 입력 원문을 제약으로 등록 | 판단이 없으면 미등록 |
-| `term` | `same_<n>` | `noul` | 확인 대기 용어 짝 최대 20개를 트리 유휴 때 함께 질문. 0.8 이상이면 확인, 0.3 미만이면 거절 | 판단이 없으면 대기 유지 |
 | `constraint` | `replaces_<n>` | `noul` | 기존 제약 최대 10개와 함께 질문. 0.8 이상이면 대체, 0.5 이상 0.8 미만이면 충돌 가능 | 판단이 없으면 대체와 충돌 가능 기록 생략 |
 | `relation` | `relation_to_running` | `choice` | `refines`, `continues`, `independent`, `conflicts` 중 선택 | 확신도 0.6 미만이면 대기 |
 | `send-opt` | `steer_or_spawn` | `choice` | `target_model`과 함께 질문 | 확신도 0.6 미만이면 현재 에이전트에 대기 뒤 전송 |
@@ -105,7 +104,7 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 - 실행 중이면 처리 방식을 `relation_to_running`과 `steer_or_spawn`으로 정한다. `refines`, `continues`면 `steer_or_spawn`의 `steer`, `queue`, `spawn`을 끼워 넣기, 대기, 새 작업으로 옮기고, `independent`면 새 작업이다. `conflicts`는 미해결 질문이 정해지기 전까지 대기로 둔다. 실행 중이 아니면 `keep_current`로 현재 에이전트 대기와 새 작업을 가른다.
 - `target_model`의 선택지는 허용 후보와 `other`이고, `other`를 고르면 대체 규칙을 따른다. 후보가 없으면 묻지 않는다.
 - `difficulty`와 `skills`는 답을 쓰는 곳이 생기기 전까지 묻지 않고 대체 규칙(미사용, 힌트 생략)으로 둔다. 쓰지 않는 질문으로 판단 비용을 늘리지 않기 위해서다.
-- 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `is_constraint`를 더한 `route`는 `route@1.1`이고, `constraint`는 `constraint@1.0`, `term`은 `term@1.0`에서 시작한다. 기존 질문의 뜻은 바뀌지 않기 때문이다.
+- 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `is_constraint`를 더한 `route`는 `route@1.1`이고, `constraint`는 `constraint@1.0`에서 시작한다. 기존 질문의 뜻은 바뀌지 않기 때문이다.
 - 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다.
 - 기준값을 판단 기록으로 자동 조정하는 규칙은 [judge 학습](judge-training.md)에 있다.
 

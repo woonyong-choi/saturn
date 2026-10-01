@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 이슈 | [#127](https://github.com/woonyong-choi/saturn/issues/127) |
-| 관련 설계 | [용어 카탈로그](../../design/term-catalog.md) |
+| 관련 설계 | [용어 카탈로그](https://github.com/woonyong-choi/saturn/blob/6fda8f610b49d8febe162bf7ec36114513b2e741/docs/design/term-catalog.md) |
 | 사전 데이터 | 설계 문서 `term-catalog.md`, `judge.md`, `context-selection.md`를 규칙 확인용으로 읽었다. 이 문서들은 괄호 표기 말뭉치의 일부지만 짝 후보를 뽑거나 세지 않았다. 함께 나옴 출처의 대화 기록은 열지 않았다. |
 
 ## 질문
@@ -35,7 +35,7 @@
 
 ### 짝 후보 캐기 규칙
 
-[용어 카탈로그](../../design/term-catalog.md)의 출처 표를 아래처럼 코드로 옮긴다.
+[용어 카탈로그](https://github.com/woonyong-choi/saturn/blob/6fda8f610b49d8febe162bf7ec36114513b2e741/docs/design/term-catalog.md)의 출처 표를 아래처럼 코드로 옮긴다.
 
 | 출처 | 입력 | 규칙 |
 |---|---|---|

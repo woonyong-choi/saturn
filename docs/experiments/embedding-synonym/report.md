@@ -107,10 +107,10 @@
 
 | 가설 | 판정 | 반영한 문서 |
 |---|---|---|
-| H1 | 기각 | [용어 카탈로그](../../design/term-catalog.md) |
-| H2 | 기각 | [용어 카탈로그](../../design/term-catalog.md) |
-| H3 | 기각 | [용어 카탈로그](../../design/term-catalog.md) |
-| H4 | 기각 | [용어 카탈로그](../../design/term-catalog.md) |
+| H1 | 기각 | [용어 카탈로그](https://github.com/woonyong-choi/saturn/blob/6fda8f610b49d8febe162bf7ec36114513b2e741/docs/design/term-catalog.md) |
+| H2 | 기각 | [용어 카탈로그](https://github.com/woonyong-choi/saturn/blob/6fda8f610b49d8febe162bf7ec36114513b2e741/docs/design/term-catalog.md) |
+| H3 | 기각 | [용어 카탈로그](https://github.com/woonyong-choi/saturn/blob/6fda8f610b49d8febe162bf7ec36114513b2e741/docs/design/term-catalog.md) |
+| H4 | 기각 | [용어 카탈로그](https://github.com/woonyong-choi/saturn/blob/6fda8f610b49d8febe162bf7ec36114513b2e741/docs/design/term-catalog.md) |
 | H5 | 기각 | [맥락 고르기](../../design/context-selection.md) |
 | H6 | 기각 | [맥락 고르기](../../design/context-selection.md) |
 | H7 | 기각 | [맥락 고르기](../../design/context-selection.md) |
