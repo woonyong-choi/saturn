@@ -1,0 +1,452 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": {
+    "text": "사용 방식 급변 전후의 평균 기준값",
+    "subtitle": "복제 n=100, 5,000건에서 틀림 비율 3%→10%. 기준선은 10% 조건 후반 평균"
+  },
+  "width": 420,
+  "height": 220,
+  "layer": [
+    {
+      "data": {
+        "values": [
+          {
+            "judgment": 100,
+            "threshold": 0.764663
+          },
+          {
+            "judgment": 200,
+            "threshold": 0.764079
+          },
+          {
+            "judgment": 300,
+            "threshold": 0.760275
+          },
+          {
+            "judgment": 400,
+            "threshold": 0.759847
+          },
+          {
+            "judgment": 500,
+            "threshold": 0.760825
+          },
+          {
+            "judgment": 600,
+            "threshold": 0.75962
+          },
+          {
+            "judgment": 700,
+            "threshold": 0.758949
+          },
+          {
+            "judgment": 800,
+            "threshold": 0.759312
+          },
+          {
+            "judgment": 900,
+            "threshold": 0.757832
+          },
+          {
+            "judgment": 1000,
+            "threshold": 0.758211
+          },
+          {
+            "judgment": 1100,
+            "threshold": 0.758389
+          },
+          {
+            "judgment": 1200,
+            "threshold": 0.760625
+          },
+          {
+            "judgment": 1300,
+            "threshold": 0.758945
+          },
+          {
+            "judgment": 1400,
+            "threshold": 0.757913
+          },
+          {
+            "judgment": 1500,
+            "threshold": 0.759053
+          },
+          {
+            "judgment": 1600,
+            "threshold": 0.759183
+          },
+          {
+            "judgment": 1700,
+            "threshold": 0.758531
+          },
+          {
+            "judgment": 1800,
+            "threshold": 0.758211
+          },
+          {
+            "judgment": 1900,
+            "threshold": 0.757637
+          },
+          {
+            "judgment": 2000,
+            "threshold": 0.759313
+          },
+          {
+            "judgment": 2100,
+            "threshold": 0.75921
+          },
+          {
+            "judgment": 2200,
+            "threshold": 0.757735
+          },
+          {
+            "judgment": 2300,
+            "threshold": 0.757383
+          },
+          {
+            "judgment": 2400,
+            "threshold": 0.757358
+          },
+          {
+            "judgment": 2500,
+            "threshold": 0.758314
+          },
+          {
+            "judgment": 2600,
+            "threshold": 0.757624
+          },
+          {
+            "judgment": 2700,
+            "threshold": 0.76013
+          },
+          {
+            "judgment": 2800,
+            "threshold": 0.759646
+          },
+          {
+            "judgment": 2900,
+            "threshold": 0.758243
+          },
+          {
+            "judgment": 3000,
+            "threshold": 0.75857
+          },
+          {
+            "judgment": 3100,
+            "threshold": 0.759445
+          },
+          {
+            "judgment": 3200,
+            "threshold": 0.759496
+          },
+          {
+            "judgment": 3300,
+            "threshold": 0.758499
+          },
+          {
+            "judgment": 3400,
+            "threshold": 0.758108
+          },
+          {
+            "judgment": 3500,
+            "threshold": 0.75977
+          },
+          {
+            "judgment": 3600,
+            "threshold": 0.759412
+          },
+          {
+            "judgment": 3700,
+            "threshold": 0.758853
+          },
+          {
+            "judgment": 3800,
+            "threshold": 0.758564
+          },
+          {
+            "judgment": 3900,
+            "threshold": 0.757382
+          },
+          {
+            "judgment": 4000,
+            "threshold": 0.757241
+          },
+          {
+            "judgment": 4100,
+            "threshold": 0.758006
+          },
+          {
+            "judgment": 4200,
+            "threshold": 0.759761
+          },
+          {
+            "judgment": 4300,
+            "threshold": 0.758947
+          },
+          {
+            "judgment": 4400,
+            "threshold": 0.756957
+          },
+          {
+            "judgment": 4500,
+            "threshold": 0.757067
+          },
+          {
+            "judgment": 4600,
+            "threshold": 0.757916
+          },
+          {
+            "judgment": 4700,
+            "threshold": 0.75861
+          },
+          {
+            "judgment": 4800,
+            "threshold": 0.757228
+          },
+          {
+            "judgment": 4900,
+            "threshold": 0.757677
+          },
+          {
+            "judgment": 5000,
+            "threshold": 0.757968
+          },
+          {
+            "judgment": 5100,
+            "threshold": 0.788196
+          },
+          {
+            "judgment": 5200,
+            "threshold": 0.807772
+          },
+          {
+            "judgment": 5300,
+            "threshold": 0.812839
+          },
+          {
+            "judgment": 5400,
+            "threshold": 0.813814
+          },
+          {
+            "judgment": 5500,
+            "threshold": 0.814416
+          },
+          {
+            "judgment": 5600,
+            "threshold": 0.811762
+          },
+          {
+            "judgment": 5700,
+            "threshold": 0.814499
+          },
+          {
+            "judgment": 5800,
+            "threshold": 0.815696
+          },
+          {
+            "judgment": 5900,
+            "threshold": 0.815402
+          },
+          {
+            "judgment": 6000,
+            "threshold": 0.816602
+          },
+          {
+            "judgment": 6100,
+            "threshold": 0.816484
+          },
+          {
+            "judgment": 6200,
+            "threshold": 0.814058
+          },
+          {
+            "judgment": 6300,
+            "threshold": 0.814606
+          },
+          {
+            "judgment": 6400,
+            "threshold": 0.814757
+          },
+          {
+            "judgment": 6500,
+            "threshold": 0.814183
+          },
+          {
+            "judgment": 6600,
+            "threshold": 0.812973
+          },
+          {
+            "judgment": 6700,
+            "threshold": 0.811625
+          },
+          {
+            "judgment": 6800,
+            "threshold": 0.813108
+          },
+          {
+            "judgment": 6900,
+            "threshold": 0.813894
+          },
+          {
+            "judgment": 7000,
+            "threshold": 0.810616
+          },
+          {
+            "judgment": 7100,
+            "threshold": 0.81262
+          },
+          {
+            "judgment": 7200,
+            "threshold": 0.815647
+          },
+          {
+            "judgment": 7300,
+            "threshold": 0.814726
+          },
+          {
+            "judgment": 7400,
+            "threshold": 0.815229
+          },
+          {
+            "judgment": 7500,
+            "threshold": 0.814923
+          },
+          {
+            "judgment": 7600,
+            "threshold": 0.814998
+          },
+          {
+            "judgment": 7700,
+            "threshold": 0.818815
+          },
+          {
+            "judgment": 7800,
+            "threshold": 0.817089
+          },
+          {
+            "judgment": 7900,
+            "threshold": 0.816876
+          },
+          {
+            "judgment": 8000,
+            "threshold": 0.81486
+          },
+          {
+            "judgment": 8100,
+            "threshold": 0.813844
+          },
+          {
+            "judgment": 8200,
+            "threshold": 0.81347
+          },
+          {
+            "judgment": 8300,
+            "threshold": 0.817072
+          },
+          {
+            "judgment": 8400,
+            "threshold": 0.814921
+          },
+          {
+            "judgment": 8500,
+            "threshold": 0.812102
+          },
+          {
+            "judgment": 8600,
+            "threshold": 0.812281
+          },
+          {
+            "judgment": 8700,
+            "threshold": 0.812852
+          },
+          {
+            "judgment": 8800,
+            "threshold": 0.812519
+          },
+          {
+            "judgment": 8900,
+            "threshold": 0.812431
+          },
+          {
+            "judgment": 9000,
+            "threshold": 0.811888
+          },
+          {
+            "judgment": 9100,
+            "threshold": 0.813631
+          },
+          {
+            "judgment": 9200,
+            "threshold": 0.813228
+          },
+          {
+            "judgment": 9300,
+            "threshold": 0.813185
+          },
+          {
+            "judgment": 9400,
+            "threshold": 0.813704
+          },
+          {
+            "judgment": 9500,
+            "threshold": 0.812432
+          },
+          {
+            "judgment": 9600,
+            "threshold": 0.814155
+          },
+          {
+            "judgment": 9700,
+            "threshold": 0.815686
+          },
+          {
+            "judgment": 9800,
+            "threshold": 0.813058
+          },
+          {
+            "judgment": 9900,
+            "threshold": 0.814675
+          },
+          {
+            "judgment": 10000,
+            "threshold": 0.814951
+          }
+        ]
+      },
+      "mark": {
+        "type": "line",
+        "point": true
+      },
+      "encoding": {
+        "x": {
+          "field": "judgment",
+          "type": "quantitative",
+          "title": "판단 수(건)"
+        },
+        "y": {
+          "field": "threshold",
+          "type": "quantitative",
+          "title": "100건 평균 기준값",
+          "scale": {
+            "zero": false
+          }
+        }
+      }
+    },
+    {
+      "data": {
+        "values": [
+          {
+            "target": 0.814201
+          }
+        ]
+      },
+      "mark": "rule",
+      "encoding": {
+        "y": {
+          "field": "target",
+          "type": "quantitative"
+        }
+      }
+    }
+  ]
+}
