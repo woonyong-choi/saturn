@@ -243,14 +243,38 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | `다른 Saturn에서 실행 중` | 다른 Saturn 프로세스가 실행 중인 채팅, 작업 목록에서 읽기 전용 |
 | `모델 미보고` | 작업 상세에서 provider의 모델 보고 없음 |
 
+### 초안 값
+
+설계에서 정하지 않아 구현이 정한 값이다. 바꾸면 이 표와 코드를 함께 고친다.
+
+| 대상 | 값 |
+|---|---|
+| 틱 간격 | 100ms |
+| 이름표 글자 | `A`부터 `Z`까지 |
+| 작업별 출력 칸 축소 | 화면 높이의 1/4, 최소 1줄, 최대 8줄 |
+| 높이가 모자랄 때 | 작업별 출력 칸, 상태판, 팝업 순서로 줄이고 입력창과 바닥줄은 줄이지 않는다 |
+| 시작 화면 전환 | 대화 기록에 첫 셀(입력 에코 포함)이 생길 때 |
+| 전체 기록 키 | `Esc` 닫기, `↑`, `↓` 스크롤, `Ctrl+T`를 다시 누르면 닫기. 창 화면의 `Ctrl+C`도 뷰 해제 |
+| 화면 언어 | `LC_ALL`, `LC_MESSAGES`, `LANG` 중 처음 비어 있지 않은 값이 `ko`로 시작하면 한국어. 영어 문구는 `saturn-terminal/tui/src/i18n.rs`의 `ENGLISH` |
+| 외부 에디터와 셸 | `$VISUAL`, `$EDITOR`, `vi` 순서. 셸은 `$SHELL -c`, 없으면 `sh -c` |
+| 입력 기록 파일 | 한 줄에 입력 하나, 줄바꿈은 `\n`, 역슬래시는 `\\`, 오래된 것이 위. 쓰기 실패는 경고 로그만 남기고 계속 |
+| 결과 머리줄 토큰 | 새 입력, 캐시 쓰기, 출력, 추론의 합. 캐시 읽기는 뺀다 |
+| 폴더 설정 신뢰 창 두 번째 선택지 | `적용하지 않고 계속` |
+| 끼워 넣기가 아닌 판단의 피드백 질문 머리 | `[B] 새 작업으로 보냈어요`, `[C] 대기열에 넣었어요` |
+| 셸 명령 셀 | 출력 앞 10줄, 전체 기록에서 전체 |
+| `@` 파일 목록 | 2,000개까지. `.git`과 작업 폴더 `.gitignore`의 글로브 없는 이름은 뺀다 |
+| 스크롤 | 휠 한 칸 3줄, 맨 위에 닿으면 이전 기록 50개 요청 |
+| judge 키 입력 창 붙여넣기 | 제어 문자를 뺀 글을 가린 입력칸에 넣는다 |
+| `/record` | 명령 목록에 넣고 값 목록은 `on`, `off` |
+
 ### 요구사항
 
 | 요구사항 | 검증 계획 |
 |---|---|
-| 작업이 하나이고 대기와 보류가 없으면 이름표를 숨긴다. | 작업 하나만 실행한 화면과 대기 줄이 생긴 화면을 그려 이름표 표시 여부를 비교 |
-| 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | 줄을 더하고 지운 전후 화면에서 남은 줄의 순서를 비교 |
-| 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | 운영체제 언어를 영어와 한국어로 바꿔 같은 화면의 문구 언어를 확인 |
-| 화면이 없는 파이프와 CI에서도 같은 명령이 같은 결과를 낸다. | 같은 명령을 plain 출력과 전체 화면 방식으로 실행해 결과 내용을 비교 |
+| 작업이 하나이고 대기와 보류가 없으면 이름표를 숨긴다. | `saturn-terminal/tui/src/app/tests.rs`의 `render_single_task_hides_labels`, `render_stacks_transcript_status_composer_and_footer` |
+| 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
+| 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
+| 화면이 없는 파이프와 CI에서도 같은 명령이 같은 결과를 낸다. | `saturn-terminal/tui/src/plain.rs`의 `plain_and_full_screen_cells_use_same_text`, `apply_writes_echo_output_result_and_summary` |
 
 ## 미해결 질문
 
@@ -266,3 +290,5 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 - 좁은 가로 폭에서 폭 구간별로 버튼과 칸을 줄일지, 줄 끝부터 말줄임할지, 버튼 대신 명령 안내를 보일지 ([#58](https://github.com/woonyong-choi/saturn/issues/58))
 - 빈 입력창에서 `←`로 작업 목록 화면을 열지, `/tasks`로만 열지, 다른 전용 키를 둘지 ([#59](https://github.com/woonyong-choi/saturn/issues/59))
 - provider가 끼워 넣기를 거절한 입력을 대기 줄로 옮길지, judge로 다시 판단할지, 사용자에게 물을지 ([#60](https://github.com/woonyong-choi/saturn/issues/60))
+- 바로잡기 제안의 `[실행]`, `[그대로]`를 클릭으로 고를지, 숫자 키로 고를지, 명령으로만 고를지 ([#109](https://github.com/woonyong-choi/saturn/issues/109))
+- 위로 스크롤할 때 이전 기록 요청의 기준 위치를 `HistoryChunk`에 실을지, 항목마다 붙일지, engine이 기억할지 ([#110](https://github.com/woonyong-choi/saturn/issues/110))
