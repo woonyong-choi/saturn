@@ -1,16 +1,5 @@
 //! provider 프로세스 실행, 감시, 단계별 중지. provider 규약은 모르고 프로세스 묶음(process group)만 다룬다.
-//!
-//! 설계: docs/design/providers-and-sessions.md(트리 전체 중지), docs/design/engine-lifecycle.md(프로세스 배치와 수명, 중첩 saturn 거절),
-//! docs/design/judge-key-security.md(자식 환경의 변수 제거).
-//!
-//! 호출 흐름:
-//! 1. `providers`가 `ProcessSpec`을 만들어 `Supervisor::spawn`을 부른다. `env`는 engine이 `secrets::scrub`으로 한 번 거른 환경이다.
-//! 2. `spawn`은 `env_clear` 뒤 `secrets::scrub`을 다시 거친 환경만 넣고(두 번째 제거), 중첩 표지를 더해 새 묶음의 리더로 실행한다.
-//! 3. 멈춤: 호출자가 provider 멈춤 신호를 모두 보낸 뒤 `stop_tree`를 부른다.
-//!    `STOP_GRACE`(10초) 안에 끝나지 않으면 묶음에 중지 신호(SIGTERM), `KILL_GRACE`(초안 5초) 뒤에도 남으면 강제 종료(SIGKILL).
-//! 4. `stop_tree`는 묶음과 묶음 밖으로 빠져나간 자손이 모두 끝난 것을 확인할 때만 `StopOutcome::Stopped`를 돌려준다.
-//!
-//! 묶음 신호는 `libc::kill(-pgid, sig)`로 보내고, 프로세스 표는 `ps -A -o pid=,ppid=,pgid=,stat=` 실행으로 읽는다.
+//! 설계: docs/design/engine-lifecycle.md
 
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
@@ -28,29 +17,27 @@ use crate::secrets;
 /// 멈춤 신호 뒤 묶음에 중지 신호를 보내기 전까지 기다리는 시간.
 pub const STOP_GRACE: Duration = Duration::from_secs(10);
 
-/// 중지 신호(SIGTERM) 뒤 강제 종료(SIGKILL) 전까지 기다리는 시간. 5초는 초안 값이다(설계에 없음).
+/// SIGTERM 뒤 SIGKILL 전까지 기다리는 시간. 초안 값.
 pub const KILL_GRACE: Duration = Duration::from_secs(5);
 
-/// 자손 목록 갱신과 리더 종료 수거 주기. 1초는 초안 값이다(설계에 없음).
+/// 초안 값.
 pub const WATCH_INTERVAL: Duration = Duration::from_secs(1);
 
-/// 중지 단계에서 남은 프로세스를 다시 세는 간격.
 const STOP_POLL: Duration = Duration::from_millis(100);
 
 /// SIGKILL 뒤 프로세스 표에서 사라지기를 기다리는 시간.
 const KILL_SETTLE: Duration = Duration::from_secs(1);
 
-/// 자식 환경에 넣는 중첩 표지. 에이전트가 작업 중 실행한 `saturn`은 이 변수가 있으면 거절한다(판정은 `cli`).
-/// TODO(#33): 표지 이름과 방식(환경 변수만, 소켓 경로 포함 등) 미정. 자식 Saturn을 부모에 붙이는 방식이 정해지면 바꾼다
+/// 에이전트가 작업 중 실행한 `saturn`은 이 변수가 있으면 거절한다(판정은 `cli`).
+/// TODO(#33): 표지 이름과 방식 미정. 자식 Saturn을 부모에 붙이는 방식이 정해지면 바꾼다
 pub const NESTED_MARKER_ENV: &str = "SATURN_AGENT";
 
-/// 멈춤 결과를 확인하지 못했을 때 화면 문구. `{n}`은 남은 프로세스 수.
+/// `{n}`은 남은 프로세스 수.
 pub const UNCONFIRMED_NOTICE: &str = "멈춤 확인 안 됨 · {n}개 남음";
 
-/// 프로세스 실행과 중지 오류.
 #[derive(Debug, thiserror::Error)]
 pub enum ProcessError {
-    /// 실행 실패. 프로세스가 뜨지 않았으므로 provider 입장에서는 보내기 전 실패다.
+    /// 프로세스가 뜨지 않았으므로 provider 입장에서는 보내기 전 실패다.
     #[error("failed to spawn process: {program}")]
     Spawn {
         program: PathBuf,
@@ -60,66 +47,56 @@ pub enum ProcessError {
     /// 등록되지 않았거나 이미 정리한 묶음.
     #[error("process group not found: {0:?}")]
     UnknownGroup(ProcessGroupId),
-    /// 신호 전송 실패(권한 없음 등). 이미 끝난 프로세스(ESRCH)는 실패로 보지 않는다.
+    /// 이미 끝난 프로세스(ESRCH)는 실패로 보지 않는다.
     #[error("failed to signal process group: {0:?}")]
     Signal(ProcessGroupId, #[source] std::io::Error),
-    /// 프로세스 표 조회 실패. 남은 수를 모르므로 호출자는 완료라고 하지 않는다.
+    /// 남은 수를 모르므로 호출자는 완료라고 하지 않는다.
     #[error("failed to inspect process table")]
     Inspect(#[source] std::io::Error),
 }
 
-/// 프로세스 묶음 id. 묶음 리더(provider 본 프로세스)의 pid와 같다.
+/// 묶음 리더(provider 본 프로세스)의 pid와 같다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ProcessGroupId(pub u32);
 
-/// 실행할 프로세스. `providers`가 만든다.
 #[derive(Debug, Clone)]
 pub struct ProcessSpec {
-    /// 실행 파일(`codex`, `claude` 또는 절대 경로).
     pub program: PathBuf,
-    /// 인자. Saturn 기본값 인자는 `providers`가 이미 넣어 둔다.
+    /// Saturn 기본값 인자는 `providers`가 이미 넣어 둔다.
     pub args: Vec<String>,
-    /// 작업 폴더.
     pub workdir: PathBuf,
-    /// 자식 환경 전체. engine이 부모 환경(`std::env::vars_os`)을 `secrets::scrub`으로 거른 값에 provider별 변수를 더한 것.
+    /// engine이 `secrets::scrub`으로 한 번 거른 부모 환경에 provider별 변수를 더한 것.
     pub env: Vec<(OsString, OsString)>,
 }
 
-/// 실행한 프로세스의 표준 입출력. `providers`가 규약대로 읽고 쓴다.
 #[derive(Debug)]
 pub struct ChildIo {
-    /// provider에 요청을 쓰는 쪽.
     pub stdin: ChildStdin,
-    /// provider 이벤트를 읽는 쪽. 한 줄에 JSON 하나.
+    /// 한 줄에 JSON 하나.
     pub stdout: ChildStdout,
-    /// 진단 출력. `secrets::Masker`로 가린 뒤에만 `tracing`으로 남긴다.
+    /// `secrets::Masker`로 가린 뒤에만 `tracing`으로 남긴다.
     pub stderr: ChildStderr,
 }
 
-/// 실행 결과.
 #[derive(Debug)]
 pub struct Spawned {
-    /// 새 묶음 id.
     pub group: ProcessGroupId,
-    /// 표준 입출력.
     pub io: ChildIo,
 }
 
-/// 중지 범위.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StopScope {
-    /// 묶음 리더(provider 본 프로세스)는 남기고 자손만. 멈춤 뒤에도 session을 이어 쓸 때(Codex app-server, 유예 중 Claude).
+    /// 리더는 남기고 자손만. 멈춤 뒤에도 session을 이어 쓸 때.
     Descendants,
-    /// 리더까지 전부. session 닫기, 연결 끊김, engine 종료 때.
+    /// 리더까지 전부.
     Whole,
 }
 
-/// 중지 결과.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StopOutcome {
     /// 범위 안 프로세스와 묶음 밖으로 빠져나간 자손이 모두 끝났다.
     Stopped,
-    /// 강제 종료 뒤에도 남았다. 대부분 묶음 밖으로 빠져나간 프로세스(`setsid` 등)다. 완료라고 하지 않는다.
+    /// 강제 종료 뒤에도 남았다(대부분 `setsid` 등으로 묶음 밖으로 나간 프로세스).
     Unconfirmed {
         /// 남은 프로세스 수.
         remaining: usize,
@@ -127,7 +104,7 @@ pub enum StopOutcome {
 }
 
 impl StopOutcome {
-    /// 화면 문구. `Stopped`면 `None`, 아니면 `멈춤 확인 안 됨 · N개 남음`.
+    /// `Stopped`면 `None`.
     pub fn notice(&self) -> Option<String> {
         match self {
             Self::Stopped => None,
@@ -138,12 +115,11 @@ impl StopOutcome {
     }
 }
 
-/// 프로세스가 끝난 모습.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ExitInfo {
-    /// 종료 코드. 신호로 끝났으면 `None`.
+    /// 신호로 끝났으면 `None`.
     pub code: Option<i32>,
-    /// 끝낸 신호 번호. 정상 종료면 `None`.
+    /// 정상 종료면 `None`.
     pub signal: Option<i32>,
 }
 
@@ -156,7 +132,6 @@ impl From<ExitStatus> for ExitInfo {
     }
 }
 
-/// 프로세스 표 한 줄.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ProcessRow {
     pid: u32,
@@ -164,42 +139,34 @@ struct ProcessRow {
     pgid: u32,
 }
 
-/// 중지 단계별 대기 시간. 테스트가 줄여 넣는다.
+/// 테스트가 줄여 넣는다.
 #[derive(Debug, Clone, Copy)]
 struct Grace {
     stop: Duration,
     kill: Duration,
 }
 
-/// 등록된 묶음 하나의 감시 상태.
 #[derive(Debug)]
 struct Watched {
-    /// 리더 프로세스. 종료 수거(reap)와 종료 코드 확인에 쓴다.
+    /// 종료 수거(reap)와 종료 코드 확인에 쓴다.
     child: tokio::process::Child,
-    /// 감시 중 본 자손 pid. pgid가 묶음과 달라진 것이 묶음 밖으로 빠져나간 프로세스다.
+    /// pgid가 묶음과 달라진 것이 묶음 밖으로 빠져나간 프로세스다.
     seen_descendants: Vec<u32>,
-    /// 리더가 끝났으면 그 모습.
     exited: Option<ExitInfo>,
 }
 
-/// provider 프로세스 감시자. engine에 하나, 복제해 provider 연결마다 나눠 준다(내부는 공유).
+/// engine에 하나, 복제해 provider 연결마다 나눠 준다(내부는 공유).
 #[derive(Debug, Clone, Default)]
 pub struct Supervisor {
     groups: Arc<Mutex<HashMap<ProcessGroupId, Watched>>>,
 }
 
 impl Supervisor {
-    /// 빈 감시자.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// 새 묶음의 리더로 실행하고 감시를 시작한다.
-    ///
-    /// `env_clear` 뒤 `secrets::scrub(spec.env)` 결과와 `NESTED_MARKER_ENV=1`만 넣는다. 제외 목록(`secrets::CHILD_ENV_DENYLIST`)은 여기서 다시 보지 않고 `scrub`에 맡긴다.
-    /// `process_group(0)`으로 새 묶음을 만들고 stdin, stdout, stderr를 파이프로 잇는다.
-    /// 등록 뒤 자손 목록 갱신과 리더 종료 수거를 백그라운드 작업으로 돌린다. 갱신 주기는 `WATCH_INTERVAL`(초안 1초)이다.
-    /// tokio 실행기 안에서 불러야 한다.
+    /// 제외 목록은 여기서 다시 보지 않고 `secrets::scrub`에 맡긴다. tokio 실행기 안에서 불러야 한다.
     ///
     /// # Errors
     /// 실행 파일이 없거나 실행 권한이 없으면 `Spawn`.
@@ -240,7 +207,7 @@ impl Supervisor {
         Ok(Spawned { group, io })
     }
 
-    /// 묶음 리더가 끝날 때까지 기다린다. 이미 끝났으면 바로 돌려준다.
+    /// 이미 끝났으면 바로 돌려준다.
     ///
     /// # Errors
     /// 등록되지 않은 묶음이면 `UnknownGroup`.
@@ -253,19 +220,11 @@ impl Supervisor {
         }
     }
 
-    /// 리더가 아직 살아 있는지.
     pub fn is_running(&self, group: ProcessGroupId) -> bool {
         matches!(self.reap(group), Ok(None))
     }
 
-    /// 단계별 중지. 호출자는 provider 멈춤 신호를 먼저 모두 보낸다.
-    ///
-    /// 1. 범위 안 프로세스가 모두 끝나기를 `STOP_GRACE`(10초)까지 기다린다.
-    /// 2. 남았으면 묶음에 SIGTERM(`Descendants`면 리더 빼고 자손 pid마다).
-    /// 3. `KILL_GRACE` 뒤에도 남았으면 SIGKILL.
-    /// 4. 범위 안 프로세스와 묶음 밖으로 빠져나간 자손 중 살아 있는 수를 센다. 0이면 `Stopped`, 아니면 `Unconfirmed`.
-    ///
-    /// 묶음 밖 자손에는 신호를 보내지 않고 수만 보고한다. 트리 유휴(`core::agents`)까지 확인해 멈춤 완료를 알리는 것은 호출자다.
+    /// 호출자는 provider 멈춤 신호를 먼저 모두 보낸다. 묶음 밖 자손에는 신호를 보내지 않고 수만 보고한다.
     ///
     /// # Errors
     /// 등록되지 않은 묶음이면 `UnknownGroup`, 신호 실패는 `Signal`, 남은 수를 셀 수 없으면 `Inspect`.
@@ -281,7 +240,7 @@ impl Supervisor {
         self.stop_tree_with(group, scope, grace).await
     }
 
-    /// 등록된 모든 묶음을 `StopScope::Whole`로 멈춘다. engine 종료 때 부른다. 묶음마다 결과를 돌려준다.
+    /// engine 종료 때 부른다.
     pub async fn stop_all(&self) -> Vec<(ProcessGroupId, Result<StopOutcome, ProcessError>)> {
         let groups: Vec<ProcessGroupId> = self.lock().keys().copied().collect();
         let mut results = Vec::with_capacity(groups.len());
@@ -291,8 +250,7 @@ impl Supervisor {
         results
     }
 
-    /// 끝난 묶음을 등록에서 뺀다. 리더가 끝났고 남은 자손이 없을 때만 뺀다. 뺐으면 참.
-    /// 남은 자손은 마지막 감시 때 본 목록으로 판단한다(프로세스 표를 새로 읽지 않는다).
+    /// 리더가 끝났고 마지막 감시 때 본 자손이 없을 때만 뺀다.
     pub fn release(&self, group: ProcessGroupId) -> bool {
         if !matches!(self.reap(group), Ok(Some(_))) {
             return false;
@@ -308,7 +266,7 @@ impl Supervisor {
         true
     }
 
-    /// `stop_tree`의 본문. 대기 시간을 받아 테스트가 줄여 넣는다.
+    /// 테스트가 대기 시간을 줄여 넣는다.
     async fn stop_tree_with(
         &self,
         group: ProcessGroupId,
@@ -328,7 +286,7 @@ impl Supervisor {
         self.outcome(group, scope).await
     }
 
-    /// 범위 안 프로세스가 모두 끝날 때까지 `limit`만큼 기다린다. 끝났으면 참.
+    /// 끝났으면 참.
     async fn wait_until_clear(
         &self,
         group: ProcessGroupId,
@@ -350,7 +308,7 @@ impl Supervisor {
         }
     }
 
-    /// 범위 안 프로세스에 신호를 보낸다. `Whole`은 묶음 전체, `Descendants`는 리더를 뺀 pid마다.
+    /// `Descendants`는 리더를 뺀 pid마다 보낸다.
     async fn signal_scope(
         &self,
         group: ProcessGroupId,
@@ -370,7 +328,7 @@ impl Supervisor {
         }
     }
 
-    /// 마지막 집계. 범위 안 프로세스와 묶음 밖으로 빠져나간 자손 중 살아 있는 수.
+    /// 범위 안 프로세스와 묶음 밖으로 빠져나간 자손 중 살아 있는 수.
     async fn outcome(
         &self,
         group: ProcessGroupId,
@@ -397,7 +355,7 @@ impl Supervisor {
         }
     }
 
-    /// 백그라운드 감시. 리더 종료를 수거하고 자손 목록을 넓힌다. 리더가 끝나고 산 자손이 없거나 등록이 빠지면 멈춘다.
+    /// 리더가 끝나고 산 자손이 없거나 등록이 빠지면 멈춘다.
     async fn watch(self, group: ProcessGroupId) {
         loop {
             tokio::time::sleep(WATCH_INTERVAL).await;
@@ -418,7 +376,6 @@ impl Supervisor {
         }
     }
 
-    /// 리더가 끝났으면 수거하고 그 모습을 돌려준다.
     fn reap(&self, group: ProcessGroupId) -> Result<Option<ExitInfo>, ProcessError> {
         let mut groups = self.lock();
         let watched = groups
@@ -432,7 +389,7 @@ impl Supervisor {
         Ok(watched.exited)
     }
 
-    /// 프로세스 표에서 리더의 자손(부모 줄을 따라 내려간 것)과 묶음 구성원을 감시 목록에 더한다.
+    /// 리더에서 부모 줄을 따라 내려간 자손과 묶음 구성원을 더한다.
     fn remember_descendants(&self, group: ProcessGroupId, rows: &[ProcessRow]) {
         let found = descendants(group, rows);
         if let Some(watched) = self.lock().get_mut(&group) {
@@ -459,7 +416,7 @@ impl Supervisor {
     }
 }
 
-/// 범위 안에서 아직 살아 있는 pid. 좀비는 프로세스 표 읽기에서 이미 뺐다.
+/// 좀비는 프로세스 표 읽기에서 이미 뺐다.
 fn in_scope(group: ProcessGroupId, scope: StopScope, rows: &[ProcessRow]) -> Vec<u32> {
     rows.iter()
         .filter(|row| row.pgid == group.0)
@@ -468,7 +425,7 @@ fn in_scope(group: ProcessGroupId, scope: StopScope, rows: &[ProcessRow]) -> Vec
         .collect()
 }
 
-/// 리더에서 부모 줄을 따라 내려간 자손과 같은 묶음의 구성원(리더 제외).
+/// 리더 제외.
 fn descendants(group: ProcessGroupId, rows: &[ProcessRow]) -> Vec<u32> {
     let mut found: Vec<u32> = rows
         .iter()
@@ -488,7 +445,7 @@ fn descendants(group: ProcessGroupId, rows: &[ProcessRow]) -> Vec<u32> {
     found
 }
 
-/// `ps`로 살아 있는 프로세스 표를 읽는다. 좀비(`Z`)는 끝난 것으로 보고 뺀다.
+/// 좀비(`Z`)는 끝난 것으로 보고 뺀다.
 async fn process_table() -> Result<Vec<ProcessRow>, ProcessError> {
     let output = tokio::process::Command::new("/bin/ps")
         .args(["-A", "-o", "pid=,ppid=,pgid=,stat="])
@@ -506,7 +463,6 @@ async fn process_table() -> Result<Vec<ProcessRow>, ProcessError> {
     Ok(parse_table(&String::from_utf8_lossy(&output.stdout)))
 }
 
-/// `ps -o pid=,ppid=,pgid=,stat=` 출력 해석.
 fn parse_table(text: &str) -> Vec<ProcessRow> {
     text.lines()
         .filter_map(|line| {
@@ -520,7 +476,7 @@ fn parse_table(text: &str) -> Vec<ProcessRow> {
         .collect()
 }
 
-/// pid(음수면 묶음)에 신호를 보낸다. 이미 없는 대상(ESRCH)은 성공으로 본다.
+/// 음수 pid는 묶음이다. 이미 없는 대상(ESRCH)은 성공으로 본다.
 fn send_signal(target: libc::pid_t, signal: libc::c_int) -> std::io::Result<()> {
     // SAFETY: `kill`은 메모리를 건드리지 않는 시스템 호출이고 인자는 정수다
     let result = unsafe { libc::kill(target, signal) };
@@ -534,7 +490,7 @@ fn send_signal(target: libc::pid_t, signal: libc::c_int) -> std::io::Result<()> 
     Err(error)
 }
 
-/// pid가 살아 있는지(신호 0). 권한이 없어도 존재하면 참.
+/// 권한이 없어도 존재하면 참.
 fn pid_alive(pid: u32) -> bool {
     // SAFETY: 신호 0은 존재 확인만 하는 `kill` 호출이다
     let result = unsafe { libc::kill(to_pid(pid), 0) };
