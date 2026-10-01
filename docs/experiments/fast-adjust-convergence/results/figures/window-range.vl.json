@@ -1,0 +1,194 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": {
+    "text": "후반 5,000건의 100건 안 기준값 폭",
+    "subtitle": "조건마다 복제 n=100. 기준선은 멈춤 폭 0.02"
+  },
+  "width": 420,
+  "height": 220,
+  "layer": [
+    {
+      "data": {
+        "values": [
+          {
+            "condition": "3%",
+            "signal": "행동 신호",
+            "range": 0.030238,
+            "low": 0.028643,
+            "high": 0.031834
+          },
+          {
+            "condition": "5%",
+            "signal": "행동 신호",
+            "range": 0.05111,
+            "low": 0.050043,
+            "high": 0.052177
+          },
+          {
+            "condition": "10%",
+            "signal": "행동 신호",
+            "range": 0.052562,
+            "low": 0.051622,
+            "high": 0.053503
+          },
+          {
+            "condition": "3%",
+            "signal": "물은 판단만",
+            "range": 0.00406,
+            "low": 0.003668,
+            "high": 0.004452
+          },
+          {
+            "condition": "5%",
+            "signal": "물은 판단만",
+            "range": 0.005096,
+            "low": 0.004719,
+            "high": 0.005472
+          },
+          {
+            "condition": "10%",
+            "signal": "물은 판단만",
+            "range": 0.005155,
+            "low": 0.004848,
+            "high": 0.005462
+          }
+        ]
+      },
+      "mark": "bar",
+      "encoding": {
+        "x": {
+          "field": "condition",
+          "type": "nominal",
+          "title": "시작 기준값의 틀림 비율",
+          "sort": [
+            "3%",
+            "5%",
+            "10%"
+          ],
+          "axis": {
+            "labelAngle": 0
+          }
+        },
+        "xOffset": {
+          "field": "signal",
+          "sort": [
+            "행동 신호",
+            "물은 판단만"
+          ]
+        },
+        "y": {
+          "field": "range",
+          "type": "quantitative",
+          "title": "기준값 폭(최대 − 최소)",
+          "scale": {
+            "zero": true
+          }
+        },
+        "color": {
+          "field": "signal",
+          "type": "nominal",
+          "title": "신호 출처",
+          "sort": [
+            "행동 신호",
+            "물은 판단만"
+          ]
+        }
+      }
+    },
+    {
+      "data": {
+        "values": [
+          {
+            "condition": "3%",
+            "signal": "행동 신호",
+            "range": 0.030238,
+            "low": 0.028643,
+            "high": 0.031834
+          },
+          {
+            "condition": "5%",
+            "signal": "행동 신호",
+            "range": 0.05111,
+            "low": 0.050043,
+            "high": 0.052177
+          },
+          {
+            "condition": "10%",
+            "signal": "행동 신호",
+            "range": 0.052562,
+            "low": 0.051622,
+            "high": 0.053503
+          },
+          {
+            "condition": "3%",
+            "signal": "물은 판단만",
+            "range": 0.00406,
+            "low": 0.003668,
+            "high": 0.004452
+          },
+          {
+            "condition": "5%",
+            "signal": "물은 판단만",
+            "range": 0.005096,
+            "low": 0.004719,
+            "high": 0.005472
+          },
+          {
+            "condition": "10%",
+            "signal": "물은 판단만",
+            "range": 0.005155,
+            "low": 0.004848,
+            "high": 0.005462
+          }
+        ]
+      },
+      "mark": "errorbar",
+      "encoding": {
+        "x": {
+          "field": "condition",
+          "type": "nominal",
+          "title": "시작 기준값의 틀림 비율",
+          "sort": [
+            "3%",
+            "5%",
+            "10%"
+          ],
+          "axis": {
+            "labelAngle": 0
+          }
+        },
+        "xOffset": {
+          "field": "signal",
+          "sort": [
+            "행동 신호",
+            "물은 판단만"
+          ]
+        },
+        "y": {
+          "field": "low",
+          "type": "quantitative",
+          "title": null
+        },
+        "y2": {
+          "field": "high"
+        }
+      }
+    },
+    {
+      "data": {
+        "values": [
+          {
+            "limit": 0.02
+          }
+        ]
+      },
+      "mark": "rule",
+      "encoding": {
+        "y": {
+          "field": "limit",
+          "type": "quantitative"
+        }
+      }
+    }
+  ]
+}
