@@ -1,0 +1,160 @@
+{"id": "pr-001", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 3, "text": "에러 메시지는 영어로 통일해"}, "later": {"turn": 20, "text": "에러 메시지는 한국어로 통일해"}}
+{"id": "pr-002", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 16, "text": "패키지는 npm으로 설치해"}, "later": {"turn": 35, "text": "패키지는 pnpm으로만 설치해"}}
+{"id": "pr-003", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 2, "text": "테스트는 unittest로 써"}, "later": {"turn": 32, "text": "테스트는 pytest로만 써"}}
+{"id": "pr-004", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 1, "text": "커밋 메시지는 한글로 써"}, "later": {"turn": 15, "text": "커밋 메시지는 영어로 써"}}
+{"id": "pr-005", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 3, "text": "들여쓰기는 탭으로 해"}, "later": {"turn": 30, "text": "들여쓰기는 스페이스 4칸으로 해"}}
+{"id": "pr-006", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 3, "text": "답변은 자세히 길게 해"}, "later": {"turn": 9, "text": "답변은 세 줄 이내로 해"}}
+{"id": "pr-007", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 12, "text": "주석은 영어로 달아"}, "later": {"turn": 37, "text": "주석은 한국어로 달아"}}
+{"id": "pr-008", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 20, "text": "함수 이름은 camelCase로 지어"}, "later": {"turn": 32, "text": "함수 이름은 snake_case로 지어"}}
+{"id": "pr-009", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 19, "text": "Docker 이미지는 ubuntu 기반으로 만들어"}, "later": {"turn": 41, "text": "Docker 이미지는 alpine 기반으로만 만들어"}}
+{"id": "pr-010", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 19, "text": "문서는 존댓말로 써"}, "later": {"turn": 28, "text": "문서는 평서문으로 써"}}
+{"id": "pr-011", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 11, "text": "날짜는 MM/DD/YYYY로 적어"}, "later": {"turn": 15, "text": "날짜는 ISO 8601로 적어"}}
+{"id": "pr-012", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 10, "text": "API 필드는 snake_case로 해"}, "later": {"turn": 40, "text": "API 필드는 camelCase로 통일해"}}
+{"id": "pr-013", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 8, "text": "응답에 코드 전체를 보여줘"}, "later": {"turn": 29, "text": "응답에는 바뀐 부분만 보여줘"}}
+{"id": "pr-014", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 7, "text": "테스트 이름은 영어로 지어"}, "later": {"turn": 28, "text": "테스트 이름은 한글 문장으로 지어"}}
+{"id": "pr-015", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 6, "text": "줄 길이는 80자로 맞춰"}, "later": {"turn": 24, "text": "줄 길이는 120자까지 허용해"}}
+{"id": "pr-016", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 3, "text": "셸 스크립트는 bash로 써"}, "later": {"turn": 8, "text": "셸 스크립트는 POSIX sh로만 써"}}
+{"id": "pr-017", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 19, "text": "시간은 서울 시간 기준으로 다뤄"}, "later": {"turn": 22, "text": "시간은 항상 UTC로 다뤄"}}
+{"id": "pr-018", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 3, "text": "PR 설명은 영어로 써"}, "later": {"turn": 28, "text": "PR 설명은 한국어로 써"}}
+{"id": "pr-019", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 9, "text": "README는 한국어로 써"}, "later": {"turn": 33, "text": "README는 영어로 써"}}
+{"id": "pr-020", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 11, "text": "이모지를 적극적으로 써"}, "later": {"turn": 14, "text": "이모지는 쓰지 마"}}
+{"id": "pr-021", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 5, "text": "의존성 버전은 범위로 지정해"}, "later": {"turn": 16, "text": "의존성 버전은 정확한 버전으로 고정해"}}
+{"id": "pr-022", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 8, "text": "main 브랜치에 바로 커밋해"}, "later": {"turn": 29, "text": "main 브랜치에 직접 커밋하지 마"}}
+{"id": "pr-023", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 20, "text": "로그는 한국어로 남겨"}, "later": {"turn": 35, "text": "로그는 영어로 남겨"}}
+{"id": "pr-024", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 14, "text": "파일 이름은 snake_case로 지어"}, "later": {"turn": 20, "text": "파일 이름은 kebab-case로 지어"}}
+{"id": "pr-025", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 15, "text": "CSS는 Tailwind로 써"}, "later": {"turn": 40, "text": "CSS는 Tailwind 없이 일반 CSS 파일로 써"}}
+{"id": "pr-026", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 5, "text": "SQL은 ORM으로 작성해"}, "later": {"turn": 26, "text": "SQL은 ORM 없이 직접 쿼리로 작성해"}}
+{"id": "pr-027", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 18, "text": "작업 끝날 때마다 바뀐 파일 목록 알려줘"}, "later": {"turn": 35, "text": "바뀐 파일 목록은 알려주지 마"}}
+{"id": "pr-028", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 9, "text": "새 라이브러리 추가는 자유롭게 해"}, "later": {"turn": 21, "text": "외부 라이브러리는 새로 추가하지 마"}}
+{"id": "pr-029", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 5, "text": "JSON 키 순서는 그대로 둬"}, "later": {"turn": 28, "text": "JSON 키는 알파벳 순으로 정렬해"}}
+{"id": "pr-030", "category": "direct-replace", "indirect": false, "label": "replaces", "earlier": {"turn": 10, "text": "타입 힌트는 붙이지 마"}, "later": {"turn": 34, "text": "타입 힌트는 빠짐없이 붙여"}}
+{"id": "pr-031", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 3, "text": "에러 메시지는 영어로 통일해"}, "later": {"turn": 18, "text": "아니, 한국어로 바꿔"}}
+{"id": "pr-032", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 4, "text": "패키지는 npm으로 설치해"}, "later": {"turn": 15, "text": "아니다, 그거 pnpm으로 바꿔"}}
+{"id": "pr-033", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 6, "text": "테스트는 unittest로 써"}, "later": {"turn": 35, "text": "생각해 보니 그것도 pytest로 하자"}}
+{"id": "pr-034", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 12, "text": "커밋 메시지는 한글로 써"}, "later": {"turn": 18, "text": "그거 영어로 하는 걸로 바꿀게"}}
+{"id": "pr-035", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 17, "text": "들여쓰기는 탭으로 해"}, "later": {"turn": 45, "text": "아니, 스페이스로 해"}}
+{"id": "pr-036", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 12, "text": "답변은 자세히 길게 해줘"}, "later": {"turn": 36, "text": "방금 말한 거 반대로, 짧게 해"}}
+{"id": "pr-037", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 19, "text": "로그는 한국어로 남겨"}, "later": {"turn": 40, "text": "그것도 영어로 통일하자"}}
+{"id": "pr-038", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 14, "text": "주석은 영어로 달아"}, "later": {"turn": 29, "text": "아니, 그건 한국어가 낫겠다"}}
+{"id": "pr-039", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 15, "text": "함수 이름은 camelCase로 해"}, "later": {"turn": 18, "text": "아까 말한 거 snake_case로 바꿔"}}
+{"id": "pr-040", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 5, "text": "Docker 이미지는 ubuntu 기반으로 만들어"}, "later": {"turn": 12, "text": "그거 alpine으로 바꿔"}}
+{"id": "pr-041", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 14, "text": "문서는 존댓말로 써"}, "later": {"turn": 33, "text": "아니, 평서문으로 가자"}}
+{"id": "pr-042", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 12, "text": "날짜는 MM/DD/YYYY로 적어"}, "later": {"turn": 35, "text": "그 형식 말고 ISO 형식으로 해"}}
+{"id": "pr-043", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 12, "text": "새 의존성은 추가하지 마"}, "later": {"turn": 35, "text": "그 규칙 풀게, 필요하면 추가해"}}
+{"id": "pr-044", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 1, "text": "API 필드는 snake_case로 해"}, "later": {"turn": 17, "text": "그거 camelCase로 바꿔"}}
+{"id": "pr-045", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 12, "text": "응답에 코드 전체를 보여줘"}, "later": {"turn": 42, "text": "아니, 바뀐 부분만"}}
+{"id": "pr-046", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 16, "text": "테스트 이름은 영어로 지어"}, "later": {"turn": 36, "text": "아니, 한글로 하자"}}
+{"id": "pr-047", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 11, "text": "파이썬은 3.10 문법까지만 써"}, "later": {"turn": 12, "text": "그거 3.12로 올려"}}
+{"id": "pr-048", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 5, "text": "README는 한국어로 써"}, "later": {"turn": 32, "text": "생각이 바뀌었어, 영어로 해"}}
+{"id": "pr-049", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 17, "text": "줄 길이는 80자로 맞춰"}, "later": {"turn": 20, "text": "아니, 120자로 늘려"}}
+{"id": "pr-050", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 8, "text": "셸 스크립트는 bash로 써"}, "later": {"turn": 9, "text": "그거 sh로 바꿔"}}
+{"id": "pr-051", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 13, "text": "시간은 서울 시간 기준으로 다뤄"}, "later": {"turn": 25, "text": "아니, UTC로 하자"}}
+{"id": "pr-052", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 10, "text": "PR 설명은 영어로 써"}, "later": {"turn": 18, "text": "아까 그거 한국어로 바꿔"}}
+{"id": "pr-053", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 13, "text": "작업 끝나면 바뀐 파일 목록 알려줘"}, "later": {"turn": 29, "text": "그거 이제 안 해도 돼"}}
+{"id": "pr-054", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 17, "text": "이모지는 쓰지 마"}, "later": {"turn": 36, "text": "방금 그 금지 취소할게"}}
+{"id": "pr-055", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 16, "text": "main에 직접 커밋해도 돼"}, "later": {"turn": 43, "text": "아니, 그건 이제 금지야"}}
+{"id": "pr-056", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 7, "text": "CSS는 Tailwind로 써"}, "later": {"turn": 35, "text": "그거 빼고 일반 CSS로 해"}}
+{"id": "pr-057", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 8, "text": "SQL은 ORM으로 작성해"}, "later": {"turn": 10, "text": "아니, ORM 쓰지 말자"}}
+{"id": "pr-058", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 20, "text": "JSON 키 순서는 그대로 둬"}, "later": {"turn": 22, "text": "그거 정렬하는 걸로 바꿔"}}
+{"id": "pr-059", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 20, "text": "타입 힌트는 붙이지 마"}, "later": {"turn": 47, "text": "말 바꿀게, 다 붙여"}}
+{"id": "pr-060", "category": "indirect-replace", "indirect": true, "label": "replaces", "earlier": {"turn": 19, "text": "파일 이름은 snake_case로 지어"}, "later": {"turn": 36, "text": "아니, 그거 kebab-case로"}}
+{"id": "pr-061", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 11, "text": "모든 출력은 영어로 해"}, "later": {"turn": 17, "text": "에러 메시지는 한국어로 써"}}
+{"id": "pr-062", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 15, "text": "테스트는 pytest로 써"}, "later": {"turn": 39, "text": "통합 테스트는 셸 스크립트로 해"}}
+{"id": "pr-063", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 12, "text": "주석은 영어로 달아"}, "later": {"turn": 24, "text": "공개 API 주석은 한국어로 달아"}}
+{"id": "pr-064", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 15, "text": "의존성 추가하지 마"}, "later": {"turn": 43, "text": "개발용 도구는 추가해도 돼"}}
+{"id": "pr-065", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 1, "text": "파일 하나는 300줄을 넘기지 마"}, "later": {"turn": 7, "text": "생성된 코드 파일은 길어도 돼"}}
+{"id": "pr-066", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 1, "text": "문서는 평서문으로 써"}, "later": {"turn": 18, "text": "사용자 안내 문구는 존댓말로 써"}}
+{"id": "pr-067", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 14, "text": "로그는 영어로 남겨"}, "later": {"turn": 30, "text": "감사 로그는 한국어로 남겨"}}
+{"id": "pr-068", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 4, "text": "답변은 세 줄 이내로 해"}, "later": {"turn": 26, "text": "설계 설명은 자세히 해"}}
+{"id": "pr-069", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 12, "text": "함수 이름은 snake_case로 지어"}, "later": {"turn": 28, "text": "테스트 함수 이름은 한글로 지어"}}
+{"id": "pr-070", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 12, "text": "force push는 하지 마"}, "later": {"turn": 22, "text": "내 개인 브랜치에서는 force push 해도 돼"}}
+{"id": "pr-071", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 8, "text": "시간은 UTC로 다뤄"}, "later": {"turn": 33, "text": "화면에 보여주는 시간은 서울 시간으로 해"}}
+{"id": "pr-072", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 20, "text": "이모지는 쓰지 마"}, "later": {"turn": 33, "text": "커밋 메시지 앞에는 gitmoji를 붙여"}}
+{"id": "pr-073", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 4, "text": "줄 길이는 100자를 넘기지 마"}, "later": {"turn": 23, "text": "URL이 들어간 줄은 길어도 돼"}}
+{"id": "pr-074", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 6, "text": "print 디버깅은 남기지 마"}, "later": {"turn": 12, "text": "CLI 출력용 print는 써도 돼"}}
+{"id": "pr-075", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 3, "text": "응답에는 바뀐 부분만 보여줘"}, "later": {"turn": 24, "text": "새 파일은 전체를 보여줘"}}
+{"id": "pr-076", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 13, "text": "설정 값은 환경 변수로 받아"}, "later": {"turn": 41, "text": "테스트에서는 설정 값을 코드에 넣어도 돼"}}
+{"id": "pr-077", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 4, "text": "README는 영어로 써"}, "later": {"turn": 23, "text": "README 설치 절은 한국어로도 같이 써"}}
+{"id": "pr-078", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 10, "text": "TypeScript에서 any는 쓰지 마"}, "later": {"turn": 30, "text": "외부 라이브러리 타입 보정에는 any를 허용해"}}
+{"id": "pr-079", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 6, "text": "삭제 명령은 실행 전에 물어봐"}, "later": {"turn": 15, "text": "빌드 폴더 정리는 묻지 말고 해"}}
+{"id": "pr-080", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 20, "text": "들여쓰기는 스페이스 4칸으로 해"}, "later": {"turn": 42, "text": "YAML 파일은 2칸으로 해"}}
+{"id": "pr-081", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 11, "text": "모든 함수에 타입 힌트를 붙여"}, "later": {"turn": 33, "text": "스크립트 파일에는 타입 힌트 생략해"}}
+{"id": "pr-082", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 5, "text": "커밋 메시지는 한국어로 써"}, "later": {"turn": 14, "text": "커밋 타입 접두사는 영어로 써"}}
+{"id": "pr-083", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 20, "text": "외부 호출엔 타임아웃 5초 걸어"}, "later": {"turn": 25, "text": "파일 업로드 호출은 60초로 해"}}
+{"id": "pr-084", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 5, "text": "PR 하나에는 변경 하나만 담아"}, "later": {"turn": 8, "text": "오타 수정은 아무 PR에 같이 넣어도 돼"}}
+{"id": "pr-085", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 10, "text": "날짜는 ISO 8601로 적어"}, "later": {"turn": 33, "text": "보고서 표의 날짜는 MM월 DD일로 적어"}}
+{"id": "pr-086", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 19, "text": "lint 경고 끄는 주석은 쓰지 마"}, "later": {"turn": 47, "text": "생성된 파일에는 lint 끄는 주석을 넣어"}}
+{"id": "pr-087", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 7, "text": "Docker 이미지는 alpine 기반으로 만들어"}, "later": {"turn": 37, "text": "GPU 이미지는 ubuntu 기반으로 해"}}
+{"id": "pr-088", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 12, "text": "테스트 데이터는 합성 데이터로 해"}, "later": {"turn": 28, "text": "성능 테스트는 익명화한 실데이터로 해"}}
+{"id": "pr-089", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 10, "text": "에러는 전용 에러 타입으로 반환해"}, "later": {"turn": 25, "text": "내부 헬퍼에서는 문자열 에러를 써도 돼"}}
+{"id": "pr-090", "category": "partial", "indirect": false, "label": "partial", "earlier": {"turn": 11, "text": "코드 블록에는 언어 이름을 붙여"}, "later": {"turn": 16, "text": "셸 출력 블록은 언어 이름 없이 둬"}}
+{"id": "pr-091", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 15, "text": "커밋 메시지는 영어로 써"}, "later": {"turn": 38, "text": "커밋 메시지는 50자 이내로 써"}}
+{"id": "pr-092", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 4, "text": "테스트는 pytest로 써"}, "later": {"turn": 31, "text": "Python 타입 힌트는 빠짐없이 붙여"}}
+{"id": "pr-093", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 4, "text": "에러 메시지는 한국어로 써"}, "later": {"turn": 34, "text": "로그에 비밀번호를 남기지 마"}}
+{"id": "pr-094", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 7, "text": "들여쓰기는 스페이스 4칸으로 해"}, "later": {"turn": 12, "text": "줄 길이는 100자를 넘기지 마"}}
+{"id": "pr-095", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 11, "text": "패키지는 pnpm으로 설치해"}, "later": {"turn": 18, "text": "Node는 20 버전을 써"}}
+{"id": "pr-096", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 13, "text": "force push는 하지 마"}, "later": {"turn": 40, "text": "PR 하나에는 변경 하나만 담아"}}
+{"id": "pr-097", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 16, "text": "주석은 한국어로 달아"}, "later": {"turn": 18, "text": "함수 이름은 snake_case로 지어"}}
+{"id": "pr-098", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 15, "text": "답변은 세 줄 이내로 해"}, "later": {"turn": 42, "text": "설명할 때 이모지는 쓰지 마"}}
+{"id": "pr-099", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 4, "text": "Docker 이미지는 alpine 기반으로 만들어"}, "later": {"turn": 10, "text": "컨테이너는 root 사용자로 실행하지 마"}}
+{"id": "pr-100", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 10, "text": "날짜는 ISO 8601로 적어"}, "later": {"turn": 23, "text": "시간은 UTC로 다뤄"}}
+{"id": "pr-101", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 14, "text": "API 필드는 camelCase로 통일해"}, "later": {"turn": 18, "text": "API 응답에는 항상 request id를 넣어"}}
+{"id": "pr-102", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 18, "text": "외부 라이브러리는 새로 추가하지 마"}, "later": {"turn": 24, "text": "네트워크 호출에는 타임아웃을 걸어"}}
+{"id": "pr-103", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 6, "text": "문서는 평서문으로 써"}, "later": {"turn": 33, "text": "문서 제목은 명사형으로 끝내"}}
+{"id": "pr-104", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 9, "text": "main 브랜치에 직접 커밋하지 마"}, "later": {"turn": 21, "text": "브랜치 이름은 이슈 번호로 시작해"}}
+{"id": "pr-105", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 16, "text": "print 디버깅 코드는 남기지 마"}, "later": {"turn": 17, "text": "로그는 구조화된 JSON으로 남겨"}}
+{"id": "pr-106", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 19, "text": "CSS 색은 토큰 변수로만 지정해"}, "later": {"turn": 33, "text": "CSS 클래스 이름은 kebab-case로 지어"}}
+{"id": "pr-107", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 4, "text": "마이그레이션 파일은 직접 고치지 마"}, "later": {"turn": 33, "text": "테이블 이름은 복수형 snake_case로 지어"}}
+{"id": "pr-108", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 11, "text": "설정 값은 환경 변수로 받아"}, "later": {"turn": 29, "text": "비밀 값은 로그에 남기지 마"}}
+{"id": "pr-109", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 1, "text": "README는 영어로 써"}, "later": {"turn": 20, "text": "내부 문서는 한국어로 써"}}
+{"id": "pr-110", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 20, "text": "TypeScript에서 any는 쓰지 마"}, "later": {"turn": 37, "text": "TypeScript strict 모드는 켜 둬"}}
+{"id": "pr-111", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 19, "text": "테스트 없이 기능 코드를 커밋하지 마"}, "later": {"turn": 23, "text": "테스트 이름은 한글 문장으로 지어"}}
+{"id": "pr-112", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 6, "text": "응답에는 바뀐 부분만 보여줘"}, "later": {"turn": 31, "text": "작업 끝나면 바뀐 파일 목록을 알려줘"}}
+{"id": "pr-113", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 12, "text": "파일 하나는 300줄을 넘기지 마"}, "later": {"turn": 17, "text": "새 파일 이름은 kebab-case로 지어"}}
+{"id": "pr-114", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 15, "text": "JSON 키는 알파벳 순으로 정렬해"}, "later": {"turn": 37, "text": "JSON은 들여쓰기 2칸으로 저장해"}}
+{"id": "pr-115", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 15, "text": "셸 스크립트는 POSIX sh로 써"}, "later": {"turn": 31, "text": "셸 스크립트 맨 위에 set -eu를 넣어"}}
+{"id": "pr-116", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 5, "text": "삭제 명령은 실행 전에 물어봐"}, "later": {"turn": 12, "text": "git push 전에도 나한테 확인받아"}}
+{"id": "pr-117", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 4, "text": "PR 설명은 한국어로 써"}, "later": {"turn": 26, "text": "PR 설명 첫 줄에 이슈 번호를 적어"}}
+{"id": "pr-118", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 19, "text": "에러 메시지에는 원인을 적어"}, "later": {"turn": 35, "text": "에러 메시지에는 해결 방법도 같이 적어"}}
+{"id": "pr-119", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 6, "text": "의존성 버전은 정확한 버전으로 고정해"}, "later": {"turn": 33, "text": "lock 파일은 꼭 커밋해"}}
+{"id": "pr-120", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 9, "text": "Python은 3.12 문법까지만 써"}, "later": {"turn": 26, "text": "Python 포매터는 ruff를 써"}}
+{"id": "pr-121", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 1, "text": "변수 이름에 약어를 쓰지 마"}, "later": {"turn": 8, "text": "불리언 변수는 is로 시작해"}}
+{"id": "pr-122", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 4, "text": "코드 블록에는 언어 이름을 붙여"}, "later": {"turn": 19, "text": "표는 마크다운 표로 만들어"}}
+{"id": "pr-123", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 2, "text": "테스트 데이터에 실제 개인정보를 쓰지 마"}, "later": {"turn": 9, "text": "테스트는 서로 순서에 기대지 않게 짜"}}
+{"id": "pr-124", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 9, "text": "lint 경고를 끄는 주석은 쓰지 마"}, "later": {"turn": 19, "text": "clippy 경고는 모두 고쳐"}}
+{"id": "pr-125", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 9, "text": "에러는 전용 에러 타입으로 반환해"}, "later": {"turn": 27, "text": "panic은 테스트 밖에서 쓰지 마"}}
+{"id": "pr-126", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 6, "text": "숫자 단위는 SI 접두사로 표기해"}, "later": {"turn": 12, "text": "소수는 유효 숫자 세 자리로 적어"}}
+{"id": "pr-127", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 13, "text": "SQL은 직접 쿼리로 작성해"}, "later": {"turn": 20, "text": "쿼리 파라미터는 꼭 바인딩으로 넘겨"}}
+{"id": "pr-128", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 5, "text": "커밋 메시지는 한국어로 써"}, "later": {"turn": 33, "text": "커밋 하나에는 변경 하나만 담아"}}
+{"id": "pr-129", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 16, "text": "들여쓰기는 탭으로 해"}, "later": {"turn": 25, "text": "파일 끝에는 빈 줄을 하나 둬"}}
+{"id": "pr-130", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 6, "text": "문서는 존댓말로 써"}, "later": {"turn": 34, "text": "문서에 이모지는 쓰지 마"}}
+{"id": "pr-131", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 12, "text": "로그는 영어로 남겨"}, "later": {"turn": 14, "text": "로그 레벨은 기본 info로 둬"}}
+{"id": "pr-132", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 3, "text": "함수는 50줄을 넘기지 마"}, "later": {"turn": 7, "text": "함수 인자는 네 개까지만 둬"}}
+{"id": "pr-133", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 12, "text": "API 응답은 JSON으로만 줘"}, "later": {"turn": 33, "text": "API 오류에는 오류 코드를 넣어"}}
+{"id": "pr-134", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 1, "text": "화면 문구는 존댓말로 써"}, "later": {"turn": 16, "text": "버튼 문구는 동사로 끝내"}}
+{"id": "pr-135", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 9, "text": "테스트는 pytest로 써"}, "later": {"turn": 27, "text": "테스트 픽스처는 conftest.py에 모아"}}
+{"id": "pr-136", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 4, "text": "커밋 전에 테스트를 돌려"}, "later": {"turn": 34, "text": "커밋 전에 포매터도 돌려"}}
+{"id": "pr-137", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 5, "text": "에러 메시지는 영어로 통일해"}, "later": {"turn": 28, "text": "에러 메시지 끝에는 마침표를 찍지 마"}}
+{"id": "pr-138", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 8, "text": "시간은 UTC로 다뤄"}, "later": {"turn": 15, "text": "시간 값은 밀리초 정수로 저장해"}}
+{"id": "pr-139", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 19, "text": "Docker 이미지 태그는 버전으로 고정해"}, "later": {"turn": 27, "text": "Docker 빌드는 멀티 스테이지로 해"}}
+{"id": "pr-140", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 9, "text": "새 의존성은 추가하지 마"}, "later": {"turn": 26, "text": "표준 라이브러리를 먼저 써"}}
+{"id": "pr-141", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 7, "text": "응답은 한국어로 해"}, "later": {"turn": 12, "text": "코드 식별자는 영어로 지어"}}
+{"id": "pr-142", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 6, "text": "주석은 영어로 달아"}, "later": {"turn": 25, "text": "커밋 메시지는 한국어로 써"}}
+{"id": "pr-143", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 3, "text": "README는 한국어로 써"}, "later": {"turn": 22, "text": "CHANGELOG는 영어로 써"}}
+{"id": "pr-144", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 2, "text": "에러 메시지는 한국어로 써"}, "later": {"turn": 27, "text": "로그 메시지는 영어로 써"}}
+{"id": "pr-145", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 5, "text": "테스트 이름은 영어로 지어"}, "later": {"turn": 22, "text": "테스트 설명 주석은 한국어로 달아"}}
+{"id": "pr-146", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 7, "text": "파일 이름은 kebab-case로 지어"}, "later": {"turn": 10, "text": "폴더 이름도 kebab-case로 지어"}}
+{"id": "pr-147", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 20, "text": "CSS는 일반 CSS 파일로 써"}, "later": {"turn": 49, "text": "CSS 파일은 컴포넌트마다 하나씩 둬"}}
+{"id": "pr-148", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 7, "text": "rm -rf는 쓰지 마"}, "later": {"turn": 24, "text": "파일 삭제는 휴지통으로 옮기는 걸로 해"}}
+{"id": "pr-149", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 8, "text": "API 필드는 snake_case로 해"}, "later": {"turn": 27, "text": "URL 경로는 kebab-case로 해"}}
+{"id": "pr-150", "category": "compatible", "indirect": false, "label": "compatible", "earlier": {"turn": 1, "text": "답변은 짧게 해"}, "later": {"turn": 21, "text": "코드 리뷰 의견은 번호를 붙여서 줘"}}
+{"id": "pr-151", "category": "indirect-compatible", "indirect": true, "label": "compatible", "earlier": {"turn": 8, "text": "주석은 한국어로 달아"}, "later": {"turn": 10, "text": "아, 그리고 테스트도 꼭 붙여"}}
+{"id": "pr-152", "category": "indirect-compatible", "indirect": true, "label": "compatible", "earlier": {"turn": 5, "text": "커밋 메시지는 영어로 써"}, "later": {"turn": 15, "text": "그거랑 별개로 PR 설명은 짧게 해"}}
+{"id": "pr-153", "category": "indirect-compatible", "indirect": true, "label": "compatible", "earlier": {"turn": 5, "text": "패키지는 pnpm으로 설치해"}, "later": {"turn": 31, "text": "아까 거 그대로 두고 lock 파일도 커밋해"}}
+{"id": "pr-154", "category": "indirect-compatible", "indirect": true, "label": "compatible", "earlier": {"turn": 14, "text": "에러 메시지는 영어로 통일해"}, "later": {"turn": 32, "text": "그건 그대로 하고 로그엔 사용자 이메일 남기지 마"}}
+{"id": "pr-155", "category": "indirect-compatible", "indirect": true, "label": "compatible", "earlier": {"turn": 11, "text": "들여쓰기는 스페이스 4칸으로 해"}, "later": {"turn": 14, "text": "그것도 좋고, 줄 끝 공백은 지워"}}
+{"id": "pr-156", "category": "indirect-compatible", "indirect": true, "label": "compatible", "earlier": {"turn": 5, "text": "테스트는 pytest로 써"}, "later": {"turn": 23, "text": "거기에 더해서 커버리지도 같이 재"}}
+{"id": "pr-157", "category": "indirect-compatible", "indirect": true, "label": "compatible", "earlier": {"turn": 17, "text": "문서는 평서문으로 써"}, "later": {"turn": 42, "text": "그 규칙에 더해 문장은 짧게 써"}}
+{"id": "pr-158", "category": "indirect-compatible", "indirect": true, "label": "compatible", "earlier": {"turn": 5, "text": "force push는 하지 마"}, "later": {"turn": 17, "text": "아까 그 말 유지하고 태그도 지우지 마"}}
+{"id": "pr-159", "category": "indirect-compatible", "indirect": true, "label": "compatible", "earlier": {"turn": 5, "text": "Docker 이미지는 alpine 기반으로 만들어"}, "later": {"turn": 33, "text": "그대로 가되 이미지 크기도 매번 알려줘"}}
+{"id": "pr-160", "category": "indirect-compatible", "indirect": true, "label": "compatible", "earlier": {"turn": 5, "text": "시간은 UTC로 다뤄"}, "later": {"turn": 14, "text": "그건 맞고, 날짜 형식은 ISO로 해"}}

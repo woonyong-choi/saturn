@@ -1522,6 +1522,7 @@ dependencies = [
  "crossterm",
  "ratatui",
  "saturn-protocol",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",
