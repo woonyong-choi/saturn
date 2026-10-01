@@ -27,6 +27,8 @@ pub enum QueueError {
     /// 시작을 기다리는 작업이 아니다.
     #[error("task not found: {0:?}")]
     TaskNotFound(TaskId),
+    #[error("write task workdir is already held: {0:?}")]
+    WriteConflict(TaskId),
 }
 
 /// 접수 때 고정해 쓰기 규칙을 결정론으로 판정한다.
@@ -250,20 +252,24 @@ impl Queue {
         let mut blocked_chats: Vec<ChatId> = Vec::new();
         for index in 0..self.inputs.len() {
             let entry = &self.inputs[index];
-            if entry.input.state != InputState::Queued || entry.is_dispatched {
+            if entry.input.state != InputState::Queued {
                 continue;
             }
             let chat = entry.input.chat;
+            if entry.is_dispatched {
+                blocked_chats.push(chat);
+                continue;
+            }
             let route = self.route_for(entry);
             match route {
-                Route::Steer { .. } => return Some(self.commit(index, route)),
-                _ if blocked_chats.contains(&chat) => {}
+                Route::Steer { .. } => return self.commit(index, route),
                 Route::Wait(reason) => {
                     self.inputs[index].input.reason = reason;
                     blocked_chats.push(chat);
                 }
+                _ if blocked_chats.contains(&chat) => {}
                 Route::NewTurn { .. } | Route::NewTask { .. } => {
-                    return Some(self.commit(index, route));
+                    return self.commit(index, route);
                 }
             }
         }
@@ -467,27 +473,31 @@ impl Queue {
     /// 이미 보류된 작업이면 에이전트만 기록하고 잠금은 잡지 않는다.
     ///
     /// # Errors
-    /// 시작을 기다리는 작업이 아니면 `TaskNotFound`.
-    ///
-    /// # Panics
-    /// 시작을 기다리는 쓰기 작업의 폴더를 다른 에이전트가 쥐고 있으면(`next_to_send`가 막으므로 일어나지 않음).
+    /// 시작을 기다리는 작업이 아니면 `TaskNotFound`, 폴더를 다른 에이전트가 쥐고 있으면 `WriteConflict`.
     pub fn start_task(&mut self, task: TaskId, agent: AgentId) -> Result<(), QueueError> {
-        let slot = self
+        let index = self
             .tasks
-            .iter_mut()
-            .find(|slot| slot.id == task && slot.agent.is_none())
-            .filter(|slot| matches!(slot.phase, TaskPhase::Pending | TaskPhase::Held))
+            .iter()
+            .position(|slot| {
+                slot.id == task
+                    && slot.agent.is_none()
+                    && matches!(slot.phase, TaskPhase::Pending | TaskPhase::Held)
+            })
             .ok_or(QueueError::TaskNotFound(task))?;
+        let slot = &self.tasks[index];
+        if slot.phase == TaskPhase::Pending
+            && slot.permission == Permission::Write
+            && !self.gate.try_acquire(&slot.workdir, agent)
+        {
+            return Err(QueueError::WriteConflict(task));
+        }
+        let slot = &mut self.tasks[index];
         slot.agent = Some(agent);
         if slot.phase == TaskPhase::Held {
             return Ok(());
         }
         slot.phase = TaskPhase::Running;
         let chat = slot.chat;
-        if slot.permission == Permission::Write {
-            let is_acquired = self.gate.try_acquire(&slot.workdir, agent);
-            assert!(is_acquired, "pending write task should own its workdir");
-        }
         self.bump(chat);
         Ok(())
     }
@@ -639,12 +649,9 @@ impl Queue {
     // cost: time O(t + h), heap O(1) amortized, stack O(1)
     // vars: t = 작업 수, h = 쓰기 잠금 수
     // basis: estimate
-    fn commit(&mut self, index: usize, route: Route) -> SendAction {
-        let entry = &mut self.inputs[index];
-        entry.is_dispatched = true;
-        entry.input.reason = None;
-        let input = entry.input.clone();
-        match route {
+    fn commit(&mut self, index: usize, route: Route) -> Option<SendAction> {
+        let input = self.inputs[index].input.clone();
+        let action = match route {
             Route::Steer { agent, task } => {
                 self.inputs[index].input.task = Some(task);
                 SendAction::Steer {
@@ -653,54 +660,58 @@ impl Queue {
                 }
             }
             Route::NewTurn { agent, task } => {
+                if !self.run_turn(task, agent, &input) {
+                    return None;
+                }
                 self.inputs[index].input.task = Some(task);
-                self.run_turn(task, agent, &input);
                 SendAction::NewTurn {
                     input: input.id,
                     agent,
                 }
             }
             Route::NewTask { task, is_existing } => {
+                if !self.reserve_task(task, is_existing, &input) {
+                    return None;
+                }
                 self.inputs[index].input.task = Some(task);
-                self.reserve_task(task, is_existing, &input);
                 SendAction::NewTask {
                     input: input.id,
                     task,
                 }
             }
-            Route::Wait(_) => unreachable!("waiting inputs should not be committed"),
-        }
+            Route::Wait(_) => return None,
+        };
+        self.inputs[index].is_dispatched = true;
+        self.inputs[index].input.reason = None;
+        Some(action)
     }
 
     // cost: time O(t + h), heap O(1) amortized, stack O(1)
     // vars: t = 작업 수, h = 쓰기 잠금 수
     // basis: estimate
-    fn run_turn(&mut self, task: TaskId, agent: AgentId, input: &QueuedInput) {
-        let slot = self
-            .tasks
-            .iter_mut()
-            .find(|slot| slot.id == task)
-            .expect("routed task should exist");
+    fn run_turn(&mut self, task: TaskId, agent: AgentId, input: &QueuedInput) -> bool {
+        let Some(index) = self.tasks.iter().position(|slot| slot.id == task) else {
+            return false;
+        };
+        if input.permission == Permission::Write && !self.gate.try_acquire(&input.workdir, agent) {
+            return false;
+        }
+        let slot = &mut self.tasks[index];
         slot.phase = TaskPhase::Running;
         slot.permission = input.permission;
         slot.workdir.clone_from(&input.workdir);
-        if input.permission == Permission::Write {
-            let is_acquired = self.gate.try_acquire(&input.workdir, agent);
-            assert!(is_acquired, "write rule should be checked before the turn");
-        }
         self.bump(input.chat);
+        true
     }
 
     // cost: time O(t), heap O(1) amortized, stack O(1)
     // vars: t = 작업 수
     // basis: estimate
-    fn reserve_task(&mut self, task: TaskId, is_existing: bool, input: &QueuedInput) {
+    fn reserve_task(&mut self, task: TaskId, is_existing: bool, input: &QueuedInput) -> bool {
         if is_existing {
-            let slot = self
-                .tasks
-                .iter_mut()
-                .find(|slot| slot.id == task)
-                .expect("routed task should exist");
+            let Some(slot) = self.tasks.iter_mut().find(|slot| slot.id == task) else {
+                return false;
+            };
             slot.phase = TaskPhase::Pending;
             slot.permission = input.permission;
             slot.workdir.clone_from(&input.workdir);
@@ -718,6 +729,7 @@ impl Queue {
             });
         }
         self.bump(input.chat);
+        true
     }
 
     // cost: time O(t), heap O(1) amortized, stack O(1)
@@ -985,6 +997,17 @@ mod tests {
 
         assert!(first.is_some());
         assert_eq!(second, None);
+    }
+
+    #[test]
+    fn next_to_send_waits_for_dispatched_input_in_same_chat() {
+        let mut queue = Queue::new();
+        accept_judged(&mut queue, 1, Permission::ReadOnly, Disposition::NewTask);
+        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::NewTask);
+
+        assert!(queue.next_to_send().is_some());
+
+        assert_eq!(queue.next_to_send(), None);
     }
 
     #[test]
@@ -1407,6 +1430,22 @@ mod tests {
         let result = queue.start_task(TaskId(1), AgentId(1));
 
         assert!(matches!(result, Err(QueueError::TaskNotFound(TaskId(1)))));
+    }
+
+    #[test]
+    fn start_task_write_conflict_keeps_task_pending() {
+        let mut queue = Queue::new();
+        accept_judged(&mut queue, 1, Permission::Write, Disposition::NewTask);
+        assert!(queue.next_to_send().is_some());
+        queue
+            .write_gate()
+            .try_acquire(Path::new("/work"), AgentId(9));
+
+        let result = queue.start_task(TaskId(1), AgentId(1));
+
+        assert!(matches!(result, Err(QueueError::WriteConflict(TaskId(1)))));
+        assert_eq!(queue.tasks[0].phase, TaskPhase::Pending);
+        assert_eq!(queue.tasks[0].agent, None);
     }
 
     #[test]
