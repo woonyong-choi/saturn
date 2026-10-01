@@ -1,0 +1,126 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": {
+    "text": "RRF 상위 N이 judge가 남긴 항목을 덮는 비율(k=60)",
+    "subtitle": "n=400. 기준선은 H1 채택 기준 90%"
+  },
+  "width": 420,
+  "height": 220,
+  "layer": [
+    {
+      "data": {
+        "values": [
+          {
+            "top_n": "5",
+            "recall": 6.2,
+            "low": 4.3,
+            "high": 9.1
+          },
+          {
+            "top_n": "10",
+            "recall": 12.0,
+            "low": 9.2,
+            "high": 15.6
+          },
+          {
+            "top_n": "20",
+            "recall": 25.5,
+            "low": 21.5,
+            "high": 30.0
+          },
+          {
+            "top_n": "40",
+            "recall": 44.2,
+            "low": 39.5,
+            "high": 49.1
+          }
+        ]
+      },
+      "mark": "bar",
+      "encoding": {
+        "x": {
+          "field": "top_n",
+          "type": "ordinal",
+          "title": "N",
+          "sort": null,
+          "axis": {
+            "labelAngle": 0
+          }
+        },
+        "y": {
+          "field": "recall",
+          "type": "quantitative",
+          "title": "recall(%)",
+          "scale": {
+            "domain": [
+              0,
+              100
+            ]
+          }
+        }
+      }
+    },
+    {
+      "data": {
+        "values": [
+          {
+            "top_n": "5",
+            "recall": 6.2,
+            "low": 4.3,
+            "high": 9.1
+          },
+          {
+            "top_n": "10",
+            "recall": 12.0,
+            "low": 9.2,
+            "high": 15.6
+          },
+          {
+            "top_n": "20",
+            "recall": 25.5,
+            "low": 21.5,
+            "high": 30.0
+          },
+          {
+            "top_n": "40",
+            "recall": 44.2,
+            "low": 39.5,
+            "high": 49.1
+          }
+        ]
+      },
+      "mark": "errorbar",
+      "encoding": {
+        "x": {
+          "field": "top_n",
+          "type": "ordinal",
+          "sort": null
+        },
+        "y": {
+          "field": "low",
+          "type": "quantitative",
+          "title": null
+        },
+        "y2": {
+          "field": "high"
+        }
+      }
+    },
+    {
+      "data": {
+        "values": [
+          {
+            "y": 90.0
+          }
+        ]
+      },
+      "mark": "rule",
+      "encoding": {
+        "y": {
+          "field": "y",
+          "type": "quantitative"
+        }
+      }
+    }
+  ]
+}
