@@ -199,7 +199,11 @@ def main() -> None:
     cost["no-packet"] = {"packet_tokens": mean([float(s["packet_tokens"]) for s in sessions
                                                 if s["condition"] == "no-packet"])}
 
+    snapshots = json.loads((EXPERIMENT / "env.json").read_text(encoding="utf-8"))["usage"]["snapshots"]
+    usage = {"start": snapshots[0], "after_pilot": next((x for x in snapshots if x["label"] == "after-pilot"), None),
+             "end": snapshots[-1]}
     summary = {
+        "usage": usage,
         "flow": {"sessions": len(sessions), "status": dict(sorted(flow.items())),
                  "excluded_units_by_reason": dict(sorted(reasons.items())), "excluded_units": len(bad_units),
                  "analyzed_units": len(units), "analyzed_scenarios": len({u.split("-")[0] for u in units})},
@@ -229,16 +233,23 @@ def main() -> None:
     labels = {"H1": "judge-all − no-packet (A)", "H2": "judge-all − rrf-fallback (B)"}
     values = [{"comparison": labels[n], "diff": c["diff"] * 100, "low": c["bootstrap"]["ci95"][0] * 100,
                "high": c["bootstrap"]["ci95"][1] * 100} for n, c in comparisons.items()]
+    comparison_axis = {"field": "comparison", "type": "nominal", "sort": list(labels.values()), "title": None,
+                       "axis": {"labelLimit": 300}}
+    n_units = next(iter(comparisons.values()))["n"]
     figure = {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": "정답률 차이", "subtitle": "점은 차이, 선은 시나리오 군집 부트스트랩 95% 신뢰구간, 점선은 +10%p"},
+        "title": {"text": "정답률 차이", "subtitle": f"n={n_units}. 점은 차이, 막대는 시나리오 군집 부트스트랩 95% 신뢰구간, 기준선은 +10%p"},
+        "width": 420,
+        "height": 120,
         "data": {"values": values},
-        "encoding": {"y": {"field": "comparison", "type": "nominal", "sort": list(labels.values()), "title": None}},
         "layer": [
-            {"mark": "rule", "encoding": {"x": {"field": "low", "type": "quantitative", "title": "정답률 차이(%p)"},
-                                           "x2": {"field": "high"}}},
-            {"mark": {"type": "point", "filled": True}, "encoding": {"x": {"field": "diff", "type": "quantitative"}}},
-            {"mark": {"type": "rule", "strokeDash": [4, 4]}, "encoding": {"x": {"datum": 10}}},
+            {"mark": {"type": "errorbar"},
+             "encoding": {"y": comparison_axis,
+                          "x": {"field": "low", "type": "quantitative", "title": "정답률 차이(%p)"},
+                          "x2": {"field": "high"}}},
+            {"mark": {"type": "point", "filled": True},
+             "encoding": {"y": comparison_axis, "x": {"field": "diff", "type": "quantitative"}}},
+            {"mark": "rule", "encoding": {"x": {"datum": 10}}},
         ],
     }
     (RESULTS / "figures" / "differences.vl.json").write_text(json.dumps(figure, ensure_ascii=False, indent=2) + "\n",

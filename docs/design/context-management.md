@@ -225,6 +225,7 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 | compaction 방식은 provider 기본 압축보다 품질을 낮추지 않는다. | [#7](https://github.com/woonyong-choi/saturn/issues/7) |
 | provider별 `T`와 방식이 품질을 지키며 토큰을 줄인다. | [#7](https://github.com/woonyong-choi/saturn/issues/7) |
 | `H`가 subagent의 맥락 증가를 덮는다. | [#25](https://github.com/woonyong-choi/saturn/issues/25) |
+| 판단 전체 패킷이 새 session의 이전 작업 질문 정답률을 패킷 없음보다 10%p 이상 높인다. | [패킷 전환 품질 실험 결과](../experiments/handoff-packet-quality/report.md): 정답률 차이 +8.4%p [6.1, 10.8]로 보류 |
 
 ## 단점
 
