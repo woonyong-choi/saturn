@@ -135,7 +135,7 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 3. judge가 무관한 작업으로 판단하면 `queue`는 채팅에 속한 보조 에이전트를 시작한다.
 4. 보조 에이전트는 끝나면 결과를 전달한 뒤 바로 종료한다.
 
-살아 있는 메인 session은 `종료`가 아닌 메인 session이다. 열린 메인 session은 채팅마다 하나이고, `닫힘·재개 가능` 메인 session은 provider마다 하나까지 보관한다. 같은 provider의 더 오래된 보관 session은 `종료`로 둔다. 같은 provider면 열린 session에 그대로 보내고, `닫힘·재개 가능`이나 `보류`면 보관한 provider session ID로 재개한다. provider가 다르면 그 provider로 돌아가기 규칙으로 재개와 새 session을 가른다. 보관한 ID가 없으면 새 session을 연다. 보조 에이전트는 작업마다 새 session을 연다. 끝나면 바로 종료하므로 재개할 session이 없기 때문이다.
+살아 있는 메인 session은 `종료`가 아닌 메인 session이다. 열린 메인 session은 채팅마다 하나이고, `닫힘·재개 가능` 메인 session은 provider마다 하나까지 보관한다. 같은 provider의 더 오래된 보관 session은 `종료`로 둔다. `보류` session은 이 한도에 세지 않는다. 같은 provider면 열린 session에 그대로 보내고, `닫힘·재개 가능`이나 `보류`면 보관한 provider session ID로 재개한다. provider가 다르면 그 provider로 돌아가기 규칙으로 재개와 새 session을 가른다. 보관한 ID가 없으면 새 session을 연다. 보조 에이전트는 작업마다 새 session을 연다. 끝나면 바로 종료하므로 재개할 session이 없기 때문이다.
 
 보조 에이전트가 물려받는 설정 층은 [설정](settings.md)에 있다. judge가 무엇을 묻는지는 [judge](judge.md)에 있다.
 
@@ -158,6 +158,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 - 재개하면 그 session이 마지막으로 받은 기록 번호 뒤의 변경분만 붙인다. 앞부분이 그대로인 맥락 뒤에 덧붙여 캐시와 원문 맥락을 함께 지키기 위해서다.
 - 변경분이 많으면 [맥락 고르기](context-selection.md) 순서로 고른다.
 - 2단계는 재개해도 곧 맥락 정리가 필요하기 때문이고, 3단계는 [맥락 정리](context-management.md)의 유휴 복귀 조건과 같은 식이다.
+- `sessions`는 보관 session마다 마지막 턴의 `A`와 끝 시각을 `record_last_turn`으로 받아 두고, 전송 대상을 정할 때 돌아갈 provider의 설정과 패킷 크기 `P`, 현재 시각(`ReturnInputs`)으로 `decide_return`을 부른다. 값을 저장하고 되살리는 일은 `store`의 몫이다. 마지막 턴 값이 없는 보관 session은 재개한다. 잴 수 없는 맥락을 이유로 새 session을 열지 않기 위해서다.
 - 판정은 경과 시간, `A`, `T`, `P`, 설정의 캐시 유지 시간만 쓰는 `sessions` 코드다. Codex 원격 압축 요약처럼 맥락 내용을 볼 수 없어도 같은 규칙으로 판정하기 위해서다.
 - 재개한 session의 첫 턴 캐시 적중은 [#10](https://github.com/woonyong-choi/saturn/issues/10)에서 잰다.
 
@@ -245,8 +246,8 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 
 | 요구사항 | 검증 계획 |
 |---|---|
-| 채팅마다 열린 메인 session은 하나이고, 보관 session은 provider마다 하나까지다. | provider를 두 번 바꾼 뒤 열린 session이 하나이고 provider마다 보관 session이 하나 이하인지 확인한다. |
-| 캐시 유지 시간 안이고 `A < T`인 보관 session으로 돌아가면 재개하고 변경분만 붙인다. | `saturn-terminal/core/src/sessions/context.rs`의 `decide_return_matches_rule_table` |
+| 채팅마다 열린 메인 session은 하나이고, 보관 session은 provider마다 하나까지다. | `saturn-terminal/core/src/sessions/mod.rs`의 `provider_switches_keep_one_open_and_one_archive_per_provider`, `register_second_archive_ends_older_one_and_drops_its_last_turn` |
+| 캐시 유지 시간 안이고 `A < T`인 보관 session으로 돌아가면 재개하고 변경분만 붙인다. | `saturn-terminal/core/src/sessions/context.rs`의 `decide_return_matches_rule_table`, `saturn-terminal/core/src/sessions/mod.rs`의 `target_for_send_warm_below_threshold_resumes_archive` |
 | session 교체 뒤 새 session에는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. | 교체 뒤 첫 입력에 이미 받은 기록 번호의 결과가 다시 붙지 않는지 확인한다. |
 | Saturn 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. | 사용자 설정에 값이 있는 항목의 인자가 실행 명령에 없는지 확인한다. |
 | 작업 끝은 메인 에이전트와 모든 subagent가 끝난 때로 판정한다. | 답이 먼저 나오고 subagent가 남은 경우 트리 유휴가 되지 않는지 확인한다. |
