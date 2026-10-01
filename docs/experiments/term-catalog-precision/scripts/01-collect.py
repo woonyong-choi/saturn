@@ -134,7 +134,7 @@ def write_jsonl(path, rows):
 
 
 def is_paren_doc(path):
-    if path.startswith(("docs/archive/", "docs/experiments/")):
+    if path.startswith((".local/", "docs/archive/", "docs/experiments/")):
         return False
     return path in ("README.ko.md", "AGENTS.md") or (path.startswith("docs/") and path.endswith(".md"))
 
