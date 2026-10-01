@@ -8,7 +8,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use tracing::warn;
 
-use super::super::records::{Body, Record};
+use crate::records::{Body, Record};
 
 #[derive(Debug, Deserialize)]
 struct Line {
@@ -24,7 +24,7 @@ struct Line {
 ///
 /// # Errors
 /// 줄이 JSON이 아니거나 `record_no`, `event`가 없으면 오류.
-pub(in super::super) fn from_stream(text: &str) -> anyhow::Result<Vec<Record>> {
+pub(crate) fn from_stream(text: &str) -> anyhow::Result<Vec<Record>> {
     let mut records: Vec<Record> = Vec::new();
     let mut pending: HashMap<String, usize> = HashMap::new();
     for (index, line) in text

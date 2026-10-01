@@ -1463,12 +1463,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "saturn-core",
  "saturn-protocol",
  "saturn-tui",
- "serde",
- "serde_json",
- "tempfile",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -1478,10 +1474,15 @@ dependencies = [
 name = "saturn-core"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "clap",
  "saturn-protocol",
  "serde",
+ "serde_json",
+ "tempfile",
  "thiserror",
  "tracing",
+ "tracing-subscriber",
  "unicode-normalization",
 ]
 
