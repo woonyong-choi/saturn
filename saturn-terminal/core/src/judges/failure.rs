@@ -11,8 +11,11 @@ use super::{JudgeRequest, RouteDecision, question_ids};
 /// 실패한 호출을 다시 보내기 전에 기다리는 시간.
 pub const RETRY_INTERVAL: Duration = Duration::from_secs(5);
 
-/// 첫 호출 뒤 다시 보내는 최대 횟수. 간격 두 번이라 기다림은 10초에서 끝난다.
+/// 첫 호출 뒤 다시 보내는 최대 횟수.
 pub const MAX_RETRIES: u32 = 2;
+
+/// 첫 실패 시각부터 포기까지의 전체 마감. 진행 중인 시도도 이 시각에 끊는다.
+pub const RETRY_DEADLINE: Duration = Duration::from_secs(10);
 
 /// 입력 처리 판단을 포기하고 현재 모델로 진행할 때 남기는 로그.
 pub const SKIP_MODEL_MESSAGE: &str = "판단 모델 실패로 모델 선택을 건너뜁니다";
@@ -38,9 +41,17 @@ pub enum CompactFailure {
     FillByRank,
 }
 
-/// `failed_attempts`는 지금까지 실패한 호출 수(1 이상). 포기하면 `None`.
-pub fn retry_delay(failed_attempts: u32) -> Option<Duration> {
-    (failed_attempts <= MAX_RETRIES).then_some(RETRY_INTERVAL)
+/// 첫 실패 뒤 아직 쓸 수 있는 시간. 마감이 지났으면 0.
+pub fn remaining_until_deadline(since_first_failure: Duration) -> Duration {
+    RETRY_DEADLINE.saturating_sub(since_first_failure)
+}
+
+/// `failed_attempts`는 지금까지 실패한 호출 수(1 이상), `since_first_failure`는 첫 실패 뒤 흐른 시간.
+/// 횟수를 다 썼거나 간격을 기다린 시점이 마감을 넘으면 포기해 `None`.
+pub fn retry_delay(failed_attempts: u32, since_first_failure: Duration) -> Option<Duration> {
+    let within_count = failed_attempts <= MAX_RETRIES;
+    let within_deadline = since_first_failure + RETRY_INTERVAL <= RETRY_DEADLINE;
+    (within_count && within_deadline).then_some(RETRY_INTERVAL)
 }
 
 /// 판단 없이 전환하면 패킷 없음과 같은 정답률이라 judge가 시작한 전환만 건너뛴다.
@@ -107,11 +118,36 @@ mod tests {
 
     #[test]
     fn retry_delay_waits_five_seconds_twice_then_gives_up() {
-        assert_eq!(retry_delay(1), Some(Duration::from_secs(5)));
-        assert_eq!(retry_delay(2), Some(Duration::from_secs(5)));
-        assert_eq!(retry_delay(3), None);
-        let waited: Duration = (1..).map_while(retry_delay).sum();
-        assert_eq!(waited, Duration::from_secs(10));
+        let none = Duration::ZERO;
+        assert_eq!(retry_delay(1, none), Some(Duration::from_secs(5)));
+        assert_eq!(
+            retry_delay(2, Duration::from_secs(5)),
+            Some(Duration::from_secs(5))
+        );
+        assert_eq!(retry_delay(3, Duration::from_secs(10)), None);
+    }
+
+    #[test]
+    fn retry_delay_gives_up_when_waiting_would_pass_the_deadline() {
+        assert_eq!(retry_delay(1, Duration::from_secs(5)), Some(RETRY_INTERVAL));
+        assert_eq!(retry_delay(1, Duration::from_millis(5001)), None);
+        assert_eq!(retry_delay(1, Duration::from_secs(10)), None);
+    }
+
+    #[test]
+    fn remaining_until_deadline_counts_down_to_zero() {
+        assert_eq!(
+            remaining_until_deadline(Duration::from_secs(3)),
+            Duration::from_secs(7)
+        );
+        assert_eq!(
+            remaining_until_deadline(Duration::from_secs(10)),
+            Duration::ZERO
+        );
+        assert_eq!(
+            remaining_until_deadline(Duration::from_secs(99)),
+            Duration::ZERO
+        );
     }
 
     #[test]
