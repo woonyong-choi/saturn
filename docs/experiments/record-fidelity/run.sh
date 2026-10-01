@@ -3,6 +3,7 @@
 #   stage1   1단계 수집, 처리, 분석(진행 조건 판정 포함)
 #   stage2   1단계 판정이 `run`일 때만 2단계 수집, 처리, 분석
 set -eu
+export PYTHONDONTWRITEBYTECODE=1
 cd "$(dirname "$0")"
 
 verify() {
