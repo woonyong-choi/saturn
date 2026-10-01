@@ -219,7 +219,7 @@ def judge_post(body: dict, key: str) -> dict | None:
             if error.code not in (429, 529) or attempt == JUDGE_RETRIES - 1:
                 return None
             time.sleep(float(error.headers.get("retry-after") or 2))
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+        except (urllib.error.URLError, OSError, json.JSONDecodeError):
             if attempt == JUDGE_RETRIES - 1:
                 return None
     return None

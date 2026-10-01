@@ -172,7 +172,18 @@ def main() -> None:
                 **{f"diff_{n}": paired(scores, new, old, subset) for n, (new, old) in COMPARISONS.items()},
             }
 
+    by_subtype = {}
+    for sub in ("sum", "codes", "first", "date"):
+        subset = [u for u in units if meta[u]["qsub"] == sub]
+        by_subtype[sub] = {"qtype": meta[subset[0]]["qtype"], "accuracy": accuracy_table(scores, subset)}
+
     evidence = read_csv("evidence")
+    evidence_by_qtype = {}
+    for cond in ("judge-all", "rrf-fallback"):
+        for qtype in sorted({e["qtype"] for e in evidence}):
+            sub = [e for e in evidence if e["condition"] == cond and e["qtype"] == qtype]
+            kk = sum(int(e["in_packet"]) for e in sub)
+            evidence_by_qtype[f"{cond},qtype={qtype}"] = {"k": kk, "n": len(sub), "rate": kk / len(sub), "ci95": wilson(kk, len(sub))}
     coverage, relation_mix = {}, defaultdict(int)
     for cond in ("judge-all", "rrf-fallback"):
         rows = [e for e in evidence if e["condition"] == cond]
@@ -221,7 +232,7 @@ def main() -> None:
                  "analyzed_units": len(units), "analyzed_scenarios": len({u.split("-")[0] for u in units})},
         "accuracy": accuracy_table(scores, units),
         "confirmatory": comparisons,
-        "exploratory": {"by_group": by_group, "evidence_in_packet": coverage,
+        "exploratory": {"by_group": by_group, "by_subtype": by_subtype, "evidence_by_qtype": evidence_by_qtype, "evidence_in_packet": coverage,
                         "evidence_relation_mix": dict(sorted(relation_mix.items())), "mean_cost": cost,
                         "vs_previous": vs_previous},
     }

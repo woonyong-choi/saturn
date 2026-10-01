@@ -192,10 +192,11 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 순위가 judge 전체 판단과 얼마나 겹치는지 잰다. | [RRF k와 judge 상위 N 실험 결과](../experiments/rrf-k-top-n/report.md): 상위 10개 12.0%, 상위 40개 44.5% |
 | 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [단어 조각 단위별 오타 재현율 실험 결과](../experiments/wordpiece-typo-recall/report.md) |
 | `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. [간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)에서 `replaces_<n>` 구간과 간접 지시 입력은 기준을 가르지 못해 보류이고(간접 지시 입력 74.5% [68.0, 80.0]), 앞 입력의 제약 등록 여부를 state에 넣어도 정확도는 오르지 않았다. |
-| judge 없이 순위로 채운 패킷은 judge 전체 판단 패킷보다 정답률이 10%p를 넘게 낮지 않다. | [패킷 전환 품질 실험 결과](../experiments/handoff-packet-quality/report.md): 정답률 차이 +7.0%p [4.5, 9.6]로 보류 |
+| judge 없이 순위로 채운 패킷은 judge 전체 판단 패킷보다 정답률이 10%p를 넘게 낮지 않다. | [새 패킷 규칙의 전환 품질 재측정](../experiments/handoff-packet-quality-v2/report.md): 정답률 차이 +50.7%p [44.7, 56.7]로 기각. 판단 없는 패킷의 규칙은 [#222](https://github.com/woonyong-choi/saturn/issues/222)에서 정한다. |
 
 ## 단점
 
+- judge가 실패해 순위 순서로 채운 패킷은 정답률이 20.6%로 패킷 없음(20.0%)과 같은 수준이다([재측정 결과](../experiments/handoff-packet-quality-v2/report.md)).
 - 순위 채널은 같은 뜻의 다른 말을 모르므로 judge가 모두 실패하면 대체 순서에서 같은 뜻의 후보를 놓칠 수 있다.
 - RRF 상위 40개는 judge 전체 판단이 남긴 항목의 절반 이상을 놓친다([실험 결과](../experiments/rrf-k-top-n/report.md)).
 - 영문 단어 사이 공백이 빠지면 소문자 단어가 하나로 붙어 단어 겹침을 놓친다. 이 오타의 상위 10개 재현율은 56.4%였다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
@@ -217,4 +218,5 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 ## 미해결 질문
 
 - judge에 넘길 후보를 RRF 상위 N으로 고를지, 후보 전체나 다른 거르기로 바꿀지([#153](https://github.com/woonyong-choi/saturn/issues/153))
+- judge가 실패하면 순위 순서로 바로 채울지, 재시도와 대기를 거칠지([#222](https://github.com/woonyong-choi/saturn/issues/222))
 - 간접 지시 입력에서 `is_constraint` 정확도를 올리되 일반 제약 입력의 재현율을 해치지 않는 질문 문장과 부분 충돌을 따로 묻는 질문이 있는지([#186](https://github.com/woonyong-choi/saturn/issues/186))

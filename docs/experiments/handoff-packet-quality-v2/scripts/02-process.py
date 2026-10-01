@@ -65,6 +65,16 @@ def grade(question: dict, answer: dict | None) -> int:
     return int(not any(normalize(s) in said for s in question["stale"]))
 
 
+def subtype(question: dict) -> str:
+    """multi-session과 temporal 질문 둘씩을 질문 문구로 가른다."""
+    text = question["text"]
+    if question["qtype"] == "multi-session":
+        return "sum" if "합" in text else "codes"
+    if question["qtype"] == "temporal":
+        return "first" if "먼저" in text else "date"
+    return ""
+
+
 def write_csv(name: str, rows: list[dict]) -> None:
     with (PROCESSED / f"{name}.csv").open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]) if rows else ["run_id"])
@@ -122,7 +132,7 @@ def main() -> None:
                 trials.append({"run_id": row["run_id"], "trial_id": f"{row['trial_id']}-{q['qid']}",
                                "unit": f"{row['scenario_id']}-{row['provider']}-{q['qid']}",
                                "scenario_id": row["scenario_id"], "provider": row["provider"],
-                               "qid": q["qid"], "qtype": q["qtype"], "condition": row["condition"],
+                               "qid": q["qid"], "qtype": q["qtype"], "qsub": subtype(q), "condition": row["condition"],
                                "correct": grade(q, answers.get(q["qid"])) if status == "ok" else ""})
     for name, rows in (("trials", trials), ("sessions", sessions), ("evidence", evidence), ("packets", packets)):
         write_csv(name, rows)
