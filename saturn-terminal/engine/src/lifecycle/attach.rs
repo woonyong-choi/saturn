@@ -162,7 +162,7 @@ async fn attach_sends_start_info_then_history_then_permissions() {
 }
 
 #[tokio::test]
-async fn attach_keeps_env_and_workdir_per_chat_and_latest_tui_wins() {
+async fn attach_keeps_first_workdir_and_latest_tui_env() {
     let fixture = Fixture::new();
     let other = fixture.root.path().join("other");
     std::fs::create_dir_all(other.join(".git")).unwrap();
@@ -192,13 +192,49 @@ async fn attach_keeps_env_and_workdir_per_chat_and_latest_tui_wins() {
     })
     .await;
 
-    assert_eq!(engine.chat_env(first_chat).unwrap().workdir(), other);
+    assert_eq!(
+        engine.chat_env(first_chat).unwrap().workdir(),
+        fixture.workdir
+    );
+    assert_eq!(
+        engine.store.chat_workdir(first_chat).await.unwrap(),
+        fixture.workdir
+    );
     assert_eq!(
         engine.chat_env(first_chat).unwrap().provider_env(),
         vec![(OsString::from("PATH"), OsString::from("/second/bin"))]
     );
     assert_eq!(engine.chat_env(second_chat).unwrap().workdir(), other);
     assert!(engine.chat_env(ChatId(99)).is_none());
+}
+
+#[tokio::test]
+async fn existing_chat_uses_first_folder_for_trust_even_from_another_folder() {
+    let fixture = Fixture::new();
+    fixture.write_folder_config("[judge.thresholds]\ninjection = 0.9\n");
+    let other = fixture.root.path().join("other");
+    std::fs::create_dir_all(other.join(".git")).unwrap();
+    let mut engine = fixture.ready().await;
+    let chat = engine
+        .store
+        .create_chat(fixture.workdir.clone())
+        .await
+        .unwrap();
+    let mut client = Client::connect(&fixture.socket()).await;
+
+    let received = drive(&mut engine, async {
+        client.attach(1, attach_to(chat, &other)).await
+    })
+    .await;
+
+    assert!(matches!(
+        received.last(),
+        Some(Notification::FolderTrustRequested { .. })
+    ));
+    assert!(matches!(
+        &received[0],
+        Notification::StartInfo { folder, .. } if folder == &fixture.workdir.display().to_string()
+    ));
 }
 
 #[tokio::test]

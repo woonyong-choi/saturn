@@ -98,6 +98,19 @@ impl Store {
         Ok(ChatId(from_sql_int(id)))
     }
 
+    /// 채팅을 만들 때 고정한 작업 폴더.
+    ///
+    /// # Errors
+    /// 없는 채팅이면 `NotFound`.
+    pub async fn chat_workdir(&self, chat: ChatId) -> Result<PathBuf, StoreError> {
+        let row: Option<String> = sqlx::query_scalar("SELECT workdir FROM chats WHERE id = ?")
+            .bind(to_sql_int(chat.0))
+            .fetch_optional(&self.pool)
+            .await?;
+        row.map(PathBuf::from)
+            .ok_or_else(|| not_found(format!("chat {}", chat.0)))
+    }
+
     /// 끄면 새 판단 기록만 저장하지 않고 이미 저장한 것은 둔다.
     ///
     /// # Errors

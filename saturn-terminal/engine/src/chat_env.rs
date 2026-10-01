@@ -8,7 +8,8 @@ use saturn_protocol::ids::ChatId;
 use crate::Engine;
 use crate::secrets;
 
-/// 그 채팅에 가장 나중에 붙은 TUI의 값이다. TUI가 떨어져도 채팅이 남아 있는 동안 둔다.
+/// 작업 폴더는 채팅을 만든 폴더이고, 환경은 그 채팅에 가장 최근에 붙은 TUI의 값이다.
+/// TUI가 떨어져도 채팅이 남아 있는 동안 둔다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ChatEnv {
     workdir: PathBuf,

@@ -68,7 +68,7 @@ judge 키 보호는 외부 judge API 키를 provider와 subagent가 어떤 경�
 - 강화 방식이면 session 시작 때 키체인 암호를 한 번 요청한다.
 - 강화 방식이면 비활성 10분이나 최대 12시간 뒤 키를 잠금 상태로 바꾼다.
 - 설정에는 키의 출처와 끝 4자리만 적는다.
-- 키체인 항목의 서비스 이름은 `saturn`, 계정 이름은 `judge-key`다(초안, [#32](https://github.com/woonyong-choi/saturn/issues/32)).
+- 키체인 항목의 서비스 이름은 `saturn`, 계정 이름은 `saturn-key`다.
 - 대체 파일은 `~/.saturn/judge.key`이고(초안), 권한이 0600이 아니면 읽지 않는다.
 - 대체 파일은 같은 폴더에 새 임시 파일을 0600으로 만든 뒤 교체한다.
 - 임시 파일은 고유 이름으로 만들고 기존 `.partial` 경로의 심볼릭 링크를 따라가지 않는다.
@@ -145,7 +145,3 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 
 - 환경 변수로 키를 그대로 넘기는 방식은 provider와 subagent에 키가 드러나 버렸다([engine만 judge를 부르고 자식 프로세스 환경에서 judge 키를 지운다](../decisions/2026-09-29-engine-as-judge-proxy.md)).
 - 암호문 파일에 저장하고 실행마다 암호를 확인하는 방식은 실행마다 암호를 입력해야 해 버렸다(같은 결정 기록).
-
-## 미해결 질문
-
-- 키체인 항목의 서비스 이름과 계정 이름을 초안 `saturn`, `judge-key`로 확정할지 ([#32](https://github.com/woonyong-choi/saturn/issues/32))

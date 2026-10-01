@@ -449,13 +449,8 @@ impl Engine {
                 env,
                 overrides,
             } => {
-                self.attach(
-                    client,
-                    chat,
-                    ChatEnv::new(PathBuf::from(workdir), env),
-                    overrides,
-                )
-                .await
+                self.attach(client, chat, PathBuf::from(workdir), env, overrides)
+                    .await
             }
             Request::LoadHistory {
                 chat,
@@ -518,7 +513,8 @@ impl Engine {
     }
 
     /// 순서: `StartInfo` → `HistoryChunk` → 답을 기다리는 허가 요청 → 시작 안내와 키·신뢰 창.
-    /// 이 채팅의 폴더 설정 층은 `chat_env`의 작업 폴더로 병합하고, 그 폴더와 환경은 채팅에 저장한다.
+    /// 새 채팅은 `workdir`로 만들어 그 폴더에 고정한다. 있는 채팅은 TUI가 다른 폴더를 넘겨도
+    /// 처음 폴더로 폴더 설정 층과 신뢰를 판단하고, 환경 `env`만 가장 최근 TUI의 것으로 바꾼다.
     /// `overrides`는 이 접속의 입력에만 적용하는 실행 층이다.
     ///
     /// # Errors
@@ -527,20 +523,18 @@ impl Engine {
         &mut self,
         client: ClientId,
         chat: Option<ChatId>,
-        chat_env: ChatEnv,
+        workdir: PathBuf,
+        env: Vec<(String, String)>,
         overrides: Vec<(String, String)>,
     ) -> Result<(), EngineError> {
-        let chat = match chat {
+        let (chat, workdir) = match chat {
             Some(chat) => {
                 self.store.chat_layer(chat).await?;
-                chat
+                (chat, self.store.chat_workdir(chat).await?)
             }
-            None => {
-                self.store
-                    .create_chat(chat_env.workdir().to_path_buf())
-                    .await?
-            }
+            None => (self.store.create_chat(workdir.clone()).await?, workdir),
         };
+        let chat_env = ChatEnv::new(workdir, env);
         let (applied, folder_trust) = self
             .settings
             .apply_trusted(&self.store, Some(chat), chat_env.workdir())

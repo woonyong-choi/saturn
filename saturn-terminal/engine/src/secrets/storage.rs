@@ -1,6 +1,5 @@
 //! 키 저장: macOS 키체인 OS API, 키체인이 없으면 0600 파일, 강화 방식의 잠금.
 //! `security` 명령으로 저장하면 그 명령이 신뢰 앱이 되어 누구나 확인 창 없이 읽으므로 쓰지 않는다.
-//! TODO(#32): 키체인 서비스 이름과 계정 이름(초안 `saturn`, `judge-key`)
 //! TODO(#102): 강화 방식 항목의 신뢰 앱 목록을 비우는 방법. 정해지기 전에는 잠금 시계만 더한다
 
 use std::io::Write;
@@ -21,7 +20,7 @@ pub const LOCK_CHECK_INTERVAL: Duration = Duration::from_secs(60);
 
 const KEYCHAIN_SERVICE: &str = "saturn";
 
-const KEYCHAIN_ACCOUNT: &str = "judge-key";
+const KEYCHAIN_ACCOUNT: &str = "saturn-key";
 
 /// 훅 차단 목록도 이 이름을 쓴다. 초안 값.
 pub(crate) const KEY_FILE: &str = "judge.key";
