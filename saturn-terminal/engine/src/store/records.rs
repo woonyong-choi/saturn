@@ -79,8 +79,7 @@ pub struct UsageRow {
     pub session: SessionId,
     pub report: UsageReport,
     pub at: SystemTime,
-    /// 중간 보고가 빠져 이 값의 차이가 여러 턴에 걸친다.
-    /// TODO(#90): `/usage` 응답에 이 값을 넘기는 protocol 필드와 화면 문구를 정한다
+    /// 중간 보고가 빠져 이 값의 차이가 여러 턴에 걸친다. `/usage` 응답은 protocol `UsageRow::turns`로 턴 수를 싣는다.
     pub spans_turns: bool,
 }
 

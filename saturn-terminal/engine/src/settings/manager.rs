@@ -6,7 +6,10 @@ use std::path::{Path, PathBuf};
 use saturn_protocol::ids::{ChatId, SettingsRevision};
 
 use super::layers::{default_layer, find_folder_config, fingerprint, merge, run_layer, source};
-use super::{CONFIG_FILE, Layer, Settings, SettingsError, TrustStatus, TrustStore};
+use super::{
+    CONFIG_FILE, FolderTrustPrompt, Layer, LayerSource, Settings, SettingsError, TrustStatus,
+    TrustStore,
+};
 use crate::store::Store;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,30 +82,70 @@ impl SettingsManager {
         store: &Store,
         chat: Option<ChatId>,
     ) -> Result<Applied, SettingsError> {
+        let (layers, untrusted) = self.collect_layers(store, chat).await?;
+        if let Some(prompt) = untrusted {
+            return Err(SettingsError::Untrusted { path: prompt.path });
+        }
+        self.merge_and_save(store, layers).await
+    }
+
+    /// 신뢰하지 않은 폴더 설정은 빼고 병합하고, 그 폴더 설정의 신뢰 창 내용을 함께 돌려준다.
+    ///
+    /// # Errors
+    /// 이전 번호 없이 검사 실패면 `NoPreviousRevision`, 저장 실패면 `Store`.
+    pub async fn apply_trusted(
+        &mut self,
+        store: &Store,
+        chat: Option<ChatId>,
+    ) -> Result<(Applied, Option<FolderTrustPrompt>), SettingsError> {
+        let (layers, untrusted) = self.collect_layers(store, chat).await?;
+        let applied = self.merge_and_save(store, layers).await?;
+        Ok((applied, untrusted))
+    }
+
+    async fn collect_layers(
+        &mut self,
+        store: &Store,
+        chat: Option<ChatId>,
+    ) -> Result<(Vec<(LayerSource, String)>, Option<FolderTrustPrompt>), SettingsError> {
         let user_path = self.user_config_path();
         let mut layers = vec![(
             source(Layer::Default, None, default_layer()),
             default_layer().to_owned(),
         )];
         let mut seen = Vec::new();
+        let mut untrusted = None;
         let user = read_file(&user_path)?;
         seen.push((user_path.clone(), user.as_deref().map(fingerprint)));
         if let Some(content) = user {
             layers.push((source(Layer::User, Some(user_path), &content), content));
         }
         if let Some((path, status)) = self.folder_status().await? {
-            if status != TrustStatus::Trusted {
-                return Err(SettingsError::Untrusted { path });
-            }
             let content = read_file(&path)?.unwrap_or_default();
             seen.push((path.clone(), Some(fingerprint(&content))));
-            layers.push((source(Layer::Folder, Some(path), &content), content));
+            match status {
+                TrustStatus::Trusted => {
+                    layers.push((source(Layer::Folder, Some(path), &content), content));
+                }
+                TrustStatus::Unknown(prompt) | TrustStatus::Changed(prompt) => {
+                    untrusted = Some(prompt);
+                }
+            }
         }
         if let Some(chat) = chat
             && let Some(content) = store.chat_layer(chat).await?
         {
             layers.push((source(Layer::Chat, None, &content), content));
         }
+        self.seen = Some(seen);
+        Ok((layers, untrusted))
+    }
+
+    async fn merge_and_save(
+        &mut self,
+        store: &Store,
+        mut layers: Vec<(LayerSource, String)>,
+    ) -> Result<Applied, SettingsError> {
         let merged = match run_layer(&self.run_overrides) {
             Ok(content) => {
                 layers.push((source(Layer::Run, None, &content), content));
@@ -110,7 +153,6 @@ impl SettingsManager {
             }
             Err(error) => Err(error),
         };
-        self.seen = Some(seen);
         let snapshot = match merged {
             Ok(snapshot) => snapshot,
             Err(error @ (SettingsError::Parse { .. } | SettingsError::Invalid { .. })) => {
@@ -349,6 +391,29 @@ mod tests {
         assert_eq!(settings.thresholds().injection, 0.9);
         assert_eq!(settings.judge_endpoint(), "https://api.typesafe.ai");
         assert!(applied.warning.unwrap().contains("judge.endpoint"));
+    }
+
+    #[tokio::test]
+    async fn apply_trusted_skips_untrusted_folder_and_returns_prompt() {
+        let fixture = Fixture::new().await;
+        let path = fixture.write_folder("[judge.thresholds]\ninjection = 0.9\n");
+        let mut manager = fixture.manager(&[]).await;
+
+        let (applied, prompt) = manager.apply_trusted(&fixture.store, None).await.unwrap();
+
+        let settings = manager.at(&fixture.store, applied.revision).await.unwrap();
+        assert_ne!(settings.thresholds().injection, 0.9);
+        let prompt = prompt.unwrap();
+        assert_eq!(prompt.path, std::fs::canonicalize(&path).unwrap());
+        assert!(!manager.changed().await.unwrap());
+        manager
+            .trust_folder(&path, &prompt.fingerprint)
+            .await
+            .unwrap();
+        let (trusted, none) = manager.apply_trusted(&fixture.store, None).await.unwrap();
+        let settings = manager.at(&fixture.store, trusted.revision).await.unwrap();
+        assert_eq!(settings.thresholds().injection, 0.9);
+        assert!(none.is_none());
     }
 
     #[tokio::test]

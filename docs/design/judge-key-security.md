@@ -18,15 +18,16 @@ judge 키 보호는 외부 judge API 키를 provider와 subagent가 어떤 경�
 ### 처음 실행 때 키를 입력할 때
 
 1. 사용자가 저장된 키 없이 `saturn`을 실행한다.
-2. `judges`의 시작 확인이 실패하고, TUI가 숨김 입력으로 judge 키를 요청한다.
-3. 사용자가 키를 붙여 넣으면 `judges`가 `GET /v1/models`로 키를 확인하고 모델 버전을 고정한다.
-4. `secrets`가 키를 macOS 키체인에 OS API로 직접 저장한다.
-5. `settings`는 키의 출처와 끝 4자리만 설정에 적고, Saturn이 실행을 계속한다.
+2. `judges`의 시작 확인이 실패하고, `engine`은 소켓을 연 채 judge 키를 기다린다.
+3. TUI가 붙으면 `engine`이 `JudgeKeyRequired`를 보내고, TUI가 숨김 입력으로 judge 키를 요청한다.
+4. 사용자가 키를 붙여 넣으면 TUI가 `SubmitJudgeKey`로 보내고, `judges`가 `GET /v1/models`로 키를 확인하고 모델 버전을 고정한다.
+5. `secrets`가 키를 macOS 키체인에 OS API로 직접 저장한다.
+6. `settings`는 키의 출처와 끝 4자리만 설정에 적고, `engine`이 일반 요청을 받기 시작한다.
 
 ### CI에서 환경 변수로 키를 줄 때
 
 1. 사용자가 파이프로 입력을 넘기는 CI에서 키 없이 `saturn`을 실행한다.
-2. 입력할 수 없는 환경이므로 Saturn은 묻지 않고 끝내며 환경 변수와 표준 입력 방식을 안내한다.
+2. 입력할 수 없는 환경이므로 `cli`는 `JudgeKeyRequired`를 받으면 묻지 않고 끝내며 환경 변수와 표준 입력 방식을 안내한다.
 3. 사용자가 환경 변수로 키를 주고 다시 실행한다.
 4. engine이 provider를 실행할 때 자식 환경에서 제외 목록의 변수를 지운다.
 5. provider와 그 아래 subagent는 키 변수가 없는 환경에서 작업한다.
@@ -48,9 +49,11 @@ judge 키 보호는 외부 judge API 키를 provider와 subagent가 어떤 경�
 
 - judge 키는 명령 인자로 받지 않는다. 키 입력 방법을 위 네 가지로 한정하기 위해서다.
 - 키를 받는 순서는 환경 변수 → 비밀번호 관리자 명령 → 표준 입력(입력할 수 없는 환경일 때만) → 숨김 입력이다(초안).
+- 숨김 입력은 TUI의 judge 키 입력 창이 받아 `SubmitJudgeKey`로 `engine`에 보낸다. `engine`은 터미널에서 직접 숨김 입력을 받지 않는다. 사용자당 하나인 상주 프로세스라 키를 물을 터미널을 갖지 않기 때문이다.
+- `SubmitJudgeKey` 메시지는 기록 저장소와 로그에 남기지 않는다. `engine`이 키를 기다리지 않을 때 온 `SubmitJudgeKey`는 거절한다. 확인된 키를 틀린 키로 덮어 잃지 않기 위해서다.
 - 비밀번호 관리자 명령은 셸 없이 실행하고 stdout 첫 줄을 키로 쓴다. 실패하면 종료 코드만 보인다.
 - 받은 값은 앞뒤 공백과 끝 줄바꿈을 지우고, 버릴 때 메모리를 0으로 덮는다.
-- 시작 확인이 실패하면 그 자리에서 키를 요청한다. 시작 확인 절차는 [judge](judge.md)에 있다.
+- 시작 확인이 실패하면 `engine`은 소켓을 열고, judge를 확인하기 전에는 `SubmitJudgeKey`, `Attach`, `Detach`만 받는다. 붙는 TUI에 `JudgeKeyRequired`로 키를 요청한다. 시작 확인 절차는 [judge](judge.md)에, 소켓 요청 규칙은 [engine 수명](engine-lifecycle.md)에 있다.
 
 ### 키 저장
 
@@ -118,8 +121,9 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 
 | 상황 | 동작 |
 |---|---|
-| 키 입력 거부 | 원인 한 줄을 보이고 실행하지 않고 끝낸다. |
-| 입력할 수 없는 환경(파이프, CI)의 judge 확인 실패 | 묻지 않고 끝내며 환경 변수와 표준 입력 방식을 안내한다. |
+| 키 입력 거부 | TUI가 원인 한 줄을 보이고 끝낸다. `engine`은 계속 키를 기다린다. |
+| TUI가 보낸 키의 확인 실패 | 오류 응답과 함께 `JudgeKeyRequired`를 다시 보내고 키를 저장하지 않는다. |
+| 입력할 수 없는 환경(파이프, CI)의 judge 확인 실패 | `cli`가 묻지 않고 끝내며 환경 변수와 표준 입력 방식을 안내한다. |
 
 ### 요구사항
 

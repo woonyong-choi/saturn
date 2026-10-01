@@ -4,6 +4,7 @@
 //! TODO(#30): 옛 구현 v8 기록을 가져오지 않을지, 명령으로 가져올지
 //! TODO(#31): 표 이름을 용어 표(채팅, 입력, 턴)에 맞출지, 초안 이름을 유지할지
 
+mod history;
 mod judgments;
 mod raw;
 mod records;
@@ -20,6 +21,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
+pub use history::HistoryEntry;
 pub use judgments::{JudgmentOutcome, JudgmentPruneRequest, NewJudgment};
 pub use raw::RawDigest;
 pub use records::{NewInput, NewRun, RunEnd, RunRecord, UsageRow};
