@@ -1,0 +1,80 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": {
+    "text": "간접 지시 입력 200건의 조건별 정확도와 95% Wilson 신뢰구간"
+  },
+  "width": 420,
+  "height": 200,
+  "data": {
+    "values": [
+      {
+        "condition": "baseline",
+        "value": 0.745,
+        "low": 0.680371,
+        "high": 0.800395
+      },
+      {
+        "condition": "flag",
+        "value": 0.75,
+        "low": 0.685659,
+        "high": 0.804918
+      },
+      {
+        "condition": "flag_text",
+        "value": 0.69,
+        "low": 0.622828,
+        "high": 0.750011
+      },
+      {
+        "condition": "oracle_flag",
+        "value": 0.76,
+        "low": 0.696267,
+        "high": 0.813934
+      },
+      {
+        "condition": "flag_hint",
+        "value": 0.955,
+        "low": 0.916703,
+        "high": 0.976147
+      }
+    ]
+  },
+  "encoding": {
+    "y": {
+      "field": "condition",
+      "type": "nominal",
+      "title": null,
+      "sort": null
+    }
+  },
+  "layer": [
+    {
+      "mark": "bar",
+      "encoding": {
+        "x": {
+          "field": "value",
+          "type": "quantitative",
+          "scale": {
+            "domain": [
+              0,
+              1
+            ]
+          },
+          "title": "정확도"
+        }
+      }
+    },
+    {
+      "mark": "errorbar",
+      "encoding": {
+        "x": {
+          "field": "low",
+          "type": "quantitative"
+        },
+        "x2": {
+          "field": "high"
+        }
+      }
+    }
+  ]
+}
