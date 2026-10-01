@@ -222,7 +222,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | `‖ [E] 보류를 닫을까요?` | 보류 닫기 확인, 보내지 않은 입력 취소, 수정된 파일 유지 |
 | `[E] 보류를 닫았습니다` | 보류 종료 완료 |
 | `자동 판단 일시 중단` | judge 호출 일시 실패, 질문별 대체 규칙 적용 |
-| `새 입력 접수 중단 · 판단기 연결을 확인하세요` | judge 호출 연속 3회 실패, 새 입력 접수 중지 |
+| `판단 모델 연결 끊김` | judge 호출 연속 3회 실패, 입력 접수는 계속하고 현재 모델로 처리 |
 | `바로 반영: 준비 중 (codex)` | 해당 provider의 끼워 넣기 확인 전, 끼워 넣기 대신 대기 처리 |
 | `판단기 연결 없음 · 차례에 보냅니다` | `[보내기]`를 눌렀으나 judge 실패, 차례에 전송 |
 | `전달 중` | 에이전트로 입력 전달 중, 취소 불가 |
@@ -277,6 +277,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | 작업이 하나이고 대기와 보류가 없으면 이름표를 숨긴다. | `saturn-terminal/tui/src/app/tests.rs`의 `render_single_task_hides_labels`, `render_stacks_transcript_status_composer_and_footer` |
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
+| judge 연결이 끊겨도 입력창은 입력을 계속 보낸다. | `saturn-terminal/tui/src/app/tests.rs`의 `submit_while_judge_disconnected_still_sends_input` |
 | 화면이 없는 파이프와 CI에서도 같은 명령이 같은 결과를 낸다. | `saturn-terminal/tui/src/plain.rs`의 `plain_and_full_screen_cells_use_same_text`, `apply_writes_echo_output_result_and_summary` |
 
 ## 미해결 질문

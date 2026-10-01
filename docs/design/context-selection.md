@@ -11,7 +11,7 @@
 
 ## 동기
 
-긴 채팅에는 도구 호출과 다른 에이전트 결과가 수백 개 쌓인다. 후보를 코드 순위의 상위 N개로 좁혀 judge에 물으면 judge가 남길 항목을 놓친다. 후보 전체를 판단하게 한 측정에서 judge가 남긴 항목 중 RRF 상위 10개에 든 비율은 12.0%였고 무작위 기대값은 8.7%였다. 상위 40개도 44.5%였다([#116](https://github.com/woonyong-choi/saturn/issues/116) 측정). judge가 답하지 못하면 대체 규칙이 생략이나 경로만이라 확실히 관련 있는 항목까지 빠진다. 사용자가 뒤집은 제약이 옛 제약과 나란히 패킷에 들어가면 새 session은 어느 쪽을 따를지 모른다. 이 기능은 judge가 후보 전체를 판단하게 하고, 큰 요청은 질문 단위로 나눠 보내며, judge가 실패해도 순위로 고르고, 대체된 제약을 정리한다.
+긴 채팅에는 도구 호출과 다른 에이전트 결과가 수백 개 쌓인다. 후보를 코드 순위의 상위 N개로 좁혀 judge에 물으면 judge가 남길 항목을 놓친다. 후보 전체를 판단하게 한 측정에서 judge가 남긴 항목 중 RRF 상위 10개에 든 비율은 12.0%였고 무작위 기대값은 8.7%였다. 상위 40개도 44.5%였다([#116](https://github.com/woonyong-choi/saturn/issues/116) 측정). judge가 답하지 못하면 대체 규칙이 생략이나 경로만이라 확실히 관련 있는 항목까지 빠진다. 사용자가 뒤집은 제약이 옛 제약과 나란히 패킷에 들어가면 새 session은 어느 쪽을 따를지 모른다. 이 기능은 judge가 후보 전체를 판단하게 하고, 큰 요청은 질문 단위로 나눠 보내며, judge가 실패하면 강제한 전환만 순위로 고르고, 대체된 제약을 정리한다.
 
 ## 예시
 
@@ -25,9 +25,10 @@
 
 ### judge가 답하지 않을 때
 
-1. 패킷을 만드는 중에 judge가 응답하지 않는다.
-2. `sessions`는 RRF 순서대로 경쟁 구역의 예산까지 채운다.
-3. `/v2/auth` 응답은 순위 상위라 judge 판단 없이도 패킷에 들어간다.
+1. 사용자가 모델을 고정해 새 session으로 옮기는 중에 패킷의 `compact` 판단이 응답하지 않는다.
+2. engine은 5초 간격으로 두 번 다시 보내고, 10초 뒤에도 실패하면 로그에 `판단 모델 실패로 기록 선택을 건너뜁니다`를 남긴다.
+3. `sessions`는 전환하고 RRF 순서대로 경쟁 구역의 예산까지 채운다.
+4. `/v2/auth` 응답은 순위 상위라 judge 판단 없이도 패킷에 들어간다.
 
 ### 제약이 뒤집힐 때
 
@@ -115,7 +116,7 @@
 3. 항목의 남김 확률은 `call_<id>_keep`과 `result_<id>_keep` 중 큰 값이다. 하나만 답했으면 그 값이다.
 4. 최종 순서는 답이 있는 항목을 남김 확률이 높은 순으로 두고, 같은 확률이면 RRF 순으로 둔다. 기준값은 없고 확률이 낮은 항목도 빼지 않는다.
 5. judge가 답하지 못한 항목은 답이 있는 항목 뒤에 RRF 순으로 둔다. 실패한 조각의 항목도 같다.
-6. judge가 전부 답하지 못하면 RRF 순서로 경쟁 구역의 예산까지 채운다.
+6. judge가 전부 답하지 못하면 재시도가 끝난 뒤 판단 없이 진행한다. judge가 시작한 전환은 건너뛰고 현재 모델로 진행하며, 사용자가 고정했거나 맥락 크기 규칙이 시작한 전환은 RRF 순서로 경쟁 구역의 예산까지 채운다. 재시도와 로그는 [judge 실패](judge.md#judge-실패)에 있다.
 
 - judge가 남길 항목을 순위로 미리 자르지 않기 위해서다. 후보 전체를 판단한 측정에서 남은 항목 중 RRF 상위 10개에 든 비율은 12.0% [9.2, 15.6]였고 무작위 기대값은 8.7%였다. 상위 40개도 44.5% [39.7, 49.4]였고, 95%에 닿으려면 후보 중앙값 127개보다 많은 132~133개가 필요했다([#116](https://github.com/woonyong-choi/saturn/issues/116) 측정).
 - 전체를 묻는 비용은 낮다. 기준 judge의 입력 비용은 100만 토큰당 $0.042이고 같은 질문의 일치율은 98.4%였다([#116](https://github.com/woonyong-choi/saturn/issues/116) 측정).
@@ -166,7 +167,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 | 상황 | 동작 |
 |---|---|
-| `compact`, `file-rank` judge 무응답 | RRF 순서로 경쟁 구역의 예산까지 채운다. |
+| `compact`, `file-rank` judge 호출이 재시도 뒤에도 실패 | judge가 시작한 전환은 건너뛰고 현재 모델로 진행한다. 그 밖에는 RRF 순서로 경쟁 구역의 예산까지 채운다. |
 | 요청 조각 일부 실패 | 실패한 조각의 항목은 남기고, 답이 있는 남긴 항목 뒤에 RRF 순으로 둔다. |
 | 크기 한도를 넘는 `state` | 질문 하나도 담을 수 없으므로 요청을 만들지 않고 RRF 순서로 채운다. |
 | `is_constraint` 판단 없음 | 제약으로 등록하지 않는다. |
@@ -192,11 +193,12 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 순위가 judge 전체 판단과 얼마나 겹치는지 잰다. | [RRF k와 judge 상위 N 실험 결과](../experiments/rrf-k-top-n/report.md): 상위 10개 12.0%, 상위 40개 44.5% |
 | 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [단어 조각 단위별 오타 재현율 실험 결과](../experiments/wordpiece-typo-recall/report.md) |
 | `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. [간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)에서 `replaces_<n>` 구간과 간접 지시 입력은 기준을 가르지 못해 보류이고(간접 지시 입력 74.5% [68.0, 80.0]), 앞 입력의 제약 등록 여부를 state에 넣어도 정확도는 오르지 않았다. |
-| judge 없이 순위로 채운 패킷은 judge 전체 판단 패킷보다 정답률이 10%p를 넘게 낮지 않다. | [새 패킷 규칙의 전환 품질 재측정](../experiments/handoff-packet-quality-v2/report.md): 정답률 차이 +50.7%p [44.7, 56.7]로 기각. 판단 없는 패킷의 규칙은 [#222](https://github.com/woonyong-choi/saturn/issues/222)에서 정한다. |
+| judge 없이 순위로 채운 패킷은 judge 전체 판단 패킷보다 정답률이 10%p를 넘게 낮지 않다. | [새 패킷 규칙의 전환 품질 재측정](../experiments/handoff-packet-quality-v2/report.md): 정답률 차이 +50.7%p [44.7, 56.7]로 기각. 판단 없는 패킷의 규칙은 [judge 실패](judge.md#judge-실패)에 있다. |
+| judge가 시작한 전환은 `compact` 판단이 실패하면 건너뛰고, 강제한 전환은 순위 순서로 채운다. | `saturn-terminal/core/src/judges/failure.rs`의 `compact_failure_skips_judge_transition_and_fills_forced_one`, `compact_failure_forced_transition_orders_competing_zone_by_rank` |
 
 ## 단점
 
-- judge가 실패해 순위 순서로 채운 패킷은 정답률이 20.6%로 패킷 없음(20.0%)과 같은 수준이다([재측정 결과](../experiments/handoff-packet-quality-v2/report.md)).
+- judge가 실패해 순위 순서로 채운 패킷은 정답률이 20.6%로 패킷 없음(20.0%)과 같은 수준이다([재측정 결과](../experiments/handoff-packet-quality-v2/report.md)). 그래서 judge가 시작한 전환은 건너뛰고, 강제한 전환만 이 패킷으로 채운다.
 - 순위 채널은 같은 뜻의 다른 말을 모르므로 judge가 모두 실패하면 대체 순서에서 같은 뜻의 후보를 놓칠 수 있다.
 - RRF 상위 40개는 judge 전체 판단이 남긴 항목의 절반 이상을 놓친다([실험 결과](../experiments/rrf-k-top-n/report.md)).
 - 영문 단어 사이 공백이 빠지면 소문자 단어가 하나로 붙어 단어 겹침을 놓친다. 이 오타의 상위 10개 재현율은 56.4%였다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
@@ -218,5 +220,4 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 ## 미해결 질문
 
 - judge에 넘길 후보를 RRF 상위 N으로 고를지, 후보 전체나 다른 거르기로 바꿀지([#153](https://github.com/woonyong-choi/saturn/issues/153))
-- judge가 실패하면 순위 순서로 바로 채울지, 재시도와 대기를 거칠지([#222](https://github.com/woonyong-choi/saturn/issues/222))
 - 간접 지시 입력에서 `is_constraint` 정확도를 올리되 일반 제약 입력의 재현율을 해치지 않는 질문 문장과 부분 충돌을 따로 묻는 질문이 있는지([#186](https://github.com/woonyong-choi/saturn/issues/186))
