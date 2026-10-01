@@ -1,72 +1,380 @@
 //! 스키마 버전 확인, 이관 직전 백업, 자동 이관, 오래된 백업 삭제.
-//!
-//! 설계: docs/design/records.md(스키마 이관). `Store::open`이 사용자당 잠금을 얻은 직후 이 순서로 부른다.
+//! 설계: docs/design/records.md
 //! TODO(#29): 첫 스키마를 전체 정의로 쓸지, 옛 스키마 위 변경분으로 쓸지
 //! TODO(#30): 옛 구현 v8 기록 파일을 만나면 가져오지 않을지, 명령으로 가져올지
 
-use std::path::PathBuf;
+use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use super::{Store, StoreError};
+use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
-/// 이 실행 파일이 아는 스키마 버전. SQLite `PRAGMA user_version`에 적는다. 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
+/// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
 pub const SCHEMA_VERSION: u32 = 1;
 
-/// 이관 직전 백업 보관 기간. 만든 뒤 14일이 지나면 다음 시작 때 지운다.
 pub const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
-/// 이관 사실 한 줄 안내. TUI 대화 기록과 stderr에 한 번 보인다.
+/// 이 형식의 파일만 백업으로 보고 지운다. 초안 값.
+const BACKUP_PREFIX: &str = "saturn-v";
+const BACKUP_SUFFIX: &str = ".db";
+
+/// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
+pub(crate) const MIGRATIONS: &[&str] = &[V1];
+
+const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
+
+/// 첫 스키마 전체 정의.
+const V1: &str = r#"
+CREATE TABLE chats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workdir TEXT NOT NULL,
+    recording INTEGER NOT NULL DEFAULT 1,
+    chat_layer TEXT,
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE inputs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    settings_revision INTEGER NOT NULL,
+    permission TEXT NOT NULL,
+    workdir TEXT NOT NULL,
+    pinned_model TEXT,
+    skip_relation INTEGER NOT NULL,
+    state TEXT NOT NULL,
+    reason TEXT,
+    accepted_at INTEGER NOT NULL
+);
+CREATE INDEX inputs_chat ON inputs(chat_id);
+CREATE TABLE stops (
+    chat_id INTEGER PRIMARY KEY REFERENCES chats(id) ON DELETE CASCADE,
+    started_at INTEGER NOT NULL
+);
+CREATE TABLE sessions (
+    id INTEGER PRIMARY KEY,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    agent_id INTEGER NOT NULL,
+    role TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    provider_session TEXT,
+    state TEXT NOT NULL,
+    delivered INTEGER NOT NULL
+);
+CREATE INDEX sessions_chat ON sessions(chat_id);
+CREATE TABLE runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    input_id INTEGER REFERENCES inputs(id) ON DELETE CASCADE,
+    task_id INTEGER NOT NULL,
+    agent_id INTEGER NOT NULL,
+    session_id INTEGER NOT NULL,
+    provider TEXT NOT NULL,
+    effect_scope TEXT NOT NULL,
+    started_at INTEGER NOT NULL,
+    ended_at INTEGER,
+    end_kind TEXT,
+    raw_gzip BLOB,
+    raw_hash TEXT,
+    raw_size INTEGER
+);
+CREATE INDEX runs_chat ON runs(chat_id);
+CREATE INDEX runs_session ON runs(session_id);
+CREATE TABLE raw_chunks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    bytes BLOB NOT NULL
+);
+CREATE INDEX raw_chunks_run ON raw_chunks(run_id);
+CREATE TABLE events (
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    seq INTEGER NOT NULL,
+    run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    at INTEGER NOT NULL,
+    PRIMARY KEY (chat_id, seq)
+);
+CREATE TABLE usage (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    session_id INTEGER NOT NULL,
+    body TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    agent_id INTEGER NOT NULL,
+    subagent TEXT,
+    model TEXT,
+    input_tokens INTEGER,
+    cache_read_tokens INTEGER,
+    cache_write_tokens INTEGER,
+    output_tokens INTEGER,
+    reasoning_tokens INTEGER,
+    spans_turns INTEGER NOT NULL,
+    at INTEGER NOT NULL
+);
+CREATE INDEX usage_chat ON usage(chat_id);
+CREATE INDEX usage_session ON usage(session_id);
+CREATE TABLE judgments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL,
+    input_id INTEGER,
+    method TEXT NOT NULL,
+    judge TEXT NOT NULL,
+    model TEXT NOT NULL,
+    reported_model TEXT,
+    question_sets TEXT NOT NULL,
+    settings_revision INTEGER NOT NULL,
+    sent TEXT NOT NULL,
+    received TEXT,
+    answers TEXT NOT NULL,
+    fallbacks TEXT NOT NULL,
+    input_tokens INTEGER,
+    output_tokens INTEGER,
+    started_at INTEGER NOT NULL,
+    elapsed_ms INTEGER NOT NULL,
+    outcome TEXT NOT NULL,
+    judge_version TEXT NOT NULL,
+    thresholds TEXT NOT NULL,
+    asked_with REAL
+);
+CREATE INDEX judgments_chat ON judgments(chat_id);
+CREATE TABLE settings_snapshots (
+    revision INTEGER PRIMARY KEY AUTOINCREMENT,
+    digest TEXT NOT NULL UNIQUE,
+    body TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE meta (
+    key TEXT PRIMARY KEY,
+    value INTEGER NOT NULL
+);
+CREATE TABLE tombstones (
+    chat_id INTEGER PRIMARY KEY,
+    hash TEXT NOT NULL,
+    deleted_at INTEGER NOT NULL
+);
+"#;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MigrationNotice {
-    /// 이관 전 버전.
     pub from: u32,
-    /// 이관 뒤 버전(`SCHEMA_VERSION`).
     pub to: u32,
-    /// 만든 백업 파일. `~/.saturn/backup/` 아래에 두고 14일 뒤 지운다. 파일 이름은 초안이다(설계에 없음).
-    /// TODO(#82): 값 미정, 초안 `saturn-v<from>-<unix초>.db`
+    /// 파일 이름 `saturn-v<from>-<unix밀리초>.db`는 초안이다.
     pub backup: PathBuf,
 }
 
 impl MigrationNotice {
-    /// 한 줄 문구. 예: `기록 저장소 스키마 1 → 2 이관 · 백업 ~/.saturn/backup/... (14일 보관)`.
+    /// 예: `기록 저장소 스키마 1 → 2 이관 · 백업 ~/.saturn/backup/... (14일 보관)`.
     pub fn line(&self) -> String {
-        todo!("#82")
+        format!(
+            "기록 저장소 스키마 {} → {} 이관 · 백업 {} (14일 보관)",
+            self.from,
+            self.to,
+            self.backup.display()
+        )
     }
 }
 
 impl Store {
-    /// 파일의 스키마 버전(`PRAGMA user_version`). 새 파일은 0.
-    ///
-    /// # Errors
-    /// 질의 실패면 `Database`.
+    /// 새 파일은 0.
     pub(crate) async fn schema_version(&self) -> Result<u32, StoreError> {
-        todo!("#82")
+        let version: i64 = sqlx::query_scalar("PRAGMA user_version")
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(u32::try_from(version).unwrap_or_default())
     }
 
-    /// 이관 직전 백업. SQLite 온라인 백업(`VACUUM INTO`)으로 `backup/`에 새 파일을 만든 뒤, 그 전 백업 파일을 모두 지운다.
-    /// 백업은 항상 가장 최근 1개만 남는다. 새 파일(버전 0)은 백업하지 않는다.
+    /// 백업은 항상 가장 최근 1개만 남고, 새 파일(버전 0)은 백업하지 않는다.
     ///
     /// # Errors
-    /// 파일 생성이나 옛 백업 삭제 실패면 `Backup`. 이 경우 이관하지 않는다.
+    /// 파일 생성이나 옛 백업 삭제 실패면 `Backup`이고 이관하지 않는다.
     pub(crate) async fn backup_before_migration(&self, from: u32) -> Result<PathBuf, StoreError> {
-        todo!("#82")
+        let dir = self.backup_dir();
+        let path = dir.join(format!(
+            "{BACKUP_PREFIX}{from}-{}{BACKUP_SUFFIX}",
+            to_millis(SystemTime::now())
+        ));
+        let backup_error = |path: &Path| {
+            let path = path.to_path_buf();
+            move |source| StoreError::Backup { path, source }
+        };
+        std::fs::create_dir_all(&dir).map_err(backup_error(&dir))?;
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700))
+            .map_err(backup_error(&dir))?;
+        sqlx::query("VACUUM INTO ?")
+            .bind(path.to_string_lossy().into_owned())
+            .execute(&self.pool)
+            .await?;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(DB_FILE_MODE))
+            .map_err(backup_error(&path))?;
+        for old in backup_files(&dir).map_err(backup_error(&dir))? {
+            if old != path {
+                std::fs::remove_file(&old).map_err(backup_error(&old))?;
+            }
+        }
+        Ok(path)
     }
 
-    /// `from`에서 `SCHEMA_VERSION`까지 단계별 이관을 한 거래로 실행하고 `user_version`을 올린다.
-    /// `from > SCHEMA_VERSION`이면 아무것도 바꾸지 않는다(호출 전에 `NewerSchema`로 거른다).
+    /// 호출 전에 `from > SCHEMA_VERSION`은 `NewerSchema`로 거른다.
     ///
     /// # Errors
     /// 어느 단계든 실패하면 거래를 되돌리고 `Migration`.
     pub(crate) async fn migrate(&self, from: u32) -> Result<(), StoreError> {
-        todo!("#82")
+        self.migrate_with(from, MIGRATIONS).await
     }
 
-    /// `backup/`에서 수정 시각이 `now - BACKUP_RETENTION`보다 이른 백업 파일을 지운다. 시작마다 한 번 부른다.
-    /// 지운 파일 수를 돌려준다. `backup/` 밖 파일은 건드리지 않는다.
-    ///
-    /// # Errors
-    /// 목록 조회나 삭제 실패면 `Backup`.
+    /// 테스트가 이관 단계를 바꿔 넣는다.
+    pub(crate) async fn migrate_with(&self, from: u32, steps: &[&str]) -> Result<(), StoreError> {
+        let to = schema_target(steps);
+        if from >= to {
+            return Ok(());
+        }
+        let failed = |source: sqlx::Error| StoreError::Migration {
+            from,
+            to,
+            source: Box::new(source),
+        };
+        let mut tx = self.pool.begin().await.map_err(failed)?;
+        for step in &steps[from as usize..] {
+            sqlx::raw_sql(step)
+                .execute(&mut *tx)
+                .await
+                .map_err(failed)?;
+        }
+        // PRAGMA는 값을 바인딩할 수 없다. `to`는 정수라 그대로 넣어도 안전하다
+        sqlx::raw_sql(&format!("PRAGMA user_version = {to}"))
+            .execute(&mut *tx)
+            .await
+            .map_err(failed)?;
+        tx.commit().await.map_err(failed)?;
+        Ok(())
+    }
+
+    /// `backup/` 밖 파일은 건드리지 않는다.
     pub(crate) async fn sweep_backups(&self, now: SystemTime) -> Result<usize, StoreError> {
-        todo!("#82")
+        let dir = self.backup_dir();
+        if !dir.exists() {
+            return Ok(0);
+        }
+        let backup_error = |path: &Path| {
+            let path = path.to_path_buf();
+            move |source| StoreError::Backup { path, source }
+        };
+        let cutoff = now
+            .checked_sub(BACKUP_RETENTION)
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+        let mut removed = 0;
+        for path in backup_files(&dir).map_err(backup_error(&dir))? {
+            let modified = std::fs::metadata(&path)
+                .and_then(|meta| meta.modified())
+                .map_err(backup_error(&path))?;
+            if modified < cutoff {
+                std::fs::remove_file(&path).map_err(backup_error(&path))?;
+                removed += 1;
+            }
+        }
+        Ok(removed)
+    }
+}
+
+/// 다른 이름의 파일과 폴더는 빼서 건드리지 않는다.
+fn backup_files(dir: &Path) -> std::io::Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        let is_backup = name.starts_with(BACKUP_PREFIX) && name.ends_with(BACKUP_SUFFIX);
+        if is_backup && entry.file_type()?.is_file() {
+            files.push(entry.path());
+        }
+    }
+    Ok(files)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs::File;
+
+    use super::*;
+    use crate::store::tests::temp_store;
+
+    #[tokio::test]
+    async fn backup_keeps_only_latest_file() {
+        let (_dir, store) = temp_store().await;
+
+        let first = store.backup_before_migration(1).await.unwrap();
+        tokio::time::sleep(Duration::from_millis(5)).await;
+        let second = store.backup_before_migration(1).await.unwrap();
+
+        assert!(!first.exists());
+        assert!(second.exists());
+        assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
+        assert_eq!(
+            std::fs::metadata(&second).unwrap().permissions().mode() & 0o777,
+            DB_FILE_MODE
+        );
+        assert_eq!(
+            std::fs::metadata(store.backup_dir())
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
+    }
+
+    #[tokio::test]
+    async fn sweep_removes_backups_older_than_fourteen_days() {
+        let (_dir, store) = temp_store().await;
+        let backup = store.backup_before_migration(1).await.unwrap();
+        let other = store.backup_dir().join("notes.txt");
+        std::fs::write(&other, "not a backup").unwrap();
+        let now = SystemTime::now();
+
+        assert_eq!(store.sweep_backups(now).await.unwrap(), 0);
+        let old = now - BACKUP_RETENTION - Duration::from_secs(60);
+        for path in [&backup, &other] {
+            File::options()
+                .write(true)
+                .open(path)
+                .unwrap()
+                .set_modified(old)
+                .unwrap();
+        }
+
+        assert_eq!(store.sweep_backups(now).await.unwrap(), 1);
+        assert!(!backup.exists());
+        assert!(other.exists());
+    }
+
+    #[tokio::test]
+    async fn sweep_without_backup_dir_is_noop() {
+        let (_dir, store) = temp_store().await;
+
+        assert_eq!(store.sweep_backups(SystemTime::now()).await.unwrap(), 0);
+    }
+
+    #[tokio::test]
+    async fn failed_migration_rolls_back_whole_transaction() {
+        let (_dir, store) = temp_store().await;
+        let steps = [
+            MIGRATIONS[0],
+            "CREATE TABLE half_done (id INTEGER); INSERT INTO missing_table VALUES (1);",
+        ];
+
+        let error = store.migrate_with(1, &steps).await.unwrap_err();
+
+        assert!(matches!(
+            error,
+            StoreError::Migration { from: 1, to: 2, .. }
+        ));
+        assert_eq!(store.schema_version().await.unwrap(), 1);
+        let tables: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'half_done'",
+        )
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(tables, 0);
     }
 }
