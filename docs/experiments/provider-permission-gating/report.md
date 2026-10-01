@@ -1,18 +1,18 @@
 # provider 권한 정본: 실험 결과
 
 > [!NOTE]
-> 사후 기록이다. 이슈 [#194](https://github.com/woonyong-choi/saturn/issues/194)의 결과 댓글 8개와 Codex 에이전트 보고서 4개를 근거로 썼고, 수치는 그 근거에 있는 것만 옮겼다. 후속: 원인 찾기 실험 진행 중(이슈 #194).
+> 사후 기록이다. 이슈 [#194](https://github.com/woonyong-choi/saturn/issues/194)의 결과 댓글 9개와 Codex 에이전트 보고서 5개를 근거로 썼고, 수치는 그 근거에 있는 것만 옮겼다. 실험 9의 원문 로그에서 직접 센 값은 표에 따로 밝혔다.
 
 ## 요약
 
-Claude Code는 `--permission-prompt-tool stdio`와 `--settings`로 Bash 호출을 모두 호스트로 받았다(시도 1회씩, 사용자 `bypassPermissions`에서도). Codex는 전용 `CODEX_HOME`, `untrusted`, 읽기 전용 샌드박스, MCP 설정 번역을 합친 조합에서 셸, 파일 편집, subagent 명령이 승인 요청으로 왔다(3/3~5/5). MCP 묻기는 불안정했고(실험 6: 2/3, 실험 7: 1/5, 실험 8: 시도 10/10 중 요청 6/10), 네 경로를 항상 판단한다는 H6은 보류다. 설계 문서와 결정 기록에는 반영하지 않았고, 반영은 시리즈 결론 뒤에 한다.
+Claude Code는 `--permission-prompt-tool stdio`와 `--settings`로 Bash 호출을 모두 호스트로 받았다(시도 1회씩, 사용자 `bypassPermissions`에서도). Codex는 전용 `CODEX_HOME`, `untrusted`, 읽기 전용 샌드박스, MCP 설정 번역을 합친 조합에서 셸, 파일 편집, subagent 명령이 승인 요청으로 왔다(3/3~5/5). MCP 묻기는 불안정했고(실험 6: 2/3, 실험 7: 1/5, 실험 8: 시도 10/10 중 요청 6/10), 네 경로를 항상 판단한다는 H6은 보류다. 원인을 찾은 실험 9는 시도한 31회 모두 승인 요청이 도착해 실험 8의 4회 누락을 재현하지 못했고, 원인은 확인 못 함이다. 요청 도착 시점이 도구 호출 시작 뒤 약 0~145초로 갈렸고, 이 지연의 원인은 밝히지 못했다. 설계 문서와 결정 기록에는 반영하지 않았다.
 
 ## 방법
 
 | 항목 | 값 |
 |---|---|
 | 설계 | [실험 설계](design.md). 사전 등록 없는 사후 기록이라 설계 커밋은 없다. |
-| 실행 id | 없음. 실험 8개를 2026-10-02에 이슈 댓글 순서로 실행했고, 실행 id 형식의 원자료 파일은 없다. |
+| 실행 id | 없음. 실험 9개를 2026-10-02에 이슈 댓글 순서로 실행했고, 실행 id 형식의 원자료 파일은 없다. |
 | 환경 | [env.json](env.json) |
 | 표본 | 설계 크기는 [실험별 방법](design.md) 표. 실제 크기는 아래 결과 표의 회차 수. |
 
@@ -28,6 +28,10 @@ Claude Code는 `--permission-prompt-tool stdio`와 `--settings`로 Bash 호출�
 | 실험 6 지시서는 "안전 목록을 소스에서 찾아 모두 prompt로 적는다"였지만 소스에 고정 목록이 없었다. | 수집 중 | 전제 불일치 | 규칙에 적은 대표 명령(`ls`, `cat`, `head`, `wc`, `sort`, `node -e`, `touch`)으로 시험했다. 목록 전부는 `확인 못 함`. |
 | 실험 8에서 decline 2에 보충 재시도 1회를 추가했다. | 수집 중 | 요청이 오지 않은 회차를 다시 확인했다. | 보충 재시도도 요청 없이 시간 초과였다. 회차 판정은 최초 5회 기준이다. |
 | 실험 3과 4의 에이전트가 항목을 건너뛰었다. 상세는 한계 절 | 수집 중 | 에이전트 실수 | 건너뛴 항목은 `확인 못 함`으로 남았다. |
+| 실험 9가 모델 호출 상한 30회를 넘겼다. 실제 36회(preliminary 4회, baseline 12회, `all_requests` 20회) | 수집 중 | `all_requests` 실행기가 이름 슬롯 10개마다 thread를 2개씩 남겼다. 보고서는 확인한 뒤 추가 호출을 멈췄다. | 호출 수만 공개한다. 호출이 늘어난 `all_requests` 후보 처리는 정식 판정을 내리지 않았다. |
+| 실험 9의 지시서 3번(Codex 소스와 대조)을 수행하지 못했다 | 수집 중 | 보고서는 지시서가 네트워크와 저장소 사본을 금지했다고 해석해 소스를 열지 않았다. 설치된 0.158.0 바이너리로 생성한 schema만 확인했다. | 원인 분석이 로그 비교와 schema 확인에 그쳤다. 소스 경로와 줄은 없다. |
+| 실험 9의 지시서 4번(거부 5회, 승인 5회 정식 재확인)의 판정을 내리지 않았다 | 수집 중 | 원인을 찾지 못했고 후보 처리는 실행기 중복과 호출 상한 초과가 겹쳤다. | 해결 확인 판정 없음. |
+| 실험 9의 preliminary 4회 중 1회는 드라이버를 수동 종료한 불완전 로그라 정식 비교 표본에서 뺐다. | 수집 중 | 수동 종료 | 모델 호출 수에는 넣었고 판정 표본에서만 뺐다. |
 
 ## 결과
 
@@ -43,6 +47,7 @@ Claude Code는 `--permission-prompt-tool stdio`와 `--settings`로 Bash 호출�
 | 6. 구멍 막기 | 53회 | 부모 thread 48회, subagent 자식 thread 5회. 상한 60회 안. 댓글 6 |
 | 7. MCP 준비 시점 | 60회 | 정식 반복 40회, 번역 실험과 초기 드라이버 확인 20회. 상한 70회 안. 댓글 7 |
 | 8. MCP 묻기 경로 | 11회 | decline 5회, decline 2 보충 1회, accept 5회. 모델 호출 전에 끝난 준비 실행 2회는 제외. 상한 20회 안. 댓글 8 |
+| 9. MCP 승인 요청 원인 찾기 | 36회 | preliminary 4회, baseline 12회, `all_requests` 20회(`turn/start` 기준). 상한 30회 초과. 댓글 9 |
 
 실험 6의 호출 수는 전용 home에 남은 rollout 기록을 한 번의 모델 호출로 센 값이다(보고서의 가정). 제외한 실행은 없다. 모델이 도구를 시도하지 않은 회차(시도 없음)는 아래 표에 따로 적었다.
 
@@ -85,7 +90,8 @@ Codex 0.158.0(app-server, stdio JSON-RPC).
 |---|---|---|---|
 | 1. 규칙 끄기(app-server 인자, `-c`, `thread/start.config`) | `--ignore-rules`는 `exec`에만 있다. 내부 플래그는 app-server 인자나 config 키로 노출되지 않는다. `codex features list` 전수에 규칙 관련 키 없음. 소스만 | 아니오 | 해당 없음 |
 | 2. `approvalPolicy` 변경, `granular`, `approvalsReviewer` | 규칙이 `allow`면 정책과 무관하게 무승인 실행이고 샌드박스도 우회한다. 관리형 `requirements.toml`은 이기지만 전체 와일드카드가 없고 세션 단위가 아니다. 소스만 | 아니오 | 해당 없음 |
-| 3. `CODEX_HOME` 분리 | 빈 `CODEX_HOME`으로 `account/read` 호출(모델 호출 없음)이 `account: null, requiresOpenaiAuth: true`. 인증 공유가 필요해 멈췄다. 분리하면 `.codex` 폴더 config, hooks, rules가 신뢰 전까지 꺼진다는 경고가 나왔다. | 미시험 | 미시험 || 4. 내장 셸 끄기와 `dynamicTools` | 호출 3회와 도구 목록 질의 1회. `features.shell_tool=false`와 `dynamicTools`로 폴더 규칙 `touch` allow가 있어도 모델의 `touch probe-e1.txt`가 `item/tool/call`로 호스트에 도착했다. 호스트가 실패 응답을 주면 파일이 안 생겼다. | 예 | 예 |
+| 3. `CODEX_HOME` 분리 | 빈 `CODEX_HOME`으로 `account/read` 호출(모델 호출 없음)이 `account: null, requiresOpenaiAuth: true`. 인증 공유가 필요해 멈췄다. 분리하면 `.codex` 폴더 config, hooks, rules가 신뢰 전까지 꺼진다는 경고가 나왔다. | 미시험 | 미시험 |
+| 4. 내장 셸 끄기와 `dynamicTools` | 호출 3회와 도구 목록 질의 1회. `features.shell_tool=false`와 `dynamicTools`로 폴더 규칙 `touch` allow가 있어도 모델의 `touch probe-e1.txt`가 `item/tool/call`로 호스트에 도착했다. 호스트가 실패 응답을 주면 파일이 안 생겼다. | 예 | 예 |
 | 5. 세션 훅 | 호출 1회. `-c hooks.PreToolUse=[...]`와 `-c hooks.state={<key>={trusted_hash=<hash>}}`로 훅이 폴더 규칙 allow `touch`를 가로챘다. deny하자 파일이 안 생기고 `Command blocked by PreToolUse hook: denied by saturn hook`가 전달됐다. | 예 | 예 |
 | 6. OpenCode 방식 | 소스만. Codex CLI나 app-server를 띄우지 않고 모델 API를 직접 호출하며, 자체 `shell` 도구가 매번 `ctx.ask`로 권한을 확인한다. 자체 OAuth와 `chatgpt.com/backend-api/codex/responses` 호출에 의존한다. | 해당 없음 | 해당 없음 |
 
@@ -213,6 +219,72 @@ Codex 0.158.0(app-server, stdio JSON-RPC).
 
 시도 없음은 0회였다. 시도한 회차 기준으로 decline은 승인 요청 3/5회, accept도 3/5회였고, 요청이 온 경우에는 decline 3/3회 미실행, accept 3/3회 실행이었다. 판정은 불안정이다(도구 시도 10/10회, 승인 요청 6/10회). 요청이 오지 않은 회차에서도 도구는 실행되지 않았다(실행 기록 없음).
 
+### 실험 9. MCP 승인 요청 원인 찾기
+
+[댓글 9](https://github.com/woonyong-choi/saturn/issues/194#issuecomment-5942476740), [지시서](data/raw/codex-194-rootcause-prompt.md), [보고서](data/raw/codex-194-rootcause-report.md), 회차 요약은 [결과 요약](data/raw/codex-194-rootcause-results.jsonl)과 [thread 요약](data/raw/codex-194-rootcause-thread-summary.json), 원문 줄은 [핵심 줄](data/raw/key-lines.md). `gpt-5.6-luna` 에이전트가 실험 8과 같은 방법(전용 `CODEX_HOME`, `approvalPolicy="untrusted"`, 첫 턴 전 `mcpServerStatus/list`, `mcp_optional_startup_grace_ms=12000`, `write_like_tool` 하나뿐인 서버)으로 시험하면서 app-server와 주고받은 모든 JSON-RPC 원문과 stderr를 회차마다 기록하고 모든 서버 요청의 응답 여부를 적었다. 사용자 MCP 서버와 `mcpServer/tool/call` 직접 호출은 쓰지 않았다. 모델 호출은 36회였다.
+
+| 구분 | 회차 | 도구 시도 | 승인 요청 도착 | 호스트 응답 | fixture 실행 | 주요 순서와 판정 |
+|---|---|---|---|---|---|---|
+| baseline decline | 1~5 | 5/5 | 5/5 | 5/5 decline | 0/5 | `mcpToolCall` 시작, `waitingOnApproval`, `mcpServer/elicitation/request`, decline 순서. 요청 뒤 완료까지 간 회차와 시간 초과 회차가 섞였다. |
+| baseline accept | 1~5 | 3/5 | 3/3 | 3/3 accept | 기록 있다 | accept 2와 5는 도구 시도 없이 idle로 끝났다. 시도한 회차는 모두 요청이 도착했다. |
+| baseline 보충 accept | 6~7 | 2/2 | 2/2 | 2/2 accept | 0/2 | 완료 전 150초 경계에서 끝난 회차. 요청 자체는 도착했다. |
+| `all_requests` 후보 검증 | decline 1~5, accept 1~5 | 19/20 | 19/19 | 19/19 | 일부 completed | 미응답 서버 요청 0건. 슬롯 10개마다 thread가 2개 남아 20회로 기록됐다. |
+
+시도한 회차 기준으로 승인 요청은 정식 비교 표본 31회 모두 도착했다(보고서 값). 요청이 없던 정식 회차는 모델이 `mcpToolCall`을 시작하지 않고 idle로 끝난 회차였다. 실험 8의 "도구 시도 뒤 요청 없이 시간 초과" 4회는 재현되지 않았다.
+
+도착 시점은 도구 호출 시작 직후부터 약 0~145초까지 갈렸다. baseline decline 공식 5회는 약 `141510, 143478, 1, 143635, 1`ms였고 보충 accept 2회는 약 `123786, 127521`ms였다.
+
+요청 종류와 응답 여부는 다음과 같다.
+
+| 항목 | 관측 |
+|---|---|
+| 승인 요청 이름 | 실제 도구 시도 회차에서 `mcpServer/elicitation/request` 하나뿐이었다. |
+| 다른 이름의 승인 요청 | `item/commandExecution/requestApproval`, `item/fileChange/requestApproval` 모두 0건 |
+| 서버 요청 응답 | 관측한 서버 요청은 모두 id `0`이었고 모두 호스트 응답이 있었다. 미응답 서버 요청 0건 |
+| 서버 준비 | thread마다 `mcpServer/startupStatus/updated`가 `ready`였고 준비 조회에 `write_like_tool`이 있었다. startup 미완료는 관측되지 않았다. |
+| 결과 처리 | decline 응답 뒤 fixture 실행 기록은 없었다. accept 회차는 일부만 `item/completed.status=completed`와 fixture 기록이 남았고, 일부는 승인 뒤 시간 초과 경계에서 completed가 남지 않았다. |
+
+원문 로그에서 센 도착 순서(보고서에 없는 값)는 다음과 같다. `experiment-logs/baseline/`과 `experiment-logs/all_requests/`의 회차별 로그에서 도구를 시도한 thread마다 `mcpToolCall` 시작, 승인 요청 도착, 드라이버가 보낸 `turn/interrupt`의 시각을 비교했다.
+
+| 구분 | 도구를 시도한 thread | 요청이 `turn/interrupt` 없이 도착 | 요청이 드라이버의 `turn/interrupt` 1~4ms 뒤 도착 |
+|---|---:|---:|---:|
+| baseline | 10 | 3 | 7 |
+| `all_requests` | 19 | 10 | 9 |
+
+- `turn/interrupt` 없이 도착한 13회는 도구 시작 뒤 0~2ms에 왔고, `all_requests` 1회만 약 7.9초였다.
+- 드라이버는 150초 마감에 닿으면 `threadId`만 담은 `turn/interrupt`를 보냈다. 이 요청은 모두 `Invalid request: missing field turnId` 오류로 거부됐다(19/19).
+- 도착이 100초 넘게 늦은 회차는 모두 이 `turn/interrupt` 1~4ms 뒤에 도착했다. `turn/interrupt` 바로 앞 줄은 `waitingOnApproval` 상태 변경(12회)이나 도구 시작(4회)이었고, 그 줄과 `turn/interrupt` 사이에 다른 줄이 없었다. 줄 예시는 [핵심 줄](data/raw/key-lines.md)이다.
+- 이 표의 합 29는 보고서 본문의 정식 시도 31회와 맞지 않는다. 보고서는 차이를 설명하지 않았고, 2회가 어느 로그인지 확인하지 못했다.
+
+원인 분석 결과는 다음과 같다.
+
+| 확인한 것 | 결과 |
+|---|---|
+| 다른 이름의 승인 요청을 놓쳤는가 | 증거 없음 |
+| 호스트가 응답하지 않은 다른 서버 요청이 막았는가 | 증거 없음. 미응답 서버 요청 0건 |
+| 서버 준비 미완료 | 관측 없음 |
+| 실험 8의 4회 누락 재현 | 재현 못 함. 시도한 회차는 모두 요청이 도착했다. |
+| 늦게 도착한 요청의 원인 | `확인 못 함` |
+
+늦은 도착의 원인 후보는 세 가지이고 어느 것도 시험하지 않았다.
+
+- 실험 8의 드라이버 시간 초과가 이 지연(최대 약 145초)보다 짧았을 가능성이 있다. 다만 실험 8 accept 1의 에이전트 메모는 180초 대기로 적혀 있어 이 가능성과 맞지 않고, 나머지 3회의 대기 시간은 기록이 없다. 보고서도 원인을 확정하지 않았다.
+- 실험 9 드라이버가 stdout을 `selectors`로 기다린 뒤 텍스트 모드 `readline()`으로 읽는 구조라, 이미 도착한 줄이 읽기 버퍼에 남아 다음 입력이 올 때까지 처리되지 않았을 가능성이 있다. 늦은 도착이 모두 호스트 쓰기 직후라는 관측과 맞지만, 드라이버 코드를 읽어 세운 후보이고 확인하지 않았다. 실험 8 드라이버는 유실돼 같은 구조였는지 알 수 없다.
+- Codex 쪽 내부 지연일 가능성이 있다. 소스를 열지 못해 배제도 확인도 못 했다.
+
+Codex 소스(`codex-rs/core/src/mcp_tool_call.rs`, `codex-rs/codex-mcp/`, app-server 승인과 elicitation 구현)는 열지 못했다. 생성 schema에서 확인한 계약은 다음과 같다.
+
+| schema | 내용 |
+|---|---|
+| `ServerRequest.json` 1905~1945줄 | 명령, 파일 승인 요청 |
+| `ServerRequest.json` 1980~2002줄 | `mcpServer/elicitation/request` |
+| `McpServerElicitationRequestResponse.json` | 응답의 필수 `action`, 값은 `accept`, `decline`, `cancel` |
+| `CommandExecutionRequestApprovalResponse.json`, `FileChangeRequestApprovalResponse.json` | 다른 승인 요청의 응답 계약 |
+
+후보 처리 재확인은 모든 서버 요청에 즉시 JSON-RPC 응답을 보내는 `all_requests` 드라이버로 했다. 미응답 요청은 0건이었고 elicitation은 도구를 시도한 19/19회에 도착했다. 이 후보가 누락을 고쳤다고 확인할 수 없다. 실행기 중복으로 슬롯 10개가 thread 20개가 됐고 호출 상한도 넘어, 거부 5회와 승인 5회의 정식 확인 판정은 내리지 않았다.
+
+판정: 확인 못 함. 원자료는 비공개 폴더에 있고 경로와 SHA-256은 [데이터](data/README.md)에 적었다.
+
 ## 방향이 바뀐 이유
 
 | 단계 | 시도 | 실패하거나 모자란 것 | 다음 시도 |
@@ -224,7 +296,8 @@ Codex 0.158.0(app-server, stdio JSON-RPC).
 | 5에서 6 | 전용 `CODEX_HOME`과 execpolicy | 모두 묻는 규칙을 표현하지 못했고, `apply_patch`와 MCP가 승인 없이 실행됐고, subagent가 불안정했다. | `untrusted`, 읽기 전용 샌드박스, MCP 서버별 `approval_mode`, subagent 5회로 구멍 4개를 막는 시험 |
 | 6에서 7 | 구멍 막기 | MCP가 3회 중 1회 도구 접근 불가였다. | MCP 서버 시작과 도구 목록 시점을 조사하고 준비 조회, 유예 늘리기, 번역표 시험 |
 | 7에서 8 | MCP 준비 시점 | 준비는 5/5 확인했지만 `prompt` 묻기가 모델 전용 5회에서 1/5였다. | 준비 조회와 유예 12초를 켠 상태에서 묻기 경로만 거부 5회와 승인 5회로 시험 |
-| 8에서 9 | MCP 묻기 경로 | 도구 시도 10/10회, 승인 요청 6/10회로 불안정 | 원인 찾기 실험(진행 중) |
+| 8에서 9 | MCP 묻기 경로 | 도구 시도 10/10회, 승인 요청 6/10회로 불안정 | 모든 JSON-RPC 원문을 기록하고 재현해 원인을 찾는 실험 9 |
+| 9 이후 | 원인 찾기 | 시도한 31회 모두 승인 요청이 도착해 4회 누락을 재현하지 못했다. 도착 시점이 약 0~145초로 갈린 원인은 `확인 못 함` | 이 시리즈는 여기서 마친다. 남은 것 절에 후속 시험을 적었다. |
 
 ### 확인 분석
 
@@ -237,19 +310,24 @@ Codex 0.158.0(app-server, stdio JSON-RPC).
 | H5 | 기각 | 보장 범위는 규칙에 명시한 셸 prefix뿐. 모든 실행 판단 불가 |
 | H6 | 보류 | 셸 대표 명령 3/3, 파일 편집과 subagent 확인. MCP 2/3 불안정, 종합 1/3 |
 | H7 | 부분 채택 | 준비 5/5, 허용과 거부 5/5, 묻기 1/5 불안정 |
-| H8 | 보류 | 시도 10/10, 승인 요청 6/10. 요청 온 6회는 모두 기대대로 |
+| H8 | 보류 | 실험 8은 시도 10/10, 요청 6/10이었다. 실험 9는 시도한 회차 기준 요청 도착 31/31이지만 도착이 도구 시작 뒤 약 0~145초로 갈렸고 원인이 확정되지 않았다. 원문 로그에서 센 정식 시도 29회 중 16회는 드라이버의 `turn/interrupt` 직후에 도착했다. 승인한 회차의 실행 기록도 일부만 남았다. 요청이 오고 거부하면 미실행이었다는 점은 유지된다. |
+| H9 | `확인 못 함` | 다른 이름의 승인 요청 0건, 미응답 서버 요청 0건, 서버 준비 미완료 관측 없음. 4회 누락은 재현되지 않았고 늦은 도착의 원인은 밝히지 못했다. 소스는 열지 못했다. |
 
 ## 논의
 
 ### 해석
 
-Claude Code와 Codex 모두 실행 인자나 전용 설정으로 Saturn이 요청을 받는 경로는 있었다. Codex는 provider 규칙이 인자를 이기기 때문에 전용 `CODEX_HOME`으로 사용자와 폴더 규칙을 제거해야 했고, 그 위에 `untrusted`와 읽기 전용 샌드박스가 셸과 파일 편집을 요청으로 바꿨다. 남은 불안정은 MCP 묻기다. 요청이 오지 않은 회차에서도 도구가 실행되지 않았으므로 지금까지는 요청 누락이 승인 없는 실행으로 이어진 관측은 없다. 이 판단은 실험 8에서 요청이 없던 4회 기록에 한정된다.
+Claude Code와 Codex 모두 실행 인자나 전용 설정으로 Saturn이 요청을 받는 경로는 있었다. Codex는 provider 규칙이 인자를 이기기 때문에 전용 `CODEX_HOME`으로 사용자와 폴더 규칙을 제거해야 했고, 그 위에 `untrusted`와 읽기 전용 샌드박스가 셸과 파일 편집을 요청으로 바꿨다. 남은 불안정은 MCP 묻기다. 요청이 오지 않은 회차에서도 도구가 실행되지 않았으므로 지금까지는 요청 누락이 승인 없는 실행으로 이어진 관측은 없다. 이 판단은 실험 8에서 요청이 없던 4회 기록에 한정된다. 실험 9는 이 4회를 재현하지 못했고 도착이 지연된 회차의 원인도 밝히지 못했다. 그래서 요청이 가끔 오지 않는지, 드라이버가 늦게 읽었는지는 구분하지 못했다. 사용자 대기 시간에 주는 영향도 재지 않았다.
 
 ### 타당성 위협
 
 | 종류 | 위협 | 이 실험에서 |
 |---|---|---|
-| 내적 | 모델 응답에 의존한다. | 실험 6의 `mcp/3`, 실험 7의 모델 선택 2/5, 실험 8의 요청 6/10처럼 같은 설정에서 회차마다 결과가 달랐다. 원인은 미확인이고 실험 9가 찾는 중이다. |
+| 내적 | 모델 응답에 의존한다. | 실험 6의 `mcp/3`, 실험 7의 모델 선택 2/5, 실험 8의 요청 6/10처럼 같은 설정에서 회차마다 결과가 달랐다. 원인은 실험 9에서도 확인하지 못했다. |
+| 내적 | 실험 9의 호출 수와 실행기가 계획을 벗어났다. | 상한 30회를 넘긴 36회가 들었고, `all_requests` 실행기 중복으로 슬롯 10개가 thread 20개가 됐다. 호출 수는 공개했고 후보 처리는 정식 판정에서 뺐다. |
+| 내적 | 실험 9의 드라이버 읽기 방식과 `turn/interrupt` 호출이 관측에 영향을 줬을 수 있다. | 늦게 도착한 요청 16회가 모두 `turn/interrupt` 직후였고 이 호출은 19/19 오류로 거부됐다. 코드를 읽어 세운 후보이고 확인하지 않았다. |
+| 구성 | 정식 시도 수의 출처가 맞지 않는다. | 보고서 본문 31회, 원문 로그에서 센 값 29회. 차이를 풀지 못했다. |
+| 외적 | 실험 9에서 Codex 소스를 열지 못했다. | 생성 schema만 확인했다. 내부 지연 가능성은 배제하지 못했다. |
 | 내적 | 실험 에이전트의 실수다. | 실험 3의 인용 오류, 실험 4의 건너뛴 항목, 실험 5의 호출 상한 초과와 판별력 없는 9b가 있었다. |
 | 구성 | `asked`는 호스트에 온 요청이고 보안 경계의 완전성이 아니다. | 거부 뒤 파일 생성과 호출 기록으로 실행 여부를 따로 봤다. 요청이 오지 않은 MCP 회차는 `승인 경계 관측 불가`로만 셌다. |
 | 구성 | 호스트의 직접 호출 경로(`mcpServer/tool/call`)는 승인 경계를 우회한다. | 실험 7에서 5/5 실행됐고 실험 8은 이 경로를 쓰지 않았다. |
@@ -261,6 +339,10 @@ Claude Code와 Codex 모두 실행 인자나 전용 설정으로 Saturn이 요�
 - 실험 4는 즉시 허용과 거부, 오류 감싸기(종료 코드 2), 파일 편집 훅 항목을 에이전트가 잘못 건너뛰었다. 이 항목들은 지금도 확인 못 함이다.
 - 원자료 일부가 유실됐다. 실험 1~4의 회차별 원문 메시지와 스크립트, 실험 5~8의 드라이버와 회차별 관측 파일(`matrix-results.json`, `observations.jsonl`, `results.jsonl` 등)은 실험 worktree와 함께 지워졌다. 보고서가 인용한 줄 번호는 지금 확인할 수 없다. 남은 것은 [데이터](data/README.md)에 적었다.
 - 실험 5가 모델 호출 상한 40회를 넘겼다(44회).
+- 실험 9도 모델 호출 상한 30회를 넘겼다(36회). `all_requests` 실행기가 슬롯마다 thread를 2개씩 남겨 후보 처리 표본이 슬롯 10개가 아니라 thread 20개로 기록됐다. 이 처리의 정식 확인 판정은 내리지 않았다.
+- 실험 9는 Codex 소스를 열지 못해 어디서 멈추는지 소스로 대조하지 못했다. 지연된 도착의 원인은 확인 못 함이다.
+- 실험 9의 정식 시도 수 31회는 원문 로그에서 센 29회와 다르다. `turn/interrupt` 직후 도착 비율은 원문 로그 기준 값이고 보고서와 댓글에는 없다.
+- 실험 9의 드라이버가 늦은 도착에 영향을 줬는지 시험하지 않았다. 실험 8의 드라이버는 유실돼 같은 구조였는지 알 수 없다.
 - 반복이 3~10회다. 통계 검정과 신뢰구간을 계산하지 않았다.
 - 실험 6의 모델 호출 수는 rollout 기록을 한 번으로 센 값이다. 같은 실험의 실행 로그에는 `safe-command/ls/1`이 요청 0건으로 중단된 앞선 시도(종료 코드 130)가 남아 있고, 이 시도가 53회에 들어갔는지는 보고서에 없다. 보고서의 3/3은 이후 재실행이다.
 - 실험 2의 에이전트 모델은 기록이 없고, 실험 3과 4의 호출 수도 기록이 없다.
@@ -269,21 +351,21 @@ Claude Code와 Codex 모두 실행 인자나 전용 설정으로 Saturn이 요�
 
 | provider | 구성 | 상태 |
 |---|---|---|
-| Codex | 전용 `CODEX_HOME`(사용자와 폴더 규칙 제외, 로그인은 심볼릭 링크), `thread/start`의 `approvalPolicy="untrusted"`, 읽기 전용 샌드박스, MCP 설정 번역(허용 `approve`, 묻기 `prompt`, 거부 `disabled_tools`나 `enabled_tools`), 첫 턴 전 `mcpServerStatus/list`와 유예 늘리기 | 셸 대표 명령, 파일 편집, subagent는 확인(3/3~5/5). MCP 묻기는 불안정 |
+| Codex | 전용 `CODEX_HOME`(사용자와 폴더 규칙 제외, 로그인은 심볼릭 링크), `thread/start`의 `approvalPolicy="untrusted"`, 읽기 전용 샌드박스, MCP 설정 번역(허용 `approve`, 묻기 `prompt`, 거부 `disabled_tools`나 `enabled_tools`), 첫 턴 전 `mcpServerStatus/list`와 유예 늘리기 | 셸 대표 명령, 파일 편집, subagent는 확인(3/3~5/5). MCP 묻기는 불안정. 실험 9에서 시도한 회차 모두 요청이 도착했으나(31/31) 도착 시점이 최대 약 145초 늦었고 원인은 `확인 못 함` |
 | Claude Code | `--permission-prompt-tool stdio`와 `--settings '{"permissions":{"ask":[...]}}'` | Bash는 확인(사용자 bypass에서도). 다른 도구는 시험하지 않았다 |
 
 채팅마다 규칙이 다르면 규칙마다 별도 app-server와 별도 `CODEX_HOME`을 쓴다(실험 5의 9a 확인). 단일 app-server의 thread별 규칙 변경은 확인하지 못했다.
 
 ## 남은 것
 
-- MCP 묻기 불안정: 요청이 오지 않는 원인
+- MCP 승인 요청 도착이 약 0~145초로 갈린 원인(드라이버 읽기 방식, 실험 8 시간 초과 길이, Codex 내부 지연 중 무엇인지)
+- 승인 요청 지연이 사용자 대기 시간에 주는 영향
 - 읽기 전용 샌드박스의 일반 작업 불편 정도 측정
 - 키체인 로그인(`cli_auth_credentials_store`)에서의 로그인 공유와 토큰 갱신
 - Claude의 편집과 쓰기 도구, MCP 도구, `ask: ["*"]` 와일드카드 시험
 - 모든 명령을 매치하는 규칙의 표현 방법과 안전 목록 전체 묻기
 - 훅의 `apply_patch`와 코드 모드 `exec` 범위 실측
 - 관리형(managed) 설정이 있을 때의 결과
-- 후속: 원인 찾기 실험 진행 중(이슈 #194)
 
 ## 재현
 
@@ -296,7 +378,7 @@ shasum -a 256 -c SHA256SUMS
 
 | 파일 | SHA-256 |
 |---|---|
-| `data/SHA256SUMS` | `e67025e71dedac79d333b4a0c344de7fccebd358418b295fb09287420bae7a91` |
+| `data/SHA256SUMS` | `68e0eecdc6e5755a1dff100b12b6ca01cd97a22fe0ff0d77f613f6c2685a0f2e` |
 
 ## 결론
 
@@ -310,5 +392,6 @@ shasum -a 256 -c SHA256SUMS
 | H6 | 보류 | 없음 |
 | H7 | 부분 채택 | 없음 |
 | H8 | 보류 | 없음 |
+| H9 | `확인 못 함` | 없음 |
 
-시리즈가 끝나지 않아 설계 문서와 결정 기록에는 반영하지 않았다.
+실험 시리즈는 여기서 마친다. 판정이 보류나 확인 못 함으로 남은 항목이 있어 설계 문서와 결정 기록에는 반영하지 않았다.

@@ -1,6 +1,6 @@
 # 실행 로그 핵심 줄
 
-Codex 실험 4건의 실행 전체 로그(`codex-194-{home,plug,mcp,prompt-path}.log`, 경로와 SHA-256은 [데이터](../README.md))에서 결과 판단에 쓴 줄만 발췌했다. 줄 번호는 각 로그 파일 안의 번호다. 긴 줄은 `...`로 줄였다. 장치 이름과 설치 id가 든 부분은 줄였고, thread id와 작업 경로는 `<id>`, `<worktree>`로 바꿨다. 이메일 주소와 인증 값이 든 줄은 발췌하지 않았다.
+Codex 실험 4건의 실행 전체 로그(`codex-194-{home,plug,mcp,prompt-path}.log`, 경로와 SHA-256은 [데이터](../README.md))에서 결과 판단에 쓴 줄만 발췌했다. 줄 번호는 각 로그 파일 안의 번호다. 긴 줄은 `...`로 줄였다. 장치 이름과 설치 id가 든 부분은 줄였고, thread id와 작업 경로는 `<id>`, `<worktree>`로 바꿨다. 이메일 주소와 인증 값이 든 줄은 발췌하지 않았다. 실험 9는 맨 아래 절에 따로 적었다.
 
 ## home 실험(실험 5)
 
@@ -158,4 +158,42 @@ accept 1도 도구 시도 항목은 생겼지만 승인 요청 없이 180초 대
 
 ```text
 accept 1·2 모두 도구 시도 항목 후 승인 요청 없이 timeout 됐고 fixture 로그도 없었습니다. 이는 이미 accept 조건의 불안정 신호입니다.
+```
+
+## rootcause 실험(실험 9)
+
+실험 9의 회차별 원문 로그(`.local/experiments/provider-permission-gating/rootcause/experiment-logs/`, 경로와 SHA-256은 [데이터](../README.md))에서 승인 요청 도착 시각을 보인 줄이다. 줄 번호는 각 회차 로그 파일 안의 번호이고 `capturedAtMs`는 드라이버가 줄을 읽어 기록한 시각이다. 긴 줄은 `...`로 줄였고 thread id와 turn id는 `<id>`로 바꿨다. 이 절의 해석은 보고서가 아니라 원문 줄을 읽은 결과이고, 원인 판정은 아니다.
+
+`baseline/decline-1.jsonl` 44~49줄. 도구 호출 시작 뒤 약 141.5초 동안 아무 줄도 없다가, 드라이버가 `turn/interrupt`를 보낸 1ms 뒤에 `mcpServer/elicitation/request`가 기록됐다. `turn/interrupt` 요청 자체는 `turnId` 누락 오류로 거부됐다.
+
+```text
+44 1790893948593 server->host item/started        mcpToolCall write_like_tool inProgress
+45 1790893948594 server->host thread/status/changed active waitingOnApproval
+46 1790894090102 host->server turn/interrupt       {"threadId":"<id>"}
+47 1790894090103 server->host mcpServer/elicitation/request id=0 turnId=<id> serverName=saturn_prompt_fixture ...
+48 1790894090104 host->server {"id":0,"result":{"action":"decline"}}
+49 1790894090104 server->host {"error":{"code":-32600,"message":"Invalid request: missing field `turnId`"},"id":5}
+```
+
+`baseline/decline-3.jsonl` 44~47줄. 같은 방법의 즉시 도착 회차다. 도구 호출 시작 1ms 뒤에 요청이 기록됐고 `turn/interrupt`는 없었다.
+
+```text
+44 1790894248197 server->host item/started        mcpToolCall write_like_tool inProgress
+45 1790894248198 server->host thread/status/changed active waitingOnApproval
+46 1790894248198 server->host mcpServer/elicitation/request id=0 turnId=<id> serverName=saturn_prompt_fixture ...
+47 1790894248198 host->server {"id":0,"result":{"action":"decline"}}
+```
+
+`experiment/run_trial.py` 중 읽기와 중단 부분(드라이버, 원문 그대로 발췌). 읽기는 `selectors`로 stdout 파일 기술자를 기다린 뒤 텍스트 모드 `readline()`으로 한 줄씩 읽고, 시간 초과 때 `turn/interrupt`에 `threadId`만 보낸다.
+
+```text
+36  self.selector.register(process.stdout, selectors.EVENT_READ, "stdout")
+...
+79  events = self.selector.select(max(0.05, deadline - time.monotonic()))
+...
+83  line = key.fileobj.readline()
+...
+224 deadline = time.monotonic() + 150
+...
+273 interrupt_id = rpc.request("turn/interrupt", {"threadId": thread_value})
 ```
