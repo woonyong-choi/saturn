@@ -8,7 +8,13 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use saturn_protocol::ids::{TaskId, TaskLabel};
 
-use crate::i18n::Lang;
+use ratatui::style::Style;
+use ratatui::text::{Line, Span};
+
+use crate::i18n::{self, Lang};
+use crate::labels;
+use crate::view::transcript::held_labels;
+use crate::view::{SELECTED, render_window};
 
 /// 선택지.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,22 +54,75 @@ pub struct ResumePrompt {
 impl ResumePrompt {
     /// 보류 목록으로 연다. 강조는 `모두 이어서`.
     pub fn new(held: Vec<(TaskId, TaskLabel)>) -> Self {
-        todo!("#92")
+        Self {
+            held,
+            selected: ResumeChoice::All,
+            picking: None,
+        }
     }
 
     /// `↑` 이동.
     pub fn up(&mut self) {
-        todo!("#92")
+        match &mut self.picking {
+            Some((row, _)) => *row = row.saturating_sub(1),
+            None => {
+                self.selected = match self.selected {
+                    ResumeChoice::All | ResumeChoice::Pick => ResumeChoice::All,
+                    ResumeChoice::Leave => ResumeChoice::Pick,
+                };
+            }
+        }
     }
 
     /// `↓` 이동.
     pub fn down(&mut self) {
-        todo!("#92")
+        let last = self.held.len();
+        match &mut self.picking {
+            Some((row, _)) => *row = (*row + 1).min(last),
+            None => {
+                self.selected = match self.selected {
+                    ResumeChoice::All => ResumeChoice::Pick,
+                    ResumeChoice::Pick | ResumeChoice::Leave => ResumeChoice::Leave,
+                };
+            }
+        }
     }
 
+    // cost: time O(h²), heap O(h), stack O(1)
+    // vars: h = 보류 작업 수
+    // basis: estimate
     /// `Enter`. 선택 단계에서는 강조한 작업을 고르거나 빼고, 목록 끝의 확정 행에서 `Continue`를 돌려준다.
     pub fn confirm(&mut self) -> ResumeOutcome {
-        todo!("#92")
+        let Some((row, chosen)) = &mut self.picking else {
+            return match self.selected {
+                ResumeChoice::All => ResumeOutcome::ContinueAll,
+                ResumeChoice::Pick => {
+                    self.picking = Some((0, Vec::new()));
+                    ResumeOutcome::Pending
+                }
+                ResumeChoice::Leave => ResumeOutcome::Leave,
+            };
+        };
+        match self.held.get(*row) {
+            Some((task, _)) => {
+                match chosen.iter().position(|c| c == task) {
+                    Some(index) => {
+                        chosen.remove(index);
+                    }
+                    None => chosen.push(*task),
+                }
+                ResumeOutcome::Pending
+            }
+            None => {
+                let ordered = self
+                    .held
+                    .iter()
+                    .map(|(task, _)| *task)
+                    .filter(|task| chosen.contains(task))
+                    .collect();
+                ResumeOutcome::Continue(ordered)
+            }
+        }
     }
 }
 
@@ -77,8 +136,90 @@ pub struct ResumePromptView<'a> {
 }
 
 impl ResumePromptView<'_> {
+    // cost: time O(h²), heap O(h), stack O(1)
+    // vars: h = 보류 작업 수
+    // basis: estimate
     /// 보류 목록 `[A] [C]`과 선택지 세 개, 선택 단계면 작업마다 고름 표시를 그린다.
     pub fn render(&self, frame: &mut Frame, area: Rect) {
-        todo!("#92")
+        let lang = self.lang;
+        let prompt = self.prompt;
+        let labels: Vec<TaskLabel> = prompt.held.iter().map(|(_, label)| *label).collect();
+        let mut lines = vec![Line::from(held_labels(&labels)), Line::from("")];
+        let rows: Vec<(String, bool)> = match &prompt.picking {
+            None => [
+                (ResumeChoice::All, i18n::RESUME_ALL),
+                (ResumeChoice::Pick, i18n::RESUME_PICK),
+                (ResumeChoice::Leave, i18n::RESUME_LEAVE),
+            ]
+            .into_iter()
+            .map(|(choice, text)| (lang.tr(text).to_string(), choice == prompt.selected))
+            .collect(),
+            Some((row, chosen)) => {
+                let mut rows: Vec<(String, bool)> = prompt
+                    .held
+                    .iter()
+                    .enumerate()
+                    .map(|(i, (task, label))| {
+                        let mark = if chosen.contains(task) { "[x]" } else { "[ ]" };
+                        (format!("{mark} {}", labels::format(*label)), i == *row)
+                    })
+                    .collect();
+                rows.push((
+                    lang.tr(i18n::RESUME_CONFIRM).to_string(),
+                    *row == prompt.held.len(),
+                ));
+                rows
+            }
+        };
+        lines.extend(rows.into_iter().map(|(text, selected)| {
+            let style = if selected { SELECTED } else { Style::new() };
+            Line::from(Span::styled(text, style))
+        }));
+        render_window(frame, area, lang.tr(i18n::RESUME_TITLE), lines);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn prompt() -> ResumePrompt {
+        ResumePrompt::new(vec![
+            (TaskId(1), TaskLabel('A')),
+            (TaskId(3), TaskLabel('C')),
+        ])
+    }
+
+    #[test]
+    fn confirm_all_continues_everything() {
+        assert_eq!(prompt().confirm(), ResumeOutcome::ContinueAll);
+    }
+
+    #[test]
+    fn confirm_leave_after_moving_down_twice() {
+        let mut prompt = prompt();
+
+        prompt.down();
+        prompt.down();
+        prompt.down();
+
+        assert_eq!(prompt.confirm(), ResumeOutcome::Leave);
+    }
+
+    #[test]
+    fn pick_toggles_tasks_and_confirms_in_order() {
+        let mut prompt = prompt();
+        prompt.down();
+        assert_eq!(prompt.confirm(), ResumeOutcome::Pending);
+
+        prompt.down();
+        prompt.confirm();
+        prompt.up();
+        prompt.confirm();
+        prompt.confirm();
+        prompt.down();
+        prompt.down();
+
+        assert_eq!(prompt.confirm(), ResumeOutcome::Continue(vec![TaskId(3)]));
     }
 }

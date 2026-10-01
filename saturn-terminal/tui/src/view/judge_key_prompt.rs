@@ -9,43 +9,54 @@ use std::fmt;
 use ratatui::Frame;
 use ratatui::layout::Rect;
 
-use crate::i18n::Lang;
+use ratatui::text::{Line, Span};
+
+use crate::i18n::{self, Lang};
+use crate::view::{MUTED, render_window};
 
 /// 가린 입력. `Debug`는 글자 수만 보인다(`MaskedInput(len=40)`).
 #[derive(Clone, Default)]
 pub struct MaskedInput(String);
 
 impl MaskedInput {
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
     /// 글자 하나 더한다.
     pub fn push(&mut self, c: char) {
-        todo!("#92")
+        self.0.push(c);
     }
 
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
     /// 끝 글자 지운다.
     pub fn pop(&mut self) {
-        todo!("#92")
+        self.0.pop();
     }
 
     /// 글자 수. 화면에는 이 수만큼 `•`를 그린다.
     pub fn len(&self) -> usize {
-        todo!("#92")
+        self.0.chars().count()
     }
 
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
     /// 비었다.
     pub fn is_empty(&self) -> bool {
-        todo!("#92")
+        self.0.is_empty()
     }
 
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
     /// 원문을 꺼내고 비운다. engine에 보낼 때 한 번만.
     pub fn take(&mut self) -> String {
-        todo!("#92")
+        std::mem::take(&mut self.0)
     }
 }
 
 impl fmt::Debug for MaskedInput {
     /// 원문 대신 글자 수만 쓴다.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!("#92")
+        write!(f, "MaskedInput(len={})", self.len())
     }
 }
 
@@ -70,6 +81,83 @@ pub struct JudgeKeyPromptView<'a> {
 impl JudgeKeyPromptView<'_> {
     /// 가운데 창에 원인과 `•` 입력칸, `Enter 확인 · Esc 종료` 안내를 그린다.
     pub fn render(&self, frame: &mut Frame, area: Rect) {
-        todo!("#92")
+        let lang = self.lang;
+        let lines = vec![
+            Line::from(self.prompt.cause.clone()),
+            Line::from(""),
+            Line::from(format!("› {}", "•".repeat(self.prompt.input.len()))),
+            Line::from(""),
+            Line::from(Span::styled(lang.tr(i18n::JUDGE_KEY_HINT), MUTED)),
+        ];
+        render_window(frame, area, lang.tr(i18n::JUDGE_KEY_TITLE), lines);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ratatui::Terminal;
+    use ratatui::backend::TestBackend;
+
+    use super::*;
+
+    fn masked(text: &str) -> MaskedInput {
+        let mut input = MaskedInput::default();
+        text.chars().for_each(|c| input.push(c));
+        input
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    #[test]
+    fn debug_hides_key_text() {
+        let prompt = JudgeKeyPrompt {
+            cause: "invalid key".to_string(),
+            input: masked("sk-secret"),
+        };
+
+        let debug = format!("{prompt:?}");
+
+        assert!(debug.contains("MaskedInput(len=9)"));
+        assert!(!debug.contains("sk-secret"));
+    }
+
+    #[test]
+    fn take_returns_text_once() {
+        let mut input = masked("ab");
+        input.pop();
+        input.push('c');
+
+        assert_eq!(input.take(), "ac");
+        assert!(input.is_empty());
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    #[test]
+    fn render_masks_key_with_dots() {
+        let prompt = JudgeKeyPrompt {
+            cause: "judge check failed".to_string(),
+            input: masked("secret"),
+        };
+        let mut terminal = Terminal::new(TestBackend::new(60, 9)).unwrap();
+        let view = JudgeKeyPromptView {
+            prompt: &prompt,
+            lang: Lang::Ko,
+        };
+
+        terminal
+            .draw(|frame| view.render(frame, frame.area()))
+            .unwrap();
+
+        let content: String = terminal
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .map(|cell| cell.symbol())
+            .collect();
+        assert!(content.contains("••••••"));
+        assert!(!content.contains("secret"));
+        assert!(content.contains("judge check failed"));
     }
 }

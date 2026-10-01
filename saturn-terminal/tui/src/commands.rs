@@ -6,6 +6,8 @@
 use saturn_protocol::ids::TaskLabel;
 use saturn_protocol::rpc::UsageRange;
 
+use crate::labels::LABEL_RANGE;
+
 /// 명령 해석 오류. 입력창 아래 한 줄로 보이고 입력은 보내지 않는다.
 #[derive(Debug, thiserror::Error)]
 pub enum CommandError {
@@ -79,6 +81,11 @@ pub const SATURN_COMMANDS: &[CommandSpec] = &[
         description: "판단 모델 버전",
         values: &[],
     },
+    CommandSpec {
+        path: "record",
+        description: "판단 기록 켜기와 끄기",
+        values: &["on", "off"],
+    },
 ];
 
 /// 해석한 명령.
@@ -87,7 +94,6 @@ pub enum SlashCommand {
     /// `/help` 도움말.
     Help,
     /// `/record on|off` 이 채팅의 판단 기록 켜기와 끄기(`Request::SetRecording`).
-    /// TODO(#92): `SATURN_COMMANDS` 목록과 `/` 팝업에 추가
     Record { on: bool },
     /// `/send [이름표]` 대기 입력을 지금 보낸다(`Request::SendNow`). 이름표가 없으면 가장 최근 대기 입력.
     Send { target: Option<TaskLabel> },
@@ -112,16 +118,300 @@ pub enum SlashCommand {
     Provider { line: String },
 }
 
+// cost: time O(n), heap O(n), stack O(1)
+// vars: n = line.len()
+// basis: estimate
 /// 제출한 줄을 명령으로 해석한다. `/`로 시작하지 않으면 `Ok(None)`(일반 입력).
+/// Saturn 명령이 아닌 이름은 provider 명령(`SlashCommand::Provider`)으로 넘기고, 이름이 없는 `/`만 `Unknown`이다.
 /// 앞뒤 공백은 무시하고, 이름표 인자는 `labels::LABEL_RANGE`(초안 `A`–`Z`)의 한 글자만 받는다.
 ///
 /// # Errors
 /// 알 수 없는 Saturn 명령이면 `Unknown`, 인자가 틀리면 `InvalidArgument`.
 pub fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
-    todo!("#92")
+    let line = line.trim();
+    let Some(body) = line.strip_prefix('/') else {
+        return Ok(None);
+    };
+    let mut words = body.split_whitespace();
+    let name = words.next().unwrap_or_default();
+    let args: Vec<&str> = words.collect();
+    let command = match name {
+        "help" => no_args("help", &args, SlashCommand::Help)?,
+        "record" => SlashCommand::Record {
+            on: parse_switch(&args)?,
+        },
+        "send" => SlashCommand::Send {
+            target: parse_target("send", &args)?,
+        },
+        "cancel" => SlashCommand::Cancel {
+            target: parse_target("cancel", &args)?,
+        },
+        "continue" => SlashCommand::Continue {
+            target: parse_target("continue", &args)?,
+        },
+        "feedback" => SlashCommand::Feedback {
+            correct: parse_feedback(&args)?,
+        },
+        "tasks" => no_args("tasks", &args, SlashCommand::Tasks)?,
+        "usage" => SlashCommand::Usage {
+            range: parse_range(&args)?,
+        },
+        "train" => parse_train(&args)?,
+        "judge" => parse_judge(&args)?,
+        "" => {
+            return Err(CommandError::Unknown {
+                name: String::new(),
+            });
+        }
+        _ => SlashCommand::Provider {
+            line: line.to_string(),
+        },
+    };
+    Ok(Some(command))
 }
 
+// cost: time O(k·t), heap O(k), stack O(1)
+// vars: k = SATURN_COMMANDS.len(), t = token.len()
+// basis: estimate
 /// 입력 토큰(`/ju`)에 맞는 명령을 앞부분 일치 우선, 그다음 포함 순서로 고른다. 팝업이 최대 8행을 보인다.
 pub fn filter(token: &str) -> Vec<&'static CommandSpec> {
-    todo!("#92")
+    let token = token.trim_start_matches('/');
+    let prefixed = SATURN_COMMANDS
+        .iter()
+        .filter(|spec| spec.path.starts_with(token));
+    let contained = SATURN_COMMANDS
+        .iter()
+        .filter(|spec| !spec.path.starts_with(token) && spec.path.contains(token));
+    prefixed.chain(contained).collect()
+}
+
+/// 인자가 없어야 하는 명령.
+fn no_args(
+    command: &'static str,
+    args: &[&str],
+    parsed: SlashCommand,
+) -> Result<SlashCommand, CommandError> {
+    match args.first() {
+        None => Ok(parsed),
+        Some(argument) => Err(invalid(command, argument)),
+    }
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 인자 글자 수(오류 문구를 만들 때만)
+// basis: estimate
+/// `/record on|off`.
+fn parse_switch(args: &[&str]) -> Result<bool, CommandError> {
+    match args {
+        ["on"] => Ok(true),
+        ["off"] => Ok(false),
+        _ => Err(invalid("record", &args.join(" "))),
+    }
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 인자 글자 수(오류 문구를 만들 때만)
+// basis: estimate
+/// 이름표 인자 하나(없어도 된다). `LABEL_RANGE`의 한 글자만, 소문자는 대문자로 읽는다.
+fn parse_target(command: &'static str, args: &[&str]) -> Result<Option<TaskLabel>, CommandError> {
+    let argument = match args {
+        [] => return Ok(None),
+        [argument] => *argument,
+        _ => return Err(invalid(command, &args.join(" "))),
+    };
+    let mut chars = argument.chars();
+    match (chars.next().map(|c| c.to_ascii_uppercase()), chars.next()) {
+        (Some(c), None) if LABEL_RANGE.contains(&c) => Ok(Some(TaskLabel(c))),
+        _ => Err(invalid(command, argument)),
+    }
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 인자 글자 수(오류 문구를 만들 때만)
+// basis: estimate
+/// `/feedback 1|2`.
+fn parse_feedback(args: &[&str]) -> Result<bool, CommandError> {
+    match args {
+        ["1"] => Ok(true),
+        ["2"] => Ok(false),
+        _ => Err(invalid("feedback", &args.join(" "))),
+    }
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 인자 글자 수(오류 문구를 만들 때만)
+// basis: estimate
+/// `/usage [chat|today|week|all]`. 기본 `chat`.
+fn parse_range(args: &[&str]) -> Result<UsageRange, CommandError> {
+    match args {
+        [] | ["chat"] => Ok(UsageRange::Chat),
+        ["today"] => Ok(UsageRange::Today),
+        ["week"] => Ok(UsageRange::Week),
+        ["all"] => Ok(UsageRange::All),
+        _ => Err(invalid("usage", &args.join(" "))),
+    }
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 인자 글자 수
+// basis: estimate
+/// `/train [--reset-thresholds] [--from 버전]`.
+fn parse_train(args: &[&str]) -> Result<SlashCommand, CommandError> {
+    let mut reset_thresholds = false;
+    let mut from = None;
+    let mut rest = args.iter();
+    while let Some(argument) = rest.next() {
+        match *argument {
+            "--reset-thresholds" => reset_thresholds = true,
+            "--from" => match rest.next() {
+                Some(version) => from = Some((*version).to_string()),
+                None => return Err(invalid("train", argument)),
+            },
+            _ => return Err(invalid("train", argument)),
+        }
+    }
+    Ok(SlashCommand::Train {
+        reset_thresholds,
+        from,
+    })
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 인자 글자 수(오류 문구를 만들 때만)
+// basis: estimate
+/// `/judge version`.
+fn parse_judge(args: &[&str]) -> Result<SlashCommand, CommandError> {
+    match args {
+        ["version"] => Ok(SlashCommand::JudgeVersion),
+        _ => Err(invalid("judge", &args.join(" "))),
+    }
+}
+
+/// 인자 오류.
+fn invalid(command: &'static str, argument: &str) -> CommandError {
+    CommandError::InvalidArgument {
+        command,
+        argument: argument.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_plain_text_returns_none() {
+        assert_eq!(parse("고쳐 줘").unwrap(), None);
+    }
+
+    #[test]
+    fn parse_send_with_label_returns_target() {
+        let parsed = parse(" /send c ").unwrap();
+
+        assert_eq!(
+            parsed,
+            Some(SlashCommand::Send {
+                target: Some(TaskLabel('C'))
+            })
+        );
+    }
+
+    #[test]
+    fn parse_continue_without_label_returns_all() {
+        assert_eq!(
+            parse("/continue").unwrap(),
+            Some(SlashCommand::Continue { target: None })
+        );
+    }
+
+    #[test]
+    fn parse_label_outside_range_returns_invalid_argument() {
+        let result = parse("/cancel 9");
+
+        assert!(matches!(
+            result,
+            Err(CommandError::InvalidArgument {
+                command: "cancel",
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn parse_usage_default_is_chat() {
+        assert_eq!(
+            parse("/usage").unwrap(),
+            Some(SlashCommand::Usage {
+                range: UsageRange::Chat
+            })
+        );
+        assert_eq!(
+            parse("/usage week").unwrap(),
+            Some(SlashCommand::Usage {
+                range: UsageRange::Week
+            })
+        );
+    }
+
+    #[test]
+    fn parse_train_flags_are_read() {
+        let parsed = parse("/train --reset-thresholds --from v2").unwrap();
+
+        assert_eq!(
+            parsed,
+            Some(SlashCommand::Train {
+                reset_thresholds: true,
+                from: Some("v2".to_string())
+            })
+        );
+    }
+
+    #[test]
+    fn parse_record_switch_is_read() {
+        assert_eq!(
+            parse("/record off").unwrap(),
+            Some(SlashCommand::Record { on: false })
+        );
+        assert!(parse("/record maybe").is_err());
+    }
+
+    #[test]
+    fn parse_judge_version_and_feedback() {
+        assert_eq!(
+            parse("/judge version").unwrap(),
+            Some(SlashCommand::JudgeVersion)
+        );
+        assert_eq!(
+            parse("/feedback 2").unwrap(),
+            Some(SlashCommand::Feedback { correct: false })
+        );
+    }
+
+    #[test]
+    fn parse_unknown_command_goes_to_provider() {
+        assert_eq!(
+            parse("/review src").unwrap(),
+            Some(SlashCommand::Provider {
+                line: "/review src".to_string()
+            })
+        );
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    #[test]
+    fn filter_prefers_prefix_then_contains() {
+        let paths: Vec<&str> = filter("/ver").iter().map(|spec| spec.path).collect();
+
+        assert_eq!(paths, vec!["judge version"]);
+        assert_eq!(filter("/c")[0].path, "cancel");
+        assert_eq!(filter("/c")[1].path, "continue");
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    #[test]
+    fn saturn_commands_include_record() {
+        assert!(SATURN_COMMANDS.iter().any(|spec| spec.path == "record"));
+    }
 }
