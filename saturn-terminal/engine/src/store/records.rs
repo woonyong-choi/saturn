@@ -103,8 +103,8 @@ pub struct UsageRow {
     pub report: UsageReport,
     /// 받은 시각.
     pub at: SystemTime,
-    /// 중간 보고가 빠져 이 값의 차이가 여러 턴에 걸친다. 화면 문구는 초안이다(설계는 표시만 정함).
-    /// TODO(#92): 값 미정, 초안 `여러 턴 합계`
+    /// 중간 보고가 빠져 이 값의 차이가 여러 턴에 걸친다. 기록 저장소는 참·거짓만 두고 화면 문구는 정하지 않는다.
+    /// TODO(#90): `/usage` 응답에 이 값을 TUI로 넘기는 protocol 필드를 더하고 화면 문구(초안 `여러 턴 합계`)를 정한다
     pub spans_turns: bool,
 }
 
