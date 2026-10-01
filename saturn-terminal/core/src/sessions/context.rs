@@ -1,12 +1,5 @@
 //! compaction 판정과 패킷 구성.
-//!
-//! 설계: docs/design/context-management.md. 기호:
-//! - `A`: 턴 끝마다 잰 활성 맥락 크기(토큰)
-//! - `T = min(T_abs, N% × 창 크기)`: 발동 기준. `T_abs`는 provider별 절대 토큰, `N`은 안전 비율
-//! - `P`: 새 session에 넘길 패킷 크기, `P_max = T / 10`
-//! - `r`, `w`: 캐시 읽기 배수, 캐시 쓰기 배수
-//! - `k* = (P×w − A×r) / ((A − P) × r)`: 새 session으로 옮기는 비용과 그대로 잇는 비용이 같아지는 턴 수
-//! - `H`: 턴당 증가량의 p95(관측 전에는 창의 10%), `T_hard = T + H`: provider 자동 압축 안전망
+//! 설계: docs/design/context-management.md
 
 use std::path::Path;
 use std::time::Duration;
@@ -19,31 +12,31 @@ pub const DEFAULT_EXPECTED_TURNS: u32 = 3;
 /// 도구 결과에서 남기는 앞부분 글자 수.
 pub const TOOL_RESULT_CHARS: usize = 300;
 
-/// 토큰 수 추정에 쓰는 글자 수. 초안: 한 토큰을 네 글자로 본다.
+// 초안
 const CHARS_PER_TOKEN: usize = 4;
 
-/// provider가 스스로 읽는 문서. 패킷에 넣지 않는다.
+/// provider가 스스로 읽으므로 패킷에 넣지 않는다.
 const PROVIDER_DOCS: [&str; 2] = ["AGENTS.md", "CLAUDE.md"];
 
-/// provider별 기준값. 설정에서 읽는다. TODO(#49): 설정 키 이름과 기본값
+/// TODO(#49): 설정 키 이름과 기본값
 #[derive(Debug, Clone, Copy)]
 pub struct ContextBudget {
-    /// provider별 절대 토큰 `T_abs`.
+    /// 절대 기준(토큰).
     pub t_abs: u64,
-    /// 안전 비율 `N`(0~100).
+    /// 백분율(0~100).
     pub safety_percent: u8,
-    /// 모델 맥락 창 크기.
+    /// 맥락 창 크기(토큰).
     pub window: u64,
-    /// 캐시 읽기 배수 `r`, 쓰기 배수 `w`.
+    /// 단가 배수.
     pub cache_read: f64,
-    /// 캐시 쓰기 배수.
+    /// 단가 배수.
     pub cache_write: f64,
-    /// provider 캐시 유지 시간. 마지막 턴 뒤 이만큼 지나면 유휴 복귀 조건을 본다.
+    /// 마지막 턴 뒤 이만큼 지나면 유휴 복귀 조건을 본다.
     pub cache_ttl: Duration,
 }
 
 impl ContextBudget {
-    /// 발동 기준 `T`. `N`이 100을 넘으면 100으로 본다.
+    /// `safety_percent`가 100을 넘으면 100으로 본다.
     pub fn threshold(&self) -> u64 {
         let percent = u128::from(self.safety_percent.min(100));
         let by_window = u128::from(self.window) * percent / 100;
@@ -51,50 +44,38 @@ impl ContextBudget {
         self.t_abs.min(by_window)
     }
 
-    /// provider 자동 압축에 넘길 안전망 `T_hard = T + H`. 사용자가 provider 설정에 값을 정해 두면 넣지 않는다.
-    /// `H`를 관측하기 전(`None`)에는 창 크기의 10%를 쓴다.
+    /// `p95_growth`를 관측하기 전(`None`)에는 창 크기의 10%를 더한다.
     pub fn hard_limit(&self, p95_growth: Option<u64>) -> u64 {
         let growth = p95_growth.unwrap_or(self.window / 10);
         self.threshold().saturating_add(growth)
     }
 
-    /// 패킷 크기 상한 `P_max = T / 10`.
     pub fn packet_limit(&self) -> u64 {
         self.threshold() / 10
     }
 }
 
-/// 턴 끝에 판정에 쓰는 값.
 #[derive(Debug, Clone, Copy)]
 pub struct ContextMeasure {
-    /// `A`. 잴 수 없으면 `None`이고 Saturn 재시작 없이 provider 자동 압축에 맡긴다. TODO(#62): 루트 메시지로만 계산할지
+    /// 잴 수 없으면 `None`이고 provider 자동 압축에 맡긴다.
+    /// TODO(#62): 루트 메시지로만 계산할지
     pub active: Option<u64>,
-    /// 예상 패킷 크기 `P`.
     pub packet: u64,
-    /// 트리 유휴인지.
     pub tree_idle: bool,
-    /// A에 합칠 대기 입력이 있는지.
     pub has_mergeable_queue: bool,
-    /// 마지막 턴 뒤 지난 시간.
     pub since_last_turn: Duration,
-    /// 기대 잔여 턴. 모르면 `None`(3으로 본다).
+    /// 모르면 `DEFAULT_EXPECTED_TURNS`로 본다.
     pub expected_turns: Option<u32>,
 }
 
-/// compaction 판정.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompactionDecision {
-    /// 그대로 계속한다.
     Continue,
-    /// 다음 턴 경계까지 미룬다(트리 유휴가 아니거나 합칠 대기 입력이 있음).
     Defer,
-    /// 새 session을 열고 패킷을 넘긴다.
     Restart,
 }
 
-/// 판정 순서: 유휴 아님이나 합칠 입력 → `Defer`, 캐시 만료이고 `P < A` → `Restart`, `A < T` → `Continue`,
-/// `A ≥ T`이고 `k*` ≤ 기대 잔여 턴 → `Restart`, 그 밖 → `Continue`.
-/// `A`를 잴 수 없으면 새 session을 열지 않고 `Continue`(provider 자동 압축에 맡긴다).
+/// `measure.active`가 `None`이면 새 session을 열지 않고 provider 자동 압축에 맡긴다.
 pub fn decide(budget: &ContextBudget, measure: &ContextMeasure) -> CompactionDecision {
     if !measure.tree_idle || measure.has_mergeable_queue {
         return CompactionDecision::Defer;
@@ -116,8 +97,7 @@ pub fn decide(budget: &ContextBudget, measure: &ContextMeasure) -> CompactionDec
     CompactionDecision::Continue
 }
 
-/// 본전 턴 수 `k*`. 0보다 작으면 0(바로 옮기는 쪽이 이득)이다.
-/// `A ≤ P`이거나 `r ≤ 0`이면 옮겨도 턴당 비용이 줄지 않으므로 무한대다.
+/// 음수는 0으로, 옮겨도 턴당 비용이 줄지 않으면(`active ≤ packet`, `cache_read ≤ 0`) 무한대로 돌려준다.
 pub fn break_even_turns(budget: &ContextBudget, active: u64, packet: u64) -> f64 {
     if active <= packet || budget.cache_read <= 0.0 {
         return f64::INFINITY;
@@ -132,34 +112,29 @@ pub fn break_even_turns(budget: &ContextBudget, active: u64, packet: u64) -> f64
     turns.max(0.0)
 }
 
-/// 패킷 재료. 모두 Saturn 기록 원문에서 고른다(provider 요약은 정본이 아니다).
+/// provider 요약은 정본이 아니므로 모두 Saturn 기록 원문에서 고른다.
 #[derive(Debug, Clone, Default)]
 pub struct PacketSource {
-    /// 사용자가 명시한 제약과 결정 원문. 항상 넣는다.
+    /// 사용자가 명시한 제약과 결정 원문.
     pub pinned: Vec<String>,
-    /// 현재 목표와 마지막 사용자 입력 원문.
     pub goal_and_last_input: Vec<String>,
     /// 끝나지 않은 항목과 효과를 모르는 항목.
     pub open_items: Vec<String>,
-    /// 최근 3턴 원문.
+    /// 최근 3턴.
     pub recent_turns: Vec<String>,
-    /// 그 이전 도구 호출 `(결과 원문, 한 줄 메모)`. `compact` 질문이 남기라고 한 것만 들어온다.
-    /// 결과는 앞 300자와 한 줄 메모로 줄인다.
+    /// `(결과 원문, 한 줄 메모)`이고 `compact` 질문이 남기라고 한 것만 들어온다.
     pub kept_tool_calls: Vec<(String, String)>,
     /// 파일은 내용 대신 경로만.
     pub file_paths: Vec<String>,
-    /// 이 패킷이 포함하는 마지막 기록 번호.
     pub up_to: LedgerSeq,
 }
 
-/// 새 session에 넘길 패킷.
 #[derive(Debug, Clone)]
 pub struct Packet {
-    /// 본문.
     pub text: String,
-    /// 토큰 수 추정.
+    /// 추정치.
     pub tokens: u64,
-    /// 포함한 마지막 기록 번호. 새 session의 `delivered`가 된다.
+    /// 새 session의 `delivered`가 된다.
     pub up_to: LedgerSeq,
 }
 
@@ -167,12 +142,7 @@ pub struct Packet {
 // vars: m = 패킷 항목 수, L = 패킷 원문 글자 수
 // basis: estimate
 // alt: 항목별 토큰 수를 한 번 세어 두고 빼기. time O(L). 잃는 것: 절 머리 줄 계산이 따로 필요
-/// 패킷을 위 순서대로 만들고 `P_max`를 넘으면 뒤쪽 항목부터 줄인다.
-/// provider가 스스로 읽는 문서(`AGENTS.md`, `CLAUDE.md`)는 넣지 않는다.
-///
-/// 줄이는 순서는 파일 경로, 도구 호출, 최근 턴, 미완 항목, 목표, 고정 항목이고, 절 안에서는 끝 항목부터다.
-/// 마지막으로 줄이는 항목은 남은 예산만큼 앞부분을 남긴다. 고정 항목도 상한을 넘으면 줄인다.
-/// 토큰 수는 네 글자를 한 토큰으로 추정한다.
+/// `max_tokens`를 넘으면 뒤 절의 끝 항목부터 줄이고, 고정 항목도 예외가 아니다.
 pub fn build_packet(source: &PacketSource, max_tokens: u64) -> Packet {
     let mut sections = packet_sections(source);
     let mut text = render(&sections);
@@ -195,7 +165,6 @@ pub fn build_packet(source: &PacketSource, max_tokens: u64) -> Packet {
     }
 }
 
-/// 패킷의 절 하나.
 #[derive(Debug, Clone)]
 struct Section {
     title: &'static str,
@@ -205,8 +174,6 @@ struct Section {
 // cost: time O(L), heap O(L), stack O(1)
 // vars: L = 패킷 재료 글자 수
 // basis: estimate
-/// 패킷 재료를 넣는 순서대로 절로 나눈다. 도구 결과는 앞 300자와 한 줄 메모로 줄이고,
-/// provider가 스스로 읽는 문서의 경로는 뺀다.
 fn packet_sections(source: &PacketSource) -> Vec<Section> {
     let tool_calls = source
         .kept_tool_calls
@@ -254,7 +221,6 @@ fn packet_sections(source: &PacketSource) -> Vec<Section> {
 // cost: time O(L), heap O(L), stack O(1)
 // vars: L = 패킷 원문 글자 수
 // basis: estimate
-/// 빈 절은 빼고 `## 제목`과 항목을 빈 줄로 나눠 잇는다.
 fn render(sections: &[Section]) -> String {
     let mut text = String::new();
     for section in sections.iter().filter(|section| !section.items.is_empty()) {
@@ -272,7 +238,6 @@ fn render(sections: &[Section]) -> String {
 // cost: time O(l), heap O(l), stack O(1), alloc 1
 // vars: l = 끝 항목 글자 수
 // basis: estimate
-/// 끝 항목을 넘친 토큰만큼 줄인다. 다 줄여야 하면 뺀다.
 fn shrink_last_item(section: &mut Section, excess_tokens: u64) {
     let Some(item) = section.items.last_mut() else {
         return;
@@ -291,7 +256,6 @@ fn shrink_last_item(section: &mut Section, excess_tokens: u64) {
 // cost: time O(L), heap O(1), stack O(1)
 // vars: L = 글자 수
 // basis: estimate
-/// 토큰 수 추정. 초안: 네 글자를 한 토큰으로 보고 올림한다.
 fn estimate_tokens(text: &str) -> u64 {
     let tokens = text.chars().count().div_ceil(CHARS_PER_TOKEN);
     u64::try_from(tokens).expect("token count should fit in u64")
