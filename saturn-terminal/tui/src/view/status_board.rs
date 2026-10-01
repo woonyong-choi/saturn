@@ -326,6 +326,11 @@ pub fn alert_text(lang: Lang, alert: &Alert) -> String {
         }
         Alert::ChatBusyElsewhere { .. } => i18n::BUSY_ELSEWHERE,
         Alert::JudgeDownSendingInOrder => i18n::JUDGE_UNAVAILABLE_SEND,
+        Alert::SchemaMigrated { to, .. } => {
+            return lang
+                .tr(i18n::SCHEMA_MIGRATED)
+                .replace("{to}", &to.to_string());
+        }
     };
     lang.tr(key).to_string()
 }
@@ -584,6 +589,16 @@ mod tests {
             .iter()
             .map(|line| line.text(Lang::Ko, true, '⠙'))
             .collect()
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    #[test]
+    fn alert_text_schema_migrated_shows_target_version() {
+        let alert = Alert::SchemaMigrated { from: 1, to: 2 };
+
+        assert_eq!(alert_text(Lang::Ko, &alert), "기록 저장소 v2로 옮김");
+        assert_eq!(alert_text(Lang::En, &alert), "record store migrated to v2");
     }
 
     #[test]

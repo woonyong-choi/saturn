@@ -51,6 +51,8 @@ pub const INTAKE_STOPPED: &str = "새 입력 접수 중단 · 판단기 연결�
 pub const STEER_NOT_READY: &str = "바로 반영: 준비 중";
 pub const JUDGE_UNAVAILABLE_SEND: &str = "판단기 연결 없음 · 차례에 보냅니다";
 pub const BUSY_ELSEWHERE: &str = "다른 Saturn에서 실행 중";
+/// `{to}`는 이관한 스키마 버전.
+pub const SCHEMA_MIGRATED: &str = "기록 저장소 v{to}로 옮김";
 pub const SETTINGS_ERROR: &str = "폴더 설정 오류";
 pub const SETTINGS_PREVIOUS: &str = "이전 설정 번호";
 pub const SETTINGS_CONTINUE_SUFFIX: &str = "로 계속";
@@ -240,6 +242,7 @@ const ENGLISH: &[(&str, &str)] = &[
         "judge unavailable · sending in order",
     ),
     ("다른 Saturn에서 실행 중", "running in another Saturn"),
+    ("기록 저장소 v{to}로 옮김", "record store migrated to v{to}"),
     ("폴더 설정 오류", "folder settings error"),
     ("이전 설정 번호", "continuing with settings revision"),
     ("로 계속", ""),

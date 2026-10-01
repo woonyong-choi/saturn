@@ -314,6 +314,11 @@ pub enum Alert {
     },
     /// judge 실패로 `[보내기]` 입력을 차례에 보낸다.
     JudgeDownSendingInOrder,
+    /// 시작할 때 기록 저장소 스키마를 이관했다. 첫 TUI에만 보낸다.
+    SchemaMigrated {
+        from: u32,
+        to: u32,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
@@ -341,15 +346,17 @@ pub struct TaskListItem {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct UsageRow {
-    /// 에이전트 이름이나 judge.
+    /// provider·모델이나 judge. 예: `codex · gpt-5.6-terra`, `judge · jev`.
     pub who: String,
     /// 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론 순. 보고되지 않았으면 `None`.
     pub tokens: [Option<u64>; 5],
     pub judge_calls: u32,
     /// 단위: 마이크로 달러.
     pub estimated_cost_micros: Option<u64>,
-    pub compactions: u32,
-    pub labels: u32,
+    /// 기록에 없으면 `None`.
+    pub compactions: Option<u32>,
+    /// 기록에 없으면 `None`.
+    pub labels: Option<u32>,
     /// 여러 턴의 합계인 행만 턴 수를 채운다. 한 턴이면 `None`.
     pub turns: Option<u32>,
 }

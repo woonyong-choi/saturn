@@ -186,24 +186,35 @@ fn turns_text(lang: Lang, row: &UsageRow) -> Option<String> {
 // cost: time O(r), heap O(r), stack O(1)
 // vars: r = 행 수
 // basis: estimate
-/// 비용은 아는 값만 더한다.
+/// 비용, 맥락 정리, 채점은 아는 값만 더하고 하나도 없으면 `-`.
 fn totals_line(lang: Lang, rows: &[UsageRow]) -> String {
     let calls: u32 = rows.iter().map(|row| row.judge_calls).sum();
-    let costs: Vec<u64> = rows
-        .iter()
-        .filter_map(|row| row.estimated_cost_micros)
-        .collect();
-    let cost = (!costs.is_empty()).then(|| costs.iter().sum());
-    let compactions: u32 = rows.iter().map(|row| row.compactions).sum();
-    let labels: u32 = rows.iter().map(|row| row.labels).sum();
+    let cost = known_sum(rows.iter().map(|row| row.estimated_cost_micros));
+    let compactions = known_sum(rows.iter().map(|row| row.compactions.map(u64::from)));
+    let labels = known_sum(rows.iter().map(|row| row.labels.map(u64::from)));
     format!(
-        "{} {calls} · {} {} · {} {compactions} · {} {labels}",
+        "{} {calls} · {} {} · {} {} · {} {}",
         lang.tr(i18n::USAGE_JUDGE_CALLS),
         lang.tr(i18n::USAGE_COST),
         cost_text(cost),
         lang.tr(i18n::USAGE_COMPACTIONS),
-        lang.tr(i18n::USAGE_LABELS)
+        count_text(compactions),
+        lang.tr(i18n::USAGE_LABELS),
+        count_text(labels)
     )
+}
+
+// cost: time O(r), heap O(1), stack O(1)
+// vars: r = 값 수
+// basis: estimate
+fn known_sum(values: impl Iterator<Item = Option<u64>>) -> Option<u64> {
+    values.flatten().reduce(|sum, value| sum + value)
+}
+
+// cost: time O(1), heap O(1), stack O(1)
+// basis: estimate
+fn count_text(count: Option<u64>) -> String {
+    count.map_or_else(|| "-".to_string(), |count| count.to_string())
 }
 
 #[cfg(test)]
@@ -219,8 +230,8 @@ mod tests {
             tokens,
             judge_calls,
             estimated_cost_micros: (judge_calls > 0).then_some(12_000),
-            compactions: 1,
-            labels: 0,
+            compactions: (judge_calls == 0).then_some(1),
+            labels: None,
             turns: None,
         }
     }
@@ -267,7 +278,9 @@ mod tests {
 
         assert!(content.contains("1,200"));
         assert!(content.contains("-"));
-        assert!(content.contains("judge calls 3 · estimated cost $0.0120 · compactions 2"));
+        assert!(
+            content.contains("judge calls 3 · estimated cost $0.0120 · compactions 1 · labels -")
+        );
         assert!(!content.contains("  judge-model ·"));
     }
 

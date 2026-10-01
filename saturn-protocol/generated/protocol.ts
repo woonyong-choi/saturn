@@ -4,7 +4,7 @@ export type Activity = "Thinking" | "ReadingFile" | "EditingFile" | { "RunningCo
 
 export type AgentId = number;
 
-export type Alert = "JudgePaused" | "IntakeStopped" | { "SteerNotReady": { provider: Provider, } } | { "ChatBusyElsewhere": { chat: ChatId, } } | "JudgeDownSendingInOrder";
+export type Alert = "JudgePaused" | "IntakeStopped" | { "SteerNotReady": { provider: Provider, } } | { "ChatBusyElsewhere": { chat: ChatId, } } | "JudgeDownSendingInOrder" | { "SchemaMigrated": { from: number, to: number, } };
 
 export type ChatId = number;
 
@@ -90,7 +90,7 @@ export type UsageReport = { agent: AgentId, subagent: SubagentId | null, model: 
 
 export type UsageRow = { 
 /**
- * 에이전트 이름이나 judge.
+ * provider·모델이나 judge. 예: `codex · gpt-5.6-terra`, `judge · jev`.
  */
 who: string, 
 /**
@@ -100,7 +100,15 @@ tokens: [number | null, number | null, number | null, number | null, number | nu
 /**
  * 단위: 마이크로 달러.
  */
-estimated_cost_micros: number | null, compactions: number, labels: number, 
+estimated_cost_micros: number | null, 
+/**
+ * 기록에 없으면 `None`.
+ */
+compactions: number | null, 
+/**
+ * 기록에 없으면 `None`.
+ */
+labels: number | null, 
 /**
  * 여러 턴의 합계인 행만 턴 수를 채운다. 한 턴이면 `None`.
  */
