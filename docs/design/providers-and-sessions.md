@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md) |
+| 관련 결정 | [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md) |
 
 ## 요약
 
@@ -74,14 +74,14 @@ Codex app-server 규약은 codex-cli 0.158.0의 `codex app-server generate-json-
 - 활성 턴 없음은 오류 코드가 따로 없어 `turn/steer` 오류 문구로 판정한다(초안).
 - 맥락 크기는 `thread/tokenUsage/updated`의 `last.totalTokens`이고 메인 턴 끝에 보낸다. 누적 사용량의 새 입력은 `total.inputTokens - cachedInputTokens`다.
 - 명령 대응표는 `compact` → `thread/compact/start`, `review` → `review/start`(대상 `uncommittedChanges`)이고, 명령 목록에서 `new`, `resume`, `fork`, `quit`, `exit`를 뺀다(초안). 스킬은 `turn/start` 입력에 `{"type":"skill","name","path"}` 항목으로 넣는다.
-- 권한 기본값 인자는 `-c sandbox_mode="workspace-write"`이고(초안), 사용자 설정은 `$CODEX_HOME/config.toml`(기본 `~/.codex/config.toml`)의 루트와 선택된 프로필에서 `approval_policy`, `sandbox_mode`, `model_auto_compact_token_limit` 키가 있는지만 본다.
+- 권한은 Saturn 규칙을 전용 `CODEX_HOME`과 `thread/start` 인자로 넘기고([권한](permissions.md)), 사용자 설정은 `~/.codex/config.toml`의 루트와 선택된 프로필에서 `model_auto_compact_token_limit` 키가 있는지만 본다.
 
 Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 
 - 새 session은 Saturn이 만든 UUID를 `--session-id`로 넘긴다. stream-json은 첫 입력 전에 `system/init`을 내지 않으므로 session id를 미리 알기 위해서다. 재개는 `--resume <id>`이고, 500ms(초안) 안에 프로그램이 끝나면 재개 실패로 본다.
-- 권한 기본값 인자는 `--permission-mode acceptEdits`이고(초안), 안전망 `--autocompact` 값은 허용 범위 100000~1000000으로 맞춘다.
-- 사용자 설정은 `~/.claude/settings.json`, `<작업 폴더>/.claude/settings.json`, `settings.local.json`의 `permissions.defaultMode`, `autoCompactEnabled`와 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있는지만 본다(초안).
-- 명령 목록에서 `clear`, `resume`, `exit`, `quit`를 뺀다(초안). 허가 요청은 `control_request`의 `can_use_tool`로 본다(초안, [#26](https://github.com/woonyong-choi/saturn/issues/26) 실측 전).
+- 권한은 `--permission-prompt-tool stdio`와 `--settings`의 `ask` 목록으로 Saturn 규칙에 넘기고([권한](permissions.md)), 안전망 `--autocompact` 값은 허용 범위 100000~1000000으로 맞춘다.
+- 사용자 설정은 `~/.claude/settings.json`, `<작업 폴더>/.claude/settings.json`, `settings.local.json`의 `autoCompactEnabled`와 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있는지만 본다(초안).
+- 명령 목록에서 `clear`, `resume`, `exit`, `quit`를 뺀다(초안). 허가 요청은 `control_request`의 `can_use_tool`로 받는다(`Bash`만 실측, [권한](permissions.md)).
 - 맥락 크기는 마지막 메인 `assistant` 메시지 `usage`의 입력, 캐시 읽기, 캐시 쓰기 합이다(초안).
 - interrupt 제어 응답은 10초, session 닫기 뒤 종료는 5초까지 기다리고, 넘으면 프로세스 묶음 중지로 넘어간다(초안).
 
@@ -91,14 +91,14 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 
 1. `settings`는 입력 접수 때 고정한 설정 번호의 값을 읽는다.
 2. `secrets`는 자식 환경에서 제외 목록에 있는 변수를 지운다.
-3. `providers`는 사용자 provider 설정에 값이 없는 항목에만 Saturn 기본값 인자를 더한다.
+3. `providers`는 권한 규칙을 provider 실행 설정으로 번역하고, 사용자 provider 설정에 값이 없으면 안전망 인자를 더한다.
 4. `providers`는 Claude 실행에 Saturn 소유 PreToolUse 훅을 실행별 설정으로 넘긴다.
 5. `processes`는 provider 프로세스를 실행하고 감시를 시작한다.
 6. `providers`는 provider 명령 목록을 모은다.
 
-Saturn은 provider의 샌드박스, 네트워크, 권한, subagent 설정을 막거나 바꾸지 않는다. provider 설정은 사용자에게 맡기고 Saturn은 추적만 하기 때문이다. provider 설정을 바꾸는 provider 명령도 막지 않고, 실제 적용된 값을 읽어 기록한다. 막지 않으면서 추적은 하기 위해서다.
+권한은 Saturn의 `permission` 규칙이 정본이므로 Saturn이 provider의 승인 정책과 샌드박스를 실행마다 정한다([권한](permissions.md)). 그 밖의 provider 설정(모델, MCP 서버, 네트워크 등)과 subagent 사용은 막거나 바꾸지 않고 추적만 한다. 사용자가 정한 provider 동작을 유지하기 위해서다. provider 설정을 바꾸는 provider 명령도 막지 않고, 실제 적용된 값을 읽어 기록한다. provider 설정 파일은 어느 경우에도 고치지 않는다.
 
-Saturn 기본값은 권한(수정 허용)과 자동 압축 안전망 값 두 가지다. 사용자 설정이 없을 때도 동작을 정해 두기 위해서다. 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. 사용자가 정한 provider 설정을 덮어쓰지 않기 위해서다.
+권한 외 Saturn 기본값은 자동 압축 안전망 값이다. 사용자 설정이 없을 때도 동작을 정해 두기 위해서다. 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. 사용자가 정한 provider 설정을 덮어쓰지 않기 위해서다.
 
 | provider | 안전망 인자 |
 |---|---|
@@ -107,7 +107,7 @@ Saturn 기본값은 권한(수정 허용)과 자동 압축 안전망 값 두 가
 
 안전망은 실행 인자로만 넘기고 사용자 설정 파일은 건드리지 않는다. 안전망 값의 계산은 [맥락 정리](context-management.md)에 있다.
 
-추적만 하는 규칙의 예외는 judge 키 보안뿐이다. judge 키가 provider 자식 프로세스로 새는 일을 막기 위해서다. 2단계의 환경 변수 제거와 4단계의 훅은 [judge 키 보호](judge-key-security.md)에 있다.
+권한 외에 추적만 하는 규칙의 예외는 judge 키 보안뿐이다. judge 키가 provider 자식 프로세스로 새는 일을 막기 위해서다. 2단계의 환경 변수 제거와 4단계의 훅은 [judge 키 보호](judge-key-security.md)에 있다.
 
 ### provider 명령과 스킬 전달
 
@@ -262,7 +262,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | 재시작 뒤에도 보관 session의 재개 판정이 같다. | `saturn-terminal/engine/src/lifecycle/sessions.rs`의 `restart_resumes_archived_session_within_cache_ttl`, `restart_keeps_new_session_when_active_context_reaches_threshold`, `restart_keeps_new_session_when_cache_expired_and_packet_is_smaller`, `restart_resumes_when_cache_expired_and_packet_is_not_smaller`, `restart_without_last_turn_resumes_archived_session` |
 | provider를 바꿀 때 떠나는 메인은 보관하고, 보관과 재개 상태를 저장한다. | `saturn-terminal/engine/src/lifecycle/sessions.rs`의 `archive_main_ends_older_archive_and_saves_both_states`, `resume_main_opens_archive_and_returns_delivered_number` |
 | session 교체 뒤 새 session에는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. | 교체 뒤 첫 입력에 이미 받은 기록 번호의 결과가 다시 붙지 않는지 확인한다. |
-| Saturn 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. | 사용자 설정에 값이 있는 항목의 인자가 실행 명령에 없는지 확인한다. |
+| 권한은 Saturn 규칙이 정본이고, 권한 외 Saturn 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. | [권한](permissions.md)의 요구사항을 확인하고, 사용자 설정에 값이 있는 안전망 항목의 인자가 실행 명령에 없는지 확인한다. |
 | 작업 끝은 메인 에이전트와 모든 subagent가 끝난 때로 판정한다. | 답이 먼저 나오고 subagent가 남은 경우 트리 유휴가 되지 않는지 확인한다. |
 | 누적 범위 사용량의 턴 값은 같은 session의 직전 누적을 뺀 값이다. | Codex 누적 보고 두 개에서 턴 값이 차이로 나오는지 확인한다. |
 | 멈춤 신호는 추적된 subagent까지 보낸다. | 멈춤 요청 뒤 모든 추적 subagent가 멈춤 신호를 받는지 확인한다. |

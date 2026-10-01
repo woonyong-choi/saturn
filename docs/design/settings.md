@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md) |
+| 관련 결정 | [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md) |
 
 ## 요약
 
@@ -65,6 +65,7 @@
 |---|---|---|
 | `on_exit` | `background`, `stop`, `ask` | `background` |
 | `agents.worktree` | 참·거짓 | 거짓 |
+| `permission.shell`, `permission.edit`, `permission.mcp`, `permission.subagent` | `allow`, `ask`, `deny` 또는 패턴 → 값 표 | `ask`(초안) |
 | `judge.method` | `jev`, `saturn`, `collect` | `jev` |
 | `judge.endpoint` | 문자열 | `https://api.typesafe.ai` |
 | `judge.model` | 문자열 | `jev-1.13.0` |
@@ -88,6 +89,7 @@
 | `context.select.rrf_k` | 0 이상 정수 | 60 |
 
 - `agents.worktree`가 거짓이면 보조 에이전트는 같은 폴더에서 한 번에 하나씩 쓴다. 참이면 git 저장소일 때만 보조 에이전트의 쓰기를 별도 worktree에서 병렬로 하고, git 저장소가 아니면 거짓일 때와 같다. 쓰기 격리를 사용자가 켠 뒤에만 하기 위해서다. 규칙은 [입력 처리](input-handling.md)에 있다.
+- `permission.*`는 셸 명령, 파일 편집, MCP 도구, subagent 실행의 허용, 묻기, 거부 규칙이다. 문자열 하나면 그 도구 전체에 적용하고, 패턴 표를 주면 패턴마다 값을 준다. 사용자 층 규칙 뒤에 폴더 층 규칙을 잇고 마지막으로 일치한 규칙이 이긴다. 같은 층 안의 순서는 파일에 적힌 순서다(초안). 판정 흐름과 provider별 번역은 [권한](permissions.md)에 있다.
 - `context.select.rrf_k`는 judge가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
 - 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_replace`, `constraint_conflict`다.
 - 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
@@ -159,7 +161,7 @@ engine이 시작하면 사용자당 잠금을 얻고 스키마 이관을 마친 
 
 ### provider 설정과의 관계
 
-Saturn 설정은 provider 설정 파일을 바꾸지 않는다. Saturn 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. 사용자가 정한 provider 설정을 덮어쓰지 않기 위해서다([결정 기록](../decisions/2026-09-29-minimal-provider-control.md)).
+Saturn 설정은 provider 설정 파일을 바꾸지 않는다. 권한은 `permission` 규칙이 정본이고, Saturn이 provider별 실행 설정으로 번역해 넘긴다([결정 기록](../decisions/2026-10-02-saturn-permission-authority.md)). 권한 외 Saturn 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. 사용자가 정한 provider 설정을 덮어쓰지 않기 위해서다([결정 기록](../decisions/2026-09-29-minimal-provider-control.md)).
 
 ### 오류 처리
 

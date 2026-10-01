@@ -3,8 +3,8 @@
 | 항목 | 값 |
 |---|---|
 | 날짜 | 2026-09-29 |
-| 상태 | 채택 |
-| 대체 | 없음 |
+| 상태 | 채택. 권한에 한해 대체됨 |
+| 대체 | 권한에 한해 대체된 결정: [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](2026-10-02-saturn-permission-authority.md) |
 | 관련 문서 | [아키텍처](../architecture.md), [provider 연결과 session](../design/providers-and-sessions.md), [설정](../design/settings.md) |
 
 ## 배경
