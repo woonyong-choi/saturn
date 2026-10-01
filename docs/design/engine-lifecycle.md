@@ -79,6 +79,8 @@ judge 확인에 실패하면 `engine`은 그 자리에서 숨김 입력으로 �
 
 TUI와 `cli`는 Unix 소켓 위 JSON-RPC로 `engine`에 붙는다. 한 `engine`에 여러 TUI가 동시에 붙을 수 있다. TUI를 닫은 뒤에도 작업을 이어 가고 여러 TUI를 한 `engine`에 붙이기 위해 이 구조를 골랐다. 허가 요청 창은 다른 클라이언트가 먼저 답하면 사라진다.
 
+메시지는 JSON-RPC 2.0이고 소켓 한 줄에 하나씩 쓴다. 메서드 이름은 `saturn-protocol` 타입의 variant 이름, `params`는 그 필드다. 클라이언트의 요청에는 모두 `id`가 붙고, `engine`은 요청마다 같은 `id`의 응답 하나(`result: null` 또는 `error`)를 돌려준다. 조회 결과와 화면 갱신은 `id` 없는 알림으로 보낸다. 해석하지 못한 줄에는 읽어 낸 `id`(없으면 `null`)로 오류 응답을 보내고 연결은 유지한다. 오류 문구에는 입력 원문을 넣지 않는다. judge 키가 들어 있을 수 있기 때문이다. 메시지의 JSON Schema와 TypeScript 타입은 `saturn-protocol/generated/`에 있고 `cargo run -p saturn-protocol --example codegen`으로 다시 만든다.
+
 ### TUI 종료 뒤 동작
 
 TUI가 끝나면 `rpc`가 설정 `on_exit` 값을 확인한다. 값은 `background`, `stop`, `ask` 세 가지이고 기본값은 `background`다. 기본값을 `background`로 둔 것은 TUI를 닫아도 작업을 계속하게 하기 위해서다.
