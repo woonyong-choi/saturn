@@ -8,7 +8,8 @@ use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::memo::{ToolKind, tool_memo};
 use saturn_core::sessions::packet::{CompetingItem, Entry, PacketSource, RECENT_TURNS, RecentTurn};
 use saturn_core::sessions::ranking::{Candidate, order_after_judge, rank_candidates};
-use saturn_protocol::ids::LedgerSeq;
+use saturn_core::sessions::stamp::Stamp;
+use saturn_protocol::ids::{LedgerSeq, SessionId};
 use serde::Deserialize;
 
 use crate::args::PacketCondition;
@@ -20,6 +21,7 @@ const BUDGET_TO_THRESHOLD: u64 = 10;
 /// 경쟁 구역 후보. 도구 호출 하나가 후보 하나다.
 struct Tool<'a> {
     seq: u64,
+    stamp: Stamp,
     name: &'a str,
     args: &'a serde_json::Value,
     result: Option<&'a str>,
@@ -159,6 +161,7 @@ fn recent_turns(records: &[Record]) -> Vec<RecentTurn> {
         match &record.body {
             Body::User(text) => turns.push(RecentTurn {
                 seq: LedgerSeq(record.seq),
+                stamp: stamp_of(record),
                 input: text.clone(),
                 answer: String::new(),
             }),
@@ -183,6 +186,7 @@ fn tools(records: &[Record], after: Option<u64>) -> Vec<Tool<'_>> {
         .filter_map(|record| match &record.body {
             Body::Tool { name, args, result } => Some(Tool {
                 seq: record.seq,
+                stamp: stamp_of(record),
                 name,
                 args,
                 result: result.as_deref(),
@@ -190,6 +194,13 @@ fn tools(records: &[Record], after: Option<u64>) -> Vec<Tool<'_>> {
             _ => None,
         })
         .collect()
+}
+
+fn stamp_of(record: &Record) -> Stamp {
+    Stamp {
+        session: SessionId(record.session),
+        at_ms: record.at_ms,
+    }
 }
 
 fn candidate(tool: &Tool) -> Candidate {
@@ -207,6 +218,7 @@ fn competing_item(tool: &Tool) -> CompetingItem {
     let files = tool_files(tool);
     CompetingItem {
         seq: LedgerSeq(tool.seq),
+        stamp: tool.stamp,
         text: tool_text(tool),
         memo: tool_memo(
             &kind_of(tool, files.first()),

@@ -1,11 +1,13 @@
 //! 새 session에 넘기는 패킷의 고정 구역과 경쟁 구역.
 //! 설계: docs/design/context-management.md#패킷-구성
 
+use std::collections::HashSet;
 use std::path::Path;
 
-use saturn_protocol::ids::LedgerSeq;
+use saturn_protocol::ids::{LedgerSeq, SessionId};
 
 use super::context::ContextBudget;
+use super::stamp::{Stamp, label, session_title};
 
 /// 축약본과 줄인 에이전트 답에 남기는 앞부분 글자 수.
 pub const DIGEST_HEAD_CHARS: usize = 300;
@@ -36,6 +38,7 @@ pub struct Entry {
 #[derive(Debug, Clone)]
 pub struct RecentTurn {
     pub seq: LedgerSeq,
+    pub stamp: Stamp,
     pub input: String,
     pub answer: String,
 }
@@ -44,6 +47,7 @@ pub struct RecentTurn {
 #[derive(Debug, Clone)]
 pub struct CompetingItem {
     pub seq: LedgerSeq,
+    pub stamp: Stamp,
     /// 원문.
     pub text: String,
     /// 축약본 첫 줄. `memo::tool_memo`가 만든다.
@@ -94,7 +98,21 @@ pub enum PacketOutcome {
 #[derive(Debug, Clone)]
 struct Section {
     title: &'static str,
-    items: Vec<String>,
+    items: Vec<SectionItem>,
+}
+
+/// `session`이 있으면 같은 session의 이어진 항목 앞에 제목을 한 번 쓴다. 기록 번호 순이면 session도 이어진다.
+#[derive(Debug, Clone)]
+struct SectionItem {
+    session: Option<SessionId>,
+    text: String,
+}
+
+#[derive(Debug, Clone)]
+struct Chosen {
+    seq: LedgerSeq,
+    session: Option<SessionId>,
+    text: String,
 }
 
 // cost: time O(t·L + m log m), heap O(L), stack O(1)
@@ -127,7 +145,10 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
     let fixed_chars = render(&sections).chars().count();
     if fixed_chars > hard_chars {
         return PacketOutcome::Deferred {
-            constraints: by_seq(&source.constraints),
+            constraints: by_seq(&source.constraints)
+                .into_iter()
+                .map(|item| item.text)
+                .collect(),
         };
     }
     let is_over_limit = fixed_chars > soft_chars;
@@ -136,16 +157,26 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
         .count();
     let competing_chars = soft_chars.saturating_sub(fixed_chars + header_chars);
     let summary = summary.filter(|entry| item_chars(&entry.text) <= competing_chars);
-    let mut chosen: Vec<(LedgerSeq, String)> = Vec::new();
+    let mut chosen: Vec<Chosen> = Vec::new();
     let mut rest_chars = competing_chars;
     if let Some(entry) = summary {
         rest_chars -= item_chars(&entry.text);
-        chosen.push((entry.seq, entry.text.clone()));
+        chosen.push(Chosen {
+            seq: entry.seq,
+            session: None,
+            text: entry.text.clone(),
+        });
     }
     chosen.extend(fill_competing_zone(&source.competitors, rest_chars));
     sections.push(Section {
         title: COMPETING_TITLE,
-        items: chosen.iter().map(|(_, form)| form.clone()).collect(),
+        items: chosen
+            .iter()
+            .map(|item| SectionItem {
+                session: item.session,
+                text: item.text.clone(),
+            })
+            .collect(),
     });
     let text = render(&sections);
     let tokens = estimate_tokens(&text);
@@ -154,7 +185,7 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
         tokens,
         up_to: source.up_to,
         is_over_limit,
-        included: chosen.iter().map(|(seq, _)| *seq).collect(),
+        included: chosen.iter().map(|item| item.seq).collect(),
         is_summary_used: summary.is_some(),
     })
 }
@@ -188,7 +219,15 @@ fn fit_fixed_zone(source: &PacketSource, soft_chars: usize) -> Vec<Section> {
 fn fixed_sections(source: &PacketSource, turns: &[RecentTurn]) -> Vec<Section> {
     let turns = turns
         .iter()
-        .map(|turn| format!("User: {}\nAgent: {}", turn.input, turn.answer))
+        .map(|turn| SectionItem {
+            session: Some(turn.stamp.session),
+            text: format!(
+                "{} User: {}\nAgent: {}",
+                label(turn.seq, turn.stamp.at_ms),
+                turn.input,
+                turn.answer
+            ),
+        })
         .collect();
     vec![
         Section {
@@ -214,25 +253,40 @@ fn fixed_sections(source: &PacketSource, turns: &[RecentTurn]) -> Vec<Section> {
 // vars: L = 경쟁 항목 글자 수, m = 경쟁 항목 수
 // basis: estimate
 /// 고른 순서대로 원문, 축약본, 경로 중 처음 들어가는 형태를 넣고 기록 번호 순으로 돌려준다.
-fn fill_competing_zone(items: &[CompetingItem], budget_chars: usize) -> Vec<(LedgerSeq, String)> {
+/// 항목 앞의 기록 번호와 시각, session의 첫 항목이 쓰는 제목도 예산에 든다.
+fn fill_competing_zone(items: &[CompetingItem], budget_chars: usize) -> Vec<Chosen> {
     let item_cap = budget_chars * ITEM_SHARE_PERCENT / 100;
     let mut remaining = budget_chars;
-    let mut chosen: Vec<(LedgerSeq, String)> = Vec::new();
+    let mut titled: HashSet<SessionId> = HashSet::new();
+    let mut chosen: Vec<Chosen> = Vec::new();
     for item in items.iter().filter(|item| !is_provider_doc(item)) {
+        let session = item.stamp.session;
+        let title_chars = if titled.contains(&session) {
+            0
+        } else {
+            item_chars(&session_title(session))
+        };
+        let prefix = label(item.seq, item.stamp.at_ms);
         let raw_chars = item.text.chars().count();
         let raw = (raw_chars <= item_cap).then(|| item.text.clone());
         let forms = [raw, Some(digest(item)), item.path.clone()];
-        let Some(form) = forms
+        let Some(text) = forms
             .into_iter()
             .flatten()
-            .find(|form| item_chars(form) <= remaining)
+            .map(|form| format!("{prefix} {form}"))
+            .find(|text| item_chars(text) + title_chars <= remaining)
         else {
             continue;
         };
-        remaining -= item_chars(&form);
-        chosen.push((item.seq, form));
+        remaining -= item_chars(&text) + title_chars;
+        titled.insert(session);
+        chosen.push(Chosen {
+            seq: item.seq,
+            session: Some(session),
+            text,
+        });
     }
-    chosen.sort_by_key(|(seq, _)| *seq);
+    chosen.sort_by_key(|item| item.seq);
     chosen
 }
 
@@ -265,10 +319,16 @@ fn item_chars(form: &str) -> usize {
 // cost: time O(e log e + L), heap O(L), stack O(1)
 // vars: e = 항목 수, L = 항목 글자 수
 // basis: estimate
-fn by_seq(entries: &[Entry]) -> Vec<String> {
+fn by_seq(entries: &[Entry]) -> Vec<SectionItem> {
     let mut sorted: Vec<&Entry> = entries.iter().collect();
     sorted.sort_by_key(|entry| entry.seq);
-    sorted.into_iter().map(|entry| entry.text.clone()).collect()
+    sorted
+        .into_iter()
+        .map(|entry| SectionItem {
+            session: None,
+            text: entry.text.clone(),
+        })
+        .collect()
 }
 
 // cost: time O(L), heap O(L), stack O(1)
@@ -280,8 +340,14 @@ fn render(sections: &[Section]) -> String {
         text.push_str("## ");
         text.push_str(section.title);
         text.push_str(ITEM_SEPARATOR);
+        let mut titled: Option<SessionId> = None;
         for item in &section.items {
-            text.push_str(item);
+            if let Some(session) = item.session.filter(|session| titled != Some(*session)) {
+                text.push_str(&session_title(session));
+                text.push_str(ITEM_SEPARATOR);
+                titled = Some(session);
+            }
+            text.push_str(&item.text);
             text.push_str(ITEM_SEPARATOR);
         }
     }
@@ -322,6 +388,9 @@ mod tests {
     use super::*;
     use crate::sessions::ranking::{Candidate, DEFAULT_RRF_K, order_after_judge, rank_candidates};
 
+    // 2026-09-12T10:00Z
+    const AT_MS: i64 = 1_789_207_200_000;
+
     // T = 4_000 → P_max = 400 토큰(1_600자), P_hard = 800 토큰(3_200자)
     fn budget() -> ContextBudget {
         ContextBudget {
@@ -341,9 +410,17 @@ mod tests {
         }
     }
 
+    fn stamp(session: u64, at_ms: i64) -> Stamp {
+        Stamp {
+            session: SessionId(session),
+            at_ms: Some(at_ms),
+        }
+    }
+
     fn turn(seq: u64, input: &str, answer: &str) -> RecentTurn {
         RecentTurn {
             seq: LedgerSeq(seq),
+            stamp: stamp(1, AT_MS),
             input: input.into(),
             answer: answer.into(),
         }
@@ -355,6 +432,7 @@ mod tests {
     fn item(seq: u64, text: &str, path: Option<&str>) -> CompetingItem {
         CompetingItem {
             seq: LedgerSeq(seq),
+            stamp: stamp(1, AT_MS),
             text: text.into(),
             memo: format!("memo {seq}"),
             path: path.map(str::to_string),
@@ -414,10 +492,10 @@ mod tests {
     fn build_packet_fills_competing_in_chosen_order_raw_then_digest() {
         let source = PacketSource {
             competitors: vec![
-                item(10, &filler("A", 400), None),
-                item(11, &filler("B", 400), None),
-                item(12, &filler("C", 400), None),
-                item(13, &filler("D", 400), None),
+                item(10, &filler("A", 380), None),
+                item(11, &filler("B", 380), None),
+                item(12, &filler("C", 380), None),
+                item(13, &filler("D", 380), None),
             ],
             ..PacketSource::default()
         };
@@ -425,7 +503,7 @@ mod tests {
         let packet = ready(build_packet(&source, &budget()));
 
         for name in ["A", "B", "C"] {
-            assert!(packet.text.contains(&filler(name, 400)));
+            assert!(packet.text.contains(&filler(name, 380)));
         }
         assert!(
             packet
@@ -503,6 +581,94 @@ mod tests {
     // vars: n = 테스트 데이터 크기
     // basis: estimate
     #[test]
+    fn build_packet_competing_groups_by_session_with_seq_and_time() {
+        let mut first = item(12, "twelve", None);
+        first.stamp = stamp(2, AT_MS + 120_000);
+        let mut second = item(10, "ten", None);
+        second.stamp = stamp(1, AT_MS);
+        let mut third = item(11, "eleven", None);
+        third.stamp = stamp(1, AT_MS + 60_000);
+        let source = PacketSource {
+            competitors: vec![first, second, third],
+            ..PacketSource::default()
+        };
+
+        let packet = ready(build_packet(&source, &budget()));
+
+        assert_eq!(
+            packet.text,
+            "## Earlier records\n\n### Session 1\n\n#10 2026-09-12T10:00Z ten\n\n\
+             #11 2026-09-12T10:01Z eleven\n\n### Session 2\n\n#12 2026-09-12T10:02Z twelve\n\n"
+        );
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 테스트 데이터 크기
+    // basis: estimate
+    #[test]
+    fn build_packet_recent_turns_carry_session_title_seq_and_time() {
+        let mut later = turn(5, "next", "ok");
+        later.stamp = stamp(2, AT_MS + 3_600_000);
+        let source = PacketSource {
+            recent_turns: vec![later, turn(3, "run tests", "ran them")],
+            ..PacketSource::default()
+        };
+
+        let packet = ready(build_packet(&source, &budget()));
+
+        assert_eq!(
+            packet.text,
+            "## Recent turns\n\n### Session 1\n\n#3 2026-09-12T10:00Z User: run tests\nAgent: ran them\n\n\
+             ### Session 2\n\n#5 2026-09-12T11:00Z User: next\nAgent: ok\n\n"
+        );
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 테스트 데이터 크기
+    // basis: estimate
+    #[test]
+    fn build_packet_many_sessions_stay_within_packet_limit() {
+        let source = PacketSource {
+            competitors: (10..200)
+                .map(|seq| {
+                    let mut item = item(seq, &filler("x", 2_000), Some("src/x.rs"));
+                    item.stamp = stamp(seq, AT_MS);
+                    item
+                })
+                .collect(),
+            ..PacketSource::default()
+        };
+
+        let packet = ready(build_packet(&source, &budget()));
+
+        assert!(packet.tokens <= budget().packet_limit());
+        assert!(packet.text.contains("### Session 10\n\n#10 "));
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 테스트 데이터 크기
+    // basis: estimate
+    #[test]
+    fn build_packet_without_time_writes_seq_only() {
+        let mut undated = item(7, "seven", None);
+        undated.stamp = Stamp {
+            session: SessionId(1),
+            at_ms: None,
+        };
+        let source = PacketSource {
+            competitors: vec![undated],
+            ..PacketSource::default()
+        };
+
+        let packet = ready(build_packet(&source, &budget()));
+
+        assert!(packet.text.contains("### Session 1\n\n#7 seven\n\n"));
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 테스트 데이터 크기
+    // basis: estimate
+    #[test]
     fn build_packet_writes_competing_in_seq_order() {
         let source = PacketSource {
             competitors: vec![
@@ -548,9 +714,9 @@ mod tests {
     fn build_packet_fixed_overflow_trims_oldest_answer_first() {
         let source = PacketSource {
             recent_turns: vec![
-                turn(1, "q1", &filler("a", 600)),
-                turn(2, "q2", &filler("b", 600)),
-                turn(3, "q3", &filler("c", 600)),
+                turn(1, "q1", &filler("a", 560)),
+                turn(2, "q2", &filler("b", 560)),
+                turn(3, "q3", &filler("c", 560)),
             ],
             ..PacketSource::default()
         };
@@ -559,8 +725,8 @@ mod tests {
 
         assert!(packet.text.contains(&filler("a", 300)));
         assert!(!packet.text.contains(&filler("a", 301)));
-        assert!(packet.text.contains(&filler("b", 600)));
-        assert!(packet.text.contains(&filler("c", 600)));
+        assert!(packet.text.contains(&filler("b", 560)));
+        assert!(packet.text.contains(&filler("c", 560)));
         assert!(!packet.is_over_limit);
     }
 
