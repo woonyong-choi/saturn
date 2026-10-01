@@ -1,10 +1,5 @@
-//! JSON-RPC 2.0 봉투와 한 줄 코덱. 소켓 한 줄에 메시지 하나를 쓴다.
-//!
-//! 설계: docs/architecture.md(구성 요소 연결), docs/design/engine-lifecycle.md(TUI 접속).
-//!
-//! - 클라이언트 → engine: `ClientMessage`. `id`가 있는 요청만 쓴다.
-//! - engine → 클라이언트: `ServerMessage`. 요청마다 `Response` 하나, 그 밖의 화면 갱신은 `id` 없는 알림이다.
-//! - 해석 오류에는 입력 원문을 담지 않는다. `SubmitJudgeKey` 줄에는 judge 키가 들어 있다.
+//! JSON-RPC 2.0 봉투와 한 줄 코덱. 설계: docs/design/engine-lifecycle.md
+//! 해석 오류에는 입력 원문을 담지 않는다. `SubmitJudgeKey` 줄에 judge 키가 있다.
 
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::de::{self, DeserializeOwned};
@@ -13,40 +8,29 @@ use ts_rs::TS;
 
 use crate::rpc::{Notification, Request};
 
-/// 봉투의 `jsonrpc` 값.
 const VERSION: &str = "2.0";
 
-/// 표준 JSON-RPC 오류 코드: 줄이 JSON이 아니다.
 pub const PARSE_ERROR: i32 = -32700;
-/// 표준 JSON-RPC 오류 코드: JSON이지만 요청 봉투가 아니다.
 pub const INVALID_REQUEST: i32 = -32600;
-/// 표준 JSON-RPC 오류 코드: 모르는 메서드.
 pub const METHOD_NOT_FOUND: i32 = -32601;
-/// 표준 JSON-RPC 오류 코드: 메서드는 알지만 `params`가 맞지 않는다.
 pub const INVALID_PARAMS: i32 = -32602;
-/// 표준 JSON-RPC 오류 코드: engine 내부 오류.
 pub const INTERNAL_ERROR: i32 = -32603;
 
-/// 봉투 인코딩과 해석 오류. 메시지에 입력 원문을 담지 않는다.
 #[derive(Debug, thiserror::Error)]
 pub enum CodecError {
-    /// 메시지를 JSON으로 쓰지 못했다.
     #[error("failed to encode message")]
     Encode(#[source] serde_json::Error),
-    /// 줄을 해석하지 못했다.
     #[error("failed to decode message at column {column}: {kind}")]
     Decode {
-        /// 요청 봉투에서 읽어 낸 `id`. 오류 응답에 그대로 돌려준다. 읽지 못하면 `None`.
+        /// 읽지 못하면 `None`.
         id: Option<RequestId>,
-        /// 실패 종류.
         kind: DecodeFailure,
-        /// 실패한 칸(1부터).
+        /// 1부터.
         column: usize,
     },
 }
 
 impl CodecError {
-    /// 해석 오류를 클라이언트에 돌려줄 오류 응답으로 바꾼다. 인코딩 오류는 내부 오류다.
     pub fn to_response(&self) -> Response {
         match self {
             Self::Encode(_) => Response::error(None, INTERNAL_ERROR, "failed to encode message"),
@@ -54,7 +38,6 @@ impl CodecError {
         }
     }
 
-    /// `serde_json` 오류에서 원문 없이 종류와 위치만 옮긴다.
     fn decode(id: Option<RequestId>, error: &serde_json::Error) -> Self {
         let kind = match error.classify() {
             serde_json::error::Category::Io | serde_json::error::Category::Syntax => {
@@ -71,19 +54,16 @@ impl CodecError {
     }
 }
 
-/// 줄 해석 실패 종류.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DecodeFailure {
-    /// JSON 문법이 틀렸다.
     Syntax,
-    /// JSON이 중간에 끊겼다.
     Truncated,
-    /// JSON이지만 메시지 형식이 아니다(모르는 메서드, 빠진 필드, 틀린 타입).
+    /// 모르는 메서드, 빠진 필드, 틀린 타입.
     Shape,
 }
 
 impl DecodeFailure {
-    /// 오류 응답 코드. 메서드와 `params`를 구분하지 않고 형식 오류는 `INVALID_REQUEST`로 묶는다.
+    /// 메서드와 `params` 오류를 구분하지 않는다.
     pub fn code(self) -> i32 {
         match self {
             Self::Syntax | Self::Truncated => PARSE_ERROR,
@@ -91,7 +71,6 @@ impl DecodeFailure {
         }
     }
 
-    /// 오류 응답 문구.
     pub fn message(self) -> &'static str {
         match self {
             Self::Syntax => "parse error",
@@ -107,7 +86,7 @@ impl std::fmt::Display for DecodeFailure {
     }
 }
 
-/// `jsonrpc` 필드. 항상 `"2.0"`이고 다른 값은 해석 오류다.
+/// 항상 `"2.0"`.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, TS)]
 #[ts(type = "\"2.0\"")]
 pub struct JsonRpcVersion;
@@ -142,26 +121,21 @@ impl JsonSchema for JsonRpcVersion {
     }
 }
 
-/// 요청 번호. 클라이언트가 연결마다 매기고 engine은 `Response`에 그대로 돌려준다.
+/// 클라이언트가 연결마다 매긴다.
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, JsonSchema, TS,
 )]
 pub struct RequestId(pub u64);
 
-/// 클라이언트 → engine 한 줄.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct ClientMessage {
-    /// 항상 `"2.0"`.
     pub jsonrpc: JsonRpcVersion,
-    /// 요청 번호.
     pub id: RequestId,
-    /// 메서드와 `params`.
     #[serde(flatten)]
     pub request: Request,
 }
 
 impl ClientMessage {
-    /// 요청을 봉투에 담는다.
     pub fn new(id: RequestId, request: Request) -> Self {
         Self {
             jsonrpc: JsonRpcVersion,
@@ -171,18 +145,16 @@ impl ClientMessage {
     }
 }
 
-/// engine → 클라이언트 한 줄. `method`가 있으면 알림, 없으면 응답이다.
+/// `method`가 있으면 알림, 없으면 응답.
 #[derive(Debug, Clone, PartialEq, Serialize, JsonSchema, TS)]
 #[serde(untagged)]
 pub enum ServerMessage {
-    /// 요청 하나의 답.
     Response(Response),
-    /// 화면 갱신 알림.
     Notification(NotificationMessage),
 }
 
 impl<'de> Deserialize<'de> for ServerMessage {
-    /// `untagged` 자동 해석은 실패 원인을 잃는다. `method` 유무로 먼저 갈라 원인을 남긴다.
+    /// `untagged` 자동 해석은 실패 원인을 잃어 `method` 유무로 먼저 가른다.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let value = serde_json::Value::deserialize(deserializer)?;
         let is_notification = value.get("method").is_some();
@@ -195,20 +167,17 @@ impl<'de> Deserialize<'de> for ServerMessage {
     }
 }
 
-/// 요청 하나의 답. 요청의 결과 화면 갱신은 따로 알림으로 온다.
+/// 요청 결과의 화면 갱신은 알림으로 따로 온다.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct Response {
-    /// 항상 `"2.0"`.
     pub jsonrpc: JsonRpcVersion,
-    /// 답하는 요청 번호. 줄을 해석하지 못해 번호를 모르면 `null`.
+    /// 줄을 해석하지 못해 번호를 모르면 `null`.
     pub id: Option<RequestId>,
-    /// 성공이면 `result`, 실패면 `error`.
     #[serde(flatten)]
     pub outcome: Outcome,
 }
 
 impl Response {
-    /// 성공 응답.
     pub fn ok(id: RequestId) -> Self {
         Self {
             jsonrpc: JsonRpcVersion,
@@ -217,7 +186,6 @@ impl Response {
         }
     }
 
-    /// 오류 응답.
     pub fn error(id: Option<RequestId>, code: i32, message: impl Into<String>) -> Self {
         Self {
             jsonrpc: JsonRpcVersion,
@@ -230,39 +198,30 @@ impl Response {
     }
 }
 
-/// 응답 결과. 지금 요청은 모두 결과 값 없이 접수 여부만 돌려준다.
-/// TODO(#46): 메서드 목록을 확정하면 조회 요청의 결과를 알림 대신 `result`로 돌려줄지 정한다
+/// TODO(#46): 조회 결과를 알림 대신 `result`로 돌려줄지
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum Outcome {
-    /// 접수했다. `"result": null`.
     #[serde(rename = "result")]
     Ok(()),
-    /// 거절했다.
     #[serde(rename = "error")]
     Err(RpcError),
 }
 
-/// JSON-RPC 오류 객체. `message`에 사용자 입력과 비밀값을 넣지 않는다.
+/// `message`에 사용자 입력과 비밀값을 넣지 않는다.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct RpcError {
-    /// 오류 코드. 표준 코드는 이 모듈의 상수.
     pub code: i32,
-    /// 오류 문구.
     pub message: String,
 }
 
-/// engine이 보내는 알림 한 줄.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct NotificationMessage {
-    /// 항상 `"2.0"`.
     pub jsonrpc: JsonRpcVersion,
-    /// 메서드와 `params`.
     #[serde(flatten)]
     pub notification: Notification,
 }
 
 impl NotificationMessage {
-    /// 알림을 봉투에 담는다.
     pub fn new(notification: Notification) -> Self {
         Self {
             jsonrpc: JsonRpcVersion,
@@ -283,41 +242,26 @@ impl From<Response> for ServerMessage {
     }
 }
 
-/// 메시지를 줄바꿈으로 끝나는 한 줄로 쓴다. JSON 문자열 안 줄바꿈은 이스케이프되어 줄이 나뉘지 않는다.
-///
-/// # Errors
-/// 직렬화에 실패하면 `Encode`.
+/// JSON 문자열 안 줄바꿈은 이스케이프되어 한 줄을 유지한다.
 pub fn encode_line<T: Serialize>(message: &T) -> Result<String, CodecError> {
     let mut line = serde_json::to_string(message).map_err(CodecError::Encode)?;
     line.push('\n');
     Ok(line)
 }
 
-/// 클라이언트 한 줄을 해석한다. 실패해도 요청 `id`를 읽을 수 있으면 오류에 담는다.
-///
-/// # Errors
-/// JSON이 아니거나 요청 봉투가 아니면 `Decode`.
+/// 실패해도 요청 `id`를 읽을 수 있으면 오류에 담는다.
 pub fn decode_client_line(line: &str) -> Result<ClientMessage, CodecError> {
     serde_json::from_str(line).map_err(|error| CodecError::decode(request_id_of(line), &error))
 }
 
-/// engine 한 줄을 해석한다.
-///
-/// # Errors
-/// JSON이 아니거나 응답, 알림 형식이 아니면 `Decode`.
 pub fn decode_server_line(line: &str) -> Result<ServerMessage, CodecError> {
     decode_line(line)
 }
 
-/// 아무 메시지 한 줄을 해석한다. 앞뒤 공백과 줄바꿈은 무시한다.
-///
-/// # Errors
-/// JSON이 아니거나 `T` 형식이 아니면 `Decode`.
 pub fn decode_line<T: DeserializeOwned>(line: &str) -> Result<T, CodecError> {
     serde_json::from_str(line).map_err(|error| CodecError::decode(None, &error))
 }
 
-/// 해석에 실패한 요청 줄에서 `id`만 다시 읽는다.
 fn request_id_of(line: &str) -> Option<RequestId> {
     let value: serde_json::Value = serde_json::from_str(line).ok()?;
     value.get("id")?.as_u64().map(RequestId)

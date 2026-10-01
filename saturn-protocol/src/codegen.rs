@@ -1,7 +1,4 @@
-//! 메시지 타입에서 JSON Schema와 TypeScript 타입을 만든다. Rust 타입이 정본이고 생성 파일은 결과물이다.
-//!
-//! 생성 명령: `cargo run -p saturn-protocol --example codegen`. `generated/`의 파일을 다시 쓴다.
-//! `cargo test -p saturn-protocol`이 생성 결과와 저장된 파일이 같은지 확인한다.
+//! JSON Schema와 TypeScript 생성. `generated/`와 다르면 테스트가 실패한다.
 
 use std::any::TypeId;
 use std::collections::HashSet;
@@ -13,13 +10,10 @@ use ts_rs::{Config, TS, TypeVisitor};
 use crate::envelope::{ClientMessage, ServerMessage};
 use crate::rpc::{Notification, Request};
 
-/// JSON Schema 파일 이름. `generated/` 아래.
 pub const SCHEMA_FILE: &str = "protocol.schema.json";
 
-/// TypeScript 파일 이름. `generated/` 아래.
 pub const TYPESCRIPT_FILE: &str = "protocol.ts";
 
-/// 두 방향 봉투(`ClientMessage`, `ServerMessage`)를 뿌리로 한 JSON Schema(draft 2020-12). 끝에 줄바꿈 하나.
 pub fn json_schema() -> String {
     let mut generator = SchemaSettings::draft2020_12().into_generator();
     let client = generator.subschema_for::<ClientMessage>();
@@ -37,7 +31,7 @@ pub fn json_schema() -> String {
     text
 }
 
-/// 봉투와 메서드 묶음(`Request`, `Notification`)에서 닿는 모든 타입의 TypeScript 선언을 한 파일로 모은다. 큰 정수는 `number`로 쓴다(값이 2^53을 넘지 않는다).
+/// 큰 정수는 `number`로 쓴다(값이 2^53을 넘지 않는다).
 pub fn typescript() -> String {
     let config = Config::new().with_large_int("number");
     let mut collector = Collector {
@@ -47,7 +41,7 @@ pub fn typescript() -> String {
     };
     collector.visit::<ClientMessage>();
     collector.visit::<ServerMessage>();
-    // 봉투 안에 펼쳐져 이름이 사라지는 메서드 묶음도 따로 선언한다.
+    // 봉투 안에 펼쳐져 이름이 사라지므로 따로 선언한다.
     collector.visit::<Request>();
     collector.visit::<Notification>();
     collector.decls.sort();
@@ -64,7 +58,6 @@ pub fn typescript() -> String {
     text
 }
 
-/// 선언이 있는 타입을 따라가며 이름순으로 모은다.
 struct Collector<'a> {
     config: &'a Config,
     seen: HashSet<TypeId>,
@@ -76,7 +69,7 @@ impl TypeVisitor for Collector<'_> {
         if !self.seen.insert(TypeId::of::<T>()) {
             return;
         }
-        // 선언 파일 자리가 있는 타입만 선언이 있다. 기본 타입과 감싸는 타입은 안쪽만 따라간다.
+        // 선언 파일 자리가 있는 타입만 선언이 있다.
         if T::output_path().is_some() {
             self.decls
                 .push((T::ident(self.config), T::decl(self.config)));

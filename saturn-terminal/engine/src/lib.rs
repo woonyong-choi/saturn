@@ -283,8 +283,7 @@ impl Engine {
     }
 
     /// 3단계. 주 반복. 아래 중 먼저 온 것 하나를 처리하고 되돌아간다.
-    /// - `RpcServer::next_event`: 접속 → 대기, 요청 → `handle_request` 뒤 `RpcServer::respond`(성공 `Response::ok`, 실패 오류 응답),
-    ///   마지막 끊김 → `on_last_detach`.
+    /// - `RpcServer::next_event`: 접속 → 대기, 요청 → `handle_request`, 마지막 끊김 → `on_last_detach`.
     /// - provider별 `next_event` → `on_provider_event`.
     /// - 유예 시계: `SessionManager::due_for_close`로 session 닫기, `background_expired`면 반복을 끝낸다.
     ///

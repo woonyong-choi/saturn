@@ -1,6 +1,4 @@
-//! `generated/`의 JSON Schema와 TypeScript 타입을 다시 쓴다.
-//!
-//! 실행: `cargo run -p saturn-protocol --example codegen`
+//! `generated/`를 다시 쓴다.
 
 use std::path::Path;
 

@@ -10,29 +10,13 @@ export type ChatId = number;
 
 export type ChatNotice = "Compacted" | { "ProviderSwitched": { from: Provider, to: Provider, } } | { "Stopped": { held: Array<TaskLabel>, } } | { "ResumeSuggested": { held: Array<TaskLabel>, } } | { "StopUnconfirmed": { remaining: number, } } | { "RequestSummary": { provider_tokens: Array<[Provider, number]>, judge_calls: number, judge_tokens: number, elapsed_ms: number, } };
 
-export type ClientMessage = { 
-/**
- * 항상 `"2.0"`.
- */
-jsonrpc: JsonRpcVersion, 
-/**
- * 요청 번호.
- */
-id: RequestId, } & ({ "method": "Attach", "params": { chat: ChatId | null, workdir: string, overrides: Array<[string, string]>, } } | { "method": "LoadHistory", "params": { chat: ChatId, before: LedgerSeq | null, limit: number, } } | { "method": "RenameChat", "params": { chat: ChatId, name: string, } } | { "method": "SetChatGroup", "params": { chat: ChatId, group: string | null, } } | { "method": "Detach" } | { "method": "SubmitInput", "params": { chat: ChatId, client_ref: number, text: string, pinned_model: string | null, skip_relation: boolean, } } | { "method": "RunAsNewTask", "params": { input: InputId, } } | { "method": "SendNow", "params": { input: InputId, } } | { "method": "CancelInput", "params": { input: InputId, } } | { "method": "Stop", "params": { chat: ChatId, } } | { "method": "Continue", "params": { chat: ChatId, task: TaskId | null, } } | { "method": "ContinueInput", "params": { input: InputId, } } | { "method": "CloseHeld", "params": { chat: ChatId, task: TaskId, } } | { "method": "AnswerPermission", "params": { request_id: string, answer: PermissionAnswer, } } | { "method": "AnswerFeedback", "params": { judgment: JudgmentId, correct: boolean, } } | { "method": "SubmitJudgeKey", "params": { key: string, } } | { "method": "AnswerFolderTrust", "params": { path: string, fingerprint: string, apply: boolean, } } | { "method": "SetRecording", "params": { chat: ChatId, on: boolean, } } | { "method": "Usage", "params": { scope: UsageRange, } } | { "method": "ListTasks" } | { "method": "Train", "params": { reset_thresholds: boolean, from: string | null, } } | { "method": "ConfirmTrain", "params": { proceed: boolean, } } | { "method": "ListJudgeVersions" } | { "method": "UseJudgeVersion", "params": { version: string, } } | { "method": "Prune", "params": { yes: boolean, } } | { "method": "ExportJudgments", "params": { path: string, } });
+export type ClientMessage = { jsonrpc: JsonRpcVersion, id: RequestId, } & ({ "method": "Attach", "params": { chat: ChatId | null, workdir: string, overrides: Array<[string, string]>, } } | { "method": "LoadHistory", "params": { chat: ChatId, before: LedgerSeq | null, limit: number, } } | { "method": "RenameChat", "params": { chat: ChatId, name: string, } } | { "method": "SetChatGroup", "params": { chat: ChatId, group: string | null, } } | { "method": "Detach" } | { "method": "SubmitInput", "params": { chat: ChatId, client_ref: number, text: string, pinned_model: string | null, skip_relation: boolean, } } | { "method": "RunAsNewTask", "params": { input: InputId, } } | { "method": "SendNow", "params": { input: InputId, } } | { "method": "CancelInput", "params": { input: InputId, } } | { "method": "Stop", "params": { chat: ChatId, } } | { "method": "Continue", "params": { chat: ChatId, task: TaskId | null, } } | { "method": "ContinueInput", "params": { input: InputId, } } | { "method": "CloseHeld", "params": { chat: ChatId, task: TaskId, } } | { "method": "AnswerPermission", "params": { request_id: string, answer: PermissionAnswer, } } | { "method": "AnswerFeedback", "params": { judgment: JudgmentId, correct: boolean, } } | { "method": "SubmitJudgeKey", "params": { key: string, } } | { "method": "AnswerFolderTrust", "params": { path: string, fingerprint: string, apply: boolean, } } | { "method": "SetRecording", "params": { chat: ChatId, on: boolean, } } | { "method": "Usage", "params": { scope: UsageRange, } } | { "method": "ListTasks" } | { "method": "Train", "params": { reset_thresholds: boolean, from: string | null, } } | { "method": "ConfirmTrain", "params": { proceed: boolean, } } | { "method": "ListJudgeVersions" } | { "method": "UseJudgeVersion", "params": { version: string, } } | { "method": "Prune", "params": { yes: boolean, } } | { "method": "ExportJudgments", "params": { path: string, } });
 
 export type CommandInfo = { 
 /**
- * 이름(`/` 없이).
+ * `/` 없이.
  */
-name: string, 
-/**
- * 설명.
- */
-description: string, 
-/**
- * 스킬이면 참.
- */
-is_skill: boolean, };
+name: string, description: string, is_skill: boolean, };
 
 export type Disposition = "Steer" | "NewTask" | "Queue";
 
@@ -42,21 +26,9 @@ export type InputState = "Judging" | "Queued" | "Delivering" | "Applied" | "Reje
 
 export type JsonRpcVersion = "2.0";
 
-export type JudgeVersionInfo = { 
+export type JudgeVersionInfo = { version: string, judge: string, ece: number | null, 
 /**
- * 버전 이름.
- */
-version: string, 
-/**
- * judge와 보정값.
- */
-judge: string, 
-/**
- * ECE.
- */
-ece: number | null, 
-/**
- * 질문별 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수.
+ * (질문, 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수).
  */
 questions: Array<[string, number, number, number, number]>, };
 
@@ -66,11 +38,7 @@ export type LedgerSeq = number;
 
 export type Notification = { "method": "StartInfo", "params": { saturn_version: string, providers: Array<[Provider, string]>, judge: string, judge_version: string, folder: string, } } | { "method": "InputAccepted", "params": { client_ref: number, input: InputId, } } | { "method": "InputChanged", "params": { input: InputId, text: string, label: TaskLabel | null, state: InputState, disposition: Disposition | null, reason: QueueReason | null, } } | { "method": "TaskChanged", "params": { task: TaskId, label: TaskLabel, state: TaskState, provider: Provider | null, elapsed_ms: number, failure: string | null, } } | { "method": "HistoryChunk", "params": { chat: ChatId, entries: Array<Notification>, has_more: boolean, } } | { "method": "PermissionRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, summary: string, reason: string, waiting: number, } } | { "method": "PermissionResolved", "params": { request_id: string, } } | { "method": "FolderTrustRequested", "params": { path: string, fingerprint: string, applied: Array<string>, ignored: Array<string>, changed_lines: Array<string>, } } | { "method": "JudgeKeyRequired", "params": { reason: string, } } | { "method": "Commands", "params": { provider: Provider, commands: Array<CommandInfo>, } } | { "method": "TaskList", "params": { items: Array<TaskListItem>, } } | { "method": "Usage", "params": { range: UsageRange, rows: Array<UsageRow>, } } | { "method": "JudgeVersions", "params": { current: string, versions: Array<JudgeVersionInfo>, } } | { "method": "TrainPreview", "params": { candidates: number, grader: string, estimated_tokens: number, threshold_targets: Array<string>, retrain_model: boolean, } } | { "method": "TrainProgress", "params": { stage: string, labeled: number, elapsed_ms: number, tokens: number, } } | { "method": "TaskEvent", "params": { task: TaskId, event: ProviderEvent, } } | { "method": "ChatNotice", "params": { chat: ChatId, task: TaskId | null, notice: ChatNotice, } } | { "method": "FeedbackQuestion", "params": { judgment: JudgmentId, input: InputId, label: TaskLabel, disposition: Disposition, } } | { "method": "ContextSize", "params": { chat: ChatId, tokens: number | null, threshold: number, } } | { "method": "SettingsApplied", "params": { revision: SettingsRevision, warning: string | null, } } | { "method": "Alert", "params": { alert: Alert, } };
 
-export type NotificationMessage = { 
-/**
- * 항상 `"2.0"`.
- */
-jsonrpc: JsonRpcVersion, } & ({ "method": "StartInfo", "params": { saturn_version: string, providers: Array<[Provider, string]>, judge: string, judge_version: string, folder: string, } } | { "method": "InputAccepted", "params": { client_ref: number, input: InputId, } } | { "method": "InputChanged", "params": { input: InputId, text: string, label: TaskLabel | null, state: InputState, disposition: Disposition | null, reason: QueueReason | null, } } | { "method": "TaskChanged", "params": { task: TaskId, label: TaskLabel, state: TaskState, provider: Provider | null, elapsed_ms: number, failure: string | null, } } | { "method": "HistoryChunk", "params": { chat: ChatId, entries: Array<Notification>, has_more: boolean, } } | { "method": "PermissionRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, summary: string, reason: string, waiting: number, } } | { "method": "PermissionResolved", "params": { request_id: string, } } | { "method": "FolderTrustRequested", "params": { path: string, fingerprint: string, applied: Array<string>, ignored: Array<string>, changed_lines: Array<string>, } } | { "method": "JudgeKeyRequired", "params": { reason: string, } } | { "method": "Commands", "params": { provider: Provider, commands: Array<CommandInfo>, } } | { "method": "TaskList", "params": { items: Array<TaskListItem>, } } | { "method": "Usage", "params": { range: UsageRange, rows: Array<UsageRow>, } } | { "method": "JudgeVersions", "params": { current: string, versions: Array<JudgeVersionInfo>, } } | { "method": "TrainPreview", "params": { candidates: number, grader: string, estimated_tokens: number, threshold_targets: Array<string>, retrain_model: boolean, } } | { "method": "TrainProgress", "params": { stage: string, labeled: number, elapsed_ms: number, tokens: number, } } | { "method": "TaskEvent", "params": { task: TaskId, event: ProviderEvent, } } | { "method": "ChatNotice", "params": { chat: ChatId, task: TaskId | null, notice: ChatNotice, } } | { "method": "FeedbackQuestion", "params": { judgment: JudgmentId, input: InputId, label: TaskLabel, disposition: Disposition, } } | { "method": "ContextSize", "params": { chat: ChatId, tokens: number | null, threshold: number, } } | { "method": "SettingsApplied", "params": { revision: SettingsRevision, warning: string | null, } } | { "method": "Alert", "params": { alert: Alert, } });
+export type NotificationMessage = { jsonrpc: JsonRpcVersion, } & ({ "method": "StartInfo", "params": { saturn_version: string, providers: Array<[Provider, string]>, judge: string, judge_version: string, folder: string, } } | { "method": "InputAccepted", "params": { client_ref: number, input: InputId, } } | { "method": "InputChanged", "params": { input: InputId, text: string, label: TaskLabel | null, state: InputState, disposition: Disposition | null, reason: QueueReason | null, } } | { "method": "TaskChanged", "params": { task: TaskId, label: TaskLabel, state: TaskState, provider: Provider | null, elapsed_ms: number, failure: string | null, } } | { "method": "HistoryChunk", "params": { chat: ChatId, entries: Array<Notification>, has_more: boolean, } } | { "method": "PermissionRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, summary: string, reason: string, waiting: number, } } | { "method": "PermissionResolved", "params": { request_id: string, } } | { "method": "FolderTrustRequested", "params": { path: string, fingerprint: string, applied: Array<string>, ignored: Array<string>, changed_lines: Array<string>, } } | { "method": "JudgeKeyRequired", "params": { reason: string, } } | { "method": "Commands", "params": { provider: Provider, commands: Array<CommandInfo>, } } | { "method": "TaskList", "params": { items: Array<TaskListItem>, } } | { "method": "Usage", "params": { range: UsageRange, rows: Array<UsageRow>, } } | { "method": "JudgeVersions", "params": { current: string, versions: Array<JudgeVersionInfo>, } } | { "method": "TrainPreview", "params": { candidates: number, grader: string, estimated_tokens: number, threshold_targets: Array<string>, retrain_model: boolean, } } | { "method": "TrainProgress", "params": { stage: string, labeled: number, elapsed_ms: number, tokens: number, } } | { "method": "TaskEvent", "params": { task: TaskId, event: ProviderEvent, } } | { "method": "ChatNotice", "params": { chat: ChatId, task: TaskId | null, notice: ChatNotice, } } | { "method": "FeedbackQuestion", "params": { judgment: JudgmentId, input: InputId, label: TaskLabel, disposition: Disposition, } } | { "method": "ContextSize", "params": { chat: ChatId, tokens: number | null, threshold: number, } } | { "method": "SettingsApplied", "params": { revision: SettingsRevision, warning: string | null, } } | { "method": "Alert", "params": { alert: Alert, } });
 
 export type PermissionAnswer = "Allow" | "AllowForTask" | "Deny" | "DenyAndRedirect";
 
@@ -84,25 +52,13 @@ export type Request = { "method": "Attach", "params": { chat: ChatId | null, wor
 
 export type RequestId = number;
 
-export type Response = { 
+export type Response = { jsonrpc: JsonRpcVersion, 
 /**
- * 항상 `"2.0"`.
- */
-jsonrpc: JsonRpcVersion, 
-/**
- * 답하는 요청 번호. 줄을 해석하지 못해 번호를 모르면 `null`.
+ * 줄을 해석하지 못해 번호를 모르면 `null`.
  */
 id: RequestId | null, } & ({ "result": null } | { "error": RpcError });
 
-export type RpcError = { 
-/**
- * 오류 코드. 표준 코드는 이 모듈의 상수.
- */
-code: number, 
-/**
- * 오류 문구.
- */
-message: string, };
+export type RpcError = { code: number, message: string, };
 
 export type ServerMessage = Response | NotificationMessage;
 
@@ -114,37 +70,9 @@ export type TaskId = number;
 
 export type TaskLabel = string;
 
-export type TaskListItem = { 
+export type TaskListItem = { chat: ChatId, chat_name: string, group: string | null, task: TaskId, label: TaskLabel, state: TaskState, needs_permission: boolean, 
 /**
- * 채팅.
- */
-chat: ChatId, 
-/**
- * 채팅 이름.
- */
-chat_name: string, 
-/**
- * 묶음.
- */
-group: string | null, 
-/**
- * 작업.
- */
-task: TaskId, 
-/**
- * 이름표.
- */
-label: TaskLabel, 
-/**
- * 상태.
- */
-state: TaskState, 
-/**
- * 허가가 필요하면 참(`!`).
- */
-needs_permission: boolean, 
-/**
- * 다른 Saturn이 실행 중이면 참(읽기 전용).
+ * 다른 Saturn이 실행 중이면 읽기 전용.
  */
 busy_elsewhere: boolean, 
 /**
@@ -158,43 +86,7 @@ export type TurnOrigin = "User" | "ProviderWake";
 
 export type UsageRange = "Chat" | "Today" | "Week" | "All";
 
-export type UsageReport = { 
-/**
- * 보고 대상 에이전트.
- */
-agent: AgentId, 
-/**
- * 보고 대상 subagent. 메인이면 `None`.
- */
-subagent: SubagentId | null, 
-/**
- * 보고한 모델 이름. 보고하지 않으면 `None`(`모델 미보고`).
- */
-model: string | null, 
-/**
- * 값의 범위. 턴 값 계산 방식을 가른다.
- */
-scope: UsageScope, 
-/**
- * 새 입력 토큰.
- */
-input: number | null, 
-/**
- * 캐시 읽기 토큰.
- */
-cache_read: number | null, 
-/**
- * 캐시 쓰기 토큰.
- */
-cache_write: number | null, 
-/**
- * 출력 토큰.
- */
-output: number | null, 
-/**
- * 추론 토큰.
- */
-reasoning: number | null, };
+export type UsageReport = { agent: AgentId, subagent: SubagentId | null, model: string | null, scope: UsageScope, input: number | null, cache_read: number | null, cache_write: number | null, output: number | null, reasoning: number | null, };
 
 export type UsageRow = { 
 /**
@@ -202,24 +94,12 @@ export type UsageRow = {
  */
 who: string, 
 /**
- * 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론 토큰. 보고되지 않았으면 `None`.
+ * 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론 순. 보고되지 않았으면 `None`.
  */
-tokens: [number | null, number | null, number | null, number | null, number | null], 
+tokens: [number | null, number | null, number | null, number | null, number | null], judge_calls: number, 
 /**
- * judge 호출 수와 예상 비용(마이크로 달러).
+ * 단위: 마이크로 달러.
  */
-judge_calls: number, 
-/**
- * 예상 비용.
- */
-estimated_cost_micros: number | null, 
-/**
- * 맥락 정리 횟수.
- */
-compactions: number, 
-/**
- * 채점 수.
- */
-labels: number, };
+estimated_cost_micros: number | null, compactions: number, labels: number, };
 
 export type UsageScope = "MainTurn" | "TreeTotal" | "ThreadCumulative";

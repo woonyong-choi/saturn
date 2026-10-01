@@ -1,26 +1,19 @@
 {
   "$defs": {
     "Activity": {
-      "description": "실행 줄의 하는 일.",
       "oneOf": [
         {
-          "const": "Thinking",
-          "description": "생각 중.",
-          "type": "string"
-        },
-        {
-          "const": "ReadingFile",
-          "description": "파일 조회.",
-          "type": "string"
-        },
-        {
-          "const": "EditingFile",
-          "description": "파일 수정.",
+          "enum": [
+            "Thinking",
+            "ReadingFile",
+            "EditingFile",
+            "Compacting",
+            "SwitchingProvider"
+          ],
           "type": "string"
         },
         {
           "additionalProperties": false,
-          "description": "명령 실행. 화면은 명령 앞 40칸만 보인다.",
           "properties": {
             "RunningCommand": {
               "properties": {
@@ -38,41 +31,30 @@
             "RunningCommand"
           ],
           "type": "object"
-        },
-        {
-          "const": "Compacting",
-          "description": "맥락 정리 중.",
-          "type": "string"
-        },
-        {
-          "const": "SwitchingProvider",
-          "description": "provider 전환 중.",
-          "type": "string"
         }
       ]
     },
     "AgentId": {
-      "description": "Saturn이 띄운 에이전트 하나(메인 또는 보조). provider subagent는 `SubagentId`로 구분한다.",
+      "description": "Saturn이 띄운 메인 또는 보조 에이전트. provider subagent는 `SubagentId`.",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
     },
     "Alert": {
-      "description": "상태판 알림 줄.",
       "oneOf": [
         {
           "const": "JudgePaused",
-          "description": "judge 호출 일시 실패. 질문별 대체 규칙을 적용 중이다.",
+          "description": "질문별 대체 규칙을 적용 중.",
           "type": "string"
         },
         {
           "const": "IntakeStopped",
-          "description": "judge 호출 연속 3회 실패. 새 입력 접수를 멈췄다.",
+          "description": "연속 3회 실패로 새 입력 접수를 멈췄다.",
           "type": "string"
         },
         {
           "additionalProperties": false,
-          "description": "provider의 끼워 넣기 실측 전. 끼워 넣기를 대기로 처리한다.",
+          "description": "끼워 넣기 실측 전이라 대기로 처리한다.",
           "properties": {
             "SteerNotReady": {
               "properties": {
@@ -93,7 +75,6 @@
         },
         {
           "additionalProperties": false,
-          "description": "다른 Saturn 프로세스가 이 채팅을 실행 중이다(작업 목록에서 읽기 전용).",
           "properties": {
             "ChatBusyElsewhere": {
               "properties": {
@@ -114,28 +95,27 @@
         },
         {
           "const": "JudgeDownSendingInOrder",
-          "description": "`[보내기]`를 눌렀으나 judge가 실패해 차례에 보낸다.",
+          "description": "judge 실패로 `[보내기]` 입력을 차례에 보낸다.",
           "type": "string"
         }
       ]
     },
     "ChatId": {
-      "description": "사용자가 보는 대화 하나. 여러 provider session이 한 채팅에 이어진다.",
+      "description": "여러 provider session이 한 채팅에 이어진다.",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
     },
     "ChatNotice": {
-      "description": "대화 기록에 남는 한 줄 알림 종류.",
       "oneOf": [
         {
-          "const": "Compacted",
-          "description": "맥락 정리 뒤 같은 작업 계속.",
+          "enum": [
+            "Compacted"
+          ],
           "type": "string"
         },
         {
           "additionalProperties": false,
-          "description": "작업의 provider 전환.",
           "properties": {
             "ProviderSwitched": {
               "properties": {
@@ -160,7 +140,6 @@
         },
         {
           "additionalProperties": false,
-          "description": "멈춤 결과. 보류된 이름표 목록.",
           "properties": {
             "Stopped": {
               "properties": {
@@ -184,7 +163,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "크래시 뒤 증명되지 않은 실행을 보류했다. 보류 줄과 함께 `/continue` 제안을 보인다.",
+          "description": "크래시 뒤 증명되지 않은 실행을 보류했다.",
           "properties": {
             "ResumeSuggested": {
               "properties": {
@@ -208,7 +187,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "멈춤 뒤 provider 프로세스 묶음 밖에 남은 프로세스 수.",
+          "description": "provider 프로세스 묶음 밖에 남은 프로세스 수.",
           "properties": {
             "StopUnconfirmed": {
               "properties": {
@@ -231,7 +210,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "모든 작업이 끝난 순간의 합계(`이번 요청 · ...`).",
+          "description": "모든 작업이 끝난 순간의 합계.",
           "properties": {
             "RequestSummary": {
               "properties": {
@@ -286,10 +265,9 @@
       ]
     },
     "ClientMessage": {
-      "description": "클라이언트 → engine 한 줄.",
       "oneOf": [
         {
-          "description": "채팅에 붙는다. `chat`이 없으면 새 채팅. engine은 `StartInfo`, 최근 기록, 보관한 허가 요청 순서로 보낸다.\n`overrides`는 실행 층(`-c key=value`)이다. 이 접속의 입력에만 적용한다.\n`workdir`는 TUI의 작업 폴더다. 폴더 설정 층 검색과 새 작업의 실행 위치가 된다.",
+          "description": "`chat`이 `None`이면 새 채팅.\n`overrides`(`-c key=value`)는 이 접속의 입력에만 적용한다.\n`workdir`는 폴더 설정 층 검색 위치이자 새 작업의 실행 위치.",
           "properties": {
             "method": {
               "const": "Attach",
@@ -341,7 +319,7 @@
           "type": "object"
         },
         {
-          "description": "대화 기록 이전 부분(위로 스크롤). `before`보다 앞 기록을 `limit`개.",
+          "description": "`before`보다 앞 기록 `limit`개.",
           "properties": {
             "method": {
               "const": "LoadHistory",
@@ -382,7 +360,6 @@
           "type": "object"
         },
         {
-          "description": "채팅 이름 변경(작업 목록 `r`).",
           "properties": {
             "method": {
               "const": "RenameChat",
@@ -411,7 +388,6 @@
           "type": "object"
         },
         {
-          "description": "채팅 묶음 변경(작업 목록 `g`).",
           "properties": {
             "method": {
               "const": "SetChatGroup",
@@ -442,7 +418,7 @@
           "type": "object"
         },
         {
-          "description": "채팅에서 떨어진다. 마지막 TUI가 떨어지면 `OnExit`를 적용한다.",
+          "description": "마지막 TUI가 떨어지면 `OnExit`를 적용한다.",
           "properties": {
             "method": {
               "const": "Detach",
@@ -455,7 +431,7 @@
           "type": "object"
         },
         {
-          "description": "입력 제출. `Enter`는 `send_now: true`, 실행 중 `Tab`은 관계 판단 없이 대기.\n`client_ref`는 TUI가 매긴 번호로, engine이 `InputAccepted`로 입력 id와 짝지어 돌려준다.",
+          "description": "`skip_relation`이 참이면 관계 판단 없이 대기(실행 중 `Tab`).\n`client_ref`는 TUI가 매긴 번호. `InputAccepted`로 입력 id와 짝지어 돌아온다.",
           "properties": {
             "method": {
               "const": "SubmitInput",
@@ -500,7 +476,7 @@
           "type": "object"
         },
         {
-          "description": "피드백 `아니에요` 뒤 바로잡기 제안의 `[실행]`. 아직 보내지 않은 입력을 새 작업으로 보낸다.",
+          "description": "아직 보내지 않은 입력을 새 작업으로 보낸다.",
           "properties": {
             "method": {
               "const": "RunAsNewTask",
@@ -525,7 +501,6 @@
           "type": "object"
         },
         {
-          "description": "대기 입력을 지금 보낸다(`[보내기]`, `/send`).",
           "properties": {
             "method": {
               "const": "SendNow",
@@ -550,7 +525,7 @@
           "type": "object"
         },
         {
-          "description": "보내기 전 입력 취소(`[취소]`, `/cancel`, `Alt+↑`).",
+          "description": "보내기 전 입력만.",
           "properties": {
             "method": {
               "const": "CancelInput",
@@ -575,7 +550,7 @@
           "type": "object"
         },
         {
-          "description": "멈춤(`Ctrl+C`). 채팅의 모든 작업과 보내지 않은 입력을 보류한다.",
+          "description": "채팅의 모든 작업과 보내지 않은 입력을 보류한다.",
           "properties": {
             "method": {
               "const": "Stop",
@@ -600,7 +575,7 @@
           "type": "object"
         },
         {
-          "description": "보류 재개(`/continue`). `task`가 없으면 채팅의 보류 전부를 접수 순서로.",
+          "description": "`task`가 `None`이면 채팅의 보류 전부를 접수 순서로.",
           "properties": {
             "method": {
               "const": "Continue",
@@ -635,7 +610,6 @@
           "type": "object"
         },
         {
-          "description": "보류된 입력 하나만 대기열로 되돌린다.",
           "properties": {
             "method": {
               "const": "ContinueInput",
@@ -660,7 +634,7 @@
           "type": "object"
         },
         {
-          "description": "보류 종료. 보내지 않은 입력은 취소하고 수정된 파일은 되돌리지 않는다.",
+          "description": "보내지 않은 입력은 취소하고 수정된 파일은 되돌리지 않는다.",
           "properties": {
             "method": {
               "const": "CloseHeld",
@@ -689,7 +663,6 @@
           "type": "object"
         },
         {
-          "description": "허가 요청 답.",
           "properties": {
             "method": {
               "const": "AnswerPermission",
@@ -718,7 +691,6 @@
           "type": "object"
         },
         {
-          "description": "피드백 질문 답(`1` 맞아요, `2` 아니에요).",
           "properties": {
             "method": {
               "const": "AnswerFeedback",
@@ -747,7 +719,7 @@
           "type": "object"
         },
         {
-          "description": "judge 키 전달(키 입력 창). engine은 받은 키로 다시 확인하고 저장한다. 이 메시지는 기록하지 않는다.",
+          "description": "기록하지 않는다(judge 키).",
           "properties": {
             "method": {
               "const": "SubmitJudgeKey",
@@ -772,7 +744,7 @@
           "type": "object"
         },
         {
-          "description": "폴더 설정 신뢰 답. `apply`가 참이면 경로와 지문으로 신뢰를 기록한다.",
+          "description": "`apply`가 참이면 경로와 지문으로 신뢰를 기록한다.",
           "properties": {
             "method": {
               "const": "AnswerFolderTrust",
@@ -805,7 +777,7 @@
           "type": "object"
         },
         {
-          "description": "채팅 판단 기록 켜기와 끄기(`/record on`, `/record off`). 끄면 그 채팅의 판단 기록을 저장하지 않는다.",
+          "description": "끄면 그 채팅의 판단 기록을 저장하지 않는다.",
           "properties": {
             "method": {
               "const": "SetRecording",
@@ -834,7 +806,6 @@
           "type": "object"
         },
         {
-          "description": "사용량 조회(`/usage`).",
           "properties": {
             "method": {
               "const": "Usage",
@@ -859,7 +830,6 @@
           "type": "object"
         },
         {
-          "description": "작업 목록 조회(`/tasks`).",
           "properties": {
             "method": {
               "const": "ListTasks",
@@ -872,7 +842,7 @@
           "type": "object"
         },
         {
-          "description": "판단 모델 학습(`/train`). 채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 judge 버전.",
+          "description": "채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 judge 버전.",
           "properties": {
             "method": {
               "const": "Train",
@@ -903,7 +873,7 @@
           "type": "object"
         },
         {
-          "description": "학습 확인 창의 답. 거짓이면 취소.",
+          "description": "거짓이면 취소.",
           "properties": {
             "method": {
               "const": "ConfirmTrain",
@@ -928,7 +898,6 @@
           "type": "object"
         },
         {
-          "description": "judge 버전 목록 조회(`/judge version`).",
           "properties": {
             "method": {
               "const": "ListJudgeVersions",
@@ -941,7 +910,6 @@
           "type": "object"
         },
         {
-          "description": "고른 judge 버전 사용(`u`, `saturn judge version`).",
           "properties": {
             "method": {
               "const": "UseJudgeVersion",
@@ -966,7 +934,7 @@
           "type": "object"
         },
         {
-          "description": "기록 정리. `yes`가 없으면 미리보기만 한다.",
+          "description": "`yes`가 거짓이면 미리보기만.",
           "properties": {
             "method": {
               "const": "Prune",
@@ -991,7 +959,7 @@
           "type": "object"
         },
         {
-          "description": "판단 기록 JSONL 내보내기. 채점하지 않은 기록도 내보낸다.",
+          "description": "채점하지 않은 기록도 내보낸다.",
           "properties": {
             "method": {
               "const": "ExportJudgments",
@@ -1018,12 +986,10 @@
       ],
       "properties": {
         "id": {
-          "$ref": "#/$defs/RequestId",
-          "description": "요청 번호."
+          "$ref": "#/$defs/RequestId"
         },
         "jsonrpc": {
-          "$ref": "#/$defs/JsonRpcVersion",
-          "description": "항상 `\"2.0\"`."
+          "$ref": "#/$defs/JsonRpcVersion"
         }
       },
       "required": [
@@ -1033,18 +999,15 @@
       "type": "object"
     },
     "CommandInfo": {
-      "description": "provider 명령이나 스킬 하나.",
       "properties": {
         "description": {
-          "description": "설명.",
           "type": "string"
         },
         "is_skill": {
-          "description": "스킬이면 참.",
           "type": "boolean"
         },
         "name": {
-          "description": "이름(`/` 없이).",
+          "description": "`/` 없이.",
           "type": "string"
         }
       },
@@ -1056,67 +1019,36 @@
       "type": "object"
     },
     "Disposition": {
-      "description": "입력이 어떻게 처리될지. judge 결과와 `Tab` 입력이 정한다.",
-      "oneOf": [
-        {
-          "const": "Steer",
-          "description": "진행 중인 턴에 더한다(steer).",
-          "type": "string"
-        },
-        {
-          "const": "NewTask",
-          "description": "새 작업으로 시작한다.",
-          "type": "string"
-        },
-        {
-          "const": "Queue",
-          "description": "대기열에 둔다.",
-          "type": "string"
-        }
-      ]
+      "enum": [
+        "Steer",
+        "NewTask",
+        "Queue"
+      ],
+      "type": "string"
     },
     "InputId": {
-      "description": "사용자 입력 하나. 접수(ACK) 때 발급한다.",
+      "description": "접수 때 발급한다.",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
     },
     "InputState": {
-      "description": "입력 전달 상태. `Applied`, `Rejected`, `Cancelled`는 끝 상태다.",
+      "description": "`Applied`, `Rejected`, `Cancelled`는 끝 상태.",
       "oneOf": [
         {
-          "const": "Judging",
-          "description": "judge 답을 기다린다. 다음: `Queued`, `Delivering`, `Held`, `Cancelled`.",
-          "type": "string"
-        },
-        {
-          "const": "Queued",
-          "description": "보내기 전 대기열에 있다. 다음: `Delivering`, `Held`, `Cancelled`.",
+          "enum": [
+            "Judging",
+            "Queued",
+            "Applied",
+            "Rejected",
+            "Held",
+            "Cancelled"
+          ],
           "type": "string"
         },
         {
           "const": "Delivering",
-          "description": "에이전트에 보냈다. 취소할 수 없다. 다음: `Applied`, `Rejected`.",
-          "type": "string"
-        },
-        {
-          "const": "Applied",
-          "description": "에이전트가 받았다.",
-          "type": "string"
-        },
-        {
-          "const": "Rejected",
-          "description": "에이전트가 받지 않았다.",
-          "type": "string"
-        },
-        {
-          "const": "Held",
-          "description": "사용자가 멈춘 작업의 보내지 않은 입력. 다음: `Queued`, `Cancelled`.",
-          "type": "string"
-        },
-        {
-          "const": "Cancelled",
-          "description": "보내기 전에 취소했다.",
+          "description": "취소할 수 없다.",
           "type": "string"
         }
       ]
@@ -1126,10 +1058,8 @@
       "type": "string"
     },
     "JudgeVersionInfo": {
-      "description": "judge 버전 한 행.",
       "properties": {
         "ece": {
-          "description": "ECE.",
           "format": "double",
           "type": [
             "number",
@@ -1137,11 +1067,10 @@
           ]
         },
         "judge": {
-          "description": "judge와 보정값.",
           "type": "string"
         },
         "questions": {
-          "description": "질문별 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수.",
+          "description": "(질문, 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수).",
           "items": {
             "maxItems": 5,
             "minItems": 5,
@@ -1173,7 +1102,6 @@
           "type": "array"
         },
         "version": {
-          "description": "버전 이름.",
           "type": "string"
         }
       },
@@ -1185,22 +1113,20 @@
       "type": "object"
     },
     "JudgmentId": {
-      "description": "판단 호출 기록 하나.",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
     },
     "LedgerSeq": {
-      "description": "채팅 트리 전체 기록에 매긴 하나의 연속 번호. session마다 전달받은 번호를 기억한다.",
+      "description": "채팅 트리 전체 기록의 연속 번호.",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
     },
     "Notification": {
-      "description": "engine이 TUI에 보내는 알림. TUI는 이것만으로 화면을 그린다.",
+      "description": "TUI는 이것만으로 화면을 그린다.",
       "oneOf": [
         {
-          "description": "접속 직후 시작 화면 정보.",
           "properties": {
             "method": {
               "const": "StartInfo",
@@ -1254,7 +1180,6 @@
           "type": "object"
         },
         {
-          "description": "`SubmitInput`을 접수했다. `client_ref`로 보낸 입력과 짝짓는다.",
           "properties": {
             "method": {
               "const": "InputAccepted",
@@ -1285,7 +1210,7 @@
           "type": "object"
         },
         {
-          "description": "입력 에코와 상태 변화. `label`은 합쳐진 작업의 이름표, `text`는 다른 TUI가 보낸 입력에도 원문을 준다.",
+          "description": "`text`는 다른 TUI가 보낸 입력에도 원문을 준다.",
           "properties": {
             "method": {
               "const": "InputChanged",
@@ -1348,7 +1273,7 @@
           "type": "object"
         },
         {
-          "description": "작업 상태 변화. 상태판 줄과 결과 머리줄을 고친다. `failure`는 실패 원인 한 줄.",
+          "description": "`failure`는 실패 원인 한 줄.",
           "properties": {
             "method": {
               "const": "TaskChanged",
@@ -1403,7 +1328,7 @@
           "type": "object"
         },
         {
-          "description": "대화 기록 이전 부분. `LoadHistory`의 답이고, 항목은 실시간 알림과 같은 형식이다.",
+          "description": "`LoadHistory`의 답. 항목은 실시간 알림과 같은 형식.",
           "properties": {
             "method": {
               "const": "HistoryChunk",
@@ -1439,7 +1364,6 @@
           "type": "object"
         },
         {
-          "description": "허가 요청. 1초 입력 보호 뒤 접수 순서로 하나씩 창을 띄운다.",
           "properties": {
             "method": {
               "const": "PermissionRequested",
@@ -1490,7 +1414,7 @@
           "type": "object"
         },
         {
-          "description": "다른 클라이언트가 먼저 답했다. 창을 지운다.",
+          "description": "다른 클라이언트가 먼저 답했다.",
           "properties": {
             "method": {
               "const": "PermissionResolved",
@@ -1515,7 +1439,6 @@
           "type": "object"
         },
         {
-          "description": "폴더 설정 신뢰 요청. 실행 중이면 다음 입력 접수 전에 묻는다.",
           "properties": {
             "method": {
               "const": "FolderTrustRequested",
@@ -1565,7 +1488,6 @@
           "type": "object"
         },
         {
-          "description": "judge 확인 실패. 키 입력 창을 띄운다.",
           "properties": {
             "method": {
               "const": "JudgeKeyRequired",
@@ -1590,7 +1512,6 @@
           "type": "object"
         },
         {
-          "description": "provider 명령과 스킬 목록(`/`, `$` 팝업).",
           "properties": {
             "method": {
               "const": "Commands",
@@ -1622,7 +1543,6 @@
           "type": "object"
         },
         {
-          "description": "작업 목록(`/tasks`)의 답.",
           "properties": {
             "method": {
               "const": "TaskList",
@@ -1650,7 +1570,6 @@
           "type": "object"
         },
         {
-          "description": "사용량(`/usage`)의 답. 행은 에이전트별.",
           "properties": {
             "method": {
               "const": "Usage",
@@ -1682,7 +1601,6 @@
           "type": "object"
         },
         {
-          "description": "judge 버전 목록의 답.",
           "properties": {
             "method": {
               "const": "JudgeVersions",
@@ -1714,7 +1632,6 @@
           "type": "object"
         },
         {
-          "description": "학습 확인 창 값.",
           "properties": {
             "method": {
               "const": "TrainPreview",
@@ -1762,7 +1679,6 @@
           "type": "object"
         },
         {
-          "description": "학습 진행 줄(`⠼ [학습]`).",
           "properties": {
             "method": {
               "const": "TrainProgress",
@@ -1805,7 +1721,6 @@
           "type": "object"
         },
         {
-          "description": "작업의 provider 이벤트. 작업별 출력 칸과 도구 셀을 그린다.",
           "properties": {
             "method": {
               "const": "TaskEvent",
@@ -1834,7 +1749,6 @@
           "type": "object"
         },
         {
-          "description": "대화 기록 한 줄 알림(`맥락 정리 후 이어서 진행`, `codex → claude로 전환` 등).",
           "properties": {
             "method": {
               "const": "ChatNotice",
@@ -1873,7 +1787,7 @@
           "type": "object"
         },
         {
-          "description": "피드백 질문. 8초 안에 답이 없으면 TUI가 지운다.\n`disposition`으로 문구를 고르고(`[A]에 이어서 보냈어요` 등), 입력이 아직 안 보내졌으면 `아니에요` 뒤 바로잡기 제안을 보인다.",
+          "description": "8초 안에 답이 없으면 TUI가 지운다.",
           "properties": {
             "method": {
               "const": "FeedbackQuestion",
@@ -1910,7 +1824,7 @@
           "type": "object"
         },
         {
-          "description": "바닥줄 맥락 크기. 측정하지 못하면 `tokens`가 `None`(`맥락 미확인`).",
+          "description": "측정하지 못하면 `tokens`가 `None`.",
           "properties": {
             "method": {
               "const": "ContextSize",
@@ -1949,7 +1863,7 @@
           "type": "object"
         },
         {
-          "description": "설정 적용 결과. 검사 실패면 이전 번호로 계속하고 경고한다.",
+          "description": "검사 실패면 이전 번호로 계속하고 `warning`을 채운다.",
           "properties": {
             "method": {
               "const": "SettingsApplied",
@@ -1980,7 +1894,6 @@
           "type": "object"
         },
         {
-          "description": "engine 경고 줄(`자동 판단 일시 중단`, `새 입력 접수 중단 · ...` 등).",
           "properties": {
             "method": {
               "const": "Alert",
@@ -2007,10 +1920,9 @@
       ]
     },
     "NotificationMessage": {
-      "description": "engine이 보내는 알림 한 줄.",
+      "description": "TUI는 이것만으로 화면을 그린다.",
       "oneOf": [
         {
-          "description": "접속 직후 시작 화면 정보.",
           "properties": {
             "method": {
               "const": "StartInfo",
@@ -2064,7 +1976,6 @@
           "type": "object"
         },
         {
-          "description": "`SubmitInput`을 접수했다. `client_ref`로 보낸 입력과 짝짓는다.",
           "properties": {
             "method": {
               "const": "InputAccepted",
@@ -2095,7 +2006,7 @@
           "type": "object"
         },
         {
-          "description": "입력 에코와 상태 변화. `label`은 합쳐진 작업의 이름표, `text`는 다른 TUI가 보낸 입력에도 원문을 준다.",
+          "description": "`text`는 다른 TUI가 보낸 입력에도 원문을 준다.",
           "properties": {
             "method": {
               "const": "InputChanged",
@@ -2158,7 +2069,7 @@
           "type": "object"
         },
         {
-          "description": "작업 상태 변화. 상태판 줄과 결과 머리줄을 고친다. `failure`는 실패 원인 한 줄.",
+          "description": "`failure`는 실패 원인 한 줄.",
           "properties": {
             "method": {
               "const": "TaskChanged",
@@ -2213,7 +2124,7 @@
           "type": "object"
         },
         {
-          "description": "대화 기록 이전 부분. `LoadHistory`의 답이고, 항목은 실시간 알림과 같은 형식이다.",
+          "description": "`LoadHistory`의 답. 항목은 실시간 알림과 같은 형식.",
           "properties": {
             "method": {
               "const": "HistoryChunk",
@@ -2249,7 +2160,6 @@
           "type": "object"
         },
         {
-          "description": "허가 요청. 1초 입력 보호 뒤 접수 순서로 하나씩 창을 띄운다.",
           "properties": {
             "method": {
               "const": "PermissionRequested",
@@ -2300,7 +2210,7 @@
           "type": "object"
         },
         {
-          "description": "다른 클라이언트가 먼저 답했다. 창을 지운다.",
+          "description": "다른 클라이언트가 먼저 답했다.",
           "properties": {
             "method": {
               "const": "PermissionResolved",
@@ -2325,7 +2235,6 @@
           "type": "object"
         },
         {
-          "description": "폴더 설정 신뢰 요청. 실행 중이면 다음 입력 접수 전에 묻는다.",
           "properties": {
             "method": {
               "const": "FolderTrustRequested",
@@ -2375,7 +2284,6 @@
           "type": "object"
         },
         {
-          "description": "judge 확인 실패. 키 입력 창을 띄운다.",
           "properties": {
             "method": {
               "const": "JudgeKeyRequired",
@@ -2400,7 +2308,6 @@
           "type": "object"
         },
         {
-          "description": "provider 명령과 스킬 목록(`/`, `$` 팝업).",
           "properties": {
             "method": {
               "const": "Commands",
@@ -2432,7 +2339,6 @@
           "type": "object"
         },
         {
-          "description": "작업 목록(`/tasks`)의 답.",
           "properties": {
             "method": {
               "const": "TaskList",
@@ -2460,7 +2366,6 @@
           "type": "object"
         },
         {
-          "description": "사용량(`/usage`)의 답. 행은 에이전트별.",
           "properties": {
             "method": {
               "const": "Usage",
@@ -2492,7 +2397,6 @@
           "type": "object"
         },
         {
-          "description": "judge 버전 목록의 답.",
           "properties": {
             "method": {
               "const": "JudgeVersions",
@@ -2524,7 +2428,6 @@
           "type": "object"
         },
         {
-          "description": "학습 확인 창 값.",
           "properties": {
             "method": {
               "const": "TrainPreview",
@@ -2572,7 +2475,6 @@
           "type": "object"
         },
         {
-          "description": "학습 진행 줄(`⠼ [학습]`).",
           "properties": {
             "method": {
               "const": "TrainProgress",
@@ -2615,7 +2517,6 @@
           "type": "object"
         },
         {
-          "description": "작업의 provider 이벤트. 작업별 출력 칸과 도구 셀을 그린다.",
           "properties": {
             "method": {
               "const": "TaskEvent",
@@ -2644,7 +2545,6 @@
           "type": "object"
         },
         {
-          "description": "대화 기록 한 줄 알림(`맥락 정리 후 이어서 진행`, `codex → claude로 전환` 등).",
           "properties": {
             "method": {
               "const": "ChatNotice",
@@ -2683,7 +2583,7 @@
           "type": "object"
         },
         {
-          "description": "피드백 질문. 8초 안에 답이 없으면 TUI가 지운다.\n`disposition`으로 문구를 고르고(`[A]에 이어서 보냈어요` 등), 입력이 아직 안 보내졌으면 `아니에요` 뒤 바로잡기 제안을 보인다.",
+          "description": "8초 안에 답이 없으면 TUI가 지운다.",
           "properties": {
             "method": {
               "const": "FeedbackQuestion",
@@ -2720,7 +2620,7 @@
           "type": "object"
         },
         {
-          "description": "바닥줄 맥락 크기. 측정하지 못하면 `tokens`가 `None`(`맥락 미확인`).",
+          "description": "측정하지 못하면 `tokens`가 `None`.",
           "properties": {
             "method": {
               "const": "ContextSize",
@@ -2759,7 +2659,7 @@
           "type": "object"
         },
         {
-          "description": "설정 적용 결과. 검사 실패면 이전 번호로 계속하고 경고한다.",
+          "description": "검사 실패면 이전 번호로 계속하고 `warning`을 채운다.",
           "properties": {
             "method": {
               "const": "SettingsApplied",
@@ -2790,7 +2690,6 @@
           "type": "object"
         },
         {
-          "description": "engine 경고 줄(`자동 판단 일시 중단`, `새 입력 접수 중단 · ...` 등).",
           "properties": {
             "method": {
               "const": "Alert",
@@ -2817,8 +2716,7 @@
       ],
       "properties": {
         "jsonrpc": {
-          "$ref": "#/$defs/JsonRpcVersion",
-          "description": "항상 `\"2.0\"`."
+          "$ref": "#/$defs/JsonRpcVersion"
         }
       },
       "required": [
@@ -2827,51 +2725,39 @@
       "type": "object"
     },
     "PermissionAnswer": {
-      "description": "허가 요청 창의 네 선택지.",
       "oneOf": [
         {
-          "const": "Allow",
-          "description": "`y` 실행.",
+          "enum": [
+            "Allow",
+            "Deny"
+          ],
           "type": "string"
         },
         {
           "const": "AllowForTask",
-          "description": "`a` 이 작업 동안 같은 명령 허용.",
-          "type": "string"
-        },
-        {
-          "const": "Deny",
-          "description": "`d` 실행하지 않고 계속.",
+          "description": "이 작업 동안 같은 명령 허용.",
           "type": "string"
         },
         {
           "const": "DenyAndRedirect",
-          "description": "`Esc` 실행하지 않고 다르게 하라고 말하기. TODO(#56): 이어 받는 입력 처리 방식",
+          "description": "TODO(#56): 이어 받는 입력 처리 방식",
           "type": "string"
         }
       ]
     },
     "Provider": {
-      "description": "provider 종류. 화면에는 이 값만 보이고 provider 고유 이름은 engine 안에 둔다.",
-      "oneOf": [
-        {
-          "const": "Codex",
-          "description": "Codex CLI app-server.",
-          "type": "string"
-        },
-        {
-          "const": "Claude",
-          "description": "Claude Code stream-json.",
-          "type": "string"
-        }
-      ]
+      "description": "provider 고유 이름은 engine 안에만 둔다.",
+      "enum": [
+        "Codex",
+        "Claude"
+      ],
+      "type": "string"
     },
     "ProviderEvent": {
-      "description": "provider 이벤트 한 조각. 공급자 고유 필드는 engine에서 모두 걸러 낸다.",
+      "description": "provider 고유 필드는 engine에서 걸러 낸다.",
       "oneOf": [
         {
           "additionalProperties": false,
-          "description": "모델 글 조각.",
           "properties": {
             "Text": {
               "properties": {
@@ -2906,7 +2792,6 @@
         },
         {
           "additionalProperties": false,
-          "description": "도구 호출 시작. `activity`는 상태판 실행 줄의 하는 일이다.",
           "properties": {
             "ToolCall": {
               "properties": {
@@ -2945,7 +2830,6 @@
         },
         {
           "additionalProperties": false,
-          "description": "도구 결과.",
           "properties": {
             "ToolResult": {
               "properties": {
@@ -2984,7 +2868,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "provider가 subagent를 띄웠다. 부모가 `None`이면 메인 에이전트 바로 아래다.",
+          "description": "`parent`가 `None`이면 메인 에이전트 바로 아래.",
           "properties": {
             "SubagentStarted": {
               "properties": {
@@ -3019,7 +2903,6 @@
         },
         {
           "additionalProperties": false,
-          "description": "subagent가 끝났다.",
           "properties": {
             "SubagentEnded": {
               "properties": {
@@ -3044,7 +2927,6 @@
         },
         {
           "additionalProperties": false,
-          "description": "허가 요청. 사용자 답이 올 때까지 경과 시간을 멈춘다.",
           "properties": {
             "PermissionRequested": {
               "properties": {
@@ -3077,7 +2959,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "부모 턴 완료. Codex는 부모 작업의 `turn/completed`만 여기로 온다.",
+          "description": "Codex는 부모 작업의 `turn/completed`만 온다.",
           "properties": {
             "TurnCompleted": {
               "properties": {
@@ -3102,7 +2984,6 @@
         },
         {
           "additionalProperties": false,
-          "description": "사용량 보고 한 건. 원값과 범위를 그대로 담고 0으로 채우지 않는다.",
           "properties": {
             "Usage": {
               "$ref": "#/$defs/UsageReport"
@@ -3115,7 +2996,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "provider가 알린 활성 맥락 크기(토큰). 턴 끝마다 온다.",
+          "description": "토큰 수.",
           "properties": {
             "ContextSize": {
               "properties": {
@@ -3144,7 +3025,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "provider 흐름이 완료 신호 없이 끝났다. 효과 범위를 `Unobserved`로 바꾼다.",
+          "description": "효과 범위를 `Unobserved`로 바꾼다.",
           "properties": {
             "StreamLost": {
               "properties": {
@@ -3165,7 +3046,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "provider 명령으로 바뀐 적용 설정 값. 막지 않고 기록만 한다.",
+          "description": "막지 않고 기록만 한다.",
           "properties": {
             "SettingsApplied": {
               "properties": {
@@ -3204,11 +3085,17 @@
       ]
     },
     "QueueReason": {
-      "description": "대기 입력이 기다리는 이유. 상태판 대기 줄의 문구를 고른다.",
       "oneOf": [
         {
+          "enum": [
+            "JudgeConnection",
+            "WriteTurn",
+            "AfterCompaction"
+          ],
+          "type": "string"
+        },
+        {
           "additionalProperties": false,
-          "description": "실행 중인 작업 뒤(`대기 · A 다음`).",
           "properties": {
             "AfterTask": {
               "$ref": "#/$defs/TaskLabel"
@@ -3221,42 +3108,26 @@
         },
         {
           "const": "JudgeOrder",
-          "description": "같은 채팅의 앞 입력 판단 차례(`대기 · 판단 차례`). `[보내기]` 없이 `[취소]`만.",
-          "type": "string"
-        },
-        {
-          "const": "JudgeConnection",
-          "description": "judge 연결 회복(`대기 · 판단기 연결 기다림`).",
-          "type": "string"
-        },
-        {
-          "const": "WriteTurn",
-          "description": "다른 에이전트의 쓰기 끝(`대기 · 쓰기 차례`).",
-          "type": "string"
-        },
-        {
-          "const": "AfterCompaction",
-          "description": "session 교체 끝(`대기 · 맥락 정리 뒤`).",
+          "description": "`[보내기]` 없이 `[취소]`만.",
           "type": "string"
         },
         {
           "const": "AfterAllTasks",
-          "description": "모든 작업 끝. session을 바꾸는 명령만(`대기 · 모든 작업 뒤`).",
+          "description": "session을 바꾸는 명령만.",
           "type": "string"
         }
       ]
     },
     "RequestId": {
-      "description": "요청 번호. 클라이언트가 연결마다 매기고 engine은 `Response`에 그대로 돌려준다.",
+      "description": "클라이언트가 연결마다 매긴다.",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
     },
     "Response": {
-      "description": "요청 하나의 답. 요청의 결과 화면 갱신은 따로 알림으로 온다.",
+      "description": "요청 결과의 화면 갱신은 알림으로 따로 온다.",
       "oneOf": [
         {
-          "description": "접수했다. `\"result\": null`.",
           "properties": {
             "result": {
               "type": "null"
@@ -3268,7 +3139,6 @@
           "type": "object"
         },
         {
-          "description": "거절했다.",
           "properties": {
             "error": {
               "$ref": "#/$defs/RpcError"
@@ -3290,11 +3160,10 @@
               "type": "null"
             }
           ],
-          "description": "답하는 요청 번호. 줄을 해석하지 못해 번호를 모르면 `null`."
+          "description": "줄을 해석하지 못해 번호를 모르면 `null`."
         },
         "jsonrpc": {
-          "$ref": "#/$defs/JsonRpcVersion",
-          "description": "항상 `\"2.0\"`."
+          "$ref": "#/$defs/JsonRpcVersion"
         }
       },
       "required": [
@@ -3303,15 +3172,13 @@
       "type": "object"
     },
     "RpcError": {
-      "description": "JSON-RPC 오류 객체. `message`에 사용자 입력과 비밀값을 넣지 않는다.",
+      "description": "`message`에 사용자 입력과 비밀값을 넣지 않는다.",
       "properties": {
         "code": {
-          "description": "오류 코드. 표준 코드는 이 모듈의 상수.",
           "format": "int32",
           "type": "integer"
         },
         "message": {
-          "description": "오류 문구.",
           "type": "string"
         }
       },
@@ -3324,51 +3191,45 @@
     "ServerMessage": {
       "anyOf": [
         {
-          "$ref": "#/$defs/Response",
-          "description": "요청 하나의 답."
+          "$ref": "#/$defs/Response"
         },
         {
-          "$ref": "#/$defs/NotificationMessage",
-          "description": "화면 갱신 알림."
+          "$ref": "#/$defs/NotificationMessage"
         }
       ],
-      "description": "engine → 클라이언트 한 줄. `method`가 있으면 알림, 없으면 응답이다."
+      "description": "`method`가 있으면 알림, 없으면 응답."
     },
     "SettingsRevision": {
-      "description": "설정 스냅샷 번호. 입력은 접수 때 고정한 번호로 끝까지 처리한다.",
+      "description": "입력은 접수 때 고정한 번호로 끝까지 처리한다.",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
     },
     "SubagentId": {
-      "description": "provider가 스스로 띄운 subagent. provider가 준 id 문자열을 그대로 담는다.",
+      "description": "provider가 준 id 문자열 그대로.",
       "type": "string"
     },
     "TaskId": {
-      "description": "채팅 안 작업 하나. 화면 이름표(`A`, `B`, ...)는 `TaskLabel`로 따로 붙인다.",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
     },
     "TaskLabel": {
-      "description": "화면 이름표 한 글자. 끝난 작업의 글자는 비어 있는 가장 앞 글자로 재사용한다.",
+      "description": "끝난 작업의 글자는 비어 있는 가장 앞 글자로 재사용한다.",
       "maxLength": 1,
       "minLength": 1,
       "type": "string"
     },
     "TaskListItem": {
-      "description": "작업 목록 한 행.",
       "properties": {
         "busy_elsewhere": {
-          "description": "다른 Saturn이 실행 중이면 참(읽기 전용).",
+          "description": "다른 Saturn이 실행 중이면 읽기 전용.",
           "type": "boolean"
         },
         "chat": {
-          "$ref": "#/$defs/ChatId",
-          "description": "채팅."
+          "$ref": "#/$defs/ChatId"
         },
         "chat_name": {
-          "description": "채팅 이름.",
           "type": "string"
         },
         "children": {
@@ -3378,27 +3239,22 @@
           "type": "integer"
         },
         "group": {
-          "description": "묶음.",
           "type": [
             "string",
             "null"
           ]
         },
         "label": {
-          "$ref": "#/$defs/TaskLabel",
-          "description": "이름표."
+          "$ref": "#/$defs/TaskLabel"
         },
         "needs_permission": {
-          "description": "허가가 필요하면 참(`!`).",
           "type": "boolean"
         },
         "state": {
-          "$ref": "#/$defs/TaskState",
-          "description": "상태."
+          "$ref": "#/$defs/TaskState"
         },
         "task": {
-          "$ref": "#/$defs/TaskId",
-          "description": "작업."
+          "$ref": "#/$defs/TaskId"
         }
       },
       "required": [
@@ -3414,94 +3270,64 @@
       "type": "object"
     },
     "TaskState": {
-      "description": "작업 상태. 상태판 줄과 작업 목록 필터가 쓴다.",
       "oneOf": [
         {
-          "const": "Running",
-          "description": "에이전트가 실행 중이다.",
+          "enum": [
+            "Running",
+            "Held",
+            "Done",
+            "Failed"
+          ],
           "type": "string"
         },
         {
           "const": "AnsweredTreeRunning",
-          "description": "답은 나왔지만 subagent가 남았다(`answered-tree-running`).",
+          "description": "답은 나왔지만 subagent가 남았다.",
           "type": "string"
         },
         {
           "const": "AwaitingPermission",
-          "description": "허가 응답을 기다린다. 경과 시간이 멈춘다.",
-          "type": "string"
-        },
-        {
-          "const": "Held",
-          "description": "보류됐다. `/continue`로 재개한다.",
+          "description": "경과 시간이 멈춘다.",
           "type": "string"
         },
         {
           "const": "NeedsCheck",
-          "description": "결과를 확인해야 한다(결과 불명).",
-          "type": "string"
-        },
-        {
-          "const": "Done",
-          "description": "끝났다.",
-          "type": "string"
-        },
-        {
-          "const": "Failed",
-          "description": "실패했다.",
+          "description": "결과 불명.",
           "type": "string"
         }
       ]
     },
     "TurnOrigin": {
-      "description": "턴을 누가 시작했나.",
       "oneOf": [
         {
-          "const": "User",
-          "description": "사용자 입력으로 시작.",
+          "enum": [
+            "User"
+          ],
           "type": "string"
         },
         {
           "const": "ProviderWake",
-          "description": "입력 없이 provider가 시작(`provider-wake`).",
+          "description": "`provider-wake`: 입력 없이 provider가 시작.",
           "type": "string"
         }
       ]
     },
     "UsageRange": {
-      "description": "`/usage` 범위.",
-      "oneOf": [
-        {
-          "const": "Chat",
-          "description": "현재 채팅.",
-          "type": "string"
-        },
-        {
-          "const": "Today",
-          "description": "오늘.",
-          "type": "string"
-        },
-        {
-          "const": "Week",
-          "description": "이번 주.",
-          "type": "string"
-        },
-        {
-          "const": "All",
-          "description": "전체.",
-          "type": "string"
-        }
-      ]
+      "enum": [
+        "Chat",
+        "Today",
+        "Week",
+        "All"
+      ],
+      "type": "string"
     },
     "UsageReport": {
-      "description": "사용량 보고 원값. 보고하지 않은 값은 `None`으로 두고 0으로 채우지 않는다.",
+      "description": "보고하지 않은 값은 0이 아니라 `None`.",
       "properties": {
         "agent": {
-          "$ref": "#/$defs/AgentId",
-          "description": "보고 대상 에이전트."
+          "$ref": "#/$defs/AgentId"
         },
         "cache_read": {
-          "description": "캐시 읽기 토큰.",
           "format": "uint64",
           "minimum": 0,
           "type": [
@@ -3510,7 +3336,6 @@
           ]
         },
         "cache_write": {
-          "description": "캐시 쓰기 토큰.",
           "format": "uint64",
           "minimum": 0,
           "type": [
@@ -3519,7 +3344,6 @@
           ]
         },
         "input": {
-          "description": "새 입력 토큰.",
           "format": "uint64",
           "minimum": 0,
           "type": [
@@ -3528,14 +3352,12 @@
           ]
         },
         "model": {
-          "description": "보고한 모델 이름. 보고하지 않으면 `None`(`모델 미보고`).",
           "type": [
             "string",
             "null"
           ]
         },
         "output": {
-          "description": "출력 토큰.",
           "format": "uint64",
           "minimum": 0,
           "type": [
@@ -3544,7 +3366,6 @@
           ]
         },
         "reasoning": {
-          "description": "추론 토큰.",
           "format": "uint64",
           "minimum": 0,
           "type": [
@@ -3553,8 +3374,7 @@
           ]
         },
         "scope": {
-          "$ref": "#/$defs/UsageScope",
-          "description": "값의 범위. 턴 값 계산 방식을 가른다."
+          "$ref": "#/$defs/UsageScope"
         },
         "subagent": {
           "anyOf": [
@@ -3564,8 +3384,7 @@
             {
               "type": "null"
             }
-          ],
-          "description": "보고 대상 subagent. 메인이면 `None`."
+          ]
         }
       },
       "required": [
@@ -3575,16 +3394,14 @@
       "type": "object"
     },
     "UsageRow": {
-      "description": "사용량 화면 한 행.",
       "properties": {
         "compactions": {
-          "description": "맥락 정리 횟수.",
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
         },
         "estimated_cost_micros": {
-          "description": "예상 비용.",
+          "description": "단위: 마이크로 달러.",
           "format": "uint64",
           "minimum": 0,
           "type": [
@@ -3593,19 +3410,17 @@
           ]
         },
         "judge_calls": {
-          "description": "judge 호출 수와 예상 비용(마이크로 달러).",
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
         },
         "labels": {
-          "description": "채점 수.",
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
         },
         "tokens": {
-          "description": "새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론 토큰. 보고되지 않았으면 `None`.",
+          "description": "새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론 순. 보고되지 않았으면 `None`.",
           "items": {
             "format": "uint64",
             "minimum": 0,
@@ -3633,21 +3448,21 @@
       "type": "object"
     },
     "UsageScope": {
-      "description": "사용량 보고 범위.",
       "oneOf": [
         {
-          "const": "MainTurn",
-          "description": "메인 턴 하나의 값. 보고값을 그대로 턴 값으로 쓴다.",
+          "enum": [
+            "TreeTotal"
+          ],
           "type": "string"
         },
         {
-          "const": "TreeTotal",
-          "description": "트리 전체 합계.",
+          "const": "MainTurn",
+          "description": "보고값이 곧 턴 값.",
           "type": "string"
         },
         {
           "const": "ThreadCumulative",
-          "description": "session 누적값(Codex `tokenUsage`). 같은 session의 직전 누적을 빼서 턴 값을 구한다.",
+          "description": "Codex `tokenUsage`. 턴 값은 직전 누적과의 차이.",
           "type": "string"
         }
       ]

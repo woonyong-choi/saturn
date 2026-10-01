@@ -1,9 +1,5 @@
-//! 접속 하나의 읽기·쓰기 작업. 한 줄에 JSON 메시지 하나.
-//!
-//! 설계: docs/design/engine-lifecycle.md(여러 TUI 동시 접속).
-//! 읽기 작업은 줄마다 `envelope::decode_client_line`으로 해석해 서버 inbox로 보내고, 쓰기 작업은 outbox의 `ServerMessage`를 한 줄씩 쓴다.
-//! 해석하지 못한 줄은 inbox로 보내지 않고 `CodecError::to_response`를 outbox에 넣는다.
-//! `Request::SubmitJudgeKey` 줄은 해석 실패여도 원문을 로그에 남기지 않는다. `CodecError`에는 원문이 없다.
+//! 접속 하나의 읽기·쓰기 작업. 해석하지 못한 줄은 inbox 대신 오류 응답을 outbox에 넣는다.
+//! `SubmitJudgeKey` 줄은 해석 실패여도 원문을 로그에 남기지 않는다.
 
 use saturn_protocol::envelope::ServerMessage;
 use tokio::net::UnixStream;
@@ -11,23 +7,19 @@ use tokio::sync::mpsc;
 
 use super::{ClientId, RpcEvent};
 
-/// 접속 하나.
 #[derive(Debug)]
 pub(crate) struct Connection {
-    /// 접속 id.
     id: ClientId,
-    /// 소켓.
     stream: UnixStream,
 }
 
 impl Connection {
-    /// 수락한 소켓으로 만든다.
     pub(crate) fn new(id: ClientId, stream: UnixStream) -> Self {
         Self { id, stream }
     }
 
-    /// 읽기·쓰기 작업을 띄우고 응답·알림 outbox를 돌려준다. 읽기가 끝나면 `RpcEvent::Disconnected`를 inbox로 보낸다.
-    /// TODO(#89): outbox 크기와 느린 TUI 때문에 넘칠 때 처리 미정
+    /// 읽기가 끝나면 `RpcEvent::Disconnected`를 inbox로 보낸다.
+    /// TODO(#89): outbox가 넘칠 때 처리
     pub(crate) fn spawn(self, inbox: mpsc::Sender<RpcEvent>) -> mpsc::Sender<ServerMessage> {
         todo!("#89")
     }
