@@ -1,0 +1,6 @@
+condition,tp,predicted,positives,precision,recall
+baseline,151,179,180,0.843575,0.838889
+flag,146,166,180,0.879518,0.811111
+flag_text,131,149,180,0.879195,0.727778
+oracle_flag,148,168,180,0.880952,0.822222
+flag_hint,120,125,180,0.96,0.666667

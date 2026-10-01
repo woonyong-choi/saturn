@@ -1,0 +1,9 @@
+scope,candidate,reference,n,both_correct,b,c,both_wrong,diff,ci95_low,ci95_high,p_one_sided
+indirect,flag,baseline,200,140,10,9,41,0.005,-0.038283,0.048362,0.5
+direct,flag,baseline,150,143,3,1,3,0.013333,-0.018674,0.050454,0.3125
+indirect,flag_text,baseline,200,130,8,19,43,-0.055,-0.105613,-0.004533,0.982868
+direct,flag_text,baseline,150,143,2,1,4,0.006667,-0.024023,0.040191,0.5
+indirect,oracle_flag,baseline,200,143,9,6,42,0.015,-0.023552,0.053899,0.303619
+direct,oracle_flag,baseline,150,143,3,1,3,0.013333,-0.018674,0.050454,0.3125
+indirect,flag_hint,baseline,200,144,47,5,4,0.21,0.145697,0.276078,0.0
+direct,flag_hint,baseline,150,90,4,54,2,-0.333333,-0.416205,-0.246906,1.0

@@ -1,6 +1,5 @@
 //! 채팅, 입력, 실행, session, provider 이벤트, 사용량 원값 기록.
 //! 설계: docs/design/records.md
-//! TODO(#31): 표 이름(chats/inputs/runs/sessions/events/usage 초안)을 용어 표에 맞출지
 
 use std::path::PathBuf;
 use std::time::SystemTime;

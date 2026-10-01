@@ -1,6 +1,5 @@
 //! 스키마 버전 확인, 이관 직전 백업, 자동 이관, 오래된 백업 삭제.
 //! 설계: docs/design/records.md
-//! TODO(#29): 첫 스키마를 전체 정의로 쓸지, 옛 스키마 위 변경분으로 쓸지
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};

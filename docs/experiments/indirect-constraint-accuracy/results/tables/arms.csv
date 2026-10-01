@@ -1,0 +1,11 @@
+condition,scope,n,correct,accuracy,ci95_low,ci95_high
+baseline,indirect,200,149,0.745,0.680371,0.800395
+baseline,direct,150,144,0.96,0.915487,0.981541
+flag,indirect,200,150,0.75,0.685659,0.804918
+flag,direct,150,146,0.973333,0.933446,0.989582
+flag_text,indirect,200,138,0.69,0.622828,0.750011
+flag_text,direct,150,145,0.966667,0.924348,0.98568
+oracle_flag,indirect,200,152,0.76,0.696267,0.813934
+oracle_flag,direct,150,146,0.973333,0.933446,0.989582
+flag_hint,indirect,200,191,0.955,0.916703,0.976147
+flag_hint,direct,150,94,0.626667,0.547006,0.700002
