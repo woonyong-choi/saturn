@@ -18,8 +18,11 @@ mod manager;
 mod trust;
 
 use std::path::PathBuf;
+use std::sync::OnceLock;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use saturn_core::judges::{Method, Thresholds};
 use saturn_core::sessions::context::ContextBudget;
@@ -27,7 +30,7 @@ use saturn_protocol::ids::Provider;
 use saturn_protocol::state::OnExit;
 
 use crate::secrets::{KeyInfo, StorageMode};
-use crate::store::{RetentionPolicy, StoreError};
+use crate::store::{RetentionPolicy, StoreError, sha256_hex};
 
 pub use edit::FileVersion;
 pub use layers::{
@@ -113,8 +116,7 @@ pub struct LayerSource {
     pub layer: Layer,
     /// 파일 층이면 경로.
     pub path: Option<PathBuf>,
-    /// 파일 층이면 읽은 내용의 지문(hex). 해시는 초안이다(설계는 지문만 정함).
-    /// TODO(#83): 값 미정, 초안 SHA-256
+    /// 파일 층이면 읽은 내용의 지문(hex). 해시 SHA-256은 초안이다(설계는 지문만 정함).
     pub fingerprint: Option<String>,
     /// 폴더 층에서 `USER_ONLY`라 무시한 점 경로 키.
     pub ignored: Vec<String>,
@@ -129,63 +131,141 @@ pub struct Settings {
 impl Settings {
     /// 판단 방식. 사용자 전용.
     pub fn method(&self) -> Method {
-        todo!("#83")
+        match self.text("judge.method") {
+            "saturn" => Method::Saturn,
+            "collect" => Method::Collect,
+            _ => Method::Jev,
+        }
     }
 
-    /// 질문별 기준값. 사용자 층과 폴더 층에서 바꿀 수 있다. 없는 항목은 `Thresholds::default()`.
+    /// 질문별 기준값. 사용자 층과 폴더 층에서 바꿀 수 있다. 없는 항목은 기본값 층 값(docs/design/judge.md 표)이다.
     pub fn thresholds(&self) -> Thresholds {
-        todo!("#83")
+        let value = |name: &str| self.number(&format!("judge.thresholds.{name}"));
+        Thresholds {
+            keep_current: value("keep_current"),
+            is_actionable: value("is_actionable"),
+            min_confidence: value("min_confidence"),
+            resume_held: value("resume_held"),
+            file_relevant: (value("file_present"), value("file_absent")),
+            context_gate: value("context_gate"),
+            compact_keep: value("compact_keep"),
+            injection: value("injection"),
+            progressing: value("progressing"),
+            feedback_cause: value("feedback_cause"),
+        }
     }
 
     /// judge 주소. 사용자 전용. 허용 호스트 검사는 `judges`가 한다.
     pub fn judge_endpoint(&self) -> &str {
-        todo!("#83")
+        self.text("judge.endpoint")
     }
 
     /// 사용자 층에 기록한 키 정보(출처와 끝 4자리). 없으면 `None`.
     pub fn key_info(&self) -> Option<KeyInfo> {
-        todo!("#83")
+        serde_json::from_value(self.get("judge.key.info")?.clone()).ok()
     }
 
-    /// 비밀번호 관리자 명령(실행 파일과 인자). 사용자 전용. 없으면 `None`. TODO(#32): 키 이름 `judge.key_command`
+    /// 비밀번호 관리자 명령(실행 파일과 인자). 사용자 전용. 없으면 `None`. 키 이름 `judge.key.command`는 초안이다.
+    /// TODO(#32): 키 이름 확정
     pub fn key_command(&self) -> Option<Vec<String>> {
-        todo!("#83")
+        let items = self.get("judge.key.command")?.as_array()?;
+        let command: Vec<String> = items
+            .iter()
+            .filter_map(|item| item.as_str().map(str::to_owned))
+            .collect();
+        (!command.is_empty()).then_some(command)
     }
 
     /// 키 저장 방식. 기본 `Standard`.
     pub fn storage_mode(&self) -> StorageMode {
-        todo!("#83")
+        match self.text("judge.key.storage") {
+            "hardened" => StorageMode::Hardened,
+            _ => StorageMode::Standard,
+        }
     }
 
     /// 채점 모델. 사용자 전용.
     pub fn grading_model(&self) -> Option<&str> {
-        todo!("#83")
+        self.get("grading.model")?.as_str()
     }
 
     /// 데이터 공유 동의(`consent.share_with_server`). 사용자 전용. 기본 거짓.
     pub fn share_with_server(&self) -> bool {
-        todo!("#83")
+        self.lookup("consent.share_with_server")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
     }
 
-    /// 자동 정리 정책. 기본 무제한 보존.
+    /// 자동 정리 정책. 기본 무제한 보존. `retention.max_age_days`(초안)가 있으면 그 일수.
     pub fn retention(&self) -> RetentionPolicy {
-        todo!("#83")
+        let days = self.get("retention.max_age_days").and_then(Value::as_u64);
+        RetentionPolicy {
+            max_age: days.map(|days| Duration::from_secs(days.saturating_mul(24 * 60 * 60))),
+        }
     }
 
     /// TUI를 닫을 때 engine이 할 일. 기본 `Background`.
     pub fn on_exit(&self) -> OnExit {
-        todo!("#83")
+        match self.text("on_exit") {
+            "stop" => OnExit::Stop,
+            "ask" => OnExit::Ask,
+            _ => OnExit::Background,
+        }
     }
 
-    /// provider별 맥락 기준값.
+    /// provider별 맥락 기준값. 키는 `context.<codex|claude>.*`, 안전 비율은 두 provider 공통 `context.safety_percent`(초안).
     pub fn context_budget(&self, provider: Provider) -> ContextBudget {
-        todo!("#83")
+        let section = match provider {
+            Provider::Codex => "context.codex",
+            Provider::Claude => "context.claude",
+        };
+        let integer = |key: &str| {
+            self.lookup(key)
+                .and_then(Value::as_u64)
+                .expect("default layer should define every context integer")
+        };
+        ContextBudget {
+            t_abs: integer(&format!("{section}.t_abs")),
+            safety_percent: u8::try_from(integer("context.safety_percent")).unwrap_or(100),
+            window: integer(&format!("{section}.window")),
+            cache_read: self.number(&format!("{section}.cache_read")),
+            cache_write: self.number(&format!("{section}.cache_write")),
+            cache_ttl: Duration::from_secs(integer(&format!("{section}.cache_ttl_secs"))),
+        }
     }
 
     /// 점 경로 키의 원값. 모르는 키면 `None`.
     pub fn get(&self, key: &str) -> Option<&serde_json::Value> {
-        todo!("#83")
+        layers::get_path(&self.values, key)
     }
+
+    /// 이 값에 없으면 기본값 층 값. 옛 스냅샷에 없던 키도 기본값으로 읽는다.
+    fn lookup(&self, key: &str) -> Option<&Value> {
+        self.get(key).or_else(|| layers::get_path(defaults(), key))
+    }
+
+    /// 기본값 층에 반드시 있는 문자열 키.
+    fn text(&self, key: &str) -> &str {
+        self.lookup(key)
+            .and_then(Value::as_str)
+            .expect("default layer should define every string setting")
+    }
+
+    /// 기본값 층에 반드시 있는 실수 키.
+    fn number(&self, key: &str) -> f64 {
+        self.lookup(key)
+            .and_then(Value::as_f64)
+            .expect("default layer should define every numeric setting")
+    }
+}
+
+/// 기본값 층을 JSON 표로 한 번만 읽는다.
+fn defaults() -> &'static Value {
+    static DEFAULTS: OnceLock<Value> = OnceLock::new();
+    DEFAULTS.get_or_init(|| {
+        layers::parse_toml(default_layer(), std::path::Path::new("default"))
+            .expect("default layer should be valid toml")
+    })
 }
 
 /// 설정 번호에 붙는 스냅샷. `store`가 저장하고 `digest`로 같은 내용을 찾는다.
@@ -199,9 +279,82 @@ pub struct SettingsSnapshot {
 
 impl SettingsSnapshot {
     /// 같은 내용 판정 값. 키를 정렬한 `settings` JSON의 해시 hex. 층 목록은 넣지 않는다(값이 같으면 같은 번호).
-    /// 해시는 초안이다(설계에 없음).
-    /// TODO(#83): 값 미정, 초안 SHA-256
+    /// 해시 SHA-256은 초안이다(설계에 없음).
     pub fn digest(&self) -> String {
-        todo!("#83")
+        let sorted = serde_json::to_string(&self.settings.values)
+            .expect("settings json should serialize because it holds only json values");
+        sha256_hex(sorted.as_bytes())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn snapshot(content: &str, layers: Vec<LayerSource>) -> SettingsSnapshot {
+        let mut sources = vec![(
+            layers::source(Layer::Default, None, default_layer()),
+            default_layer().to_owned(),
+        )];
+        sources.push((
+            layers::source(Layer::Chat, None, content),
+            content.to_owned(),
+        ));
+        let mut merged = merge(sources).unwrap();
+        merged.layers = layers;
+        merged
+    }
+
+    #[test]
+    fn digest_ignores_layer_list_and_key_order() {
+        let a = snapshot(
+            "on_exit = \"ask\"\nretention.max_age_days = 3\n",
+            Vec::new(),
+        );
+        let b = snapshot(
+            "retention.max_age_days = 3\non_exit = \"ask\"\n",
+            vec![layers::source(Layer::User, Some(PathBuf::from("/u")), "x")],
+        );
+        let c = snapshot("on_exit = \"stop\"\n", Vec::new());
+
+        assert_eq!(a.digest(), b.digest());
+        assert_ne!(a.digest(), c.digest());
+        assert_eq!(a.digest().len(), 64);
+        assert_eq!(
+            a.settings.retention().max_age,
+            Some(Duration::from_secs(3 * 24 * 60 * 60))
+        );
+    }
+
+    #[test]
+    fn user_only_check_sees_ignored_keys() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".saturn").join(CONFIG_FILE);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let content = "[judge]\nmethod = \"saturn\"\n";
+        std::fs::write(&path, content).unwrap();
+        let sources = vec![
+            (
+                layers::source(Layer::Default, None, default_layer()),
+                default_layer().to_owned(),
+            ),
+            (
+                layers::source(Layer::Folder, Some(path), content),
+                content.to_owned(),
+            ),
+        ];
+
+        let snapshot = merge(sources).unwrap();
+
+        assert!(layers::user_only_from_user_layer(
+            &snapshot.settings,
+            &snapshot.layers
+        ));
+        let mut forged = snapshot.layers.clone();
+        forged[1].ignored.clear();
+        assert!(!layers::user_only_from_user_layer(
+            &snapshot.settings,
+            &forged
+        ));
     }
 }

@@ -57,6 +57,32 @@
 - 보조 에이전트는 부모 채팅의 채팅 층을 물려받는다. 보조 에이전트가 메인 에이전트와 같은 설정으로 실행되게 하기 위해서다.
 - judge 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다. 기준값 조정은 [judge 학습](judge-training.md)에 있다.
 
+### 설정 키
+
+키 이름과 기본값은 초안이다([#49](https://github.com/woonyong-choi/saturn/issues/49)). 병합 결과에 아래 표에 없는 키가 있으면 검사에 실패한다.
+
+| 키 | 값 | 기본값 |
+|---|---|---|
+| `on_exit` | `background`, `stop`, `ask` | `background` |
+| `judge.method` | `jev`, `saturn`, `collect` | `jev` |
+| `judge.endpoint` | 문자열 | `https://api.typesafe.ai` |
+| `judge.key.info` | `source`(`Stored`, `Stdin`, `Env`, `Command`), `last4` | 없음 |
+| `judge.key.command` | 문자열 배열 | 없음 |
+| `judge.key.storage` | `standard`, `hardened` | `standard` |
+| `judge.thresholds.<이름>` | 0~1 실수 | [judge](judge.md) 표의 값 |
+| `grading.model` | 문자열 | 없음 |
+| `consent.share_with_server` | 참·거짓 | 거짓 |
+| `retention.max_age_days` | 1 이상 정수 | 없음(무제한 보존) |
+| `context.safety_percent` | 0~100 정수 | 70 |
+| `context.<codex\|claude>.t_abs` | 1 이상 정수 | 200000 |
+| `context.<codex\|claude>.window` | 1 이상 정수 | codex 272000, claude 1000000 |
+| `context.<codex\|claude>.cache_read`, `cache_write` | 0 이상 실수 | 0.1, codex 1.0 · claude 1.25 |
+| `context.<codex\|claude>.cache_ttl_secs` | 1 이상 정수 | 300 |
+
+- 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `compact_keep`, `injection`, `progressing`, `feedback_cause`다.
+- 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
+- 실행 층 `-c key=value`의 값은 TOML 값 문법으로 읽고, 같은 키가 여러 번 오면 뒤 값이 이긴다.
+
 ### 폴더 층에서 바꿀 수 없는 항목
 
 아래 항목은 사용자 전용이라 폴더 층에서 바꿀 수 없다. 폴더 설정 신뢰 창은 이 항목을 무시되는 항목에 표시한다.
@@ -68,7 +94,7 @@
 | 데이터 공유 동의 | [judge 학습](judge-training.md) |
 | 판단 방식 | [judge](judge.md) |
 
-judge 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([judge 키 보호](judge-key-security.md)).
+사용자 전용 키는 `judge.endpoint`, `judge.key`, `grading.model`, `consent`, `judge.method`와 같거나 그 아래 키다(초안). judge 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([judge 키 보호](judge-key-security.md)).
 
 ### 병합과 설정 번호
 
@@ -101,6 +127,8 @@ engine이 시작하면 사용자당 잠금을 얻고 스키마 이관을 마친 
 
 - 신뢰한 폴더 설정의 내용이 바뀌면 다시 묻고 새 지문으로 신뢰를 기록한다. 확인하지 않은 변경이 적용되는 일을 막기 위해서다.
 - 실행 중에 폴더 설정이 바뀌면 신뢰 창은 다음 입력을 접수하기 전에 열린다.
+- 신뢰 기록은 `~/.saturn/trusted.json`(경로 → 지문, 권한 0600)에 두고, 지문은 파일 내용의 SHA-256 hex다(초안).
+- 신뢰한 뒤 내용이 바뀐 파일은 옛 내용을 두지 않으므로, 바뀐 줄로 빈 줄과 주석을 뺀 모든 줄을 보인다(초안).
 
 폴더 설정 신뢰 창은 파일 경로, 지문, 적용되는 항목, 무시되는 항목, 바뀐 줄을 보인다.
 
@@ -115,6 +143,9 @@ engine이 시작하면 사용자당 잠금을 얻고 스키마 이관을 마친 
 
 명령으로 설정 파일을 고칠 때 `settings`는 `toml_edit`로 주석을 보존한다. 파일을 쓰기 전에 읽은 버전이 그대로인지 확인한다. 다른 곳에서 고친 내용과 사용자 주석을 잃지 않기 위해서다.
 
+- 버전은 내용 지문으로 비교하고, 고친 내용은 같은 폴더의 `<파일 이름>.partial`에 쓴 뒤 이름을 바꿔 갈아 끼운다. 원래 파일 권한은 그대로 둔다.
+- 고칠 수 있는 파일은 사용자 설정과 폴더 설정(`.saturn/config.toml`)뿐이다.
+
 ### provider 설정과의 관계
 
 Saturn 설정은 provider 설정 파일을 바꾸지 않는다. Saturn 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. 사용자가 정한 provider 설정을 덮어쓰지 않기 위해서다([결정 기록](../decisions/2026-09-29-minimal-provider-control.md)).
@@ -123,7 +154,7 @@ Saturn 설정은 provider 설정 파일을 바꾸지 않는다. Saturn 기본값
 
 | 상황 | 동작 |
 |---|---|
-| 병합 결과 검사 실패 | 이전 설정 번호를 유지하고 경고한다. |
+| 병합 결과 검사 실패 | 이전 설정 번호를 유지하고 `<층> 설정 오류 · 이전 설정 번호 12로 계속 · 줄 7: ...`(검사 실패면 `키: 이유`)로 경고한다. |
 | 시작 때 이전 설정 번호 없음 | 실행하지 않는다. |
 | 신뢰한 폴더 설정의 내용 변경 | 다시 묻고 새 지문으로 신뢰를 기록한다. |
 

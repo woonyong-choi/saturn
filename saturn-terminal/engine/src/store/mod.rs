@@ -258,8 +258,8 @@ fn parse_enum<T: DeserializeOwned>(text: &str) -> Result<T, StoreError> {
     ))?)
 }
 
-/// 바이트의 SHA-256 hex.
-fn sha256_hex(bytes: &[u8]) -> String {
+/// 바이트의 SHA-256 hex. 기록 저장소 대조 값과 설정 지문에 쓴다.
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     use std::fmt::Write;
 
