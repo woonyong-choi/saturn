@@ -3,8 +3,8 @@
 | 항목 | 값 |
 |---|---|
 | 날짜 | 2026-10-01 |
-| 상태 | 채택 |
-| 대체 | 없음 |
+| 상태 | 대체됨 |
+| 대체 | 대체된 결정: [judge가 후보 전체를 판단하고 코드 순위는 대체 순서로만 쓴다](2026-10-01-judge-all-candidates.md) |
 | 관련 문서 | [맥락 고르기](../design/context-selection.md), [맥락 정리](../design/context-management.md), [judge](../design/judge.md) |
 
 ## 배경

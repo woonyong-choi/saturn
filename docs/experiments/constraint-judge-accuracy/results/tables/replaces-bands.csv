@@ -1,0 +1,4 @@
+band,n,correct,accuracy,ci95_low,ci95_high,replaces,partial,compatible
+replace,48,45,0.9375,0.831646,0.978517,45,3,0
+possible,20,8,0.4,0.218807,0.613418,12,8,0
+none,92,70,0.76087,0.664379,0.836449,3,19,70

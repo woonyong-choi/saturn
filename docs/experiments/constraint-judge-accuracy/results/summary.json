@@ -1,0 +1,357 @@
+{
+  "hypotheses": [
+    {
+      "hypothesis": "H1",
+      "metric": "is_constraint 정밀도",
+      "k": 98,
+      "n": 107,
+      "value": 0.915888,
+      "ci95_low": 0.847831,
+      "ci95_high": 0.955118,
+      "criterion": 0.8,
+      "p_one_sided": 0.001364,
+      "p_holm": 0.006819,
+      "verdict": "채택"
+    },
+    {
+      "hypothesis": "H2",
+      "metric": "is_constraint 재현율",
+      "k": 98,
+      "n": 105,
+      "value": 0.933333,
+      "ci95_low": 0.868744,
+      "ci95_high": 0.967334,
+      "criterion": 0.8,
+      "p_one_sided": 0.000318,
+      "p_holm": 0.001909,
+      "verdict": "채택"
+    },
+    {
+      "hypothesis": "H3",
+      "metric": "대체 구간 정밀도",
+      "k": 45,
+      "n": 48,
+      "value": 0.9375,
+      "ci95_low": 0.831646,
+      "ci95_high": 0.978517,
+      "criterion": 0.9,
+      "p_one_sided": 0.193238,
+      "p_holm": 0.579714,
+      "verdict": "보류"
+    },
+    {
+      "hypothesis": "H4",
+      "metric": "기록 없음 구간 정확도",
+      "k": 70,
+      "n": 92,
+      "value": 0.76087,
+      "ci95_low": 0.664379,
+      "ci95_high": 0.836449,
+      "criterion": 0.8,
+      "p_one_sided": 0.825959,
+      "p_holm": 1.0,
+      "verdict": "보류"
+    },
+    {
+      "hypothesis": "H5",
+      "metric": "간접 지시 입력 is_constraint 정확도",
+      "k": 40,
+      "n": 50,
+      "value": 0.8,
+      "ci95_low": 0.669629,
+      "ci95_high": 0.887562,
+      "criterion": 0.8,
+      "p_one_sided": 0.5,
+      "p_holm": 1.0,
+      "verdict": "보류"
+    },
+    {
+      "hypothesis": "H6",
+      "metric": "간접 지시 대체 쌍 재현율",
+      "k": 26,
+      "n": 30,
+      "value": 0.866667,
+      "ci95_low": 0.703187,
+      "ci95_high": 0.946903,
+      "criterion": 0.7,
+      "p_one_sided": 0.023183,
+      "p_holm": 0.092732,
+      "verdict": "보류"
+    }
+  ],
+  "is_constraint_sweep": [
+    {
+      "threshold": 0.5,
+      "tp": 103,
+      "predicted": 120,
+      "positives": 105,
+      "precision": 0.858333,
+      "recall": 0.980952
+    },
+    {
+      "threshold": 0.55,
+      "tp": 103,
+      "predicted": 118,
+      "positives": 105,
+      "precision": 0.872881,
+      "recall": 0.980952
+    },
+    {
+      "threshold": 0.6,
+      "tp": 103,
+      "predicted": 117,
+      "positives": 105,
+      "precision": 0.880342,
+      "recall": 0.980952
+    },
+    {
+      "threshold": 0.65,
+      "tp": 101,
+      "predicted": 111,
+      "positives": 105,
+      "precision": 0.90991,
+      "recall": 0.961905
+    },
+    {
+      "threshold": 0.7,
+      "tp": 98,
+      "predicted": 107,
+      "positives": 105,
+      "precision": 0.915888,
+      "recall": 0.933333
+    },
+    {
+      "threshold": 0.75,
+      "tp": 94,
+      "predicted": 101,
+      "positives": 105,
+      "precision": 0.930693,
+      "recall": 0.895238
+    },
+    {
+      "threshold": 0.8,
+      "tp": 88,
+      "predicted": 94,
+      "positives": 105,
+      "precision": 0.93617,
+      "recall": 0.838095
+    },
+    {
+      "threshold": 0.85,
+      "tp": 75,
+      "predicted": 75,
+      "positives": 105,
+      "precision": 1.0,
+      "recall": 0.714286
+    },
+    {
+      "threshold": 0.9,
+      "tp": 41,
+      "predicted": 41,
+      "positives": 105,
+      "precision": 1.0,
+      "recall": 0.390476
+    }
+  ],
+  "replaces_bands": [
+    {
+      "band": "replace",
+      "n": 48,
+      "correct": 45,
+      "accuracy": 0.9375,
+      "ci95_low": 0.831646,
+      "ci95_high": 0.978517,
+      "replaces": 45,
+      "partial": 3,
+      "compatible": 0
+    },
+    {
+      "band": "possible",
+      "n": 20,
+      "correct": 8,
+      "accuracy": 0.4,
+      "ci95_low": 0.218807,
+      "ci95_high": 0.613418,
+      "replaces": 12,
+      "partial": 8,
+      "compatible": 0
+    },
+    {
+      "band": "none",
+      "n": 92,
+      "correct": 70,
+      "accuracy": 0.76087,
+      "ci95_low": 0.664379,
+      "ci95_high": 0.836449,
+      "replaces": 3,
+      "partial": 19,
+      "compatible": 70
+    }
+  ],
+  "categories": [
+    {
+      "set": "inputs",
+      "category": "constraint",
+      "n": 50,
+      "correct": 50,
+      "accuracy": 1.0,
+      "ci95_low": 0.928652,
+      "ci95_high": 1.0
+    },
+    {
+      "set": "inputs",
+      "category": "indirect-constraint",
+      "n": 25,
+      "correct": 21,
+      "accuracy": 0.84,
+      "ci95_low": 0.653464,
+      "ci95_high": 0.935965
+    },
+    {
+      "set": "inputs",
+      "category": "indirect-request",
+      "n": 25,
+      "correct": 19,
+      "accuracy": 0.76,
+      "ci95_low": 0.565703,
+      "ci95_high": 0.885037
+    },
+    {
+      "set": "inputs",
+      "category": "mixed",
+      "n": 30,
+      "correct": 27,
+      "accuracy": 0.9,
+      "ci95_low": 0.743789,
+      "ci95_high": 0.9654
+    },
+    {
+      "set": "inputs",
+      "category": "request",
+      "n": 70,
+      "correct": 67,
+      "accuracy": 0.957143,
+      "ci95_low": 0.881403,
+      "ci95_high": 0.985318
+    },
+    {
+      "set": "pairs",
+      "category": "compatible",
+      "n": 60,
+      "correct": 60,
+      "accuracy": 1.0,
+      "ci95_low": 0.939828,
+      "ci95_high": 1.0
+    },
+    {
+      "set": "pairs",
+      "category": "direct-replace",
+      "n": 30,
+      "correct": 19,
+      "accuracy": 0.633333,
+      "ci95_low": 0.455136,
+      "ci95_high": 0.781261
+    },
+    {
+      "set": "pairs",
+      "category": "indirect-compatible",
+      "n": 10,
+      "correct": 10,
+      "accuracy": 1.0,
+      "ci95_low": 0.722467,
+      "ci95_high": 1.0
+    },
+    {
+      "set": "pairs",
+      "category": "indirect-replace",
+      "n": 30,
+      "correct": 26,
+      "accuracy": 0.866667,
+      "ci95_low": 0.703187,
+      "ci95_high": 0.946903
+    },
+    {
+      "set": "pairs",
+      "category": "partial",
+      "n": 30,
+      "correct": 8,
+      "accuracy": 0.266667,
+      "ci95_low": 0.141827,
+      "ci95_high": 0.44448
+    }
+  ],
+  "pair_category_bands": [
+    {
+      "category": "compatible",
+      "n": 60,
+      "replace": 0,
+      "possible": 0,
+      "none": 60
+    },
+    {
+      "category": "direct-replace",
+      "n": 30,
+      "replace": 19,
+      "possible": 9,
+      "none": 2
+    },
+    {
+      "category": "indirect-compatible",
+      "n": 10,
+      "replace": 0,
+      "possible": 0,
+      "none": 10
+    },
+    {
+      "category": "indirect-replace",
+      "n": 30,
+      "replace": 26,
+      "possible": 3,
+      "none": 1
+    },
+    {
+      "category": "partial",
+      "n": 30,
+      "replace": 3,
+      "possible": 8,
+      "none": 19
+    }
+  ],
+  "statuses": {
+    "inputs": {
+      "ok": 200
+    },
+    "pairs": {
+      "ok": 160
+    }
+  },
+  "latency_ms": {
+    "all": {
+      "n": 360,
+      "mean": 240.569444,
+      "sd": 43.915349,
+      "median": 221.5,
+      "p5": 195.0,
+      "p95": 318.05,
+      "max": 489.0
+    },
+    "inputs": {
+      "n": 200,
+      "mean": 240.96,
+      "sd": 45.725623,
+      "median": 221.0,
+      "p5": 197.0,
+      "p95": 315.1,
+      "max": 489.0
+    },
+    "pairs": {
+      "n": 160,
+      "mean": 240.08125,
+      "sd": 41.679214,
+      "median": 227.5,
+      "p5": 194.95,
+      "p95": 322.2,
+      "max": 359.0
+    }
+  }
+}

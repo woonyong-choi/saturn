@@ -44,7 +44,7 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 - 기계적으로 판단할 수 있는 것은 코드가, 뜻을 이해해야 하는 것은 judge가 정한다. judge를 뜻 판단에만 쓰기 위해서다.
 - 제어 명령이 아닌 입력마다 judge를 한 번 부르고 필요한 질문을 요청 한 건에 묶는다. 입력당 호출 수를 한 번으로 줄이기 위해서다.
 - 사용자가 모델을 고정한 입력이면 judge 호출을 생략한다.
-- 후보를 고르는 질문(`compact`, `file-rank`)은 후보가 상위 N개보다 많으면 `core`가 순위로 좁힌 뒤 묻는다. judge 요청 크기를 후보 수와 무관하게 두기 위해서다. 순위 규칙은 [맥락 고르기](context-selection.md)에 있다.
+- 후보를 고르는 질문(`compact`, `file-rank`)은 후보 전체를 묻는다. 순위로 미리 자르면 judge가 남길 항목을 놓치기 때문이다. 요청이 크기 한도를 넘으면 질문 단위로 나눠 보낸다. 순위는 judge가 답하지 못한 항목의 순서와 같은 확률일 때의 순서에만 쓰며, 규칙은 [맥락 고르기](context-selection.md)에 있다.
 - 뜻 판단이 새로 필요하면 입력마다 보내는 요청에 질문을 더하는 방식을 먼저 쓴다. judge는 state를 한 번 읽고 모든 질문에 답하므로 호출 수가 늘지 않기 때문이다. 개수 세기, 날짜 비교, 앞 말을 가리키는 간접 지시처럼 judge가 약한 판단은 코드로 하거나 두 원문을 나란히 놓는 질문으로 바꾼다.
 - judge는 앞 입력의 판단 결과를 state에 넣은 요청으로 판단한다. 판단 차례와 적용 직전 revision 비교는 [입력 처리](input-handling.md)에 있다.
 - `keep_current`를 `is_actionable`보다 먼저 읽는다. 이어 가는 입력이 파일 탐색으로 빠지는 일을 막기 위해서다.
@@ -94,9 +94,9 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 | `constraint` | `replaces_<n>` | `noul` | 기존 제약 최대 10개와 함께 질문. 0.8 이상이면 대체, 0.5 이상 0.8 미만이면 충돌 가능 | 판단이 없으면 대체와 충돌 가능 기록 생략 |
 | `relation` | `relation_to_running` | `choice` | `refines`, `continues`, `independent`, `conflicts` 중 선택 | 확신도 0.6 미만이면 대기 |
 | `send-opt` | `steer_or_spawn` | `choice` | `target_model`과 함께 질문 | 확신도 0.6 미만이면 현재 에이전트에 대기 뒤 전송 |
-| `file-rank` | `file_<n>_relevant` | `noul` | 순위 상위 파일 20개와 `answer_present`를 함께 질문. 0.7 이상은 존재, 0.35 미만은 없음 | 판단이 없으면 후보 순위 그대로 |
+| `file-rank` | `file_<n>_relevant` | `noul` | 후보 파일 전체와 `answer_present`를 함께 질문. 0.7 이상은 존재, 0.35 미만은 없음 | 판단이 없으면 후보 순위 그대로 |
 | `context-select` | `pick` | `choice` | 게이트 `noul` 3개 평균이 0.3 미만이면 없음. 2차로 `fits_<n>` 질문 | 판단이 없으면 힌트 생략 |
-| `compact` | `call_<id>_keep` | `noul` | 순위 상위 N개 호출마다 `result_<id>_keep`과 함께 질문. 0.5 이상이면 유지 | 판단이 없으면 후보 순위 상위 N개를 유지 |
+| `compact` | `call_<id>_keep` | `noul` | 후보 호출 전체에 `result_<id>_keep`과 함께 질문. 0.5 이상이면 유지, 남긴 항목은 확률이 높은 순, 같은 확률이면 후보 순위 순 | 답이 없는 항목은 후보 순위 순으로 남긴 항목 뒤에 두고, 판단이 전부 없으면 후보 순위 순서로 예산까지 채움 |
 | `doc-filter` | `injection` | `noul` | 조각마다 `relevant`, `evidence`, `contradiction`과 함께 질문. 0.7 이상이면 제외 | 판단이 없으면 문서 조각 생략 |
 | `loop` | `is_progressing` | `noul` | 0.2 미만이면 루프 | 판단이 없으면 멈춤과 사용자 알림 |
 | `feedback` | `wrong_doc` | `noul` | `misunderstood_intent`, `code_error`와 함께 질문. 0.7 이상인 원인만 사용 | 판단이 없으면 원문 그대로 전달 |
@@ -150,7 +150,7 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 
 - judge 전송의 HTTPS, 허용 호스트, 인증 헤더 규칙은 [judge 키 보호](judge-key-security.md)에 있다.
 - 기준 judge는 `POST https://api.typesafe.ai/v1/systemone`에 `{"model","state","questions"}`를 보낸다. `choice` 기준은 선택지별 `null`, `score` 기준은 질문에 단계 설명이 없어 `level 1`..`level N`이다(초안). 답은 `noul`이나 `probabilities`를 읽고, 0~1 밖이거나 없으면 `invalid`다.
-- 크기 한도는 토큰을 셀 수 없어 본문 바이트로 잰다(초안, 바이트 수는 토큰 수 이상이다). 나눌 때는 질문 단위로 나누고 조각마다 `state`를 그대로 싣는다.
+- 크기 한도는 토큰을 셀 수 없어 본문 바이트로 잰다(초안, 바이트 수는 토큰 수 이상이다). 나눌 때는 질문 단위로 나누고 조각마다 `state`를 그대로 싣는다. `core`의 `split_request`가 나눈 요청 목록을 만들고 `engine`이 보낸다. `state`와 질문 하나만으로 한도를 넘으면 나누지 못해 오류다.
 - 255개를 넘는 선택지는 254개씩 나누고 조각마다 `none of these`를 더해 한 요청에 묻고, 조각의 `none of these`가 아닌 확률로 조각 무게를 정해 원래 분포로 합친다(초안, [#68](https://github.com/woonyong-choi/saturn/issues/68) 전).
 - 재시도 기본값은 보내기 전 실패 3회, 응답 대기 30초, 속도 제한(429, 529) 대기 2초(`retry-after`가 있으면 그 값)이고, 속도 제한은 3회까지 다시 보낸다(초안). 리다이렉트는 허용 주소로 한 번만 인증 헤더를 뺀 채 따른다.
 - 연속 실패는 응답이 없는 실패(무응답, 보낸 뒤 시간 초과, 속도 제한 포기, 키 거절)만 센다. `invalid`와 `superseded`는 judge가 답한 것이라 세지 않는다.
@@ -190,11 +190,12 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 | 실행 중 judge 호출이 실패하면 질문별 대체 규칙을 적용한다. | 질문마다 호출 실패와 `invalid` 답을 주고 표의 대체 규칙이 적용되는지 확인한다. |
 | 판단 호출의 보낸 원문, 받은 원문, 질문별 답을 모두 기록한다. | 기록을 켠 채팅에서 호출마다 원문과 답이 저장되고 `/record off` 채팅에서는 생략되는지 확인한다. |
 | `choice` 확신도는 `(N·pmax − 1)/(N − 1)`로 계산한다. | 균등 분포에서 0, 한 선택지 확률 1에서 1이 나오는지 확인한다. |
-| 요청이 크기 한도를 넘으면 나눠 보낸다. | 64K 초과 요청과 255개 초과 선택지가 나뉘어 전송되는지 확인한다. |
+| 요청이 크기 한도를 넘으면 질문 단위로 나눠 같은 state로 보낸다. | `saturn-terminal/core/src/judges/split.rs`의 `split_request_over_limit_splits_by_question_with_same_state` |
+| 255개 초과 선택지는 나뉘어 전송된다. | 255개 초과 선택지가 나뉘어 전송되는지 확인한다. |
 | `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [#6](https://github.com/woonyong-choi/saturn/issues/6) 실험으로 한국어 평가 세트의 오분류율을 확인한다. |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
-| 후보가 상위 N개보다 많으면 순위로 좁힌 뒤 묻는다. | `saturn-terminal/core/src/judges/mod.rs`의 `compact_questions_150_candidates_ask_only_top_n` |
-| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [#121](https://github.com/woonyong-choi/saturn/issues/121) |
+| 후보를 순위로 자르지 않고 전체를 묻는다. | `saturn-terminal/core/src/judges/mod.rs`의 `compact_questions_150_candidates_ask_all` |
+| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. `replaces_<n>` 구간과 간접 지시는 [#152](https://github.com/woonyong-choi/saturn/issues/152) 실험으로 다시 확인한다. |
 
 ## 단점
 
