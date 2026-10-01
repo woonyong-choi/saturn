@@ -171,7 +171,7 @@ P_max = T / 10
 
 고정 구역이 넘칠 때 provider 압축으로 대신하지 않는다. provider가 들고 있는 맥락과 Saturn 기록이 달라지고, Codex 원격 압축 요약은 무엇이 남았는지 볼 수 없기 때문이다. 4단계 뒤 맥락이 `T_hard`를 넘으면 provider 자동 압축 안전망이 받는다.
 
-`saturn` 모드에서 이어 갈 내용은 provider 요약이 아니라 맥락의 정본인 Saturn 기록 원문에서 고른다. provider 압축 요약은 읽을 수 있을 때만 경쟁 구역의 후보 하나로 쓴다. 기록 원문을 정본으로 두기 위해서다. `provider` 모드에서 Claude 압축 요약을 넘길 때는 그 요약을 경쟁 구역의 첫 항목으로 두고, 나머지 경쟁 구역은 요약 시점 뒤의 기록에서 고른다. 요약이 경쟁 구역 예산을 넘으면 요약을 쓰지 않고 Saturn 기록 원문으로 채운다. 어느 모드든 고정 구역은 Saturn 기록 원문으로 넣고, 패킷에 제약이 요약보다 우선한다고 적는다. 요약이 대체되기 전의 제약을 담고 있을 수 있기 때문이다. provider가 스스로 읽는 문서(`AGENTS.md`, `CLAUDE.md`)는 패킷에 넣지 않는다. 중복을 막기 위해서다.
+`saturn` 모드에서 이어 갈 내용은 provider 요약이 아니라 맥락의 정본인 Saturn 기록 원문에서 고른다. provider 압축 요약은 읽을 수 있을 때만 경쟁 구역의 후보 하나로 쓴다. 기록 원문을 정본으로 두기 위해서다. `provider` 모드에서 Claude 압축 요약을 넘길 때는 그 요약을 경쟁 구역의 첫 항목으로 두고, 나머지 경쟁 구역은 요약 시점 뒤의 기록에서 고른다. 요약이 경쟁 구역 예산을 넘으면 요약을 쓰지 않고 Saturn 기록 원문으로 채운다(`build_packet_with_summary`). 어느 모드든 고정 구역은 Saturn 기록 원문으로 넣고, 패킷에 제약이 요약보다 우선한다고 적는다. 요약이 대체되기 전의 제약을 담고 있을 수 있기 때문이다. provider가 스스로 읽는 문서(`AGENTS.md`, `CLAUDE.md`)는 패킷에 넣지 않는다. 중복을 막기 위해서다.
 
 `compact` 판단은 턴이 끝날 때마다 그 턴의 도구 호출 후보를 미리 묻고, 패킷을 만들 때는 아직 묻지 않은 후보만 묻는다. 미리 한 판단은 패킷을 만들 때 다시 묻지 않는다. 시작 조건은 두지 않고 첫 턴부터 판단한다. 후보 전체를 묻기 때문에 미리 판단은 패킷 때 물을 질문을 앞당길 뿐이고, 사건에 닿지 않아 버려지는 질문은 9.7% [7.3, 13.1]이다. 첫 턴부터 미리 판단하면 추정 입력 토큰은 1.118배 [1.088, 1.161]로 늘고, 정리 시점에 남는 질문은 61.9% [58.3, 64.5], 추정 지연은 56.0% [51.6, 59.0] 줄었다. 시작을 `T`의 25% 이후로 늦추면 남는 질문 감소율은 45.3% [41.9, 48.5]로 기준 50%에 못 미친다([후속 분석](../experiments/precompute-breakeven/report.md#후속-분석-후보-전체-판단-조건)). 이 기준은 사전 등록 판정이 아니라 설계 판단용이다.
 
@@ -217,9 +217,10 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 | 패킷은 구역마다 기록 번호 순서로 쓴다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_writes_competing_in_seq_order` |
 | `compact` 질문은 턴이 끝날 때 그 턴의 후보만, 패킷을 만들 때 아직 묻지 않은 후보만 judge에 보낸다. | 같은 후보를 두 번 묻지 않는지, 패킷을 만들 때 미리 판단한 후보가 빠지는지 확인한다. |
 | 고정 구역이 `P_max`를 넘으면 오래된 턴의 답부터 줄이고, 최근 턴 수를 줄인 뒤 `P_hard`까지 허용한다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_fixed_overflow_trims_oldest_answer_first`, `build_packet_fixed_overflow_drops_oldest_turns`, `build_packet_fixed_over_limit_allows_hard_limit_without_competing` |
+| 실험 수집기가 `saturn packet` 명령으로 두 실험 설계의 입력에서 패킷을 만들고, judge 판단이 없으면 RRF 순서로 채운다. | `saturn-terminal/cli/tests/packet.rs`의 `packet_stream_input_prints_packet_text`, `packet_scenarios_input_prints_json_with_packet_and_rrf_order`, `packet_without_judgments_fills_in_rrf_order`, `packet_judgments_drop_item_judge_rejected` |
 | 고정 구역이 넘쳐도 provider 압축으로 대신하지 않는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_fixed_over_hard_limit_defers_with_constraints` |
 | `provider` 모드에서는 compaction을 판정하지 않고 안전망 값을 넣지 않는다. | `provider` 모드의 실행 인자와 판정 기록을 확인한다. |
-| 떠나는 provider의 압축 요약을 읽을 수 있으면 요약과 요약 뒤 기록으로 패킷을 만든다. | [#122](https://github.com/woonyong-choi/saturn/issues/122) |
+| 떠나는 provider의 압축 요약을 읽을 수 있으면 요약과 요약 뒤 기록으로 패킷을 만든다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_with_summary_puts_summary_first_in_competing_zone`, `build_packet_with_summary_over_competing_budget_falls_back_to_records`, `saturn-terminal/cli/tests/packet.rs`의 `packet_provider_mode_puts_summary_first_and_uses_records_after_it`, 전환 품질은 [#122](https://github.com/woonyong-choi/saturn/issues/122) |
 | 사용자가 자동 압축 값을 정했으면 안전망 값을 넣지 않는다. | 사용자 설정에 자동 압축 값이 있을 때 안전망 인자가 빠지는지 확인한다. |
 | compaction 방식은 provider 기본 압축보다 품질을 낮추지 않는다. | [#7](https://github.com/woonyong-choi/saturn/issues/7) |
 | provider별 `T`와 방식이 품질을 지키며 토큰을 줄인다. | [#7](https://github.com/woonyong-choi/saturn/issues/7) |
