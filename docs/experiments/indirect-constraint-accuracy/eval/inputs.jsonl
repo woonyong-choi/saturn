@@ -1,0 +1,350 @@
+{"id": "in-001", "category": "constraint", "indirect": false, "label": true, "previous": "테스트 돌려줘", "text": "에러 메시지는 앞으로 영어로 통일해", "origin": "121"}
+{"id": "in-002", "category": "constraint", "indirect": false, "label": true, "previous": "지금 상태 요약해줘", "text": "커밋 메시지는 항상 한글로 써", "origin": "121"}
+{"id": "in-003", "category": "constraint", "indirect": false, "label": true, "previous": "PR 목록 보여줘", "text": "테스트는 pytest로만 작성해", "origin": "121"}
+{"id": "in-004", "category": "constraint", "indirect": false, "label": true, "previous": "에러 로그 확인해줘", "text": "패키지는 pnpm으로만 설치하고 npm은 쓰지 마", "origin": "121"}
+{"id": "in-005", "category": "constraint", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "force push는 절대 하지 마", "origin": "121"}
+{"id": "in-006", "category": "constraint", "indirect": false, "label": true, "previous": "PR 목록 보여줘", "text": "함수 이름은 snake_case로 맞춰", "origin": "121"}
+{"id": "in-007", "category": "constraint", "indirect": false, "label": true, "previous": "오늘 할 일 정리해줘", "text": "코드 주석은 한국어로 달아", "origin": "121"}
+{"id": "in-008", "category": "constraint", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "답변은 세 줄 이내로 짧게 해", "origin": "121"}
+{"id": "in-009", "category": "constraint", "indirect": false, "label": true, "previous": "README 읽어봐", "text": "들여쓰기는 스페이스 4칸으로 해", "origin": "121"}
+{"id": "in-010", "category": "constraint", "indirect": false, "label": true, "previous": "결제 모듈 봐줘", "text": "외부 라이브러리는 새로 추가하지 마", "origin": "121"}
+{"id": "in-011", "category": "constraint", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "main 브랜치에 직접 커밋하지 마", "origin": "121"}
+{"id": "in-012", "category": "constraint", "indirect": false, "label": true, "previous": "에러 로그 확인해줘", "text": "로그 메시지는 영어 소문자로 시작해", "origin": "121"}
+{"id": "in-013", "category": "constraint", "indirect": false, "label": true, "previous": "로그인 화면 손봐줘", "text": "날짜는 모두 ISO 8601 형식으로 적어", "origin": "121"}
+{"id": "in-014", "category": "constraint", "indirect": false, "label": true, "previous": "PR 목록 보여줘", "text": "문서는 존댓말 말고 평서문으로 써", "origin": "121"}
+{"id": "in-015", "category": "constraint", "indirect": false, "label": true, "previous": "에러 로그 확인해줘", "text": "SQL은 ORM 없이 직접 쿼리로 작성해", "origin": "121"}
+{"id": "in-016", "category": "constraint", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "파일 하나는 300줄을 넘기지 마", "origin": "121"}
+{"id": "in-017", "category": "constraint", "indirect": false, "label": true, "previous": "로그인 화면 손봐줘", "text": "테스트 없이 기능 코드를 커밋하지 마", "origin": "121"}
+{"id": "in-018", "category": "constraint", "indirect": false, "label": true, "previous": "검색 기능 고쳐줘", "text": "변수 이름에 약어를 쓰지 마", "origin": "121"}
+{"id": "in-019", "category": "constraint", "indirect": false, "label": true, "previous": "에러 로그 확인해줘", "text": "설명할 때 이모지는 쓰지 마", "origin": "121"}
+{"id": "in-020", "category": "constraint", "indirect": false, "label": true, "previous": "README 읽어봐", "text": "API 응답 필드는 camelCase로 통일해", "origin": "121"}
+{"id": "in-021", "category": "constraint", "indirect": false, "label": true, "previous": "검색 기능 고쳐줘", "text": "셸 스크립트는 bash 말고 POSIX sh로 써", "origin": "121"}
+{"id": "in-022", "category": "constraint", "indirect": false, "label": true, "previous": "PR 목록 보여줘", "text": "시간은 항상 UTC 기준으로 다뤄", "origin": "121"}
+{"id": "in-023", "category": "constraint", "indirect": false, "label": true, "previous": "지금 상태 요약해줘", "text": "비밀번호나 키 값은 로그에 절대 남기지 마", "origin": "121"}
+{"id": "in-024", "category": "constraint", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "CSS 색은 토큰 변수로만 지정해", "origin": "121"}
+{"id": "in-025", "category": "constraint", "indirect": false, "label": true, "previous": "README 읽어봐", "text": "마이그레이션 파일은 직접 고치지 말고 새로 만들어", "origin": "121"}
+{"id": "in-026", "category": "constraint", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "Python 타입 힌트는 빠짐없이 붙여", "origin": "121"}
+{"id": "in-027", "category": "constraint", "indirect": false, "label": true, "previous": "에러 로그 확인해줘", "text": "에러는 문자열 말고 전용 에러 타입으로 반환해", "origin": "121"}
+{"id": "in-028", "category": "constraint", "indirect": false, "label": true, "previous": "테스트 돌려줘", "text": "문서 제목은 명사형으로 끝내", "origin": "121"}
+{"id": "in-029", "category": "constraint", "indirect": false, "label": true, "previous": "README 읽어봐", "text": "설치 명령은 sudo 없이 동작하게 해", "origin": "121"}
+{"id": "in-030", "category": "constraint", "indirect": false, "label": true, "previous": "지금 상태 요약해줘", "text": "코드 블록에는 언어 이름을 꼭 붙여", "origin": "121"}
+{"id": "in-031", "category": "constraint", "indirect": false, "label": true, "previous": "에러 로그 확인해줘", "text": "테스트 이름은 한글 문장으로 지어", "origin": "121"}
+{"id": "in-032", "category": "constraint", "indirect": false, "label": true, "previous": "오늘 할 일 정리해줘", "text": "의존성 버전은 범위 말고 정확한 버전으로 고정해", "origin": "121"}
+{"id": "in-033", "category": "constraint", "indirect": false, "label": true, "previous": "검색 기능 고쳐줘", "text": "Docker 이미지는 alpine 기반으로만 만들어", "origin": "121"}
+{"id": "in-034", "category": "constraint", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "응답에 코드 전체를 다시 붙이지 말고 바뀐 부분만 보여줘", "origin": "121"}
+{"id": "in-035", "category": "constraint", "indirect": false, "label": true, "previous": "README 읽어봐", "text": "print 디버깅 코드는 남기지 마", "origin": "121"}
+{"id": "in-036", "category": "constraint", "indirect": false, "label": true, "previous": "테스트 돌려줘", "text": "숫자 단위는 항상 SI 접두사로 표기해", "origin": "121"}
+{"id": "in-037", "category": "constraint", "indirect": false, "label": true, "previous": "에러 로그 확인해줘", "text": "설정 값은 코드에 박지 말고 환경 변수로 받아", "origin": "121"}
+{"id": "in-038", "category": "constraint", "indirect": false, "label": true, "previous": "로그인 화면 손봐줘", "text": "README는 영어로, 내부 문서는 한국어로 써", "origin": "121"}
+{"id": "in-039", "category": "constraint", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "PR 하나에는 변경 하나만 담아", "origin": "121"}
+{"id": "in-040", "category": "constraint", "indirect": false, "label": true, "previous": "README 읽어봐", "text": "lint 경고를 끄는 주석은 쓰지 마", "origin": "121"}
+{"id": "in-041", "category": "constraint", "indirect": false, "label": true, "previous": "검색 기능 고쳐줘", "text": "JSON 키는 알파벳 순으로 정렬해서 저장해", "origin": "121"}
+{"id": "in-042", "category": "constraint", "indirect": false, "label": true, "previous": "README 읽어봐", "text": "네트워크 호출에는 꼭 타임아웃을 걸어", "origin": "121"}
+{"id": "in-043", "category": "constraint", "indirect": false, "label": true, "previous": "README 읽어봐", "text": "작업 끝날 때마다 바꾼 파일 목록을 알려줘", "origin": "121"}
+{"id": "in-044", "category": "constraint", "indirect": false, "label": true, "previous": "PR 목록 보여줘", "text": "rm -rf 같은 삭제 명령은 실행 전에 꼭 물어봐", "origin": "121"}
+{"id": "in-045", "category": "constraint", "indirect": false, "label": true, "previous": "PR 목록 보여줘", "text": "TypeScript에서 any 타입은 쓰지 마", "origin": "121"}
+{"id": "in-046", "category": "constraint", "indirect": false, "label": true, "previous": "로그인 화면 손봐줘", "text": "테스트 데이터에 실제 개인정보를 쓰지 마", "origin": "121"}
+{"id": "in-047", "category": "constraint", "indirect": false, "label": true, "previous": "오늘 할 일 정리해줘", "text": "줄 길이는 100자를 넘기지 마", "origin": "121"}
+{"id": "in-048", "category": "constraint", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "에러 메시지에는 원인과 해결 방법을 같이 적어", "origin": "121"}
+{"id": "in-049", "category": "constraint", "indirect": false, "label": true, "previous": "로그인 화면 손봐줘", "text": "새 파일 이름은 kebab-case로 지어", "origin": "121"}
+{"id": "in-050", "category": "constraint", "indirect": false, "label": true, "previous": "결제 모듈 봐줘", "text": "git 명령은 내가 확인하기 전엔 push까지 가지 마", "origin": "121"}
+{"id": "in-051", "category": "mixed", "indirect": false, "label": true, "previous": "에러 로그 확인해줘", "text": "로그인 버그 고쳐줘, 그리고 앞으로 커밋 메시지는 영어로 써", "origin": "121"}
+{"id": "in-052", "category": "mixed", "indirect": false, "label": true, "previous": "PR 목록 보여줘", "text": "API 문서 정리해줘. 표는 항상 마크다운 표로 만들어", "origin": "121"}
+{"id": "in-053", "category": "mixed", "indirect": false, "label": true, "previous": "로그인 화면 손봐줘", "text": "결제 모듈 테스트 추가해줘, 테스트는 앞으로 다 pytest로 하고", "origin": "121"}
+{"id": "in-054", "category": "mixed", "indirect": false, "label": true, "previous": "오늘 할 일 정리해줘", "text": "이 함수 리팩터링해줘. 그리고 앞으로 주석은 한국어로 달아", "origin": "121"}
+{"id": "in-055", "category": "mixed", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "README 업데이트해줘, 문서에는 이모지 쓰지 말고", "origin": "121"}
+{"id": "in-056", "category": "mixed", "indirect": false, "label": true, "previous": "지금 상태 요약해줘", "text": "빌드 스크립트 손봐줘. 앞으로 셸 스크립트는 POSIX sh로만 써", "origin": "121"}
+{"id": "in-057", "category": "mixed", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "회원가입 폼 만들어줘, 스타일 색은 토큰 변수로만 쓰고", "origin": "121"}
+{"id": "in-058", "category": "mixed", "indirect": false, "label": true, "previous": "로그인 화면 손봐줘", "text": "로그 정리해줘. 앞으로 로그에 사용자 이메일은 남기지 마", "origin": "121"}
+{"id": "in-059", "category": "mixed", "indirect": false, "label": true, "previous": "지금 상태 요약해줘", "text": "CI 설정 고쳐줘, 그리고 main에 직접 push는 하지 마", "origin": "121"}
+{"id": "in-060", "category": "mixed", "indirect": false, "label": true, "previous": "에러 로그 확인해줘", "text": "검색 API 붙여줘. 외부 호출엔 항상 타임아웃 5초 걸어", "origin": "121"}
+{"id": "in-061", "category": "mixed", "indirect": false, "label": true, "previous": "지금 상태 요약해줘", "text": "에러 처리 다듬어줘, 앞으로 에러 메시지는 영어로 통일하고", "origin": "121"}
+{"id": "in-062", "category": "mixed", "indirect": false, "label": true, "previous": "검색 기능 고쳐줘", "text": "의존성 업데이트해줘. 버전은 늘 정확한 버전으로 고정해", "origin": "121"}
+{"id": "in-063", "category": "mixed", "indirect": false, "label": true, "previous": "PR 목록 보여줘", "text": "설정 파일 분리해줘, 앞으로 비밀 값은 코드에 넣지 마", "origin": "121"}
+{"id": "in-064", "category": "mixed", "indirect": false, "label": true, "previous": "PR 목록 보여줘", "text": "데이터베이스 스키마 짜줘. 테이블 이름은 복수형 snake_case로 통일해", "origin": "121"}
+{"id": "in-065", "category": "mixed", "indirect": false, "label": true, "previous": "테스트 돌려줘", "text": "타임존 버그 잡아줘, 시간은 앞으로 전부 UTC로 다뤄", "origin": "121"}
+{"id": "in-066", "category": "mixed", "indirect": false, "label": true, "previous": "로그인 화면 손봐줘", "text": "변경 사항 요약해줘. 요약은 앞으로 항상 다섯 줄 이내로", "origin": "121"}
+{"id": "in-067", "category": "mixed", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "새 엔드포인트 추가해줘, 응답 필드는 camelCase로 맞추고", "origin": "121"}
+{"id": "in-068", "category": "mixed", "indirect": false, "label": true, "previous": "지금 상태 요약해줘", "text": "테스트 깨진 거 고쳐줘. 앞으로 테스트 없이 커밋하지 마", "origin": "121"}
+{"id": "in-069", "category": "mixed", "indirect": false, "label": true, "previous": "지금 상태 요약해줘", "text": "대시보드 화면 만들어줘, 차트 라이브러리는 새로 들이지 말고", "origin": "121"}
+{"id": "in-070", "category": "mixed", "indirect": false, "label": true, "previous": "PR 목록 보여줘", "text": "이 스크립트 빠르게 해줘. 앞으로 파이썬은 3.12 문법까지만 써", "origin": "121"}
+{"id": "in-071", "category": "mixed", "indirect": false, "label": true, "previous": "지금 상태 요약해줘", "text": "문서 번역해줘. 용어는 항상 용어집에 있는 말로 맞춰", "origin": "121"}
+{"id": "in-072", "category": "mixed", "indirect": false, "label": true, "previous": "빌드 결과 알려줘", "text": "캐시 붙여줘, 그리고 앞으로 전역 변수는 쓰지 마", "origin": "121"}
+{"id": "in-073", "category": "mixed", "indirect": false, "label": true, "previous": "로그인 화면 손봐줘", "text": "배포 스크립트 점검해줘. 삭제 명령은 실행 전에 늘 나한테 확인받아", "origin": "121"}
+{"id": "in-074", "category": "mixed", "indirect": false, "label": true, "previous": "README 읽어봐", "text": "이 컴포넌트 쪼개줘, 파일 하나에 컴포넌트 하나만 두는 걸로 하고", "origin": "121"}
+{"id": "in-075", "category": "mixed", "indirect": false, "label": true, "previous": "에러 로그 확인해줘", "text": "에러 페이지 디자인해줘. 문구는 앞으로 존댓말로 통일해", "origin": "121"}
+{"id": "in-076", "category": "mixed", "indirect": false, "label": true, "previous": "에러 로그 확인해줘", "text": "마이그레이션 추가해줘, 기존 마이그레이션 파일은 절대 건드리지 말고", "origin": "121"}
+{"id": "in-077", "category": "mixed", "indirect": false, "label": true, "previous": "테스트 돌려줘", "text": "버그 리포트 정리해줘. 앞으로 날짜는 YYYY-MM-DD로 적어", "origin": "121"}
+{"id": "in-078", "category": "mixed", "indirect": false, "label": true, "previous": "README 읽어봐", "text": "인증 미들웨어 짜줘, 토큰 값은 어디에도 로그로 남기지 마", "origin": "121"}
+{"id": "in-079", "category": "mixed", "indirect": false, "label": true, "previous": "PR 목록 보여줘", "text": "PR 설명 써줘. 앞으로 PR 설명은 한국어로 써", "origin": "121"}
+{"id": "in-080", "category": "mixed", "indirect": false, "label": true, "previous": "검색 기능 고쳐줘", "text": "테스트 픽스처 만들어줘, 앞으로 테스트 데이터는 전부 합성 데이터로 해", "origin": "121"}
+{"id": "in-081", "category": "request", "indirect": false, "label": false, "previous": "에러 로그 확인해줘", "text": "로그인 실패 원인 찾아줘", "origin": "121"}
+{"id": "in-082", "category": "request", "indirect": false, "label": false, "previous": "README 읽어봐", "text": "이 함수에 단위 테스트 추가해줘", "origin": "121"}
+{"id": "in-083", "category": "request", "indirect": false, "label": false, "previous": "결제 모듈 봐줘", "text": "README 오타 고쳐줘", "origin": "121"}
+{"id": "in-084", "category": "request", "indirect": false, "label": false, "previous": "PR 목록 보여줘", "text": "이 에러 왜 나는 거야", "origin": "121"}
+{"id": "in-085", "category": "request", "indirect": false, "label": false, "previous": "결제 모듈 봐줘", "text": "빌드 다시 돌려줘", "origin": "121"}
+{"id": "in-086", "category": "request", "indirect": false, "label": false, "previous": "에러 로그 확인해줘", "text": "결제 API 응답 속도 측정해줘", "origin": "121"}
+{"id": "in-087", "category": "request", "indirect": false, "label": false, "previous": "에러 로그 확인해줘", "text": "src/auth 폴더 구조 설명해줘", "origin": "121"}
+{"id": "in-088", "category": "request", "indirect": false, "label": false, "previous": "에러 로그 확인해줘", "text": "이번 커밋 메시지만 영어로 써줘", "origin": "121"}
+{"id": "in-089", "category": "request", "indirect": false, "label": false, "previous": "검색 기능 고쳐줘", "text": "이 파일 주석을 한국어로 바꿔줘", "origin": "121"}
+{"id": "in-090", "category": "request", "indirect": false, "label": false, "previous": "로그인 화면 손봐줘", "text": "방금 만든 함수 이름을 snake_case로 바꿔줘", "origin": "121"}
+{"id": "in-091", "category": "request", "indirect": false, "label": false, "previous": "README 읽어봐", "text": "이 SQL 쿼리 느린 이유 알려줘", "origin": "121"}
+{"id": "in-092", "category": "request", "indirect": false, "label": false, "previous": "에러 로그 확인해줘", "text": "테스트 커버리지 몇 퍼센트야", "origin": "121"}
+{"id": "in-093", "category": "request", "indirect": false, "label": false, "previous": "검색 기능 고쳐줘", "text": "package.json에 있는 스크립트 목록 보여줘", "origin": "121"}
+{"id": "in-094", "category": "request", "indirect": false, "label": false, "previous": "PR 목록 보여줘", "text": "회원가입 화면에 비밀번호 확인 칸 추가해줘", "origin": "121"}
+{"id": "in-095", "category": "request", "indirect": false, "label": false, "previous": "지금 상태 요약해줘", "text": "이 PR 리뷰해줘", "origin": "121"}
+{"id": "in-096", "category": "request", "indirect": false, "label": false, "previous": "검색 기능 고쳐줘", "text": "배포 로그에서 실패한 단계 찾아줘", "origin": "121"}
+{"id": "in-097", "category": "request", "indirect": false, "label": false, "previous": "빌드 결과 알려줘", "text": "이 정규식이 뭘 잡는지 설명해줘", "origin": "121"}
+{"id": "in-098", "category": "request", "indirect": false, "label": false, "previous": "에러 로그 확인해줘", "text": "Dockerfile 빌드 시간 줄여줘", "origin": "121"}
+{"id": "in-099", "category": "request", "indirect": false, "label": false, "previous": "에러 로그 확인해줘", "text": "CHANGELOG에 이번 변경 추가해줘", "origin": "121"}
+{"id": "in-100", "category": "request", "indirect": false, "label": false, "previous": "테스트 돌려줘", "text": "user 테이블에 last_login 컬럼 추가해줘", "origin": "121"}
+{"id": "in-101", "category": "request", "indirect": false, "label": false, "previous": "테스트 돌려줘", "text": "이번 답변은 표로 정리해줘", "origin": "121"}
+{"id": "in-102", "category": "request", "indirect": false, "label": false, "previous": "로그인 화면 손봐줘", "text": "지금 브랜치 이름 뭐야", "origin": "121"}
+{"id": "in-103", "category": "request", "indirect": false, "label": false, "previous": "테스트 돌려줘", "text": "이 테스트만 pytest로 다시 돌려봐", "origin": "121"}
+{"id": "in-104", "category": "request", "indirect": false, "label": false, "previous": "오늘 할 일 정리해줘", "text": "린트 에러 고쳐줘", "origin": "121"}
+{"id": "in-105", "category": "request", "indirect": false, "label": false, "previous": "PR 목록 보여줘", "text": "config.yaml 읽는 코드 어디 있어", "origin": "121"}
+{"id": "in-106", "category": "request", "indirect": false, "label": false, "previous": "검색 기능 고쳐줘", "text": "오늘 바꾼 파일 목록 보여줘", "origin": "121"}
+{"id": "in-107", "category": "request", "indirect": false, "label": false, "previous": "README 읽어봐", "text": "이 함수 시간 복잡도 알려줘", "origin": "121"}
+{"id": "in-108", "category": "request", "indirect": false, "label": false, "previous": "검색 기능 고쳐줘", "text": "에러 메시지 문구 이 줄만 영어로 바꿔줘", "origin": "121"}
+{"id": "in-109", "category": "request", "indirect": false, "label": false, "previous": "결제 모듈 봐줘", "text": "검색 결과 정렬 순서 바꿔줘", "origin": "121"}
+{"id": "in-110", "category": "request", "indirect": false, "label": false, "previous": "빌드 결과 알려줘", "text": "이 경고 무시해도 되는 거야", "origin": "121"}
+{"id": "in-111", "category": "request", "indirect": false, "label": false, "previous": "결제 모듈 봐줘", "text": "API 키가 어디서 읽히는지 찾아줘", "origin": "121"}
+{"id": "in-112", "category": "request", "indirect": false, "label": false, "previous": "빌드 결과 알려줘", "text": "캐시 만료 시간을 10분으로 바꿔줘", "origin": "121"}
+{"id": "in-113", "category": "request", "indirect": false, "label": false, "previous": "README 읽어봐", "text": "이 함수 두 개 합쳐줘", "origin": "121"}
+{"id": "in-114", "category": "request", "indirect": false, "label": false, "previous": "지금 상태 요약해줘", "text": "테스트 하나 실패하는데 봐줘", "origin": "121"}
+{"id": "in-115", "category": "request", "indirect": false, "label": false, "previous": "PR 목록 보여줘", "text": "로그 레벨을 이번 실행만 debug로 올려줘", "origin": "121"}
+{"id": "in-116", "category": "request", "indirect": false, "label": false, "previous": "결제 모듈 봐줘", "text": "README 설치 절을 다시 써줘", "origin": "121"}
+{"id": "in-117", "category": "request", "indirect": false, "label": false, "previous": "지금 상태 요약해줘", "text": "이 클래스 다이어그램 그려줘", "origin": "121"}
+{"id": "in-118", "category": "request", "indirect": false, "label": false, "previous": "빌드 결과 알려줘", "text": "uv로 가상환경 하나 만들어줘", "origin": "121"}
+{"id": "in-119", "category": "request", "indirect": false, "label": false, "previous": "테스트 돌려줘", "text": "Node 버전 확인해줘", "origin": "121"}
+{"id": "in-120", "category": "request", "indirect": false, "label": false, "previous": "테스트 돌려줘", "text": "이 파일 삭제해도 돼", "origin": "121"}
+{"id": "in-121", "category": "request", "indirect": false, "label": false, "previous": "결제 모듈 봐줘", "text": "인덱스 페이지 로딩 느린 거 봐줘", "origin": "121"}
+{"id": "in-122", "category": "request", "indirect": false, "label": false, "previous": "에러 로그 확인해줘", "text": "이번 배포만 수동으로 승인할게", "origin": "121"}
+{"id": "in-123", "category": "request", "indirect": false, "label": false, "previous": "에러 로그 확인해줘", "text": "타입 에러 난 곳 고쳐줘", "origin": "121"}
+{"id": "in-124", "category": "request", "indirect": false, "label": false, "previous": "README 읽어봐", "text": "이 함수 주석 좀 달아줘", "origin": "121"}
+{"id": "in-125", "category": "request", "indirect": false, "label": false, "previous": "로그인 화면 손봐줘", "text": "에러 로그 최근 100줄 보여줘", "origin": "121"}
+{"id": "in-126", "category": "request", "indirect": false, "label": false, "previous": "README 읽어봐", "text": "이 브랜치 main에 머지해줘", "origin": "121"}
+{"id": "in-127", "category": "request", "indirect": false, "label": false, "previous": "지금 상태 요약해줘", "text": "디자인 시안대로 버튼 색 바꿔줘", "origin": "121"}
+{"id": "in-128", "category": "request", "indirect": false, "label": false, "previous": "오늘 할 일 정리해줘", "text": "이번 요약은 세 줄로만 해줘", "origin": "121"}
+{"id": "in-129", "category": "request", "indirect": false, "label": false, "previous": "결제 모듈 봐줘", "text": "마이그레이션 실행해줘", "origin": "121"}
+{"id": "in-130", "category": "request", "indirect": false, "label": false, "previous": "로그인 화면 손봐줘", "text": "이 API 문서 영어로 번역해줘", "origin": "121"}
+{"id": "in-131", "category": "request", "indirect": false, "label": false, "previous": "로그인 화면 손봐줘", "text": "결제 실패 재현 스크립트 만들어줘", "origin": "121"}
+{"id": "in-132", "category": "request", "indirect": false, "label": false, "previous": "로그인 화면 손봐줘", "text": "의존성 중에 보안 경고 있는 거 찾아줘", "origin": "121"}
+{"id": "in-133", "category": "request", "indirect": false, "label": false, "previous": "지금 상태 요약해줘", "text": "지금 이 코드 스레드 안전해", "origin": "121"}
+{"id": "in-134", "category": "request", "indirect": false, "label": false, "previous": "README 읽어봐", "text": "테스트 데이터 열 개 만들어줘", "origin": "121"}
+{"id": "in-135", "category": "request", "indirect": false, "label": false, "previous": "빌드 결과 알려줘", "text": "이 커밋 되돌려줘", "origin": "121"}
+{"id": "in-136", "category": "request", "indirect": false, "label": false, "previous": "오늘 할 일 정리해줘", "text": "환경 변수 목록 정리해줘", "origin": "121"}
+{"id": "in-137", "category": "request", "indirect": false, "label": false, "previous": "PR 목록 보여줘", "text": "엔드포인트별 응답 시간 표로 보여줘", "origin": "121"}
+{"id": "in-138", "category": "request", "indirect": false, "label": false, "previous": "지금 상태 요약해줘", "text": "이 함수 왜 None을 반환해", "origin": "121"}
+{"id": "in-139", "category": "request", "indirect": false, "label": false, "previous": "결제 모듈 봐줘", "text": "로그인 화면 스크린샷 찍어줘", "origin": "121"}
+{"id": "in-140", "category": "request", "indirect": false, "label": false, "previous": "테스트 돌려줘", "text": "요청 재시도 로직 넣어줘", "origin": "121"}
+{"id": "in-141", "category": "request", "indirect": false, "label": false, "previous": "로그인 화면 손봐줘", "text": "이 문서 존댓말로 고쳐줘", "origin": "121"}
+{"id": "in-142", "category": "request", "indirect": false, "label": false, "previous": "오늘 할 일 정리해줘", "text": "빌드 경고 몇 개야", "origin": "121"}
+{"id": "in-143", "category": "request", "indirect": false, "label": false, "previous": "PR 목록 보여줘", "text": "프로필 이미지 업로드 기능 만들어줘", "origin": "121"}
+{"id": "in-144", "category": "request", "indirect": false, "label": false, "previous": "에러 로그 확인해줘", "text": "이 질문만 짧게 답해줘", "origin": "121"}
+{"id": "in-145", "category": "request", "indirect": false, "label": false, "previous": "검색 기능 고쳐줘", "text": "테스트 코드 이 파일만 한국어 이름으로 바꿔줘", "origin": "121"}
+{"id": "in-146", "category": "request", "indirect": false, "label": false, "previous": "결제 모듈 봐줘", "text": "깃 로그 최근 열 개 보여줘", "origin": "121"}
+{"id": "in-147", "category": "request", "indirect": false, "label": false, "previous": "테스트 돌려줘", "text": "메모리 누수 있는지 봐줘", "origin": "121"}
+{"id": "in-148", "category": "request", "indirect": false, "label": false, "previous": "빌드 결과 알려줘", "text": "이 스크립트 실행 권한 줘", "origin": "121"}
+{"id": "in-149", "category": "request", "indirect": false, "label": false, "previous": "지금 상태 요약해줘", "text": "지금 실행 중인 작업 멈춰줘", "origin": "121"}
+{"id": "in-150", "category": "request", "indirect": false, "label": false, "previous": "로그인 화면 손봐줘", "text": "타임아웃 값 얼마로 잡혀 있어", "origin": "121"}
+{"id": "in-151", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "에러 메시지는 영어로 통일해", "text": "아니, 한국어로 바꿔", "origin": "121"}
+{"id": "in-152", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "패키지는 npm으로 설치해", "text": "아니다, 그거 pnpm으로 바꿔", "origin": "121"}
+{"id": "in-153", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "테스트는 unittest로 써", "text": "생각해 보니 그것도 pytest로 하자", "origin": "121"}
+{"id": "in-154", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "커밋 메시지는 한글로 써", "text": "그거 영어로 하는 걸로 바꿀게", "origin": "121"}
+{"id": "in-155", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "들여쓰기는 탭으로 해", "text": "아니, 스페이스로 해", "origin": "121"}
+{"id": "in-156", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "답변은 길게 자세히 해줘", "text": "방금 말한 거 반대로, 짧게 해", "origin": "121"}
+{"id": "in-157", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "로그는 한국어로 남겨", "text": "그것도 영어로 통일하자", "origin": "121"}
+{"id": "in-158", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "주석은 영어로 달아", "text": "아니, 그건 한국어가 낫겠다. 앞으로 그렇게 해", "origin": "121"}
+{"id": "in-159", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "함수 이름은 camelCase로 해", "text": "아까 말한 거 snake_case로 바꿔", "origin": "121"}
+{"id": "in-160", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "Docker 이미지는 ubuntu 기반으로 만들어", "text": "그거 alpine으로 바꿔", "origin": "121"}
+{"id": "in-161", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "문서는 존댓말로 써", "text": "아니, 평서문으로 가자", "origin": "121"}
+{"id": "in-162", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "날짜는 MM/DD/YYYY로 적어", "text": "그 형식 말고 ISO 형식으로 해", "origin": "121"}
+{"id": "in-163", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "새 의존성 추가하지 마", "text": "그 규칙 풀게, 필요하면 추가해도 돼", "origin": "121"}
+{"id": "in-164", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "force push는 하지 마", "text": "아까 그 금지는 내 개인 브랜치에서는 예외로 해", "origin": "121"}
+{"id": "in-165", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "API 필드는 snake_case로 해", "text": "그거 camelCase로 바꿔", "origin": "121"}
+{"id": "in-166", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "응답에 코드 전체를 보여줘", "text": "아니, 바뀐 부분만 보여줘", "origin": "121"}
+{"id": "in-167", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "테스트 이름은 영어로 지어", "text": "아니, 한글로 하자", "origin": "121"}
+{"id": "in-168", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "파이썬은 3.10 문법까지만 써", "text": "그거 3.12까지로 올려", "origin": "121"}
+{"id": "in-169", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "README는 한국어로 써", "text": "생각이 바뀌었어, 영어로 해", "origin": "121"}
+{"id": "in-170", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "줄 길이는 80자로 맞춰", "text": "아니, 120자로 늘려", "origin": "121"}
+{"id": "in-171", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "셸 스크립트는 bash로 써", "text": "그거 sh로 바꿔", "origin": "121"}
+{"id": "in-172", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "시간은 서울 시간 기준으로 다뤄", "text": "아니, UTC로 하자", "origin": "121"}
+{"id": "in-173", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "PR 설명은 영어로 써", "text": "아까 그거 한국어로 바꿔", "origin": "121"}
+{"id": "in-174", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "작업 끝나면 바뀐 파일 목록 알려줘", "text": "그거 이제 안 해도 돼", "origin": "121"}
+{"id": "in-175", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "이모지는 쓰지 마", "text": "아니, 상태 표시에는 써도 돼", "origin": "121"}
+{"id": "in-176", "category": "indirect-request", "indirect": true, "label": false, "previous": "로그인 실패 원인 찾아줘", "text": "아니, 그거 말고 회원가입 쪽", "origin": "121"}
+{"id": "in-177", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 에러 메시지 뜻 알려줘", "text": "아니, 한국어로 설명해줘", "origin": "121"}
+{"id": "in-178", "category": "indirect-request", "indirect": true, "label": false, "previous": "auth.py 리팩터링해줘", "text": "아니, 두 번째 함수만", "origin": "121"}
+{"id": "in-179", "category": "indirect-request", "indirect": true, "label": false, "previous": "테스트 돌려줘", "text": "다시 해봐", "origin": "121"}
+{"id": "in-180", "category": "indirect-request", "indirect": true, "label": false, "previous": "README 오타 고쳐줘", "text": "그걸로 커밋해", "origin": "121"}
+{"id": "in-181", "category": "indirect-request", "indirect": true, "label": false, "previous": "빌드 로그 보여줘", "text": "아니, 그 위에 있는 거", "origin": "121"}
+{"id": "in-182", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 함수 이름 바꿔줘", "text": "아니, 원래대로 돌려", "origin": "121"}
+{"id": "in-183", "category": "indirect-request", "indirect": true, "label": false, "previous": "결제 API 느린 이유 찾아줘", "text": "그거 표로 정리해줘", "origin": "121"}
+{"id": "in-184", "category": "indirect-request", "indirect": true, "label": false, "previous": "변경 사항 요약해줘", "text": "더 짧게", "origin": "121"}
+{"id": "in-185", "category": "indirect-request", "indirect": true, "label": false, "previous": "캐시 만료를 5분으로 바꿔줘", "text": "아니, 10분으로", "origin": "121"}
+{"id": "in-186", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 파일 영어로 번역해줘", "text": "아니, 일본어로", "origin": "121"}
+{"id": "in-187", "category": "indirect-request", "indirect": true, "label": false, "previous": "의존성 업데이트해줘", "text": "그거 취소해", "origin": "121"}
+{"id": "in-188", "category": "indirect-request", "indirect": true, "label": false, "previous": "config 읽는 코드 찾아줘", "text": "아니, 테스트 쪽 말고 본 코드", "origin": "121"}
+{"id": "in-189", "category": "indirect-request", "indirect": true, "label": false, "previous": "에러 로그 최근 100줄 보여줘", "text": "아니, 50줄만", "origin": "121"}
+{"id": "in-190", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 함수 설명해줘", "text": "방금 거 다시 쉽게 말해줘", "origin": "121"}
+{"id": "in-191", "category": "indirect-request", "indirect": true, "label": false, "previous": "버튼 색 파란색으로 바꿔줘", "text": "아니, 초록색으로", "origin": "121"}
+{"id": "in-192", "category": "indirect-request", "indirect": true, "label": false, "previous": "마이그레이션 만들어줘", "text": "그거 되돌려", "origin": "121"}
+{"id": "in-193", "category": "indirect-request", "indirect": true, "label": false, "previous": "PR 설명 써줘", "text": "아니, 영어로 써줘", "origin": "121"}
+{"id": "in-194", "category": "indirect-request", "indirect": true, "label": false, "previous": "검색 결과 정렬해줘", "text": "반대로 정렬해", "origin": "121"}
+{"id": "in-195", "category": "indirect-request", "indirect": true, "label": false, "previous": "배포 실패 원인 봐줘", "text": "아까 그거 계속해", "origin": "121"}
+{"id": "in-196", "category": "indirect-request", "indirect": true, "label": false, "previous": "테스트 데이터 열 개 만들어줘", "text": "아니, 스무 개", "origin": "121"}
+{"id": "in-197", "category": "indirect-request", "indirect": true, "label": false, "previous": "타입 에러 고쳐줘", "text": "그거 말고 아까 말한 파일", "origin": "121"}
+{"id": "in-198", "category": "indirect-request", "indirect": true, "label": false, "previous": "요약해줘", "text": "아니, 영어로 바꿔", "origin": "121"}
+{"id": "in-199", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 커밋 되돌려줘", "text": "아니, 그 전 커밋", "origin": "121"}
+{"id": "in-200", "category": "indirect-request", "indirect": true, "label": false, "previous": "로그 레벨 debug로 올려줘", "text": "다시 info로 내려", "origin": "121"}
+{"id": "in-201", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "코드 리뷰 코멘트는 영어로 써", "text": "그거 한국어로 바꿔", "origin": "new"}
+{"id": "in-202", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "커밋은 작은 단위로 잘게 나눠", "text": "아니, 한 번에 묶어서 해도 돼", "origin": "new"}
+{"id": "in-203", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "패키지 매니저는 yarn으로 통일해", "text": "그거 bun으로 갈아타자", "origin": "new"}
+{"id": "in-204", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "테스트 커버리지는 80% 이상 유지해", "text": "아까 그 기준 70%로 낮춰", "origin": "new"}
+{"id": "in-205", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "에러는 예외로 던져", "text": "아니, 결과 값으로 돌려주는 걸로 바꿔", "origin": "new"}
+{"id": "in-206", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "변경 전에 항상 나한테 물어봐", "text": "그거 이제 안 물어봐도 돼", "origin": "new"}
+{"id": "in-207", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "브랜치 이름은 feature/로 시작해", "text": "그 규칙 바꿔서 type/로 시작하게 해", "origin": "new"}
+{"id": "in-208", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "문자열은 작은따옴표로 써", "text": "그거 큰따옴표로 통일하자", "origin": "new"}
+{"id": "in-209", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "로그 레벨은 info로 고정해", "text": "방금 말한 거 debug로 올려", "origin": "new"}
+{"id": "in-210", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "설명은 존댓말로 해줘", "text": "아니, 반말이 편하겠다", "origin": "new"}
+{"id": "in-211", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "응답은 표로 정리해서 줘", "text": "그거 말고 글머리 목록으로 해", "origin": "new"}
+{"id": "in-212", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "파일 맨 위에 라이선스 헤더를 붙여", "text": "그건 이제 붙이지 마", "origin": "new"}
+{"id": "in-213", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "비동기 코드는 async/await로 써", "text": "그거 Promise 체인으로 바꿔", "origin": "new"}
+{"id": "in-214", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "함수는 30줄을 넘기지 마", "text": "그 제한 50줄로 늘려", "origin": "new"}
+{"id": "in-215", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "데이터베이스는 PostgreSQL로 써", "text": "그거 SQLite로 바꾸자", "origin": "new"}
+{"id": "in-216", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "설정 파일은 YAML로 만들어", "text": "아니, TOML로 가자", "origin": "new"}
+{"id": "in-217", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "외부 API 호출은 모킹해서 테스트해", "text": "그건 실제 호출로 바꿔", "origin": "new"}
+{"id": "in-218", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "린트 경고가 있으면 커밋하지 마", "text": "그 규칙 풀게, 경고는 무시해도 돼", "origin": "new"}
+{"id": "in-219", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "이슈 번호를 커밋 메시지에 꼭 넣어", "text": "아니, 그건 PR 제목에만 넣어", "origin": "new"}
+{"id": "in-220", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "날짜는 한국어 표기로 써", "text": "그것도 ISO로 바꿔", "origin": "new"}
+{"id": "in-221", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "숫자는 천 단위로 쉼표를 찍어", "text": "그거 쉼표 빼고 그냥 써", "origin": "new"}
+{"id": "in-222", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "문서 제목은 명사형으로 써", "text": "아니, 문장형으로 바꿔", "origin": "new"}
+{"id": "in-223", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "이미지는 webp로만 저장해", "text": "그거 png로 되돌려", "origin": "new"}
+{"id": "in-224", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "한 번에 파일 세 개까지만 고쳐", "text": "그 제한 없애", "origin": "new"}
+{"id": "in-225", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "환경 변수 이름은 대문자로 써", "text": "아니, 소문자로 바꿔", "origin": "new"}
+{"id": "in-226", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "요약은 다섯 줄 이내로 해", "text": "방금 그 길이 열 줄로 늘려", "origin": "new"}
+{"id": "in-227", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "테스트 파일은 tests 폴더에 둬", "text": "그거 소스 옆에 두는 걸로 바꿔", "origin": "new"}
+{"id": "in-228", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "의존성은 최신 버전으로 써", "text": "아니, 안정 버전으로 고정해", "origin": "new"}
+{"id": "in-229", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "코드 블록에는 언어 태그를 붙여", "text": "그건 안 붙여도 돼", "origin": "new"}
+{"id": "in-230", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "정렬은 항상 이름 오름차순으로 해", "text": "그거 최신순으로 바꿔", "origin": "new"}
+{"id": "in-231", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "에이전트가 파일을 지우기 전에 확인받아", "text": "아까 그거 내 작업 폴더 안에서는 생략해", "origin": "new"}
+{"id": "in-232", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "모든 함수에 docstring을 달아", "text": "그건 공개 함수만으로 줄여", "origin": "new"}
+{"id": "in-233", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "외부 네트워크 접근은 막아", "text": "그 금지 풀자, 필요하면 접근해도 돼", "origin": "new"}
+{"id": "in-234", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "터미널 출력은 색 없이 보여줘", "text": "그거 색 넣어도 돼", "origin": "new"}
+{"id": "in-235", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "시간 표시는 24시간제로 해", "text": "아니, 오전 오후로 바꿔", "origin": "new"}
+{"id": "in-236", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "클래스 이름은 PascalCase로 지어", "text": "그건 그냥 snake_case로 하자", "origin": "new"}
+{"id": "in-237", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "응답 앞에 결론부터 말해", "text": "아니, 근거부터 말하게 바꿔", "origin": "new"}
+{"id": "in-238", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "패치는 diff 형식으로 보여줘", "text": "그거 전체 파일로 보여줘", "origin": "new"}
+{"id": "in-239", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "변수 이름 약어 쓰지 마", "text": "그 규칙 완화해서 흔한 약어는 써도 돼", "origin": "new"}
+{"id": "in-240", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "커밋 전에 테스트를 꼭 돌려", "text": "그거 이제 생략해도 돼", "origin": "new"}
+{"id": "in-241", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "주석에 TODO를 남기지 마", "text": "아니, 이슈 번호 붙이면 남겨도 돼", "origin": "new"}
+{"id": "in-242", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "에러 메시지에 스택 트레이스를 포함해", "text": "그건 빼", "origin": "new"}
+{"id": "in-243", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "한 줄 커밋 메시지만 써", "text": "그거 본문도 쓰는 걸로 바꿔", "origin": "new"}
+{"id": "in-244", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "들여쓰기는 탭 대신 스페이스로 써", "text": "아니, 그거 탭으로 되돌려", "origin": "new"}
+{"id": "in-245", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "번역투 문장은 피해", "text": "그건 이제 신경 쓰지 마", "origin": "new"}
+{"id": "in-246", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "새 파일은 만들지 말고 기존 파일을 고쳐", "text": "그 제한 풀게, 필요하면 새로 만들어", "origin": "new"}
+{"id": "in-247", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "숫자 단위는 SI 단위로 써", "text": "아니, 바이트는 MiB로 써", "origin": "new"}
+{"id": "in-248", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "모든 코드 예시는 파이썬으로 보여줘", "text": "그거 Rust로 바꿔", "origin": "new"}
+{"id": "in-249", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "비밀 값은 .env에만 둬", "text": "아니, 키체인으로 옮겨", "origin": "new"}
+{"id": "in-250", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "문장은 한 줄에 하나씩 써", "text": "그 방식 말고 문단으로 이어 써", "origin": "new"}
+{"id": "in-251", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "응답에 이모지 쓰지 마", "text": "그 금지 풀게", "origin": "new"}
+{"id": "in-252", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "새 브랜치는 main에서만 따", "text": "아니, develop에서 따는 걸로 바꿔", "origin": "new"}
+{"id": "in-253", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "코드 변경 뒤에는 변경 요약을 붙여", "text": "그거 이제 안 붙여도 돼", "origin": "new"}
+{"id": "in-254", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "파일 이름에 날짜 붙이지 마", "text": "그건 로그 파일만 예외로 해", "origin": "new"}
+{"id": "in-255", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "오류 코드는 숫자로 줘", "text": "그거 문자열 코드로 바꿔", "origin": "new"}
+{"id": "in-256", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "응답 언어는 영어로 해", "text": "아니, 한국어로 돌려놔", "origin": "new"}
+{"id": "in-257", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "테스트 이름은 should로 시작해", "text": "그거 test_로 시작하게 바꿔", "origin": "new"}
+{"id": "in-258", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "쿼리는 파라미터 바인딩으로만 짜", "text": "그 규칙 이 스크립트에서는 건너뛰어도 돼", "origin": "new"}
+{"id": "in-259", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "버전 번호는 semver로 매겨", "text": "그거 날짜 기반으로 바꿔", "origin": "new"}
+{"id": "in-260", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "보고는 하루 한 번만 해", "text": "그 빈도 작업 끝날 때마다로 바꿔", "origin": "new"}
+{"id": "in-261", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "긴 출력은 항상 파일로 저장해", "text": "그건 이제 화면에 바로 보여줘", "origin": "new"}
+{"id": "in-262", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "마크다운 표 대신 목록을 써", "text": "그거 반대로, 표로 써", "origin": "new"}
+{"id": "in-263", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "가능하면 표준 라이브러리만 써", "text": "그 제한 풀자, 외부 라이브러리도 괜찮아", "origin": "new"}
+{"id": "in-264", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "함수 인자는 세 개를 넘기지 마", "text": "그 상한 네 개로 올려", "origin": "new"}
+{"id": "in-265", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "커밋 메시지 첫 줄은 50자 이내로 써", "text": "그거 72자로 늘려", "origin": "new"}
+{"id": "in-266", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "도구 실행 전에 계획부터 보여줘", "text": "아니, 계획 단계는 건너뛰어", "origin": "new"}
+{"id": "in-267", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "로그에는 개인 정보를 남기지 마", "text": "그건 디버그 빌드에서는 예외로 하자", "origin": "new"}
+{"id": "in-268", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "스크립트는 zsh로 작성해", "text": "그거 bash로 바꿔", "origin": "new"}
+{"id": "in-269", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "응답은 짧은 문장으로 끊어서 써", "text": "그 말투 긴 문장으로 풀어서 쓰는 걸로 바꿔", "origin": "new"}
+{"id": "in-270", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "변경한 파일은 바로 커밋해", "text": "아니, 내가 말할 때까지 커밋하지 마", "origin": "new"}
+{"id": "in-271", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "테스트는 병렬로 돌려", "text": "그거 순서대로 하나씩 돌려", "origin": "new"}
+{"id": "in-272", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "용어는 영어 원어로 써", "text": "그것도 한국어 번역어로 바꿔", "origin": "new"}
+{"id": "in-273", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "폴더 이름은 복수형으로 지어", "text": "그거 단수형으로 통일하자", "origin": "new"}
+{"id": "in-274", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "설정 변경은 항상 백업부터 해", "text": "그 절차 이제 안 해도 돼", "origin": "new"}
+{"id": "in-275", "category": "indirect-constraint", "indirect": true, "label": true, "previous": "타임아웃은 30초로 둬", "text": "그거 60초로 늘려", "origin": "new"}
+{"id": "in-276", "category": "indirect-request", "indirect": true, "label": false, "previous": "로그인 오류 원인 찾아줘", "text": "아니, 세션 만료 쪽으로", "origin": "new"}
+{"id": "in-277", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 함수에 주석 달아줘", "text": "아니, 한국어로 바꿔", "origin": "new"}
+{"id": "in-278", "category": "indirect-request", "indirect": true, "label": false, "previous": "테스트 하나 추가해줘", "text": "아니, 두 개로", "origin": "new"}
+{"id": "in-279", "category": "indirect-request", "indirect": true, "label": false, "previous": "결과를 표로 정리해줘", "text": "그거 목록으로 바꿔", "origin": "new"}
+{"id": "in-280", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 커밋 메시지 영어로 써줘", "text": "아니, 한글로", "origin": "new"}
+{"id": "in-281", "category": "indirect-request", "indirect": true, "label": false, "previous": "주문 목록 API 설명해줘", "text": "더 자세히", "origin": "new"}
+{"id": "in-282", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 쿼리 최적화해줘", "text": "아니, 읽기 쉽게만", "origin": "new"}
+{"id": "in-283", "category": "indirect-request", "indirect": true, "label": false, "previous": "설정 파일 열어봐", "text": "아니, 그 옆에 있는 것", "origin": "new"}
+{"id": "in-284", "category": "indirect-request", "indirect": true, "label": false, "previous": "배포 로그 보여줘", "text": "그거 에러만 걸러서", "origin": "new"}
+{"id": "in-285", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 PR 리뷰해줘", "text": "아니, 보안 관점으로만", "origin": "new"}
+{"id": "in-286", "category": "indirect-request", "indirect": true, "label": false, "previous": "차트 색 바꿔줘", "text": "그거 빨간색으로", "origin": "new"}
+{"id": "in-287", "category": "indirect-request", "indirect": true, "label": false, "previous": "변수명 정리해줘", "text": "아니, 원래대로 돌려", "origin": "new"}
+{"id": "in-288", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 문서 요약해줘", "text": "그거 세 줄로", "origin": "new"}
+{"id": "in-289", "category": "indirect-request", "indirect": true, "label": false, "previous": "의존성 하나 올려줘", "text": "아니, 그건 놔두고 다른 걸로", "origin": "new"}
+{"id": "in-290", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 에러 해결 방법 알려줘", "text": "그거 단계별로 말해줘", "origin": "new"}
+{"id": "in-291", "category": "indirect-request", "indirect": true, "label": false, "previous": "API 응답 예시 만들어줘", "text": "아니, 실패 응답으로", "origin": "new"}
+{"id": "in-292", "category": "indirect-request", "indirect": true, "label": false, "previous": "README에 설치 방법 추가해줘", "text": "그거 맨 아래로 옮겨", "origin": "new"}
+{"id": "in-293", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 스크립트 실행해봐", "text": "다시 한번만", "origin": "new"}
+{"id": "in-294", "category": "indirect-request", "indirect": true, "label": false, "previous": "타임아웃 값 확인해줘", "text": "아니, 읽기 타임아웃 쪽", "origin": "new"}
+{"id": "in-295", "category": "indirect-request", "indirect": true, "label": false, "previous": "페이지네이션 붙여줘", "text": "그거 커서 방식으로 바꿔", "origin": "new"}
+{"id": "in-296", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 로그 분석해줘", "text": "아니, 어제 것", "origin": "new"}
+{"id": "in-297", "category": "indirect-request", "indirect": true, "label": false, "previous": "이슈 목록 가져와줘", "text": "열린 것만", "origin": "new"}
+{"id": "in-298", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 이미지 설명해줘", "text": "영어로", "origin": "new"}
+{"id": "in-299", "category": "indirect-request", "indirect": true, "label": false, "previous": "마이그레이션 파일 만들어줘", "text": "아니, 컬럼 추가만", "origin": "new"}
+{"id": "in-300", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 코드 파이썬으로 옮겨줘", "text": "아니, Go로", "origin": "new"}
+{"id": "in-301", "category": "indirect-request", "indirect": true, "label": false, "previous": "팝업 문구 다듬어줘", "text": "더 짧게 해줘", "origin": "new"}
+{"id": "in-302", "category": "indirect-request", "indirect": true, "label": false, "previous": "테스트 실패 이유 알려줘", "text": "아니, 두 번째 실패만", "origin": "new"}
+{"id": "in-303", "category": "indirect-request", "indirect": true, "label": false, "previous": "폴더 구조 보여줘", "text": "그거 두 단계까지만", "origin": "new"}
+{"id": "in-304", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 값 환경 변수로 빼줘", "text": "아니, 설정 파일로", "origin": "new"}
+{"id": "in-305", "category": "indirect-request", "indirect": true, "label": false, "previous": "에러 처리 추가해줘", "text": "그거 재시도 포함해서", "origin": "new"}
+{"id": "in-306", "category": "indirect-request", "indirect": true, "label": false, "previous": "변경 사항 되돌려줘", "text": "아니, 마지막 파일만", "origin": "new"}
+{"id": "in-307", "category": "indirect-request", "indirect": true, "label": false, "previous": "서버 상태 확인해줘", "text": "그거 다시 확인해봐", "origin": "new"}
+{"id": "in-308", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 함수 테스트해줘", "text": "아니, 경계값으로", "origin": "new"}
+{"id": "in-309", "category": "indirect-request", "indirect": true, "label": false, "previous": "요약본 한국어로 써줘", "text": "아니, 영어로 바꿔", "origin": "new"}
+{"id": "in-310", "category": "indirect-request", "indirect": true, "label": false, "previous": "보고서 초안 써줘", "text": "그거 더 격식 있게", "origin": "new"}
+{"id": "in-311", "category": "indirect-request", "indirect": true, "label": false, "previous": "샘플 데이터 열 개 만들어줘", "text": "아니, 백 개", "origin": "new"}
+{"id": "in-312", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 파일 포맷 맞춰줘", "text": "아니, 그 옆 파일도", "origin": "new"}
+{"id": "in-313", "category": "indirect-request", "indirect": true, "label": false, "previous": "쿼리 결과 정렬해줘", "text": "그거 반대로", "origin": "new"}
+{"id": "in-314", "category": "indirect-request", "indirect": true, "label": false, "previous": "에러 로그 최근 것만 보여줘", "text": "아니, 최근 한 시간", "origin": "new"}
+{"id": "in-315", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 변수 이름 설명해줘", "text": "쉽게 풀어서", "origin": "new"}
+{"id": "in-316", "category": "indirect-request", "indirect": true, "label": false, "previous": "커밋 내역 보여줘", "text": "아니, 내가 한 것만", "origin": "new"}
+{"id": "in-317", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 설정 비교해줘", "text": "아니, 운영 설정이랑", "origin": "new"}
+{"id": "in-318", "category": "indirect-request", "indirect": true, "label": false, "previous": "새 컴포넌트 만들어줘", "text": "그거 클래스 말고 함수로", "origin": "new"}
+{"id": "in-319", "category": "indirect-request", "indirect": true, "label": false, "previous": "번역해줘", "text": "아니, 일본어로 바꿔", "origin": "new"}
+{"id": "in-320", "category": "indirect-request", "indirect": true, "label": false, "previous": "캐시 지워줘", "text": "그거 취소해", "origin": "new"}
+{"id": "in-321", "category": "indirect-request", "indirect": true, "label": false, "previous": "테스트 커버리지 알려줘", "text": "아니, 이 모듈만", "origin": "new"}
+{"id": "in-322", "category": "indirect-request", "indirect": true, "label": false, "previous": "오타 찾아줘", "text": "아니, 주석 쪽만", "origin": "new"}
+{"id": "in-323", "category": "indirect-request", "indirect": true, "label": false, "previous": "응답 시간 측정해줘", "text": "그거 세 번 반복해서", "origin": "new"}
+{"id": "in-324", "category": "indirect-request", "indirect": true, "label": false, "previous": "쉘 스크립트로 만들어줘", "text": "아니, 파이썬으로", "origin": "new"}
+{"id": "in-325", "category": "indirect-request", "indirect": true, "label": false, "previous": "경고 메시지 없애줘", "text": "그거 다시 켜", "origin": "new"}
+{"id": "in-326", "category": "indirect-request", "indirect": true, "label": false, "previous": "요청 본문 검증 추가해줘", "text": "아니, 헤더 검증으로", "origin": "new"}
+{"id": "in-327", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 브랜치 머지해줘", "text": "아니, 스쿼시로", "origin": "new"}
+{"id": "in-328", "category": "indirect-request", "indirect": true, "label": false, "previous": "변경 파일 목록 보여줘", "text": "그거 경로만", "origin": "new"}
+{"id": "in-329", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 개념 설명해줘", "text": "예시 들어서", "origin": "new"}
+{"id": "in-330", "category": "indirect-request", "indirect": true, "label": false, "previous": "에러 상황 재현해줘", "text": "아니, 윈도우에서", "origin": "new"}
+{"id": "in-331", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 로직 단순화해줘", "text": "아니, 그냥 주석만 달아줘", "origin": "new"}
+{"id": "in-332", "category": "indirect-request", "indirect": true, "label": false, "previous": "버튼 위치 옮겨줘", "text": "그거 오른쪽 위로", "origin": "new"}
+{"id": "in-333", "category": "indirect-request", "indirect": true, "label": false, "previous": "차이점 알려줘", "text": "그거 표로", "origin": "new"}
+{"id": "in-334", "category": "indirect-request", "indirect": true, "label": false, "previous": "파일 이름 바꿔줘", "text": "아니, 원래 이름으로", "origin": "new"}
+{"id": "in-335", "category": "indirect-request", "indirect": true, "label": false, "previous": "스크린샷 찍어줘", "text": "아니, 전체 화면으로", "origin": "new"}
+{"id": "in-336", "category": "indirect-request", "indirect": true, "label": false, "previous": "인덱스 추가해줘", "text": "아니, 복합 인덱스로", "origin": "new"}
+{"id": "in-337", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 에러 무시하게 해줘", "text": "아니, 경고만 남겨", "origin": "new"}
+{"id": "in-338", "category": "indirect-request", "indirect": true, "label": false, "previous": "점검 결과 정리해줘", "text": "그거 짧게 한 줄로", "origin": "new"}
+{"id": "in-339", "category": "indirect-request", "indirect": true, "label": false, "previous": "필드 하나 추가해줘", "text": "그거 필수로 바꿔", "origin": "new"}
+{"id": "in-340", "category": "indirect-request", "indirect": true, "label": false, "previous": "로그인 화면 영어로 바꿔줘", "text": "아니, 일본어로", "origin": "new"}
+{"id": "in-341", "category": "indirect-request", "indirect": true, "label": false, "previous": "서버 재시작해줘", "text": "그거 취소해", "origin": "new"}
+{"id": "in-342", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 PR 설명 고쳐줘", "text": "더 간단하게", "origin": "new"}
+{"id": "in-343", "category": "indirect-request", "indirect": true, "label": false, "previous": "마지막 줄 지워줘", "text": "아니, 그 위 줄", "origin": "new"}
+{"id": "in-344", "category": "indirect-request", "indirect": true, "label": false, "previous": "키워드 검색해줘", "text": "아니, 정규식으로", "origin": "new"}
+{"id": "in-345", "category": "indirect-request", "indirect": true, "label": false, "previous": "목록 열 개만 보여줘", "text": "아니, 스무 개", "origin": "new"}
+{"id": "in-346", "category": "indirect-request", "indirect": true, "label": false, "previous": "이 에러 번역해줘", "text": "한국어로 쉽게", "origin": "new"}
+{"id": "in-347", "category": "indirect-request", "indirect": true, "label": false, "previous": "설명 길게 써줘", "text": "아니, 짧게", "origin": "new"}
+{"id": "in-348", "category": "indirect-request", "indirect": true, "label": false, "previous": "파일 열어서 읽어줘", "text": "아니, 그 위 폴더 것", "origin": "new"}
+{"id": "in-349", "category": "indirect-request", "indirect": true, "label": false, "previous": "테스트 데이터 지워줘", "text": "그거 되살려", "origin": "new"}
+{"id": "in-350", "category": "indirect-request", "indirect": true, "label": false, "previous": "작업 이어서 해줘", "text": "아니, 처음부터 다시", "origin": "new"}
