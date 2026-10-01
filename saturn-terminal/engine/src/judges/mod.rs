@@ -138,8 +138,13 @@ impl std::fmt::Debug for JudgeExchange {
     /// 원문은 쓰지 않고 길이, 결과 종류, 걸린 시간만 쓴다.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let result = match &self.result {
-            Ok(_) => "ok".to_owned(),
-            Err(error) => format!("{error:?}"),
+            Ok(_) => "ok",
+            Err(JudgeError::NoResponse) => "NoResponse",
+            Err(JudgeError::TimedOutAfterSend) => "TimedOutAfterSend",
+            Err(JudgeError::Unauthorized) => "Unauthorized",
+            Err(JudgeError::RateLimited) => "RateLimited",
+            Err(JudgeError::Invalid { .. }) => "Invalid",
+            Err(JudgeError::Superseded) => "Superseded",
         };
         f.debug_struct("JudgeExchange")
             .field("sent_len", &self.sent.len())
@@ -764,7 +769,9 @@ mod tests {
         let exchange = JudgeExchange {
             sent: format!("state {KEY}"),
             received: None,
-            result: Err(JudgeError::NoResponse),
+            result: Err(JudgeError::Invalid {
+                reason: KEY.to_owned(),
+            }),
             started_at: SystemTime::now(),
             elapsed: Duration::from_millis(5),
         };
@@ -773,5 +780,6 @@ mod tests {
 
         assert!(!debug.contains(KEY));
         assert!(debug.contains("sent_len"));
+        assert!(debug.contains("Invalid"));
     }
 }

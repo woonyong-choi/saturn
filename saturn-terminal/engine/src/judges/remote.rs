@@ -59,11 +59,20 @@ impl Default for RetryPolicy {
 }
 
 /// 헤더 이름은 소문자.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub(crate) struct HttpReply {
     pub(crate) status: u16,
     pub(crate) headers: Vec<(String, String)>,
     pub(crate) body: String,
+}
+
+impl Debug for HttpReply {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HttpReply")
+            .field("status", &self.status)
+            .field("body_len", &self.body.len())
+            .finish_non_exhaustive()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -392,7 +401,6 @@ impl JudgeClient for RemoteJudge {
 }
 
 /// 재시도 판단에만 쓴다.
-#[derive(Debug)]
 enum SendFailure {
     /// 전달되지 않은 것이 확정이라 다시 보내도 된다.
     BeforeSend,
@@ -775,6 +783,14 @@ pub(crate) mod tests {
                 .collect(),
             body: body.to_owned(),
         })
+    }
+
+    #[test]
+    fn reply_debug_hides_body_and_headers() {
+        let reply = status(401, KEY, vec![("authorization", KEY)]).unwrap();
+        let debug = format!("{reply:?}");
+        assert!(!debug.contains(KEY));
+        assert!(debug.contains("body_len"));
     }
 
     pub(crate) async fn secrets_with_key(dir: &std::path::Path) -> SharedSecrets {
