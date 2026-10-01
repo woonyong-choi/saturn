@@ -4,7 +4,7 @@ export type Activity = "Thinking" | "ReadingFile" | "EditingFile" | { "RunningCo
 
 export type AgentId = number;
 
-export type Alert = "JudgePaused" | "IntakeStopped" | { "SteerNotReady": { provider: Provider, } } | { "ChatBusyElsewhere": { chat: ChatId, } } | "JudgeDownSendingInOrder" | { "SchemaMigrated": { from: number, to: number, } };
+export type Alert = "JudgePaused" | "JudgeDisconnected" | { "SteerNotReady": { provider: Provider, } } | { "ChatBusyElsewhere": { chat: ChatId, } } | "JudgeDownSendingInOrder" | { "SchemaMigrated": { from: number, to: number, } };
 
 export type ChatId = number;
 

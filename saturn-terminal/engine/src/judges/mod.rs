@@ -1,4 +1,4 @@
-//! judge 연결 구현과 engine 쪽 판단 흐름: judge 선택, 시작 확인, 키 재확인, 호출, 연속 실패 집계, 판단 기록.
+//! judge 연결 구현과 engine 쪽 판단 흐름: judge 선택, 시작 확인, 키 재확인, 호출, 실패 대체, 연속 실패 집계, 판단 기록.
 //! 설계: docs/design/judge.md
 
 mod local;
@@ -7,11 +7,12 @@ mod remote;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
+use saturn_core::judges::failure::{self, CompactFailure, TransitionStarter};
 use saturn_core::judges::{
     AnswerKind, JudgeClient, JudgeError, JudgeRequest, JudgeResponse, Method, Question,
-    QuestionSetId,
+    QuestionSetId, RouteDecision,
 };
-use saturn_protocol::ids::{ChatId, InputId, JudgmentId, SettingsRevision};
+use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision};
 use saturn_protocol::rpc::Alert;
 use tokio::sync::Mutex;
 
@@ -38,7 +39,7 @@ const UNVERSIONED_LOCAL: &str = "unversioned";
 /// 끝 이름만 남긴다. 초안 값.
 const ABSOLUTE_PATH_MARK: &str = "[abs]/";
 
-/// 이만큼 쌓이면 새 입력 접수를 멈추고 연결 복구를 안내한다.
+/// 이만큼 쌓이면 상태판에 판단 모델 연결 끊김을 보인다. 입력 접수는 멈추지 않는다.
 pub const CONSECUTIVE_FAILURE_LIMIT: u32 = 3;
 
 /// 키를 메모리에 들고 있는 곳은 `SecretStore` 하나뿐이라 `RemoteJudge`도 이것을 빌려 쓴다.
@@ -132,6 +133,8 @@ pub struct JudgeExchange {
     pub started_at: SystemTime,
     /// 응답이 없으면 포기할 때까지.
     pub elapsed: Duration,
+    /// 보낸 뒤 시간 초과로 이미 처리됐을 수 있어 비용을 모르는 호출 수. 다시 보내 성공해도 남는다.
+    pub unknown_cost_calls: u32,
 }
 
 impl std::fmt::Debug for JudgeExchange {
@@ -193,22 +196,18 @@ struct FailureTracker {
 }
 
 impl FailureTracker {
-    /// 한도 전 실패는 `JudgePaused`, 한도에 닿으면 `IntakeStopped`, 성공이면 `None`.
+    /// 한도 전 실패는 `JudgePaused`, 한도에 닿으면 `JudgeDisconnected`, 성공이면 `None`.
     fn observe(&mut self, ok: bool) -> Option<Alert> {
         if ok {
             self.consecutive = 0;
             return None;
         }
         self.consecutive = self.consecutive.saturating_add(1);
-        if self.intake_stopped() {
-            Some(Alert::IntakeStopped)
+        if self.consecutive >= CONSECUTIVE_FAILURE_LIMIT {
+            Some(Alert::JudgeDisconnected)
         } else {
             Some(Alert::JudgePaused)
         }
-    }
-
-    fn intake_stopped(&self) -> bool {
-        self.consecutive >= CONSECUTIVE_FAILURE_LIMIT
     }
 }
 
@@ -340,9 +339,25 @@ impl Judges {
         (exchange, alert)
     }
 
-    /// 참이면 engine은 `SubmitInput`을 접수하지 않는다.
-    pub fn intake_stopped(&self) -> bool {
-        self.failures.intake_stopped()
+    /// 입력 처리 판단이 재시도 끝에 실패했을 때 쓴다. 현재 에이전트와 현재 모델로 보내고 입력은 대기로 두지 않는다.
+    pub fn route_after_failure(
+        &self,
+        request: &JudgeRequest,
+        revision: ChatRevision,
+        settings: SettingsRevision,
+    ) -> RouteDecision {
+        tracing::warn!("{}", failure::SKIP_MODEL_MESSAGE);
+        failure::route_after_failure(request, revision, settings)
+    }
+
+    /// 패킷의 `compact` 판단이 재시도 끝에 실패했을 때 쓴다. judge가 시작한 전환은 건너뛰고 현재 모델로 진행한다. 강제한 전환은 하고 경쟁 구역을 순위 순서로 채운다.
+    pub fn compact_after_failure(&self, starter: TransitionStarter) -> CompactFailure {
+        let action = failure::compact_failure(starter);
+        match action {
+            CompactFailure::SkipTransition => tracing::warn!("{}", failure::SKIP_MODEL_MESSAGE),
+            CompactFailure::FillByRank => tracing::warn!("{}", failure::SKIP_RECORD_MESSAGE),
+        }
+        action
     }
 
     /// 원문은 `Masker`로 가린 뒤 넘기고, `/record off` 채팅이면 `store`가 쓰지 않는다.
@@ -521,6 +536,7 @@ mod tests {
             result: Err(JudgeError::NoResponse),
             started_at: SystemTime::now(),
             elapsed: Duration::ZERO,
+            unknown_cost_calls: 0,
         };
 
         let judgment = new_judgment(
@@ -534,27 +550,25 @@ mod tests {
     }
 
     #[test]
-    fn three_failures_stop_intake_and_success_resets() {
+    fn three_failures_show_disconnected_and_success_resets() {
         let mut tracker = FailureTracker::default();
 
         assert_eq!(tracker.observe(false), Some(Alert::JudgePaused));
         assert_eq!(tracker.observe(false), Some(Alert::JudgePaused));
-        assert_eq!(tracker.observe(false), Some(Alert::IntakeStopped));
-        assert!(tracker.intake_stopped());
+        assert_eq!(tracker.observe(false), Some(Alert::JudgeDisconnected));
+        assert_eq!(tracker.observe(false), Some(Alert::JudgeDisconnected));
         assert_eq!(tracker.observe(true), None);
-        assert!(!tracker.intake_stopped());
+        assert_eq!(tracker.observe(false), Some(Alert::JudgePaused));
     }
 
-    #[tokio::test]
-    async fn call_counts_only_unanswered_failures() {
+    #[tokio::test(start_paused = true)]
+    async fn call_counts_only_unanswered_failures_and_keeps_accepting() {
         let dir = tempfile::tempdir().unwrap();
         let invalid = r#"{"answers":{"keep_current":{"noul":-1}}}"#;
-        let transport = FakeTransport::new(vec![
-            ok(invalid),
-            Err(remote::TransportError::AfterSend),
-            Err(remote::TransportError::AfterSend),
-            Err(remote::TransportError::AfterSend),
-        ]);
+        let mut replies = vec![ok(invalid)];
+        replies.extend(vec![Err(remote::TransportError::AfterSend); 9]);
+        replies.push(ok(ANSWER));
+        let transport = FakeTransport::new(replies);
         let mut judges = judges(secrets_with_key(dir.path()).await, transport);
 
         let (first, alert) = judges.call(request()).await;
@@ -563,8 +577,85 @@ mod tests {
         for _ in 0..2 {
             assert_eq!(judges.call(request()).await.1, Some(Alert::JudgePaused));
         }
-        assert_eq!(judges.call(request()).await.1, Some(Alert::IntakeStopped));
-        assert!(judges.intake_stopped());
+        assert_eq!(
+            judges.call(request()).await.1,
+            Some(Alert::JudgeDisconnected)
+        );
+        let (answered, alert) = judges.call(request()).await;
+        assert!(answered.result.is_ok());
+        assert_eq!(alert, None);
+    }
+
+    /// 테스트 안에서 나온 로그 줄을 모은다.
+    #[derive(Clone, Default)]
+    struct LogSink(Arc<std::sync::Mutex<Vec<u8>>>);
+
+    impl std::io::Write for LogSink {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0.lock().unwrap().extend_from_slice(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+
+    impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for LogSink {
+        type Writer = LogSink;
+
+        fn make_writer(&'a self) -> Self::Writer {
+            self.clone()
+        }
+    }
+
+    fn logged<T>(run: impl FnOnce() -> T) -> (T, String) {
+        let sink = LogSink::default();
+        let subscriber = tracing_subscriber::fmt()
+            .with_writer(sink.clone())
+            .with_ansi(false)
+            .finish();
+        let value = tracing::subscriber::with_default(subscriber, run);
+        let text = String::from_utf8(sink.0.lock().unwrap().clone()).unwrap();
+        (value, text)
+    }
+
+    fn judges_without_transport() -> Judges {
+        judges(
+            Arc::new(Mutex::new(SecretStore::with_key_file(
+                PathBuf::from("/nonexistent/none.key"),
+                StorageMode::Standard,
+            ))),
+            FakeTransport::new(Vec::new()),
+        )
+    }
+
+    #[test]
+    fn route_after_failure_logs_skip_message_and_keeps_current_model() {
+        let judges = judges_without_transport();
+
+        let (decision, log) =
+            logged(|| judges.route_after_failure(&request(), ChatRevision(1), SettingsRevision(1)));
+
+        assert!(log.contains("판단 모델 실패로 모델 선택을 건너뜁니다"));
+        assert!(!log.contains(KEY));
+        assert_eq!(decision.model, None);
+        assert!(decision.keep_current);
+    }
+
+    #[test]
+    fn compact_after_failure_logs_by_who_started_the_transition() {
+        let judges = judges_without_transport();
+
+        let (skipped, skipped_log) =
+            logged(|| judges.compact_after_failure(TransitionStarter::Judge));
+        let (filled, filled_log) =
+            logged(|| judges.compact_after_failure(TransitionStarter::Forced));
+
+        assert_eq!(skipped, CompactFailure::SkipTransition);
+        assert!(skipped_log.contains("판단 모델 실패로 모델 선택을 건너뜁니다"));
+        assert_eq!(filled, CompactFailure::FillByRank);
+        assert!(filled_log.contains("판단 모델 실패로 기록 선택을 건너뜁니다"));
     }
 
     #[tokio::test]
@@ -573,8 +664,7 @@ mod tests {
         let (store, _) = Store::open(&dir.path().join("home")).await.unwrap();
         let chat = store.create_chat(PathBuf::from("/w")).await.unwrap();
         let reply = ANSWER.replace("\"usage\"", &format!("\"echo\":\"{KEY}\",\"usage\""));
-        let transport =
-            FakeTransport::new(vec![ok(&reply), Err(remote::TransportError::AfterSend)]);
+        let transport = FakeTransport::new(vec![ok(&reply)]);
         let mut judges = judges(secrets_with_key(dir.path()).await, transport);
         let mut leaky = request();
         leaky.state = format!("pasted {KEY}");
@@ -585,7 +675,14 @@ mod tests {
             .record(&store, context(chat, outcome), &exchange)
             .await
             .unwrap();
-        let (timeout, _) = judges.call(request()).await;
+        let timeout = JudgeExchange {
+            sent: "{}".to_owned(),
+            received: None,
+            result: Err(JudgeError::TimedOutAfterSend),
+            started_at: SystemTime::now(),
+            elapsed: Duration::from_secs(40),
+            unknown_cost_calls: 3,
+        };
         let timeout_outcome = outcome_of(&timeout.result);
         judges
             .record(&store, context(chat, timeout_outcome), &timeout)
@@ -808,6 +905,7 @@ mod tests {
             }),
             started_at: SystemTime::now(),
             elapsed: Duration::from_millis(5),
+            unknown_cost_calls: 0,
         };
 
         let debug = format!("{exchange:?}");

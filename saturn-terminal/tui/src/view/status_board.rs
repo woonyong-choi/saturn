@@ -316,7 +316,7 @@ pub fn activity_text(lang: Lang, activity: &Activity) -> String {
 pub fn alert_text(lang: Lang, alert: &Alert) -> String {
     let key = match alert {
         Alert::JudgePaused => i18n::JUDGE_PAUSED,
-        Alert::IntakeStopped => i18n::INTAKE_STOPPED,
+        Alert::JudgeDisconnected => i18n::JUDGE_DISCONNECTED,
         Alert::SteerNotReady { provider } => {
             return format!(
                 "{} ({})",

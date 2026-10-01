@@ -111,6 +111,7 @@ impl LocalJudge {
             result,
             started_at,
             elapsed: clock.elapsed(),
+            unknown_cost_calls: 0,
         }
     }
 }

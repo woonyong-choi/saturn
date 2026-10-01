@@ -2,7 +2,7 @@
 //! 설계: docs/design/tui.md
 
 use saturn_protocol::ids::TaskLabel;
-use saturn_protocol::rpc::{Alert, Request};
+use saturn_protocol::rpc::Request;
 use saturn_protocol::state::InputState;
 
 use super::{App, Effect, Window};
@@ -204,7 +204,7 @@ impl App {
             })
     }
 
-    /// 새 입력 접수가 중단됐거나 채팅을 아직 모르면 보내지 않고 초안을 유지한다.
+    /// 채팅을 아직 모르면 보내지 않고 초안을 유지한다.
     pub(super) fn submit(&mut self, queued: bool) -> Vec<Effect> {
         let text = self.composer.text();
         if text.trim().is_empty() {
@@ -235,9 +235,6 @@ impl App {
     // vars: n = 원문 길이, a = 첨부 길이 합
     // basis: estimate
     pub(super) fn submit_text(&mut self, text: String, queued: bool) -> Vec<Effect> {
-        if self.chat.alerts.contains(&Alert::IntakeStopped) {
-            return Vec::new();
-        }
         let Some(chat) = self.chat.chat else {
             return Vec::new();
         };

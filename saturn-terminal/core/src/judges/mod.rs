@@ -2,6 +2,7 @@
 //! 설계: docs/design/judge.md
 
 pub mod calibration;
+pub mod failure;
 pub mod split;
 
 use std::future::Future;
@@ -44,10 +45,10 @@ const OTHER: &str = "other";
 
 #[derive(Debug, thiserror::Error)]
 pub enum JudgeError {
-    /// 응답이 없거나 시간 초과면 입력을 대기로 보낸다.
+    /// 재시도가 끝나도 응답이 없으면 현재 에이전트와 현재 모델로 진행한다.
     #[error("judge did not respond")]
     NoResponse,
-    /// `cost-unknown`으로 기록하고 다시 보내지 않는다.
+    /// `cost-unknown`으로 기록하고 다시 보낸다.
     #[error("judge timed out after send")]
     TimedOutAfterSend,
     /// 연결 실패와 구분해 키 입력 창을 띄운다.
@@ -392,7 +393,7 @@ pub fn compact_verdicts(
 
 /// `keep_current`를 `is_actionable`보다 먼저 읽어 이어 가는 입력이 파일 탐색으로 빠지지 않게 한다.
 pub fn decide_route(
-    judged: Option<(&JudgeRequest, &JudgeResponse)>,
+    judged: (&JudgeRequest, &JudgeResponse),
     thresholds: &Thresholds,
     method: Method,
     revision: ChatRevision,
@@ -407,9 +408,7 @@ pub fn decide_route(
         resume_held: false,
         fallbacks: Vec::new(),
     };
-    let Some((request, response)) = judged else {
-        return decision;
-    };
+    let (request, response) = judged;
     let reader = AnswerReader {
         request,
         response,
@@ -735,7 +734,7 @@ mod tests {
 
     fn decide(request: &JudgeRequest, response: &JudgeResponse, method: Method) -> RouteDecision {
         decide_route(
-            Some((request, response)),
+            (request, response),
             &Thresholds::default(),
             method,
             REVISION,
@@ -854,22 +853,6 @@ mod tests {
                 _ => true,
             });
         assert!(has_other);
-    }
-
-    #[test]
-    fn decide_route_without_judgment_queues_to_current_agent() {
-        let decision = decide_route(
-            None,
-            &Thresholds::default(),
-            Method::Jev,
-            REVISION,
-            SETTINGS,
-        );
-
-        assert_eq!(decision.disposition, Disposition::Queue);
-        assert!(decision.keep_current);
-        assert_eq!(decision.revision, REVISION);
-        assert_eq!(decision.settings, SETTINGS);
     }
 
     #[test]
