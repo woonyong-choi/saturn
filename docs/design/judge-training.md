@@ -102,21 +102,18 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 3. 행동한 판단은 틀림 신호(사용자가 뒤집거나 취소)를 그대로 틀림으로 쓰고 가중은 1이다. 반응이 없으면 틀리지 않은 것으로 센다.
 4. 행동하지 않은 판단은 물은 답만 쓴다. 판단이 틀렸다는 답이면 틀림 가중이 1/q이고, 맞았다는 답이면 0이다. 묻지 않았거나 답이 없는 판단은 틀림 가중 0으로 분모에만 들어간다.
 5. 기준값 격자는 질문의 최저값에서 최고값까지 0.005 간격이다. 격자의 각 값 t마다 p가 t 이상인 판단 전체의 틀림 가중 합을 그 판단 수로 나눈 값을 t의 틀림 비율로 본다.
-6. 틀림 비율이 목표 틀림 비율 이하인 가장 낮은 t가 새 중심값이다. 그런 값이 없으면 최고값이다.
-7. 새 중심값이 잡히면 빠른 조정으로 생긴 차이를 0으로 되돌린다.
+6. 틀림 비율이 목표 틀림 비율 이하인 가장 낮은 t가 새 중심값 후보다. 그런 값이 없으면 최고값이다.
+7. 새 중심값은 이전 중심값 ±0.05 안으로 제한하고 질문의 최저값과 최고값 안에 둔다.
+8. 새 중심값이 잡히면 빠른 조정으로 생긴 차이를 0으로 되돌린다.
 
 - 목표 틀림 비율의 기본값은 5%다.
 - 가장 낮은 값을 고르는 것은 목표 위험 안에서 행동 비율을 최대로 두기 위해서다.
 - 놓침 신호는 쓰지 않는다. 놓침은 행동하지 않은 판단 중 맞은 것만 관찰되고 틀림은 행동한 판단 중에서만 관찰되어, 둘을 한 비율로 섞으면 모집단이 달라 중심값이 최저값이나 최고값으로 갈리기 때문이다.
 - 행동하지 않은 판단의 틀림은 물은 답을 1/q로 키워 추정한다. 판단 기록에 q가 있어 행동하지 않은 판단의 결과를 몰라도 곡선을 만들 수 있다.
 - 모의 판단(시드 120, 복제 100, 판단 1만 건, `/train` 1,000건마다)에서 목표 5% 조건의 9,000건 시점 중심값은 틀림 비율이 목표를 지키는 값 ±0.02 안이 66%, 최저값이나 최고값이 3%였다. 목표 3%, 5%, 10% 조건의 장기 틀림 비율은 4.96%, 4.98%, 5.91%였다([#166](https://github.com/woonyong-choi/saturn/issues/166)).
-- 기준값 자동 조정은 그 질문의 쓰인 결과(행동한 판단과 물은 답)가 3,000건 이상일 때만 한다. `/train`마다 쓰인 결과 수와 중심값이 최저값이나 최고값에 닿은 비율을 보고, 세 조건 모두 10% 이하가 되는 가장 작은 값을 100 단위로 올려 정했다. 적은 결과로 한 조정은 잡음 수준이기 때문이다.
-
-| 목표 틀림 비율 | 닿은 비율이 10% 이하가 되는 가장 작은 쓰인 결과 수 |
-|---|---|
-| 3% | 2,910 |
-| 5% | 938 |
-| 10% | 668 |
+- 기준값 자동 조정은 그 질문의 쓰인 결과(행동한 판단과 물은 답)가 300건 이상일 때만 한다. 적은 결과로 한 조정은 잡음 수준이기 때문이다.
+- `/train` 한 번에 중심값이 움직이는 폭은 빠른 조정의 범위와 같은 0.05로 제한한다. 한 번에 크게 움직이면 중심값이 최저값이나 최고값 쪽으로 쏠리기 때문이다. 일찍 적용하되 폭을 제한하면 행동 범위가 단계적으로 낮아져 낮은 확률의 결과가 쌓인다.
+- 모의 판단(시드 120, 7개 조건, `/train` 1,000건마다, 빠른 조정 고정 폭, 복제 1,000)에서 이 방식은 목표 3%, 5%, 10% 조건의 최저값이나 최고값에 닿은 비율이 3.8%, 0.0%, 0.4%이고 장기 틀림 비율이 5.04%, 5.10%, 5.84%였다. 목표 5% 조건의 9,000건 시점 중심값은 목표를 지키는 값 ±0.02 안이 62%이고, 첫 조정은 1,000건째였다. 쓰인 결과를 3,000건으로 늦추고 폭을 제한하지 않으면 닿은 비율이 17.6%, 적중이 52%, 목표 10% 조건의 장기 틀림 비율이 7.78%였다. 폭 제한 없이 일찍 적용해도 닿은 비율은 16~20%로 같다([#190](https://github.com/woonyong-choi/saturn/issues/190)).
 
 ### 기준값 안전장치
 
@@ -154,7 +151,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 3. 200건 미만이면 engine은 실행하지 않고 부족한 건수를 보인다.
 4. 200건 이상이면 TUI가 학습 확인 창을 보이고 사용자 선택을 기다린다.
 5. engine이 채점 모델로 후보를 채점하고 품질 게이트를 통과한 라벨을 저장한다.
-6. `judges`가 느린 조정으로 질문별 중심값을 다시 계산한다. 쓰인 결과가 3,000건 미만인 질문은 그대로 둔다.
+6. `judges`가 느린 조정으로 질문별 중심값을 다시 계산한다. 쓰인 결과가 300건 미만인 질문은 그대로 둔다.
 7. engine이 로컬 학습기로 Saturn 모델을 학습하고 승격 게이트로 비교한다.
 
 - `/train`은 지난 실행 뒤 채점 안 된 판단이 200건 이상일 때만 실행한다([#16](https://github.com/woonyong-choi/saturn/issues/16)). 적은 라벨로 한 조정은 잡음 수준이기 때문이다.
@@ -191,12 +188,13 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 | 빠른 조정은 행동 신호에 1/q를 붙이지 않고 물은 피드백 답의 신호에만 붙인다. | `saturn-terminal/core/src/judges/calibration.rs`의 `observe_behavior_signal_moves_fixed_step_without_ask_weight`, `observe_asked_answer_is_weighted_by_inverse_q` |
 | 빠른 조정은 같은 입력 열에서 모의 판단의 고정 폭 규칙과 같은 이동을 한다. | `saturn-terminal/core/src/judges/calibration.rs`의 `observe_follows_simulation_b_on_same_signals` |
 | 되돌릴 수 없는 행동의 기준값은 0.8 미만이 되지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `observe_irreversible_floor_holds` |
-| 느린 조정은 쓰인 결과가 3,000건 미만이면 중심값을 바꾸지 않고, 행동하지 않았고 묻지 않은 판단은 쓰인 결과로 세지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_below_min_results_does_nothing`, `recenter_unasked_skipped_judgments_are_not_results` |
+| 느린 조정은 쓰인 결과가 300건 미만이면 중심값을 바꾸지 않고 300건 이상이면 바꾸며, 행동하지 않았고 묻지 않은 판단은 쓰인 결과로 세지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_below_min_results_does_nothing`, `recenter_at_min_results_acts_and_below_does_not`, `recenter_unasked_skipped_judgments_are_not_results` |
+| 느린 조정은 `/train` 한 번에 중심값을 이전 중심값 ±0.05 안으로만 움직인다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_moves_at_most_fast_range_per_call`, `recenter_all_wrong_uses_upper_bound` |
 | 느린 조정은 행동한 판단의 틀림 신호를 가중 1로 쓰고, 반응 없는 행동은 틀리지 않은 것으로 센다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_acted_without_reaction_counts_as_not_wrong`, `recenter_all_wrong_uses_upper_bound` |
 | 느린 조정은 행동하지 않은 판단은 물은 답만 1/q로 쓰고 놓침 신호는 쓰지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_skipped_judgment_uses_only_asked_answer_with_inverse_q`, `recenter_skipped_judgment_with_missed_signal_is_not_used` |
 | 느린 조정은 목표 틀림 비율 이하인 가장 낮은 격자 값을 새 중심값으로 고르고, 없으면 최고값을 고른다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_picks_lowest_threshold_meeting_target`, `recenter_all_wrong_uses_upper_bound`, `threshold_grid_default_bounds_spans_bounds_by_half_percent` |
 | 느린 조정은 행동이 목표를 지키는 값 위에서 멈춘 기록에서도 새 중심값을 그 값 근처로 둔다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_where_actions_stop_above_oracle_lands_near_oracle` |
-| 느린 조정은 같은 판단 기록에서 모의 판단의 위험 곡선 계산과 같은 중심값을 낸다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_matches_simulation_s1q_on_same_records` |
+| 느린 조정은 같은 판단 기록에서 모의 판단의 위험 곡선 계산과 같은 중심값을 낸다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_matches_simulation_s1q_on_same_records`, `recenter_matches_simulation_t1_on_same_records` |
 | 느린 조정은 되돌릴 수 없는 행동의 최저값 아래로 중심값을 내리지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_keeps_center_within_irreversible_floor` |
 | 전체 묻는 빈도는 판단 20번에 1번을 넘지 않는다. | 많은 판단을 흘려 물은 비율이 상한 안인지 확인한다. |
 | 판단 기록마다 judge 버전, 기준값, q를 남기고 결과 신호와 물은 답은 생긴 뒤 같은 기록에 채운다. | 판단 뒤 기록에 세 값이 있고, 신호와 답이 확정된 뒤 같은 기록에 채워지는지 확인한다. |
@@ -214,7 +212,8 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 - 평가용 라벨 조건이 엄격해 평가 세트가 천천히 쌓인다.
 - 사용자 반응이 없는 판단은 미확정이라 학습 신호가 되지 않는다.
 - 느린 조정은 누적 기록으로 계산해 사용 방식이 급변하면 늦게 따라간다. 급변은 빠른 조정이 맡는다.
-- 쓰인 결과 3,000건 조건은 첫 조정을 늦춘다. 목표 3% 조건에서 이 조건을 걸고 모의 판단을 돌리면 새 중심값이 최저값이나 최고값에 닿는 비율이 16~18%로 남는다. 일찍 조정해야 행동 범위가 낮아져 낮은 확률의 결과를 더 모을 수 있기 때문이다.
+- 물은 답만 신호인 조건에서는 쓰인 결과가 300건에 못 미쳐 9,000건까지 조정하지 못하는 복제가 15%다.
+- 한 번에 0.05까지만 움직여 중심값이 목표 값에 닿기까지 `/train`이 여러 번 필요하다. 급변은 빠른 조정이 맡는다.
 
 ## 미해결 질문
 
