@@ -112,7 +112,7 @@ pub async fn run(
     todo!("#91")
 }
 
-/// 느린 조정. 채점된 판단이 `MIN_UNLABELED` 미만인 질문은 그대로 둔다.
+/// 느린 조정. 쓰인 결과가 `MIN_RECENTER_RESULTS` 미만인 질문은 그대로 둔다.
 pub async fn recenter_thresholds(
     store: &Store,
     targets: &[String],
