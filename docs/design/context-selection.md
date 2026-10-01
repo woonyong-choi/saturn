@@ -187,7 +187,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 대체된 제약 원문은 기록에 남고 패킷에서만 빠진다. | 대체 뒤 기록에 두 원문이 있고 패킷에는 새 원문과 대체 표시만 있는지 확인한다. |
 | 순위가 judge 전체 판단과 얼마나 겹치는지 잰다. | [RRF k와 judge 상위 N 실험 결과](../experiments/rrf-k-top-n/report.md): 상위 10개 12.0%, 상위 40개 44.5% |
 | 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [단어 조각 단위별 오타 재현율 실험 결과](../experiments/wordpiece-typo-recall/report.md) |
-| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. `replaces_<n>` 구간과 간접 지시는 [#152](https://github.com/woonyong-choi/saturn/issues/152) 실험으로 다시 확인한다. |
+| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. [간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)에서 `replaces_<n>` 구간과 간접 지시 입력은 기준을 가르지 못해 보류이고(간접 지시 입력 74.5% [68.0, 80.0]), 앞 입력의 제약 등록 여부를 state에 넣어도 정확도는 오르지 않았다. |
 
 ## 단점
 
@@ -199,6 +199,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 - 동시 요청이 8개를 넘을 때의 속도 제한은 재지 않았다.
 - `k`, 기준 파일 범위를 실측으로 맞춰야 한다.
 - 일과 제약이 섞인 입력은 원문 전체가 제약으로 등록되어 패킷이 길어진다.
+- 앞 말을 가리키는 간접 지시 입력은 `is_constraint` 정확도가 74.5% [68.0, 80.0]이고, 앞 입력의 제약 등록 여부를 state에 넣어도 오르지 않았다([간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)).
 
 ## 대안
 
@@ -210,3 +211,4 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 ## 미해결 질문
 
 - judge에 넘길 후보를 RRF 상위 N으로 고를지, 후보 전체나 다른 거르기로 바꿀지([#153](https://github.com/woonyong-choi/saturn/issues/153))
+- 간접 지시 입력에서 `is_constraint` 정확도를 올리되 일반 제약 입력의 재현율을 해치지 않는 질문 문장과 부분 충돌을 따로 묻는 질문이 있는지([#186](https://github.com/woonyong-choi/saturn/issues/186))

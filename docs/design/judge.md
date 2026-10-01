@@ -199,13 +199,14 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 | `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [#6](https://github.com/woonyong-choi/saturn/issues/6) 실험으로 한국어 평가 세트의 오분류율을 확인한다. |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
 | 후보를 순위로 자르지 않고 전체를 묻는다. | `saturn-terminal/core/src/judges/mod.rs`의 `compact_questions_150_candidates_ask_all` |
-| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. `replaces_<n>` 구간과 간접 지시는 [#152](https://github.com/woonyong-choi/saturn/issues/152) 실험으로 다시 확인한다. |
+| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. [간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)에서 `replaces_<n>` 구간과 간접 지시 입력은 기준을 가르지 못해 보류이고(간접 지시 입력 74.5% [68.0, 80.0]), 앞 입력의 제약 등록 여부를 state에 넣어도 정확도는 오르지 않았다. |
 
 ## 단점
 
 - 입력마다 외부 judge를 부르므로 호출 비용과 지연이 입력 수에 비례한다.
 - judge 규격과 `judge_id` 매핑을 Saturn이 직접 정의하고 유지한다.
 - 큰 변경마다 옛 선택지에서 새 선택지로 가는 대응표를 코드에 함께 관리한다.
+- state에 앞 입력의 제약 등록 여부를 넣어도 judge는 그 값을 거의 쓰지 않아 간접 지시 입력 정확도가 오르지 않았다([간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)). 질문 문장에 규칙을 더하면 올랐지만 일반 제약 입력의 재현율이 떨어졌다.
 
 ## 대안
 
@@ -219,3 +220,4 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 - 통과한 후보가 없거나 provider가 비정상 종료했을 때 사용자에게 확인할지, 현재 에이전트를 유지할지 ([#39](https://github.com/woonyong-choi/saturn/issues/39))
 - judge에 넘기는 state에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))
 - 관계 판단이 `conflicts`일 때 바로 멈출지, 사용자에게 확인할지, 대기로 둘지 ([#36](https://github.com/woonyong-choi/saturn/issues/36))
+- 간접 지시 입력의 `is_constraint` 질문 문장과 부분 충돌 질문을 어떻게 고칠지([#186](https://github.com/woonyong-choi/saturn/issues/186))
