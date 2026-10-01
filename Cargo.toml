@@ -31,6 +31,7 @@ sha2 = "0.10"
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite"] }
 tempfile = "3"
 thiserror = "2"
+toml_edit = "0.22"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "process", "sync", "time", "signal", "io-util"] }
 tracing = "0.1"
 ts-rs = "12"

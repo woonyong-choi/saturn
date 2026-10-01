@@ -221,7 +221,7 @@ fn parse_enum<T: DeserializeOwned>(text: &str) -> Result<T, StoreError> {
     ))?)
 }
 
-fn sha256_hex(bytes: &[u8]) -> String {
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     use std::fmt::Write;
 
