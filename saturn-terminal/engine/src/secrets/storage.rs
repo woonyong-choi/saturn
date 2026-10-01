@@ -67,6 +67,12 @@ impl SecretStore {
         Self::with_backend(backend, mode)
     }
 
+    /// 대체 파일 백엔드로 연다. 테스트가 키체인 대신 쓴다.
+    #[cfg(test)]
+    pub(crate) fn with_key_file(path: PathBuf, mode: StorageMode) -> Self {
+        Self::with_backend(Backend::File(path), mode)
+    }
+
     fn with_backend(backend: Backend, mode: StorageMode) -> Self {
         Self {
             backend,
@@ -110,6 +116,27 @@ impl SecretStore {
         }
         self.current = Some((key, source));
         Ok(())
+    }
+
+    /// 확인 전 키라 백엔드에는 쓰지 않는다.
+    pub(crate) fn hold(&mut self, key: JudgeKey, source: KeySource) {
+        self.current = Some((key, source));
+    }
+
+    /// `Stored`, `Stdin` 출처만 쓴다.
+    ///
+    /// # Errors
+    /// 키체인 실패면 `Keychain`, 파일 실패면 `Io`.
+    pub(crate) fn persist_current(&mut self) -> Result<(), SecretsError> {
+        match &self.current {
+            Some((key, KeySource::Stored | KeySource::Stdin)) => self.write_backend(key),
+            _ => Ok(()),
+        }
+    }
+
+    /// 저장된 키는 그대로 둔다.
+    pub(crate) fn drop_current(&mut self) {
+        self.current = None;
     }
 
     /// # Errors

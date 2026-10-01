@@ -66,6 +66,9 @@
 | `on_exit` | `background`, `stop`, `ask` | `background` |
 | `judge.method` | `jev`, `saturn`, `collect` | `jev` |
 | `judge.endpoint` | 문자열 | `https://api.typesafe.ai` |
+| `judge.model` | 문자열 | `jev-1.13.0` |
+| `judge.local.endpoint`, `judge.local.version` | 문자열 | 없음 |
+| `judge.skip_check` | 참·거짓(도움말에 없음) | 없음 |
 | `judge.key.info` | `source`(`Stored`, `Stdin`, `Env`, `Command`), `last4` | 없음 |
 | `judge.key.command` | 문자열 배열 | 없음 |
 | `judge.key.storage` | `standard`, `hardened` | `standard` |

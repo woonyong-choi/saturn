@@ -90,12 +90,11 @@ impl SettingsManager {
         if let Some(content) = user {
             layers.push((source(Layer::User, Some(user_path), &content), content));
         }
-        if let Some(path) = find_folder_config(&self.workdir, &self.home).await? {
-            let content = read_file(&path)?.unwrap_or_default();
-            let status = self.trust.status(&path, &content);
+        if let Some((path, status)) = self.folder_status().await? {
             if status != TrustStatus::Trusted {
                 return Err(SettingsError::Untrusted { path });
             }
+            let content = read_file(&path)?.unwrap_or_default();
             seen.push((path.clone(), Some(fingerprint(&content))));
             layers.push((source(Layer::Folder, Some(path), &content), content));
         }
