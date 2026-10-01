@@ -64,8 +64,10 @@ judge 버전은 모델, 보정값, 질문별 목표 틀림 비율을 묶은 것�
 2. 관찰 시간은 다음 입력 3개 또는 10분이다.
 3. judge 판단으로 행동한 뒤 사용자가 뒤집거나 취소하면 틀림 신호다.
 4. 행동하지 않았는데 사용자가 같은 행동을 직접 하면 놓침 신호다.
-5. 사용자 반응이 없으면 정답으로 보지 않고 미확정으로 둔다.
+5. 사용자 반응이 없으면 정답으로 보지 않고 미확정(`Unconfirmed`)으로 확정한다.
 
+- `judges`는 관찰 중에 처음 본 반응을 들고 있다가 관찰 시간이 끝난 뒤 한 번에 판단 기록에 쓴다. 관찰이 끝나기 전의 반응은 바뀔 수 있기 때문이다.
+- 관찰이 끝나기 전에는 판단 기록의 결과 신호가 비어 있고, 비어 있는 판단은 느린 조정의 기록에 들지 않는다.
 - 틀림 신호와 놓침 신호를 둘 다 쓴다. 행동한 판단만 보면 기준값이 끝없이 오르기 때문이다.
 
 ### 사용자에게 묻기
@@ -107,6 +109,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 8. 새 중심값이 잡히면 빠른 조정으로 생긴 차이를 0으로 되돌린다.
 
 - 목표 틀림 비율의 기본값은 5%다.
+- 기준값이 있는 질문 중 답이 `noul`인 질문마다 판단 기록 한 건이 관찰 하나다. 판단 하나의 결과 신호와 물은 답은 그 판단의 모든 관찰에 같이 적용한다. 신호와 답을 질문별로 따로 받지 않는 현재 기록 구조에 맞춘 것이다.
 - 가장 낮은 값을 고르는 것은 목표 위험 안에서 행동 비율을 최대로 두기 위해서다.
 - 놓침 신호는 쓰지 않는다. 놓침은 행동하지 않은 판단 중 맞은 것만 관찰되고 틀림은 행동한 판단 중에서만 관찰되어, 둘을 한 비율로 섞으면 모집단이 달라 중심값이 최저값이나 최고값으로 갈리기 때문이다.
 - 행동하지 않은 판단의 틀림은 물은 답을 1/q로 키워 추정한다. 판단 기록에 q가 있어 행동하지 않은 판단의 결과를 몰라도 곡선을 만들 수 있다.
@@ -151,7 +154,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 3. 200건 미만이면 engine은 실행하지 않고 부족한 건수를 보인다.
 4. 200건 이상이면 TUI가 학습 확인 창을 보이고 사용자 선택을 기다린다.
 5. engine이 채점 모델로 후보를 채점하고 품질 게이트를 통과한 라벨을 저장한다.
-6. `judges`가 느린 조정으로 질문별 중심값을 다시 계산한다. 쓰인 결과가 300건 미만인 질문은 그대로 둔다.
+6. `judges`가 결과 신호를 확정한 모든 판단 기록으로 `Observation` 목록을 만들어 질문마다 `recenter`에 넘기고 질문별 중심값을 다시 계산한다. 쓰인 결과가 300건 미만인 질문은 그대로 둔다.
 7. engine이 로컬 학습기로 Saturn 모델을 학습하고 승격 게이트로 비교한다.
 
 - `/train`은 지난 실행 뒤 채점 안 된 판단이 200건 이상일 때만 실행한다([#16](https://github.com/woonyong-choi/saturn/issues/16)). 적은 라벨로 한 조정은 잡음 수준이기 때문이다.
@@ -182,7 +185,7 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 
 | 요구사항 | 검증 계획 |
 |---|---|
-| 결과 신호는 관찰 시간(다음 입력 3개 또는 10분)이 지난 뒤에만 확정한다. | 관찰 시간 전에는 신호가 미확정으로 남는지 확인한다. |
+| 결과 신호는 관찰 시간(다음 입력 3개 또는 10분)이 지난 뒤에만 확정한다. | `saturn-terminal/engine/src/lifecycle/outcomes.rs`의 `settle_after_three_inputs_records_confirmed_signal`, `settle_before_observation_ends_leaves_signal_empty`, `settle_after_ten_minutes_without_reaction_records_unconfirmed`, `saturn-terminal/engine/src/outcomes.rs`의 `settled_before_window_and_inputs_is_empty`, `settled_after_three_inputs_returns_reaction` |
 | 빠른 조정은 기준값을 중심값 ±0.05 밖으로 옮기지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `observe_never_leaves_fast_range` |
 | 빠른 조정은 신호 하나로 기준값을 `0.002 × 가중 × 방향`만큼만 옮기고, 이동 폭은 신호가 쌓여도 줄지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `observe_step_stays_fixed_after_many_signals` |
 | 빠른 조정은 행동 신호에 1/q를 붙이지 않고 물은 피드백 답의 신호에만 붙인다. | `saturn-terminal/core/src/judges/calibration.rs`의 `observe_behavior_signal_moves_fixed_step_without_ask_weight`, `observe_asked_answer_is_weighted_by_inverse_q` |
@@ -197,7 +200,8 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 | 느린 조정은 같은 판단 기록에서 모의 판단의 위험 곡선 계산과 같은 중심값을 낸다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_matches_simulation_s1q_on_same_records`, `recenter_matches_simulation_t1_on_same_records` |
 | 느린 조정은 되돌릴 수 없는 행동의 최저값 아래로 중심값을 내리지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_keeps_center_within_irreversible_floor` |
 | 전체 묻는 빈도는 판단 20번에 1번을 넘지 않는다. | 많은 판단을 흘려 물은 비율이 상한 안인지 확인한다. |
-| 판단 기록마다 judge 버전, 기준값, q를 남기고 결과 신호와 물은 답은 생긴 뒤 같은 기록에 채운다. | 판단 뒤 기록에 세 값이 있고, 신호와 답이 확정된 뒤 같은 기록에 채워지는지 확인한다. |
+| 판단 기록마다 judge 버전, 기준값, q를 남기고 결과 신호와 물은 답은 생긴 뒤 같은 기록에 채운다. | `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`, `saturn-terminal/engine/src/lifecycle/outcomes.rs`의 `answer_feedback_records_answer_in_judgment`, `answer_feedback_request_is_answered_through_socket` |
+| `/train`은 판단 기록으로 `Observation` 목록을 만들어 `recenter`에 넘긴다. | `saturn-terminal/engine/src/training/mod.rs`의 `recenter_thresholds_with_enough_recorded_results_moves_center`, `recenter_thresholds_below_min_results_keeps_center`, `recenter_thresholds_ignores_judgments_still_being_observed` |
 | `/train`은 채점 안 된 판단이 200건 미만이면 실행하지 않는다. | 199건에서 실행을 거절하고 200건에서 시작하는지 확인한다. |
 | 모델 학습은 학습용 라벨 1,000건 이상, 평가용 라벨 200건 이상일 때만 한다. | 학습용 999건에서 학습을 건너뛰고 채점과 기준값 조정만 하는지 확인한다. |
 | 품질 게이트를 통과하지 못한 라벨은 학습용과 평가용에 들어가지 않는다. | 순서를 바꾼 두 답이 다른 판단이 라벨에서 빠지는지 확인한다. |

@@ -236,7 +236,7 @@ fn method_text(method: Method) -> &'static str {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::os::unix::fs::PermissionsExt;
     use std::path::PathBuf;
 
@@ -245,7 +245,7 @@ mod tests {
     use crate::store::tests::temp_store;
     use crate::store::{PruneOutcome, PruneRequest, PruneScope, RunEnd};
 
-    fn judgment(chat: ChatId) -> NewJudgment {
+    pub(crate) fn judgment(chat: ChatId) -> NewJudgment {
         NewJudgment {
             chat,
             input: None,

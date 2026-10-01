@@ -49,7 +49,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 | 실행 | 실행마다의 `effect_scope`, 원시 기록 |
 | session | 닫은 session의 provider session ID, 마지막 턴의 활성 맥락과 끝 시각 |
 | 사용량 | 사용량 보고 원값, 범위, 대상 에이전트, 모델 |
-| 판단 기록 | judge 호출의 보낸 원문, 받은 원문, 질문별 답, 비용, 시간 |
+| 판단 기록 | judge 호출의 보낸 원문, 받은 원문, 질문별 답, 비용, 시간, 물은 확률 q, 결과 신호, 물은 답 |
 | 설정 스냅샷 | 설정 번호별 병합 결과와 층 목록 |
 
 - 기록 저장소에 쓰는 쪽은 engine 하나다. 쓰기 충돌을 막기 위해서다.
@@ -73,7 +73,11 @@ engine은 모든 judge 호출의 원문, 답, 비용, 시간을 판단 기록으
 - 저장하기 전에 보낸 원문과 받은 원문에서 비밀값을 가린다([judge 키 보호](judge-key-security.md)).
 - 기록을 끈 채팅(`/record off`)에서는 판단 기록을 저장하지 않는다.
 - 판단 기록에는 질문 버전과 설정 번호를 남긴다. 버전이 바뀐 뒤에도 옛 기록을 다시 해석하기 위해서다.
-- 판단 기록에는 그때의 기준값과 물은 확률 q를 남기고, 결과 신호와 물은 답이 생기면 같은 기록에 채운다. 느린 조정이 모든 판단 기록으로 위험 곡선을 다시 계산하기 위해서다.
+- 판단 기록에는 그때의 기준값과 물은 확률 q(`asked_with`)를 남기고, 결과 신호(`signal`)와 물은 답(`asked_answer`)이 생기면 같은 기록에 채운다. 느린 조정이 모든 판단 기록으로 위험 곡선을 다시 계산하기 위해서다.
+- `signal`은 스키마 V3에서 더한 칸이고 `Wrong`(틀림), `Missed`(놓침), `Unconfirmed`(반응 없음)이다. 값이 NULL이면 관찰 시간(다음 입력 3개 또는 10분)이 끝나지 않은 판단이다. engine이 관찰이 끝난 뒤 한 번만 쓰고 이미 쓴 값은 바꾸지 않는다.
+- `asked_answer`는 스키마 V3에서 더한 칸이고 `Correct`나 `Wrong`이다. 물은 판단(`asked_with`가 NULL이 아닌 판단)에만 쓰고 첫 답만 남긴다. NULL이면 묻지 않았거나 답이 없는 판단이다.
+- 이관 전 행은 두 칸이 NULL이다. NULL 신호인 판단은 느린 조정의 기록에 들지 않는다.
+- engine이 다시 시작하면 관찰 중이던 판단의 신호는 NULL로 남는다. 관찰 상태를 메모리에만 두기 때문이다.
 - 사용자가 동의한 레코드만 서버로 올리고, 동의 버전과 삭제 id를 기록한다([결정 기록](../decisions/2026-09-29-local-first-judgment-collection.md)).
 - 삭제를 요청한 레코드는 다음 학습부터 뺀다.
 - judge 호출 규칙은 [judge](judge.md), 학습에 쓰는 방식은 [judge 학습](judge-training.md)에 있다.
@@ -153,6 +157,8 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 스키마를 올리기 전 백업 하나를 남긴다. | 옛 스키마 파일로 새 버전을 실행해 백업 1개와 이관된 스키마가 생기는지 확인한다. |
 | 스키마 V2 이관은 session 행을 보존하고 마지막 턴 열을 NULL로 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v1_file_migrates_to_last_turn_columns_keeping_sessions`, `migration_keeps_only_latest_backup_and_removes_old_ones` |
 | 마지막 턴 값은 저장하고 되살린다. | `saturn-terminal/engine/src/store/sessions.rs`의 `record_last_turn_round_trips_through_live_mains`, `record_last_turn_overwrites_and_survives_session_upsert` |
+| 스키마 V3 이관은 판단 기록 행을 보존하고 결과 신호와 물은 답 칸을 NULL로 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v2_file_migrates_to_outcome_columns_keeping_judgments` |
+| 결과 신호와 물은 답은 같은 판단 기록에 저장하고, 신호는 한 번 확정하면 바꾸지 않으며, 물은 답은 묻지 않은 판단에 쓰지 않는다. | `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`, `record_signal_keeps_first_confirmed_value`, `record_asked_answer_keeps_first_answer`, `record_asked_answer_for_unasked_judgment_returns_not_found` |
 | 이관 백업은 14일이 지나면 지운다. | 만든 지 14일이 지난 백업이 다음 시작 때 사라지는지 확인한다. |
 | 원시 기록의 해시와 크기는 압축 전 값이다. | 압축 뒤 기록한 해시가 원본의 해시와 같은지 확인한다. |
 | 열린 입력, 열린 실행, 활성 session은 어떤 명령으로도 지우지 않는다. | 열린 항목이 있는 채팅을 지워 그 항목이 남는지 확인한다. |

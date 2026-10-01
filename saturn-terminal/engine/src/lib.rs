@@ -14,6 +14,7 @@ pub mod store;
 pub mod training;
 
 mod chat_env;
+mod outcomes;
 mod requests;
 mod sessions;
 mod usage;
@@ -210,6 +211,8 @@ pub struct Engine {
     notices: StartNotices,
     queue: Queue,
     sessions: SessionManager,
+    /// 결과 신호를 아직 확정하지 않은 판단.
+    signals: outcomes::SignalWatch,
     agents: AgentTracker,
     runs: Runs,
     presence: Presence,
@@ -258,6 +261,7 @@ impl Engine {
             notices: StartNotices { migration },
             queue: Queue::new(),
             sessions,
+            signals: outcomes::SignalWatch::default(),
             agents: AgentTracker::new(),
             runs: Runs::default(),
             presence: Presence::Background { idle_since: None },
@@ -398,18 +402,34 @@ impl Engine {
     /// # Errors
     /// 복구할 수 없는 오류만 돌려주고, 요청 하나의 오류는 그 클라이언트에 알리고 계속한다.
     async fn serve(&mut self) -> Result<(), EngineError> {
-        while let Some(event) = self.rpc.next_event().await {
-            match event {
-                RpcEvent::Connected(_) => {}
-                RpcEvent::Request(client, id, request) => {
-                    self.handle_request(client, id, request).await?;
+        let mut tick = tokio::time::interval(outcomes::SETTLE_TICK);
+        loop {
+            tokio::select! {
+                event = self.rpc.next_event() => {
+                    let Some(event) = event else { break };
+                    self.handle_event(event).await?;
                 }
-                RpcEvent::Disconnected(client) => {
-                    self.attachments.remove(&client);
+                _ = tick.tick() => {
+                    if let Err(error) = self.settle_signals(Instant::now()).await {
+                        tracing::warn!(error = %masked_chain(&self.masker, &error), "failed to settle judgment signals");
+                    }
                 }
-                // TODO(#150): 마지막 TUI가 떨어진 뒤 `on_last_detach`와 유예 시계
-                RpcEvent::LastDetached => {}
             }
+        }
+        Ok(())
+    }
+
+    async fn handle_event(&mut self, event: RpcEvent) -> Result<(), EngineError> {
+        match event {
+            RpcEvent::Connected(_) => {}
+            RpcEvent::Request(client, id, request) => {
+                self.handle_request(client, id, request).await?;
+            }
+            RpcEvent::Disconnected(client) => {
+                self.attachments.remove(&client);
+            }
+            // TODO(#150): 마지막 TUI가 떨어진 뒤 `on_last_detach`와 유예 시계
+            RpcEvent::LastDetached => {}
         }
         Ok(())
     }
@@ -484,8 +504,9 @@ impl Engine {
             Request::ContinueInput { .. } => Err(unsupported("ContinueInput")),
             Request::CloseHeld { .. } => Err(unsupported("CloseHeld")),
             Request::AnswerPermission { .. } => Err(unsupported("AnswerPermission")),
-            // TODO(#91): 피드백 답
-            Request::AnswerFeedback { .. } => Err(unsupported("AnswerFeedback")),
+            Request::AnswerFeedback { judgment, correct } => {
+                self.answer_feedback(judgment, correct).await
+            }
             Request::SubmitJudgeKey { key } => self.submit_judge_key(client, key).await,
             Request::AnswerFolderTrust {
                 path,

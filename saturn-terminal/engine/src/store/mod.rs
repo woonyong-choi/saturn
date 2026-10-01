@@ -3,6 +3,7 @@
 
 mod history;
 mod judgments;
+mod outcomes;
 mod raw;
 mod records;
 mod retention;
@@ -29,6 +30,9 @@ pub use retention::{
 };
 pub use schema::{BACKUP_RETENTION, MigrationNotice, SCHEMA_VERSION};
 pub use usage::JudgeUsage;
+
+#[cfg(test)]
+pub(crate) use judgments::tests::judgment as test_judgment;
 
 pub const DB_FILE: &str = "saturn.db";
 
@@ -236,7 +240,7 @@ pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     /// 폴더가 살아 있는 동안만 쓴다.
@@ -247,15 +251,18 @@ mod tests {
         (dir, store)
     }
 
-    /// 첫 스키마(V1)까지만 만든 옛 파일. 이관 시험의 출발점이다.
-    pub(crate) async fn temp_store_at_v1() -> (tempfile::TempDir, Store) {
+    /// 스키마 `version`까지만 만든 옛 파일. 이관 시험의 출발점이다.
+    pub(crate) async fn temp_store_at(version: usize) -> (tempfile::TempDir, Store) {
         let dir = tempfile::tempdir().unwrap();
-        let (store, notice) =
-            Store::open_with(dir.path(), &schema::MIGRATIONS[..1], SystemTime::now())
-                .await
-                .unwrap();
+        let (store, notice) = Store::open_with(
+            dir.path(),
+            &schema::MIGRATIONS[..version],
+            SystemTime::now(),
+        )
+        .await
+        .unwrap();
         assert!(notice.is_none());
-        assert_eq!(store.schema_version().await.unwrap(), 1);
+        assert_eq!(store.schema_version().await.unwrap() as usize, version);
         (dir, store)
     }
 
@@ -310,22 +317,26 @@ mod tests {
     async fn open_older_schema_backs_up_then_migrates() {
         let (dir, store) = temp_store().await;
         store.pool.close().await;
-        let steps = [
-            schema::MIGRATIONS[0],
-            schema::MIGRATIONS[1],
-            "CREATE TABLE extra (id INTEGER)",
-        ];
+        let mut steps = schema::MIGRATIONS.to_vec();
+        steps.push("CREATE TABLE extra (id INTEGER)");
 
         let (store, notice) = Store::open_with(dir.path(), &steps, SystemTime::now())
             .await
             .unwrap();
 
         let notice = notice.unwrap();
-        assert_eq!((notice.from, notice.to), (2, 3));
+        assert_eq!(
+            (notice.from, notice.to),
+            (SCHEMA_VERSION, SCHEMA_VERSION + 1)
+        );
         assert!(notice.backup.starts_with(store.backup_dir()));
         assert!(notice.backup.exists());
-        assert!(notice.line().contains("2 → 3"));
-        assert_eq!(store.schema_version().await.unwrap(), 3);
+        assert!(
+            notice
+                .line()
+                .contains(&format!("{SCHEMA_VERSION} → {}", SCHEMA_VERSION + 1))
+        );
+        assert_eq!(store.schema_version().await.unwrap(), SCHEMA_VERSION + 1);
         let backups = std::fs::read_dir(store.backup_dir()).unwrap().count();
         assert_eq!(backups, 1);
     }
