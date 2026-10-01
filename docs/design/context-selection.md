@@ -91,7 +91,8 @@
 - 라틴 밖 알파벳 문자(키릴, 그리스 문자 등)는 라틴 문자와 같은 규칙으로 자르되 다른 종류로 본다.
 - 오타는 오타 글자가 든 조각만 빠지므로 점수가 낮아질 뿐 0이 되지 않는다.
 - 같은 뜻의 다른 말과 번역어는 용어 카탈로그, 파일 겹침 채널, judge가 맡는다. 임베딩 채널은 두지 않는다. 식별자와 경로가 많은 기록에서는 단어 기반 채널이 강하고, 임베딩은 설치 크기, 상주 메모리, 계산 시간이 드는데 이득이 측정되지 않았기 때문이다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)). RRF는 목록 수와 무관하게 합치므로, 실측으로 이득이 확인되면 채널 하나를 더하는 것으로 넣는다.
-- 자모 단위 조각과 영문 글자 4개 단위 조각은 오타 재현율을 실측한 뒤 정한다([#118](https://github.com/woonyong-choi/saturn/issues/118)). 영문 글자 n-gram의 근거는 McNamee & Mayfield, Information Retrieval 2004다.
+- 한글을 자모 3개 단위로 자르지 않는다. 오타 질의 재현율 이득이 0.9%p [−0.8, 2.6]에 그치고 오타 없는 질의의 1위 정밀도가 10.0%p 떨어졌기 때문이다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
+- 영문 식별자 단어를 글자 4개 단위로 바꾸지 않는다. 오타 질의 재현율은 11.6%p 올랐지만 오타 없는 질의의 1위 정밀도가 5.2%p 떨어졌기 때문이다([실험 결과](../experiments/wordpiece-typo-recall/report.md)). 영문 글자 n-gram의 근거는 McNamee & Mayfield, Information Retrieval 2004다.
 
 ### 순위 합치기
 
@@ -180,12 +181,13 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 대체된 제약 원문은 기록에 남고 패킷에서만 빠진다. | 대체 뒤 기록에 두 원문이 있고 패킷에는 새 원문과 대체 표시만 있는지 확인한다. |
 | `k`와 N이 judge 전체 판단의 95% 이상을 덮는다. | [#116](https://github.com/woonyong-choi/saturn/issues/116) |
 | RRF 상위 N + judge가 judge 단독보다 전환 품질을 낮추지 않는다. | [#117](https://github.com/woonyong-choi/saturn/issues/117) |
-| 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [#118](https://github.com/woonyong-choi/saturn/issues/118) |
+| 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [단어 조각 단위별 오타 재현율 실험 결과](../experiments/wordpiece-typo-recall/report.md) |
 | `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [#121](https://github.com/woonyong-choi/saturn/issues/121) |
 
 ## 단점
 
 - 순위 채널은 같은 뜻의 다른 말을 모르므로 용어 카탈로그가 자랄 때까지 같은 뜻을 놓칠 수 있다.
+- 영문 단어 사이 공백이 빠지면 소문자 단어가 하나로 붙어 단어 겹침을 놓친다. 이 오타의 상위 10개 재현율은 56.4%였다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
 - `k`, N, 기준 파일 범위를 실측으로 맞춰야 한다.
 - 일과 제약이 섞인 입력은 원문 전체가 제약으로 등록되어 패킷이 길어진다.
 
