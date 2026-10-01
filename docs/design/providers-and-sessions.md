@@ -167,8 +167,12 @@ session 교체는 같은 채팅·역할 안에서 턴이 끝난 경계에만 한
 1. `agents`는 추적된 subagent부터 멈춤 신호 대상 순서를 정한다.
 2. `providers`는 Codex에는 자식 session별 `turn/interrupt`를, Claude에는 멈춤 제어 신호를 보낸다.
 3. 10초 뒤 남은 프로세스가 있으면 `processes`는 provider 프로세스 묶음에 중지 신호를 보낸다.
-4. 그래도 남으면 `processes`는 강제 종료한다.
+4. 중지 신호 뒤 5초(초안)가 지나도 남으면 `processes`는 강제 종료한다.
 5. `processes`는 트리 전체의 종료를 확인한 뒤 완료를 보고한다.
+
+- provider는 새 프로세스 묶음의 리더로 실행한다. 자식 환경은 비운 뒤 제외 목록 변수를 지운 환경과 중첩 표지만 넣는다. 실행 명세의 환경 값은 디버그 출력에 담지 않는다.
+- `processes`는 1초(초안)마다 프로세스 표를 읽어 리더의 자손을 기억한다. 묶음 밖으로 빠져나간 자손에는 신호를 보내지 않고, 살아 있으면 남은 수로 센다.
+- 리더를 남기는 중지(Codex app-server처럼 session을 이어 쓸 때)는 리더를 뺀 묶음 구성원에만 신호를 보낸다.
 
 멈춤은 Saturn session의 모든 에이전트와 subagent에 닿는다. 에이전트 하나만 멈추는 기능은 취소와 모델 교체 같은 내부 처리에서만 쓰기 때문이다. 트리 전체 종료를 확인하기 전에는 완료라고 하지 않는다. subagent가 남은 채 멈췄다고 보이는 일을 막기 위해서다. Claude 백그라운드 subagent의 중지는 실측으로 확인한다([#18](https://github.com/woonyong-choi/saturn/issues/18)). 멈춘 작업의 보류와 재개는 [입력 처리](input-handling.md)에 있다.
 
