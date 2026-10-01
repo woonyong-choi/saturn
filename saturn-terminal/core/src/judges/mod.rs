@@ -5,7 +5,7 @@ pub mod calibration;
 
 use std::future::Future;
 
-use saturn_protocol::ids::{ChatRevision, SettingsRevision};
+use saturn_protocol::ids::{ChatRevision, LedgerSeq, SettingsRevision};
 use saturn_protocol::state::Disposition;
 
 /// 이 값 미만이면 새 작업, 이 값부터 유지 기준 미만까지는 현재 에이전트 유지.
@@ -17,6 +17,7 @@ pub const PROBABILITY_TOLERANCE: f64 = 0.01;
 pub const SET_ROUTE: &str = "route";
 pub const SET_RELATION: &str = "relation";
 pub const SET_SEND_OPT: &str = "send-opt";
+pub const SET_COMPACT: &str = "compact";
 
 /// 판단 기록과 대체 규칙 기록에 그대로 남는다.
 pub mod question_ids {
@@ -310,6 +311,55 @@ pub fn questions_for_input(
     sets
 }
 
+// cost: time O(n), heap O(n), stack O(1)
+// vars: n = `shortlist` 길이
+// basis: estimate
+/// `shortlist`는 `sessions::ranking::judge_shortlist`로 좁힌 상위 N개이고, 후보마다 `call_<id>_keep`과 `result_<id>_keep`을 묻는다.
+pub fn compact_questions(shortlist: &[LedgerSeq]) -> (QuestionSetId, Vec<Question>) {
+    let questions = shortlist
+        .iter()
+        .flat_map(|seq| {
+            [
+                noul(
+                    &compact_call_id(*seq),
+                    &format!("Should tool call {} stay in the handoff context?", seq.0),
+                ),
+                noul(
+                    &format!("result_{}_keep", seq.0),
+                    &format!(
+                        "Should the result of tool call {} stay in the handoff context?",
+                        seq.0
+                    ),
+                ),
+            ]
+        })
+        .collect();
+    (set_id(SET_COMPACT), questions)
+}
+
+// cost: time O(n·a), heap O(n), stack O(1)
+// vars: n = `shortlist` 길이, a = 답 수
+// basis: estimate
+/// `call_<id>_keep` 답을 `(기록 번호, P(yes))`로 돌려주고, 답이 없거나 `noul`이 아닌 후보는 뺀다.
+pub fn compact_verdicts(
+    shortlist: &[LedgerSeq],
+    response: &JudgeResponse,
+) -> Vec<(LedgerSeq, f64)> {
+    shortlist
+        .iter()
+        .filter_map(|seq| {
+            let id = compact_call_id(*seq);
+            response
+                .answers
+                .iter()
+                .find_map(|(answer_id, answer)| match answer {
+                    Answer::Noul(yes) if *answer_id == id => Some((*seq, *yes)),
+                    _ => None,
+                })
+        })
+        .collect()
+}
+
 /// `keep_current`를 `is_actionable`보다 먼저 읽어 이어 가는 입력이 파일 탐색으로 빠지지 않게 한다.
 pub fn decide_route(
     judged: Option<(&JudgeRequest, &JudgeResponse)>,
@@ -544,6 +594,10 @@ impl AnswerReader<'_> {
 }
 
 /// 초안: 모든 세트를 1.0에서 시작한다.
+fn compact_call_id(seq: LedgerSeq) -> String {
+    format!("call_{}_keep", seq.0)
+}
+
 fn set_id(name: &str) -> QuestionSetId {
     QuestionSetId {
         name: name.to_string(),
@@ -1020,5 +1074,51 @@ mod tests {
         ]);
 
         assert!(validate(&request, &response).is_err());
+    }
+
+    // cost: time O(c log c), heap O(c), stack O(1)
+    // vars: c = 후보 수
+    // basis: estimate
+    #[test]
+    fn compact_questions_150_candidates_ask_only_top_n() {
+        use crate::sessions::ranking::{
+            Candidate, DEFAULT_JUDGE_TOP, DEFAULT_RRF_K, judge_shortlist, rank_candidates,
+        };
+        let candidates: Vec<Candidate> = (0..150)
+            .map(|seq| Candidate {
+                seq: LedgerSeq(seq),
+                text: format!("output {seq}"),
+                files: Vec::new(),
+            })
+            .collect();
+        let ranked = rank_candidates(&candidates, &[], "output", DEFAULT_RRF_K);
+
+        let (set, questions) = compact_questions(judge_shortlist(&ranked, DEFAULT_JUDGE_TOP));
+
+        assert_eq!(set.name, SET_COMPACT);
+        assert_eq!(questions.len(), 2 * DEFAULT_JUDGE_TOP);
+        assert!(
+            questions
+                .iter()
+                .any(|question| question.id == "call_149_keep")
+        );
+        assert!(
+            !questions
+                .iter()
+                .any(|question| question.id == "call_0_keep")
+        );
+    }
+
+    #[test]
+    fn compact_verdicts_reads_call_keep_and_skips_missing() {
+        let shortlist = [LedgerSeq(7), LedgerSeq(3)];
+        let answers = response(vec![
+            ("call_7_keep", Answer::Noul(0.9)),
+            ("result_7_keep", Answer::Noul(0.1)),
+        ]);
+
+        let verdicts = compact_verdicts(&shortlist, &answers);
+
+        assert_eq!(verdicts, vec![(LedgerSeq(7), 0.9)]);
     }
 }
