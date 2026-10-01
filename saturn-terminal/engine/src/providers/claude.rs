@@ -17,6 +17,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::{mpsc, oneshot};
 
+use super::codex::mask_values;
 use super::{AppliedSettings, LaunchSpec, TurnOriginTracker, UserProviderConfig};
 use crate::processes::{ProcessGroupId, ProcessSpec, StopScope, Supervisor};
 use crate::secrets::Masker;
@@ -259,6 +260,7 @@ impl ProviderClient for ClaudeClient {
             Arc::clone(&state),
             self.events_tx.clone(),
             Arc::clone(&self.latest_commands),
+            self.launch.masker.clone(),
         ));
         tokio::spawn(log_stderr(spawned.io.stderr, self.launch.masker.clone()));
         if matches!(session_arg, SessionArg::Resume(_))
@@ -689,13 +691,15 @@ async fn read_loop(
     state: Arc<Mutex<SessionState>>,
     events: mpsc::Sender<ProviderEvent>,
     latest_commands: Arc<Mutex<Vec<ProviderCommand>>>,
+    masker: Masker,
 ) {
     let mut lines = BufReader::new(stdout).lines();
     while let Ok(Some(line)) = lines.next_line().await {
-        let Ok(message) = serde_json::from_str::<Value>(&line) else {
+        let Ok(mut message) = serde_json::from_str::<Value>(&line) else {
             tracing::debug!("skipping non-json line from claude");
             continue;
         };
+        mask_values(&mut message, &masker);
         let converted = {
             let mut state = lock(&state);
             if message["type"] == "control_response" {
@@ -812,6 +816,9 @@ while (my $line = <STDIN>) {
     result();
   } elsif ($text eq "ask") {
     out({ type => "control_request", request_id => "perm-1", request => { subtype => "can_use_tool", tool_name => "Bash", input => { command => "rm -rf build" }, decision_reason => "outside workdir" } });
+  } elsif ($text eq "secret") {
+    assistant([ { type => "text", text => "sk-secret-1234" } ], undef);
+    result();
   } elsif ($text eq "/compact") {
     $model = "claude-other";
     init();
@@ -873,6 +880,26 @@ while (my $line = <STDIN>) {
             events.push(event);
         }
         events
+    }
+
+    #[tokio::test]
+    async fn stdout_hides_judge_key_before_emitting_events() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut config = launch(dir.path(), Vec::new());
+        config.masker = Masker::new(vec!["sk-secret-1234".to_owned()]);
+        let mut client = ClaudeClient::new(config, Supervisor::new());
+        let session = client
+            .open_session(spec(dir.path(), None))
+            .await
+            .unwrap()
+            .provider_session;
+
+        client.send_turn(&session, "secret").await.unwrap();
+        let events = take(&mut client, 4).await;
+
+        assert!(matches!(&events[0], ProviderEvent::Text { text, .. } if text == "[redacted]"));
+        assert!(!format!("{events:?}").contains("sk-secret-1234"));
+        client.close_session(&session).await.unwrap();
     }
 
     #[tokio::test]
