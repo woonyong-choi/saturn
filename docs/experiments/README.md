@@ -3,7 +3,7 @@
 | 실험 | 확인할 것 | 관련 설계 | 결론 |
 |---|---|---|---|
 | [rrf-k-top-n](rrf-k-top-n/design.md) | 후보 순위의 k와 judge 상위 N | [맥락 고르기](../design/context-selection.md) | 측정 전 |
-| [precompute-breakeven](precompute-breakeven/design.md) | 도구 결과 미리 판단의 손익분기 | [맥락 정리](../design/context-management.md) | 측정 전 |
+| [precompute-breakeven](precompute-breakeven/report.md) | 도구 결과 미리 판단의 손익분기 | [맥락 정리](../design/context-management.md) | H2 기각: 남는 질문 감소 29.4% [26.4, 32.3], H3 기각: 토큰 4.967배 [4.337, 5.614] |
 | [claude-summary-handoff](claude-summary-handoff/design.md) | Claude 압축 요약 전환 품질 | [맥락 정리](../design/context-management.md), [provider 연결과 session](../design/providers-and-sessions.md) | 측정 전 |
 | [fast-adjust-convergence](fast-adjust-convergence/report.md) | 빠른 조정의 수렴과 진동 | [judge 학습](../design/judge-training.md) | H3 기각: 100건 안 기준값 폭 0.051 [0.050, 0.052], H1 채택: 틀림 비율 5.6% [5.5, 5.7] |
 | [ranked-handoff-quality](ranked-handoff-quality/design.md) | 후보 순위와 judge 결합의 전환 품질 | [맥락 고르기](../design/context-selection.md) | 측정 전 |
