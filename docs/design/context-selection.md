@@ -90,7 +90,7 @@
 - 한 글자뿐인 한글, 한자, 가나 구간은 그 글자 하나를 조각으로 둔다. 한 글자 단어를 버리지 않기 위해서다.
 - 라틴 밖 알파벳 문자(키릴, 그리스 문자 등)는 라틴 문자와 같은 규칙으로 자르되 다른 종류로 본다.
 - 오타는 오타 글자가 든 조각만 빠지므로 점수가 낮아질 뿐 0이 되지 않는다.
-- 같은 뜻의 다른 말과 번역어는 용어 카탈로그, 파일 겹침 채널, judge가 맡는다. 임베딩 채널은 두지 않는다. 식별자와 경로가 많은 기록에서는 단어 기반 채널이 강하고, 임베딩은 설치 크기, 상주 메모리, 계산 시간이 드는데 이득이 측정되지 않았기 때문이다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)). RRF는 목록 수와 무관하게 합치므로, 실측으로 이득이 확인되면 채널 하나를 더하는 것으로 넣는다.
+- 같은 뜻의 다른 말과 번역어는 용어 카탈로그, 파일 겹침 채널, judge가 맡는다. 임베딩 채널은 두지 않는다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)). 작은 다국어 모델 두 개로 잰 결과, 한국어 설명 질의의 정답 코드 묶음을 상위 10개에 올린 비율은 단어 기반과 같은 0.0%였고, 단어가 겹치는 질의의 상위 10개 재현율은 10.5%p 이상 낮아졌다([실험 보고서](../experiments/embedding-synonym/report.md)). 설치 크기 342.5MB 이상과 상주 메모리 287.4MB 이상도 든다.
 - 한글을 자모 3개 단위로 자르지 않는다. 오타 질의 재현율 이득이 0.9%p [−0.8, 2.6]에 그치고 오타 없는 질의의 1위 정밀도가 10.0%p 떨어졌기 때문이다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
 - 영문 식별자 단어를 글자 4개 단위로 바꾸지 않는다. 오타 질의 재현율은 11.6%p 올랐지만 오타 없는 질의의 1위 정밀도가 5.2%p 떨어졌기 때문이다([실험 결과](../experiments/wordpiece-typo-recall/report.md)). 영문 글자 n-gram의 근거는 McNamee & Mayfield, Information Retrieval 2004다.
 
@@ -195,5 +195,5 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 - judge가 후보 전체를 판단하는 방식은 요청이 후보 수에 비례하고 judge 실패 때 관련 항목까지 잃어 버렸다([결정 기록](../decisions/2026-10-01-ranked-candidates-before-judge.md)).
 - 채널 점수의 가중합은 단위가 다른 점수의 가중치를 따로 학습해야 해 버렸다([결정 기록](../decisions/2026-10-01-ranked-candidates-before-judge.md)).
-- 임베딩 채널을 기본으로 넣는 방식은 설치 크기와 상주 메모리가 들고 이득이 측정되지 않아 버렸다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)).
+- 임베딩 채널을 기본으로 넣는 방식은 같은 뜻 질의에서 이득이 없고 단어가 겹치는 질의의 재현율과 설치 크기, 상주 메모리를 잃어 버렸다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md), [실험 보고서](../experiments/embedding-synonym/report.md)).
 - 입력마다 LLM으로 사실 문장을 뽑는 방식은 호출과 출력 비용이 들고 원문 대신 생성문을 저장해 버렸다.

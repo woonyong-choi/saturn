@@ -10,4 +10,4 @@
 | [wordpiece-typo-recall](wordpiece-typo-recall/report.md) | 단어 조각 단위별 오타 재현율 | [맥락 고르기](../design/context-selection.md) | H1 기각: 재현율 차이 0.9%p [−0.8, 2.6], H2 기각: 정밀도 차이 −10.0%p [−12.5, −7.5], H3 채택: 재현율 차이 11.6%p [8.8, 14.5], H4 기각: 정밀도 차이 −5.2%p [−7.8, −2.7] |
 | [term-catalog-precision](term-catalog-precision/design.md) | 용어 카탈로그 짝 정밀도와 묶음 확인 비용 | [용어 카탈로그](../design/term-catalog.md) | 측정 전 |
 | [constraint-judge-accuracy](constraint-judge-accuracy/design.md) | 제약 식별과 대체 판정 정확도 | [맥락 고르기](../design/context-selection.md), [judge](../design/judge.md) | 측정 전 |
-| [embedding-synonym](embedding-synonym/design.md) | 임베딩 같은 뜻 찾기의 정확도와 비용 | [맥락 고르기](../design/context-selection.md), [용어 카탈로그](../design/term-catalog.md) | 측정 전 |
+| [embedding-synonym](embedding-synonym/report.md) | 임베딩 같은 뜻 찾기의 정확도와 비용 | [맥락 고르기](../design/context-selection.md), [용어 카탈로그](../design/term-catalog.md) | H1, H2 기각: 제안 0개, H3, H4 기각: 재현율 0.0% [0.0, 6.0], H5, H6 기각: 재현율 차이 0.0%p [−6.0, 6.0], H7 기각: 재현율 차이 −10.5%p [−13.9, −7.6], H8 기각: 재현율 차이 −28.3%p [−32.9, −23.8], H9 기각: 설치 577.7MB, 메모리 406.0MB, H10 기각: 설치 342.5MB, 메모리 287.4MB |

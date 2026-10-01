@@ -376,7 +376,12 @@ def exploratory(proposals, rankings, pair):
 # 그림
 
 
-def bar_figure(title, subtitle, axis, values, rule):
+def bar_figure(title, subtitle, axis, values):
+    """모델마다 기준 순위와 임베딩을 더한 순위의 비율을 막대와 신뢰구간으로 그린다."""
+    y = {"field": "model", "type": "nominal", "title": None, "sort": None}
+    offset = {"field": "ranking", "sort": ["단어 기반", "단어 기반 + 임베딩"]}
+    color = {"field": "ranking", "type": "nominal", "title": "순위",
+             "sort": ["단어 기반", "단어 기반 + 임베딩"]}
     return {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
         "title": {"text": title, "subtitle": subtitle},
@@ -384,21 +389,13 @@ def bar_figure(title, subtitle, axis, values, rule):
         "height": 160,
         "data": {"values": values},
         "layer": [
-            {"mark": {"type": "point", "filled": True, "size": 80},
+            {"mark": "bar",
              "encoding": {"x": {"field": "value", "type": "quantitative", "title": axis,
                                 "scale": {"domain": [0, 100]}},
-                          "y": {"field": "group", "type": "nominal", "title": None, "sort": None},
-                          "color": {"field": "model", "type": "nominal", "title": "모델"},
-                          "yOffset": {"field": "model"}}},
+                          "y": y, "yOffset": offset, "color": color}},
             {"mark": "errorbar",
              "encoding": {"x": {"field": "lo", "type": "quantitative", "title": axis},
-                          "x2": {"field": "hi"},
-                          "y": {"field": "group", "type": "nominal", "sort": None},
-                          "color": {"field": "model", "type": "nominal"},
-                          "yOffset": {"field": "model"}}},
-            {"data": {"values": rule},
-             "mark": {"type": "rule", "strokeDash": [4, 4]},
-             "encoding": {"x": {"field": "value", "type": "quantitative"}}},
+                          "x2": {"field": "hi"}, "y": y, "yOffset": offset}},
         ],
     }
 
@@ -419,6 +416,9 @@ def main():
         "counts": {
             "pair_queries": len({r["query_id"] for r in proposals}),
             "pair_queries_gold_same": len({r["query_id"] for r in proposals if r["gold_label"] == "same"}),
+            "synonym_excluded_not_same": len({r["query_id"] for r in proposals if r["gold_label"] != "same"}),
+            "label_rows": len({(r["query_id"], r["top1_identifier"]) for r in proposals}
+                              | {(r["query_id"], r["gold_identifier"]) for r in proposals}),
             "rank_queries": {s: len({r["rank_query_id"] for r in rankings if r["set"] == s})
                              for s in ("synonym", "lexical-ko", "lexical-en")},
         },
@@ -441,27 +441,26 @@ def main():
                             "latency_p95_ms": c["latency_ms"]["p95"], "verdict": c["verdict"]}
                            for m, c in cost.items()])
 
-    pair_values = []
-    for h in hyps[:4]:
-        r = h["result"]
-        pair_values.append({"group": "정밀도" if h["kind"] == "precision" else "재현율",
-                            "model": MODEL_LABEL[h["model"]], "value": r["pct"] or 0,
-                            "lo": r["ci_pct"][0], "hi": r["ci_pct"][1]})
-    gain_values = []
-    for h in hyps[4:6]:
-        r = h["result"]
-        for name, key in (("단어 기반", "baseline"), ("단어 기반 + 임베딩", "candidate")):
-            gain_values.append({"group": name, "model": MODEL_LABEL[h["model"]], "value": r[key]["pct"],
-                                "lo": r[key]["ci_pct"][0], "hi": r[key]["ci_pct"][1]})
-    n_pairs = summary["counts"]["pair_queries"]
+    def ranking_values(rows):
+        values = []
+        for h in rows:
+            r = h["result"]
+            for name, key in (("단어 기반", "baseline"), ("단어 기반 + 임베딩", "candidate")):
+                values.append({"model": MODEL_LABEL[h["model"]], "ranking": name, "value": r[key]["pct"],
+                               "lo": r[key]["ci_pct"][0], "hi": r[key]["ci_pct"][1]})
+        return values
+
     n_syn = hyps[4]["result"]["n"]
+    n_lex = hyps[6]["result"]["n"]
     figures = {
-        "pair-precision-recall": bar_figure(
-            "한국어 설명과 식별자 짝 찾기", f"n=설명 {n_pairs}개. 점선은 정밀도 기준 80%와 재현율 기준 50%",
-            "비율(%)", pair_values, [{"value": 80}, {"value": 50}]),
         "synonym-recall-at-10": bar_figure(
-            "같은 뜻 질의의 상위 10개 재현율", f"n={n_syn}. 단어 기반 순위와 임베딩 채널을 RRF로 더한 순위",
-            "재현율(%)", gain_values, []),
+            "같은 뜻 질의의 상위 10개 재현율",
+            f"n={n_syn}. 정답 짝이 same인 한국어 설명 질의, 정답은 주석을 뺀 코드 묶음",
+            "재현율(%)", ranking_values(hyps[4:6])),
+        "lexical-recall-at-10": bar_figure(
+            "단어가 겹치는 질의의 상위 10개 재현율",
+            f"n={n_lex}. 한글 어절 질의 200개와 영문 식별자 질의 200개",
+            "재현율(%)", ranking_values(hyps[6:8])),
     }
     for name, spec in figures.items():
         with open(os.path.join(RESULTS_DIR, "figures", f"{name}.vl.json"), "w", encoding="utf-8") as f:

@@ -1,0 +1,7 @@
+model,set,n,base_pct,base_lo,base_hi,embedding_pct,embedding_lo,embedding_hi,rrf_pct,rrf_lo,rrf_hi
+e5,synonym,60,0.0,0.0,6.0,0.0,0.0,6.0,0.0,0.0,6.0
+e5,lexical-ko,200,99.5,97.2,99.9,60.5,53.6,67.0,87.0,81.6,91.0
+e5,lexical-en,200,98.0,95.0,99.2,66.0,59.2,72.2,89.5,84.5,93.0
+minilm,synonym,60,0.0,0.0,6.0,0.0,0.0,6.0,0.0,0.0,6.0
+minilm,lexical-ko,200,99.5,97.2,99.9,9.0,5.8,13.8,58.5,51.6,65.1
+minilm,lexical-en,200,98.0,95.0,99.2,41.5,34.9,48.4,82.5,76.6,87.1

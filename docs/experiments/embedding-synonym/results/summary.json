@@ -1,0 +1,646 @@
+{
+  "criteria": {
+    "alpha": 0.05,
+    "fold_precision_pct": 85.0,
+    "precision_target_pct": 80.0,
+    "recall_target_pct": 50.0,
+    "min_gain_pct": 10.0,
+    "guard_margin_pct": 2.0,
+    "budget": {
+      "install_bytes": 200000000,
+      "rss_increase_bytes": 200000000,
+      "latency_p95_ms": 20.0
+    },
+    "top_k": 10
+  },
+  "models": {
+    "e5": "multilingual-e5-small",
+    "minilm": "paraphrase-multilingual-MiniLM-L12-v2"
+  },
+  "counts": {
+    "pair_queries": 200,
+    "pair_queries_gold_same": 60,
+    "synonym_excluded_not_same": 140,
+    "label_rows": 583,
+    "rank_queries": {
+      "synonym": 200,
+      "lexical-ko": 200,
+      "lexical-en": 200
+    }
+  },
+  "hypotheses": [
+    {
+      "id": "H1",
+      "kind": "precision",
+      "model": "e5",
+      "target_pct": 80.0,
+      "thresholds": {
+        "0": null,
+        "1": null
+      },
+      "result": {
+        "k": 0,
+        "n": 0,
+        "pct": null,
+        "ci_pct": [
+          0.0,
+          100.0
+        ]
+      },
+      "p": 1.0,
+      "p_holm": 1.0,
+      "verdict": "기각"
+    },
+    {
+      "id": "H2",
+      "kind": "precision",
+      "model": "minilm",
+      "target_pct": 80.0,
+      "thresholds": {
+        "0": null,
+        "1": null
+      },
+      "result": {
+        "k": 0,
+        "n": 0,
+        "pct": null,
+        "ci_pct": [
+          0.0,
+          100.0
+        ]
+      },
+      "p": 1.0,
+      "p_holm": 1.0,
+      "verdict": "기각"
+    },
+    {
+      "id": "H3",
+      "kind": "recall",
+      "model": "e5",
+      "target_pct": 50.0,
+      "thresholds": {
+        "0": null,
+        "1": null
+      },
+      "result": {
+        "k": 0,
+        "n": 60,
+        "pct": 0.0,
+        "ci_pct": [
+          0.0,
+          6.0
+        ]
+      },
+      "p": 1.735e-18,
+      "p_holm": 1.041e-17,
+      "verdict": "기각"
+    },
+    {
+      "id": "H4",
+      "kind": "recall",
+      "model": "minilm",
+      "target_pct": 50.0,
+      "thresholds": {
+        "0": null,
+        "1": null
+      },
+      "result": {
+        "k": 0,
+        "n": 60,
+        "pct": 0.0,
+        "ci_pct": [
+          0.0,
+          6.0
+        ]
+      },
+      "p": 1.735e-18,
+      "p_holm": 1.041e-17,
+      "verdict": "기각"
+    },
+    {
+      "id": "H5",
+      "kind": "gain",
+      "model": "e5",
+      "min_gain_pct": 10.0,
+      "result": {
+        "n": 60,
+        "baseline": {
+          "k": 0,
+          "n": 60,
+          "pct": 0.0,
+          "ci_pct": [
+            0.0,
+            6.0
+          ]
+        },
+        "candidate": {
+          "k": 0,
+          "n": 60,
+          "pct": 0.0,
+          "ci_pct": [
+            0.0,
+            6.0
+          ]
+        },
+        "table": {
+          "both": 0,
+          "baseline_only": 0,
+          "candidate_only": 0,
+          "neither": 60
+        },
+        "diff_pct": 0.0,
+        "diff_ci_pct": [
+          -6.0,
+          6.0
+        ],
+        "mcnemar": {
+          "method": "해당 없음",
+          "statistic": null,
+          "p": 1.0
+        }
+      },
+      "p": 1.0,
+      "p_holm": 1.0,
+      "verdict": "기각"
+    },
+    {
+      "id": "H6",
+      "kind": "gain",
+      "model": "minilm",
+      "min_gain_pct": 10.0,
+      "result": {
+        "n": 60,
+        "baseline": {
+          "k": 0,
+          "n": 60,
+          "pct": 0.0,
+          "ci_pct": [
+            0.0,
+            6.0
+          ]
+        },
+        "candidate": {
+          "k": 0,
+          "n": 60,
+          "pct": 0.0,
+          "ci_pct": [
+            0.0,
+            6.0
+          ]
+        },
+        "table": {
+          "both": 0,
+          "baseline_only": 0,
+          "candidate_only": 0,
+          "neither": 60
+        },
+        "diff_pct": 0.0,
+        "diff_ci_pct": [
+          -6.0,
+          6.0
+        ],
+        "mcnemar": {
+          "method": "해당 없음",
+          "statistic": null,
+          "p": 1.0
+        }
+      },
+      "p": 1.0,
+      "p_holm": 1.0,
+      "verdict": "기각"
+    },
+    {
+      "id": "H7",
+      "kind": "guard",
+      "model": "e5",
+      "margin_pct": 2.0,
+      "result": {
+        "n": 400,
+        "baseline": {
+          "k": 395,
+          "n": 400,
+          "pct": 98.8,
+          "ci_pct": [
+            97.1,
+            99.5
+          ]
+        },
+        "candidate": {
+          "k": 353,
+          "n": 400,
+          "pct": 88.2,
+          "ci_pct": [
+            84.7,
+            91.0
+          ]
+        },
+        "table": {
+          "both": 352,
+          "baseline_only": 43,
+          "candidate_only": 1,
+          "neither": 4
+        },
+        "diff_pct": -10.5,
+        "diff_ci_pct": [
+          -13.9,
+          -7.6
+        ],
+        "mcnemar": {
+          "method": "McNemar 연속성 보정",
+          "statistic": 38.205,
+          "p": 6.370385309896183e-10
+        }
+      },
+      "p": null,
+      "p_holm": null,
+      "verdict": "기각"
+    },
+    {
+      "id": "H8",
+      "kind": "guard",
+      "model": "minilm",
+      "margin_pct": 2.0,
+      "result": {
+        "n": 400,
+        "baseline": {
+          "k": 395,
+          "n": 400,
+          "pct": 98.8,
+          "ci_pct": [
+            97.1,
+            99.5
+          ]
+        },
+        "candidate": {
+          "k": 282,
+          "n": 400,
+          "pct": 70.5,
+          "ci_pct": [
+            65.9,
+            74.8
+          ]
+        },
+        "table": {
+          "both": 280,
+          "baseline_only": 115,
+          "candidate_only": 2,
+          "neither": 3
+        },
+        "diff_pct": -28.3,
+        "diff_ci_pct": [
+          -32.9,
+          -23.8
+        ],
+        "mcnemar": {
+          "method": "McNemar 연속성 보정",
+          "statistic": 107.214,
+          "p": 3.996693488374165e-25
+        }
+      },
+      "p": null,
+      "p_holm": null,
+      "verdict": "기각"
+    },
+    {
+      "id": "H9",
+      "kind": "cost",
+      "model": "e5",
+      "result": {
+        "install_mb": 577.7,
+        "install_detail_mb": {
+          "model_snapshot": 487.4,
+          "onnxruntime": 82.4,
+          "tokenizers": 7.9
+        },
+        "rss_increase_mb": 406.0,
+        "rss_detail_mb": {
+          "peak_rss": 1066.2,
+          "rss_after": 490.9,
+          "rss_before": 85.0
+        },
+        "load_s": 0.701,
+        "latency_ms": {
+          "n": 600,
+          "mean": 3.56,
+          "sd": 0.976,
+          "median": 3.39,
+          "p5": 2.6,
+          "p95": 4.82,
+          "outliers_mild": 10,
+          "outliers_severe": 11
+        },
+        "verdict": "기각"
+      },
+      "p": null,
+      "p_holm": null,
+      "verdict": "기각"
+    },
+    {
+      "id": "H10",
+      "kind": "cost",
+      "model": "minilm",
+      "result": {
+        "install_mb": 342.5,
+        "install_detail_mb": {
+          "model_snapshot": 252.1,
+          "onnxruntime": 82.4,
+          "tokenizers": 7.9
+        },
+        "rss_increase_mb": 287.4,
+        "rss_detail_mb": {
+          "peak_rss": 855.0,
+          "rss_after": 372.0,
+          "rss_before": 84.6
+        },
+        "load_s": 0.446,
+        "latency_ms": {
+          "n": 600,
+          "mean": 4.83,
+          "sd": 3.09,
+          "median": 4.21,
+          "p5": 2.38,
+          "p95": 8.8,
+          "outliers_mild": 18,
+          "outliers_severe": 19
+        },
+        "verdict": "기각"
+      },
+      "p": null,
+      "p_holm": null,
+      "verdict": "기각"
+    }
+  ],
+  "decision": {
+    "option": "judge-only",
+    "models": [],
+    "accuracy_only_models": []
+  },
+  "exploratory": {
+    "gold_rank": {
+      "e5": {
+        "hit_at_1": {
+          "k": 2,
+          "n": 60,
+          "pct": 3.3,
+          "ci_pct": [
+            0.9,
+            11.4
+          ]
+        },
+        "hit_at_5": {
+          "k": 5,
+          "n": 60,
+          "pct": 8.3,
+          "ci_pct": [
+            3.6,
+            18.1
+          ]
+        },
+        "hit_at_10": {
+          "k": 6,
+          "n": 60,
+          "pct": 10.0,
+          "ci_pct": [
+            4.7,
+            20.1
+          ]
+        }
+      },
+      "minilm": {
+        "hit_at_1": {
+          "k": 2,
+          "n": 60,
+          "pct": 3.3,
+          "ci_pct": [
+            0.9,
+            11.4
+          ]
+        },
+        "hit_at_5": {
+          "k": 4,
+          "n": 60,
+          "pct": 6.7,
+          "ci_pct": [
+            2.6,
+            15.9
+          ]
+        },
+        "hit_at_10": {
+          "k": 6,
+          "n": 60,
+          "pct": 10.0,
+          "ci_pct": [
+            4.7,
+            20.1
+          ]
+        }
+      }
+    },
+    "gold_labels": {
+      "different": 137,
+      "same": 60,
+      "unclear": 3
+    },
+    "top1_labels": {
+      "e5": {
+        "different": 182,
+        "same": 18,
+        "unclear": 0
+      },
+      "minilm": {
+        "different": 191,
+        "same": 8,
+        "unclear": 1
+      }
+    },
+    "top1_all_precision": {
+      "e5": {
+        "k": 18,
+        "n": 200,
+        "pct": 9.0,
+        "ci_pct": [
+          5.8,
+          13.8
+        ]
+      },
+      "minilm": {
+        "k": 8,
+        "n": 200,
+        "pct": 4.0,
+        "ci_pct": [
+          2.0,
+          7.7
+        ]
+      }
+    },
+    "e5_minus_minilm_top1": {
+      "n": 200,
+      "baseline": {
+        "k": 8,
+        "n": 200,
+        "pct": 4.0,
+        "ci_pct": [
+          2.0,
+          7.7
+        ]
+      },
+      "candidate": {
+        "k": 18,
+        "n": 200,
+        "pct": 9.0,
+        "ci_pct": [
+          5.8,
+          13.8
+        ]
+      },
+      "table": {
+        "both": 4,
+        "baseline_only": 4,
+        "candidate_only": 14,
+        "neither": 178
+      },
+      "diff_pct": 5.0,
+      "diff_ci_pct": [
+        0.9,
+        9.6
+      ],
+      "mcnemar": {
+        "method": "정확 이항",
+        "statistic": null,
+        "p": 0.03088
+      }
+    },
+    "precision_without_unclear": {
+      "e5": {
+        "k": 0,
+        "n": 0,
+        "pct": null,
+        "ci_pct": [
+          0.0,
+          100.0
+        ]
+      },
+      "minilm": {
+        "k": 0,
+        "n": 0,
+        "pct": null,
+        "ci_pct": [
+          0.0,
+          100.0
+        ]
+      }
+    },
+    "e5_top1_by_kind": {
+      "const": {
+        "k": 3,
+        "n": 15
+      },
+      "enum": {
+        "k": 0,
+        "n": 1
+      },
+      "field": {
+        "k": 3,
+        "n": 15
+      },
+      "fn": {
+        "k": 0,
+        "n": 9
+      },
+      "struct": {
+        "k": 1,
+        "n": 5
+      },
+      "variant": {
+        "k": 4,
+        "n": 15
+      }
+    },
+    "recall_by_set": [
+      {
+        "model": "e5",
+        "set": "synonym",
+        "n": 60,
+        "base_pct": 0.0,
+        "base_lo": 0.0,
+        "base_hi": 6.0,
+        "embedding_pct": 0.0,
+        "embedding_lo": 0.0,
+        "embedding_hi": 6.0,
+        "rrf_pct": 0.0,
+        "rrf_lo": 0.0,
+        "rrf_hi": 6.0
+      },
+      {
+        "model": "e5",
+        "set": "lexical-ko",
+        "n": 200,
+        "base_pct": 99.5,
+        "base_lo": 97.2,
+        "base_hi": 99.9,
+        "embedding_pct": 60.5,
+        "embedding_lo": 53.6,
+        "embedding_hi": 67.0,
+        "rrf_pct": 87.0,
+        "rrf_lo": 81.6,
+        "rrf_hi": 91.0
+      },
+      {
+        "model": "e5",
+        "set": "lexical-en",
+        "n": 200,
+        "base_pct": 98.0,
+        "base_lo": 95.0,
+        "base_hi": 99.2,
+        "embedding_pct": 66.0,
+        "embedding_lo": 59.2,
+        "embedding_hi": 72.2,
+        "rrf_pct": 89.5,
+        "rrf_lo": 84.5,
+        "rrf_hi": 93.0
+      },
+      {
+        "model": "minilm",
+        "set": "synonym",
+        "n": 60,
+        "base_pct": 0.0,
+        "base_lo": 0.0,
+        "base_hi": 6.0,
+        "embedding_pct": 0.0,
+        "embedding_lo": 0.0,
+        "embedding_hi": 6.0,
+        "rrf_pct": 0.0,
+        "rrf_lo": 0.0,
+        "rrf_hi": 6.0
+      },
+      {
+        "model": "minilm",
+        "set": "lexical-ko",
+        "n": 200,
+        "base_pct": 99.5,
+        "base_lo": 97.2,
+        "base_hi": 99.9,
+        "embedding_pct": 9.0,
+        "embedding_lo": 5.8,
+        "embedding_hi": 13.8,
+        "rrf_pct": 58.5,
+        "rrf_lo": 51.6,
+        "rrf_hi": 65.1
+      },
+      {
+        "model": "minilm",
+        "set": "lexical-en",
+        "n": 200,
+        "base_pct": 98.0,
+        "base_lo": 95.0,
+        "base_hi": 99.2,
+        "embedding_pct": 41.5,
+        "embedding_lo": 34.9,
+        "embedding_hi": 48.4,
+        "rrf_pct": 82.5,
+        "rrf_lo": 76.6,
+        "rrf_hi": 87.1
+      }
+    ]
+  }
+}
