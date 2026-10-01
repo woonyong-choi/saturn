@@ -9,6 +9,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")"
+export PYTHONDONTWRITEBYTECODE=1
 export TERM_CATALOG_PRIVATE_DIR="${TERM_CATALOG_PRIVATE_DIR:-$HOME/workspace/woon/.local/orchestration/saturn-experiments/term-catalog-precision/raw}"
 
 write_sums() {
