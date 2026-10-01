@@ -9,13 +9,16 @@ pub const IRREVERSIBLE_FLOOR: f64 = 0.8;
 /// 빠른 조정이 중심값에서 벗어날 수 있는 폭.
 pub const FAST_RANGE: f64 = 0.05;
 
-/// 느린 조정에 필요한 질문별 채점된 판단 수.
-pub const MIN_LABELED: usize = 200;
+/// 느린 조정에 필요한 질문별 쓰인 결과 수(행동한 판단 + 물은 답)이고, 3% 조건에서 중심값이 하한·상한에 닿는 비율이 10% 이하가 되는 값이다.
+pub const MIN_RECENTER_RESULTS: usize = 3_000;
 
 pub const MAX_ASK_RATE: f64 = 0.05;
 
 /// 단위는 pp이고, 신뢰구간 하한이 이 값보다 커야 한다.
 pub const PROMOTION_ACCURACY_FLOOR_PP: f64 = -1.0;
+
+/// 느린 조정이 중심값을 고르는 격자에서 1.0당 점 수이고, 간격은 0.005다.
+const GRID_PER_UNIT: f64 = 200.0;
 
 /// 신호 하나가 기준값을 옮기는 고정 폭이다.
 const FAST_STEP: f64 = 0.002;
@@ -52,6 +55,15 @@ pub enum Signal {
     Unconfirmed,
 }
 
+/// 물은 판단에서 사용자가 한 답이다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AskedAnswer {
+    /// judge의 답이 맞았다고 답했다.
+    Correct,
+    /// judge의 답이 틀렸다고 답했다.
+    Wrong,
+}
+
 #[derive(Debug, Clone)]
 pub struct Observation {
     pub question: String,
@@ -63,6 +75,8 @@ pub struct Observation {
     /// 피드백 질문을 받은 판단이면 참이고, 빠른 조정이 이 신호만 1/q로 가중한다.
     pub is_asked: bool,
     pub signal: Signal,
+    /// 물은 답이고, 행동하지 않은 판단은 이 값만 느린 조정의 결과로 쓴다.
+    pub asked_answer: Option<AskedAnswer>,
 }
 
 impl Observation {
@@ -117,28 +131,26 @@ impl ThresholdState {
     }
 
     // cost: time O(n log n), heap O(n), stack O(1), alloc 1
-    // vars: n = 채점된 판단 수
+    // vars: n = 판단 기록 수
     // basis: estimate
-    /// `/train` 때 부르며, 채점된 판단이 `MIN_LABELED`건 미만이면 하지 않는다.
-    pub fn recenter(&mut self, labeled: &[Observation]) {
-        let mut samples: Vec<(f64, f64, bool)> = labeled
+    /// `/train` 때 모든 판단 기록으로 부르며, 쓰인 결과가 `MIN_RECENTER_RESULTS`건 미만이면 하지 않는다.
+    pub fn recenter(&mut self, records: &[Observation]) {
+        let mut results = 0;
+        let mut samples: Vec<(f64, f64)> = Vec::new();
+        for observation in records
             .iter()
             .filter(|observation| observation.question == self.question)
-            .filter_map(|observation| {
-                let weight = 1.0 / observation.asked_with.max(MIN_ASK);
-                match observation.signal {
-                    Signal::Wrong => Some((observation.probability, weight, true)),
-                    Signal::Missed => Some((observation.probability, weight, false)),
-                    Signal::Unconfirmed => None,
-                }
-            })
-            .collect();
-        if samples.len() < MIN_LABELED {
+        {
+            let (wrong_weight, is_result) = risk_sample(observation);
+            results += usize::from(is_result);
+            samples.push((observation.probability, wrong_weight));
+        }
+        if results < MIN_RECENTER_RESULTS {
             return;
         }
         samples.sort_by(|left, right| right.0.total_cmp(&left.0));
-        let new_center =
-            lowest_safe_threshold(&samples, self.target_wrong_rate).unwrap_or(self.bounds.1);
+        let new_center = lowest_safe_threshold(&samples, self.bounds, self.target_wrong_rate)
+            .unwrap_or(self.bounds.1);
         self.previous = Some((self.center, self.fast_offset));
         self.center = new_center.clamp(self.bounds.0, self.bounds.1);
         self.fast_offset = 0.0;
@@ -223,6 +235,18 @@ pub enum LabelUse {
     Drop,
 }
 
+// cost: time O(1), heap O(g), stack O(1), alloc 1
+// vars: g = 격자 점 수
+// basis: estimate
+/// 하한과 0.005 간격의 점을 상한까지 오름차순으로 돌려준다.
+fn threshold_grid(bounds: (f64, f64)) -> Vec<f64> {
+    let first = (bounds.0 * GRID_PER_UNIT).floor() as u32 + 1;
+    let last = (bounds.1 * GRID_PER_UNIT).floor() as u32;
+    let mut grid = vec![bounds.0];
+    grid.extend((first..=last).map(|step| f64::from(step) / GRID_PER_UNIT));
+    grid
+}
+
 // cost: time O(g²), heap O(1), stack O(1)
 // vars: g = 채점 모델 답 수
 // basis: estimate
@@ -285,24 +309,39 @@ pub fn should_promote(report: &EvalReport) -> bool {
         && new_order >= current_order
 }
 
-// cost: time O(n), heap O(1), stack O(1)
-// vars: n = 표본 수
+/// 판단 하나의 (틀림 가중, 쓰인 결과 여부)이다. 행동한 판단은 틀림 신호를 가중 1로, 행동하지 않은 판단은 물은 답의 틀림만 `1/q`로 쓴다.
+fn risk_sample(observation: &Observation) -> (f64, bool) {
+    if observation.probability >= observation.threshold {
+        let wrong = observation.signal == Signal::Wrong;
+        return (f64::from(u8::from(wrong)), true);
+    }
+    match observation.asked_answer {
+        Some(AskedAnswer::Wrong) => (1.0 / observation.asked_with.max(MIN_ASK), true),
+        Some(AskedAnswer::Correct) => (0.0, true),
+        None => (0.0, false),
+    }
+}
+
+// cost: time O(n + g), heap O(g), stack O(1), alloc 1
+// vars: n = 표본 수, g = 격자 점 수
 // basis: estimate
-/// `samples`는 확률 내림차순이어야 한다.
-fn lowest_safe_threshold(samples: &[(f64, f64, bool)], target: f64) -> Option<f64> {
+/// `samples`는 (확률, 틀림 가중)이고 확률 내림차순이어야 한다. 격자의 각 값에서 확률이 그 값 이상인 판단 전체의 틀림 가중 평균이 목표 이하인 가장 낮은 값을 돌려준다.
+fn lowest_safe_threshold(samples: &[(f64, f64)], bounds: (f64, f64), target: f64) -> Option<f64> {
     let mut wrong = 0.0;
-    let mut total = 0.0;
+    let mut count = 0_u32;
+    let mut covered = 0;
     let mut lowest = None;
-    for (index, (probability, weight, is_wrong)) in samples.iter().enumerate() {
-        total += weight;
-        if *is_wrong {
+    for threshold in threshold_grid(bounds).into_iter().rev() {
+        while let Some((probability, weight)) = samples.get(covered) {
+            if *probability < threshold {
+                break;
+            }
             wrong += weight;
+            count += 1;
+            covered += 1;
         }
-        let is_last_of_value = samples
-            .get(index + 1)
-            .is_none_or(|next| next.0 < *probability);
-        if is_last_of_value && wrong / total <= target {
-            lowest = Some(*probability);
+        if count > 0 && wrong / f64::from(count) <= target {
+            lowest = Some(threshold);
         }
     }
     lowest
@@ -336,6 +375,7 @@ mod tests {
             asked_with: 1.0,
             is_asked: false,
             signal,
+            asked_answer: None,
         }
     }
 
@@ -344,6 +384,28 @@ mod tests {
             asked_with: q,
             is_asked: true,
             ..observation(probability, signal)
+        }
+    }
+
+    fn acted(probability: f64, signal: Signal) -> Observation {
+        Observation {
+            threshold: 0.9,
+            ..observation(probability, signal)
+        }
+    }
+
+    fn observation_below(probability: f64, signal: Signal) -> Observation {
+        Observation {
+            threshold: 0.9,
+            ..observation(probability, signal)
+        }
+    }
+
+    fn skipped_asked(probability: f64, answer: AskedAnswer, q: f64) -> Observation {
+        Observation {
+            threshold: 0.9,
+            asked_answer: Some(answer),
+            ..asked(probability, Signal::Unconfirmed, q)
         }
     }
 
@@ -517,58 +579,239 @@ mod tests {
     }
 
     // cost: time O(n), heap O(n), stack O(1)
-    // vars: n = 표본 수
+    // vars: n = 판단 기록 수
     // basis: estimate
-    #[test]
-    fn recenter_below_min_labeled_does_nothing() {
-        let mut state = state();
-        let labeled: Vec<Observation> = (0..MIN_LABELED - 1)
-            .map(|_| observation(0.6, Signal::Missed))
-            .collect();
+    fn results(count: usize, probability: f64, signal: Signal) -> Vec<Observation> {
+        (0..count).map(|_| acted(probability, signal)).collect()
+    }
 
-        state.recenter(&labeled);
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 판단 기록 수
+    // basis: estimate
+    /// 확률 0.50~0.99 50단계에 1,000건씩이고 틀림 비율이 `0.6 × (1 − p)`다. 0.9 이상만 행동했고, 아래는 10건에 1건(q = 0.1)만 물었다.
+    fn population() -> Vec<Observation> {
+        let mut records = Vec::new();
+        for level in 50..100_u32 {
+            let probability = f64::from(level) / 100.0;
+            let wrong_count = 10 * (60.0 * (1.0 - probability)).round() as u32;
+            for index in 0..1_000_u32 {
+                let is_wrong = index * 7 % 1_000 < wrong_count;
+                let is_asked = index % 10 == 0;
+                let record = match (probability >= 0.9, is_asked) {
+                    (true, _) if is_wrong => acted(probability, Signal::Wrong),
+                    (true, _) => acted(probability, Signal::Unconfirmed),
+                    (false, true) => {
+                        let answer = if is_wrong {
+                            AskedAnswer::Wrong
+                        } else {
+                            AskedAnswer::Correct
+                        };
+                        skipped_asked(probability, answer, 0.1)
+                    }
+                    (false, false) => Observation {
+                        asked_with: 0.1,
+                        ..acted(probability, Signal::Unconfirmed)
+                    },
+                };
+                records.push(record);
+            }
+        }
+        records
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 판단 기록 수
+    // basis: estimate
+    /// 틀림 비율은 `(1000 − p)² / 800`, 기준값은 판단마다 0.75, 0.80, 0.85이고 q는 0.1, 0.05, 0.02, 0.01을 돈다. 시뮬레이션 S1q와 같은 입력이다.
+    fn simulated_records() -> Vec<Observation> {
+        let asked_milli = [100_u64, 50, 20, 10];
+        (0..8_000_u64)
+            .map(|index| {
+                let probability_milli = 500 + index * 7_919 % 500;
+                let threshold_milli = 750 + 50 * (index % 3);
+                let q_milli = asked_milli[(index % 4) as usize];
+                let wrong_milli = (1_000 - probability_milli).pow(2) / 800;
+                let is_wrong = ((index * 2_654_435_761) >> 8) % 1_000 < wrong_milli;
+                let is_asked = ((index * 2_246_822_519) >> 8) % 1_000 < q_milli;
+                let is_acted = probability_milli >= threshold_milli;
+                let answer = if is_wrong {
+                    AskedAnswer::Wrong
+                } else {
+                    AskedAnswer::Correct
+                };
+                Observation {
+                    question: QUESTION.to_string(),
+                    probability: probability_milli as f64 / 1_000.0,
+                    threshold: threshold_milli as f64 / 1_000.0,
+                    asked_with: q_milli as f64 / 1_000.0,
+                    is_asked,
+                    signal: if is_acted && is_wrong {
+                        Signal::Wrong
+                    } else {
+                        Signal::Unconfirmed
+                    },
+                    asked_answer: (!is_acted && is_asked).then_some(answer),
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn recenter_below_min_results_does_nothing() {
+        let mut state = state();
+        let records = results(MIN_RECENTER_RESULTS - 1, 0.6, Signal::Unconfirmed);
+
+        state.recenter(&records);
 
         assert_eq!(state.center, 0.8);
     }
 
     // cost: time O(n), heap O(n), stack O(1)
-    // vars: n = 표본 수
+    // vars: n = 판단 기록 수
+    // basis: estimate
+    #[test]
+    fn recenter_unasked_skipped_judgments_are_not_results() {
+        let mut state = state();
+        let mut records = results(MIN_RECENTER_RESULTS - 1, 0.95, Signal::Unconfirmed);
+        records.extend((0..5_000).map(|_| observation_below(0.7, Signal::Missed)));
+
+        state.recenter(&records);
+
+        assert_eq!(state.center, 0.8);
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 판단 기록 수
     // basis: estimate
     #[test]
     fn recenter_picks_lowest_threshold_meeting_target() {
         let mut state = state();
         state.fast_offset = 0.03;
-        // 0.9 이상은 모두 맞고, 0.7은 절반이 틀린다.
-        let mut labeled: Vec<Observation> =
-            (0..150).map(|_| observation(0.9, Signal::Missed)).collect();
-        labeled.extend((0..50).map(|n| {
-            let signal = if n % 2 == 0 {
+        // 0.9는 모두 맞고, 0.7은 절반이 틀린다.
+        let mut records = results(1_500, 0.9, Signal::Unconfirmed);
+        records.extend((0..1_500).map(|index| {
+            let signal = if index % 2 == 0 {
                 Signal::Wrong
             } else {
-                Signal::Missed
+                Signal::Unconfirmed
             };
-            observation(0.7, signal)
+            Observation {
+                threshold: 0.6,
+                ..observation(0.7, signal)
+            }
         }));
 
-        state.recenter(&labeled);
+        state.recenter(&records);
 
-        assert_eq!(state.center, 0.9);
+        // 0.7 위 첫 격자점은 0.9만 포함한다.
+        assert_eq!(state.center, 0.705);
         assert_eq!(state.fast_offset, 0.0);
     }
 
-    // cost: time O(n), heap O(n), stack O(1)
-    // vars: n = 표본 수
-    // basis: estimate
     #[test]
     fn recenter_all_wrong_uses_upper_bound() {
         let mut state = state();
-        let labeled: Vec<Observation> = (0..MIN_LABELED)
-            .map(|_| observation(0.9, Signal::Wrong))
-            .collect();
+        let records = results(MIN_RECENTER_RESULTS, 0.9, Signal::Wrong);
 
-        state.recenter(&labeled);
+        state.recenter(&records);
 
         assert_eq!(state.center, 0.95);
+    }
+
+    #[test]
+    fn recenter_acted_without_reaction_counts_as_not_wrong() {
+        let mut state = state();
+        let mut records = results(MIN_RECENTER_RESULTS, 0.92, Signal::Unconfirmed);
+        records.extend(results(100, 0.92, Signal::Wrong));
+
+        state.recenter(&records);
+
+        assert_eq!(state.center, 0.5);
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 판단 기록 수
+    // basis: estimate
+    #[test]
+    fn recenter_skipped_judgment_uses_only_asked_answer_with_inverse_q() {
+        // 행동하지 않은 판단 1,000건이 모두 물은 답이고 q는 0.1이다.
+        let skipped = |wrong_count: usize| {
+            let mut records = results(2_000, 0.9, Signal::Unconfirmed);
+            records.extend((0..1_000).map(|index| {
+                let answer = if index < wrong_count {
+                    AskedAnswer::Wrong
+                } else {
+                    AskedAnswer::Correct
+                };
+                skipped_asked(0.7, answer, 0.1)
+            }));
+            records
+        };
+        let mut few_wrong = state();
+        let mut many_wrong = state();
+
+        // 틀림 10건 x 10 = 100 / 3,000 = 3.3%, 20건 x 10 = 200 / 3,000 = 6.7%
+        few_wrong.recenter(&skipped(10));
+        many_wrong.recenter(&skipped(20));
+
+        assert_eq!(few_wrong.center, 0.5);
+        assert_eq!(many_wrong.center, 0.705);
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 판단 기록 수
+    // basis: estimate
+    #[test]
+    fn recenter_skipped_judgment_with_missed_signal_is_not_used() {
+        let mut state = state();
+        let mut records = results(MIN_RECENTER_RESULTS, 0.9, Signal::Unconfirmed);
+        records.extend((0..1_000).map(|_| observation_below(0.6, Signal::Missed)));
+
+        state.recenter(&records);
+
+        // 0.6 판단은 결과가 없어 틀림 가중 0으로 분모에만 들어가므로 평균이 낮아져 하한까지 내려간다.
+        assert_eq!(state.center, 0.5);
+    }
+
+    #[test]
+    fn recenter_where_actions_stop_above_oracle_lands_near_oracle() {
+        let mut state = state();
+
+        state.recenter(&population());
+
+        // 0.85 이상의 틀림 비율이 4.8%, 0.84 이상이 5.1%라 oracle은 0.85다.
+        assert!((state.center - 0.85).abs() <= 0.02, "{}", state.center);
+    }
+
+    #[test]
+    fn recenter_matches_simulation_s1q_on_same_records() {
+        let mut state = state();
+
+        state.recenter(&simulated_records());
+
+        assert_eq!(state.center, 0.695);
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    #[test]
+    fn threshold_grid_default_bounds_spans_bounds_by_half_percent() {
+        let grid = threshold_grid((0.5, 0.95));
+
+        assert_eq!(grid.len(), 91);
+        assert_eq!(grid.first(), Some(&0.5));
+        assert_eq!(grid.last(), Some(&0.95));
+        assert!(grid.contains(&0.805));
+    }
+
+    #[test]
+    fn recenter_keeps_center_within_irreversible_floor() {
+        let mut state = ThresholdState::new(QUESTION, 0.85, (IRREVERSIBLE_FLOOR, 0.95));
+        let records = results(MIN_RECENTER_RESULTS, 0.9, Signal::Unconfirmed);
+
+        state.recenter(&records);
+
+        assert_eq!(state.center, IRREVERSIBLE_FLOOR);
     }
 
     // cost: time O(n), heap O(n), stack O(1)
@@ -577,14 +820,11 @@ mod tests {
     #[test]
     fn rollback_if_worse_restores_previous_on_many_wrongs() {
         let mut state = state();
-        let labeled: Vec<Observation> = (0..MIN_LABELED)
-            .map(|_| observation(0.6, Signal::Missed))
-            .collect();
-        state.recenter(&labeled);
-        assert_eq!(state.center, 0.6);
+        state.recenter(&results(MIN_RECENTER_RESULTS, 0.9, Signal::Unconfirmed));
+        assert_eq!(state.center, 0.5);
         let recent: Vec<Observation> = (0..20)
             .map(|_| Observation {
-                threshold: 0.6,
+                threshold: 0.5,
                 ..observation(0.65, Signal::Wrong)
             })
             .collect();
@@ -601,13 +841,10 @@ mod tests {
     #[test]
     fn rollback_if_worse_keeps_value_when_fine() {
         let mut state = state();
-        let labeled: Vec<Observation> = (0..MIN_LABELED)
-            .map(|_| observation(0.6, Signal::Missed))
-            .collect();
-        state.recenter(&labeled);
+        state.recenter(&results(MIN_RECENTER_RESULTS, 0.9, Signal::Unconfirmed));
         let recent: Vec<Observation> = (0..100)
             .map(|_| Observation {
-                threshold: 0.6,
+                threshold: 0.5,
                 ..observation(0.65, Signal::Unconfirmed)
             })
             .collect();
@@ -615,7 +852,7 @@ mod tests {
         let rolled_back = state.rollback_if_worse(&recent);
 
         assert!(!rolled_back);
-        assert_eq!(state.center, 0.6);
+        assert_eq!(state.center, 0.5);
     }
 
     #[test]
