@@ -103,7 +103,8 @@
 ```
 
 - 점수 대신 순위를 쓴다. 채널마다 값의 단위가 달라 그대로 더할 수 없기 때문이다.
-- `k`의 기본값은 60이다. 원 논문이 여러 검색 결과를 합칠 때 평균 성능이 가장 좋았던 값이다(Cormack, Clarke, Büttcher, SIGIR 2009). `k`가 클수록 한 채널의 1등보다 여러 채널에 고르게 든 후보가 이긴다.
+- `k`의 기본값은 30이다. 실측에서 `k` 10, 30, 60, 100의 차이는 상위 40개 기준 1.0%p 이하였고, 사전 등록한 규칙대로 상위 40개 비율이 가장 높은 값을 골랐다([실험 결과](../experiments/rrf-k-top-n/report.md)).
+- 원 논문은 여러 검색 결과를 합칠 때 `k`=60을 썼다(Cormack, Clarke, Büttcher, SIGIR 2009). `k`가 클수록 한 채널의 1등보다 여러 채널에 고르게 든 후보가 이긴다.
 - 점수가 같으면 기록 번호가 큰 후보를 위에 둔다.
 - `k`는 judge가 답하지 못했을 때의 순서와 같은 확률일 때의 순서에만 쓰이며 실측으로 정한다([#116](https://github.com/woonyong-choi/saturn/issues/116)).
 
@@ -185,13 +186,14 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 자모로 풀린 한글도 음절 한글과 같은 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_nfd_hangul_matches_nfc` |
 | 같은 결과에서 늘 같은 메모를 만든다. | `saturn-terminal/core/src/sessions/memo.rs`의 `tool_memo_same_result_gives_same_memo` |
 | 대체된 제약 원문은 기록에 남고 패킷에서만 빠진다. | 대체 뒤 기록에 두 원문이 있고 패킷에는 새 원문과 대체 표시만 있는지 확인한다. |
-| 순위가 judge 전체 판단과 얼마나 겹치는지 잰다. | [#116](https://github.com/woonyong-choi/saturn/issues/116) |
+| 순위가 judge 전체 판단과 얼마나 겹치는지 잰다. | [RRF k와 judge 상위 N 실험 결과](../experiments/rrf-k-top-n/report.md): 상위 10개 12.0%, 상위 40개 44.5% |
 | 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [단어 조각 단위별 오타 재현율 실험 결과](../experiments/wordpiece-typo-recall/report.md) |
 | `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. `replaces_<n>` 구간과 간접 지시는 [#152](https://github.com/woonyong-choi/saturn/issues/152) 실험으로 다시 확인한다. |
 
 ## 단점
 
 - 순위 채널은 같은 뜻의 다른 말을 모르므로 용어 카탈로그가 자랄 때까지 같은 뜻을 놓칠 수 있다.
+- RRF 상위 40개는 judge 전체 판단이 남긴 항목의 절반 이상을 놓친다([실험 결과](../experiments/rrf-k-top-n/report.md)).
 - 영문 단어 사이 공백이 빠지면 소문자 단어가 하나로 붙어 단어 겹침을 놓친다. 이 오타의 상위 10개 재현율은 56.4%였다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
 - 후보가 150개면 질문이 300개라 judge 입력 토큰과 지연이 후보 수에 비례한다. 큰 요청은 여러 건으로 나뉜다.
 - 나뉜 요청은 조각마다 같은 state를 보내 입력 토큰이 조각 수만큼 늘고, 조각이 실패하면 그 항목은 순위로만 정해진다.
@@ -204,3 +206,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 - 채널 점수의 가중합은 단위가 다른 점수의 가중치를 따로 학습해야 해 버렸다([결정 기록](../decisions/2026-10-01-ranked-candidates-before-judge.md)).
 - 임베딩 채널을 기본으로 넣는 방식은 설치 크기와 상주 메모리가 들고 이득이 측정되지 않아 버렸다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)).
 - 입력마다 LLM으로 사실 문장을 뽑는 방식은 호출과 출력 비용이 들고 원문 대신 생성문을 저장해 버렸다.
+
+## 미해결 질문
+
+- judge에 넘길 후보를 RRF 상위 N으로 고를지, 후보 전체나 다른 거르기로 바꿀지([#153](https://github.com/woonyong-choi/saturn/issues/153))

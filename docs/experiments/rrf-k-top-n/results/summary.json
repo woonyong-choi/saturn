@@ -1,0 +1,272 @@
+{
+  "candidates": 5943,
+  "exploratory": {
+    "candidates_per_set_median": 127,
+    "channel_missing_ratio": {
+      "rank_file": 0.3241,
+      "rank_word": 0.2396
+    },
+    "h1_per_set_recall_median": 0.0606,
+    "h1_session_bootstrap_ci95": [
+      0.0694,
+      0.2679
+    ],
+    "kept_per_set": {
+      "median": 3,
+      "top5_share": 0.4725,
+      "zero_sets": 15
+    },
+    "min_n_for_recall_95": {
+      "10": 132,
+      "100": 133,
+      "30": 133,
+      "60": 133
+    },
+    "p_keep": {
+      "median": 0.3,
+      "near_threshold_ratio": 0.2073,
+      "p05": 0.17,
+      "p95": 0.52
+    },
+    "random_recall": {
+      "10": 0.0873,
+      "20": 0.1746,
+      "40": 0.3492,
+      "5": 0.0437
+    },
+    "replica_agreement": {
+      "agree": 569,
+      "ci95": [
+        0.9707,
+        0.9918
+      ],
+      "n": 578
+    },
+    "single_channel_recall": {
+      "rank_file": {
+        "ci95": [
+          0.0386,
+          0.0848
+        ],
+        "covered": 23,
+        "kept": 400,
+        "recall": 0.0575
+      },
+      "rank_recent": {
+        "ci95": [
+          0.0786,
+          0.1389
+        ],
+        "covered": 42,
+        "kept": 400,
+        "recall": 0.105
+      },
+      "rank_word": {
+        "ci95": [
+          0.1477,
+          0.2233
+        ],
+        "covered": 73,
+        "kept": 400,
+        "recall": 0.1825
+      }
+    }
+  },
+  "flow": {
+    "analyzed": 50,
+    "collected": 50
+  },
+  "grid": [
+    {
+      "ci95": [
+        0.0386,
+        0.0848
+      ],
+      "covered": 23,
+      "k": 10,
+      "kept": 400,
+      "recall": 0.0575,
+      "top_n": 5
+    },
+    {
+      "ci95": [
+        0.0917,
+        0.1555
+      ],
+      "covered": 48,
+      "k": 10,
+      "kept": 400,
+      "recall": 0.12,
+      "top_n": 10
+    },
+    {
+      "ci95": [
+        0.1891,
+        0.2711
+      ],
+      "covered": 91,
+      "k": 10,
+      "kept": 400,
+      "recall": 0.2275,
+      "top_n": 20
+    },
+    {
+      "ci95": [
+        0.3946,
+        0.4915
+      ],
+      "covered": 177,
+      "k": 10,
+      "kept": 400,
+      "recall": 0.4425,
+      "top_n": 40
+    },
+    {
+      "ci95": [
+        0.0406,
+        0.0877
+      ],
+      "covered": 24,
+      "k": 30,
+      "kept": 400,
+      "recall": 0.06,
+      "top_n": 5
+    },
+    {
+      "ci95": [
+        0.0873,
+        0.15
+      ],
+      "covered": 46,
+      "k": 30,
+      "kept": 400,
+      "recall": 0.115,
+      "top_n": 10
+    },
+    {
+      "ci95": [
+        0.2031,
+        0.2868
+      ],
+      "covered": 97,
+      "k": 30,
+      "kept": 400,
+      "recall": 0.2425,
+      "top_n": 20
+    },
+    {
+      "ci95": [
+        0.3971,
+        0.494
+      ],
+      "covered": 178,
+      "k": 30,
+      "kept": 400,
+      "recall": 0.445,
+      "top_n": 40
+    },
+    {
+      "ci95": [
+        0.0427,
+        0.0906
+      ],
+      "covered": 25,
+      "k": 60,
+      "kept": 400,
+      "recall": 0.0625,
+      "top_n": 5
+    },
+    {
+      "ci95": [
+        0.0917,
+        0.1555
+      ],
+      "covered": 48,
+      "k": 60,
+      "kept": 400,
+      "recall": 0.12,
+      "top_n": 10
+    },
+    {
+      "ci95": [
+        0.2148,
+        0.2999
+      ],
+      "covered": 102,
+      "k": 60,
+      "kept": 400,
+      "recall": 0.255,
+      "top_n": 20
+    },
+    {
+      "ci95": [
+        0.3946,
+        0.4915
+      ],
+      "covered": 177,
+      "k": 60,
+      "kept": 400,
+      "recall": 0.4425,
+      "top_n": 40
+    },
+    {
+      "ci95": [
+        0.0427,
+        0.0906
+      ],
+      "covered": 25,
+      "k": 100,
+      "kept": 400,
+      "recall": 0.0625,
+      "top_n": 5
+    },
+    {
+      "ci95": [
+        0.0917,
+        0.1555
+      ],
+      "covered": 48,
+      "k": 100,
+      "kept": 400,
+      "recall": 0.12,
+      "top_n": 10
+    },
+    {
+      "ci95": [
+        0.2241,
+        0.3103
+      ],
+      "covered": 106,
+      "k": 100,
+      "kept": 400,
+      "recall": 0.265,
+      "top_n": 20
+    },
+    {
+      "ci95": [
+        0.3873,
+        0.484
+      ],
+      "covered": 174,
+      "k": 100,
+      "kept": 400,
+      "recall": 0.435,
+      "top_n": 40
+    }
+  ],
+  "h1": {
+    "ci95": [
+      0.0917,
+      0.1555
+    ],
+    "covered": 48,
+    "k": 60,
+    "kept": 400,
+    "lower_bound": 0.9,
+    "recall": 0.12,
+    "top_n": 10,
+    "verdict": "기각"
+  },
+  "selected": null,
+  "sessions": 10
+}
