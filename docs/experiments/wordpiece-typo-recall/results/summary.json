@@ -1,0 +1,1490 @@
+{
+  "run_id": "20261001T105556Z-6235a29",
+  "criteria": {
+    "alpha": 0.05,
+    "min_gain_pct": 3.0,
+    "non_inferiority_margin_pct": 2.0,
+    "top_k": 10
+  },
+  "queries": {
+    "ko": 800,
+    "en": 800
+  },
+  "hypotheses": [
+    {
+      "id": "H1",
+      "lang": "ko",
+      "variant": "typo",
+      "metric": "hit_at_10",
+      "baseline": "base",
+      "candidate": "ko-jamo3",
+      "kind": "superiority",
+      "n": 800,
+      "baseline_result": {
+        "k": 749,
+        "n": 800,
+        "pct": 93.6,
+        "ci_pct": [
+          91.7,
+          95.1
+        ]
+      },
+      "candidate_result": {
+        "k": 756,
+        "n": 800,
+        "pct": 94.5,
+        "ci_pct": [
+          92.7,
+          95.9
+        ]
+      },
+      "table": {
+        "both": 729,
+        "baseline_only": 20,
+        "candidate_only": 27,
+        "neither": 24
+      },
+      "diff_pct": 0.9,
+      "diff_ci_pct": [
+        -0.8,
+        2.6
+      ],
+      "odds_ratio": 1.35,
+      "mcnemar": {
+        "method": "McNemar 연속성 보정",
+        "statistic": 0.766,
+        "p": 0.3815
+      },
+      "p_holm": 0.3815,
+      "verdict": "기각"
+    },
+    {
+      "id": "H2",
+      "lang": "ko",
+      "variant": "clean",
+      "metric": "hit_at_1",
+      "baseline": "base",
+      "candidate": "ko-jamo3",
+      "kind": "non-inferiority",
+      "n": 800,
+      "baseline_result": {
+        "k": 636,
+        "n": 800,
+        "pct": 79.5,
+        "ci_pct": [
+          76.6,
+          82.2
+        ]
+      },
+      "candidate_result": {
+        "k": 556,
+        "n": 800,
+        "pct": 69.5,
+        "ci_pct": [
+          66.2,
+          72.6
+        ]
+      },
+      "table": {
+        "both": 539,
+        "baseline_only": 97,
+        "candidate_only": 17,
+        "neither": 147
+      },
+      "diff_pct": -10.0,
+      "diff_ci_pct": [
+        -12.5,
+        -7.5
+      ],
+      "odds_ratio": 0.175,
+      "mcnemar": {
+        "method": "McNemar 연속성 보정",
+        "statistic": 54.746,
+        "p": 1.372e-13
+      },
+      "p_holm": null,
+      "verdict": "기각"
+    },
+    {
+      "id": "H3",
+      "lang": "en",
+      "variant": "typo",
+      "metric": "hit_at_10",
+      "baseline": "base",
+      "candidate": "en-char4",
+      "kind": "superiority",
+      "n": 800,
+      "baseline_result": {
+        "k": 604,
+        "n": 800,
+        "pct": 75.5,
+        "ci_pct": [
+          72.4,
+          78.4
+        ]
+      },
+      "candidate_result": {
+        "k": 697,
+        "n": 800,
+        "pct": 87.1,
+        "ci_pct": [
+          84.6,
+          89.3
+        ]
+      },
+      "table": {
+        "both": 580,
+        "baseline_only": 24,
+        "candidate_only": 117,
+        "neither": 79
+      },
+      "diff_pct": 11.6,
+      "diff_ci_pct": [
+        8.8,
+        14.5
+      ],
+      "odds_ratio": 4.875,
+      "mcnemar": {
+        "method": "McNemar 연속성 보정",
+        "statistic": 60.028,
+        "p": 9.35e-15
+      },
+      "p_holm": 1.87e-14,
+      "verdict": "채택"
+    },
+    {
+      "id": "H4",
+      "lang": "en",
+      "variant": "clean",
+      "metric": "hit_at_1",
+      "baseline": "base",
+      "candidate": "en-char4",
+      "kind": "non-inferiority",
+      "n": 800,
+      "baseline_result": {
+        "k": 496,
+        "n": 800,
+        "pct": 62.0,
+        "ci_pct": [
+          58.6,
+          65.3
+        ]
+      },
+      "candidate_result": {
+        "k": 454,
+        "n": 800,
+        "pct": 56.8,
+        "ci_pct": [
+          53.3,
+          60.1
+        ]
+      },
+      "table": {
+        "both": 419,
+        "baseline_only": 77,
+        "candidate_only": 35,
+        "neither": 269
+      },
+      "diff_pct": -5.2,
+      "diff_ci_pct": [
+        -7.8,
+        -2.7
+      ],
+      "odds_ratio": 0.455,
+      "mcnemar": {
+        "method": "McNemar 연속성 보정",
+        "statistic": 15.009,
+        "p": 0.000107
+      },
+      "p_holm": null,
+      "verdict": "기각"
+    }
+  ],
+  "exploratory": {
+    "conditions": [
+      {
+        "lang": "en",
+        "variant": "clean",
+        "condition": "base",
+        "n": 800,
+        "recall_at_10_pct": 97.1,
+        "recall_at_10_lo": 95.7,
+        "recall_at_10_hi": 98.1,
+        "precision_at_1_pct": 62.0,
+        "precision_at_1_lo": 58.6,
+        "precision_at_1_hi": 65.3,
+        "mrr_at_10": 0.742
+      },
+      {
+        "lang": "en",
+        "variant": "clean",
+        "condition": "en-char4",
+        "n": 800,
+        "recall_at_10_pct": 94.1,
+        "recall_at_10_lo": 92.3,
+        "recall_at_10_hi": 95.6,
+        "precision_at_1_pct": 56.8,
+        "precision_at_1_lo": 53.3,
+        "precision_at_1_hi": 60.1,
+        "mrr_at_10": 0.696
+      },
+      {
+        "lang": "en",
+        "variant": "clean",
+        "condition": "en-union",
+        "n": 800,
+        "recall_at_10_pct": 95.9,
+        "recall_at_10_lo": 94.3,
+        "recall_at_10_hi": 97.0,
+        "precision_at_1_pct": 60.5,
+        "precision_at_1_lo": 57.1,
+        "precision_at_1_hi": 63.8,
+        "mrr_at_10": 0.727
+      },
+      {
+        "lang": "en",
+        "variant": "clean",
+        "condition": "ko-jamo2",
+        "n": 800,
+        "recall_at_10_pct": 96.5,
+        "recall_at_10_lo": 95.0,
+        "recall_at_10_hi": 97.6,
+        "precision_at_1_pct": 58.6,
+        "precision_at_1_lo": 55.2,
+        "precision_at_1_hi": 62.0,
+        "mrr_at_10": 0.72
+      },
+      {
+        "lang": "en",
+        "variant": "clean",
+        "condition": "ko-jamo3",
+        "n": 800,
+        "recall_at_10_pct": 96.5,
+        "recall_at_10_lo": 95.0,
+        "recall_at_10_hi": 97.6,
+        "precision_at_1_pct": 59.5,
+        "precision_at_1_lo": 56.1,
+        "precision_at_1_hi": 62.8,
+        "mrr_at_10": 0.724
+      },
+      {
+        "lang": "en",
+        "variant": "clean",
+        "condition": "ko-jamo4",
+        "n": 800,
+        "recall_at_10_pct": 96.9,
+        "recall_at_10_lo": 95.4,
+        "recall_at_10_hi": 97.9,
+        "precision_at_1_pct": 59.9,
+        "precision_at_1_lo": 56.4,
+        "precision_at_1_hi": 63.2,
+        "mrr_at_10": 0.728
+      },
+      {
+        "lang": "en",
+        "variant": "clean",
+        "condition": "ko-union",
+        "n": 800,
+        "recall_at_10_pct": 96.5,
+        "recall_at_10_lo": 95.0,
+        "recall_at_10_hi": 97.6,
+        "precision_at_1_pct": 58.4,
+        "precision_at_1_lo": 54.9,
+        "precision_at_1_hi": 61.7,
+        "mrr_at_10": 0.718
+      },
+      {
+        "lang": "en",
+        "variant": "typo",
+        "condition": "base",
+        "n": 800,
+        "recall_at_10_pct": 75.5,
+        "recall_at_10_lo": 72.4,
+        "recall_at_10_hi": 78.4,
+        "precision_at_1_pct": 36.1,
+        "precision_at_1_lo": 32.9,
+        "precision_at_1_hi": 39.5,
+        "mrr_at_10": 0.482
+      },
+      {
+        "lang": "en",
+        "variant": "typo",
+        "condition": "en-char4",
+        "n": 800,
+        "recall_at_10_pct": 87.1,
+        "recall_at_10_lo": 84.6,
+        "recall_at_10_hi": 89.3,
+        "precision_at_1_pct": 47.0,
+        "precision_at_1_lo": 43.6,
+        "precision_at_1_hi": 50.5,
+        "mrr_at_10": 0.601
+      },
+      {
+        "lang": "en",
+        "variant": "typo",
+        "condition": "en-union",
+        "n": 800,
+        "recall_at_10_pct": 88.4,
+        "recall_at_10_lo": 86.0,
+        "recall_at_10_hi": 90.4,
+        "precision_at_1_pct": 48.2,
+        "precision_at_1_lo": 44.8,
+        "precision_at_1_hi": 51.7,
+        "mrr_at_10": 0.617
+      },
+      {
+        "lang": "en",
+        "variant": "typo",
+        "condition": "ko-jamo2",
+        "n": 800,
+        "recall_at_10_pct": 74.0,
+        "recall_at_10_lo": 70.9,
+        "recall_at_10_hi": 76.9,
+        "precision_at_1_pct": 35.0,
+        "precision_at_1_lo": 31.8,
+        "precision_at_1_hi": 38.4,
+        "mrr_at_10": 0.473
+      },
+      {
+        "lang": "en",
+        "variant": "typo",
+        "condition": "ko-jamo3",
+        "n": 800,
+        "recall_at_10_pct": 73.9,
+        "recall_at_10_lo": 70.7,
+        "recall_at_10_hi": 76.8,
+        "precision_at_1_pct": 35.6,
+        "precision_at_1_lo": 32.4,
+        "precision_at_1_hi": 39.0,
+        "mrr_at_10": 0.475
+      },
+      {
+        "lang": "en",
+        "variant": "typo",
+        "condition": "ko-jamo4",
+        "n": 800,
+        "recall_at_10_pct": 74.9,
+        "recall_at_10_lo": 71.8,
+        "recall_at_10_hi": 77.8,
+        "precision_at_1_pct": 36.0,
+        "precision_at_1_lo": 32.7,
+        "precision_at_1_hi": 39.4,
+        "mrr_at_10": 0.48
+      },
+      {
+        "lang": "en",
+        "variant": "typo",
+        "condition": "ko-union",
+        "n": 800,
+        "recall_at_10_pct": 73.9,
+        "recall_at_10_lo": 70.7,
+        "recall_at_10_hi": 76.8,
+        "precision_at_1_pct": 35.4,
+        "precision_at_1_lo": 32.1,
+        "precision_at_1_hi": 38.8,
+        "mrr_at_10": 0.475
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "condition": "base",
+        "n": 800,
+        "recall_at_10_pct": 99.0,
+        "recall_at_10_lo": 98.0,
+        "recall_at_10_hi": 99.5,
+        "precision_at_1_pct": 79.5,
+        "precision_at_1_lo": 76.6,
+        "precision_at_1_hi": 82.2,
+        "mrr_at_10": 0.865
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "condition": "en-char4",
+        "n": 800,
+        "recall_at_10_pct": 98.8,
+        "recall_at_10_lo": 97.7,
+        "recall_at_10_hi": 99.3,
+        "precision_at_1_pct": 79.4,
+        "precision_at_1_lo": 76.4,
+        "precision_at_1_hi": 82.0,
+        "mrr_at_10": 0.865
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "condition": "en-union",
+        "n": 800,
+        "recall_at_10_pct": 98.9,
+        "recall_at_10_lo": 97.9,
+        "recall_at_10_hi": 99.4,
+        "precision_at_1_pct": 79.2,
+        "precision_at_1_lo": 76.3,
+        "precision_at_1_hi": 81.9,
+        "mrr_at_10": 0.862
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "condition": "ko-jamo2",
+        "n": 800,
+        "recall_at_10_pct": 90.1,
+        "recall_at_10_lo": 87.9,
+        "recall_at_10_hi": 92.0,
+        "precision_at_1_pct": 53.6,
+        "precision_at_1_lo": 50.2,
+        "precision_at_1_hi": 57.1,
+        "mrr_at_10": 0.652
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "condition": "ko-jamo3",
+        "n": 800,
+        "recall_at_10_pct": 97.0,
+        "recall_at_10_lo": 95.6,
+        "recall_at_10_hi": 98.0,
+        "precision_at_1_pct": 69.5,
+        "precision_at_1_lo": 66.2,
+        "precision_at_1_hi": 72.6,
+        "mrr_at_10": 0.788
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "condition": "ko-jamo4",
+        "n": 800,
+        "recall_at_10_pct": 97.8,
+        "recall_at_10_lo": 96.5,
+        "recall_at_10_hi": 98.6,
+        "precision_at_1_pct": 74.6,
+        "precision_at_1_lo": 71.5,
+        "precision_at_1_hi": 77.5,
+        "mrr_at_10": 0.826
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "condition": "ko-union",
+        "n": 800,
+        "recall_at_10_pct": 98.0,
+        "recall_at_10_lo": 96.8,
+        "recall_at_10_hi": 98.8,
+        "precision_at_1_pct": 73.5,
+        "precision_at_1_lo": 70.3,
+        "precision_at_1_hi": 76.4,
+        "mrr_at_10": 0.818
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "condition": "base",
+        "n": 800,
+        "recall_at_10_pct": 93.6,
+        "recall_at_10_lo": 91.7,
+        "recall_at_10_hi": 95.1,
+        "precision_at_1_pct": 67.0,
+        "precision_at_1_lo": 63.7,
+        "precision_at_1_hi": 70.2,
+        "mrr_at_10": 0.756
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "condition": "en-char4",
+        "n": 800,
+        "recall_at_10_pct": 93.8,
+        "recall_at_10_lo": 91.9,
+        "recall_at_10_hi": 95.2,
+        "precision_at_1_pct": 66.8,
+        "precision_at_1_lo": 63.4,
+        "precision_at_1_hi": 69.9,
+        "mrr_at_10": 0.755
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "condition": "en-union",
+        "n": 800,
+        "recall_at_10_pct": 93.4,
+        "recall_at_10_lo": 91.4,
+        "recall_at_10_hi": 94.9,
+        "precision_at_1_pct": 66.9,
+        "precision_at_1_lo": 63.5,
+        "precision_at_1_hi": 70.0,
+        "mrr_at_10": 0.755
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "condition": "ko-jamo2",
+        "n": 800,
+        "recall_at_10_pct": 85.6,
+        "recall_at_10_lo": 83.0,
+        "recall_at_10_hi": 87.9,
+        "precision_at_1_pct": 47.9,
+        "precision_at_1_lo": 44.4,
+        "precision_at_1_hi": 51.3,
+        "mrr_at_10": 0.6
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "condition": "ko-jamo3",
+        "n": 800,
+        "recall_at_10_pct": 94.5,
+        "recall_at_10_lo": 92.7,
+        "recall_at_10_hi": 95.9,
+        "precision_at_1_pct": 63.5,
+        "precision_at_1_lo": 60.1,
+        "precision_at_1_hi": 66.8,
+        "mrr_at_10": 0.739
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "condition": "ko-jamo4",
+        "n": 800,
+        "recall_at_10_pct": 93.4,
+        "recall_at_10_lo": 91.4,
+        "recall_at_10_hi": 94.9,
+        "precision_at_1_pct": 67.6,
+        "precision_at_1_lo": 64.3,
+        "precision_at_1_hi": 70.8,
+        "mrr_at_10": 0.763
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "condition": "ko-union",
+        "n": 800,
+        "recall_at_10_pct": 94.1,
+        "recall_at_10_lo": 92.3,
+        "recall_at_10_hi": 95.6,
+        "precision_at_1_pct": 67.4,
+        "precision_at_1_lo": 64.0,
+        "precision_at_1_hi": 70.5,
+        "mrr_at_10": 0.765
+      }
+    ],
+    "typo_types": [
+      {
+        "lang": "en",
+        "typo_type": "letter-del",
+        "condition": "base",
+        "n": 171,
+        "recall_at_10_pct": 82.5,
+        "recall_at_10_lo": 76.1,
+        "recall_at_10_hi": 87.4
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-del",
+        "condition": "en-char4",
+        "n": 171,
+        "recall_at_10_pct": 86.5,
+        "recall_at_10_lo": 80.6,
+        "recall_at_10_hi": 90.9
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-del",
+        "condition": "en-union",
+        "n": 171,
+        "recall_at_10_pct": 88.3,
+        "recall_at_10_lo": 82.6,
+        "recall_at_10_hi": 92.3
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-del",
+        "condition": "ko-jamo2",
+        "n": 171,
+        "recall_at_10_pct": 78.4,
+        "recall_at_10_lo": 71.6,
+        "recall_at_10_hi": 83.9
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-del",
+        "condition": "ko-jamo3",
+        "n": 171,
+        "recall_at_10_pct": 78.9,
+        "recall_at_10_lo": 72.2,
+        "recall_at_10_hi": 84.4
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-del",
+        "condition": "ko-jamo4",
+        "n": 171,
+        "recall_at_10_pct": 80.7,
+        "recall_at_10_lo": 74.1,
+        "recall_at_10_hi": 85.9
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-del",
+        "condition": "ko-union",
+        "n": 171,
+        "recall_at_10_pct": 78.4,
+        "recall_at_10_lo": 71.6,
+        "recall_at_10_hi": 83.9
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-ins",
+        "condition": "base",
+        "n": 153,
+        "recall_at_10_pct": 76.5,
+        "recall_at_10_lo": 69.2,
+        "recall_at_10_hi": 82.5
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-ins",
+        "condition": "en-char4",
+        "n": 153,
+        "recall_at_10_pct": 88.9,
+        "recall_at_10_lo": 82.9,
+        "recall_at_10_hi": 92.9
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-ins",
+        "condition": "en-union",
+        "n": 153,
+        "recall_at_10_pct": 88.9,
+        "recall_at_10_lo": 82.9,
+        "recall_at_10_hi": 92.9
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-ins",
+        "condition": "ko-jamo2",
+        "n": 153,
+        "recall_at_10_pct": 73.2,
+        "recall_at_10_lo": 65.7,
+        "recall_at_10_hi": 79.6
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-ins",
+        "condition": "ko-jamo3",
+        "n": 153,
+        "recall_at_10_pct": 73.2,
+        "recall_at_10_lo": 65.7,
+        "recall_at_10_hi": 79.6
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-ins",
+        "condition": "ko-jamo4",
+        "n": 153,
+        "recall_at_10_pct": 75.2,
+        "recall_at_10_lo": 67.8,
+        "recall_at_10_hi": 81.3
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-ins",
+        "condition": "ko-union",
+        "n": 153,
+        "recall_at_10_pct": 73.2,
+        "recall_at_10_lo": 65.7,
+        "recall_at_10_hi": 79.6
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-sub",
+        "condition": "base",
+        "n": 154,
+        "recall_at_10_pct": 80.5,
+        "recall_at_10_lo": 73.6,
+        "recall_at_10_hi": 86.0
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-sub",
+        "condition": "en-char4",
+        "n": 154,
+        "recall_at_10_pct": 84.4,
+        "recall_at_10_lo": 77.9,
+        "recall_at_10_hi": 89.3
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-sub",
+        "condition": "en-union",
+        "n": 154,
+        "recall_at_10_pct": 87.0,
+        "recall_at_10_lo": 80.8,
+        "recall_at_10_hi": 91.4
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-sub",
+        "condition": "ko-jamo2",
+        "n": 154,
+        "recall_at_10_pct": 81.8,
+        "recall_at_10_lo": 75.0,
+        "recall_at_10_hi": 87.1
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-sub",
+        "condition": "ko-jamo3",
+        "n": 154,
+        "recall_at_10_pct": 81.2,
+        "recall_at_10_lo": 74.3,
+        "recall_at_10_hi": 86.6
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-sub",
+        "condition": "ko-jamo4",
+        "n": 154,
+        "recall_at_10_pct": 81.2,
+        "recall_at_10_lo": 74.3,
+        "recall_at_10_hi": 86.6
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-sub",
+        "condition": "ko-union",
+        "n": 154,
+        "recall_at_10_pct": 81.8,
+        "recall_at_10_lo": 75.0,
+        "recall_at_10_hi": 87.1
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-swap",
+        "condition": "base",
+        "n": 166,
+        "recall_at_10_pct": 80.7,
+        "recall_at_10_lo": 74.1,
+        "recall_at_10_hi": 86.0
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-swap",
+        "condition": "en-char4",
+        "n": 166,
+        "recall_at_10_pct": 83.7,
+        "recall_at_10_lo": 77.4,
+        "recall_at_10_hi": 88.6
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-swap",
+        "condition": "en-union",
+        "n": 166,
+        "recall_at_10_pct": 85.5,
+        "recall_at_10_lo": 79.4,
+        "recall_at_10_hi": 90.1
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-swap",
+        "condition": "ko-jamo2",
+        "n": 166,
+        "recall_at_10_pct": 80.7,
+        "recall_at_10_lo": 74.1,
+        "recall_at_10_hi": 86.0
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-swap",
+        "condition": "ko-jamo3",
+        "n": 166,
+        "recall_at_10_pct": 80.7,
+        "recall_at_10_lo": 74.1,
+        "recall_at_10_hi": 86.0
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-swap",
+        "condition": "ko-jamo4",
+        "n": 166,
+        "recall_at_10_pct": 80.7,
+        "recall_at_10_lo": 74.1,
+        "recall_at_10_hi": 86.0
+      },
+      {
+        "lang": "en",
+        "typo_type": "letter-swap",
+        "condition": "ko-union",
+        "n": 166,
+        "recall_at_10_pct": 80.7,
+        "recall_at_10_lo": 74.1,
+        "recall_at_10_hi": 86.0
+      },
+      {
+        "lang": "en",
+        "typo_type": "space-drop",
+        "condition": "base",
+        "n": 156,
+        "recall_at_10_pct": 56.4,
+        "recall_at_10_lo": 48.6,
+        "recall_at_10_hi": 63.9
+      },
+      {
+        "lang": "en",
+        "typo_type": "space-drop",
+        "condition": "en-char4",
+        "n": 156,
+        "recall_at_10_pct": 92.3,
+        "recall_at_10_lo": 87.0,
+        "recall_at_10_hi": 95.5
+      },
+      {
+        "lang": "en",
+        "typo_type": "space-drop",
+        "condition": "en-union",
+        "n": 156,
+        "recall_at_10_pct": 92.3,
+        "recall_at_10_lo": 87.0,
+        "recall_at_10_hi": 95.5
+      },
+      {
+        "lang": "en",
+        "typo_type": "space-drop",
+        "condition": "ko-jamo2",
+        "n": 156,
+        "recall_at_10_pct": 55.1,
+        "recall_at_10_lo": 47.3,
+        "recall_at_10_hi": 62.7
+      },
+      {
+        "lang": "en",
+        "typo_type": "space-drop",
+        "condition": "ko-jamo3",
+        "n": 156,
+        "recall_at_10_pct": 54.5,
+        "recall_at_10_lo": 46.7,
+        "recall_at_10_hi": 62.1
+      },
+      {
+        "lang": "en",
+        "typo_type": "space-drop",
+        "condition": "ko-jamo4",
+        "n": 156,
+        "recall_at_10_pct": 55.8,
+        "recall_at_10_lo": 47.9,
+        "recall_at_10_hi": 63.3
+      },
+      {
+        "lang": "en",
+        "typo_type": "space-drop",
+        "condition": "ko-union",
+        "n": 156,
+        "recall_at_10_pct": 54.5,
+        "recall_at_10_lo": 46.7,
+        "recall_at_10_hi": 62.1
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-del",
+        "condition": "base",
+        "n": 263,
+        "recall_at_10_pct": 88.6,
+        "recall_at_10_lo": 84.2,
+        "recall_at_10_hi": 91.9
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-del",
+        "condition": "en-char4",
+        "n": 263,
+        "recall_at_10_pct": 89.7,
+        "recall_at_10_lo": 85.5,
+        "recall_at_10_hi": 92.8
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-del",
+        "condition": "en-union",
+        "n": 263,
+        "recall_at_10_pct": 89.0,
+        "recall_at_10_lo": 84.6,
+        "recall_at_10_hi": 92.2
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-del",
+        "condition": "ko-jamo2",
+        "n": 263,
+        "recall_at_10_pct": 84.0,
+        "recall_at_10_lo": 79.1,
+        "recall_at_10_hi": 88.0
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-del",
+        "condition": "ko-jamo3",
+        "n": 263,
+        "recall_at_10_pct": 93.5,
+        "recall_at_10_lo": 89.9,
+        "recall_at_10_hi": 95.9
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-del",
+        "condition": "ko-jamo4",
+        "n": 263,
+        "recall_at_10_pct": 91.3,
+        "recall_at_10_lo": 87.2,
+        "recall_at_10_hi": 94.1
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-del",
+        "condition": "ko-union",
+        "n": 263,
+        "recall_at_10_pct": 90.9,
+        "recall_at_10_lo": 86.8,
+        "recall_at_10_hi": 93.8
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-sub",
+        "condition": "base",
+        "n": 281,
+        "recall_at_10_pct": 92.9,
+        "recall_at_10_lo": 89.3,
+        "recall_at_10_hi": 95.3
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-sub",
+        "condition": "en-char4",
+        "n": 281,
+        "recall_at_10_pct": 92.2,
+        "recall_at_10_lo": 88.4,
+        "recall_at_10_hi": 94.8
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-sub",
+        "condition": "en-union",
+        "n": 281,
+        "recall_at_10_pct": 92.2,
+        "recall_at_10_lo": 88.4,
+        "recall_at_10_hi": 94.8
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-sub",
+        "condition": "ko-jamo2",
+        "n": 281,
+        "recall_at_10_pct": 84.0,
+        "recall_at_10_lo": 79.2,
+        "recall_at_10_hi": 87.8
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-sub",
+        "condition": "ko-jamo3",
+        "n": 281,
+        "recall_at_10_pct": 93.6,
+        "recall_at_10_lo": 90.1,
+        "recall_at_10_hi": 95.9
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-sub",
+        "condition": "ko-jamo4",
+        "n": 281,
+        "recall_at_10_pct": 90.7,
+        "recall_at_10_lo": 86.8,
+        "recall_at_10_hi": 93.6
+      },
+      {
+        "lang": "ko",
+        "typo_type": "jamo-sub",
+        "condition": "ko-union",
+        "n": 281,
+        "recall_at_10_pct": 93.6,
+        "recall_at_10_lo": 90.1,
+        "recall_at_10_hi": 95.9
+      },
+      {
+        "lang": "ko",
+        "typo_type": "space-drop",
+        "condition": "base",
+        "n": 256,
+        "recall_at_10_pct": 99.6,
+        "recall_at_10_lo": 97.8,
+        "recall_at_10_hi": 99.9
+      },
+      {
+        "lang": "ko",
+        "typo_type": "space-drop",
+        "condition": "en-char4",
+        "n": 256,
+        "recall_at_10_pct": 99.6,
+        "recall_at_10_lo": 97.8,
+        "recall_at_10_hi": 99.9
+      },
+      {
+        "lang": "ko",
+        "typo_type": "space-drop",
+        "condition": "en-union",
+        "n": 256,
+        "recall_at_10_pct": 99.2,
+        "recall_at_10_lo": 97.2,
+        "recall_at_10_hi": 99.8
+      },
+      {
+        "lang": "ko",
+        "typo_type": "space-drop",
+        "condition": "ko-jamo2",
+        "n": 256,
+        "recall_at_10_pct": 89.1,
+        "recall_at_10_lo": 84.6,
+        "recall_at_10_hi": 92.3
+      },
+      {
+        "lang": "ko",
+        "typo_type": "space-drop",
+        "condition": "ko-jamo3",
+        "n": 256,
+        "recall_at_10_pct": 96.5,
+        "recall_at_10_lo": 93.5,
+        "recall_at_10_hi": 98.1
+      },
+      {
+        "lang": "ko",
+        "typo_type": "space-drop",
+        "condition": "ko-jamo4",
+        "n": 256,
+        "recall_at_10_pct": 98.4,
+        "recall_at_10_lo": 96.1,
+        "recall_at_10_hi": 99.4
+      },
+      {
+        "lang": "ko",
+        "typo_type": "space-drop",
+        "condition": "ko-union",
+        "n": 256,
+        "recall_at_10_pct": 98.0,
+        "recall_at_10_lo": 95.5,
+        "recall_at_10_hi": 99.2
+      }
+    ],
+    "pairs": [
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "metric": "hit_at_10",
+        "candidate": "ko-jamo3",
+        "n": 800,
+        "baseline_pct": 93.6,
+        "candidate_pct": 94.5,
+        "diff_pct": 0.9,
+        "diff_lo": -0.8,
+        "diff_hi": 2.6,
+        "baseline_only": 20,
+        "candidate_only": 27,
+        "p_unadjusted": 0.3815
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "metric": "hit_at_10",
+        "candidate": "ko-jamo3",
+        "n": 800,
+        "baseline_pct": 99.0,
+        "candidate_pct": 97.0,
+        "diff_pct": -2.0,
+        "diff_lo": -3.3,
+        "diff_hi": -1.0,
+        "baseline_only": 18,
+        "candidate_only": 2,
+        "p_unadjusted": 0.0004025
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "metric": "hit_at_1",
+        "candidate": "ko-jamo3",
+        "n": 800,
+        "baseline_pct": 67.0,
+        "candidate_pct": 63.5,
+        "diff_pct": -3.5,
+        "diff_lo": -6.1,
+        "diff_hi": -0.8,
+        "baseline_only": 73,
+        "candidate_only": 45,
+        "p_unadjusted": 0.01294
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "metric": "hit_at_1",
+        "candidate": "ko-jamo3",
+        "n": 800,
+        "baseline_pct": 79.5,
+        "candidate_pct": 69.5,
+        "diff_pct": -10.0,
+        "diff_lo": -12.5,
+        "diff_hi": -7.5,
+        "baseline_only": 97,
+        "candidate_only": 17,
+        "p_unadjusted": 1.372e-13
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "metric": "hit_at_10",
+        "candidate": "ko-jamo2",
+        "n": 800,
+        "baseline_pct": 93.6,
+        "candidate_pct": 85.6,
+        "diff_pct": -8.0,
+        "diff_lo": -10.5,
+        "diff_hi": -5.6,
+        "baseline_only": 85,
+        "candidate_only": 21,
+        "p_unadjusted": 9.41e-10
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "metric": "hit_at_10",
+        "candidate": "ko-jamo2",
+        "n": 800,
+        "baseline_pct": 99.0,
+        "candidate_pct": 90.1,
+        "diff_pct": -8.9,
+        "diff_lo": -11.1,
+        "diff_hi": -7.0,
+        "baseline_only": 72,
+        "candidate_only": 1,
+        "p_unadjusted": 2.55e-16
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "metric": "hit_at_1",
+        "candidate": "ko-jamo2",
+        "n": 800,
+        "baseline_pct": 67.0,
+        "candidate_pct": 47.9,
+        "diff_pct": -19.1,
+        "diff_lo": -22.6,
+        "diff_hi": -15.6,
+        "baseline_only": 193,
+        "candidate_only": 40,
+        "p_unadjusted": 2.33e-23
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "metric": "hit_at_1",
+        "candidate": "ko-jamo2",
+        "n": 800,
+        "baseline_pct": 79.5,
+        "candidate_pct": 53.6,
+        "diff_pct": -25.9,
+        "diff_lo": -29.1,
+        "diff_hi": -22.6,
+        "baseline_only": 219,
+        "candidate_only": 12,
+        "p_unadjusted": 7.523e-42
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "metric": "hit_at_10",
+        "candidate": "ko-jamo4",
+        "n": 800,
+        "baseline_pct": 93.6,
+        "candidate_pct": 93.4,
+        "diff_pct": -0.3,
+        "diff_lo": -1.7,
+        "diff_hi": 1.2,
+        "baseline_only": 18,
+        "candidate_only": 16,
+        "p_unadjusted": 0.8638
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "metric": "hit_at_10",
+        "candidate": "ko-jamo4",
+        "n": 800,
+        "baseline_pct": 99.0,
+        "candidate_pct": 97.8,
+        "diff_pct": -1.2,
+        "diff_lo": -2.4,
+        "diff_hi": -0.3,
+        "baseline_only": 12,
+        "candidate_only": 2,
+        "p_unadjusted": 0.01294
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "metric": "hit_at_1",
+        "candidate": "ko-jamo4",
+        "n": 800,
+        "baseline_pct": 67.0,
+        "candidate_pct": 67.6,
+        "diff_pct": 0.6,
+        "diff_lo": -1.8,
+        "diff_hi": 3.0,
+        "baseline_only": 46,
+        "candidate_only": 51,
+        "p_unadjusted": 0.6846
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "metric": "hit_at_1",
+        "candidate": "ko-jamo4",
+        "n": 800,
+        "baseline_pct": 79.5,
+        "candidate_pct": 74.6,
+        "diff_pct": -4.9,
+        "diff_lo": -7.0,
+        "diff_hi": -2.8,
+        "baseline_only": 58,
+        "candidate_only": 19,
+        "p_unadjusted": 1.488e-05
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "metric": "hit_at_10",
+        "candidate": "ko-union",
+        "n": 800,
+        "baseline_pct": 93.6,
+        "candidate_pct": 94.1,
+        "diff_pct": 0.5,
+        "diff_lo": -1.0,
+        "diff_hi": 2.0,
+        "baseline_only": 15,
+        "candidate_only": 19,
+        "p_unadjusted": 0.6069
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "metric": "hit_at_10",
+        "candidate": "ko-union",
+        "n": 800,
+        "baseline_pct": 99.0,
+        "candidate_pct": 98.0,
+        "diff_pct": -1.0,
+        "diff_lo": -2.1,
+        "diff_hi": -0.1,
+        "baseline_only": 10,
+        "candidate_only": 2,
+        "p_unadjusted": 0.03857
+      },
+      {
+        "lang": "ko",
+        "variant": "typo",
+        "metric": "hit_at_1",
+        "candidate": "ko-union",
+        "n": 800,
+        "baseline_pct": 67.0,
+        "candidate_pct": 67.4,
+        "diff_pct": 0.4,
+        "diff_lo": -2.0,
+        "diff_hi": 2.8,
+        "baseline_only": 46,
+        "candidate_only": 49,
+        "p_unadjusted": 0.8374
+      },
+      {
+        "lang": "ko",
+        "variant": "clean",
+        "metric": "hit_at_1",
+        "candidate": "ko-union",
+        "n": 800,
+        "baseline_pct": 79.5,
+        "candidate_pct": 73.5,
+        "diff_pct": -6.0,
+        "diff_lo": -8.3,
+        "diff_hi": -3.7,
+        "baseline_only": 68,
+        "candidate_only": 20,
+        "p_unadjusted": 5.437e-07
+      },
+      {
+        "lang": "en",
+        "variant": "typo",
+        "metric": "hit_at_10",
+        "candidate": "en-char4",
+        "n": 800,
+        "baseline_pct": 75.5,
+        "candidate_pct": 87.1,
+        "diff_pct": 11.6,
+        "diff_lo": 8.8,
+        "diff_hi": 14.5,
+        "baseline_only": 24,
+        "candidate_only": 117,
+        "p_unadjusted": 9.35e-15
+      },
+      {
+        "lang": "en",
+        "variant": "clean",
+        "metric": "hit_at_10",
+        "candidate": "en-char4",
+        "n": 800,
+        "baseline_pct": 97.1,
+        "candidate_pct": 94.1,
+        "diff_pct": -3.0,
+        "diff_lo": -4.5,
+        "diff_hi": -1.7,
+        "baseline_only": 27,
+        "candidate_only": 3,
+        "p_unadjusted": 2.679e-05
+      },
+      {
+        "lang": "en",
+        "variant": "typo",
+        "metric": "hit_at_1",
+        "candidate": "en-char4",
+        "n": 800,
+        "baseline_pct": 36.1,
+        "candidate_pct": 47.0,
+        "diff_pct": 10.9,
+        "diff_lo": 7.8,
+        "diff_hi": 13.9,
+        "baseline_only": 38,
+        "candidate_only": 125,
+        "p_unadjusted": 1.628e-11
+      },
+      {
+        "lang": "en",
+        "variant": "clean",
+        "metric": "hit_at_1",
+        "candidate": "en-char4",
+        "n": 800,
+        "baseline_pct": 62.0,
+        "candidate_pct": 56.8,
+        "diff_pct": -5.2,
+        "diff_lo": -7.8,
+        "diff_hi": -2.7,
+        "baseline_only": 77,
+        "candidate_only": 35,
+        "p_unadjusted": 0.000107
+      },
+      {
+        "lang": "en",
+        "variant": "typo",
+        "metric": "hit_at_10",
+        "candidate": "en-union",
+        "n": 800,
+        "baseline_pct": 75.5,
+        "candidate_pct": 88.4,
+        "diff_pct": 12.9,
+        "diff_lo": 10.3,
+        "diff_hi": 15.5,
+        "baseline_only": 11,
+        "candidate_only": 114,
+        "p_unadjusted": 7.297e-20
+      },
+      {
+        "lang": "en",
+        "variant": "clean",
+        "metric": "hit_at_10",
+        "candidate": "en-union",
+        "n": 800,
+        "baseline_pct": 97.1,
+        "candidate_pct": 95.9,
+        "diff_pct": -1.2,
+        "diff_lo": -2.3,
+        "diff_hi": -0.4,
+        "baseline_only": 11,
+        "candidate_only": 1,
+        "p_unadjusted": 0.006348
+      },
+      {
+        "lang": "en",
+        "variant": "typo",
+        "metric": "hit_at_1",
+        "candidate": "en-union",
+        "n": 800,
+        "baseline_pct": 36.1,
+        "candidate_pct": 48.2,
+        "diff_pct": 12.1,
+        "diff_lo": 9.3,
+        "diff_hi": 14.9,
+        "baseline_only": 23,
+        "candidate_only": 120,
+        "p_unadjusted": 9.914e-16
+      },
+      {
+        "lang": "en",
+        "variant": "clean",
+        "metric": "hit_at_1",
+        "candidate": "en-union",
+        "n": 800,
+        "baseline_pct": 62.0,
+        "candidate_pct": 60.5,
+        "diff_pct": -1.5,
+        "diff_lo": -3.7,
+        "diff_hi": 0.7,
+        "baseline_only": 45,
+        "candidate_only": 33,
+        "p_unadjusted": 0.2129
+      }
+    ],
+    "index": [
+      {
+        "run_id": "20261001T105556Z-6235a29",
+        "condition": "base",
+        "vocab_size": 6527,
+        "postings": 83494,
+        "total_tokens": 150044
+      },
+      {
+        "run_id": "20261001T105556Z-6235a29",
+        "condition": "ko-jamo3",
+        "vocab_size": 5467,
+        "postings": 133327,
+        "total_tokens": 234937
+      },
+      {
+        "run_id": "20261001T105556Z-6235a29",
+        "condition": "en-char4",
+        "vocab_size": 7881,
+        "postings": 133970,
+        "total_tokens": 270214
+      },
+      {
+        "run_id": "20261001T105556Z-6235a29",
+        "condition": "ko-jamo2",
+        "vocab_size": 2898,
+        "postings": 118806,
+        "total_tokens": 265726
+      },
+      {
+        "run_id": "20261001T105556Z-6235a29",
+        "condition": "ko-jamo4",
+        "vocab_size": 8881,
+        "postings": 123869,
+        "total_tokens": 206569
+      },
+      {
+        "run_id": "20261001T105556Z-6235a29",
+        "condition": "ko-union",
+        "vocab_size": 9802,
+        "postings": 173324,
+        "total_tokens": 287705
+      },
+      {
+        "run_id": "20261001T105556Z-6235a29",
+        "condition": "en-union",
+        "vocab_size": 9920,
+        "postings": 175560,
+        "total_tokens": 364121
+      }
+    ]
+  }
+}

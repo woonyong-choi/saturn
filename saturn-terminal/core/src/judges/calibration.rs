@@ -1,8 +1,6 @@
 //! 기준값 조정, 채점 라벨 게이트, 승격 게이트의 계산 규칙(실행은 engine `training`).
 //! 설계: docs/design/judge-training.md
 
-use std::collections::VecDeque;
-
 pub const DEFAULT_TARGET_WRONG_RATE: f64 = 0.05;
 
 /// 되돌릴 수 없는 행동 질문의 `bounds.0`으로 넘긴다.
@@ -19,26 +17,8 @@ pub const MAX_ASK_RATE: f64 = 0.05;
 /// 단위는 pp이고, 신뢰구간 하한이 이 값보다 커야 한다.
 pub const PROMOTION_ACCURACY_FLOOR_PP: f64 = -1.0;
 
-/// n번째 판단의 폭은 `FAST_STEP / sqrt(n + 1)`이다(초안).
-const FAST_STEP: f64 = 0.01;
-
-/// 이 수의 최근 기준값이 `STABLE_BAND` 안이면 빠른 조정을 멈춘다.
-const STABLE_WINDOW: usize = 100;
-
-/// 한쪽 폭(±).
-const STABLE_BAND: f64 = 0.01;
-
-/// 빠른·느린 지수 평균 차이가 이 값을 넘으면 폭을 다시 키운다(초안).
-const RATE_SHIFT: f64 = 0.25;
-
-// 초안
-const FAST_RATE_WEIGHT: f64 = 0.2;
-
-// 초안
-const SLOW_RATE_WEIGHT: f64 = 0.02;
-
-// 초안
-const RATE_SHIFT_MIN_SIGNALS: u32 = 20;
+/// 신호 하나가 기준값을 옮기는 고정 폭이다.
+const FAST_STEP: f64 = 0.002;
 
 /// 묻는 빈도 상한에 닿았을 때도 쓰며, 1/q 가중의 최대값을 정한다(초안).
 const MIN_ASK: f64 = 0.01;
@@ -78,12 +58,25 @@ pub struct Observation {
     pub probability: f64,
     /// 판단 당시 값.
     pub threshold: f64,
-    /// 계산 때 1/q로 가중한다.
+    /// 판단 당시 묻는 확률 q이고, 느린 조정이 1/q로 가중한다.
     pub asked_with: f64,
+    /// 피드백 질문을 받은 판단이면 참이고, 빠른 조정이 이 신호만 1/q로 가중한다.
+    pub is_asked: bool,
     pub signal: Signal,
 }
 
-/// 빠른 조정 상태는 메모리에만 두어 engine을 다시 시작하면 처음 폭으로 다시 맞춘다.
+impl Observation {
+    /// 행동 신호는 항상 관찰되므로 1이고, 물은 답에서 온 신호만 `1/q`다.
+    fn fast_weight(&self) -> f64 {
+        if self.is_asked {
+            1.0 / self.asked_with.max(MIN_ASK)
+        } else {
+            1.0
+        }
+    }
+}
+
+/// 빠른 조정 상태는 메모리에만 두어 engine을 다시 시작하면 중심값에서 다시 맞춘다.
 #[derive(Debug, Clone)]
 pub struct ThresholdState {
     pub question: String,
@@ -93,20 +86,8 @@ pub struct ThresholdState {
     pub fast_offset: f64,
     pub bounds: (f64, f64),
     pub target_wrong_rate: f64,
-    adaptation: Adaptation,
     /// `recenter` 직전의 (중심값, 빠른 조정 차이).
     previous: Option<(f64, f64)>,
-}
-
-#[derive(Debug, Clone, Default)]
-struct Adaptation {
-    /// 마지막 재시작 뒤 반영한 신호 수.
-    signals: u32,
-    /// 최대 `STABLE_WINDOW`개.
-    recent: VecDeque<f64>,
-    is_frozen: bool,
-    /// (빠른, 느린)이고 첫 신호 전에는 `None`.
-    wrong_rate: Option<(f64, f64)>,
 }
 
 impl ThresholdState {
@@ -117,44 +98,22 @@ impl ThresholdState {
             fast_offset: 0.0,
             bounds,
             target_wrong_rate: DEFAULT_TARGET_WRONG_RATE,
-            adaptation: Adaptation::default(),
             previous: None,
         }
     }
 
-    // cost: time O(w), heap O(1) amortized, stack O(1)
-    // vars: w = STABLE_WINDOW
-    // basis: estimate
     /// 틀림은 `(1 − α)`만큼 올리고 놓침은 `α`만큼 내려, 틀림 비율이 목표 α일 때 균형이 된다.
     pub fn observe(&mut self, observation: &Observation) {
         if observation.question != self.question {
             return;
         }
-        let is_wrong = match observation.signal {
-            Signal::Wrong => true,
-            Signal::Missed => false,
+        let direction = match observation.signal {
+            Signal::Wrong => 1.0 - self.target_wrong_rate,
+            Signal::Missed => -self.target_wrong_rate,
             Signal::Unconfirmed => return,
         };
-        if self.has_rate_shifted(is_wrong) {
-            self.adaptation = Adaptation {
-                wrong_rate: self.adaptation.wrong_rate,
-                ..Adaptation::default()
-            };
-        }
-        if self.adaptation.is_frozen {
-            return;
-        }
-        let step = FAST_STEP / f64::from(self.adaptation.signals + 1).sqrt();
-        let weight = 1.0 / observation.asked_with.max(MIN_ASK);
-        let direction = if is_wrong {
-            1.0 - self.target_wrong_rate
-        } else {
-            -self.target_wrong_rate
-        };
-        self.fast_offset =
-            (self.fast_offset + step * weight * direction).clamp(-FAST_RANGE, FAST_RANGE);
-        self.adaptation.signals += 1;
-        self.remember_current();
+        self.fast_offset = (self.fast_offset + FAST_STEP * observation.fast_weight() * direction)
+            .clamp(-FAST_RANGE, FAST_RANGE);
     }
 
     // cost: time O(n log n), heap O(n), stack O(1), alloc 1
@@ -183,7 +142,6 @@ impl ThresholdState {
         self.previous = Some((self.center, self.fast_offset));
         self.center = new_center.clamp(self.bounds.0, self.bounds.1);
         self.fast_offset = 0.0;
-        self.adaptation = Adaptation::default();
     }
 
     // cost: time O(n), heap O(1), stack O(1)
@@ -216,7 +174,6 @@ impl ThresholdState {
                 self.center = center;
                 self.fast_offset = fast_offset;
                 self.previous = None;
-                self.adaptation = Adaptation::default();
                 return true;
             }
         }
@@ -225,35 +182,6 @@ impl ThresholdState {
 
     pub fn current(&self) -> f64 {
         (self.center + self.fast_offset).clamp(self.bounds.0, self.bounds.1)
-    }
-
-    /// 판정하면서 틀림 비율 지수 평균도 갱신한다.
-    fn has_rate_shifted(&mut self, is_wrong: bool) -> bool {
-        let value = if is_wrong { 1.0 } else { 0.0 };
-        let (fast, slow) = self.adaptation.wrong_rate.unwrap_or((value, value));
-        let fast = fast + FAST_RATE_WEIGHT * (value - fast);
-        let slow = slow + SLOW_RATE_WEIGHT * (value - slow);
-        self.adaptation.wrong_rate = Some((fast, slow));
-        self.adaptation.signals >= RATE_SHIFT_MIN_SIGNALS && (fast - slow).abs() > RATE_SHIFT
-    }
-
-    // cost: time O(w), heap O(1) amortized, stack O(1)
-    // vars: w = STABLE_WINDOW
-    // basis: estimate
-    /// 최근 `STABLE_WINDOW`개가 ±`STABLE_BAND` 안이면 멈춘다.
-    fn remember_current(&mut self) {
-        let current = self.current();
-        let recent = &mut self.adaptation.recent;
-        recent.push_back(current);
-        if recent.len() > STABLE_WINDOW {
-            recent.pop_front();
-        }
-        if recent.len() < STABLE_WINDOW {
-            return;
-        }
-        let min = recent.iter().copied().fold(f64::INFINITY, f64::min);
-        let max = recent.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-        self.adaptation.is_frozen = max - min <= 2.0 * STABLE_BAND;
     }
 }
 
@@ -406,7 +334,16 @@ mod tests {
             probability,
             threshold: 0.8,
             asked_with: 1.0,
+            is_asked: false,
             signal,
+        }
+    }
+
+    fn asked(probability: f64, signal: Signal, q: f64) -> Observation {
+        Observation {
+            asked_with: q,
+            is_asked: true,
+            ..observation(probability, signal)
         }
     }
 
@@ -480,8 +417,7 @@ mod tests {
     #[test]
     fn observe_never_leaves_fast_range() {
         let mut state = state();
-        let mut wrong = observation(0.85, Signal::Wrong);
-        wrong.asked_with = 0.0001;
+        let wrong = asked(0.85, Signal::Wrong, 0.0001);
 
         for _ in 0..1_000 {
             state.observe(&wrong);
@@ -505,51 +441,79 @@ mod tests {
     }
 
     #[test]
-    fn observe_step_shrinks_with_signals() {
+    fn observe_behavior_signal_moves_fixed_step_without_ask_weight() {
+        let mut wrong = state();
+        let mut missed = state();
+        let mut rarely_asked = observation(0.85, Signal::Wrong);
+        rarely_asked.asked_with = 0.01;
+
+        wrong.observe(&rarely_asked);
+        missed.observe(&observation(0.7, Signal::Missed));
+
+        assert!((wrong.fast_offset - FAST_STEP * 0.95).abs() < 1e-12);
+        assert!((missed.fast_offset + FAST_STEP * 0.05).abs() < 1e-12);
+    }
+
+    #[test]
+    fn observe_asked_answer_is_weighted_by_inverse_q() {
         let mut state = state();
 
-        state.observe(&observation(0.85, Signal::Wrong));
-        let first = state.fast_offset;
-        state.observe(&observation(0.85, Signal::Wrong));
-        let second = state.fast_offset - first;
+        state.observe(&asked(0.85, Signal::Wrong, 0.1));
 
-        assert!(second < first);
+        assert!((state.fast_offset - FAST_STEP * 10.0 * 0.95).abs() < 1e-12);
+    }
+
+    #[test]
+    fn observe_asked_weight_is_capped_by_min_ask() {
+        let mut state = state();
+
+        state.observe(&asked(0.7, Signal::Missed, 0.0001));
+
+        assert!((state.fast_offset + FAST_STEP / MIN_ASK * 0.05).abs() < 1e-12);
     }
 
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 넣는 신호 수
     // basis: estimate
     #[test]
-    fn observe_stops_after_stable_window() {
+    fn observe_step_stays_fixed_after_many_signals() {
         let mut state = state();
-        for _ in 0..STABLE_WINDOW {
+        for _ in 0..300 {
             state.observe(&observation(0.7, Signal::Missed));
         }
-        let frozen_at = state.fast_offset;
+        let before = state.fast_offset;
 
-        state.observe(&observation(0.7, Signal::Missed));
+        state.observe(&observation(0.85, Signal::Wrong));
 
-        assert!(state.adaptation.is_frozen);
-        assert_eq!(state.fast_offset, frozen_at);
+        assert!((state.fast_offset - before - FAST_STEP * 0.95).abs() < 1e-12);
     }
 
-    // cost: time O(n), heap O(1), stack O(1)
-    // vars: n = 넣는 신호 수
+    // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     #[test]
-    fn observe_rate_shift_restarts_adaptation() {
+    fn observe_follows_simulation_b_on_same_signals() {
+        // 시뮬레이션 B(고정 폭 0.002)가 같은 입력 열에서 낸 이동 후 값이다.
+        let signals = [
+            (Signal::Wrong, None, 0.0019),
+            (Signal::Missed, None, 0.0018),
+            (Signal::Wrong, Some(0.1), 0.0208),
+            (Signal::Missed, Some(0.04), 0.0183),
+            (Signal::Missed, Some(0.01), 0.0083),
+            (Signal::Wrong, None, 0.0102),
+            (Signal::Missed, None, 0.0101),
+            (Signal::Wrong, Some(0.05), 0.0481),
+        ];
         let mut state = state();
-        for _ in 0..STABLE_WINDOW {
-            state.observe(&observation(0.7, Signal::Missed));
-        }
-        assert!(state.adaptation.is_frozen);
 
-        for _ in 0..3 {
-            state.observe(&observation(0.85, Signal::Wrong));
-        }
+        for (signal, q, expected) in signals {
+            let observation = match q {
+                Some(q) => asked(0.85, signal, q),
+                None => observation(0.85, signal),
+            };
+            state.observe(&observation);
 
-        assert!(!state.adaptation.is_frozen);
-        assert!(state.adaptation.signals < 10);
+            assert!((state.fast_offset - expected).abs() < 1e-9);
+        }
     }
 
     // cost: time O(n), heap O(n), stack O(1)

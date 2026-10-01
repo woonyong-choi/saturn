@@ -3,15 +3,15 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [관련 항목 후보는 코드 순위로 좁힌 뒤 judge가 고른다](../decisions/2026-10-01-ranked-candidates-before-judge.md), [후보 순위는 임베딩 없이 단어 기반과 용어 카탈로그로 시작한다](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md) |
+| 관련 결정 | [judge가 후보 전체를 판단하고 코드 순위는 대체 순서로만 쓴다](../decisions/2026-10-01-judge-all-candidates.md), [후보 순위는 임베딩 없이 단어 기반과 용어 카탈로그로 시작한다](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md) |
 
 ## 요약
 
-맥락 고르기는 패킷, 결과 전달, 파일 순위에 넣을 항목을 고르는 기능이다. `core`의 `sessions`가 후보마다 파일 겹침, 단어 겹침, 최근성 순위를 매기고 RRF로 합친다. judge는 합친 순위의 상위 N개만 판단한다. 같은 흐름에서 judge는 입력이 제약인지, 새 제약이 옛 제약을 대체하는지도 판단한다.
+맥락 고르기는 패킷, 결과 전달, 파일 순위에 넣을 항목을 고르는 기능이다. `core`의 `sessions`가 후보마다 파일 겹침, 단어 겹침, 최근성 순위를 매기고 RRF로 합친다. judge는 후보 전체를 판단하고, 합친 순위는 judge가 답하지 못했을 때의 순서와 같은 확률일 때의 순서로만 쓴다. 같은 흐름에서 judge는 입력이 제약인지, 새 제약이 옛 제약을 대체하는지도 판단한다.
 
 ## 동기
 
-긴 채팅에는 도구 호출과 다른 에이전트 결과가 수백 개 쌓인다. judge가 후보 전체를 읽으면 요청이 후보 수에 비례해 커지고, 관련 없는 큰 state가 판단을 흐린다. judge가 답하지 못하면 대체 규칙이 생략이나 경로만이라 확실히 관련 있는 항목까지 빠진다. 사용자가 뒤집은 제약이 옛 제약과 나란히 패킷에 들어가면 새 session은 어느 쪽을 따를지 모른다. 이 기능은 코드로 후보를 좁혀 judge 요청 크기를 고정하고, judge가 실패해도 순위로 고르며, 대체된 제약을 정리한다.
+긴 채팅에는 도구 호출과 다른 에이전트 결과가 수백 개 쌓인다. 후보를 코드 순위의 상위 N개로 좁혀 judge에 물으면 judge가 남길 항목을 놓친다. 후보 전체를 판단하게 한 측정에서 judge가 남긴 항목 중 RRF 상위 10개에 든 비율은 12.0%였고 무작위 기대값은 8.7%였다. 상위 40개도 44.5%였다([#116](https://github.com/woonyong-choi/saturn/issues/116) 측정). judge가 답하지 못하면 대체 규칙이 생략이나 경로만이라 확실히 관련 있는 항목까지 빠진다. 사용자가 뒤집은 제약이 옛 제약과 나란히 패킷에 들어가면 새 session은 어느 쪽을 따를지 모른다. 이 기능은 judge가 후보 전체를 판단하게 하고, 큰 요청은 질문 단위로 나눠 보내며, judge가 실패해도 순위로 고르고, 대체된 제약을 정리한다.
 
 ## 예시
 
@@ -20,14 +20,14 @@
 1. 사용자가 Claude로 40턴 작업한 뒤 Codex로 바꾸고 `로그인 실패 메시지 고쳐 줘`를 보낸다.
 2. `sessions`는 도구 호출 150개에 파일 겹침, 단어 겹침, 최근성 순위를 매기고 RRF로 합친다.
 3. 12턴의 `/v2/auth` 응답은 `auth/` 경로와 `로그인` 단어가 겹쳐 상위에 든다.
-4. engine은 상위 10개만 `compact` 질문으로 judge에 묻는다.
-5. `sessions`는 judge가 남기라고 한 항목부터 패킷의 경쟁 구역을 채운다.
+4. engine은 150개 전체를 `compact` 질문으로 judge에 묻는다. 질문 300개와 state가 요청 한 건의 크기 한도를 넘으면 질문 단위로 나눠 보낸다.
+5. `sessions`는 judge가 남기라고 한 항목을 확률이 높은 순으로, 같은 확률이면 순위 순으로 패킷의 경쟁 구역에 채운다.
 
 ### judge가 답하지 않을 때
 
 1. 패킷을 만드는 중에 judge가 응답하지 않는다.
-2. `sessions`는 RRF 상위 10개를 남긴 항목으로 보고 경쟁 구역을 채운다.
-3. `/v2/auth` 응답은 judge 판단 없이도 패킷에 들어간다.
+2. `sessions`는 RRF 순서대로 경쟁 구역의 예산까지 채운다.
+3. `/v2/auth` 응답은 순위 상위라 judge 판단 없이도 패킷에 들어간다.
 
 ### 제약이 뒤집힐 때
 
@@ -91,7 +91,8 @@
 - 라틴 밖 알파벳 문자(키릴, 그리스 문자 등)는 라틴 문자와 같은 규칙으로 자르되 다른 종류로 본다.
 - 오타는 오타 글자가 든 조각만 빠지므로 점수가 낮아질 뿐 0이 되지 않는다.
 - 같은 뜻의 다른 말과 번역어는 용어 카탈로그, 파일 겹침 채널, judge가 맡는다. 임베딩 채널은 두지 않는다. 식별자와 경로가 많은 기록에서는 단어 기반 채널이 강하고, 임베딩은 설치 크기, 상주 메모리, 계산 시간이 드는데 이득이 측정되지 않았기 때문이다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)). RRF는 목록 수와 무관하게 합치므로, 실측으로 이득이 확인되면 채널 하나를 더하는 것으로 넣는다.
-- 자모 단위 조각과 영문 글자 4개 단위 조각은 오타 재현율을 실측한 뒤 정한다([#118](https://github.com/woonyong-choi/saturn/issues/118)). 영문 글자 n-gram의 근거는 McNamee & Mayfield, Information Retrieval 2004다.
+- 한글을 자모 3개 단위로 자르지 않는다. 오타 질의 재현율 이득이 0.9%p [−0.8, 2.6]에 그치고 오타 없는 질의의 1위 정밀도가 10.0%p 떨어졌기 때문이다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
+- 영문 식별자 단어를 글자 4개 단위로 바꾸지 않는다. 오타 질의 재현율은 11.6%p 올랐지만 오타 없는 질의의 1위 정밀도가 5.2%p 떨어졌기 때문이다([실험 결과](../experiments/wordpiece-typo-recall/report.md)). 영문 글자 n-gram의 근거는 McNamee & Mayfield, Information Retrieval 2004다.
 
 ### 순위 합치기
 
@@ -104,20 +105,21 @@
 - 점수 대신 순위를 쓴다. 채널마다 값의 단위가 달라 그대로 더할 수 없기 때문이다.
 - `k`의 기본값은 60이다. 원 논문이 여러 검색 결과를 합칠 때 평균 성능이 가장 좋았던 값이다(Cormack, Clarke, Büttcher, SIGIR 2009). `k`가 클수록 한 채널의 1등보다 여러 채널에 고르게 든 후보가 이긴다.
 - 점수가 같으면 기록 번호가 큰 후보를 위에 둔다.
-- `k`와 상위 N개는 실측으로 정한다([#116](https://github.com/woonyong-choi/saturn/issues/116)).
+- `k`는 judge가 답하지 못했을 때의 순서와 같은 확률일 때의 순서에만 쓰이며 실측으로 정한다([#116](https://github.com/woonyong-choi/saturn/issues/116)).
 
 ### judge에 넘기기
 
-1. 후보가 N개 이하면 전부 judge에 묻는다. N의 기본값은 10이다(초안).
-2. 후보가 N개보다 많으면 RRF 상위 N개만 묻는다.
-3. 최종 순서는 judge가 남기라고 한 항목을 확률이 높은 순으로, 그 뒤에 judge가 보지 않은 항목을 RRF 순으로 둔다.
+1. 후보 전체를 judge에 묻는다. 후보 수로 줄이지 않는다.
+2. 요청이 크기 한도를 넘으면 질문 단위로 나눠 여러 요청으로 보내고, 조각마다 같은 state를 싣는다. 한도는 [judge 호출](judge.md#judge-호출)에 있다.
+3. 최종 순서는 judge가 남기라고 한 항목을 확률이 높은 순으로 두고, 같은 확률이면 RRF 순으로 둔다.
 4. judge가 버리라고 한 항목은 뺀다.
-5. judge가 답하지 못하면 RRF 상위 N개를 남기라고 한 항목으로 본다.
-6. 답은 왔지만 일부 항목의 답이 빠졌으면 그 항목은 남기고, 답이 있는 남긴 항목 뒤에 RRF 순으로 둔다.
+5. judge가 답하지 못한 항목은 남기고, 답이 있는 남긴 항목 뒤에 RRF 순으로 둔다. 실패한 조각의 항목도 같다.
+6. judge가 전부 답하지 못하면 RRF 순서로 경쟁 구역의 예산까지 채운다.
 
-- judge 요청 크기를 후보 수와 무관하게 두기 위해서다. 관련 없는 큰 state는 judge 판단을 흐리고, 64K를 넘는 요청은 나눠 보내야 한다.
-- judge 실패 때 순위로 고르는 것은 확실히 관련 있는 항목까지 잃지 않기 위해서다.
-- RRF 상위 N + judge가 judge 단독보다 품질을 낮추지 않는지는 실측으로 확인한다([#117](https://github.com/woonyong-choi/saturn/issues/117)).
+- judge가 남길 항목을 순위로 미리 자르지 않기 위해서다. 후보 전체를 판단한 측정에서 남은 항목 중 RRF 상위 10개에 든 비율은 12.0% [9.2, 15.6]였고 무작위 기대값은 8.7%였다. 상위 40개도 44.5% [39.7, 49.4]였고, 95%에 닿으려면 후보 중앙값 127개보다 많은 132~133개가 필요했다([#116](https://github.com/woonyong-choi/saturn/issues/116) 측정).
+- 전체를 묻는 비용은 낮다. 기준 judge의 입력 비용은 100만 토큰당 $0.042이고 같은 질문의 일치율은 98.4%였다([#116](https://github.com/woonyong-choi/saturn/issues/116) 측정).
+- RRF 순위는 judge 판단을 보조하는 값이다. judge가 답하지 못할 때의 순서와 같은 확률일 때의 순서만 정하므로, 순위가 낮아도 judge가 남기라고 하면 들어간다.
+- 나누는 규칙은 `core`가 요청 목록을 만드는 순수 함수이고, 전송과 응답 모으기는 engine이 한다. `core`가 네트워크를 다루지 않기 위해서다.
 
 ### 도구 결과 메모
 
@@ -162,7 +164,9 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 | 상황 | 동작 |
 |---|---|
-| `compact`, `file-rank` judge 무응답 | RRF 상위 N개를 남긴 항목으로 본다. |
+| `compact`, `file-rank` judge 무응답 | RRF 순서로 경쟁 구역의 예산까지 채운다. |
+| 요청 조각 일부 실패 | 실패한 조각의 항목은 남기고, 답이 있는 남긴 항목 뒤에 RRF 순으로 둔다. |
+| 크기 한도를 넘는 `state` | 질문 하나도 담을 수 없으므로 요청을 만들지 않고 RRF 순서로 채운다. |
 | `is_constraint` 판단 없음 | 제약으로 등록하지 않는다. |
 | `replaces_<n>` 판단 없음 | 대체도 충돌 가능도 기록하지 않는다. |
 | 도구 호출 인자에 경로 없음 | 파일 겹침 채널에서 그 후보를 뺀다. |
@@ -171,27 +175,32 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 | 요구사항 | 검증 계획 |
 |---|---|
-| 후보가 N개보다 많으면 RRF 상위 N개만 judge에 묻는다. | `saturn-terminal/core/src/judges/mod.rs`의 `compact_questions_150_candidates_ask_only_top_n` |
-| judge가 답하지 못하면 RRF 상위 N개를 남긴 항목으로 본다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_judge_no_response_fills_in_rrf_order` |
+| 후보 전체를 judge에 묻는다. | `saturn-terminal/core/src/judges/mod.rs`의 `compact_questions_150_candidates_ask_all` |
+| 요청이 크기 한도를 넘으면 질문 단위로 나누고 조각마다 같은 state를 싣는다. | `saturn-terminal/core/src/judges/split.rs`의 `split_request_over_limit_splits_by_question_with_same_state`, `saturn-terminal/core/src/judges/mod.rs`의 `compact_requests_large_state_splits_and_every_piece_carries_state` |
+| 최종 순서는 남긴 항목의 확률 순이고 같은 확률이면 RRF 순이다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_judge_kept_by_probability_and_drops_rejected`, `order_after_judge_same_probability_follows_rrf_order` |
+| 답이 없는 항목(실패한 조각 포함)은 RRF 순으로 뒤에 둔다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_judge_unanswered_follow_answered_in_rrf_order`, `saturn-terminal/core/src/judges/mod.rs`의 `compact_verdicts_merges_pieces_and_skips_failed_piece` |
+| judge가 전부 답하지 못하면 RRF 순서로 예산까지 채운다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_judge_no_verdicts_keeps_rrf_order`, `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_judge_no_response_fills_in_rrf_order` |
 | 띄어쓰기와 조사가 달라도 같은 한글 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_spacing_and_particle_share_hangul_bigrams` |
 | 영문 식별자는 식별자 경계에서 나눈다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_identifier_splits_at_case_and_symbols` |
 | 자모로 풀린 한글도 음절 한글과 같은 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_nfd_hangul_matches_nfc` |
 | 같은 결과에서 늘 같은 메모를 만든다. | `saturn-terminal/core/src/sessions/memo.rs`의 `tool_memo_same_result_gives_same_memo` |
 | 대체된 제약 원문은 기록에 남고 패킷에서만 빠진다. | 대체 뒤 기록에 두 원문이 있고 패킷에는 새 원문과 대체 표시만 있는지 확인한다. |
-| `k`와 N이 judge 전체 판단의 95% 이상을 덮는다. | [#116](https://github.com/woonyong-choi/saturn/issues/116) |
-| RRF 상위 N + judge가 judge 단독보다 전환 품질을 낮추지 않는다. | [#117](https://github.com/woonyong-choi/saturn/issues/117) |
-| 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [#118](https://github.com/woonyong-choi/saturn/issues/118) |
+| 순위가 judge 전체 판단과 얼마나 겹치는지 잰다. | [#116](https://github.com/woonyong-choi/saturn/issues/116) |
+| 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [단어 조각 단위별 오타 재현율 실험 결과](../experiments/wordpiece-typo-recall/report.md) |
 | `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. `replaces_<n>` 구간과 간접 지시는 [#152](https://github.com/woonyong-choi/saturn/issues/152) 실험으로 다시 확인한다. |
 
 ## 단점
 
 - 순위 채널은 같은 뜻의 다른 말을 모르므로 용어 카탈로그가 자랄 때까지 같은 뜻을 놓칠 수 있다.
-- `k`, N, 기준 파일 범위를 실측으로 맞춰야 한다.
+- 영문 단어 사이 공백이 빠지면 소문자 단어가 하나로 붙어 단어 겹침을 놓친다. 이 오타의 상위 10개 재현율은 56.4%였다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
+- 후보가 150개면 질문이 300개라 judge 입력 토큰과 지연이 후보 수에 비례한다. 큰 요청은 여러 건으로 나뉜다.
+- 나뉜 요청은 조각마다 같은 state를 보내 입력 토큰이 조각 수만큼 늘고, 조각이 실패하면 그 항목은 순위로만 정해진다.
+- `k`, 기준 파일 범위를 실측으로 맞춰야 한다.
 - 일과 제약이 섞인 입력은 원문 전체가 제약으로 등록되어 패킷이 길어진다.
 
 ## 대안
 
-- judge가 후보 전체를 판단하는 방식은 요청이 후보 수에 비례하고 judge 실패 때 관련 항목까지 잃어 버렸다([결정 기록](../decisions/2026-10-01-ranked-candidates-before-judge.md)).
+- RRF 상위 N개만 judge에 묻는 방식은 judge가 남길 항목을 상위 10개에서 12.0%, 상위 40개에서도 44.5%만 담아 버렸다([결정 기록](../decisions/2026-10-01-judge-all-candidates.md)).
 - 채널 점수의 가중합은 단위가 다른 점수의 가중치를 따로 학습해야 해 버렸다([결정 기록](../decisions/2026-10-01-ranked-candidates-before-judge.md)).
 - 임베딩 채널을 기본으로 넣는 방식은 설치 크기와 상주 메모리가 들고 이득이 측정되지 않아 버렸다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)).
 - 입력마다 LLM으로 사실 문장을 뽑는 방식은 호출과 출력 비용이 들고 원문 대신 생성문을 저장해 버렸다.

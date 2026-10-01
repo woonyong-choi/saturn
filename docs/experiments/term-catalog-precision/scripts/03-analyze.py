@@ -213,15 +213,16 @@ def token_comparison(pool, project):
             batches.append(rng.choices(pool, k=BATCH_SIZE))
     result = {}
     for factor in HANGUL_FACTORS:
-        batch_tokens, single_tokens, reduction = [], [], []
+        batch_tokens, single_tokens, reduction, saved = [], [], [], []
         for batch in batches:
             together = estimate_tokens(request_body(project, batch), factor)
             apart = sum(estimate_tokens(request_body(project, [pair]), factor) for pair in batch)
             batch_tokens.append(together)
             single_tokens.append(apart)
             reduction.append(1 - together / apart)
+            saved.append(apart - together)
         result[str(factor)] = {"batch_tokens": describe(batch_tokens), "single_tokens": describe(single_tokens),
-                               "token_reduction": describe(reduction),
+                               "token_reduction": describe(reduction), "tokens_saved": describe(saved),
                                "batch_tokens_values": batch_tokens, "reduction_values": reduction}
     return result
 
@@ -232,7 +233,7 @@ def precision_figure(rows):
     n_text = ", ".join(f"{r['source']} n={r['n']}" for r in rows)
     return {
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": "출처별 짝 후보 정밀도", "subtitle": f"{n_text}. 막대는 95% Wilson 신뢰구간, 기준선은 80%(H1, H2)와 50%(H3)"},
+        "title": {"text": "출처별 짝 후보 정밀도", "subtitle": f"{n_text}. 오차 막대는 95% Wilson 신뢰구간, 기준선은 80%(H1, H2)와 50%(H3)"},
         "width": 420,
         "height": 220,
         "layer": [
@@ -242,7 +243,7 @@ def precision_figure(rows):
                                 "scale": {"domain": [0, 100]}}}},
             {"data": {"values": rows}, "mark": "errorbar",
              "encoding": {"x": {"field": "source", "type": "nominal", "sort": None},
-                          "y": {"field": "ci_low", "type": "quantitative"},
+                          "y": {"field": "ci_low", "type": "quantitative", "title": "정밀도(%)"},
                           "y2": {"field": "ci_high"}}},
             {"data": {"values": [{"threshold": 80}, {"threshold": 50}]}, "mark": "rule",
              "encoding": {"y": {"field": "threshold", "type": "quantitative"}}},
@@ -272,7 +273,7 @@ def token_figure(values):
 
 def rounded(value):
     if isinstance(value, float):
-        return round(value, 6)
+        return float(f"{value:.6g}")
     if isinstance(value, dict):
         return {k: rounded(v) for k, v in value.items()}
     if isinstance(value, list):
@@ -371,8 +372,11 @@ def main():
             dice_bins[f"q{index + 1}"]["dice_max"] = float(cooc_candidates[chunk[-1]]["dice"])
     same_paren = {key for key in paren if labels.get(key) == "same"}
     same_comment = {key for key in comment if labels.get(key) == "same"}
+    explicit = [key for key, row in paren.items() if int(row["ko_paren_en"]) + int(row["en_paren_ko"]) > 0]
     exploratory = {
         "paren_patterns": pattern_stats,
+        "paren_explicit_population": {"pairs": len(explicit),
+                                      "labeled": precision([k for k in explicit if labels.get(k)], labels)},
         "comment_extended": precision(strata["comment_extended"], labels),
         "comment_extended_pairs": len(extended),
         "comment_extended_only_pairs": len(set(extended) - set(comment)),
@@ -411,7 +415,7 @@ def main():
         "verdicts": final,
         "tokens": {"requests_single": BATCH_SIZE, "requests_batch": 1,
                    "batch_tokens": primary["batch_tokens"], "single_tokens": primary["single_tokens"],
-                   "token_reduction": primary["token_reduction"]},
+                   "token_reduction": primary["token_reduction"], "tokens_saved": primary["tokens_saved"]},
         "exploratory": exploratory,
     })
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)

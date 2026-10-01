@@ -1,0 +1,852 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": {
+    "text": "짝 20개 묶음 요청의 추정 입력 토큰",
+    "subtitle": "n=200. 기준선은 가설 범위 2,000과 3,000"
+  },
+  "width": 420,
+  "height": 220,
+  "layer": [
+    {
+      "data": {
+        "values": [
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3186
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3399
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3287
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3006
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3549
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3111
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3246
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2871
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3073
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3312
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3119
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3295
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3147
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3209
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3260
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3107
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2785
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3251
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3350
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3049
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2963
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2985
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2990
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2927
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2834
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3035
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3089
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3240
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3259
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2969
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3558
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2950
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3198
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3345
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3327
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2826
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3317
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3244
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3071
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3289
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3005
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2967
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3208
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3151
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2969
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3182
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3042
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3368
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2988
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3137
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3201
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3254
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3164
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3105
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3272
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3195
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2833
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3205
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3070
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3144
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3291
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3006
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2981
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3177
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3521
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3156
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3123
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3612
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3111
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3270
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3005
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3127
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2883
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3490
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3139
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3235
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2976
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2773
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3280
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3184
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3374
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3166
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3277
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3022
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3016
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3332
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2941
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3578
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3125
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3354
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3074
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3328
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3184
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3143
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3017
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3205
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2889
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2977
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3362
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3141
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2858
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2841
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2845
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2776
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3216
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3033
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3269
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3066
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2782
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2862
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3298
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2946
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3074
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3272
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3257
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3431
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2825
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2906
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3252
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3020
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3051
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2786
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3199
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3085
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3044
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3325
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3561
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3134
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3300
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2832
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3421
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3097
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2952
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2706
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2779
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3604
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2910
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3071
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2916
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3065
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3294
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3127
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3068
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3035
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3229
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3274
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3351
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2990
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3111
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3396
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3025
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3310
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3367
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3501
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3083
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2925
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3133
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2991
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3230
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2977
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2867
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3364
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3293
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3115
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3154
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3053
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2806
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3484
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3006
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3012
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3202
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2960
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2977
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3350
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3248
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3131
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2940
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3053
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3127
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2903
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3221
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3212
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2996
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3221
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3021
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3459
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3060
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3216
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3395
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3057
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3639
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3069
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3171
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3303
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2943
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3110
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3221
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3168
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 3213
+          },
+          {
+            "batch": "짝 20개 묶음",
+            "tokens": 2851
+          }
+        ]
+      },
+      "mark": "boxplot",
+      "encoding": {
+        "x": {
+          "field": "batch",
+          "type": "nominal",
+          "title": null
+        },
+        "y": {
+          "field": "tokens",
+          "type": "quantitative",
+          "title": "입력 토큰(토큰)",
+          "scale": {
+            "zero": true
+          }
+        }
+      }
+    },
+    {
+      "data": {
+        "values": [
+          {
+            "threshold": 2000
+          },
+          {
+            "threshold": 3000
+          }
+        ]
+      },
+      "mark": "rule",
+      "encoding": {
+        "y": {
+          "field": "threshold",
+          "type": "quantitative"
+        }
+      }
+    }
+  ]
+}
