@@ -20,13 +20,13 @@
 1. 사용자가 Claude로 40턴 작업한 뒤 Codex로 바꾸고 `로그인 실패 메시지 고쳐 줘`를 보낸다.
 2. `sessions`는 도구 호출 150개에 파일 겹침, 단어 겹침, 최근성 순위를 매기고 RRF로 합친다.
 3. 12턴의 `/v2/auth` 응답은 `auth/` 경로와 `로그인` 단어가 겹쳐 상위에 든다.
-4. engine은 상위 10개만 `compact` 질문으로 judge에 묻는다.
+4. engine은 상위 40개만 `compact` 질문으로 judge에 묻는다.
 5. `sessions`는 judge가 남기라고 한 항목부터 패킷의 경쟁 구역을 채운다.
 
 ### judge가 답하지 않을 때
 
 1. 패킷을 만드는 중에 judge가 응답하지 않는다.
-2. `sessions`는 RRF 상위 10개를 남긴 항목으로 보고 경쟁 구역을 채운다.
+2. `sessions`는 RRF 상위 40개를 남긴 항목으로 보고 경쟁 구역을 채운다.
 3. `/v2/auth` 응답은 judge 판단 없이도 패킷에 들어간다.
 
 ### 제약이 뒤집힐 때
@@ -96,13 +96,13 @@
 ```
 
 - 점수 대신 순위를 쓴다. 채널마다 값의 단위가 달라 그대로 더할 수 없기 때문이다.
-- `k`의 기본값은 60이다. 원 논문이 여러 검색 결과를 합칠 때 평균 성능이 가장 좋았던 값이다(Cormack, Clarke, Büttcher, SIGIR 2009). `k`가 클수록 한 채널의 1등보다 여러 채널에 고르게 든 후보가 이긴다.
+- `k`의 기본값은 30이다. 실측에서 `k` 10, 30, 60, 100의 차이는 상위 40개 기준 1.0%p 이하였고, 사전 등록한 규칙대로 상위 40개 비율이 가장 높은 값을 골랐다([실험 결과](../experiments/rrf-k-top-n/report.md)).
+- 원 논문은 여러 검색 결과를 합칠 때 `k`=60을 썼다(Cormack, Clarke, Büttcher, SIGIR 2009). `k`가 클수록 한 채널의 1등보다 여러 채널에 고르게 든 후보가 이긴다.
 - 점수가 같으면 기록 번호가 큰 후보를 위에 둔다.
-- `k`와 상위 N개는 실측으로 정한다([#116](https://github.com/woonyong-choi/saturn/issues/116)).
 
 ### judge에 넘기기
 
-1. 후보가 N개 이하면 전부 judge에 묻는다. N의 기본값은 10이다(초안).
+1. 후보가 N개 이하면 전부 judge에 묻는다. N의 기본값은 40이다.
 2. 후보가 N개보다 많으면 RRF 상위 N개만 묻는다.
 3. 최종 순서는 judge가 남기라고 한 항목을 확률이 높은 순으로, 그 뒤에 judge가 보지 않은 항목을 RRF 순으로 둔다.
 4. judge가 버리라고 한 항목은 뺀다.
@@ -110,6 +110,8 @@
 
 - judge 요청 크기를 후보 수와 무관하게 두기 위해서다. 관련 없는 큰 state는 judge 판단을 흐리고, 64K를 넘는 요청은 나눠 보내야 한다.
 - judge 실패 때 순위로 고르는 것은 확실히 관련 있는 항목까지 잃지 않기 위해서다.
+- RRF 상위 40개는 judge가 후보 전체를 판단해 남긴 항목의 44.5%만 덮는다. 상위 10개는 12.0%로, 무작위로 고른 10개의 기대값 8.7%와 차이가 작다([실험 결과](../experiments/rrf-k-top-n/report.md)).
+- 상위 N 안에 95%가 드는 N은 후보 수와 비슷해, 넘기는 방식은 다시 정한다([#153](https://github.com/woonyong-choi/saturn/issues/153)).
 - RRF 상위 N + judge가 judge 단독보다 품질을 낮추지 않는지는 실측으로 확인한다([#117](https://github.com/woonyong-choi/saturn/issues/117)).
 
 ### 도구 결과 메모
@@ -171,7 +173,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 자모로 풀린 한글도 음절 한글과 같은 조각을 만든다. | NFD로 저장된 `로그인.md`와 `로그인`의 조각이 같은지 확인한다. |
 | 같은 결과에서 늘 같은 메모를 만든다. | 같은 도구 결과로 두 번 만든 메모가 같은지 확인한다. |
 | 대체된 제약 원문은 기록에 남고 패킷에서만 빠진다. | 대체 뒤 기록에 두 원문이 있고 패킷에는 새 원문과 대체 표시만 있는지 확인한다. |
-| `k`와 N이 judge 전체 판단의 95% 이상을 덮는다. | [#116](https://github.com/woonyong-choi/saturn/issues/116) |
+| `k`와 N이 judge 전체 판단의 95% 이상을 덮는다. | [실험 결과](../experiments/rrf-k-top-n/report.md)에서 기각. `k`=30, N=40이 44.5%를 덮는다. 넘기는 방식은 [#153](https://github.com/woonyong-choi/saturn/issues/153)에서 다시 정한다. |
 | RRF 상위 N + judge가 judge 단독보다 전환 품질을 낮추지 않는다. | [#117](https://github.com/woonyong-choi/saturn/issues/117) |
 | 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [#118](https://github.com/woonyong-choi/saturn/issues/118) |
 | `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [#121](https://github.com/woonyong-choi/saturn/issues/121) |
@@ -179,7 +181,8 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 ## 단점
 
 - 순위 채널은 같은 뜻의 다른 말을 모르므로 용어 카탈로그가 자랄 때까지 같은 뜻을 놓칠 수 있다.
-- `k`, N, 기준 파일 범위를 실측으로 맞춰야 한다.
+- RRF 상위 40개는 judge 전체 판단이 남긴 항목의 절반 이상을 놓친다([실험 결과](../experiments/rrf-k-top-n/report.md)).
+- 기준 파일 범위를 실측으로 맞춰야 한다.
 - 일과 제약이 섞인 입력은 원문 전체가 제약으로 등록되어 패킷이 길어진다.
 
 ## 대안
@@ -188,3 +191,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 - 채널 점수의 가중합은 단위가 다른 점수의 가중치를 따로 학습해야 해 버렸다([결정 기록](../decisions/2026-10-01-ranked-candidates-before-judge.md)).
 - 임베딩 채널을 기본으로 넣는 방식은 설치 크기와 상주 메모리가 들고 이득이 측정되지 않아 버렸다([결정 기록](../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)).
 - 입력마다 LLM으로 사실 문장을 뽑는 방식은 호출과 출력 비용이 들고 원문 대신 생성문을 저장해 버렸다.
+
+## 미해결 질문
+
+- judge에 넘길 후보를 RRF 상위 N으로 고를지, 후보 전체나 다른 거르기로 바꿀지([#153](https://github.com/woonyong-choi/saturn/issues/153))
