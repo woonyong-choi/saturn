@@ -34,7 +34,7 @@ def main():
     with (OUT_DIR / "channel-ranks.csv").open("w", encoding="utf-8", newline="") as out:
         writer = csv.writer(out, lineterminator="\n")
         writer.writerow(["run_id", "trial_id", "session_id", "candidate_id", "record_no", "kept",
-                         "has_paths", "rank_file", "rank_word", "rank_recent"])
+                         "has_paths", "rank_file", "rank_word", "rank_recent", "p_keep"])
         for key in sorted(sets):
             rows = sorted(sets[key], key=lambda r: r["record_no"])
             flow["collected"] += 1
@@ -51,7 +51,7 @@ def main():
                 kept = max(r["p_call"], r["p_result"]) >= KEEP_THRESHOLD
                 writer.writerow([r["run_id"], r["trial_id"], r["session_id"], r["candidate_id"], n,
                                  int(kept), int(r["has_paths"]), file_rank.get(n, ""),
-                                 word_rank.get(n, ""), recent_rank[n]])
+                                 word_rank.get(n, ""), recent_rank[n], max(r["p_call"], r["p_result"])])
     with (OUT_DIR / "replicas.csv").open("w", encoding="utf-8", newline="") as out:
         writer = csv.writer(out, lineterminator="\n")
         writer.writerow(["trial_id", "candidate_id", "kept_first", "kept_second"])

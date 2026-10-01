@@ -1,0 +1,158 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "title": {
+    "text": "후보 전체 판단에서 미리 판단의 judge 입력 토큰 배수",
+    "subtitle": "n=1154 session. 기준선은 1.5배"
+  },
+  "width": 420,
+  "height": 220,
+  "layer": [
+    {
+      "data": {
+        "values": [
+          {
+            "s": 0.0,
+            "value": 1.118,
+            "lo": 1.088,
+            "hi": 1.161
+          },
+          {
+            "s": 0.25,
+            "value": 1.089,
+            "lo": 1.067,
+            "hi": 1.121
+          },
+          {
+            "s": 0.5,
+            "value": 1.062,
+            "lo": 1.045,
+            "hi": 1.087
+          },
+          {
+            "s": 0.6,
+            "value": 1.043,
+            "lo": 1.032,
+            "hi": 1.06
+          },
+          {
+            "s": 0.7,
+            "value": 1.03,
+            "lo": 1.021,
+            "hi": 1.042
+          },
+          {
+            "s": 0.8,
+            "value": 1.021,
+            "lo": 1.014,
+            "hi": 1.031
+          },
+          {
+            "s": 0.9,
+            "value": 1.008,
+            "lo": 1.005,
+            "hi": 1.014
+          }
+        ]
+      },
+      "mark": {
+        "type": "line",
+        "point": true
+      },
+      "encoding": {
+        "x": {
+          "field": "s",
+          "type": "quantitative",
+          "title": "미리 판단 시작 비율 s(T 대비)"
+        },
+        "y": {
+          "field": "value",
+          "type": "quantitative",
+          "title": "lazy 대비 추정 입력 토큰(배)",
+          "scale": {
+            "zero": true
+          }
+        }
+      }
+    },
+    {
+      "data": {
+        "values": [
+          {
+            "s": 0.0,
+            "value": 1.118,
+            "lo": 1.088,
+            "hi": 1.161
+          },
+          {
+            "s": 0.25,
+            "value": 1.089,
+            "lo": 1.067,
+            "hi": 1.121
+          },
+          {
+            "s": 0.5,
+            "value": 1.062,
+            "lo": 1.045,
+            "hi": 1.087
+          },
+          {
+            "s": 0.6,
+            "value": 1.043,
+            "lo": 1.032,
+            "hi": 1.06
+          },
+          {
+            "s": 0.7,
+            "value": 1.03,
+            "lo": 1.021,
+            "hi": 1.042
+          },
+          {
+            "s": 0.8,
+            "value": 1.021,
+            "lo": 1.014,
+            "hi": 1.031
+          },
+          {
+            "s": 0.9,
+            "value": 1.008,
+            "lo": 1.005,
+            "hi": 1.014
+          }
+        ]
+      },
+      "mark": "errorbar",
+      "encoding": {
+        "x": {
+          "field": "s",
+          "type": "quantitative",
+          "title": "미리 판단 시작 비율 s(T 대비)"
+        },
+        "y": {
+          "field": "lo",
+          "type": "quantitative",
+          "title": "lazy 대비 추정 입력 토큰(배)"
+        },
+        "y2": {
+          "field": "hi"
+        }
+      }
+    },
+    {
+      "data": {
+        "values": [
+          {
+            "threshold": 1.5
+          }
+        ]
+      },
+      "mark": "rule",
+      "encoding": {
+        "y": {
+          "field": "threshold",
+          "type": "quantitative"
+        }
+      }
+    }
+  ]
+}

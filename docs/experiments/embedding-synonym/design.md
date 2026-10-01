@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 이슈 | [#155](https://github.com/woonyong-choi/saturn/issues/155) |
-| 관련 설계 | [맥락 고르기](../../design/context-selection.md), [용어 카탈로그](../../design/term-catalog.md) |
+| 관련 설계 | [맥락 고르기](../../design/context-selection.md), [용어 카탈로그](https://github.com/woonyong-choi/saturn/blob/6fda8f610b49d8febe162bf7ec36114513b2e741/docs/design/term-catalog.md) |
 | 사전 데이터 | 모델을 고정하려고 두 모델 파일을 내려받아 크기와 SHA-256을 확인했다. ONNX Runtime과 tokenizers 배포 크기도 확인했다. 설명 추출 규칙을 고치려고 `scripts/01-collect.py plan`으로 개수만 보고, 첫 파일의 설명 8개를 읽었다. 짝 제안, 순위, 라벨은 보지 않았다. |
 
 ## 질문
@@ -148,7 +148,7 @@
 
 | 결과 | 설계에 반영 |
 |---|---|
-| 채택 | 같은 모델의 H5(또는 H6), H7(또는 H8), H9(또는 H10)가 모두 채택이면 그 모델의 임베딩 채널을 RRF 네 번째 목록으로 더한다. [맥락 고르기](../../design/context-selection.md)의 순위 채널 표와 [용어 카탈로그](../../design/term-catalog.md)를 고치고, [결정 기록](../../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)을 대체하는 새 결정 기록을 쓴다. 채널 조건은 아니지만 같은 모델의 H1(또는 H2), H3(또는 H4), 비용이 모두 채택이면 임베딩으로 짝을 찾아 카탈로그에 저장하는 방식으로 같은 문서들을 고친다. |
+| 채택 | 같은 모델의 H5(또는 H6), H7(또는 H8), H9(또는 H10)가 모두 채택이면 그 모델의 임베딩 채널을 RRF 네 번째 목록으로 더한다. [맥락 고르기](../../design/context-selection.md)의 순위 채널 표와 [용어 카탈로그](https://github.com/woonyong-choi/saturn/blob/6fda8f610b49d8febe162bf7ec36114513b2e741/docs/design/term-catalog.md)를 고치고, [결정 기록](../../decisions/2026-10-01-lexical-ranking-with-term-catalog.md)을 대체하는 새 결정 기록을 쓴다. 채널 조건은 아니지만 같은 모델의 H1(또는 H2), H3(또는 H4), 비용이 모두 채택이면 임베딩으로 짝을 찾아 카탈로그에 저장하는 방식으로 같은 문서들을 고친다. |
 | 기각 | 위 조건을 채우는 모델이 없으면 같은 뜻 찾기 없이 judge에 맡긴다. 설계는 그대로 두고 보고서 논의에 이유를 적는다. 정확도 가설은 채택인데 비용만 기각이면 양자화 모델이나 더 작은 모델의 비용을 재는 후속 실험 이슈를 연다. |
 | 보류 | 기각과 같이 설계를 두고, 설명 질의를 늘리거나 두 사람 라벨로 다시 재는 후속 실험 이슈를 연다. |
 

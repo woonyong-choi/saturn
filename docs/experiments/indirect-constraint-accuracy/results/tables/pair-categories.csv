@@ -1,0 +1,6 @@
+category,n,correct,accuracy,ci95_low,ci95_high,replace,possible,none
+compatible,120,120,1.0,0.968981,1.0,0,0,120
+direct-replace,60,41,0.683333,0.557662,0.786941,41,15,4
+indirect-compatible,20,20,1.0,0.838875,1.0,0,0,20
+indirect-replace,60,49,0.816667,0.700802,0.894422,49,9,2
+partial,60,22,0.366667,0.256209,0.49317,3,22,35

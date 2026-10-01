@@ -2,11 +2,14 @@
 //! 설계: docs/design/judge.md
 
 pub mod calibration;
+pub mod split;
 
 use std::future::Future;
 
 use saturn_protocol::ids::{ChatRevision, LedgerSeq, SettingsRevision};
 use saturn_protocol::state::Disposition;
+
+use self::split::{SplitError, split_request};
 
 /// 이 값 미만이면 새 작업, 이 값부터 유지 기준 미만까지는 현재 에이전트 유지.
 pub const KEEP_CURRENT_FLOOR: f64 = 0.3;
@@ -179,7 +182,7 @@ pub trait JudgeClient: Send + Sync {
     /// 실패하면 호출자는 키를 다시 받거나 Saturn을 실행하지 않는다.
     fn check(&self) -> impl Future<Output = Result<(), JudgeError>> + Send;
 
-    /// 64K를 넘거나 `state`와 가장 긴 질문 합이 32K를 넘으면 구현이 나눠 보낸다.
+    /// 64K를 넘거나 `state`와 가장 긴 질문 합이 32K를 넘으면 구현이 `split::split_request`로 나눠 보낸다.
     ///
     /// # Errors
     /// 호출자는 `JudgeError` 종류별로 대기, 대체 규칙, 재전송을 고른다.
@@ -312,11 +315,11 @@ pub fn questions_for_input(
 }
 
 // cost: time O(n), heap O(n), stack O(1)
-// vars: n = `shortlist` 길이
+// vars: n = 후보 수
 // basis: estimate
-/// `shortlist`는 `sessions::ranking::judge_shortlist`로 좁힌 상위 N개이고, 후보마다 `call_<id>_keep`과 `result_<id>_keep`을 묻는다.
-pub fn compact_questions(shortlist: &[LedgerSeq]) -> (QuestionSetId, Vec<Question>) {
-    let questions = shortlist
+/// 후보마다 `call_<id>_keep`과 `result_<id>_keep`을 묻는다. 후보를 줄이지 않고 전체를 넘긴다.
+pub fn compact_questions(candidates: &[LedgerSeq]) -> (QuestionSetId, Vec<Question>) {
+    let questions = candidates
         .iter()
         .flat_map(|seq| {
             [
@@ -337,21 +340,41 @@ pub fn compact_questions(shortlist: &[LedgerSeq]) -> (QuestionSetId, Vec<Questio
     (set_id(SET_COMPACT), questions)
 }
 
-// cost: time O(n·a), heap O(n), stack O(1)
-// vars: n = `shortlist` 길이, a = 답 수
+// cost: time O(n + q), heap O(n + q·s), stack O(1), alloc 1
+// vars: n = 후보 수, q = 질문 수, s = state 글자 수
 // basis: estimate
-/// `call_<id>_keep` 답을 `(기록 번호, P(yes))`로 돌려주고, 답이 없거나 `noul`이 아닌 후보는 뺀다.
+/// 후보 전체를 묻는 요청을 크기 한도에 맞게 나눈 목록이다. 조각마다 같은 `state`를 싣는다.
+///
+/// # Errors
+/// `state`가 너무 커서 질문 하나도 담을 수 없으면 `SplitError::QuestionTooLarge`.
+pub fn compact_requests(
+    model: &str,
+    state: &str,
+    candidates: &[LedgerSeq],
+) -> Result<Vec<JudgeRequest>, SplitError> {
+    split_request(JudgeRequest {
+        model: model.to_string(),
+        state: state.to_string(),
+        sets: vec![compact_questions(candidates)],
+    })
+}
+
+// cost: time O(n·r·a), heap O(n), stack O(1)
+// vars: n = 후보 수, r = 응답 수, a = 응답당 답 수
+// basis: estimate
+/// 조각마다 받은 응답에서 `call_<id>_keep` 답을 `(기록 번호, P(yes))`로 모은다.
+/// 실패한 조각의 응답은 넘기지 않으며, 답이 없거나 `noul`이 아닌 후보는 뺀다.
 pub fn compact_verdicts(
-    shortlist: &[LedgerSeq],
-    response: &JudgeResponse,
+    candidates: &[LedgerSeq],
+    responses: &[JudgeResponse],
 ) -> Vec<(LedgerSeq, f64)> {
-    shortlist
+    candidates
         .iter()
         .filter_map(|seq| {
             let id = compact_call_id(*seq);
-            response
-                .answers
+            responses
                 .iter()
+                .flat_map(|response| &response.answers)
                 .find_map(|(answer_id, answer)| match answer {
                     Answer::Noul(yes) if *answer_id == id => Some((*seq, *yes)),
                     _ => None,
@@ -1076,49 +1099,59 @@ mod tests {
         assert!(validate(&request, &response).is_err());
     }
 
-    // cost: time O(c log c), heap O(c), stack O(1)
+    // cost: time O(c), heap O(c), stack O(1)
     // vars: c = 후보 수
     // basis: estimate
     #[test]
-    fn compact_questions_150_candidates_ask_only_top_n() {
-        use crate::sessions::ranking::{
-            Candidate, DEFAULT_JUDGE_TOP, DEFAULT_RRF_K, judge_shortlist, rank_candidates,
-        };
-        let candidates: Vec<Candidate> = (0..150)
-            .map(|seq| Candidate {
-                seq: LedgerSeq(seq),
-                text: format!("output {seq}"),
-                files: Vec::new(),
-            })
-            .collect();
-        let ranked = rank_candidates(&candidates, &[], "output", DEFAULT_RRF_K);
+    fn compact_questions_150_candidates_ask_all() {
+        let candidates: Vec<LedgerSeq> = (0..150).map(LedgerSeq).collect();
 
-        let (set, questions) = compact_questions(judge_shortlist(&ranked, DEFAULT_JUDGE_TOP));
+        let (set, questions) = compact_questions(&candidates);
 
         assert_eq!(set.name, SET_COMPACT);
-        assert_eq!(questions.len(), 2 * DEFAULT_JUDGE_TOP);
+        assert_eq!(questions.len(), 300);
         assert!(
             questions
                 .iter()
-                .any(|question| question.id == "call_149_keep")
+                .any(|question| question.id == "call_0_keep")
         );
         assert!(
-            !questions
+            questions
                 .iter()
-                .any(|question| question.id == "call_0_keep")
+                .any(|question| question.id == "result_149_keep")
         );
     }
 
+    // cost: time O(c), heap O(c), stack O(1)
+    // vars: c = 후보 수
+    // basis: estimate
     #[test]
-    fn compact_verdicts_reads_call_keep_and_skips_missing() {
-        let shortlist = [LedgerSeq(7), LedgerSeq(3)];
-        let answers = response(vec![
+    fn compact_requests_large_state_splits_and_every_piece_carries_state() {
+        let candidates: Vec<LedgerSeq> = (0..1_000).map(LedgerSeq).collect();
+        let state = "s".repeat(20_000);
+
+        let requests = compact_requests("jev-test", &state, &candidates).unwrap();
+
+        assert!(requests.len() > 1);
+        assert!(requests.iter().all(|request| request.state == state));
+    }
+
+    #[test]
+    fn compact_verdicts_merges_pieces_and_skips_failed_piece() {
+        let candidates = [LedgerSeq(7), LedgerSeq(3), LedgerSeq(1)];
+        let first = response(vec![
             ("call_7_keep", Answer::Noul(0.9)),
             ("result_7_keep", Answer::Noul(0.1)),
         ]);
+        let second = response(vec![("call_1_keep", Answer::Noul(0.4))]);
 
-        let verdicts = compact_verdicts(&shortlist, &answers);
+        let verdicts = compact_verdicts(&candidates, &[first, second]);
 
-        assert_eq!(verdicts, vec![(LedgerSeq(7), 0.9)]);
+        assert_eq!(verdicts, vec![(LedgerSeq(7), 0.9), (LedgerSeq(1), 0.4)]);
+    }
+
+    #[test]
+    fn compact_verdicts_no_responses_is_empty() {
+        assert!(compact_verdicts(&[LedgerSeq(1)], &[]).is_empty());
     }
 }
