@@ -1,0 +1,406 @@
+{
+  "c2": {
+    "pooled_descriptive": {
+      "bootstrap_ci95": [
+        0.0,
+        0.0
+      ],
+      "claude": {
+        "k": 616,
+        "n": 624,
+        "rate": 0.9871794871794872,
+        "wilson": [
+          0.9749077010949261,
+          0.9934896409400362
+        ]
+      },
+      "codex": {
+        "k": 616,
+        "n": 624,
+        "rate": 0.9871794871794872,
+        "wilson": [
+          0.9749077010949261,
+          0.9934896409400362
+        ]
+      },
+      "n": 624,
+      "paired": {
+        "a": 616,
+        "b": 0,
+        "c": 0,
+        "d": 8,
+        "diff": 0.0,
+        "lower": -0.006733971806378101,
+        "n": 624,
+        "upper": 0.006733971806378101
+      },
+      "tasks": 24,
+      "verdict": "채택",
+      "verdict_newcombe": "채택"
+    },
+    "receivers": {
+      "claude": {
+        "bootstrap_ci95": [
+          0.0,
+          0.0
+        ],
+        "claude": {
+          "k": 308,
+          "n": 312,
+          "rate": 0.9871794871794872,
+          "wilson": [
+            0.9675048555345308,
+            0.9950033632305478
+          ]
+        },
+        "codex": {
+          "k": 308,
+          "n": 312,
+          "rate": 0.9871794871794872,
+          "wilson": [
+            0.9675048555345308,
+            0.9950033632305478
+          ]
+        },
+        "n": 312,
+        "paired": {
+          "a": 308,
+          "b": 0,
+          "c": 0,
+          "d": 4,
+          "diff": 0.0,
+          "lower": -0.01339489293762304,
+          "n": 312,
+          "upper": 0.01339489293762304
+        },
+        "tasks": 24,
+        "verdict": "채택",
+        "verdict_newcombe": "채택"
+      },
+      "codex": {
+        "bootstrap_ci95": [
+          0.0,
+          0.0
+        ],
+        "claude": {
+          "k": 308,
+          "n": 312,
+          "rate": 0.9871794871794872,
+          "wilson": [
+            0.9675048555345308,
+            0.9950033632305478
+          ]
+        },
+        "codex": {
+          "k": 308,
+          "n": 312,
+          "rate": 0.9871794871794872,
+          "wilson": [
+            0.9675048555345308,
+            0.9950033632305478
+          ]
+        },
+        "n": 312,
+        "paired": {
+          "a": 308,
+          "b": 0,
+          "c": 0,
+          "d": 4,
+          "diff": 0.0,
+          "lower": -0.01339489293762304,
+          "n": 312,
+          "upper": 0.01339489293762304
+        },
+        "tasks": 24,
+        "verdict": "채택",
+        "verdict_newcombe": "채택"
+      }
+    },
+    "verdict": "채택"
+  },
+  "exploratory": {
+    "accuracy_by_source": {
+      "receiver=all,source=claude": {
+        "k": 616,
+        "n": 624,
+        "rate": 0.9871794871794872,
+        "wilson": [
+          0.9749077010949261,
+          0.9934896409400362
+        ]
+      },
+      "receiver=all,source=codex": {
+        "k": 616,
+        "n": 624,
+        "rate": 0.9871794871794872,
+        "wilson": [
+          0.9749077010949261,
+          0.9934896409400362
+        ]
+      },
+      "receiver=claude,source=claude": {
+        "k": 308,
+        "n": 312,
+        "rate": 0.9871794871794872,
+        "wilson": [
+          0.9675048555345308,
+          0.9950033632305478
+        ]
+      },
+      "receiver=claude,source=codex": {
+        "k": 308,
+        "n": 312,
+        "rate": 0.9871794871794872,
+        "wilson": [
+          0.9675048555345308,
+          0.9950033632305478
+        ]
+      },
+      "receiver=codex,source=claude": {
+        "k": 308,
+        "n": 312,
+        "rate": 0.9871794871794872,
+        "wilson": [
+          0.9675048555345308,
+          0.9950033632305478
+        ]
+      },
+      "receiver=codex,source=codex": {
+        "k": 308,
+        "n": 312,
+        "rate": 0.9871794871794872,
+        "wilson": [
+          0.9675048555345308,
+          0.9950033632305478
+        ]
+      }
+    },
+    "activity": {
+      "claude": {
+        "edit_output_empty": 0,
+        "editing": 24,
+        "exit_code_missing": 0,
+        "reading": 118,
+        "reasoning_events": 0,
+        "shell": 72,
+        "tools": 214,
+        "wrapped_command": 0
+      },
+      "codex": {
+        "edit_output_empty": 0,
+        "editing": 24,
+        "exit_code_missing": 0,
+        "reading": 96,
+        "reasoning_events": 53,
+        "shell": 72,
+        "tools": 192,
+        "wrapped_command": 0
+      }
+    },
+    "conversion": {
+      "capture": {
+        "bootstrap_ci95": [
+          0.0,
+          0.0
+        ],
+        "claude": {
+          "k": 192,
+          "n": 192,
+          "rate": 1.0,
+          "wilson": [
+            0.980384853629872,
+            1.0
+          ]
+        },
+        "codex": {
+          "k": 192,
+          "n": 192,
+          "rate": 1.0,
+          "wilson": [
+            0.980384853629872,
+            1.0
+          ]
+        },
+        "n": 192,
+        "paired": {
+          "a": 192,
+          "b": 0,
+          "c": 0,
+          "d": 0,
+          "diff": 0.0,
+          "lower": -0.019615146370127956,
+          "n": 192,
+          "upper": 0.019615146370127956
+        },
+        "tasks": 24,
+        "verdict": "채택",
+        "verdict_newcombe": "채택"
+      },
+      "kind": {
+        "bootstrap_ci95": [
+          0.0,
+          0.0
+        ],
+        "claude": {
+          "k": 192,
+          "n": 192,
+          "rate": 1.0,
+          "wilson": [
+            0.980384853629872,
+            1.0
+          ]
+        },
+        "codex": {
+          "k": 192,
+          "n": 192,
+          "rate": 1.0,
+          "wilson": [
+            0.980384853629872,
+            1.0
+          ]
+        },
+        "n": 192,
+        "paired": {
+          "a": 192,
+          "b": 0,
+          "c": 0,
+          "d": 0,
+          "diff": 0.0,
+          "lower": -0.019615146370127956,
+          "n": 192,
+          "upper": 0.019615146370127956
+        },
+        "tasks": 24,
+        "verdict": "채택",
+        "verdict_newcombe": "채택"
+      },
+      "memo": {
+        "bootstrap_ci95": [
+          0.0,
+          0.015625
+        ],
+        "claude": {
+          "k": 191,
+          "n": 192,
+          "rate": 0.9947916666666666,
+          "wilson": [
+            0.9710925025328832,
+            0.9990800088716776
+          ]
+        },
+        "codex": {
+          "k": 192,
+          "n": 192,
+          "rate": 1.0,
+          "wilson": [
+            0.980384853629872,
+            1.0
+          ]
+        },
+        "n": 192,
+        "paired": {
+          "a": 191,
+          "b": 1,
+          "c": 0,
+          "d": 0,
+          "diff": 0.00520833333333337,
+          "lower": -0.014870108986448864,
+          "n": 192,
+          "upper": 0.02890749746711685
+        },
+        "tasks": 24,
+        "verdict": "채택",
+        "verdict_newcombe": "채택"
+      },
+      "path": {
+        "bootstrap_ci95": [
+          0.0,
+          0.0
+        ],
+        "claude": {
+          "k": 120,
+          "n": 120,
+          "rate": 1.0,
+          "wilson": [
+            0.9689808331071251,
+            0.9999999999999999
+          ]
+        },
+        "codex": {
+          "k": 120,
+          "n": 120,
+          "rate": 1.0,
+          "wilson": [
+            0.9689808331071251,
+            0.9999999999999999
+          ]
+        },
+        "n": 120,
+        "paired": {
+          "a": 120,
+          "b": 0,
+          "c": 0,
+          "d": 0,
+          "diff": 0.0,
+          "lower": -0.031019166892874872,
+          "n": 120,
+          "upper": 0.031019166892874872
+        },
+        "tasks": 24,
+        "verdict": "채택",
+        "verdict_newcombe": "채택"
+      }
+    },
+    "fact_in_packet_by_source": {
+      "claude": {
+        "k": 312,
+        "n": 312,
+        "rate": 1.0,
+        "wilson": [
+          0.9878373824167911,
+          0.9999999999999999
+        ]
+      },
+      "codex": {
+        "k": 312,
+        "n": 312,
+        "rate": 1.0,
+        "wilson": [
+          0.9878373824167911,
+          0.9999999999999999
+        ]
+      }
+    },
+    "mean_packet_tokens": {
+      "claude": 1234.4166666666667,
+      "codex": 1170.7083333333333
+    },
+    "packet_budget": 1600
+  },
+  "flow": {
+    "common_facts": 312,
+    "dropped_task_receivers": 0,
+    "sessions": 96,
+    "status": {
+      "ok": 96
+    },
+    "tasks": 24
+  },
+  "margin": 0.1,
+  "usage": {
+    "end": {
+      "claude_session_percent": 6.0,
+      "claude_week_percent": 28.0,
+      "codex_week_percent": 11.0,
+      "label": "end",
+      "ts_utc": "2026-10-01T19:42:14+00:00"
+    },
+    "start": {
+      "claude_session_percent": 5.0,
+      "claude_week_percent": 28.0,
+      "codex_week_percent": 11.0,
+      "label": "start",
+      "ts_utc": "2026-10-01T19:30:48+00:00"
+    }
+  }
+}
