@@ -1,36 +1,32 @@
-//! 출력 마스킹: judge 키와 일치하는 문자열을 로그, 오류, 디버그 출력, 판단 기록 저장 전에 가린다. Authorization 헤더는 기록하지 않는다.
-//!
-//! 설계: docs/design/judge-key-security.md(출력 마스킹, 키를 저장하지 않는 곳).
-//! 가린 자리는 치환 문자열로 바꾼다(끝 4자리도 남기지 않는다). 치환 문자열 `[redacted]`와 헤더 목록
-//! `authorization`, `proxy-authorization`, `x-api-key`는 초안이다(설계에 없음).
+//! 출력 마스킹: judge 키와 일치하는 문자열을 로그, 오류, 디버그 출력, 판단 기록 저장 전에 가린다.
+//! 설계: docs/design/judge-key-security.md
 
 use std::io::Write;
 
-/// 가린 자리에 넣는 문자열.
+/// 끝 4자리도 남기지 않는다. 초안 값.
 pub const REDACTED: &str = "[redacted]";
 
-/// 기록하면 안 되는 헤더 이름(소문자).
+/// 초안 목록(설계는 Authorization만 정함).
 const SENSITIVE_HEADERS: &[&str] = &["authorization", "proxy-authorization", "x-api-key"];
 
-/// 가린 뒤의 문자열. `Masker::mask`로만 만든다. `store::NewJudgment`는 원문을 이 타입으로만 받는다.
+/// `Masker::mask`로만 만든다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Masked(String);
 
 impl Masked {
-    /// 가린 문자열.
     pub fn as_str(&self) -> &str {
         &self.0
     }
 }
 
-/// 가림 대상 목록. `SecretStore::mask_needles`로 만들고, 키가 바뀌면 새로 만든다. 대상이 키 원문이라 `Debug`는 개수만 보인다.
+/// 대상이 키 원문이라 `Debug`는 개수만 보인다.
 #[derive(Clone, Default)]
 pub struct Masker {
     needles: Vec<String>,
 }
 
 impl Masker {
-    /// 대상 목록으로 만든다. 빈 문자열은 넣지 않는다.
+    /// 빈 문자열은 넣지 않는다.
     pub fn new(needles: Vec<String>) -> Self {
         let mut needles: Vec<String> = needles
             .into_iter()
@@ -41,8 +37,7 @@ impl Masker {
         Self { needles }
     }
 
-    /// `text`의 모든 대상 문자열을 치환 문자열(초안 `[redacted]`)로 바꾼다. 긴 대상부터 바꿔 겹친 대상이 남지 않게 한다.
-    /// `Authorization: ...`, `x-api-key: ...` 헤더 줄은 값 전체를 가린다.
+    /// 긴 대상부터 바꿔 겹친 대상이 남지 않게 한다.
     pub fn mask(&self, text: &str) -> Masked {
         let mut masked = text.to_owned();
         for needle in &self.needles {
@@ -61,7 +56,6 @@ impl Masker {
 }
 
 impl std::fmt::Debug for Masker {
-    /// `Masker { needles: 1 }`처럼 개수만 쓴다.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Masker")
             .field("needles", &self.needles.len())
@@ -69,8 +63,7 @@ impl std::fmt::Debug for Masker {
     }
 }
 
-/// 로그 출력 감싸개. 줄바꿈까지 모았다가 `Masker::mask`를 거쳐 안쪽에 쓴다(키가 두 번의 쓰기로 나뉘어도 가린다).
-/// `tracing` 구독자의 writer와 오류 출력(stderr)에 쓴다.
+/// 키가 두 번의 쓰기로 나뉘어도 가리도록 줄바꿈까지 모았다가 쓴다.
 #[derive(Debug)]
 pub struct MaskingWriter<W: Write> {
     inner: W,
@@ -79,7 +72,6 @@ pub struct MaskingWriter<W: Write> {
 }
 
 impl<W: Write> MaskingWriter<W> {
-    /// `inner`를 감싼다.
     pub fn new(inner: W, masker: Masker) -> Self {
         Self {
             inner,
@@ -90,7 +82,7 @@ impl<W: Write> MaskingWriter<W> {
 }
 
 impl<W: Write> Write for MaskingWriter<W> {
-    /// 줄바꿈이 나올 때마다 그 줄을 가려서 쓴다. 남은 조각은 버퍼에 둔다.
+    /// 남은 조각은 버퍼에 둔다.
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         self.line.extend_from_slice(buf);
         while let Some(end) = self.line.iter().position(|byte| *byte == b'\n') {
@@ -101,7 +93,6 @@ impl<W: Write> Write for MaskingWriter<W> {
         Ok(buf.len())
     }
 
-    /// 버퍼에 남은 조각도 가려서 쓰고 안쪽을 비운다.
     fn flush(&mut self) -> std::io::Result<()> {
         if !self.line.is_empty() {
             let line = std::mem::take(&mut self.line);
@@ -112,7 +103,7 @@ impl<W: Write> Write for MaskingWriter<W> {
 }
 
 impl<W: Write> MaskingWriter<W> {
-    /// 한 줄을 가려서 안쪽에 쓴다. UTF-8이 아니면 깨진 바이트를 바꾼 뒤 가린다(키는 ASCII라 가림은 그대로 맞는다).
+    /// 키는 ASCII라 깨진 UTF-8 바이트를 바꾼 뒤 가려도 맞는다.
     fn write_masked(&mut self, line: &[u8]) -> std::io::Result<()> {
         let text = String::from_utf8_lossy(line);
         self.inner
@@ -120,7 +111,7 @@ impl<W: Write> MaskingWriter<W> {
     }
 }
 
-/// `Authorization: ...` 같은 헤더 줄이면 이름만 남기고 값을 가린다. 줄 끝 줄바꿈은 그대로 둔다.
+/// 줄 끝 줄바꿈은 그대로 둔다.
 fn mask_header_line(line: &str) -> String {
     let Some((name, _)) = line.split_once(':') else {
         return line.to_owned();
@@ -138,8 +129,7 @@ fn mask_header_line(line: &str) -> String {
     format!("{name}: {REDACTED}{ending}")
 }
 
-/// 기록하면 안 되는 HTTP 헤더인지. 설계는 Authorization만 정한다. 초안 목록 `authorization`, `proxy-authorization`, `x-api-key`(대소문자 무시)면 참.
-/// judge 요청과 응답을 기록할 때 이 헤더는 이름만 남기고 값을 버린다.
+/// 대소문자를 무시한다.
 pub fn is_sensitive_header(name: &str) -> bool {
     SENSITIVE_HEADERS
         .iter()
