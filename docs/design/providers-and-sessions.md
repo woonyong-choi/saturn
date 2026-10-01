@@ -108,19 +108,21 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 3. judge가 무관한 작업으로 판단하면 `queue`는 채팅에 속한 보조 에이전트를 시작한다.
 4. 보조 에이전트는 끝나면 결과를 전달한 뒤 바로 종료한다.
 
+살아 있는 메인 session은 `종료`가 아닌 메인 session이다. 같은 provider면 열린 session에 그대로 보내고, `닫힘·재개 가능`이나 `보류`면 보관한 provider session ID로 재개한다. 보관한 ID가 없거나 provider가 다르면 새 session을 연다. 보조 에이전트는 작업마다 새 session을 연다. 끝나면 바로 종료하므로 재개할 session이 없기 때문이다.
+
 보조 에이전트가 물려받는 설정 층은 [설정](settings.md)에 있다. judge가 무엇을 묻는지는 [judge](judge.md)에 있다.
 
 ### provider 전환
 
 한 채팅 안에서 Codex와 Claude를 바꿔 가도 채팅은 하나로 이어진다. 채팅마다 살아 있는 session은 하나다. `sessions`는 입력을 보내는 순간 대상 session을 정한다.
 
-session 교체는 턴이 끝난 경계에서만 한다. 진행 중인 턴이 교체로 끊기는 일을 막기 위해서다. 대기열은 에이전트 session이 아니라 채팅에 둔다. 교체 중 들어온 입력이 옛 session을 가리키는 일을 막기 위해서다. 교체 중 들어온 입력은 새 session에 들어온 순서대로 보낸다. 입력 순서를 교체와 무관하게 지키기 위해서다.
+session 교체는 같은 채팅·역할 안에서 턴이 끝난 경계에만 한다. 진행 중인 턴이 교체로 끊기는 일을 막기 위해서다. session ID는 재사용하지 않는다. 대기열은 에이전트 session이 아니라 채팅에 둔다. 교체 중 들어온 입력이 옛 session을 가리키는 일을 막기 위해서다. 교체 중 들어온 입력은 새 session에 들어온 순서대로 보낸다. 입력 순서를 교체와 무관하게 지키기 위해서다.
 
-새 session에는 패킷을 넘기고, 그 뒤로는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. 패킷을 어떻게 고르는지는 [맥락 정리](context-management.md)에 있다.
+새 session에는 패킷을 넘기고, 그 뒤로는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. 새 session의 전달 기록 번호는 이전 session이 받은 번호보다 작아지지 않는다. 패킷이 그 번호까지의 기록을 담으므로 같은 결과를 두 번 붙이지 않기 위해서다. 패킷을 어떻게 고르는지는 [맥락 정리](context-management.md)에 있다.
 
 ### session 닫기와 재개
 
-1. 트리 유휴 뒤 5분 유예가 지나면 `sessions`는 session을 닫는다.
+1. 트리 유휴 뒤 5분 유예가 지나면 `sessions`는 session을 닫는다. 유예 중 새 턴이 시작되면 유예 시계를 멈춘다.
 2. `store`는 닫은 session의 provider session ID를 보관한다.
 3. 새 입력이 오면 `sessions`는 보관한 ID로 session을 재개한다.
 
