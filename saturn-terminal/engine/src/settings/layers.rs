@@ -33,6 +33,7 @@ on_exit = "background"
 [judge]
 method = "jev"
 endpoint = "https://api.typesafe.ai"
+model = "jev-1.13.0"
 
 [judge.key]
 storage = "standard"
@@ -115,6 +116,10 @@ const SCHEMA: &[(&str, Kind)] = &[
     ("judge.thresholds.injection", Kind::Unit),
     ("judge.thresholds.progressing", Kind::Unit),
     ("judge.thresholds.feedback_cause", Kind::Unit),
+    ("judge.model", Kind::Text),
+    ("judge.local.endpoint", Kind::Text),
+    ("judge.local.version", Kind::Text),
+    ("judge.skip_check", Kind::Flag),
     ("grading.model", Kind::Text),
     ("consent.share_with_server", Kind::Flag),
     ("retention.max_age_days", Kind::Positive),
