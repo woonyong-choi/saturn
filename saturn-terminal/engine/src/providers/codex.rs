@@ -19,7 +19,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::{mpsc, oneshot};
 
-use super::tool_detail::classify_command;
+use super::tool_detail::{classify_command, unwrap_shell};
 use super::{AppliedSettings, LaunchSpec, TurnOriginTracker, UserProviderConfig};
 use crate::processes::{ProcessGroupId, ProcessSpec, Supervisor};
 use crate::secrets::Masker;
@@ -815,7 +815,7 @@ fn activity_of(item: &Value) -> Option<Activity> {
                 return Some(Activity::ReadingFile);
             }
             Some(Activity::RunningCommand {
-                command: item["command"].as_str().unwrap_or_default().to_owned(),
+                command: unwrap_shell(item["command"].as_str().unwrap_or_default()),
             })
         }
         "fileChange" => Some(Activity::EditingFile),
@@ -870,11 +870,11 @@ fn detail_of(item: &Value) -> ToolDetail {
                 .flatten()
                 .filter_map(|action| action["path"].as_str().map(str::to_owned))
                 .collect();
-            let command = item["command"].as_str().unwrap_or_default();
+            let command = unwrap_shell(item["command"].as_str().unwrap_or_default());
             let category = if matches!(activity_of(item), Some(Activity::ReadingFile)) {
                 ToolCategory::FileRead
             } else {
-                classify_command(command)
+                classify_command(&command)
             };
             ToolDetail {
                 category,
@@ -904,6 +904,10 @@ fn detail_of(item: &Value) -> ToolDetail {
                 changed: Some(total),
             }
         }
+        Some("reasoning") => ToolDetail {
+            category: ToolCategory::Reasoning,
+            ..ToolDetail::default()
+        },
         _ => ToolDetail::default(),
     }
 }
@@ -1572,6 +1576,30 @@ while (my $line = <STDIN>) {
         assert_eq!(activity_of(&json!({ "type": "agentMessage" })), None);
         assert!(is_no_active_turn(&json!({ "message": "No active turn" })));
         assert!(!is_no_active_turn(&json!({ "message": "invalid input" })));
+    }
+
+    #[test]
+    fn activity_of_wrapped_command_is_inner_command() {
+        let item = json!({
+            "type": "commandExecution",
+            "command": "/bin/zsh -lc 'python3 scripts/check.py'",
+            "commandActions": [{ "type": "unknown", "command": "python3 scripts/check.py" }],
+        });
+
+        assert_eq!(
+            activity_of(&item),
+            Some(Activity::RunningCommand {
+                command: "python3 scripts/check.py".to_owned()
+            })
+        );
+    }
+
+    #[test]
+    fn detail_of_reasoning_is_not_a_candidate() {
+        let detail = detail_of(&json!({ "type": "reasoning", "summary": [] }));
+
+        assert_eq!(detail.category, ToolCategory::Reasoning);
+        assert!(!detail.category.is_candidate());
     }
 
     #[test]

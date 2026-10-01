@@ -48,6 +48,7 @@
 | 파일 순위 | 코드 검색이 찾은 파일 | `file-rank` |
 
 - 문서 조각을 고르는 `context-select`는 이 흐름을 쓰지 않는다. 문서 조각은 `doc-filter`의 인젝션 판단을 거쳐야 하므로 judge 없이 순위만으로 넣지 않기 위해서다.
+- `Reasoning` 종류의 도구 호출은 기록에 남기되 후보에서 뺀다. 추론은 도구 결과가 아니라 후보 수와 메모를 provider마다 다르게 만들기 때문이다.
 - 패킷의 구역과 채우기 규칙은 [맥락 정리](context-management.md)에, 결과 전달은 [provider 연결과 session](providers-and-sessions.md)에 있다.
 
 ### 순위 채널

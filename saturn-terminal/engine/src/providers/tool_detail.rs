@@ -22,6 +22,9 @@ const TEST_COMMANDS: &[&[&str]] = &[
     &["make", "test"],
 ];
 
+/// 감싸는 셸 프로그램 이름.
+const WRAPPER_SHELLS: &[&str] = &["sh", "bash", "zsh", "dash", "fish"];
+
 // cost: time O(c·t), heap O(c), stack O(1), alloc 1
 // vars: c = 명령 글자 수, t = TEST_COMMANDS 항목 수
 // basis: estimate
@@ -42,6 +45,84 @@ pub(super) fn classify_command(command: &str) -> ToolCategory {
     } else {
         ToolCategory::Shell
     }
+}
+
+// cost: time O(c), heap O(c), stack O(1), alloc 1
+// vars: c = 명령 글자 수
+// basis: estimate
+/// `/bin/zsh -lc '...'`처럼 셸이 명령을 감쌌으면 안쪽 명령을, 아니면 받은 글을 그대로 돌려준다.
+pub(super) fn unwrap_shell(command: &str) -> String {
+    let Some(words) = split_words(command) else {
+        return command.to_owned();
+    };
+    let [program, rest @ ..] = words.as_slice() else {
+        return command.to_owned();
+    };
+    let program = program.rsplit('/').next().unwrap_or_default();
+    if !WRAPPER_SHELLS.contains(&program) {
+        return command.to_owned();
+    }
+    let Some(flag) = rest
+        .iter()
+        .position(|word| word.starts_with('-') && !word.starts_with("--") && word.contains('c'))
+    else {
+        return command.to_owned();
+    };
+    rest.get(flag + 1)
+        .cloned()
+        .unwrap_or_else(|| command.to_owned())
+}
+
+// cost: time O(c), heap O(c), stack O(1), alloc 1
+// vars: c = 명령 글자 수
+// basis: estimate
+/// 작은따옴표, 큰따옴표, 역슬래시만 푸는 낱말 나누기. 따옴표가 닫히지 않으면 `None`.
+fn split_words(command: &str) -> Option<Vec<String>> {
+    let mut words = Vec::new();
+    let mut word = String::new();
+    let mut has_word = false;
+    let mut chars = command.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '\'' => {
+                has_word = true;
+                loop {
+                    match chars.next()? {
+                        '\'' => break,
+                        inner => word.push(inner),
+                    }
+                }
+            }
+            '"' => {
+                has_word = true;
+                loop {
+                    match chars.next()? {
+                        '"' => break,
+                        '\\' => word.push(chars.next()?),
+                        inner => word.push(inner),
+                    }
+                }
+            }
+            '\\' => {
+                has_word = true;
+                word.push(chars.next()?);
+            }
+            c if c.is_whitespace() => {
+                if has_word {
+                    words.push(std::mem::take(&mut word));
+                    has_word = false;
+                }
+            }
+            c => {
+                has_word = true;
+                word.push(c);
+            }
+        }
+    }
+    if has_word {
+        words.push(word);
+    }
+    Some(words)
 }
 
 // cost: time O(o + n), heap O(o + n), stack O(1), alloc 2
@@ -94,6 +175,35 @@ mod tests {
     fn classify_command_other_commands_are_shell() {
         for command in ["python3 scripts/check.py", "cat tests/test_rules.py", "ls"] {
             assert_eq!(classify_command(command), ToolCategory::Shell, "{command}");
+        }
+    }
+
+    #[test]
+    fn unwrap_shell_login_shell_wrapper_gives_inner_command() {
+        assert_eq!(
+            unwrap_shell("/bin/zsh -lc 'python3 -m unittest tests.test_rules'"),
+            "python3 -m unittest tests.test_rules"
+        );
+        assert_eq!(unwrap_shell("bash -c \"echo hi\""), "echo hi");
+    }
+
+    #[test]
+    fn unwrap_shell_escaped_single_quote_stays_in_inner_command() {
+        assert_eq!(
+            unwrap_shell(r"/bin/zsh -lc 'echo '\''hi'\'' there'"),
+            "echo 'hi' there"
+        );
+    }
+
+    #[test]
+    fn unwrap_shell_plain_or_unbalanced_command_is_unchanged() {
+        for command in [
+            "python3 scripts/check.py",
+            "zsh script.sh",
+            "/bin/zsh -lc 'oops",
+            "",
+        ] {
+            assert_eq!(unwrap_shell(command), command);
         }
     }
 
