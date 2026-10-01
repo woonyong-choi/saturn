@@ -1,7 +1,5 @@
-//! judge 공통 규격과 판단 규칙: 질문 세트, 답 형식, 확신도, 질문별 기준값과 대체 규칙.
-//!
-//! 구현(외부 API, 로컬 Saturn 모델)은 `saturn-engine`의 `judges`. 여기는 요청을 만들고 답을 행동으로 바꾸는 순수 규칙만 둔다.
-//! 설계: docs/design/judge.md. 기계로 정할 수 있으면 코드가, 뜻을 이해해야 하면 judge가 정한다.
+//! judge 요청을 만들고 답을 행동으로 바꾸는 순수 규칙(구현은 `saturn-engine`의 `judges`).
+//! 설계: docs/design/judge.md
 
 pub mod calibration;
 
@@ -10,109 +8,92 @@ use std::future::Future;
 use saturn_protocol::ids::{ChatRevision, SettingsRevision};
 use saturn_protocol::state::Disposition;
 
-/// `keep_current`가 이 값 미만이면 새 작업으로 본다. 이 값부터 유지 기준 미만까지는 판단 없음과 같이 현재 에이전트 유지.
+/// 이 값 미만이면 새 작업, 이 값부터 유지 기준 미만까지는 현재 에이전트 유지.
 pub const KEEP_CURRENT_FLOOR: f64 = 0.3;
 
-/// 확률 합이 1에서 이만큼 넘게 벗어나면 `invalid`. 초안 값.
+/// 확률 합이 1에서 벗어나도 되는 폭(초안).
 pub const PROBABILITY_TOLERANCE: f64 = 0.01;
 
-/// 입력 판단 질문 세트 이름.
 pub const SET_ROUTE: &str = "route";
-/// 실행 중 관계 질문 세트 이름.
 pub const SET_RELATION: &str = "relation";
-/// 실행 중 보내는 방식 질문 세트 이름.
 pub const SET_SEND_OPT: &str = "send-opt";
 
-/// 질문 id. 판단 기록과 대체 규칙 기록에 그대로 남는다.
+/// 판단 기록과 대체 규칙 기록에 그대로 남는다.
 pub mod question_ids {
-    /// 하던 에이전트로 보낼지(`noul`).
     pub const KEEP_CURRENT: &str = "keep_current";
-    /// 탐색 없이 바로 할 수 있을 만큼 명확한지(`noul`).
     pub const IS_ACTIONABLE: &str = "is_actionable";
-    /// 쓸 모델(`choice`).
     pub const TARGET_MODEL: &str = "target_model";
-    /// 보류 작업을 재개할지(`noul`).
     pub const RESUME_HELD: &str = "resume_held";
-    /// 실행 중 작업과의 관계(`choice`).
     pub const RELATION_TO_RUNNING: &str = "relation_to_running";
-    /// 끼워 넣기, 대기, 새 에이전트 중 보내는 방식(`choice`).
     pub const STEER_OR_SPAWN: &str = "steer_or_spawn";
 }
 
-/// `relation_to_running` 선택지. 순서가 답의 확률 순서다.
+/// 순서가 답의 확률 순서다.
 pub const RELATION_OPTIONS: [&str; 5] =
     ["refines", "continues", "independent", "conflicts", "other"];
 
-/// `steer_or_spawn` 선택지. 순서가 답의 확률 순서다.
+/// 순서가 답의 확률 순서다.
 pub const SEND_OPTIONS: [&str; 4] = ["steer", "queue", "spawn", "other"];
 
-/// 답이 하나인 `choice` 질문에 넣는 기타 선택지.
+/// 답이 하나인 `choice` 질문에 넣는다.
 const OTHER: &str = "other";
 
-/// judge 호출과 답 해석 오류.
 #[derive(Debug, thiserror::Error)]
 pub enum JudgeError {
-    /// 응답이 없거나 시간 초과. 입력을 대기로 보낸다.
+    /// 응답이 없거나 시간 초과면 입력을 대기로 보낸다.
     #[error("judge did not respond")]
     NoResponse,
-    /// 보낸 뒤 시간 초과. `cost-unknown`으로 기록하고 다시 보내지 않는다.
+    /// `cost-unknown`으로 기록하고 다시 보내지 않는다.
     #[error("judge timed out after send")]
     TimedOutAfterSend,
-    /// 키가 없거나 거절됐다. 연결 실패와 구분해 키 입력 창을 띄운다.
+    /// 연결 실패와 구분해 키 입력 창을 띄운다.
     #[error("judge rejected the key")]
     Unauthorized,
-    /// 속도 제한. 기다렸다가 다시 보낸다.
+    /// 기다렸다가 다시 보낸다.
     #[error("judge rate limited")]
     RateLimited,
-    /// 후보 밖 선택, NaN, 확률 누락. 판단을 `invalid`로 기록하고 대체 규칙을 적용한다.
+    /// 후보 밖 선택, NaN, 확률 누락이면 `invalid`로 기록하고 대체 규칙을 적용한다.
     #[error("judge answer is invalid: {reason}")]
     Invalid { reason: String },
-    /// 판단 중 채팅 revision이 바뀌었다. `superseded`로 기록한다.
+    /// `superseded`로 기록한다.
     #[error("chat revision changed during judgment")]
     Superseded,
 }
 
-/// 질문 세트 이름과 버전. 기록에 `route@3.1`처럼 남는다.
+/// 기록에 `route@3.1`처럼 남는다.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct QuestionSetId {
-    /// `route`, `relation`, `send-opt`, `file-rank`, `context-select`, `compact`, `doc-filter`, `loop`, `feedback`.
     pub name: String,
-    /// 주 버전. 뜻이나 선택지가 바뀌면 올리고 옛 선택지 → 새 선택지 대응표를 함께 둔다.
+    /// 뜻이나 선택지가 바뀌면 올리고 옛 선택지 대응표를 함께 둔다.
     pub major: u16,
-    /// 소수 버전. 뜻이 같은 작은 변경. 옛 답과 라벨을 그대로 쓴다.
+    /// 뜻이 같은 작은 변경이라 옛 답과 라벨을 그대로 쓴다.
     pub minor: u16,
 }
 
-/// 질문 하나. 문장과 선택지는 영어로 쓰고 사용자 원문은 `state`에 그대로 넣는다.
+/// 문장과 선택지는 영어로 쓰고 사용자 원문은 `state`에 그대로 넣는다.
 #[derive(Debug, Clone)]
 pub struct Question {
-    /// 질문 id(`keep_current`, `file_3_relevant` 등).
     pub id: String,
-    /// 영어 질문 문장.
     pub text: String,
-    /// 답 형식.
     pub kind: AnswerKind,
 }
 
-/// 답 형식.
 #[derive(Debug, Clone)]
 pub enum AnswerKind {
-    /// 선택지 하나. 255개 이하, 답이 하나인 질문에는 `other`를 넣는다. 넘으면 계층 선택으로 나눈다.
+    /// 255개 이하이고, 답이 하나인 질문에는 `other`를 넣는다.
     Choice { options: Vec<String> },
-    /// 예·아니요. 여러 개가 맞을 수 있는 속성은 `noul`로 하나씩 묻는다.
+    /// 여러 개가 맞을 수 있는 속성은 `noul`로 하나씩 묻는다.
     Noul,
-    /// 2~10단계 분포.
+    /// 2~10단계.
     Score { levels: u8 },
 }
 
-/// judge 답 하나.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Answer {
-    /// 선택지별 확률. 순서는 `options`와 같다.
+    /// 순서는 `options`와 같다.
     Choice(Vec<f64>),
     /// P(yes).
     Noul(f64),
-    /// 단계별 확률.
     Score(Vec<f64>),
 }
 
@@ -120,8 +101,7 @@ impl Answer {
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 선택지 수
     // basis: estimate
-    /// 확신도 `(N·pmax − 1)/(N − 1)`. 균등이면 0, 한 선택지가 1이면 1. `noul`은 두 선택지로 본다.
-    /// 선택지가 하나면 1, 없거나 NaN이 있으면 0이다. 결과는 0~1로 자른다.
+    /// `(N·pmax − 1)/(N − 1)`을 0~1로 자르고, `noul`은 두 선택지로, NaN이나 빈 답은 0으로 본다.
     pub fn confidence(&self) -> f64 {
         let (count, max) = match self {
             Self::Noul(yes) => (2, yes.max(1.0 - yes)),
@@ -152,7 +132,6 @@ impl Answer {
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 선택지 수
     // basis: estimate
-    /// 가장 높은 확률의 선택지 번호. `choice`와 `score`만, 비었으면 `None`.
     fn top_index(&self) -> Option<usize> {
         let (Self::Choice(probabilities) | Self::Score(probabilities)) = self else {
             return None;
@@ -165,94 +144,79 @@ impl Answer {
     }
 }
 
-/// 판단 호출 하나의 결과 종류. 판단 기록에 남는다.
+/// 판단 기록에 남는다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum JudgmentOutcome {
-    /// 정상 답.
     Ok,
-    /// 형식 오류. 대체 규칙을 적용했다.
     Invalid,
-    /// 판단 중 채팅 revision이 바뀌었다.
     Superseded,
-    /// 보낸 뒤 시간 초과. 비용을 모른다.
     CostUnknown,
-    /// 응답 없음.
     NoResponse,
 }
 
-/// judge 요청 한 건. 입력당 한 번 부르고 필요한 질문을 모두 묶는다.
+/// 입력당 한 번 부르고 필요한 질문을 모두 묶는다.
 #[derive(Debug, Clone)]
 pub struct JudgeRequest {
-    /// 고정 버전 모델 이름. 별칭을 쓰면 응답의 `model`을 기록한다.
+    /// 고정 버전 이름을 쓰고, 별칭이면 응답의 `model`을 기록한다.
     pub model: String,
-    /// 채팅 상태 요약. 비밀값, 절대 경로, 다른 대화 원문은 넣지 않는다. 앞 입력의 판단 결과를 넣는다.
+    /// 비밀값, 절대 경로, 다른 대화 원문은 넣지 않는다.
     pub state: String,
-    /// 이번에 묻는 질문 세트들.
     pub sets: Vec<(QuestionSetId, Vec<Question>)>,
 }
 
-/// judge 응답.
 #[derive(Debug, Clone)]
 pub struct JudgeResponse {
-    /// 응답이 보고한 실제 모델.
     pub model: String,
-    /// 질문 id별 답.
     pub answers: Vec<(String, Answer)>,
-    /// 입력 토큰과 출력 토큰. 비용 표시에 쓴다.
+    /// (입력, 출력) 토큰.
     pub tokens: (u64, u64),
 }
 
-/// judge 연결. 모든 judge는 이 trait의 구현으로만 붙는다.
+/// 모든 judge는 이 trait의 구현으로만 붙는다.
 pub trait JudgeClient: Send + Sync {
-    /// 시작 확인. 외부 judge는 `GET /v1/models`와 실제 판단 1건, 로컬은 모델 로드나 서버 응답.
-    ///
     /// # Errors
-    /// 확인 실패. 호출자는 키를 다시 받거나 Saturn을 실행하지 않는다.
+    /// 실패하면 호출자는 키를 다시 받거나 Saturn을 실행하지 않는다.
     fn check(&self) -> impl Future<Output = Result<(), JudgeError>> + Send;
 
-    /// 판단 요청. 64K를 넘거나 `state`와 가장 긴 질문 합이 32K를 넘으면 구현이 나눠 보낸다.
+    /// 64K를 넘거나 `state`와 가장 긴 질문 합이 32K를 넘으면 구현이 나눠 보낸다.
     ///
     /// # Errors
-    /// `JudgeError` 종류별로 호출자가 대기, 대체 규칙, 재전송을 고른다.
+    /// 호출자는 `JudgeError` 종류별로 대기, 대체 규칙, 재전송을 고른다.
     fn judge(
         &self,
         request: JudgeRequest,
     ) -> impl Future<Output = Result<JudgeResponse, JudgeError>> + Send;
 }
 
-/// 판단 방식. 판단 기록은 방식과 관계없이 전부 남긴다.
+/// 판단 기록은 방식과 관계없이 전부 남긴다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Method {
-    /// 기준 judge(외부 API)가 행동을 정한다.
+    /// 외부 API 기준 judge.
     Jev,
-    /// Saturn 모델이 정한다. 확신도가 기준보다 낮으면 행동하지 않고 대체 규칙으로 간다.
+    /// 확신도가 기준보다 낮으면 행동하지 않고 대체 규칙으로 간다.
     Saturn,
     /// TODO(#40): `collect`의 뜻 미정
     Collect,
 }
 
-/// 질문별 기준값. 설정 층에 두고 사용자 층과 폴더 층에서 바꿀 수 있다. 기본값은 docs/design/judge.md 표.
+/// 기본값은 docs/design/judge.md 표를 따른다.
 #[derive(Debug, Clone)]
 pub struct Thresholds {
-    /// `keep_current` 유지 기준(0.8). 0.3~0.8이면 판단 없음과 같이 현재 에이전트 유지.
     pub keep_current: f64,
-    /// `is_actionable` 명확 기준(0.7).
     pub is_actionable: f64,
-    /// `choice`와 `score` 확신도 기준(0.6).
+    /// `choice`와 `score` 확신도 기준.
     pub min_confidence: f64,
-    /// `resume_held` 재개 기준(0.85). 아래면 무시 횟수 1 증가.
+    /// 미만이면 무시 횟수가 1 오른다.
     pub resume_held: f64,
-    /// `file_<n>_relevant` 존재 기준(0.7)과 없음 기준(0.35).
+    /// (존재 기준, 없음 기준).
     pub file_relevant: (f64, f64),
-    /// `context-select` 게이트 평균 없음 기준(0.3).
+    /// `context-select` 게이트 평균 없음 기준.
     pub context_gate: f64,
-    /// `compact` 유지 기준(0.5).
     pub compact_keep: f64,
-    /// `doc-filter` `injection` 제외 기준(0.7).
+    /// `doc-filter`의 `injection` 제외 기준.
     pub injection: f64,
-    /// `loop` `is_progressing` 루프 기준(0.2).
+    /// `loop`의 `is_progressing`이 이 값 미만이면 루프.
     pub progressing: f64,
-    /// `feedback` 원인 사용 기준(0.7).
     pub feedback_cause: f64,
 }
 
@@ -273,32 +237,26 @@ impl Default for Thresholds {
     }
 }
 
-/// 입력 하나의 판단 결과. `queue`가 적용 직전에 `revision`을 비교한다.
+/// `queue`가 적용 직전에 `revision`을 비교한다.
 #[derive(Debug, Clone)]
 pub struct RouteDecision {
-    /// 판단 시점의 채팅 revision.
+    /// 판단 시점 값.
     pub revision: ChatRevision,
-    /// 판단 때 쓴 설정 번호.
     pub settings: SettingsRevision,
-    /// 끼워 넣기, 새 작업, 대기.
     pub disposition: Disposition,
-    /// 하던 에이전트로 보낼지(`keep_current`). 거짓이면 새 작업이나 보조 에이전트.
+    /// 거짓이면 새 작업이나 보조 에이전트.
     pub keep_current: bool,
-    /// 쓸 모델. `None`이면 사용자 고정 모델이나 현재 모델.
+    /// `None`이면 사용자 고정 모델이나 현재 모델.
     pub model: Option<String>,
-    /// 보류 작업을 재개할지(`resume_held`).
     pub resume_held: bool,
-    /// 대체 규칙을 적용한 질문 id. 기록에 사유와 함께 남긴다.
+    /// 기록에 사유와 함께 남긴다.
     pub fallbacks: Vec<String>,
 }
 
 // cost: time O(m), heap O(m), stack O(1)
 // vars: m = 허용 모델 후보 수
 // basis: estimate
-/// 입력 판단에 필요한 질문을 고른다. 제어 명령이 아닌 입력만. 사용자가 모델을 고정했으면 `target_model`을 뺀다.
-/// 실행 중이면 `relation`과 `send-opt`를 더한다.
-///
-/// `models`는 `target_model`의 허용 후보다. 비었으면 `target_model`을 묻지 않는다. 보류가 있으면 `resume_held`를 더한다.
+/// 제어 명령이 아닌 입력에만 부르고, `models`가 비었거나 모델이 고정됐으면 `target_model`을 묻지 않는다.
 pub fn questions_for_input(
     running: bool,
     model_pinned: bool,
@@ -352,12 +310,7 @@ pub fn questions_for_input(
     sets
 }
 
-/// judge 답을 행동으로 바꾼다. `keep_current`를 `is_actionable`보다 먼저 읽는다(이어 가는 입력이 파일 탐색으로 빠지지 않게).
-/// 답이 없거나 확신도가 낮거나 `invalid`면 질문별 대체 규칙을 쓴다. `Saturn` 방식이면 확신도 미달 시 행동하지 않는다.
-///
-/// `judged`는 보낸 요청과 받은 답의 짝이다. 무응답이나 모델 고정으로 판단이 없으면 `None`이고 대기로 둔다.
-/// 실행 중(요청에 `relation`이 있음)이면 관계와 보내는 방식으로, 아니면 `keep_current`로 처리 방식을 정한다.
-/// `Saturn` 방식에서는 `noul` 답도 확신도 `|2p − 1|`가 `min_confidence` 미만이면 판단 없음으로 본다.
+/// `keep_current`를 `is_actionable`보다 먼저 읽어 이어 가는 입력이 파일 탐색으로 빠지지 않게 한다.
 pub fn decide_route(
     judged: Option<(&JudgeRequest, &JudgeResponse)>,
     thresholds: &Thresholds,
@@ -401,13 +354,8 @@ pub fn decide_route(
 // cost: time O(q·a + q·n), heap O(q), stack O(1), alloc 1
 // vars: q = 요청 질문 수, a = 답 수, n = 질문당 선택지 수
 // basis: estimate
-/// judge 답의 형식 검사. 후보 밖 선택, NaN, 확률 누락이면 `Invalid`.
-///
-/// 요청한 질문마다 같은 형식의 답이 하나 있어야 하고, 요청하지 않은 질문의 답이 있으면 안 된다.
-/// 확률은 0~1의 유한한 값이고, `choice`와 `score`는 선택지 수와 길이가 같고 합이 1(허용 오차 `PROBABILITY_TOLERANCE`)이다.
-///
 /// # Errors
-/// 형식이 맞지 않으면 `JudgeError::Invalid`.
+/// 요청과 답의 질문이 일대일로 맞지 않거나, 확률이 0~1 밖이거나, 분포 합이 1이 아니면 `JudgeError::Invalid`.
 pub fn validate(request: &JudgeRequest, response: &JudgeResponse) -> Result<(), JudgeError> {
     let questions: Vec<&Question> = request
         .sets
@@ -436,7 +384,6 @@ pub fn validate(request: &JudgeRequest, response: &JudgeResponse) -> Result<(), 
     Ok(())
 }
 
-/// 요청과 답에서 질문별 값을 읽고 대체 규칙을 적용한다.
 struct AnswerReader<'a> {
     request: &'a JudgeRequest,
     response: &'a JudgeResponse,
@@ -478,7 +425,7 @@ impl AnswerReader<'_> {
     // cost: time O(a), heap O(1), stack O(1)
     // vars: a = 답 수
     // basis: estimate
-    /// `noul` 답의 P(yes). 형식이 다르거나 0~1 밖이거나, `Saturn` 방식에서 확신도가 기준 미만이면 `None`.
+    /// `Saturn` 방식에서는 확신도가 기준 미만이어도 `None`이다.
     fn yes(&self, id: &str) -> Option<f64> {
         let answer = self.answer(id)?;
         let Answer::Noul(yes) = answer else {
@@ -497,7 +444,7 @@ impl AnswerReader<'_> {
     // cost: time O(q + a + n), heap O(1), stack O(1)
     // vars: q = 요청 질문 수, a = 답 수, n = 선택지 수
     // basis: estimate
-    /// `choice` 답에서 확신도가 기준 이상인 선택지. 길이가 선택지 수와 다르면 `None`.
+    /// 확신도가 기준 미만이거나 길이가 선택지 수와 다르면 `None`.
     fn picked(&self, id: &str) -> Option<&str> {
         let question = self.question(id)?;
         let AnswerKind::Choice { options } = &question.kind else {
@@ -519,7 +466,7 @@ impl AnswerReader<'_> {
             .map(String::as_str)
     }
 
-    /// `keep_current`. 유지 기준 이상이면 유지, `KEEP_CURRENT_FLOOR` 미만이면 새 작업, 그 사이와 판단 없음은 대체 규칙(유지).
+    /// 유지 기준과 `KEEP_CURRENT_FLOOR` 사이, 판단 없음은 대체 규칙으로 유지한다.
     fn keep_current(&self, fallbacks: &mut Vec<String>) -> bool {
         match self.yes(question_ids::KEEP_CURRENT) {
             Some(yes) if yes >= self.thresholds.keep_current => true,
@@ -531,7 +478,7 @@ impl AnswerReader<'_> {
         }
     }
 
-    /// `is_actionable`. 판단이 없으면 명확으로 보고 탐색을 생략한다(대체 규칙 기록만 남긴다).
+    /// 판단이 없으면 명확으로 보고 탐색을 생략하며, 대체 규칙 기록만 남긴다.
     fn note_actionable(&self, fallbacks: &mut Vec<String>) {
         let is_asked = self.is_asked(question_ids::IS_ACTIONABLE);
         if is_asked && self.yes(question_ids::IS_ACTIONABLE).is_none() {
@@ -539,7 +486,7 @@ impl AnswerReader<'_> {
         }
     }
 
-    /// `target_model`. 허용 후보 중 하나면 그 모델, 그 밖은 대체 규칙(사용자 고정 모델이나 현재 모델, `None`).
+    /// 허용 후보 밖이면 대체 규칙으로 `None`(사용자 고정 모델이나 현재 모델).
     fn target_model(&self, fallbacks: &mut Vec<String>) -> Option<String> {
         if !self.is_asked(question_ids::TARGET_MODEL) {
             return None;
@@ -553,7 +500,7 @@ impl AnswerReader<'_> {
         }
     }
 
-    /// `resume_held`. 기준 이상에서만 재개. 판단이 없으면 재개하지 않고 대체 규칙을 기록한다.
+    /// 판단이 없으면 재개하지 않는다.
     fn resume_held(&self, fallbacks: &mut Vec<String>) -> bool {
         if !self.is_asked(question_ids::RESUME_HELD) {
             return false;
@@ -567,8 +514,8 @@ impl AnswerReader<'_> {
         }
     }
 
-    /// 실행 중 처리 방식. 관계가 확신도 미달이면 대기, 무관하면 새 작업, 이어 가면 보내는 방식을 따른다.
-    /// TODO(#36): `conflicts`일 때 바로 멈출지, 사용자에게 확인할지. 정해지기 전에는 대기로 둔다
+    /// 관계가 `conflicts`이거나 확신도 미달이면 대기로 둔다.
+    /// TODO(#36): `conflicts`일 때 바로 멈출지, 사용자에게 확인할지
     fn running_disposition(&self, fallbacks: &mut Vec<String>) -> Disposition {
         let relation = self.picked(question_ids::RELATION_TO_RUNNING);
         match relation {
@@ -582,7 +529,7 @@ impl AnswerReader<'_> {
         }
     }
 
-    /// 보내는 방식. 확신도 미달이면 현재 에이전트에 대기 뒤 전송.
+    /// 확신도 미달이면 현재 에이전트에 대기 뒤 전송.
     fn send_disposition(&self, fallbacks: &mut Vec<String>) -> Disposition {
         match self.picked(question_ids::STEER_OR_SPAWN) {
             Some("steer") => Disposition::Steer,
@@ -596,7 +543,7 @@ impl AnswerReader<'_> {
     }
 }
 
-/// 질문 세트 id. 초안: 모든 세트를 1.0에서 시작한다.
+/// 초안: 모든 세트를 1.0에서 시작한다.
 fn set_id(name: &str) -> QuestionSetId {
     QuestionSetId {
         name: name.to_string(),
@@ -628,7 +575,6 @@ fn invalid(reason: String) -> JudgeError {
 // cost: time O(n), heap O(1), stack O(1)
 // vars: n = 선택지 수
 // basis: estimate
-/// 답 하나의 형식 검사.
 fn check_answer(question: &Question, answer: &Answer) -> Result<(), JudgeError> {
     let id = &question.id;
     let probabilities: &[f64] = match (&question.kind, answer) {
