@@ -19,3 +19,4 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [TUI](design/tui.md) | 화면 배치, 키, 상태 표시 |
 | [용어](glossary.md) | 이 프로젝트에서만 쓰는 말 |
 | [결정 기록](decisions/README.md) | 설계를 정한 이유와 버린 선택지 |
+| [실험](experiments/README.md) | 설계 값을 확인한 실험 |
