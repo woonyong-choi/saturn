@@ -1,8 +1,5 @@
-//! 명령줄 정의(clap derive). 하위 명령이 없으면 대화 화면을 연다.
-//!
-//! 설계: docs/design/records.md(정리, 내보내기), docs/design/judge-training.md(`train`, `judge version`),
-//! docs/design/settings.md(`-c` 실행 층), docs/design/tui.md(`usage`).
-//! judge 키는 명령 인자로 받지 않는다(docs/design/judge-key-security.md). 키 인자를 더하지 않는다.
+//! 명령줄 정의. judge 키 인자는 두지 않는다.
+//! 설계: docs/design/judge-key-security.md
 
 use std::str::FromStr;
 
@@ -62,9 +59,7 @@ pub(crate) struct TrainArgs {
     pub(crate) from: Option<String>,
 }
 
-/// `prune` 인자.
-///
-/// TODO(#42): 판단 기록 전용 정리(docs/design/records.md)의 명령 이름과 자리
+/// `prune` 인자. TODO(#42): 판단 기록 전용 정리의 명령 이름과 자리
 #[derive(Debug, Args)]
 pub(crate) struct PruneArgs {
     /// 미리보기 없이 지운다.
@@ -123,16 +118,14 @@ impl From<UsageRangeArg> for UsageRange {
 /// `-c key=value` 한 개. 값 검사는 engine의 설정 병합이 한다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ConfigOverride {
-    /// 설정 키.
     pub(crate) key: String,
-    /// 설정 값 원문.
     pub(crate) value: String,
 }
 
 impl FromStr for ConfigOverride {
     type Err = String;
 
-    /// `key=value`를 나눈다. `=`가 없거나 키가 비면 오류.
+    /// `=`가 없거나 키가 비면 오류.
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         todo!("#93")
     }
