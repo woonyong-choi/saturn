@@ -17,6 +17,8 @@ pub mod state;
 pub mod terminal;
 pub mod view;
 
+pub(crate) const JUDGE_KEY_ENV: &str = "SATURN_JUDGE_KEY";
+
 use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::time::Instant;

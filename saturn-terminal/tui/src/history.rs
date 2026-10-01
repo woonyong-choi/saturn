@@ -2,6 +2,7 @@
 //! 설계: docs/design/records.md
 
 use std::io::Write;
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, thiserror::Error)]
@@ -66,11 +67,12 @@ impl InputHistory {
         if self.entries.last().map(String::as_str) == Some(text) {
             return Ok(());
         }
-        self.entries.push(text.to_string());
         self.append(text).map_err(|source| HistoryError::Write {
             path: self.path.clone(),
             source,
-        })
+        })?;
+        self.entries.push(text.to_string());
+        Ok(())
     }
 
     // cost: time O(1), heap O(1), stack O(1)
@@ -145,7 +147,9 @@ impl InputHistory {
         let mut file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
+            .mode(0o600)
             .open(&self.path)?;
+        file.set_permissions(std::fs::Permissions::from_mode(0o600))?;
         writeln!(file, "{}", escape(text))
     }
 }
@@ -257,5 +261,30 @@ mod tests {
         let mut history = InputHistory::load(&path).unwrap();
 
         assert_eq!(history.older(), None);
+    }
+
+    #[test]
+    fn failed_append_does_not_add_history_entry() {
+        let mut history = InputHistory {
+            path: PathBuf::from("/dev/null/history"),
+            entries: Vec::new(),
+            cursor: None,
+        };
+
+        assert!(history.push("unsaved").is_err());
+        assert_eq!(history.older(), None);
+    }
+
+    #[test]
+    fn history_file_is_private() {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join(format!(".saturn-history-test-{}", std::process::id()));
+        let mut history = InputHistory::load(&path).unwrap();
+
+        history.push("sample").unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        std::fs::remove_file(&path).unwrap();
+
+        assert_eq!(mode, 0o600);
     }
 }

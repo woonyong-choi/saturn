@@ -5,6 +5,8 @@ use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
+use crate::JUDGE_KEY_ENV;
+
 #[derive(Debug, thiserror::Error)]
 pub enum ShellError {
     #[error("failed to spawn shell")]
@@ -74,6 +76,7 @@ fn run_blocking(command: &str, workdir: &Path) -> Result<ShellOutput, ShellError
         Command::new(shell_program())
             .arg("-c")
             .arg(command)
+            .env_remove(JUDGE_KEY_ENV)
             .current_dir(workdir)
             .stdin(Stdio::null())
             .stdout(writer)

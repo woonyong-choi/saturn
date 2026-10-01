@@ -1,6 +1,8 @@
 //! 터미널 준비와 복원, 입력 이벤트 읽기, `Ctrl+Z` 일시 중지, 외부 에디터.
 
 use std::io::Stdout;
+use std::io::Write;
+use std::os::unix::fs::OpenOptionsExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
@@ -16,6 +18,7 @@ use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use tokio::sync::mpsc;
 
+use crate::JUDGE_KEY_ENV;
 use crate::app::AppEvent;
 
 /// 일시 중지와 외부 에디터 동안 키를 가로채지 않으려고 짧게 둔다.
@@ -78,6 +81,7 @@ pub fn suspend(screen: &mut Screen) -> Result<(), TerminalError> {
     let pid = std::process::id().to_string();
     let signal = std::process::Command::new("kill")
         .args(["-TSTP", &pid])
+        .env_remove(JUDGE_KEY_ENV)
         .status()
         .map_err(TerminalError::Suspend);
     // `fg`로 돌아오면 여기서 이어진다.
@@ -96,8 +100,21 @@ pub fn suspend(screen: &mut Screen) -> Result<(), TerminalError> {
 /// # Errors
 /// 에디터 실행이나 임시 파일 처리 실패면 `Editor`.
 pub fn edit_external(screen: &mut Screen, draft: &str) -> Result<String, TerminalError> {
-    let path = std::env::temp_dir().join(format!("saturn-draft-{}.md", std::process::id()));
-    std::fs::write(&path, draft).map_err(TerminalError::Editor)?;
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(std::io::Error::other)
+        .map_err(TerminalError::Editor)?
+        .as_nanos();
+    let path = std::env::temp_dir().join(format!("saturn-draft-{}-{nonce}.md", std::process::id()));
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&path)
+        .map_err(TerminalError::Editor)?;
+    file.write_all(draft.as_bytes())
+        .map_err(TerminalError::Editor)?;
+    drop(file);
     READER_PAUSED.store(true, Ordering::SeqCst);
     leave()?;
     let editor = editor_program();
@@ -106,6 +123,7 @@ pub fn edit_external(screen: &mut Screen, draft: &str) -> Result<String, Termina
     let status = std::process::Command::new(program)
         .args(words)
         .arg(&path)
+        .env_remove(JUDGE_KEY_ENV)
         .status()
         .map_err(TerminalError::Editor);
     let restored = configure().map_err(TerminalError::Configure);
