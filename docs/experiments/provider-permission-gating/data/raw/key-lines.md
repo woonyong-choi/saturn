@@ -1,6 +1,6 @@
 # 실행 로그 핵심 줄
 
-Codex 실험 4건의 실행 전체 로그(`codex-194-{home,plug,mcp,prompt-path}.log`, 경로와 SHA-256은 [데이터](../README.md))에서 결과 판단에 쓴 줄만 발췌했다. 줄 번호는 각 로그 파일 안의 번호다. 긴 줄은 `...`로 줄였다. 장치 이름과 설치 id가 든 부분은 줄였고, thread id와 작업 경로는 `<id>`, `<worktree>`로 바꿨다. 이메일 주소와 인증 값이 든 줄은 발췌하지 않았다. 실험 9는 맨 아래 절에 따로 적었다.
+Codex 실험 4건의 실행 전체 로그(`codex-194-{home,plug,mcp,prompt-path}.log`, 경로와 SHA-256은 [데이터](../README.md))에서 결과 판단에 쓴 줄만 발췌했다. 줄 번호는 각 로그 파일 안의 번호다. 긴 줄은 `...`로 줄였다. 장치 이름과 설치 id가 든 부분은 줄였고, thread id와 작업 경로는 `<id>`, `<worktree>`로 바꿨다. 이메일 주소와 인증 값이 든 줄은 발췌하지 않았다. 실험 9와 10은 맨 아래 절에 따로 적었다.
 
 ## home 실험(실험 5)
 
@@ -196,4 +196,31 @@ accept 1·2 모두 도구 시도 항목 후 승인 요청 없이 timeout 됐고 
 224 deadline = time.monotonic() + 150
 ...
 273 interrupt_id = rpc.request("turn/interrupt", {"threadId": thread_value})
+```
+
+## delay 실험(실험 10)
+
+실험 10의 드라이버 두 개(원래 `experiment/run_trial_original.py`, 고친 `experiment/run_trial.py`, 비공개 폴더의 `.local/experiments/provider-permission-gating/delay/`, 경로와 SHA-256은 [데이터](../README.md))에서 읽기 부분만 발췌했다. 줄 번호는 각 파일 안의 번호다. 앞 절의 `run_trial.py`는 실험 9 드라이버이고 `run_trial_original.py`와 같은 파일이다(SHA-256 `2c7ceb4a...`).
+
+버그가 있던 원래 드라이버. 자식 프로세스의 stdout을 텍스트 모드(`text=True`, `bufsize=1`)로 열고, `select()`가 fd를 읽을 수 있다고 알릴 때마다 `readline()`을 한 번만 부른다. `readline()`은 한 번의 OS read로 여러 줄을 파이썬 쪽 버퍼에 미리 들여올 수 있다. 그러면 다음 줄이 이미 버퍼에 있어도 fd에는 읽을 것이 없어 `select()`가 깨어나지 않고, 줄은 다음 입력이 올 때까지 처리되지 않는다.
+
+```text
+216 text=True,
+218 bufsize=1,
+79  events = self.selector.select(max(0.05, deadline - time.monotonic()))
+83  line = key.fileobj.readline()
+```
+
+고친 드라이버. fd를 비차단으로 바꾸고 `os.read()`로 읽을 수 있는 바이트를 모두 비운 뒤, 완성된 줄을 큐(`pending`)에 넣는다. 줄마다 첫 `os.read()`가 반환한 시각을 `rawByteReceivedAtNs`로 기록한다. 회차 마감은 150초에서 300초로 늘렸다.
+
+```text
+44  os.set_blocking(stream.fileno(), False)
+100 chunk = os.read(fd, 65536)
+113 line, _, remainder = buffer.partition(b"\n")
+126 self.pending.append(message)
+90  if self.pending:
+91      return self.pending.popleft()
+257 deadline = time.monotonic() + 300
+249 text=False,
+251 bufsize=0,
 ```
