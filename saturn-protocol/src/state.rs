@@ -3,10 +3,12 @@
 //! 설계: docs/design/input-handling.md(입력 전달 상태), docs/design/providers-and-sessions.md(session 상태),
 //! docs/design/engine-lifecycle.md(효과 범위).
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 /// 입력 전달 상태. `Applied`, `Rejected`, `Cancelled`는 끝 상태다.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
 pub enum InputState {
     /// judge 답을 기다린다. 다음: `Queued`, `Delivering`, `Held`, `Cancelled`.
     Judging,
@@ -25,7 +27,7 @@ pub enum InputState {
 }
 
 /// 대기 입력이 기다리는 이유. 상태판 대기 줄의 문구를 고른다.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
 pub enum QueueReason {
     /// 실행 중인 작업 뒤(`대기 · A 다음`).
     AfterTask(crate::ids::TaskLabel),
@@ -42,7 +44,7 @@ pub enum QueueReason {
 }
 
 /// 작업 상태. 상태판 줄과 작업 목록 필터가 쓴다.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
 pub enum TaskState {
     /// 에이전트가 실행 중이다.
     Running,
@@ -61,7 +63,7 @@ pub enum TaskState {
 }
 
 /// Saturn session 상태.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
 pub enum SessionState {
     /// provider 대화와 연결 중. 다음: `ClosedResumable`, `Held`, `Ended`.
     Open,
@@ -74,7 +76,7 @@ pub enum SessionState {
 }
 
 /// 실행의 효과 범위. 크래시 뒤 자동 재개는 `Proven*`만 한다.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
 pub enum EffectScope {
     /// 적용된 provider 설정을 기록했고 트리 전체에서 외부 효과가 불가능하다.
     ProvenByConfig,
@@ -94,7 +96,7 @@ impl EffectScope {
 }
 
 /// 입력이 어떻게 처리될지. judge 결과와 `Tab` 입력이 정한다.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
 pub enum Disposition {
     /// 진행 중인 턴에 더한다(steer).
     Steer,
@@ -105,7 +107,9 @@ pub enum Disposition {
 }
 
 /// TUI를 닫을 때 engine이 할 일. 기본값은 `Background`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize, JsonSchema, TS,
+)]
 pub enum OnExit {
     /// 접수된 입력을 계속 처리한다.
     #[default]

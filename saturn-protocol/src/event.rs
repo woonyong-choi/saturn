@@ -2,12 +2,14 @@
 //!
 //! 설계: docs/design/providers-and-sessions.md(이벤트 수신, 사용량 보고).
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::ids::{AgentId, SubagentId};
 
 /// provider 이벤트 한 조각. 공급자 고유 필드는 engine에서 모두 걸러 낸다.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum ProviderEvent {
     /// 모델 글 조각.
     Text {
@@ -63,7 +65,7 @@ pub enum ProviderEvent {
 }
 
 /// 실행 줄의 하는 일.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum Activity {
     /// 생각 중.
     Thinking,
@@ -80,7 +82,7 @@ pub enum Activity {
 }
 
 /// 턴을 누가 시작했나.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum TurnOrigin {
     /// 사용자 입력으로 시작.
     User,
@@ -89,7 +91,7 @@ pub enum TurnOrigin {
 }
 
 /// 사용량 보고 원값. 보고하지 않은 값은 `None`으로 두고 0으로 채우지 않는다.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct UsageReport {
     /// 보고 대상 에이전트.
     pub agent: AgentId,
@@ -112,7 +114,7 @@ pub struct UsageReport {
 }
 
 /// 사용량 보고 범위.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum UsageScope {
     /// 메인 턴 하나의 값. 보고값을 그대로 턴 값으로 쓴다.
     MainTurn,

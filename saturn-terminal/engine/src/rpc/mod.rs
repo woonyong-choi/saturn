@@ -2,13 +2,14 @@
 //!
 //! 설계: docs/design/engine-lifecycle.md(사용자당 engine 하나, engine 시작 순서, 여러 TUI 동시 접속, TUI 종료 뒤 동작).
 //! 메시지 정본은 `saturn_protocol::rpc`(`Request`, `Notification`)다. 한 줄에 JSON 메시지 하나.
+//! 봉투와 코덱은 `saturn_protocol::envelope`다. 요청마다 같은 `id`로 `Response` 하나를 돌려준다.
 //! TODO(#46): 메서드 이름과 목록 확정. 지금은 `Request` variant 이름을 그대로 쓴다
-//! TODO(#75): JSON-RPC 2.0 봉투(`id`, 응답 짝짓기)는 protocol에 두고 여기서 그것을 쓴다
 //!
 //! 흐름:
 //! 1. `EngineLock::acquire`로 사용자당 잠금을 잡는다(engine 시작 1단계). 이미 잡혀 있으면 두 번째 engine은 끝난다.
 //! 2. judge 확인까지 끝나면 `RpcServer::bind`로 소켓을 연다(5단계). 잠금 없이 소켓을 열지 않는다.
-//! 3. `RpcServer::next_event`가 접속, 요청, 끊김을 하나씩 돌려준다. 요청 처리는 engine(`Engine::handle_request`)이 한다.
+//! 3. `RpcServer::next_event`가 접속, 요청, 끊김을 하나씩 돌려준다. 요청 처리는 engine(`Engine::handle_request`)이 하고,
+//!    결과를 `RpcServer::respond`로 돌려준다. 해석하지 못한 줄은 연결 작업이 바로 오류 응답을 쓴다.
 //! 4. 붙을 때 `greet`가 `StartInfo` → 최근 기록 → 보관한 허가 요청 순서로 보낸다.
 //! 5. 마지막 TUI가 떨어지면 `RpcEvent::LastDetached`를 한 번 내고, engine이 `on_exit`를 적용한다.
 
@@ -18,6 +19,7 @@ mod lock;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use saturn_protocol::envelope::{CodecError, RequestId, Response, ServerMessage};
 use saturn_protocol::ids::ChatId;
 use saturn_protocol::rpc::{Notification, Request};
 use tokio::net::UnixListener;
@@ -62,7 +64,7 @@ pub enum RpcError {
     Io(#[from] std::io::Error),
     /// 요청을 해석하지 못했다. 그 줄만 버리고 연결은 유지한다. 원문은 로그에 남기지 않는다(키가 들어 있을 수 있다).
     #[error("failed to decode client message")]
-    Decode(#[from] serde_json::Error),
+    Decode(#[from] CodecError),
     /// 이미 끊긴 클라이언트.
     #[error("client not connected: {0:?}")]
     ClientGone(ClientId),
@@ -77,8 +79,8 @@ pub struct ClientId(pub u64);
 pub enum RpcEvent {
     /// 새 접속. 아직 채팅에 붙지 않았다(`Request::Attach`를 기다린다).
     Connected(ClientId),
-    /// 요청 하나. 받은 순서대로 돌려준다.
-    Request(ClientId, Request),
+    /// 요청 하나. 받은 순서대로 돌려준다. `RequestId`로 `respond`한다.
+    Request(ClientId, RequestId, Request),
     /// 접속이 끊겼다(`Request::Detach` 포함).
     Disconnected(ClientId),
     /// 마지막 클라이언트가 떨어졌다. `Disconnected` 바로 뒤에 한 번 온다. engine이 `on_exit`를 적용한다.
@@ -88,8 +90,8 @@ pub enum RpcEvent {
 /// 접속한 클라이언트 하나.
 #[derive(Debug)]
 struct ClientHandle {
-    /// 알림을 쓰는 쪽. 쓰기 작업이 한 줄씩 소켓에 쓴다.
-    outbox: mpsc::Sender<Notification>,
+    /// 응답과 알림을 쓰는 쪽. 쓰기 작업이 한 줄씩 소켓에 쓴다.
+    outbox: mpsc::Sender<ServerMessage>,
     /// 붙은 채팅. `Attach` 전이면 `None`.
     chat: Option<ChatId>,
 }
@@ -146,7 +148,15 @@ impl RpcServer {
         todo!("#89")
     }
 
-    /// 클라이언트 하나에 알림을 보낸다(요청의 답).
+    /// 요청 하나의 응답을 보낸다. 요청마다 한 번.
+    ///
+    /// # Errors
+    /// 클라이언트가 이미 끊겼으면 `ClientGone`.
+    pub async fn respond(&self, client: ClientId, response: Response) -> Result<(), RpcError> {
+        todo!("#89")
+    }
+
+    /// 클라이언트 하나에 알림을 보낸다(조회 요청의 결과).
     ///
     /// # Errors
     /// 클라이언트가 이미 끊겼으면 `ClientGone`.

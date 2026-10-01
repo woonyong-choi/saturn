@@ -1,10 +1,12 @@
 //! TUI, CLI → engine 요청과 engine → TUI 알림. Unix 소켓 위 JSON-RPC 한 줄에 하나.
 //!
 //! 설계: docs/design/engine-lifecycle.md(TUI 접속), docs/design/tui.md(화면이 보내고 받는 것).
+//! JSON-RPC 메서드 이름은 variant 이름, `params`는 variant 필드다. 봉투와 한 줄 코덱은 `envelope`에 있다.
 //! TODO(#46): 메서드 이름과 목록은 design 이슈 결정 뒤 확정. 지금 이름은 가칭
-//! TODO(#75): 요청마다 `id`를 붙이는 JSON-RPC 2.0 봉투(`Envelope`)와 직렬화 테스트
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use crate::event::ProviderEvent;
 use crate::ids::{
@@ -13,7 +15,8 @@ use crate::ids::{
 use crate::state::{Disposition, InputState, QueueReason, TaskState};
 
 /// TUI나 CLI가 engine에 보내는 요청.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(tag = "method", content = "params")]
 pub enum Request {
     /// 채팅에 붙는다. `chat`이 없으면 새 채팅. engine은 `StartInfo`, 최근 기록, 보관한 허가 요청 순서로 보낸다.
     /// `overrides`는 실행 층(`-c key=value`)이다. 이 접속의 입력에만 적용한다.
@@ -97,7 +100,7 @@ pub enum Request {
 }
 
 /// 허가 요청 창의 네 선택지.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum PermissionAnswer {
     /// `y` 실행.
     Allow,
@@ -110,7 +113,7 @@ pub enum PermissionAnswer {
 }
 
 /// `/usage` 범위.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum UsageRange {
     /// 현재 채팅.
     Chat,
@@ -123,7 +126,8 @@ pub enum UsageRange {
 }
 
 /// engine이 TUI에 보내는 알림. TUI는 이것만으로 화면을 그린다.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(tag = "method", content = "params")]
 pub enum Notification {
     /// 접속 직후 시작 화면 정보.
     StartInfo {
@@ -245,7 +249,7 @@ pub enum Notification {
 }
 
 /// 대화 기록에 남는 한 줄 알림 종류.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum ChatNotice {
     /// 맥락 정리 뒤 같은 작업 계속.
     Compacted,
@@ -270,7 +274,7 @@ pub enum ChatNotice {
 }
 
 /// 상태판 알림 줄.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum Alert {
     /// judge 호출 일시 실패. 질문별 대체 규칙을 적용 중이다.
     JudgePaused,
@@ -285,7 +289,7 @@ pub enum Alert {
 }
 
 /// provider 명령이나 스킬 하나.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct CommandInfo {
     /// 이름(`/` 없이).
     pub name: String,
@@ -296,7 +300,7 @@ pub struct CommandInfo {
 }
 
 /// 작업 목록 한 행.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct TaskListItem {
     /// 채팅.
     pub chat: ChatId,
@@ -319,7 +323,7 @@ pub struct TaskListItem {
 }
 
 /// 사용량 화면 한 행.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct UsageRow {
     /// 에이전트 이름이나 judge.
     pub who: String,
@@ -336,7 +340,7 @@ pub struct UsageRow {
 }
 
 /// judge 버전 한 행.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct JudgeVersionInfo {
     /// 버전 이름.
     pub version: String,

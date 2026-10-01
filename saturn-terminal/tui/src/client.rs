@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
+use saturn_protocol::envelope::CodecError;
 use saturn_protocol::rpc::{Notification, Request};
 
 /// engine 접속 오류.
@@ -17,15 +18,7 @@ pub enum ClientError {
     Closed,
     /// 메시지를 해석하지 못했다.
     #[error("failed to decode engine message")]
-    Decode(#[from] serde_json_error::Error),
-}
-
-/// `serde_json` 오류를 감싸는 자리. TODO(#75): protocol에 봉투와 코덱을 두면 그 오류 타입으로 바꾼다
-mod serde_json_error {
-    /// 메시지 해석 오류.
-    #[derive(Debug, thiserror::Error)]
-    #[error("{0}")]
-    pub struct Error(pub String);
+    Decode(#[from] CodecError),
 }
 
 /// engine과의 연결 하나.
@@ -48,7 +41,7 @@ impl EngineClient {
         todo!("#89")
     }
 
-    /// 요청 하나를 보낸다.
+    /// 요청 하나를 `ClientMessage` 봉투에 연결별 번호를 붙여 보낸다.
     ///
     /// # Errors
     /// 연결이 끊겼으면 `Closed`.
@@ -56,7 +49,7 @@ impl EngineClient {
         todo!("#89")
     }
 
-    /// 다음 알림을 기다린다. 연결이 끝나면 `None`.
+    /// 다음 알림을 기다린다. 요청의 `Response`는 번호로 짝지어 여기서 소비한다. 연결이 끝나면 `None`.
     pub async fn next(&mut self) -> Option<Notification> {
         todo!("#89")
     }
