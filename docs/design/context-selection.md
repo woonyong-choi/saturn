@@ -187,7 +187,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 대체된 제약 원문은 기록에 남고 패킷에서만 빠진다. | 대체 뒤 기록에 두 원문이 있고 패킷에는 새 원문과 대체 표시만 있는지 확인한다. |
 | 순위가 judge 전체 판단과 얼마나 겹치는지 잰다. | [#116](https://github.com/woonyong-choi/saturn/issues/116) |
 | 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [단어 조각 단위별 오타 재현율 실험 결과](../experiments/wordpiece-typo-recall/report.md) |
-| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [#121](https://github.com/woonyong-choi/saturn/issues/121) |
+| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. `replaces_<n>` 구간과 간접 지시는 [#152](https://github.com/woonyong-choi/saturn/issues/152) 실험으로 다시 확인한다. |
 
 ## 단점
 

@@ -9,5 +9,5 @@
 | [ranked-handoff-quality](ranked-handoff-quality/design.md) | 후보 순위와 judge 결합의 전환 품질 | [맥락 고르기](../design/context-selection.md) | 측정 전 |
 | [wordpiece-typo-recall](wordpiece-typo-recall/report.md) | 단어 조각 단위별 오타 재현율 | [맥락 고르기](../design/context-selection.md) | H1 기각: 재현율 차이 0.9%p [−0.8, 2.6], H2 기각: 정밀도 차이 −10.0%p [−12.5, −7.5], H3 채택: 재현율 차이 11.6%p [8.8, 14.5], H4 기각: 정밀도 차이 −5.2%p [−7.8, −2.7] |
 | [term-catalog-precision](term-catalog-precision/report.md) | 용어 카탈로그 짝 정밀도와 묶음 확인 비용 | [용어 카탈로그](../design/term-catalog.md) | H1 기각: 괄호 표기 정밀도 1.5% [0.5, 4.3] |
-| [constraint-judge-accuracy](constraint-judge-accuracy/design.md) | 제약 식별과 대체 판정 정확도 | [맥락 고르기](../design/context-selection.md), [judge](../design/judge.md) | 측정 전 |
+| [constraint-judge-accuracy](constraint-judge-accuracy/report.md) | 제약 식별과 대체 판정 정확도 | [맥락 고르기](../design/context-selection.md), [judge](../design/judge.md) | H1 채택: 정밀도 91.6% [84.8, 95.5], H2 채택: 재현율 93.3% [86.9, 96.7], H3~H6 보류 |
 | [embedding-synonym](embedding-synonym/design.md) | 임베딩 같은 뜻 찾기의 정확도와 비용 | [맥락 고르기](../design/context-selection.md), [용어 카탈로그](../design/term-catalog.md) | 측정 전 |

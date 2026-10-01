@@ -55,10 +55,11 @@ def main() -> int:
         input_rows.append([
             item["id"], trial["trial_id"] if trial else None, item["category"], int(item["indirect"]),
             int(item["label"]), trial["status"] if trial else "missing", answer, int(predicted),
+            trial["latency_ms"] if trial else None,
         ])
     write_csv(
         PROCESSED / "inputs.csv",
-        ["item_id", "trial_id", "category", "indirect", "label", "status", "answer", "predicted"],
+        ["item_id", "trial_id", "category", "indirect", "label", "status", "answer", "predicted", "latency_ms"],
         input_rows,
     )
 
@@ -69,10 +70,11 @@ def main() -> int:
         pair_rows.append([
             item["id"], trial["trial_id"] if trial else None, item["category"], int(item["indirect"]),
             item["label"], trial["status"] if trial else "missing", answer, band(answer),
+            trial["latency_ms"] if trial else None,
         ])
     write_csv(
         PROCESSED / "pairs.csv",
-        ["item_id", "trial_id", "category", "indirect", "label", "status", "answer", "band"],
+        ["item_id", "trial_id", "category", "indirect", "label", "status", "answer", "band", "latency_ms"],
         pair_rows,
     )
     return 0

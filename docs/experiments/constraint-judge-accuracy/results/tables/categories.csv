@@ -1,0 +1,11 @@
+set,category,n,correct,accuracy,ci95_low,ci95_high
+inputs,constraint,50,50,1.0,0.928652,1.0
+inputs,indirect-constraint,25,21,0.84,0.653464,0.935965
+inputs,indirect-request,25,19,0.76,0.565703,0.885037
+inputs,mixed,30,27,0.9,0.743789,0.9654
+inputs,request,70,67,0.957143,0.881403,0.985318
+pairs,compatible,60,60,1.0,0.939828,1.0
+pairs,direct-replace,30,19,0.633333,0.455136,0.781261
+pairs,indirect-compatible,10,10,1.0,0.722467,1.0
+pairs,indirect-replace,30,26,0.866667,0.703187,0.946903
+pairs,partial,30,8,0.266667,0.141827,0.44448
