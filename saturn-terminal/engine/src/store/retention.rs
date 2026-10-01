@@ -85,57 +85,21 @@ impl Store {
     /// 쓰지 않는다.
     pub async fn plan_prune(&self, scope: &PruneScope) -> Result<PrunePlan, StoreError> {
         let mut conn = self.pool.acquire().await?;
-        let candidates: Vec<i64> = match scope {
-            PruneScope::Chats(chats) => {
-                let mut found = Vec::new();
-                for chat in chats {
-                    let id: Option<i64> = sqlx::query_scalar("SELECT id FROM chats WHERE id = ?")
-                        .bind(to_sql_int(chat.0))
-                        .fetch_optional(&mut *conn)
-                        .await?;
-                    found.extend(id.filter(|id| !found.contains(id)));
-                }
-                found
-            }
-            PruneScope::InactiveBefore(at) => {
-                sqlx::query_scalar(&format!(
-                    "SELECT c.id FROM chats c WHERE {LAST_ACTIVE} < ? ORDER BY c.id"
-                ))
-                .bind(to_millis(*at))
-                .fetch_all(&mut *conn)
-                .await?
-            }
-        };
-        let mut plan = PrunePlan::default();
-        for id in candidates {
-            let reasons = skip_reasons(&mut conn, id).await?;
-            let chat = ChatId(from_sql_int(id));
-            if !reasons.is_empty() {
-                plan.skipped.push((chat, reasons));
-                continue;
-            }
-            for table in COUNTED_TABLES {
-                let count: i64 =
-                    sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {table} WHERE chat_id = ?"))
-                        .bind(id)
-                        .fetch_one(&mut *conn)
-                        .await?;
-                plan.rows += from_sql_int(count);
-            }
-            plan.chats.push(chat);
-        }
-        Ok(plan)
+        plan_prune_on(&mut conn, scope).await
     }
 
-    /// 미리보기 이후 열린 항목이 생겼을 수 있어 지우기 전에 계획을 다시 만든다.
+    /// 미리보기 이후 열린 항목이 생겼을 수 있어 삭제 거래 안에서 계획을 다시 만든다.
     ///
     /// # Errors
     /// 삭제 거래가 끝난 뒤 정리 단계만 실패하면 `Database`이고 삭제와 흔적은 남는다.
     pub async fn prune(&self, request: &PruneRequest) -> Result<PruneOutcome, StoreError> {
-        let plan = self.plan_prune(&request.scope).await?;
         if !request.yes {
-            return Ok(PruneOutcome::Preview(plan));
+            return Ok(PruneOutcome::Preview(
+                self.plan_prune(&request.scope).await?,
+            ));
         }
+        let mut tx = self.pool.begin().await?;
+        let plan = plan_prune_on(&mut tx, &request.scope).await?;
         if plan.chats.is_empty() {
             return Ok(PruneOutcome::Deleted {
                 plan,
@@ -144,7 +108,6 @@ impl Store {
         }
         let deleted_at = SystemTime::now();
         let mut tombstones = Vec::with_capacity(plan.chats.len());
-        let mut tx = self.pool.begin().await?;
         for chat in &plan.chats {
             let hash = chat_hash(&mut tx, chat.0).await?;
             // 나머지 행은 외래 키 `ON DELETE CASCADE`로 함께 지운다
@@ -211,6 +174,52 @@ impl Store {
         sqlx::query("VACUUM").execute(&self.pool).await?;
         Ok(())
     }
+}
+
+async fn plan_prune_on(
+    conn: &mut sqlx::SqliteConnection,
+    scope: &PruneScope,
+) -> Result<PrunePlan, StoreError> {
+    let candidates: Vec<i64> = match scope {
+        PruneScope::Chats(chats) => {
+            let mut found = Vec::new();
+            for chat in chats {
+                let id: Option<i64> = sqlx::query_scalar("SELECT id FROM chats WHERE id = ?")
+                    .bind(to_sql_int(chat.0))
+                    .fetch_optional(&mut *conn)
+                    .await?;
+                found.extend(id.filter(|id| !found.contains(id)));
+            }
+            found
+        }
+        PruneScope::InactiveBefore(at) => {
+            sqlx::query_scalar(&format!(
+                "SELECT c.id FROM chats c WHERE {LAST_ACTIVE} < ? ORDER BY c.id"
+            ))
+            .bind(to_millis(*at))
+            .fetch_all(&mut *conn)
+            .await?
+        }
+    };
+    let mut plan = PrunePlan::default();
+    for id in candidates {
+        let reasons = skip_reasons(conn, id).await?;
+        let chat = ChatId(from_sql_int(id));
+        if !reasons.is_empty() {
+            plan.skipped.push((chat, reasons));
+            continue;
+        }
+        for table in COUNTED_TABLES {
+            let count: i64 =
+                sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {table} WHERE chat_id = ?"))
+                    .bind(id)
+                    .fetch_one(&mut *conn)
+                    .await?;
+            plan.rows += from_sql_int(count);
+        }
+        plan.chats.push(chat);
+    }
+    Ok(plan)
 }
 
 /// 비어 있으면 지워도 된다.
