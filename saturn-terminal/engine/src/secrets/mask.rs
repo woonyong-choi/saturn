@@ -17,6 +17,11 @@ impl Masked {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    #[cfg(test)]
+    pub(crate) fn assume_masked(text: &str) -> Self {
+        Self(text.to_owned())
+    }
 }
 
 /// 대상이 키 원문이라 `Debug`는 개수만 보인다.
@@ -64,7 +69,6 @@ impl std::fmt::Debug for Masker {
 }
 
 /// 키가 두 번의 쓰기로 나뉘어도 가리도록 줄바꿈까지 모았다가 쓴다.
-#[derive(Debug)]
 pub struct MaskingWriter<W: Write> {
     inner: W,
     masker: Masker,
@@ -94,11 +98,15 @@ impl<W: Write> Write for MaskingWriter<W> {
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        if !self.line.is_empty() {
-            let line = std::mem::take(&mut self.line);
-            self.write_masked(&line)?;
-        }
         self.inner.flush()
+    }
+}
+
+impl<W: Write> std::fmt::Debug for MaskingWriter<W> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MaskingWriter")
+            .field("buffered_bytes", &self.line.len())
+            .finish()
     }
 }
 
@@ -200,9 +208,24 @@ mod tests {
         writer
             .write_all(format!("{} end\nsecond {KEY}", &KEY[6..]).as_bytes())
             .unwrap();
+        writer.write_all(b"\n").unwrap();
         writer.flush().unwrap();
 
         let out = String::from_utf8(writer.inner).unwrap();
-        assert_eq!(out, "first [redacted] end\nsecond [redacted]");
+        assert_eq!(out, "first [redacted] end\nsecond [redacted]\n");
+    }
+
+    #[test]
+    fn flush_and_debug_do_not_expose_partial_key() {
+        let mut writer = MaskingWriter::new(Vec::new(), Masker::new(vec![KEY.to_owned()]));
+        writer.write_all(&KEY.as_bytes()[..8]).unwrap();
+        writer.flush().unwrap();
+
+        assert!(writer.inner.is_empty());
+        assert!(!format!("{writer:?}").contains(&KEY[..8]));
+
+        writer.write_all(&KEY.as_bytes()[8..]).unwrap();
+        writer.write_all(b"\n").unwrap();
+        assert_eq!(writer.inner, b"[redacted]\n");
     }
 }

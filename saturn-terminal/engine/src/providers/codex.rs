@@ -251,8 +251,7 @@ impl CodexClient {
     async fn write_line(&mut self, message: &Value) -> std::io::Result<()> {
         let mut line = message.to_string();
         line.push('\n');
-        self.stdin.write_all(line.as_bytes()).await?;
-        self.stdin.flush().await
+        self.stdin.write_all(line.as_bytes()).await
     }
 
     /// `Subagent(id)`는 `id.0`인 자식 thread.

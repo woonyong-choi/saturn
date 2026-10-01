@@ -59,7 +59,7 @@ pub enum ProcessError {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ProcessGroupId(pub u32);
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ProcessSpec {
     pub program: PathBuf,
     /// Saturn 기본값 인자는 `providers`가 이미 넣어 둔다.

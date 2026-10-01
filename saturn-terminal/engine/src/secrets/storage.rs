@@ -4,7 +4,7 @@
 //! TODO(#102): 강화 방식 항목의 신뢰 앱 목록을 비우는 방법. 정해지기 전에는 잠금 시계만 더한다
 
 use std::io::Write;
-use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -160,7 +160,7 @@ impl SecretStore {
         }
         let key = match self.read_backend() {
             Ok(key) => key,
-            Err(SecretsError::Keychain(_)) => return Err(SecretsError::Locked),
+            Err(SecretsError::Keychain) => return Err(SecretsError::Locked),
             Err(error) => return Err(error),
         };
         self.current = Some((key, KeySource::Stored));
@@ -239,37 +239,24 @@ fn keychain_entry() -> Result<keyring::Entry, SecretsError> {
     keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT).map_err(keychain_error)
 }
 
-/// `BadEncoding`은 저장된 바이트(키일 수 있다)를 담고 있어 버리고 종류만 남긴다.
-fn keychain_error(error: keyring::Error) -> SecretsError {
-    let source: Box<dyn std::error::Error + Send + Sync> = match error {
-        keyring::Error::BadEncoding(_) => "keychain item is not valid utf-8".into(),
-        other => Box::new(other),
-    };
-    SecretsError::Keychain(source)
+/// 원인 객체에 키가 담길 수 있어 그대로 보관하지 않는다.
+fn keychain_error(_: keyring::Error) -> SecretsError {
+    SecretsError::Keychain
 }
 
 /// 같은 폴더의 임시 파일을 0600으로 만들어 쓰고 이름을 바꿔 갈아 끼운다.
 fn write_key_file(path: &Path, value: &str) -> std::io::Result<()> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    let mut name = path.file_name().unwrap_or_default().to_os_string();
-    name.push(".partial");
-    let partial = path.with_file_name(name);
-    match std::fs::remove_file(&partial) {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => return Err(error),
-    }
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(KEY_FILE_MODE)
-        .open(&partial)?;
-    file.set_permissions(std::fs::Permissions::from_mode(KEY_FILE_MODE))?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| std::io::Error::other("key file has no parent"))?;
+    std::fs::create_dir_all(parent)?;
+    let mut file = tempfile::NamedTempFile::new_in(parent)?;
+    file.as_file()
+        .set_permissions(std::fs::Permissions::from_mode(KEY_FILE_MODE))?;
     file.write_all(value.as_bytes())?;
-    file.sync_all()?;
-    std::fs::rename(&partial, path)
+    file.as_file().sync_all()?;
+    file.persist(path).map_err(|error| error.error)?;
+    std::fs::File::open(parent)?.sync_all()
 }
 
 #[cfg(test)]
@@ -331,17 +318,19 @@ mod tests {
     }
 
     #[test]
-    fn stale_partial_symlink_does_not_overwrite_target() {
+    fn existing_partial_link_is_not_followed() {
         let dir = tempfile::tempdir().unwrap();
-        let target = dir.path().join("other");
-        let key_path = dir.path().join(KEY_FILE);
-        std::fs::write(&target, "keep this").unwrap();
-        std::os::unix::fs::symlink(&target, dir.path().join("judge.key.partial")).unwrap();
+        let victim = dir.path().join("other.txt");
+        std::fs::write(&victim, "keep this").unwrap();
+        std::os::unix::fs::symlink(&victim, dir.path().join("judge.key.partial")).unwrap();
 
-        write_key_file(&key_path, "sk-new").unwrap();
+        write_key_file(&dir.path().join(KEY_FILE), "sk-new").unwrap();
 
-        assert_eq!(std::fs::read_to_string(&target).unwrap(), "keep this");
-        assert_eq!(std::fs::read_to_string(&key_path).unwrap(), "sk-new");
+        assert_eq!(std::fs::read_to_string(&victim).unwrap(), "keep this");
+        assert_eq!(
+            std::fs::read_to_string(dir.path().join(KEY_FILE)).unwrap(),
+            "sk-new"
+        );
     }
 
     #[tokio::test]
