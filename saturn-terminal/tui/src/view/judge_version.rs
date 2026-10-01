@@ -1,12 +1,5 @@
 //! judge 버전 화면(`/judge version`).
-//!
-//! 설계: docs/design/tui.md(영역 judge 버전 화면, 키), docs/design/judge-training.md(버전과 보정).
-//! - 목록: 버전별 judge, 보정값, ECE.
-//! - 상세(`Enter`): 질문별 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수.
-//! - `r` 1차 영점 복귀(`/train --reset-thresholds`), `t` 고른 버전에서 다시 학습(`/train --from`),
-//!   `u` 확인 한 줄 뒤 고른 버전 사용(`saturn judge version`).
-//!
-//! 목록은 `Request::ListJudgeVersions` → `Notification::JudgeVersions`, 사용은 `Request::UseJudgeVersion`.
+//! 설계: docs/design/tui.md
 
 use ratatui::Frame;
 use ratatui::layout::Rect;
@@ -20,36 +13,24 @@ use crate::i18n::{self, Lang};
 use crate::keys::Action;
 use crate::view::{EMPHASIS, MUTED, SELECTED, truncate, window_block};
 
-/// 상세의 최근 판단 창 크기.
+/// 상세의 최근 판단 건수.
 pub const RECENT_WINDOW: u32 = 200;
 
-/// 질문 하나의 상세.
 #[derive(Debug, Clone, PartialEq)]
 pub struct QuestionStats {
-    /// 질문 id.
     pub question: String,
-    /// 목표 틀림 비율.
     pub target_error: f64,
-    /// 기준값.
     pub threshold: f64,
-    /// 최근 200건 중 틀림 수.
     pub recent_errors: u32,
-    /// 판단 수.
     pub judgments: u32,
 }
 
-/// 버전 한 행.
 #[derive(Debug, Clone, PartialEq)]
 pub struct JudgeVersionRow {
-    /// 버전 이름.
     pub version: String,
-    /// judge와 보정값(원문, `JudgeVersionInfo::judge`).
     pub judge: String,
-    /// ECE.
     pub ece: Option<f64>,
-    /// 지금 쓰는 버전.
     pub active: bool,
-    /// 질문별 상세.
     pub questions: Vec<QuestionStats>,
 }
 
@@ -57,7 +38,7 @@ impl JudgeVersionRow {
     // cost: time O(q), heap O(q), stack O(1)
     // vars: q = 질문 수
     // basis: estimate
-    /// protocol 행에서 만든다. `current`와 이름이 같으면 사용 중.
+    /// `current`와 이름이 같으면 사용 중.
     pub fn from_info(info: JudgeVersionInfo, current: &str) -> Self {
         Self {
             active: info.version == current,
@@ -81,38 +62,27 @@ impl JudgeVersionRow {
     }
 }
 
-/// judge 버전 화면에서 고른 동작.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum JudgeVersionCommand {
-    /// `r` → `Request::Train { reset_thresholds: true }`.
     ResetThresholds,
-    /// `t` → 고른 버전에서 학습(`Request::Train { from: Some(버전) }`).
     TrainFrom(String),
-    /// `u` 확인 뒤 고른 버전 사용.
     Use(String),
 }
 
-/// judge 버전 화면 상태.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct JudgeVersionScreen {
-    /// 버전 목록. 응답 전이면 빈 목록.
     pub rows: Vec<JudgeVersionRow>,
-    /// 강조 행.
     pub selected: usize,
-    /// `Enter` 상세를 펼쳤다.
     pub detail: bool,
-    /// `u` 확인 한 줄을 띄웠다. 다시 `u`나 `Enter`면 확정, `Esc`면 취소.
     pub confirm_use: bool,
 }
 
 impl JudgeVersionScreen {
-    /// `↑` 이동.
     pub fn up(&mut self) {
         self.selected = self.selected.saturating_sub(1);
         self.confirm_use = false;
     }
 
-    /// `↓` 이동.
     pub fn down(&mut self) {
         if self.selected + 1 < self.rows.len() {
             self.selected += 1;
@@ -123,8 +93,7 @@ impl JudgeVersionScreen {
     // cost: time O(v), heap O(v), stack O(1)
     // vars: v = 버전 이름 길이
     // basis: estimate
-    /// 키 동작을 명령으로. `u`는 처음엔 확인 한 줄만 띄우고 `None`, 다시 `u`나 `Enter`면 `Use`.
-    /// 확인 중이 아닌 `Enter`는 상세를 펼치거나 접는다.
+    /// `u`는 처음엔 확인 한 줄만 띄우고 `None`을 돌려준다.
     pub fn command(&mut self, action: &Action) -> Option<JudgeVersionCommand> {
         let version = self.rows.get(self.selected).map(|row| row.version.clone());
         match action {
@@ -148,18 +117,15 @@ impl JudgeVersionScreen {
 }
 
 impl JudgeVersionScreen {
-    /// `Esc`: 확인 한 줄이 떠 있으면 닫고 참, 아니면 거짓(화면 종료).
+    /// 확인 한 줄이 떠 있었으면 닫고 `true`, 아니면 `false`(화면 종료).
     pub fn cancel(&mut self) -> bool {
         std::mem::take(&mut self.confirm_use)
     }
 }
 
-/// judge 버전 화면 그리기.
 #[derive(Debug)]
 pub struct JudgeVersionView<'a> {
-    /// 화면 상태.
     pub screen: &'a JudgeVersionScreen,
-    /// 화면 언어.
     pub lang: Lang,
 }
 
@@ -167,7 +133,6 @@ impl JudgeVersionView<'_> {
     // cost: time O(r + q), heap O(r + q), stack O(1)
     // vars: r = 버전 수, q = 상세 질문 수
     // basis: estimate
-    /// 버전 목록 표(버전, judge, 보정값, ECE, 사용 중 표시), 상세면 질문별 표, 확인 중이면 확인 한 줄을 그린다.
     pub fn render(&self, frame: &mut Frame, area: Rect) {
         let lang = self.lang;
         let block = window_block(lang.tr(i18n::JUDGE_VERSION_TITLE));
@@ -207,7 +172,6 @@ impl JudgeVersionView<'_> {
     }
 }
 
-/// 버전 행 `v3 · remote/cal-2 · ECE 0.031 · 사용 중`.
 fn version_text(lang: Lang, row: &JudgeVersionRow) -> String {
     let ece = row
         .ece
@@ -222,7 +186,6 @@ fn version_text(lang: Lang, row: &JudgeVersionRow) -> String {
 // cost: time O(q), heap O(q), stack O(1)
 // vars: q = 질문 수
 // basis: estimate
-/// 질문별 상세 표.
 fn question_lines(lang: Lang, row: &JudgeVersionRow) -> Vec<Line<'static>> {
     let head = format!(
         "{} · {} · {} · {} · {}",

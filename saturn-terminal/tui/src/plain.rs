@@ -1,10 +1,5 @@
 //! 화면 없는 plain 출력. 파이프와 CI에서 전체 화면 대신 쓴다.
-//!
-//! 설계: docs/design/tui.md(화면 언어와 출력 방식, 요구사항 같은 명령 같은 결과).
-//! 같은 `state::ChatState`와 같은 문구 함수(`TranscriptCell::lines`, `status_board` 문구)를 써서
-//! 전체 화면 대화 기록과 같은 줄을 stdout에 한 줄씩 쓴다. 스피너, 버튼, 틱 갱신 줄(경과 시간)은 쓰지 않는다.
-//! 창이 필요한 상호작용(허가 요청, 폴더 신뢰, 보류 재개 질문)의 plain 처리는 설계에 없어 허가 요청만 한 줄로 알린다.
-//! 접속 직후의 최근 기록(`HistoryChunk`)은 쓰지 않는다. 파이프 출력에는 이번 입력의 결과만 남긴다.
+//! 설계: docs/design/tui.md
 //! TODO(#57): plain을 켜는 조건과 우선순위, 설정 키 이름
 
 use std::collections::BTreeMap;
@@ -20,23 +15,20 @@ use crate::state::{Change, ChatState, InputUpdate, TaskUpdate};
 use crate::view::status_board::{StatusLine, alert_text};
 use crate::view::transcript::{TranscriptCell, echo_cell, result_cell};
 
-/// plain 출력기.
 #[derive(Debug)]
 pub struct PlainOutput<W: Write> {
     out: W,
     lang: Lang,
     chat: ChatState,
     finished: bool,
-    /// 작업별로 줄바꿈 전 모델 글 조각.
+    /// 아직 줄바꿈이 오지 않은 모델 글 조각.
     partial: BTreeMap<TaskId, String>,
-    /// 이미 쓴 알림 줄.
     alerts_written: usize,
 }
 
 impl<W: Write> PlainOutput<W> {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    /// `out`(보통 stdout)에 쓰는 출력기.
     pub fn new(out: W, lang: Lang) -> Self {
         Self {
             out,
@@ -48,20 +40,18 @@ impl<W: Write> PlainOutput<W> {
         }
     }
 
-    /// 제출했다. 원문은 engine이 `InputChanged`로 돌려주므로 에코에 쓰지 않고, 모든 작업이 끝날 때까지 기다린다.
+    /// 원문은 engine이 `InputChanged`로 돌려주므로 여기서 쓰지 않는다.
     pub fn submitted(&mut self, text: String) {
         let _ = text;
         self.finished = false;
     }
 
-    /// 붙은 채팅. 접속 직후 `HistoryChunk`가 알려 준다.
+    /// 접속 직후 `HistoryChunk`가 알려 준다.
     pub fn chat(&self) -> Option<ChatId> {
         self.chat.chat
     }
 
-    /// 알림 하나를 반영하고 대화 기록에 생길 셀과 같은 줄을 쓴다.
-    /// 에코 `> [A] 원문`, 결과 머리줄, 실패 원인, 한 줄 알림, 이번 요청 합계, 멈춤 결과, 알림 줄(처음 한 번),
-    /// 허가 요청(요청 내용과 이유 한 줄). 모델 글은 완성된 줄마다 바로 쓴다.
+    /// 접속 직후 최근 기록(`HistoryChunk`)은 쓰지 않고 이번 입력의 결과만 쓴다.
     ///
     /// # Errors
     /// 쓰기 실패.
@@ -149,7 +139,7 @@ impl<W: Write> PlainOutput<W> {
         Ok(())
     }
 
-    /// 모든 작업이 끝났다(`ChatNotice::RequestSummary`를 쓴 뒤 참). 표준 입력이 끝났고 이것이 참이면 `run_plain`이 끝난다.
+    /// `ChatNotice::RequestSummary`를 쓴 뒤 참.
     pub fn is_finished(&self) -> bool {
         self.finished
     }
@@ -157,7 +147,6 @@ impl<W: Write> PlainOutput<W> {
     // cost: time O(t + l), heap O(l), stack O(1), io l
     // vars: t = 작업 수, l = 쓸 줄 수
     // basis: estimate
-    /// 작업 상태. 끝나면 남은 조각과 결과 머리줄, 결과 불명이면 확인 필요 줄.
     fn task_changed(&mut self, update: TaskUpdate, now: Instant) -> std::io::Result<()> {
         match self.chat.apply_task(update, now) {
             Change::TaskFinished { task } => {
@@ -186,7 +175,6 @@ impl<W: Write> PlainOutput<W> {
     // cost: time O(n), heap O(n), stack O(1), io l
     // vars: n = 조각 글자 수, l = 완성된 줄 수
     // basis: estimate
-    /// 작업 이벤트. 모델 글은 완성된 줄마다, 도구 호출은 줄인 도구 셀 한 줄.
     fn task_event(&mut self, task: TaskId, change: Change) -> std::io::Result<()> {
         let Some(label) = self.chat.tasks.get(&task).map(|view| view.label) else {
             return Ok(());
@@ -225,7 +213,6 @@ impl<W: Write> PlainOutput<W> {
     // cost: time O(h), heap O(h), stack O(1), io 1
     // vars: h = 보류 이름표 수
     // basis: estimate
-    /// 한 줄 알림. 멈춤 결과와 남은 프로세스는 상태판 문구로, 이번 요청 합계 뒤에는 끝났다고 표시한다.
     fn notice(&mut self, task: Option<TaskId>, notice: ChatNotice) -> std::io::Result<()> {
         let label = task.and_then(|task| self.chat.tasks.get(&task).map(|view| view.label));
         let line = match notice {
@@ -252,7 +239,6 @@ impl<W: Write> PlainOutput<W> {
     // cost: time O(a), heap O(a), stack O(1), io a
     // vars: a = 새 알림 수
     // basis: estimate
-    /// 새로 생긴 알림 줄만 쓴다.
     fn write_new_alerts(&mut self) -> std::io::Result<()> {
         let fresh: Vec<String> = self.chat.alerts[self.alerts_written..]
             .iter()
@@ -262,7 +248,7 @@ impl<W: Write> PlainOutput<W> {
         fresh.iter().try_for_each(|text| self.line(text))
     }
 
-    /// 모델 글 한 줄. 대화 기록 `AgentText` 셀과 같은 문구.
+    /// 대화 기록 `AgentText` 셀과 같은 문구.
     fn agent_line(&mut self, label: TaskLabel, line: String) -> std::io::Result<()> {
         let cell = TranscriptCell::AgentText {
             label: Some(label),
@@ -274,7 +260,7 @@ impl<W: Write> PlainOutput<W> {
     // cost: time O(l), heap O(l), stack O(1), io l
     // vars: l = 셀 줄 수
     // basis: estimate
-    /// 셀의 줄을 쓴다. 이름표 보임은 지금 상태로 정한다.
+    /// 이름표 보임은 지금 상태로 정한다.
     fn cell(&mut self, cell: &TranscriptCell) -> std::io::Result<()> {
         let visible = self.chat.labels_visible();
         cell.lines(self.lang, visible, false)
@@ -282,7 +268,7 @@ impl<W: Write> PlainOutput<W> {
             .try_for_each(|line| self.line(line))
     }
 
-    /// 한 줄 쓰고 바로 비운다(파이프 버퍼에 머물지 않게).
+    /// 파이프 버퍼에 머물지 않게 바로 비운다.
     fn line(&mut self, text: &str) -> std::io::Result<()> {
         writeln!(self.out, "{text}")?;
         self.out.flush()

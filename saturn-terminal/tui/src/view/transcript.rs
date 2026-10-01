@@ -1,9 +1,5 @@
-//! 대화 기록 영역. 입력 에코, 도구 셀, 결과 줄, 한 줄 알림, 피드백 질문, 이번 요청 합계를 쌓는다.
-//!
-//! 설계: docs/design/tui.md(영역 대화 기록, 피드백 질문, 상태 표시).
-//! 갱신 시점: 판단 확정(에코), 작업 종료(작업별 출력 칸 내용과 결과 머리줄), 다시 실행할 때 기록 저장소에서 최근 부분부터 로드,
-//! 위로 스크롤할 때 이전 부분 로드(`Request::LoadHistory` → `Notification::HistoryChunk`).
-//! 각 셀의 글은 `TranscriptCell::lines`가 만들고 plain 출력도 같은 함수를 쓴다.
+//! 대화 기록 영역. 셀 글은 `TranscriptCell::lines`가 만들고 plain 출력도 같은 함수를 쓴다.
+//! 설계: docs/design/tui.md
 
 use std::time::Duration;
 
@@ -25,81 +21,69 @@ use crate::view::start_screen::StartInfo;
 use crate::view::status_board::activity_text;
 use crate::view::{MUTED, wrap};
 
-/// 셸 명령 셀이 줄인 형태에서 보이는 출력 줄 수. 초안 값이다(docs/design/tui.md 초안 값).
+/// 초안 값.
 pub const SHELL_PREVIEW_LINES: usize = 10;
 
-/// 입력 에코 뒤에 붙는 전달 상태 표시.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeliveryBadge {
-    /// `전달 중` 에이전트로 전달 중, 취소 불가.
     Delivering,
-    /// `반영됨` 전달 완료, 취소 불가.
     Applied,
 }
 
-/// 대화 기록 한 칸.
 #[derive(Debug, Clone, PartialEq)]
 pub enum TranscriptCell {
-    /// 시작 화면이 첫 결과 뒤 바뀐 맨 위 머리 셀.
+    /// 첫 결과 뒤 시작 화면이 바뀐 맨 위 셀.
     Header(StartInfo),
-    /// 판단이 끝난 입력의 에코 `> [A] 원문`. 끼워 넣은 입력은 합쳐진 작업의 이름표.
     InputEcho {
         input: InputId,
         label: Option<TaskLabel>,
         text: String,
         badge: Option<DeliveryBadge>,
     },
-    /// 모델 글. 작업이 끝날 때 작업별 출력 칸에서 옮겨 온다.
     AgentText {
         label: Option<TaskLabel>,
         lines: Vec<String>,
     },
-    /// 도구 셀. 기본은 한 줄로 줄이고 전체 기록(`Ctrl+T`)에서 펼친다. `call_id`로 결과를 짝짓는다.
+    /// `call_id`로 결과를 짝짓는다.
     Tool {
         label: Option<TaskLabel>,
         call_id: String,
         activity: Activity,
         output: String,
     },
-    /// 결과 머리줄 `[A] codex · 45초 · Token 3,210`. 토큰 보고 전이면 `Token -`.
     Result {
         label: Option<TaskLabel>,
         provider: Option<Provider>,
         elapsed: Duration,
         tokens: Option<u64>,
     },
-    /// 실패 `[A] codex · 45초 · 실패`, 다음 줄에 원인 한 줄.
     Failed {
         label: Option<TaskLabel>,
         provider: Option<Provider>,
         elapsed: Duration,
         cause: String,
     },
-    /// 결과 불명 `[A] 결과 확인 필요 · /continue A`. 보류 줄과 함께 보인다. 이름표는 늘 붙인다.
+    /// 이름표는 보임 규칙과 관계없이 늘 붙인다.
     NeedsCheck { label: TaskLabel },
-    /// `ChatNotice` 한 줄: `[A] 맥락 정리 후 이어서 진행`, `[A] codex → claude로 전환`,
-    /// `이번 요청 · codex Token 4,120 · 판단기 3회 Token 9,870 · 2분 31초`, 크래시 뒤 보류 `[A] [C] 보류됨 · /continue 로 이어서`.
     /// `Stopped`, `StopUnconfirmed`는 상태판에 그리고 여기에는 넣지 않는다.
     Notice {
         label: Option<TaskLabel>,
         notice: ChatNotice,
     },
-    /// 피드백 질문 `[A]에 이어서 보냈어요 · 판단이 맞았나요? (선택)  1 맞아요  2 아니에요  0 닫기`. 입력 에코 다음 줄에 뜬다.
-    /// 끼워 넣기가 아닌 판단의 머리 문구는 초안이다(`[B] 새 작업으로 보냈어요`, `[C] 대기열에 넣었어요`).
+    /// 끼워 넣기가 아닌 판단의 머리 문구는 초안.
     Feedback {
         label: TaskLabel,
         disposition: Disposition,
     },
-    /// 바로잡기 제안 `[B] 바로 새 작업으로 실행할까요? [실행] [그대로]`. `2` 답 뒤 입력이 아직 보내지지 않았을 때.
-    /// TODO(#109): `[실행]`(`Request::RunAsNewTask`)과 `[그대로]`를 고르는 키나 클릭. 지금은 그리기만 한다
+    /// TODO(#109): `[실행]`과 `[그대로]`를 고르는 키나 클릭, 지금은 그리기만 한다
     Correction { label: TaskLabel },
-    /// 보류 종료 완료 `[E] 보류를 닫았습니다`.
+    /// 보류 닫기가 끝났다.
     HeldClosed { label: TaskLabel },
-    /// `/train` 불가 `채점할 판단 83 / 200건 · 200건이 쌓이면 실행할 수 있습니다`.
+    /// 채점 후보가 모자라 `/train`을 실행하지 못했다.
     TrainShort { graded: u32, need: u32 },
     /// `!` 셸 명령 결과.
     Shell(ShellOutput),
-    /// 한 줄 경고(명령 해석 오류 등). 원문 그대로.
+    /// 명령 해석 오류 같은 한 줄 경고, 원문 그대로.
     Warning(String),
 }
 
@@ -107,7 +91,6 @@ impl TranscriptCell {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 셀 글자 수
     // basis: estimate
-    /// 셀의 글 줄. `labels_visible`이 거짓이면 이름표를 빼고, `expanded`면 도구 셀 전체를 펼친다.
     /// 전체 화면과 plain 출력이 같은 결과를 내도록 문구는 모두 여기서 만든다.
     pub fn lines(&self, lang: Lang, labels_visible: bool, expanded: bool) -> Vec<String> {
         let prefix = |label: Option<TaskLabel>| labels::prefix(label, labels_visible);
@@ -181,7 +164,6 @@ impl TranscriptCell {
         }
     }
 
-    /// 줄 `index`의 글자 속성. 실패 원인 줄은 흐리게.
     fn line_style(&self, index: usize) -> Style {
         match self {
             Self::Failed { .. } if index > 0 => MUTED,
@@ -191,7 +173,6 @@ impl TranscriptCell {
     }
 }
 
-/// 대화 기록 모음과 스크롤 위치.
 #[derive(Debug, Default)]
 pub struct Transcript {
     cells: Vec<TranscriptCell>,
@@ -199,7 +180,6 @@ pub struct Transcript {
 }
 
 impl Transcript {
-    /// 빈 기록.
     pub fn new() -> Self {
         Self::default()
     }
@@ -207,7 +187,7 @@ impl Transcript {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 셀 글자 수(위로 스크롤 중일 때만 줄 수를 센다)
     // basis: estimate
-    /// 셀을 끝에 더한다. 맨 아래를 보고 있으면 계속 맨 아래를 따라가고, 위를 보고 있으면 보던 자리를 지킨다.
+    /// 맨 아래를 보고 있으면 따라가고, 위를 보고 있으면 보던 자리를 지킨다.
     pub fn push(&mut self, cell: TranscriptCell) {
         if self.scroll_from_bottom > 0 {
             self.scroll_from_bottom += cell_rows(&cell);
@@ -215,7 +195,7 @@ impl Transcript {
         self.cells.push(cell);
     }
 
-    /// 이전 부분(`HistoryChunk`)을 머리 셀 뒤, 기존 셀 앞에 넣는다. 보던 자리는 아래 기준이라 그대로다.
+    /// 머리 셀 뒤에 넣고, 보던 자리는 아래 기준이라 그대로다.
     pub fn prepend(&mut self, cells: Vec<TranscriptCell>) {
         let at = usize::from(matches!(
             self.cells.first(),
@@ -224,7 +204,6 @@ impl Transcript {
         self.cells.splice(at..at, cells);
     }
 
-    /// 맨 위 머리 셀을 넣거나 바꾼다(시작 화면 전환).
     pub fn set_header(&mut self, info: StartInfo) {
         match self.cells.first_mut() {
             Some(TranscriptCell::Header(header)) => *header = info,
@@ -232,7 +211,6 @@ impl Transcript {
         }
     }
 
-    /// 떠 있는 피드백 질문 셀을 지운다(답, `0`, 8초 경과).
     pub fn remove_feedback(&mut self, label: TaskLabel) {
         self.cells.retain(
             |cell| !matches!(cell, TranscriptCell::Feedback { label: shown, .. } if *shown == label),
@@ -242,7 +220,6 @@ impl Transcript {
     // cost: time O(c), heap O(1), stack O(1)
     // vars: c = 셀 수
     // basis: estimate
-    /// 입력 에코의 전달 상태 표시를 바꾼다. 에코가 없으면 아무것도 하지 않는다.
     pub fn set_badge(&mut self, input: InputId, badge: DeliveryBadge) {
         let echo = self.cells.iter_mut().rev().find_map(|cell| match cell {
             TranscriptCell::InputEcho {
@@ -260,7 +237,7 @@ impl Transcript {
     // cost: time O(c), heap O(1), stack O(1)
     // vars: c = 셀 수
     // basis: estimate
-    /// 도구 결과를 같은 `call_id`의 도구 셀에 붙인다. 셀이 없으면 거짓.
+    /// 셀이 없으면 `false`.
     pub fn set_tool_output(&mut self, call_id: &str, text: String) -> bool {
         let tool = self.cells.iter_mut().rev().find_map(|cell| match cell {
             TranscriptCell::Tool {
@@ -282,7 +259,7 @@ impl Transcript {
     // cost: time O(g), heap O(g), stack O(1)
     // vars: g = 대화 기록 글자 수
     // basis: estimate
-    /// 위로 `rows`줄 스크롤. 맨 위에 닿으면 이전 부분 로드가 필요하다고 참을 돌려준다.
+    /// 맨 위에 닿아 이전 부분을 불러와야 하면 `true`.
     pub fn scroll_up(&mut self, rows: usize) -> bool {
         let total: usize = self.cells.iter().map(cell_rows).sum();
         let wanted = self.scroll_from_bottom + rows;
@@ -290,7 +267,6 @@ impl Transcript {
         wanted >= total
     }
 
-    /// 아래로 `rows`줄 스크롤.
     pub fn scroll_down(&mut self, rows: usize) {
         self.scroll_from_bottom = self.scroll_from_bottom.saturating_sub(rows);
     }
@@ -300,20 +276,15 @@ impl Transcript {
         self.scroll_from_bottom
     }
 
-    /// 모든 셀.
     pub fn cells(&self) -> &[TranscriptCell] {
         &self.cells
     }
 }
 
-/// 대화 기록 그리기.
 #[derive(Debug)]
 pub struct TranscriptView<'a> {
-    /// 그릴 기록.
     pub transcript: &'a Transcript,
-    /// 화면 언어.
     pub lang: Lang,
-    /// 이름표를 보일지.
     pub labels_visible: bool,
 }
 
@@ -321,8 +292,6 @@ impl TranscriptView<'_> {
     // cost: time O(g), heap O(g), stack O(1)
     // vars: g = 대화 기록 글자 수
     // basis: estimate
-    /// 아래에서부터 칸 높이만큼 셀 줄을 그린다(도구 셀은 줄인 형태). 에코는 `>` 접두, 실패 원인과 도구 출력은 흐리게.
-    /// 칸보다 긴 줄은 접어 그린다.
     pub fn render(&self, frame: &mut Frame, area: Rect) {
         let rows = styled_rows(
             self.transcript.cells(),
@@ -344,7 +313,7 @@ impl TranscriptView<'_> {
     }
 }
 
-/// 작업이 끝났을 때의 결과 머리줄 셀. 실패면 원인 줄이 붙는 `Failed`. 경과는 engine이 알린 값을 쓴다.
+/// 경과는 engine이 알린 값을 쓴다.
 pub fn result_cell(task: &TaskView) -> TranscriptCell {
     if task.state == TaskState::Failed {
         TranscriptCell::Failed {
@@ -363,7 +332,6 @@ pub fn result_cell(task: &TaskView) -> TranscriptCell {
     }
 }
 
-/// 입력 에코 셀. 전달 중이거나 반영된 입력이면 표시를 붙인다.
 pub fn echo_cell(update: &InputUpdate) -> TranscriptCell {
     TranscriptCell::InputEcho {
         input: update.input,
@@ -373,7 +341,6 @@ pub fn echo_cell(update: &InputUpdate) -> TranscriptCell {
     }
 }
 
-/// 전달 상태의 표시. `Delivering`, `Applied`만 있다.
 pub fn delivery_badge(state: InputState) -> Option<DeliveryBadge> {
     match state {
         InputState::Delivering => Some(DeliveryBadge::Delivering),
@@ -385,7 +352,6 @@ pub fn delivery_badge(state: InputState) -> Option<DeliveryBadge> {
 // cost: time O(c), heap O(c), stack O(1)
 // vars: c = 셀 글 전체 글자 수
 // basis: estimate
-/// 셀들을 폭 `width`로 접은 줄과 속성.
 pub fn styled_rows(
     cells: &[TranscriptCell],
     lang: Lang,
@@ -411,7 +377,7 @@ pub fn styled_rows(
     rows
 }
 
-/// 스크롤 계산에 쓰는 셀 줄 수(접기 전).
+/// 접기 전 줄 수.
 fn cell_rows(cell: &TranscriptCell) -> usize {
     cell.lines(Lang::Ko, true, false).len()
 }
@@ -419,7 +385,6 @@ fn cell_rows(cell: &TranscriptCell) -> usize {
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = text.len()
 // basis: estimate
-/// 에코 줄. 첫 줄 `> [A] 원문`, 이어지는 줄은 두 칸 들여 쓰고 전달 상태는 끝 줄 뒤에 붙인다.
 fn echo_lines(lang: Lang, prefix: &str, text: &str, badge: Option<DeliveryBadge>) -> Vec<String> {
     let mut lines: Vec<String> = text
         .lines()
@@ -450,7 +415,6 @@ fn echo_lines(lang: Lang, prefix: &str, text: &str, badge: Option<DeliveryBadge>
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = output.len()
 // basis: estimate
-/// 도구 셀. 줄인 형태는 `• 하는 일` 한 줄, 펼치면 출력 줄을 두 칸 들여 붙인다.
 fn tool_lines(
     lang: Lang,
     prefix: &str,
@@ -465,7 +429,6 @@ fn tool_lines(
     lines
 }
 
-/// 결과 머리줄 `[A] codex · 45초 · 끝 칸`. provider를 모르면 그 칸을 뺀다.
 fn result_line(
     lang: Lang,
     prefix: &str,
@@ -483,7 +446,6 @@ fn result_line(
     }
 }
 
-/// 토큰 칸 `Token 3,210`, 보고 전이면 `Token -`.
 pub fn tokens_text(lang: Lang, tokens: Option<u64>) -> String {
     match tokens {
         Some(tokens) => format!("{} {}", lang.tr(i18n::TOKEN), i18n::format_count(tokens)),
@@ -491,7 +453,6 @@ pub fn tokens_text(lang: Lang, tokens: Option<u64>) -> String {
     }
 }
 
-/// 한 줄 알림.
 fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
     match notice {
         ChatNotice::Compacted => vec![format!("{prefix}{}", lang.tr(i18n::COMPACTED))],
@@ -527,7 +488,6 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
 // cost: time O(h), heap O(h), stack O(1)
 // vars: h = 이름표 수
 // basis: estimate
-/// 이름표 목록 `[A] [C]`.
 pub fn held_labels(held: &[TaskLabel]) -> String {
     held.iter()
         .map(|label| labels::format(*label))
@@ -538,7 +498,6 @@ pub fn held_labels(held: &[TaskLabel]) -> String {
 // cost: time O(p), heap O(p), stack O(1)
 // vars: p = provider 수
 // basis: estimate
-/// 이번 요청 합계 `이번 요청 · codex Token 4,120 · 판단기 3회 Token 9,870 · 2분 31초`.
 fn summary_line(
     lang: Lang,
     provider_tokens: &[(Provider, u64)],
@@ -567,7 +526,6 @@ fn summary_line(
     parts.join(" · ")
 }
 
-/// 피드백 질문 줄.
 fn feedback_line(lang: Lang, label: TaskLabel, disposition: Disposition) -> String {
     let label_text = labels::format(label);
     let head = match (disposition, lang) {
@@ -585,7 +543,6 @@ fn feedback_line(lang: Lang, label: TaskLabel, disposition: Disposition) -> Stri
     )
 }
 
-/// `/train` 불가 줄.
 fn train_short_line(lang: Lang, graded: u32, need: u32) -> String {
     let unit = lang.tr(i18n::COUNT_SUFFIX);
     let (graded, need) = (
@@ -609,7 +566,6 @@ fn train_short_line(lang: Lang, graded: u32, need: u32) -> String {
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = output.output.len()
 // basis: estimate
-/// 셸 명령 셀. `! 명령`, 출력(줄인 형태는 앞 `SHELL_PREVIEW_LINES`줄과 `…`), 0이 아닌 종료 코드.
 fn shell_lines(lang: Lang, output: &ShellOutput, expanded: bool) -> Vec<String> {
     let mut lines = vec![format!("! {}", output.command)];
     let body: Vec<&str> = output.output.lines().collect();

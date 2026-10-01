@@ -1,7 +1,5 @@
-//! 입력창. `›` 접두 초안과 붙여넣은 내용 요소.
-//!
-//! 설계: docs/design/tui.md(영역 입력창, 키 입력창, 상태 표시 `[붙여넣은 내용 1,204자]`).
-//! 1,000자를 넘는 붙여넣기는 초안에 요소 하나로 접어 `[붙여넣은 내용 1,204자]`로 보이고, 제출할 때 원문으로 펼친다.
+//! 입력창. 긴 붙여넣기는 요소 하나로 접고 제출할 때 원문으로 펼친다.
+//! 설계: docs/design/tui.md
 
 use ratatui::Frame;
 use ratatui::layout::{Position, Rect};
@@ -11,28 +9,22 @@ use ratatui::widgets::Paragraph;
 use crate::i18n::{self, Lang};
 use crate::view::{MUTED, text_width, truncate};
 
-/// 이 글자 수를 넘는 붙여넣기는 요소로 접는다.
+/// 이 글자 수를 넘으면 접는다.
 pub const PASTE_COLLAPSE_CHARS: usize = 1_000;
 
-/// 초안 조각. 커서는 조각 단위로 움직인다(붙여넣은 요소는 한 칸).
+/// 커서는 조각 단위로 움직인다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Segment {
-    /// 입력한 글자 하나.
     Char(char),
-    /// 1,000자를 넘는 붙여넣은 내용. 화면에는 `[붙여넣은 내용 N자]` 한 덩어리.
     Pasted(String),
 }
 
-/// `Ctrl+R` 입력 기록 검색 상태.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct HistorySearch {
-    /// 검색어.
     pub query: String,
-    /// 같은 검색어로 건너뛴 수. `Ctrl+R`을 다시 누르면 하나 늘린다.
     pub skip: usize,
 }
 
-/// 입력창 상태.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Composer {
     segments: Vec<Segment>,
@@ -43,17 +35,14 @@ pub struct Composer {
 }
 
 impl Composer {
-    /// 빈 입력창.
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// 커서 자리에 글자 하나.
     pub fn insert(&mut self, c: char) {
         self.insert_segment(Segment::Char(c));
     }
 
-    /// 붙여넣기. 1,000자를 넘으면 `Segment::Pasted` 하나, 아니면 글로 넣는다.
     pub fn paste(&mut self, text: String) {
         let text = text.replace("\r\n", "\n").replace('\r', "\n");
         if text.chars().count() > PASTE_COLLAPSE_CHARS {
@@ -64,12 +53,11 @@ impl Composer {
         }
     }
 
-    /// 줄바꿈.
     pub fn newline(&mut self) {
         self.insert('\n');
     }
 
-    /// 앞 글자 지우기. 커서 바로 앞이 붙여넣은 요소면 요소 전체.
+    /// 커서 바로 앞이 붙여넣은 요소면 요소 전체를 지운다.
     pub fn backspace(&mut self) {
         if self.cursor == 0 {
             return;
@@ -79,12 +67,10 @@ impl Composer {
         self.from_history = false;
     }
 
-    /// 커서 왼쪽.
     pub fn left(&mut self) {
         self.cursor = self.cursor.saturating_sub(1);
     }
 
-    /// 커서 오른쪽.
     pub fn right(&mut self) {
         self.cursor = (self.cursor + 1).min(self.segments.len());
     }
@@ -92,7 +78,7 @@ impl Composer {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 조각 수
     // basis: estimate
-    /// `Ctrl+K` 커서부터 줄 끝까지 잘라 보관한다(이전 보관 글은 덮는다).
+    /// 이전 보관 글은 덮는다.
     pub fn kill_to_end(&mut self) {
         let end = self.segments[self.cursor..]
             .iter()
@@ -108,7 +94,6 @@ impl Composer {
         self.from_history = false;
     }
 
-    /// `Ctrl+Y` 보관한 글을 커서 자리에 넣는다.
     pub fn yank(&mut self) {
         let text = self.kill_buffer.clone();
         text.chars()
@@ -117,7 +102,7 @@ impl Composer {
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    /// 초안을 모두 지운다(`Ctrl+C` 초안 삭제). 지웠으면 참.
+    /// 지웠으면 `true`.
     pub fn clear(&mut self) -> bool {
         if self.is_empty() && self.search.is_none() {
             return false;
@@ -132,7 +117,7 @@ impl Composer {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = text.len()
     // basis: estimate
-    /// 초안을 바꾼다(기록 이동, `Alt+↑`로 되돌린 원문, 외부 에디터 결과). `from_history`면 `↑`/`↓` 이동을 계속 허용한다.
+    /// `from_history`면 `↑`/`↓` 기록 이동을 계속 허용한다.
     pub fn set_text(&mut self, text: &str, from_history: bool) {
         self.segments = text.chars().map(Segment::Char).collect();
         self.cursor = self.segments.len();
@@ -140,12 +125,12 @@ impl Composer {
         self.from_history = from_history;
     }
 
-    /// 제출할 원문. 붙여넣은 요소는 원문으로 펼친다.
+    /// 붙여넣은 요소는 원문으로 펼친다.
     pub fn text(&self) -> String {
         segments_text(&self.segments)
     }
 
-    /// 제출하고 비운다. 원문을 돌려준다. 공백뿐이면 `None`이고 비우지 않는다.
+    /// 공백뿐이면 `None`이고 비우지 않는다.
     pub fn take(&mut self) -> Option<String> {
         let text = self.text();
         if text.trim().is_empty() {
@@ -160,19 +145,16 @@ impl Composer {
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    /// 비었다(요소 포함).
     pub fn is_empty(&self) -> bool {
         self.segments.is_empty()
     }
 
-    /// 커서가 줄 맨 앞이다(`!` 셸 명령).
     pub fn at_line_start(&self) -> bool {
         self.cursor == 0 || self.segments[self.cursor - 1] == Segment::Char('\n')
     }
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    /// 커서가 단어 맨 앞이다(`$` 스킬 목록). 줄 앞이거나 앞 글자가 공백.
     pub fn at_word_start(&self) -> bool {
         match self.cursor.checked_sub(1).map(|i| &self.segments[i]) {
             None => true,
@@ -181,12 +163,12 @@ impl Composer {
         }
     }
 
-    /// `↑`/`↓` 기록 이동을 받을지. 비었거나 불러온 기록을 고치지 않았을 때.
+    /// 비었거나 불러온 기록을 고치지 않았을 때 참.
     pub fn history_browsable(&self) -> bool {
         self.is_empty() || self.from_history
     }
 
-    /// 셸 명령 줄이면 `!` 뒤 명령. 첫 줄이 `!`로 시작할 때만.
+    /// 첫 줄이 `!`로 시작할 때만.
     pub fn shell_command(&self) -> Option<String> {
         let text = self.text();
         let first = text.lines().next()?;
@@ -200,7 +182,7 @@ impl Composer {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 커서 앞 조각 수
     // basis: estimate
-    /// 커서가 있는 팝업 입력 토큰(`/ju`, `@src/ma`, `$rev`). 토큰 첫 글자가 `/`, `@`, `$`가 아니면 `None`.
+    /// 토큰 첫 글자가 `/`, `@`, `$`가 아니면 `None`.
     pub fn popup_token(&self) -> Option<String> {
         let start = self.token_start();
         let token: String = self.segments[start..self.cursor]
@@ -216,7 +198,6 @@ impl Composer {
         }
     }
 
-    /// 팝업에서 고른 값으로 커서 토큰을 바꾼다(`/` 명령은 전체 경로와 공백 하나).
     pub fn replace_token(&mut self, value: &str) {
         let start = self.token_start();
         self.segments.drain(start..self.cursor);
@@ -226,7 +207,6 @@ impl Composer {
             .for_each(|c| self.insert_segment(Segment::Char(c)));
     }
 
-    /// `Ctrl+R` 검색을 시작하거나 다음 결과로 넘긴다.
     pub fn start_or_next_search(&mut self) {
         match &mut self.search {
             Some(search) => search.skip += 1,
@@ -234,12 +214,11 @@ impl Composer {
         }
     }
 
-    /// 검색 중이면 끝내고 참(`Ctrl+C` 검색 취소).
+    /// 검색 중이었으면 `true`.
     pub fn cancel_search(&mut self) -> bool {
         self.search.take().is_some()
     }
 
-    /// 검색 상태.
     pub fn search(&self) -> Option<&HistorySearch> {
         self.search.as_ref()
     }
@@ -247,7 +226,7 @@ impl Composer {
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 조각 수
     // basis: estimate
-    /// 그릴 줄 수(초안 줄 수, 최소 1).
+    /// 최소 1.
     pub fn height(&self) -> u16 {
         let newlines = self
             .segments
@@ -257,7 +236,7 @@ impl Composer {
         u16::try_from(newlines + 1).unwrap_or(u16::MAX)
     }
 
-    /// `↑` 커서를 윗줄 같은 칸으로. 첫 줄이면 그대로.
+    /// 첫 줄이면 그대로.
     pub fn cursor_up(&mut self) {
         let (row, col) = self.cursor_row_col();
         if row > 0 {
@@ -265,7 +244,7 @@ impl Composer {
         }
     }
 
-    /// `↓` 커서를 아랫줄 같은 칸으로. 끝 줄이면 그대로.
+    /// 끝 줄이면 그대로.
     pub fn cursor_down(&mut self) {
         let (row, col) = self.cursor_row_col();
         if row + 1 < usize::from(self.height()) {
@@ -273,7 +252,7 @@ impl Composer {
         }
     }
 
-    /// 검색어에 글자 하나를 더한다. 건너뛴 수는 처음부터.
+    /// 건너뛴 수는 0으로 되돌린다.
     pub fn push_search_char(&mut self, c: char) {
         if let Some(search) = &mut self.search {
             search.query.push(c);
@@ -281,7 +260,6 @@ impl Composer {
         }
     }
 
-    /// 검색어 끝 글자를 지운다.
     pub fn pop_search_char(&mut self) {
         if let Some(search) = &mut self.search {
             search.query.pop();
@@ -289,7 +267,7 @@ impl Composer {
         }
     }
 
-    /// 검색을 끝내고 찾은 기록을 초안으로 둔다. 못 찾았으면 초안을 그대로 둔다.
+    /// 못 찾았으면 초안을 그대로 둔다.
     pub fn accept_search(&mut self, found: Option<&str>) {
         self.search = None;
         if let Some(found) = found {
@@ -300,7 +278,7 @@ impl Composer {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 조각 수
     // basis: estimate
-    /// 화면 줄. 붙여넣은 요소는 `[붙여넣은 내용 1,204자]`. 커서가 있는 줄과 칸(표시 폭)도 돌려준다.
+    /// 커서의 줄과 칸(표시 폭)도 돌려준다.
     pub fn display(&self, lang: Lang) -> (Vec<String>, (usize, usize)) {
         let mut lines = vec![String::new()];
         let mut cursor = (0, 0);
@@ -320,7 +298,7 @@ impl Composer {
         (lines, cursor)
     }
 
-    /// 조각 하나를 커서 자리에 넣는다. 고친 초안은 기록 그대로가 아니다.
+    /// 고친 초안은 더 이상 불러온 기록 그대로가 아니다.
     fn insert_segment(&mut self, segment: Segment) {
         self.segments.insert(self.cursor, segment);
         self.cursor += 1;
@@ -330,7 +308,6 @@ impl Composer {
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 커서 앞 조각 수
     // basis: estimate
-    /// 커서가 있는 낱말의 시작. 공백, 줄바꿈, 붙여넣은 요소 바로 뒤에서 멈춘다.
     fn token_start(&self) -> usize {
         self.segments[..self.cursor]
             .iter()
@@ -344,7 +321,7 @@ impl Composer {
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 커서 앞 조각 수
     // basis: estimate
-    /// 커서의 줄과 칸(조각 단위).
+    /// 조각 단위.
     fn cursor_row_col(&self) -> (usize, usize) {
         let before = &self.segments[..self.cursor];
         let row = before.iter().filter(|s| **s == Segment::Char('\n')).count();
@@ -358,7 +335,7 @@ impl Composer {
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 조각 수
     // basis: estimate
-    /// 줄 `row`의 칸 `col` 조각 위치. 줄이 짧으면 줄 끝.
+    /// 줄이 짧으면 줄 끝.
     fn index_at(&self, row: usize, col: usize) -> usize {
         let mut start = 0;
         for _ in 0..row {
@@ -378,14 +355,10 @@ impl Composer {
     }
 }
 
-/// 입력창 그리기.
 #[derive(Debug)]
 pub struct ComposerView<'a> {
-    /// 그릴 입력창.
     pub composer: &'a Composer,
-    /// 화면 언어.
     pub lang: Lang,
-    /// 검색 중이면 찾은 기록.
     pub search_result: Option<&'a str>,
 }
 
@@ -393,8 +366,6 @@ impl ComposerView<'_> {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 조각 수와 붙여넣은 글자 수
     // basis: estimate
-    /// `› ` 접두와 초안을 그리고 커서를 둔다. 붙여넣은 요소는 `[붙여넣은 내용 1,204자]`(글자 수는 `format_count`).
-    /// 검색 중이면 검색어와 찾은 기록을 보인다.
     pub fn render(&self, frame: &mut Frame, area: Rect) {
         if let Some(search) = self.composer.search() {
             let found = self.search_result.unwrap_or_default();
@@ -430,7 +401,6 @@ impl ComposerView<'_> {
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = 원문 길이
 // basis: estimate
-/// 조각을 원문으로 잇는다. 붙여넣은 요소는 원문으로 펼친다.
 fn segments_text(segments: &[Segment]) -> String {
     let mut text = String::new();
     for segment in segments {
@@ -442,7 +412,6 @@ fn segments_text(segments: &[Segment]) -> String {
     text
 }
 
-/// 붙여넣은 요소 표시 `[붙여넣은 내용 1,204자]`.
 pub fn pasted_label(lang: Lang, text: &str) -> String {
     let count = i18n::format_count(text.chars().count() as u64);
     match lang {
@@ -455,14 +424,13 @@ pub fn pasted_label(lang: Lang, text: &str) -> String {
     }
 }
 
-/// 마지막 줄에 글을 붙인다.
 fn push_last(lines: &mut [String], text: &str) {
     if let Some(last) = lines.last_mut() {
         last.push_str(text);
     }
 }
 
-/// 마지막 줄 끝의 줄과 칸(표시 폭).
+/// 칸은 표시 폭.
 fn current_position(lines: &[String]) -> (usize, usize) {
     let row = lines.len().saturating_sub(1);
     (row, lines.last().map_or(0, |line| text_width(line)))

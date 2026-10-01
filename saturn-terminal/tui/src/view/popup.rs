@@ -1,9 +1,5 @@
 //! 팝업: `/` 명령 목록과 값 목록, `@` 파일 목록, `$` 스킬 목록.
-//!
-//! 설계: docs/design/tui.md(영역 팝업, 키 팝업).
-//! - 글자 입력마다 입력 토큰으로 목록을 거른다. 명령 목록은 최대 8행, 오른쪽에 출처(`Saturn` 또는 provider)를 보인다.
-//! - `Enter`: 명령 목록이면 고른 명령의 전체 경로를 입력창에 기입, 값 목록이면 값 선택. `Tab`: 전체 경로까지 완성.
-//! - `Esc`: 해제하고 입력 토큰이 바뀔 때까지 다시 띄우지 않는다.
+//! 설계: docs/design/tui.md
 
 use ratatui::Frame;
 use ratatui::layout::Rect;
@@ -15,50 +11,36 @@ use ratatui::widgets::Paragraph;
 use crate::i18n::Lang;
 use crate::view::{SELECTED, text_width, truncate};
 
-/// 팝업 최대 행 수.
 pub const MAX_ROWS: usize = 8;
-/// `@` 파일 목록 후보 상한. 큰 저장소에서 화면이 멈추지 않게 한다. 초안 값이다(docs/design/tui.md 초안 값).
+/// 큰 저장소에서 화면이 멈추지 않게 둔 상한(초안).
 pub const MAX_FILES: usize = 2_000;
 
-/// 팝업 종류.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PopupKind {
-    /// `/` 명령 목록(`commands::SATURN_COMMANDS`와 provider 명령).
     Command,
-    /// 명령을 고른 뒤 그 명령의 값 목록(`/usage` → `chat`, `today`, `week`, `all`).
     Value,
-    /// `@` 작업 폴더 파일 목록.
     File,
-    /// `$` 메인 에이전트 provider의 스킬 목록. 다른 provider는 `$공급자 이름`. 목록은 `Notification::Commands`의 `is_skill` 항목.
     Skill,
 }
 
-/// 목록 한 행.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PopupItem {
-    /// 기입할 값(명령 전체 경로, 파일 경로, 스킬 이름).
     pub value: String,
-    /// 설명.
     pub description: String,
-    /// 오른쪽 출처 표시(`Saturn`, `codex`, `claude`). 파일 목록은 비운다.
+    /// 파일 목록은 비운다.
     pub source: String,
 }
 
-/// 떠 있는 팝업.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Popup {
-    /// 종류.
     pub kind: PopupKind,
-    /// 거르는 입력 토큰(`/ju`의 `ju`).
+    /// `/ju`의 `ju`.
     pub token: String,
-    /// 거른 목록.
     pub items: Vec<PopupItem>,
-    /// 강조 행.
     pub selected: usize,
 }
 
 impl Popup {
-    /// 종류와 전체 후보로 연다. 토큰은 빈 문자열.
     pub fn open(kind: PopupKind, candidates: Vec<PopupItem>) -> Self {
         Self {
             kind,
@@ -71,7 +53,7 @@ impl Popup {
     // cost: time O(p·q), heap O(p), stack O(1)
     // vars: p = 후보 수, q = token.len()
     // basis: estimate
-    /// 토큰이 바뀌면 다시 거른다. 앞부분 일치 우선, 그다음 포함. 강조는 첫 행으로.
+    /// 앞부분 일치 우선, 그다음 포함.
     pub fn filter(&mut self, token: &str, candidates: &[PopupItem]) {
         self.token = token.to_string();
         let prefixed = candidates.iter().filter(|c| c.value.starts_with(token));
@@ -82,42 +64,39 @@ impl Popup {
         self.selected = 0;
     }
 
-    /// `↑` 위로. 첫 행에서 멈춘다.
+    /// 첫 행에서 멈춘다.
     pub fn up(&mut self) {
         self.selected = self.selected.saturating_sub(1);
     }
 
-    /// `↓` 아래로. 끝 행에서 멈춘다.
+    /// 끝 행에서 멈춘다.
     pub fn down(&mut self) {
         if self.selected + 1 < self.items.len() {
             self.selected += 1;
         }
     }
 
-    /// 강조한 행.
     pub fn selected(&self) -> Option<&PopupItem> {
         self.items.get(self.selected)
     }
 
-    /// 그릴 행 수(최대 8).
     pub fn height(&self) -> u16 {
         self.items.len().min(MAX_ROWS) as u16
     }
 }
 
-/// `Esc`로 닫은 뒤의 억제. 같은 토큰이면 다시 띄우지 않는다.
+/// 같은 토큰이면 다시 띄우지 않는다.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct PopupSuppress {
     token: Option<String>,
 }
 
 impl PopupSuppress {
-    /// 이 토큰에서 닫았다고 기록한다.
     pub fn suppress(&mut self, token: &str) {
         self.token = Some(token.to_string());
     }
 
-    /// 지금 토큰에서 띄워도 되는지. 토큰이 바뀌면 억제를 풀고 참.
+    /// 토큰이 바뀌면 억제를 풀고 `true`.
     pub fn allows(&mut self, token: &str) -> bool {
         match &self.token {
             Some(suppressed) if suppressed == token => false,
@@ -133,8 +112,7 @@ impl PopupSuppress {
 // cost: time O(f log f), heap O(f), stack O(1), io d
 // vars: f = 훑은 항목 수(최대 MAX_FILES), d = 읽은 폴더 수
 // basis: estimate
-/// 작업 폴더 파일 후보. `.git` 폴더와 무시 파일은 뺀다. 경로는 작업 폴더 기준 상대 경로이고 값은 `@경로`.
-/// 무시 파일은 작업 폴더 `.gitignore`의 글로브 없는 이름만 본다(초안). 후보는 `MAX_FILES`개까지.
+/// `.git`과 `.gitignore`의 글로브 없는 이름을 빼고 `MAX_FILES`개까지 모은다(초안).
 pub fn file_candidates(workdir: &std::path::Path) -> Vec<PopupItem> {
     let ignored = ignore_names(workdir);
     let mut found = Vec::new();
@@ -170,12 +148,9 @@ pub fn file_candidates(workdir: &std::path::Path) -> Vec<PopupItem> {
     found
 }
 
-/// 팝업 그리기.
 #[derive(Debug)]
 pub struct PopupView<'a> {
-    /// 그릴 팝업.
     pub popup: &'a Popup,
-    /// 화면 언어.
     pub lang: Lang,
 }
 
@@ -183,7 +158,6 @@ impl PopupView<'_> {
     // cost: time O(r·w), heap O(r·w), stack O(1)
     // vars: r = 행 수(최대 8), w = 칸 폭
     // basis: estimate
-    /// `› 값  설명 ... 출처` 행을 최대 8행 그린다. 강조 행은 `›`, 출처는 오른쪽 정렬.
     pub fn render(&self, frame: &mut Frame, area: Rect) {
         let width = usize::from(area.width);
         let start = (self.popup.selected + 1).saturating_sub(MAX_ROWS);
@@ -222,7 +196,6 @@ fn ignore_names(workdir: &std::path::Path) -> Vec<String> {
         .collect()
 }
 
-/// 팝업 한 행 `› 값  설명 ... 출처`. 출처는 오른쪽 끝에 붙인다.
 fn row_text(item: &PopupItem, selected: bool, width: usize) -> String {
     let marker = if selected { "› " } else { "  " };
     let source_width = text_width(&item.source);

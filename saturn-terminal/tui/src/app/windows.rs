@@ -1,7 +1,5 @@
-//! 창과 화면의 동작: 상태판 버튼, judge 키 입력 창, 폴더 설정 신뢰 창, 보류 재개 질문, 작업 목록, 사용량,
-//! judge 버전, 학습 확인 창.
-//!
-//! 설계: docs/design/tui.md(영역, 키).
+//! 창과 화면의 키 동작.
+//! 설계: docs/design/tui.md
 
 use saturn_protocol::ids::ChatId;
 use saturn_protocol::rpc::Request;
@@ -20,8 +18,6 @@ use crate::view::train_confirm::TrainChoice;
 use crate::view::transcript::{Transcript, TranscriptCell};
 
 impl App {
-    /// 상태판 버튼. `Send` → `SendNow`, `CancelInput`/`CancelHeldInput` → `CancelInput`,
-    /// `ContinueTask` → `Continue { task: Some }`, `ContinueInput` → `Request::ContinueInput`, `CloseHeld` → 확인 줄.
     pub(super) fn on_button(&mut self, button: Button) -> Vec<Effect> {
         let request = match button {
             Button::Send(input) => Request::SendNow { input },
@@ -46,7 +42,6 @@ impl App {
         vec![Effect::Send(request)]
     }
 
-    /// 보류 닫기 확인의 `Enter`. `Request::CloseHeld`를 보내고 `[E] 보류를 닫았습니다`를 남긴다.
     pub(super) fn close_held(&mut self) -> Vec<Effect> {
         let Some(task) = self.chat.close_held_confirm.take() else {
             return Vec::new();
@@ -61,7 +56,6 @@ impl App {
         vec![Effect::Send(Request::CloseHeld { chat, task })]
     }
 
-    /// judge 키 입력 창: 글자는 가린 칸에, `Enter`는 `Request::SubmitJudgeKey` 뒤 창 닫기.
     pub(super) fn on_judge_key_action(&mut self, action: Action) -> Vec<Effect> {
         let Some(Window::JudgeKey(prompt)) = &mut self.window else {
             return Vec::new();
@@ -79,7 +73,6 @@ impl App {
         Vec::new()
     }
 
-    /// 폴더 설정 신뢰 창: `1`/`y`는 `적용하고 계속` 강조, `Enter`는 강조한 선택지 확정.
     pub(super) fn on_trust_action(&mut self, action: Action) -> Vec<Effect> {
         let Some(Window::FolderTrust(trust)) = &mut self.window else {
             return Vec::new();
@@ -110,7 +103,6 @@ impl App {
     // cost: time O(h), heap O(h), stack O(1)
     // vars: h = 보류 작업 수
     // basis: estimate
-    /// 보류 재개 질문.
     pub(super) fn on_resume_action(&mut self, action: Action) -> Vec<Effect> {
         let Some(Window::Resume(prompt)) = &mut self.window else {
             return Vec::new();
@@ -146,7 +138,6 @@ impl App {
         requests.into_iter().map(Effect::Send).collect()
     }
 
-    /// 작업 목록 화면.
     pub(super) fn on_task_list_action(&mut self, action: Action) -> Vec<Effect> {
         let Some(Window::TaskList(list)) = &mut self.window else {
             return Vec::new();
@@ -182,7 +173,6 @@ impl App {
         }
     }
 
-    /// 작업 목록 명령을 요청으로. `Open`은 다른 채팅이면 그 채팅에 다시 붙는다(`Detach` 뒤 `Attach`).
     pub(super) fn on_task_list_command(&mut self, command: TaskListCommand) -> Vec<Effect> {
         let request = match command {
             TaskListCommand::Open { chat, .. } => {
@@ -212,8 +202,7 @@ impl App {
         vec![Effect::Send(request), Effect::Send(Request::ListTasks)]
     }
 
-    /// 다른 채팅이나 새 채팅으로 옮긴다. 채팅에 묶인 화면 상태를 비우고 `Detach` 뒤 `Attach`를 보낸다.
-    /// 입력창, 입력 기록, provider 명령 목록은 유지한다.
+    /// 입력창, 입력 기록, provider 명령 목록은 채팅을 옮겨도 유지한다.
     pub(super) fn reattach(&mut self, chat: Option<ChatId>) -> Vec<Effect> {
         self.chat = ChatState::new();
         self.transcript = Transcript::new();
@@ -234,7 +223,6 @@ impl App {
         ]
     }
 
-    /// 전체 기록, 사용량, judge 버전 화면.
     pub(super) fn on_screen_action(&mut self, action: Action) -> Vec<Effect> {
         match (&mut self.window, action) {
             (Some(Window::FullTranscript(full)), Action::Up) => full.up(),
@@ -260,7 +248,6 @@ impl App {
         Vec::new()
     }
 
-    /// 학습 확인 창.
     pub(super) fn on_train_action(&mut self, action: Action) -> Vec<Effect> {
         let Some(Window::TrainConfirm(confirm)) = &mut self.window else {
             return Vec::new();
@@ -283,7 +270,6 @@ impl App {
     }
 }
 
-/// judge 버전 화면 명령을 요청으로.
 fn judge_version_request(command: JudgeVersionCommand) -> Request {
     match command {
         JudgeVersionCommand::ResetThresholds => Request::Train {

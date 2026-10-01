@@ -1,6 +1,5 @@
 //! 입력창, 팝업, 제출과 명령, `Ctrl+C`, 피드백 답.
-//!
-//! 설계: docs/design/tui.md(키 입력창, 키 팝업, 피드백 질문), docs/design/input-handling.md(대기와 취소, 멈춤과 보류).
+//! 설계: docs/design/tui.md
 
 use saturn_protocol::ids::TaskLabel;
 use saturn_protocol::rpc::{Alert, Request};
@@ -21,7 +20,6 @@ impl App {
     // cost: time O(n + p), heap O(n + p), stack O(1)
     // vars: n = 초안 길이, p = 팝업 후보 수
     // basis: estimate
-    /// 입력창 동작.
     pub(super) fn on_composer_action(&mut self, action: Action) -> Vec<Effect> {
         match action {
             Action::Insert(c) => self.edit(|composer| composer.insert(c)),
@@ -64,7 +62,6 @@ impl App {
         Vec::new()
     }
 
-    /// 초안을 고치고 기록 이동을 끝낸 뒤 팝업을 다시 거른다.
     pub(super) fn edit(&mut self, change: impl FnOnce(&mut Composer)) {
         change(&mut self.composer);
         self.history.reset();
@@ -74,7 +71,6 @@ impl App {
     // cost: time O(n + p), heap O(n + p), stack O(1)
     // vars: n = 초안 길이, p = 팝업 후보 수
     // basis: estimate
-    /// 팝업 동작: 이동, 고르기(`Enter`, `Tab`), 닫기.
     pub(super) fn on_popup_action(&mut self, action: Action) -> Vec<Effect> {
         match action {
             Action::Up => self.popup.iter_mut().for_each(Popup::up),
@@ -86,7 +82,6 @@ impl App {
         Vec::new()
     }
 
-    /// 강조한 팝업 행을 입력창에 기입한다. 명령은 `/전체 경로 `로 바꾸고 값 목록이 있으면 이어서 띄운다.
     pub(super) fn apply_popup_selection(&mut self) {
         let Some(popup) = self.popup.take() else {
             return;
@@ -103,7 +98,7 @@ impl App {
         self.refresh_popup();
     }
 
-    /// `Esc`로 팝업을 닫고 같은 토큰에서는 다시 띄우지 않는다.
+    /// 같은 토큰에서는 다시 띄우지 않는다.
     pub(super) fn close_popup(&mut self) {
         if self.popup.take().is_some()
             && let Some((_, _, key)) = self.popup_target()
@@ -115,7 +110,6 @@ impl App {
     // cost: time O(n + p·q), heap O(n + p), stack O(1)
     // vars: n = 초안 길이, p = 팝업 후보 수, q = 거르는 글 길이
     // basis: estimate
-    /// 입력 토큰으로 팝업을 열거나 다시 거르고, 맞는 행이 없으면 닫는다.
     pub(super) fn refresh_popup(&mut self) {
         let Some((kind, query, key)) = self.popup_target() else {
             self.popup = None;
@@ -137,8 +131,7 @@ impl App {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 초안 길이
     // basis: estimate
-    /// 팝업 종류, 거르는 글, 억제 키. `/`로 시작한 한 줄 초안은 명령 목록(값이 있는 명령 뒤면 값 목록),
-    /// 커서 낱말이 `@`, `$`로 시작하면 파일, 스킬 목록.
+    /// 팝업 종류, 거르는 글, 억제 키.
     pub(super) fn popup_target(&self) -> Option<(PopupKind, String, String)> {
         let text = self.composer.text();
         if let Some(rest) = text.strip_prefix('/').filter(|rest| !rest.contains('\n')) {
@@ -164,7 +157,6 @@ impl App {
     // cost: time O(p), heap O(p), stack O(1), io f
     // vars: p = 후보 수, f = 처음 파일 목록을 모을 때 읽는 폴더 수
     // basis: estimate
-    /// 팝업 종류별 전체 후보.
     pub(super) fn popup_candidates(&mut self, kind: PopupKind) -> Vec<PopupItem> {
         let lang = self.lang;
         match kind {
@@ -196,7 +188,7 @@ impl App {
     // cost: time O(p), heap O(p), stack O(1)
     // vars: p = provider 명령 수
     // basis: estimate
-    /// provider 명령(`skills`가 거짓) 또는 스킬(참) 후보. 스킬 값은 `$이름`.
+    /// `skills`가 참이면 스킬, 거짓이면 provider 명령.
     pub(super) fn provider_items(&self, skills: bool) -> impl Iterator<Item = PopupItem> + '_ {
         self.provider_commands
             .iter()
@@ -212,12 +204,7 @@ impl App {
             })
     }
 
-    /// `Enter`(`queued: false`)와 `Tab`(`queued: true`). 초안이 비면 아무것도 하지 않는다.
-    /// - `!` 줄: `Effect::RunShell`.
-    /// - `/` 줄: `commands::parse` 뒤 `run_command`. 해석 오류는 대화 기록 경고 한 줄, 초안 유지.
-    /// - 그 밖: `SubmitInput { skip_relation: queued && 실행 중 }`. 유휴 `Tab`은 `Enter`와 같다.
-    ///   셸 결과 첨부가 있으면 원문 뒤에 붙이고 비운다. 원문은 입력 기록에 넣는다.
-    /// - 새 입력 접수 중단(`Alert::IntakeStopped`) 중이거나 아직 채팅을 모르면 보내지 않고 초안을 유지한다.
+    /// 새 입력 접수가 중단됐거나 채팅을 아직 모르면 보내지 않고 초안을 유지한다.
     pub(super) fn submit(&mut self, queued: bool) -> Vec<Effect> {
         let text = self.composer.text();
         if text.trim().is_empty() {
@@ -247,7 +234,6 @@ impl App {
     // cost: time O(n + a), heap O(n + a), stack O(1)
     // vars: n = 원문 길이, a = 첨부 길이 합
     // basis: estimate
-    /// 일반 입력과 provider 명령을 보낸다.
     pub(super) fn submit_text(&mut self, text: String, queued: bool) -> Vec<Effect> {
         if self.chat.alerts.contains(&Alert::IntakeStopped) {
             return Vec::new();
@@ -274,7 +260,6 @@ impl App {
         ]
     }
 
-    /// 제출한 초안을 비우고 팝업을 닫는다.
     pub(super) fn clear_draft(&mut self) {
         self.composer.take();
         self.history.reset();
@@ -284,9 +269,7 @@ impl App {
     // cost: time O(i + t), heap O(1), stack O(1)
     // vars: i = 입력 수, t = 작업 수
     // basis: estimate
-    /// 해석한 명령 실행. `Send`/`Cancel`/`Continue`는 이름표로 대상을 찾아 요청, `Feedback`은 `answer_feedback`,
-    /// `Tasks`/`Usage`/`JudgeVersion`은 창을 열고 조회 요청, `Train`은 `Request::Train`(부족하면 engine이 거절),
-    /// `Help`는 단축키 안내 창, `Record`는 `Request::SetRecording`. `Provider`는 `submit`이 원문으로 보낸다.
+    /// `Provider`는 `submit`이 원문으로 보내므로 여기서는 무시한다.
     pub(super) fn run_command(&mut self, command: SlashCommand) -> Vec<Effect> {
         let chat = self.chat.chat;
         let request = match command {
@@ -329,7 +312,6 @@ impl App {
         request.map(Effect::Send).into_iter().collect()
     }
 
-    /// `/cancel [이름표]`: 대기 입력이면 취소, 이름표가 보류 작업이면 보류 닫기 확인 줄.
     pub(super) fn cancel_target(&mut self, target: Option<TaskLabel>) -> Option<Request> {
         if let Some(input) = self.chat.queued_by_label(target) {
             return Some(Request::CancelInput { input: input.id });
@@ -339,7 +321,7 @@ impl App {
         None
     }
 
-    /// `/continue [이름표]`: 이름표가 있으면 그 보류 작업, 없으면 채팅의 보류 전부.
+    /// 이름표가 없으면 채팅의 보류 전부.
     pub(super) fn continue_target(&self, target: Option<TaskLabel>) -> Option<Request> {
         let chat = self.chat.chat?;
         let task = match target {
@@ -349,8 +331,6 @@ impl App {
         Some(Request::Continue { chat, task })
     }
 
-    /// `Ctrl+C` 한 번에 하나: 창·전체 기록·팝업 닫기 → 기록 검색 취소 → 초안 삭제.
-    /// 모두 해당 없으면 실행 중일 때 `Request::Stop`(모든 작업 멈춤과 보류), 유휴이면 `Effect::Quit`.
     pub(super) fn interrupt(&mut self) -> Vec<Effect> {
         if self.window.as_ref().is_some_and(|w| !w.is_blocking()) {
             self.window = None;
@@ -369,7 +349,6 @@ impl App {
         }
     }
 
-    /// `Alt+↑`, `Shift+←`: 판단 중이거나 대기 중인 가장 최근 입력을 `CancelInput`하고 원문을 입력창에 넣는다.
     /// 원문을 모르는 입력은 취소만 한다.
     pub(super) fn recall_latest_input(&mut self) -> Vec<Effect> {
         let Some(input) = self.chat.latest_recallable() else {
@@ -383,8 +362,7 @@ impl App {
         vec![Effect::Send(Request::CancelInput { input: id })]
     }
 
-    /// 피드백 답. `Some(true)` 맞아요, `Some(false)` 아니에요, `None` 닫기(요청 없음).
-    /// 아니에요이고 그 입력이 아직 보내지지 않았으면(`Judging`, `Queued`) 바로잡기 제안 셀을 더한다.
+    /// `Some(true)` 맞음, `Some(false)` 아님, `None` 닫기(요청 없음).
     pub(super) fn answer_feedback(&mut self, correct: Option<bool>) -> Vec<Effect> {
         let Some(feedback) = self.chat.feedback.take() else {
             return Vec::new();
@@ -409,7 +387,6 @@ impl App {
     }
 }
 
-/// 값 목록 한 행.
 fn value_item(value: &str) -> PopupItem {
     PopupItem {
         value: value.to_string(),
@@ -418,7 +395,6 @@ fn value_item(value: &str) -> PopupItem {
     }
 }
 
-/// 명령 해석 오류 경고 문구(`알 수 없는 명령: /`, `잘못된 인자: /usage year`).
 fn command_error_text(lang: Lang, error: &CommandError) -> String {
     match error {
         CommandError::Unknown { name } => {

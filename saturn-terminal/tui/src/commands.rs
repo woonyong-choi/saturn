@@ -1,20 +1,15 @@
-//! `/` 명령: 입력창에서 제출한 줄의 해석과 팝업 명령 목록.
-//!
-//! 설계: docs/design/tui.md(키, 상태 표시), docs/design/input-handling.md(대기와 취소, 보류 재개와 보류 종료).
-//! 명령은 `app::App`이 `Request`로 바꾼다. 해석은 순수 함수다.
+//! `/` 명령 해석과 팝업 명령 목록. 해석은 순수 함수다.
+//! 설계: docs/design/tui.md
 
 use saturn_protocol::ids::TaskLabel;
 use saturn_protocol::rpc::UsageRange;
 
 use crate::labels::LABEL_RANGE;
 
-/// 명령 해석 오류. 입력창 아래 한 줄로 보이고 입력은 보내지 않는다.
 #[derive(Debug, thiserror::Error)]
 pub enum CommandError {
-    /// 목록에 없는 명령.
     #[error("unknown command: {name}")]
     Unknown { name: String },
-    /// 인자가 명령 형식과 맞지 않는다.
     #[error("invalid argument for /{command}: {argument}")]
     InvalidArgument {
         command: &'static str,
@@ -22,19 +17,15 @@ pub enum CommandError {
     },
 }
 
-/// Saturn 명령 하나(팝업 표시용).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CommandSpec {
-    /// 전체 경로(`judge version`). 팝업 `Enter`·`Tab`이 이 값을 입력창에 기입한다.
     pub path: &'static str,
-    /// 한국어 키 설명. 화면에는 `Lang::tr`로 바꿔 쓴다.
+    /// `Lang::tr`의 한국어 키.
     pub description: &'static str,
-    /// 값 목록. 명령을 고른 뒤 팝업이 값 목록으로 바뀐다. 없으면 빈 배열.
     pub values: &'static [&'static str],
 }
 
-/// Saturn 명령 목록. 팝업 오른쪽 출처는 모두 `Saturn`이다. provider 명령은 engine이 알려 준다.
-/// TODO(#41): 메인 에이전트가 아닌 provider의 명령을 고르면 session을 새로 열지, 메인 전환을 물을지, 거절할지
+/// TODO(#41): 메인이 아닌 provider의 명령을 골랐을 때 처리
 pub const SATURN_COMMANDS: &[CommandSpec] = &[
     CommandSpec {
         path: "help",
@@ -88,31 +79,30 @@ pub const SATURN_COMMANDS: &[CommandSpec] = &[
     },
 ];
 
-/// 해석한 명령.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlashCommand {
-    /// `/help` 도움말.
+    /// `/help`
     Help,
-    /// `/record on|off` 이 채팅의 판단 기록 켜기와 끄기(`Request::SetRecording`).
+    /// `/record on|off`
     Record { on: bool },
-    /// `/send [이름표]` 대기 입력을 지금 보낸다(`Request::SendNow`). 이름표가 없으면 가장 최근 대기 입력.
+    /// 이름표가 없으면 가장 최근 대기 입력.
     Send { target: Option<TaskLabel> },
-    /// `/cancel [이름표]` 보내기 전 입력 취소(`Request::CancelInput`), 보류면 보류 닫기 확인. 없으면 가장 최근 대기 입력.
+    /// 이름표가 없으면 가장 최근 대기 입력.
     Cancel { target: Option<TaskLabel> },
-    /// `/continue [이름표]` 보류 재개(`Request::Continue`). 없으면 채팅의 보류 전부를 접수 순서로.
+    /// 이름표가 없으면 채팅의 보류 전부를 접수 순서로.
     Continue { target: Option<TaskLabel> },
-    /// `/feedback 1|2` 피드백 질문 답. `1` 맞아요(`true`), `2` 아니에요(`false`).
+    /// `/feedback 1|2`, `1`이면 `true`.
     Feedback { correct: bool },
-    /// `/tasks` 작업 목록 화면.
+    /// `/tasks`
     Tasks,
-    /// `/usage [chat|today|week|all]` 사용량 화면. 기본 `chat`.
+    /// `/usage [chat|today|week|all]`, 기본 `chat`.
     Usage { range: UsageRange },
-    /// `/train [--reset-thresholds] [--from 버전]` 학습. 채점 후보가 200건 미만이면 engine이 거절한다.
+    /// 채점 후보가 200건 미만이면 engine이 거절한다.
     Train {
         reset_thresholds: bool,
         from: Option<String>,
     },
-    /// `/judge version` judge 버전 화면.
+    /// `/judge version`
     JudgeVersion,
     /// 목록에 없는 provider 명령. 원문 그대로 메인 에이전트 provider에 넘긴다. TODO(#41): 비메인 provider 명령 처리
     Provider { line: String },
@@ -121,9 +111,7 @@ pub enum SlashCommand {
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = line.len()
 // basis: estimate
-/// 제출한 줄을 명령으로 해석한다. `/`로 시작하지 않으면 `Ok(None)`(일반 입력).
-/// Saturn 명령이 아닌 이름은 provider 명령(`SlashCommand::Provider`)으로 넘기고, 이름이 없는 `/`만 `Unknown`이다.
-/// 앞뒤 공백은 무시하고, 이름표 인자는 `labels::LABEL_RANGE`(초안 `A`–`Z`)의 한 글자만 받는다.
+/// `/`로 시작하지 않으면 `Ok(None)`, Saturn 명령이 아닌 이름은 `SlashCommand::Provider`.
 ///
 /// # Errors
 /// 알 수 없는 Saturn 명령이면 `Unknown`, 인자가 틀리면 `InvalidArgument`.
@@ -173,7 +161,7 @@ pub fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
 // cost: time O(k·t), heap O(k), stack O(1)
 // vars: k = SATURN_COMMANDS.len(), t = token.len()
 // basis: estimate
-/// 입력 토큰(`/ju`)에 맞는 명령을 앞부분 일치 우선, 그다음 포함 순서로 고른다. 팝업이 최대 8행을 보인다.
+/// 앞부분 일치 우선, 그다음 포함 순서.
 pub fn filter(token: &str) -> Vec<&'static CommandSpec> {
     let token = token.trim_start_matches('/');
     let prefixed = SATURN_COMMANDS
@@ -185,7 +173,6 @@ pub fn filter(token: &str) -> Vec<&'static CommandSpec> {
     prefixed.chain(contained).collect()
 }
 
-/// 인자가 없어야 하는 명령.
 fn no_args(
     command: &'static str,
     args: &[&str],
@@ -200,7 +187,6 @@ fn no_args(
 // cost: time O(a), heap O(a), stack O(1)
 // vars: a = 인자 글자 수(오류 문구를 만들 때만)
 // basis: estimate
-/// `/record on|off`.
 fn parse_switch(args: &[&str]) -> Result<bool, CommandError> {
     match args {
         ["on"] => Ok(true),
@@ -212,7 +198,7 @@ fn parse_switch(args: &[&str]) -> Result<bool, CommandError> {
 // cost: time O(a), heap O(a), stack O(1)
 // vars: a = 인자 글자 수(오류 문구를 만들 때만)
 // basis: estimate
-/// 이름표 인자 하나(없어도 된다). `LABEL_RANGE`의 한 글자만, 소문자는 대문자로 읽는다.
+/// 없어도 되고, 소문자는 대문자로 읽는다.
 fn parse_target(command: &'static str, args: &[&str]) -> Result<Option<TaskLabel>, CommandError> {
     let argument = match args {
         [] => return Ok(None),
@@ -229,7 +215,6 @@ fn parse_target(command: &'static str, args: &[&str]) -> Result<Option<TaskLabel
 // cost: time O(a), heap O(a), stack O(1)
 // vars: a = 인자 글자 수(오류 문구를 만들 때만)
 // basis: estimate
-/// `/feedback 1|2`.
 fn parse_feedback(args: &[&str]) -> Result<bool, CommandError> {
     match args {
         ["1"] => Ok(true),
@@ -241,7 +226,7 @@ fn parse_feedback(args: &[&str]) -> Result<bool, CommandError> {
 // cost: time O(a), heap O(a), stack O(1)
 // vars: a = 인자 글자 수(오류 문구를 만들 때만)
 // basis: estimate
-/// `/usage [chat|today|week|all]`. 기본 `chat`.
+/// 기본 `chat`.
 fn parse_range(args: &[&str]) -> Result<UsageRange, CommandError> {
     match args {
         [] | ["chat"] => Ok(UsageRange::Chat),
@@ -255,7 +240,6 @@ fn parse_range(args: &[&str]) -> Result<UsageRange, CommandError> {
 // cost: time O(a), heap O(a), stack O(1)
 // vars: a = 인자 글자 수
 // basis: estimate
-/// `/train [--reset-thresholds] [--from 버전]`.
 fn parse_train(args: &[&str]) -> Result<SlashCommand, CommandError> {
     let mut reset_thresholds = false;
     let mut from = None;
@@ -279,7 +263,6 @@ fn parse_train(args: &[&str]) -> Result<SlashCommand, CommandError> {
 // cost: time O(a), heap O(a), stack O(1)
 // vars: a = 인자 글자 수(오류 문구를 만들 때만)
 // basis: estimate
-/// `/judge version`.
 fn parse_judge(args: &[&str]) -> Result<SlashCommand, CommandError> {
     match args {
         ["version"] => Ok(SlashCommand::JudgeVersion),
@@ -287,7 +270,6 @@ fn parse_judge(args: &[&str]) -> Result<SlashCommand, CommandError> {
     }
 }
 
-/// 인자 오류.
 fn invalid(command: &'static str, argument: &str) -> CommandError {
     CommandError::InvalidArgument {
         command,

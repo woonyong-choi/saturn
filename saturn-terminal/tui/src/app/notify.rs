@@ -1,8 +1,5 @@
 //! engine 알림을 화면 상태에 반영한다.
-//!
-//! 설계: docs/design/tui.md(영역의 갱신 시점), docs/design/engine-lifecycle.md(접속 직후 `StartInfo` → 최근 기록 → 보관한 허가 요청).
-//! 접속 직후의 첫 `HistoryChunk`는 실시간 알림처럼 차례로 반영해 보류 작업과 대화 기록을 되살리고,
-//! 그 뒤의 묶음(위로 스크롤한 이전 부분)은 대화 기록 셀로만 바꿔 앞에 넣는다.
+//! 설계: docs/design/tui.md
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -30,7 +27,6 @@ use crate::view::transcript::{TranscriptCell, delivery_badge, echo_cell, result_
 use crate::view::usage::UsageTable;
 
 impl App {
-    /// engine 알림 하나. 변형별로 나눠 처리한다. 대화 기록에 첫 셀이 생기면 시작 화면을 머리 셀로 바꾼다.
     pub(super) fn on_notification(
         &mut self,
         notification: Notification,
@@ -109,7 +105,6 @@ impl App {
     // cost: time O(m), heap O(m), stack O(1)
     // vars: m = 알림에 실린 행 수
     // basis: estimate
-    /// 창과 상태판, 바닥줄을 고치는 나머지 알림.
     fn on_window_notification(&mut self, notification: Notification, now: Instant) {
         match notification {
             Notification::FolderTrustRequested {
@@ -160,7 +155,6 @@ impl App {
         }
     }
 
-    /// 학습, 작업 이벤트, 한 줄 알림, 피드백, 맥락 크기, 설정, 경고.
     fn on_progress_notification(&mut self, notification: Notification, now: Instant) {
         match notification {
             Notification::TrainPreview {
@@ -217,8 +211,6 @@ impl App {
         }
     }
 
-    /// `InputChanged`: `ChatState::apply_input`. `Change::Echo`면 에코 셀(`> [A] 원문`),
-    /// `Delivering`/`Applied`면 에코 뒤 `전달 중`/`반영됨` 표시를 고친다.
     fn on_input_changed(&mut self, update: InputUpdate) {
         let cell = echo_cell(&update);
         let (input, state) = (update.input, update.state);
@@ -232,9 +224,7 @@ impl App {
         }
     }
 
-    /// `TaskChanged`: `ChatState::apply_task`. 끝나면 작업별 출력 칸 내용을 대화 기록으로 옮기고 결과 머리줄
-    /// (`[A] codex · 45초 · Token 3,210`, 실패면 `· 실패`와 원인 줄), `NeedsCheck`면 `[A] 결과 확인 필요 · /continue A`.
-    /// 보류 재개 질문은 접속 직후 첫 기록을 모두 반영한 뒤 `on_history_chunk`가 띄운다.
+    /// 보류 재개 질문은 첫 기록을 모두 반영한 뒤 `on_history_chunk`가 띄운다.
     fn on_task_changed(&mut self, update: TaskUpdate, now: Instant) {
         match self.chat.apply_task(update, now) {
             Change::TaskFinished { task } => {
@@ -263,8 +253,7 @@ impl App {
     // cost: time O(e), heap O(e), stack O(d)
     // vars: e = 기록 항목 수, d = 접속 직후 묶음 반영의 호출 깊이(1)
     // basis: estimate
-    /// `HistoryChunk`. 접속 직후 첫 묶음은 항목을 실시간 알림처럼 반영하고, 보류 작업이 있으면 보류 재개 질문을 한 번 띄운다.
-    /// 그 뒤 묶음은 대화 기록 셀로 바꿔 앞에 넣는다.
+    /// 접속 직후 첫 묶음은 실시간 알림처럼 반영하고, 그 뒤 묶음은 대화 기록 셀로 바꿔 앞에 넣는다.
     fn on_history_chunk(
         &mut self,
         chat: ChatId,
@@ -291,7 +280,7 @@ impl App {
     // cost: time O(t log t), heap O(t), stack O(1)
     // vars: t = 작업 수
     // basis: estimate
-    /// 보류 작업이 있으면 보류 재개 질문을 띄운다. 채팅을 열 때 한 번만.
+    /// 채팅을 열 때 한 번만 묻는다.
     fn ask_resume(&mut self) {
         if self.resume_asked {
             return;
@@ -308,7 +297,6 @@ impl App {
         }
     }
 
-    /// `TaskEvent`: `ChatState::apply_event`. 글은 작업별 출력 칸, 도구는 도구 셀, 허가 요청은 허가 요청 창 대기열.
     fn on_task_event(&mut self, task: TaskId, event: ProviderEvent, now: Instant) {
         let change = self.chat.apply_event(task, event, now);
         let Some(view) = self.chat.tasks.get(&task) else {
@@ -359,8 +347,6 @@ impl App {
     // cost: time O(log t + c), heap O(1), stack O(1)
     // vars: t = 작업 수, c = 대화 기록 셀 수(위로 스크롤 중 줄 수 계산)
     // basis: estimate
-    /// `ChatNotice`: `Compacted`·`ProviderSwitched`·`ResumeSuggested`·`RequestSummary`는 대화 기록 한 줄,
-    /// `Stopped`·`StopUnconfirmed`는 상태판(`ChatState::stop`). `ProviderSwitched`는 작업 provider도 고친다.
     fn on_chat_notice(&mut self, chat: ChatId, task: Option<TaskId>, notice: ChatNotice) {
         self.learn_chat(chat);
         let view = task.and_then(|task| self.chat.tasks.get_mut(&task));
@@ -377,7 +363,6 @@ impl App {
         }
     }
 
-    /// `FeedbackQuestion`: 입력 에코 다음 줄에 질문 셀을 넣고 `now`부터 8초를 잰다. 이전 질문이 있으면 바꾼다.
     fn on_feedback_question(
         &mut self,
         judgment: JudgmentId,
@@ -399,17 +384,15 @@ impl App {
         self.push_cell(TranscriptCell::Feedback { label, disposition });
     }
 
-    /// `SettingsApplied`: 경고가 있으면 알림 줄 `폴더 설정 오류 · 이전 설정 번호 N로 계속 · 경고`.
     fn on_settings_applied(&mut self, revision: SettingsRevision, warning: Option<String>) {
         self.chat.settings = Some((revision, warning));
     }
 
-    /// `Alert`: `ChatState::apply_alert`.
     fn on_alert(&mut self, alert: Alert) {
         self.chat.apply_alert(alert);
     }
 
-    /// 아직 모르는 채팅 id를 알림에서 배운다(새 채팅은 접속 직후 `HistoryChunk`가 처음 알린다).
+    /// 새 채팅 id는 접속 직후 `HistoryChunk`가 처음 알린다.
     fn learn_chat(&mut self, chat: ChatId) {
         if self.chat.chat.is_none() {
             self.chat.chat = Some(chat);
@@ -420,7 +403,7 @@ impl App {
 // cost: time O(e), heap O(e), stack O(1)
 // vars: e = entries.len()
 // basis: estimate
-/// 이전 기록 항목을 대화 기록 셀로 바꾼다. 실시간 반영과 같은 문구가 나오도록 별도 상태로 차례로 반영한다.
+/// 실시간 반영과 같은 문구가 나오도록 별도 상태에 차례로 반영한다.
 fn history_cells(entries: Vec<Notification>) -> Vec<TranscriptCell> {
     let mut chat = ChatState::new();
     let mut live = LiveArea::new();
@@ -491,7 +474,6 @@ fn history_cells(entries: Vec<Notification>) -> Vec<TranscriptCell> {
     cells
 }
 
-/// 이전 기록의 작업 상태 하나. 끝났으면 모은 글과 결과 머리줄, 결과 불명이면 확인 필요 줄.
 fn finished_cells(
     chat: &mut ChatState,
     live: &mut LiveArea,

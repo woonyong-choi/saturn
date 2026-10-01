@@ -1,12 +1,5 @@
-//! 상태판. 실행 줄, 판단 줄, 학습 줄, 대기 줄, 보류 줄, 알림 줄을 이 순서로 쌓는다.
-//!
-//! 설계: docs/design/tui.md(상태판 줄 순서, 상태 표시), docs/design/input-handling.md(대기와 취소, 멈춤과 보류).
-//! - 같은 종류 안에서는 접수 순서(`seq`)를 따른다. 줄이 생기거나 사라져도 남은 줄끼리 상대 위치는 유지한다.
-//! - 보류 줄을 뺀 나머지 줄은 그 항목이 끝나면 지운다.
-//! - 판단 줄은 판단 방식과 관계없이 같은 문구를 쓰고 근거와 확률은 보이지 않는다.
-//! - 대기 줄과 보류 줄의 버튼은 전체 화면에서 클릭할 수 있다(`buttons`로 칸을 구해 마우스 위치와 맞춘다).
-//!
-//! 줄은 매 프레임 `build`로 `state::ChatState`에서 새로 만든다.
+//! 상태판. 줄은 매 프레임 `state::ChatState`에서 새로 만든다.
+//! 설계: docs/design/tui.md
 
 use std::time::{Duration, Instant};
 
@@ -27,103 +20,79 @@ use crate::state::{ChatState, InputView, TaskView, TrainingProgress};
 use crate::view::transcript::held_labels;
 use crate::view::{EMPHASIS, text_width, truncate};
 
-/// 실행 줄 `명령 실행 중` 뒤에 보이는 명령 앞 칸 수.
 pub const COMMAND_PREVIEW_COLS: usize = 40;
 
-/// 줄 종류. 값 순서가 상태판 위→아래 순서다.
+/// 값 순서가 상태판 위에서 아래 순서다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum LineKind {
-    /// 실행 줄.
     Running,
-    /// 판단 줄.
     Judging,
-    /// 학습 줄.
     Training,
-    /// 대기 줄.
     Queued,
-    /// 보류 줄(멈춤 결과 줄과 보류 닫기 확인 포함).
+    /// 멈춤 결과 줄과 보류 닫기 확인을 포함한다.
     Held,
-    /// 알림 줄.
     Alert,
 }
 
-/// 실행 줄.
-/// 출력 전: `⠙ [A] 작업 중`. 출력 뒤: `⠙ [A] claude · opus · 1분 · 하위 에이전트 2개 실행 중`처럼
-/// provider · 모델 · 경과 · 하는 일(subagent가 돌면 `하위 에이전트 N개 실행 중`).
-/// TODO(#50): 칸 순서를 provider와 모델 먼저로 둘지, 하는 일 먼저로 둘지, 모델 이름을 보고된 그대로 쓸지 별칭으로 쓸지
+/// TODO(#50): 칸 순서와 모델 이름 표기
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RunningLine {
-    /// 작업.
     pub task: TaskId,
-    /// 이름표.
     pub label: TaskLabel,
-    /// 마지막으로 답한 provider.
     pub provider: Option<Provider>,
-    /// 보고된 모델.
     pub model: Option<String>,
-    /// 경과(허가 대기 동안 멈춘 값).
     pub elapsed: Duration,
-    /// 하는 일. `None`이고 출력 전이면 `작업 중`.
     pub activity: Option<Activity>,
-    /// 허가 응답 대기 중(`허가 기다림`). `activity`보다 앞선다.
+    /// `activity`보다 앞선다.
     pub awaiting_permission: bool,
-    /// 도는 provider subagent 수. 0이 아니면 하는 일 대신 `하위 에이전트 N개 실행 중`.
+    /// 0이 아니면 하는 일 대신 보인다.
     pub subagents: usize,
-    /// 모델 글이 한 번이라도 왔다.
     pub has_output: bool,
 }
 
-/// 상태판 한 줄.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StatusLine {
-    /// 실행 줄.
+    /// 살아 있는 작업마다 한 줄.
     Running(RunningLine),
-    /// 판단 줄 `⠹ [D] 판단 중 · 배포 스크립트 정리`. 원문을 모르면 `· 원문` 칸을 뺀다.
-    /// TODO(#53): 짧게 끝나는 판단의 판단 줄을 생략할지, 항상 그릴지, 지연 표시와 최소 표시 시간을 둘지
+    /// TODO(#53): 짧게 끝나는 판단의 판단 줄 표시 방식
     Judging {
         input: InputId,
         label: Option<TaskLabel>,
         text: Option<String>,
     },
-    /// 학습 줄 `⠼ [학습] 단계 · 채점 N건 · 경과 · Token N`.
-    /// TODO(#55): `/stop`이 진행 중인 `/train`도 멈출지, 학습 전용 중지 명령을 둘지, 학습 줄에 중지 버튼을 둘지
+    /// TODO(#55): `/stop`과 진행 중인 `/train`의 관계
     Training(TrainingProgress),
-    /// 대기 줄 `· [C] 대기 · A 다음 · 테스트도 같이 돌려줘  [보내기] [취소]`.
-    /// 이유 문구는 `queue_reason_text`. `JudgeOrder`면 `[보내기]` 없이 `[취소]`만.
     Queued {
         input: InputId,
         label: Option<TaskLabel>,
         reason: QueueReason,
         text: Option<String>,
     },
-    /// 멈춤 결과 `‖ 멈춤 · [A] [C] 보류됨 · /continue 로 이어서`. 보류 줄 맨 앞.
+    /// 보류 줄 맨 앞에 둔다.
     Stopped { held: Vec<TaskLabel> },
-    /// 보류 줄(작업) `‖ [E] 보류 · codex · /continue E  [이어서] [취소]`.
     HeldTask {
         task: TaskId,
         label: TaskLabel,
         provider: Option<Provider>,
     },
-    /// 보류 줄(보내지 않은 입력) `‖ [C] 보류 · 원문  [이어서] [취소]`.
     HeldInput {
         input: InputId,
         label: Option<TaskLabel>,
         text: Option<String>,
     },
-    /// 보류 닫기 확인 `‖ [E] 보류를 닫을까요?`. 그 작업의 보류 줄 자리에 대신 그린다. `Enter` 종료, `Esc` 유지.
+    /// 그 작업의 보류 줄 자리에 대신 그린다.
     CloseHeldConfirm { task: TaskId, label: TaskLabel },
-    /// 알림 줄. 문구는 `alert_text`.
+    /// 같은 알림은 한 줄만.
     Alert(Alert),
-    /// 알림 줄 `멈춤 확인 안 됨 · N개 남음`.
+    /// 멈춤 뒤 provider 프로세스 묶음 밖에 남은 프로세스 수.
     StopUnconfirmed { remaining: u32 },
-    /// 알림 줄 `판단기 연결 없음 · 차례에 보냅니다`. `[보내기]`를 눌렀으나 judge 실패(`Alert::JudgeDownSendingInOrder`).
+    /// `[보내기]`를 눌렀지만 judge가 실패해 차례에 보낸다.
     JudgeUnavailableSend,
-    /// 알림 줄 `폴더 설정 오류 · 이전 설정 번호 12로 계속 · 줄 7: ...`(`SettingsApplied`의 경고).
+    /// `previous`는 계속 쓰는 이전 설정 번호.
     SettingsError { previous: u64, detail: String },
 }
 
 impl StatusLine {
-    /// 줄 종류.
     pub fn kind(&self) -> LineKind {
         match self {
             Self::Running(_) => LineKind::Running,
@@ -144,7 +113,7 @@ impl StatusLine {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 줄 글자 수
     // basis: estimate
-    /// 버튼을 뺀 줄 글. `spinner`는 실행·판단·학습 줄 머리 글자, 대기 줄은 `·`, 보류 줄은 `‖`.
+    /// `spinner`는 실행·판단·학습 줄의 머리 글자.
     pub fn text(&self, lang: Lang, labels_visible: bool, spinner: char) -> String {
         let prefix = |label: Option<TaskLabel>| labels::prefix(label, labels_visible);
         match self {
@@ -231,7 +200,6 @@ impl StatusLine {
         }
     }
 
-    /// 줄 끝 버튼. 대기 줄 `[보내기] [취소]`(`JudgeOrder`면 `[취소]`만), 보류 줄 `[이어서] [취소]`, 그 밖에는 없음.
     pub fn buttons(&self) -> Vec<Button> {
         match self {
             Self::Queued {
@@ -252,25 +220,18 @@ impl StatusLine {
     }
 }
 
-/// 상태판 버튼. 누르면 같은 뜻의 명령과 같다.
+/// 누르면 같은 뜻의 명령과 같다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Button {
-    /// `[보내기]` = `/send` → `Request::SendNow`.
     Send(InputId),
-    /// 대기 줄 `[취소]` = `/cancel` → `Request::CancelInput`.
     CancelInput(InputId),
-    /// 보류 줄 `[이어서]` = `/continue` → `Request::Continue { task: Some }`.
     ContinueTask(TaskId),
-    /// 보류 입력 줄 `[이어서]` → `Request::ContinueInput`(그 입력만 대기열로 되돌린다).
     ContinueInput(InputId),
-    /// 보류 줄 `[취소]` = `/cancel` → 보류 닫기 확인 줄을 띄운다.
     CloseHeld(TaskId),
-    /// 보류 입력 줄 `[취소]` → `Request::CancelInput`.
     CancelHeldInput(InputId),
 }
 
 impl Button {
-    /// 버튼 글(`[보내기]`, `[취소]`, `[이어서]`).
     pub fn text(self, lang: Lang) -> &'static str {
         match self {
             Self::Send(_) => lang.tr(i18n::BUTTON_SEND),
@@ -285,8 +246,7 @@ impl Button {
 // cost: time O(t log t + i log i + a), heap O(t + i + a), stack O(1)
 // vars: t = 작업 수, i = 입력 수, a = 알림 수
 // basis: estimate
-/// 상태에서 줄을 만든다. 종류 순서, 같은 종류 안 접수 순서로 정렬한다.
-/// 끝난 작업·끝 상태 입력은 줄이 없다. `Queued`인데 `reason`이 없으면 줄을 만들지 않는다(engine이 항상 싣는다).
+/// `Queued`인데 `reason`이 없으면 줄을 만들지 않는다(engine이 항상 싣는다).
 pub fn build(state: &ChatState, now: Instant) -> Vec<StatusLine> {
     let mut lines: Vec<StatusLine> = Vec::new();
     let mut tasks: Vec<&TaskView> = state.tasks.values().collect();
@@ -317,8 +277,6 @@ pub fn build(state: &ChatState, now: Instant) -> Vec<StatusLine> {
     lines
 }
 
-/// 대기 이유 문구: `AfterTask(A)` → `A 다음`, `JudgeOrder` → `판단 차례`, `JudgeConnection` → `판단기 연결 기다림`,
-/// `WriteTurn` → `쓰기 차례`, `AfterCompaction` → `맥락 정리 뒤`, `AfterAllTasks` → `모든 작업 뒤`.
 pub fn queue_reason_text(lang: Lang, reason: QueueReason) -> String {
     let key = match reason {
         QueueReason::AfterTask(label) => {
@@ -336,8 +294,6 @@ pub fn queue_reason_text(lang: Lang, reason: QueueReason) -> String {
     lang.tr(key).to_string()
 }
 
-/// 실행 줄 하는 일 문구: `Thinking` → `생각 중`, `ReadingFile` → `파일 읽는 중`, `EditingFile` → `파일 수정 중`,
-/// `RunningCommand` → `명령 실행 중 ` + 명령 앞 40칸, `Compacting` → `맥락 정리 중`, `SwitchingProvider` → `공급자 전환 중`.
 pub fn activity_text(lang: Lang, activity: &Activity) -> String {
     let key = match activity {
         Activity::Thinking => i18n::THINKING,
@@ -357,8 +313,6 @@ pub fn activity_text(lang: Lang, activity: &Activity) -> String {
     lang.tr(key).to_string()
 }
 
-/// 알림 문구: `JudgePaused` → `자동 판단 일시 중단`, `IntakeStopped` → `새 입력 접수 중단 · 판단기 연결을 확인하세요`,
-/// `SteerNotReady(codex)` → `바로 반영: 준비 중 (codex)`, `ChatBusyElsewhere` → `다른 Saturn에서 실행 중`.
 pub fn alert_text(lang: Lang, alert: &Alert) -> String {
     let key = match alert {
         Alert::JudgePaused => i18n::JUDGE_PAUSED,
@@ -379,7 +333,6 @@ pub fn alert_text(lang: Lang, alert: &Alert) -> String {
 // cost: time O(l), heap O(l), stack O(1)
 // vars: l = 그릴 줄 수
 // basis: estimate
-/// 줄마다 버튼 칸. `area`는 상태판 칸, 줄 `i`는 `area.y + i`행, 버튼은 줄 끝에 두 칸 띄어 오른쪽에 붙인다.
 /// 그리기와 마우스 클릭 판정이 같은 계산을 쓴다.
 pub fn button_rects(lines: &[StatusLine], lang: Lang, area: Rect) -> Vec<(Rect, Button)> {
     let mut rects = Vec::new();
@@ -397,16 +350,11 @@ pub fn button_rects(lines: &[StatusLine], lang: Lang, area: Rect) -> Vec<(Rect, 
     rects
 }
 
-/// 상태판 그리기.
 #[derive(Debug)]
 pub struct StatusBoardView<'a> {
-    /// `build`로 만든 줄.
     pub lines: &'a [StatusLine],
-    /// 화면 언어.
     pub lang: Lang,
-    /// 이름표를 보일지.
     pub labels_visible: bool,
-    /// 스피너 글자.
     pub spinner: char,
 }
 
@@ -414,7 +362,6 @@ impl StatusBoardView<'_> {
     // cost: time O(l·w), heap O(l·w), stack O(1)
     // vars: l = 그릴 줄 수, w = 칸 폭
     // basis: estimate
-    /// 줄을 위에서부터 그리고 버튼을 `button_rects` 자리에 그린다. subagent 줄은 부모 줄 아래 흐리게.
     pub fn render(&self, frame: &mut Frame, area: Rect) {
         let rects = button_rects(self.lines, self.lang, area);
         let width = usize::from(area.width);
@@ -443,8 +390,6 @@ impl StatusBoardView<'_> {
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = 줄 글자 수
 // basis: estimate
-/// 실행 줄 본문. 출력·하는 일·허가 대기·subagent가 모두 없으면 `작업 중`,
-/// 아니면 provider · 모델 · 경과 · 하는 일(허가 대기 → subagent 수 → 도구 순).
 fn running_text(lang: Lang, line: &RunningLine) -> String {
     let doing = if line.awaiting_permission {
         Some(lang.tr(i18n::AWAITING_PERMISSION).to_string())
@@ -464,7 +409,6 @@ fn running_text(lang: Lang, line: &RunningLine) -> String {
     parts.join(" · ")
 }
 
-/// `하위 에이전트 2개 실행 중`.
 fn subagents_text(lang: Lang, count: usize) -> String {
     match lang {
         Lang::Ko => format!("{} {count}{}", i18n::SUBAGENTS, i18n::RUNNING_COUNT_SUFFIX),
@@ -476,7 +420,6 @@ fn subagents_text(lang: Lang, count: usize) -> String {
     }
 }
 
-/// 학습 줄 `⠼ [학습] 단계 · 채점 83건 · 1분 · Token 9,870`.
 fn training_text(lang: Lang, spinner: char, progress: &TrainingProgress) -> String {
     let graded = i18n::format_count(u64::from(progress.graded));
     let graded = match lang {
@@ -493,7 +436,6 @@ fn training_text(lang: Lang, spinner: char, progress: &TrainingProgress) -> Stri
     )
 }
 
-/// 줄 끝에 ` · 원문 첫 줄`을 붙인다. 원문을 모르면 그대로.
 fn with_text(head: String, text: Option<&str>) -> String {
     match text.and_then(|text| text.lines().next()) {
         Some(first) => format!("{head} · {first}"),
@@ -503,13 +445,11 @@ fn with_text(head: String, text: Option<&str>) -> String {
 
 // cost: time O(1), heap O(1), stack O(1)
 // basis: estimate
-/// 버튼 칸 전체 폭. 버튼 사이 한 칸.
 fn buttons_width(buttons: &[Button], lang: Lang) -> u16 {
     let widths: usize = buttons.iter().map(|b| text_width(b.text(lang))).sum();
     (widths + buttons.len().saturating_sub(1)) as u16
 }
 
-/// 작업의 실행 줄.
 fn running_line(task: &TaskView, now: Instant) -> RunningLine {
     RunningLine {
         task: task.id,
@@ -524,7 +464,6 @@ fn running_line(task: &TaskView, now: Instant) -> RunningLine {
     }
 }
 
-/// 대기 줄. 이유가 없으면 만들지 않는다.
 fn queued_line(input: &InputView) -> Option<StatusLine> {
     if input.state != InputState::Queued {
         return None;
@@ -540,7 +479,6 @@ fn queued_line(input: &InputView) -> Option<StatusLine> {
 // cost: time O(t log t + i log i), heap O(t + i), stack O(1)
 // vars: t = 보류 작업 수, i = 보류 입력 수
 // basis: estimate
-/// 보류 줄: 멈춤 결과를 맨 앞에, 이어서 보류 작업과 보류 입력을 접수 순서로. 닫기 확인 중인 작업은 확인 줄로 바꾼다.
 fn held_lines(state: &ChatState, tasks: &[&TaskView], inputs: &[&InputView]) -> Vec<StatusLine> {
     let mut held: Vec<(u64, StatusLine)> = Vec::new();
     for task in tasks
@@ -582,7 +520,6 @@ fn held_lines(state: &ChatState, tasks: &[&TaskView], inputs: &[&InputView]) -> 
 // cost: time O(a), heap O(a), stack O(1)
 // vars: a = 알림 수
 // basis: estimate
-/// 알림 줄: engine 경고, 멈춤 뒤 남은 프로세스, 폴더 설정 오류.
 fn alert_lines(state: &ChatState) -> Vec<StatusLine> {
     let mut lines: Vec<StatusLine> = state
         .alerts

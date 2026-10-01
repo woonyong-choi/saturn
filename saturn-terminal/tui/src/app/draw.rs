@@ -1,7 +1,5 @@
 //! 화면 전체 그리기. 영역 배치와 창 덮기.
-//!
-//! 설계: docs/design/tui.md(배치). 위에서 아래로 시작 화면 또는 대화 기록, 작업별 출력 칸, 상태판, 팝업, 입력창, 바닥줄.
-//! 창은 그 위에 덮고, 허가 요청 창은 일반 창 위에, judge 키·폴더 신뢰 창은 맨 위에 그린다.
+//! 설계: docs/design/tui.md
 
 use std::time::Instant;
 
@@ -33,8 +31,6 @@ impl App {
     // cost: time O(c + w·h), heap O(c + w·h), stack O(1)
     // vars: c = 대화 기록 글자 수, w·h = 화면 칸 수
     // basis: estimate
-    /// 화면 전체를 그린다. `view::layout`으로 영역을 나누고 시작 화면 또는 대화 기록, 작업별 출력 칸, 상태판,
-    /// 팝업, 입력창, 바닥줄을 그린 뒤 창(`window`)과 허가 요청 창을 덮는다. 전체 기록은 화면 전체를 쓴다.
     pub fn render(&self, frame: &mut Frame, now: Instant) {
         let area = frame.area();
         let lang = self.lang;
@@ -90,7 +86,6 @@ impl App {
         self.render_windows(frame, area, now);
     }
 
-    /// 화면 영역. 상태판은 줄 수만큼, 작업별 출력 칸은 `LiveArea::height`만큼.
     pub(super) fn areas(&self, area: Rect, status_lines: usize) -> Areas {
         let composer = if self.composer.search().is_some() {
             1
@@ -108,7 +103,6 @@ impl App {
         )
     }
 
-    /// 창 덮기. 일반 창 → 허가 요청 창 → judge 키·폴더 신뢰 창 순서로 위에 그린다.
     fn render_windows(&self, frame: &mut Frame, area: Rect, now: Instant) {
         let lang = self.lang;
         match &self.window {
@@ -144,7 +138,6 @@ impl App {
 
 // cost: time O(1), heap O(1), stack O(1)
 // basis: estimate
-/// `?` 단축키 안내 창. 키 칸을 맞춰 설명을 붙인다.
 fn render_shortcuts(app: &App, frame: &mut Frame, area: Rect) {
     let lang = app.lang;
     let width = i18n::SHORTCUTS

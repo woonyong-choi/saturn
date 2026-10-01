@@ -1,8 +1,5 @@
 //! 사용량 화면(`/usage`). 범위 `chat`, `today`, `week`, `all`.
-//!
-//! 설계: docs/design/tui.md(영역 사용량 화면, 키 사용량 화면), docs/design/providers-and-sessions.md(사용량 보고).
-//! 보고하지 않은 값은 0으로 채우지 않고 `-`로 보인다.
-//! `Request::Usage`의 응답은 `Notification::Usage`이고, 행은 protocol `UsageRow`를 그대로 쓴다.
+//! 설계: docs/design/tui.md
 
 use ratatui::Frame;
 use ratatui::layout::Rect;
@@ -13,31 +10,22 @@ use saturn_protocol::rpc::{UsageRange, UsageRow};
 use crate::i18n::{self, Lang};
 use crate::view::{EMPHASIS, MUTED, text_width, truncate, window_block};
 
-/// 토큰 칸 폭.
 const NUMBER_COLS: usize = 11;
 
-/// 사용량 화면 내용.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UsageTable {
-    /// 범위.
     pub range: UsageRange,
-    /// 에이전트별 행과 judge 행.
     pub rows: Vec<UsageRow>,
 }
 
-/// 사용량 화면 상태.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UsageScreen {
-    /// 받은 내용. 응답 전이면 `None`.
     pub table: Option<UsageTable>,
-    /// 요청한 범위.
     pub range: UsageRange,
-    /// `Enter`로 judge 실제 모델 상세를 펼쳤다.
     pub detail: bool,
 }
 
 impl UsageScreen {
-    /// 범위로 연다(응답 대기).
     pub fn new(range: UsageRange) -> Self {
         Self {
             table: None,
@@ -46,18 +34,14 @@ impl UsageScreen {
         }
     }
 
-    /// `Enter` judge 실제 모델 상세를 펼치거나 접는다.
     pub fn toggle_detail(&mut self) {
         self.detail = !self.detail;
     }
 }
 
-/// 사용량 화면 그리기.
 #[derive(Debug)]
 pub struct UsageView<'a> {
-    /// 화면 상태.
     pub screen: &'a UsageScreen,
-    /// 화면 언어.
     pub lang: Lang,
 }
 
@@ -65,8 +49,7 @@ impl UsageView<'_> {
     // cost: time O(r·w), heap O(r·w), stack O(1)
     // vars: r = 행 수, w = 칸 폭
     // basis: estimate
-    /// 범위 머리, 에이전트별 새 입력·캐시 읽기·캐시 쓰기·출력·추론 표(천 단위 쉼표, 미보고 `-`),
-    /// judge 호출과 예상 비용, 맥락 정리, 채점 합계 줄, 상세면 judge를 부른 행(`who`가 judge 실제 모델)별 호출과 비용을 그린다.
+    /// 보고하지 않은 값은 0으로 채우지 않고 `-`로 보인다.
     pub fn render(&self, frame: &mut Frame, area: Rect) {
         let lang = self.lang;
         let title = format!(
@@ -95,7 +78,7 @@ impl UsageView<'_> {
     }
 }
 
-/// 범위 이름(`chat`, `today`, `week`, `all`). 명령 인자와 같아 번역하지 않는다.
+/// 명령 인자와 같아 번역하지 않는다.
 pub fn range_name(range: UsageRange) -> &'static str {
     match range {
         UsageRange::Chat => "chat",
@@ -105,7 +88,7 @@ pub fn range_name(range: UsageRange) -> &'static str {
     }
 }
 
-/// 예상 비용(마이크로 달러)을 `$0.0123`으로. 모르면 `-`.
+/// `micros`는 마이크로 달러이고 모르면 `-`.
 pub fn cost_text(micros: Option<u64>) -> String {
     match micros {
         Some(micros) => format!("${:.4}", micros as f64 / 1_000_000.0),
@@ -116,7 +99,6 @@ pub fn cost_text(micros: Option<u64>) -> String {
 // cost: time O(r), heap O(r), stack O(1)
 // vars: r = table.rows.len()
 // basis: estimate
-/// 표 줄: 머리, 행, 합계, 상세.
 fn table_lines(lang: Lang, table: &UsageTable, detail: bool) -> Vec<Line<'static>> {
     let who_width = table
         .rows
@@ -172,7 +154,6 @@ fn table_lines(lang: Lang, table: &UsageTable, detail: bool) -> Vec<Line<'static
 
 // cost: time O(1), heap O(1), stack O(1)
 // basis: estimate
-/// 표 한 행. 대상은 왼쪽 정렬, 숫자는 오른쪽 정렬.
 fn table_row(who: &str, cells: &[String; 5], who_width: usize) -> String {
     let mut row = format!("{who}{}", " ".repeat(who_width - text_width(who)));
     for cell in cells {
@@ -186,7 +167,7 @@ fn table_row(who: &str, cells: &[String; 5], who_width: usize) -> String {
 // cost: time O(r), heap O(r), stack O(1)
 // vars: r = 행 수
 // basis: estimate
-/// 합계 줄 `판단기 호출 3 · 예상 비용 $0.0120 · 맥락 정리 1 · 채점 40`. 비용은 아는 값만 더한다.
+/// 비용은 아는 값만 더한다.
 fn totals_line(lang: Lang, rows: &[UsageRow]) -> String {
     let calls: u32 = rows.iter().map(|row| row.judge_calls).sum();
     let costs: Vec<u64> = rows
