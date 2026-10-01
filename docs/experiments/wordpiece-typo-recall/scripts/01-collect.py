@@ -327,21 +327,21 @@ def en_valid(window):
 def ko_positions(docs):
     out = []
     for d, doc in enumerate(docs):
-        for l, line in enumerate(doc["text"].split("\n")):
+        for n, line in enumerate(doc["text"].split("\n")):
             words = line.split()
             for i in range(len(words) - 1):
                 if HANGUL_WORD.match(words[i]) and HANGUL_WORD.match(words[i + 1]):
-                    out.append((d, l, i))
+                    out.append((d, n, i))
     return out
 
 
 def en_positions(docs):
     out = []
     for d, doc in enumerate(docs):
-        for l, line in enumerate(doc["ident_lines"]):
+        for n, line in enumerate(doc["ident_lines"]):
             words = line.split()
             for i in range(len(words) - 1):
-                out.append((d, l, i))
+                out.append((d, n, i))
     return out
 
 
