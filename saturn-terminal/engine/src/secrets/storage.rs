@@ -1,10 +1,7 @@
-//! 키 저장: macOS 키체인 OS API 직접 저장, OS 저장소가 없으면 0600 파일, 강화 방식의 잠금.
-//!
-//! 설계: docs/design/judge-key-security.md(키 저장, `security` 명령을 쓰지 않는 이유).
-//! `security` 명령은 쓰지 않는다. 그 명령으로 저장하면 명령이 신뢰 앱이 되어 누구나 확인 창 없이 읽는다.
-//! 키체인은 `keyring` crate(`apple-native`)로 OS API를 직접 부른다.
+//! 키 저장: macOS 키체인 OS API, 키체인이 없으면 0600 파일, 강화 방식의 잠금.
+//! `security` 명령으로 저장하면 그 명령이 신뢰 앱이 되어 누구나 확인 창 없이 읽으므로 쓰지 않는다.
 //! TODO(#32): 키체인 서비스 이름과 계정 이름(초안 `saturn`, `judge-key`)
-//! TODO(#102): 강화 방식 항목의 신뢰 앱 목록을 비우는 방법. 정해지기 전에는 표준 방식과 같은 항목에 잠금 시계만 더한다
+//! TODO(#102): 강화 방식 항목의 신뢰 앱 목록을 비우는 방법. 정해지기 전에는 잠금 시계만 더한다
 
 use std::io::Write;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
@@ -13,61 +10,54 @@ use std::time::{Duration, Instant};
 
 use super::{JUDGE_KEY_ENV, JudgeKey, KeySource, SecretsError};
 
-/// 강화 방식: 마지막 사용 뒤 이만큼 쓰지 않으면 잠근다.
+/// 마지막 사용 뒤 이만큼 쓰지 않으면 잠근다.
 pub const HARDENED_IDLE_LOCK: Duration = Duration::from_secs(10 * 60);
 
-/// 강화 방식: 풀린 뒤 사용과 관계없이 이만큼 지나면 잠근다.
+/// 풀린 뒤 사용과 관계없이 이만큼 지나면 잠근다.
 pub const HARDENED_MAX_UNLOCK: Duration = Duration::from_secs(12 * 60 * 60);
 
-/// engine 타이머가 `SecretStore::lock_if_expired`를 부르는 주기. 값은 초안이다(설계에 없음).
+/// 초안 값.
 pub const LOCK_CHECK_INTERVAL: Duration = Duration::from_secs(60);
 
-/// 키체인 서비스 이름(초안, TODO(#32)).
 const KEYCHAIN_SERVICE: &str = "saturn";
 
-/// 키체인 계정 이름(초안, TODO(#32)).
 const KEYCHAIN_ACCOUNT: &str = "judge-key";
 
-/// 대체 키 파일 이름(초안). `~/.saturn/` 아래에 둔다. 훅 차단 목록도 이 이름을 쓴다.
+/// 훅 차단 목록도 이 이름을 쓴다. 초안 값.
 pub(crate) const KEY_FILE: &str = "judge.key";
 
-/// 대체 키 파일 권한.
+/// 소유자만 읽고 쓴다.
 const KEY_FILE_MODE: u32 = 0o600;
 
-/// 저장 방식. 사용자 층 설정에서 고른다. TODO(#49): 설정 키 이름과 기본값
+/// TODO(#49): 설정 키 이름과 기본값
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum StorageMode {
-    /// 기본. 키체인에 OS API로 저장한다.
     #[default]
     Standard,
-    /// 신뢰 앱 없는 키체인 항목으로 저장한다. session 시작 때 키체인 암호를 한 번 받고,
-    /// `HARDENED_IDLE_LOCK`이나 `HARDENED_MAX_UNLOCK`이 지나면 잠근다.
+    /// 신뢰 앱 없는 항목으로 저장하고 session 시작 때 키체인 암호를 한 번 받는다.
     Hardened,
 }
 
-/// 실제 저장소.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Backend {
-    /// macOS 키체인.
     Keychain,
-    /// 키체인을 쓸 수 없을 때 권한 0600 파일. 경로 `~/.saturn/judge.key`는 초안이다(설계에 없음).
+    /// 키체인을 쓸 수 없을 때. 경로는 초안이다.
     File(PathBuf),
 }
 
-/// judge 키 보관소. engine에 하나. 키를 메모리에 들고 있는 곳은 여기뿐이다.
+/// engine에 하나. 키를 메모리에 들고 있는 곳은 여기뿐이다.
 #[derive(Debug)]
 pub struct SecretStore {
     backend: Backend,
     mode: StorageMode,
-    /// 이번 실행에 쓰는 키. 관리자 명령과 환경 변수 키도 여기에만 둔다.
+    /// 관리자 명령과 환경 변수 키도 여기에만 둔다.
     current: Option<(JudgeKey, KeySource)>,
     /// 강화 방식에서 풀린 시각과 마지막 사용 시각.
     unlocked: Option<(Instant, Instant)>,
 }
 
 impl SecretStore {
-    /// 키체인을 쓸 수 있으면 `Keychain`, 없으면 파일 백엔드(초안 경로 `home/judge.key`)로 연다. 키를 읽지는 않는다.
-    /// 키체인을 쓸 수 있는지는 운영체제로 정한다(macOS면 키체인).
+    /// 키를 읽지는 않는다.
     pub fn open(home: &Path, mode: StorageMode) -> Self {
         let backend = if cfg!(target_os = "macos") {
             Backend::Keychain
@@ -92,8 +82,7 @@ impl SecretStore {
         }
     }
 
-    /// 저장된 키를 읽어 `current`에 둔다. 환경 변수가 있으면 그것을 먼저 쓴다(`KeySource::Env`).
-    /// 파일 백엔드는 권한이 0600이 아니면 읽지 않는다. 강화 방식이면 잠금 상태에서 `Locked`.
+    /// 환경 변수가 있으면 그것을 먼저 쓴다.
     ///
     /// # Errors
     /// 없으면 `NotFound`, 권한이 틀리면 `FilePermission`, 키체인 실패면 `Keychain`, 잠겼으면 `Locked`.
@@ -101,7 +90,7 @@ impl SecretStore {
         self.load_with_env(std::env::var(JUDGE_KEY_ENV).ok()).await
     }
 
-    /// `load`의 본문. 환경 변수 값을 밖에서 받아 테스트가 프로세스 환경을 바꾸지 않게 한다.
+    /// 테스트가 프로세스 환경을 바꾸지 않게 환경 변수 값을 밖에서 받는다.
     async fn load_with_env(
         &mut self,
         env_value: Option<String>,
@@ -117,8 +106,7 @@ impl SecretStore {
         Ok(&self.current.insert((key, KeySource::Stored)).0)
     }
 
-    /// 확인을 통과한 키를 보관한다. `Stored`와 `Stdin` 출처만 백엔드에 쓰고, `Env`와 `Command`는 `current`에만 둔다.
-    /// 파일 백엔드는 임시 파일을 0600으로 만든 뒤 이름을 바꿔 쓴다. 강화 방식은 신뢰 앱 목록이 빈 항목으로 쓴다(TODO(#102)).
+    /// `Stored`와 `Stdin` 출처만 백엔드에 쓰고, `Env`와 `Command`는 메모리에만 둔다.
     ///
     /// # Errors
     /// 키체인 실패면 `Keychain`, 파일 실패면 `Io`.
@@ -130,12 +118,12 @@ impl SecretStore {
         Ok(())
     }
 
-    /// 확인 전 키를 이번 실행에만 둔다. 백엔드에는 쓰지 않는다. 확인을 통과하면 `persist_current`, 실패하면 `drop_current`.
+    /// 확인 전 키라 백엔드에는 쓰지 않는다.
     pub(crate) fn hold(&mut self, key: JudgeKey, source: KeySource) {
         self.current = Some((key, source));
     }
 
-    /// `hold`로 둔 키를 `save` 규칙대로 백엔드에 쓴다(`Stored`, `Stdin`만). 둔 키가 없으면 아무것도 하지 않는다.
+    /// `Stored`, `Stdin` 출처만 쓴다.
     ///
     /// # Errors
     /// 키체인 실패면 `Keychain`, 파일 실패면 `Io`.
@@ -146,13 +134,11 @@ impl SecretStore {
         }
     }
 
-    /// 이번 실행의 키를 버린다. 저장된 키는 그대로 둔다.
+    /// 저장된 키는 그대로 둔다.
     pub(crate) fn drop_current(&mut self) {
         self.current = None;
     }
 
-    /// 저장된 키와 `current`를 지운다. 키가 거부됐거나 사용자가 키를 바꿀 때 쓴다.
-    ///
     /// # Errors
     /// 키체인 실패면 `Keychain`, 파일 삭제 실패면 `Io`.
     pub async fn forget(&mut self) -> Result<(), SecretsError> {
@@ -170,7 +156,7 @@ impl SecretStore {
         }
     }
 
-    /// 이번 실행의 키. judge 호출 직전에 부르고, 강화 방식이면 잠금 조건을 먼저 확인하고 마지막 사용 시각을 갱신한다.
+    /// 강화 방식이면 잠금 조건을 먼저 확인하고 마지막 사용 시각을 갱신한다.
     ///
     /// # Errors
     /// 없으면 `NotFound`, 잠겼으면 `Locked`.
@@ -191,7 +177,7 @@ impl SecretStore {
             .ok_or(SecretsError::NotFound)
     }
 
-    /// 강화 방식에서 session 시작 때 키체인 암호로 푼다. 암호는 OS 확인 창이 받는다(Saturn은 암호를 보지 않는다). 표준 방식이면 아무것도 하지 않는다.
+    /// 암호는 OS 확인 창이 받고 Saturn은 보지 않는다.
     ///
     /// # Errors
     /// 사용자가 거부하면 `Locked`, 키체인 실패면 `Keychain`.
@@ -209,8 +195,7 @@ impl SecretStore {
         Ok(())
     }
 
-    /// 강화 방식에서 마지막 사용 뒤 `HARDENED_IDLE_LOCK` 또는 풀린 뒤 `HARDENED_MAX_UNLOCK`이 지났으면 `current`를 버리고 잠근다.
-    /// 잠갔으면 참. engine 타이머가 `LOCK_CHECK_INTERVAL`(초안 1분)마다 부른다.
+    /// 잠갔으면 참.
     pub fn lock_if_expired(&mut self, now: Instant) -> bool {
         if self.mode == StorageMode::Standard {
             return false;
@@ -233,7 +218,6 @@ impl SecretStore {
         true
     }
 
-    /// 가림 대상 문자열. 이번 실행의 키가 있으면 그 원문. `Masker`를 만들 때 쓴다.
     pub(crate) fn mask_needles(&self) -> Vec<String> {
         self.current
             .iter()
@@ -241,7 +225,6 @@ impl SecretStore {
             .collect()
     }
 
-    /// 백엔드에서 키를 읽는다.
     fn read_backend(&self) -> Result<JudgeKey, SecretsError> {
         match &self.backend {
             Backend::Keychain => match keychain_entry()?.get_password() {
@@ -265,7 +248,6 @@ impl SecretStore {
         }
     }
 
-    /// 백엔드에 키를 쓴다.
     fn write_backend(&self, key: &JudgeKey) -> Result<(), SecretsError> {
         match &self.backend {
             Backend::Keychain => keychain_entry()?
@@ -279,12 +261,12 @@ impl SecretStore {
     }
 }
 
-/// 키체인 항목 하나. 만들기만 하고 키체인에 접근하지 않는다.
+/// 키체인에 접근하지 않는다.
 fn keychain_entry() -> Result<keyring::Entry, SecretsError> {
     keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT).map_err(keychain_error)
 }
 
-/// `keyring::Error`를 원인으로 바꾼다. `BadEncoding`은 저장된 바이트(키일 수 있다)를 담고 있어 버리고 종류만 남긴다.
+/// `BadEncoding`은 저장된 바이트(키일 수 있다)를 담고 있어 버리고 종류만 남긴다.
 fn keychain_error(error: keyring::Error) -> SecretsError {
     let source: Box<dyn std::error::Error + Send + Sync> = match error {
         keyring::Error::BadEncoding(_) => "keychain item is not valid utf-8".into(),
