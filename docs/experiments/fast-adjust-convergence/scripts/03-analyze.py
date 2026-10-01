@@ -38,6 +38,10 @@ LABELS = {
     "asked-10": "10%",
 }
 SIGNAL_LABELS = {"behavior": "행동 신호", "asked": "물은 판단만"}
+_GROUPED_X = {
+    "x": {"field": "condition", "type": "nominal", "title": "시작 기준값의 틀림 비율", "sort": ["3%", "5%", "10%"], "axis": {"labelAngle": 0}},
+    "xOffset": {"field": "signal", "sort": ["행동 신호", "물은 판단만"]},
+}
 
 
 def main() -> int:
@@ -62,9 +66,11 @@ def main() -> int:
     checks = _checks(conditions, shift)
     hypotheses = _verdicts(checks)
     flow = _flow(by_condition)
+    exploratory = {"window_range_by_restart": _window_by_restart(blocks)}
 
     summary = {
         "conditions": conditions,
+        "exploratory": exploratory,
         "shift": shift,
         "checks": checks,
         "hypotheses": hypotheses,
@@ -116,6 +122,9 @@ def _describe_condition(rows: list[dict], population: dict) -> dict:
         "late_asks_per_judgment": _round(
             sum(int(row["late_asks"]) for row in rows) / (len(rows) * (100 - LATE_FIRST_BLOCK + 1) * BLOCK)
         ),
+        "late_signals_per_judgment": _round(
+            (wrong_signals + missed_signals) / (len(rows) * (100 - LATE_FIRST_BLOCK + 1) * BLOCK)
+        ),
         "late_wrong_signal_share": _proportion(wrong_signals, wrong_signals + missed_signals),
         "frozen_final": _proportion(frozen, len(rows)),
         "population": {
@@ -154,6 +163,21 @@ def _describe_shift(blocks: list[dict], target: float) -> dict:
     }
 
 
+def _window_by_restart(blocks: list[dict]) -> dict:
+    """후반 100건 묶음의 기준값 폭을 급변 재시작이 있던 묶음과 없던 묶음으로 나눈다."""
+    grouped: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    for row in blocks:
+        if int(row["block"]) < LATE_FIRST_BLOCK:
+            continue
+        key = "with_restart" if int(row["restarts"]) > 0 else "without_restart"
+        width = float(row["threshold_max"]) - float(row["threshold_min"])
+        grouped[row["condition"]][key].append(width)
+    return {
+        condition: {key: _describe(values) for key, values in sorted(groups.items())}
+        for condition, groups in sorted(grouped.items())
+    }
+
+
 def _checks(conditions: dict, shift: dict) -> list[dict]:
     checks = []
     h1 = conditions["behavior-5"]["late_wrong_rate"]
@@ -178,7 +202,7 @@ def _checks(conditions: dict, shift: dict) -> list[dict]:
     reached = shift["reached_within_limit"]
     n = reached["n"]
     z = (reached["rate"] - REACH_SHARE) / math.sqrt(REACH_SHARE * (1 - REACH_SHARE) / n)
-    p = 1.0 - _phi(z)
+    p = _phi(-z)
     rejected = reached["wilson95"][1] < REACH_SHARE
     checks.append(
         {
@@ -188,7 +212,7 @@ def _checks(conditions: dict, shift: dict) -> list[dict]:
             "value": reached["rate"],
             "ci95": reached["wilson95"],
             "n": n,
-            "p": _round(p),
+            "p": _significant(p),
             "rejected": rejected,
         }
     )
@@ -212,7 +236,7 @@ def _check(hypothesis: str, condition: str, metric: str, stats: dict, p: float, 
         "value": stats["mean"],
         "ci95": stats["ci95"],
         "n": stats["n"],
-        "p": _round(p),
+        "p": _significant(p),
         "rejected": rejected,
     }
 
@@ -224,7 +248,7 @@ def _holm(checks: list[dict]) -> None:
     for rank, index in enumerate(order):
         adjusted = min(1.0, (total - rank) * checks[index]["p"])
         running = max(running, adjusted)
-        checks[index]["p_holm"] = _round(running)
+        checks[index]["p_holm"] = _significant(running)
 
 
 def _verdicts(checks: list[dict]) -> dict:
@@ -286,7 +310,7 @@ def _upper_tail(mean: float, bound: float, se: float) -> float:
     """평균이 bound보다 크다는 단측 검정의 p값."""
     if se == 0:
         return 0.0 if mean > bound else 1.0
-    return 1.0 - _phi((mean - bound) / se)
+    return _phi(-(mean - bound) / se)
 
 
 def _lower_tail(mean: float, bound: float, se: float) -> float:
@@ -297,7 +321,12 @@ def _lower_tail(mean: float, bound: float, se: float) -> float:
 
 
 def _phi(z: float) -> float:
-    return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
+    """표준 정규 누적 분포. 꼬리의 작은 p값을 잃지 않게 erfc로 계산한다."""
+    return 0.5 * math.erfc(-z / math.sqrt(2.0))
+
+
+def _significant(value: float) -> float:
+    return float(f"{value:.6g}")
 
 
 def _round(value: float) -> float:
@@ -326,23 +355,22 @@ def _wrong_rate_figure(conditions: dict) -> dict:
         },
         "width": 420,
         "height": 220,
-        "data": {"values": values},
-        "encoding": {
-            "x": {"field": "condition", "type": "nominal", "title": "시작 기준값의 틀림 비율", "sort": ["3%", "5%", "10%"]},
-            "xOffset": {"field": "signal"},
-        },
         "layer": [
             {
+                "data": {"values": values},
                 "mark": "bar",
                 "encoding": {
+                    **_GROUPED_X,
                     "y": {"field": "rate", "type": "quantitative", "title": "틀림 비율(%)", "scale": {"zero": True}},
                     "color": {"field": "signal", "type": "nominal", "title": "신호 출처", "sort": ["행동 신호", "물은 판단만"]},
                 },
             },
             {
+                "data": {"values": values},
                 "mark": "errorbar",
                 "encoding": {
-                    "y": {"field": "low", "type": "quantitative"},
+                    **_GROUPED_X,
+                    "y": {"field": "low", "type": "quantitative", "title": None},
                     "y2": {"field": "high"},
                 },
             },
@@ -377,23 +405,22 @@ def _window_figure(conditions: dict) -> dict:
         },
         "width": 420,
         "height": 220,
-        "data": {"values": values},
-        "encoding": {
-            "x": {"field": "condition", "type": "nominal", "title": "시작 기준값의 틀림 비율", "sort": ["3%", "5%", "10%"]},
-            "xOffset": {"field": "signal"},
-        },
         "layer": [
             {
+                "data": {"values": values},
                 "mark": "bar",
                 "encoding": {
+                    **_GROUPED_X,
                     "y": {"field": "range", "type": "quantitative", "title": "기준값 폭(최대 − 최소)", "scale": {"zero": True}},
                     "color": {"field": "signal", "type": "nominal", "title": "신호 출처", "sort": ["행동 신호", "물은 판단만"]},
                 },
             },
             {
+                "data": {"values": values},
                 "mark": "errorbar",
                 "encoding": {
-                    "y": {"field": "low", "type": "quantitative"},
+                    **_GROUPED_X,
+                    "y": {"field": "low", "type": "quantitative", "title": None},
                     "y2": {"field": "high"},
                 },
             },
