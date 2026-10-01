@@ -1,0 +1,2091 @@
+{
+  "bootstrap_reps": 10000,
+  "correct_questions_by_first_stage": {
+    "claude": {
+      "5 근거 줄이 패킷에 있음": 41
+    },
+    "codex": {
+      "5 근거 줄이 패킷에 있음": 40
+    }
+  },
+  "counterfactual": {
+    "rrf-only": {
+      "answerable_rate": {
+        "k": 7,
+        "n": 384,
+        "rate": 0.018229166666666668,
+        "wilson95": [
+          0.008857651820499819,
+          0.03714428638111607
+        ]
+      },
+      "by_kind": {
+        "date": {
+          "k": 0,
+          "n": 48,
+          "rate": 0.0,
+          "wilson95": [
+            6.938893903907228e-18,
+            0.07410012966611748
+          ]
+        },
+        "date-sum": {
+          "k": 0,
+          "n": 48,
+          "rate": 0.0,
+          "wilson95": [
+            6.938893903907228e-18,
+            0.07410012966611748
+          ]
+        },
+        "extract": {
+          "k": 0,
+          "n": 96,
+          "rate": 0.0,
+          "wilson95": [
+            3.469446951953614e-18,
+            0.038475587857675686
+          ]
+        },
+        "order": {
+          "k": 0,
+          "n": 48,
+          "rate": 0.0,
+          "wilson95": [
+            6.938893903907228e-18,
+            0.07410012966611748
+          ]
+        },
+        "set": {
+          "k": 0,
+          "n": 48,
+          "rate": 0.0,
+          "wilson95": [
+            6.938893903907228e-18,
+            0.07410012966611748
+          ]
+        },
+        "update": {
+          "k": 7,
+          "n": 96,
+          "rate": 0.07291666666666667,
+          "wilson95": [
+            0.03576758131036273,
+            0.14293031665140193
+          ]
+        }
+      },
+      "by_qtype": {
+        "extract": {
+          "k": 0,
+          "n": 96,
+          "rate": 0.0,
+          "wilson95": [
+            3.469446951953614e-18,
+            0.038475587857675686
+          ]
+        },
+        "multi-session": {
+          "k": 0,
+          "n": 96,
+          "rate": 0.0,
+          "wilson95": [
+            3.469446951953614e-18,
+            0.038475587857675686
+          ]
+        },
+        "temporal": {
+          "k": 0,
+          "n": 96,
+          "rate": 0.0,
+          "wilson95": [
+            3.469446951953614e-18,
+            0.038475587857675686
+          ]
+        },
+        "update": {
+          "k": 7,
+          "n": 96,
+          "rate": 0.07291666666666667,
+          "wilson95": [
+            0.03576758131036273,
+            0.14293031665140193
+          ]
+        }
+      },
+      "evidence_items_in_packet": 66,
+      "evidence_items_total": 624,
+      "evidence_lines_visible": 10,
+      "included_items_mean": 24.208333333333332,
+      "item_visible_ci95": [
+        0.00641025641025641,
+        0.027243589743589744
+      ],
+      "item_visible_rate": 0.016025641025641024,
+      "kind_date": "0/48",
+      "kind_date-sum": "0/48",
+      "kind_extract": "0/96",
+      "kind_order": "0/48",
+      "kind_set": "0/48",
+      "kind_update": "7/96",
+      "packet_tokens_mean": 7998.828125,
+      "passed_threshold_but_cut_by_budget": 0,
+      "question_all_visible": 7,
+      "question_all_visible_ci95": [
+        0.0078125,
+        0.03125
+      ],
+      "question_all_visible_rate": 0.018229166666666668,
+      "question_answerable_in_current_format": 7,
+      "question_extract": "0/96",
+      "question_multi-session": "0/96",
+      "question_temporal": "0/96",
+      "question_update": "7/96",
+      "questions": 384,
+      "rule": "rrf-only"
+    },
+    "threshold-0.00": {
+      "answerable_rate": {
+        "k": 188,
+        "n": 384,
+        "rate": 0.4895833333333333,
+        "wilson95": [
+          0.4399359850805729,
+          0.539437029799462
+        ]
+      },
+      "by_kind": {
+        "date": {
+          "k": 23,
+          "n": 48,
+          "rate": 0.4791666666666667,
+          "wilson95": [
+            0.34471316176951616,
+            0.616707676966572
+          ]
+        },
+        "date-sum": {
+          "k": 41,
+          "n": 48,
+          "rate": 0.8541666666666666,
+          "wilson95": [
+            0.7283282347525372,
+            0.9275175067339628
+          ]
+        },
+        "extract": {
+          "k": 70,
+          "n": 96,
+          "rate": 0.7291666666666666,
+          "wilson95": [
+            0.6327365269279848,
+            0.8079621619705808
+          ]
+        },
+        "order": {
+          "k": 18,
+          "n": 48,
+          "rate": 0.375,
+          "wilson95": [
+            0.25215266760868205,
+            0.5163723648078473
+          ]
+        },
+        "set": {
+          "k": 39,
+          "n": 48,
+          "rate": 0.8125,
+          "wilson95": [
+            0.680601328507153,
+            0.8980860904515235
+          ]
+        },
+        "update": {
+          "k": 61,
+          "n": 96,
+          "rate": 0.6354166666666666,
+          "wilson95": [
+            0.5356522624736236,
+            0.7247605991482561
+          ]
+        }
+      },
+      "by_qtype": {
+        "extract": {
+          "k": 70,
+          "n": 96,
+          "rate": 0.7291666666666666,
+          "wilson95": [
+            0.6327365269279848,
+            0.8079621619705808
+          ]
+        },
+        "multi-session": {
+          "k": 80,
+          "n": 96,
+          "rate": 0.8333333333333334,
+          "wilson95": [
+            0.7462900984810511,
+            0.8947261762804989
+          ]
+        },
+        "temporal": {
+          "k": 41,
+          "n": 96,
+          "rate": 0.4270833333333333,
+          "wilson95": [
+            0.33282083114008043,
+            0.5269568587558306
+          ]
+        },
+        "update": {
+          "k": 61,
+          "n": 96,
+          "rate": 0.6354166666666666,
+          "wilson95": [
+            0.5356522624736236,
+            0.7247605991482561
+          ]
+        }
+      },
+      "evidence_items_in_packet": 516,
+      "evidence_items_total": 624,
+      "evidence_lines_visible": 441,
+      "included_items_mean": 25.0625,
+      "item_visible_ci95": [
+        0.6474358974358975,
+        0.7644230769230769
+      ],
+      "item_visible_rate": 0.7067307692307693,
+      "kind_date": "23/48",
+      "kind_date-sum": "41/48",
+      "kind_extract": "70/96",
+      "kind_order": "18/48",
+      "kind_set": "39/48",
+      "kind_update": "61/96",
+      "packet_tokens_mean": 7998.3125,
+      "passed_threshold_but_cut_by_budget": 108,
+      "question_all_visible": 252,
+      "question_all_visible_ci95": [
+        0.5859375,
+        0.7239583333333334
+      ],
+      "question_all_visible_rate": 0.65625,
+      "question_answerable_in_current_format": 188,
+      "question_extract": "70/96",
+      "question_multi-session": "80/96",
+      "question_temporal": "41/96",
+      "question_update": "61/96",
+      "questions": 384,
+      "rule": "threshold-0.00"
+    },
+    "threshold-0.10": {
+      "answerable_rate": {
+        "k": 188,
+        "n": 384,
+        "rate": 0.4895833333333333,
+        "wilson95": [
+          0.4399359850805729,
+          0.539437029799462
+        ]
+      },
+      "by_kind": {
+        "date": {
+          "k": 23,
+          "n": 48,
+          "rate": 0.4791666666666667,
+          "wilson95": [
+            0.34471316176951616,
+            0.616707676966572
+          ]
+        },
+        "date-sum": {
+          "k": 41,
+          "n": 48,
+          "rate": 0.8541666666666666,
+          "wilson95": [
+            0.7283282347525372,
+            0.9275175067339628
+          ]
+        },
+        "extract": {
+          "k": 70,
+          "n": 96,
+          "rate": 0.7291666666666666,
+          "wilson95": [
+            0.6327365269279848,
+            0.8079621619705808
+          ]
+        },
+        "order": {
+          "k": 18,
+          "n": 48,
+          "rate": 0.375,
+          "wilson95": [
+            0.25215266760868205,
+            0.5163723648078473
+          ]
+        },
+        "set": {
+          "k": 39,
+          "n": 48,
+          "rate": 0.8125,
+          "wilson95": [
+            0.680601328507153,
+            0.8980860904515235
+          ]
+        },
+        "update": {
+          "k": 61,
+          "n": 96,
+          "rate": 0.6354166666666666,
+          "wilson95": [
+            0.5356522624736236,
+            0.7247605991482561
+          ]
+        }
+      },
+      "by_qtype": {
+        "extract": {
+          "k": 70,
+          "n": 96,
+          "rate": 0.7291666666666666,
+          "wilson95": [
+            0.6327365269279848,
+            0.8079621619705808
+          ]
+        },
+        "multi-session": {
+          "k": 80,
+          "n": 96,
+          "rate": 0.8333333333333334,
+          "wilson95": [
+            0.7462900984810511,
+            0.8947261762804989
+          ]
+        },
+        "temporal": {
+          "k": 41,
+          "n": 96,
+          "rate": 0.4270833333333333,
+          "wilson95": [
+            0.33282083114008043,
+            0.5269568587558306
+          ]
+        },
+        "update": {
+          "k": 61,
+          "n": 96,
+          "rate": 0.6354166666666666,
+          "wilson95": [
+            0.5356522624736236,
+            0.7247605991482561
+          ]
+        }
+      },
+      "evidence_items_in_packet": 516,
+      "evidence_items_total": 624,
+      "evidence_lines_visible": 441,
+      "included_items_mean": 25.0625,
+      "item_visible_ci95": [
+        0.6458333333333334,
+        0.7644230769230769
+      ],
+      "item_visible_rate": 0.7067307692307693,
+      "kind_date": "23/48",
+      "kind_date-sum": "41/48",
+      "kind_extract": "70/96",
+      "kind_order": "18/48",
+      "kind_set": "39/48",
+      "kind_update": "61/96",
+      "packet_tokens_mean": 7998.3125,
+      "passed_threshold_but_cut_by_budget": 108,
+      "question_all_visible": 252,
+      "question_all_visible_ci95": [
+        0.5859375,
+        0.7265625
+      ],
+      "question_all_visible_rate": 0.65625,
+      "question_answerable_in_current_format": 188,
+      "question_extract": "70/96",
+      "question_multi-session": "80/96",
+      "question_temporal": "41/96",
+      "question_update": "61/96",
+      "questions": 384,
+      "rule": "threshold-0.10"
+    },
+    "threshold-0.20": {
+      "answerable_rate": {
+        "k": 188,
+        "n": 384,
+        "rate": 0.4895833333333333,
+        "wilson95": [
+          0.4399359850805729,
+          0.539437029799462
+        ]
+      },
+      "by_kind": {
+        "date": {
+          "k": 23,
+          "n": 48,
+          "rate": 0.4791666666666667,
+          "wilson95": [
+            0.34471316176951616,
+            0.616707676966572
+          ]
+        },
+        "date-sum": {
+          "k": 41,
+          "n": 48,
+          "rate": 0.8541666666666666,
+          "wilson95": [
+            0.7283282347525372,
+            0.9275175067339628
+          ]
+        },
+        "extract": {
+          "k": 70,
+          "n": 96,
+          "rate": 0.7291666666666666,
+          "wilson95": [
+            0.6327365269279848,
+            0.8079621619705808
+          ]
+        },
+        "order": {
+          "k": 18,
+          "n": 48,
+          "rate": 0.375,
+          "wilson95": [
+            0.25215266760868205,
+            0.5163723648078473
+          ]
+        },
+        "set": {
+          "k": 39,
+          "n": 48,
+          "rate": 0.8125,
+          "wilson95": [
+            0.680601328507153,
+            0.8980860904515235
+          ]
+        },
+        "update": {
+          "k": 61,
+          "n": 96,
+          "rate": 0.6354166666666666,
+          "wilson95": [
+            0.5356522624736236,
+            0.7247605991482561
+          ]
+        }
+      },
+      "by_qtype": {
+        "extract": {
+          "k": 70,
+          "n": 96,
+          "rate": 0.7291666666666666,
+          "wilson95": [
+            0.6327365269279848,
+            0.8079621619705808
+          ]
+        },
+        "multi-session": {
+          "k": 80,
+          "n": 96,
+          "rate": 0.8333333333333334,
+          "wilson95": [
+            0.7462900984810511,
+            0.8947261762804989
+          ]
+        },
+        "temporal": {
+          "k": 41,
+          "n": 96,
+          "rate": 0.4270833333333333,
+          "wilson95": [
+            0.33282083114008043,
+            0.5269568587558306
+          ]
+        },
+        "update": {
+          "k": 61,
+          "n": 96,
+          "rate": 0.6354166666666666,
+          "wilson95": [
+            0.5356522624736236,
+            0.7247605991482561
+          ]
+        }
+      },
+      "evidence_items_in_packet": 516,
+      "evidence_items_total": 624,
+      "evidence_lines_visible": 441,
+      "included_items_mean": 25.0625,
+      "item_visible_ci95": [
+        0.6473958333333334,
+        0.7660256410256411
+      ],
+      "item_visible_rate": 0.7067307692307693,
+      "kind_date": "23/48",
+      "kind_date-sum": "41/48",
+      "kind_extract": "70/96",
+      "kind_order": "18/48",
+      "kind_set": "39/48",
+      "kind_update": "61/96",
+      "packet_tokens_mean": 7998.3125,
+      "passed_threshold_but_cut_by_budget": 108,
+      "question_all_visible": 252,
+      "question_all_visible_ci95": [
+        0.5833333333333334,
+        0.7239583333333334
+      ],
+      "question_all_visible_rate": 0.65625,
+      "question_answerable_in_current_format": 188,
+      "question_extract": "70/96",
+      "question_multi-session": "80/96",
+      "question_temporal": "41/96",
+      "question_update": "61/96",
+      "questions": 384,
+      "rule": "threshold-0.20"
+    },
+    "threshold-0.25": {
+      "answerable_rate": {
+        "k": 188,
+        "n": 384,
+        "rate": 0.4895833333333333,
+        "wilson95": [
+          0.4399359850805729,
+          0.539437029799462
+        ]
+      },
+      "by_kind": {
+        "date": {
+          "k": 23,
+          "n": 48,
+          "rate": 0.4791666666666667,
+          "wilson95": [
+            0.34471316176951616,
+            0.616707676966572
+          ]
+        },
+        "date-sum": {
+          "k": 41,
+          "n": 48,
+          "rate": 0.8541666666666666,
+          "wilson95": [
+            0.7283282347525372,
+            0.9275175067339628
+          ]
+        },
+        "extract": {
+          "k": 70,
+          "n": 96,
+          "rate": 0.7291666666666666,
+          "wilson95": [
+            0.6327365269279848,
+            0.8079621619705808
+          ]
+        },
+        "order": {
+          "k": 18,
+          "n": 48,
+          "rate": 0.375,
+          "wilson95": [
+            0.25215266760868205,
+            0.5163723648078473
+          ]
+        },
+        "set": {
+          "k": 39,
+          "n": 48,
+          "rate": 0.8125,
+          "wilson95": [
+            0.680601328507153,
+            0.8980860904515235
+          ]
+        },
+        "update": {
+          "k": 61,
+          "n": 96,
+          "rate": 0.6354166666666666,
+          "wilson95": [
+            0.5356522624736236,
+            0.7247605991482561
+          ]
+        }
+      },
+      "by_qtype": {
+        "extract": {
+          "k": 70,
+          "n": 96,
+          "rate": 0.7291666666666666,
+          "wilson95": [
+            0.6327365269279848,
+            0.8079621619705808
+          ]
+        },
+        "multi-session": {
+          "k": 80,
+          "n": 96,
+          "rate": 0.8333333333333334,
+          "wilson95": [
+            0.7462900984810511,
+            0.8947261762804989
+          ]
+        },
+        "temporal": {
+          "k": 41,
+          "n": 96,
+          "rate": 0.4270833333333333,
+          "wilson95": [
+            0.33282083114008043,
+            0.5269568587558306
+          ]
+        },
+        "update": {
+          "k": 61,
+          "n": 96,
+          "rate": 0.6354166666666666,
+          "wilson95": [
+            0.5356522624736236,
+            0.7247605991482561
+          ]
+        }
+      },
+      "evidence_items_in_packet": 510,
+      "evidence_items_total": 624,
+      "evidence_lines_visible": 441,
+      "included_items_mean": 22.5625,
+      "item_visible_ci95": [
+        0.6473958333333334,
+        0.7628205128205128
+      ],
+      "item_visible_rate": 0.7067307692307693,
+      "kind_date": "23/48",
+      "kind_date-sum": "41/48",
+      "kind_extract": "70/96",
+      "kind_order": "18/48",
+      "kind_set": "39/48",
+      "kind_update": "61/96",
+      "packet_tokens_mean": 7927.59375,
+      "passed_threshold_but_cut_by_budget": 100,
+      "question_all_visible": 252,
+      "question_all_visible_ci95": [
+        0.5833333333333334,
+        0.7239583333333334
+      ],
+      "question_all_visible_rate": 0.65625,
+      "question_answerable_in_current_format": 188,
+      "question_extract": "70/96",
+      "question_multi-session": "80/96",
+      "question_temporal": "41/96",
+      "question_update": "61/96",
+      "questions": 384,
+      "rule": "threshold-0.25"
+    },
+    "threshold-0.30": {
+      "answerable_rate": {
+        "k": 152,
+        "n": 384,
+        "rate": 0.3958333333333333,
+        "wilson95": [
+          0.3481847906884676,
+          0.4455453581118816
+        ]
+      },
+      "by_kind": {
+        "date": {
+          "k": 14,
+          "n": 48,
+          "rate": 0.2916666666666667,
+          "wilson95": [
+            0.18241578926516536,
+            0.431792598095717
+          ]
+        },
+        "date-sum": {
+          "k": 39,
+          "n": 48,
+          "rate": 0.8125,
+          "wilson95": [
+            0.680601328507153,
+            0.8980860904515235
+          ]
+        },
+        "extract": {
+          "k": 57,
+          "n": 96,
+          "rate": 0.59375,
+          "wilson95": [
+            0.49373884894170256,
+            0.6865469783349833
+          ]
+        },
+        "order": {
+          "k": 11,
+          "n": 48,
+          "rate": 0.22916666666666666,
+          "wilson95": [
+            0.13307826266911232,
+            0.3653926409000346
+          ]
+        },
+        "set": {
+          "k": 35,
+          "n": 48,
+          "rate": 0.7291666666666666,
+          "wilson95": [
+            0.5900303501775939,
+            0.8343404237254355
+          ]
+        },
+        "update": {
+          "k": 49,
+          "n": 96,
+          "rate": 0.5104166666666666,
+          "wilson95": [
+            0.41196037089885484,
+            0.6080713876874437
+          ]
+        }
+      },
+      "by_qtype": {
+        "extract": {
+          "k": 57,
+          "n": 96,
+          "rate": 0.59375,
+          "wilson95": [
+            0.49373884894170256,
+            0.6865469783349833
+          ]
+        },
+        "multi-session": {
+          "k": 74,
+          "n": 96,
+          "rate": 0.7708333333333334,
+          "wilson95": [
+            0.6773148946997619,
+            0.8435108285439975
+          ]
+        },
+        "temporal": {
+          "k": 25,
+          "n": 96,
+          "rate": 0.2604166666666667,
+          "wilson95": [
+            0.18305899970298767,
+            0.35621055281214864
+          ]
+        },
+        "update": {
+          "k": 49,
+          "n": 96,
+          "rate": 0.5104166666666666,
+          "wilson95": [
+            0.41196037089885484,
+            0.6080713876874437
+          ]
+        }
+      },
+      "evidence_items_in_packet": 397,
+      "evidence_items_total": 624,
+      "evidence_lines_visible": 370,
+      "included_items_mean": 15.104166666666666,
+      "item_visible_ci95": [
+        0.5400641025641025,
+        0.6442307692307693
+      ],
+      "item_visible_rate": 0.592948717948718,
+      "kind_date": "14/48",
+      "kind_date-sum": "39/48",
+      "kind_extract": "57/96",
+      "kind_order": "11/48",
+      "kind_set": "35/48",
+      "kind_update": "49/96",
+      "packet_tokens_mean": 6093.838541666667,
+      "passed_threshold_but_cut_by_budget": 25,
+      "question_all_visible": 205,
+      "question_all_visible_ci95": [
+        0.46875,
+        0.5963541666666666
+      ],
+      "question_all_visible_rate": 0.5338541666666666,
+      "question_answerable_in_current_format": 152,
+      "question_extract": "57/96",
+      "question_multi-session": "74/96",
+      "question_temporal": "25/96",
+      "question_update": "49/96",
+      "questions": 384,
+      "rule": "threshold-0.30"
+    },
+    "threshold-0.40": {
+      "answerable_rate": {
+        "k": 92,
+        "n": 384,
+        "rate": 0.23958333333333334,
+        "wilson95": [
+          0.19960536939241139,
+          0.2847200026084621
+        ]
+      },
+      "by_kind": {
+        "date": {
+          "k": 11,
+          "n": 48,
+          "rate": 0.22916666666666666,
+          "wilson95": [
+            0.13307826266911232,
+            0.3653926409000346
+          ]
+        },
+        "date-sum": {
+          "k": 25,
+          "n": 48,
+          "rate": 0.5208333333333334,
+          "wilson95": [
+            0.3832923230334281,
+            0.6552868382304838
+          ]
+        },
+        "extract": {
+          "k": 35,
+          "n": 96,
+          "rate": 0.3645833333333333,
+          "wilson95": [
+            0.27523940085174403,
+            0.4643477375263765
+          ]
+        },
+        "order": {
+          "k": 5,
+          "n": 48,
+          "rate": 0.10416666666666667,
+          "wilson95": [
+            0.045321719041813105,
+            0.2216742169438633
+          ]
+        },
+        "set": {
+          "k": 19,
+          "n": 48,
+          "rate": 0.3958333333333333,
+          "wilson95": [
+            0.2702082786059137,
+            0.5368959150745274
+          ]
+        },
+        "update": {
+          "k": 33,
+          "n": 96,
+          "rate": 0.34375,
+          "wilson95": [
+            0.2564039323896144,
+            0.4431196888159093
+          ]
+        }
+      },
+      "by_qtype": {
+        "extract": {
+          "k": 35,
+          "n": 96,
+          "rate": 0.3645833333333333,
+          "wilson95": [
+            0.27523940085174403,
+            0.4643477375263765
+          ]
+        },
+        "multi-session": {
+          "k": 44,
+          "n": 96,
+          "rate": 0.4583333333333333,
+          "wilson95": [
+            0.36218849483208426,
+            0.5576844708227221
+          ]
+        },
+        "temporal": {
+          "k": 16,
+          "n": 96,
+          "rate": 0.16666666666666666,
+          "wilson95": [
+            0.10527382371950136,
+            0.2537099015189491
+          ]
+        },
+        "update": {
+          "k": 33,
+          "n": 96,
+          "rate": 0.34375,
+          "wilson95": [
+            0.2564039323896144,
+            0.4431196888159093
+          ]
+        }
+      },
+      "evidence_items_in_packet": 260,
+      "evidence_items_total": 624,
+      "evidence_lines_visible": 259,
+      "included_items_mean": 6.708333333333333,
+      "item_visible_ci95": [
+        0.3685897435897436,
+        0.46153846153846156
+      ],
+      "item_visible_rate": 0.4150641025641026,
+      "kind_date": "11/48",
+      "kind_date-sum": "25/48",
+      "kind_extract": "35/96",
+      "kind_order": "5/48",
+      "kind_set": "19/48",
+      "kind_update": "33/96",
+      "packet_tokens_mean": 3552.2760416666665,
+      "passed_threshold_but_cut_by_budget": 0,
+      "question_all_visible": 128,
+      "question_all_visible_ci95": [
+        0.28125,
+        0.3854166666666667
+      ],
+      "question_all_visible_rate": 0.3333333333333333,
+      "question_answerable_in_current_format": 92,
+      "question_extract": "35/96",
+      "question_multi-session": "44/96",
+      "question_temporal": "16/96",
+      "question_update": "33/96",
+      "questions": 384,
+      "rule": "threshold-0.40"
+    },
+    "threshold-0.50": {
+      "answerable_rate": {
+        "k": 43,
+        "n": 384,
+        "rate": 0.11197916666666667,
+        "wilson95": [
+          0.0842044707090054,
+          0.14744033357229602
+        ]
+      },
+      "by_kind": {
+        "date": {
+          "k": 1,
+          "n": 48,
+          "rate": 0.020833333333333332,
+          "wilson95": [
+            0.003687110977510649,
+            0.10899217995251861
+          ]
+        },
+        "date-sum": {
+          "k": 1,
+          "n": 48,
+          "rate": 0.020833333333333332,
+          "wilson95": [
+            0.003687110977510649,
+            0.10899217995251861
+          ]
+        },
+        "extract": {
+          "k": 26,
+          "n": 96,
+          "rate": 0.2708333333333333,
+          "wilson95": [
+            0.19203783802941934,
+            0.36726347307201535
+          ]
+        },
+        "order": {
+          "k": 0,
+          "n": 48,
+          "rate": 0.0,
+          "wilson95": [
+            6.938893903907228e-18,
+            0.07410012966611748
+          ]
+        },
+        "set": {
+          "k": 0,
+          "n": 48,
+          "rate": 0.0,
+          "wilson95": [
+            6.938893903907228e-18,
+            0.07410012966611748
+          ]
+        },
+        "update": {
+          "k": 17,
+          "n": 96,
+          "rate": 0.17708333333333334,
+          "wilson95": [
+            0.11360507865666794,
+            0.265410405168081
+          ]
+        }
+      },
+      "by_qtype": {
+        "extract": {
+          "k": 26,
+          "n": 96,
+          "rate": 0.2708333333333333,
+          "wilson95": [
+            0.19203783802941934,
+            0.36726347307201535
+          ]
+        },
+        "multi-session": {
+          "k": 1,
+          "n": 96,
+          "rate": 0.010416666666666666,
+          "wilson95": [
+            0.0018411702168162486,
+            0.056666176227157854
+          ]
+        },
+        "temporal": {
+          "k": 1,
+          "n": 96,
+          "rate": 0.010416666666666666,
+          "wilson95": [
+            0.0018411702168162486,
+            0.056666176227157854
+          ]
+        },
+        "update": {
+          "k": 17,
+          "n": 96,
+          "rate": 0.17708333333333334,
+          "wilson95": [
+            0.11360507865666794,
+            0.265410405168081
+          ]
+        }
+      },
+      "evidence_items_in_packet": 75,
+      "evidence_items_total": 624,
+      "evidence_lines_visible": 75,
+      "included_items_mean": 1.5625,
+      "item_visible_ci95": [
+        0.09455128205128205,
+        0.14743589743589744
+      ],
+      "item_visible_rate": 0.1201923076923077,
+      "kind_date": "1/48",
+      "kind_date-sum": "1/48",
+      "kind_extract": "26/96",
+      "kind_order": "0/48",
+      "kind_set": "0/48",
+      "kind_update": "17/96",
+      "packet_tokens_mean": 866.5572916666666,
+      "passed_threshold_but_cut_by_budget": 0,
+      "question_all_visible": 45,
+      "question_all_visible_ci95": [
+        0.0859375,
+        0.15104166666666666
+      ],
+      "question_all_visible_rate": 0.1171875,
+      "question_answerable_in_current_format": 43,
+      "question_extract": "26/96",
+      "question_multi-session": "1/96",
+      "question_temporal": "1/96",
+      "question_update": "17/96",
+      "questions": 384,
+      "rule": "threshold-0.50"
+    }
+  },
+  "evidence_items": {
+    "candidates": 624,
+    "judged": 624,
+    "total": 624
+  },
+  "format": {
+    "date_strings_in_96_packets": 0,
+    "kinds": [
+      {
+        "judge-all_correct": 50,
+        "judge-all_evidence_visible": 26,
+        "judge-all_n": 192,
+        "kind": "extract",
+        "needs": "근거 줄 하나",
+        "questions": 96,
+        "rrf-fallback_correct": 0,
+        "rrf-fallback_evidence_visible": 0,
+        "rrf-fallback_n": 192
+      },
+      {
+        "judge-all_correct": 0,
+        "judge-all_evidence_visible": 0,
+        "judge-all_n": 96,
+        "kind": "set",
+        "needs": "근거 줄 둘(여러 session에 흩어짐)",
+        "questions": 48,
+        "rrf-fallback_correct": 0,
+        "rrf-fallback_evidence_visible": 0,
+        "rrf-fallback_n": 96
+      },
+      {
+        "judge-all_correct": 0,
+        "judge-all_evidence_visible": 1,
+        "judge-all_n": 96,
+        "kind": "date-sum",
+        "needs": "근거 줄 둘과 각 줄이 일어난 날짜",
+        "questions": 48,
+        "rrf-fallback_correct": 0,
+        "rrf-fallback_evidence_visible": 0,
+        "rrf-fallback_n": 96
+      },
+      {
+        "judge-all_correct": 0,
+        "judge-all_evidence_visible": 1,
+        "judge-all_n": 96,
+        "kind": "date",
+        "needs": "근거 줄 하나와 그 줄이 일어난 날짜",
+        "questions": 48,
+        "rrf-fallback_correct": 0,
+        "rrf-fallback_evidence_visible": 0,
+        "rrf-fallback_n": 96
+      },
+      {
+        "judge-all_correct": 0,
+        "judge-all_evidence_visible": 0,
+        "judge-all_n": 96,
+        "kind": "order",
+        "needs": "근거 줄 둘과 앞뒤 순서",
+        "questions": 48,
+        "rrf-fallback_correct": 0,
+        "rrf-fallback_evidence_visible": 0,
+        "rrf-fallback_n": 96
+      },
+      {
+        "judge-all_correct": 31,
+        "judge-all_evidence_visible": 17,
+        "judge-all_n": 192,
+        "kind": "update",
+        "needs": "같은 값의 옛 줄과 새 줄, 앞뒤 순서",
+        "questions": 96,
+        "rrf-fallback_correct": 14,
+        "rrf-fallback_evidence_visible": 7,
+        "rrf-fallback_n": 192
+      }
+    ],
+    "session_or_seq_labels_in_96_packets": 0
+  },
+  "item_limit": {
+    "candidates": 6144,
+    "candidates_over_cap": 0,
+    "max_candidate_chars": 4103,
+    "min_item_cap_chars": 9535
+  },
+  "probability": {
+    "at_least": {
+      "0.00": {
+        "evidence": {
+          "k": 624,
+          "n": 624,
+          "rate": 1.0,
+          "wilson95": [
+            0.9938814827107633,
+            1.0
+          ]
+        },
+        "non_evidence": {
+          "k": 5520,
+          "n": 5520,
+          "rate": 1.0,
+          "wilson95": [
+            0.9993045675098876,
+            1.0
+          ]
+        }
+      },
+      "0.10": {
+        "evidence": {
+          "k": 624,
+          "n": 624,
+          "rate": 1.0,
+          "wilson95": [
+            0.9938814827107633,
+            1.0
+          ]
+        },
+        "non_evidence": {
+          "k": 5517,
+          "n": 5520,
+          "rate": 0.9994565217391305,
+          "wilson95": [
+            0.9984032153729724,
+            0.9998151515200567
+          ]
+        }
+      },
+      "0.20": {
+        "evidence": {
+          "k": 624,
+          "n": 624,
+          "rate": 1.0,
+          "wilson95": [
+            0.9938814827107633,
+            1.0
+          ]
+        },
+        "non_evidence": {
+          "k": 3649,
+          "n": 5520,
+          "rate": 0.6610507246376811,
+          "wilson95": [
+            0.6484554158585233,
+            0.6734220336039006
+          ]
+        }
+      },
+      "0.25": {
+        "evidence": {
+          "k": 610,
+          "n": 624,
+          "rate": 0.9775641025641025,
+          "wilson95": [
+            0.9626950457679113,
+            0.9865891909237792
+          ]
+        },
+        "non_evidence": {
+          "k": 1396,
+          "n": 5520,
+          "rate": 0.2528985507246377,
+          "wilson95": [
+            0.24160631214640285,
+            0.2645344740552324
+          ]
+        }
+      },
+      "0.30": {
+        "evidence": {
+          "k": 422,
+          "n": 624,
+          "rate": 0.6762820512820513,
+          "wilson95": [
+            0.6385884759915647,
+            0.7118184570154352
+          ]
+        },
+        "non_evidence": {
+          "k": 435,
+          "n": 5520,
+          "rate": 0.07880434782608696,
+          "wilson95": [
+            0.0719859896961661,
+            0.08620853223843952
+          ]
+        }
+      },
+      "0.40": {
+        "evidence": {
+          "k": 260,
+          "n": 624,
+          "rate": 0.4166666666666667,
+          "wilson95": [
+            0.37860972326321546,
+            0.45574336295165735
+          ]
+        },
+        "non_evidence": {
+          "k": 62,
+          "n": 5520,
+          "rate": 0.011231884057971014,
+          "wilson95": [
+            0.008771999968024032,
+            0.014371578603832279
+          ]
+        }
+      },
+      "0.50": {
+        "evidence": {
+          "k": 75,
+          "n": 624,
+          "rate": 0.1201923076923077,
+          "wilson95": [
+            0.09697385431312879,
+            0.14805848093542617
+          ]
+        },
+        "non_evidence": {
+          "k": 0,
+          "n": 5520,
+          "rate": 0.0,
+          "wilson95": [
+            0.0,
+            0.0006954324901124612
+          ]
+        }
+      }
+    },
+    "auc": 0.9399915226681531,
+    "by_kind": {
+      "date": {
+        "max": 0.51,
+        "mean": 0.31145833333333334,
+        "median": 0.27,
+        "min": 0.23,
+        "n": 48,
+        "p25": 0.26,
+        "p5": 0.24,
+        "p75": 0.32,
+        "p95": 0.473,
+        "sd": 0.0839450069056949
+      },
+      "date-sum": {
+        "max": 0.56,
+        "mean": 0.42468749999999994,
+        "median": 0.42,
+        "min": 0.28,
+        "n": 96,
+        "p25": 0.38,
+        "p5": 0.3,
+        "p75": 0.48,
+        "p95": 0.5425,
+        "sd": 0.07279319119402945
+      },
+      "extract": {
+        "max": 0.63,
+        "mean": 0.39208333333333334,
+        "median": 0.34,
+        "min": 0.25,
+        "n": 96,
+        "p25": 0.29,
+        "p5": 0.27,
+        "p75": 0.5,
+        "p95": 0.58,
+        "sd": 0.11771434350437786
+      },
+      "order": {
+        "max": 0.5,
+        "mean": 0.3340625,
+        "median": 0.29,
+        "min": 0.22,
+        "n": 96,
+        "p25": 0.26,
+        "p5": 0.25,
+        "p75": 0.42,
+        "p95": 0.48,
+        "sd": 0.08355997688392515
+      },
+      "set": {
+        "max": 0.52,
+        "mean": 0.3927083333333334,
+        "median": 0.4,
+        "min": 0.26,
+        "n": 96,
+        "p25": 0.3575,
+        "p5": 0.28,
+        "p75": 0.43,
+        "p95": 0.4825,
+        "sd": 0.06350265915139496
+      },
+      "update": {
+        "max": 0.65,
+        "mean": 0.3595833333333333,
+        "median": 0.3,
+        "min": 0.23,
+        "n": 192,
+        "p25": 0.28,
+        "p5": 0.26,
+        "p75": 0.45,
+        "p95": 0.56,
+        "sd": 0.10455506995217909
+      }
+    },
+    "by_relation": {
+      "same": {
+        "max": 0.65,
+        "mean": 0.3765441176470588,
+        "median": 0.34,
+        "min": 0.23,
+        "n": 272,
+        "p25": 0.29,
+        "p5": 0.26,
+        "p75": 0.46,
+        "p95": 0.56,
+        "sd": 0.1020880068670265
+      },
+      "synonym": {
+        "max": 0.63,
+        "mean": 0.35966101694915253,
+        "median": 0.33,
+        "min": 0.23,
+        "n": 177,
+        "p25": 0.27,
+        "p5": 0.25,
+        "p75": 0.43,
+        "p95": 0.5159999999999997,
+        "sd": 0.09492160823713204
+      },
+      "translation": {
+        "max": 0.58,
+        "mean": 0.37765714285714286,
+        "median": 0.39,
+        "min": 0.22,
+        "n": 175,
+        "p25": 0.28,
+        "p5": 0.26,
+        "p75": 0.455,
+        "p95": 0.52,
+        "sd": 0.09368384803473018
+      }
+    },
+    "evidence": {
+      "max": 0.65,
+      "mean": 0.3720673076923077,
+      "median": 0.35,
+      "min": 0.22,
+      "n": 624,
+      "p25": 0.28,
+      "p5": 0.2515,
+      "p75": 0.45,
+      "p95": 0.55,
+      "sd": 0.09793561921260752
+    },
+    "evidence_rank_by_probability": {
+      "median": 8.0,
+      "p25": 4.0,
+      "p75": 19.0,
+      "p95": 43.0,
+      "within_top_24": {
+        "k": 506,
+        "n": 624,
+        "rate": 0.8108974358974359,
+        "wilson95": [
+          0.7783056467063229,
+          0.8396847624151133
+        ]
+      }
+    },
+    "non_evidence": {
+      "max": 0.47,
+      "mean": 0.2195942028985507,
+      "median": 0.21,
+      "min": 0.09,
+      "n": 5520,
+      "p25": 0.19,
+      "p5": 0.15,
+      "p75": 0.25,
+      "p95": 0.32,
+      "sd": 0.05245018692130526
+    }
+  },
+  "recipient": {
+    "judge-all/both/all/0": {
+      "k": 0,
+      "n": 678,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.0056339472629579794
+      ]
+    },
+    "judge-all/both/all/1": {
+      "k": 81,
+      "n": 90,
+      "rate": 0.9,
+      "wilson95": [
+        0.8207582512456635,
+        0.9464932483028752
+      ]
+    },
+    "judge-all/both/date-sum/0": {
+      "k": 0,
+      "n": 94,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.03926207629154474
+      ]
+    },
+    "judge-all/both/date-sum/1": {
+      "k": 0,
+      "n": 2,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.6576197724933469
+      ]
+    },
+    "judge-all/both/date/0": {
+      "k": 0,
+      "n": 94,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.03926207629154474
+      ]
+    },
+    "judge-all/both/date/1": {
+      "k": 0,
+      "n": 2,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.6576197724933469
+      ]
+    },
+    "judge-all/both/extract/0": {
+      "k": 0,
+      "n": 140,
+      "rate": 0.0,
+      "wilson95": [
+        1.734723475976807e-18,
+        0.026706200369412993
+      ]
+    },
+    "judge-all/both/extract/1": {
+      "k": 50,
+      "n": 52,
+      "rate": 0.9615384615384616,
+      "wilson95": [
+        0.8701881084254424,
+        0.9893882889986847
+      ]
+    },
+    "judge-all/both/order/0": {
+      "k": 0,
+      "n": 96,
+      "rate": 0.0,
+      "wilson95": [
+        3.469446951953614e-18,
+        0.038475587857675686
+      ]
+    },
+    "judge-all/both/set/0": {
+      "k": 0,
+      "n": 96,
+      "rate": 0.0,
+      "wilson95": [
+        3.469446951953614e-18,
+        0.038475587857675686
+      ]
+    },
+    "judge-all/both/update/0": {
+      "k": 0,
+      "n": 158,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.023735937927685878
+      ]
+    },
+    "judge-all/both/update/1": {
+      "k": 31,
+      "n": 34,
+      "rate": 0.9117647058823529,
+      "wilson95": [
+        0.7703951343719113,
+        0.9695340563253514
+      ]
+    },
+    "judge-all/claude/all/0": {
+      "k": 0,
+      "n": 339,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.011204767456969683
+      ]
+    },
+    "judge-all/claude/all/1": {
+      "k": 41,
+      "n": 45,
+      "rate": 0.9111111111111111,
+      "wilson95": [
+        0.7926642466571064,
+        0.9648888832736299
+      ]
+    },
+    "judge-all/claude/date-sum/0": {
+      "k": 0,
+      "n": 47,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.07555760416399632
+      ]
+    },
+    "judge-all/claude/date-sum/1": {
+      "k": 0,
+      "n": 1,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.7934506856227626
+      ]
+    },
+    "judge-all/claude/date/0": {
+      "k": 0,
+      "n": 47,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.07555760416399632
+      ]
+    },
+    "judge-all/claude/date/1": {
+      "k": 0,
+      "n": 1,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.7934506856227626
+      ]
+    },
+    "judge-all/claude/extract/0": {
+      "k": 0,
+      "n": 70,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.05202306241026692
+      ]
+    },
+    "judge-all/claude/extract/1": {
+      "k": 24,
+      "n": 26,
+      "rate": 0.9230769230769231,
+      "wilson95": [
+        0.7585844622837095,
+        0.9786449115277238
+      ]
+    },
+    "judge-all/claude/order/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "judge-all/claude/set/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "judge-all/claude/update/0": {
+      "k": 0,
+      "n": 79,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.04637121165392266
+      ]
+    },
+    "judge-all/claude/update/1": {
+      "k": 17,
+      "n": 17,
+      "rate": 1.0,
+      "wilson95": [
+        0.8156818649911483,
+        1.0
+      ]
+    },
+    "judge-all/codex/all/0": {
+      "k": 0,
+      "n": 339,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.011204767456969683
+      ]
+    },
+    "judge-all/codex/all/1": {
+      "k": 40,
+      "n": 45,
+      "rate": 0.8888888888888888,
+      "wilson95": [
+        0.7650090300423141,
+        0.9515952820543282
+      ]
+    },
+    "judge-all/codex/date-sum/0": {
+      "k": 0,
+      "n": 47,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.07555760416399632
+      ]
+    },
+    "judge-all/codex/date-sum/1": {
+      "k": 0,
+      "n": 1,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.7934506856227626
+      ]
+    },
+    "judge-all/codex/date/0": {
+      "k": 0,
+      "n": 47,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.07555760416399632
+      ]
+    },
+    "judge-all/codex/date/1": {
+      "k": 0,
+      "n": 1,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.7934506856227626
+      ]
+    },
+    "judge-all/codex/extract/0": {
+      "k": 0,
+      "n": 70,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.05202306241026692
+      ]
+    },
+    "judge-all/codex/extract/1": {
+      "k": 26,
+      "n": 26,
+      "rate": 1.0,
+      "wilson95": [
+        0.8712710781407846,
+        1.0
+      ]
+    },
+    "judge-all/codex/order/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "judge-all/codex/set/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "judge-all/codex/update/0": {
+      "k": 0,
+      "n": 79,
+      "rate": 0.0,
+      "wilson95": [
+        0.0,
+        0.04637121165392266
+      ]
+    },
+    "judge-all/codex/update/1": {
+      "k": 14,
+      "n": 17,
+      "rate": 0.8235294117647058,
+      "wilson95": [
+        0.5897054143116588,
+        0.9380887336237901
+      ]
+    },
+    "rrf-fallback/both/all/0": {
+      "k": 0,
+      "n": 754,
+      "rate": 0.0,
+      "wilson95": [
+        4.336808689942018e-19,
+        0.005068947833326466
+      ]
+    },
+    "rrf-fallback/both/all/1": {
+      "k": 14,
+      "n": 14,
+      "rate": 1.0,
+      "wilson95": [
+        0.7846891972623643,
+        1.0
+      ]
+    },
+    "rrf-fallback/both/date-sum/0": {
+      "k": 0,
+      "n": 96,
+      "rate": 0.0,
+      "wilson95": [
+        3.469446951953614e-18,
+        0.038475587857675686
+      ]
+    },
+    "rrf-fallback/both/date/0": {
+      "k": 0,
+      "n": 96,
+      "rate": 0.0,
+      "wilson95": [
+        3.469446951953614e-18,
+        0.038475587857675686
+      ]
+    },
+    "rrf-fallback/both/extract/0": {
+      "k": 0,
+      "n": 192,
+      "rate": 0.0,
+      "wilson95": [
+        1.734723475976807e-18,
+        0.01961514606675411
+      ]
+    },
+    "rrf-fallback/both/order/0": {
+      "k": 0,
+      "n": 96,
+      "rate": 0.0,
+      "wilson95": [
+        3.469446951953614e-18,
+        0.038475587857675686
+      ]
+    },
+    "rrf-fallback/both/set/0": {
+      "k": 0,
+      "n": 96,
+      "rate": 0.0,
+      "wilson95": [
+        3.469446951953614e-18,
+        0.038475587857675686
+      ]
+    },
+    "rrf-fallback/both/update/0": {
+      "k": 0,
+      "n": 178,
+      "rate": 0.0,
+      "wilson95": [
+        1.734723475976807e-18,
+        0.021125318976251826
+      ]
+    },
+    "rrf-fallback/both/update/1": {
+      "k": 14,
+      "n": 14,
+      "rate": 1.0,
+      "wilson95": [
+        0.7846891972623643,
+        1.0
+      ]
+    },
+    "rrf-fallback/claude/all/0": {
+      "k": 0,
+      "n": 377,
+      "rate": 0.0,
+      "wilson95": [
+        8.673617379884035e-19,
+        0.010086766374095689
+      ]
+    },
+    "rrf-fallback/claude/all/1": {
+      "k": 7,
+      "n": 7,
+      "rate": 1.0,
+      "wilson95": [
+        0.6456695649333126,
+        1.0
+      ]
+    },
+    "rrf-fallback/claude/date-sum/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "rrf-fallback/claude/date/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "rrf-fallback/claude/extract/0": {
+      "k": 0,
+      "n": 96,
+      "rate": 0.0,
+      "wilson95": [
+        3.469446951953614e-18,
+        0.038475587857675686
+      ]
+    },
+    "rrf-fallback/claude/order/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "rrf-fallback/claude/set/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "rrf-fallback/claude/update/0": {
+      "k": 0,
+      "n": 89,
+      "rate": 0.0,
+      "wilson95": [
+        3.469446951953614e-18,
+        0.04137654523625252
+      ]
+    },
+    "rrf-fallback/claude/update/1": {
+      "k": 7,
+      "n": 7,
+      "rate": 1.0,
+      "wilson95": [
+        0.6456695649333126,
+        1.0
+      ]
+    },
+    "rrf-fallback/codex/all/0": {
+      "k": 0,
+      "n": 377,
+      "rate": 0.0,
+      "wilson95": [
+        8.673617379884035e-19,
+        0.010086766374095689
+      ]
+    },
+    "rrf-fallback/codex/all/1": {
+      "k": 7,
+      "n": 7,
+      "rate": 1.0,
+      "wilson95": [
+        0.6456695649333126,
+        1.0
+      ]
+    },
+    "rrf-fallback/codex/date-sum/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "rrf-fallback/codex/date/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "rrf-fallback/codex/extract/0": {
+      "k": 0,
+      "n": 96,
+      "rate": 0.0,
+      "wilson95": [
+        3.469446951953614e-18,
+        0.038475587857675686
+      ]
+    },
+    "rrf-fallback/codex/order/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "rrf-fallback/codex/set/0": {
+      "k": 0,
+      "n": 48,
+      "rate": 0.0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ]
+    },
+    "rrf-fallback/codex/update/0": {
+      "k": 0,
+      "n": 89,
+      "rate": 0.0,
+      "wilson95": [
+        3.469446951953614e-18,
+        0.04137654523625252
+      ]
+    },
+    "rrf-fallback/codex/update/1": {
+      "k": 7,
+      "n": 7,
+      "rate": 1.0,
+      "wilson95": [
+        0.6456695649333126,
+        1.0
+      ]
+    }
+  },
+  "reproduction": {
+    "judge-all": {
+      "included_matched": 48,
+      "scenarios": 48,
+      "text_matched": 48
+    },
+    "rrf-fallback": {
+      "included_matched": 48,
+      "scenarios": 48,
+      "text_matched": 48
+    }
+  },
+  "scenarios": 48,
+  "seed": 209,
+  "stages_items": {
+    "2 기준값 0.5 미달": {
+      "items": 549,
+      "rate": 0.8798076923076923
+    },
+    "5 근거 줄이 패킷에 있음": {
+      "items": 75,
+      "rate": 0.1201923076923077
+    }
+  },
+  "stages_wrong_questions": {
+    "2 기준값 0.5 미달": {
+      "claude": 339,
+      "codex": 339,
+      "rate": 0.9868995633187773,
+      "total": 678
+    },
+    "5a 근거 줄은 있으나 시각이나 session이 패킷에 없어 풀 수 없음": {
+      "claude": 2,
+      "codex": 2,
+      "rate": 0.005822416302765648,
+      "total": 4
+    },
+    "5b 근거 줄이 있는데 받는 쪽이 못 맞힘": {
+      "claude": 2,
+      "codex": 3,
+      "rate": 0.00727802037845706,
+      "total": 5
+    },
+    "틀린 질문 합계(abstain 제외)": {
+      "claude": 343,
+      "codex": 344,
+      "rate": 1.0,
+      "total": 687
+    }
+  }
+}

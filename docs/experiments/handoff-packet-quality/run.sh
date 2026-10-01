@@ -25,6 +25,7 @@ case "$command" in
   analyze)
     python3 scripts/02-process.py
     python3 scripts/03-analyze.py
+    python3 scripts/04-diagnose.py
     ;;
   verify)
     verify
