@@ -49,7 +49,11 @@ pub(crate) async fn use_version(
     args: &RouterUseArgs,
 ) -> anyhow::Result<()> {
     let mut out = std::io::stdout().lock();
-    switch_version(client, args, confirm_on_terminal, &mut out).await
+    if args.yes {
+        switch_version(client, args, |_| Ok(true), &mut out).await
+    } else {
+        switch_version(client, args, confirm_on_terminal, &mut out).await
+    }
 }
 
 // cost: time O(v), heap O(v), stack O(1), io 4
@@ -129,6 +133,7 @@ mod tests {
     fn args(version: &str) -> RouterUseArgs {
         RouterUseArgs {
             version: version.to_owned(),
+            yes: false,
         }
     }
 

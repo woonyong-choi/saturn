@@ -120,6 +120,9 @@ pub(crate) struct TrainArgs {
     /// 이 router 버전에서 다시 학습한다(`Request::Train`의 `from`).
     #[arg(long, value_name = "VERSION")]
     pub(crate) from: Option<String>,
+    /// 확인 없이 학습을 시작한다.
+    #[arg(long)]
+    pub(crate) yes: bool,
 }
 
 /// `prune` 인자.
@@ -144,6 +147,9 @@ pub(crate) struct RouterUseArgs {
     /// 쓸 router 버전. TODO(#49): 버전 표기 형식
     #[arg(value_name = "VERSION")]
     pub(crate) version: String,
+    /// 확인 없이 바꾼다.
+    #[arg(long)]
+    pub(crate) yes: bool,
 }
 
 /// `usage` 인자.
@@ -233,6 +239,11 @@ mod tests {
             Some(Command::Router {
                 command: RouterCommand::List
             })
+        ));
+        let yes = parse(&["router", "use", "v2", "--yes"]).unwrap();
+        assert!(matches!(
+            yes.command,
+            Some(Command::Router { command: RouterCommand::Use(ref args) }) if args.yes
         ));
         assert!(parse(&["train"]).is_err());
     }

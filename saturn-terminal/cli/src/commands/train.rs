@@ -19,7 +19,11 @@ use crate::commands::{call, confirm_on_terminal};
 pub(crate) async fn run(client: &mut EngineClient, args: &TrainArgs) -> anyhow::Result<()> {
     let mut out = std::io::stdout().lock();
     let mut progress = std::io::stderr().lock();
-    train(client, args, confirm_on_terminal, &mut out, &mut progress).await
+    if args.yes {
+        train(client, args, |_| Ok(true), &mut out, &mut progress).await
+    } else {
+        train(client, args, confirm_on_terminal, &mut out, &mut progress).await
+    }
 }
 
 // cost: time O(p), heap O(1), stack O(1), io p
@@ -117,6 +121,7 @@ mod tests {
         TrainArgs {
             reset_thresholds: false,
             from: Some("v1".to_owned()),
+            yes: false,
         }
     }
 
