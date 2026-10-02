@@ -309,18 +309,32 @@ pub(crate) fn train_confirm(key: KeyEvent) -> Option<Action> {
 }
 
 fn composer_control(key: KeyEvent, ctx: KeyContext) -> Option<Action> {
-    let ctrl = key.modifiers == KeyModifiers::CONTROL;
+    let ctrl_action = if key.modifiers == KeyModifiers::CONTROL {
+        control_chord(key.code, ctx)
+    } else {
+        None
+    };
+    ctrl_action.or_else(|| composer_navigation(key, ctx))
+}
+
+fn control_chord(code: KeyCode, ctx: KeyContext) -> Option<Action> {
+    match code {
+        KeyCode::Char('c') => Some(Action::Interrupt),
+        KeyCode::Char('d') => ctx.composer_empty.then_some(Action::Quit),
+        KeyCode::Char('g') => Some(Action::ExternalEditor),
+        KeyCode::Char('j') => Some(Action::Newline),
+        KeyCode::Char('k') => Some(Action::KillToEnd),
+        KeyCode::Char('r') => Some(Action::HistorySearch),
+        KeyCode::Char('y') => Some(Action::Yank),
+        _ => None,
+    }
+}
+
+fn composer_navigation(key: KeyEvent, ctx: KeyContext) -> Option<Action> {
     let alt = key.modifiers == KeyModifiers::ALT;
     let shift = key.modifiers == KeyModifiers::SHIFT;
     let plain = key.modifiers.is_empty();
     match key.code {
-        KeyCode::Char('c') if ctrl => Some(Action::Interrupt),
-        KeyCode::Char('d') if ctrl => ctx.composer_empty.then_some(Action::Quit),
-        KeyCode::Char('g') if ctrl => Some(Action::ExternalEditor),
-        KeyCode::Char('j') if ctrl => Some(Action::Newline),
-        KeyCode::Char('k') if ctrl => Some(Action::KillToEnd),
-        KeyCode::Char('r') if ctrl => Some(Action::HistorySearch),
-        KeyCode::Char('y') if ctrl => Some(Action::Yank),
         KeyCode::Enter if alt || shift => Some(Action::Newline),
         KeyCode::Enter if plain => Some(Action::Submit),
         KeyCode::Tab if plain && ctx.running => Some(Action::SubmitQueued),
