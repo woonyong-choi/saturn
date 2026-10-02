@@ -49,7 +49,7 @@ fn collect_attach_env(lookup: impl Fn(&str) -> Option<String>) -> Vec<(String, S
 }
 
 impl EngineClient {
-    /// `~/.saturn/engine.sock`. TODO(#49): 경로 설정 키
+    /// `~/.saturn/engine.sock`. TODO(#235): 경로 설정 키
     pub fn default_socket() -> PathBuf {
         let home = std::env::var_os("HOME")
             .map(PathBuf::from)

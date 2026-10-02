@@ -13,7 +13,7 @@
 | 표본 여부 | 전수. 표본 추출 없이 실험마다 지시서에 정한 반복 횟수를 모두 실행했다. |
 | 라벨 | 없음. 회차별 판정은 실험 에이전트가 붙였다. 사람이 다시 확인한 기록은 없다. |
 | 알려진 문제 | 회차별 원자료가 유실됐다. 실험 3의 인용 일부가 틀렸고 실험 4는 항목 일부를 잘못 건너뛰었다. 실험 5와 실험 9가 모델 호출 상한을 넘겼다. 실험 9는 `all_requests` 실행기 중복으로 슬롯 10개가 thread 20개가 됐고, 정식 시도 수가 보고서 본문(31회)과 원문 로그에서 센 값(29회)이 다르다. 실험 8과 9의 승인 요청 누락과 지연 관측은 실험 10에서 드라이버 읽기 버그로 확인됐다. 상세는 [보고서](../report.md) 한계 절이다. |
-| 개인정보 | 지시서, 보고서, 결과 요약 JSON에 사용자 홈 경로(`/Users/...`)가 있다. 계정 플랜 종류(`planType=pro`)가 있다. 토큰, 키, 인증 값은 없다(복사 전에 `token`, `key`, `secret`, `bearer`, `sk-`, `@` 패턴을 검색해 확인. 실험 9 결과 요약 JSON에서 걸린 것은 메서드 이름 `thread/tokenUsage/updated`뿐이다. 실험 10 보고서에서 걸린 것은 "token을 포함하지 않았다"는 문장뿐이다). 실행 로그에는 계정 이메일과 의존 패키지 저자 이메일이 있어 저장소에 넣지 않았다. |
+| 개인정보 | 보고서와 결과 요약에 있던 사용자 홈 경로(`/Users/...`)는 `~`로 가렸다. 계정 플랜 종류(`planType=pro`)가 있다. 토큰, 키, 인증 값은 없다(복사 전에 `token`, `key`, `secret`, `bearer`, `sk-`, `@` 패턴을 검색해 확인. 실험 9 결과 요약 JSON에서 걸린 것은 메서드 이름 `thread/tokenUsage/updated`뿐이다. 실험 10 보고서에서 걸린 것은 "token을 포함하지 않았다"는 문장뿐이다). 실행 로그에는 계정 이메일과 의존 패키지 저자 이메일이 있어 저장소에 넣지 않았다. |
 | 라이선스 | 저장소 라이선스를 따른다. |
 
 ## 원자료 상태
@@ -34,20 +34,20 @@
 
 ## 저장소 밖 실행 로그
 
-비공개 경로다. 저장소 루트 기준 `.local/experiments/provider-permission-gating/`(git 제외 비공개 폴더) 안에만 있고 저장소와 GitHub에 올라가 있지 않다. 사용자 로컬 장치의 작업본에만 있어 다른 장치에서는 읽을 수 없다.
+비공개 원자료다. 저장소 밖 비공개 폴더 안에만 있고 저장소와 GitHub에 올라가 있지 않다. 사용자 로컬 장치의 작업본에만 있어 다른 장치에서는 읽을 수 없다.
 
 | 실험 | 파일 | 크기 | SHA-256 |
 |---|---|---|---|
-| 5. 전용 `CODEX_HOME` | `.local/experiments/provider-permission-gating/codex-194-home.log` | 3,070,349바이트 | `3cd4606bd74735c2fc13b8e26ecc1ef9009b1fb7d7036711c11a654ec1d37551` |
-| 6. 구멍 막기 | `.local/experiments/provider-permission-gating/codex-194-plug.log` | 2,963,403바이트 | `f4999c9ac27e862c94b2a76e1884d1c2d48f379a5fb585fe25811f7fe3067eec` |
-| 7. MCP 준비 시점 | `.local/experiments/provider-permission-gating/codex-194-mcp.log` | 3,393,037바이트 | `ddcfa97f84e1f53cbf68cddd9faadd4886b12dd9064b991eb8044592958a146b` |
-| 8. MCP 묻기 경로 | `.local/experiments/provider-permission-gating/codex-194-prompt-path.log` | 3,402,504바이트 | `a4fe82296bb2c8fe0e54abd4650b907a6c6aa6848ce18e53c0677f5963f71d18` |
-| 9. MCP 승인 요청 원인 찾기 | `.local/experiments/provider-permission-gating/codex-194-rootcause.log` | 8,957,152바이트 | `0c1d62712dee0d541ba62ef119eb52aa9b22c328f9c09a4aef646f04e5066d13` |
-| 10. 승인 요청 지연 원인 | `.local/experiments/provider-permission-gating/codex-194-delay.log` | 1,917,537바이트 | `d79d8cf9cca8b995c4398d6beb7be3f20c885227b118ebb6c8e67e795c6d662f` |
+| 5. 전용 `CODEX_HOME` | `codex-194-home.log` | 3,070,349바이트 | `3cd4606bd74735c2fc13b8e26ecc1ef9009b1fb7d7036711c11a654ec1d37551` |
+| 6. 구멍 막기 | `codex-194-plug.log` | 2,963,403바이트 | `f4999c9ac27e862c94b2a76e1884d1c2d48f379a5fb585fe25811f7fe3067eec` |
+| 7. MCP 준비 시점 | `codex-194-mcp.log` | 3,393,037바이트 | `ddcfa97f84e1f53cbf68cddd9faadd4886b12dd9064b991eb8044592958a146b` |
+| 8. MCP 묻기 경로 | `codex-194-prompt-path.log` | 3,402,504바이트 | `a4fe82296bb2c8fe0e54abd4650b907a6c6aa6848ce18e53c0677f5963f71d18` |
+| 9. MCP 승인 요청 원인 찾기 | `codex-194-rootcause.log` | 8,957,152바이트 | `0c1d62712dee0d541ba62ef119eb52aa9b22c328f9c09a4aef646f04e5066d13` |
+| 10. 승인 요청 지연 원인 | `codex-194-delay.log` | 1,917,537바이트 | `d79d8cf9cca8b995c4398d6beb7be3f20c885227b118ebb6c8e67e795c6d662f` |
 
 로그는 Codex 에이전트(`gpt-5.6-luna`)의 실행 전체 기록이다. 에이전트가 읽은 파일, 실행한 명령, 만든 드라이버 코드, 드라이버 출력이 들어 있다. 로그에서 확인한 시험 thread의 모델 이름은 [env.json](../env.json)에 적었다.
 
-실험 9는 에이전트 로그 외에 폴더 하나가 더 있다. 저장소 루트 기준 `.local/experiments/provider-permission-gating/rootcause/`(같은 비공개 폴더)이고 다음이 들어 있다.
+실험 9는 에이전트 로그 외에 폴더 하나가 더 있다. 비공개 원자료의 `rootcause/`이고 다음이 들어 있다.
 
 | 경로(`rootcause/` 기준) | 내용 | SHA-256 |
 |---|---|---|
@@ -62,9 +62,9 @@
 | `experiment-logs/results.jsonl`, `thread-summary.json`, `tool-calls.jsonl` | 결과 요약 JSON과 fixture 호출 기록. 앞 둘은 `raw/`에 사본이 있다. | 해시 목록 파일 참조 |
 | `experiment-logs/split/` | 원문 로그를 thread별로 나눈 것. 로그에서 다시 만들 수 있어 해시 목록에 넣지 않았다. | 해당 없음 |
 
-회차별 원문 로그에는 계정과 의존 패키지 정보가 있을 수 있어 저장소에 넣지 않았다. 파일별 SHA-256은 [`raw/codex-194-rootcause-private-sha256.txt`](raw/codex-194-rootcause-private-sha256.txt)에 있다. 비공개 폴더가 있는 장치에서 `cd .local/experiments/provider-permission-gating && shasum -a 256 -c <해시 목록 파일의 절대 경로>`로 확인한다.
+회차별 원문 로그에는 계정과 의존 패키지 정보가 있을 수 있어 저장소에 넣지 않았다. 파일별 SHA-256은 [`raw/codex-194-rootcause-private-sha256.txt`](raw/codex-194-rootcause-private-sha256.txt)에 있다. 비공개 원자료가 있는 장치에서 그 폴더로 이동해 `shasum -a 256 -c <해시 목록 파일의 절대 경로>`로 확인한다.
 
-실험 10은 에이전트 로그 외에 폴더 하나가 더 있다. 저장소 루트 기준 `.local/experiments/provider-permission-gating/delay/`(같은 비공개 폴더)이고 다음이 들어 있다. 같은 비공개 폴더 바로 아래에 지시서 `codex-194-delay-prompt.md`(`ae71891d...`)와 마지막 답 `codex-194-delay-last.md`(`741c8eb5...`)도 있다. 해시 목록 파일은 만들지 않았고 주요 파일만 아래에 적었다. 원문 로그와 `split/` 폴더, 셸 시험 로그는 해시 목록에 넣지 않았다.
+실험 10은 에이전트 로그 외에 폴더 하나가 더 있다. 비공개 원자료의 `delay/`이고 다음이 들어 있다. 비공개 원자료 바로 아래에 지시서 `codex-194-delay-prompt.md`(`ae71891d...`)와 마지막 답 `codex-194-delay-last.md`(`741c8eb5...`)도 있다. 해시 목록 파일은 만들지 않았고 주요 파일만 아래에 적었다. 원문 로그와 `split/` 폴더, 셸 시험 로그는 해시 목록에 넣지 않았다.
 
 | 경로(`delay/` 기준) | 내용 | SHA-256 |
 |---|---|---|
@@ -102,7 +102,7 @@
 | `raw/key-lines.md` | 실행 로그와 드라이버의 핵심 줄 발췌(줄 번호 표기). 실험 10은 원래 드라이버의 버그 부분과 고친 부분 | 해당 없음(손으로 발췌) |
 | `SHA256SUMS` | `raw/` 파일의 SHA-256 | 해당 없음(`shasum -a 256`) |
 
-복사한 지시서, 보고서, 결과 요약 JSON은 원본과 바이트가 같다. `raw/key-lines.md`는 로그에서 줄을 옮겨 적은 것이고 긴 줄은 `...`로 줄였다. `scripts/`, `run.sh`, `results/`, `processed/`는 원본이 없어 만들지 않았다. 재현 절차는 [설계](../design.md)의 실험별 방법 표다.
+복사한 지시서, 보고서, 결과 요약 JSON은 원본과 바이트가 같다. 단 보고서 5개(`codex-194-{home,plug,mcp,prompt-path,rootcause}-report.md`)와 `codex-194-rootcause-results.jsonl`은 개인 경로를 `~`로 가렸고, 지시서 6개(`codex-194-{home,plug,mcp,prompt-path,rootcause,delay}-prompt.md`)와 `key-lines.md`는 사본의 비공개 경로를 `<비공개 경로>`나 "비공개 원자료"로 가렸다. `raw/key-lines.md`는 로그에서 줄을 옮겨 적은 것이고 긴 줄은 `...`로 줄였다. `scripts/`, `run.sh`, `results/`, `processed/`는 원본이 없어 만들지 않았다. 재현 절차는 [설계](../design.md)의 실험별 방법 표다.
 
 ## 필드
 

@@ -37,7 +37,7 @@ const MODELS_PATH: &str = "/v1/models";
 const OTHER_CHUNK_OPTION: &str = "none of these";
 
 /// 재시도 횟수와 간격은 `saturn_core::judges::failure`가 정한다.
-/// TODO(#49): 설정 키 이름과 기본값
+/// TODO(#235): 설정 키 이름과 기본값
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RetryPolicy {
     /// 시도마다(첫 시도 포함) 보낸 뒤 이 시간이 지나면 `TimedOutAfterSend`.

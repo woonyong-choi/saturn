@@ -26,6 +26,6 @@ Saturn이 Codex를 띄울 때 `CODEX_HOME`을 Saturn 전용 폴더로 주고, �
 - 커밋, PR, 이슈 닫기 금지. AI 흔적을 남기지 마라
 
 ## 보고
-이슈 #194에 댓글로 남긴다(한국어, 표): 확인할 것 / 회차별 관측 / 결과 / 근거(소스 경로·줄, 문서 URL, 실제로 열어 본 것만). 마지막에 결론: 이 방식으로 Saturn이 Codex의 모든 실행을 판단할 수 있는가, 남는 구멍과 조건, 채팅마다 규칙이 다를 때 권장 방식(9번 a/b). 같은 내용을 `~/workspace/woon/.local/orchestration/saturn-build/codex-194-home-report.md`에도 쓴다.
+이슈 #194에 댓글로 남긴다(한국어, 표): 확인할 것 / 회차별 관측 / 결과 / 근거(소스 경로·줄, 문서 URL, 실제로 열어 본 것만). 마지막에 결론: 이 방식으로 Saturn이 Codex의 모든 실행을 판단할 수 있는가, 남는 구멍과 조건, 채팅마다 규칙이 다를 때 권장 방식(9번 a/b). 같은 내용을 `<비공개 경로>/codex-194-home-report.md`에도 쓴다.
 
 끝나면 worktree의 실험 파일과 심볼릭 링크를 지우고 `git -C ~/workspace/oss/saturn worktree remove --force ../saturn.wt/experiment-194-codex-home`, `git -C ~/workspace/oss/saturn branch -D experiment/194-codex-home`로 정리한다.

@@ -10,7 +10,7 @@
 5. 원인을 못 찾으면 "확인 못 함"과 남은 가설을 쓴다. 추정으로 채우지 마라
 
 ## 원자료 보존 (중요, 사용자가 나중에 블로그에 쓴다)
-worktree를 지우기 전에 다음을 `~/workspace/woon/.local/orchestration/saturn-build/experiments/194-mcp-rootcause/`로 옮겨 보존한다: 드라이버·테스트 서버 스크립트, 전용 home의 `config.toml`과 rules(인증 링크와 토큰 제외), 회차별 원문 메시지 로그, 결과 요약 JSON. 인증 파일과 토큰 값은 절대 넣지 않는다.
+worktree를 지우기 전에 다음을 `<비공개 경로>/experiments/194-mcp-rootcause/`로 옮겨 보존한다: 드라이버·테스트 서버 스크립트, 전용 home의 `config.toml`과 rules(인증 링크와 토큰 제외), 회차별 원문 메시지 로그, 결과 요약 JSON. 인증 파일과 토큰 값은 절대 넣지 않는다.
 
 ## 장소와 안전 규칙
 - `git -C ~/workspace/oss/saturn worktree add ../saturn.wt/experiment-194-mcp-rootcause -b experiment/194-mcp-rootcause origin/main`. 실험 파일은 이 안. 커밋하지 않는다
@@ -21,5 +21,5 @@ worktree를 지우기 전에 다음을 `~/workspace/woon/.local/orchestration/sa
 - 커밋, PR, 이슈 닫기 금지. AI 흔적 금지
 
 ## 보고
-이슈 #194에 댓글(한국어, 표): 회차별 관측(요청 도착, 메시지 순서 차이), 원인, 근거, 해결 방법과 재확인 결과, 결론. 같은 내용을 `~/workspace/woon/.local/orchestration/saturn-build/experiments/194-mcp-rootcause/report.md`에. 실제 모델 호출 횟수를 적는다.
+이슈 #194에 댓글(한국어, 표): 회차별 관측(요청 도착, 메시지 순서 차이), 원인, 근거, 해결 방법과 재확인 결과, 결론. 같은 내용을 `<비공개 경로>/experiments/194-mcp-rootcause/report.md`에. 실제 모델 호출 횟수를 적는다.
 끝나면 원자료를 옮긴 뒤 worktree 실험 파일과 링크를 지우고 `git -C ~/workspace/oss/saturn worktree remove --force ../saturn.wt/experiment-194-mcp-rootcause`, `git -C ~/workspace/oss/saturn branch -D experiment/194-mcp-rootcause`로 정리한다.

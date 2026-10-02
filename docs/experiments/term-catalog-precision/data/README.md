@@ -26,7 +26,7 @@
 | `SHA256SUMS` | 저장소 `raw/` 파일의 SHA-256 | `run.sh collect` |
 | `private-SHA256SUMS` | 저장소 밖 원자료의 SHA-256 | `run.sh collect` |
 
-저장소 밖 자료는 `TERM_CATALOG_PRIVATE_DIR`(기본 `~/workspace/woon/.local/orchestration/saturn-experiments/term-catalog-precision/raw/`)에 있다. `./run.sh verify`가 아래 해시를 확인한다.
+저장소 밖 자료는 `TERM_CATALOG_PRIVATE_DIR`이 가리키는 비공개 폴더에 있다(기본 경로는 `run.sh`). `./run.sh verify`가 아래 해시를 확인한다.
 
 | 저장소 밖 파일 | 내용 | SHA-256 |
 |---|---|---|

@@ -19,5 +19,5 @@
 - 커밋, PR, 이슈 닫기 금지. AI 흔적 금지
 
 ## 보고
-이슈 #194에 댓글(한국어, 표): 회차 / 시도 여부 / 승인 요청 / 답 / 실행 기록 / 판정. 결론 한 줄. 같은 내용을 `~/workspace/woon/.local/orchestration/saturn-build/codex-194-prompt-path-report.md`에. 실제 모델 호출 횟수를 적는다.
+이슈 #194에 댓글(한국어, 표): 회차 / 시도 여부 / 승인 요청 / 답 / 실행 기록 / 판정. 결론 한 줄. 같은 내용을 `<비공개 경로>/codex-194-prompt-path-report.md`에. 실제 모델 호출 횟수를 적는다.
 끝나면 실험 파일과 링크를 지우고 `git -C ~/workspace/oss/saturn worktree remove --force ../saturn.wt/experiment-194-mcp-prompt`, `git -C ~/workspace/oss/saturn branch -D experiment/194-mcp-prompt`로 정리한다.

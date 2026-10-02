@@ -450,7 +450,7 @@ shasum -a 256 -c SHA256SUMS
 
 | 파일 | SHA-256 |
 |---|---|
-| `data/SHA256SUMS` | `842aeaacd0ad02bbe7d0fd097b6a3c0466506a34b0e1f38c34d3246e5f88545a` |
+| `data/SHA256SUMS` | `5f37c26298c7d29d31c59a22f5759055ec99c64103f85eaa2306c7c3c67c53e1` |
 
 ## 결론
 

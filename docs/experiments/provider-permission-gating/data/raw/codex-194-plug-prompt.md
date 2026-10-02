@@ -22,6 +22,6 @@
 - 커밋, PR, 이슈 닫기 금지. AI 흔적을 남기지 마라
 
 ## 보고
-이슈 #194에 댓글로 남긴다(한국어, 표): 확인할 것 / 회차별 관측 / 결과 / 근거(소스 경로·줄, 문서 URL, 실제로 열어 본 것만). 마지막에 결론: 이 설정 조합으로 Saturn이 Codex의 셸·파일 편집·MCP·subagent 실행을 모두 판단할 수 있는가, 남는 구멍과 조건, 일반 작업 불편(읽기 전용 샌드박스 영향). 같은 내용을 `~/workspace/woon/.local/orchestration/saturn-build/codex-194-plug-report.md`에도 쓴다. 실제 모델 호출 횟수를 적는다.
+이슈 #194에 댓글로 남긴다(한국어, 표): 확인할 것 / 회차별 관측 / 결과 / 근거(소스 경로·줄, 문서 URL, 실제로 열어 본 것만). 마지막에 결론: 이 설정 조합으로 Saturn이 Codex의 셸·파일 편집·MCP·subagent 실행을 모두 판단할 수 있는가, 남는 구멍과 조건, 일반 작업 불편(읽기 전용 샌드박스 영향). 같은 내용을 `<비공개 경로>/codex-194-plug-report.md`에도 쓴다. 실제 모델 호출 횟수를 적는다.
 
 끝나면 worktree의 실험 파일과 심볼릭 링크를 지우고 `git -C ~/workspace/oss/saturn worktree remove --force ../saturn.wt/experiment-194-codex-plug`, `git -C ~/workspace/oss/saturn branch -D experiment/194-codex-plug`로 정리한다.

@@ -6,7 +6,7 @@
 
 - 저장소: `woonyong-choi/saturn`, 지정 worktree `../saturn.wt/experiment-194-codex-home`
 - Codex CLI: `0.158.0`; app-server stdio JSON-RPC
-- 인증 파일은 복사하지 않고 두 전용 home에서 모두 `/Users/woonyong/.codex/auth.json`을 가리키는 심볼릭 링크로 연결했다.
+- 인증 파일은 복사하지 않고 두 전용 home에서 모두 `~/.codex/auth.json`을 가리키는 심볼릭 링크로 연결했다.
 - 전용 home의 규칙은 `codex-home-a/rules/default.rules`, `codex-home-b/rules/default.rules`에 두었다.
 - 사용자 `~/.codex/config.toml`, `~/.codex/rules/default.rules`, `~/.codex/hooks.json`은 읽기만 했다.
 - 모델을 실제로 호출한 전체 횟수는 44회다. 본시험 39회에 드라이버 수정 전 탐색 호출 5회가 더해져 사용자가 정한 40회 제한을 초과했다. 이 보고서에 숨기지 않는다.

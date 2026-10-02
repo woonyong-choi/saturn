@@ -30,6 +30,6 @@ Saturn이 띄운 Codex에서 MCP 도구가 매번 준비된 상태로 쓰이고,
 - 커밋, PR, 이슈 닫기 금지. AI 흔적을 남기지 마라
 
 ## 보고
-이슈 #194에 댓글(한국어, 표): 확인할 것 / 회차별 관측 / 결과 / 근거. 결론: 불안정의 원인, 권장 해결 방법과 조건, Saturn 규칙→MCP 설정 번역표, 승인 없이 실행된 MCP 호출 유무. 같은 내용을 `~/workspace/woon/.local/orchestration/saturn-build/codex-194-mcp-report.md`에도 쓴다. 실제 모델 호출 횟수를 적는다.
+이슈 #194에 댓글(한국어, 표): 확인할 것 / 회차별 관측 / 결과 / 근거. 결론: 불안정의 원인, 권장 해결 방법과 조건, Saturn 규칙→MCP 설정 번역표, 승인 없이 실행된 MCP 호출 유무. 같은 내용을 `<비공개 경로>/codex-194-mcp-report.md`에도 쓴다. 실제 모델 호출 횟수를 적는다.
 
 끝나면 worktree 실험 파일과 심볼릭 링크를 지우고 `git -C ~/workspace/oss/saturn worktree remove --force ../saturn.wt/experiment-194-codex-mcp`, `git -C ~/workspace/oss/saturn branch -D experiment/194-codex-mcp`로 정리한다.
