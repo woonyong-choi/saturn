@@ -39,6 +39,28 @@ pub(crate) fn resolve_chat(mode: OpenMode) -> anyhow::Result<Option<ChatId>> {
     }
 }
 
+// cost: time O(d·p), heap O(d·p), stack O(1), io d·p
+// vars: d = `--add-dir` 개수, p = 경로 깊이
+// basis: estimate
+/// `--add-dir` 폴더를 링크를 푼 절대 경로로 바꾼다. engine에 붙기 전에 불러 없는 폴더면 engine을 띄우지 않는다.
+///
+/// # Errors
+/// 폴더가 없거나 폴더가 아니면 오류.
+pub(crate) fn resolve_add_dirs(dirs: &[PathBuf]) -> anyhow::Result<Vec<PathBuf>> {
+    dirs.iter()
+        .map(|dir| {
+            let resolved = std::fs::canonicalize(dir)
+                .with_context(|| format!("failed to read --add-dir folder: {}", dir.display()))?;
+            anyhow::ensure!(
+                resolved.is_dir(),
+                "--add-dir should be a folder: {}",
+                dir.display()
+            );
+            Ok(resolved)
+        })
+        .collect()
+}
+
 // cost: time O(c), heap O(c), stack O(1), io c
 // vars: c = 화면을 연 동안 오간 메시지 수
 // basis: estimate
@@ -48,9 +70,10 @@ pub(crate) async fn run(
     client: &mut EngineClient,
     chat: Option<ChatId>,
     config: &[ConfigOverride],
+    add_dirs: Vec<PathBuf>,
 ) -> anyhow::Result<()> {
     let workdir = std::env::current_dir().context("failed to read the current folder")?;
-    let options = run_options(chat, config, workdir);
+    let options = run_options(chat, config, add_dirs, workdir);
     match detect_mode() {
         ScreenMode::FullScreen => run_full_screen(client, options).await,
         ScreenMode::Plain => run_plain(client, options).await,
@@ -77,7 +100,12 @@ fn mode_for(stdin_is_terminal: bool, stdout_is_terminal: bool) -> ScreenMode {
 // vars: c = `-c` 개수
 // basis: estimate
 /// `-c`는 실행 층으로 `Attach`에 실려 이 접속의 입력에만 적용된다.
-fn run_options(chat: Option<ChatId>, config: &[ConfigOverride], workdir: PathBuf) -> RunOptions {
+fn run_options(
+    chat: Option<ChatId>,
+    config: &[ConfigOverride],
+    add_dirs: Vec<PathBuf>,
+    workdir: PathBuf,
+) -> RunOptions {
     let history = EngineClient::default_socket()
         .parent()
         .map(|home| home.join(HISTORY_FILE))
@@ -90,6 +118,7 @@ fn run_options(chat: Option<ChatId>, config: &[ConfigOverride], workdir: PathBuf
             .iter()
             .map(|entry| (entry.key.clone(), entry.value.clone()))
             .collect(),
+        add_dirs,
         history,
     }
 }
@@ -142,6 +171,24 @@ mod tests {
     }
 
     #[test]
+    fn add_dir_resolves_to_absolute_folders_and_rejects_files_and_missing_paths() {
+        let root = tempfile::tempdir().unwrap();
+        let folder = root.path().join("lib");
+        std::fs::create_dir_all(&folder).unwrap();
+        let file = root.path().join("file");
+        std::fs::write(&file, "x").unwrap();
+
+        let resolved = resolve_add_dirs(&[folder.join("../lib")]).unwrap();
+        let missing = resolve_add_dirs(&[root.path().join("missing")]).unwrap_err();
+        let not_folder = resolve_add_dirs(&[file]).unwrap_err();
+
+        assert_eq!(resolved, vec![folder.canonicalize().unwrap()]);
+        assert!(missing.to_string().contains("failed to read --add-dir"));
+        assert!(not_folder.to_string().contains("should be a folder"));
+        assert!(resolve_add_dirs(&[]).unwrap().is_empty());
+    }
+
+    #[test]
     fn mode_for_needs_terminal_input_and_output_for_full_screen() {
         assert_eq!(mode_for(true, true), ScreenMode::FullScreen);
         assert_eq!(mode_for(true, false), ScreenMode::Plain);
@@ -153,10 +200,16 @@ mod tests {
     fn run_options_carries_chat_workdir_and_config_layer_in_order() {
         let config = [entry("permission.mode", "\"full\""), entry("a", "1")];
 
-        let options = run_options(Some(ChatId(3)), &config, PathBuf::from("/work"));
+        let options = run_options(
+            Some(ChatId(3)),
+            &config,
+            vec![PathBuf::from("/shared")],
+            PathBuf::from("/work"),
+        );
 
         assert_eq!(options.chat, Some(ChatId(3)));
         assert_eq!(options.workdir, PathBuf::from("/work"));
+        assert_eq!(options.add_dirs, vec![PathBuf::from("/shared")]);
         assert_eq!(
             options.overrides,
             vec![

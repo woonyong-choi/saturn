@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub const SCHEMA_VERSION: u32 = 4;
+pub const SCHEMA_VERSION: u32 = 5;
 
 pub const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,7 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4];
+pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -173,6 +173,17 @@ CREATE TABLE permission_allows (
     pattern TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     UNIQUE (workdir, tool, pattern)
+);
+"#;
+
+/// 채팅에 더한 폴더. 채팅마다 같은 경로는 한 행이고, id 순서가 더한 순서다.
+const V5: &str = r#"
+CREATE TABLE chat_dirs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    added_at INTEGER NOT NULL,
+    UNIQUE (chat_id, path)
 );
 "#;
 
@@ -467,6 +478,28 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!((asked_with, signal, answer), (0.2, None, None));
+    }
+
+    #[tokio::test]
+    async fn v4_file_migrates_to_chat_dirs_keeping_chats() {
+        let (dir, store) = temp_store_at(4).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (4, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        let chat = saturn_protocol::ids::ChatId(1);
+        assert_eq!(
+            store.chat_workdir(chat).await.unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.chat_dirs(chat).await.unwrap().is_empty());
     }
 
     #[tokio::test]

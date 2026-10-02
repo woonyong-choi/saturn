@@ -374,6 +374,7 @@ async fn requests_are_answered_while_a_judgment_is_in_flight() {
                     workdir,
                     env: Vec::new(),
                     overrides: Vec::new(),
+                    add_dirs: Vec::new(),
                 },
             )
             .await;
@@ -449,6 +450,7 @@ async fn socket_submit_reports_input_and_task_states_in_order() {
                     workdir,
                     env: Vec::new(),
                     overrides: Vec::new(),
+                    add_dirs: Vec::new(),
                 },
             )
             .await;

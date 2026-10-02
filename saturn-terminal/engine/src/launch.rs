@@ -70,6 +70,7 @@ impl Engine {
             settings: record.settings,
             resume,
             packet,
+            add_dirs: self.chat_dirs_of(record.chat),
         }
     }
 

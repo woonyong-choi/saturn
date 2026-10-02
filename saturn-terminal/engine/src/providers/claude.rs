@@ -252,6 +252,14 @@ impl ClaudeClient {
         if let Some(model) = &spec.model {
             args.extend(["--model".to_owned(), model.clone()]);
         }
+        if !spec.add_dirs.is_empty() {
+            args.push("--add-dir".to_owned());
+            args.extend(
+                spec.add_dirs
+                    .iter()
+                    .map(|dir| dir.to_string_lossy().into_owned()),
+            );
+        }
         let found = read_user_config(&self.launch);
         let user = UserProviderConfig {
             has_auto_compact: self.launch.user_config.has_auto_compact || found.has_auto_compact,
@@ -1121,6 +1129,7 @@ while (my $line = <STDIN>) {
             settings: SettingsRevision(1),
             resume: resume.map(|id| ProviderSessionId(id.to_owned())),
             packet: None,
+            add_dirs: Vec::new(),
         }
     }
 
@@ -1691,6 +1700,30 @@ while (my $line = <STDIN>) {
                 "{\"hooks\":{\"PreToolUse\":[]},\"permissions\":{\"ask\":[\"Bash\",\"Edit\",\"MultiEdit\",\"Write\",\"NotebookEdit\",\"Task\",\"Agent\",\"mcp__*\"]}}",
             ]
         );
+    }
+
+    #[test]
+    fn add_dir_follows_the_model_as_one_variadic_flag_before_the_permission_args() {
+        let dir = tempfile::tempdir().unwrap();
+        let client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+        let mut with_dirs = spec(dir.path(), None);
+        with_dirs.add_dirs = vec![PathBuf::from("/shared/lib"), PathBuf::from("/docs")];
+
+        let args = client.launch_args(&with_dirs, &SessionArg::New("id-1".to_owned()));
+        let without =
+            client.launch_args(&spec(dir.path(), None), &SessionArg::New("id-1".to_owned()));
+
+        let at = args.iter().position(|arg| arg == "--add-dir").unwrap();
+        assert_eq!(
+            args[at..at + 4],
+            [
+                "--add-dir",
+                "/shared/lib",
+                "/docs",
+                "--permission-prompt-tool"
+            ]
+        );
+        assert!(!without.contains(&"--add-dir".to_owned()));
     }
 
     #[test]

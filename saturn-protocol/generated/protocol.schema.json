@@ -239,6 +239,31 @@
         },
         {
           "additionalProperties": false,
+          "description": "폴더를 채팅에 더했다. 이미 열린 session에는 반영하지 못해 `applies_from_next_session`이면 다음 session부터 적용한다.",
+          "properties": {
+            "FolderAdded": {
+              "properties": {
+                "applies_from_next_session": {
+                  "type": "boolean"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "applies_from_next_session"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "FolderAdded"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "description": "패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못했다. 맥락 정리를 미루고 제약 목록을 보인다.",
           "properties": {
             "ContextDeferred": {
@@ -320,7 +345,7 @@
     "ClientMessage": {
       "oneOf": [
         {
-          "description": "`chat`이 `None`이면 새 채팅.\n`overrides`(`-c key=value`)는 이 접속의 입력에만 적용한다.\n`workdir`는 폴더 설정 층 검색 위치이자 새 작업의 실행 위치.\n`env`는 이 TUI의 환경 변수(`ATTACH_ENV_NAMES`만)로, engine이 이 채팅의 provider 실행 환경으로 쓴다.",
+          "description": "`chat`이 `None`이면 새 채팅.\n`overrides`(`-c key=value`)는 이 접속의 입력에만 적용한다.\n`workdir`는 폴더 설정 층 검색 위치이자 새 작업의 실행 위치.\n`env`는 이 TUI의 환경 변수(`ATTACH_ENV_NAMES`만)로, engine이 이 채팅의 provider 실행 환경으로 쓴다.\n`add_dirs`(`--add-dir`)는 절대 경로이고, 이 채팅에 폴더로 더한다(이미 있으면 그대로).",
           "properties": {
             "method": {
               "const": "Attach",
@@ -328,6 +353,13 @@
             },
             "params": {
               "properties": {
+                "add_dirs": {
+                  "default": [],
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
                 "chat": {
                   "anyOf": [
                     {
@@ -378,6 +410,35 @@
                 "workdir",
                 "env",
                 "overrides"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "채팅의 provider session이 다룰 폴더를 더한다. `path`는 이미 있는 폴더의 절대 경로.\n열려 있는 session에는 반영하지 못하고 다음 session부터 적용한다.",
+          "properties": {
+            "method": {
+              "const": "AddDir",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "chat",
+                "path"
               ],
               "type": "object"
             }
@@ -1272,7 +1333,16 @@
             },
             "params": {
               "properties": {
+                "added_dirs": {
+                  "default": [],
+                  "description": "더한 폴더. 기본 폴더는 들어 있지 않다.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
                 "folder": {
+                  "description": "채팅의 기본 폴더.",
                   "type": "string"
                 },
                 "judge": {
@@ -2068,7 +2138,16 @@
             },
             "params": {
               "properties": {
+                "added_dirs": {
+                  "default": [],
+                  "description": "더한 폴더. 기본 폴더는 들어 있지 않다.",
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
                 "folder": {
+                  "description": "채팅의 기본 폴더.",
                   "type": "string"
                 },
                 "judge": {
@@ -3455,6 +3534,14 @@
           "format": "uint32",
           "minimum": 0,
           "type": "integer"
+        },
+        "folder": {
+          "default": null,
+          "description": "채팅의 기본 폴더. TUI가 작업 목록의 폴더 범위를 가를 때 쓴다.",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "group": {
           "type": [

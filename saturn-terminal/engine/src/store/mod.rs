@@ -1,6 +1,7 @@
 //! 기록 저장소: SQLite 파일 하나에 입력, 실행, 판단 기록, 설정 스냅샷을 쓴다.
 //! 설계: docs/design/records.md
 
+mod chat_dirs;
 mod history;
 mod judgments;
 mod ledger;

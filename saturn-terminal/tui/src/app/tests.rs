@@ -116,6 +116,7 @@ fn attach_request_carries_chat_workdir_and_env() {
             workdir: "/work".to_string(),
             env: vec![("PATH".to_string(), "/usr/bin".to_string())],
             overrides: Vec::new(),
+            add_dirs: Vec::new(),
         }
     );
 }
@@ -230,6 +231,177 @@ fn usage_command_opens_screen_and_requests_rows() {
         }]
     );
     assert!(matches!(app.window, Some(Window::Usage(_))));
+}
+
+#[test]
+fn add_dir_command_sends_an_absolute_path_relative_to_the_tui_folder() {
+    let mut app = attached();
+    type_text(&mut app, "/add-dir ../shared lib");
+    app.popup = None;
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::AddDir {
+            chat: ChatId(7),
+            path: "/work/../shared lib".to_owned(),
+        }]
+    );
+}
+
+#[test]
+fn add_dir_command_keeps_an_absolute_path_as_it_is() {
+    let mut app = attached();
+    type_text(&mut app, "/add-dir /abs/dir");
+    app.popup = None;
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::AddDir {
+            chat: ChatId(7),
+            path: "/abs/dir".to_owned(),
+        }]
+    );
+}
+
+#[test]
+fn add_dir_notice_adds_a_cell_and_updates_the_start_screen_folders() {
+    let mut app = attached();
+    notify(
+        &mut app,
+        Notification::StartInfo {
+            saturn_version: "0.1.0".to_string(),
+            providers: Vec::new(),
+            judge: String::new(),
+            judge_version: String::new(),
+            folder: "/work".to_string(),
+            added_dirs: Vec::new(),
+        },
+    );
+
+    notify(
+        &mut app,
+        Notification::ChatNotice {
+            chat: ChatId(7),
+            task: None,
+            notice: saturn_protocol::rpc::ChatNotice::FolderAdded {
+                path: "/shared".to_owned(),
+                applies_from_next_session: true,
+            },
+        },
+    );
+
+    assert!(matches!(
+        app.transcript.cells().last(),
+        Some(TranscriptCell::Notice { .. })
+    ));
+    let Some(TranscriptCell::Header(header)) = app.transcript.cells().first() else {
+        panic!("the start screen should have become the header cell");
+    };
+    assert_eq!(header.added_dirs, vec![std::path::PathBuf::from("/shared")]);
+}
+
+#[test]
+fn add_dir_notice_before_the_first_cell_updates_the_start_screen() {
+    let mut app = app();
+    notify(
+        &mut app,
+        Notification::StartInfo {
+            saturn_version: "0.1.0".to_string(),
+            providers: Vec::new(),
+            judge: String::new(),
+            judge_version: String::new(),
+            folder: "/work".to_string(),
+            added_dirs: vec!["/first".to_owned()],
+        },
+    );
+    assert_eq!(
+        app.chat_folder.as_deref(),
+        Some(std::path::Path::new("/work"))
+    );
+
+    notify(
+        &mut app,
+        Notification::ChatNotice {
+            chat: ChatId(7),
+            task: None,
+            notice: saturn_protocol::rpc::ChatNotice::FolderAdded {
+                path: "/second".to_owned(),
+                applies_from_next_session: false,
+            },
+        },
+    );
+
+    let Some(TranscriptCell::Header(header)) = app.transcript.cells().first() else {
+        panic!("the start screen should have become the header cell");
+    };
+    assert_eq!(
+        header.added_dirs,
+        vec![
+            std::path::PathBuf::from("/first"),
+            std::path::PathBuf::from("/second")
+        ]
+    );
+}
+
+#[test]
+fn add_dirs_from_the_command_line_ride_on_the_attach_request() {
+    let mut app = app();
+    app.add_dirs = vec!["/a".to_owned(), "/b".to_owned()];
+
+    let request = app.attach_request();
+
+    assert!(matches!(
+        request,
+        Request::Attach { add_dirs, .. } if add_dirs == ["/a", "/b"]
+    ));
+}
+
+#[test]
+fn task_list_opened_from_a_chat_starts_in_the_chat_folder_scope() {
+    let mut app = attached();
+    notify(
+        &mut app,
+        Notification::StartInfo {
+            saturn_version: "0.1.0".to_string(),
+            providers: Vec::new(),
+            judge: String::new(),
+            judge_version: String::new(),
+            folder: "/other/project".to_string(),
+            added_dirs: Vec::new(),
+        },
+    );
+    type_text(&mut app, "/tasks");
+    app.popup = None;
+
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    let Some(Window::TaskList(list)) = &app.window else {
+        panic!("task list should be open");
+    };
+    assert_eq!(
+        list.folder.as_deref(),
+        Some(std::path::Path::new("/other/project"))
+    );
+    assert_eq!(list.scope, crate::view::task_list::FolderScope::Current);
+}
+
+#[test]
+fn task_list_key_a_widens_the_scope_to_all_folders() {
+    let mut app = attached();
+    type_text(&mut app, "/tasks");
+    app.popup = None;
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    press(&mut app, KeyCode::Char('a'), KeyModifiers::NONE);
+
+    let Some(Window::TaskList(list)) = &app.window else {
+        panic!("task list should be open");
+    };
+    assert_eq!(list.scope, crate::view::task_list::FolderScope::All);
 }
 
 #[test]
@@ -438,6 +610,7 @@ fn notifications_build_echo_live_output_and_result() {
             judge: String::new(),
             judge_version: String::new(),
             folder: "/work".to_string(),
+            added_dirs: Vec::new(),
         },
     );
     notify(&mut app, input(1, InputState::Delivering, "버그 고쳐"));

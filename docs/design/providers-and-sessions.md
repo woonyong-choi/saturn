@@ -76,11 +76,13 @@ Codex app-server 규약은 codex-cli 0.158.0의 `codex app-server generate-json-
 - 맥락 크기는 `thread/tokenUsage/updated`의 `last.totalTokens`이고 메인 턴 끝에 보낸다. 누적 사용량의 새 입력은 `total.inputTokens - cachedInputTokens`다.
 - 명령 대응표는 `compact` → `thread/compact/start`, `review` → `review/start`(대상 `uncommittedChanges`)이고, 명령 목록에서 `new`, `resume`, `fork`, `quit`, `exit`를 뺀다(초안). 스킬은 `turn/start` 입력에 `{"type":"skill","name","path"}` 항목으로 넣는다.
 - 승인 요청(`item/commandExecution/requestApproval`, `item/fileChange/requestApproval`, `item/permissions/requestApproval`, 옛 이름 `execCommandApproval`·`applyPatchApproval`, `_meta.codex_approval_kind`가 있는 `mcpServer/elicitation/request`)은 요청의 JSON-RPC 번호를 숫자와 문자열 그대로 기억했다가 같은 번호로 응답한다. 번호는 `PermissionRequested`의 `request_id`로 올린다. 승인이 아닌 elicitation은 올리지도 응답하지도 않는다. 사용자 답을 provider 값으로 바꾸는 표는 [권한](permissions.md#허가-요청-창과-답)에 있다.
+- 채팅에 더한 폴더([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기))는 `thread/start`와 `thread/resume`의 `config`에 `sandbox_workspace_write.writable_roots`로 넘긴다(초안). app-server에는 `--add-dir`에 해당하는 인자가 없어서다. 읽기 전용 샌드박스에서 이 값이 효과가 있는지는 실측하지 않았다.
 - 권한은 Saturn 규칙을 전용 `CODEX_HOME`과 `thread/start` 인자로 넘기고([권한](permissions.md)), 사용자 설정은 `~/.codex/config.toml`의 루트와 선택된 프로필에서 `model_auto_compact_token_limit` 키가 있는지만 본다.
 
 Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 
 - 새 session은 Saturn이 만든 UUID를 `--session-id`로 넘긴다. stream-json은 첫 입력 전에 `system/init`을 내지 않으므로 session id를 미리 알기 위해서다. 재개는 `--resume <id>`이고, 500ms(초안) 안에 프로그램이 끝나면 재개 실패로 본다.
+- 채팅에 더한 폴더는 `--add-dir <폴더>...` 하나로 넘긴다(Claude Code 2.1.285 `--help`의 여러 값 인자). 열린 session에는 넣지 않는다.
 - 권한은 `--permission-prompt-tool stdio`와 `--settings`의 `ask` 목록으로 Saturn 규칙에 넘기고([권한](permissions.md)), 안전망 `--autocompact` 값은 허용 범위 100000~1000000으로 맞춘다.
 - 사용자 설정은 `~/.claude/settings.json`, `<작업 폴더>/.claude/settings.json`, `settings.local.json`의 `autoCompactEnabled`와 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있는지만 본다(초안).
 - 명령 목록에서 `clear`, `resume`, `exit`, `quit`를 뺀다(초안). 허가 요청은 `control_request`의 `can_use_tool`로 받고 `control_response`로 답한다. 요청의 `input`은 허용 응답의 `updatedInput`으로 되돌려 주려고 요청 번호와 함께 기억한다(`Bash`만 실측, [권한](permissions.md)).
@@ -299,6 +301,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | Claude 백그라운드 subagent까지 멈춘다. | [#18](https://github.com/woonyong-choi/saturn/issues/18) |
 | Claude 사용량 보고의 범위를 올바르게 표시한다. | [#19](https://github.com/woonyong-choi/saturn/issues/19) |
 | Claude 스트림에서 provider 명령 결과와 허가 요청을 받는다. | [#26](https://github.com/woonyong-choi/saturn/issues/26) |
+| 채팅에 더한 폴더가 session을 열 때 provider 실행 인자로 간다. | `saturn-terminal/engine/src/providers/claude.rs`의 `add_dir_follows_the_model_as_one_variadic_flag_before_the_permission_args`, `saturn-terminal/engine/src/providers/codex.rs`의 `add_dir_goes_to_the_thread_config_when_a_session_opens` |
 | 허가 답이 없는 동안 턴이 멈춰 있고, 답한 뒤 이어진다. 답은 Codex에는 요청과 같은 JSON-RPC 번호로, Claude에는 `control_response`로 나간다. | `saturn-terminal/engine/src/providers/codex.rs`의 `command_approval_is_answered_with_the_same_numeric_request_id`, `file_change_approval_keeps_a_string_request_id`, `saturn-terminal/engine/src/providers/claude.rs`의 `allow_once_answers_can_use_tool_with_the_request_input` |
 | 허가 요청을 TUI에 올리고 사용자 답을 provider에 넘기며, 받지 못했으면 다시 답할 수 있다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `permission_request_reaches_the_tui_and_the_answer_reaches_the_provider`, `answer_for_a_request_nobody_asked_is_refused`, `answer_the_provider_did_not_take_keeps_the_request_for_another_try`, `turn_end_withdraws_requests_nobody_answered` |
 | 이미 답했거나 모르는 허가 요청에 답하면 보내지 않는다. | `saturn-terminal/engine/src/providers/codex.rs`의 `answering_an_unknown_or_answered_request_is_not_sent`, `saturn-terminal/engine/src/providers/claude.rs`의 `answering_an_unknown_or_answered_request_is_not_sent` |
@@ -322,6 +325,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 
 ## 미해결 질문
 
+- 채팅에 더한 폴더를 열린 session에 넣는 방법(Claude stream-json 제어 요청, Codex 턴 단위 쓰기 폴더)과, Codex 읽기 전용 샌드박스에서 `writable_roots`가 효과가 있는지. 지금은 다음 session부터 적용한다 ([#193](https://github.com/woonyong-choi/saturn/issues/193))
 - 한 번 실행 경로를 상시 연결의 대체 경로로 구현할지, 경로 하나만 유지할지 ([#34](https://github.com/woonyong-choi/saturn/issues/34))
 - 메인이 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - Codex 자식 session의 승인 요청에 Saturn이 부모 정책으로 응답할지, 사용자에게 따로 보일지, 모두 거절할지 ([#61](https://github.com/woonyong-choi/saturn/issues/61))

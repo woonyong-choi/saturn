@@ -39,11 +39,20 @@ pub enum Request {
     /// `overrides`(`-c key=value`)는 이 접속의 입력에만 적용한다.
     /// `workdir`는 폴더 설정 층 검색 위치이자 새 작업의 실행 위치.
     /// `env`는 이 TUI의 환경 변수(`ATTACH_ENV_NAMES`만)로, engine이 이 채팅의 provider 실행 환경으로 쓴다.
+    /// `add_dirs`(`--add-dir`)는 절대 경로이고, 이 채팅에 폴더로 더한다(이미 있으면 그대로).
     Attach {
         chat: Option<ChatId>,
         workdir: String,
         env: Vec<(String, String)>,
         overrides: Vec<(String, String)>,
+        #[serde(default)]
+        add_dirs: Vec<String>,
+    },
+    /// 채팅의 provider session이 다룰 폴더를 더한다. `path`는 이미 있는 폴더의 절대 경로.
+    /// 열려 있는 session에는 반영하지 못하고 다음 session부터 적용한다.
+    AddDir {
+        chat: ChatId,
+        path: String,
     },
     /// `before`보다 앞 기록 `limit`개.
     LoadHistory {
@@ -187,7 +196,11 @@ pub enum Notification {
         providers: Vec<(Provider, String)>,
         judge: String,
         judge_version: String,
+        /// 채팅의 기본 폴더.
         folder: String,
+        /// 더한 폴더. 기본 폴더는 들어 있지 않다.
+        #[serde(default)]
+        added_dirs: Vec<String>,
     },
     InputAccepted {
         client_ref: u64,
@@ -318,6 +331,11 @@ pub enum ChatNotice {
     StopUnconfirmed {
         remaining: u32,
     },
+    /// 폴더를 채팅에 더했다. 이미 열린 session에는 반영하지 못해 `applies_from_next_session`이면 다음 session부터 적용한다.
+    FolderAdded {
+        path: String,
+        applies_from_next_session: bool,
+    },
     /// 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못했다. 맥락 정리를 미루고 제약 목록을 보인다.
     ContextDeferred {
         constraints: Vec<String>,
@@ -374,6 +392,9 @@ pub struct TaskListItem {
     pub busy_elsewhere: bool,
     /// subagent와 자식 채팅 수.
     pub children: u32,
+    /// 채팅의 기본 폴더. TUI가 작업 목록의 폴더 범위를 가를 때 쓴다.
+    #[serde(default)]
+    pub folder: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

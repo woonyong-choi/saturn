@@ -91,7 +91,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | 폴더 설정 신뢰 창 | 폴더 설정 파일 경로, 지문, 적용되는 항목, 무시되는 항목, 바뀐 줄 | 처음 보거나 내용이 바뀐 폴더 설정을 만난 때, 실행 중이면 다음 입력 접수 전 |
 | 보류 재개 질문 | 보류된 작업 목록, 선택지 `모두 이어서`, `골라서 이어서`, `그대로 두기` | 보류 작업이 있는 채팅을 다시 열 때 한 번 |
 | 허가 요청 창 | 작업 이름표와 provider가 붙은 제목, 요청 내용, 이유, 선택지 세 개, 허가를 기다리는 다른 작업 수 | 허가 요청 도착 |
-| 작업 목록 화면 | 필터 전체, 확인 필요, 실행 중, 대기, 보류, 끝남, 묶음 채팅, 폴더, 상태, 작업과 그 아래 subagent와 자식 채팅, 작업 상세. 기본 범위는 현재 폴더의 채팅이고 필터 `모든 폴더`로 넓힌다(초안) | `/tasks` 실행, `engine` 상태 변경 때 선택 유지 |
+| 작업 목록 화면 | 필터 전체, 확인 필요, 실행 중, 대기, 보류, 끝남, 묶음 채팅, 폴더, 상태, 작업과 그 아래 subagent와 자식 채팅, 작업 상세. 기본 범위는 현재 채팅의 기본 폴더에서 만든 채팅이고 키 `a`로 모든 폴더로 넓히고 되돌린다. 필터 줄 끝에 범위(`현재 폴더`, `모든 폴더`)를 보인다. 채팅이나 현재 폴더를 알 수 없으면 범위로 거르지 않는다(초안) | `/tasks` 실행, `engine` 상태 변경 때 선택 유지 |
 | 전체 기록 | 도구 셀 전체와 줄인 셀을 펼친 대화 기록 | `Ctrl+T` 입력 |
 | 사용량 화면 | 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론, judge 호출과 예상 비용, 맥락 정리, 채점, 여러 턴 합계 행 끝의 `n 토큰 · n 턴`. provider·모델마다 한 행, judge 한 행 | `/usage` 실행, 범위 `chat`, `today`, `week`, `all` 선택 |
 | judge 버전 화면 | judge 버전 목록, 버전별 judge와 보정값과 ECE, 질문별 목표 틀림 비율과 기준값과 최근 200건 틀림과 판단 수 | `/judge version` 실행 |
@@ -170,6 +170,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | `Enter` | 그 채팅으로 이동해 해당 작업 결과로 스크롤 | 작업 목록 화면 |
 | `Esc` | 화면 종료 | 작업 목록 화면 |
 | `Tab`, `Shift+Tab` | 필터 변경 | 작업 목록 화면 |
+| `a` | 폴더 범위 바꾸기(현재 폴더, 모든 폴더) | 작업 목록 화면 |
 | `c` | 보류 작업 재개 | 작업 목록 화면 |
 | `d` | 대기 취소, 확인 한 줄 뒤 보류 종료 | 작업 목록 화면 |
 | `f` | 검색 | 작업 목록 화면 |
@@ -270,7 +271,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | 스크롤 | 휠 한 칸 3줄, 맨 위에 닿으면 이전 기록 50개 요청 |
 | judge 키 입력 창 붙여넣기 | 제어 문자를 뺀 글을 가린 입력칸에 넣는다 |
 | `/record` | 명령 목록에 넣고 값 목록은 `on`, `off` |
-| `/add-dir` | 명령 목록에 넣고 값은 폴더 경로 하나. 더한 폴더는 채팅 기록에 저장하고 모든 provider session에 넘긴다. 폴더 설정은 읽지 않는다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)) |
+| `/add-dir` | 명령 목록에 넣고 값은 폴더 경로 하나. 명령 이름 뒤 나머지 줄 전체를 경로로 읽어 공백이 들어 있어도 된다. 상대 경로는 TUI의 현재 폴더 기준 절대 경로로, `~/`는 홈 폴더 아래로 바꿔 보낸다(초안). 더한 폴더는 채팅 기록에 저장하고 모든 provider session에 넘긴다. 폴더 설정은 읽지 않는다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)). 더한 뒤 안내 한 줄을 대화 기록에 남기고, 열린 session이 있으면 다음 session부터 적용한다고 덧붙인다 |
 | `/permissions` | 명령 목록에 넣고 값 목록은 `ask`, `edit`, `read-only`, `full`(초안). 값을 주면 채팅 층 모드를 바꾼다. 값 없이 실행하면 현재 모드를 보이는 동작은 아직 없다([#177](https://github.com/woonyong-choi/saturn/issues/177), [권한](permissions.md)) |
 
 ### 요구사항
@@ -282,6 +283,8 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
 | judge 연결이 끊겨도 입력창은 입력을 계속 보낸다. | `saturn-terminal/tui/src/app/tests.rs`의 `submit_while_judge_disconnected_still_sends_input` |
+| `/add-dir`는 폴더 경로를 절대 경로로 바꿔 engine에 보내고, 시작 화면과 안내 줄이 더한 폴더를 보인다. | `saturn-terminal/tui/src/app/tests.rs`의 `add_dir_command_sends_an_absolute_path_relative_to_the_tui_folder`, `add_dir_notice_adds_a_cell_and_updates_the_start_screen_folders`, `saturn-terminal/tui/src/view/start_screen.rs`의 `lines_show_the_chat_folder_and_the_added_folders`, `saturn-terminal/tui/src/view/transcript.rs`의 `lines_folder_added_mentions_the_next_session_only_when_one_is_open` |
+| 작업 목록은 기본으로 현재 채팅 폴더의 채팅만 보이고 키 `a`로 모든 폴더를 본다. | `saturn-terminal/tui/src/view/task_list.rs`의 `task_list_defaults_to_the_current_folder_and_the_key_widens_it`, `task_list_does_not_hide_chats_whose_folder_is_unknown`, `saturn-terminal/tui/src/app/tests.rs`의 `task_list_opened_from_a_chat_starts_in_the_chat_folder_scope`, `task_list_key_a_widens_the_scope_to_all_folders` |
 | 화면이 없는 파이프와 CI에서도 같은 명령이 같은 결과를 낸다. | `saturn-terminal/tui/src/plain.rs`의 `plain_and_full_screen_cells_use_same_text`, `apply_writes_echo_output_result_and_summary` |
 
 ## 미해결 질문

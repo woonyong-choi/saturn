@@ -82,6 +82,11 @@ pub const SATURN_COMMANDS: &[CommandSpec] = &[
         description: "권한 모드 바꾸기",
         values: &PERMISSION_MODES,
     },
+    CommandSpec {
+        path: "add-dir",
+        description: "폴더 더하기",
+        values: &[],
+    },
 ];
 
 /// engine이 받는 권한 모드 이름. 초안.
@@ -96,6 +101,8 @@ pub enum SlashCommand {
     /// `/permissions ask|edit|read-only|full`
     /// TODO(#177): 값 없이 실행하면 현재 모드를 보이는 동작은 조회 결과를 돌려주는 방식이 정해진 뒤에 넣는다
     Permissions { mode: &'static str },
+    /// `/add-dir <폴더>`. 경로는 공백을 포함할 수 있어 명령 이름 뒤 나머지 전체다.
+    AddDir { path: String },
     /// 이름표가 없으면 가장 최근 대기 입력.
     Send { target: Option<TaskLabel> },
     /// 이름표가 없으면 가장 최근 대기 입력.
@@ -152,6 +159,7 @@ pub fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
             correct: parse_feedback(&args)?,
         },
         "permissions" => parse_permissions(&args)?,
+        "add-dir" => parse_add_dir(body)?,
         "tasks" => no_args("tasks", &args, SlashCommand::Tasks)?,
         "usage" => SlashCommand::Usage {
             range: parse_range(&args)?,
@@ -222,6 +230,20 @@ fn parse_target(command: &'static str, args: &[&str]) -> Result<Option<TaskLabel
         (Some(c), None) if LABEL_RANGE.contains(&c) => Ok(Some(TaskLabel(c))),
         _ => Err(invalid(command, argument)),
     }
+}
+
+// cost: time O(b), heap O(b), stack O(1)
+// vars: b = 명령 글자 수
+// basis: estimate
+/// `body`는 `/`를 뗀 줄. 이름 뒤 나머지를 앞뒤 공백만 떼어 경로로 쓴다.
+fn parse_add_dir(body: &str) -> Result<SlashCommand, CommandError> {
+    let path = body.strip_prefix("add-dir").unwrap_or_default().trim();
+    if path.is_empty() {
+        return Err(invalid("add-dir", ""));
+    }
+    Ok(SlashCommand::AddDir {
+        path: path.to_owned(),
+    })
 }
 
 // cost: time O(a), heap O(a), stack O(1)
@@ -372,6 +394,19 @@ mod tests {
                 from: Some("v2".to_string())
             })
         );
+    }
+
+    #[test]
+    fn parse_add_dir_keeps_the_rest_of_the_line_as_the_path() {
+        assert_eq!(
+            parse("/add-dir ~/my docs/ ").unwrap(),
+            Some(SlashCommand::AddDir {
+                path: "~/my docs/".to_owned()
+            })
+        );
+        assert!(parse("/add-dir").is_err());
+        assert!(parse("/add-dir   ").is_err());
+        assert!(SATURN_COMMANDS.iter().any(|spec| spec.path == "add-dir"));
     }
 
     #[test]

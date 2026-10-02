@@ -1,6 +1,7 @@
 //! 입력 흐름 테스트용 가짜 provider. 프로세스를 띄우지 않고 받은 호출을 기록하며 정해 둔 답과 이벤트를 낸다.
 
 use std::collections::VecDeque;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use saturn_core::providers::{
@@ -21,6 +22,7 @@ pub(crate) enum Call {
         model: Option<String>,
         resume: Option<ProviderSessionId>,
         packet: Option<String>,
+        add_dirs: Vec<PathBuf>,
     },
     SendTurn {
         session: ProviderSessionId,
@@ -137,6 +139,7 @@ impl ProviderClient for FakeProvider {
             model: spec.model.clone(),
             resume: spec.resume.clone(),
             packet: spec.packet.clone(),
+            add_dirs: spec.add_dirs.clone(),
         });
         script.open.pop_front().unwrap_or(Ok(()))?;
         script.opened += 1;

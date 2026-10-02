@@ -13,6 +13,7 @@ pub mod settings;
 pub mod store;
 pub mod training;
 
+mod add_dir;
 mod chat_env;
 mod control;
 mod dispatch;
@@ -90,6 +91,9 @@ pub enum EngineError {
     /// 묻지 않은 창의 답이라 적용하지 않는다.
     #[error("no pending {what} for this answer")]
     UnexpectedAnswer { what: &'static str },
+    /// 채팅에 더하려는 경로가 이미 있는 폴더의 절대 경로가 아니다.
+    #[error("invalid folder {path}: {reason}")]
+    InvalidFolder { path: String, reason: &'static str },
     /// `ask`, `edit`, `read-only`, `full`이 아닌 권한 모드 이름이다.
     #[error("unknown permission mode: {mode}")]
     UnknownPermissionMode { mode: String },
@@ -131,6 +135,7 @@ impl EngineError {
             Self::Unsupported { .. } => METHOD_NOT_FOUND,
             Self::UnexpectedAnswer { .. }
             | Self::UnknownPermissionMode { .. }
+            | Self::InvalidFolder { .. }
             | Self::ChatNotAttached { .. }
             | Self::Store(StoreError::NotFound { .. })
             | Self::Queue(
@@ -193,6 +198,16 @@ struct StartNotices {
     migration: Option<MigrationNotice>,
 }
 
+/// `Request::Attach`의 값.
+#[derive(Debug)]
+struct AttachRequest {
+    chat: Option<ChatId>,
+    workdir: PathBuf,
+    env: Vec<(String, String)>,
+    overrides: Vec<(String, String)>,
+    add_dirs: Vec<String>,
+}
+
 #[derive(Debug)]
 struct Attachment {
     chat: ChatId,
@@ -236,6 +251,8 @@ pub struct Engine {
     attachments: HashMap<ClientId, Attachment>,
     /// 채팅마다 가장 나중에 붙은 TUI가 넘긴 작업 폴더와 환경.
     chats: HashMap<ChatId, ChatEnv>,
+    /// 채팅마다 더한 폴더. 기록 저장소가 정본이고 session을 열 때 읽는 빠른 사본이다.
+    chat_dirs: HashMap<ChatId, Vec<PathBuf>>,
     notices: StartNotices,
     queue: Queue,
     sessions: SessionManager,
@@ -288,6 +305,7 @@ impl Engine {
             rpc,
             attachments: HashMap::new(),
             chats: HashMap::new(),
+            chat_dirs: HashMap::new(),
             notices: StartNotices { migration },
             queue: Queue::new(),
             sessions,
@@ -510,10 +528,18 @@ impl Engine {
                 workdir,
                 env,
                 overrides,
+                add_dirs,
             } => {
-                self.attach(client, chat, PathBuf::from(workdir), env, overrides)
-                    .await
+                let request = AttachRequest {
+                    chat,
+                    workdir: PathBuf::from(workdir),
+                    env,
+                    overrides,
+                    add_dirs,
+                };
+                self.attach(client, request).await
             }
+            Request::AddDir { chat, path } => self.add_dir(client, chat, &path).await,
             Request::LoadHistory {
                 chat,
                 before,
@@ -588,11 +614,16 @@ impl Engine {
     async fn attach(
         &mut self,
         client: ClientId,
-        chat: Option<ChatId>,
-        workdir: PathBuf,
-        env: Vec<(String, String)>,
-        overrides: Vec<(String, String)>,
+        request: AttachRequest,
     ) -> Result<(), EngineError> {
+        let AttachRequest {
+            chat,
+            workdir,
+            env,
+            overrides,
+            add_dirs,
+        } = request;
+        let add_dirs = add_dir::resolve_folders(&add_dirs)?;
         let (chat, workdir) = match chat {
             Some(chat) => {
                 self.store.chat_layer(chat).await?;
@@ -600,12 +631,16 @@ impl Engine {
             }
             None => (self.store.create_chat(workdir.clone()).await?, workdir),
         };
+        self.load_chat_dirs(chat).await?;
+        for dir in add_dirs {
+            self.register_dir(chat, dir).await?;
+        }
         let chat_env = ChatEnv::new(workdir, env);
         let (applied, folder_trust) = self
             .settings
             .apply_trusted(&self.store, Some(chat), chat_env.workdir())
             .await?;
-        let start = self.start_info(chat_env.workdir());
+        let start = self.start_info(chat_env.workdir(), &self.chat_dirs_of(chat));
         let history = self.history_chunk(chat, ATTACH_HISTORY).await?;
         self.rpc.greet(client, chat, start, history).await?;
         self.chats.insert(chat, chat_env);

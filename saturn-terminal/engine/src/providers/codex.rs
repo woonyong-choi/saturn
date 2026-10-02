@@ -446,6 +446,15 @@ impl ProviderClient for CodexClient {
             }
             None => "thread/start",
         };
+        if !spec.add_dirs.is_empty() {
+            // app-server에는 `--add-dir` 인자가 없어 thread 설정의 쓰기 가능 폴더로 넘긴다. 읽기 전용 샌드박스에서의 효과는 실측 전이다
+            let dirs: Vec<String> = spec
+                .add_dirs
+                .iter()
+                .map(|dir| dir.to_string_lossy().into_owned())
+                .collect();
+            params["config"] = json!({ "sandbox_workspace_write": { "writable_roots": dirs } });
+        }
         let result = match self.request(method, params).await {
             Ok(Ok(result)) => result,
             Ok(Err(error)) => {
@@ -1455,6 +1464,13 @@ while (my $line = <STDIN>) {
       { name => "off", description => "disabled", enabled => JSON::PP::false, path => "/skills/off/SKILL.md", scope => "user" } ] } ] } });
   } elsif ($method eq "thread/start" || $method eq "thread/resume") {
     my $model = $p->{model} // "";
+    if (($ENV{FAKE_REQUIRE_ADD_DIR} // "") ne "") {
+      my $roots = $p->{config}{sandbox_workspace_write}{writable_roots} // [];
+      if (($roots->[0] // "") ne $ENV{FAKE_REQUIRE_ADD_DIR}) {
+        out({ id => $id, error => { code => -32000, message => "added folders are missing" } });
+        next;
+      }
+    }
     if (($ENV{FAKE_REQUIRE_MCP} // "") ne "" && $mcp_polls < 3) {
       out({ id => $id, error => { code => -32000, message => "mcp tools are not ready" } });
       next;
@@ -1561,6 +1577,7 @@ while (my $line = <STDIN>) {
             settings: SettingsRevision(1),
             resume: None,
             packet: None,
+            add_dirs: Vec::new(),
         }
     }
 
@@ -2451,6 +2468,30 @@ while (my $line = <STDIN>) {
         let (client, handle) = start(dir.path()).await;
         let applied = client.applied_settings(&handle.provider_session).unwrap();
         assert_eq!(applied.permission.as_deref(), Some("untrusted"));
+    }
+
+    #[tokio::test]
+    async fn add_dir_goes_to_the_thread_config_when_a_session_opens() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = || vec![("FAKE_REQUIRE_ADD_DIR".into(), "/extra".into())];
+        let mut with_dir = spec(dir.path());
+        with_dir.add_dirs = vec![PathBuf::from("/extra")];
+        let mut resumed = with_dir.clone();
+        resumed.resume = Some(ProviderSessionId("thr_main".to_owned()));
+        let mut client = CodexClient::start(launch(dir.path(), env()), Supervisor::new())
+            .await
+            .unwrap();
+
+        let opened = client.open_session(with_dir).await;
+        let reopened = client.open_session(resumed).await;
+        let without = client.open_session(spec(dir.path())).await;
+
+        assert!(opened.is_ok());
+        assert!(reopened.is_ok());
+        assert!(matches!(
+            without,
+            Err(ProviderError::NotSent { ref reason }) if reason.contains("added folders")
+        ));
     }
 
     #[tokio::test]

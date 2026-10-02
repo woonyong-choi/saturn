@@ -106,8 +106,11 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 | `saturn --resume [채팅 id]` | 채팅 id가 있으면 그 채팅을, 없으면 현재 폴더의 채팅 목록에서 골라 연다. |
 | `saturn --resume all` | 모든 폴더의 채팅 목록에서 골라 연다. |
 
-- 더한 폴더는 채팅 기록에 저장하고, 채팅을 이어 열면 그대로 되살린다. 채팅마다 폴더가 달라도 이어 열기 전에 다시 더하지 않게 하기 위해서다.
-- 더한 폴더는 그 채팅의 모든 provider session에 넘긴다. provider를 바꿔도 같은 폴더를 다루게 하기 위해서다. 넘기는 방식은 provider마다 다르고 `providers`가 맡는다(초안).
+- 더한 폴더는 채팅 기록에 저장하고(표 `chat_dirs`, [기록 저장과 보존](records.md)), 채팅을 이어 열면 그대로 되살린다. 채팅마다 폴더가 달라도 이어 열기 전에 다시 더하지 않게 하기 위해서다. 붙을 때마다 기록에서 읽어 메모리 사본을 새로 만든다.
+- 더한 폴더는 그 채팅의 모든 provider session에 넘긴다. provider를 바꿔도 같은 폴더를 다루게 하기 위해서다. 넘기는 방식은 provider마다 다르고 `providers`가 맡는다(초안). `engine`은 session을 열 때마다(새 session, 재개, provider 전환) 그 시점의 더한 폴더를 넘긴다.
+- 쓰는 중에 더한 폴더는 이미 열린 session에 넣지 못하고 다음에 여는 session부터 적용한다. 열린 session에 폴더를 넣는 방법을 두 provider에서 확인하지 못했기 때문이다(초안). 열린 메인 session이 있으면 안내에 그 사실을 덧붙인다.
+- `--add-dir`는 `saturn`이 링크를 푼 절대 경로로 바꿔 `Attach`에 싣는다. 폴더가 없거나 폴더가 아니면 engine을 띄우기 전에 거절한다. 이미 있는 채팅을 `--resume`으로 열 때 준 `--add-dir`도 그 채팅에 더한다(초안). `engine`도 같은 검사를 하고, 틀린 경로가 있으면 채팅을 만들기 전에 `Attach`를 거절한다.
+- 폴더 경로는 링크를 푼 절대 경로로 저장한다. 같은 폴더를 다른 이름으로 두 번 더하지 않기 위해서다. 채팅의 기본 폴더와 같거나 이미 더한 폴더는 더하지 않고 안내도 보내지 않는다.
 - 더한 폴더의 `.saturn/config.toml`은 읽지 않는다. 폴더 설정은 기본 폴더 것만 쓴다([설정](settings.md)).
 - 이어 열기는 provider의 재개 명령이 아니라 Saturn이 채팅 기록으로 직접 처리한다. 채팅은 여러 provider session을 잇는 단위이므로 provider 하나의 session으로 채팅을 정할 수 없기 때문이다. provider의 이어 열기와 새 대화 명령은 provider 명령 목록에서 뺀다([provider 연결과 session](providers-and-sessions.md)).
 - 다른 폴더의 채팅을 이어 열면 그 채팅의 기본 폴더에서 일한다. 현재 폴더로 바꾸지 않으며, 시작 화면이 그 폴더를 보인다([TUI](tui.md)).
@@ -199,7 +202,9 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | TUI를 닫아도 `engine`은 접수된 입력을 계속 처리한다. | TUI 연결을 끊은 뒤 대기 입력이 순서대로 provider에 전달되는지 확인 |
 | judge를 확인하기 전에는 judge 키 제출과 채팅 붙기 밖의 요청을 받지 않는다. | judge 키가 없는 환경에서 일반 요청이 오류 응답으로 거절되고, 키를 보낸 뒤에는 처리되는지 확인 |
 | 채팅의 폴더, 폴더 설정 층, 폴더 설정 신뢰 판단은 채팅을 만든 폴더로 정하고, provider 실행 환경은 가장 최근에 붙은 TUI의 환경으로 정한다. | 다른 폴더에서 같은 채팅에 붙어도 폴더와 신뢰 창이 처음 폴더 그대로이고 환경만 바뀌는지 확인 |
-| 더한 폴더는 채팅 기록에 저장돼 이어 열 때 되살아나고, 모든 provider session에 넘어가며, 그 폴더의 설정 파일은 읽지 않는다. | 폴더를 더한 채팅을 닫고 `--resume`으로 열어 폴더가 남아 있고 폴더 설정이 적용되지 않는지 확인 |
+| 더한 폴더는 채팅 기록에 저장돼 이어 열 때 되살아나고, 모든 provider session에 넘어가며, 그 폴더의 설정 파일은 읽지 않는다. | `saturn-terminal/engine/src/lifecycle/add_dir.rs`의 `add_dir_from_attach_is_saved_and_kept_when_the_chat_is_opened_again`, `add_dir_is_read_from_records_not_from_memory_when_a_chat_is_reopened`, `add_dir_reaches_the_session_spec_of_every_provider`, `add_dir_settings_file_is_not_read` |
+| 쓰는 중에 더한 폴더는 열린 session을 건드리지 않고 다음 session부터 적용하며 TUI에 알린다. | `saturn-terminal/engine/src/lifecycle/add_dir.rs`의 `add_dir_while_a_session_is_open_applies_from_the_next_session`, `add_dir_without_an_open_session_applies_at_once`, `add_dir_twice_or_the_base_folder_changes_nothing` |
+| 폴더가 아니거나 붙지 않은 채팅이면 더하지 않고, 틀린 `--add-dir`는 채팅을 만들지 않는다. | `saturn-terminal/engine/src/lifecycle/add_dir.rs`의 `add_dir_refuses_other_clients_and_paths_that_are_not_folders`, `add_dir_with_a_bad_attach_path_creates_no_chat`, `saturn-terminal/cli/src/commands/chat.rs`의 `add_dir_resolves_to_absolute_folders_and_rejects_files_and_missing_paths` |
 | 다른 폴더의 채팅을 이어 열면 그 채팅의 기본 폴더에서 일한다. | `--resume all`로 다른 폴더의 채팅을 열어 작업 폴더가 처음 폴더인지 확인 |
 | 넘겨받은 환경의 judge 키 변수는 provider 자식 환경에 들어가지 않는다. | `Attach`의 `env`에 `SATURN_KEY`를 넣어도 그 채팅의 provider 환경에 없는지 확인 |
 | 판단 방식에 맞는 judge를 만들 수 없으면 Saturn을 실행하지 않는다. | 허용 호스트가 아닌 judge 주소로 `engine`을 띄워 소켓을 열지 않고 끝나는지 확인 |
