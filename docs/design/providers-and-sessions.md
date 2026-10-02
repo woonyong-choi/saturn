@@ -52,7 +52,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트를 바꿀 때마
 
 ### provider 연결
 
-engine은 provider마다 켜 둔 채 입력을 받는 연결을 둔다. Codex는 app-server로, Claude Code는 stream-json 입력으로 연결한다. 한 번 실행 방식으로는 끼워 넣기가 불가능하기 때문이다.
+engine은 채팅마다 provider별로 켜 둔 채 입력을 받는 연결을 두고, 작업 폴더와 환경은 그 채팅에 고정한 값을 쓴다. Codex는 app-server로, Claude Code는 stream-json 입력으로 연결한다. 한 번 실행 방식으로는 끼워 넣기가 불가능하기 때문이다. 고정 모델도 이어 갈 메인 session도 없는 첫 입력은 설치된 Claude로, 없으면 Codex로 보내고 둘 다 없으면 보내지 않는다([입력 처리](input-handling.md#입력-전송과-재전송)).
 
 `core`는 provider 연결 공통 규격인 `ProviderClient` trait을 정의하고, engine의 `providers` 모듈이 `CodexClient`와 `ClaudeClient`로 구현한다. 구현은 끼워 넣기, 멈춤 신호, compaction, 사용량 보고를 Saturn 용어로 넘긴다. provider 고유 이름은 `providers/codex`, `providers/claude` 안에서만 쓴다. TUI와 앱이 provider를 몰라도 화면을 그리게 하기 위해서다.
 

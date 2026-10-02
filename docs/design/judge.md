@@ -149,6 +149,8 @@ judge는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어 
 5. 답에 후보 밖 선택, NaN, 확률 누락이 있으면 그 판단을 `invalid`로 처리한다. 요청하지 않은 질문의 답, 형식이 다른 답, 0~1 밖의 확률, 합이 1에서 0.01 넘게 벗어난 분포도 `invalid`다.
 6. 판단 사이에 채팅 revision이 바뀌었으면 그 판단을 `superseded`로 처리한다.
 
+- 입력 처리 판단의 `state`는 채팅이 실행 중인지, 앞 입력의 처리 방식, 사용자 원문으로 만든다(초안). 모델을 고정한 입력과 관계 판단 없이 대기하는 입력은 judge를 부르지 않는다. 바로 보내기는 입력을 판단한 뒤에도 judge에 한 번 더 묻는다([입력 처리](input-handling.md#대기와-취소)).
+- 판단 기록은 `queue`가 판단을 적용한 뒤에 쓴다. 적용 직전 revision이 달라 버린 판단은 `superseded`로 쓴다.
 - judge 전송의 HTTPS, 허용 호스트, 인증 헤더 규칙은 [judge 키 보호](judge-key-security.md)에 있다.
 - 기준 judge는 `POST https://api.typesafe.ai/v1/systemone`에 `{"model","state","questions"}`를 보낸다. `choice` 기준은 선택지별 `null`, `score` 기준은 질문에 단계 설명이 없어 `level 1`..`level N`이다(초안). 답은 `noul`이나 `probabilities`를 읽고, 0~1 밖이거나 없으면 `invalid`다.
 - 나눈 요청은 동시에 최대 8개(초안)까지 병렬로 보내고, 먼저 끝난 요청을 기다리지 않고 남은 요청을 이어 보낸다. 질문 40개와 약 7KB state 요청의 실측은 1개 0.22초, 4개 동시 0.26초, 8개 동시 0.27초, 4개 차례로 0.97초였다([#179](https://github.com/woonyong-choi/saturn/issues/179) 실측). 8개보다 많은 동시 요청의 속도 제한은 재지 않았다.

@@ -64,6 +64,10 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트가 일하는 중
 
 - 같은 채팅의 입력은 접수 순서대로 하나씩 판단한다. 두 입력이 같은 상태를 보고 함께 끼워 넣어지는 일을 막기 위해서다.
 - 적용 직전 revision이 다르면 한 번 다시 판단하고, 또 다르면 대기로 보낸다. 바뀐 상태에 옛 판단을 적용하는 일을 막기 위해서다.
+- 판단 기록은 적용 결과를 안 뒤에 쓴다. revision이 어긋나 버린 판단은 `superseded`로 쓰고, 적용한 판단만 결과 신호 관찰을 시작한다.
+- 모델을 고정한 입력과 관계 판단 없이 대기하는 입력(`Tab`)은 judge를 부르지 않고 대기로 둔다(초안). 모델을 고정한 입력이 실행 중에 도착했을 때의 처리 방식은 정해지기 전이라 대기다([#168](https://github.com/woonyong-choi/saturn/issues/168)).
+- 입력은 접수 때 권한을 쓰기로 고정한다. 권한 규칙이 구현되기 전에는 병렬 쓰기가 생기지 않는 쪽으로 둔다(초안, [#232](https://github.com/woonyong-choi/saturn/issues/232)).
+- 판단 state는 채팅이 실행 중인지, 앞 입력의 처리 방식, 사용자 원문으로 만들고 비밀값과 절대 경로를 뺀다(초안).
 
 ### 실행 중 새 입력
 
@@ -92,7 +96,11 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 - 대기열은 에이전트 session이 아니라 채팅에 둔다. session 교체 중 들어온 입력이 옛 session을 가리키는 일을 막기 위해서다.
 - session 교체는 턴이 끝난 경계에서만 한다. 진행 중인 턴이 session 교체로 끊기는 일을 막기 위해서다.
 - session 교체 중 들어온 입력은 새 session에 순서대로 보낸다. 입력 순서를 session 교체와 무관하게 지키기 위해서다.
-- 보내기 전에 확정된 실패만 다시 보낸다. 같은 작업이 두 번 실행되는 일을 막기 위해서다.
+- 보내기 전에 확정된 실패만 다시 보낸다. 같은 작업이 두 번 실행되는 일을 막기 위해서다. 같은 입력은 처음 시도를 포함해 3번(초안)까지 보내고, 그래도 실패하면 `거절됨`으로 두고 시작하려던 작업은 닫는다.
+- 입력은 `전달 중`을 기록 저장소에 쓴 뒤에만 provider로 보내고, provider가 받으면 `반영됨`으로 바꾼다. 기록에 쓰지 못하면 보내지 않고 거절한다.
+- 보낼 provider는 채팅의 메인 session이 있으면 그 provider이고, 없으면 설치된 Claude, 없으면 설치된 Codex이며 둘 다 없으면 오류를 보이고 보내지 않는다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정). 모델을 고정한 입력의 모델은 그대로 넘기고 모델에서 provider로 가는 대응은 정해지기 전이다.
+- provider 연결은 채팅마다 둔다. 작업 폴더와 환경이 채팅마다 달라서다.
+- 맥락 한도 초과로 provider가 거절한 입력은 정해지기 전이라 다른 `NotSent`와 같이 처리한다([#162](https://github.com/woonyong-choi/saturn/issues/162)).
 - 보낸 뒤 결과가 불명인 입력은 자동으로 다시 보내지 않고 사용자 확인으로 넘긴다. 이미 반영된 입력을 두 번 실행하는 일을 막기 위해서다.
 - 끼워 넣기와 대기 입력은 입력에 붙은 작업, 없으면 채팅의 메인 작업으로 보낸다. 메인 작업이 보류 중이면 새 작업을 메인으로 시작한다. 보류된 작업을 사용자 뜻 없이 이어 가지 않기 위해서다.
 - 같은 채팅의 대기 입력은 앞 입력이 기다리면 함께 기다리고, 끼워 넣기만 실행 중인 턴에 바로 보낸다. 입력 순서를 쓰기 대기와 무관하게 지키기 위해서다.
@@ -101,7 +109,10 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 ### 대기와 취소
 
 - 대기는 보내기 전 채팅 대기열에 있는 입력의 상태다.
-- 사용자는 대기 입력을 바로 보내거나 취소할 수 있다.
+- 사용자는 대기 입력을 바로 보내거나 새 작업으로 보내거나 취소할 수 있다.
+- 바로 보내기는 judge에 한 번 물어 끼워 넣기나 새 작업이면 그 처리 방식으로 바꾸고, 대기로 답하면 차례를 기다린다. 판단하지 못하면 `판단기 연결 없음 · 차례에 보냅니다`를 보이고 차례를 기다린다. 모델을 고정한 입력은 물을 것이 없어 차례를 기다린다.
+- 새 작업으로 보내기는 judge 없이 새 작업으로 시작한다. 쓰기 규칙은 그대로 적용한다.
+- 사용자가 판단을 뒤집은 것은 결과 신호로 남긴다. 취소는 `Wrong`, 대기로 판단한 입력을 바로 보내거나 새 작업으로 보내면 `Missed`다.
 - 취소는 에이전트에 보내기 전 입력에만 적용한다. `전달 중`과 `반영됨` 입력은 취소할 수 없다.
 - TUI를 닫은 뒤 대기 입력을 계속 보내는 규칙은 [engine 수명](engine-lifecycle.md)에 있다.
 
@@ -172,21 +183,26 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 | judge 호출 연속 3회 실패 | 새 입력 접수를 계속하고 상태판에 `판단 모델 연결 끊김`을 보인다. |
 | Codex `turn/steer`가 활성 턴 없음으로 실패 | 확정 미전달로 기록하고 다시 판단하지 않고 같은 session에 `turn/start`로 보낸다. |
 | Claude 끼워 넣기 중 턴 종료 | provider가 추가 메시지를 다음 턴에 처리하므로 따로 처리하지 않는다. |
-| 보낸 뒤 결과 불명 | 자동으로 다시 보내지 않고 사용자 확인으로 넘긴다. |
+| 보낸 뒤 결과 불명 | 자동으로 다시 보내지 않고 사용자 확인으로 넘긴다. 입력은 `전달 중`으로 두고 작업을 `결과 확인 필요`로 보이며, 실행 기록은 열어 둔다. |
+| 보내기 전 확정 실패가 3번 이어짐 | 입력을 `거절됨`으로 두고 작업을 실패로 보인다. 끼워 넣기가 거절된 입력의 다음 처리는 [#60](https://github.com/woonyong-choi/saturn/issues/60)에서 정한다. |
+| provider 연결이나 session 열기 실패, 설치된 provider 없음 | 보내지 않고 입력을 `거절됨`으로 두며 원인 한 줄을 작업 실패에 보인다. |
+| 접수나 `전달 중` 기록 실패 | 어디에도 보내지 않는다. 접수 실패는 요청 오류로, `전달 중` 실패는 입력 거절로 알린다. |
 | 멈춤 뒤 묶음 밖으로 빠져나간 프로세스 존재 | 완료라고 하지 않고 `멈춤 확인 안 됨 · N개 남음`을 보고한다. |
 
 ### 요구사항
 
 | 요구사항 | 검증 계획 |
 |---|---|
-| 입력은 기록 저장소에 접수된 뒤에만 에이전트로 보낸다. | 접수 전에는 어떤 입력도 provider로 가지 않는지 확인한다. |
-| 끼워 넣기가 활성 턴 없음으로 실패하면 다시 판단하지 않고 같은 session의 새 턴으로 보낸다. | 활성 턴이 없을 때 끼워 넣은 입력이 새 턴으로 한 번만 전송되는지 확인한다. |
-| 보낸 뒤 결과가 불명인 입력은 자동으로 다시 보내지 않는다. | 결과 불명 입력이 재전송되지 않고 사용자 확인으로 넘어가는지 확인한다. |
-| 같은 채팅의 입력은 접수 순서대로 하나씩 판단한다. | 여러 입력을 연달아 접수해도 판단이 ACK 순서로 하나씩 일어나는지 확인한다. |
+| 입력은 기록 저장소에 접수된 뒤에만 에이전트로 보낸다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `record_write_failure_sends_nothing_anywhere`, `accepted_input_reaches_first_provider_after_it_is_recorded` |
+| 끼워 넣기가 활성 턴 없음으로 실패하면 다시 판단하지 않고 같은 session의 새 턴으로 보낸다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `steer_without_active_turn_sends_one_new_turn_without_rejudging`, `steer_new_turn_unknown_is_not_sent_again` |
+| 보낸 뒤 결과가 불명인 입력은 자동으로 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `unknown_is_never_sent_again_and_the_task_needs_check` |
+| 보내기 전에 확정된 실패만 다시 보낸다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `not_sent_is_sent_again_and_then_applied`, `not_sent_every_time_is_rejected_and_the_next_input_still_goes`, `open_failure_that_is_not_a_resend_case_rejects_without_sending` |
+| 같은 채팅의 입력은 접수 순서대로 하나씩 판단한다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `inputs_are_judged_one_at_a_time_in_accept_order` |
 | judge 호출이 재시도 뒤에도 실패하면 입력을 대기로 보내지 않고 현재 에이전트와 현재 모델로 보낸다. | `saturn-terminal/core/src/judges/failure.rs`의 `route_after_failure_idle_sends_to_current_agent_and_model`, `route_after_failure_running_steers_instead_of_queueing` |
-| 판단 뒤 채팅 상태가 바뀌었으면 한 번 다시 판단하고, 또 바뀌면 대기로 둔다. | revision을 두 번 바꿔 입력이 대기로 가는지 확인한다. |
-| 쓰기 권한 에이전트는 같은 작업 폴더에서 한 번에 하나만 실행한다. | 쓰기 작업 둘을 접수해 뒤 작업이 앞 작업의 트리 유휴까지 대기하는지 확인한다. |
-| 취소는 에이전트에 보내기 전 입력에만 적용한다. | `전달 중`과 `반영됨` 입력의 취소 요청이 거절되는지 확인한다. |
+| 판단 뒤 채팅 상태가 바뀌었으면 한 번 다시 판단하고, 또 바뀌면 대기로 둔다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `revision_conflict_supersedes_old_judgment_and_rejudges_once`, `second_conflict_puts_input_in_queue_without_another_judge_call` |
+| 쓰기 권한 에이전트는 같은 작업 폴더에서 한 번에 하나만 실행한다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `relation_answer_to_new_task_waits_for_the_write_turn_then_starts` |
+| 취소는 에이전트에 보내기 전 입력에만 적용한다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `cancel_applies_only_before_the_input_is_sent` |
+| 바로 보내기는 judge에 한 번 묻고, 판단하지 못하면 차례를 기다린다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `send_now_asks_the_judge_once_and_steers_into_the_running_turn`, `send_now_with_judge_down_leaves_the_input_waiting_in_order` |
 | 멈춘 작업은 자동으로 이어 가지 않고 보류한다. | 멈춤 뒤 재개 요청 없이는 보류 작업이 실행되지 않는지 확인한다. |
 | 멈춤 신호는 추적된 subagent까지 보낸다. | 멈춤 요청 뒤 추적된 subagent마다 멈춤 신호가 가는지 확인한다. |
 | 멈춤 신호 10초 뒤 남은 프로세스 묶음에는 중지 신호를 보낸다. | 멈춤 신호를 무시하는 프로세스에 10초 뒤 중지 신호가 가는지 확인한다. |
