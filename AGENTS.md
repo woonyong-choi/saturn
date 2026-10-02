@@ -28,7 +28,7 @@ Codex와 Claude Code를 하나의 대화로 이어 쓰는 터미널 도구
 - `core`는 파일, 네트워크, 프로세스를 직접 다루지 않음
 - provider 고유 이름은 `providers/codex`, `providers/claude` 안에서만 사용
 - 에이전트끼리 직접 통신 금지
-- provider 설정과 subagent 사용은 추적만, 예외는 judge 키 보호
+- 권한은 Saturn 규칙이 정본, 그 밖의 provider 설정과 subagent 사용은 추적만, 예외는 judge 키 보호
 - judge는 engine만 호출, HTTPS만 사용, TLS 검증 유지
 - judge 키와 일치하는 문자열은 로그, 오류, 디버그 출력에서 은닉
 - 스키마는 새 버전을 처음 실행할 때 자동 이관, 이관 직전 백업 하나를 14일 보관
