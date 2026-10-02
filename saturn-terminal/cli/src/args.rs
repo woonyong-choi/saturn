@@ -86,8 +86,6 @@ pub(crate) enum OpenMode {
 /// 하위 명령.
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
-    /// 판단 모델 학습. 채점 안 된 판단이 200건 미만이면 engine이 거절한다.
-    Train(TrainArgs),
     /// 기록 정리. `--yes`가 없으면 지울 대상만 미리 보인다.
     Prune(PruneArgs),
     /// 판단 기록을 JSONL로 내보낸다. 채점하지 않은 기록도 내보낸다.
@@ -105,8 +103,12 @@ pub(crate) enum Command {
 /// `router` 하위 명령.
 #[derive(Debug, Subcommand)]
 pub(crate) enum RouterCommand {
+    /// router 학습. 채점 안 된 판단이 200건 미만이면 engine이 거절한다.
+    Train(TrainArgs),
     /// 고른 router 버전을 확인 한 줄 뒤 현재 버전으로 쓴다.
-    Version(RouterVersionArgs),
+    Use(RouterUseArgs),
+    /// router 버전 목록을 보인다.
+    List,
 }
 
 /// `train` 인자.
@@ -136,9 +138,9 @@ pub(crate) struct ExportArgs {
     pub(crate) path: std::path::PathBuf,
 }
 
-/// `router version` 인자.
+/// `router use` 인자.
 #[derive(Debug, Args)]
-pub(crate) struct RouterVersionArgs {
+pub(crate) struct RouterUseArgs {
     /// 쓸 router 버전. TODO(#49): 버전 표기 형식
     #[arg(value_name = "VERSION")]
     pub(crate) version: String,
@@ -211,6 +213,28 @@ mod tests {
 
     fn parse(args: &[&str]) -> Result<Cli, clap::Error> {
         Cli::try_parse_from(std::iter::once("saturn").chain(args.iter().copied()))
+    }
+
+    #[test]
+    fn router_subcommands_parse() {
+        let train = parse(&["router", "train", "--from", "v1"]).unwrap();
+        assert!(matches!(
+            train.command,
+            Some(Command::Router { command: RouterCommand::Train(ref args) }) if args.from.as_deref() == Some("v1")
+        ));
+        let used = parse(&["router", "use", "v2"]).unwrap();
+        assert!(matches!(
+            used.command,
+            Some(Command::Router { command: RouterCommand::Use(ref args) }) if args.version == "v2"
+        ));
+        let list = parse(&["router", "list"]).unwrap();
+        assert!(matches!(
+            list.command,
+            Some(Command::Router {
+                command: RouterCommand::List
+            })
+        ));
+        assert!(parse(&["train"]).is_err());
     }
 
     #[test]

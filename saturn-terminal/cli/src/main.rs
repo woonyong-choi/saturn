@@ -30,12 +30,17 @@ async fn main() -> anyhow::Result<()> {
 
     match cli.command {
         None => commands::chat::run(&mut client, chat, &cli.config, add_dirs).await,
-        Some(Command::Train(args)) => commands::train::run(&mut client, &args).await,
         Some(Command::Prune(args)) => commands::prune::run(&mut client, &args).await,
         Some(Command::Export(args)) => commands::export::run(&mut client, &args).await,
         Some(Command::Router {
-            command: RouterCommand::Version(args),
+            command: RouterCommand::Train(args),
+        }) => commands::train::run(&mut client, &args).await,
+        Some(Command::Router {
+            command: RouterCommand::Use(args),
         }) => commands::router::use_version(&mut client, &args).await,
+        Some(Command::Router {
+            command: RouterCommand::List,
+        }) => commands::router::list(&mut client).await,
         Some(Command::Usage(args)) => commands::usage::run(&mut client, &args).await,
     }
 }

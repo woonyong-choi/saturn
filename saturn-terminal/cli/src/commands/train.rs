@@ -1,4 +1,4 @@
-//! `saturn train`: router 학습. `/train`과 같다.
+//! `saturn router train`: router 학습. `/train`과 같다.
 //! 설계: docs/design/router-training.md
 
 use std::io::Write;

@@ -185,7 +185,7 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 | `Esc` | 화면 종료 | router 버전 화면 |
 | `r` | 1차 영점으로 복귀, `/train --reset-thresholds`와 동일 | router 버전 화면 |
 | `t` | 고른 버전에서 다시 학습, `/train --from`과 동일 | router 버전 화면 |
-| `u` | 확인 한 줄 뒤 고른 버전 사용, `saturn router version`과 동일 | router 버전 화면 |
+| `u` | 확인 한 줄 뒤 고른 버전 사용, `saturn router use`와 동일 | router 버전 화면 |
 | `Enter` | 선택 | 학습 확인 창 |
 | `Esc` | 취소 | 학습 확인 창 |
 | `↑`, `↓` | 선택지 이동 | 학습 확인 창 |

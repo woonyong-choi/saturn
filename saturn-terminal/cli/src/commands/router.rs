@@ -6,8 +6,36 @@ use std::io::Write;
 use saturn_protocol::rpc::{Notification, Request, RouterVersionInfo};
 use saturn_tui::client::EngineClient;
 
-use crate::args::RouterVersionArgs;
+use crate::args::RouterUseArgs;
 use crate::commands::{call, confirm_on_terminal};
+
+// cost: time O(v), heap O(v), stack O(1), io 2
+// vars: v = router 버전 수
+// basis: estimate
+/// 버전 목록을 한 줄에 하나씩 보인다. 현재 버전 앞에는 `*`를 붙인다.
+///
+/// # Errors
+/// 연결이 끊기거나 engine이 목록 없이 답하면 오류.
+pub(crate) async fn list(client: &mut EngineClient) -> anyhow::Result<()> {
+    let mut out = std::io::stdout().lock();
+    let (current, versions) = list_versions(client).await?;
+    write_versions(&mut out, &current, &versions)
+}
+
+fn write_versions(
+    out: &mut impl Write,
+    current: &str,
+    versions: &[RouterVersionInfo],
+) -> anyhow::Result<()> {
+    for info in versions {
+        let marker = if info.version == current { '*' } else { ' ' };
+        let ece = info
+            .ece
+            .map_or_else(|| "-".to_owned(), |ece| format!("{ece:.3}"));
+        writeln!(out, "{marker} {} {} ece {ece}", info.version, info.router)?;
+    }
+    Ok(())
+}
 
 // cost: time O(v), heap O(v), stack O(1), io 4
 // vars: v = router 버전 수
@@ -18,7 +46,7 @@ use crate::commands::{call, confirm_on_terminal};
 /// 버전이 없거나 사용자가 확인하지 않았거나 연결이 끊기면 오류.
 pub(crate) async fn use_version(
     client: &mut EngineClient,
-    args: &RouterVersionArgs,
+    args: &RouterUseArgs,
 ) -> anyhow::Result<()> {
     let mut out = std::io::stdout().lock();
     switch_version(client, args, confirm_on_terminal, &mut out).await
@@ -29,7 +57,7 @@ pub(crate) async fn use_version(
 // basis: estimate
 async fn switch_version(
     client: &mut EngineClient,
-    args: &RouterVersionArgs,
+    args: &RouterUseArgs,
     confirm: impl FnOnce(&str) -> anyhow::Result<bool>,
     out: &mut impl Write,
 ) -> anyhow::Result<()> {
@@ -98,8 +126,8 @@ mod tests {
         }])
     }
 
-    fn args(version: &str) -> RouterVersionArgs {
-        RouterVersionArgs {
+    fn args(version: &str) -> RouterUseArgs {
+        RouterUseArgs {
             version: version.to_owned(),
         }
     }
@@ -176,5 +204,21 @@ mod tests {
             String::from_utf8(out).unwrap(),
             "already using router version v2\n"
         );
+    }
+
+    #[test]
+    fn write_versions_marks_current_and_shows_ece() {
+        let mut v2 = info("v2");
+        v2.ece = Some(0.0421);
+        let mut out = Vec::new();
+
+        write_versions(&mut out, "v2", &[info("v1"), v2]).unwrap();
+
+        let text = String::from_utf8(out).unwrap();
+        let lines: Vec<_> = text.lines().collect();
+        assert!(lines[0].starts_with("  v1 "));
+        assert!(lines[0].ends_with("ece -"));
+        assert!(lines[1].starts_with("* v2 "));
+        assert!(lines[1].ends_with("ece 0.042"));
     }
 }
