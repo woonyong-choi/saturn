@@ -3,7 +3,8 @@
 
 use std::str::FromStr;
 
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use saturn_protocol::ids::ChatId;
 use saturn_protocol::rpc::UsageRange;
 
 /// `saturn` 명령줄.
@@ -17,9 +18,65 @@ pub(crate) struct Cli {
     /// 이번 실행의 설정 값(`-c key=value`, 여러 번). 설정의 실행 층이 된다.
     #[arg(short = 'c', value_name = "KEY=VALUE")]
     pub(crate) config: Vec<ConfigOverride>,
+    /// 현재 폴더에서 가장 최근에 쓴 채팅을 잇는다.
+    #[arg(long = "continue", conflicts_with = "resume")]
+    pub(crate) continue_last: bool,
+    /// 채팅 id가 있으면 그 채팅을, 없으면 현재 폴더의 채팅 목록에서 골라 잇는다. `all`은 모든 폴더의 목록.
+    #[arg(long, value_name = "CHAT_ID|all", num_args = 0..=1)]
+    pub(crate) resume: Option<Option<ResumeTarget>>,
     /// 하위 명령. 없으면 대화 화면(터미널이면 전체 화면, 파이프나 CI면 plain)을 연다.
     #[command(subcommand)]
     pub(crate) command: Option<Command>,
+}
+
+impl Cli {
+    /// 이어 열기 인자가 하위 명령과 함께 오면 오류. 이어 열기는 대화 화면에만 있다.
+    pub(crate) fn open_mode(&self) -> Result<OpenMode, clap::Error> {
+        let mode = match (&self.resume, self.continue_last) {
+            (Some(None), _) => OpenMode::PickInFolder,
+            (Some(Some(ResumeTarget::All)), _) => OpenMode::PickInAll,
+            (Some(Some(ResumeTarget::Chat(chat))), _) => OpenMode::Chat(*chat),
+            (None, true) => OpenMode::ContinueLast,
+            (None, false) => OpenMode::New,
+        };
+        if self.command.is_some() && mode != OpenMode::New {
+            return Err(Cli::command().error(
+                clap::error::ErrorKind::ArgumentConflict,
+                "--continue and --resume open the chat screen and cannot be used with a subcommand",
+            ));
+        }
+        Ok(mode)
+    }
+}
+
+/// `--resume`의 값. 채팅 id는 숫자라 `all`과 겹치지 않는다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ResumeTarget {
+    Chat(ChatId),
+    All,
+}
+
+impl FromStr for ResumeTarget {
+    type Err = String;
+
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        if text == "all" {
+            return Ok(Self::All);
+        }
+        text.parse::<u64>()
+            .map(|id| Self::Chat(ChatId(id)))
+            .map_err(|_| format!("expected a chat id (number) or `all`, got `{text}`"))
+    }
+}
+
+/// 대화 화면을 여는 방식.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OpenMode {
+    New,
+    ContinueLast,
+    PickInFolder,
+    PickInAll,
+    Chat(ChatId),
 }
 
 /// 하위 명령.
@@ -125,8 +182,122 @@ pub(crate) struct ConfigOverride {
 impl FromStr for ConfigOverride {
     type Err = String;
 
+    // cost: time O(n), heap O(n), stack O(1), alloc 2
+    // vars: n = text.len()
+    // basis: estimate
     /// `=`가 없거나 키가 비면 오류.
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        todo!("#93")
+        let (key, value) = text
+            .split_once('=')
+            .ok_or_else(|| format!("expected KEY=VALUE, got `{text}`"))?;
+        let key = key.trim();
+        if key.is_empty() {
+            return Err(format!("key is empty in `{text}`"));
+        }
+        Ok(Self {
+            key: key.to_owned(),
+            value: value.to_owned(),
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(args: &[&str]) -> Result<Cli, clap::Error> {
+        Cli::try_parse_from(std::iter::once("saturn").chain(args.iter().copied()))
+    }
+
+    #[test]
+    fn config_override_splits_at_first_equals() {
+        let parsed: ConfigOverride = "judge.url=https://a.example/?x=1".parse().unwrap();
+
+        assert_eq!(parsed.key, "judge.url");
+        assert_eq!(parsed.value, "https://a.example/?x=1");
+    }
+
+    #[test]
+    fn config_override_without_equals_or_key_is_error() {
+        assert!("permission.mode".parse::<ConfigOverride>().is_err());
+        assert!("=full".parse::<ConfigOverride>().is_err());
+    }
+
+    #[test]
+    fn config_override_allows_empty_value() {
+        let parsed: ConfigOverride = "judge.key.command=".parse().unwrap();
+
+        assert_eq!(parsed.value, "");
+    }
+
+    #[test]
+    fn continue_resume_without_arguments_opens_new_chat() {
+        assert_eq!(parse(&[]).unwrap().open_mode().unwrap(), OpenMode::New);
+    }
+
+    #[test]
+    fn continue_resume_continue_flag_picks_last_chat() {
+        let mode = parse(&["--continue"]).unwrap().open_mode().unwrap();
+
+        assert_eq!(mode, OpenMode::ContinueLast);
+    }
+
+    #[test]
+    fn continue_resume_without_id_picks_in_folder() {
+        let mode = parse(&["--resume"]).unwrap().open_mode().unwrap();
+
+        assert_eq!(mode, OpenMode::PickInFolder);
+    }
+
+    #[test]
+    fn continue_resume_all_picks_in_every_folder() {
+        let mode = parse(&["--resume", "all"]).unwrap().open_mode().unwrap();
+
+        assert_eq!(mode, OpenMode::PickInAll);
+    }
+
+    #[test]
+    fn continue_resume_numeric_id_opens_that_chat() {
+        let mode = parse(&["--resume", "42"]).unwrap().open_mode().unwrap();
+
+        assert_eq!(mode, OpenMode::Chat(ChatId(42)));
+    }
+
+    #[test]
+    fn continue_resume_rejects_non_numeric_id() {
+        assert!(parse(&["--resume", "latest"]).is_err());
+    }
+
+    #[test]
+    fn continue_resume_has_no_short_names() {
+        assert!(parse(&["-r"]).is_err());
+        assert!(parse(&["-r", "all"]).is_err());
+    }
+
+    #[test]
+    fn continue_resume_short_c_stays_config_layer() {
+        let cli = parse(&["-c", "permission.mode=\"full\""]).unwrap();
+
+        assert_eq!(cli.config.len(), 1);
+        assert_eq!(cli.open_mode().unwrap(), OpenMode::New);
+    }
+
+    #[test]
+    fn continue_resume_conflict_is_error() {
+        assert!(parse(&["--continue", "--resume"]).is_err());
+    }
+
+    #[test]
+    fn continue_resume_with_subcommand_is_error() {
+        let cli = parse(&["--continue", "usage"]).unwrap();
+
+        assert!(cli.open_mode().is_err());
+    }
+
+    #[test]
+    fn config_overrides_repeat() {
+        let cli = parse(&["-c", "a=1", "-c", "b=2", "usage"]).unwrap();
+
+        assert_eq!(cli.config.len(), 2);
     }
 }
