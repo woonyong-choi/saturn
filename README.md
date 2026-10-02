@@ -19,7 +19,7 @@
 Developers who use Codex and Claude Code together lose context each time they switch, because each provider keeps its own sessions and compacts them in its own way. Saturn records every input locally before sending it and gives each provider session only the context it needs from that record. Unlike running each tool in a separate terminal, one chat keeps its history and task state across provider switches, parallel tasks, and fresh sessions.
 
 > [!NOTE]
-> Design stage. There is no runnable code yet.
+> In development. There is no runnable command yet.
 
 ![Design: after you switch the chat from Claude Code to Codex, the new Codex session gets a packet from the Saturn record and both results stay in one chat](docs/assets/provider-switch.svg)
 
@@ -32,12 +32,13 @@ The following is the designed behavior.
 3. When the context of a session passes a set token limit and no work is running, Saturn either lets the provider compact the session or, when that costs less, starts a new session. The new session gets a packet with the goal, recent turns, and open items taken from Saturn's own record.
 4. You switch the chat from Claude Code to Codex. A chat is the conversation you see, and provider sessions open and close behind it. The new session receives only what changed since it last saw the chat.
 5. You close the terminal. The engine keeps processing the inputs you already sent, and you can attach again later.
+6. A provider asks to run a command or edit a file. Saturn applies its own permission rules instead of the provider settings, and shows an approval prompt only when a rule says to ask.
 
 The full design is in the [design documents](docs/README.md), which are written in Korean.
 
 ## Status
 
-Saturn is in the design stage. The design documents, decision records, and experiment plans are public, and there is no code yet. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
+Saturn is in development. The message types, core rules, engine parts, and TUI are on `main`, but the input flow, the `saturn` command that starts a chat, and permission handling are not built yet. The design documents, decision records, and experiment reports are public. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
 
 ## Comparison
 
@@ -46,15 +47,13 @@ Saturn is in the design stage. The design documents, decision records, and exper
 
 ## Roadmap
 
-The order after the design stage is not fixed yet.
+The order after the first conversation is not fixed yet.
 
-1. Design: design documents, decision records, and experiments on provider behavior. (in progress)
-2. Core loop: accept inputs before sending, queue and hold inputs, keep one session per chat. (later)
-3. Provider switching and context: switch between Codex and Claude Code in one chat, hand over context packets, track subagents and usage. (later)
-4. Judge: judge every input with Jev, an external judgment API, as the first judge, and fall back to fixed per-question rules when it fails. (later)
-5. Full-screen TUI and data management: status board, usage view, record cleanup, judgment export. (later)
-6. Local judge model: train a personal judge model from recorded judgments and switch to it only when it is not worse than the current judge on the same evaluation set. (later)
-7. Service: consent-based data collection, remote API, authentication, and infrastructure. (later)
+1. First conversation: the `saturn` command, the input flow from acceptance to provider send, provider events with turn end, stop, and resume, approval replies, switching between Codex and Claude Code with context packets. (in progress)
+2. Permissions: Saturn permission rules decide provider execution, and always-allow rules are stored. (next)
+3. Chat management and recovery: continue without a TUI, crash recovery, chat names and grouping, added folders, task-completion notifications. (later)
+4. Local judge model: score recorded judgments, train a personal judge model, and switch to it only when it is not worse than the current judge on the same evaluation set. (later)
+5. Service: consent-based data collection, remote API, authentication, and infrastructure. (later)
 
 ## Documentation
 
@@ -66,3 +65,12 @@ The design documents are written in Korean.
 - [Context management](docs/design/context-management.md): measuring context and continuing in a new session
 - [Decision records](docs/decisions/README.md): why each design choice was made
 - [All documents](docs/README.md)
+
+## Development
+
+Run the following commands from the repository root. There is no CI yet.
+
+```sh
+cargo build --workspace
+cargo test --workspace
+```

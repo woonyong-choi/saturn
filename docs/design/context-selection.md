@@ -107,7 +107,7 @@
 - `k`의 기본값은 30이다. 실측에서 `k` 10, 30, 60, 100의 차이는 상위 40개 기준 1.0%p 이하였고, 사전 등록한 규칙대로 상위 40개 비율이 가장 높은 값을 골랐다([실험 결과](../experiments/rrf-k-top-n/report.md)).
 - 원 논문은 여러 검색 결과를 합칠 때 `k`=60을 썼다(Cormack, Clarke, Büttcher, SIGIR 2009). `k`가 클수록 한 채널의 1등보다 여러 채널에 고르게 든 후보가 이긴다.
 - 점수가 같으면 기록 번호가 큰 후보를 위에 둔다.
-- `k`는 judge가 답하지 못했을 때의 순서와 같은 확률일 때의 순서에만 쓰이며 실측으로 정한다([#116](https://github.com/woonyong-choi/saturn/issues/116)).
+- `k`는 judge가 답하지 못했을 때의 순서와 같은 확률일 때의 순서에만 쓰인다.
 
 ### judge에 넘기기
 
@@ -205,7 +205,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 - 후보가 150개면 질문이 300개라 judge 입력 토큰이 후보 수에 비례한다. 큰 요청은 여러 건으로 나뉘고, 병렬로 보내면 지연은 조각 수와 거의 무관하게 약 0.3초다([#179](https://github.com/woonyong-choi/saturn/issues/179) 실측).
 - 나뉜 요청은 조각마다 같은 state를 보내 입력 토큰이 조각 수만큼 늘고, 조각이 실패하면 그 항목은 순위로만 정해진다.
 - 동시 요청이 8개를 넘을 때의 속도 제한은 재지 않았다.
-- `k`, 기준 파일 범위를 실측으로 맞춰야 한다.
+- 기준 파일 범위를 실측으로 맞춰야 한다.
 - 일과 제약이 섞인 입력은 원문 전체가 제약으로 등록되어 패킷이 길어진다.
 - 앞 말을 가리키는 간접 지시 입력은 `is_constraint` 정확도가 74.5% [68.0, 80.0]이고, 앞 입력의 제약 등록 여부를 state에 넣어도 오르지 않았다([간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)).
 
@@ -219,5 +219,4 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 ## 미해결 질문
 
-- judge에 넘길 후보를 RRF 상위 N으로 고를지, 후보 전체나 다른 거르기로 바꿀지([#153](https://github.com/woonyong-choi/saturn/issues/153))
 - 간접 지시 입력에서 `is_constraint` 정확도를 올리되 일반 제약 입력의 재현율을 해치지 않는 질문 문장과 부분 충돌을 따로 묻는 질문이 있는지([#186](https://github.com/woonyong-choi/saturn/issues/186))
