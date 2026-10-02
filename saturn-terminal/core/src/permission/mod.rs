@@ -301,13 +301,17 @@ impl Policy {
         if let Some(relative) = relative {
             candidates.push(relative.to_string_lossy().into_owned());
         }
-        let in_added_dir = self
-            .extra_dirs
-            .iter()
-            .any(|dir| absolute.starts_with(pattern::normalize(Path::new("/"), dir)));
+        let inside_dir = self.extra_dirs.iter().find_map(|dir| {
+            absolute
+                .strip_prefix(pattern::normalize(Path::new("/"), dir))
+                .ok()
+        });
+        let inside_part = relative.or(inside_dir);
+        let is_git_internal =
+            inside_part.is_some_and(|part| part.components().any(|c| c.as_os_str() == ".git"));
         Unit {
             store: escape(&candidates[0]),
-            is_inside: relative.is_some() || in_added_dir,
+            is_inside: inside_part.is_some() && !is_git_internal,
             is_read_only: false,
             candidates,
         }
@@ -321,7 +325,7 @@ struct Unit {
     candidates: Vec<String>,
     /// 항상 허용으로 저장할 때 쓰는 패턴.
     store: String,
-    /// 작업 폴더 안의 편집인지. 편집이 아니면 거짓.
+    /// 작업 폴더 안의 편집인지. `.git` 아래 경로와 편집이 아니면 거짓.
     is_inside: bool,
     /// 셸 문법 없는 단일 명령이 읽기 전용 목록에 드는지. 셸 명령이 아니면 거짓.
     is_read_only: bool,

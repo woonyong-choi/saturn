@@ -471,3 +471,24 @@ fn mode_edit_asks_when_a_read_only_command_gets_a_write_or_exec_option() {
         assert_eq!(policy.decide(&shell(command)), Verdict::Allow, "{command}");
     }
 }
+
+#[test]
+fn mode_edit_asks_for_edits_under_git_internals_but_not_other_dot_files() {
+    let mut policy = policy(Mode::Edit, Vec::new());
+    policy.extra_dirs = vec![PathBuf::from("/shared/lib")];
+
+    for path in [
+        "/work/.git/config",
+        ".git/config",
+        "/work/sub/.git/hooks/x",
+        "/work/.git",
+        "/shared/lib/.git/config",
+    ] {
+        assert_eq!(policy.decide(&edit(path)), Verdict::Ask, "{path}");
+    }
+    for path in ["/work/.gitignore", "/work/.github/x", "/work/src/.gitkeep"] {
+        assert_eq!(policy.decide(&edit(path)), Verdict::Allow, "{path}");
+    }
+    policy.rules = vec![rule(PermissionTool::Edit, "*/.git/config", Verdict::Allow)];
+    assert_eq!(policy.decide(&edit("/work/.git/config")), Verdict::Allow);
+}
