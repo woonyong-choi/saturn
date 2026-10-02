@@ -20,8 +20,8 @@ use crate::rpc::ClientId;
 use crate::settings::{Settings, SettingsError};
 use crate::{Engine, EngineError, masked_chain};
 
-/// 모든 입력을 쓰기 권한으로 접수한다. 권한 모드를 읽어 읽기 전용 입력을 가르는 일은
-/// TODO(#232): 권한 규칙 구현. 그 전에는 쓰기 대기가 길어져도 병렬 쓰기가 생기지 않는 쪽으로 둔다.
+/// 모든 입력을 쓰기 권한으로 접수한다. 권한 모드로 읽기 전용 입력을 가르는 규칙은 설계에 없고, 쓰기로 두면
+/// 쓰기 대기가 길어져도 병렬 쓰기가 생기지 않는다.
 const INPUT_PERMISSION: Permission = Permission::Write;
 
 /// 판단 한 번의 결과.
