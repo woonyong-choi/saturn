@@ -45,16 +45,38 @@ impl Mode {
         (folder < self).then_some(folder)
     }
 
-    fn default_verdict(self, tool: PermissionTool, is_inside: bool) -> Verdict {
+    fn default_verdict(self, tool: PermissionTool, unit: &Unit) -> Verdict {
         match self {
             Self::ReadOnly => Verdict::Deny,
             Self::Ask => Verdict::Ask,
-            Self::Edit if tool == PermissionTool::Edit && is_inside => Verdict::Allow,
+            Self::Edit if tool == PermissionTool::Edit && unit.is_inside => Verdict::Allow,
+            Self::Edit if tool == PermissionTool::Shell && unit.is_read_only => Verdict::Allow,
             Self::Edit => Verdict::Ask,
             Self::Full => Verdict::Allow,
         }
     }
 }
+
+/// `edit` 모드가 묻지 않고 허용하는 읽기 전용 셸 명령. 인자가 붙어도 일치하고, 셸 문법이 섞이면 보지 않는다.
+const READ_ONLY_SHELL: [&str; 7] = [
+    "ls *",
+    "cat *",
+    "rg *",
+    "grep *",
+    "git status *",
+    "git diff *",
+    "git log *",
+];
+
+/// 읽기 전용 목록 명령이라도 파일을 쓰거나 외부 명령을 실행하게 만드는 긴 옵션. 하나라도 있으면 `ask`다.
+/// `git`은 긴 옵션을 앞부분만 써도 받으므로 `git` 명령은 이 옵션의 앞부분도 같게 본다.
+const UNSAFE_OPTIONS: [&str; 5] = [
+    "--pre",
+    "--hostname-bin",
+    "--output",
+    "--ext-diff",
+    "--textconv",
+];
 
 /// 엄한 쪽이 크다: `Allow` < `Ask` < `Deny`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -223,7 +245,7 @@ impl Policy {
             return Verdict::Deny;
         }
         let verdict = matching.last().map_or_else(
-            || self.mode.default_verdict(tool, unit.is_inside),
+            || self.mode.default_verdict(tool, unit),
             |rule| rule.verdict,
         );
         if use_always && verdict == Verdict::Ask && self.always_matches(tool, unit) {
@@ -246,7 +268,15 @@ impl Policy {
         match call.tool {
             PermissionTool::Shell => {
                 let split = pattern::split_shell(&call.target);
-                let units = split.parts.iter().map(|part| Unit::text(part)).collect();
+                let is_single = split.is_plain && split.parts.len() == 1;
+                let units = split
+                    .parts
+                    .iter()
+                    .map(|part| Unit {
+                        is_read_only: is_single && is_read_only_shell(part),
+                        ..Unit::text(part)
+                    })
+                    .collect();
                 (non_empty(units), split.is_opaque)
             }
             PermissionTool::Edit => {
@@ -271,13 +301,18 @@ impl Policy {
         if let Some(relative) = relative {
             candidates.push(relative.to_string_lossy().into_owned());
         }
-        let in_added_dir = self
-            .extra_dirs
-            .iter()
-            .any(|dir| absolute.starts_with(pattern::normalize(Path::new("/"), dir)));
+        let inside_dir = self.extra_dirs.iter().find_map(|dir| {
+            absolute
+                .strip_prefix(pattern::normalize(Path::new("/"), dir))
+                .ok()
+        });
+        let inside_part = relative.or(inside_dir);
+        let is_git_internal =
+            inside_part.is_some_and(|part| part.components().any(|c| c.as_os_str() == ".git"));
         Unit {
             store: escape(&candidates[0]),
-            is_inside: relative.is_some() || in_added_dir,
+            is_inside: inside_part.is_some() && !is_git_internal,
+            is_read_only: false,
             candidates,
         }
     }
@@ -290,8 +325,10 @@ struct Unit {
     candidates: Vec<String>,
     /// 항상 허용으로 저장할 때 쓰는 패턴.
     store: String,
-    /// 작업 폴더 안의 편집인지. 편집이 아니면 거짓.
+    /// 작업 폴더 안의 편집인지. `.git` 아래 경로와 편집이 아니면 거짓.
     is_inside: bool,
+    /// 셸 문법 없는 단일 명령이 읽기 전용 목록에 드는지. 셸 명령이 아니면 거짓.
+    is_read_only: bool,
 }
 
 impl Unit {
@@ -300,8 +337,38 @@ impl Unit {
             candidates: vec![text.to_owned()],
             store: escape(text),
             is_inside: false,
+            is_read_only: false,
         }
     }
+}
+
+fn is_read_only_shell(command: &str) -> bool {
+    READ_ONLY_SHELL
+        .iter()
+        .any(|pattern| pattern::matches(pattern, command))
+        && !has_unsafe_option(command)
+}
+
+// cost: time O(c·o), heap O(c), stack O(1), alloc 1
+// vars: c = command 글자 수, o = UNSAFE_OPTIONS 수
+// basis: estimate
+/// 따옴표와 `\`를 걷어낸 토큰이 위험 옵션이거나 `옵션=`으로 시작하는지 본다.
+fn has_unsafe_option(command: &str) -> bool {
+    let plain: String = command
+        .chars()
+        .filter(|c| !matches!(c, '\'' | '"' | '\\'))
+        .collect();
+    let is_git = plain.starts_with("git ");
+    plain.split_whitespace().any(|token| {
+        let Some(name) = token.strip_prefix("--") else {
+            return false;
+        };
+        let name = name.split('=').next().unwrap_or_default();
+        UNSAFE_OPTIONS.iter().any(|option| {
+            let option = &option[2..];
+            name == option || (is_git && !name.is_empty() && option.starts_with(name))
+        })
+    })
 }
 
 /// 대상이 하나도 없는 호출(빈 명령, 경로를 모르는 편집)은 빈 글자열 하나로 본다.
