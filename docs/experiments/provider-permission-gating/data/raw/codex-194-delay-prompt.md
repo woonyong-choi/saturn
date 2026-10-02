@@ -1,6 +1,6 @@
 # Saturn 이슈 #194 실험 10: MCP 승인 요청이 약 140초 늦게 오는 원인 찾기와 줄이기
 
-저장소: `~/workspace/oss/saturn`. 먼저 `gh issue view 194 --comments`의 마지막 세 댓글을 읽고, 직전 실험(실험 9) 보고서와 원자료 `~/workspace/oss/saturn/.local/experiments/provider-permission-gating/rootcause/`(report.md, experiment/의 드라이버·fixture, codex-home/config.toml, experiment-logs/)를 읽어라. 실험 9에서 MCP 도구(`approval_mode="prompt"`) 호출 시작(`mcpToolCall started`, `waitingOnApproval`) 뒤 `mcpServer/elicitation/request`가 오기까지 바로(약 1ms) 오거나 약 141~144초 걸렸다. 원인은 확정하지 못했고 Codex 소스는 읽지 못했다.
+저장소: `~/workspace/oss/saturn`. 먼저 `gh issue view 194 --comments`의 마지막 세 댓글을 읽고, 직전 실험(실험 9) 보고서와 원자료 `<비공개 경로>/rootcause/`(report.md, experiment/의 드라이버·fixture, codex-home/config.toml, experiment-logs/)를 읽어라. 실험 9에서 MCP 도구(`approval_mode="prompt"`) 호출 시작(`mcpToolCall started`, `waitingOnApproval`) 뒤 `mcpServer/elicitation/request`가 오기까지 바로(약 1ms) 오거나 약 141~144초 걸렸다. 원인은 확정하지 못했고 Codex 소스는 읽지 못했다.
 
 ## 새로 발견된 단서 (가장 먼저 검증하라)
 실험 9 원문 로그를 다시 세어 보니, 늦게 온 승인 요청 16회는 모두 드라이버가 150초 마감 때 보낸 `turn/interrupt` **1~4ms 뒤**에 도착했다. 나머지 13회는 도구 시작 0~2ms 뒤(1회 약 7.9초)에 도착했다. 실험 9 드라이버는 `selectors`로 읽을 거리를 기다린 뒤 텍스트 모드 `readline()`으로 읽는 구조다. 이 구조는 이미 도착한 줄이 파이썬 버퍼에 남아 있어도 `select`가 깨어나지 않아, 다음 데이터(예: interrupt 응답)가 올 때까지 줄을 못 보는 고전적인 버그를 만든다. 즉 **"140초 지연"은 Codex가 아니라 드라이버의 읽기 버그일 수 있다.**
@@ -26,7 +26,7 @@ openai/codex 소스를 `gh api`, raw.githubusercontent.com, WebFetch로 읽어�
 - 지연이 사라지면 해결 후보를 셸 명령 승인(`item/commandExecution/requestApproval`)에도 같은 지연이 있는지 3회 확인한다(있으면 같은 해결이 통하는지)
 
 ## 3. 원자료 보존
-끝내기 전에 드라이버, fixture, 전용 home의 `config.toml`과 rules(인증 링크·토큰 제외), 회차별 원문 로그, 결과 요약 JSON, 보고서를 `~/workspace/oss/saturn/.local/experiments/provider-permission-gating/delay/`로 옮긴다.
+끝내기 전에 드라이버, fixture, 전용 home의 `config.toml`과 rules(인증 링크·토큰 제외), 회차별 원문 로그, 결과 요약 JSON, 보고서를 `<비공개 경로>/delay/`로 옮긴다.
 
 ## 장소와 안전 규칙
 - `git -C ~/workspace/oss/saturn worktree add ../saturn.wt/experiment-194-mcp-delay -b experiment/194-mcp-delay origin/main`. 실험 파일은 이 안. 커밋하지 않는다

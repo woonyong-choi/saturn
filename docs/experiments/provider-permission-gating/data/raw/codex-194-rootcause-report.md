@@ -11,7 +11,7 @@
 ## 방법과 호출 수
 
 - Codex CLI 0.158.0, app-server stdio JSON-RPC를 사용했다.
-- 전용 `CODEX_HOME`, `/Users/woonyong/.codex/auth.json` 심볼릭 링크만 사용했다.
+- 전용 `CODEX_HOME`, `~/.codex/auth.json` 심볼릭 링크만 사용했다.
 - `thread/start.approvalPolicy="untrusted"`, 첫 턴 전
   `mcpServerStatus/list`, `mcp_optional_startup_grace_ms=12000`을 사용했다.
 - fixture는 `write_like_tool` 하나이며 호출 시에만 `tool-calls.jsonl`에 기록했다.
@@ -103,7 +103,7 @@ baseline 처리에 더해 모든 server request에 즉시 JSON-RPC 응답을 보
   fixture 기록, 결과 요약 JSON
 
 인증 파일과 토큰 값은 보존 자료에 포함하지 않았다. 원본
-`/Users/woonyong/.codex/auth.json`은 수정·복사·이동하지 않았다.
+`~/.codex/auth.json`은 수정·복사·이동하지 않았다.
 
 가정: “실제 모델 호출”은 raw 로그에서 `turn/started`가 확인된 thread 수로
 계산했다. 실행기 중복으로 같은 회차 이름에 여러 thread가 남은 경우도 별도

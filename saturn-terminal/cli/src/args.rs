@@ -22,7 +22,7 @@ pub(crate) struct Cli {
     pub(crate) command: Option<Command>,
 }
 
-/// 하위 명령. TODO(#42): 명령 이름 확정
+/// 하위 명령.
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
     /// 판단 모델 학습. 채점 안 된 판단이 200건 미만이면 engine이 거절한다.
@@ -59,7 +59,7 @@ pub(crate) struct TrainArgs {
     pub(crate) from: Option<String>,
 }
 
-/// `prune` 인자. TODO(#42): 판단 기록 전용 정리의 명령 이름과 자리
+/// `prune` 인자.
 #[derive(Debug, Args)]
 pub(crate) struct PruneArgs {
     /// 미리보기 없이 지운다.

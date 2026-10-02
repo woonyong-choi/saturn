@@ -23,7 +23,7 @@ Codex app-server의 선택적 MCP 서버는 기본 공용 준비 유예가 1초(
 
 - 기준 저장소에서 지정한 worktree를 만들고 그 안에 전용 `CODEX_HOME`, 테스트 서버, 로그를 두었다.
 - `codex-cli 0.158.0`, app-server stdio JSONL, `thread/start`의 `approvalPolicy="untrusted"`를 사용했다.
-- 인증 원본은 복사·이동하지 않고 전용 home 안에 `/Users/woonyong/.codex/auth.json` 심볼릭 링크만 만들었다.
+- 인증 원본은 복사·이동하지 않고 전용 home 안에 `~/.codex/auth.json` 심볼릭 링크만 만들었다.
 - 사용자 전역 `mcp_servers` 설정은 전용 config에 포함했지만, 사용자 서버에는 `enabled_tools=[]`, `default_tools_approval_mode="prompt"`, `required=false`를 적용했다. 사용자 서버 도구 호출은 0회였고, 설정의 비밀값은 보고서·로그에 기록하지 않았다.
 - 테스트 서버는 worktree의 `experiment/mcp_fixture.py`였고, `echo_tool`과 메시지만 반환하는 `write_like_tool`을 제공했다. 서버 시작 지연은 3초 또는 10초였다.
 - 드라이버와 설정 생성기는 `experiment/run.py`, `experiment/build_config.py`였다. 결과 원자료는 worktree의 `logs/results.jsonl`에 저장했다.

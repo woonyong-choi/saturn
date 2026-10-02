@@ -162,7 +162,7 @@ accept 1·2 모두 도구 시도 항목 후 승인 요청 없이 timeout 됐고 
 
 ## rootcause 실험(실험 9)
 
-실험 9의 회차별 원문 로그(`.local/experiments/provider-permission-gating/rootcause/experiment-logs/`, 경로와 SHA-256은 [데이터](../README.md))에서 승인 요청 도착 시각을 보인 줄이다. 줄 번호는 각 회차 로그 파일 안의 번호이고 `capturedAtMs`는 드라이버가 줄을 읽어 기록한 시각이다. 긴 줄은 `...`로 줄였고 thread id와 turn id는 `<id>`로 바꿨다. 이 절의 해석은 보고서가 아니라 원문 줄을 읽은 결과이고, 원인 판정은 아니다.
+실험 9의 회차별 원문 로그(비공개 원자료의 `rootcause/experiment-logs/`, 파일 이름과 SHA-256은 [데이터](../README.md))에서 승인 요청 도착 시각을 보인 줄이다. 줄 번호는 각 회차 로그 파일 안의 번호이고 `capturedAtMs`는 드라이버가 줄을 읽어 기록한 시각이다. 긴 줄은 `...`로 줄였고 thread id와 turn id는 `<id>`로 바꿨다. 이 절의 해석은 보고서가 아니라 원문 줄을 읽은 결과이고, 원인 판정은 아니다.
 
 `baseline/decline-1.jsonl` 44~49줄. 도구 호출 시작 뒤 약 141.5초 동안 아무 줄도 없다가, 드라이버가 `turn/interrupt`를 보낸 1ms 뒤에 `mcpServer/elicitation/request`가 기록됐다. `turn/interrupt` 요청 자체는 `turnId` 누락 오류로 거부됐다.
 
@@ -200,7 +200,7 @@ accept 1·2 모두 도구 시도 항목 후 승인 요청 없이 timeout 됐고 
 
 ## delay 실험(실험 10)
 
-실험 10의 드라이버 두 개(원래 `experiment/run_trial_original.py`, 고친 `experiment/run_trial.py`, 비공개 폴더의 `.local/experiments/provider-permission-gating/delay/`, 경로와 SHA-256은 [데이터](../README.md))에서 읽기 부분만 발췌했다. 줄 번호는 각 파일 안의 번호다. 앞 절의 `run_trial.py`는 실험 9 드라이버이고 `run_trial_original.py`와 같은 파일이다(SHA-256 `2c7ceb4a...`).
+실험 10의 드라이버 두 개(원래 `experiment/run_trial_original.py`, 고친 `experiment/run_trial.py`, 비공개 원자료의 `delay/`, 파일 이름과 SHA-256은 [데이터](../README.md))에서 읽기 부분만 발췌했다. 줄 번호는 각 파일 안의 번호다. 앞 절의 `run_trial.py`는 실험 9 드라이버이고 `run_trial_original.py`와 같은 파일이다(SHA-256 `2c7ceb4a...`).
 
 버그가 있던 원래 드라이버. 자식 프로세스의 stdout을 텍스트 모드(`text=True`, `bufsize=1`)로 열고, `select()`가 fd를 읽을 수 있다고 알릴 때마다 `readline()`을 한 번만 부른다. `readline()`은 한 번의 OS read로 여러 줄을 파이썬 쪽 버퍼에 미리 들여올 수 있다. 그러면 다음 줄이 이미 버퍼에 있어도 fd에는 읽을 것이 없어 `select()`가 깨어나지 않고, 줄은 다음 입력이 올 때까지 처리되지 않는다.
 
