@@ -24,6 +24,9 @@ pub enum ClientError {
     },
     #[error("engine connection closed")]
     Closed,
+    /// `message`에는 사용자 입력과 비밀값이 없다.
+    #[error("engine rejected the request ({code}): {message}")]
+    Rejected { code: i32, message: String },
     #[error("failed to decode engine message")]
     Decode(#[from] CodecError),
 }
@@ -98,6 +101,49 @@ impl EngineClient {
     /// cancel-safe: 줄 단위 읽기라 `select!` 안에서 취소돼도 메시지를 잃지 않는다.
     pub async fn next(&mut self) -> Option<Notification> {
         loop {
+            match self.next_message().await? {
+                ServerMessage::Notification(message) => return Some(message.notification),
+                ServerMessage::Response(response) => {
+                    if let Outcome::Err(error) = response.outcome {
+                        tracing::warn!(code = error.code, message = %error.message, "engine rejected request");
+                    }
+                }
+            }
+        }
+    }
+
+    // cost: time O(m), heap O(1), stack O(1), io m
+    // vars: m = 요청 하나가 응답을 받기까지 온 알림 수
+    // basis: estimate
+    /// 요청 하나를 보내고 그 응답이 올 때까지 받은 알림을 `on_notification`에 넘긴다.
+    /// 요청이 하나만 진행 중일 때 쓴다(`cli` 하위 명령). 응답 번호는 비교하지 않는다.
+    ///
+    /// # Errors
+    /// engine이 거절했으면 `Rejected`, 연결이 끊겼으면 `Closed`.
+    pub async fn call(
+        &mut self,
+        request: Request,
+        mut on_notification: impl FnMut(Notification),
+    ) -> Result<(), ClientError> {
+        self.send(request).await?;
+        loop {
+            match self.next_message().await.ok_or(ClientError::Closed)? {
+                ServerMessage::Notification(message) => on_notification(message.notification),
+                ServerMessage::Response(response) => {
+                    return match response.outcome {
+                        Outcome::Ok(()) => Ok(()),
+                        Outcome::Err(error) => Err(ClientError::Rejected {
+                            code: error.code,
+                            message: error.message,
+                        }),
+                    };
+                }
+            }
+        }
+    }
+
+    async fn next_message(&mut self) -> Option<ServerMessage> {
+        loop {
             let line = match self.lines.next_line().await {
                 Ok(Some(line)) => line,
                 Ok(None) => return None,
@@ -107,12 +153,7 @@ impl EngineClient {
                 }
             };
             match envelope::decode_server_line(&line) {
-                Ok(ServerMessage::Notification(message)) => return Some(message.notification),
-                Ok(ServerMessage::Response(response)) => {
-                    if let Outcome::Err(error) = response.outcome {
-                        tracing::warn!(code = error.code, message = %error.message, "engine rejected request");
-                    }
-                }
+                Ok(message) => return Some(message),
                 Err(error) => tracing::warn!(%error, "dropped engine line"),
             }
         }
@@ -203,6 +244,53 @@ mod tests {
         assert_eq!(received, Some(notice()));
         assert_eq!(server.await.unwrap(), vec![RequestId(0), RequestId(1)]);
         assert_eq!(client.next().await, None);
+    }
+
+    #[tokio::test]
+    async fn call_collects_notifications_until_response_and_reports_rejection() {
+        let home = tempfile::tempdir().unwrap();
+        let socket = home.path().join(SOCKET_FILE);
+        let listener = UnixListener::bind(&socket).unwrap();
+        let server = tokio::spawn(async move {
+            let (stream, _) = listener.accept().await.unwrap();
+            let (read_half, mut writer) = stream.into_split();
+            let mut lines = BufReader::new(read_half).lines();
+            for rejected in [false, true] {
+                let line = lines.next_line().await.unwrap().unwrap();
+                let id = decode_client_line(&line).unwrap().id;
+                if !rejected {
+                    let note = ServerMessage::Notification(NotificationMessage::new(notice()));
+                    writer
+                        .write_all(encode_line(&note).unwrap().as_bytes())
+                        .await
+                        .unwrap();
+                }
+                let reply = if rejected {
+                    Response::error(Some(id), -32601, "unsupported")
+                } else {
+                    Response::ok(id)
+                };
+                writer
+                    .write_all(encode_line(&ServerMessage::from(reply)).unwrap().as_bytes())
+                    .await
+                    .unwrap();
+            }
+        });
+        let mut client = EngineClient::connect(&socket).await.unwrap();
+        let mut seen = Vec::new();
+
+        let first = client
+            .call(Request::ListTasks, |note| seen.push(note))
+            .await;
+        let second = client.call(Request::ListTasks, |_| {}).await;
+
+        assert!(first.is_ok());
+        assert_eq!(seen, vec![notice()]);
+        assert!(matches!(
+            second,
+            Err(ClientError::Rejected { code: -32601, .. })
+        ));
+        server.await.unwrap();
     }
 
     #[test]

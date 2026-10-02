@@ -97,6 +97,8 @@ pub struct App {
     pub workdir: PathBuf,
     /// `Attach`로 engine에 넘기는 이 TUI의 환경 변수.
     pub env: Vec<(String, String)>,
+    /// `Attach`로 넘기는 실행 층(`-c key=value`).
+    pub overrides: Vec<(String, String)>,
     pub chat: ChatState,
     pub transcript: Transcript,
     pub live: LiveArea,
@@ -136,6 +138,7 @@ impl App {
             lang,
             workdir,
             env: Vec::new(),
+            overrides: Vec::new(),
             chat: ChatState::new(),
             transcript: Transcript::new(),
             live: LiveArea::new(),
@@ -167,7 +170,7 @@ impl App {
             chat: self.attach_chat,
             workdir: self.workdir.display().to_string(),
             env: self.env.clone(),
-            overrides: Vec::new(),
+            overrides: self.overrides.clone(),
         }
     }
 
