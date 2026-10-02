@@ -9,11 +9,11 @@ use std::path::{Path, PathBuf};
 use super::RpcError;
 
 /// 초안. 소켓과 같은 `~/.saturn/` 아래.
-pub const LOCK_FILE: &str = "engine.lock";
+pub(crate) const LOCK_FILE: &str = "engine.lock";
 
 /// `flock` 잠금이라 버리거나 프로세스가 죽으면 풀린다.
 #[derive(Debug)]
-pub struct EngineLock {
+pub(crate) struct EngineLock {
     path: PathBuf,
     // 잠금은 열린 파일에 묶여 있어 살아 있는 동안 들고 있어야 한다.
     #[allow(dead_code)]
@@ -25,7 +25,7 @@ impl EngineLock {
     ///
     /// # Errors
     /// 다른 engine이 잡고 있으면 `AlreadyRunning`, 파일을 만들거나 잠그지 못하면 `Lock`.
-    pub fn acquire(home: &Path) -> Result<Self, RpcError> {
+    pub(crate) fn acquire(home: &Path) -> Result<Self, RpcError> {
         let path = home.join(LOCK_FILE);
         let lock_error = |source| RpcError::Lock {
             path: path.clone(),
@@ -53,7 +53,7 @@ impl EngineLock {
         Ok(Self { path, file })
     }
 
-    pub fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         &self.path
     }
 }

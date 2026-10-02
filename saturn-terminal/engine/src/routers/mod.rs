@@ -20,16 +20,14 @@ use crate::secrets::{KeyInfo, KeyInput, Masker, SecretStore, SecretsError, acqui
 use crate::settings::{Settings, SettingsError, SettingsManager};
 use crate::store::{JudgmentOutcome, NewJudgment, Store, StoreError};
 
-pub use local::{LocalRouter, LocalSource};
-pub use remote::{
-    ALLOWED_HOST, MAX_CHOICES, REQUEST_SPLIT_LIMIT, RemoteRouter, RetryPolicy, STATE_SPLIT_LIMIT,
-};
+pub(crate) use local::{LocalRouter, LocalSource};
+pub(crate) use remote::{RemoteRouter, RetryPolicy};
 
 /// 기록용 중립 이름. 초안 값.
-pub const REMOTE_ROUTER_ID: &str = "jev";
+pub(crate) const REMOTE_ROUTER_ID: &str = "jev";
 
 /// 기록용 중립 이름. 초안 값.
-pub const LOCAL_ROUTER_ID: &str = "saturn-local";
+pub(crate) const LOCAL_ROUTER_ID: &str = "saturn-local";
 
 const CHECK_QUESTION: &str = "saturn_check";
 
@@ -40,10 +38,10 @@ const UNVERSIONED_LOCAL: &str = "unversioned";
 const ABSOLUTE_PATH_MARK: &str = "[abs]/";
 
 /// 이만큼 쌓이면 상태판에 판단 모델 연결 끊김을 보인다. 입력 접수는 멈추지 않는다.
-pub const CONSECUTIVE_FAILURE_LIMIT: u32 = 3;
+pub(crate) const CONSECUTIVE_FAILURE_LIMIT: u32 = 3;
 
 /// 키를 메모리에 들고 있는 곳은 `SecretStore` 하나뿐이라 `RemoteRouter`도 이것을 빌려 쓴다.
-pub type SharedSecrets = Arc<Mutex<SecretStore>>;
+pub(crate) type SharedSecrets = Arc<Mutex<SecretStore>>;
 
 /// 메시지와 원인 어디에도 키 문자열을 넣지 않는다.
 #[derive(Debug, thiserror::Error)]
@@ -73,7 +71,7 @@ pub enum RoutersError {
 
 /// `RouterClient`는 `impl Future`를 돌려 dyn으로 못 쓰므로 enum으로 나눈다.
 #[derive(Debug)]
-pub enum ActiveRouter {
+pub(crate) enum ActiveRouter {
     /// `jev` 방식.
     Remote(RemoteRouter),
     /// `saturn` 방식.
@@ -82,7 +80,7 @@ pub enum ActiveRouter {
 
 impl ActiveRouter {
     /// 실제 모델과 버전은 설정 매핑과 `router_manifest`에만 둔다.
-    pub fn router_id(&self) -> &str {
+    pub(crate) fn router_id(&self) -> &str {
         match self {
             Self::Remote(_) => REMOTE_ROUTER_ID,
             Self::Local(_) => LOCAL_ROUTER_ID,
@@ -90,7 +88,7 @@ impl ActiveRouter {
     }
 
     /// 판단 기록에 원문이 필요해 engine은 trait의 `router` 대신 이것을 쓴다.
-    pub async fn exchange(&self, request: RouterRequest) -> RouterExchange {
+    pub(crate) async fn exchange(&self, request: RouterRequest) -> RouterExchange {
         match self {
             Self::Remote(router) => router.exchange(request).await,
             Self::Local(router) => router.exchange(request).await,
@@ -98,7 +96,7 @@ impl ActiveRouter {
     }
 
     /// 외부는 고정 모델, 로컬은 router 버전.
-    pub fn model(&self) -> &str {
+    pub(crate) fn model(&self) -> &str {
         match self {
             Self::Remote(router) => router.model(),
             Self::Local(router) => router.version(),
@@ -123,7 +121,7 @@ impl RouterClient for ActiveRouter {
 }
 
 /// 원문은 가리기 전 값이라 로그에 남기지 않고 `record`에서만 가린 뒤 쓴다.
-pub struct RouterExchange {
+pub(crate) struct RouterExchange {
     /// 나눠 보냈으면 조각을 순서대로 이은 것. Authorization 헤더는 넣지 않는다.
     pub sent: String,
     /// 응답이 없으면 `None`.
@@ -159,7 +157,7 @@ impl std::fmt::Debug for RouterExchange {
 }
 
 #[derive(Debug)]
-pub enum StartCheck {
+pub(crate) enum StartCheck {
     /// 소켓 접속을 받아도 된다.
     Ready,
     /// engine은 키를 받아 `accept_key`로 넘긴다.
@@ -173,7 +171,7 @@ pub enum StartCheck {
 
 /// 원문과 결과는 `RouterExchange`에서 온다.
 #[derive(Debug, Clone)]
-pub struct RecordContext {
+pub(crate) struct RecordContext {
     /// `/record off`인지 `store`가 이것으로 본다.
     pub chat: ChatId,
     /// 입력과 무관한 호출(`compact`, `loop` 등)은 `None`.
@@ -212,7 +210,7 @@ impl FailureTracker {
 }
 
 #[derive(Debug)]
-pub struct Routers {
+pub(crate) struct Routers {
     /// 호출을 별도 작업으로 보내려고 공유한다.
     active: Arc<ActiveRouter>,
     method: Method,
@@ -226,7 +224,7 @@ impl Routers {
     ///
     /// # Errors
     /// 주소가 HTTPS나 허용 호스트가 아니면 `DisallowedEndpoint`, 방식에 맞는 설정이 없으면 `NotConfigured`.
-    pub fn select(
+    pub(crate) fn select(
         settings: &Settings,
         secrets: SharedSecrets,
         masker: Masker,
@@ -276,11 +274,11 @@ impl Routers {
         }
     }
 
-    pub fn method(&self) -> Method {
+    pub(crate) fn method(&self) -> Method {
         self.method
     }
 
-    pub fn active(&self) -> &ActiveRouter {
+    pub(crate) fn active(&self) -> &ActiveRouter {
         &self.active
     }
 
@@ -290,7 +288,7 @@ impl Routers {
     }
 
     /// 실패는 오류가 아니라 원인을 가린 한 줄과 함께 `KeyRequired`로 돌려준다.
-    pub async fn check(&self, settings: &Settings) -> StartCheck {
+    pub(crate) async fn check(&self, settings: &Settings) -> StartCheck {
         let skip = settings
             .get("router.skip_check")
             .and_then(|value| value.as_bool())
@@ -310,7 +308,7 @@ impl Routers {
     ///
     /// # Errors
     /// 키를 못 받으면 `Secrets`, 다시 확인이 실패하면 `Check`, 키 정보 기록 실패면 `Settings`.
-    pub async fn accept_key(
+    pub(crate) async fn accept_key(
         &mut self,
         input: KeyInput,
         secrets: &SharedSecrets,
@@ -344,7 +342,7 @@ impl Routers {
     }
 
     /// 입력 처리 판단이 재시도 끝에 실패했을 때 쓴다. 현재 에이전트와 현재 모델로 보내고 입력은 대기로 두지 않는다.
-    pub fn route_after_failure(
+    pub(crate) fn route_after_failure(
         &self,
         request: &RouterRequest,
         revision: ChatRevision,
@@ -355,7 +353,7 @@ impl Routers {
     }
 
     /// 패킷의 `compact` 판단이 재시도 끝에 실패했을 때 쓴다. router가 시작한 전환은 건너뛰고 현재 모델로 진행한다. 강제한 전환은 하고 경쟁 구역을 순위 순서로 채운다.
-    pub fn compact_after_failure(&self, starter: TransitionStarter) -> CompactFailure {
+    pub(crate) fn compact_after_failure(&self, starter: TransitionStarter) -> CompactFailure {
         let action = failure::compact_failure(starter);
         match action {
             CompactFailure::SkipTransition => tracing::warn!("{}", failure::SKIP_MODEL_MESSAGE),
@@ -365,7 +363,7 @@ impl Routers {
     }
 
     /// 원문은 `Masker`로 가린 뒤 넘기고, `/record off` 채팅이면 `store`가 쓰지 않는다.
-    pub async fn record(
+    pub(crate) async fn record(
         &self,
         store: &Store,
         context: RecordContext,
@@ -396,7 +394,7 @@ pub(crate) fn check_request(model: String) -> RouterRequest {
 }
 
 /// 절대 경로는 끝 이름만 남기고, 다른 대화 원문은 `core`가 넣지 않아 찾지 않는다. 초안 규칙.
-pub fn sanitize_state(state: &str, masker: &Masker) -> String {
+pub(crate) fn sanitize_state(state: &str, masker: &Masker) -> String {
     let masked = masker.mask(state);
     let mut out = String::with_capacity(masked.as_str().len());
     let mut word = String::new();
@@ -437,7 +435,7 @@ fn replace_absolute(word: &str) -> String {
 }
 
 /// 보낸 뒤 시간 초과는 `CostUnknown`, 무응답과 속도 제한 포기는 `NoResponse`.
-pub fn outcome_of(result: &Result<RouterResponse, RouterError>) -> JudgmentOutcome {
+pub(crate) fn outcome_of(result: &Result<RouterResponse, RouterError>) -> JudgmentOutcome {
     match result {
         Ok(_) => JudgmentOutcome::Ok,
         Err(RouterError::TimedOutAfterSend) => JudgmentOutcome::CostUnknown,

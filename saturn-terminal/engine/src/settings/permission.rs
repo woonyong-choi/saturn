@@ -24,7 +24,7 @@ pub(super) struct LayerPermission {
 
 /// 병합이 끝난 모드와 규칙. 규칙은 사용자, 폴더, 채팅, 실행 층 순서로 이어 붙인 목록이다.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PermissionSettings {
+pub(crate) struct PermissionSettings {
     pub mode: Mode,
     pub rules: Vec<Rule>,
 }
@@ -191,12 +191,12 @@ pub(super) fn from_value(value: Option<&Value>) -> PermissionSettings {
 }
 
 /// 채팅 층 원문이 적은 모드. 없거나 읽지 못하면 `None`.
-pub fn chat_layer_mode(content: Option<&str>) -> Option<Mode> {
+pub(crate) fn chat_layer_mode(content: Option<&str>) -> Option<Mode> {
     read_layer(content?).ok()?.mode
 }
 
 /// 채팅 층 원문의 `permission.mode`만 바꾸고 나머지는 그대로 둔다.
-pub fn with_chat_layer_mode(content: Option<&str>, mode: Mode) -> String {
+pub(crate) fn with_chat_layer_mode(content: Option<&str>, mode: Mode) -> String {
     let mut doc = content
         .and_then(|content| content.parse::<toml_edit::DocumentMut>().ok())
         .unwrap_or_default();

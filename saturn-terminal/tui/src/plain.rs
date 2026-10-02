@@ -16,7 +16,7 @@ use crate::view::status_board::{StatusLine, alert_text};
 use crate::view::transcript::{TranscriptCell, echo_cell, result_cell};
 
 #[derive(Debug)]
-pub struct PlainOutput<W: Write> {
+pub(crate) struct PlainOutput<W: Write> {
     out: W,
     lang: Lang,
     chat: ChatState,
@@ -31,7 +31,7 @@ pub struct PlainOutput<W: Write> {
 impl<W: Write> PlainOutput<W> {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn new(out: W, lang: Lang) -> Self {
+    pub(crate) fn new(out: W, lang: Lang) -> Self {
         Self {
             out,
             lang,
@@ -44,18 +44,18 @@ impl<W: Write> PlainOutput<W> {
     }
 
     /// engine가 router 키를 요청했으면 그 원인. 호출자는 묻지 않고 안내하고 끝낸다.
-    pub fn key_required(&self) -> Option<&str> {
+    pub(crate) fn key_required(&self) -> Option<&str> {
         self.key_required.as_deref()
     }
 
     /// 원문은 engine이 `InputChanged`로 돌려주므로 여기서 쓰지 않는다.
-    pub fn submitted(&mut self, text: String) {
+    pub(crate) fn submitted(&mut self, text: String) {
         let _ = text;
         self.finished = false;
     }
 
     /// 접속 직후 `HistoryChunk`가 알려 준다.
-    pub fn chat(&self) -> Option<ChatId> {
+    pub(crate) fn chat(&self) -> Option<ChatId> {
         self.chat.chat
     }
 
@@ -63,7 +63,11 @@ impl<W: Write> PlainOutput<W> {
     ///
     /// # Errors
     /// 쓰기 실패.
-    pub fn apply(&mut self, notification: Notification, now: Instant) -> std::io::Result<()> {
+    pub(crate) fn apply(
+        &mut self,
+        notification: Notification,
+        now: Instant,
+    ) -> std::io::Result<()> {
         match notification {
             Notification::HistoryChunk { chat, .. } => {
                 self.chat.chat.get_or_insert(chat);
@@ -149,7 +153,7 @@ impl<W: Write> PlainOutput<W> {
     }
 
     /// `ChatNotice::RequestSummary`를 쓴 뒤 참.
-    pub fn is_finished(&self) -> bool {
+    pub(crate) fn is_finished(&self) -> bool {
         self.finished
     }
 

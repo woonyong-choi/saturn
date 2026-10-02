@@ -16,7 +16,7 @@ const KEY_INFO_KEY: &str = "router.key.info";
 
 /// 쓰기 직전에 다시 재서 다르면 쓰지 않는다.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FileVersion {
+pub(crate) struct FileVersion {
     pub path: PathBuf,
     /// 파일이 없었으면 `None`. 해시 SHA-256은 초안이다.
     pub fingerprint: Option<String>,
@@ -27,7 +27,10 @@ pub struct FileVersion {
 impl SettingsManager {
     /// # Errors
     /// 읽기 실패면 `Io`(없는 파일은 빈 내용과 `fingerprint: None`).
-    pub async fn read_for_edit(&self, path: &Path) -> Result<(String, FileVersion), SettingsError> {
+    pub(crate) async fn read_for_edit(
+        &self,
+        path: &Path,
+    ) -> Result<(String, FileVersion), SettingsError> {
         read_versioned(path)
     }
 
@@ -35,7 +38,7 @@ impl SettingsManager {
     ///
     /// # Errors
     /// 읽은 뒤 파일이 바뀌었으면 `Conflict`, 값이 TOML이 아니면 `Parse`, 쓰기 실패면 `Io`.
-    pub async fn set_value(
+    pub(crate) async fn set_value(
         &self,
         path: &Path,
         key: &str,
@@ -106,7 +109,7 @@ impl SettingsManager {
     }
 
     /// 키 원문은 받지 않는다.
-    pub async fn record_key_info(&self, info: &KeyInfo) -> Result<(), SettingsError> {
+    pub(crate) async fn record_key_info(&self, info: &KeyInfo) -> Result<(), SettingsError> {
         let path = self.user_config_path();
         let source = serde_json::to_value(info.source)
             .ok()

@@ -12,7 +12,7 @@ use crate::i18n::{self, Lang};
 use crate::view::{MUTED, SELECTED, render_window};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ModelPicker {
+pub(crate) struct ModelPicker {
     /// `/model <provider>`로 연 창이면 그 provider.
     pub provider: Option<Provider>,
     /// 목록이 오기 전에는 `None`.
@@ -23,7 +23,7 @@ pub struct ModelPicker {
 }
 
 impl ModelPicker {
-    pub fn new(provider: Option<Provider>, current: Option<ModelChoice>) -> Self {
+    pub(crate) fn new(provider: Option<Provider>, current: Option<ModelChoice>) -> Self {
         Self {
             provider,
             models: None,
@@ -33,7 +33,7 @@ impl ModelPicker {
     }
 
     /// 지금 고정한 모델이 목록에 있으면 그 줄을 고른 채로 둔다.
-    pub fn load(&mut self, models: Vec<ModelInfo>) {
+    pub(crate) fn load(&mut self, models: Vec<ModelInfo>) {
         self.selected = self
             .current
             .as_ref()
@@ -42,11 +42,11 @@ impl ModelPicker {
         self.models = Some(models);
     }
 
-    pub fn up(&mut self) {
+    pub(crate) fn up(&mut self) {
         self.selected = self.selected.saturating_sub(1);
     }
 
-    pub fn down(&mut self) {
+    pub(crate) fn down(&mut self) {
         let last = self
             .models
             .as_ref()
@@ -54,7 +54,7 @@ impl ModelPicker {
         self.selected = (self.selected + 1).min(last);
     }
 
-    pub fn selected_choice(&self) -> Option<&ModelChoice> {
+    pub(crate) fn selected_choice(&self) -> Option<&ModelChoice> {
         self.models
             .as_ref()
             .and_then(|models| models.get(self.selected))
@@ -63,7 +63,7 @@ impl ModelPicker {
 }
 
 #[derive(Debug)]
-pub struct ModelPickerView<'a> {
+pub(crate) struct ModelPickerView<'a> {
     pub picker: &'a ModelPicker,
     pub lang: Lang,
 }
@@ -72,7 +72,7 @@ impl ModelPickerView<'_> {
     // cost: time O(m), heap O(m), stack O(1)
     // vars: m = 모델 수
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let lang = self.lang;
         let picker = self.picker;
         let mut lines: Vec<Line<'static>> = match &picker.models {

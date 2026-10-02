@@ -11,7 +11,7 @@ use super::{LabeledSets, TrainingError};
 use crate::processes::Supervisor;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrainerSpec {
+pub(crate) struct TrainerSpec {
     pub python: PathBuf,
     pub script: PathBuf,
     pub base_model: String,
@@ -25,7 +25,7 @@ pub struct TrainerSpec {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CandidateModel {
+pub(crate) struct CandidateModel {
     pub version: String,
     pub path: PathBuf,
     pub base_model: String,
@@ -35,7 +35,7 @@ pub struct CandidateModel {
 ///
 /// # Errors
 /// 실행 실패면 `Process`, 0이 아닌 종료면 `Trainer`.
-pub async fn run_trainer(
+pub(crate) async fn run_trainer(
     supervisor: &Supervisor,
     spec: &TrainerSpec,
     labels: &LabeledSets,
@@ -47,7 +47,7 @@ pub async fn run_trainer(
 ///
 /// # Errors
 /// 평가 실행 실패면 `Trainer`나 `Process`.
-pub async fn evaluate(
+pub(crate) async fn evaluate(
     supervisor: &Supervisor,
     candidate: &CandidateModel,
     current: &str,

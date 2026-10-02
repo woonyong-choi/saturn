@@ -18,10 +18,10 @@ use crate::labels;
 use crate::view::{MUTED, render_window};
 
 /// 모르고 누른 키로 허가하지 않게 막는 시간.
-pub const INPUT_GUARD: Duration = Duration::from_secs(1);
+pub(crate) const INPUT_GUARD: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PermissionRequest {
+pub(crate) struct PermissionRequest {
     pub request_id: String,
     pub task: TaskId,
     /// 창 제목에는 이름표 보임 규칙과 관계없이 늘 붙인다.
@@ -33,13 +33,13 @@ pub struct PermissionRequest {
 
 /// 맨 앞이 떠 있는 창.
 #[derive(Debug, Default)]
-pub struct PermissionQueue {
+pub(crate) struct PermissionQueue {
     queue: VecDeque<PermissionRequest>,
     shown_at: Option<Instant>,
 }
 
 impl PermissionQueue {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
@@ -47,7 +47,7 @@ impl PermissionQueue {
     // vars: q = 대기열 길이
     // basis: estimate
     /// 같은 `request_id`가 있으면 무시한다.
-    pub fn push(&mut self, request: PermissionRequest, now: Instant) {
+    pub(crate) fn push(&mut self, request: PermissionRequest, now: Instant) {
         if self
             .queue
             .iter()
@@ -61,17 +61,17 @@ impl PermissionQueue {
         self.queue.push_back(request);
     }
 
-    pub fn current(&self) -> Option<&PermissionRequest> {
+    pub(crate) fn current(&self) -> Option<&PermissionRequest> {
         self.queue.front()
     }
 
-    pub fn accepts_input(&self, now: Instant) -> bool {
+    pub(crate) fn accepts_input(&self, now: Instant) -> bool {
         self.shown_at
             .is_some_and(|shown| now.saturating_duration_since(shown) >= INPUT_GUARD)
     }
 
     /// 보호 시간 중이면 `None`.
-    pub fn answer(
+    pub(crate) fn answer(
         &mut self,
         answer: PermissionAnswer,
         now: Instant,
@@ -87,7 +87,7 @@ impl PermissionQueue {
     // cost: time O(q), heap O(1), stack O(1)
     // vars: q = 대기열 길이
     // basis: estimate
-    pub fn resolve(&mut self, request_id: &str, now: Instant) {
+    pub(crate) fn resolve(&mut self, request_id: &str, now: Instant) {
         let Some(index) = self.queue.iter().position(|r| r.request_id == request_id) else {
             return;
         };
@@ -97,19 +97,19 @@ impl PermissionQueue {
         }
     }
 
-    pub fn others_waiting(&self) -> usize {
+    pub(crate) fn others_waiting(&self) -> usize {
         self.queue.len().saturating_sub(1)
     }
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.queue.is_empty()
     }
 }
 
 #[derive(Debug)]
-pub struct PermissionView<'a> {
+pub(crate) struct PermissionView<'a> {
     pub queue: &'a PermissionQueue,
     pub lang: Lang,
     pub guarded: bool,
@@ -119,7 +119,7 @@ impl PermissionView<'_> {
     // cost: time O(m), heap O(m), stack O(1)
     // vars: m = 요청 내용과 이유 길이
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let Some(request) = self.queue.current() else {
             return;
         };

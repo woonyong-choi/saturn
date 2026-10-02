@@ -18,7 +18,7 @@ const LOOPBACK_HOSTS: &[&str] = &["127.0.0.1", "localhost", "[::1]"];
 const LOCAL_TIMEOUT: Duration = Duration::from_secs(30);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LocalSource {
+pub(crate) enum LocalSource {
     /// 승격된 모델 파일.
     Model {
         /// router 버전의 모델 경로.
@@ -32,7 +32,7 @@ pub enum LocalSource {
 }
 
 #[derive(Debug)]
-pub struct LocalRouter {
+pub(crate) struct LocalRouter {
     source: LocalSource,
     /// 판단 기록에 남긴다.
     version: String,
@@ -42,7 +42,7 @@ pub struct LocalRouter {
 
 impl LocalRouter {
     /// 아직 모델을 불러오지 않는다.
-    pub fn new(source: LocalSource, version: String) -> Self {
+    pub(crate) fn new(source: LocalSource, version: String) -> Self {
         let transport: Option<Arc<dyn Transport>> = match &source {
             LocalSource::Server { .. } => Some(Arc::new(PlainTransport::new())),
             LocalSource::Model { .. } => None,
@@ -68,12 +68,12 @@ impl LocalRouter {
         }
     }
 
-    pub fn version(&self) -> &str {
+    pub(crate) fn version(&self) -> &str {
         &self.version
     }
 
     /// `Model`은 실행 방식이 정해지지 않아(#43) `NoResponse`, `Server`는 루프백 주소가 아니면 보내지 않는다.
-    pub async fn exchange(&self, request: RouterRequest) -> RouterExchange {
+    pub(crate) async fn exchange(&self, request: RouterRequest) -> RouterExchange {
         let started_at = SystemTime::now();
         let clock = Instant::now();
         let body = router_body(&request).to_string();

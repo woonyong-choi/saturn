@@ -24,7 +24,7 @@ pub(crate) const FINAL_INPUT_STATES: &str = "('Applied', 'Rejected', 'Cancelled'
 
 /// 접수 때 설정 번호와 권한을 고정하고 끝까지 바꾸지 않는다.
 #[derive(Debug, Clone)]
-pub struct NewInput {
+pub(crate) struct NewInput {
     pub chat: ChatId,
     /// 사용자 입력이고 router 키가 아니라 마스킹하지 않는다.
     pub text: String,
@@ -38,7 +38,7 @@ pub struct NewInput {
 
 /// provider 턴 하나.
 #[derive(Debug, Clone)]
-pub struct NewRun {
+pub(crate) struct NewRun {
     /// `provider-wake` 턴이면 `None`.
     pub input: Option<InputId>,
     pub task: TaskId,
@@ -50,14 +50,14 @@ pub struct NewRun {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RunEnd {
+pub(crate) enum RunEnd {
     Completed,
     Failed,
     Stopped,
 }
 
 #[derive(Debug, Clone)]
-pub struct RunRecord {
+pub(crate) struct RunRecord {
     pub id: RunId,
     pub input: Option<InputId>,
     pub task: TaskId,
@@ -71,7 +71,7 @@ pub struct RunRecord {
 
 /// 보고하지 않은 칸은 `None`이고 합계에서 0으로 세지 않는다.
 #[derive(Debug, Clone)]
-pub struct UsageRow {
+pub(crate) struct UsageRow {
     /// 기록 순서.
     pub id: u64,
     pub run: RunId,
@@ -87,7 +87,7 @@ pub struct UsageRow {
 
 impl Store {
     /// 판단 기록 저장은 켜진 상태로 시작한다.
-    pub async fn create_chat(&self, workdir: PathBuf) -> Result<ChatId, StoreError> {
+    pub(crate) async fn create_chat(&self, workdir: PathBuf) -> Result<ChatId, StoreError> {
         let id: i64 = sqlx::query_scalar(
             "INSERT INTO chats (workdir, recording, created_at) VALUES (?, 1, ?) RETURNING id",
         )
@@ -102,7 +102,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 채팅이면 `NotFound`.
-    pub async fn chat_workdir(&self, chat: ChatId) -> Result<PathBuf, StoreError> {
+    pub(crate) async fn chat_workdir(&self, chat: ChatId) -> Result<PathBuf, StoreError> {
         let row: Option<String> = sqlx::query_scalar("SELECT workdir FROM chats WHERE id = ?")
             .bind(to_sql_int(chat.0))
             .fetch_optional(&self.pool)
@@ -115,7 +115,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 채팅이면 `NotFound`.
-    pub async fn set_recording(&self, chat: ChatId, on: bool) -> Result<(), StoreError> {
+    pub(crate) async fn set_recording(&self, chat: ChatId, on: bool) -> Result<(), StoreError> {
         let done = sqlx::query("UPDATE chats SET recording = ? WHERE id = ?")
             .bind(on)
             .bind(to_sql_int(chat.0))
@@ -128,7 +128,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 채팅이면 `NotFound`.
-    pub async fn set_chat_model(&self, chat: ChatId, model: &str) -> Result<(), StoreError> {
+    pub(crate) async fn set_chat_model(&self, chat: ChatId, model: &str) -> Result<(), StoreError> {
         let done = sqlx::query("UPDATE chats SET pinned_model = ? WHERE id = ?")
             .bind(model)
             .bind(to_sql_int(chat.0))
@@ -141,7 +141,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 채팅이면 `NotFound`.
-    pub async fn chat_model(&self, chat: ChatId) -> Result<Option<String>, StoreError> {
+    pub(crate) async fn chat_model(&self, chat: ChatId) -> Result<Option<String>, StoreError> {
         let row: Option<Option<String>> =
             sqlx::query_scalar("SELECT pinned_model FROM chats WHERE id = ?")
                 .bind(to_sql_int(chat.0))
@@ -154,7 +154,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 채팅이면 `NotFound`.
-    pub async fn chat_layer(&self, chat: ChatId) -> Result<Option<String>, StoreError> {
+    pub(crate) async fn chat_layer(&self, chat: ChatId) -> Result<Option<String>, StoreError> {
         let row: Option<Option<String>> =
             sqlx::query_scalar("SELECT chat_layer FROM chats WHERE id = ?")
                 .bind(to_sql_int(chat.0))
@@ -167,7 +167,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 채팅이면 `NotFound`.
-    pub async fn set_chat_layer(&self, chat: ChatId, toml: &str) -> Result<(), StoreError> {
+    pub(crate) async fn set_chat_layer(&self, chat: ChatId, toml: &str) -> Result<(), StoreError> {
         let done = sqlx::query("UPDATE chats SET chat_layer = ? WHERE id = ?")
             .bind(toml)
             .bind(to_sql_int(chat.0))
@@ -180,7 +180,7 @@ impl Store {
     ///
     /// # Errors
     /// 쓰기 실패면 `Database`(없는 채팅 포함)이고 입력은 접수되지 않았다.
-    pub async fn accept_input(&self, input: &NewInput) -> Result<InputId, StoreError> {
+    pub(crate) async fn accept_input(&self, input: &NewInput) -> Result<InputId, StoreError> {
         let id: i64 = sqlx::query_scalar(
             "INSERT INTO inputs (chat_id, text, settings_revision, permission, workdir, pinned_model, \
              skip_relation, state, reason, accepted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?) RETURNING id",
@@ -203,7 +203,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 입력이면 `NotFound`.
-    pub async fn set_input_state(
+    pub(crate) async fn set_input_state(
         &self,
         input: InputId,
         state: InputState,
@@ -222,7 +222,9 @@ impl Store {
     }
 
     /// 시작 때 대기열을 되살리는 데 쓴다. 접수 순서.
-    pub async fn open_inputs(&self) -> Result<Vec<(InputId, NewInput, InputState)>, StoreError> {
+    pub(crate) async fn open_inputs(
+        &self,
+    ) -> Result<Vec<(InputId, NewInput, InputState)>, StoreError> {
         let rows = sqlx::query(&format!(
             "SELECT id, chat_id, text, settings_revision, permission, workdir, pinned_model, \
              skip_relation, state FROM inputs WHERE state NOT IN {FINAL_INPUT_STATES} ORDER BY id"
@@ -247,7 +249,7 @@ impl Store {
     }
 
     /// 처리 중인 동안 그 채팅은 정리 대상에서 빠지고, 이미 처리 중이면 그대로 둔다.
-    pub async fn begin_stop(&self, chat: ChatId) -> Result<(), StoreError> {
+    pub(crate) async fn begin_stop(&self, chat: ChatId) -> Result<(), StoreError> {
         sqlx::query("INSERT OR IGNORE INTO stops (chat_id, started_at) VALUES (?, ?)")
             .bind(to_sql_int(chat.0))
             .bind(to_millis(SystemTime::now()))
@@ -258,7 +260,7 @@ impl Store {
 
     /// # Errors
     /// 처리 중인 요청이 없으면 `NotFound`.
-    pub async fn end_stop(&self, chat: ChatId) -> Result<(), StoreError> {
+    pub(crate) async fn end_stop(&self, chat: ChatId) -> Result<(), StoreError> {
         let done = sqlx::query("DELETE FROM stops WHERE chat_id = ?")
             .bind(to_sql_int(chat.0))
             .execute(&self.pool)
@@ -270,7 +272,7 @@ impl Store {
     ///
     /// # Errors
     /// 입력도 session 행도 없어 채팅을 정하지 못하면 `NotFound`.
-    pub async fn start_run(&self, run: &NewRun) -> Result<RunId, StoreError> {
+    pub(crate) async fn start_run(&self, run: &NewRun) -> Result<RunId, StoreError> {
         let mut tx = self.pool.begin().await?;
         let chat: Option<i64> = match run.input {
             Some(input) => {
@@ -312,7 +314,11 @@ impl Store {
     ///
     /// # Errors
     /// 없는 실행이면 `NotFound`.
-    pub async fn set_effect_scope(&self, run: RunId, scope: EffectScope) -> Result<(), StoreError> {
+    pub(crate) async fn set_effect_scope(
+        &self,
+        run: RunId,
+        scope: EffectScope,
+    ) -> Result<(), StoreError> {
         let unobserved = enum_text(&EffectScope::Unobserved)?;
         let done = sqlx::query(
             "UPDATE runs SET effect_scope = CASE WHEN effect_scope = ? THEN effect_scope ELSE ? END \
@@ -330,7 +336,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 실행이면 `NotFound`, 압축 실패면 `Compression`(끝 기록은 남는다).
-    pub async fn finish_run(&self, run: RunId, end: RunEnd) -> Result<(), StoreError> {
+    pub(crate) async fn finish_run(&self, run: RunId, end: RunEnd) -> Result<(), StoreError> {
         let done = sqlx::query(
             "UPDATE runs SET end_kind = COALESCE(end_kind, ?), ended_at = COALESCE(ended_at, ?) \
              WHERE id = ?",
@@ -345,7 +351,7 @@ impl Store {
         Ok(())
     }
 
-    pub async fn unfinished_runs(&self) -> Result<Vec<RunRecord>, StoreError> {
+    pub(crate) async fn unfinished_runs(&self) -> Result<Vec<RunRecord>, StoreError> {
         let rows = sqlx::query(
             "SELECT id, input_id, task_id, session_id, effect_scope, started_at, end_kind FROM runs \
              WHERE end_kind IS NULL ORDER BY id",
@@ -356,12 +362,15 @@ impl Store {
     }
 
     /// `idle_since`(`Instant`)는 저장하지 않는다.
-    pub async fn upsert_session(&self, session: &SessionRecord) -> Result<(), StoreError> {
+    pub(crate) async fn upsert_session(&self, session: &SessionRecord) -> Result<(), StoreError> {
         self.upsert_sessions(std::slice::from_ref(session)).await
     }
 
     /// 모두 한 거래로 쓴다. 한 변경이 여러 session의 상태를 함께 바꾸기 때문이다.
-    pub async fn upsert_sessions(&self, sessions: &[SessionRecord]) -> Result<(), StoreError> {
+    pub(crate) async fn upsert_sessions(
+        &self,
+        sessions: &[SessionRecord],
+    ) -> Result<(), StoreError> {
         let mut tx = self.pool.begin().await?;
         for session in sessions {
             sqlx::query(
@@ -387,7 +396,7 @@ impl Store {
     }
 
     /// id 순서.
-    pub async fn sessions(&self, chat: ChatId) -> Result<Vec<SessionRecord>, StoreError> {
+    pub(crate) async fn sessions(&self, chat: ChatId) -> Result<Vec<SessionRecord>, StoreError> {
         let rows = sqlx::query(
             "SELECT id, chat_id, agent_id, role, provider, provider_session, model, state, delivered \
              FROM sessions WHERE chat_id = ? ORDER BY id",
@@ -402,7 +411,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 실행이면 `NotFound`, 직렬화 실패면 `Json`.
-    pub async fn append_event(
+    pub(crate) async fn append_event(
         &self,
         run: RunId,
         chat: ChatId,
@@ -434,7 +443,7 @@ impl Store {
 
     /// # Errors
     /// 저장된 JSON이 깨졌으면 `Json`.
-    pub async fn events_since(
+    pub(crate) async fn events_since(
         &self,
         chat: ChatId,
         after: LedgerSeq,
@@ -458,7 +467,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 실행이면 `NotFound`.
-    pub async fn record_usage(
+    pub(crate) async fn record_usage(
         &self,
         run: RunId,
         session: SessionId,

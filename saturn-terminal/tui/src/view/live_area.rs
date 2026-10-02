@@ -10,14 +10,13 @@ use saturn_protocol::ids::{TaskId, TaskLabel};
 use ratatui::text::Line;
 use ratatui::widgets::Paragraph;
 
-use crate::i18n::Lang;
 use crate::labels;
 use crate::view::truncate;
 
-pub const MAX_ROWS: u16 = 8;
+pub(crate) const MAX_ROWS: u16 = 8;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LiveTask {
+pub(crate) struct LiveTask {
     pub task: TaskId,
     pub label: TaskLabel,
     pub lines: Vec<String>,
@@ -27,12 +26,12 @@ pub struct LiveTask {
 
 /// 출력이 시작된 순서이며 그 뒤에는 바꾸지 않는다.
 #[derive(Debug, Default)]
-pub struct LiveArea {
+pub(crate) struct LiveArea {
     tasks: VecDeque<LiveTask>,
 }
 
 impl LiveArea {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
@@ -40,7 +39,7 @@ impl LiveArea {
     // vars: k = 칸의 작업 수, n = 조각 길이
     // basis: estimate
     /// 완성된 줄이 새로 생겼으면 `true`.
-    pub fn push(&mut self, task: TaskId, label: TaskLabel, text: &str) -> bool {
+    pub(crate) fn push(&mut self, task: TaskId, label: TaskLabel, text: &str) -> bool {
         let index = match self.tasks.iter().position(|t| t.task == task) {
             Some(index) => index,
             None => {
@@ -71,7 +70,7 @@ impl LiveArea {
     // vars: k = 칸의 작업 수
     // basis: estimate
     /// 남은 조각까지 줄로 돌려주고 칸에서 지운다.
-    pub fn finish(&mut self, task: TaskId) -> Vec<String> {
+    pub(crate) fn finish(&mut self, task: TaskId) -> Vec<String> {
         let Some(index) = self.tasks.iter().position(|t| t.task == task) else {
             return Vec::new();
         };
@@ -88,7 +87,7 @@ impl LiveArea {
     // vars: k = 칸의 작업 수
     // basis: estimate
     /// `max_rows(screen_height)`를 넘지 않는다.
-    pub fn height(&self, screen_height: u16) -> u16 {
+    pub(crate) fn height(&self, screen_height: u16) -> u16 {
         let wanted: usize = self.tasks.iter().map(|t| t.lines.len()).sum();
         let wanted = u16::try_from(wanted).unwrap_or(u16::MAX);
         wanted.min(max_rows(screen_height))
@@ -96,20 +95,19 @@ impl LiveArea {
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn tasks(&self) -> impl ExactSizeIterator<Item = &LiveTask> {
+    pub(crate) fn tasks(&self) -> impl ExactSizeIterator<Item = &LiveTask> {
         self.tasks.iter()
     }
 }
 
 /// 화면 높이의 1/4이 `MAX_ROWS`보다 작으면 그 값(최소 1줄, 초안).
-pub fn max_rows(screen_height: u16) -> u16 {
+pub(crate) fn max_rows(screen_height: u16) -> u16 {
     (screen_height / 4).clamp(1, MAX_ROWS)
 }
 
 #[derive(Debug)]
-pub struct LiveAreaView<'a> {
+pub(crate) struct LiveAreaView<'a> {
     pub live: &'a LiveArea,
-    pub lang: Lang,
     pub labels_visible: bool,
 }
 
@@ -118,7 +116,7 @@ impl LiveAreaView<'_> {
     // vars: r = 칸 높이, k = 칸의 작업 수, w = 칸 폭
     // basis: estimate
     /// 줄 수가 모자라면 작업마다 가장 최근 줄부터 남긴다.
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let budgets = row_budgets(self.live, usize::from(area.height));
         let width = usize::from(area.width);
         let mut rows: Vec<Line> = Vec::new();
@@ -232,7 +230,6 @@ mod tests {
         let mut terminal = Terminal::new(TestBackend::new(10, 3)).unwrap();
         let view = LiveAreaView {
             live: &live,
-            lang: Lang::Ko,
             labels_visible: true,
         };
 

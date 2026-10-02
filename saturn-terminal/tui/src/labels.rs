@@ -5,25 +5,25 @@ use saturn_protocol::ids::TaskLabel;
 use saturn_protocol::state::TaskState;
 
 /// 초안 값.
-pub const LABEL_RANGE: std::ops::RangeInclusive<char> = 'A'..='Z';
+pub(crate) const LABEL_RANGE: std::ops::RangeInclusive<char> = 'A'..='Z';
 
 /// `Held`는 보류 줄로 따로 센다.
-pub fn is_live(state: TaskState) -> bool {
+pub(crate) fn is_live(state: TaskState) -> bool {
     matches!(
         state,
         TaskState::Running | TaskState::AnsweredTreeRunning | TaskState::AwaitingPermission
     )
 }
 
-pub fn visible(live_tasks: usize, queued_lines: usize, held_lines: usize) -> bool {
+pub(crate) fn visible(live_tasks: usize, queued_lines: usize, held_lines: usize) -> bool {
     live_tasks > 1 || queued_lines > 0 || held_lines > 0
 }
 
-pub fn format(label: TaskLabel) -> String {
+pub(crate) fn format(label: TaskLabel) -> String {
     format!("[{}]", label.0)
 }
 
-pub fn prefix(label: Option<TaskLabel>, visible: bool) -> String {
+pub(crate) fn prefix(label: Option<TaskLabel>, visible: bool) -> String {
     match label {
         Some(label) if visible => format!("{} ", format(label)),
         _ => String::new(),
@@ -34,7 +34,8 @@ pub fn prefix(label: Option<TaskLabel>, visible: bool) -> String {
 // vars: r = LABEL_RANGE 글자 수, u = used.len()
 // basis: estimate
 /// engine 규칙과 같은 계산이며 화면 쪽 검증에만 쓴다.
-pub fn first_free(used: &[TaskLabel]) -> Option<TaskLabel> {
+#[cfg(test)]
+pub(crate) fn first_free(used: &[TaskLabel]) -> Option<TaskLabel> {
     LABEL_RANGE
         .map(TaskLabel)
         .find(|candidate| !used.contains(candidate))

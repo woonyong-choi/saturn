@@ -18,16 +18,16 @@ use super::{RouterExchange, RoutersError, SharedSecrets};
 use crate::secrets::is_sensitive_header;
 
 /// router 키는 이 호스트로만 간다.
-pub const ALLOWED_HOST: &str = "api.typesafe.ai";
+pub(crate) const ALLOWED_HOST: &str = "api.typesafe.ai";
 
 /// 토큰을 셀 수 없어 본문 바이트로 잰다(바이트 수 ≥ 토큰 수라 API 한도 64k 토큰을 넘지 않는다). 초안 값.
-pub const REQUEST_SPLIT_LIMIT: usize = 64 * 1024;
+pub(crate) const REQUEST_SPLIT_LIMIT: usize = 64 * 1024;
 
 /// `state`와 가장 긴 질문의 합 한도(바이트). 초안 값.
-pub const STATE_SPLIT_LIMIT: usize = 32 * 1024;
+pub(crate) const STATE_SPLIT_LIMIT: usize = 32 * 1024;
 
 /// 넘으면 계층 선택으로 나눈다.
-pub const MAX_CHOICES: usize = 255;
+pub(crate) const MAX_CHOICES: usize = 255;
 
 const ROUTER_PATH: &str = "/v1/systemone";
 
@@ -39,7 +39,7 @@ const OTHER_CHUNK_OPTION: &str = "none of these";
 /// 재시도 횟수와 간격은 `saturn_core::routers::failure`가 정한다.
 /// TODO(#235): 설정 키 이름과 기본값
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RetryPolicy {
+pub(crate) struct RetryPolicy {
     /// 시도마다(첫 시도 포함) 보낸 뒤 이 시간이 지나면 `TimedOutAfterSend`.
     pub response_timeout: Duration,
 }
@@ -168,7 +168,7 @@ pub(crate) fn send_with<'a>(
 }
 
 /// `Debug`는 키 보관소와 전송을 빼고 주소, 모델, 재시도 설정만 쓴다.
-pub struct RemoteRouter {
+pub(crate) struct RemoteRouter {
     endpoint: String,
     /// 버전을 고정한 이름.
     model: String,
@@ -194,7 +194,7 @@ impl RemoteRouter {
     ///
     /// # Errors
     /// 주소가 HTTPS가 아니거나 호스트가 `ALLOWED_HOST`가 아니면 `DisallowedEndpoint`.
-    pub fn new(
+    pub(crate) fn new(
         endpoint: &str,
         model: String,
         secrets: SharedSecrets,
@@ -230,7 +230,7 @@ impl RemoteRouter {
         }
     }
 
-    pub fn model(&self) -> &str {
+    pub(crate) fn model(&self) -> &str {
         &self.model
     }
 
@@ -238,7 +238,7 @@ impl RemoteRouter {
     ///
     /// # Errors
     /// 인증 실패(키 없음, 거절)는 `Unauthorized`, 연결 실패는 `NoResponse`.
-    pub async fn list_models(&self) -> Result<Vec<String>, RouterError> {
+    pub(crate) async fn list_models(&self) -> Result<Vec<String>, RouterError> {
         let url = format!("{}{MODELS_PATH}", self.endpoint);
         let reply = self
             .authorized(&url, None)
@@ -257,7 +257,7 @@ impl RemoteRouter {
     }
 
     /// 한 조각이라도 실패하면 그 실패를 결과로 한다. 형식 검사는 호출자가 한다.
-    pub async fn exchange(&self, request: RouterRequest) -> RouterExchange {
+    pub(crate) async fn exchange(&self, request: RouterRequest) -> RouterExchange {
         let started_at = SystemTime::now();
         let clock = Instant::now();
         let expanded = expand_choices(&request);

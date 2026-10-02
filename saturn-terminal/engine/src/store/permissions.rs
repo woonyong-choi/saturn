@@ -16,7 +16,7 @@ impl Store {
     ///
     /// # Errors
     /// 쓰기 실패면 `Database`.
-    pub async fn add_permission_allow(
+    pub(crate) async fn add_permission_allow(
         &self,
         workdir: &Path,
         rule: &Rule,
@@ -41,7 +41,7 @@ impl Store {
     ///
     /// # Errors
     /// 읽기 실패면 `Database`.
-    pub async fn permission_allows(&self, workdir: &Path) -> Result<Vec<Rule>, StoreError> {
+    pub(crate) async fn permission_allows(&self, workdir: &Path) -> Result<Vec<Rule>, StoreError> {
         let rows: Vec<(String, String)> = sqlx::query_as(
             "SELECT tool, pattern FROM permission_allows WHERE workdir = ? ORDER BY id",
         )

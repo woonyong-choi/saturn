@@ -10,23 +10,23 @@ use crate::i18n::{self, Lang};
 use crate::view::{MUTED, text_width, truncate};
 
 /// 이 글자 수를 넘으면 접는다.
-pub const PASTE_COLLAPSE_CHARS: usize = 1_000;
+pub(crate) const PASTE_COLLAPSE_CHARS: usize = 1_000;
 
 /// 커서는 조각 단위로 움직인다.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Segment {
+pub(crate) enum Segment {
     Char(char),
     Pasted(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct HistorySearch {
+pub(crate) struct HistorySearch {
     pub query: String,
     pub skip: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Composer {
+pub(crate) struct Composer {
     segments: Vec<Segment>,
     cursor: usize,
     kill_buffer: String,
@@ -35,15 +35,15 @@ pub struct Composer {
 }
 
 impl Composer {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
-    pub fn insert(&mut self, c: char) {
+    pub(crate) fn insert(&mut self, c: char) {
         self.insert_segment(Segment::Char(c));
     }
 
-    pub fn paste(&mut self, text: String) {
+    pub(crate) fn paste(&mut self, text: String) {
         let text = text.replace("\r\n", "\n").replace('\r', "\n");
         if text.chars().count() > PASTE_COLLAPSE_CHARS {
             self.insert_segment(Segment::Pasted(text));
@@ -53,12 +53,12 @@ impl Composer {
         }
     }
 
-    pub fn newline(&mut self) {
+    pub(crate) fn newline(&mut self) {
         self.insert('\n');
     }
 
     /// 커서 바로 앞이 붙여넣은 요소면 요소 전체를 지운다.
-    pub fn backspace(&mut self) {
+    pub(crate) fn backspace(&mut self) {
         if self.cursor == 0 {
             return;
         }
@@ -67,11 +67,11 @@ impl Composer {
         self.from_history = false;
     }
 
-    pub fn left(&mut self) {
+    pub(crate) fn left(&mut self) {
         self.cursor = self.cursor.saturating_sub(1);
     }
 
-    pub fn right(&mut self) {
+    pub(crate) fn right(&mut self) {
         self.cursor = (self.cursor + 1).min(self.segments.len());
     }
 
@@ -79,7 +79,7 @@ impl Composer {
     // vars: n = 조각 수
     // basis: estimate
     /// 이전 보관 글은 덮는다.
-    pub fn kill_to_end(&mut self) {
+    pub(crate) fn kill_to_end(&mut self) {
         let end = self.segments[self.cursor..]
             .iter()
             .position(|s| *s == Segment::Char('\n'))
@@ -94,7 +94,7 @@ impl Composer {
         self.from_history = false;
     }
 
-    pub fn yank(&mut self) {
+    pub(crate) fn yank(&mut self) {
         let text = self.kill_buffer.clone();
         text.chars()
             .for_each(|c| self.insert_segment(Segment::Char(c)));
@@ -103,7 +103,7 @@ impl Composer {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     /// 지웠으면 `true`.
-    pub fn clear(&mut self) -> bool {
+    pub(crate) fn clear(&mut self) -> bool {
         if self.is_empty() && self.search.is_none() {
             return false;
         }
@@ -118,7 +118,7 @@ impl Composer {
     // vars: n = text.len()
     // basis: estimate
     /// `from_history`면 `↑`/`↓` 기록 이동을 계속 허용한다.
-    pub fn set_text(&mut self, text: &str, from_history: bool) {
+    pub(crate) fn set_text(&mut self, text: &str, from_history: bool) {
         self.segments = text.chars().map(Segment::Char).collect();
         self.cursor = self.segments.len();
         self.search = None;
@@ -126,12 +126,12 @@ impl Composer {
     }
 
     /// 붙여넣은 요소는 원문으로 펼친다.
-    pub fn text(&self) -> String {
+    pub(crate) fn text(&self) -> String {
         segments_text(&self.segments)
     }
 
     /// 공백뿐이면 `None`이고 비우지 않는다.
-    pub fn take(&mut self) -> Option<String> {
+    pub(crate) fn take(&mut self) -> Option<String> {
         let text = self.text();
         if text.trim().is_empty() {
             return None;
@@ -145,17 +145,17 @@ impl Composer {
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.segments.is_empty()
     }
 
-    pub fn at_line_start(&self) -> bool {
+    pub(crate) fn at_line_start(&self) -> bool {
         self.cursor == 0 || self.segments[self.cursor - 1] == Segment::Char('\n')
     }
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn at_word_start(&self) -> bool {
+    pub(crate) fn at_word_start(&self) -> bool {
         match self.cursor.checked_sub(1).map(|i| &self.segments[i]) {
             None => true,
             Some(Segment::Char(c)) => c.is_whitespace(),
@@ -164,12 +164,12 @@ impl Composer {
     }
 
     /// 비었거나 불러온 기록을 고치지 않았을 때 참.
-    pub fn history_browsable(&self) -> bool {
+    pub(crate) fn history_browsable(&self) -> bool {
         self.is_empty() || self.from_history
     }
 
     /// 첫 줄이 `!`로 시작할 때만.
-    pub fn shell_command(&self) -> Option<String> {
+    pub(crate) fn shell_command(&self) -> Option<String> {
         let text = self.text();
         let first = text.lines().next()?;
         let command = first.strip_prefix('!')?.trim();
@@ -183,7 +183,7 @@ impl Composer {
     // vars: n = 커서 앞 조각 수
     // basis: estimate
     /// 토큰 첫 글자가 `/`, `@`, `$`가 아니면 `None`.
-    pub fn popup_token(&self) -> Option<String> {
+    pub(crate) fn popup_token(&self) -> Option<String> {
         let start = self.token_start();
         let token: String = self.segments[start..self.cursor]
             .iter()
@@ -198,7 +198,7 @@ impl Composer {
         }
     }
 
-    pub fn replace_token(&mut self, value: &str) {
+    pub(crate) fn replace_token(&mut self, value: &str) {
         let start = self.token_start();
         self.segments.drain(start..self.cursor);
         self.cursor = start;
@@ -207,7 +207,7 @@ impl Composer {
             .for_each(|c| self.insert_segment(Segment::Char(c)));
     }
 
-    pub fn start_or_next_search(&mut self) {
+    pub(crate) fn start_or_next_search(&mut self) {
         match &mut self.search {
             Some(search) => search.skip += 1,
             None => self.search = Some(HistorySearch::default()),
@@ -215,11 +215,11 @@ impl Composer {
     }
 
     /// 검색 중이었으면 `true`.
-    pub fn cancel_search(&mut self) -> bool {
+    pub(crate) fn cancel_search(&mut self) -> bool {
         self.search.take().is_some()
     }
 
-    pub fn search(&self) -> Option<&HistorySearch> {
+    pub(crate) fn search(&self) -> Option<&HistorySearch> {
         self.search.as_ref()
     }
 
@@ -227,7 +227,7 @@ impl Composer {
     // vars: n = 조각 수
     // basis: estimate
     /// 최소 1.
-    pub fn height(&self) -> u16 {
+    pub(crate) fn height(&self) -> u16 {
         let newlines = self
             .segments
             .iter()
@@ -237,7 +237,7 @@ impl Composer {
     }
 
     /// 첫 줄이면 그대로.
-    pub fn cursor_up(&mut self) {
+    pub(crate) fn cursor_up(&mut self) {
         let (row, col) = self.cursor_row_col();
         if row > 0 {
             self.cursor = self.index_at(row - 1, col);
@@ -245,7 +245,7 @@ impl Composer {
     }
 
     /// 끝 줄이면 그대로.
-    pub fn cursor_down(&mut self) {
+    pub(crate) fn cursor_down(&mut self) {
         let (row, col) = self.cursor_row_col();
         if row + 1 < usize::from(self.height()) {
             self.cursor = self.index_at(row + 1, col);
@@ -253,14 +253,14 @@ impl Composer {
     }
 
     /// 건너뛴 수는 0으로 되돌린다.
-    pub fn push_search_char(&mut self, c: char) {
+    pub(crate) fn push_search_char(&mut self, c: char) {
         if let Some(search) = &mut self.search {
             search.query.push(c);
             search.skip = 0;
         }
     }
 
-    pub fn pop_search_char(&mut self) {
+    pub(crate) fn pop_search_char(&mut self) {
         if let Some(search) = &mut self.search {
             search.query.pop();
             search.skip = 0;
@@ -268,7 +268,7 @@ impl Composer {
     }
 
     /// 못 찾았으면 초안을 그대로 둔다.
-    pub fn accept_search(&mut self, found: Option<&str>) {
+    pub(crate) fn accept_search(&mut self, found: Option<&str>) {
         self.search = None;
         if let Some(found) = found {
             self.set_text(found, true);
@@ -279,7 +279,7 @@ impl Composer {
     // vars: n = 조각 수
     // basis: estimate
     /// 커서의 줄과 칸(표시 폭)도 돌려준다.
-    pub fn display(&self, lang: Lang) -> (Vec<String>, (usize, usize)) {
+    pub(crate) fn display(&self, lang: Lang) -> (Vec<String>, (usize, usize)) {
         let mut lines = vec![String::new()];
         let mut cursor = (0, 0);
         for (index, segment) in self.segments.iter().enumerate() {
@@ -356,7 +356,7 @@ impl Composer {
 }
 
 #[derive(Debug)]
-pub struct ComposerView<'a> {
+pub(crate) struct ComposerView<'a> {
     pub composer: &'a Composer,
     pub lang: Lang,
     pub search_result: Option<&'a str>,
@@ -366,7 +366,7 @@ impl ComposerView<'_> {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 조각 수와 붙여넣은 글자 수
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         if let Some(search) = self.composer.search() {
             let found = self.search_result.unwrap_or_default();
             let head = format!("{}: {}", self.lang.tr(i18n::TASKS_SEARCH), search.query);
@@ -412,7 +412,7 @@ fn segments_text(segments: &[Segment]) -> String {
     text
 }
 
-pub fn pasted_label(lang: Lang, text: &str) -> String {
+pub(crate) fn pasted_label(lang: Lang, text: &str) -> String {
     let count = i18n::format_count(text.chars().count() as u64);
     match lang {
         Lang::Ko => format!("[{} {count}{}]", i18n::PASTED, i18n::CHARS_SUFFIX),

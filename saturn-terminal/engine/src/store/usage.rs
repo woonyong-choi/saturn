@@ -11,7 +11,7 @@ use super::{Store, StoreError, UsageRow, from_millis, from_sql_int, parse_enum, 
 
 /// router 하나의 범위 안 호출 합계. 토큰을 보고한 호출이 없으면 `None`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RouterUsage {
+pub(crate) struct RouterUsage {
     /// 중립 이름. 예: `jev`.
     pub router: String,
     pub calls: u32,
@@ -24,7 +24,7 @@ impl Store {
     ///
     /// # Errors
     /// `Chat`인데 `chat`이 없으면 `NotFound`.
-    pub async fn usage_rows(
+    pub(crate) async fn usage_rows(
         &self,
         range: UsageRange,
         chat: Option<ChatId>,
@@ -38,7 +38,7 @@ impl Store {
     }
 
     /// 범위와 상관없이 모든 보고. 턴 값은 같은 session의 직전 누적을 뺀 값이라 범위 밖 보고가 필요하다.
-    pub async fn all_usage_rows(&self) -> Result<Vec<UsageRow>, StoreError> {
+    pub(crate) async fn all_usage_rows(&self) -> Result<Vec<UsageRow>, StoreError> {
         let rows = sqlx::query(&usage_sql("1 = 1"))
             .fetch_all(&self.pool)
             .await?;
@@ -46,7 +46,7 @@ impl Store {
     }
 
     /// 마지막 입력을 접수한 시각이 가장 늦은 채팅. 입력이 없는 채팅은 만든 시각으로 견준다.
-    pub async fn latest_chat_in(&self, workdir: &str) -> Result<Option<ChatId>, StoreError> {
+    pub(crate) async fn latest_chat_in(&self, workdir: &str) -> Result<Option<ChatId>, StoreError> {
         let id: Option<i64> = sqlx::query_scalar(
             "SELECT id FROM chats WHERE workdir = ? ORDER BY \
              COALESCE((SELECT MAX(accepted_at) FROM inputs WHERE chat_id = chats.id), created_at) \
@@ -62,7 +62,7 @@ impl Store {
     ///
     /// # Errors
     /// `Chat`인데 `chat`이 없으면 `NotFound`.
-    pub async fn router_usage(
+    pub(crate) async fn router_usage(
         &self,
         range: UsageRange,
         chat: Option<ChatId>,
@@ -90,7 +90,7 @@ impl Store {
     }
 
     /// 누적 보고가 몇 턴에 걸쳤는지 세는 데 쓴다. 실행 순서.
-    pub async fn session_runs(&self, session: SessionId) -> Result<Vec<RunId>, StoreError> {
+    pub(crate) async fn session_runs(&self, session: SessionId) -> Result<Vec<RunId>, StoreError> {
         let ids: Vec<i64> =
             sqlx::query_scalar("SELECT id FROM runs WHERE session_id = ? ORDER BY id")
                 .bind(to_sql_int(session.0))

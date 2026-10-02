@@ -24,24 +24,20 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
-pub use history::HistoryEntry;
-pub use judgments::{JudgmentOutcome, JudgmentPruneRequest, NewJudgment};
+pub(crate) use history::HistoryEntry;
+pub(crate) use judgments::{JudgmentOutcome, NewJudgment};
 pub(crate) use ledger::LedgerRow;
-pub use raw::RawDigest;
-pub use records::{NewInput, NewRun, RunEnd, RunRecord, UsageRow};
-pub use retention::{
-    PruneOutcome, PrunePlan, PruneRequest, PruneScope, RetentionPolicy, SkipReason, Tombstone,
-};
-pub use schema::{BACKUP_RETENTION, MigrationNotice, SCHEMA_VERSION};
-pub use sessions::IdKind;
-pub use usage::RouterUsage;
+pub(crate) use records::{NewInput, NewRun, RunEnd, RunRecord, UsageRow};
+pub(crate) use retention::RetentionPolicy;
+pub(crate) use schema::MigrationNotice;
+pub(crate) use sessions::IdKind;
 
 #[cfg(test)]
 pub(crate) use judgments::tests::judgment as test_judgment;
 
-pub const DB_FILE: &str = "saturn.db";
+pub(crate) const DB_FILE: &str = "saturn.db";
 
-pub const BACKUP_DIR: &str = "backup";
+pub(crate) const BACKUP_DIR: &str = "backup";
 
 /// 쓰는 쪽이 engine 하나라 길게 기다릴 일이 없다. 초안 값.
 const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
@@ -109,7 +105,7 @@ pub enum StoreError {
 
 /// engine에 하나만 만들고 모든 쓰기를 이것으로만 한다.
 #[derive(Debug)]
-pub struct Store {
+pub(crate) struct Store {
     home: PathBuf,
     pool: SqlitePool,
 }
@@ -119,7 +115,7 @@ impl Store {
     ///
     /// # Errors
     /// 파일을 못 열면 `Open`, 파일 버전이 더 높으면 `NewerSchema`, 백업 실패면 `Backup`, 이관 실패면 `Migration`.
-    pub async fn open(home: &Path) -> Result<(Self, Option<MigrationNotice>), StoreError> {
+    pub(crate) async fn open(home: &Path) -> Result<(Self, Option<MigrationNotice>), StoreError> {
         Self::open_with(home, schema::MIGRATIONS, SystemTime::now()).await
     }
 
@@ -154,11 +150,11 @@ impl Store {
         Ok((store, notice))
     }
 
-    pub fn db_path(&self) -> PathBuf {
+    pub(crate) fn db_path(&self) -> PathBuf {
         self.home.join(DB_FILE)
     }
 
-    pub fn backup_dir(&self) -> PathBuf {
+    pub(crate) fn backup_dir(&self) -> PathBuf {
         self.home.join(BACKUP_DIR)
     }
 
@@ -264,6 +260,7 @@ pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
 
 #[cfg(test)]
 pub(crate) mod tests {
+    use super::schema::SCHEMA_VERSION;
     use super::*;
 
     /// 폴더가 살아 있는 동안만 쓴다.

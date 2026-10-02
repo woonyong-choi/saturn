@@ -16,7 +16,7 @@ use super::{
 use crate::store::Store;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Applied {
+pub(crate) struct Applied {
     /// 검사 실패면 이전 번호.
     pub revision: SettingsRevision,
     /// 검사 실패나 무시한 사용자 전용 키가 있을 때의 경고.
@@ -25,7 +25,7 @@ pub struct Applied {
 
 /// engine에 하나. 실행 `-c`는 engine 시작 때 정하고, 작업 폴더는 채팅마다 호출 때 받는다.
 #[derive(Debug)]
-pub struct SettingsManager {
+pub(crate) struct SettingsManager {
     home: PathBuf,
     run_overrides: Vec<String>,
     trust: TrustStore,
@@ -38,7 +38,7 @@ pub struct SettingsManager {
 impl SettingsManager {
     /// # Errors
     /// 신뢰 기록 읽기 실패면 `Io`/`Parse`, 스냅샷 조회 실패면 `Store`.
-    pub async fn new(
+    pub(crate) async fn new(
         home: PathBuf,
         run_overrides: Vec<String>,
         store: &Store,
@@ -55,7 +55,7 @@ impl SettingsManager {
     }
 
     /// 폴더 설정이 없으면 `None`. `Unknown`·`Changed`면 호출자가 신뢰 창을 열고 답을 `trust_folder`로 넘긴다.
-    pub async fn folder_status(
+    pub(crate) async fn folder_status(
         &self,
         workdir: &Path,
     ) -> Result<Option<(PathBuf, TrustStatus)>, SettingsError> {
@@ -74,7 +74,7 @@ impl SettingsManager {
     }
 
     /// 신뢰 창에서 `y`를 확정했을 때 부른다.
-    pub async fn trust_folder(
+    pub(crate) async fn trust_folder(
         &mut self,
         path: &Path,
         fingerprint: &str,
@@ -86,7 +86,7 @@ impl SettingsManager {
     ///
     /// # Errors
     /// 폴더 설정 미신뢰면 `Untrusted`, 이전 번호 없이 검사 실패면 `NoPreviousRevision`, 저장 실패면 `Store`.
-    pub async fn apply(
+    pub(crate) async fn apply(
         &mut self,
         store: &Store,
         chat: Option<ChatId>,
@@ -103,7 +103,7 @@ impl SettingsManager {
     ///
     /// # Errors
     /// 이전 번호 없이 검사 실패면 `NoPreviousRevision`, 저장 실패면 `Store`.
-    pub async fn apply_trusted(
+    pub(crate) async fn apply_trusted(
         &mut self,
         store: &Store,
         chat: Option<ChatId>,
@@ -118,7 +118,7 @@ impl SettingsManager {
     ///
     /// # Errors
     /// 이전 번호 없이 검사 실패면 `NoPreviousRevision`, 저장 실패면 `Store`.
-    pub async fn apply_user(&mut self, store: &Store) -> Result<Applied, SettingsError> {
+    pub(crate) async fn apply_user(&mut self, store: &Store) -> Result<Applied, SettingsError> {
         let (layers, _) = self.collect_layers(store, None, None).await?;
         self.merge_and_save(store, layers).await
     }
@@ -229,7 +229,7 @@ impl SettingsManager {
     }
 
     /// 입력 접수 때 이 값을 `NewInput::settings`로 고정한다.
-    pub fn current(&self) -> Option<SettingsRevision> {
+    pub(crate) fn current(&self) -> Option<SettingsRevision> {
         self.current
     }
 
@@ -237,7 +237,7 @@ impl SettingsManager {
     ///
     /// # Errors
     /// 없는 번호면 `Store`.
-    pub async fn at(
+    pub(crate) async fn at(
         &self,
         store: &Store,
         revision: SettingsRevision,
@@ -249,7 +249,7 @@ impl SettingsManager {
     ///
     /// # Errors
     /// 파일 읽기 실패면 `Io`.
-    pub async fn changed(&self, workdir: &Path) -> Result<bool, SettingsError> {
+    pub(crate) async fn changed(&self, workdir: &Path) -> Result<bool, SettingsError> {
         let Some(seen) = self.seen.get(workdir) else {
             return Ok(true);
         };

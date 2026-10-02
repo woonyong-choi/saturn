@@ -7,12 +7,12 @@
 pub mod engine_log;
 pub mod processes;
 pub mod providers;
-pub mod routers;
-pub mod rpc;
+pub(crate) mod routers;
+pub(crate) mod rpc;
 pub mod secrets;
-pub mod settings;
-pub mod store;
-pub mod training;
+pub(crate) mod settings;
+pub(crate) mod store;
+pub(crate) mod training;
 
 mod add_dir;
 mod chat_env;

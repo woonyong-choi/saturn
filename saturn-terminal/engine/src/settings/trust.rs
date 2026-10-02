@@ -15,7 +15,7 @@ const TRUST_FILE: &str = "trusted.json";
 const TRUST_FILE_MODE: u32 = 0o600;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TrustStatus {
+pub(crate) enum TrustStatus {
     /// 같은 경로, 같은 지문으로 신뢰했다.
     Trusted,
     /// 묻기 전에는 병합하지 않는다.
@@ -25,7 +25,7 @@ pub enum TrustStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FolderTrustPrompt {
+pub(crate) struct FolderTrustPrompt {
     pub path: PathBuf,
     /// 해시 SHA-256은 초안이다.
     pub fingerprint: String,
@@ -49,7 +49,7 @@ impl FolderTrustPrompt {
 
 /// 경로마다 마지막으로 신뢰한 지문 하나.
 #[derive(Debug, Default)]
-pub struct TrustStore {
+pub(crate) struct TrustStore {
     path: PathBuf,
     entries: Vec<(PathBuf, String)>,
 }
@@ -59,7 +59,7 @@ impl TrustStore {
     ///
     /// # Errors
     /// 읽기 실패면 `Io`, 형식이 깨졌으면 `Parse`.
-    pub async fn load(saturn_home: &Path) -> Result<Self, SettingsError> {
+    pub(crate) async fn load(saturn_home: &Path) -> Result<Self, SettingsError> {
         let path = saturn_home.join(TRUST_FILE);
         let content = match std::fs::read_to_string(&path) {
             Ok(content) => content,
@@ -84,7 +84,7 @@ impl TrustStore {
     }
 
     /// 경로는 심볼릭 링크를 풀어 비교한다.
-    pub fn status(&self, path: &Path, content: &str) -> TrustStatus {
+    pub(crate) fn status(&self, path: &Path, content: &str) -> TrustStatus {
         let path = canonical(path);
         let current = fingerprint(content);
         let known = self
@@ -112,7 +112,11 @@ impl TrustStore {
     }
 
     /// 같은 경로의 옛 지문은 바꾼다.
-    pub async fn trust(&mut self, path: &Path, fingerprint: &str) -> Result<(), SettingsError> {
+    pub(crate) async fn trust(
+        &mut self,
+        path: &Path,
+        fingerprint: &str,
+    ) -> Result<(), SettingsError> {
         let path = canonical(path);
         match self
             .entries

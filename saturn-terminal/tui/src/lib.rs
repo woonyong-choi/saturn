@@ -1,17 +1,17 @@
 //! 전체 화면 TUI. engine과 `protocol` 메시지로만 주고받고 provider를 모른다.
 //! 설계: docs/design/tui.md
 
-pub mod app;
+pub(crate) mod app;
 pub mod client;
-pub mod commands;
-pub mod history;
+pub(crate) mod commands;
+pub(crate) mod history;
 pub mod i18n;
-pub mod keys;
-pub mod labels;
-pub mod plain;
-pub mod shell;
-pub mod state;
-pub mod terminal;
+pub(crate) mod keys;
+pub(crate) mod labels;
+pub(crate) mod plain;
+pub(crate) mod shell;
+pub(crate) mod state;
+pub(crate) mod terminal;
 pub mod view;
 
 pub(crate) const ROUTER_KEY_ENV: &str = "SATURN_KEY";

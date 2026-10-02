@@ -19,7 +19,7 @@ use crate::view::{EMPHASIS, MUTED, SELECTED, truncate, window_block};
 
 /// 끝에서 처음으로 돈다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum TaskFilter {
+pub(crate) enum TaskFilter {
     #[default]
     All,
     /// 허가 필요 작업을 포함한다.
@@ -42,19 +42,19 @@ impl TaskFilter {
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn next(self) -> Self {
+    pub(crate) fn next(self) -> Self {
         let index = Self::ORDER.iter().position(|f| *f == self).unwrap_or(0);
         Self::ORDER[(index + 1) % Self::ORDER.len()]
     }
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn prev(self) -> Self {
+    pub(crate) fn prev(self) -> Self {
         let index = Self::ORDER.iter().position(|f| *f == self).unwrap_or(0);
         Self::ORDER[(index + Self::ORDER.len() - 1) % Self::ORDER.len()]
     }
 
-    pub fn text(self, lang: Lang) -> &'static str {
+    pub(crate) fn text(self, lang: Lang) -> &'static str {
         lang.tr(match self {
             Self::All => i18n::FILTER_ALL,
             Self::NeedsCheck => i18n::FILTER_NEEDS_CHECK,
@@ -79,7 +79,7 @@ impl TaskFilter {
 
 /// 작업 목록이 보이는 채팅의 폴더 범위. 기본은 현재 채팅의 폴더다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum FolderScope {
+pub(crate) enum FolderScope {
     #[default]
     Current,
     All,
@@ -88,14 +88,14 @@ pub enum FolderScope {
 impl FolderScope {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn toggled(self) -> Self {
+    pub(crate) fn toggled(self) -> Self {
         match self {
             Self::Current => Self::All,
             Self::All => Self::Current,
         }
     }
 
-    pub fn text(self, lang: Lang) -> &'static str {
+    pub(crate) fn text(self, lang: Lang) -> &'static str {
         lang.tr(match self {
             Self::Current => i18n::TASKS_SCOPE_CURRENT,
             Self::All => i18n::TASKS_SCOPE_ALL,
@@ -104,7 +104,7 @@ impl FolderScope {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TaskRow {
+pub(crate) struct TaskRow {
     pub task: TaskId,
     pub label: TaskLabel,
     pub state: TaskState,
@@ -115,7 +115,7 @@ pub struct TaskRow {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ChatGroup {
+pub(crate) struct ChatGroup {
     pub group: String,
     pub chat: ChatId,
     pub name: String,
@@ -130,7 +130,7 @@ impl ChatGroup {
     // vars: n = items.len(), c = 채팅 수
     // basis: estimate
     /// protocol `TaskListItem`에 대기 입력과 모델이 없어 그 칸은 비워 둔다.
-    pub fn from_items(items: Vec<TaskListItem>) -> Vec<Self> {
+    pub(crate) fn from_items(items: Vec<TaskListItem>) -> Vec<Self> {
         let mut groups: Vec<Self> = Vec::new();
         for item in items {
             let row = TaskRow {
@@ -159,7 +159,7 @@ impl ChatGroup {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TaskListCommand {
+pub(crate) enum TaskListCommand {
     Open { chat: ChatId, task: TaskId },
     Continue { chat: ChatId, task: TaskId },
     CancelInput(InputId),
@@ -171,14 +171,14 @@ pub enum TaskListCommand {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TaskListInput {
+pub(crate) enum TaskListInput {
     Search,
     Rename(ChatId),
     Regroup(ChatId),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct TaskList {
+pub(crate) struct TaskList {
     pub groups: Vec<ChatGroup>,
     pub filter: TaskFilter,
     pub scope: FolderScope,
@@ -194,7 +194,7 @@ pub struct TaskList {
 
 impl TaskList {
     /// 기본 범위(현재 폴더)로 연다.
-    pub fn for_folder(folder: Option<PathBuf>) -> Self {
+    pub(crate) fn for_folder(folder: Option<PathBuf>) -> Self {
         Self {
             folder,
             ..Self::default()
@@ -205,7 +205,7 @@ impl TaskList {
     // vars: r = 행 수, q = 검색어 길이
     // basis: estimate
     /// 범위를 바꾸고 선택은 보이는 행 안에서 다시 고른다.
-    pub fn toggle_scope(&mut self) {
+    pub(crate) fn toggle_scope(&mut self) {
         self.scope = self.scope.toggled();
         let groups = std::mem::take(&mut self.groups);
         self.replace(groups);
@@ -215,7 +215,7 @@ impl TaskList {
     // vars: r = 행 수
     // basis: estimate
     /// 선택한 작업이 새 목록에 없으면 같은 자리의 행을 고른다.
-    pub fn replace(&mut self, groups: Vec<ChatGroup>) {
+    pub(crate) fn replace(&mut self, groups: Vec<ChatGroup>) {
         let old_index = self.selected_index();
         self.groups = groups;
         let rows = self.visible_keys();
@@ -229,7 +229,7 @@ impl TaskList {
     // cost: time O(r·q), heap O(r), stack O(1)
     // vars: r = 행 수, q = 검색어 길이
     // basis: estimate
-    pub fn visible_rows(&self) -> Vec<(&ChatGroup, &TaskRow)> {
+    pub(crate) fn visible_rows(&self) -> Vec<(&ChatGroup, &TaskRow)> {
         self.groups
             .iter()
             .filter(|group| self.scope_matches(group))
@@ -239,13 +239,13 @@ impl TaskList {
             .collect()
     }
 
-    pub fn up(&mut self) {
+    pub(crate) fn up(&mut self) {
         let rows = self.visible_keys();
         let index = self.selected_index().unwrap_or(0).saturating_sub(1);
         self.selected = rows.get(index).copied();
     }
 
-    pub fn down(&mut self) {
+    pub(crate) fn down(&mut self) {
         let rows = self.visible_keys();
         let index = match self.selected_index() {
             Some(index) => (index + 1).min(rows.len().saturating_sub(1)),
@@ -254,7 +254,7 @@ impl TaskList {
         self.selected = rows.get(index).copied();
     }
 
-    pub fn set_filter(&mut self, filter: TaskFilter) {
+    pub(crate) fn set_filter(&mut self, filter: TaskFilter) {
         self.filter = filter;
         let groups = std::mem::take(&mut self.groups);
         self.replace(groups);
@@ -264,7 +264,7 @@ impl TaskList {
     // vars: r = 행 수, q = 검색어 길이
     // basis: estimate
     /// 읽기 전용 채팅이면 `Open`, `NewChat`, 검색만 받는다.
-    pub fn command(&mut self, action: &Action) -> Option<TaskListCommand> {
+    pub(crate) fn command(&mut self, action: &Action) -> Option<TaskListCommand> {
         match action {
             Action::Confirm => return self.confirm(),
             Action::NewChat => return Some(TaskListCommand::NewChat),
@@ -310,7 +310,7 @@ impl TaskList {
     }
 
     /// 닫은 것이 없으면 `false`(화면 종료).
-    pub fn cancel(&mut self) -> bool {
+    pub(crate) fn cancel(&mut self) -> bool {
         if self.help {
             self.help = false;
         } else if self.pending.is_some() {
@@ -323,19 +323,19 @@ impl TaskList {
         true
     }
 
-    pub fn edit_push(&mut self, c: char) {
+    pub(crate) fn edit_push(&mut self, c: char) {
         if let Some((_, text)) = &mut self.editing {
             text.push(c);
         }
     }
 
-    pub fn edit_pop(&mut self) {
+    pub(crate) fn edit_pop(&mut self) {
         if let Some((_, text)) = &mut self.editing {
             text.pop();
         }
     }
 
-    pub fn marker(state: TaskState) -> char {
+    pub(crate) fn marker(state: TaskState) -> char {
         match state {
             TaskState::AwaitingPermission => '!',
             TaskState::NeedsCheck => '?',
@@ -428,13 +428,13 @@ impl TaskList {
 }
 
 #[derive(Debug)]
-pub struct TaskListView<'a> {
+pub(crate) struct TaskListView<'a> {
     pub list: &'a TaskList,
     pub lang: Lang,
 }
 
 impl TaskListView<'_> {
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let block = window_block(self.lang.tr(i18n::TASKS_TITLE));
         let inner = block.inner(area);
         frame.render_widget(Clear, area);

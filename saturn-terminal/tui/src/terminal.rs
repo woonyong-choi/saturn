@@ -27,7 +27,7 @@ const READER_POLL: Duration = Duration::from_millis(50);
 /// 일시 중지나 외부 에디터가 터미널을 쓰는 동안 입력 이벤트 스레드를 쉬게 한다.
 static READER_PAUSED: AtomicBool = AtomicBool::new(false);
 
-pub type Screen = Terminal<CrosstermBackend<Stdout>>;
+pub(crate) type Screen = Terminal<CrosstermBackend<Stdout>>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum TerminalError {
@@ -45,7 +45,7 @@ pub enum TerminalError {
 ///
 /// # Errors
 /// 터미널 설정 실패면 `Configure`.
-pub fn enter() -> Result<Screen, TerminalError> {
+pub(crate) fn enter() -> Result<Screen, TerminalError> {
     configure().map_err(TerminalError::Configure)?;
     install_panic_hook();
     Terminal::new(CrosstermBackend::new(std::io::stdout())).map_err(TerminalError::Configure)
@@ -55,7 +55,7 @@ pub fn enter() -> Result<Screen, TerminalError> {
 ///
 /// # Errors
 /// 터미널 복원 실패면 `Configure`.
-pub fn leave() -> Result<(), TerminalError> {
+pub(crate) fn leave() -> Result<(), TerminalError> {
     let mut stdout = std::io::stdout();
     // 켜지 않은 모드를 끄는 것은 해가 없으므로 여러 번 불러도 된다.
     let restore = execute!(
@@ -75,7 +75,7 @@ pub fn leave() -> Result<(), TerminalError> {
 ///
 /// # Errors
 /// 신호 전송 실패면 `Suspend`, 복원 실패면 `Configure`.
-pub fn suspend(screen: &mut Screen) -> Result<(), TerminalError> {
+pub(crate) fn suspend(screen: &mut Screen) -> Result<(), TerminalError> {
     READER_PAUSED.store(true, Ordering::SeqCst);
     leave()?;
     let pid = std::process::id().to_string();
@@ -99,7 +99,7 @@ pub fn suspend(screen: &mut Screen) -> Result<(), TerminalError> {
 ///
 /// # Errors
 /// 에디터 실행이나 임시 파일 처리 실패면 `Editor`.
-pub fn edit_external(screen: &mut Screen, draft: &str) -> Result<String, TerminalError> {
+pub(crate) fn edit_external(screen: &mut Screen, draft: &str) -> Result<String, TerminalError> {
     let nonce = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(std::io::Error::other)
@@ -145,7 +145,9 @@ pub fn edit_external(screen: &mut Screen, draft: &str) -> Result<String, Termina
 // vars: e = 읽은 터미널 이벤트 수
 // basis: estimate
 /// crossterm `event-stream` 기능이 없어 전용 스레드에서 막힌 채 읽는다.
-pub fn spawn_event_reader(tx: mpsc::UnboundedSender<AppEvent>) -> std::thread::JoinHandle<()> {
+pub(crate) fn spawn_event_reader(
+    tx: mpsc::UnboundedSender<AppEvent>,
+) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         loop {
             if tx.is_closed() {

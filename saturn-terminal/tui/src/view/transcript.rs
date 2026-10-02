@@ -23,16 +23,16 @@ use crate::view::status_board::activity_text;
 use crate::view::{MUTED, wrap};
 
 /// 초안 값.
-pub const SHELL_PREVIEW_LINES: usize = 10;
+pub(crate) const SHELL_PREVIEW_LINES: usize = 10;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DeliveryBadge {
+pub(crate) enum DeliveryBadge {
     Delivering,
     Applied,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TranscriptCell {
+pub(crate) enum TranscriptCell {
     /// 첫 결과 뒤 시작 화면이 바뀐 맨 위 셀.
     Header(StartInfo),
     InputEcho {
@@ -81,6 +81,7 @@ pub enum TranscriptCell {
     /// 보류 닫기가 끝났다.
     HeldClosed { label: TaskLabel },
     /// 채점 후보가 모자라 `/train`을 실행하지 못했다.
+    #[cfg_attr(not(test), expect(dead_code, reason = "#91 학습 실행 구현 전"))]
     TrainShort { graded: u32, need: u32 },
     /// `!` 셸 명령 결과.
     Shell(ShellOutput),
@@ -93,7 +94,7 @@ impl TranscriptCell {
     // vars: n = 셀 글자 수
     // basis: estimate
     /// 전체 화면과 plain 출력이 같은 결과를 내도록 문구는 모두 여기서 만든다.
-    pub fn lines(&self, lang: Lang, labels_visible: bool, expanded: bool) -> Vec<String> {
+    pub(crate) fn lines(&self, lang: Lang, labels_visible: bool, expanded: bool) -> Vec<String> {
         let prefix = |label: Option<TaskLabel>| labels::prefix(label, labels_visible);
         match self {
             Self::Header(info) => info.lines(lang),
@@ -175,13 +176,13 @@ impl TranscriptCell {
 }
 
 #[derive(Debug, Default)]
-pub struct Transcript {
+pub(crate) struct Transcript {
     cells: Vec<TranscriptCell>,
     scroll_from_bottom: usize,
 }
 
 impl Transcript {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
@@ -189,7 +190,7 @@ impl Transcript {
     // vars: n = 셀 글자 수(위로 스크롤 중일 때만 줄 수를 센다)
     // basis: estimate
     /// 맨 아래를 보고 있으면 따라가고, 위를 보고 있으면 보던 자리를 지킨다.
-    pub fn push(&mut self, cell: TranscriptCell) {
+    pub(crate) fn push(&mut self, cell: TranscriptCell) {
         if self.scroll_from_bottom > 0 {
             self.scroll_from_bottom += cell_rows(&cell);
         }
@@ -197,7 +198,7 @@ impl Transcript {
     }
 
     /// 머리 셀 뒤에 넣고, 보던 자리는 아래 기준이라 그대로다.
-    pub fn prepend(&mut self, cells: Vec<TranscriptCell>) {
+    pub(crate) fn prepend(&mut self, cells: Vec<TranscriptCell>) {
         let at = usize::from(matches!(
             self.cells.first(),
             Some(TranscriptCell::Header(_))
@@ -205,7 +206,7 @@ impl Transcript {
         self.cells.splice(at..at, cells);
     }
 
-    pub fn set_header(&mut self, info: StartInfo) {
+    pub(crate) fn set_header(&mut self, info: StartInfo) {
         match self.cells.first_mut() {
             Some(TranscriptCell::Header(header)) => *header = info,
             _ => self.cells.insert(0, TranscriptCell::Header(info)),
@@ -213,7 +214,7 @@ impl Transcript {
     }
 
     /// 머리 셀이 있으면 더한 폴더에 넣는다. 이미 있으면 그대로 둔다.
-    pub fn add_header_dir(&mut self, dir: PathBuf) {
+    pub(crate) fn add_header_dir(&mut self, dir: PathBuf) {
         if let Some(TranscriptCell::Header(header)) = self.cells.first_mut()
             && !header.added_dirs.contains(&dir)
         {
@@ -221,7 +222,7 @@ impl Transcript {
         }
     }
 
-    pub fn remove_feedback(&mut self, label: TaskLabel) {
+    pub(crate) fn remove_feedback(&mut self, label: TaskLabel) {
         self.cells.retain(
             |cell| !matches!(cell, TranscriptCell::Feedback { label: shown, .. } if *shown == label),
         );
@@ -230,7 +231,7 @@ impl Transcript {
     // cost: time O(c), heap O(1), stack O(1)
     // vars: c = 셀 수
     // basis: estimate
-    pub fn set_badge(&mut self, input: InputId, badge: DeliveryBadge) {
+    pub(crate) fn set_badge(&mut self, input: InputId, badge: DeliveryBadge) {
         let echo = self.cells.iter_mut().rev().find_map(|cell| match cell {
             TranscriptCell::InputEcho {
                 input: shown,
@@ -248,7 +249,7 @@ impl Transcript {
     // vars: c = 셀 수
     // basis: estimate
     /// 셀이 없으면 `false`.
-    pub fn set_tool_output(&mut self, call_id: &str, text: String) -> bool {
+    pub(crate) fn set_tool_output(&mut self, call_id: &str, text: String) -> bool {
         let tool = self.cells.iter_mut().rev().find_map(|cell| match cell {
             TranscriptCell::Tool {
                 call_id: shown,
@@ -270,29 +271,29 @@ impl Transcript {
     // vars: g = 대화 기록 글자 수
     // basis: estimate
     /// 맨 위에 닿아 이전 부분을 불러와야 하면 `true`.
-    pub fn scroll_up(&mut self, rows: usize) -> bool {
+    pub(crate) fn scroll_up(&mut self, rows: usize) -> bool {
         let total: usize = self.cells.iter().map(cell_rows).sum();
         let wanted = self.scroll_from_bottom + rows;
         self.scroll_from_bottom = wanted.min(total.saturating_sub(1));
         wanted >= total
     }
 
-    pub fn scroll_down(&mut self, rows: usize) {
+    pub(crate) fn scroll_down(&mut self, rows: usize) {
         self.scroll_from_bottom = self.scroll_from_bottom.saturating_sub(rows);
     }
 
     /// 아래에서 올라온 줄 수.
-    pub fn scroll_from_bottom(&self) -> usize {
+    pub(crate) fn scroll_from_bottom(&self) -> usize {
         self.scroll_from_bottom
     }
 
-    pub fn cells(&self) -> &[TranscriptCell] {
+    pub(crate) fn cells(&self) -> &[TranscriptCell] {
         &self.cells
     }
 }
 
 #[derive(Debug)]
-pub struct TranscriptView<'a> {
+pub(crate) struct TranscriptView<'a> {
     pub transcript: &'a Transcript,
     pub lang: Lang,
     pub labels_visible: bool,
@@ -302,7 +303,7 @@ impl TranscriptView<'_> {
     // cost: time O(g), heap O(g), stack O(1)
     // vars: g = 대화 기록 글자 수
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let rows = styled_rows(
             self.transcript.cells(),
             self.lang,
@@ -324,7 +325,7 @@ impl TranscriptView<'_> {
 }
 
 /// 경과는 engine이 알린 값을 쓴다.
-pub fn result_cell(task: &TaskView) -> TranscriptCell {
+pub(crate) fn result_cell(task: &TaskView) -> TranscriptCell {
     if task.state == TaskState::Failed {
         TranscriptCell::Failed {
             label: Some(task.label),
@@ -342,7 +343,7 @@ pub fn result_cell(task: &TaskView) -> TranscriptCell {
     }
 }
 
-pub fn echo_cell(update: &InputUpdate) -> TranscriptCell {
+pub(crate) fn echo_cell(update: &InputUpdate) -> TranscriptCell {
     TranscriptCell::InputEcho {
         input: update.input,
         label: update.label,
@@ -351,7 +352,7 @@ pub fn echo_cell(update: &InputUpdate) -> TranscriptCell {
     }
 }
 
-pub fn delivery_badge(state: InputState) -> Option<DeliveryBadge> {
+pub(crate) fn delivery_badge(state: InputState) -> Option<DeliveryBadge> {
     match state {
         InputState::Delivering => Some(DeliveryBadge::Delivering),
         InputState::Applied => Some(DeliveryBadge::Applied),
@@ -362,7 +363,7 @@ pub fn delivery_badge(state: InputState) -> Option<DeliveryBadge> {
 // cost: time O(c), heap O(c), stack O(1)
 // vars: c = 셀 글 전체 글자 수
 // basis: estimate
-pub fn styled_rows(
+pub(crate) fn styled_rows(
     cells: &[TranscriptCell],
     lang: Lang,
     labels_visible: bool,
@@ -456,7 +457,7 @@ fn result_line(
     }
 }
 
-pub fn tokens_text(lang: Lang, tokens: Option<u64>) -> String {
+pub(crate) fn tokens_text(lang: Lang, tokens: Option<u64>) -> String {
     match tokens {
         Some(tokens) => format!("{} {}", lang.tr(i18n::TOKEN), i18n::format_count(tokens)),
         None => lang.tr(i18n::TOKEN_UNREPORTED).to_string(),
@@ -525,7 +526,7 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
 // cost: time O(h), heap O(h), stack O(1)
 // vars: h = 이름표 수
 // basis: estimate
-pub fn held_labels(held: &[TaskLabel]) -> String {
+pub(crate) fn held_labels(held: &[TaskLabel]) -> String {
     held.iter()
         .map(|label| labels::format(*label))
         .collect::<Vec<_>>()

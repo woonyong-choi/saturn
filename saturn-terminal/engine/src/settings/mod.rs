@@ -22,16 +22,13 @@ use saturn_protocol::state::OnExit;
 use crate::secrets::{KeyInfo, StorageMode};
 use crate::store::{RetentionPolicy, StoreError, sha256_hex};
 
-pub use edit::FileVersion;
-pub use layers::{
-    USER_ONLY, UserOnly, default_layer, find_folder_config, merge, read_reference, run_layer,
-};
-pub use manager::{Applied, SettingsManager};
-pub use permission::{PermissionSettings, chat_layer_mode, with_chat_layer_mode};
-pub use trust::{FolderTrustPrompt, TrustStatus, TrustStore};
+pub(crate) use layers::default_layer;
+pub(crate) use manager::{Applied, SettingsManager};
+pub(crate) use permission::{PermissionSettings, chat_layer_mode, with_chat_layer_mode};
+pub(crate) use trust::{FolderTrustPrompt, TrustStatus, TrustStore};
 
 /// 사용자 층은 `~/.saturn/`, 폴더 층은 `<폴더>/.saturn/` 아래 파일 이름.
-pub const CONFIG_FILE: &str = "config.toml";
+pub(crate) const CONFIG_FILE: &str = "config.toml";
 
 /// 병합 검사 실패면 호출자가 이전 번호로 계속하고 경고한다.
 #[derive(Debug, thiserror::Error)]
@@ -93,7 +90,7 @@ pub enum Layer {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LayerSource {
+pub(crate) struct LayerSource {
     pub layer: Layer,
     pub path: Option<PathBuf>,
     /// 파일 층이면 읽은 내용의 SHA-256 hex. 해시 종류는 초안이다.
@@ -104,13 +101,13 @@ pub struct LayerSource {
 
 /// 값은 TOML을 JSON으로 옮긴 표 하나다.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Settings {
+pub(crate) struct Settings {
     values: serde_json::Value,
 }
 
 impl Settings {
     /// 사용자 전용.
-    pub fn method(&self) -> Method {
+    pub(crate) fn method(&self) -> Method {
         match self.text("router.method") {
             "saturn" => Method::Saturn,
             "collect" => Method::Collect,
@@ -119,7 +116,7 @@ impl Settings {
     }
 
     /// 없는 항목은 기본값 층 값이다.
-    pub fn thresholds(&self) -> Thresholds {
+    pub(crate) fn thresholds(&self) -> Thresholds {
         let value = |name: &str| self.number(&format!("router.thresholds.{name}"));
         Thresholds {
             keep_current: value("keep_current"),
@@ -135,17 +132,17 @@ impl Settings {
     }
 
     /// 사용자 전용. 허용 호스트 검사는 `routers`가 한다.
-    pub fn router_endpoint(&self) -> &str {
+    pub(crate) fn router_endpoint(&self) -> &str {
         self.text("router.endpoint")
     }
 
     /// 출처와 끝 4자리만 담는다.
-    pub fn key_info(&self) -> Option<KeyInfo> {
+    pub(crate) fn key_info(&self) -> Option<KeyInfo> {
         serde_json::from_value(self.get("router.key.info")?.clone()).ok()
     }
 
     /// 사용자 전용.
-    pub fn key_command(&self) -> Option<Vec<String>> {
+    pub(crate) fn key_command(&self) -> Option<Vec<String>> {
         let items = self.get("router.key.command")?.as_array()?;
         let command: Vec<String> = items
             .iter()
@@ -154,7 +151,7 @@ impl Settings {
         (!command.is_empty()).then_some(command)
     }
 
-    pub fn storage_mode(&self) -> StorageMode {
+    pub(crate) fn storage_mode(&self) -> StorageMode {
         match self.text("router.key.storage") {
             "hardened" => StorageMode::Hardened,
             _ => StorageMode::Standard,
@@ -162,19 +159,19 @@ impl Settings {
     }
 
     /// 사용자 전용.
-    pub fn grading_model(&self) -> Option<&str> {
+    pub(crate) fn grading_model(&self) -> Option<&str> {
         self.get("grading.model")?.as_str()
     }
 
     /// 사용자 전용. 기본 거짓.
-    pub fn share_with_server(&self) -> bool {
+    pub(crate) fn share_with_server(&self) -> bool {
         self.lookup("consent.share_with_server")
             .and_then(Value::as_bool)
             .unwrap_or(false)
     }
 
     /// 기본 무제한 보존.
-    pub fn retention(&self) -> RetentionPolicy {
+    pub(crate) fn retention(&self) -> RetentionPolicy {
         let days = self.get("retention.max_age_days").and_then(Value::as_u64);
         RetentionPolicy {
             max_age: days.map(|days| Duration::from_secs(days.saturating_mul(24 * 60 * 60))),
@@ -182,11 +179,11 @@ impl Settings {
     }
 
     /// 모드와 개별 규칙. 옛 스냅샷에 없으면 기본 모드와 빈 규칙이다.
-    pub fn permission(&self) -> PermissionSettings {
+    pub(crate) fn permission(&self) -> PermissionSettings {
         permission::from_value(self.get(permission::KEY))
     }
 
-    pub fn on_exit(&self) -> OnExit {
+    pub(crate) fn on_exit(&self) -> OnExit {
         match self.text("on_exit") {
             "stop" => OnExit::Stop,
             "ask" => OnExit::Ask,
@@ -195,7 +192,7 @@ impl Settings {
     }
 
     /// 안전 비율 `context.safety_percent`(초안)는 두 provider 공통이다.
-    pub fn context_budget(&self, provider: Provider) -> ContextBudget {
+    pub(crate) fn context_budget(&self, provider: Provider) -> ContextBudget {
         let section = match provider {
             Provider::Codex => "context.codex",
             Provider::Claude => "context.claude",
@@ -216,7 +213,7 @@ impl Settings {
     }
 
     /// 모르는 키면 `None`.
-    pub fn get(&self, key: &str) -> Option<&serde_json::Value> {
+    pub(crate) fn get(&self, key: &str) -> Option<&serde_json::Value> {
         layers::get_path(&self.values, key)
     }
 
@@ -250,14 +247,14 @@ fn defaults() -> &'static Value {
 
 /// `store`가 저장하고 `digest`로 같은 내용을 찾는다.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SettingsSnapshot {
+pub(crate) struct SettingsSnapshot {
     pub settings: Settings,
     pub layers: Vec<LayerSource>,
 }
 
 impl SettingsSnapshot {
     /// 값이 같으면 같은 번호를 쓰도록 층 목록은 넣지 않는다. 해시 SHA-256은 초안이다.
-    pub fn digest(&self) -> String {
+    pub(crate) fn digest(&self) -> String {
         let sorted = serde_json::to_string(&self.settings.values)
             .expect("settings json should serialize because it holds only json values");
         sha256_hex(sorted.as_bytes())
@@ -266,6 +263,7 @@ impl SettingsSnapshot {
 
 #[cfg(test)]
 mod tests {
+    use super::layers::merge;
     use super::*;
 
     fn snapshot(content: &str, layers: Vec<LayerSource>) -> SettingsSnapshot {

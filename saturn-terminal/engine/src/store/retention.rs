@@ -20,13 +20,13 @@ const COUNTED_TABLES: [&str; 5] = ["inputs", "runs", "events", "usage", "session
 
 /// 기본값은 무제한 보존.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct RetentionPolicy {
+pub(crate) struct RetentionPolicy {
     /// `None`이면 자동 정리하지 않는다.
     pub max_age: Option<Duration>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PruneScope {
+pub(crate) enum PruneScope {
     Chats(Vec<ChatId>),
     /// 마지막 활동이 이 시각보다 이른 채팅 전부.
     InactiveBefore(SystemTime),
@@ -34,14 +34,14 @@ pub enum PruneScope {
 
 /// `yes`가 거짓이면 아무것도 지우지 않고 계획만 돌려준다.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PruneRequest {
+pub(crate) struct PruneRequest {
     pub scope: PruneScope,
     pub yes: bool,
 }
 
 /// 어떤 명령으로 지워도 이 이유가 있는 항목은 남긴다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SkipReason {
+pub(crate) enum SkipReason {
     OpenInput,
     OpenRun,
     /// `begin_stop` 뒤 `end_stop` 전.
@@ -54,7 +54,7 @@ pub enum SkipReason {
 
 /// 미리보기와 실제 삭제 모두 같은 계획으로 만든다.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct PrunePlan {
+pub(crate) struct PrunePlan {
     pub chats: Vec<ChatId>,
     /// 이유가 여럿이면 모두.
     pub skipped: Vec<(ChatId, Vec<SkipReason>)>,
@@ -64,7 +64,7 @@ pub struct PrunePlan {
 
 /// 같은 id가 다시 들어오면 알아보는 데 쓴다.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Tombstone {
+pub(crate) struct Tombstone {
     pub chat: ChatId,
     /// 지우기 직전 입력 원문과 이벤트의 해시(hex).
     pub hash: String,
@@ -72,7 +72,7 @@ pub struct Tombstone {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum PruneOutcome {
+pub(crate) enum PruneOutcome {
     Preview(PrunePlan),
     Deleted {
         plan: PrunePlan,
@@ -83,7 +83,7 @@ pub enum PruneOutcome {
 
 impl Store {
     /// 쓰지 않는다.
-    pub async fn plan_prune(&self, scope: &PruneScope) -> Result<PrunePlan, StoreError> {
+    pub(crate) async fn plan_prune(&self, scope: &PruneScope) -> Result<PrunePlan, StoreError> {
         let mut conn = self.pool.acquire().await?;
         plan_prune_on(&mut conn, scope).await
     }
@@ -92,7 +92,7 @@ impl Store {
     ///
     /// # Errors
     /// 삭제 거래가 끝난 뒤 정리 단계만 실패하면 `Database`이고 삭제와 흔적은 남는다.
-    pub async fn prune(&self, request: &PruneRequest) -> Result<PruneOutcome, StoreError> {
+    pub(crate) async fn prune(&self, request: &PruneRequest) -> Result<PruneOutcome, StoreError> {
         if !request.yes {
             return Ok(PruneOutcome::Preview(
                 self.plan_prune(&request.scope).await?,
@@ -135,7 +135,7 @@ impl Store {
     }
 
     /// 시작 때 한 번 부른다. `policy.max_age`가 `None`이면 아무것도 하지 않는다.
-    pub async fn prune_on_start(
+    pub(crate) async fn prune_on_start(
         &self,
         policy: RetentionPolicy,
         now: SystemTime,
@@ -151,7 +151,7 @@ impl Store {
         Ok(Some(self.prune(&request).await?))
     }
 
-    pub async fn tombstone(&self, chat: ChatId) -> Result<Option<Tombstone>, StoreError> {
+    pub(crate) async fn tombstone(&self, chat: ChatId) -> Result<Option<Tombstone>, StoreError> {
         let row = sqlx::query("SELECT hash, deleted_at FROM tombstones WHERE chat_id = ?")
             .bind(to_sql_int(chat.0))
             .fetch_optional(&self.pool)

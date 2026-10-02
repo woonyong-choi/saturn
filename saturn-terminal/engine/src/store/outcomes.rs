@@ -27,7 +27,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 판단이면 `NotFound`.
-    pub async fn record_signal(
+    pub(crate) async fn record_signal(
         &self,
         judgment: JudgmentId,
         signal: Signal,
@@ -47,7 +47,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 판단이거나 묻지 않은 판단이면 `NotFound`.
-    pub async fn record_asked_answer(
+    pub(crate) async fn record_asked_answer(
         &self,
         judgment: JudgmentId,
         answer: AskedAnswer,
@@ -81,7 +81,7 @@ impl Store {
     ///
     /// # Errors
     /// 읽기 실패면 `Database`, 저장된 JSON이나 값이 깨졌으면 `Json`이나 `Database`.
-    pub async fn observations(&self) -> Result<Vec<Observation>, StoreError> {
+    pub(crate) async fn observations(&self) -> Result<Vec<Observation>, StoreError> {
         let rows = sqlx::query(
             "SELECT answers, thresholds, asked_with, signal, asked_answer FROM judgments \
              WHERE signal IS NOT NULL ORDER BY id",

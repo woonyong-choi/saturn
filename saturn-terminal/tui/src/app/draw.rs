@@ -32,7 +32,7 @@ impl App {
     // cost: time O(c + w·h), heap O(c + w·h), stack O(1)
     // vars: c = 대화 기록 글자 수, w·h = 화면 칸 수
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, now: Instant) {
+    pub(crate) fn render(&self, frame: &mut Frame, now: Instant) {
         let area = frame.area();
         let lang = self.lang;
         let labels_visible = self.chat.labels_visible();
@@ -59,7 +59,6 @@ impl App {
         }
         let live = LiveAreaView {
             live: &self.live,
-            lang,
             labels_visible,
         };
         live.render(frame, areas.live);
@@ -71,7 +70,7 @@ impl App {
         };
         board.render(frame, areas.status);
         if let Some(popup) = &self.popup {
-            PopupView { popup, lang }.render(frame, areas.popup);
+            PopupView { popup }.render(frame, areas.popup);
         }
         let composer = ComposerView {
             composer: &self.composer,

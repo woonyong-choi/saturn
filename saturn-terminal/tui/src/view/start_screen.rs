@@ -14,10 +14,10 @@ use saturn_protocol::rpc::Notification;
 use crate::i18n::{self, Lang};
 use crate::view::{EMPHASIS, centered, text_width};
 
-pub const LOGO: &[&str] = &["saturn"];
+pub(crate) const LOGO: &[&str] = &["saturn"];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StartInfo {
+pub(crate) struct StartInfo {
     pub saturn_version: String,
     /// 확인하지 못한 provider는 버전이 `None`.
     pub providers: Vec<(Provider, Option<String>)>,
@@ -34,7 +34,7 @@ impl StartInfo {
     // vars: m = 알림 글자 수
     // basis: estimate
     /// 빈 버전과 빈 router 이름은 확인하지 못한 것으로 본다.
-    pub fn from_notification(notification: &Notification) -> Option<Self> {
+    pub(crate) fn from_notification(notification: &Notification) -> Option<Self> {
         let Notification::StartInfo {
             saturn_version,
             providers,
@@ -64,7 +64,7 @@ impl StartInfo {
     // vars: m = 정보 글자 수
     // basis: estimate
     /// 머리 셀과 plain 출력이 함께 쓴다.
-    pub fn lines(&self, lang: Lang) -> Vec<String> {
+    pub(crate) fn lines(&self, lang: Lang) -> Vec<String> {
         let mut lines: Vec<String> = LOGO.iter().map(|line| line.to_string()).collect();
         lines.push(format!("Saturn {}", self.saturn_version));
         lines.extend(self.providers.iter().map(|(provider, version)| {
@@ -101,7 +101,7 @@ impl StartInfo {
 }
 
 #[derive(Debug)]
-pub struct StartScreenView<'a> {
+pub(crate) struct StartScreenView<'a> {
     pub info: &'a StartInfo,
     pub lang: Lang,
 }
@@ -110,7 +110,7 @@ impl StartScreenView<'_> {
     // cost: time O(m), heap O(m), stack O(1)
     // vars: m = 정보 글자 수
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let lines = self.info.lines(self.lang);
         let height = u16::try_from(lines.len()).unwrap_or(u16::MAX);
         let width = lines.iter().map(|line| text_width(line)).max().unwrap_or(0);

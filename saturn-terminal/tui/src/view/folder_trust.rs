@@ -13,7 +13,7 @@ use crate::i18n::{self, Lang};
 use crate::view::{EMPHASIS, SELECTED, render_window};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TrustChoice {
+pub(crate) enum TrustChoice {
     Apply,
     /// 설계 표에 키와 문구가 없어 방향키와 `Enter`로만 고른다.
     Second,
@@ -21,7 +21,7 @@ pub enum TrustChoice {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FolderTrust {
+pub(crate) struct FolderTrust {
     pub path: PathBuf,
     pub fingerprint: String,
     pub applied: Vec<String>,
@@ -32,14 +32,14 @@ pub struct FolderTrust {
 }
 
 impl FolderTrust {
-    pub fn up(&mut self) {
+    pub(crate) fn up(&mut self) {
         self.selected = match self.selected {
             TrustChoice::Apply | TrustChoice::Second => TrustChoice::Apply,
             TrustChoice::Quit => TrustChoice::Second,
         };
     }
 
-    pub fn down(&mut self) {
+    pub(crate) fn down(&mut self) {
         self.selected = match self.selected {
             TrustChoice::Apply => TrustChoice::Second,
             TrustChoice::Second | TrustChoice::Quit => TrustChoice::Quit,
@@ -48,7 +48,7 @@ impl FolderTrust {
 }
 
 #[derive(Debug)]
-pub struct FolderTrustView<'a> {
+pub(crate) struct FolderTrustView<'a> {
     pub trust: &'a FolderTrust,
     pub lang: Lang,
 }
@@ -57,7 +57,7 @@ impl FolderTrustView<'_> {
     // cost: time O(m), heap O(m), stack O(1)
     // vars: m = 항목과 바뀐 줄의 글자 수
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let lang = self.lang;
         let trust = self.trust;
         let mut lines = vec![
