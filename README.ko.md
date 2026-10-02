@@ -19,7 +19,7 @@
 Codex와 Claude Code를 함께 쓰는 개발자는 provider마다 session과 압축 방식이 달라서 도구를 바꿀 때마다 맥락을 잃습니다. Saturn은 모든 입력을 보내기 전에 로컬에 기록하고, 그 기록에서 각 provider session에 필요한 맥락만 골라 넘깁니다. 도구마다 터미널을 따로 띄우는 방식과 달리, provider를 바꾸거나 작업을 병렬로 돌리거나 새 session을 열어도 한 채팅의 기록과 작업 상태가 이어집니다.
 
 > [!NOTE]
-> 설계 단계입니다. 실행할 수 있는 코드는 아직 없습니다.
+> 개발 중입니다. 실행할 수 있는 명령은 아직 없습니다.
 
 ![설계: 채팅을 Claude Code에서 Codex로 바꾸면 새 Codex session이 Saturn 기록으로 만든 패킷을 받고, 두 결과가 한 채팅에 남습니다](docs/assets/provider-switch.svg)
 
@@ -32,12 +32,13 @@ Codex와 Claude Code를 함께 쓰는 개발자는 provider마다 session과 압
 3. session의 맥락이 정해 둔 토큰 기준을 넘고 실행 중인 작업이 없으면, Saturn은 provider에 압축을 맡기거나 비용이 더 적을 때 새 session을 엽니다. 새 session은 Saturn 기록에서 고른 목표, 최근 턴, 끝나지 않은 항목을 패킷으로 받습니다.
 4. 채팅을 Claude Code에서 Codex로 바꿉니다. 채팅은 사용자가 보는 대화이고, provider session은 그 뒤에서 열리고 닫힙니다. 새 session은 그 채팅을 마지막으로 본 뒤 바뀐 내용만 받습니다.
 5. 터미널을 닫습니다. engine은 이미 보낸 입력을 계속 처리하고, 나중에 다시 붙을 수 있습니다.
+6. provider가 명령 실행이나 파일 수정을 요청합니다. Saturn은 provider 설정 대신 자체 권한 규칙을 적용하고, 규칙이 묻기로 정한 경우에만 허가 창을 보입니다.
 
 전체 설계는 [설계 문서](docs/README.md)에 있고, 설계 문서는 한국어로 씁니다.
 
 ## 상태
 
-Saturn은 설계 단계입니다. 설계 문서, 결정 기록, 실험 계획은 공개되어 있고 코드는 아직 없습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
+Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine 부품, TUI는 `main`에 있지만 입력 흐름, 채팅을 시작하는 `saturn` 명령, 권한 처리는 아직 만들지 않았습니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
 
 ## 비교
 
@@ -46,15 +47,13 @@ Saturn은 설계 단계입니다. 설계 문서, 결정 기록, 실험 계획은
 
 ## 로드맵
 
-설계 단계 다음의 순서는 아직 정하지 않았습니다.
+첫 대화 이후의 순서는 아직 정하지 않았습니다.
 
-1. 설계: 설계 문서, 결정 기록, provider 동작 실험. (진행 중)
-2. 핵심 흐름: 보내기 전 입력 접수, 입력 대기와 보류, 채팅마다 session 하나. (나중)
-3. provider 전환과 맥락: 한 채팅 안 Codex와 Claude Code 전환, 맥락 패킷 인계, subagent와 사용량 추적. (나중)
-4. judge: 외부 판단 API인 Jev를 첫 judge로 입력마다 판단, 실패 때 질문별로 정해 둔 규칙으로 대체. (나중)
-5. 전체 화면 TUI와 데이터 관리: 상태판, 사용량 화면, 기록 정리, 판단 기록 내보내기. (나중)
-6. 로컬 judge 모델: 판단 기록으로 개인 judge 모델을 학습하고, 같은 평가 세트에서 현재 judge보다 나쁘지 않을 때만 교체. (나중)
-7. 서비스: 동의 기반 데이터 수집, 원격 API, 인증, 인프라. (나중)
+1. 첫 대화: `saturn` 명령, 입력 접수부터 provider 전송까지의 입력 흐름, provider 이벤트와 턴 끝, 멈춤과 재개, 허가 응답, 맥락 패킷으로 Codex와 Claude Code 전환. (진행 중)
+2. 권한: Saturn 권한 규칙으로 provider 실행 판단, 항상 허용 규칙 저장. (다음)
+3. 채팅 관리와 복구: TUI 없이 계속 실행, 크래시 뒤 복구, 채팅 이름과 묶음, 더한 폴더, 작업 완료 알림. (나중)
+4. 로컬 judge 모델: 판단 기록 채점, 개인 judge 모델 학습, 같은 평가 세트에서 현재 judge보다 나쁘지 않을 때만 교체. (나중)
+5. 서비스: 동의 기반 데이터 수집, 원격 API, 인증, 인프라. (나중)
 
 ## 문서
 
@@ -66,3 +65,12 @@ Saturn은 설계 단계입니다. 설계 문서, 결정 기록, 실험 계획은
 - [맥락 정리](docs/design/context-management.md): 맥락 측정과 새 session으로 이어 가기
 - [결정 기록](docs/decisions/README.md): 설계를 정한 이유
 - [전체 문서](docs/README.md)
+
+## 개발
+
+저장소 루트에서 다음 명령을 실행하세요. CI는 아직 없습니다.
+
+```sh
+cargo build --workspace
+cargo test --workspace
+```

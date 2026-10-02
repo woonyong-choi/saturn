@@ -13,6 +13,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | judge API | 외부 서비스 | 판단 질문과 선택지별 확률 |
 | 로컬 Saturn 모델 | 외부 프로그램 | 판단 질문과 선택지별 확률 |
 | macOS 키체인 | 운영체제 | judge 키 |
+| `SATURN_KEY` 환경 변수 | 운영체제 | 키체인 확인에 실패할 때 받는 judge 키 |
 | 설정 파일 | 파일 | 사용자 설정과 폴더 설정 |
 
 ## 코드 지도
@@ -41,13 +42,15 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 |---|---|
 | 입력 접수, 대기, 보류와 재개, 쓰기 규칙 | [입력 처리](design/input-handling.md) |
 | provider 연결, session, subagent 추적, 사용량 | [provider 연결과 session](design/providers-and-sessions.md) |
+| 권한 규칙, 권한 모드, 항상 허용 | [권한](design/permissions.md) |
 | 맥락 크기 측정과 새 session으로 이어 가기 | [맥락 정리](design/context-management.md) |
+| 후보 순위, 제약 식별과 대체 | [맥락 고르기](design/context-selection.md) |
 | 판단 질문, 기준값, 대체 규칙 | [judge](design/judge.md) |
 | judge 키 입력, 저장, 차단 | [judge 키 보호](design/judge-key-security.md) |
 | 채점, 기준값 조정, 로컬 모델 승격 | [judge 학습](design/judge-training.md) |
 | 설정 층과 설정 번호 | [설정](design/settings.md) |
 | 스키마 이관, 보존, 삭제 | [기록 저장과 보존](design/records.md) |
-| engine 시작, TUI 종료 뒤 계속, 크래시 뒤 복구 | [engine 수명과 복구](design/engine-lifecycle.md) |
+| engine 시작, TUI 종료 뒤 계속, 크래시 뒤 복구, 채팅 폴더와 이어 열기 | [engine 수명과 복구](design/engine-lifecycle.md) |
 | 화면 배치, 키, 상태 표시 | [TUI](design/tui.md) |
 
 ## 실행 흐름
@@ -78,6 +81,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 - provider 고유 이름은 `providers/codex`, `providers/claude` 안에서만 쓴다. TUI가 provider를 몰라도 그릴 수 있게 하기 위해서다.
 - 에이전트끼리 직접 통신하지 않는다. 맥락 전달을 기록 번호 하나로 맞추기 위해서다.
 - 권한은 Saturn 설정의 `permission` 규칙이 정본이고 provider 설정 파일은 고치지 않는다. 사용자 설정이 Saturn의 허가 판단을 우회하는 일을 막기 위해서다. 그 밖의 provider 설정과 subagent 사용은 막거나 바꾸지 않고 추적만 하고, 예외는 judge 키 보호 하나다.
+- 채팅의 폴더 설정과 작업 폴더는 채팅을 만든 기본 폴더 하나만 따르고, provider 실행 환경은 그 채팅에 가장 최근에 붙은 TUI의 환경으로 정한다. 다른 폴더의 설정과 상주 engine의 환경이 섞이지 않게 하기 위해서다.
 - judge는 engine만 부른다. judge 전송은 HTTPS만 쓰고 TLS 검증을 끄지 않는다. judge 키가 자식 프로세스나 다른 호스트로 새는 것을 막기 위해서다.
 - judge 키와 일치하는 문자열은 로그, 오류, 디버그 출력에서 가리고, Authorization 헤더는 기록하지 않는다. 키가 기록이나 화면으로 새는 것을 막기 위해서다.
 - 스키마는 새 버전을 처음 실행할 때 자동으로 옮기고, 옮기기 직전 백업 하나를 14일 둔다. 판단 기록에는 질문 버전과 설정 번호를 남긴다. 버전이 바뀐 뒤에도 옛 기록을 다시 해석하기 위해서다.
