@@ -3,8 +3,10 @@
 //! TODO(#61): 자식 thread의 승인 요청 처리 미정. 정해지기 전에는 부모와 같이 `PermissionRequested`로 올린다
 
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::time::{Duration, Instant};
 
 use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
@@ -20,6 +22,10 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::{mpsc, oneshot};
 
+use super::codex_permission::{
+    APPROVAL_POLICY, McpState, SANDBOX, call_of, check_applied, check_version, file_change_paths,
+    mcp_state,
+};
 use super::tool_detail::{classify_command, unwrap_shell};
 use super::{AppliedSettings, LaunchSpec, TurnOriginTracker, UserProviderConfig};
 use crate::processes::{ProcessGroupId, ProcessSpec, Supervisor};
@@ -43,14 +49,14 @@ pub(crate) const COMMAND_METHODS: &[(&str, &str)] = &[
 /// 대응표에 없는 이름이 스킬 목록에 섞여 올 때를 대비한다. 초안 목록.
 pub(crate) const EXCLUDED_COMMANDS: &[&str] = &["new", "resume", "fork", "quit", "exit"];
 
-/// 사용자 설정에 권한 값이 없을 때만 넣는다. 초안 값(설계는 수정 허용만 정함).
-const PERMISSION_ARGS: &[&str] = &["-c", "sandbox_mode=\"workspace-write\""];
-
 const AUTO_COMPACT_KEY: &str = "model_auto_compact_token_limit";
 
-const PERMISSION_KEYS: &[&str] = &["approval_policy", "sandbox_mode"];
-
 const EVENT_BUFFER: usize = 1024;
+
+/// 첫 턴 전에 MCP 서버가 준비되기를 기다리는 최대 시간. 서버 유예 12초에 시작 시간 제한을 더한 값이다. 초안.
+const MCP_READY_TIMEOUT: Duration = Duration::from_secs(30);
+
+const MCP_READY_POLL: Duration = Duration::from_millis(250);
 
 /// 대응표에 설명이 없어 메서드 이름을 쓴다.
 const COMMAND_DESCRIPTION_PREFIX: &str = "app-server ";
@@ -104,6 +110,8 @@ struct ThreadState {
     /// `turn/started`에서 정하고 `turn/completed`에서 쓴다.
     turn_origin: Option<TurnOrigin>,
     context_tokens: Option<u64>,
+    /// 키는 `fileChange` 항목 id. 편집 승인 요청에는 경로가 없어 항목이 시작될 때 받은 경로를 둔다.
+    file_changes: HashMap<String, Vec<String>>,
 }
 
 impl ThreadState {
@@ -116,6 +124,7 @@ impl ThreadState {
             applied,
             turn_origin: None,
             context_tokens: None,
+            file_changes: HashMap::new(),
         }
     }
 }
@@ -137,17 +146,23 @@ pub struct CodexClient {
     commands: Vec<ProviderCommand>,
     /// 스킬 이름별 `SKILL.md` 경로.
     skill_paths: HashMap<String, String>,
+    /// 첫 턴 전에 준비를 확인할 MCP 서버. 비면 확인하지 않는다.
+    mcp_servers: Vec<String>,
+    /// 서버가 모두 준비된 것을 확인했다.
+    is_mcp_ready: bool,
+    mcp_ready_timeout: Duration,
 }
 
 impl CodexClient {
-    /// `launch.hook_settings`는 쓰지 않는다.
+    /// `launch.hook_settings`는 쓰지 않는다. `launch.permission.codex_home`이 있으면 `CODEX_HOME`을 그 폴더로 바꿔
+    /// 사용자 설정과 규칙이 끼어들지 못하게 한다.
     ///
     /// # Errors
-    /// 실행 실패나 `initialize` 응답 없이 stdout이 닫히면 `ConnectionLost`.
+    /// 실행 실패나 `initialize` 응답 없이 stdout이 닫히면 `ConnectionLost`, 지원하지 않는 버전이면 `NotSent`.
     pub async fn start(launch: LaunchSpec, supervisor: Supervisor) -> Result<Self, ProviderError> {
+        let launch = with_codex_home(launch);
         let found = read_user_config(&launch);
         let user = UserProviderConfig {
-            has_permission: launch.user_config.has_permission || found.has_permission,
             has_auto_compact: launch.user_config.has_auto_compact || found.has_auto_compact,
         };
         let mut args = vec!["app-server".to_owned()];
@@ -187,10 +202,35 @@ impl CodexClient {
             events,
             commands: Vec::new(),
             skill_paths: HashMap::new(),
+            mcp_servers: launch.permission.mcp_servers.clone(),
+            is_mcp_ready: false,
+            mcp_ready_timeout: MCP_READY_TIMEOUT,
         };
-        client.initialize().await?;
+        if let Err(error) = client.initialize().await {
+            client.abort_start().await;
+            return Err(error);
+        }
         client.load_commands(&launch.workdir).await;
         Ok(client)
+    }
+
+    /// 열지 않기로 한 app-server를 남기지 않는다.
+    async fn abort_start(&mut self) {
+        let stopped = self
+            .supervisor
+            .stop_tree(self.group, crate::processes::StopScope::Whole)
+            .await;
+        if let Err(error) = stopped {
+            tracing::warn!(%error, "failed to stop rejected codex app-server");
+        }
+        self.supervisor.release(self.group);
+    }
+
+    /// 부하에서 준비가 늦어지는 시험이 기다리는 시간을 줄이거나 늘리는 데 쓴다.
+    #[cfg(test)]
+    fn with_mcp_ready_timeout(mut self, timeout: Duration) -> Self {
+        self.mcp_ready_timeout = timeout;
+        self
     }
 
     /// 묶음 중지는 이 연결의 다른 thread도 멈춘다.
@@ -214,7 +254,10 @@ impl CodexClient {
             },
         });
         match self.request("initialize", params).await {
-            Ok(Ok(_)) => {}
+            Ok(Ok(result)) => {
+                let user_agent = result["userAgent"].as_str().unwrap_or_default();
+                check_version(user_agent).map_err(|reason| ProviderError::NotSent { reason })?;
+            }
             Ok(Err(error)) => {
                 tracing::warn!(error = %error, "codex app-server rejected initialize");
                 return Err(ProviderError::ConnectionLost);
@@ -306,6 +349,46 @@ impl CodexClient {
         threads.contains_key(&thread).then_some(thread)
     }
 
+    // cost: time O(t/p·s), heap O(1), stack O(1), io t/p
+    // vars: t = 제한 시간, p = 확인 간격, s = 서버 수
+    // basis: estimate
+    /// 첫 session을 열기 전에 대상 MCP 서버가 모두 준비될 때까지 `mcpServerStatus/list`로 확인한다.
+    /// 제한 시간 안에 준비되지 않으면 `NotSent`이고 첫 턴을 보내지 않는다.
+    async fn wait_for_mcp(&mut self) -> Result<(), ProviderError> {
+        if self.is_mcp_ready || self.mcp_servers.is_empty() {
+            return Ok(());
+        }
+        let deadline = Instant::now() + self.mcp_ready_timeout;
+        loop {
+            let waiting = match self.request("mcpServerStatus/list", json!({})).await? {
+                Ok(result) => match mcp_state(&result, &self.mcp_servers) {
+                    McpState::Ready => {
+                        self.is_mcp_ready = true;
+                        return Ok(());
+                    }
+                    McpState::Waiting(reason) => reason,
+                },
+                Err(error) => error_message(&error),
+            };
+            if Instant::now() >= deadline {
+                return Err(ProviderError::NotSent {
+                    reason: format!("mcp servers are not ready: {waiting}"),
+                });
+            }
+            tokio::time::sleep(MCP_READY_POLL).await;
+        }
+    }
+
+    /// 적용값이 기대와 달라 쓰지 않는 thread를 구독에서 뺀다. 실패해도 이미 쓰지 않기로 했다.
+    async fn release_unchecked_thread(&mut self, thread: &ProviderSessionId) {
+        let released = self
+            .request("thread/unsubscribe", json!({ "threadId": thread.0 }))
+            .await;
+        if let Err(error) = released {
+            tracing::debug!(%error, "failed to release unchecked codex thread");
+        }
+    }
+
     fn ensure_thread(&self, session: &ProviderSessionId) -> Result<(), ProviderError> {
         if lock(&self.threads).contains_key(session) {
             return Ok(());
@@ -348,13 +431,20 @@ impl CodexClient {
 impl ProviderClient for CodexClient {
     /// `packet`이 있으면 이어서 첫 턴으로 `turn/start`한다.
     async fn open_session(&mut self, spec: SessionSpec) -> Result<SessionHandle, ProviderError> {
+        self.wait_for_mcp().await?;
         let cwd = spec.workdir.to_string_lossy().into_owned();
-        let (method, params) = match &spec.resume {
-            Some(thread) => (
-                "thread/resume",
-                json!({ "threadId": thread.0, "cwd": cwd, "model": spec.model }),
-            ),
-            None => ("thread/start", json!({ "cwd": cwd, "model": spec.model })),
+        let mut params = json!({
+            "cwd": cwd,
+            "model": spec.model,
+            "approvalPolicy": APPROVAL_POLICY,
+            "sandbox": SANDBOX,
+        });
+        let method = match &spec.resume {
+            Some(thread) => {
+                params["threadId"] = json!(thread.0);
+                "thread/resume"
+            }
+            None => "thread/start",
         };
         let result = match self.request(method, params).await {
             Ok(Ok(result)) => result,
@@ -371,6 +461,10 @@ impl ProviderClient for CodexClient {
             });
         };
         let thread = ProviderSessionId(id.to_owned());
+        if let Err(reason) = check_applied(&result) {
+            self.release_unchecked_thread(&thread).await;
+            return Err(ProviderError::NotSent { reason });
+        }
         let applied = AppliedSettings {
             model: result["model"].as_str().map(str::to_owned),
             permission: value_text(&result["approvalPolicy"]),
@@ -553,11 +647,9 @@ impl ProviderClient for CodexClient {
     }
 }
 
+/// 권한은 Saturn 규칙이 정하므로 권한 인자는 넣지 않는다. 승인 정책과 샌드박스는 `thread/start`가 정한다.
 pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec<String> {
     let mut args = Vec::new();
-    if !user.has_permission {
-        args.extend(PERMISSION_ARGS.iter().map(|arg| (*arg).to_owned()));
-    }
     if !user.has_auto_compact {
         args.push("-c".to_owned());
         args.push(format!(
@@ -566,6 +658,18 @@ pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec
         ));
     }
     args
+}
+
+/// 전용 `CODEX_HOME`이 정해져 있으면 환경의 `CODEX_HOME`을 그 폴더로 바꾼다.
+fn with_codex_home(mut launch: LaunchSpec) -> LaunchSpec {
+    let Some(home) = launch.permission.codex_home.clone() else {
+        return launch;
+    };
+    launch.env.retain(|(name, _)| name != "CODEX_HOME");
+    launch
+        .env
+        .push((OsString::from("CODEX_HOME"), home.into_os_string()));
+    launch
 }
 
 /// `CODEX_HOME`, `HOME`은 부모 환경이 아니라 `launch.env`에서 읽고, 파일을 못 읽으면 값 없음으로 본다.
@@ -617,9 +721,6 @@ fn scan_user_config(content: &str) -> UserProviderConfig {
         };
         if !in_scope {
             continue;
-        }
-        if PERMISSION_KEYS.contains(&key) {
-            found.has_permission = true;
         }
         if key == AUTO_COMPACT_KEY {
             found.has_auto_compact = true;
@@ -692,17 +793,25 @@ fn convert_notification(
             })
             .into_iter()
             .collect(),
-        "item/started" => activity_of(&params["item"])
-            .zip(params["item"]["id"].as_str())
-            .map(|(activity, id)| ProviderEvent::ToolCall {
-                agent,
-                subagent,
-                call_id: id.to_owned(),
-                activity,
-                detail: detail_of(&params["item"]),
-            })
-            .into_iter()
-            .collect(),
+        "item/started" => {
+            let item = &params["item"];
+            if let (Some("fileChange"), Some(id)) = (item["type"].as_str(), item["id"].as_str()) {
+                state
+                    .file_changes
+                    .insert(id.to_owned(), file_change_paths(item));
+            }
+            activity_of(item)
+                .zip(item["id"].as_str())
+                .map(|(activity, id)| ProviderEvent::ToolCall {
+                    agent,
+                    subagent,
+                    call_id: id.to_owned(),
+                    activity,
+                    detail: detail_of(item),
+                })
+                .into_iter()
+                .collect()
+        }
         "item/completed" => tool_output(&params["item"])
             .zip(params["item"]["id"].as_str())
             .map(|(output, id)| ProviderEvent::ToolResult {
@@ -742,7 +851,7 @@ fn convert_notification(
 }
 
 /// 승인 요청만 `PermissionRequested`로 올리고 나머지는 버린다. 올린 요청은 답할 수 있게 `approvals`에 둔다.
-/// TODO(#232): MCP 승인이 아닌 elicitation에 답하는 방식. 지금은 버리고 응답하지 않는다
+/// MCP 승인이 아닌 elicitation은 설계 초안대로 올리지도 응답하지도 않는다.
 fn convert_server_request(
     threads: &HashMap<ProviderSessionId, ThreadState>,
     approvals: &mut HashMap<String, PendingApproval>,
@@ -792,6 +901,7 @@ fn convert_server_request(
         request_id,
         summary,
         reason: params["reason"].as_str().unwrap_or_default().to_owned(),
+        call: call_of(method, params, &state.file_changes),
     }]
 }
 
@@ -799,7 +909,8 @@ fn convert_server_request(
 /// `approved_for_session`, 권한 `scope: session`)으로 보내고, 요청이 그 결정을 허용 목록에서 뺐거나 보낼 값이
 /// 없는(MCP elicitation) 요청이면 `AllowOnce`와 같게 보낸다.
 /// `decline`은 `availableDecisions`에 없어도 받아들여지는 것을 실측했다.
-/// TODO(#232): 항상 허용을 기록 저장소에 저장하는 일과 provider 값의 확정
+/// engine은 규칙으로 읽은 호출의 `항상 허용`을 직접 저장하고 `AllowOnce`로 보내므로, 이 값은 읽을 수 없는
+/// 요청(권한 요청 등)에만 쓰인다.
 /// TODO(#56): 거부와 함께 남기는 말은 정해지기 전에는 보내지 않는다
 fn approval_result(pending: &PendingApproval, answer: &PermissionAnswer) -> Value {
     let denied = matches!(answer, PermissionAnswer::Deny { .. });
@@ -1259,7 +1370,7 @@ fn error_message(error: &Value) -> String {
 }
 
 /// null이면 `None`.
-fn value_text(value: &Value) -> Option<String> {
+pub(super) fn value_text(value: &Value) -> Option<String> {
     match value {
         Value::Null => None,
         Value::String(text) => Some(text.clone()),
@@ -1290,10 +1401,12 @@ mod tests {
     use std::path::PathBuf;
     use std::time::Duration;
 
+    use saturn_core::permission::{Mode, Policy, Rule, Verdict};
+    use saturn_protocol::event::{PermissionCall, PermissionTool};
     use saturn_protocol::ids::{Provider, SettingsRevision};
 
     use super::*;
-    use crate::providers::SaturnDefaults;
+    use crate::providers::{HomeInput, PermissionLaunch, SaturnDefaults, prepare_codex_home};
 
     /// 받은 요청에 schema 모양 그대로 응답한다.
     const FAKE_APP_SERVER: &str = r#"#!/usr/bin/perl
@@ -1303,7 +1416,17 @@ my $json = JSON::PP->new->canonical;
 sub out { print $json->encode($_[0]), "\n"; }
 sub note { out({ method => $_[0], params => $_[1] }); }
 my $active = "";
+my $mcp_polls = 0;
+sub rules_text {
+  my $home = $ENV{CODEX_HOME} // "";
+  open(my $file, "<", "$home/rules/default.rules") or return "";
+  local $/;
+  my $text = <$file>;
+  return $text // "";
+}
 my %gates = (
+  "gate-file-known" => ["srv-file2", "item/fileChange/requestApproval", { itemId => "item_f", reason => "write file" }],
+  "run-sort" => [21, "item/commandExecution/requestApproval", { itemId => "item_s", command => "sort a.txt", reason => "needs approval" }],
   "gate-command" => [7, "item/commandExecution/requestApproval", { itemId => "item_g", command => "touch a.txt", reason => "needs write", availableDecisions => ["accept", "acceptForSession", "decline"] }],
   "gate-command-once-only" => [8, "item/commandExecution/requestApproval", { itemId => "item_g", command => "ls", availableDecisions => ["accept", "cancel"] }],
   "gate-file" => ["srv-file", "item/fileChange/requestApproval", { itemId => "item_g", reason => "write file" }],
@@ -1325,13 +1448,25 @@ while (my $line = <STDIN>) {
   my $p = $m->{params} // {};
   my $tid = $p->{threadId} // "thr_main";
   if ($method eq "initialize") {
-    out({ id => $id, result => { userAgent => "fake/0.158.0", platformFamily => "unix", platformOs => "macos", codexHome => "/fake" } });
+    out({ id => $id, result => { userAgent => ($ENV{FAKE_USER_AGENT} // "fake/0.158.0"), platformFamily => "unix", platformOs => "macos", codexHome => ($ENV{CODEX_HOME} // "/fake") } });
   } elsif ($method eq "skills/list") {
     out({ id => $id, result => { data => [ { cwd => "/w", errors => [], skills => [
       { name => "lint", description => "Run the linter", shortDescription => "lint it", enabled => JSON::PP::true, path => "/skills/lint/SKILL.md", scope => "user" },
       { name => "off", description => "disabled", enabled => JSON::PP::false, path => "/skills/off/SKILL.md", scope => "user" } ] } ] } });
   } elsif ($method eq "thread/start" || $method eq "thread/resume") {
-    out({ id => $id, result => { thread => { id => $tid, sessionId => "s1", preview => "", turns => [], cliVersion => "0.158.0", createdAt => 1, updatedAt => 1, ephemeral => JSON::PP::false, modelProvider => "openai" }, model => "gpt-test", modelProvider => "openai", approvalPolicy => "on-request", cwd => "/w" } });
+    my $model = $p->{model} // "";
+    if (($ENV{FAKE_REQUIRE_MCP} // "") ne "" && $mcp_polls < 3) {
+      out({ id => $id, error => { code => -32000, message => "mcp tools are not ready" } });
+      next;
+    }
+    my $policy = $model eq "wrong-policy" ? "on-request" : ($p->{approvalPolicy} // "on-request");
+    my $asked = $p->{sandbox} // "";
+    my $sandbox = $model eq "wrong-sandbox" ? { type => "dangerFullAccess" } : ($asked eq "read-only" ? { type => "readOnly" } : { type => "workspaceWrite" });
+    out({ id => $id, result => { thread => { id => $tid, sessionId => "s1", preview => "", turns => [], cliVersion => "0.158.0", createdAt => 1, updatedAt => 1, ephemeral => JSON::PP::false, modelProvider => "openai" }, model => "gpt-test", modelProvider => "openai", approvalPolicy => $policy, approvalsReviewer => "user", sandbox => $sandbox, cwd => "/w" } });
+  } elsif ($method eq "mcpServerStatus/list") {
+    $mcp_polls++;
+    my $ready = $mcp_polls >= 3;
+    out({ id => $id, result => { data => [ { name => "docs", runtimeStatus => ($ready ? "ready" : "starting"), tools => ($ready ? { echo => {} } : undef), toolsError => undef } ], nextCursor => undef } });
   } elsif ($method eq "turn/start") {
     my $first = $p->{input}[0];
     if (($first->{text} // "") eq "crash") {
@@ -1340,9 +1475,26 @@ while (my $line = <STDIN>) {
       exit 1;
     }
     my $gate = $gates{$first->{text} // ""};
+    if ($gate && ($first->{text} eq "run-sort") && rules_text() !~ /pattern = \["sort"\], decision = "prompt"/) {
+      out({ id => $id, result => { turn => { id => "turn_g", status => "inProgress", items => [] } } });
+      note("turn/started", { threadId => $tid, turn => { id => "turn_g", status => "inProgress", items => [] } });
+      note("item/agentMessage/delta", { threadId => $tid, turnId => "turn_g", itemId => "mg", delta => "ran-without-asking" });
+      note("turn/completed", { threadId => $tid, turn => { id => "turn_g", status => "completed", items => [] } });
+      next;
+    }
+    if (($first->{text} // "") eq "gate-child") {
+      out({ id => $id, result => { turn => { id => "turn_g", status => "inProgress", items => [] } } });
+      note("turn/started", { threadId => $tid, turn => { id => "turn_g", status => "inProgress", items => [] } });
+      note("thread/started", { thread => { id => "thr_child", parentThreadId => $tid, sessionId => "s1", preview => "", turns => [], cliVersion => "0.158.0", createdAt => 1, updatedAt => 1, ephemeral => JSON::PP::false, modelProvider => "openai" } });
+      out({ id => 31, method => "item/commandExecution/requestApproval", params => { threadId => "thr_child", turnId => "turn_c", itemId => "item_c", command => "rm -rf build", reason => "child needs write" } });
+      next;
+    }
     if ($gate) {
       out({ id => $id, result => { turn => { id => "turn_g", status => "inProgress", items => [] } } });
       note("turn/started", { threadId => $tid, turn => { id => "turn_g", status => "inProgress", items => [] } });
+      if ($first->{text} eq "gate-file-known") {
+        note("item/started", { threadId => $tid, turnId => "turn_g", startedAtMs => 1, item => { type => "fileChange", id => "item_f", status => "inProgress", changes => [ { path => "src/a.rs", kind => { type => "update" }, diff => "" } ] } });
+      }
       out({ id => $gate->[0], method => $gate->[1], params => { threadId => $tid, turnId => "turn_g", %{ $gate->[2] } } });
       next;
     }
@@ -1392,11 +1544,11 @@ while (my $line = <STDIN>) {
             settings: SettingsRevision(1),
             user_config: UserProviderConfig::default(),
             defaults: SaturnDefaults {
-                allow_edits: true,
                 auto_compact_tokens: 180_000,
             },
             env,
             hook_settings: None,
+            permission: PermissionLaunch::default(),
             masker: Masker::new(Vec::new()),
         }
     }
@@ -1443,7 +1595,7 @@ while (my $line = <STDIN>) {
             client.applied_settings(&main),
             Some(AppliedSettings {
                 model: Some("gpt-test".to_owned()),
-                permission: Some("on-request".to_owned()),
+                permission: Some("untrusted".to_owned()),
             })
         );
 
@@ -1489,6 +1641,11 @@ while (my $line = <STDIN>) {
                     request_id: "srv-1".to_owned(),
                     summary: "run command: rm -rf build".to_owned(),
                     reason: "needs write".to_owned(),
+                    call: Some(PermissionCall {
+                        tool: PermissionTool::Shell,
+                        target: "rm -rf build".to_owned(),
+                        paths: Vec::new(),
+                    }),
                 },
                 ProviderEvent::Usage(UsageReport {
                     agent,
@@ -1586,6 +1743,11 @@ while (my $line = <STDIN>) {
                 request_id: "7".to_owned(),
                 summary: "run command: touch a.txt".to_owned(),
                 reason: "needs write".to_owned(),
+                call: Some(PermissionCall {
+                    tool: PermissionTool::Shell,
+                    target: "touch a.txt".to_owned(),
+                    paths: Vec::new(),
+                }),
             }
         );
         assert_eq!(
@@ -1844,24 +2006,15 @@ while (my $line = <STDIN>) {
         let launch = launch(dir.path(), Vec::new());
 
         let none = default_args(UserProviderConfig::default(), &launch);
-        let both = default_args(
+        let compact_set = default_args(
             UserProviderConfig {
-                has_permission: true,
                 has_auto_compact: true,
             },
             &launch,
         );
 
-        assert_eq!(
-            none,
-            vec![
-                "-c",
-                "sandbox_mode=\"workspace-write\"",
-                "-c",
-                "model_auto_compact_token_limit=180000"
-            ]
-        );
-        assert!(both.is_empty());
+        assert_eq!(none, vec!["-c", "model_auto_compact_token_limit=180000"]);
+        assert!(compact_set.is_empty());
     }
 
     #[test]
@@ -1882,16 +2035,12 @@ while (my $line = <STDIN>) {
         assert_eq!(
             found,
             UserProviderConfig {
-                has_permission: false,
                 has_auto_compact: true,
             }
         );
         assert_eq!(
             scan_user_config("approval_policy = \"never\"\n"),
-            UserProviderConfig {
-                has_permission: true,
-                has_auto_compact: false,
-            }
+            UserProviderConfig::default()
         );
         assert_eq!(
             read_user_config(&launch(dir.path(), Vec::new())),
@@ -2076,5 +2225,334 @@ while (my $line = <STDIN>) {
 
         assert!(!message.to_string().contains(key));
         assert_eq!(message["error"]["message"], "bad key [redacted]");
+    }
+
+    fn rule(tool: PermissionTool, pattern: &str, verdict: Verdict) -> Rule {
+        Rule {
+            tool,
+            pattern: pattern.to_owned(),
+            verdict,
+        }
+    }
+
+    fn policy(rules: Vec<Rule>) -> Policy {
+        Policy {
+            mode: Mode::Edit,
+            workdir: PathBuf::from("/work"),
+            rules,
+            always: Vec::new(),
+        }
+    }
+
+    /// `text` 턴이 올린 승인 요청을 Saturn 규칙으로 판정한다. 허용과 거부는 그 답을 보내 가짜 app-server가 받은
+    /// 응답(`id`, `result`)을 함께 돌려주고, 묻기는 답하지 않고 `None`을 돌려준다.
+    async fn answer_by_rules(text: &str, policy: &Policy) -> (Verdict, Option<Value>) {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut client, handle) = start(dir.path()).await;
+        let main = handle.provider_session;
+        client.send_turn(&main, text).await.unwrap();
+        let requested = loop {
+            let event = take(&mut client, 1).await.remove(0);
+            if matches!(event, ProviderEvent::PermissionRequested { .. }) {
+                break event;
+            }
+        };
+        let ProviderEvent::PermissionRequested {
+            request_id, call, ..
+        } = &requested
+        else {
+            unreachable!("loop should stop at a permission request");
+        };
+        let call = call.as_ref().expect("request should be readable");
+        let verdict = policy.decide(call);
+        let answer = match verdict {
+            Verdict::Allow => PermissionAnswer::AllowOnce,
+            Verdict::Deny => deny(),
+            Verdict::Ask => return (verdict, None),
+        };
+        client
+            .answer_permission(&main, request_id, answer)
+            .await
+            .unwrap();
+        let resumed = take(&mut client, 3).await;
+        let ProviderEvent::Text { text, .. } = &resumed[0] else {
+            panic!("expected text after the answer, got {:?}", resumed[0]);
+        };
+        let received = text.strip_prefix("answer:").expect("answer prefix");
+        (verdict, Some(serde_json::from_str(received).unwrap()))
+    }
+
+    #[tokio::test]
+    async fn permission_shell() {
+        let allow = policy(vec![rule(PermissionTool::Shell, "touch *", Verdict::Allow)]);
+        let denied = policy(vec![rule(PermissionTool::Shell, "touch *", Verdict::Deny)]);
+
+        let allowed = answer_by_rules("gate-command", &allow).await;
+        let refused = answer_by_rules("gate-command", &denied).await;
+        let asked = answer_by_rules("gate-command", &policy(Vec::new())).await;
+
+        assert_eq!(
+            allowed,
+            (
+                Verdict::Allow,
+                Some(json!({ "id": 7, "result": { "decision": "accept" } }))
+            )
+        );
+        assert_eq!(
+            refused,
+            (
+                Verdict::Deny,
+                Some(json!({ "id": 7, "result": { "decision": "decline" } }))
+            )
+        );
+        assert_eq!(asked, (Verdict::Ask, None));
+    }
+
+    #[tokio::test]
+    async fn permission_edit() {
+        let denied = policy(vec![rule(PermissionTool::Edit, "src/*", Verdict::Deny)]);
+
+        let inside = answer_by_rules("gate-file-known", &policy(Vec::new())).await;
+        let refused = answer_by_rules("gate-file-known", &denied).await;
+        let unknown_path = answer_by_rules("gate-file", &policy(Vec::new())).await;
+
+        assert_eq!(
+            inside,
+            (
+                Verdict::Allow,
+                Some(json!({ "id": "srv-file2", "result": { "decision": "accept" } }))
+            )
+        );
+        assert_eq!(
+            refused,
+            (
+                Verdict::Deny,
+                Some(json!({ "id": "srv-file2", "result": { "decision": "decline" } }))
+            )
+        );
+        assert_eq!(unknown_path, (Verdict::Ask, None));
+    }
+
+    #[tokio::test]
+    async fn permission_subagent() {
+        let allow = policy(vec![rule(PermissionTool::Shell, "rm *", Verdict::Allow)]);
+        let denied = policy(vec![rule(PermissionTool::Shell, "rm *", Verdict::Deny)]);
+
+        let allowed = answer_by_rules("gate-child", &allow).await;
+        let refused = answer_by_rules("gate-child", &denied).await;
+
+        assert_eq!(
+            allowed,
+            (
+                Verdict::Allow,
+                Some(json!({ "id": 31, "result": { "decision": "accept" } }))
+            )
+        );
+        assert_eq!(
+            refused,
+            (
+                Verdict::Deny,
+                Some(json!({ "id": 31, "result": { "decision": "decline" } }))
+            )
+        );
+    }
+
+    #[tokio::test]
+    async fn permission_subagent_request_belongs_to_the_parent_agent() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut client, handle) = start(dir.path()).await;
+
+        client
+            .send_turn(&handle.provider_session, "gate-child")
+            .await
+            .unwrap();
+        let events = take(&mut client, 2).await;
+
+        assert!(matches!(
+            events[0],
+            ProviderEvent::SubagentStarted {
+                agent: AgentId(7),
+                ..
+            }
+        ));
+        assert!(matches!(
+            &events[1],
+            ProviderEvent::PermissionRequested { agent: AgentId(7), call: Some(call), .. }
+                if call.target == "rm -rf build"
+        ));
+    }
+
+    #[tokio::test]
+    async fn permission_mcp() {
+        let allow = policy(vec![rule(
+            PermissionTool::Mcp,
+            "mcp__probe__echo",
+            Verdict::Allow,
+        )]);
+        let denied = policy(vec![rule(
+            PermissionTool::Mcp,
+            "mcp__probe__*",
+            Verdict::Deny,
+        )]);
+
+        let allowed = answer_by_rules("gate-mcp", &allow).await;
+        let refused = answer_by_rules("gate-mcp", &denied).await;
+        let asked = answer_by_rules("gate-mcp", &policy(Vec::new())).await;
+
+        assert_eq!(
+            allowed,
+            (
+                Verdict::Allow,
+                Some(json!({ "id": 0, "result": { "action": "accept", "content": {} } }))
+            )
+        );
+        assert_eq!(
+            refused,
+            (
+                Verdict::Deny,
+                Some(json!({ "id": 0, "result": { "action": "decline" } }))
+            )
+        );
+        assert_eq!(asked, (Verdict::Ask, None));
+    }
+
+    #[tokio::test]
+    async fn startup_checks_version_and_policy() {
+        let dir = tempfile::tempdir().unwrap();
+        let old = vec![("FAKE_USER_AGENT".into(), "fake/0.159.0".into())];
+
+        let unsupported = CodexClient::start(launch(dir.path(), old), Supervisor::new())
+            .await
+            .unwrap_err();
+
+        assert!(matches!(
+            unsupported,
+            ProviderError::NotSent { ref reason } if reason.contains("not supported")
+        ));
+        for (model, expected) in [
+            ("wrong-policy", "approval policy"),
+            ("wrong-sandbox", "sandbox"),
+        ] {
+            let mut client = CodexClient::start(launch(dir.path(), Vec::new()), Supervisor::new())
+                .await
+                .unwrap();
+            let mut wrong = spec(dir.path());
+            wrong.model = Some(model.to_owned());
+
+            let error = client.open_session(wrong).await.unwrap_err();
+
+            assert!(matches!(
+                error,
+                ProviderError::NotSent { ref reason } if reason.contains(expected)
+            ));
+            let thread = ProviderSessionId("thr_main".to_owned());
+            assert!(client.applied_settings(&thread).is_none());
+        }
+        let (client, handle) = start(dir.path()).await;
+        let applied = client.applied_settings(&handle.provider_session).unwrap();
+        assert_eq!(applied.permission.as_deref(), Some("untrusted"));
+    }
+
+    #[tokio::test]
+    async fn first_turn_waits_for_mcp_ready() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut launch = launch(dir.path(), vec![("FAKE_REQUIRE_MCP".into(), "1".into())]);
+        launch.permission.mcp_servers = vec!["docs".to_owned()];
+        let mut client = CodexClient::start(launch, Supervisor::new()).await.unwrap();
+
+        let handle = client.open_session(spec(dir.path())).await.unwrap();
+
+        client
+            .send_turn(&handle.provider_session, "hello")
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn first_turn_is_not_sent_when_mcp_never_gets_ready() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut launch = launch(dir.path(), vec![("FAKE_REQUIRE_MCP".into(), "1".into())]);
+        launch.permission.mcp_servers = vec!["docs".to_owned()];
+        let mut client = CodexClient::start(launch, Supervisor::new())
+            .await
+            .unwrap()
+            .with_mcp_ready_timeout(Duration::from_millis(10));
+
+        let error = client.open_session(spec(dir.path())).await.unwrap_err();
+
+        assert!(matches!(
+            error,
+            ProviderError::NotSent { ref reason } if reason.contains("not ready")
+        ));
+    }
+
+    #[tokio::test]
+    async fn codex_home_ignores_user_rules() {
+        let dir = tempfile::tempdir().unwrap();
+        let user = dir.path().join("user-codex");
+        std::fs::create_dir_all(user.join("rules")).unwrap();
+        std::fs::write(
+            user.join("rules/default.rules"),
+            "prefix_rule(pattern = [\"sort\"], decision = \"allow\")\n",
+        )
+        .unwrap();
+        let prepared = prepare_codex_home(HomeInput {
+            saturn_home: &dir.path().join("saturn"),
+            user_codex_home: &user,
+            rules: &[rule(PermissionTool::Shell, "sort *", Verdict::Ask)],
+        })
+        .unwrap();
+        let env = vec![("CODEX_HOME".into(), user.clone().into_os_string())];
+        let mut dedicated = launch(dir.path(), env.clone());
+        dedicated.permission.codex_home = Some(prepared.path.clone());
+        let mut with_user_home = CodexClient::start(launch(dir.path(), env), Supervisor::new())
+            .await
+            .unwrap();
+        let mut with_saturn_home = CodexClient::start(dedicated, Supervisor::new())
+            .await
+            .unwrap();
+        let mut sessions = Vec::new();
+        for client in [&mut with_user_home, &mut with_saturn_home] {
+            sessions.push(client.open_session(spec(dir.path())).await.unwrap());
+        }
+
+        with_user_home
+            .send_turn(&sessions[0].provider_session, "run-sort")
+            .await
+            .unwrap();
+        with_saturn_home
+            .send_turn(&sessions[1].provider_session, "run-sort")
+            .await
+            .unwrap();
+        let user_rules_ran = take(&mut with_user_home, 1).await.remove(0);
+        let saturn_rules_asked = take(&mut with_saturn_home, 1).await.remove(0);
+
+        assert!(matches!(
+            user_rules_ran,
+            ProviderEvent::Text { ref text, .. } if text == "ran-without-asking"
+        ));
+        assert!(matches!(
+            saturn_rules_asked,
+            ProviderEvent::PermissionRequested { .. }
+        ));
+    }
+
+    #[test]
+    fn file_change_paths_are_remembered_from_the_item_start() {
+        let mut threads = HashMap::new();
+        let main = ProviderSessionId("main".to_owned());
+        threads.insert(
+            main,
+            ThreadState::new(AgentId(1), None, AppliedSettings::default()),
+        );
+        let started = json!({
+            "threadId": "main",
+            "item": { "type": "fileChange", "id": "item_f", "changes": [{ "path": "a.rs", "diff": "" }] },
+        });
+
+        convert_notification(&mut threads, "item/started", &started);
+
+        let state = threads.values().next().unwrap();
+        assert_eq!(state.file_changes["item_f"], vec!["a.rs"]);
     }
 }

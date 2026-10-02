@@ -11,8 +11,8 @@ use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
 use saturn_protocol::event::{
-    Activity, LineChange, LineRange, ProviderEvent, ToolCategory, ToolDetail, UsageReport,
-    UsageScope,
+    Activity, LineChange, LineRange, PermissionCall, PermissionTool, ProviderEvent, ToolCategory,
+    ToolDetail, UsageReport, UsageScope,
 };
 use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
 use saturn_protocol::rpc::PermissionAnswer;
@@ -43,8 +43,21 @@ const SHELL_TOOL: &str = "Bash";
 /// 설정을 바꾸는 명령(`model`, `permissions` 등)은 빼지 않는다. 초안 목록.
 pub(crate) const EXCLUDED_COMMANDS: &[&str] = &["clear", "resume", "exit", "quit"];
 
-/// 사용자 설정에 권한 값이 없을 때만 넣는다. 초안 값(설계는 수정 허용만 정함).
-const PERMISSION_ARGS: &[&str] = &["--permission-mode", "acceptEdits"];
+/// 모든 도구 승인을 호스트가 받게 하는 인자. 사용자 설정이 `bypassPermissions`여도 요청이 온다(`Bash`로 확인).
+const PERMISSION_PROMPT_ARGS: &[&str] = &["--permission-prompt-tool", "stdio"];
+
+/// 규칙 대상 도구. 이름을 나열해야 요청이 호스트로 온다. `Edit`, `Write`, MCP, subagent 도구는 실측 전이다.
+/// MCP는 서버를 알 수 없어 `mcp__*` 하나로 둔다. 초안.
+pub(crate) const ASK_TOOLS: &[&str] = &[
+    "Bash",
+    "Edit",
+    "MultiEdit",
+    "Write",
+    "NotebookEdit",
+    "Task",
+    "Agent",
+    "mcp__*",
+];
 
 const AUTO_COMPACT_FLAG: &str = "--autocompact";
 
@@ -241,13 +254,11 @@ impl ClaudeClient {
         }
         let found = read_user_config(&self.launch);
         let user = UserProviderConfig {
-            has_permission: self.launch.user_config.has_permission || found.has_permission,
             has_auto_compact: self.launch.user_config.has_auto_compact || found.has_auto_compact,
         };
         args.extend(default_args(user, &self.launch));
-        if let Some(settings) = &self.launch.hook_settings {
-            args.extend(["--settings".to_owned(), settings.to_string()]);
-        }
+        let hooks = self.launch.hook_settings.clone().unwrap_or(Value::Null);
+        args.extend(["--settings".to_owned(), with_ask_tools(hooks).to_string()]);
         args
     }
 }
@@ -493,11 +504,12 @@ impl ProviderClient for ClaudeClient {
     }
 }
 
+/// 권한은 Saturn 규칙이 정하므로 `--permission-mode` 기본값은 넣지 않고, 승인 요청은 항상 호스트로 받는다.
 pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec<String> {
-    let mut args = Vec::new();
-    if !user.has_permission {
-        args.extend(PERMISSION_ARGS.iter().map(|arg| (*arg).to_owned()));
-    }
+    let mut args: Vec<String> = PERMISSION_PROMPT_ARGS
+        .iter()
+        .map(|arg| (*arg).to_owned())
+        .collect();
     if !user.has_auto_compact {
         let tokens = launch
             .defaults
@@ -527,17 +539,21 @@ pub(crate) fn read_user_config(launch: &LaunchSpec) -> UserProviderConfig {
     files.push(project.join("settings.json"));
     files.push(project.join("settings.local.json"));
     let mut found = UserProviderConfig {
-        has_permission: false,
         has_auto_compact: AUTO_COMPACT_ENV.iter().any(|name| env(name).is_some()),
     };
     for file in files {
         let Some(settings) = read_json(&file) else {
             continue;
         };
-        found.has_permission |= !settings["permissions"]["defaultMode"].is_null();
         found.has_auto_compact |= !settings["autoCompactEnabled"].is_null();
     }
     found
+}
+
+/// `--settings`로 넘기는 값에 `permissions.ask`로 규칙 대상 도구를 나열한다. 훅 설정은 그대로 두고 합친다.
+pub(crate) fn with_ask_tools(mut settings: Value) -> Value {
+    settings["permissions"]["ask"] = json!(ASK_TOOLS);
+    settings
 }
 
 /// 없거나 깨졌으면 `None`.
@@ -596,15 +612,52 @@ fn convert_line(state: &mut SessionState, line: &serde_json::Value) -> Vec<Provi
                     .as_str()
                     .unwrap_or_default()
                     .to_owned(),
+                call: permission_call(tool, &request["input"]),
             }]
         }
         _ => Vec::new(),
     }
 }
 
+/// 규칙 대상 도구의 요청만 규칙이 읽는 호출로 바꾼다. 그 밖의 도구는 `None`이라 사용자에게 묻는다.
+fn permission_call(tool: &str, input: &Value) -> Option<PermissionCall> {
+    let text = |key: &str| input[key].as_str().map(str::to_owned);
+    if tool == SHELL_TOOL {
+        return Some(shell_call(text("command").unwrap_or_default()));
+    }
+    if EDIT_TOOLS.contains(&tool) {
+        let path = text("file_path").or_else(|| text("notebook_path"));
+        return Some(PermissionCall {
+            tool: PermissionTool::Edit,
+            target: String::new(),
+            paths: path.into_iter().collect(),
+        });
+    }
+    if SUBAGENT_TOOLS.contains(&tool) {
+        return Some(PermissionCall {
+            tool: PermissionTool::Subagent,
+            target: text("subagent_type").unwrap_or_default(),
+            paths: Vec::new(),
+        });
+    }
+    tool.starts_with("mcp__").then(|| PermissionCall {
+        tool: PermissionTool::Mcp,
+        target: tool.to_owned(),
+        paths: Vec::new(),
+    })
+}
+
+fn shell_call(command: String) -> PermissionCall {
+    PermissionCall {
+        tool: PermissionTool::Shell,
+        target: command,
+        paths: Vec::new(),
+    }
+}
+
 /// 허용은 요청 `input`을 그대로 돌려주고, 거부는 모델에 전달되는 고정 문구를 붙인다.
-/// `AllowAlways`는 실측한 응답 형식이 허용과 거부뿐이라 `AllowOnce`와 같게 보낸다.
-/// TODO(#232): 항상 허용을 Claude 세션 규칙으로 보내는 값의 실측과 저장
+/// `AllowAlways`는 `AllowOnce`와 같게 보낸다. 규칙으로 읽은 호출의 항상 허용은 engine이 저장해 판정하고, 읽지 못한
+/// 요청은 Claude 세션 규칙으로 보내는 값(`updatedPermissions`)을 실측하지 않아 되풀이해 묻는다.
 /// TODO(#56): 거부와 함께 남기는 말은 정해지기 전에는 보내지 않는다
 fn permission_response(answer: &PermissionAnswer, input: &Value) -> Value {
     match answer {
@@ -963,12 +1016,14 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 mod tests {
     use std::ffi::OsString;
     use std::os::unix::fs::PermissionsExt;
+    use std::path::PathBuf;
 
+    use saturn_core::permission::{Mode, Policy, Rule, Verdict};
     use saturn_protocol::event::TurnOrigin;
     use saturn_protocol::ids::{Provider, SettingsRevision};
 
     use super::*;
-    use crate::providers::SaturnDefaults;
+    use crate::providers::{PermissionLaunch, SaturnDefaults};
 
     /// 받은 사용자 메시지 글에 따라 정해진 줄을 낸다.
     const FAKE_CLAUDE: &str = r#"#!/usr/bin/perl
@@ -1049,11 +1104,11 @@ while (my $line = <STDIN>) {
             settings: SettingsRevision(1),
             user_config: UserProviderConfig::default(),
             defaults: SaturnDefaults {
-                allow_edits: true,
                 auto_compact_tokens: 60_000,
             },
             env,
             hook_settings: Some(json!({ "hooks": { "PreToolUse": [] } })),
+            permission: PermissionLaunch::default(),
             masker: Masker::new(Vec::new()),
         }
     }
@@ -1394,6 +1449,11 @@ while (my $line = <STDIN>) {
                 request_id: "perm-1".to_owned(),
                 summary: "Bash: rm -rf build".to_owned(),
                 reason: "outside workdir".to_owned(),
+                call: Some(PermissionCall {
+                    tool: PermissionTool::Shell,
+                    target: "rm -rf build".to_owned(),
+                    paths: Vec::new(),
+                }),
             }]
         );
         client.send_turn(&session, "crash").await.unwrap();
@@ -1411,6 +1471,11 @@ while (my $line = <STDIN>) {
 
     /// `ask`로 허가 요청을 받고, 답이 없는 동안 턴이 멈춰 있는지 확인한 뒤 답해서 가짜 provider가 받은 응답을 돌려준다.
     async fn answer_ask(answer: PermissionAnswer) -> Value {
+        answer_ask_by(|_| answer).await
+    }
+
+    /// 올라온 요청을 보고 `decide`가 정한 답을 보낸다.
+    async fn answer_ask_by(decide: impl FnOnce(&ProviderEvent) -> PermissionAnswer) -> Value {
         let dir = tempfile::tempdir().unwrap();
         let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
         let session = client
@@ -1428,7 +1493,7 @@ while (my $line = <STDIN>) {
         assert!(stalled.is_err(), "turn should wait for the answer");
 
         client
-            .answer_permission(&session, "perm-1", answer)
+            .answer_permission(&session, "perm-1", decide(&requested[0]))
             .await
             .unwrap();
         let resumed = take(&mut client, 4).await;
@@ -1459,6 +1524,49 @@ while (my $line = <STDIN>) {
                     "updatedInput": { "command": "rm -rf build" },
                 },
             })
+        );
+    }
+
+    /// 요청의 호출을 Saturn 규칙으로 판정해 `allow`와 `deny`로 답한다.
+    #[tokio::test]
+    async fn permission_rules() {
+        let policy = |verdict| Policy {
+            mode: Mode::Edit,
+            workdir: PathBuf::from("/work"),
+            rules: vec![Rule {
+                tool: PermissionTool::Shell,
+                pattern: "rm *".to_owned(),
+                verdict,
+            }],
+            always: Vec::new(),
+        };
+        let answer_by = |policy: Policy| {
+            answer_ask_by(move |event| {
+                let ProviderEvent::PermissionRequested {
+                    call: Some(call), ..
+                } = event
+                else {
+                    panic!("expected a readable permission request, got {event:?}");
+                };
+                match policy.decide(call) {
+                    Verdict::Allow => PermissionAnswer::AllowOnce,
+                    Verdict::Deny => PermissionAnswer::Deny { note: None },
+                    Verdict::Ask => panic!("rule should decide this call"),
+                }
+            })
+        };
+
+        let allowed = answer_by(policy(Verdict::Allow)).await;
+        let denied = answer_by(policy(Verdict::Deny)).await;
+
+        assert_eq!(allowed["response"]["behavior"], "allow");
+        assert_eq!(
+            allowed["response"]["updatedInput"],
+            json!({ "command": "rm -rf build" })
+        );
+        assert_eq!(
+            denied["response"],
+            json!({ "behavior": "deny", "message": DENY_MESSAGE })
         );
     }
 
@@ -1575,14 +1683,64 @@ while (my $line = <STDIN>) {
                 "id-1",
                 "--model",
                 "sonnet",
-                "--permission-mode",
-                "acceptEdits",
+                "--permission-prompt-tool",
+                "stdio",
                 "--autocompact",
                 "100000",
                 "--settings",
-                "{\"hooks\":{\"PreToolUse\":[]}}",
+                "{\"hooks\":{\"PreToolUse\":[]},\"permissions\":{\"ask\":[\"Bash\",\"Edit\",\"MultiEdit\",\"Write\",\"NotebookEdit\",\"Task\",\"Agent\",\"mcp__*\"]}}",
             ]
         );
+    }
+
+    #[test]
+    fn ask_settings_merge_into_hook_settings_and_stand_alone() {
+        let merged = with_ask_tools(json!({ "hooks": { "PreToolUse": [] } }));
+        let alone = with_ask_tools(Value::Null);
+
+        assert_eq!(merged["hooks"], json!({ "PreToolUse": [] }));
+        assert_eq!(merged["permissions"]["ask"], json!(ASK_TOOLS));
+        assert_eq!(alone, json!({ "permissions": { "ask": ASK_TOOLS } }));
+    }
+
+    #[test]
+    fn permission_call_reads_rule_tools_and_leaves_the_rest_to_the_user() {
+        let call = |tool: &str, input: Value| permission_call(tool, &input);
+
+        assert_eq!(
+            call("Bash", json!({ "command": "cargo test" })),
+            Some(PermissionCall {
+                tool: PermissionTool::Shell,
+                target: "cargo test".to_owned(),
+                paths: Vec::new(),
+            })
+        );
+        assert_eq!(
+            call("Edit", json!({ "file_path": "/work/a.rs" }))
+                .unwrap()
+                .paths,
+            vec!["/work/a.rs"]
+        );
+        assert_eq!(
+            call("NotebookEdit", json!({ "notebook_path": "/work/a.ipynb" }))
+                .unwrap()
+                .paths,
+            vec!["/work/a.ipynb"]
+        );
+        assert_eq!(
+            call("Task", json!({ "subagent_type": "explorer" })).unwrap(),
+            PermissionCall {
+                tool: PermissionTool::Subagent,
+                target: "explorer".to_owned(),
+                paths: Vec::new(),
+            }
+        );
+        assert_eq!(
+            call("mcp__docs__read", json!({})).unwrap().target,
+            "mcp__docs__read"
+        );
+        assert_eq!(call("WebFetch", json!({ "url": "https://x" })), None);
+        assert_eq!(call("Read", json!({ "file_path": "/etc/hosts" })), None);
     }
 
     #[test]
@@ -1606,22 +1764,28 @@ while (my $line = <STDIN>) {
         assert_eq!(
             found,
             UserProviderConfig {
-                has_permission: true,
                 has_auto_compact: true,
             }
         );
-        assert!(default_args(found, &launch).is_empty());
+        assert_eq!(
+            default_args(found, &launch),
+            vec!["--permission-prompt-tool", "stdio"]
+        );
         let mut big = launch.clone();
         big.defaults.auto_compact_tokens = 5_000_000;
         assert_eq!(
             default_args(
                 UserProviderConfig {
-                    has_permission: true,
                     has_auto_compact: false
                 },
                 &big
             ),
-            vec!["--autocompact", "1000000"]
+            vec![
+                "--permission-prompt-tool",
+                "stdio",
+                "--autocompact",
+                "1000000"
+            ]
         );
     }
 

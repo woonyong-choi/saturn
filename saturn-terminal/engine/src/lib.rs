@@ -22,6 +22,7 @@ mod handoff;
 mod intake;
 mod launch;
 mod outcomes;
+mod permission;
 mod requests;
 mod sessions;
 mod stop;
@@ -89,6 +90,9 @@ pub enum EngineError {
     /// 묻지 않은 창의 답이라 적용하지 않는다.
     #[error("no pending {what} for this answer")]
     UnexpectedAnswer { what: &'static str },
+    /// `ask`, `edit`, `read-only`, `full`이 아닌 권한 모드 이름이다.
+    #[error("unknown permission mode: {mode}")]
+    UnknownPermissionMode { mode: String },
     /// 이벤트를 붙일 실행이 없어 기록하지 못한다.
     #[error("no run to record the event of agent {}", agent.0)]
     NoRun { agent: AgentId },
@@ -126,6 +130,7 @@ impl EngineError {
             Self::JudgeKeyRequired { .. } => JUDGE_KEY_REQUIRED,
             Self::Unsupported { .. } => METHOD_NOT_FOUND,
             Self::UnexpectedAnswer { .. }
+            | Self::UnknownPermissionMode { .. }
             | Self::ChatNotAttached { .. }
             | Self::Store(StoreError::NotFound { .. })
             | Self::Queue(
@@ -552,6 +557,9 @@ impl Engine {
                     .await
             }
             Request::SetRecording { chat, on } => Ok(self.store.set_recording(chat, on).await?),
+            Request::SetPermissionMode { chat, mode } => {
+                self.set_permission_mode(chat, &mode).await
+            }
             Request::Usage { scope } => self.send_usage(client, scope).await,
             // TODO(#161): 작업 목록
             Request::ListTasks => Err(unsupported("ListTasks")),

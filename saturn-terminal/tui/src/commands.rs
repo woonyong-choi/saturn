@@ -77,7 +77,15 @@ pub const SATURN_COMMANDS: &[CommandSpec] = &[
         description: "판단 기록 켜기와 끄기",
         values: &["on", "off"],
     },
+    CommandSpec {
+        path: "permissions",
+        description: "권한 모드 바꾸기",
+        values: &PERMISSION_MODES,
+    },
 ];
+
+/// engine이 받는 권한 모드 이름. 초안.
+const PERMISSION_MODES: [&str; 4] = ["ask", "edit", "read-only", "full"];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlashCommand {
@@ -85,6 +93,9 @@ pub enum SlashCommand {
     Help,
     /// `/record on|off`
     Record { on: bool },
+    /// `/permissions ask|edit|read-only|full`
+    /// TODO(#177): 값 없이 실행하면 현재 모드를 보이는 동작은 조회 결과를 돌려주는 방식이 정해진 뒤에 넣는다
+    Permissions { mode: &'static str },
     /// 이름표가 없으면 가장 최근 대기 입력.
     Send { target: Option<TaskLabel> },
     /// 이름표가 없으면 가장 최근 대기 입력.
@@ -140,6 +151,7 @@ pub fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         "feedback" => SlashCommand::Feedback {
             correct: parse_feedback(&args)?,
         },
+        "permissions" => parse_permissions(&args)?,
         "tasks" => no_args("tasks", &args, SlashCommand::Tasks)?,
         "usage" => SlashCommand::Usage {
             range: parse_range(&args)?,
@@ -210,6 +222,20 @@ fn parse_target(command: &'static str, args: &[&str]) -> Result<Option<TaskLabel
         (Some(c), None) if LABEL_RANGE.contains(&c) => Ok(Some(TaskLabel(c))),
         _ => Err(invalid(command, argument)),
     }
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 인자 글자 수(오류 문구를 만들 때만)
+// basis: estimate
+fn parse_permissions(args: &[&str]) -> Result<SlashCommand, CommandError> {
+    let [argument] = args else {
+        return Err(invalid("permissions", &args.join(" ")));
+    };
+    PERMISSION_MODES
+        .iter()
+        .find(|mode| *mode == argument)
+        .map(|mode| SlashCommand::Permissions { mode })
+        .ok_or_else(|| invalid("permissions", argument))
 }
 
 // cost: time O(a), heap O(a), stack O(1)
@@ -345,6 +371,24 @@ mod tests {
                 reset_thresholds: true,
                 from: Some("v2".to_string())
             })
+        );
+    }
+
+    #[test]
+    fn parse_permissions_reads_one_known_mode() {
+        for mode in ["ask", "edit", "read-only", "full"] {
+            assert_eq!(
+                parse(&format!("/permissions {mode}")).unwrap(),
+                Some(SlashCommand::Permissions { mode })
+            );
+        }
+        assert!(parse("/permissions").is_err());
+        assert!(parse("/permissions plan").is_err());
+        assert!(parse("/permissions edit full").is_err());
+        assert!(
+            SATURN_COMMANDS
+                .iter()
+                .any(|spec| spec.path == "permissions" && spec.values.contains(&"read-only"))
         );
     }
 

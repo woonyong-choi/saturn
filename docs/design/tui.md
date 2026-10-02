@@ -271,7 +271,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | judge 키 입력 창 붙여넣기 | 제어 문자를 뺀 글을 가린 입력칸에 넣는다 |
 | `/record` | 명령 목록에 넣고 값 목록은 `on`, `off` |
 | `/add-dir` | 명령 목록에 넣고 값은 폴더 경로 하나. 더한 폴더는 채팅 기록에 저장하고 모든 provider session에 넘긴다. 폴더 설정은 읽지 않는다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)) |
-| `/permissions` | 명령 목록에 넣고 값 목록은 `ask`, `edit`, `read-only`, `full`(초안). 값 없이 실행하면 현재 모드를 보인다([권한](permissions.md)) |
+| `/permissions` | 명령 목록에 넣고 값 목록은 `ask`, `edit`, `read-only`, `full`(초안). 값을 주면 채팅 층 모드를 바꾼다. 값 없이 실행하면 현재 모드를 보이는 동작은 아직 없다([#177](https://github.com/woonyong-choi/saturn/issues/177), [권한](permissions.md)) |
 
 ### 요구사항
 

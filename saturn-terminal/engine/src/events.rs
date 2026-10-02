@@ -7,8 +7,9 @@ use std::pin::pin;
 use std::task::Poll;
 
 use saturn_core::agents::TreeStatus;
+use saturn_core::permission::Verdict;
 use saturn_core::providers::{ProviderClient, ProviderError};
-use saturn_protocol::event::ProviderEvent;
+use saturn_protocol::event::{PermissionCall, ProviderEvent};
 use saturn_protocol::ids::{AgentId, ChatId, InputId, LedgerSeq, Provider, RunId, TaskId};
 use saturn_protocol::rpc::{Notification, PermissionAnswer};
 use saturn_protocol::state::{EffectScope, SessionState, TaskState};
@@ -20,12 +21,23 @@ use crate::store::NewRun;
 use crate::{Engine, EngineError};
 
 /// 답을 기다리는 허가 요청이 속한 곳.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct PendingPermission {
     pub(crate) chat: ChatId,
     pub(crate) agent: AgentId,
     pub(crate) provider: Provider,
     pub(crate) task: TaskId,
+    /// `항상 허용` 답을 저장할 호출. 규칙으로 읽지 못한 요청은 `None`.
+    pub(crate) call: Option<PermissionCall>,
+}
+
+/// provider가 올린 허가 요청 한 건.
+#[derive(Clone, Copy)]
+struct PermissionRequest<'a> {
+    id: &'a str,
+    summary: &'a str,
+    reason: &'a str,
+    call: Option<&'a PermissionCall>,
 }
 
 /// 연결 하나가 낸 것. 연결이 끝났으면 `event`가 `None`이다.
@@ -180,10 +192,16 @@ impl Engine {
                 request_id,
                 summary,
                 reason,
+                call,
                 ..
             } => {
-                self.offer_permission(chat, live, request_id, summary, reason)
-                    .await;
+                let request = PermissionRequest {
+                    id: request_id,
+                    summary,
+                    reason,
+                    call: call.as_ref(),
+                };
+                self.on_permission_request(chat, live, request).await;
             }
             ProviderEvent::ContextSize { tokens, .. } => {
                 self.on_context_size(chat, live, *tokens).await;
@@ -358,15 +376,73 @@ impl Engine {
         }
     }
 
+    /// Saturn 규칙이 `allow`나 `deny`로 판정하면 사용자에게 묻지 않고 바로 답한다. `ask`이거나 답이 provider에
+    /// 닿지 않으면 TUI로 올린다.
+    async fn on_permission_request(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+        request: PermissionRequest<'_>,
+    ) {
+        let answer = match self.judge_permission(chat, live.agent, request.call).await {
+            Verdict::Allow => Some(PermissionAnswer::AllowOnce),
+            Verdict::Deny => Some(PermissionAnswer::Deny { note: None }),
+            Verdict::Ask => None,
+        };
+        if let Some(answer) = answer
+            && self.answer_by_rule(chat, live, request.id, answer).await
+        {
+            return;
+        }
+        self.offer_permission(chat, live, request).await;
+    }
+
+    /// provider가 답을 받았으면 참. 받지 못했으면 사용자에게 물어야 하므로 거짓.
+    async fn answer_by_rule(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+        request_id: &str,
+        answer: PermissionAnswer,
+    ) -> bool {
+        let is_allow = answer != PermissionAnswer::Deny { note: None };
+        let sent = match self.provider_mut(chat, live.provider) {
+            Ok(connection) => {
+                connection
+                    .answer_permission(&live.provider_session, request_id, answer)
+                    .await
+            }
+            Err(error) => Err(error),
+        };
+        match sent {
+            Ok(()) => {
+                tracing::debug!(
+                    request = request_id,
+                    is_allow,
+                    "permission answered by rule"
+                );
+                true
+            }
+            Err(error) => {
+                tracing::warn!(request = request_id, %error, "rule answer not sent, asking the user");
+                false
+            }
+        }
+    }
+
     /// 허가 요청을 기록 뒤에 TUI로 올린다. 답이 올 때까지 provider는 그 호출에서 멈춰 있고 작업 시계도 멈춘다.
     async fn offer_permission(
         &mut self,
         chat: ChatId,
         live: &LiveSession,
-        request_id: &str,
-        summary: &str,
-        reason: &str,
+        request: PermissionRequest<'_>,
     ) {
+        let PermissionRequest {
+            id: request_id,
+            summary,
+            reason,
+            call,
+        } = request;
         let Some(task) = self.runs.task_of.get(&live.agent).copied() else {
             tracing::warn!(request = request_id, "permission request without a task");
             return;
@@ -387,6 +463,7 @@ impl Engine {
                 agent: live.agent,
                 provider: live.provider,
                 task,
+                call: call.cloned(),
             },
         );
         let request = Notification::PermissionRequested {
@@ -409,7 +486,8 @@ impl Engine {
         .await;
     }
 
-    /// 사용자 답을 provider 값으로 넘긴다. 다른 TUI의 창은 지운다.
+    /// 사용자 답을 provider 값으로 넘긴다. 다른 TUI의 창은 지운다. 규칙으로 읽은 호출의 `항상 허용`은 Saturn이
+    /// 저장해 판정하므로 provider에는 이번만 허용으로 보낸다.
     ///
     /// # Errors
     /// 묻지 않은 요청이면 `UnexpectedAnswer`, 열린 session이 없으면 `Provider(NotSent)`. provider가 받지 못했으면
@@ -424,7 +502,7 @@ impl Engine {
             .flow
             .permissions
             .get(&request_id)
-            .copied()
+            .cloned()
             .ok_or(EngineError::UnexpectedAnswer { what: "permission" })?;
         let live =
             self.flow
@@ -434,10 +512,20 @@ impl Engine {
                 .ok_or_else(|| ProviderError::NotSent {
                     reason: "no open session for the permission request".to_owned(),
                 })?;
+        let is_saved_here = answer == PermissionAnswer::AllowAlways && pending.call.is_some();
+        let sent = if is_saved_here {
+            PermissionAnswer::AllowOnce
+        } else {
+            answer
+        };
         self.provider_mut(pending.chat, pending.provider)?
-            .answer_permission(&live.provider_session, &request_id, answer)
+            .answer_permission(&live.provider_session, &request_id, sent)
             .await?;
         self.flow.permissions.remove(&request_id);
+        if let (true, Some(call)) = (is_saved_here, &pending.call) {
+            self.save_always_allow(pending.chat, pending.agent, call)
+                .await;
+        }
         self.rpc.resolve_permission(client, &request_id).await;
         let is_still_waiting = self
             .flow

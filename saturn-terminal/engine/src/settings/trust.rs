@@ -36,6 +36,17 @@ pub struct FolderTrustPrompt {
     pub changed_lines: Vec<(usize, String)>,
 }
 
+impl FolderTrustPrompt {
+    /// 병합이 무시하는 키를 적용되는 항목에서 무시되는 항목으로 옮긴다.
+    pub(super) fn ignore(&mut self, key: &str) {
+        let before = self.applied.len();
+        self.applied.retain(|applied| applied != key);
+        if self.applied.len() < before {
+            self.ignored.push(key.to_owned());
+        }
+    }
+}
+
 /// 경로마다 마지막으로 신뢰한 지문 하나.
 #[derive(Debug, Default)]
 pub struct TrustStore {

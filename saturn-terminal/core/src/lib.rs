@@ -6,6 +6,7 @@
 
 pub mod agents;
 pub mod judges;
+pub mod permission;
 pub mod providers;
 pub mod queue;
 pub mod sessions;

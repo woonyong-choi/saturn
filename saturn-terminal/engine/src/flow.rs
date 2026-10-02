@@ -7,7 +7,7 @@ use std::time::Instant;
 use saturn_core::judges::JudgeRequest;
 use saturn_protocol::ids::{
     AgentId, ChatId, ChatRevision, InputId, JudgmentId, Provider, ProviderSessionId, RunId,
-    SessionId, TaskId, TaskLabel,
+    SessionId, SettingsRevision, TaskId, TaskLabel,
 };
 use saturn_protocol::rpc::{Alert, Notification};
 use saturn_protocol::state::{Disposition, TaskState};
@@ -130,6 +130,8 @@ pub(crate) struct FlowState {
     pub(crate) packet_turns: HashMap<AgentId, u32>,
     /// 답을 기다리는 허가 요청. 키는 `request_id`.
     pub(crate) permissions: HashMap<String, PendingPermission>,
+    /// 에이전트가 가장 나중에 시작한 입력의 설정 번호. 허가 요청 판정이 그 번호의 규칙을 쓴다.
+    pub(crate) settings_of: HashMap<AgentId, SettingsRevision>,
     /// 보낸 뒤 결과를 모르는 작업.
     pub(crate) needs_check: HashMap<TaskId, NeedsCheck>,
     /// 사용자가 정한 다음 provider. 그 provider의 session이 열리면 지운다.
@@ -159,6 +161,7 @@ impl Default for FlowState {
             context_tokens: HashMap::new(),
             packet_turns: HashMap::new(),
             permissions: HashMap::new(),
+            settings_of: HashMap::new(),
             needs_check: HashMap::new(),
             switch_to: HashMap::new(),
             stopping: HashMap::new(),

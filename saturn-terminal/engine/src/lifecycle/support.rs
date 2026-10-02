@@ -2,7 +2,9 @@
 
 use saturn_core::judges::{RELATION_OPTIONS, RouteDecision, SEND_OPTIONS};
 use saturn_core::queue::{Permission, QueuedInput};
-use saturn_protocol::event::{Activity, ProviderEvent, ToolCategory, ToolDetail, TurnOrigin};
+use saturn_protocol::event::{
+    Activity, PermissionCall, PermissionTool, ProviderEvent, ToolCategory, ToolDetail, TurnOrigin,
+};
 use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, SubagentId};
 use saturn_protocol::state::InputState;
 use serde_json::{Value, json};
@@ -35,7 +37,17 @@ impl Flow {
 
     /// `config`는 시작 전에 쓰는 사용자 설정 파일이다.
     pub(super) async fn with_config(config: &str, judge_replies: Vec<FakeReply>) -> Self {
-        let fixture = Fixture::new();
+        Self::with_setup(config, &[], judge_replies).await
+    }
+
+    /// `overrides`는 실행 `-c` 층의 `키=값`이다.
+    pub(super) async fn with_setup(
+        config: &str,
+        overrides: &[&str],
+        judge_replies: Vec<FakeReply>,
+    ) -> Self {
+        let mut fixture = Fixture::new();
+        fixture.options.run_overrides = overrides.iter().map(|item| (*item).to_owned()).collect();
         if !config.is_empty() {
             fixture.write_user_config(config);
         }
@@ -379,5 +391,27 @@ pub(super) fn permission(agent: AgentId, request_id: &str) -> ProviderEvent {
         request_id: request_id.to_owned(),
         summary: "run cargo test".to_owned(),
         reason: "the build needs checking".to_owned(),
+        call: None,
+    }
+}
+
+/// 규칙이 읽을 수 있는 호출을 가진 허가 요청.
+pub(super) fn permission_for(
+    agent: AgentId,
+    request_id: &str,
+    tool: PermissionTool,
+    target: &str,
+    paths: &[&str],
+) -> ProviderEvent {
+    ProviderEvent::PermissionRequested {
+        agent,
+        request_id: request_id.to_owned(),
+        summary: format!("{target} {}", paths.join(" ")),
+        reason: String::new(),
+        call: Some(PermissionCall {
+            tool,
+            target: target.to_owned(),
+            paths: paths.iter().map(|path| (*path).to_owned()).collect(),
+        }),
     }
 }

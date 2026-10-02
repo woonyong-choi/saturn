@@ -275,6 +275,10 @@ impl App {
                 None
             }
             SlashCommand::Record { on } => chat.map(|chat| Request::SetRecording { chat, on }),
+            SlashCommand::Permissions { mode } => chat.map(|chat| Request::SetPermissionMode {
+                chat,
+                mode: mode.to_owned(),
+            }),
             SlashCommand::Send { target } => self
                 .chat
                 .queued_by_label(target)

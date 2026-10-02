@@ -1,8 +1,10 @@
 //! provider 연결을 만들고 session을 여는 공통 도구. 채팅의 작업 폴더와 환경은 `chat_env`를 쓴다.
 //! 설계: docs/design/providers-and-sessions.md
 
+use std::ffi::OsString;
 use std::path::PathBuf;
 
+use saturn_core::permission::Rule;
 use saturn_core::providers::{ProviderClient, ProviderError, SessionHandle, SessionSpec};
 use saturn_core::queue::QueuedInput;
 use saturn_protocol::ids::{
@@ -12,8 +14,8 @@ use saturn_protocol::ids::{
 use crate::dispatch::MAX_SEND_ATTEMPTS;
 use crate::flow::LiveSession;
 use crate::providers::{
-    FIRST_INPUT_ORDER, LaunchSpec, ProviderConnection, SaturnDefaults, UserProviderConfig,
-    is_installed, program_name,
+    FIRST_INPUT_ORDER, HomeInput, LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults,
+    UserProviderConfig, is_installed, prepare_codex_home, program_name,
 };
 use crate::secrets::HookPolicy;
 use crate::{Engine, EngineError};
@@ -134,7 +136,10 @@ impl Engine {
     }
 
     /// 작업 폴더와 환경은 채팅에 고정한 값이고, judge 키 변수는 뺀다. 훅은 에이전트가 키 저장소를 읽지 못하게 막는다.
-    /// TODO(#232): 권한 규칙을 provider 실행 설정으로 번역한다. 그 전에는 수정을 항상 허용하는 기본값을 쓴다
+    /// Saturn 권한 규칙은 provider 실행 설정으로 번역해 넣는다.
+    ///
+    /// # Errors
+    /// 붙은 적 없는 채팅이면 `ChatNotAttached`, 규칙을 번역하지 못하면 `Provider(NotSent)`다.
     pub(crate) async fn launch_spec(
         &self,
         provider: Provider,
@@ -156,6 +161,12 @@ impl Engine {
         })?;
         let hook =
             HookPolicy::new(&self.options.home, &user_home).pre_tool_use_settings(&saturn_bin);
+        let permission = match provider {
+            Provider::Codex => {
+                self.codex_permission(&settings.permission().rules, &provider_env)?
+            }
+            Provider::Claude => PermissionLaunch::default(),
+        };
         Ok(LaunchSpec {
             provider,
             program: PathBuf::from(program_name(provider)),
@@ -163,12 +174,41 @@ impl Engine {
             settings: revision,
             user_config: UserProviderConfig::default(),
             defaults: SaturnDefaults {
-                allow_edits: true,
                 auto_compact_tokens: settings.context_budget(provider).hard_limit(None),
             },
             env: provider_env,
             hook_settings: Some(hook),
+            permission,
             masker: self.masker.clone(),
+        })
+    }
+
+    /// 사용자 `~/.codex`는 읽기만 하고 전용 `CODEX_HOME`을 만든다. 사용자 폴더는 환경의 `CODEX_HOME`, 없으면
+    /// `HOME/.codex`다.
+    fn codex_permission(
+        &self,
+        rules: &[Rule],
+        env: &[(OsString, OsString)],
+    ) -> Result<PermissionLaunch, ProviderError> {
+        let value = |name: &str| {
+            env.iter()
+                .find(|(key, _)| key == name)
+                .map(|(_, value)| PathBuf::from(value))
+        };
+        let user_codex_home = value("CODEX_HOME")
+            .or_else(|| value("HOME").map(|home| home.join(".codex")))
+            .unwrap_or_else(|| PathBuf::from("/.codex"));
+        let prepared = prepare_codex_home(HomeInput {
+            saturn_home: &self.options.home,
+            user_codex_home: &user_codex_home,
+            rules,
+        })
+        .map_err(|error| ProviderError::NotSent {
+            reason: format!("failed to prepare codex home: {error}"),
+        })?;
+        Ok(PermissionLaunch {
+            codex_home: Some(prepared.path),
+            mcp_servers: prepared.mcp_servers,
         })
     }
 }
