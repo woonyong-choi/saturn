@@ -71,6 +71,10 @@ impl Engine {
         Ok(())
     }
 
+    #[expect(
+        clippy::cognitive_complexity,
+        reason = "요청 종류마다 한 줄씩 넘기는 분배라 나누면 대응표가 흩어지고, .await마다 점수가 오른다"
+    )]
     async fn route(&mut self, client: ClientId, request: Request) -> Result<(), EngineError> {
         self.ensure_router_open(&request)?;
         match request {

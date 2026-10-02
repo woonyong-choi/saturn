@@ -414,6 +414,10 @@ impl Engine {
     }
 
     /// provider가 답을 받았으면 참. 받지 못했으면 사용자에게 물어야 하므로 거짓.
+    #[expect(
+        clippy::cognitive_complexity,
+        reason = "성공과 실패 로그 매크로 둘이 점수를 올리고 흐름은 단순하다"
+    )]
     async fn answer_by_rule(
         &mut self,
         chat: ChatId,
