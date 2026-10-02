@@ -1,9 +1,6 @@
 //! 전체 화면 TUI. engine과 `protocol` 메시지로만 주고받고 provider를 모른다.
 //! 설계: docs/design/tui.md
 
-// TODO(#74): 뼈대의 `todo!` 본문 때문에 둔 허용, 구현이 끝나면 지운다
-#![allow(unused_variables, dead_code)]
-
 pub mod app;
 pub mod client;
 pub mod commands;
