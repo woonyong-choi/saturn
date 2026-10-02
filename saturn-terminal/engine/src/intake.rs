@@ -39,12 +39,9 @@ impl Engine {
         chat: ChatId,
         client_ref: u64,
         text: String,
-        pinned_model: Option<String>,
         skip_relation: bool,
     ) -> Result<(), EngineError> {
-        let input = self
-            .accept_input(client, chat, text, pinned_model, skip_relation)
-            .await?;
+        let input = self.accept_input(client, chat, text, skip_relation).await?;
         self.send(client, Notification::InputAccepted { client_ref, input })
             .await;
         self.notify_input(input).await;
@@ -113,10 +110,10 @@ impl Engine {
         client: ClientId,
         chat: ChatId,
         text: String,
-        pinned_model: Option<String>,
         skip_relation: bool,
     ) -> Result<InputId, EngineError> {
         let workdir = self.attached_workdir(client, chat)?;
+        let pinned_model = self.store.chat_model(chat).await?;
         let settings = self.fix_settings(client, chat, &workdir).await?;
         self.note_rules_revision(chat, settings).await;
         let permission = self.input_permission(chat, settings).await;
@@ -192,8 +189,8 @@ impl Engine {
         Ok(revision)
     }
 
-    /// 같은 채팅 입력을 접수 순서대로 하나씩 판단하고 적용한다. 모델을 고정했거나 관계 판단 없이 대기하는
-    /// 입력(`skip_relation`)은 router를 부르지 않는다.
+    /// 같은 채팅 입력을 접수 순서대로 하나씩 판단하고 적용한다. 관계 판단 없이 대기하는 입력(`skip_relation`)은
+    /// router를 부르지 않는다. 모델을 고정한 입력은 관계 판단을 받고 `target_model`만 묻지 않는다.
     ///
     /// # Errors
     /// 판단 요청에 쓸 설정 번호를 읽지 못하면 `Settings`, 적용 오류는 `apply_decision`과 같다.
@@ -203,7 +200,7 @@ impl Engine {
                 break;
             };
             let record = self.queued(input)?;
-            if record.pinned_model.is_some() || record.skip_relation {
+            if record.skip_relation {
                 let decision = direct_decision(&record, revision);
                 self.apply_decision(input, decision, false).await?;
             } else {
@@ -237,7 +234,7 @@ impl Engine {
                         return self.wait_in_queue(input).await;
                     }
                     retried = true;
-                    if record.pinned_model.is_none() && !record.skip_relation {
+                    if !record.skip_relation {
                         self.start_router(&record, current, retried);
                         return Ok(());
                     }
@@ -325,7 +322,12 @@ impl Engine {
         if let Some(alert) = self.routers.observe(&exchange) {
             self.notify_alert(record.chat, alert).await;
         }
-        let read = self.read_verdict(request, &exchange, &settings, job.revision, record.settings);
+        let mut read =
+            self.read_verdict(request, &exchange, &settings, job.revision, record.settings);
+        // 고정 모델은 `target_model` 선택만 대신하고 관계 판단은 그대로 받는다
+        if record.pinned_model.is_some() {
+            read.decision.model.clone_from(&record.pinned_model);
+        }
         let fallbacks = read.fallback_reasons();
         let context = RecordContext {
             chat: record.chat,
@@ -357,12 +359,12 @@ impl Engine {
             "chat: {activity}\nprevious input handled as: {previous}\nuser input: {}",
             record.text
         );
-        // TODO(#168): 허용 모델 후보가 정해지면 `target_model`을 묻는다
+        // TODO(#168): `/model` 목록을 허용 후보로 넣어 `target_model`을 묻고, router가 고른 모델을 적용한다
         // TODO(#90): 보류 작업이 있으면 `resume_held`를 묻고 `note_resume_signal`로 잇는다
         RouterRequest {
             model: self.routers.active().model().to_owned(),
             state: sanitize_state(&state, &self.masker),
-            sets: questions_for_input(running, false, false, &[]),
+            sets: questions_for_input(running, record.pinned_model.is_some(), false, &[]),
         }
     }
 

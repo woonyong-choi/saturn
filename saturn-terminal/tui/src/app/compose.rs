@@ -12,6 +12,7 @@ use crate::commands::{self, CommandError, SATURN_COMMANDS, SlashCommand};
 use crate::i18n::{self, Lang};
 use crate::keys::Action;
 use crate::view::composer::Composer;
+use crate::view::model_picker::ModelPicker;
 use crate::view::popup::{self, Popup, PopupItem, PopupKind};
 use crate::view::router_version::RouterVersionScreen;
 use crate::view::task_list::TaskList;
@@ -253,7 +254,6 @@ impl App {
                 chat,
                 client_ref: self.next_client_ref,
                 text: body,
-                pinned_model: None,
                 skip_relation: queued && self.chat.is_running(),
             }),
         ]
@@ -314,6 +314,11 @@ impl App {
             SlashCommand::RouterVersion => {
                 self.open_window(Window::RouterVersion(RouterVersionScreen::default()));
                 Some(Request::ListRouterVersions)
+            }
+            SlashCommand::Model { provider } => {
+                let picker = ModelPicker::new(provider, self.chat.pinned_model.clone());
+                self.open_window(Window::Model(picker));
+                chat.map(|chat| Request::ListModels { chat, provider })
             }
             SlashCommand::Provider { .. } => None,
         };

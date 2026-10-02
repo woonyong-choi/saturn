@@ -31,6 +31,7 @@ use crate::view::composer::Composer;
 use crate::view::folder_trust::FolderTrust;
 use crate::view::full_transcript::FullTranscript;
 use crate::view::live_area::LiveArea;
+use crate::view::model_picker::ModelPicker;
 use crate::view::permission::PermissionQueue;
 use crate::view::popup::{Popup, PopupItem, PopupSuppress};
 use crate::view::resume_prompt::ResumePrompt;
@@ -81,6 +82,7 @@ pub enum Window {
     Usage(UsageScreen),
     RouterVersion(RouterVersionScreen),
     TrainConfirm(TrainConfirm),
+    Model(ModelPicker),
     Shortcuts,
 }
 
@@ -228,6 +230,7 @@ impl App {
             Some(Window::Usage(_)) => return KeyArea::Usage,
             Some(Window::RouterVersion(_)) => return KeyArea::RouterVersion,
             Some(Window::TrainConfirm(_)) => return KeyArea::TrainConfirm,
+            Some(Window::Model(_)) => return KeyArea::ModelPicker,
             _ => {}
         }
         if self.popup.is_some() {
@@ -442,6 +445,7 @@ impl App {
                 self.on_screen_action(action)
             }
             KeyArea::TrainConfirm => self.on_train_action(action),
+            KeyArea::ModelPicker => self.on_model_action(action),
             KeyArea::Popup => self.on_popup_action(action),
             _ => self.on_composer_action(action),
         }

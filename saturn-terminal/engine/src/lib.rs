@@ -23,6 +23,7 @@ mod flow;
 mod handoff;
 mod intake;
 mod launch;
+mod models;
 mod outcomes;
 mod permission;
 mod requests;
@@ -554,10 +555,9 @@ impl Engine {
                 chat,
                 client_ref,
                 text,
-                pinned_model,
                 skip_relation,
             } => {
-                self.submit_input(client, chat, client_ref, text, pinned_model, skip_relation)
+                self.submit_input(client, chat, client_ref, text, skip_relation)
                     .await
             }
             Request::RunAsNewTask { input } => self.run_as_new_task(client, input).await,
@@ -589,6 +589,10 @@ impl Engine {
             Request::Usage { scope, folder } => {
                 self.send_usage(client, scope, folder.as_deref()).await
             }
+            Request::SetModel { chat, model } => self.set_model(client, chat, &model).await,
+            Request::ListModels { chat, provider } => {
+                self.send_models(client, chat, provider).await
+            }
             // TODO(#161): 작업 목록
             Request::ListTasks => Err(unsupported("ListTasks")),
             // TODO(#91): 학습과 router 버전
@@ -606,7 +610,7 @@ impl Engine {
         }
     }
 
-    /// 순서: `StartInfo` → `HistoryChunk` → 답을 기다리는 허가 요청 → 시작 안내와 키·신뢰 창.
+    /// 순서: `StartInfo` → `HistoryChunk` → 답을 기다리는 허가 요청 → 고정 모델(`ModelPinned`, 고정했을 때만) → 시작 안내와 키·신뢰 창.
     /// 새 채팅은 `workdir`로 만들어 그 폴더에 고정한다. 있는 채팅은 TUI가 다른 폴더를 넘겨도
     /// 처음 폴더로 폴더 설정 층과 신뢰를 판단하고, 환경 `env`만 가장 최근 TUI의 것으로 바꾼다.
     /// `overrides`는 이 접속의 입력에만 적용하는 실행 층이다.
@@ -655,6 +659,7 @@ impl Engine {
             },
         );
         self.presence = Presence::Attached;
+        self.send_chat_model(client, chat).await?;
         self.send_start_notices(client, applied).await;
         Ok(())
     }

@@ -79,7 +79,7 @@ impl Store {
     /// `Ended`가 아닌 메인을 id 순서로 돌려준다. 마지막 턴 값이 없으면 `None`.
     pub async fn live_mains(&self) -> Result<Vec<(SessionRecord, Option<LastTurn>)>, StoreError> {
         let rows = sqlx::query(
-            "SELECT id, chat_id, agent_id, role, provider, provider_session, state, delivered, \
+            "SELECT id, chat_id, agent_id, role, provider, provider_session, model, state, delivered, \
              last_active, last_turn_ended_at FROM sessions \
              WHERE role = 'Main' AND state != 'Ended' ORDER BY id",
         )
@@ -190,6 +190,19 @@ mod tests {
         let live = store.live_mains().await.unwrap();
 
         assert!(live.is_empty());
+    }
+
+    #[tokio::test]
+    async fn session_model_round_trips_through_live_mains() {
+        let (_dir, store) = temp_store().await;
+        let (chat, _, session, _) = chat_with_run(&store).await;
+        let mut record = session_record(session, chat, SessionState::ClosedResumable);
+        record.model = Some("opus".to_owned());
+        store.upsert_session(&record).await.unwrap();
+
+        let live = store.live_mains().await.unwrap();
+
+        assert_eq!(live[0].0.model.as_deref(), Some("opus"));
     }
 
     #[tokio::test]

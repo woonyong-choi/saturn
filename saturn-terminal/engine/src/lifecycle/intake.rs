@@ -27,14 +27,7 @@ async fn record_write_failure_sends_nothing_anywhere() {
 
     let error = flow
         .engine
-        .submit_input(
-            CLIENT,
-            flow.chat,
-            1,
-            "fix the build".to_owned(),
-            None,
-            false,
-        )
+        .submit_input(CLIENT, flow.chat, 1, "fix the build".to_owned(), false)
         .await
         .unwrap_err();
 
@@ -94,12 +87,12 @@ async fn unattached_client_cannot_submit() {
 
     let wrong_client = flow
         .engine
-        .submit_input(ClientId(2), flow.chat, 1, "hi".to_owned(), None, false)
+        .submit_input(ClientId(2), flow.chat, 1, "hi".to_owned(), false)
         .await
         .unwrap_err();
     let wrong_chat = flow
         .engine
-        .submit_input(CLIENT, ChatId(99), 1, "hi".to_owned(), None, false)
+        .submit_input(CLIENT, ChatId(99), 1, "hi".to_owned(), false)
         .await
         .unwrap_err();
 
@@ -173,14 +166,16 @@ async fn first_input_without_any_provider_is_rejected_and_sent_nowhere() {
 }
 
 #[tokio::test]
-async fn pinned_model_skips_router_and_goes_to_the_session_as_given() {
-    let mut flow = Flow::new(Vec::new()).await;
+async fn pinned_model_input_is_judged_and_goes_to_the_session_with_that_model() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    let model = saturn_protocol::rpc::ModelChoice {
+        provider: Provider::Claude,
+        model: "the-pinned-model".to_owned(),
+    };
 
-    let input = flow
-        .submit_with("hello", Some("the-pinned-model"), false)
-        .await;
+    let input = flow.submit_with("hello", Some(model), false).await;
 
-    assert_eq!(flow.router_calls(), 0);
+    assert_eq!(flow.router_calls(), 1);
     assert_eq!(flow.state(input), InputState::Applied);
     assert!(matches!(
         &flow.fake.calls()[0],

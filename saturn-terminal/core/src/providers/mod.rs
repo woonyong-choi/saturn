@@ -5,7 +5,7 @@ use std::future::Future;
 
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, ProviderSessionId, SettingsRevision, SubagentId};
-use saturn_protocol::rpc::PermissionAnswer;
+use saturn_protocol::rpc::{ModelInfo, PermissionAnswer};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderError {
@@ -120,6 +120,13 @@ pub trait ProviderClient: Send {
         &mut self,
         session: &ProviderSessionId,
     ) -> impl Future<Output = Result<(), ProviderError>> + Send;
+
+    /// 이 provider에서 고를 수 있는 모델. 보이는 모델만 provider가 알려 준 순서로 돌려준다.
+    ///
+    /// # Errors
+    /// provider가 목록을 주지 않으면 `NotSent`, 연결이 끊겼으면 `ConnectionLost`.
+    fn list_models(&mut self)
+    -> impl Future<Output = Result<Vec<ModelInfo>, ProviderError>> + Send;
 
     /// 연결이 끝나면 `None`.
     fn next_event(&mut self) -> impl Future<Output = Option<ProviderEvent>> + Send;

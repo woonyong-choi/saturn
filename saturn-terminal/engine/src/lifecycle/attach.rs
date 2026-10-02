@@ -76,6 +76,7 @@ async fn chat_with_history(engine: &Engine, workdir: &Path) -> ChatId {
             role: AgentRole::Main,
             provider: Provider::Codex,
             provider_session: None,
+            model: None,
             state: SessionState::Open,
             delivered: LedgerSeq(0),
             idle_since: None,

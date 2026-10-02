@@ -1,7 +1,8 @@
 //! 판단 적용 테스트: 적용 직전 채팅 revision을 비교하고, 어긋나면 한 번만 다시 판단한다.
 
 use saturn_core::routers::RouteDecision;
-use saturn_protocol::ids::{ChatRevision, InputId};
+use saturn_protocol::ids::{ChatRevision, InputId, Provider};
+use saturn_protocol::rpc::ModelChoice;
 use saturn_protocol::state::{Disposition, InputState};
 
 use super::support::{CLIENT, Flow, idle_reply, router_down, running_reply};
@@ -105,17 +106,26 @@ async fn matching_revision_applies_without_rerouting() {
 }
 
 #[tokio::test]
-async fn pinned_model_input_waits_without_router_while_task_runs() {
-    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+async fn pinned_model_input_still_gets_the_relation_judgment_while_task_runs() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.9, "independent", "spawn"),
+    ])
+    .await;
     flow.submit("first request").await;
+    let model = ModelChoice {
+        provider: Provider::Claude,
+        model: "opus".to_owned(),
+    };
 
-    let pinned = flow.submit_with("use that model", Some("m"), false).await;
+    let pinned = flow
+        .submit_with("unrelated question", Some(model), false)
+        .await;
 
-    assert_eq!(flow.router_calls(), 1);
-    assert_eq!(flow.state(pinned), InputState::Queued);
+    assert_eq!(flow.router_calls(), 2);
     assert_eq!(
         flow.engine.queue.disposition(pinned),
-        Some(Disposition::Queue)
+        Some(Disposition::NewTask)
     );
 }
 
@@ -169,14 +179,7 @@ async fn stop_while_judging_holds_the_input_and_drops_the_late_judgment() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     let release = flow.transport.hold_next_call();
     flow.engine
-        .submit_input(
-            CLIENT,
-            flow.chat,
-            1,
-            "fix the build".to_owned(),
-            None,
-            false,
-        )
+        .submit_input(CLIENT, flow.chat, 1, "fix the build".to_owned(), false)
         .await
         .unwrap();
     let (input, _) = flow.engine.queue.next_to_route(flow.chat).unwrap();

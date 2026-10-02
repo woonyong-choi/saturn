@@ -7,6 +7,7 @@ pub mod folder_trust;
 pub mod footer;
 pub mod full_transcript;
 pub mod live_area;
+pub mod model_picker;
 pub mod permission;
 pub mod popup;
 pub mod resume_prompt;

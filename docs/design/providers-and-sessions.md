@@ -160,6 +160,18 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 
 보조 에이전트가 물려받는 설정 층은 [설정](settings.md)에 있다. router가 무엇을 묻는지는 [router](router.md)에 있다.
 
+### 모델 고르기
+
+사용자는 TUI `/model`로 다음 입력부터 쓸 모델을 고른다([TUI](tui.md#영역)). Claude Code와 Codex의 `/model`이 session 안에서 다시 바꿀 때까지 유지되는 것과 같게, 고른 모델은 그 채팅에서 다시 고를 때까지 모든 입력에 붙는다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정).
+
+- 목록은 provider가 알려 준다. Codex는 app-server `model/list`에서 숨기지 않은 모델을 쪽마다 `nextCursor`를 따라 모으고, Claude는 Claude Code `/model`이 보이는 별칭(기본, `opus`, `sonnet`, `haiku`)이다. 기본은 `--model`을 넘기지 않는 것과 같다. 설치된 provider만 보이고, 목록은 Claude, Codex 순이다. 첫 입력의 기본 provider와 같은 순서다.
+- TUI가 `ListModels`(provider를 주면 그 provider만)로 요청하면 engine이 `Models` 알림으로 답한다. provider 하나가 목록을 못 주면 그 provider를 빼고 로그만 남기고, 모두 못 주면 빈 목록을 보내고 오류로 답한다. TUI 창이 끝없이 기다리지 않게 하기 위해서다.
+- 고른 모델은 TUI가 `SetModel`로 알리면 engine이 채팅별로 기록 저장소에 저장하고(`chats.pinned_model`) 붙은 모든 TUI에 `ModelPinned`로 알린다. 고정한 채팅에 붙을 때도 같은 알림을 보낸다. 그래서 TUI를 다시 열거나 채팅을 옮겨도 다시 바꿀 때까지 유지된다. 입력은 모델을 싣지 않고, engine이 접수 때 채팅의 고정값을 읽어 입력에 남긴다. 모델이 provider를 정하고, 같은 이름이 두 provider에 있어도 구분되도록 `<provider>/<model>` 글로 저장한다.
+- `sessions` 기록은 session을 열 때 고른 모델(`model`)을 남긴다. 고르지 않았으면 provider 기본값이라 비어 있다. 입력의 모델이 열린 메인의 모델과 다르면 그 메인을 쓰지 않고 새 메인 session을 열어 패킷을 넘기고, 떠나는 메인은 보관한다([provider 전환](#provider-전환)). 다른 모델로 연 보관 session은 되돌아갈 때도 재개하지 않는다. 열린 session의 모델을 provider 안에서 바꾸는 방식은 쓰지 않는다. session 기록의 모델과 실제 모델이 어긋나지 않게 하기 위해서다. 같은 provider 안에서 모델만 바뀐 교체는 provider 전환 안내 줄을 남기지 않는다.
+- 맥락 정리로 여는 새 session은 이전 session의 모델을 이어 쓴다.
+- provider의 `/model` 명령은 provider 명령 목록에서 빼고 Saturn `/model`로만 처리한다. provider가 몰래 모델을 바꿔 기록과 어긋나는 일을 막기 위해서다. 모델을 고르지 않은 채 provider 설정이나 환경으로 정해진 모델은 막지 않고 추적만 한다(위 provider 실행 절).
+- router의 `target_model` 후보는 이 목록과 같다([router](router.md)). router가 고른 모델을 적용하는 일은 아직 없다.
+
 ### provider 전환
 
 한 채팅 안에서 Codex와 Claude를 바꿔 가도 채팅은 하나로 이어진다. 채팅마다 열린 메인 session은 하나다. `sessions`는 입력을 보내는 순간 대상 session을 정한다.
@@ -174,7 +186,7 @@ session 교체는 같은 채팅·역할 안에서 턴이 끝난 경계에만 한
 - 떠나는 메인은 새 session이 열린 뒤에 보관한다. 새 session을 열지 못하면 떠나는 메인은 그대로 열려 있다. provider 둘 다 열리지 않은 채팅이 생기는 일을 막기 위해서다.
 - 패킷의 고정 구역이 `P_hard`도 넘으면 새 session을 열지 않고 입력을 작업과 함께 보류하며 TUI에 `고정 제약이 길어 맥락 정리를 미룹니다`와 제약 목록을 보인다. 사용자가 `/continue`를 하면 다시 판정한다.
 - 열린 메인이 있으면 그 메인이 이어 갈 session이다. 보관 session이 더 나중에 등록돼도 열린 메인을 먼저 본다. provider를 오간 뒤 등록 순서와 열린 순서가 다르기 때문이다.
-- 모델 고정이 provider로 이어지는 대응은 정해지기 전이라([#168](https://github.com/woonyong-choi/saturn/issues/168)) `engine`은 입력이 아니라 내부 호출(`switch_provider`)로만 다음 provider를 바꾼다.
+- 입력에 고정한 모델이 있으면 그 모델의 provider로 보낸다([모델 고르기](#모델-고르기)). 모델을 고르지 않은 입력의 provider는 `engine`의 내부 호출(`switch_provider`)로만 바꾼다.
 
 ### 그 provider로 돌아가기
 
@@ -297,6 +309,10 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | 트리 유휴와 프로세스 중지를 모두 확인한 뒤에만 멈춤 완료를 보고한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_is_not_complete_until_the_process_group_is_confirmed_stopped`, `stop_without_a_finished_turn_signal_is_not_complete`, `processes_left_outside_the_group_are_reported_instead_of_done` |
 | 끼워 넣기와 멈춤 신호가 문서대로 provider에 전달된다. | [#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27) |
 | 닫은 session을 보관한 ID로 재개한다. | [#10](https://github.com/woonyong-choi/saturn/issues/10) |
+| 채팅의 고정 모델이 저장되고 TUI가 붙을 때 알려진다. 고정 입력도 router 관계 판단을 받고 고정 모델로 전송된다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `pinned_model_is_saved_and_told_to_every_tui_that_attaches`, `pinned_input_gets_the_relation_judgment_and_the_pinned_model`, `saturn-terminal/engine/src/lifecycle/decision.rs`의 `pinned_model_input_still_gets_the_relation_judgment_while_task_runs` |
+| 고정한 모델이 session을 여는 모델과 provider를 정하고 session 기록에 남는다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `pinned_model_opens_the_session_with_that_model_and_records_it`, `pinned_model_decides_the_provider`, `saturn-terminal/engine/src/store/sessions.rs`의 `session_model_round_trips_through_live_mains` |
+| 모델이 바뀌면 새 메인 session을 열고, 같은 모델이면 열린 session을 쓴다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `changing_the_model_opens_a_new_main_session_with_a_packet`, `same_model_keeps_using_the_open_session` |
+| 모델 목록은 설치된 provider 순서로 오고 provider로 거를 수 있다. Codex는 숨긴 모델을 빼고, Claude 기본은 `--model`을 넘기지 않는다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `model_list_comes_in_provider_order`, `model_list_can_be_limited_to_one_provider`, `saturn-terminal/engine/src/providers/codex.rs`의 `model_list_entries_skip_hidden_models_and_fall_back_to_the_id`, `saturn-terminal/engine/src/providers/claude.rs`의 `default_model_is_not_passed_to_claude` |
 | subagent의 시작과 끝을 이벤트로 추적한다. | [#17](https://github.com/woonyong-choi/saturn/issues/17), [#20](https://github.com/woonyong-choi/saturn/issues/20) |
 | Claude 백그라운드 subagent까지 멈춘다. | [#18](https://github.com/woonyong-choi/saturn/issues/18) |
 | Claude 사용량 보고의 범위를 올바르게 표시한다. | [#19](https://github.com/woonyong-choi/saturn/issues/19) |

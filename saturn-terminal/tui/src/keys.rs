@@ -21,6 +21,7 @@ pub enum KeyArea {
     Usage,
     RouterVersion,
     TrainConfirm,
+    ModelPicker,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -126,6 +127,7 @@ pub fn map(area: KeyArea, key: KeyEvent, ctx: KeyContext) -> Option<Action> {
         KeyArea::Usage => usage(key),
         KeyArea::RouterVersion => router_version(key),
         KeyArea::TrainConfirm => train_confirm(key),
+        KeyArea::ModelPicker => model_picker(key),
     }
 }
 
@@ -279,6 +281,16 @@ pub fn router_version(key: KeyEvent) -> Option<Action> {
         KeyCode::Char('r') if is_char(key, 'r') => Some(Action::ResetThresholds),
         KeyCode::Char('t') if is_char(key, 't') => Some(Action::TrainFrom),
         KeyCode::Char('u') if is_char(key, 'u') => Some(Action::UseVersion),
+        _ => None,
+    }
+}
+
+pub fn model_picker(key: KeyEvent) -> Option<Action> {
+    match key.code {
+        KeyCode::Enter => Some(Action::Confirm),
+        KeyCode::Esc => Some(Action::Close),
+        KeyCode::Up => Some(Action::Up),
+        KeyCode::Down => Some(Action::Down),
         _ => None,
     }
 }

@@ -8,7 +8,9 @@ use ratatui::backend::TestBackend;
 use ratatui::layout::Rect;
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, ChatId, InputId, JudgmentId, Provider, TaskId, TaskLabel};
-use saturn_protocol::rpc::{Alert, Notification, PermissionAnswer, Request, UsageRange};
+use saturn_protocol::rpc::{
+    Alert, ModelChoice, ModelInfo, Notification, PermissionAnswer, Request, UsageRange,
+};
 use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 
 use super::{App, AppEvent, Effect, Window};
@@ -137,7 +139,6 @@ fn enter_idle_submits_input_and_records_history() {
                 chat: ChatId(7),
                 client_ref: 1,
                 text: "버그 고쳐".to_string(),
-                pinned_model: None,
                 skip_relation: false,
             }),
         ]
@@ -945,4 +946,138 @@ fn render_single_task_hides_labels() {
 
     let rows = buffer_lines(terminal.backend().buffer());
     assert_eq!(rows[3], "⠋ 작업 중");
+}
+
+fn model_info(provider: Provider, model: &str) -> ModelInfo {
+    ModelInfo {
+        choice: ModelChoice {
+            provider,
+            model: model.to_owned(),
+        },
+        name: model.to_owned(),
+    }
+}
+
+/// `/model`을 실행하고 목록 두 개가 도착한 상태.
+fn model_window() -> App {
+    let mut app = attached();
+    type_text(&mut app, "/model");
+    app.popup = None;
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    notify(
+        &mut app,
+        Notification::Models {
+            models: vec![
+                model_info(Provider::Claude, "opus"),
+                model_info(Provider::Codex, "gpt-x"),
+            ],
+        },
+    );
+    app
+}
+
+#[test]
+fn model_command_asks_for_the_list_and_opens_the_window() {
+    let mut app = attached();
+    type_text(&mut app, "/model");
+    app.popup = None;
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::ListModels {
+            chat: ChatId(7),
+            provider: None,
+        }]
+    );
+    assert!(matches!(app.window, Some(Window::Model(_))));
+}
+
+#[test]
+fn model_command_with_a_provider_asks_only_for_that_provider() {
+    let mut app = attached();
+    type_text(&mut app, "/model codex");
+    app.popup = None;
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::ListModels {
+            chat: ChatId(7),
+            provider: Some(Provider::Codex),
+        }]
+    );
+}
+
+#[test]
+fn model_window_enter_asks_the_engine_to_pin_the_model() {
+    let mut app = model_window();
+
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert!(app.window.is_none());
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::SetModel {
+            chat: ChatId(7),
+            model: ModelChoice {
+                provider: Provider::Codex,
+                model: "gpt-x".to_owned(),
+            },
+        }]
+    );
+}
+
+#[test]
+fn model_window_escape_sends_nothing() {
+    let mut app = model_window();
+
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    let effects = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+
+    assert!(app.window.is_none());
+    assert!(sent(&effects).is_empty());
+}
+
+#[test]
+fn pinned_model_notice_marks_the_model_in_the_next_window() {
+    let mut app = attached();
+    let model = ModelChoice {
+        provider: Provider::Claude,
+        model: "opus".to_owned(),
+    };
+    notify(
+        &mut app,
+        Notification::ModelPinned {
+            chat: ChatId(7),
+            model: model.clone(),
+        },
+    );
+
+    type_text(&mut app, "/model");
+    app.popup = None;
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    let Some(Window::Model(picker)) = &app.window else {
+        panic!("model window should be open");
+    };
+    assert_eq!(picker.current, Some(model));
+}
+
+#[test]
+fn model_command_is_not_passed_to_the_provider() {
+    let mut app = attached();
+    type_text(&mut app, "/model");
+    app.popup = None;
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert!(
+        sent(&effects)
+            .iter()
+            .all(|request| !matches!(request, Request::SubmitInput { .. }))
+    );
 }

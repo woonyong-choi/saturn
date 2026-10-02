@@ -1,8 +1,9 @@
 //! `/` 명령 해석과 팝업 명령 목록. 해석은 순수 함수다.
 //! 설계: docs/design/tui.md
 
-use saturn_protocol::ids::TaskLabel;
+use saturn_protocol::ids::{Provider, TaskLabel};
 
+use crate::i18n::provider_name;
 use crate::labels::LABEL_RANGE;
 
 #[derive(Debug, thiserror::Error)]
@@ -86,7 +87,15 @@ pub const SATURN_COMMANDS: &[CommandSpec] = &[
         description: "폴더 더하기",
         values: &[],
     },
+    CommandSpec {
+        path: "model",
+        description: "다음 입력부터 쓸 모델 고르기",
+        values: &MODEL_PROVIDERS,
+    },
 ];
+
+/// `/model <provider>`에서 고를 수 있는 이름. `i18n::provider_name`과 같다.
+const MODEL_PROVIDERS: [&str; 2] = ["codex", "claude"];
 
 /// engine이 받는 권한 모드 이름. 초안.
 const PERMISSION_MODES: [&str; 4] = ["ask", "edit", "read-only", "full"];
@@ -100,6 +109,8 @@ pub enum SlashCommand {
     /// `/permissions ask|edit|read-only|full`
     /// TODO(#177): 값 없이 실행하면 현재 모드를 보이는 동작은 조회 결과를 돌려주는 방식이 정해진 뒤에 넣는다
     Permissions { mode: &'static str },
+    /// `/model [provider]`. provider를 주면 그 provider 모델만 목록에 보인다. 고르는 것은 목록 창에서 한다.
+    Model { provider: Option<Provider> },
     /// `/add-dir <폴더>`. 경로는 공백을 포함할 수 있어 명령 이름 뒤 나머지 전체다.
     AddDir { path: String },
     /// 이름표가 없으면 가장 최근 대기 입력.
@@ -159,6 +170,7 @@ pub fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         },
         "permissions" => parse_permissions(&args)?,
         "add-dir" => parse_add_dir(body)?,
+        "model" => parse_model(&args)?,
         "tasks" => no_args("tasks", &args, SlashCommand::Tasks)?,
         "usage" => no_args("usage", &args, SlashCommand::Usage)?,
         "train" => parse_train(&args)?,
@@ -246,6 +258,23 @@ fn parse_add_dir(body: &str) -> Result<SlashCommand, CommandError> {
 // cost: time O(a), heap O(a), stack O(1)
 // vars: a = 인자 글자 수(오류 문구를 만들 때만)
 // basis: estimate
+fn parse_model(args: &[&str]) -> Result<SlashCommand, CommandError> {
+    let provider = match args {
+        [] => None,
+        [name] => Some(
+            [Provider::Codex, Provider::Claude]
+                .into_iter()
+                .find(|provider| provider_name(*provider) == *name)
+                .ok_or_else(|| invalid("model", name))?,
+        ),
+        _ => return Err(invalid("model", &args.join(" "))),
+    };
+    Ok(SlashCommand::Model { provider })
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 인자 글자 수(오류 문구를 만들 때만)
+// basis: estimate
 fn parse_permissions(args: &[&str]) -> Result<SlashCommand, CommandError> {
     let [argument] = args else {
         return Err(invalid("permissions", &args.join(" ")));
@@ -311,6 +340,34 @@ fn invalid(command: &'static str, argument: &str) -> CommandError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_model_reads_an_optional_provider_and_keeps_the_provider_command_out() {
+        assert_eq!(
+            parse("/model").unwrap(),
+            Some(SlashCommand::Model { provider: None })
+        );
+        assert_eq!(
+            parse("/model codex").unwrap(),
+            Some(SlashCommand::Model {
+                provider: Some(Provider::Codex)
+            })
+        );
+        assert!(matches!(
+            parse("/model gemini"),
+            Err(CommandError::InvalidArgument {
+                command: "model",
+                ..
+            })
+        ));
+        assert!(matches!(
+            parse("/model codex claude"),
+            Err(CommandError::InvalidArgument {
+                command: "model",
+                ..
+            })
+        ));
+    }
 
     #[test]
     fn parse_plain_text_returns_none() {

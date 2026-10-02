@@ -8,7 +8,7 @@ use saturn_protocol::event::{Activity, ProviderEvent, UsageReport, UsageScope};
 use saturn_protocol::ids::{
     AgentId, ChatId, InputId, JudgmentId, Provider, SettingsRevision, SubagentId, TaskId, TaskLabel,
 };
-use saturn_protocol::rpc::{Alert, SettingsWarning};
+use saturn_protocol::rpc::{Alert, ModelChoice, SettingsWarning};
 use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 
 use crate::labels;
@@ -188,6 +188,8 @@ pub struct ChatState {
     pub close_held_confirm: Option<TaskId>,
     pub feedback: Option<FeedbackPrompt>,
     pub context: Option<ContextSize>,
+    /// 채팅의 고정 모델. engine이 저장해 두고 채팅에 붙을 때와 바뀔 때 알려 준다. 창이 지금 고정을 표시하는 데 쓴다.
+    pub pinned_model: Option<ModelChoice>,
     /// 적용된 설정 번호와 경고.
     pub settings: Option<(SettingsRevision, Option<SettingsWarning>)>,
     next_seq: u64,

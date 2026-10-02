@@ -76,7 +76,6 @@ pub enum Request {
         chat: ChatId,
         client_ref: u64,
         text: String,
-        pinned_model: Option<String>,
         skip_relation: bool,
     },
     /// 아직 보내지 않은 입력을 새 작업으로 보낸다.
@@ -142,6 +141,17 @@ pub enum Request {
         folder: Option<String>,
     },
     ListTasks,
+    /// 채팅이 다시 바꿀 때까지 쓸 모델을 정하고 저장한다. 모델이 provider도 정한다. 붙은 모든 TUI에 `ModelPinned`로 알린다.
+    SetModel {
+        chat: ChatId,
+        model: ModelChoice,
+    },
+    /// 고를 수 있는 모델 목록을 `Models`로 보낸다. `provider`가 `None`이면 모든 provider.
+    /// `chat`은 Codex 목록을 받을 연결을 고른다.
+    ListModels {
+        chat: ChatId,
+        provider: Option<Provider>,
+    },
     /// 채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 router 버전.
     Train {
         reset_thresholds: bool,
@@ -262,6 +272,15 @@ pub enum Notification {
     },
     TaskList {
         items: Vec<TaskListItem>,
+    },
+    /// 채팅의 고정 모델. 고정한 채팅에 붙을 때와 고정을 바꿀 때 보낸다.
+    ModelPinned {
+        chat: ChatId,
+        model: ModelChoice,
+    },
+    /// `ListModels`의 답. provider 순서와 provider가 알려 준 순서를 지킨다.
+    Models {
+        models: Vec<ModelInfo>,
     },
     Usage {
         range: UsageRange,
@@ -421,6 +440,20 @@ pub struct CommandInfo {
     pub name: String,
     pub description: String,
     pub is_skill: bool,
+}
+
+/// provider가 받는 모델 이름. 같은 이름이 두 provider에 있어도 provider로 구분한다.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub struct ModelChoice {
+    pub provider: Provider,
+    pub model: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct ModelInfo {
+    pub choice: ModelChoice,
+    /// 화면에 보일 이름. provider가 알려 주지 않으면 모델 이름과 같다.
+    pub name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

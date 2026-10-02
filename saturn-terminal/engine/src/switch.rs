@@ -13,6 +13,7 @@ use saturn_protocol::state::SessionState;
 use crate::dispatch::Start;
 use crate::flow::LiveSession;
 use crate::handoff::{HandoffOutcome, build_handoff, others_only};
+use crate::models::pinned_model_name;
 use crate::sessions::SendRequest;
 use crate::store::IdKind;
 use crate::{Engine, EngineError};
@@ -31,6 +32,8 @@ pub(crate) enum PlanError {
 pub(crate) struct OpenPlan {
     provider: Provider,
     target: SendTarget,
+    /// 새 session에 고른 모델. `None`이면 provider 기본값이다.
+    model: Option<String>,
     /// 새 session의 첫 턴으로 보낼 패킷이나 돌아온 session에 붙일 변경분.
     handoff: Option<String>,
     /// provider를 바꿀 때 떠나는 열린 메인.
@@ -41,9 +44,13 @@ pub(crate) struct OpenPlan {
     synced: LedgerSeq,
 }
 
+/// 고른 모델이 없으면 어떤 session이든 이어 쓴다.
+fn keeps_model(session: &SessionRecord, model: Option<&str>) -> bool {
+    model.is_none_or(|model| session.model.as_deref() == Some(model))
+}
+
 impl Engine {
-    /// 다음 입력부터 `provider`로 보낸다. 그 provider의 session이 열리면 지운다.
-    /// TODO(#168): 모델을 고르는 입력이 provider로 가는 대응이 정해지면 입력의 모델로 부른다
+    /// 다음 입력부터 `provider`로 보낸다. 그 provider의 session이 열리면 지운다. 입력에 고정한 모델이 있으면 그 모델의 provider가 먼저다.
     pub(crate) fn switch_provider(&mut self, chat: ChatId, provider: Provider) {
         self.flow.switch_to.insert(chat, provider);
     }
@@ -63,8 +70,9 @@ impl Engine {
             _ => AgentRole::Main,
         };
         let provider = self
-            .pick_provider(record.chat)
+            .pick_provider(record)
             .map_err(|error| PlanError::Failed(self.failure_line(&error)))?;
+        let model = pinned_model_name(record);
         let main = self.sessions.live_main(record.chat).cloned();
         let agent = match (start, role, &main) {
             (Start::Turn(agent), _, _) => Some(agent),
@@ -73,6 +81,7 @@ impl Engine {
         };
         let plain = OpenPlan {
             provider,
+            model: model.clone(),
             target: SendTarget::New { provider, role },
             handoff: None,
             leaving: None,
@@ -82,16 +91,34 @@ impl Engine {
         if role == AgentRole::Sub {
             return Ok(plain);
         }
-        if let Some(main) = main
-            .as_ref()
-            .filter(|main| main.provider == provider && main.state == SessionState::Open)
-        {
+        if let Some(main) = main.as_ref().filter(|main| {
+            main.provider == provider
+                && main.state == SessionState::Open
+                && keeps_model(main, model.as_deref())
+        }) {
             return Ok(OpenPlan {
                 target: SendTarget::Open(main.id),
                 ..plain
             });
         }
         self.plan_handoff(record, plain, main.as_ref()).await
+    }
+
+    /// 고른 모델과 다른 모델의 session은 쓰거나 재개하지 않고 새 session을 연다. 모델이 바뀌면 새 메인 session이다.
+    fn keep_pinned_model(&self, target: SendTarget, model: Option<&str>) -> SendTarget {
+        let (SendTarget::Open(id) | SendTarget::Resume(id)) = target else {
+            return target;
+        };
+        let Some(stored) = self.sessions.get(id) else {
+            return target;
+        };
+        if keeps_model(stored, model) {
+            return target;
+        }
+        SendTarget::New {
+            provider: stored.provider,
+            role: stored.role,
+        }
     }
 
     async fn plan_handoff(
@@ -131,6 +158,7 @@ impl Engine {
             .send_target(request, SystemTime::now())
             .await
             .map_err(failed)?;
+        let target = self.keep_pinned_model(target, plain.model.as_deref());
         let outcome = match &target {
             SendTarget::Resume(id) => {
                 let after = self.sessions.attach_from(*id);
@@ -156,7 +184,10 @@ impl Engine {
             }
         };
         let leaving = main
-            .filter(|main| main.provider != provider && main.state == SessionState::Open)
+            .filter(|main| {
+                main.state == SessionState::Open
+                    && (main.provider != provider || !keeps_model(main, plain.model.as_deref()))
+            })
             .map(|main| main.id);
         Ok(OpenPlan {
             target,
@@ -214,6 +245,7 @@ impl Engine {
             });
         OpenPlan {
             provider,
+            model: None,
             target: SendTarget::Resume(id),
             handoff: None,
             leaving: None,
@@ -254,7 +286,13 @@ impl Engine {
             .ok_or_else(|| ProviderError::NotSent {
                 reason: format!("session {} has no provider session id", id.0),
             })?;
-        let spec = self.session_spec(record, stored.agent, Some(resume), plan.handoff.clone());
+        let spec = self.session_spec(
+            record,
+            stored.agent,
+            stored.model.clone(),
+            Some(resume),
+            plan.handoff.clone(),
+        );
         let handle = self
             .open_with_retries(record.chat, stored.provider, spec)
             .await?;
@@ -295,7 +333,13 @@ impl Engine {
             None => AgentId(self.store.allocate_id(IdKind::Agent).await?),
         };
         let id = SessionId(self.store.allocate_id(IdKind::Session).await?);
-        let spec = self.session_spec(record, agent, None, plan.handoff.clone());
+        let spec = self.session_spec(
+            record,
+            agent,
+            plan.model.clone(),
+            None,
+            plan.handoff.clone(),
+        );
         let handle = self.open_with_retries(record.chat, provider, spec).await?;
         let registered = match self.leave_main(record.chat, plan).await {
             Ok(()) => {
@@ -306,6 +350,7 @@ impl Engine {
                     role,
                     provider,
                     provider_session: Some(handle.provider_session.clone()),
+                    model: plan.model.clone(),
                     state: SessionState::Open,
                     delivered: LedgerSeq(0),
                     idle_since: None,
@@ -340,14 +385,16 @@ impl Engine {
             tracing::warn!(%error, "failed to close the leaving session");
         }
         self.archive_main(leaving).await?;
-        self.notify_chat(
-            chat,
-            ChatNotice::ProviderSwitched {
-                from: main.provider,
-                to: plan.provider,
-            },
-        )
-        .await;
+        if main.provider != plan.provider {
+            self.notify_chat(
+                chat,
+                ChatNotice::ProviderSwitched {
+                    from: main.provider,
+                    to: plan.provider,
+                },
+            )
+            .await;
+        }
         Ok(())
     }
 
@@ -398,7 +445,7 @@ impl Engine {
         let spec = SessionSpec {
             agent: old.agent,
             workdir,
-            model: None,
+            model: old.model.clone(),
             settings: self
                 .settings
                 .current()
@@ -415,6 +462,7 @@ impl Engine {
             role: old.role,
             provider: live.provider,
             provider_session: Some(handle.provider_session.clone()),
+            model: old.model.clone(),
             state: SessionState::Open,
             delivered: up_to,
             idle_since: None,

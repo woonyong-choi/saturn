@@ -95,6 +95,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | 전체 기록 | 도구 셀 전체와 줄인 셀을 펼친 대화 기록 | `Ctrl+T` 입력 |
 | 사용량 화면 | 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론, router 호출과 예상 비용, 맥락 정리, 채점, 여러 턴 합계 행 끝의 `n 토큰 · n 턴`. provider·모델마다 한 행, router 한 행 | `/usage` 실행, 키 `d`, `w`로 범위 변경 |
 | router 버전 화면 | router 버전 목록, 버전별 router와 보정값과 ECE, 질문별 목표 틀림 비율과 기준값과 최근 200건 틀림과 판단 수 | `/router version` 실행 |
+| 모델 선택 창 | 고정할 수 있는 모델 목록(`provider · 모델 이름` 줄), 지금 고정한 모델 표시, 키 안내. 목록이 오기 전에는 불러오는 중, 비었으면 안내 한 줄 | `/model` 실행(`/model codex`처럼 provider를 주면 그 provider 모델만), 목록 알림 도착 |
 | 학습 확인 창 | 채점 후보 수, 채점 모델, 예상 토큰, 기준값 조정 대상, 모델 추가 학습 여부 | 실행 조건을 채운 `/train` 실행 |
 
 router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-key-security.md)에, 폴더 설정 신뢰 규칙은 [설정](settings.md)에 있다.
@@ -189,6 +190,9 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 | `t` | 고른 버전에서 다시 학습, `/train --from`과 동일 | router 버전 화면 |
 | `u` | 확인 한 줄 뒤 고른 버전 사용, `saturn router use`와 동일(명령줄은 `--yes`로 확인을 건너뜀) | router 버전 화면 |
 | `Enter` | 선택 | 학습 확인 창 |
+| `↑`, `↓` | 모델 이동 | 모델 선택 창 |
+| `Enter` | 고른 모델을 이 채팅의 고정 모델로 정하고 창 닫기 | 모델 선택 창 |
+| `Esc` | 취소, 고정 모델은 그대로 | 모델 선택 창 |
 | `Esc` | 취소 | 학습 확인 창 |
 | `↑`, `↓` | 선택지 이동 | 학습 확인 창 |
 
@@ -277,6 +281,7 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 | router 키 입력 창 붙여넣기 | 제어 문자를 뺀 글을 가린 입력칸에 넣는다 |
 | `/record` | 명령 목록에 넣고 값 목록은 `on`, `off` |
 | `/add-dir` | 명령 목록에 넣고 값은 폴더 경로 하나. 명령 이름 뒤 나머지 줄 전체를 경로로 읽어 공백이 들어 있어도 된다. 상대 경로는 TUI의 현재 폴더 기준 절대 경로로, `~/`는 홈 폴더 아래로 바꿔 보낸다(초안). 더한 폴더는 채팅 기록에 저장하고 모든 provider session에 넘긴다. 폴더 설정은 읽지 않는다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)). 더한 뒤 안내 한 줄을 대화 기록에 남기고, 열린 session이 있으면 다음 session부터 적용한다고 덧붙인다 |
+| `/model` | 명령 목록에 넣고 값 목록은 `codex`, `claude`. 값 없이 실행하면 모든 provider의 모델 창이 열리고, 값을 주면 그 provider 모델만 보인다. 방향키로 고르고 `Enter`로 정한다. 고른 모델은 `SetModel`로 engine에 저장하고, 그 채팅의 모든 입력이 쓴다. 채팅에 붙을 때 engine이 `ModelPinned`로 알려 주므로 TUI를 다시 열거나 채팅을 옮겨도 유지된다. 정한 뒤 안내 한 줄을 대화 기록에 남긴다. provider 고유의 `/model`은 넘기지 않고 Saturn `/model`로 처리한다([모델 고르기](providers-and-sessions.md#모델-고르기)) |
 | `/permissions` | 명령 목록에 넣고 값 목록은 `ask`, `edit`, `read-only`, `full`(초안). 값을 주면 채팅 층 모드를 바꾼다. 값 없이 실행하면 현재 모드를 보이는 동작은 아직 없다([#177](https://github.com/woonyong-choi/saturn/issues/177), [권한](permissions.md)) |
 
 ### 요구사항
@@ -290,6 +295,7 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 | 모든 한국어 문구에 영어가 있고, `saturn` 명령의 도움말도 같다. | `saturn-terminal/tui/src/i18n.rs`의 `english_covers_every_phrase_constant`, `saturn-terminal/cli/src/args.rs`의 `help_has_english_for_every_korean_text`, `localized_help_replaces_korean_with_english` |
 | router 연결이 끊겨도 입력창은 입력을 계속 보낸다. | `saturn-terminal/tui/src/app/tests.rs`의 `submit_while_router_disconnected_still_sends_input` |
 | `/add-dir`는 폴더 경로를 절대 경로로 바꿔 engine에 보내고, 시작 화면과 안내 줄이 더한 폴더를 보인다. | `saturn-terminal/tui/src/app/tests.rs`의 `add_dir_command_sends_an_absolute_path_relative_to_the_tui_folder`, `add_dir_notice_adds_a_cell_and_updates_the_start_screen_folders`, `saturn-terminal/tui/src/view/start_screen.rs`의 `lines_show_the_chat_folder_and_the_added_folders`, `saturn-terminal/tui/src/view/transcript.rs`의 `lines_folder_added_mentions_the_next_session_only_when_one_is_open` |
+| `/model`은 목록 창을 열고, `Enter`는 고른 모델을 engine에 저장하라고 보내고, `Esc`는 아무것도 보내지 않는다. 고정은 채팅에 붙을 때 알려져 창에 표시된다. `/model <provider>`는 그 provider 모델만 요청하고, provider의 `/model`은 넘기지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `model_command_asks_for_the_list_and_opens_the_window`, `model_command_with_a_provider_asks_only_for_that_provider`, `model_window_enter_asks_the_engine_to_pin_the_model`, `model_window_escape_sends_nothing`, `pinned_model_notice_marks_the_model_in_the_next_window`, `model_command_is_not_passed_to_the_provider`, `saturn-terminal/tui/src/view/model_picker.rs`의 `selection_stays_inside_the_list`, `list_starts_on_the_pinned_model`, `saturn-terminal/tui/src/commands.rs`의 `parse_model_reads_an_optional_provider_and_keeps_the_provider_command_out` |
 | 작업 목록은 기본으로 현재 채팅 폴더의 채팅만 보이고 키 `a`로 모든 폴더를 본다. | `saturn-terminal/tui/src/view/task_list.rs`의 `task_list_defaults_to_the_current_folder_and_the_key_widens_it`, `task_list_does_not_hide_chats_whose_folder_is_unknown`, `saturn-terminal/tui/src/app/tests.rs`의 `task_list_opened_from_a_chat_starts_in_the_chat_folder_scope`, `task_list_key_a_widens_the_scope_to_all_folders` |
 | 화면이 없는 파이프와 CI에서도 같은 명령이 같은 결과를 낸다. | `saturn-terminal/tui/src/plain.rs`의 `plain_and_full_screen_cells_use_same_text`, `apply_writes_echo_output_result_and_summary` |
 

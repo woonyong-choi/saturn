@@ -20,7 +20,7 @@ use saturn_core::providers::{
 };
 use saturn_protocol::event::{ProviderEvent, TurnOrigin};
 use saturn_protocol::ids::{Provider, ProviderSessionId, SettingsRevision};
-use saturn_protocol::rpc::PermissionAnswer;
+use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::secrets::Masker;
@@ -239,6 +239,15 @@ impl ProviderClient for ProviderConnection {
         }
     }
 
+    async fn list_models(&mut self) -> Result<Vec<ModelInfo>, ProviderError> {
+        match self {
+            Self::Codex(client) => client.list_models().await,
+            Self::Claude(client) => client.list_models().await,
+            #[cfg(test)]
+            Self::Fake(client) => client.list_models().await,
+        }
+    }
+
     async fn next_event(&mut self) -> Option<ProviderEvent> {
         match self {
             Self::Codex(client) => client.next_event().await,
@@ -314,6 +323,23 @@ pub fn display_name(provider: Provider) -> &'static str {
         Provider::Codex => codex::DISPLAY_NAME,
         Provider::Claude => claude::DISPLAY_NAME,
     }
+}
+
+/// 입력 접수 기록에 남기는 고정 모델 글 `<provider>/<model>`. 같은 모델 이름이 두 provider에 있어도 구분된다.
+pub fn pinned_text(choice: &ModelChoice) -> String {
+    format!("{}/{}", display_name(choice.provider), choice.model)
+}
+
+/// `pinned_text`가 만든 글을 되돌린다. provider 접두사가 없으면 `None`.
+pub fn parse_pinned(text: &str) -> Option<ModelChoice> {
+    let (name, model) = text.split_once('/')?;
+    let provider = [Provider::Codex, Provider::Claude]
+        .into_iter()
+        .find(|provider| display_name(*provider) == name)?;
+    Some(ModelChoice {
+        provider,
+        model: model.to_owned(),
+    })
 }
 
 /// `handle.steer_verified`가 거짓(끼워 넣기 실측 #5, #27 통과 전)이면 `Queue`.

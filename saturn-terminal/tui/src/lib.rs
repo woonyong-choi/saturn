@@ -130,7 +130,6 @@ pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result
                     chat,
                     client_ref: submitted,
                     text,
-                    pinned_model: None,
                     skip_relation: false,
                 };
                 client.send(request).await?;
