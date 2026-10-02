@@ -45,16 +45,28 @@ impl Mode {
         (folder < self).then_some(folder)
     }
 
-    fn default_verdict(self, tool: PermissionTool, is_inside: bool) -> Verdict {
+    fn default_verdict(self, tool: PermissionTool, unit: &Unit) -> Verdict {
         match self {
             Self::ReadOnly => Verdict::Deny,
             Self::Ask => Verdict::Ask,
-            Self::Edit if tool == PermissionTool::Edit && is_inside => Verdict::Allow,
+            Self::Edit if tool == PermissionTool::Edit && unit.is_inside => Verdict::Allow,
+            Self::Edit if tool == PermissionTool::Shell && unit.is_read_only => Verdict::Allow,
             Self::Edit => Verdict::Ask,
             Self::Full => Verdict::Allow,
         }
     }
 }
+
+/// `edit` 모드가 묻지 않고 허용하는 읽기 전용 셸 명령. 인자가 붙어도 일치하고, 셸 문법이 섞이면 보지 않는다.
+const READ_ONLY_SHELL: [&str; 7] = [
+    "ls *",
+    "cat *",
+    "rg *",
+    "grep *",
+    "git status *",
+    "git diff *",
+    "git log *",
+];
 
 /// 엄한 쪽이 크다: `Allow` < `Ask` < `Deny`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -223,7 +235,7 @@ impl Policy {
             return Verdict::Deny;
         }
         let verdict = matching.last().map_or_else(
-            || self.mode.default_verdict(tool, unit.is_inside),
+            || self.mode.default_verdict(tool, unit),
             |rule| rule.verdict,
         );
         if use_always && verdict == Verdict::Ask && self.always_matches(tool, unit) {
@@ -246,7 +258,15 @@ impl Policy {
         match call.tool {
             PermissionTool::Shell => {
                 let split = pattern::split_shell(&call.target);
-                let units = split.parts.iter().map(|part| Unit::text(part)).collect();
+                let is_single = split.is_plain && split.parts.len() == 1;
+                let units = split
+                    .parts
+                    .iter()
+                    .map(|part| Unit {
+                        is_read_only: is_single && is_read_only_shell(part),
+                        ..Unit::text(part)
+                    })
+                    .collect();
                 (non_empty(units), split.is_opaque)
             }
             PermissionTool::Edit => {
@@ -278,6 +298,7 @@ impl Policy {
         Unit {
             store: escape(&candidates[0]),
             is_inside: relative.is_some() || in_added_dir,
+            is_read_only: false,
             candidates,
         }
     }
@@ -292,6 +313,8 @@ struct Unit {
     store: String,
     /// 작업 폴더 안의 편집인지. 편집이 아니면 거짓.
     is_inside: bool,
+    /// 셸 문법 없는 단일 명령이 읽기 전용 목록에 드는지. 셸 명령이 아니면 거짓.
+    is_read_only: bool,
 }
 
 impl Unit {
@@ -300,8 +323,15 @@ impl Unit {
             candidates: vec![text.to_owned()],
             store: escape(text),
             is_inside: false,
+            is_read_only: false,
         }
     }
+}
+
+fn is_read_only_shell(command: &str) -> bool {
+    READ_ONLY_SHELL
+        .iter()
+        .any(|pattern| pattern::matches(pattern, command))
 }
 
 /// 대상이 하나도 없는 호출(빈 명령, 경로를 모르는 편집)은 빈 글자열 하나로 본다.

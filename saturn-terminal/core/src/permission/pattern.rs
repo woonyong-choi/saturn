@@ -132,17 +132,21 @@ pub(super) struct ShellParts {
     pub(super) parts: Vec<String>,
     /// 명령 치환이나 닫히지 않은 따옴표가 있어 조각이 실제 실행과 다를 수 있다.
     pub(super) is_opaque: bool,
+    /// 따옴표 밖에 구분자, 리디렉션, 명령 치환이 없는 단순 명령 하나인지.
+    pub(super) is_plain: bool,
 }
 
 // cost: time O(c), heap O(c), stack O(1), alloc c
 // vars: c = command 글자 수
 // basis: estimate
 /// `&&`, `||`, `;`, `|`, `&`, 줄바꿈, 괄호, 역따옴표 밖의 따옴표 안이 아닌 자리에서 나눈다.
+/// `<`, `>`는 나누지 않지만 `is_plain`을 거짓으로 만든다.
 pub(super) fn split_shell(command: &str) -> ShellParts {
     let mut parts = Vec::new();
     let mut current = String::new();
     let mut quote: Option<char> = None;
     let mut is_opaque = false;
+    let mut is_plain = true;
     let mut chars = command.chars().peekable();
     while let Some(c) = chars.next() {
         if c == ESCAPE && quote != Some('\'') {
@@ -164,17 +168,22 @@ pub(super) fn split_shell(command: &str) -> ShellParts {
                 current.push(c);
             }
             '`' | '(' | ')' | ';' | '|' | '&' | '\n' => {
+                is_plain = false;
                 is_opaque |= c == '`' || opens_substitution(c, chars.peek().copied());
                 is_opaque |= current.ends_with('$') && c == '(';
                 push_part(&mut parts, &mut current);
             }
-            other => current.push(other),
+            other => {
+                is_plain &= other != '<' && other != '>';
+                current.push(other);
+            }
         }
     }
     push_part(&mut parts, &mut current);
     ShellParts {
         parts,
         is_opaque: is_opaque || quote.is_some(),
+        is_plain: is_plain && quote.is_none(),
     }
 }
 
@@ -280,6 +289,16 @@ mod tests {
         assert!(split_shell(r#"echo "$(rm x)""#).is_opaque);
         assert!(split_shell("echo 'open").is_opaque);
         assert_eq!(split_shell("echo $(rm x)").parts, vec!["echo $", "rm x"]);
+    }
+
+    #[test]
+    fn split_shell_plain_only_without_syntax_outside_quotes() {
+        assert!(split_shell(r#"ls -la "a|b>c""#).is_plain);
+        assert!(!split_shell("ls > out").is_plain);
+        assert!(!split_shell("cat < in").is_plain);
+        assert!(!split_shell("ls;").is_plain);
+        assert!(!split_shell("ls &&").is_plain);
+        assert!(!split_shell("echo $(x)").is_plain);
     }
 
     #[test]

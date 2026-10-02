@@ -366,3 +366,80 @@ fn tool_and_verdict_names_round_trip() {
     assert_eq!(parse_tool("read"), None);
     assert_eq!(Verdict::parse("maybe"), None);
 }
+
+#[test]
+fn mode_edit_allows_read_only_shell_commands_with_arguments() {
+    let policy = policy(Mode::Edit, Vec::new());
+
+    for command in [
+        "ls",
+        "ls -la src",
+        "cat Cargo.toml",
+        "rg todo src",
+        "grep -rn todo .",
+        "git status",
+        "git diff HEAD~1",
+        "git log --oneline",
+        r#"grep "a|b" file"#,
+    ] {
+        assert_eq!(policy.decide(&shell(command)), Verdict::Allow, "{command}");
+    }
+    assert_eq!(policy.decide(&shell("cat")), Verdict::Allow);
+    for command in ["lsof", "git push", "git statusx", "rm -rf x", "make"] {
+        assert_eq!(policy.decide(&shell(command)), Verdict::Ask, "{command}");
+    }
+}
+
+#[test]
+fn mode_edit_asks_when_shell_syntax_is_mixed_into_a_read_only_command() {
+    let policy = policy(Mode::Edit, Vec::new());
+
+    for command in [
+        "ls | wc -l",
+        "ls > out.txt",
+        "cat < in.txt",
+        "ls; ls",
+        "ls && ls",
+        "ls || ls",
+        "ls &",
+        "ls\nls",
+        "cat $(echo a)",
+        "cat `echo a`",
+        "ls;",
+    ] {
+        assert_eq!(policy.decide(&shell(command)), Verdict::Ask, "{command}");
+    }
+}
+
+#[test]
+fn read_only_shell_list_yields_to_individual_rules_and_deny_wins() {
+    let ask = policy(
+        Mode::Edit,
+        vec![rule(PermissionTool::Shell, "git log *", Verdict::Ask)],
+    );
+    let deny = policy(
+        Mode::Edit,
+        vec![rule(PermissionTool::Shell, "cat *.pem", Verdict::Deny)],
+    );
+
+    assert_eq!(ask.decide(&shell("git log")), Verdict::Ask);
+    assert_eq!(ask.decide(&shell("git status")), Verdict::Allow);
+    assert_eq!(deny.decide(&shell("cat key.pem")), Verdict::Deny);
+    assert_eq!(deny.decide(&shell("cat a.txt")), Verdict::Allow);
+}
+
+#[test]
+fn read_only_shell_list_does_not_change_other_modes() {
+    assert_eq!(
+        policy(Mode::ReadOnly, Vec::new()).decide(&shell("ls")),
+        Verdict::Deny
+    );
+    assert_eq!(
+        policy(Mode::Ask, Vec::new()).decide(&shell("ls")),
+        Verdict::Ask
+    );
+    assert_eq!(
+        policy(Mode::Full, Vec::new()).decide(&shell("rm x")),
+        Verdict::Allow
+    );
+}
