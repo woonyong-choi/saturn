@@ -21,7 +21,7 @@ use saturn_protocol::ids::LedgerSeq;
 use serde_json::json;
 
 use crate::args::{PacketArgs, PacketCondition, PacketFormat, PacketMode};
-use crate::assemble::{Judgments, OrderRule, assemble, budget_for};
+use crate::assemble::{FixedFields, Judgments, OrderRule, assemble, budget_for};
 use crate::records::Record;
 
 // cost: time O(L), heap O(L), stack O(1), io 1
@@ -54,8 +54,9 @@ fn main() -> anyhow::Result<()> {
 fn run(args: &PacketArgs, stdin: &mut dyn Read) -> anyhow::Result<Rendered> {
     let records = read_records(args, stdin)?;
     let judgments = read_judgments(args.judgments.as_deref())?;
+    let fixed = read_fixed(args.fixed_file.as_deref())?;
     let summary = read_summary(args)?;
-    render(args, &records, &judgments, summary)
+    render(args, &records, &judgments, fixed.as_ref(), summary)
 }
 
 #[derive(Debug)]
@@ -71,6 +72,7 @@ fn render(
     args: &PacketArgs,
     records: &[Record],
     judgments: &Judgments,
+    fixed: Option<&FixedFields>,
     summary: Option<Entry>,
 ) -> anyhow::Result<Rendered> {
     let after = summary.as_ref().map(|entry| entry.seq.0);
@@ -83,7 +85,7 @@ fn render(
         k: args.k,
         top_n: args.top_n,
     };
-    let assembled = assemble(records, after, judgments, &rule);
+    let assembled = assemble(records, after, judgments, &rule, fixed);
     let budget = budget_for(args.budget_tokens);
     let outcome = match &summary {
         Some(entry) => build_packet_with_summary(&assembled.source, &budget, entry),
@@ -152,6 +154,20 @@ fn read_judgments(path: Option<&Path>) -> anyhow::Result<Judgments> {
         .with_context(|| format!("failed to read judgments: {}", path.display()))?;
     serde_json::from_str(&text)
         .with_context(|| format!("failed to parse judgments: {}", path.display()))
+}
+
+// cost: time O(L), heap O(L), stack O(1), io 1
+// vars: L = 고정 구역 파일 글자 수
+// basis: estimate
+fn read_fixed(path: Option<&Path>) -> anyhow::Result<Option<FixedFields>> {
+    let Some(path) = path else {
+        return Ok(None);
+    };
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read fixed fields: {}", path.display()))?;
+    serde_json::from_str(&text)
+        .with_context(|| format!("failed to parse fixed fields: {}", path.display()))
+        .map(Some)
 }
 
 // cost: time O(L), heap O(L), stack O(1), io 1

@@ -27,6 +27,9 @@ pub(crate) struct PacketArgs {
     /// router 판단 JSON(`compact`, `constraints`). 없으면 RRF 순서로 채운다.
     #[arg(long, value_name = "FILE")]
     pub(crate) judgments: Option<PathBuf>,
+    /// 고정 구역의 목표와 남은 일을 담은 JSON. 지정하면 마지막 입력과 미완료 도구 대신 사용한다.
+    #[arg(long, value_name = "FILE")]
+    pub(crate) fixed_file: Option<PathBuf>,
     /// 시나리오 JSONL. 있으면 표준 입력 대신 이 파일의 `--scenario-id` 시나리오를 읽는다.
     #[arg(long, value_name = "FILE", requires = "scenario_id")]
     pub(crate) scenarios: Option<PathBuf>,
