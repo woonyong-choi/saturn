@@ -20,10 +20,10 @@ impl ChatEnv {
     pub(crate) fn new(workdir: PathBuf, env: Vec<(String, String)>) -> Self {
         Self {
             workdir,
-            env: env
-                .into_iter()
-                .map(|(name, value)| (OsString::from(name), OsString::from(value)))
-                .collect(),
+            env: secrets::scrub(
+                env.into_iter()
+                    .map(|(name, value)| (OsString::from(name), OsString::from(value))),
+            ),
         }
     }
 
@@ -65,5 +65,6 @@ mod tests {
             vec![(OsString::from("PATH"), OsString::from("/opt/bin:/usr/bin"))]
         );
         assert_eq!(env.workdir(), Path::new("/work"));
+        assert!(!format!("{env:?}").contains("sk-secret"));
     }
 }

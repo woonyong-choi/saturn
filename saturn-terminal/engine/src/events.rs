@@ -1,0 +1,482 @@
+//! provider 이벤트: 기록한 뒤에만 화면과 상태에 반영하고, 허가 요청을 TUI에 올려 답을 provider로 돌려준다.
+//! 설계: docs/design/providers-and-sessions.md#이벤트-수신과-변환, docs/design/permissions.md
+
+use std::collections::HashMap;
+use std::future::{Future, poll_fn};
+use std::pin::pin;
+use std::task::Poll;
+
+use saturn_core::agents::TreeStatus;
+use saturn_core::providers::{ProviderClient, ProviderError};
+use saturn_protocol::event::ProviderEvent;
+use saturn_protocol::ids::{AgentId, ChatId, InputId, LedgerSeq, Provider, RunId, TaskId};
+use saturn_protocol::rpc::{Notification, PermissionAnswer};
+use saturn_protocol::state::{EffectScope, SessionState, TaskState};
+
+use crate::flow::{LiveSession, NeedsCheck};
+use crate::providers::ProviderConnection;
+use crate::rpc::ClientId;
+use crate::store::NewRun;
+use crate::{Engine, EngineError};
+
+/// 답을 기다리는 허가 요청이 속한 곳.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct PendingPermission {
+    pub(crate) chat: ChatId,
+    pub(crate) agent: AgentId,
+    pub(crate) provider: Provider,
+    pub(crate) task: TaskId,
+}
+
+/// 연결 하나가 낸 것. 연결이 끝났으면 `event`가 `None`이다.
+pub(crate) struct Arrival {
+    pub(crate) chat: ChatId,
+    pub(crate) provider: Provider,
+    pub(crate) event: Option<ProviderEvent>,
+}
+
+/// 연결이 없으면 영원히 기다린다. 취소해도 이벤트를 잃지 않는다.
+pub(crate) async fn next_arrival(
+    providers: &mut HashMap<(ChatId, Provider), ProviderConnection>,
+) -> Arrival {
+    poll_fn(|cx| {
+        for ((chat, provider), connection) in providers.iter_mut() {
+            let mut next = pin!(connection.next_event());
+            if let Poll::Ready(event) = next.as_mut().poll(cx) {
+                return Poll::Ready(Arrival {
+                    chat: *chat,
+                    provider: *provider,
+                    event,
+                });
+            }
+        }
+        Poll::Pending
+    })
+    .await
+}
+
+impl Engine {
+    pub(crate) async fn on_arrival(&mut self, arrival: Arrival) {
+        let Arrival {
+            chat,
+            provider,
+            event,
+        } = arrival;
+        let Some(event) = event else {
+            self.on_connection_closed(chat, provider).await;
+            return;
+        };
+        if let Err(error) = self.on_provider_event(provider, event).await {
+            tracing::warn!(error = %self.failure_line(&error), "provider event not handled");
+        }
+    }
+
+    /// 이벤트는 처리 전에 먼저 기록한다. 기록하지 못하면 화면에도 상태에도 반영하지 않는다.
+    ///
+    /// # Errors
+    /// 열린 session이 없는 에이전트의 이벤트는 버리고 `Ok`, 붙일 실행이 없으면 `NoRun`, 기록 실패면 `Store`.
+    pub(crate) async fn on_provider_event(
+        &mut self,
+        provider: Provider,
+        event: ProviderEvent,
+    ) -> Result<(), EngineError> {
+        let agent = event.agent();
+        let live = self
+            .flow
+            .live
+            .get(&agent)
+            .filter(|live| live.provider == provider)
+            .cloned();
+        let Some(live) = live else {
+            tracing::warn!(
+                agent = agent.0,
+                "event from an agent without an open session"
+            );
+            return Ok(());
+        };
+        let chat = self.session_chat(live.session)?;
+        let run = self.run_for_event(chat, &live, &event).await?;
+        let seq = self.record_event(run, chat, &live, &event).await?;
+        if let Some(seq) = seq {
+            self.sessions.mark_delivered(live.session, seq);
+        }
+        let status = self.agents.on_event(live.session, &event);
+        self.apply_event(chat, &live, event, status).await
+    }
+
+    async fn record_event(
+        &self,
+        run: RunId,
+        chat: ChatId,
+        live: &LiveSession,
+        event: &ProviderEvent,
+    ) -> Result<Option<LedgerSeq>, EngineError> {
+        match event {
+            ProviderEvent::Usage(report) => {
+                self.store.record_usage(run, live.session, report).await?;
+                Ok(None)
+            }
+            _ => Ok(Some(self.store.append_event(run, chat, event).await?)),
+        }
+    }
+
+    /// 진행 중인 실행에 붙인다. 실행이 없을 때 메인 출력이 오면 입력 없이 provider가 시작한 턴이고,
+    /// 그 밖의 이벤트는 가장 나중 실행에 붙인다.
+    async fn run_for_event(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+        event: &ProviderEvent,
+    ) -> Result<RunId, EngineError> {
+        if let Some(run) = self.runs.active.get(&live.agent) {
+            return Ok(*run);
+        }
+        let no_run = EngineError::NoRun { agent: live.agent };
+        let is_held = self
+            .sessions
+            .get(live.session)
+            .is_some_and(|session| session.state == SessionState::Held);
+        if starts_turn(event) && !is_held {
+            let task = *self.flow.last_task.get(&live.agent).ok_or(no_run)?;
+            return self.begin_wake_run(chat, live, task).await;
+        }
+        self.flow.last_run.get(&live.agent).copied().ok_or(no_run)
+    }
+
+    async fn begin_wake_run(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+        task: TaskId,
+    ) -> Result<RunId, EngineError> {
+        let run = self
+            .store
+            .start_run(&NewRun {
+                input: None,
+                task,
+                agent: live.agent,
+                session: live.session,
+                provider: live.provider,
+                effect_scope: EffectScope::NetworkPossible,
+            })
+            .await?;
+        self.runs.active.insert(live.agent, run);
+        self.runs.chat_of.insert(live.agent, chat);
+        self.runs.task_of.insert(live.agent, task);
+        self.flow.last_run.insert(live.agent, run);
+        self.sessions.mark_busy(live.session);
+        Ok(run)
+    }
+
+    async fn apply_event(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+        event: ProviderEvent,
+        status: TreeStatus,
+    ) -> Result<(), EngineError> {
+        match &event {
+            ProviderEvent::PermissionRequested {
+                request_id,
+                summary,
+                reason,
+                ..
+            } => {
+                self.offer_permission(chat, live, request_id, summary, reason)
+                    .await;
+            }
+            ProviderEvent::ContextSize { tokens, .. } => {
+                self.on_context_size(chat, live, *tokens).await;
+            }
+            ProviderEvent::StreamLost { .. } => self.on_stream_lost(chat, live).await,
+            _ => self.forward_event(live.agent, &event).await,
+        }
+        match event {
+            ProviderEvent::TurnCompleted { .. } | ProviderEvent::SubagentEnded { .. } => {
+                self.after_tree_change(chat, live, &event, status).await
+            }
+            _ => Ok(()),
+        }
+    }
+
+    async fn forward_event(&self, agent: AgentId, event: &ProviderEvent) {
+        let Some(chat) = self.runs.chat_of.get(&agent).copied() else {
+            return;
+        };
+        let Some(task) = self.runs.task_of.get(&agent).copied() else {
+            return;
+        };
+        let notification = Notification::TaskEvent {
+            task,
+            event: event.clone(),
+        };
+        self.rpc.broadcast(Some(chat), notification).await;
+    }
+
+    /// 부모 턴이 끝났는데 subagent가 남았으면 `AnsweredTreeRunning`으로 보이고, 트리가 유휴가 되면 턴 끝이다.
+    /// 멈추는 중인 채팅은 멈춤 완료 확인으로 넘긴다.
+    async fn after_tree_change(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+        event: &ProviderEvent,
+        status: TreeStatus,
+    ) -> Result<(), EngineError> {
+        let is_turn_completed = matches!(event, ProviderEvent::TurnCompleted { .. });
+        if self.flow.stopping.contains_key(&chat) {
+            if is_turn_completed {
+                self.confirm_stopped_agent(chat, live.agent);
+            }
+            return self.check_stop_done(chat).await;
+        }
+        if is_turn_completed && self.take_packet_turn(live.agent) {
+            return Ok(());
+        }
+        match status {
+            TreeStatus::Running => Ok(()),
+            TreeStatus::AnsweredTreeRunning => {
+                self.notify_running_task(chat, live, TaskState::AnsweredTreeRunning)
+                    .await;
+                Ok(())
+            }
+            TreeStatus::TreeIdle if self.runs.active.contains_key(&live.agent) => {
+                self.on_turn_end(chat, live.agent).await
+            }
+            TreeStatus::TreeIdle => Ok(()),
+        }
+    }
+
+    /// 새 session의 첫 턴으로 보낸 패킷의 완료 신호면 참이고, 작업 끝으로 보지 않는다.
+    fn take_packet_turn(&mut self, agent: AgentId) -> bool {
+        let Some(pending) = self.flow.packet_turns.get_mut(&agent) else {
+            return false;
+        };
+        *pending -= 1;
+        if *pending == 0 {
+            self.flow.packet_turns.remove(&agent);
+        }
+        true
+    }
+
+    pub(crate) async fn notify_running_task(
+        &self,
+        chat: ChatId,
+        live: &LiveSession,
+        state: TaskState,
+    ) {
+        if let Some(task) = self.runs.task_of.get(&live.agent).copied() {
+            self.notify_task(chat, task, state, Some(live.provider), None)
+                .await;
+        }
+    }
+
+    async fn on_context_size(&mut self, chat: ChatId, live: &LiveSession, tokens: Option<u64>) {
+        self.flow.context_tokens.insert(live.agent, tokens);
+        let threshold = match self.context_budget(live.provider).await {
+            Ok(budget) => budget.threshold(),
+            Err(error) => {
+                tracing::warn!(error = %self.failure_line(&error), "failed to read context budget");
+                return;
+            }
+        };
+        let notification = Notification::ContextSize {
+            chat,
+            tokens,
+            threshold,
+        };
+        self.rpc.broadcast(Some(chat), notification).await;
+    }
+
+    /// 완료 신호 없이 흐름이 끝났다. 관찰이 끊겼으므로 효과 범위를 `Unobserved`로 기록하고, 자동으로 이어 가지 않고
+    /// 결과 확인 필요로 둔다. 실행 기록은 열어 둔다.
+    /// TODO(#90): 결과를 모르는 작업을 사용자가 푸는 방법. 지금은 `/continue <작업>`이 확인 입력을 보낸다
+    async fn on_stream_lost(&mut self, chat: ChatId, live: &LiveSession) {
+        self.clear_permissions(live.agent).await;
+        self.flow.live.remove(&live.agent);
+        self.confirm_stopped_agent(chat, live.agent);
+        if self.flow.stopping.contains_key(&chat) {
+            if let Err(error) = self.check_stop_done(chat).await {
+                tracing::warn!(error = %self.failure_line(&error), "failed to finish stop");
+            }
+            return;
+        }
+        if let Some(run) = self.runs.active.get(&live.agent).copied()
+            && let Err(error) = self
+                .store
+                .set_effect_scope(run, EffectScope::Unobserved)
+                .await
+        {
+            tracing::warn!(error = %self.failure_line(&error), "failed to record lost stream");
+        }
+        let (Some(task), Some(input)) = (
+            self.runs.task_of.get(&live.agent).copied(),
+            self.run_input(live.agent).await,
+        ) else {
+            return;
+        };
+        self.flow.needs_check.insert(
+            task,
+            NeedsCheck {
+                chat,
+                agent: live.agent,
+                input,
+            },
+        );
+        self.notify_task(chat, task, TaskState::NeedsCheck, Some(live.provider), None)
+            .await;
+    }
+
+    /// 에이전트의 진행 중인 실행을 연 입력.
+    pub(crate) async fn run_input(&self, agent: AgentId) -> Option<InputId> {
+        let run = self.runs.active.get(&agent).copied()?;
+        let runs = self.store.unfinished_runs().await.ok()?;
+        runs.into_iter()
+            .find(|record| record.id == run)
+            .and_then(|record| record.input)
+    }
+
+    /// 연결이 끝났다. 그 연결의 열린 session은 닫히고, 진행 중인 실행은 흐름이 끊긴 것으로 다룬다.
+    pub(crate) async fn on_connection_closed(&mut self, chat: ChatId, provider: Provider) {
+        self.providers.remove(&(chat, provider));
+        let lost: Vec<LiveSession> = self
+            .flow
+            .live
+            .values()
+            .filter(|live| live.provider == provider)
+            .filter(|live| {
+                self.session_chat(live.session)
+                    .is_ok_and(|owner| owner == chat)
+            })
+            .cloned()
+            .collect();
+        for live in lost {
+            let event = ProviderEvent::StreamLost { agent: live.agent };
+            if let Err(error) = self.on_provider_event(provider, event).await {
+                tracing::warn!(error = %self.failure_line(&error), "failed to handle closed connection");
+                self.flow.live.remove(&live.agent);
+            }
+        }
+    }
+
+    /// 허가 요청을 기록 뒤에 TUI로 올린다. 답이 올 때까지 provider는 그 호출에서 멈춰 있고 작업 시계도 멈춘다.
+    async fn offer_permission(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+        request_id: &str,
+        summary: &str,
+        reason: &str,
+    ) {
+        let Some(task) = self.runs.task_of.get(&live.agent).copied() else {
+            tracing::warn!(request = request_id, "permission request without a task");
+            return;
+        };
+        let label = self.flow.tasks.assign(task);
+        let waiting = u32::try_from(
+            self.flow
+                .permissions
+                .values()
+                .filter(|pending| pending.chat == chat)
+                .count(),
+        )
+        .unwrap_or(u32::MAX);
+        self.flow.permissions.insert(
+            request_id.to_owned(),
+            PendingPermission {
+                chat,
+                agent: live.agent,
+                provider: live.provider,
+                task,
+            },
+        );
+        let request = Notification::PermissionRequested {
+            task,
+            label,
+            provider: live.provider,
+            request_id: request_id.to_owned(),
+            summary: summary.to_owned(),
+            reason: reason.to_owned(),
+            waiting,
+        };
+        self.rpc.offer_permission(chat, request).await;
+        self.notify_task(
+            chat,
+            task,
+            TaskState::AwaitingPermission,
+            Some(live.provider),
+            None,
+        )
+        .await;
+    }
+
+    /// 사용자 답을 provider 값으로 넘긴다. 다른 TUI의 창은 지운다.
+    ///
+    /// # Errors
+    /// 묻지 않은 요청이면 `UnexpectedAnswer`, 열린 session이 없으면 `Provider(NotSent)`. provider가 받지 못했으면
+    /// 요청을 그대로 두어 다시 답할 수 있다.
+    pub(crate) async fn answer_permission(
+        &mut self,
+        client: ClientId,
+        request_id: String,
+        answer: PermissionAnswer,
+    ) -> Result<(), EngineError> {
+        let pending = self
+            .flow
+            .permissions
+            .get(&request_id)
+            .copied()
+            .ok_or(EngineError::UnexpectedAnswer { what: "permission" })?;
+        let live =
+            self.flow
+                .live
+                .get(&pending.agent)
+                .cloned()
+                .ok_or_else(|| ProviderError::NotSent {
+                    reason: "no open session for the permission request".to_owned(),
+                })?;
+        self.provider_mut(pending.chat, pending.provider)?
+            .answer_permission(&live.provider_session, &request_id, answer)
+            .await?;
+        self.flow.permissions.remove(&request_id);
+        self.rpc.resolve_permission(client, &request_id).await;
+        let is_still_waiting = self
+            .flow
+            .permissions
+            .values()
+            .any(|other| other.task == pending.task);
+        if !is_still_waiting {
+            self.notify_task(
+                pending.chat,
+                pending.task,
+                TaskState::Running,
+                Some(pending.provider),
+                None,
+            )
+            .await;
+        }
+        Ok(())
+    }
+
+    /// 턴이 끝났거나 흐름이 끊겨 더는 답할 수 없는 요청의 창을 지운다.
+    pub(crate) async fn clear_permissions(&mut self, agent: AgentId) {
+        let ended: Vec<String> = self
+            .flow
+            .permissions
+            .iter()
+            .filter(|(_, pending)| pending.agent == agent)
+            .map(|(request_id, _)| request_id.clone())
+            .collect();
+        for request_id in ended {
+            self.flow.permissions.remove(&request_id);
+            self.rpc.withdraw_permission(&request_id).await;
+        }
+    }
+}
+
+/// 입력 없이 provider가 시작한 턴도 첫 메인 출력으로 시작을 안다.
+fn starts_turn(event: &ProviderEvent) -> bool {
+    matches!(
+        event,
+        ProviderEvent::Text { subagent: None, .. } | ProviderEvent::ToolCall { subagent: None, .. }
+    )
+}

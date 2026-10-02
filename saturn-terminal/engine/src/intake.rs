@@ -374,7 +374,7 @@ impl Engine {
             record.text
         );
         // TODO(#168): 허용 모델 후보가 정해지면 `target_model`을 묻는다
-        // TODO(#149): 보류 작업이 있으면 `resume_held`를 묻고 `note_resume_signal`로 잇는다
+        // TODO(#90): 보류 작업이 있으면 `resume_held`를 묻고 `note_resume_signal`로 잇는다
         JudgeRequest {
             model: self.judges.active().model().to_owned(),
             state: sanitize_state(&state, &self.masker),
@@ -491,7 +491,7 @@ impl ReadVerdict {
 
 /// judge 없이 정하는 판단. 처리 방식은 대기이고 모델은 고정 모델을 그대로 쓴다.
 /// TODO(#168): 모델을 고정한 입력이 실행 중 도착했을 때의 처리 방식이 정해지면 대기 대신 따른다
-fn direct_decision(record: &QueuedInput, revision: ChatRevision) -> RouteDecision {
+pub(crate) fn direct_decision(record: &QueuedInput, revision: ChatRevision) -> RouteDecision {
     RouteDecision {
         revision,
         settings: record.settings,

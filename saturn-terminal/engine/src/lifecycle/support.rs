@@ -2,7 +2,8 @@
 
 use saturn_core::judges::{RELATION_OPTIONS, RouteDecision, SEND_OPTIONS};
 use saturn_core::queue::{Permission, QueuedInput};
-use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider};
+use saturn_protocol::event::{Activity, ProviderEvent, ToolCategory, ToolDetail, TurnOrigin};
+use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, SubagentId};
 use saturn_protocol::state::InputState;
 use serde_json::{Value, json};
 
@@ -29,7 +30,15 @@ pub(super) struct Flow {
 impl Flow {
     /// `judge_replies`는 시작 확인 뒤 judge가 차례로 낼 답이다.
     pub(super) async fn new(judge_replies: Vec<FakeReply>) -> Self {
+        Self::with_config("", judge_replies).await
+    }
+
+    /// `config`는 시작 전에 쓰는 사용자 설정 파일이다.
+    pub(super) async fn with_config(config: &str, judge_replies: Vec<FakeReply>) -> Self {
         let fixture = Fixture::new();
+        if !config.is_empty() {
+            fixture.write_user_config(config);
+        }
         let mut script = check_passes();
         script.extend(judge_replies);
         let transport = FakeTransport::new(script);
@@ -67,6 +76,50 @@ impl Flow {
             chat,
             fixture,
         }
+    }
+
+    /// 열려 있는 가짜 Claude가 낸 것처럼 이벤트를 처리한다.
+    pub(super) async fn claude_event(&mut self, event: ProviderEvent) {
+        self.event(Provider::Claude, event).await;
+    }
+
+    pub(super) async fn event(&mut self, provider: Provider, event: ProviderEvent) {
+        self.engine
+            .on_provider_event(provider, event)
+            .await
+            .expect("event should be handled");
+    }
+
+    /// 채팅에 다른 provider의 가짜 연결을 더한다.
+    pub(super) fn add_provider(&mut self, provider: Provider) -> FakeProvider {
+        let fake = FakeProvider::new(provider);
+        self.engine.providers.insert(
+            (self.chat, provider),
+            ProviderConnection::Fake(fake.clone()),
+        );
+        fake
+    }
+
+    /// 소켓으로 붙은 TUI. 붙는 동안 engine 요청 처리를 돌리고, 그 뒤의 알림은 직접 부른 처리에서 온다.
+    pub(super) async fn client(&mut self) -> Client {
+        let mut client = Client::connect(&self.fixture.socket()).await;
+        let chat = self.chat;
+        let workdir = self.fixture.workdir.display().to_string();
+        drive(&mut self.engine, async {
+            client
+                .attach(
+                    1,
+                    Request::Attach {
+                        chat: Some(chat),
+                        workdir,
+                        env: vec![("PATH".to_owned(), "/nonexistent".to_owned())],
+                        overrides: Vec::new(),
+                    },
+                )
+                .await;
+        })
+        .await;
+        client
     }
 
     /// judge 호출 수. 시작 확인의 두 호출은 뺀다.
@@ -256,4 +309,75 @@ fn choice(options: &[&str], picked: &str) -> Value {
 /// 다시 보내지 않는 실패(키 거절)라 재시도 대기 없이 바로 판단 실패가 된다. 시계를 멈추면 기록 저장소 접근 시간 제한이 먼저 끝나므로 멈추지 않는다.
 pub(super) fn judge_down() -> Vec<FakeReply> {
     vec![key_rejected()]
+}
+
+pub(super) fn text(agent: AgentId, text: &str) -> ProviderEvent {
+    ProviderEvent::Text {
+        agent,
+        subagent: None,
+        text: text.to_owned(),
+    }
+}
+
+pub(super) fn turn_completed(agent: AgentId) -> ProviderEvent {
+    ProviderEvent::TurnCompleted {
+        agent,
+        origin: TurnOrigin::User,
+    }
+}
+
+pub(super) fn context_size(agent: AgentId, tokens: u64) -> ProviderEvent {
+    ProviderEvent::ContextSize {
+        agent,
+        tokens: Some(tokens),
+    }
+}
+
+pub(super) fn subagent_started(agent: AgentId, id: &str, parent: Option<&str>) -> ProviderEvent {
+    ProviderEvent::SubagentStarted {
+        agent,
+        subagent: SubagentId(id.to_owned()),
+        parent: parent.map(|parent| SubagentId(parent.to_owned())),
+    }
+}
+
+pub(super) fn subagent_ended(agent: AgentId, id: &str) -> ProviderEvent {
+    ProviderEvent::SubagentEnded {
+        agent,
+        subagent: SubagentId(id.to_owned()),
+    }
+}
+
+pub(super) fn tool_read(agent: AgentId, call_id: &str, path: &str) -> ProviderEvent {
+    ProviderEvent::ToolCall {
+        agent,
+        subagent: None,
+        call_id: call_id.to_owned(),
+        activity: Activity::ReadingFile,
+        detail: ToolDetail {
+            category: ToolCategory::FileRead,
+            paths: vec![path.to_owned()],
+            read_lines: None,
+            changed: None,
+        },
+    }
+}
+
+pub(super) fn tool_result(agent: AgentId, call_id: &str, output: &str) -> ProviderEvent {
+    ProviderEvent::ToolResult {
+        agent,
+        subagent: None,
+        call_id: call_id.to_owned(),
+        output: output.to_owned(),
+        exit_code: None,
+    }
+}
+
+pub(super) fn permission(agent: AgentId, request_id: &str) -> ProviderEvent {
+    ProviderEvent::PermissionRequested {
+        agent,
+        request_id: request_id.to_owned(),
+        summary: "run cargo test".to_owned(),
+        reason: "the build needs checking".to_owned(),
+    }
 }

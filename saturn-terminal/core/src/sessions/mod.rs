@@ -328,12 +328,15 @@ impl SessionManager {
     // cost: time O(s), heap O(1), stack O(1)
     // vars: s = session 수
     // basis: estimate
-    /// `Ended`가 아닌 가장 나중 메인. engine이 이어 갈 provider를 정하는 데 쓴다.
+    /// 열린 메인이 있으면 그 메인, 없으면 `Ended`가 아닌 가장 나중 메인. engine이 이어 갈 provider를 정하는 데 쓴다.
+    /// 열린 메인을 먼저 보는 것은 provider를 오간 뒤 등록 순서가 열린 순서와 달라지기 때문이다.
     pub fn live_main(&self, chat: ChatId) -> Option<&SessionRecord> {
-        self.sessions.iter().rev().find(|session| {
-            session.chat == chat
-                && session.role == AgentRole::Main
-                && session.state != SessionState::Ended
+        self.open_main(chat).or_else(|| {
+            self.sessions.iter().rev().find(|session| {
+                session.chat == chat
+                    && session.role == AgentRole::Main
+                    && session.state != SessionState::Ended
+            })
         })
     }
 
@@ -852,6 +855,23 @@ mod tests {
         assert_eq!(
             return_target(&manager, 50_000),
             SendTarget::Resume(SessionId(1))
+        );
+    }
+
+    #[test]
+    fn live_main_prefers_the_open_main_over_a_later_registered_archive() {
+        let manager = manager_with(vec![
+            record(1, Provider::Codex, SessionState::Open),
+            record(2, Provider::Claude, SessionState::ClosedResumable),
+        ]);
+
+        assert_eq!(
+            manager.live_main(CHAT).map(|main| main.id),
+            Some(SessionId(1))
+        );
+        assert_eq!(
+            return_target(&manager, 50_000),
+            SendTarget::Open(SessionId(1))
         );
     }
 

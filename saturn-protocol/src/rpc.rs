@@ -312,6 +312,10 @@ pub enum ChatNotice {
     StopUnconfirmed {
         remaining: u32,
     },
+    /// 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못했다. 맥락 정리를 미루고 제약 목록을 보인다.
+    ContextDeferred {
+        constraints: Vec<String>,
+    },
     /// 모든 작업이 끝난 순간의 합계.
     RequestSummary {
         provider_tokens: Vec<(crate::ids::Provider, u64)>,

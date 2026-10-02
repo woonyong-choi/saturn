@@ -122,7 +122,7 @@ impl ProviderConnection {
             Self::Codex(client) => Some(client.process_group()),
             Self::Claude(client) => client.process_group(session),
             #[cfg(test)]
-            Self::Fake(_) => None,
+            Self::Fake(client) => client.group(),
         }
     }
 

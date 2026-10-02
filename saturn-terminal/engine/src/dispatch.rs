@@ -4,12 +4,13 @@
 use saturn_core::providers::{ProviderClient, ProviderError};
 use saturn_core::queue::{QueuedInput, SendAction};
 use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, RunId, TaskId};
-use saturn_protocol::rpc::Alert;
+use saturn_protocol::rpc::{Alert, ChatNotice};
 use saturn_protocol::state::{EffectScope, InputState, TaskState};
 
-use crate::flow::LiveSession;
+use crate::flow::{LiveSession, NeedsCheck};
 use crate::providers::ProviderConnection;
 use crate::store::{NewRun, RunEnd};
+use crate::switch::PlanError;
 use crate::{Engine, EngineError};
 
 /// 초안. 같은 입력을 보내기 전에 확정된 실패(`NotSent`)로 시도하는 최대 횟수. 처음 시도를 포함한다.
@@ -134,11 +135,25 @@ impl Engine {
     ) -> Result<(), EngineError> {
         let record = self.queued(input)?;
         let mut delivery = self.delivery(&record, start)?;
+        let plan = match self.plan_open(&record, start).await {
+            Err(PlanError::Deferred(constraints)) => {
+                return self.hold_for_context(&delivery, constraints).await;
+            }
+            Err(PlanError::Failed(reason)) => Err(reason),
+            Ok(plan) => Ok(plan),
+        };
         if let Err(error) = self.mark_delivering(&delivery).await {
             self.release_task(&delivery);
             return Err(error);
         }
-        let live = match self.open_for(&record, start).await {
+        let opened = match plan {
+            Ok(plan) => self
+                .open_planned(&record, plan)
+                .await
+                .map_err(|error| self.failure_line(&error)),
+            Err(reason) => Err(reason),
+        };
+        let live = match opened {
             Ok(live) => live,
             Err(reason) => return self.reject(delivery, reason).await,
         };
@@ -156,6 +171,26 @@ impl Engine {
         }
         let result = self.send_turn_with_retries(chat, &live, &record.text).await;
         self.settle(delivery, result).await
+    }
+
+    /// 패킷의 고정 구역이 `P_hard`도 넘으면 새 session으로 옮기지 않고 보내지도 않는다. 입력은 작업과 함께 보류하고
+    /// 제약 목록을 보인다.
+    /// TODO(#162): 맥락 한도로 provider가 거절하는 경우와 이 보류의 재개 조건. 지금은 `/continue`로 다시 시도한다
+    async fn hold_for_context(
+        &mut self,
+        delivery: &Delivery,
+        constraints: Vec<String>,
+    ) -> Result<(), EngineError> {
+        self.queue.hold_unsent(delivery.input)?;
+        self.store
+            .set_input_state(delivery.input, InputState::Held, None)
+            .await?;
+        self.notify_input(delivery.input).await;
+        self.notify_chat(delivery.chat, ChatNotice::ContextDeferred { constraints })
+            .await;
+        self.notify_task(delivery.chat, delivery.task, TaskState::Held, None, None)
+            .await;
+        Ok(())
     }
 
     fn delivery(&mut self, record: &QueuedInput, start: Start) -> Result<Delivery, EngineError> {
@@ -233,6 +268,9 @@ impl Engine {
         self.runs.active.insert(live.agent, run);
         self.runs.chat_of.insert(live.agent, chat);
         self.runs.task_of.insert(live.agent, task);
+        self.flow.last_run.insert(live.agent, run);
+        self.flow.last_task.insert(live.agent, task);
+        self.sessions.mark_busy(live.session);
         Ok(run)
     }
 
@@ -386,13 +424,23 @@ impl Engine {
     }
 
     /// 보낸 뒤 결과를 모른다. 다시 보내지 않고 입력은 `Delivering`으로 두며 실행 기록도 열어 둔다.
-    /// TODO(#149): 사용자가 `NeedsCheck` 작업을 확인해 이어 가는 방법
+    /// 사용자는 `/continue <작업>`으로 확인 입력을 보내 이어 간다(`continue_held`).
     async fn needs_check(&mut self, delivery: &Delivery) {
         tracing::warn!(
             input = delivery.input.0,
             "turn result is unknown, needs check"
         );
         let provider = delivery.live.as_ref().map(|live| live.provider);
+        if let Some(live) = &delivery.live {
+            self.flow.needs_check.insert(
+                delivery.task,
+                NeedsCheck {
+                    chat: delivery.chat,
+                    agent: live.agent,
+                    input: delivery.input,
+                },
+            );
+        }
         self.notify_task(
             delivery.chat,
             delivery.task,
@@ -469,6 +517,19 @@ impl Engine {
         chat: ChatId,
         agent: AgentId,
     ) -> Result<(), EngineError> {
+        self.end_task(chat, agent).await?;
+        self.dispatch_next(chat).await
+    }
+
+    /// `finish_task`에서 이어 보내기만 뺀 것. 턴 끝이 맥락 정리를 판정한 뒤에 이어 보낼 때 쓴다.
+    ///
+    /// # Errors
+    /// 실행 기록을 끝내지 못하면 `Store`.
+    pub(crate) async fn end_task(
+        &mut self,
+        chat: ChatId,
+        agent: AgentId,
+    ) -> Result<(), EngineError> {
         self.queue.finish_task(agent);
         let task = self.runs.task_of.remove(&agent);
         self.runs.chat_of.remove(&agent);
@@ -481,7 +542,7 @@ impl Engine {
                 .await;
             self.flow.tasks.release(task);
         }
-        self.dispatch_next(chat).await
+        Ok(())
     }
 
     /// 로그와 알림에 남길 원인 한 줄. judge 키와 같은 문자열은 가린다.

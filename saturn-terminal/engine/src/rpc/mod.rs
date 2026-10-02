@@ -229,6 +229,22 @@ impl RpcServer {
         self.broadcast_except(chat, Some(answered_by), &resolved);
     }
 
+    /// 답 없이 끝난 요청(턴이 끝났거나 흐름이 끊김)의 창을 모든 클라이언트에서 지운다. 모르는 요청이면 아무것도 하지 않는다.
+    pub async fn withdraw_permission(&mut self, request_id: &str) {
+        let Some(index) = self
+            .pending_permissions
+            .iter()
+            .position(|pending| pending.request_id == request_id)
+        else {
+            return;
+        };
+        let chat = self.pending_permissions.remove(index).chat;
+        let resolved = Notification::PermissionResolved {
+            request_id: request_id.to_owned(),
+        };
+        self.broadcast_except(Some(chat), None, &resolved);
+    }
+
     /// 0이면 TUI 없음(background).
     pub fn client_count(&self) -> usize {
         self.clients.len()
