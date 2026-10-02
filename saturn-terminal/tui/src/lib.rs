@@ -57,6 +57,8 @@ pub struct RunOptions {
     /// `None`이면 운영체제 언어를 따른다.
     pub lang: Option<Lang>,
     pub workdir: PathBuf,
+    /// `-c key=value` 실행 층. `Attach`의 `overrides`로 넘긴다.
+    pub overrides: Vec<(String, String)>,
     /// 기본 `~/.saturn/history`.
     pub history: PathBuf,
 }
@@ -73,6 +75,7 @@ pub async fn run(client: &mut EngineClient, options: RunOptions) -> Result<(), T
     let history = InputHistory::load(&options.history)?;
     let mut app = App::new(lang, options.workdir, history, options.chat);
     app.env = client::attach_env();
+    app.overrides = options.overrides;
     let mut screen = terminal::enter()?;
     let result = app::run_loop(&mut app, client, &mut screen).await;
     let restored = terminal::leave();
@@ -97,7 +100,7 @@ pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result
             chat: options.chat,
             workdir: options.workdir.display().to_string(),
             env: client::attach_env(),
-            overrides: Vec::new(),
+            overrides: options.overrides,
         })
         .await?;
     let mut stdin = BufReader::new(tokio::io::stdin()).lines();
