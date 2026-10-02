@@ -225,7 +225,7 @@ impl ChatState {
         }
         view.state = update.state;
         view.reason = update.reason.filter(|_| update.state == InputState::Queued);
-        let echo = !view.echoed && is_judged(update.state);
+        let echo = !view.echoed && is_routed(update.state);
         view.echoed |= echo;
         if is_final(update.state) {
             self.inputs.remove(&update.input);
@@ -521,7 +521,7 @@ impl ChatState {
     }
 }
 
-fn is_judged(state: InputState) -> bool {
+fn is_routed(state: InputState) -> bool {
     matches!(
         state,
         InputState::Queued | InputState::Delivering | InputState::Applied | InputState::Held
@@ -565,7 +565,7 @@ mod tests {
             label: Some(TaskLabel('C')),
             state,
             disposition: None,
-            reason: (state == InputState::Queued).then_some(QueueReason::JudgeOrder),
+            reason: (state == InputState::Queued).then_some(QueueReason::RouterOrder),
         }
     }
 
@@ -856,10 +856,10 @@ mod tests {
     fn apply_alert_ignores_duplicates() {
         let mut state = ChatState::new();
 
-        state.apply_alert(Alert::JudgePaused);
-        state.apply_alert(Alert::JudgePaused);
+        state.apply_alert(Alert::RouterPaused);
+        state.apply_alert(Alert::RouterPaused);
 
-        assert_eq!(state.alerts, vec![Alert::JudgePaused]);
+        assert_eq!(state.alerts, vec![Alert::RouterPaused]);
     }
 
     // cost: time O(1), heap O(1), stack O(1)

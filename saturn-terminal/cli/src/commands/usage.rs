@@ -66,7 +66,7 @@ fn write_table(
         i18n::USAGE_CACHE_WRITE,
         i18n::USAGE_OUTPUT,
         i18n::USAGE_REASONING,
-        i18n::USAGE_JUDGE_CALLS,
+        i18n::USAGE_ROUTER_CALLS,
         i18n::USAGE_COST,
     ];
     let header: Vec<&str> = headers.iter().map(|key| lang.tr(key)).collect();
@@ -78,7 +78,7 @@ fn write_table(
                 .iter()
                 .map(|value| value.map_or_else(|| "-".to_owned(), |value| value.to_string())),
         );
-        cells.push(row.judge_calls.to_string());
+        cells.push(row.router_calls.to_string());
         cells.push(cost_text(row.estimated_cost_micros));
         writeln!(out, "{}", cells.join("\t"))?;
     }
@@ -96,7 +96,7 @@ mod tests {
         UsageRow {
             who: who.to_owned(),
             tokens,
-            judge_calls: 2,
+            router_calls: 2,
             estimated_cost_micros: cost,
             compactions: None,
             labels: None,
@@ -123,7 +123,7 @@ mod tests {
 
     #[tokio::test]
     async fn fetch_sends_range_and_reads_usage_notification() {
-        let rows = vec![row("judge · jev", [None; 5], Some(1_500_000))];
+        let rows = vec![row("router · jev", [None; 5], Some(1_500_000))];
         let engine = FakeEngine::start(vec![Reply::with(vec![Notification::Usage {
             range: UsageRange::Week,
             rows: rows.clone(),
@@ -165,7 +165,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn fetch_when_judge_key_is_required_explains_how_to_set_it() {
+    async fn fetch_when_router_key_is_required_explains_how_to_set_it() {
         let engine = FakeEngine::start(vec![Reply::error(-32001, "no key")]);
         let mut client = engine.client().await;
 
@@ -180,6 +180,6 @@ mod tests {
 
         let message = error.to_string();
         assert!(message.contains("SATURN_KEY"));
-        assert!(message.contains("judge.key.command"));
+        assert!(message.contains("router.key.command"));
     }
 }

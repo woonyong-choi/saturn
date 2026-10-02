@@ -1,4 +1,4 @@
-//! `/usage` 응답 행: provider·모델마다 한 행과 judge마다 한 행, 각 행은 고른 범위의 합계.
+//! `/usage` 응답 행: provider·모델마다 한 행과 router마다 한 행, 각 행은 고른 범위의 합계.
 //! 설계: docs/design/tui.md
 
 use std::collections::hash_map::Entry;
@@ -13,7 +13,7 @@ use crate::rpc::ClientId;
 use crate::store::{Store, StoreError, UsageRow as StoredUsage};
 use crate::{Engine, EngineError};
 
-const JUDGE_PREFIX: &str = "judge";
+const ROUTER_PREFIX: &str = "router";
 
 /// 같은 session에서 같은 에이전트와 subagent의 누적 보고 계열.
 type Series = (SessionId, AgentId, Option<SubagentId>);
@@ -98,7 +98,7 @@ async fn usage_rows(
             UsageRow {
                 who,
                 tokens: group.tokens,
-                judge_calls: 0,
+                router_calls: 0,
                 estimated_cost_micros: None,
                 compactions: None,
                 labels: None,
@@ -108,13 +108,13 @@ async fn usage_rows(
         .collect();
     rows.extend(
         store
-            .judge_usage(range, chat)
+            .router_usage(range, chat)
             .await?
             .into_iter()
-            .map(|judge| UsageRow {
-                who: format!("{JUDGE_PREFIX} · {}", judge.judge),
-                tokens: [judge.input, None, None, judge.output, None],
-                judge_calls: judge.calls,
+            .map(|router| UsageRow {
+                who: format!("{ROUTER_PREFIX} · {}", router.router),
+                tokens: [router.input, None, None, router.output, None],
+                router_calls: router.calls,
                 estimated_cost_micros: None,
                 compactions: None,
                 labels: None,
@@ -194,8 +194,8 @@ mod tests {
     use std::path::PathBuf;
     use std::time::{Duration, SystemTime};
 
-    use saturn_core::judges::{Method, QuestionSetId};
     use saturn_core::queue::Permission;
+    use saturn_core::routers::{Method, QuestionSetId};
     use saturn_core::sessions::{AgentRole, SessionRecord};
     use saturn_protocol::event::UsageReport;
     use saturn_protocol::ids::{LedgerSeq, Provider, SettingsRevision, TaskId};
@@ -302,7 +302,7 @@ mod tests {
                     chat: self.chat,
                     input: None,
                     method: Method::Jev,
-                    judge: "jev".to_owned(),
+                    router: "jev".to_owned(),
                     model: ("jev-1.13.0".to_owned(), None),
                     question_sets: vec![QuestionSetId {
                         name: "route".to_owned(),
@@ -318,7 +318,7 @@ mod tests {
                     started_at: SystemTime::now(),
                     elapsed: Duration::ZERO,
                     outcome: JudgmentOutcome::Ok,
-                    judge_version: "jev-1.13.0".to_owned(),
+                    router_version: "jev-1.13.0".to_owned(),
                     thresholds: Vec::new(),
                     asked_with: None,
                 })
@@ -328,7 +328,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn usage_rows_group_by_provider_model_and_judge() {
+    async fn usage_rows_group_by_provider_model_and_router() {
         let fixture = Fixture::new().await;
         let codex = fixture.session(1, Provider::Codex).await;
         let first = fixture.run(codex, Provider::Codex).await;
@@ -370,7 +370,7 @@ mod tests {
         let who: Vec<&str> = rows.iter().map(|row| row.who.as_str()).collect();
         assert_eq!(
             who,
-            vec!["claude · opus", "codex · gpt-5.6-terra", "judge · jev"]
+            vec!["claude · opus", "codex · gpt-5.6-terra", "router · jev"]
         );
         assert_eq!(rows[0].tokens, [Some(40), None, None, Some(4), None]);
         assert_eq!(rows[0].turns, None);
@@ -379,7 +379,7 @@ mod tests {
         assert_eq!(rows[1].compactions, None);
         assert_eq!(rows[1].estimated_cost_micros, None);
         assert_eq!(rows[2].tokens, [Some(50), None, None, Some(5), None]);
-        assert_eq!(rows[2].judge_calls, 2);
+        assert_eq!(rows[2].router_calls, 2);
         assert_eq!(rows[2].labels, None);
     }
 

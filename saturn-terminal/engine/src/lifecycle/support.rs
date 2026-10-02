@@ -1,7 +1,7 @@
-//! 입력 흐름 테스트 공용 도구: 소켓 없이 붙인 채팅, 가짜 provider, 가짜 judge 답.
+//! 입력 흐름 테스트 공용 도구: 소켓 없이 붙인 채팅, 가짜 provider, 가짜 router 답.
 
-use saturn_core::judges::{RELATION_OPTIONS, RouteDecision, SEND_OPTIONS};
 use saturn_core::queue::{Permission, QueuedInput};
+use saturn_core::routers::{RELATION_OPTIONS, RouteDecision, SEND_OPTIONS};
 use saturn_protocol::event::{
     Activity, PermissionCall, PermissionTool, ProviderEvent, ToolCategory, ToolDetail, TurnOrigin,
 };
@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 use super::*;
 use crate::Attachment;
 use crate::chat_env::ChatEnv;
-use crate::flow::JudgeJob;
+use crate::flow::RouterJob;
 use crate::providers::ProviderConnection;
 use crate::providers::test_support::FakeProvider;
 use crate::rpc::ClientId;
@@ -30,21 +30,21 @@ pub(super) struct Flow {
 }
 
 impl Flow {
-    /// `judge_replies`는 시작 확인 뒤 judge가 차례로 낼 답이다.
-    pub(super) async fn new(judge_replies: Vec<FakeReply>) -> Self {
-        Self::with_config("", judge_replies).await
+    /// `router_replies`는 시작 확인 뒤 router가 차례로 낼 답이다.
+    pub(super) async fn new(router_replies: Vec<FakeReply>) -> Self {
+        Self::with_config("", router_replies).await
     }
 
     /// `config`는 시작 전에 쓰는 사용자 설정 파일이다.
-    pub(super) async fn with_config(config: &str, judge_replies: Vec<FakeReply>) -> Self {
-        Self::with_setup(config, &[], judge_replies).await
+    pub(super) async fn with_config(config: &str, router_replies: Vec<FakeReply>) -> Self {
+        Self::with_setup(config, &[], router_replies).await
     }
 
     /// `overrides`는 실행 `-c` 층의 `키=값`이다.
     pub(super) async fn with_setup(
         config: &str,
         overrides: &[&str],
-        judge_replies: Vec<FakeReply>,
+        router_replies: Vec<FakeReply>,
     ) -> Self {
         let mut fixture = Fixture::new();
         fixture.options.run_overrides = overrides.iter().map(|item| (*item).to_owned()).collect();
@@ -52,7 +52,7 @@ impl Flow {
             fixture.write_user_config(config);
         }
         let mut script = check_passes();
-        script.extend(judge_replies);
+        script.extend(router_replies);
         let transport = FakeTransport::new(script);
         let env = fixture.env(true, Arc::clone(&transport)).await;
         let mut engine = fixture.start(env).await.unwrap();
@@ -135,8 +135,8 @@ impl Flow {
         client
     }
 
-    /// judge 호출 수. 시작 확인의 두 호출은 뺀다.
-    pub(super) fn judge_calls(&self) -> usize {
+    /// router 호출 수. 시작 확인의 두 호출은 뺀다.
+    pub(super) fn router_calls(&self) -> usize {
         self.transport.calls().len() - check_passes().len()
     }
 
@@ -217,33 +217,33 @@ impl Flow {
         id
     }
 
-    /// 지금 revision으로 judge에 한 번 묻고 그 판단을 돌려준다. 기록은 적용 때 쓴다.
-    pub(super) async fn judge_now(&mut self, input: InputId, running: bool) -> RouteDecision {
+    /// 지금 revision으로 router에 한 번 묻고 그 판단을 돌려준다. 기록은 적용 때 쓴다.
+    pub(super) async fn router_now(&mut self, input: InputId, running: bool) -> RouteDecision {
         let record = self.record(input);
         let revision = self.engine.queue.revision(self.chat);
-        let request = self.engine.judge_request(&record, running);
-        let exchange = self.engine.judges.shared().exchange(request.clone()).await;
-        let job = JudgeJob {
+        let request = self.engine.router_request(&record, running);
+        let exchange = self.engine.routers.shared().exchange(request.clone()).await;
+        let job = RouterJob {
             chat: self.chat,
             input,
             revision,
             retried: false,
         };
         self.engine
-            .finish_judge(&job, &request, exchange)
+            .finish_router(&job, &request, exchange)
             .await
             .unwrap()
             .decision
     }
 
-    /// 별도 작업에서 도는 judge 호출이 모두 돌아와 적용될 때까지 engine 루프 역할을 한다.
+    /// 별도 작업에서 도는 router 호출이 모두 돌아와 적용될 때까지 engine 루프 역할을 한다.
     pub(super) async fn settle(&mut self) {
         while self.is_judging() {
-            let done = timeout(WAIT, self.engine.flow.judge_rx.recv())
+            let done = timeout(WAIT, self.engine.flow.router_rx.recv())
                 .await
-                .expect("judge result should arrive in time")
+                .expect("router result should arrive in time")
                 .expect("engine should keep the result channel open");
-            self.engine.on_judged(done).await;
+            self.engine.on_routed(done).await;
         }
     }
 
@@ -279,12 +279,12 @@ impl Flow {
     }
 }
 
-/// 실행 중이 아닐 때 묻는 질문에 대한 judge 답.
+/// 실행 중이 아닐 때 묻는 질문에 대한 router 답.
 pub(super) fn idle_reply(keep_current: f64) -> FakeReply {
     ok(&answers(keep_current, None))
 }
 
-/// 실행 중일 때 묻는 질문에 대한 judge 답. `relation`은 `RELATION_OPTIONS`, `send`는 `SEND_OPTIONS` 중 하나.
+/// 실행 중일 때 묻는 질문에 대한 router 답. `relation`은 `RELATION_OPTIONS`, `send`는 `SEND_OPTIONS` 중 하나.
 pub(super) fn running_reply(keep_current: f64, relation: &str, send: &str) -> FakeReply {
     ok(&answers(keep_current, Some((relation, send))))
 }
@@ -320,7 +320,7 @@ fn choice(options: &[&str], picked: &str) -> Value {
 }
 
 /// 다시 보내지 않는 실패(키 거절)라 재시도 대기 없이 바로 판단 실패가 된다. 시계를 멈추면 기록 저장소 접근 시간 제한이 먼저 끝나므로 멈추지 않는다.
-pub(super) fn judge_down() -> Vec<FakeReply> {
+pub(super) fn router_down() -> Vec<FakeReply> {
     vec![key_rejected()]
 }
 

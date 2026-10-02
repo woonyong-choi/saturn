@@ -3,7 +3,7 @@ use saturn_protocol::ids::ChatId;
 use saturn_protocol::rpc::UsageRange;
 
 use super::*;
-use crate::{JUDGE_KEY_REQUIRED, JudgeGate};
+use crate::{ROUTER_KEY_REQUIRED, RouterGate};
 
 #[tokio::test]
 async fn usage_request_answers_rows_for_attached_chat() {
@@ -68,7 +68,7 @@ fn files_containing(dir: &Path, needle: &str) -> Vec<PathBuf> {
 }
 
 #[tokio::test]
-async fn requests_wait_for_judge_key_and_key_is_not_recorded() {
+async fn requests_wait_for_router_key_and_key_is_not_recorded() {
     let fixture = Fixture::new();
     let mut replies = vec![key_rejected()];
     replies.extend(check_passes());
@@ -84,19 +84,19 @@ async fn requests_wait_for_judge_key_and_key_is_not_recorded() {
         client.send(1, set_recording(chat.0)).await;
         let refused = client.response().await;
         assert_eq!(refused.id, Some(RequestId(1)));
-        assert_eq!(error_code(&refused), JUDGE_KEY_REQUIRED);
+        assert_eq!(error_code(&refused), ROUTER_KEY_REQUIRED);
 
         client
             .send(
                 2,
-                Request::SubmitJudgeKey {
+                Request::SubmitRouterKey {
                     key: "sk-wrong-0000".to_owned(),
                 },
             )
             .await;
         assert!(matches!(
             client.notification().await,
-            Notification::JudgeKeyRequired { .. }
+            Notification::RouterKeyRequired { .. }
         ));
         let wrong = client.response().await;
         assert_eq!(wrong.id, Some(RequestId(2)));
@@ -105,7 +105,7 @@ async fn requests_wait_for_judge_key_and_key_is_not_recorded() {
         client
             .send(
                 3,
-                Request::SubmitJudgeKey {
+                Request::SubmitRouterKey {
                     key: KEY.to_owned(),
                 },
             )
@@ -116,7 +116,7 @@ async fn requests_wait_for_judge_key_and_key_is_not_recorded() {
     })
     .await;
 
-    assert_eq!(engine.judge_gate, JudgeGate::Open);
+    assert_eq!(engine.router_gate, RouterGate::Open);
     assert_eq!(std::fs::read_to_string(fixture.key_file()).unwrap(), KEY);
     assert!(files_containing(&fixture.options.home, KEY).is_empty());
     assert!(files_containing(&fixture.options.home, "sk-wrong-0000").is_empty());
@@ -157,7 +157,7 @@ async fn requests_each_get_one_response_in_order() {
         client
             .send(
                 5,
-                Request::SubmitJudgeKey {
+                Request::SubmitRouterKey {
                     key: KEY.to_owned(),
                 },
             )

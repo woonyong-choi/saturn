@@ -78,7 +78,7 @@ fn render(
         condition: args.condition.unwrap_or(if judgments.compact.is_empty() {
             PacketCondition::RrfOnly
         } else {
-            PacketCondition::JudgeOnly
+            PacketCondition::RouterOnly
         }),
         k: args.k,
         top_n: args.top_n,
@@ -104,9 +104,9 @@ fn render(
             "tokens": packet.tokens,
             "included": seqs(&packet.included),
             "rrf_order": seqs(&assembled.rrf_order),
-            "judge_calls": 0,
-            "judge_failures": 0,
-            "judged": assembled.judged,
+            "router_calls": 0,
+            "router_failures": 0,
+            "routed": assembled.routed,
             "is_over_limit": packet.is_over_limit,
             "is_summary_used": packet.is_summary_used,
         })

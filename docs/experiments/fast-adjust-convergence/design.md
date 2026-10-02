@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 이슈 | [#120](https://github.com/woonyong-choi/saturn/issues/120) |
-| 관련 설계 | [judge 학습](../../design/judge-training.md) |
+| 관련 설계 | [judge 학습](../../design/router-training.md) |
 | 사전 데이터 | 없음. 합성 분포의 모수를 정하려고 기준값별 틀림 비율 곡선만 계산했고, 빠른 조정 시뮬레이션은 실행하지 않았다 |
 
 ## 질문

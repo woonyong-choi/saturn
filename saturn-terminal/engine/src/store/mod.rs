@@ -34,7 +34,7 @@ pub use retention::{
 };
 pub use schema::{BACKUP_RETENTION, MigrationNotice, SCHEMA_VERSION};
 pub use sessions::IdKind;
-pub use usage::JudgeUsage;
+pub use usage::RouterUsage;
 
 #[cfg(test)]
 pub(crate) use judgments::tests::judgment as test_judgment;

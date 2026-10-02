@@ -12,8 +12,8 @@ use crate::commands::{self, CommandError, SATURN_COMMANDS, SlashCommand};
 use crate::i18n::{self, Lang};
 use crate::keys::Action;
 use crate::view::composer::Composer;
-use crate::view::judge_version::JudgeVersionScreen;
 use crate::view::popup::{self, Popup, PopupItem, PopupKind};
+use crate::view::router_version::RouterVersionScreen;
 use crate::view::task_list::TaskList;
 use crate::view::transcript::TranscriptCell;
 use crate::view::usage::UsageScreen;
@@ -311,9 +311,9 @@ impl App {
                     from,
                 })
             }
-            SlashCommand::JudgeVersion => {
-                self.open_window(Window::JudgeVersion(JudgeVersionScreen::default()));
-                Some(Request::ListJudgeVersions)
+            SlashCommand::RouterVersion => {
+                self.open_window(Window::RouterVersion(RouterVersionScreen::default()));
+                Some(Request::ListRouterVersions)
             }
             SlashCommand::Provider { .. } => None,
         };

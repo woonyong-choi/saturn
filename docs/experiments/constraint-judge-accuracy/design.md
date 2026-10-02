@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 이슈 | [#121](https://github.com/woonyong-choi/saturn/issues/121) |
-| 관련 설계 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/judge.md) |
+| 관련 설계 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/router.md) |
 | 사전 데이터 | 없음. 평가 세트 문장과 라벨만 있고 judge 답은 아직 없다. |
 
 ## 질문

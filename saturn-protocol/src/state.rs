@@ -21,8 +21,8 @@ pub enum InputState {
 pub enum QueueReason {
     AfterTask(crate::ids::TaskLabel),
     /// `[보내기]` 없이 `[취소]`만.
-    JudgeOrder,
-    JudgeConnection,
+    RouterOrder,
+    RouterConnection,
     WriteTurn,
     AfterCompaction,
     /// session을 바꾸는 명령만.

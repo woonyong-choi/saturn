@@ -386,7 +386,7 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
-    use crate::sessions::ranking::{Candidate, DEFAULT_RRF_K, order_after_judge, rank_candidates};
+    use crate::sessions::ranking::{Candidate, DEFAULT_RRF_K, order_after_router, rank_candidates};
 
     // 2026-09-12T10:00Z
     const AT_MS: i64 = 1_789_207_200_000;
@@ -818,7 +818,7 @@ mod tests {
     // vars: c = 후보 수, l = 항목 글자 수
     // basis: estimate
     #[test]
-    fn build_packet_judge_no_response_fills_in_rrf_order() {
+    fn build_packet_router_no_response_fills_in_rrf_order() {
         let mut candidates: Vec<Candidate> = (0..150)
             .map(|seq| Candidate {
                 seq: LedgerSeq(seq),
@@ -834,7 +834,7 @@ mod tests {
             "로그인 실패 고쳐 줘",
             DEFAULT_RRF_K,
         );
-        let ordered = order_after_judge(&ranked, &[]);
+        let ordered = order_after_router(&ranked, &[]);
         let source = PacketSource {
             competitors: ordered
                 .iter()

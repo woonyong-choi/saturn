@@ -7,7 +7,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use super::{JUDGE_KEY_ENV, JudgeKey, KeySource, SecretsError};
+use super::{KeySource, ROUTER_KEY_ENV, RouterKey, SecretsError};
 
 /// 마지막 사용 뒤 이만큼 쓰지 않으면 잠근다.
 pub const HARDENED_IDLE_LOCK: Duration = Duration::from_secs(10 * 60);
@@ -23,7 +23,7 @@ const KEYCHAIN_SERVICE: &str = "saturn";
 const KEYCHAIN_ACCOUNT: &str = "saturn-key";
 
 /// 훅 차단 목록도 이 이름을 쓴다. 초안 값.
-pub(crate) const KEY_FILE: &str = "judge.key";
+pub(crate) const KEY_FILE: &str = "router.key";
 
 /// 소유자만 읽고 쓴다.
 const KEY_FILE_MODE: u32 = 0o600;
@@ -49,7 +49,7 @@ pub struct SecretStore {
     backend: Backend,
     mode: StorageMode,
     /// 관리자 명령과 환경 변수 키도 여기에만 둔다.
-    current: Option<(JudgeKey, KeySource)>,
+    current: Option<(RouterKey, KeySource)>,
     /// 강화 방식에서 풀린 시각과 마지막 사용 시각.
     unlocked: Option<(Instant, Instant)>,
 }
@@ -84,17 +84,17 @@ impl SecretStore {
     ///
     /// # Errors
     /// 없으면 `NotFound`, 권한이 틀리면 `FilePermission`, 키체인 실패면 `Keychain`, 잠겼으면 `Locked`.
-    pub async fn load(&mut self) -> Result<&JudgeKey, SecretsError> {
-        self.load_with_env(std::env::var(JUDGE_KEY_ENV).ok()).await
+    pub async fn load(&mut self) -> Result<&RouterKey, SecretsError> {
+        self.load_with_env(std::env::var(ROUTER_KEY_ENV).ok()).await
     }
 
     /// 테스트가 프로세스 환경을 바꾸지 않게 환경 변수 값을 밖에서 받는다.
     async fn load_with_env(
         &mut self,
         env_value: Option<String>,
-    ) -> Result<&JudgeKey, SecretsError> {
+    ) -> Result<&RouterKey, SecretsError> {
         if let Some(value) = env_value {
-            let key = JudgeKey::new(value)?;
+            let key = RouterKey::new(value)?;
             return Ok(&self.current.insert((key, KeySource::Env)).0);
         }
         if self.mode == StorageMode::Hardened && self.unlocked.is_none() {
@@ -108,7 +108,7 @@ impl SecretStore {
     ///
     /// # Errors
     /// 키체인 실패면 `Keychain`, 파일 실패면 `Io`.
-    pub async fn save(&mut self, key: JudgeKey, source: KeySource) -> Result<(), SecretsError> {
+    pub async fn save(&mut self, key: RouterKey, source: KeySource) -> Result<(), SecretsError> {
         if source == KeySource::Stored {
             self.write_backend(&key)?;
         }
@@ -117,7 +117,7 @@ impl SecretStore {
     }
 
     /// 확인 전 키라 백엔드에는 쓰지 않는다.
-    pub(crate) fn hold(&mut self, key: JudgeKey, source: KeySource) {
+    pub(crate) fn hold(&mut self, key: RouterKey, source: KeySource) {
         self.current = Some((key, source));
     }
 
@@ -158,7 +158,7 @@ impl SecretStore {
     ///
     /// # Errors
     /// 없으면 `NotFound`, 잠겼으면 `Locked`.
-    pub fn key(&mut self, now: Instant) -> Result<&JudgeKey, SecretsError> {
+    pub fn key(&mut self, now: Instant) -> Result<&RouterKey, SecretsError> {
         let from_env = matches!(self.current, Some((_, KeySource::Env | KeySource::Command)));
         if self.mode == StorageMode::Hardened && !from_env {
             if self.lock_if_expired(now) {
@@ -220,10 +220,10 @@ impl SecretStore {
             .collect()
     }
 
-    fn read_backend(&self) -> Result<JudgeKey, SecretsError> {
+    fn read_backend(&self) -> Result<RouterKey, SecretsError> {
         match &self.backend {
             Backend::Keychain => match keychain_entry()?.get_password() {
-                Ok(value) => JudgeKey::new(value),
+                Ok(value) => RouterKey::new(value),
                 Err(keyring::Error::NoEntry) => Err(SecretsError::NotFound),
                 Err(error) => Err(keychain_error(error)),
             },
@@ -238,12 +238,12 @@ impl SecretStore {
                 if meta.permissions().mode() & 0o777 != KEY_FILE_MODE {
                     return Err(SecretsError::FilePermission { path: path.clone() });
                 }
-                JudgeKey::new(std::fs::read_to_string(path)?)
+                RouterKey::new(std::fs::read_to_string(path)?)
             }
         }
     }
 
-    fn write_backend(&self, key: &JudgeKey) -> Result<(), SecretsError> {
+    fn write_backend(&self, key: &RouterKey) -> Result<(), SecretsError> {
         match &self.backend {
             Backend::Keychain => keychain_entry()?
                 .set_password(key.expose())
@@ -289,8 +289,8 @@ mod tests {
         SecretStore::with_backend(Backend::File(dir.join(KEY_FILE)), mode)
     }
 
-    fn key(value: &str) -> JudgeKey {
-        JudgeKey::new(value.to_owned()).unwrap()
+    fn key(value: &str) -> RouterKey {
+        RouterKey::new(value.to_owned()).unwrap()
     }
 
     #[tokio::test]
@@ -344,7 +344,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let victim = dir.path().join("other.txt");
         std::fs::write(&victim, "keep this").unwrap();
-        std::os::unix::fs::symlink(&victim, dir.path().join("judge.key.partial")).unwrap();
+        std::os::unix::fs::symlink(&victim, dir.path().join("router.key.partial")).unwrap();
 
         write_key_file(&dir.path().join(KEY_FILE), "sk-new").unwrap();
 

@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 이슈 | [#198](https://github.com/woonyong-choi/saturn/issues/198) |
-| 관련 설계 | [맥락 정리](../../design/context-management.md), [맥락 고르기](../../design/context-selection.md), [judge](../../design/judge.md) |
+| 관련 설계 | [맥락 정리](../../design/context-management.md), [맥락 고르기](../../design/context-selection.md), [judge](../../design/router.md) |
 | 사전 데이터 | 없음. 대체하는 [#117](https://github.com/woonyong-choi/saturn/issues/117)의 사전 등록 [ranked-handoff-quality](../ranked-handoff-quality/design.md)는 측정 전이라 데이터가 없다. 시나리오 생성, 질문 유형, 채점, 실행 방식은 이 설계에서 가져온다. |
 
 ## 질문

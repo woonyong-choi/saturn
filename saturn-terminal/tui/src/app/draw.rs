@@ -13,12 +13,12 @@ use crate::view::composer::ComposerView;
 use crate::view::folder_trust::FolderTrustView;
 use crate::view::footer::FooterView;
 use crate::view::full_transcript::FullTranscriptView;
-use crate::view::judge_key_prompt::JudgeKeyPromptView;
-use crate::view::judge_version::JudgeVersionView;
 use crate::view::live_area::LiveAreaView;
 use crate::view::permission::PermissionView;
 use crate::view::popup::PopupView;
 use crate::view::resume_prompt::ResumePromptView;
+use crate::view::router_key_prompt::RouterKeyPromptView;
+use crate::view::router_version::RouterVersionView;
 use crate::view::start_screen::StartScreenView;
 use crate::view::status_board::{self, StatusBoardView};
 use crate::view::task_list::TaskListView;
@@ -109,8 +109,8 @@ impl App {
             Some(Window::Resume(prompt)) => ResumePromptView { prompt, lang }.render(frame, area),
             Some(Window::TaskList(list)) => TaskListView { list, lang }.render(frame, area),
             Some(Window::Usage(screen)) => UsageView { screen, lang }.render(frame, area),
-            Some(Window::JudgeVersion(screen)) => {
-                JudgeVersionView { screen, lang }.render(frame, area);
+            Some(Window::RouterVersion(screen)) => {
+                RouterVersionView { screen, lang }.render(frame, area);
             }
             Some(Window::TrainConfirm(confirm)) => {
                 TrainConfirmView { confirm, lang }.render(frame, area);
@@ -127,8 +127,8 @@ impl App {
             view.render(frame, area);
         }
         match &self.window {
-            Some(Window::JudgeKey(prompt)) => {
-                JudgeKeyPromptView { prompt, lang }.render(frame, area);
+            Some(Window::RouterKey(prompt)) => {
+                RouterKeyPromptView { prompt, lang }.render(frame, area);
             }
             Some(Window::FolderTrust(trust)) => FolderTrustView { trust, lang }.render(frame, area),
             _ => {}

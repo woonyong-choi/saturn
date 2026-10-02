@@ -4,7 +4,7 @@
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
-use saturn_core::judges::JudgeRequest;
+use saturn_core::routers::RouterRequest;
 use saturn_protocol::ids::{
     AgentId, ChatId, ChatRevision, InputId, JudgmentId, Provider, ProviderSessionId, RunId,
     SessionId, SettingsRevision, TaskId, TaskLabel,
@@ -15,7 +15,7 @@ use tokio::sync::mpsc;
 
 use crate::Engine;
 use crate::events::PendingPermission;
-use crate::judges::{JudgeExchange, RecordContext};
+use crate::routers::{RecordContext, RouterExchange};
 use crate::stop::{HeldTask, StopDone, StopProgress};
 
 /// 열려 있는 provider session 하나.
@@ -31,7 +31,7 @@ pub(crate) struct LiveSession {
 
 /// 판단을 받아 적용한 입력. 사용자가 판단을 뒤집을 때 결과 신호를 알리는 데 쓴다.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Judged {
+pub(crate) struct Routed {
     pub(crate) judgment: Option<JudgmentId>,
     pub(crate) disposition: Disposition,
 }
@@ -39,7 +39,7 @@ pub(crate) struct Judged {
 /// 적용 결과를 알기 전이라 아직 기록하지 않은 판단. revision이 어긋나면 `Superseded`로 쓴다.
 pub(crate) struct Unrecorded {
     pub(crate) context: RecordContext,
-    pub(crate) exchange: JudgeExchange,
+    pub(crate) exchange: RouterExchange,
 }
 
 /// 작업 글자. `A`부터 쓰고 끝난 작업의 글자는 비어 있는 가장 앞 글자로 다시 쓴다.
@@ -79,10 +79,10 @@ impl TaskBook {
     }
 }
 
-/// 돌고 있는 judge 호출 하나(접수한 입력의 처리 방식 판단). 요청을 만들 때의 채팅 revision을 들고 있어 결과를
+/// 돌고 있는 router 호출 하나(접수한 입력의 처리 방식 판단). 요청을 만들 때의 채팅 revision을 들고 있어 결과를
 /// 적용할 때 비교한다. `retried`는 revision이 어긋나 다시 묻는 호출이면 참이다.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct JudgeJob {
+pub(crate) struct RouterJob {
     pub(crate) chat: ChatId,
     pub(crate) input: InputId,
     pub(crate) revision: ChatRevision,
@@ -90,18 +90,18 @@ pub(crate) struct JudgeJob {
 }
 
 /// 별도 작업이 engine 루프로 돌려주는 호출 결과.
-pub(crate) struct JudgeDone {
-    pub(crate) job: JudgeJob,
-    pub(crate) request: JudgeRequest,
-    pub(crate) exchange: JudgeExchange,
+pub(crate) struct RouterDone {
+    pub(crate) job: RouterJob,
+    pub(crate) request: RouterRequest,
+    pub(crate) exchange: RouterExchange,
 }
 
 pub(crate) struct FlowState {
-    pub(crate) judged: HashMap<InputId, Judged>,
+    pub(crate) routed: HashMap<InputId, Routed>,
     /// 채팅마다 판단 중인 접수 입력. 같은 채팅 입력은 하나씩만 판단한다.
     pub(crate) judging: HashMap<ChatId, InputId>,
-    pub(crate) judge_tx: mpsc::UnboundedSender<JudgeDone>,
-    pub(crate) judge_rx: mpsc::UnboundedReceiver<JudgeDone>,
+    pub(crate) router_tx: mpsc::UnboundedSender<RouterDone>,
+    pub(crate) router_rx: mpsc::UnboundedReceiver<RouterDone>,
     /// 채팅의 가장 나중 판단이 정한 처리 방식. 다음 판단의 state에 넣는다.
     pub(crate) last_disposition: HashMap<ChatId, Disposition>,
     pub(crate) unrecorded: HashMap<InputId, Unrecorded>,
@@ -147,7 +147,7 @@ pub(crate) struct NeedsCheck {
 
 impl Default for FlowState {
     fn default() -> Self {
-        let (judge_tx, judge_rx) = mpsc::unbounded_channel();
+        let (router_tx, router_rx) = mpsc::unbounded_channel();
         let (stop_tx, stop_rx) = mpsc::unbounded_channel();
         Self {
             last_run: HashMap::new(),
@@ -164,10 +164,10 @@ impl Default for FlowState {
             held: HashMap::new(),
             stop_tx,
             stop_rx,
-            judged: HashMap::new(),
+            routed: HashMap::new(),
             judging: HashMap::new(),
-            judge_tx,
-            judge_rx,
+            router_tx,
+            router_rx,
             last_disposition: HashMap::new(),
             unrecorded: HashMap::new(),
             applied: Vec::new(),
@@ -180,7 +180,7 @@ impl Default for FlowState {
 impl std::fmt::Debug for FlowState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FlowState")
-            .field("judged", &self.judged.len())
+            .field("routed", &self.routed.len())
             .field("unrecorded", &self.unrecorded.len())
             .field("live", &self.live.len())
             .finish_non_exhaustive()

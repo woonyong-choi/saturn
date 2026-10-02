@@ -4,27 +4,27 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 
 ## 맥락
 
-![사용자 입력은 Saturn을 거쳐 Codex와 Claude Code로 가고, 뜻 판단은 judge에 묻는다](assets/context.svg)
+![사용자 입력은 Saturn을 거쳐 Codex와 Claude Code로 가고, 뜻 판단은 router에 묻는다](assets/context.svg)
 
 | 외부 요소 | 종류 | 주고받는 것 |
 |---|---|---|
 | Codex CLI | 외부 프로그램 | app-server 요청, 이벤트, 사용량 보고 |
 | Claude Code | 외부 프로그램 | stream-json 입력, 이벤트, 사용량 보고 |
-| judge API | 외부 서비스 | 판단 질문과 선택지별 확률 |
+| router API | 외부 서비스 | 판단 질문과 선택지별 확률 |
 | 로컬 Saturn 모델 | 외부 프로그램 | 판단 질문과 선택지별 확률 |
-| macOS 키체인 | 운영체제 | judge 키 |
-| `SATURN_KEY` 환경 변수 | 운영체제 | 키체인 확인에 실패할 때 받는 judge 키 |
+| macOS 키체인 | 운영체제 | router 키 |
+| `SATURN_KEY` 환경 변수 | 운영체제 | 키체인 확인에 실패할 때 받는 router 키 |
 | 설정 파일 | 파일 | 사용자 설정과 폴더 설정 |
 
 ## 코드 지도
 
-![TUI와 CLI는 engine에만 붙고, engine이 core 규칙으로 provider와 judge를 다룬다](assets/architecture.svg)
+![TUI와 CLI는 engine에만 붙고, engine이 core 규칙으로 provider와 router를 다룬다](assets/architecture.svg)
 
 | 구성 요소 | 하는 일 | 기술 | 위치 |
 |---|---|---|---|
 | `protocol` | engine과 TUI가 주고받는 메시지 타입 정의 | Rust, `schemars`, `ts-rs` | `saturn-protocol` |
 | `core` | 대기열, session, 에이전트 트리, 판단 규칙과 외부 연결 trait | Rust | `saturn-terminal/core` |
-| `engine` | provider 연결, judge 호출, 기록 저장, TUI 접속을 맡는 상주 프로세스 | Rust, `tokio` | `saturn-terminal/engine` |
+| `engine` | provider 연결, router 호출, 기록 저장, TUI 접속을 맡는 상주 프로세스 | Rust, `tokio` | `saturn-terminal/engine` |
 | `tui` | 채팅 기록, 실행 영역, 상태판, 입력창을 그리는 전체 화면 | Rust, `ratatui`, `crossterm` | `saturn-terminal/tui` |
 | `cli` | `saturn` 실행 파일, 명령줄 처리와 engine 시작 | Rust, `clap` | `saturn-terminal/cli` |
 | `database` | 기록 저장소. 입력, 실행, session, 사용량, 판단 기록, 설정 스냅샷 보관 | SQLite | `~/.saturn/saturn.db` |
@@ -33,8 +33,8 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 
 | 구성 요소 | 모듈과 주요 타입 | 위치 |
 |---|---|---|
-| `core` | `providers`(`ProviderClient` trait), `judges`(`JudgeClient` trait), `agents`(`AgentTracker`), `sessions`(`SessionManager`), `queue`(`Queue`) | `saturn-terminal/core/src/{모듈}/mod.rs` |
-| `engine` | `secrets`(`SecretStore`), `store`(`Store`), `settings`(`SettingsManager`), `processes`(`Supervisor`), `providers`(`CodexClient`, `ClaudeClient`), `judges`(`RemoteJudge`, `LocalJudge`), `rpc`(`RpcServer`) | `saturn-terminal/engine/src/{모듈}/` |
+| `core` | `providers`(`ProviderClient` trait), `routers`(`RouterClient` trait), `agents`(`AgentTracker`), `sessions`(`SessionManager`), `queue`(`Queue`) | `saturn-terminal/core/src/{모듈}/mod.rs` |
+| `engine` | `secrets`(`SecretStore`), `store`(`Store`), `settings`(`SettingsManager`), `processes`(`Supervisor`), `providers`(`CodexClient`, `ClaudeClient`), `routers`(`RemoteRouter`, `LocalRouter`), `rpc`(`RpcServer`) | `saturn-terminal/engine/src/{모듈}/` |
 
 기능별 동작은 설계 문서에 있다.
 
@@ -45,9 +45,9 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 권한 규칙, 권한 모드, 항상 허용 | [권한](design/permissions.md) |
 | 맥락 크기 측정과 새 session으로 이어 가기 | [맥락 정리](design/context-management.md) |
 | 후보 순위, 제약 식별과 대체 | [맥락 고르기](design/context-selection.md) |
-| 판단 질문, 기준값, 대체 규칙 | [judge](design/judge.md) |
-| judge 키 입력, 저장, 차단 | [judge 키 보호](design/judge-key-security.md) |
-| 채점, 기준값 조정, 로컬 모델 승격 | [judge 학습](design/judge-training.md) |
+| 판단 질문, 기준값, 대체 규칙 | [router](design/router.md) |
+| router 키 입력, 저장, 차단 | [router 키 보호](design/router-key-security.md) |
+| 채점, 기준값 조정, 로컬 모델 승격 | [router 학습](design/router-training.md) |
 | 설정 층과 설정 번호 | [설정](design/settings.md) |
 | 스키마 이관, 보존, 삭제 | [기록 저장과 보존](design/records.md) |
 | engine 시작, TUI 종료 뒤 계속, 크래시 뒤 복구, 채팅 폴더와 이어 열기 | [engine 수명과 복구](design/engine-lifecycle.md) |
@@ -60,7 +60,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 1. TUI가 입력을 engine에 보낸다.
 2. engine이 입력을 기록 저장소에 접수한다.
 3. `core`가 같은 채팅 입력의 판단 차례를 접수 순서로 정한다.
-4. engine이 judge에 묻고, `core`가 판단 결과로 대상 에이전트와 처리 방식을 정한다.
+4. engine이 router에 묻고, `core`가 판단 결과로 대상 에이전트와 처리 방식을 정한다.
 5. engine이 보내는 순간 대상 session을 골라 provider에 전달한다.
 6. engine이 provider 이벤트와 사용량 보고를 기록하고 TUI에 결과 줄을 보낸다.
 
@@ -80,15 +80,15 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 - `core`는 파일, 네트워크, 프로세스를 직접 다루지 않는다. 규칙을 외부 연결 없이 테스트하기 위해서다.
 - provider 고유 이름은 `providers/codex`, `providers/claude` 안에서만 쓴다. TUI가 provider를 몰라도 그릴 수 있게 하기 위해서다.
 - 에이전트끼리 직접 통신하지 않는다. 맥락 전달을 기록 번호 하나로 맞추기 위해서다.
-- 권한은 Saturn 설정의 `permission` 규칙이 정본이고 provider 설정 파일은 고치지 않는다. 사용자 설정이 Saturn의 허가 판단을 우회하는 일을 막기 위해서다. 그 밖의 provider 설정과 subagent 사용은 막거나 바꾸지 않고 추적만 하고, 예외는 judge 키 보호 하나다.
+- 권한은 Saturn 설정의 `permission` 규칙이 정본이고 provider 설정 파일은 고치지 않는다. 사용자 설정이 Saturn의 허가 판단을 우회하는 일을 막기 위해서다. 그 밖의 provider 설정과 subagent 사용은 막거나 바꾸지 않고 추적만 하고, 예외는 router 키 보호 하나다.
 - 채팅의 폴더 설정과 작업 폴더는 채팅을 만든 기본 폴더 하나만 따르고, provider 실행 환경은 그 채팅에 가장 최근에 붙은 TUI의 환경으로 정한다. 다른 폴더의 설정과 상주 engine의 환경이 섞이지 않게 하기 위해서다.
-- judge는 engine만 부른다. judge 전송은 HTTPS만 쓰고 TLS 검증을 끄지 않는다. judge 키가 자식 프로세스나 다른 호스트로 새는 것을 막기 위해서다.
-- judge 키와 일치하는 문자열은 로그, 오류, 디버그 출력에서 가리고, Authorization 헤더는 기록하지 않는다. 키가 기록이나 화면으로 새는 것을 막기 위해서다.
+- router는 engine만 부른다. router 전송은 HTTPS만 쓰고 TLS 검증을 끄지 않는다. router 키가 자식 프로세스나 다른 호스트로 새는 것을 막기 위해서다.
+- router 키와 일치하는 문자열은 로그, 오류, 디버그 출력에서 가리고, Authorization 헤더는 기록하지 않는다. 키가 기록이나 화면으로 새는 것을 막기 위해서다.
 - 스키마는 새 버전을 처음 실행할 때 자동으로 옮기고, 옮기기 직전 백업 하나를 14일 둔다. 판단 기록에는 질문 버전과 설정 번호를 남긴다. 버전이 바뀐 뒤에도 옛 기록을 다시 해석하기 위해서다.
 
 ## 배치
 
-지원 환경은 Apple Silicon macOS다. Rust 2024 edition으로 빌드하고, 실행에는 Codex CLI나 Claude Code 중 하나 이상과 judge API 키나 로컬 Saturn 모델이 필요하다.
+지원 환경은 Apple Silicon macOS다. Rust 2024 edition으로 빌드하고, 실행에는 Codex CLI나 Claude Code 중 하나 이상과 router API 키나 로컬 Saturn 모델이 필요하다.
 
 | 프로세스 | 시작 주체 | 수명 |
 |---|---|---|
@@ -115,5 +115,5 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 비동기 실행 | `tokio` | provider 연결과 TUI 접속을 한 engine에서 동시에 처리한다. |
 | 기록 저장소 | SQLite, `sqlx` | 단일 파일과 원자 거래로 입력을 먼저 기록한다. |
 | 설정 편집 | `toml_edit` | 명령으로 설정 파일을 고칠 때 주석을 보존한다. |
-| judge 키 저장 | `keyring` | macOS 키체인을 OS API로 직접 쓴다([결정 기록](decisions/2026-09-29-engine-as-judge-proxy.md)). |
-| judge 학습 | Python, MLX | Apple Silicon에서 로컬 학습을 실행한다. |
+| router 키 저장 | `keyring` | macOS 키체인을 OS API로 직접 쓴다([결정 기록](decisions/2026-09-29-engine-as-router-proxy.md)). |
+| router 학습 | Python, MLX | Apple Silicon에서 로컬 학습을 실행한다. |

@@ -12,14 +12,14 @@ pub enum KeyArea {
     StatusBoard,
     Popup,
     Composer,
-    JudgeKeyPrompt,
+    RouterKeyPrompt,
     FolderTrust,
     ResumePrompt,
     Permission,
     TaskList,
     FullTranscript,
     Usage,
-    JudgeVersion,
+    RouterVersion,
     TrainConfirm,
 }
 
@@ -98,7 +98,7 @@ pub enum Action {
     RenameChat,
     SendQueued,
 
-    // judge 버전 화면
+    // router 버전 화면
     ResetThresholds,
     TrainFrom,
     UseVersion,
@@ -114,14 +114,14 @@ pub fn map(area: KeyArea, key: KeyEvent, ctx: KeyContext) -> Option<Action> {
         KeyArea::StatusBoard => status_board(key),
         KeyArea::Popup => popup(key),
         KeyArea::Composer => composer(key, ctx),
-        KeyArea::JudgeKeyPrompt => judge_key_prompt(key),
+        KeyArea::RouterKeyPrompt => router_key_prompt(key),
         KeyArea::FolderTrust => folder_trust(key),
         KeyArea::ResumePrompt => resume_prompt(key),
         KeyArea::Permission => permission(key),
         KeyArea::TaskList => task_list(key),
         KeyArea::FullTranscript => full_transcript(key),
         KeyArea::Usage => usage(key),
-        KeyArea::JudgeVersion => judge_version(key),
+        KeyArea::RouterVersion => router_version(key),
         KeyArea::TrainConfirm => train_confirm(key),
     }
 }
@@ -179,7 +179,7 @@ pub fn composer(key: KeyEvent, ctx: KeyContext) -> Option<Action> {
     }
 }
 
-pub fn judge_key_prompt(key: KeyEvent) -> Option<Action> {
+pub fn router_key_prompt(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Quit),
@@ -265,7 +265,7 @@ pub fn usage(key: KeyEvent) -> Option<Action> {
     }
 }
 
-pub fn judge_version(key: KeyEvent) -> Option<Action> {
+pub fn router_version(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Close),
@@ -573,9 +573,9 @@ mod tests {
     }
 
     #[test]
-    fn judge_version_and_status_board_keys() {
-        assert_eq!(judge_version(plain('u')), Some(Action::UseVersion));
-        assert_eq!(judge_version(plain('t')), Some(Action::TrainFrom));
+    fn router_version_and_status_board_keys() {
+        assert_eq!(router_version(plain('u')), Some(Action::UseVersion));
+        assert_eq!(router_version(plain('t')), Some(Action::TrainFrom));
         assert_eq!(
             status_board(key(KeyCode::Enter, KeyModifiers::NONE)),
             Some(Action::ConfirmCloseHeld)
@@ -587,10 +587,10 @@ mod tests {
     }
 
     #[test]
-    fn judge_key_prompt_takes_text() {
-        assert_eq!(judge_key_prompt(plain('k')), Some(Action::Insert('k')));
+    fn router_key_prompt_takes_text() {
+        assert_eq!(router_key_prompt(plain('k')), Some(Action::Insert('k')));
         assert_eq!(
-            judge_key_prompt(key(KeyCode::Esc, KeyModifiers::NONE)),
+            router_key_prompt(key(KeyCode::Esc, KeyModifiers::NONE)),
             Some(Action::Quit)
         );
     }

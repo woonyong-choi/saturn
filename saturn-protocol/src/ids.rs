@@ -73,7 +73,7 @@ pub struct LedgerSeq(pub u64);
 )]
 pub struct SettingsRevision(pub u64);
 
-/// judge 결과를 적용하기 직전에 비교한다(CAS).
+/// router 결과를 적용하기 직전에 비교한다(CAS).
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, JsonSchema, TS,
 )]

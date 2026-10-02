@@ -1,16 +1,44 @@
-//! `saturn judge`: judge 버전 관리.
-//! 설계: docs/design/judge-training.md
+//! `saturn router`: router 버전 관리.
+//! 설계: docs/design/router-training.md
 
 use std::io::Write;
 
-use saturn_protocol::rpc::{JudgeVersionInfo, Notification, Request};
+use saturn_protocol::rpc::{Notification, Request, RouterVersionInfo};
 use saturn_tui::client::EngineClient;
 
-use crate::args::JudgeVersionArgs;
+use crate::args::RouterUseArgs;
 use crate::commands::{call, confirm_on_terminal};
 
+// cost: time O(v), heap O(v), stack O(1), io 2
+// vars: v = router 버전 수
+// basis: estimate
+/// 버전 목록을 한 줄에 하나씩 보인다. 현재 버전 앞에는 `*`를 붙인다.
+///
+/// # Errors
+/// 연결이 끊기거나 engine이 목록 없이 답하면 오류.
+pub(crate) async fn list(client: &mut EngineClient) -> anyhow::Result<()> {
+    let mut out = std::io::stdout().lock();
+    let (current, versions) = list_versions(client).await?;
+    write_versions(&mut out, &current, &versions)
+}
+
+fn write_versions(
+    out: &mut impl Write,
+    current: &str,
+    versions: &[RouterVersionInfo],
+) -> anyhow::Result<()> {
+    for info in versions {
+        let marker = if info.version == current { '*' } else { ' ' };
+        let ece = info
+            .ece
+            .map_or_else(|| "-".to_owned(), |ece| format!("{ece:.3}"));
+        writeln!(out, "{marker} {} {} ece {ece}", info.version, info.router)?;
+    }
+    Ok(())
+}
+
 // cost: time O(v), heap O(v), stack O(1), io 4
-// vars: v = judge 버전 수
+// vars: v = router 버전 수
 // basis: estimate
 /// 확인 한 줄은 터미널에서만 받는다. 터미널이 없으면 바꾸지 않고 오류로 끝낸다(TODO(#57)).
 ///
@@ -18,25 +46,29 @@ use crate::commands::{call, confirm_on_terminal};
 /// 버전이 없거나 사용자가 확인하지 않았거나 연결이 끊기면 오류.
 pub(crate) async fn use_version(
     client: &mut EngineClient,
-    args: &JudgeVersionArgs,
+    args: &RouterUseArgs,
 ) -> anyhow::Result<()> {
     let mut out = std::io::stdout().lock();
-    switch_version(client, args, confirm_on_terminal, &mut out).await
+    if args.yes {
+        switch_version(client, args, |_| Ok(true), &mut out).await
+    } else {
+        switch_version(client, args, confirm_on_terminal, &mut out).await
+    }
 }
 
 // cost: time O(v), heap O(v), stack O(1), io 4
-// vars: v = judge 버전 수
+// vars: v = router 버전 수
 // basis: estimate
 async fn switch_version(
     client: &mut EngineClient,
-    args: &JudgeVersionArgs,
+    args: &RouterUseArgs,
     confirm: impl FnOnce(&str) -> anyhow::Result<bool>,
     out: &mut impl Write,
 ) -> anyhow::Result<()> {
     let (current, versions) = list_versions(client).await?;
     anyhow::ensure!(
         versions.iter().any(|info| info.version == args.version),
-        "judge version not found: {} (available: {})",
+        "router version not found: {} (available: {})",
         args.version,
         versions
             .iter()
@@ -45,35 +77,35 @@ async fn switch_version(
             .join(", ")
     );
     if current == args.version {
-        writeln!(out, "already using judge version {current}")?;
+        writeln!(out, "already using router version {current}")?;
         return Ok(());
     }
-    let prompt = format!("use judge version {} (current: {current})?", args.version);
+    let prompt = format!("use router version {} (current: {current})?", args.version);
     if !confirm(&prompt)? {
-        anyhow::bail!("not confirmed; judge version stays {current}");
+        anyhow::bail!("not confirmed; router version stays {current}");
     }
-    let request = Request::UseJudgeVersion {
+    let request = Request::UseRouterVersion {
         version: args.version.clone(),
     };
     call(client, request, drop).await?;
-    writeln!(out, "now using judge version {}", args.version)?;
+    writeln!(out, "now using router version {}", args.version)?;
     Ok(())
 }
 
 // cost: time O(v), heap O(v), stack O(1), io 2
-// vars: v = judge 버전 수
+// vars: v = router 버전 수
 // basis: estimate
 async fn list_versions(
     client: &mut EngineClient,
-) -> anyhow::Result<(String, Vec<JudgeVersionInfo>)> {
+) -> anyhow::Result<(String, Vec<RouterVersionInfo>)> {
     let mut listed = None;
-    call(client, Request::ListJudgeVersions, |notification| {
-        if let Notification::JudgeVersions { current, versions } = notification {
+    call(client, Request::ListRouterVersions, |notification| {
+        if let Notification::RouterVersions { current, versions } = notification {
             listed = Some((current, versions));
         }
     })
     .await?;
-    listed.ok_or_else(|| anyhow::anyhow!("engine answered without judge versions"))
+    listed.ok_or_else(|| anyhow::anyhow!("engine answered without router versions"))
 }
 
 #[cfg(test)]
@@ -82,25 +114,26 @@ mod tests {
 
     use super::*;
 
-    fn info(version: &str) -> JudgeVersionInfo {
-        JudgeVersionInfo {
+    fn info(version: &str) -> RouterVersionInfo {
+        RouterVersionInfo {
             version: version.to_owned(),
-            judge: "jev".to_owned(),
+            router: "jev".to_owned(),
             ece: None,
             questions: Vec::new(),
         }
     }
 
     fn versions(current: &str) -> Reply {
-        Reply::with(vec![Notification::JudgeVersions {
+        Reply::with(vec![Notification::RouterVersions {
             current: current.to_owned(),
             versions: vec![info("v1"), info("v2")],
         }])
     }
 
-    fn args(version: &str) -> JudgeVersionArgs {
-        JudgeVersionArgs {
+    fn args(version: &str) -> RouterUseArgs {
+        RouterUseArgs {
             version: version.to_owned(),
+            yes: false,
         }
     }
 
@@ -117,15 +150,15 @@ mod tests {
         assert_eq!(
             engine.finish().await,
             vec![
-                Request::ListJudgeVersions,
-                Request::UseJudgeVersion {
+                Request::ListRouterVersions,
+                Request::UseRouterVersion {
                     version: "v2".to_owned()
                 }
             ]
         );
         assert_eq!(
             String::from_utf8(out).unwrap(),
-            "now using judge version v2\n"
+            "now using router version v2\n"
         );
     }
 
@@ -137,7 +170,7 @@ mod tests {
         let result = switch_version(&mut client, &args("v2"), |_| Ok(false), &mut Vec::new()).await;
 
         assert!(result.is_err());
-        assert_eq!(engine.finish().await, vec![Request::ListJudgeVersions]);
+        assert_eq!(engine.finish().await, vec![Request::ListRouterVersions]);
     }
 
     #[tokio::test]
@@ -174,7 +207,23 @@ mod tests {
 
         assert_eq!(
             String::from_utf8(out).unwrap(),
-            "already using judge version v2\n"
+            "already using router version v2\n"
         );
+    }
+
+    #[test]
+    fn write_versions_marks_current_and_shows_ece() {
+        let mut v2 = info("v2");
+        v2.ece = Some(0.0421);
+        let mut out = Vec::new();
+
+        write_versions(&mut out, "v2", &[info("v1"), v2]).unwrap();
+
+        let text = String::from_utf8(out).unwrap();
+        let lines: Vec<_> = text.lines().collect();
+        assert!(lines[0].starts_with("  v1 "));
+        assert!(lines[0].ends_with("ece -"));
+        assert!(lines[1].starts_with("* v2 "));
+        assert!(lines[1].ends_with("ece 0.042"));
     }
 }

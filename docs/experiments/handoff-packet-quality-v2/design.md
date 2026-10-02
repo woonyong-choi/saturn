@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 이슈 | [#218](https://github.com/woonyong-choi/saturn/issues/218) |
-| 관련 설계 | [맥락 정리](../../design/context-management.md), [맥락 고르기](../../design/context-selection.md), [judge](../../design/judge.md) |
+| 관련 설계 | [맥락 정리](../../design/context-management.md), [맥락 고르기](../../design/context-selection.md), [judge](../../design/router.md) |
 | 사전 데이터 | [handoff-packet-quality](../handoff-packet-quality/report.md)의 결과와 후속 분석을 규칙 변경의 근거로 봤다. 시나리오 생성, 질문 유형, 채점, 실행 방식은 그 실험의 스크립트를 가져오고 시드만 218로 바꾼다. 시드 218 시나리오 하나를 판단 없이 RRF 순서로 채운 패킷의 형식(session 제목, 기록 번호, 시각 표기)만 확인했고, provider 답과 judge 판단은 보지 않았다. |
 
 ## 질문

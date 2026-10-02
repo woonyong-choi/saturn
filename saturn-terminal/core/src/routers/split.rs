@@ -1,7 +1,7 @@
-//! 크기 한도를 넘는 judge 요청을 질문 단위로 나누는 순수 규칙(전송은 `saturn-engine`).
-//! 설계: docs/design/judge.md
+//! 크기 한도를 넘는 router 요청을 질문 단위로 나누는 순수 규칙(전송은 `saturn-engine`).
+//! 설계: docs/design/router.md
 
-use super::{AnswerKind, JudgeRequest, Question, QuestionSetId};
+use super::{AnswerKind, Question, QuestionSetId, RouterRequest};
 
 /// 요청 한 건의 한도. 토큰을 셀 수 없어 본문 바이트로 잰다(초안).
 pub const MAX_REQUEST_BYTES: usize = 64 * 1024;
@@ -23,8 +23,8 @@ pub enum SplitError {
 ///
 /// # Errors
 /// `state`와 질문 하나만으로 [`MAX_STATE_AND_QUESTION_BYTES`]를 넘으면 `SplitError::QuestionTooLarge`.
-pub fn split_request(request: JudgeRequest) -> Result<Vec<JudgeRequest>, SplitError> {
-    let JudgeRequest { model, state, sets } = request;
+pub fn split_request(request: RouterRequest) -> Result<Vec<RouterRequest>, SplitError> {
+    let RouterRequest { model, state, sets } = request;
     let fixed_bytes = model.len() + state.len();
     let mut pieces = Vec::new();
     let mut current: Vec<(QuestionSetId, Vec<Question>)> = Vec::new();
@@ -79,8 +79,8 @@ fn push_question(
 // cost: time O(s), heap O(s), stack O(1), alloc 1
 // vars: s = state 글자 수
 // basis: estimate
-fn piece(model: &str, state: &str, sets: Vec<(QuestionSetId, Vec<Question>)>) -> JudgeRequest {
-    JudgeRequest {
+fn piece(model: &str, state: &str, sets: Vec<(QuestionSetId, Vec<Question>)>) -> RouterRequest {
+    RouterRequest {
         model: model.to_string(),
         state: state.to_string(),
         sets,
@@ -90,15 +90,15 @@ fn piece(model: &str, state: &str, sets: Vec<(QuestionSetId, Vec<Question>)>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::judges::{SET_COMPACT, compact_questions};
+    use crate::routers::{SET_COMPACT, compact_questions};
     use saturn_protocol::ids::LedgerSeq;
 
     // cost: time O(q), heap O(q), stack O(1)
     // vars: q = 질문 수
     // basis: estimate
-    fn compact_request(state_bytes: usize, candidates: u64) -> JudgeRequest {
+    fn compact_request(state_bytes: usize, candidates: u64) -> RouterRequest {
         let seqs: Vec<LedgerSeq> = (0..candidates).map(LedgerSeq).collect();
-        JudgeRequest {
+        RouterRequest {
             model: "jev-test".into(),
             state: "s".repeat(state_bytes),
             sets: vec![compact_questions(&seqs)],
@@ -108,7 +108,7 @@ mod tests {
     // cost: time O(p), heap O(1), stack O(1)
     // vars: p = 조각 수
     // basis: estimate
-    fn question_count(pieces: &[JudgeRequest]) -> usize {
+    fn question_count(pieces: &[RouterRequest]) -> usize {
         pieces
             .iter()
             .flat_map(|piece| &piece.sets)

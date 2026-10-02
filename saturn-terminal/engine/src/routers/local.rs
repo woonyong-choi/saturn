@@ -1,15 +1,15 @@
 //! 로컬 Saturn 모델 연결. 키를 쓰지 않는다.
-//! 설계: docs/design/judge.md
+//! 설계: docs/design/router.md
 //! TODO(#43): 모델 형식과 실행 방식이 정해지면 `LocalSource`를 확정한다. 그 전에는 `Server`만 동작한다
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
-use saturn_core::judges::{JudgeClient, JudgeError, JudgeRequest, JudgeResponse};
+use saturn_core::routers::{RouterClient, RouterError, RouterRequest, RouterResponse};
 
-use super::JudgeExchange;
-use super::remote::{HttpReply, Transport, TransportError, judge_body, parse_judge_reply};
+use super::RouterExchange;
+use super::remote::{HttpReply, Transport, TransportError, parse_router_reply, router_body};
 
 /// 판단 원문이 기기 밖으로 나가지 않게 루프백만 받는다. 초안 값.
 const LOOPBACK_HOSTS: &[&str] = &["127.0.0.1", "localhost", "[::1]"];
@@ -21,18 +21,18 @@ const LOCAL_TIMEOUT: Duration = Duration::from_secs(30);
 pub enum LocalSource {
     /// 승격된 모델 파일.
     Model {
-        /// judge 버전의 모델 경로.
+        /// router 버전의 모델 경로.
         path: PathBuf,
     },
     /// 이미 떠 있는 로컬 API 서버. 루프백 `http`만 받는다(초안).
     Server {
-        /// 설정 `judge.local.endpoint`(초안).
+        /// 설정 `router.local.endpoint`(초안).
         endpoint: String,
     },
 }
 
 #[derive(Debug)]
-pub struct LocalJudge {
+pub struct LocalRouter {
     source: LocalSource,
     /// 판단 기록에 남긴다.
     version: String,
@@ -40,7 +40,7 @@ pub struct LocalJudge {
     transport: Option<Arc<dyn Transport>>,
 }
 
-impl LocalJudge {
+impl LocalRouter {
     /// 아직 모델을 불러오지 않는다.
     pub fn new(source: LocalSource, version: String) -> Self {
         let transport: Option<Arc<dyn Transport>> = match &source {
@@ -73,10 +73,10 @@ impl LocalJudge {
     }
 
     /// `Model`은 실행 방식이 정해지지 않아(#43) `NoResponse`, `Server`는 루프백 주소가 아니면 보내지 않는다.
-    pub async fn exchange(&self, request: JudgeRequest) -> JudgeExchange {
+    pub async fn exchange(&self, request: RouterRequest) -> RouterExchange {
         let started_at = SystemTime::now();
         let clock = Instant::now();
-        let body = judge_body(&request).to_string();
+        let body = router_body(&request).to_string();
         let (received, result) = match (&self.source, &self.transport) {
             (LocalSource::Server { endpoint }, Some(transport)) if is_loopback(endpoint) => {
                 let url = format!("{}/v1/systemone", endpoint.trim_end_matches('/'));
@@ -90,22 +90,22 @@ impl LocalJudge {
                         body: reply,
                         ..
                     }) => {
-                        let parsed = parse_judge_reply(&request, &reply);
+                        let parsed = parse_router_reply(&request, &reply);
                         (Some(reply), parsed)
                     }
                     Ok(reply) => (
                         Some(reply.body),
-                        Err(JudgeError::Invalid {
-                            reason: format!("local judge returned status {}", reply.status),
+                        Err(RouterError::Invalid {
+                            reason: format!("local router returned status {}", reply.status),
                         }),
                     ),
-                    Err(TransportError::BeforeSend) => (None, Err(JudgeError::NoResponse)),
-                    Err(TransportError::AfterSend) => (None, Err(JudgeError::TimedOutAfterSend)),
+                    Err(TransportError::BeforeSend) => (None, Err(RouterError::NoResponse)),
+                    Err(TransportError::AfterSend) => (None, Err(RouterError::TimedOutAfterSend)),
                 }
             }
-            _ => (None, Err(JudgeError::NoResponse)),
+            _ => (None, Err(RouterError::NoResponse)),
         };
-        JudgeExchange {
+        RouterExchange {
             sent: body,
             received,
             result,
@@ -116,14 +116,14 @@ impl LocalJudge {
     }
 }
 
-impl JudgeClient for LocalJudge {
+impl RouterClient for LocalRouter {
     /// `Model`은 실행 방식이 정해질 때까지(#43) 항상 실패한다.
-    async fn check(&self) -> Result<(), JudgeError> {
+    async fn check(&self) -> Result<(), RouterError> {
         let request = super::check_request(self.version.clone());
         self.exchange(request).await.result.map(|_| ())
     }
 
-    async fn judge(&self, request: JudgeRequest) -> Result<JudgeResponse, JudgeError> {
+    async fn router(&self, request: RouterRequest) -> Result<RouterResponse, RouterError> {
         self.exchange(request).await.result
     }
 }
@@ -171,7 +171,7 @@ impl Transport for PlainTransport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::judges::remote::tests::{ANSWER, FakeTransport, ok, request};
+    use crate::routers::remote::tests::{ANSWER, FakeTransport, ok, request};
 
     #[test]
     fn only_loopback_http_is_allowed() {
@@ -198,28 +198,28 @@ mod tests {
         let source = LocalSource::Server {
             endpoint: "http://127.0.0.1:7777/".to_owned(),
         };
-        let judge = LocalJudge::with_transport(source, "saturn-v3".to_owned(), transport.clone());
+        let router = LocalRouter::with_transport(source, "saturn-v3".to_owned(), transport.clone());
 
-        let exchange = judge.exchange(request()).await;
+        let exchange = router.exchange(request()).await;
 
         assert_eq!(exchange.result.unwrap().answers.len(), 3);
         let calls = transport.calls();
         assert_eq!(calls[0].0, "http://127.0.0.1:7777/v1/systemone");
         assert!(calls[0].1.iter().all(|(name, _)| name != "authorization"));
-        assert_eq!(judge.version(), "saturn-v3");
+        assert_eq!(router.version(), "saturn-v3");
     }
 
     #[tokio::test]
     async fn model_source_and_remote_server_are_not_called() {
         let transport = FakeTransport::new(vec![ok(ANSWER)]);
-        let remote = LocalJudge::with_transport(
+        let remote = LocalRouter::with_transport(
             LocalSource::Server {
                 endpoint: "http://192.168.0.9:7777".to_owned(),
             },
             "v".to_owned(),
             transport.clone(),
         );
-        let model = LocalJudge::new(
+        let model = LocalRouter::new(
             LocalSource::Model {
                 path: PathBuf::from("/models/saturn"),
             },
@@ -228,9 +228,9 @@ mod tests {
 
         assert!(matches!(
             remote.exchange(request()).await.result,
-            Err(JudgeError::NoResponse)
+            Err(RouterError::NoResponse)
         ));
-        assert!(matches!(model.check().await, Err(JudgeError::NoResponse)));
+        assert!(matches!(model.check().await, Err(RouterError::NoResponse)));
         assert!(transport.calls().is_empty());
     }
 }

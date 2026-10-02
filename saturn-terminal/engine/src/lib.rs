@@ -4,9 +4,9 @@
 // TODO(#74): 뼈대 단계라 본문이 `todo!`인 함수의 인자가 쓰이지 않는다. 구현 이슈가 모두 닫히면 이 허용을 지운다
 #![allow(unused_variables, dead_code)]
 
-pub mod judges;
 pub mod processes;
 pub mod providers;
+pub mod routers;
 pub mod rpc;
 pub mod secrets;
 pub mod settings;
@@ -52,17 +52,17 @@ use saturn_protocol::rpc::Request;
 use tokio::sync::Mutex;
 
 use crate::chat_env::ChatEnv;
-use crate::judges::{ActiveJudge, Judges, JudgesError, SharedSecrets, StartCheck};
 use crate::processes::{NESTED_MARKER_ENV, ProcessError, Supervisor};
 use crate::providers::ProviderConnection;
+use crate::routers::{ActiveRouter, Routers, RoutersError, SharedSecrets, StartCheck};
 use crate::rpc::{ClientId, EngineLock, RpcError, RpcEvent, RpcServer};
 use crate::secrets::{KeyInput, Masker, SecretStore, SecretsError, input_order};
 use crate::settings::{FolderTrustPrompt, Settings, SettingsError, SettingsManager};
 use crate::store::{MigrationNotice, RunRecord, Store, StoreError};
 use crate::training::{TrainPlan, TrainingError};
 
-/// 초안. judge 키를 기다리는 동안 거절한 요청의 오류 번호(JSON-RPC 서버 오류 범위).
-pub const JUDGE_KEY_REQUIRED: i32 = -32001;
+/// 초안. router 키를 기다리는 동안 거절한 요청의 오류 번호(JSON-RPC 서버 오류 범위).
+pub const ROUTER_KEY_REQUIRED: i32 = -32001;
 
 /// 초안. 붙을 때 보내는 기록 수. TUI `HISTORY_PAGE`와 같다.
 const ATTACH_HISTORY: u32 = 50;
@@ -73,15 +73,15 @@ pub enum EngineError {
     /// 자식 Saturn을 부모에 잇는 방식이 정해질 때까지 에이전트 작업 안의 실행을 거절한다.
     #[error("nested saturn is not allowed inside an agent task")]
     Nested,
-    /// 판단 방식에 맞는 judge를 만들 수 없어 키를 받아도 확인할 수 없다.
-    #[error("judge is not available: {reason}")]
-    JudgeUnavailable {
+    /// 판단 방식에 맞는 router를 만들 수 없어 키를 받아도 확인할 수 없다.
+    #[error("router is not available: {reason}")]
+    RouterUnavailable {
         /// 가린 원인 한 줄.
         reason: String,
     },
-    /// judge 확인 전에는 `SubmitJudgeKey`, `Attach`, `Detach`만 받는다.
-    #[error("judge key required: {reason}")]
-    JudgeKeyRequired {
+    /// router 확인 전에는 `SubmitRouterKey`, `Attach`, `Detach`만 받는다.
+    #[error("router key required: {reason}")]
+    RouterKeyRequired {
         /// 가린 원인 한 줄.
         reason: String,
     },
@@ -112,8 +112,8 @@ pub enum EngineError {
     Store(#[from] StoreError),
     #[error("settings failed")]
     Settings(#[from] SettingsError),
-    #[error("judge failed")]
-    Judges(#[from] JudgesError),
+    #[error("router failed")]
+    Routers(#[from] RoutersError),
     #[error("secrets failed")]
     Secrets(#[from] SecretsError),
     #[error("provider failed")]
@@ -131,7 +131,7 @@ pub enum EngineError {
 impl EngineError {
     fn code(&self) -> i32 {
         match self {
-            Self::JudgeKeyRequired { .. } => JUDGE_KEY_REQUIRED,
+            Self::RouterKeyRequired { .. } => ROUTER_KEY_REQUIRED,
             Self::Unsupported { .. } => METHOD_NOT_FOUND,
             Self::UnexpectedAnswer { .. }
             | Self::UnknownPermissionMode { .. }
@@ -154,7 +154,7 @@ pub struct EngineOptions {
     pub run_overrides: Vec<String>,
 }
 
-/// 시작 단계가 프로세스 환경, 키 저장소, judge API와 닿는 자리. 테스트는 가짜를 넣는다.
+/// 시작 단계가 프로세스 환경, 키 저장소, router API와 닿는 자리. 테스트는 가짜를 넣는다.
 #[derive(Debug, Default)]
 struct StartEnv {
     nested_marker: Option<OsString>,
@@ -163,7 +163,7 @@ struct StartEnv {
     /// `None`이면 `secrets::input_order`를 따른다.
     key_inputs: Option<Vec<KeyInput>>,
     /// `None`이면 설정의 판단 방식으로 고른다.
-    judge: Option<ActiveJudge>,
+    router: Option<ActiveRouter>,
 }
 
 impl StartEnv {
@@ -176,7 +176,7 @@ impl StartEnv {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum JudgeGate {
+enum RouterGate {
     Open,
     KeyRequired {
         /// 가린 원인 한 줄.
@@ -185,11 +185,11 @@ enum JudgeGate {
 }
 
 #[derive(Debug)]
-struct VerifiedJudge {
-    judges: Judges,
+struct VerifiedRouter {
+    routers: Routers,
     secrets: SharedSecrets,
     masker: Masker,
-    gate: JudgeGate,
+    gate: RouterGate,
 }
 
 /// 첫 TUI에 한 번 보낸다.
@@ -239,14 +239,14 @@ pub struct Engine {
     /// 쓰는 쪽은 이 engine 하나.
     store: Store,
     settings: SettingsManager,
-    /// `RemoteJudge`와 함께 쓴다.
+    /// `RemoteRouter`와 함께 쓴다.
     secrets: SharedSecrets,
     masker: Masker,
     supervisor: Supervisor,
     /// 연결은 채팅마다 둔다. 작업 폴더와 환경이 채팅마다 달라서다.
     providers: HashMap<(ChatId, Provider), ProviderConnection>,
-    judges: Judges,
-    judge_gate: JudgeGate,
+    routers: Routers,
+    router_gate: RouterGate,
     rpc: RpcServer,
     attachments: HashMap<ClientId, Attachment>,
     /// 채팅마다 가장 나중에 붙은 TUI가 넘긴 작업 폴더와 환경.
@@ -276,10 +276,10 @@ impl Engine {
         served
     }
 
-    /// 앞 단계가 실패하면 뒤 단계를 하지 않는다. judge 키가 없거나 틀려도 소켓은 열고 키를 기다린다.
+    /// 앞 단계가 실패하면 뒤 단계를 하지 않는다. router 키가 없거나 틀려도 소켓은 열고 키를 기다린다.
     ///
     /// # Errors
-    /// 판단 방식에 맞는 judge를 만들 수 없으면 `JudgeUnavailable`.
+    /// 판단 방식에 맞는 router를 만들 수 없으면 `RouterUnavailable`.
     async fn start(options: EngineOptions) -> Result<Self, EngineError> {
         Self::start_with(options, StartEnv::from_process()).await
     }
@@ -290,7 +290,7 @@ impl Engine {
         let (store, migration) = Self::open_store(&options).await?;
         let sessions = sessions::restore_sessions(&store).await?;
         let settings = Self::merge_settings(&options, &store).await?;
-        let verified = Self::verify_judge(&options, &store, &settings, env).await?;
+        let verified = Self::verify_router(&options, &store, &settings, env).await?;
         let rpc = Self::listen(&options, lock).await?;
         Ok(Self {
             options,
@@ -300,8 +300,8 @@ impl Engine {
             masker: verified.masker,
             supervisor: Supervisor::new(),
             providers: HashMap::new(),
-            judges: verified.judges,
-            judge_gate: verified.gate,
+            routers: verified.routers,
+            router_gate: verified.gate,
             rpc,
             attachments: HashMap::new(),
             chats: HashMap::new(),
@@ -362,16 +362,16 @@ impl Engine {
     }
 
     /// 확인이 실패하면 환경 변수, 비밀번호 관리자 명령 순서로 키를 받아 다시 확인하고,
-    /// 그래도 실패하면 TUI가 `SubmitJudgeKey`로 키를 보낼 때까지 일반 요청을 막는다.
+    /// 그래도 실패하면 TUI가 `SubmitRouterKey`로 키를 보낼 때까지 일반 요청을 막는다.
     ///
     /// # Errors
-    /// 판단 방식에 맞는 judge를 만들 수 없으면 `JudgeUnavailable`.
-    async fn verify_judge(
+    /// 판단 방식에 맞는 router를 만들 수 없으면 `RouterUnavailable`.
+    async fn verify_router(
         options: &EngineOptions,
         store: &Store,
         settings: &SettingsManager,
         env: StartEnv,
-    ) -> Result<VerifiedJudge, EngineError> {
+    ) -> Result<VerifiedRouter, EngineError> {
         let revision = settings
             .current()
             .ok_or(SettingsError::NoPreviousRevision)?;
@@ -381,50 +381,49 @@ impl Engine {
             None => open_secrets(&options.home, &current).await,
         };
         let masker = Masker::new(secrets.lock().await.mask_needles());
-        let mut judges =
-            match env.judge {
-                Some(active) => Judges::with_active(active, current.method(), masker.clone()),
-                None => Judges::select(&current, Arc::clone(&secrets), masker.clone()).map_err(
-                    |error| EngineError::JudgeUnavailable {
-                        reason: masked_chain(&masker, &error),
-                    },
-                )?,
-            };
-        let reason = match judges.check(&current).await {
+        let mut routers = match env.router {
+            Some(active) => Routers::with_active(active, current.method(), masker.clone()),
+            None => Routers::select(&current, Arc::clone(&secrets), masker.clone()).map_err(
+                |error| EngineError::RouterUnavailable {
+                    reason: masked_chain(&masker, &error),
+                },
+            )?,
+        };
+        let reason = match routers.check(&current).await {
             StartCheck::Ready | StartCheck::Skipped => None,
             StartCheck::KeyRequired { reason } => Some(reason),
         };
         let Some(reason) = reason else {
-            return Ok(VerifiedJudge {
-                judges,
+            return Ok(VerifiedRouter {
+                routers,
                 secrets,
                 masker,
-                gate: JudgeGate::Open,
+                gate: RouterGate::Open,
             });
         };
         let inputs = env
             .key_inputs
             .unwrap_or_else(|| input_order(current.key_command()));
         for input in inputs {
-            match judges.accept_key(input, &secrets, settings).await {
+            match routers.accept_key(input, &secrets, settings).await {
                 Ok(()) => {
                     let masker = Masker::new(secrets.lock().await.mask_needles());
-                    return Ok(VerifiedJudge {
-                        judges,
+                    return Ok(VerifiedRouter {
+                        routers,
                         secrets,
                         masker,
-                        gate: JudgeGate::Open,
+                        gate: RouterGate::Open,
                     });
                 }
-                Err(error) => tracing::debug!(error = %error, "judge key input failed"),
+                Err(error) => tracing::debug!(error = %error, "router key input failed"),
             }
         }
-        tracing::warn!(%reason, "judge check failed, waiting for judge key from tui");
-        Ok(VerifiedJudge {
-            judges,
+        tracing::warn!(%reason, "router check failed, waiting for router key from tui");
+        Ok(VerifiedRouter {
+            routers,
             secrets,
             masker,
-            gate: JudgeGate::KeyRequired { reason },
+            gate: RouterGate::KeyRequired { reason },
         })
     }
 
@@ -458,8 +457,8 @@ impl Engine {
                     let Some(event) = event else { break };
                     self.handle_event(event).await?;
                 }
-                Some(done) = self.flow.judge_rx.recv() => {
-                    self.on_judged(done).await;
+                Some(done) = self.flow.router_rx.recv() => {
+                    self.on_routed(done).await;
                 }
                 arrival = events::next_arrival(&mut self.providers) => {
                     self.on_arrival(arrival).await;
@@ -492,7 +491,7 @@ impl Engine {
         Ok(())
     }
 
-    /// 요청마다 응답 하나를 돌려준다. `SubmitJudgeKey` 메시지는 기록하지 않는다.
+    /// 요청마다 응답 하나를 돌려준다. `SubmitRouterKey` 메시지는 기록하지 않는다.
     async fn handle_request(
         &mut self,
         client: ClientId,
@@ -512,13 +511,13 @@ impl Engine {
     }
 
     async fn route(&mut self, client: ClientId, request: Request) -> Result<(), EngineError> {
-        if let JudgeGate::KeyRequired { reason } = &self.judge_gate
+        if let RouterGate::KeyRequired { reason } = &self.router_gate
             && !matches!(
                 request,
-                Request::Attach { .. } | Request::SubmitJudgeKey { .. }
+                Request::Attach { .. } | Request::SubmitRouterKey { .. }
             )
         {
-            return Err(EngineError::JudgeKeyRequired {
+            return Err(EngineError::RouterKeyRequired {
                 reason: reason.clone(),
             });
         }
@@ -573,7 +572,7 @@ impl Engine {
             Request::AnswerFeedback { judgment, correct } => {
                 self.answer_feedback(judgment, correct).await
             }
-            Request::SubmitJudgeKey { key } => self.submit_judge_key(client, key).await,
+            Request::SubmitRouterKey { key } => self.submit_router_key(client, key).await,
             Request::AnswerFolderTrust {
                 path,
                 fingerprint,
@@ -589,11 +588,11 @@ impl Engine {
             Request::Usage { scope } => self.send_usage(client, scope).await,
             // TODO(#161): 작업 목록
             Request::ListTasks => Err(unsupported("ListTasks")),
-            // TODO(#91): 학습과 judge 버전
+            // TODO(#91): 학습과 router 버전
             Request::Train { .. } => Err(unsupported("Train")),
             Request::ConfirmTrain { .. } => Err(unsupported("ConfirmTrain")),
-            Request::ListJudgeVersions => Err(unsupported("ListJudgeVersions")),
-            Request::UseJudgeVersion { .. } => Err(unsupported("UseJudgeVersion")),
+            Request::ListRouterVersions => Err(unsupported("ListRouterVersions")),
+            Request::UseRouterVersion { .. } => Err(unsupported("UseRouterVersion")),
             // TODO(#161): 기록 정리 미리보기
             Request::Prune { .. } => Err(unsupported("Prune")),
             Request::ExportJudgments { path } => {
@@ -690,16 +689,16 @@ impl Engine {
 async fn open_secrets(home: &Path, settings: &Settings) -> SharedSecrets {
     let mut store = SecretStore::open(home, settings.storage_mode());
     if let Err(error) = store.unlock(Instant::now()).await {
-        tracing::warn!(%error, "failed to unlock judge key");
+        tracing::warn!(%error, "failed to unlock router key");
     }
     match store.load().await {
         Ok(_) | Err(SecretsError::NotFound) => {}
-        Err(error) => tracing::warn!(%error, "failed to load judge key"),
+        Err(error) => tracing::warn!(%error, "failed to load router key"),
     }
     Arc::new(Mutex::new(store))
 }
 
-/// 원인까지 `: `로 이은 한 줄. judge 키와 같은 문자열은 가린다.
+/// 원인까지 `: `로 이은 한 줄. router 키와 같은 문자열은 가린다.
 fn masked_chain(masker: &Masker, error: &dyn std::error::Error) -> String {
     let mut line = error.to_string();
     let mut source = error.source();

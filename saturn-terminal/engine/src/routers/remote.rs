@@ -1,5 +1,5 @@
-//! 외부 judge API 연결. HTTPS와 허용 호스트만 쓰고 TLS 검증을 끄는 옵션은 두지 않는다.
-//! 설계: docs/design/judge.md
+//! 외부 router API 연결. HTTPS와 허용 호스트만 쓰고 TLS 검증을 끄는 옵션은 두지 않는다.
+//! 설계: docs/design/router.md
 
 use std::fmt::Debug;
 use std::future::Future;
@@ -7,17 +7,17 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime};
 
-use saturn_core::judges::failure::{remaining_until_deadline, retry_delay};
-use saturn_core::judges::{
-    Answer, AnswerKind, JudgeClient, JudgeError, JudgeRequest, JudgeResponse, Question,
+use saturn_core::routers::failure::{remaining_until_deadline, retry_delay};
+use saturn_core::routers::{
+    Answer, AnswerKind, Question, RouterClient, RouterError, RouterRequest, RouterResponse,
 };
 use serde_json::{Map, Value, json};
 use tokio::time::Instant as TokioInstant;
 
-use super::{JudgeExchange, JudgesError, SharedSecrets};
+use super::{RouterExchange, RoutersError, SharedSecrets};
 use crate::secrets::is_sensitive_header;
 
-/// judge 키는 이 호스트로만 간다.
+/// router 키는 이 호스트로만 간다.
 pub const ALLOWED_HOST: &str = "api.typesafe.ai";
 
 /// 토큰을 셀 수 없어 본문 바이트로 잰다(바이트 수 ≥ 토큰 수라 API 한도 64k 토큰을 넘지 않는다). 초안 값.
@@ -29,14 +29,14 @@ pub const STATE_SPLIT_LIMIT: usize = 32 * 1024;
 /// 넘으면 계층 선택으로 나눈다.
 pub const MAX_CHOICES: usize = 255;
 
-const JUDGE_PATH: &str = "/v1/systemone";
+const ROUTER_PATH: &str = "/v1/systemone";
 
 const MODELS_PATH: &str = "/v1/models";
 
 /// 계층 선택 조각의 "이 조각에 없음" 선택지 이름.
 const OTHER_CHUNK_OPTION: &str = "none of these";
 
-/// 재시도 횟수와 간격은 `saturn_core::judges::failure`가 정한다.
+/// 재시도 횟수와 간격은 `saturn_core::routers::failure`가 정한다.
 /// TODO(#235): 설정 키 이름과 기본값
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RetryPolicy {
@@ -168,7 +168,7 @@ pub(crate) fn send_with<'a>(
 }
 
 /// `Debug`는 키 보관소와 전송을 빼고 주소, 모델, 재시도 설정만 쓴다.
-pub struct RemoteJudge {
+pub struct RemoteRouter {
     endpoint: String,
     /// 버전을 고정한 이름.
     model: String,
@@ -179,9 +179,9 @@ pub struct RemoteJudge {
     transport: Arc<dyn Transport>,
 }
 
-impl Debug for RemoteJudge {
+impl Debug for RemoteRouter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("RemoteJudge")
+        f.debug_struct("RemoteRouter")
             .field("endpoint", &self.endpoint)
             .field("model", &self.model)
             .field("retry", &self.retry)
@@ -189,7 +189,7 @@ impl Debug for RemoteJudge {
     }
 }
 
-impl RemoteJudge {
+impl RemoteRouter {
     /// 아직 네트워크를 쓰지 않는다.
     ///
     /// # Errors
@@ -199,9 +199,9 @@ impl RemoteJudge {
         model: String,
         secrets: SharedSecrets,
         retry: RetryPolicy,
-    ) -> Result<Self, JudgesError> {
+    ) -> Result<Self, RoutersError> {
         validate_endpoint(endpoint)?;
-        let transport = ReqwestTransport::new().map_err(|_| JudgesError::DisallowedEndpoint {
+        let transport = ReqwestTransport::new().map_err(|_| RoutersError::DisallowedEndpoint {
             endpoint: endpoint.to_owned(),
         })?;
         Ok(Self::with_transport(
@@ -238,16 +238,16 @@ impl RemoteJudge {
     ///
     /// # Errors
     /// 인증 실패(키 없음, 거절)는 `Unauthorized`, 연결 실패는 `NoResponse`.
-    pub async fn list_models(&self) -> Result<Vec<String>, JudgeError> {
+    pub async fn list_models(&self) -> Result<Vec<String>, RouterError> {
         let url = format!("{}{MODELS_PATH}", self.endpoint);
         let reply = self
             .authorized(&url, None)
             .await
             .map_err(|failure| match failure {
-                SendFailure::Rejected { status: 401, .. } => JudgeError::Unauthorized,
-                _ => JudgeError::NoResponse,
+                SendFailure::Rejected { status: 401, .. } => RouterError::Unauthorized,
+                _ => RouterError::NoResponse,
             })?;
-        let parsed: Value = serde_json::from_str(&reply).map_err(|_| JudgeError::NoResponse)?;
+        let parsed: Value = serde_json::from_str(&reply).map_err(|_| RouterError::NoResponse)?;
         Ok(parsed["models"]
             .as_array()
             .into_iter()
@@ -257,7 +257,7 @@ impl RemoteJudge {
     }
 
     /// 한 조각이라도 실패하면 그 실패를 결과로 한다. 형식 검사는 호출자가 한다.
-    pub async fn exchange(&self, request: JudgeRequest) -> JudgeExchange {
+    pub async fn exchange(&self, request: RouterRequest) -> RouterExchange {
         let started_at = SystemTime::now();
         let clock = Instant::now();
         let expanded = expand_choices(&request);
@@ -283,7 +283,7 @@ impl RemoteJudge {
             Some(error) => Err(error),
             None => Ok(merge_responses(&request, parts)),
         };
-        JudgeExchange {
+        RouterExchange {
             sent: sent.join("\n"),
             received: (!received.is_empty()).then(|| received.join("\n")),
             result,
@@ -296,11 +296,11 @@ impl RemoteJudge {
     // cost: time O(r·t), heap O(b), stack O(1), io r
     // vars: r = 시도 수(최대 3), t = 시도 하나의 응답 대기(5초), b = 요청과 응답 본문 크기
     // basis: estimate
-    /// 보내기 전 실패, 응답 없음, 속도 제한은 5초 간격으로 두 번까지 다시 보낸다. judge 판단은 부작용이 없는 조회라 보낸 뒤 시간 초과도 다시 보내고, 그 호출의 비용은 모른다고 센다.
+    /// 보내기 전 실패, 응답 없음, 속도 제한은 5초 간격으로 두 번까지 다시 보낸다. router 판단은 부작용이 없는 조회라 보낸 뒤 시간 초과도 다시 보내고, 그 호출의 비용은 모른다고 센다.
     ///
     /// 첫 실패 시각부터 10초가 전체 마감이다. 시도는 응답을 5초까지 기다리되 마감까지 남은 시간을 넘기지 않고, 마감에 걸린 시도는 끊는다.
-    async fn send_with_retry(&self, request: &JudgeRequest) -> SentPart {
-        let body = judge_body(request).to_string();
+    async fn send_with_retry(&self, request: &RouterRequest) -> SentPart {
+        let body = router_body(request).to_string();
         let mut failures = 0;
         let mut first_failure = None;
         let mut unknown_cost_calls = 0;
@@ -316,7 +316,7 @@ impl RemoteJudge {
                 .unwrap_or(Err(SendFailure::TimedOutAfterSend));
             let error = match outcome {
                 Ok(reply) => {
-                    let result = parse_judge_reply(request, &reply);
+                    let result = parse_router_reply(request, &reply);
                     return SentPart::new(body, Some(reply), result, unknown_cost_calls);
                 }
                 Err(SendFailure::Rejected {
@@ -324,33 +324,33 @@ impl RemoteJudge {
                     body: reply,
                 }) => {
                     let error = match status {
-                        401 | 403 => JudgeError::Unauthorized,
-                        _ => JudgeError::Invalid {
-                            reason: format!("judge returned status {status}"),
+                        401 | 403 => RouterError::Unauthorized,
+                        _ => RouterError::Invalid {
+                            reason: format!("router returned status {status}"),
                         },
                     };
                     return SentPart::new(body, Some(reply), Err(error), unknown_cost_calls);
                 }
-                Err(SendFailure::BeforeSend) => JudgeError::NoResponse,
+                Err(SendFailure::BeforeSend) => RouterError::NoResponse,
                 Err(SendFailure::TimedOutAfterSend) => {
                     unknown_cost_calls += 1;
-                    JudgeError::TimedOutAfterSend
+                    RouterError::TimedOutAfterSend
                 }
-                Err(SendFailure::RateLimited) => JudgeError::RateLimited,
+                Err(SendFailure::RateLimited) => RouterError::RateLimited,
             };
             failures += 1;
             let first = *first_failure.get_or_insert_with(TokioInstant::now);
             let Some(delay) = retry_delay(failures, first.elapsed()) else {
                 return SentPart::new(body, None, Err(error), unknown_cost_calls);
             };
-            tracing::warn!(failures, error = %error, "judge call failed, retrying");
+            tracing::warn!(failures, error = %error, "router call failed, retrying");
             tokio::time::sleep(delay).await;
         }
     }
 
     /// 인증 헤더는 요청 직전에 붙이고 기록하지 않는다.
     async fn send_once(&self, body: &str) -> Result<String, SendFailure> {
-        let url = format!("{}{JUDGE_PATH}", self.endpoint);
+        let url = format!("{}{ROUTER_PATH}", self.endpoint);
         self.authorized(&url, Some(body.to_owned())).await
     }
 
@@ -390,15 +390,15 @@ impl RemoteJudge {
     }
 }
 
-impl JudgeClient for RemoteJudge {
+impl RouterClient for RemoteRouter {
     /// 키와 모델을 확인한 뒤 실제 판단 1건을 보낸다.
-    async fn check(&self) -> Result<(), JudgeError> {
+    async fn check(&self) -> Result<(), RouterError> {
         self.list_models().await?;
         let request = super::check_request(self.model.clone());
         self.exchange(request).await.result.map(|_| ())
     }
 
-    async fn judge(&self, request: JudgeRequest) -> Result<JudgeResponse, JudgeError> {
+    async fn router(&self, request: RouterRequest) -> Result<RouterResponse, RouterError> {
         self.exchange(request).await.result
     }
 }
@@ -407,7 +407,7 @@ impl JudgeClient for RemoteJudge {
 struct SentPart {
     body: String,
     reply: Option<String>,
-    result: Result<JudgeResponse, JudgeError>,
+    result: Result<RouterResponse, RouterError>,
     /// 보낸 뒤 시간 초과로 비용을 모르는 호출 수.
     unknown_cost_calls: u32,
 }
@@ -416,7 +416,7 @@ impl SentPart {
     fn new(
         body: String,
         reply: Option<String>,
-        result: Result<JudgeResponse, JudgeError>,
+        result: Result<RouterResponse, RouterError>,
         unknown_cost_calls: u32,
     ) -> Self {
         Self {
@@ -480,8 +480,8 @@ fn header<'a>(reply: &'a HttpReply, name: &str) -> Option<&'a str> {
 ///
 /// # Errors
 /// 조건을 어기면 `DisallowedEndpoint`.
-pub(crate) fn validate_endpoint(endpoint: &str) -> Result<(), JudgesError> {
-    let disallowed = || JudgesError::DisallowedEndpoint {
+pub(crate) fn validate_endpoint(endpoint: &str) -> Result<(), RoutersError> {
+    let disallowed = || RoutersError::DisallowedEndpoint {
         endpoint: endpoint.to_owned(),
     };
     let rest = endpoint.strip_prefix("https://").ok_or_else(disallowed)?;
@@ -501,9 +501,9 @@ pub(crate) fn redirect_headers(headers: Vec<(String, String)>) -> Vec<(String, S
 }
 
 /// 조각마다 `state`는 그대로 싣고, 질문 하나와 `state`만으로 한도를 넘으면 그 질문만 담아 보낸다.
-pub(crate) fn split_request(request: JudgeRequest) -> Vec<JudgeRequest> {
+pub(crate) fn split_request(request: RouterRequest) -> Vec<RouterRequest> {
     let base = request.state.len() + request.model.len();
-    let mut parts: Vec<JudgeRequest> = Vec::new();
+    let mut parts: Vec<RouterRequest> = Vec::new();
     let mut size = base;
     let mut longest = 0;
     for (set, questions) in request.sets {
@@ -513,7 +513,7 @@ pub(crate) fn split_request(request: JudgeRequest) -> Vec<JudgeRequest> {
                 && size + question_size <= REQUEST_SPLIT_LIMIT
                 && request.state.len() + longest.max(question_size) <= STATE_SPLIT_LIMIT;
             if !fits {
-                parts.push(JudgeRequest {
+                parts.push(RouterRequest {
                     model: request.model.clone(),
                     state: request.state.clone(),
                     sets: Vec::new(),
@@ -531,7 +531,7 @@ pub(crate) fn split_request(request: JudgeRequest) -> Vec<JudgeRequest> {
         }
     }
     if parts.is_empty() {
-        parts.push(JudgeRequest {
+        parts.push(RouterRequest {
             model: request.model,
             state: request.state,
             sets: Vec::new(),
@@ -565,7 +565,10 @@ pub(crate) fn split_choices(question: &Question) -> Vec<Question> {
 }
 
 /// 계층 선택은 원래 선택지 확률로 되돌린다.
-pub(crate) fn merge_responses(request: &JudgeRequest, parts: Vec<JudgeResponse>) -> JudgeResponse {
+pub(crate) fn merge_responses(
+    request: &RouterRequest,
+    parts: Vec<RouterResponse>,
+) -> RouterResponse {
     let model = parts
         .first()
         .map_or_else(|| request.model.clone(), |part| part.model.clone());
@@ -593,7 +596,7 @@ pub(crate) fn merge_responses(request: &JudgeRequest, parts: Vec<JudgeResponse>)
             answers.push((question.id.clone(), Answer::Choice(combine_chunks(&pieces))));
         }
     }
-    JudgeResponse {
+    RouterResponse {
         model,
         answers,
         tokens,
@@ -627,8 +630,8 @@ fn combine_chunks(pieces: &[Vec<f64>]) -> Vec<f64> {
     combined
 }
 
-fn expand_choices(request: &JudgeRequest) -> JudgeRequest {
-    JudgeRequest {
+fn expand_choices(request: &RouterRequest) -> RouterRequest {
+    RouterRequest {
         model: request.model.clone(),
         state: request.state.clone(),
         sets: request
@@ -645,7 +648,7 @@ fn expand_choices(request: &JudgeRequest) -> JudgeRequest {
 }
 
 /// 로컬 서버도 같은 본문을 쓴다.
-pub(crate) fn judge_body(request: &JudgeRequest) -> Value {
+pub(crate) fn router_body(request: &RouterRequest) -> Value {
     let questions: Map<String, Value> = request
         .sets
         .iter()
@@ -676,11 +679,11 @@ fn question_body(question: &Question) -> Value {
 }
 
 /// 확률이 없거나 0~1 밖이면 `Invalid`. 답 누락 검사는 `core::validate`가 한다.
-pub(crate) fn parse_judge_reply(
-    request: &JudgeRequest,
+pub(crate) fn parse_router_reply(
+    request: &RouterRequest,
     body: &str,
-) -> Result<JudgeResponse, JudgeError> {
-    let invalid = |reason: &str| JudgeError::Invalid {
+) -> Result<RouterResponse, RouterError> {
+    let invalid = |reason: &str| RouterError::Invalid {
         reason: reason.to_owned(),
     };
     let parsed: Value = serde_json::from_str(body).map_err(|_| invalid("response is not json"))?;
@@ -691,7 +694,7 @@ pub(crate) fn parse_judge_reply(
         };
         answers.push((question.id.clone(), parse_answer(question, answer)?));
     }
-    Ok(JudgeResponse {
+    Ok(RouterResponse {
         model: parsed["model"]
             .as_str()
             .unwrap_or(&request.model)
@@ -704,8 +707,8 @@ pub(crate) fn parse_judge_reply(
     })
 }
 
-fn parse_answer(question: &Question, answer: &Value) -> Result<Answer, JudgeError> {
-    let invalid = |reason: String| JudgeError::Invalid { reason };
+fn parse_answer(question: &Question, answer: &Value) -> Result<Answer, RouterError> {
+    let invalid = |reason: String| RouterError::Invalid { reason };
     let probability = |value: &Value, what: &str| {
         value
             .as_f64()
@@ -738,12 +741,12 @@ pub(crate) mod tests {
     use std::collections::VecDeque;
     use std::sync::Mutex as StdMutex;
 
-    use saturn_core::judges::QuestionSetId;
+    use saturn_core::routers::QuestionSetId;
 
     use super::*;
-    use crate::secrets::{JudgeKey, KeySource, SecretStore, StorageMode};
+    use crate::secrets::{KeySource, RouterKey, SecretStore, StorageMode};
 
-    pub(crate) const KEY: &str = "sk-judge-test-0123456789";
+    pub(crate) const KEY: &str = "sk-router-test-0123456789";
 
     /// 주소, 헤더, 본문.
     pub(crate) type Call = (String, Vec<(String, String)>, Option<String>);
@@ -834,19 +837,19 @@ pub(crate) mod tests {
     }
 
     pub(crate) async fn secrets_with_key(dir: &std::path::Path) -> SharedSecrets {
-        let mut store = SecretStore::with_key_file(dir.join("judge.key"), StorageMode::Standard);
+        let mut store = SecretStore::with_key_file(dir.join("router.key"), StorageMode::Standard);
         store
-            .save(JudgeKey::new(KEY.to_owned()).unwrap(), KeySource::Stored)
+            .save(RouterKey::new(KEY.to_owned()).unwrap(), KeySource::Stored)
             .await
             .unwrap();
         Arc::new(tokio::sync::Mutex::new(store))
     }
 
-    pub(crate) fn judge(secrets: SharedSecrets, transport: Arc<FakeTransport>) -> RemoteJudge {
+    pub(crate) fn router(secrets: SharedSecrets, transport: Arc<FakeTransport>) -> RemoteRouter {
         let retry = RetryPolicy {
             response_timeout: Duration::from_secs(1),
         };
-        RemoteJudge::with_transport(
+        RemoteRouter::with_transport(
             "https://api.typesafe.ai",
             "jev-1.13.0".to_owned(),
             secrets,
@@ -855,8 +858,8 @@ pub(crate) mod tests {
         )
     }
 
-    pub(crate) fn request() -> JudgeRequest {
-        JudgeRequest {
+    pub(crate) fn request() -> RouterRequest {
+        RouterRequest {
             model: "jev-1.13.0".to_owned(),
             state: "user: also translate the error message".to_owned(),
             sets: vec![(
@@ -932,9 +935,9 @@ pub(crate) mod tests {
     async fn exchange_sends_bearer_and_parses_all_answer_kinds() {
         let dir = tempfile::tempdir().unwrap();
         let transport = FakeTransport::new(vec![ok(ANSWER)]);
-        let judge = judge(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+        let router = router(secrets_with_key(dir.path()).await, Arc::clone(&transport));
 
-        let exchange = judge.exchange(request()).await;
+        let exchange = router.exchange(request()).await;
 
         let response = exchange.result.unwrap();
         assert_eq!(response.tokens, (310, 24));
@@ -963,7 +966,7 @@ pub(crate) mod tests {
             json!(["level 1", "level 2", "level 3"])
         );
         assert!(!exchange.sent.contains(KEY));
-        assert!(!format!("{judge:?}").contains(KEY));
+        assert!(!format!("{router:?}").contains(KEY));
     }
 
     #[tokio::test(start_paused = true)]
@@ -978,11 +981,11 @@ pub(crate) mod tests {
         let gave_up = FakeTransport::new(vec![Err(TransportError::BeforeSend); 3]);
 
         let started = tokio::time::Instant::now();
-        let first = judge(Arc::clone(&secrets), Arc::clone(&recovered))
+        let first = router(Arc::clone(&secrets), Arc::clone(&recovered))
             .exchange(request())
             .await;
         let after_recovery = started.elapsed();
-        let second = judge(Arc::clone(&secrets), Arc::clone(&gave_up))
+        let second = router(Arc::clone(&secrets), Arc::clone(&gave_up))
             .exchange(request())
             .await;
         let after_give_up = started.elapsed() - after_recovery;
@@ -990,7 +993,7 @@ pub(crate) mod tests {
         assert!(first.result.is_ok());
         assert_eq!(recovered.calls().len(), 3);
         assert_eq!(after_recovery, Duration::from_secs(10));
-        assert!(matches!(second.result, Err(JudgeError::NoResponse)));
+        assert!(matches!(second.result, Err(RouterError::NoResponse)));
         assert_eq!(gave_up.calls().len(), 3);
         assert_eq!(after_give_up, Duration::from_secs(10));
     }
@@ -999,10 +1002,10 @@ pub(crate) mod tests {
     async fn first_retry_waits_five_seconds_before_sending() {
         let dir = tempfile::tempdir().unwrap();
         let transport = FakeTransport::new(vec![Err(TransportError::BeforeSend), ok(ANSWER)]);
-        let judge = judge(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+        let router = router(secrets_with_key(dir.path()).await, Arc::clone(&transport));
 
         let started = tokio::time::Instant::now();
-        let exchange = judge.exchange(request()).await;
+        let exchange = router.exchange(request()).await;
 
         assert!(exchange.result.is_ok());
         assert_eq!(transport.calls().len(), 2);
@@ -1051,8 +1054,8 @@ pub(crate) mod tests {
         }
     }
 
-    fn scripted_judge(secrets: SharedSecrets, transport: Arc<ScriptedTransport>) -> RemoteJudge {
-        RemoteJudge::with_transport(
+    fn scripted_router(secrets: SharedSecrets, transport: Arc<ScriptedTransport>) -> RemoteRouter {
+        RemoteRouter::with_transport(
             "https://api.typesafe.ai",
             "jev-1.13.0".to_owned(),
             secrets,
@@ -1065,14 +1068,14 @@ pub(crate) mod tests {
     async fn no_response_at_all_gives_up_within_fifteen_seconds() {
         let dir = tempfile::tempdir().unwrap();
         let transport = ScriptedTransport::new(vec![None, None, None]);
-        let judge = scripted_judge(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+        let router = scripted_router(secrets_with_key(dir.path()).await, Arc::clone(&transport));
 
         let started = tokio::time::Instant::now();
-        let exchange = judge.exchange(request()).await;
+        let exchange = router.exchange(request()).await;
 
         assert!(matches!(
             exchange.result,
-            Err(JudgeError::TimedOutAfterSend)
+            Err(RouterError::TimedOutAfterSend)
         ));
         assert_eq!(started.elapsed(), Duration::from_secs(15));
         assert_eq!(transport.called_at_seconds(), vec![0, 10]);
@@ -1087,14 +1090,14 @@ pub(crate) mod tests {
             Some(Err(TransportError::BeforeSend)),
             None,
         ]);
-        let judge = scripted_judge(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+        let router = scripted_router(secrets_with_key(dir.path()).await, Arc::clone(&transport));
 
         let started = tokio::time::Instant::now();
-        let exchange = judge.exchange(request()).await;
+        let exchange = router.exchange(request()).await;
 
         assert!(matches!(
             exchange.result,
-            Err(JudgeError::TimedOutAfterSend)
+            Err(RouterError::TimedOutAfterSend)
         ));
         assert_eq!(started.elapsed(), Duration::from_secs(10));
         assert_eq!(transport.called_at_seconds(), vec![0, 5, 10]);
@@ -1106,14 +1109,14 @@ pub(crate) mod tests {
         let dir = tempfile::tempdir().unwrap();
         let transport =
             ScriptedTransport::new(vec![Some(Err(TransportError::BeforeSend)), None, None]);
-        let judge = scripted_judge(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+        let router = scripted_router(secrets_with_key(dir.path()).await, Arc::clone(&transport));
 
         let started = tokio::time::Instant::now();
-        let exchange = judge.exchange(request()).await;
+        let exchange = router.exchange(request()).await;
 
         assert!(matches!(
             exchange.result,
-            Err(JudgeError::TimedOutAfterSend)
+            Err(RouterError::TimedOutAfterSend)
         ));
         assert_eq!(started.elapsed(), Duration::from_secs(10));
         assert_eq!(transport.called_at_seconds(), vec![0, 5]);
@@ -1125,14 +1128,14 @@ pub(crate) mod tests {
         let dir = tempfile::tempdir().unwrap();
         let transport =
             ScriptedTransport::new(vec![None, Some(Err(TransportError::BeforeSend)), None]);
-        let judge = scripted_judge(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+        let router = scripted_router(secrets_with_key(dir.path()).await, Arc::clone(&transport));
 
         let started = tokio::time::Instant::now();
-        let exchange = judge.exchange(request()).await;
+        let exchange = router.exchange(request()).await;
 
         assert!(matches!(
             exchange.result,
-            Err(JudgeError::TimedOutAfterSend)
+            Err(RouterError::TimedOutAfterSend)
         ));
         assert_eq!(started.elapsed(), Duration::from_secs(15));
         assert_eq!(transport.called_at_seconds(), vec![0, 10, 15]);
@@ -1146,17 +1149,17 @@ pub(crate) mod tests {
         let recovered = FakeTransport::new(vec![Err(TransportError::AfterSend), ok(ANSWER)]);
         let timed_out = FakeTransport::new(vec![Err(TransportError::AfterSend); 3]);
 
-        let first = judge(Arc::clone(&secrets), Arc::clone(&recovered))
+        let first = router(Arc::clone(&secrets), Arc::clone(&recovered))
             .exchange(request())
             .await;
-        let second = judge(secrets, Arc::clone(&timed_out))
+        let second = router(secrets, Arc::clone(&timed_out))
             .exchange(request())
             .await;
 
         assert!(first.result.is_ok());
         assert_eq!(first.unknown_cost_calls, 1);
         assert_eq!(recovered.calls().len(), 2);
-        assert!(matches!(second.result, Err(JudgeError::TimedOutAfterSend)));
+        assert!(matches!(second.result, Err(RouterError::TimedOutAfterSend)));
         assert_eq!(second.unknown_cost_calls, 3);
         assert_eq!(timed_out.calls().len(), 3);
         assert!(second.received.is_none());
@@ -1174,18 +1177,18 @@ pub(crate) mod tests {
         let exhausted = FakeTransport::new(vec![status(429, "{}", Vec::new()); 3]);
 
         let started = tokio::time::Instant::now();
-        let first = judge(Arc::clone(&secrets), Arc::clone(&limited))
+        let first = router(Arc::clone(&secrets), Arc::clone(&limited))
             .exchange(request())
             .await;
         let after_recovery = started.elapsed();
-        let second = judge(secrets, Arc::clone(&exhausted))
+        let second = router(secrets, Arc::clone(&exhausted))
             .exchange(request())
             .await;
 
         assert!(first.result.is_ok());
         assert_eq!(limited.calls().len(), 3);
         assert_eq!(after_recovery, Duration::from_secs(10));
-        assert!(matches!(second.result, Err(JudgeError::RateLimited)));
+        assert!(matches!(second.result, Err(RouterError::RateLimited)));
         assert_eq!(exhausted.calls().len(), 3);
     }
 
@@ -1196,16 +1199,16 @@ pub(crate) mod tests {
         let rejected = FakeTransport::new(vec![status(401, "{\"error\":\"bad key\"}", Vec::new())]);
         let broken = FakeTransport::new(vec![status(500, "{}", Vec::new())]);
 
-        let first = judge(Arc::clone(&secrets), Arc::clone(&rejected))
+        let first = router(Arc::clone(&secrets), Arc::clone(&rejected))
             .exchange(request())
             .await;
-        let second = judge(secrets, Arc::clone(&broken))
+        let second = router(secrets, Arc::clone(&broken))
             .exchange(request())
             .await;
 
-        assert!(matches!(first.result, Err(JudgeError::Unauthorized)));
+        assert!(matches!(first.result, Err(RouterError::Unauthorized)));
         assert_eq!(rejected.calls().len(), 1);
-        assert!(matches!(second.result, Err(JudgeError::Invalid { .. })));
+        assert!(matches!(second.result, Err(RouterError::Invalid { .. })));
         assert_eq!(broken.calls().len(), 1);
     }
 
@@ -1214,11 +1217,11 @@ pub(crate) mod tests {
         let dir = tempfile::tempdir().unwrap();
         let body = r#"{"model":"jev-1.13.0","answers":{"keep_current":{"noul":1.7}},"usage":{}}"#;
         let transport = FakeTransport::new(vec![ok(body)]);
-        let judge = judge(secrets_with_key(dir.path()).await, transport);
+        let router = router(secrets_with_key(dir.path()).await, transport);
 
-        let exchange = judge.exchange(request()).await;
+        let exchange = router.exchange(request()).await;
 
-        assert!(matches!(exchange.result, Err(JudgeError::Invalid { .. })));
+        assert!(matches!(exchange.result, Err(RouterError::Invalid { .. })));
         assert_eq!(exchange.received.as_deref(), Some(body));
     }
 
@@ -1240,10 +1243,10 @@ pub(crate) mod tests {
             vec![("location", "https://evil.example/steal")],
         )]);
 
-        judge(Arc::clone(&secrets), Arc::clone(&allowed))
+        router(Arc::clone(&secrets), Arc::clone(&allowed))
             .exchange(request())
             .await;
-        let refused = judge(secrets, Arc::clone(&outside))
+        let refused = router(secrets, Arc::clone(&outside))
             .exchange(request())
             .await;
 
@@ -1251,11 +1254,11 @@ pub(crate) mod tests {
         assert_eq!(calls.len(), 2);
         assert!(calls[1].1.iter().all(|(name, _)| name != "authorization"));
         assert_eq!(outside.calls().len(), 1);
-        assert!(matches!(refused.result, Err(JudgeError::Invalid { .. })));
+        assert!(matches!(refused.result, Err(RouterError::Invalid { .. })));
     }
 
     #[tokio::test]
-    async fn check_lists_models_then_judges_once() {
+    async fn check_lists_models_then_routes_once() {
         let dir = tempfile::tempdir().unwrap();
         let secrets = secrets_with_key(dir.path()).await;
         let good = FakeTransport::new(vec![
@@ -1266,16 +1269,16 @@ pub(crate) mod tests {
         ]);
         let bad_key = FakeTransport::new(vec![status(401, "{}", Vec::new())]);
 
-        judge(Arc::clone(&secrets), Arc::clone(&good))
+        router(Arc::clone(&secrets), Arc::clone(&good))
             .check()
             .await
             .unwrap();
-        let error = judge(secrets, bad_key).check().await.unwrap_err();
+        let error = router(secrets, bad_key).check().await.unwrap_err();
 
         let calls = good.calls();
         assert_eq!(calls[0].0, "https://api.typesafe.ai/v1/models");
         assert!(calls[0].2.is_none());
-        assert!(matches!(error, JudgeError::Unauthorized));
+        assert!(matches!(error, RouterError::Unauthorized));
     }
 
     #[tokio::test]
@@ -1283,14 +1286,14 @@ pub(crate) mod tests {
         let dir = tempfile::tempdir().unwrap();
         let empty = SecretStore::with_key_file(dir.path().join("none.key"), StorageMode::Standard);
         let transport = FakeTransport::new(vec![ok(ANSWER)]);
-        let judge = judge(
+        let router = router(
             Arc::new(tokio::sync::Mutex::new(empty)),
             Arc::clone(&transport),
         );
 
-        let exchange = judge.exchange(request()).await;
+        let exchange = router.exchange(request()).await;
 
-        assert!(matches!(exchange.result, Err(JudgeError::Unauthorized)));
+        assert!(matches!(exchange.result, Err(RouterError::Unauthorized)));
         assert!(transport.calls().is_empty());
     }
 
@@ -1334,7 +1337,7 @@ pub(crate) mod tests {
             }
             (id.to_owned(), Answer::Choice(probabilities))
         };
-        let part = JudgeResponse {
+        let part = RouterResponse {
             model: "jev-1.13.0".to_owned(),
             answers: vec![
                 answer("target_model#0", 255, None),

@@ -1,10 +1,10 @@
 //! 판단 적용 테스트: 적용 직전 채팅 revision을 비교하고, 어긋나면 한 번만 다시 판단한다.
 
-use saturn_core::judges::RouteDecision;
+use saturn_core::routers::RouteDecision;
 use saturn_protocol::ids::{ChatRevision, InputId};
 use saturn_protocol::state::{Disposition, InputState};
 
-use super::support::{CLIENT, Flow, idle_reply, judge_down, running_reply};
+use super::support::{CLIENT, Flow, idle_reply, router_down, running_reply};
 use crate::providers::test_support::Call;
 
 fn decision(flow: &Flow, revision: ChatRevision, disposition: Disposition) -> RouteDecision {
@@ -37,11 +37,11 @@ async fn exported(flow: &Flow) -> String {
 }
 
 #[tokio::test]
-async fn revision_conflict_supersedes_old_judgment_and_rejudges_once() {
+async fn revision_conflict_supersedes_old_judgment_and_reroutes_once() {
     let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
     let first = flow.accept_only("first").await;
     let second = flow.accept_only("second").await;
-    let stale = flow.judge_now(first, false).await;
+    let stale = flow.router_now(first, false).await;
     bump_revision(&mut flow, second).await;
 
     flow.engine
@@ -50,7 +50,7 @@ async fn revision_conflict_supersedes_old_judgment_and_rejudges_once() {
         .unwrap();
     flow.settle().await;
 
-    assert_eq!(flow.judge_calls(), 2);
+    assert_eq!(flow.router_calls(), 2);
     assert_eq!(flow.state(first), InputState::Applied);
     assert_eq!(
         flow.engine.queue.disposition(first),
@@ -71,11 +71,11 @@ async fn revision_conflict_supersedes_old_judgment_and_rejudges_once() {
 }
 
 #[tokio::test]
-async fn second_conflict_puts_input_in_queue_without_another_judge_call() {
+async fn second_conflict_puts_input_in_queue_without_another_router_call() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     let first = flow.accept_only("first").await;
     let second = flow.accept_only("second").await;
-    let stale = flow.judge_now(first, false).await;
+    let stale = flow.router_now(first, false).await;
     bump_revision(&mut flow, second).await;
 
     flow.engine
@@ -83,35 +83,35 @@ async fn second_conflict_puts_input_in_queue_without_another_judge_call() {
         .await
         .unwrap();
 
-    assert_eq!(flow.judge_calls(), 1);
+    assert_eq!(flow.router_calls(), 1);
     assert_eq!(flow.state(first), InputState::Queued);
     assert_eq!(flow.engine.queue.disposition(first), None);
     assert!(exported(&flow).await.contains("Superseded"));
 }
 
 #[tokio::test]
-async fn matching_revision_applies_without_rejudging() {
+async fn matching_revision_applies_without_rerouting() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     let input = flow.accept_only("only").await;
-    let fresh = flow.judge_now(input, false).await;
+    let fresh = flow.router_now(input, false).await;
 
     flow.engine
         .apply_decision(input, fresh, false)
         .await
         .unwrap();
 
-    assert_eq!(flow.judge_calls(), 1);
+    assert_eq!(flow.router_calls(), 1);
     assert_eq!(flow.state(input), InputState::Queued);
 }
 
 #[tokio::test]
-async fn pinned_model_input_waits_without_judge_while_task_runs() {
+async fn pinned_model_input_waits_without_router_while_task_runs() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     flow.submit("first request").await;
 
     let pinned = flow.submit_with("use that model", Some("m"), false).await;
 
-    assert_eq!(flow.judge_calls(), 1);
+    assert_eq!(flow.router_calls(), 1);
     assert_eq!(flow.state(pinned), InputState::Queued);
     assert_eq!(
         flow.engine.queue.disposition(pinned),
@@ -120,21 +120,21 @@ async fn pinned_model_input_waits_without_judge_while_task_runs() {
 }
 
 #[tokio::test]
-async fn skip_relation_input_waits_without_judge_while_task_runs() {
+async fn skip_relation_input_waits_without_router_while_task_runs() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     flow.submit("first request").await;
 
     let waiting = flow.submit_with("later", None, true).await;
 
-    assert_eq!(flow.judge_calls(), 1);
+    assert_eq!(flow.router_calls(), 1);
     assert_eq!(flow.state(waiting), InputState::Queued);
 }
 
 #[tokio::test]
-async fn judge_failure_while_running_steers_the_current_agent() {
+async fn router_failure_while_running_steers_the_current_agent() {
     let mut flow = Flow::new(
         std::iter::once(idle_reply(0.95))
-            .chain(judge_down())
+            .chain(router_down())
             .collect(),
     )
     .await;
@@ -152,8 +152,8 @@ async fn judge_failure_while_running_steers_the_current_agent() {
 }
 
 #[tokio::test]
-async fn judge_failure_while_idle_sends_to_the_current_agent_not_the_queue() {
-    let mut flow = Flow::new(judge_down()).await;
+async fn router_failure_while_idle_sends_to_the_current_agent_not_the_queue() {
+    let mut flow = Flow::new(router_down()).await;
 
     let input = flow.submit("first request").await;
 
@@ -179,7 +179,7 @@ async fn stop_while_judging_holds_the_input_and_drops_the_late_judgment() {
         )
         .await
         .unwrap();
-    let (input, _) = flow.engine.queue.next_to_judge(flow.chat).unwrap();
+    let (input, _) = flow.engine.queue.next_to_route(flow.chat).unwrap();
     assert!(flow.is_judging());
     let before = flow.engine.queue.revision(flow.chat);
 

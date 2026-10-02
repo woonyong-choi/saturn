@@ -26,7 +26,7 @@ pub(crate) const FINAL_INPUT_STATES: &str = "('Applied', 'Rejected', 'Cancelled'
 #[derive(Debug, Clone)]
 pub struct NewInput {
     pub chat: ChatId,
-    /// 사용자 입력이고 judge 키가 아니라 마스킹하지 않는다.
+    /// 사용자 입력이고 router 키가 아니라 마스킹하지 않는다.
     pub text: String,
     pub settings: SettingsRevision,
     pub permission: Permission,
@@ -715,7 +715,7 @@ pub(crate) mod tests {
         assert_eq!(open[0].2, InputState::Judging);
 
         store
-            .set_input_state(input, InputState::Queued, Some(QueueReason::JudgeOrder))
+            .set_input_state(input, InputState::Queued, Some(QueueReason::RouterOrder))
             .await
             .unwrap();
         assert_eq!(store.open_inputs().await.unwrap()[0].2, InputState::Queued);

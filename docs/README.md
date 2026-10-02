@@ -10,9 +10,9 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [권한](design/permissions.md) | 권한 규칙, 항상 허용 저장, Codex와 Claude 구성, 허가 대기 중 피드백 |
 | [맥락 정리](design/context-management.md) | 맥락 크기 측정, 정리 판정, 정리 모드, 패킷 구성 |
 | [맥락 고르기](design/context-selection.md) | 후보 순위, 단어 조각, 도구 결과 메모, 제약 식별과 대체 |
-| [judge](design/judge.md) | 판단 질문, 답 형식, 기준값과 대체 규칙, 판단 기록 |
-| [judge 키 보호](design/judge-key-security.md) | judge 키 입력, 저장, 자식 프로세스 차단 |
-| [judge 학습](design/judge-training.md) | 기준값 조정, 채점, 로컬 모델 승격 |
+| [router](design/router.md) | 판단 질문, 답 형식, 기준값과 대체 규칙, 판단 기록 |
+| [router 키 보호](design/router-key-security.md) | router 키 입력, 저장, 자식 프로세스 차단 |
+| [router 학습](design/router-training.md) | 기준값 조정, 채점, 로컬 모델 승격 |
 | [설정](design/settings.md) | 설정 층, 폴더 설정 신뢰, 설정 번호 |
 | [기록 저장과 보존](design/records.md) | 기록 저장소, 스키마 이관, 보존과 삭제 |
 | [engine 수명과 복구](design/engine-lifecycle.md) | engine 시작, TUI 종료 뒤 계속, 크래시 뒤 복구, 채팅 폴더와 이어 열기 |

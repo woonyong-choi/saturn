@@ -491,14 +491,14 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         )],
         ChatNotice::RequestSummary {
             provider_tokens,
-            judge_calls,
-            judge_tokens,
+            router_calls,
+            router_tokens,
             elapsed_ms,
         } => vec![summary_line(
             lang,
             provider_tokens,
-            *judge_calls,
-            *judge_tokens,
+            *router_calls,
+            *router_tokens,
             Duration::from_millis(*elapsed_ms),
         )],
         ChatNotice::FolderAdded {
@@ -531,8 +531,8 @@ pub fn held_labels(held: &[TaskLabel]) -> String {
 fn summary_line(
     lang: Lang,
     provider_tokens: &[(Provider, u64)],
-    judge_calls: u32,
-    judge_tokens: u64,
+    router_calls: u32,
+    router_tokens: u64,
     elapsed: Duration,
 ) -> String {
     let mut parts = vec![lang.tr(i18n::REQUEST_SUMMARY).to_string()];
@@ -544,13 +544,13 @@ fn summary_line(
         )
     }));
     let calls = match lang {
-        Lang::Ko => format!("{judge_calls}{}", i18n::TIMES_SUFFIX),
-        Lang::En => format!("{judge_calls} {}", lang.tr(i18n::TIMES_SUFFIX)),
+        Lang::Ko => format!("{router_calls}{}", i18n::TIMES_SUFFIX),
+        Lang::En => format!("{router_calls} {}", lang.tr(i18n::TIMES_SUFFIX)),
     };
     parts.push(format!(
         "{} {calls} {}",
-        lang.tr(i18n::JUDGE_CALLS),
-        tokens_text(lang, Some(judge_tokens))
+        lang.tr(i18n::ROUTER_CALLS),
+        tokens_text(lang, Some(router_tokens))
     ));
     parts.push(i18n::format_elapsed(lang, elapsed));
     parts.join(" · ")
@@ -716,8 +716,8 @@ mod tests {
             label: None,
             notice: ChatNotice::RequestSummary {
                 provider_tokens: vec![(Provider::Codex, 4_120)],
-                judge_calls: 3,
-                judge_tokens: 9_870,
+                router_calls: 3,
+                router_tokens: 9_870,
                 elapsed_ms: 151_000,
             },
         };
@@ -728,7 +728,7 @@ mod tests {
         );
         assert_eq!(
             summary.lines(Lang::Ko, true, false),
-            vec!["이번 요청 · codex Token 4,120 · 판단기 3회 Token 9,870 · 2분 31초"]
+            vec!["이번 요청 · codex Token 4,120 · 라우터 3회 Token 9,870 · 2분 31초"]
         );
     }
 
@@ -893,8 +893,8 @@ mod tests {
         transcript.set_header(StartInfo {
             saturn_version: "0.1.0".to_string(),
             providers: Vec::new(),
-            judge: None,
-            judge_version: None,
+            router: None,
+            router_version: None,
             folder: "/w".into(),
             added_dirs: Vec::new(),
         });

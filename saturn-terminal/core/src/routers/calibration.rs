@@ -1,5 +1,5 @@
 //! 기준값 조정, 채점 라벨 게이트, 승격 게이트의 계산 규칙(실행은 engine `training`).
-//! 설계: docs/design/judge-training.md
+//! 설계: docs/design/router-training.md
 
 pub const DEFAULT_TARGET_WRONG_RATE: f64 = 0.05;
 
@@ -58,9 +58,9 @@ pub enum Signal {
 /// 물은 판단에서 사용자가 한 답이다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AskedAnswer {
-    /// judge의 답이 맞았다고 답했다.
+    /// router의 답이 맞았다고 답했다.
     Correct,
-    /// judge의 답이 틀렸다고 답했다.
+    /// router의 답이 틀렸다고 답했다.
     Wrong,
 }
 
@@ -928,8 +928,8 @@ mod tests {
         let mut asks = 0_u32;
         let mut accumulated = 0.0;
 
-        for judged in 0..judgments {
-            accumulated += ask_probability(0.8, 0.8, asks, judged);
+        for routed in 0..judgments {
+            accumulated += ask_probability(0.8, 0.8, asks, routed);
             if accumulated >= 1.0 {
                 accumulated -= 1.0;
                 asks += 1;

@@ -1,4 +1,4 @@
-//! engine 시작 순서, 요청 분배, 채팅 붙기, 입력 흐름 테스트. 가짜 judge 전송, 가짜 provider, 임시 폴더만 쓴다.
+//! engine 시작 순서, 요청 분배, 채팅 붙기, 입력 흐름 테스트. 가짜 router 전송, 가짜 provider, 임시 폴더만 쓴다.
 
 mod add_dir;
 mod attach;
@@ -33,12 +33,12 @@ use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::sync::Mutex;
 use tokio::time::timeout;
 
-use crate::judges::test_support::{
-    FakeTransport, HttpReply, KEY, TransportError, judge, ok, status,
+use crate::routers::test_support::{
+    FakeTransport, HttpReply, KEY, TransportError, ok, router, status,
 };
-use crate::judges::{ActiveJudge, SharedSecrets};
+use crate::routers::{ActiveRouter, SharedSecrets};
 use crate::rpc::SOCKET_FILE;
-use crate::secrets::{JudgeKey, KeyInput, KeySource, SecretStore, StorageMode};
+use crate::secrets::{KeyInput, KeySource, RouterKey, SecretStore, StorageMode};
 use crate::{Engine, EngineError, EngineOptions, StartEnv};
 
 const WAIT: Duration = Duration::from_secs(5);
@@ -72,7 +72,7 @@ impl Fixture {
     }
 
     fn key_file(&self) -> PathBuf {
-        self.root.path().join("judge.key")
+        self.root.path().join("router.key")
     }
 
     fn socket(&self) -> PathBuf {
@@ -95,7 +95,7 @@ impl Fixture {
         let mut store = SecretStore::with_key_file(self.key_file(), StorageMode::Standard);
         if with_key {
             store
-                .save(JudgeKey::new(KEY.to_owned()).unwrap(), KeySource::Stored)
+                .save(RouterKey::new(KEY.to_owned()).unwrap(), KeySource::Stored)
                 .await
                 .unwrap();
         }
@@ -106,7 +106,10 @@ impl Fixture {
         let secrets = self.secrets(with_key).await;
         StartEnv {
             nested_marker: None,
-            judge: Some(ActiveJudge::Remote(judge(Arc::clone(&secrets), transport))),
+            router: Some(ActiveRouter::Remote(router(
+                Arc::clone(&secrets),
+                transport,
+            ))),
             secrets: Some(secrets),
             key_inputs: Some(Vec::<KeyInput>::new()),
         }
@@ -116,13 +119,13 @@ impl Fixture {
         Engine::start_with(self.options.clone(), env).await
     }
 
-    /// judge 확인이 통과한 engine.
+    /// router 확인이 통과한 engine.
     async fn ready(&self) -> Engine {
         let transport = FakeTransport::new(vec![ok(MODELS), ok(CHECK_OK)]);
         self.start(self.env(true, transport).await).await.unwrap()
     }
 
-    /// 키가 없어 judge 키를 기다리는 engine과, 키를 다시 확인할 때 쓸 전송.
+    /// 키가 없어 router 키를 기다리는 engine과, 키를 다시 확인할 때 쓸 전송.
     async fn waiting_for_key(&self, replies: Vec<FakeReply>) -> Engine {
         let transport = FakeTransport::new(replies);
         self.start(self.env(false, transport).await).await.unwrap()

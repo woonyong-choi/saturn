@@ -16,11 +16,11 @@ const RUN_LAYER_PATH: &str = "-c";
 
 /// 목록은 초안이다(설계는 원칙만 정함).
 const IRREVERSIBLE_THRESHOLDS: &[&str] = &[
-    "judge.thresholds.keep_current",
-    "judge.thresholds.resume_held",
+    "router.thresholds.keep_current",
+    "router.thresholds.resume_held",
 ];
 
-/// docs/design/judge-training.md
+/// docs/design/router-training.md
 const IRREVERSIBLE_MIN: f64 = 0.8;
 
 /// 질문별 기준값과 맥락 창 크기 외의 값은 초안이다(맥락 기준값은 #7 실측 전).
@@ -30,15 +30,15 @@ on_exit = "background"
 [agents]
 worktree = false
 
-[judge]
+[router]
 method = "jev"
 endpoint = "https://api.typesafe.ai"
 model = "jev-1.13.0"
 
-[judge.key]
+[router.key]
 storage = "standard"
 
-[judge.thresholds]
+[router.thresholds]
 keep_current = 0.8
 is_actionable = 0.7
 min_confidence = 0.6
@@ -91,29 +91,29 @@ enum Kind {
 const SCHEMA: &[(&str, Kind)] = &[
     ("on_exit", Kind::OneOf(&["background", "stop", "ask"])),
     ("agents.worktree", Kind::Flag),
-    ("judge.method", Kind::OneOf(&["jev", "saturn", "collect"])),
-    ("judge.endpoint", Kind::Text),
+    ("router.method", Kind::OneOf(&["jev", "saturn", "collect"])),
+    ("router.endpoint", Kind::Text),
     (
-        "judge.key.info.source",
+        "router.key.info.source",
         Kind::OneOf(&["Stored", "Env", "Command"]),
     ),
-    ("judge.key.info.last4", Kind::Text),
-    ("judge.key.command", Kind::TextList),
-    ("judge.key.storage", Kind::OneOf(&["standard", "hardened"])),
-    ("judge.thresholds.keep_current", Kind::Unit),
-    ("judge.thresholds.is_actionable", Kind::Unit),
-    ("judge.thresholds.min_confidence", Kind::Unit),
-    ("judge.thresholds.resume_held", Kind::Unit),
-    ("judge.thresholds.file_present", Kind::Unit),
-    ("judge.thresholds.file_absent", Kind::Unit),
-    ("judge.thresholds.context_gate", Kind::Unit),
-    ("judge.thresholds.injection", Kind::Unit),
-    ("judge.thresholds.progressing", Kind::Unit),
-    ("judge.thresholds.feedback_cause", Kind::Unit),
-    ("judge.model", Kind::Text),
-    ("judge.local.endpoint", Kind::Text),
-    ("judge.local.version", Kind::Text),
-    ("judge.skip_check", Kind::Flag),
+    ("router.key.info.last4", Kind::Text),
+    ("router.key.command", Kind::TextList),
+    ("router.key.storage", Kind::OneOf(&["standard", "hardened"])),
+    ("router.thresholds.keep_current", Kind::Unit),
+    ("router.thresholds.is_actionable", Kind::Unit),
+    ("router.thresholds.min_confidence", Kind::Unit),
+    ("router.thresholds.resume_held", Kind::Unit),
+    ("router.thresholds.file_present", Kind::Unit),
+    ("router.thresholds.file_absent", Kind::Unit),
+    ("router.thresholds.context_gate", Kind::Unit),
+    ("router.thresholds.injection", Kind::Unit),
+    ("router.thresholds.progressing", Kind::Unit),
+    ("router.thresholds.feedback_cause", Kind::Unit),
+    ("router.model", Kind::Text),
+    ("router.local.endpoint", Kind::Text),
+    ("router.local.version", Kind::Text),
+    ("router.skip_check", Kind::Flag),
     ("grading.model", Kind::Text),
     ("consent.share_with_server", Kind::Flag),
     ("retention.max_age_days", Kind::Positive),
@@ -132,9 +132,9 @@ const SCHEMA: &[(&str, Kind)] = &[
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UserOnly {
-    JudgeEndpoint,
+    RouterEndpoint,
     /// 키 정보, 관리자 명령, 저장 방식.
-    JudgeKeyRef,
+    RouterKeyRef,
     GradingModel,
     DataSharingConsent,
     Method,
@@ -144,11 +144,11 @@ impl UserOnly {
     /// 이 접두사와 같거나 `접두사.`로 시작하는 키는 모두 사용자 전용이다.
     pub fn key_prefix(self) -> &'static str {
         match self {
-            Self::JudgeEndpoint => "judge.endpoint",
-            Self::JudgeKeyRef => "judge.key",
+            Self::RouterEndpoint => "router.endpoint",
+            Self::RouterKeyRef => "router.key",
             Self::GradingModel => "grading.model",
             Self::DataSharingConsent => "consent",
-            Self::Method => "judge.method",
+            Self::Method => "router.method",
         }
     }
 
@@ -162,8 +162,8 @@ impl UserOnly {
 }
 
 pub const USER_ONLY: &[UserOnly] = &[
-    UserOnly::JudgeEndpoint,
-    UserOnly::JudgeKeyRef,
+    UserOnly::RouterEndpoint,
+    UserOnly::RouterKeyRef,
     UserOnly::GradingModel,
     UserOnly::DataSharingConsent,
     UserOnly::Method,
@@ -625,13 +625,13 @@ mod tests {
 
     #[test]
     fn later_layer_wins_in_order() {
-        let key = "judge.thresholds.is_actionable";
+        let key = "router.thresholds.is_actionable";
         let layers = vec![
             layer(Layer::Run, &run_layer(&[format!("{key}=0.95")]).unwrap()),
             layer(Layer::Default, default_layer()),
-            layer(Layer::User, "[judge.thresholds]\nis_actionable = 0.71\n"),
-            layer(Layer::Folder, "[judge.thresholds]\nis_actionable = 0.72\n"),
-            layer(Layer::Chat, "judge.thresholds.is_actionable = 0.73\n"),
+            layer(Layer::User, "[router.thresholds]\nis_actionable = 0.71\n"),
+            layer(Layer::Folder, "[router.thresholds]\nis_actionable = 0.72\n"),
+            layer(Layer::Chat, "router.thresholds.is_actionable = 0.73\n"),
         ];
 
         let snapshot = merge(layers).unwrap();
@@ -654,8 +654,8 @@ mod tests {
     #[test]
     fn folder_cannot_change_user_only_items() {
         let folder = "on_exit = \"ask\"\n\
-            [judge]\nmethod = \"saturn\"\nendpoint = \"https://evil.example\"\n\
-            [judge.key]\ncommand = [\"steal\"]\n\
+            [router]\nmethod = \"saturn\"\nendpoint = \"https://evil.example\"\n\
+            [router.key]\ncommand = [\"steal\"]\n\
             [grading]\nmodel = \"other\"\n\
             [consent]\nshare_with_server = true\n";
         let layers = vec![
@@ -667,8 +667,8 @@ mod tests {
         let snapshot = merge(layers).unwrap();
 
         let settings = &snapshot.settings;
-        assert_eq!(settings.method(), saturn_core::judges::Method::Jev);
-        assert_eq!(settings.judge_endpoint(), "https://api.typesafe.ai");
+        assert_eq!(settings.method(), saturn_core::routers::Method::Jev);
+        assert_eq!(settings.router_endpoint(), "https://api.typesafe.ai");
         assert_eq!(settings.key_command(), None);
         assert_eq!(settings.grading_model(), Some("mine"));
         assert!(!settings.share_with_server());
@@ -680,9 +680,9 @@ mod tests {
             vec![
                 "consent.share_with_server",
                 "grading.model",
-                "judge.endpoint",
-                "judge.key.command",
-                "judge.method",
+                "router.endpoint",
+                "router.key.command",
+                "router.method",
             ]
         );
     }
@@ -692,14 +692,14 @@ mod tests {
         let cases = [
             ("unknown_key = 1\n", "unknown_key"),
             (
-                "judge.thresholds.injection = 1.5\n",
-                "judge.thresholds.injection",
+                "router.thresholds.injection = 1.5\n",
+                "router.thresholds.injection",
             ),
             (
-                "judge.thresholds.keep_current = 0.75\n",
-                "judge.thresholds.keep_current",
+                "router.thresholds.keep_current = 0.75\n",
+                "router.thresholds.keep_current",
             ),
-            ("judge.thresholds = 0.5\n", "judge.thresholds"),
+            ("router.thresholds = 0.5\n", "router.thresholds"),
             ("on_exit = \"later\"\n", "on_exit"),
             ("context.safety_percent = 120\n", "context.safety_percent"),
         ];
@@ -749,14 +749,14 @@ mod tests {
             layer(Layer::Default, default_layer()),
             layer(
                 Layer::User,
-                "[judge.key.info]\nsource = \"Stdin\"\nlast4 = \"abcd\"\n",
+                "[router.key.info]\nsource = \"Stdin\"\nlast4 = \"abcd\"\n",
             ),
         ];
 
         let error = merge(layers).unwrap_err();
 
         assert!(
-            matches!(error, SettingsError::Invalid { key, .. } if key == "judge.key.info.source")
+            matches!(error, SettingsError::Invalid { key, .. } if key == "router.key.info.source")
         );
     }
 
@@ -764,7 +764,7 @@ mod tests {
     fn parse_error_reports_line() {
         let layers = vec![
             layer(Layer::Default, default_layer()),
-            layer(Layer::Folder, "[judge]\n\n\nbroken = = 1\n"),
+            layer(Layer::Folder, "[router]\n\n\nbroken = = 1\n"),
         ];
 
         let error = merge(layers).unwrap_err();
@@ -778,15 +778,15 @@ mod tests {
     #[test]
     fn run_layer_parses_values_and_rejects_bad_input() {
         let text = run_layer(&[
-            "judge.thresholds.injection=0.9".to_owned(),
-            "judge.thresholds.injection = 0.95".to_owned(),
+            "router.thresholds.injection=0.9".to_owned(),
+            "router.thresholds.injection = 0.95".to_owned(),
             "on_exit=\"ask\"".to_owned(),
         ])
         .unwrap();
         let values = parse_toml(&text, Path::new("-c")).unwrap();
 
         assert_eq!(
-            get_path(&values, "judge.thresholds.injection"),
+            get_path(&values, "router.thresholds.injection"),
             Some(&Value::from(0.95))
         );
         assert_eq!(get_path(&values, "on_exit"), Some(&Value::from("ask")));
@@ -813,10 +813,10 @@ mod tests {
 
     #[test]
     fn user_only_prefix_matches_whole_segments() {
-        assert!(is_user_only("judge.key.info.last4"));
+        assert!(is_user_only("router.key.info.last4"));
         assert!(is_user_only("consent.share_with_server"));
-        assert!(!is_user_only("judge.keys"));
-        assert!(!is_user_only("judge.thresholds.keep_current"));
+        assert!(!is_user_only("router.keys"));
+        assert!(!is_user_only("router.thresholds.keep_current"));
     }
 
     #[tokio::test]

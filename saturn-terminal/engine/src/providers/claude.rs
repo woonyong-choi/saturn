@@ -1227,7 +1227,7 @@ while (my $line = <STDIN>) {
     }
 
     #[tokio::test]
-    async fn stdout_hides_judge_key_before_emitting_events() {
+    async fn stdout_hides_router_key_before_emitting_events() {
         let dir = tempfile::tempdir().unwrap();
         let mut config = launch(dir.path(), Vec::new());
         config.masker = Masker::new(vec!["sk-secret-1234".to_owned()]);

@@ -17,9 +17,9 @@ system: Saturn {
 }
 codex-cli: Codex CLI {style.stroke-dash: 4}
 claude-code: Claude Code {style.stroke-dash: 4}
-judge-api: Judge API {style.stroke-dash: 4}
+router-api: Router API {style.stroke-dash: 4}
 user -> system.cli: commands
 user -> system.tui: input
 system.engine -> codex-cli: app-server requests
 system.engine -> claude-code: stream-json input
-system.engine -> judge-api: judgment questions
+system.engine -> router-api: judgment questions

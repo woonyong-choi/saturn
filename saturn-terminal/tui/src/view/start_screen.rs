@@ -1,4 +1,4 @@
-//! 시작 화면. 로고, Saturn 버전, provider 버전, judge와 judge 버전, 폴더.
+//! 시작 화면. 로고, Saturn 버전, provider 버전, router와 router 버전, 폴더.
 //! 설계: docs/design/tui.md
 
 use std::path::PathBuf;
@@ -21,8 +21,8 @@ pub struct StartInfo {
     pub saturn_version: String,
     /// 확인하지 못한 provider는 버전이 `None`.
     pub providers: Vec<(Provider, Option<String>)>,
-    pub judge: Option<String>,
-    pub judge_version: Option<String>,
+    pub router: Option<String>,
+    pub router_version: Option<String>,
     /// 채팅의 기본 폴더. 다른 폴더의 채팅을 이어 열었으면 그 채팅의 폴더다.
     pub folder: PathBuf,
     /// 더한 폴더.
@@ -33,13 +33,13 @@ impl StartInfo {
     // cost: time O(m), heap O(m), stack O(1)
     // vars: m = 알림 글자 수
     // basis: estimate
-    /// 빈 버전과 빈 judge 이름은 확인하지 못한 것으로 본다.
+    /// 빈 버전과 빈 router 이름은 확인하지 못한 것으로 본다.
     pub fn from_notification(notification: &Notification) -> Option<Self> {
         let Notification::StartInfo {
             saturn_version,
             providers,
-            judge,
-            judge_version,
+            router,
+            router_version,
             folder,
             added_dirs,
         } = notification
@@ -53,8 +53,8 @@ impl StartInfo {
                 .iter()
                 .map(|(provider, version)| (*provider, non_empty(version)))
                 .collect(),
-            judge: non_empty(judge),
-            judge_version: non_empty(judge_version),
+            router: non_empty(router),
+            router_version: non_empty(router_version),
             folder: PathBuf::from(folder),
             added_dirs: added_dirs.iter().map(PathBuf::from).collect(),
         })
@@ -73,12 +73,12 @@ impl StartInfo {
                 .unwrap_or_else(|| lang.tr(i18n::VERSION_UNKNOWN).to_string());
             format!("{} {version}", i18n::provider_name(*provider))
         }));
-        let judge = match (&self.judge, &self.judge_version) {
-            (Some(judge), Some(version)) => format!("{judge} · {version}"),
-            (Some(judge), None) => judge.clone(),
+        let router = match (&self.router, &self.router_version) {
+            (Some(router), Some(version)) => format!("{router} · {version}"),
+            (Some(router), None) => router.clone(),
             (None, _) => "-".to_string(),
         };
-        lines.push(format!("{} {judge}", lang.tr(i18n::START_JUDGE)));
+        lines.push(format!("{} {router}", lang.tr(i18n::START_ROUTER)));
         lines.push(format!(
             "{} {}",
             lang.tr(i18n::START_FOLDER),
@@ -143,8 +143,8 @@ mod tests {
                 (Provider::Codex, Some("0.40.0".to_string())),
                 (Provider::Claude, None),
             ],
-            judge: Some("remote".to_string()),
-            judge_version: Some("v3".to_string()),
+            router: Some("remote".to_string()),
+            router_version: Some("v3".to_string()),
             folder: PathBuf::from("/work/app"),
             added_dirs: Vec::new(),
         }
@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    fn lines_list_versions_judge_and_folder() {
+    fn lines_list_versions_router_and_folder() {
         assert_eq!(
             info().lines(Lang::Ko),
             vec![
@@ -177,7 +177,7 @@ mod tests {
                 "Saturn 0.1.0",
                 "codex 0.40.0",
                 "claude 확인 안 됨",
-                "판단기 remote · v3",
+                "라우터 remote · v3",
                 "폴더 /work/app",
             ]
         );
@@ -188,8 +188,8 @@ mod tests {
         let notification = Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
             providers: vec![(Provider::Codex, String::new())],
-            judge: String::new(),
-            judge_version: String::new(),
+            router: String::new(),
+            router_version: String::new(),
             folder: "/w".to_string(),
             added_dirs: vec!["/x".to_string()],
         };
@@ -197,7 +197,7 @@ mod tests {
         let info = StartInfo::from_notification(&notification).unwrap();
 
         assert_eq!(info.providers, vec![(Provider::Codex, None)]);
-        assert_eq!(info.judge, None);
+        assert_eq!(info.router, None);
         assert_eq!(info.added_dirs, vec![PathBuf::from("/x")]);
     }
 }

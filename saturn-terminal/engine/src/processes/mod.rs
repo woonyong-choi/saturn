@@ -569,11 +569,11 @@ mod tests {
         let supervisor = Supervisor::new();
         let script = format!(
             "echo \"${{{NESTED_MARKER_ENV}}}:${{{key}:-none}}:${{KEEP}}:${{HOME:-unset}}\"",
-            key = secrets::JUDGE_KEY_ENV
+            key = secrets::ROUTER_KEY_ENV
         );
         let spec = shell(
             &script,
-            &[(secrets::JUDGE_KEY_ENV, "sk-secret"), ("KEEP", "yes")],
+            &[(secrets::ROUTER_KEY_ENV, "sk-secret"), ("KEEP", "yes")],
         );
 
         let mut spawned = supervisor.spawn(spec).unwrap();

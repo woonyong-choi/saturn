@@ -1,4 +1,4 @@
-//! 기록 목록에서 `PacketSource`를 만들고 후보 순위와 judge 판단으로 경쟁 구역 순서를 정한다.
+//! 기록 목록에서 `PacketSource`를 만들고 후보 순위와 router 판단으로 경쟁 구역 순서를 정한다.
 //! 설계: docs/design/context-management.md#패킷-구성, docs/design/context-selection.md
 
 use std::collections::HashSet;
@@ -7,7 +7,7 @@ use std::time::Duration;
 use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::memo::{ToolKind, tool_memo};
 use saturn_core::sessions::packet::{CompetingItem, Entry, PacketSource, RECENT_TURNS, RecentTurn};
-use saturn_core::sessions::ranking::{Candidate, order_after_judge, rank_candidates};
+use saturn_core::sessions::ranking::{Candidate, order_after_router, rank_candidates};
 use saturn_core::sessions::stamp::Stamp;
 use saturn_protocol::ids::{LedgerSeq, SessionId};
 use serde::Deserialize;
@@ -57,8 +57,8 @@ pub(crate) struct Assembled {
     pub(crate) source: PacketSource,
     /// 후보 전체의 RRF 순서.
     pub(crate) rrf_order: Vec<LedgerSeq>,
-    /// 순서를 정하는 데 쓴 judge 판단 수.
-    pub(crate) judged: usize,
+    /// 순서를 정하는 데 쓴 router 판단 수.
+    pub(crate) routed: usize,
 }
 
 // cost: time O(L + c log c), heap O(L), stack O(1)
@@ -78,7 +78,7 @@ pub(crate) fn assemble(
     let base_files = base_files(records, &turns, last_input);
     let rrf_order = rank_candidates(&candidates, &base_files, last_input, rule.k);
     let verdicts = usable_verdicts(&rrf_order, judgments, rule);
-    let ordered = order_after_judge(&rrf_order, &verdicts);
+    let ordered = order_after_router(&rrf_order, &verdicts);
     let competitors = ordered
         .iter()
         .filter_map(|seq| tools.iter().find(|tool| tool.seq == seq.0))
@@ -102,7 +102,7 @@ pub(crate) fn assemble(
     Assembled {
         source,
         rrf_order,
-        judged: verdicts.len(),
+        routed: verdicts.len(),
     }
 }
 
@@ -122,7 +122,7 @@ pub(crate) fn budget_for(budget_tokens: u64) -> ContextBudget {
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = 입력 항목 수
 // basis: estimate
-/// 조건이 judge 판단을 쓰지 않거나 판단이 없으면 빈 목록(RRF 순서 대체)이다. `rrf-judge`는 RRF 상위 `top_n`개의 판단만 쓴다.
+/// 조건이 router 판단을 쓰지 않거나 판단이 없으면 빈 목록(RRF 순서 대체)이다. `rrf-router`는 RRF 상위 `top_n`개의 판단만 쓴다.
 fn usable_verdicts(
     rrf_order: &[LedgerSeq],
     judgments: &Judgments,
@@ -130,8 +130,8 @@ fn usable_verdicts(
 ) -> Vec<(LedgerSeq, f64)> {
     let allowed: HashSet<u64> = match rule.condition {
         PacketCondition::RrfOnly => return Vec::new(),
-        PacketCondition::JudgeOnly => rrf_order.iter().map(|seq| seq.0).collect(),
-        PacketCondition::RrfJudge => rrf_order.iter().take(rule.top_n).map(|seq| seq.0).collect(),
+        PacketCondition::RouterOnly => rrf_order.iter().map(|seq| seq.0).collect(),
+        PacketCondition::RrfRouter => rrf_order.iter().take(rule.top_n).map(|seq| seq.0).collect(),
     };
     judgments
         .compact

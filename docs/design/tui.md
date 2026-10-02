@@ -20,8 +20,8 @@ Codex와 Claude Code를 함께 쓰는 개발자는 한 저장소에서 여러 �
 1. 사용자가 `로그인할 때 세션이 바로 끊기는 버그 고쳐`를 입력하자 작업 A가 시작된다.
 2. 작업이 하나뿐이라 대화 기록에는 이름표 없이 입력 에코가 찍힌다.
 3. A가 실행 중일 때 사용자가 `테스트도 같이 돌려줘`를 입력한다.
-4. 상태판에 `⠹ [C] 판단 중` 줄이 뜨고 judge가 입력을 판단한다.
-5. judge가 A 다음에 보내기로 정하면 줄이 `· [C] 대기 · A 다음`으로 바뀌고 `[보내기] [취소]` 버튼이 붙는다.
+4. 상태판에 `⠹ [C] 판단 중` 줄이 뜨고 router가 입력을 판단한다.
+5. router가 A 다음에 보내기로 정하면 줄이 `· [C] 대기 · A 다음`으로 바뀌고 `[보내기] [취소]` 버튼이 붙는다.
 6. 살아 있는 작업과 대기 줄이 생겼으므로 A의 줄과 기록에도 이름표 `[A]`가 붙는다.
 
 ### 맥락 정리가 기록에 한 줄로 남는다
@@ -86,20 +86,20 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | 팝업 | `/` 명령 목록과 값 목록, `@` 파일 목록, `$` 스킬 목록, 명령 목록 최대 8행과 오른쪽 출처 표시 | 글자 입력마다 목록 필터 |
 | 입력창 | `›` 접두 초안, 붙여넣은 내용 요소 | 키 입력 |
 | 바닥줄 | 키 안내, 맥락 크기 | 상태 변경, 턴마다 맥락 크기 |
-| 시작 화면 | 로고, Saturn 버전, provider 버전, judge와 judge 버전, 채팅 기본 폴더와 더한 폴더(다른 폴더의 채팅을 이어 열었으면 그 폴더를 보임) | 실행 때, 첫 결과가 오면 대화 기록 맨 위 머리 셀로 전환 |
-| judge 키 입력 창 | judge 확인 실패 원인, 가린 키 입력칸 | 시작 때 judge 확인 실패 |
+| 시작 화면 | 로고, Saturn 버전, provider 버전, router와 router 버전, 채팅 기본 폴더와 더한 폴더(다른 폴더의 채팅을 이어 열었으면 그 폴더를 보임) | 실행 때, 첫 결과가 오면 대화 기록 맨 위 머리 셀로 전환 |
+| router 키 입력 창 | router 확인 실패 원인, 가린 키 입력칸 | 시작 때 router 확인 실패 |
 | 폴더 설정 신뢰 창 | 폴더 설정 파일 경로, 지문, 적용되는 항목, 무시되는 항목, 바뀐 줄 | 처음 보거나 내용이 바뀐 폴더 설정을 만난 때, 실행 중이면 다음 입력 접수 전 |
 | 보류 재개 질문 | 보류된 작업 목록, 선택지 `모두 이어서`, `골라서 이어서`, `그대로 두기` | 보류 작업이 있는 채팅을 다시 열 때 한 번 |
 | 허가 요청 창 | 작업 이름표와 provider가 붙은 제목, 요청 내용, 이유, 선택지 세 개, 허가를 기다리는 다른 작업 수 | 허가 요청 도착 |
 | 작업 목록 화면 | 필터 전체, 확인 필요, 실행 중, 대기, 보류, 끝남, 묶음 채팅, 폴더, 상태, 작업과 그 아래 subagent와 자식 채팅, 작업 상세. 기본 범위는 현재 채팅의 기본 폴더에서 만든 채팅이고 키 `a`로 모든 폴더로 넓히고 되돌린다. 필터 줄 끝에 범위(`현재 폴더`, `모든 폴더`)를 보인다. 채팅이나 현재 폴더를 알 수 없으면 범위로 거르지 않는다(초안) | `/tasks` 실행, `engine` 상태 변경 때 선택 유지 |
 | 전체 기록 | 도구 셀 전체와 줄인 셀을 펼친 대화 기록 | `Ctrl+T` 입력 |
-| 사용량 화면 | 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론, judge 호출과 예상 비용, 맥락 정리, 채점, 여러 턴 합계 행 끝의 `n 토큰 · n 턴`. provider·모델마다 한 행, judge 한 행 | `/usage` 실행, 범위 `chat`, `today`, `week`, `all` 선택 |
-| judge 버전 화면 | judge 버전 목록, 버전별 judge와 보정값과 ECE, 질문별 목표 틀림 비율과 기준값과 최근 200건 틀림과 판단 수 | `/judge version` 실행 |
+| 사용량 화면 | 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론, router 호출과 예상 비용, 맥락 정리, 채점, 여러 턴 합계 행 끝의 `n 토큰 · n 턴`. provider·모델마다 한 행, router 한 행 | `/usage` 실행, 범위 `chat`, `today`, `week`, `all` 선택 |
+| router 버전 화면 | router 버전 목록, 버전별 router와 보정값과 ECE, 질문별 목표 틀림 비율과 기준값과 최근 200건 틀림과 판단 수 | `/router version` 실행 |
 | 학습 확인 창 | 채점 후보 수, 채점 모델, 예상 토큰, 기준값 조정 대상, 모델 추가 학습 여부 | 실행 조건을 채운 `/train` 실행 |
 
-judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-security.md)에, 폴더 설정 신뢰 규칙은 [설정](settings.md)에 있다.
+router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-key-security.md)에, 폴더 설정 신뢰 규칙은 [설정](settings.md)에 있다.
 
-사용량 화면은 provider·모델마다 한 행, judge마다 한 행을 보인다. 행 이름은 `codex · gpt-5.6-terra`, `claude · opus`, `judge · jev` 형식이고, 모델을 보고하지 않았으면 provider 이름만 쓴다. 각 행은 고른 범위(`chat`, `today`, `week`, `all`)의 합계다. provider 행의 토큰은 턴 값의 합이고, session 누적 보고는 같은 계열의 직전 누적을 뺀 값을 더한다. 여러 턴을 합친 행은 끝에 `n 토큰 · n 턴`을 보이고, 턴 수는 그 행에 합친 실행 수다. 중간 보고가 빠진 누적 보고는 그사이 보고 없는 실행까지 턴으로 센다. judge 행은 호출 수와 입력·출력 토큰을 보인다. 예상 비용, 맥락 정리, 채점처럼 기록 저장소에 없는 값은 `-`로 표시한다. 지어낸 값을 보이지 않기 위해서다.
+사용량 화면은 provider·모델마다 한 행, router마다 한 행을 보인다. 행 이름은 `codex · gpt-5.6-terra`, `claude · opus`, `router · jev` 형식이고, 모델을 보고하지 않았으면 provider 이름만 쓴다. 각 행은 고른 범위(`chat`, `today`, `week`, `all`)의 합계다. provider 행의 토큰은 턴 값의 합이고, session 누적 보고는 같은 계열의 직전 누적을 뺀 값을 더한다. 여러 턴을 합친 행은 끝에 `n 토큰 · n 턴`을 보이고, 턴 수는 그 행에 합친 실행 수다. 중간 보고가 빠진 누적 보고는 그사이 보고 없는 실행까지 턴으로 센다. router 행은 호출 수와 입력·출력 토큰을 보인다. 예상 비용, 맥락 정리, 채점처럼 기록 저장소에 없는 값은 `-`로 표시한다. 지어낸 값을 보이지 않기 위해서다.
 
 ### 이름표
 
@@ -113,7 +113,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 
 ### 피드백 질문
 
-피드백 질문은 입력 에코 다음 줄에 뜬다. 어떤 판단에서 묻는지는 [judge 학습](judge-training.md)의 확률 q 규칙을 따른다. 질문은 8초 안에 답이 없으면 사라진다. 사용자가 `2`(아니에요)로 답했고 그 입력이 아직 보내지지 않았으면 바로 새 작업으로 실행할지 묻는 바로잡기 제안을 보인다. TUI가 붙어 있지 않은 동안에는 피드백 질문을 건너뛴다([engine 수명과 복구](engine-lifecycle.md)).
+피드백 질문은 입력 에코 다음 줄에 뜬다. 어떤 판단에서 묻는지는 [router 학습](router-training.md)의 확률 q 규칙을 따른다. 질문은 8초 안에 답이 없으면 사라진다. 사용자가 `2`(아니에요)로 답했고 그 입력이 아직 보내지지 않았으면 바로 새 작업으로 실행할지 묻는 바로잡기 제안을 보인다. TUI가 붙어 있지 않은 동안에는 피드백 질문을 건너뛴다([engine 수명과 복구](engine-lifecycle.md)).
 
 ### 허가 요청 창
 
@@ -151,12 +151,12 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | `Ctrl+K` | 초안 글자 잘라 보관 | 입력창 |
 | `Ctrl+R` | 입력 기록 검색 | 입력창 |
 | `Ctrl+Y` | 잘라 둔 글자 복원 | 입력창 |
-| `Enter` | 입력 제출, 유휴이면 새 작업, 실행 중이면 judge가 끼워 넣기, 새 작업, 대기 중 하나 선택 | 입력창 |
+| `Enter` | 입력 제출, 유휴이면 새 작업, 실행 중이면 router가 끼워 넣기, 새 작업, 대기 중 하나 선택 | 입력창 |
 | `Esc` | 팝업과 선택 해제, 작업 중지 없음 | 입력창 |
-| `Tab` | 유휴이면 `Enter`와 동일, 실행 중이면 관계 판단 없이 대기, 보낼 때 judge 1회 | 입력창 |
+| `Tab` | 유휴이면 `Enter`와 동일, 실행 중이면 관계 판단 없이 대기, 보낼 때 router 1회 | 입력창 |
 | `↑`, `↓` | 입력창이 비었거나 불러온 기록 그대로일 때 입력 기록 이동 | 입력창 |
-| `Enter` | 키 확인 | judge 키 입력 창 |
-| `Esc` | 종료 | judge 키 입력 창 |
+| `Enter` | 키 확인 | router 키 입력 창 |
+| `Esc` | 종료 | router 키 입력 창 |
 | `1`, `y` | 적용하고 계속 강조 | 폴더 설정 신뢰 창 |
 | `3`, `q`, `Esc`, `Ctrl+C` | 종료 | 폴더 설정 신뢰 창 |
 | `Enter` | 강조한 선택지 확정 | 폴더 설정 신뢰 창 |
@@ -179,13 +179,13 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | `r` | 채팅 이름 변경 | 작업 목록 화면 |
 | `s` | 대기 입력 전송 | 작업 목록 화면 |
 | `↑`, `↓` | 목록 이동 | 작업 목록 화면 |
-| `Enter` | judge 실제 모델 상세 표시 | 사용량 화면 |
+| `Enter` | router 실제 모델 상세 표시 | 사용량 화면 |
 | `Esc` | 화면 종료 | 사용량 화면 |
-| `Enter` | 버전 상세 표시 | judge 버전 화면 |
-| `Esc` | 화면 종료 | judge 버전 화면 |
-| `r` | 1차 영점으로 복귀, `/train --reset-thresholds`와 동일 | judge 버전 화면 |
-| `t` | 고른 버전에서 다시 학습, `/train --from`과 동일 | judge 버전 화면 |
-| `u` | 확인 한 줄 뒤 고른 버전 사용, `saturn judge version`과 동일 | judge 버전 화면 |
+| `Enter` | 버전 상세 표시 | router 버전 화면 |
+| `Esc` | 화면 종료 | router 버전 화면 |
+| `r` | 1차 영점으로 복귀, `/train --reset-thresholds`와 동일 | router 버전 화면 |
+| `t` | 고른 버전에서 다시 학습, `/train --from`과 동일 | router 버전 화면 |
+| `u` | 확인 한 줄 뒤 고른 버전 사용, `saturn router use`와 동일(명령줄은 `--yes`로 확인을 건너뜀) | router 버전 화면 |
 | `Enter` | 선택 | 학습 확인 창 |
 | `Esc` | 취소 | 학습 확인 창 |
 | `↑`, `↓` | 선택지 이동 | 학습 확인 창 |
@@ -207,11 +207,11 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | `맥락 정리 중` | 실행 줄의 하는 일, 맥락 정리 |
 | `공급자 전환 중` | 실행 줄의 하는 일, provider 전환 |
 | `Token -` | 사용량 보고 전 |
-| `⠹ [D] 판단 중` | judge가 입력을 판단하는 중 |
+| `⠹ [D] 판단 중` | router가 입력을 판단하는 중 |
 | `⠼ [학습]` | `/train` 진행, 단계와 채점 건수와 경과와 토큰 |
 | `· [C] 대기 · A 다음` | 실행 중인 작업 A 뒤에 보낼 입력 |
 | `· [C] 대기 · 판단 차례` | 같은 채팅의 앞 입력 판단을 기다리는 입력, `[보내기]` 없이 `[취소]`만 표시 |
-| `· [C] 대기 · 판단기 연결 기다림` | judge 연결을 기다리는 입력 |
+| `· [C] 대기 · 라우터 연결 기다림` | router 연결을 기다리는 입력 |
 | `· [C] 대기 · 쓰기 차례` | 다른 에이전트의 쓰기가 끝나기를 기다리는 입력 |
 | `· [C] 대기 · 맥락 정리 뒤` | session 교체가 끝나기를 기다리는 입력 |
 | `· [C] 대기 · 모든 작업 뒤` | 모든 작업이 끝난 뒤 실행할 session 변경 명령 |
@@ -222,10 +222,10 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | `멈춤 확인 안 됨 · N개 남음` | provider 프로세스 묶음 밖에 남은 프로세스 N개 |
 | `‖ [E] 보류를 닫을까요?` | 보류 닫기 확인, 보내지 않은 입력 취소, 수정된 파일 유지 |
 | `[E] 보류를 닫았습니다` | 보류 종료 완료 |
-| `자동 판단 일시 중단` | judge 호출 일시 실패, 질문별 대체 규칙 적용 |
-| `판단 모델 연결 끊김` | judge 호출 연속 3회 실패, 입력 접수는 계속하고 현재 모델로 처리 |
+| `자동 판단 일시 중단` | router 호출 일시 실패, 질문별 대체 규칙 적용 |
+| `판단 모델 연결 끊김` | router 호출 연속 3회 실패, 입력 접수는 계속하고 현재 모델로 처리 |
 | `바로 반영: 준비 중 (codex)` | 해당 provider의 끼워 넣기 확인 전, 끼워 넣기 대신 대기 처리 |
-| `판단기 연결 없음 · 차례에 보냅니다` | 바로 보내기가 judge를 부르지 않아 engine이 더는 보내지 않는 안내. 화면 쪽 표시는 남아 있고 제거 여부는 미정 |
+| `라우터 연결 없음 · 차례에 보냅니다` | 바로 보내기가 router를 부르지 않아 engine이 더는 보내지 않는 안내. 화면 쪽 표시는 남아 있고 제거 여부는 미정 |
 | `전달 중` | 에이전트로 입력 전달 중, 취소 불가 |
 | `반영됨` | 에이전트에 입력 전달 완료, 취소 불가 |
 | `[A] codex · 45초 · Token 3,210` | 결과 머리줄, 마지막으로 답한 provider와 경과와 토큰 |
@@ -235,7 +235,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | `고정 제약이 길어 맥락 정리를 미룹니다` | 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못함, 다음 줄부터 제약 목록 |
 | `[A] codex → claude로 전환` | 작업의 provider 전환 |
 | `Codex 연결을 다시 시작해 권한 규칙을 적용했습니다` | 채팅 중 바뀐 Codex 권한 규칙을 적용하려고 턴이 끝난 뒤 Codex 연결을 다시 시작함. 문구는 초안이고 Codex의 실제 문구 조사 결과로 바꾼다([#232](https://github.com/woonyong-choi/saturn/issues/232)) |
-| `이번 요청 · codex Token 4,120 · 판단기 3회 Token 9,870 · 2분 31초` | 모든 작업이 끝난 순간의 합계, provider별 토큰과 judge 호출과 경과 |
+| `이번 요청 · codex Token 4,120 · 라우터 3회 Token 9,870 · 2분 31초` | 모든 작업이 끝난 순간의 합계, provider별 토큰과 router 호출과 경과 |
 | `[A]에 이어서 보냈어요 · 판단이 맞았나요? (선택)  1 맞아요  2 아니에요  0 닫기` | 피드백 질문 |
 | `[B] 바로 새 작업으로 실행할까요? [실행] [그대로]` | 아니에요 답 뒤 아직 보내지 않은 입력의 바로잡기 제안 |
 | `채점할 판단 83 / 200건 · 200건이 쌓이면 실행할 수 있습니다` | 채점할 판단 부족으로 `/train` 실행 불가 |
@@ -270,7 +270,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | 셸 명령 셀 | 출력 앞 10줄, 전체 기록에서 전체 |
 | `@` 파일 목록 | 2,000개까지. `.git`과 작업 폴더 `.gitignore`의 글로브 없는 이름은 뺀다 |
 | 스크롤 | 휠 한 칸 3줄, 맨 위에 닿으면 이전 기록 50개 요청 |
-| judge 키 입력 창 붙여넣기 | 제어 문자를 뺀 글을 가린 입력칸에 넣는다 |
+| router 키 입력 창 붙여넣기 | 제어 문자를 뺀 글을 가린 입력칸에 넣는다 |
 | `/record` | 명령 목록에 넣고 값 목록은 `on`, `off` |
 | `/add-dir` | 명령 목록에 넣고 값은 폴더 경로 하나. 명령 이름 뒤 나머지 줄 전체를 경로로 읽어 공백이 들어 있어도 된다. 상대 경로는 TUI의 현재 폴더 기준 절대 경로로, `~/`는 홈 폴더 아래로 바꿔 보낸다(초안). 더한 폴더는 채팅 기록에 저장하고 모든 provider session에 넘긴다. 폴더 설정은 읽지 않는다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)). 더한 뒤 안내 한 줄을 대화 기록에 남기고, 열린 session이 있으면 다음 session부터 적용한다고 덧붙인다 |
 | `/permissions` | 명령 목록에 넣고 값 목록은 `ask`, `edit`, `read-only`, `full`(초안). 값을 주면 채팅 층 모드를 바꾼다. 값 없이 실행하면 현재 모드를 보이는 동작은 아직 없다([#177](https://github.com/woonyong-choi/saturn/issues/177), [권한](permissions.md)) |
@@ -283,7 +283,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | 패킷이 넘쳐 맥락 정리를 미루면 안내 한 줄과 제약 목록을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_context_deferred_lists_the_constraints` |
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
-| judge 연결이 끊겨도 입력창은 입력을 계속 보낸다. | `saturn-terminal/tui/src/app/tests.rs`의 `submit_while_judge_disconnected_still_sends_input` |
+| router 연결이 끊겨도 입력창은 입력을 계속 보낸다. | `saturn-terminal/tui/src/app/tests.rs`의 `submit_while_router_disconnected_still_sends_input` |
 | `/add-dir`는 폴더 경로를 절대 경로로 바꿔 engine에 보내고, 시작 화면과 안내 줄이 더한 폴더를 보인다. | `saturn-terminal/tui/src/app/tests.rs`의 `add_dir_command_sends_an_absolute_path_relative_to_the_tui_folder`, `add_dir_notice_adds_a_cell_and_updates_the_start_screen_folders`, `saturn-terminal/tui/src/view/start_screen.rs`의 `lines_show_the_chat_folder_and_the_added_folders`, `saturn-terminal/tui/src/view/transcript.rs`의 `lines_folder_added_mentions_the_next_session_only_when_one_is_open` |
 | 작업 목록은 기본으로 현재 채팅 폴더의 채팅만 보이고 키 `a`로 모든 폴더를 본다. | `saturn-terminal/tui/src/view/task_list.rs`의 `task_list_defaults_to_the_current_folder_and_the_key_widens_it`, `task_list_does_not_hide_chats_whose_folder_is_unknown`, `saturn-terminal/tui/src/app/tests.rs`의 `task_list_opened_from_a_chat_starts_in_the_chat_folder_scope`, `task_list_key_a_widens_the_scope_to_all_folders` |
 | 화면이 없는 파이프와 CI에서도 같은 명령이 같은 결과를 낸다. | `saturn-terminal/tui/src/plain.rs`의 `plain_and_full_screen_cells_use_same_text`, `apply_writes_echo_output_result_and_summary` |
@@ -297,7 +297,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 - 짧게 끝나는 판단의 판단 줄을 생략할지, 항상 그릴지, 지연 표시와 최소 표시 시간을 둘지 ([#53](https://github.com/woonyong-choi/saturn/issues/53))
 - 피드백 질문의 숫자 키를 입력창이 비었을 때만 답으로 받을지, 항상 받을지, `/feedback` 명령으로만 받을지 ([#54](https://github.com/woonyong-choi/saturn/issues/54))
 - `/stop`이 진행 중인 `/train`도 멈출지, 학습 전용 중지 명령을 둘지, 학습 줄에 중지 버튼을 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
-- 허가 거절 뒤 다르게 하라는 입력을 접두 초안으로 받을지, 창 안 입력칸으로 받을지, 일반 입력처럼 judge에 맡길지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
+- 허가 거절 뒤 다르게 하라는 입력을 접두 초안으로 받을지, 창 안 입력칸으로 받을지, 일반 입력처럼 router에 맡길지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
 - plain 출력을 켜는 조건과 우선순위, 설정 키 이름을 무엇으로 할지 ([#57](https://github.com/woonyong-choi/saturn/issues/57))
 - 좁은 가로 폭에서 폭 구간별로 버튼과 칸을 줄일지, 줄 끝부터 말줄임할지, 버튼 대신 명령 안내를 보일지 ([#58](https://github.com/woonyong-choi/saturn/issues/58))
 - 빈 입력창에서 `←`로 작업 목록 화면을 열지, `/tasks`로만 열지, 다른 전용 키를 둘지 ([#59](https://github.com/woonyong-choi/saturn/issues/59))

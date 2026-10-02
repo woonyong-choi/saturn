@@ -2230,7 +2230,7 @@ while (my $line = <STDIN>) {
     }
 
     #[test]
-    fn app_server_values_hide_judge_key_before_routing() {
+    fn app_server_values_hide_router_key_before_routing() {
         let key = "sk-secret-1234";
         let mut message = json!({
             "id": 1,

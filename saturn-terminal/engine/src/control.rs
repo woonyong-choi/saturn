@@ -1,8 +1,8 @@
 //! 보내기 전 입력에 대한 사용자 요청: 새 작업으로 보내기, 바로 보내기, 취소.
 //! 설계: docs/design/input-handling.md
 
-use saturn_core::judges::calibration::Signal;
 use saturn_core::queue::QueuedInput;
+use saturn_core::routers::calibration::Signal;
 use saturn_protocol::ids::InputId;
 use saturn_protocol::state::{Disposition, InputState};
 
@@ -27,7 +27,7 @@ impl Engine {
         Ok(())
     }
 
-    /// 대기 입력을 judge에 묻지 않고 실행 중인 작업에 끼워 넣는다. 끼워 넣을 수 없으면(실행 중인 작업이 없거나
+    /// 대기 입력을 router에 묻지 않고 실행 중인 작업에 끼워 넣는다. 끼워 넣을 수 없으면(실행 중인 작업이 없거나
     /// provider가 끼워 넣기를 아직 지원하지 않으면) 같은 채팅 대기열 맨 앞에서 다음 차례를 기다린다.
     ///
     /// # Errors
@@ -77,9 +77,9 @@ impl Engine {
     fn note_user_override(&mut self, input: InputId, signal: Signal) {
         let judgment = self
             .flow
-            .judged
+            .routed
             .get(&input)
-            .and_then(|judged| judged.judgment);
+            .and_then(|routed| routed.judgment);
         if let Some(judgment) = judgment {
             self.note_reaction(judgment, signal);
         }

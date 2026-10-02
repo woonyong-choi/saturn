@@ -1,4 +1,4 @@
-//! `/usage` 조회: 범위 안의 사용량 보고 원값, judge 호출 합계, session의 실행 목록.
+//! `/usage` 조회: 범위 안의 사용량 보고 원값, router 호출 합계, session의 실행 목록.
 //! 설계: docs/design/records.md
 
 use saturn_protocol::ids::{ChatId, RunId, SessionId};
@@ -9,11 +9,11 @@ use sqlx::sqlite::SqliteRow;
 use super::records::not_found;
 use super::{Store, StoreError, UsageRow, from_millis, from_sql_int, parse_enum, to_sql_int};
 
-/// judge 하나의 범위 안 호출 합계. 토큰을 보고한 호출이 없으면 `None`.
+/// router 하나의 범위 안 호출 합계. 토큰을 보고한 호출이 없으면 `None`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct JudgeUsage {
+pub struct RouterUsage {
     /// 중립 이름. 예: `jev`.
-    pub judge: String,
+    pub router: String,
     pub calls: u32,
     pub input: Option<u64>,
     pub output: Option<u64>,
@@ -41,20 +41,20 @@ impl Store {
         rows.iter().map(usage_row).collect()
     }
 
-    /// judge마다 한 행, 이름 순서.
+    /// router마다 한 행, 이름 순서.
     ///
     /// # Errors
     /// `Chat`인데 `chat`이 없으면 `NotFound`.
-    pub async fn judge_usage(
+    pub async fn router_usage(
         &self,
         range: UsageRange,
         chat: Option<ChatId>,
-    ) -> Result<Vec<JudgeUsage>, StoreError> {
+    ) -> Result<Vec<RouterUsage>, StoreError> {
         let condition = range_condition(range, "started_at", "chat_id");
         let sql = format!(
-            "SELECT judge, COUNT(*) AS calls, SUM(input_tokens) AS input, \
+            "SELECT router, COUNT(*) AS calls, SUM(input_tokens) AS input, \
              SUM(output_tokens) AS output FROM judgments WHERE {condition} \
-             GROUP BY judge ORDER BY judge"
+             GROUP BY router ORDER BY router"
         );
         let rows = bind_chat(sqlx::query(&sql), range, chat)?
             .fetch_all(&self.pool)
@@ -62,8 +62,8 @@ impl Store {
         rows.iter()
             .map(|row| {
                 let calls: i64 = row.try_get("calls")?;
-                Ok(JudgeUsage {
-                    judge: row.try_get("judge")?,
+                Ok(RouterUsage {
+                    router: row.try_get("router")?,
                     calls: u32::try_from(calls).unwrap_or(u32::MAX),
                     input: row.try_get::<Option<i64>, _>("input")?.map(from_sql_int),
                     output: row.try_get::<Option<i64>, _>("output")?.map(from_sql_int),

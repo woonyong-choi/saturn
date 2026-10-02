@@ -128,11 +128,11 @@
 
 | 가설 | 판정 | 반영한 문서 |
 |---|---|---|
-| H1 | 보류 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/judge.md) |
-| H2 | 보류 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/judge.md) |
-| H3 | 보류 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/judge.md) |
-| H4 | 보류 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/judge.md) |
-| H5 | 보류 | [judge](../../design/judge.md) |
-| H6 | 기각 | [judge](../../design/judge.md) |
+| H1 | 보류 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/router.md) |
+| H2 | 보류 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/router.md) |
+| H3 | 보류 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/router.md) |
+| H4 | 보류 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/router.md) |
+| H5 | 보류 | [judge](../../design/router.md) |
+| H6 | 기각 | [judge](../../design/router.md) |
 | H7 | 채택 | 없음 |
 | H8 | 채택 | 없음 |

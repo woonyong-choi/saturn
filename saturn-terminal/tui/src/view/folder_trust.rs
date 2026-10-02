@@ -121,7 +121,7 @@ mod tests {
             path: PathBuf::from("/repo/.saturn/settings.toml"),
             fingerprint: "ab12".to_string(),
             applied: vec!["model".to_string()],
-            ignored: vec!["judge.url".to_string()],
+            ignored: vec!["router.url".to_string()],
             changed: Vec::new(),
             selected: TrustChoice::Apply,
         }
@@ -160,7 +160,7 @@ mod tests {
 
         let content = crate::view::buffer_lines(terminal.backend().buffer()).join("\n");
         assert!(content.contains("/repo/.saturn/settings.toml"));
-        assert!(content.contains("judge.url"));
+        assert!(content.contains("router.url"));
         assert!(content.contains("3 종료"));
     }
 }

@@ -138,14 +138,14 @@ fn table_lines(lang: Lang, table: &UsageTable, detail: bool) -> Vec<Line<'static
             table
                 .rows
                 .iter()
-                .filter(|row| row.judge_calls > 0)
+                .filter(|row| row.router_calls > 0)
                 .map(|row| {
                     Line::from(Span::styled(
                         format!(
                             "  {} · {} {} · {} {}",
                             row.who,
-                            lang.tr(i18n::USAGE_JUDGE_CALLS),
-                            row.judge_calls,
+                            lang.tr(i18n::USAGE_ROUTER_CALLS),
+                            row.router_calls,
                             lang.tr(i18n::USAGE_COST),
                             cost_text(row.estimated_cost_micros)
                         ),
@@ -188,13 +188,13 @@ fn turns_text(lang: Lang, row: &UsageRow) -> Option<String> {
 // basis: estimate
 /// 비용, 맥락 정리, 채점은 아는 값만 더하고 하나도 없으면 `-`.
 fn totals_line(lang: Lang, rows: &[UsageRow]) -> String {
-    let calls: u32 = rows.iter().map(|row| row.judge_calls).sum();
+    let calls: u32 = rows.iter().map(|row| row.router_calls).sum();
     let cost = known_sum(rows.iter().map(|row| row.estimated_cost_micros));
     let compactions = known_sum(rows.iter().map(|row| row.compactions.map(u64::from)));
     let labels = known_sum(rows.iter().map(|row| row.labels.map(u64::from)));
     format!(
         "{} {calls} · {} {} · {} {} · {} {}",
-        lang.tr(i18n::USAGE_JUDGE_CALLS),
+        lang.tr(i18n::USAGE_ROUTER_CALLS),
         lang.tr(i18n::USAGE_COST),
         cost_text(cost),
         lang.tr(i18n::USAGE_COMPACTIONS),
@@ -224,13 +224,13 @@ mod tests {
 
     use super::*;
 
-    fn row(who: &str, tokens: [Option<u64>; 5], judge_calls: u32) -> UsageRow {
+    fn row(who: &str, tokens: [Option<u64>; 5], router_calls: u32) -> UsageRow {
         UsageRow {
             who: who.to_string(),
             tokens,
-            judge_calls,
-            estimated_cost_micros: (judge_calls > 0).then_some(12_000),
-            compactions: (judge_calls == 0).then_some(1),
+            router_calls,
+            estimated_cost_micros: (router_calls > 0).then_some(12_000),
+            compactions: (router_calls == 0).then_some(1),
             labels: None,
             turns: None,
         }
@@ -242,7 +242,7 @@ mod tests {
                 range: UsageRange::Chat,
                 rows: vec![
                     row("A codex", [Some(1_200), None, None, Some(300), None], 0),
-                    row("judge-model", [None; 5], 3),
+                    row("router-model", [None; 5], 3),
                 ],
             }),
             range: UsageRange::Chat,
@@ -279,9 +279,9 @@ mod tests {
         assert!(content.contains("1,200"));
         assert!(content.contains("-"));
         assert!(
-            content.contains("judge calls 3 · estimated cost $0.0120 · compactions 1 · labels -")
+            content.contains("router calls 3 · estimated cost $0.0120 · compactions 1 · labels -")
         );
-        assert!(!content.contains("  judge-model ·"));
+        assert!(!content.contains("  router-model ·"));
     }
 
     // cost: time O(1), heap O(1), stack O(1)
@@ -302,12 +302,12 @@ mod tests {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     #[test]
-    fn toggle_detail_shows_judge_rows() {
+    fn toggle_detail_shows_router_rows() {
         let mut screen = screen(false);
 
         screen.toggle_detail();
 
-        assert!(content(&screen).contains("judge-model · judge calls 3"));
+        assert!(content(&screen).contains("router-model · router calls 3"));
     }
 
     // cost: time O(1), heap O(1), stack O(1)

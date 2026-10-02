@@ -1,12 +1,12 @@
-//! judge 호출이 실패했을 때의 재시도 간격과 대체 행동.
-//! 설계: docs/design/judge.md#judge-실패
+//! router 호출이 실패했을 때의 재시도 간격과 대체 행동.
+//! 설계: docs/design/router.md#router-실패
 
 use std::time::Duration;
 
 use saturn_protocol::ids::{ChatRevision, SettingsRevision};
 use saturn_protocol::state::Disposition;
 
-use super::{JudgeRequest, RouteDecision, question_ids};
+use super::{RouteDecision, RouterRequest, question_ids};
 
 /// 실패한 호출을 다시 보내기 전에 기다리는 시간.
 pub const RETRY_INTERVAL: Duration = Duration::from_secs(5);
@@ -26,8 +26,8 @@ pub const SKIP_RECORD_MESSAGE: &str = "판단 모델 실패로 기록 선택을 
 /// 누가 session 전환을 시작했는지.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransitionStarter {
-    /// judge가 고른 모델이 달라 시작한 전환.
-    Judge,
+    /// router가 고른 모델이 달라 시작한 전환.
+    Router,
     /// 사용자가 모델을 고정했거나 맥락 크기 규칙이 시작한 전환.
     Forced,
 }
@@ -54,10 +54,10 @@ pub fn retry_delay(failed_attempts: u32, since_first_failure: Duration) -> Optio
     (within_count && within_deadline).then_some(RETRY_INTERVAL)
 }
 
-/// 판단 없이 전환하면 패킷 없음과 같은 정답률이라 judge가 시작한 전환만 건너뛴다.
+/// 판단 없이 전환하면 패킷 없음과 같은 정답률이라 router가 시작한 전환만 건너뛴다.
 pub fn compact_failure(starter: TransitionStarter) -> CompactFailure {
     match starter {
-        TransitionStarter::Judge => CompactFailure::SkipTransition,
+        TransitionStarter::Router => CompactFailure::SkipTransition,
         TransitionStarter::Forced => CompactFailure::FillByRank,
     }
 }
@@ -70,7 +70,7 @@ pub fn compact_failure(starter: TransitionStarter) -> CompactFailure {
 /// 실행 중이면 현재 에이전트의 턴에 끼워 넣고, 아니면 현재 에이전트에 바로 보낸다. 입력을 대기로 두지 않는다.
 /// `fallbacks`에는 묻지 못한 질문을 모두 남긴다.
 pub fn route_after_failure(
-    request: &JudgeRequest,
+    request: &RouterRequest,
     revision: ChatRevision,
     settings: SettingsRevision,
 ) -> RouteDecision {
@@ -100,17 +100,17 @@ pub fn route_after_failure(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::judges::questions_for_input;
-    use crate::sessions::ranking::order_after_judge;
+    use crate::routers::questions_for_input;
+    use crate::sessions::ranking::order_after_router;
 
     use saturn_protocol::ids::LedgerSeq;
 
     const REVISION: ChatRevision = ChatRevision(3);
     const SETTINGS: SettingsRevision = SettingsRevision(2);
 
-    fn request(running: bool) -> JudgeRequest {
-        JudgeRequest {
-            model: "judge".into(),
+    fn request(running: bool) -> RouterRequest {
+        RouterRequest {
+            model: "router".into(),
             state: "state".into(),
             sets: questions_for_input(running, false, false, &["model-a".to_string()]),
         }
@@ -190,9 +190,9 @@ mod tests {
     }
 
     #[test]
-    fn compact_failure_skips_judge_transition_and_fills_forced_one() {
+    fn compact_failure_skips_router_transition_and_fills_forced_one() {
         assert_eq!(
-            compact_failure(TransitionStarter::Judge),
+            compact_failure(TransitionStarter::Router),
             CompactFailure::SkipTransition
         );
         assert_eq!(
@@ -208,7 +208,7 @@ mod tests {
         let action = compact_failure(TransitionStarter::Forced);
 
         assert_eq!(action, CompactFailure::FillByRank);
-        assert_eq!(order_after_judge(&ranked, &[]), ranked);
+        assert_eq!(order_after_router(&ranked, &[]), ranked);
     }
 
     #[test]

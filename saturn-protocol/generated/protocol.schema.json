@@ -43,12 +43,12 @@
     "Alert": {
       "oneOf": [
         {
-          "const": "JudgePaused",
+          "const": "RouterPaused",
           "description": "질문별 대체 규칙을 적용 중.",
           "type": "string"
         },
         {
-          "const": "JudgeDisconnected",
+          "const": "RouterDisconnected",
           "description": "연속 3회 실패로 판단 모델 연결이 끊겼다. 입력은 계속 접수하고 현재 모델로 보낸다.",
           "type": "string"
         },
@@ -94,8 +94,8 @@
           "type": "object"
         },
         {
-          "const": "JudgeDownSendingInOrder",
-          "description": "judge 실패로 `[보내기]` 입력을 차례에 보낸다.",
+          "const": "RouterDownSendingInOrder",
+          "description": "router 실패로 `[보내기]` 입력을 차례에 보낸다.",
           "type": "string"
         },
         {
@@ -322,16 +322,6 @@
                   "minimum": 0,
                   "type": "integer"
                 },
-                "judge_calls": {
-                  "format": "uint32",
-                  "minimum": 0,
-                  "type": "integer"
-                },
-                "judge_tokens": {
-                  "format": "uint64",
-                  "minimum": 0,
-                  "type": "integer"
-                },
                 "provider_tokens": {
                   "items": {
                     "maxItems": 2,
@@ -349,12 +339,22 @@
                     "type": "array"
                   },
                   "type": "array"
+                },
+                "router_calls": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "router_tokens": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
                 }
               },
               "required": [
                 "provider_tokens",
-                "judge_calls",
-                "judge_tokens",
+                "router_calls",
+                "router_tokens",
                 "elapsed_ms"
               ],
               "type": "object"
@@ -875,10 +875,10 @@
           "type": "object"
         },
         {
-          "description": "기록하지 않는다(judge 키).",
+          "description": "기록하지 않는다(router 키).",
           "properties": {
             "method": {
-              "const": "SubmitJudgeKey",
+              "const": "SubmitRouterKey",
               "type": "string"
             },
             "params": {
@@ -1027,7 +1027,7 @@
           "type": "object"
         },
         {
-          "description": "채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 judge 버전.",
+          "description": "채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 router 버전.",
           "properties": {
             "method": {
               "const": "Train",
@@ -1085,7 +1085,7 @@
         {
           "properties": {
             "method": {
-              "const": "ListJudgeVersions",
+              "const": "ListRouterVersions",
               "type": "string"
             }
           },
@@ -1097,7 +1097,7 @@
         {
           "properties": {
             "method": {
-              "const": "UseJudgeVersion",
+              "const": "UseRouterVersion",
               "type": "string"
             },
             "params": {
@@ -1242,61 +1242,6 @@
       "const": "2.0",
       "type": "string"
     },
-    "JudgeVersionInfo": {
-      "properties": {
-        "ece": {
-          "format": "double",
-          "type": [
-            "number",
-            "null"
-          ]
-        },
-        "judge": {
-          "type": "string"
-        },
-        "questions": {
-          "description": "(질문, 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수).",
-          "items": {
-            "maxItems": 5,
-            "minItems": 5,
-            "prefixItems": [
-              {
-                "type": "string"
-              },
-              {
-                "format": "double",
-                "type": "number"
-              },
-              {
-                "format": "double",
-                "type": "number"
-              },
-              {
-                "format": "uint32",
-                "minimum": 0,
-                "type": "integer"
-              },
-              {
-                "format": "uint32",
-                "minimum": 0,
-                "type": "integer"
-              }
-            ],
-            "type": "array"
-          },
-          "type": "array"
-        },
-        "version": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "version",
-        "judge",
-        "questions"
-      ],
-      "type": "object"
-    },
     "JudgmentId": {
       "format": "uint64",
       "minimum": 0,
@@ -1370,12 +1315,6 @@
                   "description": "채팅의 기본 폴더.",
                   "type": "string"
                 },
-                "judge": {
-                  "type": "string"
-                },
-                "judge_version": {
-                  "type": "string"
-                },
                 "providers": {
                   "items": {
                     "maxItems": 2,
@@ -1392,6 +1331,12 @@
                   },
                   "type": "array"
                 },
+                "router": {
+                  "type": "string"
+                },
+                "router_version": {
+                  "type": "string"
+                },
                 "saturn_version": {
                   "type": "string"
                 }
@@ -1399,8 +1344,8 @@
               "required": [
                 "saturn_version",
                 "providers",
-                "judge",
-                "judge_version",
+                "router",
+                "router_version",
                 "folder"
               ],
               "type": "object"
@@ -1723,7 +1668,7 @@
         {
           "properties": {
             "method": {
-              "const": "JudgeKeyRequired",
+              "const": "RouterKeyRequired",
               "type": "string"
             },
             "params": {
@@ -1836,7 +1781,7 @@
         {
           "properties": {
             "method": {
-              "const": "JudgeVersions",
+              "const": "RouterVersions",
               "type": "string"
             },
             "params": {
@@ -1846,7 +1791,7 @@
                 },
                 "versions": {
                   "items": {
-                    "$ref": "#/$defs/JudgeVersionInfo"
+                    "$ref": "#/$defs/RouterVersionInfo"
                   },
                   "type": "array"
                 }
@@ -2175,12 +2120,6 @@
                   "description": "채팅의 기본 폴더.",
                   "type": "string"
                 },
-                "judge": {
-                  "type": "string"
-                },
-                "judge_version": {
-                  "type": "string"
-                },
                 "providers": {
                   "items": {
                     "maxItems": 2,
@@ -2197,6 +2136,12 @@
                   },
                   "type": "array"
                 },
+                "router": {
+                  "type": "string"
+                },
+                "router_version": {
+                  "type": "string"
+                },
                 "saturn_version": {
                   "type": "string"
                 }
@@ -2204,8 +2149,8 @@
               "required": [
                 "saturn_version",
                 "providers",
-                "judge",
-                "judge_version",
+                "router",
+                "router_version",
                 "folder"
               ],
               "type": "object"
@@ -2528,7 +2473,7 @@
         {
           "properties": {
             "method": {
-              "const": "JudgeKeyRequired",
+              "const": "RouterKeyRequired",
               "type": "string"
             },
             "params": {
@@ -2641,7 +2586,7 @@
         {
           "properties": {
             "method": {
-              "const": "JudgeVersions",
+              "const": "RouterVersions",
               "type": "string"
             },
             "params": {
@@ -2651,7 +2596,7 @@
                 },
                 "versions": {
                   "items": {
-                    "$ref": "#/$defs/JudgeVersionInfo"
+                    "$ref": "#/$defs/RouterVersionInfo"
                   },
                   "type": "array"
                 }
@@ -3410,7 +3355,7 @@
       "oneOf": [
         {
           "enum": [
-            "JudgeConnection",
+            "RouterConnection",
             "WriteTurn",
             "AfterCompaction"
           ],
@@ -3429,7 +3374,7 @@
           "type": "object"
         },
         {
-          "const": "JudgeOrder",
+          "const": "RouterOrder",
           "description": "`[보내기]` 없이 `[취소]`만.",
           "type": "string"
         },
@@ -3490,6 +3435,61 @@
       },
       "required": [
         "jsonrpc"
+      ],
+      "type": "object"
+    },
+    "RouterVersionInfo": {
+      "properties": {
+        "ece": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "questions": {
+          "description": "(질문, 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수).",
+          "items": {
+            "maxItems": 5,
+            "minItems": 5,
+            "prefixItems": [
+              {
+                "type": "string"
+              },
+              {
+                "format": "double",
+                "type": "number"
+              },
+              {
+                "format": "double",
+                "type": "number"
+              },
+              {
+                "format": "uint32",
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "format": "uint32",
+                "minimum": 0,
+                "type": "integer"
+              }
+            ],
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "router": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "router",
+        "questions"
       ],
       "type": "object"
     },
@@ -3804,11 +3804,6 @@
             "null"
           ]
         },
-        "judge_calls": {
-          "format": "uint32",
-          "minimum": 0,
-          "type": "integer"
-        },
         "labels": {
           "description": "기록에 없으면 `None`.",
           "format": "uint32",
@@ -3817,6 +3812,11 @@
             "integer",
             "null"
           ]
+        },
+        "router_calls": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
         },
         "tokens": {
           "description": "새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론 순. 보고되지 않았으면 `None`.",
@@ -3842,14 +3842,14 @@
           ]
         },
         "who": {
-          "description": "provider·모델이나 judge. 예: `codex · gpt-5.6-terra`, `judge · jev`.",
+          "description": "provider·모델이나 router. 예: `codex · gpt-5.6-terra`, `router · jev`.",
           "type": "string"
         }
       },
       "required": [
         "who",
         "tokens",
-        "judge_calls"
+        "router_calls"
       ],
       "type": "object"
     },

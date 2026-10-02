@@ -550,7 +550,7 @@ impl Engine {
         Ok(())
     }
 
-    /// 로그와 알림에 남길 원인 한 줄. judge 키와 같은 문자열은 가린다.
+    /// 로그와 알림에 남길 원인 한 줄. router 키와 같은 문자열은 가린다.
     pub(crate) fn failure_line(&self, error: &dyn std::error::Error) -> String {
         crate::masked_chain(&self.masker, error)
     }

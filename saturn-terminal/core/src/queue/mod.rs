@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use saturn_protocol::ids::{AgentId, ChatId, ChatRevision, InputId, SettingsRevision, TaskId};
 use saturn_protocol::state::{Disposition, InputState, QueueReason};
 
-use crate::judges::RouteDecision;
+use crate::routers::RouteDecision;
 
 /// 한 채팅에서 재개 뜻이 없는 새 입력이 이만큼 쌓이면 보류를 종료한다.
 pub const HELD_IGNORE_LIMIT: u32 = 3;
@@ -50,9 +50,9 @@ pub struct QueuedInput {
     /// 접수 때 고정한다.
     pub permission: Permission,
     pub workdir: PathBuf,
-    /// 있으면 judge 호출에서 모델 질문을 뺀다.
+    /// 있으면 router 호출에서 모델 질문을 뺀다.
     pub pinned_model: Option<String>,
-    /// 관계 판단 없이 대기하고, 보낼 때 judge를 한 번 부른다.
+    /// 관계 판단 없이 대기하고, 보낼 때 router를 한 번 부른다.
     pub skip_relation: bool,
     pub state: InputState,
     pub reason: Option<QueueReason>,
@@ -198,14 +198,14 @@ impl Queue {
             disposition: None,
             is_dispatched: false,
         });
-        self.refresh_judge_order(chat);
+        self.refresh_router_order(chat);
     }
 
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 대기열 입력 수
     // basis: estimate
     /// 같은 채팅 입력은 접수 순서대로 하나씩 판단한다.
-    pub fn next_to_judge(&self, chat: ChatId) -> Option<(InputId, ChatRevision)> {
+    pub fn next_to_route(&self, chat: ChatId) -> Option<(InputId, ChatRevision)> {
         self.inputs
             .iter()
             .find(|entry| entry.input.chat == chat && entry.input.state == InputState::Judging)
@@ -240,7 +240,7 @@ impl Queue {
         entry.disposition = Some(decision.disposition);
         let chat = entry.input.chat;
         self.bump(chat);
-        self.refresh_judge_order(chat);
+        self.refresh_router_order(chat);
         Ok(decision.disposition)
     }
 
@@ -321,7 +321,7 @@ impl Queue {
         if from == InputState::Queued || state == InputState::Queued {
             self.bump(chat);
         }
-        self.refresh_judge_order(chat);
+        self.refresh_router_order(chat);
         Ok(())
     }
 
@@ -352,7 +352,7 @@ impl Queue {
         if from == InputState::Queued {
             self.bump(chat);
         }
-        self.refresh_judge_order(chat);
+        self.refresh_router_order(chat);
         Ok(())
     }
 
@@ -585,7 +585,7 @@ impl Queue {
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 대기열 입력 수
     // basis: estimate
-    /// 사용자가 바로 보내기를 눌렀다. judge를 거치지 않고 처리 방식을 끼워 넣기로 바꾸고, 같은 채팅의 대기 입력 중
+    /// 사용자가 바로 보내기를 눌렀다. router를 거치지 않고 처리 방식을 끼워 넣기로 바꾸고, 같은 채팅의 대기 입력 중
     /// 맨 앞으로 옮긴다. 끼워 넣을 수 없는 상황이면 그 자리에서 다음 차례를 기다린다. 바꾸기 전 처리 방식을 돌려준다.
     ///
     /// # Errors
@@ -634,7 +634,7 @@ impl Queue {
         let chat = entry.input.chat;
         self.move_to_queue_front(index);
         self.bump(chat);
-        self.refresh_judge_order(chat);
+        self.refresh_router_order(chat);
         Ok(())
     }
 
@@ -719,7 +719,7 @@ impl Queue {
         entry.input.reason = None;
         entry.is_dispatched = false;
         self.bump(chat);
-        self.refresh_judge_order(chat);
+        self.refresh_router_order(chat);
         Ok(())
     }
 
@@ -740,8 +740,8 @@ impl Queue {
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 대기열 입력 수
     // basis: estimate
-    /// 판단 대기 입력 중 맨 앞만 판단 중이고 나머지는 `JudgeOrder` 대기다.
-    fn refresh_judge_order(&mut self, chat: ChatId) {
+    /// 판단 대기 입력 중 맨 앞만 판단 중이고 나머지는 `RouterOrder` 대기다.
+    fn refresh_router_order(&mut self, chat: ChatId) {
         let mut is_first = true;
         for entry in &mut self.inputs {
             if entry.input.chat != chat || entry.input.state != InputState::Judging {
@@ -750,7 +750,7 @@ impl Queue {
             entry.input.reason = if is_first {
                 None
             } else {
-                Some(QueueReason::JudgeOrder)
+                Some(QueueReason::RouterOrder)
             };
             is_first = false;
         }
@@ -1044,7 +1044,7 @@ mod tests {
         queue.input(InputId(id)).expect("input should exist").state
     }
 
-    fn accept_judged(queue: &mut Queue, id: u64, permission: Permission, disposition: Disposition) {
+    fn accept_routed(queue: &mut Queue, id: u64, permission: Permission, disposition: Disposition) {
         queue.accept(input(id, permission));
         let revision = queue.revision(CHAT);
         queue
@@ -1053,7 +1053,7 @@ mod tests {
     }
 
     fn start_running(queue: &mut Queue, id: u64, permission: Permission, agent: u64) -> TaskId {
-        accept_judged(queue, id, permission, Disposition::NewTask);
+        accept_routed(queue, id, permission, Disposition::NewTask);
         let Some(SendAction::NewTask { task, .. }) = queue.next_to_send() else {
             panic!("input should start a new task");
         };
@@ -1065,7 +1065,7 @@ mod tests {
     }
 
     #[test]
-    fn accept_sets_judging_and_later_inputs_wait_for_judge_order() {
+    fn accept_sets_judging_and_later_inputs_wait_for_router_order() {
         let mut queue = Queue::new();
 
         queue.accept(input(1, Permission::ReadOnly));
@@ -1075,7 +1075,7 @@ mod tests {
         assert_eq!(queue.input(InputId(1)).unwrap().reason, None);
         assert_eq!(
             queue.input(InputId(2)).unwrap().reason,
-            Some(QueueReason::JudgeOrder)
+            Some(QueueReason::RouterOrder)
         );
     }
 
@@ -1083,12 +1083,12 @@ mod tests {
     // vars: n = 테스트 입력 수
     // basis: estimate
     #[test]
-    fn next_to_judge_follows_ack_order_one_at_a_time() {
+    fn next_to_route_follows_ack_order_one_at_a_time() {
         let mut queue = Queue::new();
         queue.accept(input(1, Permission::ReadOnly));
         queue.accept(input(2, Permission::ReadOnly));
 
-        let first = queue.next_to_judge(CHAT).map(|(id, _)| id);
+        let first = queue.next_to_route(CHAT).map(|(id, _)| id);
         let revision = queue.revision(CHAT);
         queue
             .apply(
@@ -1097,30 +1097,30 @@ mod tests {
                 revision,
             )
             .unwrap();
-        let second = queue.next_to_judge(CHAT).map(|(id, _)| id);
+        let second = queue.next_to_route(CHAT).map(|(id, _)| id);
 
         assert_eq!(first, Some(InputId(1)));
         assert_eq!(second, Some(InputId(2)));
     }
 
     #[test]
-    fn next_to_judge_other_chat_returns_none() {
+    fn next_to_route_other_chat_returns_none() {
         let mut queue = Queue::new();
         queue.accept(input(1, Permission::ReadOnly));
 
-        assert_eq!(queue.next_to_judge(ChatId(9)), None);
+        assert_eq!(queue.next_to_route(ChatId(9)), None);
     }
 
     #[test]
     fn apply_changed_revision_returns_conflict() {
         let mut queue = Queue::new();
         queue.accept(input(1, Permission::ReadOnly));
-        let (_, judged_at) = queue.next_to_judge(CHAT).unwrap();
+        let (_, routed_at) = queue.next_to_route(CHAT).unwrap();
         start_running(&mut queue, 2, Permission::ReadOnly, 7);
 
         let result = queue.apply(
             InputId(1),
-            &decision(judged_at, Disposition::Steer),
+            &decision(routed_at, Disposition::Steer),
             queue.revision(CHAT),
         );
 
@@ -1160,7 +1160,7 @@ mod tests {
         let mut queue = Queue::new();
         let before = queue.revision(CHAT);
 
-        accept_judged(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
+        accept_routed(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
 
         assert!(queue.revision(CHAT) > before);
     }
@@ -1168,7 +1168,7 @@ mod tests {
     #[test]
     fn next_to_send_first_input_starts_main_task() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 1, Permission::Write, Disposition::Queue);
 
         let action = queue.next_to_send();
 
@@ -1184,7 +1184,7 @@ mod tests {
     #[test]
     fn next_to_send_does_not_dispatch_twice() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
+        accept_routed(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
 
         let first = queue.next_to_send();
         let second = queue.next_to_send();
@@ -1196,8 +1196,8 @@ mod tests {
     #[test]
     fn next_to_send_waits_for_dispatched_input_in_same_chat() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::ReadOnly, Disposition::NewTask);
-        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::NewTask);
+        accept_routed(&mut queue, 1, Permission::ReadOnly, Disposition::NewTask);
+        accept_routed(&mut queue, 2, Permission::ReadOnly, Disposition::NewTask);
 
         assert!(queue.next_to_send().is_some());
 
@@ -1208,7 +1208,7 @@ mod tests {
     fn next_to_send_steer_goes_to_running_agent() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::Steer);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::Steer);
 
         let action = queue.next_to_send();
 
@@ -1225,7 +1225,7 @@ mod tests {
     fn next_to_send_queue_waits_for_main_then_new_turn() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::Queue);
         assert_eq!(queue.next_to_send(), None);
 
         queue.finish_task(AgentId(7));
@@ -1244,7 +1244,7 @@ mod tests {
     fn next_to_send_second_writer_waits_for_tree_idle() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::NewTask);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::NewTask);
 
         let blocked = queue.next_to_send();
         let reason = queue.input(InputId(2)).unwrap().reason;
@@ -1265,8 +1265,8 @@ mod tests {
     #[test]
     fn next_to_send_pending_writer_blocks_other_writer() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::Write, Disposition::NewTask);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::NewTask);
+        accept_routed(&mut queue, 1, Permission::Write, Disposition::NewTask);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::NewTask);
         assert!(queue.next_to_send().is_some());
 
         let second = queue.next_to_send();
@@ -1278,7 +1278,7 @@ mod tests {
     fn next_to_send_read_only_runs_beside_writer() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::NewTask);
+        accept_routed(&mut queue, 2, Permission::ReadOnly, Disposition::NewTask);
 
         let action = queue.next_to_send();
 
@@ -1295,8 +1295,8 @@ mod tests {
     fn next_to_send_keeps_order_within_chat() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
-        accept_judged(&mut queue, 3, Permission::ReadOnly, Disposition::NewTask);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 3, Permission::ReadOnly, Disposition::NewTask);
 
         let action = queue.next_to_send();
 
@@ -1322,7 +1322,7 @@ mod tests {
     fn defer_steer_turns_steer_into_queue() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::Steer);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::Steer);
         assert!(matches!(
             queue.next_to_send(),
             Some(SendAction::Steer { .. })
@@ -1337,8 +1337,8 @@ mod tests {
     fn send_now_steers_a_running_task_ahead_of_earlier_waiting_inputs() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
-        accept_judged(&mut queue, 3, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 3, Permission::Write, Disposition::Queue);
 
         let previous = queue.send_now(InputId(3)).unwrap();
 
@@ -1360,8 +1360,8 @@ mod tests {
     fn send_now_that_cannot_steer_waits_first_in_line() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
-        accept_judged(&mut queue, 3, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 3, Permission::Write, Disposition::Queue);
         queue.send_now(InputId(3)).unwrap();
         let Some(SendAction::Steer { input, .. }) = queue.next_to_send() else {
             panic!("input should steer");
@@ -1383,7 +1383,7 @@ mod tests {
     fn send_now_refuses_inputs_that_are_not_waiting() {
         let mut queue = Queue::new();
         queue.accept(input(1, Permission::Write));
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::NewTask);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::NewTask);
         queue.next_to_send();
 
         assert!(matches!(
@@ -1404,8 +1404,8 @@ mod tests {
     fn refused_steer_returns_to_the_front_as_a_queued_input() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
-        accept_judged(&mut queue, 3, Permission::Write, Disposition::Steer);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 3, Permission::Write, Disposition::Steer);
         let Some(SendAction::Steer { input, .. }) = queue.next_to_send() else {
             panic!("input should steer");
         };
@@ -1433,7 +1433,7 @@ mod tests {
     #[test]
     fn refused_steer_needs_a_delivering_input() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 1, Permission::Write, Disposition::Queue);
 
         assert!(matches!(
             queue.return_refused_steer(InputId(1)),
@@ -1444,7 +1444,7 @@ mod tests {
     #[test]
     fn set_state_follows_transition_table() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
+        accept_routed(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
 
         queue.set_state(InputId(1), InputState::Delivering).unwrap();
         queue.set_state(InputId(1), InputState::Applied).unwrap();
@@ -1455,7 +1455,7 @@ mod tests {
     #[test]
     fn set_state_outside_table_returns_error() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
+        accept_routed(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
         queue.set_state(InputId(1), InputState::Delivering).unwrap();
 
         let result = queue.set_state(InputId(1), InputState::Queued);
@@ -1505,7 +1505,7 @@ mod tests {
     #[test]
     fn cancel_queued_input_cancels() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
+        accept_routed(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
 
         queue.cancel(InputId(1)).unwrap();
 
@@ -1515,8 +1515,8 @@ mod tests {
     #[test]
     fn cancel_delivering_or_applied_returns_already_sent() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
-        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::NewTask);
+        accept_routed(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
+        accept_routed(&mut queue, 2, Permission::ReadOnly, Disposition::NewTask);
         queue.set_state(InputId(1), InputState::Delivering).unwrap();
         queue.set_state(InputId(2), InputState::Delivering).unwrap();
         queue.set_state(InputId(2), InputState::Applied).unwrap();
@@ -1531,7 +1531,7 @@ mod tests {
     #[test]
     fn cancel_dispatched_input_returns_already_sent() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
+        accept_routed(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
         assert!(queue.next_to_send().is_some());
 
         let result = queue.cancel(InputId(1));
@@ -1543,7 +1543,7 @@ mod tests {
     fn stop_holds_running_task_and_unsent_inputs() {
         let mut queue = Queue::new();
         let task = start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::Queue);
         queue.accept(input(3, Permission::Write));
 
         let held = queue.stop(CHAT);
@@ -1559,7 +1559,7 @@ mod tests {
     fn stop_held_task_is_not_sent_without_resume() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::Queue);
         queue.stop(CHAT);
 
         queue.finish_task(AgentId(7));
@@ -1582,7 +1582,7 @@ mod tests {
         let mut queue = Queue::new();
         let first = start_running(&mut queue, 1, Permission::ReadOnly, 7);
         let second = start_running(&mut queue, 2, Permission::ReadOnly, 8);
-        accept_judged(&mut queue, 3, Permission::ReadOnly, Disposition::Queue);
+        accept_routed(&mut queue, 3, Permission::ReadOnly, Disposition::Queue);
         queue.stop(CHAT);
         queue.finish_task(AgentId(7));
         queue.finish_task(AgentId(8));
@@ -1610,7 +1610,7 @@ mod tests {
     fn resume_writers_run_one_at_a_time() {
         let mut queue = Queue::new();
         let main = start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::NewTask);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::NewTask);
         queue.stop(CHAT);
         queue.finish_task(AgentId(7));
         queue.resume(CHAT, None);
@@ -1700,7 +1700,7 @@ mod tests {
     fn close_held_cancels_unsent_inputs() {
         let mut queue = Queue::new();
         let task = start_running(&mut queue, 1, Permission::Write, 7);
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::Queue);
         queue.stop(CHAT);
 
         let cancelled = queue.close_held(task);
@@ -1737,7 +1737,7 @@ mod tests {
     #[test]
     fn start_task_write_conflict_keeps_task_pending() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::Write, Disposition::NewTask);
+        accept_routed(&mut queue, 1, Permission::Write, Disposition::NewTask);
         assert!(queue.next_to_send().is_some());
         queue
             .write_gate()
@@ -1767,12 +1767,12 @@ mod tests {
     #[test]
     fn abandon_task_unblocks_write_inputs_waiting_on_pending_writer() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::Write, Disposition::NewTask);
+        accept_routed(&mut queue, 1, Permission::Write, Disposition::NewTask);
         let Some(SendAction::NewTask { task, .. }) = queue.next_to_send() else {
             panic!("input should start a new task");
         };
         queue.set_state(InputId(1), InputState::Delivering).unwrap();
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::NewTask);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::NewTask);
         assert_eq!(queue.next_to_send(), None);
 
         queue.abandon_task(task);
@@ -1809,7 +1809,7 @@ mod tests {
     fn redirect_changes_queued_input_disposition() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::ReadOnly, 7);
-        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::Queue);
+        accept_routed(&mut queue, 2, Permission::ReadOnly, Disposition::Queue);
         assert_eq!(queue.next_to_send(), None);
 
         queue.redirect(InputId(2), Disposition::Steer).unwrap();
@@ -1828,7 +1828,7 @@ mod tests {
     fn redirect_new_task_starts_separate_task_even_while_running() {
         let mut queue = Queue::new();
         start_running(&mut queue, 1, Permission::ReadOnly, 7);
-        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::Queue);
+        accept_routed(&mut queue, 2, Permission::ReadOnly, Disposition::Queue);
 
         queue.redirect(InputId(2), Disposition::NewTask).unwrap();
 
@@ -1845,7 +1845,7 @@ mod tests {
     fn redirect_rejects_judging_dispatched_and_unknown_inputs() {
         let mut queue = Queue::new();
         queue.accept(input(1, Permission::ReadOnly));
-        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::NewTask);
+        accept_routed(&mut queue, 2, Permission::ReadOnly, Disposition::NewTask);
         queue.next_to_send().unwrap();
 
         assert!(matches!(
@@ -1865,7 +1865,7 @@ mod tests {
     #[test]
     fn hold_unsent_returns_a_dispatched_new_task_to_held_and_resume_sends_it_again() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::Write, Disposition::NewTask);
+        accept_routed(&mut queue, 1, Permission::Write, Disposition::NewTask);
         let Some(SendAction::NewTask { task, .. }) = queue.next_to_send() else {
             panic!("input should start a new task");
         };
@@ -1890,7 +1890,7 @@ mod tests {
         let mut queue = Queue::new();
         let task = start_running(&mut queue, 1, Permission::Write, 7);
         queue.finish_task(AgentId(7));
-        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 2, Permission::Write, Disposition::Queue);
         assert!(matches!(
             queue.next_to_send(),
             Some(SendAction::NewTurn { .. })
@@ -1912,7 +1912,7 @@ mod tests {
     fn hold_unsent_rejects_inputs_that_were_not_handed_out() {
         let mut queue = Queue::new();
         queue.accept(input(1, Permission::ReadOnly));
-        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::Queue);
+        accept_routed(&mut queue, 2, Permission::ReadOnly, Disposition::Queue);
 
         assert!(matches!(
             queue.hold_unsent(InputId(1)),
@@ -1927,7 +1927,7 @@ mod tests {
     #[test]
     fn has_waiting_and_inputs_in_state_follow_the_chat() {
         let mut queue = Queue::new();
-        accept_judged(&mut queue, 1, Permission::Write, Disposition::Queue);
+        accept_routed(&mut queue, 1, Permission::Write, Disposition::Queue);
         queue.accept(input(2, Permission::Write));
 
         assert!(queue.has_waiting(CHAT));

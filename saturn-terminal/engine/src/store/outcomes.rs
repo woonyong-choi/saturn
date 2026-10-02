@@ -1,8 +1,8 @@
 //! 판단 기록의 결과 신호와 물은 답 저장, 느린 조정에 쓸 `Observation` 목록 만들기.
 //! 설계: docs/design/records.md
 
-use saturn_core::judges::Answer;
-use saturn_core::judges::calibration::{AskedAnswer, Observation, Signal};
+use saturn_core::routers::Answer;
+use saturn_core::routers::calibration::{AskedAnswer, Observation, Signal};
 use saturn_protocol::ids::JudgmentId;
 use serde::Deserialize;
 use sqlx::Row;

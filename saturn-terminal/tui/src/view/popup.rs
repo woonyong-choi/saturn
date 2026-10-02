@@ -228,7 +228,7 @@ mod tests {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     fn candidates() -> Vec<PopupItem> {
-        ["help", "send", "judge version", "usage"]
+        ["help", "send", "router version", "usage"]
             .into_iter()
             .map(item)
             .collect()
@@ -243,7 +243,7 @@ mod tests {
         popup.filter("s", &candidates());
 
         let values: Vec<&str> = popup.items.iter().map(|i| i.value.as_str()).collect();
-        assert_eq!(values, vec!["send", "judge version", "usage"]);
+        assert_eq!(values, vec!["send", "router version", "usage"]);
         assert_eq!(popup.selected, 0);
     }
 

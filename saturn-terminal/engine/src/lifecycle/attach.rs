@@ -11,7 +11,7 @@ use saturn_protocol::rpc::Alert;
 use saturn_protocol::state::{EffectScope, InputState, SessionState};
 
 use super::*;
-use crate::secrets::JUDGE_KEY_ENV;
+use crate::secrets::ROUTER_KEY_ENV;
 use crate::store::{MigrationNotice, NewInput, NewRun};
 
 fn attach_to(chat: ChatId, workdir: &Path) -> Request {
@@ -27,7 +27,7 @@ fn attach_to(chat: ChatId, workdir: &Path) -> Request {
 fn tui_env() -> Vec<(String, String)> {
     vec![
         ("PATH".to_owned(), "/opt/tui/bin:/usr/bin".to_owned()),
-        (JUDGE_KEY_ENV.to_owned(), "sk-from-tui".to_owned()),
+        (ROUTER_KEY_ENV.to_owned(), "sk-from-tui".to_owned()),
     ]
 }
 
@@ -112,16 +112,16 @@ async fn attach_sends_start_info_then_history_then_permissions() {
 
     assert_eq!(received.len(), 3);
     let Notification::StartInfo {
-        judge,
-        judge_version,
+        router,
+        router_version,
         folder,
         ..
     } = &received[0]
     else {
         panic!("expected StartInfo first, got {:?}", received[0]);
     };
-    assert_eq!(judge, "jev");
-    assert_eq!(judge_version, "jev-1.13.0");
+    assert_eq!(router, "jev");
+    assert_eq!(router_version, "jev-1.13.0");
     assert_eq!(folder, &fixture.workdir.display().to_string());
     let Notification::HistoryChunk {
         chat: history_chat,
@@ -213,7 +213,7 @@ async fn attach_keeps_first_workdir_and_latest_tui_env() {
 #[tokio::test]
 async fn existing_chat_uses_first_folder_for_trust_even_from_another_folder() {
     let fixture = Fixture::new();
-    fixture.write_folder_config("[judge.thresholds]\ninjection = 0.9\n");
+    fixture.write_folder_config("[router.thresholds]\ninjection = 0.9\n");
     let other = fixture.root.path().join("other");
     std::fs::create_dir_all(other.join(".git")).unwrap();
     let mut engine = fixture.ready().await;
@@ -242,7 +242,7 @@ async fn existing_chat_uses_first_folder_for_trust_even_from_another_folder() {
 #[tokio::test]
 async fn folder_trust_is_asked_per_chat_workdir() {
     let fixture = Fixture::new();
-    fixture.write_folder_config("[judge.thresholds]\ninjection = 0.9\n");
+    fixture.write_folder_config("[router.thresholds]\ninjection = 0.9\n");
     let other = fixture.root.path().join("other");
     std::fs::create_dir_all(other.join(".git")).unwrap();
     let mut engine = fixture.ready().await;
@@ -317,12 +317,12 @@ async fn attach_while_waiting_for_key_asks_for_key_after_greeting() {
 
     assert!(matches!(
         &received[0],
-        Notification::StartInfo { judge_version, .. } if judge_version.is_empty()
+        Notification::StartInfo { router_version, .. } if router_version.is_empty()
     ));
     assert!(matches!(received[1], Notification::HistoryChunk { .. }));
     assert!(matches!(
         &received[2],
-        Notification::JudgeKeyRequired { reason } if !reason.is_empty()
+        Notification::RouterKeyRequired { reason } if !reason.is_empty()
     ));
     assert_eq!(received.len(), 3);
 }
@@ -330,7 +330,7 @@ async fn attach_while_waiting_for_key_asks_for_key_after_greeting() {
 #[tokio::test]
 async fn attach_asks_folder_trust_and_answer_applies_folder_settings() {
     let fixture = Fixture::new();
-    fixture.write_folder_config("[judge.thresholds]\ninjection = 0.9\n");
+    fixture.write_folder_config("[router.thresholds]\ninjection = 0.9\n");
     let mut engine = fixture.ready().await;
     let before = engine.settings.current().unwrap();
     let mut client = Client::connect(&fixture.socket()).await;

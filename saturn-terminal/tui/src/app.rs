@@ -30,12 +30,12 @@ use crate::terminal::{self, Screen};
 use crate::view::composer::Composer;
 use crate::view::folder_trust::FolderTrust;
 use crate::view::full_transcript::FullTranscript;
-use crate::view::judge_key_prompt::JudgeKeyPrompt;
-use crate::view::judge_version::JudgeVersionScreen;
 use crate::view::live_area::LiveArea;
 use crate::view::permission::PermissionQueue;
 use crate::view::popup::{Popup, PopupItem, PopupSuppress};
 use crate::view::resume_prompt::ResumePrompt;
+use crate::view::router_key_prompt::RouterKeyPrompt;
+use crate::view::router_version::RouterVersionScreen;
 use crate::view::start_screen::StartInfo;
 use crate::view::status_board;
 use crate::view::task_list::TaskList;
@@ -73,13 +73,13 @@ pub enum Effect {
 
 #[derive(Debug)]
 pub enum Window {
-    JudgeKey(JudgeKeyPrompt),
+    RouterKey(RouterKeyPrompt),
     FolderTrust(FolderTrust),
     Resume(ResumePrompt),
     TaskList(TaskList),
     FullTranscript(FullTranscript),
     Usage(UsageScreen),
-    JudgeVersion(JudgeVersionScreen),
+    RouterVersion(RouterVersionScreen),
     TrainConfirm(TrainConfirm),
     Shortcuts,
 }
@@ -87,7 +87,7 @@ pub enum Window {
 impl Window {
     /// 다른 창이 덮을 수 없는 창.
     fn is_blocking(&self) -> bool {
-        matches!(self, Self::JudgeKey(_) | Self::FolderTrust(_))
+        matches!(self, Self::RouterKey(_) | Self::FolderTrust(_))
     }
 }
 
@@ -214,7 +214,7 @@ impl App {
 
     pub fn key_area(&self) -> KeyArea {
         match &self.window {
-            Some(Window::JudgeKey(_)) => return KeyArea::JudgeKeyPrompt,
+            Some(Window::RouterKey(_)) => return KeyArea::RouterKeyPrompt,
             Some(Window::FolderTrust(_)) => return KeyArea::FolderTrust,
             _ => {}
         }
@@ -226,7 +226,7 @@ impl App {
             Some(Window::TaskList(_)) => return KeyArea::TaskList,
             Some(Window::FullTranscript(_)) => return KeyArea::FullTranscript,
             Some(Window::Usage(_)) => return KeyArea::Usage,
-            Some(Window::JudgeVersion(_)) => return KeyArea::JudgeVersion,
+            Some(Window::RouterVersion(_)) => return KeyArea::RouterVersion,
             Some(Window::TrainConfirm(_)) => return KeyArea::TrainConfirm,
             _ => {}
         }
@@ -391,7 +391,7 @@ impl App {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     fn on_paste(&mut self, text: String) {
-        if let Some(Window::JudgeKey(prompt)) = &mut self.window {
+        if let Some(Window::RouterKey(prompt)) = &mut self.window {
             text.chars()
                 .filter(|c| !c.is_control())
                 .for_each(|c| prompt.input.push(c));
@@ -434,11 +434,11 @@ impl App {
             _ => {}
         }
         match self.key_area() {
-            KeyArea::JudgeKeyPrompt => self.on_judge_key_action(action),
+            KeyArea::RouterKeyPrompt => self.on_router_key_action(action),
             KeyArea::FolderTrust => self.on_trust_action(action),
             KeyArea::ResumePrompt => self.on_resume_action(action),
             KeyArea::TaskList => self.on_task_list_action(action),
-            KeyArea::FullTranscript | KeyArea::Usage | KeyArea::JudgeVersion => {
+            KeyArea::FullTranscript | KeyArea::Usage | KeyArea::RouterVersion => {
                 self.on_screen_action(action)
             }
             KeyArea::TrainConfirm => self.on_train_action(action),

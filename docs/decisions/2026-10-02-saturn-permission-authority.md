@@ -5,7 +5,7 @@
 | 날짜 | 2026-10-02 |
 | 상태 | 채택 |
 | 대체 | 대체한 결정: [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](2026-09-29-minimal-provider-control.md)의 권한 부분 |
-| 관련 문서 | [권한](../design/permissions.md), [provider 연결과 session](../design/providers-and-sessions.md), [설정](../design/settings.md), [TUI](../design/tui.md), [judge 키 보호](../design/judge-key-security.md) |
+| 관련 문서 | [권한](../design/permissions.md), [provider 연결과 session](../design/providers-and-sessions.md), [설정](../design/settings.md), [TUI](../design/tui.md), [router 키 보호](../design/router-key-security.md) |
 
 ## 배경
 

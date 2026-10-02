@@ -21,7 +21,7 @@ pub enum HistoryError {
     },
 }
 
-/// judge 키 입력 창의 값은 절대 넣지 않는다.
+/// router 키 입력 창의 값은 절대 넣지 않는다.
 #[derive(Debug)]
 pub struct InputHistory {
     path: PathBuf,

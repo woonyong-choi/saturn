@@ -1,5 +1,5 @@
-//! judge 연결 구현과 engine 쪽 판단 흐름: judge 선택, 시작 확인, 키 재확인, 호출, 실패 대체, 연속 실패 집계, 판단 기록.
-//! 설계: docs/design/judge.md
+//! router 연결 구현과 engine 쪽 판단 흐름: router 선택, 시작 확인, 키 재확인, 호출, 실패 대체, 연속 실패 집계, 판단 기록.
+//! 설계: docs/design/router.md
 
 mod local;
 mod remote;
@@ -7,10 +7,10 @@ mod remote;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use saturn_core::judges::failure::{self, CompactFailure, TransitionStarter};
-use saturn_core::judges::{
-    AnswerKind, JudgeClient, JudgeError, JudgeRequest, JudgeResponse, Method, Question,
-    QuestionSetId, RouteDecision,
+use saturn_core::routers::failure::{self, CompactFailure, TransitionStarter};
+use saturn_core::routers::{
+    AnswerKind, Method, Question, QuestionSetId, RouteDecision, RouterClient, RouterError,
+    RouterRequest, RouterResponse,
 };
 use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision};
 use saturn_protocol::rpc::Alert;
@@ -20,20 +20,20 @@ use crate::secrets::{KeyInfo, KeyInput, Masker, SecretStore, SecretsError, acqui
 use crate::settings::{Settings, SettingsError, SettingsManager};
 use crate::store::{JudgmentOutcome, NewJudgment, Store, StoreError};
 
-pub use local::{LocalJudge, LocalSource};
+pub use local::{LocalRouter, LocalSource};
 pub use remote::{
-    ALLOWED_HOST, MAX_CHOICES, REQUEST_SPLIT_LIMIT, RemoteJudge, RetryPolicy, STATE_SPLIT_LIMIT,
+    ALLOWED_HOST, MAX_CHOICES, REQUEST_SPLIT_LIMIT, RemoteRouter, RetryPolicy, STATE_SPLIT_LIMIT,
 };
 
 /// 기록용 중립 이름. 초안 값.
-pub const REMOTE_JUDGE_ID: &str = "jev";
+pub const REMOTE_ROUTER_ID: &str = "jev";
 
 /// 기록용 중립 이름. 초안 값.
-pub const LOCAL_JUDGE_ID: &str = "saturn-local";
+pub const LOCAL_ROUTER_ID: &str = "saturn-local";
 
 const CHECK_QUESTION: &str = "saturn_check";
 
-/// 로컬 judge 버전 설정이 없을 때. 초안 값.
+/// 로컬 router 버전 설정이 없을 때. 초안 값.
 const UNVERSIONED_LOCAL: &str = "unversioned";
 
 /// 끝 이름만 남긴다. 초안 값.
@@ -42,94 +42,94 @@ const ABSOLUTE_PATH_MARK: &str = "[abs]/";
 /// 이만큼 쌓이면 상태판에 판단 모델 연결 끊김을 보인다. 입력 접수는 멈추지 않는다.
 pub const CONSECUTIVE_FAILURE_LIMIT: u32 = 3;
 
-/// 키를 메모리에 들고 있는 곳은 `SecretStore` 하나뿐이라 `RemoteJudge`도 이것을 빌려 쓴다.
+/// 키를 메모리에 들고 있는 곳은 `SecretStore` 하나뿐이라 `RemoteRouter`도 이것을 빌려 쓴다.
 pub type SharedSecrets = Arc<Mutex<SecretStore>>;
 
 /// 메시지와 원인 어디에도 키 문자열을 넣지 않는다.
 #[derive(Debug, thiserror::Error)]
-pub enum JudgesError {
+pub enum RoutersError {
     /// HTTPS가 아니거나 허용 호스트가 아니라 키를 보내지 않는다.
-    #[error("judge endpoint is not allowed: {endpoint}")]
+    #[error("router endpoint is not allowed: {endpoint}")]
     DisallowedEndpoint {
-        /// 설정의 judge 주소.
+        /// 설정의 router 주소.
         endpoint: String,
     },
     /// 예: `saturn` 방식인데 로컬 모델이 없다.
-    #[error("no judge configured for method {method:?}")]
+    #[error("no router configured for method {method:?}")]
     NotConfigured {
         /// 판단 방식.
         method: Method,
     },
     /// 호출자는 키를 받아 `accept_key`로 다시 확인하거나 실행하지 않는다.
-    #[error("judge check failed")]
-    Check(#[source] JudgeError),
-    #[error("judge key handling failed")]
+    #[error("router check failed")]
+    Check(#[source] RouterError),
+    #[error("router key handling failed")]
     Secrets(#[from] SecretsError),
-    #[error("failed to record judge key info")]
+    #[error("failed to record router key info")]
     Settings(#[from] SettingsError),
     #[error("failed to record judgment")]
     Store(#[from] StoreError),
 }
 
-/// `JudgeClient`는 `impl Future`를 돌려 dyn으로 못 쓰므로 enum으로 나눈다.
+/// `RouterClient`는 `impl Future`를 돌려 dyn으로 못 쓰므로 enum으로 나눈다.
 #[derive(Debug)]
-pub enum ActiveJudge {
+pub enum ActiveRouter {
     /// `jev` 방식.
-    Remote(RemoteJudge),
+    Remote(RemoteRouter),
     /// `saturn` 방식.
-    Local(LocalJudge),
+    Local(LocalRouter),
 }
 
-impl ActiveJudge {
-    /// 실제 모델과 버전은 설정 매핑과 `judge_manifest`에만 둔다.
-    pub fn judge_id(&self) -> &str {
+impl ActiveRouter {
+    /// 실제 모델과 버전은 설정 매핑과 `router_manifest`에만 둔다.
+    pub fn router_id(&self) -> &str {
         match self {
-            Self::Remote(_) => REMOTE_JUDGE_ID,
-            Self::Local(_) => LOCAL_JUDGE_ID,
+            Self::Remote(_) => REMOTE_ROUTER_ID,
+            Self::Local(_) => LOCAL_ROUTER_ID,
         }
     }
 
-    /// 판단 기록에 원문이 필요해 engine은 trait의 `judge` 대신 이것을 쓴다.
-    pub async fn exchange(&self, request: JudgeRequest) -> JudgeExchange {
+    /// 판단 기록에 원문이 필요해 engine은 trait의 `router` 대신 이것을 쓴다.
+    pub async fn exchange(&self, request: RouterRequest) -> RouterExchange {
         match self {
-            Self::Remote(judge) => judge.exchange(request).await,
-            Self::Local(judge) => judge.exchange(request).await,
+            Self::Remote(router) => router.exchange(request).await,
+            Self::Local(router) => router.exchange(request).await,
         }
     }
 
-    /// 외부는 고정 모델, 로컬은 judge 버전.
+    /// 외부는 고정 모델, 로컬은 router 버전.
     pub fn model(&self) -> &str {
         match self {
-            Self::Remote(judge) => judge.model(),
-            Self::Local(judge) => judge.version(),
+            Self::Remote(router) => router.model(),
+            Self::Local(router) => router.version(),
         }
     }
 }
 
-impl JudgeClient for ActiveJudge {
-    async fn check(&self) -> Result<(), JudgeError> {
+impl RouterClient for ActiveRouter {
+    async fn check(&self) -> Result<(), RouterError> {
         match self {
-            Self::Remote(judge) => judge.check().await,
-            Self::Local(judge) => judge.check().await,
+            Self::Remote(router) => router.check().await,
+            Self::Local(router) => router.check().await,
         }
     }
 
-    async fn judge(&self, request: JudgeRequest) -> Result<JudgeResponse, JudgeError> {
+    async fn router(&self, request: RouterRequest) -> Result<RouterResponse, RouterError> {
         match self {
-            Self::Remote(judge) => judge.judge(request).await,
-            Self::Local(judge) => judge.judge(request).await,
+            Self::Remote(router) => router.router(request).await,
+            Self::Local(router) => router.router(request).await,
         }
     }
 }
 
 /// 원문은 가리기 전 값이라 로그에 남기지 않고 `record`에서만 가린 뒤 쓴다.
-pub struct JudgeExchange {
+pub struct RouterExchange {
     /// 나눠 보냈으면 조각을 순서대로 이은 것. Authorization 헤더는 넣지 않는다.
     pub sent: String,
     /// 응답이 없으면 `None`.
     pub received: Option<String>,
     /// 형식 검사는 호출자가 한다.
-    pub result: Result<JudgeResponse, JudgeError>,
+    pub result: Result<RouterResponse, RouterError>,
     pub started_at: SystemTime,
     /// 응답이 없으면 포기할 때까지.
     pub elapsed: Duration,
@@ -137,19 +137,19 @@ pub struct JudgeExchange {
     pub unknown_cost_calls: u32,
 }
 
-impl std::fmt::Debug for JudgeExchange {
+impl std::fmt::Debug for RouterExchange {
     /// 원문은 쓰지 않고 길이, 결과 종류, 걸린 시간만 쓴다.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let result = match &self.result {
             Ok(_) => "ok",
-            Err(JudgeError::NoResponse) => "NoResponse",
-            Err(JudgeError::TimedOutAfterSend) => "TimedOutAfterSend",
-            Err(JudgeError::Unauthorized) => "Unauthorized",
-            Err(JudgeError::RateLimited) => "RateLimited",
-            Err(JudgeError::Invalid { .. }) => "Invalid",
-            Err(JudgeError::Superseded) => "Superseded",
+            Err(RouterError::NoResponse) => "NoResponse",
+            Err(RouterError::TimedOutAfterSend) => "TimedOutAfterSend",
+            Err(RouterError::Unauthorized) => "Unauthorized",
+            Err(RouterError::RateLimited) => "RateLimited",
+            Err(RouterError::Invalid { .. }) => "Invalid",
+            Err(RouterError::Superseded) => "Superseded",
         };
-        f.debug_struct("JudgeExchange")
+        f.debug_struct("RouterExchange")
             .field("sent_len", &self.sent.len())
             .field("received_len", &self.received.as_ref().map(String::len))
             .field("result", &result)
@@ -171,7 +171,7 @@ pub enum StartCheck {
     Skipped,
 }
 
-/// 원문과 결과는 `JudgeExchange`에서 온다.
+/// 원문과 결과는 `RouterExchange`에서 온다.
 #[derive(Debug, Clone)]
 pub struct RecordContext {
     /// `/record off`인지 `store`가 이것으로 본다.
@@ -196,7 +196,7 @@ struct FailureTracker {
 }
 
 impl FailureTracker {
-    /// 한도 전 실패는 `JudgePaused`, 한도에 닿으면 `JudgeDisconnected`, 성공이면 `None`.
+    /// 한도 전 실패는 `RouterPaused`, 한도에 닿으면 `RouterDisconnected`, 성공이면 `None`.
     fn observe(&mut self, ok: bool) -> Option<Alert> {
         if ok {
             self.consecutive = 0;
@@ -204,25 +204,25 @@ impl FailureTracker {
         }
         self.consecutive = self.consecutive.saturating_add(1);
         if self.consecutive >= CONSECUTIVE_FAILURE_LIMIT {
-            Some(Alert::JudgeDisconnected)
+            Some(Alert::RouterDisconnected)
         } else {
-            Some(Alert::JudgePaused)
+            Some(Alert::RouterPaused)
         }
     }
 }
 
 #[derive(Debug)]
-pub struct Judges {
+pub struct Routers {
     /// 호출을 별도 작업으로 보내려고 공유한다.
-    active: Arc<ActiveJudge>,
+    active: Arc<ActiveRouter>,
     method: Method,
     failures: FailureTracker,
     masker: Masker,
 }
 
-impl Judges {
-    /// 외부 judge 모델 기본값과 재시도 정책, 로컬 설정 키 이름은 초안이다.
-    /// TODO(#40): `collect` 방식이 어떤 judge를 쓰는지 미정. 정해지기 전에는 `NotConfigured`
+impl Routers {
+    /// 외부 router 모델 기본값과 재시도 정책, 로컬 설정 키 이름은 초안이다.
+    /// TODO(#40): `collect` 방식이 어떤 router를 쓰는지 미정. 정해지기 전에는 `NotConfigured`
     ///
     /// # Errors
     /// 주소가 HTTPS나 허용 호스트가 아니면 `DisallowedEndpoint`, 방식에 맞는 설정이 없으면 `NotConfigured`.
@@ -230,17 +230,17 @@ impl Judges {
         settings: &Settings,
         secrets: SharedSecrets,
         masker: Masker,
-    ) -> Result<Self, JudgesError> {
+    ) -> Result<Self, RoutersError> {
         let method = settings.method();
         let active = match method {
             Method::Jev => {
                 let model = settings
-                    .get("judge.model")
+                    .get("router.model")
                     .and_then(|value| value.as_str())
                     .unwrap_or("jev-1.13.0")
                     .to_owned();
-                ActiveJudge::Remote(RemoteJudge::new(
-                    settings.judge_endpoint(),
+                ActiveRouter::Remote(RemoteRouter::new(
+                    settings.router_endpoint(),
                     model,
                     secrets,
                     RetryPolicy::default(),
@@ -248,26 +248,26 @@ impl Judges {
             }
             Method::Saturn => {
                 let endpoint = settings
-                    .get("judge.local.endpoint")
+                    .get("router.local.endpoint")
                     .and_then(|value| value.as_str())
-                    .ok_or(JudgesError::NotConfigured { method })?;
+                    .ok_or(RoutersError::NotConfigured { method })?;
                 let version = settings
-                    .get("judge.local.version")
+                    .get("router.local.version")
                     .and_then(|value| value.as_str())
                     .unwrap_or(UNVERSIONED_LOCAL);
-                ActiveJudge::Local(LocalJudge::new(
+                ActiveRouter::Local(LocalRouter::new(
                     LocalSource::Server {
                         endpoint: endpoint.to_owned(),
                     },
                     version.to_owned(),
                 ))
             }
-            Method::Collect => return Err(JudgesError::NotConfigured { method }),
+            Method::Collect => return Err(RoutersError::NotConfigured { method }),
         };
         Ok(Self::with_active(active, method, masker))
     }
 
-    pub(crate) fn with_active(active: ActiveJudge, method: Method, masker: Masker) -> Self {
+    pub(crate) fn with_active(active: ActiveRouter, method: Method, masker: Masker) -> Self {
         Self {
             active: Arc::new(active),
             method,
@@ -280,19 +280,19 @@ impl Judges {
         self.method
     }
 
-    pub fn active(&self) -> &ActiveJudge {
+    pub fn active(&self) -> &ActiveRouter {
         &self.active
     }
 
     /// 호출만 따로 돌릴 작업에 넘기는 손잡이. 연속 실패 집계는 결과를 받은 쪽이 `observe`로 한다.
-    pub(crate) fn shared(&self) -> Arc<ActiveJudge> {
+    pub(crate) fn shared(&self) -> Arc<ActiveRouter> {
         Arc::clone(&self.active)
     }
 
     /// 실패는 오류가 아니라 원인을 가린 한 줄과 함께 `KeyRequired`로 돌려준다.
     pub async fn check(&self, settings: &Settings) -> StartCheck {
         let skip = settings
-            .get("judge.skip_check")
+            .get("router.skip_check")
             .and_then(|value| value.as_bool())
             .unwrap_or(false);
         if skip {
@@ -315,7 +315,7 @@ impl Judges {
         input: KeyInput,
         secrets: &SharedSecrets,
         settings: &SettingsManager,
-    ) -> Result<(), JudgesError> {
+    ) -> Result<(), RoutersError> {
         let (key, source) = acquire(input).await?;
         let info = KeyInfo {
             source,
@@ -327,18 +327,18 @@ impl Judges {
         if let Err(error) = self.active.check().await {
             secrets.lock().await.drop_current();
             self.masker = previous;
-            return Err(JudgesError::Check(error));
+            return Err(RoutersError::Check(error));
         }
         secrets.lock().await.persist_current()?;
         settings.record_key_info(&info).await?;
         Ok(())
     }
 
-    /// 형식 오류(`Invalid`)와 revision 변경은 judge가 답한 것이라 연속 실패로 세지 않는다.
-    pub(crate) fn observe(&mut self, exchange: &JudgeExchange) -> Option<Alert> {
+    /// 형식 오류(`Invalid`)와 revision 변경은 router가 답한 것이라 연속 실패로 세지 않는다.
+    pub(crate) fn observe(&mut self, exchange: &RouterExchange) -> Option<Alert> {
         let answered = matches!(
             exchange.result,
-            Ok(_) | Err(JudgeError::Invalid { .. } | JudgeError::Superseded)
+            Ok(_) | Err(RouterError::Invalid { .. } | RouterError::Superseded)
         );
         self.failures.observe(answered)
     }
@@ -346,7 +346,7 @@ impl Judges {
     /// 입력 처리 판단이 재시도 끝에 실패했을 때 쓴다. 현재 에이전트와 현재 모델로 보내고 입력은 대기로 두지 않는다.
     pub fn route_after_failure(
         &self,
-        request: &JudgeRequest,
+        request: &RouterRequest,
         revision: ChatRevision,
         settings: SettingsRevision,
     ) -> RouteDecision {
@@ -354,7 +354,7 @@ impl Judges {
         failure::route_after_failure(request, revision, settings)
     }
 
-    /// 패킷의 `compact` 판단이 재시도 끝에 실패했을 때 쓴다. judge가 시작한 전환은 건너뛰고 현재 모델로 진행한다. 강제한 전환은 하고 경쟁 구역을 순위 순서로 채운다.
+    /// 패킷의 `compact` 판단이 재시도 끝에 실패했을 때 쓴다. router가 시작한 전환은 건너뛰고 현재 모델로 진행한다. 강제한 전환은 하고 경쟁 구역을 순위 순서로 채운다.
     pub fn compact_after_failure(&self, starter: TransitionStarter) -> CompactFailure {
         let action = failure::compact_failure(starter);
         match action {
@@ -369,17 +369,17 @@ impl Judges {
         &self,
         store: &Store,
         context: RecordContext,
-        exchange: &JudgeExchange,
-    ) -> Result<Option<JudgmentId>, JudgesError> {
+        exchange: &RouterExchange,
+    ) -> Result<Option<JudgmentId>, RoutersError> {
         let judgment = new_judgment(self, context, exchange);
         Ok(store.record_judgment(&judgment).await?)
     }
 }
 
-pub(crate) fn check_request(model: String) -> JudgeRequest {
-    JudgeRequest {
+pub(crate) fn check_request(model: String) -> RouterRequest {
+    RouterRequest {
         model,
-        state: "Saturn judge start check.".to_owned(),
+        state: "Saturn router start check.".to_owned(),
         sets: vec![(
             QuestionSetId {
                 name: "check".to_owned(),
@@ -437,41 +437,45 @@ fn replace_absolute(word: &str) -> String {
 }
 
 /// 보낸 뒤 시간 초과는 `CostUnknown`, 무응답과 속도 제한 포기는 `NoResponse`.
-pub fn outcome_of(result: &Result<JudgeResponse, JudgeError>) -> JudgmentOutcome {
+pub fn outcome_of(result: &Result<RouterResponse, RouterError>) -> JudgmentOutcome {
     match result {
         Ok(_) => JudgmentOutcome::Ok,
-        Err(JudgeError::TimedOutAfterSend) => JudgmentOutcome::CostUnknown,
-        Err(JudgeError::NoResponse | JudgeError::RateLimited | JudgeError::Unauthorized) => {
+        Err(RouterError::TimedOutAfterSend) => JudgmentOutcome::CostUnknown,
+        Err(RouterError::NoResponse | RouterError::RateLimited | RouterError::Unauthorized) => {
             JudgmentOutcome::NoResponse
         }
-        Err(JudgeError::Invalid { .. }) => JudgmentOutcome::Invalid,
-        Err(JudgeError::Superseded) => JudgmentOutcome::Superseded,
+        Err(RouterError::Invalid { .. }) => JudgmentOutcome::Invalid,
+        Err(RouterError::Superseded) => JudgmentOutcome::Superseded,
     }
 }
 
-fn new_judgment(judges: &Judges, context: RecordContext, exchange: &JudgeExchange) -> NewJudgment {
+fn new_judgment(
+    routers: &Routers,
+    context: RecordContext,
+    exchange: &RouterExchange,
+) -> NewJudgment {
     let response = exchange.result.as_ref().ok();
     let tokens = match context.outcome {
         JudgmentOutcome::CostUnknown | JudgmentOutcome::NoResponse => None,
         _ => response.map(|response| response.tokens),
     };
-    let model = judges.active.model().to_owned();
+    let model = routers.active.model().to_owned();
     NewJudgment {
         chat: context.chat,
         input: context.input,
-        method: judges.method,
-        judge: judges.active.judge_id().to_owned(),
+        method: routers.method,
+        router: routers.active.router_id().to_owned(),
         model: (
             model.clone(),
             response.map(|response| response.model.clone()),
         ),
         question_sets: context.question_sets,
         settings: context.settings,
-        sent: judges.masker.mask(&exchange.sent),
+        sent: routers.masker.mask(&exchange.sent),
         received: exchange
             .received
             .as_ref()
-            .map(|received| judges.masker.mask(received)),
+            .map(|received| routers.masker.mask(received)),
         answers: response
             .map(|response| response.answers.clone())
             .unwrap_or_default(),
@@ -480,16 +484,16 @@ fn new_judgment(judges: &Judges, context: RecordContext, exchange: &JudgeExchang
         started_at: exchange.started_at,
         elapsed: exchange.elapsed,
         outcome: context.outcome,
-        judge_version: model,
+        router_version: model,
         thresholds: context.thresholds,
         asked_with: context.asked_with,
     }
 }
 
-/// 다른 모듈 테스트가 가짜 전송으로 judge를 만든다.
+/// 다른 모듈 테스트가 가짜 전송으로 router를 만든다.
 #[cfg(test)]
 pub(crate) mod test_support {
-    pub(crate) use super::remote::tests::{FakeTransport, KEY, judge, ok, status};
+    pub(crate) use super::remote::tests::{FakeTransport, KEY, ok, router, status};
     pub(crate) use super::remote::{HttpReply, TransportError};
 }
 
@@ -497,22 +501,25 @@ pub(crate) mod test_support {
 mod tests {
     use std::path::PathBuf;
 
-    use saturn_core::judges::Answer;
+    use saturn_core::routers::Answer;
 
     use super::*;
-    use crate::judges::remote::tests::{
-        ANSWER, FakeTransport, KEY, judge, ok, request, secrets_with_key, status,
+    use crate::routers::remote::tests::{
+        ANSWER, FakeTransport, KEY, ok, request, router, secrets_with_key, status,
     };
     use crate::secrets::StorageMode;
 
-    fn judges(secrets: SharedSecrets, transport: Arc<FakeTransport>) -> Judges {
-        let active = ActiveJudge::Remote(judge(secrets, transport));
-        Judges::with_active(active, Method::Jev, Masker::new(vec![KEY.to_owned()]))
+    fn routers(secrets: SharedSecrets, transport: Arc<FakeTransport>) -> Routers {
+        let active = ActiveRouter::Remote(router(secrets, transport));
+        Routers::with_active(active, Method::Jev, Masker::new(vec![KEY.to_owned()]))
     }
 
-    async fn call(judges: &mut Judges, request: JudgeRequest) -> (JudgeExchange, Option<Alert>) {
-        let exchange = judges.shared().exchange(request).await;
-        let alert = judges.observe(&exchange);
+    async fn call(
+        routers: &mut Routers,
+        request: RouterRequest,
+    ) -> (RouterExchange, Option<Alert>) {
+        let exchange = routers.shared().exchange(request).await;
+        let alert = routers.observe(&exchange);
         (exchange, alert)
     }
 
@@ -536,21 +543,21 @@ mod tests {
     #[tokio::test]
     async fn new_judgment_carries_caller_thresholds_and_probability() {
         let dir = tempfile::tempdir().unwrap();
-        let judges = judges(
+        let routers = routers(
             secrets_with_key(dir.path()).await,
             FakeTransport::new(Vec::new()),
         );
-        let exchange = JudgeExchange {
+        let exchange = RouterExchange {
             sent: String::new(),
             received: None,
-            result: Err(JudgeError::NoResponse),
+            result: Err(RouterError::NoResponse),
             started_at: SystemTime::now(),
             elapsed: Duration::ZERO,
             unknown_cost_calls: 0,
         };
 
         let judgment = new_judgment(
-            &judges,
+            &routers,
             context(ChatId(1), JudgmentOutcome::NoResponse),
             &exchange,
         );
@@ -563,12 +570,12 @@ mod tests {
     fn three_failures_show_disconnected_and_success_resets() {
         let mut tracker = FailureTracker::default();
 
-        assert_eq!(tracker.observe(false), Some(Alert::JudgePaused));
-        assert_eq!(tracker.observe(false), Some(Alert::JudgePaused));
-        assert_eq!(tracker.observe(false), Some(Alert::JudgeDisconnected));
-        assert_eq!(tracker.observe(false), Some(Alert::JudgeDisconnected));
+        assert_eq!(tracker.observe(false), Some(Alert::RouterPaused));
+        assert_eq!(tracker.observe(false), Some(Alert::RouterPaused));
+        assert_eq!(tracker.observe(false), Some(Alert::RouterDisconnected));
+        assert_eq!(tracker.observe(false), Some(Alert::RouterDisconnected));
         assert_eq!(tracker.observe(true), None);
-        assert_eq!(tracker.observe(false), Some(Alert::JudgePaused));
+        assert_eq!(tracker.observe(false), Some(Alert::RouterPaused));
     }
 
     #[tokio::test(start_paused = true)]
@@ -579,22 +586,22 @@ mod tests {
         replies.extend(vec![Err(remote::TransportError::AfterSend); 9]);
         replies.push(ok(ANSWER));
         let transport = FakeTransport::new(replies);
-        let mut judges = judges(secrets_with_key(dir.path()).await, transport);
+        let mut routers = routers(secrets_with_key(dir.path()).await, transport);
 
-        let (first, alert) = call(&mut judges, request()).await;
-        assert!(matches!(first.result, Err(JudgeError::Invalid { .. })));
+        let (first, alert) = call(&mut routers, request()).await;
+        assert!(matches!(first.result, Err(RouterError::Invalid { .. })));
         assert_eq!(alert, None);
         for _ in 0..2 {
             assert_eq!(
-                call(&mut judges, request()).await.1,
-                Some(Alert::JudgePaused)
+                call(&mut routers, request()).await.1,
+                Some(Alert::RouterPaused)
             );
         }
         assert_eq!(
-            call(&mut judges, request()).await.1,
-            Some(Alert::JudgeDisconnected)
+            call(&mut routers, request()).await.1,
+            Some(Alert::RouterDisconnected)
         );
-        let (answered, alert) = call(&mut judges, request()).await;
+        let (answered, alert) = call(&mut routers, request()).await;
         assert!(answered.result.is_ok());
         assert_eq!(alert, None);
     }
@@ -633,8 +640,8 @@ mod tests {
         (value, text)
     }
 
-    fn judges_without_transport() -> Judges {
-        judges(
+    fn routers_without_transport() -> Routers {
+        routers(
             Arc::new(Mutex::new(SecretStore::with_key_file(
                 PathBuf::from("/nonexistent/none.key"),
                 StorageMode::Standard,
@@ -645,10 +652,11 @@ mod tests {
 
     #[test]
     fn route_after_failure_logs_skip_message_and_keeps_current_model() {
-        let judges = judges_without_transport();
+        let routers = routers_without_transport();
 
-        let (decision, log) =
-            logged(|| judges.route_after_failure(&request(), ChatRevision(1), SettingsRevision(1)));
+        let (decision, log) = logged(|| {
+            routers.route_after_failure(&request(), ChatRevision(1), SettingsRevision(1))
+        });
 
         assert!(log.contains("판단 모델 실패로 모델 선택을 건너뜁니다"));
         assert!(!log.contains(KEY));
@@ -658,12 +666,12 @@ mod tests {
 
     #[test]
     fn compact_after_failure_logs_by_who_started_the_transition() {
-        let judges = judges_without_transport();
+        let routers = routers_without_transport();
 
         let (skipped, skipped_log) =
-            logged(|| judges.compact_after_failure(TransitionStarter::Judge));
+            logged(|| routers.compact_after_failure(TransitionStarter::Router));
         let (filled, filled_log) =
-            logged(|| judges.compact_after_failure(TransitionStarter::Forced));
+            logged(|| routers.compact_after_failure(TransitionStarter::Forced));
 
         assert_eq!(skipped, CompactFailure::SkipTransition);
         assert!(skipped_log.contains("판단 모델 실패로 모델 선택을 건너뜁니다"));
@@ -678,31 +686,31 @@ mod tests {
         let chat = store.create_chat(PathBuf::from("/w")).await.unwrap();
         let reply = ANSWER.replace("\"usage\"", &format!("\"echo\":\"{KEY}\",\"usage\""));
         let transport = FakeTransport::new(vec![ok(&reply)]);
-        let mut judges = judges(secrets_with_key(dir.path()).await, transport);
+        let mut routers = routers(secrets_with_key(dir.path()).await, transport);
         let mut leaky = request();
         leaky.state = format!("pasted {KEY}");
 
-        let (exchange, _) = call(&mut judges, leaky).await;
+        let (exchange, _) = call(&mut routers, leaky).await;
         let outcome = outcome_of(&exchange.result);
-        let id = judges
+        let id = routers
             .record(&store, context(chat, outcome), &exchange)
             .await
             .unwrap();
-        let timeout = JudgeExchange {
+        let timeout = RouterExchange {
             sent: "{}".to_owned(),
             received: None,
-            result: Err(JudgeError::TimedOutAfterSend),
+            result: Err(RouterError::TimedOutAfterSend),
             started_at: SystemTime::now(),
             elapsed: Duration::from_secs(40),
             unknown_cost_calls: 3,
         };
         let timeout_outcome = outcome_of(&timeout.result);
-        judges
+        routers
             .record(&store, context(chat, timeout_outcome), &timeout)
             .await
             .unwrap();
         store.set_recording(chat, false).await.unwrap();
-        let skipped = judges
+        let skipped = routers
             .record(&store, context(chat, outcome), &exchange)
             .await
             .unwrap();
@@ -719,7 +727,7 @@ mod tests {
             .map(|line| serde_json::from_str(line).unwrap())
             .collect();
         assert_eq!(lines.len(), 2);
-        assert_eq!(lines[0]["judge"], "jev");
+        assert_eq!(lines[0]["router"], "jev");
         assert_eq!(
             lines[0]["tokens"],
             serde_json::json!({ "input": 310, "output": 24 })
@@ -740,7 +748,7 @@ mod tests {
         let settings = SettingsManager::new(home.clone(), Vec::new(), &store)
             .await
             .unwrap();
-        let key_file = dir.path().join("judge.key");
+        let key_file = dir.path().join("router.key");
         let empty = SecretStore::with_key_file(key_file.clone(), StorageMode::Standard);
         let secrets: SharedSecrets = Arc::new(Mutex::new(empty));
         let check_ok = r#"{"model":"jev-1.13.0","answers":{"saturn_check":{"noul":0.6}},"usage":{"input_tokens":1,"output_tokens":1}}"#;
@@ -749,13 +757,13 @@ mod tests {
             ok(r#"{"models":[]}"#),
             ok(check_ok),
         ]);
-        let mut judges = Judges::with_active(
-            ActiveJudge::Remote(judge(Arc::clone(&secrets), transport)),
+        let mut routers = Routers::with_active(
+            ActiveRouter::Remote(router(Arc::clone(&secrets), transport)),
             Method::Jev,
             Masker::default(),
         );
 
-        let rejected = judges
+        let rejected = routers
             .accept_key(
                 KeyInput::Hidden("sk-wrong-0000".to_owned()),
                 &secrets,
@@ -765,11 +773,11 @@ mod tests {
             .unwrap_err();
         assert!(matches!(
             rejected,
-            JudgesError::Check(JudgeError::Unauthorized)
+            RoutersError::Check(RouterError::Unauthorized)
         ));
         assert!(!key_file.exists());
 
-        judges
+        routers
             .accept_key(KeyInput::Hidden(format!("{KEY}\n")), &secrets, &settings)
             .await
             .unwrap();
@@ -778,7 +786,7 @@ mod tests {
         let config = std::fs::read_to_string(home.join("config.toml")).unwrap();
         assert!(config.contains("last4 = \"6789\""));
         assert!(!config.contains(KEY));
-        assert_eq!(judges.masker.mask(KEY).as_str(), "[redacted]");
+        assert_eq!(routers.masker.mask(KEY).as_str(), "[redacted]");
     }
 
     #[tokio::test]
@@ -792,17 +800,20 @@ mod tests {
         let normal = manager.apply_user(&store).await.unwrap().revision;
         let settings = manager.at(&store, normal).await.unwrap();
         let transport = FakeTransport::new(vec![status(401, "{}", Vec::new())]);
-        let judges = judges(secrets_with_key(dir.path()).await, transport);
+        let routers = routers(secrets_with_key(dir.path()).await, transport);
 
-        let failed = judges.check(&settings).await;
+        let failed = routers.check(&settings).await;
 
         assert!(
-            matches!(failed, StartCheck::KeyRequired { ref reason } if reason == "judge rejected the key")
+            matches!(failed, StartCheck::KeyRequired { ref reason } if reason == "router rejected the key")
         );
-        std::fs::write(home.join("config.toml"), "[judge]\nskip_check = true\n").unwrap();
+        std::fs::write(home.join("config.toml"), "[router]\nskip_check = true\n").unwrap();
         let skip = manager.apply_user(&store).await.unwrap().revision;
         let skipping = manager.at(&store, skip).await.unwrap();
-        assert!(matches!(judges.check(&skipping).await, StartCheck::Skipped));
+        assert!(matches!(
+            routers.check(&skipping).await,
+            StartCheck::Skipped
+        ));
     }
 
     #[tokio::test]
@@ -815,39 +826,39 @@ mod tests {
             .unwrap();
         let secrets = secrets_with_key(dir.path()).await;
         let jev = load(&mut manager, &store, &home, "").await;
-        let chosen = Judges::select(&jev, Arc::clone(&secrets), Masker::default()).unwrap();
-        assert_eq!(chosen.active().judge_id(), "jev");
+        let chosen = Routers::select(&jev, Arc::clone(&secrets), Masker::default()).unwrap();
+        assert_eq!(chosen.active().router_id(), "jev");
         let evil = load(
             &mut manager,
             &store,
             &home,
-            "[judge]\nendpoint = \"https://evil.example\"\n",
+            "[router]\nendpoint = \"https://evil.example\"\n",
         )
         .await;
         assert!(matches!(
-            Judges::select(&evil, Arc::clone(&secrets), Masker::default()),
-            Err(JudgesError::DisallowedEndpoint { .. })
+            Routers::select(&evil, Arc::clone(&secrets), Masker::default()),
+            Err(RoutersError::DisallowedEndpoint { .. })
         ));
         let saturn = load(
             &mut manager,
             &store,
             &home,
-            "[judge]\nmethod = \"saturn\"\n",
+            "[router]\nmethod = \"saturn\"\n",
         )
         .await;
         assert!(matches!(
-            Judges::select(&saturn, Arc::clone(&secrets), Masker::default()),
-            Err(JudgesError::NotConfigured { .. })
+            Routers::select(&saturn, Arc::clone(&secrets), Masker::default()),
+            Err(RoutersError::NotConfigured { .. })
         ));
         let local = load(
             &mut manager,
             &store,
             &home,
-            "[judge]\nmethod = \"saturn\"\n[judge.local]\nendpoint = \"http://127.0.0.1:9\"\nversion = \"v2\"\n",
+            "[router]\nmethod = \"saturn\"\n[router.local]\nendpoint = \"http://127.0.0.1:9\"\nversion = \"v2\"\n",
         )
         .await;
-        let chosen = Judges::select(&local, secrets, Masker::default()).unwrap();
-        assert_eq!(chosen.active().judge_id(), "saturn-local");
+        let chosen = Routers::select(&local, secrets, Masker::default()).unwrap();
+        assert_eq!(chosen.active().router_id(), "saturn-local");
         assert_eq!(chosen.method(), Method::Saturn);
     }
 
@@ -881,7 +892,7 @@ mod tests {
 
     #[test]
     fn outcomes_follow_error_kinds() {
-        let ok = Ok(JudgeResponse {
+        let ok = Ok(RouterResponse {
             model: "m".to_owned(),
             answers: vec![("a".to_owned(), Answer::Noul(0.5))],
             tokens: (1, 1),
@@ -889,31 +900,31 @@ mod tests {
 
         assert_eq!(outcome_of(&ok), JudgmentOutcome::Ok);
         assert_eq!(
-            outcome_of(&Err(JudgeError::TimedOutAfterSend)),
+            outcome_of(&Err(RouterError::TimedOutAfterSend)),
             JudgmentOutcome::CostUnknown
         );
         assert_eq!(
-            outcome_of(&Err(JudgeError::RateLimited)),
+            outcome_of(&Err(RouterError::RateLimited)),
             JudgmentOutcome::NoResponse
         );
         assert_eq!(
-            outcome_of(&Err(JudgeError::Invalid {
+            outcome_of(&Err(RouterError::Invalid {
                 reason: String::new()
             })),
             JudgmentOutcome::Invalid
         );
         assert_eq!(
-            outcome_of(&Err(JudgeError::Superseded)),
+            outcome_of(&Err(RouterError::Superseded)),
             JudgmentOutcome::Superseded
         );
     }
 
     #[test]
     fn exchange_debug_hides_text() {
-        let exchange = JudgeExchange {
+        let exchange = RouterExchange {
             sent: format!("state {KEY}"),
             received: None,
-            result: Err(JudgeError::Invalid {
+            result: Err(RouterError::Invalid {
                 reason: KEY.to_owned(),
             }),
             started_at: SystemTime::now(),

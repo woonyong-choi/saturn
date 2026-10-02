@@ -312,7 +312,7 @@ async fn mode_change_keeps_other_chat_layer_values_and_rejects_unknown_modes() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     flow.engine
         .store
-        .set_chat_layer(flow.chat, "# note\njudge.thresholds.injection = 0.75\n")
+        .set_chat_layer(flow.chat, "# note\nrouter.thresholds.injection = 0.75\n")
         .await
         .unwrap();
 
@@ -334,7 +334,7 @@ async fn mode_change_keeps_other_chat_layer_values_and_rejects_unknown_modes() {
         .unwrap()
         .unwrap();
     assert!(layer.contains("# note"));
-    assert!(layer.contains("judge.thresholds.injection = 0.75"));
+    assert!(layer.contains("router.thresholds.injection = 0.75"));
     assert_eq!(
         crate::settings::chat_layer_mode(Some(&layer)),
         Some(Mode::Ask)

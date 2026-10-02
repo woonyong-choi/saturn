@@ -35,7 +35,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트를 바꿀 때마
 ### 보조 에이전트 결과를 메인 에이전트가 받기
 
 1. 메인 에이전트가 작업하는 동안 사용자는 하던 일과 무관한 질문을 보낸다.
-2. judge가 무관한 작업으로 판단하면 `queue`는 채팅에 속한 보조 에이전트를 시작한다.
+2. router가 무관한 작업으로 판단하면 `queue`는 채팅에 속한 보조 에이전트를 시작한다.
 3. 보조 에이전트는 일을 끝내면 결과를 전달한 뒤 바로 종료한다.
 4. engine은 쉬고 있는 메인 에이전트를 이 결과로 깨우지 않는다.
 5. 사용자가 메인 에이전트에 다음 입력을 보내면, engine은 보조 에이전트의 결과 요약과 수정 파일 경로를 붙여 보낸다.
@@ -111,7 +111,7 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 
 안전망은 실행 인자로만 넘기고 사용자 설정 파일은 건드리지 않는다. 안전망 값의 계산은 [맥락 정리](context-management.md)에 있다.
 
-권한 외에 추적만 하는 규칙의 예외는 judge 키 보안뿐이다. judge 키가 provider 자식 프로세스로 새는 일을 막기 위해서다. 2단계의 환경 변수 제거와 4단계의 훅은 [judge 키 보호](judge-key-security.md)에 있다.
+권한 외에 추적만 하는 규칙의 예외는 router 키 보안뿐이다. router 키가 provider 자식 프로세스로 새는 일을 막기 위해서다. 2단계의 환경 변수 제거와 4단계의 훅은 [router 키 보호](router-key-security.md)에 있다.
 
 ### provider 명령과 스킬 전달
 
@@ -153,12 +153,12 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 
 1. `sessions`는 채팅마다 메인 에이전트 하나를 유지한다.
 2. 모델이나 provider가 바뀌면 `sessions`는 대상 provider의 메인 session을 재개하거나 새로 시작하고, 이전 메인 session은 인수 뒤 닫고 provider session ID를 보관한다.
-3. judge가 무관한 작업으로 판단하면 `queue`는 채팅에 속한 보조 에이전트를 시작한다.
+3. router가 무관한 작업으로 판단하면 `queue`는 채팅에 속한 보조 에이전트를 시작한다.
 4. 보조 에이전트는 끝나면 결과를 전달한 뒤 바로 종료한다.
 
 살아 있는 메인 session은 `종료`가 아닌 메인 session이다. 열린 메인 session은 채팅마다 하나이고, `닫힘·재개 가능` 메인 session은 provider마다 하나까지 보관한다. 같은 provider의 더 오래된 보관 session은 `종료`로 둔다. `보류` session은 이 한도에 세지 않는다. 같은 provider면 열린 session에 그대로 보내고, `닫힘·재개 가능`이나 `보류`면 보관한 provider session ID로 재개한다. provider가 다르면 그 provider로 돌아가기 규칙으로 재개와 새 session을 가른다. 보관한 ID가 없으면 새 session을 연다. 보조 에이전트는 작업마다 새 session을 연다. 끝나면 바로 종료하므로 재개할 session이 없기 때문이다.
 
-보조 에이전트가 물려받는 설정 층은 [설정](settings.md)에 있다. judge가 무엇을 묻는지는 [judge](judge.md)에 있다.
+보조 에이전트가 물려받는 설정 층은 [설정](settings.md)에 있다. router가 무엇을 묻는지는 [router](router.md)에 있다.
 
 ### provider 전환
 
@@ -203,7 +203,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 
 1. `sessions`는 session마다 마지막으로 전달받은 기록 번호를 기록한다.
 2. 다음 입력 때 `sessions`는 그 기록 번호 뒤에 쌓인 다른 에이전트의 결과 요약과 수정 파일 경로를 붙인다.
-3. judge가 쌓인 항목 전체에서 관련 항목을 고르고, 순서는 [맥락 고르기](context-selection.md)를 따른다.
+3. router가 쌓인 항목 전체에서 관련 항목을 고르고, 순서는 [맥락 고르기](context-selection.md)를 따른다.
 
 에이전트끼리 직접 통신하지 않는다. 보조 에이전트 결과로 쉬는 메인 에이전트를 깨우지 않고, 메인 에이전트의 다음 입력 때 전달한다. 두 규칙 모두 맥락 전달을 Saturn 기록 번호 하나로 맞추기 위해서다.
 
@@ -329,7 +329,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 - 한 번 실행 경로를 상시 연결의 대체 경로로 구현할지, 경로 하나만 유지할지 ([#34](https://github.com/woonyong-choi/saturn/issues/34))
 - 메인이 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - Codex 자식 session의 승인 요청에 Saturn이 부모 정책으로 응답할지, 사용자에게 따로 보일지, 모두 거절할지 ([#61](https://github.com/woonyong-choi/saturn/issues/61))
-- judge 상태에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))
+- router 상태에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))
 - 수정 파일 목록을 실행 경계의 파일 상태 차이로 계산할지, provider 이벤트로 계산할지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))
 - 패킷 고정 구역의 "현재 목표"와 "끝나지 않은 항목"을 무엇으로 뽑을지. 정해지기 전에는 목표는 마지막 입력이고 제약은 빈 목록이며 끝나지 않은 항목은 결과가 없는 도구 호출이다 ([#90](https://github.com/woonyong-choi/saturn/issues/90))
 - 보낸 뒤 결과를 모르는 작업을 사용자가 푸는 방법. 지금은 `/continue <작업>`이 파일 상태를 확인하게 하는 새 입력을 보내고 원래 입력은 `전달 중`으로 둔다 ([#90](https://github.com/woonyong-choi/saturn/issues/90))

@@ -173,12 +173,12 @@ fn submit_before_chat_known_keeps_draft() {
 }
 
 #[test]
-fn submit_while_judge_disconnected_still_sends_input() {
+fn submit_while_router_disconnected_still_sends_input() {
     let mut app = attached();
     notify(
         &mut app,
         Notification::Alert {
-            alert: Alert::JudgeDisconnected,
+            alert: Alert::RouterDisconnected,
         },
     );
     type_text(&mut app, "hi");
@@ -275,8 +275,8 @@ fn add_dir_notice_adds_a_cell_and_updates_the_start_screen_folders() {
         Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
             providers: Vec::new(),
-            judge: String::new(),
-            judge_version: String::new(),
+            router: String::new(),
+            router_version: String::new(),
             folder: "/work".to_string(),
             added_dirs: Vec::new(),
         },
@@ -312,8 +312,8 @@ fn add_dir_notice_before_the_first_cell_updates_the_start_screen() {
         Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
             providers: Vec::new(),
-            judge: String::new(),
-            judge_version: String::new(),
+            router: String::new(),
+            router_version: String::new(),
             folder: "/work".to_string(),
             added_dirs: vec!["/first".to_owned()],
         },
@@ -368,8 +368,8 @@ fn task_list_opened_from_a_chat_starts_in_the_chat_folder_scope() {
         Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
             providers: Vec::new(),
-            judge: String::new(),
-            judge_version: String::new(),
+            router: String::new(),
+            router_version: String::new(),
             folder: "/other/project".to_string(),
             added_dirs: Vec::new(),
         },
@@ -607,8 +607,8 @@ fn notifications_build_echo_live_output_and_result() {
         Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
             providers: Vec::new(),
-            judge: String::new(),
-            judge_version: String::new(),
+            router: String::new(),
+            router_version: String::new(),
             folder: "/work".to_string(),
             added_dirs: Vec::new(),
         },
@@ -732,11 +732,11 @@ fn folder_trust_q_quits() {
 }
 
 #[test]
-fn judge_key_prompt_sends_key_and_closes() {
+fn router_key_prompt_sends_key_and_closes() {
     let mut app = attached();
     notify(
         &mut app,
-        Notification::JudgeKeyRequired {
+        Notification::RouterKeyRequired {
             reason: "invalid".to_string(),
         },
     );
@@ -746,7 +746,7 @@ fn judge_key_prompt_sends_key_and_closes() {
 
     assert_eq!(
         sent(&effects),
-        vec![&Request::SubmitJudgeKey {
+        vec![&Request::SubmitRouterKey {
             key: "sk-1".to_string()
         }]
     );
