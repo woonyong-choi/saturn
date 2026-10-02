@@ -322,7 +322,7 @@ fn permission_window_ignores_keys_for_one_second() {
         sent(&late),
         vec![&Request::AnswerPermission {
             request_id: "r1".to_string(),
-            answer: PermissionAnswer::Allow,
+            answer: PermissionAnswer::AllowOnce,
         }]
     );
 }

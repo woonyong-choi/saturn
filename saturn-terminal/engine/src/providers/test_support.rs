@@ -8,6 +8,7 @@ use saturn_core::providers::{
 };
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId};
+use saturn_protocol::rpc::PermissionAnswer;
 
 /// provider가 받은 호출.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,6 +25,11 @@ pub(crate) enum Call {
     Steer {
         session: ProviderSessionId,
         text: String,
+    },
+    AnswerPermission {
+        session: ProviderSessionId,
+        request_id: String,
+        answer: PermissionAnswer,
     },
 }
 
@@ -140,6 +146,20 @@ impl ProviderClient for FakeProvider {
     }
 
     async fn compact(&mut self, _session: &ProviderSessionId) -> Result<(), ProviderError> {
+        Ok(())
+    }
+
+    async fn answer_permission(
+        &mut self,
+        session: &ProviderSessionId,
+        request_id: &str,
+        answer: PermissionAnswer,
+    ) -> Result<(), ProviderError> {
+        self.lock().calls.push(Call::AnswerPermission {
+            session: session.clone(),
+            request_id: request_id.to_owned(),
+            answer,
+        });
         Ok(())
     }
 

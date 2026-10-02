@@ -12,6 +12,7 @@ pub const READING_FILE: &str = "파일 읽는 중";
 pub const EDITING_FILE: &str = "파일 수정 중";
 pub const RUNNING_COMMAND: &str = "명령 실행 중";
 pub const AWAITING_PERMISSION: &str = "허가 기다림";
+pub const APPROVAL_PENDING: &str = "도구 사용 허가 준비 중";
 pub const COMPACTING: &str = "맥락 정리 중";
 pub const SWITCHING_PROVIDER: &str = "공급자 전환 중";
 pub const SUBAGENTS: &str = "하위 에이전트";
@@ -90,10 +91,10 @@ pub const CONTEXT_UNKNOWN: &str = "맥락 미확인";
 pub const RESUME_ALL: &str = "모두 이어서";
 pub const RESUME_PICK: &str = "골라서 이어서";
 pub const RESUME_LEAVE: &str = "그대로 두기";
-pub const PERMISSION_ALLOW: &str = "실행";
-pub const PERMISSION_ALLOW_FOR_TASK: &str = "이 작업 동안 같은 명령 허용";
-pub const PERMISSION_DENY: &str = "실행하지 않고 계속";
-pub const PERMISSION_DENY_AND_REDIRECT: &str = "실행하지 않고 다르게 하라고 말하기";
+pub const TRAIN_RUN: &str = "실행";
+pub const PERMISSION_ALLOW_ONCE: &str = "이번만 허용";
+pub const PERMISSION_ALLOW_ALWAYS: &str = "항상 허용";
+pub const PERMISSION_DENY: &str = "거부";
 pub const FILTER_ALL: &str = "전체";
 pub const FILTER_NEEDS_CHECK: &str = "확인 필요";
 pub const FILTER_RUNNING: &str = "실행 중";
@@ -205,6 +206,7 @@ const ENGLISH: &[(&str, &str)] = &[
     ("파일 수정 중", "editing files"),
     ("명령 실행 중", "running command"),
     ("허가 기다림", "waiting for permission"),
+    ("도구 사용 허가 준비 중", "preparing tool permission"),
     ("맥락 정리 중", "compacting context"),
     ("공급자 전환 중", "switching provider"),
     ("하위 에이전트", "subagents"),
@@ -270,15 +272,9 @@ const ENGLISH: &[(&str, &str)] = &[
     ("골라서 이어서", "choose what to continue"),
     ("그대로 두기", "leave as is"),
     ("실행", "run"),
-    (
-        "이 작업 동안 같은 명령 허용",
-        "allow this command for this task",
-    ),
-    ("실행하지 않고 계속", "don't run, continue"),
-    (
-        "실행하지 않고 다르게 하라고 말하기",
-        "don't run, tell it what to do instead",
-    ),
+    ("이번만 허용", "allow once"),
+    ("항상 허용", "always allow"),
+    ("거부", "deny"),
     ("전체", "all"),
     ("확인 필요", "needs check"),
     ("실행 중", "running"),

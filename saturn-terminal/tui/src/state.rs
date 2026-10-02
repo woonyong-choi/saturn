@@ -13,6 +13,9 @@ use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 
 use crate::labels;
 
+/// 도구 호출이 시작되고 허가 요청이나 진행 이벤트 없이 이만큼 지나면 상태판에 준비 중을 보인다.
+pub const APPROVAL_PENDING_AFTER: Duration = Duration::from_secs(3);
+
 /// 허가를 기다리는 동안은 멈춘다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Stopwatch {
@@ -68,6 +71,8 @@ pub struct TaskView {
     pub stopwatch: Stopwatch,
     pub reported_elapsed: Duration,
     pub failure: Option<String>,
+    /// 도구 호출이 시작된 뒤 허가 요청이나 다른 진행 이벤트가 아직 없으면 그 호출이 시작된 시각.
+    pub tool_started_at: Option<Instant>,
     /// 같은 종류 줄 안의 접수 순서 정렬에 쓴다.
     pub seq: u64,
     /// `ThreadCumulative` 보고의 에이전트별 직전 누적이며 차이만 합계에 더한다.
@@ -254,6 +259,7 @@ impl ChatState {
             stopwatch: Stopwatch::start_with(now, update.elapsed),
             reported_elapsed: update.elapsed,
             failure: None,
+            tool_started_at: None,
             seq,
             cumulative: BTreeMap::new(),
         });
@@ -302,6 +308,8 @@ impl ChatState {
         let Some(view) = self.tasks.get_mut(&task) else {
             return Change::Redraw;
         };
+        view.tool_started_at =
+            matches!(event, ProviderEvent::ToolCall { subagent: None, .. }).then_some(now);
         match event {
             ProviderEvent::Text {
                 subagent: None,

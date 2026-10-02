@@ -18,6 +18,7 @@ use saturn_core::providers::{
 };
 use saturn_protocol::event::{ProviderEvent, TurnOrigin};
 use saturn_protocol::ids::{Provider, ProviderSessionId, SettingsRevision};
+use saturn_protocol::rpc::PermissionAnswer;
 
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::secrets::Masker;
@@ -192,6 +193,20 @@ impl ProviderClient for ProviderConnection {
             Self::Claude(client) => client.compact(session).await,
             #[cfg(test)]
             Self::Fake(client) => client.compact(session).await,
+        }
+    }
+
+    async fn answer_permission(
+        &mut self,
+        session: &ProviderSessionId,
+        request_id: &str,
+        answer: PermissionAnswer,
+    ) -> Result<(), ProviderError> {
+        match self {
+            Self::Codex(client) => client.answer_permission(session, request_id, answer).await,
+            Self::Claude(client) => client.answer_permission(session, request_id, answer).await,
+            #[cfg(test)]
+            Self::Fake(client) => client.answer_permission(session, request_id, answer).await,
         }
     }
 

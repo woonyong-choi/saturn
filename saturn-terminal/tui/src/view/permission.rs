@@ -1,6 +1,6 @@
 //! 허가 요청 창. 도착한 순서대로 한 번에 하나씩 뜬다.
 //! 설계: docs/design/tui.md
-//! TODO(#56): `Esc`(다르게 하라고 말하기) 뒤 입력을 받는 방식
+//! TODO(#56): 거부와 함께 다르게 하라는 말을 받는 방식. 정해지기 전에는 말 없이 거부한다
 
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};
@@ -136,10 +136,9 @@ impl PermissionView<'_> {
         ];
         lines.extend(
             [
-                ("y", i18n::PERMISSION_ALLOW),
-                ("a", i18n::PERMISSION_ALLOW_FOR_TASK),
-                ("d", i18n::PERMISSION_DENY),
-                ("Esc", i18n::PERMISSION_DENY_AND_REDIRECT),
+                ("y", i18n::PERMISSION_ALLOW_ONCE),
+                ("a", i18n::PERMISSION_ALLOW_ALWAYS),
+                ("d/Esc", i18n::PERMISSION_DENY),
             ]
             .into_iter()
             .map(|(key, text)| {
@@ -197,11 +196,14 @@ mod tests {
         let mut queue = PermissionQueue::new();
         queue.push(request("r1"), now);
 
-        let early = queue.answer(PermissionAnswer::Allow, now + Duration::from_millis(500));
-        let late = queue.answer(PermissionAnswer::Allow, now + Duration::from_secs(1));
+        let early = queue.answer(
+            PermissionAnswer::AllowOnce,
+            now + Duration::from_millis(500),
+        );
+        let late = queue.answer(PermissionAnswer::AllowOnce, now + Duration::from_secs(1));
 
         assert_eq!(early, None);
-        assert_eq!(late, Some(("r1".to_string(), PermissionAnswer::Allow)));
+        assert_eq!(late, Some(("r1".to_string(), PermissionAnswer::AllowOnce)));
         assert!(queue.is_empty());
     }
 
@@ -215,7 +217,7 @@ mod tests {
         queue.push(request("r2"), now);
         let later = now + Duration::from_secs(2);
 
-        queue.answer(PermissionAnswer::Deny, later);
+        queue.answer(PermissionAnswer::Deny { note: None }, later);
 
         assert_eq!(queue.current().map(|r| r.request_id.as_str()), Some("r2"));
         assert!(!queue.accepts_input(later));
@@ -275,7 +277,9 @@ mod tests {
             .map(|cell| cell.symbol())
             .collect();
         assert!(content.contains("[A] codex"));
-        assert!(content.contains("y run"));
+        assert!(content.contains("y allow once"));
+        assert!(content.contains("a always allow"));
+        assert!(content.contains("d/Esc deny"));
         assert!(content.contains("other tasks waiting for permission: 1"));
     }
 }

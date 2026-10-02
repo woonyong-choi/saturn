@@ -83,7 +83,7 @@ impl TrainConfirmView<'_> {
             Line::from(""),
         ];
         for (choice, text) in [
-            (TrainChoice::Run, i18n::PERMISSION_ALLOW),
+            (TrainChoice::Run, i18n::TRAIN_RUN),
             (TrainChoice::Cancel, i18n::CANCEL),
         ] {
             let style = if choice == confirm.selected {

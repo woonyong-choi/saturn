@@ -5,6 +5,7 @@ use std::future::Future;
 
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, ProviderSessionId, SettingsRevision, SubagentId};
+use saturn_protocol::rpc::PermissionAnswer;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderError {
@@ -97,6 +98,19 @@ pub trait ProviderClient: Send {
     fn compact(
         &mut self,
         session: &ProviderSessionId,
+    ) -> impl Future<Output = Result<(), ProviderError>> + Send;
+
+    /// `PermissionRequested`의 `request_id`에 사용자 답을 provider 값으로 바꿔 돌려준다. 답이 갈 때까지
+    /// provider는 그 호출에서 멈춰 있고, 답한 뒤 이어진다. `AllowAlways`를 보낼 값이 provider에 없으면
+    /// `AllowOnce`로 보낸다.
+    ///
+    /// # Errors
+    /// 모르는 요청(이미 답했거나 끝난 요청)이면 `NotSent`이고, 쓰기에 실패하면 구현이 정한다.
+    fn answer_permission(
+        &mut self,
+        session: &ProviderSessionId,
+        request_id: &str,
+        answer: PermissionAnswer,
     ) -> impl Future<Output = Result<(), ProviderError>> + Send;
 
     /// provider session id는 호출자가 보관해 재개에 쓴다.
