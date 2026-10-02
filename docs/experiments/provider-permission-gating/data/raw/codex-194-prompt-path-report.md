@@ -3,7 +3,7 @@
 ## 방법
 
 - 기준: Codex CLI 0.158.0, app-server stdio JSON-RPC.
-- 전용 `CODEX_HOME`만 사용하고 `auth.json`은 `/Users/woonyong/.codex/auth.json`을 가리키는 심볼릭 링크로 두었다. 원본 인증 파일은 복사·이동·수정하지 않았다.
+- 전용 `CODEX_HOME`만 사용하고 `auth.json`은 `~/.codex/auth.json`을 가리키는 심볼릭 링크로 두었다. 원본 인증 파일은 복사·이동·수정하지 않았다.
 - `thread/start`에 `approvalPolicy="untrusted"`를 전달했다.
 - 각 회차 첫 턴 전에 `mcpServerStatus/list`로 `saturn_prompt_fixture/write_like_tool` 목록을 확인했다. `mcp_optional_startup_grace_ms=12000`, 서버 `startup_timeout_sec=30`을 사용했다.
 - 사용자 MCP 서버는 설정하지 않았다. `mcpServer/tool/call` 직접 호출도 하지 않았다.

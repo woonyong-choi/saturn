@@ -5,7 +5,7 @@
 - 기준: `woonyong-choi/saturn` 이슈 #194의 앞선 댓글 전체와 마지막 전용 `CODEX_HOME` 실험 방법.
 - Codex CLI: `0.158.0`.
 - worktree: `../saturn.wt/experiment-194-codex-plug`, `origin/main` 기준.
-- 전용 home: `codex-home/`. `auth.json`은 `/Users/woonyong/.codex/auth.json`을 가리키는 심볼릭 링크만 만들었다. 원본 값은 읽거나 출력하지 않았다.
+- 전용 home: `codex-home/`. `auth.json`은 `~/.codex/auth.json`을 가리키는 심볼릭 링크만 만들었다. 원본 값은 읽거나 출력하지 않았다.
 - 설정: `approvalPolicy=untrusted`를 `thread/start`에 전달했다. 전용 `config.toml`에는 `approval_policy="on-request"`, `sandbox_mode="workspace-write"`, MCP 서버·도구별 `prompt` 설정을 두었다. `rules/default.rules`에는 실험 명령을 모두 `prompt`로 적었다.
 - 사용한 app-server 드라이버와 관측 원자료: 실험 worktree의 `run-experiment.py`, `experiment-logs/observations.jsonl`.
 - 모델 호출: 전용 home의 rollout 기록 53회(부모 thread 48회, subagent child thread 5회). 제한 60회 안에서 종료했다. 초기 timeout/중단으로 끝난 호출도 시도 횟수에 포함했다.

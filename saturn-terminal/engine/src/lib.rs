@@ -666,7 +666,7 @@ impl Engine {
     }
 
     /// 보류는 자동으로 이어 가지 않는다.
-    /// TODO(#49): 완료 알림 설정 키. TODO(#151): 알림 보내는 방법
+    /// TODO(#235): 완료 알림 설정 키. TODO(#151): 알림 보내는 방법
     fn enter_background(&mut self) {
         todo!("#90")
     }

@@ -19,7 +19,7 @@ use connection::{Connection, Outbox};
 pub use lock::{EngineLock, LOCK_FILE};
 
 /// 초안. `~/.saturn/` 아래. TUI `EngineClient::default_socket`과 같은 경로.
-/// TODO(#49): 경로 설정 키
+/// TODO(#235): 경로 설정 키
 pub const SOCKET_FILE: &str = "engine.sock";
 
 /// 초안. 소켓을 같은 사용자만 열 수 있게 한다.
