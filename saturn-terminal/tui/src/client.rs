@@ -179,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    fn attach_env_takes_only_listed_names_and_never_the_judge_key() {
+    fn attach_env_takes_only_listed_names_and_never_the_router_key() {
         let process = [
             ("PATH", "/opt/bin:/usr/bin"),
             ("SATURN_KEY", "sk-secret"),
@@ -238,7 +238,7 @@ mod tests {
         let mut client = EngineClient::connect(&socket).await.unwrap();
 
         client.send(Request::ListTasks).await.unwrap();
-        client.send(Request::ListJudgeVersions).await.unwrap();
+        client.send(Request::ListRouterVersions).await.unwrap();
         let received = client.next().await;
 
         assert_eq!(received, Some(notice()));

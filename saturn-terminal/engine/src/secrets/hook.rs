@@ -1,5 +1,5 @@
 //! Saturn 소유 PreToolUse 훅: 에이전트의 키 저장소 조회와 Saturn 비밀 파일 접근을 막는다. 명령 이름과 차단 목록은 초안이다.
-//! 설계: docs/design/judge-key-security.md
+//! 설계: docs/design/router-key-security.md
 
 use std::path::{Path, PathBuf};
 
@@ -21,7 +21,7 @@ const COMMAND_WRAPPERS: &[&str] = &["sudo", "env", "command", "exec", "nohup", "
 const COMMAND_SEPARATORS: &[&str] = &["&&", "||", ";", "|", "$(", "`", "(", ")", "\n", "&"];
 
 /// 에이전트에 그대로 보이므로 경로와 키 값을 넣지 않는다.
-const DENY_REASON: &str = "blocked by saturn: judge key storage is not available to agents";
+const DENY_REASON: &str = "blocked by saturn: router key storage is not available to agents";
 
 /// provider 고유 형식은 `providers/claude`가 이것으로 바꿔 넘긴다.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -210,7 +210,7 @@ mod tests {
             "FOO=1 sudo security -q find-internet-password -a x",
             "echo $(security export -k login.keychain)",
             "cat ~/Library/Keychains/login.keychain-db",
-            "cp \"$HOME/.saturn/judge.key\" /tmp/x",
+            "cp \"$HOME/.saturn/router.key\" /tmp/x",
         ];
 
         for command in commands {

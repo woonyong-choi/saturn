@@ -11,7 +11,7 @@ use crate::chat_env::ChatEnv;
 use crate::providers::ProviderConnection;
 use crate::providers::test_support::{Call, FakeProvider};
 use crate::rpc::ClientId;
-use crate::secrets::JUDGE_KEY_ENV;
+use crate::secrets::ROUTER_KEY_ENV;
 use crate::store::HistoryEntry;
 
 #[tokio::test]
@@ -40,8 +40,8 @@ async fn record_write_failure_sends_nothing_anywhere() {
 
     assert!(matches!(error, EngineError::Store(_)));
     assert!(flow.fake.calls().is_empty());
-    assert_eq!(flow.judge_calls(), 0);
-    assert_eq!(flow.engine.queue.next_to_judge(flow.chat), None);
+    assert_eq!(flow.router_calls(), 0);
+    assert_eq!(flow.engine.queue.next_to_router(flow.chat), None);
     flow.engine.store.allow_writes().await;
     let (entries, _) = flow
         .engine
@@ -110,7 +110,7 @@ async fn unattached_client_cannot_submit() {
 }
 
 #[tokio::test]
-async fn inputs_are_judged_one_at_a_time_in_accept_order() {
+async fn inputs_are_routerd_one_at_a_time_in_accept_order() {
     let mut flow = Flow::new(vec![
         idle_reply(0.95),
         running_reply(0.95, "continues", "queue"),
@@ -130,7 +130,7 @@ async fn inputs_are_judged_one_at_a_time_in_accept_order() {
     assert!(bodies[2].contains("second request"));
     assert!(bodies[2].contains("chat: running"));
     assert_eq!(flow.state(second), InputState::Queued);
-    assert_eq!(flow.judge_calls(), 2);
+    assert_eq!(flow.router_calls(), 2);
 }
 
 #[tokio::test]
@@ -173,14 +173,14 @@ async fn first_input_without_any_provider_is_rejected_and_sent_nowhere() {
 }
 
 #[tokio::test]
-async fn pinned_model_skips_judge_and_goes_to_the_session_as_given() {
+async fn pinned_model_skips_router_and_goes_to_the_session_as_given() {
     let mut flow = Flow::new(Vec::new()).await;
 
     let input = flow
         .submit_with("hello", Some("the-pinned-model"), false)
         .await;
 
-    assert_eq!(flow.judge_calls(), 0);
+    assert_eq!(flow.router_calls(), 0);
     assert_eq!(flow.state(input), InputState::Applied);
     assert!(matches!(
         &flow.fake.calls()[0],
@@ -200,7 +200,7 @@ async fn launch_spec_takes_workdir_and_env_from_the_chat() {
             other.clone(),
             vec![
                 ("PATH".to_owned(), "/opt/tui/bin".to_owned()),
-                (JUDGE_KEY_ENV.to_owned(), "sk-secret".to_owned()),
+                (ROUTER_KEY_ENV.to_owned(), "sk-secret".to_owned()),
             ],
         ),
     );
@@ -218,7 +218,7 @@ async fn launch_spec_takes_workdir_and_env_from_the_chat() {
         launch
             .env
             .iter()
-            .all(|(name, _)| name != JUDGE_KEY_ENV && name != "SATURN_KEY")
+            .all(|(name, _)| name != ROUTER_KEY_ENV && name != "SATURN_KEY")
     );
     assert!(launch.env.iter().any(|(name, _)| name == "PATH"));
     assert!(launch.hook_settings.is_some());

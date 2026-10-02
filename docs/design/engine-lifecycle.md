@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [engine을 상주 프로세스로 두고 TUI는 JSON-RPC로 붙는 클라이언트로 만든다](../decisions/2026-09-29-engine-centered-json-rpc.md), [외부 효과가 없음을 증명할 때만 크래시 뒤 자동으로 이어 간다](../decisions/2026-09-29-proof-based-auto-resume.md), [engine만 judge를 부르고 자식 프로세스 환경에서 judge 키를 지운다](../decisions/2026-09-29-engine-as-judge-proxy.md) |
+| 관련 결정 | [engine을 상주 프로세스로 두고 TUI는 JSON-RPC로 붙는 클라이언트로 만든다](../decisions/2026-09-29-engine-centered-json-rpc.md), [외부 효과가 없음을 증명할 때만 크래시 뒤 자동으로 이어 간다](../decisions/2026-09-29-proof-based-auto-resume.md), [engine만 router를 부르고 자식 프로세스 환경에서 router 키를 지운다](../decisions/2026-09-29-engine-as-router-proxy.md) |
 
 ## 요약
 
@@ -46,7 +46,7 @@
 
 ### 사용자당 engine 하나
 
-`engine`은 사용자마다 하나만 돌고, 잠금으로 이를 지킨다. 기록 저장소 `~/.saturn/saturn.db`에 쓰는 프로세스를 하나로 두어 쓰기 충돌을 막기 위해서다. judge 호출도 `engine`만 한다. judge 키가 TUI나 provider 자식 프로세스로 새는 일을 막기 위해서다. 자세한 judge 호출 규칙은 [judge](judge.md)에 있다.
+`engine`은 사용자마다 하나만 돌고, 잠금으로 이를 지킨다. 기록 저장소 `~/.saturn/saturn.db`에 쓰는 프로세스를 하나로 두어 쓰기 충돌을 막기 위해서다. router 호출도 `engine`만 한다. router 키가 TUI나 provider 자식 프로세스로 새는 일을 막기 위해서다. 자세한 router 호출 규칙은 [router](router.md)에 있다.
 
 TUI와 `cli`는 `engine` crate에 의존하지 않고, 이 경계는 Cargo 의존성으로 강제한다. TUI가 provider를 몰라도 Saturn 용어만으로 화면을 그리게 하기 위해서다.
 
@@ -58,15 +58,15 @@ TUI와 `cli`는 `engine` crate에 의존하지 않고, 이 경계는 Cargo 의�
 2. `store`가 스키마 버전이 올라갔는지 보고, 올라갔으면 스키마를 이관한다.
 3. `sessions`가 끝나지 않은 메인 session과 보관 session의 마지막 턴 값을 `store`에서 되살린다.
 4. `settings`가 기본값, 사용자, 실행 층을 병합하고 설정 번호를 확정한다. 폴더 층과 채팅 층은 채팅이 붙을 때 채팅마다 병합한다.
-5. `judges`가 판단 방식이 쓰는 judge가 응답하는지 확인한다.
+5. `routers`가 판단 방식이 쓰는 router가 응답하는지 확인한다.
 6. `rpc`가 Unix 소켓에서 JSON-RPC 접속을 받기 시작한다.
 7. `rpc`가 여러 TUI의 접속을 동시에 유지한다.
 
-앞 단계가 실패하면 뒤 단계를 하지 않는다. 판단 방식에 맞는 judge를 만들 수 없으면(허용 호스트가 아닌 주소, 설정이 없는 판단 방식) 소켓을 열지 않고 끝낸다. 키를 받아도 확인할 수 없기 때문이다.
+앞 단계가 실패하면 뒤 단계를 하지 않는다. 판단 방식에 맞는 router를 만들 수 없으면(허용 호스트가 아닌 주소, 설정이 없는 판단 방식) 소켓을 열지 않고 끝낸다. 키를 받아도 확인할 수 없기 때문이다.
 
-등록된 judge 키가 확인되면 화면이 있어도 키를 묻지 않는다. 키가 없거나 틀려 확인에 실패하면 `engine`은 `SATURN_KEY` 환경 변수, 비밀번호 관리자 명령(`judge.key.command`) 순서로 키를 받아 다시 확인한다. 표준 입력으로는 키를 받지 않는다. 그래도 실패하면 소켓은 연다. 다만 judge를 확인하기 전에는 `SubmitJudgeKey`, `Attach`, `Detach`만 받고, 나머지 요청은 오류 번호 `-32001`(초안)의 오류 응답으로 거절한다. TUI가 붙으면 시작 정보와 기록 뒤에 `JudgeKeyRequired`를 보내고, TUI가 보낸 키로 다시 확인해 성공하면 일반 요청을 받기 시작한다. 실패하면 오류 응답과 함께 `JudgeKeyRequired`를 다시 보낸다. `engine`은 터미널에서 직접 숨김 입력을 받지 않는다. 사용자당 하나인 상주 프로세스라 키를 물을 터미널을 갖지 않기 때문이다. judge 시작 확인은 [judge](judge.md)에, 키 요청과 저장 절차는 [judge 키 보호](judge-key-security.md)에 있다.
+등록된 router 키가 확인되면 화면이 있어도 키를 묻지 않는다. 키가 없거나 틀려 확인에 실패하면 `engine`은 `SATURN_KEY` 환경 변수, 비밀번호 관리자 명령(`router.key.command`) 순서로 키를 받아 다시 확인한다. 표준 입력으로는 키를 받지 않는다. 그래도 실패하면 소켓은 연다. 다만 router를 확인하기 전에는 `SubmitRouterKey`, `Attach`, `Detach`만 받고, 나머지 요청은 오류 번호 `-32001`(초안)의 오류 응답으로 거절한다. TUI가 붙으면 시작 정보와 기록 뒤에 `RouterKeyRequired`를 보내고, TUI가 보낸 키로 다시 확인해 성공하면 일반 요청을 받기 시작한다. 실패하면 오류 응답과 함께 `RouterKeyRequired`를 다시 보낸다. `engine`은 터미널에서 직접 숨김 입력을 받지 않는다. 사용자당 하나인 상주 프로세스라 키를 물을 터미널을 갖지 않기 때문이다. router 시작 확인은 [router](router.md)에, 키 요청과 저장 절차는 [router 키 보호](router-key-security.md)에 있다.
 
-폴더 설정은 TUI가 붙을 때 그 채팅의 작업 폴더로 병합한다. 처음 보거나 내용이 바뀐 폴더 설정은 빼고 병합하고, 그 TUI에 폴더 설정 신뢰 창을 보낸다. 키를 기다리는 동안에는 키를 받은 뒤 보낸다. TUI는 창을 한 번에 하나만 띄우기 때문이다. 적용을 고르면 신뢰를 기록하고 그 채팅의 작업 폴더로 설정을 다시 병합해 같은 채팅에 붙은 모든 TUI에 `SettingsApplied`를 보내고, 고르지 않으면 그 채팅은 폴더 설정 없이 계속한다. 병합 결과에 경고가 있으면 붙을 때 `SettingsApplied`로 알린다. 설치 검증 테스트만을 위해 judge 확인을 건너뛰는 설정이 있고, 이 설정은 도움말에 보이지 않는다. judge 없이 설치만 검증하기 위해서다. 설정 층과 병합 규칙은 [설정](settings.md)에 있다.
+폴더 설정은 TUI가 붙을 때 그 채팅의 작업 폴더로 병합한다. 처음 보거나 내용이 바뀐 폴더 설정은 빼고 병합하고, 그 TUI에 폴더 설정 신뢰 창을 보낸다. 키를 기다리는 동안에는 키를 받은 뒤 보낸다. TUI는 창을 한 번에 하나만 띄우기 때문이다. 적용을 고르면 신뢰를 기록하고 그 채팅의 작업 폴더로 설정을 다시 병합해 같은 채팅에 붙은 모든 TUI에 `SettingsApplied`를 보내고, 고르지 않으면 그 채팅은 폴더 설정 없이 계속한다. 병합 결과에 경고가 있으면 붙을 때 `SettingsApplied`로 알린다. 설치 검증 테스트만을 위해 router 확인을 건너뛰는 설정이 있고, 이 설정은 도움말에 보이지 않는다. router 없이 설치만 검증하기 위해서다. 설정 층과 병합 규칙은 [설정](settings.md)에 있다.
 
 ### 스키마 이관
 
@@ -86,11 +86,11 @@ TUI와 `cli`는 Unix 소켓 위 JSON-RPC로 `engine`에 붙는다. 한 `engine`�
 
 TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 답을 기다리는 허가 요청 순서로 보낸 뒤 `Attach`에 응답한다. `chat`이 없으면 새 채팅을 만든다. `HistoryChunk`는 그 채팅에 접수한 입력과 provider 이벤트를 시각 순서로 합친 끝 50개(초안)이고, 기록에 없는 작업 글자와 처리 방식은 비운다. provider는 첫 입력 때 연결하므로 `StartInfo`의 provider 버전은 비어 있다. `LoadHistory`는 한 번에 500개(초안)까지 보낸다.
 
-`Attach`에는 그 TUI의 작업 폴더와 환경 변수(`env`)가 들어 있다. TUI는 터미널마다 따로 뜨고 터미널마다 PATH와 환경이 다르기 때문에, 상주 프로세스인 `engine`의 환경 대신 붙은 TUI의 값을 쓴다. `engine`은 새 채팅을 TUI가 넘긴 작업 폴더로 만들고 그 폴더를 채팅 기록에 고정한다. 이미 있는 채팅에 붙을 때는 TUI가 다른 폴더를 넘겨도 채팅의 폴더, 폴더 설정 층, 폴더 설정 신뢰 판단에 처음 폴더를 그대로 쓰고, 환경 변수만 그 채팅에 가장 최근에 붙은 TUI의 값으로 바꿔 저장한다. 채팅의 provider 실행 환경은 이 환경 변수로 정한다. 넘기는 변수는 `PATH`, `HOME`, `SHELL`, 로캘, 프록시 같은 실행에 필요한 것으로 한정하고(목록은 `saturn-protocol`의 `ATTACH_ENV_NAMES`, 초안), 넘겨받은 환경에 judge 키 변수가 있어도 provider 자식 환경에는 넣지 않는다. 처음 친 `saturn`이 `engine`을 띄우고 붙으며, 이후의 `saturn`은 붙기만 한다.
+`Attach`에는 그 TUI의 작업 폴더와 환경 변수(`env`)가 들어 있다. TUI는 터미널마다 따로 뜨고 터미널마다 PATH와 환경이 다르기 때문에, 상주 프로세스인 `engine`의 환경 대신 붙은 TUI의 값을 쓴다. `engine`은 새 채팅을 TUI가 넘긴 작업 폴더로 만들고 그 폴더를 채팅 기록에 고정한다. 이미 있는 채팅에 붙을 때는 TUI가 다른 폴더를 넘겨도 채팅의 폴더, 폴더 설정 층, 폴더 설정 신뢰 판단에 처음 폴더를 그대로 쓰고, 환경 변수만 그 채팅에 가장 최근에 붙은 TUI의 값으로 바꿔 저장한다. 채팅의 provider 실행 환경은 이 환경 변수로 정한다. 넘기는 변수는 `PATH`, `HOME`, `SHELL`, 로캘, 프록시 같은 실행에 필요한 것으로 한정하고(목록은 `saturn-protocol`의 `ATTACH_ENV_NAMES`, 초안), 넘겨받은 환경에 router 키 변수가 있어도 provider 자식 환경에는 넣지 않는다. 처음 친 `saturn`이 `engine`을 띄우고 붙으며, 이후의 `saturn`은 붙기만 한다.
 
 `cli`는 소켓에 먼저 붙어 보고, 받는 `engine`이 없을 때만 `saturn-engine`(`saturn`과 같은 폴더, 없으면 `PATH`)을 새 프로세스 그룹으로 띄워 `saturn`이 끝나도 남게 한다. `engine`의 stderr는 `~/.saturn/logs/engine.log`에 쌓는다. 로그가 10 MiB(초안)를 넘은 채 `engine`을 띄우면 `engine.log.1`로 옮기고 앞선 파일은 `engine.log.2`, `engine.log.3`으로 한 칸씩 밀어 5개(초안)까지만 보관한다. 돌리는 때는 `engine`을 띄울 때뿐이라 오래 도는 `engine`의 로그는 다음 시작 때 돈다. 소켓이 열릴 때까지 30초(초안)를 기다린다. 두 `saturn`이 동시에 띄워 한쪽 `engine`이 잠금을 얻지 못하고 끝나면, 소켓이 열리기를 2초(초안) 더 기다려 먼저 뜬 `engine`에 붙는다. 그래도 붙지 못하면 `engine.log` 끝 줄과 함께 오류로 끝낸다. 실행 층 `-c`는 `engine`을 띄울 때 넘기지 않고 `Attach`의 `overrides`로만 넘긴다. 이미 도는 `engine`에도 같은 방식으로 적용하고, 다른 접속에는 영향을 주지 않게 하기 위해서다. `saturn --resume <채팅 id>`는 그 id를 `Attach`의 `chat`으로 넘긴다. `--continue`와 `--resume`의 목록은 `engine`에 채팅 목록 요청이 생기기 전까지 오류로 끝낸다([#161](https://github.com/woonyong-choi/saturn/issues/161)).
 
-메시지는 JSON-RPC 2.0이고 소켓 한 줄에 하나씩 쓴다. 메서드 이름은 `saturn-protocol` 타입의 variant 이름, `params`는 그 필드다. 클라이언트의 요청에는 모두 `id`가 붙고, `engine`은 요청마다 같은 `id`의 응답 하나(`result: null` 또는 `error`)를 돌려준다. 조회 결과와 화면 갱신은 `id` 없는 알림으로 보낸다. 해석하지 못한 줄에는 읽어 낸 `id`(없으면 `null`)로 오류 응답을 보내고 연결은 유지한다. 오류 문구에는 입력 원문을 넣지 않는다. judge 키가 들어 있을 수 있기 때문이다. 메시지의 JSON Schema와 TypeScript 타입은 `saturn-protocol/generated/`에 있고 `cargo run -p saturn-protocol --example codegen`으로 다시 만든다.
+메시지는 JSON-RPC 2.0이고 소켓 한 줄에 하나씩 쓴다. 메서드 이름은 `saturn-protocol` 타입의 variant 이름, `params`는 그 필드다. 클라이언트의 요청에는 모두 `id`가 붙고, `engine`은 요청마다 같은 `id`의 응답 하나(`result: null` 또는 `error`)를 돌려준다. 조회 결과와 화면 갱신은 `id` 없는 알림으로 보낸다. 해석하지 못한 줄에는 읽어 낸 `id`(없으면 `null`)로 오류 응답을 보내고 연결은 유지한다. 오류 문구에는 입력 원문을 넣지 않는다. router 키가 들어 있을 수 있기 때문이다. 메시지의 JSON Schema와 TypeScript 타입은 `saturn-protocol/generated/`에 있고 `cargo run -p saturn-protocol --example codegen`으로 다시 만든다.
 
 사용자당 잠금은 `~/.saturn/engine.lock`의 `flock`이다. 프로세스가 죽으면 운영체제가 풀기 때문에 남은 잠금 파일을 지울 필요가 없다. 소켓은 `~/.saturn/engine.sock`이고 권한은 0600이다. 남은 소켓 파일은 잠금을 얻은 뒤에만 지운다. 답을 기다리는 허가 요청은 TUI가 붙어 있어도 답이 올 때까지 보관한다. 나중에 붙는 TUI도 같은 창을 띄우게 하기 위해서다. 클라이언트마다 보낼 메시지를 1024개까지 쌓고, 넘치면 기다리지 않고 그 연결을 끊는다. 느린 TUI 하나가 `engine`을 멈추지 않게 하기 위해서다. 끊긴 TUI는 다시 붙어 기록으로 화면을 되살린다. 파일 이름, 권한, 쌓는 개수는 초안이다.
 
@@ -184,9 +184,9 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 | 상황 | 동작 |
 |---|---|
-| 판단 방식에 맞는 judge를 만들 수 없음 | 원인을 한 줄로 보이고 소켓을 열지 않고 끝낸다. |
-| judge 키가 없거나 틀려 시작 확인 실패 | 소켓을 열고 TUI가 키를 보낼 때까지 `SubmitJudgeKey`, `Attach`, `Detach` 밖의 요청을 오류 응답으로 거절한다. |
-| 화면이 없는 환경(파이프, CI)의 judge 확인 실패 | `engine`은 키를 기다리고, `cli`가 키를 묻지 않고 끝내며 `SATURN_KEY` 환경 변수와 `judge.key.command` 설정 방법을 안내한다. |
+| 판단 방식에 맞는 router를 만들 수 없음 | 원인을 한 줄로 보이고 소켓을 열지 않고 끝낸다. |
+| router 키가 없거나 틀려 시작 확인 실패 | 소켓을 열고 TUI가 키를 보낼 때까지 `SubmitRouterKey`, `Attach`, `Detach` 밖의 요청을 오류 응답으로 거절한다. |
+| 화면이 없는 환경(파이프, CI)의 router 확인 실패 | `engine`은 키를 기다리고, `cli`가 키를 묻지 않고 끝내며 `SATURN_KEY` 환경 변수와 `router.key.command` 설정 방법을 안내한다. |
 | 시작 때 이전 설정 번호 없음 | 실행하지 않는다. |
 | 설정 검사 실패 | 이전 설정 번호를 유지하고 경고한다. |
 | `engine` 비정상 종료 | 다시 시작한 `engine`이 `effect_scope`로 자동 재개와 보류를 나눈다. |
@@ -201,14 +201,14 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | `engine`은 사용자당 하나만 실행된다. | 같은 사용자로 `engine`을 두 번 띄우면 두 번째가 잠금을 얻지 못하고 기존 `engine`에 붙는지 확인 |
 | `engine`의 stderr는 `~/.saturn/logs/engine.log`에 쌓이고, 상한을 넘으면 정해진 개수까지 돌려 쓴다. | `saturn-terminal/cli/src/launch.rs`의 `spawn_engine_passes_home_and_writes_stderr_to_engine_log_under_logs`, `spawn_engine_rotates_an_engine_log_over_the_cap_before_writing`, `engine_log_within_the_cap_is_not_rotated`, `engine_log_over_the_cap_shifts_numbered_files_and_keeps_only_the_newest`, `engine_log_without_a_file_has_nothing_to_rotate` |
 | TUI를 닫아도 `engine`은 접수된 입력을 계속 처리한다. | TUI 연결을 끊은 뒤 대기 입력이 순서대로 provider에 전달되는지 확인 |
-| judge를 확인하기 전에는 judge 키 제출과 채팅 붙기 밖의 요청을 받지 않는다. | judge 키가 없는 환경에서 일반 요청이 오류 응답으로 거절되고, 키를 보낸 뒤에는 처리되는지 확인 |
+| router를 확인하기 전에는 router 키 제출과 채팅 붙기 밖의 요청을 받지 않는다. | router 키가 없는 환경에서 일반 요청이 오류 응답으로 거절되고, 키를 보낸 뒤에는 처리되는지 확인 |
 | 채팅의 폴더, 폴더 설정 층, 폴더 설정 신뢰 판단은 채팅을 만든 폴더로 정하고, provider 실행 환경은 가장 최근에 붙은 TUI의 환경으로 정한다. | 다른 폴더에서 같은 채팅에 붙어도 폴더와 신뢰 창이 처음 폴더 그대로이고 환경만 바뀌는지 확인 |
 | 더한 폴더는 채팅 기록에 저장돼 이어 열 때 되살아나고, 모든 provider session에 넘어가며, 그 폴더의 설정 파일은 읽지 않는다. | `saturn-terminal/engine/src/lifecycle/add_dir.rs`의 `add_dir_from_attach_is_saved_and_kept_when_the_chat_is_opened_again`, `add_dir_is_read_from_records_not_from_memory_when_a_chat_is_reopened`, `add_dir_reaches_the_session_spec_of_every_provider`, `add_dir_settings_file_is_not_read` |
 | 쓰는 중에 더한 폴더는 열린 session을 건드리지 않고 다음 session부터 적용하며 TUI에 알린다. | `saturn-terminal/engine/src/lifecycle/add_dir.rs`의 `add_dir_while_a_session_is_open_applies_from_the_next_session`, `add_dir_without_an_open_session_applies_at_once`, `add_dir_twice_or_the_base_folder_changes_nothing` |
 | 폴더가 아니거나 붙지 않은 채팅이면 더하지 않고, 틀린 `--add-dir`는 채팅을 만들지 않는다. | `saturn-terminal/engine/src/lifecycle/add_dir.rs`의 `add_dir_refuses_other_clients_and_paths_that_are_not_folders`, `add_dir_with_a_bad_attach_path_creates_no_chat`, `saturn-terminal/cli/src/commands/chat.rs`의 `add_dir_resolves_to_absolute_folders_and_rejects_files_and_missing_paths` |
 | 다른 폴더의 채팅을 이어 열면 그 채팅의 기본 폴더에서 일한다. | `--resume all`로 다른 폴더의 채팅을 열어 작업 폴더가 처음 폴더인지 확인 |
-| 넘겨받은 환경의 judge 키 변수는 provider 자식 환경에 들어가지 않는다. | `Attach`의 `env`에 `SATURN_KEY`를 넣어도 그 채팅의 provider 환경에 없는지 확인 |
-| 판단 방식에 맞는 judge를 만들 수 없으면 Saturn을 실행하지 않는다. | 허용 호스트가 아닌 judge 주소로 `engine`을 띄워 소켓을 열지 않고 끝나는지 확인 |
+| 넘겨받은 환경의 router 키 변수는 provider 자식 환경에 들어가지 않는다. | `Attach`의 `env`에 `SATURN_KEY`를 넣어도 그 채팅의 provider 환경에 없는지 확인 |
+| 판단 방식에 맞는 router를 만들 수 없으면 Saturn을 실행하지 않는다. | 허용 호스트가 아닌 router 주소로 `engine`을 띄워 소켓을 열지 않고 끝나는지 확인 |
 | 스키마를 올리기 전 백업 하나를 남긴다. | 옛 스키마 저장소로 새 버전을 실행한 뒤 백업이 하나만 남고 스키마가 올라갔는지 확인 |
 | 크래시 뒤 자동 재개는 효과 범위가 설정이나 관찰로 증명된 실행에만 한다. | [공급자 적용 설정의 보고 범위 측정](https://github.com/woonyong-choi/saturn/issues/4), [하위 에이전트 외부 효과 경로 측정](https://github.com/woonyong-choi/saturn/issues/22) |
 | 자동으로 이어 갈 때 같은 패킷을 다시 보내지 않는다. | 자동 재개 때 파일 상태로 만든 새 입력만 전송되는지 확인 |

@@ -15,16 +15,16 @@ pub(crate) struct PacketArgs {
     /// 패킷 상한 `P_max`(토큰). 발동 기준 `T`는 이 값의 10배로 둔다.
     #[arg(long, visible_alias = "budget", value_name = "TOKENS")]
     pub(crate) budget_tokens: u64,
-    /// 경쟁 구역의 순서 규칙. 없으면 `--judgments`가 있을 때 `judge-only`, 없을 때 `rrf-only`다.
+    /// 경쟁 구역의 순서 규칙. 없으면 `--judgments`가 있을 때 `router-only`, 없을 때 `rrf-only`다.
     #[arg(long, value_enum)]
     pub(crate) condition: Option<PacketCondition>,
-    /// `rrf-judge`에서 judge 판단을 쓰는 RRF 상위 후보 수.
+    /// `rrf-router`에서 router 판단을 쓰는 RRF 상위 후보 수.
     #[arg(long, value_name = "N", default_value_t = 10)]
     pub(crate) top_n: usize,
     /// RRF 합치기 상수.
     #[arg(long, value_name = "K", default_value_t = DEFAULT_RRF_K)]
     pub(crate) k: u32,
-    /// judge 판단 JSON(`compact`, `constraints`). 없으면 RRF 순서로 채운다.
+    /// router 판단 JSON(`compact`, `constraints`). 없으면 RRF 순서로 채운다.
     #[arg(long, value_name = "FILE")]
     pub(crate) judgments: Option<PathBuf>,
     /// 시나리오 JSONL. 있으면 표준 입력 대신 이 파일의 `--scenario-id` 시나리오를 읽는다.
@@ -56,12 +56,12 @@ pub(crate) enum PacketMode {
 /// 경쟁 구역 순서 조건.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub(crate) enum PacketCondition {
-    /// judge 판단을 쓰지 않고 RRF 순서로 채운다.
+    /// router 판단을 쓰지 않고 RRF 순서로 채운다.
     RrfOnly,
     /// RRF 상위 `--top-n`개의 판단만 쓴다.
-    RrfJudge,
+    RrfRouter,
     /// 후보 전체의 판단을 쓴다.
-    JudgeOnly,
+    RouterOnly,
 }
 
 /// 패킷 출력 형식.

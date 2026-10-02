@@ -29,7 +29,7 @@ MODEL = "jev-1.13.0"
 ORDER_SEED = 152
 SOURCE = "jev"
 CONSTRAINT_THRESHOLD = 0.7
-# judge.md 재시도 기본값과 같다.
+# router.md 재시도 기본값과 같다.
 SEND_RETRIES = 3
 RATE_LIMIT_RETRIES = 3
 RATE_LIMIT_WAIT_SECONDS = 2.0

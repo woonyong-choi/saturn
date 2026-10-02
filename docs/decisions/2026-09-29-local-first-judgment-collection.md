@@ -5,7 +5,7 @@
 | 날짜 | 2026-09-29 |
 | 상태 | 채택 |
 | 대체 | 없음 |
-| 관련 문서 | [아키텍처](../architecture.md), [judge 학습](../design/judge-training.md) |
+| 관련 문서 | [아키텍처](../architecture.md), [router 학습](../design/router-training.md) |
 
 ## 배경
 
@@ -27,7 +27,7 @@
 - `consent.share_with_server = true`인 레코드만 업로드, 동의 버전과 삭제 id 기록
 - 삭제 요청 레코드는 다음 학습부터 제외
 - 업로드 경로를 레코드 보내기 인터페이스 하나 뒤에 배치
-- 원격 HTTP judge도 붙는 judge 연결 구조 유지
+- 원격 HTTP router도 붙는 router 연결 구조 유지
 - 사용자 컴퓨터의 로컬 모델 실행 자원 부담
 
 ## 다시 볼 조건

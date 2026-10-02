@@ -1,14 +1,14 @@
-//! judge 학습용 채점과 라벨 나누기.
-//! 설계: docs/design/judge-training.md
+//! router 학습용 채점과 라벨 나누기.
+//! 설계: docs/design/router-training.md
 //! TODO(#45): 채점 모델 출력을 학습에도 쓸지 미정, 그때까지 라벨에 출처를 남긴다
 //! TODO(#64): subagent 출력이 섞인 턴의 처리 미정
 
-use saturn_core::judges::Answer;
-use saturn_core::judges::calibration::{Label, Signal};
+use saturn_core::routers::Answer;
+use saturn_core::routers::calibration::{Label, Signal};
 use saturn_protocol::ids::JudgmentId;
 
 use super::TrainingError;
-use crate::judges::RemoteJudge;
+use crate::routers::RemoteRouter;
 
 #[derive(Debug, Clone)]
 pub struct GradingCandidate {
@@ -19,7 +19,7 @@ pub struct GradingCandidate {
     /// 관찰 시간 전이면 `None`.
     pub signal: Option<Signal>,
     pub confidence: f64,
-    /// judge끼리 답이 갈렸는지.
+    /// router끼리 답이 갈렸는지.
     pub disagreement: bool,
     /// 결정 이후 대화의 가린 원문.
     pub later_context: String,
@@ -48,7 +48,7 @@ pub fn estimate_tokens(candidates: &[GradingCandidate], graders: usize) -> u64 {
 /// # Errors
 /// 채점 모델 호출이 실패하면 `Grader`.
 pub async fn grade(
-    grader: &RemoteJudge,
+    grader: &RemoteRouter,
     candidate: &GradingCandidate,
 ) -> Result<Label, TrainingError> {
     todo!("#91")

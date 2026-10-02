@@ -129,8 +129,8 @@
 
 | 가설 | 판정 | 반영한 문서 |
 |---|---|---|
-| H1 | 채택 | [judge](../../design/judge.md), [맥락 고르기](../../design/context-selection.md) |
-| H2 | 채택 | [judge](../../design/judge.md), [맥락 고르기](../../design/context-selection.md) |
+| H1 | 채택 | [judge](../../design/router.md), [맥락 고르기](../../design/context-selection.md) |
+| H2 | 채택 | [judge](../../design/router.md), [맥락 고르기](../../design/context-selection.md) |
 | H3 | 보류 | 없음 |
 | H4 | 보류 | 없음 |
 | H5 | 보류 | 없음 |

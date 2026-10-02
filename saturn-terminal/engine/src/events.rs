@@ -388,7 +388,7 @@ impl Engine {
         live: &LiveSession,
         request: PermissionRequest<'_>,
     ) {
-        let answer = match self.judge_permission(chat, live.agent, request.call).await {
+        let answer = match self.router_permission(chat, live.agent, request.call).await {
             Verdict::Allow => Some(PermissionAnswer::AllowOnce),
             Verdict::Deny => Some(PermissionAnswer::Deny { note: None }),
             Verdict::Ask => None,

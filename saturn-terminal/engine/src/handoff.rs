@@ -51,7 +51,7 @@ struct Tool {
 // vars: L = 기록 글자 수, c = 도구 호출 수
 // basis: estimate
 /// 순서는 후보 순위(RRF)만 쓴다. 제약 식별과 `compact` 판단 순서는 아직 넣지 않는다.
-/// TODO(#90): 고정 구역의 "현재 목표"와 "끝나지 않은 항목"을 뽑는 규칙, 제약 식별(`constraints`)과 judge `compact` 순서가 정해지기 전까지 목표는 마지막 입력, 제약은 빈 목록이다
+/// TODO(#90): 고정 구역의 "현재 목표"와 "끝나지 않은 항목"을 뽑는 규칙, 제약 식별(`constraints`)과 router `compact` 순서가 정해지기 전까지 목표는 마지막 입력, 제약은 빈 목록이다
 pub(crate) fn build_handoff(rows: &[LedgerRow], budget: &ContextBudget) -> HandoffOutcome {
     let Some(last) = rows.last() else {
         return HandoffOutcome::Empty;

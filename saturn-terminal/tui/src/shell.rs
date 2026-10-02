@@ -1,11 +1,11 @@
-//! 입력창 `!` 셸 명령. judge와 engine을 거치지 않고 작업 폴더에서 바로 실행한다.
+//! 입력창 `!` 셸 명령. router와 engine을 거치지 않고 작업 폴더에서 바로 실행한다.
 //! 설계: docs/design/tui.md
 
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use crate::JUDGE_KEY_ENV;
+use crate::ROUTER_KEY_ENV;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ShellError {
@@ -76,7 +76,7 @@ fn run_blocking(command: &str, workdir: &Path) -> Result<ShellOutput, ShellError
         Command::new(shell_program())
             .arg("-c")
             .arg(command)
-            .env_remove(JUDGE_KEY_ENV)
+            .env_remove(ROUTER_KEY_ENV)
             .current_dir(workdir)
             .stdin(Stdio::null())
             .stdout(writer)

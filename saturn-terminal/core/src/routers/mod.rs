@@ -1,5 +1,5 @@
-//! judge 요청을 만들고 답을 행동으로 바꾸는 순수 규칙(구현은 `saturn-engine`의 `judges`).
-//! 설계: docs/design/judge.md
+//! router 요청을 만들고 답을 행동으로 바꾸는 순수 규칙(구현은 `saturn-engine`의 `routers`).
+//! 설계: docs/design/router.md
 
 pub mod calibration;
 pub mod failure;
@@ -44,21 +44,21 @@ pub const SEND_OPTIONS: [&str; 4] = ["steer", "queue", "spawn", "other"];
 const OTHER: &str = "other";
 
 #[derive(Debug, thiserror::Error)]
-pub enum JudgeError {
+pub enum RouterError {
     /// 재시도가 끝나도 응답이 없으면 현재 에이전트와 현재 모델로 진행한다.
-    #[error("judge did not respond")]
+    #[error("router did not respond")]
     NoResponse,
     /// `cost-unknown`으로 기록하고 다시 보낸다.
-    #[error("judge timed out after send")]
+    #[error("router timed out after send")]
     TimedOutAfterSend,
     /// 연결 실패와 구분해 키 입력 창을 띄운다.
-    #[error("judge rejected the key")]
+    #[error("router rejected the key")]
     Unauthorized,
     /// 기다렸다가 다시 보낸다.
-    #[error("judge rate limited")]
+    #[error("router rate limited")]
     RateLimited,
     /// 후보 밖 선택, NaN, 확률 누락이면 `invalid`로 기록하고 대체 규칙을 적용한다.
-    #[error("judge answer is invalid: {reason}")]
+    #[error("router answer is invalid: {reason}")]
     Invalid { reason: String },
     /// `superseded`로 기록한다.
     #[error("chat revision changed during judgment")]
@@ -161,7 +161,7 @@ pub enum JudgmentOutcome {
 
 /// 입력당 한 번 부르고 필요한 질문을 모두 묶는다.
 #[derive(Debug, Clone)]
-pub struct JudgeRequest {
+pub struct RouterRequest {
     /// 고정 버전 이름을 쓰고, 별칭이면 응답의 `model`을 기록한다.
     pub model: String,
     /// 비밀값, 절대 경로, 다른 대화 원문은 넣지 않는다.
@@ -170,33 +170,33 @@ pub struct JudgeRequest {
 }
 
 #[derive(Debug, Clone)]
-pub struct JudgeResponse {
+pub struct RouterResponse {
     pub model: String,
     pub answers: Vec<(String, Answer)>,
     /// (입력, 출력) 토큰.
     pub tokens: (u64, u64),
 }
 
-/// 모든 judge는 이 trait의 구현으로만 붙는다.
-pub trait JudgeClient: Send + Sync {
+/// 모든 router는 이 trait의 구현으로만 붙는다.
+pub trait RouterClient: Send + Sync {
     /// # Errors
     /// 실패하면 호출자는 키를 다시 받거나 Saturn을 실행하지 않는다.
-    fn check(&self) -> impl Future<Output = Result<(), JudgeError>> + Send;
+    fn check(&self) -> impl Future<Output = Result<(), RouterError>> + Send;
 
     /// 64K를 넘거나 `state`와 가장 긴 질문 합이 32K를 넘으면 구현이 `split::split_request`로 나눠 보낸다.
     ///
     /// # Errors
-    /// 호출자는 `JudgeError` 종류별로 대기, 대체 규칙, 재전송을 고른다.
-    fn judge(
+    /// 호출자는 `RouterError` 종류별로 대기, 대체 규칙, 재전송을 고른다.
+    fn router(
         &self,
-        request: JudgeRequest,
-    ) -> impl Future<Output = Result<JudgeResponse, JudgeError>> + Send;
+        request: RouterRequest,
+    ) -> impl Future<Output = Result<RouterResponse, RouterError>> + Send;
 }
 
 /// 판단 기록은 방식과 관계없이 전부 남긴다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Method {
-    /// 외부 API 기준 judge.
+    /// 외부 API 기준 router.
     Jev,
     /// 확신도가 기준보다 낮으면 행동하지 않고 대체 규칙으로 간다.
     Saturn,
@@ -204,7 +204,7 @@ pub enum Method {
     Collect,
 }
 
-/// 기본값은 docs/design/judge.md 표를 따른다.
+/// 기본값은 docs/design/router.md 표를 따른다.
 #[derive(Debug, Clone)]
 pub struct Thresholds {
     pub keep_current: f64,
@@ -350,8 +350,8 @@ pub fn compact_requests(
     model: &str,
     state: &str,
     candidates: &[LedgerSeq],
-) -> Result<Vec<JudgeRequest>, SplitError> {
-    split_request(JudgeRequest {
+) -> Result<Vec<RouterRequest>, SplitError> {
+    split_request(RouterRequest {
         model: model.to_string(),
         state: state.to_string(),
         sets: vec![compact_questions(candidates)],
@@ -365,7 +365,7 @@ pub fn compact_requests(
 /// 실패한 조각의 응답은 넘기지 않으며, 두 답이 모두 없거나 `noul`이 아닌 후보는 뺀다.
 pub fn compact_verdicts(
     candidates: &[LedgerSeq],
-    responses: &[JudgeResponse],
+    responses: &[RouterResponse],
 ) -> Vec<(LedgerSeq, f64)> {
     let answers: Vec<&(String, Answer)> = responses
         .iter()
@@ -393,7 +393,7 @@ pub fn compact_verdicts(
 
 /// `keep_current`를 `is_actionable`보다 먼저 읽어 이어 가는 입력이 파일 탐색으로 빠지지 않게 한다.
 pub fn decide_route(
-    judged: (&JudgeRequest, &JudgeResponse),
+    routerd: (&RouterRequest, &RouterResponse),
     thresholds: &Thresholds,
     method: Method,
     revision: ChatRevision,
@@ -408,7 +408,7 @@ pub fn decide_route(
         resume_held: false,
         fallbacks: Vec::new(),
     };
-    let (request, response) = judged;
+    let (request, response) = routerd;
     let reader = AnswerReader {
         request,
         response,
@@ -434,8 +434,8 @@ pub fn decide_route(
 // vars: q = 요청 질문 수, a = 답 수, n = 질문당 선택지 수
 // basis: estimate
 /// # Errors
-/// 요청과 답의 질문이 일대일로 맞지 않거나, 확률이 0~1 밖이거나, 분포 합이 1이 아니면 `JudgeError::Invalid`.
-pub fn validate(request: &JudgeRequest, response: &JudgeResponse) -> Result<(), JudgeError> {
+/// 요청과 답의 질문이 일대일로 맞지 않거나, 확률이 0~1 밖이거나, 분포 합이 1이 아니면 `RouterError::Invalid`.
+pub fn validate(request: &RouterRequest, response: &RouterResponse) -> Result<(), RouterError> {
     let questions: Vec<&Question> = request
         .sets
         .iter()
@@ -464,8 +464,8 @@ pub fn validate(request: &JudgeRequest, response: &JudgeResponse) -> Result<(), 
 }
 
 struct AnswerReader<'a> {
-    request: &'a JudgeRequest,
-    response: &'a JudgeResponse,
+    request: &'a RouterRequest,
+    response: &'a RouterResponse,
     thresholds: &'a Thresholds,
     method: Method,
 }
@@ -655,14 +655,14 @@ fn choice(id: &str, text: &str, options: Vec<String>) -> Question {
     }
 }
 
-fn invalid(reason: String) -> JudgeError {
-    JudgeError::Invalid { reason }
+fn invalid(reason: String) -> RouterError {
+    RouterError::Invalid { reason }
 }
 
 // cost: time O(n), heap O(1), stack O(1)
 // vars: n = 선택지 수
 // basis: estimate
-fn check_answer(question: &Question, answer: &Answer) -> Result<(), JudgeError> {
+fn check_answer(question: &Question, answer: &Answer) -> Result<(), RouterError> {
     let id = &question.id;
     let probabilities: &[f64] = match (&question.kind, answer) {
         (AnswerKind::Noul, Answer::Noul(yes)) => std::slice::from_ref(yes),
@@ -690,7 +690,7 @@ fn check_answer(question: &Question, answer: &Answer) -> Result<(), JudgeError> 
     Ok(())
 }
 
-fn check_length(id: &str, expected: usize, actual: usize) -> Result<(), JudgeError> {
+fn check_length(id: &str, expected: usize, actual: usize) -> Result<(), RouterError> {
     if expected == actual {
         return Ok(());
     }
@@ -710,9 +710,9 @@ mod tests {
         vec!["model-a".to_string(), "model-b".to_string()]
     }
 
-    fn request(running: bool, has_held: bool) -> JudgeRequest {
-        JudgeRequest {
-            model: "judge".into(),
+    fn request(running: bool, has_held: bool) -> RouterRequest {
+        RouterRequest {
+            model: "router".into(),
             state: "state".into(),
             sets: questions_for_input(running, false, has_held, &models()),
         }
@@ -721,9 +721,9 @@ mod tests {
     // cost: time O(a), heap O(a), stack O(1)
     // vars: a = 답 수
     // basis: estimate
-    fn response(answers: Vec<(&str, Answer)>) -> JudgeResponse {
-        JudgeResponse {
-            model: "judge".into(),
+    fn response(answers: Vec<(&str, Answer)>) -> RouterResponse {
+        RouterResponse {
+            model: "router".into(),
             answers: answers
                 .into_iter()
                 .map(|(id, answer)| (id.to_string(), answer))
@@ -732,7 +732,7 @@ mod tests {
         }
     }
 
-    fn decide(request: &JudgeRequest, response: &JudgeResponse, method: Method) -> RouteDecision {
+    fn decide(request: &RouterRequest, response: &RouterResponse, method: Method) -> RouteDecision {
         decide_route(
             (request, response),
             &Thresholds::default(),
@@ -1033,7 +1033,7 @@ mod tests {
 
         assert!(matches!(
             validate(&request, &response),
-            Err(JudgeError::Invalid { .. })
+            Err(RouterError::Invalid { .. })
         ));
     }
 

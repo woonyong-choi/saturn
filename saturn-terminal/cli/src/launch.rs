@@ -30,7 +30,7 @@ const ENGINE_LOG_MAX_BYTES: u64 = 10 * 1024 * 1024;
 /// 돌린 뒤 보관하는 이전 로그 파일 수(`engine.log.1`이 가장 최근). 초안 값.
 const ENGINE_LOG_KEEP: u32 = 5;
 
-/// engine이 judge 확인까지 마치고 소켓을 여는 데 기다리는 시간. 초안 값.
+/// engine이 router 확인까지 마치고 소켓을 여는 데 기다리는 시간. 초안 값.
 const START_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// 띄운 engine이 먼저 끝났을 때 다른 engine이 소켓을 열기를 더 기다리는 시간. 초안 값.
@@ -111,7 +111,7 @@ fn engine_binary() -> anyhow::Result<PathBuf> {
 
 // cost: time O(1), heap O(1), stack O(1), io 3
 // basis: estimate
-/// `saturn`이 끝나도 남도록 새 프로세스 그룹으로 띄운다. engine은 터미널을 갖지 않으므로 judge 키는 붙은 TUI가 보낸다.
+/// `saturn`이 끝나도 남도록 새 프로세스 그룹으로 띄운다. engine은 터미널을 갖지 않으므로 router 키는 붙은 TUI가 보낸다.
 fn spawn_engine(binary: &Path, socket: &Path) -> anyhow::Result<StartedEngine> {
     let home = socket
         .parent()
@@ -351,7 +351,7 @@ mod tests {
         let home = tempfile::tempdir().unwrap();
         let socket = home.path().join(SOCKET_FILE);
         let mut engine =
-            exiting_engine(home.path(), "echo 'judge host is not allowed' >&2; exit 1");
+            exiting_engine(home.path(), "echo 'router host is not allowed' >&2; exit 1");
 
         let error = wait_until_ready(&socket, Duration::from_secs(10), &mut engine)
             .await
@@ -359,7 +359,7 @@ mod tests {
 
         let message = error.to_string();
         assert!(message.contains("engine exited"));
-        assert!(message.contains("judge host is not allowed"));
+        assert!(message.contains("router host is not allowed"));
     }
 
     #[tokio::test]

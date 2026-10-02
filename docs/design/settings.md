@@ -11,7 +11,7 @@
 
 ## 동기
 
-사용자는 모든 작업에 같은 값을 쓰기도 하고, 저장소마다 다른 값을 쓰기도 한다. 한 번만 값을 바꿔 실행하고 싶을 때도 있다. 층이 없으면 저장소마다 사용자 설정 파일을 고쳐야 한다. 저장소에 들어 있는 폴더 설정을 묻지 않고 적용하면 남이 만든 설정이 judge 주소나 키 참조를 바꿀 수 있다. 처리 중에 설정이 바뀌면 한 입력의 앞뒤가 다른 값으로 처리되고, 나중에 어떤 값으로 처리했는지 알 수 없다. 이 기능은 층별 우선순위, 폴더 설정 신뢰, 입력마다 고정한 설정 번호로 이 문제를 막는다.
+사용자는 모든 작업에 같은 값을 쓰기도 하고, 저장소마다 다른 값을 쓰기도 한다. 한 번만 값을 바꿔 실행하고 싶을 때도 있다. 층이 없으면 저장소마다 사용자 설정 파일을 고쳐야 한다. 저장소에 들어 있는 폴더 설정을 묻지 않고 적용하면 남이 만든 설정이 router 주소나 키 참조를 바꿀 수 있다. 처리 중에 설정이 바뀌면 한 입력의 앞뒤가 다른 값으로 처리되고, 나중에 어떤 값으로 처리했는지 알 수 없다. 이 기능은 층별 우선순위, 폴더 설정 신뢰, 입력마다 고정한 설정 번호로 이 문제를 막는다.
 
 ## 예시
 
@@ -55,7 +55,7 @@
 - 설정 원본은 파일이고, 기록 저장소에는 적용된 설정의 스냅샷만 둔다. 입력마다 그때 쓴 설정을 번호로 남기기 위해서다.
 - 잠깐 들여다본 다른 폴더의 설정은 적용하지 않고 참고 자료로만 읽는다. 작업 폴더가 아닌 폴더의 설정이 실행에 섞이는 일을 막기 위해서다. 같은 이유로 `--add-dir`와 `/add-dir`로 더한 폴더의 설정 파일은 읽지 않고, 폴더 층은 채팅의 기본 폴더 것만 쓴다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)).
 - 보조 에이전트는 부모 채팅의 채팅 층을 물려받는다. 보조 에이전트가 메인 에이전트와 같은 설정으로 실행되게 하기 위해서다.
-- judge 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다. 기준값 조정은 [judge 학습](judge-training.md)에 있다.
+- router 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다. 기준값 조정은 [router 학습](router-training.md)에 있다.
 
 ### 설정 키
 
@@ -67,15 +67,15 @@
 | `agents.worktree` | 참·거짓 | 거짓 |
 | `permission.mode` | `ask`, `edit`, `read-only`, `full` | `edit`(초안) |
 | `permission.shell`, `permission.edit`, `permission.mcp`, `permission.subagent` | `allow`, `ask`, `deny` 또는 패턴 → 값 표 | 모드를 따름 |
-| `judge.method` | `jev`, `saturn`, `collect` | `jev` |
-| `judge.endpoint` | 문자열 | `https://api.typesafe.ai` |
-| `judge.model` | 문자열 | `jev-1.13.0` |
-| `judge.local.endpoint`, `judge.local.version` | 문자열 | 없음 |
-| `judge.skip_check` | 참·거짓(도움말에 없음) | 없음 |
-| `judge.key.info` | `source`(`Stored`, `Env`, `Command`), `last4` | 없음 |
-| `judge.key.command` | 문자열 배열 | 없음 |
-| `judge.key.storage` | `standard`, `hardened` | `standard` |
-| `judge.thresholds.<이름>` | 0~1 실수 | [judge](judge.md) 표의 값 |
+| `router.method` | `jev`, `saturn`, `collect` | `jev` |
+| `router.endpoint` | 문자열 | `https://api.typesafe.ai` |
+| `router.model` | 문자열 | `jev-1.13.0` |
+| `router.local.endpoint`, `router.local.version` | 문자열 | 없음 |
+| `router.skip_check` | 참·거짓(도움말에 없음) | 없음 |
+| `router.key.info` | `source`(`Stored`, `Env`, `Command`), `last4` | 없음 |
+| `router.key.command` | 문자열 배열 | 없음 |
+| `router.key.storage` | `standard`, `hardened` | `standard` |
+| `router.thresholds.<이름>` | 0~1 실수 | [router](router.md) 표의 값 |
 | `grading.model` | 문자열 | 없음 |
 | `consent.share_with_server` | 참·거짓 | 거짓 |
 | `retention.max_age_days` | 1 이상 정수 | 없음(무제한 보존) |
@@ -92,7 +92,7 @@
 - `agents.worktree`가 거짓이면 보조 에이전트는 같은 폴더에서 한 번에 하나씩 쓴다. 참이면 git 저장소일 때만 보조 에이전트의 쓰기를 별도 worktree에서 병렬로 하고, git 저장소가 아니면 거짓일 때와 같다. 쓰기 격리를 사용자가 켠 뒤에만 하기 위해서다. 규칙은 [입력 처리](input-handling.md)에 있다.
 - `permission.mode`는 기본 규칙 묶음이다. `edit`는 작업 폴더 안 편집을 허용하고 나머지는 묻는다. `ask`는 모두 묻고, `read-only`는 읽기만 허용하고, `full`은 `deny` 규칙을 뺀 모두를 허용한다. 모드의 뜻과 provider 대응은 [권한](permissions.md)에 있다. 층 병합에서 폴더 층의 `permission.mode`는 낮은 쪽부터 `read-only`, `ask`, `edit`, `full` 순서일 때 앞 층까지 합친 모드보다 낮은 값만 적용하고, 같거나 높은 값은 무시해 신뢰 창의 무시되는 항목(`permission.mode`)에 보이고, 병합 때 한 줄 경고에도 남는다. 채팅 층의 `/permissions`와 실행 층 `-c`에는 이 제한이 없다.
 - `permission.shell` 같은 개별 규칙은 셸 명령, 파일 편집, MCP 도구, subagent 실행의 허용, 묻기, 거부 규칙이다. 문자열 하나면 그 도구 전체에 적용하고, 패턴 표를 주면 패턴마다 값을 준다. 모드 기본 규칙 뒤에 사용자 층 규칙, 폴더 층 규칙, 채팅 층 규칙, 실행 층 규칙을 잇고 마지막으로 일치한 규칙이 이긴다. 단 어느 층이든 `deny`가 하나라도 일치하면 거부한다(채팅 층과 실행 층까지 넣은 것은 초안). 같은 층 안의 순서는 파일에 적힌 순서다(초안). 병합 결과의 `permission`에는 합친 모드와 이은 규칙 목록이 들어가고, 입력은 접수 때 고정한 설정 번호의 목록을 쓴다. `permission` 아래 모르는 키, 모르는 모드, `allow`, `ask`, `deny`가 아닌 값은 검사에 실패한다. 패턴 문법과 판정 흐름, provider별 번역은 [권한](permissions.md)에 있다.
-- `context.select.rrf_k`는 judge가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
+- `context.select.rrf_k`는 router가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
 - 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_replace`, `constraint_conflict`다.
 - 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
 - 실행 층 `-c key=value`의 값은 TOML 값 문법으로 읽고, 같은 키가 여러 번 오면 뒤 값이 이긴다.
@@ -103,16 +103,16 @@
 
 | 항목 | 다루는 문서 |
 |---|---|
-| judge 주소와 키 참조 | [judge 키 보호](judge-key-security.md) |
-| 채점 모델 | [judge 학습](judge-training.md) |
-| 데이터 공유 동의 | [judge 학습](judge-training.md) |
-| 판단 방식 | [judge](judge.md) |
+| router 주소와 키 참조 | [router 키 보호](router-key-security.md) |
+| 채점 모델 | [router 학습](router-training.md) |
+| 데이터 공유 동의 | [router 학습](router-training.md) |
+| 판단 방식 | [router](router.md) |
 
-사용자 전용 키는 `judge.endpoint`, `judge.key`, `grading.model`, `consent`, `judge.method`와 같거나 그 아래 키다(초안). judge 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([judge 키 보호](judge-key-security.md)).
+사용자 전용 키는 `router.endpoint`, `router.key`, `grading.model`, `consent`, `router.method`와 같거나 그 아래 키다(초안). router 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([router 키 보호](router-key-security.md)).
 
 ### 병합과 설정 번호
 
-engine이 시작하면 사용자당 잠금을 얻고 스키마 이관을 마친 뒤 기본값, 사용자, 실행 층을 병합한다. judge 시작 확인은 이 설정 번호가 확정된 뒤에 한다. 폴더 층과 채팅 층은 TUI가 채팅에 붙을 때 채팅마다 병합한다. 채팅은 처음 만든 폴더에 묶이므로, 이미 있는 채팅에 다른 폴더의 TUI가 붙어도 처음 폴더로 병합한다. 아래 절차의 3~5단계가 그때 돈다.
+engine이 시작하면 사용자당 잠금을 얻고 스키마 이관을 마친 뒤 기본값, 사용자, 실행 층을 병합한다. router 시작 확인은 이 설정 번호가 확정된 뒤에 한다. 폴더 층과 채팅 층은 TUI가 채팅에 붙을 때 채팅마다 병합한다. 채팅은 처음 만든 폴더에 묶이므로, 이미 있는 채팅에 다른 폴더의 TUI가 붙어도 처음 폴더로 병합한다. 아래 절차의 3~5단계가 그때 돈다.
 
 1. `settings`가 기본값 층을 읽는다.
 2. `settings`가 사용자 층 `~/.saturn/config.toml`을 읽는다.
@@ -124,7 +124,7 @@ engine이 시작하면 사용자당 잠금을 얻고 스키마 이관을 마친 
 8. 같은 내용의 스냅샷이 이미 있으면 `store`는 기존 설정 번호를 다시 쓴다.
 
 - 같은 내용의 설정은 기존 설정 번호를 다시 쓴다. 여러 프로세스가 같은 설정에 번호를 중복으로 만드는 일을 막기 위해서다.
-- judge 판단 기록에는 질문 버전과 함께 설정 번호를 남긴다. 버전이 바뀐 뒤에도 옛 기록을 다시 해석하기 위해서다.
+- router 판단 기록에는 질문 버전과 함께 설정 번호를 남긴다. 버전이 바뀐 뒤에도 옛 기록을 다시 해석하기 위해서다.
 
 ### 입력마다 설정 번호 고정
 
@@ -179,7 +179,7 @@ Saturn 설정은 provider 설정 파일을 바꾸지 않는다. 권한은 `permi
 |---|---|
 | 뒤 층의 값이 앞 층의 값보다 우선한다. | 다섯 층에 같은 키를 다른 값으로 두고 `-c` 값이 적용되는지 확인한다. |
 | 더한 폴더의 설정 파일은 읽지 않는다. | `saturn-terminal/engine/src/lifecycle/add_dir.rs`의 `add_dir_settings_file_is_not_read` |
-| 폴더 층은 judge 주소와 키 참조, 채점 모델, 데이터 공유 동의, 판단 방식을 바꾸지 못한다. | 폴더 설정에 이 항목을 넣어도 병합 결과가 사용자 층 값인지 확인한다. |
+| 폴더 층은 router 주소와 키 참조, 채점 모델, 데이터 공유 동의, 판단 방식을 바꾸지 못한다. | 폴더 설정에 이 항목을 넣어도 병합 결과가 사용자 층 값인지 확인한다. |
 | 처음 보거나 바뀐 폴더 설정은 사용자 확인 전에는 적용하지 않는다. | 지문이 바뀐 폴더 설정이 신뢰 창을 거치기 전에 병합되지 않는지 확인한다. |
 | 같은 내용의 설정은 같은 설정 번호를 쓴다. | 같은 설정으로 두 번 병합해 설정 번호가 하나만 생기는지 확인한다. |
 | 입력은 접수 때 고정한 설정 번호로 끝까지 처리한다. | 처리 중 설정을 바꿔도 그 입력의 provider 실행 값이 접수 때 값인지 확인한다. |

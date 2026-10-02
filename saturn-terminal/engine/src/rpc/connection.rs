@@ -1,5 +1,5 @@
 //! 접속 하나의 읽기·쓰기 작업. 해석하지 못한 줄은 inbox 대신 오류 응답을 outbox에 넣는다.
-//! `SubmitJudgeKey` 줄은 해석 실패여도 원문을 로그에 남기지 않는다.
+//! `SubmitRouterKey` 줄은 해석 실패여도 원문을 로그에 남기지 않는다.
 
 use std::sync::Arc;
 

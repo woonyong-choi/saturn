@@ -116,7 +116,7 @@ CREATE TABLE judgments (
     chat_id INTEGER NOT NULL,
     input_id INTEGER,
     method TEXT NOT NULL,
-    judge TEXT NOT NULL,
+    router TEXT NOT NULL,
     model TEXT NOT NULL,
     reported_model TEXT,
     question_sets TEXT NOT NULL,
@@ -130,7 +130,7 @@ CREATE TABLE judgments (
     started_at INTEGER NOT NULL,
     elapsed_ms INTEGER NOT NULL,
     outcome TEXT NOT NULL,
-    judge_version TEXT NOT NULL,
+    router_version TEXT NOT NULL,
     thresholds TEXT NOT NULL,
     asked_with REAL
 );
@@ -456,8 +456,8 @@ mod tests {
         let (dir, store) = temp_store_at(2).await;
         sqlx::raw_sql(
             "INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0); \
-             INSERT INTO judgments (id, chat_id, method, judge, model, question_sets, settings_revision, \
-             sent, answers, fallbacks, started_at, elapsed_ms, outcome, judge_version, thresholds, asked_with) \
+             INSERT INTO judgments (id, chat_id, method, router, model, question_sets, settings_revision, \
+             sent, answers, fallbacks, started_at, elapsed_ms, outcome, router_version, thresholds, asked_with) \
              VALUES (5, 1, 'jev', 'jev', 'm', '[]', 1, '{}', '[]', '[]', 0, 1, 'Ok', 'v1', '[]', 0.2)",
         )
         .execute(&store.pool)

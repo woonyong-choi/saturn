@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [compaction 기준을 절대 토큰 예산으로 정한다](../decisions/2026-09-29-absolute-token-budget.md), [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [맥락 정리는 Saturn 방식을 기본으로 두고 provider 압축 모드를 설정으로 연다](../decisions/2026-10-01-context-mode-setting.md), [경쟁 구역은 기준값 없이 judge 남김 확률 순으로 예산까지 채운다](../decisions/2026-10-02-fill-packet-by-probability.md) |
+| 관련 결정 | [compaction 기준을 절대 토큰 예산으로 정한다](../decisions/2026-09-29-absolute-token-budget.md), [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [맥락 정리는 Saturn 방식을 기본으로 두고 provider 압축 모드를 설정으로 연다](../decisions/2026-10-01-context-mode-setting.md), [경쟁 구역은 기준값 없이 router 남김 확률 순으로 예산까지 채운다](../decisions/2026-10-02-fill-packet-by-probability.md) |
 
 ## 요약
 
@@ -142,8 +142,8 @@ T_hard = T + H
 
 - 1단계의 제약은 대체된 제약을 빼고 넣는다. 제약 식별과 대체는 [맥락 고르기](context-selection.md)에 있다.
 - 4단계에는 도구 결과를 넣지 않는다. 최근 턴의 큰 도구 결과가 예산을 혼자 차지하지 않게 하기 위해서다.
-- 경쟁 구역의 순서는 `compact` 판단으로 정한다. 후보 전체를 묻고, 항목마다 호출과 결과 중 큰 남김 확률을 쓴다. 확률이 높은 순으로, 같은 확률이면 [맥락 고르기](context-selection.md)의 후보 순위 순으로 둔다. judge가 답하지 못한 항목은 후보 순위 순으로 뒤에 둔다.
-- `compact` 판단이 재시도 뒤에도 실패하면 judge가 시작한 전환은 건너뛰고, 사용자가 고정했거나 맥락 크기 규칙이 시작한 전환은 후보 순위 순으로 경쟁 구역을 채운다. 규칙과 이유는 [judge 실패](judge.md#judge-실패)에 있다.
+- 경쟁 구역의 순서는 `compact` 판단으로 정한다. 후보 전체를 묻고, 항목마다 호출과 결과 중 큰 남김 확률을 쓴다. 확률이 높은 순으로, 같은 확률이면 [맥락 고르기](context-selection.md)의 후보 순위 순으로 둔다. router가 답하지 못한 항목은 후보 순위 순으로 뒤에 둔다.
+- `compact` 판단이 재시도 뒤에도 실패하면 router가 시작한 전환은 건너뛰고, 사용자가 고정했거나 맥락 크기 규칙이 시작한 전환은 후보 순위 순으로 경쟁 구역을 채운다. 규칙과 이유는 [router 실패](router.md#router-실패)에 있다.
 - 확률에 기준값을 두지 않고 예산이 찰 때까지 채운다. 근거 항목의 확률은 평균 0.372, 최댓값 0.65로 낮아서 기준값 0.5가 근거 항목 624개 중 549개(88.0%)를 버렸기 때문이다([결정 기록](../decisions/2026-10-02-fill-packet-by-probability.md)). 확률은 근거와 비근거를 가르는 순서에만 쓴다.
 
 패킷 크기 상한 `P_max`는 발동 기준의 10분의 1이다.
@@ -178,7 +178,7 @@ P_max = T / 10
 
 `compact` 판단은 패킷을 만들 때 한 번 묻는다. 턴마다 미리 묻지 않는다. 나눈 요청을 병렬로 보내면 후보 전체 판단의 지연이 조각 수와 거의 무관하게 약 0.3초이기 때문이다. 질문 40개와 약 7KB state 요청을 4개 동시에 보내면 0.26초, 8개 동시에 보내면 0.27초, 4개를 차례로 보내면 0.97초였다([#179](https://github.com/woonyong-choi/saturn/issues/179) 실측). 미리 판단은 후보 전체를 묻는 조건에서 패킷 때 물을 질문을 앞당길 뿐이다. 첫 턴부터 미리 판단하면 추정 입력 토큰이 1.118배 [1.088, 1.161]로 늘고, 사건에 닿지 않아 버려지는 질문이 9.7% [7.3, 13.1]이며, 미리 한 판단이 패킷 때 목표와 어긋날 위험이 남는다. 지연을 줄이는 이득은 순차 전송을 가정한 값이라 병렬 전송에서는 사라진다([후속 분석](../experiments/precompute-breakeven/report.md#후속-분석-후보-전체-판단-조건)). 이 기준은 사전 등록 판정이 아니라 설계 판단용이다.
 
-`compact` 질문의 확률 읽기와 judge가 답하지 못할 때의 대체 규칙은 [judge](judge.md)에 있다.
+`compact` 질문의 확률 읽기와 router가 답하지 못할 때의 대체 규칙은 [router](router.md)에 있다.
 
 ### 패킷 표기
 
@@ -259,16 +259,16 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | 유휴 복귀 조건과 기준 도달 조건에서만 새 session으로 이어 간다. | `A`, `T`, `P`, `k*`, 경과 시간 조합마다 판정 결과가 규칙과 같은지 확인한다. |
 | 고정 구역이 넘치지 않으면 패킷 크기는 `T`의 10분의 1을 넘지 않는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_large_record_stays_within_packet_limit` |
 | 고정 구역은 정한 순서로 모두 들어가고 최근 턴에는 도구 결과가 없다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_fixed_zone_in_order_and_tool_results_only_in_competing` |
-| 경쟁 구역은 기준값 없이 judge 남김 확률 순으로 예산이 찰 때까지 채운다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_judge_orders_by_probability_and_keeps_low`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_judgments_put_low_probability_item_before_unanswered` |
+| 경쟁 구역은 기준값 없이 router 남김 확률 순으로 예산이 찰 때까지 채운다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_orders_by_probability_and_keeps_low`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_judgments_put_low_probability_item_before_unanswered` |
 | 경쟁 구역은 고른 순서대로 원문, 축약본, 경로 중 들어가는 형태로 채운다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_small_top_item_goes_raw_before_large_lower_item`, `build_packet_fills_competing_in_chosen_order_raw_then_digest`, `build_packet_falls_back_to_path_then_skips` |
 | 한 항목은 경쟁 구역 예산의 30%를 넘는 원문으로 들어가지 않는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_item_over_cap_goes_as_digest` |
 | 최근 턴과 경쟁 구역은 session별 제목 아래에 묶고 항목마다 기록 번호와 기록 시각을 적는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_competing_groups_by_session_with_seq_and_time`, `build_packet_recent_turns_carry_session_title_seq_and_time`, `saturn-terminal/core/src/sessions/stamp.rs`의 `label_formats_seq_and_utc_minute`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_scenario_session_and_time_appear_before_items` |
 | 시각이 없는 입력은 기록 번호만 적는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_without_time_writes_seq_only`, `saturn-terminal/core/src/sessions/stamp.rs`의 `label_without_time_is_seq_only` |
 | 표기와 session 제목의 글자도 경쟁 구역 예산에 들어 패킷은 `P_max`를 넘지 않는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_many_sessions_stay_within_packet_limit` |
 | 패킷은 구역마다 기록 번호 순서로 쓴다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_writes_competing_in_seq_order` |
-| `compact` 질문은 패킷을 만들 때 후보 전체를 한 번 judge에 보내고 턴이 끝날 때는 보내지 않는다. | 턴 종료에서 judge 호출이 없는지, 패킷을 만들 때 후보 전체가 한 번 묻히는지 확인한다. |
+| `compact` 질문은 패킷을 만들 때 후보 전체를 한 번 router에 보내고 턴이 끝날 때는 보내지 않는다. | 턴 종료에서 router 호출이 없는지, 패킷을 만들 때 후보 전체가 한 번 묻히는지 확인한다. |
 | 고정 구역이 `P_max`를 넘으면 오래된 턴의 답부터 줄이고, 최근 턴 수를 줄인 뒤 `P_hard`까지 허용한다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_fixed_overflow_trims_oldest_answer_first`, `build_packet_fixed_overflow_drops_oldest_turns`, `build_packet_fixed_over_limit_allows_hard_limit_without_competing` |
-| 실험 수집기가 `saturn-core`의 `packet` 예제(`cargo run -p saturn-core --example packet`)로 두 실험 설계의 입력에서 패킷을 만들고, judge 판단이 없으면 RRF 순서로 채운다. | `saturn-terminal/core/examples/packet/tests.rs`의 `packet_stream_input_prints_packet_text`, `packet_scenarios_input_prints_json_with_packet_and_rrf_order`, `packet_without_judgments_fills_in_rrf_order`, `packet_judgments_drop_item_judge_rejected` |
+| 실험 수집기가 `saturn-core`의 `packet` 예제(`cargo run -p saturn-core --example packet`)로 두 실험 설계의 입력에서 패킷을 만들고, router 판단이 없으면 RRF 순서로 채운다. | `saturn-terminal/core/examples/packet/tests.rs`의 `packet_stream_input_prints_packet_text`, `packet_scenarios_input_prints_json_with_packet_and_rrf_order`, `packet_without_judgments_fills_in_rrf_order`, `packet_judgments_drop_item_router_rejected` |
 | 고정 구역이 넘쳐도 provider 압축으로 대신하지 않는다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_fixed_over_hard_limit_defers_with_constraints` |
 | `provider` 모드에서는 compaction을 판정하지 않고 안전망 값을 넣지 않는다. | `provider` 모드의 실행 인자와 판정 기록을 확인한다. |
 | 떠나는 provider의 압축 요약을 읽을 수 있으면 요약과 요약 뒤 기록으로 패킷을 만든다. | `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_with_summary_puts_summary_first_in_competing_zone`, `build_packet_with_summary_over_competing_budget_falls_back_to_records`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_provider_mode_puts_summary_first_and_uses_records_after_it`, 전환 품질은 [#122](https://github.com/woonyong-choi/saturn/issues/122) |
@@ -285,7 +285,7 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 - `A`를 잴 수 없는 경로는 provider 자동 압축에 기댄다.
 - 정리 모드마다 전달 경로가 달라 두 경로를 함께 유지해야 한다.
 - 제약이 아주 길면 맥락 정리를 미루고 안전망에 기댄다.
-- 항목마다 표기가 붙어 같은 예산에 드는 항목 수가 줄어든다. 순위 순서 패킷의 포함 항목은 평균 24.2개에서 20.2개로 줄었다. 날짜가 필요한 질문의 `judge-all` 정답률은 `temporal` 0.0%에서 42.2%, `multi-session` 0.0%에서 78.1%로 올랐다([재측정 결과](../experiments/handoff-packet-quality-v2/report.md)).
+- 항목마다 표기가 붙어 같은 예산에 드는 항목 수가 줄어든다. 순위 순서 패킷의 포함 항목은 평균 24.2개에서 20.2개로 줄었다. 날짜가 필요한 질문의 `router-all` 정답률은 `temporal` 0.0%에서 42.2%, `multi-session` 0.0%에서 78.1%로 올랐다([재측정 결과](../experiments/handoff-packet-quality-v2/report.md)).
 
 ## 대안
 

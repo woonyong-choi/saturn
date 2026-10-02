@@ -1,4 +1,4 @@
-//! 명령으로 설정 파일 고치기. 판단기 키 원문은 쓰지 않고 `KeyInfo`만 쓴다.
+//! 명령으로 설정 파일 고치기. 라우터 키 원문은 쓰지 않고 `KeyInfo`만 쓴다.
 //! 설계: docs/design/settings.md
 
 use std::io::Write;
@@ -12,7 +12,7 @@ use super::trust::partial_path;
 use super::{CONFIG_FILE, SettingsError, SettingsManager};
 use crate::secrets::KeyInfo;
 
-const KEY_INFO_KEY: &str = "judge.key.info";
+const KEY_INFO_KEY: &str = "router.key.info";
 
 /// 쓰기 직전에 다시 재서 다르면 쓰지 않는다.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -175,12 +175,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let (_store, manager) = manager(dir.path()).await;
         let path = dir.path().join(CONFIG_FILE);
-        let original = "# 내 설정\non_exit = \"background\" # 닫아도 계속\n\n[judge.thresholds]\n# 조금 엄하게\ninjection = 0.7\n";
+        let original = "# 내 설정\non_exit = \"background\" # 닫아도 계속\n\n[router.thresholds]\n# 조금 엄하게\ninjection = 0.7\n";
         std::fs::write(&path, original).unwrap();
 
         let (_, read) = manager.read_for_edit(&path).await.unwrap();
         manager
-            .set_value(&path, "judge.thresholds.injection", "0.9", &read)
+            .set_value(&path, "router.thresholds.injection", "0.9", &read)
             .await
             .unwrap();
 

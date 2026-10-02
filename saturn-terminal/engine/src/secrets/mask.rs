@@ -1,5 +1,5 @@
-//! 출력 마스킹: judge 키와 일치하는 문자열을 로그, 오류, 디버그 출력, 판단 기록 저장 전에 가린다.
-//! 설계: docs/design/judge-key-security.md
+//! 출력 마스킹: router 키와 일치하는 문자열을 로그, 오류, 디버그 출력, 판단 기록 저장 전에 가린다.
+//! 설계: docs/design/router-key-security.md
 
 use std::io::Write;
 

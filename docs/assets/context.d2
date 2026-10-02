@@ -3,14 +3,14 @@ user: Developer {shape: person}
 system: Saturn
 codex-cli: Codex CLI {style.stroke-dash: 4}
 claude-code: Claude Code {style.stroke-dash: 4}
-judge-api: Judge API {style.stroke-dash: 4}
-local-judge: Local Saturn model {style.stroke-dash: 4}
+router-api: Router API {style.stroke-dash: 4}
+local-router: Local Saturn model {style.stroke-dash: 4}
 macos-keychain: macOS Keychain {style.stroke-dash: 4}
 config-files: Config files {shape: cylinder}
 user -> system: input, commands
 system -> codex-cli: app-server requests
 system -> claude-code: stream-json input
-system -> judge-api: judgment questions
-system -> local-judge: judgment questions
-system -> macos-keychain: judge key lookup
+system -> router-api: judgment questions
+system -> local-router: judgment questions
+system -> macos-keychain: router key lookup
 system -> config-files: config lookup

@@ -1,6 +1,6 @@
-//! judge 학습 실행. 계산 규칙은 `saturn_core::judges::calibration`에 있고 여기는 실행만 맡는다.
-//! 설계: docs/design/judge-training.md
-//! TODO(#91): 채점 안 된 판단 수, 채점 후보, 라벨, judge 버전을 읽고 쓰는 `store` 메서드 없음
+//! router 학습 실행. 계산 규칙은 `saturn_core::routers::calibration`에 있고 여기는 실행만 맡는다.
+//! 설계: docs/design/router-training.md
+//! TODO(#91): 채점 안 된 판단 수, 채점 후보, 라벨, router 버전을 읽고 쓰는 `store` 메서드 없음
 //! TODO(#55): 멈춤 명령이 진행 중인 학습도 멈출지 미정
 
 mod grading;
@@ -8,12 +8,12 @@ mod trainer;
 
 use std::path::PathBuf;
 
-use saturn_core::judges::calibration::{EvalReport, ThresholdState};
+use saturn_core::routers::calibration::{EvalReport, ThresholdState};
 use saturn_protocol::rpc::Notification;
 use tokio::sync::mpsc;
 
-use crate::judges::{JudgesError, RemoteJudge};
 use crate::processes::{ProcessError, Supervisor};
+use crate::routers::{RemoteRouter, RoutersError};
 use crate::settings::Settings;
 use crate::store::{Store, StoreError};
 
@@ -32,7 +32,7 @@ pub enum TrainingError {
     #[error("grading model is not configured")]
     NoGrader,
     #[error("grading model call failed")]
-    Grader(#[source] JudgesError),
+    Grader(#[source] RoutersError),
     #[error("local trainer failed: {detail}")]
     Trainer {
         /// 종료 코드와 가린 stderr 첫 줄.
@@ -42,7 +42,7 @@ pub enum TrainingError {
     Process(#[from] ProcessError),
     #[error("training record access failed")]
     Store(#[from] StoreError),
-    #[error("judge version not found: {version}")]
+    #[error("router version not found: {version}")]
     UnknownVersion { version: String },
 }
 
@@ -50,7 +50,7 @@ pub enum TrainingError {
 pub struct TrainOptions {
     /// 기준값을 1차 영점으로 되돌린다.
     pub reset_thresholds: bool,
-    /// 이 judge 버전에서 다시 학습한다.
+    /// 이 router 버전에서 다시 학습한다.
     pub from: Option<String>,
 }
 
@@ -104,7 +104,7 @@ pub async fn preview(
 /// 채점 실패면 `Grader`, 학습기 실패면 `Trainer`나 `Process`, 기록 실패면 `Store`.
 pub async fn run(
     store: &Store,
-    grader: &RemoteJudge,
+    grader: &RemoteRouter,
     supervisor: &Supervisor,
     plan: TrainPlan,
     progress: mpsc::Sender<Notification>,
@@ -169,7 +169,7 @@ pub fn models_dir(home: &std::path::Path) -> PathBuf {
 mod tests {
     use std::path::PathBuf;
 
-    use saturn_core::judges::calibration::{MIN_RECENTER_RESULTS, Signal};
+    use saturn_core::routers::calibration::{MIN_RECENTER_RESULTS, Signal};
 
     use super::*;
     use crate::store::test_judgment;

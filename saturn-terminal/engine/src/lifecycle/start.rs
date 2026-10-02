@@ -1,7 +1,7 @@
 use std::ffi::OsString;
 
 use super::*;
-use crate::JudgeGate;
+use crate::RouterGate;
 use crate::rpc::{EngineLock, LOCK_FILE, RpcError};
 use crate::settings::SettingsError;
 use crate::store::DB_FILE;
@@ -15,7 +15,7 @@ async fn start_runs_every_step_and_opens_socket() {
     assert!(fixture.options.home.join(LOCK_FILE).exists());
     assert!(fixture.options.home.join(DB_FILE).exists());
     assert!(engine.settings.current().is_some());
-    assert_eq!(engine.judge_gate, JudgeGate::Open);
+    assert_eq!(engine.router_gate, RouterGate::Open);
     assert!(fixture.socket().exists());
 }
 
@@ -51,7 +51,7 @@ async fn start_with_running_engine_stops_before_store() {
 }
 
 #[tokio::test]
-async fn start_invalid_settings_without_revision_stops_before_judge_and_socket() {
+async fn start_invalid_settings_without_revision_stops_before_router_and_socket() {
     let fixture = Fixture::new();
     fixture.write_user_config("broken = = 1\n");
     let transport = FakeTransport::new(check_passes());
@@ -70,16 +70,16 @@ async fn start_invalid_settings_without_revision_stops_before_judge_and_socket()
 }
 
 #[tokio::test]
-async fn start_disallowed_judge_stops_before_socket() {
+async fn start_disallowed_router_stops_before_socket() {
     let fixture = Fixture::new();
-    fixture.write_user_config("[judge]\nendpoint = \"https://evil.example\"\n");
+    fixture.write_user_config("[router]\nendpoint = \"https://evil.example\"\n");
     let mut env = fixture.env(true, FakeTransport::new(Vec::new())).await;
-    env.judge = None;
+    env.router = None;
 
     let error = fixture.start(env).await.unwrap_err();
 
     assert!(
-        matches!(error, EngineError::JudgeUnavailable { ref reason } if reason.contains("evil.example"))
+        matches!(error, EngineError::RouterUnavailable { ref reason } if reason.contains("evil.example"))
     );
     assert!(!fixture.socket().exists());
 }
@@ -91,8 +91,8 @@ async fn start_without_key_opens_socket_and_waits_for_key() {
     let engine = fixture.waiting_for_key(Vec::new()).await;
 
     assert!(matches!(
-        engine.judge_gate,
-        JudgeGate::KeyRequired { ref reason } if !reason.is_empty()
+        engine.router_gate,
+        RouterGate::KeyRequired { ref reason } if !reason.is_empty()
     ));
     assert!(fixture.socket().exists());
 }
@@ -110,7 +110,7 @@ async fn start_tries_automatic_key_inputs_before_waiting() {
 
     let engine = fixture.start(env).await.unwrap();
 
-    assert_eq!(engine.judge_gate, JudgeGate::Open);
+    assert_eq!(engine.router_gate, RouterGate::Open);
     assert_eq!(transport.calls().len(), 2);
     assert_eq!(std::fs::read_to_string(fixture.key_file()).unwrap(), KEY);
     assert_eq!(engine.masker.mask(KEY).as_str(), crate::secrets::REDACTED);

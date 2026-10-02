@@ -43,7 +43,7 @@ impl<W: Write> PlainOutput<W> {
         }
     }
 
-    /// engine가 judge 키를 요청했으면 그 원인. 호출자는 묻지 않고 안내하고 끝낸다.
+    /// engine가 router 키를 요청했으면 그 원인. 호출자는 묻지 않고 안내하고 끝낸다.
     pub fn key_required(&self) -> Option<&str> {
         self.key_required.as_deref()
     }
@@ -142,7 +142,7 @@ impl<W: Write> PlainOutput<W> {
                 self.chat.apply_alert(alert);
                 self.write_new_alerts()?;
             }
-            Notification::JudgeKeyRequired { reason } => self.key_required = Some(reason),
+            Notification::RouterKeyRequired { reason } => self.key_required = Some(reason),
             _ => {}
         }
         Ok(())
@@ -356,8 +356,8 @@ mod tests {
                 task: None,
                 notice: ChatNotice::RequestSummary {
                     provider_tokens: vec![(Provider::Codex, 4_120)],
-                    judge_calls: 0,
-                    judge_tokens: 0,
+                    router_calls: 0,
+                    router_tokens: 0,
                     elapsed_ms: 45_000,
                 },
             },
@@ -366,25 +366,25 @@ mod tests {
         assert_eq!(
             text,
             "> 버그 고쳐 · 전달 중\n• 파일 읽는 중\n고쳤습니다\n끝\ncodex · 45초 · Token -\n\
-             이번 요청 · codex Token 4,120 · 판단기 0회 Token 0 · 45초\n"
+             이번 요청 · codex Token 4,120 · 라우터 0회 Token 0 · 45초\n"
         );
         assert!(finished);
     }
 
     #[test]
-    fn judge_key_request_is_kept_for_the_caller_and_writes_nothing() {
+    fn router_key_request_is_kept_for_the_caller_and_writes_nothing() {
         let mut plain = PlainOutput::new(Vec::new(), Lang::Ko);
 
         plain
             .apply(
-                Notification::JudgeKeyRequired {
-                    reason: "judge rejected the key".to_owned(),
+                Notification::RouterKeyRequired {
+                    reason: "router rejected the key".to_owned(),
                 },
                 Instant::now(),
             )
             .unwrap();
 
-        assert_eq!(plain.key_required(), Some("judge rejected the key"));
+        assert_eq!(plain.key_required(), Some("router rejected the key"));
         assert!(plain.out.is_empty());
     }
 
@@ -392,10 +392,10 @@ mod tests {
     fn apply_writes_alert_once_and_stop_result() {
         let (text, finished) = output(vec![
             Notification::Alert {
-                alert: saturn_protocol::rpc::Alert::JudgePaused,
+                alert: saturn_protocol::rpc::Alert::RouterPaused,
             },
             Notification::Alert {
-                alert: saturn_protocol::rpc::Alert::JudgePaused,
+                alert: saturn_protocol::rpc::Alert::RouterPaused,
             },
             Notification::ChatNotice {
                 chat: ChatId(1),

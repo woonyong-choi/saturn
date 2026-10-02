@@ -1,4 +1,4 @@
-//! 채팅 붙기와 시작 창(judge 키, 폴더 설정 신뢰)에 딸린 요청 처리. 설계: docs/design/engine-lifecycle.md
+//! 채팅 붙기와 시작 창(router 키, 폴더 설정 신뢰)에 딸린 요청 처리. 설계: docs/design/engine-lifecycle.md
 
 use std::path::{Path, PathBuf};
 
@@ -9,17 +9,17 @@ use crate::rpc::ClientId;
 use crate::secrets::{KeyInput, Masker};
 use crate::settings::{Applied, FolderTrustPrompt};
 use crate::store::HistoryEntry;
-use crate::{Engine, EngineError, JudgeGate, masked_chain};
+use crate::{Engine, EngineError, RouterGate, masked_chain};
 
 /// 초안. `LoadHistory` 한 번에 보내는 최대 기록 수.
 const MAX_HISTORY: u32 = 500;
 
 impl Engine {
     pub(super) fn start_info(&self, workdir: &Path, added_dirs: &[PathBuf]) -> Notification {
-        let active = self.judges.active();
-        let judge_version = match self.judge_gate {
-            JudgeGate::Open => active.model().to_owned(),
-            JudgeGate::KeyRequired { .. } => String::new(),
+        let active = self.routers.active();
+        let router_version = match self.router_gate {
+            RouterGate::Open => active.model().to_owned(),
+            RouterGate::KeyRequired { .. } => String::new(),
         };
         Notification::StartInfo {
             saturn_version: env!("CARGO_PKG_VERSION").to_owned(),
@@ -28,8 +28,8 @@ impl Engine {
                 .into_iter()
                 .map(|provider| (provider, String::new()))
                 .collect(),
-            judge: active.judge_id().to_owned(),
-            judge_version,
+            router: active.router_id().to_owned(),
+            router_version,
             folder: workdir.display().to_string(),
             added_dirs: added_dirs
                 .iter()
@@ -64,9 +64,9 @@ impl Engine {
         if applied.warning.is_some() {
             self.send(client, settings_notification(applied)).await;
         }
-        if let JudgeGate::KeyRequired { reason } = &self.judge_gate {
+        if let RouterGate::KeyRequired { reason } = &self.router_gate {
             let reason = reason.clone();
-            self.send(client, Notification::JudgeKeyRequired { reason })
+            self.send(client, Notification::RouterKeyRequired { reason })
                 .await;
             return;
         }
@@ -103,31 +103,31 @@ impl Engine {
     /// 키 원문은 확인과 저장에만 쓰고 로그, 오류, 기록 저장소에 남기지 않는다.
     ///
     /// # Errors
-    /// 키를 기다리지 않을 때면 `UnexpectedAnswer`, 다시 확인이 실패하면 `Judges`.
-    pub(super) async fn submit_judge_key(
+    /// 키를 기다리지 않을 때면 `UnexpectedAnswer`, 다시 확인이 실패하면 `Routers`.
+    pub(super) async fn submit_router_key(
         &mut self,
         client: ClientId,
         key: String,
     ) -> Result<(), EngineError> {
-        if self.judge_gate == JudgeGate::Open {
-            return Err(EngineError::UnexpectedAnswer { what: "judge key" });
+        if self.router_gate == RouterGate::Open {
+            return Err(EngineError::UnexpectedAnswer { what: "router key" });
         }
         let accepted = self
-            .judges
+            .routers
             .accept_key(KeyInput::Hidden(key), &self.secrets, &self.settings)
             .await;
         if let Err(error) = accepted {
             let reason = masked_chain(&self.masker, &error);
-            self.judge_gate = JudgeGate::KeyRequired {
+            self.router_gate = RouterGate::KeyRequired {
                 reason: reason.clone(),
             };
-            self.send(client, Notification::JudgeKeyRequired { reason })
+            self.send(client, Notification::RouterKeyRequired { reason })
                 .await;
             return Err(error.into());
         }
         self.masker = Masker::new(self.secrets.lock().await.mask_needles());
-        self.judge_gate = JudgeGate::Open;
-        tracing::info!("judge key accepted");
+        self.router_gate = RouterGate::Open;
+        tracing::info!("router key accepted");
         self.send_folder_trust(client).await;
         Ok(())
     }

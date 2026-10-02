@@ -88,8 +88,8 @@ pub enum StatusLine {
     Alert(Alert),
     /// 멈춤 뒤 provider 프로세스 묶음 밖에 남은 프로세스 수.
     StopUnconfirmed { remaining: u32 },
-    /// `[보내기]`를 눌렀지만 judge가 실패해 차례에 보낸다.
-    JudgeUnavailableSend,
+    /// `[보내기]`를 눌렀지만 router가 실패해 차례에 보낸다.
+    RouterUnavailableSend,
     /// `previous`는 계속 쓰는 이전 설정 번호.
     SettingsError { previous: u64, detail: String },
 }
@@ -107,7 +107,7 @@ impl StatusLine {
             | Self::CloseHeldConfirm { .. } => LineKind::Held,
             Self::Alert(_)
             | Self::StopUnconfirmed { .. }
-            | Self::JudgeUnavailableSend
+            | Self::RouterUnavailableSend
             | Self::SettingsError { .. } => LineKind::Alert,
         }
     }
@@ -185,7 +185,7 @@ impl StatusLine {
                     lang.tr(i18n::REMAINING_SUFFIX)
                 ),
             },
-            Self::JudgeUnavailableSend => lang.tr(i18n::JUDGE_UNAVAILABLE_SEND).to_string(),
+            Self::RouterUnavailableSend => lang.tr(i18n::ROUTER_UNAVAILABLE_SEND).to_string(),
             Self::SettingsError { previous, detail } => match lang {
                 Lang::Ko => format!(
                     "{} · {} {previous}{} · {detail}",
@@ -206,7 +206,7 @@ impl StatusLine {
         match self {
             Self::Queued {
                 input,
-                reason: QueueReason::JudgeOrder,
+                reason: QueueReason::RouterOrder,
                 ..
             } => vec![Button::CancelInput(*input)],
             Self::Queued { input, .. } => vec![Button::Send(*input), Button::CancelInput(*input)],
@@ -287,8 +287,8 @@ pub fn queue_reason_text(lang: Lang, reason: QueueReason) -> String {
                 Lang::En => format!("{} {}", lang.tr(i18n::AFTER_TASK_SUFFIX), label.0),
             };
         }
-        QueueReason::JudgeOrder => i18n::JUDGE_ORDER,
-        QueueReason::JudgeConnection => i18n::JUDGE_CONNECTION,
+        QueueReason::RouterOrder => i18n::ROUTER_ORDER,
+        QueueReason::RouterConnection => i18n::ROUTER_CONNECTION,
         QueueReason::WriteTurn => i18n::WRITE_TURN,
         QueueReason::AfterCompaction => i18n::AFTER_COMPACTION,
         QueueReason::AfterAllTasks => i18n::AFTER_ALL_TASKS,
@@ -317,8 +317,8 @@ pub fn activity_text(lang: Lang, activity: &Activity) -> String {
 
 pub fn alert_text(lang: Lang, alert: &Alert) -> String {
     let key = match alert {
-        Alert::JudgePaused => i18n::JUDGE_PAUSED,
-        Alert::JudgeDisconnected => i18n::JUDGE_DISCONNECTED,
+        Alert::RouterPaused => i18n::ROUTER_PAUSED,
+        Alert::RouterDisconnected => i18n::ROUTER_DISCONNECTED,
         Alert::SteerNotReady { provider } => {
             return format!(
                 "{} ({})",
@@ -327,7 +327,7 @@ pub fn alert_text(lang: Lang, alert: &Alert) -> String {
             );
         }
         Alert::ChatBusyElsewhere { .. } => i18n::BUSY_ELSEWHERE,
-        Alert::JudgeDownSendingInOrder => i18n::JUDGE_UNAVAILABLE_SEND,
+        Alert::RouterDownSendingInOrder => i18n::ROUTER_UNAVAILABLE_SEND,
         Alert::SchemaMigrated { to, .. } => {
             return lang
                 .tr(i18n::SCHEMA_MIGRATED)
@@ -546,7 +546,7 @@ fn alert_lines(state: &ChatState) -> Vec<StatusLine> {
         .alerts
         .iter()
         .map(|alert| match alert {
-            Alert::JudgeDownSendingInOrder => StatusLine::JudgeUnavailableSend,
+            Alert::RouterDownSendingInOrder => StatusLine::RouterUnavailableSend,
             other => StatusLine::Alert(other.clone()),
         })
         .collect();
@@ -622,7 +622,7 @@ mod tests {
     fn build_orders_kinds_then_arrival() {
         let now = Instant::now();
         let mut state = ChatState::new();
-        state.apply_alert(Alert::JudgePaused);
+        state.apply_alert(Alert::RouterPaused);
         input(
             &mut state,
             1,
@@ -827,10 +827,10 @@ mod tests {
 
     #[test]
     fn buttons_follow_line_kind() {
-        let judge_order = StatusLine::Queued {
+        let router_order = StatusLine::Queued {
             input: InputId(1),
             label: None,
-            reason: QueueReason::JudgeOrder,
+            reason: QueueReason::RouterOrder,
             text: None,
         };
         let held = StatusLine::HeldTask {
@@ -839,7 +839,10 @@ mod tests {
             provider: None,
         };
 
-        assert_eq!(judge_order.buttons(), vec![Button::CancelInput(InputId(1))]);
+        assert_eq!(
+            router_order.buttons(),
+            vec![Button::CancelInput(InputId(1))]
+        );
         assert_eq!(
             held.buttons(),
             vec![

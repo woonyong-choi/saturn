@@ -9,7 +9,7 @@
 
 ## 배경
 
-사용자가 TUI를 꺼도 작업은 계속되어야 한다. engine은 provider 연결, 대기열, judge, 기록을 맡는다. engine에 붙는 쪽은 TUI(`tui`), `cli`, 나중의 데스크톱 앱으로 여럿이다. 기록 저장소는 SQLite 파일 하나에 쓰는 프로세스를 하나로 두는 규칙을 따른다. Codex TUI도 app-server에 붙는 클라이언트로 동작한다(2026-09-29 확인).
+사용자가 TUI를 꺼도 작업은 계속되어야 한다. engine은 provider 연결, 대기열, router, 기록을 맡는다. engine에 붙는 쪽은 TUI(`tui`), `cli`, 나중의 데스크톱 앱으로 여럿이다. 기록 저장소는 SQLite 파일 하나에 쓰는 프로세스를 하나로 두는 규칙을 따른다. Codex TUI도 app-server에 붙는 클라이언트로 동작한다(2026-09-29 확인).
 
 ## 선택지
 

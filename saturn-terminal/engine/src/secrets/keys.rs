@@ -1,5 +1,5 @@
-//! judge 키 값과 세 가지 입력 방법. 명령 인자와 표준 입력으로는 받지 않는다.
-//! 설계: docs/design/judge-key-security.md
+//! router 키 값과 세 가지 입력 방법. 명령 인자와 표준 입력으로는 받지 않는다.
+//! 설계: docs/design/router-key-security.md
 
 use std::process::Stdio;
 
@@ -7,14 +7,14 @@ use serde::{Deserialize, Serialize};
 
 use super::{SecretsError, scrub_command};
 
-pub const JUDGE_KEY_ENV: &str = "SATURN_KEY";
+pub const ROUTER_KEY_ENV: &str = "SATURN_KEY";
 
 /// 저장이나 출력으로 새지 않게 `Serialize`, `Display`가 없고, 버릴 때 메모리를 0으로 덮는다.
-pub struct JudgeKey {
+pub struct RouterKey {
     value: String,
 }
 
-impl JudgeKey {
+impl RouterKey {
     /// 앞뒤 공백과 끝 줄바꿈을 지우고 만든다.
     ///
     /// # Errors
@@ -43,13 +43,13 @@ impl JudgeKey {
     }
 }
 
-impl std::fmt::Debug for JudgeKey {
+impl std::fmt::Debug for RouterKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "JudgeKey(****{})", self.last4())
+        write!(f, "RouterKey(****{})", self.last4())
     }
 }
 
-impl Drop for JudgeKey {
+impl Drop for RouterKey {
     /// 컴파일러가 덮어쓰기를 지우지 못하게 `write_volatile`을 쓴다.
     fn drop(&mut self) {
         wipe(std::mem::take(&mut self.value));
@@ -102,20 +102,20 @@ pub struct KeyInfo {
 ///
 /// # Errors
 /// 값이 없으면 `NotFound`, 비었으면 `Empty`, 명령 실패면 `Command`.
-pub async fn acquire(input: KeyInput) -> Result<(JudgeKey, KeySource), SecretsError> {
-    acquire_with_env(input, std::env::var(JUDGE_KEY_ENV).ok()).await
+pub async fn acquire(input: KeyInput) -> Result<(RouterKey, KeySource), SecretsError> {
+    acquire_with_env(input, std::env::var(ROUTER_KEY_ENV).ok()).await
 }
 
 /// 테스트가 프로세스 환경을 바꾸지 않게 환경 변수 값을 밖에서 받는다.
 pub(crate) async fn acquire_with_env(
     input: KeyInput,
     env_value: Option<String>,
-) -> Result<(JudgeKey, KeySource), SecretsError> {
+) -> Result<(RouterKey, KeySource), SecretsError> {
     match input {
-        KeyInput::Hidden(value) => Ok((JudgeKey::new(value)?, KeySource::Stored)),
+        KeyInput::Hidden(value) => Ok((RouterKey::new(value)?, KeySource::Stored)),
         KeyInput::Env => {
             let value = env_value.ok_or(SecretsError::NotFound)?;
-            Ok((JudgeKey::new(value)?, KeySource::Env))
+            Ok((RouterKey::new(value)?, KeySource::Env))
         }
         KeyInput::Command { argv } => Ok((run_key_command(&argv).await?, KeySource::Command)),
     }
@@ -131,7 +131,7 @@ pub fn input_order(key_command: Option<Vec<String>>) -> Vec<KeyInput> {
 }
 
 /// 셸 없이 실행하고 자식 환경에서 키 변수를 지운다.
-async fn run_key_command(argv: &[String]) -> Result<JudgeKey, SecretsError> {
+async fn run_key_command(argv: &[String]) -> Result<RouterKey, SecretsError> {
     let Some((program, args)) = argv.split_first() else {
         return Err(SecretsError::Command {
             detail: "empty command".to_owned(),
@@ -164,7 +164,7 @@ async fn run_key_command(argv: &[String]) -> Result<JudgeKey, SecretsError> {
         });
     }
     wipe(stdout);
-    JudgeKey::new(first_line)
+    RouterKey::new(first_line)
 }
 
 fn wipe(text: String) {
@@ -186,14 +186,14 @@ mod tests {
 
     #[test]
     fn key_is_trimmed_and_never_printed_whole() {
-        let key = JudgeKey::new("  sk-secret-abcd\n".to_owned()).unwrap();
+        let key = RouterKey::new("  sk-secret-abcd\n".to_owned()).unwrap();
 
         assert_eq!(key.expose(), "sk-secret-abcd");
         assert_eq!(key.last4(), "abcd");
-        assert_eq!(format!("{key:?}"), "JudgeKey(****abcd)");
-        assert_eq!(JudgeKey::new("abc".to_owned()).unwrap().last4(), "***");
+        assert_eq!(format!("{key:?}"), "RouterKey(****abcd)");
+        assert_eq!(RouterKey::new("abc".to_owned()).unwrap().last4(), "***");
         assert!(matches!(
-            JudgeKey::new(" \n".to_owned()),
+            RouterKey::new(" \n".to_owned()),
             Err(SecretsError::Empty)
         ));
     }
@@ -269,12 +269,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn command_child_does_not_see_judge_key_variable() {
-        let script = format!("echo \"${{{JUDGE_KEY_ENV}:-absent}}\"");
+    async fn command_child_does_not_see_router_key_variable() {
+        let script = format!("echo \"${{{ROUTER_KEY_ENV}:-absent}}\"");
         let mut command = tokio::process::Command::new("/bin/sh");
         command
             .args(["-c", &script])
-            .env(JUDGE_KEY_ENV, "sk-parent");
+            .env(ROUTER_KEY_ENV, "sk-parent");
         scrub_command(&mut command);
 
         let output = command.output().await.unwrap();

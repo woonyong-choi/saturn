@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use saturn_core::judges::calibration::{AskedAnswer, Signal};
+use saturn_core::routers::calibration::{AskedAnswer, Signal};
 use saturn_protocol::ids::{ChatId, JudgmentId};
 
 use super::*;

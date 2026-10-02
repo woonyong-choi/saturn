@@ -190,14 +190,14 @@ mod tests {
         let folder = tempfile::tempdir().unwrap();
         let path = folder.path().join("config.toml");
         std::fs::write(&path, "x").unwrap();
-        let content = "[judge]\nendpoint = \"https://x\"\n[judge.thresholds]\ninjection = 0.9\n";
+        let content = "[router]\nendpoint = \"https://x\"\n[router.thresholds]\ninjection = 0.9\n";
         let mut store = TrustStore::load(home.path()).await.unwrap();
 
         let TrustStatus::Unknown(prompt) = store.status(&path, content) else {
             panic!("first sight should be unknown");
         };
-        assert_eq!(prompt.applied, vec!["judge.thresholds.injection"]);
-        assert_eq!(prompt.ignored, vec!["judge.endpoint"]);
+        assert_eq!(prompt.applied, vec!["router.thresholds.injection"]);
+        assert_eq!(prompt.ignored, vec!["router.endpoint"]);
         store.trust(&path, &prompt.fingerprint).await.unwrap();
 
         let reloaded = TrustStore::load(home.path()).await.unwrap();

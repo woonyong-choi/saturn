@@ -1,9 +1,9 @@
 //! 판단 뒤 관찰 시간을 재고, 지나면 결과 신호를 판단 기록에 확정한다.
-//! 설계: docs/design/judge-training.md
+//! 설계: docs/design/router-training.md
 
 use std::time::{Duration, Instant};
 
-use saturn_core::judges::calibration::{AskedAnswer, Signal};
+use saturn_core::routers::calibration::{AskedAnswer, Signal};
 use saturn_protocol::ids::{ChatId, JudgmentId};
 
 use crate::store::StoreError;

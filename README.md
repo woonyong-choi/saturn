@@ -28,7 +28,7 @@ Developers who use Codex and Claude Code together lose context each time they sw
 The following is the designed behavior.
 
 1. You run `saturn` in a repository and type a request. A background engine process stores the input in a local SQLite database before it sends anything to Codex or Claude Code.
-2. While the agent works, you type a follow-up. A judge, a small model that answers yes-or-no, multiple-choice, and rating questions about your input, decides whether to add it to the running turn, start a separate task, or queue it.
+2. While the agent works, you type a follow-up. A router, a small model that answers yes-or-no, multiple-choice, and rating questions about your input, decides whether to add it to the running turn, start a separate task, or queue it.
 3. When the context of a session passes a set token limit and no work is running, Saturn either lets the provider compact the session or, when that costs less, starts a new session. The new session gets a packet with the goal, recent turns, and open items taken from Saturn's own record.
 4. You switch the chat from Claude Code to Codex. A chat is the conversation you see, and provider sessions open and close behind it. The new session receives only what changed since it last saw the chat.
 5. You close the terminal. The engine keeps processing the inputs you already sent, and you can attach again later.
@@ -52,7 +52,7 @@ The order after the first conversation is not fixed yet.
 1. First conversation: the `saturn` command, the input flow from acceptance to provider send, provider events with turn end, stop, and resume, approval replies, switching between Codex and Claude Code with context packets. (in progress)
 2. Permissions: Saturn permission rules decide provider execution, and always-allow rules are stored. (next)
 3. Chat management and recovery: continue without a TUI, crash recovery, chat names and grouping, added folders, task-completion notifications. (later)
-4. Local judge model: score recorded judgments, train a personal judge model, and switch to it only when it is not worse than the current judge on the same evaluation set. (later)
+4. Local router model: score recorded judgments, train a personal router model, and switch to it only when it is not worse than the current router on the same evaluation set. (later)
 5. Service: consent-based data collection, remote API, authentication, and infrastructure. (later)
 
 ## Documentation

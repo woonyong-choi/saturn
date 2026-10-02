@@ -4,7 +4,7 @@
 |---|---|
 | 날짜 | 2026-10-01 |
 | 상태 | 대체됨 |
-| 대체 | 대체된 결정: [같은 뜻 찾기는 judge에 맡기고 용어 카탈로그를 두지 않는다](2026-10-01-judge-decides-synonyms.md) |
+| 대체 | 대체된 결정: [같은 뜻 찾기는 router에 맡기고 용어 카탈로그를 두지 않는다](2026-10-01-router-decides-synonyms.md) |
 | 관련 문서 | [맥락 고르기](../design/context-selection.md), [용어 카탈로그](https://github.com/woonyong-choi/saturn/blob/6fda8f610b49d8febe162bf7ec36114513b2e741/docs/design/term-catalog.md) |
 
 ## 배경
@@ -26,11 +26,11 @@
 ## 결과
 
 - 파일 겹침, 단어 겹침, 최근성 세 채널과 용어 카탈로그
-- 기록에서 짝을 캐고 judge로 확인하는 카탈로그 성장
+- 기록에서 짝을 캐고 router로 확인하는 카탈로그 성장
 - 모델 배포와 상주 메모리 없음
 - 카탈로그에 없는 같은 뜻의 누락
 
 ## 다시 볼 조건
 
-- [후보 순위와 judge 결합의 전환 품질 측정](https://github.com/woonyong-choi/saturn/issues/117)에서 RRF 상위 N이 놓친 항목의 대부분이 같은 뜻이나 번역어 문제
+- [후보 순위와 router 결합의 전환 품질 측정](https://github.com/woonyong-choi/saturn/issues/117)에서 RRF 상위 N이 놓친 항목의 대부분이 같은 뜻이나 번역어 문제
 - [용어 카탈로그 짝 정확도와 묶음 확인 비용 측정](https://github.com/woonyong-choi/saturn/issues/127)에서 카탈로그 재현율이 낮음

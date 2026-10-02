@@ -1,11 +1,11 @@
-//! 로컬 학습기(Python, MLX) 실행과 평가. 자식 환경에서 judge 키를 지운다(`secrets::scrub`).
-//! 설계: docs/design/judge-training.md
+//! 로컬 학습기(Python, MLX) 실행과 평가. 자식 환경에서 router 키를 지운다(`secrets::scrub`).
+//! 설계: docs/design/router-training.md
 //! TODO(#43): 학습 출발점 미정
 //! TODO(#91): 학습 스크립트 위치, Python 실행 파일 찾기, 산출물 형식 미정
 
 use std::path::PathBuf;
 
-use saturn_core::judges::calibration::EvalReport;
+use saturn_core::routers::calibration::EvalReport;
 
 use super::{LabeledSets, TrainingError};
 use crate::processes::Supervisor;

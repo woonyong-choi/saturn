@@ -224,8 +224,8 @@ fn packet_scenarios_input_prints_json_with_packet_and_rrf_order() {
     );
     assert_eq!(seqs(&result["rrf_order"]).len(), 6);
     assert!(!seqs(&result["included"]).is_empty());
-    assert_eq!(result["judge_calls"], 0);
-    assert_eq!(result["judge_failures"], 0);
+    assert_eq!(result["router_calls"], 0);
+    assert_eq!(result["router_failures"], 0);
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -240,7 +240,7 @@ fn packet_without_judgments_fills_in_rrf_order() {
     let rrf = seqs(&result["rrf_order"]);
     let included = seqs(&result["included"]);
     assert!(included.contains(&rrf[0]));
-    assert_eq!(result["judged"], 0);
+    assert_eq!(result["routerd"], 0);
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -263,7 +263,7 @@ fn packet_judgments_put_low_probability_item_before_unanswered() {
     let note = format!("cache note {last} ");
     assert!(!baseline["packet"].as_str().unwrap().contains(&note));
     assert!(result["packet"].as_str().unwrap().contains(&note));
-    assert_eq!(result["judged"], 1);
+    assert_eq!(result["routerd"], 1);
 }
 
 #[test]
@@ -290,7 +290,7 @@ fn packet_rrf_only_condition_ignores_judgments() {
 // vars: n = 입력 항목 수
 // basis: estimate
 #[test]
-fn packet_rrf_judge_ignores_verdicts_outside_top_n() {
+fn packet_rrf_router_ignores_verdicts_outside_top_n() {
     let dir = TempDir::new().unwrap();
     let scenarios = scenario_file(&dir);
     let rrf = seqs(&run_scenario_with_budget(&scenarios, "150", &[])["rrf_order"]);
@@ -304,7 +304,7 @@ fn packet_rrf_judge_ignores_verdicts_outside_top_n() {
         "--judgments",
         judgments.as_str(),
         "--condition",
-        "rrf-judge",
+        "rrf-router",
     ];
 
     let mut args_all = outside.to_vec();

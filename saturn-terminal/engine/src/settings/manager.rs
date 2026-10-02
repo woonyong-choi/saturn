@@ -212,7 +212,7 @@ impl SettingsManager {
         self.current
     }
 
-    /// 처리 중 설정이 바뀌어도 provider 실행과 judge 호출은 입력의 번호로 같은 값을 쓴다.
+    /// 처리 중 설정이 바뀌어도 provider 실행과 router 호출은 입력의 번호로 같은 값을 쓴다.
     ///
     /// # Errors
     /// 없는 번호면 `Store`.
@@ -366,7 +366,7 @@ mod tests {
     #[tokio::test]
     async fn same_content_reuses_revision() {
         let fixture = Fixture::new().await;
-        fixture.write_user("[judge.thresholds]\ninjection = 0.9\n");
+        fixture.write_user("[router.thresholds]\ninjection = 0.9\n");
         let mut manager = fixture.manager(&[]).await;
 
         let first = manager
@@ -397,7 +397,7 @@ mod tests {
     async fn untrusted_folder_is_not_merged_until_trusted() {
         let fixture = Fixture::new().await;
         let path = fixture.write_folder(
-            "[judge]\nendpoint = \"https://x\"\n[judge.thresholds]\ninjection = 0.9\n",
+            "[router]\nendpoint = \"https://x\"\n[router.thresholds]\ninjection = 0.9\n",
         );
         let mut manager = fixture.manager(&[]).await;
 
@@ -424,14 +424,14 @@ mod tests {
 
         let settings = manager.at(&fixture.store, applied.revision).await.unwrap();
         assert_eq!(settings.thresholds().injection, 0.9);
-        assert_eq!(settings.judge_endpoint(), "https://api.typesafe.ai");
-        assert!(applied.warning.unwrap().contains("judge.endpoint"));
+        assert_eq!(settings.router_endpoint(), "https://api.typesafe.ai");
+        assert!(applied.warning.unwrap().contains("router.endpoint"));
     }
 
     #[tokio::test]
     async fn apply_trusted_skips_untrusted_folder_and_returns_prompt() {
         let fixture = Fixture::new().await;
-        let path = fixture.write_folder("[judge.thresholds]\ninjection = 0.9\n");
+        let path = fixture.write_folder("[router.thresholds]\ninjection = 0.9\n");
         let mut manager = fixture.manager(&[]).await;
 
         let (applied, prompt) = manager
@@ -517,7 +517,7 @@ mod tests {
     #[tokio::test]
     async fn folder_layer_follows_the_workdir_given_per_call() {
         let fixture = Fixture::new().await;
-        let path = fixture.write_folder("[judge.thresholds]\ninjection = 0.9\n");
+        let path = fixture.write_folder("[router.thresholds]\ninjection = 0.9\n");
         let other = fixture._root.path().join("other");
         std::fs::create_dir_all(other.join(".git")).unwrap();
         let mut manager = fixture.manager(&[]).await;
@@ -586,7 +586,7 @@ mod tests {
     async fn invalid_settings_without_previous_revision_stop_start() {
         let fixture = Fixture::new().await;
         let mut manager = fixture
-            .manager(&["judge.thresholds.keep_current=0.5"])
+            .manager(&["router.thresholds.keep_current=0.5"])
             .await;
 
         let error = manager
@@ -607,7 +607,7 @@ mod tests {
             .unwrap();
         fixture
             .store
-            .set_chat_layer(chat, "judge.thresholds.injection = 0.75\n")
+            .set_chat_layer(chat, "router.thresholds.injection = 0.75\n")
             .await
             .unwrap();
         let mut manager = fixture.manager(&["on_exit=\"ask\""]).await;
@@ -618,7 +618,7 @@ mod tests {
             .revision;
         assert!(!manager.changed(&fixture.workdir).await.unwrap());
 
-        fixture.write_user("[judge.thresholds]\ninjection = 0.95\nprogressing = 0.4\n");
+        fixture.write_user("[router.thresholds]\ninjection = 0.95\nprogressing = 0.4\n");
         assert!(manager.changed(&fixture.workdir).await.unwrap());
         let newer = manager
             .apply(&fixture.store, Some(chat), &fixture.workdir)

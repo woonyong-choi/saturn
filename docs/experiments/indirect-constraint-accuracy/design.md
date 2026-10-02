@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 이슈 | [#152](https://github.com/woonyong-choi/saturn/issues/152) |
-| 관련 설계 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/judge.md) |
+| 관련 설계 | [맥락 고르기](../../design/context-selection.md), [judge](../../design/router.md) |
 | 사전 데이터 | [제약 식별과 대체 판정 정확도 실험 결과](../constraint-judge-accuracy/report.md)의 요약 수치만 봤다. 그 실험의 항목별 judge 답은 열어 보지 않았다. 새 항목 문장은 그 답을 보지 않고 썼다. |
 
 ## 질문
@@ -146,7 +146,7 @@ judge 요청은 모두 2279건이다. 요청 하나는 질문 하나를 담는�
 
 | 결과 | 설계에 반영 |
 |---|---|
-| 채택 | 후보 채택 규칙을 채운 후보를 맞춰 [맥락 고르기](../../design/context-selection.md) 제약 식별 절과 [judge](../../design/judge.md)의 `is_constraint` 행에 state 구성(앞 입력의 등록 여부)과 이유를 적고 관련 요구사항 행에 보고서를 링크한다. H1~H4는 채택된 가설의 기준값을 확인된 값으로 적는다. |
+| 채택 | 후보 채택 규칙을 채운 후보를 맞춰 [맥락 고르기](../../design/context-selection.md) 제약 식별 절과 [judge](../../design/router.md)의 `is_constraint` 행에 state 구성(앞 입력의 등록 여부)과 이유를 적고 관련 요구사항 행에 보고서를 링크한다. H1~H4는 채택된 가설의 기준값을 확인된 값으로 적는다. |
 | 기각 | H1이면 간접 지시 약점을 맥락 고르기 단점에 수치와 함께 적는다. H2이면 0.8 이상도 대체 대신 충돌 가능으로만 기록한다. H3이면 0.5 기준을 낮추거나 부분 충돌을 따로 묻는 질문을 새 실험 이슈로 연다. H4이면 간접 지시 대체는 충돌 가능으로만 기록한다. H5~H8이 기각이면 그 후보를 설계에 넣지 않고 이유를 judge 설계에 적는다. |
 | 보류 | 보류된 가설의 구간만 항목을 더 늘려 새 실험 이슈를 연다. |
 

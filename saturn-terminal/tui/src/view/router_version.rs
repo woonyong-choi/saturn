@@ -1,4 +1,4 @@
-//! judge 버전 화면(`/judge version`).
+//! router 버전 화면(`/router version`).
 //! 설계: docs/design/tui.md
 
 use ratatui::Frame;
@@ -7,7 +7,7 @@ use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Clear, Paragraph};
-use saturn_protocol::rpc::JudgeVersionInfo;
+use saturn_protocol::rpc::RouterVersionInfo;
 
 use crate::i18n::{self, Lang};
 use crate::keys::Action;
@@ -26,24 +26,24 @@ pub struct QuestionStats {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct JudgeVersionRow {
+pub struct RouterVersionRow {
     pub version: String,
-    pub judge: String,
+    pub router: String,
     pub ece: Option<f64>,
     pub active: bool,
     pub questions: Vec<QuestionStats>,
 }
 
-impl JudgeVersionRow {
+impl RouterVersionRow {
     // cost: time O(q), heap O(q), stack O(1)
     // vars: q = 질문 수
     // basis: estimate
     /// `current`와 이름이 같으면 사용 중.
-    pub fn from_info(info: JudgeVersionInfo, current: &str) -> Self {
+    pub fn from_info(info: RouterVersionInfo, current: &str) -> Self {
         Self {
             active: info.version == current,
             version: info.version,
-            judge: info.judge,
+            router: info.router,
             ece: info.ece,
             questions: info
                 .questions
@@ -63,21 +63,21 @@ impl JudgeVersionRow {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum JudgeVersionCommand {
+pub enum RouterVersionCommand {
     ResetThresholds,
     TrainFrom(String),
     Use(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct JudgeVersionScreen {
-    pub rows: Vec<JudgeVersionRow>,
+pub struct RouterVersionScreen {
+    pub rows: Vec<RouterVersionRow>,
     pub selected: usize,
     pub detail: bool,
     pub confirm_use: bool,
 }
 
-impl JudgeVersionScreen {
+impl RouterVersionScreen {
     pub fn up(&mut self) {
         self.selected = self.selected.saturating_sub(1);
         self.confirm_use = false;
@@ -94,14 +94,14 @@ impl JudgeVersionScreen {
     // vars: v = 버전 이름 길이
     // basis: estimate
     /// `u`는 처음엔 확인 한 줄만 띄우고 `None`을 돌려준다.
-    pub fn command(&mut self, action: &Action) -> Option<JudgeVersionCommand> {
+    pub fn command(&mut self, action: &Action) -> Option<RouterVersionCommand> {
         let version = self.rows.get(self.selected).map(|row| row.version.clone());
         match action {
-            Action::ResetThresholds => Some(JudgeVersionCommand::ResetThresholds),
-            Action::TrainFrom => version.map(JudgeVersionCommand::TrainFrom),
+            Action::ResetThresholds => Some(RouterVersionCommand::ResetThresholds),
+            Action::TrainFrom => version.map(RouterVersionCommand::TrainFrom),
             Action::UseVersion | Action::Confirm if self.confirm_use => {
                 self.confirm_use = false;
-                version.map(JudgeVersionCommand::Use)
+                version.map(RouterVersionCommand::Use)
             }
             Action::UseVersion => {
                 self.confirm_use = version.is_some();
@@ -116,7 +116,7 @@ impl JudgeVersionScreen {
     }
 }
 
-impl JudgeVersionScreen {
+impl RouterVersionScreen {
     /// 확인 한 줄이 떠 있었으면 닫고 `true`, 아니면 `false`(화면 종료).
     pub fn cancel(&mut self) -> bool {
         std::mem::take(&mut self.confirm_use)
@@ -124,18 +124,18 @@ impl JudgeVersionScreen {
 }
 
 #[derive(Debug)]
-pub struct JudgeVersionView<'a> {
-    pub screen: &'a JudgeVersionScreen,
+pub struct RouterVersionView<'a> {
+    pub screen: &'a RouterVersionScreen,
     pub lang: Lang,
 }
 
-impl JudgeVersionView<'_> {
+impl RouterVersionView<'_> {
     // cost: time O(r + q), heap O(r + q), stack O(1)
     // vars: r = 버전 수, q = 상세 질문 수
     // basis: estimate
     pub fn render(&self, frame: &mut Frame, area: Rect) {
         let lang = self.lang;
-        let block = window_block(lang.tr(i18n::JUDGE_VERSION_TITLE));
+        let block = window_block(lang.tr(i18n::ROUTER_VERSION_TITLE));
         let inner = block.inner(area);
         frame.render_widget(Clear, area);
         frame.render_widget(block, area);
@@ -163,22 +163,22 @@ impl JudgeVersionView<'_> {
         }
         lines.push(Line::from(""));
         let hint = if self.screen.confirm_use {
-            Span::raw(lang.tr(i18n::JUDGE_VERSION_CONFIRM))
+            Span::raw(lang.tr(i18n::ROUTER_VERSION_CONFIRM))
         } else {
-            Span::styled(lang.tr(i18n::JUDGE_VERSION_HINT), MUTED)
+            Span::styled(lang.tr(i18n::ROUTER_VERSION_HINT), MUTED)
         };
         lines.push(Line::from(hint));
         frame.render_widget(Paragraph::new(lines), inner);
     }
 }
 
-fn version_text(lang: Lang, row: &JudgeVersionRow) -> String {
+fn version_text(lang: Lang, row: &RouterVersionRow) -> String {
     let ece = row
         .ece
         .map_or_else(|| "-".to_string(), |ece| format!("{ece:.3}"));
-    let mut text = format!("{} · {} · ECE {ece}", row.version, row.judge);
+    let mut text = format!("{} · {} · ECE {ece}", row.version, row.router);
     if row.active {
-        text.push_str(&format!(" · {}", lang.tr(i18n::JUDGE_VERSION_ACTIVE)));
+        text.push_str(&format!(" · {}", lang.tr(i18n::ROUTER_VERSION_ACTIVE)));
     }
     text
 }
@@ -186,14 +186,14 @@ fn version_text(lang: Lang, row: &JudgeVersionRow) -> String {
 // cost: time O(q), heap O(q), stack O(1)
 // vars: q = 질문 수
 // basis: estimate
-fn question_lines(lang: Lang, row: &JudgeVersionRow) -> Vec<Line<'static>> {
+fn question_lines(lang: Lang, row: &RouterVersionRow) -> Vec<Line<'static>> {
     let head = format!(
         "{} · {} · {} · {} · {}",
-        lang.tr(i18n::JUDGE_VERSION_QUESTION),
-        lang.tr(i18n::JUDGE_VERSION_TARGET),
-        lang.tr(i18n::JUDGE_VERSION_THRESHOLD),
-        lang.tr(i18n::JUDGE_VERSION_RECENT),
-        lang.tr(i18n::JUDGE_VERSION_JUDGMENTS)
+        lang.tr(i18n::ROUTER_VERSION_QUESTION),
+        lang.tr(i18n::ROUTER_VERSION_TARGET),
+        lang.tr(i18n::ROUTER_VERSION_THRESHOLD),
+        lang.tr(i18n::ROUTER_VERSION_RECENT),
+        lang.tr(i18n::ROUTER_VERSION_JUDGMENTS)
     );
     let mut lines = vec![Line::from(Span::styled(head, EMPHASIS))];
     lines.extend(row.questions.iter().map(|q| {
@@ -214,27 +214,27 @@ mod tests {
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    fn screen() -> JudgeVersionScreen {
+    fn screen() -> RouterVersionScreen {
         let infos = [
-            JudgeVersionInfo {
+            RouterVersionInfo {
                 version: "v1".to_string(),
-                judge: "remote/cal-1".to_string(),
+                router: "remote/cal-1".to_string(),
                 ece: Some(0.05),
                 questions: vec![("relation".to_string(), 0.1, 0.62, 7, 200)],
             },
-            JudgeVersionInfo {
+            RouterVersionInfo {
                 version: "v2".to_string(),
-                judge: "local/cal-2".to_string(),
+                router: "local/cal-2".to_string(),
                 ece: None,
                 questions: Vec::new(),
             },
         ];
-        JudgeVersionScreen {
+        RouterVersionScreen {
             rows: infos
                 .into_iter()
-                .map(|info| JudgeVersionRow::from_info(info, "v2"))
+                .map(|info| RouterVersionRow::from_info(info, "v2"))
                 .collect(),
-            ..JudgeVersionScreen::default()
+            ..RouterVersionScreen::default()
         }
     }
 
@@ -246,7 +246,7 @@ mod tests {
         let second = screen.command(&Action::Confirm);
 
         assert_eq!(first, None);
-        assert_eq!(second, Some(JudgeVersionCommand::Use("v1".to_string())));
+        assert_eq!(second, Some(RouterVersionCommand::Use("v1".to_string())));
     }
 
     #[test]
@@ -265,11 +265,11 @@ mod tests {
 
         assert_eq!(
             screen.command(&Action::TrainFrom),
-            Some(JudgeVersionCommand::TrainFrom("v2".to_string()))
+            Some(RouterVersionCommand::TrainFrom("v2".to_string()))
         );
         assert_eq!(
             screen.command(&Action::ResetThresholds),
-            Some(JudgeVersionCommand::ResetThresholds)
+            Some(RouterVersionCommand::ResetThresholds)
         );
     }
 
@@ -280,7 +280,7 @@ mod tests {
         let mut screen = screen();
         screen.command(&Action::Confirm);
         let mut terminal = Terminal::new(TestBackend::new(80, 12)).unwrap();
-        let view = JudgeVersionView {
+        let view = RouterVersionView {
             screen: &screen,
             lang: Lang::En,
         };

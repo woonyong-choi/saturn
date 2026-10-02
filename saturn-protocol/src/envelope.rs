@@ -1,5 +1,5 @@
 //! JSON-RPC 2.0 봉투와 한 줄 코덱. 설계: docs/design/engine-lifecycle.md
-//! 해석 오류에는 입력 원문을 담지 않는다. `SubmitJudgeKey` 줄에 judge 키가 있다.
+//! 해석 오류에는 입력 원문을 담지 않는다. `SubmitRouterKey` 줄에 router 키가 있다.
 
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::de::{self, DeserializeOwned};
@@ -423,8 +423,8 @@ mod tests {
     }
 
     #[test]
-    fn decode_error_hides_judge_key() {
-        let line = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"SubmitJudgeKey\",\"params\":{\"key\":\"sk-secret\",\"key\":1}}";
+    fn decode_error_hides_router_key() {
+        let line = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"SubmitRouterKey\",\"params\":{\"key\":\"sk-secret\",\"key\":1}}";
         let mistyped = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"Usage\",\"params\":{\"scope\":\"sk-secret\"}}";
 
         for input in [line, mistyped] {
@@ -436,10 +436,10 @@ mod tests {
     }
 
     #[test]
-    fn request_debug_hides_judge_key() {
+    fn request_debug_hides_router_key() {
         let message = ClientMessage::new(
             RequestId(1),
-            Request::SubmitJudgeKey {
+            Request::SubmitRouterKey {
                 key: "sk-secret".into(),
             },
         );

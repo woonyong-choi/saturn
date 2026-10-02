@@ -1,5 +1,5 @@
-//! judge 키 입력 창. 시작 때 judge 확인이 실패하면 원인과 가린 키 입력칸을 보인다.
-//! 설계: docs/design/judge-key-security.md
+//! router 키 입력 창. 시작 때 router 확인이 실패하면 원인과 가린 키 입력칸을 보인다.
+//! 설계: docs/design/router-key-security.md
 
 use std::fmt;
 
@@ -54,19 +54,19 @@ impl fmt::Debug for MaskedInput {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct JudgeKeyPrompt {
+pub struct RouterKeyPrompt {
     /// engine이 키를 가린 문구.
     pub cause: String,
     pub input: MaskedInput,
 }
 
 #[derive(Debug)]
-pub struct JudgeKeyPromptView<'a> {
-    pub prompt: &'a JudgeKeyPrompt,
+pub struct RouterKeyPromptView<'a> {
+    pub prompt: &'a RouterKeyPrompt,
     pub lang: Lang,
 }
 
-impl JudgeKeyPromptView<'_> {
+impl RouterKeyPromptView<'_> {
     pub fn render(&self, frame: &mut Frame, area: Rect) {
         let lang = self.lang;
         let lines = vec![
@@ -74,9 +74,9 @@ impl JudgeKeyPromptView<'_> {
             Line::from(""),
             Line::from(format!("› {}", "•".repeat(self.prompt.input.len()))),
             Line::from(""),
-            Line::from(Span::styled(lang.tr(i18n::JUDGE_KEY_HINT), MUTED)),
+            Line::from(Span::styled(lang.tr(i18n::ROUTER_KEY_HINT), MUTED)),
         ];
-        render_window(frame, area, lang.tr(i18n::JUDGE_KEY_TITLE), lines);
+        render_window(frame, area, lang.tr(i18n::ROUTER_KEY_TITLE), lines);
     }
 }
 
@@ -97,7 +97,7 @@ mod tests {
     // basis: estimate
     #[test]
     fn debug_hides_key_text() {
-        let prompt = JudgeKeyPrompt {
+        let prompt = RouterKeyPrompt {
             cause: "invalid key".to_string(),
             input: masked("sk-secret"),
         };
@@ -122,12 +122,12 @@ mod tests {
     // basis: estimate
     #[test]
     fn render_masks_key_with_dots() {
-        let prompt = JudgeKeyPrompt {
-            cause: "judge check failed".to_string(),
+        let prompt = RouterKeyPrompt {
+            cause: "router check failed".to_string(),
             input: masked("secret"),
         };
         let mut terminal = Terminal::new(TestBackend::new(60, 9)).unwrap();
-        let view = JudgeKeyPromptView {
+        let view = RouterKeyPromptView {
             prompt: &prompt,
             lang: Lang::Ko,
         };
@@ -145,6 +145,6 @@ mod tests {
             .collect();
         assert!(content.contains("••••••"));
         assert!(!content.contains("secret"));
-        assert!(content.contains("judge check failed"));
+        assert!(content.contains("router check failed"));
     }
 }

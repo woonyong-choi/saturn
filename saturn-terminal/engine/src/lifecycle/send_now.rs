@@ -1,8 +1,8 @@
-//! 바로 보내기 테스트: judge를 부르지 않고 끼워 넣기를 시도하고, 안 되면 대기열 맨 앞에서 다음 차례를 기다린다.
+//! 바로 보내기 테스트: router를 부르지 않고 끼워 넣기를 시도하고, 안 되면 대기열 맨 앞에서 다음 차례를 기다린다.
 
 use saturn_protocol::state::{Disposition, InputState};
 
-use super::support::{CLIENT, Flow, idle_reply, judge_down, running_reply};
+use super::support::{CLIENT, Flow, idle_reply, router_down, running_reply};
 use super::*;
 use crate::providers::test_support::Call;
 
@@ -29,7 +29,7 @@ fn steers(flow: &Flow) -> Vec<String> {
 }
 
 #[tokio::test]
-async fn send_now_steers_into_the_running_turn_without_calling_the_judge() {
+async fn send_now_steers_into_the_running_turn_without_calling_the_router() {
     let mut flow = Flow::new(vec![
         idle_reply(0.95),
         running_reply(0.95, "continues", "queue"),
@@ -39,22 +39,22 @@ async fn send_now_steers_into_the_running_turn_without_calling_the_judge() {
     flow.submit("fix the build").await;
     let waiting = flow.submit("also run the tests").await;
     assert_eq!(flow.state(waiting), InputState::Queued);
-    let before = flow.judge_calls();
+    let before = flow.router_calls();
 
     flow.engine.send_now(CLIENT, waiting).await.unwrap();
     flow.settle().await;
 
-    assert_eq!(flow.judge_calls(), before);
+    assert_eq!(flow.router_calls(), before);
     assert_eq!(steers(&flow), vec!["also run the tests"]);
     assert_eq!(flow.state(waiting), InputState::Applied);
 }
 
 #[tokio::test]
-async fn send_now_does_not_need_the_judge_to_be_up() {
+async fn send_now_does_not_need_the_router_to_be_up() {
     let mut flow = Flow::new(
         [idle_reply(0.95), running_reply(0.95, "continues", "queue")]
             .into_iter()
-            .chain(judge_down())
+            .chain(router_down())
             .collect(),
     )
     .await;
@@ -136,5 +136,5 @@ async fn send_now_on_a_sent_input_is_refused() {
     let error = flow.engine.send_now(CLIENT, sent).await.unwrap_err();
 
     assert!(matches!(error, EngineError::Queue(_)));
-    assert_eq!(flow.judge_calls(), 1);
+    assert_eq!(flow.router_calls(), 1);
 }

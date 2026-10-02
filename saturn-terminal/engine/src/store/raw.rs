@@ -21,7 +21,7 @@ pub struct RawDigest {
 }
 
 impl Store {
-    /// provider가 보낸 줄에 judge 키가 있을 수 없어 마스킹하지 않는다.
+    /// provider가 보낸 줄에 router 키가 있을 수 없어 마스킹하지 않는다.
     ///
     /// # Errors
     /// 없는 실행이면 `NotFound`, 이미 압축한(끝난) 실행이면 `Database`.

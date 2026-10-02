@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 이슈 | [#119](https://github.com/woonyong-choi/saturn/issues/119) |
-| 관련 설계 | [맥락 정리](../../design/context-management.md), [맥락 고르기](../../design/context-selection.md), [judge](../../design/judge.md) |
+| 관련 설계 | [맥락 정리](../../design/context-management.md), [맥락 고르기](../../design/context-selection.md), [judge](../../design/router.md) |
 | 사전 데이터 | 없음. 기록 파일은 설계 머지 전에 열지 않았고, 기록 형식은 provider 기록 형식에 대한 사전 지식으로 정했다. |
 
 ## 질문
@@ -36,7 +36,7 @@
 5. `lazy`는 사건마다 요청 하나로 `min(N, 후보 수)`개 호출을 묻는다.
 6. `pre@s`는 사건이 아닌 턴의 끝에서 `S_t ≥ s×T`면 그 턴의 호출 `c_t`개를 요청 하나로 묻는다.
 7. `pre@s`의 사건 요청은 순위 상위 N개 중 아직 판단하지 않은 호출만 묻는다. 순위는 기록에 없으므로 상위 N개를 후보에서 고르게 뽑는다고 보고 기댓값 `min(N, 후보 수) × 미판단 후보 수 ÷ 후보 수`를 쓴다.
-8. 호출 하나는 `call_<id>_keep`과 `result_<id>_keep` 두 질문이다([judge](../../design/judge.md)).
+8. 호출 하나는 `call_<id>_keep`과 `result_<id>_keep` 두 질문이다([judge](../../design/router.md)).
 
 ## 변수
 

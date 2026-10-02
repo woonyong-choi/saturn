@@ -7,19 +7,19 @@ use saturn_tui::client::{ClientError, EngineClient};
 
 pub(crate) mod chat;
 pub(crate) mod export;
-pub(crate) mod judge;
 pub(crate) mod prune;
+pub(crate) mod router;
 pub(crate) mod train;
 pub(crate) mod usage;
 
-/// engine의 judge 키 대기 오류 번호(`-32001`, 초안)와 같다.
-const JUDGE_KEY_REQUIRED: i32 = -32001;
+/// engine의 router 키 대기 오류 번호(`-32001`, 초안)와 같다.
+const ROUTER_KEY_REQUIRED: i32 = -32001;
 
 // cost: time O(m), heap O(1), stack O(1), io m
 // vars: m = 응답이 오기까지 받은 알림 수
 // basis: estimate
 /// 요청 하나를 보내고 응답까지 받은 알림을 `on_notification`에 넘긴다.
-/// 화면이 없어 키를 묻지 않으므로 judge 키 대기 거절에는 설정 방법을 안내한다.
+/// 화면이 없어 키를 묻지 않으므로 router 키 대기 거절에는 설정 방법을 안내한다.
 ///
 /// # Errors
 /// engine이 거절했거나 연결이 끊기면 오류.
@@ -30,10 +30,10 @@ pub(crate) async fn call(
 ) -> anyhow::Result<()> {
     match client.call(request, on_notification).await {
         Err(ClientError::Rejected {
-            code: JUDGE_KEY_REQUIRED,
+            code: ROUTER_KEY_REQUIRED,
             message,
         }) => anyhow::bail!(
-            "judge key required ({message}): set the SATURN_KEY environment variable or the judge.key.command setting, then run again"
+            "router key required ({message}): set the SATURN_KEY environment variable or the router.key.command setting, then run again"
         ),
         other => Ok(other?),
     }

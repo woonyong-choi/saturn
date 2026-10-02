@@ -18,7 +18,7 @@ use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use tokio::sync::mpsc;
 
-use crate::JUDGE_KEY_ENV;
+use crate::ROUTER_KEY_ENV;
 use crate::app::AppEvent;
 
 /// 일시 중지와 외부 에디터 동안 키를 가로채지 않으려고 짧게 둔다.
@@ -81,7 +81,7 @@ pub fn suspend(screen: &mut Screen) -> Result<(), TerminalError> {
     let pid = std::process::id().to_string();
     let signal = std::process::Command::new("kill")
         .args(["-TSTP", &pid])
-        .env_remove(JUDGE_KEY_ENV)
+        .env_remove(ROUTER_KEY_ENV)
         .status()
         .map_err(TerminalError::Suspend);
     // `fg`로 돌아오면 여기서 이어진다.
@@ -123,7 +123,7 @@ pub fn edit_external(screen: &mut Screen, draft: &str) -> Result<String, Termina
     let status = std::process::Command::new(program)
         .args(words)
         .arg(&path)
-        .env_remove(JUDGE_KEY_ENV)
+        .env_remove(ROUTER_KEY_ENV)
         .status()
         .map_err(TerminalError::Editor);
     let restored = configure().map_err(TerminalError::Configure);

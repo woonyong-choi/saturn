@@ -19,14 +19,14 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트가 일하는 중
 
 1. 사용자가 에이전트 A가 코드를 고치는 중에 "테스트도 같이 돌려줘"를 입력한다.
 2. engine이 입력을 기록 저장소에 접수하고 설정 번호와 권한을 고정한다.
-3. judge가 이 입력을 하던 작업을 다듬는 입력으로 판단한다.
+3. router가 이 입력을 하던 작업을 다듬는 입력으로 판단한다.
 4. engine이 진행 중인 턴에 입력을 끼워 넣는다.
 5. 사용자는 입력 상태가 `전달 중`에서 `반영됨`으로 바뀌는 것을 본다.
 
 ### 무관한 일을 맡길 때
 
 1. 사용자가 에이전트 A가 파일을 고치는 중에 다른 기능의 수정을 입력한다.
-2. judge가 이 입력을 하던 일과 무관한 작업으로 판단한다.
+2. router가 이 입력을 하던 일과 무관한 작업으로 판단한다.
 3. `queue`가 같은 채팅 안에 보조 에이전트를 새 작업 B로 시작하려 한다.
 4. 두 작업 모두 쓰기 권한이므로 B는 A의 트리 유휴까지 대기한다.
 5. A와 그 아래 모든 subagent가 끝나면 쓰기 잠금이 풀리고 B가 실행된다.
@@ -45,40 +45,40 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트가 일하는 중
 
 1. engine이 입력을 기록 저장소에 접수(ACK)한다.
 2. `queue`가 접수 때 그 입력의 설정 번호와 권한을 고정한다.
-3. 사용자가 모델을 고정한 입력이면 `queue`는 judge 호출을 생략한다.
-4. 그 밖의 입력은 judge가 뜻을 판단한 뒤 처리 방식을 정한다.
+3. 사용자가 모델을 고정한 입력이면 `queue`는 router 호출을 생략한다.
+4. 그 밖의 입력은 router가 뜻을 판단한 뒤 처리 방식을 정한다.
 
 - 입력은 기록 저장소에 접수된 뒤에만 에이전트로 보낸다. 전달 여부를 모르는 입력이 생기는 일을 막기 위해서다.
 - 입력은 접수 때 고정한 설정 번호로 끝까지 처리한다. 처리 중 설정이 바뀌어도 한 입력을 한 설정으로 처리하기 위해서다.
-- judge에 묻는 질문과 기준값의 세부는 [judge](judge.md)에 있다.
-- judge 호출이 실패하면 [judge 실패](judge.md#judge-실패)의 재시도를 거친 뒤 판단 없이 현재 에이전트와 현재 모델로 보낸다. judge 장애가 입력을 대기에 묶지 않게 하기 위해서다.
+- router에 묻는 질문과 기준값의 세부는 [router](router.md)에 있다.
+- router 호출이 실패하면 [router 실패](router.md#router-실패)의 재시도를 거친 뒤 판단 없이 현재 에이전트와 현재 모델로 보낸다. router 장애가 입력을 대기에 묶지 않게 하기 위해서다.
 
 ### 판단 차례와 적용
 
 1. `queue`가 같은 채팅 입력에 ACK 순서대로 판단 차례를 준다.
 2. `queue`가 판단 시점의 채팅 revision을 고정한다.
 3. 채팅 revision은 작업 상태, 대기열 맨 앞, 마지막 판단으로 이루어진다.
-4. judge는 앞 입력의 판단 결과를 state에 넣은 요청 한 건으로 필요한 질문을 한 번에 판단한다.
+4. router는 앞 입력의 판단 결과를 state에 넣은 요청 한 건으로 필요한 질문을 한 번에 판단한다.
 5. `queue`가 적용 직전에 채팅 revision을 비교(CAS)한다.
 
-- judge 호출은 요청 처리와 별도 작업으로 돌고 결과는 engine 루프로 돌아와 적용한다. 호출이 도는 동안 멈춤, 취소 같은 다른 요청은 기다리지 않는다. 호출이 도는 사이 멈춤이나 취소로 입력이 더는 `판단 중`이 아니면 늦게 온 결과는 `superseded`로 기록하고 버린다.
+- router 호출은 요청 처리와 별도 작업으로 돌고 결과는 engine 루프로 돌아와 적용한다. 호출이 도는 동안 멈춤, 취소 같은 다른 요청은 기다리지 않는다. 호출이 도는 사이 멈춤이나 취소로 입력이 더는 `판단 중`이 아니면 늦게 온 결과는 `superseded`로 기록하고 버린다.
 6. revision이 같으면 `queue`가 끼워 넣기, 새 작업, 대기 중 하나를 적용한다.
 
 - 같은 채팅의 입력은 접수 순서대로 하나씩 판단한다. 두 입력이 같은 상태를 보고 함께 끼워 넣어지는 일을 막기 위해서다.
 - 적용 직전 revision이 다르면 한 번 다시 판단하고, 또 다르면 대기로 보낸다. 바뀐 상태에 옛 판단을 적용하는 일을 막기 위해서다.
 - 판단 기록은 적용 결과를 안 뒤에 쓴다. revision이 어긋나 버린 판단은 `superseded`로 쓰고, 적용한 판단만 결과 신호 관찰을 시작한다.
-- 모델을 고정한 입력과 관계 판단 없이 대기하는 입력(`Tab`)은 judge를 부르지 않고 대기로 둔다(초안). 모델을 고정한 입력이 실행 중에 도착했을 때의 처리 방식은 정해지기 전이라 대기다([#168](https://github.com/woonyong-choi/saturn/issues/168)).
+- 모델을 고정한 입력과 관계 판단 없이 대기하는 입력(`Tab`)은 router를 부르지 않고 대기로 둔다(초안). 모델을 고정한 입력이 실행 중에 도착했을 때의 처리 방식은 정해지기 전이라 대기다([#168](https://github.com/woonyong-choi/saturn/issues/168)).
 - 입력은 접수 때 권한을 고정한다. 권한 모드가 읽기 전용(`read-only`)이면 읽기 전용, 그 밖의 모드는 쓰기다. 읽기 전용 모드여도 쓰기를 허용하는 규칙(`allow`)이 하나라도 있으면 쓰기로 둔다. 읽기 전용 입력은 같은 폴더의 다른 읽기 작업과 병렬로 실행한다(사용자 결정, [#232](https://github.com/woonyong-choi/saturn/issues/232)). `allow` 규칙이 있을 때 쓰기로 두는 것은 쓰기를 막는 모드 기본 규칙을 규칙이 풀 수 있어서 둔 보수적 선택이다(초안).
 - 판단 state는 채팅이 실행 중인지, 앞 입력의 처리 방식, 사용자 원문으로 만들고 비밀값과 절대 경로를 뺀다(초안).
 
 ### 실행 중 새 입력
 
-judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`, `independent`, `conflicts` 중 하나로 고른다. 그 결과로 `queue`가 처리 방식 하나를 적용한다.
+router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`, `independent`, `conflicts` 중 하나로 고른다. 그 결과로 `queue`가 처리 방식 하나를 적용한다.
 
 | 처리 방식 | 동작 |
 |---|---|
 | 끼워 넣기 | 진행 중인 턴에 입력을 더한다. Codex는 `turn/steer`, Claude는 스트림 입력 추가로 전달한다. |
-| 새 작업 | judge가 무관한 작업으로 판단하면 같은 채팅 안에 보조 에이전트를 시작한다. |
+| 새 작업 | router가 무관한 작업으로 판단하면 같은 채팅 안에 보조 에이전트를 시작한다. |
 | 대기 | 하던 작업 다음에 보낼 입력으로 대기열에 둔다. |
 
 - 관계 판단의 확신도가 0.6 미만이면 대기로 보낸다.
@@ -112,8 +112,8 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 
 - 대기는 보내기 전 채팅 대기열에 있는 입력의 상태다.
 - 사용자는 대기 입력을 바로 보내거나 새 작업으로 보내거나 취소할 수 있다.
-- 바로 보내기는 judge를 부르지 않는다(사용자 결정). 실행 중인 작업에 끼워 넣기를 시도하고, 끼워 넣을 수 없으면(실행 중인 작업이 없거나 provider가 끼워 넣기를 아직 지원하지 않으면) 같은 채팅 대기열 맨 앞에 두어 다음 차례를 기다린다. 사용자가 지금 반영되길 원했으므로 앞선 대기 입력보다 먼저 가게 하기 위해서다. 판단이 끼워 넣기가 아니었던 입력을 바로 보내면 판단을 놓친 신호로 기록하고, 모델을 고정한 입력도 같다.
-- 새 작업으로 보내기는 judge 없이 새 작업으로 시작한다. 쓰기 규칙은 그대로 적용한다.
+- 바로 보내기는 router를 부르지 않는다(사용자 결정). 실행 중인 작업에 끼워 넣기를 시도하고, 끼워 넣을 수 없으면(실행 중인 작업이 없거나 provider가 끼워 넣기를 아직 지원하지 않으면) 같은 채팅 대기열 맨 앞에 두어 다음 차례를 기다린다. 사용자가 지금 반영되길 원했으므로 앞선 대기 입력보다 먼저 가게 하기 위해서다. 판단이 끼워 넣기가 아니었던 입력을 바로 보내면 판단을 놓친 신호로 기록하고, 모델을 고정한 입력도 같다.
+- 새 작업으로 보내기는 router 없이 새 작업으로 시작한다. 쓰기 규칙은 그대로 적용한다.
 - 사용자가 판단을 뒤집은 것은 결과 신호로 남긴다. 취소는 `Wrong`, 대기로 판단한 입력을 바로 보내거나 새 작업으로 보내면 `Missed`다.
 - 취소는 에이전트에 보내기 전 입력에만 적용한다. `전달 중`과 `반영됨` 입력은 취소할 수 없다.
 - TUI를 닫은 뒤 대기 입력을 계속 보내는 규칙은 [engine 수명](engine-lifecycle.md)에 있다.
@@ -144,7 +144,7 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 2. 대상이 없는 재개 요청이면 `queue`가 채팅의 보류 전부를 접수 순서대로 재개한다.
 3. `queue`는 재개한 작업을 쓰기 규칙에 따라 한 번에 하나씩 실행한다.
 4. `sessions`가 확인된 상태로 만든 새 입력을 보낸다.
-5. 새 입력의 `resume_held`가 0.85 이상이면 judge 판단으로 보류 작업을 재개한다([#9](https://github.com/woonyong-choi/saturn/issues/9)).
+5. 새 입력의 `resume_held`가 0.85 이상이면 router 판단으로 보류 작업을 재개한다([#9](https://github.com/woonyong-choi/saturn/issues/9)).
 6. `resume_held`가 0.85 미만이면 무시 횟수를 1 올린다.
 7. 재개 뜻이 없는 새 입력이 3개 쌓이거나 Saturn session이 끝나면 보류를 종료한다.
 8. 보류 종료 때 `sessions`가 에이전트 session을 끝내고 보내지 않은 입력을 취소 처리한다.
@@ -176,7 +176,7 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 
 | 상태 | 뜻 | 다음 상태 |
 |---|---|---|
-| `판단 중` | judge 답을 기다리는 입력 | `대기`, `전달 중`, `보류`, `취소됨` |
+| `판단 중` | router 답을 기다리는 입력 | `대기`, `전달 중`, `보류`, `취소됨` |
 | `대기` | 보내기 전 대기열의 입력 | `전달 중`, `보류`, `취소됨` |
 | `전달 중` | 에이전트에 보낸 입력 | `반영됨`, `거절됨` |
 | `반영됨` | 에이전트가 받은 입력 | 없음 |
@@ -188,10 +188,10 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 
 | 상황 | 동작 |
 |---|---|
-| judge 호출이 재시도 뒤에도 실패 | 모델 선택과 처리 방식 판단을 건너뛰고 현재 에이전트와 현재 모델로 보낸다. 입력을 대기로 보내지 않는다. |
+| router 호출이 재시도 뒤에도 실패 | 모델 선택과 처리 방식 판단을 건너뛰고 현재 에이전트와 현재 모델로 보낸다. 입력을 대기로 보내지 않는다. |
 | 적용 직전 revision 불일치 | 한 번 다시 판단하고, 또 어긋나면 대기로 보낸다. |
 | 판단 중 revision 변경 | 판단을 `superseded`로 기록한다. |
-| judge 호출 연속 3회 실패 | 새 입력 접수를 계속하고 상태판에 `판단 모델 연결 끊김`을 보인다. |
+| router 호출 연속 3회 실패 | 새 입력 접수를 계속하고 상태판에 `판단 모델 연결 끊김`을 보인다. |
 | Codex `turn/steer`가 활성 턴 없음으로 실패 | 확정 미전달로 기록하고 다시 판단하지 않고 같은 session에 `turn/start`로 보낸다. |
 | Claude 끼워 넣기 중 턴 종료 | provider가 추가 메시지를 다음 턴에 처리하므로 따로 처리하지 않는다. |
 | 보낸 뒤 결과 불명 | 자동으로 다시 보내지 않고 사용자 확인으로 넘긴다. 입력은 `전달 중`으로 두고 작업을 `결과 확인 필요`로 보이며, 실행 기록은 열어 둔다. 사용자는 `/continue <작업>`으로 확인 입력을 보내 잇는다. |
@@ -210,13 +210,13 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 | 끼워 넣기가 활성 턴 없음으로 실패하면 다시 판단하지 않고 같은 session의 새 턴으로 보낸다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `steer_without_active_turn_sends_one_new_turn_without_rejudging`, `steer_new_turn_unknown_is_not_sent_again` |
 | 보낸 뒤 결과가 불명인 입력은 자동으로 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `unknown_is_never_sent_again_and_the_task_needs_check` |
 | 보내기 전에 확정된 실패만 다시 보낸다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `not_sent_is_sent_again_and_then_applied`, `not_sent_every_time_is_rejected_and_the_next_input_still_goes`, `open_failure_that_is_not_a_resend_case_rejects_without_sending` |
-| 같은 채팅의 입력은 접수 순서대로 하나씩 판단한다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `inputs_are_judged_one_at_a_time_in_accept_order` |
-| judge 호출이 재시도 뒤에도 실패하면 입력을 대기로 보내지 않고 현재 에이전트와 현재 모델로 보낸다. | `saturn-terminal/core/src/judges/failure.rs`의 `route_after_failure_idle_sends_to_current_agent_and_model`, `route_after_failure_running_steers_instead_of_queueing` |
-| 판단 뒤 채팅 상태가 바뀌었으면 한 번 다시 판단하고, 또 바뀌면 대기로 둔다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `revision_conflict_supersedes_old_judgment_and_rejudges_once`, `second_conflict_puts_input_in_queue_without_another_judge_call` |
-| judge 호출이 도는 동안에도 다른 요청을 바로 처리하고, 판단 중 멈춤이나 취소가 있으면 늦게 온 판단은 적용하지 않는다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `requests_are_answered_while_a_judgment_is_in_flight`, `saturn-terminal/engine/src/lifecycle/decision.rs`의 `stop_while_judging_holds_the_input_and_drops_the_late_judgment` |
+| 같은 채팅의 입력은 접수 순서대로 하나씩 판단한다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `inputs_are_routerd_one_at_a_time_in_accept_order` |
+| router 호출이 재시도 뒤에도 실패하면 입력을 대기로 보내지 않고 현재 에이전트와 현재 모델로 보낸다. | `saturn-terminal/core/src/routers/failure.rs`의 `route_after_failure_idle_sends_to_current_agent_and_model`, `route_after_failure_running_steers_instead_of_queueing` |
+| 판단 뒤 채팅 상태가 바뀌었으면 한 번 다시 판단하고, 또 바뀌면 대기로 둔다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `revision_conflict_supersedes_old_judgment_and_rerouters_once`, `second_conflict_puts_input_in_queue_without_another_router_call` |
+| router 호출이 도는 동안에도 다른 요청을 바로 처리하고, 판단 중 멈춤이나 취소가 있으면 늦게 온 판단은 적용하지 않는다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `requests_are_answered_while_a_judgment_is_in_flight`, `saturn-terminal/engine/src/lifecycle/decision.rs`의 `stop_while_judging_holds_the_input_and_drops_the_late_judgment` |
 | 쓰기 권한 에이전트는 같은 작업 폴더에서 한 번에 하나만 실행한다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `relation_answer_to_new_task_waits_for_the_write_turn_then_starts` |
 | 취소는 에이전트에 보내기 전 입력에만 적용한다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `cancel_applies_only_before_the_input_is_sent` |
-| 바로 보내기는 judge를 부르지 않고 끼워 넣기를 시도하며, 안 되면 대기열 맨 앞에 둔다. | `saturn-terminal/engine/src/lifecycle/send_now.rs`의 `send_now_steers_into_the_running_turn_without_calling_the_judge`, `send_now_does_not_need_the_judge_to_be_up`, `send_now_that_cannot_steer_goes_first_in_the_queue`, `send_now_without_verified_steer_goes_back_to_waiting`, `send_now_on_a_sent_input_is_refused`, `saturn-terminal/core/src/queue/mod.rs`의 `send_now_steers_a_running_task_ahead_of_earlier_waiting_inputs`, `send_now_that_cannot_steer_waits_first_in_line`, `send_now_refuses_inputs_that_are_not_waiting` |
+| 바로 보내기는 router를 부르지 않고 끼워 넣기를 시도하며, 안 되면 대기열 맨 앞에 둔다. | `saturn-terminal/engine/src/lifecycle/send_now.rs`의 `send_now_steers_into_the_running_turn_without_calling_the_router`, `send_now_does_not_need_the_router_to_be_up`, `send_now_that_cannot_steer_goes_first_in_the_queue`, `send_now_without_verified_steer_goes_back_to_waiting`, `send_now_on_a_sent_input_is_refused`, `saturn-terminal/core/src/queue/mod.rs`의 `send_now_steers_a_running_task_ahead_of_earlier_waiting_inputs`, `send_now_that_cannot_steer_waits_first_in_line`, `send_now_refuses_inputs_that_are_not_waiting` |
 | provider가 거절한 끼워 넣기는 다시 끼워 넣지 않고 대기열 맨 앞으로 옮겨 다음 차례에 보낸다. | `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `refused_steer_is_not_sent_again_and_is_not_rejected`, `refused_steer_goes_to_the_front_and_takes_the_next_turn`, `refused_steer_through_send_now_also_goes_to_the_front`, `saturn-terminal/core/src/queue/mod.rs`의 `refused_steer_returns_to_the_front_as_a_queued_input`, `refused_steer_needs_a_delivering_input` |
 | 멈춘 작업은 자동으로 이어 가지 않고 보류한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stopped_work_is_not_continued_without_a_request`, `stop_with_nothing_running_holds_the_waiting_input_at_once`, `stop_twice_signals_once` |
 | 재개는 보류 입력을 접수 순서로 보내고 멈춘 작업에는 파일 상태 확인 입력을 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `continue_sends_held_input_and_then_a_state_check_for_the_interrupted_task`, `continue_input_resumes_the_task_of_that_input` |

@@ -27,8 +27,8 @@ pub const TRAINING: &str = "학습";
 // 상태판 대기 줄
 pub const QUEUED: &str = "대기";
 pub const AFTER_TASK_SUFFIX: &str = "다음";
-pub const JUDGE_ORDER: &str = "판단 차례";
-pub const JUDGE_CONNECTION: &str = "판단기 연결 기다림";
+pub const ROUTER_ORDER: &str = "판단 차례";
+pub const ROUTER_CONNECTION: &str = "라우터 연결 기다림";
 pub const WRITE_TURN: &str = "쓰기 차례";
 pub const AFTER_COMPACTION: &str = "맥락 정리 뒤";
 pub const AFTER_ALL_TASKS: &str = "모든 작업 뒤";
@@ -47,10 +47,10 @@ pub const CLOSE_HELD_QUESTION: &str = "보류를 닫을까요?";
 pub const HELD_CLOSED: &str = "보류를 닫았습니다";
 
 // 상태판 알림 줄
-pub const JUDGE_PAUSED: &str = "자동 판단 일시 중단";
-pub const JUDGE_DISCONNECTED: &str = "판단 모델 연결 끊김";
+pub const ROUTER_PAUSED: &str = "자동 판단 일시 중단";
+pub const ROUTER_DISCONNECTED: &str = "판단 모델 연결 끊김";
 pub const STEER_NOT_READY: &str = "바로 반영: 준비 중";
-pub const JUDGE_UNAVAILABLE_SEND: &str = "판단기 연결 없음 · 차례에 보냅니다";
+pub const ROUTER_UNAVAILABLE_SEND: &str = "라우터 연결 없음 · 차례에 보냅니다";
 pub const BUSY_ELSEWHERE: &str = "다른 Saturn에서 실행 중";
 /// `{to}`는 이관한 스키마 버전.
 pub const SCHEMA_MIGRATED: &str = "기록 저장소 v{to}로 옮김";
@@ -69,7 +69,7 @@ pub const COMPACTED: &str = "맥락 정리 후 이어서 진행";
 pub const CONTEXT_DEFERRED: &str = "고정 제약이 길어 맥락 정리를 미룹니다";
 pub const SWITCHED_SUFFIX: &str = "로 전환";
 pub const REQUEST_SUMMARY: &str = "이번 요청";
-pub const JUDGE_CALLS: &str = "판단기";
+pub const ROUTER_CALLS: &str = "라우터";
 pub const TIMES_SUFFIX: &str = "회";
 pub const FEEDBACK_STEERED: &str = "에 이어서 보냈어요";
 pub const FEEDBACK_QUESTION: &str = "판단이 맞았나요? (선택)";
@@ -116,8 +116,8 @@ pub const SHELL_FAILED: &str = "셸 명령을 실행하지 못했습니다";
 pub const ITEMS_SUFFIX: &str = "개";
 
 // 시작 화면 초안
-/// `JUDGE_CALLS`와 같은 키라 번역도 같다.
-pub const START_JUDGE: &str = "판단기";
+/// `ROUTER_CALLS`와 같은 키라 번역도 같다.
+pub const START_ROUTER: &str = "라우터";
 pub const START_FOLDER: &str = "폴더";
 pub const START_ADDED_DIRS: &str = "더한 폴더";
 pub const FOLDER_ADDED: &str = "폴더 더함";
@@ -125,8 +125,8 @@ pub const FOLDER_NEXT_SESSION: &str = "열린 session에는 다음 session부터
 pub const VERSION_UNKNOWN: &str = "확인 안 됨";
 
 // 창 초안
-pub const JUDGE_KEY_TITLE: &str = "판단기 키 입력";
-pub const JUDGE_KEY_HINT: &str = "Enter 확인 · Esc 종료";
+pub const ROUTER_KEY_TITLE: &str = "라우터 키 입력";
+pub const ROUTER_KEY_HINT: &str = "Enter 확인 · Esc 종료";
 pub const TRUST_TITLE: &str = "폴더 설정 신뢰";
 pub const TRUST_PATH: &str = "경로";
 pub const TRUST_FINGERPRINT: &str = "지문";
@@ -159,21 +159,21 @@ pub const USAGE_CACHE_READ: &str = "캐시 읽기";
 pub const USAGE_CACHE_WRITE: &str = "캐시 쓰기";
 pub const USAGE_OUTPUT: &str = "출력";
 pub const USAGE_REASONING: &str = "추론";
-pub const USAGE_JUDGE_CALLS: &str = "판단기 호출";
+pub const USAGE_ROUTER_CALLS: &str = "라우터 호출";
 pub const USAGE_COST: &str = "예상 비용";
 pub const USAGE_COMPACTIONS: &str = "맥락 정리";
 pub const USAGE_LABELS: &str = "채점";
 pub const USAGE_TOKENS: &str = "토큰";
 pub const USAGE_TURNS: &str = "턴";
-pub const JUDGE_VERSION_TITLE: &str = "판단기 버전";
-pub const JUDGE_VERSION_ACTIVE: &str = "사용 중";
-pub const JUDGE_VERSION_QUESTION: &str = "질문";
-pub const JUDGE_VERSION_TARGET: &str = "목표 틀림 비율";
-pub const JUDGE_VERSION_THRESHOLD: &str = "기준값";
-pub const JUDGE_VERSION_RECENT: &str = "최근 200건 틀림";
-pub const JUDGE_VERSION_JUDGMENTS: &str = "판단 수";
-pub const JUDGE_VERSION_CONFIRM: &str = "이 버전을 쓸까요? u 또는 Enter 확인 · Esc 취소";
-pub const JUDGE_VERSION_HINT: &str = "Enter 상세 · r 영점 복귀 · t 다시 학습 · u 사용 · Esc 닫기";
+pub const ROUTER_VERSION_TITLE: &str = "라우터 버전";
+pub const ROUTER_VERSION_ACTIVE: &str = "사용 중";
+pub const ROUTER_VERSION_QUESTION: &str = "질문";
+pub const ROUTER_VERSION_TARGET: &str = "목표 틀림 비율";
+pub const ROUTER_VERSION_THRESHOLD: &str = "기준값";
+pub const ROUTER_VERSION_RECENT: &str = "최근 200건 틀림";
+pub const ROUTER_VERSION_JUDGMENTS: &str = "판단 수";
+pub const ROUTER_VERSION_CONFIRM: &str = "이 버전을 쓸까요? u 또는 Enter 확인 · Esc 취소";
+pub const ROUTER_VERSION_HINT: &str = "Enter 상세 · r 영점 복귀 · t 다시 학습 · u 사용 · Esc 닫기";
 pub const TRAIN_TITLE: &str = "판단 모델 학습";
 pub const TRAIN_CANDIDATES: &str = "채점 후보";
 pub const TRAIN_GRADER: &str = "채점 모델";
@@ -223,8 +223,8 @@ const ENGLISH: &[(&str, &str)] = &[
     ("학습", "training"),
     ("대기", "queued"),
     ("다음", "after"),
-    ("판단 차례", "waiting for judge turn"),
-    ("판단기 연결 기다림", "waiting for judge connection"),
+    ("판단 차례", "waiting for router turn"),
+    ("라우터 연결 기다림", "waiting for router connection"),
     ("쓰기 차례", "waiting for write turn"),
     ("맥락 정리 뒤", "after compaction"),
     ("모든 작업 뒤", "after all tasks"),
@@ -240,11 +240,11 @@ const ENGLISH: &[(&str, &str)] = &[
     ("보류를 닫을까요?", "close this hold?"),
     ("보류를 닫았습니다", "hold closed"),
     ("자동 판단 일시 중단", "auto judgment paused"),
-    ("판단 모델 연결 끊김", "judge model disconnected"),
+    ("판단 모델 연결 끊김", "router model disconnected"),
     ("바로 반영: 준비 중", "steer: not ready"),
     (
-        "판단기 연결 없음 · 차례에 보냅니다",
-        "judge unavailable · sending in order",
+        "라우터 연결 없음 · 차례에 보냅니다",
+        "router unavailable · sending in order",
     ),
     ("다른 Saturn에서 실행 중", "running in another Saturn"),
     ("기록 저장소 v{to}로 옮김", "record store migrated to v{to}"),
@@ -262,7 +262,7 @@ const ENGLISH: &[(&str, &str)] = &[
     ),
     ("로 전환", "switched"),
     ("이번 요청", "this request"),
-    ("판단기", "judge"),
+    ("라우터", "router"),
     ("회", "calls"),
     ("에 이어서 보냈어요", "added to"),
     ("판단이 맞았나요? (선택)", "was this right? (optional)"),
@@ -309,7 +309,7 @@ const ENGLISH: &[(&str, &str)] = &[
         "applies to open sessions from the next session",
     ),
     ("확인 안 됨", "not checked"),
-    ("판단기 키 입력", "judge key"),
+    ("라우터 키 입력", "router key"),
     ("Enter 확인 · Esc 종료", "Enter confirm · Esc quit"),
     ("폴더 설정 신뢰", "trust folder settings"),
     ("경로", "path"),
@@ -349,13 +349,13 @@ const ENGLISH: &[(&str, &str)] = &[
     ("캐시 쓰기", "cache write"),
     ("출력", "output"),
     ("추론", "reasoning"),
-    ("판단기 호출", "judge calls"),
+    ("라우터 호출", "router calls"),
     ("예상 비용", "estimated cost"),
     ("채점", "labels"),
     ("맥락 정리", "compactions"),
     ("토큰", "tokens"),
     ("턴", "turns"),
-    ("판단기 버전", "judge versions"),
+    ("라우터 버전", "router versions"),
     ("사용 중", "in use"),
     ("질문", "question"),
     ("목표 틀림 비율", "target error"),
@@ -370,7 +370,7 @@ const ENGLISH: &[(&str, &str)] = &[
         "Enter 상세 · r 영점 복귀 · t 다시 학습 · u 사용 · Esc 닫기",
         "Enter details · r reset · t retrain · u use · Esc close",
     ),
-    ("판단 모델 학습", "train judge"),
+    ("판단 모델 학습", "train router"),
     ("채점 후보", "candidates"),
     ("채점 모델", "grader"),
     ("예상 토큰", "estimated tokens"),
@@ -395,7 +395,7 @@ const ENGLISH: &[(&str, &str)] = &[
     ("보내기 전 입력 취소", "cancel an input before sending"),
     ("보류 이어서", "continue a hold"),
     ("판단 피드백", "judgment feedback"),
-    ("판단 모델 버전", "judge versions"),
+    ("판단 모델 버전", "router versions"),
     ("판단 기록 켜기와 끄기", "turn judgment records on or off"),
     ("권한 모드 바꾸기", "change the permission mode"),
     ("폴더 더하기", "add a folder to the chat"),

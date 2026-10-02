@@ -8,10 +8,10 @@ use super::{App, Effect, Window};
 use crate::keys::Action;
 use crate::state::ChatState;
 use crate::view::folder_trust::TrustChoice;
-use crate::view::judge_version::JudgeVersionCommand;
 use crate::view::live_area::LiveArea;
 use crate::view::permission::PermissionQueue;
 use crate::view::resume_prompt::ResumeOutcome;
+use crate::view::router_version::RouterVersionCommand;
 use crate::view::status_board::Button;
 use crate::view::task_list::TaskListCommand;
 use crate::view::train_confirm::TrainChoice;
@@ -56,8 +56,8 @@ impl App {
         vec![Effect::Send(Request::CloseHeld { chat, task })]
     }
 
-    pub(super) fn on_judge_key_action(&mut self, action: Action) -> Vec<Effect> {
-        let Some(Window::JudgeKey(prompt)) = &mut self.window else {
+    pub(super) fn on_router_key_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(Window::RouterKey(prompt)) = &mut self.window else {
             return Vec::new();
         };
         match action {
@@ -66,7 +66,7 @@ impl App {
             Action::Confirm if !prompt.input.is_empty() => {
                 let key = prompt.input.take();
                 self.window = None;
-                return vec![Effect::Send(Request::SubmitJudgeKey { key })];
+                return vec![Effect::Send(Request::SubmitRouterKey { key })];
             }
             _ => {}
         }
@@ -232,17 +232,17 @@ impl App {
             (Some(Window::FullTranscript(full)), Action::Up) => full.up(),
             (Some(Window::FullTranscript(full)), Action::Down) => full.down(),
             (Some(Window::Usage(usage)), Action::Confirm) => usage.toggle_detail(),
-            (Some(Window::JudgeVersion(screen)), Action::Up) => screen.up(),
-            (Some(Window::JudgeVersion(screen)), Action::Down) => screen.down(),
-            (Some(Window::JudgeVersion(screen)), Action::Close) => {
+            (Some(Window::RouterVersion(screen)), Action::Up) => screen.up(),
+            (Some(Window::RouterVersion(screen)), Action::Down) => screen.down(),
+            (Some(Window::RouterVersion(screen)), Action::Close) => {
                 let cancelled = screen.cancel();
                 if !cancelled {
                     self.window = None;
                 }
             }
-            (Some(Window::JudgeVersion(screen)), other) => {
+            (Some(Window::RouterVersion(screen)), other) => {
                 return match screen.command(&other) {
-                    Some(command) => vec![Effect::Send(judge_version_request(command))],
+                    Some(command) => vec![Effect::Send(router_version_request(command))],
                     None => Vec::new(),
                 };
             }
@@ -274,16 +274,16 @@ impl App {
     }
 }
 
-fn judge_version_request(command: JudgeVersionCommand) -> Request {
+fn router_version_request(command: RouterVersionCommand) -> Request {
     match command {
-        JudgeVersionCommand::ResetThresholds => Request::Train {
+        RouterVersionCommand::ResetThresholds => Request::Train {
             reset_thresholds: true,
             from: None,
         },
-        JudgeVersionCommand::TrainFrom(version) => Request::Train {
+        RouterVersionCommand::TrainFrom(version) => Request::Train {
             reset_thresholds: false,
             from: Some(version),
         },
-        JudgeVersionCommand::Use(version) => Request::UseJudgeVersion { version },
+        RouterVersionCommand::Use(version) => Request::UseRouterVersion { version },
     }
 }

@@ -1,5 +1,5 @@
-//! 명령줄 정의. judge 키 인자는 두지 않는다.
-//! 설계: docs/design/judge-key-security.md
+//! 명령줄 정의. router 키 인자는 두지 않는다.
+//! 설계: docs/design/router-key-security.md
 
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -92,21 +92,21 @@ pub(crate) enum Command {
     Prune(PruneArgs),
     /// 판단 기록을 JSONL로 내보낸다. 채점하지 않은 기록도 내보낸다.
     Export(ExportArgs),
-    /// judge 관리.
-    Judge {
-        /// judge 하위 명령.
+    /// router 관리.
+    Router {
+        /// router 하위 명령.
         #[command(subcommand)]
-        command: JudgeCommand,
+        command: RouterCommand,
     },
     /// 사용량 조회.
     Usage(UsageArgs),
 }
 
-/// `judge` 하위 명령.
+/// `router` 하위 명령.
 #[derive(Debug, Subcommand)]
-pub(crate) enum JudgeCommand {
-    /// 고른 judge 버전을 확인 한 줄 뒤 현재 버전으로 쓴다.
-    Version(JudgeVersionArgs),
+pub(crate) enum RouterCommand {
+    /// 고른 router 버전을 확인 한 줄 뒤 현재 버전으로 쓴다.
+    Version(RouterVersionArgs),
 }
 
 /// `train` 인자.
@@ -115,7 +115,7 @@ pub(crate) struct TrainArgs {
     /// 기준값을 1차 영점으로 되돌린다.
     #[arg(long)]
     pub(crate) reset_thresholds: bool,
-    /// 이 judge 버전에서 다시 학습한다(`Request::Train`의 `from`).
+    /// 이 router 버전에서 다시 학습한다(`Request::Train`의 `from`).
     #[arg(long, value_name = "VERSION")]
     pub(crate) from: Option<String>,
 }
@@ -136,10 +136,10 @@ pub(crate) struct ExportArgs {
     pub(crate) path: std::path::PathBuf,
 }
 
-/// `judge version` 인자.
+/// `router version` 인자.
 #[derive(Debug, Args)]
-pub(crate) struct JudgeVersionArgs {
-    /// 쓸 judge 버전. TODO(#49): 버전 표기 형식
+pub(crate) struct RouterVersionArgs {
+    /// 쓸 router 버전. TODO(#49): 버전 표기 형식
     #[arg(value_name = "VERSION")]
     pub(crate) version: String,
 }
@@ -215,9 +215,9 @@ mod tests {
 
     #[test]
     fn config_override_splits_at_first_equals() {
-        let parsed: ConfigOverride = "judge.url=https://a.example/?x=1".parse().unwrap();
+        let parsed: ConfigOverride = "router.url=https://a.example/?x=1".parse().unwrap();
 
-        assert_eq!(parsed.key, "judge.url");
+        assert_eq!(parsed.key, "router.url");
         assert_eq!(parsed.value, "https://a.example/?x=1");
     }
 
@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn config_override_allows_empty_value() {
-        let parsed: ConfigOverride = "judge.key.command=".parse().unwrap();
+        let parsed: ConfigOverride = "router.key.command=".parse().unwrap();
 
         assert_eq!(parsed.value, "");
     }

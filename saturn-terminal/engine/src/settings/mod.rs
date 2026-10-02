@@ -14,7 +14,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use saturn_core::judges::{Method, Thresholds};
+use saturn_core::routers::{Method, Thresholds};
 use saturn_core::sessions::context::ContextBudget;
 use saturn_protocol::ids::Provider;
 use saturn_protocol::state::OnExit;
@@ -53,7 +53,7 @@ pub enum SettingsError {
     /// 모르는 키, 타입 오류, 범위 밖 값.
     #[error("invalid setting {key}: {reason}")]
     Invalid {
-        /// 점 경로. 예: `judge.thresholds.keep_current`.
+        /// 점 경로. 예: `router.thresholds.keep_current`.
         key: String,
         reason: String,
         /// 값이 온 층.
@@ -111,7 +111,7 @@ pub struct Settings {
 impl Settings {
     /// 사용자 전용.
     pub fn method(&self) -> Method {
-        match self.text("judge.method") {
+        match self.text("router.method") {
             "saturn" => Method::Saturn,
             "collect" => Method::Collect,
             _ => Method::Jev,
@@ -120,7 +120,7 @@ impl Settings {
 
     /// 없는 항목은 기본값 층 값이다.
     pub fn thresholds(&self) -> Thresholds {
-        let value = |name: &str| self.number(&format!("judge.thresholds.{name}"));
+        let value = |name: &str| self.number(&format!("router.thresholds.{name}"));
         Thresholds {
             keep_current: value("keep_current"),
             is_actionable: value("is_actionable"),
@@ -134,19 +134,19 @@ impl Settings {
         }
     }
 
-    /// 사용자 전용. 허용 호스트 검사는 `judges`가 한다.
-    pub fn judge_endpoint(&self) -> &str {
-        self.text("judge.endpoint")
+    /// 사용자 전용. 허용 호스트 검사는 `routers`가 한다.
+    pub fn router_endpoint(&self) -> &str {
+        self.text("router.endpoint")
     }
 
     /// 출처와 끝 4자리만 담는다.
     pub fn key_info(&self) -> Option<KeyInfo> {
-        serde_json::from_value(self.get("judge.key.info")?.clone()).ok()
+        serde_json::from_value(self.get("router.key.info")?.clone()).ok()
     }
 
     /// 사용자 전용.
     pub fn key_command(&self) -> Option<Vec<String>> {
-        let items = self.get("judge.key.command")?.as_array()?;
+        let items = self.get("router.key.command")?.as_array()?;
         let command: Vec<String> = items
             .iter()
             .filter_map(|item| item.as_str().map(str::to_owned))
@@ -155,7 +155,7 @@ impl Settings {
     }
 
     pub fn storage_mode(&self) -> StorageMode {
-        match self.text("judge.key.storage") {
+        match self.text("router.key.storage") {
             "hardened" => StorageMode::Hardened,
             _ => StorageMode::Standard,
         }
@@ -308,7 +308,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join(".saturn").join(CONFIG_FILE);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        let content = "[judge]\nmethod = \"saturn\"\n";
+        let content = "[router]\nmethod = \"saturn\"\n";
         std::fs::write(&path, content).unwrap();
         let sources = vec![
             (

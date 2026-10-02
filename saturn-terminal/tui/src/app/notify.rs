@@ -15,11 +15,11 @@ use crate::state::{
     Change, ChatState, ContextSize, FeedbackPrompt, InputUpdate, TaskUpdate, TrainingProgress,
 };
 use crate::view::folder_trust::{FolderTrust, TrustChoice};
-use crate::view::judge_key_prompt::JudgeKeyPrompt;
-use crate::view::judge_version::JudgeVersionRow;
 use crate::view::live_area::LiveArea;
 use crate::view::permission::PermissionRequest;
 use crate::view::resume_prompt::ResumePrompt;
+use crate::view::router_key_prompt::RouterKeyPrompt;
+use crate::view::router_version::RouterVersionRow;
 use crate::view::start_screen::StartInfo;
 use crate::view::task_list::ChatGroup;
 use crate::view::train_confirm::{TrainChoice, TrainConfirm};
@@ -122,8 +122,8 @@ impl App {
                 changed: changed_lines,
                 selected: TrustChoice::Apply,
             })),
-            Notification::JudgeKeyRequired { reason } => {
-                self.window = Some(Window::JudgeKey(JudgeKeyPrompt {
+            Notification::RouterKeyRequired { reason } => {
+                self.window = Some(Window::RouterKey(RouterKeyPrompt {
                     cause: reason,
                     input: Default::default(),
                 }));
@@ -143,11 +143,11 @@ impl App {
                     screen.table = Some(UsageTable { range, rows });
                 }
             }
-            Notification::JudgeVersions { current, versions } => {
-                if let Some(Window::JudgeVersion(screen)) = &mut self.window {
+            Notification::RouterVersions { current, versions } => {
+                if let Some(Window::RouterVersion(screen)) = &mut self.window {
                     screen.rows = versions
                         .into_iter()
-                        .map(|info| JudgeVersionRow::from_info(info, &current))
+                        .map(|info| RouterVersionRow::from_info(info, &current))
                         .collect();
                     screen.selected = screen.selected.min(screen.rows.len().saturating_sub(1));
                 }

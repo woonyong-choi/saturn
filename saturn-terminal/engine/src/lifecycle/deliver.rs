@@ -139,7 +139,7 @@ async fn steer_without_active_turn_sends_one_new_turn_without_rejudging() {
 
     assert_eq!(steers(&flow), vec!["also run the tests"]);
     assert_eq!(turns(&flow), vec!["fix the build", "also run the tests"]);
-    assert_eq!(flow.judge_calls(), 2);
+    assert_eq!(flow.router_calls(), 2);
     assert_eq!(flow.state(second), InputState::Applied);
     let runs = flow.engine.store.unfinished_runs().await.unwrap();
     assert_eq!(runs.len(), 1);
@@ -333,11 +333,11 @@ async fn requests_are_answered_while_a_judgment_is_in_flight() {
     .await;
 
     release.notify_one();
-    let done = timeout(WAIT, engine.flow.judge_rx.recv())
+    let done = timeout(WAIT, engine.flow.router_rx.recv())
         .await
-        .expect("judge result should arrive in time")
+        .expect("router result should arrive in time")
         .expect("result channel should stay open");
-    engine.on_judged(done).await;
+    engine.on_routerd(done).await;
     assert_eq!(
         engine.queue.input(input).map(|record| record.state),
         Some(InputState::Cancelled)

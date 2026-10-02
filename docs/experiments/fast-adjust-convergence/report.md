@@ -106,7 +106,7 @@
 
 | 가설 | 판정 | 반영한 문서 |
 |---|---|---|
-| H1 | 채택 | [judge 학습](../../design/judge-training.md) |
-| H2 | 채택 | [judge 학습](../../design/judge-training.md) |
-| H3 | 기각 | [judge 학습](../../design/judge-training.md) |
-| H4 | 채택 | [judge 학습](../../design/judge-training.md) |
+| H1 | 채택 | [judge 학습](../../design/router-training.md) |
+| H2 | 채택 | [judge 학습](../../design/router-training.md) |
+| H3 | 기각 | [judge 학습](../../design/router-training.md) |
+| H4 | 채택 | [judge 학습](../../design/router-training.md) |

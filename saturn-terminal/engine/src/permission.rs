@@ -152,7 +152,7 @@ impl Engine {
     }
 
     /// 규칙을 읽지 못하면 묻는다. 호출을 규칙으로 읽지 못한 요청(`call`이 없음)도 묻는다.
-    pub(crate) async fn judge_permission(
+    pub(crate) async fn router_permission(
         &self,
         chat: ChatId,
         agent: AgentId,

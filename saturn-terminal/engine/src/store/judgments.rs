@@ -6,7 +6,7 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 use std::time::{Duration, SystemTime};
 
-use saturn_core::judges::{Answer, Method, QuestionSetId};
+use saturn_core::routers::{Answer, Method, QuestionSetId};
 use saturn_protocol::ids::{ChatId, InputId, JudgmentId, SettingsRevision};
 use serde_json::{Value, json};
 use sqlx::Row;
@@ -19,7 +19,7 @@ use crate::secrets::Masked;
 /// 판단 원문이 들어 있어 소유자만 읽고 쓴다. 초안 값.
 const EXPORT_FILE_MODE: u32 = 0o600;
 
-pub use saturn_core::judges::JudgmentOutcome;
+pub use saturn_core::routers::JudgmentOutcome;
 
 #[derive(Debug, Clone)]
 pub struct NewJudgment {
@@ -29,7 +29,7 @@ pub struct NewJudgment {
     pub input: Option<InputId>,
     pub method: Method,
     /// 중립 이름. 예: `jev`, `saturn-local`.
-    pub judge: String,
+    pub router: String,
     /// 요청 모델과 응답이 보고한 실제 모델.
     pub model: (String, Option<String>),
     /// 버전이 바뀐 뒤 옛 기록을 다시 해석하는 데 쓴다.
@@ -49,7 +49,7 @@ pub struct NewJudgment {
     pub elapsed: Duration,
     pub outcome: JudgmentOutcome,
     /// 모델, 보정값, 질문별 목표 틀림 비율 묶음. 기준값 조정 계산을 다시 하는 데 쓴다.
-    pub judge_version: String,
+    pub router_version: String,
     pub thresholds: Vec<(String, f64)>,
     /// 피드백 질문을 한 확률 q. 계산 때 1/q로 가중한다.
     pub asked_with: Option<f64>,
@@ -103,15 +103,15 @@ impl Store {
             .collect();
         let elapsed_ms = i64::try_from(judgment.elapsed.as_millis()).unwrap_or(i64::MAX);
         let id: i64 = sqlx::query_scalar(
-            "INSERT INTO judgments (chat_id, input_id, method, judge, model, reported_model, question_sets, \
+            "INSERT INTO judgments (chat_id, input_id, method, router, model, reported_model, question_sets, \
              settings_revision, sent, received, answers, fallbacks, input_tokens, output_tokens, started_at, \
-             elapsed_ms, outcome, judge_version, thresholds, asked_with) \
+             elapsed_ms, outcome, router_version, thresholds, asked_with) \
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
         )
         .bind(to_sql_int(judgment.chat.0))
         .bind(judgment.input.map(|input| to_sql_int(input.0)))
         .bind(method_text(judgment.method))
-        .bind(&judgment.judge)
+        .bind(&judgment.router)
         .bind(&judgment.model.0)
         .bind(&judgment.model.1)
         .bind(serde_json::to_string(&question_sets)?)
@@ -125,7 +125,7 @@ impl Store {
         .bind(to_millis(judgment.started_at))
         .bind(elapsed_ms)
         .bind(enum_text(&judgment.outcome)?)
-        .bind(&judgment.judge_version)
+        .bind(&judgment.router_version)
         .bind(serde_json::to_string(&thresholds)?)
         .bind(judgment.asked_with)
         .fetch_one(&mut *tx)
@@ -204,7 +204,7 @@ fn export_line(row: &SqliteRow) -> Result<Value, StoreError> {
         "chat": row.try_get::<i64, _>("chat_id")?,
         "input": row.try_get::<Option<i64>, _>("input_id")?,
         "method": row.try_get::<String, _>("method")?,
-        "judge": row.try_get::<String, _>("judge")?,
+        "router": row.try_get::<String, _>("router")?,
         "model": {
             "requested": row.try_get::<String, _>("model")?,
             "reported": row.try_get::<Option<String>, _>("reported_model")?,
@@ -250,8 +250,8 @@ pub(crate) mod tests {
             chat,
             input: None,
             method: Method::Jev,
-            judge: "jev".to_owned(),
-            model: ("judge-1".to_owned(), None),
+            router: "jev".to_owned(),
+            model: ("router-1".to_owned(), None),
             question_sets: vec![QuestionSetId {
                 name: "route".to_owned(),
                 major: 3,
@@ -266,7 +266,7 @@ pub(crate) mod tests {
             started_at: SystemTime::now(),
             elapsed: Duration::from_millis(120),
             outcome: JudgmentOutcome::NoResponse,
-            judge_version: "v1".to_owned(),
+            router_version: "v1".to_owned(),
             thresholds: vec![("keep_current".to_owned(), 0.8)],
             asked_with: None,
         }

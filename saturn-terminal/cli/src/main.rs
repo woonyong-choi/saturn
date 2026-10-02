@@ -3,7 +3,7 @@
 
 use clap::Parser;
 
-use crate::args::{Cli, Command, JudgeCommand};
+use crate::args::{Cli, Command, RouterCommand};
 
 mod args;
 mod commands;
@@ -33,9 +33,9 @@ async fn main() -> anyhow::Result<()> {
         Some(Command::Train(args)) => commands::train::run(&mut client, &args).await,
         Some(Command::Prune(args)) => commands::prune::run(&mut client, &args).await,
         Some(Command::Export(args)) => commands::export::run(&mut client, &args).await,
-        Some(Command::Judge {
-            command: JudgeCommand::Version(args),
-        }) => commands::judge::use_version(&mut client, &args).await,
+        Some(Command::Router {
+            command: RouterCommand::Version(args),
+        }) => commands::router::use_version(&mut client, &args).await,
         Some(Command::Usage(args)) => commands::usage::run(&mut client, &args).await,
     }
 }

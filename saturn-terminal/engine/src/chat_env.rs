@@ -31,7 +31,7 @@ impl ChatEnv {
         &self.workdir
     }
 
-    /// 넘겨받은 환경에 judge 키 변수가 있어도 뺀다.
+    /// 넘겨받은 환경에 router 키 변수가 있어도 뺀다.
     pub(crate) fn provider_env(&self) -> Vec<(OsString, OsString)> {
         secrets::scrub(self.env.iter().cloned())
     }
@@ -49,12 +49,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn provider_env_drops_judge_key_variable_and_keeps_the_rest() {
+    fn provider_env_drops_router_key_variable_and_keeps_the_rest() {
         let env = ChatEnv::new(
             PathBuf::from("/work"),
             vec![
                 ("PATH".to_owned(), "/opt/bin:/usr/bin".to_owned()),
-                (secrets::JUDGE_KEY_ENV.to_owned(), "sk-secret".to_owned()),
+                (secrets::ROUTER_KEY_ENV.to_owned(), "sk-secret".to_owned()),
             ],
         );
 

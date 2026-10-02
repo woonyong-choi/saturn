@@ -115,8 +115,8 @@ pub enum Request {
         judgment: JudgmentId,
         correct: bool,
     },
-    /// 기록하지 않는다(judge 키).
-    SubmitJudgeKey {
+    /// 기록하지 않는다(router 키).
+    SubmitRouterKey {
         key: String,
     },
     /// `apply`가 참이면 경로와 지문으로 신뢰를 기록한다.
@@ -140,7 +140,7 @@ pub enum Request {
         scope: UsageRange,
     },
     ListTasks,
-    /// 채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 judge 버전.
+    /// 채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 router 버전.
     Train {
         reset_thresholds: bool,
         from: Option<String>,
@@ -149,8 +149,8 @@ pub enum Request {
     ConfirmTrain {
         proceed: bool,
     },
-    ListJudgeVersions,
-    UseJudgeVersion {
+    ListRouterVersions,
+    UseRouterVersion {
         version: String,
     },
     /// `yes`가 거짓이면 미리보기만.
@@ -194,8 +194,8 @@ pub enum Notification {
     StartInfo {
         saturn_version: String,
         providers: Vec<(Provider, String)>,
-        judge: String,
-        judge_version: String,
+        router: String,
+        router_version: String,
         /// 채팅의 기본 폴더.
         folder: String,
         /// 더한 폴더. 기본 폴더는 들어 있지 않다.
@@ -250,7 +250,7 @@ pub enum Notification {
         ignored: Vec<String>,
         changed_lines: Vec<String>,
     },
-    JudgeKeyRequired {
+    RouterKeyRequired {
         reason: String,
     },
     Commands {
@@ -264,9 +264,9 @@ pub enum Notification {
         range: UsageRange,
         rows: Vec<UsageRow>,
     },
-    JudgeVersions {
+    RouterVersions {
         current: String,
-        versions: Vec<JudgeVersionInfo>,
+        versions: Vec<RouterVersionInfo>,
     },
     TrainPreview {
         candidates: u32,
@@ -348,8 +348,8 @@ pub enum ChatNotice {
     /// 모든 작업이 끝난 순간의 합계.
     RequestSummary {
         provider_tokens: Vec<(crate::ids::Provider, u64)>,
-        judge_calls: u32,
-        judge_tokens: u64,
+        router_calls: u32,
+        router_tokens: u64,
         elapsed_ms: u64,
     },
 }
@@ -357,9 +357,9 @@ pub enum ChatNotice {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum Alert {
     /// 질문별 대체 규칙을 적용 중.
-    JudgePaused,
+    RouterPaused,
     /// 연속 3회 실패로 판단 모델 연결이 끊겼다. 입력은 계속 접수하고 현재 모델로 보낸다.
-    JudgeDisconnected,
+    RouterDisconnected,
     /// 끼워 넣기 실측 전이라 대기로 처리한다.
     SteerNotReady {
         provider: crate::ids::Provider,
@@ -367,8 +367,8 @@ pub enum Alert {
     ChatBusyElsewhere {
         chat: ChatId,
     },
-    /// judge 실패로 `[보내기]` 입력을 차례에 보낸다.
-    JudgeDownSendingInOrder,
+    /// router 실패로 `[보내기]` 입력을 차례에 보낸다.
+    RouterDownSendingInOrder,
     /// 시작할 때 기록 저장소 스키마를 이관했다. 첫 TUI에만 보낸다.
     SchemaMigrated {
         from: u32,
@@ -404,11 +404,11 @@ pub struct TaskListItem {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct UsageRow {
-    /// provider·모델이나 judge. 예: `codex · gpt-5.6-terra`, `judge · jev`.
+    /// provider·모델이나 router. 예: `codex · gpt-5.6-terra`, `router · jev`.
     pub who: String,
     /// 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론 순. 보고되지 않았으면 `None`.
     pub tokens: [Option<u64>; 5],
-    pub judge_calls: u32,
+    pub router_calls: u32,
     /// 단위: 마이크로 달러.
     pub estimated_cost_micros: Option<u64>,
     /// 기록에 없으면 `None`.
@@ -420,9 +420,9 @@ pub struct UsageRow {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
-pub struct JudgeVersionInfo {
+pub struct RouterVersionInfo {
     pub version: String,
-    pub judge: String,
+    pub router: String,
     pub ece: Option<f64>,
     /// (질문, 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수).
     pub questions: Vec<(String, f64, f64, u32, u32)>,

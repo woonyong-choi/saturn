@@ -68,7 +68,7 @@ pub const SATURN_COMMANDS: &[CommandSpec] = &[
         values: &[],
     },
     CommandSpec {
-        path: "judge version",
+        path: "router version",
         description: "판단 모델 버전",
         values: &[],
     },
@@ -120,8 +120,8 @@ pub enum SlashCommand {
         reset_thresholds: bool,
         from: Option<String>,
     },
-    /// `/judge version`
-    JudgeVersion,
+    /// `/router version`
+    RouterVersion,
     /// 목록에 없는 provider 명령. 원문 그대로 메인 에이전트 provider에 넘긴다. TODO(#41): 비메인 provider 명령 처리
     Provider { line: String },
 }
@@ -165,7 +165,7 @@ pub fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
             range: parse_range(&args)?,
         },
         "train" => parse_train(&args)?,
-        "judge" => parse_judge(&args)?,
+        "router" => parse_router(&args)?,
         "" => {
             return Err(CommandError::Unknown {
                 name: String::new(),
@@ -311,10 +311,10 @@ fn parse_train(args: &[&str]) -> Result<SlashCommand, CommandError> {
 // cost: time O(a), heap O(a), stack O(1)
 // vars: a = 인자 글자 수(오류 문구를 만들 때만)
 // basis: estimate
-fn parse_judge(args: &[&str]) -> Result<SlashCommand, CommandError> {
+fn parse_router(args: &[&str]) -> Result<SlashCommand, CommandError> {
     match args {
-        ["version"] => Ok(SlashCommand::JudgeVersion),
-        _ => Err(invalid("judge", &args.join(" "))),
+        ["version"] => Ok(SlashCommand::RouterVersion),
+        _ => Err(invalid("router", &args.join(" "))),
     }
 }
 
@@ -437,10 +437,10 @@ mod tests {
     }
 
     #[test]
-    fn parse_judge_version_and_feedback() {
+    fn parse_router_version_and_feedback() {
         assert_eq!(
-            parse("/judge version").unwrap(),
-            Some(SlashCommand::JudgeVersion)
+            parse("/router version").unwrap(),
+            Some(SlashCommand::RouterVersion)
         );
         assert_eq!(
             parse("/feedback 2").unwrap(),
@@ -464,7 +464,7 @@ mod tests {
     fn filter_prefers_prefix_then_contains() {
         let paths: Vec<&str> = filter("/ver").iter().map(|spec| spec.path).collect();
 
-        assert_eq!(paths, vec!["judge version"]);
+        assert_eq!(paths, vec!["router version"]);
         assert_eq!(filter("/c")[0].path, "cancel");
         assert_eq!(filter("/c")[1].path, "continue");
     }

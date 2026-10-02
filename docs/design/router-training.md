@@ -1,25 +1,25 @@
-# judge 학습
+# router 학습
 
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [판단 기록은 로컬에 쌓고 동의한 레코드만 서버로 올린다](../decisions/2026-09-29-local-first-judgment-collection.md), [판단 규격은 Saturn이 정하고 judge는 중립 이름과 출처로 기록한다](../decisions/2026-09-29-vendor-neutral-judge-spec.md) |
+| 관련 결정 | [판단 기록은 로컬에 쌓고 동의한 레코드만 서버로 올린다](../decisions/2026-09-29-local-first-judgment-collection.md), [판단 규격은 Saturn이 정하고 router는 중립 이름과 출처로 기록한다](../decisions/2026-09-29-vendor-neutral-router-spec.md) |
 
 ## 요약
 
-judge 학습은 판단 기록과 사용자 반응으로 judge를 사용자에게 맞추는 기능이다. 판단마다 기준값을 조금씩 옮기는 빠른 조정과 `/train` 때 중심값을 다시 계산하는 느린 조정이 있다. `/train`은 판단 기록을 채점하고 Saturn 모델을 학습한다. 새 모델은 승격 게이트를 통과할 때만 현재 judge 버전이 된다.
+router 학습은 판단 기록과 사용자 반응으로 router를 사용자에게 맞추는 기능이다. 판단마다 기준값을 조금씩 옮기는 빠른 조정과 `/train` 때 중심값을 다시 계산하는 느린 조정이 있다. `/train`은 판단 기록을 채점하고 Saturn 모델을 학습한다. 새 모델은 승격 게이트를 통과할 때만 현재 router 버전이 된다.
 
 ## 동기
 
-judge가 같은 기준값으로 모든 사용자를 대하면 사람마다 다른 입력 습관을 따라가지 못한다. 기준값이 낮으면 틀린 행동이 늘고, 높으면 사용자가 직접 할 일이 늘어난다. 외부 API인 기준 judge만 쓰면 판단마다 비용이 들고 사용자 기록으로 나아지지 않는다. 이 기능은 사용자 반응으로 기준값을 맞추고, 쌓인 판단 기록으로 로컬 Saturn 모델을 만든다. 새 모델이 현재 모델보다 나빠지면 승격하지 않아 사용자가 성능 저하를 겪지 않는다.
+router가 같은 기준값으로 모든 사용자를 대하면 사람마다 다른 입력 습관을 따라가지 못한다. 기준값이 낮으면 틀린 행동이 늘고, 높으면 사용자가 직접 할 일이 늘어난다. 외부 API인 기준 router만 쓰면 판단마다 비용이 들고 사용자 기록으로 나아지지 않는다. 이 기능은 사용자 반응으로 기준값을 맞추고, 쌓인 판단 기록으로 로컬 Saturn 모델을 만든다. 새 모델이 현재 모델보다 나빠지면 승격하지 않아 사용자가 성능 저하를 겪지 않는다.
 
 ## 예시
 
 ### 틀린 판단이 기준값을 올릴 때
 
-1. judge가 새 입력을 하던 작업에 이어 가는 입력으로 판단하고 engine이 끼워 넣는다.
+1. router가 새 입력을 하던 작업에 이어 가는 입력으로 판단하고 engine이 끼워 넣는다.
 2. 사용자가 곧바로 그 처리를 뒤집는다.
-3. 다음 입력 3개가 지나거나 10분이 지나면 `judges`가 틀림 신호를 확정한다.
+3. 다음 입력 3개가 지나거나 10분이 지나면 `routers`가 틀림 신호를 확정한다.
 4. 빠른 조정이 그 질문의 기준값을 중심값 ±0.05 안에서 `0.002 × (1 − α)`만큼 올린다. α는 목표 틀림 비율이다.
 
 ### 채점할 판단이 모자랄 때
@@ -35,44 +35,44 @@ judge가 같은 기준값으로 모든 사용자를 대하면 사람마다 다�
 2. TUI가 채점 후보 수, 채점 모델, 예상 토큰, 기준값 조정 대상, 모델 추가 학습 여부를 학습 확인 창에 보인다.
 3. 사용자가 확인하면 상태판의 학습 줄이 단계, 채점 건수, 경과 시간, 토큰을 보인다.
 4. engine이 품질 게이트를 통과한 라벨로 Saturn 모델을 학습한다.
-5. 같은 평가용 데이터에서 승격 게이트를 통과하면 새 모델이 현재 judge 버전이 된다.
+5. 같은 평가용 데이터에서 승격 게이트를 통과하면 새 모델이 현재 router 버전이 된다.
 
 ## 상세 설계
 
-### judge 버전
+### router 버전
 
-judge 버전은 모델, 보정값, 질문별 목표 틀림 비율을 묶은 것이다. 모델이 바뀌어도 같은 목표를 지키기 위해서다.
+router 버전은 모델, 보정값, 질문별 목표 틀림 비율을 묶은 것이다. 모델이 바뀌어도 같은 목표를 지키기 위해서다.
 
-- 기준값은 judge 버전마다 목표 틀림 비율에서 다시 계산한다. 버전에 기준값 숫자 대신 목표를 남기기 위해서다.
-- 판단 기록마다 judge 버전, 그때의 기준값, 물은 확률 q를 남기고, 결과 신호와 물은 답이 생기면 같은 기록에 채운다. 기준값 조정 계산을 나중에 다시 하기 위해서다.
+- 기준값은 router 버전마다 목표 틀림 비율에서 다시 계산한다. 버전에 기준값 숫자 대신 목표를 남기기 위해서다.
+- 판단 기록마다 router 버전, 그때의 기준값, 물은 확률 q를 남기고, 결과 신호와 물은 답이 생기면 같은 기록에 채운다. 기준값 조정 계산을 나중에 다시 하기 위해서다.
 - 기준값은 설정 층에 두어 사용자 층과 폴더 층에서 조정한다. 릴리스 없이 기준값을 바꾸기 위해서다. 설정 층은 [설정](settings.md)에 있다.
-- judge 질문과 호출 규칙은 [judge](judge.md)에 있다.
+- router 질문과 호출 규칙은 [router](router.md)에 있다.
 
-`/judge version`은 judge 버전 화면을 연다. 이 화면은 버전별 judge, 보정값, ECE를 보인다. 질문별로 목표 틀림 비율, 기준값, 최근 200건의 틀림 수와 판단 수도 보인다.
+`/router version`은 router 버전 화면을 연다. 이 화면은 버전별 router, 보정값, ECE를 보인다. 질문별로 목표 틀림 비율, 기준값, 최근 200건의 틀림 수와 판단 수도 보인다.
 
 | 키 | 동작 |
 |---|---|
 | `Enter` | 버전 상세 표시 |
 | `r` | 1차 영점으로 복귀, `/train --reset-thresholds`와 동일 |
 | `t` | 고른 버전에서 다시 학습, `/train --from`과 동일 |
-| `u` | 확인 한 줄 뒤 고른 버전 사용, `saturn judge version`과 동일 |
+| `u` | 확인 한 줄 뒤 고른 버전 사용, `saturn router version`과 동일 |
 | `Esc` | 화면 종료 |
 
 ### 결과 신호
 
-1. `judges`가 판단 뒤 관찰 시간이 지나면 결과 신호를 확정한다.
+1. `routers`가 판단 뒤 관찰 시간이 지나면 결과 신호를 확정한다.
 2. 관찰 시간은 다음 입력 3개 또는 10분이다.
-3. judge 판단으로 행동한 뒤 사용자가 뒤집거나 취소하면 틀림 신호다.
+3. router 판단으로 행동한 뒤 사용자가 뒤집거나 취소하면 틀림 신호다.
 4. 행동하지 않았는데 사용자가 같은 행동을 직접 하면 놓침 신호다.
 5. 사용자 반응이 없으면 정답으로 보지 않고 미확정(`Unconfirmed`)으로 확정한다.
 
-- `judges`는 관찰 중에 처음 본 반응을 들고 있다가 관찰 시간이 끝난 뒤 한 번에 판단 기록에 쓴다. 관찰이 끝나기 전의 반응은 바뀔 수 있기 때문이다.
+- `routers`는 관찰 중에 처음 본 반응을 들고 있다가 관찰 시간이 끝난 뒤 한 번에 판단 기록에 쓴다. 관찰이 끝나기 전의 반응은 바뀔 수 있기 때문이다.
 - 관찰이 끝나기 전에는 판단 기록의 결과 신호가 비어 있고, 비어 있는 판단은 느린 조정의 기록에 들지 않는다.
 - 틀림 신호와 놓침 신호를 둘 다 쓴다. 행동한 판단만 보면 기준값이 끝없이 오르기 때문이다.
 
 ### 사용자에게 묻기
 
-`judges`는 모든 판단에서 확률 q로 판단이 맞았는지 사용자에게 묻는다. 묻는 판단을 고르게 섞기 위해서다.
+`routers`는 모든 판단에서 확률 q로 판단이 맞았는지 사용자에게 묻는다. 묻는 판단을 고르게 섞기 위해서다.
 
 - q는 기준값 근처의 판단에서 높고 확실한 판단에서 낮되 0이 되지 않는다. 기준값 근처에서 신호를 더 모으기 위해서다.
 - 느린 조정이 중심값을 계산할 때 행동하지 않은 판단은 물은 답만 1/q로 가중한다. 확률로 고른 표본의 치우침을 바로잡기 위해서다.
@@ -84,7 +84,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 
 ### 빠른 조정
 
-1. `judges`가 판단마다 확정된 신호 하나로 기준값을 옮긴다.
+1. `routers`가 판단마다 확정된 신호 하나로 기준값을 옮긴다.
 2. 옮기는 범위는 질문별 중심값 ±0.05 안이다.
 3. 신호 하나의 이동은 `0.002 × 가중 × 방향`이다. 방향은 틀림이면 `+(1 − α)`, 놓침이면 `−α`이고, α는 목표 틀림 비율이다.
 4. 가중은 행동 신호(틀림은 사용자가 뒤집거나 취소, 놓침은 사용자가 직접 같은 행동)에서 1이다.
@@ -99,7 +99,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 
 ### 느린 조정
 
-1. `/train`이 실행되면 `judges`가 모든 판단 기록으로 질문별 중심값을 다시 계산한다.
+1. `/train`이 실행되면 `routers`가 모든 판단 기록으로 질문별 중심값을 다시 계산한다.
 2. 판단 기록에서 확률 p, 그때의 기준값, 행동 여부(p가 그때의 기준값 이상이면 행동), 물었는지와 q, 결과 신호, 물은 답을 읽는다.
 3. 행동한 판단은 틀림 신호(사용자가 뒤집거나 취소)를 그대로 틀림으로 쓰고 가중은 1이다. 반응이 없으면 틀리지 않은 것으로 센다.
 4. 행동하지 않은 판단은 물은 답만 쓴다. 판단이 틀렸다는 답이면 틀림 가중이 1/q이고, 맞았다는 답이면 0이다. 묻지 않았거나 답이 없는 판단은 틀림 가중 0으로 분모에만 들어간다.
@@ -123,16 +123,16 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 - 질문마다 기준값의 최저값과 최고값을 두고, 되돌릴 수 없는 행동의 기준값은 0.8 미만으로 두지 않는다. 되돌릴 수 없는 행동의 오판을 막기 위해서다.
 - 기준값을 바꾼 뒤 순차 검정으로 확실히 나빠졌다고 나오면 이전 값으로 되돌린다. 나빠진 기준값이 굳는 일을 막기 위해서다.
 - 순차 검정은 행동한 판단의 틀림 비율이 α인지 2α인지 가르는 SPRT이고, 1종 오류율 0.05, 2종 오류율 0.2로 경계를 정한다. 되돌리는 대상은 느린 조정 직전 값이다.
-- 행동 비율이 하한 아래로 내려가면 경고한다. 기준값이 올라 judge가 거의 행동하지 않게 되는 일을 알리기 위해서다.
+- 행동 비율이 하한 아래로 내려가면 경고한다. 기준값이 올라 router가 거의 행동하지 않게 되는 일을 알리기 위해서다.
 
 ### 채점
 
 채점은 판단 기록에 학습용 정답 라벨을 붙이는 처리다. 사람이나 코드가 아니라 설정으로 정한 채점 모델이 채점한다. 채점 모델이 바뀌어도 같은 흐름을 쓰기 위해서다.
 
-1. `judges`가 결과 신호가 있거나 확신도가 낮거나 judge끼리 답이 갈린 판단을 먼저 고른다.
+1. `routers`가 결과 신호가 있거나 확신도가 낮거나 router끼리 답이 갈린 판단을 먼저 고른다.
 2. 채점 모델마다 선택지 순서를 두 번 바꿔 풀고, 두 답이 같을 때만 채택한다.
 3. 사후 판정은 결정 이후 대화를 보고, 결정 시점에 알 수 있던 정보를 기준으로 정답을 정한다.
-4. `judges`가 채점 모델 답, 사후 판정, 결과 신호를 label model로 합친다.
+4. `routers`가 채점 모델 답, 사후 판정, 결과 신호를 label model로 합친다.
 5. 품질 게이트를 통과한 라벨만 학습용과 평가용으로 나눈다.
 
 | 라벨 | 통과 조건 |
@@ -154,7 +154,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 3. 200건 미만이면 engine은 실행하지 않고 부족한 건수를 보인다.
 4. 200건 이상이면 TUI가 학습 확인 창을 보이고 사용자 선택을 기다린다.
 5. engine이 채점 모델로 후보를 채점하고 품질 게이트를 통과한 라벨을 저장한다.
-6. `judges`가 결과 신호를 확정한 모든 판단 기록으로 `Observation` 목록을 만들어 질문마다 `recenter`에 넘기고 질문별 중심값을 다시 계산한다. 쓰인 결과가 300건 미만인 질문은 그대로 둔다.
+6. `routers`가 결과 신호를 확정한 모든 판단 기록으로 `Observation` 목록을 만들어 질문마다 `recenter`에 넘기고 질문별 중심값을 다시 계산한다. 쓰인 결과가 300건 미만인 질문은 그대로 둔다.
 7. engine이 로컬 학습기로 Saturn 모델을 학습하고 승격 게이트로 비교한다.
 
 - `/train`은 지난 실행 뒤 채점 안 된 판단이 200건 이상일 때만 실행한다([#16](https://github.com/woonyong-choi/saturn/issues/16)). 적은 라벨로 한 조정은 잡음 수준이기 때문이다.
@@ -164,7 +164,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 
 ### 승격 게이트
 
-새 Saturn 모델은 현재 judge 버전과 같은 평가용 데이터에서 비교한다. 아래 조건을 모두 채울 때만 새 모델을 현재 judge 버전으로 승격한다. 새 모델이 현재 모델보다 나빠지는 일을 막기 위해서다.
+새 Saturn 모델은 현재 router 버전과 같은 평가용 데이터에서 비교한다. 아래 조건을 모두 채울 때만 새 모델을 현재 router 버전으로 승격한다. 새 모델이 현재 모델보다 나빠지는 일을 막기 위해서다.
 
 | 항목 | 조건 |
 |---|---|
@@ -186,21 +186,21 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 | 요구사항 | 검증 계획 |
 |---|---|
 | 결과 신호는 관찰 시간(다음 입력 3개 또는 10분)이 지난 뒤에만 확정한다. | `saturn-terminal/engine/src/lifecycle/outcomes.rs`의 `settle_after_three_inputs_records_confirmed_signal`, `settle_before_observation_ends_leaves_signal_empty`, `settle_after_ten_minutes_without_reaction_records_unconfirmed`, `saturn-terminal/engine/src/outcomes.rs`의 `settled_before_window_and_inputs_is_empty`, `settled_after_three_inputs_returns_reaction` |
-| 빠른 조정은 기준값을 중심값 ±0.05 밖으로 옮기지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `observe_never_leaves_fast_range` |
-| 빠른 조정은 신호 하나로 기준값을 `0.002 × 가중 × 방향`만큼만 옮기고, 이동 폭은 신호가 쌓여도 줄지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `observe_step_stays_fixed_after_many_signals` |
-| 빠른 조정은 행동 신호에 1/q를 붙이지 않고 물은 피드백 답의 신호에만 붙인다. | `saturn-terminal/core/src/judges/calibration.rs`의 `observe_behavior_signal_moves_fixed_step_without_ask_weight`, `observe_asked_answer_is_weighted_by_inverse_q` |
-| 빠른 조정은 같은 입력 열에서 모의 판단의 고정 폭 규칙과 같은 이동을 한다. | `saturn-terminal/core/src/judges/calibration.rs`의 `observe_follows_simulation_b_on_same_signals` |
-| 되돌릴 수 없는 행동의 기준값은 0.8 미만이 되지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `observe_irreversible_floor_holds` |
-| 느린 조정은 쓰인 결과가 300건 미만이면 중심값을 바꾸지 않고 300건 이상이면 바꾸며, 행동하지 않았고 묻지 않은 판단은 쓰인 결과로 세지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_below_min_results_does_nothing`, `recenter_at_min_results_acts_and_below_does_not`, `recenter_unasked_skipped_judgments_are_not_results` |
-| 느린 조정은 `/train` 한 번에 중심값을 이전 중심값 ±0.05 안으로만 움직인다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_moves_at_most_fast_range_per_call`, `recenter_all_wrong_uses_upper_bound` |
-| 느린 조정은 행동한 판단의 틀림 신호를 가중 1로 쓰고, 반응 없는 행동은 틀리지 않은 것으로 센다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_acted_without_reaction_counts_as_not_wrong`, `recenter_all_wrong_uses_upper_bound` |
-| 느린 조정은 행동하지 않은 판단은 물은 답만 1/q로 쓰고 놓침 신호는 쓰지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_skipped_judgment_uses_only_asked_answer_with_inverse_q`, `recenter_skipped_judgment_with_missed_signal_is_not_used` |
-| 느린 조정은 목표 틀림 비율 이하인 가장 낮은 격자 값을 새 중심값으로 고르고, 없으면 최고값을 고른다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_picks_lowest_threshold_meeting_target`, `recenter_all_wrong_uses_upper_bound`, `threshold_grid_default_bounds_spans_bounds_by_half_percent` |
-| 느린 조정은 행동이 목표를 지키는 값 위에서 멈춘 기록에서도 새 중심값을 그 값 근처로 둔다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_where_actions_stop_above_oracle_lands_near_oracle` |
-| 느린 조정은 같은 판단 기록에서 모의 판단의 위험 곡선 계산과 같은 중심값을 낸다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_matches_simulation_s1q_on_same_records`, `recenter_matches_simulation_t1_on_same_records` |
-| 느린 조정은 되돌릴 수 없는 행동의 최저값 아래로 중심값을 내리지 않는다. | `saturn-terminal/core/src/judges/calibration.rs`의 `recenter_keeps_center_within_irreversible_floor` |
+| 빠른 조정은 기준값을 중심값 ±0.05 밖으로 옮기지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `observe_never_leaves_fast_range` |
+| 빠른 조정은 신호 하나로 기준값을 `0.002 × 가중 × 방향`만큼만 옮기고, 이동 폭은 신호가 쌓여도 줄지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `observe_step_stays_fixed_after_many_signals` |
+| 빠른 조정은 행동 신호에 1/q를 붙이지 않고 물은 피드백 답의 신호에만 붙인다. | `saturn-terminal/core/src/routers/calibration.rs`의 `observe_behavior_signal_moves_fixed_step_without_ask_weight`, `observe_asked_answer_is_weighted_by_inverse_q` |
+| 빠른 조정은 같은 입력 열에서 모의 판단의 고정 폭 규칙과 같은 이동을 한다. | `saturn-terminal/core/src/routers/calibration.rs`의 `observe_follows_simulation_b_on_same_signals` |
+| 되돌릴 수 없는 행동의 기준값은 0.8 미만이 되지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `observe_irreversible_floor_holds` |
+| 느린 조정은 쓰인 결과가 300건 미만이면 중심값을 바꾸지 않고 300건 이상이면 바꾸며, 행동하지 않았고 묻지 않은 판단은 쓰인 결과로 세지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_below_min_results_does_nothing`, `recenter_at_min_results_acts_and_below_does_not`, `recenter_unasked_skipped_judgments_are_not_results` |
+| 느린 조정은 `/train` 한 번에 중심값을 이전 중심값 ±0.05 안으로만 움직인다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_moves_at_most_fast_range_per_call`, `recenter_all_wrong_uses_upper_bound` |
+| 느린 조정은 행동한 판단의 틀림 신호를 가중 1로 쓰고, 반응 없는 행동은 틀리지 않은 것으로 센다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_acted_without_reaction_counts_as_not_wrong`, `recenter_all_wrong_uses_upper_bound` |
+| 느린 조정은 행동하지 않은 판단은 물은 답만 1/q로 쓰고 놓침 신호는 쓰지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_skipped_judgment_uses_only_asked_answer_with_inverse_q`, `recenter_skipped_judgment_with_missed_signal_is_not_used` |
+| 느린 조정은 목표 틀림 비율 이하인 가장 낮은 격자 값을 새 중심값으로 고르고, 없으면 최고값을 고른다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_picks_lowest_threshold_meeting_target`, `recenter_all_wrong_uses_upper_bound`, `threshold_grid_default_bounds_spans_bounds_by_half_percent` |
+| 느린 조정은 행동이 목표를 지키는 값 위에서 멈춘 기록에서도 새 중심값을 그 값 근처로 둔다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_where_actions_stop_above_oracle_lands_near_oracle` |
+| 느린 조정은 같은 판단 기록에서 모의 판단의 위험 곡선 계산과 같은 중심값을 낸다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_matches_simulation_s1q_on_same_records`, `recenter_matches_simulation_t1_on_same_records` |
+| 느린 조정은 되돌릴 수 없는 행동의 최저값 아래로 중심값을 내리지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_keeps_center_within_irreversible_floor` |
 | 전체 묻는 빈도는 판단 20번에 1번을 넘지 않는다. | 많은 판단을 흘려 물은 비율이 상한 안인지 확인한다. |
-| 판단 기록마다 judge 버전, 기준값, q를 남기고 결과 신호와 물은 답은 생긴 뒤 같은 기록에 채운다. | `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`, `saturn-terminal/engine/src/lifecycle/outcomes.rs`의 `answer_feedback_records_answer_in_judgment`, `answer_feedback_request_is_answered_through_socket` |
+| 판단 기록마다 router 버전, 기준값, q를 남기고 결과 신호와 물은 답은 생긴 뒤 같은 기록에 채운다. | `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`, `saturn-terminal/engine/src/lifecycle/outcomes.rs`의 `answer_feedback_records_answer_in_judgment`, `answer_feedback_request_is_answered_through_socket` |
 | `/train`은 판단 기록으로 `Observation` 목록을 만들어 `recenter`에 넘긴다. | `saturn-terminal/engine/src/training/mod.rs`의 `recenter_thresholds_with_enough_recorded_results_moves_center`, `recenter_thresholds_below_min_results_keeps_center`, `recenter_thresholds_ignores_judgments_still_being_observed` |
 | `/train`은 채점 안 된 판단이 200건 미만이면 실행하지 않는다. | 199건에서 실행을 거절하고 200건에서 시작하는지 확인한다. |
 | 모델 학습은 학습용 라벨 1,000건 이상, 평가용 라벨 200건 이상일 때만 한다. | 학습용 999건에서 학습을 건너뛰고 채점과 기준값 조정만 하는지 확인한다. |
@@ -222,7 +222,7 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 ## 미해결 질문
 
 - Saturn 모델 학습을 공개 체크포인트에서 이어 학습할지, 항목별 yes/no 확률 방식으로 직접 학습할지 ([#43](https://github.com/woonyong-choi/saturn/issues/43))
-- 기준 judge와 채점 모델의 출력을 비교와 평가에만 쓸지, 허용된 범위에서 학습에도 쓸지 ([#45](https://github.com/woonyong-choi/saturn/issues/45))
+- 기준 router와 채점 모델의 출력을 비교와 평가에만 쓸지, 허용된 범위에서 학습에도 쓸지 ([#45](https://github.com/woonyong-choi/saturn/issues/45))
 - 학습 레코드에서 subagent 출력을 출처로 구분할지, 그 턴을 빼거나 구분 없이 둘지 ([#64](https://github.com/woonyong-choi/saturn/issues/64))
 - 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 라벨 품질 게이트의 결과 신호 일치를 사후 판정으로 볼지, 원래 판단의 답과 결과 신호로 볼지 ([#105](https://github.com/woonyong-choi/saturn/issues/105))

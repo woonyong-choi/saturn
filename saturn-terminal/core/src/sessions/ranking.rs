@@ -1,4 +1,4 @@
-//! 후보 순위(파일·단어·최근성 채널과 RRF)와 judge 판단 뒤의 최종 순서.
+//! 후보 순위(파일·단어·최근성 채널과 RRF)와 router 판단 뒤의 최종 순서.
 //! 설계: docs/design/context-selection.md
 
 use std::cmp::Ordering;
@@ -58,10 +58,10 @@ pub fn rank_candidates(
 // cost: time O(c log c), heap O(c), stack O(1), alloc 2
 // vars: c = 후보 수
 // basis: estimate
-/// judge가 답한 항목을 남길 확률이 높은 순으로 두고, 같은 확률이면 RRF 순이다.
+/// router가 답한 항목을 남길 확률이 높은 순으로 두고, 같은 확률이면 RRF 순이다.
 /// 기준값이 없어 확률이 낮아도 빼지 않는다. 답이 없는 항목(실패한 조각 포함)은 RRF 순으로 뒤에 둔다.
-/// `verdicts`가 비면 judge가 전부 답하지 못한 것이라 RRF 순서 그대로다.
-pub fn order_after_judge(ranked: &[LedgerSeq], verdicts: &[(LedgerSeq, f64)]) -> Vec<LedgerSeq> {
+/// `verdicts`가 비면 router가 전부 답하지 못한 것이라 RRF 순서 그대로다.
+pub fn order_after_router(ranked: &[LedgerSeq], verdicts: &[(LedgerSeq, f64)]) -> Vec<LedgerSeq> {
     let answered: HashMap<LedgerSeq, f64> = verdicts.iter().copied().collect();
     let mut kept: Vec<(usize, f64, LedgerSeq)> = Vec::new();
     let mut unanswered: Vec<LedgerSeq> = Vec::new();
@@ -283,14 +283,14 @@ mod tests {
     }
 
     #[test]
-    fn order_after_judge_no_verdicts_keeps_rrf_order() {
+    fn order_after_router_no_verdicts_keeps_rrf_order() {
         let ranked = seqs(&[5, 4, 3, 2, 1]);
 
-        assert_eq!(order_after_judge(&ranked, &[]), ranked);
+        assert_eq!(order_after_router(&ranked, &[]), ranked);
     }
 
     #[test]
-    fn order_after_judge_orders_by_probability_and_keeps_low() {
+    fn order_after_router_orders_by_probability_and_keeps_low() {
         let ranked = seqs(&[5, 4, 3, 2, 1]);
         let verdicts = [
             (LedgerSeq(5), 0.6),
@@ -300,13 +300,13 @@ mod tests {
             (LedgerSeq(1), 0.8),
         ];
 
-        let ordered = order_after_judge(&ranked, &verdicts);
+        let ordered = order_after_router(&ranked, &verdicts);
 
         assert_eq!(ordered, seqs(&[4, 1, 2, 5, 3]));
     }
 
     #[test]
-    fn order_after_judge_same_probability_follows_rrf_order() {
+    fn order_after_router_same_probability_follows_rrf_order() {
         let ranked = seqs(&[5, 4, 3]);
         let verdicts = [
             (LedgerSeq(3), 0.8),
@@ -314,17 +314,17 @@ mod tests {
             (LedgerSeq(5), 0.8),
         ];
 
-        let ordered = order_after_judge(&ranked, &verdicts);
+        let ordered = order_after_router(&ranked, &verdicts);
 
         assert_eq!(ordered, seqs(&[5, 4, 3]));
     }
 
     #[test]
-    fn order_after_judge_unanswered_follow_answered_in_rrf_order() {
+    fn order_after_router_unanswered_follow_answered_in_rrf_order() {
         let ranked = seqs(&[5, 4, 3, 2, 1]);
         let verdicts = [(LedgerSeq(2), 0.7), (LedgerSeq(4), 0.1)];
 
-        let ordered = order_after_judge(&ranked, &verdicts);
+        let ordered = order_after_router(&ranked, &verdicts);
 
         assert_eq!(ordered, seqs(&[2, 4, 5, 3, 1]));
     }

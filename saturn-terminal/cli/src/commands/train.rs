@@ -1,5 +1,5 @@
-//! `saturn train`: judge 학습. `/train`과 같다.
-//! 설계: docs/design/judge-training.md
+//! `saturn train`: router 학습. `/train`과 같다.
+//! 설계: docs/design/router-training.md
 
 use std::io::Write;
 
