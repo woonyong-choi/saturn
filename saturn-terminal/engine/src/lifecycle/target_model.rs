@@ -103,11 +103,11 @@ async fn target_model_picks_the_provider_of_the_chosen_model() {
 }
 
 #[tokio::test]
-async fn target_model_change_opens_a_new_main_session() {
+async fn target_model_on_a_second_new_task_opens_a_session_with_that_model() {
     let options = ["claude/opus", "claude/haiku", "other"];
     let mut flow = Flow::new(vec![
         model_reply(0.1, &options, "claude/opus"),
-        model_reply(0.95, &options, "claude/haiku"),
+        model_reply(0.1, &options, "claude/haiku"),
     ])
     .await;
     know_models(&mut flow, Provider::Claude, &["opus", "haiku"]);
@@ -121,9 +121,10 @@ async fn target_model_change_opens_a_new_main_session() {
         opened_models(&flow.fake),
         vec![Some("opus".to_owned()), Some("haiku".to_owned())]
     );
+    // 두 번째 새 작업은 보조 에이전트라 첫 session은 그대로 열려 있다
     let old = flow.engine.sessions.get(SessionId(1)).unwrap();
     let new = flow.engine.sessions.get(SessionId(2)).unwrap();
-    assert_eq!(old.state, SessionState::ClosedResumable);
+    assert_eq!(old.state, SessionState::Open);
     assert_eq!(new.state, SessionState::Open);
     assert_eq!(new.model.as_deref(), Some("haiku"));
 }
@@ -159,6 +160,17 @@ async fn target_model_outside_the_candidates_is_ignored() {
     let options = ["claude/opus", "claude/sonnet", "other"];
     let mut flow = Flow::new(vec![model_reply(0.1, &options, "claude/sonnet")]).await;
     know_models(&mut flow, Provider::Claude, &["opus"]);
+
+    flow.submit("hello").await;
+
+    assert_eq!(opened_models(&flow.fake), vec![None]);
+}
+
+#[tokio::test]
+async fn target_model_is_ignored_when_the_input_continues_current_work() {
+    let options = ["claude/opus", "claude/haiku", "other"];
+    let mut flow = Flow::new(vec![model_reply(0.95, &options, "claude/haiku")]).await;
+    know_models(&mut flow, Provider::Claude, &["opus", "haiku"]);
 
     flow.submit("hello").await;
 

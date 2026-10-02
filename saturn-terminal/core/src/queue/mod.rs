@@ -238,8 +238,8 @@ impl Queue {
         entry.input.state = InputState::Queued;
         entry.input.reason = None;
         entry.disposition = Some(decision.disposition);
-        // 끼워 넣기는 열린 턴의 모델을 바꿀 수 없어 고른 모델을 쓰지 않는다
-        if decision.disposition != Disposition::Steer && decision.model.is_some() {
+        // 모델 선택은 새 작업에만 쓴다. 이어 가기(대기)와 끼워 넣기는 현재 모델을 유지한다
+        if decision.disposition == Disposition::NewTask && decision.model.is_some() {
             entry.input.pinned_model.clone_from(&decision.model);
         }
         let chat = entry.input.chat;
