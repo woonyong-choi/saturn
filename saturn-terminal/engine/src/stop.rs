@@ -146,13 +146,13 @@ impl Engine {
 
     /// 멈춘 session은 보류로 두고 사용자가 이을 때까지 쓰지 않는다.
     async fn hold_session(&mut self, live: &LiveSession) {
-        if let Err(error) = self.sessions.set_state(live.session, SessionState::Held) {
-            tracing::warn!(error = %self.failure_line(&error), "session was not held");
+        let held = self.sessions.set_state(live.session, SessionState::Held);
+        if held.is_err() {
+            self.warn_failure("session was not held", held);
             return;
         }
-        if let Err(error) = self.persist_sessions(live.session).await {
-            tracing::warn!(error = %self.failure_line(&error), "failed to record held session");
-        }
+        let persisted = self.persist_sessions(live.session).await;
+        self.warn_failure("failed to record held session", persisted);
     }
 
     fn group_of(&self, chat: ChatId, live: &LiveSession) -> Option<ProcessGroupId> {
@@ -173,7 +173,20 @@ impl Engine {
 
     pub(crate) async fn on_stop_done(&mut self, done: StopDone) {
         let StopDone { chat, result } = done;
-        let remaining = match &result {
+        let remaining = self.unconfirmed_after(&result);
+        let Some(progress) = self.flow.stopping.get_mut(&chat) else {
+            return;
+        };
+        progress.pending_groups = progress.pending_groups.saturating_sub(1);
+        progress.unconfirmed = progress.unconfirmed.saturating_add(remaining);
+        if let Err(error) = self.check_stop_done(chat).await {
+            tracing::warn!(error = %self.failure_line(&error), "failed to finish stop");
+        }
+    }
+
+    /// 확인하지 못한 프로세스 수. 중지 호출이 실패하면 하나로 센다.
+    fn unconfirmed_after(&self, result: &Result<StopOutcome, ProcessError>) -> u32 {
+        match result {
             Ok(StopOutcome::Stopped) => 0,
             Ok(StopOutcome::Unconfirmed { remaining }) => {
                 u32::try_from(*remaining).unwrap_or(u32::MAX)
@@ -182,14 +195,6 @@ impl Engine {
                 tracing::warn!(error = %self.failure_line(error), "failed to confirm process stop");
                 1
             }
-        };
-        let Some(progress) = self.flow.stopping.get_mut(&chat) else {
-            return;
-        };
-        progress.pending_groups = progress.pending_groups.saturating_sub(1);
-        progress.unconfirmed = progress.unconfirmed.saturating_add(remaining);
-        if let Err(error) = self.check_stop_done(chat).await {
-            tracing::warn!(error = %self.failure_line(&error), "failed to finish stop");
         }
     }
 
@@ -254,14 +259,11 @@ impl Engine {
     }
 
     async fn end_stopped_run(&mut self, agent: AgentId) {
-        self.runs.chat_of.remove(&agent);
-        self.runs.task_of.remove(&agent);
-        let Some(run) = self.runs.active.remove(&agent) else {
+        let Some(run) = self.runs.forget(agent) else {
             return;
         };
-        if let Err(error) = self.store.finish_run(run, RunEnd::Stopped).await {
-            tracing::warn!(error = %self.failure_line(&error), "failed to end stopped run");
-        }
+        let ended = self.store.finish_run(run, RunEnd::Stopped).await;
+        self.warn_failure("failed to end stopped run", ended);
     }
 
     /// `task`가 없으면 채팅의 보류 전부를 접수 순서로 재개한다. 멈출 때 실행 중이던 작업에는 파일 상태부터
@@ -349,22 +351,17 @@ impl Engine {
         let Some(live) = self.flow.live.remove(&agent) else {
             return;
         };
-        if let Ok(connection) = self.provider_mut(chat, live.provider)
-            && let Err(error) = connection.close_session(&live.provider_session).await
-        {
-            tracing::warn!(error = %self.failure_line(&error), "failed to close held session");
+        if let Ok(connection) = self.provider_mut(chat, live.provider) {
+            let closed = connection.close_session(&live.provider_session).await;
+            self.warn_failure("failed to close held session", closed);
         }
         let ended = self.sessions.set_state(live.session, SessionState::Ended);
-        match ended {
-            Ok(()) => {
-                if let Err(error) = self.persist_sessions(live.session).await {
-                    tracing::warn!(error = %self.failure_line(&error), "failed to record ended session");
-                }
-            }
-            Err(error) => {
-                tracing::warn!(error = %self.failure_line(&error), "held session was not ended");
-            }
+        if ended.is_err() {
+            self.warn_failure("held session was not ended", ended);
+            return;
         }
+        let persisted = self.persist_sessions(live.session).await;
+        self.warn_failure("failed to record ended session", persisted);
     }
 
     /// 결과를 모르는 실행은 닫고 그 입력은 `전달 중`으로 둔다. 같은 입력을 다시 보내지 않고 확인 입력으로 잇는다.
@@ -373,9 +370,7 @@ impl Engine {
             return Ok(());
         };
         self.queue.finish_task(check.agent);
-        self.runs.chat_of.remove(&check.agent);
-        self.runs.task_of.remove(&check.agent);
-        if let Some(run) = self.runs.active.remove(&check.agent) {
+        if let Some(run) = self.runs.forget(check.agent) {
             self.store.finish_run(run, RunEnd::Stopped).await?;
         }
         self.flow.held.insert(

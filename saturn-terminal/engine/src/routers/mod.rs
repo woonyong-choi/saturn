@@ -355,10 +355,11 @@ impl Routers {
     /// 패킷의 `compact` 판단이 재시도 끝에 실패했을 때 쓴다. router가 시작한 전환은 건너뛰고 현재 모델로 진행한다. 강제한 전환은 하고 경쟁 구역을 순위 순서로 채운다.
     pub(crate) fn compact_after_failure(&self, starter: TransitionStarter) -> CompactFailure {
         let action = failure::compact_failure(starter);
-        match action {
-            CompactFailure::SkipTransition => tracing::warn!("{}", failure::SKIP_MODEL_MESSAGE),
-            CompactFailure::FillByRank => tracing::warn!("{}", failure::SKIP_RECORD_MESSAGE),
-        }
+        let message = match action {
+            CompactFailure::SkipTransition => failure::SKIP_MODEL_MESSAGE,
+            CompactFailure::FillByRank => failure::SKIP_RECORD_MESSAGE,
+        };
+        tracing::warn!("{message}");
         action
     }
 

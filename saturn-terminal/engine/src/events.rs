@@ -322,19 +322,22 @@ impl Engine {
         self.flow.live.remove(&live.agent);
         self.confirm_stopped_agent(chat, live.agent);
         if self.flow.stopping.contains_key(&chat) {
-            if let Err(error) = self.check_stop_done(chat).await {
-                tracing::warn!(error = %self.failure_line(&error), "failed to finish stop");
-            }
+            let checked = self.check_stop_done(chat).await;
+            self.warn_failure("failed to finish stop", checked);
             return;
         }
-        if let Some(run) = self.runs.active.get(&live.agent).copied()
-            && let Err(error) = self
+        if let Some(run) = self.runs.active.get(&live.agent).copied() {
+            let recorded = self
                 .store
                 .set_effect_scope(run, EffectScope::Unobserved)
-                .await
-        {
-            tracing::warn!(error = %self.failure_line(&error), "failed to record lost stream");
+                .await;
+            self.warn_failure("failed to record lost stream", recorded);
         }
+        self.mark_needs_check(chat, live).await;
+    }
+
+    /// 실행 기록에서 입력을 찾을 수 있을 때만 결과 확인 필요로 둔다.
+    async fn mark_needs_check(&mut self, chat: ChatId, live: &LiveSession) {
         let (Some(task), Some(input)) = (
             self.runs.task_of.get(&live.agent).copied(),
             self.run_input(live.agent).await,
@@ -419,15 +422,7 @@ impl Engine {
         answer: PermissionAnswer,
     ) -> bool {
         let is_allow = answer != PermissionAnswer::Deny { note: None };
-        let sent = match self.provider_mut(chat, live.provider) {
-            Ok(connection) => {
-                connection
-                    .answer_permission(&live.provider_session, request_id, answer)
-                    .await
-            }
-            Err(error) => Err(error),
-        };
-        match sent {
+        match self.send_rule_answer(chat, live, request_id, answer).await {
             Ok(()) => {
                 tracing::debug!(
                     request = request_id,
@@ -441,6 +436,18 @@ impl Engine {
                 false
             }
         }
+    }
+
+    async fn send_rule_answer(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+        request_id: &str,
+        answer: PermissionAnswer,
+    ) -> Result<(), ProviderError> {
+        self.provider_mut(chat, live.provider)?
+            .answer_permission(&live.provider_session, request_id, answer)
+            .await
     }
 
     /// 허가 요청을 기록 뒤에 TUI로 올린다. 답이 올 때까지 provider는 그 호출에서 멈춰 있고 작업 시계도 멈춘다.
