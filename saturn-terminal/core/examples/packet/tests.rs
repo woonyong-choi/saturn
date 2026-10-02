@@ -155,6 +155,37 @@ fn packet_provider_mode_without_summary_returns_error() {
     assert!(error.to_string().contains("--summary-file"));
 }
 
+// cost: time O(L), heap O(L), stack O(1)
+// vars: L = packet output size
+// basis: estimate
+#[test]
+fn packet_fixed_file_replaces_goal_and_open_items() {
+    let dir = TempDir::new().unwrap();
+    let fixed = write(
+        &dir,
+        "fixed.json",
+        r#"{"goal":[{"seq":1,"text":"first goal"},{"seq":8,"text":"last input"}],"open_items":[{"seq":4,"text":"pending work"}]}"#,
+    );
+    let input = stream_lines(&stream_events());
+
+    let rendered = run_with_stdin(
+        &[
+            "--mode",
+            "saturn",
+            "--budget-tokens",
+            "800",
+            "--fixed-file",
+            &fixed,
+        ],
+        &input,
+    )
+    .unwrap();
+
+    assert!(rendered.output.contains("first goal"));
+    assert!(rendered.output.contains("last input"));
+    assert!(rendered.output.contains("pending work"));
+}
+
 fn tool_record(seq: u64, path: &str, result: &str) -> Value {
     json!({"seq": seq, "session": 1, "kind": "tool", "tool": "read", "args": {"path": path}, "result": result})
 }

@@ -44,6 +44,18 @@ pub(crate) struct Verdict {
     pub(crate) probability: f64,
 }
 
+#[derive(Debug, Deserialize)]
+pub(crate) struct FixedFields {
+    pub(crate) goal: Vec<FixedEntry>,
+    pub(crate) open_items: Vec<FixedEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct FixedEntry {
+    pub(crate) seq: u64,
+    pub(crate) text: String,
+}
+
 /// 순서를 정하는 규칙.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct OrderRule {
@@ -70,6 +82,7 @@ pub(crate) fn assemble(
     after: Option<u64>,
     judgments: &Judgments,
     rule: &OrderRule,
+    fixed: Option<&FixedFields>,
 ) -> Assembled {
     let last_input = last_user(records).map_or("", |(_, text)| text);
     let turns = recent_turns(records);
@@ -84,17 +97,31 @@ pub(crate) fn assemble(
         .filter_map(|seq| tools.iter().find(|tool| tool.seq == seq.0))
         .map(competing_item)
         .collect();
+    let (goal_and_last_input, open_items) = fixed.map_or_else(
+        || {
+            (
+                last_user(records)
+                    .map(|(seq, text)| {
+                        vec![Entry {
+                            seq: LedgerSeq(seq),
+                            text: text.to_owned(),
+                        }]
+                    })
+                    .unwrap_or_default(),
+                open_items(&tools),
+            )
+        },
+        |fields| {
+            (
+                fields.goal.iter().map(entry).collect(),
+                fields.open_items.iter().map(entry).collect(),
+            )
+        },
+    );
     let source = PacketSource {
         constraints: constraints(records, &judgments.constraints),
-        goal_and_last_input: last_user(records)
-            .map(|(seq, text)| {
-                vec![Entry {
-                    seq: LedgerSeq(seq),
-                    text: text.to_owned(),
-                }]
-            })
-            .unwrap_or_default(),
-        open_items: open_items(&tools),
+        goal_and_last_input,
+        open_items,
         recent_turns: turns,
         competitors,
         up_to: LedgerSeq(records.iter().map(|record| record.seq).max().unwrap_or(0)),
@@ -103,6 +130,13 @@ pub(crate) fn assemble(
         source,
         rrf_order,
         routed: verdicts.len(),
+    }
+}
+
+fn entry(value: &FixedEntry) -> Entry {
+    Entry {
+        seq: LedgerSeq(value.seq),
+        text: value.text.clone(),
     }
 }
 
