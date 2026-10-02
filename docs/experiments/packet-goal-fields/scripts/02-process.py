@@ -97,6 +97,7 @@ def main() -> None:
     for path in sorted(RAW.glob("packets-*.jsonl")):
         for row in read_jsonl(path):
             scenario = scenarios[(row["run_id"], row["scenario_id"])]
+            record_text = {record["seq"]: record.get("text", "") for record in scenario["record"]}
             for condition in PACKET_CONDITIONS:
                 packet = row["packets"][condition]
                 included = set(packet.get("included", []))
@@ -108,7 +109,10 @@ def main() -> None:
                     for seq, relation in zip(q["evidence_seq"], q["evidence_relation"]):
                         evidence.append({"run_id": row["run_id"], "scenario_id": row["scenario_id"],
                                          "condition": condition, "qid": q["qid"], "qtype": q["qtype"],
-                                         "seq": seq, "relation": relation, "in_packet": int(seq in included)})
+                                         "seq": seq, "relation": relation,
+                                         "in_packet": int(seq in included or (
+                                             bool(record_text[seq]) and record_text[seq] in packet["packet"]
+                                         ))})
     for path in session_files:
         for row in read_jsonl(path):
             scenario = scenarios[(row["run_id"], row["scenario_id"])]
