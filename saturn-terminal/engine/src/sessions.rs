@@ -75,7 +75,7 @@ impl Engine {
         let settings = self.settings.at(&self.store, request.settings).await?;
         let inputs = ReturnInputs {
             budget: ContextBudget {
-                cache_ttl: self.cache_ttl(request.provider),
+                cache_ttl: self.cache_ttl(request.provider).await?,
                 ..settings.context_budget(request.provider)
             },
             packet: request.packet,
@@ -141,18 +141,19 @@ impl Engine {
             .await?
             .context_budget(provider);
         Ok(ContextBudget {
-            cache_ttl: self.cache_ttl(provider),
+            cache_ttl: self.cache_ttl(provider).await?,
             ..budget
         })
     }
 
-    /// provider가 알려 준 캐시 유지 시간. 알려 주지 않았으면 `DEFAULT_CACHE_TTL`.
-    fn cache_ttl(&self, provider: Provider) -> Duration {
-        self.flow
-            .cache_ttl
-            .get(&provider)
-            .copied()
-            .unwrap_or(DEFAULT_CACHE_TTL)
+    /// provider가 마지막으로 알려 준 캐시 유지 시간. 연결이 닫혔거나 engine을 다시 시작해도 기록 저장소에서 읽는다.
+    /// 알려 준 적이 없을 때만 `DEFAULT_CACHE_TTL`.
+    async fn cache_ttl(&self, provider: Provider) -> Result<Duration, EngineError> {
+        Ok(self
+            .store
+            .cache_ttl_secs(provider)
+            .await?
+            .map_or(DEFAULT_CACHE_TTL, Duration::from_secs))
     }
 
     /// session 기록에서 채팅을 찾는다.

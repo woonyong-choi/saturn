@@ -176,6 +176,9 @@ async fn target_back_to_claude(provider_ttl: Option<u64>) -> SendTarget {
             .await
             .unwrap();
     }
+    // 보관한 Claude의 연결은 없다. 재시작해도 저장한 값으로 판정한다.
+    engine.shutdown().await.unwrap();
+    let engine = fixture.ready().await;
     let request = SendRequest {
         provider: Provider::Claude,
         ..to_codex(&engine, chat, 50_000)
@@ -197,7 +200,7 @@ async fn cache_window_without_provider_report_is_five_minutes() {
 }
 
 #[tokio::test]
-async fn cache_window_reported_by_provider_extends_resume() {
+async fn cache_window_reported_by_provider_survives_closed_connection_and_restart() {
     let target = target_back_to_claude(Some(60 * 60)).await;
 
     assert_eq!(target, SendTarget::Resume(CLAUDE));

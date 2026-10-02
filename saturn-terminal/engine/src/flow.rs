@@ -2,7 +2,7 @@
 //! 설계: docs/design/input-handling.md
 
 use std::collections::{HashMap, HashSet};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use saturn_core::routers::RouterRequest;
 use saturn_protocol::ids::{
@@ -115,8 +115,6 @@ pub(crate) struct FlowState {
     pub(crate) last_task: HashMap<AgentId, TaskId>,
     /// 가장 나중에 보고한 활성 맥락 `A`. 보고하지 않았으면 `None`.
     pub(crate) context_tokens: HashMap<AgentId, Option<u64>>,
-    /// provider가 알려 준 캐시 유지 시간. 알려 주지 않았으면 항목이 없고 기본값을 쓴다.
-    pub(crate) cache_ttl: HashMap<Provider, Duration>,
     /// 패킷 턴 수. 그 턴의 완료는 작업 끝이 아니다.
     pub(crate) packet_turns: HashMap<AgentId, u32>,
     /// 답을 기다리는 허가 요청. 키는 `request_id`.
@@ -154,7 +152,6 @@ impl Default for FlowState {
             last_run: HashMap::new(),
             last_task: HashMap::new(),
             context_tokens: HashMap::new(),
-            cache_ttl: HashMap::new(),
             packet_turns: HashMap::new(),
             permissions: HashMap::new(),
             settings_of: HashMap::new(),

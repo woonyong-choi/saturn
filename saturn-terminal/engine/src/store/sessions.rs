@@ -2,7 +2,7 @@
 //! 설계: docs/design/records.md
 
 use saturn_core::sessions::{LastTurn, SessionRecord};
-use saturn_protocol::ids::SessionId;
+use saturn_protocol::ids::{Provider, SessionId};
 use sqlx::Row;
 
 use super::records::{ensure_found, session_from_row};
@@ -34,7 +34,49 @@ impl IdKind {
     }
 }
 
+/// provider가 마지막으로 알려 준 캐시 유지 시간(초)을 두는 `meta` 키.
+fn cache_ttl_key(provider: Provider) -> &'static str {
+    match provider {
+        Provider::Codex => "cache_ttl_secs_codex",
+        Provider::Claude => "cache_ttl_secs_claude",
+    }
+}
+
 impl Store {
+    /// 같은 provider의 이전 값은 덮어쓴다.
+    ///
+    /// # Errors
+    /// 쓰기 실패면 `Sqlx`.
+    pub(crate) async fn record_cache_ttl(
+        &self,
+        provider: Provider,
+        ttl_secs: u64,
+    ) -> Result<(), StoreError> {
+        sqlx::query(
+            "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        )
+        .bind(cache_ttl_key(provider))
+        .bind(to_sql_int(ttl_secs))
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    /// 알려 준 적이 없으면 `None`.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Sqlx`.
+    pub(crate) async fn cache_ttl_secs(
+        &self,
+        provider: Provider,
+    ) -> Result<Option<u64>, StoreError> {
+        let value: Option<i64> = sqlx::query_scalar("SELECT value FROM meta WHERE key = ?")
+            .bind(cache_ttl_key(provider))
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(value.map(from_sql_int))
+    }
+
     /// 같은 session의 이전 값은 덮어쓴다.
     ///
     /// # Errors

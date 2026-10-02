@@ -195,7 +195,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 1. 보관 session의 마지막 턴이 끝난 뒤 경과 시간이 그 provider의 캐시 유지 시간 안이면 재개한다.
 2. 캐시 유지 시간이 지났으면 패킷 크기 `P`가 그 session의 마지막 활성 맥락 `A`보다 작을 때(`P < A`) 새 session을 열고 패킷을 넘기고, 아니면 재개한다.
 
-캐시 유지 시간은 상수이고 설정 키가 없다. Codex는 5분이다. Claude는 구독 로그인이면 1시간, 그 밖(API 키 등)이면 5분이다. 구독 여부는 `providers/claude`가 `system/init`의 `apiKeySource`로 판단한다. 값이 `none`이면 API 키 없이 로그인한 구독이고, 다른 값이거나 값이 없으면 5분으로 본다. `providers/claude`는 판단한 값을 `CacheWindow` 이벤트로 알리고, `engine`은 이를 기록하지 않고 메모리에 두었다가 판정에 쓴다. 알려 주기 전(재시작 직후 등)에는 5분이다. 판정은 다음 입력을 보낼 때 한다.
+캐시 유지 시간은 상수이고 설정 키가 없다. Codex는 5분이다. Claude는 구독 로그인이면 1시간, 그 밖(API 키 등)이면 5분이다. 구독 여부는 `providers/claude`가 `system/init`의 `apiKeySource`로 판단한다. 값이 `none`이면 API 키 없이 로그인한 구독이고, 다른 값이거나 값이 없으면 5분으로 본다. `providers/claude`는 판단한 값을 `CacheWindow` 이벤트로 알리고, `engine`은 이를 대화 기록에 넣지 않고 provider별로 마지막 값을 기록 저장소의 `meta` 표에 저장한다. 돌아갈 때는 그 provider 연결이 닫혔거나 `engine`을 다시 시작해 `system/init`이 아직 오지 않았어도 저장한 값으로 판정한다. 값을 한 번도 받지 못했을 때만 5분이다. 판정은 다음 입력을 보낼 때 한다.
 
 - 재개하면 그 session이 마지막으로 받은 기록 번호 뒤의 변경분만 붙인다. 앞부분이 그대로인 맥락 뒤에 덧붙여 캐시와 원문 맥락을 함께 지키기 위해서다.
 - 변경분이 많으면 [맥락 고르기](context-selection.md) 순서로 고른다.
@@ -292,7 +292,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 |---|---|
 | 채팅마다 열린 메인 session은 하나이고, 보관 session은 provider마다 하나까지다. | `saturn-terminal/core/src/sessions/mod.rs`의 `provider_switches_keep_one_open_and_one_archive_per_provider`, `register_second_archive_ends_older_one_and_drops_its_last_turn` |
 | 캐시 유지 시간 안인 보관 session으로 돌아가면 `A`와 무관하게 재개하고 변경분만 붙인다. 지났으면 `P < A`일 때만 새 session을 연다. | `saturn-terminal/core/src/sessions/context.rs`의 `decide_return_matches_rule_table`, `saturn-terminal/core/src/sessions/mod.rs`의 `target_for_send_warm_below_threshold_resumes_archive`, `target_for_send_warm_above_threshold_resumes_archive` |
-| Claude 캐시 유지 시간은 `apiKeySource`가 `none`이면 1시간, 아니면 5분이고, 알려 주지 않았으면 5분이다. | `saturn-terminal/engine/src/providers/claude.rs`의 `cache_window_without_api_key_is_one_hour`, `cache_window_with_api_key_is_five_minutes_and_missing_source_is_unknown`, `saturn-terminal/engine/src/lifecycle/sessions.rs`의 `cache_window_without_provider_report_is_five_minutes`, `cache_window_reported_by_provider_extends_resume` |
+| Claude 캐시 유지 시간은 `apiKeySource`가 `none`이면 1시간, 아니면 5분이고, 저장한 값이 없으면 5분이다. | `saturn-terminal/engine/src/providers/claude.rs`의 `cache_window_without_api_key_is_one_hour`, `cache_window_with_api_key_is_five_minutes_and_missing_source_is_unknown`, `saturn-terminal/engine/src/lifecycle/sessions.rs`의 `cache_window_without_provider_report_is_five_minutes`, `cache_window_reported_by_provider_survives_closed_connection_and_restart` |
 | 재시작 뒤에도 보관 session의 재개 판정이 같다. | `saturn-terminal/engine/src/lifecycle/sessions.rs`의 `cache_window_inside_resumes_archived_session`, `cache_window_inside_resumes_even_when_context_is_large`, `cache_window_expired_opens_new_session`, `cache_window_expired_resumes_when_context_is_smaller_than_packet`, `restart_without_last_turn_resumes_archived_session` |
 | provider를 바꿀 때 떠나는 메인은 보관하고, 보관과 재개 상태를 저장한다. | `saturn-terminal/engine/src/lifecycle/sessions.rs`의 `archive_main_ends_older_archive_and_saves_both_states`, `resume_main_opens_archive_and_returns_delivered_number` |
 | session 교체 뒤 새 session에는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. | `saturn-terminal/engine/src/lifecycle/switch_round_trip.rs`의 `codex_to_claude_to_codex_hands_over_without_duplicates_or_gaps`, `delivered_numbers_never_go_down_across_switches` |
