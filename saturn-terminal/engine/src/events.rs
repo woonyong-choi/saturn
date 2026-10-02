@@ -92,6 +92,10 @@ impl Engine {
         provider: Provider,
         event: ProviderEvent,
     ) -> Result<(), EngineError> {
+        if let ProviderEvent::CacheWindow { ttl_secs, .. } = event {
+            self.store.record_cache_ttl(provider, ttl_secs).await?;
+            return Ok(());
+        }
         let agent = event.agent();
         let live = self
             .flow

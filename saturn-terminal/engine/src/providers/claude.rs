@@ -10,6 +10,7 @@ use std::time::Duration;
 use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
+use saturn_core::sessions::context::DEFAULT_CACHE_TTL;
 use saturn_protocol::event::{
     Activity, LineChange, LineRange, PermissionCall, PermissionTool, ProviderEvent, ToolCategory,
     ToolDetail, UsageReport, UsageScope,
@@ -35,6 +36,12 @@ pub(crate) const PROGRAM: &str = "claude";
 
 /// 끼워 넣기 실측(#5, #27) 통과 전이라 거짓이고, 거짓이면 끼워 넣기를 대기로 바꾼다.
 pub(crate) const STEER_VERIFIED: bool = false;
+
+/// 구독 로그인으로 쓸 때 프롬프트 캐시가 남는 시간. API 키 같은 그 밖의 인증은 5분이다.
+const SUBSCRIPTION_CACHE_TTL: Duration = Duration::from_secs(60 * 60);
+
+/// API 키 없이 로그인으로 쓰면 `system/init`의 `apiKeySource`가 `none`이다. 키를 쓰면 다른 값이 온다.
+const SUBSCRIPTION_KEY_SOURCE: &str = "none";
 
 const SUBAGENT_TOOLS: &[&str] = &["Task", "Agent"];
 
@@ -696,8 +703,22 @@ fn permission_response(answer: &PermissionAnswer, input: &Value) -> Value {
     }
 }
 
-/// 두 번째부터 모델이나 권한 방식이 바뀌었으면 `SettingsApplied`.
+/// `apiKeySource`가 `none`이면 구독이라 1시간, 다른 값이면 5분이다. 값이 없으면 판단할 수 없어 `None`.
+fn cache_ttl(line: &Value) -> Option<Duration> {
+    let source = line["apiKeySource"].as_str()?;
+    Some(if source == SUBSCRIPTION_KEY_SOURCE {
+        SUBSCRIPTION_CACHE_TTL
+    } else {
+        DEFAULT_CACHE_TTL
+    })
+}
+
+/// 캐시 유지 시간을 판단할 수 있으면 `CacheWindow`를 알리고, 두 번째부터 모델이나 권한 방식이 바뀌었으면 `SettingsApplied`도 알린다.
 fn apply_init(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
+    let cache_window = cache_ttl(line).map(|ttl| ProviderEvent::CacheWindow {
+        agent: state.agent,
+        ttl_secs: ttl.as_secs(),
+    });
     let applied = AppliedSettings {
         model: line["model"].as_str().map(str::to_owned),
         permission: line["permissionMode"].as_str().map(str::to_owned),
@@ -723,7 +744,7 @@ fn apply_init(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
     state.initialized = true;
     state.applied = applied;
     if !changed {
-        return Vec::new();
+        return cache_window.into_iter().collect();
     }
     let values = [
         ("model", state.applied.model.clone()),
@@ -732,10 +753,13 @@ fn apply_init(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
     .into_iter()
     .filter_map(|(key, value)| value.map(|value| (key.to_owned(), value)))
     .collect();
-    vec![ProviderEvent::SettingsApplied {
-        agent: state.agent,
-        values,
-    }]
+    cache_window
+        .into_iter()
+        .chain([ProviderEvent::SettingsApplied {
+            agent: state.agent,
+            values,
+        }])
+        .collect()
 }
 
 /// Task/Agent 호출은 subagent 시작으로 등록한다.
@@ -1163,6 +1187,22 @@ while (my $line = <STDIN>) {
             events.push(event);
         }
         events
+    }
+
+    #[test]
+    fn cache_window_without_api_key_is_one_hour() {
+        let init = json!({ "type": "system", "subtype": "init", "apiKeySource": "none" });
+
+        assert_eq!(cache_ttl(&init), Some(Duration::from_secs(3600)));
+    }
+
+    #[test]
+    fn cache_window_with_api_key_is_five_minutes_and_missing_source_is_unknown() {
+        let keyed = json!({ "apiKeySource": "user" });
+        let missing = json!({ "type": "system", "subtype": "init" });
+
+        assert_eq!(cache_ttl(&keyed), Some(Duration::from_secs(300)));
+        assert_eq!(cache_ttl(&missing), None);
     }
 
     #[test]

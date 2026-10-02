@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use saturn_core::routers::{Method, Thresholds};
-use saturn_core::sessions::context::ContextBudget;
+use saturn_core::sessions::context::{ContextBudget, DEFAULT_CACHE_TTL};
 use saturn_protocol::ids::Provider;
 use saturn_protocol::state::OnExit;
 
@@ -208,7 +208,7 @@ impl Settings {
             window: integer(&format!("{section}.window")),
             cache_read: self.number(&format!("{section}.cache_read")),
             cache_write: self.number(&format!("{section}.cache_write")),
-            cache_ttl: Duration::from_secs(integer(&format!("{section}.cache_ttl_secs"))),
+            cache_ttl: DEFAULT_CACHE_TTL,
         }
     }
 

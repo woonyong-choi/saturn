@@ -1,9 +1,9 @@
 //! 보관 session의 마지막 턴 값 기록과 되살리기, 전송 대상 정하기, provider 전환 때 보관과 재개.
 //! 설계: docs/design/providers-and-sessions.md
 
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
-use saturn_core::sessions::context::ContextBudget;
+use saturn_core::sessions::context::{ContextBudget, DEFAULT_CACHE_TTL};
 use saturn_core::sessions::{
     AgentRole, LastTurn, ReturnInputs, SendTarget, SessionError, SessionManager, SessionRecord,
 };
@@ -74,7 +74,10 @@ impl Engine {
     ) -> Result<SendTarget, EngineError> {
         let settings = self.settings.at(&self.store, request.settings).await?;
         let inputs = ReturnInputs {
-            budget: settings.context_budget(request.provider),
+            budget: ContextBudget {
+                cache_ttl: self.cache_ttl(request.provider).await?,
+                ..settings.context_budget(request.provider)
+            },
             packet: request.packet,
             now,
         };
@@ -132,11 +135,25 @@ impl Engine {
             .settings
             .current()
             .ok_or(SettingsError::NoPreviousRevision)?;
-        Ok(self
+        let budget = self
             .settings
             .at(&self.store, revision)
             .await?
-            .context_budget(provider))
+            .context_budget(provider);
+        Ok(ContextBudget {
+            cache_ttl: self.cache_ttl(provider).await?,
+            ..budget
+        })
+    }
+
+    /// provider가 마지막으로 알려 준 캐시 유지 시간. 연결이 닫혔거나 engine을 다시 시작해도 기록 저장소에서 읽는다.
+    /// 알려 준 적이 없을 때만 `DEFAULT_CACHE_TTL`.
+    async fn cache_ttl(&self, provider: Provider) -> Result<Duration, EngineError> {
+        Ok(self
+            .store
+            .cache_ttl_secs(provider)
+            .await?
+            .map_or(DEFAULT_CACHE_TTL, Duration::from_secs))
     }
 
     /// session 기록에서 채팅을 찾는다.

@@ -90,7 +90,7 @@ exit_code: number | null, } } | { "SubagentStarted": { agent: AgentId, subagent:
 /**
  * 규칙으로 판정할 수 있는 호출만 담는다. 없으면 사용자에게 묻는다.
  */
-call: PermissionCall | null, } } | { "TurnCompleted": { agent: AgentId, origin: TurnOrigin, } } | { "Usage": UsageReport } | { "ContextSize": { agent: AgentId, tokens: number | null, } } | { "StreamLost": { agent: AgentId, } } | { "SettingsApplied": { agent: AgentId, values: Array<[string, string]>, } };
+call: PermissionCall | null, } } | { "TurnCompleted": { agent: AgentId, origin: TurnOrigin, } } | { "Usage": UsageReport } | { "ContextSize": { agent: AgentId, tokens: number | null, } } | { "StreamLost": { agent: AgentId, } } | { "CacheWindow": { agent: AgentId, ttl_secs: number, } } | { "SettingsApplied": { agent: AgentId, values: Array<[string, string]>, } };
 
 export type QueueReason = { "AfterTask": TaskLabel } | "RouterOrder" | "RouterConnection" | "WriteTurn" | "AfterCompaction" | "AfterAllTasks";
 
