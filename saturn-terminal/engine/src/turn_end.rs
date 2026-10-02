@@ -69,7 +69,7 @@ impl Engine {
             return Ok(());
         }
         let rows = self.store.ledger_since(chat, LedgerSeq(0)).await?;
-        let outcome = build_handoff(&rows, &budget);
+        let outcome = build_handoff(&rows, &self.pending_work(chat, None), &budget);
         let packet = match &outcome {
             HandoffOutcome::Ready(handoff) => handoff.tokens,
             HandoffOutcome::Empty | HandoffOutcome::Deferred { .. } => 0,

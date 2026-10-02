@@ -2,7 +2,7 @@
 //! 설계: docs/design/records.md, docs/design/context-management.md
 
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::{ChatId, LedgerSeq, RunId, SessionId};
+use saturn_protocol::ids::{ChatId, LedgerSeq, RunId, SessionId, TaskId};
 use sqlx::Row;
 
 use super::{Store, StoreError, from_sql_int, to_sql_int};
@@ -13,6 +13,8 @@ pub(crate) struct LedgerRow {
     pub(crate) seq: LedgerSeq,
     pub(crate) run: RunId,
     pub(crate) session: SessionId,
+    /// 실행이 속한 작업.
+    pub(crate) task: TaskId,
     /// 입력 없이 provider가 시작한 실행이면 `None`.
     pub(crate) input: Option<String>,
     /// unix 밀리초, UTC.
@@ -31,7 +33,7 @@ impl Store {
         after: LedgerSeq,
     ) -> Result<Vec<LedgerRow>, StoreError> {
         let rows = sqlx::query(
-            "SELECT e.seq, e.run_id, r.session_id, i.text, e.at, e.body FROM events e \
+            "SELECT e.seq, e.run_id, r.session_id, r.task_id, i.text, e.at, e.body FROM events e \
              JOIN runs r ON r.id = e.run_id \
              LEFT JOIN inputs i ON i.id = r.input_id \
              WHERE e.chat_id = ? AND e.seq > ? ORDER BY e.seq",
@@ -46,6 +48,7 @@ impl Store {
                     seq: LedgerSeq(from_sql_int(row.try_get("seq")?)),
                     run: RunId(from_sql_int(row.try_get("run_id")?)),
                     session: SessionId(from_sql_int(row.try_get("session_id")?)),
+                    task: TaskId(from_sql_int(row.try_get("task_id")?)),
                     input: row.try_get("text")?,
                     at_ms: row.try_get("at")?,
                     event: serde_json::from_str(row.try_get("body")?)?,
