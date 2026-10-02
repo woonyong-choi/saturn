@@ -114,7 +114,8 @@ impl Engine {
             .await
             .map_err(|error| failed(error.into()))?;
         let synced = rows.last().map_or(LedgerSeq(0), |row| row.seq);
-        let full = build_handoff(&rows, &budget);
+        let pending = self.pending_work(chat, Some(record.id));
+        let full = build_handoff(&rows, &pending, &budget);
         let packet = match &full {
             HandoffOutcome::Ready(handoff) => handoff.tokens,
             HandoffOutcome::Empty | HandoffOutcome::Deferred { .. } => 0,
@@ -134,7 +135,7 @@ impl Engine {
             SendTarget::Resume(id) => {
                 let after = self.sessions.attach_from(*id);
                 let changes = rows.into_iter().filter(|row| row.seq > after).collect();
-                build_handoff(&others_only(changes, *id), &budget)
+                build_handoff(&others_only(changes, *id), &pending, &budget)
             }
             SendTarget::New { .. } | SendTarget::Open(_) => full,
         };
