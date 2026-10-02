@@ -2,9 +2,8 @@
 //! 설계: docs/design/engine-lifecycle.md
 
 use std::ffi::OsStr;
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
-use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -18,17 +17,12 @@ const ENGINE_BINARY: &str = "saturn-engine";
 /// engine이 에이전트 작업의 환경에 넣는 변수 이름과 같다.
 const NESTED_MARKER_ENV: &str = "SATURN_AGENT";
 
-/// engine의 stderr를 받는 파일이 있는 폴더. 소켓이 있는 폴더 아래. TODO(#235): 경로 설정 키
+/// engine이 날짜별 로그를 쌓는 폴더. 소켓이 있는 폴더 아래. TODO(#235): 경로 설정 키
 const ENGINE_LOG_DIR: &str = "logs";
 
-/// engine의 stderr를 받는 파일 이름. `ENGINE_LOG_DIR` 안에 둔다.
-const ENGINE_LOG_FILE: &str = "engine.log";
-
-/// engine을 띄울 때 로그가 이 크기(바이트)를 넘었으면 돌린다. 초안 값.
-const ENGINE_LOG_MAX_BYTES: u64 = 10 * 1024 * 1024;
-
-/// 돌린 뒤 보관하는 이전 로그 파일 수(`engine.log.1`이 가장 최근). 초안 값.
-const ENGINE_LOG_KEEP: u32 = 5;
+/// engine 로그 파일 이름의 앞과 뒤. 사이에 `YYYY-MM-DD`가 온다.
+const ENGINE_LOG_PREFIX: &str = "engine-";
+const ENGINE_LOG_SUFFIX: &str = ".log";
 
 /// engine이 router 확인까지 마치고 소켓을 여는 데 기다리는 시간. 초안 값.
 const START_TIMEOUT: Duration = Duration::from_secs(30);
@@ -41,13 +35,13 @@ const POLL_INTERVAL: Duration = Duration::from_millis(50);
 /// 실패 안내에 보이는 engine 로그 줄 수. 초안 값.
 const LOG_TAIL_LINES: usize = 5;
 
-/// 띄운 engine 프로세스와 그 stderr 로그 위치.
+/// 띄운 engine 프로세스와 그 로그 위치.
 #[derive(Debug)]
 struct StartedEngine {
     process: Child,
-    log: PathBuf,
-    /// 이번 시작 전 로그 길이. 이 뒤의 내용만 실패 안내에 쓴다.
-    log_start: u64,
+    log_dir: PathBuf,
+    /// 이번 시작 전 가장 최근 로그 파일과 그 길이. 같은 파일이면 이 뒤의 내용만 실패 안내에 쓴다.
+    log_before: Option<(PathBuf, u64)>,
 }
 
 /// TODO(#33): 자식 Saturn을 부모와 잇는 방식과 판별 신호가 정해지면 거절 대신 연결한다
@@ -117,73 +111,43 @@ fn spawn_engine(binary: &Path, socket: &Path) -> anyhow::Result<StartedEngine> {
         .parent()
         .context("engine socket path should have a parent folder")?;
     let log_dir = home.join(ENGINE_LOG_DIR);
-    std::fs::create_dir_all(&log_dir)
-        .with_context(|| format!("failed to create {}", log_dir.display()))?;
-    std::fs::set_permissions(&log_dir, std::fs::Permissions::from_mode(0o700))
-        .with_context(|| format!("failed to secure {}", log_dir.display()))?;
-    let log = log_dir.join(ENGINE_LOG_FILE);
-    rotate_log(&log, ENGINE_LOG_MAX_BYTES, ENGINE_LOG_KEEP)?;
-    let log_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .mode(0o600)
-        .open(&log)
-        .with_context(|| format!("failed to open {}", log.display()))?;
-    std::fs::set_permissions(&log, std::fs::Permissions::from_mode(0o600))
-        .with_context(|| format!("failed to secure {}", log.display()))?;
-    let log_start = log_file.metadata().map(|meta| meta.len()).unwrap_or(0);
+    let log_before = latest_log(&log_dir).map(|path| {
+        let len = std::fs::metadata(&path).map_or(0, |meta| meta.len());
+        (path, len)
+    });
+    // engine이 로그 파일을 직접 쓴다. 날짜가 바뀌면 새 파일로 옮겨야 해서 stderr는 파일에 잇지 않는다
     let process = Command::new(binary)
         .arg("--home")
         .arg(home)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(log_file)
+        .stderr(Stdio::null())
         .process_group(0)
         .spawn()
         .with_context(|| format!("failed to start {}", binary.display()))?;
     Ok(StartedEngine {
         process,
-        log,
-        log_start,
+        log_dir,
+        log_before,
     })
 }
 
-// cost: time O(k), heap O(1), stack O(1), io k
-// vars: k = 보관하는 이전 로그 파일 수
+// cost: time O(n), heap O(1), stack O(1), io n
+// vars: n = 로그 폴더의 파일 수
 // basis: estimate
-/// `log`가 `max_bytes`를 넘었으면 `log.1`로 옮기고, 앞서 있던 `log.n`은 `log.(n+1)`로 한 칸씩 밀어
-/// `keep`개까지만 남긴다. 상한 안이면 아무것도 하지 않는다. 돌리는 때는 engine을 띄울 때뿐이라 실행 중인
-/// engine의 로그는 다음 시작 때 돈다.
-///
-/// # Errors
-/// 파일 이름을 바꾸거나 지울 수 없으면 오류.
-fn rotate_log(log: &Path, max_bytes: u64, keep: u32) -> anyhow::Result<()> {
-    let over = std::fs::metadata(log).is_ok_and(|meta| meta.len() > max_bytes);
-    if !over {
-        return Ok(());
-    }
-    let numbered = |n: u32| {
-        let mut name = log.as_os_str().to_owned();
-        name.push(format!(".{n}"));
-        PathBuf::from(name)
-    };
-    if keep == 0 {
-        return std::fs::remove_file(log)
-            .with_context(|| format!("failed to remove {}", log.display()));
-    }
-    let oldest = numbered(keep);
-    if oldest.exists() {
-        std::fs::remove_file(&oldest)
-            .with_context(|| format!("failed to remove {}", oldest.display()))?;
-    }
-    for n in (1..keep).rev() {
-        let from = numbered(n);
-        if from.exists() {
-            std::fs::rename(&from, numbered(n + 1))
-                .with_context(|| format!("failed to rotate {}", from.display()))?;
-        }
-    }
-    std::fs::rename(log, numbered(1)).with_context(|| format!("failed to rotate {}", log.display()))
+/// 가장 최근 날짜의 `engine-YYYY-MM-DD.log`. 날짜 형식이라 이름순이 날짜순이다.
+fn latest_log(log_dir: &Path) -> Option<PathBuf> {
+    std::fs::read_dir(log_dir)
+        .ok()?
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| {
+            path.file_name()
+                .and_then(OsStr::to_str)
+                .is_some_and(|name| {
+                    name.starts_with(ENGINE_LOG_PREFIX) && name.ends_with(ENGINE_LOG_SUFFIX)
+                })
+        })
+        .max()
 }
 
 // cost: time O(t), heap O(1), stack O(1), io t
@@ -218,7 +182,7 @@ async fn wait_until_ready(
             anyhow::bail!(
                 "engine exited before opening {}{}",
                 socket.display(),
-                log_tail(&engine.log, engine.log_start)
+                log_tail(&engine.log_dir, engine.log_before.as_ref())
             );
         }
         if started.elapsed() >= timeout {
@@ -226,7 +190,7 @@ async fn wait_until_ready(
                 "engine did not open {} within {}s{}",
                 socket.display(),
                 timeout.as_secs(),
-                log_tail(&engine.log, engine.log_start)
+                log_tail(&engine.log_dir, engine.log_before.as_ref())
             );
         }
         tokio::time::sleep(POLL_INTERVAL).await;
@@ -236,9 +200,16 @@ async fn wait_until_ready(
 // cost: time O(b), heap O(b), stack O(1), io 1
 // vars: b = 이번 시작 뒤 로그 바이트 수
 // basis: estimate
-/// 안내 문구 뒤에 붙일 로그 끝 줄. 읽을 수 없거나 비었으면 빈 문자열.
-fn log_tail(log: &Path, start: u64) -> String {
-    let Ok(mut file) = File::open(log) else {
+/// 안내 문구 뒤에 붙일 가장 최근 로그 파일의 끝 줄. 이번 시작 전과 같은 파일이면 시작 뒤 내용만 쓴다.
+/// 읽을 수 없거나 비었으면 빈 문자열.
+fn log_tail(log_dir: &Path, before: Option<&(PathBuf, u64)>) -> String {
+    let Some(log) = latest_log(log_dir) else {
+        return String::new();
+    };
+    let start = before
+        .filter(|(path, _)| *path == log)
+        .map_or(0, |(_, len)| *len);
+    let Ok(mut file) = File::open(&log) else {
         return String::new();
     };
     let mut text = String::new();
@@ -261,19 +232,24 @@ mod tests {
 
     const SOCKET_FILE: &str = "engine.sock";
 
+    const LOG_FILE: &str = "engine-2026-10-02.log";
+
+    /// `script`의 stderr가 로그 폴더의 날짜별 파일에 쌓이는 가짜 engine.
     fn exiting_engine(home: &Path, script: &str) -> StartedEngine {
-        let log = home.join(ENGINE_LOG_FILE);
-        let log_file = File::create(&log).unwrap();
+        let log_dir = home.join(ENGINE_LOG_DIR);
+        std::fs::create_dir_all(&log_dir).unwrap();
         let process = Command::new("/bin/sh")
             .arg("-c")
-            .arg(script)
-            .stderr(log_file)
+            .arg(format!(
+                "exec 2>>'{}'; {script}",
+                log_dir.join(LOG_FILE).display()
+            ))
             .spawn()
             .unwrap();
         StartedEngine {
             process,
-            log,
-            log_start: 0,
+            log_dir,
+            log_before: None,
         }
     }
 
@@ -378,105 +354,73 @@ mod tests {
     }
 
     #[test]
-    fn spawn_engine_passes_home_and_writes_stderr_to_engine_log_under_logs() {
+    fn spawn_engine_passes_home_and_discards_stderr() {
         let home = tempfile::tempdir().unwrap();
         let socket = home.path().join(SOCKET_FILE);
         let script = home.path().join("fake-engine");
-        std::fs::write(&script, "#!/bin/sh\necho \"args: $*\" >&2\n").unwrap();
+        std::fs::write(
+            &script,
+            "#!/bin/sh\necho \"args: $*\" > \"$2/args\"\necho noise >&2\n",
+        )
+        .unwrap();
         std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755))
             .unwrap();
 
         let mut engine = spawn_engine(&script, &socket).unwrap();
         engine.process.wait().unwrap();
 
-        let log = std::fs::read_to_string(&engine.log).unwrap();
-        assert_eq!(engine.log, home.path().join("logs/engine.log"));
-        assert_eq!(log, format!("args: --home {}\n", home.path().display()));
         assert_eq!(
-            std::fs::metadata(&engine.log).unwrap().permissions().mode() & 0o777,
-            0o600
+            std::fs::read_to_string(home.path().join("args")).unwrap(),
+            format!("args: --home {}\n", home.path().display())
         );
-        assert_eq!(
-            std::fs::metadata(home.path().join("logs"))
-                .unwrap()
-                .permissions()
-                .mode()
-                & 0o777,
-            0o700
-        );
+        assert_eq!(engine.log_dir, home.path().join("logs"));
+        assert!(!home.path().join("logs").exists());
     }
 
     #[test]
-    fn spawn_engine_rotates_an_engine_log_over_the_cap_before_writing() {
+    fn engine_log_tail_reads_the_latest_dated_file() {
         let home = tempfile::tempdir().unwrap();
-        let socket = home.path().join(SOCKET_FILE);
-        let logs = home.path().join("logs");
-        std::fs::create_dir_all(&logs).unwrap();
-        let old = File::create(logs.join("engine.log")).unwrap();
-        old.set_len(ENGINE_LOG_MAX_BYTES + 1).unwrap();
-        let script = home.path().join("fake-engine");
-        std::fs::write(&script, "#!/bin/sh\necho started >&2\n").unwrap();
-        std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755))
-            .unwrap();
+        std::fs::write(home.path().join("engine-2026-10-01.log"), "yesterday\n").unwrap();
+        std::fs::write(home.path().join(LOG_FILE), "today\n").unwrap();
+        std::fs::write(home.path().join("engine-2026-10-03.txt"), "other\n").unwrap();
 
-        let mut engine = spawn_engine(&script, &socket).unwrap();
-        engine.process.wait().unwrap();
+        let tail = log_tail(home.path(), None);
 
-        assert_eq!(std::fs::read_to_string(&engine.log).unwrap(), "started\n");
-        assert_eq!(
-            std::fs::metadata(logs.join("engine.log.1")).unwrap().len(),
-            ENGINE_LOG_MAX_BYTES + 1
-        );
-        assert_eq!(engine.log_start, 0);
+        assert!(tail.contains("today"));
+        assert!(!tail.contains("yesterday"));
+        assert!(!tail.contains("other"));
     }
 
     #[test]
-    fn engine_log_within_the_cap_is_not_rotated() {
+    fn engine_log_tail_without_a_log_file_is_empty() {
         let home = tempfile::tempdir().unwrap();
-        let log = home.path().join("engine.log");
-        std::fs::write(&log, "1234").unwrap();
 
-        rotate_log(&log, 4, 3).unwrap();
-
-        assert_eq!(std::fs::read_to_string(&log).unwrap(), "1234");
-        assert!(!home.path().join("engine.log.1").exists());
+        assert_eq!(log_tail(home.path(), None), "");
     }
 
     #[test]
-    fn engine_log_over_the_cap_shifts_numbered_files_and_keeps_only_the_newest() {
+    fn engine_log_tail_keeps_only_lines_after_the_start_offset_of_the_same_file() {
         let home = tempfile::tempdir().unwrap();
-        let log = home.path().join("engine.log");
-        let numbered = |n: u32| home.path().join(format!("engine.log.{n}"));
-        std::fs::write(&log, "current!").unwrap();
-        std::fs::write(numbered(1), "one").unwrap();
-        std::fs::write(numbered(2), "two").unwrap();
-
-        rotate_log(&log, 4, 2).unwrap();
-
-        assert!(!log.exists());
-        assert_eq!(std::fs::read_to_string(numbered(1)).unwrap(), "current!");
-        assert_eq!(std::fs::read_to_string(numbered(2)).unwrap(), "one");
-        assert!(!numbered(3).exists());
-    }
-
-    #[test]
-    fn engine_log_without_a_file_has_nothing_to_rotate() {
-        let home = tempfile::tempdir().unwrap();
-
-        rotate_log(&home.path().join("engine.log"), 4, 2).unwrap();
-
-        assert!(!home.path().join("engine.log.1").exists());
-    }
-
-    #[test]
-    fn log_tail_keeps_only_lines_after_start_offset() {
-        let home = tempfile::tempdir().unwrap();
-        let log = home.path().join(ENGINE_LOG_FILE);
+        let log = home.path().join(LOG_FILE);
         std::fs::write(&log, "old line\nnew line\n").unwrap();
+        let before = (log, "old line\n".len() as u64);
 
-        let tail = log_tail(&log, "old line\n".len() as u64);
+        let tail = log_tail(home.path(), Some(&before));
 
         assert!(tail.contains("new line"));
         assert!(!tail.contains("old line"));
+    }
+
+    #[test]
+    fn engine_log_tail_reads_a_new_day_file_from_the_start() {
+        let home = tempfile::tempdir().unwrap();
+        let yesterday = home.path().join("engine-2026-10-01.log");
+        std::fs::write(&yesterday, "old line\n").unwrap();
+        std::fs::write(home.path().join(LOG_FILE), "new line\n").unwrap();
+        let before = (yesterday, 100);
+
+        let tail = log_tail(home.path(), Some(&before));
+
+        assert!(tail.contains("new line"));
     }
 }

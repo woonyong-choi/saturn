@@ -4,6 +4,7 @@
 // TODO(#74): 뼈대 단계라 본문이 `todo!`인 함수의 인자가 쓰이지 않는다. 구현 이슈가 모두 닫히면 이 허용을 지운다
 #![allow(unused_variables, dead_code)]
 
+pub mod engine_log;
 pub mod processes;
 pub mod providers;
 pub mod routers;

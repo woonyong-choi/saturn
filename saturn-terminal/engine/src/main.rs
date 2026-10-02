@@ -4,17 +4,25 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
+use saturn_engine::engine_log::EngineLog;
 use saturn_engine::{Engine, EngineOptions};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let options = parse_options(std::env::args().skip(1))?;
+    let log = EngineLog::start(&options.home).context("failed to start engine log")?;
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .with_writer(std::io::stderr)
+        .with_writer(log)
         .init();
+    // cli가 engine의 stderr를 버리므로 panic과 종료 사유는 로그 파일에만 남긴다
+    std::panic::set_hook(Box::new(|info| tracing::error!(%info, "engine panicked")));
 
-    let options = parse_options(std::env::args().skip(1))?;
-    Engine::run(options).await.context("engine stopped")
+    let result = Engine::run(options).await.context("engine stopped");
+    if let Err(error) = &result {
+        tracing::error!("{error:#}");
+    }
+    result
 }
 
 fn parse_options(args: impl Iterator<Item = String>) -> anyhow::Result<EngineOptions> {

@@ -17,6 +17,7 @@ path = "src/main.rs"
 saturn-protocol.workspace = true
 saturn-core.workspace = true
 anyhow.workspace = true
+chrono.workspace = true
 flate2.workspace = true
 keyring.workspace = true
 libc.workspace = true
