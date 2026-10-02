@@ -18,6 +18,7 @@ use crate::keys::KeyArea;
 use crate::view::buffer_lines;
 use crate::view::popup::PopupKind;
 use crate::view::transcript::TranscriptCell;
+use crate::view::usage::usage_request;
 
 // cost: time O(1), heap O(1), stack O(1)
 // basis: estimate
@@ -219,18 +220,33 @@ fn shell_line_runs_shell_and_attaches_result_to_next_input() {
 #[test]
 fn usage_command_opens_screen_and_requests_rows() {
     let mut app = attached();
-    type_text(&mut app, "/usage week");
+    type_text(&mut app, "/usage");
     app.popup = None;
 
     let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
 
-    assert_eq!(
-        sent(&effects),
-        vec![&Request::Usage {
-            scope: UsageRange::Week
-        }]
-    );
+    assert_eq!(sent(&effects), vec![&usage_request(UsageRange::Chat)]);
     assert!(matches!(app.window, Some(Window::Usage(_))));
+}
+
+#[test]
+fn usage_screen_keys_switch_range_and_second_press_returns_to_chat() {
+    let mut app = attached();
+    type_text(&mut app, "/usage");
+    app.popup = None;
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    let day = press(&mut app, KeyCode::Char('d'), KeyModifiers::NONE);
+    let week = press(&mut app, KeyCode::Char('w'), KeyModifiers::NONE);
+    let week_again = press(&mut app, KeyCode::Char('w'), KeyModifiers::NONE);
+
+    assert_eq!(sent(&day), vec![&usage_request(UsageRange::Day)]);
+    assert_eq!(sent(&week), vec![&usage_request(UsageRange::Week)]);
+    assert_eq!(sent(&week_again), vec![&usage_request(UsageRange::Chat)]);
+    let Some(Window::Usage(screen)) = &app.window else {
+        panic!("usage screen should stay open");
+    };
+    assert_eq!(screen.range, UsageRange::Chat);
 }
 
 #[test]
@@ -760,18 +776,18 @@ fn router_key_prompt_sends_key_and_closes() {
 fn slash_popup_completes_command_then_shows_values() {
     let mut app = attached();
 
-    type_text(&mut app, "/us");
+    type_text(&mut app, "/rec");
     let first = app
         .popup
         .as_ref()
         .map(|p| (p.kind, p.items[0].value.clone()));
     press(&mut app, KeyCode::Tab, KeyModifiers::NONE);
 
-    assert_eq!(first, Some((PopupKind::Command, "usage".to_string())));
-    assert_eq!(app.composer.text(), "/usage ");
+    assert_eq!(first, Some((PopupKind::Command, "record".to_string())));
+    assert_eq!(app.composer.text(), "/record ");
     assert_eq!(app.popup.as_ref().map(|p| p.kind), Some(PopupKind::Value));
     press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
-    assert_eq!(app.composer.text(), "/usage chat ");
+    assert_eq!(app.composer.text(), "/record on ");
     assert!(app.popup.is_none());
 }
 

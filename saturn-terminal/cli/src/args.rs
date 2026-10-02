@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, Parser, Subcommand};
 use saturn_protocol::ids::ChatId;
 use saturn_protocol::rpc::UsageRange;
 use saturn_tui::i18n::{self, Lang};
@@ -187,30 +187,23 @@ pub(crate) struct RouterUseArgs {
     pub(crate) yes: bool,
 }
 
-/// `usage` 인자.
+/// `usage` 인자. 둘 다 없으면 지금 폴더의 최근 채팅.
 #[derive(Debug, Args)]
 pub(crate) struct UsageArgs {
-    /// 조회 범위(chat 현재 채팅, today 오늘, week 이번 주, all 전체).
-    #[arg(long, value_enum, default_value_t = UsageRangeArg::Chat)]
-    pub(crate) range: UsageRangeArg,
+    /// 모든 채팅의 최근 24시간 사용량을 본다.
+    #[arg(long, conflicts_with = "week")]
+    pub(crate) day: bool,
+    /// 모든 채팅의 최근 7일 사용량을 본다.
+    #[arg(long)]
+    pub(crate) week: bool,
 }
 
-/// 명령줄의 사용량 범위. protocol `UsageRange`에 clap 의존을 넣지 않으려고 따로 둔다.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub(crate) enum UsageRangeArg {
-    Chat,
-    Today,
-    Week,
-    All,
-}
-
-impl From<UsageRangeArg> for UsageRange {
-    fn from(range: UsageRangeArg) -> Self {
-        match range {
-            UsageRangeArg::Chat => Self::Chat,
-            UsageRangeArg::Today => Self::Today,
-            UsageRangeArg::Week => Self::Week,
-            UsageRangeArg::All => Self::All,
+impl UsageArgs {
+    pub(crate) fn range(&self) -> UsageRange {
+        match (self.day, self.week) {
+            (true, _) => UsageRange::Day,
+            (_, true) => UsageRange::Week,
+            _ => UsageRange::Chat,
         }
     }
 }
@@ -289,16 +282,30 @@ mod tests {
         let command = command(Lang::En);
 
         let usage = command.find_subcommand("usage").unwrap();
-        let range = usage.get_arguments().find(|arg| arg.get_id() == "range");
+        let day = usage.get_arguments().find(|arg| arg.get_id() == "day");
 
         assert_eq!(
             usage.get_about().map(ToString::to_string).as_deref(),
             Some("show usage")
         );
-        assert!(range.is_some_and(|arg| {
+        assert!(day.is_some_and(|arg| {
             arg.get_help()
-                .is_some_and(|h| h.to_string().starts_with("usage range"))
+                .is_some_and(|h| h.to_string().contains("last 24 hours"))
         }));
+    }
+
+    #[test]
+    fn usage_flags_choose_the_range() {
+        let range = |args: &[&str]| match parse(args).unwrap().command {
+            Some(Command::Usage(usage)) => usage.range(),
+            other => panic!("not usage: {other:?}"),
+        };
+
+        assert_eq!(range(&["usage"]), UsageRange::Chat);
+        assert_eq!(range(&["usage", "--day"]), UsageRange::Day);
+        assert_eq!(range(&["usage", "--week"]), UsageRange::Week);
+        assert!(parse(&["usage", "--day", "--week"]).is_err());
+        assert!(parse(&["usage", "--range", "week"]).is_err());
     }
 
     #[test]

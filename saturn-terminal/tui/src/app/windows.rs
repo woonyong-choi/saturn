@@ -16,6 +16,7 @@ use crate::view::status_board::Button;
 use crate::view::task_list::TaskListCommand;
 use crate::view::train_confirm::TrainChoice;
 use crate::view::transcript::{Transcript, TranscriptCell};
+use crate::view::usage::usage_request;
 
 impl App {
     pub(super) fn on_button(&mut self, button: Button) -> Vec<Effect> {
@@ -232,6 +233,10 @@ impl App {
             (Some(Window::FullTranscript(full)), Action::Up) => full.up(),
             (Some(Window::FullTranscript(full)), Action::Down) => full.down(),
             (Some(Window::Usage(usage)), Action::Confirm) => usage.toggle_detail(),
+            (Some(Window::Usage(usage)), Action::UsageRange(range)) => {
+                let range = usage.select(range);
+                return vec![Effect::Send(usage_request(range))];
+            }
             (Some(Window::RouterVersion(screen)), Action::Up) => screen.up(),
             (Some(Window::RouterVersion(screen)), Action::Down) => screen.down(),
             (Some(Window::RouterVersion(screen)), Action::Close) => {

@@ -3,6 +3,7 @@
 
 use std::io::Write;
 
+use anyhow::Context;
 use saturn_protocol::rpc::{Notification, Request, UsageRange, UsageRow};
 use saturn_tui::client::EngineClient;
 use saturn_tui::i18n::{self, Lang};
@@ -23,7 +24,11 @@ pub(crate) async fn run(
     client: &mut EngineClient,
     args: &UsageArgs,
 ) -> anyhow::Result<()> {
-    let table = fetch(lang, client, args).await?;
+    let folder = std::env::current_dir()
+        .context(lang.tr(i18n::CLI_CURRENT_DIR_UNREADABLE))?
+        .display()
+        .to_string();
+    let table = fetch(lang, client, args, folder).await?;
     let mut out = std::io::stdout().lock();
     write_table(&mut out, lang, table.0, &table.1)?;
     Ok(())
@@ -36,10 +41,14 @@ async fn fetch(
     lang: Lang,
     client: &mut EngineClient,
     args: &UsageArgs,
+    folder: String,
 ) -> anyhow::Result<(UsageRange, Vec<UsageRow>)> {
-    let scope = UsageRange::from(args.range);
+    let request = Request::Usage {
+        scope: args.range(),
+        folder: Some(folder),
+    };
     let mut table = None;
-    call(lang, client, Request::Usage { scope }, |notification| {
+    call(lang, client, request, |notification| {
         if let Notification::Usage { range, rows } = notification {
             table = Some((range, rows));
         }
@@ -62,7 +71,7 @@ fn write_table(
         out,
         "{} · {}",
         lang.tr(i18n::USAGE_TITLE),
-        range_name(range)
+        range_name(lang, range)
     )?;
     let headers = [
         i18n::USAGE_WHO,
@@ -92,7 +101,6 @@ fn write_table(
 
 #[cfg(test)]
 mod tests {
-    use crate::args::UsageRangeArg;
     use crate::testing::{FakeEngine, Reply};
 
     use super::*;
@@ -118,12 +126,12 @@ mod tests {
         )];
         let mut out = Vec::new();
 
-        write_table(&mut out, Lang::En, UsageRange::Today, &rows).unwrap();
+        write_table(&mut out, Lang::En, UsageRange::Day, &rows).unwrap();
 
         let text = String::from_utf8(out).unwrap();
         let line = text.lines().last().unwrap();
         assert_eq!(line, "codex · gpt\t10\t-\t-\t5\t-\t2\t-");
-        assert!(text.lines().next().unwrap().ends_with("today"));
+        assert!(text.lines().next().unwrap().ends_with("last 24 hours"));
     }
 
     #[tokio::test]
@@ -139,8 +147,10 @@ mod tests {
             Lang::En,
             &mut client,
             &UsageArgs {
-                range: UsageRangeArg::Week,
+                day: false,
+                week: true,
             },
+            "/work".to_owned(),
         )
         .await
         .unwrap();
@@ -149,7 +159,8 @@ mod tests {
         assert_eq!(
             engine.finish().await,
             vec![Request::Usage {
-                scope: UsageRange::Week
+                scope: UsageRange::Week,
+                folder: Some("/work".to_owned()),
             }]
         );
     }
@@ -163,8 +174,10 @@ mod tests {
             Lang::En,
             &mut client,
             &UsageArgs {
-                range: UsageRangeArg::Chat,
+                day: false,
+                week: false,
             },
+            "/work".to_owned(),
         )
         .await;
 
@@ -180,8 +193,10 @@ mod tests {
             Lang::En,
             &mut client,
             &UsageArgs {
-                range: UsageRangeArg::All,
+                day: true,
+                week: false,
             },
+            "/work".to_owned(),
         )
         .await
         .unwrap_err();

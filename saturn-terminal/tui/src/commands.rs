@@ -2,7 +2,6 @@
 //! 설계: docs/design/tui.md
 
 use saturn_protocol::ids::TaskLabel;
-use saturn_protocol::rpc::UsageRange;
 
 use crate::labels::LABEL_RANGE;
 
@@ -60,7 +59,7 @@ pub const SATURN_COMMANDS: &[CommandSpec] = &[
     CommandSpec {
         path: "usage",
         description: "사용량",
-        values: &["chat", "today", "week", "all"],
+        values: &[],
     },
     CommandSpec {
         path: "train",
@@ -113,8 +112,8 @@ pub enum SlashCommand {
     Feedback { correct: bool },
     /// `/tasks`
     Tasks,
-    /// `/usage [chat|today|week|all]`, 기본 `chat`.
-    Usage { range: UsageRange },
+    /// `/usage`. 범위는 화면에서 `d`, `w`로 바꾼다.
+    Usage,
     /// 채점 후보가 200건 미만이면 engine이 거절한다.
     Train {
         reset_thresholds: bool,
@@ -161,9 +160,7 @@ pub fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         "permissions" => parse_permissions(&args)?,
         "add-dir" => parse_add_dir(body)?,
         "tasks" => no_args("tasks", &args, SlashCommand::Tasks)?,
-        "usage" => SlashCommand::Usage {
-            range: parse_range(&args)?,
-        },
+        "usage" => no_args("usage", &args, SlashCommand::Usage)?,
         "train" => parse_train(&args)?,
         "router" => parse_router(&args)?,
         "" => {
@@ -272,20 +269,6 @@ fn parse_feedback(args: &[&str]) -> Result<bool, CommandError> {
 }
 
 // cost: time O(a), heap O(a), stack O(1)
-// vars: a = 인자 글자 수(오류 문구를 만들 때만)
-// basis: estimate
-/// 기본 `chat`.
-fn parse_range(args: &[&str]) -> Result<UsageRange, CommandError> {
-    match args {
-        [] | ["chat"] => Ok(UsageRange::Chat),
-        ["today"] => Ok(UsageRange::Today),
-        ["week"] => Ok(UsageRange::Week),
-        ["all"] => Ok(UsageRange::All),
-        _ => Err(invalid("usage", &args.join(" "))),
-    }
-}
-
-// cost: time O(a), heap O(a), stack O(1)
 // vars: a = 인자 글자 수
 // basis: estimate
 fn parse_train(args: &[&str]) -> Result<SlashCommand, CommandError> {
@@ -368,19 +351,15 @@ mod tests {
     }
 
     #[test]
-    fn parse_usage_default_is_chat() {
-        assert_eq!(
-            parse("/usage").unwrap(),
-            Some(SlashCommand::Usage {
-                range: UsageRange::Chat
+    fn parse_usage_takes_no_arguments() {
+        assert_eq!(parse("/usage").unwrap(), Some(SlashCommand::Usage));
+        assert!(matches!(
+            parse("/usage week"),
+            Err(CommandError::InvalidArgument {
+                command: "usage",
+                ..
             })
-        );
-        assert_eq!(
-            parse("/usage week").unwrap(),
-            Some(SlashCommand::Usage {
-                range: UsageRange::Week
-            })
-        );
+        ));
     }
 
     #[test]

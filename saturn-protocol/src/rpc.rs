@@ -136,8 +136,10 @@ pub enum Request {
         chat: ChatId,
         mode: String,
     },
+    /// `Chat` 범위는 붙은 채팅이고, 붙은 채팅이 없으면 `folder`의 가장 최근 채팅이다.
     Usage {
         scope: UsageRange,
+        folder: Option<String>,
     },
     ListTasks,
     /// 채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 router 버전.
@@ -182,9 +184,10 @@ pub enum PermissionAnswer {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum UsageRange {
     Chat,
-    Today,
+    /// 지금부터 24시간 전까지 모든 채팅.
+    Day,
+    /// 지금부터 7일 전까지 모든 채팅.
     Week,
-    All,
 }
 
 /// TUI는 이것만으로 화면을 그린다.

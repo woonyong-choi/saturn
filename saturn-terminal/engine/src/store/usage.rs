@@ -30,15 +30,32 @@ impl Store {
         chat: Option<ChatId>,
     ) -> Result<Vec<UsageRow>, StoreError> {
         let condition = range_condition(range, "usage.at", "usage.chat_id");
-        let sql = format!(
-            "SELECT usage.id, usage.run_id, usage.session_id, usage.body, usage.at, \
-             usage.spans_turns, runs.provider FROM usage JOIN runs ON runs.id = usage.run_id \
-             WHERE {condition} ORDER BY usage.id"
-        );
+        let sql = usage_sql(&condition);
         let rows = bind_chat(sqlx::query(&sql), range, chat)?
             .fetch_all(&self.pool)
             .await?;
         rows.iter().map(usage_row).collect()
+    }
+
+    /// 범위와 상관없이 모든 보고. 턴 값은 같은 session의 직전 누적을 뺀 값이라 범위 밖 보고가 필요하다.
+    pub async fn all_usage_rows(&self) -> Result<Vec<UsageRow>, StoreError> {
+        let rows = sqlx::query(&usage_sql("1 = 1"))
+            .fetch_all(&self.pool)
+            .await?;
+        rows.iter().map(usage_row).collect()
+    }
+
+    /// 마지막 입력을 접수한 시각이 가장 늦은 채팅. 입력이 없는 채팅은 만든 시각으로 견준다.
+    pub async fn latest_chat_in(&self, workdir: &str) -> Result<Option<ChatId>, StoreError> {
+        let id: Option<i64> = sqlx::query_scalar(
+            "SELECT id FROM chats WHERE workdir = ? ORDER BY \
+             COALESCE((SELECT MAX(accepted_at) FROM inputs WHERE chat_id = chats.id), created_at) \
+             DESC, id DESC LIMIT 1",
+        )
+        .bind(workdir)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(id.map(|id| ChatId(from_sql_int(id))))
     }
 
     /// router마다 한 행, 이름 순서.
@@ -83,18 +100,24 @@ impl Store {
     }
 }
 
-/// `Today`는 로컬 오늘 0시부터, `Week`는 로컬 이번 주 월요일 0시부터다. 초안 값.
+fn usage_sql(condition: &str) -> String {
+    format!(
+        "SELECT usage.id, usage.run_id, usage.session_id, usage.body, usage.at, \
+         usage.spans_turns, runs.provider FROM usage JOIN runs ON runs.id = usage.run_id \
+         WHERE {condition} ORDER BY usage.id"
+    )
+}
+
+/// `Day`는 지금부터 24시간 전, `Week`는 7일 전부터다(Claude Code와 같은 방식).
 fn range_condition(range: UsageRange, at: &str, chat: &str) -> String {
     match range {
         UsageRange::Chat => format!("{chat} = ?"),
-        UsageRange::Today => format!(
-            "{at} >= CAST(strftime('%s', 'now', 'localtime', 'start of day', 'utc') AS INTEGER) * 1000"
-        ),
-        UsageRange::Week => format!(
-            "{at} >= CAST(strftime('%s', 'now', 'localtime', 'start of day', 'weekday 0', \
-             '-6 days', 'utc') AS INTEGER) * 1000"
-        ),
-        UsageRange::All => "1 = 1".to_owned(),
+        UsageRange::Day => {
+            format!("{at} >= (CAST(strftime('%s', 'now') AS INTEGER) - 86400) * 1000")
+        }
+        UsageRange::Week => {
+            format!("{at} >= (CAST(strftime('%s', 'now') AS INTEGER) - 604800) * 1000")
+        }
     }
 }
 

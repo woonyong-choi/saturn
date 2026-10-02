@@ -17,6 +17,7 @@ async fn usage_request_answers_rows_for_attached_chat() {
                 1,
                 Request::Usage {
                     scope: UsageRange::Chat,
+                    folder: None,
                 },
             )
             .await;
@@ -27,6 +28,7 @@ async fn usage_request_answers_rows_for_attached_chat() {
                 3,
                 Request::Usage {
                     scope: UsageRange::Chat,
+                    folder: None,
                 },
             )
             .await;
@@ -37,6 +39,39 @@ async fn usage_request_answers_rows_for_attached_chat() {
     .await;
 
     assert_eq!(error_code(&unattached), INVALID_PARAMS);
+    assert_eq!(
+        usage,
+        Notification::Usage {
+            range: UsageRange::Chat,
+            rows: Vec::new(),
+        }
+    );
+}
+
+#[tokio::test]
+async fn usage_request_without_attachment_reads_the_latest_chat_of_the_folder() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.ready().await;
+    let mut owner = Client::connect(&fixture.socket()).await;
+    let mut reader = Client::connect(&fixture.socket()).await;
+    let folder = fixture.workdir.display().to_string();
+
+    let (other_folder, usage) = drive(&mut engine, async {
+        owner.attach(1, new_chat(&fixture.workdir)).await;
+        let request = |folder: &str| Request::Usage {
+            scope: UsageRange::Chat,
+            folder: Some(folder.to_owned()),
+        };
+        reader.send(2, request("/nowhere")).await;
+        let other_folder = reader.response().await;
+        reader.send(3, request(&folder)).await;
+        let usage = reader.notification().await;
+        assert_eq!(reader.response().await, Response::ok(RequestId(3)));
+        (other_folder, usage)
+    })
+    .await;
+
+    assert_eq!(error_code(&other_folder), INVALID_PARAMS);
     assert_eq!(
         usage,
         Notification::Usage {

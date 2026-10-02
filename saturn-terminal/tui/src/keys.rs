@@ -2,7 +2,7 @@
 //! 설계: docs/design/tui.md
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use saturn_protocol::rpc::PermissionAnswer;
+use saturn_protocol::rpc::{PermissionAnswer, UsageRange};
 
 use crate::view::popup::PopupKind;
 
@@ -46,6 +46,9 @@ pub enum Action {
     Confirm,
     Close,
     Quit,
+
+    // 사용량 화면
+    UsageRange(UsageRange),
 
     // 대화 기록(피드백 질문)
     FeedbackDismiss,
@@ -261,6 +264,8 @@ pub fn usage(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Close),
+        KeyCode::Char('d') if is_char(key, 'd') => Some(Action::UsageRange(UsageRange::Day)),
+        KeyCode::Char('w') if is_char(key, 'w') => Some(Action::UsageRange(UsageRange::Week)),
         _ => None,
     }
 }
