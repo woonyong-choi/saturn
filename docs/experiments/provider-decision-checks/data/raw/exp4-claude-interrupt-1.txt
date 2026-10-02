@@ -1,0 +1,51 @@
+===== before stop =====
+ ▐▛███▛█   Claude Code v2.1.285
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+────────────────────────────────────────────────────────────────────────────────
+❯ Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · PR #255
+
+
+
+
+
+
+
+
+
+
+
+
+
+===== after interrupt =====
+
+===== final =====
+ ▐▛███▛█   Claude Code v2.1.285
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+────────────────────────────────────────────────────────────────────────────────
+❯ Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · PR #255
+
+
+
+
+
+
+
+
+
+
+
+

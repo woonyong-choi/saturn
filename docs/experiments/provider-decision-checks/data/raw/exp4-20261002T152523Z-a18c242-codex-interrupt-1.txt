@@ -1,0 +1,51 @@
+===== before stop =====
+╰─────────────────────────────────────────────────╯
+
+
+  >_ OpenAI Codex (v0.158.0)
+     ~/workspace/oss/saturn.wt/…/docs/experiments/provider-decision-checks
+
+  Welcome to the part where the idea gets interesting.
+
+
+› Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+
+↳ Hook · PONYTAIL:FULL
+
+■ Your access token could not be refreshed because you have since logged out or
+signed in to another account. Please sign in again.
+
+
+› Ask Codex to do anything
+
+  GPT-5.6-Luna high · ~/workspace/oss/saturn.wt/experiment-252-provider-decisio…
+  ← for agents · ? for shortcuts                      ⚠ 5 warnings · f2 to view
+
+===== after interrupt =====
+
+===== final =====
+╰─────────────────────────────────────────────────╯
+
+
+  >_ OpenAI Codex (v0.158.0)
+     ~/workspace/oss/saturn.wt/…/docs/experiments/provider-decision-checks
+
+  Welcome to the part where the idea gets interesting.
+
+
+› Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+
+↳ Hook · PONYTAIL:FULL
+
+■ Your access token could not be refreshed because you have since logged out or
+signed in to another account. Please sign in again.
+
+
+› Ask Codex to do anything
+
+  GPT-5.6-Luna high · ~/workspace/oss/saturn.wt/experiment-252-provider-decisio…
+  ← for agents · ? for shortcuts                      ⚠ 5 warnings · f2 to view

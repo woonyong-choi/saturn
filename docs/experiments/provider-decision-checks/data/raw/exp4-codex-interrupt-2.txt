@@ -1,0 +1,74 @@
+===== before stop =====
+Run this harmless command exactly once and do not stop it yourself: sleep 600. T
+hen report when it ends.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===== after interrupt =====
+╭─────────────────────────────────────────────────╮
+│ ✨ Update available! 0.158.0 -> 0.159.2         │
+│ Run npm install -g @openai/codex to update.     │
+│                                                 │
+│ See full release notes:                         │
+│ https://github.com/openai/codex/releases/latest │
+╰─────────────────────────────────────────────────╯
+
+
+  >_ OpenAI Codex (v0.158.0)
+     ~/workspace/oss/saturn.wt/…/docs/experiments/provider-decision-checks
+
+  You, me, and a blinking cursor.
+
+
+
+
+› Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+
+  GPT-5.6-Luna default · ~/workspace/oss/saturn.wt/experiment-252-provider-deci…
+
+
+===== final =====
+╭─────────────────────────────────────────────────╮
+│ ✨ Update available! 0.158.0 -> 0.159.2         │
+│ Run npm install -g @openai/codex to update.     │
+│                                                 │
+│ See full release notes:                         │
+│ https://github.com/openai/codex/releases/latest │
+╰─────────────────────────────────────────────────╯
+
+
+  >_ OpenAI Codex (v0.158.0)
+     ~/workspace/oss/saturn.wt/…/docs/experiments/provider-decision-checks
+
+  You, me, and a blinking cursor.
+
+
+
+
+› Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+
+  GPT-5.6-Luna default · ~/workspace/oss/saturn.wt/experiment-252-provider-deci…
+

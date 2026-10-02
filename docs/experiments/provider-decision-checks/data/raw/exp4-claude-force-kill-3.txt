@@ -1,0 +1,99 @@
+===== before stop =====
+Run this harmless command exactly once and do not stop it yourself: trap '' INT;
+ sleep 600.ClauderCodetv2.1.285 ends. ▐▛███▛█
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+────────────────────────────────────────────────────────────────────────────────
+❯ Run this harmless command exactly once and do not stop it yourself: trap ''
+  INT; sleep 600. Then report when it ends.
+────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · PR #255
+
+
+
+
+
+
+
+
+
+
+
+
+
+===== after interrupt =====
+Run this harmless command exactly once and do not stop it yourself: trap '' INT;
+ sleep 600.ClauderCodetv2.1.285 ends. ▐▛███▛█
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+────────────────────────────────────────────────────────────────────────────────
+❯ Run this harmless command exactly once and do not stop it yourself: trap ''
+  INT; sleep 600. Then report when it ends.
+────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · PR #255
+
+
+
+
+
+
+
+
+
+
+
+
+
+===== after force key =====
+Run this harmless command exactly once and do not stop it yourself: trap '' INT;
+ sleep 600.ClauderCodetv2.1.285 ends. ▐▛███▛█
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+────────────────────────────────────────────────────────────────────────────────
+❯ Try "how do I log an error?"
+────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · PR #255 · ← for agents
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===== final =====
+Run this harmless command exactly once and do not stop it yourself: trap '' INT;
+ sleep 600.ClauderCodetv2.1.285 ends. ▐▛███▛█
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+────────────────────────────────────────────────────────────────────────────────
+❯ Try "how do I log an error?"
+────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · PR #255 · ← for agents
+
+
+
+
+
+
+
+
+
+
+
+
+
