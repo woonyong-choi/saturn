@@ -186,7 +186,6 @@ CREATE TABLE chat_dirs (
     UNIQUE (chat_id, path)
 );
 "#;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MigrationNotice {
     pub from: u32,

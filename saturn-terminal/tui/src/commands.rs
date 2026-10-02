@@ -263,6 +263,20 @@ fn parse_permissions(args: &[&str]) -> Result<SlashCommand, CommandError> {
 // cost: time O(a), heap O(a), stack O(1)
 // vars: a = 인자 글자 수(오류 문구를 만들 때만)
 // basis: estimate
+fn parse_permissions(args: &[&str]) -> Result<SlashCommand, CommandError> {
+    let [argument] = args else {
+        return Err(invalid("permissions", &args.join(" ")));
+    };
+    PERMISSION_MODES
+        .iter()
+        .find(|mode| *mode == argument)
+        .map(|mode| SlashCommand::Permissions { mode })
+        .ok_or_else(|| invalid("permissions", argument))
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 인자 글자 수(오류 문구를 만들 때만)
+// basis: estimate
 fn parse_feedback(args: &[&str]) -> Result<bool, CommandError> {
     match args {
         ["1"] => Ok(true),
