@@ -186,19 +186,19 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 | 요구사항 | 검증 계획 |
 |---|---|
 | 결과 신호는 관찰 시간(다음 입력 3개 또는 10분)이 지난 뒤에만 확정한다. | `saturn-terminal/engine/src/lifecycle/outcomes.rs`의 `settle_after_three_inputs_records_confirmed_signal`, `settle_before_observation_ends_leaves_signal_empty`, `settle_after_ten_minutes_without_reaction_records_unconfirmed`, `saturn-terminal/engine/src/outcomes.rs`의 `settled_before_window_and_inputs_is_empty`, `settled_after_three_inputs_returns_reaction` |
-| 빠른 조정은 기준값을 중심값 ±0.05 밖으로 옮기지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `observe_never_leaves_fast_range` |
-| 빠른 조정은 신호 하나로 기준값을 `0.002 × 가중 × 방향`만큼만 옮기고, 이동 폭은 신호가 쌓여도 줄지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `observe_step_stays_fixed_after_many_signals` |
-| 빠른 조정은 행동 신호에 1/q를 붙이지 않고 물은 피드백 답의 신호에만 붙인다. | `saturn-terminal/core/src/routers/calibration.rs`의 `observe_behavior_signal_moves_fixed_step_without_ask_weight`, `observe_asked_answer_is_weighted_by_inverse_q` |
-| 빠른 조정은 같은 입력 열에서 모의 판단의 고정 폭 규칙과 같은 이동을 한다. | `saturn-terminal/core/src/routers/calibration.rs`의 `observe_follows_simulation_b_on_same_signals` |
-| 되돌릴 수 없는 행동의 기준값은 0.8 미만이 되지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `observe_irreversible_floor_holds` |
-| 느린 조정은 쓰인 결과가 300건 미만이면 중심값을 바꾸지 않고 300건 이상이면 바꾸며, 행동하지 않았고 묻지 않은 판단은 쓰인 결과로 세지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_below_min_results_does_nothing`, `recenter_at_min_results_acts_and_below_does_not`, `recenter_unasked_skipped_judgments_are_not_results` |
-| 느린 조정은 `/train` 한 번에 중심값을 이전 중심값 ±0.05 안으로만 움직인다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_moves_at_most_fast_range_per_call`, `recenter_all_wrong_uses_upper_bound` |
-| 느린 조정은 행동한 판단의 틀림 신호를 가중 1로 쓰고, 반응 없는 행동은 틀리지 않은 것으로 센다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_acted_without_reaction_counts_as_not_wrong`, `recenter_all_wrong_uses_upper_bound` |
-| 느린 조정은 행동하지 않은 판단은 물은 답만 1/q로 쓰고 놓침 신호는 쓰지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_skipped_judgment_uses_only_asked_answer_with_inverse_q`, `recenter_skipped_judgment_with_missed_signal_is_not_used` |
-| 느린 조정은 목표 틀림 비율 이하인 가장 낮은 격자 값을 새 중심값으로 고르고, 없으면 최고값을 고른다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_picks_lowest_threshold_meeting_target`, `recenter_all_wrong_uses_upper_bound`, `threshold_grid_default_bounds_spans_bounds_by_half_percent` |
-| 느린 조정은 행동이 목표를 지키는 값 위에서 멈춘 기록에서도 새 중심값을 그 값 근처로 둔다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_where_actions_stop_above_oracle_lands_near_oracle` |
-| 느린 조정은 같은 판단 기록에서 모의 판단의 위험 곡선 계산과 같은 중심값을 낸다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_matches_simulation_s1q_on_same_records`, `recenter_matches_simulation_t1_on_same_records` |
-| 느린 조정은 되돌릴 수 없는 행동의 최저값 아래로 중심값을 내리지 않는다. | `saturn-terminal/core/src/routers/calibration.rs`의 `recenter_keeps_center_within_irreversible_floor` |
+| 빠른 조정은 기준값을 중심값 ±0.05 밖으로 옮기지 않는다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `observe_never_leaves_fast_range` |
+| 빠른 조정은 신호 하나로 기준값을 `0.002 × 가중 × 방향`만큼만 옮기고, 이동 폭은 신호가 쌓여도 줄지 않는다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `observe_step_stays_fixed_after_many_signals` |
+| 빠른 조정은 행동 신호에 1/q를 붙이지 않고 물은 피드백 답의 신호에만 붙인다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `observe_behavior_signal_moves_fixed_step_without_ask_weight`, `observe_asked_answer_is_weighted_by_inverse_q` |
+| 빠른 조정은 같은 입력 열에서 모의 판단의 고정 폭 규칙과 같은 이동을 한다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `observe_follows_simulation_b_on_same_signals` |
+| 되돌릴 수 없는 행동의 기준값은 0.8 미만이 되지 않는다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `observe_irreversible_floor_holds` |
+| 느린 조정은 쓰인 결과가 300건 미만이면 중심값을 바꾸지 않고 300건 이상이면 바꾸며, 행동하지 않았고 묻지 않은 판단은 쓰인 결과로 세지 않는다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_below_min_results_does_nothing`, `recenter_at_min_results_acts_and_below_does_not`, `recenter_unasked_skipped_judgments_are_not_results` |
+| 느린 조정은 `/train` 한 번에 중심값을 이전 중심값 ±0.05 안으로만 움직인다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_moves_at_most_fast_range_per_call`, `recenter_all_wrong_uses_upper_bound` |
+| 느린 조정은 행동한 판단의 틀림 신호를 가중 1로 쓰고, 반응 없는 행동은 틀리지 않은 것으로 센다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_acted_without_reaction_counts_as_not_wrong`, `recenter_all_wrong_uses_upper_bound` |
+| 느린 조정은 행동하지 않은 판단은 물은 답만 1/q로 쓰고 놓침 신호는 쓰지 않는다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_skipped_judgment_uses_only_asked_answer_with_inverse_q`, `recenter_skipped_judgment_with_missed_signal_is_not_used` |
+| 느린 조정은 목표 틀림 비율 이하인 가장 낮은 격자 값을 새 중심값으로 고르고, 없으면 최고값을 고른다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_picks_lowest_threshold_meeting_target`, `recenter_all_wrong_uses_upper_bound`, `threshold_grid_default_bounds_spans_bounds_by_half_percent` |
+| 느린 조정은 행동이 목표를 지키는 값 위에서 멈춘 기록에서도 새 중심값을 그 값 근처로 둔다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_where_actions_stop_above_oracle_lands_near_oracle` |
+| 느린 조정은 같은 판단 기록에서 모의 판단의 위험 곡선 계산과 같은 중심값을 낸다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_matches_simulation_s1q_on_same_records`, `recenter_matches_simulation_t1_on_same_records` |
+| 느린 조정은 되돌릴 수 없는 행동의 최저값 아래로 중심값을 내리지 않는다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_keeps_center_within_irreversible_floor` |
 | 전체 묻는 빈도는 판단 20번에 1번을 넘지 않는다. | 많은 판단을 흘려 물은 비율이 상한 안인지 확인한다. |
 | 판단 기록마다 router 버전, 기준값, q를 남기고 결과 신호와 물은 답은 생긴 뒤 같은 기록에 채운다. | `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`, `saturn-terminal/engine/src/lifecycle/outcomes.rs`의 `answer_feedback_records_answer_in_judgment`, `answer_feedback_request_is_answered_through_socket` |
 | `/train`은 판단 기록으로 `Observation` 목록을 만들어 `recenter`에 넘긴다. | `saturn-terminal/engine/src/training/mod.rs`의 `recenter_thresholds_with_enough_recorded_results_moves_center`, `recenter_thresholds_below_min_results_keeps_center`, `recenter_thresholds_ignores_judgments_still_being_observed` |

@@ -179,12 +179,12 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 요구사항 | 검증 계획 |
 |---|---|
 | 도구 결과 메모의 종료 코드, 경로, 줄 수를 provider와 무관하게 이벤트에서 얻는다. | [provider 연결과 session](providers-and-sessions.md#요구사항)의 도구 호출 값 행 |
-| 후보 전체를 router에 묻는다. | `saturn-terminal/core/src/routers/mod.rs`의 `compact_questions_150_candidates_ask_all` |
-| 요청이 크기 한도를 넘으면 질문 단위로 나누고 조각마다 같은 state를 싣는다. | `saturn-terminal/core/src/routers/split.rs`의 `split_request_over_limit_splits_by_question_with_same_state`, `saturn-terminal/core/src/routers/mod.rs`의 `compact_requests_large_state_splits_and_every_piece_carries_state` |
+| 후보 전체를 router에 묻는다. | `saturn-terminal/core/src/routers/tests.rs`의 `compact_questions_150_candidates_ask_all` |
+| 요청이 크기 한도를 넘으면 질문 단위로 나누고 조각마다 같은 state를 싣는다. | `saturn-terminal/core/src/routers/split.rs`의 `split_request_over_limit_splits_by_question_with_same_state`, `saturn-terminal/core/src/routers/tests.rs`의 `compact_requests_large_state_splits_and_every_piece_carries_state` |
 | 최종 순서는 답이 있는 항목의 남김 확률 순이고 같은 확률이면 RRF 순이며 확률이 낮은 항목도 빼지 않는다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_orders_by_probability_and_keeps_low`, `order_after_router_same_probability_follows_rrf_order` |
-| 항목의 남김 확률은 호출과 결과 중 큰 값이다. | `saturn-terminal/core/src/routers/mod.rs`의 `compact_verdicts_takes_larger_of_call_and_result` |
-| 답이 없는 항목(실패한 조각 포함)은 RRF 순으로 뒤에 둔다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_unanswered_follow_answered_in_rrf_order`, `saturn-terminal/core/src/routers/mod.rs`의 `compact_verdicts_merges_pieces_and_skips_failed_piece` |
-| router가 전부 답하지 못하면 RRF 순서로 예산까지 채운다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_no_verdicts_keeps_rrf_order`, `saturn-terminal/core/src/sessions/packet.rs`의 `build_packet_router_no_response_fills_in_rrf_order` |
+| 항목의 남김 확률은 호출과 결과 중 큰 값이다. | `saturn-terminal/core/src/routers/tests.rs`의 `compact_verdicts_takes_larger_of_call_and_result` |
+| 답이 없는 항목(실패한 조각 포함)은 RRF 순으로 뒤에 둔다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_unanswered_follow_answered_in_rrf_order`, `saturn-terminal/core/src/routers/tests.rs`의 `compact_verdicts_merges_pieces_and_skips_failed_piece` |
+| router가 전부 답하지 못하면 RRF 순서로 예산까지 채운다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_no_verdicts_keeps_rrf_order`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_router_no_response_fills_in_rrf_order` |
 | 띄어쓰기와 조사가 달라도 같은 한글 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_spacing_and_particle_share_hangul_bigrams` |
 | 영문 식별자는 식별자 경계에서 나눈다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_identifier_splits_at_case_and_symbols` |
 | 자모로 풀린 한글도 음절 한글과 같은 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_nfd_hangul_matches_nfc` |

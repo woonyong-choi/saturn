@@ -212,8 +212,8 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 |---|---|
 | router를 확인하기 전에는 일반 요청을 받지 않는다. | router 확인이 실패하는 환경에서 일반 요청이 거절되고, 키를 다시 확인한 뒤에는 처리되는지 확인한다. |
 | `invalid` 답이면 질문별 대체 규칙을 적용한다. | 질문마다 `invalid` 답을 주고 표의 대체 규칙이 적용되는지 확인한다. |
-| 호출이 실패하면 5초 뒤 한 번, 다시 5초 뒤 한 번 더 보내고 첫 실패부터 10초 뒤에도 실패하면 진행 중인 시도도 끊고 포기한다. 시도마다 응답 대기는 5초이고 응답이 없으면 15초 안에 포기한다. | `saturn-terminal/core/src/routers/failure.rs`의 `retry_delay_waits_five_seconds_twice_then_gives_up`, `retry_delay_gives_up_when_waiting_would_pass_the_deadline`, `saturn-terminal/engine/src/routers/remote.rs`의 `failures_retry_twice_five_seconds_apart_then_give_up`, `first_retry_waits_five_seconds_before_sending`, `no_response_at_all_gives_up_within_fifteen_seconds`, `immediate_failure_retries_at_five_and_ten_seconds_then_gives_up_at_the_deadline`, `attempt_after_a_slow_first_failure_is_cut_at_the_new_deadline` |
-| 보낸 뒤 시간 초과와 속도 제한도 같은 간격으로 다시 보내고, 키 거절과 `invalid`는 다시 보내지 않는다. | `saturn-terminal/engine/src/routers/remote.rs`의 `timeout_after_send_is_retried_and_counted_as_unknown_cost`, `rate_limit_retries_on_the_same_interval_ignoring_retry_after`, `auth_failure_and_invalid_status_are_not_retried` |
+| 호출이 실패하면 5초 뒤 한 번, 다시 5초 뒤 한 번 더 보내고 첫 실패부터 10초 뒤에도 실패하면 진행 중인 시도도 끊고 포기한다. 시도마다 응답 대기는 5초이고 응답이 없으면 15초 안에 포기한다. | `saturn-terminal/core/src/routers/failure.rs`의 `retry_delay_waits_five_seconds_twice_then_gives_up`, `retry_delay_gives_up_when_waiting_would_pass_the_deadline`, `saturn-terminal/engine/src/routers/remote/tests.rs`의 `failures_retry_twice_five_seconds_apart_then_give_up`, `first_retry_waits_five_seconds_before_sending`, `no_response_at_all_gives_up_within_fifteen_seconds`, `immediate_failure_retries_at_five_and_ten_seconds_then_gives_up_at_the_deadline`, `attempt_after_a_slow_first_failure_is_cut_at_the_new_deadline` |
+| 보낸 뒤 시간 초과와 속도 제한도 같은 간격으로 다시 보내고, 키 거절과 `invalid`는 다시 보내지 않는다. | `saturn-terminal/engine/src/routers/remote/tests.rs`의 `timeout_after_send_is_retried_and_counted_as_unknown_cost`, `rate_limit_retries_on_the_same_interval_ignoring_retry_after`, `auth_failure_and_invalid_status_are_not_retried` |
 | 입력 처리 판단이 실패하면 현재 에이전트와 현재 모델로 보내고 입력을 대기로 보내지 않는다. | `saturn-terminal/core/src/routers/failure.rs`의 `route_after_failure_idle_sends_to_current_agent_and_model`, `route_after_failure_running_steers_instead_of_queueing`, `route_after_failure_records_every_skipped_question` |
 | `compact` 판단이 실패하면 router가 시작한 전환은 건너뛰고 강제한 전환은 순위 순서로 채운다. | `saturn-terminal/core/src/routers/failure.rs`의 `compact_failure_skips_router_transition_and_fills_forced_one`, `compact_failure_forced_transition_orders_competing_zone_by_rank` |
 | 판단을 건너뛸 때 정한 문구를 로그에 남기고 비밀값은 남기지 않는다. | `saturn-terminal/engine/src/routers/mod.rs`의 `route_after_failure_logs_skip_message_and_keeps_current_model`, `compact_after_failure_logs_by_who_started_the_transition` |
@@ -225,7 +225,7 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | 255개 초과 선택지는 나뉘어 전송된다. | 255개 초과 선택지가 나뉘어 전송되는지 확인한다. |
 | `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [#6](https://github.com/woonyong-choi/saturn/issues/6) 실험으로 한국어 평가 세트의 오분류율을 확인한다. |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
-| 후보를 순위로 자르지 않고 전체를 묻는다. | `saturn-terminal/core/src/routers/mod.rs`의 `compact_questions_150_candidates_ask_all` |
+| 후보를 순위로 자르지 않고 전체를 묻는다. | `saturn-terminal/core/src/routers/tests.rs`의 `compact_questions_150_candidates_ask_all` |
 | 고정하지 않은 입력에 모델 목록을 `target_model` 후보로 묻고 고른 모델로 보낸다. 고정 모델이거나 목록이 없거나 후보 밖이면 현재 모델이다. | [모델 고르기](providers-and-sessions.md#모델-고르기)의 `target_model` 테스트 |
 | `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. [간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)에서 `replaces_<n>` 구간과 간접 지시 입력은 기준을 가르지 못해 보류이고(간접 지시 입력 74.5% [68.0, 80.0]), 앞 입력의 제약 등록 여부를 state에 넣어도 정확도는 오르지 않았다. |
 
