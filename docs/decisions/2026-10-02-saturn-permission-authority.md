@@ -27,6 +27,8 @@ Saturn 설정의 `permission` 규칙을 권한의 정본으로 쓴다. 두 provi
 ## 결과
 
 - 셸 명령, 파일 편집, MCP 도구, subagent 실행을 `allow`, `ask`, `deny` 규칙 하나로 판단
+- 권한 모드(`ask`, `edit`, `read-only`, `full`)를 기본 규칙 묶음으로 두고 개별 규칙을 그 위에 덧붙임
+- 사용자와 폴더 어느 층이든 개별 `deny`가 하나라도 일치하면 거부
 - 항상 허용을 provider 파일이 아닌 Saturn 기록 저장소에 보관
 - 사용자 provider 파일 불변
 - 권한 외 provider 설정(모델, MCP 서버 등)과 subagent 사용은 이전 결정대로 사용자 설정을 따르고 추적

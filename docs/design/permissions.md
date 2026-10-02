@@ -7,7 +7,7 @@
 
 ## 요약
 
-권한은 provider의 셸 명령, 파일 편집, MCP 도구, subagent 실행을 허용, 묻기, 거부 중 무엇으로 처리할지 정하는 기능이다. 정본은 Saturn 설정의 `permission` 규칙 하나다. engine은 규칙을 Codex와 Claude Code 각각의 방식으로 바꿔 넘기고, 묻기로 판정된 호출은 TUI 허가 요청 창으로 올린다. provider 설정 파일은 고치지 않는다.
+권한은 provider의 셸 명령, 파일 편집, MCP 도구, subagent 실행을 허용, 묻기, 거부 중 무엇으로 처리할지 정하는 기능이다. 정본은 Saturn 설정의 `permission` 규칙 하나다. 권한 모드는 기본 규칙 묶음이고 개별 규칙이 그 위에 덧붙는다. engine은 규칙을 Codex와 Claude Code 각각의 방식으로 바꿔 넘기고, 묻기로 판정된 호출은 TUI 허가 요청 창으로 올린다. provider 설정 파일은 고치지 않는다.
 
 ## 동기
 
@@ -17,25 +17,25 @@
 
 ### 규칙으로 명령을 허용하고 거부하기
 
-1. 사용자가 `permission.shell`에 `"*"`는 `ask`, `"git status"`는 `allow`, `"rm *"`는 `deny`로 적는다.
+1. 사용자가 기본 모드 `edit`에서 `permission.shell`에 `"git status"`는 `allow`, `"rm *"`는 `deny`로 적는다.
 2. Codex가 `git status`를 실행하려 하면 engine은 묻지 않고 허용한다.
 3. Codex가 `rm -rf build`를 실행하려 하면 engine은 허가 창 없이 거부하고, 명령은 실행되지 않는다.
-4. Codex가 `touch a.txt`를 실행하려 하면 규칙이 `ask`이므로 TUI가 허가 요청 창을 띄운다.
+4. Codex가 `touch a.txt`를 실행하려 하면 `edit` 모드의 셸 기본값이 `ask`이므로 TUI가 허가 요청 창을 띄운다.
 
 ### 항상 허용하기
 
-1. Claude가 `cargo test`를 실행하려 하고 규칙이 `ask`라서 TUI가 허가 요청 창을 띄운다.
-2. 사용자가 `a`(항상)를 누른다.
+1. Claude가 `cargo test`를 실행하려 하고 셸 기본값이 `ask`라서 TUI가 허가 요청 창을 띄운다.
+2. 사용자가 `a`(항상 허용)를 누른다.
 3. engine은 허용 답을 Claude에 보내고, `cargo test`에 대한 항상 허용을 기록 저장소에 저장한다.
 4. 다음에 같은 명령이 오면 engine은 묻지 않고 허용한다.
 5. 사용자의 `~/.claude`와 `~/.codex` 설정 파일은 바뀌지 않는다.
 
-### 허가 준비 중 표시
+### 작업 중 모드 바꾸기
 
-1. Codex가 MCP 도구 호출을 시작한다.
-2. 3초 안에 허가 요청도 진행 이벤트도 오지 않는다.
-3. 상태판 실행 줄에 `도구 사용 허가 준비 중 · codex`(초안)가 보인다.
-4. 허가 요청이 오면 표시를 지우고 허가 요청 창을 띄운다.
+1. 사용자가 기본 모드 `edit`로 작업하고, Codex가 작업 폴더 안의 파일을 고치면 허가 창 없이 적용된다.
+2. 사용자가 `/permissions read-only`(초안)를 입력한다.
+3. engine은 다음 허가 요청부터 편집과 실행을 거부한다.
+4. 사용자가 `/permissions edit`를 입력하면 작업 폴더 안 편집이 다시 허용된다.
 
 ## 상세 설계
 
@@ -43,23 +43,43 @@
 
 규칙 대상은 셸 명령, 파일 편집, MCP 도구, subagent 실행 네 가지다. 값은 `allow`, `ask`, `deny` 셋이다. 키 이름과 형식은 [설정](settings.md)의 `permission` 키 표에 있다.
 
-1. `settings`가 사용자 설정의 규칙을 읽는다.
-2. `settings`가 폴더 설정의 규칙을 그 뒤에 잇는다.
-3. engine이 호출마다 이어 붙인 규칙에서 마지막으로 일치한 규칙의 값을 쓴다.
-4. 일치한 규칙이 없으면 기본값을 쓴다. 기본값은 `ask`다(초안).
+1. `settings`가 현재 권한 모드의 기본 규칙을 앞에 둔다.
+2. `settings`가 사용자 설정의 개별 규칙을 그 뒤에 잇는다.
+3. `settings`가 폴더 설정의 개별 규칙을 그 뒤에 잇는다.
+4. engine이 호출마다 이어 붙인 규칙에서 마지막으로 일치한 규칙의 값을 쓴다.
+5. 사용자와 폴더의 개별 규칙 중 `deny`가 하나라도 일치하면 순서와 상관없이 `deny`를 쓴다.
 
 - 마지막 일치가 이긴다. OpenCode의 규칙 방식을 따른다.
+- `deny`는 예외다. 폴더 설정이 사용자 설정의 `deny`를 뒤집어 저장소가 사용자의 금지를 풀지 못하게 하기 위해서다. 모드의 기본 규칙에는 이 예외가 없고, 개별 `allow`가 모드의 기본 `deny`를 덮을 수 있다.
 - 패턴은 `*`를 포함할 수 있는 글자 일치다(초안).
 - 셸 명령이 `&&`, `;`, `|`로 이어져 있으면 나뉜 부분마다 판정하고 가장 엄한 값(`deny`, `ask`, `allow` 순)을 쓴다(초안). 허용된 명령 뒤에 막힌 명령을 붙이는 우회를 막기 위해서다.
 - 폴더 설정의 `permission`은 폴더 설정 신뢰 창의 적용되는 항목에 보인다. 저장소가 사용자 모르게 허용 규칙을 넣는 일을 막기 위해서다.
-- 규칙은 입력 접수 때 고정한 설정 번호의 값을 쓴다. 한 입력을 한 규칙으로 끝까지 판단하기 위해서다.
+- 개별 규칙은 입력 접수 때 고정한 설정 번호의 값을 쓴다. 한 입력을 한 규칙으로 끝까지 판단하기 위해서다. 모드는 예외로 다음 허가 요청부터 바뀐 값을 쓴다(초안). 모드를 낮추면 진행 중인 작업에도 바로 적용하기 위해서다.
+
+### 권한 모드
+
+`permission.mode`(초안 이름)는 기본 규칙 묶음을 고른다. 기본값은 `edit`다. 모드 이름과 값은 초안이다.
+
+| 모드 | 기본 규칙 | Claude의 같은 모드 | Codex의 같은 모드 |
+|---|---|---|---|
+| `ask` | 모든 실행을 묻는다 | `default` | 해당 없음 |
+| `edit` | 작업 폴더 안 편집은 `allow`, 그 밖은 `ask` | `acceptEdits` | `auto` |
+| `read-only` | 읽기만 `allow`, 편집과 실행은 `deny` | `plan` | `read-only` |
+| `full` | 모두 `allow`, 개별 규칙의 `deny`만 적용 | `bypassPermissions` | `full-access` |
+
+- `edit`에서 작업 폴더 밖 편집, 셸 명령, MCP 도구, subagent 실행은 `ask`다. 작업 폴더 밖 편집은 사용자가 확인한 경로만 열기 위해서다(초안).
+- `permission.shell` 같은 개별 규칙은 모드 기본 규칙 위에 덧붙는다.
+- 모드마다 provider 구성은 같다. Codex는 `untrusted`와 읽기 전용 샌드박스, Claude는 모든 대상 도구의 `ask` 목록을 쓴다. 모드에 따라 달라지는 것은 engine이 허가 요청에 하는 답이다. `deny` 패턴이 모든 요청에 걸리게 하고, 모드를 바꿔도 provider를 다시 시작하지 않기 위해서다(초안).
+- Codex execpolicy에는 개별 셸 규칙만 번역한다. `"*"` 패턴은 어떤 명령도 매치하지 않았기 때문이다. 모드 기본 규칙과 번역하지 않은 요청은 engine이 승인 요청에 규칙으로 답한다.
+- 세션 중에는 TUI 명령 `/permissions`(초안)로 모드를 본다. `/permissions {모드}`는 채팅 층의 `permission.mode`를 바꾼다. 화면은 [TUI](tui.md)에 있다.
+- 폴더 설정의 `permission.mode`는 폴더 설정 신뢰 창의 적용되는 항목에 보인다.
 
 ### 항상 허용 저장
 
 사용자가 허가 요청 창에서 `항상`을 고르면 engine은 그 호출의 도구 종류와 패턴을 허용 규칙으로 기록 저장소에 저장한다. provider 설정 파일에는 쓰지 않는다.
 
-- 항상 허용은 설정 규칙이 `ask`로 판정한 호출에만 적용한다. 설정의 `deny`는 항상 허용보다 앞선다(초안). 사용자가 나중에 넣은 거부 규칙이 옛 허용에 가려지지 않게 하기 위해서다.
-- 항상 허용의 범위는 작업 폴더 단위다(초안).
+- 항상 허용은 설정 규칙이 `ask`로 판정한 호출에만 적용한다. 개별 규칙의 `deny`는 항상 허용보다 앞선다(초안). 사용자가 나중에 넣은 거부 규칙이 옛 허용에 가려지지 않게 하기 위해서다.
+- 항상 허용의 범위는 작업 폴더 단위이고 Saturn 기록 저장소에만 저장한다(초안).
 - 저장 표의 이름과 열은 [기록 저장과 보존](records.md)의 규칙에 따라 구현 이슈에서 정한다.
 
 ### 판정 흐름
@@ -83,7 +103,7 @@ engine은 Saturn 전용 `CODEX_HOME`으로 app-server를 시작한다(2026-10-02
 - 뺄 키는 `approval_policy`, `sandbox_mode`, `sandbox_workspace_write.*`, `approvals_reviewer`, `hooks`, `hooks.state`, rules, `projects.*.trust_level`, `shell_environment_policy.*`, `cli_auth_credentials_store` 등이다.
 - 모델과 MCP 서버 같은 권한 외 설정은 사용자 설정을 그대로 옮기고 추적한다.
 - 생성한 설정에 `approvals_reviewer="user"`를 명시한다. 자동 검토자가 Saturn 앞에서 판단하는 일을 막기 위해서다.
-- Saturn 규칙은 execpolicy 규칙 파일로 번역한다. `allow`는 `allow`, `ask`는 `prompt`, `deny`는 `forbidden`이다.
+- Saturn의 개별 셸 규칙은 execpolicy 규칙 파일로 번역한다. `allow`는 `allow`, `ask`는 `prompt`, `deny`는 `forbidden`이다.
 - `thread/start`에 `approvalPolicy="untrusted"`와 읽기 전용 샌드박스를 준다. 파일 편집도 `item/fileChange/requestApproval`로 받기 위해서다. `untrusted`는 설정 키로는 쓸 수 없고 `thread/start` 인자로만 줄 수 있다.
 - 자식 thread는 부모의 승인 정책과 규칙을 이어받아, 자식이 실행한 명령도 같은 규칙으로 승인 요청이 왔다(5/5 관측).
 - 세션을 시작할 때 Codex 버전과 실제 적용된 승인 정책과 샌드박스를 확인하고, 기대와 다르면 첫 턴을 보내지 않는다(초안).
@@ -116,14 +136,15 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 
 ### 허가 요청 창과 답
 
-허가 요청 창의 선택지는 `이번만`, `항상`, `거부`이고 `Esc`로 `다르게 하라고 말하기`를 고른다. 화면과 키는 [TUI](tui.md)에 있다.
+허가 요청 창의 선택지는 `이번만 허용`, `항상 허용`, `거부` 셋이다. Claude와 Codex CLI의 허가 창과 같은 모양이다. 화면과 키는 [TUI](tui.md)에 있다.
 
 | 사용자 답 | engine 동작 |
 |---|---|
-| `이번만` | provider에 허용을 보내고 저장하지 않는다 |
-| `항상` | provider에 허용을 보내고 항상 허용을 기록 저장소에 저장한다 |
-| `거부` | provider에 거부를 보낸다 |
-| `다르게 하라고 말하기` | 입력 처리 방식이 정해지기 전까지 거부로 보낸다([#56](https://github.com/woonyong-choi/saturn/issues/56)) |
+| `이번만 허용` | provider에 허용을 보내고 저장하지 않는다 |
+| `항상 허용` | provider에 허용을 보내고 항상 허용을 기록 저장소에 저장한다 |
+| `거부` | provider에 거부를 보낸다. 다르게 하라는 말을 함께 남길 수 있다 |
+
+거부와 함께 남기는 말의 입력 방식과 처리는 정해지지 않았다([#56](https://github.com/woonyong-choi/saturn/issues/56)). 정해지기 전에는 말 없이 거부만 보낸다.
 
 ### 허가 대기 중 피드백
 
@@ -142,13 +163,16 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 
 | 요구사항 | 검증 계획 |
 |---|---|
-| 권한 규칙은 사용자, 폴더 순서로 이어 붙이고 마지막 일치가 이긴다. | 사용자 `deny`와 폴더 `allow`가 겹칠 때 값이 폴더 `allow`인지 확인한다. |
+| 규칙은 모드, 사용자, 폴더 순서로 이어 붙이고 마지막 일치가 이긴다. | 사용자 `allow`와 폴더 `ask`가 겹칠 때 값이 폴더 `ask`인지 확인한다. |
+| 사용자나 폴더의 개별 `deny`가 하나라도 일치하면 거부한다. | 사용자 `deny` 뒤에 폴더 `allow`를 두어도 거부되는지 확인한다. |
+| 모드의 기본 규칙이 표대로 판정되고, 기본 모드는 `edit`다. | 모드마다 작업 폴더 안 편집, 밖 편집, 셸, MCP, subagent 호출의 값을 확인한다. |
+| 모드를 바꾸면 다음 허가 요청부터 새 모드로 판정하고 provider를 다시 시작하지 않는다. | `/permissions read-only` 뒤 같은 작업의 다음 요청이 거부되는지 확인한다. |
 | Codex 셸, 파일 편집, subagent, MCP가 Saturn 규칙대로 허용, 묻기, 거부로 처리된다. | 가짜 app-server로 규칙별 응답을 확인한다. |
 | 사용자 Codex 규칙, 훅, 자동 검토자가 Saturn 판단에 끼어들지 않는다. | 사용자 `allow`와 Saturn `prompt`가 충돌하는 가짜 home에서 요청이 오는지 확인한다. |
 | MCP 준비를 확인하기 전에는 첫 턴을 보내지 않는다. | 준비가 늦은 가짜 MCP 서버로 첫 턴 전송 시점을 확인한다. |
 | Claude 규칙 대상 도구의 호출이 모두 `can_use_tool`로 온다. | [#232](https://github.com/woonyong-choi/saturn/issues/232) |
 | 항상 허용은 기록 저장소에 저장되고 provider 설정 파일은 바뀌지 않는다. | 항상 허용 뒤 기록 저장소 행과 provider 설정 파일 지문을 확인한다. |
-| 설정의 `deny`는 항상 허용보다 앞선다. | 항상 허용이 있는 패턴에 `deny`를 넣어 거부되는지 확인한다. |
+| 개별 규칙의 `deny`는 항상 허용보다 앞선다. | 항상 허용이 있는 패턴에 `deny`를 넣어 거부되는지 확인한다. |
 
 ## 단점
 
@@ -156,7 +180,8 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 - 사용자가 provider 설정에 둔 권한은 Saturn 실행에서 적용되지 않는다.
 - Codex는 읽기 전용 샌드박스로 실행해 일반 작업이 승인 요청으로 몰릴 수 있다. 불편 정도는 측정 전이다.
 - 규칙이 다른 채팅마다 Codex app-server 프로세스가 늘어난다.
-- 마지막 일치가 이기므로 폴더 설정의 `allow`가 사용자 설정의 `deny` 뒤에 오면 이긴다. 폴더 설정 신뢰 창이 이를 사용자에게 보인다.
+- `deny`를 뺀 규칙과 모드는 마지막 일치가 이기므로 폴더 설정이 사용자 설정의 `allow`와 모드를 바꿀 수 있다. 폴더 설정 신뢰 창이 이를 사용자에게 보인다.
+- 모든 모드가 같은 provider 구성을 쓰므로 `full`에서도 Codex는 승인 요청을 거치고, 요청마다 engine 응답을 기다린다.
 
 ## 대안
 
@@ -171,6 +196,7 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 - Claude 사용자와 폴더의 `deny` 규칙과 훅이 Saturn 판정 앞에서 호출을 막는지 ([#232](https://github.com/woonyong-choi/saturn/issues/232))
 - Codex 읽기 전용 샌드박스에서 일반 읽기, 빌드, 테스트 작업이 얼마나 막히는지 ([#232](https://github.com/woonyong-choi/saturn/issues/232))
 - 키체인 로그인(`cli_auth_credentials_store=keyring`)에서 전용 `CODEX_HOME`이 로그인을 공유하는지 ([#232](https://github.com/woonyong-choi/saturn/issues/232))
+- Codex가 승인된 편집과 명령을 읽기 전용 샌드박스에 막히지 않고 실행하는지 ([#232](https://github.com/woonyong-choi/saturn/issues/232))
 - Codex subagent 실행 자체를 허용, 묻기, 거부로 처리하는 방법 ([#232](https://github.com/woonyong-choi/saturn/issues/232))
 - Codex MCP `prompt`가 도구를 시도한 모든 호출에서 요청으로 오는지(마지막 실측은 31/31, 앞선 실측은 불안정) ([#232](https://github.com/woonyong-choi/saturn/issues/232))
 - Codex 자식 thread의 승인 요청에 Saturn이 부모 규칙으로 응답할지, 사용자에게 따로 보일지 ([#61](https://github.com/woonyong-choi/saturn/issues/61))
