@@ -255,13 +255,7 @@ impl Engine {
         if let Some(judgment) = judgment {
             self.watch_judgment(chat, judgment, Instant::now());
         }
-        self.flow.routed.insert(
-            input,
-            Routed {
-                judgment,
-                disposition,
-            },
-        );
+        self.flow.routed.insert(input, Routed { judgment });
         self.flow.last_disposition.insert(chat, disposition);
         self.flow.applied.push(input);
         self.store

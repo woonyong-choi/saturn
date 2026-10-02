@@ -517,6 +517,7 @@ impl Engine {
     ///
     /// # Errors
     /// 실행 기록을 끝내지 못하면 `Store`, 이어 보내는 중의 오류는 `dispatch_next`와 같다.
+    #[cfg(test)]
     pub(crate) async fn finish_task(
         &mut self,
         chat: ChatId,

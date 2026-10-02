@@ -1,50 +1,11 @@
 //! 작업 이름표 규칙. 글자는 engine이 정하고 TUI는 보일지와 표기만 정한다.
 //! 설계: docs/design/tui.md
 
-use std::collections::BTreeMap;
-
-use saturn_protocol::ids::{InputId, TaskId, TaskLabel};
+use saturn_protocol::ids::TaskLabel;
 use saturn_protocol::state::TaskState;
 
 /// 초안 값.
 pub const LABEL_RANGE: std::ops::RangeInclusive<char> = 'A'..='Z';
-
-#[derive(Debug, Default)]
-pub struct LabelBook {
-    tasks: BTreeMap<TaskId, TaskLabel>,
-    inputs: BTreeMap<InputId, TaskLabel>,
-}
-
-impl LabelBook {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn set_task(&mut self, task: TaskId, label: TaskLabel) {
-        self.tasks.insert(task, label);
-    }
-
-    pub fn set_input(&mut self, input: InputId, label: TaskLabel) {
-        self.inputs.insert(input, label);
-    }
-
-    /// 대화 기록에 이미 찍힌 이름표는 그대로 둔다.
-    pub fn remove_task(&mut self, task: TaskId) {
-        self.tasks.remove(&task);
-    }
-
-    pub fn remove_input(&mut self, input: InputId) {
-        self.inputs.remove(&input);
-    }
-
-    pub fn task(&self, task: TaskId) -> Option<TaskLabel> {
-        self.tasks.get(&task).copied()
-    }
-
-    pub fn input(&self, input: InputId) -> Option<TaskLabel> {
-        self.inputs.get(&input).copied()
-    }
-}
 
 /// `Held`는 보류 줄로 따로 센다.
 pub fn is_live(state: TaskState) -> bool {
@@ -124,15 +85,5 @@ mod tests {
         assert!(is_live(TaskState::AwaitingPermission));
         assert!(!is_live(TaskState::Held));
         assert!(!is_live(TaskState::Done));
-    }
-
-    #[test]
-    fn label_book_remove_task_forgets_label() {
-        let mut book = LabelBook::new();
-        book.set_task(TaskId(1), TaskLabel('A'));
-
-        book.remove_task(TaskId(1));
-
-        assert_eq!(book.task(TaskId(1)), None);
     }
 }

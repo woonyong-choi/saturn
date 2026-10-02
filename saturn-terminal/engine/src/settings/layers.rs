@@ -27,9 +27,6 @@ const IRREVERSIBLE_MIN: f64 = 0.8;
 const DEFAULT_LAYER: &str = r#"# Saturn 기본값
 on_exit = "background"
 
-[agents]
-worktree = false
-
 [router]
 method = "jev"
 endpoint = "https://api.typesafe.ai"
@@ -90,7 +87,6 @@ enum Kind {
 /// 이 밖의 키는 모르는 키로 검사에 실패한다.
 const SCHEMA: &[(&str, Kind)] = &[
     ("on_exit", Kind::OneOf(&["background", "stop", "ask"])),
-    ("agents.worktree", Kind::Flag),
     ("router.method", Kind::OneOf(&["jev", "saturn", "collect"])),
     ("router.endpoint", Kind::Text),
     (
@@ -278,29 +274,6 @@ pub async fn read_reference(path: &Path) -> Result<String, SettingsError> {
         path: path.to_path_buf(),
         source,
     })
-}
-
-/// 폴더 파일의 사용자 전용 키가 모두 그 층의 `ignored`에 있는지 본다. 파일을 다시 읽지 못하면 거짓.
-pub(crate) fn user_only_from_user_layer(_settings: &Settings, layers: &[LayerSource]) -> bool {
-    layers
-        .iter()
-        .filter(|source| source.layer == Layer::Folder)
-        .all(|source| {
-            let Some(path) = &source.path else {
-                return false;
-            };
-            let Ok(content) = std::fs::read_to_string(path) else {
-                return false;
-            };
-            let Ok(values) = parse_toml(&content, path) else {
-                return false;
-            };
-            let mut keys = Vec::new();
-            leaf_keys(&values, "", &mut keys);
-            keys.iter()
-                .filter(|key| is_user_only(key))
-                .all(|key| source.ignored.contains(key))
-        })
 }
 
 pub(crate) fn source(layer: Layer, path: Option<PathBuf>, content: &str) -> LayerSource {
@@ -717,30 +690,6 @@ mod tests {
             assert_eq!(key, expected);
             assert_eq!(layer, Layer::Chat);
         }
-    }
-
-    #[test]
-    fn agents_worktree_defaults_off_and_takes_only_booleans() {
-        let worktree = |settings: &Settings| {
-            settings
-                .lookup("agents.worktree")
-                .and_then(serde_json::Value::as_bool)
-        };
-        let off = merge(vec![layer(Layer::Default, default_layer())]).unwrap();
-        let on = merge(vec![
-            layer(Layer::Default, default_layer()),
-            layer(Layer::Folder, "[agents]\nworktree = true\n"),
-        ])
-        .unwrap();
-        let bad = merge(vec![
-            layer(Layer::Default, default_layer()),
-            layer(Layer::Chat, "agents.worktree = \"yes\"\n"),
-        ])
-        .unwrap_err();
-
-        assert_eq!(worktree(&off.settings), Some(false));
-        assert_eq!(worktree(&on.settings), Some(true));
-        assert!(matches!(bad, SettingsError::Invalid { key, .. } if key == "agents.worktree"));
     }
 
     #[test]

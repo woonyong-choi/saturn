@@ -419,19 +419,11 @@ pub enum Alert {
     /// 연속 3회 실패로 판단 모델 연결이 끊겼다. 입력은 계속 접수하고 현재 모델로 보낸다.
     RouterDisconnected,
     /// 끼워 넣기 실측 전이라 대기로 처리한다.
-    SteerNotReady {
-        provider: crate::ids::Provider,
-    },
-    ChatBusyElsewhere {
-        chat: ChatId,
-    },
+    SteerNotReady { provider: crate::ids::Provider },
     /// router 실패로 `[보내기]` 입력을 차례에 보낸다.
     RouterDownSendingInOrder,
     /// 시작할 때 기록 저장소 스키마를 이관했다. 첫 TUI에만 보낸다.
-    SchemaMigrated {
-        from: u32,
-        to: u32,
-    },
+    SchemaMigrated { from: u32, to: u32 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

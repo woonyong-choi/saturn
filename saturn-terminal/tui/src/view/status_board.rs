@@ -345,7 +345,6 @@ pub fn alert_text(lang: Lang, alert: &Alert) -> String {
                 i18n::provider_name(*provider)
             );
         }
-        Alert::ChatBusyElsewhere { .. } => i18n::BUSY_ELSEWHERE,
         Alert::RouterDownSendingInOrder => i18n::ROUTER_UNAVAILABLE_SEND,
         Alert::SchemaMigrated { to, .. } => {
             return lang

@@ -302,36 +302,4 @@ mod tests {
             Some(Duration::from_secs(3 * 24 * 60 * 60))
         );
     }
-
-    #[test]
-    fn user_only_check_sees_ignored_keys() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join(".saturn").join(CONFIG_FILE);
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        let content = "[router]\nmethod = \"saturn\"\n";
-        std::fs::write(&path, content).unwrap();
-        let sources = vec![
-            (
-                layers::source(Layer::Default, None, default_layer()),
-                default_layer().to_owned(),
-            ),
-            (
-                layers::source(Layer::Folder, Some(path), content),
-                content.to_owned(),
-            ),
-        ];
-
-        let snapshot = merge(sources).unwrap();
-
-        assert!(layers::user_only_from_user_layer(
-            &snapshot.settings,
-            &snapshot.layers
-        ));
-        let mut forged = snapshot.layers.clone();
-        forged[1].ignored.clear();
-        assert!(!layers::user_only_from_user_layer(
-            &snapshot.settings,
-            &forged
-        ));
-    }
 }

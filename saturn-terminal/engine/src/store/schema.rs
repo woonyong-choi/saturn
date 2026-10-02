@@ -254,15 +254,10 @@ impl Store {
         Ok(path)
     }
 
-    /// 호출 전에 `from > SCHEMA_VERSION`은 `NewerSchema`로 거른다.
+    /// 호출 전에 `from > SCHEMA_VERSION`은 `NewerSchema`로 거른다. 테스트가 이관 단계를 바꿔 넣을 수 있다.
     ///
     /// # Errors
     /// 어느 단계든 실패하면 거래를 되돌리고 `Migration`.
-    pub(crate) async fn migrate(&self, from: u32) -> Result<(), StoreError> {
-        self.migrate_with(from, MIGRATIONS).await
-    }
-
-    /// 테스트가 이관 단계를 바꿔 넣는다.
     pub(crate) async fn migrate_with(&self, from: u32, steps: &[&str]) -> Result<(), StoreError> {
         let to = schema_target(steps);
         if from >= to {

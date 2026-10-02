@@ -95,6 +95,7 @@ impl SignalWatch {
         self.pending.retain(|watched| watched.judgment != judgment);
     }
 
+    #[cfg(test)]
     pub(crate) fn is_watching(&self, judgment: JudgmentId) -> bool {
         self.pending
             .iter()
