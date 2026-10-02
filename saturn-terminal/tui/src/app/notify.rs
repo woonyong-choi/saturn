@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{ChatId, InputId, JudgmentId, SettingsRevision, TaskId, TaskLabel};
-use saturn_protocol::rpc::{Alert, ChatNotice, Notification};
+use saturn_protocol::rpc::{Alert, ChatNotice, Notification, SettingsWarning};
 use saturn_protocol::state::Disposition;
 
 use super::{App, Effect, Window};
@@ -402,7 +402,11 @@ impl App {
         self.push_cell(TranscriptCell::Feedback { label, disposition });
     }
 
-    fn on_settings_applied(&mut self, revision: SettingsRevision, warning: Option<String>) {
+    fn on_settings_applied(
+        &mut self,
+        revision: SettingsRevision,
+        warning: Option<SettingsWarning>,
+    ) {
         self.chat.settings = Some((revision, warning));
     }
 

@@ -306,7 +306,7 @@ pub enum Notification {
     /// 검사 실패면 이전 번호로 계속하고 `warning`을 채운다.
     SettingsApplied {
         revision: SettingsRevision,
-        warning: Option<String>,
+        warning: Option<SettingsWarning>,
     },
     Alert {
         alert: Alert,
@@ -323,11 +323,12 @@ pub enum ChatNotice {
     Stopped {
         held: Vec<TaskLabel>,
     },
-    /// provider 연결을 다시 시작했다. `text`는 화면에 그대로 보이는 안내 문구다.
+    /// 바뀐 권한 설정을 적용하려고 provider 연결을 다시 시작했다.
     ProviderRestarted {
         provider: crate::ids::Provider,
-        text: String,
     },
+    /// 권한 규칙이 바뀌었고 다음 요청부터 적용한다.
+    PermissionsChanged,
     /// 크래시 뒤 증명되지 않은 실행을 보류했다.
     ResumeSuggested {
         held: Vec<TaskLabel>,
@@ -351,6 +352,41 @@ pub enum ChatNotice {
         router_calls: u32,
         router_tokens: u64,
         elapsed_ms: u64,
+    },
+}
+
+/// 설정을 적용하며 알릴 일. 문구는 TUI가 고른다.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub enum SettingsWarning {
+    /// 층의 검사가 실패해 `SettingsApplied`의 이전 번호로 계속한다.
+    Fallback {
+        layer: SettingsLayer,
+        fault: SettingsFault,
+    },
+    /// 폴더 설정의 사용자 전용 키를 무시했다.
+    IgnoredFolderKeys { keys: Vec<String> },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub enum SettingsLayer {
+    Default,
+    User,
+    Folder,
+    Chat,
+    Run,
+}
+
+/// 검사 실패 원인. `message`와 `reason`은 검사기가 낸 원문이라 번역하지 않는다.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub enum SettingsFault {
+    /// TOML을 읽지 못했다. `line`은 1부터.
+    Parse {
+        line: u32,
+        message: String,
+    },
+    Invalid {
+        key: String,
+        reason: String,
     },
 }
 

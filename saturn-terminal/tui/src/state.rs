@@ -8,7 +8,7 @@ use saturn_protocol::event::{Activity, ProviderEvent, UsageReport, UsageScope};
 use saturn_protocol::ids::{
     AgentId, ChatId, InputId, JudgmentId, Provider, SettingsRevision, SubagentId, TaskId, TaskLabel,
 };
-use saturn_protocol::rpc::Alert;
+use saturn_protocol::rpc::{Alert, SettingsWarning};
 use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 
 use crate::labels;
@@ -189,7 +189,7 @@ pub struct ChatState {
     pub feedback: Option<FeedbackPrompt>,
     pub context: Option<ContextSize>,
     /// 적용된 설정 번호와 경고.
-    pub settings: Option<(SettingsRevision, Option<String>)>,
+    pub settings: Option<(SettingsRevision, Option<SettingsWarning>)>,
     next_seq: u64,
 }
 

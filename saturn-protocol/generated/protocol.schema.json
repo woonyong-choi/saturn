@@ -192,20 +192,16 @@
         },
         {
           "additionalProperties": false,
-          "description": "provider 연결을 다시 시작했다. `text`는 화면에 그대로 보이는 안내 문구다.",
+          "description": "바뀐 권한 설정을 적용하려고 provider 연결을 다시 시작했다.",
           "properties": {
             "ProviderRestarted": {
               "properties": {
                 "provider": {
                   "$ref": "#/$defs/Provider"
-                },
-                "text": {
-                  "type": "string"
                 }
               },
               "required": [
-                "provider",
-                "text"
+                "provider"
               ],
               "type": "object"
             }
@@ -214,6 +210,11 @@
             "ProviderRestarted"
           ],
           "type": "object"
+        },
+        {
+          "const": "PermissionsChanged",
+          "description": "권한 규칙이 바뀌었고 다음 요청부터 적용한다.",
+          "type": "string"
         },
         {
           "additionalProperties": false,
@@ -2053,9 +2054,13 @@
                   "$ref": "#/$defs/SettingsRevision"
                 },
                 "warning": {
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/SettingsWarning"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 }
               },
@@ -2858,9 +2863,13 @@
                   "$ref": "#/$defs/SettingsRevision"
                 },
                 "warning": {
-                  "type": [
-                    "string",
-                    "null"
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/SettingsWarning"
+                    },
+                    {
+                      "type": "null"
+                    }
                   ]
                 }
               },
@@ -3521,11 +3530,131 @@
       ],
       "description": "`method`가 있으면 알림, 없으면 응답."
     },
+    "SettingsFault": {
+      "description": "검사 실패 원인. `message`와 `reason`은 검사기가 낸 원문이라 번역하지 않는다.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "TOML을 읽지 못했다. `line`은 1부터.",
+          "properties": {
+            "Parse": {
+              "properties": {
+                "line": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "line",
+                "message"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "Parse"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "Invalid": {
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "key",
+                "reason"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "Invalid"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SettingsLayer": {
+      "enum": [
+        "Default",
+        "User",
+        "Folder",
+        "Chat",
+        "Run"
+      ],
+      "type": "string"
+    },
     "SettingsRevision": {
       "description": "입력은 접수 때 고정한 번호로 끝까지 처리한다.",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
+    },
+    "SettingsWarning": {
+      "description": "설정을 적용하며 알릴 일. 문구는 TUI가 고른다.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "description": "층의 검사가 실패해 `SettingsApplied`의 이전 번호로 계속한다.",
+          "properties": {
+            "Fallback": {
+              "properties": {
+                "fault": {
+                  "$ref": "#/$defs/SettingsFault"
+                },
+                "layer": {
+                  "$ref": "#/$defs/SettingsLayer"
+                }
+              },
+              "required": [
+                "layer",
+                "fault"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "Fallback"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "폴더 설정의 사용자 전용 키를 무시했다.",
+          "properties": {
+            "IgnoredFolderKeys": {
+              "properties": {
+                "keys": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "keys"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "IgnoredFolderKeys"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "SubagentId": {
       "description": "provider가 준 id 문자열 그대로.",

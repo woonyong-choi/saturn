@@ -7,6 +7,7 @@ use std::str::FromStr;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use saturn_protocol::ids::ChatId;
 use saturn_protocol::rpc::UsageRange;
+use saturn_tui::i18n::{self, Lang};
 
 /// `saturn` 명령줄.
 #[derive(Debug, Parser)]
@@ -35,7 +36,7 @@ pub(crate) struct Cli {
 
 impl Cli {
     /// 이어 열기 인자와 `--add-dir`가 하위 명령과 함께 오면 오류. 둘 다 대화 화면에만 있다.
-    pub(crate) fn open_mode(&self) -> Result<OpenMode, clap::Error> {
+    pub(crate) fn open_mode(&self, lang: Lang) -> Result<OpenMode, clap::Error> {
         let mode = match (&self.resume, self.continue_last) {
             (Some(None), _) => OpenMode::PickInFolder,
             (Some(Some(ResumeTarget::All)), _) => OpenMode::PickInAll,
@@ -44,13 +45,42 @@ impl Cli {
             (None, false) => OpenMode::New,
         };
         if self.command.is_some() && (mode != OpenMode::New || !self.add_dir.is_empty()) {
-            return Err(Cli::command().error(
+            return Err(command(lang).error(
                 clap::error::ErrorKind::ArgumentConflict,
-                "--continue, --resume and --add-dir open the chat screen and cannot be used with a subcommand",
+                lang.tr(i18n::CLI_ARGS_CONFLICT),
             ));
         }
         Ok(mode)
     }
+}
+
+// cost: time O(a), heap O(a), stack O(d)
+// vars: a = 인자와 하위 명령 수, d = 하위 명령 깊이
+// basis: estimate
+/// 도움말은 doc 주석의 한국어를 키로 `lang`의 문구로 바꿔 보인다. clap 자체 문구(`Usage:` 등)는 그대로다.
+pub(crate) fn command(lang: Lang) -> clap::Command {
+    localize(Cli::command(), lang)
+}
+
+fn localize(mut command: clap::Command, lang: Lang) -> clap::Command {
+    if let Some(about) = command.get_about().map(ToString::to_string) {
+        command = command.about(lang.tr(&about).to_owned());
+    }
+    let helps: Vec<(String, String)> = command
+        .get_arguments()
+        .filter_map(|arg| Some((arg.get_id().to_string(), arg.get_help()?.to_string())))
+        .collect();
+    for (id, help) in helps {
+        command = command.mut_arg(id, |arg| arg.help(lang.tr(&help).to_owned()));
+    }
+    let names: Vec<String> = command
+        .get_subcommands()
+        .map(|sub| sub.get_name().to_owned())
+        .collect();
+    for name in names {
+        command = command.mut_subcommand(name, |sub| localize(sub, lang));
+    }
+    command
 }
 
 /// `--resume`의 값. 채팅 id는 숫자라 `all`과 겹치지 않는다.
@@ -69,7 +99,11 @@ impl FromStr for ResumeTarget {
         }
         text.parse::<u64>()
             .map(|id| Self::Chat(ChatId(id)))
-            .map_err(|_| format!("expected a chat id (number) or `all`, got `{text}`"))
+            .map_err(|_| {
+                Lang::detect()
+                    .tr(i18n::CLI_RESUME_VALUE)
+                    .replace("{text}", text)
+            })
     }
 }
 
@@ -144,7 +178,8 @@ pub(crate) struct ExportArgs {
 /// `router use` 인자.
 #[derive(Debug, Args)]
 pub(crate) struct RouterUseArgs {
-    /// 쓸 router 버전. TODO(#49): 버전 표기 형식
+    // TODO(#49): 버전 표기 형식
+    /// 쓸 router 버전.
     #[arg(value_name = "VERSION")]
     pub(crate) version: String,
     /// 확인 없이 바꾼다.
@@ -155,7 +190,7 @@ pub(crate) struct RouterUseArgs {
 /// `usage` 인자.
 #[derive(Debug, Args)]
 pub(crate) struct UsageArgs {
-    /// 조회 범위.
+    /// 조회 범위(chat 현재 채팅, today 오늘, week 이번 주, all 전체).
     #[arg(long, value_enum, default_value_t = UsageRangeArg::Chat)]
     pub(crate) range: UsageRangeArg,
 }
@@ -163,13 +198,9 @@ pub(crate) struct UsageArgs {
 /// 명령줄의 사용량 범위. protocol `UsageRange`에 clap 의존을 넣지 않으려고 따로 둔다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub(crate) enum UsageRangeArg {
-    /// 현재 채팅.
     Chat,
-    /// 오늘.
     Today,
-    /// 이번 주.
     Week,
-    /// 전체.
     All,
 }
 
@@ -199,12 +230,16 @@ impl FromStr for ConfigOverride {
     // basis: estimate
     /// `=`가 없거나 키가 비면 오류.
     fn from_str(text: &str) -> Result<Self, Self::Err> {
-        let (key, value) = text
-            .split_once('=')
-            .ok_or_else(|| format!("expected KEY=VALUE, got `{text}`"))?;
+        let (key, value) = text.split_once('=').ok_or_else(|| {
+            Lang::detect()
+                .tr(i18n::CLI_CONFIG_FORMAT)
+                .replace("{text}", text)
+        })?;
         let key = key.trim();
         if key.is_empty() {
-            return Err(format!("key is empty in `{text}`"));
+            return Err(Lang::detect()
+                .tr(i18n::CLI_CONFIG_EMPTY_KEY)
+                .replace("{text}", text));
         }
         Ok(Self {
             key: key.to_owned(),
@@ -219,6 +254,51 @@ mod tests {
 
     fn parse(args: &[&str]) -> Result<Cli, clap::Error> {
         Cli::try_parse_from(std::iter::once("saturn").chain(args.iter().copied()))
+    }
+
+    /// 이름 붙은 명령과 인자의 도움말 문구.
+    fn help_texts(command: &clap::Command, texts: &mut Vec<String>) {
+        texts.extend(command.get_about().map(ToString::to_string));
+        texts.extend(
+            command
+                .get_arguments()
+                .filter_map(|arg| arg.get_help().map(ToString::to_string)),
+        );
+        for sub in command.get_subcommands() {
+            help_texts(sub, texts);
+        }
+    }
+
+    #[test]
+    fn help_has_english_for_every_korean_text() {
+        let mut texts = Vec::new();
+        help_texts(&Cli::command(), &mut texts);
+
+        let missing: Vec<&String> = texts
+            .iter()
+            .filter(|text| text.chars().any(|c| ('가'..='힣').contains(&c)))
+            .filter(|text| Lang::En.tr(text) == text.as_str())
+            .collect();
+
+        assert!(texts.len() > 15, "help scan should find the texts");
+        assert!(missing.is_empty(), "missing english: {missing:?}");
+    }
+
+    #[test]
+    fn localized_help_replaces_korean_with_english() {
+        let command = command(Lang::En);
+
+        let usage = command.find_subcommand("usage").unwrap();
+        let range = usage.get_arguments().find(|arg| arg.get_id() == "range");
+
+        assert_eq!(
+            usage.get_about().map(ToString::to_string).as_deref(),
+            Some("show usage")
+        );
+        assert!(range.is_some_and(|arg| {
+            arg.get_help()
+                .is_some_and(|h| h.to_string().starts_with("usage range"))
+        }));
     }
 
     #[test]
@@ -271,33 +351,42 @@ mod tests {
 
     #[test]
     fn continue_resume_without_arguments_opens_new_chat() {
-        assert_eq!(parse(&[]).unwrap().open_mode().unwrap(), OpenMode::New);
+        assert_eq!(
+            parse(&[]).unwrap().open_mode(Lang::En).unwrap(),
+            OpenMode::New
+        );
     }
 
     #[test]
     fn continue_resume_continue_flag_picks_last_chat() {
-        let mode = parse(&["--continue"]).unwrap().open_mode().unwrap();
+        let mode = parse(&["--continue"]).unwrap().open_mode(Lang::En).unwrap();
 
         assert_eq!(mode, OpenMode::ContinueLast);
     }
 
     #[test]
     fn continue_resume_without_id_picks_in_folder() {
-        let mode = parse(&["--resume"]).unwrap().open_mode().unwrap();
+        let mode = parse(&["--resume"]).unwrap().open_mode(Lang::En).unwrap();
 
         assert_eq!(mode, OpenMode::PickInFolder);
     }
 
     #[test]
     fn continue_resume_all_picks_in_every_folder() {
-        let mode = parse(&["--resume", "all"]).unwrap().open_mode().unwrap();
+        let mode = parse(&["--resume", "all"])
+            .unwrap()
+            .open_mode(Lang::En)
+            .unwrap();
 
         assert_eq!(mode, OpenMode::PickInAll);
     }
 
     #[test]
     fn continue_resume_numeric_id_opens_that_chat() {
-        let mode = parse(&["--resume", "42"]).unwrap().open_mode().unwrap();
+        let mode = parse(&["--resume", "42"])
+            .unwrap()
+            .open_mode(Lang::En)
+            .unwrap();
 
         assert_eq!(mode, OpenMode::Chat(ChatId(42)));
     }
@@ -318,7 +407,7 @@ mod tests {
         let cli = parse(&["-c", "permission.mode=\"full\""]).unwrap();
 
         assert_eq!(cli.config.len(), 1);
-        assert_eq!(cli.open_mode().unwrap(), OpenMode::New);
+        assert_eq!(cli.open_mode(Lang::En).unwrap(), OpenMode::New);
     }
 
     #[test]
@@ -330,7 +419,7 @@ mod tests {
     fn continue_resume_with_subcommand_is_error() {
         let cli = parse(&["--continue", "usage"]).unwrap();
 
-        assert!(cli.open_mode().is_err());
+        assert!(cli.open_mode(Lang::En).is_err());
     }
 
     #[test]
@@ -339,8 +428,8 @@ mod tests {
         let with_command = parse(&["--add-dir", "/a", "usage"]).unwrap();
 
         assert_eq!(cli.add_dir, vec![PathBuf::from("/a"), PathBuf::from("b")]);
-        assert!(cli.open_mode().is_ok());
-        assert!(with_command.open_mode().is_err());
+        assert!(cli.open_mode(Lang::En).is_ok());
+        assert!(with_command.open_mode(Lang::En).is_err());
     }
 
     #[test]

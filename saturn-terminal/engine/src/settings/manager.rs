@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use saturn_protocol::ids::{ChatId, SettingsRevision};
+use saturn_protocol::rpc::{SettingsFault, SettingsLayer, SettingsWarning};
 
 use super::layers::{default_layer, find_folder_config, fingerprint, merge, run_layer, source};
 use super::permission;
@@ -18,8 +19,8 @@ use crate::store::Store;
 pub struct Applied {
     /// 검사 실패면 이전 번호.
     pub revision: SettingsRevision,
-    /// 검사 실패나 무시한 사용자 전용 키가 있을 때 한 줄 경고.
-    pub warning: Option<String>,
+    /// 검사 실패나 무시한 사용자 전용 키가 있을 때의 경고.
+    pub warning: Option<SettingsWarning>,
 }
 
 /// engine에 하나. 실행 `-c`는 engine 시작 때 정하고, 작업 폴더는 채팅마다 호출 때 받는다.
@@ -179,14 +180,17 @@ impl SettingsManager {
         };
         let snapshot = match merged {
             Ok(snapshot) => snapshot,
-            Err(error @ (SettingsError::Parse { .. } | SettingsError::Invalid { .. })) => {
-                let Some(previous) = self.current else {
-                    return Err(SettingsError::NoPreviousRevision);
-                };
-                return Ok(Applied {
-                    revision: previous,
-                    warning: Some(fallback_warning(&error, previous, &self.user_config_path())),
-                });
+            Err(SettingsError::Parse {
+                path,
+                line,
+                message,
+            }) => {
+                let layer = layer_of_path(&path, &self.user_config_path());
+                let line = u32::try_from(line).unwrap_or(u32::MAX);
+                return self.fall_back(layer, SettingsFault::Parse { line, message });
+            }
+            Err(SettingsError::Invalid { key, reason, layer }) => {
+                return self.fall_back(layer.into(), SettingsFault::Invalid { key, reason });
             }
             Err(error) => return Err(error),
         };
@@ -198,9 +202,26 @@ impl SettingsManager {
             .iter()
             .flat_map(|layer| layer.ignored.iter().map(String::as_str))
             .collect();
-        let warning = (!ignored.is_empty())
-            .then(|| format!("폴더 설정의 무시한 항목 · {}", ignored.join(", ")));
+        let warning = (!ignored.is_empty()).then(|| SettingsWarning::IgnoredFolderKeys {
+            keys: ignored.iter().map(|key| (*key).to_owned()).collect(),
+        });
         Ok(Applied { revision, warning })
+    }
+
+    /// 이전 번호로 계속한다.
+    ///
+    /// # Errors
+    /// 이전 번호가 없으면 `NoPreviousRevision`.
+    fn fall_back(
+        &self,
+        layer: SettingsLayer,
+        fault: SettingsFault,
+    ) -> Result<Applied, SettingsError> {
+        let previous = self.current.ok_or(SettingsError::NoPreviousRevision)?;
+        Ok(Applied {
+            revision: previous,
+            warning: Some(SettingsWarning::Fallback { layer, fault }),
+        })
     }
 
     pub(super) fn user_config_path(&self) -> PathBuf {
@@ -261,46 +282,26 @@ pub(crate) fn read_file(path: &Path) -> Result<Option<String>, SettingsError> {
     }
 }
 
-/// 예: `폴더 설정 오류 · 이전 설정 번호 12로 계속 · 줄 7: ...`.
-fn fallback_warning(error: &SettingsError, previous: SettingsRevision, user_path: &Path) -> String {
-    let (layer, detail) = match error {
-        SettingsError::Parse {
-            path,
-            line,
-            message,
-        } => (
-            layer_name_of_path(path, user_path),
-            format!("줄 {line}: {message}"),
-        ),
-        SettingsError::Invalid { key, reason, layer } => {
-            (layer_name(*layer), format!("{key}: {reason}"))
+impl From<Layer> for SettingsLayer {
+    fn from(layer: Layer) -> Self {
+        match layer {
+            Layer::Default => Self::Default,
+            Layer::User => Self::User,
+            Layer::Folder => Self::Folder,
+            Layer::Chat => Self::Chat,
+            Layer::Run => Self::Run,
         }
-        other => ("설정", other.to_string()),
-    };
-    format!(
-        "{layer} 오류 · 이전 설정 번호 {}로 계속 · {detail}",
-        previous.0
-    )
-}
-
-fn layer_name(layer: Layer) -> &'static str {
-    match layer {
-        Layer::Default => "기본 설정",
-        Layer::User => "사용자 설정",
-        Layer::Folder => "폴더 설정",
-        Layer::Chat => "채팅 설정",
-        Layer::Run => "실행 설정",
     }
 }
 
 /// `merge`가 파일이 아닌 층에 붙이는 경로 이름과 맞춘다.
-fn layer_name_of_path(path: &Path, user_path: &Path) -> &'static str {
+fn layer_of_path(path: &Path, user_path: &Path) -> SettingsLayer {
     match path.to_str() {
-        Some("-c") => layer_name(Layer::Run),
-        Some("chat") => layer_name(Layer::Chat),
-        Some("default") => layer_name(Layer::Default),
-        _ if path == user_path => layer_name(Layer::User),
-        _ => layer_name(Layer::Folder),
+        Some("-c") => SettingsLayer::Run,
+        Some("chat") => SettingsLayer::Chat,
+        Some("default") => SettingsLayer::Default,
+        _ if path == user_path => SettingsLayer::User,
+        _ => SettingsLayer::Folder,
     }
 }
 
@@ -425,7 +426,10 @@ mod tests {
         let settings = manager.at(&fixture.store, applied.revision).await.unwrap();
         assert_eq!(settings.thresholds().injection, 0.9);
         assert_eq!(settings.router_endpoint(), "https://api.typesafe.ai");
-        assert!(applied.warning.unwrap().contains("router.endpoint"));
+        let Some(SettingsWarning::IgnoredFolderKeys { keys }) = applied.warning else {
+            panic!("ignored keys should warn");
+        };
+        assert!(keys.iter().any(|key| key.contains("router.endpoint")));
     }
 
     #[tokio::test]
@@ -574,11 +578,14 @@ mod tests {
             .unwrap();
 
         assert_eq!(applied.revision, first.revision);
-        let warning = applied.warning.unwrap();
-        assert!(
-            warning.starts_with("사용자 설정 오류 · 이전 설정 번호 1로 계속 · 줄 7: "),
-            "{warning}"
-        );
+        let Some(SettingsWarning::Fallback {
+            layer,
+            fault: SettingsFault::Parse { line, .. },
+        }) = applied.warning
+        else {
+            panic!("parse failure should fall back");
+        };
+        assert_eq!((layer, line), (SettingsLayer::User, 7));
         assert_eq!(manager.current(), Some(first.revision));
     }
 

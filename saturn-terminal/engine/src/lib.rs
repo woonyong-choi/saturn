@@ -357,7 +357,7 @@ impl Engine {
                 .await?;
         let applied = settings.apply_user(store).await?;
         if let Some(warning) = &applied.warning {
-            tracing::warn!(%warning, "settings applied with warning");
+            tracing::warn!(?warning, "settings applied with warning");
         }
         Ok(settings)
     }

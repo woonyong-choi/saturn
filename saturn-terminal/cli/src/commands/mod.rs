@@ -4,6 +4,7 @@ use std::io::{BufRead, IsTerminal, Write};
 
 use saturn_protocol::rpc::{Notification, Request};
 use saturn_tui::client::{ClientError, EngineClient};
+use saturn_tui::i18n::{self, Lang};
 
 pub(crate) mod chat;
 pub(crate) mod export;
@@ -24,6 +25,7 @@ const ROUTER_KEY_REQUIRED: i32 = -32001;
 /// # Errors
 /// engine이 거절했거나 연결이 끊기면 오류.
 pub(crate) async fn call(
+    lang: Lang,
     client: &mut EngineClient,
     request: Request,
     on_notification: impl FnMut(Notification),
@@ -33,7 +35,8 @@ pub(crate) async fn call(
             code: ROUTER_KEY_REQUIRED,
             message,
         }) => anyhow::bail!(
-            "router key required ({message}): set the SATURN_KEY environment variable or the router.key.command setting, then run again"
+            lang.tr(i18n::CLI_ROUTER_KEY_REQUIRED)
+                .replace("{message}", &message)
         ),
         other => Ok(other?),
     }
@@ -43,9 +46,10 @@ pub(crate) async fn call(
 ///
 /// # Errors
 /// 표준 입력이 터미널이 아니거나 읽지 못하면 오류.
-pub(crate) fn confirm_on_terminal(prompt: &str) -> anyhow::Result<bool> {
+pub(crate) fn confirm_on_terminal(lang: Lang, prompt: &str) -> anyhow::Result<bool> {
     let stdin = std::io::stdin();
     confirm_from(
+        lang,
         prompt,
         stdin.is_terminal(),
         stdin.lock(),
@@ -55,15 +59,13 @@ pub(crate) fn confirm_on_terminal(prompt: &str) -> anyhow::Result<bool> {
 
 /// TODO(#57): 화면이 없는 환경(파이프, CI)에서 확인 한 줄을 받는 방식. 지금은 거절한다
 fn confirm_from(
+    lang: Lang,
     prompt: &str,
     interactive: bool,
     mut input: impl BufRead,
     prompt_out: &mut impl Write,
 ) -> anyhow::Result<bool> {
-    anyhow::ensure!(
-        interactive,
-        "confirmation needs a terminal and none is available; nothing was changed"
-    );
+    anyhow::ensure!(interactive, lang.tr(i18n::CLI_CONFIRM_NEEDS_TERMINAL));
     write!(prompt_out, "{prompt} [y/N] ")?;
     prompt_out.flush()?;
     let mut line = String::new();
@@ -79,7 +81,7 @@ mod tests {
     fn confirm_from_yes_returns_true() {
         let mut prompt = Vec::new();
 
-        let answer = confirm_from("go?", true, "y\n".as_bytes(), &mut prompt).unwrap();
+        let answer = confirm_from(Lang::En, "go?", true, "y\n".as_bytes(), &mut prompt).unwrap();
 
         assert!(answer);
         assert_eq!(String::from_utf8(prompt).unwrap(), "go? [y/N] ");
@@ -88,7 +90,8 @@ mod tests {
     #[test]
     fn confirm_from_empty_or_other_answer_returns_false() {
         for line in ["\n", "n\n", "maybe\n", ""] {
-            let answer = confirm_from("go?", true, line.as_bytes(), &mut Vec::new()).unwrap();
+            let answer =
+                confirm_from(Lang::En, "go?", true, line.as_bytes(), &mut Vec::new()).unwrap();
 
             assert!(!answer, "{line:?}");
         }
@@ -96,7 +99,8 @@ mod tests {
 
     #[test]
     fn confirm_from_without_terminal_is_error_and_does_not_read() {
-        let error = confirm_from("go?", false, "y\n".as_bytes(), &mut Vec::new()).unwrap_err();
+        let error =
+            confirm_from(Lang::En, "go?", false, "y\n".as_bytes(), &mut Vec::new()).unwrap_err();
 
         assert!(error.to_string().contains("needs a terminal"));
     }

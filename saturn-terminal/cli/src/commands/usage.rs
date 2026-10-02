@@ -18,10 +18,14 @@ use crate::commands::call;
 ///
 /// # Errors
 /// 연결이 끊기면 오류.
-pub(crate) async fn run(client: &mut EngineClient, args: &UsageArgs) -> anyhow::Result<()> {
-    let table = fetch(client, args).await?;
+pub(crate) async fn run(
+    lang: Lang,
+    client: &mut EngineClient,
+    args: &UsageArgs,
+) -> anyhow::Result<()> {
+    let table = fetch(lang, client, args).await?;
     let mut out = std::io::stdout().lock();
-    write_table(&mut out, Lang::detect(), table.0, &table.1)?;
+    write_table(&mut out, lang, table.0, &table.1)?;
     Ok(())
 }
 
@@ -29,18 +33,19 @@ pub(crate) async fn run(client: &mut EngineClient, args: &UsageArgs) -> anyhow::
 // vars: r = 행 수
 // basis: estimate
 async fn fetch(
+    lang: Lang,
     client: &mut EngineClient,
     args: &UsageArgs,
 ) -> anyhow::Result<(UsageRange, Vec<UsageRow>)> {
     let scope = UsageRange::from(args.range);
     let mut table = None;
-    call(client, Request::Usage { scope }, |notification| {
+    call(lang, client, Request::Usage { scope }, |notification| {
         if let Notification::Usage { range, rows } = notification {
             table = Some((range, rows));
         }
     })
     .await?;
-    table.ok_or_else(|| anyhow::anyhow!("engine answered without a usage table"))
+    table.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_USAGE_TABLE)))
 }
 
 // cost: time O(r), heap O(1), stack O(1), io r
@@ -131,6 +136,7 @@ mod tests {
         let mut client = engine.client().await;
 
         let table = fetch(
+            Lang::En,
             &mut client,
             &UsageArgs {
                 range: UsageRangeArg::Week,
@@ -154,6 +160,7 @@ mod tests {
         let mut client = engine.client().await;
 
         let result = fetch(
+            Lang::En,
             &mut client,
             &UsageArgs {
                 range: UsageRangeArg::Chat,
@@ -170,6 +177,7 @@ mod tests {
         let mut client = engine.client().await;
 
         let error = fetch(
+            Lang::En,
             &mut client,
             &UsageArgs {
                 range: UsageRangeArg::All,

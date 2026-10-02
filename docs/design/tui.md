@@ -121,7 +121,7 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 ### 화면 언어와 출력 방식
 
-화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. 대기 줄과 보류 줄의 버튼은 전체 화면 방식에서 클릭할 수 있다. 파이프와 CI처럼 화면이 없는 환경에서는 전체 화면 대신 plain 출력을 쓰고, 같은 명령은 두 방식에서 같은 결과를 낸다. plain을 켜는 조건은 정해지지 않았고, 지금 구현은 표준 입력이나 표준 출력이 터미널이 아니면 plain으로 시작한다(초안, [#57](https://github.com/woonyong-choi/saturn/issues/57)).
+화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. engine은 화면 문구를 만들지 않고 알림 종류와 값만 보내며, 문구는 TUI의 번역표가 고른다. `saturn` 명령의 출력, 오류, 도움말도 같은 언어 판정과 같은 번역표를 쓴다. 도움말은 실행할 때 언어에 맞는 문구를 넣는다. provider와 검사기가 낸 원문(모델 답, 오류 원문)과 로그는 번역하지 않고, clap이 만드는 `Usage:` 같은 고정 문구도 영어로 남는다. 대기 줄과 보류 줄의 버튼은 전체 화면 방식에서 클릭할 수 있다. 파이프와 CI처럼 화면이 없는 환경에서는 전체 화면 대신 plain 출력을 쓰고, 같은 명령은 두 방식에서 같은 결과를 낸다. plain을 켜는 조건은 정해지지 않았고, 지금 구현은 표준 입력이나 표준 출력이 터미널이 아니면 plain으로 시작한다(초안, [#57](https://github.com/woonyong-choi/saturn/issues/57)).
 
 ### 키
 
@@ -234,7 +234,8 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 | `[A] 맥락 정리 후 이어서 진행` | 맥락 정리 뒤 같은 작업 계속 |
 | `고정 제약이 길어 맥락 정리를 미룹니다` | 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못함, 다음 줄부터 제약 목록 |
 | `[A] codex → claude로 전환` | 작업의 provider 전환 |
-| `Codex 연결을 다시 시작해 권한 규칙을 적용했습니다` | 채팅 중 바뀐 Codex 권한 규칙을 적용하려고 턴이 끝난 뒤 Codex 연결을 다시 시작함. 문구는 초안이고 Codex의 실제 문구 조사 결과로 바꾼다([#232](https://github.com/woonyong-choi/saturn/issues/232)) |
+| `권한 설정이 변경되었습니다. 다음 요청부터 적용됩니다.` | 채팅 중 권한 규칙이 바뀐 것을 처음 알아챔. 영어는 `Permission settings changed. They apply from your next request.` |
+| `변경된 권한 설정을 적용하기 위해 Codex를 다시 시작했습니다.` | 바뀐 권한 규칙을 적용하려고 턴이 끝난 뒤 Codex 연결을 다시 시작함. 영어는 `Restarted Codex to apply the changed permission settings.` |
 | `이번 요청 · codex Token 4,120 · 라우터 3회 Token 9,870 · 2분 31초` | 모든 작업이 끝난 순간의 합계, provider별 토큰과 router 호출과 경과 |
 | `[A]에 이어서 보냈어요 · 판단이 맞았나요? (선택)  1 맞아요  2 아니에요  0 닫기` | 피드백 질문 |
 | `[B] 바로 새 작업으로 실행할까요? [실행] [그대로]` | 아니에요 답 뒤 아직 보내지 않은 입력의 바로잡기 제안 |
@@ -242,7 +243,8 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 | `맥락 38K/200K` | 현재 활성 맥락 크기와 Saturn 기준 |
 | `맥락 미확인` | 맥락 크기 측정 불가 |
 | `[붙여넣은 내용 1,204자]` | 1,000자를 넘는 붙여넣은 내용 |
-| `폴더 설정 오류 · 이전 설정 번호 12로 계속 · 줄 7: ...` | 폴더 설정 검사 실패, 이전 설정으로 계속 |
+| `폴더 설정 오류 · 이전 설정 번호 12로 계속 · 줄 7: ...` | 설정 검사 실패, 이전 설정으로 계속. 앞 이름은 실패한 층(기본, 사용자, 폴더, 채팅, 실행 설정) |
+| `폴더 설정의 무시한 항목 · router.endpoint` | 폴더 설정의 사용자 전용 키를 무시함 |
 | `!` | 작업 목록의 허가 필요 작업 |
 | `?` | 작업 목록의 결과 확인 필요 작업 |
 | `다른 Saturn에서 실행 중` | 다른 Saturn 프로세스가 실행 중인 채팅, 작업 목록에서 읽기 전용 |
@@ -261,7 +263,7 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 | 높이가 모자랄 때 | 작업별 출력 칸, 상태판, 팝업 순서로 줄이고 입력창과 바닥줄은 줄이지 않는다 |
 | 시작 화면 전환 | 대화 기록에 첫 셀(입력 에코 포함)이 생길 때 |
 | 전체 기록 키 | `Esc` 닫기, `↑`, `↓` 스크롤, `Ctrl+T`를 다시 누르면 닫기. 창 화면의 `Ctrl+C`도 뷰 해제 |
-| 화면 언어 | `LC_ALL`, `LC_MESSAGES`, `LANG` 중 처음 비어 있지 않은 값이 `ko`로 시작하면 한국어. 영어 문구는 `saturn-terminal/tui/src/i18n.rs`의 `ENGLISH` |
+| 화면 언어 | `LC_ALL`, `LC_MESSAGES`, `LANG` 중 처음 비어 있지 않은 값이 `ko`로 시작하면 한국어. 영어 문구는 `saturn-terminal/tui/src/i18n.rs`의 `ENGLISH`이고, `saturn` 명령도 이 표를 쓴다 |
 | 외부 에디터와 셸 | `$VISUAL`, `$EDITOR`, `vi` 순서. 셸은 `$SHELL -c`, 없으면 `sh -c`. 자식 환경에서 `SATURN_KEY` 제거. 에디터 초안 파일은 새 경로에 권한 0600으로 생성 |
 | 입력 기록 파일 | 한 줄에 입력 하나, 줄바꿈은 `\n`, 역슬래시는 `\\`, 오래된 것이 위. 쓰기 실패는 경고 로그만 남기고 계속 |
 | 결과 머리줄 토큰 | 새 입력, 캐시 쓰기, 출력, 추론의 합. 캐시 읽기는 뺀다 |
@@ -283,6 +285,7 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 | 패킷이 넘쳐 맥락 정리를 미루면 안내 한 줄과 제약 목록을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_context_deferred_lists_the_constraints` |
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
+| 모든 한국어 문구에 영어가 있고, `saturn` 명령의 도움말도 같다. | `saturn-terminal/tui/src/i18n.rs`의 `english_covers_every_phrase_constant`, `saturn-terminal/cli/src/args.rs`의 `help_has_english_for_every_korean_text`, `localized_help_replaces_korean_with_english` |
 | router 연결이 끊겨도 입력창은 입력을 계속 보낸다. | `saturn-terminal/tui/src/app/tests.rs`의 `submit_while_router_disconnected_still_sends_input` |
 | `/add-dir`는 폴더 경로를 절대 경로로 바꿔 engine에 보내고, 시작 화면과 안내 줄이 더한 폴더를 보인다. | `saturn-terminal/tui/src/app/tests.rs`의 `add_dir_command_sends_an_absolute_path_relative_to_the_tui_folder`, `add_dir_notice_adds_a_cell_and_updates_the_start_screen_folders`, `saturn-terminal/tui/src/view/start_screen.rs`의 `lines_show_the_chat_folder_and_the_added_folders`, `saturn-terminal/tui/src/view/transcript.rs`의 `lines_folder_added_mentions_the_next_session_only_when_one_is_open` |
 | 작업 목록은 기본으로 현재 채팅 폴더의 채팅만 보이고 키 `a`로 모든 폴더를 본다. | `saturn-terminal/tui/src/view/task_list.rs`의 `task_list_defaults_to_the_current_folder_and_the_key_widens_it`, `task_list_does_not_hide_chats_whose_folder_is_unknown`, `saturn-terminal/tui/src/app/tests.rs`의 `task_list_opened_from_a_chat_starts_in_the_chat_folder_scope`, `task_list_key_a_widens_the_scope_to_all_folders` |

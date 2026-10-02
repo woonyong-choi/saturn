@@ -54,9 +54,17 @@ pub const ROUTER_UNAVAILABLE_SEND: &str = "라우터 연결 없음 · 차례에 
 pub const BUSY_ELSEWHERE: &str = "다른 Saturn에서 실행 중";
 /// `{to}`는 이관한 스키마 버전.
 pub const SCHEMA_MIGRATED: &str = "기록 저장소 v{to}로 옮김";
-pub const SETTINGS_ERROR: &str = "폴더 설정 오류";
-pub const SETTINGS_PREVIOUS: &str = "이전 설정 번호";
-pub const SETTINGS_CONTINUE_SUFFIX: &str = "로 계속";
+/// `{layer}`는 설정 층 이름, `{previous}`는 계속 쓰는 설정 번호, `{detail}`는 원인.
+pub const SETTINGS_FALLBACK: &str = "{layer} 오류 · 이전 설정 번호 {previous}로 계속 · {detail}";
+/// `{keys}`는 쉼표로 이은 키 이름.
+pub const SETTINGS_IGNORED: &str = "폴더 설정의 무시한 항목 · {keys}";
+/// `{line}`은 줄 번호, `{message}`는 검사기 원문.
+pub const SETTINGS_PARSE_LINE: &str = "줄 {line}: {message}";
+pub const SETTINGS_LAYER_DEFAULT: &str = "기본 설정";
+pub const SETTINGS_LAYER_USER: &str = "사용자 설정";
+pub const SETTINGS_LAYER_FOLDER: &str = "폴더 설정";
+pub const SETTINGS_LAYER_CHAT: &str = "채팅 설정";
+pub const SETTINGS_LAYER_RUN: &str = "실행 설정";
 
 // 입력 전달 상태
 pub const DELIVERING: &str = "전달 중";
@@ -66,6 +74,10 @@ pub const APPLIED: &str = "반영됨";
 pub const FAILED: &str = "실패";
 pub const NEEDS_CHECK: &str = "결과 확인 필요";
 pub const COMPACTED: &str = "맥락 정리 후 이어서 진행";
+/// `{provider}`는 다시 시작한 provider 이름.
+pub const PROVIDER_RESTARTED: &str =
+    "변경된 권한 설정을 적용하기 위해 {provider}를 다시 시작했습니다.";
+pub const PERMISSIONS_CHANGED: &str = "권한 설정이 변경되었습니다. 다음 요청부터 적용됩니다.";
 pub const CONTEXT_DEFERRED: &str = "고정 제약이 길어 맥락 정리를 미룹니다";
 pub const SWITCHED_SUFFIX: &str = "로 전환";
 pub const REQUEST_SUMMARY: &str = "이번 요청";
@@ -184,6 +196,53 @@ pub const YES: &str = "예";
 pub const NO: &str = "아니오";
 pub const CANCEL: &str = "취소";
 
+// CLI 출력. `{이름}` 자리는 호출하는 쪽이 채운다.
+/// `{message}`는 engine이 준 원인.
+pub const CLI_ROUTER_KEY_REQUIRED: &str = "router 키가 필요합니다({message}): SATURN_KEY 환경 변수나 router.key.command 설정을 정한 뒤 다시 실행하세요";
+pub const CLI_CONFIRM_NEEDS_TERMINAL: &str = "확인을 받을 터미널이 없어 아무것도 바꾸지 않았습니다";
+pub const CLI_EXPORTED: &str = "판단 기록을 내보냈습니다: {path}";
+pub const CLI_PATH_UNRESOLVED: &str = "경로를 확인하지 못했습니다: {path}";
+pub const CLI_PRUNED: &str = "기록을 정리했습니다";
+pub const CLI_PRUNE_PREVIEW: &str =
+    "아무것도 지우지 않았습니다. 지울 기록 목록은 아직 볼 수 없으니 지우려면 --yes로 실행하세요";
+pub const CLI_ROUTER_VERSION_NOT_FOUND: &str =
+    "router 버전을 찾지 못했습니다: {version} (사용 가능: {available})";
+pub const CLI_ROUTER_VERSION_ALREADY: &str = "이미 쓰는 router 버전입니다: {version}";
+pub const CLI_ROUTER_VERSION_PROMPT: &str =
+    "다음 router 버전을 쓸까요? {version} (현재: {current})";
+pub const CLI_ROUTER_VERSION_NOT_CONFIRMED: &str =
+    "확인하지 않았습니다. router 버전은 {current} 그대로입니다";
+pub const CLI_ROUTER_VERSION_NOW: &str = "router 버전을 바꿨습니다: {version}";
+pub const CLI_NO_ROUTER_VERSIONS: &str = "engine이 router 버전 목록 없이 답했습니다";
+pub const CLI_NO_USAGE_TABLE: &str = "engine이 사용량 표 없이 답했습니다";
+pub const CLI_TRAIN_ACCEPTED: &str = "학습 요청을 받았습니다";
+pub const CLI_TRAIN_PROMPT: &str = "학습을 실행할까요?";
+/// `{stage}`는 engine이 준 단계 이름.
+pub const CLI_TRAIN_PROGRESS: &str = "{stage} · 채점 {labeled}건 · {elapsed} · 토큰 {tokens}";
+pub const CLI_TRAIN_FINISHED: &str = "학습을 마쳤습니다";
+pub const CLI_TRAIN_CANCELLED: &str = "학습을 취소했습니다";
+pub const CLI_CONTINUE_UNSUPPORTED: &str = "--continue는 아직 지원하지 않습니다: engine이 현재 폴더의 채팅 목록을 줄 수 없습니다. --resume <chat id>를 쓰세요";
+pub const CLI_RESUME_UNSUPPORTED: &str = "채팅 id 없는 --resume과 --resume all은 아직 지원하지 않습니다: engine이 채팅 목록을 줄 수 없습니다. --resume <chat id>를 쓰세요";
+pub const CLI_ADD_DIR_UNREADABLE: &str = "--add-dir 폴더를 읽지 못했습니다: {dir}";
+pub const CLI_ADD_DIR_NOT_FOLDER: &str = "--add-dir은 폴더여야 합니다: {dir}";
+pub const CLI_CURRENT_DIR_UNREADABLE: &str = "현재 폴더를 읽지 못했습니다";
+pub const CLI_NESTED: &str =
+    "saturn은 에이전트 작업 안에서 실행할 수 없습니다({marker} 변수가 설정되어 있습니다)";
+pub const CLI_ENGINE_NOT_FOUND: &str =
+    "{binary} 실행 파일을 saturn 옆이나 PATH에서 찾지 못했습니다";
+pub const CLI_ENGINE_START_FAILED: &str = "engine을 시작하지 못했습니다: {binary}";
+pub const CLI_ENGINE_POLL_FAILED: &str = "engine 상태를 확인하지 못했습니다";
+/// `{tail}`은 engine 로그의 끝 줄.
+pub const CLI_ENGINE_EXITED: &str = "engine이 소켓을 열기 전에 끝났습니다: {socket}{tail}";
+pub const CLI_ENGINE_TIMEOUT: &str =
+    "engine이 {secs}초 안에 소켓을 열지 않았습니다: {socket}{tail}";
+pub const CLI_LOG_PATH: &str = "(로그: {path})";
+pub const CLI_ARGS_CONFLICT: &str =
+    "--continue, --resume, --add-dir은 대화 화면을 여는 인자라 하위 명령과 함께 쓸 수 없습니다";
+pub const CLI_RESUME_VALUE: &str = "채팅 id(숫자)나 `all`이어야 합니다: `{text}`";
+pub const CLI_CONFIG_FORMAT: &str = "KEY=VALUE 형식이어야 합니다: `{text}`";
+pub const CLI_CONFIG_EMPTY_KEY: &str = "키가 비어 있습니다: `{text}`";
+
 /// (키, `Lang::tr`의 한국어 설명) 쌍.
 pub const SHORTCUTS: &[(&str, &str)] = &[
     ("Enter", "입력 제출"),
@@ -248,9 +307,203 @@ const ENGLISH: &[(&str, &str)] = &[
     ),
     ("다른 Saturn에서 실행 중", "running in another Saturn"),
     ("기록 저장소 v{to}로 옮김", "record store migrated to v{to}"),
-    ("폴더 설정 오류", "folder settings error"),
-    ("이전 설정 번호", "continuing with settings revision"),
-    ("로 계속", ""),
+    (
+        "{layer} 오류 · 이전 설정 번호 {previous}로 계속 · {detail}",
+        "{layer} error · continuing with settings revision {previous} · {detail}",
+    ),
+    (
+        "폴더 설정의 무시한 항목 · {keys}",
+        "ignored folder settings items · {keys}",
+    ),
+    ("줄 {line}: {message}", "line {line}: {message}"),
+    ("기본 설정", "default settings"),
+    ("사용자 설정", "user settings"),
+    ("폴더 설정", "folder settings"),
+    ("채팅 설정", "chat settings"),
+    ("실행 설정", "run settings"),
+    (
+        "router 키가 필요합니다({message}): SATURN_KEY 환경 변수나 router.key.command 설정을 정한 뒤 다시 실행하세요",
+        "router key required ({message}): set the SATURN_KEY environment variable or the router.key.command setting, then run again",
+    ),
+    (
+        "확인을 받을 터미널이 없어 아무것도 바꾸지 않았습니다",
+        "confirmation needs a terminal and none is available; nothing was changed",
+    ),
+    (
+        "판단 기록을 내보냈습니다: {path}",
+        "exported judgments to {path}",
+    ),
+    (
+        "경로를 확인하지 못했습니다: {path}",
+        "failed to resolve {path}",
+    ),
+    ("기록을 정리했습니다", "records pruned"),
+    (
+        "아무것도 지우지 않았습니다. 지울 기록 목록은 아직 볼 수 없으니 지우려면 --yes로 실행하세요",
+        "nothing was deleted; the list of records to delete is not available yet, run with --yes to delete",
+    ),
+    (
+        "router 버전을 찾지 못했습니다: {version} (사용 가능: {available})",
+        "router version not found: {version} (available: {available})",
+    ),
+    (
+        "이미 쓰는 router 버전입니다: {version}",
+        "already using router version {version}",
+    ),
+    (
+        "다음 router 버전을 쓸까요? {version} (현재: {current})",
+        "use router version {version} (current: {current})?",
+    ),
+    (
+        "확인하지 않았습니다. router 버전은 {current} 그대로입니다",
+        "not confirmed; router version stays {current}",
+    ),
+    (
+        "router 버전을 바꿨습니다: {version}",
+        "now using router version {version}",
+    ),
+    (
+        "engine이 router 버전 목록 없이 답했습니다",
+        "engine answered without router versions",
+    ),
+    (
+        "engine이 사용량 표 없이 답했습니다",
+        "engine answered without a usage table",
+    ),
+    ("학습 요청을 받았습니다", "train request accepted"),
+    ("학습을 실행할까요?", "run training?"),
+    (
+        "{stage} · 채점 {labeled}건 · {elapsed} · 토큰 {tokens}",
+        "{stage} · labeled {labeled} · {elapsed} · {tokens} tokens",
+    ),
+    ("학습을 마쳤습니다", "training finished"),
+    ("학습을 취소했습니다", "training cancelled"),
+    (
+        "--continue는 아직 지원하지 않습니다: engine이 현재 폴더의 채팅 목록을 줄 수 없습니다. --resume <chat id>를 쓰세요",
+        "--continue is not supported yet: engine cannot list chats of the current folder; use --resume <chat id>",
+    ),
+    (
+        "채팅 id 없는 --resume과 --resume all은 아직 지원하지 않습니다: engine이 채팅 목록을 줄 수 없습니다. --resume <chat id>를 쓰세요",
+        "--resume without a chat id and --resume all are not supported yet: engine cannot list chats; use --resume <chat id>",
+    ),
+    (
+        "--add-dir 폴더를 읽지 못했습니다: {dir}",
+        "failed to read --add-dir folder: {dir}",
+    ),
+    (
+        "--add-dir은 폴더여야 합니다: {dir}",
+        "--add-dir should be a folder: {dir}",
+    ),
+    (
+        "현재 폴더를 읽지 못했습니다",
+        "failed to read the current folder",
+    ),
+    (
+        "saturn은 에이전트 작업 안에서 실행할 수 없습니다({marker} 변수가 설정되어 있습니다)",
+        "saturn cannot run inside an agent task (the {marker} variable is set)",
+    ),
+    (
+        "{binary} 실행 파일을 saturn 옆이나 PATH에서 찾지 못했습니다",
+        "{binary} not found next to saturn or in PATH",
+    ),
+    (
+        "engine을 시작하지 못했습니다: {binary}",
+        "failed to start {binary}",
+    ),
+    ("engine 상태를 확인하지 못했습니다", "failed to poll engine"),
+    (
+        "engine이 소켓을 열기 전에 끝났습니다: {socket}{tail}",
+        "engine exited before opening {socket}{tail}",
+    ),
+    (
+        "engine이 {secs}초 안에 소켓을 열지 않았습니다: {socket}{tail}",
+        "engine did not open {socket} within {secs}s{tail}",
+    ),
+    ("(로그: {path})", "(log: {path})"),
+    (
+        "--continue, --resume, --add-dir은 대화 화면을 여는 인자라 하위 명령과 함께 쓸 수 없습니다",
+        "--continue, --resume and --add-dir open the chat screen and cannot be used with a subcommand",
+    ),
+    (
+        "채팅 id(숫자)나 `all`이어야 합니다: `{text}`",
+        "expected a chat id (number) or `all`, got `{text}`",
+    ),
+    (
+        "KEY=VALUE 형식이어야 합니다: `{text}`",
+        "expected KEY=VALUE, got `{text}`",
+    ),
+    ("키가 비어 있습니다: `{text}`", "key is empty in `{text}`"),
+    // saturn 명령의 도움말. 키는 `cli/src/args.rs` doc 주석의 한국어와 같다.
+    (
+        "Codex와 Claude Code를 하나의 대화로 이어 쓰는 터미널 도구",
+        "terminal tool that continues Codex and Claude Code in one conversation",
+    ),
+    (
+        "이번 실행의 설정 값(`-c key=value`, 여러 번). 설정의 실행 층이 된다",
+        "setting values for this run (`-c key=value`, repeatable); they become the run layer of settings",
+    ),
+    (
+        "현재 폴더에서 가장 최근에 쓴 채팅을 잇는다",
+        "continue the most recent chat in the current folder",
+    ),
+    (
+        "채팅 id가 있으면 그 채팅을, 없으면 현재 폴더의 채팅 목록에서 골라 잇는다. `all`은 모든 폴더의 목록",
+        "continue the chat with this id, or pick from the chats of the current folder when no id is given; `all` lists every folder",
+    ),
+    (
+        "채팅에 폴더를 더한다(여러 번). 더한 폴더는 채팅 기록에 저장되고 모든 provider session이 그 폴더에 접근한다",
+        "add a folder to the chat (repeatable); added folders are saved with the chat and every provider session can access them",
+    ),
+    (
+        "기록 정리. `--yes`가 없으면 지울 대상만 미리 보인다",
+        "prune records; without `--yes` only the records to delete are previewed",
+    ),
+    ("미리보기 없이 지운다", "delete without a preview"),
+    (
+        "판단 기록을 JSONL로 내보낸다. 채점하지 않은 기록도 내보낸다",
+        "export judgment records as JSONL, including records not yet graded",
+    ),
+    (
+        "쓸 JSONL 파일 경로. engine이 이 경로에 쓴다",
+        "JSONL file path to write; the engine writes to this path",
+    ),
+    ("router 관리", "manage the router"),
+    (
+        "router 학습. 채점 안 된 판단이 200건 미만이면 engine이 거절한다",
+        "train the router; the engine refuses when fewer than 200 judgments are graded",
+    ),
+    (
+        "기준값을 1차 영점으로 되돌린다",
+        "reset thresholds to the first zero point",
+    ),
+    (
+        "이 router 버전에서 다시 학습한다(`Request::Train`의 `from`)",
+        "retrain from this router version",
+    ),
+    (
+        "확인 없이 학습을 시작한다",
+        "start training without confirmation",
+    ),
+    (
+        "고른 router 버전을 확인 한 줄 뒤 현재 버전으로 쓴다",
+        "use the chosen router version as the current one after a confirmation line",
+    ),
+    ("쓸 router 버전", "router version to use"),
+    ("확인 없이 바꾼다", "switch without confirmation"),
+    ("router 버전 목록을 보인다", "list router versions"),
+    ("사용량 조회", "show usage"),
+    (
+        "조회 범위(chat 현재 채팅, today 오늘, week 이번 주, all 전체)",
+        "usage range (chat: current chat, today, week, all)",
+    ),
+    (
+        "변경된 권한 설정을 적용하기 위해 {provider}를 다시 시작했습니다.",
+        "Restarted {provider} to apply the changed permission settings.",
+    ),
+    (
+        "권한 설정이 변경되었습니다. 다음 요청부터 적용됩니다.",
+        "Permission settings changed. They apply from your next request.",
+    ),
     ("전달 중", "delivering"),
     ("반영됨", "applied"),
     ("실패", "failed"),
@@ -428,7 +681,7 @@ impl Lang {
     }
 
     /// 번역이 없으면 키 그대로 돌려준다(누락은 테스트로 막는다).
-    pub fn tr(self, ko: &'static str) -> &'static str {
+    pub fn tr(self, ko: &str) -> &str {
         match self {
             Self::Ko => ko,
             Self::En => english(ko).unwrap_or(ko),
@@ -495,6 +748,14 @@ pub fn provider_name(provider: Provider) -> &'static str {
     }
 }
 
+/// 문장 안에서 쓰는 이름.
+pub fn provider_title(provider: Provider) -> &'static str {
+    match provider {
+        Provider::Codex => "Codex",
+        Provider::Claude => "Claude",
+    }
+}
+
 pub fn format_items(lang: Lang, n: u64) -> String {
     format!("{}{}", format_count(n), lang.tr(ITEMS_SUFFIX))
 }
@@ -503,17 +764,33 @@ pub fn format_items(lang: Lang, n: u64) -> String {
 mod tests {
     use super::*;
 
+    /// 값이 다음 줄로 넘어간 상수도 읽는다.
+    fn phrase_constants(source: &str) -> Vec<&str> {
+        let mut lines = source.lines();
+        let mut phrases = Vec::new();
+        while let Some(line) = lines.next() {
+            let Some(rest) = line.strip_prefix("pub const ") else {
+                continue;
+            };
+            let Some((_, value)) = rest.split_once(": &str =") else {
+                continue;
+            };
+            let value = if value.trim().is_empty() {
+                lines.next().unwrap_or_default()
+            } else {
+                value
+            };
+            phrases.extend(value.split('"').nth(1));
+        }
+        phrases
+    }
+
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     #[test]
     fn english_covers_every_phrase_constant() {
         let source = include_str!("i18n.rs");
-        let phrases: Vec<&str> = source
-            .lines()
-            .filter_map(|line| line.strip_prefix("pub const "))
-            .filter(|line| line.contains(": &str = \""))
-            .filter_map(|line| line.split('"').nth(1))
-            .collect();
+        let phrases = phrase_constants(source);
 
         let missing: Vec<&&str> = phrases.iter().filter(|p| english(p).is_none()).collect();
 

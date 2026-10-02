@@ -5,6 +5,7 @@ use std::io::Write;
 
 use saturn_protocol::rpc::{Notification, Request, RouterVersionInfo};
 use saturn_tui::client::EngineClient;
+use saturn_tui::i18n::{self, Lang};
 
 use crate::args::RouterUseArgs;
 use crate::commands::{call, confirm_on_terminal};
@@ -16,9 +17,9 @@ use crate::commands::{call, confirm_on_terminal};
 ///
 /// # Errors
 /// 연결이 끊기거나 engine이 목록 없이 답하면 오류.
-pub(crate) async fn list(client: &mut EngineClient) -> anyhow::Result<()> {
+pub(crate) async fn list(lang: Lang, client: &mut EngineClient) -> anyhow::Result<()> {
     let mut out = std::io::stdout().lock();
-    let (current, versions) = list_versions(client).await?;
+    let (current, versions) = list_versions(lang, client).await?;
     write_versions(&mut out, &current, &versions)
 }
 
@@ -45,14 +46,16 @@ fn write_versions(
 /// # Errors
 /// 버전이 없거나 사용자가 확인하지 않았거나 연결이 끊기면 오류.
 pub(crate) async fn use_version(
+    lang: Lang,
     client: &mut EngineClient,
     args: &RouterUseArgs,
 ) -> anyhow::Result<()> {
     let mut out = std::io::stdout().lock();
     if args.yes {
-        switch_version(client, args, |_| Ok(true), &mut out).await
+        switch_version(lang, client, args, |_| Ok(true), &mut out).await
     } else {
-        switch_version(client, args, confirm_on_terminal, &mut out).await
+        let confirm = |prompt: &str| confirm_on_terminal(lang, prompt);
+        switch_version(lang, client, args, confirm, &mut out).await
     }
 }
 
@@ -60,35 +63,51 @@ pub(crate) async fn use_version(
 // vars: v = router 버전 수
 // basis: estimate
 async fn switch_version(
+    lang: Lang,
     client: &mut EngineClient,
     args: &RouterUseArgs,
     confirm: impl FnOnce(&str) -> anyhow::Result<bool>,
     out: &mut impl Write,
 ) -> anyhow::Result<()> {
-    let (current, versions) = list_versions(client).await?;
+    let (current, versions) = list_versions(lang, client).await?;
     anyhow::ensure!(
         versions.iter().any(|info| info.version == args.version),
-        "router version not found: {} (available: {})",
-        args.version,
-        versions
-            .iter()
-            .map(|info| info.version.as_str())
-            .collect::<Vec<_>>()
-            .join(", ")
+        lang.tr(i18n::CLI_ROUTER_VERSION_NOT_FOUND)
+            .replace("{version}", &args.version)
+            .replace(
+                "{available}",
+                &versions
+                    .iter()
+                    .map(|info| info.version.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
     );
     if current == args.version {
-        writeln!(out, "already using router version {current}")?;
+        let line = lang
+            .tr(i18n::CLI_ROUTER_VERSION_ALREADY)
+            .replace("{version}", &current);
+        writeln!(out, "{line}")?;
         return Ok(());
     }
-    let prompt = format!("use router version {} (current: {current})?", args.version);
+    let prompt = lang
+        .tr(i18n::CLI_ROUTER_VERSION_PROMPT)
+        .replace("{version}", &args.version)
+        .replace("{current}", &current);
     if !confirm(&prompt)? {
-        anyhow::bail!("not confirmed; router version stays {current}");
+        anyhow::bail!(
+            lang.tr(i18n::CLI_ROUTER_VERSION_NOT_CONFIRMED)
+                .replace("{current}", &current)
+        );
     }
     let request = Request::UseRouterVersion {
         version: args.version.clone(),
     };
-    call(client, request, drop).await?;
-    writeln!(out, "now using router version {}", args.version)?;
+    call(lang, client, request, drop).await?;
+    let line = lang
+        .tr(i18n::CLI_ROUTER_VERSION_NOW)
+        .replace("{version}", &args.version);
+    writeln!(out, "{line}")?;
     Ok(())
 }
 
@@ -96,16 +115,17 @@ async fn switch_version(
 // vars: v = router 버전 수
 // basis: estimate
 async fn list_versions(
+    lang: Lang,
     client: &mut EngineClient,
 ) -> anyhow::Result<(String, Vec<RouterVersionInfo>)> {
     let mut listed = None;
-    call(client, Request::ListRouterVersions, |notification| {
+    call(lang, client, Request::ListRouterVersions, |notification| {
         if let Notification::RouterVersions { current, versions } = notification {
             listed = Some((current, versions));
         }
     })
     .await?;
-    listed.ok_or_else(|| anyhow::anyhow!("engine answered without router versions"))
+    listed.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_ROUTER_VERSIONS)))
 }
 
 #[cfg(test)]
@@ -143,7 +163,7 @@ mod tests {
         let mut client = engine.client().await;
         let mut out = Vec::new();
 
-        switch_version(&mut client, &args("v2"), |_| Ok(true), &mut out)
+        switch_version(Lang::En, &mut client, &args("v2"), |_| Ok(true), &mut out)
             .await
             .unwrap();
 
@@ -167,7 +187,14 @@ mod tests {
         let engine = FakeEngine::start(vec![versions("v1")]);
         let mut client = engine.client().await;
 
-        let result = switch_version(&mut client, &args("v2"), |_| Ok(false), &mut Vec::new()).await;
+        let result = switch_version(
+            Lang::En,
+            &mut client,
+            &args("v2"),
+            |_| Ok(false),
+            &mut Vec::new(),
+        )
+        .await;
 
         assert!(result.is_err());
         assert_eq!(engine.finish().await, vec![Request::ListRouterVersions]);
@@ -179,6 +206,7 @@ mod tests {
         let mut client = engine.client().await;
 
         let error = switch_version(
+            Lang::En,
             &mut client,
             &args("v9"),
             |_| panic!("must not ask"),
@@ -197,6 +225,7 @@ mod tests {
         let mut out = Vec::new();
 
         switch_version(
+            Lang::En,
             &mut client,
             &args("v2"),
             |_| panic!("must not ask"),

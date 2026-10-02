@@ -8,6 +8,7 @@ use anyhow::Context;
 use saturn_protocol::ids::ChatId;
 use saturn_tui::RunOptions;
 use saturn_tui::client::EngineClient;
+use saturn_tui::i18n::{self, Lang};
 
 use crate::args::{ConfigOverride, OpenMode};
 
@@ -26,16 +27,14 @@ pub(crate) enum ScreenMode {
 ///
 /// # Errors
 /// 채팅 id 없이 고르거나 가장 최근 채팅을 찾는 방식이면 오류(아직 지원하지 않음).
-pub(crate) fn resolve_chat(mode: OpenMode) -> anyhow::Result<Option<ChatId>> {
+pub(crate) fn resolve_chat(lang: Lang, mode: OpenMode) -> anyhow::Result<Option<ChatId>> {
     match mode {
         OpenMode::New => Ok(None),
         OpenMode::Chat(chat) => Ok(Some(chat)),
-        OpenMode::ContinueLast => anyhow::bail!(
-            "--continue is not supported yet: engine cannot list chats of the current folder; use --resume <chat id>"
-        ),
-        OpenMode::PickInFolder | OpenMode::PickInAll => anyhow::bail!(
-            "--resume without a chat id and --resume all are not supported yet: engine cannot list chats; use --resume <chat id>"
-        ),
+        OpenMode::ContinueLast => anyhow::bail!(lang.tr(i18n::CLI_CONTINUE_UNSUPPORTED)),
+        OpenMode::PickInFolder | OpenMode::PickInAll => {
+            anyhow::bail!(lang.tr(i18n::CLI_RESUME_UNSUPPORTED))
+        }
     }
 }
 
@@ -46,15 +45,18 @@ pub(crate) fn resolve_chat(mode: OpenMode) -> anyhow::Result<Option<ChatId>> {
 ///
 /// # Errors
 /// 폴더가 없거나 폴더가 아니면 오류.
-pub(crate) fn resolve_add_dirs(dirs: &[PathBuf]) -> anyhow::Result<Vec<PathBuf>> {
+pub(crate) fn resolve_add_dirs(lang: Lang, dirs: &[PathBuf]) -> anyhow::Result<Vec<PathBuf>> {
     dirs.iter()
         .map(|dir| {
-            let resolved = std::fs::canonicalize(dir)
-                .with_context(|| format!("failed to read --add-dir folder: {}", dir.display()))?;
+            let shown = dir.display().to_string();
+            let resolved = std::fs::canonicalize(dir).with_context(|| {
+                lang.tr(i18n::CLI_ADD_DIR_UNREADABLE)
+                    .replace("{dir}", &shown)
+            })?;
             anyhow::ensure!(
                 resolved.is_dir(),
-                "--add-dir should be a folder: {}",
-                dir.display()
+                lang.tr(i18n::CLI_ADD_DIR_NOT_FOLDER)
+                    .replace("{dir}", &shown)
             );
             Ok(resolved)
         })
@@ -67,12 +69,13 @@ pub(crate) fn resolve_add_dirs(dirs: &[PathBuf]) -> anyhow::Result<Vec<PathBuf>>
 /// # Errors
 /// `-c` 값을 engine이 받지 않았거나 연결이 끊기면 오류.
 pub(crate) async fn run(
+    lang: Lang,
     client: &mut EngineClient,
     chat: Option<ChatId>,
     config: &[ConfigOverride],
     add_dirs: Vec<PathBuf>,
 ) -> anyhow::Result<()> {
-    let workdir = std::env::current_dir().context("failed to read the current folder")?;
+    let workdir = std::env::current_dir().context(lang.tr(i18n::CLI_CURRENT_DIR_UNREADABLE))?;
     let options = run_options(chat, config, add_dirs, workdir);
     match detect_mode() {
         ScreenMode::FullScreen => run_full_screen(client, options).await,
@@ -147,12 +150,12 @@ mod tests {
 
     #[test]
     fn continue_resume_new_chat_has_no_chat_id() {
-        assert_eq!(resolve_chat(OpenMode::New).unwrap(), None);
+        assert_eq!(resolve_chat(Lang::En, OpenMode::New).unwrap(), None);
     }
 
     #[test]
     fn continue_resume_chat_id_is_passed_to_attach() {
-        let chat = resolve_chat(OpenMode::Chat(ChatId(7))).unwrap();
+        let chat = resolve_chat(Lang::En, OpenMode::Chat(ChatId(7))).unwrap();
 
         assert_eq!(chat, Some(ChatId(7)));
     }
@@ -164,7 +167,7 @@ mod tests {
             OpenMode::PickInFolder,
             OpenMode::PickInAll,
         ] {
-            let error = resolve_chat(mode).unwrap_err();
+            let error = resolve_chat(Lang::En, mode).unwrap_err();
 
             assert!(error.to_string().contains("not supported yet"), "{mode:?}");
         }
@@ -178,14 +181,14 @@ mod tests {
         let file = root.path().join("file");
         std::fs::write(&file, "x").unwrap();
 
-        let resolved = resolve_add_dirs(&[folder.join("../lib")]).unwrap();
-        let missing = resolve_add_dirs(&[root.path().join("missing")]).unwrap_err();
-        let not_folder = resolve_add_dirs(&[file]).unwrap_err();
+        let resolved = resolve_add_dirs(Lang::En, &[folder.join("../lib")]).unwrap();
+        let missing = resolve_add_dirs(Lang::En, &[root.path().join("missing")]).unwrap_err();
+        let not_folder = resolve_add_dirs(Lang::En, &[file]).unwrap_err();
 
         assert_eq!(resolved, vec![folder.canonicalize().unwrap()]);
         assert!(missing.to_string().contains("failed to read --add-dir"));
         assert!(not_folder.to_string().contains("should be a folder"));
-        assert!(resolve_add_dirs(&[]).unwrap().is_empty());
+        assert!(resolve_add_dirs(Lang::En, &[]).unwrap().is_empty());
     }
 
     #[test]

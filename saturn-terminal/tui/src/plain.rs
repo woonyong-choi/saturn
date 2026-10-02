@@ -130,11 +130,11 @@ impl<W: Write> PlainOutput<W> {
             }
             Notification::SettingsApplied {
                 revision,
-                warning: Some(detail),
+                warning: Some(warning),
             } => {
-                let line = StatusLine::SettingsError {
-                    previous: revision.0,
-                    detail,
+                let line = StatusLine::Settings {
+                    revision: revision.0,
+                    warning,
                 };
                 self.line(&line.text(self.lang, false, ' '))?;
             }

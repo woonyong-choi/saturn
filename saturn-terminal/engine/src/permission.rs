@@ -12,10 +12,6 @@ use crate::providers::rules_fingerprint;
 use crate::settings::{self, SettingsError};
 use crate::{Engine, EngineError};
 
-/// Codex 연결을 다시 시작했을 때 화면에 보이는 안내. 초안 문구다.
-/// TODO(#232): Codex 안내 문구 조사 결과로 교체
-pub(crate) const CODEX_RESTART_NOTICE: &str = "Codex 연결을 다시 시작해 권한 규칙을 적용했습니다";
-
 impl Engine {
     /// 접수하는 입력의 권한. 읽기 전용 모드이고 쓰기를 허용하는 규칙이 하나도 없을 때만 읽기 전용이라, 같은 폴더의
     /// 다른 읽기 작업과 병렬로 실행한다. 규칙을 읽지 못하면 쓰기로 둔다.
@@ -45,7 +41,7 @@ impl Engine {
     }
 
     /// 입력을 접수할 때 그 번호의 Codex 규칙이 연결을 시작할 때 읽은 규칙과 다른지 본다. 다르면 다음 턴이 끝난 뒤
-    /// 연결을 다시 시작하도록 표시하고, 다시 같아졌으면 표시를 지운다.
+    /// 연결을 다시 시작하도록 표시하며 처음 표시할 때 한 번 알리고, 다시 같아졌으면 표시를 지운다.
     pub(crate) async fn note_rules_revision(&mut self, chat: ChatId, revision: SettingsRevision) {
         let Some(started) = self.flow.rules_of_connection.get(&chat) else {
             return;
@@ -59,8 +55,8 @@ impl Engine {
         };
         if *started == current {
             self.flow.rules_stale.remove(&chat);
-        } else {
-            self.flow.rules_stale.insert(chat);
+        } else if self.flow.rules_stale.insert(chat) {
+            self.notify_chat(chat, ChatNotice::PermissionsChanged).await;
         }
     }
 
@@ -104,7 +100,6 @@ impl Engine {
             chat,
             ChatNotice::ProviderRestarted {
                 provider: Provider::Codex,
-                text: CODEX_RESTART_NOTICE.to_owned(),
             },
         )
         .await;
