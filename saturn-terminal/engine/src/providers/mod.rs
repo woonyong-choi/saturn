@@ -25,11 +25,9 @@ use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::secrets::Masker;
 
-pub use claude::ClaudeClient;
-pub use codex::CodexClient;
-pub use codex_home::{
-    HomeError, HomeInput, PreparedHome, prepare as prepare_codex_home, rules_fingerprint,
-};
+pub(crate) use claude::ClaudeClient;
+pub(crate) use codex::CodexClient;
+pub(crate) use codex_home::{HomeInput, prepare as prepare_codex_home, rules_fingerprint};
 
 /// engine이 입력 접수 때 고정한 설정 번호로 만든다.
 #[derive(Debug, Clone)]
@@ -85,7 +83,7 @@ pub struct AppliedSettings {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SteerRoute {
+pub(crate) enum SteerRoute {
     Steer,
     /// 실측 전 provider라 대기로 바꾼다.
     Queue,
@@ -296,10 +294,10 @@ impl TurnOriginTracker {
 }
 
 /// 고정 모델도 현재 provider도 없는 첫 입력을 설치된 앞쪽 provider로 보낸다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정).
-pub const FIRST_INPUT_ORDER: [Provider; 2] = [Provider::Claude, Provider::Codex];
+pub(crate) const FIRST_INPUT_ORDER: [Provider; 2] = [Provider::Claude, Provider::Codex];
 
 /// 설정에 실행 파일 경로가 없을 때 `PATH`에서 찾는 이름.
-pub fn program_name(provider: Provider) -> &'static str {
+pub(crate) fn program_name(provider: Provider) -> &'static str {
     match provider {
         Provider::Codex => codex::PROGRAM,
         Provider::Claude => claude::PROGRAM,
@@ -307,7 +305,7 @@ pub fn program_name(provider: Provider) -> &'static str {
 }
 
 /// `env`의 `PATH`에서 실행 권한이 있는 파일을 찾는다. `PATH`가 없으면 없는 것으로 본다.
-pub fn is_installed(provider: Provider, env: &[(OsString, OsString)]) -> bool {
+pub(crate) fn is_installed(provider: Provider, env: &[(OsString, OsString)]) -> bool {
     let Some((_, path)) = env.iter().find(|(name, _)| name == "PATH") else {
         return false;
     };
@@ -318,7 +316,7 @@ pub fn is_installed(provider: Provider, env: &[(OsString, OsString)]) -> bool {
 }
 
 /// 사용량 화면처럼 사용자에게 provider를 이름으로 보일 때 쓴다.
-pub fn display_name(provider: Provider) -> &'static str {
+pub(crate) fn display_name(provider: Provider) -> &'static str {
     match provider {
         Provider::Codex => codex::DISPLAY_NAME,
         Provider::Claude => claude::DISPLAY_NAME,
@@ -326,12 +324,12 @@ pub fn display_name(provider: Provider) -> &'static str {
 }
 
 /// 입력 접수 기록에 남기는 고정 모델 글 `<provider>/<model>`. 같은 모델 이름이 두 provider에 있어도 구분된다.
-pub fn pinned_text(choice: &ModelChoice) -> String {
+pub(crate) fn pinned_text(choice: &ModelChoice) -> String {
     format!("{}/{}", display_name(choice.provider), choice.model)
 }
 
 /// `pinned_text`가 만든 글을 되돌린다. provider 접두사가 없으면 `None`.
-pub fn parse_pinned(text: &str) -> Option<ModelChoice> {
+pub(crate) fn parse_pinned(text: &str) -> Option<ModelChoice> {
     let (name, model) = text.split_once('/')?;
     let provider = [Provider::Codex, Provider::Claude]
         .into_iter()
@@ -343,7 +341,7 @@ pub fn parse_pinned(text: &str) -> Option<ModelChoice> {
 }
 
 /// `handle.steer_verified`가 거짓(끼워 넣기 실측 #5, #27 통과 전)이면 `Queue`.
-pub fn steer_route(handle: &SessionHandle) -> SteerRoute {
+pub(crate) fn steer_route(handle: &SessionHandle) -> SteerRoute {
     if handle.steer_verified {
         SteerRoute::Steer
     } else {

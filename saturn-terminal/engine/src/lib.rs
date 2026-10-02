@@ -5,14 +5,20 @@
 #![allow(unused_variables, dead_code)]
 
 pub mod engine_log;
-pub mod processes;
-pub mod providers;
+pub(crate) mod processes;
+pub(crate) mod providers;
 pub(crate) mod routers;
 pub(crate) mod rpc;
-pub mod secrets;
+pub(crate) mod secrets;
 pub(crate) mod settings;
 pub(crate) mod store;
 pub(crate) mod training;
+
+pub use processes::Supervisor;
+pub use providers::{
+    LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults, UserProviderConfig,
+};
+pub use secrets::Masker;
 
 mod add_dir;
 mod chat_env;
@@ -54,11 +60,10 @@ use saturn_protocol::rpc::Request;
 use tokio::sync::Mutex;
 
 use crate::chat_env::ChatEnv;
-use crate::processes::{NESTED_MARKER_ENV, ProcessError, Supervisor};
-use crate::providers::ProviderConnection;
+use crate::processes::{NESTED_MARKER_ENV, ProcessError};
 use crate::routers::{ActiveRouter, Routers, RoutersError, SharedSecrets, StartCheck};
 use crate::rpc::{ClientId, EngineLock, RpcError, RpcEvent, RpcServer};
-use crate::secrets::{KeyInput, Masker, SecretStore, SecretsError, input_order};
+use crate::secrets::{KeyInput, SecretStore, SecretsError, input_order};
 use crate::settings::{FolderTrustPrompt, Settings, SettingsError, SettingsManager};
 use crate::store::{MigrationNotice, RunRecord, Store, StoreError};
 use crate::training::{TrainPlan, TrainingError};

@@ -10,13 +10,13 @@ use std::time::{Duration, Instant};
 use super::{KeySource, ROUTER_KEY_ENV, RouterKey, SecretsError};
 
 /// 마지막 사용 뒤 이만큼 쓰지 않으면 잠근다.
-pub const HARDENED_IDLE_LOCK: Duration = Duration::from_secs(10 * 60);
+pub(crate) const HARDENED_IDLE_LOCK: Duration = Duration::from_secs(10 * 60);
 
 /// 풀린 뒤 사용과 관계없이 이만큼 지나면 잠근다.
-pub const HARDENED_MAX_UNLOCK: Duration = Duration::from_secs(12 * 60 * 60);
+pub(crate) const HARDENED_MAX_UNLOCK: Duration = Duration::from_secs(12 * 60 * 60);
 
 /// 초안 값.
-pub const LOCK_CHECK_INTERVAL: Duration = Duration::from_secs(60);
+pub(crate) const LOCK_CHECK_INTERVAL: Duration = Duration::from_secs(60);
 
 const KEYCHAIN_SERVICE: &str = "saturn";
 
@@ -29,7 +29,7 @@ pub(crate) const KEY_FILE: &str = "router.key";
 const KEY_FILE_MODE: u32 = 0o600;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum StorageMode {
+pub(crate) enum StorageMode {
     #[default]
     Standard,
     /// 신뢰 앱 없는 항목으로 저장하고 session 시작 때 키체인 암호를 한 번 받는다.
@@ -45,7 +45,7 @@ enum Backend {
 
 /// engine에 하나. 키를 메모리에 들고 있는 곳은 여기뿐이다.
 #[derive(Debug)]
-pub struct SecretStore {
+pub(crate) struct SecretStore {
     backend: Backend,
     mode: StorageMode,
     /// 관리자 명령과 환경 변수 키도 여기에만 둔다.
@@ -56,7 +56,7 @@ pub struct SecretStore {
 
 impl SecretStore {
     /// 키를 읽지는 않는다.
-    pub fn open(home: &Path, mode: StorageMode) -> Self {
+    pub(crate) fn open(home: &Path, mode: StorageMode) -> Self {
         let backend = if cfg!(target_os = "macos") {
             Backend::Keychain
         } else {
@@ -84,7 +84,7 @@ impl SecretStore {
     ///
     /// # Errors
     /// 없으면 `NotFound`, 권한이 틀리면 `FilePermission`, 키체인 실패면 `Keychain`, 잠겼으면 `Locked`.
-    pub async fn load(&mut self) -> Result<&RouterKey, SecretsError> {
+    pub(crate) async fn load(&mut self) -> Result<&RouterKey, SecretsError> {
         self.load_with_env(std::env::var(ROUTER_KEY_ENV).ok()).await
     }
 
@@ -108,7 +108,11 @@ impl SecretStore {
     ///
     /// # Errors
     /// 키체인 실패면 `Keychain`, 파일 실패면 `Io`.
-    pub async fn save(&mut self, key: RouterKey, source: KeySource) -> Result<(), SecretsError> {
+    pub(crate) async fn save(
+        &mut self,
+        key: RouterKey,
+        source: KeySource,
+    ) -> Result<(), SecretsError> {
         if source == KeySource::Stored {
             self.write_backend(&key)?;
         }
@@ -139,7 +143,7 @@ impl SecretStore {
 
     /// # Errors
     /// 키체인 실패면 `Keychain`, 파일 삭제 실패면 `Io`.
-    pub async fn forget(&mut self) -> Result<(), SecretsError> {
+    pub(crate) async fn forget(&mut self) -> Result<(), SecretsError> {
         self.current = None;
         match &self.backend {
             Backend::Keychain => match keychain_entry()?.delete_credential() {
@@ -158,7 +162,7 @@ impl SecretStore {
     ///
     /// # Errors
     /// 없으면 `NotFound`, 잠겼으면 `Locked`.
-    pub fn key(&mut self, now: Instant) -> Result<&RouterKey, SecretsError> {
+    pub(crate) fn key(&mut self, now: Instant) -> Result<&RouterKey, SecretsError> {
         let from_env = matches!(self.current, Some((_, KeySource::Env | KeySource::Command)));
         if self.mode == StorageMode::Hardened && !from_env {
             if self.lock_if_expired(now) {
@@ -179,7 +183,7 @@ impl SecretStore {
     ///
     /// # Errors
     /// 사용자가 거부하면 `Locked`, 키체인 실패면 `Keychain`.
-    pub async fn unlock(&mut self, now: Instant) -> Result<(), SecretsError> {
+    pub(crate) async fn unlock(&mut self, now: Instant) -> Result<(), SecretsError> {
         if self.mode == StorageMode::Standard {
             return Ok(());
         }
@@ -194,7 +198,7 @@ impl SecretStore {
     }
 
     /// 잠갔으면 참.
-    pub fn lock_if_expired(&mut self, now: Instant) -> bool {
+    pub(crate) fn lock_if_expired(&mut self, now: Instant) -> bool {
         if self.mode == StorageMode::Standard {
             return false;
         }

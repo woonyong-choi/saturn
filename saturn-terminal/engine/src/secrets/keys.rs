@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use super::{SecretsError, scrub_command};
 
-pub const ROUTER_KEY_ENV: &str = "SATURN_KEY";
+pub(crate) const ROUTER_KEY_ENV: &str = "SATURN_KEY";
 
 /// 저장이나 출력으로 새지 않게 `Serialize`, `Display`가 없고, 버릴 때 메모리를 0으로 덮는다.
-pub struct RouterKey {
+pub(crate) struct RouterKey {
     value: String,
 }
 
@@ -19,7 +19,7 @@ impl RouterKey {
     ///
     /// # Errors
     /// 남은 값이 비었으면 `Empty`.
-    pub fn new(raw: String) -> Result<Self, SecretsError> {
+    pub(crate) fn new(raw: String) -> Result<Self, SecretsError> {
         let trimmed = raw.trim().to_owned();
         wipe(raw);
         if trimmed.is_empty() {
@@ -29,12 +29,12 @@ impl RouterKey {
     }
 
     /// Authorization 헤더를 만들 때만 쓰고, 그 헤더는 기록하지 않는다.
-    pub fn expose(&self) -> &str {
+    pub(crate) fn expose(&self) -> &str {
         &self.value
     }
 
     /// 4자보다 짧으면 전부 `*`.
-    pub fn last4(&self) -> String {
+    pub(crate) fn last4(&self) -> String {
         let count = self.value.chars().count();
         if count < 4 {
             return "*".repeat(count);
@@ -58,7 +58,7 @@ impl Drop for RouterKey {
 
 /// `Hidden`에 키 원문이 있어 `Debug`는 종류만 보인다.
 #[derive(Clone, PartialEq, Eq)]
-pub enum KeyInput {
+pub(crate) enum KeyInput {
     /// TUI는 받은 즉시 engine에 보내고 자기 기억과 입력 기록에 남기지 않는다.
     Hidden(String),
     Env,
@@ -82,7 +82,7 @@ impl std::fmt::Debug for KeyInput {
 
 /// 설정에는 이것과 끝 4자리만 남긴다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum KeySource {
+pub(crate) enum KeySource {
     /// 키체인(또는 0600 파일)에 저장했다.
     Stored,
     /// 저장하지 않는다.
@@ -93,7 +93,7 @@ pub enum KeySource {
 
 /// 키 자체는 없다.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct KeyInfo {
+pub(crate) struct KeyInfo {
     pub source: KeySource,
     pub last4: String,
 }
@@ -102,7 +102,7 @@ pub struct KeyInfo {
 ///
 /// # Errors
 /// 값이 없으면 `NotFound`, 비었으면 `Empty`, 명령 실패면 `Command`.
-pub async fn acquire(input: KeyInput) -> Result<(RouterKey, KeySource), SecretsError> {
+pub(crate) async fn acquire(input: KeyInput) -> Result<(RouterKey, KeySource), SecretsError> {
     acquire_with_env(input, std::env::var(ROUTER_KEY_ENV).ok()).await
 }
 
@@ -122,7 +122,7 @@ pub(crate) async fn acquire_with_env(
 }
 
 /// 숨김 입력은 TUI가 값을 보내야 해서 넣지 않는다. 초안 순서.
-pub fn input_order(key_command: Option<Vec<String>>) -> Vec<KeyInput> {
+pub(crate) fn input_order(key_command: Option<Vec<String>>) -> Vec<KeyInput> {
     let mut order = vec![KeyInput::Env];
     if let Some(argv) = key_command {
         order.push(KeyInput::Command { argv });
