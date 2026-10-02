@@ -529,6 +529,70 @@ impl Queue {
         &mut self.gate
     }
 
+    // cost: time O(t), heap O(1), stack O(1)
+    // vars: t = 작업 수
+    // basis: estimate
+    /// 모르는 작업이면 거짓. engine이 새 작업에 열 session의 역할을 정하는 데 쓴다.
+    pub fn is_main_task(&self, task: TaskId) -> bool {
+        self.tasks
+            .iter()
+            .any(|slot| slot.id == task && slot.is_main && slot.phase != TaskPhase::Closed)
+    }
+
+    // cost: time O(t), heap O(1), stack O(1)
+    // vars: t = 작업 수
+    // basis: estimate
+    /// 시작하지 못한 새 작업을 닫아 쓰기 대기가 그 작업 때문에 막히지 않게 한다. 에이전트가 붙은 작업은 `finish_task`로 끝낸다.
+    pub fn abandon_task(&mut self, task: TaskId) {
+        let Some(slot) = self.tasks.iter_mut().find(|slot| {
+            slot.id == task && slot.agent.is_none() && slot.phase == TaskPhase::Pending
+        }) else {
+            return;
+        };
+        slot.phase = TaskPhase::Closed;
+        let chat = slot.chat;
+        self.bump(chat);
+    }
+
+    // cost: time O(n), heap O(1), stack O(1)
+    // vars: n = 대기열 입력 수
+    // basis: estimate
+    /// 사용자가 대기 입력의 처리 방식을 바꾼다(바로 보내기는 `Steer`, 새 작업으로 보내기는 `NewTask`).
+    ///
+    /// # Errors
+    /// 없는 입력이면 `NotFound`, `Queued`가 아니면 `InvalidTransition`, 이미 내준 입력이면 `AlreadySent`.
+    pub fn redirect(&mut self, input: InputId, disposition: Disposition) -> Result<(), QueueError> {
+        let index = self.index_of(input)?;
+        let entry = &mut self.inputs[index];
+        if entry.input.state != InputState::Queued {
+            return Err(QueueError::InvalidTransition {
+                from: entry.input.state,
+                to: InputState::Queued,
+            });
+        }
+        if entry.is_dispatched {
+            return Err(QueueError::AlreadySent);
+        }
+        entry.disposition = Some(disposition);
+        if disposition == Disposition::NewTask {
+            entry.input.task = None;
+        }
+        let chat = entry.input.chat;
+        self.bump(chat);
+        Ok(())
+    }
+
+    // cost: time O(n), heap O(1), stack O(1)
+    // vars: n = 대기열 입력 수
+    // basis: estimate
+    /// 입력에 붙은 처리 방식. 판단 전이면 `None`.
+    pub fn disposition(&self, input: InputId) -> Option<Disposition> {
+        self.inputs
+            .iter()
+            .find(|entry| entry.input.id == input)
+            .and_then(|entry| entry.disposition)
+    }
+
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 대기열 입력 수
     // basis: estimate
@@ -1460,6 +1524,104 @@ mod tests {
         assert!(same);
         assert!(!other);
         assert!(elsewhere);
+    }
+
+    #[test]
+    fn abandon_task_unblocks_write_inputs_waiting_on_pending_writer() {
+        let mut queue = Queue::new();
+        accept_judged(&mut queue, 1, Permission::Write, Disposition::NewTask);
+        let Some(SendAction::NewTask { task, .. }) = queue.next_to_send() else {
+            panic!("input should start a new task");
+        };
+        queue.set_state(InputId(1), InputState::Delivering).unwrap();
+        accept_judged(&mut queue, 2, Permission::Write, Disposition::NewTask);
+        assert_eq!(queue.next_to_send(), None);
+
+        queue.abandon_task(task);
+
+        assert!(matches!(
+            queue.next_to_send(),
+            Some(SendAction::NewTask { .. })
+        ));
+    }
+
+    #[test]
+    fn abandon_task_keeps_started_task() {
+        let mut queue = Queue::new();
+        let task = start_running(&mut queue, 1, Permission::ReadOnly, 7);
+
+        queue.abandon_task(task);
+
+        assert!(queue.is_main_task(task));
+        assert_eq!(queue.tasks[0].phase, TaskPhase::Running);
+    }
+
+    #[test]
+    fn is_main_task_is_true_only_for_first_open_task() {
+        let mut queue = Queue::new();
+        let first = start_running(&mut queue, 1, Permission::ReadOnly, 7);
+        let second = start_running(&mut queue, 2, Permission::ReadOnly, 8);
+
+        assert!(queue.is_main_task(first));
+        assert!(!queue.is_main_task(second));
+        assert!(!queue.is_main_task(TaskId(99)));
+    }
+
+    #[test]
+    fn redirect_changes_queued_input_disposition() {
+        let mut queue = Queue::new();
+        start_running(&mut queue, 1, Permission::ReadOnly, 7);
+        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::Queue);
+        assert_eq!(queue.next_to_send(), None);
+
+        queue.redirect(InputId(2), Disposition::Steer).unwrap();
+
+        assert_eq!(queue.disposition(InputId(2)), Some(Disposition::Steer));
+        assert_eq!(
+            queue.next_to_send(),
+            Some(SendAction::Steer {
+                input: InputId(2),
+                agent: AgentId(7)
+            })
+        );
+    }
+
+    #[test]
+    fn redirect_new_task_starts_separate_task_even_while_running() {
+        let mut queue = Queue::new();
+        start_running(&mut queue, 1, Permission::ReadOnly, 7);
+        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::Queue);
+
+        queue.redirect(InputId(2), Disposition::NewTask).unwrap();
+
+        assert_eq!(
+            queue.next_to_send(),
+            Some(SendAction::NewTask {
+                input: InputId(2),
+                task: TaskId(2)
+            })
+        );
+    }
+
+    #[test]
+    fn redirect_rejects_judging_dispatched_and_unknown_inputs() {
+        let mut queue = Queue::new();
+        queue.accept(input(1, Permission::ReadOnly));
+        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::NewTask);
+        queue.next_to_send().unwrap();
+
+        assert!(matches!(
+            queue.redirect(InputId(1), Disposition::Steer),
+            Err(QueueError::InvalidTransition { .. })
+        ));
+        assert!(matches!(
+            queue.redirect(InputId(2), Disposition::Steer),
+            Err(QueueError::AlreadySent)
+        ));
+        assert!(matches!(
+            queue.redirect(InputId(9), Disposition::Steer),
+            Err(QueueError::NotFound(InputId(9)))
+        ));
     }
 
     #[test]

@@ -753,6 +753,8 @@ pub(crate) mod tests {
     pub(crate) struct FakeTransport {
         replies: StdMutex<VecDeque<Result<HttpReply, TransportError>>>,
         pub(crate) calls: StdMutex<Vec<Call>>,
+        /// 다음 호출 하나가 열릴 때까지 답을 미룬다.
+        gate: StdMutex<Option<Arc<tokio::sync::Notify>>>,
     }
 
     impl FakeTransport {
@@ -760,7 +762,15 @@ pub(crate) mod tests {
             Arc::new(Self {
                 replies: StdMutex::new(replies.into()),
                 calls: StdMutex::default(),
+                gate: StdMutex::default(),
             })
+        }
+
+        /// 다음 호출은 돌려받은 `Notify`에 `notify_one`을 부를 때까지 답하지 않는다.
+        pub(crate) fn hold_next_call(&self) -> Arc<tokio::sync::Notify> {
+            let gate = Arc::new(tokio::sync::Notify::new());
+            *self.gate.lock().unwrap() = Some(Arc::clone(&gate));
+            gate
         }
 
         pub(crate) fn calls(&self) -> Vec<Call> {
@@ -786,7 +796,13 @@ pub(crate) mod tests {
                 .unwrap()
                 .pop_front()
                 .unwrap_or(Err(TransportError::BeforeSend));
-            Box::pin(async move { reply })
+            let gate = self.gate.lock().unwrap().take();
+            Box::pin(async move {
+                if let Some(gate) = gate {
+                    gate.notified().await;
+                }
+                reply
+            })
         }
     }
 

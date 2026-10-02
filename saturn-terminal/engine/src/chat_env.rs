@@ -38,8 +38,7 @@ impl ChatEnv {
 }
 
 impl Engine {
-    /// 붙은 적이 없는 채팅이면 `None`.
-    /// TODO(#148): provider 실행 때 `LaunchSpec`의 `workdir`, `env`를 이 값으로 채운다
+    /// 붙은 적이 없는 채팅이면 `None`. provider를 연결할 때 `LaunchSpec`의 `workdir`, `env`를 이 값으로 채운다.
     pub(crate) fn chat_env(&self, chat: ChatId) -> Option<&ChatEnv> {
         self.chats.get(&chat)
     }

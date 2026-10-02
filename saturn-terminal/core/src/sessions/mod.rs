@@ -328,7 +328,8 @@ impl SessionManager {
     // cost: time O(s), heap O(1), stack O(1)
     // vars: s = session 수
     // basis: estimate
-    fn live_main(&self, chat: ChatId) -> Option<&SessionRecord> {
+    /// `Ended`가 아닌 가장 나중 메인. engine이 이어 갈 provider를 정하는 데 쓴다.
+    pub fn live_main(&self, chat: ChatId) -> Option<&SessionRecord> {
         self.sessions.iter().rev().find(|session| {
             session.chat == chat
                 && session.role == AgentRole::Main

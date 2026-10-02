@@ -191,7 +191,7 @@ impl Engine {
         Ok(())
     }
 
-    fn set_folder_trust(&mut self, client: ClientId, prompt: Option<FolderTrustPrompt>) {
+    pub(crate) fn set_folder_trust(&mut self, client: ClientId, prompt: Option<FolderTrustPrompt>) {
         if let Some(attachment) = self.attachments.get_mut(&client) {
             attachment.folder_trust = prompt;
         }
@@ -218,7 +218,7 @@ fn history_notification(entry: HistoryEntry) -> Notification {
     }
 }
 
-fn settings_notification(applied: Applied) -> Notification {
+pub(crate) fn settings_notification(applied: Applied) -> Notification {
     Notification::SettingsApplied {
         revision: applied.revision,
         warning: applied.warning,
@@ -226,7 +226,7 @@ fn settings_notification(applied: Applied) -> Notification {
 }
 
 /// 바뀐 줄은 `줄 번호: 내용`.
-fn trust_notification(prompt: &FolderTrustPrompt) -> Notification {
+pub(crate) fn trust_notification(prompt: &FolderTrustPrompt) -> Notification {
     Notification::FolderTrustRequested {
         path: prompt.path.display().to_string(),
         fingerprint: prompt.fingerprint.clone(),

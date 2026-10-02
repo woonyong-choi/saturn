@@ -5,9 +5,12 @@
 
 mod claude;
 mod codex;
+#[cfg(test)]
+pub(crate) mod test_support;
 mod tool_detail;
 
 use std::ffi::OsString;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
 use saturn_core::providers::{
@@ -82,6 +85,10 @@ pub enum SteerRoute {
 pub enum ProviderConnection {
     Codex(CodexClient),
     Claude(ClaudeClient),
+    /// 입력 흐름 테스트가 실제 provider 없이 보낸 내용과 답을 정한다.
+    #[cfg(test)]
+    #[allow(private_interfaces)]
+    Fake(test_support::FakeProvider),
 }
 
 impl ProviderConnection {
@@ -103,6 +110,8 @@ impl ProviderConnection {
         match self {
             Self::Codex(_) => Provider::Codex,
             Self::Claude(_) => Provider::Claude,
+            #[cfg(test)]
+            Self::Fake(client) => client.provider(),
         }
     }
 
@@ -111,6 +120,8 @@ impl ProviderConnection {
         match self {
             Self::Codex(client) => Some(client.process_group()),
             Self::Claude(client) => client.process_group(session),
+            #[cfg(test)]
+            Self::Fake(_) => None,
         }
     }
 
@@ -119,6 +130,8 @@ impl ProviderConnection {
         match self {
             Self::Codex(client) => client.applied_settings(session),
             Self::Claude(client) => client.applied_settings(session),
+            #[cfg(test)]
+            Self::Fake(_) => None,
         }
     }
 }
@@ -128,6 +141,8 @@ impl ProviderClient for ProviderConnection {
         match self {
             Self::Codex(client) => client.open_session(spec).await,
             Self::Claude(client) => client.open_session(spec).await,
+            #[cfg(test)]
+            Self::Fake(client) => client.open_session(spec).await,
         }
     }
 
@@ -139,6 +154,8 @@ impl ProviderClient for ProviderConnection {
         match self {
             Self::Codex(client) => client.send_turn(session, text).await,
             Self::Claude(client) => client.send_turn(session, text).await,
+            #[cfg(test)]
+            Self::Fake(client) => client.send_turn(session, text).await,
         }
     }
 
@@ -151,6 +168,8 @@ impl ProviderClient for ProviderConnection {
         match self {
             Self::Codex(client) => client.steer(session, text).await,
             Self::Claude(client) => client.steer(session, text).await,
+            #[cfg(test)]
+            Self::Fake(client) => client.steer(session, text).await,
         }
     }
 
@@ -162,6 +181,8 @@ impl ProviderClient for ProviderConnection {
         match self {
             Self::Codex(client) => client.interrupt(session, target).await,
             Self::Claude(client) => client.interrupt(session, target).await,
+            #[cfg(test)]
+            Self::Fake(client) => client.interrupt(session, target).await,
         }
     }
 
@@ -169,6 +190,8 @@ impl ProviderClient for ProviderConnection {
         match self {
             Self::Codex(client) => client.compact(session).await,
             Self::Claude(client) => client.compact(session).await,
+            #[cfg(test)]
+            Self::Fake(client) => client.compact(session).await,
         }
     }
 
@@ -176,6 +199,8 @@ impl ProviderClient for ProviderConnection {
         match self {
             Self::Codex(client) => client.close_session(session).await,
             Self::Claude(client) => client.close_session(session).await,
+            #[cfg(test)]
+            Self::Fake(client) => client.close_session(session).await,
         }
     }
 
@@ -183,6 +208,8 @@ impl ProviderClient for ProviderConnection {
         match self {
             Self::Codex(client) => client.next_event().await,
             Self::Claude(client) => client.next_event().await,
+            #[cfg(test)]
+            Self::Fake(client) => client.next_event().await,
         }
     }
 
@@ -190,6 +217,8 @@ impl ProviderClient for ProviderConnection {
         match self {
             Self::Codex(client) => client.commands(),
             Self::Claude(client) => client.commands(),
+            #[cfg(test)]
+            Self::Fake(client) => client.commands(),
         }
     }
 }
@@ -220,6 +249,28 @@ impl TurnOriginTracker {
         self.pending_user_turns -= 1;
         TurnOrigin::User
     }
+}
+
+/// 고정 모델도 현재 provider도 없는 첫 입력을 설치된 앞쪽 provider로 보낸다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정).
+pub const FIRST_INPUT_ORDER: [Provider; 2] = [Provider::Claude, Provider::Codex];
+
+/// 설정에 실행 파일 경로가 없을 때 `PATH`에서 찾는 이름.
+pub fn program_name(provider: Provider) -> &'static str {
+    match provider {
+        Provider::Codex => codex::PROGRAM,
+        Provider::Claude => claude::PROGRAM,
+    }
+}
+
+/// `env`의 `PATH`에서 실행 권한이 있는 파일을 찾는다. `PATH`가 없으면 없는 것으로 본다.
+pub fn is_installed(provider: Provider, env: &[(OsString, OsString)]) -> bool {
+    let Some((_, path)) = env.iter().find(|(name, _)| name == "PATH") else {
+        return false;
+    };
+    std::env::split_paths(path).any(|dir| {
+        std::fs::metadata(dir.join(program_name(provider)))
+            .is_ok_and(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
+    })
 }
 
 /// 사용량 화면처럼 사용자에게 provider를 이름으로 보일 때 쓴다.
@@ -284,6 +335,29 @@ mod tests {
 
         assert_eq!(steer_route(&handle(false)), SteerRoute::Queue);
         assert_eq!(steer_route(&handle(true)), SteerRoute::Steer);
+    }
+
+    #[test]
+    fn installed_means_executable_file_on_the_given_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let program = dir.path().join(program_name(Provider::Claude));
+        std::fs::write(&program, "#!/bin/sh\n").unwrap();
+        let path =
+            |dir: &std::path::Path| vec![(OsString::from("PATH"), dir.as_os_str().to_owned())];
+
+        let plain_file = is_installed(Provider::Claude, &path(dir.path()));
+        std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let executable = is_installed(Provider::Claude, &path(dir.path()));
+
+        assert!(!plain_file);
+        assert!(executable);
+        assert!(!is_installed(Provider::Codex, &path(dir.path())));
+        assert!(!is_installed(Provider::Claude, &[]));
+    }
+
+    #[test]
+    fn first_input_prefers_claude_over_codex() {
+        assert_eq!(FIRST_INPUT_ORDER, [Provider::Claude, Provider::Codex]);
     }
 
     #[test]

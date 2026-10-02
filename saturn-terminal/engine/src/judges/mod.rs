@@ -213,7 +213,8 @@ impl FailureTracker {
 
 #[derive(Debug)]
 pub struct Judges {
-    active: ActiveJudge,
+    /// 호출을 별도 작업으로 보내려고 공유한다.
+    active: Arc<ActiveJudge>,
     method: Method,
     failures: FailureTracker,
     masker: Masker,
@@ -268,7 +269,7 @@ impl Judges {
 
     pub(crate) fn with_active(active: ActiveJudge, method: Method, masker: Masker) -> Self {
         Self {
-            active,
+            active: Arc::new(active),
             method,
             failures: FailureTracker::default(),
             masker,
@@ -281,6 +282,11 @@ impl Judges {
 
     pub fn active(&self) -> &ActiveJudge {
         &self.active
+    }
+
+    /// 호출만 따로 돌릴 작업에 넘기는 손잡이. 연속 실패 집계는 결과를 받은 쪽이 `observe`로 한다.
+    pub(crate) fn shared(&self) -> Arc<ActiveJudge> {
+        Arc::clone(&self.active)
     }
 
     /// 실패는 오류가 아니라 원인을 가린 한 줄과 함께 `KeyRequired`로 돌려준다.
@@ -329,14 +335,12 @@ impl Judges {
     }
 
     /// 형식 오류(`Invalid`)와 revision 변경은 judge가 답한 것이라 연속 실패로 세지 않는다.
-    pub async fn call(&mut self, request: JudgeRequest) -> (JudgeExchange, Option<Alert>) {
-        let exchange = self.active.exchange(request).await;
+    pub(crate) fn observe(&mut self, exchange: &JudgeExchange) -> Option<Alert> {
         let answered = matches!(
             exchange.result,
             Ok(_) | Err(JudgeError::Invalid { .. } | JudgeError::Superseded)
         );
-        let alert = self.failures.observe(answered);
-        (exchange, alert)
+        self.failures.observe(answered)
     }
 
     /// 입력 처리 판단이 재시도 끝에 실패했을 때 쓴다. 현재 에이전트와 현재 모델로 보내고 입력은 대기로 두지 않는다.
@@ -506,6 +510,12 @@ mod tests {
         Judges::with_active(active, Method::Jev, Masker::new(vec![KEY.to_owned()]))
     }
 
+    async fn call(judges: &mut Judges, request: JudgeRequest) -> (JudgeExchange, Option<Alert>) {
+        let exchange = judges.shared().exchange(request).await;
+        let alert = judges.observe(&exchange);
+        (exchange, alert)
+    }
+
     fn context(chat: ChatId, outcome: JudgmentOutcome) -> RecordContext {
         RecordContext {
             chat,
@@ -571,17 +581,20 @@ mod tests {
         let transport = FakeTransport::new(replies);
         let mut judges = judges(secrets_with_key(dir.path()).await, transport);
 
-        let (first, alert) = judges.call(request()).await;
+        let (first, alert) = call(&mut judges, request()).await;
         assert!(matches!(first.result, Err(JudgeError::Invalid { .. })));
         assert_eq!(alert, None);
         for _ in 0..2 {
-            assert_eq!(judges.call(request()).await.1, Some(Alert::JudgePaused));
+            assert_eq!(
+                call(&mut judges, request()).await.1,
+                Some(Alert::JudgePaused)
+            );
         }
         assert_eq!(
-            judges.call(request()).await.1,
+            call(&mut judges, request()).await.1,
             Some(Alert::JudgeDisconnected)
         );
-        let (answered, alert) = judges.call(request()).await;
+        let (answered, alert) = call(&mut judges, request()).await;
         assert!(answered.result.is_ok());
         assert_eq!(alert, None);
     }
@@ -669,7 +682,7 @@ mod tests {
         let mut leaky = request();
         leaky.state = format!("pasted {KEY}");
 
-        let (exchange, _) = judges.call(leaky).await;
+        let (exchange, _) = call(&mut judges, leaky).await;
         let outcome = outcome_of(&exchange.result);
         let id = judges
             .record(&store, context(chat, outcome), &exchange)

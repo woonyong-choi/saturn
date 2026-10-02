@@ -14,6 +14,11 @@ pub mod store;
 pub mod training;
 
 mod chat_env;
+mod control;
+mod dispatch;
+mod flow;
+mod intake;
+mod launch;
 mod outcomes;
 mod requests;
 mod sessions;
@@ -29,15 +34,14 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use saturn_core::agents::AgentTracker;
-use saturn_core::judges::RouteDecision;
 use saturn_core::providers::ProviderError;
-use saturn_core::queue::{Queue, QueueError, SendAction};
+use saturn_core::queue::{Queue, QueueError};
 use saturn_core::sessions::{SessionError, SessionManager};
 use saturn_protocol::envelope::{
     INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND, RequestId, Response,
 };
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, RunId, TaskId};
+use saturn_protocol::ids::{AgentId, ChatId, Provider, RunId, TaskId};
 use saturn_protocol::rpc::Request;
 use tokio::sync::Mutex;
 
@@ -81,6 +85,12 @@ pub enum EngineError {
     /// 묻지 않은 창의 답이라 적용하지 않는다.
     #[error("no pending {what} for this answer")]
     UnexpectedAnswer { what: &'static str },
+    /// 이 클라이언트가 붙지 않은 채팅이라 입력을 받지 않는다.
+    #[error("chat {} is not attached to this client", chat.0)]
+    ChatNotAttached { chat: ChatId },
+    /// 고정 모델도 현재 provider도 없는 첫 입력인데 설치된 provider가 없다.
+    #[error("no provider is installed")]
+    NoProvider,
     #[error("rpc failed")]
     Rpc(#[from] RpcError),
     #[error("record store failed")]
@@ -108,9 +118,14 @@ impl EngineError {
         match self {
             Self::JudgeKeyRequired { .. } => JUDGE_KEY_REQUIRED,
             Self::Unsupported { .. } => METHOD_NOT_FOUND,
-            Self::UnexpectedAnswer { .. } | Self::Store(StoreError::NotFound { .. }) => {
-                INVALID_PARAMS
-            }
+            Self::UnexpectedAnswer { .. }
+            | Self::ChatNotAttached { .. }
+            | Self::Store(StoreError::NotFound { .. })
+            | Self::Queue(
+                QueueError::NotFound(_)
+                | QueueError::AlreadySent
+                | QueueError::InvalidTransition { .. },
+            ) => INVALID_PARAMS,
             _ => INTERNAL_ERROR,
         }
     }
@@ -201,7 +216,8 @@ pub struct Engine {
     secrets: SharedSecrets,
     masker: Masker,
     supervisor: Supervisor,
-    providers: HashMap<Provider, ProviderConnection>,
+    /// 연결은 채팅마다 둔다. 작업 폴더와 환경이 채팅마다 달라서다.
+    providers: HashMap<(ChatId, Provider), ProviderConnection>,
     judges: Judges,
     judge_gate: JudgeGate,
     rpc: RpcServer,
@@ -215,6 +231,8 @@ pub struct Engine {
     signals: outcomes::SignalWatch,
     agents: AgentTracker,
     runs: Runs,
+    /// 입력 접수부터 전송까지 메모리에 두는 값.
+    flow: flow::FlowState,
     presence: Presence,
     /// `ConfirmTrain`을 기다린다.
     pending_train: Option<TrainPlan>,
@@ -264,6 +282,7 @@ impl Engine {
             signals: outcomes::SignalWatch::default(),
             agents: AgentTracker::new(),
             runs: Runs::default(),
+            flow: flow::FlowState::default(),
             presence: Presence::Background { idle_since: None },
             pending_train: None,
         })
@@ -409,6 +428,9 @@ impl Engine {
                     let Some(event) = event else { break };
                     self.handle_event(event).await?;
                 }
+                Some(done) = self.flow.judge_rx.recv() => {
+                    self.on_judged(done).await;
+                }
                 _ = tick.tick() => {
                     if let Err(error) = self.settle_signals(Instant::now()).await {
                         tracing::warn!(error = %masked_chain(&self.masker, &error), "failed to settle judgment signals");
@@ -494,10 +516,9 @@ impl Engine {
                 self.submit_input(client, chat, client_ref, text, pinned_model, skip_relation)
                     .await
             }
-            // TODO(#148): 보내기 전 입력의 새 작업 전송, 바로 보내기, 취소
-            Request::RunAsNewTask { .. } => Err(unsupported("RunAsNewTask")),
-            Request::SendNow { .. } => Err(unsupported("SendNow")),
-            Request::CancelInput { .. } => Err(unsupported("CancelInput")),
+            Request::RunAsNewTask { input } => self.run_as_new_task(client, input).await,
+            Request::SendNow { input } => self.send_now(client, input).await,
+            Request::CancelInput { input } => self.cancel_input(client, input).await,
             Request::Stop { chat } => self.stop_chat(chat).await,
             Request::Continue { chat, task } => self.continue_held(chat, task).await,
             // TODO(#149): 보류 입력 하나 재개, 보류 닫기, 허가 답 전달
@@ -577,59 +598,6 @@ impl Engine {
         self.presence = Presence::Attached;
         self.send_start_notices(client, applied).await;
         Ok(())
-    }
-
-    /// 설정 번호와 권한은 접수 때 고정한다.
-    ///
-    /// # Errors
-    /// 접수 기록 실패면 `Store`이고 입력은 어디에도 보내지 않는다.
-    async fn submit_input(
-        &mut self,
-        client: ClientId,
-        chat: ChatId,
-        client_ref: u64,
-        text: String,
-        pinned_model: Option<String>,
-        skip_relation: bool,
-    ) -> Result<(), EngineError> {
-        todo!("#90")
-    }
-
-    /// 모델을 고정한 입력이면 judge를 부르지 않는다.
-    async fn judge_next(&mut self, chat: ChatId) -> Result<(), EngineError> {
-        todo!("#90")
-    }
-
-    /// `RevisionConflict`면 `retried`가 거짓일 때만 한 번 다시 판단하고, 또 어긋나면 대기로 둔다.
-    async fn apply_decision(
-        &mut self,
-        input: InputId,
-        decision: RouteDecision,
-        retried: bool,
-    ) -> Result<(), EngineError> {
-        todo!("#90")
-    }
-
-    /// 보낼 것이 없을 때까지 반복한다.
-    async fn dispatch_next(&mut self, chat: ChatId) -> Result<(), EngineError> {
-        todo!("#90")
-    }
-
-    /// `NotSent`만 다시 보내고, `Unknown`이면 작업을 `NeedsCheck`로 두어 사용자 확인으로 넘긴다.
-    async fn deliver(&mut self, chat: ChatId, action: SendAction) -> Result<(), EngineError> {
-        todo!("#90")
-    }
-
-    /// 활성 턴 없음은 확정 미전달이라 다시 판단하지 않고 같은 session에 새 턴으로 한 번 보낸다.
-    ///
-    /// # Errors
-    /// 새 턴 전송이 `Unknown`이면 다시 보내지 않고 `Provider`를 돌려준다.
-    async fn steer_as_new_turn(
-        &mut self,
-        input: InputId,
-        agent: AgentId,
-    ) -> Result<(), EngineError> {
-        todo!("#90")
     }
 
     /// 이벤트는 처리 전에 먼저 기록한다.

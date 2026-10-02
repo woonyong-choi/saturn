@@ -29,6 +29,9 @@ use crate::secrets::Masker;
 /// `/usage` 행 이름 앞부분.
 pub(crate) const DISPLAY_NAME: &str = "claude";
 
+/// 설정에 실행 파일이 없을 때 `PATH`에서 찾는 이름.
+pub(crate) const PROGRAM: &str = "claude";
+
 /// 끼워 넣기 실측(#5, #27) 통과 전이라 거짓이고, 거짓이면 끼워 넣기를 대기로 바꾼다.
 pub(crate) const STEER_VERIFIED: bool = false;
 
