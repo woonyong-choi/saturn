@@ -1,10 +1,14 @@
-//! engine 시작 순서, 요청 분배, 채팅 붙기 테스트. 가짜 judge 전송과 임시 폴더만 쓴다.
+//! engine 시작 순서, 요청 분배, 채팅 붙기, 입력 흐름 테스트. 가짜 judge 전송, 가짜 provider, 임시 폴더만 쓴다.
 
 mod attach;
+mod decision;
+mod deliver;
+mod intake;
 mod outcomes;
 mod requests;
 mod sessions;
 mod start;
+mod support;
 
 use std::future::Future;
 use std::path::{Path, PathBuf};

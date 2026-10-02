@@ -8,6 +8,32 @@ use sqlx::Row;
 use super::records::{ensure_found, session_from_row};
 use super::{Store, StoreError, from_millis, from_sql_int, to_millis, to_sql_int};
 
+/// 번호를 받는 대상.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IdKind {
+    Session,
+    Agent,
+}
+
+impl IdKind {
+    fn meta_key(self) -> &'static str {
+        match self {
+            Self::Session => "last_session_id",
+            Self::Agent => "last_agent_id",
+        }
+    }
+
+    fn max_recorded(self) -> &'static str {
+        match self {
+            Self::Session => "SELECT COALESCE(MAX(id), 0) FROM sessions",
+            Self::Agent => {
+                "SELECT COALESCE(MAX(id), 0) FROM \
+                 (SELECT agent_id AS id FROM sessions UNION ALL SELECT agent_id AS id FROM runs)"
+            }
+        }
+    }
+}
+
 impl Store {
     /// 같은 session의 이전 값은 덮어쓴다.
     ///
@@ -26,6 +52,28 @@ impl Store {
                 .execute(&self.pool)
                 .await?;
         ensure_found(done.rows_affected(), || format!("session {}", session.0))
+    }
+
+    /// 지금까지 받은 번호와 기록에 있는 번호보다 큰 새 번호를 한 거래로 받는다. 번호를 다시 쓰지 않는다.
+    pub async fn allocate_id(&self, kind: IdKind) -> Result<u64, StoreError> {
+        let mut tx = self.pool.begin().await?;
+        let issued: Option<i64> = sqlx::query_scalar("SELECT value FROM meta WHERE key = ?")
+            .bind(kind.meta_key())
+            .fetch_optional(&mut *tx)
+            .await?;
+        let recorded: i64 = sqlx::query_scalar(kind.max_recorded())
+            .fetch_one(&mut *tx)
+            .await?;
+        let next = issued.unwrap_or(0).max(recorded) + 1;
+        sqlx::query(
+            "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        )
+        .bind(kind.meta_key())
+        .bind(next)
+        .execute(&mut *tx)
+        .await?;
+        tx.commit().await?;
+        Ok(from_sql_int(next))
     }
 
     /// `Ended`가 아닌 메인을 id 순서로 돌려준다. 마지막 턴 값이 없으면 `None`.
@@ -142,6 +190,25 @@ mod tests {
         let live = store.live_mains().await.unwrap();
 
         assert!(live.is_empty());
+    }
+
+    #[tokio::test]
+    async fn allocate_id_counts_up_and_skips_recorded_ids() {
+        let (_dir, store) = temp_store().await;
+        let (chat, _, session, _) = chat_with_run(&store).await;
+        store
+            .upsert_session(&session_record(session, chat, SessionState::Open))
+            .await
+            .unwrap();
+
+        let first = store.allocate_id(IdKind::Session).await.unwrap();
+        let second = store.allocate_id(IdKind::Session).await.unwrap();
+        let agent = store.allocate_id(IdKind::Agent).await.unwrap();
+
+        assert_eq!(first, session.0 + 1);
+        assert_eq!(second, first + 1);
+        assert!(agent >= 1);
+        assert_eq!(store.allocate_id(IdKind::Agent).await.unwrap(), agent + 1);
     }
 
     #[tokio::test]

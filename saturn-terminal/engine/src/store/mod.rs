@@ -29,6 +29,7 @@ pub use retention::{
     PruneOutcome, PrunePlan, PruneRequest, PruneScope, RetentionPolicy, SkipReason, Tombstone,
 };
 pub use schema::{BACKUP_RETENTION, MigrationNotice, SCHEMA_VERSION};
+pub use sessions::IdKind;
 pub use usage::JudgeUsage;
 
 #[cfg(test)]
@@ -155,6 +156,24 @@ impl Store {
 
     pub fn backup_dir(&self) -> PathBuf {
         self.home.join(BACKUP_DIR)
+    }
+
+    /// 이 뒤의 쓰기가 모두 실패한다. 접수 기록 실패 시험이 쓴다.
+    #[cfg(test)]
+    pub(crate) async fn deny_writes(&self) {
+        sqlx::query("PRAGMA query_only = ON")
+            .execute(&self.pool)
+            .await
+            .expect("pragma should apply");
+    }
+
+    /// `deny_writes`로 막은 쓰기를 다시 연다.
+    #[cfg(test)]
+    pub(crate) async fn allow_writes(&self) {
+        sqlx::query("PRAGMA query_only = OFF")
+            .execute(&self.pool)
+            .await
+            .expect("pragma should apply");
     }
 
     /// 스키마는 건드리지 않는다.
