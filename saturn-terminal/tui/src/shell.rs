@@ -8,7 +8,7 @@ use std::process::{Command, Stdio};
 use crate::ROUTER_KEY_ENV;
 
 #[derive(Debug, thiserror::Error)]
-pub enum ShellError {
+pub(crate) enum ShellError {
     #[error("failed to spawn shell")]
     Spawn(#[source] std::io::Error),
     #[error("failed to read shell output")]
@@ -16,7 +16,7 @@ pub enum ShellError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ShellOutput {
+pub(crate) struct ShellOutput {
     pub command: String,
     /// 신호로 끝났으면 `None`.
     pub status: Option<i32>,
@@ -25,7 +25,7 @@ pub struct ShellOutput {
 }
 
 impl ShellOutput {
-    pub fn to_attachment(&self) -> String {
+    pub(crate) fn to_attachment(&self) -> String {
         let status = match self.status {
             Some(code) => code.to_string(),
             None => "signal".to_string(),
@@ -46,7 +46,7 @@ impl ShellOutput {
 ///
 /// # Errors
 /// 셸을 띄우지 못하면 `Spawn`.
-pub async fn run(command: &str, workdir: &Path) -> Result<ShellOutput, ShellError> {
+pub(crate) async fn run(command: &str, workdir: &Path) -> Result<ShellOutput, ShellError> {
     let command = command.to_string();
     let workdir = workdir.to_path_buf();
     tokio::task::spawn_blocking(move || run_blocking(&command, &workdir))

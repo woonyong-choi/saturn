@@ -16,11 +16,13 @@ use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TrySendError;
 
 use connection::{Connection, Outbox};
-pub use lock::{EngineLock, LOCK_FILE};
+pub(crate) use lock::EngineLock;
+#[cfg(test)]
+pub(crate) use lock::LOCK_FILE;
 
 /// 초안. `~/.saturn/` 아래. TUI `EngineClient::default_socket`과 같은 경로.
 /// TODO(#235): 경로 설정 키
-pub const SOCKET_FILE: &str = "engine.sock";
+pub(crate) const SOCKET_FILE: &str = "engine.sock";
 
 /// 초안. 소켓을 같은 사용자만 열 수 있게 한다.
 const SOCKET_MODE: u32 = 0o600;
@@ -58,7 +60,7 @@ pub enum RpcError {
 pub struct ClientId(pub u64);
 
 #[derive(Debug)]
-pub enum RpcEvent {
+pub(crate) enum RpcEvent {
     /// 아직 `Request::Attach` 전.
     Connected(ClientId),
     Request(ClientId, RequestId, Request),
@@ -85,7 +87,7 @@ struct PendingPermission {
 
 /// 잠금을 소유해 서버가 사는 동안 잠금이 유지된다.
 #[derive(Debug)]
-pub struct RpcServer {
+pub(crate) struct RpcServer {
     socket: PathBuf,
     lock: EngineLock,
     listener: UnixListener,
@@ -102,7 +104,7 @@ impl RpcServer {
     ///
     /// # Errors
     /// 소켓 파일을 지우거나 열거나 권한을 바꾸지 못하면 `Bind`.
-    pub async fn bind(home: &Path, lock: EngineLock) -> Result<Self, RpcError> {
+    pub(crate) async fn bind(home: &Path, lock: EngineLock) -> Result<Self, RpcError> {
         let socket = home.join(SOCKET_FILE);
         let bind_error = |source| RpcError::Bind {
             path: socket.clone(),
@@ -132,7 +134,7 @@ impl RpcServer {
 
     /// 마지막 클라이언트가 떨어지면 `LastDetached`를 한 번 더 돌려준다.
     /// cancel-safe: `select!` 안에서 불러도 일을 잃지 않는다.
-    pub async fn next_event(&mut self) -> Option<RpcEvent> {
+    pub(crate) async fn next_event(&mut self) -> Option<RpcEvent> {
         loop {
             if self.last_detached_due {
                 self.last_detached_due = false;
@@ -156,7 +158,7 @@ impl RpcServer {
     ///
     /// # Errors
     /// 클라이언트가 이미 끊겼으면 `ClientGone`.
-    pub async fn greet(
+    pub(crate) async fn greet(
         &mut self,
         client: ClientId,
         chat: ChatId,
@@ -183,13 +185,17 @@ impl RpcServer {
     ///
     /// # Errors
     /// 클라이언트가 이미 끊겼으면 `ClientGone`.
-    pub async fn respond(&self, client: ClientId, response: Response) -> Result<(), RpcError> {
+    pub(crate) async fn respond(
+        &self,
+        client: ClientId,
+        response: Response,
+    ) -> Result<(), RpcError> {
         self.push(client, response.into())
     }
 
     /// # Errors
     /// 클라이언트가 이미 끊겼으면 `ClientGone`.
-    pub async fn send_to(
+    pub(crate) async fn send_to(
         &self,
         client: ClientId,
         notification: Notification,
@@ -198,12 +204,12 @@ impl RpcServer {
     }
 
     /// `chat`이 `None`이면 모든 클라이언트. 끊긴 클라이언트는 건너뛴다.
-    pub async fn broadcast(&self, chat: Option<ChatId>, notification: Notification) {
+    pub(crate) async fn broadcast(&self, chat: Option<ChatId>, notification: Notification) {
         self.broadcast_except(chat, None, &notification);
     }
 
     /// 붙은 클라이언트가 없어도 답이 올 때까지 두고 다음 `greet`에서 보낸다.
-    pub async fn offer_permission(&mut self, chat: ChatId, request: Notification) {
+    pub(crate) async fn offer_permission(&mut self, chat: ChatId, request: Notification) {
         let Notification::PermissionRequested { request_id, .. } = &request else {
             tracing::error!("offer_permission called with a non-permission notification");
             return;
@@ -217,7 +223,7 @@ impl RpcServer {
     }
 
     /// 다른 클라이언트에 `PermissionResolved`를 보내 창을 지우게 한다.
-    pub async fn resolve_permission(&mut self, answered_by: ClientId, request_id: &str) {
+    pub(crate) async fn resolve_permission(&mut self, answered_by: ClientId, request_id: &str) {
         let position = self
             .pending_permissions
             .iter()
@@ -230,7 +236,7 @@ impl RpcServer {
     }
 
     /// 답 없이 끝난 요청(턴이 끝났거나 흐름이 끊김)의 창을 모든 클라이언트에서 지운다. 모르는 요청이면 아무것도 하지 않는다.
-    pub async fn withdraw_permission(&mut self, request_id: &str) {
+    pub(crate) async fn withdraw_permission(&mut self, request_id: &str) {
         let Some(index) = self
             .pending_permissions
             .iter()
@@ -246,11 +252,11 @@ impl RpcServer {
     }
 
     /// 0이면 TUI 없음(background).
-    pub fn client_count(&self) -> usize {
+    pub(crate) fn client_count(&self) -> usize {
         self.clients.len()
     }
 
-    pub async fn close(self) {
+    pub(crate) async fn close(self) {
         for handle in self.clients.values() {
             handle.outbox.kill.notify_one();
         }

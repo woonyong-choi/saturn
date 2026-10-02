@@ -8,9 +8,9 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub const SCHEMA_VERSION: u32 = 6;
+pub(crate) const SCHEMA_VERSION: u32 = 6;
 
-pub const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
+pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
 /// 이 형식의 파일만 백업으로 보고 지운다. 초안 값.
 const BACKUP_PREFIX: &str = "saturn-v";
@@ -195,7 +195,7 @@ ALTER TABLE chats ADD COLUMN pinned_model TEXT;
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MigrationNotice {
+pub(crate) struct MigrationNotice {
     pub from: u32,
     pub to: u32,
     /// 파일 이름 `saturn-v<from>-<unix밀리초>.db`는 초안이다.
@@ -204,7 +204,7 @@ pub struct MigrationNotice {
 
 impl MigrationNotice {
     /// 예: `기록 저장소 스키마 1 → 2 이관 · 백업 ~/.saturn/backup/... (14일 보관)`.
-    pub fn line(&self) -> String {
+    pub(crate) fn line(&self) -> String {
         format!(
             "기록 저장소 스키마 {} → {} 이관 · 백업 {} (14일 보관)",
             self.from,
@@ -254,15 +254,10 @@ impl Store {
         Ok(path)
     }
 
-    /// 호출 전에 `from > SCHEMA_VERSION`은 `NewerSchema`로 거른다.
+    /// 호출 전에 `from > SCHEMA_VERSION`은 `NewerSchema`로 거른다. 테스트가 이관 단계를 바꿔 넣을 수 있다.
     ///
     /// # Errors
     /// 어느 단계든 실패하면 거래를 되돌리고 `Migration`.
-    pub(crate) async fn migrate(&self, from: u32) -> Result<(), StoreError> {
-        self.migrate_with(from, MIGRATIONS).await
-    }
-
-    /// 테스트가 이관 단계를 바꿔 넣는다.
     pub(crate) async fn migrate_with(&self, from: u32, steps: &[&str]) -> Result<(), StoreError> {
         let to = schema_target(steps);
         if from >= to {

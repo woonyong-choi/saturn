@@ -45,15 +45,15 @@ use crate::view::transcript::{Transcript, TranscriptCell};
 use crate::view::usage::UsageScreen;
 
 /// 초안 값.
-pub const TICK: Duration = Duration::from_millis(100);
-pub const FEEDBACK_TIMEOUT: Duration = Duration::from_secs(8);
+pub(crate) const TICK: Duration = Duration::from_millis(100);
+pub(crate) const FEEDBACK_TIMEOUT: Duration = Duration::from_secs(8);
 /// 초안 값.
-pub const WHEEL_ROWS: usize = 3;
+pub(crate) const WHEEL_ROWS: usize = 3;
 /// 초안 값.
-pub const HISTORY_PAGE: u32 = 50;
+pub(crate) const HISTORY_PAGE: u32 = 50;
 
 #[derive(Debug)]
-pub enum AppEvent {
+pub(crate) enum AppEvent {
     Terminal(Event),
     Engine(Notification),
     EngineClosed,
@@ -63,7 +63,7 @@ pub enum AppEvent {
 
 /// `run_loop`가 순서대로 실행한다.
 #[derive(Debug, Clone, PartialEq)]
-pub enum Effect {
+pub(crate) enum Effect {
     Send(Request),
     Suspend,
     OpenEditor,
@@ -73,7 +73,7 @@ pub enum Effect {
 }
 
 #[derive(Debug)]
-pub enum Window {
+pub(crate) enum Window {
     RouterKey(RouterKeyPrompt),
     FolderTrust(FolderTrust),
     Resume(ResumePrompt),
@@ -94,7 +94,7 @@ impl Window {
 }
 
 #[derive(Debug)]
-pub struct App {
+pub(crate) struct App {
     pub lang: Lang,
     pub workdir: PathBuf,
     /// `Attach`로 engine에 넘기는 이 TUI의 환경 변수.
@@ -139,7 +139,12 @@ pub struct App {
 impl App {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn new(lang: Lang, workdir: PathBuf, history: InputHistory, chat: Option<ChatId>) -> Self {
+    pub(crate) fn new(
+        lang: Lang,
+        workdir: PathBuf,
+        history: InputHistory,
+        chat: Option<ChatId>,
+    ) -> Self {
         Self {
             lang,
             workdir,
@@ -173,7 +178,7 @@ impl App {
         }
     }
 
-    pub fn attach_request(&self) -> Request {
+    pub(crate) fn attach_request(&self) -> Request {
         Request::Attach {
             chat: self.attach_chat,
             workdir: self.workdir.display().to_string(),
@@ -183,7 +188,7 @@ impl App {
         }
     }
 
-    pub fn handle(&mut self, event: AppEvent, now: Instant) -> Vec<Effect> {
+    pub(crate) fn handle(&mut self, event: AppEvent, now: Instant) -> Vec<Effect> {
         match event {
             AppEvent::Terminal(Event::Key(key)) if key.kind != KeyEventKind::Release => {
                 self.on_key(key, now)
@@ -214,7 +219,7 @@ impl App {
         }
     }
 
-    pub fn key_area(&self) -> KeyArea {
+    pub(crate) fn key_area(&self) -> KeyArea {
         match &self.window {
             Some(Window::RouterKey(_)) => return KeyArea::RouterKeyPrompt,
             Some(Window::FolderTrust(_)) => return KeyArea::FolderTrust,
@@ -244,7 +249,7 @@ impl App {
         }
     }
 
-    pub fn key_context(&self) -> KeyContext {
+    pub(crate) fn key_context(&self) -> KeyContext {
         KeyContext {
             composer_empty: self.composer.is_empty(),
             at_line_start: self.composer.at_line_start(),
@@ -254,7 +259,7 @@ impl App {
         }
     }
 
-    pub fn set_draft(&mut self, text: &str) {
+    pub(crate) fn set_draft(&mut self, text: &str) {
         self.composer.set_text(text, false);
         self.refresh_popup();
     }
@@ -504,7 +509,7 @@ fn is_ctrl_c(key: KeyEvent) -> bool {
 ///
 /// # Errors
 /// 그리기 실패, 요청 전송 실패(연결 끊김), 일시 중지와 외부 에디터 실패.
-pub async fn run_loop(
+pub(crate) async fn run_loop(
     app: &mut App,
     client: &mut EngineClient,
     screen: &mut Screen,

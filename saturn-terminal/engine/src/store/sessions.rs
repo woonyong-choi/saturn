@@ -10,7 +10,7 @@ use super::{Store, StoreError, from_millis, from_sql_int, to_millis, to_sql_int}
 
 /// 번호를 받는 대상.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IdKind {
+pub(crate) enum IdKind {
     Session,
     Agent,
 }
@@ -39,7 +39,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 session이면 `NotFound`.
-    pub async fn record_last_turn(
+    pub(crate) async fn record_last_turn(
         &self,
         session: SessionId,
         last_turn: LastTurn,
@@ -55,7 +55,7 @@ impl Store {
     }
 
     /// 지금까지 받은 번호와 기록에 있는 번호보다 큰 새 번호를 한 거래로 받는다. 번호를 다시 쓰지 않는다.
-    pub async fn allocate_id(&self, kind: IdKind) -> Result<u64, StoreError> {
+    pub(crate) async fn allocate_id(&self, kind: IdKind) -> Result<u64, StoreError> {
         let mut tx = self.pool.begin().await?;
         let issued: Option<i64> = sqlx::query_scalar("SELECT value FROM meta WHERE key = ?")
             .bind(kind.meta_key())
@@ -77,7 +77,9 @@ impl Store {
     }
 
     /// `Ended`가 아닌 메인을 id 순서로 돌려준다. 마지막 턴 값이 없으면 `None`.
-    pub async fn live_mains(&self) -> Result<Vec<(SessionRecord, Option<LastTurn>)>, StoreError> {
+    pub(crate) async fn live_mains(
+        &self,
+    ) -> Result<Vec<(SessionRecord, Option<LastTurn>)>, StoreError> {
         let rows = sqlx::query(
             "SELECT id, chat_id, agent_id, role, provider, provider_session, model, state, delivered, \
              last_active, last_turn_ended_at FROM sessions \

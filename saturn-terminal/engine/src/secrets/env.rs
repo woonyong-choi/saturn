@@ -6,24 +6,26 @@ use std::ffi::{OsStr, OsString};
 use super::keys::ROUTER_KEY_ENV;
 
 /// 새 비밀 변수를 만들면 여기에 더한다.
-pub const CHILD_ENV_DENYLIST: &[&str] = &[ROUTER_KEY_ENV];
+pub(crate) const CHILD_ENV_DENYLIST: &[&str] = &[ROUTER_KEY_ENV];
 
 /// macOS 환경 변수처럼 대소문자를 구분한다.
-pub fn is_denied(name: &OsStr) -> bool {
+pub(crate) fn is_denied(name: &OsStr) -> bool {
     CHILD_ENV_DENYLIST
         .iter()
         .any(|denied| OsStr::new(denied) == name)
 }
 
 /// `Supervisor`가 `env_clear` 뒤 자식 환경을 이것으로 채운다.
-pub fn scrub(env: impl IntoIterator<Item = (OsString, OsString)>) -> Vec<(OsString, OsString)> {
+pub(crate) fn scrub(
+    env: impl IntoIterator<Item = (OsString, OsString)>,
+) -> Vec<(OsString, OsString)> {
     env.into_iter()
         .filter(|(name, _)| !is_denied(name))
         .collect()
 }
 
 /// 부모 환경을 물려받는 명령에 쓴다.
-pub fn scrub_command(command: &mut tokio::process::Command) {
+pub(crate) fn scrub_command(command: &mut tokio::process::Command) {
     for name in CHILD_ENV_DENYLIST {
         command.env_remove(name);
     }

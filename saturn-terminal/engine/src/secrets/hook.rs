@@ -25,7 +25,7 @@ const DENY_REASON: &str = "blocked by saturn: router key storage is not availabl
 
 /// provider 고유 형식은 `providers/claude`가 이것으로 바꿔 넘긴다.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ToolCall {
+pub(crate) enum ToolCall {
     Command(String),
     /// 절대 경로로 바꾼 값.
     Path(PathBuf),
@@ -34,7 +34,7 @@ pub enum ToolCall {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum HookVerdict {
+pub(crate) enum HookVerdict {
     /// 사용자의 다른 훅이 이어서 판정한다.
     Allow,
     Deny {
@@ -45,7 +45,7 @@ pub enum HookVerdict {
 
 /// engine 시작 때 한 번 만든다.
 #[derive(Debug, Clone)]
-pub struct HookPolicy {
+pub(crate) struct HookPolicy {
     /// 셸 연결로 나뉜 각 부분을 따로 본다.
     blocked_commands: Vec<String>,
     /// 심볼릭 링크를 푼 뒤 비교한다.
@@ -55,7 +55,7 @@ pub struct HookPolicy {
 }
 
 impl HookPolicy {
-    pub fn new(saturn_home: &Path, user_home: &Path) -> Self {
+    pub(crate) fn new(saturn_home: &Path, user_home: &Path) -> Self {
         let blocked_commands = BLOCKED_SECURITY_SUBCOMMANDS
             .iter()
             .map(|sub| format!("security {sub}"))
@@ -75,7 +75,7 @@ impl HookPolicy {
         }
     }
 
-    pub fn check(&self, call: &ToolCall) -> HookVerdict {
+    pub(crate) fn check(&self, call: &ToolCall) -> HookVerdict {
         let blocked = match call {
             ToolCall::Command(command) => self.command_blocked(command),
             ToolCall::Path(path) => self.path_blocked(path),
@@ -91,7 +91,7 @@ impl HookPolicy {
     }
 
     /// 사용자 훅을 읽거나 바꾸지 않고, 사용자 설정과 합치는 일은 Claude가 한다.
-    pub fn pre_tool_use_settings(&self, saturn_bin: &Path) -> serde_json::Value {
+    pub(crate) fn pre_tool_use_settings(&self, saturn_bin: &Path) -> serde_json::Value {
         let command = format!(
             "{} hook pre-tool-use",
             shell_quote(&saturn_bin.to_string_lossy())

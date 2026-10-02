@@ -7,7 +7,7 @@ use saturn_protocol::rpc::{PermissionAnswer, UsageRange};
 use crate::view::popup::PopupKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum KeyArea {
+pub(crate) enum KeyArea {
     Transcript,
     StatusBoard,
     Popup,
@@ -25,7 +25,7 @@ pub enum KeyArea {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct KeyContext {
+pub(crate) struct KeyContext {
     /// 붙여넣은 요소도 없어야 참.
     pub composer_empty: bool,
     pub at_line_start: bool,
@@ -36,7 +36,7 @@ pub struct KeyContext {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Action {
+pub(crate) enum Action {
     // 모든 영역
     ShowFullTranscript,
     Suspend,
@@ -109,7 +109,7 @@ pub enum Action {
 }
 
 /// `global`을 먼저 적용하고, 뜻이 없는 키는 `None`.
-pub fn map(area: KeyArea, key: KeyEvent, ctx: KeyContext) -> Option<Action> {
+pub(crate) fn map(area: KeyArea, key: KeyEvent, ctx: KeyContext) -> Option<Action> {
     if let Some(action) = global(key) {
         return Some(action);
     }
@@ -131,7 +131,7 @@ pub fn map(area: KeyArea, key: KeyEvent, ctx: KeyContext) -> Option<Action> {
     }
 }
 
-pub fn global(key: KeyEvent) -> Option<Action> {
+pub(crate) fn global(key: KeyEvent) -> Option<Action> {
     if is_ctrl(key, 't') {
         Some(Action::ShowFullTranscript)
     } else if is_ctrl(key, 'z') {
@@ -142,7 +142,7 @@ pub fn global(key: KeyEvent) -> Option<Action> {
 }
 
 /// TODO(#54): 입력창이 비었을 때만 받을지, 항상 받을지, `/feedback`으로만 받을지
-pub fn transcript(key: KeyEvent, _ctx: KeyContext) -> Option<Action> {
+pub(crate) fn transcript(key: KeyEvent, _ctx: KeyContext) -> Option<Action> {
     match key.code {
         KeyCode::Char('0') if is_char(key, '0') => Some(Action::FeedbackDismiss),
         KeyCode::Char('1') if is_char(key, '1') => Some(Action::FeedbackAnswer(true)),
@@ -152,7 +152,7 @@ pub fn transcript(key: KeyEvent, _ctx: KeyContext) -> Option<Action> {
 }
 
 /// TODO(#52): 상태판 버튼을 `Shift+Tab` 진입과 방향키로 고를지, 명령만 쓸지, 줄마다 번호 키를 줄지
-pub fn status_board(key: KeyEvent) -> Option<Action> {
+pub(crate) fn status_board(key: KeyEvent) -> Option<Action> {
     if is(key, KeyCode::Enter, KeyModifiers::NONE) {
         Some(Action::ConfirmCloseHeld)
     } else if is(key, KeyCode::Esc, KeyModifiers::NONE) {
@@ -163,7 +163,7 @@ pub fn status_board(key: KeyEvent) -> Option<Action> {
 }
 
 /// 그 밖의 키는 `None`으로 입력창에 넘긴다.
-pub fn popup(key: KeyEvent) -> Option<Action> {
+pub(crate) fn popup(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter if key.modifiers.is_empty() => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Close),
@@ -174,7 +174,7 @@ pub fn popup(key: KeyEvent) -> Option<Action> {
     }
 }
 
-pub fn composer(key: KeyEvent, ctx: KeyContext) -> Option<Action> {
+pub(crate) fn composer(key: KeyEvent, ctx: KeyContext) -> Option<Action> {
     if let Some(action) = composer_control(key, ctx) {
         return Some(action);
     }
@@ -184,7 +184,7 @@ pub fn composer(key: KeyEvent, ctx: KeyContext) -> Option<Action> {
     }
 }
 
-pub fn router_key_prompt(key: KeyEvent) -> Option<Action> {
+pub(crate) fn router_key_prompt(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Quit),
@@ -195,7 +195,7 @@ pub fn router_key_prompt(key: KeyEvent) -> Option<Action> {
 }
 
 /// 설계 표에 `2`가 없어 두 번째 선택지는 방향키와 `Enter`로만 고른다.
-pub fn folder_trust(key: KeyEvent) -> Option<Action> {
+pub(crate) fn folder_trust(key: KeyEvent) -> Option<Action> {
     if is_ctrl(key, 'c') {
         return Some(Action::Quit);
     }
@@ -210,7 +210,7 @@ pub fn folder_trust(key: KeyEvent) -> Option<Action> {
     }
 }
 
-pub fn resume_prompt(key: KeyEvent) -> Option<Action> {
+pub(crate) fn resume_prompt(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Up => Some(Action::Up),
@@ -220,7 +220,7 @@ pub fn resume_prompt(key: KeyEvent) -> Option<Action> {
 }
 
 /// 1초 입력 보호는 `view::permission`이 건다.
-pub fn permission(key: KeyEvent) -> Option<Action> {
+pub(crate) fn permission(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Char('y') if is_char(key, 'y') => {
             Some(Action::Permission(PermissionAnswer::AllowOnce))
@@ -238,7 +238,7 @@ pub fn permission(key: KeyEvent) -> Option<Action> {
 
 // cost: time O(1), heap O(1), stack O(1)
 // basis: estimate
-pub fn task_list(key: KeyEvent) -> Option<Action> {
+pub(crate) fn task_list(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Close),
@@ -253,7 +253,7 @@ pub fn task_list(key: KeyEvent) -> Option<Action> {
 }
 
 /// 닫기와 스크롤 키는 초안.
-pub fn full_transcript(key: KeyEvent) -> Option<Action> {
+pub(crate) fn full_transcript(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Esc => Some(Action::Close),
         KeyCode::Up => Some(Action::Up),
@@ -262,7 +262,7 @@ pub fn full_transcript(key: KeyEvent) -> Option<Action> {
     }
 }
 
-pub fn usage(key: KeyEvent) -> Option<Action> {
+pub(crate) fn usage(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Close),
@@ -272,7 +272,7 @@ pub fn usage(key: KeyEvent) -> Option<Action> {
     }
 }
 
-pub fn router_version(key: KeyEvent) -> Option<Action> {
+pub(crate) fn router_version(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Close),
@@ -285,7 +285,7 @@ pub fn router_version(key: KeyEvent) -> Option<Action> {
     }
 }
 
-pub fn model_picker(key: KeyEvent) -> Option<Action> {
+pub(crate) fn model_picker(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Close),
@@ -295,7 +295,7 @@ pub fn model_picker(key: KeyEvent) -> Option<Action> {
     }
 }
 
-pub fn train_confirm(key: KeyEvent) -> Option<Action> {
+pub(crate) fn train_confirm(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Close),

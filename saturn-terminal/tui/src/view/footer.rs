@@ -11,7 +11,7 @@ use crate::i18n::{self, Lang};
 use crate::state::ContextSize;
 use crate::view::{MUTED, text_width, truncate};
 
-pub fn context_text(lang: Lang, context: Option<ContextSize>) -> String {
+pub(crate) fn context_text(lang: Lang, context: Option<ContextSize>) -> String {
     match context {
         Some(ContextSize {
             tokens: Some(tokens),
@@ -27,14 +27,14 @@ pub fn context_text(lang: Lang, context: Option<ContextSize>) -> String {
 }
 
 #[derive(Debug)]
-pub struct FooterView {
+pub(crate) struct FooterView {
     pub lang: Lang,
     pub context: Option<ContextSize>,
 }
 
 impl FooterView {
     /// 폭이 모자라면 왼쪽을 먼저 자른다.
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let right = context_text(self.lang, self.context);
         let right_width = text_width(&right);
         let available = usize::from(area.width);

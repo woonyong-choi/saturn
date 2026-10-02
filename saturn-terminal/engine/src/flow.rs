@@ -33,7 +33,6 @@ pub(crate) struct LiveSession {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Routed {
     pub(crate) judgment: Option<JudgmentId>,
-    pub(crate) disposition: Disposition,
 }
 
 /// 적용 결과를 알기 전이라 아직 기록하지 않은 판단. revision이 어긋나면 `Superseded`로 쓴다.

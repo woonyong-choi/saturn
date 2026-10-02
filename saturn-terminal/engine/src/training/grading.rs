@@ -11,7 +11,7 @@ use super::TrainingError;
 use crate::routers::RemoteRouter;
 
 #[derive(Debug, Clone)]
-pub struct GradingCandidate {
+pub(crate) struct GradingCandidate {
     pub judgment: JudgmentId,
     /// 질문 id.
     pub question: String,
@@ -28,7 +28,7 @@ pub struct GradingCandidate {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct LabeledSets {
+pub(crate) struct LabeledSets {
     pub train: Vec<(JudgmentId, Label)>,
     pub eval: Vec<(JudgmentId, Label)>,
     /// 게이트에서 버린 라벨 수.
@@ -36,18 +36,18 @@ pub struct LabeledSets {
 }
 
 /// TODO(#91): 낮은 확신도 기준과 한 번에 채점할 최대 건수 미정
-pub fn select_candidates(pool: Vec<GradingCandidate>) -> Vec<GradingCandidate> {
+pub(crate) fn select_candidates(pool: Vec<GradingCandidate>) -> Vec<GradingCandidate> {
     todo!("#91")
 }
 
 /// 후보마다 채점 모델 수 × 2(선택지 순서) × (질문 + 결정 이후 대화)로 센다.
-pub fn estimate_tokens(candidates: &[GradingCandidate], graders: usize) -> u64 {
+pub(crate) fn estimate_tokens(candidates: &[GradingCandidate], graders: usize) -> u64 {
     todo!("#91")
 }
 
 /// # Errors
 /// 채점 모델 호출이 실패하면 `Grader`.
-pub async fn grade(
+pub(crate) async fn grade(
     grader: &RemoteRouter,
     candidate: &GradingCandidate,
 ) -> Result<Label, TrainingError> {
@@ -55,6 +55,6 @@ pub async fn grade(
 }
 
 /// 판정은 `calibration::gate_label`이 맡는다.
-pub fn split_labels(labels: Vec<(JudgmentId, Label)>) -> LabeledSets {
+pub(crate) fn split_labels(labels: Vec<(JudgmentId, Label)>) -> LabeledSets {
     todo!("#91")
 }

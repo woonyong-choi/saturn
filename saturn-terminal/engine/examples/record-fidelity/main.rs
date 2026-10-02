@@ -9,11 +9,10 @@ use std::time::Duration;
 
 use anyhow::{Context, bail};
 use saturn_core::providers::{ProviderClient, SessionSpec};
-use saturn_engine::processes::Supervisor;
-use saturn_engine::providers::{
-    LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults, UserProviderConfig,
+use saturn_engine::{
+    LaunchSpec, Masker, PermissionLaunch, ProviderConnection, SaturnDefaults, Supervisor,
+    UserProviderConfig,
 };
-use saturn_engine::secrets::Masker;
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, Provider, SettingsRevision};
 use saturn_protocol::rpc::PermissionAnswer;

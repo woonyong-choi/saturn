@@ -9,6 +9,9 @@ publish.workspace = true
 name = "saturn"
 path = "src/main.rs"
 
+[lints]
+workspace = true
+
 [dependencies]
 saturn-protocol.workspace = true
 saturn-tui.workspace = true

@@ -19,10 +19,10 @@ use crate::secrets::Masked;
 /// 판단 원문이 들어 있어 소유자만 읽고 쓴다. 초안 값.
 const EXPORT_FILE_MODE: u32 = 0o600;
 
-pub use saturn_core::routers::JudgmentOutcome;
+pub(crate) use saturn_core::routers::JudgmentOutcome;
 
 #[derive(Debug, Clone)]
-pub struct NewJudgment {
+pub(crate) struct NewJudgment {
     /// `/record off`인지 이것으로 본다.
     pub chat: ChatId,
     /// 입력과 무관한 호출(`compact`, `loop` 등)은 `None`.
@@ -57,7 +57,7 @@ pub struct NewJudgment {
 
 /// `yes`가 거짓이면 미리보기만 한다.
 #[derive(Debug, Clone)]
-pub struct JudgmentPruneRequest {
+pub(crate) struct JudgmentPruneRequest {
     /// `None`이면 전부.
     pub before: Option<SystemTime>,
     /// `None`이면 모든 채팅.
@@ -67,7 +67,7 @@ pub struct JudgmentPruneRequest {
 
 impl Store {
     /// 채팅이 `/record off`면 쓰지 않고 `None`을 돌려준다.
-    pub async fn record_judgment(
+    pub(crate) async fn record_judgment(
         &self,
         judgment: &NewJudgment,
     ) -> Result<Option<JudgmentId>, StoreError> {
@@ -135,7 +135,10 @@ impl Store {
     }
 
     /// `yes`가 거짓이면 지울 건수만 돌려준다. 채팅 삭제가 아니라 삭제 흔적은 남기지 않는다.
-    pub async fn prune_judgments(&self, request: &JudgmentPruneRequest) -> Result<u64, StoreError> {
+    pub(crate) async fn prune_judgments(
+        &self,
+        request: &JudgmentPruneRequest,
+    ) -> Result<u64, StoreError> {
         const FILTER: &str =
             "WHERE (?1 IS NULL OR started_at < ?1) AND (?2 IS NULL OR chat_id = ?2)";
         let before = request.before.map(to_millis);
@@ -164,7 +167,7 @@ impl Store {
     ///
     /// # Errors
     /// 파일 쓰기 실패면 `Export`, 직렬화 실패면 `Json`.
-    pub async fn export_judgments(&self, path: &Path) -> Result<u64, StoreError> {
+    pub(crate) async fn export_judgments(&self, path: &Path) -> Result<u64, StoreError> {
         let rows = sqlx::query("SELECT * FROM judgments ORDER BY id")
             .fetch_all(&self.pool)
             .await?;
@@ -241,9 +244,10 @@ pub(crate) mod tests {
     use std::path::PathBuf;
 
     use super::*;
+    use crate::store::RunEnd;
     use crate::store::records::tests::chat_with_run;
+    use crate::store::retention::{PruneOutcome, PruneRequest, PruneScope};
     use crate::store::tests::temp_store;
-    use crate::store::{PruneOutcome, PruneRequest, PruneScope, RunEnd};
 
     pub(crate) fn judgment(chat: ChatId) -> NewJudgment {
         NewJudgment {

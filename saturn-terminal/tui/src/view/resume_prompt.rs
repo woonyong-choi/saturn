@@ -14,14 +14,14 @@ use crate::view::transcript::held_labels;
 use crate::view::{SELECTED, render_window};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ResumeChoice {
+pub(crate) enum ResumeChoice {
     All,
     Pick,
     Leave,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ResumeOutcome {
+pub(crate) enum ResumeOutcome {
     Pending,
     ContinueAll,
     /// 접수 순서.
@@ -30,7 +30,7 @@ pub enum ResumeOutcome {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResumePrompt {
+pub(crate) struct ResumePrompt {
     /// 이름표 순서.
     pub held: Vec<(TaskId, TaskLabel)>,
     pub selected: ResumeChoice,
@@ -39,7 +39,7 @@ pub struct ResumePrompt {
 }
 
 impl ResumePrompt {
-    pub fn new(held: Vec<(TaskId, TaskLabel)>) -> Self {
+    pub(crate) fn new(held: Vec<(TaskId, TaskLabel)>) -> Self {
         Self {
             held,
             selected: ResumeChoice::All,
@@ -47,7 +47,7 @@ impl ResumePrompt {
         }
     }
 
-    pub fn up(&mut self) {
+    pub(crate) fn up(&mut self) {
         match &mut self.picking {
             Some((row, _)) => *row = row.saturating_sub(1),
             None => {
@@ -59,7 +59,7 @@ impl ResumePrompt {
         }
     }
 
-    pub fn down(&mut self) {
+    pub(crate) fn down(&mut self) {
         let last = self.held.len();
         match &mut self.picking {
             Some((row, _)) => *row = (*row + 1).min(last),
@@ -76,7 +76,7 @@ impl ResumePrompt {
     // vars: h = 보류 작업 수
     // basis: estimate
     /// 선택 단계에서는 목록 끝의 확정 행에서만 `Continue`를 돌려준다.
-    pub fn confirm(&mut self) -> ResumeOutcome {
+    pub(crate) fn confirm(&mut self) -> ResumeOutcome {
         let Some((row, chosen)) = &mut self.picking else {
             return match self.selected {
                 ResumeChoice::All => ResumeOutcome::ContinueAll,
@@ -111,7 +111,7 @@ impl ResumePrompt {
 }
 
 #[derive(Debug)]
-pub struct ResumePromptView<'a> {
+pub(crate) struct ResumePromptView<'a> {
     pub prompt: &'a ResumePrompt,
     pub lang: Lang,
 }
@@ -120,7 +120,7 @@ impl ResumePromptView<'_> {
     // cost: time O(h²), heap O(h), stack O(1)
     // vars: h = 보류 작업 수
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let lang = self.lang;
         let prompt = self.prompt;
         let labels: Vec<TaskLabel> = prompt.held.iter().map(|(_, label)| *label).collect();

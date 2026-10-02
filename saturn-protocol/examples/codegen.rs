@@ -1,5 +1,7 @@
 //! `generated/`를 다시 쓴다.
 
+#![expect(clippy::print_stdout, reason = "생성 결과 경로를 사용자에게 출력")]
+
 use std::path::Path;
 
 use saturn_protocol::codegen;

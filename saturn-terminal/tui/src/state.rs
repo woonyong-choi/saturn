@@ -14,18 +14,18 @@ use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 use crate::labels;
 
 /// 도구 호출이 시작되고 허가 요청이나 진행 이벤트 없이 이만큼 지나면 상태판에 준비 중을 보인다.
-pub const APPROVAL_PENDING_AFTER: Duration = Duration::from_secs(3);
+pub(crate) const APPROVAL_PENDING_AFTER: Duration = Duration::from_secs(3);
 
 /// 허가를 기다리는 동안은 멈춘다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Stopwatch {
+pub(crate) struct Stopwatch {
     started: Instant,
     paused_total: Duration,
     paused_at: Option<Instant>,
 }
 
 impl Stopwatch {
-    pub fn start(now: Instant) -> Self {
+    pub(crate) fn start(now: Instant) -> Self {
         Self {
             started: now,
             paused_total: Duration::ZERO,
@@ -33,24 +33,24 @@ impl Stopwatch {
         }
     }
 
-    pub fn start_with(now: Instant, elapsed: Duration) -> Self {
+    pub(crate) fn start_with(now: Instant, elapsed: Duration) -> Self {
         Self::start(now.checked_sub(elapsed).unwrap_or(now))
     }
 
     /// 이미 멈췄으면 그대로.
-    pub fn pause(&mut self, now: Instant) {
+    pub(crate) fn pause(&mut self, now: Instant) {
         if self.paused_at.is_none() {
             self.paused_at = Some(now);
         }
     }
 
-    pub fn resume(&mut self, now: Instant) {
+    pub(crate) fn resume(&mut self, now: Instant) {
         if let Some(paused_at) = self.paused_at.take() {
             self.paused_total += now.saturating_duration_since(paused_at);
         }
     }
 
-    pub fn elapsed(&self, now: Instant) -> Duration {
+    pub(crate) fn elapsed(&self, now: Instant) -> Duration {
         let end = self.paused_at.unwrap_or(now);
         end.saturating_duration_since(self.started)
             .saturating_sub(self.paused_total)
@@ -58,7 +58,7 @@ impl Stopwatch {
 }
 
 #[derive(Debug, Clone)]
-pub struct TaskView {
+pub(crate) struct TaskView {
     pub id: TaskId,
     pub label: TaskLabel,
     pub state: TaskState,
@@ -80,7 +80,7 @@ pub struct TaskView {
 }
 
 #[derive(Debug, Clone)]
-pub struct InputView {
+pub(crate) struct InputView {
     pub id: InputId,
     /// 끼워 넣기면 합쳐진 작업의 이름표.
     pub label: Option<TaskLabel>,
@@ -96,7 +96,7 @@ pub struct InputView {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InputUpdate {
+pub(crate) struct InputUpdate {
     pub input: InputId,
     /// 다른 TUI가 보낸 입력에도 온다.
     pub text: String,
@@ -107,7 +107,7 @@ pub struct InputUpdate {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TaskUpdate {
+pub(crate) struct TaskUpdate {
     pub task: TaskId,
     pub label: TaskLabel,
     pub state: TaskState,
@@ -117,7 +117,7 @@ pub struct TaskUpdate {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrainingProgress {
+pub(crate) struct TrainingProgress {
     pub stage: String,
     pub graded: u32,
     pub elapsed: Duration,
@@ -125,21 +125,21 @@ pub struct TrainingProgress {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StopResult {
+pub(crate) struct StopResult {
     pub held: Vec<TaskLabel>,
     /// 멈춤 뒤 provider 프로세스 묶음 밖에 남은 프로세스 수.
     pub unconfirmed: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ContextSize {
+pub(crate) struct ContextSize {
     pub tokens: Option<u64>,
     /// Saturn이 맥락을 정리하는 기준 토큰.
     pub threshold: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FeedbackPrompt {
+pub(crate) struct FeedbackPrompt {
     pub judgment: JudgmentId,
     pub input: InputId,
     pub label: TaskLabel,
@@ -148,7 +148,7 @@ pub struct FeedbackPrompt {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Change {
+pub(crate) enum Change {
     /// 입력당 한 번.
     Echo { input: InputId },
     /// 작업별 출력 칸에 완성된 줄 단위로 넣는다.
@@ -174,7 +174,7 @@ pub enum Change {
 }
 
 #[derive(Debug, Default)]
-pub struct ChatState {
+pub(crate) struct ChatState {
     pub chat: Option<ChatId>,
     /// 끝난 작업은 결과를 대화 기록으로 옮긴 뒤 지운다.
     pub tasks: BTreeMap<TaskId, TaskView>,
@@ -196,7 +196,7 @@ pub struct ChatState {
 }
 
 impl ChatState {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
@@ -204,7 +204,7 @@ impl ChatState {
     // vars: i = 입력 수, h = 보류 줄 수, n = 원문 길이
     // basis: estimate
     /// TODO(#60): provider가 끼워 넣기를 거절한 입력(`Rejected`)을 대기로 옮길지, 다시 판단할지, 물을지
-    pub fn apply_input(&mut self, update: InputUpdate) -> Change {
+    pub(crate) fn apply_input(&mut self, update: InputUpdate) -> Change {
         let seq = self.next_seq();
         let view = self.inputs.entry(update.input).or_insert(InputView {
             id: update.input,
@@ -245,7 +245,7 @@ impl ChatState {
     // cost: time O(log t + h), heap O(1), stack O(1)
     // vars: t = 작업 수, h = 보류 줄 수
     // basis: estimate
-    pub fn apply_task(&mut self, update: TaskUpdate, now: Instant) -> Change {
+    pub(crate) fn apply_task(&mut self, update: TaskUpdate, now: Instant) -> Change {
         let seq = self.next_seq();
         let previous = self.tasks.get(&update.task).map(|view| view.state);
         let view = self.tasks.entry(update.task).or_insert_with(|| TaskView {
@@ -296,7 +296,7 @@ impl ChatState {
     }
 
     /// 결과 머리줄을 찍은 뒤 부른다.
-    pub fn finish_task(&mut self, task: TaskId) -> Option<TaskView> {
+    pub(crate) fn finish_task(&mut self, task: TaskId) -> Option<TaskView> {
         let view = self.tasks.remove(&task);
         self.clear_stop_if_no_holds();
         view
@@ -306,7 +306,12 @@ impl ChatState {
     // vars: t = 작업 수, s = subagent 수, n = 이벤트 글 길이
     // basis: estimate
     /// subagent의 글과 도구는 부모 출력 칸과 도구 셀에 넣지 않는다.
-    pub fn apply_event(&mut self, task: TaskId, event: ProviderEvent, now: Instant) -> Change {
+    pub(crate) fn apply_event(
+        &mut self,
+        task: TaskId,
+        event: ProviderEvent,
+        now: Instant,
+    ) -> Change {
         let Some(view) = self.tasks.get_mut(&task) else {
             return Change::Redraw;
         };
@@ -402,20 +407,20 @@ impl ChatState {
     // cost: time O(a), heap O(1), stack O(1)
     // vars: a = 알림 수
     // basis: estimate
-    pub fn apply_alert(&mut self, alert: Alert) {
+    pub(crate) fn apply_alert(&mut self, alert: Alert) {
         if !self.alerts.contains(&alert) {
             self.alerts.push(alert);
         }
     }
 
-    pub fn apply_stopped(&mut self, held: Vec<TaskLabel>) {
+    pub(crate) fn apply_stopped(&mut self, held: Vec<TaskLabel>) {
         self.stop = Some(StopResult {
             held,
             unconfirmed: None,
         });
     }
 
-    pub fn apply_stop_unconfirmed(&mut self, remaining: u32) {
+    pub(crate) fn apply_stop_unconfirmed(&mut self, remaining: u32) {
         let stop = self.stop.get_or_insert(StopResult {
             held: Vec::new(),
             unconfirmed: None,
@@ -426,7 +431,7 @@ impl ChatState {
     // cost: time O(t), heap O(1), stack O(1)
     // vars: t = 작업 수
     // basis: estimate
-    pub fn live_tasks(&self) -> usize {
+    pub(crate) fn live_tasks(&self) -> usize {
         self.tasks
             .values()
             .filter(|task| labels::is_live(task.state))
@@ -436,7 +441,7 @@ impl ChatState {
     // cost: time O(i), heap O(1), stack O(1)
     // vars: i = 입력 수
     // basis: estimate
-    pub fn queued_lines(&self) -> usize {
+    pub(crate) fn queued_lines(&self) -> usize {
         self.inputs
             .values()
             .filter(|input| input.state == InputState::Queued)
@@ -447,7 +452,7 @@ impl ChatState {
     // vars: t = 작업 수, i = 입력 수
     // basis: estimate
     /// `NeedsCheck` 작업도 보류 줄로 센다.
-    pub fn held_lines(&self) -> usize {
+    pub(crate) fn held_lines(&self) -> usize {
         let tasks = self
             .tasks
             .values()
@@ -461,18 +466,18 @@ impl ChatState {
         tasks + inputs
     }
 
-    pub fn labels_visible(&self) -> bool {
+    pub(crate) fn labels_visible(&self) -> bool {
         labels::visible(self.live_tasks(), self.queued_lines(), self.held_lines())
     }
 
-    pub fn is_running(&self) -> bool {
+    pub(crate) fn is_running(&self) -> bool {
         self.tasks.values().any(|task| labels::is_live(task.state))
     }
 
     // cost: time O(i), heap O(1), stack O(1)
     // vars: i = 입력 수
     // basis: estimate
-    pub fn latest_recallable(&self) -> Option<&InputView> {
+    pub(crate) fn latest_recallable(&self) -> Option<&InputView> {
         self.inputs
             .values()
             .filter(|input| matches!(input.state, InputState::Judging | InputState::Queued))
@@ -483,7 +488,7 @@ impl ChatState {
     // vars: i = 입력 수
     // basis: estimate
     /// 이름표가 없으면 가장 최근 `Queued` 입력.
-    pub fn queued_by_label(&self, label: Option<TaskLabel>) -> Option<&InputView> {
+    pub(crate) fn queued_by_label(&self, label: Option<TaskLabel>) -> Option<&InputView> {
         self.inputs
             .values()
             .filter(|input| input.state == InputState::Queued)
@@ -491,7 +496,7 @@ impl ChatState {
             .max_by_key(|input| input.seq)
     }
 
-    pub fn held_by_label(&self, label: TaskLabel) -> Option<&TaskView> {
+    pub(crate) fn held_by_label(&self, label: TaskLabel) -> Option<&TaskView> {
         self.tasks
             .values()
             .find(|task| task.label == label && is_held(task.state))
@@ -501,7 +506,7 @@ impl ChatState {
     // vars: t = 작업 수
     // basis: estimate
     /// 결과 불명 작업을 포함해 이름표 순서로.
-    pub fn held_tasks(&self) -> Vec<&TaskView> {
+    pub(crate) fn held_tasks(&self) -> Vec<&TaskView> {
         let mut held: Vec<&TaskView> = self
             .tasks
             .values()

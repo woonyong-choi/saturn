@@ -3,6 +3,8 @@
 //! TODO(#91): 채점 안 된 판단 수, 채점 후보, 라벨, router 버전을 읽고 쓰는 `store` 메서드 없음
 //! TODO(#55): 멈춤 명령이 진행 중인 학습도 멈출지 미정
 
+#![expect(clippy::todo, reason = "#91 뼈대")]
+
 mod grading;
 mod trainer;
 
@@ -17,13 +19,10 @@ use crate::routers::{RemoteRouter, RoutersError};
 use crate::settings::Settings;
 use crate::store::{Store, StoreError};
 
-pub use grading::{
-    GradingCandidate, LabeledSets, estimate_tokens, grade, select_candidates, split_labels,
-};
-pub use trainer::{CandidateModel, TrainerSpec, evaluate, run_trainer};
+pub(crate) use grading::{GradingCandidate, LabeledSets};
 
 /// 느린 조정의 질문별 최소 채점 건수로도 쓴다.
-pub const MIN_UNLABELED: u32 = 200;
+pub(crate) const MIN_UNLABELED: u32 = 200;
 
 #[derive(Debug, thiserror::Error)]
 pub enum TrainingError {
@@ -47,7 +46,7 @@ pub enum TrainingError {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrainOptions {
+pub(crate) struct TrainOptions {
     /// 기준값을 1차 영점으로 되돌린다.
     pub reset_thresholds: bool,
     /// 이 router 버전에서 다시 학습한다.
@@ -55,7 +54,7 @@ pub struct TrainOptions {
 }
 
 #[derive(Debug, Clone)]
-pub struct TrainPlan {
+pub(crate) struct TrainPlan {
     /// 우선순위 순서.
     pub candidates: Vec<GradingCandidate>,
     pub grader: String,
@@ -67,13 +66,13 @@ pub struct TrainPlan {
 }
 
 impl TrainPlan {
-    pub fn to_notification(&self) -> Notification {
+    pub(crate) fn to_notification(&self) -> Notification {
         todo!("#91")
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum TrainOutcome {
+pub(crate) enum TrainOutcome {
     Promoted {
         version: String,
         report: EvalReport,
@@ -92,7 +91,7 @@ pub enum TrainOutcome {
 
 /// # Errors
 /// `MIN_UNLABELED` 미만이면 `NotEnough`, 채점 모델이 없으면 `NoGrader`, 조회 실패면 `Store`.
-pub async fn preview(
+pub(crate) async fn preview(
     store: &Store,
     settings: &Settings,
     options: TrainOptions,
@@ -102,7 +101,7 @@ pub async fn preview(
 
 /// # Errors
 /// 채점 실패면 `Grader`, 학습기 실패면 `Trainer`나 `Process`, 기록 실패면 `Store`.
-pub async fn run(
+pub(crate) async fn run(
     store: &Store,
     grader: &RemoteRouter,
     supervisor: &Supervisor,
@@ -116,7 +115,7 @@ pub async fn run(
 ///
 /// # Errors
 /// 기록 조회 실패면 `Store`.
-pub async fn recenter_thresholds(
+pub(crate) async fn recenter_thresholds(
     store: &Store,
     mut states: Vec<ThresholdState>,
 ) -> Result<Vec<ThresholdState>, TrainingError> {
@@ -131,7 +130,7 @@ pub async fn recenter_thresholds(
 ///
 /// # Errors
 /// 없는 버전이면 `UnknownVersion`, 기록 실패면 `Store`.
-pub async fn recompute_thresholds(
+pub(crate) async fn recompute_thresholds(
     store: &Store,
     version: &str,
     reset: bool,
@@ -143,7 +142,7 @@ pub async fn recompute_thresholds(
 ///
 /// # Errors
 /// 학습기 실패면 `Trainer`나 `Process`, 기록 실패면 `Store`.
-pub async fn on_base_model_change(
+pub(crate) async fn on_base_model_change(
     store: &Store,
     supervisor: &Supervisor,
     base_model: &str,
@@ -156,12 +155,12 @@ pub async fn on_base_model_change(
 ///
 /// # Errors
 /// 없는 버전이면 `UnknownVersion`, 기록 실패면 `Store`.
-pub async fn approve_swap(store: &Store, version: &str) -> Result<(), TrainingError> {
+pub(crate) async fn approve_swap(store: &Store, version: &str) -> Result<(), TrainingError> {
     todo!("#91")
 }
 
 /// 승격된 모델도 버전별로 둔다. TODO(#91): 경로 미정
-pub fn models_dir(home: &std::path::Path) -> PathBuf {
+pub(crate) fn models_dir(home: &std::path::Path) -> PathBuf {
     todo!("#91")
 }
 

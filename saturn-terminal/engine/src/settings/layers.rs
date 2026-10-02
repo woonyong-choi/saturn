@@ -27,9 +27,6 @@ const IRREVERSIBLE_MIN: f64 = 0.8;
 const DEFAULT_LAYER: &str = r#"# Saturn 기본값
 on_exit = "background"
 
-[agents]
-worktree = false
-
 [router]
 method = "jev"
 endpoint = "https://api.typesafe.ai"
@@ -90,7 +87,6 @@ enum Kind {
 /// 이 밖의 키는 모르는 키로 검사에 실패한다.
 const SCHEMA: &[(&str, Kind)] = &[
     ("on_exit", Kind::OneOf(&["background", "stop", "ask"])),
-    ("agents.worktree", Kind::Flag),
     ("router.method", Kind::OneOf(&["jev", "saturn", "collect"])),
     ("router.endpoint", Kind::Text),
     (
@@ -131,7 +127,7 @@ const SCHEMA: &[(&str, Kind)] = &[
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UserOnly {
+pub(crate) enum UserOnly {
     RouterEndpoint,
     /// 키 정보, 관리자 명령, 저장 방식.
     RouterKeyRef,
@@ -142,7 +138,7 @@ pub enum UserOnly {
 
 impl UserOnly {
     /// 이 접두사와 같거나 `접두사.`로 시작하는 키는 모두 사용자 전용이다.
-    pub fn key_prefix(self) -> &'static str {
+    pub(crate) fn key_prefix(self) -> &'static str {
         match self {
             Self::RouterEndpoint => "router.endpoint",
             Self::RouterKeyRef => "router.key",
@@ -161,7 +157,7 @@ impl UserOnly {
     }
 }
 
-pub const USER_ONLY: &[UserOnly] = &[
+pub(crate) const USER_ONLY: &[UserOnly] = &[
     UserOnly::RouterEndpoint,
     UserOnly::RouterKeyRef,
     UserOnly::GradingModel,
@@ -173,7 +169,7 @@ pub const USER_ONLY: &[UserOnly] = &[
 ///
 /// # Errors
 /// 폴더를 읽지 못하면 `Io`.
-pub async fn find_folder_config(
+pub(crate) async fn find_folder_config(
     workdir: &Path,
     saturn_home: &Path,
 ) -> Result<Option<PathBuf>, SettingsError> {
@@ -205,7 +201,9 @@ pub async fn find_folder_config(
 ///
 /// # Errors
 /// 문법 오류면 `Parse`, 검사 실패면 `Invalid`.
-pub fn merge(mut layers: Vec<(LayerSource, String)>) -> Result<SettingsSnapshot, SettingsError> {
+pub(crate) fn merge(
+    mut layers: Vec<(LayerSource, String)>,
+) -> Result<SettingsSnapshot, SettingsError> {
     layers.sort_by_key(|(source, _)| source.layer);
     let mut parsed = Vec::with_capacity(layers.len());
     let mut permissions = Vec::with_capacity(layers.len());
@@ -247,7 +245,7 @@ pub fn merge(mut layers: Vec<(LayerSource, String)>) -> Result<SettingsSnapshot,
 ///
 /// # Errors
 /// `=`가 없거나 값이 TOML 값이 아니면 `Parse`(경로는 `-c`).
-pub fn run_layer(overrides: &[String]) -> Result<String, SettingsError> {
+pub(crate) fn run_layer(overrides: &[String]) -> Result<String, SettingsError> {
     let mut doc = toml_edit::DocumentMut::new();
     for (index, item) in overrides.iter().enumerate() {
         let parse_error = |message: String| SettingsError::Parse {
@@ -268,39 +266,16 @@ pub fn run_layer(overrides: &[String]) -> Result<String, SettingsError> {
     Ok(doc.to_string())
 }
 
-pub fn default_layer() -> &'static str {
+pub(crate) fn default_layer() -> &'static str {
     DEFAULT_LAYER
 }
 
 /// 병합하지 않고 신뢰도 묻지 않으며 원문만 돌려준다.
-pub async fn read_reference(path: &Path) -> Result<String, SettingsError> {
+pub(crate) async fn read_reference(path: &Path) -> Result<String, SettingsError> {
     std::fs::read_to_string(path).map_err(|source| SettingsError::Io {
         path: path.to_path_buf(),
         source,
     })
-}
-
-/// 폴더 파일의 사용자 전용 키가 모두 그 층의 `ignored`에 있는지 본다. 파일을 다시 읽지 못하면 거짓.
-pub(crate) fn user_only_from_user_layer(_settings: &Settings, layers: &[LayerSource]) -> bool {
-    layers
-        .iter()
-        .filter(|source| source.layer == Layer::Folder)
-        .all(|source| {
-            let Some(path) = &source.path else {
-                return false;
-            };
-            let Ok(content) = std::fs::read_to_string(path) else {
-                return false;
-            };
-            let Ok(values) = parse_toml(&content, path) else {
-                return false;
-            };
-            let mut keys = Vec::new();
-            leaf_keys(&values, "", &mut keys);
-            keys.iter()
-                .filter(|key| is_user_only(key))
-                .all(|key| source.ignored.contains(key))
-        })
 }
 
 pub(crate) fn source(layer: Layer, path: Option<PathBuf>, content: &str) -> LayerSource {
@@ -717,30 +692,6 @@ mod tests {
             assert_eq!(key, expected);
             assert_eq!(layer, Layer::Chat);
         }
-    }
-
-    #[test]
-    fn agents_worktree_defaults_off_and_takes_only_booleans() {
-        let worktree = |settings: &Settings| {
-            settings
-                .lookup("agents.worktree")
-                .and_then(serde_json::Value::as_bool)
-        };
-        let off = merge(vec![layer(Layer::Default, default_layer())]).unwrap();
-        let on = merge(vec![
-            layer(Layer::Default, default_layer()),
-            layer(Layer::Folder, "[agents]\nworktree = true\n"),
-        ])
-        .unwrap();
-        let bad = merge(vec![
-            layer(Layer::Default, default_layer()),
-            layer(Layer::Chat, "agents.worktree = \"yes\"\n"),
-        ])
-        .unwrap_err();
-
-        assert_eq!(worktree(&off.settings), Some(false));
-        assert_eq!(worktree(&on.settings), Some(true));
-        assert!(matches!(bad, SettingsError::Invalid { key, .. } if key == "agents.worktree"));
     }
 
     #[test]

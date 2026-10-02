@@ -15,13 +15,13 @@ use tokio::time::Instant;
 use crate::secrets;
 
 /// 멈춤 신호 뒤 묶음에 중지 신호를 보내기 전까지 기다리는 시간.
-pub const STOP_GRACE: Duration = Duration::from_secs(10);
+pub(crate) const STOP_GRACE: Duration = Duration::from_secs(10);
 
 /// SIGTERM 뒤 SIGKILL 전까지 기다리는 시간. 초안 값.
-pub const KILL_GRACE: Duration = Duration::from_secs(5);
+pub(crate) const KILL_GRACE: Duration = Duration::from_secs(5);
 
 /// 초안 값.
-pub const WATCH_INTERVAL: Duration = Duration::from_secs(1);
+pub(crate) const WATCH_INTERVAL: Duration = Duration::from_secs(1);
 
 const STOP_POLL: Duration = Duration::from_millis(100);
 
@@ -30,7 +30,7 @@ const KILL_SETTLE: Duration = Duration::from_secs(1);
 
 /// 에이전트가 작업 중 실행한 `saturn`은 이 변수가 있으면 거절한다(판정은 `cli`).
 /// TODO(#33): 표지 이름과 방식 미정. 자식 Saturn을 부모에 붙이는 방식이 정해지면 바꾼다
-pub const NESTED_MARKER_ENV: &str = "SATURN_AGENT";
+pub(crate) const NESTED_MARKER_ENV: &str = "SATURN_AGENT";
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProcessError {
@@ -466,6 +466,7 @@ fn parse_table(text: &str) -> Vec<ProcessRow> {
 /// 음수 pid는 묶음이다. 이미 없는 대상(ESRCH)은 성공으로 본다.
 fn send_signal(target: libc::pid_t, signal: libc::c_int) -> std::io::Result<()> {
     // SAFETY: `kill`은 메모리를 건드리지 않는 시스템 호출이고 인자는 정수다
+    #[expect(unsafe_code, reason = "libc kill 호출")]
     let result = unsafe { libc::kill(target, signal) };
     if result == 0 {
         return Ok(());
@@ -480,6 +481,7 @@ fn send_signal(target: libc::pid_t, signal: libc::c_int) -> std::io::Result<()> 
 /// 권한이 없어도 존재하면 참.
 fn pid_alive(pid: u32) -> bool {
     // SAFETY: 신호 0은 존재 확인만 하는 `kill` 호출이다
+    #[expect(unsafe_code, reason = "libc kill 호출")]
     let result = unsafe { libc::kill(to_pid(pid), 0) };
     result == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
 }

@@ -14,7 +14,7 @@ use super::{Store, StoreError, from_sql_int, sha256_hex, to_sql_int};
 
 /// 압축이 대조 값을 바꾸지 않게 항상 압축 전 바이트로 계산한다.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RawDigest {
+pub(crate) struct RawDigest {
     /// SHA-256 hex. 초안 값.
     pub hash: String,
     pub size: u64,
@@ -25,7 +25,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 실행이면 `NotFound`, 이미 압축한(끝난) 실행이면 `Database`.
-    pub async fn append_raw(&self, run: RunId, chunk: &[u8]) -> Result<(), StoreError> {
+    pub(crate) async fn append_raw(&self, run: RunId, chunk: &[u8]) -> Result<(), StoreError> {
         let mut tx = self.pool.begin().await?;
         let sealed: Option<bool> =
             sqlx::query_scalar("SELECT raw_gzip IS NOT NULL FROM runs WHERE id = ?")
@@ -86,7 +86,7 @@ impl Store {
     ///
     /// # Errors
     /// 해제 실패면 `Compression`, 대조가 다르면 `DigestMismatch`, 없는 실행이면 `NotFound`.
-    pub async fn read_raw(&self, run: RunId) -> Result<Vec<u8>, StoreError> {
+    pub(crate) async fn read_raw(&self, run: RunId) -> Result<Vec<u8>, StoreError> {
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query("SELECT raw_gzip, raw_hash, raw_size FROM runs WHERE id = ?")
             .bind(to_sql_int(run.0))
@@ -111,7 +111,7 @@ impl Store {
     }
 
     /// 실행 중이면 지금까지 쓴 바이트로 계산한다.
-    pub async fn raw_digest(&self, run: RunId) -> Result<RawDigest, StoreError> {
+    pub(crate) async fn raw_digest(&self, run: RunId) -> Result<RawDigest, StoreError> {
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query(
             "SELECT raw_gzip IS NOT NULL AS sealed, raw_hash, raw_size FROM runs WHERE id = ?",

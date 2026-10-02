@@ -8,15 +8,14 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
-use crate::i18n::Lang;
 use crate::view::{SELECTED, text_width, truncate};
 
-pub const MAX_ROWS: usize = 8;
+pub(crate) const MAX_ROWS: usize = 8;
 /// 큰 저장소에서 화면이 멈추지 않게 둔 상한(초안).
-pub const MAX_FILES: usize = 2_000;
+pub(crate) const MAX_FILES: usize = 2_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PopupKind {
+pub(crate) enum PopupKind {
     Command,
     Value,
     File,
@@ -24,7 +23,7 @@ pub enum PopupKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PopupItem {
+pub(crate) struct PopupItem {
     pub value: String,
     pub description: String,
     /// 파일 목록은 비운다.
@@ -32,7 +31,7 @@ pub struct PopupItem {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Popup {
+pub(crate) struct Popup {
     pub kind: PopupKind,
     /// `/ju`의 `ju`.
     pub token: String,
@@ -41,7 +40,7 @@ pub struct Popup {
 }
 
 impl Popup {
-    pub fn open(kind: PopupKind, candidates: Vec<PopupItem>) -> Self {
+    pub(crate) fn open(kind: PopupKind, candidates: Vec<PopupItem>) -> Self {
         Self {
             kind,
             token: String::new(),
@@ -54,7 +53,7 @@ impl Popup {
     // vars: p = 후보 수, q = token.len()
     // basis: estimate
     /// 앞부분 일치 우선, 그다음 포함.
-    pub fn filter(&mut self, token: &str, candidates: &[PopupItem]) {
+    pub(crate) fn filter(&mut self, token: &str, candidates: &[PopupItem]) {
         self.token = token.to_string();
         let prefixed = candidates.iter().filter(|c| c.value.starts_with(token));
         let contained = candidates
@@ -65,39 +64,39 @@ impl Popup {
     }
 
     /// 첫 행에서 멈춘다.
-    pub fn up(&mut self) {
+    pub(crate) fn up(&mut self) {
         self.selected = self.selected.saturating_sub(1);
     }
 
     /// 끝 행에서 멈춘다.
-    pub fn down(&mut self) {
+    pub(crate) fn down(&mut self) {
         if self.selected + 1 < self.items.len() {
             self.selected += 1;
         }
     }
 
-    pub fn selected(&self) -> Option<&PopupItem> {
+    pub(crate) fn selected(&self) -> Option<&PopupItem> {
         self.items.get(self.selected)
     }
 
-    pub fn height(&self) -> u16 {
+    pub(crate) fn height(&self) -> u16 {
         self.items.len().min(MAX_ROWS) as u16
     }
 }
 
 /// 같은 토큰이면 다시 띄우지 않는다.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct PopupSuppress {
+pub(crate) struct PopupSuppress {
     token: Option<String>,
 }
 
 impl PopupSuppress {
-    pub fn suppress(&mut self, token: &str) {
+    pub(crate) fn suppress(&mut self, token: &str) {
         self.token = Some(token.to_string());
     }
 
     /// 토큰이 바뀌면 억제를 풀고 `true`.
-    pub fn allows(&mut self, token: &str) -> bool {
+    pub(crate) fn allows(&mut self, token: &str) -> bool {
         match &self.token {
             Some(suppressed) if suppressed == token => false,
             Some(_) => {
@@ -113,7 +112,7 @@ impl PopupSuppress {
 // vars: f = 훑은 항목 수(최대 MAX_FILES), d = 읽은 폴더 수
 // basis: estimate
 /// `.git`과 `.gitignore`의 글로브 없는 이름을 빼고 `MAX_FILES`개까지 모은다(초안).
-pub fn file_candidates(workdir: &std::path::Path) -> Vec<PopupItem> {
+pub(crate) fn file_candidates(workdir: &std::path::Path) -> Vec<PopupItem> {
     let ignored = ignore_names(workdir);
     let mut found = Vec::new();
     let mut pending = vec![workdir.to_path_buf()];
@@ -149,16 +148,15 @@ pub fn file_candidates(workdir: &std::path::Path) -> Vec<PopupItem> {
 }
 
 #[derive(Debug)]
-pub struct PopupView<'a> {
+pub(crate) struct PopupView<'a> {
     pub popup: &'a Popup,
-    pub lang: Lang,
 }
 
 impl PopupView<'_> {
     // cost: time O(r·w), heap O(r·w), stack O(1)
     // vars: r = 행 수(최대 8), w = 칸 폭
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let width = usize::from(area.width);
         let start = (self.popup.selected + 1).saturating_sub(MAX_ROWS);
         let rows: Vec<Line> = self
@@ -298,10 +296,7 @@ mod tests {
     fn render_marks_selected_row_and_source() {
         let popup = Popup::open(PopupKind::Command, candidates());
         let mut terminal = Terminal::new(TestBackend::new(30, 2)).unwrap();
-        let view = PopupView {
-            popup: &popup,
-            lang: Lang::Ko,
-        };
+        let view = PopupView { popup: &popup };
 
         terminal
             .draw(|frame| view.render(frame, frame.area()))

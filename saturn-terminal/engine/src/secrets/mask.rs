@@ -4,7 +4,7 @@
 use std::io::Write;
 
 /// 끝 4자리도 남기지 않는다. 초안 값.
-pub const REDACTED: &str = "[redacted]";
+pub(crate) const REDACTED: &str = "[redacted]";
 
 /// 초안 목록(설계는 Authorization만 정함).
 const SENSITIVE_HEADERS: &[&str] = &["authorization", "proxy-authorization", "x-api-key"];
@@ -69,14 +69,14 @@ impl std::fmt::Debug for Masker {
 }
 
 /// 키가 두 번의 쓰기로 나뉘어도 가리도록 줄바꿈까지 모았다가 쓴다.
-pub struct MaskingWriter<W: Write> {
+pub(crate) struct MaskingWriter<W: Write> {
     inner: W,
     masker: Masker,
     line: Vec<u8>,
 }
 
 impl<W: Write> MaskingWriter<W> {
-    pub fn new(inner: W, masker: Masker) -> Self {
+    pub(crate) fn new(inner: W, masker: Masker) -> Self {
         Self {
             inner,
             masker,
@@ -138,7 +138,7 @@ fn mask_header_line(line: &str) -> String {
 }
 
 /// 대소문자를 무시한다.
-pub fn is_sensitive_header(name: &str) -> bool {
+pub(crate) fn is_sensitive_header(name: &str) -> bool {
     SENSITIVE_HEADERS
         .iter()
         .any(|header| header.eq_ignore_ascii_case(name))

@@ -11,24 +11,24 @@ use crate::i18n::Lang;
 use crate::view::transcript::{Transcript, styled_rows};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct FullTranscript {
+pub(crate) struct FullTranscript {
     /// 맨 위에서 내려온 줄 수.
     pub scroll: usize,
 }
 
 impl FullTranscript {
-    pub fn up(&mut self) {
+    pub(crate) fn up(&mut self) {
         self.scroll = self.scroll.saturating_sub(1);
     }
 
     /// 끝을 넘는 값은 그릴 때 자른다.
-    pub fn down(&mut self) {
+    pub(crate) fn down(&mut self) {
         self.scroll += 1;
     }
 }
 
 #[derive(Debug)]
-pub struct FullTranscriptView<'a> {
+pub(crate) struct FullTranscriptView<'a> {
     pub state: &'a FullTranscript,
     pub transcript: &'a Transcript,
     pub lang: Lang,
@@ -39,7 +39,7 @@ impl FullTranscriptView<'_> {
     // cost: time O(c), heap O(c), stack O(1)
     // vars: c = 대화 기록 글자 수
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let rows = styled_rows(
             self.transcript.cells(),
             self.lang,

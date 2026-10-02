@@ -27,6 +27,7 @@ use crate::records::Record;
 // cost: time O(L), heap O(L), stack O(1), io 1
 // vars: L = 입출력 글자 수
 // basis: estimate
+#[expect(clippy::print_stderr, reason = "예제 실행 결과 표시")]
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())

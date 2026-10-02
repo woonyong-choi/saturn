@@ -60,7 +60,7 @@ const DROPPED_PROFILE_KEYS: &[&str] = &[
 ];
 
 #[derive(Debug, thiserror::Error)]
-pub enum HomeError {
+pub(crate) enum HomeError {
     #[error("failed to read codex config: {path}")]
     ReadConfig {
         path: PathBuf,
@@ -83,14 +83,14 @@ pub enum HomeError {
 
 /// 만든 `CODEX_HOME`과, 첫 턴 전에 준비를 확인할 MCP 서버.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PreparedHome {
+pub(crate) struct PreparedHome {
     pub path: PathBuf,
     pub mcp_servers: Vec<String>,
 }
 
 /// 사용자 폴더는 읽기만 한다.
 #[derive(Debug, Clone, Copy)]
-pub struct HomeInput<'a> {
+pub(crate) struct HomeInput<'a> {
     pub saturn_home: &'a Path,
     pub user_codex_home: &'a Path,
     pub rules: &'a [Rule],
@@ -104,7 +104,7 @@ pub struct HomeInput<'a> {
 ///
 /// # Errors
 /// 사용자 설정을 읽거나 해석하지 못하면 `ReadConfig`와 `ParseConfig`, 파일을 쓰지 못하면 `Write`.
-pub fn prepare(input: HomeInput<'_>) -> Result<PreparedHome, HomeError> {
+pub(crate) fn prepare(input: HomeInput<'_>) -> Result<PreparedHome, HomeError> {
     let mut doc = read_user_config(&input.user_codex_home.join(CONFIG_FILE))?;
     drop_permission_keys(&mut doc);
     let mcp_servers = translate_mcp(&mut doc, input.rules);
@@ -351,7 +351,7 @@ fn quote(token: &str) -> String {
 // vars: r = 규칙 수, p = 패턴 글자 수
 // basis: estimate
 /// 규칙 목록 전체의 지문. 규칙이 같은 채팅은 같은 폴더를 쓴다.
-pub fn rules_fingerprint(rules: &[Rule]) -> String {
+pub(crate) fn rules_fingerprint(rules: &[Rule]) -> String {
     let mut text = String::new();
     for rule in rules {
         let _ = writeln!(

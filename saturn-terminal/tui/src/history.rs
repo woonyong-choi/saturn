@@ -23,7 +23,7 @@ pub enum HistoryError {
 
 /// router 키 입력 창의 값은 절대 넣지 않는다.
 #[derive(Debug)]
-pub struct InputHistory {
+pub(crate) struct InputHistory {
     path: PathBuf,
     entries: Vec<String>,
     cursor: Option<usize>,
@@ -37,7 +37,7 @@ impl InputHistory {
     ///
     /// # Errors
     /// 파일이 있는데 읽지 못하면 `Read`.
-    pub fn load(path: &Path) -> Result<Self, HistoryError> {
+    pub(crate) fn load(path: &Path) -> Result<Self, HistoryError> {
         let entries = match std::fs::read_to_string(path) {
             Ok(content) => content.lines().map(unescape).collect(),
             Err(source) if source.kind() == std::io::ErrorKind::NotFound => Vec::new(),
@@ -62,7 +62,7 @@ impl InputHistory {
     ///
     /// # Errors
     /// 파일에 쓰지 못하면 `Write`.
-    pub fn push(&mut self, text: &str) -> Result<(), HistoryError> {
+    pub(crate) fn push(&mut self, text: &str) -> Result<(), HistoryError> {
         self.cursor = None;
         if self.entries.last().map(String::as_str) == Some(text) {
             return Ok(());
@@ -78,7 +78,7 @@ impl InputHistory {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     /// 맨 앞이면 맨 앞에 머문다.
-    pub fn older(&mut self) -> Option<&str> {
+    pub(crate) fn older(&mut self) -> Option<&str> {
         if self.entries.is_empty() {
             return None;
         }
@@ -93,7 +93,7 @@ impl InputHistory {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     /// 맨 끝을 지나면 `None`.
-    pub fn newer(&mut self) -> Option<&str> {
+    pub(crate) fn newer(&mut self) -> Option<&str> {
         let index = self.cursor? + 1;
         if index >= self.entries.len() {
             self.cursor = None;
@@ -103,7 +103,7 @@ impl InputHistory {
         self.entries.get(index).map(String::as_str)
     }
 
-    pub fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.cursor = None;
     }
 
@@ -111,7 +111,7 @@ impl InputHistory {
     // vars: e = 기록 글자 수 합, q = query.len()
     // basis: estimate
     /// `query`를 포함하는 입력을 최근 것부터 `skip`개 건너 고른다.
-    pub fn search(&self, query: &str, skip: usize) -> Option<&str> {
+    pub(crate) fn search(&self, query: &str, skip: usize) -> Option<&str> {
         if query.is_empty() {
             return None;
         }

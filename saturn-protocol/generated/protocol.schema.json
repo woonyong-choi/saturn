@@ -74,26 +74,6 @@
           "type": "object"
         },
         {
-          "additionalProperties": false,
-          "properties": {
-            "ChatBusyElsewhere": {
-              "properties": {
-                "chat": {
-                  "$ref": "#/$defs/ChatId"
-                }
-              },
-              "required": [
-                "chat"
-              ],
-              "type": "object"
-            }
-          },
-          "required": [
-            "ChatBusyElsewhere"
-          ],
-          "type": "object"
-        },
-        {
           "const": "RouterDownSendingInOrder",
           "description": "router 실패로 `[보내기]` 입력을 차례에 보낸다.",
           "type": "string"

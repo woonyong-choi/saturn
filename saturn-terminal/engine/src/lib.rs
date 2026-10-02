@@ -5,14 +5,20 @@
 #![allow(unused_variables, dead_code)]
 
 pub mod engine_log;
-pub mod processes;
-pub mod providers;
-pub mod routers;
-pub mod rpc;
-pub mod secrets;
-pub mod settings;
-pub mod store;
-pub mod training;
+pub(crate) mod processes;
+pub(crate) mod providers;
+pub(crate) mod routers;
+pub(crate) mod rpc;
+pub(crate) mod secrets;
+pub(crate) mod settings;
+pub(crate) mod store;
+pub(crate) mod training;
+
+pub use processes::Supervisor;
+pub use providers::{
+    LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults, UserProviderConfig,
+};
+pub use secrets::Masker;
 
 mod add_dir;
 mod chat_env;
@@ -54,11 +60,10 @@ use saturn_protocol::rpc::Request;
 use tokio::sync::Mutex;
 
 use crate::chat_env::ChatEnv;
-use crate::processes::{NESTED_MARKER_ENV, ProcessError, Supervisor};
-use crate::providers::ProviderConnection;
+use crate::processes::{NESTED_MARKER_ENV, ProcessError};
 use crate::routers::{ActiveRouter, Routers, RoutersError, SharedSecrets, StartCheck};
 use crate::rpc::{ClientId, EngineLock, RpcError, RpcEvent, RpcServer};
-use crate::secrets::{KeyInput, Masker, SecretStore, SecretsError, input_order};
+use crate::secrets::{KeyInput, SecretStore, SecretsError, input_order};
 use crate::settings::{FolderTrustPrompt, Settings, SettingsError, SettingsManager};
 use crate::store::{MigrationNotice, RunRecord, Store, StoreError};
 use crate::training::{TrainPlan, TrainingError};
@@ -435,16 +440,19 @@ impl Engine {
 
     /// 크래시 전에 보낸 패킷은 어느 경우에도 다시 보내지 않는다.
     /// TODO(#66): 실행 중으로 남은 subagent와 provider가 다시 불러오는 자식 session을 정리할지, 끊김 표시만 할지
+    #[expect(clippy::todo, reason = "#90 뼈대")]
     async fn recover_after_crash(&mut self) -> Result<(), EngineError> {
         todo!("#90")
     }
 
     /// 파일 상태를 확인한 뒤 그 상태로 만든 새 입력을 접수해 보낸다.
     /// TODO(#65): 수정 파일 목록을 실행 경계의 파일 상태 차이로 셀지, provider 이벤트로 셀지
+    #[expect(clippy::todo, reason = "#90 뼈대")]
     async fn resume_proven(&mut self, run: RunRecord) -> Result<(), EngineError> {
         todo!("#90")
     }
 
+    #[expect(clippy::todo, reason = "#90 뼈대")]
     async fn hold_unproven(&mut self, run: RunRecord) -> Result<(), EngineError> {
         todo!("#90")
     }
@@ -665,17 +673,20 @@ impl Engine {
     }
 
     /// TODO(#70): `stop`과 `ask`의 동작이 정해지기 전에는 `Background`와 같이 처리한다
+    #[expect(clippy::todo, reason = "#90 뼈대")]
     async fn on_last_detach(&mut self) -> Result<(), EngineError> {
         todo!("#90")
     }
 
     /// 보류는 자동으로 이어 가지 않는다.
     /// TODO(#235): 완료 알림 설정 키. TODO(#151): 알림 보내는 방법
+    #[expect(clippy::todo, reason = "#90 뼈대")]
     fn enter_background(&mut self) {
         todo!("#90")
     }
 
     /// 트리 유휴 뒤 `sessions::IDLE_GRACE`가 지났고 그사이 TUI가 붙지 않았으면 참.
+    #[expect(clippy::todo, reason = "#90 뼈대")]
     fn background_expired(&self, now: Instant) -> bool {
         todo!("#90")
     }

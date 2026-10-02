@@ -13,35 +13,35 @@ use crate::view::{MUTED, render_window};
 
 /// 키 원문은 화면, 로그, 입력 기록 어디에도 남기지 않으므로 `Debug`도 글자 수만 보인다.
 #[derive(Clone, Default)]
-pub struct MaskedInput(String);
+pub(crate) struct MaskedInput(String);
 
 impl MaskedInput {
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn push(&mut self, c: char) {
+    pub(crate) fn push(&mut self, c: char) {
         self.0.push(c);
     }
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn pop(&mut self) {
+    pub(crate) fn pop(&mut self) {
         self.0.pop();
     }
 
-    pub fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.0.chars().count()
     }
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     /// engine에 보낼 때 한 번만 부른다.
-    pub fn take(&mut self) -> String {
+    pub(crate) fn take(&mut self) -> String {
         std::mem::take(&mut self.0)
     }
 }
@@ -54,20 +54,20 @@ impl fmt::Debug for MaskedInput {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct RouterKeyPrompt {
+pub(crate) struct RouterKeyPrompt {
     /// engine이 키를 가린 문구.
     pub cause: String,
     pub input: MaskedInput,
 }
 
 #[derive(Debug)]
-pub struct RouterKeyPromptView<'a> {
+pub(crate) struct RouterKeyPromptView<'a> {
     pub prompt: &'a RouterKeyPrompt,
     pub lang: Lang,
 }
 
 impl RouterKeyPromptView<'_> {
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let lang = self.lang;
         let lines = vec![
             Line::from(self.prompt.cause.clone()),

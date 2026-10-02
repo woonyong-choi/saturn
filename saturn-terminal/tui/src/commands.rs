@@ -7,7 +7,7 @@ use crate::i18n::provider_name;
 use crate::labels::LABEL_RANGE;
 
 #[derive(Debug, thiserror::Error)]
-pub enum CommandError {
+pub(crate) enum CommandError {
     #[error("unknown command: {name}")]
     Unknown { name: String },
     #[error("invalid argument for /{command}: {argument}")]
@@ -18,7 +18,7 @@ pub enum CommandError {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CommandSpec {
+pub(crate) struct CommandSpec {
     pub path: &'static str,
     /// `Lang::tr`의 한국어 키.
     pub description: &'static str,
@@ -26,7 +26,7 @@ pub struct CommandSpec {
 }
 
 /// TODO(#41): 메인이 아닌 provider의 명령을 골랐을 때 처리
-pub const SATURN_COMMANDS: &[CommandSpec] = &[
+pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
     CommandSpec {
         path: "help",
         description: "도움말",
@@ -101,7 +101,7 @@ const MODEL_PROVIDERS: [&str; 2] = ["codex", "claude"];
 const PERMISSION_MODES: [&str; 4] = ["ask", "edit", "read-only", "full"];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SlashCommand {
+pub(crate) enum SlashCommand {
     /// `/help`
     Help,
     /// `/record on|off`
@@ -143,7 +143,7 @@ pub enum SlashCommand {
 ///
 /// # Errors
 /// 알 수 없는 Saturn 명령이면 `Unknown`, 인자가 틀리면 `InvalidArgument`.
-pub fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
+pub(crate) fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
     let line = line.trim();
     let Some(body) = line.strip_prefix('/') else {
         return Ok(None);
@@ -185,21 +185,6 @@ pub fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         },
     };
     Ok(Some(command))
-}
-
-// cost: time O(k·t), heap O(k), stack O(1)
-// vars: k = SATURN_COMMANDS.len(), t = token.len()
-// basis: estimate
-/// 앞부분 일치 우선, 그다음 포함 순서.
-pub fn filter(token: &str) -> Vec<&'static CommandSpec> {
-    let token = token.trim_start_matches('/');
-    let prefixed = SATURN_COMMANDS
-        .iter()
-        .filter(|spec| spec.path.starts_with(token));
-    let contained = SATURN_COMMANDS
-        .iter()
-        .filter(|spec| !spec.path.starts_with(token) && spec.path.contains(token));
-    prefixed.chain(contained).collect()
 }
 
 fn no_args(
@@ -492,17 +477,6 @@ mod tests {
                 line: "/review src".to_string()
             })
         );
-    }
-
-    // cost: time O(1), heap O(1), stack O(1)
-    // basis: estimate
-    #[test]
-    fn filter_prefers_prefix_then_contains() {
-        let paths: Vec<&str> = filter("/ver").iter().map(|spec| spec.path).collect();
-
-        assert_eq!(paths, vec!["router version"]);
-        assert_eq!(filter("/c")[0].path, "cancel");
-        assert_eq!(filter("/c")[1].path, "continue");
     }
 
     // cost: time O(1), heap O(1), stack O(1)

@@ -217,7 +217,7 @@ impl Engine {
             }
         };
         self.flow.switch_to.remove(&record.chat);
-        self.after_open(record.chat, &live, &plan).await?;
+        self.after_open(&live, &plan).await?;
         Ok(live)
     }
 
@@ -399,12 +399,7 @@ impl Engine {
     }
 
     /// 열린 session이 받은 기록 번호를 올리고 저장한다. 패킷은 첫 턴으로 갔으니 그 턴의 완료는 작업 끝이 아니다.
-    async fn after_open(
-        &mut self,
-        chat: ChatId,
-        live: &LiveSession,
-        plan: &OpenPlan,
-    ) -> Result<(), EngineError> {
+    async fn after_open(&mut self, live: &LiveSession, plan: &OpenPlan) -> Result<(), EngineError> {
         self.sessions.mark_delivered(live.session, plan.synced);
         self.persist_sessions(live.session).await
     }

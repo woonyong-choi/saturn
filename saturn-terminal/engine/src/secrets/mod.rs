@@ -9,13 +9,16 @@ mod storage;
 
 use std::path::PathBuf;
 
-pub use env::{CHILD_ENV_DENYLIST, is_denied, scrub, scrub_command};
-pub use hook::{HookPolicy, HookVerdict, ToolCall};
-pub use keys::{KeyInfo, KeyInput, KeySource, ROUTER_KEY_ENV, RouterKey, acquire, input_order};
-pub use mask::{Masked, Masker, MaskingWriter, REDACTED, is_sensitive_header};
-pub use storage::{
-    HARDENED_IDLE_LOCK, HARDENED_MAX_UNLOCK, LOCK_CHECK_INTERVAL, SecretStore, StorageMode,
+pub(crate) use env::{scrub, scrub_command};
+pub(crate) use hook::HookPolicy;
+pub(crate) use keys::{
+    KeyInfo, KeyInput, KeySource, ROUTER_KEY_ENV, RouterKey, acquire, input_order,
 };
+pub use mask::Masker;
+#[cfg(test)]
+pub(crate) use mask::REDACTED;
+pub(crate) use mask::{Masked, is_sensitive_header};
+pub(crate) use storage::{SecretStore, StorageMode};
 
 /// 메시지와 원인 어디에도 키 문자열을 넣지 않는다.
 #[derive(Debug, thiserror::Error)]

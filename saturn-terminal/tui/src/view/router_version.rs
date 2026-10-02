@@ -14,10 +14,10 @@ use crate::keys::Action;
 use crate::view::{EMPHASIS, MUTED, SELECTED, truncate, window_block};
 
 /// 상세의 최근 판단 건수.
-pub const RECENT_WINDOW: u32 = 200;
+pub(crate) const RECENT_WINDOW: u32 = 200;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct QuestionStats {
+pub(crate) struct QuestionStats {
     pub question: String,
     pub target_error: f64,
     pub threshold: f64,
@@ -26,7 +26,7 @@ pub struct QuestionStats {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct RouterVersionRow {
+pub(crate) struct RouterVersionRow {
     pub version: String,
     pub router: String,
     pub ece: Option<f64>,
@@ -39,7 +39,7 @@ impl RouterVersionRow {
     // vars: q = 질문 수
     // basis: estimate
     /// `current`와 이름이 같으면 사용 중.
-    pub fn from_info(info: RouterVersionInfo, current: &str) -> Self {
+    pub(crate) fn from_info(info: RouterVersionInfo, current: &str) -> Self {
         Self {
             active: info.version == current,
             version: info.version,
@@ -63,14 +63,14 @@ impl RouterVersionRow {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RouterVersionCommand {
+pub(crate) enum RouterVersionCommand {
     ResetThresholds,
     TrainFrom(String),
     Use(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct RouterVersionScreen {
+pub(crate) struct RouterVersionScreen {
     pub rows: Vec<RouterVersionRow>,
     pub selected: usize,
     pub detail: bool,
@@ -78,12 +78,12 @@ pub struct RouterVersionScreen {
 }
 
 impl RouterVersionScreen {
-    pub fn up(&mut self) {
+    pub(crate) fn up(&mut self) {
         self.selected = self.selected.saturating_sub(1);
         self.confirm_use = false;
     }
 
-    pub fn down(&mut self) {
+    pub(crate) fn down(&mut self) {
         if self.selected + 1 < self.rows.len() {
             self.selected += 1;
         }
@@ -94,7 +94,7 @@ impl RouterVersionScreen {
     // vars: v = 버전 이름 길이
     // basis: estimate
     /// `u`는 처음엔 확인 한 줄만 띄우고 `None`을 돌려준다.
-    pub fn command(&mut self, action: &Action) -> Option<RouterVersionCommand> {
+    pub(crate) fn command(&mut self, action: &Action) -> Option<RouterVersionCommand> {
         let version = self.rows.get(self.selected).map(|row| row.version.clone());
         match action {
             Action::ResetThresholds => Some(RouterVersionCommand::ResetThresholds),
@@ -118,13 +118,13 @@ impl RouterVersionScreen {
 
 impl RouterVersionScreen {
     /// 확인 한 줄이 떠 있었으면 닫고 `true`, 아니면 `false`(화면 종료).
-    pub fn cancel(&mut self) -> bool {
+    pub(crate) fn cancel(&mut self) -> bool {
         std::mem::take(&mut self.confirm_use)
     }
 }
 
 #[derive(Debug)]
-pub struct RouterVersionView<'a> {
+pub(crate) struct RouterVersionView<'a> {
     pub screen: &'a RouterVersionScreen,
     pub lang: Lang,
 }
@@ -133,7 +133,7 @@ impl RouterVersionView<'_> {
     // cost: time O(r + q), heap O(r + q), stack O(1)
     // vars: r = 버전 수, q = 상세 질문 수
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let lang = self.lang;
         let block = window_block(lang.tr(i18n::ROUTER_VERSION_TITLE));
         let inner = block.inner(area);

@@ -10,16 +10,17 @@ use ratatui::text::{Line, Span};
 use crate::i18n::{self, Lang};
 use crate::view::{SELECTED, render_window};
 
-pub const MIN_CANDIDATES: u32 = 200;
+#[expect(dead_code, reason = "#91 학습 실행 구현 전")]
+pub(crate) const MIN_CANDIDATES: u32 = 200;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TrainChoice {
+pub(crate) enum TrainChoice {
     Run,
     Cancel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TrainConfirm {
+pub(crate) struct TrainConfirm {
     pub candidates: u32,
     pub grading_model: String,
     pub estimated_tokens: u64,
@@ -30,17 +31,17 @@ pub struct TrainConfirm {
 }
 
 impl TrainConfirm {
-    pub fn up(&mut self) {
+    pub(crate) fn up(&mut self) {
         self.selected = TrainChoice::Run;
     }
 
-    pub fn down(&mut self) {
+    pub(crate) fn down(&mut self) {
         self.selected = TrainChoice::Cancel;
     }
 }
 
 #[derive(Debug)]
-pub struct TrainConfirmView<'a> {
+pub(crate) struct TrainConfirmView<'a> {
     pub confirm: &'a TrainConfirm,
     pub lang: Lang,
 }
@@ -49,7 +50,7 @@ impl TrainConfirmView<'_> {
     // cost: time O(m), heap O(m), stack O(1)
     // vars: m = 조정 대상 글자 수
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let lang = self.lang;
         let confirm = self.confirm;
         let yes_no = |value: bool| lang.tr(if value { i18n::YES } else { i18n::NO });

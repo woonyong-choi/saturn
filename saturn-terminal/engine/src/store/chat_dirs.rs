@@ -16,7 +16,7 @@ impl Store {
     ///
     /// # Errors
     /// 쓰기 실패면 `Database`(없는 채팅 포함).
-    pub async fn add_chat_dir(&self, chat: ChatId, path: &Path) -> Result<bool, StoreError> {
+    pub(crate) async fn add_chat_dir(&self, chat: ChatId, path: &Path) -> Result<bool, StoreError> {
         let done = sqlx::query(
             "INSERT OR IGNORE INTO chat_dirs (chat_id, path, added_at) VALUES (?, ?, ?)",
         )
@@ -35,7 +35,7 @@ impl Store {
     ///
     /// # Errors
     /// 읽기 실패면 `Database`.
-    pub async fn chat_dirs(&self, chat: ChatId) -> Result<Vec<PathBuf>, StoreError> {
+    pub(crate) async fn chat_dirs(&self, chat: ChatId) -> Result<Vec<PathBuf>, StoreError> {
         let rows: Vec<String> =
             sqlx::query_scalar("SELECT path FROM chat_dirs WHERE chat_id = ? ORDER BY id")
                 .bind(to_sql_int(chat.0))

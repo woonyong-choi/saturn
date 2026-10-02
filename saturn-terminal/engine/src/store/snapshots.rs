@@ -16,7 +16,7 @@ impl Store {
     ///
     /// # Errors
     /// 쓰기 실패면 `Database`, 직렬화 실패면 `Json`.
-    pub async fn save_settings_snapshot(
+    pub(crate) async fn save_settings_snapshot(
         &self,
         snapshot: &SettingsSnapshot,
     ) -> Result<SettingsRevision, StoreError> {
@@ -49,7 +49,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 번호면 `NotFound`, 저장된 JSON이 깨졌으면 `Json`.
-    pub async fn settings_snapshot(
+    pub(crate) async fn settings_snapshot(
         &self,
         revision: SettingsRevision,
     ) -> Result<SettingsSnapshot, StoreError> {
@@ -63,7 +63,9 @@ impl Store {
     }
 
     /// 한 번도 적용하지 않았으면 `None`.
-    pub async fn latest_settings_revision(&self) -> Result<Option<SettingsRevision>, StoreError> {
+    pub(crate) async fn latest_settings_revision(
+        &self,
+    ) -> Result<Option<SettingsRevision>, StoreError> {
         let value: Option<i64> = sqlx::query_scalar("SELECT value FROM meta WHERE key = ?")
             .bind(LATEST_REVISION_KEY)
             .fetch_optional(&self.pool)
@@ -75,7 +77,7 @@ impl Store {
     ///
     /// # Errors
     /// 없는 번호면 `NotFound`.
-    pub async fn mark_settings_applied(
+    pub(crate) async fn mark_settings_applied(
         &self,
         revision: SettingsRevision,
     ) -> Result<(), StoreError> {

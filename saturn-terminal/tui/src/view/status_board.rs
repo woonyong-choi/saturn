@@ -20,23 +20,11 @@ use crate::state::{APPROVAL_PENDING_AFTER, ChatState, InputView, TaskView, Train
 use crate::view::transcript::held_labels;
 use crate::view::{EMPHASIS, text_width, truncate};
 
-pub const COMMAND_PREVIEW_COLS: usize = 40;
-
-/// 값 순서가 상태판 위에서 아래 순서다.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum LineKind {
-    Running,
-    Judging,
-    Training,
-    Queued,
-    /// 멈춤 결과 줄과 보류 닫기 확인을 포함한다.
-    Held,
-    Alert,
-}
+pub(crate) const COMMAND_PREVIEW_COLS: usize = 40;
 
 /// TODO(#50): 칸 순서와 모델 이름 표기
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RunningLine {
+pub(crate) struct RunningLine {
     pub task: TaskId,
     pub label: TaskLabel,
     pub provider: Option<Provider>,
@@ -53,7 +41,7 @@ pub struct RunningLine {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum StatusLine {
+pub(crate) enum StatusLine {
     /// 살아 있는 작업마다 한 줄.
     Running(RunningLine),
     /// TODO(#53): 짧게 끝나는 판단의 판단 줄 표시 방식
@@ -98,28 +86,11 @@ pub enum StatusLine {
 }
 
 impl StatusLine {
-    pub fn kind(&self) -> LineKind {
-        match self {
-            Self::Running(_) => LineKind::Running,
-            Self::Judging { .. } => LineKind::Judging,
-            Self::Training(_) => LineKind::Training,
-            Self::Queued { .. } => LineKind::Queued,
-            Self::Stopped { .. }
-            | Self::HeldTask { .. }
-            | Self::HeldInput { .. }
-            | Self::CloseHeldConfirm { .. } => LineKind::Held,
-            Self::Alert(_)
-            | Self::StopUnconfirmed { .. }
-            | Self::RouterUnavailableSend
-            | Self::Settings { .. } => LineKind::Alert,
-        }
-    }
-
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 줄 글자 수
     // basis: estimate
     /// `spinner`는 실행·판단·학습 줄의 머리 글자.
-    pub fn text(&self, lang: Lang, labels_visible: bool, spinner: char) -> String {
+    pub(crate) fn text(&self, lang: Lang, labels_visible: bool, spinner: char) -> String {
         let prefix = |label: Option<TaskLabel>| labels::prefix(label, labels_visible);
         match self {
             Self::Running(line) => {
@@ -193,7 +164,7 @@ impl StatusLine {
         }
     }
 
-    pub fn buttons(&self) -> Vec<Button> {
+    pub(crate) fn buttons(&self) -> Vec<Button> {
         match self {
             Self::Queued {
                 input,
@@ -215,7 +186,7 @@ impl StatusLine {
 
 /// 누르면 같은 뜻의 명령과 같다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Button {
+pub(crate) enum Button {
     Send(InputId),
     CancelInput(InputId),
     ContinueTask(TaskId),
@@ -225,7 +196,7 @@ pub enum Button {
 }
 
 impl Button {
-    pub fn text(self, lang: Lang) -> &'static str {
+    pub(crate) fn text(self, lang: Lang) -> &'static str {
         match self {
             Self::Send(_) => lang.tr(i18n::BUTTON_SEND),
             Self::ContinueTask(_) | Self::ContinueInput(_) => lang.tr(i18n::BUTTON_CONTINUE),
@@ -240,7 +211,7 @@ impl Button {
 // vars: t = 작업 수, i = 입력 수, a = 알림 수
 // basis: estimate
 /// `Queued`인데 `reason`이 없으면 줄을 만들지 않는다(engine이 항상 싣는다).
-pub fn build(state: &ChatState, now: Instant) -> Vec<StatusLine> {
+pub(crate) fn build(state: &ChatState, now: Instant) -> Vec<StatusLine> {
     let mut lines: Vec<StatusLine> = Vec::new();
     let mut tasks: Vec<&TaskView> = state.tasks.values().collect();
     tasks.sort_by_key(|task| task.seq);
@@ -270,7 +241,7 @@ pub fn build(state: &ChatState, now: Instant) -> Vec<StatusLine> {
     lines
 }
 
-pub fn queue_reason_text(lang: Lang, reason: QueueReason) -> String {
+pub(crate) fn queue_reason_text(lang: Lang, reason: QueueReason) -> String {
     let key = match reason {
         QueueReason::AfterTask(label) => {
             return match lang {
@@ -287,7 +258,7 @@ pub fn queue_reason_text(lang: Lang, reason: QueueReason) -> String {
     lang.tr(key).to_string()
 }
 
-pub fn activity_text(lang: Lang, activity: &Activity) -> String {
+pub(crate) fn activity_text(lang: Lang, activity: &Activity) -> String {
     let key = match activity {
         Activity::Thinking => i18n::THINKING,
         Activity::ReadingFile => i18n::READING_FILE,
@@ -306,7 +277,11 @@ pub fn activity_text(lang: Lang, activity: &Activity) -> String {
     lang.tr(key).to_string()
 }
 
-pub fn settings_warning_text(lang: Lang, revision: u64, warning: &SettingsWarning) -> String {
+pub(crate) fn settings_warning_text(
+    lang: Lang,
+    revision: u64,
+    warning: &SettingsWarning,
+) -> String {
     match warning {
         SettingsWarning::Fallback { layer, fault } => {
             let layer = match layer {
@@ -334,7 +309,7 @@ pub fn settings_warning_text(lang: Lang, revision: u64, warning: &SettingsWarnin
     }
 }
 
-pub fn alert_text(lang: Lang, alert: &Alert) -> String {
+pub(crate) fn alert_text(lang: Lang, alert: &Alert) -> String {
     let key = match alert {
         Alert::RouterPaused => i18n::ROUTER_PAUSED,
         Alert::RouterDisconnected => i18n::ROUTER_DISCONNECTED,
@@ -345,7 +320,6 @@ pub fn alert_text(lang: Lang, alert: &Alert) -> String {
                 i18n::provider_name(*provider)
             );
         }
-        Alert::ChatBusyElsewhere { .. } => i18n::BUSY_ELSEWHERE,
         Alert::RouterDownSendingInOrder => i18n::ROUTER_UNAVAILABLE_SEND,
         Alert::SchemaMigrated { to, .. } => {
             return lang
@@ -360,7 +334,7 @@ pub fn alert_text(lang: Lang, alert: &Alert) -> String {
 // vars: l = 그릴 줄 수
 // basis: estimate
 /// 그리기와 마우스 클릭 판정이 같은 계산을 쓴다.
-pub fn button_rects(lines: &[StatusLine], lang: Lang, area: Rect) -> Vec<(Rect, Button)> {
+pub(crate) fn button_rects(lines: &[StatusLine], lang: Lang, area: Rect) -> Vec<(Rect, Button)> {
     let mut rects = Vec::new();
     for (row, line) in lines.iter().enumerate().take(usize::from(area.height)) {
         let buttons = line.buttons();
@@ -377,7 +351,7 @@ pub fn button_rects(lines: &[StatusLine], lang: Lang, area: Rect) -> Vec<(Rect, 
 }
 
 #[derive(Debug)]
-pub struct StatusBoardView<'a> {
+pub(crate) struct StatusBoardView<'a> {
     pub lines: &'a [StatusLine],
     pub lang: Lang,
     pub labels_visible: bool,
@@ -388,7 +362,7 @@ impl StatusBoardView<'_> {
     // cost: time O(l·w), heap O(l·w), stack O(1)
     // vars: l = 그릴 줄 수, w = 칸 폭
     // basis: estimate
-    pub fn render(&self, frame: &mut Frame, area: Rect) {
+    pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let rects = button_rects(self.lines, self.lang, area);
         let width = usize::from(area.width);
         let rows: Vec<Line> = self

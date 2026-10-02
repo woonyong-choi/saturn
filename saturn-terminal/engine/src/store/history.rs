@@ -12,7 +12,7 @@ use super::{Store, StoreError, from_sql_int, parse_enum, to_sql_int};
 const INPUT_KIND: i64 = 0;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum HistoryEntry {
+pub(crate) enum HistoryEntry {
     Input {
         input: InputId,
         text: String,
@@ -31,7 +31,7 @@ impl Store {
     ///
     /// # Errors
     /// 저장된 JSON이 깨졌으면 `Json`.
-    pub async fn recent_history(
+    pub(crate) async fn recent_history(
         &self,
         chat: ChatId,
         limit: u32,

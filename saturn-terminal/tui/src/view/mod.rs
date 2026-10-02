@@ -2,22 +2,22 @@
 //! 설계: docs/design/tui.md
 //! TODO(#58): 좁은 가로 폭에서 버튼과 칸을 줄이는 방식
 
-pub mod composer;
-pub mod folder_trust;
-pub mod footer;
-pub mod full_transcript;
-pub mod live_area;
-pub mod model_picker;
-pub mod permission;
-pub mod popup;
-pub mod resume_prompt;
-pub mod router_key_prompt;
-pub mod router_version;
-pub mod start_screen;
-pub mod status_board;
-pub mod task_list;
-pub mod train_confirm;
-pub mod transcript;
+pub(crate) mod composer;
+pub(crate) mod folder_trust;
+pub(crate) mod footer;
+pub(crate) mod full_transcript;
+pub(crate) mod live_area;
+pub(crate) mod model_picker;
+pub(crate) mod permission;
+pub(crate) mod popup;
+pub(crate) mod resume_prompt;
+pub(crate) mod router_key_prompt;
+pub(crate) mod router_version;
+pub(crate) mod start_screen;
+pub(crate) mod status_board;
+pub(crate) mod task_list;
+pub(crate) mod train_confirm;
+pub(crate) mod transcript;
 pub mod usage;
 
 use ratatui::Frame;
