@@ -132,6 +132,10 @@ pub(crate) struct FlowState {
     pub(crate) permissions: HashMap<String, PendingPermission>,
     /// 에이전트가 가장 나중에 시작한 입력의 설정 번호. 허가 요청 판정이 그 번호의 규칙을 쓴다.
     pub(crate) settings_of: HashMap<AgentId, SettingsRevision>,
+    /// 채팅의 Codex 연결을 시작할 때 쓴 규칙 지문. 연결이 없으면 항목도 없다.
+    pub(crate) rules_of_connection: HashMap<ChatId, String>,
+    /// 연결이 시작할 때 읽은 규칙과 최신 규칙이 달라 다음 턴 끝에 연결을 다시 시작할 채팅.
+    pub(crate) rules_stale: HashSet<ChatId>,
     /// 보낸 뒤 결과를 모르는 작업.
     pub(crate) needs_check: HashMap<TaskId, NeedsCheck>,
     /// 사용자가 정한 다음 provider. 그 provider의 session이 열리면 지운다.
@@ -162,6 +166,8 @@ impl Default for FlowState {
             packet_turns: HashMap::new(),
             permissions: HashMap::new(),
             settings_of: HashMap::new(),
+            rules_of_connection: HashMap::new(),
+            rules_stale: HashSet::new(),
             needs_check: HashMap::new(),
             switch_to: HashMap::new(),
             stopping: HashMap::new(),

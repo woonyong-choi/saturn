@@ -35,6 +35,7 @@ impl Engine {
         if let Err(error) = self.compact_at_boundary(chat, &live).await {
             tracing::warn!(chat = chat.0, error = %self.failure_line(&error), "context compaction skipped");
         }
+        self.restart_stale_codex(chat).await;
         self.dispatch_next(chat).await
     }
 

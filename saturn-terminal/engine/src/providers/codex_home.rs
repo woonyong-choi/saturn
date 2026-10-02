@@ -351,7 +351,7 @@ fn quote(token: &str) -> String {
 // vars: r = 규칙 수, p = 패턴 글자 수
 // basis: estimate
 /// 규칙 목록 전체의 지문. 규칙이 같은 채팅은 같은 폴더를 쓴다.
-fn rules_fingerprint(rules: &[Rule]) -> String {
+pub fn rules_fingerprint(rules: &[Rule]) -> String {
     let mut text = String::new();
     for rule in rules {
         let _ = writeln!(

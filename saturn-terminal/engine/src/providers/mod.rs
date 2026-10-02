@@ -27,7 +27,9 @@ use crate::secrets::Masker;
 
 pub use claude::ClaudeClient;
 pub use codex::CodexClient;
-pub use codex_home::{HomeError, HomeInput, PreparedHome, prepare as prepare_codex_home};
+pub use codex_home::{
+    HomeError, HomeInput, PreparedHome, prepare as prepare_codex_home, rules_fingerprint,
+};
 
 pub const STEER_PENDING_NOTICE: &str = "바로 반영: 준비 중";
 
@@ -131,6 +133,16 @@ impl ProviderConnection {
         match self {
             Self::Codex(client) => Some(client.process_group()),
             Self::Claude(client) => client.process_group(session),
+            #[cfg(test)]
+            Self::Fake(client) => client.group(),
+        }
+    }
+
+    /// 모든 session이 프로세스 묶음 하나를 같이 쓰는 provider의 그 묶음. 연결을 통째로 닫을 때 쓴다.
+    pub fn shared_group(&self) -> Option<ProcessGroupId> {
+        match self {
+            Self::Codex(client) => Some(client.process_group()),
+            Self::Claude(_) => None,
             #[cfg(test)]
             Self::Fake(client) => client.group(),
         }
