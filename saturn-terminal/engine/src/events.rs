@@ -112,7 +112,7 @@ impl Engine {
         if let Some(seq) = seq {
             self.sessions.mark_delivered(live.session, seq);
         }
-        let status = self.agents.on_event(live.session, &event);
+        let status = self.agents.on_event(&event);
         self.apply_event(chat, &live, event, status).await
     }
 

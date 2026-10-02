@@ -242,23 +242,6 @@ impl SessionManager {
         }
     }
 
-    // cost: time O(s), heap O(k), stack O(1), alloc 1
-    // vars: s = session 수, k = 닫을 session 수
-    // basis: estimate
-    /// 닫은 뒤 상태는 `ClosedResumable`이고 provider session id는 보관한다.
-    pub fn due_for_close(&self, now: Instant) -> Vec<SessionId> {
-        self.sessions
-            .iter()
-            .filter(|session| session.state == SessionState::Open)
-            .filter(|session| {
-                session
-                    .idle_since
-                    .is_some_and(|since| now.saturating_duration_since(since) >= IDLE_GRACE)
-            })
-            .map(|session| session.id)
-            .collect()
-    }
-
     // cost: time O(s), heap O(1), stack O(1)
     // vars: s = session 수
     // basis: estimate
@@ -704,50 +687,6 @@ mod tests {
             Err(SessionError::DuplicateId(SessionId(1)))
         ));
         assert_eq!(manager.get(SessionId(1)).unwrap().state, SessionState::Held);
-    }
-
-    #[test]
-    fn due_for_close_waits_for_idle_grace() {
-        let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
-        let idle = Instant::now();
-        manager.mark_idle(SessionId(1), idle);
-
-        let early = manager.due_for_close(idle + IDLE_GRACE - Duration::from_secs(1));
-        let due = manager.due_for_close(idle + IDLE_GRACE);
-
-        assert!(early.is_empty());
-        assert_eq!(due, vec![SessionId(1)]);
-    }
-
-    #[test]
-    fn due_for_close_busy_session_is_not_due() {
-        let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
-        let idle = Instant::now();
-        manager.mark_idle(SessionId(1), idle);
-
-        manager.mark_busy(SessionId(1));
-
-        assert!(manager.due_for_close(idle + IDLE_GRACE).is_empty());
-    }
-
-    #[test]
-    fn due_for_close_closed_session_is_not_due() {
-        let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
-        let idle = Instant::now();
-        manager.mark_idle(SessionId(1), idle);
-
-        manager
-            .set_state(SessionId(1), SessionState::ClosedResumable)
-            .unwrap();
-
-        assert!(manager.due_for_close(idle + IDLE_GRACE).is_empty());
-        assert!(
-            manager
-                .get(SessionId(1))
-                .unwrap()
-                .provider_session
-                .is_some()
-        );
     }
 
     #[test]
