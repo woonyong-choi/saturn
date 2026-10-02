@@ -443,3 +443,31 @@ fn read_only_shell_list_does_not_change_other_modes() {
         Verdict::Allow
     );
 }
+
+#[test]
+fn mode_edit_asks_when_a_read_only_command_gets_a_write_or_exec_option() {
+    let policy = policy(Mode::Edit, Vec::new());
+
+    for command in [
+        "rg --pre cat foo",
+        "rg --pre=cat foo",
+        "rg --hostname-bin=/bin/x foo",
+        r#"rg --"pre" cat foo"#,
+        "git diff --output=out.patch",
+        "git diff --output out.patch",
+        "git log --output=out.txt",
+        "git diff --ext-diff",
+        "git log --textconv",
+        "git diff --out=out.patch",
+    ] {
+        assert_eq!(policy.decide(&shell(command)), Verdict::Ask, "{command}");
+    }
+    for command in [
+        "git diff --no-ext-diff",
+        "git log --pretty=oneline",
+        "rg --pre-glob '*.gz' foo",
+        "git diff --no-textconv HEAD",
+    ] {
+        assert_eq!(policy.decide(&shell(command)), Verdict::Allow, "{command}");
+    }
+}

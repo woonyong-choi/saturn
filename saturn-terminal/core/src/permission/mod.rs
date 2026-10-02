@@ -68,6 +68,16 @@ const READ_ONLY_SHELL: [&str; 7] = [
     "git log *",
 ];
 
+/// 읽기 전용 목록 명령이라도 파일을 쓰거나 외부 명령을 실행하게 만드는 긴 옵션. 하나라도 있으면 `ask`다.
+/// `git`은 긴 옵션을 앞부분만 써도 받으므로 `git` 명령은 이 옵션의 앞부분도 같게 본다.
+const UNSAFE_OPTIONS: [&str; 5] = [
+    "--pre",
+    "--hostname-bin",
+    "--output",
+    "--ext-diff",
+    "--textconv",
+];
+
 /// 엄한 쪽이 크다: `Allow` < `Ask` < `Deny`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Verdict {
@@ -332,6 +342,29 @@ fn is_read_only_shell(command: &str) -> bool {
     READ_ONLY_SHELL
         .iter()
         .any(|pattern| pattern::matches(pattern, command))
+        && !has_unsafe_option(command)
+}
+
+// cost: time O(c·o), heap O(c), stack O(1), alloc 1
+// vars: c = command 글자 수, o = UNSAFE_OPTIONS 수
+// basis: estimate
+/// 따옴표와 `\`를 걷어낸 토큰이 위험 옵션이거나 `옵션=`으로 시작하는지 본다.
+fn has_unsafe_option(command: &str) -> bool {
+    let plain: String = command
+        .chars()
+        .filter(|c| !matches!(c, '\'' | '"' | '\\'))
+        .collect();
+    let is_git = plain.starts_with("git ");
+    plain.split_whitespace().any(|token| {
+        let Some(name) = token.strip_prefix("--") else {
+            return false;
+        };
+        let name = name.split('=').next().unwrap_or_default();
+        UNSAFE_OPTIONS.iter().any(|option| {
+            let option = &option[2..];
+            name == option || (is_git && !name.is_empty() && option.starts_with(name))
+        })
+    })
 }
 
 /// 대상이 하나도 없는 호출(빈 명령, 경로를 모르는 편집)은 빈 글자열 하나로 본다.
