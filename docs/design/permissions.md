@@ -159,6 +159,8 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 | Claude `can_use_tool` | `{"behavior":"allow","updatedInput":<요청 input>}` | `이번만 허용`과 같음 | `{"behavior":"deny","message":"<고정 문구>"}` |
 
 - 응답은 Codex에는 요청과 같은 JSON-RPC 번호(숫자와 문자열 그대로)로, Claude에는 `control_response`로 보낸다. 모르는 요청이나 이미 답한 요청에는 보내지 않는다.
+- engine은 허가 요청 이벤트를 기록한 뒤 TUI에 올리고 작업을 `허가 기다림`으로 보인다. 사용자 답은 요청 번호로 찾은 요청의 provider에 넘기고, 보낸 뒤 다른 TUI의 창을 지우고 작업을 다시 `실행 중`으로 보인다. 묻지 않은 요청의 답은 거절한다. provider가 받지 못했으면 요청을 그대로 두어 다시 답할 수 있다.
+- 답이 오기 전에 턴이 끝나거나 흐름이 끊기면 그 요청의 창을 모든 TUI에서 지운다. 요청 번호는 provider 안에서만 유일하다고 보장되지 않지만 지금은 번호만으로 찾는다. 같은 번호가 두 에이전트에서 동시에 오면 나중 요청이 앞 요청을 덮는다(초안).
 - `항상 허용`은 이번에는 provider에 보내는 값만 정한다. 사용자의 허용 규칙을 기록 저장소에 저장하는 일과 provider에 맞는 값이 없을 때의 처리는 [#232](https://github.com/woonyong-choi/saturn/issues/232)에서 정한다. 그 전에는 provider에 값이 없는 요청(Codex MCP, Claude)에서 `이번만 허용`으로 보낸다. 같은 호출이 다시 오면 다시 묻는다.
 - Codex에서 실측한 응답은 셸 명령의 `decline`과 MCP의 `decline`이다. 허용 응답과 권한 요청, 옛 이름의 값은 schema에서 가져온 것이라 실측하지 않았다([#232](https://github.com/woonyong-choi/saturn/issues/232)).
 - 거부 응답에 붙는 고정 문구(`The user denied this tool call in Saturn.`)는 초안이다. 모델에 전달된다.
@@ -192,6 +194,7 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 | MCP 준비를 확인하기 전에는 첫 턴을 보내지 않는다. | 준비가 늦은 가짜 MCP 서버로 첫 턴 전송 시점을 확인한다. |
 | Claude 규칙 대상 도구의 호출이 모두 `can_use_tool`로 온다. | [#232](https://github.com/woonyong-choi/saturn/issues/232) |
 | 허가 답이 provider에 요청 번호와 같은 번호로 나가고, 답이 없는 동안 턴이 멈춰 있다가 답한 뒤 이어진다. | `saturn-terminal/engine/src/providers/codex.rs`의 `command_approval_is_answered_with_the_same_numeric_request_id`, `command_decisions_follow_the_answer_and_the_available_list`, `mcp_tool_approval_is_answered_with_an_elicitation_action`, `saturn-terminal/engine/src/providers/claude.rs`의 `allow_once_answers_can_use_tool_with_the_request_input`, `deny_answers_can_use_tool_without_the_note` |
+| 허가 요청이 TUI에 오르고 사용자 답이 provider에 넘어가며 턴이 끝나면 답 없는 요청이 지워진다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `permission_request_reaches_the_tui_and_the_answer_reaches_the_provider`, `answer_for_a_request_nobody_asked_is_refused`, `answer_the_provider_did_not_take_keeps_the_request_for_another_try`, `turn_end_withdraws_requests_nobody_answered` |
 | 허가 창은 세 선택지이고, 도구 호출 뒤 3초 안에 허가 요청이나 진행 이벤트가 없으면 상태판에 준비 중을 보인다. | `saturn-terminal/tui/src/keys.rs`의 `permission_keys`, `saturn-terminal/tui/src/view/status_board.rs`의 `approval_pending_shows_after_three_seconds_without_events`, `approval_pending_clears_when_permission_request_or_progress_arrives` |
 | 항상 허용은 기록 저장소에 저장되고 provider 설정 파일은 바뀌지 않는다. | 항상 허용 뒤 기록 저장소 행과 provider 설정 파일 지문을 확인한다. |
 | 개별 규칙의 `deny`는 항상 허용보다 앞선다. | 항상 허용이 있는 패턴에 `deny`를 넣어 거부되는지 확인한다. |

@@ -60,6 +60,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - 첫 스키마(V1)는 옛 스키마 위 변경분이 아니라 전체 정의로 쓴다. 공개 저장소만으로 스키마 전체를 읽기 위해서다.
 - 표 이름은 `chats`, `inputs`, `runs`, `sessions`, `events`, `usage`이고 Saturn 용어(채팅, 입력, 실행, session)를 따른다.
 - `sessions` 표는 마지막 활성 맥락 `last_active`(토큰)와 마지막 턴 끝 시각 `last_turn_ended_at`(unix 밀리초) 열을 둔다. engine이 턴이 끝날 때 쓰고 시작할 때 읽어 보관 session의 재개 판정을 재시작 뒤에도 같게 한다([provider 연결과 session](providers-and-sessions.md#그-provider로-돌아가기)). 두 열은 스키마 V2에서 더했고 이관 전 행은 NULL이며, NULL이면 재개로 판정한다.
+- 패킷과 돌아온 session의 변경분은 `events` 행을 그 이벤트를 연 실행의 session과 입력 원문, 기록 시각에 이어 읽어 만든다. 이벤트 행에 session을 따로 저장하지 않기 위해서다. `sessions.delivered`는 턴이 끝날 때와 session을 열거나 바꿀 때 저장한다.
 - session과 에이전트 번호는 `meta` 표에 마지막으로 준 번호를 두고, 기록에 있는 가장 큰 번호보다 큰 값을 한 거래로 새로 준다. 번호를 다시 쓰지 않기 위해서다.
 - 기록 저장소 파일 권한은 0600이다(초안). 입력 원문과 판단 기록이 들어 있기 때문이다.
 

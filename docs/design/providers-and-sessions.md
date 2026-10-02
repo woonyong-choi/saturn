@@ -131,6 +131,7 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 7. `providers`는 Codex `tokenUsage`에 session 누적 범위를, Claude 사용량에 턴 값 범위를 표시한다.
 8. `providers`는 입력 없이 provider가 시작한 턴에 `origin = provider-wake`를 표시한다.
 9. `store`는 이벤트, subagent, 사용량 보고 원값을 기록한다.
+10. `engine`은 모든 연결의 이벤트를 한 루프에서 도착 순서로 받고, 이벤트를 `store`에 먼저 쓴 뒤에만 `agents`와 TUI에 반영한다.
 
 - Saturn 도구 종류는 셸, 테스트 실행, 파일 읽기, 파일 수정, 그 밖이다. 명령의 낱말이 `unittest`, `pytest`, `cargo test` 같은 알려진 테스트 도구와 맞으면 테스트 실행이고, 그 밖의 명령은 셸이다.
 - provider가 구조로 주지 않은 값은 비운다. 추측으로 채우면 메모가 틀리기 때문이다. 경로는 provider가 낸 글자 그대로 싣고, 작업 폴더 기준으로 바꾸는 일은 메모를 만드는 쪽이 한다.
@@ -140,6 +141,11 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 - Codex 추론 항목은 `Thinking` 활동과 `Reasoning` 종류로 남긴다. 실행 줄의 `생각 중` 표시에 쓰고, 도구 결과 후보에서는 뺀다. 추론은 도구가 아니고 결과가 없기 때문이다.
 - `/bin/zsh -lc '...'`처럼 셸이 감싼 명령은 안쪽 명령을 명령 글로 싣는다. 사용자가 보낸 명령이 provider마다 다르게 기록되지 않게 하기 위해서다.
 - Claude는 실패한 `Bash` 결과 첫머리의 `Exit code N`에서 종료 코드를 읽고, 실패가 아닌 결과는 0으로 둔다. 중단처럼 코드가 없는 실패는 비운다.
+- 이벤트를 기록하지 못하면 화면에도 상태에도 반영하지 않는다. 화면이 기록에 없는 일을 보이는 것을 막기 위해서다.
+- 진행 중인 실행이 없을 때 메인 에이전트의 글이나 도구 호출이 오면 입력 없이 provider가 시작한 턴으로 보고 입력 없는 새 실행을 기록한다. 사용량, 도구 결과처럼 그 밖의 늦은 이벤트는 가장 나중 실행에 붙인다. 멈춰 보류한 session의 늦은 출력은 새 실행을 만들지 않고 가장 나중 실행에 붙인다. 멈춘 작업이 저절로 이어지는 일을 막기 위해서다.
+- 사용량 보고는 `store`에 사용량 행으로만 쓰고 기록 번호를 받지 않는다. 사용량이 패킷 재료인 기록에 섞이지 않게 하기 위해서다.
+- 흐름이 완료 신호 없이 끊기면(`StreamLost`, 연결 종료) 효과 범위를 `unobserved`로 기록하고, 작업을 `결과 확인 필요`로 보이며, 실행 기록은 열어 두고, 열려 있던 session을 닫힌 것으로 다룬다. 다음 입력 때 보관한 ID로 다시 연다.
+- 허가 요청은 TUI에 올리고 답을 기다리는 동안 작업을 `허가 기다림`으로 보인다. 답이 오기 전에 턴이 끝나거나 흐름이 끊기면 그 창을 모든 TUI에서 지운다. 더는 답할 수 없는 요청을 남기지 않기 위해서다.
 
 ### 메인 에이전트와 보조 에이전트
 
@@ -159,6 +165,14 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 session 교체는 같은 채팅·역할 안에서 턴이 끝난 경계에만 한다. 진행 중인 턴이 교체로 끊기는 일을 막기 위해서다. session ID는 재사용하지 않는다. 대기열은 에이전트 session이 아니라 채팅에 둔다. 교체 중 들어온 입력이 옛 session을 가리키는 일을 막기 위해서다. 교체 중 들어온 입력은 새 session에 들어온 순서대로 보낸다. 입력 순서를 교체와 무관하게 지키기 위해서다.
 
 새 session에는 패킷을 넘기고, 그 뒤로는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. 새 session의 전달 기록 번호는 이전 session이 받은 번호보다 작아지지 않는다. 패킷이 그 번호까지의 기록을 담으므로 같은 결과를 두 번 붙이지 않기 위해서다. 패킷을 어떻게 고르는지는 [맥락 정리](context-management.md)에 있다.
+
+- 메인 에이전트 번호는 session을 바꿔도 같게 이어 간다. 대기열의 작업이 에이전트 번호로 session을 가리키므로 번호가 달라지면 이어 갈 입력이 보낼 곳을 잃기 때문이다.
+- 각 session은 자기 provider가 낸 이벤트를 받은 것으로 친다. 이벤트를 기록할 때마다 그 session의 전달 기록 번호를 올리고 턴이 끝날 때 저장한다. 그래서 돌아온 session에는 자기가 낸 결과가 다시 붙지 않는다.
+- 패킷은 provider를 바꾸는 입력이거나 이어 갈 메인이 없는 채팅의 첫 턴(provider에는 턴 하나)으로 보낸다. 그 턴의 완료 신호는 작업 끝이 아니다. 입력이 보낸 턴의 완료만 작업 끝으로 보기 위해서다. 그 턴의 답은 입력이 연 실행에 함께 기록한다.
+- 떠나는 메인은 새 session이 열린 뒤에 보관한다. 새 session을 열지 못하면 떠나는 메인은 그대로 열려 있다. provider 둘 다 열리지 않은 채팅이 생기는 일을 막기 위해서다.
+- 패킷의 고정 구역이 `P_hard`도 넘으면 새 session을 열지 않고 입력을 작업과 함께 보류하며 TUI에 `고정 제약이 길어 맥락 정리를 미룹니다`와 제약 목록을 보인다. 사용자가 `/continue`를 하면 다시 판정한다.
+- 열린 메인이 있으면 그 메인이 이어 갈 session이다. 보관 session이 더 나중에 등록돼도 열린 메인을 먼저 본다. provider를 오간 뒤 등록 순서와 열린 순서가 다르기 때문이다.
+- 모델 고정이 provider로 이어지는 대응은 정해지기 전이라([#168](https://github.com/woonyong-choi/saturn/issues/168)) `engine`은 입력이 아니라 내부 호출(`switch_provider`)로만 다음 provider를 바꾼다.
 
 ### 그 provider로 돌아가기
 
@@ -227,7 +241,9 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 
 - provider는 새 프로세스 묶음의 리더로 실행한다. 자식 환경은 비운 뒤 제외 목록 변수를 지운 환경과 중첩 표지만 넣는다. 실행 명세의 환경 값은 디버그 출력에 담지 않는다.
 - `processes`는 1초(초안)마다 프로세스 표를 읽어 리더의 자손을 기억한다. 묶음 밖으로 빠져나간 자손에는 신호를 보내지 않고, 살아 있으면 남은 수로 센다.
-- 리더를 남기는 중지(Codex app-server처럼 session을 이어 쓸 때)는 리더를 뺀 묶음 구성원에만 신호를 보낸다.
+- 리더를 남기는 중지(Codex app-server처럼 session을 이어 쓸 때)는 리더를 뺀 묶음 구성원에만 신호를 보낸다. 멈춘 session은 보류로 두고 provider에 열린 채 남겨, 이을 때 다시 열지 않는다. 지금은 두 provider 모두 이 방식이다.
+- 완료는 세 조건을 모두 확인한 뒤에만 보고한다. 모든 에이전트가 멈춘 뒤의 완료 신호(`TurnCompleted` 또는 흐름 끊김)를 보냈거나 멈출 때 이미 답을 마쳤고, 트리가 유휴이고, 모든 프로세스 묶음의 중지 결과가 돌아왔다. 멈춤 직전에 보낸 턴의 낡은 유휴 표시를 완료로 읽지 않기 위해서다. 중지 결과가 하나라도 `남은 프로세스`이거나 확인하지 못하면 완료 대신 `멈춤 확인 안 됨 · N개 남음`을 보고한다.
+- 멈춤 요청은 응답한 뒤 별도 작업에서 묶음을 중지한다. 중지를 기다리는 동안에도 다른 요청과 provider 이벤트를 처리하기 위해서다.
 
 멈춤은 Saturn session의 모든 에이전트와 subagent에 닿는다. 에이전트 하나만 멈추는 기능은 취소와 모델 교체 같은 내부 처리에서만 쓰기 때문이다. 트리 전체 종료를 확인하기 전에는 완료라고 하지 않는다. subagent가 남은 채 멈췄다고 보이는 일을 막기 위해서다. Claude 백그라운드 subagent의 중지는 실측으로 확인한다([#18](https://github.com/woonyong-choi/saturn/issues/18)). 멈춘 작업의 보류와 재개는 [입력 처리](input-handling.md)에 있다.
 
@@ -263,12 +279,20 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | 캐시 유지 시간 안이고 `A < T`인 보관 session으로 돌아가면 재개하고 변경분만 붙인다. | `saturn-terminal/core/src/sessions/context.rs`의 `decide_return_matches_rule_table`, `saturn-terminal/core/src/sessions/mod.rs`의 `target_for_send_warm_below_threshold_resumes_archive` |
 | 재시작 뒤에도 보관 session의 재개 판정이 같다. | `saturn-terminal/engine/src/lifecycle/sessions.rs`의 `restart_resumes_archived_session_within_cache_ttl`, `restart_keeps_new_session_when_active_context_reaches_threshold`, `restart_keeps_new_session_when_cache_expired_and_packet_is_smaller`, `restart_resumes_when_cache_expired_and_packet_is_not_smaller`, `restart_without_last_turn_resumes_archived_session` |
 | provider를 바꿀 때 떠나는 메인은 보관하고, 보관과 재개 상태를 저장한다. | `saturn-terminal/engine/src/lifecycle/sessions.rs`의 `archive_main_ends_older_archive_and_saves_both_states`, `resume_main_opens_archive_and_returns_delivered_number` |
-| session 교체 뒤 새 session에는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. | 교체 뒤 첫 입력에 이미 받은 기록 번호의 결과가 다시 붙지 않는지 확인한다. |
+| session 교체 뒤 새 session에는 받지 않은 기록 번호 뒤의 변경분만 넘긴다. | `saturn-terminal/engine/src/lifecycle/switch_round_trip.rs`의 `codex_to_claude_to_codex_hands_over_without_duplicates_or_gaps`, `delivered_numbers_never_go_down_across_switches` |
+| provider 전환에서 패킷을 만들고 session별 전달 기록 번호를 지킨다. | `saturn-terminal/engine/src/lifecycle/switch_round_trip.rs`의 `codex_to_claude_to_codex_hands_over_without_duplicates_or_gaps`, `switch_tells_the_user_which_provider_took_over`, `saturn-terminal/engine/src/handoff.rs`의 `packet_carries_input_answer_and_tool_result_with_session_title` |
+| 패킷으로 연 턴의 완료는 작업 끝이 아니다. | `saturn-terminal/engine/src/lifecycle/switch_round_trip.rs`의 `packet_turn_completion_does_not_end_the_task_on_the_new_provider`, `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `packet_turn_completion_is_not_the_end_of_the_task` |
+| 패킷의 고정 구역이 `P_hard`를 넘으면 새 session을 열지 않고 입력을 보류한다. | `saturn-terminal/engine/src/lifecycle/switch_round_trip.rs`의 `packet_over_the_hard_limit_is_not_sent_and_the_input_is_held` |
+| 열린 메인이 있으면 보관 session이 더 나중에 등록돼도 열린 메인이 이어 갈 session이다. | `saturn-terminal/core/src/sessions/mod.rs`의 `live_main_prefers_the_open_main_over_a_later_registered_archive` |
+| 이벤트는 처리 전에 기록하고, 기록하지 못하면 화면과 상태에 반영하지 않는다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `event_is_recorded_before_it_reaches_the_screen_and_the_state`, `events_get_one_number_each_in_arrival_order`, `event_from_the_provider_pump_reaches_the_engine_loop` |
+| 입력 없이 시작한 턴과 늦은 이벤트, 끊긴 흐름을 기록한다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `output_after_the_turn_ended_starts_a_run_without_input`, `lost_stream_records_unobserved_and_needs_a_check`, `usage_is_recorded_as_a_usage_row_and_not_as_a_ledger_event` |
+| 턴 끝에서 마지막 턴 값을 기록하고 트리 유휴일 때만 작업을 끝낸다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `turn_end_records_the_last_turn_value_and_finishes_the_task`, `answer_with_a_running_subagent_ends_the_turn_only_when_the_tree_is_idle`, `waiting_input_is_sent_after_the_turn_ends` |
 | 권한은 Saturn 규칙이 정본이고, 권한 외 Saturn 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. | [권한](permissions.md)의 요구사항을 확인하고, 사용자 설정에 값이 있는 안전망 항목의 인자가 실행 명령에 없는지 확인한다. |
-| 작업 끝은 메인 에이전트와 모든 subagent가 끝난 때로 판정한다. | 답이 먼저 나오고 subagent가 남은 경우 트리 유휴가 되지 않는지 확인한다. |
+| 작업 끝은 메인 에이전트와 모든 subagent가 끝난 때로 판정한다. | `saturn-core`의 `agents` 시험 `on_event_answer_with_subagent_left_is_answered_tree_running`, `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `answer_with_a_running_subagent_ends_the_turn_only_when_the_tree_is_idle` |
 | 누적 범위 사용량의 턴 값은 같은 session의 직전 누적을 뺀 값이다. | Codex 누적 보고 두 개에서 턴 값이 차이로 나오는지 확인한다. |
-| 멈춤 신호는 추적된 subagent까지 보낸다. | 멈춤 요청 뒤 모든 추적 subagent가 멈춤 신호를 받는지 확인한다. |
-| 멈춤 신호 10초 뒤 남은 프로세스 묶음에는 중지 신호를 보낸다. | 멈춤 신호를 무시하는 프로세스가 10초 뒤 중지 신호를 받는지 확인한다. |
+| 멈춤 신호는 추적된 subagent까지 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_signals_the_deepest_subagent_first_and_finishes_only_when_the_tree_is_idle` |
+| 멈춤 신호 10초 뒤 남은 프로세스 묶음에는 중지 신호를 보낸다. | `saturn-terminal/engine/src/processes/mod.rs`의 `stop_sends_term_after_grace` |
+| 트리 유휴와 프로세스 중지를 모두 확인한 뒤에만 멈춤 완료를 보고한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_is_not_complete_until_the_process_group_is_confirmed_stopped`, `stop_without_a_finished_turn_signal_is_not_complete`, `processes_left_outside_the_group_are_reported_instead_of_done` |
 | 끼워 넣기와 멈춤 신호가 문서대로 provider에 전달된다. | [#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27) |
 | 닫은 session을 보관한 ID로 재개한다. | [#10](https://github.com/woonyong-choi/saturn/issues/10) |
 | subagent의 시작과 끝을 이벤트로 추적한다. | [#17](https://github.com/woonyong-choi/saturn/issues/17), [#20](https://github.com/woonyong-choi/saturn/issues/20) |
@@ -276,6 +300,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | Claude 사용량 보고의 범위를 올바르게 표시한다. | [#19](https://github.com/woonyong-choi/saturn/issues/19) |
 | Claude 스트림에서 provider 명령 결과와 허가 요청을 받는다. | [#26](https://github.com/woonyong-choi/saturn/issues/26) |
 | 허가 답이 없는 동안 턴이 멈춰 있고, 답한 뒤 이어진다. 답은 Codex에는 요청과 같은 JSON-RPC 번호로, Claude에는 `control_response`로 나간다. | `saturn-terminal/engine/src/providers/codex.rs`의 `command_approval_is_answered_with_the_same_numeric_request_id`, `file_change_approval_keeps_a_string_request_id`, `saturn-terminal/engine/src/providers/claude.rs`의 `allow_once_answers_can_use_tool_with_the_request_input` |
+| 허가 요청을 TUI에 올리고 사용자 답을 provider에 넘기며, 받지 못했으면 다시 답할 수 있다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `permission_request_reaches_the_tui_and_the_answer_reaches_the_provider`, `answer_for_a_request_nobody_asked_is_refused`, `answer_the_provider_did_not_take_keeps_the_request_for_another_try`, `turn_end_withdraws_requests_nobody_answered` |
 | 이미 답했거나 모르는 허가 요청에 답하면 보내지 않는다. | `saturn-terminal/engine/src/providers/codex.rs`의 `answering_an_unknown_or_answered_request_is_not_sent`, `saturn-terminal/engine/src/providers/claude.rs`의 `answering_an_unknown_or_answered_request_is_not_sent` |
 | Claude Code 도구 호출의 도구 종류, 경로, 읽은 줄 범위, 바뀐 줄 수와 셸 종료 코드를 이벤트에 싣는다. | `saturn-terminal/engine/src/providers/claude.rs`의 `detail_of_edit_counts_changed_lines_and_keeps_path`, `detail_of_multi_edit_sums_every_edit`, `detail_of_write_has_no_line_change`, `detail_of_read_range_needs_offset_and_limit`, `detail_of_test_command_is_test_run`, `shell_exit_code_reads_prefix_only_for_errors` |
 | 명령이 테스트 실행인지 셸인지 가르고, 바뀐 줄 수에서 앞뒤 공통 줄을 뺀다. | `saturn-terminal/engine/src/providers/tool_detail.rs`의 `classify_command_test_runners_are_test_runs`, `classify_command_other_commands_are_shell`, `line_change_replaced_lines_count_both_sides`, `line_change_common_lines_are_not_counted`, `line_change_empty_old_counts_only_added` |
@@ -302,3 +327,5 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 - Codex 자식 session의 승인 요청에 Saturn이 부모 정책으로 응답할지, 사용자에게 따로 보일지, 모두 거절할지 ([#61](https://github.com/woonyong-choi/saturn/issues/61))
 - judge 상태에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))
 - 수정 파일 목록을 실행 경계의 파일 상태 차이로 계산할지, provider 이벤트로 계산할지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))
+- 패킷 고정 구역의 "현재 목표"와 "끝나지 않은 항목"을 무엇으로 뽑을지. 정해지기 전에는 목표는 마지막 입력이고 제약은 빈 목록이며 끝나지 않은 항목은 결과가 없는 도구 호출이다 ([#90](https://github.com/woonyong-choi/saturn/issues/90))
+- 보낸 뒤 결과를 모르는 작업을 사용자가 푸는 방법. 지금은 `/continue <작업>`이 파일 상태를 확인하게 하는 새 입력을 보내고 원래 입력은 `전달 중`으로 둔다 ([#90](https://github.com/woonyong-choi/saturn/issues/90))

@@ -3,6 +3,7 @@
 
 mod history;
 mod judgments;
+mod ledger;
 mod outcomes;
 mod raw;
 mod records;
@@ -23,6 +24,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePo
 
 pub use history::HistoryEntry;
 pub use judgments::{JudgmentOutcome, JudgmentPruneRequest, NewJudgment};
+pub(crate) use ledger::LedgerRow;
 pub use raw::RawDigest;
 pub use records::{NewInput, NewRun, RunEnd, RunRecord, UsageRow};
 pub use retention::{

@@ -66,6 +66,7 @@ pub const APPLIED: &str = "반영됨";
 pub const FAILED: &str = "실패";
 pub const NEEDS_CHECK: &str = "결과 확인 필요";
 pub const COMPACTED: &str = "맥락 정리 후 이어서 진행";
+pub const CONTEXT_DEFERRED: &str = "고정 제약이 길어 맥락 정리를 미룹니다";
 pub const SWITCHED_SUFFIX: &str = "로 전환";
 pub const REQUEST_SUMMARY: &str = "이번 요청";
 pub const JUDGE_CALLS: &str = "판단기";
@@ -250,6 +251,10 @@ const ENGLISH: &[(&str, &str)] = &[
     ("실패", "failed"),
     ("결과 확인 필요", "result needs check"),
     ("맥락 정리 후 이어서 진행", "context compacted, continuing"),
+    (
+        "고정 제약이 길어 맥락 정리를 미룹니다",
+        "pinned constraints are long, deferring context compaction",
+    ),
     ("로 전환", "switched"),
     ("이번 요청", "this request"),
     ("판단기", "judge"),

@@ -1,0 +1,118 @@
+//! 턴 끝: 마지막 턴 값 기록, 작업 끝 알림, 턴 경계에서만 하는 맥락 정리, 다음 입력 전송.
+//! 설계: docs/design/context-management.md#compaction-판정, docs/design/providers-and-sessions.md
+
+use std::time::{Duration, Instant, SystemTime};
+
+use saturn_core::sessions::LastTurn;
+use saturn_core::sessions::context::{CompactionDecision, ContextMeasure, decide};
+use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq};
+use saturn_protocol::rpc::{ChatNotice, Notification};
+
+use crate::flow::LiveSession;
+use crate::handoff::{HandoffOutcome, build_handoff};
+use crate::{Engine, EngineError};
+
+impl Engine {
+    /// 트리가 유휴가 된 턴 끝에서 다음 순서로 처리한다. 마지막 턴 값을 기록하고, 작업을 끝내고,
+    /// 맥락 정리를 판정하고, 그 뒤에야 기다리던 입력을 보낸다. 정리가 새 session으로 바꾸는 일은 이 경계에서만 한다.
+    ///
+    /// # Errors
+    /// 열린 session이 없으면 `Provider(NotSent)`, 기록 실패면 `Store`. 맥락 정리 오류는 로그만 남기고 입력은 보낸다.
+    pub(crate) async fn on_turn_end(
+        &mut self,
+        chat: ChatId,
+        agent: AgentId,
+    ) -> Result<(), EngineError> {
+        let live = self
+            .flow
+            .live
+            .get(&agent)
+            .cloned()
+            .ok_or(EngineError::NoRun { agent })?;
+        self.clear_permissions(agent).await;
+        self.record_turn_value(&live).await?;
+        self.end_task(chat, agent).await?;
+        if let Err(error) = self.compact_at_boundary(chat, &live).await {
+            tracing::warn!(chat = chat.0, error = %self.failure_line(&error), "context compaction skipped");
+        }
+        self.dispatch_next(chat).await
+    }
+
+    /// 마지막 활성 맥락과 끝 시각을 기록하고 session을 유휴로 둔다. `A`를 모르면 값을 기록하지 않는다.
+    async fn record_turn_value(&mut self, live: &LiveSession) -> Result<(), EngineError> {
+        let active = self.flow.context_tokens.get(&live.agent).copied().flatten();
+        if let Some(active) = active {
+            let last_turn = LastTurn {
+                active,
+                ended_at: SystemTime::now(),
+            };
+            self.finish_turn(live.session, last_turn).await?;
+        }
+        self.sessions.mark_idle(live.session, Instant::now());
+        self.persist_sessions(live.session).await
+    }
+
+    /// 트리 유휴이고 합칠 대기 입력이 없으며 `A`를 알 때만 `decide`를 부르고, `Restart`면 새 session으로 이어 간다.
+    /// 유휴 복귀 조건(경과 시간)은 다음 입력이 올 때 판정할 일이라 여기서는 경과 0으로 본다.
+    /// TODO(#90): 유휴 복귀 조건을 평가하는 시점. `context.mode`(`provider`)와 기대 잔여 턴은 설정이 생기기 전이라 `saturn` 모드와 기본값으로 둔다
+    async fn compact_at_boundary(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+    ) -> Result<(), EngineError> {
+        let Some(active) = self.flow.context_tokens.get(&live.agent).copied().flatten() else {
+            return Ok(());
+        };
+        let budget = self.context_budget(live.provider).await?;
+        if active < budget.threshold() {
+            return Ok(());
+        }
+        let rows = self.store.ledger_since(chat, LedgerSeq(0)).await?;
+        let outcome = build_handoff(&rows, &budget);
+        let packet = match &outcome {
+            HandoffOutcome::Ready(handoff) => handoff.tokens,
+            HandoffOutcome::Empty | HandoffOutcome::Deferred { .. } => 0,
+        };
+        let measure = ContextMeasure {
+            active: Some(active),
+            packet,
+            tree_idle: self.agents.is_tree_idle(live.agent),
+            has_mergeable_queue: self.queue.has_waiting(chat),
+            since_last_turn: Duration::ZERO,
+            expected_turns: None,
+        };
+        if decide(&budget, &measure) != CompactionDecision::Restart {
+            return Ok(());
+        }
+        match outcome {
+            HandoffOutcome::Ready(handoff) => {
+                if handoff.is_over_limit {
+                    tracing::warn!(
+                        chat = chat.0,
+                        tokens = handoff.tokens,
+                        "packet exceeds its limit"
+                    );
+                }
+                let up_to = rows.last().map_or_else(Default::default, |row| row.seq);
+                self.restart_session(chat, live, handoff.text, up_to)
+                    .await?;
+                self.notify_chat(chat, ChatNotice::Compacted).await;
+            }
+            HandoffOutcome::Deferred { constraints } => {
+                self.notify_chat(chat, ChatNotice::ContextDeferred { constraints })
+                    .await;
+            }
+            HandoffOutcome::Empty => {}
+        }
+        Ok(())
+    }
+
+    pub(crate) async fn notify_chat(&self, chat: ChatId, notice: ChatNotice) {
+        let notification = Notification::ChatNotice {
+            chat,
+            task: None,
+            notice,
+        };
+        self.rpc.broadcast(Some(chat), notification).await;
+    }
+}

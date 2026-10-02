@@ -3,12 +3,16 @@
 mod attach;
 mod decision;
 mod deliver;
+mod events;
 mod intake;
 mod outcomes;
 mod requests;
 mod sessions;
 mod start;
+mod stop;
 mod support;
+mod switch_round_trip;
+mod turn_end;
 
 use std::future::Future;
 use std::path::{Path, PathBuf};
@@ -164,6 +168,31 @@ impl Client {
             ServerMessage::Notification(message) => message.notification,
             ServerMessage::Response(response) => panic!("expected notification, got {response:?}"),
         }
+    }
+
+    /// `pick`이 값을 돌려주는 알림까지 읽고, 그 값을 돌려준다. 그 전에 온 알림은 버린다.
+    async fn until<T>(&mut self, mut pick: impl FnMut(&Notification) -> Option<T>) -> T {
+        loop {
+            let notification = self.notification().await;
+            if let Some(found) = pick(&notification) {
+                return found;
+            }
+        }
+    }
+
+    /// 짧은 시간 동안 도착한 알림을 모두 읽는다. 아무것도 오지 않아야 하는 시험은 이 목록이 비어 있는지 본다.
+    async fn window(&mut self) -> Vec<Notification> {
+        let mut seen = Vec::new();
+        while let Ok(line) = timeout(Duration::from_millis(300), self.lines.next_line()).await {
+            let line = line
+                .unwrap()
+                .expect("engine should keep the connection open");
+            match decode_server_line(&line).unwrap() {
+                ServerMessage::Notification(message) => seen.push(message.notification),
+                ServerMessage::Response(response) => panic!("unexpected response {response:?}"),
+            }
+        }
+        seen
     }
 
     async fn response(&mut self) -> Response {

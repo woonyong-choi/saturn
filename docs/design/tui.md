@@ -231,6 +231,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | `[A] codex · 45초 · 실패` | 작업 실패, 다음 줄에 원인 한 줄 |
 | `[A] 결과 확인 필요 · /continue A` | 결과 불명, 보류 줄과 함께 표시 |
 | `[A] 맥락 정리 후 이어서 진행` | 맥락 정리 뒤 같은 작업 계속 |
+| `고정 제약이 길어 맥락 정리를 미룹니다` | 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못함, 다음 줄부터 제약 목록 |
 | `[A] codex → claude로 전환` | 작업의 provider 전환 |
 | `이번 요청 · codex Token 4,120 · 판단기 3회 Token 9,870 · 2분 31초` | 모든 작업이 끝난 순간의 합계, provider별 토큰과 judge 호출과 경과 |
 | `[A]에 이어서 보냈어요 · 판단이 맞았나요? (선택)  1 맞아요  2 아니에요  0 닫기` | 피드백 질문 |
@@ -277,6 +278,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | 요구사항 | 검증 계획 |
 |---|---|
 | 작업이 하나이고 대기와 보류가 없으면 이름표를 숨긴다. | `saturn-terminal/tui/src/app/tests.rs`의 `render_single_task_hides_labels`, `render_stacks_transcript_status_composer_and_footer` |
+| 패킷이 넘쳐 맥락 정리를 미루면 안내 한 줄과 제약 목록을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_context_deferred_lists_the_constraints` |
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
 | judge 연결이 끊겨도 입력창은 입력을 계속 보낸다. | `saturn-terminal/tui/src/app/tests.rs`의 `submit_while_judge_disconnected_still_sends_input` |

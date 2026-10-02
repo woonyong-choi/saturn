@@ -3,12 +3,14 @@
 
 use std::time::SystemTime;
 
+use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::{
-    AgentRole, LastTurn, ReturnInputs, SendTarget, SessionManager, SessionRecord,
+    AgentRole, LastTurn, ReturnInputs, SendTarget, SessionError, SessionManager, SessionRecord,
 };
 use saturn_protocol::ids::{ChatId, LedgerSeq, Provider, SessionId, SettingsRevision};
 use saturn_protocol::state::SessionState;
 
+use crate::settings::SettingsError;
 use crate::store::Store;
 use crate::{Engine, EngineError};
 
@@ -104,6 +106,50 @@ impl Engine {
         self.persist_sessions(id).await
     }
 
+    /// 맥락 정리로 `old`를 `Ended`로 두고 같은 채팅의 새 session으로 바꾼다. 턴 경계에서만 된다.
+    ///
+    /// # Errors
+    /// 턴 경계가 아니거나 없는 session이면 `Session`, 저장 실패면 `Store`.
+    pub(crate) async fn replace_session(
+        &mut self,
+        old: SessionId,
+        record: SessionRecord,
+    ) -> Result<(), EngineError> {
+        let id = record.id;
+        self.sessions.replace(old, record)?;
+        self.persist_sessions(id).await
+    }
+
+    /// 입력 접수 때 고정한 설정이 아니라 지금 설정으로 잰다. 턴이 끝난 session의 맥락 정리를 판정할 때 쓴다.
+    ///
+    /// # Errors
+    /// 설정 번호를 읽지 못하면 `Settings`.
+    pub(crate) async fn context_budget(
+        &self,
+        provider: Provider,
+    ) -> Result<ContextBudget, EngineError> {
+        let revision = self
+            .settings
+            .current()
+            .ok_or(SettingsError::NoPreviousRevision)?;
+        Ok(self
+            .settings
+            .at(&self.store, revision)
+            .await?
+            .context_budget(provider))
+    }
+
+    /// session 기록에서 채팅을 찾는다.
+    ///
+    /// # Errors
+    /// 모르는 session이면 `Session(NotFound)`.
+    pub(crate) fn session_chat(&self, session: SessionId) -> Result<ChatId, EngineError> {
+        self.sessions
+            .get(session)
+            .map(|record| record.chat)
+            .ok_or_else(|| SessionError::NotFound(session).into())
+    }
+
     /// `Resume` 판정을 받은 보관 session을 `Open`으로 돌리고, 붙이기 시작할 기록 번호를 돌려준다.
     ///
     /// # Errors
@@ -121,7 +167,7 @@ impl Engine {
     // vars: s = 채팅의 session 수
     // basis: estimate
     /// `changed`의 채팅에서 `sessions`가 아는 session의 현재 상태를 한 거래로 저장한다. 같은 채팅의 다른 session이 `Ended`로 바뀐 것까지 함께 남기기 위해서다.
-    async fn persist_sessions(&self, changed: SessionId) -> Result<(), EngineError> {
+    pub(crate) async fn persist_sessions(&self, changed: SessionId) -> Result<(), EngineError> {
         let Some(chat) = self.sessions.get(changed).map(|record| record.chat) else {
             return Ok(());
         };

@@ -593,6 +593,63 @@ impl Queue {
             .and_then(|entry| entry.disposition)
     }
 
+    // cost: time O(n), heap O(k), stack O(1), alloc 1
+    // vars: n = 대기열 입력 수, k = 그 상태의 입력 수
+    // basis: estimate
+    /// 접수 순서로 돌려준다.
+    pub fn inputs_in_state(&self, chat: ChatId, state: InputState) -> Vec<InputId> {
+        self.inputs
+            .iter()
+            .filter(|entry| entry.input.chat == chat && entry.input.state == state)
+            .map(|entry| entry.input.id)
+            .collect()
+    }
+
+    // cost: time O(n), heap O(1), stack O(1)
+    // vars: n = 대기열 입력 수
+    // basis: estimate
+    /// 보낼 차례를 기다리는 입력이 있으면 참. 다음 턴 경계에 합쳐질 입력이라 맥락 정리 판정을 미루는 데 쓴다.
+    pub fn has_waiting(&self, chat: ChatId) -> bool {
+        self.inputs
+            .iter()
+            .any(|entry| entry.input.chat == chat && entry.input.state == InputState::Queued)
+    }
+
+    // cost: time O(n + t + h), heap O(1), stack O(1)
+    // vars: n = 대기열 입력 수, t = 작업 수, h = 쓰기 잠금 수
+    // basis: estimate
+    /// 내줬지만 보내지 못한 입력을 보류한다. 입력이 붙은 작업은 보류로 두고 쓰기 잠금은 푼다.
+    ///
+    /// # Errors
+    /// 없는 입력이면 `NotFound`, 내준 `Queued` 입력이 아니면 `InvalidTransition`.
+    pub fn hold_unsent(&mut self, input: InputId) -> Result<(), QueueError> {
+        let index = self.index_of(input)?;
+        let entry = &self.inputs[index];
+        if entry.input.state != InputState::Queued || !entry.is_dispatched {
+            return Err(QueueError::InvalidTransition {
+                from: entry.input.state,
+                to: InputState::Held,
+            });
+        }
+        let (task, chat) = (entry.input.task, entry.input.chat);
+        if let Some(slot) = self.tasks.iter_mut().find(|slot| {
+            Some(slot.id) == task && matches!(slot.phase, TaskPhase::Running | TaskPhase::Pending)
+        }) {
+            slot.phase = TaskPhase::Held;
+            slot.was_interrupted = false;
+            if let Some(agent) = slot.agent {
+                self.gate.release(agent);
+            }
+        }
+        let entry = &mut self.inputs[index];
+        entry.input.state = InputState::Held;
+        entry.input.reason = None;
+        entry.is_dispatched = false;
+        self.bump(chat);
+        self.refresh_judge_order(chat);
+        Ok(())
+    }
+
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 대기열 입력 수
     // basis: estimate
@@ -1622,6 +1679,84 @@ mod tests {
             queue.redirect(InputId(9), Disposition::Steer),
             Err(QueueError::NotFound(InputId(9)))
         ));
+    }
+
+    #[test]
+    fn hold_unsent_returns_a_dispatched_new_task_to_held_and_resume_sends_it_again() {
+        let mut queue = Queue::new();
+        accept_judged(&mut queue, 1, Permission::Write, Disposition::NewTask);
+        let Some(SendAction::NewTask { task, .. }) = queue.next_to_send() else {
+            panic!("input should start a new task");
+        };
+
+        queue.hold_unsent(InputId(1)).unwrap();
+
+        assert_eq!(state_of(&queue, 1), InputState::Held);
+        assert_eq!(queue.next_to_send(), None);
+        assert_eq!(queue.resume(CHAT, None), Vec::<TaskId>::new());
+        assert_eq!(state_of(&queue, 1), InputState::Queued);
+        assert_eq!(
+            queue.next_to_send(),
+            Some(SendAction::NewTask {
+                input: InputId(1),
+                task
+            })
+        );
+    }
+
+    #[test]
+    fn hold_unsent_on_an_idle_task_turn_frees_the_write_lock() {
+        let mut queue = Queue::new();
+        let task = start_running(&mut queue, 1, Permission::Write, 7);
+        queue.finish_task(AgentId(7));
+        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
+        assert!(matches!(
+            queue.next_to_send(),
+            Some(SendAction::NewTurn { .. })
+        ));
+
+        queue.hold_unsent(InputId(2)).unwrap();
+
+        assert_eq!(state_of(&queue, 2), InputState::Held);
+        assert!(
+            queue
+                .write_gate()
+                .try_acquire(Path::new("/work"), AgentId(8))
+        );
+        assert_eq!(queue.resume(CHAT, Some(task)), Vec::<TaskId>::new());
+        assert_eq!(state_of(&queue, 2), InputState::Queued);
+    }
+
+    #[test]
+    fn hold_unsent_rejects_inputs_that_were_not_handed_out() {
+        let mut queue = Queue::new();
+        queue.accept(input(1, Permission::ReadOnly));
+        accept_judged(&mut queue, 2, Permission::ReadOnly, Disposition::Queue);
+
+        assert!(matches!(
+            queue.hold_unsent(InputId(1)),
+            Err(QueueError::InvalidTransition { .. })
+        ));
+        assert!(matches!(
+            queue.hold_unsent(InputId(9)),
+            Err(QueueError::NotFound(InputId(9)))
+        ));
+    }
+
+    #[test]
+    fn has_waiting_and_inputs_in_state_follow_the_chat() {
+        let mut queue = Queue::new();
+        accept_judged(&mut queue, 1, Permission::Write, Disposition::Queue);
+        queue.accept(input(2, Permission::Write));
+
+        assert!(queue.has_waiting(CHAT));
+        assert!(!queue.has_waiting(ChatId(9)));
+        assert_eq!(
+            queue.inputs_in_state(CHAT, InputState::Judging),
+            vec![InputId(2)]
+        );
+        queue.set_state(InputId(1), InputState::Cancelled).unwrap();
+        assert!(!queue.has_waiting(CHAT));
     }
 
     #[test]

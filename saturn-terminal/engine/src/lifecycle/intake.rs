@@ -65,7 +65,8 @@ async fn accepted_input_reaches_first_provider_after_it_is_recorded() {
             Call::Open {
                 agent: flow.agent(),
                 model: None,
-                resume: None
+                resume: None,
+                packet: None
             },
             Call::SendTurn {
                 session,

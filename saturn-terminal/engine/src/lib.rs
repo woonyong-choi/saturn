@@ -16,12 +16,17 @@ pub mod training;
 mod chat_env;
 mod control;
 mod dispatch;
+mod events;
 mod flow;
+mod handoff;
 mod intake;
 mod launch;
 mod outcomes;
 mod requests;
 mod sessions;
+mod stop;
+mod switch;
+mod turn_end;
 mod usage;
 
 #[cfg(test)]
@@ -40,7 +45,6 @@ use saturn_core::sessions::{SessionError, SessionManager};
 use saturn_protocol::envelope::{
     INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND, RequestId, Response,
 };
-use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, ChatId, Provider, RunId, TaskId};
 use saturn_protocol::rpc::Request;
 use tokio::sync::Mutex;
@@ -85,6 +89,9 @@ pub enum EngineError {
     /// 묻지 않은 창의 답이라 적용하지 않는다.
     #[error("no pending {what} for this answer")]
     UnexpectedAnswer { what: &'static str },
+    /// 이벤트를 붙일 실행이 없어 기록하지 못한다.
+    #[error("no run to record the event of agent {}", agent.0)]
+    NoRun { agent: AgentId },
     /// 이 클라이언트가 붙지 않은 채팅이라 입력을 받지 않는다.
     #[error("chat {} is not attached to this client", chat.0)]
     ChatNotAttached { chat: ChatId },
@@ -431,6 +438,12 @@ impl Engine {
                 Some(done) = self.flow.judge_rx.recv() => {
                     self.on_judged(done).await;
                 }
+                arrival = events::next_arrival(&mut self.providers) => {
+                    self.on_arrival(arrival).await;
+                }
+                Some(done) = self.flow.stop_rx.recv() => {
+                    self.on_stop_done(done).await;
+                }
                 _ = tick.tick() => {
                     if let Err(error) = self.settle_signals(Instant::now()).await {
                         tracing::warn!(error = %masked_chain(&self.masker, &error), "failed to settle judgment signals");
@@ -521,10 +534,11 @@ impl Engine {
             Request::CancelInput { input } => self.cancel_input(client, input).await,
             Request::Stop { chat } => self.stop_chat(chat).await,
             Request::Continue { chat, task } => self.continue_held(chat, task).await,
-            // TODO(#149): 보류 입력 하나 재개, 보류 닫기, 허가 답 전달
-            Request::ContinueInput { .. } => Err(unsupported("ContinueInput")),
-            Request::CloseHeld { .. } => Err(unsupported("CloseHeld")),
-            Request::AnswerPermission { .. } => Err(unsupported("AnswerPermission")),
+            Request::ContinueInput { input } => self.continue_input(input).await,
+            Request::CloseHeld { chat, task } => self.close_held(chat, task).await,
+            Request::AnswerPermission { request_id, answer } => {
+                self.answer_permission(client, request_id, answer).await
+            }
             Request::AnswerFeedback { judgment, correct } => {
                 self.answer_feedback(judgment, correct).await
             }
@@ -598,34 +612,6 @@ impl Engine {
         self.presence = Presence::Attached;
         self.send_start_notices(client, applied).await;
         Ok(())
-    }
-
-    /// 이벤트는 처리 전에 먼저 기록한다.
-    async fn on_provider_event(
-        &mut self,
-        provider: Provider,
-        event: ProviderEvent,
-    ) -> Result<(), EngineError> {
-        todo!("#90")
-    }
-
-    /// compaction 교체는 턴 경계에서만 한다.
-    async fn on_turn_end(&mut self, chat: ChatId, agent: AgentId) -> Result<(), EngineError> {
-        todo!("#90")
-    }
-
-    /// 트리 유휴와 `StopOutcome::Stopped`를 모두 확인한 뒤에만 멈춤 완료를 알린다.
-    async fn stop_chat(&mut self, chat: ChatId) -> Result<(), EngineError> {
-        todo!("#90")
-    }
-
-    /// `task`가 없으면 채팅의 보류 전부를 접수 순서로 재개하고, 같은 패킷은 다시 보내지 않는다.
-    async fn continue_held(
-        &mut self,
-        chat: ChatId,
-        task: Option<TaskId>,
-    ) -> Result<(), EngineError> {
-        todo!("#90")
     }
 
     /// TODO(#70): `stop`과 `ask`의 동작이 정해지기 전에는 `Background`와 같이 처리한다

@@ -70,6 +70,25 @@ pub enum ProviderEvent {
     },
 }
 
+impl ProviderEvent {
+    /// 이벤트가 속한 메인 에이전트.
+    pub fn agent(&self) -> AgentId {
+        match self {
+            Self::Text { agent, .. }
+            | Self::ToolCall { agent, .. }
+            | Self::ToolResult { agent, .. }
+            | Self::SubagentStarted { agent, .. }
+            | Self::SubagentEnded { agent, .. }
+            | Self::PermissionRequested { agent, .. }
+            | Self::TurnCompleted { agent, .. }
+            | Self::ContextSize { agent, .. }
+            | Self::StreamLost { agent }
+            | Self::SettingsApplied { agent, .. } => *agent,
+            Self::Usage(report) => report.agent,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum Activity {
     Thinking,
@@ -157,6 +176,27 @@ pub enum UsageScope {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn agent_of_usage_is_the_report_agent() {
+        let event = ProviderEvent::Usage(UsageReport {
+            agent: AgentId(7),
+            subagent: None,
+            model: None,
+            scope: UsageScope::MainTurn,
+            input: None,
+            cache_read: None,
+            cache_write: None,
+            output: None,
+            reasoning: None,
+        });
+
+        assert_eq!(event.agent(), AgentId(7));
+        assert_eq!(
+            ProviderEvent::StreamLost { agent: AgentId(3) }.agent(),
+            AgentId(3)
+        );
+    }
 
     #[test]
     fn is_candidate_only_reasoning_is_excluded() {

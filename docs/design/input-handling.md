@@ -133,6 +133,10 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 - 멈춘 작업은 자동으로 이어 가지 않고 보류하며, TUI가 없는 동안에도 보류를 그대로 둔다. 사용자가 멈춘 작업을 자동으로 이어 가지 않기 위해서다.
 - 크래시 뒤 효과 범위가 증명되지 않은 실행도 보류가 된다. 그 판정은 [engine 수명](engine-lifecycle.md)에 있다.
 - 보내지 않은 입력은 붙은 작업과 함께 보류한다. 붙은 작업이 없으면 새 작업 입력은 그 입력의 작업으로, 나머지는 메인 작업으로 묶는다. 대상이 있는 재개와 보류 종료를 작업 단위로 하기 위해서다.
+- 멈춤 요청은 보류와 멈춤 신호를 보낸 뒤 바로 응답한다. 보류가 된 입력은 그때 바로 보이고, 작업의 보류 표시와 `멈춤` 줄은 완료를 확인한 뒤에 보인다. 멈추는 중에도 다른 요청과 이벤트를 처리하기 위해서다.
+- 이미 멈추는 중인 채팅에 멈춤을 다시 요청하면 신호를 다시 보내지 않는다.
+- 멈춘 에이전트의 session은 `보류`로 두고 provider에 열린 채 남긴다. 멈춘 작업을 다시 열지 않고 이어 가기 위해서다.
+- 완료를 확인하는 조건은 [provider 연결과 session](providers-and-sessions.md#트리-전체-중지)에 있다.
 
 ### 보류 재개와 보류 종료
 
@@ -148,6 +152,11 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 - 재개할 때 같은 패킷을 다시 보내지 않는다. 이미 반영된 입력을 두 번 실행하는 일을 막기 위해서다.
 - 보류를 닫아도 기록은 지우지 않고 수정된 파일은 되돌리지 않는다. 사용자가 멈춘 작업의 결과를 사용자 뜻 없이 지우는 일을 막기 위해서다.
 - 확인된 상태로 만든 새 입력은 멈춤 때 실행 중이던 작업에만 보낸다. 실행 전이던 작업은 보류 입력을 대기로 되돌리기만 한다. 끝난 턴을 다시 이어 붙이지 않기 위해서다.
+- 새 입력은 멈춘 턴을 연 입력의 원문에 "턴이 끝나기 전에 멈췄으니 파일의 지금 상태를 먼저 확인하고, 이미 한 일은 되풀이하지 않고 이어 가라"는 말을 붙인 글이다. 파일 목록을 Saturn이 세는 방법이 정해지기 전이라([#65](https://github.com/woonyong-choi/saturn/issues/65)) 에이전트가 직접 확인하게 한다. 접수할 때 관계 판단 없이 그 작업에 대기로 붙이고, 쓰기 규칙을 그대로 적용한다.
+- 같은 작업에 보류 입력이 있으면 접수 순서가 앞선 그 입력이 먼저 가고 새 입력은 그 턴이 끝난 뒤에 간다.
+- 입력 하나를 재개하는 요청은 그 입력이 붙은 작업을 재개한다. 입력 하나만 재개하는 규칙은 정해지기 전이다.
+- 보낸 뒤 결과를 모르는 작업은 `/continue`에 작업을 가리킬 때만 잇는다. 대상이 없는 재개가 결과를 모르는 작업을 건드리지 않는 것은 이미 반영됐을 수 있는 일을 사용자 뜻 없이 이어 가지 않기 위해서다. 잇는 방법은 멈춘 작업과 같은 확인 입력이고, 원래 입력은 `전달 중`으로 남기고 다시 보내지 않는다. 그 실행 기록은 닫는다.
+- 보류 종료는 보내지 않은 입력을 취소하고, 그 작업의 에이전트 session을 provider에서 닫고 끝낸다. 기록과 수정된 파일은 그대로 둔다.
 
 ### 쓰기 규칙
 
@@ -185,7 +194,8 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 | judge 호출 연속 3회 실패 | 새 입력 접수를 계속하고 상태판에 `판단 모델 연결 끊김`을 보인다. |
 | Codex `turn/steer`가 활성 턴 없음으로 실패 | 확정 미전달로 기록하고 다시 판단하지 않고 같은 session에 `turn/start`로 보낸다. |
 | Claude 끼워 넣기 중 턴 종료 | provider가 추가 메시지를 다음 턴에 처리하므로 따로 처리하지 않는다. |
-| 보낸 뒤 결과 불명 | 자동으로 다시 보내지 않고 사용자 확인으로 넘긴다. 입력은 `전달 중`으로 두고 작업을 `결과 확인 필요`로 보이며, 실행 기록은 열어 둔다. |
+| 보낸 뒤 결과 불명 | 자동으로 다시 보내지 않고 사용자 확인으로 넘긴다. 입력은 `전달 중`으로 두고 작업을 `결과 확인 필요`로 보이며, 실행 기록은 열어 둔다. 사용자는 `/continue <작업>`으로 확인 입력을 보내 잇는다. |
+| 패킷의 고정 구역이 `P_hard`를 넘어 새 session으로 옮기지 못함 | 보내지 않고 입력을 작업과 함께 보류하며 제약 목록을 보인다. `/continue`로 다시 시도한다. |
 | 보내기 전 확정 실패가 3번 이어짐 | 입력을 `거절됨`으로 두고 작업을 실패로 보인다. 끼워 넣기가 거절된 입력의 다음 처리는 [#60](https://github.com/woonyong-choi/saturn/issues/60)에서 정한다. |
 | provider 연결이나 session 열기 실패, 설치된 provider 없음 | 보내지 않고 입력을 `거절됨`으로 두며 원인 한 줄을 작업 실패에 보인다. |
 | 접수나 `전달 중` 기록 실패 | 어디에도 보내지 않는다. 접수 실패는 요청 오류로, `전달 중` 실패는 입력 거절로 알린다. |
@@ -206,9 +216,13 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 | 쓰기 권한 에이전트는 같은 작업 폴더에서 한 번에 하나만 실행한다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `relation_answer_to_new_task_waits_for_the_write_turn_then_starts` |
 | 취소는 에이전트에 보내기 전 입력에만 적용한다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `cancel_applies_only_before_the_input_is_sent` |
 | 바로 보내기는 judge에 한 번 묻고, 판단하지 못하면 차례를 기다린다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `send_now_asks_the_judge_once_and_steers_into_the_running_turn`, `send_now_with_judge_down_leaves_the_input_waiting_in_order` |
-| 멈춘 작업은 자동으로 이어 가지 않고 보류한다. | 멈춤 뒤 재개 요청 없이는 보류 작업이 실행되지 않는지 확인한다. |
-| 멈춤 신호는 추적된 subagent까지 보낸다. | 멈춤 요청 뒤 추적된 subagent마다 멈춤 신호가 가는지 확인한다. |
-| 멈춤 신호 10초 뒤 남은 프로세스 묶음에는 중지 신호를 보낸다. | 멈춤 신호를 무시하는 프로세스에 10초 뒤 중지 신호가 가는지 확인한다. |
+| 멈춘 작업은 자동으로 이어 가지 않고 보류한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stopped_work_is_not_continued_without_a_request`, `stop_with_nothing_running_holds_the_waiting_input_at_once`, `stop_twice_signals_once` |
+| 재개는 보류 입력을 접수 순서로 보내고 멈춘 작업에는 파일 상태 확인 입력을 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `continue_sends_held_input_and_then_a_state_check_for_the_interrupted_task`, `continue_input_resumes_the_task_of_that_input` |
+| 보류 종료는 보내지 않은 입력을 취소하고 session을 끝낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `close_held_cancels_unsent_input_and_ends_the_session` |
+| 결과를 모르는 작업은 가리킬 때만 확인 입력으로 잇는다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `task_with_unknown_result_is_continued_only_when_named` |
+| 멈춤 신호는 추적된 subagent까지 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_signals_the_deepest_subagent_first_and_finishes_only_when_the_tree_is_idle` |
+| 멈춤 신호 10초 뒤 남은 프로세스 묶음에는 중지 신호를 보낸다. | `saturn-terminal/engine/src/processes/mod.rs`의 `stop_sends_term_after_grace` |
+| 트리 유휴와 프로세스 중지를 모두 확인한 뒤에만 멈춤 완료를 보고한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_is_not_complete_until_the_process_group_is_confirmed_stopped`, `stop_without_a_finished_turn_signal_is_not_complete`, `processes_left_outside_the_group_are_reported_instead_of_done` |
 | 끼워 넣기와 멈춤 신호는 provider별 경로로 전달된다. | [#5](https://github.com/woonyong-choi/saturn/issues/5)와 [#27](https://github.com/woonyong-choi/saturn/issues/27) 실험으로 경로와 불가 상태를 확인한다. |
 | `resume_held` 기준값 0.85는 보류 작업을 잘못 재개하지 않는다. | [#9](https://github.com/woonyong-choi/saturn/issues/9) 실험으로 오탐 비율을 확인한다. |
 
@@ -222,3 +236,5 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 - provider가 끼워 넣기를 거절한 입력을 대기로 옮길지, 다시 판단할지, 사용자에게 물을지 ([#60](https://github.com/woonyong-choi/saturn/issues/60))
 - 허가 거절 뒤 다르게 하라는 입력을 판단 없이 끼워 넣을지, 허가 창에서 받을지, 일반 입력으로 판단할지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
 - 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
+- 보류 입력 하나만 재개할지, 같은 작업의 보류 입력을 함께 재개할지. 같은 작업에 보류 입력이 있을 때 확인 입력이 그 입력보다 앞서야 하는지 ([#90](https://github.com/woonyong-choi/saturn/issues/90))
+- 멈춘 작업의 트리 유휴 신호가 끝내 오지 않을 때 완료 보고를 기다리는 한도 ([#90](https://github.com/woonyong-choi/saturn/issues/90))

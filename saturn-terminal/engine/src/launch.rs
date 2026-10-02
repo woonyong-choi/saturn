@@ -1,138 +1,26 @@
-//! 입력을 보낼 provider와 session을 정하고 연결한다. 채팅의 작업 폴더와 환경은 `chat_env`를 쓴다.
+//! provider 연결을 만들고 session을 여는 공통 도구. 채팅의 작업 폴더와 환경은 `chat_env`를 쓴다.
 //! 설계: docs/design/providers-and-sessions.md
 
 use std::path::PathBuf;
-use std::time::SystemTime;
 
 use saturn_core::providers::{ProviderClient, ProviderError, SessionHandle, SessionSpec};
 use saturn_core::queue::QueuedInput;
-use saturn_core::sessions::{AgentRole, SendTarget, SessionRecord};
-use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq, Provider, SessionId, SettingsRevision};
-use saturn_protocol::state::SessionState;
+use saturn_protocol::ids::{
+    AgentId, ChatId, Provider, ProviderSessionId, SessionId, SettingsRevision,
+};
 
-use crate::dispatch::{MAX_SEND_ATTEMPTS, Start};
+use crate::dispatch::MAX_SEND_ATTEMPTS;
 use crate::flow::LiveSession;
 use crate::providers::{
     FIRST_INPUT_ORDER, LaunchSpec, ProviderConnection, SaturnDefaults, UserProviderConfig,
     is_installed, program_name,
 };
 use crate::secrets::HookPolicy;
-use crate::sessions::SendRequest;
-use crate::store::IdKind;
 use crate::{Engine, EngineError};
 
 impl Engine {
-    /// 보낼 session을 연다. 실패하면 사용자에게 보일 원인 한 줄을 돌려준다.
-    pub(crate) async fn open_for(
-        &mut self,
-        record: &QueuedInput,
-        start: Start,
-    ) -> Result<LiveSession, String> {
-        let role = match start {
-            Start::Task(task) if !self.queue.is_main_task(task) => AgentRole::Sub,
-            _ => AgentRole::Main,
-        };
-        let provider = self
-            .pick_provider(record.chat)
-            .map_err(|error| self.failure_line(&error))?;
-        self.ensure_connected(provider, record)
-            .await
-            .map_err(|error| self.failure_line(&error))?;
-        let request = SendRequest {
-            chat: record.chat,
-            provider,
-            role,
-            packet: 0,
-            settings: record.settings,
-        };
-        let target = self
-            .send_target(request, SystemTime::now())
-            .await
-            .map_err(|error| self.failure_line(&error))?;
-        let live = match target {
-            SendTarget::Open(id) => self.reopen_if_needed(record, id).await,
-            SendTarget::Resume(id) => self.reopen_session(record, id).await,
-            // TODO(#168): 패킷 없이 새 session을 연다. provider 전환과 모델 고정이 정해지면 패킷을 넘긴다
-            SendTarget::New { provider, role } => {
-                self.open_new_session(record, provider, role).await
-            }
-        };
-        live.map_err(|error| self.failure_line(&error))
-    }
-
-    /// 이미 이 프로세스에서 열어 둔 session이면 그대로 쓴다.
-    async fn reopen_if_needed(
-        &mut self,
-        record: &QueuedInput,
-        id: SessionId,
-    ) -> Result<LiveSession, EngineError> {
-        let agent = self.sessions.get(id).map(|session| session.agent);
-        if let Some(live) = agent.and_then(|agent| self.flow.live.get(&agent)) {
-            return Ok(live.clone());
-        }
-        self.reopen_session(record, id).await
-    }
-
-    /// 보관한 provider session id로 다시 연다. 열린 뒤에만 상태를 `Open`으로 바꾼다.
-    async fn reopen_session(
-        &mut self,
-        record: &QueuedInput,
-        id: SessionId,
-    ) -> Result<LiveSession, EngineError> {
-        let stored = self
-            .sessions
-            .get(id)
-            .cloned()
-            .ok_or(saturn_core::sessions::SessionError::NotFound(id))?;
-        let resume = stored
-            .provider_session
-            .clone()
-            .ok_or_else(|| ProviderError::NotSent {
-                reason: format!("session {} has no provider session id", id.0),
-            })?;
-        let spec = self.session_spec(record, stored.agent, Some(resume));
-        let handle = self
-            .open_with_retries(record.chat, stored.provider, spec)
-            .await?;
-        if stored.state != SessionState::Open {
-            self.resume_main(id).await?;
-        }
-        Ok(self.remember(stored.agent, id, stored.provider, &handle))
-    }
-
-    async fn open_new_session(
-        &mut self,
-        record: &QueuedInput,
-        provider: Provider,
-        role: AgentRole,
-    ) -> Result<LiveSession, EngineError> {
-        let agent = AgentId(self.store.allocate_id(IdKind::Agent).await?);
-        let id = SessionId(self.store.allocate_id(IdKind::Session).await?);
-        let spec = self.session_spec(record, agent, None);
-        let handle = self.open_with_retries(record.chat, provider, spec).await?;
-        let registered = self
-            .register_session(SessionRecord {
-                id,
-                chat: record.chat,
-                agent,
-                role,
-                provider,
-                provider_session: Some(handle.provider_session.clone()),
-                state: SessionState::Open,
-                delivered: LedgerSeq(0),
-                idle_since: None,
-            })
-            .await;
-        if let Err(error) = registered {
-            self.close_unregistered(record.chat, provider, &handle)
-                .await;
-            return Err(error);
-        }
-        Ok(self.remember(agent, id, provider, &handle))
-    }
-
     /// 기록하지 못한 session은 쓰지 않으므로 provider 쪽도 닫는다.
-    async fn close_unregistered(
+    pub(crate) async fn close_unregistered(
         &mut self,
         chat: ChatId,
         provider: Provider,
@@ -146,7 +34,7 @@ impl Engine {
         }
     }
 
-    fn remember(
+    pub(crate) fn remember(
         &mut self,
         agent: AgentId,
         session: SessionId,
@@ -164,13 +52,14 @@ impl Engine {
         live
     }
 
-    /// 모델은 요청의 `pinned_model`을 그대로 넘긴다.
+    /// 모델은 요청의 `pinned_model`을 그대로 넘기고, `packet`은 첫 턴으로 보낼 글이다.
     /// TODO(#168): 모델에서 provider로 가는 대응과 이미 열린 session의 모델 교체
-    fn session_spec(
+    pub(crate) fn session_spec(
         &self,
         record: &QueuedInput,
         agent: AgentId,
-        resume: Option<saturn_protocol::ids::ProviderSessionId>,
+        resume: Option<ProviderSessionId>,
+        packet: Option<String>,
     ) -> SessionSpec {
         SessionSpec {
             agent,
@@ -178,12 +67,12 @@ impl Engine {
             model: record.pinned_model.clone(),
             settings: record.settings,
             resume,
-            packet: None,
+            packet,
         }
     }
 
     /// 열지 못하는 `NotSent`(재개 실패)만 다시 연다.
-    async fn open_with_retries(
+    pub(crate) async fn open_with_retries(
         &mut self,
         chat: ChatId,
         provider: Provider,
@@ -205,11 +94,14 @@ impl Engine {
         }
     }
 
-    /// 이어 갈 메인 session이 있으면 그 provider, 없으면 설치된 앞쪽 provider.
+    /// 사용자가 정한 provider가 있으면 그것, 없으면 이어 갈 메인 session의 provider, 그것도 없으면 설치된 앞쪽 provider.
     ///
     /// # Errors
-    /// 둘 다 설치돼 있지 않으면 `NoProvider`.
-    fn pick_provider(&self, chat: ChatId) -> Result<Provider, EngineError> {
+    /// 셋 다 정하지 못하면 `NoProvider`.
+    pub(crate) fn pick_provider(&self, chat: ChatId) -> Result<Provider, EngineError> {
+        if let Some(provider) = self.flow.switch_to.get(&chat) {
+            return Ok(*provider);
+        }
         if let Some(main) = self.sessions.live_main(chat) {
             return Ok(main.provider);
         }
@@ -226,19 +118,18 @@ impl Engine {
     }
 
     /// 채팅의 provider 연결이 없으면 그 채팅의 작업 폴더와 환경으로 만든다.
-    async fn ensure_connected(
+    pub(crate) async fn ensure_connected(
         &mut self,
         provider: Provider,
-        record: &QueuedInput,
+        chat: ChatId,
+        settings: SettingsRevision,
     ) -> Result<(), EngineError> {
-        if self.providers.contains_key(&(record.chat, provider)) {
+        if self.providers.contains_key(&(chat, provider)) {
             return Ok(());
         }
-        let launch = self
-            .launch_spec(provider, record.chat, record.settings)
-            .await?;
+        let launch = self.launch_spec(provider, chat, settings).await?;
         let connection = ProviderConnection::connect(launch, self.supervisor.clone()).await?;
-        self.providers.insert((record.chat, provider), connection);
+        self.providers.insert((chat, provider), connection);
         Ok(())
     }
 

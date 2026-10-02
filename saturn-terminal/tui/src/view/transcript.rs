@@ -456,6 +456,15 @@ pub fn tokens_text(lang: Lang, tokens: Option<u64>) -> String {
 fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
     match notice {
         ChatNotice::Compacted => vec![format!("{prefix}{}", lang.tr(i18n::COMPACTED))],
+        ChatNotice::ContextDeferred { constraints } => {
+            let mut lines = vec![format!("{prefix}{}", lang.tr(i18n::CONTEXT_DEFERRED))];
+            lines.extend(
+                constraints
+                    .iter()
+                    .map(|constraint| format!("- {constraint}")),
+            );
+            lines
+        }
         ChatNotice::ProviderSwitched { from, to } => {
             let (from, to) = (i18n::provider_name(*from), i18n::provider_name(*to));
             vec![match lang {
@@ -699,6 +708,24 @@ mod tests {
         assert_eq!(
             summary.lines(Lang::Ko, true, false),
             vec!["이번 요청 · codex Token 4,120 · 판단기 3회 Token 9,870 · 2분 31초"]
+        );
+    }
+
+    #[test]
+    fn lines_context_deferred_lists_the_constraints() {
+        let deferred = TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::ContextDeferred {
+                constraints: vec!["never touch the vendor folder".to_owned()],
+            },
+        };
+
+        assert_eq!(
+            deferred.lines(Lang::Ko, false, false),
+            vec![
+                "고정 제약이 길어 맥락 정리를 미룹니다",
+                "- never touch the vendor folder"
+            ]
         );
     }
 

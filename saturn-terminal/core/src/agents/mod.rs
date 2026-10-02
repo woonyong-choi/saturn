@@ -124,6 +124,13 @@ impl AgentTracker {
         tree.status()
     }
 
+    // cost: time O(1) avg, heap O(1), stack O(1)
+    // basis: estimate
+    /// 이벤트를 받은 적 없는 에이전트는 `None`이다.
+    pub fn status(&self, agent: AgentId) -> Option<TreeStatus> {
+        self.trees.get(&agent).map(AgentTree::status)
+    }
+
     /// 이벤트를 받은 적 없는 에이전트는 추적 중인 실행이 없으므로 참이다.
     pub fn is_tree_idle(&self, agent: AgentId) -> bool {
         self.trees
@@ -352,6 +359,16 @@ mod tests {
 
         assert_eq!(status, TreeStatus::AnsweredTreeRunning);
         assert!(!tracker.is_tree_idle(AGENT));
+    }
+
+    #[test]
+    fn status_is_none_until_the_first_event_and_follows_the_tree() {
+        let mut tracker = AgentTracker::new();
+        assert_eq!(tracker.status(AGENT), None);
+
+        feed(&mut tracker, &[started("a", None), completed()]);
+
+        assert_eq!(tracker.status(AGENT), Some(TreeStatus::AnsweredTreeRunning));
     }
 
     #[test]

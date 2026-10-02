@@ -1,4 +1,4 @@
-//! 입력 흐름 테스트용 가짜 provider. 프로세스를 띄우지 않고 받은 호출을 기록하며 정해 둔 답을 낸다.
+//! 입력 흐름 테스트용 가짜 provider. 프로세스를 띄우지 않고 받은 호출을 기록하며 정해 둔 답과 이벤트를 낸다.
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -7,8 +7,11 @@ use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId};
+use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SubagentId};
 use saturn_protocol::rpc::PermissionAnswer;
+use tokio::sync::mpsc;
+
+use crate::processes::ProcessGroupId;
 
 /// provider가 받은 호출.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,6 +20,7 @@ pub(crate) enum Call {
         agent: AgentId,
         model: Option<String>,
         resume: Option<ProviderSessionId>,
+        packet: Option<String>,
     },
     SendTurn {
         session: ProviderSessionId,
@@ -26,10 +30,18 @@ pub(crate) enum Call {
         session: ProviderSessionId,
         text: String,
     },
+    /// `target`이 `None`이면 메인.
+    Interrupt {
+        session: ProviderSessionId,
+        target: Option<SubagentId>,
+    },
     AnswerPermission {
         session: ProviderSessionId,
         request_id: String,
         answer: PermissionAnswer,
+    },
+    Close {
+        session: ProviderSessionId,
     },
 }
 
@@ -41,8 +53,10 @@ struct Script {
     open: VecDeque<Answer>,
     send: VecDeque<Answer>,
     steer: VecDeque<Answer>,
+    answer_permission: VecDeque<Answer>,
     steer_verified: bool,
     opened: u32,
+    group: Option<ProcessGroupId>,
 }
 
 /// 복제본은 같은 기록과 답을 함께 쓴다. 답을 정해 두지 않은 호출은 성공한다.
@@ -50,13 +64,18 @@ struct Script {
 pub(crate) struct FakeProvider {
     provider: Provider,
     script: Arc<Mutex<Script>>,
+    events_tx: mpsc::UnboundedSender<ProviderEvent>,
+    events_rx: Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<ProviderEvent>>>,
 }
 
 impl FakeProvider {
     pub(crate) fn new(provider: Provider) -> Self {
+        let (events_tx, events_rx) = mpsc::unbounded_channel();
         Self {
             provider,
             script: Arc::default(),
+            events_tx,
+            events_rx: Arc::new(tokio::sync::Mutex::new(events_rx)),
         }
     }
 
@@ -81,6 +100,24 @@ impl FakeProvider {
         self.lock().steer.extend(answers);
     }
 
+    pub(crate) fn answer_permission_with(&self, answers: impl IntoIterator<Item = Answer>) {
+        self.lock().answer_permission.extend(answers);
+    }
+
+    /// 멈춤 때 중지할 프로세스 묶음.
+    pub(crate) fn set_group(&self, group: ProcessGroupId) {
+        self.lock().group = Some(group);
+    }
+
+    pub(crate) fn group(&self) -> Option<ProcessGroupId> {
+        self.lock().group
+    }
+
+    /// 연결이 이벤트를 읽는 순서로 내보낸다.
+    pub(crate) fn emit(&self, event: ProviderEvent) {
+        let _ = self.events_tx.send(event); // 받는 쪽이 이미 사라진 시험은 이벤트가 필요 없다
+    }
+
     pub(crate) fn calls(&self) -> Vec<Call> {
         self.lock().calls.clone()
     }
@@ -99,6 +136,7 @@ impl ProviderClient for FakeProvider {
             agent: spec.agent,
             model: spec.model.clone(),
             resume: spec.resume.clone(),
+            packet: spec.packet.clone(),
         });
         script.open.pop_front().unwrap_or(Ok(()))?;
         script.opened += 1;
@@ -139,9 +177,16 @@ impl ProviderClient for FakeProvider {
 
     async fn interrupt(
         &mut self,
-        _session: &ProviderSessionId,
-        _target: InterruptTarget,
+        session: &ProviderSessionId,
+        target: InterruptTarget,
     ) -> Result<(), ProviderError> {
+        self.lock().calls.push(Call::Interrupt {
+            session: session.clone(),
+            target: match target {
+                InterruptTarget::Subagent(subagent) => Some(subagent),
+                InterruptTarget::Main => None,
+            },
+        });
         Ok(())
     }
 
@@ -155,20 +200,24 @@ impl ProviderClient for FakeProvider {
         request_id: &str,
         answer: PermissionAnswer,
     ) -> Result<(), ProviderError> {
-        self.lock().calls.push(Call::AnswerPermission {
+        let mut script = self.lock();
+        script.calls.push(Call::AnswerPermission {
             session: session.clone(),
             request_id: request_id.to_owned(),
             answer,
         });
-        Ok(())
+        script.answer_permission.pop_front().unwrap_or(Ok(()))
     }
 
-    async fn close_session(&mut self, _session: &ProviderSessionId) -> Result<(), ProviderError> {
+    async fn close_session(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
+        self.lock().calls.push(Call::Close {
+            session: session.clone(),
+        });
         Ok(())
     }
 
     async fn next_event(&mut self) -> Option<ProviderEvent> {
-        std::future::pending().await
+        self.events_rx.lock().await.recv().await
     }
 
     fn commands(&self) -> Vec<ProviderCommand> {
