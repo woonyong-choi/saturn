@@ -13,7 +13,6 @@ use crate::settings::{self, SettingsError};
 use crate::{Engine, EngineError};
 
 /// Codex 연결을 다시 시작했을 때 화면에 보이는 안내. 초안 문구다.
-/// TODO(#232): Codex 안내 문구 조사 결과로 교체
 pub(crate) const CODEX_RESTART_NOTICE: &str = "Codex 연결을 다시 시작해 권한 규칙을 적용했습니다";
 
 impl Engine {

@@ -403,9 +403,18 @@ fn link_login(user_codex_home: &Path, home: &Path) -> Result<(), HomeError> {
         return Ok(());
     }
     let relink = || -> std::io::Result<()> {
-        match std::fs::remove_file(&target) {
+        match std::fs::symlink_metadata(&target) {
+            Ok(metadata) if metadata.file_type().is_symlink() => {
+                std::fs::remove_file(&target)?;
+            }
+            Ok(_) => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::AlreadyExists,
+                    "auth.json is not a symbolic link",
+                ));
+            }
             Err(error) if error.kind() != std::io::ErrorKind::NotFound => return Err(error),
-            _ => {}
+            Err(_) => {}
         }
         symlink(&source, &target)
     };

@@ -166,6 +166,25 @@ fn home_links_login_without_copying_and_leaves_user_files_alone() {
 }
 
 #[test]
+fn home_does_not_delete_a_non_symlink_auth_file() {
+    let fixture = Fixture::new(USER_CONFIG);
+    let home = fixture.prepare(&[]);
+    let target = home.path.join(AUTH_FILE);
+    std::fs::remove_file(&target).unwrap();
+    std::fs::write(&target, "keep").unwrap();
+
+    let error = prepare(HomeInput {
+        saturn_home: &fixture.saturn_home,
+        user_codex_home: &fixture.user_home,
+        rules: &[],
+    })
+    .unwrap_err();
+
+    assert!(matches!(error, HomeError::Write { .. }));
+    assert_eq!(std::fs::read_to_string(target).unwrap(), "keep");
+}
+
+#[test]
 fn home_files_are_private_and_rules_replace_the_user_rules() {
     let fixture = Fixture::new(USER_CONFIG);
 
