@@ -58,7 +58,7 @@ pub(crate) struct Assembled {
     /// 후보 전체의 RRF 순서.
     pub(crate) rrf_order: Vec<LedgerSeq>,
     /// 순서를 정하는 데 쓴 router 판단 수.
-    pub(crate) routerd: usize,
+    pub(crate) routed: usize,
 }
 
 // cost: time O(L + c log c), heap O(L), stack O(1)
@@ -102,7 +102,7 @@ pub(crate) fn assemble(
     Assembled {
         source,
         rrf_order,
-        routerd: verdicts.len(),
+        routed: verdicts.len(),
     }
 }
 

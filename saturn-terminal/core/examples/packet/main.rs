@@ -106,7 +106,7 @@ fn render(
             "rrf_order": seqs(&assembled.rrf_order),
             "router_calls": 0,
             "router_failures": 0,
-            "routerd": assembled.routerd,
+            "routed": assembled.routed,
             "is_over_limit": packet.is_over_limit,
             "is_summary_used": packet.is_summary_used,
         })

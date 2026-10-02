@@ -226,7 +226,7 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [#6](https://github.com/woonyong-choi/saturn/issues/6) 실험으로 한국어 평가 세트의 오분류율을 확인한다. |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
 | 후보를 순위로 자르지 않고 전체를 묻는다. | `saturn-terminal/core/src/routers/mod.rs`의 `compact_questions_150_candidates_ask_all` |
-| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/README.md)에서 `is_constraint` 0.7은 확인했다. [간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)에서 `replaces_<n>` 구간과 간접 지시 입력은 기준을 가르지 못해 보류이고(간접 지시 입력 74.5% [68.0, 80.0]), 앞 입력의 제약 등록 여부를 state에 넣어도 정확도는 오르지 않았다. |
+| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. [간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)에서 `replaces_<n>` 구간과 간접 지시 입력은 기준을 가르지 못해 보류이고(간접 지시 입력 74.5% [68.0, 80.0]), 앞 입력의 제약 등록 여부를 state에 넣어도 정확도는 오르지 않았다. |
 
 ## 단점
 

@@ -458,7 +458,7 @@ impl Engine {
                     self.handle_event(event).await?;
                 }
                 Some(done) = self.flow.router_rx.recv() => {
-                    self.on_routerd(done).await;
+                    self.on_routed(done).await;
                 }
                 arrival = events::next_arrival(&mut self.providers) => {
                     self.on_arrival(arrival).await;

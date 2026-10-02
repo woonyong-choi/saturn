@@ -125,7 +125,7 @@ async fn open_not_sent_is_tried_again() {
 }
 
 #[tokio::test]
-async fn steer_without_active_turn_sends_one_new_turn_without_rejudging() {
+async fn steer_without_active_turn_sends_one_new_turn_without_rerouting() {
     let mut flow = Flow::new(vec![
         idle_reply(0.95),
         running_reply(0.95, "refines", "steer"),
@@ -337,7 +337,7 @@ async fn requests_are_answered_while_a_judgment_is_in_flight() {
         .await
         .expect("router result should arrive in time")
         .expect("result channel should stay open");
-    engine.on_routerd(done).await;
+    engine.on_routed(done).await;
     assert_eq!(
         engine.queue.input(input).map(|record| record.state),
         Some(InputState::Cancelled)

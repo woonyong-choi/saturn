@@ -243,7 +243,7 @@ impl Flow {
                 .await
                 .expect("router result should arrive in time")
                 .expect("engine should keep the result channel open");
-            self.engine.on_routerd(done).await;
+            self.engine.on_routed(done).await;
         }
     }
 

@@ -240,7 +240,7 @@ fn packet_without_judgments_fills_in_rrf_order() {
     let rrf = seqs(&result["rrf_order"]);
     let included = seqs(&result["included"]);
     assert!(included.contains(&rrf[0]));
-    assert_eq!(result["routerd"], 0);
+    assert_eq!(result["routed"], 0);
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -263,7 +263,7 @@ fn packet_judgments_put_low_probability_item_before_unanswered() {
     let note = format!("cache note {last} ");
     assert!(!baseline["packet"].as_str().unwrap().contains(&note));
     assert!(result["packet"].as_str().unwrap().contains(&note));
-    assert_eq!(result["routerd"], 1);
+    assert_eq!(result["routed"], 1);
 }
 
 #[test]

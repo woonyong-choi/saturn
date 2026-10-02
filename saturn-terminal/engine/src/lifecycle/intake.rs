@@ -41,7 +41,7 @@ async fn record_write_failure_sends_nothing_anywhere() {
     assert!(matches!(error, EngineError::Store(_)));
     assert!(flow.fake.calls().is_empty());
     assert_eq!(flow.router_calls(), 0);
-    assert_eq!(flow.engine.queue.next_to_router(flow.chat), None);
+    assert_eq!(flow.engine.queue.next_to_route(flow.chat), None);
     flow.engine.store.allow_writes().await;
     let (entries, _) = flow
         .engine
@@ -110,7 +110,7 @@ async fn unattached_client_cannot_submit() {
 }
 
 #[tokio::test]
-async fn inputs_are_routerd_one_at_a_time_in_accept_order() {
+async fn inputs_are_routed_one_at_a_time_in_accept_order() {
     let mut flow = Flow::new(vec![
         idle_reply(0.95),
         running_reply(0.95, "continues", "queue"),

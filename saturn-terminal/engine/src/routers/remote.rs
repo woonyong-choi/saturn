@@ -1258,7 +1258,7 @@ pub(crate) mod tests {
     }
 
     #[tokio::test]
-    async fn check_lists_models_then_routers_once() {
+    async fn check_lists_models_then_routes_once() {
         let dir = tempfile::tempdir().unwrap();
         let secrets = secrets_with_key(dir.path()).await;
         let good = FakeTransport::new(vec![

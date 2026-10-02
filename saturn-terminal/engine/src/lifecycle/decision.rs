@@ -37,7 +37,7 @@ async fn exported(flow: &Flow) -> String {
 }
 
 #[tokio::test]
-async fn revision_conflict_supersedes_old_judgment_and_rerouters_once() {
+async fn revision_conflict_supersedes_old_judgment_and_reroutes_once() {
     let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
     let first = flow.accept_only("first").await;
     let second = flow.accept_only("second").await;
@@ -90,7 +90,7 @@ async fn second_conflict_puts_input_in_queue_without_another_router_call() {
 }
 
 #[tokio::test]
-async fn matching_revision_applies_without_rejudging() {
+async fn matching_revision_applies_without_rerouting() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     let input = flow.accept_only("only").await;
     let fresh = flow.router_now(input, false).await;
@@ -179,7 +179,7 @@ async fn stop_while_judging_holds_the_input_and_drops_the_late_judgment() {
         )
         .await
         .unwrap();
-    let (input, _) = flow.engine.queue.next_to_router(flow.chat).unwrap();
+    let (input, _) = flow.engine.queue.next_to_route(flow.chat).unwrap();
     assert!(flow.is_judging());
     let before = flow.engine.queue.revision(flow.chat);
 

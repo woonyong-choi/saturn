@@ -928,8 +928,8 @@ mod tests {
         let mut asks = 0_u32;
         let mut accumulated = 0.0;
 
-        for routerd in 0..judgments {
-            accumulated += ask_probability(0.8, 0.8, asks, routerd);
+        for routed in 0..judgments {
+            accumulated += ask_probability(0.8, 0.8, asks, routed);
             if accumulated >= 1.0 {
                 accumulated -= 1.0;
                 asks += 1;

@@ -31,7 +31,7 @@ pub(crate) struct LiveSession {
 
 /// 판단을 받아 적용한 입력. 사용자가 판단을 뒤집을 때 결과 신호를 알리는 데 쓴다.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Routerd {
+pub(crate) struct Routed {
     pub(crate) judgment: Option<JudgmentId>,
     pub(crate) disposition: Disposition,
 }
@@ -97,7 +97,7 @@ pub(crate) struct RouterDone {
 }
 
 pub(crate) struct FlowState {
-    pub(crate) routerd: HashMap<InputId, Routerd>,
+    pub(crate) routed: HashMap<InputId, Routed>,
     /// 채팅마다 판단 중인 접수 입력. 같은 채팅 입력은 하나씩만 판단한다.
     pub(crate) judging: HashMap<ChatId, InputId>,
     pub(crate) router_tx: mpsc::UnboundedSender<RouterDone>,
@@ -164,7 +164,7 @@ impl Default for FlowState {
             held: HashMap::new(),
             stop_tx,
             stop_rx,
-            routerd: HashMap::new(),
+            routed: HashMap::new(),
             judging: HashMap::new(),
             router_tx,
             router_rx,
@@ -180,7 +180,7 @@ impl Default for FlowState {
 impl std::fmt::Debug for FlowState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FlowState")
-            .field("routerd", &self.routerd.len())
+            .field("routed", &self.routed.len())
             .field("unrecorded", &self.unrecorded.len())
             .field("live", &self.live.len())
             .finish_non_exhaustive()

@@ -13,7 +13,7 @@ use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRe
 use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::{Disposition, InputState};
 
-use crate::flow::{RouterDone, RouterJob, Routerd, Unrecorded};
+use crate::flow::{Routed, RouterDone, RouterJob, Unrecorded};
 use crate::requests::{settings_notification, trust_notification};
 use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
 use crate::rpc::ClientId;
@@ -56,7 +56,7 @@ impl Engine {
     }
 
     /// 보낼 것을 보내고 다음 입력의 판단을 시작한다. 판단 호출은 별도 작업으로 돌아 기다리지 않고,
-    /// 결과는 `on_routerd`로 돌아온다. 보내기를 먼저 해서 다음 판단이 앞 입력을 보낸 뒤의 상태를 본다.
+    /// 결과는 `on_routed`로 돌아온다. 보내기를 먼저 해서 다음 판단이 앞 입력을 보낸 뒤의 상태를 본다.
     /// 오류는 로그만 남긴다.
     pub(crate) async fn advance(&mut self, chat: ChatId) {
         let result = self.advance_flow(chat).await;
@@ -73,14 +73,14 @@ impl Engine {
 
     /// 별도 작업이 끝낸 router 호출의 결과를 받는다. 적용 직전에 채팅 revision을 비교하므로 호출이 도는 사이
     /// 멈춤이나 취소가 있었으면 결과는 버려진다. 적용하지 못한 오류는 입력을 지우지 않고 로그만 남긴다.
-    pub(crate) async fn on_routerd(&mut self, done: RouterDone) {
+    pub(crate) async fn on_routed(&mut self, done: RouterDone) {
         let RouterDone {
             job,
             request,
             exchange,
         } = done;
         self.flow.judging.remove(&job.chat);
-        match self.apply_routerd(job, &request, exchange).await {
+        match self.apply_routed(job, &request, exchange).await {
             Ok(()) => self.advance(job.chat).await,
             Err(error) => {
                 tracing::warn!(chat = job.chat.0, error = %masked_chain(&self.masker, &error), "judgment not applied");
@@ -88,7 +88,7 @@ impl Engine {
         }
     }
 
-    async fn apply_routerd(
+    async fn apply_routed(
         &mut self,
         job: RouterJob,
         request: &RouterRequest,
@@ -199,7 +199,7 @@ impl Engine {
     /// 판단 요청에 쓸 설정 번호를 읽지 못하면 `Settings`, 적용 오류는 `apply_decision`과 같다.
     pub(crate) async fn router_next(&mut self, chat: ChatId) -> Result<(), EngineError> {
         while !self.flow.judging.contains_key(&chat) {
-            let Some((input, revision)) = self.queue.next_to_router(chat) else {
+            let Some((input, revision)) = self.queue.next_to_route(chat) else {
                 break;
             };
             let record = self.queued(input)?;
@@ -213,7 +213,7 @@ impl Engine {
         Ok(())
     }
 
-    /// `RevisionConflict`면 `retried`가 거짓일 때만 한 번 다시 판단을 시작하고(결과는 `on_routerd`로 온다),
+    /// `RevisionConflict`면 `retried`가 거짓일 때만 한 번 다시 판단을 시작하고(결과는 `on_routed`로 온다),
     /// 또 어긋나면 대기로 둔다. 어긋난 판단은 `Superseded`로 기록한다.
     ///
     /// # Errors
@@ -258,9 +258,9 @@ impl Engine {
         if let Some(judgment) = judgment {
             self.watch_judgment(chat, judgment, Instant::now());
         }
-        self.flow.routerd.insert(
+        self.flow.routed.insert(
             input,
-            Routerd {
+            Routed {
                 judgment,
                 disposition,
             },

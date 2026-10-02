@@ -77,9 +77,9 @@ impl Engine {
     fn note_user_override(&mut self, input: InputId, signal: Signal) {
         let judgment = self
             .flow
-            .routerd
+            .routed
             .get(&input)
-            .and_then(|routerd| routerd.judgment);
+            .and_then(|routed| routed.judgment);
         if let Some(judgment) = judgment {
             self.note_reaction(judgment, signal);
         }

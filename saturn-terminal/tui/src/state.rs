@@ -225,7 +225,7 @@ impl ChatState {
         }
         view.state = update.state;
         view.reason = update.reason.filter(|_| update.state == InputState::Queued);
-        let echo = !view.echoed && is_routerd(update.state);
+        let echo = !view.echoed && is_routed(update.state);
         view.echoed |= echo;
         if is_final(update.state) {
             self.inputs.remove(&update.input);
@@ -521,7 +521,7 @@ impl ChatState {
     }
 }
 
-fn is_routerd(state: InputState) -> bool {
+fn is_routed(state: InputState) -> bool {
     matches!(
         state,
         InputState::Queued | InputState::Delivering | InputState::Applied | InputState::Held

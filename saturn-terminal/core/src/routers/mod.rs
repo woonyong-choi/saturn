@@ -393,7 +393,7 @@ pub fn compact_verdicts(
 
 /// `keep_current`를 `is_actionable`보다 먼저 읽어 이어 가는 입력이 파일 탐색으로 빠지지 않게 한다.
 pub fn decide_route(
-    routerd: (&RouterRequest, &RouterResponse),
+    routed: (&RouterRequest, &RouterResponse),
     thresholds: &Thresholds,
     method: Method,
     revision: ChatRevision,
@@ -408,7 +408,7 @@ pub fn decide_route(
         resume_held: false,
         fallbacks: Vec::new(),
     };
-    let (request, response) = routerd;
+    let (request, response) = routed;
     let reader = AnswerReader {
         request,
         response,
