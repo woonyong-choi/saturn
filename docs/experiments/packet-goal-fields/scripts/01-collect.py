@@ -324,6 +324,22 @@ def summary_prompt(scenario: dict) -> str:
     )
 
 
+def provider_text(stdout: str) -> tuple[str, int]:
+    text, tools = "", 0
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        item = event.get("item") or {}
+        kind = item.get("type", "")
+        if event.get("type") == "item.completed" and kind == "agent_message":
+            text = item.get("text", "")
+        elif event.get("type") == "item.started" and kind not in ("agent_message", "reasoning"):
+            tools += 1
+    return text, tools
+
+
 def token_usage(stdout: str, input_fallback: str, output_fallback: str) -> dict:
     input_tokens = output_tokens = 0
     for line in stdout.splitlines():
@@ -357,7 +373,7 @@ def build_summary(scenario: dict, call_number: int) -> dict:
          "--skip-git-repo-check", "--sandbox", "read-only", "--json", "-"],
         input=prompt, capture_output=True, text=True, check=False, timeout=SESSION_TIMEOUT_S, cwd=WORKDIR,
     )
-    text, tools = reply_text("codex", done.stdout)
+    text, tools = provider_text(done.stdout)
     if done.returncode != 0 or tools:
         raise RuntimeError(f"요약 모델 실패: 종료 코드 {done.returncode}, 도구 호출 {tools}")
     start, end = text.find("{"), text.rfind("}")
