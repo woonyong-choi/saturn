@@ -1,6 +1,7 @@
 use std::time::{Duration, SystemTime};
 
 use saturn_core::sessions::{AgentRole, LastTurn, SendTarget, SessionError, SessionRecord};
+use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq, Provider, ProviderSessionId, SessionId};
 use saturn_protocol::state::SessionState;
 
@@ -104,7 +105,7 @@ async fn target_before_and_after_restart(
 }
 
 #[tokio::test]
-async fn restart_resumes_archived_session_within_cache_ttl() {
+async fn cache_window_inside_resumes_archived_session() {
     let (before, after) =
         target_before_and_after_restart(100_000, Duration::from_secs(60), 50_000).await;
 
@@ -113,16 +114,16 @@ async fn restart_resumes_archived_session_within_cache_ttl() {
 }
 
 #[tokio::test]
-async fn restart_keeps_new_session_when_active_context_reaches_threshold() {
+async fn cache_window_inside_resumes_even_when_context_is_large() {
     let (before, after) =
         target_before_and_after_restart(200_000, Duration::from_secs(60), 50_000).await;
 
-    assert_eq!(before, new_codex());
+    assert_eq!(before, SendTarget::Resume(CODEX));
     assert_eq!(after, before);
 }
 
 #[tokio::test]
-async fn restart_keeps_new_session_when_cache_expired_and_packet_is_smaller() {
+async fn cache_window_expired_opens_new_session() {
     let (before, after) =
         target_before_and_after_restart(100_000, Duration::from_secs(600), 50_000).await;
 
@@ -131,12 +132,75 @@ async fn restart_keeps_new_session_when_cache_expired_and_packet_is_smaller() {
 }
 
 #[tokio::test]
-async fn restart_resumes_when_cache_expired_and_packet_is_not_smaller() {
+async fn cache_window_expired_resumes_when_context_is_smaller_than_packet() {
     let (before, after) =
         target_before_and_after_restart(100_000, Duration::from_secs(600), 150_000).await;
 
     assert_eq!(before, SendTarget::Resume(CODEX));
     assert_eq!(after, before);
+}
+
+/// Claude를 쓰다 Codex로 바꾼 채팅에서 Claude로 돌아갈 때의 판정. 마지막 턴은 30분 전, 맥락은 패킷보다 크다.
+async fn target_back_to_claude(provider_ttl: Option<u64>) -> SendTarget {
+    let fixture = Fixture::new();
+    let now = SystemTime::now();
+    let mut engine = fixture.ready().await;
+    let chat = engine
+        .store
+        .create_chat(fixture.workdir.clone())
+        .await
+        .unwrap();
+    engine
+        .register_session(record(CLAUDE, chat, Provider::Claude, SessionState::Open))
+        .await
+        .unwrap();
+    engine
+        .finish_turn(
+            CLAUDE,
+            last_turn(100_000, Duration::from_secs(30 * 60), now),
+        )
+        .await
+        .unwrap();
+    engine.archive_main(CLAUDE).await.unwrap();
+    engine
+        .register_session(record(CODEX, chat, Provider::Codex, SessionState::Open))
+        .await
+        .unwrap();
+    if let Some(ttl_secs) = provider_ttl {
+        let event = ProviderEvent::CacheWindow {
+            agent: AgentId(1),
+            ttl_secs,
+        };
+        engine
+            .on_provider_event(Provider::Claude, event)
+            .await
+            .unwrap();
+    }
+    let request = SendRequest {
+        provider: Provider::Claude,
+        ..to_codex(&engine, chat, 50_000)
+    };
+    engine.send_target(request, now).await.unwrap()
+}
+
+#[tokio::test]
+async fn cache_window_without_provider_report_is_five_minutes() {
+    let target = target_back_to_claude(None).await;
+
+    assert_eq!(
+        target,
+        SendTarget::New {
+            provider: Provider::Claude,
+            role: AgentRole::Main
+        }
+    );
+}
+
+#[tokio::test]
+async fn cache_window_reported_by_provider_extends_resume() {
+    let target = target_back_to_claude(Some(60 * 60)).await;
+
+    assert_eq!(target, SendTarget::Resume(CLAUDE));
 }
 
 #[tokio::test]

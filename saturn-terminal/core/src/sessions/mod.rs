@@ -764,10 +764,13 @@ mod tests {
     }
 
     #[test]
-    fn target_for_send_warm_at_threshold_returns_new() {
-        let manager = archived_codex(100_000, 10);
+    fn target_for_send_warm_above_threshold_resumes_archive() {
+        let manager = archived_codex(150_000, 10);
 
-        assert_eq!(return_target(&manager, 50_000), new_codex());
+        assert_eq!(
+            return_target(&manager, 50_000),
+            SendTarget::Resume(SessionId(1))
+        );
     }
 
     #[test]
@@ -840,7 +843,10 @@ mod tests {
             },
         );
 
-        assert_eq!(return_target(&manager, 50_000), new_codex());
+        assert_eq!(
+            return_target(&manager, 50_000),
+            SendTarget::Resume(SessionId(1))
+        );
     }
 
     // cost: time O(s), heap O(s), stack O(1), alloc 1

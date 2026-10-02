@@ -3513,6 +3513,33 @@
         },
         {
           "additionalProperties": false,
+          "description": "provider가 알려 준 캐시 유지 시간. 마지막 턴 뒤 이 시간 안에 같은 session을 이어 가면 캐시를 쓴다. 기록하지 않는다.",
+          "properties": {
+            "CacheWindow": {
+              "properties": {
+                "agent": {
+                  "$ref": "#/$defs/AgentId"
+                },
+                "ttl_secs": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "agent",
+                "ttl_secs"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "CacheWindow"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "description": "막지 않고 기록만 한다.",
           "properties": {
             "SettingsApplied": {

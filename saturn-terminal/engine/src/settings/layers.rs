@@ -58,14 +58,12 @@ t_abs = 200000
 window = 272000
 cache_read = 0.1
 cache_write = 1.0
-cache_ttl_secs = 300
 
 [context.claude]
 t_abs = 200000
 window = 1000000
 cache_read = 0.1
 cache_write = 1.25
-cache_ttl_secs = 300
 "#;
 
 #[derive(Debug, Clone, Copy)]
@@ -118,12 +116,10 @@ const SCHEMA: &[(&str, Kind)] = &[
     ("context.codex.window", Kind::Positive),
     ("context.codex.cache_read", Kind::NonNegative),
     ("context.codex.cache_write", Kind::NonNegative),
-    ("context.codex.cache_ttl_secs", Kind::Positive),
     ("context.claude.t_abs", Kind::Positive),
     ("context.claude.window", Kind::Positive),
     ("context.claude.cache_read", Kind::NonNegative),
     ("context.claude.cache_write", Kind::NonNegative),
-    ("context.claude.cache_ttl_secs", Kind::Positive),
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

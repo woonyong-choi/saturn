@@ -66,6 +66,11 @@ pub enum ProviderEvent {
     StreamLost {
         agent: AgentId,
     },
+    /// provider가 알려 준 캐시 유지 시간. 마지막 턴 뒤 이 시간 안에 같은 session을 이어 가면 캐시를 쓴다. 기록하지 않는다.
+    CacheWindow {
+        agent: AgentId,
+        ttl_secs: u64,
+    },
     /// 막지 않고 기록만 한다.
     SettingsApplied {
         agent: AgentId,
@@ -86,6 +91,7 @@ impl ProviderEvent {
             | Self::TurnCompleted { agent, .. }
             | Self::ContextSize { agent, .. }
             | Self::StreamLost { agent }
+            | Self::CacheWindow { agent, .. }
             | Self::SettingsApplied { agent, .. } => *agent,
             Self::Usage(report) => report.agent,
         }

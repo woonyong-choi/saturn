@@ -6,6 +6,9 @@ use std::time::Duration;
 /// 기대 잔여 턴을 모를 때 쓰는 값.
 pub const DEFAULT_EXPECTED_TURNS: u32 = 3;
 
+/// provider가 더 긴 유지 시간을 알려 주지 않을 때 쓰는 캐시 유지 시간.
+pub const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(300);
+
 #[derive(Debug, Clone, Copy)]
 pub struct ContextBudget {
     /// 절대 기준(토큰).
@@ -18,7 +21,7 @@ pub struct ContextBudget {
     pub cache_read: f64,
     /// 단가 배수.
     pub cache_write: f64,
-    /// 마지막 턴 뒤 이만큼 지나면 유휴 복귀 조건을 본다.
+    /// 마지막 턴 뒤 이만큼 지나면 캐시가 끝났다고 본다. provider가 알려 준 값이고 모르면 `DEFAULT_CACHE_TTL`.
     pub cache_ttl: Duration,
 }
 
@@ -113,6 +116,7 @@ pub fn break_even_turns(budget: &ContextBudget, active: u64, packet: u64) -> f64
 }
 
 /// `budget`은 돌아갈 provider의 것이고, `since_last_turn`이 `cache_ttl` 이하면 캐시 유지 시간 안으로 본다.
+/// 유지 시간 안이면 재개한다. 지났으면 패킷이 session 맥락 `active`보다 작을 때만 새 session을 연다.
 pub fn decide_return(
     budget: &ContextBudget,
     since_last_turn: Duration,
@@ -120,13 +124,7 @@ pub fn decide_return(
     packet: u64,
 ) -> ReturnDecision {
     let is_cache_warm = since_last_turn <= budget.cache_ttl;
-    if is_cache_warm && active < budget.threshold() {
-        return ReturnDecision::Resume;
-    }
-    if is_cache_warm {
-        return ReturnDecision::NewSession;
-    }
-    if packet < active {
+    if !is_cache_warm && packet < active {
         return ReturnDecision::NewSession;
     }
     ReturnDecision::Resume
@@ -338,12 +336,12 @@ mod tests {
     fn decide_return_matches_rule_table() {
         let warm = Duration::from_secs(300);
         let cold = Duration::from_secs(301);
-        // (경과 시간, A, P, 기대 판정). T = 100_000
+        // (경과 시간, A, P, 기대 판정)
         let cases = [
             (warm, 99_999, 5_000, ReturnDecision::Resume),
             (warm, 99_999, 200_000, ReturnDecision::Resume),
-            (warm, 100_000, 5_000, ReturnDecision::NewSession),
-            (warm, 100_000, 200_000, ReturnDecision::NewSession),
+            (warm, 100_000, 5_000, ReturnDecision::Resume),
+            (warm, 900_000, 5_000, ReturnDecision::Resume),
             (cold, 20_000, 5_000, ReturnDecision::NewSession),
             (cold, 150_000, 5_000, ReturnDecision::NewSession),
             (cold, 5_000, 5_000, ReturnDecision::Resume),

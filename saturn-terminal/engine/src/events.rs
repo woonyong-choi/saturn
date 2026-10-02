@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::future::{Future, poll_fn};
 use std::pin::pin;
 use std::task::Poll;
+use std::time::Duration;
 
 use saturn_core::agents::TreeStatus;
 use saturn_core::permission::Verdict;
@@ -92,6 +93,12 @@ impl Engine {
         provider: Provider,
         event: ProviderEvent,
     ) -> Result<(), EngineError> {
+        if let ProviderEvent::CacheWindow { ttl_secs, .. } = event {
+            self.flow
+                .cache_ttl
+                .insert(provider, Duration::from_secs(ttl_secs));
+            return Ok(());
+        }
         let agent = event.agent();
         let live = self
             .flow

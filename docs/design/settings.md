@@ -83,7 +83,6 @@
 | `context.<codex\|claude>.t_abs` | 1 이상 정수 | 200000 |
 | `context.<codex\|claude>.window` | 1 이상 정수 | codex 272000, claude 1000000 |
 | `context.<codex\|claude>.cache_read`, `cache_write` | 0 이상 실수 | 0.1, codex 1.0 · claude 1.25 |
-| `context.<codex\|claude>.cache_ttl_secs` | 1 이상 정수 | 300 |
 | `context.mode` | `saturn`, `provider` | `saturn` |
 | `context.packet_hard_divisor` | 1 이상 정수 | 5 |
 | `context.item_cap_percent` | 1~100 정수 | 30 |
