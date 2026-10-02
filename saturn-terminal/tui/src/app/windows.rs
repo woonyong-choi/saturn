@@ -2,9 +2,10 @@
 //! 설계: docs/design/tui.md
 
 use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::Request;
+use saturn_protocol::rpc::{ModelChoice, Request};
 
 use super::{App, Effect, Window};
+use crate::i18n;
 use crate::keys::Action;
 use crate::state::ChatState;
 use crate::view::folder_trust::TrustChoice;
@@ -276,6 +277,40 @@ impl App {
         };
         self.window = None;
         vec![Effect::Send(Request::ConfirmTrain { proceed })]
+    }
+}
+
+impl App {
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    /// `Enter`는 고른 모델을 이 채팅의 고정 모델로 두고 창을 닫는다. 목록이 오기 전의 `Enter`는 무시한다.
+    pub(super) fn on_model_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(Window::Model(picker)) = &mut self.window else {
+            return Vec::new();
+        };
+        match action {
+            Action::Up => picker.up(),
+            Action::Down => picker.down(),
+            Action::Close => self.window = None,
+            Action::Confirm => {
+                if let Some(choice) = picker.selected_choice().cloned() {
+                    self.window = None;
+                    self.pin_model(choice);
+                }
+            }
+            _ => {}
+        }
+        Vec::new()
+    }
+
+    fn pin_model(&mut self, choice: ModelChoice) {
+        let notice = self
+            .lang
+            .tr(i18n::MODEL_PINNED)
+            .replace("{provider}", i18n::provider_name(choice.provider))
+            .replace("{model}", &choice.model);
+        self.chat.pinned_model = Some(choice);
+        self.push_cell(TranscriptCell::Warning(notice));
     }
 }
 

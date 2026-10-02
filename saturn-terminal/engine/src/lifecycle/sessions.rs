@@ -18,6 +18,7 @@ fn record(id: SessionId, chat: ChatId, provider: Provider, state: SessionState) 
         role: AgentRole::Main,
         provider,
         provider_session: Some(ProviderSessionId(format!("p{}", id.0))),
+        model: None,
         state,
         delivered: LedgerSeq(0),
         idle_since: None,

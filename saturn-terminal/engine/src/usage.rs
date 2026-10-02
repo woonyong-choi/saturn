@@ -237,6 +237,7 @@ mod tests {
                     role: AgentRole::Main,
                     provider,
                     provider_session: None,
+                    model: None,
                     state: SessionState::Open,
                     delivered: LedgerSeq(0),
                     idle_since: None,

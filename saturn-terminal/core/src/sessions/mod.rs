@@ -57,6 +57,8 @@ pub struct SessionRecord {
     pub provider: Provider,
     /// 닫은 뒤 재개에 쓴다.
     pub provider_session: Option<ProviderSessionId>,
+    /// session을 열 때 고른 모델. 고르지 않았으면 provider 기본값이라 `None`.
+    pub model: Option<String>,
     pub state: SessionState,
     /// 다음 입력 때 이 번호 뒤의 변경분만 첨부한다.
     pub delivered: LedgerSeq,
@@ -467,6 +469,7 @@ mod tests {
             role: AgentRole::Main,
             provider,
             provider_session: Some(ProviderSessionId(format!("p{id}"))),
+            model: None,
             state,
             delivered: LedgerSeq(0),
             idle_since: None,

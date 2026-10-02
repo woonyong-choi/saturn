@@ -14,6 +14,7 @@ use crate::view::folder_trust::FolderTrustView;
 use crate::view::footer::FooterView;
 use crate::view::full_transcript::FullTranscriptView;
 use crate::view::live_area::LiveAreaView;
+use crate::view::model_picker::ModelPickerView;
 use crate::view::permission::PermissionView;
 use crate::view::popup::PopupView;
 use crate::view::resume_prompt::ResumePromptView;
@@ -115,6 +116,7 @@ impl App {
             Some(Window::TrainConfirm(confirm)) => {
                 TrainConfirmView { confirm, lang }.render(frame, area);
             }
+            Some(Window::Model(picker)) => ModelPickerView { picker, lang }.render(frame, area),
             Some(Window::Shortcuts) => render_shortcuts(self, frame, area),
             _ => {}
         }

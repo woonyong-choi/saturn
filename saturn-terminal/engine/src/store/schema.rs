@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub const SCHEMA_VERSION: u32 = 5;
+pub const SCHEMA_VERSION: u32 = 6;
 
 pub const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,7 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5];
+pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -186,6 +186,12 @@ CREATE TABLE chat_dirs (
     UNIQUE (chat_id, path)
 );
 "#;
+
+/// session을 열 때 고른 모델. 없으면 provider 기본값이고 이관 전 session도 비어 있다.
+const V6: &str = r#"
+ALTER TABLE sessions ADD COLUMN model TEXT;
+"#;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MigrationNotice {
     pub from: u32,

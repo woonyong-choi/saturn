@@ -357,7 +357,7 @@ impl Engine {
             "chat: {activity}\nprevious input handled as: {previous}\nuser input: {}",
             record.text
         );
-        // TODO(#168): 허용 모델 후보가 정해지면 `target_model`을 묻는다
+        // TODO(#168): `/model` 목록을 허용 후보로 넣어 `target_model`을 묻고, router가 고른 모델을 적용한다
         // TODO(#90): 보류 작업이 있으면 `resume_held`를 묻고 `note_resume_signal`로 잇는다
         RouterRequest {
             model: self.routers.active().model().to_owned(),

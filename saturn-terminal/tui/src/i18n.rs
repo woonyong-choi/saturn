@@ -196,6 +196,12 @@ pub const TRAIN_GRADER: &str = "채점 모델";
 pub const TRAIN_TOKENS: &str = "예상 토큰";
 pub const TRAIN_TARGETS: &str = "기준값 조정 대상";
 pub const TRAIN_RETRAIN: &str = "모델 추가 학습";
+pub const MODEL_TITLE: &str = "모델 고르기";
+pub const MODEL_LOADING: &str = "모델 목록을 불러오는 중";
+pub const MODEL_EMPTY: &str = "고를 수 있는 모델이 없습니다";
+pub const MODEL_HINT: &str = "↑↓ 이동 · Enter 고르기 · Esc 취소";
+/// `{provider}`와 `{model}` 자리는 호출하는 쪽이 채운다.
+pub const MODEL_PINNED: &str = "다음 입력부터 {provider} · {model} 모델로 보냅니다";
 pub const YES: &str = "예";
 pub const NO: &str = "아니오";
 pub const CANCEL: &str = "취소";
@@ -644,6 +650,17 @@ const ENGLISH: &[(&str, &str)] = &[
     ("예상 토큰", "estimated tokens"),
     ("기준값 조정 대상", "threshold targets"),
     ("모델 추가 학습", "retrain model"),
+    ("모델 고르기", "choose model"),
+    ("모델 목록을 불러오는 중", "loading models"),
+    ("고를 수 있는 모델이 없습니다", "no models to choose from"),
+    (
+        "↑↓ 이동 · Enter 고르기 · Esc 취소",
+        "↑↓ move · Enter choose · Esc cancel",
+    ),
+    (
+        "다음 입력부터 {provider} · {model} 모델로 보냅니다",
+        "next inputs go to {provider} · {model}",
+    ),
     ("예", "yes"),
     ("아니오", "no"),
     ("취소", "cancel"),
@@ -667,6 +684,10 @@ const ENGLISH: &[(&str, &str)] = &[
     ("판단 기록 켜기와 끄기", "turn judgment records on or off"),
     ("권한 모드 바꾸기", "change the permission mode"),
     ("폴더 더하기", "add a folder to the chat"),
+    (
+        "다음 입력부터 쓸 모델 고르기",
+        "choose the model for next inputs",
+    ),
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

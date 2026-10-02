@@ -148,7 +148,7 @@ async fn add_dir_reaches_the_session_spec_of_every_provider() {
     let record = flow.record(input);
     let other_provider_spec =
         flow.engine
-            .session_spec(&record, flow.agent(), None, Some("packet".to_owned()));
+            .session_spec(&record, flow.agent(), None, None, Some("packet".to_owned()));
     assert_eq!(other_provider_spec.add_dirs, vec![extra]);
 }
 

@@ -8,7 +8,7 @@ use saturn_protocol::event::{Activity, ProviderEvent, UsageReport, UsageScope};
 use saturn_protocol::ids::{
     AgentId, ChatId, InputId, JudgmentId, Provider, SettingsRevision, SubagentId, TaskId, TaskLabel,
 };
-use saturn_protocol::rpc::{Alert, SettingsWarning};
+use saturn_protocol::rpc::{Alert, ModelChoice, SettingsWarning};
 use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 
 use crate::labels;
@@ -188,6 +188,8 @@ pub struct ChatState {
     pub close_held_confirm: Option<TaskId>,
     pub feedback: Option<FeedbackPrompt>,
     pub context: Option<ContextSize>,
+    /// `/model`로 고른 모델. 다시 고를 때까지 그 채팅의 모든 입력에 붙이고, 채팅을 옮기면 지운다.
+    pub pinned_model: Option<ModelChoice>,
     /// 적용된 설정 번호와 경고.
     pub settings: Option<(SettingsRevision, Option<SettingsWarning>)>,
     next_seq: u64,

@@ -13,6 +13,7 @@ use saturn_protocol::ids::{
 
 use crate::dispatch::MAX_SEND_ATTEMPTS;
 use crate::flow::LiveSession;
+use crate::models::pinned_choice;
 use crate::providers::{
     FIRST_INPUT_ORDER, HomeInput, LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults,
     UserProviderConfig, is_installed, prepare_codex_home, program_name,
@@ -54,19 +55,19 @@ impl Engine {
         live
     }
 
-    /// 모델은 요청의 `pinned_model`을 그대로 넘기고, `packet`은 첫 턴으로 보낼 글이다.
-    /// TODO(#168): 모델에서 provider로 가는 대응과 이미 열린 session의 모델 교체
+    /// `model`은 session에 기록한 모델이고, `packet`은 첫 턴으로 보낼 글이다.
     pub(crate) fn session_spec(
         &self,
         record: &QueuedInput,
         agent: AgentId,
+        model: Option<String>,
         resume: Option<ProviderSessionId>,
         packet: Option<String>,
     ) -> SessionSpec {
         SessionSpec {
             agent,
             workdir: record.workdir.clone(),
-            model: record.pinned_model.clone(),
+            model,
             settings: record.settings,
             resume,
             packet,
@@ -97,11 +98,16 @@ impl Engine {
         }
     }
 
-    /// 사용자가 정한 provider가 있으면 그것, 없으면 이어 갈 메인 session의 provider, 그것도 없으면 설치된 앞쪽 provider.
+    /// 입력에 고정한 모델의 provider, 없으면 내부 호출로 정한 provider, 없으면 이어 갈 메인 session의 provider,
+    /// 그것도 없으면 설치된 앞쪽 provider.
     ///
     /// # Errors
-    /// 셋 다 정하지 못하면 `NoProvider`.
-    pub(crate) fn pick_provider(&self, chat: ChatId) -> Result<Provider, EngineError> {
+    /// 모두 정하지 못하면 `NoProvider`.
+    pub(crate) fn pick_provider(&self, record: &QueuedInput) -> Result<Provider, EngineError> {
+        let chat = record.chat;
+        if let Some(choice) = pinned_choice(record) {
+            return Ok(choice.provider);
+        }
         if let Some(provider) = self.flow.switch_to.get(&chat) {
             return Ok(*provider);
         }

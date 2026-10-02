@@ -14,8 +14,8 @@ use saturn_protocol::event::{
     Activity, LineChange, LineRange, PermissionCall, PermissionTool, ProviderEvent, ToolCategory,
     ToolDetail, UsageReport, UsageScope,
 };
-use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
-use saturn_protocol::rpc::PermissionAnswer;
+use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SubagentId};
+use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
@@ -41,7 +41,13 @@ const SUBAGENT_TOOLS: &[&str] = &["Task", "Agent"];
 const SHELL_TOOL: &str = "Bash";
 
 /// 설정을 바꾸는 명령(`model`, `permissions` 등)은 빼지 않는다. 초안 목록.
-pub(crate) const EXCLUDED_COMMANDS: &[&str] = &["clear", "resume", "exit", "quit"];
+pub(crate) const EXCLUDED_COMMANDS: &[&str] = &["clear", "resume", "exit", "quit", "model"];
+
+/// 모델을 고르지 않은 것과 같다. `--model`을 넘기지 않는다.
+const DEFAULT_MODEL: &str = "default";
+
+/// Claude Code `/model`이 보이는 별칭. 기본, opus, sonnet, haiku 순.
+const MODEL_ALIASES: [&str; 4] = [DEFAULT_MODEL, "opus", "sonnet", "haiku"];
 
 /// 모든 도구 승인을 호스트가 받게 하는 인자. 사용자 설정이 `bypassPermissions`여도 요청이 온다(`Bash`로 확인).
 const PERMISSION_PROMPT_ARGS: &[&str] = &["--permission-prompt-tool", "stdio"];
@@ -249,7 +255,7 @@ impl ClaudeClient {
             SessionArg::Resume(id) => args.extend(["--resume".to_owned(), id.clone()]),
             SessionArg::New(id) => args.extend(["--session-id".to_owned(), id.clone()]),
         }
-        if let Some(model) = &spec.model {
+        if let Some(model) = spec.model.as_ref().filter(|model| *model != DEFAULT_MODEL) {
             args.extend(["--model".to_owned(), model.clone()]);
         }
         if !spec.add_dirs.is_empty() {
@@ -504,6 +510,20 @@ impl ProviderClient for ClaudeClient {
     /// 모든 session이 닫혀도 채널은 남으므로 `None`은 연결을 버릴 때만.
     async fn next_event(&mut self) -> Option<ProviderEvent> {
         self.events.recv().await
+    }
+
+    /// Claude Code `/model`이 보이는 별칭이다. 프로세스를 띄우지 않고 답한다.
+    async fn list_models(&mut self) -> Result<Vec<ModelInfo>, ProviderError> {
+        Ok(MODEL_ALIASES
+            .iter()
+            .map(|alias| ModelInfo {
+                choice: ModelChoice {
+                    provider: Provider::Claude,
+                    model: (*alias).to_owned(),
+                },
+                name: (*alias).to_owned(),
+            })
+            .collect())
     }
 
     /// `system/init`에 스킬 이름 목록(`skills`)이 따로 오면 그 이름만 `is_skill = true`.
@@ -1701,6 +1721,18 @@ while (my $line = <STDIN>) {
                 "{\"hooks\":{\"PreToolUse\":[]},\"permissions\":{\"ask\":[\"Bash\",\"Edit\",\"MultiEdit\",\"Write\",\"NotebookEdit\",\"Task\",\"Agent\",\"mcp__*\"]}}",
             ]
         );
+    }
+
+    #[test]
+    fn default_model_is_not_passed_to_claude() {
+        let dir = tempfile::tempdir().unwrap();
+        let client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+        let mut default_model = spec(dir.path(), None);
+        default_model.model = Some(DEFAULT_MODEL.to_owned());
+
+        let args = client.launch_args(&default_model, &SessionArg::New("id-1".to_owned()));
+
+        assert!(!args.iter().any(|arg| arg == "--model"));
     }
 
     #[test]

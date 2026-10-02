@@ -102,7 +102,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 
 - `keep_current`가 0.3 미만이면 새 작업으로 본다. 0.3 이상 0.8 미만은 판단 없음과 같다.
 - 실행 중이면 처리 방식을 `relation_to_running`과 `steer_or_spawn`으로 정한다. `refines`, `continues`면 `steer_or_spawn`의 `steer`, `queue`, `spawn`을 끼워 넣기, 대기, 새 작업으로 옮기고, `independent`면 새 작업이다. `conflicts`는 미해결 질문이 정해지기 전까지 대기로 둔다. 실행 중이 아니면 `keep_current`로 현재 에이전트 대기와 새 작업을 가른다.
-- `target_model`의 선택지는 허용 후보와 `other`이고, `other`를 고르면 대체 규칙을 따른다. 후보가 없으면 묻지 않는다.
+- `target_model`의 선택지는 허용 후보와 `other`이고, `other`를 고르면 대체 규칙을 따른다. 후보가 없으면 묻지 않는다. 허용 후보는 provider가 알려 주는 모델 목록으로, `/model`이 보이는 목록과 같다([모델 고르기](providers-and-sessions.md#모델-고르기)). 지금은 engine이 후보를 넣지 않아 묻지 않고, router가 고른 모델을 적용하는 일도 없다(초안).
 - `difficulty`와 `skills`는 답을 쓰는 곳이 생기기 전까지 묻지 않고 대체 규칙(미사용, 힌트 생략)으로 둔다. 쓰지 않는 질문으로 판단 비용을 늘리지 않기 위해서다.
 - 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `is_constraint`를 더한 `route`는 `route@1.1`이고, `constraint`는 `constraint@1.0`에서 시작한다. 기존 질문의 뜻은 바뀌지 않기 때문이다.
 - 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다.

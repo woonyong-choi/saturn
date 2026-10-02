@@ -339,9 +339,9 @@ impl Store {
         let mut tx = self.pool.begin().await?;
         for session in sessions {
             sqlx::query(
-                "INSERT INTO sessions (id, chat_id, agent_id, role, provider, provider_session, state, delivered) \
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET \
-                 provider_session = excluded.provider_session, state = excluded.state, \
+                "INSERT INTO sessions (id, chat_id, agent_id, role, provider, provider_session, model, state, delivered) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET \
+                 provider_session = excluded.provider_session, model = excluded.model, state = excluded.state, \
                  delivered = excluded.delivered",
             )
             .bind(to_sql_int(session.id.0))
@@ -350,6 +350,7 @@ impl Store {
             .bind(role_text(session.role))
             .bind(enum_text(&session.provider)?)
             .bind(session.provider_session.as_ref().map(|id| id.0.clone()))
+            .bind(&session.model)
             .bind(enum_text(&session.state)?)
             .bind(to_sql_int(session.delivered.0))
             .execute(&mut *tx)
@@ -362,7 +363,7 @@ impl Store {
     /// id 순서.
     pub async fn sessions(&self, chat: ChatId) -> Result<Vec<SessionRecord>, StoreError> {
         let rows = sqlx::query(
-            "SELECT id, chat_id, agent_id, role, provider, provider_session, state, delivered \
+            "SELECT id, chat_id, agent_id, role, provider, provider_session, model, state, delivered \
              FROM sessions WHERE chat_id = ? ORDER BY id",
         )
         .bind(to_sql_int(chat.0))
@@ -530,6 +531,7 @@ pub(super) fn session_from_row(row: &SqliteRow) -> Result<SessionRecord, StoreEr
         provider_session: row
             .try_get::<Option<String>, _>("provider_session")?
             .map(ProviderSessionId),
+        model: row.try_get("model")?,
         state: parse_enum(row.try_get("state")?)?,
         delivered: LedgerSeq(from_sql_int(row.try_get("delivered")?)),
         idle_since: None,
@@ -681,6 +683,7 @@ pub(crate) mod tests {
             role: AgentRole::Main,
             provider: Provider::Claude,
             provider_session: Some(ProviderSessionId("thread-1".to_owned())),
+            model: None,
             state,
             delivered: LedgerSeq(0),
             idle_since: None,

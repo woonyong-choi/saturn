@@ -23,6 +23,7 @@ mod flow;
 mod handoff;
 mod intake;
 mod launch;
+mod models;
 mod outcomes;
 mod permission;
 mod requests;
@@ -557,6 +558,7 @@ impl Engine {
                 pinned_model,
                 skip_relation,
             } => {
+                let pinned_model = pinned_model.as_ref().map(providers::pinned_text);
                 self.submit_input(client, chat, client_ref, text, pinned_model, skip_relation)
                     .await
             }
@@ -588,6 +590,9 @@ impl Engine {
             }
             Request::Usage { scope, folder } => {
                 self.send_usage(client, scope, folder.as_deref()).await
+            }
+            Request::ListModels { chat, provider } => {
+                self.send_models(client, chat, provider).await
             }
             // TODO(#161): 작업 목록
             Request::ListTasks => Err(unsupported("ListTasks")),

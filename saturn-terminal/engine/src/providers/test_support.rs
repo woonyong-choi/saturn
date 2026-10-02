@@ -9,7 +9,7 @@ use saturn_core::providers::{
 };
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SubagentId};
-use saturn_protocol::rpc::PermissionAnswer;
+use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use tokio::sync::mpsc;
 
 use crate::processes::ProcessGroupId;
@@ -221,6 +221,18 @@ impl ProviderClient for FakeProvider {
 
     async fn next_event(&mut self) -> Option<ProviderEvent> {
         self.events_rx.lock().await.recv().await
+    }
+
+    /// 정해 둔 모델 없이 provider마다 모델 하나를 돌려준다.
+    async fn list_models(&mut self) -> Result<Vec<ModelInfo>, ProviderError> {
+        let model = format!("fake-{:?}", self.provider).to_lowercase();
+        Ok(vec![ModelInfo {
+            choice: ModelChoice {
+                provider: self.provider,
+                model: model.clone(),
+            },
+            name: model,
+        }])
     }
 
     fn commands(&self) -> Vec<ProviderCommand> {

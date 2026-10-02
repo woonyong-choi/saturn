@@ -15,8 +15,8 @@ use saturn_protocol::event::{
     Activity, LineChange, ProviderEvent, ToolCategory, ToolDetail, TurnOrigin, UsageReport,
     UsageScope,
 };
-use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
-use saturn_protocol::rpc::PermissionAnswer;
+use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SubagentId};
+use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
@@ -47,7 +47,7 @@ pub(crate) const COMMAND_METHODS: &[(&str, &str)] = &[
 ];
 
 /// 대응표에 없는 이름이 스킬 목록에 섞여 올 때를 대비한다. 초안 목록.
-pub(crate) const EXCLUDED_COMMANDS: &[&str] = &["new", "resume", "fork", "quit", "exit"];
+pub(crate) const EXCLUDED_COMMANDS: &[&str] = &["new", "resume", "fork", "quit", "exit", "model"];
 
 const AUTO_COMPACT_KEY: &str = "model_auto_compact_token_limit";
 
@@ -651,12 +651,55 @@ impl ProviderClient for CodexClient {
         self.events.recv().await
     }
 
+    /// app-server `model/list`. 숨긴 모델은 빼고 쪽마다 다음 쪽 표시(`nextCursor`)를 따라간다.
+    async fn list_models(&mut self) -> Result<Vec<ModelInfo>, ProviderError> {
+        let mut models = Vec::new();
+        let mut cursor: Option<String> = None;
+        loop {
+            let params = match &cursor {
+                Some(cursor) => json!({ "cursor": cursor }),
+                None => json!({}),
+            };
+            let result = self.request("model/list", params).await?.map_err(|error| {
+                ProviderError::NotSent {
+                    reason: error_message(&error),
+                }
+            })?;
+            models.extend(
+                result["data"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(model_info),
+            );
+            cursor = result["nextCursor"].as_str().map(str::to_owned);
+            if cursor.is_none() {
+                return Ok(models);
+            }
+        }
+    }
+
     fn commands(&self) -> Vec<ProviderCommand> {
         super::filter_commands(self.commands.clone(), EXCLUDED_COMMANDS)
     }
 }
 
 /// 권한은 Saturn 규칙이 정하므로 권한 인자는 넣지 않는다. 승인 정책과 샌드박스는 `thread/start`가 정한다.
+/// 숨긴 모델이거나 모델 이름이 없으면 `None`.
+fn model_info(entry: &Value) -> Option<ModelInfo> {
+    if entry["hidden"].as_bool() == Some(true) {
+        return None;
+    }
+    let model = entry["model"].as_str().or_else(|| entry["id"].as_str())?;
+    Some(ModelInfo {
+        choice: ModelChoice {
+            provider: Provider::Codex,
+            model: model.to_owned(),
+        },
+        name: entry["displayName"].as_str().unwrap_or(model).to_owned(),
+    })
+}
+
 pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec<String> {
     let mut args = Vec::new();
     if !user.has_auto_compact {
@@ -2062,6 +2105,28 @@ while (my $line = <STDIN>) {
         assert_eq!(
             read_user_config(&launch(dir.path(), Vec::new())),
             UserProviderConfig::default()
+        );
+    }
+
+    #[test]
+    fn model_list_entries_skip_hidden_models_and_fall_back_to_the_id() {
+        let visible =
+            json!({ "id": "a", "model": "gpt-a", "displayName": "GPT A", "hidden": false });
+        let hidden = json!({ "id": "b", "model": "gpt-b", "hidden": true });
+        let unnamed = json!({ "id": "c" });
+
+        let infos: Vec<(String, String)> = [visible, hidden, unnamed]
+            .iter()
+            .filter_map(model_info)
+            .map(|info| (info.choice.model, info.name))
+            .collect();
+
+        assert_eq!(
+            infos,
+            vec![
+                ("gpt-a".to_owned(), "GPT A".to_owned()),
+                ("c".to_owned(), "c".to_owned())
+            ]
         );
     }
 

@@ -6,6 +6,7 @@ mod decision;
 mod deliver;
 mod events;
 mod intake;
+mod model;
 mod outcomes;
 mod permissions;
 mod requests;

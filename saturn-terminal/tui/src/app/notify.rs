@@ -143,6 +143,11 @@ impl App {
                     screen.table = Some(UsageTable { range, rows });
                 }
             }
+            Notification::Models { models } => {
+                if let Some(Window::Model(picker)) = &mut self.window {
+                    picker.load(models);
+                }
+            }
             Notification::RouterVersions { current, versions } => {
                 if let Some(Window::RouterVersion(screen)) = &mut self.window {
                     screen.rows = versions

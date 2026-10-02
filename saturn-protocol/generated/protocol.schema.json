@@ -605,10 +605,15 @@
                   "type": "integer"
                 },
                 "pinned_model": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/ModelChoice"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "`/model`로 고른 모델. 있으면 provider도 이 모델이 정한다."
                 },
                 "skip_relation": {
                   "type": "boolean"
@@ -1035,6 +1040,41 @@
           "type": "object"
         },
         {
+          "description": "고를 수 있는 모델 목록을 `Models`로 보낸다. `provider`가 `None`이면 모든 provider.\n`chat`은 Codex 목록을 받을 연결을 고른다.",
+          "properties": {
+            "method": {
+              "const": "ListModels",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "provider": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Provider"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "chat"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "description": "채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 router 버전.",
           "properties": {
             "method": {
@@ -1297,6 +1337,38 @@
       "required": [
         "first",
         "last"
+      ],
+      "type": "object"
+    },
+    "ModelChoice": {
+      "description": "provider가 받는 모델 이름. 같은 이름이 두 provider에 있어도 provider로 구분한다.",
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/Provider"
+        }
+      },
+      "required": [
+        "provider",
+        "model"
+      ],
+      "type": "object"
+    },
+    "ModelInfo": {
+      "properties": {
+        "choice": {
+          "$ref": "#/$defs/ModelChoice"
+        },
+        "name": {
+          "description": "화면에 보일 이름. provider가 알려 주지 않으면 모델 이름과 같다.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "choice",
+        "name"
       ],
       "type": "object"
     },
@@ -1745,6 +1817,34 @@
               },
               "required": [
                 "items"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`ListModels`의 답. provider 순서와 provider가 알려 준 순서를 지킨다.",
+          "properties": {
+            "method": {
+              "const": "Models",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "models": {
+                  "items": {
+                    "$ref": "#/$defs/ModelInfo"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "models"
               ],
               "type": "object"
             }
@@ -2554,6 +2654,34 @@
               },
               "required": [
                 "items"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`ListModels`의 답. provider 순서와 provider가 알려 준 순서를 지킨다.",
+          "properties": {
+            "method": {
+              "const": "Models",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "models": {
+                  "items": {
+                    "$ref": "#/$defs/ModelInfo"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "models"
               ],
               "type": "object"
             }
