@@ -7,6 +7,8 @@ use saturn_protocol::ids::InputId;
 use saturn_protocol::rpc::Alert;
 use saturn_protocol::state::{Disposition, InputState};
 
+use crate::flow::JudgeKind;
+use crate::intake::Verdict;
 use crate::rpc::ClientId;
 use crate::{Engine, EngineError};
 
@@ -48,10 +50,26 @@ impl Engine {
             .into());
         }
         if record.pinned_model.is_none() {
-            let revision = self.queue.revision(record.chat);
-            let running = self.chat_is_running(record.chat);
-            let verdict = self.ask_judge(&record, running, revision).await?;
-            self.settle_record(input, false).await;
+            if self.flow.send_now_pending.insert(input) {
+                let revision = self.queue.revision(record.chat);
+                self.start_judge(&record, revision, JudgeKind::SendNow);
+            }
+            return Ok(());
+        }
+        self.notify_input(input).await;
+        self.advance(record.chat).await;
+        Ok(())
+    }
+
+    /// 바로 보내기 판단이 돌아왔다. 그사이 입력이 대기를 벗어났으면(보냈거나 취소했거나 멈췄으면) 판단은 기록만 한다.
+    pub(crate) async fn finish_send_now(
+        &mut self,
+        input: InputId,
+        verdict: Verdict,
+    ) -> Result<(), EngineError> {
+        let record = self.queued(input)?;
+        self.settle_record(input, false).await;
+        if record.state == InputState::Queued {
             if verdict.failed {
                 self.notify_alert(record.chat, Alert::JudgeDownSendingInOrder)
                     .await;
@@ -60,7 +78,6 @@ impl Engine {
             }
         }
         self.notify_input(input).await;
-        self.advance(record.chat).await;
         Ok(())
     }
 

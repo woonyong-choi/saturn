@@ -428,6 +428,9 @@ impl Engine {
                     let Some(event) = event else { break };
                     self.handle_event(event).await?;
                 }
+                Some(done) = self.flow.judge_rx.recv() => {
+                    self.on_judged(done).await;
+                }
                 _ = tick.tick() => {
                     if let Err(error) = self.settle_signals(Instant::now()).await {
                         tracing::warn!(error = %masked_chain(&self.masker, &error), "failed to settle judgment signals");

@@ -60,6 +60,8 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트가 일하는 중
 3. 채팅 revision은 작업 상태, 대기열 맨 앞, 마지막 판단으로 이루어진다.
 4. judge는 앞 입력의 판단 결과를 state에 넣은 요청 한 건으로 필요한 질문을 한 번에 판단한다.
 5. `queue`가 적용 직전에 채팅 revision을 비교(CAS)한다.
+
+- judge 호출은 요청 처리와 별도 작업으로 돌고 결과는 engine 루프로 돌아와 적용한다. 호출이 도는 동안 멈춤, 취소 같은 다른 요청은 기다리지 않는다. 호출이 도는 사이 멈춤이나 취소로 입력이 더는 `판단 중`이 아니면 늦게 온 결과는 `superseded`로 기록하고 버린다.
 6. revision이 같으면 `queue`가 끼워 넣기, 새 작업, 대기 중 하나를 적용한다.
 
 - 같은 채팅의 입력은 접수 순서대로 하나씩 판단한다. 두 입력이 같은 상태를 보고 함께 끼워 넣어지는 일을 막기 위해서다.
@@ -200,6 +202,7 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 | 같은 채팅의 입력은 접수 순서대로 하나씩 판단한다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `inputs_are_judged_one_at_a_time_in_accept_order` |
 | judge 호출이 재시도 뒤에도 실패하면 입력을 대기로 보내지 않고 현재 에이전트와 현재 모델로 보낸다. | `saturn-terminal/core/src/judges/failure.rs`의 `route_after_failure_idle_sends_to_current_agent_and_model`, `route_after_failure_running_steers_instead_of_queueing` |
 | 판단 뒤 채팅 상태가 바뀌었으면 한 번 다시 판단하고, 또 바뀌면 대기로 둔다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `revision_conflict_supersedes_old_judgment_and_rejudges_once`, `second_conflict_puts_input_in_queue_without_another_judge_call` |
+| judge 호출이 도는 동안에도 다른 요청을 바로 처리하고, 판단 중 멈춤이나 취소가 있으면 늦게 온 판단은 적용하지 않는다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `requests_are_answered_while_a_judgment_is_in_flight`, `saturn-terminal/engine/src/lifecycle/decision.rs`의 `stop_while_judging_holds_the_input_and_drops_the_late_judgment` |
 | 쓰기 권한 에이전트는 같은 작업 폴더에서 한 번에 하나만 실행한다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `relation_answer_to_new_task_waits_for_the_write_turn_then_starts` |
 | 취소는 에이전트에 보내기 전 입력에만 적용한다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `cancel_applies_only_before_the_input_is_sent` |
 | 바로 보내기는 judge에 한 번 묻고, 판단하지 못하면 차례를 기다린다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `send_now_asks_the_judge_once_and_steers_into_the_running_turn`, `send_now_with_judge_down_leaves_the_input_waiting_in_order` |

@@ -9,6 +9,7 @@ use serde_json::{Value, json};
 use super::*;
 use crate::Attachment;
 use crate::chat_env::ChatEnv;
+use crate::flow::{JudgeJob, JudgeKind};
 use crate::providers::ProviderConnection;
 use crate::providers::test_support::FakeProvider;
 use crate::rpc::ClientId;
@@ -95,6 +96,7 @@ impl Flow {
             )
             .await
             .unwrap();
+        self.settle().await;
         let after = self.latest_input().await;
         assert_ne!(before, after, "input should have been accepted");
         after.expect("input should exist")
@@ -153,11 +155,34 @@ impl Flow {
     pub(super) async fn judge_now(&mut self, input: InputId, running: bool) -> RouteDecision {
         let record = self.record(input);
         let revision = self.engine.queue.revision(self.chat);
+        let request = self.engine.judge_request(&record, running);
+        let exchange = self.engine.judges.shared().exchange(request.clone()).await;
+        let job = JudgeJob {
+            chat: self.chat,
+            input,
+            revision,
+            kind: JudgeKind::Intake { retried: false },
+        };
         self.engine
-            .ask_judge(&record, running, revision)
+            .finish_judge(&job, &request, exchange)
             .await
             .unwrap()
             .decision
+    }
+
+    /// 별도 작업에서 도는 judge 호출이 모두 돌아와 적용될 때까지 engine 루프 역할을 한다.
+    pub(super) async fn settle(&mut self) {
+        while self.is_judging() {
+            let done = timeout(WAIT, self.engine.flow.judge_rx.recv())
+                .await
+                .expect("judge result should arrive in time")
+                .expect("engine should keep the result channel open");
+            self.engine.on_judged(done).await;
+        }
+    }
+
+    pub(super) fn is_judging(&self) -> bool {
+        !self.engine.flow.judging.is_empty() || !self.engine.flow.send_now_pending.is_empty()
     }
 
     /// 열려 있는 에이전트. 시험마다 하나뿐이다.

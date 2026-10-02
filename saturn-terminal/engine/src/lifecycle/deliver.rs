@@ -301,6 +301,7 @@ async fn send_now_asks_the_judge_once_and_steers_into_the_running_turn() {
     assert_eq!(flow.state(waiting), InputState::Queued);
 
     flow.engine.send_now(CLIENT, waiting).await.unwrap();
+    flow.settle().await;
 
     assert_eq!(flow.judge_calls(), 3);
     assert_eq!(steers(&flow), vec!["also run the tests"]);
@@ -321,6 +322,7 @@ async fn send_now_with_judge_down_leaves_the_input_waiting_in_order() {
     let waiting = flow.submit("also run the tests").await;
 
     flow.engine.send_now(CLIENT, waiting).await.unwrap();
+    flow.settle().await;
 
     assert!(steers(&flow).is_empty());
     assert_eq!(flow.state(waiting), InputState::Queued);
@@ -335,6 +337,82 @@ async fn send_now_on_a_sent_input_is_refused() {
 
     assert!(matches!(error, EngineError::Queue(_)));
     assert_eq!(flow.judge_calls(), 1);
+}
+
+#[tokio::test]
+async fn requests_are_answered_while_a_judgment_is_in_flight() {
+    let fixture = Fixture::new();
+    let transport = FakeTransport::new({
+        let mut script = check_passes();
+        script.push(idle_reply(0.95));
+        script
+    });
+    let mut engine = fixture
+        .start(fixture.env(true, Arc::clone(&transport)).await)
+        .await
+        .unwrap();
+    let chat = engine
+        .store
+        .create_chat(fixture.workdir.clone())
+        .await
+        .unwrap();
+    let fake = FakeProvider::new(Provider::Claude);
+    engine.providers.insert(
+        (chat, Provider::Claude),
+        ProviderConnection::Fake(fake.clone()),
+    );
+    let mut client = Client::connect(&fixture.socket()).await;
+    let workdir = fixture.workdir.display().to_string();
+    let release = transport.hold_next_call();
+
+    let input = drive(&mut engine, async {
+        client
+            .attach(
+                1,
+                Request::Attach {
+                    chat: Some(chat),
+                    workdir,
+                    env: Vec::new(),
+                    overrides: Vec::new(),
+                },
+            )
+            .await;
+        let submitted = client
+            .attach(
+                2,
+                Request::SubmitInput {
+                    chat,
+                    client_ref: 7,
+                    text: "fix the build".to_owned(),
+                    pinned_model: None,
+                    skip_relation: false,
+                },
+            )
+            .await;
+        let input = submitted
+            .iter()
+            .find_map(|notification| match notification {
+                Notification::InputAccepted { input, .. } => Some(*input),
+                _ => None,
+            })
+            .expect("input should be accepted");
+        client.attach(3, Request::CancelInput { input }).await;
+        input
+    })
+    .await;
+
+    release.notify_one();
+    let done = timeout(WAIT, engine.flow.judge_rx.recv())
+        .await
+        .expect("judge result should arrive in time")
+        .expect("result channel should stay open");
+    engine.on_judged(done).await;
+    assert_eq!(
+        engine.queue.input(input).map(|record| record.state),
+        Some(InputState::Cancelled)
+    );
+    assert!(engine.flow.judging.is_empty());
+    assert!(fake.calls().is_empty());
 }
 
 #[tokio::test]
@@ -374,7 +452,7 @@ async fn socket_submit_reports_input_and_task_states_in_order() {
                 },
             )
             .await;
-        client
+        let mut notifications = client
             .attach(
                 2,
                 Request::SubmitInput {
@@ -385,7 +463,12 @@ async fn socket_submit_reports_input_and_task_states_in_order() {
                     skip_relation: false,
                 },
             )
-            .await
+            .await;
+        // 판단은 별도 작업이라 응답 뒤에 이어서 온다
+        for _ in 0..3 {
+            notifications.push(client.notification().await);
+        }
+        notifications
     })
     .await;
 

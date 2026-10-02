@@ -13,7 +13,7 @@ use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRe
 use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::{Disposition, InputState};
 
-use crate::flow::{Judged, Unrecorded};
+use crate::flow::{JudgeDone, JudgeJob, JudgeKind, Judged, Unrecorded};
 use crate::judges::{JudgeExchange, RecordContext, outcome_of, sanitize_state};
 use crate::requests::{settings_notification, trust_notification};
 use crate::rpc::ClientId;
@@ -59,14 +59,68 @@ impl Engine {
         Ok(())
     }
 
-    /// 판단하고 보낸다. 오류는 로그만 남긴다.
+    /// 보낼 것을 보내고 다음 입력의 판단을 시작한다. 판단 호출은 별도 작업으로 돌아 기다리지 않고,
+    /// 결과는 `on_judged`로 돌아온다. 보내기를 먼저 해서 다음 판단이 앞 입력을 보낸 뒤의 상태를 본다.
+    /// 오류는 로그만 남긴다.
     pub(crate) async fn advance(&mut self, chat: ChatId) {
-        let result = match self.judge_next(chat).await {
-            Ok(()) => self.dispatch_next(chat).await,
-            Err(error) => Err(error),
-        };
+        let result = self.advance_flow(chat).await;
         if let Err(error) = result {
             tracing::warn!(chat = chat.0, error = %masked_chain(&self.masker, &error), "input flow stopped");
+        }
+    }
+
+    async fn advance_flow(&mut self, chat: ChatId) -> Result<(), EngineError> {
+        self.dispatch_next(chat).await?;
+        self.judge_next(chat).await?;
+        self.dispatch_next(chat).await
+    }
+
+    /// 별도 작업이 끝낸 judge 호출의 결과를 받는다. 적용 직전에 채팅 revision을 비교하므로 호출이 도는 사이
+    /// 멈춤이나 취소가 있었으면 결과는 버려진다. 적용하지 못한 오류는 입력을 지우지 않고 로그만 남긴다.
+    pub(crate) async fn on_judged(&mut self, done: JudgeDone) {
+        let JudgeDone {
+            job,
+            request,
+            exchange,
+        } = done;
+        match job.kind {
+            JudgeKind::Intake { .. } => {
+                self.flow.judging.remove(&job.chat);
+            }
+            JudgeKind::SendNow => {
+                self.flow.send_now_pending.remove(&job.input);
+            }
+        }
+        match self.apply_judged(job, &request, exchange).await {
+            Ok(()) => self.advance(job.chat).await,
+            Err(error) => {
+                tracing::warn!(chat = job.chat.0, error = %masked_chain(&self.masker, &error), "judgment not applied");
+            }
+        }
+    }
+
+    async fn apply_judged(
+        &mut self,
+        job: JudgeJob,
+        request: &JudgeRequest,
+        exchange: JudgeExchange,
+    ) -> Result<(), EngineError> {
+        let verdict = self.finish_judge(&job, request, exchange).await?;
+        match job.kind {
+            JudgeKind::Intake { retried } => {
+                let waiting = self
+                    .queue
+                    .input(job.input)
+                    .is_some_and(|record| record.state == InputState::Judging);
+                if waiting {
+                    self.apply_decision(job.input, verdict.decision, retried)
+                        .await
+                } else {
+                    self.settle_record(job.input, true).await;
+                    Ok(())
+                }
+            }
+            JudgeKind::SendNow => self.finish_send_now(job.input, verdict).await,
         }
     }
 
@@ -158,21 +212,23 @@ impl Engine {
     /// # Errors
     /// 판단 요청에 쓸 설정 번호를 읽지 못하면 `Settings`, 적용 오류는 `apply_decision`과 같다.
     pub(crate) async fn judge_next(&mut self, chat: ChatId) -> Result<(), EngineError> {
-        while let Some((input, revision)) = self.queue.next_to_judge(chat) {
-            let record = self.queued(input)?;
-            let decision = if record.pinned_model.is_some() || record.skip_relation {
-                direct_decision(&record, revision)
-            } else {
-                let running = self.chat_is_running(chat);
-                self.ask_judge(&record, running, revision).await?.decision
+        while !self.flow.judging.contains_key(&chat) {
+            let Some((input, revision)) = self.queue.next_to_judge(chat) else {
+                break;
             };
-            self.apply_decision(input, decision, false).await?;
+            let record = self.queued(input)?;
+            if record.pinned_model.is_some() || record.skip_relation {
+                let decision = direct_decision(&record, revision);
+                self.apply_decision(input, decision, false).await?;
+            } else {
+                self.start_judge(&record, revision, JudgeKind::Intake { retried: false });
+            }
         }
         Ok(())
     }
 
-    /// `RevisionConflict`면 `retried`가 거짓일 때만 한 번 다시 판단하고, 또 어긋나면 대기로 둔다.
-    /// 어긋난 판단은 `Superseded`로 기록한다.
+    /// `RevisionConflict`면 `retried`가 거짓일 때만 한 번 다시 판단을 시작하고(결과는 `on_judged`로 온다),
+    /// 또 어긋나면 대기로 둔다. 어긋난 판단은 `Superseded`로 기록한다.
     ///
     /// # Errors
     /// 없는 입력이거나 `Judging`이 아니면 `Queue`, 기록 저장소 쓰기 실패면 `Store`.
@@ -182,11 +238,11 @@ impl Engine {
         decision: RouteDecision,
         retried: bool,
     ) -> Result<(), EngineError> {
-        let chat = self.queued(input)?.chat;
+        let record = self.queued(input)?;
         let mut decision = decision;
         let mut retried = retried;
         loop {
-            let current = self.queue.revision(chat);
+            let current = self.queue.revision(record.chat);
             match self.queue.apply(input, &decision, current) {
                 Ok(disposition) => return self.after_applied(input, disposition).await,
                 Err(QueueError::RevisionConflict) => {
@@ -194,23 +250,16 @@ impl Engine {
                     if retried {
                         return self.wait_in_queue(input).await;
                     }
-                    decision = self.rejudge(input).await?;
                     retried = true;
+                    if record.pinned_model.is_none() && !record.skip_relation {
+                        self.start_judge(&record, current, JudgeKind::Intake { retried });
+                        return Ok(());
+                    }
+                    decision = direct_decision(&record, current);
                 }
                 Err(error) => return Err(error.into()),
             }
         }
-    }
-
-    /// 어긋난 판단을 버리고 지금 revision으로 한 번 더 묻는다.
-    async fn rejudge(&mut self, input: InputId) -> Result<RouteDecision, EngineError> {
-        let record = self.queued(input)?;
-        let revision = self.queue.revision(record.chat);
-        if record.pinned_model.is_some() || record.skip_relation {
-            return Ok(direct_decision(&record, revision));
-        }
-        let running = self.chat_is_running(record.chat);
-        Ok(self.ask_judge(&record, running, revision).await?.decision)
     }
 
     async fn after_applied(
@@ -248,20 +297,51 @@ impl Engine {
         Ok(())
     }
 
-    /// 판단 요청 하나를 보내 결과를 읽는다. 기록은 적용 결과를 안 뒤 `settle_record`가 쓴다.
-    pub(crate) async fn ask_judge(
+    /// judge 호출을 별도 작업으로 시작하고 기다리지 않는다. 요청은 지금 상태로 만들고 `revision`은
+    /// 결과를 적용할 때 비교하려고 호출 결과와 함께 돌려받는다.
+    pub(crate) fn start_judge(
         &mut self,
         record: &QueuedInput,
-        running: bool,
         revision: ChatRevision,
-    ) -> Result<Verdict, EngineError> {
-        let settings = self.settings.at(&self.store, record.settings).await?;
+        kind: JudgeKind,
+    ) {
+        let running = self.chat_is_running(record.chat);
         let request = self.judge_request(record, running);
-        let (exchange, alert) = self.judges.call(request.clone()).await;
-        if let Some(alert) = alert {
+        let job = JudgeJob {
+            chat: record.chat,
+            input: record.id,
+            revision,
+            kind,
+        };
+        if matches!(kind, JudgeKind::Intake { .. }) {
+            self.flow.judging.insert(record.chat, record.id);
+        }
+        let judge = self.judges.shared();
+        let results = self.flow.judge_tx.clone();
+        tokio::spawn(async move {
+            let exchange = judge.exchange(request.clone()).await;
+            // engine가 끝난 뒤에는 받을 곳이 없다
+            let _ = results.send(JudgeDone {
+                job,
+                request,
+                exchange,
+            });
+        });
+    }
+
+    /// 돌아온 호출 결과를 읽는다. 기록은 적용 결과를 안 뒤 `settle_record`가 쓴다.
+    pub(crate) async fn finish_judge(
+        &mut self,
+        job: &JudgeJob,
+        request: &JudgeRequest,
+        exchange: JudgeExchange,
+    ) -> Result<Verdict, EngineError> {
+        let record = self.queued(job.input)?;
+        let settings = self.settings.at(&self.store, record.settings).await?;
+        if let Some(alert) = self.judges.observe(&exchange) {
             self.notify_alert(record.chat, alert).await;
         }
-        let read = self.read_verdict(&request, &exchange, &settings, revision, record.settings);
+        let read = self.read_verdict(request, &exchange, &settings, job.revision, record.settings);
         let fallbacks = read.fallback_reasons();
         let context = RecordContext {
             chat: record.chat,
@@ -282,7 +362,7 @@ impl Engine {
         })
     }
 
-    fn judge_request(&self, record: &QueuedInput, running: bool) -> JudgeRequest {
+    pub(crate) fn judge_request(&self, record: &QueuedInput, running: bool) -> JudgeRequest {
         let activity = if running { "running" } else { "idle" };
         let previous = self
             .flow

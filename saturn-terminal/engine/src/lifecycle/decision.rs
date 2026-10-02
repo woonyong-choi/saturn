@@ -4,7 +4,7 @@ use saturn_core::judges::RouteDecision;
 use saturn_protocol::ids::{ChatRevision, InputId};
 use saturn_protocol::state::{Disposition, InputState};
 
-use super::support::{Flow, idle_reply, judge_down, running_reply};
+use super::support::{CLIENT, Flow, idle_reply, judge_down, running_reply};
 use crate::providers::test_support::Call;
 
 fn decision(flow: &Flow, revision: ChatRevision, disposition: Disposition) -> RouteDecision {
@@ -48,9 +48,10 @@ async fn revision_conflict_supersedes_old_judgment_and_rejudges_once() {
         .apply_decision(first, stale, false)
         .await
         .unwrap();
+    flow.settle().await;
 
     assert_eq!(flow.judge_calls(), 2);
-    assert_eq!(flow.state(first), InputState::Queued);
+    assert_eq!(flow.state(first), InputState::Applied);
     assert_eq!(
         flow.engine.queue.disposition(first),
         Some(Disposition::Queue)
@@ -161,6 +162,36 @@ async fn judge_failure_while_idle_sends_to_the_current_agent_not_the_queue() {
         flow.fake.calls().last(),
         Some(Call::SendTurn { text, .. }) if text == "first request"
     ));
+}
+
+#[tokio::test]
+async fn stop_while_judging_holds_the_input_and_drops_the_late_judgment() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    let release = flow.transport.hold_next_call();
+    flow.engine
+        .submit_input(
+            CLIENT,
+            flow.chat,
+            1,
+            "fix the build".to_owned(),
+            None,
+            false,
+        )
+        .await
+        .unwrap();
+    let (input, _) = flow.engine.queue.next_to_judge(flow.chat).unwrap();
+    assert!(flow.is_judging());
+    let before = flow.engine.queue.revision(flow.chat);
+
+    flow.engine.queue.stop(flow.chat);
+    assert_eq!(flow.state(input), InputState::Held);
+    release.notify_one();
+    flow.settle().await;
+
+    assert_eq!(flow.state(input), InputState::Held);
+    assert_ne!(flow.engine.queue.revision(flow.chat), before);
+    assert!(flow.fake.calls().is_empty());
+    assert!(exported(&flow).await.contains("Superseded"));
 }
 
 #[tokio::test]

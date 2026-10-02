@@ -1,14 +1,17 @@
 //! 입력 흐름이 메모리에 두는 값과 TUI 알림. 정본은 기록 저장소와 `core` 대기열이다.
 //! 설계: docs/design/input-handling.md
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
+use saturn_core::judges::JudgeRequest;
 use saturn_protocol::ids::{
-    AgentId, ChatId, InputId, JudgmentId, Provider, ProviderSessionId, SessionId, TaskId, TaskLabel,
+    AgentId, ChatId, ChatRevision, InputId, JudgmentId, Provider, ProviderSessionId, SessionId,
+    TaskId, TaskLabel,
 };
 use saturn_protocol::rpc::{Alert, Notification};
 use saturn_protocol::state::{Disposition, TaskState};
+use tokio::sync::mpsc;
 
 use crate::Engine;
 use crate::judges::{JudgeExchange, RecordContext};
@@ -74,9 +77,39 @@ impl TaskBook {
     }
 }
 
-#[derive(Default)]
+/// 별도 작업에서 도는 judge 호출이 무엇을 위한 것인지.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum JudgeKind {
+    /// 접수한 입력의 처리 방식 판단. `retried`는 revision이 어긋나 다시 묻는 호출이면 참.
+    Intake { retried: bool },
+    /// 대기 입력을 바로 보내기 위한 판단.
+    SendNow,
+}
+
+/// 돌고 있는 judge 호출 하나. 요청을 만들 때의 채팅 revision을 들고 있어 결과를 적용할 때 비교한다.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct JudgeJob {
+    pub(crate) chat: ChatId,
+    pub(crate) input: InputId,
+    pub(crate) revision: ChatRevision,
+    pub(crate) kind: JudgeKind,
+}
+
+/// 별도 작업이 engine 루프로 돌려주는 호출 결과.
+pub(crate) struct JudgeDone {
+    pub(crate) job: JudgeJob,
+    pub(crate) request: JudgeRequest,
+    pub(crate) exchange: JudgeExchange,
+}
+
 pub(crate) struct FlowState {
     pub(crate) judged: HashMap<InputId, Judged>,
+    /// 채팅마다 판단 중인 접수 입력. 같은 채팅 입력은 하나씩만 판단한다.
+    pub(crate) judging: HashMap<ChatId, InputId>,
+    /// 바로 보내기 판단이 돌고 있는 입력.
+    pub(crate) send_now_pending: HashSet<InputId>,
+    pub(crate) judge_tx: mpsc::UnboundedSender<JudgeDone>,
+    pub(crate) judge_rx: mpsc::UnboundedReceiver<JudgeDone>,
     /// 채팅의 가장 나중 판단이 정한 처리 방식. 다음 판단의 state에 넣는다.
     pub(crate) last_disposition: HashMap<ChatId, Disposition>,
     pub(crate) unrecorded: HashMap<InputId, Unrecorded>,
@@ -85,6 +118,24 @@ pub(crate) struct FlowState {
     pub(crate) tasks: TaskBook,
     /// 키는 에이전트. provider를 연 뒤에만 들어간다.
     pub(crate) live: HashMap<AgentId, LiveSession>,
+}
+
+impl Default for FlowState {
+    fn default() -> Self {
+        let (judge_tx, judge_rx) = mpsc::unbounded_channel();
+        Self {
+            judged: HashMap::new(),
+            judging: HashMap::new(),
+            send_now_pending: HashSet::new(),
+            judge_tx,
+            judge_rx,
+            last_disposition: HashMap::new(),
+            unrecorded: HashMap::new(),
+            applied: Vec::new(),
+            tasks: TaskBook::default(),
+            live: HashMap::new(),
+        }
+    }
 }
 
 impl std::fmt::Debug for FlowState {
