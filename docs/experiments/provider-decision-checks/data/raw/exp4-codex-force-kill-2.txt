@@ -1,0 +1,99 @@
+===== before stop =====
+
+  Update available · 0.158.0 → 0.160.0
+  Release notes: https://github.com/openai/codex/releases/latest
+
+› 1. Update now (runs `npm install -g @openai/codex`)
+  2. Skip
+  3. Skip until next version
+
+  enter continue · esc skip
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+===== after interrupt =====
+╭─────────────────────────────────────────────────╮
+│ ✨ Update available! 0.158.0 -> 0.160.0         │
+│ Run npm install -g @openai/codex to update.     │
+│                                                 │
+│ See full release notes:                         │
+│ https://github.com/openai/codex/releases/latest │
+╰─────────────────────────────────────────────────╯
+
+
+  >_ OpenAI Codex (v0.158.0)
+     ~/workspace/oss/saturn.wt/…/docs/experiments/provider-decision-checks
+
+  Bring your unfinished thoughts.
+
+
+
+
+› Run this harmless command exactly once and do not stop it yourself: trap ''
+  INT; sleep 600. Then report when it ends.
+
+
+  GPT-5.6-Luna default · ~/workspace/oss/saturn.wt/experiment-252-provider-deci…
+
+
+===== after force key =====
+╭─────────────────────────────────────────────────╮
+│ ✨ Update available! 0.158.0 -> 0.160.0         │
+│ Run npm install -g @openai/codex to update.     │
+│                                                 │
+│ See full release notes:                         │
+│ https://github.com/openai/codex/releases/latest │
+╰─────────────────────────────────────────────────╯
+
+
+  >_ OpenAI Codex (v0.158.0)
+     ~/workspace/oss/saturn.wt/…/docs/experiments/provider-decision-checks
+
+  Bring your unfinished thoughts.
+
+
+
+
+
+
+› Ask Codex to do anything
+
+  GPT-5.6-Luna high · ~/workspace/oss/saturn.wt/experiment-252-provider-decisio…
+  ← for agents · ? for shortcuts                      ⚠ 4 warnings · f2 to view
+
+===== final =====
+╭─────────────────────────────────────────────────╮
+│ ✨ Update available! 0.158.0 -> 0.160.0         │
+│ Run npm install -g @openai/codex to update.     │
+│                                                 │
+│ See full release notes:                         │
+│ https://github.com/openai/codex/releases/latest │
+╰─────────────────────────────────────────────────╯
+
+
+  >_ OpenAI Codex (v0.158.0)
+     ~/workspace/oss/saturn.wt/…/docs/experiments/provider-decision-checks
+
+  Bring your unfinished thoughts.
+
+
+
+
+
+
+› Ask Codex to do anything
+
+  GPT-5.6-Luna high · ~/workspace/oss/saturn.wt/experiment-252-provider-decisio…
+  ← for agents · ? for shortcuts                      ⚠ 4 warnings · f2 to view

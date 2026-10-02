@@ -1,0 +1,74 @@
+===== before stop =====
+ ▐▛███▛█   Claude Code v2.1.287
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+❯ Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+⏺ Bash(sleep 600)
+  ⎿  Running…
+
+✻ Hullaballooing… (4s · ↓ 235 tokens · thought for 1s)
+
+────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────
+  ⏸ manual mode on · PR #255 · ← for agents
+
+
+
+
+
+
+
+===== after interrupt =====
+ ▐▛███▛█   Claude Code v2.1.287
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+❯ Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+⏺ Bash(sleep 600)
+  ⎿  Running in the background (↓ to manage)
+  ⎿  Interrupted · What should Claude do instead?
+
+────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────
+  ⏸ manual mode on · PR #255 · 1 shell · ← for agents
+
+
+
+
+
+
+
+
+===== final =====
+ ▐▛███▛█   Claude Code v2.1.287
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+❯ Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+⏺ Bash(sleep 600)
+  ⎿  Running in the background (↓ to manage)
+  ⎿  Interrupted · What should Claude do instead?
+
+────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────
+  ⏸ manual mode on · PR #255 · 1 shell · ← for agents
+
+
+
+
+
+
+

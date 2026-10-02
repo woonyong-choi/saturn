@@ -1,0 +1,77 @@
+===== before stop =====
+ ▐▛███▛█   Claude Code v2.1.287
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+❯ Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+⏺ 명령을 백그라운드에서 실행하겠습니다.
+
+  Bash(sleep 600)
+  ⎿  Running…
+
+❯ y
+
+· Razzle-dazzling… (running UserPromptSubmit hook · 6s · ↓ 313 tokens ·
+thought for 5s)
+
+────────────────────────────────────────────────────────────────────────────────
+❯ Press up to edit queued messages
+────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · PR #255 · ← for agents
+  tmux focus-events off · add 'set -g focus-events on' to ~/.tmux.conf and re…
+
+
+===== after interrupt =====
+ ▐▛███▛█   Claude Code v2.1.287
+ ▐▛███▛█   Claude Code v2.1.287
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+❯ Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+⏺ 명령을 백그라운드에서 실행하겠습니다.
+
+⏺ Bash(sleep 600)
+  ⎿  Running in the background (↓ to manage)
+
+❯ y
+  ⎿  Interrupted · What should Claude do instead?
+
+────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on · PR #255 · 1 shell · ← for agents
+
+
+
+
+===== final =====
+ ▐▛███▛█   Claude Code v2.1.287
+ ▐▛███▛█   Claude Code v2.1.287
+▝▜██████▀  Haiku 4.5 · Claude Max
+ ▝▝   ▝▝   ~/…/docs/experiments/provider-decision-checks
+
+
+❯ Run this harmless command exactly once and do not stop it yourself: sleep
+  600. Then report when it ends.
+
+⏺ 명령을 백그라운드에서 실행하겠습니다.
+
+⏺ Bash(sleep 600)
+  ⎿  Running in the background (↓ to manage)
+
+❯ y
+  ⎿  Interrupted · What should Claude do instead?
+
+────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on · PR #255 · 1 shell · ← for agents
+
+
+
