@@ -1,11 +1,11 @@
-//! 사용량 화면(`/usage`). 범위 `chat`, `today`, `week`, `all`.
+//! 사용량 화면(`/usage`). 범위는 현재 채팅, 최근 24시간, 최근 7일.
 //! 설계: docs/design/tui.md
 
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Clear, Paragraph};
-use saturn_protocol::rpc::{UsageRange, UsageRow};
+use saturn_protocol::rpc::{Request, UsageRange, UsageRow};
 
 use crate::i18n::{self, Lang};
 use crate::view::{EMPHASIS, MUTED, text_width, truncate, window_block};
@@ -37,6 +37,25 @@ impl UsageScreen {
     pub fn toggle_detail(&mut self) {
         self.detail = !self.detail;
     }
+
+    /// 이미 보는 범위를 다시 고르면 현재 채팅으로 돌아간다. 새 범위의 표가 올 때까지 비운다.
+    pub fn select(&mut self, range: UsageRange) -> UsageRange {
+        self.range = if self.range == range {
+            UsageRange::Chat
+        } else {
+            range
+        };
+        self.table = None;
+        self.range
+    }
+}
+
+/// 붙은 채팅이 있는 화면의 요청이라 폴더는 싣지 않는다.
+pub fn usage_request(range: UsageRange) -> Request {
+    Request::Usage {
+        scope: range,
+        folder: None,
+    }
 }
 
 #[derive(Debug)]
@@ -55,17 +74,19 @@ impl UsageView<'_> {
         let title = format!(
             "{} · {}",
             lang.tr(i18n::USAGE_TITLE),
-            range_name(self.screen.range)
+            range_name(lang, self.screen.range)
         );
         let block = window_block(&title);
         let inner = block.inner(area);
         frame.render_widget(Clear, area);
         frame.render_widget(block, area);
         let width = usize::from(inner.width);
-        let lines = match &self.screen.table {
+        let mut lines = match &self.screen.table {
             None => vec![Line::from(Span::styled(lang.tr(i18n::LOADING), MUTED))],
             Some(table) => table_lines(lang, table, self.screen.detail),
         };
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(lang.tr(i18n::USAGE_HELP), MUTED)));
         let lines: Vec<Line> = lines
             .into_iter()
             .map(|line| {
@@ -78,14 +99,12 @@ impl UsageView<'_> {
     }
 }
 
-/// 명령 인자와 같아 번역하지 않는다.
-pub fn range_name(range: UsageRange) -> &'static str {
-    match range {
-        UsageRange::Chat => "chat",
-        UsageRange::Today => "today",
-        UsageRange::Week => "week",
-        UsageRange::All => "all",
-    }
+pub fn range_name(lang: Lang, range: UsageRange) -> &'static str {
+    lang.tr(match range {
+        UsageRange::Chat => i18n::USAGE_RANGE_CHAT,
+        UsageRange::Day => i18n::USAGE_RANGE_DAY,
+        UsageRange::Week => i18n::USAGE_RANGE_WEEK,
+    })
 }
 
 /// `micros`는 마이크로 달러이고 모르면 `-`.
@@ -308,6 +327,18 @@ mod tests {
         screen.toggle_detail();
 
         assert!(content(&screen).contains("router-model · router calls 3"));
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    #[test]
+    fn select_switches_range_and_returns_to_chat_on_second_press() {
+        let mut screen = screen(false);
+
+        assert_eq!(screen.select(UsageRange::Day), UsageRange::Day);
+        assert!(screen.table.is_none());
+        assert_eq!(screen.select(UsageRange::Week), UsageRange::Week);
+        assert_eq!(screen.select(UsageRange::Week), UsageRange::Chat);
     }
 
     // cost: time O(1), heap O(1), stack O(1)

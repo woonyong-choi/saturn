@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use saturn_protocol::ids::TaskLabel;
-use saturn_protocol::rpc::Request;
+use saturn_protocol::rpc::{Request, UsageRange};
 use saturn_protocol::state::InputState;
 
 use super::{App, Effect, Window};
@@ -16,7 +16,7 @@ use crate::view::popup::{self, Popup, PopupItem, PopupKind};
 use crate::view::router_version::RouterVersionScreen;
 use crate::view::task_list::TaskList;
 use crate::view::transcript::TranscriptCell;
-use crate::view::usage::UsageScreen;
+use crate::view::usage::{UsageScreen, usage_request};
 
 impl App {
     // cost: time O(n + p), heap O(n + p), stack O(1)
@@ -297,9 +297,9 @@ impl App {
                 self.open_window(Window::TaskList(TaskList::for_folder(folder)));
                 Some(Request::ListTasks)
             }
-            SlashCommand::Usage { range } => {
-                self.open_window(Window::Usage(UsageScreen::new(range)));
-                Some(Request::Usage { scope: range })
+            SlashCommand::Usage => {
+                self.open_window(Window::Usage(UsageScreen::new(UsageRange::Chat)));
+                Some(usage_request(UsageRange::Chat))
             }
             SlashCommand::Train {
                 reset_thresholds,

@@ -177,6 +177,10 @@ pub const USAGE_COMPACTIONS: &str = "맥락 정리";
 pub const USAGE_LABELS: &str = "채점";
 pub const USAGE_TOKENS: &str = "토큰";
 pub const USAGE_TURNS: &str = "턴";
+pub const USAGE_RANGE_CHAT: &str = "현재 채팅";
+pub const USAGE_RANGE_DAY: &str = "최근 24시간";
+pub const USAGE_RANGE_WEEK: &str = "최근 7일";
+pub const USAGE_HELP: &str = "d 최근 24시간 · w 최근 7일 · Enter 자세히 · Esc 닫기";
 pub const ROUTER_VERSION_TITLE: &str = "라우터 버전";
 pub const ROUTER_VERSION_ACTIVE: &str = "사용 중";
 pub const ROUTER_VERSION_QUESTION: &str = "질문";
@@ -493,8 +497,12 @@ const ENGLISH: &[(&str, &str)] = &[
     ("router 버전 목록을 보인다", "list router versions"),
     ("사용량 조회", "show usage"),
     (
-        "조회 범위(chat 현재 채팅, today 오늘, week 이번 주, all 전체)",
-        "usage range (chat: current chat, today, week, all)",
+        "모든 채팅의 최근 24시간 사용량을 본다",
+        "show usage of all chats for the last 24 hours",
+    ),
+    (
+        "모든 채팅의 최근 7일 사용량을 본다",
+        "show usage of all chats for the last 7 days",
     ),
     (
         "변경된 권한 설정을 적용하기 위해 {provider}를 다시 시작했습니다.",
@@ -596,6 +604,13 @@ const ENGLISH: &[(&str, &str)] = &[
     ("모든 폴더", "all folders"),
     ("불러오는 중", "loading"),
     ("사용량", "usage"),
+    ("현재 채팅", "this chat"),
+    ("최근 24시간", "last 24 hours"),
+    ("최근 7일", "last 7 days"),
+    (
+        "d 최근 24시간 · w 최근 7일 · Enter 자세히 · Esc 닫기",
+        "d last 24 hours · w last 7 days · Enter details · Esc close",
+    ),
     ("대상", "who"),
     ("새 입력", "input"),
     ("캐시 읽기", "cache read"),

@@ -586,7 +586,9 @@ impl Engine {
             Request::SetPermissionMode { chat, mode } => {
                 self.set_permission_mode(chat, &mode).await
             }
-            Request::Usage { scope } => self.send_usage(client, scope).await,
+            Request::Usage { scope, folder } => {
+                self.send_usage(client, scope, folder.as_deref()).await
+            }
             // TODO(#161): 작업 목록
             Request::ListTasks => Err(unsupported("ListTasks")),
             // TODO(#91): 학습과 router 버전

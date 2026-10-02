@@ -894,28 +894,62 @@ pub(crate) mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].report, report);
         assert!(!rows[0].spans_turns);
-        assert_eq!(
-            store
-                .usage_rows(UsageRange::Today, None)
-                .await
-                .unwrap()
-                .len(),
-            1
-        );
-        assert_eq!(
-            store
-                .usage_rows(UsageRange::Week, None)
-                .await
-                .unwrap()
-                .len(),
-            1
-        );
-        assert_eq!(
-            store.usage_rows(UsageRange::All, None).await.unwrap().len(),
-            1
-        );
+        for range in [UsageRange::Day, UsageRange::Week] {
+            assert_eq!(store.usage_rows(range, None).await.unwrap().len(), 1);
+        }
+        assert_eq!(store.all_usage_rows().await.unwrap().len(), 1);
         let no_chat = store.usage_rows(UsageRange::Chat, None).await.unwrap_err();
         assert!(matches!(no_chat, StoreError::NotFound { .. }));
+    }
+
+    #[tokio::test]
+    async fn day_and_week_ranges_are_rolling_windows_over_all_chats() {
+        let (_dir, store) = temp_store().await;
+        let (_, _, session, run) = chat_with_run(&store).await;
+        for _ in 0..3 {
+            store
+                .record_usage(run, session, &cumulative(Some(10), None))
+                .await
+                .unwrap();
+        }
+        let now_ms: i64 =
+            sqlx::query_scalar("SELECT CAST(strftime('%s', 'now') AS INTEGER) * 1000")
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+        let hour = 3_600_000;
+        for (id, age) in [(1, 23 * hour), (2, 25 * hour), (3, 8 * 24 * hour)] {
+            sqlx::query("UPDATE usage SET at = ? WHERE id = ?")
+                .bind(now_ms - age)
+                .bind(id)
+                .execute(&store.pool)
+                .await
+                .unwrap();
+        }
+
+        let day = store.usage_rows(UsageRange::Day, None).await.unwrap();
+        let week = store.usage_rows(UsageRange::Week, None).await.unwrap();
+
+        assert_eq!(day.iter().map(|row| row.id).collect::<Vec<_>>(), [1]);
+        assert_eq!(week.iter().map(|row| row.id).collect::<Vec<_>>(), [1, 2]);
+        assert_eq!(store.all_usage_rows().await.unwrap().len(), 3);
+    }
+
+    #[tokio::test]
+    async fn latest_chat_in_prefers_the_chat_with_the_latest_input() {
+        let (_dir, store) = temp_store().await;
+        let (older, _, _, _) = chat_with_run(&store).await;
+        let (newer, _, _, _) = chat_with_run(&store).await;
+        sqlx::query("UPDATE inputs SET accepted_at = 1 WHERE chat_id = ?")
+            .bind(to_sql_int(newer.0))
+            .execute(&store.pool)
+            .await
+            .unwrap();
+
+        let latest = store.latest_chat_in("/work").await.unwrap();
+
+        assert_eq!(latest, Some(older));
+        assert_eq!(store.latest_chat_in("/other").await.unwrap(), None);
     }
 
     #[tokio::test]

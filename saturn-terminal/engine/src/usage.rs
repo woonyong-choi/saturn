@@ -35,19 +35,23 @@ struct Group {
 }
 
 impl Engine {
-    /// `Chat` 범위는 이 클라이언트가 붙은 채팅이다.
+    /// `Chat` 범위는 이 클라이언트가 붙은 채팅이고, 붙은 채팅이 없으면 `folder`의 가장 최근 채팅이다.
     ///
     /// # Errors
-    /// `Chat`인데 붙은 채팅이 없으면 `Store(NotFound)`.
+    /// `Chat`인데 붙은 채팅도 `folder`의 채팅도 없으면 `Store(NotFound)`.
     pub(super) async fn send_usage(
         &self,
         client: ClientId,
         range: UsageRange,
+        folder: Option<&str>,
     ) -> Result<(), EngineError> {
-        let chat = self
+        let mut chat = self
             .attachments
             .get(&client)
             .map(|attachment| attachment.chat);
+        if let (None, UsageRange::Chat, Some(folder)) = (chat, range, folder) {
+            chat = self.store.latest_chat_in(folder).await?;
+        }
         let rows = usage_rows(&self.store, range, chat).await?;
         self.send(client, Notification::Usage { range, rows }).await;
         Ok(())
@@ -61,7 +65,7 @@ async fn usage_rows(
     chat: Option<ChatId>,
 ) -> Result<Vec<UsageRow>, StoreError> {
     let in_range = store.usage_rows(range, chat).await?;
-    let turn_values = turn_values(&store.usage_rows(UsageRange::All, None).await?);
+    let turn_values = turn_values(&store.all_usage_rows().await?);
     let mut session_runs: HashMap<SessionId, Vec<RunId>> = HashMap::new();
     let mut groups: BTreeMap<String, Group> = BTreeMap::new();
     for row in &in_range {
