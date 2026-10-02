@@ -136,9 +136,7 @@ impl Engine {
             .store
             .set_input_state(input, InputState::Queued, None)
             .await;
-        if let Err(error) = written {
-            tracing::warn!(error = %self.failure_line(&error), "failed to record the returned input");
-        }
+        self.warn_failure("failed to record the returned input", written);
         self.notify_input(input).await;
         Ok(())
     }
@@ -341,15 +339,9 @@ impl Engine {
         if let Err(error) = &sent
             && !matches!(error, ProviderError::Unknown)
         {
-            self.runs.active.remove(&live.agent);
-            self.runs.chat_of.remove(&live.agent);
-            self.runs.task_of.remove(&live.agent);
-            if let Err(end_error) = self.store.finish_run(run, RunEnd::Failed).await {
-                tracing::warn!(
-                    error = %self.failure_line(&end_error),
-                    "failed to end fallback run"
-                );
-            }
+            self.runs.forget(live.agent);
+            let ended = self.store.finish_run(run, RunEnd::Failed).await;
+            self.warn_failure("failed to end fallback run", ended);
         }
         sent.map_err(EngineError::from)
     }
@@ -466,9 +458,7 @@ impl Engine {
             .store
             .set_input_state(delivery.input, InputState::Rejected, None)
             .await;
-        if let Err(error) = written {
-            tracing::warn!(error = %self.failure_line(&error), "failed to record rejected input");
-        }
+        self.warn_failure("failed to record rejected input", written);
         self.end_failed_run(&delivery).await;
         self.release_task(&delivery);
         self.notify_input(delivery.input).await;
@@ -492,13 +482,10 @@ impl Engine {
             return;
         };
         if let Some(live) = &delivery.live {
-            self.runs.active.remove(&live.agent);
-            self.runs.chat_of.remove(&live.agent);
-            self.runs.task_of.remove(&live.agent);
+            self.runs.forget(live.agent);
         }
-        if let Err(error) = self.store.finish_run(run, RunEnd::Failed).await {
-            tracing::warn!(error = %self.failure_line(&error), "failed to end run");
-        }
+        let ended = self.store.finish_run(run, RunEnd::Failed).await;
+        self.warn_failure("failed to end run", ended);
     }
 
     /// 시작하지 못한 새 작업은 닫고, 에이전트가 붙은 작업은 끝내 쓰기 잠금을 푼다.
@@ -554,6 +541,13 @@ impl Engine {
     /// 로그와 알림에 남길 원인 한 줄. router 키와 같은 문자열은 가린다.
     pub(crate) fn failure_line(&self, error: &dyn std::error::Error) -> String {
         crate::masked_chain(&self.masker, error)
+    }
+
+    /// 흐름을 이어 가는 실패를 원인 한 줄과 함께 경고로 남긴다.
+    pub(crate) fn warn_failure<T>(&self, what: &str, result: Result<T, impl std::error::Error>) {
+        if let Err(error) = result {
+            tracing::warn!(error = %self.failure_line(&error), "{what}");
+        }
     }
 }
 

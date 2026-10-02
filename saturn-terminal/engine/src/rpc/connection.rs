@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use saturn_protocol::envelope::{self, CodecError, ServerMessage};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
 use tokio::net::UnixStream;
 use tokio::sync::{Notify, mpsc};
 
@@ -49,34 +49,50 @@ async fn read_loop(
     replies: mpsc::Sender<ServerMessage>,
 ) {
     let mut lines = BufReader::new(read_half).lines();
-    loop {
-        let line = match lines.next_line().await {
-            Ok(Some(line)) => line,
-            Ok(None) => break,
-            Err(error) => {
-                tracing::debug!(client = id.0, %error, "client read failed");
-                break;
-            }
-        };
+    while let Some(line) = next_line(&mut lines, id).await {
         if line.trim().is_empty() {
             continue;
         }
-        match envelope::decode_client_line(&line) {
-            Ok(message) => {
-                let event = RpcEvent::Request(id, message.id, message.request);
-                if inbox.send(event).await.is_err() {
-                    return; // 서버가 이미 닫혔다
-                }
-            }
-            Err(error) => {
-                if let CodecError::Decode { kind, column, .. } = &error {
-                    tracing::warn!(client = id.0, %kind, column, "dropped client line");
-                }
-                let _ = replies.try_send(error.to_response().into()); // 넘치면 쓰기 쪽이 곧 끊긴다
-            }
+        if !forward_line(id, &line, &inbox, &replies).await {
+            return; // 서버가 이미 닫혔다
         }
     }
     let _ = inbox.send(RpcEvent::Disconnected(id)).await; // 서버가 이미 닫혔다
+}
+
+async fn next_line(
+    lines: &mut Lines<BufReader<tokio::net::unix::OwnedReadHalf>>,
+    id: ClientId,
+) -> Option<String> {
+    match lines.next_line().await {
+        Ok(line) => line,
+        Err(error) => {
+            tracing::debug!(client = id.0, %error, "client read failed");
+            None
+        }
+    }
+}
+
+/// 서버가 이미 닫혀 요청을 넘기지 못하면 거짓.
+async fn forward_line(
+    id: ClientId,
+    line: &str,
+    inbox: &mpsc::Sender<RpcEvent>,
+    replies: &mpsc::Sender<ServerMessage>,
+) -> bool {
+    match envelope::decode_client_line(line) {
+        Ok(message) => {
+            let event = RpcEvent::Request(id, message.id, message.request);
+            inbox.send(event).await.is_ok()
+        }
+        Err(error) => {
+            if let CodecError::Decode { kind, column, .. } = &error {
+                tracing::warn!(client = id.0, %kind, column, "dropped client line");
+            }
+            let _ = replies.try_send(error.to_response().into()); // 넘치면 쓰기 쪽이 곧 끊긴다
+            true
+        }
+    }
 }
 
 async fn write_loop(
@@ -90,16 +106,18 @@ async fn write_loop(
             () = kill.notified() => None,
         };
         let Some(message) = message else { break };
-        let line = match envelope::encode_line(&message) {
-            Ok(line) => line,
-            Err(error) => {
-                tracing::error!(%error, "failed to encode server message");
-                continue;
-            }
+        let Some(line) = encode_logged(&message) else {
+            continue;
         };
         if write_half.write_all(line.as_bytes()).await.is_err() {
             break;
         }
     }
     let _ = write_half.shutdown().await; // 상대가 이미 끊었다
+}
+
+fn encode_logged(message: &ServerMessage) -> Option<String> {
+    envelope::encode_line(message)
+        .inspect_err(|error| tracing::error!(%error, "failed to encode server message"))
+        .ok()
 }

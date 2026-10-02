@@ -1,0 +1,460 @@
+use super::*;
+
+const REVISION: ChatRevision = ChatRevision(3);
+const SETTINGS: SettingsRevision = SettingsRevision(2);
+
+fn models() -> Vec<String> {
+    vec!["model-a".to_string(), "model-b".to_string()]
+}
+
+fn request(running: bool, has_held: bool) -> RouterRequest {
+    RouterRequest {
+        model: "router".into(),
+        state: "state".into(),
+        sets: questions_for_input(running, false, has_held, &models()),
+    }
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 답 수
+// basis: estimate
+fn response(answers: Vec<(&str, Answer)>) -> RouterResponse {
+    RouterResponse {
+        model: "router".into(),
+        answers: answers
+            .into_iter()
+            .map(|(id, answer)| (id.to_string(), answer))
+            .collect(),
+        tokens: (0, 0),
+    }
+}
+
+fn decide(request: &RouterRequest, response: &RouterResponse, method: Method) -> RouteDecision {
+    decide_route(
+        (request, response),
+        &Thresholds::default(),
+        method,
+        REVISION,
+        SETTINGS,
+    )
+}
+
+// cost: time O(q), heap O(q), stack O(1)
+// vars: q = 질문 수
+// basis: estimate
+fn ids(sets: &[(QuestionSetId, Vec<Question>)]) -> Vec<String> {
+    sets.iter()
+        .flat_map(|(_, questions)| questions.iter().map(|question| question.id.clone()))
+        .collect()
+}
+
+// cost: time O(q), heap O(q), stack O(1)
+// vars: q = 질문 수
+// basis: estimate
+fn asks(sets: &[(QuestionSetId, Vec<Question>)], id: &str) -> bool {
+    ids(sets).iter().any(|asked| asked == id)
+}
+
+// cost: time O(f), heap O(1), stack O(1)
+// vars: f = 대체 규칙 기록 수
+// basis: estimate
+fn has_fallback(decision: &RouteDecision, id: &str) -> bool {
+    decision.fallbacks.iter().any(|fallback| fallback == id)
+}
+
+#[test]
+fn confidence_uniform_is_zero_and_certain_is_one() {
+    assert_eq!(Answer::Choice(vec![0.25; 4]).confidence(), 0.0);
+    assert_eq!(Answer::Choice(vec![0.0, 1.0, 0.0]).confidence(), 1.0);
+}
+
+#[test]
+fn confidence_matches_formula() {
+    let answer = Answer::Choice(vec![0.7, 0.2, 0.1]);
+
+    let expected = (3.0 * 0.7 - 1.0) / 2.0;
+    assert!((answer.confidence() - expected).abs() < 1e-12);
+}
+
+#[test]
+fn confidence_noul_is_two_choices() {
+    assert!((Answer::Noul(0.9).confidence() - 0.8).abs() < 1e-12);
+    assert!((Answer::Noul(0.1).confidence() - 0.8).abs() < 1e-12);
+    assert_eq!(Answer::Noul(0.5).confidence(), 0.0);
+}
+
+#[test]
+fn confidence_nan_or_empty_is_zero() {
+    assert_eq!(Answer::Choice(vec![f64::NAN, 0.5]).confidence(), 0.0);
+    assert_eq!(Answer::Choice(Vec::new()).confidence(), 0.0);
+    assert_eq!(Answer::Noul(f64::NAN).confidence(), 0.0);
+}
+
+#[test]
+fn default_thresholds_match_design_table() {
+    let thresholds = Thresholds::default();
+
+    assert_eq!(thresholds.keep_current, 0.8);
+    assert_eq!(thresholds.is_actionable, 0.7);
+    assert_eq!(thresholds.min_confidence, 0.6);
+    assert_eq!(thresholds.resume_held, 0.85);
+    assert_eq!(thresholds.file_relevant, (0.7, 0.35));
+    assert_eq!(thresholds.context_gate, 0.3);
+    assert_eq!(thresholds.injection, 0.7);
+    assert_eq!(thresholds.progressing, 0.2);
+    assert_eq!(thresholds.feedback_cause, 0.7);
+}
+
+#[test]
+fn questions_for_input_idle_asks_route_only() {
+    let sets = questions_for_input(false, false, false, &models());
+
+    assert_eq!(
+        ids(&sets),
+        vec!["keep_current", "is_actionable", "target_model"]
+    );
+    assert_eq!((sets[0].0.major, sets[0].0.minor), (1, 0));
+}
+
+// cost: time O(q), heap O(q), stack O(1)
+// vars: q = 질문 수
+// basis: estimate
+#[test]
+fn questions_for_input_running_adds_relation_and_send_opt() {
+    let sets = questions_for_input(true, false, true, &models());
+
+    let names: Vec<&str> = sets.iter().map(|(set, _)| set.name.as_str()).collect();
+    assert_eq!(names, vec!["route", "relation", "send-opt"]);
+    assert!(asks(&sets, "resume_held"));
+}
+
+#[test]
+fn questions_for_input_pinned_model_skips_target_model() {
+    let sets = questions_for_input(false, true, false, &models());
+
+    assert!(!asks(&sets, "target_model"));
+}
+
+// cost: time O(q·n), heap O(1), stack O(1)
+// vars: q = 질문 수, n = 선택지 수
+// basis: estimate
+#[test]
+fn questions_for_input_choice_has_other_option() {
+    let sets = questions_for_input(true, false, false, &models());
+
+    let has_other =
+        sets.iter()
+            .flat_map(|(_, questions)| questions)
+            .all(|question| match &question.kind {
+                AnswerKind::Choice { options } => options.iter().any(|option| option == "other"),
+                _ => true,
+            });
+    assert!(has_other);
+}
+
+#[test]
+fn decide_route_keep_current_high_keeps_agent() {
+    let request = request(false, false);
+    let response = response(vec![
+        ("keep_current", Answer::Noul(0.91)),
+        ("is_actionable", Answer::Noul(0.9)),
+        ("target_model", Answer::Choice(vec![0.9, 0.05, 0.05])),
+    ]);
+
+    let decision = decide(&request, &response, Method::Jev);
+
+    assert_eq!(decision.disposition, Disposition::Queue);
+    assert!(decision.keep_current);
+    assert_eq!(decision.model.as_deref(), Some("model-a"));
+    assert!(decision.fallbacks.is_empty());
+}
+
+#[test]
+fn decide_route_keep_current_low_starts_new_task() {
+    let request = request(false, false);
+    let response = response(vec![
+        ("keep_current", Answer::Noul(0.1)),
+        ("is_actionable", Answer::Noul(0.9)),
+        ("target_model", Answer::Choice(vec![0.05, 0.9, 0.05])),
+    ]);
+
+    let decision = decide(&request, &response, Method::Jev);
+
+    assert_eq!(decision.disposition, Disposition::NewTask);
+    assert!(!decision.keep_current);
+}
+
+#[test]
+fn decide_route_keep_current_middle_falls_back_to_keep() {
+    let request = request(false, false);
+    let response = response(vec![("keep_current", Answer::Noul(0.5))]);
+
+    let decision = decide(&request, &response, Method::Jev);
+
+    assert!(decision.keep_current);
+    assert!(has_fallback(&decision, "keep_current"));
+    assert!(has_fallback(&decision, "is_actionable"));
+    assert!(has_fallback(&decision, "target_model"));
+}
+
+#[test]
+fn decide_route_low_confidence_model_falls_back_to_current() {
+    let request = request(false, false);
+    let response = response(vec![
+        ("keep_current", Answer::Noul(0.9)),
+        ("target_model", Answer::Choice(vec![0.4, 0.35, 0.25])),
+    ]);
+
+    let decision = decide(&request, &response, Method::Jev);
+
+    assert_eq!(decision.model, None);
+    assert!(has_fallback(&decision, "target_model"));
+}
+
+#[test]
+fn decide_route_relation_low_confidence_queues() {
+    let request = request(true, false);
+    let response = response(vec![
+        ("keep_current", Answer::Noul(0.9)),
+        (
+            "relation_to_running",
+            Answer::Choice(vec![0.25, 0.25, 0.2, 0.2, 0.1]),
+        ),
+        (
+            "steer_or_spawn",
+            Answer::Choice(vec![0.97, 0.01, 0.01, 0.01]),
+        ),
+    ]);
+
+    let decision = decide(&request, &response, Method::Jev);
+
+    assert_eq!(decision.disposition, Disposition::Queue);
+    assert!(has_fallback(&decision, "relation_to_running"));
+}
+
+#[test]
+fn decide_route_refines_and_steer_steers() {
+    let request = request(true, false);
+    let response = response(vec![
+        ("keep_current", Answer::Noul(0.91)),
+        (
+            "relation_to_running",
+            Answer::Choice(vec![0.96, 0.01, 0.01, 0.01, 0.01]),
+        ),
+        (
+            "steer_or_spawn",
+            Answer::Choice(vec![0.97, 0.01, 0.01, 0.01]),
+        ),
+    ]);
+
+    let decision = decide(&request, &response, Method::Jev);
+
+    assert_eq!(decision.disposition, Disposition::Steer);
+    assert!(decision.keep_current);
+}
+
+#[test]
+fn decide_route_independent_starts_new_task() {
+    let request = request(true, false);
+    let response = response(vec![
+        ("keep_current", Answer::Noul(0.1)),
+        (
+            "relation_to_running",
+            Answer::Choice(vec![0.01, 0.01, 0.96, 0.01, 0.01]),
+        ),
+    ]);
+
+    let decision = decide(&request, &response, Method::Jev);
+
+    assert_eq!(decision.disposition, Disposition::NewTask);
+    assert!(!decision.keep_current);
+}
+
+#[test]
+fn decide_route_send_low_confidence_queues_to_current() {
+    let request = request(true, false);
+    let response = response(vec![
+        (
+            "relation_to_running",
+            Answer::Choice(vec![0.96, 0.01, 0.01, 0.01, 0.01]),
+        ),
+        ("steer_or_spawn", Answer::Choice(vec![0.4, 0.3, 0.3, 0.0])),
+    ]);
+
+    let decision = decide(&request, &response, Method::Jev);
+
+    assert_eq!(decision.disposition, Disposition::Queue);
+    assert!(decision.keep_current);
+    assert!(has_fallback(&decision, "steer_or_spawn"));
+}
+
+#[test]
+fn decide_route_resume_held_needs_threshold() {
+    let request = request(false, true);
+    let below = response(vec![("resume_held", Answer::Noul(0.84))]);
+    let above = response(vec![("resume_held", Answer::Noul(0.9))]);
+
+    assert!(!decide(&request, &below, Method::Jev).resume_held);
+    assert!(decide(&request, &above, Method::Jev).resume_held);
+}
+
+#[test]
+fn decide_route_saturn_method_ignores_unsure_noul() {
+    let request = request(false, false);
+    let response = response(vec![("keep_current", Answer::Noul(0.25))]);
+
+    let jev = decide(&request, &response, Method::Jev);
+    let saturn = decide(&request, &response, Method::Saturn);
+
+    assert_eq!(jev.disposition, Disposition::NewTask);
+    assert_eq!(saturn.disposition, Disposition::Queue);
+    assert!(has_fallback(&saturn, "keep_current"));
+}
+
+#[test]
+fn validate_well_formed_answer_passes() {
+    let request = request(false, false);
+    let response = response(vec![
+        ("keep_current", Answer::Noul(0.9)),
+        ("is_actionable", Answer::Noul(0.8)),
+        ("target_model", Answer::Choice(vec![0.6, 0.3, 0.1])),
+    ]);
+
+    assert!(validate(&request, &response).is_ok());
+}
+
+#[test]
+fn validate_missing_answer_is_invalid() {
+    let request = request(false, false);
+    let response = response(vec![("keep_current", Answer::Noul(0.9))]);
+
+    assert!(matches!(
+        validate(&request, &response),
+        Err(RouterError::Invalid { .. })
+    ));
+}
+
+#[test]
+fn validate_unknown_question_is_invalid() {
+    let request = request(false, false);
+    let response = response(vec![
+        ("keep_current", Answer::Noul(0.9)),
+        ("is_actionable", Answer::Noul(0.8)),
+        ("target_model", Answer::Choice(vec![0.6, 0.3, 0.1])),
+        ("model-c", Answer::Noul(0.5)),
+    ]);
+
+    assert!(validate(&request, &response).is_err());
+}
+
+#[test]
+fn validate_nan_or_wrong_length_is_invalid() {
+    let request = request(false, false);
+    let nan = response(vec![
+        ("keep_current", Answer::Noul(f64::NAN)),
+        ("is_actionable", Answer::Noul(0.8)),
+        ("target_model", Answer::Choice(vec![0.6, 0.3, 0.1])),
+    ]);
+    let short = response(vec![
+        ("keep_current", Answer::Noul(0.9)),
+        ("is_actionable", Answer::Noul(0.8)),
+        ("target_model", Answer::Choice(vec![0.6, 0.4])),
+    ]);
+
+    assert!(validate(&request, &nan).is_err());
+    assert!(validate(&request, &short).is_err());
+}
+
+#[test]
+fn validate_sum_not_one_is_invalid() {
+    let request = request(false, false);
+    let response = response(vec![
+        ("keep_current", Answer::Noul(0.9)),
+        ("is_actionable", Answer::Noul(0.8)),
+        ("target_model", Answer::Choice(vec![0.6, 0.6, 0.1])),
+    ]);
+
+    assert!(validate(&request, &response).is_err());
+}
+
+#[test]
+fn validate_kind_mismatch_is_invalid() {
+    let request = request(false, false);
+    let response = response(vec![
+        ("keep_current", Answer::Choice(vec![0.5, 0.5])),
+        ("is_actionable", Answer::Noul(0.8)),
+        ("target_model", Answer::Choice(vec![0.6, 0.3, 0.1])),
+    ]);
+
+    assert!(validate(&request, &response).is_err());
+}
+
+// cost: time O(c), heap O(c), stack O(1)
+// vars: c = 후보 수
+// basis: estimate
+#[test]
+fn compact_questions_150_candidates_ask_all() {
+    let candidates: Vec<LedgerSeq> = (0..150).map(LedgerSeq).collect();
+
+    let (set, questions) = compact_questions(&candidates);
+
+    assert_eq!(set.name, SET_COMPACT);
+    assert_eq!(questions.len(), 300);
+    assert!(
+        questions
+            .iter()
+            .any(|question| question.id == "call_0_keep")
+    );
+    assert!(
+        questions
+            .iter()
+            .any(|question| question.id == "result_149_keep")
+    );
+}
+
+// cost: time O(c), heap O(c), stack O(1)
+// vars: c = 후보 수
+// basis: estimate
+#[test]
+fn compact_requests_large_state_splits_and_every_piece_carries_state() {
+    let candidates: Vec<LedgerSeq> = (0..1_000).map(LedgerSeq).collect();
+    let state = "s".repeat(20_000);
+
+    let requests = compact_requests("jev-test", &state, &candidates).unwrap();
+
+    assert!(requests.len() > 1);
+    assert!(requests.iter().all(|request| request.state == state));
+}
+
+#[test]
+fn compact_verdicts_merges_pieces_and_skips_failed_piece() {
+    let candidates = [LedgerSeq(7), LedgerSeq(3), LedgerSeq(1)];
+    let first = response(vec![
+        ("call_7_keep", Answer::Noul(0.9)),
+        ("result_7_keep", Answer::Noul(0.1)),
+    ]);
+    let second = response(vec![("call_1_keep", Answer::Noul(0.4))]);
+
+    let verdicts = compact_verdicts(&candidates, &[first, second]);
+
+    assert_eq!(verdicts, vec![(LedgerSeq(7), 0.9), (LedgerSeq(1), 0.4)]);
+}
+
+#[test]
+fn compact_verdicts_takes_larger_of_call_and_result() {
+    let candidates = [LedgerSeq(7), LedgerSeq(3)];
+    let answers = response(vec![
+        ("call_7_keep", Answer::Noul(0.2)),
+        ("result_7_keep", Answer::Noul(0.65)),
+        ("result_3_keep", Answer::Noul(0.3)),
+    ]);
+
+    let verdicts = compact_verdicts(&candidates, &[answers]);
+
+    assert_eq!(verdicts, vec![(LedgerSeq(7), 0.65), (LedgerSeq(3), 0.3)]);
+}
+
+#[test]
+fn compact_verdicts_no_responses_is_empty() {
+    assert!(compact_verdicts(&[LedgerSeq(1)], &[]).is_empty());
+}

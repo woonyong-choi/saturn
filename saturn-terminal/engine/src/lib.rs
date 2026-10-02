@@ -34,7 +34,9 @@ mod models;
 mod outcomes;
 mod permission;
 mod requests;
+mod serve;
 mod sessions;
+mod startup;
 mod stop;
 mod switch;
 mod turn_end;
@@ -44,28 +46,23 @@ mod usage;
 mod lifecycle;
 
 use std::collections::HashMap;
-use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::ffi::OsString;
+use std::path::PathBuf;
 use std::time::Instant;
 
 use saturn_core::agents::AgentTracker;
 use saturn_core::providers::ProviderError;
 use saturn_core::queue::{Queue, QueueError};
 use saturn_core::sessions::{SessionError, SessionManager};
-use saturn_protocol::envelope::{
-    INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND, RequestId, Response,
-};
+use saturn_protocol::envelope::{INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND};
 use saturn_protocol::ids::{AgentId, ChatId, Provider, RunId, TaskId};
-use saturn_protocol::rpc::Request;
-use tokio::sync::Mutex;
 
 use crate::chat_env::ChatEnv;
 use crate::processes::{NESTED_MARKER_ENV, ProcessError};
-use crate::routers::{ActiveRouter, Routers, RoutersError, SharedSecrets, StartCheck};
-use crate::rpc::{ClientId, EngineLock, RpcError, RpcEvent, RpcServer};
-use crate::secrets::{KeyInput, SecretStore, SecretsError, input_order};
-use crate::settings::{FolderTrustPrompt, Settings, SettingsError, SettingsManager};
+use crate::routers::{ActiveRouter, Routers, RoutersError, SharedSecrets};
+use crate::rpc::{ClientId, RpcError, RpcServer};
+use crate::secrets::{KeyInput, SecretsError};
+use crate::settings::{FolderTrustPrompt, SettingsError, SettingsManager};
 use crate::store::{MigrationNotice, RunRecord, Store, StoreError};
 use crate::training::{TrainPlan, TrainingError};
 
@@ -192,14 +189,6 @@ enum RouterGate {
     },
 }
 
-#[derive(Debug)]
-struct VerifiedRouter {
-    routers: Routers,
-    secrets: SharedSecrets,
-    masker: Masker,
-    gate: RouterGate,
-}
-
 /// 첫 TUI에 한 번 보낸다.
 #[derive(Debug, Default)]
 struct StartNotices {
@@ -239,6 +228,15 @@ struct Runs {
     active: HashMap<AgentId, RunId>,
     chat_of: HashMap<AgentId, ChatId>,
     task_of: HashMap<AgentId, TaskId>,
+}
+
+impl Runs {
+    /// 에이전트의 채팅과 작업 연결을 지우고, 끝내지 않은 실행이 있으면 돌려준다.
+    fn forget(&mut self, agent: AgentId) -> Option<RunId> {
+        self.chat_of.remove(&agent);
+        self.task_of.remove(&agent);
+        self.active.remove(&agent)
+    }
 }
 
 #[derive(Debug)]
@@ -284,161 +282,6 @@ impl Engine {
         served
     }
 
-    /// 앞 단계가 실패하면 뒤 단계를 하지 않는다. router 키가 없거나 틀려도 소켓은 열고 키를 기다린다.
-    ///
-    /// # Errors
-    /// 판단 방식에 맞는 router를 만들 수 없으면 `RouterUnavailable`.
-    async fn start(options: EngineOptions) -> Result<Self, EngineError> {
-        Self::start_with(options, StartEnv::from_process()).await
-    }
-
-    async fn start_with(options: EngineOptions, env: StartEnv) -> Result<Self, EngineError> {
-        Self::ensure_not_nested(env.nested_marker.as_deref())?;
-        let lock = Self::acquire_lock(&options)?;
-        let (store, migration) = Self::open_store(&options).await?;
-        let sessions = sessions::restore_sessions(&store).await?;
-        let settings = Self::merge_settings(&options, &store).await?;
-        let verified = Self::verify_router(&options, &store, &settings, env).await?;
-        let rpc = Self::listen(&options, lock).await?;
-        Ok(Self {
-            options,
-            store,
-            settings,
-            secrets: verified.secrets,
-            masker: verified.masker,
-            supervisor: Supervisor::new(),
-            providers: HashMap::new(),
-            routers: verified.routers,
-            router_gate: verified.gate,
-            rpc,
-            attachments: HashMap::new(),
-            chats: HashMap::new(),
-            chat_dirs: HashMap::new(),
-            notices: StartNotices { migration },
-            queue: Queue::new(),
-            sessions,
-            signals: outcomes::SignalWatch::default(),
-            agents: AgentTracker::new(),
-            runs: Runs::default(),
-            flow: flow::FlowState::default(),
-            presence: Presence::Background { idle_since: None },
-            pending_train: None,
-        })
-    }
-
-    /// 판정 기준은 cli와 같다: 중첩 표지 변수가 있으면 거절한다.
-    /// TODO(#33): 자식 Saturn을 부모 engine에 붙일지, 독립 engine으로 띄울지
-    fn ensure_not_nested(marker: Option<&OsStr>) -> Result<(), EngineError> {
-        match marker {
-            Some(_) => Err(EngineError::Nested),
-            None => Ok(()),
-        }
-    }
-
-    /// 이미 잡혀 있으면 `Rpc(AlreadyRunning)`이고 cli는 기존 소켓에 붙는다.
-    fn acquire_lock(options: &EngineOptions) -> Result<EngineLock, EngineError> {
-        Ok(EngineLock::acquire(&options.home)?)
-    }
-
-    /// 이관했으면 안내 한 줄을 stderr에 쓰고 첫 TUI에도 보낸다.
-    async fn open_store(
-        options: &EngineOptions,
-    ) -> Result<(Store, Option<MigrationNotice>), EngineError> {
-        let (store, notice) = Store::open(&options.home).await?;
-        if let Some(notice) = &notice {
-            tracing::warn!(notice = %notice.line(), "record store migrated");
-        }
-        Ok((store, notice))
-    }
-
-    /// 채팅이 붙기 전이라 폴더 층과 채팅 층 없이 병합한다. 그 층은 TUI가 붙을 때 채팅마다 병합한다.
-    ///
-    /// # Errors
-    /// 검사 실패이고 이전 설정 번호도 없으면 `Settings(NoPreviousRevision)`.
-    async fn merge_settings(
-        options: &EngineOptions,
-        store: &Store,
-    ) -> Result<SettingsManager, EngineError> {
-        let mut settings =
-            SettingsManager::new(options.home.clone(), options.run_overrides.clone(), store)
-                .await?;
-        let applied = settings.apply_user(store).await?;
-        if let Some(warning) = &applied.warning {
-            tracing::warn!(?warning, "settings applied with warning");
-        }
-        Ok(settings)
-    }
-
-    /// 확인이 실패하면 환경 변수, 비밀번호 관리자 명령 순서로 키를 받아 다시 확인하고,
-    /// 그래도 실패하면 TUI가 `SubmitRouterKey`로 키를 보낼 때까지 일반 요청을 막는다.
-    ///
-    /// # Errors
-    /// 판단 방식에 맞는 router를 만들 수 없으면 `RouterUnavailable`.
-    async fn verify_router(
-        options: &EngineOptions,
-        store: &Store,
-        settings: &SettingsManager,
-        env: StartEnv,
-    ) -> Result<VerifiedRouter, EngineError> {
-        let revision = settings
-            .current()
-            .ok_or(SettingsError::NoPreviousRevision)?;
-        let current = settings.at(store, revision).await?;
-        let secrets = match env.secrets {
-            Some(secrets) => secrets,
-            None => open_secrets(&options.home, &current).await,
-        };
-        let masker = Masker::new(secrets.lock().await.mask_needles());
-        let mut routers = match env.router {
-            Some(active) => Routers::with_active(active, current.method(), masker.clone()),
-            None => Routers::select(&current, Arc::clone(&secrets), masker.clone()).map_err(
-                |error| EngineError::RouterUnavailable {
-                    reason: masked_chain(&masker, &error),
-                },
-            )?,
-        };
-        let reason = match routers.check(&current).await {
-            StartCheck::Ready | StartCheck::Skipped => None,
-            StartCheck::KeyRequired { reason } => Some(reason),
-        };
-        let Some(reason) = reason else {
-            return Ok(VerifiedRouter {
-                routers,
-                secrets,
-                masker,
-                gate: RouterGate::Open,
-            });
-        };
-        let inputs = env
-            .key_inputs
-            .unwrap_or_else(|| input_order(current.key_command()));
-        for input in inputs {
-            match routers.accept_key(input, &secrets, settings).await {
-                Ok(()) => {
-                    let masker = Masker::new(secrets.lock().await.mask_needles());
-                    return Ok(VerifiedRouter {
-                        routers,
-                        secrets,
-                        masker,
-                        gate: RouterGate::Open,
-                    });
-                }
-                Err(error) => tracing::debug!(error = %error, "router key input failed"),
-            }
-        }
-        tracing::warn!(%reason, "router check failed, waiting for router key from tui");
-        Ok(VerifiedRouter {
-            routers,
-            secrets,
-            masker,
-            gate: RouterGate::KeyRequired { reason },
-        })
-    }
-
-    async fn listen(options: &EngineOptions, lock: EngineLock) -> Result<RpcServer, EngineError> {
-        Ok(RpcServer::bind(&options.home, lock).await?)
-    }
-
     /// 크래시 전에 보낸 패킷은 어느 경우에도 다시 보내지 않는다.
     /// TODO(#66): 실행 중으로 남은 subagent와 provider가 다시 불러오는 자식 session을 정리할지, 끊김 표시만 할지
     #[expect(clippy::todo, reason = "#90 뼈대")]
@@ -456,170 +299,6 @@ impl Engine {
     #[expect(clippy::todo, reason = "#90 뼈대")]
     async fn hold_unproven(&mut self, run: RunRecord) -> Result<(), EngineError> {
         todo!("#90")
-    }
-
-    /// # Errors
-    /// 복구할 수 없는 오류만 돌려주고, 요청 하나의 오류는 그 클라이언트에 알리고 계속한다.
-    async fn serve(&mut self) -> Result<(), EngineError> {
-        let mut tick = tokio::time::interval(outcomes::SETTLE_TICK);
-        loop {
-            tokio::select! {
-                event = self.rpc.next_event() => {
-                    let Some(event) = event else { break };
-                    self.handle_event(event).await?;
-                }
-                Some(done) = self.flow.router_rx.recv() => {
-                    self.on_routed(done).await;
-                }
-                arrival = events::next_arrival(&mut self.providers) => {
-                    self.on_arrival(arrival).await;
-                }
-                Some(done) = self.flow.stop_rx.recv() => {
-                    self.on_stop_done(done).await;
-                }
-                _ = tick.tick() => {
-                    if let Err(error) = self.settle_signals(Instant::now()).await {
-                        tracing::warn!(error = %masked_chain(&self.masker, &error), "failed to settle judgment signals");
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-
-    async fn handle_event(&mut self, event: RpcEvent) -> Result<(), EngineError> {
-        match event {
-            RpcEvent::Connected(_) => {}
-            RpcEvent::Request(client, id, request) => {
-                self.handle_request(client, id, request).await?;
-            }
-            RpcEvent::Disconnected(client) => {
-                self.attachments.remove(&client);
-            }
-            // TODO(#150): 마지막 TUI가 떨어진 뒤 `on_last_detach`와 유예 시계
-            RpcEvent::LastDetached => {}
-        }
-        Ok(())
-    }
-
-    /// 요청마다 응답 하나를 돌려준다. `SubmitRouterKey` 메시지는 기록하지 않는다.
-    async fn handle_request(
-        &mut self,
-        client: ClientId,
-        id: RequestId,
-        request: Request,
-    ) -> Result<(), EngineError> {
-        let response = match self.route(client, request).await {
-            Ok(()) => Response::ok(id),
-            Err(error) => {
-                let message = masked_chain(&self.masker, &error);
-                tracing::warn!(client = client.0, error = %message, "request failed");
-                Response::error(Some(id), error.code(), message)
-            }
-        };
-        let _ = self.rpc.respond(client, response).await; // 이미 끊긴 클라이언트에는 응답할 곳이 없다
-        Ok(())
-    }
-
-    async fn route(&mut self, client: ClientId, request: Request) -> Result<(), EngineError> {
-        if let RouterGate::KeyRequired { reason } = &self.router_gate
-            && !matches!(
-                request,
-                Request::Attach { .. } | Request::SubmitRouterKey { .. }
-            )
-        {
-            return Err(EngineError::RouterKeyRequired {
-                reason: reason.clone(),
-            });
-        }
-        match request {
-            Request::Attach {
-                chat,
-                workdir,
-                env,
-                overrides,
-                add_dirs,
-            } => {
-                let request = AttachRequest {
-                    chat,
-                    workdir: PathBuf::from(workdir),
-                    env,
-                    overrides,
-                    add_dirs,
-                };
-                self.attach(client, request).await
-            }
-            Request::AddDir { chat, path } => self.add_dir(client, chat, &path).await,
-            Request::LoadHistory {
-                chat,
-                before,
-                limit,
-            } => self.load_history(client, chat, before, limit).await,
-            // TODO(#161): 채팅 이름과 묶음
-            Request::RenameChat { .. } => Err(unsupported("RenameChat")),
-            Request::SetChatGroup { .. } => Err(unsupported("SetChatGroup")),
-            // 서버가 응답하고 끊김으로 바꿔 여기까지 오지 않는다.
-            Request::Detach => Ok(()),
-            Request::SubmitInput {
-                chat,
-                client_ref,
-                text,
-                skip_relation,
-            } => {
-                self.submit_input(client, chat, client_ref, text, skip_relation)
-                    .await
-            }
-            Request::RunAsNewTask { input } => self.run_as_new_task(client, input).await,
-            Request::SendNow { input } => self.send_now(client, input).await,
-            Request::CancelInput { input } => self.cancel_input(client, input).await,
-            Request::Stop { chat } => self.stop_chat(chat).await,
-            Request::Continue { chat, task } => self.continue_held(chat, task).await,
-            Request::ContinueInput { input } => self.continue_input(input).await,
-            Request::CloseHeld { chat, task } => self.close_held(chat, task).await,
-            Request::AnswerPermission { request_id, answer } => {
-                self.answer_permission(client, request_id, answer).await
-            }
-            Request::AnswerInput { request_id, answer } => {
-                self.answer_input(client, request_id, answer).await
-            }
-            Request::AnswerFeedback { judgment, correct } => {
-                self.answer_feedback(judgment, correct).await
-            }
-            Request::SubmitRouterKey { key } => self.submit_router_key(client, key).await,
-            Request::AnswerFolderTrust {
-                path,
-                fingerprint,
-                apply,
-            } => {
-                self.answer_folder_trust(client, path, fingerprint, apply)
-                    .await
-            }
-            Request::SetRecording { chat, on } => Ok(self.store.set_recording(chat, on).await?),
-            Request::SetPermissionMode { chat, mode } => {
-                self.set_permission_mode(chat, &mode).await
-            }
-            Request::Usage { scope, folder } => {
-                self.send_usage(client, scope, folder.as_deref()).await
-            }
-            Request::SetModel { chat, model } => self.set_model(client, chat, &model).await,
-            Request::ListModels { chat, provider } => {
-                self.send_models(client, chat, provider).await
-            }
-            // TODO(#161): 작업 목록
-            Request::ListTasks => Err(unsupported("ListTasks")),
-            // TODO(#91): 학습과 router 버전
-            Request::Train { .. } => Err(unsupported("Train")),
-            Request::ConfirmTrain { .. } => Err(unsupported("ConfirmTrain")),
-            Request::ListRouterVersions => Err(unsupported("ListRouterVersions")),
-            Request::UseRouterVersion { .. } => Err(unsupported("UseRouterVersion")),
-            // TODO(#161): 기록 정리 미리보기
-            Request::Prune { .. } => Err(unsupported("Prune")),
-            Request::ExportJudgments { path } => {
-                let count = self.store.export_judgments(Path::new(&path)).await?;
-                tracing::info!(count, "judgments exported");
-                Ok(())
-            }
-        }
     }
 
     /// 순서: `StartInfo` → `HistoryChunk` → 답을 기다리는 허가 요청 → 고정 모델(`ModelPinned`, 고정했을 때만) → 시작 안내와 키·신뢰 창.
@@ -697,28 +376,19 @@ impl Engine {
 
     /// provider session id는 기록 저장소에 남아 있어 따로 보관하지 않는다.
     async fn shutdown(self) -> Result<(), EngineError> {
+        self.stop_process_groups().await;
+        self.rpc.close().await;
+        tracing::info!("engine stopped");
+        Ok(())
+    }
+
+    async fn stop_process_groups(&self) {
         for (group, result) in self.supervisor.stop_all().await {
             if let Err(error) = result {
                 tracing::warn!(group = group.0, %error, "failed to stop process group");
             }
         }
-        self.rpc.close().await;
-        tracing::info!("engine stopped");
-        Ok(())
     }
-}
-
-/// 강화 방식이면 키체인 암호를 한 번 요청한다. 키가 없거나 잠겨 있으면 시작 확인이 실패해 키를 받는다.
-async fn open_secrets(home: &Path, settings: &Settings) -> SharedSecrets {
-    let mut store = SecretStore::open(home, settings.storage_mode());
-    if let Err(error) = store.unlock(Instant::now()).await {
-        tracing::warn!(%error, "failed to unlock router key");
-    }
-    match store.load().await {
-        Ok(_) | Err(SecretsError::NotFound) => {}
-        Err(error) => tracing::warn!(%error, "failed to load router key"),
-    }
-    Arc::new(Mutex::new(store))
 }
 
 /// 원인까지 `: `로 이은 한 줄. router 키와 같은 문자열은 가린다.

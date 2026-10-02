@@ -2,6 +2,7 @@
 
 use std::io::Stdout;
 use std::io::Write;
+use std::ops::ControlFlow;
 use std::os::unix::fs::OpenOptionsExt;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
@@ -9,6 +10,7 @@ use std::time::Duration;
 use crossterm::cursor::Show;
 use crossterm::event::{
     self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+    Event,
 };
 use crossterm::execute;
 use crossterm::terminal::{
@@ -148,36 +150,47 @@ pub(crate) fn edit_external(screen: &mut Screen, draft: &str) -> Result<String, 
 pub(crate) fn spawn_event_reader(
     tx: mpsc::UnboundedSender<AppEvent>,
 ) -> std::thread::JoinHandle<()> {
-    std::thread::spawn(move || {
-        loop {
-            if tx.is_closed() {
-                return;
-            }
-            if READER_PAUSED.load(Ordering::SeqCst) {
-                std::thread::sleep(READER_POLL);
-                continue;
-            }
-            match event::poll(READER_POLL) {
-                Ok(false) => continue,
-                Ok(true) => {}
-                Err(error) => {
-                    tracing::warn!(%error, "terminal event poll failed");
-                    return;
-                }
-            }
-            match event::read() {
-                Ok(event) => {
-                    if tx.send(AppEvent::Terminal(event)).is_err() {
-                        return;
-                    }
-                }
-                Err(error) => {
-                    tracing::warn!(%error, "terminal event read failed");
-                    return;
-                }
-            }
+    std::thread::spawn(move || while read_next_event(&tx).is_continue() {})
+}
+
+fn read_next_event(tx: &mpsc::UnboundedSender<AppEvent>) -> ControlFlow<()> {
+    if tx.is_closed() {
+        return ControlFlow::Break(());
+    }
+    if READER_PAUSED.load(Ordering::SeqCst) {
+        std::thread::sleep(READER_POLL);
+        return ControlFlow::Continue(());
+    }
+    let ControlFlow::Continue(event) = poll_terminal_event() else {
+        return ControlFlow::Break(());
+    };
+    if let Some(event) = event
+        && tx.send(AppEvent::Terminal(event)).is_err()
+    {
+        return ControlFlow::Break(());
+    }
+    ControlFlow::Continue(())
+}
+
+/// 이벤트가 없으면 `Continue(None)`, 읽기에 실패하면 `Break`.
+fn poll_terminal_event() -> ControlFlow<(), Option<Event>> {
+    let is_ready = event::poll(READER_POLL)
+        .inspect_err(|error| tracing::warn!(%error, "terminal event poll failed"));
+    match is_ready {
+        Ok(true) => read_terminal_event(),
+        Ok(false) => ControlFlow::Continue(None),
+        Err(_) => ControlFlow::Break(()),
+    }
+}
+
+fn read_terminal_event() -> ControlFlow<(), Option<Event>> {
+    match event::read() {
+        Ok(event) => ControlFlow::Continue(Some(event)),
+        Err(error) => {
+            tracing::warn!(%error, "terminal event read failed");
+            ControlFlow::Break(())
         }
-    })
+    }
 }
 
 fn configure() -> std::io::Result<()> {
