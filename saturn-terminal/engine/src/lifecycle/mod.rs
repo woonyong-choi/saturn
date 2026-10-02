@@ -17,6 +17,7 @@ mod steer_rejected;
 mod stop;
 mod support;
 mod switch_round_trip;
+mod target_model;
 mod turn_end;
 
 use std::future::Future;

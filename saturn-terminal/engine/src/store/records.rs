@@ -221,6 +221,23 @@ impl Store {
         ensure_found(done.rows_affected(), || format!("input {}", input.0))
     }
 
+    /// router가 고른 모델을 입력에 남긴다. 다시 시작해도 같은 모델로 보내기 위해서다.
+    ///
+    /// # Errors
+    /// 없는 입력이면 `NotFound`.
+    pub(crate) async fn set_input_model(
+        &self,
+        input: InputId,
+        model: Option<&str>,
+    ) -> Result<(), StoreError> {
+        let done = sqlx::query("UPDATE inputs SET pinned_model = ? WHERE id = ?")
+            .bind(model)
+            .bind(to_sql_int(input.0))
+            .execute(&self.pool)
+            .await?;
+        ensure_found(done.rows_affected(), || format!("input {}", input.0))
+    }
+
     /// 시작 때 대기열을 되살리는 데 쓴다. 접수 순서.
     pub(crate) async fn open_inputs(
         &self,

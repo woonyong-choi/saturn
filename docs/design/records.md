@@ -61,7 +61,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - 표 이름은 `chats`, `inputs`, `runs`, `sessions`, `events`, `usage`이고 Saturn 용어(채팅, 입력, 실행, session)를 따른다.
 - `sessions` 표는 마지막 활성 맥락 `last_active`(토큰)와 마지막 턴 끝 시각 `last_turn_ended_at`(unix 밀리초) 열을 둔다. engine이 턴이 끝날 때 쓰고 시작할 때 읽어 보관 session의 재개 판정을 재시작 뒤에도 같게 한다([provider 연결과 session](providers-and-sessions.md#그-provider로-돌아가기)). 두 열은 스키마 V2에서 더했고 이관 전 행은 NULL이며, NULL이면 재개로 판정한다.
 - `sessions` 표의 `model`은 session을 열 때 고른 모델이다. 고르지 않았거나 이관 전 행은 NULL이고, 입력의 모델과 다르면 새 메인 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기)). 스키마 V6에서 더했다.
-- `chats` 표의 `pinned_model`은 `/model`로 고른 채팅의 고정 모델(`<provider>/<model>`)이다. 고르지 않았으면 NULL이고 입력 접수 때 읽어 `inputs.pinned_model`에 남긴다. 스키마 V6에서 더했다.
+- `chats` 표의 `pinned_model`은 `/model`로 고른 채팅의 고정 모델(`<provider>/<model>`)이다. 고르지 않았으면 NULL이고 입력 접수 때 읽어 `inputs.pinned_model`에 남긴다. 고정하지 않은 입력은 router가 고른 모델(`<provider>/<model>`)을 판단을 적용할 때 같은 열에 쓴다. 스키마 V6에서 더했다.
 - `chat_dirs` 표는 채팅에 더한 폴더를 채팅 `chat_id`, 링크를 푼 절대 경로 `path`, 더한 시각 `added_at`(unix 밀리초)으로 둔다. 같은 채팅의 같은 경로는 한 행이고 행 번호 순서가 더한 순서다. 채팅을 지우면 함께 지운다. 스키마 V5에서 더했다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)).
 - `permission_allows` 표는 항상 허용을 작업 폴더 `workdir`, 도구 `tool`, 패턴 `pattern`, 저장 시각 `created_at`(unix 밀리초)으로 둔다. 같은 `workdir`, `tool`, `pattern`은 한 행이다. 스키마 V4에서 더했고 채팅과 상관없이 작업 폴더 단위로 쓴다([권한](permissions.md#항상-허용-저장)).
 - 패킷과 돌아온 session의 변경분은 `events` 행을 그 이벤트를 연 실행의 session과 입력 원문, 기록 시각에 이어 읽어 만든다. 이벤트 행에 session을 따로 저장하지 않기 위해서다. `sessions.delivered`는 턴이 끝날 때와 session을 열거나 바꿀 때 저장한다.

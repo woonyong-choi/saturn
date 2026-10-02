@@ -50,7 +50,7 @@ pub struct QueuedInput {
     /// 접수 때 고정한다.
     pub permission: Permission,
     pub workdir: PathBuf,
-    /// 있으면 router 호출에서 모델 질문을 뺀다.
+    /// 사용자가 고정한 모델이나 router가 고른 모델. 있으면 그 모델로 보내고 router 호출에서 모델 질문을 뺀다.
     pub pinned_model: Option<String>,
     /// 관계 판단 없이 대기하고, 보낼 때 router를 한 번 부른다.
     pub skip_relation: bool,
@@ -238,6 +238,10 @@ impl Queue {
         entry.input.state = InputState::Queued;
         entry.input.reason = None;
         entry.disposition = Some(decision.disposition);
+        // 끼워 넣기는 열린 턴의 모델을 바꿀 수 없어 고른 모델을 쓰지 않는다
+        if decision.disposition != Disposition::Steer && decision.model.is_some() {
+            entry.input.pinned_model.clone_from(&decision.model);
+        }
         let chat = entry.input.chat;
         self.bump(chat);
         self.refresh_router_order(chat);

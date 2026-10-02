@@ -145,6 +145,7 @@ impl Engine {
             .map(|name| name.to_string_lossy().into_owned());
         let connection = ProviderConnection::connect(launch, self.supervisor.clone()).await?;
         self.providers.insert((chat, provider), connection);
+        self.remember_models(provider, chat).await;
         if let Some(rules) = rules {
             self.flow.rules_of_connection.insert(chat, rules);
             self.flow.rules_stale.remove(&chat);
