@@ -1542,6 +1542,7 @@ while (my $line = <STDIN>) {
         let policy = |verdict| Policy {
             mode: Mode::Edit,
             workdir: PathBuf::from("/work"),
+            extra_dirs: Vec::new(),
             rules: vec![Rule {
                 tool: PermissionTool::Shell,
                 pattern: "rm *".to_owned(),

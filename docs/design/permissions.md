@@ -71,8 +71,8 @@
 | `read-only` | 읽기만 `allow`, 편집과 실행은 `deny` | `plan` | `read-only` |
 | `full` | 모두 `allow`, 개별 규칙의 `deny`만 적용 | `bypassPermissions` | `full-access` |
 
+- `--add-dir`와 `/add-dir`로 더한 폴더([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)) 안의 편집은 `edit`에서 작업 폴더 안의 편집처럼 `allow`다(사용자 결정). 읽기 전용과 `deny` 규칙은 더한 폴더에도 그대로 적용한다.
 - `edit`에서 작업 폴더 밖 편집, 셸 명령, MCP 도구, subagent 실행은 `ask`다. 작업 폴더 밖 편집은 사용자가 확인한 경로만 열기 위해서다(초안).
-- 채팅에 더한 폴더([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)) 안의 편집도 작업 폴더 밖으로 보고 `ask`다. 폴더를 더한 것이 그 폴더의 편집 허용을 뜻하는지 설계에 없어 가장 엄한 쪽으로 둔다(초안).
 - `permission.shell` 같은 개별 규칙은 모드 기본 규칙 위에 덧붙는다.
 - 모드마다 provider 구성은 같다. Codex는 `untrusted`와 읽기 전용 샌드박스, Claude는 모든 대상 도구의 `ask` 목록을 쓴다. 모드에 따라 달라지는 것은 engine이 허가 요청에 하는 답이다. `deny` 패턴이 모든 요청에 걸리게 하고, 모드를 바꿔도 provider를 다시 시작하지 않기 위해서다(초안).
 - Codex execpolicy에는 개별 셸 규칙만 번역한다. `"*"` 패턴은 어떤 명령도 매치하지 않았기 때문이다. 모드 기본 규칙과 번역하지 않은 요청은 engine이 승인 요청에 규칙으로 답한다.
@@ -205,6 +205,7 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 | 개별 `deny`가 하나라도 일치하면 거부한다. | `saturn-terminal/core/src/permission/tests.rs`의 `deny_is_sticky`, `deny_beats_always_allow`, `compound_command_takes_the_strictest_part` |
 | 폴더 설정의 모드가 사용자 층 모드보다 높거나 같으면 무시하고 신뢰 창에 보인다. | `saturn-terminal/core/src/permission/tests.rs`의 `folder_mode_cannot_raise`, `saturn-terminal/engine/src/settings/layers.rs`의 `folder_permission_mode_cannot_raise_and_is_reported_as_ignored`, `saturn-terminal/engine/src/settings/manager.rs`의 `folder_permission_mode_that_does_not_lower_is_listed_as_ignored_in_the_trust_prompt` |
 | 모드의 기본 규칙이 표대로 판정되고, 기본 모드는 `edit`다. | `saturn-terminal/core/src/permission/tests.rs`의 `mode_default_rules`, `mode_edit_treats_dotdot_escape_as_outside` |
+| 더한 폴더 안의 편집은 `edit`에서 작업 폴더처럼 허용하고, 읽기 전용과 `deny`는 그대로다. | `saturn-terminal/core/src/permission/tests.rs`의 `mode_edit_allows_edits_inside_added_folders_like_the_workdir`, `added_folders_do_not_widen_read_only_or_deny_rules`, `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `edit_inside_an_added_folder_is_allowed_like_the_workdir_in_edit_mode` |
 | 모드를 바꾸면 다음 허가 요청부터 새 모드로 판정하고 provider를 다시 시작하지 않는다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `mode_change_applies_next_request`, `saturn-terminal/tui/src/commands.rs`의 `parse_permissions_reads_one_known_mode` |
 | 규칙의 `allow`와 `deny`는 사용자에게 묻지 않고 provider에 답하고, `ask`와 규칙으로 읽을 수 없는 요청만 TUI로 올린다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `rule_allow_answers_the_provider_without_asking_the_user`, `rule_deny_answers_the_provider_without_asking_the_user`, `rule_ask_goes_to_the_tui_and_waits_for_the_answer`, `request_without_a_readable_call_goes_to_the_tui_even_in_full_mode`, `rule_answer_that_the_provider_does_not_take_falls_back_to_the_user` |
 | Codex 셸, 파일 편집, subagent 명령, MCP가 Saturn 규칙대로 허용, 묻기, 거부로 처리된다. | `saturn-terminal/engine/src/providers/codex.rs`의 `permission_shell`, `permission_edit`, `permission_subagent`, `permission_mcp`, 가짜 app-server |

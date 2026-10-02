@@ -114,6 +114,33 @@ async fn edit_inside_the_workdir_is_allowed_and_outside_is_asked_in_edit_mode() 
 }
 
 #[tokio::test]
+async fn edit_inside_an_added_folder_is_allowed_like_the_workdir_in_edit_mode() {
+    let (mut flow, agent) = started("").await;
+    let added = flow.fixture.root.path().join("shared-lib");
+    std::fs::create_dir_all(&added).unwrap();
+    flow.engine
+        .chat_dirs
+        .entry(flow.chat)
+        .or_default()
+        .push(added.clone());
+    let event = |id: &str, path: &str| permission_for(agent, id, PermissionTool::Edit, "", &[path]);
+
+    flow.claude_event(event(
+        "added",
+        &added.join("src/a.rs").display().to_string(),
+    ))
+    .await;
+    flow.claude_event(event("sibling", &format!("{}-other/a.rs", added.display())))
+        .await;
+
+    assert_eq!(
+        answers(&flow),
+        vec![("added".to_owned(), PermissionAnswer::AllowOnce)]
+    );
+    assert!(flow.engine.flow.permissions.contains_key("sibling"));
+}
+
+#[tokio::test]
 async fn mode_default_rules_apply_when_no_rule_matches() {
     let (mut flow, agent) = started("permission.mode = \"read-only\"\n").await;
 

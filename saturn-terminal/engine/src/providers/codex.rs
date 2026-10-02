@@ -2256,6 +2256,7 @@ while (my $line = <STDIN>) {
         Policy {
             mode: Mode::Edit,
             workdir: PathBuf::from("/work"),
+            extra_dirs: Vec::new(),
             rules,
             always: Vec::new(),
         }

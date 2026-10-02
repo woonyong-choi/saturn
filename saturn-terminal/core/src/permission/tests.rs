@@ -28,9 +28,49 @@ fn policy(mode: Mode, rules: Vec<Rule>) -> Policy {
     Policy {
         mode,
         workdir: PathBuf::from("/work"),
+        extra_dirs: Vec::new(),
         rules,
         always: Vec::new(),
     }
+}
+
+#[test]
+fn mode_edit_allows_edits_inside_added_folders_like_the_workdir() {
+    let mut policy = policy(Mode::Edit, Vec::new());
+    policy.extra_dirs = vec![PathBuf::from("/shared/lib")];
+
+    assert_eq!(policy.decide(&edit("/shared/lib/src/a.rs")), Verdict::Allow);
+    assert_eq!(
+        policy.decide(&edit("/shared/lib/../secret/a.rs")),
+        Verdict::Ask
+    );
+    assert_eq!(policy.decide(&edit("/shared/library/a.rs")), Verdict::Ask);
+    assert_eq!(
+        policy.decide(&edit("/shared/lib/a.rs")),
+        Verdict::Allow,
+        "an added folder is checked per path, not per mode"
+    );
+}
+
+#[test]
+fn added_folders_do_not_widen_read_only_or_deny_rules() {
+    let mut read_only = policy(Mode::ReadOnly, Vec::new());
+    read_only.extra_dirs = vec![PathBuf::from("/shared/lib")];
+    let mut denied = policy(
+        Mode::Edit,
+        vec![rule(
+            PermissionTool::Edit,
+            "/shared/lib/vendor/*",
+            Verdict::Deny,
+        )],
+    );
+    denied.extra_dirs = vec![PathBuf::from("/shared/lib")];
+
+    assert_eq!(read_only.decide(&edit("/shared/lib/a.rs")), Verdict::Deny);
+    assert_eq!(
+        denied.decide(&edit("/shared/lib/vendor/a.rs")),
+        Verdict::Deny
+    );
 }
 
 #[test]

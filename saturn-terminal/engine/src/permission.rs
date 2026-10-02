@@ -134,6 +134,11 @@ impl Engine {
             mode: settings::chat_layer_mode(layer.as_deref()).unwrap_or(configured.mode),
             always: self.store.permission_allows(&key).await?,
             rules: configured.rules,
+            extra_dirs: self
+                .chat_dirs_of(chat)
+                .into_iter()
+                .map(|dir| dir.canonicalize().unwrap_or(dir))
+                .collect(),
             workdir: key.canonicalize().unwrap_or(key),
         })
     }
