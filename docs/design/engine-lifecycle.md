@@ -100,9 +100,9 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 |---|---|
 | `saturn --add-dir <폴더>` | 새 채팅을 열면서 폴더를 더한다. 여러 번 쓸 수 있다. |
 | TUI `/add-dir <폴더>` | 열린 채팅에 폴더를 더한다. |
-| `saturn --continue`, `-c` | 현재 폴더에서 가장 최근에 쓴 채팅을 연다. |
-| `saturn --resume [채팅 id]`, `-r [채팅 id]` | 채팅 id가 있으면 그 채팅을, 없으면 현재 폴더의 채팅 목록에서 골라 연다. |
-| `saturn --resume all`, `-r all` | 모든 폴더의 채팅 목록에서 골라 연다. |
+| `saturn --continue` | 현재 폴더에서 가장 최근에 쓴 채팅을 연다. |
+| `saturn --resume [채팅 id]` | 채팅 id가 있으면 그 채팅을, 없으면 현재 폴더의 채팅 목록에서 골라 연다. |
+| `saturn --resume all` | 모든 폴더의 채팅 목록에서 골라 연다. |
 
 - 더한 폴더는 채팅 기록에 저장하고, 채팅을 이어 열면 그대로 되살린다. 채팅마다 폴더가 달라도 이어 열기 전에 다시 더하지 않게 하기 위해서다.
 - 더한 폴더는 그 채팅의 모든 provider session에 넘긴다. provider를 바꿔도 같은 폴더를 다루게 하기 위해서다. 넘기는 방식은 provider마다 다르고 `providers`가 맡는다(초안).
@@ -110,7 +110,7 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 - 이어 열기는 provider의 재개 명령이 아니라 Saturn이 채팅 기록으로 직접 처리한다. 채팅은 여러 provider session을 잇는 단위이므로 provider 하나의 session으로 채팅을 정할 수 없기 때문이다. provider의 이어 열기와 새 대화 명령은 provider 명령 목록에서 뺀다([provider 연결과 session](providers-and-sessions.md)).
 - 다른 폴더의 채팅을 이어 열면 그 채팅의 기본 폴더에서 일한다. 현재 폴더로 바꾸지 않으며, 시작 화면이 그 폴더를 보인다([TUI](tui.md)).
 - TUI의 작업 목록은 기본으로 현재 폴더의 채팅만 보인다. 모든 폴더의 채팅은 `--resume all`이나 작업 목록 필터로 본다.
-- `-c`는 현재 설정의 실행 층 `-c KEY=VALUE`와 이름이 겹친다. `--continue`의 짧은 이름을 어떻게 둘지는 정하지 않았다(초안).
+- 이어 열기 명령은 짧은 이름 없이 긴 이름만 쓴다. 설정의 실행 층 `-c KEY=VALUE`와 겹치지 않게 하고 이어 열기 명령끼리 일관되게 하기 위해서다. 채팅 id는 숫자라 `all`과 겹치지 않는다.
 
 ### TUI 종료 뒤 동작
 
