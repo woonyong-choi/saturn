@@ -3,6 +3,8 @@
 //! TODO(#91): 채점 안 된 판단 수, 채점 후보, 라벨, router 버전을 읽고 쓰는 `store` 메서드 없음
 //! TODO(#55): 멈춤 명령이 진행 중인 학습도 멈출지 미정
 
+#![expect(clippy::todo, reason = "#91 뼈대")]
+
 mod grading;
 mod trainer;
 

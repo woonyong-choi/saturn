@@ -41,3 +41,20 @@ tracing = "0.1"
 ts-rs = "12"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 unicode-normalization = "0.1"
+
+[workspace.lints.rust]
+unreachable_pub = "warn"
+unsafe_code = "warn"
+
+[workspace.lints.clippy]
+await_holding_lock = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+dbg_macro = "deny"
+too_many_arguments = "warn"
+fn_params_excessive_bools = "warn"
+if_not_else = "warn"
+unwrap_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"

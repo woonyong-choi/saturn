@@ -466,6 +466,7 @@ fn parse_table(text: &str) -> Vec<ProcessRow> {
 /// 음수 pid는 묶음이다. 이미 없는 대상(ESRCH)은 성공으로 본다.
 fn send_signal(target: libc::pid_t, signal: libc::c_int) -> std::io::Result<()> {
     // SAFETY: `kill`은 메모리를 건드리지 않는 시스템 호출이고 인자는 정수다
+    #[expect(unsafe_code, reason = "libc kill 호출")]
     let result = unsafe { libc::kill(target, signal) };
     if result == 0 {
         return Ok(());
@@ -480,6 +481,7 @@ fn send_signal(target: libc::pid_t, signal: libc::c_int) -> std::io::Result<()> 
 /// 권한이 없어도 존재하면 참.
 fn pid_alive(pid: u32) -> bool {
     // SAFETY: 신호 0은 존재 확인만 하는 `kill` 호출이다
+    #[expect(unsafe_code, reason = "libc kill 호출")]
     let result = unsafe { libc::kill(to_pid(pid), 0) };
     result == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
 }

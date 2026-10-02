@@ -41,6 +41,7 @@ impl EngineLock {
             .open(&path)
             .map_err(lock_error)?;
         // SAFETY: `file`이 살아 있는 동안 유효한 fd에 `flock`만 부른다.
+        #[expect(unsafe_code, reason = "libc flock 호출")]
         let locked = unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
         if locked != 0 {
             let error = std::io::Error::last_os_error();

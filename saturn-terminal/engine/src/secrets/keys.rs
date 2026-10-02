@@ -171,7 +171,10 @@ fn wipe(text: String) {
     let mut bytes = text.into_bytes();
     for byte in bytes.iter_mut() {
         // SAFETY: `byte`는 살아 있는 `Vec`의 원소를 가리키는 유효한 가변 참조다
-        unsafe { std::ptr::write_volatile(byte, 0) };
+        #[expect(unsafe_code, reason = "컴파일러가 지우지 못하게 하는 volatile 쓰기")]
+        unsafe {
+            std::ptr::write_volatile(byte, 0)
+        };
     }
     std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
 }
