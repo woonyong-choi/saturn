@@ -116,7 +116,7 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 | 명령 목록 수집 | 명령 대응표와 `skills/list` | `system/init`의 `slash_commands` |
 | 명령과 스킬 전달 | 명령 이름과 app-server 메서드 대응표로 호출 | 프롬프트에 `/이름`을 그대로 넣어 전송 |
 
-provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대신하는 명령은 뺀다. 뒤에서 연결할 때 쓸 수 없거나 Saturn session 기록과 어긋나기 때문이다. Claude 스트림에서 provider 명령의 결과와 허가 요청이 어떻게 오는지는 실측으로 확인한다([#26](https://github.com/woonyong-choi/saturn/issues/26)).
+provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대신하는 명령은 뺀다. 뒤에서 연결할 때 쓸 수 없거나 Saturn session 기록과 어긋나기 때문이다. 채팅 이어 열기와 폴더 추가는 [engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)에 있다. Claude 스트림에서 provider 명령의 결과와 허가 요청이 어떻게 오는지는 실측으로 확인한다([#26](https://github.com/woonyong-choi/saturn/issues/26)).
 
 ### 이벤트 수신과 변환
 

@@ -15,7 +15,7 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [judge 학습](design/judge-training.md) | 기준값 조정, 채점, 로컬 모델 승격 |
 | [설정](design/settings.md) | 설정 층, 폴더 설정 신뢰, 설정 번호 |
 | [기록 저장과 보존](design/records.md) | 기록 저장소, 스키마 이관, 보존과 삭제 |
-| [engine 수명과 복구](design/engine-lifecycle.md) | engine 시작, TUI 종료 뒤 계속, 크래시 뒤 복구 |
+| [engine 수명과 복구](design/engine-lifecycle.md) | engine 시작, TUI 종료 뒤 계속, 크래시 뒤 복구, 채팅 폴더와 이어 열기 |
 | [TUI](design/tui.md) | 화면 배치, 키, 상태 표시 |
 | [용어](glossary.md) | 이 프로젝트에서만 쓰는 말 |
 | [결정 기록](decisions/README.md) | 설계를 정한 이유와 버린 선택지 |
