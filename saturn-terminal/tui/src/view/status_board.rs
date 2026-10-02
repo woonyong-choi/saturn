@@ -16,7 +16,7 @@ use saturn_protocol::state::{InputState, TaskState};
 
 use crate::i18n::{self, Lang};
 use crate::labels;
-use crate::state::{ChatState, InputView, TaskView, TrainingProgress};
+use crate::state::{APPROVAL_PENDING_AFTER, ChatState, InputView, TaskView, TrainingProgress};
 use crate::view::transcript::held_labels;
 use crate::view::{EMPHASIS, text_width, truncate};
 
@@ -45,6 +45,8 @@ pub struct RunningLine {
     pub activity: Option<Activity>,
     /// `activity`보다 앞선다.
     pub awaiting_permission: bool,
+    /// 도구 호출이 시작되고 3초 안에 허가 요청이나 진행 이벤트가 없다. `awaiting_permission` 다음으로 앞선다.
+    pub approval_pending: bool,
     /// 0이 아니면 하는 일 대신 보인다.
     pub subagents: usize,
     pub has_output: bool,
@@ -398,6 +400,8 @@ impl StatusBoardView<'_> {
 fn running_text(lang: Lang, line: &RunningLine) -> String {
     let doing = if line.awaiting_permission {
         Some(lang.tr(i18n::AWAITING_PERMISSION).to_string())
+    } else if line.approval_pending {
+        Some(approval_pending_text(lang, line.provider))
     } else if line.subagents > 0 {
         Some(subagents_text(lang, line.subagents))
     } else {
@@ -412,6 +416,15 @@ fn running_text(lang: Lang, line: &RunningLine) -> String {
     parts.push(i18n::format_elapsed(lang, line.elapsed));
     parts.extend(doing);
     parts.join(" · ")
+}
+
+/// 문구 초안: `도구 사용 허가 준비 중 · codex`.
+fn approval_pending_text(lang: Lang, provider: Option<Provider>) -> String {
+    let text = lang.tr(i18n::APPROVAL_PENDING);
+    match provider {
+        Some(provider) => format!("{text} · {}", i18n::provider_name(provider)),
+        None => text.to_string(),
+    }
 }
 
 fn subagents_text(lang: Lang, count: usize) -> String {
@@ -464,6 +477,9 @@ fn running_line(task: &TaskView, now: Instant) -> RunningLine {
         elapsed: task.stopwatch.elapsed(now),
         activity: task.activity.clone(),
         awaiting_permission: task.state == TaskState::AwaitingPermission,
+        approval_pending: task.tool_started_at.is_some_and(|started| {
+            now.saturating_duration_since(started) >= APPROVAL_PENDING_AFTER
+        }),
         subagents: task.subagents.len(),
         has_output: task.has_output,
     }
@@ -550,7 +566,8 @@ fn alert_lines(state: &ChatState) -> Vec<StatusLine> {
 mod tests {
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
-    use saturn_protocol::ids::SettingsRevision;
+    use saturn_protocol::event::{ProviderEvent, ToolDetail};
+    use saturn_protocol::ids::{AgentId, SettingsRevision};
 
     use super::*;
     use crate::state::{InputUpdate, TaskUpdate};
@@ -669,6 +686,7 @@ mod tests {
             elapsed: Duration::from_secs(60),
             activity: Some(Activity::Thinking),
             awaiting_permission: false,
+            approval_pending: false,
             subagents: 2,
             has_output: true,
         });
@@ -676,6 +694,95 @@ mod tests {
         assert_eq!(
             line.text(Lang::Ko, true, '⠙'),
             "⠙ [A] claude · opus · 1분 · 하위 에이전트 2개 실행 중"
+        );
+    }
+
+    fn tool_call(task: TaskId) -> ProviderEvent {
+        ProviderEvent::ToolCall {
+            agent: AgentId(1),
+            subagent: None,
+            call_id: format!("call-{}", task.0),
+            activity: Activity::RunningCommand {
+                command: "touch a.txt".to_string(),
+            },
+            detail: ToolDetail::default(),
+        }
+    }
+
+    fn running_texts(state: &ChatState, now: Instant) -> Vec<String> {
+        texts(&build(state, now))
+    }
+
+    #[test]
+    fn approval_pending_shows_after_three_seconds_without_events() {
+        let start = Instant::now();
+        let mut state = ChatState::new();
+        task(&mut state, 1, 'A', TaskState::Running, start);
+        state.apply_event(TaskId(1), tool_call(TaskId(1)), start);
+
+        let early = running_texts(&state, start + Duration::from_millis(2_900));
+        let late = running_texts(&state, start + Duration::from_secs(3));
+
+        assert!(!early[0].contains("도구 사용 허가 준비 중"));
+        assert!(late[0].ends_with("도구 사용 허가 준비 중 · codex"));
+    }
+
+    #[test]
+    fn approval_pending_clears_when_permission_request_or_progress_arrives() {
+        let start = Instant::now();
+        let later = start + Duration::from_secs(4);
+        let mut state = ChatState::new();
+        task(&mut state, 1, 'A', TaskState::Running, start);
+        state.apply_event(TaskId(1), tool_call(TaskId(1)), start);
+        assert!(running_texts(&state, later)[0].contains("도구 사용 허가 준비 중"));
+
+        state.apply_event(
+            TaskId(1),
+            ProviderEvent::PermissionRequested {
+                agent: AgentId(1),
+                request_id: "r1".to_string(),
+                summary: "touch a.txt".to_string(),
+                reason: String::new(),
+            },
+            later,
+        );
+        task(&mut state, 1, 'A', TaskState::AwaitingPermission, later);
+        let awaiting = running_texts(&state, later + Duration::from_secs(5));
+
+        assert!(!awaiting[0].contains("도구 사용 허가 준비 중"));
+        assert!(awaiting[0].contains("허가 기다림"));
+        state.apply_event(TaskId(1), tool_call(TaskId(1)), later);
+        state.apply_event(
+            TaskId(1),
+            ProviderEvent::ToolResult {
+                agent: AgentId(1),
+                subagent: None,
+                call_id: "call-1".to_string(),
+                output: String::new(),
+                exit_code: Some(0),
+            },
+            later,
+        );
+        task(&mut state, 1, 'A', TaskState::Running, later);
+        assert!(
+            !running_texts(&state, later + Duration::from_secs(5))[0]
+                .contains("도구 사용 허가 준비 중")
+        );
+    }
+
+    #[test]
+    fn approval_pending_text_names_the_provider_in_both_languages() {
+        assert_eq!(
+            approval_pending_text(Lang::Ko, Some(Provider::Codex)),
+            "도구 사용 허가 준비 중 · codex"
+        );
+        assert_eq!(
+            approval_pending_text(Lang::En, Some(Provider::Claude)),
+            "preparing tool permission · claude"
+        );
+        assert_eq!(
+            approval_pending_text(Lang::En, None),
+            "preparing tool permission"
         );
     }
 

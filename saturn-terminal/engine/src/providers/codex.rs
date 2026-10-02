@@ -14,6 +14,7 @@ use saturn_protocol::event::{
     UsageScope,
 };
 use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
+use saturn_protocol::rpc::PermissionAnswer;
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
@@ -58,9 +59,18 @@ const APPROVAL_METHODS: &[(&str, &str)] = &[
     ("item/commandExecution/requestApproval", "run command"),
     ("item/fileChange/requestApproval", "change files"),
     ("item/permissions/requestApproval", "grant permissions"),
+    (ELICITATION_METHOD, "use MCP tool"),
     ("execCommandApproval", "run command"),
     ("applyPatchApproval", "change files"),
 ];
+
+/// MCP 도구 승인은 이 요청의 `_meta.codex_approval_kind`가 있는 것만 허가 요청으로 본다.
+const ELICITATION_METHOD: &str = "mcpServer/elicitation/request";
+
+const PERMISSIONS_METHOD: &str = "item/permissions/requestApproval";
+
+/// `ProviderSessionId`가 아니라 `request_id`로 찾는다.
+type Approvals = Arc<Mutex<HashMap<String, PendingApproval>>>;
 
 /// `Ok`는 `result`, `Err`는 JSON-RPC `error` 객체.
 type RpcReply = oneshot::Sender<Result<serde_json::Value, serde_json::Value>>;
@@ -68,6 +78,18 @@ type RpcReply = oneshot::Sender<Result<serde_json::Value, serde_json::Value>>;
 type Pending = Arc<Mutex<HashMap<u64, RpcReply>>>;
 
 type Threads = Arc<Mutex<HashMap<ProviderSessionId, ThreadState>>>;
+
+/// 답을 기다리는 승인 요청. 같은 JSON-RPC 번호로 응답해야 해서 요청이 보낸 번호를 그대로 둔다.
+#[derive(Debug, Clone)]
+struct PendingApproval {
+    /// 숫자와 문자열 둘 다 올 수 있어 원래 값을 쓴다.
+    id: Value,
+    method: String,
+    /// 요청이 알려 준 결정 이름. 요청에 목록이 없으면 `None`.
+    available: Option<Vec<String>>,
+    /// `item/permissions/requestApproval`이 원한 권한. 허용 응답에 그대로 돌려준다.
+    permissions: Value,
+}
 
 #[derive(Debug)]
 struct ThreadState {
@@ -108,6 +130,8 @@ pub struct CodexClient {
     pending: Pending,
     /// 자식 thread는 읽기 작업이 첫 신호 때 등록한다.
     threads: Threads,
+    /// 읽기 작업이 승인 요청을 넣고 `answer_permission`이 꺼낸다.
+    approvals: Approvals,
     events: mpsc::Receiver<ProviderEvent>,
     /// 거르기 전 목록.
     commands: Vec<ProviderCommand>,
@@ -142,10 +166,12 @@ impl CodexClient {
         let (tx, events) = mpsc::channel(EVENT_BUFFER);
         let pending = Pending::default();
         let threads = Threads::default();
+        let approvals = Approvals::default();
         tokio::spawn(read_loop(
             spawned.io.stdout,
             Arc::clone(&pending),
             Arc::clone(&threads),
+            Arc::clone(&approvals),
             tx,
             launch.masker.clone(),
         ));
@@ -157,6 +183,7 @@ impl CodexClient {
             next_request_id: 1,
             pending,
             threads,
+            approvals,
             events,
             commands: Vec::new(),
             skill_paths: HashMap::new(),
@@ -475,6 +502,31 @@ impl ProviderClient for CodexClient {
         self.call_command(session, "thread/compact/start").await
     }
 
+    /// 요청이 보낸 JSON-RPC 번호로 결정을 돌려준다. 모르는 요청이면 `NotSent`이고, 쓰기에 실패하면 요청을
+    /// 되돌려 다시 답할 수 있게 한다. 자식 thread의 승인도 부모 요청과 같은 경로로 답한다.
+    /// TODO(#61): 자식 thread 승인 요청의 처리 방식
+    async fn answer_permission(
+        &mut self,
+        _session: &ProviderSessionId,
+        request_id: &str,
+        answer: PermissionAnswer,
+    ) -> Result<(), ProviderError> {
+        let pending =
+            lock(&self.approvals)
+                .remove(request_id)
+                .ok_or_else(|| ProviderError::NotSent {
+                    reason: format!("unknown permission request {request_id}"),
+                })?;
+        let message = json!({ "id": pending.id, "result": approval_result(&pending, &answer) });
+        if let Err(error) = self.write_line(&message).await {
+            lock(&self.approvals).insert(request_id.to_owned(), pending);
+            return Err(ProviderError::NotSent {
+                reason: format!("failed to write approval response: {}", error.kind()),
+            });
+        }
+        Ok(())
+    }
+
     /// 자식 thread도 함께 빼고 app-server 프로세스는 남긴다.
     async fn close_session(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
         let reply = self
@@ -689,9 +741,11 @@ fn convert_notification(
     }
 }
 
-/// 승인 요청만 `PermissionRequested`로 올리고 나머지는 버린다.
+/// 승인 요청만 `PermissionRequested`로 올리고 나머지는 버린다. 올린 요청은 답할 수 있게 `approvals`에 둔다.
+/// TODO(#232): MCP 승인이 아닌 elicitation에 답하는 방식. 지금은 버리고 응답하지 않는다
 fn convert_server_request(
     threads: &HashMap<ProviderSessionId, ThreadState>,
+    approvals: &mut HashMap<String, PendingApproval>,
     method: &str,
     id: &Value,
     params: &Value,
@@ -699,6 +753,9 @@ fn convert_server_request(
     let Some((_, summary)) = APPROVAL_METHODS.iter().find(|(name, _)| *name == method) else {
         return Vec::new();
     };
+    if method == ELICITATION_METHOD && !params["_meta"]["codex_approval_kind"].is_string() {
+        return Vec::new();
+    }
     let thread = params["threadId"]
         .as_str()
         .or_else(|| params["conversationId"].as_str())
@@ -706,16 +763,89 @@ fn convert_server_request(
     let Some(state) = thread.as_ref().and_then(|thread| threads.get(thread)) else {
         return Vec::new();
     };
-    let summary = params["command"].as_str().map_or_else(
-        || (*summary).to_owned(),
-        |command| format!("{summary}: {command}"),
+    let summary = params["command"]
+        .as_str()
+        .map(|command| format!("{summary}: {command}"))
+        .or_else(|| {
+            (method == ELICITATION_METHOD)
+                .then(|| params["message"].as_str().map(str::to_owned))
+                .flatten()
+        })
+        .unwrap_or_else(|| (*summary).to_owned());
+    let request_id = value_text(id).unwrap_or_default();
+    approvals.insert(
+        request_id.clone(),
+        PendingApproval {
+            id: id.clone(),
+            method: method.to_owned(),
+            available: params["availableDecisions"].as_array().map(|decisions| {
+                decisions
+                    .iter()
+                    .filter_map(|decision| decision.as_str().map(str::to_owned))
+                    .collect()
+            }),
+            permissions: params["permissions"].clone(),
+        },
     );
     vec![ProviderEvent::PermissionRequested {
         agent: state.agent,
-        request_id: value_text(id).unwrap_or_default(),
+        request_id,
         summary,
         reason: params["reason"].as_str().unwrap_or_default().to_owned(),
     }]
+}
+
+/// 답을 요청 종류별 결정 값으로 바꾼다. `AllowAlways`는 Codex 세션 동안 허용(`acceptForSession`,
+/// `approved_for_session`, 권한 `scope: session`)으로 보내고, 요청이 그 결정을 허용 목록에서 뺐거나 보낼 값이
+/// 없는(MCP elicitation) 요청이면 `AllowOnce`와 같게 보낸다.
+/// `decline`은 `availableDecisions`에 없어도 받아들여지는 것을 실측했다.
+/// TODO(#232): 항상 허용을 기록 저장소에 저장하는 일과 provider 값의 확정
+/// TODO(#56): 거부와 함께 남기는 말은 정해지기 전에는 보내지 않는다
+fn approval_result(pending: &PendingApproval, answer: &PermissionAnswer) -> Value {
+    let denied = matches!(answer, PermissionAnswer::Deny { .. });
+    let always = matches!(answer, PermissionAnswer::AllowAlways);
+    match pending.method.as_str() {
+        ELICITATION_METHOD => {
+            if always {
+                tracing::debug!("codex MCP approval has no always value, sent as allow once");
+            }
+            if denied {
+                json!({ "action": "decline" })
+            } else {
+                json!({ "action": "accept", "content": {} })
+            }
+        }
+        PERMISSIONS_METHOD => {
+            let scope = if always { "session" } else { "turn" };
+            let permissions = if denied {
+                json!({})
+            } else {
+                pending.permissions.clone()
+            };
+            json!({ "permissions": permissions, "scope": scope })
+        }
+        "execCommandApproval" | "applyPatchApproval" => {
+            let decision = match (denied, always) {
+                (true, _) => "denied",
+                (false, true) => "approved_for_session",
+                (false, false) => "approved",
+            };
+            json!({ "decision": decision })
+        }
+        _ => {
+            let for_session_listed = pending.available.as_ref().is_none_or(|available| {
+                available
+                    .iter()
+                    .any(|decision| decision == "acceptForSession")
+            });
+            let decision = match (denied, always && for_session_listed) {
+                (true, _) => "decline",
+                (false, true) => "acceptForSession",
+                (false, false) => "accept",
+            };
+            json!({ "decision": decision })
+        }
+    }
 }
 
 /// 부모를 모르거나 이미 있으면 빈 목록.
@@ -1004,6 +1134,7 @@ async fn read_loop(
     stdout: ChildStdout,
     pending: Pending,
     threads: Threads,
+    approvals: Approvals,
     events: mpsc::Sender<ProviderEvent>,
     masker: Masker,
 ) {
@@ -1014,11 +1145,12 @@ async fn read_loop(
             continue;
         };
         mask_values(&mut message, &masker);
-        for event in route_message(&message, &pending, &threads) {
+        for event in route_message(&message, &pending, &threads, &approvals) {
             let _ = events.send(event).await; // 받는 쪽이 연결을 버렸다
         }
     }
     lock(&pending).clear();
+    lock(&approvals).clear();
     let lost: Vec<AgentId> = {
         let threads = lock(&threads);
         let mut agents: Vec<AgentId> = threads
@@ -1052,14 +1184,23 @@ pub(super) fn mask_values(value: &mut Value, masker: &Masker) {
     }
 }
 
-fn route_message(message: &Value, pending: &Pending, threads: &Threads) -> Vec<ProviderEvent> {
+fn route_message(
+    message: &Value,
+    pending: &Pending,
+    threads: &Threads,
+    approvals: &Approvals,
+) -> Vec<ProviderEvent> {
     match (
         message.get("method").and_then(Value::as_str),
         message.get("id"),
     ) {
-        (Some(method), Some(id)) => {
-            convert_server_request(&lock(threads), method, id, &message["params"])
-        }
+        (Some(method), Some(id)) => convert_server_request(
+            &lock(threads),
+            &mut lock(approvals),
+            method,
+            id,
+            &message["params"],
+        ),
         (Some(method), None) => {
             convert_notification(&mut lock(threads), method, &message["params"])
         }
@@ -1162,11 +1303,25 @@ my $json = JSON::PP->new->canonical;
 sub out { print $json->encode($_[0]), "\n"; }
 sub note { out({ method => $_[0], params => $_[1] }); }
 my $active = "";
+my %gates = (
+  "gate-command" => [7, "item/commandExecution/requestApproval", { itemId => "item_g", command => "touch a.txt", reason => "needs write", availableDecisions => ["accept", "acceptForSession", "decline"] }],
+  "gate-command-once-only" => [8, "item/commandExecution/requestApproval", { itemId => "item_g", command => "ls", availableDecisions => ["accept", "cancel"] }],
+  "gate-file" => ["srv-file", "item/fileChange/requestApproval", { itemId => "item_g", reason => "write file" }],
+  "gate-mcp" => [0, "mcpServer/elicitation/request", { serverName => "probe", mode => "form", message => "Allow the probe MCP server to run tool \"echo\"?", _meta => { codex_approval_kind => "mcp_tool_call" }, requestedSchema => { type => "object", properties => {} } }],
+  "gate-permissions" => [9, "item/permissions/requestApproval", { itemId => "item_g", reason => "needs network", permissions => { network => { enabled => JSON::PP::true } } }],
+  "gate-legacy" => ["legacy-1", "execCommandApproval", { conversationId => "thr_main", command => ["ls"], reason => "legacy" }],
+  "gate-plain-elicitation" => [11, "mcpServer/elicitation/request", { serverName => "probe", mode => "form", message => "Pick a color", requestedSchema => { type => "object", properties => {} } }],
+);
 while (my $line = <STDIN>) {
   my $m = eval { $json->decode($line) } or next;
   my $method = $m->{method} // "";
   my $id = $m->{id};
   next unless defined $id;
+  if ($method eq "" && exists $m->{result}) {
+    note("item/agentMessage/delta", { threadId => "thr_main", turnId => "turn_g", itemId => "mg", delta => "answer:" . $json->encode({ id => $m->{id}, result => $m->{result} }) });
+    note("turn/completed", { threadId => "thr_main", turn => { id => "turn_g", status => "completed", items => [] } });
+    next;
+  }
   my $p = $m->{params} // {};
   my $tid = $p->{threadId} // "thr_main";
   if ($method eq "initialize") {
@@ -1183,6 +1338,13 @@ while (my $line = <STDIN>) {
       out({ id => $id, result => { turn => { id => "turn_x", status => "inProgress", items => [] } } });
       note("turn/started", { threadId => $tid, turn => { id => "turn_x", status => "inProgress", items => [] } });
       exit 1;
+    }
+    my $gate = $gates{$first->{text} // ""};
+    if ($gate) {
+      out({ id => $id, result => { turn => { id => "turn_g", status => "inProgress", items => [] } } });
+      note("turn/started", { threadId => $tid, turn => { id => "turn_g", status => "inProgress", items => [] } });
+      out({ id => $gate->[0], method => $gate->[1], params => { threadId => $tid, turnId => "turn_g", %{ $gate->[2] } } });
+      next;
     }
     $active = "turn_1";
     out({ id => $id, result => { turn => { id => "turn_1", status => "inProgress", items => [] } } });
@@ -1376,6 +1538,209 @@ while (my $line = <STDIN>) {
             client.steer(&main, "after end").await,
             Err(ProviderError::NoActiveTurn)
         ));
+    }
+
+    /// `text` 턴이 승인 요청에서 멈추게 한 뒤, 답이 없는 동안 턴이 멈춰 있는지 확인하고 답한다.
+    /// 올라온 요청과 가짜 app-server가 받은 응답(`id`, `result`)을 돌려준다.
+    async fn answer_gate(text: &str, answer: PermissionAnswer) -> (ProviderEvent, Value) {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut client, handle) = start(dir.path()).await;
+        let main = handle.provider_session;
+        client.send_turn(&main, text).await.unwrap();
+        let requested = take(&mut client, 1).await.remove(0);
+        let ProviderEvent::PermissionRequested { request_id, .. } = &requested else {
+            panic!("expected a permission request, got {requested:?}");
+        };
+        let stalled = tokio::time::timeout(Duration::from_millis(300), client.next_event()).await;
+        assert!(stalled.is_err(), "turn should wait for the answer");
+
+        client
+            .answer_permission(&main, request_id, answer)
+            .await
+            .unwrap();
+        let resumed = take(&mut client, 3).await;
+
+        let ProviderEvent::Text { text, .. } = &resumed[0] else {
+            panic!(
+                "expected the turn to continue with text, got {:?}",
+                resumed[0]
+            );
+        };
+        assert!(matches!(resumed[2], ProviderEvent::TurnCompleted { .. }));
+        let received = text.strip_prefix("answer:").expect("answer prefix");
+        (requested, serde_json::from_str(received).unwrap())
+    }
+
+    fn deny() -> PermissionAnswer {
+        PermissionAnswer::Deny { note: None }
+    }
+
+    #[tokio::test]
+    async fn command_approval_is_answered_with_the_same_numeric_request_id() {
+        let (requested, received) = answer_gate("gate-command", PermissionAnswer::AllowOnce).await;
+
+        assert_eq!(
+            requested,
+            ProviderEvent::PermissionRequested {
+                agent: AgentId(7),
+                request_id: "7".to_owned(),
+                summary: "run command: touch a.txt".to_owned(),
+                reason: "needs write".to_owned(),
+            }
+        );
+        assert_eq!(
+            received,
+            json!({ "id": 7, "result": { "decision": "accept" } })
+        );
+    }
+
+    #[tokio::test]
+    async fn command_decisions_follow_the_answer_and_the_available_list() {
+        let always = answer_gate("gate-command", PermissionAnswer::AllowAlways)
+            .await
+            .1;
+        let listed_without_session =
+            answer_gate("gate-command-once-only", PermissionAnswer::AllowAlways)
+                .await
+                .1;
+        let denied = answer_gate("gate-command", deny()).await.1;
+        let denied_without_decline_listed = answer_gate("gate-command-once-only", deny()).await.1;
+
+        assert_eq!(always["result"], json!({ "decision": "acceptForSession" }));
+        assert_eq!(listed_without_session["id"], 8);
+        assert_eq!(
+            listed_without_session["result"],
+            json!({ "decision": "accept" })
+        );
+        assert_eq!(denied["result"], json!({ "decision": "decline" }));
+        assert_eq!(
+            denied_without_decline_listed["result"],
+            json!({ "decision": "decline" })
+        );
+    }
+
+    #[tokio::test]
+    async fn file_change_approval_keeps_a_string_request_id() {
+        let (requested, received) = answer_gate("gate-file", PermissionAnswer::AllowOnce).await;
+
+        assert!(matches!(
+            requested,
+            ProviderEvent::PermissionRequested { ref request_id, ref summary, .. }
+                if request_id == "srv-file" && summary == "change files"
+        ));
+        assert_eq!(
+            received,
+            json!({ "id": "srv-file", "result": { "decision": "accept" } })
+        );
+    }
+
+    #[tokio::test]
+    async fn mcp_tool_approval_is_answered_with_an_elicitation_action() {
+        let (requested, allowed) = answer_gate("gate-mcp", PermissionAnswer::AllowOnce).await;
+        let always = answer_gate("gate-mcp", PermissionAnswer::AllowAlways)
+            .await
+            .1;
+        let denied = answer_gate("gate-mcp", deny()).await.1;
+
+        assert!(matches!(
+            requested,
+            ProviderEvent::PermissionRequested { ref request_id, ref summary, .. }
+                if request_id == "0" && summary.contains("run tool")
+        ));
+        assert_eq!(
+            allowed,
+            json!({ "id": 0, "result": { "action": "accept", "content": {} } })
+        );
+        assert_eq!(always, allowed);
+        assert_eq!(denied["result"], json!({ "action": "decline" }));
+    }
+
+    #[tokio::test]
+    async fn permission_grant_approval_returns_the_requested_permissions() {
+        let once = answer_gate("gate-permissions", PermissionAnswer::AllowOnce)
+            .await
+            .1;
+        let always = answer_gate("gate-permissions", PermissionAnswer::AllowAlways)
+            .await
+            .1;
+        let denied = answer_gate("gate-permissions", deny()).await.1;
+
+        let network = json!({ "network": { "enabled": true } });
+        assert_eq!(
+            once["result"],
+            json!({ "permissions": network, "scope": "turn" })
+        );
+        assert_eq!(
+            always["result"],
+            json!({ "permissions": network, "scope": "session" })
+        );
+        assert_eq!(
+            denied["result"],
+            json!({ "permissions": {}, "scope": "turn" })
+        );
+    }
+
+    #[tokio::test]
+    async fn legacy_approvals_use_review_decisions() {
+        let once = answer_gate("gate-legacy", PermissionAnswer::AllowOnce)
+            .await
+            .1;
+        let always = answer_gate("gate-legacy", PermissionAnswer::AllowAlways)
+            .await
+            .1;
+        let denied = answer_gate("gate-legacy", deny()).await.1;
+
+        assert_eq!(once["id"], "legacy-1");
+        assert_eq!(once["result"], json!({ "decision": "approved" }));
+        assert_eq!(
+            always["result"],
+            json!({ "decision": "approved_for_session" })
+        );
+        assert_eq!(denied["result"], json!({ "decision": "denied" }));
+    }
+
+    #[tokio::test]
+    async fn elicitation_that_is_not_an_approval_is_not_a_permission_request() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut client, handle) = start(dir.path()).await;
+        let main = handle.provider_session;
+        client
+            .send_turn(&main, "gate-plain-elicitation")
+            .await
+            .unwrap();
+
+        let event = tokio::time::timeout(Duration::from_millis(300), client.next_event()).await;
+
+        assert!(event.is_err());
+        assert!(matches!(
+            client
+                .answer_permission(&main, "11", PermissionAnswer::AllowOnce)
+                .await,
+            Err(ProviderError::NotSent { .. })
+        ));
+    }
+
+    #[tokio::test]
+    async fn answering_an_unknown_or_answered_request_is_not_sent() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut client, handle) = start(dir.path()).await;
+        let main = handle.provider_session;
+        client.send_turn(&main, "gate-command").await.unwrap();
+        take(&mut client, 1).await;
+
+        let unknown = client
+            .answer_permission(&main, "99", PermissionAnswer::AllowOnce)
+            .await;
+        client
+            .answer_permission(&main, "7", PermissionAnswer::AllowOnce)
+            .await
+            .unwrap();
+        let again = client
+            .answer_permission(&main, "7", PermissionAnswer::AllowOnce)
+            .await;
+
+        assert!(matches!(unknown, Err(ProviderError::NotSent { .. })));
+        assert!(matches!(again, Err(ProviderError::NotSent { .. })));
     }
 
     #[tokio::test]

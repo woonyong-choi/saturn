@@ -62,6 +62,7 @@ engine은 채팅마다 provider별로 켜 둔 채 입력을 받는 연결을 두
 | 끼워 넣기 | `turn/steer` | 스트림 입력 추가 |
 | 멈춤 신호 | `turn/interrupt` | interrupt 제어 요청 |
 | compaction 요청 | `thread/compact/start` | `/compact` 전송 |
+| 허가 답 | 승인 요청의 JSON-RPC 번호로 결정 응답 | `can_use_tool`의 `control_response` |
 | session 닫기 | app-server 하나를 창구로 정리 | 프로그램 종료 |
 | session 재개 | app-server 하나를 창구로 재개 | stream-json 방식 `--resume` |
 | 프로세스 수명 | 연결 창구로 유지, session은 턴 끝 뒤 5분 유예에 정리 | 턴 진행 중과 턴 끝 뒤 5분 유예까지 |
@@ -74,6 +75,7 @@ Codex app-server 규약은 codex-cli 0.158.0의 `codex app-server generate-json-
 - 활성 턴 없음은 오류 코드가 따로 없어 `turn/steer` 오류 문구로 판정한다(초안).
 - 맥락 크기는 `thread/tokenUsage/updated`의 `last.totalTokens`이고 메인 턴 끝에 보낸다. 누적 사용량의 새 입력은 `total.inputTokens - cachedInputTokens`다.
 - 명령 대응표는 `compact` → `thread/compact/start`, `review` → `review/start`(대상 `uncommittedChanges`)이고, 명령 목록에서 `new`, `resume`, `fork`, `quit`, `exit`를 뺀다(초안). 스킬은 `turn/start` 입력에 `{"type":"skill","name","path"}` 항목으로 넣는다.
+- 승인 요청(`item/commandExecution/requestApproval`, `item/fileChange/requestApproval`, `item/permissions/requestApproval`, 옛 이름 `execCommandApproval`·`applyPatchApproval`, `_meta.codex_approval_kind`가 있는 `mcpServer/elicitation/request`)은 요청의 JSON-RPC 번호를 숫자와 문자열 그대로 기억했다가 같은 번호로 응답한다. 번호는 `PermissionRequested`의 `request_id`로 올린다. 승인이 아닌 elicitation은 올리지도 응답하지도 않는다. 사용자 답을 provider 값으로 바꾸는 표는 [권한](permissions.md#허가-요청-창과-답)에 있다.
 - 권한은 Saturn 규칙을 전용 `CODEX_HOME`과 `thread/start` 인자로 넘기고([권한](permissions.md)), 사용자 설정은 `~/.codex/config.toml`의 루트와 선택된 프로필에서 `model_auto_compact_token_limit` 키가 있는지만 본다.
 
 Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
@@ -81,7 +83,7 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 - 새 session은 Saturn이 만든 UUID를 `--session-id`로 넘긴다. stream-json은 첫 입력 전에 `system/init`을 내지 않으므로 session id를 미리 알기 위해서다. 재개는 `--resume <id>`이고, 500ms(초안) 안에 프로그램이 끝나면 재개 실패로 본다.
 - 권한은 `--permission-prompt-tool stdio`와 `--settings`의 `ask` 목록으로 Saturn 규칙에 넘기고([권한](permissions.md)), 안전망 `--autocompact` 값은 허용 범위 100000~1000000으로 맞춘다.
 - 사용자 설정은 `~/.claude/settings.json`, `<작업 폴더>/.claude/settings.json`, `settings.local.json`의 `autoCompactEnabled`와 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있는지만 본다(초안).
-- 명령 목록에서 `clear`, `resume`, `exit`, `quit`를 뺀다(초안). 허가 요청은 `control_request`의 `can_use_tool`로 받는다(`Bash`만 실측, [권한](permissions.md)).
+- 명령 목록에서 `clear`, `resume`, `exit`, `quit`를 뺀다(초안). 허가 요청은 `control_request`의 `can_use_tool`로 받고 `control_response`로 답한다. 요청의 `input`은 허용 응답의 `updatedInput`으로 되돌려 주려고 요청 번호와 함께 기억한다(`Bash`만 실측, [권한](permissions.md)).
 - 맥락 크기는 마지막 메인 `assistant` 메시지 `usage`의 입력, 캐시 읽기, 캐시 쓰기 합이다(초안).
 - interrupt 제어 응답은 10초, session 닫기 뒤 종료는 5초까지 기다리고, 넘으면 프로세스 묶음 중지로 넘어간다(초안).
 
@@ -273,6 +275,8 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | Claude 백그라운드 subagent까지 멈춘다. | [#18](https://github.com/woonyong-choi/saturn/issues/18) |
 | Claude 사용량 보고의 범위를 올바르게 표시한다. | [#19](https://github.com/woonyong-choi/saturn/issues/19) |
 | Claude 스트림에서 provider 명령 결과와 허가 요청을 받는다. | [#26](https://github.com/woonyong-choi/saturn/issues/26) |
+| 허가 답이 없는 동안 턴이 멈춰 있고, 답한 뒤 이어진다. 답은 Codex에는 요청과 같은 JSON-RPC 번호로, Claude에는 `control_response`로 나간다. | `saturn-terminal/engine/src/providers/codex.rs`의 `command_approval_is_answered_with_the_same_numeric_request_id`, `file_change_approval_keeps_a_string_request_id`, `saturn-terminal/engine/src/providers/claude.rs`의 `allow_once_answers_can_use_tool_with_the_request_input` |
+| 이미 답했거나 모르는 허가 요청에 답하면 보내지 않는다. | `saturn-terminal/engine/src/providers/codex.rs`의 `answering_an_unknown_or_answered_request_is_not_sent`, `saturn-terminal/engine/src/providers/claude.rs`의 `answering_an_unknown_or_answered_request_is_not_sent` |
 | Claude Code 도구 호출의 도구 종류, 경로, 읽은 줄 범위, 바뀐 줄 수와 셸 종료 코드를 이벤트에 싣는다. | `saturn-terminal/engine/src/providers/claude.rs`의 `detail_of_edit_counts_changed_lines_and_keeps_path`, `detail_of_multi_edit_sums_every_edit`, `detail_of_write_has_no_line_change`, `detail_of_read_range_needs_offset_and_limit`, `detail_of_test_command_is_test_run`, `shell_exit_code_reads_prefix_only_for_errors` |
 | 명령이 테스트 실행인지 셸인지 가르고, 바뀐 줄 수에서 앞뒤 공통 줄을 뺀다. | `saturn-terminal/engine/src/providers/tool_detail.rs`의 `classify_command_test_runners_are_test_runs`, `classify_command_other_commands_are_shell`, `line_change_replaced_lines_count_both_sides`, `line_change_common_lines_are_not_counted`, `line_change_empty_old_counts_only_added` |
 | Codex 명령의 경로와 종료 코드, 파일 수정의 경로와 바뀐 줄 수와 수정 내용을 같은 칸에 싣는다. | `saturn-terminal/engine/src/providers/codex.rs`의 `detail_of_read_command_keeps_action_paths`, `detail_of_test_command_is_test_run_without_paths`, `detail_of_file_change_counts_diff_lines`, `detail_of_file_change_added_file_counts_whole_text`, `tool_output_file_change_is_path_and_diff`, `exit_code_of_command_reads_code_and_ignores_other_items`, `turn_events_are_converted_in_order` |

@@ -154,14 +154,14 @@ impl std::fmt::Debug for Request {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum PermissionAnswer {
-    Allow,
-    /// 이 작업 동안 같은 명령 허용.
-    AllowForTask,
-    Deny,
-    /// TODO(#56): 이어 받는 입력 처리 방식
-    DenyAndRedirect,
+    /// 이 요청만 허용한다.
+    AllowOnce,
+    /// 같은 종류 호출을 앞으로도 허용한다. 저장은 TODO(#232).
+    AllowAlways,
+    /// `note`는 다르게 하라는 말. TODO(#56): 입력 방식이 정해지기 전에는 늘 `None`.
+    Deny { note: Option<String> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

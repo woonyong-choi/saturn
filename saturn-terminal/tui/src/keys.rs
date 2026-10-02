@@ -217,13 +217,15 @@ pub fn resume_prompt(key: KeyEvent) -> Option<Action> {
 pub fn permission(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Char('y') if is_char(key, 'y') => {
-            Some(Action::Permission(PermissionAnswer::Allow))
+            Some(Action::Permission(PermissionAnswer::AllowOnce))
         }
         KeyCode::Char('a') if is_char(key, 'a') => {
-            Some(Action::Permission(PermissionAnswer::AllowForTask))
+            Some(Action::Permission(PermissionAnswer::AllowAlways))
         }
-        KeyCode::Char('d') if is_char(key, 'd') => Some(Action::Permission(PermissionAnswer::Deny)),
-        KeyCode::Esc => Some(Action::Permission(PermissionAnswer::DenyAndRedirect)),
+        KeyCode::Char('d') if is_char(key, 'd') => {
+            Some(Action::Permission(PermissionAnswer::Deny { note: None }))
+        }
+        KeyCode::Esc => Some(Action::Permission(PermissionAnswer::Deny { note: None })),
         _ => None,
     }
 }
@@ -539,14 +541,17 @@ mod tests {
 
     #[test]
     fn permission_keys() {
+        let deny = Some(Action::Permission(PermissionAnswer::Deny { note: None }));
+        assert_eq!(
+            permission(plain('y')),
+            Some(Action::Permission(PermissionAnswer::AllowOnce))
+        );
         assert_eq!(
             permission(plain('a')),
-            Some(Action::Permission(PermissionAnswer::AllowForTask))
+            Some(Action::Permission(PermissionAnswer::AllowAlways))
         );
-        assert_eq!(
-            permission(key(KeyCode::Esc, KeyModifiers::NONE)),
-            Some(Action::Permission(PermissionAnswer::DenyAndRedirect))
-        );
+        assert_eq!(permission(plain('d')), deny);
+        assert_eq!(permission(key(KeyCode::Esc, KeyModifiers::NONE)), deny);
         assert_eq!(permission(plain('x')), None);
     }
 

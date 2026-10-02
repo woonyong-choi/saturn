@@ -15,6 +15,7 @@ use saturn_protocol::event::{
     UsageScope,
 };
 use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
+use saturn_protocol::rpc::PermissionAnswer;
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
@@ -64,6 +65,9 @@ const CLOSE_GRACE: Duration = Duration::from_secs(5);
 
 const EVENT_BUFFER: usize = 1024;
 
+/// 거부 응답에 붙여 모델에 전달되는 문구. 초안.
+const DENY_MESSAGE: &str = "The user denied this tool call in Saturn.";
+
 /// `ReadingFile`로 보인다.
 const READ_TOOLS: &[&str] = &["Read", "Glob", "Grep", "LS"];
 
@@ -93,6 +97,8 @@ struct SessionState {
     context_tokens: Option<u64>,
     /// 키는 `request_id`.
     control_waiters: HashMap<String, oneshot::Sender<Value>>,
+    /// 답을 기다리는 `can_use_tool` 요청. 키는 `request_id`, 값은 허용 답에 되돌려 줄 요청 `input`.
+    permissions: HashMap<String, Value>,
 }
 
 impl SessionState {
@@ -108,6 +114,7 @@ impl SessionState {
             initialized: false,
             context_tokens: None,
             control_waiters: HashMap::new(),
+            permissions: HashMap::new(),
         }
     }
 }
@@ -415,6 +422,45 @@ impl ProviderClient for ClaudeClient {
         self.send_turn(session, "/compact").await
     }
 
+    /// `control_response`로 답한다. 모르는 session이나 요청이면 `NotSent`. 쓰기 전에 실패하면 요청을 되돌려
+    /// 다시 답할 수 있게 한다.
+    async fn answer_permission(
+        &mut self,
+        session: &ProviderSessionId,
+        request_id: &str,
+        answer: PermissionAnswer,
+    ) -> Result<(), ProviderError> {
+        let state = self
+            .sessions
+            .get(session)
+            .map(|link| Arc::clone(&link.state))
+            .ok_or_else(|| ProviderError::NotSent {
+                reason: format!("unknown session {}", session.0),
+            })?;
+        let input =
+            lock(&state)
+                .permissions
+                .remove(request_id)
+                .ok_or_else(|| ProviderError::NotSent {
+                    reason: format!("unknown permission request {request_id}"),
+                })?;
+        let message = json!({
+            "type": "control_response",
+            "response": {
+                "subtype": "success",
+                "request_id": request_id,
+                "response": permission_response(&answer, &input),
+            },
+        });
+        let written = self.write_line(session, &message).await;
+        if let Err(ProviderError::NotSent { .. }) = &written {
+            lock(&state)
+                .permissions
+                .insert(request_id.to_owned(), input);
+        }
+        written
+    }
+
     /// `session_id`는 호출자가 보관해 `--resume`에 쓴다. 모르는 session이면 아무것도 하지 않는다.
     async fn close_session(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
         let Some(link) = self.sessions.remove(session) else {
@@ -538,9 +584,13 @@ fn convert_line(state: &mut SessionState, line: &serde_json::Value) -> Vec<Provi
                 .or_else(|| request["input"]["file_path"].as_str());
             let summary =
                 target.map_or_else(|| tool.to_owned(), |target| format!("{tool}: {target}"));
+            let request_id = line["request_id"].as_str().unwrap_or_default().to_owned();
+            state
+                .permissions
+                .insert(request_id.clone(), request["input"].clone());
             vec![ProviderEvent::PermissionRequested {
                 agent,
-                request_id: line["request_id"].as_str().unwrap_or_default().to_owned(),
+                request_id,
                 summary,
                 reason: request["decision_reason"]
                     .as_str()
@@ -549,6 +599,19 @@ fn convert_line(state: &mut SessionState, line: &serde_json::Value) -> Vec<Provi
             }]
         }
         _ => Vec::new(),
+    }
+}
+
+/// 허용은 요청 `input`을 그대로 돌려주고, 거부는 모델에 전달되는 고정 문구를 붙인다.
+/// `AllowAlways`는 실측한 응답 형식이 허용과 거부뿐이라 `AllowOnce`와 같게 보낸다.
+/// TODO(#232): 항상 허용을 Claude 세션 규칙으로 보내는 값의 실측과 저장
+/// TODO(#56): 거부와 함께 남기는 말은 정해지기 전에는 보내지 않는다
+fn permission_response(answer: &PermissionAnswer, input: &Value) -> Value {
+    match answer {
+        PermissionAnswer::AllowOnce | PermissionAnswer::AllowAlways => {
+            json!({ "behavior": "allow", "updatedInput": input })
+        }
+        PermissionAnswer::Deny { .. } => json!({ "behavior": "deny", "message": DENY_MESSAGE }),
     }
 }
 
@@ -854,6 +917,7 @@ async fn read_loop(
     let lost = {
         let mut state = lock(&state);
         state.control_waiters.clear();
+        state.permissions.clear();
         let lost = state.turn_active || !state.running.is_empty();
         state.turn_active = false;
         state.running.clear();
@@ -926,6 +990,11 @@ while (my $line = <STDIN>) {
   if ($m->{type} eq "control_request") {
     out({ type => "control_response", response => { subtype => "success", request_id => $m->{request_id}, response => {} } });
     result("error_during_execution");
+    next;
+  }
+  if ($m->{type} eq "control_response") {
+    assistant([ { type => "text", text => "answer:" . $json->encode($m->{response}) } ], undef);
+    result();
     next;
   }
   my $text = $m->{message}{content}[0]{text};
@@ -1337,6 +1406,109 @@ while (my $line = <STDIN>) {
             client.send_turn(&session, "again").await,
             Err(ProviderError::NotSent { .. })
         ));
+        client.close_session(&session).await.unwrap();
+    }
+
+    /// `ask`로 허가 요청을 받고, 답이 없는 동안 턴이 멈춰 있는지 확인한 뒤 답해서 가짜 provider가 받은 응답을 돌려준다.
+    async fn answer_ask(answer: PermissionAnswer) -> Value {
+        let dir = tempfile::tempdir().unwrap();
+        let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+        let session = client
+            .open_session(spec(dir.path(), None))
+            .await
+            .unwrap()
+            .provider_session;
+        client.send_turn(&session, "ask").await.unwrap();
+        let requested = take(&mut client, 1).await;
+        assert!(matches!(
+            &requested[0],
+            ProviderEvent::PermissionRequested { request_id, .. } if request_id == "perm-1"
+        ));
+        let stalled = tokio::time::timeout(Duration::from_millis(300), client.next_event()).await;
+        assert!(stalled.is_err(), "turn should wait for the answer");
+
+        client
+            .answer_permission(&session, "perm-1", answer)
+            .await
+            .unwrap();
+        let resumed = take(&mut client, 4).await;
+
+        let ProviderEvent::Text { text, .. } = &resumed[0] else {
+            panic!(
+                "expected the provider to continue with text, got {:?}",
+                resumed[0]
+            );
+        };
+        assert!(matches!(resumed[3], ProviderEvent::TurnCompleted { .. }));
+        client.close_session(&session).await.unwrap();
+        let received = text.strip_prefix("answer:").expect("answer prefix");
+        serde_json::from_str(received).unwrap()
+    }
+
+    #[tokio::test]
+    async fn allow_once_answers_can_use_tool_with_the_request_input() {
+        let received = answer_ask(PermissionAnswer::AllowOnce).await;
+
+        assert_eq!(
+            received,
+            json!({
+                "subtype": "success",
+                "request_id": "perm-1",
+                "response": {
+                    "behavior": "allow",
+                    "updatedInput": { "command": "rm -rf build" },
+                },
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn allow_always_is_sent_as_allow_until_a_session_rule_value_is_measured() {
+        let always = answer_ask(PermissionAnswer::AllowAlways).await;
+        let once = answer_ask(PermissionAnswer::AllowOnce).await;
+
+        assert_eq!(always, once);
+    }
+
+    #[tokio::test]
+    async fn deny_answers_can_use_tool_without_the_note() {
+        let received = answer_ask(PermissionAnswer::Deny {
+            note: Some("do it differently".to_owned()),
+        })
+        .await;
+
+        assert_eq!(
+            received["response"],
+            json!({ "behavior": "deny", "message": DENY_MESSAGE })
+        );
+        assert_eq!(received["request_id"], "perm-1");
+    }
+
+    #[tokio::test]
+    async fn answering_an_unknown_or_answered_request_is_not_sent() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+        let session = client
+            .open_session(spec(dir.path(), None))
+            .await
+            .unwrap()
+            .provider_session;
+        client.send_turn(&session, "ask").await.unwrap();
+        take(&mut client, 1).await;
+
+        let unknown = client
+            .answer_permission(&session, "other", PermissionAnswer::AllowOnce)
+            .await;
+        client
+            .answer_permission(&session, "perm-1", PermissionAnswer::AllowOnce)
+            .await
+            .unwrap();
+        let again = client
+            .answer_permission(&session, "perm-1", PermissionAnswer::AllowOnce)
+            .await;
+
+        assert!(matches!(unknown, Err(ProviderError::NotSent { .. })));
+        assert!(matches!(again, Err(ProviderError::NotSent { .. })));
         client.close_session(&session).await.unwrap();
     }
 
