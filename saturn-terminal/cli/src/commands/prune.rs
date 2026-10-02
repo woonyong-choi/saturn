@@ -5,6 +5,7 @@ use std::io::Write;
 
 use saturn_protocol::rpc::Request;
 use saturn_tui::client::EngineClient;
+use saturn_tui::i18n::{self, Lang};
 
 use crate::args::PruneArgs;
 use crate::commands::call;
@@ -17,14 +18,18 @@ use crate::commands::call;
 ///
 /// # Errors
 /// engine이 거절했거나 연결이 끊기면 오류.
-pub(crate) async fn run(client: &mut EngineClient, args: &PruneArgs) -> anyhow::Result<()> {
-    call(client, Request::Prune { yes: args.yes }, drop).await?;
+pub(crate) async fn run(
+    lang: Lang,
+    client: &mut EngineClient,
+    args: &PruneArgs,
+) -> anyhow::Result<()> {
+    call(lang, client, Request::Prune { yes: args.yes }, drop).await?;
     let message = if args.yes {
-        "records pruned"
+        i18n::CLI_PRUNED
     } else {
-        "nothing was deleted; the list of records to delete is not available yet, run with --yes to delete"
+        i18n::CLI_PRUNE_PREVIEW
     };
-    writeln!(std::io::stdout().lock(), "{message}")?;
+    writeln!(std::io::stdout().lock(), "{}", lang.tr(message))?;
     Ok(())
 }
 
@@ -39,7 +44,9 @@ mod tests {
         let engine = FakeEngine::start(vec![Reply::ok()]);
         let mut client = engine.client().await;
 
-        run(&mut client, &PruneArgs { yes: false }).await.unwrap();
+        run(Lang::En, &mut client, &PruneArgs { yes: false })
+            .await
+            .unwrap();
 
         assert_eq!(engine.finish().await, vec![Request::Prune { yes: false }]);
     }
@@ -49,7 +56,9 @@ mod tests {
         let engine = FakeEngine::start(vec![Reply::ok()]);
         let mut client = engine.client().await;
 
-        run(&mut client, &PruneArgs { yes: true }).await.unwrap();
+        run(Lang::En, &mut client, &PruneArgs { yes: true })
+            .await
+            .unwrap();
 
         assert_eq!(engine.finish().await, vec![Request::Prune { yes: true }]);
     }
@@ -59,7 +68,7 @@ mod tests {
         let engine = FakeEngine::start(vec![Reply::error(-32601, "unsupported: Prune")]);
         let mut client = engine.client().await;
 
-        let result = run(&mut client, &PruneArgs { yes: true }).await;
+        let result = run(Lang::En, &mut client, &PruneArgs { yes: true }).await;
 
         assert!(result.is_err());
     }

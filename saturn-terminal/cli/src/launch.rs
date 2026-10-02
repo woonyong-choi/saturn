@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use saturn_tui::client::{ClientError, EngineClient};
+use saturn_tui::i18n::{self, Lang};
 
 const ENGINE_BINARY: &str = "saturn-engine";
 
@@ -48,22 +49,26 @@ struct StartedEngine {
 ///
 /// # Errors
 /// 에이전트 작업 안에서 실행됐으면 오류.
-pub(crate) fn ensure_not_nested() -> anyhow::Result<()> {
-    check_nested(std::env::var_os(NESTED_MARKER_ENV).as_deref())
+pub(crate) fn ensure_not_nested(lang: Lang) -> anyhow::Result<()> {
+    check_nested(lang, std::env::var_os(NESTED_MARKER_ENV).as_deref())
 }
 
-fn check_nested(marker: Option<&OsStr>) -> anyhow::Result<()> {
+fn check_nested(lang: Lang, marker: Option<&OsStr>) -> anyhow::Result<()> {
     anyhow::ensure!(
         marker.is_none(),
-        "saturn cannot run inside an agent task (the {NESTED_MARKER_ENV} variable is set)"
+        lang.tr(i18n::CLI_NESTED)
+            .replace("{marker}", NESTED_MARKER_ENV)
     );
     Ok(())
 }
 
 /// # Errors
 /// engine 실행 파일이 없거나, engine이 시작에 실패했거나 제때 소켓을 열지 않으면 오류.
-pub(crate) async fn connect_or_start() -> anyhow::Result<EngineClient> {
-    connect_or_start_at(&EngineClient::default_socket(), engine_binary).await
+pub(crate) async fn connect_or_start(lang: Lang) -> anyhow::Result<EngineClient> {
+    connect_or_start_at(lang, &EngineClient::default_socket(), || {
+        engine_binary(lang)
+    })
+    .await
 }
 
 // cost: time O(t) , heap O(1), stack O(1), io t
@@ -71,6 +76,7 @@ pub(crate) async fn connect_or_start() -> anyhow::Result<EngineClient> {
 // basis: estimate
 /// 이미 도는 engine이 있으면 붙기만 한다. 없으면 `locate`가 준 실행 파일을 띄우고 소켓이 열리기를 기다린다.
 async fn connect_or_start_at(
+    lang: Lang,
     socket: &Path,
     locate: impl FnOnce() -> anyhow::Result<PathBuf>,
 ) -> anyhow::Result<EngineClient> {
@@ -80,16 +86,16 @@ async fn connect_or_start_at(
         Err(error) => return Err(error.into()),
     }
     let binary = locate()?;
-    let mut engine = spawn_engine(&binary, socket)?;
+    let mut engine = spawn_engine(lang, &binary, socket)?;
     tracing::debug!(binary = %binary.display(), "engine started");
-    wait_until_ready(socket, START_TIMEOUT, &mut engine).await
+    wait_until_ready(lang, socket, START_TIMEOUT, &mut engine).await
 }
 
 // cost: time O(p), heap O(p), stack O(1), io p
 // vars: p = PATH 항목 수
 // basis: estimate
 /// `saturn`과 같은 폴더를 먼저 보고 없으면 `PATH`에서 찾는다.
-fn engine_binary() -> anyhow::Result<PathBuf> {
+fn engine_binary(lang: Lang) -> anyhow::Result<PathBuf> {
     let sibling = std::env::current_exe()
         .ok()
         .and_then(|exe| exe.parent().map(|dir| dir.join(ENGINE_BINARY)));
@@ -100,13 +106,16 @@ fn engine_binary() -> anyhow::Result<PathBuf> {
     std::env::split_paths(&path_var)
         .map(|dir| dir.join(ENGINE_BINARY))
         .find(|candidate| candidate.is_file())
-        .with_context(|| format!("{ENGINE_BINARY} not found next to saturn or in PATH"))
+        .with_context(|| {
+            lang.tr(i18n::CLI_ENGINE_NOT_FOUND)
+                .replace("{binary}", ENGINE_BINARY)
+        })
 }
 
 // cost: time O(1), heap O(1), stack O(1), io 3
 // basis: estimate
 /// `saturn`이 끝나도 남도록 새 프로세스 그룹으로 띄운다. engine은 터미널을 갖지 않으므로 router 키는 붙은 TUI가 보낸다.
-fn spawn_engine(binary: &Path, socket: &Path) -> anyhow::Result<StartedEngine> {
+fn spawn_engine(lang: Lang, binary: &Path, socket: &Path) -> anyhow::Result<StartedEngine> {
     let home = socket
         .parent()
         .context("engine socket path should have a parent folder")?;
@@ -124,7 +133,10 @@ fn spawn_engine(binary: &Path, socket: &Path) -> anyhow::Result<StartedEngine> {
         .stderr(Stdio::null())
         .process_group(0)
         .spawn()
-        .with_context(|| format!("failed to start {}", binary.display()))?;
+        .with_context(|| {
+            lang.tr(i18n::CLI_ENGINE_START_FAILED)
+                .replace("{binary}", &binary.display().to_string())
+        })?;
     Ok(StartedEngine {
         process,
         log_dir,
@@ -158,6 +170,7 @@ fn latest_log(log_dir: &Path) -> Option<PathBuf> {
 /// # Errors
 /// `timeout` 안에 붙지 못하거나 engine이 먼저 끝나면 오류.
 async fn wait_until_ready(
+    lang: Lang,
     socket: &Path,
     timeout: Duration,
     engine: &mut StartedEngine,
@@ -171,7 +184,10 @@ async fn wait_until_ready(
             Err(error) => return Err(error.into()),
         }
         if exited_at.is_none()
-            && let Some(status) = engine.process.try_wait().context("failed to poll engine")?
+            && let Some(status) = engine
+                .process
+                .try_wait()
+                .context(lang.tr(i18n::CLI_ENGINE_POLL_FAILED))?
         {
             tracing::debug!(%status, "started engine exited");
             exited_at = Some(Instant::now());
@@ -180,17 +196,23 @@ async fn wait_until_ready(
             && exited.elapsed() >= EXIT_GRACE
         {
             anyhow::bail!(
-                "engine exited before opening {}{}",
-                socket.display(),
-                log_tail(&engine.log_dir, engine.log_before.as_ref())
+                lang.tr(i18n::CLI_ENGINE_EXITED)
+                    .replace("{socket}", &socket.display().to_string())
+                    .replace(
+                        "{tail}",
+                        &log_tail(lang, &engine.log_dir, engine.log_before.as_ref())
+                    )
             );
         }
         if started.elapsed() >= timeout {
             anyhow::bail!(
-                "engine did not open {} within {}s{}",
-                socket.display(),
-                timeout.as_secs(),
-                log_tail(&engine.log_dir, engine.log_before.as_ref())
+                lang.tr(i18n::CLI_ENGINE_TIMEOUT)
+                    .replace("{socket}", &socket.display().to_string())
+                    .replace("{secs}", &timeout.as_secs().to_string())
+                    .replace(
+                        "{tail}",
+                        &log_tail(lang, &engine.log_dir, engine.log_before.as_ref())
+                    )
             );
         }
         tokio::time::sleep(POLL_INTERVAL).await;
@@ -202,7 +224,7 @@ async fn wait_until_ready(
 // basis: estimate
 /// 안내 문구 뒤에 붙일 가장 최근 로그 파일의 끝 줄. 이번 시작 전과 같은 파일이면 시작 뒤 내용만 쓴다.
 /// 읽을 수 없거나 비었으면 빈 문자열.
-fn log_tail(log_dir: &Path, before: Option<&(PathBuf, u64)>) -> String {
+fn log_tail(lang: Lang, log_dir: &Path, before: Option<&(PathBuf, u64)>) -> String {
     let Some(log) = latest_log(log_dir) else {
         return String::new();
     };
@@ -221,7 +243,10 @@ fn log_tail(log_dir: &Path, before: Option<&(PathBuf, u64)>) -> String {
     if tail.is_empty() {
         return String::new();
     }
-    format!("\n{}\n(log: {})", tail.join("\n"), log.display())
+    let log_path = lang
+        .tr(i18n::CLI_LOG_PATH)
+        .replace("{path}", &log.display().to_string());
+    format!("\n{}\n{log_path}", tail.join("\n"))
 }
 
 #[cfg(test)]
@@ -255,12 +280,12 @@ mod tests {
 
     #[test]
     fn check_nested_with_marker_is_error() {
-        assert!(check_nested(Some(OsStr::new("1"))).is_err());
+        assert!(check_nested(Lang::En, Some(OsStr::new("1"))).is_err());
     }
 
     #[test]
     fn check_nested_without_marker_is_ok() {
-        assert!(check_nested(None).is_ok());
+        assert!(check_nested(Lang::En, None).is_ok());
     }
 
     #[tokio::test]
@@ -269,7 +294,8 @@ mod tests {
         let socket = home.path().join(SOCKET_FILE);
         let _listener = UnixListener::bind(&socket).unwrap();
 
-        let client = connect_or_start_at(&socket, || anyhow::bail!("must not locate")).await;
+        let client =
+            connect_or_start_at(Lang::En, &socket, || anyhow::bail!("must not locate")).await;
 
         assert!(client.is_ok());
     }
@@ -279,9 +305,11 @@ mod tests {
         let home = tempfile::tempdir().unwrap();
         let socket = home.path().join(SOCKET_FILE);
 
-        let error = connect_or_start_at(&socket, || anyhow::bail!("saturn-engine not found"))
-            .await
-            .unwrap_err();
+        let error = connect_or_start_at(Lang::En, &socket, || {
+            anyhow::bail!("saturn-engine not found")
+        })
+        .await
+        .unwrap_err();
 
         assert!(error.to_string().contains("not found"));
     }
@@ -297,7 +325,7 @@ mod tests {
             UnixListener::bind(&late_socket).unwrap()
         });
 
-        let client = wait_until_ready(&socket, Duration::from_secs(5), &mut engine).await;
+        let client = wait_until_ready(Lang::En, &socket, Duration::from_secs(5), &mut engine).await;
 
         assert!(client.is_ok());
         let _listener = opener.await.unwrap();
@@ -316,7 +344,7 @@ mod tests {
             UnixListener::bind(&late_socket).unwrap()
         });
 
-        let client = wait_until_ready(&socket, Duration::from_secs(5), &mut engine).await;
+        let client = wait_until_ready(Lang::En, &socket, Duration::from_secs(5), &mut engine).await;
 
         assert!(client.is_ok());
         let _listener = opener.await.unwrap();
@@ -329,7 +357,7 @@ mod tests {
         let mut engine =
             exiting_engine(home.path(), "echo 'router host is not allowed' >&2; exit 1");
 
-        let error = wait_until_ready(&socket, Duration::from_secs(10), &mut engine)
+        let error = wait_until_ready(Lang::En, &socket, Duration::from_secs(10), &mut engine)
             .await
             .unwrap_err();
 
@@ -344,7 +372,7 @@ mod tests {
         let socket = home.path().join(SOCKET_FILE);
         let mut engine = exiting_engine(home.path(), "sleep 5");
 
-        let error = wait_until_ready(&socket, Duration::from_millis(200), &mut engine)
+        let error = wait_until_ready(Lang::En, &socket, Duration::from_millis(200), &mut engine)
             .await
             .unwrap_err();
 
@@ -366,7 +394,7 @@ mod tests {
         std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755))
             .unwrap();
 
-        let mut engine = spawn_engine(&script, &socket).unwrap();
+        let mut engine = spawn_engine(Lang::En, &script, &socket).unwrap();
         engine.process.wait().unwrap();
 
         assert_eq!(
@@ -384,7 +412,7 @@ mod tests {
         std::fs::write(home.path().join(LOG_FILE), "today\n").unwrap();
         std::fs::write(home.path().join("engine-2026-10-03.txt"), "other\n").unwrap();
 
-        let tail = log_tail(home.path(), None);
+        let tail = log_tail(Lang::En, home.path(), None);
 
         assert!(tail.contains("today"));
         assert!(!tail.contains("yesterday"));
@@ -395,7 +423,7 @@ mod tests {
     fn engine_log_tail_without_a_log_file_is_empty() {
         let home = tempfile::tempdir().unwrap();
 
-        assert_eq!(log_tail(home.path(), None), "");
+        assert_eq!(log_tail(Lang::En, home.path(), None), "");
     }
 
     #[test]
@@ -405,7 +433,7 @@ mod tests {
         std::fs::write(&log, "old line\nnew line\n").unwrap();
         let before = (log, "old line\n".len() as u64);
 
-        let tail = log_tail(home.path(), Some(&before));
+        let tail = log_tail(Lang::En, home.path(), Some(&before));
 
         assert!(tail.contains("new line"));
         assert!(!tail.contains("old line"));
@@ -419,7 +447,7 @@ mod tests {
         std::fs::write(home.path().join(LOG_FILE), "new line\n").unwrap();
         let before = (yesterday, 100);
 
-        let tail = log_tail(home.path(), Some(&before));
+        let tail = log_tail(Lang::En, home.path(), Some(&before));
 
         assert!(tail.contains("new line"));
     }

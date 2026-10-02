@@ -2,9 +2,11 @@
 //! 설계: docs/design/router-training.md
 
 use std::io::Write;
+use std::time::Duration;
 
 use saturn_protocol::rpc::{Notification, Request};
 use saturn_tui::client::EngineClient;
+use saturn_tui::i18n::{self, Lang};
 
 use crate::args::TrainArgs;
 use crate::commands::{call, confirm_on_terminal};
@@ -16,13 +18,18 @@ use crate::commands::{call, confirm_on_terminal};
 ///
 /// # Errors
 /// engine이 거절했거나 연결이 끊기면 오류.
-pub(crate) async fn run(client: &mut EngineClient, args: &TrainArgs) -> anyhow::Result<()> {
+pub(crate) async fn run(
+    lang: Lang,
+    client: &mut EngineClient,
+    args: &TrainArgs,
+) -> anyhow::Result<()> {
     let mut out = std::io::stdout().lock();
     let mut progress = std::io::stderr().lock();
     if args.yes {
-        train(client, args, |_| Ok(true), &mut out, &mut progress).await
+        train(lang, client, args, |_| Ok(true), &mut out, &mut progress).await
     } else {
-        train(client, args, confirm_on_terminal, &mut out, &mut progress).await
+        let confirm = |prompt: &str| confirm_on_terminal(lang, prompt);
+        train(lang, client, args, confirm, &mut out, &mut progress).await
     }
 }
 
@@ -30,6 +37,7 @@ pub(crate) async fn run(client: &mut EngineClient, args: &TrainArgs) -> anyhow::
 // vars: p = 받은 진행 알림 수
 // basis: estimate
 async fn train(
+    lang: Lang,
     client: &mut EngineClient,
     args: &TrainArgs,
     confirm: impl FnOnce(&str) -> anyhow::Result<bool>,
@@ -41,7 +49,7 @@ async fn train(
         from: args.from.clone(),
     };
     let mut preview = None;
-    call(client, request, |notification| {
+    call(lang, client, request, |notification| {
         if let Notification::TrainPreview { .. } = notification {
             preview = Some(notification);
         }
@@ -55,7 +63,7 @@ async fn train(
         retrain_model,
     }) = preview
     else {
-        writeln!(out, "train request accepted")?;
+        writeln!(out, "{}", lang.tr(i18n::CLI_TRAIN_ACCEPTED))?;
         return Ok(());
     };
     let targets = if threshold_targets.is_empty() {
@@ -63,41 +71,52 @@ async fn train(
     } else {
         threshold_targets.join(", ")
     };
-    writeln!(out, "candidates: {candidates}")?;
-    writeln!(out, "grading model: {grader}")?;
-    writeln!(out, "estimated tokens: {estimated_tokens}")?;
-    writeln!(out, "threshold targets: {targets}")?;
-    writeln!(out, "retrain model: {retrain_model}")?;
+    let retrain_model = lang.tr(if retrain_model { i18n::YES } else { i18n::NO });
+    writeln!(out, "{}: {candidates}", lang.tr(i18n::TRAIN_CANDIDATES))?;
+    writeln!(out, "{}: {grader}", lang.tr(i18n::TRAIN_GRADER))?;
+    writeln!(out, "{}: {estimated_tokens}", lang.tr(i18n::TRAIN_TOKENS))?;
+    writeln!(out, "{}: {targets}", lang.tr(i18n::TRAIN_TARGETS))?;
+    writeln!(out, "{}: {retrain_model}", lang.tr(i18n::TRAIN_RETRAIN))?;
 
-    let proceed = match confirm("run training?") {
+    let proceed = match confirm(lang.tr(i18n::CLI_TRAIN_PROMPT)) {
         Ok(proceed) => proceed,
         Err(error) => {
-            call(client, Request::ConfirmTrain { proceed: false }, drop).await?;
+            call(lang, client, Request::ConfirmTrain { proceed: false }, drop).await?;
             return Err(error);
         }
     };
-    call(client, Request::ConfirmTrain { proceed }, |notification| {
-        if let Notification::TrainProgress {
-            stage,
-            labeled,
-            elapsed_ms,
-            tokens,
-        } = notification
-        {
-            let _ = writeln!(
-                progress,
-                "{stage} · labeled {labeled} · {}s · {tokens} tokens",
-                elapsed_ms / 1000
-            ); // 진행 줄을 못 써도 학습은 계속한다
-        }
-    })
+    call(
+        lang,
+        client,
+        Request::ConfirmTrain { proceed },
+        |notification| {
+            if let Notification::TrainProgress {
+                stage,
+                labeled,
+                elapsed_ms,
+                tokens,
+            } = notification
+            {
+                let line = lang
+                    .tr(i18n::CLI_TRAIN_PROGRESS)
+                    .replace("{stage}", &stage)
+                    .replace("{labeled}", &labeled.to_string())
+                    .replace(
+                        "{elapsed}",
+                        &i18n::format_elapsed(lang, Duration::from_millis(elapsed_ms)),
+                    )
+                    .replace("{tokens}", &tokens.to_string());
+                let _ = writeln!(progress, "{line}"); // 진행 줄을 못 써도 학습은 계속한다
+            }
+        },
+    )
     .await?;
     let outcome = if proceed {
-        "training finished"
+        i18n::CLI_TRAIN_FINISHED
     } else {
-        "training cancelled"
+        i18n::CLI_TRAIN_CANCELLED
     };
-    writeln!(out, "{outcome}")?;
+    writeln!(out, "{}", lang.tr(outcome))?;
     Ok(())
 }
 
@@ -143,12 +162,20 @@ mod tests {
         let mut client = engine.client().await;
         let (mut out, mut progress) = (Vec::new(), Vec::new());
 
-        train(&mut client, &args(), |_| Ok(true), &mut out, &mut progress)
-            .await
-            .unwrap();
+        train(
+            Lang::En,
+            &mut client,
+            &args(),
+            |_| Ok(true),
+            &mut out,
+            &mut progress,
+        )
+        .await
+        .unwrap();
 
         let out = String::from_utf8(out).unwrap();
         assert!(out.contains("candidates: 250"));
+        assert!(out.contains("retrain model: no"));
         assert!(out.ends_with("training finished\n"));
         assert_eq!(
             String::from_utf8(progress).unwrap(),
@@ -173,6 +200,7 @@ mod tests {
         let mut out = Vec::new();
 
         train(
+            Lang::En,
             &mut client,
             &args(),
             |_| Ok(false),
@@ -197,6 +225,7 @@ mod tests {
         let mut client = engine.client().await;
 
         let error = train(
+            Lang::En,
             &mut client,
             &args(),
             |_| panic!("must not ask"),
@@ -215,6 +244,7 @@ mod tests {
         let mut client = engine.client().await;
 
         let result = train(
+            Lang::En,
             &mut client,
             &args(),
             |_| anyhow::bail!("confirmation needs a terminal"),
