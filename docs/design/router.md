@@ -102,7 +102,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 
 - `keep_current`가 0.3 미만이면 새 작업으로 본다. 0.3 이상 0.8 미만은 판단 없음과 같다.
 - 실행 중이면 처리 방식을 `relation_to_running`과 `steer_or_spawn`으로 정한다. `refines`, `continues`면 `steer_or_spawn`의 `steer`, `queue`, `spawn`을 끼워 넣기, 대기, 새 작업으로 옮기고, `independent`면 새 작업이다. `conflicts`는 미해결 질문이 정해지기 전까지 대기로 둔다. 실행 중이 아니면 `keep_current`로 현재 에이전트 대기와 새 작업을 가른다.
-- `target_model`의 선택지는 허용 후보와 `other`이고, `other`를 고르면 대체 규칙을 따른다. 후보가 없으면 묻지 않는다. 허용 후보는 provider가 알려 주는 모델 목록으로, `/model`이 보이는 목록과 같다([모델 고르기](providers-and-sessions.md#모델-고르기)). 채팅에 고정한 모델이 있으면 `target_model`만 묻지 않고 그 모델을 쓰며, 관계 판단 질문은 똑같이 묻는다. 지금은 engine이 후보를 넣지 않아 고정하지 않은 입력도 묻지 않고, router가 고른 모델을 적용하는 일도 없다(초안).
+- `target_model`의 선택지는 허용 후보와 `other`이고, `other`를 고르면 대체 규칙을 따른다. 후보가 없으면 묻지 않는다. 허용 후보는 provider가 알려 주는 모델 목록으로, `/model`이 보이는 목록과 같다([모델 고르기](providers-and-sessions.md#모델-고르기)). 채팅에 고정한 모델이 있으면 `target_model`만 묻지 않고 그 모델을 쓰며, 관계 판단 질문은 똑같이 묻는다. engine은 provider 연결을 만들 때 받아 둔 모델 목록(`/model`이 보이는 목록)을 Claude, Codex 순으로 후보에 넣고, 선택지는 `<provider>/<model>` 글이다. 목록을 아직 못 받은 provider(연결 전이거나 목록 요청이 실패한 경우)는 후보에서 빠지고, 받은 목록이 없으면 묻지 않아 현재 모델(첫 입력은 기본 provider의 기본값)을 쓴다. 후보는 관계 판단과 같은 요청에서 묻지만, 고른 모델은 새 작업으로 판단된 입력에만 적용한다. 이어 가는 입력(대기)과 끼워 넣기는 현재 모델을 유지한다. 적용한 모델은 입력 기록(`inputs.pinned_model`)에 남겨 다시 시작해도 같은 모델로 보낸다. 그 새 작업이 메인이고 모델이 열린 메인 session의 모델과 다르면 새 메인 session 규칙을 따르고, 보조 에이전트면 그 모델로 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기))(초안).
 - `difficulty`와 `skills`는 답을 쓰는 곳이 생기기 전까지 묻지 않고 대체 규칙(미사용, 힌트 생략)으로 둔다. 쓰지 않는 질문으로 판단 비용을 늘리지 않기 위해서다.
 - 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `is_constraint`를 더한 `route`는 `route@1.1`이고, `constraint`는 `constraint@1.0`에서 시작한다. 기존 질문의 뜻은 바뀌지 않기 때문이다.
 - 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다.
@@ -226,6 +226,7 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [#6](https://github.com/woonyong-choi/saturn/issues/6) 실험으로 한국어 평가 세트의 오분류율을 확인한다. |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
 | 후보를 순위로 자르지 않고 전체를 묻는다. | `saturn-terminal/core/src/routers/mod.rs`의 `compact_questions_150_candidates_ask_all` |
+| 고정하지 않은 입력에 모델 목록을 `target_model` 후보로 묻고 고른 모델로 보낸다. 고정 모델이거나 목록이 없거나 후보 밖이면 현재 모델이다. | [모델 고르기](providers-and-sessions.md#모델-고르기)의 `target_model` 테스트 |
 | `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. [간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)에서 `replaces_<n>` 구간과 간접 지시 입력은 기준을 가르지 못해 보류이고(간접 지시 입력 74.5% [68.0, 80.0]), 앞 입력의 제약 등록 여부를 state에 넣어도 정확도는 오르지 않았다. |
 
 ## 단점

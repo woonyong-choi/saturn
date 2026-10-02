@@ -14,6 +14,7 @@ use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::{Disposition, InputState};
 
 use crate::flow::{Routed, RouterDone, RouterJob, Unrecorded};
+use crate::providers::parse_pinned;
 use crate::requests::{settings_notification, trust_notification};
 use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
 use crate::rpc::ClientId;
@@ -227,7 +228,11 @@ impl Engine {
         loop {
             let current = self.queue.revision(record.chat);
             match self.queue.apply(input, &decision, current) {
-                Ok(disposition) => return self.after_applied(input, disposition).await,
+                Ok(disposition) => {
+                    return self
+                        .after_applied(input, disposition, record.pinned_model.clone())
+                        .await;
+                }
                 Err(QueueError::RevisionConflict) => {
                     self.settle_record(input, true).await;
                     if retried {
@@ -249,8 +254,15 @@ impl Engine {
         &mut self,
         input: InputId,
         disposition: Disposition,
+        before_model: Option<String>,
     ) -> Result<(), EngineError> {
-        let chat = self.queued(input)?.chat;
+        let applied = self.queued(input)?;
+        let chat = applied.chat;
+        if applied.pinned_model != before_model {
+            self.store
+                .set_input_model(input, applied.pinned_model.as_deref())
+                .await?;
+        }
         let judgment = self.settle_record(input, false).await;
         if let Some(judgment) = judgment {
             self.watch_judgment(chat, judgment, Instant::now());
@@ -318,9 +330,16 @@ impl Engine {
         }
         let mut read =
             self.read_verdict(request, &exchange, &settings, job.revision, record.settings);
-        // 고정 모델은 `target_model` 선택만 대신하고 관계 판단은 그대로 받는다
+        // 고정 모델은 `target_model` 선택만 대신하고 관계 판단은 그대로 받는다.
+        // 고정하지 않았으면 후보가 아닌 글은 버려 현재 모델로 둔다
         if record.pinned_model.is_some() {
             read.decision.model.clone_from(&record.pinned_model);
+        } else {
+            read.decision.model = read
+                .decision
+                .model
+                .take()
+                .filter(|model| parse_pinned(model).is_some());
         }
         let fallbacks = read.fallback_reasons();
         let context = RecordContext {
@@ -353,12 +372,16 @@ impl Engine {
             "chat: {activity}\nprevious input handled as: {previous}\nuser input: {}",
             record.text
         );
-        // TODO(#168): `/model` 목록을 허용 후보로 넣어 `target_model`을 묻고, router가 고른 모델을 적용한다
         // TODO(#90): 보류 작업이 있으면 `resume_held`를 묻고 `note_resume_signal`로 잇는다
         RouterRequest {
             model: self.routers.active().model().to_owned(),
             state: sanitize_state(&state, &self.masker),
-            sets: questions_for_input(running, record.pinned_model.is_some(), false, &[]),
+            sets: questions_for_input(
+                running,
+                record.pinned_model.is_some(),
+                false,
+                &self.model_candidates(record.chat),
+            ),
         }
     }
 

@@ -286,19 +286,31 @@ impl Flow {
 
 /// 실행 중이 아닐 때 묻는 질문에 대한 router 답.
 pub(super) fn idle_reply(keep_current: f64) -> FakeReply {
-    ok(&answers(keep_current, None))
+    ok(&answers(keep_current, None, None))
+}
+
+/// `target_model`까지 묻는 요청에 대한 router 답. `options`는 질문의 선택지 전체(마지막은 `other`)다.
+pub(super) fn model_reply(keep_current: f64, options: &[&str], picked: &str) -> FakeReply {
+    ok(&answers(keep_current, None, Some((options, picked))))
 }
 
 /// 실행 중일 때 묻는 질문에 대한 router 답. `relation`은 `RELATION_OPTIONS`, `send`는 `SEND_OPTIONS` 중 하나.
 pub(super) fn running_reply(keep_current: f64, relation: &str, send: &str) -> FakeReply {
-    ok(&answers(keep_current, Some((relation, send))))
+    ok(&answers(keep_current, Some((relation, send)), None))
 }
 
-fn answers(keep_current: f64, running: Option<(&str, &str)>) -> String {
+fn answers(
+    keep_current: f64,
+    running: Option<(&str, &str)>,
+    model: Option<(&[&str], &str)>,
+) -> String {
     let mut answers = json!({
         "keep_current": { "type": "noul", "noul": keep_current },
         "is_actionable": { "type": "noul", "noul": 0.9 },
     });
+    if let Some((options, picked)) = model {
+        answers["target_model"] = choice(options, picked);
+    }
     if let Some((relation, send)) = running {
         answers["relation_to_running"] = choice(&RELATION_OPTIONS, relation);
         answers["steer_or_spawn"] = choice(&SEND_OPTIONS, send);

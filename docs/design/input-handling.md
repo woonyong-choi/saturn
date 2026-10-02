@@ -100,7 +100,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 - session 교체 중 들어온 입력은 새 session에 순서대로 보낸다. 입력 순서를 session 교체와 무관하게 지키기 위해서다.
 - 보내기 전에 확정된 실패만 다시 보낸다. 같은 작업이 두 번 실행되는 일을 막기 위해서다. 같은 입력은 처음 시도를 포함해 3번(초안)까지 보내고, 그래도 실패하면 `거절됨`으로 두고 시작하려던 작업은 닫는다. 끼워 넣기는 이 규칙을 따르지 않는다. provider가 끼워 넣기를 거절(`NotSent`)하면 다시 끼워 넣지 않고 입력을 대기열 맨 앞으로 옮겨 다음 차례에 새 턴으로 보낸다(사용자 결정, [#60](https://github.com/woonyong-choi/saturn/issues/60)). 사용자가 지금 반영되길 원한 입력이라 순서를 뒤로 미루지 않고, 거절은 보내지 않음이 확정된 실패라 다시 보내도 되기 때문이다. 입력은 `대기`로 돌아가고 `거절됨`이 되지 않는다.
 - 입력은 `전달 중`을 기록 저장소에 쓴 뒤에만 provider로 보내고, provider가 받으면 `반영됨`으로 바꾼다. 기록에 쓰지 못하면 보내지 않고 거절한다.
-- 보낼 provider는 입력에 고정한 모델의 provider, 없으면 채팅의 메인 session이 있으면 그 provider이고, 없으면 설치된 Claude, 없으면 설치된 Codex이며 둘 다 없으면 오류를 보이고 보내지 않는다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정). 고정한 모델은 session을 여는 모델로 넘기고 모델이 바뀌면 새 메인 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기)).
+- 보낼 provider는 입력에 고정한 모델이나 router가 고른 모델의 provider, 없으면 채팅의 메인 session이 있으면 그 provider이고, 없으면 설치된 Claude, 없으면 설치된 Codex이며 둘 다 없으면 오류를 보이고 보내지 않는다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정). 고정한 모델은 session을 여는 모델로 넘기고 모델이 바뀌면 새 메인 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기)).
 - provider 연결은 채팅마다 둔다. 작업 폴더와 환경이 채팅마다 달라서다.
 - 맥락 한도 초과로 provider가 거절한 입력은 정해지기 전이라 다른 `NotSent`와 같이 처리한다([#162](https://github.com/woonyong-choi/saturn/issues/162)).
 - 보낸 뒤 결과가 불명인 입력은 자동으로 다시 보내지 않고 사용자 확인으로 넘긴다. 이미 반영된 입력을 두 번 실행하는 일을 막기 위해서다.

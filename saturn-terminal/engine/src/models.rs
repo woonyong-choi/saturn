@@ -116,6 +116,7 @@ impl Engine {
         }
     }
 
+    /// 연결할 때 받아 둔 목록이 있으면 그것을 쓰고, 없으면 받아서 둔다.
     async fn list_provider_models(
         &mut self,
         provider: Provider,
@@ -123,6 +124,38 @@ impl Engine {
         revision: SettingsRevision,
     ) -> Result<Vec<ModelInfo>, EngineError> {
         self.ensure_connected(provider, chat, revision).await?;
-        Ok(self.provider_mut(chat, provider)?.list_models().await?)
+        if let Some(models) = self.flow.models.get(&(chat, provider)) {
+            return Ok(models.clone());
+        }
+        let models = self.provider_mut(chat, provider)?.list_models().await?;
+        self.flow.models.insert((chat, provider), models.clone());
+        Ok(models)
+    }
+
+    /// 방금 연결한 provider의 모델 목록을 받아 둔다. 못 받으면 로그만 남기고 그 provider는 후보에 넣지 않는다.
+    pub(crate) async fn remember_models(&mut self, provider: Provider, chat: ChatId) {
+        let listed = match self.provider_mut(chat, provider) {
+            Ok(client) => client.list_models().await,
+            Err(error) => Err(error),
+        };
+        match listed {
+            Ok(models) => {
+                self.flow.models.insert((chat, provider), models);
+            }
+            Err(error) => {
+                self.flow.models.remove(&(chat, provider));
+                tracing::warn!(error = %masked_chain(&self.masker, &EngineError::from(error)), "failed to list models");
+            }
+        }
+    }
+
+    /// router에 물을 허용 후보. 받아 둔 목록을 Claude, Codex 순으로 `<provider>/<model>` 글로 만든다.
+    pub(crate) fn model_candidates(&self, chat: ChatId) -> Vec<String> {
+        FIRST_INPUT_ORDER
+            .into_iter()
+            .filter_map(|provider| self.flow.models.get(&(chat, provider)))
+            .flatten()
+            .map(|info| pinned_text(&info.choice))
+            .collect()
     }
 }
