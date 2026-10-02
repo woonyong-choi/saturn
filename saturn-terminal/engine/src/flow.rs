@@ -15,6 +15,7 @@ use tokio::sync::mpsc;
 
 use crate::Engine;
 use crate::events::PendingPermission;
+use crate::inputs::PendingInput;
 use crate::routers::{RecordContext, RouterExchange};
 use crate::stop::{HeldTask, StopDone, StopProgress};
 
@@ -121,6 +122,8 @@ pub(crate) struct FlowState {
     pub(crate) packet_turns: HashMap<AgentId, u32>,
     /// 답을 기다리는 허가 요청. 키는 `request_id`.
     pub(crate) permissions: HashMap<String, PendingPermission>,
+    /// 답을 기다리는 입력 요청. 키는 `request_id`.
+    pub(crate) inputs: HashMap<String, PendingInput>,
     /// 에이전트가 가장 나중에 시작한 입력의 설정 번호. 허가 요청 판정이 그 번호의 규칙을 쓴다.
     pub(crate) settings_of: HashMap<AgentId, SettingsRevision>,
     /// 채팅의 Codex 연결을 시작할 때 쓴 규칙 지문. 연결이 없으면 항목도 없다.
@@ -156,6 +159,7 @@ impl Default for FlowState {
             context_tokens: HashMap::new(),
             packet_turns: HashMap::new(),
             permissions: HashMap::new(),
+            inputs: HashMap::new(),
             settings_of: HashMap::new(),
             rules_of_connection: HashMap::new(),
             rules_stale: HashSet::new(),

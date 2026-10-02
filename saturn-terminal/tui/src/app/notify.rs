@@ -98,6 +98,19 @@ impl App {
             Notification::PermissionResolved { request_id } => {
                 self.permissions.resolve(&request_id, now);
             }
+            Notification::InputRequested {
+                task,
+                label,
+                provider,
+                request_id,
+                request,
+                ..
+            } => self
+                .inputs
+                .push(request_id, task, label, Some(provider), request, now),
+            Notification::InputResolved { request_id } => {
+                self.inputs.resolve(&request_id, now);
+            }
             other => self.on_window_notification(other, now),
         }
         Vec::new()

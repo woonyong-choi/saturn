@@ -4,8 +4,10 @@
 //! TODO(#38): 추론과 도구 실행이 오래 걸릴 때 타임아웃을 둘지와 값. 정해지기 전에는 기다리기만 한다
 
 mod claude;
+mod claude_input;
 mod codex;
 mod codex_home;
+mod codex_input;
 mod codex_permission;
 #[cfg(test)]
 pub(crate) mod test_support;
@@ -20,6 +22,7 @@ use saturn_core::providers::{
 };
 use saturn_protocol::event::{ProviderEvent, TurnOrigin};
 use saturn_protocol::ids::{Provider, ProviderSessionId, SettingsRevision};
+use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 
 use crate::processes::{ProcessGroupId, Supervisor};
@@ -225,6 +228,20 @@ impl ProviderClient for ProviderConnection {
             Self::Claude(client) => client.answer_permission(session, request_id, answer).await,
             #[cfg(test)]
             Self::Fake(client) => client.answer_permission(session, request_id, answer).await,
+        }
+    }
+
+    async fn answer_input(
+        &mut self,
+        session: &ProviderSessionId,
+        request_id: &str,
+        answer: InputAnswer,
+    ) -> Result<(), ProviderError> {
+        match self {
+            Self::Codex(client) => client.answer_input(session, request_id, answer).await,
+            Self::Claude(client) => client.answer_input(session, request_id, answer).await,
+            #[cfg(test)]
+            Self::Fake(client) => client.answer_input(session, request_id, answer).await,
         }
     }
 

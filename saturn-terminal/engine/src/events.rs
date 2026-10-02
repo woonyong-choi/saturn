@@ -207,6 +207,11 @@ impl Engine {
                 };
                 self.on_permission_request(chat, live, request).await;
             }
+            ProviderEvent::InputRequested {
+                request_id,
+                request,
+                ..
+            } => self.offer_input(chat, live, request_id, request).await,
             ProviderEvent::ContextSize { tokens, .. } => {
                 self.on_context_size(chat, live, *tokens).await;
             }
@@ -456,14 +461,7 @@ impl Engine {
             return;
         };
         let label = self.flow.tasks.assign(task);
-        let waiting = u32::try_from(
-            self.flow
-                .permissions
-                .values()
-                .filter(|pending| pending.chat == chat)
-                .count(),
-        )
-        .unwrap_or(u32::MAX);
+        let waiting = self.waiting_in_chat(chat);
         self.flow.permissions.insert(
             request_id.to_owned(),
             PendingPermission {
@@ -535,26 +533,63 @@ impl Engine {
                 .await;
         }
         self.rpc.resolve_permission(client, &request_id).await;
-        let is_still_waiting = self
-            .flow
-            .permissions
-            .values()
-            .any(|other| other.task == pending.task);
-        if !is_still_waiting {
-            self.notify_task(
-                pending.chat,
-                pending.task,
-                TaskState::Running,
-                Some(pending.provider),
-                None,
-            )
-            .await;
-        }
+        let state = self
+            .waiting_state(pending.task)
+            .unwrap_or(TaskState::Running);
+        self.notify_task(
+            pending.chat,
+            pending.task,
+            state,
+            Some(pending.provider),
+            None,
+        )
+        .await;
         Ok(())
     }
 
-    /// 턴이 끝났거나 흐름이 끊겨 더는 답할 수 없는 요청의 창을 지운다.
+    // cost: time O(p + i), heap O(1), stack O(1)
+    // vars: p = 대기 허가 요청 수, i = 대기 입력 요청 수
+    // basis: estimate
+    /// 채팅에서 답을 기다리는 허가 요청과 입력 요청 수.
+    pub(crate) fn waiting_in_chat(&self, chat: ChatId) -> u32 {
+        let permissions = self
+            .flow
+            .permissions
+            .values()
+            .filter(|pending| pending.chat == chat)
+            .count();
+        let inputs = self
+            .flow
+            .inputs
+            .values()
+            .filter(|pending| pending.chat == chat)
+            .count();
+        u32::try_from(permissions + inputs).unwrap_or(u32::MAX)
+    }
+
+    // cost: time O(p + i), heap O(1), stack O(1)
+    // vars: p = 대기 허가 요청 수, i = 대기 입력 요청 수
+    // basis: estimate
+    /// 작업이 아직 기다리는 것이 있으면 그 상태. 허가 요청이 먼저이고, 없으면 `None`.
+    pub(crate) fn waiting_state(&self, task: TaskId) -> Option<TaskState> {
+        if self
+            .flow
+            .permissions
+            .values()
+            .any(|pending| pending.task == task)
+        {
+            return Some(TaskState::AwaitingPermission);
+        }
+        self.flow
+            .inputs
+            .values()
+            .any(|pending| pending.task == task)
+            .then_some(TaskState::AwaitingInput)
+    }
+
+    /// 턴이 끝났거나 흐름이 끊겨 더는 답할 수 없는 허가 요청과 입력 요청의 창을 지운다.
     pub(crate) async fn clear_permissions(&mut self, agent: AgentId) {
+        self.clear_inputs(agent).await;
         let ended: Vec<String> = self
             .flow
             .permissions

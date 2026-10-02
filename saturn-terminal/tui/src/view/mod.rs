@@ -6,6 +6,8 @@ pub(crate) mod composer;
 pub(crate) mod folder_trust;
 pub(crate) mod footer;
 pub(crate) mod full_transcript;
+pub(crate) mod input_form;
+pub(crate) mod input_request;
 pub(crate) mod live_area;
 pub(crate) mod model_picker;
 pub(crate) mod permission;

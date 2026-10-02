@@ -9,6 +9,7 @@ use crate::i18n;
 use crate::keys::Action;
 use crate::state::ChatState;
 use crate::view::folder_trust::TrustChoice;
+use crate::view::input_request::InputQueue;
 use crate::view::live_area::LiveArea;
 use crate::view::permission::PermissionQueue;
 use crate::view::resume_prompt::ResumeOutcome;
@@ -215,6 +216,7 @@ impl App {
         self.live = LiveArea::new();
         self.popup = None;
         self.permissions = PermissionQueue::new();
+        self.inputs = InputQueue::new();
         self.window = None;
         self.start = None;
         self.resume_asked = false;

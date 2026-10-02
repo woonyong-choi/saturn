@@ -6,6 +6,7 @@ use saturn_protocol::event::{
     Activity, PermissionCall, PermissionTool, ProviderEvent, ToolCategory, ToolDetail, TurnOrigin,
 };
 use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, SubagentId};
+use saturn_protocol::input::{InputField, InputFieldKind, InputRequest};
 use saturn_protocol::rpc::ModelChoice;
 use saturn_protocol::state::InputState;
 use serde_json::{Value, json};
@@ -115,10 +116,15 @@ impl Flow {
 
     /// 소켓으로 붙은 TUI. 붙는 동안 engine 요청 처리를 돌리고, 그 뒤의 알림은 직접 부른 처리에서 온다.
     pub(super) async fn client(&mut self) -> Client {
+        self.attach().await.0
+    }
+
+    /// `client`와 같고 붙을 때 받은 알림도 돌려준다.
+    pub(super) async fn attach(&mut self) -> (Client, Vec<Notification>) {
         let mut client = Client::connect(&self.fixture.socket()).await;
         let chat = self.chat;
         let workdir = self.fixture.workdir.display().to_string();
-        drive(&mut self.engine, async {
+        let greeting = drive(&mut self.engine, async {
             client
                 .attach(
                     1,
@@ -130,10 +136,10 @@ impl Flow {
                         add_dirs: Vec::new(),
                     },
                 )
-                .await;
+                .await
         })
         .await;
-        client
+        (client, greeting)
     }
 
     /// router 호출 수. 시작 확인의 두 호출은 뺀다.
@@ -410,6 +416,26 @@ pub(super) fn permission(agent: AgentId, request_id: &str) -> ProviderEvent {
         summary: "run cargo test".to_owned(),
         reason: "the build needs checking".to_owned(),
         call: None,
+    }
+}
+
+/// 질문 하나를 가진 입력 요청.
+pub(super) fn input_request(agent: AgentId, request_id: &str) -> ProviderEvent {
+    ProviderEvent::InputRequested {
+        agent,
+        request_id: request_id.to_owned(),
+        request: InputRequest {
+            message: String::new(),
+            fields: vec![InputField {
+                id: "q".to_owned(),
+                title: "Which?".to_owned(),
+                description: String::new(),
+                kind: InputFieldKind::Text,
+                is_required: true,
+                is_secret: false,
+            }],
+            url: None,
+        },
     }
 }
 

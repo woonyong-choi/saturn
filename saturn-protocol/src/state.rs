@@ -36,6 +36,8 @@ pub enum TaskState {
     AnsweredTreeRunning,
     /// 경과 시간이 멈춘다.
     AwaitingPermission,
+    /// provider의 입력 요청에 답하기를 기다린다. 경과 시간이 멈춘다.
+    AwaitingInput,
     Held,
     /// 결과 불명.
     NeedsCheck,

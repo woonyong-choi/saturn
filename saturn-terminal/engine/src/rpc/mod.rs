@@ -214,41 +214,81 @@ impl RpcServer {
             tracing::error!("offer_permission called with a non-permission notification");
             return;
         };
+        let request_id = request_id.clone();
+        self.offer(chat, request_id, request);
+    }
+
+    /// 입력 요청도 허가 요청처럼 답이 올 때까지 두고 다음 `greet`에서 보낸다.
+    pub(crate) async fn offer_input(&mut self, chat: ChatId, request: Notification) {
+        let Notification::InputRequested { request_id, .. } = &request else {
+            tracing::error!("offer_input called with a non-input notification");
+            return;
+        };
+        let request_id = request_id.clone();
+        self.offer(chat, request_id, request);
+    }
+
+    fn offer(&mut self, chat: ChatId, request_id: String, request: Notification) {
         self.broadcast_except(Some(chat), None, &request);
         self.pending_permissions.push(PendingPermission {
             chat,
-            request_id: request_id.clone(),
+            request_id,
             notification: request,
         });
     }
 
     /// 다른 클라이언트에 `PermissionResolved`를 보내 창을 지우게 한다.
     pub(crate) async fn resolve_permission(&mut self, answered_by: ClientId, request_id: &str) {
-        let position = self
-            .pending_permissions
-            .iter()
-            .position(|pending| pending.request_id == request_id);
-        let chat = position.map(|index| self.pending_permissions.remove(index).chat);
         let resolved = Notification::PermissionResolved {
             request_id: request_id.to_owned(),
         };
-        self.broadcast_except(chat, Some(answered_by), &resolved);
+        self.resolve(answered_by, request_id, &resolved);
+    }
+
+    /// 다른 클라이언트에 `InputResolved`를 보내 창을 지우게 한다.
+    pub(crate) async fn resolve_input(&mut self, answered_by: ClientId, request_id: &str) {
+        let resolved = Notification::InputResolved {
+            request_id: request_id.to_owned(),
+        };
+        self.resolve(answered_by, request_id, &resolved);
     }
 
     /// 답 없이 끝난 요청(턴이 끝났거나 흐름이 끊김)의 창을 모든 클라이언트에서 지운다. 모르는 요청이면 아무것도 하지 않는다.
     pub(crate) async fn withdraw_permission(&mut self, request_id: &str) {
-        let Some(index) = self
-            .pending_permissions
-            .iter()
-            .position(|pending| pending.request_id == request_id)
-        else {
-            return;
-        };
-        let chat = self.pending_permissions.remove(index).chat;
         let resolved = Notification::PermissionResolved {
             request_id: request_id.to_owned(),
         };
-        self.broadcast_except(Some(chat), None, &resolved);
+        self.withdraw(request_id, &resolved);
+    }
+
+    /// 답 없이 끝난 입력 요청의 창을 모든 클라이언트에서 지운다. 모르는 요청이면 아무것도 하지 않는다.
+    pub(crate) async fn withdraw_input(&mut self, request_id: &str) {
+        let resolved = Notification::InputResolved {
+            request_id: request_id.to_owned(),
+        };
+        self.withdraw(request_id, &resolved);
+    }
+
+    fn resolve(&mut self, answered_by: ClientId, request_id: &str, resolved: &Notification) {
+        let chat = self.take_pending(request_id);
+        self.broadcast_except(chat, Some(answered_by), resolved);
+    }
+
+    fn withdraw(&mut self, request_id: &str, resolved: &Notification) {
+        if let Some(chat) = self.take_pending(request_id) {
+            self.broadcast_except(Some(chat), None, resolved);
+        }
+    }
+
+    // cost: time O(q), heap O(1), stack O(1)
+    // vars: q = 보관한 요청 수
+    // basis: estimate
+    fn take_pending(&mut self, request_id: &str) -> Option<ChatId> {
+        let index = self
+            .pending_permissions
+            .iter()
+            .position(|pending| pending.request_id == request_id)?;
+        Some(self.pending_permissions.remove(index).chat)
     }
 
     /// 0이면 TUI 없음(background).

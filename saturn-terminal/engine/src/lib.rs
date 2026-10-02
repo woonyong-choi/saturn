@@ -27,6 +27,7 @@ mod dispatch;
 mod events;
 mod flow;
 mod handoff;
+mod inputs;
 mod intake;
 mod launch;
 mod models;
@@ -577,6 +578,9 @@ impl Engine {
             Request::CloseHeld { chat, task } => self.close_held(chat, task).await,
             Request::AnswerPermission { request_id, answer } => {
                 self.answer_permission(client, request_id, answer).await
+            }
+            Request::AnswerInput { request_id, answer } => {
+                self.answer_input(client, request_id, answer).await
             }
             Request::AnswerFeedback { judgment, correct } => {
                 self.answer_feedback(judgment, correct).await

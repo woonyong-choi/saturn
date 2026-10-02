@@ -70,17 +70,19 @@ provider·조건별 5회, 총 20회다. 실제 명령 이벤트를 private raw l
 
 ## 실험 3. 입력 요청 형식과 왕복
 
-Codex 7회, Claude 3회다. 모든 기록된 요청은 드라이버 응답 후 왕복 지표가 1이었다.
+Codex 7회, Claude 3회다. Codex `item/tool/requestUserInput`을 뺀 기록된 요청은 드라이버 응답 후 왕복 지표가 1이었다. `requestUserInput`은 요청 수신만 확인했고 왕복은 확인하지 못했다(바로잡음 참조).
 
 | provider / 원문 형식 | 요청 기록 | 왕복 |
 |---|---:|---:|
 | Codex `mcpServer/elicitation/request` | 8 | 8 |
-| Codex `item/tool/requestUserInput` | 1 | 1 |
+| Codex `item/tool/requestUserInput` | 1 | 0 (바로잡음) |
 | Claude `control_request` (`AskUserQuestion`) | 3 | 3 |
 
-Codex form 요청에는 문자열·정수·불리언·단일 선택·다중 선택 schema가 원문으로 남았다. URL 요청에는 `url`과 `elicitationId`가 남았다. Codex agent request는 `default_mode_request_user_input` 활성화 뒤 `questions` 배열과 `isBlocking`을 전달했고, 응답은 `answers` 객체였다. Claude는 `control_request.request.subtype=can_use_tool`, `tool_name=AskUserQuestion`으로 왔고, `updatedInput.answers` 응답 뒤 후속 출력에서 답을 반영했다.
+Codex form 요청에는 문자열·정수·불리언·단일 선택·다중 선택 schema가 원문으로 남았다. URL 요청에는 `url`과 `elicitationId`가 남았다. Codex agent request는 `default_mode_request_user_input` 활성화 뒤 `questions` 배열과 `isBlocking`을 전달했다. Claude는 `control_request.request.subtype=can_use_tool`, `tool_name=AskUserQuestion`으로 왔고, `updatedInput.answers` 응답 뒤 후속 출력에서 답을 반영했다.
 
-판정: H4 확인. Saturn의 adapter는 provider별 원문을 보존하고, Codex는 MCP elicitation과 agent user-input을 별도 계약으로 다뤄야 하며, Claude는 stream-json control request와 `updatedInput.answers`를 별도 처리해야 한다.
+바로잡음(2026-10-03): 이 절의 처음 기록은 `item/tool/requestUserInput` 왕복을 확인으로 적었으나 틀렸다. 드라이버는 질문 id마다 글을 바로 담은 `{"answers": {"preference": "experiment-answer"}}`로 답했고, 이 모양은 올바르지 않아 모델은 `{"answers":{}}`(빈 `answers`)를 받았다(원자료 `data/raw/exp3-20261002T135843Z-1e4de2b.jsonl`의 `exp3-codex-agent-request`, `function_call_output`). 왕복 지표는 요청이 도착했는지만 봐서 이 실패를 잡지 못했다. 올바른 응답 모양은 `{"answers": {"<질문 id>": {"answers": ["<글>"]}}}`이다. 2026-10-03에 codex-cli 0.158.0 app-server를 `--enable default_mode_request_user_input`으로 띄워 이 모양으로 답했고, 모델이 고른 선택지를 그대로 되풀이하는 것을 수동으로 확인했다. 이 수동 확인은 1회이고 원자료를 남기지 않았다. 원자료와 위 표의 수치는 고치지 않았다.
+
+판정: H4 부분 확인. 요청 원문 세 형식과 MCP elicitation, Claude `updatedInput.answers`의 왕복은 확인했다. Codex `requestUserInput`은 요청 형식만 확인했고, 올바른 응답 모양은 수동 1회로 확인했다. Saturn의 adapter는 provider별 원문을 보존하고, Codex는 MCP elicitation과 agent user-input을 별도 계약으로 다뤄야 하며, Claude는 stream-json control request와 `updatedInput.answers`를 별도 처리해야 한다.
 
 ## 실험 4. 중단·강제 종료 표시
 
@@ -99,7 +101,7 @@ Claude의 원문 화면은 `data/raw/exp4-20261002T152523Z-a18c242-claude-*.txt`
 
 1. 맥락 정리 두 전략은 이번 합성 표본에서 우열이 없었다. 실제 packet compiler/tokenizer 연결 뒤 다시 측정할 때까지 선택을 보류한다.
 2. 상태 경고는 중복 명령을 줄이는 신호가 있었지만 첫 상태 확인을 보장하지 않았다. 재개 계약에는 상태 확인 지시와 중복 실행 방지를 별도 규칙으로 둔다.
-3. 입력 요청은 Codex MCP elicitation, Codex agent request, Claude control request가 서로 다른 원문 계약임을 확인했다.
+3. 입력 요청은 Codex MCP elicitation, Codex agent request, Claude control request가 서로 다른 원문 계약임을 확인했다. Codex agent request의 왕복은 드라이버 응답 오류로 기록 실험에서는 확인하지 못했고, 올바른 응답 모양은 수동으로 확인했다.
 4. TUI 화면 수집은 Claude의 `Interrupted` 문구 2개 유효 회차를 남겼지만 3회 반복과 Codex 실행이 성립하지 않았다. provider 공통 중단·강제 종료 문구는 여전히 미확인이다.
 
 ## 재현과 검증

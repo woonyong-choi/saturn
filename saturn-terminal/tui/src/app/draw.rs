@@ -13,6 +13,7 @@ use crate::view::composer::ComposerView;
 use crate::view::folder_trust::FolderTrustView;
 use crate::view::footer::FooterView;
 use crate::view::full_transcript::FullTranscriptView;
+use crate::view::input_request::InputView;
 use crate::view::live_area::LiveAreaView;
 use crate::view::model_picker::ModelPickerView;
 use crate::view::permission::PermissionView;
@@ -124,6 +125,13 @@ impl App {
                 queue: &self.permissions,
                 lang,
                 guarded: !self.permissions.accepts_input(now),
+            };
+            view.render(frame, area);
+        } else if !self.inputs.is_empty() {
+            let view = InputView {
+                queue: &self.inputs,
+                lang,
+                guarded: !self.inputs.accepts_input(now),
             };
             view.render(frame, area);
         }

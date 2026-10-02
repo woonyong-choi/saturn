@@ -11,7 +11,10 @@ pub(crate) const LABEL_RANGE: std::ops::RangeInclusive<char> = 'A'..='Z';
 pub(crate) fn is_live(state: TaskState) -> bool {
     matches!(
         state,
-        TaskState::Running | TaskState::AnsweredTreeRunning | TaskState::AwaitingPermission
+        TaskState::Running
+            | TaskState::AnsweredTreeRunning
+            | TaskState::AwaitingPermission
+            | TaskState::AwaitingInput
     )
 }
 
@@ -84,6 +87,7 @@ mod tests {
     #[test]
     fn is_live_held_and_finished_are_not_live() {
         assert!(is_live(TaskState::AwaitingPermission));
+        assert!(is_live(TaskState::AwaitingInput));
         assert!(!is_live(TaskState::Held));
         assert!(!is_live(TaskState::Done));
     }

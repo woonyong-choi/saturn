@@ -30,6 +30,7 @@ use crate::terminal::{self, Screen};
 use crate::view::composer::Composer;
 use crate::view::folder_trust::FolderTrust;
 use crate::view::full_transcript::FullTranscript;
+use crate::view::input_request::InputQueue;
 use crate::view::live_area::LiveArea;
 use crate::view::model_picker::ModelPicker;
 use crate::view::permission::PermissionQueue;
@@ -110,6 +111,7 @@ pub(crate) struct App {
     pub popup: Option<Popup>,
     pub popup_suppress: PopupSuppress,
     pub permissions: PermissionQueue,
+    pub inputs: InputQueue,
     pub window: Option<Window>,
     /// 첫 대화 기록 셀이 생기면 머리 셀로 옮기고 `None`.
     pub start: Option<StartInfo>,
@@ -158,6 +160,7 @@ impl App {
             popup: None,
             popup_suppress: PopupSuppress::default(),
             permissions: PermissionQueue::new(),
+            inputs: InputQueue::new(),
             window: None,
             start: None,
             chat_folder: None,
@@ -195,7 +198,7 @@ impl App {
             }
             AppEvent::Terminal(Event::Mouse(mouse)) => self.on_mouse(mouse, now),
             AppEvent::Terminal(Event::Paste(text)) => {
-                self.on_paste(text);
+                self.on_paste(text, now);
                 Vec::new()
             }
             AppEvent::Terminal(Event::Resize(width, height)) => {
@@ -227,6 +230,9 @@ impl App {
         }
         if !self.permissions.is_empty() {
             return KeyArea::Permission;
+        }
+        if !self.inputs.is_empty() {
+            return KeyArea::Input;
         }
         match &self.window {
             Some(Window::Resume(_)) => return KeyArea::ResumePrompt,
@@ -273,6 +279,9 @@ impl App {
         if area == KeyArea::Permission && !self.permissions.accepts_input(now) {
             return Vec::new();
         }
+        if area == KeyArea::Input {
+            return self.on_input_key(key, now);
+        }
         if self.edit_text_line(area, key) {
             return Vec::new();
         }
@@ -293,6 +302,25 @@ impl App {
             }
             // 창 화면의 `Ctrl+C`는 입력창과 같이 뷰 해제부터 처리한다.
             None if is_ctrl_c(key) => self.interrupt(),
+            None => Vec::new(),
+        }
+    }
+
+    // cost: time O(f·o), heap O(f·o), stack O(1)
+    // vars: f = 입력 요청의 칸 수, o = 선택지 수
+    // basis: estimate
+    /// 입력 요청 창은 전역 키와 `Ctrl+C`만 따로 읽고 나머지는 폼이 받는다.
+    fn on_input_key(&mut self, key: KeyEvent, now: Instant) -> Vec<Effect> {
+        if let Some(action) = keys::global(key) {
+            return self.on_action(action, now);
+        }
+        if is_ctrl_c(key) {
+            return self.interrupt();
+        }
+        match self.inputs.on_key(key, now) {
+            Some((request_id, answer)) => {
+                vec![Effect::Send(Request::AnswerInput { request_id, answer })]
+            }
             None => Vec::new(),
         }
     }
@@ -398,11 +426,15 @@ impl App {
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    fn on_paste(&mut self, text: String) {
+    fn on_paste(&mut self, text: String, now: Instant) {
         if let Some(Window::RouterKey(prompt)) = &mut self.window {
             text.chars()
                 .filter(|c| !c.is_control())
                 .for_each(|c| prompt.input.push(c));
+            return;
+        }
+        if self.permissions.is_empty() && !self.inputs.is_empty() {
+            self.inputs.paste(&text, now);
             return;
         }
         if self.window.is_some() || !self.permissions.is_empty() {

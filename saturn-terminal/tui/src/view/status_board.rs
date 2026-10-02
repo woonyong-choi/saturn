@@ -33,6 +33,8 @@ pub(crate) struct RunningLine {
     pub activity: Option<Activity>,
     /// `activity`보다 앞선다.
     pub awaiting_permission: bool,
+    /// `awaiting_permission` 다음으로 앞선다.
+    pub awaiting_input: bool,
     /// 도구 호출이 시작되고 3초 안에 허가 요청이나 진행 이벤트가 없다. `awaiting_permission` 다음으로 앞선다.
     pub approval_pending: bool,
     /// 0이 아니면 하는 일 대신 보인다.
@@ -393,6 +395,8 @@ impl StatusBoardView<'_> {
 fn running_text(lang: Lang, line: &RunningLine) -> String {
     let doing = if line.awaiting_permission {
         Some(lang.tr(i18n::AWAITING_PERMISSION).to_string())
+    } else if line.awaiting_input {
+        Some(lang.tr(i18n::AWAITING_INPUT).to_string())
     } else if line.approval_pending {
         Some(approval_pending_text(lang, line.provider))
     } else if line.subagents > 0 {
@@ -470,6 +474,7 @@ fn running_line(task: &TaskView, now: Instant) -> RunningLine {
         elapsed: task.stopwatch.elapsed(now),
         activity: task.activity.clone(),
         awaiting_permission: task.state == TaskState::AwaitingPermission,
+        awaiting_input: task.state == TaskState::AwaitingInput,
         approval_pending: task.tool_started_at.is_some_and(|started| {
             now.saturating_duration_since(started) >= APPROVAL_PENDING_AFTER
         }),
@@ -670,6 +675,19 @@ mod tests {
     }
 
     #[test]
+    fn awaiting_input_shows_its_own_phrase() {
+        let mut state = ChatState::new();
+        let now = Instant::now();
+        task(&mut state, 1, 'A', TaskState::AwaitingInput, now);
+
+        let ko = texts(&build(&state, now)).join("\n");
+
+        assert!(ko.contains("입력 기다림"), "{ko}");
+        assert!(!ko.contains("허가 기다림"), "{ko}");
+        assert_eq!(Lang::En.tr(i18n::AWAITING_INPUT), "waiting for input");
+    }
+
+    #[test]
     fn running_line_with_output_shows_fields_and_subagents() {
         let line = StatusLine::Running(RunningLine {
             task: TaskId(1),
@@ -679,6 +697,7 @@ mod tests {
             elapsed: Duration::from_secs(60),
             activity: Some(Activity::Thinking),
             awaiting_permission: false,
+            awaiting_input: false,
             approval_pending: false,
             subagents: 2,
             has_output: true,

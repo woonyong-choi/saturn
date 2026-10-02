@@ -16,12 +16,14 @@ use saturn_protocol::event::{
     ToolDetail, UsageReport, UsageScope,
 };
 use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SubagentId};
+use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::{mpsc, oneshot};
 
+use super::claude_input::{self, ASK_TOOL};
 use super::codex::mask_values;
 use super::tool_detail::{classify_command, line_change};
 use super::{AppliedSettings, LaunchSpec, TurnOriginTracker, UserProviderConfig};
@@ -125,6 +127,8 @@ struct SessionState {
     control_waiters: HashMap<String, oneshot::Sender<Value>>,
     /// 답을 기다리는 `can_use_tool` 요청. 키는 `request_id`, 값은 허용 답에 되돌려 줄 요청 `input`.
     permissions: HashMap<String, Value>,
+    /// 답을 기다리는 `AskUserQuestion` 요청. 키는 `request_id`, 값은 답에 되돌려 줄 요청 `input`.
+    inputs: HashMap<String, Value>,
 }
 
 impl SessionState {
@@ -141,6 +145,7 @@ impl SessionState {
             context_tokens: None,
             control_waiters: HashMap::new(),
             permissions: HashMap::new(),
+            inputs: HashMap::new(),
         }
     }
 }
@@ -493,6 +498,43 @@ impl ProviderClient for ClaudeClient {
         written
     }
 
+    /// `AskUserQuestion`에 `control_response`로 답한다. 모르는 session이나 요청이면 `NotSent`. 쓰기 전에 실패하면
+    /// 요청을 되돌려 다시 답할 수 있게 한다.
+    async fn answer_input(
+        &mut self,
+        session: &ProviderSessionId,
+        request_id: &str,
+        answer: InputAnswer,
+    ) -> Result<(), ProviderError> {
+        let state = self
+            .sessions
+            .get(session)
+            .map(|link| Arc::clone(&link.state))
+            .ok_or_else(|| ProviderError::NotSent {
+                reason: format!("unknown session {}", session.0),
+            })?;
+        let input =
+            lock(&state)
+                .inputs
+                .remove(request_id)
+                .ok_or_else(|| ProviderError::NotSent {
+                    reason: format!("unknown input request {request_id}"),
+                })?;
+        let message = json!({
+            "type": "control_response",
+            "response": {
+                "subtype": "success",
+                "request_id": request_id,
+                "response": claude_input::response(&input, &answer),
+            },
+        });
+        let written = self.write_line(session, &message).await;
+        if let Err(ProviderError::NotSent { .. }) = &written {
+            lock(&state).inputs.insert(request_id.to_owned(), input);
+        }
+        written
+    }
+
     /// `session_id`는 호출자가 보관해 `--resume`에 쓴다. 모르는 session이면 아무것도 하지 않는다.
     async fn close_session(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
         let Some(link) = self.sessions.remove(session) else {
@@ -636,6 +678,18 @@ fn convert_line(state: &mut SessionState, line: &serde_json::Value) -> Vec<Provi
             let summary =
                 target.map_or_else(|| tool.to_owned(), |target| format!("{tool}: {target}"));
             let request_id = line["request_id"].as_str().unwrap_or_default().to_owned();
+            if tool == ASK_TOOL
+                && let Some(asked) = claude_input::request(&request["input"])
+            {
+                state
+                    .inputs
+                    .insert(request_id.clone(), request["input"].clone());
+                return vec![ProviderEvent::InputRequested {
+                    agent,
+                    request_id,
+                    request: asked,
+                }];
+            }
             state
                 .permissions
                 .insert(request_id.clone(), request["input"].clone());
@@ -1023,6 +1077,7 @@ async fn read_loop(
         let mut state = lock(&state);
         state.control_waiters.clear();
         state.permissions.clear();
+        state.inputs.clear();
         let lost = state.turn_active || !state.running.is_empty();
         state.turn_active = false;
         state.running.clear();
@@ -1073,6 +1128,7 @@ mod tests {
     use saturn_core::permission::{Mode, Policy, Rule, Verdict};
     use saturn_protocol::event::TurnOrigin;
     use saturn_protocol::ids::{Provider, SettingsRevision};
+    use saturn_protocol::input::InputValue;
 
     use super::*;
     use crate::providers::{PermissionLaunch, SaturnDefaults};
@@ -1122,6 +1178,8 @@ while (my $line = <STDIN>) {
     result();
   } elsif ($text eq "ask") {
     out({ type => "control_request", request_id => "perm-1", request => { subtype => "can_use_tool", tool_name => "Bash", input => { command => "rm -rf build" }, decision_reason => "outside workdir" } });
+  } elsif ($text eq "ask-user") {
+    out({ type => "control_request", request_id => "ask-1", request => { subtype => "can_use_tool", tool_name => "AskUserQuestion", display_name => "AskUserQuestion", input => { questions => [ { question => "What is the name of your project?", header => "Project name", options => [ { label => "Saturn WT", description => "The Saturn Waterfall Testing project" }, { label => "Other project", description => "A different project name" } ], multiSelect => JSON::PP::false } ] }, tool_use_id => "toolu_ask", requires_user_interaction => JSON::PP::true } });
   } elsif ($text eq "secret") {
     assistant([ { type => "text", text => "sk-secret-1234" } ], undef);
     result();
@@ -1660,6 +1718,119 @@ while (my $line = <STDIN>) {
             json!({ "behavior": "deny", "message": DENY_MESSAGE })
         );
         assert_eq!(received["request_id"], "perm-1");
+    }
+
+    /// `ask-user`로 질문 요청을 받고, 답이 없는 동안 턴이 멈춰 있는지 확인한 뒤 답해서 가짜 provider가 받은 응답을
+    /// 돌려준다.
+    async fn answer_ask_user(answer: InputAnswer) -> (ProviderEvent, Value) {
+        let dir = tempfile::tempdir().unwrap();
+        let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+        let session = client
+            .open_session(spec(dir.path(), None))
+            .await
+            .unwrap()
+            .provider_session;
+        client.send_turn(&session, "ask-user").await.unwrap();
+        let requested = take(&mut client, 1).await.remove(0);
+        let ProviderEvent::InputRequested { request_id, .. } = &requested else {
+            panic!("expected an input request, got {requested:?}");
+        };
+        let stalled = tokio::time::timeout(Duration::from_millis(300), client.next_event()).await;
+        assert!(stalled.is_err(), "turn should wait for the answer");
+
+        client
+            .answer_input(&session, request_id, answer)
+            .await
+            .unwrap();
+        let resumed = take(&mut client, 4).await;
+
+        let ProviderEvent::Text { text, .. } = &resumed[0] else {
+            panic!(
+                "expected the provider to continue with text, got {:?}",
+                resumed[0]
+            );
+        };
+        client.close_session(&session).await.unwrap();
+        let received = text.strip_prefix("answer:").expect("answer prefix");
+        (requested, serde_json::from_str(received).unwrap())
+    }
+
+    #[tokio::test]
+    async fn elicitation_ask_user_question_round_trip_returns_answers_in_updated_input() {
+        let question = "What is the name of your project?";
+        let submit = InputAnswer::Submit {
+            values: vec![(
+                question.to_owned(),
+                InputValue::Selected(vec!["Saturn WT".to_owned()]),
+            )],
+        };
+
+        let (requested, received) = answer_ask_user(submit).await;
+
+        let ProviderEvent::InputRequested {
+            request_id,
+            request,
+            ..
+        } = requested
+        else {
+            unreachable!("answer_ask_user returns an input request");
+        };
+        assert_eq!(request_id, "ask-1");
+        assert_eq!(request.fields[0].id, question);
+        assert_eq!(received["request_id"], "ask-1");
+        assert_eq!(received["response"]["behavior"], "allow");
+        assert_eq!(
+            received["response"]["updatedInput"]["answers"],
+            json!({ question: "Saturn WT" })
+        );
+        assert_eq!(
+            received["response"]["updatedInput"]["questions"][0]["header"],
+            "Project name"
+        );
+    }
+
+    #[tokio::test]
+    async fn elicitation_ask_user_question_decline_and_cancel_deny_the_call() {
+        for answer in [InputAnswer::Decline, InputAnswer::Cancel] {
+            let (_, received) = answer_ask_user(answer).await;
+
+            assert_eq!(received["response"]["behavior"], "deny");
+            assert_eq!(received["request_id"], "ask-1");
+        }
+    }
+
+    #[tokio::test]
+    async fn elicitation_ask_user_question_is_not_answered_as_a_permission() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+        let session = client
+            .open_session(spec(dir.path(), None))
+            .await
+            .unwrap()
+            .provider_session;
+        client.send_turn(&session, "ask-user").await.unwrap();
+        take(&mut client, 1).await;
+
+        let as_permission = client
+            .answer_permission(&session, "ask-1", PermissionAnswer::AllowOnce)
+            .await;
+        let unknown = client
+            .answer_input(&session, "other", InputAnswer::Cancel)
+            .await;
+        let again = {
+            client
+                .answer_input(&session, "ask-1", InputAnswer::Cancel)
+                .await
+                .unwrap();
+            client
+                .answer_input(&session, "ask-1", InputAnswer::Cancel)
+                .await
+        };
+
+        assert!(matches!(as_permission, Err(ProviderError::NotSent { .. })));
+        assert!(matches!(unknown, Err(ProviderError::NotSent { .. })));
+        assert!(matches!(again, Err(ProviderError::NotSent { .. })));
+        client.close_session(&session).await.unwrap();
     }
 
     #[tokio::test]
