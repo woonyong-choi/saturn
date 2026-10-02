@@ -323,6 +323,11 @@ pub enum ChatNotice {
     Stopped {
         held: Vec<TaskLabel>,
     },
+    /// provider 연결을 다시 시작했다. `text`는 화면에 그대로 보이는 안내 문구다.
+    ProviderRestarted {
+        provider: crate::ids::Provider,
+        text: String,
+    },
     /// 크래시 뒤 증명되지 않은 실행을 보류했다.
     ResumeSuggested {
         held: Vec<TaskLabel>,

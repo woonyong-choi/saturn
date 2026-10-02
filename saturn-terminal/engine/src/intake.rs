@@ -8,7 +8,7 @@ use saturn_core::judges::{
     JudgeError, JudgeRequest, JudgeResponse, JudgmentOutcome, RouteDecision, decide_route,
     questions_for_input, validate,
 };
-use saturn_core::queue::{Permission, QueueError, QueuedInput};
+use saturn_core::queue::{QueueError, QueuedInput};
 use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision};
 use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::{Disposition, InputState};
@@ -19,10 +19,6 @@ use crate::requests::{settings_notification, trust_notification};
 use crate::rpc::ClientId;
 use crate::settings::{Settings, SettingsError};
 use crate::{Engine, EngineError, masked_chain};
-
-/// 모든 입력을 쓰기 권한으로 접수한다. 권한 모드로 읽기 전용 입력을 가르는 규칙은 설계에 없고, 쓰기로 두면
-/// 쓰기 대기가 길어져도 병렬 쓰기가 생기지 않는다.
-const INPUT_PERMISSION: Permission = Permission::Write;
 
 /// 판단 한 번의 결과.
 pub(crate) struct Verdict {
@@ -134,11 +130,13 @@ impl Engine {
     ) -> Result<InputId, EngineError> {
         let workdir = self.attached_workdir(client, chat)?;
         let settings = self.fix_settings(client, chat, &workdir).await?;
+        self.note_rules_revision(chat, settings).await;
+        let permission = self.input_permission(chat, settings).await;
         let new = crate::store::NewInput {
             chat,
             text,
             settings,
-            permission: INPUT_PERMISSION,
+            permission,
             workdir,
             pinned_model,
             skip_relation,

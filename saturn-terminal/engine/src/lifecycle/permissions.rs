@@ -4,7 +4,7 @@ use saturn_core::permission::{Mode, Rule, Verdict};
 use saturn_core::providers::ProviderError;
 use saturn_protocol::event::{PermissionTool, ProviderEvent};
 use saturn_protocol::ids::{AgentId, Provider};
-use saturn_protocol::rpc::{Notification, PermissionAnswer};
+use saturn_protocol::rpc::{ChatNotice, Notification, PermissionAnswer};
 
 use super::support::{Flow, idle_reply, permission, permission_for, turn_completed};
 use super::*;
@@ -378,4 +378,163 @@ async fn codex_launch_builds_a_dedicated_home_from_the_rules() {
         std::fs::read_to_string(user_codex.join("config.toml")).unwrap(),
         "approval_policy = \"never\"\n"
     );
+}
+
+async fn permission_of_first_input(config: &str) -> saturn_core::queue::Permission {
+    let mut flow = Flow::with_config(config, vec![idle_reply(0.95)]).await;
+    let input = flow.submit("look around").await;
+    flow.record(input).permission
+}
+
+#[tokio::test]
+async fn read_only_mode_accepts_inputs_as_read_only() {
+    use saturn_core::queue::Permission;
+
+    assert_eq!(
+        permission_of_first_input("[permission]\nmode = \"read-only\"\n").await,
+        Permission::ReadOnly
+    );
+    assert_eq!(permission_of_first_input("").await, Permission::Write);
+    assert_eq!(
+        permission_of_first_input("[permission]\nmode = \"ask\"\n").await,
+        Permission::Write
+    );
+}
+
+#[tokio::test]
+async fn read_only_mode_with_an_allow_rule_keeps_inputs_as_write() {
+    let config = "[permission]\nmode = \"read-only\"\n[permission.edit]\n\"src/*\" = \"allow\"\n";
+
+    assert_eq!(
+        permission_of_first_input(config).await,
+        saturn_core::queue::Permission::Write
+    );
+}
+
+#[tokio::test]
+async fn chat_layer_mode_decides_the_input_permission() {
+    let mut flow = Flow::with_config("", vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    flow.engine
+        .set_permission_mode(flow.chat, "read-only")
+        .await
+        .unwrap();
+
+    let input = flow.submit("look around").await;
+
+    assert_eq!(
+        flow.record(input).permission,
+        saturn_core::queue::Permission::ReadOnly
+    );
+}
+
+#[tokio::test]
+async fn changed_codex_rules_mark_the_connection_stale_until_they_match_again() {
+    let mut flow = Flow::new(Vec::new()).await;
+    let revision = flow.engine.settings.current().unwrap();
+    let current = crate::providers::rules_fingerprint(
+        &flow
+            .engine
+            .settings
+            .at(&flow.engine.store, revision)
+            .await
+            .unwrap()
+            .permission()
+            .rules,
+    );
+
+    flow.engine.note_rules_revision(flow.chat, revision).await;
+    assert!(flow.engine.flow.rules_stale.is_empty());
+
+    flow.engine
+        .flow
+        .rules_of_connection
+        .insert(flow.chat, "older-rules".to_owned());
+    flow.engine.note_rules_revision(flow.chat, revision).await;
+    assert!(flow.engine.flow.rules_stale.contains(&flow.chat));
+
+    flow.engine
+        .flow
+        .rules_of_connection
+        .insert(flow.chat, current);
+    flow.engine.note_rules_revision(flow.chat, revision).await;
+    assert!(flow.engine.flow.rules_stale.is_empty());
+}
+
+#[tokio::test]
+async fn stale_codex_connection_restarts_after_the_turn_ends_and_reopens_the_session() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    flow.add_provider(Provider::Codex);
+    let mut client = flow.client().await;
+    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.submit("write the cache module").await;
+    let agent = flow.agent();
+    flow.engine
+        .flow
+        .rules_of_connection
+        .insert(flow.chat, "older-rules".to_owned());
+    flow.engine.flow.rules_stale.insert(flow.chat);
+
+    flow.event(Provider::Codex, turn_completed(agent)).await;
+
+    assert!(
+        !flow
+            .engine
+            .providers
+            .contains_key(&(flow.chat, Provider::Codex))
+    );
+    assert!(flow.engine.flow.live.is_empty());
+    assert!(flow.engine.flow.rules_stale.is_empty());
+    assert!(flow.engine.flow.rules_of_connection.is_empty());
+    let notice = client
+        .until(|notification| match notification {
+            Notification::ChatNotice {
+                notice: ChatNotice::ProviderRestarted { provider, text },
+                ..
+            } => Some((*provider, text.clone())),
+            _ => None,
+        })
+        .await;
+    assert_eq!(
+        notice,
+        (
+            Provider::Codex,
+            crate::permission::CODEX_RESTART_NOTICE.to_owned()
+        )
+    );
+
+    let reconnected = flow.add_provider(Provider::Codex);
+    flow.submit("add the tests").await;
+
+    let resumed: Vec<_> = reconnected
+        .calls()
+        .into_iter()
+        .filter_map(|call| match call {
+            Call::Open { resume, .. } => Some(resume),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        resumed,
+        vec![Some(saturn_protocol::ids::ProviderSessionId(
+            "fake-session-1".to_owned()
+        ))]
+    );
+}
+
+#[tokio::test]
+async fn stale_codex_connection_waits_while_the_chat_is_running() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.add_provider(Provider::Codex);
+    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.submit("write the cache module").await;
+    flow.engine.flow.rules_stale.insert(flow.chat);
+
+    flow.engine.restart_stale_codex(flow.chat).await;
+
+    assert!(
+        flow.engine
+            .providers
+            .contains_key(&(flow.chat, Provider::Codex))
+    );
+    assert!(flow.engine.flow.rules_stale.contains(&flow.chat));
 }

@@ -356,6 +356,10 @@ impl Engine {
     /// 연결이 끝났다. 그 연결의 열린 session은 닫히고, 진행 중인 실행은 흐름이 끊긴 것으로 다룬다.
     pub(crate) async fn on_connection_closed(&mut self, chat: ChatId, provider: Provider) {
         self.providers.remove(&(chat, provider));
+        if provider == Provider::Codex {
+            self.flow.rules_of_connection.remove(&chat);
+            self.flow.rules_stale.remove(&chat);
+        }
         let lost: Vec<LiveSession> = self
             .flow
             .live

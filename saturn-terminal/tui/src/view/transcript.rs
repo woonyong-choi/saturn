@@ -482,6 +482,7 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
                 Lang::En => format!("{prefix}{} {from} → {to}", lang.tr(i18n::SWITCHED_SUFFIX)),
             }]
         }
+        ChatNotice::ProviderRestarted { text, .. } => vec![format!("{prefix}{text}")],
         ChatNotice::ResumeSuggested { held } => vec![format!(
             "{} {} · {}",
             held_labels(held),

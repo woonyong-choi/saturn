@@ -4,12 +4,112 @@
 use std::path::{Path, PathBuf};
 
 use saturn_core::permission::{Mode, PermissionCall, PermissionTool, Policy, Verdict};
-use saturn_protocol::ids::{AgentId, ChatId};
+use saturn_core::queue::Permission;
+use saturn_protocol::ids::{AgentId, ChatId, Provider, SettingsRevision};
+use saturn_protocol::rpc::ChatNotice;
 
+use crate::providers::rules_fingerprint;
 use crate::settings::{self, SettingsError};
 use crate::{Engine, EngineError};
 
+/// Codex 연결을 다시 시작했을 때 화면에 보이는 안내. 초안 문구다.
+/// TODO(#232): Codex 안내 문구 조사 결과로 교체
+pub(crate) const CODEX_RESTART_NOTICE: &str = "Codex 연결을 다시 시작해 권한 규칙을 적용했습니다";
+
 impl Engine {
+    /// 접수하는 입력의 권한. 읽기 전용 모드이고 쓰기를 허용하는 규칙이 하나도 없을 때만 읽기 전용이라, 같은 폴더의
+    /// 다른 읽기 작업과 병렬로 실행한다. 규칙을 읽지 못하면 쓰기로 둔다.
+    pub(crate) async fn input_permission(
+        &self,
+        chat: ChatId,
+        revision: SettingsRevision,
+    ) -> Permission {
+        let read = async {
+            let configured = self.settings.at(&self.store, revision).await?.permission();
+            let layer = self.store.chat_layer(chat).await?;
+            let mode = settings::chat_layer_mode(layer.as_deref()).unwrap_or(configured.mode);
+            let allows = configured
+                .rules
+                .iter()
+                .any(|rule| rule.verdict == Verdict::Allow);
+            Ok::<bool, EngineError>(mode == Mode::ReadOnly && !allows)
+        };
+        match read.await {
+            Ok(true) => Permission::ReadOnly,
+            Ok(false) => Permission::Write,
+            Err(error) => {
+                tracing::warn!(error = %self.failure_line(&error), "input permission not read, taking it as write");
+                Permission::Write
+            }
+        }
+    }
+
+    /// 입력을 접수할 때 그 번호의 Codex 규칙이 연결을 시작할 때 읽은 규칙과 다른지 본다. 다르면 다음 턴이 끝난 뒤
+    /// 연결을 다시 시작하도록 표시하고, 다시 같아졌으면 표시를 지운다.
+    pub(crate) async fn note_rules_revision(&mut self, chat: ChatId, revision: SettingsRevision) {
+        let Some(started) = self.flow.rules_of_connection.get(&chat) else {
+            return;
+        };
+        let current = match self.settings.at(&self.store, revision).await {
+            Ok(settings) => rules_fingerprint(&settings.permission().rules),
+            Err(error) => {
+                tracing::warn!(error = %self.failure_line(&error), "rules not read, keeping the codex connection");
+                return;
+            }
+        };
+        if *started == current {
+            self.flow.rules_stale.remove(&chat);
+        } else {
+            self.flow.rules_stale.insert(chat);
+        }
+    }
+
+    /// 턴 끝에서 부른다. 규칙이 바뀐 Codex 연결은 채팅에 실행 중인 작업이 없을 때 통째로 닫는다. 열려 있던 session은
+    /// 기록에 그대로 남아, 다음 입력이 새 번호의 규칙으로 연결을 만들고 보관한 provider session id로 이어 연다.
+    pub(crate) async fn restart_stale_codex(&mut self, chat: ChatId) {
+        if !self.flow.rules_stale.contains(&chat) || self.chat_is_running(chat) {
+            return;
+        }
+        self.flow.rules_stale.remove(&chat);
+        self.flow.rules_of_connection.remove(&chat);
+        let Some(connection) = self.providers.remove(&(chat, Provider::Codex)) else {
+            return;
+        };
+        if let Some(group) = connection.shared_group() {
+            if let Err(error) = self
+                .supervisor
+                .stop_tree(group, crate::processes::StopScope::Whole)
+                .await
+            {
+                tracing::warn!(error = %self.failure_line(&error), "failed to stop the codex connection for restart");
+            }
+            self.supervisor.release(group);
+        }
+        drop(connection);
+        let closed: Vec<_> = self
+            .flow
+            .live
+            .iter()
+            .filter(|(_, live)| live.provider == Provider::Codex)
+            .filter(|(_, live)| {
+                self.session_chat(live.session)
+                    .is_ok_and(|owner| owner == chat)
+            })
+            .map(|(agent, _)| *agent)
+            .collect();
+        for agent in closed {
+            self.flow.live.remove(&agent);
+        }
+        self.notify_chat(
+            chat,
+            ChatNotice::ProviderRestarted {
+                provider: Provider::Codex,
+                text: CODEX_RESTART_NOTICE.to_owned(),
+            },
+        )
+        .await;
+    }
+
     /// 규칙은 에이전트가 가장 나중에 시작한 입력에 고정한 설정 번호의 값이고, 모드는 채팅 층에 쓴 값이 있으면 그것이
     /// 먼저다. 채팅 층의 모드는 `/permissions`로 실행 중에 바뀌어 다음 허가 요청부터 적용된다.
     ///
