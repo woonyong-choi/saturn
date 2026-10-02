@@ -1,0 +1,2941 @@
+{
+  "thread_group_count": 72,
+  "model_call_count": 36,
+  "summaries": [
+    {
+      "source": "baseline/accept-1.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 182,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/accept-1.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9a0-15fd-78c0-ae87-65972376e89e",
+      "phase": "accept",
+      "number": 1,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-83e9d0e5-fa57-434e-b377-805bb9c6e0ec"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 38,
+      "capture_duration_ms": 149824,
+      "mcp_item_to_elicitation_ms": 145452,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 3,
+        "item/completed": 2,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "baseline/accept-2.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 210,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/accept-2.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9a2-602a-7752-bfdb-f5ca7380866a",
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 1,
+      "message_count": 52,
+      "capture_duration_ms": 38566,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 10,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "item/started": 3,
+        "item/completed": 3,
+        "item/agentMessage/delta": 28,
+        "thread/tokenUsage/updated": 1,
+        "account/rateLimits/updated": 1
+      }
+    },
+    {
+      "source": "baseline/accept-3.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 208,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/accept-3.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9a2-f7b1-7892-9f88-818ede8fffc9",
+      "phase": "accept",
+      "number": 3,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-2a051609-ab58-444d-9c15-6911a4cef67d"
+        },
+        {
+          "method": "item/completed",
+          "status": "completed",
+          "error": null,
+          "id": "exec-2a051609-ab58-444d-9c15-6911a4cef67d"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": true,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 70,
+      "capture_duration_ms": 13148,
+      "mcp_item_to_elicitation_ms": 1,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 5,
+        "item/completed": 5,
+        "item/agentMessage/delta": 36,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2
+      }
+    },
+    {
+      "source": "baseline/accept-4.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 164,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/accept-4.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9a3-2bbf-7ae1-96dd-14ba173fb7c9",
+      "phase": "accept",
+      "number": 4,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-126c058d-87ca-42d0-bf5b-a118e12ee577"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 38,
+      "capture_duration_ms": 149843,
+      "mcp_item_to_elicitation_ms": 143661,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 3,
+        "item/completed": 2,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "baseline/accept-5.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 189,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/accept-5.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9a5-760d-7303-991e-c138405129ed",
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 50,
+      "capture_duration_ms": 10668,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 3,
+        "item/completed": 3,
+        "item/agentMessage/delta": 27,
+        "thread/tokenUsage/updated": 1,
+        "account/rateLimits/updated": 1
+      }
+    },
+    {
+      "source": "baseline/accept-6.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 168,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/accept-6.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9a6-9091-7f03-99c6-8d4710360177",
+      "phase": "accept",
+      "number": 6,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-77273f38-a9fa-4dc9-8989-8b6b8e311dea"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 1,
+      "message_count": 24,
+      "capture_duration_ms": 149838,
+      "mcp_item_to_elicitation_ms": 123786,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "item/started": 3,
+        "item/completed": 2,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "baseline/accept-7.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 174,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/accept-7.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9a8-e973-7ea2-940e-f04adece1993",
+      "phase": "accept",
+      "number": 7,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-777888fc-18ba-421b-8a82-ff54be5882ee"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 1,
+      "message_count": 41,
+      "capture_duration_ms": 149834,
+      "mcp_item_to_elicitation_ms": 127521,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 3,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "baseline/decline-1.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 185,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/decline-1.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f998-de2f-7be2-bc48-5c04d5d4b57a",
+      "phase": "decline",
+      "number": 1,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-982dfc4f-6523-4e61-8471-e4b5f12ab891"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 40,
+      "capture_duration_ms": 149823,
+      "mcp_item_to_elicitation_ms": 141510,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 3,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "baseline/decline-2.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 209,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/decline-2.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f99b-2853-7770-aef5-298e2cebcffd",
+      "phase": "decline",
+      "number": 2,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-6efb53cd-3f6f-45c1-871c-881d52613867"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 38,
+      "capture_duration_ms": 149805,
+      "mcp_item_to_elicitation_ms": 143478,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 3,
+        "item/completed": 2,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "baseline/decline-3.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 270,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/decline-3.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f99d-72a5-76a1-a831-7da0976732ef",
+      "phase": "decline",
+      "number": 3,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-ce6ce902-f218-4979-b940-19d6b3438088"
+        },
+        {
+          "method": "item/completed",
+          "status": "failed",
+          "error": {
+            "message": "user rejected MCP tool call"
+          },
+          "id": "exec-ce6ce902-f218-4979-b940-19d6b3438088"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 77,
+      "capture_duration_ms": 10719,
+      "mcp_item_to_elicitation_ms": 1,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 5,
+        "item/completed": 5,
+        "item/agentMessage/delta": 43,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2
+      }
+    },
+    {
+      "source": "baseline/decline-4.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 157,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/decline-4.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f99d-9d31-7161-bfa0-0773def7a25c",
+      "phase": "decline",
+      "number": 4,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-14e8a2c5-b19d-4e5d-9c18-a5e32d34bbd1"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 38,
+      "capture_duration_ms": 149823,
+      "mcp_item_to_elicitation_ms": 143635,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 3,
+        "item/completed": 2,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "baseline/decline-5.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 189,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "baseline/decline-5.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f99f-e773-76e0-a380-e877962f1e93",
+      "phase": "decline",
+      "number": 5,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-36b4e7bb-3235-4b45-a1c1-1c41c92cbdaa"
+        },
+        {
+          "method": "item/completed",
+          "status": "failed",
+          "error": {
+            "message": "user rejected MCP tool call"
+          },
+          "id": "exec-36b4e7bb-3235-4b45-a1c1-1c41c92cbdaa"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 81,
+      "capture_duration_ms": 11721,
+      "mcp_item_to_elicitation_ms": 1,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 5,
+        "item/completed": 5,
+        "item/agentMessage/delta": 47,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2
+      }
+    },
+    {
+      "source": "all_requests/accept-1.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 172,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-1.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9ad-75a1-7840-91a0-bf5d35437344",
+      "phase": "accept",
+      "number": 1,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-d027bd1f-cea0-47e3-82db-e37e71ffaabc"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 1,
+      "message_count": 41,
+      "capture_duration_ms": 149833,
+      "mcp_item_to_elicitation_ms": 119608,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 3,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-1.jsonl",
+      "segment": 2,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 152,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-1.jsonl",
+      "segment": 3,
+      "thread_id": "01a0f9b2-bc41-7d61-be5d-388ce336dd26",
+      "phase": "accept",
+      "number": 1,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-a060f021-fb7a-45fb-b295-97f9005b4160"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 40,
+      "capture_duration_ms": 149845,
+      "mcp_item_to_elicitation_ms": 141910,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 3,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-2.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 195,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-2.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9af-bff1-7271-8fa1-086857a14369",
+      "phase": "accept",
+      "number": 2,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-02473e77-301b-4a15-accf-36efe943ba70"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 40,
+      "capture_duration_ms": 149811,
+      "mcp_item_to_elicitation_ms": 142577,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 3,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-2.jsonl",
+      "segment": 2,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 174,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-2.jsonl",
+      "segment": 3,
+      "thread_id": "01a0f9b5-0687-72b0-9b21-019f6f39a192",
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 49,
+      "capture_duration_ms": 11338,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 7,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 3,
+        "item/completed": 3,
+        "item/agentMessage/delta": 28,
+        "thread/tokenUsage/updated": 1,
+        "account/rateLimits/updated": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-3.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 175,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-3.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9b2-0a29-7b70-82ab-455bcda580c8",
+      "phase": "accept",
+      "number": 3,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-d69cd0ac-a9bc-4c67-bb74-7e8a62d0a25a"
+        },
+        {
+          "method": "item/completed",
+          "status": "completed",
+          "error": null,
+          "id": "exec-d69cd0ac-a9bc-4c67-bb74-7e8a62d0a25a"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": true,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 71,
+      "capture_duration_ms": 10256,
+      "mcp_item_to_elicitation_ms": 0,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 5,
+        "item/completed": 5,
+        "item/agentMessage/delta": 37,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2
+      }
+    },
+    {
+      "source": "all_requests/accept-3.jsonl",
+      "segment": 2,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 162,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-3.jsonl",
+      "segment": 3,
+      "thread_id": "01a0f9b5-337e-7442-b836-5b0e710955c4",
+      "phase": "accept",
+      "number": 3,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-fb0128b8-470d-4628-84de-44e2dac050cc"
+        },
+        {
+          "method": "item/completed",
+          "status": "completed",
+          "error": null,
+          "id": "exec-fb0128b8-470d-4628-84de-44e2dac050cc"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": true,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 42,
+      "capture_duration_ms": 9343,
+      "mcp_item_to_elicitation_ms": 0,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 4,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2,
+        "item/agentMessage/delta": 10
+      }
+    },
+    {
+      "source": "all_requests/accept-4.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 152,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-4.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9b2-32e7-7392-a79d-db5027f4274b",
+      "phase": "accept",
+      "number": 4,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-e961108e-3272-4cb6-aac6-b5362b82eab2"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 38,
+      "capture_duration_ms": 149826,
+      "mcp_item_to_elicitation_ms": 144362,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 3,
+        "item/completed": 2,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-4.jsonl",
+      "segment": 2,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 155,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-4.jsonl",
+      "segment": 3,
+      "thread_id": "01a0f9b5-58ab-7862-ae6f-e83a0f6bd46b",
+      "phase": "accept",
+      "number": 4,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-6387a5b8-1eb1-487f-8170-1b45368bd12a"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 40,
+      "capture_duration_ms": 149850,
+      "mcp_item_to_elicitation_ms": 139248,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 3,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-5.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 10,
+      "capture_duration_ms": 184,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1,
+        "mcpServer/startupStatus/updated": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-5.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9b4-7d35-7102-918f-2f479b7b3e03",
+      "phase": "accept",
+      "number": 5,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-b1971d75-4eb5-4f4f-a4b3-2525644132b1"
+        },
+        {
+          "method": "item/completed",
+          "status": "completed",
+          "error": null,
+          "id": "exec-b1971d75-4eb5-4f4f-a4b3-2525644132b1"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": true,
+      "turn_completed": true,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 72,
+      "capture_duration_ms": 149824,
+      "mcp_item_to_elicitation_ms": 0,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 8,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 5,
+        "item/completed": 5,
+        "item/agentMessage/delta": 36,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2,
+        "turn/interrupt": 1,
+        "turn/completed": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-5.jsonl",
+      "segment": 2,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 211,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/accept-5.jsonl",
+      "segment": 3,
+      "thread_id": "01a0f9b7-a2f2-7e31-9d5f-29595325fe3b",
+      "phase": "accept",
+      "number": 5,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-f93197a8-bb11-4454-b9f8-c4faa793f55f"
+        },
+        {
+          "method": "item/completed",
+          "status": "completed",
+          "error": null,
+          "id": "exec-f93197a8-bb11-4454-b9f8-c4faa793f55f"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "accept"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": true,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 42,
+      "capture_duration_ms": 12267,
+      "mcp_item_to_elicitation_ms": 1,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 4,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2,
+        "item/agentMessage/delta": 10
+      }
+    },
+    {
+      "source": "all_requests/decline-1.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 172,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-1.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9a5-a07a-7f00-b931-b55209935ede",
+      "phase": "decline",
+      "number": 1,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-3cee64d6-0d4c-4f89-b705-f11e8fd974ca"
+        },
+        {
+          "method": "item/completed",
+          "status": "failed",
+          "error": {
+            "message": "user rejected MCP tool call"
+          },
+          "id": "exec-3cee64d6-0d4c-4f89-b705-f11e8fd974ca"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": true,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 80,
+      "capture_duration_ms": 149835,
+      "mcp_item_to_elicitation_ms": 2,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 4,
+        "item/agentMessage/delta": 45,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2,
+        "turn/interrupt": 1,
+        "turn/completed": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-1.jsonl",
+      "segment": 2,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 179,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-1.jsonl",
+      "segment": 3,
+      "thread_id": "01a0f9ab-78a2-7932-92a2-2382450b5f0c",
+      "phase": "decline",
+      "number": 1,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-10ce1233-a9d4-46fd-940a-76bfcbd8f404"
+        },
+        {
+          "method": "item/completed",
+          "status": "failed",
+          "error": {
+            "message": "user rejected MCP tool call"
+          },
+          "id": "exec-10ce1233-a9d4-46fd-940a-76bfcbd8f404"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 52,
+      "capture_duration_ms": 11778,
+      "mcp_item_to_elicitation_ms": 0,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 4,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2,
+        "item/agentMessage/delta": 20
+      }
+    },
+    {
+      "source": "all_requests/decline-2.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 192,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-2.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9a7-ead3-7693-a811-2d0e5ddd5c37",
+      "phase": "decline",
+      "number": 2,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-7b3fa7d8-2a69-4df3-8c11-81d0b7d912ca"
+        },
+        {
+          "method": "item/completed",
+          "status": "failed",
+          "error": {
+            "message": "user rejected MCP tool call"
+          },
+          "id": "exec-7b3fa7d8-2a69-4df3-8c11-81d0b7d912ca"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 1,
+      "message_count": 78,
+      "capture_duration_ms": 26772,
+      "mcp_item_to_elicitation_ms": 0,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 7,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 4,
+        "item/agentMessage/delta": 47,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2
+      }
+    },
+    {
+      "source": "all_requests/decline-2.jsonl",
+      "segment": 2,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 159,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-2.jsonl",
+      "segment": 3,
+      "thread_id": "01a0f9ab-a75a-7522-9f18-0ef247098e0d",
+      "phase": "decline",
+      "number": 2,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-6c6f359c-4d82-4a5c-bd86-677e75ec1d63"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 25,
+      "capture_duration_ms": 149847,
+      "mcp_item_to_elicitation_ms": 140102,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 10,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 3,
+        "item/completed": 2,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-3.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 230,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-3.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9a8-5459-7f90-8e12-e1ecefe2059d",
+      "phase": "decline",
+      "number": 3,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-b63223b5-a494-4126-a357-02859008ec1a"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 38,
+      "capture_duration_ms": 149778,
+      "mcp_item_to_elicitation_ms": 143394,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 3,
+        "item/completed": 2,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-3.jsonl",
+      "segment": 2,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 171,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-3.jsonl",
+      "segment": 3,
+      "thread_id": "01a0f9ad-f1a0-7fb3-a744-db2ef8f560f6",
+      "phase": "decline",
+      "number": 3,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-22981140-0f09-4c8a-8544-a180f1eca93d"
+        },
+        {
+          "method": "item/completed",
+          "status": "failed",
+          "error": {
+            "message": "user rejected MCP tool call"
+          },
+          "id": "exec-22981140-0f09-4c8a-8544-a180f1eca93d"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": true,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 65,
+      "capture_duration_ms": 149837,
+      "mcp_item_to_elicitation_ms": 0,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 4,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2,
+        "item/agentMessage/delta": 30,
+        "turn/interrupt": 1,
+        "turn/completed": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-4.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 191,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-4.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9aa-9e70-74f3-bacc-d8294d580b45",
+      "phase": "decline",
+      "number": 4,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-372f7762-a3ed-47a3-9d6a-0cdc86032cda"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 40,
+      "capture_duration_ms": 149816,
+      "mcp_item_to_elicitation_ms": 142384,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 3,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-4.jsonl",
+      "segment": 2,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 184,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-4.jsonl",
+      "segment": 3,
+      "thread_id": "01a0f9b0-3bf6-75f2-b13c-b82b1825c356",
+      "phase": "decline",
+      "number": 4,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-54285d0a-e287-4c22-9add-7928863c24e8"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 40,
+      "capture_duration_ms": 149814,
+      "mcp_item_to_elicitation_ms": 142026,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 3,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-5.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 186,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-5.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f9ac-e8b3-7312-bc2a-8a28c960b8d2",
+      "phase": "decline",
+      "number": 5,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-40af14a9-ca88-49fa-a34e-a252c645772d"
+        },
+        {
+          "method": "item/completed",
+          "status": "failed",
+          "error": {
+            "message": "user rejected MCP tool call"
+          },
+          "id": "exec-40af14a9-ca88-49fa-a34e-a252c645772d"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 1,
+      "message_count": 79,
+      "capture_duration_ms": 35884,
+      "mcp_item_to_elicitation_ms": 7932,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 4,
+        "item/agentMessage/delta": 46,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2
+      }
+    },
+    {
+      "source": "all_requests/decline-5.jsonl",
+      "segment": 2,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": 525,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "all_requests/decline-5.jsonl",
+      "segment": 3,
+      "thread_id": "01a0f9b2-8750-7621-b579-16d1f10f091d",
+      "phase": "decline",
+      "number": 5,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-0655184d-8296-42cf-8451-a5af5e5a7beb"
+        },
+        {
+          "method": "item/completed",
+          "status": "failed",
+          "error": {
+            "message": "user rejected MCP tool call"
+          },
+          "id": "exec-0655184d-8296-42cf-8451-a5af5e5a7beb"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 65,
+      "capture_duration_ms": 13305,
+      "mcp_item_to_elicitation_ms": 1,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 5,
+        "item/completed": 5,
+        "item/agentMessage/delta": 31,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2
+      }
+    },
+    {
+      "source": "preliminary-baseline-decline-1-clean.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": null,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "preliminary-baseline-decline-1-clean.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f995-db2f-7a21-837b-6e438d8ac66d",
+      "phase": "decline",
+      "number": 1,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-3e008bf0-3e0b-4e30-ac22-3bd62581f192"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 40,
+      "capture_duration_ms": null,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 3,
+        "item/agentMessage/delta": 14,
+        "turn/interrupt": 1,
+        "mcpServer/elicitation/request": 1
+      }
+    },
+    {
+      "source": "preliminary-baseline-decline-1-combined.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": null,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "preliminary-baseline-decline-1-combined.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f991-1969-76f1-88a2-3e38ba40f528",
+      "phase": "decline",
+      "number": 1,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-32836a2c-72f5-490c-88c4-674161131747"
+        },
+        {
+          "method": "item/completed",
+          "status": "failed",
+          "error": {
+            "message": "user rejected MCP tool call"
+          },
+          "id": "exec-32836a2c-72f5-490c-88c4-674161131747"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": true,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 82,
+      "capture_duration_ms": null,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 4,
+        "item/agentMessage/delta": 47,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 2,
+        "account/rateLimits/updated": 2,
+        "turn/interrupt": 1,
+        "turn/completed": 1
+      }
+    },
+    {
+      "source": "preliminary-baseline-decline-1-combined.jsonl",
+      "segment": 2,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": null,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "preliminary-baseline-decline-1-combined.jsonl",
+      "segment": 3,
+      "thread_id": "01a0f994-1d04-7441-8b8a-5e34be7b698f",
+      "phase": null,
+      "number": null,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-d8712b01-e168-44ac-b920-5f3105595362"
+        }
+      ],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 36,
+      "capture_duration_ms": null,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 9,
+        "thread/status/changed": 2,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 4,
+        "item/completed": 3,
+        "item/agentMessage/delta": 14
+      }
+    },
+    {
+      "source": "preliminary-baseline-decline-1.jsonl",
+      "segment": 0,
+      "thread_id": null,
+      "phase": null,
+      "number": null,
+      "tool_attempt": false,
+      "mcp_item_statuses": [],
+      "approval_request_count": 0,
+      "approval_request_methods": [],
+      "approval_request_ids": [],
+      "approval_actions": [],
+      "server_request_methods": [],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": false,
+      "thread_idle": false,
+      "stderr_lines": 0,
+      "message_count": 9,
+      "capture_duration_ms": null,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "initialize": 1,
+        "initialized": 1,
+        "mcpServerStatus/list": 1,
+        "remoteControl/status/changed": 1,
+        "thread/start": 1,
+        "turn/start": 1
+      }
+    },
+    {
+      "source": "preliminary-baseline-decline-1.jsonl",
+      "segment": 1,
+      "thread_id": "01a0f98e-c189-7823-ade7-c6de7a28e1b2",
+      "phase": "decline",
+      "number": 1,
+      "tool_attempt": true,
+      "mcp_item_statuses": [
+        {
+          "method": "item/started",
+          "status": "inProgress",
+          "error": null,
+          "id": "exec-69a96bff-30be-4401-92f2-7f2ff913a7e9"
+        },
+        {
+          "method": "item/completed",
+          "status": "failed",
+          "error": {
+            "message": "user rejected MCP tool call"
+          },
+          "id": "exec-69a96bff-30be-4401-92f2-7f2ff913a7e9"
+        }
+      ],
+      "approval_request_count": 1,
+      "approval_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "approval_request_ids": [
+        0
+      ],
+      "approval_actions": [
+        "decline"
+      ],
+      "server_request_methods": [
+        "mcpServer/elicitation/request"
+      ],
+      "unanswered_server_requests": [],
+      "fixture_item_completed": false,
+      "turn_completed": true,
+      "thread_idle": true,
+      "stderr_lines": 0,
+      "message_count": 84,
+      "capture_duration_ms": null,
+      "mcp_item_to_elicitation_ms": null,
+      "methods": {
+        "thread/started": 1,
+        "mcpServer/startupStatus/updated": 10,
+        "thread/status/changed": 4,
+        "turn/started": 1,
+        "account/updated": 1,
+        "item/started": 6,
+        "item/completed": 6,
+        "item/agentMessage/delta": 44,
+        "mcpServer/elicitation/request": 1,
+        "serverRequest/resolved": 1,
+        "thread/tokenUsage/updated": 3,
+        "account/rateLimits/updated": 3,
+        "turn/completed": 1
+      }
+    }
+  ]
+}
