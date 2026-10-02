@@ -130,6 +130,7 @@ pub struct ClaudeClient {
     next_request_id: u64,
     /// 거르기 전 목록. 읽기 작업이 갱신한다.
     latest_commands: Arc<Mutex<Vec<ProviderCommand>>>,
+    resume_settle: Duration,
 }
 
 impl ClaudeClient {
@@ -144,7 +145,15 @@ impl ClaudeClient {
             events_tx,
             next_request_id: 1,
             latest_commands: Arc::default(),
+            resume_settle: RESUME_SETTLE,
         }
+    }
+
+    /// 부하에서 프로세스 시작이 늦어지는 테스트가 판정 시간을 늘리거나 줄이는 데 쓴다.
+    #[cfg(test)]
+    fn with_resume_settle(mut self, resume_settle: Duration) -> Self {
+        self.resume_settle = resume_settle;
+        self
     }
 
     /// 모르는 session이면 `None`.
@@ -277,7 +286,7 @@ impl ProviderClient for ClaudeClient {
         tokio::spawn(log_stderr(spawned.io.stderr, self.launch.masker.clone()));
         if matches!(session_arg, SessionArg::Resume(_))
             && let Ok(Ok(exit)) =
-                tokio::time::timeout(RESUME_SETTLE, self.supervisor.wait(group)).await
+                tokio::time::timeout(self.resume_settle, self.supervisor.wait(group)).await
         {
             self.supervisor.release(group);
             return Err(ProviderError::NotSent {
@@ -1348,9 +1357,13 @@ while (my $line = <STDIN>) {
     #[tokio::test]
     async fn resume_failure_is_not_sent() {
         let dir = tempfile::tempdir().unwrap();
-        let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+        // 실패 쪽은 종료를 기다리는 시간만 넉넉히, 성공 쪽은 살아 있는지만 보므로 짧게 둔다
+        let mut failing = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new())
+            .with_resume_settle(Duration::from_secs(30));
+        let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new())
+            .with_resume_settle(Duration::from_millis(100));
 
-        let error = client
+        let error = failing
             .open_session(spec(dir.path(), Some("missing")))
             .await
             .unwrap_err();
