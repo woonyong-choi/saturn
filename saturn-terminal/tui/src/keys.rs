@@ -89,6 +89,7 @@ pub enum Action {
     Help,
     NextFilter,
     PrevFilter,
+    ToggleFolderScope,
     ContinueHeld,
     CancelOrCloseHeld,
     Search,
@@ -331,6 +332,7 @@ fn composer_char(c: char, ctx: KeyContext) -> Action {
 fn task_list_char(c: char) -> Option<Action> {
     match c {
         '?' => Some(Action::Help),
+        'a' => Some(Action::ToggleFolderScope),
         'c' => Some(Action::ContinueHeld),
         'd' => Some(Action::CancelOrCloseHeld),
         'f' => Some(Action::Search),
@@ -566,6 +568,7 @@ mod tests {
             Some(Action::NextFilter)
         );
         assert_eq!(task_list(plain('s')), Some(Action::SendQueued));
+        assert_eq!(task_list(plain('a')), Some(Action::ToggleFolderScope));
         assert_eq!(task_list(plain('?')), Some(Action::Help));
     }
 

@@ -159,6 +159,10 @@ impl App {
                 list.set_filter(list.filter.prev());
                 None
             }
+            Action::ToggleFolderScope => {
+                list.toggle_scope();
+                None
+            }
             Action::Close => {
                 if !list.cancel() {
                     self.window = None;

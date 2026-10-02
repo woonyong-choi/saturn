@@ -35,6 +35,8 @@ pub struct SessionSpec {
     pub resume: Option<ProviderSessionId>,
     /// 새 session으로 이어 갈 때만 첫 턴에 넣는다.
     pub packet: Option<String>,
+    /// 채팅에 더한 폴더. session을 열 때 provider에 넘기고, 이미 열린 session에는 반영하지 않는다.
+    pub add_dirs: Vec<std::path::PathBuf>,
 }
 
 #[derive(Debug, Clone)]

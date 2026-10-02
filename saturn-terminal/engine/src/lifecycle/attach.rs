@@ -20,6 +20,7 @@ fn attach_to(chat: ChatId, workdir: &Path) -> Request {
         workdir: workdir.display().to_string(),
         env: tui_env(),
         overrides: vec![("model".to_owned(), "fast".to_owned())],
+        add_dirs: Vec::new(),
     }
 }
 
@@ -181,6 +182,7 @@ async fn attach_keeps_first_workdir_and_latest_tui_env() {
         workdir: other.display().to_string(),
         env: vec![("PATH".to_owned(), "/second/bin".to_owned())],
         overrides: Vec::new(),
+        add_dirs: Vec::new(),
     };
 
     drive(&mut engine, async {

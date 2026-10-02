@@ -404,6 +404,7 @@ impl Engine {
                 .ok_or(crate::settings::SettingsError::NoPreviousRevision)?,
             resume: None,
             packet: Some(packet),
+            add_dirs: self.chat_dirs_of(chat),
         };
         let handle = self.open_with_retries(chat, live.provider, spec).await?;
         let record = SessionRecord {

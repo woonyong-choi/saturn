@@ -126,6 +126,7 @@ impl Flow {
                         workdir,
                         env: vec![("PATH".to_owned(), "/nonexistent".to_owned())],
                         overrides: Vec::new(),
+                        add_dirs: Vec::new(),
                     },
                 )
                 .await;

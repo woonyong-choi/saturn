@@ -59,8 +59,20 @@ pub struct RunOptions {
     pub workdir: PathBuf,
     /// `-c key=value` 실행 층. `Attach`의 `overrides`로 넘긴다.
     pub overrides: Vec<(String, String)>,
+    /// `--add-dir`로 받은 폴더의 절대 경로. `Attach`의 `add_dirs`로 넘긴다.
+    pub add_dirs: Vec<PathBuf>,
     /// 기본 `~/.saturn/history`.
     pub history: PathBuf,
+}
+
+// cost: time O(d), heap O(d), stack O(1), alloc d
+// vars: d = 폴더 수
+// basis: estimate
+fn path_texts(paths: &[PathBuf]) -> Vec<String> {
+    paths
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect()
 }
 
 // cost: time O(e), heap O(s), stack O(1), io e
@@ -76,6 +88,7 @@ pub async fn run(client: &mut EngineClient, options: RunOptions) -> Result<(), T
     let mut app = App::new(lang, options.workdir, history, options.chat);
     app.env = client::attach_env();
     app.overrides = options.overrides;
+    app.add_dirs = path_texts(&options.add_dirs);
     let mut screen = terminal::enter()?;
     let result = app::run_loop(&mut app, client, &mut screen).await;
     let restored = terminal::leave();
@@ -101,6 +114,7 @@ pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result
             workdir: options.workdir.display().to_string(),
             env: client::attach_env(),
             overrides: options.overrides,
+            add_dirs: path_texts(&options.add_dirs),
         })
         .await?;
     let mut stdin = BufReader::new(tokio::io::stdin()).lines();

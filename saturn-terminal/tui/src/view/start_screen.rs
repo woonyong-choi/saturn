@@ -23,7 +23,10 @@ pub struct StartInfo {
     pub providers: Vec<(Provider, Option<String>)>,
     pub judge: Option<String>,
     pub judge_version: Option<String>,
+    /// 채팅의 기본 폴더. 다른 폴더의 채팅을 이어 열었으면 그 채팅의 폴더다.
     pub folder: PathBuf,
+    /// 더한 폴더.
+    pub added_dirs: Vec<PathBuf>,
 }
 
 impl StartInfo {
@@ -38,6 +41,7 @@ impl StartInfo {
             judge,
             judge_version,
             folder,
+            added_dirs,
         } = notification
         else {
             return None;
@@ -52,6 +56,7 @@ impl StartInfo {
             judge: non_empty(judge),
             judge_version: non_empty(judge_version),
             folder: PathBuf::from(folder),
+            added_dirs: added_dirs.iter().map(PathBuf::from).collect(),
         })
     }
 
@@ -79,6 +84,18 @@ impl StartInfo {
             lang.tr(i18n::START_FOLDER),
             self.folder.display()
         ));
+        if !self.added_dirs.is_empty() {
+            let dirs: Vec<String> = self
+                .added_dirs
+                .iter()
+                .map(|dir| dir.display().to_string())
+                .collect();
+            lines.push(format!(
+                "{} {}",
+                lang.tr(i18n::START_ADDED_DIRS),
+                dirs.join(", ")
+            ));
+        }
         lines
     }
 }
@@ -129,7 +146,26 @@ mod tests {
             judge: Some("remote".to_string()),
             judge_version: Some("v3".to_string()),
             folder: PathBuf::from("/work/app"),
+            added_dirs: Vec::new(),
         }
+    }
+
+    #[test]
+    fn lines_show_the_chat_folder_and_the_added_folders() {
+        let mut info = info();
+        info.folder = PathBuf::from("/other/project");
+        info.added_dirs = vec![PathBuf::from("/shared/lib"), PathBuf::from("/docs")];
+
+        let lines = info.lines(Lang::Ko);
+
+        assert_eq!(
+            lines[lines.len() - 2..],
+            ["폴더 /other/project", "더한 폴더 /shared/lib, /docs"]
+        );
+        assert_eq!(
+            info.lines(Lang::En).last().map(String::as_str),
+            Some("added folders /shared/lib, /docs")
+        );
     }
 
     #[test]
@@ -155,11 +191,13 @@ mod tests {
             judge: String::new(),
             judge_version: String::new(),
             folder: "/w".to_string(),
+            added_dirs: vec!["/x".to_string()],
         };
 
         let info = StartInfo::from_notification(&notification).unwrap();
 
         assert_eq!(info.providers, vec![(Provider::Codex, None)]);
         assert_eq!(info.judge, None);
+        assert_eq!(info.added_dirs, vec![PathBuf::from("/x")]);
     }
 }

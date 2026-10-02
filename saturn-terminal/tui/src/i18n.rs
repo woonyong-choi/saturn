@@ -119,6 +119,9 @@ pub const ITEMS_SUFFIX: &str = "개";
 /// `JUDGE_CALLS`와 같은 키라 번역도 같다.
 pub const START_JUDGE: &str = "판단기";
 pub const START_FOLDER: &str = "폴더";
+pub const START_ADDED_DIRS: &str = "더한 폴더";
+pub const FOLDER_ADDED: &str = "폴더 더함";
+pub const FOLDER_NEXT_SESSION: &str = "열린 session에는 다음 session부터 적용";
 pub const VERSION_UNKNOWN: &str = "확인 안 됨";
 
 // 창 초안
@@ -145,7 +148,9 @@ pub const TASKS_CHILDREN: &str = "하위 항목";
 pub const TASKS_SEARCH: &str = "검색";
 pub const TASKS_RENAME: &str = "새 이름";
 pub const TASKS_GROUP: &str = "묶음";
-pub const TASKS_HELP: &str = "Enter 이동 · Esc 닫기 · Tab 필터 · c 이어서 · d 취소 · f 검색 · g 묶음 · n 새 채팅 · r 이름 · s 보내기";
+pub const TASKS_HELP: &str = "Enter 이동 · Esc 닫기 · Tab 필터 · a 폴더 범위 · c 이어서 · d 취소 · f 검색 · g 묶음 · n 새 채팅 · r 이름 · s 보내기";
+pub const TASKS_SCOPE_CURRENT: &str = "현재 폴더";
+pub const TASKS_SCOPE_ALL: &str = "모든 폴더";
 pub const LOADING: &str = "불러오는 중";
 pub const USAGE_TITLE: &str = "사용량";
 pub const USAGE_WHO: &str = "대상";
@@ -297,6 +302,12 @@ const ENGLISH: &[(&str, &str)] = &[
     ),
     ("개", ""),
     ("폴더", "folder"),
+    ("더한 폴더", "added folders"),
+    ("폴더 더함", "folder added"),
+    (
+        "열린 session에는 다음 session부터 적용",
+        "applies to open sessions from the next session",
+    ),
     ("확인 안 됨", "not checked"),
     ("판단기 키 입력", "judge key"),
     ("Enter 확인 · Esc 종료", "Enter confirm · Esc quit"),
@@ -325,9 +336,11 @@ const ENGLISH: &[(&str, &str)] = &[
     ("새 이름", "new name"),
     ("묶음", "group"),
     (
-        "Enter 이동 · Esc 닫기 · Tab 필터 · c 이어서 · d 취소 · f 검색 · g 묶음 · n 새 채팅 · r 이름 · s 보내기",
-        "Enter open · Esc close · Tab filter · c continue · d cancel · f search · g group · n new chat · r rename · s send",
+        "Enter 이동 · Esc 닫기 · Tab 필터 · a 폴더 범위 · c 이어서 · d 취소 · f 검색 · g 묶음 · n 새 채팅 · r 이름 · s 보내기",
+        "Enter open · Esc close · Tab filter · a folder scope · c continue · d cancel · f search · g group · n new chat · r rename · s send",
     ),
+    ("현재 폴더", "this folder"),
+    ("모든 폴더", "all folders"),
     ("불러오는 중", "loading"),
     ("사용량", "usage"),
     ("대상", "who"),
@@ -385,6 +398,7 @@ const ENGLISH: &[(&str, &str)] = &[
     ("판단 모델 버전", "judge versions"),
     ("판단 기록 켜기와 끄기", "turn judgment records on or off"),
     ("권한 모드 바꾸기", "change the permission mode"),
+    ("폴더 더하기", "add a folder to the chat"),
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

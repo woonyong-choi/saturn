@@ -99,6 +99,8 @@ pub struct App {
     pub env: Vec<(String, String)>,
     /// `Attach`로 넘기는 실행 층(`-c key=value`).
     pub overrides: Vec<(String, String)>,
+    /// `Attach`로 넘기는 `--add-dir` 절대 경로.
+    pub add_dirs: Vec<String>,
     pub chat: ChatState,
     pub transcript: Transcript,
     pub live: LiveArea,
@@ -109,6 +111,8 @@ pub struct App {
     pub window: Option<Window>,
     /// 첫 대화 기록 셀이 생기면 머리 셀로 옮기고 `None`.
     pub start: Option<StartInfo>,
+    /// 채팅의 기본 폴더. 시작 화면이 머리 셀로 바뀐 뒤에도 남는다.
+    pub chat_folder: Option<PathBuf>,
     pub history: InputHistory,
     /// 채팅을 열 때 한 번만 묻는다.
     pub resume_asked: bool,
@@ -139,6 +143,7 @@ impl App {
             workdir,
             env: Vec::new(),
             overrides: Vec::new(),
+            add_dirs: Vec::new(),
             chat: ChatState::new(),
             transcript: Transcript::new(),
             live: LiveArea::new(),
@@ -148,6 +153,7 @@ impl App {
             permissions: PermissionQueue::new(),
             window: None,
             start: None,
+            chat_folder: None,
             history,
             resume_asked: false,
             pending_attachments: Vec::new(),
@@ -171,6 +177,7 @@ impl App {
             workdir: self.workdir.display().to_string(),
             env: self.env.clone(),
             overrides: self.overrides.clone(),
+            add_dirs: self.add_dirs.clone(),
         }
     }
 

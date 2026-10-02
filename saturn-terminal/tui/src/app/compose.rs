@@ -1,6 +1,8 @@
 //! 입력창, 팝업, 제출과 명령, `Ctrl+C`, 피드백 답.
 //! 설계: docs/design/tui.md
 
+use std::path::{Path, PathBuf};
+
 use saturn_protocol::ids::TaskLabel;
 use saturn_protocol::rpc::Request;
 use saturn_protocol::state::InputState;
@@ -279,6 +281,10 @@ impl App {
                 chat,
                 mode: mode.to_owned(),
             }),
+            SlashCommand::AddDir { path } => chat.map(|chat| Request::AddDir {
+                chat,
+                path: absolute_path(&self.workdir, &path),
+            }),
             SlashCommand::Send { target } => self
                 .chat
                 .queued_by_label(target)
@@ -287,7 +293,8 @@ impl App {
             SlashCommand::Continue { target } => self.continue_target(target),
             SlashCommand::Feedback { correct } => return self.answer_feedback(Some(correct)),
             SlashCommand::Tasks => {
-                self.open_window(Window::TaskList(TaskList::default()));
+                let folder = self.chat_folder.clone();
+                self.open_window(Window::TaskList(TaskList::for_folder(folder)));
                 Some(Request::ListTasks)
             }
             SlashCommand::Usage { range } => {
@@ -386,6 +393,18 @@ impl App {
             correct,
         })]
     }
+}
+
+/// 상대 경로는 TUI의 현재 폴더 기준 절대 경로로 바꾸고, `~/`로 시작하면 홈 폴더 아래로 읽는다. engine은 절대 경로만 받는다.
+fn absolute_path(workdir: &Path, path: &str) -> String {
+    let home_relative = path
+        .strip_prefix("~/")
+        .zip(std::env::var_os("HOME"))
+        .map(|(rest, home)| PathBuf::from(home).join(rest));
+    home_relative
+        .unwrap_or_else(|| workdir.join(path))
+        .display()
+        .to_string()
 }
 
 fn value_item(value: &str) -> PopupItem {

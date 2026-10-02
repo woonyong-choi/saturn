@@ -1,6 +1,7 @@
 //! 대화 기록 영역. 셀 글은 `TranscriptCell::lines`가 만들고 plain 출력도 같은 함수를 쓴다.
 //! 설계: docs/design/tui.md
 
+use std::path::PathBuf;
 use std::time::Duration;
 
 use ratatui::Frame;
@@ -208,6 +209,15 @@ impl Transcript {
         match self.cells.first_mut() {
             Some(TranscriptCell::Header(header)) => *header = info,
             _ => self.cells.insert(0, TranscriptCell::Header(info)),
+        }
+    }
+
+    /// 머리 셀이 있으면 더한 폴더에 넣는다. 이미 있으면 그대로 둔다.
+    pub fn add_header_dir(&mut self, dir: PathBuf) {
+        if let Some(TranscriptCell::Header(header)) = self.cells.first_mut()
+            && !header.added_dirs.contains(&dir)
+        {
+            header.added_dirs.push(dir);
         }
     }
 
@@ -491,6 +501,16 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
             *judge_tokens,
             Duration::from_millis(*elapsed_ms),
         )],
+        ChatNotice::FolderAdded {
+            path,
+            applies_from_next_session,
+        } => {
+            let mut line = format!("{prefix}{} · {path}", lang.tr(i18n::FOLDER_ADDED));
+            if *applies_from_next_session {
+                line.push_str(&format!(" · {}", lang.tr(i18n::FOLDER_NEXT_SESSION)));
+            }
+            vec![line]
+        }
         ChatNotice::Stopped { .. } | ChatNotice::StopUnconfirmed { .. } => Vec::new(),
     }
 }
@@ -713,6 +733,26 @@ mod tests {
     }
 
     #[test]
+    fn lines_folder_added_mentions_the_next_session_only_when_one_is_open() {
+        let added = |applies_from_next_session| TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::FolderAdded {
+                path: "/shared/lib".to_owned(),
+                applies_from_next_session,
+            },
+        };
+
+        assert_eq!(
+            added(true).lines(Lang::Ko, false, false),
+            vec!["폴더 더함 · /shared/lib · 열린 session에는 다음 session부터 적용"]
+        );
+        assert_eq!(
+            added(false).lines(Lang::Ko, false, false),
+            vec!["폴더 더함 · /shared/lib"]
+        );
+    }
+
+    #[test]
     fn lines_context_deferred_lists_the_constraints() {
         let deferred = TranscriptCell::Notice {
             label: None,
@@ -856,6 +896,7 @@ mod tests {
             judge: None,
             judge_version: None,
             folder: "/w".into(),
+            added_dirs: Vec::new(),
         });
 
         transcript.prepend(vec![echo("old")]);

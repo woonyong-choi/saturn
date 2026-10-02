@@ -1,5 +1,6 @@
 //! engine 시작 순서, 요청 분배, 채팅 붙기, 입력 흐름 테스트. 가짜 judge 전송, 가짜 provider, 임시 폴더만 쓴다.
 
+mod add_dir;
 mod attach;
 mod decision;
 mod deliver;
@@ -227,6 +228,7 @@ fn new_chat(workdir: &Path) -> Request {
         workdir: workdir.display().to_string(),
         env: Vec::new(),
         overrides: Vec::new(),
+        add_dirs: Vec::new(),
     }
 }
 

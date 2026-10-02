@@ -154,6 +154,8 @@ pub fn rules_verdict(rules: &[Rule], tool: PermissionTool, target: &str) -> Opti
 pub struct Policy {
     pub mode: Mode,
     pub workdir: PathBuf,
+    /// `--add-dir`와 `/add-dir`로 더한 폴더. 안의 편집은 작업 폴더 안의 편집처럼 판정한다.
+    pub extra_dirs: Vec<PathBuf>,
     pub rules: Vec<Rule>,
     /// 사용자가 허가 창에서 고른 허용. `Allow` 규칙만 둔다.
     pub always: Vec<Rule>,
@@ -269,10 +271,14 @@ impl Policy {
         if let Some(relative) = relative {
             candidates.push(relative.to_string_lossy().into_owned());
         }
+        let in_added_dir = self
+            .extra_dirs
+            .iter()
+            .any(|dir| absolute.starts_with(pattern::normalize(Path::new("/"), dir)));
         Unit {
             store: escape(&candidates[0]),
+            is_inside: relative.is_some() || in_added_dir,
             candidates,
-            is_inside: relative.is_some(),
         }
     }
 }

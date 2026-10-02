@@ -60,6 +60,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - 첫 스키마(V1)는 옛 스키마 위 변경분이 아니라 전체 정의로 쓴다. 공개 저장소만으로 스키마 전체를 읽기 위해서다.
 - 표 이름은 `chats`, `inputs`, `runs`, `sessions`, `events`, `usage`이고 Saturn 용어(채팅, 입력, 실행, session)를 따른다.
 - `sessions` 표는 마지막 활성 맥락 `last_active`(토큰)와 마지막 턴 끝 시각 `last_turn_ended_at`(unix 밀리초) 열을 둔다. engine이 턴이 끝날 때 쓰고 시작할 때 읽어 보관 session의 재개 판정을 재시작 뒤에도 같게 한다([provider 연결과 session](providers-and-sessions.md#그-provider로-돌아가기)). 두 열은 스키마 V2에서 더했고 이관 전 행은 NULL이며, NULL이면 재개로 판정한다.
+- `chat_dirs` 표는 채팅에 더한 폴더를 채팅 `chat_id`, 링크를 푼 절대 경로 `path`, 더한 시각 `added_at`(unix 밀리초)으로 둔다. 같은 채팅의 같은 경로는 한 행이고 행 번호 순서가 더한 순서다. 채팅을 지우면 함께 지운다. 스키마 V5에서 더했다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)).
 - `permission_allows` 표는 항상 허용을 작업 폴더 `workdir`, 도구 `tool`, 패턴 `pattern`, 저장 시각 `created_at`(unix 밀리초)으로 둔다. 같은 `workdir`, `tool`, `pattern`은 한 행이다. 스키마 V4에서 더했고 채팅과 상관없이 작업 폴더 단위로 쓴다([권한](permissions.md#항상-허용-저장)).
 - 패킷과 돌아온 session의 변경분은 `events` 행을 그 이벤트를 연 실행의 session과 입력 원문, 기록 시각에 이어 읽어 만든다. 이벤트 행에 session을 따로 저장하지 않기 위해서다. `sessions.delivered`는 턴이 끝날 때와 session을 열거나 바꿀 때 저장한다.
 - session과 에이전트 번호는 `meta` 표에 마지막으로 준 번호를 두고, 기록에 있는 가장 큰 번호보다 큰 값을 한 거래로 새로 준다. 번호를 다시 쓰지 않기 위해서다.
@@ -162,6 +163,8 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 마지막 턴 값은 저장하고 되살린다. | `saturn-terminal/engine/src/store/sessions.rs`의 `record_last_turn_round_trips_through_live_mains`, `record_last_turn_overwrites_and_survives_session_upsert` |
 | 스키마 V3 이관은 판단 기록 행을 보존하고 결과 신호와 물은 답 칸을 NULL로 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v2_file_migrates_to_outcome_columns_keeping_judgments` |
 | 스키마 V4 이관은 채팅 행을 보존하고 항상 허용 표를 비어 있게 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v3_file_migrates_to_permission_allows_keeping_chats` |
+| 스키마 V5 이관은 채팅 행을 보존하고 더한 폴더 표를 비어 있게 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v4_file_migrates_to_chat_dirs_keeping_chats` |
+| 더한 폴더는 채팅마다 더한 순서대로 읽히고 같은 경로는 한 번만 저장되며 채팅을 지우면 함께 지워진다. | `saturn-terminal/engine/src/store/chat_dirs.rs`의 `add_dir_is_kept_per_chat_in_added_order_without_duplicates`, `add_dir_for_a_missing_chat_is_refused`, `add_dir_rows_follow_the_chat_when_it_is_deleted` |
 | 항상 허용은 작업 폴더마다 저장 순서대로 읽히고 같은 행은 한 번만 저장된다. | `saturn-terminal/engine/src/store/permissions.rs`의 `allows_are_kept_per_workdir_in_saved_order`, `saving_the_same_allow_twice_keeps_one_row` |
 | 결과 신호와 물은 답은 같은 판단 기록에 저장하고, 신호는 한 번 확정하면 바꾸지 않으며, 물은 답은 묻지 않은 판단에 쓰지 않는다. | `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`, `record_signal_keeps_first_confirmed_value`, `record_asked_answer_keeps_first_answer`, `record_asked_answer_for_unasked_judgment_returns_not_found` |
 | 이관 백업은 14일이 지나면 지운다. | 만든 지 14일이 지난 백업이 다음 시작 때 사라지는지 확인한다. |

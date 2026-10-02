@@ -1,6 +1,6 @@
 //! 채팅 붙기와 시작 창(judge 키, 폴더 설정 신뢰)에 딸린 요청 처리. 설계: docs/design/engine-lifecycle.md
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use saturn_protocol::ids::{ChatId, LedgerSeq, Provider};
 use saturn_protocol::rpc::{Alert, Notification};
@@ -15,7 +15,7 @@ use crate::{Engine, EngineError, JudgeGate, masked_chain};
 const MAX_HISTORY: u32 = 500;
 
 impl Engine {
-    pub(super) fn start_info(&self, workdir: &Path) -> Notification {
+    pub(super) fn start_info(&self, workdir: &Path, added_dirs: &[PathBuf]) -> Notification {
         let active = self.judges.active();
         let judge_version = match self.judge_gate {
             JudgeGate::Open => active.model().to_owned(),
@@ -31,6 +31,10 @@ impl Engine {
             judge: active.judge_id().to_owned(),
             judge_version,
             folder: workdir.display().to_string(),
+            added_dirs: added_dirs
+                .iter()
+                .map(|dir| dir.display().to_string())
+                .collect(),
         }
     }
 

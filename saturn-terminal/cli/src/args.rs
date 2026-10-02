@@ -1,6 +1,7 @@
 //! 명령줄 정의. judge 키 인자는 두지 않는다.
 //! 설계: docs/design/judge-key-security.md
 
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
@@ -24,13 +25,16 @@ pub(crate) struct Cli {
     /// 채팅 id가 있으면 그 채팅을, 없으면 현재 폴더의 채팅 목록에서 골라 잇는다. `all`은 모든 폴더의 목록.
     #[arg(long, value_name = "CHAT_ID|all", num_args = 0..=1)]
     pub(crate) resume: Option<Option<ResumeTarget>>,
+    /// 채팅에 폴더를 더한다(여러 번). 더한 폴더는 채팅 기록에 저장되고 모든 provider session이 그 폴더에 접근한다.
+    #[arg(long = "add-dir", value_name = "DIR")]
+    pub(crate) add_dir: Vec<PathBuf>,
     /// 하위 명령. 없으면 대화 화면(터미널이면 전체 화면, 파이프나 CI면 plain)을 연다.
     #[command(subcommand)]
     pub(crate) command: Option<Command>,
 }
 
 impl Cli {
-    /// 이어 열기 인자가 하위 명령과 함께 오면 오류. 이어 열기는 대화 화면에만 있다.
+    /// 이어 열기 인자와 `--add-dir`가 하위 명령과 함께 오면 오류. 둘 다 대화 화면에만 있다.
     pub(crate) fn open_mode(&self) -> Result<OpenMode, clap::Error> {
         let mode = match (&self.resume, self.continue_last) {
             (Some(None), _) => OpenMode::PickInFolder,
@@ -39,10 +43,10 @@ impl Cli {
             (None, true) => OpenMode::ContinueLast,
             (None, false) => OpenMode::New,
         };
-        if self.command.is_some() && mode != OpenMode::New {
+        if self.command.is_some() && (mode != OpenMode::New || !self.add_dir.is_empty()) {
             return Err(Cli::command().error(
                 clap::error::ErrorKind::ArgumentConflict,
-                "--continue and --resume open the chat screen and cannot be used with a subcommand",
+                "--continue, --resume and --add-dir open the chat screen and cannot be used with a subcommand",
             ));
         }
         Ok(mode)
@@ -292,6 +296,16 @@ mod tests {
         let cli = parse(&["--continue", "usage"]).unwrap();
 
         assert!(cli.open_mode().is_err());
+    }
+
+    #[test]
+    fn add_dir_repeats_and_conflicts_with_subcommands() {
+        let cli = parse(&["--add-dir", "/a", "--add-dir", "b"]).unwrap();
+        let with_command = parse(&["--add-dir", "/a", "usage"]).unwrap();
+
+        assert_eq!(cli.add_dir, vec![PathBuf::from("/a"), PathBuf::from("b")]);
+        assert!(cli.open_mode().is_ok());
+        assert!(with_command.open_mode().is_err());
     }
 
     #[test]

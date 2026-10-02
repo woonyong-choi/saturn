@@ -35,6 +35,7 @@ impl App {
         match notification {
             Notification::StartInfo { .. } => {
                 self.start = StartInfo::from_notification(&notification);
+                self.chat_folder = self.start.as_ref().map(|start| start.folder.clone());
             }
             Notification::InputAccepted { .. } => {}
             Notification::InputChanged {
@@ -358,6 +359,23 @@ impl App {
             ChatNotice::Stopped { held } => self.chat.apply_stopped(held),
             ChatNotice::StopUnconfirmed { remaining } => {
                 self.chat.apply_stop_unconfirmed(remaining);
+            }
+            ChatNotice::FolderAdded {
+                path,
+                applies_from_next_session,
+            } => {
+                let dir = PathBuf::from(&path);
+                match &mut self.start {
+                    Some(start) => start.added_dirs.push(dir),
+                    None => self.transcript.add_header_dir(dir),
+                }
+                self.push_cell(TranscriptCell::Notice {
+                    label,
+                    notice: ChatNotice::FolderAdded {
+                        path,
+                        applies_from_next_session,
+                    },
+                });
             }
             notice => self.push_cell(TranscriptCell::Notice { label, notice }),
         }

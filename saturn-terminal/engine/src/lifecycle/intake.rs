@@ -66,7 +66,8 @@ async fn accepted_input_reaches_first_provider_after_it_is_recorded() {
                 agent: flow.agent(),
                 model: None,
                 resume: None,
-                packet: None
+                packet: None,
+                add_dirs: Vec::new(),
             },
             Call::SendTurn {
                 session,

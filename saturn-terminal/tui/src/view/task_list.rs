@@ -77,6 +77,32 @@ impl TaskFilter {
     }
 }
 
+/// 작업 목록이 보이는 채팅의 폴더 범위. 기본은 현재 채팅의 폴더다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum FolderScope {
+    #[default]
+    Current,
+    All,
+}
+
+impl FolderScope {
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    pub fn toggled(self) -> Self {
+        match self {
+            Self::Current => Self::All,
+            Self::All => Self::Current,
+        }
+    }
+
+    pub fn text(self, lang: Lang) -> &'static str {
+        lang.tr(match self {
+            Self::Current => i18n::TASKS_SCOPE_CURRENT,
+            Self::All => i18n::TASKS_SCOPE_ALL,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TaskRow {
     pub task: TaskId,
@@ -103,7 +129,7 @@ impl ChatGroup {
     // cost: time O(n·c), heap O(n), stack O(1)
     // vars: n = items.len(), c = 채팅 수
     // basis: estimate
-    /// protocol `TaskListItem`에 폴더, 대기 입력, 모델이 없어 그 칸은 비워 둔다.
+    /// protocol `TaskListItem`에 대기 입력과 모델이 없어 그 칸은 비워 둔다.
     pub fn from_items(items: Vec<TaskListItem>) -> Vec<Self> {
         let mut groups: Vec<Self> = Vec::new();
         for item in items {
@@ -122,7 +148,7 @@ impl ChatGroup {
                     group: item.group.unwrap_or_default(),
                     chat: item.chat,
                     name: item.chat_name,
-                    folder: None,
+                    folder: item.folder.map(PathBuf::from),
                     busy_elsewhere: item.busy_elsewhere,
                     tasks: vec![row],
                 }),
@@ -155,6 +181,9 @@ pub enum TaskListInput {
 pub struct TaskList {
     pub groups: Vec<ChatGroup>,
     pub filter: TaskFilter,
+    pub scope: FolderScope,
+    /// 현재 채팅의 폴더. 모르면 폴더로 거르지 않는다.
+    pub folder: Option<PathBuf>,
     pub query: Option<String>,
     /// 목록을 다시 받아도 유지한다.
     pub selected: Option<(ChatId, TaskId)>,
@@ -164,6 +193,24 @@ pub struct TaskList {
 }
 
 impl TaskList {
+    /// 기본 범위(현재 폴더)로 연다.
+    pub fn for_folder(folder: Option<PathBuf>) -> Self {
+        Self {
+            folder,
+            ..Self::default()
+        }
+    }
+
+    // cost: time O(r·q), heap O(r), stack O(1)
+    // vars: r = 행 수, q = 검색어 길이
+    // basis: estimate
+    /// 범위를 바꾸고 선택은 보이는 행 안에서 다시 고른다.
+    pub fn toggle_scope(&mut self) {
+        self.scope = self.scope.toggled();
+        let groups = std::mem::take(&mut self.groups);
+        self.replace(groups);
+    }
+
     // cost: time O(r), heap O(r), stack O(1)
     // vars: r = 행 수
     // basis: estimate
@@ -185,6 +232,7 @@ impl TaskList {
     pub fn visible_rows(&self) -> Vec<(&ChatGroup, &TaskRow)> {
         self.groups
             .iter()
+            .filter(|group| self.scope_matches(group))
             .filter(|group| self.query_matches(group))
             .flat_map(|group| group.tasks.iter().map(move |row| (group, row)))
             .filter(|(_, row)| self.filter.matches(row))
@@ -348,6 +396,18 @@ impl TaskList {
             .collect()
     }
 
+    // cost: time O(f), heap O(1), stack O(1)
+    // vars: f = 폴더 경로 길이
+    // basis: estimate
+    /// 모든 폴더 범위이거나 채팅이나 현재 폴더를 모르면 참이다. 모르는 채팅을 숨겨 확인이 필요한 작업을 놓치지 않기 위해서다.
+    /// TODO(#161): 작업 목록 조회가 engine에 생기면 폴더 범위를 조회 조건으로도 보낸다. 지금은 받은 목록을 TUI가 거른다
+    fn scope_matches(&self, group: &ChatGroup) -> bool {
+        match (self.scope, &group.folder, &self.folder) {
+            (FolderScope::Current, Some(chat), Some(current)) => chat == current,
+            _ => true,
+        }
+    }
+
     // cost: time O(m·q), heap O(m), stack O(1)
     // vars: m = 채팅 이름·묶음·폴더 길이, q = 검색어 길이
     // basis: estimate
@@ -403,6 +463,10 @@ impl TaskListView<'_> {
                     Span::raw("  "),
                 ]
             })
+            .chain([Span::styled(
+                format!("· {}", self.list.scope.text(self.lang)),
+                MUTED,
+            )])
             .collect();
         Line::from(spans)
     }
@@ -518,7 +582,110 @@ mod tests {
             needs_permission: state == TaskState::AwaitingPermission,
             busy_elsewhere: chat == 9,
             children: 0,
+            folder: None,
         }
+    }
+
+    fn in_folder(folder: &str, item: TaskListItem) -> TaskListItem {
+        TaskListItem {
+            folder: Some(folder.to_owned()),
+            ..item
+        }
+    }
+
+    fn two_folders() -> TaskList {
+        let mut list = TaskList::for_folder(Some(PathBuf::from("/work/a")));
+        list.replace(ChatGroup::from_items(vec![
+            in_folder("/work/a", item(1, 1, 'A', TaskState::Running)),
+            in_folder("/work/b", item(2, 2, 'A', TaskState::Running)),
+            in_folder("/work/a", item(3, 3, 'A', TaskState::Held)),
+        ]));
+        list
+    }
+
+    fn visible_chats(list: &TaskList) -> Vec<u64> {
+        list.visible_rows()
+            .iter()
+            .map(|(group, _)| group.chat.0)
+            .collect()
+    }
+
+    #[test]
+    fn task_list_defaults_to_the_current_folder_and_the_key_widens_it() {
+        let mut list = two_folders();
+
+        let narrow = visible_chats(&list);
+        list.toggle_scope();
+        let wide = visible_chats(&list);
+        list.toggle_scope();
+
+        assert_eq!(narrow, vec![1, 3]);
+        assert_eq!(wide, vec![1, 2, 3]);
+        assert_eq!(list.scope, FolderScope::Current);
+    }
+
+    #[test]
+    fn task_list_scope_keeps_the_selection_inside_the_visible_rows() {
+        let mut list = two_folders();
+        list.toggle_scope();
+        list.selected = Some((ChatId(2), TaskId(2)));
+
+        list.toggle_scope();
+
+        assert_eq!(list.selected, Some((ChatId(1), TaskId(1))));
+    }
+
+    #[test]
+    fn task_list_does_not_hide_chats_whose_folder_is_unknown() {
+        let mut list = TaskList::for_folder(Some(PathBuf::from("/work/a")));
+        list.replace(ChatGroup::from_items(vec![
+            item(1, 1, 'A', TaskState::Running),
+            in_folder("/work/b", item(2, 2, 'A', TaskState::Running)),
+        ]));
+        let without_current = {
+            let mut other = TaskList::for_folder(None);
+            other.replace(list.groups.clone());
+            visible_chats(&other)
+        };
+
+        assert_eq!(visible_chats(&list), vec![1]);
+        assert_eq!(without_current, vec![1, 2]);
+    }
+
+    #[test]
+    fn task_list_from_items_keeps_the_folder_for_the_head_line() {
+        let list = two_folders();
+
+        assert_eq!(list.groups[1].folder, Some(PathBuf::from("/work/b")));
+    }
+
+    #[test]
+    fn task_list_scope_is_named_on_the_filter_line() {
+        let mut list = two_folders();
+        let backend = TestBackend::new(70, 6);
+        let mut terminal = Terminal::new(backend).unwrap();
+        let mut texts = Vec::new();
+        for _ in 0..2 {
+            terminal
+                .draw(|frame| {
+                    TaskListView {
+                        list: &list,
+                        lang: Lang::En,
+                    }
+                    .render(frame, frame.area());
+                })
+                .unwrap();
+            let buffer = terminal.backend().buffer().clone();
+            texts.push(
+                (0..buffer.area.width)
+                    .map(|x| buffer[(x, 1)].symbol().to_owned())
+                    .collect::<String>(),
+            );
+            list.toggle_scope();
+        }
+
+        assert!(texts[0].contains("· this folder"));
+        assert!(texts[1].contains("· all folders"));
     }
 
     fn list() -> TaskList {
