@@ -4,6 +4,7 @@
 use std::ffi::OsStr;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom};
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -112,8 +113,11 @@ fn spawn_engine(binary: &Path, socket: &Path) -> anyhow::Result<StartedEngine> {
     let log_file = OpenOptions::new()
         .create(true)
         .append(true)
+        .mode(0o600)
         .open(&log)
         .with_context(|| format!("failed to open {}", log.display()))?;
+    std::fs::set_permissions(&log, std::fs::Permissions::from_mode(0o600))
+        .with_context(|| format!("failed to secure {}", log.display()))?;
     let log_start = log_file.metadata().map(|meta| meta.len()).unwrap_or(0);
     let process = Command::new(binary)
         .arg("--home")
@@ -336,6 +340,10 @@ mod tests {
 
         let log = std::fs::read_to_string(&engine.log).unwrap();
         assert_eq!(log, format!("args: --home {}\n", home.path().display()));
+        assert_eq!(
+            std::fs::metadata(&engine.log).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
     }
 
     #[test]
