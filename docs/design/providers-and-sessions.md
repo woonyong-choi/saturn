@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md) |
+| 관련 결정 | [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md), [provider 연결을 채팅마다 따로 둔다](../decisions/2026-10-02-per-chat-provider-connections.md) |
 
 ## 요약
 
@@ -52,7 +52,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트를 바꿀 때마
 
 ### provider 연결
 
-engine은 채팅마다 provider별로 켜 둔 채 입력을 받는 연결을 두고, 작업 폴더와 환경은 그 채팅에 고정한 값을 쓴다. Codex는 app-server로, Claude Code는 stream-json 입력으로 연결한다. 한 번 실행 방식으로는 끼워 넣기가 불가능하기 때문이다. 고정 모델도 이어 갈 메인 session도 없는 첫 입력은 설치된 Claude로, 없으면 Codex로 보내고 둘 다 없으면 보내지 않는다([입력 처리](input-handling.md#입력-전송과-재전송)).
+engine은 채팅마다 provider별로 켜 둔 채 입력을 받는 연결을 두고([결정 기록](../decisions/2026-10-02-per-chat-provider-connections.md)), 작업 폴더와 환경은 그 채팅에 고정한 값을 쓴다. Codex는 app-server로, Claude Code는 stream-json 입력으로 연결한다. 한 번 실행 방식으로는 끼워 넣기가 불가능하기 때문이다. 고정 모델도 이어 갈 메인 session도 없는 첫 입력은 설치된 Claude로, 없으면 Codex로 보내고 둘 다 없으면 보내지 않는다([입력 처리](input-handling.md#입력-전송과-재전송)).
 
 `core`는 provider 연결 공통 규격인 `ProviderClient` trait을 정의하고, engine의 `providers` 모듈이 `CodexClient`와 `ClaudeClient`로 구현한다. 구현은 끼워 넣기, 멈춤 신호, compaction, 사용량 보고를 Saturn 용어로 넘긴다. provider 고유 이름은 `providers/codex`, `providers/claude` 안에서만 쓴다. TUI와 앱이 provider를 몰라도 화면을 그리게 하기 위해서다.
 
@@ -63,8 +63,8 @@ engine은 채팅마다 provider별로 켜 둔 채 입력을 받는 연결을 두
 | 멈춤 신호 | `turn/interrupt` | interrupt 제어 요청 |
 | compaction 요청 | `thread/compact/start` | `/compact` 전송 |
 | 허가 답 | 승인 요청의 JSON-RPC 번호로 결정 응답 | `can_use_tool`의 `control_response` |
-| session 닫기 | app-server 하나를 창구로 정리 | 프로그램 종료 |
-| session 재개 | app-server 하나를 창구로 재개 | stream-json 방식 `--resume` |
+| session 닫기 | 채팅의 app-server를 창구로 정리 | 프로그램 종료 |
+| session 재개 | 채팅의 app-server를 창구로 재개 | stream-json 방식 `--resume` |
 | 프로세스 수명 | 연결 창구로 유지, session은 턴 끝 뒤 5분 유예에 정리 | 턴 진행 중과 턴 끝 뒤 5분 유예까지 |
 
 Codex app-server 규약은 codex-cli 0.158.0의 `codex app-server generate-json-schema` 결과로 확인했다.

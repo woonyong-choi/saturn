@@ -94,7 +94,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 |---|---|---|
 | `saturn` | 사용자 | 명령이 끝나거나 TUI를 닫을 때까지 |
 | `saturn-engine` | `saturn` | 모든 TUI가 떨어지고 트리 유휴 뒤 5분 유예까지, 사용자당 하나 |
-| Codex app-server | `saturn-engine` | 연결 창구로 유지, session은 턴 끝 뒤 5분 유예에 정리 |
+| Codex app-server | `saturn-engine` | 채팅마다 연결 창구로 유지, session은 턴 끝 뒤 5분 유예에 정리 |
 | Claude Code | `saturn-engine` | 턴 진행 중과 턴 끝 뒤 5분 유예까지 |
 
 | 경로 | 내용 | 쓰는 구성 요소 |
@@ -111,7 +111,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 언어 | Rust | TUI가 가장 큰 작업이고 가벼운 실행 파일이 기준이다([결정 기록](decisions/2026-09-29-rust-for-all-components.md)). |
 | TUI | `ratatui`, `crossterm` | Codex TUI와 같은 라이브러리라 그 코드를 본보기로 쓴다. |
 | 구성 요소 연결 | Unix 소켓 위 JSON-RPC | 여러 TUI가 한 engine에 동시에 붙는다([결정 기록](decisions/2026-09-29-engine-centered-json-rpc.md)). |
-| provider 연결 | Codex app-server, Claude stream-json | 실행 중 입력을 끼워 넣을 수 있다([결정 기록](decisions/2026-09-29-persistent-provider-connections.md)). |
+| provider 연결 | 채팅마다 Codex app-server, Claude stream-json | 실행 중 입력을 끼워 넣을 수 있고([결정 기록](decisions/2026-09-29-persistent-provider-connections.md)), 채팅별 환경과 권한 규칙이 섞이지 않는다([결정 기록](decisions/2026-10-02-per-chat-provider-connections.md)). |
 | 비동기 실행 | `tokio` | provider 연결과 TUI 접속을 한 engine에서 동시에 처리한다. |
 | 기록 저장소 | SQLite, `sqlx` | 단일 파일과 원자 거래로 입력을 먼저 기록한다. |
 | 설정 편집 | `toml_edit` | 명령으로 설정 파일을 고칠 때 주석을 보존한다. |
