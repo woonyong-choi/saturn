@@ -50,7 +50,7 @@ async fn elicitation_request_reaches_the_tui_and_the_answer_reaches_the_provider
         (request_id.as_str(), provider, title.as_str()),
         ("ask-1", Provider::Claude, "Which?")
     );
-    assert_eq!(waiting, TaskState::AwaitingPermission);
+    assert_eq!(waiting, TaskState::AwaitingInput);
 
     flow.engine
         .answer_input(ClientId(99), "ask-1".to_owned(), typed("ok"))

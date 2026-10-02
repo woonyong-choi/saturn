@@ -533,16 +533,17 @@ impl Engine {
                 .await;
         }
         self.rpc.resolve_permission(client, &request_id).await;
-        if !self.is_task_waiting(pending.task) {
-            self.notify_task(
-                pending.chat,
-                pending.task,
-                TaskState::Running,
-                Some(pending.provider),
-                None,
-            )
-            .await;
-        }
+        let state = self
+            .waiting_state(pending.task)
+            .unwrap_or(TaskState::Running);
+        self.notify_task(
+            pending.chat,
+            pending.task,
+            state,
+            Some(pending.provider),
+            None,
+        )
+        .await;
         Ok(())
     }
 
@@ -569,17 +570,21 @@ impl Engine {
     // cost: time O(p + i), heap O(1), stack O(1)
     // vars: p = 대기 허가 요청 수, i = 대기 입력 요청 수
     // basis: estimate
-    /// 작업이 답을 기다리는 허가 요청이나 입력 요청을 아직 가지고 있다.
-    pub(crate) fn is_task_waiting(&self, task: TaskId) -> bool {
-        self.flow
+    /// 작업이 아직 기다리는 것이 있으면 그 상태. 허가 요청이 먼저이고, 없으면 `None`.
+    pub(crate) fn waiting_state(&self, task: TaskId) -> Option<TaskState> {
+        if self
+            .flow
             .permissions
             .values()
             .any(|pending| pending.task == task)
-            || self
-                .flow
-                .inputs
-                .values()
-                .any(|pending| pending.task == task)
+        {
+            return Some(TaskState::AwaitingPermission);
+        }
+        self.flow
+            .inputs
+            .values()
+            .any(|pending| pending.task == task)
+            .then_some(TaskState::AwaitingInput)
     }
 
     /// 턴이 끝났거나 흐름이 끊겨 더는 답할 수 없는 허가 요청과 입력 요청의 창을 지운다.

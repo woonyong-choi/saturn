@@ -4442,6 +4442,11 @@
           "type": "string"
         },
         {
+          "const": "AwaitingInput",
+          "description": "provider의 입력 요청에 답하기를 기다린다. 경과 시간이 멈춘다.",
+          "type": "string"
+        },
+        {
           "const": "NeedsCheck",
           "description": "결과 불명.",
           "type": "string"

@@ -12,6 +12,7 @@ pub const READING_FILE: &str = "파일 읽는 중";
 pub const EDITING_FILE: &str = "파일 수정 중";
 pub const RUNNING_COMMAND: &str = "명령 실행 중";
 pub const AWAITING_PERMISSION: &str = "허가 기다림";
+pub const AWAITING_INPUT: &str = "입력 기다림";
 pub const APPROVAL_PENDING: &str = "도구 사용 허가 준비 중";
 pub const COMPACTING: &str = "맥락 정리 중";
 pub const SWITCHING_PROVIDER: &str = "공급자 전환 중";
@@ -293,6 +294,7 @@ const ENGLISH: &[(&str, &str)] = &[
     ("파일 수정 중", "editing files"),
     ("명령 실행 중", "running command"),
     ("허가 기다림", "waiting for permission"),
+    ("입력 기다림", "waiting for input"),
     ("도구 사용 허가 준비 중", "preparing tool permission"),
     ("맥락 정리 중", "compacting context"),
     ("공급자 전환 중", "switching provider"),

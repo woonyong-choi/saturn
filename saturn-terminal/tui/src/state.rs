@@ -274,7 +274,10 @@ impl ChatState {
         if update.failure.is_some() {
             view.failure = update.failure;
         }
-        if update.state == TaskState::AwaitingPermission {
+        if matches!(
+            update.state,
+            TaskState::AwaitingPermission | TaskState::AwaitingInput
+        ) {
             view.stopwatch.pause(now);
         } else {
             view.stopwatch.resume(now);
@@ -708,6 +711,21 @@ mod tests {
         state.apply_task(task(1, 'A', TaskState::Running), now);
 
         state.apply_task(task(1, 'A', TaskState::AwaitingPermission), now);
+        let later = now + Duration::from_secs(30);
+
+        assert_eq!(
+            state.tasks[&TaskId(1)].stopwatch.elapsed(later),
+            Duration::from_secs(5)
+        );
+    }
+
+    #[test]
+    fn apply_task_awaiting_input_pauses_stopwatch() {
+        let mut state = ChatState::new();
+        let now = Instant::now();
+        state.apply_task(task(1, 'A', TaskState::Running), now);
+
+        state.apply_task(task(1, 'A', TaskState::AwaitingInput), now);
         let later = now + Duration::from_secs(30);
 
         assert_eq!(

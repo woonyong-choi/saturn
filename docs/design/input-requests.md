@@ -18,7 +18,7 @@ provider는 작업 중에 모르는 값을 사용자에게 직접 묻는다. MCP
 ### Claude가 프로젝트 이름을 묻는다
 
 1. Claude가 `AskUserQuestion`으로 질문 하나와 선택지 둘을 보낸다.
-2. TUI가 질문과 선택지를 입력 창으로 띄우고 상태판 실행 줄을 `허가 기다림`으로 바꾼다.
+2. TUI가 질문과 선택지를 입력 창으로 띄우고 상태판 실행 줄을 `입력 기다림`으로 바꾼다.
 3. 사용자가 `↓`와 `Enter`로 둘째 선택지를 고른다.
 4. `engine`이 질문 글을 키로 한 `answers`를 요청 `input`에 붙여 허용 응답으로 보낸다.
 5. Claude가 답을 받아 턴을 이어 가고 작업이 `실행 중`으로 돌아온다.
@@ -71,11 +71,11 @@ provider 고유 이름(`mcpServer/elicitation/request`, `AskUserQuestion` 같은
 ### 흐름과 대기
 
 1. provider가 입력 요청을 보낸다. 어댑터가 요청의 번호를 기억하고 `InputRequested` 이벤트로 올린다.
-2. `engine`이 이벤트를 기록한 뒤 TUI에 `InputRequested`를 보내고, 작업을 `허가 기다림`으로 바꾼다. 경과 시간이 멈춘다.
+2. `engine`이 이벤트를 기록한 뒤 TUI에 `InputRequested`를 보내고, 작업 상태를 `AwaitingInput`(`입력 기다림`)으로 바꾼다. 경과 시간이 멈춘다.
 3. 사용자가 답하면 TUI가 `AnswerInput`을 보낸다. `engine`이 요청 번호로 찾은 요청의 어댑터에 답을 넘긴다.
 4. 어댑터가 provider 형식으로 응답하면 `engine`이 다른 TUI의 창을 지우고 작업을 `실행 중`으로 되돌린다.
 
-- 상태 표시는 허가 대기와 같다. 새 작업 상태를 만들지 않고 `허가 기다림`을 그대로 쓴다. 입력 요청과 허가 요청이 함께 남아 있으면 둘 다 답할 때까지 `허가 기다림`이다.
+- 입력 대기는 허가 대기(`AwaitingPermission`, `허가 기다림`)와 다른 작업 상태이고 영어는 `waiting for input`이다. 사용자가 무엇을 기다리는지 틀리게 알지 않게 하기 위해서다. 허가 요청과 입력 요청이 함께 남아 있으면 허가 요청이 먼저 보이고, 하나에 답하면 남은 쪽 상태로 바뀐다.
 - 요청은 TUI가 붙어 있지 않아도 답이 올 때까지 보관하고, 나중에 붙는 TUI가 허가 요청과 같은 순서로 받는다([engine 수명과 복구](engine-lifecycle.md)).
 - 허가 요청과 입력 요청이 함께 오면 TUI는 허가 요청 창을 먼저 보인다.
 - 답이 오기 전에 턴이 끝나거나 흐름이 끊기면 그 요청의 창을 모든 TUI에서 지운다.
@@ -102,10 +102,8 @@ Codex 에이전트 질문(`item/tool/requestUserInput`)은 `default_mode_request
 
 ## 단점
 
-- 허가 대기와 같은 `허가 기다림` 표시를 쓰므로 입력을 기다리는 중인지 허가를 기다리는 중인지는 창을 열어야 구분된다.
 - Codex 질문은 사용자가 기능을 켜야 쓸 수 있다.
 
 ## 미해결 질문
 
 - Saturn 설정 키로 Codex 질문 기능을 켜게 할지, 기본값을 무엇으로 할지 ([#271](https://github.com/woonyong-choi/saturn/issues/271))
-- 입력 대기를 허가 대기와 다른 상태 표시로 나눌지 ([#271](https://github.com/woonyong-choi/saturn/issues/271))

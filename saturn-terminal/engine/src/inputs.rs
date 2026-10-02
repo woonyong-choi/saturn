@@ -61,7 +61,7 @@ impl Engine {
         self.notify_task(
             chat,
             task,
-            TaskState::AwaitingPermission,
+            TaskState::AwaitingInput,
             Some(live.provider),
             None,
         )
@@ -101,16 +101,17 @@ impl Engine {
             .await?;
         self.flow.inputs.remove(&request_id);
         self.rpc.resolve_input(client, &request_id).await;
-        if !self.is_task_waiting(pending.task) {
-            self.notify_task(
-                pending.chat,
-                pending.task,
-                TaskState::Running,
-                Some(pending.provider),
-                None,
-            )
-            .await;
-        }
+        let state = self
+            .waiting_state(pending.task)
+            .unwrap_or(TaskState::Running);
+        self.notify_task(
+            pending.chat,
+            pending.task,
+            state,
+            Some(pending.provider),
+            None,
+        )
+        .await;
         Ok(())
     }
 

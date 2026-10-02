@@ -337,7 +337,7 @@ impl TaskList {
 
     pub(crate) fn marker(state: TaskState) -> char {
         match state {
-            TaskState::AwaitingPermission => '!',
+            TaskState::AwaitingPermission | TaskState::AwaitingInput => '!',
             TaskState::NeedsCheck => '?',
             _ => ' ',
         }
@@ -557,6 +557,7 @@ fn state_text(lang: Lang, row: &TaskRow) -> &'static str {
     lang.tr(match row.state {
         TaskState::Running | TaskState::AnsweredTreeRunning => i18n::FILTER_RUNNING,
         TaskState::AwaitingPermission => i18n::AWAITING_PERMISSION,
+        TaskState::AwaitingInput => i18n::AWAITING_INPUT,
         TaskState::Held => i18n::FILTER_HELD,
         TaskState::NeedsCheck => i18n::FILTER_NEEDS_CHECK,
         TaskState::Done => i18n::FILTER_DONE,
@@ -579,7 +580,10 @@ mod tests {
             task: TaskId(task),
             label: TaskLabel(label),
             state,
-            needs_permission: state == TaskState::AwaitingPermission,
+            needs_permission: matches!(
+                state,
+                TaskState::AwaitingPermission | TaskState::AwaitingInput
+            ),
             busy_elsewhere: chat == 9,
             children: 0,
             folder: None,

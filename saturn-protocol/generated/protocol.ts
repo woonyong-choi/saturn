@@ -194,7 +194,7 @@ children: number,
  */
 folder: string | null, };
 
-export type TaskState = "Running" | "AnsweredTreeRunning" | "AwaitingPermission" | "Held" | "NeedsCheck" | "Done" | "Failed";
+export type TaskState = "Running" | "AnsweredTreeRunning" | "AwaitingPermission" | "AwaitingInput" | "Held" | "NeedsCheck" | "Done" | "Failed";
 
 export type ToolCategory = "Shell" | "TestRun" | "FileRead" | "FileEdit" | "Reasoning" | "Other";
 
