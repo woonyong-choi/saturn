@@ -3,7 +3,7 @@
 
 use saturn_core::judges::calibration::Signal;
 use saturn_core::queue::QueuedInput;
-use saturn_protocol::ids::InputId;
+use saturn_protocol::ids::{ChatRevision, InputId};
 use saturn_protocol::rpc::Alert;
 use saturn_protocol::state::{Disposition, InputState};
 
@@ -65,17 +65,22 @@ impl Engine {
     pub(crate) async fn finish_send_now(
         &mut self,
         input: InputId,
+        revision: ChatRevision,
         verdict: Verdict,
     ) -> Result<(), EngineError> {
         let record = self.queued(input)?;
+        let current = self.queue.revision(record.chat);
+        if record.state != InputState::Queued || current != revision {
+            self.settle_record(input, true).await;
+            self.notify_input(input).await;
+            return Ok(());
+        }
         self.settle_record(input, false).await;
-        if record.state == InputState::Queued {
-            if verdict.failed {
-                self.notify_alert(record.chat, Alert::JudgeDownSendingInOrder)
-                    .await;
-            } else {
-                self.redirect_by_verdict(input, verdict.decision.disposition)?;
-            }
+        if verdict.failed {
+            self.notify_alert(record.chat, Alert::JudgeDownSendingInOrder)
+                .await;
+        } else {
+            self.redirect_by_verdict(input, verdict.decision.disposition)?;
         }
         self.notify_input(input).await;
         Ok(())

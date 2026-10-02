@@ -120,7 +120,7 @@ impl Engine {
                     Ok(())
                 }
             }
-            JudgeKind::SendNow => self.finish_send_now(job.input, verdict).await,
+            JudgeKind::SendNow => self.finish_send_now(job.input, job.revision, verdict).await,
         }
     }
 

@@ -166,6 +166,31 @@ async fn steer_new_turn_unknown_is_not_sent_again() {
 }
 
 #[tokio::test]
+async fn steer_new_turn_not_sent_closes_the_new_run() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "refines", "steer"),
+    ])
+    .await;
+    flow.fake.verify_steer();
+    flow.submit("fix the build").await;
+    flow.fake.answer_steer([Err(ProviderError::NoActiveTurn)]);
+    flow.fake.answer_send([not_sent()]);
+
+    let second = flow.submit("also run the tests").await;
+
+    assert_eq!(flow.state(second), InputState::Rejected);
+    assert!(
+        flow.engine
+            .store
+            .unfinished_runs()
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}
+
+#[tokio::test]
 async fn verified_steer_not_sent_is_retried_then_rejected() {
     let mut flow = Flow::new(vec![
         idle_reply(0.95),
@@ -326,6 +351,34 @@ async fn send_now_with_judge_down_leaves_the_input_waiting_in_order() {
 
     assert!(steers(&flow).is_empty());
     assert_eq!(flow.state(waiting), InputState::Queued);
+}
+
+#[tokio::test]
+async fn send_now_drops_a_late_judgment_after_stop() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "continues", "queue"),
+        running_reply(0.95, "refines", "steer"),
+    ])
+    .await;
+    flow.fake.verify_steer();
+    flow.submit("fix the build").await;
+    let waiting = flow.submit("also run the tests").await;
+    let release = flow.transport.hold_next_call();
+
+    flow.engine.send_now(CLIENT, waiting).await.unwrap();
+    flow.engine.queue.stop(flow.chat);
+    release.notify_one();
+    flow.settle().await;
+
+    assert_eq!(flow.state(waiting), InputState::Held);
+    let path = flow.fixture.root.path().join("judgments.jsonl");
+    flow.engine.store.export_judgments(&path).await.unwrap();
+    assert!(
+        std::fs::read_to_string(path)
+            .unwrap()
+            .contains("Superseded")
+    );
 }
 
 #[tokio::test]
