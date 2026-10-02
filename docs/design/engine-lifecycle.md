@@ -88,6 +88,8 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 
 `Attach`에는 그 TUI의 작업 폴더와 환경 변수(`env`)가 들어 있다. TUI는 터미널마다 따로 뜨고 터미널마다 PATH와 환경이 다르기 때문에, 상주 프로세스인 `engine`의 환경 대신 붙은 TUI의 값을 쓴다. `engine`은 새 채팅을 TUI가 넘긴 작업 폴더로 만들고 그 폴더를 채팅 기록에 고정한다. 이미 있는 채팅에 붙을 때는 TUI가 다른 폴더를 넘겨도 채팅의 폴더, 폴더 설정 층, 폴더 설정 신뢰 판단에 처음 폴더를 그대로 쓰고, 환경 변수만 그 채팅에 가장 최근에 붙은 TUI의 값으로 바꿔 저장한다. 채팅의 provider 실행 환경은 이 환경 변수로 정한다. 넘기는 변수는 `PATH`, `HOME`, `SHELL`, 로캘, 프록시 같은 실행에 필요한 것으로 한정하고(목록은 `saturn-protocol`의 `ATTACH_ENV_NAMES`, 초안), 넘겨받은 환경에 judge 키 변수가 있어도 provider 자식 환경에는 넣지 않는다. 처음 친 `saturn`이 `engine`을 띄우고 붙으며, 이후의 `saturn`은 붙기만 한다.
 
+`cli`는 소켓에 먼저 붙어 보고, 받는 `engine`이 없을 때만 `saturn-engine`(`saturn`과 같은 폴더, 없으면 `PATH`)을 새 프로세스 그룹으로 띄워 `saturn`이 끝나도 남게 한다. `engine`의 stderr는 `~/.saturn/engine.log`에 쌓고, 소켓이 열릴 때까지 30초(초안)를 기다린다. 두 `saturn`이 동시에 띄워 한쪽 `engine`이 잠금을 얻지 못하고 끝나면, 소켓이 열리기를 2초(초안) 더 기다려 먼저 뜬 `engine`에 붙는다. 그래도 붙지 못하면 `engine.log` 끝 줄과 함께 오류로 끝낸다. 실행 층 `-c`는 `engine`을 띄울 때 넘기지 않고 `Attach`의 `overrides`로만 넘긴다. 이미 도는 `engine`에도 같은 방식으로 적용하고, 다른 접속에는 영향을 주지 않게 하기 위해서다. `saturn --resume <채팅 id>`는 그 id를 `Attach`의 `chat`으로 넘긴다. `--continue`와 `--resume`의 목록은 `engine`에 채팅 목록 요청이 생기기 전까지 오류로 끝낸다([#161](https://github.com/woonyong-choi/saturn/issues/161)).
+
 메시지는 JSON-RPC 2.0이고 소켓 한 줄에 하나씩 쓴다. 메서드 이름은 `saturn-protocol` 타입의 variant 이름, `params`는 그 필드다. 클라이언트의 요청에는 모두 `id`가 붙고, `engine`은 요청마다 같은 `id`의 응답 하나(`result: null` 또는 `error`)를 돌려준다. 조회 결과와 화면 갱신은 `id` 없는 알림으로 보낸다. 해석하지 못한 줄에는 읽어 낸 `id`(없으면 `null`)로 오류 응답을 보내고 연결은 유지한다. 오류 문구에는 입력 원문을 넣지 않는다. judge 키가 들어 있을 수 있기 때문이다. 메시지의 JSON Schema와 TypeScript 타입은 `saturn-protocol/generated/`에 있고 `cargo run -p saturn-protocol --example codegen`으로 다시 만든다.
 
 사용자당 잠금은 `~/.saturn/engine.lock`의 `flock`이다. 프로세스가 죽으면 운영체제가 풀기 때문에 남은 잠금 파일을 지울 필요가 없다. 소켓은 `~/.saturn/engine.sock`이고 권한은 0600이다. 남은 소켓 파일은 잠금을 얻은 뒤에만 지운다. 답을 기다리는 허가 요청은 TUI가 붙어 있어도 답이 올 때까지 보관한다. 나중에 붙는 TUI도 같은 창을 띄우게 하기 위해서다. 클라이언트마다 보낼 메시지를 1024개까지 쌓고, 넘치면 기다리지 않고 그 연결을 끊는다. 느린 TUI 하나가 `engine`을 멈추지 않게 하기 위해서다. 끊긴 TUI는 다시 붙어 기록으로 화면을 되살린다. 파일 이름, 권한, 쌓는 개수는 초안이다.
@@ -143,6 +145,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | `~/.saturn/config.toml` | 사용자 설정 | `engine` |
 | `<작업 폴더>/.saturn/config.toml` | 폴더 설정 | `engine` |
 | `~/.saturn/backup/` | 스키마 이관 직전 백업 | `engine` |
+| `~/.saturn/engine.log` | `cli`가 띄운 `engine`의 stderr (초안) | `cli` |
 | `~/.saturn/history` | 입력 기록 | `tui` |
 
 ### 효과 범위

@@ -298,11 +298,25 @@ impl Engine {
         if let Some(previous) = self.runs.active.remove(&agent) {
             self.store.finish_run(previous, RunEnd::Completed).await?;
         }
-        self.begin_run(record.chat, input, task, &live).await?;
-        self.provider_mut(record.chat, live.provider)?
+        let run = self.begin_run(record.chat, input, task, &live).await?;
+        let sent = self
+            .provider_mut(record.chat, live.provider)?
             .send_turn(&live.provider_session, &record.text)
-            .await?;
-        Ok(())
+            .await;
+        if let Err(error) = &sent
+            && !matches!(error, ProviderError::Unknown)
+        {
+            self.runs.active.remove(&live.agent);
+            self.runs.chat_of.remove(&live.agent);
+            self.runs.task_of.remove(&live.agent);
+            if let Err(end_error) = self.store.finish_run(run, RunEnd::Failed).await {
+                tracing::warn!(
+                    error = %self.failure_line(&end_error),
+                    "failed to end fallback run"
+                );
+            }
+        }
+        sent.map_err(EngineError::from)
     }
 
     async fn steer_with_retries(

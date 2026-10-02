@@ -1,9 +1,17 @@
 //! 하위 명령 없는 `saturn`: 대화 화면을 연다.
 //! 설계: docs/design/tui.md
 
+use std::io::IsTerminal;
+use std::path::PathBuf;
+
+use anyhow::Context;
+use saturn_protocol::ids::ChatId;
+use saturn_tui::RunOptions;
 use saturn_tui::client::EngineClient;
 
-use crate::args::ConfigOverride;
+use crate::args::{ConfigOverride, OpenMode};
+
+const HISTORY_FILE: &str = "history";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ScreenMode {
@@ -12,31 +20,150 @@ pub(crate) enum ScreenMode {
     Plain,
 }
 
+/// 이어 열 채팅을 정한다. engine에 붙기 전에 불러 지원하지 않는 방식이면 engine을 띄우지 않는다.
+///
+/// TODO(#161): 현재 폴더의 최근 채팅과 채팅 목록을 engine에서 받을 수 있게 되면 `--continue`와 `--resume`(목록)을 구현한다
+///
+/// # Errors
+/// 채팅 id 없이 고르거나 가장 최근 채팅을 찾는 방식이면 오류(아직 지원하지 않음).
+pub(crate) fn resolve_chat(mode: OpenMode) -> anyhow::Result<Option<ChatId>> {
+    match mode {
+        OpenMode::New => Ok(None),
+        OpenMode::Chat(chat) => Ok(Some(chat)),
+        OpenMode::ContinueLast => anyhow::bail!(
+            "--continue is not supported yet: engine cannot list chats of the current folder; use --resume <chat id>"
+        ),
+        OpenMode::PickInFolder | OpenMode::PickInAll => anyhow::bail!(
+            "--resume without a chat id and --resume all are not supported yet: engine cannot list chats; use --resume <chat id>"
+        ),
+    }
+}
+
+// cost: time O(c), heap O(c), stack O(1), io c
+// vars: c = 화면을 연 동안 오간 메시지 수
+// basis: estimate
 /// # Errors
 /// `-c` 값을 engine이 받지 않았거나 연결이 끊기면 오류.
 pub(crate) async fn run(
     client: &mut EngineClient,
+    chat: Option<ChatId>,
     config: &[ConfigOverride],
 ) -> anyhow::Result<()> {
-    todo!("#93")
+    let workdir = std::env::current_dir().context("failed to read the current folder")?;
+    let options = run_options(chat, config, workdir);
+    match detect_mode() {
+        ScreenMode::FullScreen => run_full_screen(client, options).await,
+        ScreenMode::Plain => run_plain(client, options).await,
+    }
 }
 
-/// TODO(#57): plain을 켜는 조건과 우선순위, 설정 키
+/// TODO(#57): plain을 켜는 조건과 우선순위, 설정 키. 지금은 표준 입력이나 표준 출력이 터미널이 아니면 plain
 fn detect_mode() -> ScreenMode {
-    todo!("#93")
+    mode_for(
+        std::io::stdin().is_terminal(),
+        std::io::stdout().is_terminal(),
+    )
 }
 
-async fn send_run_layer(
-    client: &mut EngineClient,
-    config: &[ConfigOverride],
-) -> anyhow::Result<()> {
-    todo!("#93")
+fn mode_for(stdin_is_terminal: bool, stdout_is_terminal: bool) -> ScreenMode {
+    if stdin_is_terminal && stdout_is_terminal {
+        ScreenMode::FullScreen
+    } else {
+        ScreenMode::Plain
+    }
 }
 
-async fn run_full_screen(client: &mut EngineClient) -> anyhow::Result<()> {
-    todo!("#93")
+// cost: time O(c), heap O(c), stack O(1)
+// vars: c = `-c` 개수
+// basis: estimate
+/// `-c`는 실행 층으로 `Attach`에 실려 이 접속의 입력에만 적용된다.
+fn run_options(chat: Option<ChatId>, config: &[ConfigOverride], workdir: PathBuf) -> RunOptions {
+    let history = EngineClient::default_socket()
+        .parent()
+        .map(|home| home.join(HISTORY_FILE))
+        .unwrap_or_else(|| PathBuf::from(HISTORY_FILE));
+    RunOptions {
+        chat,
+        lang: None,
+        workdir,
+        overrides: config
+            .iter()
+            .map(|entry| (entry.key.clone(), entry.value.clone()))
+            .collect(),
+        history,
+    }
 }
 
-async fn run_plain(client: &mut EngineClient) -> anyhow::Result<()> {
-    todo!("#93")
+async fn run_full_screen(client: &mut EngineClient, options: RunOptions) -> anyhow::Result<()> {
+    Ok(saturn_tui::run(client, options).await?)
+}
+
+// cost: time O(c), heap O(c), stack O(1), io c
+// vars: c = 오간 메시지 수. `saturn_tui::run_plain`을 부른다
+// basis: estimate
+async fn run_plain(client: &mut EngineClient, options: RunOptions) -> anyhow::Result<()> {
+    Ok(saturn_tui::run_plain(client, options).await?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn entry(key: &str, value: &str) -> ConfigOverride {
+        ConfigOverride {
+            key: key.to_owned(),
+            value: value.to_owned(),
+        }
+    }
+
+    #[test]
+    fn continue_resume_new_chat_has_no_chat_id() {
+        assert_eq!(resolve_chat(OpenMode::New).unwrap(), None);
+    }
+
+    #[test]
+    fn continue_resume_chat_id_is_passed_to_attach() {
+        let chat = resolve_chat(OpenMode::Chat(ChatId(7))).unwrap();
+
+        assert_eq!(chat, Some(ChatId(7)));
+    }
+
+    #[test]
+    fn continue_resume_modes_that_need_a_chat_list_are_not_supported_yet() {
+        for mode in [
+            OpenMode::ContinueLast,
+            OpenMode::PickInFolder,
+            OpenMode::PickInAll,
+        ] {
+            let error = resolve_chat(mode).unwrap_err();
+
+            assert!(error.to_string().contains("not supported yet"), "{mode:?}");
+        }
+    }
+
+    #[test]
+    fn mode_for_needs_terminal_input_and_output_for_full_screen() {
+        assert_eq!(mode_for(true, true), ScreenMode::FullScreen);
+        assert_eq!(mode_for(true, false), ScreenMode::Plain);
+        assert_eq!(mode_for(false, true), ScreenMode::Plain);
+        assert_eq!(mode_for(false, false), ScreenMode::Plain);
+    }
+
+    #[test]
+    fn run_options_carries_chat_workdir_and_config_layer_in_order() {
+        let config = [entry("permission.mode", "\"full\""), entry("a", "1")];
+
+        let options = run_options(Some(ChatId(3)), &config, PathBuf::from("/work"));
+
+        assert_eq!(options.chat, Some(ChatId(3)));
+        assert_eq!(options.workdir, PathBuf::from("/work"));
+        assert_eq!(
+            options.overrides,
+            vec![
+                ("permission.mode".to_owned(), "\"full\"".to_owned()),
+                ("a".to_owned(), "1".to_owned())
+            ]
+        );
+        assert!(options.history.ends_with(".saturn/history"));
+    }
 }
