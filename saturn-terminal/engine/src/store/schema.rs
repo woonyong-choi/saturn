@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub const SCHEMA_VERSION: u32 = 3;
+pub const SCHEMA_VERSION: u32 = 4;
 
 pub const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,7 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3];
+pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -162,6 +162,18 @@ ALTER TABLE sessions ADD COLUMN last_turn_ended_at INTEGER;
 const V3: &str = r#"
 ALTER TABLE judgments ADD COLUMN signal TEXT;
 ALTER TABLE judgments ADD COLUMN asked_answer TEXT;
+"#;
+
+/// 항상 허용. 작업 폴더, 도구, 패턴이 같은 행은 하나다.
+const V4: &str = r#"
+CREATE TABLE permission_allows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    workdir TEXT NOT NULL,
+    tool TEXT NOT NULL,
+    pattern TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    UNIQUE (workdir, tool, pattern)
+);
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -455,5 +467,35 @@ mod tests {
                 .await
                 .unwrap();
         assert_eq!((asked_with, signal, answer), (0.2, None, None));
+    }
+
+    #[tokio::test]
+    async fn v3_file_migrates_to_permission_allows_keeping_chats() {
+        let (dir, store) = temp_store_at(3).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (3, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        assert_eq!(
+            store
+                .chat_workdir(saturn_protocol::ids::ChatId(1))
+                .await
+                .unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(
+            store
+                .permission_allows(Path::new("/work"))
+                .await
+                .unwrap()
+                .is_empty()
+        );
     }
 }

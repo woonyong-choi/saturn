@@ -5,6 +5,7 @@ mod history;
 mod judgments;
 mod ledger;
 mod outcomes;
+mod permissions;
 mod raw;
 mod records;
 mod retention;

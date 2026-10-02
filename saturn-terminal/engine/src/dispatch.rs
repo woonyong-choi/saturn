@@ -270,6 +270,9 @@ impl Engine {
         self.runs.task_of.insert(live.agent, task);
         self.flow.last_run.insert(live.agent, run);
         self.flow.last_task.insert(live.agent, task);
+        if let Some(record) = self.queue.input(input) {
+            self.flow.settings_of.insert(live.agent, record.settings);
+        }
         self.sessions.mark_busy(live.session);
         Ok(run)
     }

@@ -47,6 +47,9 @@ pub enum ProviderEvent {
         request_id: String,
         summary: String,
         reason: String,
+        /// 규칙으로 판정할 수 있는 호출만 담는다. 없으면 사용자에게 묻는다.
+        #[serde(default)]
+        call: Option<PermissionCall>,
     },
     /// Codex는 부모 작업의 `turn/completed`만 온다.
     TurnCompleted {
@@ -87,6 +90,25 @@ impl ProviderEvent {
             Self::Usage(report) => report.agent,
         }
     }
+}
+
+/// 권한 규칙이 대상으로 삼는 도구 종류.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum PermissionTool {
+    Shell,
+    Edit,
+    Mcp,
+    Subagent,
+}
+
+/// provider 요청을 규칙이 읽는 모양으로 옮긴 값.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct PermissionCall {
+    pub tool: PermissionTool,
+    /// 셸은 명령, MCP는 `mcp__<서버>__<도구>`, subagent는 종류 이름, 편집은 비어 있다.
+    pub target: String,
+    /// 편집이 건드리는 경로. provider가 낸 경로 그대로.
+    pub paths: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

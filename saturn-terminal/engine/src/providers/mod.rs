@@ -5,6 +5,8 @@
 
 mod claude;
 mod codex;
+mod codex_home;
+mod codex_permission;
 #[cfg(test)]
 pub(crate) mod test_support;
 mod tool_detail;
@@ -25,6 +27,9 @@ use crate::secrets::Masker;
 
 pub use claude::ClaudeClient;
 pub use codex::CodexClient;
+pub use codex_home::{
+    HomeError, HomeInput, PreparedHome, prepare as prepare_codex_home, rules_fingerprint,
+};
 
 pub const STEER_PENDING_NOTICE: &str = "바로 반영: 준비 중";
 
@@ -43,15 +48,24 @@ pub struct LaunchSpec {
     pub env: Vec<(OsString, OsString)>,
     /// Claude만 `--settings`로 넘기고 Codex는 무시한다.
     pub hook_settings: Option<serde_json::Value>,
+    /// Saturn 규칙을 번역한 provider 실행 설정.
+    pub permission: PermissionLaunch,
     /// provider stderr와 오류 문구를 로그에 남기기 전에 가린다.
     pub masker: Masker,
+}
+
+/// Saturn 권한 규칙을 provider 실행 설정으로 번역한 결과. Claude의 `ask` 목록은 `hook_settings`에 합쳐 넘긴다.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PermissionLaunch {
+    /// Codex 전용 `CODEX_HOME`. 없으면 환경의 값을 그대로 쓴다.
+    pub codex_home: Option<PathBuf>,
+    /// 첫 턴 전에 준비를 확인할 Codex MCP 서버. 비면 확인하지 않는다.
+    pub mcp_servers: Vec<String>,
 }
 
 /// 값 자체는 읽지 않고 있는지만 본다.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct UserProviderConfig {
-    /// 승인, 샌드박스 값이 있다.
-    pub has_permission: bool,
     /// 끄기 포함.
     pub has_auto_compact: bool,
 }
@@ -59,8 +73,6 @@ pub struct UserProviderConfig {
 /// 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘기고, 사용자 설정 파일은 건드리지 않는다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SaturnDefaults {
-    /// 항상 수정 허용.
-    pub allow_edits: bool,
     /// `T_hard`(토큰). `ContextBudget::hard_limit` 값.
     pub auto_compact_tokens: u64,
 }
@@ -121,6 +133,16 @@ impl ProviderConnection {
         match self {
             Self::Codex(client) => Some(client.process_group()),
             Self::Claude(client) => client.process_group(session),
+            #[cfg(test)]
+            Self::Fake(client) => client.group(),
+        }
+    }
+
+    /// 모든 session이 프로세스 묶음 하나를 같이 쓰는 provider의 그 묶음. 연결을 통째로 닫을 때 쓴다.
+    pub fn shared_group(&self) -> Option<ProcessGroupId> {
+        match self {
+            Self::Codex(client) => Some(client.process_group()),
+            Self::Claude(_) => None,
             #[cfg(test)]
             Self::Fake(client) => client.group(),
         }

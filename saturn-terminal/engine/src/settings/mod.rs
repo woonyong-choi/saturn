@@ -4,6 +4,7 @@
 mod edit;
 mod layers;
 mod manager;
+mod permission;
 mod trust;
 
 use std::path::PathBuf;
@@ -26,6 +27,7 @@ pub use layers::{
     USER_ONLY, UserOnly, default_layer, find_folder_config, merge, read_reference, run_layer,
 };
 pub use manager::{Applied, SettingsManager};
+pub use permission::{PermissionSettings, chat_layer_mode, with_chat_layer_mode};
 pub use trust::{FolderTrustPrompt, TrustStatus, TrustStore};
 
 /// 사용자 층은 `~/.saturn/`, 폴더 층은 `<폴더>/.saturn/` 아래 파일 이름.
@@ -177,6 +179,11 @@ impl Settings {
         RetentionPolicy {
             max_age: days.map(|days| Duration::from_secs(days.saturating_mul(24 * 60 * 60))),
         }
+    }
+
+    /// 모드와 개별 규칙. 옛 스냅샷에 없으면 기본 모드와 빈 규칙이다.
+    pub fn permission(&self) -> PermissionSettings {
+        permission::from_value(self.get(permission::KEY))
     }
 
     pub fn on_exit(&self) -> OnExit {

@@ -743,6 +743,7 @@ mod tests {
                 request_id: "r1".to_string(),
                 summary: "touch a.txt".to_string(),
                 reason: String::new(),
+                call: None,
             },
             later,
         );

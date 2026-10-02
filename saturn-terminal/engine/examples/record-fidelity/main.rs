@@ -11,11 +11,12 @@ use anyhow::{Context, bail};
 use saturn_core::providers::{ProviderClient, SessionSpec};
 use saturn_engine::processes::Supervisor;
 use saturn_engine::providers::{
-    LaunchSpec, ProviderConnection, SaturnDefaults, UserProviderConfig,
+    LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults, UserProviderConfig,
 };
 use saturn_engine::secrets::Masker;
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, Provider, SettingsRevision};
+use saturn_protocol::rpc::PermissionAnswer;
 
 const USAGE: &str = "usage: record-fidelity <codex|claude> --program FILE --workdir DIR --prompt-file FILE --out FILE [--model NAME] [--timeout-s N]";
 
@@ -69,17 +70,15 @@ fn launch_spec(args: &Args) -> LaunchSpec {
         program: args.program.clone(),
         workdir: args.workdir.clone(),
         settings: SettingsRevision(1),
-        // 승인 방식은 실행 도구가 provider 인자로 정하므로 Saturn 기본값을 넣지 않는다
         user_config: UserProviderConfig {
-            has_permission: true,
             has_auto_compact: true,
         },
         defaults: SaturnDefaults {
-            allow_edits: true,
             auto_compact_tokens: 180_000,
         },
         env,
         hook_settings: None,
+        permission: PermissionLaunch::default(),
         masker: Masker::new(Vec::new()),
     }
 }
@@ -123,6 +122,17 @@ async fn run(args: &Args) -> anyhow::Result<()> {
             break;
         };
         writeln!(out, "{}", serde_json::to_string(&event)?)?;
+        if let ProviderEvent::PermissionRequested { request_id, .. } = &event {
+            // 이 도구는 사람이 답하지 않으므로 모든 승인 요청을 허용해 작업이 끝까지 돌게 한다
+            connection
+                .answer_permission(
+                    &handle.provider_session,
+                    request_id,
+                    PermissionAnswer::AllowOnce,
+                )
+                .await
+                .map_err(|error| anyhow::anyhow!("failed to answer permission: {error}"))?;
+        }
         if matches!(
             event,
             ProviderEvent::TurnCompleted { .. } | ProviderEvent::StreamLost { .. }

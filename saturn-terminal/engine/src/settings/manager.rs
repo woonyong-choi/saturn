@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use saturn_protocol::ids::{ChatId, SettingsRevision};
 
 use super::layers::{default_layer, find_folder_config, fingerprint, merge, run_layer, source};
+use super::permission;
 use super::{
     CONFIG_FILE, FolderTrustPrompt, Layer, LayerSource, Settings, SettingsError, TrustStatus,
     TrustStore,
@@ -61,7 +62,13 @@ impl SettingsManager {
             return Ok(None);
         };
         let content = read_file(&path)?.unwrap_or_default();
-        let status = self.trust.status(&path, &content);
+        let mut status = self.trust.status(&path, &content);
+        let user = read_file(&self.user_config_path())?;
+        if permission::is_folder_mode_ignored(user.as_deref(), &content)
+            && let TrustStatus::Unknown(prompt) | TrustStatus::Changed(prompt) = &mut status
+        {
+            prompt.ignore(permission::MODE_KEY);
+        }
         Ok(Some((path, status)))
     }
 
@@ -192,7 +199,7 @@ impl SettingsManager {
             .flat_map(|layer| layer.ignored.iter().map(String::as_str))
             .collect();
         let warning = (!ignored.is_empty())
-            .then(|| format!("폴더 설정의 사용자 전용 항목 무시 · {}", ignored.join(", ")));
+            .then(|| format!("폴더 설정의 무시한 항목 · {}", ignored.join(", ")));
         Ok(Applied { revision, warning })
     }
 
@@ -448,6 +455,63 @@ mod tests {
         let settings = manager.at(&fixture.store, trusted.revision).await.unwrap();
         assert_eq!(settings.thresholds().injection, 0.9);
         assert!(none.is_none());
+    }
+
+    #[tokio::test]
+    async fn folder_permission_mode_that_does_not_lower_is_listed_as_ignored_in_the_trust_prompt() {
+        let fixture = Fixture::new().await;
+        fixture.write_user("permission.mode = \"edit\"\n");
+        fixture.write_folder("permission.mode = \"full\"\npermission.shell = \"allow\"\n");
+        let mut manager = fixture.manager(&[]).await;
+
+        let (_, prompt) = manager
+            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
+
+        let prompt = prompt.unwrap();
+        assert_eq!(prompt.ignored, vec!["permission.mode"]);
+        assert_eq!(prompt.applied, vec!["permission.shell"]);
+    }
+
+    #[tokio::test]
+    async fn folder_permission_mode_that_lowers_is_applied_and_trusted_rules_merge_after_user_rules()
+     {
+        let fixture = Fixture::new().await;
+        fixture.write_user("[permission.shell]\n\"ls\" = \"allow\"\n");
+        let path = fixture
+            .write_folder("permission.mode = \"ask\"\n[permission.shell]\n\"ls\" = \"ask\"\n");
+        let mut manager = fixture.manager(&[]).await;
+        let (_, prompt) = manager
+            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
+        let prompt = prompt.unwrap();
+        assert!(prompt.ignored.is_empty());
+        manager
+            .trust_folder(&path, &prompt.fingerprint)
+            .await
+            .unwrap();
+
+        let (applied, _) = manager
+            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
+
+        let permission = manager
+            .at(&fixture.store, applied.revision)
+            .await
+            .unwrap()
+            .permission();
+        assert_eq!(permission.mode, saturn_core::permission::Mode::Ask);
+        let verdicts: Vec<_> = permission.rules.iter().map(|rule| rule.verdict).collect();
+        assert_eq!(
+            verdicts,
+            vec![
+                saturn_core::permission::Verdict::Allow,
+                saturn_core::permission::Verdict::Ask
+            ]
+        );
     }
 
     #[tokio::test]

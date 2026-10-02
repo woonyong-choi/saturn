@@ -5,7 +5,9 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
-use super::{CONFIG_FILE, Layer, LayerSource, Settings, SettingsError, SettingsSnapshot};
+use super::{
+    CONFIG_FILE, Layer, LayerSource, Settings, SettingsError, SettingsSnapshot, permission,
+};
 use crate::store::sha256_hex;
 
 const FOLDER_DIR: &str = ".saturn";
@@ -206,8 +208,17 @@ pub async fn find_folder_config(
 pub fn merge(mut layers: Vec<(LayerSource, String)>) -> Result<SettingsSnapshot, SettingsError> {
     layers.sort_by_key(|(source, _)| source.layer);
     let mut parsed = Vec::with_capacity(layers.len());
+    let mut permissions = Vec::with_capacity(layers.len());
     for (mut source, content) in layers {
         let mut values = parse_toml(&content, &layer_path(&source))?;
+        let permission =
+            permission::read_layer(&content).map_err(|(key, reason)| SettingsError::Invalid {
+                key,
+                reason,
+                layer: source.layer,
+            })?;
+        permissions.push(permission);
+        remove_path(&mut values, permission::KEY);
         if source.layer == Layer::Folder {
             source.ignored = strip_user_only(&mut values);
         }
@@ -221,11 +232,14 @@ pub fn merge(mut layers: Vec<(LayerSource, String)>) -> Result<SettingsSnapshot,
         let layer = origin_layer(&parsed, &key);
         return Err(SettingsError::Invalid { key, reason, layer });
     }
+    let mut sources: Vec<LayerSource> = parsed.into_iter().map(|(source, _)| source).collect();
+    let folded = permission::fold(&mut sources, permissions);
+    merged.insert(permission::KEY.to_owned(), permission::to_value(&folded));
     Ok(SettingsSnapshot {
         settings: Settings {
             values: Value::Object(merged),
         },
-        layers: parsed.into_iter().map(|(source, _)| source).collect(),
+        layers: sources,
     })
 }
 
@@ -849,5 +863,87 @@ mod tests {
         std::fs::write(&path, "# note\nx = 1\n").unwrap();
 
         assert_eq!(read_reference(&path).await.unwrap(), "# note\nx = 1\n");
+    }
+
+    #[test]
+    fn permission_defaults_to_edit_mode_without_rules() {
+        let snapshot = merge(vec![layer(Layer::Default, default_layer())]).unwrap();
+
+        let permission = snapshot.settings.permission();
+
+        assert_eq!(permission.mode, saturn_core::permission::Mode::Edit);
+        assert!(permission.rules.is_empty());
+    }
+
+    #[test]
+    fn permission_rules_follow_layer_order_then_file_order() {
+        let layers = vec![
+            layer(Layer::Chat, "[permission.shell]\n\"c\" = \"allow\"\n"),
+            layer(Layer::Default, default_layer()),
+            layer(
+                Layer::Folder,
+                "[permission.shell]\n\"f2\" = \"ask\"\n\"f1\" = \"deny\"\n",
+            ),
+            layer(Layer::User, "[permission.shell]\n\"u\" = \"allow\"\n"),
+        ];
+
+        let snapshot = merge(layers).unwrap();
+
+        let patterns: Vec<String> = snapshot
+            .settings
+            .permission()
+            .rules
+            .into_iter()
+            .map(|rule| rule.pattern)
+            .collect();
+        assert_eq!(patterns, vec!["u", "f2", "f1", "c"]);
+    }
+
+    #[test]
+    fn folder_permission_mode_cannot_raise_and_is_reported_as_ignored() {
+        let layers = vec![
+            layer(Layer::Default, default_layer()),
+            layer(Layer::User, "permission.mode = \"edit\"\n"),
+            layer(Layer::Folder, "permission.mode = \"full\"\n"),
+        ];
+
+        let snapshot = merge(layers).unwrap();
+
+        assert_eq!(
+            snapshot.settings.permission().mode,
+            saturn_core::permission::Mode::Edit
+        );
+        assert_eq!(snapshot.layers[2].ignored, vec!["permission.mode"]);
+    }
+
+    #[test]
+    fn folder_permission_mode_can_lower() {
+        let layers = vec![
+            layer(Layer::Default, default_layer()),
+            layer(Layer::Folder, "permission.mode = \"read-only\"\n"),
+        ];
+
+        let snapshot = merge(layers).unwrap();
+
+        assert_eq!(
+            snapshot.settings.permission().mode,
+            saturn_core::permission::Mode::ReadOnly
+        );
+        assert!(snapshot.layers[1].ignored.is_empty());
+    }
+
+    #[test]
+    fn invalid_permission_value_reports_key_and_layer() {
+        let layers = vec![
+            layer(Layer::Default, default_layer()),
+            layer(Layer::Folder, "permission.shell = \"sometimes\"\n"),
+        ];
+
+        let error = merge(layers).unwrap_err();
+
+        let SettingsError::Invalid { key, layer, .. } = error else {
+            panic!("expected an invalid setting, got {error:?}");
+        };
+        assert_eq!((key.as_str(), layer), ("permission.shell", Layer::Folder));
     }
 }

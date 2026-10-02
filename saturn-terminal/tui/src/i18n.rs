@@ -384,6 +384,7 @@ const ENGLISH: &[(&str, &str)] = &[
     ("판단 피드백", "judgment feedback"),
     ("판단 모델 버전", "judge versions"),
     ("판단 기록 켜기와 끄기", "turn judgment records on or off"),
+    ("권한 모드 바꾸기", "change the permission mode"),
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

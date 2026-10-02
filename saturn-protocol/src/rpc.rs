@@ -121,6 +121,12 @@ pub enum Request {
         chat: ChatId,
         on: bool,
     },
+    /// 채팅 층의 `permission.mode`를 바꾼다. 다음 허가 요청부터 새 모드로 판정한다.
+    /// `mode`는 `ask`, `edit`, `read-only`, `full`.
+    SetPermissionMode {
+        chat: ChatId,
+        mode: String,
+    },
     Usage {
         scope: UsageRange,
     },
@@ -158,7 +164,7 @@ impl std::fmt::Debug for Request {
 pub enum PermissionAnswer {
     /// 이 요청만 허용한다.
     AllowOnce,
-    /// 같은 종류 호출을 앞으로도 허용한다. 저장은 TODO(#232).
+    /// 같은 종류 호출을 앞으로도 허용한다. engine이 작업 폴더 단위로 저장한다.
     AllowAlways,
     /// `note`는 다르게 하라는 말. TODO(#56): 입력 방식이 정해지기 전에는 늘 `None`.
     Deny { note: Option<String> },
@@ -303,6 +309,11 @@ pub enum ChatNotice {
     },
     Stopped {
         held: Vec<TaskLabel>,
+    },
+    /// provider 연결을 다시 시작했다. `text`는 화면에 그대로 보이는 안내 문구다.
+    ProviderRestarted {
+        provider: crate::ids::Provider,
+        text: String,
     },
     /// 크래시 뒤 증명되지 않은 실행을 보류했다.
     ResumeSuggested {

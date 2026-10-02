@@ -6,6 +6,7 @@ mod deliver;
 mod events;
 mod intake;
 mod outcomes;
+mod permissions;
 mod requests;
 mod sessions;
 mod start;
