@@ -457,6 +457,7 @@ async fn chat_layer_mode_decides_the_input_permission() {
 #[tokio::test]
 async fn changed_codex_rules_mark_the_connection_stale_until_they_match_again() {
     let mut flow = Flow::new(Vec::new()).await;
+    let mut client = flow.client().await;
     let revision = flow.engine.settings.current().unwrap();
     let current = crate::providers::rules_fingerprint(
         &flow
@@ -478,6 +479,15 @@ async fn changed_codex_rules_mark_the_connection_stale_until_they_match_again() 
         .insert(flow.chat, "older-rules".to_owned());
     flow.engine.note_rules_revision(flow.chat, revision).await;
     assert!(flow.engine.flow.rules_stale.contains(&flow.chat));
+    client
+        .until(|notification| match notification {
+            Notification::ChatNotice {
+                notice: ChatNotice::PermissionsChanged,
+                ..
+            } => Some(()),
+            _ => None,
+        })
+        .await;
 
     flow.engine
         .flow
@@ -515,19 +525,13 @@ async fn stale_codex_connection_restarts_after_the_turn_ends_and_reopens_the_ses
     let notice = client
         .until(|notification| match notification {
             Notification::ChatNotice {
-                notice: ChatNotice::ProviderRestarted { provider, text },
+                notice: ChatNotice::ProviderRestarted { provider },
                 ..
-            } => Some((*provider, text.clone())),
+            } => Some(*provider),
             _ => None,
         })
         .await;
-    assert_eq!(
-        notice,
-        (
-            Provider::Codex,
-            crate::permission::CODEX_RESTART_NOTICE.to_owned()
-        )
-    );
+    assert_eq!(notice, Provider::Codex);
 
     let reconnected = flow.add_provider(Provider::Codex);
     flow.submit("add the tests").await;

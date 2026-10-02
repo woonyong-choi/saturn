@@ -482,7 +482,14 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
                 Lang::En => format!("{prefix}{} {from} → {to}", lang.tr(i18n::SWITCHED_SUFFIX)),
             }]
         }
-        ChatNotice::ProviderRestarted { text, .. } => vec![format!("{prefix}{text}")],
+        ChatNotice::ProviderRestarted { provider } => vec![format!(
+            "{prefix}{}",
+            lang.tr(i18n::PROVIDER_RESTARTED)
+                .replace("{provider}", i18n::provider_title(*provider))
+        )],
+        ChatNotice::PermissionsChanged => {
+            vec![format!("{prefix}{}", lang.tr(i18n::PERMISSIONS_CHANGED))]
+        }
         ChatNotice::ResumeSuggested { held } => vec![format!(
             "{} {} · {}",
             held_labels(held),
@@ -671,6 +678,37 @@ mod tests {
         };
 
         assert_eq!(cell.lines(Lang::Ko, true, false), vec!["> a · 반영됨"]);
+    }
+
+    #[test]
+    fn lines_permission_notices_follow_language() {
+        let restarted = TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::ProviderRestarted {
+                provider: Provider::Codex,
+            },
+        };
+        let changed = TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::PermissionsChanged,
+        };
+
+        assert_eq!(
+            restarted.lines(Lang::Ko, true, false),
+            vec!["변경된 권한 설정을 적용하기 위해 Codex를 다시 시작했습니다."]
+        );
+        assert_eq!(
+            restarted.lines(Lang::En, true, false),
+            vec!["Restarted Codex to apply the changed permission settings."]
+        );
+        assert_eq!(
+            changed.lines(Lang::Ko, true, false),
+            vec!["권한 설정이 변경되었습니다. 다음 요청부터 적용됩니다."]
+        );
+        assert_eq!(
+            changed.lines(Lang::En, true, false),
+            vec!["Permission settings changed. They apply from your next request."]
+        );
     }
 
     #[test]

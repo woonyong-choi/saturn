@@ -7,7 +7,7 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use saturn_protocol::event::Activity;
 use saturn_protocol::ids::{InputId, Provider, TaskId, TaskLabel};
-use saturn_protocol::rpc::Alert;
+use saturn_protocol::rpc::{Alert, SettingsFault, SettingsLayer, SettingsWarning};
 use saturn_protocol::state::QueueReason;
 
 use ratatui::text::{Line, Span};
@@ -90,8 +90,11 @@ pub enum StatusLine {
     StopUnconfirmed { remaining: u32 },
     /// `[보내기]`를 눌렀지만 router가 실패해 차례에 보낸다.
     RouterUnavailableSend,
-    /// `previous`는 계속 쓰는 이전 설정 번호.
-    SettingsError { previous: u64, detail: String },
+    /// `revision`은 적용된 설정 번호. 검사 실패면 계속 쓰는 이전 번호다.
+    Settings {
+        revision: u64,
+        warning: SettingsWarning,
+    },
 }
 
 impl StatusLine {
@@ -108,7 +111,7 @@ impl StatusLine {
             Self::Alert(_)
             | Self::StopUnconfirmed { .. }
             | Self::RouterUnavailableSend
-            | Self::SettingsError { .. } => LineKind::Alert,
+            | Self::Settings { .. } => LineKind::Alert,
         }
     }
 
@@ -186,19 +189,7 @@ impl StatusLine {
                 ),
             },
             Self::RouterUnavailableSend => lang.tr(i18n::ROUTER_UNAVAILABLE_SEND).to_string(),
-            Self::SettingsError { previous, detail } => match lang {
-                Lang::Ko => format!(
-                    "{} · {} {previous}{} · {detail}",
-                    i18n::SETTINGS_ERROR,
-                    i18n::SETTINGS_PREVIOUS,
-                    i18n::SETTINGS_CONTINUE_SUFFIX
-                ),
-                Lang::En => format!(
-                    "{} · {} {previous} · {detail}",
-                    lang.tr(i18n::SETTINGS_ERROR),
-                    lang.tr(i18n::SETTINGS_PREVIOUS)
-                ),
-            },
+            Self::Settings { revision, warning } => settings_warning_text(lang, *revision, warning),
         }
     }
 
@@ -313,6 +304,34 @@ pub fn activity_text(lang: Lang, activity: &Activity) -> String {
         Activity::SwitchingProvider => i18n::SWITCHING_PROVIDER,
     };
     lang.tr(key).to_string()
+}
+
+pub fn settings_warning_text(lang: Lang, revision: u64, warning: &SettingsWarning) -> String {
+    match warning {
+        SettingsWarning::Fallback { layer, fault } => {
+            let layer = match layer {
+                SettingsLayer::Default => i18n::SETTINGS_LAYER_DEFAULT,
+                SettingsLayer::User => i18n::SETTINGS_LAYER_USER,
+                SettingsLayer::Folder => i18n::SETTINGS_LAYER_FOLDER,
+                SettingsLayer::Chat => i18n::SETTINGS_LAYER_CHAT,
+                SettingsLayer::Run => i18n::SETTINGS_LAYER_RUN,
+            };
+            let detail = match fault {
+                SettingsFault::Parse { line, message } => lang
+                    .tr(i18n::SETTINGS_PARSE_LINE)
+                    .replace("{line}", &line.to_string())
+                    .replace("{message}", message),
+                SettingsFault::Invalid { key, reason } => format!("{key}: {reason}"),
+            };
+            lang.tr(i18n::SETTINGS_FALLBACK)
+                .replace("{layer}", lang.tr(layer))
+                .replace("{previous}", &revision.to_string())
+                .replace("{detail}", &detail)
+        }
+        SettingsWarning::IgnoredFolderKeys { keys } => lang
+            .tr(i18n::SETTINGS_IGNORED)
+            .replace("{keys}", &keys.join(", ")),
+    }
 }
 
 pub fn alert_text(lang: Lang, alert: &Alert) -> String {
@@ -553,10 +572,10 @@ fn alert_lines(state: &ChatState) -> Vec<StatusLine> {
     if let Some(remaining) = state.stop.as_ref().and_then(|stop| stop.unconfirmed) {
         lines.push(StatusLine::StopUnconfirmed { remaining });
     }
-    if let Some((revision, Some(detail))) = &state.settings {
-        lines.push(StatusLine::SettingsError {
-            previous: revision.0,
-            detail: detail.clone(),
+    if let Some((revision, Some(warning))) = &state.settings {
+        lines.push(StatusLine::Settings {
+            revision: revision.0,
+            warning: warning.clone(),
         });
     }
     lines
@@ -811,7 +830,16 @@ mod tests {
         task(&mut state, 1, 'A', TaskState::Held, now);
         state.apply_stopped(vec![TaskLabel('A')]);
         state.apply_stop_unconfirmed(2);
-        state.settings = Some((SettingsRevision(12), Some("줄 7: ...".to_string())));
+        state.settings = Some((
+            SettingsRevision(12),
+            Some(SettingsWarning::Fallback {
+                layer: SettingsLayer::Folder,
+                fault: SettingsFault::Parse {
+                    line: 7,
+                    message: "...".to_string(),
+                },
+            }),
+        ));
         state.apply_alert(Alert::SteerNotReady {
             provider: Provider::Codex,
         });
@@ -822,6 +850,33 @@ mod tests {
         assert!(lines.contains(&"멈춤 확인 안 됨 · 2개 남음".to_string()));
         assert!(
             lines.contains(&"폴더 설정 오류 · 이전 설정 번호 12로 계속 · 줄 7: ...".to_string())
+        );
+    }
+
+    #[test]
+    fn settings_warning_text_follows_language() {
+        let fallback = SettingsWarning::Fallback {
+            layer: SettingsLayer::User,
+            fault: SettingsFault::Invalid {
+                key: "router.endpoint".to_string(),
+                reason: "not https".to_string(),
+            },
+        };
+        let ignored = SettingsWarning::IgnoredFolderKeys {
+            keys: vec!["router.endpoint".to_string(), "router.key".to_string()],
+        };
+
+        assert_eq!(
+            settings_warning_text(Lang::Ko, 3, &fallback),
+            "사용자 설정 오류 · 이전 설정 번호 3로 계속 · router.endpoint: not https"
+        );
+        assert_eq!(
+            settings_warning_text(Lang::En, 3, &fallback),
+            "user settings error · continuing with settings revision 3 · router.endpoint: not https"
+        );
+        assert_eq!(
+            settings_warning_text(Lang::En, 3, &ignored),
+            "ignored folder settings items · router.endpoint, router.key"
         );
     }
 

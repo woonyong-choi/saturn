@@ -32,9 +32,6 @@ const KILL_SETTLE: Duration = Duration::from_secs(1);
 /// TODO(#33): 표지 이름과 방식 미정. 자식 Saturn을 부모에 붙이는 방식이 정해지면 바꾼다
 pub const NESTED_MARKER_ENV: &str = "SATURN_AGENT";
 
-/// `{n}`은 남은 프로세스 수.
-pub const UNCONFIRMED_NOTICE: &str = "멈춤 확인 안 됨 · {n}개 남음";
-
 #[derive(Debug, thiserror::Error)]
 pub enum ProcessError {
     /// 프로세스가 뜨지 않았으므로 provider 입장에서는 보내기 전 실패다.
@@ -101,18 +98,6 @@ pub enum StopOutcome {
         /// 남은 프로세스 수.
         remaining: usize,
     },
-}
-
-impl StopOutcome {
-    /// `Stopped`면 `None`.
-    pub fn notice(&self) -> Option<String> {
-        match self {
-            Self::Stopped => None,
-            Self::Unconfirmed { remaining } => {
-                Some(UNCONFIRMED_NOTICE.replace("{n}", &remaining.to_string()))
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -541,13 +526,6 @@ mod tests {
     #[test]
     fn design_grace_values() {
         assert_eq!(STOP_GRACE, Duration::from_secs(10));
-        assert_eq!(StopOutcome::Stopped.notice(), None);
-        assert_eq!(
-            StopOutcome::Unconfirmed { remaining: 2 }
-                .notice()
-                .as_deref(),
-            Some("멈춤 확인 안 됨 · 2개 남음")
-        );
     }
 
     #[test]

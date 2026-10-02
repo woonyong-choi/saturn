@@ -31,8 +31,6 @@ pub use codex_home::{
     HomeError, HomeInput, PreparedHome, prepare as prepare_codex_home, rules_fingerprint,
 };
 
-pub const STEER_PENDING_NOTICE: &str = "바로 반영: 준비 중";
-
 /// engine이 입력 접수 때 고정한 설정 번호로 만든다.
 #[derive(Debug, Clone)]
 pub struct LaunchSpec {
