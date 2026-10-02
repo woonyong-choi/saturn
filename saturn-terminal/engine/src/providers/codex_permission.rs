@@ -1,4 +1,4 @@
-//! Codex 권한 연결: 승인 요청을 규칙이 읽는 호출로 옮기고, 시작 때 버전과 적용 정책, MCP 준비를 확인한다.
+//! Codex 권한 연결: 승인 요청을 규칙이 읽는 호출로 옮기고, 시작 때 적용 정책과 MCP 준비를 확인한다.
 //! 설계: docs/design/permissions.md#codex-구성
 
 use std::collections::HashMap;
@@ -14,40 +14,10 @@ pub(super) const APPROVAL_POLICY: &str = "untrusted";
 /// 파일 편집도 승인 요청으로 받으려고 주는 샌드박스.
 pub(super) const SANDBOX: &str = "read-only";
 
-/// 실측한 Codex 0.158.0과 같은 minor만 연다. 다른 minor는 승인 요청 동작이 다를 수 있어 열지 않는다. 초안.
-pub(super) const SUPPORTED_VERSION: (u64, u64) = (0, 158);
-
 const ELICITATION_METHOD: &str = "mcpServer/elicitation/request";
 
 /// 도구 이름을 알 수 없는 MCP 요청의 도구 자리.
 const UNKNOWN_MCP_TOOL: &str = "?";
-
-// cost: time O(n), heap O(1), stack O(1)
-// vars: n = text 글자 수
-// basis: estimate
-/// `userAgent` 글에서 `x.y.z` 모양의 첫 낱말.
-pub(super) fn parse_version(text: &str) -> Option<(u64, u64, u64)> {
-    text.split(|c: char| !(c.is_ascii_digit() || c == '.'))
-        .find_map(|word| {
-            let mut parts = word.split('.').map(|part| part.parse::<u64>().ok());
-            let version = (parts.next()??, parts.next()??, parts.next()??);
-            parts.next().is_none().then_some(version)
-        })
-}
-
-/// 지원하는 minor가 아니거나 읽지 못하면 이유 한 줄.
-pub(super) fn check_version(user_agent: &str) -> Result<(), String> {
-    let Some((major, minor, patch)) = parse_version(user_agent) else {
-        return Err(format!("codex version not found in {user_agent:?}"));
-    };
-    if (major, minor) == SUPPORTED_VERSION {
-        return Ok(());
-    }
-    Err(format!(
-        "codex {major}.{minor}.{patch} is not supported, expected {}.{}.x",
-        SUPPORTED_VERSION.0, SUPPORTED_VERSION.1
-    ))
-}
 
 /// `thread/start`와 `thread/resume`의 응답이 실제로 적용한 승인 정책, 샌드박스, 검토자가 기대와 다르면 이유 한 줄.
 pub(super) fn check_applied(result: &Value) -> Result<(), String> {
@@ -221,30 +191,6 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-
-    #[test]
-    fn version_is_read_from_the_user_agent() {
-        assert_eq!(
-            parse_version("codex_cli_rs/0.158.0 (Mac)"),
-            Some((0, 158, 0))
-        );
-        assert_eq!(parse_version("fake/0.158.3"), Some((0, 158, 3)));
-        assert_eq!(parse_version("codex"), None);
-        assert_eq!(parse_version("x/1.2"), None);
-        assert_eq!(parse_version("x/1.2.3.4"), None);
-    }
-
-    #[test]
-    fn only_the_measured_minor_is_supported() {
-        assert!(check_version("codex/0.158.2").is_ok());
-        assert!(
-            check_version("codex/0.159.0")
-                .unwrap_err()
-                .contains("not supported")
-        );
-        assert!(check_version("codex/1.158.0").is_err());
-        assert!(check_version("codex").unwrap_err().contains("not found"));
-    }
 
     #[test]
     fn applied_policy_must_be_untrusted_read_only() {

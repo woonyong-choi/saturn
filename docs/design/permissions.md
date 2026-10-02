@@ -123,7 +123,7 @@ engine은 Saturn 전용 `CODEX_HOME`으로 app-server를 시작한다(2026-10-02
 - 채팅 중에 규칙이 바뀌면(새 입력을 접수할 때 설정을 다시 읽어 규칙 지문이 연결을 시작할 때와 달라지면) 다음 턴이 끝난 뒤 그 채팅의 app-server를 다시 시작한다(사용자 결정). 채팅에 실행 중인 작업이 있으면 다음 턴 끝으로 미룬다. 연결은 통째로 닫고, 열려 있던 session은 기록에 남겨 다음 입력이 새 규칙의 `CODEX_HOME`으로 연결을 만들고 보관한 provider session id로 이어 연다. 규칙이 바뀐 것을 처음 알아챈 입력에서 `다음 요청부터 적용됩니다` 안내를, 다시 시작할 때 `다시 시작했습니다` 안내를 대화 기록에 한 줄씩 남긴다. engine은 문구를 만들지 않고 알림 종류(`PermissionsChanged`, `ProviderRestarted`)만 보내며, 문구는 TUI가 시스템 언어로 고른다([TUI](tui.md#화면-언어와-출력-방식)).
 - `thread/start`와 `thread/resume`에 `approvalPolicy="untrusted"`와 `sandbox="read-only"`(읽기 전용 샌드박스)를 준다. 파일 편집도 `item/fileChange/requestApproval`로 받기 위해서다. `untrusted`는 설정 키로는 쓸 수 없고 `thread/start` 인자로만 줄 수 있다.
 - 자식 thread는 부모의 승인 정책과 규칙을 이어받아, 자식이 실행한 명령도 같은 규칙으로 승인 요청이 왔다(5/5 관측). Saturn은 자식 요청도 부모 에이전트의 요청으로 올려 같은 규칙으로 판정한다. 승인 요청에는 편집 경로가 없어 앞선 `item/started`의 `fileChange` 항목 경로를 기억해 쓴다.
-- 세션을 시작할 때 Codex 버전과 실제 적용된 승인 정책과 샌드박스를 확인하고, 기대와 다르면 첫 턴을 보내지 않는다(초안). 버전은 `initialize` 응답의 `userAgent`에서 읽고 실측한 0.158과 같은 minor(0.158.x)만 연다(초안). 정책은 `thread/start` 응답의 `approvalPolicy`가 `untrusted`, `sandbox`가 읽기 전용, `approvalsReviewer`가 있으면 `user`인지 본다. 다르면 그 thread를 구독에서 빼고 `NotSent` 오류로 알린다.
+- Codex 버전으로 열기를 막지 않는다. 버전은 `initialize` 응답의 `userAgent`를 로그에만 남긴다. 세션을 열 때 실제 적용된 승인 정책과 샌드박스를 확인하고, 기대와 다르면 첫 턴을 보내지 않는다. 정책은 `thread/start`와 `thread/resume` 응답의 `approvalPolicy`가 `untrusted`, `sandbox`가 읽기 전용, `approvalsReviewer`가 있으면 `user`인지 본다. 다르면 그 thread를 구독에서 빼고 `NotSent` 오류로 알린다.
 - 규칙이 다른 채팅은 규칙마다 app-server 프로세스와 `CODEX_HOME`을 따로 둔다. app-server 하나가 thread별로 execpolicy 파일을 고르게 하는 인자가 없기 때문이다.
 
 MCP 도구는 규칙을 다음처럼 번역한다.
@@ -194,7 +194,7 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 | 상황 | 동작 |
 |---|---|
 | 규칙을 provider 설정으로 번역하는 데 실패 | 첫 턴을 보내지 않고 입력을 오류 상태로 둔다. |
-| Codex 버전이나 적용 정책이 기대와 다름 | 첫 턴을 보내지 않고 오류를 보인다. |
+| Codex가 적용한 정책이 기대와 다름 | 첫 턴을 보내지 않고 오류를 보인다. |
 | MCP 서버가 준비되지 않았거나 도구 목록이 예상과 다름 | 첫 턴을 보내지 않고 재시도하거나 오류 상태로 둔다. |
 | TUI가 붙어 있지 않을 때 `ask` 요청 도착 | 요청을 보관하고 TUI가 붙으면 가장 먼저 보인다([engine 수명과 복구](engine-lifecycle.md)). |
 | 이미 답했거나 모르는 요청에 답함 | provider에 보내지 않고 `NotSent`로 돌려준다. 쓰기 전에 실패하면 요청을 되돌려 다시 답할 수 있다. |
@@ -215,7 +215,7 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 | 사용자 Codex 규칙, 훅, 자동 검토자가 Saturn 판단에 끼어들지 않는다. | `saturn-terminal/engine/src/providers/codex.rs`의 `codex_home_ignores_user_rules`, `saturn-terminal/engine/src/providers/codex_home/tests.rs`의 `generated_config_has_no_permission_keys`, `home_links_login_without_copying_and_leaves_user_files_alone` |
 | 규칙이 execpolicy와 MCP 설정으로 번역된다. | `saturn-terminal/engine/src/providers/codex_home/tests.rs`의 `shell_rules_translate_to_execpolicy_decisions`, `mcp_rules_translate_to_approval_modes_and_disabled_tools`, `mcp_allow_for_a_whole_server_is_approve_and_default_is_prompt` |
 | MCP 준비를 확인하기 전에는 첫 턴을 보내지 않는다. | `saturn-terminal/engine/src/providers/codex.rs`의 `first_turn_waits_for_mcp_ready`, `first_turn_is_not_sent_when_mcp_never_gets_ready` |
-| 시작 때 Codex 버전과 적용된 정책을 확인하고 다르면 첫 턴을 보내지 않는다. | `saturn-terminal/engine/src/providers/codex.rs`의 `startup_checks_version_and_policy`, `saturn-terminal/engine/src/providers/codex_permission.rs`의 `only_the_measured_minor_is_supported`, `applied_policy_must_be_untrusted_read_only` |
+| 버전과 상관없이 적용된 정책을 확인하고 다르면 첫 턴을 보내지 않는다. | `saturn-terminal/engine/src/providers/codex.rs`의 `startup_checks_applied_policy_whatever_the_version`, `saturn-terminal/engine/src/providers/codex_permission.rs`의 `applied_policy_must_be_untrusted_read_only` |
 | Claude `can_use_tool`에 Saturn 규칙대로 `allow`, `deny`를 답한다. | `saturn-terminal/engine/src/providers/claude.rs`의 `permission_rules`, `launch_args_add_defaults_and_hook_settings` |
 | Claude 규칙 대상 도구의 호출이 모두 `can_use_tool`로 온다. | [#232](https://github.com/woonyong-choi/saturn/issues/232) 실측 |
 | 허가 답이 provider에 요청 번호와 같은 번호로 나가고, 답이 없는 동안 턴이 멈춰 있다가 답한 뒤 이어진다. | `saturn-terminal/engine/src/providers/codex.rs`의 `command_approval_is_answered_with_the_same_numeric_request_id`, `command_decisions_follow_the_answer_and_the_available_list`, `mcp_tool_approval_is_answered_with_an_elicitation_action`, `saturn-terminal/engine/src/providers/claude.rs`의 `allow_once_answers_can_use_tool_with_the_request_input`, `deny_answers_can_use_tool_without_the_note` |
@@ -254,7 +254,6 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 - Codex subagent 실행 자체를 막을 방법. 지금은 승인 요청이 없어 안의 명령만 판정한다 ([#232](https://github.com/woonyong-choi/saturn/issues/232))
 - Codex MCP `prompt`가 도구를 시도한 모든 호출에서 요청으로 오는지(마지막 실측은 31/31, 앞선 실측은 불안정) ([#232](https://github.com/woonyong-choi/saturn/issues/232))
 - 규칙으로 읽지 못한 요청의 `항상 허용`을 provider 값으로 보낼 방법: Claude 세션 규칙(`updatedPermissions`), Codex MCP의 `_meta.persist`, Codex 허용 응답과 권한 요청, 옛 이름 값의 실측 ([#232](https://github.com/woonyong-choi/saturn/issues/232))
-- Codex 지원 버전을 실측한 minor(0.158.x) 하나로 둘지, 더 넓힐지 ([#232](https://github.com/woonyong-choi/saturn/issues/232))
 - Codex MCP 승인 요청에서 도구 이름을 읽는 필드(`_meta`의 이름 키)가 실제로 있는지. 지금은 `_meta.tool_name`, `_meta.tool`, 요청 문구의 `tool "이름"` 순으로 읽는다 ([#232](https://github.com/woonyong-choi/saturn/issues/232))
 - Codex 자식 thread의 승인 요청에 Saturn이 부모 규칙으로 응답할지, 사용자에게 따로 보일지 ([#61](https://github.com/woonyong-choi/saturn/issues/61))
 - 허가 거절 뒤 다르게 하라는 입력을 어떻게 받을지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))

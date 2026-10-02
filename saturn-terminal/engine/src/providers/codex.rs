@@ -23,8 +23,7 @@ use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::{mpsc, oneshot};
 
 use super::codex_permission::{
-    APPROVAL_POLICY, McpState, SANDBOX, call_of, check_applied, check_version, file_change_paths,
-    mcp_state,
+    APPROVAL_POLICY, McpState, SANDBOX, call_of, check_applied, file_change_paths, mcp_state,
 };
 use super::tool_detail::{classify_command, unwrap_shell};
 use super::{AppliedSettings, LaunchSpec, TurnOriginTracker, UserProviderConfig};
@@ -255,8 +254,11 @@ impl CodexClient {
         });
         match self.request("initialize", params).await {
             Ok(Ok(result)) => {
-                let user_agent = result["userAgent"].as_str().unwrap_or_default();
-                check_version(user_agent).map_err(|reason| ProviderError::NotSent { reason })?;
+                // 버전으로 열기를 막지 않는다. 적용된 정책은 thread를 열 때 확인한다
+                tracing::info!(
+                    user_agent = result["userAgent"].as_str().unwrap_or_default(),
+                    "codex app-server initialized"
+                );
             }
             Ok(Err(error)) => {
                 tracing::warn!(error = %error, "codex app-server rejected initialize");
@@ -2500,18 +2502,15 @@ while (my $line = <STDIN>) {
     }
 
     #[tokio::test]
-    async fn startup_checks_version_and_policy() {
+    async fn startup_checks_applied_policy_whatever_the_version() {
         let dir = tempfile::tempdir().unwrap();
-        let old = vec![("FAKE_USER_AGENT".into(), "fake/0.159.0".into())];
+        let newer = vec![("FAKE_USER_AGENT".into(), "fake/0.200.0".into())];
 
-        let unsupported = CodexClient::start(launch(dir.path(), old), Supervisor::new())
+        let mut client = CodexClient::start(launch(dir.path(), newer), Supervisor::new())
             .await
-            .unwrap_err();
+            .unwrap();
 
-        assert!(matches!(
-            unsupported,
-            ProviderError::NotSent { ref reason } if reason.contains("not supported")
-        ));
+        assert!(client.open_session(spec(dir.path())).await.is_ok());
         for (model, expected) in [
             ("wrong-policy", "approval policy"),
             ("wrong-sandbox", "sandbox"),
