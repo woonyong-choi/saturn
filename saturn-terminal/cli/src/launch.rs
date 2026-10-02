@@ -18,8 +18,17 @@ const ENGINE_BINARY: &str = "saturn-engine";
 /// engine이 에이전트 작업의 환경에 넣는 변수 이름과 같다.
 const NESTED_MARKER_ENV: &str = "SATURN_AGENT";
 
-/// engine의 stderr를 받는 파일. 소켓과 같은 폴더. 초안. TODO(#235): 경로 설정 키
+/// engine의 stderr를 받는 파일이 있는 폴더. 소켓이 있는 폴더 아래. TODO(#235): 경로 설정 키
+const ENGINE_LOG_DIR: &str = "logs";
+
+/// engine의 stderr를 받는 파일 이름. `ENGINE_LOG_DIR` 안에 둔다.
 const ENGINE_LOG_FILE: &str = "engine.log";
+
+/// engine을 띄울 때 로그가 이 크기(바이트)를 넘었으면 돌린다. 초안 값.
+const ENGINE_LOG_MAX_BYTES: u64 = 10 * 1024 * 1024;
+
+/// 돌린 뒤 보관하는 이전 로그 파일 수(`engine.log.1`이 가장 최근). 초안 값.
+const ENGINE_LOG_KEEP: u32 = 5;
 
 /// engine이 judge 확인까지 마치고 소켓을 여는 데 기다리는 시간. 초안 값.
 const START_TIMEOUT: Duration = Duration::from_secs(30);
@@ -107,9 +116,13 @@ fn spawn_engine(binary: &Path, socket: &Path) -> anyhow::Result<StartedEngine> {
     let home = socket
         .parent()
         .context("engine socket path should have a parent folder")?;
-    std::fs::create_dir_all(home)
-        .with_context(|| format!("failed to create {}", home.display()))?;
-    let log = home.join(ENGINE_LOG_FILE);
+    let log_dir = home.join(ENGINE_LOG_DIR);
+    std::fs::create_dir_all(&log_dir)
+        .with_context(|| format!("failed to create {}", log_dir.display()))?;
+    std::fs::set_permissions(&log_dir, std::fs::Permissions::from_mode(0o700))
+        .with_context(|| format!("failed to secure {}", log_dir.display()))?;
+    let log = log_dir.join(ENGINE_LOG_FILE);
+    rotate_log(&log, ENGINE_LOG_MAX_BYTES, ENGINE_LOG_KEEP)?;
     let log_file = OpenOptions::new()
         .create(true)
         .append(true)
@@ -133,6 +146,44 @@ fn spawn_engine(binary: &Path, socket: &Path) -> anyhow::Result<StartedEngine> {
         log,
         log_start,
     })
+}
+
+// cost: time O(k), heap O(1), stack O(1), io k
+// vars: k = 보관하는 이전 로그 파일 수
+// basis: estimate
+/// `log`가 `max_bytes`를 넘었으면 `log.1`로 옮기고, 앞서 있던 `log.n`은 `log.(n+1)`로 한 칸씩 밀어
+/// `keep`개까지만 남긴다. 상한 안이면 아무것도 하지 않는다. 돌리는 때는 engine을 띄울 때뿐이라 실행 중인
+/// engine의 로그는 다음 시작 때 돈다.
+///
+/// # Errors
+/// 파일 이름을 바꾸거나 지울 수 없으면 오류.
+fn rotate_log(log: &Path, max_bytes: u64, keep: u32) -> anyhow::Result<()> {
+    let over = std::fs::metadata(log).is_ok_and(|meta| meta.len() > max_bytes);
+    if !over {
+        return Ok(());
+    }
+    let numbered = |n: u32| {
+        let mut name = log.as_os_str().to_owned();
+        name.push(format!(".{n}"));
+        PathBuf::from(name)
+    };
+    if keep == 0 {
+        return std::fs::remove_file(log)
+            .with_context(|| format!("failed to remove {}", log.display()));
+    }
+    let oldest = numbered(keep);
+    if oldest.exists() {
+        std::fs::remove_file(&oldest)
+            .with_context(|| format!("failed to remove {}", oldest.display()))?;
+    }
+    for n in (1..keep).rev() {
+        let from = numbered(n);
+        if from.exists() {
+            std::fs::rename(&from, numbered(n + 1))
+                .with_context(|| format!("failed to rotate {}", from.display()))?;
+        }
+    }
+    std::fs::rename(log, numbered(1)).with_context(|| format!("failed to rotate {}", log.display()))
 }
 
 // cost: time O(t), heap O(1), stack O(1), io t
@@ -327,7 +378,7 @@ mod tests {
     }
 
     #[test]
-    fn spawn_engine_passes_home_and_writes_stderr_to_log() {
+    fn spawn_engine_passes_home_and_writes_stderr_to_engine_log_under_logs() {
         let home = tempfile::tempdir().unwrap();
         let socket = home.path().join(SOCKET_FILE);
         let script = home.path().join("fake-engine");
@@ -339,11 +390,82 @@ mod tests {
         engine.process.wait().unwrap();
 
         let log = std::fs::read_to_string(&engine.log).unwrap();
+        assert_eq!(engine.log, home.path().join("logs/engine.log"));
         assert_eq!(log, format!("args: --home {}\n", home.path().display()));
         assert_eq!(
             std::fs::metadata(&engine.log).unwrap().permissions().mode() & 0o777,
             0o600
         );
+        assert_eq!(
+            std::fs::metadata(home.path().join("logs"))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
+    }
+
+    #[test]
+    fn spawn_engine_rotates_an_engine_log_over_the_cap_before_writing() {
+        let home = tempfile::tempdir().unwrap();
+        let socket = home.path().join(SOCKET_FILE);
+        let logs = home.path().join("logs");
+        std::fs::create_dir_all(&logs).unwrap();
+        let old = File::create(logs.join("engine.log")).unwrap();
+        old.set_len(ENGINE_LOG_MAX_BYTES + 1).unwrap();
+        let script = home.path().join("fake-engine");
+        std::fs::write(&script, "#!/bin/sh\necho started >&2\n").unwrap();
+        std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755))
+            .unwrap();
+
+        let mut engine = spawn_engine(&script, &socket).unwrap();
+        engine.process.wait().unwrap();
+
+        assert_eq!(std::fs::read_to_string(&engine.log).unwrap(), "started\n");
+        assert_eq!(
+            std::fs::metadata(logs.join("engine.log.1")).unwrap().len(),
+            ENGINE_LOG_MAX_BYTES + 1
+        );
+        assert_eq!(engine.log_start, 0);
+    }
+
+    #[test]
+    fn engine_log_within_the_cap_is_not_rotated() {
+        let home = tempfile::tempdir().unwrap();
+        let log = home.path().join("engine.log");
+        std::fs::write(&log, "1234").unwrap();
+
+        rotate_log(&log, 4, 3).unwrap();
+
+        assert_eq!(std::fs::read_to_string(&log).unwrap(), "1234");
+        assert!(!home.path().join("engine.log.1").exists());
+    }
+
+    #[test]
+    fn engine_log_over_the_cap_shifts_numbered_files_and_keeps_only_the_newest() {
+        let home = tempfile::tempdir().unwrap();
+        let log = home.path().join("engine.log");
+        let numbered = |n: u32| home.path().join(format!("engine.log.{n}"));
+        std::fs::write(&log, "current!").unwrap();
+        std::fs::write(numbered(1), "one").unwrap();
+        std::fs::write(numbered(2), "two").unwrap();
+
+        rotate_log(&log, 4, 2).unwrap();
+
+        assert!(!log.exists());
+        assert_eq!(std::fs::read_to_string(numbered(1)).unwrap(), "current!");
+        assert_eq!(std::fs::read_to_string(numbered(2)).unwrap(), "one");
+        assert!(!numbered(3).exists());
+    }
+
+    #[test]
+    fn engine_log_without_a_file_has_nothing_to_rotate() {
+        let home = tempfile::tempdir().unwrap();
+
+        rotate_log(&home.path().join("engine.log"), 4, 2).unwrap();
+
+        assert!(!home.path().join("engine.log.1").exists());
     }
 
     #[test]

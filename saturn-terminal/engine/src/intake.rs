@@ -13,7 +13,7 @@ use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRe
 use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::{Disposition, InputState};
 
-use crate::flow::{JudgeDone, JudgeJob, JudgeKind, Judged, Unrecorded};
+use crate::flow::{JudgeDone, JudgeJob, Judged, Unrecorded};
 use crate::judges::{JudgeExchange, RecordContext, outcome_of, sanitize_state};
 use crate::requests::{settings_notification, trust_notification};
 use crate::rpc::ClientId;
@@ -79,14 +79,7 @@ impl Engine {
             request,
             exchange,
         } = done;
-        match job.kind {
-            JudgeKind::Intake { .. } => {
-                self.flow.judging.remove(&job.chat);
-            }
-            JudgeKind::SendNow => {
-                self.flow.send_now_pending.remove(&job.input);
-            }
-        }
+        self.flow.judging.remove(&job.chat);
         match self.apply_judged(job, &request, exchange).await {
             Ok(()) => self.advance(job.chat).await,
             Err(error) => {
@@ -102,21 +95,16 @@ impl Engine {
         exchange: JudgeExchange,
     ) -> Result<(), EngineError> {
         let verdict = self.finish_judge(&job, request, exchange).await?;
-        match job.kind {
-            JudgeKind::Intake { retried } => {
-                let waiting = self
-                    .queue
-                    .input(job.input)
-                    .is_some_and(|record| record.state == InputState::Judging);
-                if waiting {
-                    self.apply_decision(job.input, verdict.decision, retried)
-                        .await
-                } else {
-                    self.settle_record(job.input, true).await;
-                    Ok(())
-                }
-            }
-            JudgeKind::SendNow => self.finish_send_now(job.input, job.revision, verdict).await,
+        let waiting = self
+            .queue
+            .input(job.input)
+            .is_some_and(|record| record.state == InputState::Judging);
+        if waiting {
+            self.apply_decision(job.input, verdict.decision, job.retried)
+                .await
+        } else {
+            self.settle_record(job.input, true).await;
+            Ok(())
         }
     }
 
@@ -219,7 +207,7 @@ impl Engine {
                 let decision = direct_decision(&record, revision);
                 self.apply_decision(input, decision, false).await?;
             } else {
-                self.start_judge(&record, revision, JudgeKind::Intake { retried: false });
+                self.start_judge(&record, revision, false);
             }
         }
         Ok(())
@@ -250,7 +238,7 @@ impl Engine {
                     }
                     retried = true;
                     if record.pinned_model.is_none() && !record.skip_relation {
-                        self.start_judge(&record, current, JudgeKind::Intake { retried });
+                        self.start_judge(&record, current, retried);
                         return Ok(());
                     }
                     decision = direct_decision(&record, current);
@@ -301,7 +289,7 @@ impl Engine {
         &mut self,
         record: &QueuedInput,
         revision: ChatRevision,
-        kind: JudgeKind,
+        retried: bool,
     ) {
         let running = self.chat_is_running(record.chat);
         let request = self.judge_request(record, running);
@@ -309,11 +297,9 @@ impl Engine {
             chat: record.chat,
             input: record.id,
             revision,
-            kind,
+            retried,
         };
-        if matches!(kind, JudgeKind::Intake { .. }) {
-            self.flow.judging.insert(record.chat, record.id);
-        }
+        self.flow.judging.insert(record.chat, record.id);
         let judge = self.judges.shared();
         let results = self.flow.judge_tx.clone();
         tokio::spawn(async move {

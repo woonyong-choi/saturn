@@ -3,12 +3,9 @@
 
 use saturn_core::judges::calibration::Signal;
 use saturn_core::queue::QueuedInput;
-use saturn_protocol::ids::{ChatRevision, InputId};
-use saturn_protocol::rpc::Alert;
+use saturn_protocol::ids::InputId;
 use saturn_protocol::state::{Disposition, InputState};
 
-use crate::flow::JudgeKind;
-use crate::intake::Verdict;
 use crate::rpc::ClientId;
 use crate::{Engine, EngineError};
 
@@ -30,73 +27,23 @@ impl Engine {
         Ok(())
     }
 
-    /// 대기 입력을 judge에 한 번 물어 끼워 넣기나 새 작업으로 바로 보낸다. 대기로 답하거나 판단할 수 없으면
-    /// 차례를 기다린다. judge가 실패하면 `판단기 연결 없음 · 차례에 보냅니다`를 보인다.
-    /// TODO(#36): 판단이 이어 가는 입력을 뒤집는 관계(`conflicts`)로 답할 때 바로 멈출지
+    /// 대기 입력을 judge에 묻지 않고 실행 중인 작업에 끼워 넣는다. 끼워 넣을 수 없으면(실행 중인 작업이 없거나
+    /// provider가 끼워 넣기를 아직 지원하지 않으면) 같은 채팅 대기열 맨 앞에서 다음 차례를 기다린다.
     ///
     /// # Errors
-    /// `run_as_new_task`와 같다. 판단 호출 실패는 오류가 아니다.
+    /// `run_as_new_task`와 같다.
     pub(crate) async fn send_now(
         &mut self,
         client: ClientId,
         input: InputId,
     ) -> Result<(), EngineError> {
         let record = self.attached_input(client, input)?;
-        if record.state != InputState::Queued {
-            return Err(saturn_core::queue::QueueError::InvalidTransition {
-                from: record.state,
-                to: InputState::Queued,
-            }
-            .into());
-        }
-        if record.pinned_model.is_none() {
-            if self.flow.send_now_pending.insert(input) {
-                let revision = self.queue.revision(record.chat);
-                self.start_judge(&record, revision, JudgeKind::SendNow);
-            }
-            return Ok(());
+        let previous = self.queue.send_now(input)?;
+        if previous != Some(Disposition::Steer) {
+            self.note_user_override(input, Signal::Missed);
         }
         self.notify_input(input).await;
         self.advance(record.chat).await;
-        Ok(())
-    }
-
-    /// 바로 보내기 판단이 돌아왔다. 그사이 입력이 대기를 벗어났으면(보냈거나 취소했거나 멈췄으면) 판단은 기록만 한다.
-    pub(crate) async fn finish_send_now(
-        &mut self,
-        input: InputId,
-        revision: ChatRevision,
-        verdict: Verdict,
-    ) -> Result<(), EngineError> {
-        let record = self.queued(input)?;
-        let current = self.queue.revision(record.chat);
-        if record.state != InputState::Queued || current != revision {
-            self.settle_record(input, true).await;
-            self.notify_input(input).await;
-            return Ok(());
-        }
-        self.settle_record(input, false).await;
-        if verdict.failed {
-            self.notify_alert(record.chat, Alert::JudgeDownSendingInOrder)
-                .await;
-        } else {
-            self.redirect_by_verdict(input, verdict.decision.disposition)?;
-        }
-        self.notify_input(input).await;
-        Ok(())
-    }
-
-    /// 판단이 대기면 그대로 둔다.
-    fn redirect_by_verdict(
-        &mut self,
-        input: InputId,
-        disposition: Disposition,
-    ) -> Result<(), EngineError> {
-        if disposition == Disposition::Queue {
-            return Ok(());
-        }
-        self.queue.redirect(input, disposition)?;
-        self.note_user_override(input, Signal::Missed);
         Ok(())
     }
 

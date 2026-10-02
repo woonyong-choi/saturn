@@ -88,7 +88,7 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 
 `Attach`에는 그 TUI의 작업 폴더와 환경 변수(`env`)가 들어 있다. TUI는 터미널마다 따로 뜨고 터미널마다 PATH와 환경이 다르기 때문에, 상주 프로세스인 `engine`의 환경 대신 붙은 TUI의 값을 쓴다. `engine`은 새 채팅을 TUI가 넘긴 작업 폴더로 만들고 그 폴더를 채팅 기록에 고정한다. 이미 있는 채팅에 붙을 때는 TUI가 다른 폴더를 넘겨도 채팅의 폴더, 폴더 설정 층, 폴더 설정 신뢰 판단에 처음 폴더를 그대로 쓰고, 환경 변수만 그 채팅에 가장 최근에 붙은 TUI의 값으로 바꿔 저장한다. 채팅의 provider 실행 환경은 이 환경 변수로 정한다. 넘기는 변수는 `PATH`, `HOME`, `SHELL`, 로캘, 프록시 같은 실행에 필요한 것으로 한정하고(목록은 `saturn-protocol`의 `ATTACH_ENV_NAMES`, 초안), 넘겨받은 환경에 judge 키 변수가 있어도 provider 자식 환경에는 넣지 않는다. 처음 친 `saturn`이 `engine`을 띄우고 붙으며, 이후의 `saturn`은 붙기만 한다.
 
-`cli`는 소켓에 먼저 붙어 보고, 받는 `engine`이 없을 때만 `saturn-engine`(`saturn`과 같은 폴더, 없으면 `PATH`)을 새 프로세스 그룹으로 띄워 `saturn`이 끝나도 남게 한다. `engine`의 stderr는 `~/.saturn/engine.log`에 쌓고, 소켓이 열릴 때까지 30초(초안)를 기다린다. 두 `saturn`이 동시에 띄워 한쪽 `engine`이 잠금을 얻지 못하고 끝나면, 소켓이 열리기를 2초(초안) 더 기다려 먼저 뜬 `engine`에 붙는다. 그래도 붙지 못하면 `engine.log` 끝 줄과 함께 오류로 끝낸다. 실행 층 `-c`는 `engine`을 띄울 때 넘기지 않고 `Attach`의 `overrides`로만 넘긴다. 이미 도는 `engine`에도 같은 방식으로 적용하고, 다른 접속에는 영향을 주지 않게 하기 위해서다. `saturn --resume <채팅 id>`는 그 id를 `Attach`의 `chat`으로 넘긴다. `--continue`와 `--resume`의 목록은 `engine`에 채팅 목록 요청이 생기기 전까지 오류로 끝낸다([#161](https://github.com/woonyong-choi/saturn/issues/161)).
+`cli`는 소켓에 먼저 붙어 보고, 받는 `engine`이 없을 때만 `saturn-engine`(`saturn`과 같은 폴더, 없으면 `PATH`)을 새 프로세스 그룹으로 띄워 `saturn`이 끝나도 남게 한다. `engine`의 stderr는 `~/.saturn/logs/engine.log`에 쌓는다. 로그가 10 MiB(초안)를 넘은 채 `engine`을 띄우면 `engine.log.1`로 옮기고 앞선 파일은 `engine.log.2`, `engine.log.3`으로 한 칸씩 밀어 5개(초안)까지만 보관한다. 돌리는 때는 `engine`을 띄울 때뿐이라 오래 도는 `engine`의 로그는 다음 시작 때 돈다. 소켓이 열릴 때까지 30초(초안)를 기다린다. 두 `saturn`이 동시에 띄워 한쪽 `engine`이 잠금을 얻지 못하고 끝나면, 소켓이 열리기를 2초(초안) 더 기다려 먼저 뜬 `engine`에 붙는다. 그래도 붙지 못하면 `engine.log` 끝 줄과 함께 오류로 끝낸다. 실행 층 `-c`는 `engine`을 띄울 때 넘기지 않고 `Attach`의 `overrides`로만 넘긴다. 이미 도는 `engine`에도 같은 방식으로 적용하고, 다른 접속에는 영향을 주지 않게 하기 위해서다. `saturn --resume <채팅 id>`는 그 id를 `Attach`의 `chat`으로 넘긴다. `--continue`와 `--resume`의 목록은 `engine`에 채팅 목록 요청이 생기기 전까지 오류로 끝낸다([#161](https://github.com/woonyong-choi/saturn/issues/161)).
 
 메시지는 JSON-RPC 2.0이고 소켓 한 줄에 하나씩 쓴다. 메서드 이름은 `saturn-protocol` 타입의 variant 이름, `params`는 그 필드다. 클라이언트의 요청에는 모두 `id`가 붙고, `engine`은 요청마다 같은 `id`의 응답 하나(`result: null` 또는 `error`)를 돌려준다. 조회 결과와 화면 갱신은 `id` 없는 알림으로 보낸다. 해석하지 못한 줄에는 읽어 낸 `id`(없으면 `null`)로 오류 응답을 보내고 연결은 유지한다. 오류 문구에는 입력 원문을 넣지 않는다. judge 키가 들어 있을 수 있기 때문이다. 메시지의 JSON Schema와 TypeScript 타입은 `saturn-protocol/generated/`에 있고 `cargo run -p saturn-protocol --example codegen`으로 다시 만든다.
 
@@ -148,7 +148,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | `~/.saturn/config.toml` | 사용자 설정 | `engine` |
 | `<작업 폴더>/.saturn/config.toml` | 폴더 설정 | `engine` |
 | `~/.saturn/backup/` | 스키마 이관 직전 백업 | `engine` |
-| `~/.saturn/engine.log` | `cli`가 띄운 `engine`의 stderr (초안) | `cli` |
+| `~/.saturn/logs/engine.log` | `cli`가 띄운 `engine`의 stderr. 크기 상한을 넘으면 `engine.log.1`부터 번호를 붙여 돌린다 (초안) | `cli` |
 | `~/.saturn/history` | 입력 기록 | `tui` |
 
 ### 효과 범위
@@ -199,6 +199,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 요구사항 | 검증 계획 |
 |---|---|
 | `engine`은 사용자당 하나만 실행된다. | 같은 사용자로 `engine`을 두 번 띄우면 두 번째가 잠금을 얻지 못하고 기존 `engine`에 붙는지 확인 |
+| `engine`의 stderr는 `~/.saturn/logs/engine.log`에 쌓이고, 상한을 넘으면 정해진 개수까지 돌려 쓴다. | `saturn-terminal/cli/src/launch.rs`의 `spawn_engine_passes_home_and_writes_stderr_to_engine_log_under_logs`, `spawn_engine_rotates_an_engine_log_over_the_cap_before_writing`, `engine_log_within_the_cap_is_not_rotated`, `engine_log_over_the_cap_shifts_numbered_files_and_keeps_only_the_newest`, `engine_log_without_a_file_has_nothing_to_rotate` |
 | TUI를 닫아도 `engine`은 접수된 입력을 계속 처리한다. | TUI 연결을 끊은 뒤 대기 입력이 순서대로 provider에 전달되는지 확인 |
 | judge를 확인하기 전에는 judge 키 제출과 채팅 붙기 밖의 요청을 받지 않는다. | judge 키가 없는 환경에서 일반 요청이 오류 응답으로 거절되고, 키를 보낸 뒤에는 처리되는지 확인 |
 | 채팅의 폴더, 폴더 설정 층, 폴더 설정 신뢰 판단은 채팅을 만든 폴더로 정하고, provider 실행 환경은 가장 최근에 붙은 TUI의 환경으로 정한다. | 다른 폴더에서 같은 채팅에 붙어도 폴더와 신뢰 창이 처음 폴더 그대로이고 환경만 바뀌는지 확인 |

@@ -5,7 +5,7 @@ use saturn_protocol::ids::Provider;
 use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::{Disposition, InputState, TaskState};
 
-use super::support::{CLIENT, Flow, idle_reply, judge_down, running_reply};
+use super::support::{CLIENT, Flow, idle_reply, running_reply};
 use super::*;
 use crate::dispatch::MAX_SEND_ATTEMPTS;
 use crate::providers::ProviderConnection;
@@ -166,24 +166,6 @@ async fn steer_new_turn_unknown_is_not_sent_again() {
 }
 
 #[tokio::test]
-async fn verified_steer_not_sent_is_retried_then_rejected() {
-    let mut flow = Flow::new(vec![
-        idle_reply(0.95),
-        running_reply(0.95, "refines", "steer"),
-    ])
-    .await;
-    flow.fake.verify_steer();
-    flow.submit("fix the build").await;
-    let attempts = usize::try_from(MAX_SEND_ATTEMPTS).unwrap();
-    flow.fake.answer_steer((0..attempts).map(|_| not_sent()));
-
-    let second = flow.submit("also run the tests").await;
-
-    assert_eq!(steers(&flow).len(), attempts);
-    assert_eq!(flow.state(second), InputState::Rejected);
-}
-
-#[tokio::test]
 async fn unverified_steer_waits_and_goes_as_a_new_turn_when_the_task_ends() {
     let mut flow = Flow::new(vec![
         idle_reply(0.95),
@@ -285,58 +267,6 @@ async fn run_as_new_task_moves_a_waiting_input_to_its_own_session() {
         .filter(|call| matches!(call, Call::Open { .. }))
         .count();
     assert_eq!(opens, 2);
-}
-
-#[tokio::test]
-async fn send_now_asks_the_judge_once_and_steers_into_the_running_turn() {
-    let mut flow = Flow::new(vec![
-        idle_reply(0.95),
-        running_reply(0.95, "continues", "queue"),
-        running_reply(0.95, "refines", "steer"),
-    ])
-    .await;
-    flow.fake.verify_steer();
-    flow.submit("fix the build").await;
-    let waiting = flow.submit("also run the tests").await;
-    assert_eq!(flow.state(waiting), InputState::Queued);
-
-    flow.engine.send_now(CLIENT, waiting).await.unwrap();
-    flow.settle().await;
-
-    assert_eq!(flow.judge_calls(), 3);
-    assert_eq!(steers(&flow), vec!["also run the tests"]);
-    assert_eq!(flow.state(waiting), InputState::Applied);
-}
-
-#[tokio::test]
-async fn send_now_with_judge_down_leaves_the_input_waiting_in_order() {
-    let mut flow = Flow::new(
-        [idle_reply(0.95), running_reply(0.95, "continues", "queue")]
-            .into_iter()
-            .chain(judge_down())
-            .collect(),
-    )
-    .await;
-    flow.fake.verify_steer();
-    flow.submit("fix the build").await;
-    let waiting = flow.submit("also run the tests").await;
-
-    flow.engine.send_now(CLIENT, waiting).await.unwrap();
-    flow.settle().await;
-
-    assert!(steers(&flow).is_empty());
-    assert_eq!(flow.state(waiting), InputState::Queued);
-}
-
-#[tokio::test]
-async fn send_now_on_a_sent_input_is_refused() {
-    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    let sent = flow.submit("fix the build").await;
-
-    let error = flow.engine.send_now(CLIENT, sent).await.unwrap_err();
-
-    assert!(matches!(error, EngineError::Queue(_)));
-    assert_eq!(flow.judge_calls(), 1);
 }
 
 #[tokio::test]

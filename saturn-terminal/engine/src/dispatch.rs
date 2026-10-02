@@ -105,10 +105,42 @@ impl Engine {
         delivery.live = Some(live.clone());
         delivery.run = self.runs.active.get(&agent).copied();
         self.mark_delivering(&delivery).await?;
-        let result = self
-            .steer_with_retries(chat, input, &live, &record.text)
-            .await;
+        let sent = match self.provider_mut(chat, live.provider) {
+            Ok(connection) => connection.steer(&live.provider_session, &record.text).await,
+            Err(error) => Err(error),
+        };
+        let result = match sent {
+            Err(ProviderError::NoActiveTurn) => self
+                .steer_as_new_turn(input, live.agent)
+                .await
+                .map_err(into_provider_error),
+            Err(ProviderError::NotSent { reason }) => {
+                return self.return_refused_steer(&delivery, &reason).await;
+            }
+            other => other,
+        };
         self.settle(delivery, result).await
+    }
+
+    /// provider가 끼워 넣기를 거절했다(보내지 않음이 확정). 다시 끼워 넣지 않고 입력을 대기열 맨 앞으로 되돌려
+    /// 현재 작업이 끝난 뒤 다음 차례에 보낸다. 입력을 거절로 끝내지 않는다([#60](https://github.com/woonyong-choi/saturn/issues/60) 결정).
+    async fn return_refused_steer(
+        &mut self,
+        delivery: &Delivery,
+        reason: &str,
+    ) -> Result<(), EngineError> {
+        let input = delivery.input;
+        tracing::warn!(input = input.0, %reason, "steer was refused, moving the input to the front of the queue");
+        self.queue.return_refused_steer(input)?;
+        let written = self
+            .store
+            .set_input_state(input, InputState::Queued, None)
+            .await;
+        if let Err(error) = written {
+            tracing::warn!(error = %self.failure_line(&error), "failed to record the returned input");
+        }
+        self.notify_input(input).await;
+        Ok(())
     }
 
     /// 끼워 넣기를 대기로 바꾸고 TUI에 `바로 반영: 준비 중`을 보인다.
@@ -322,35 +354,6 @@ impl Engine {
         sent.map_err(EngineError::from)
     }
 
-    async fn steer_with_retries(
-        &mut self,
-        chat: ChatId,
-        input: InputId,
-        live: &LiveSession,
-        text: &str,
-    ) -> Result<(), ProviderError> {
-        let mut attempt = 0;
-        loop {
-            attempt += 1;
-            let sent = self
-                .provider_mut(chat, live.provider)?
-                .steer(&live.provider_session, text)
-                .await;
-            match sent {
-                Err(ProviderError::NoActiveTurn) => {
-                    return self
-                        .steer_as_new_turn(input, live.agent)
-                        .await
-                        .map_err(into_provider_error);
-                }
-                Err(error) if should_resend(&error, attempt) => {
-                    tracing::warn!(attempt, "steer was not sent, sending again");
-                }
-                other => return other,
-            }
-        }
-    }
-
     async fn send_turn_with_retries(
         &mut self,
         chat: ChatId,
@@ -455,7 +458,6 @@ impl Engine {
     }
 
     /// 보내기 전에 확정된 실패가 끝내 이어졌다. 입력은 `Rejected`, 시작하려던 작업은 닫는다.
-    /// TODO(#60): 끼워 넣기가 거절된 입력을 대기로 옮길지, 다시 판단할지, 사용자에게 물을지
     /// TODO(#162): 맥락 초과로 provider가 거절한 입력도 지금은 `NotSent`와 같이 처리한다
     async fn reject(&mut self, delivery: Delivery, reason: String) -> Result<(), EngineError> {
         tracing::warn!(input = delivery.input.0, %reason, "input was not delivered");
