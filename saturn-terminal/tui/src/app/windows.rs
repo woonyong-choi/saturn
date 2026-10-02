@@ -293,9 +293,11 @@ impl App {
             Action::Down => picker.down(),
             Action::Close => self.window = None,
             Action::Confirm => {
-                if let Some(choice) = picker.selected_choice().cloned() {
+                if let (Some(choice), Some(chat)) =
+                    (picker.selected_choice().cloned(), self.chat.chat)
+                {
                     self.window = None;
-                    self.pin_model(choice);
+                    return self.pin_model(chat, choice);
                 }
             }
             _ => {}
@@ -303,14 +305,15 @@ impl App {
         Vec::new()
     }
 
-    fn pin_model(&mut self, choice: ModelChoice) {
+    /// 저장은 engine이 하고, 고정 상태는 돌아오는 `ModelPinned`로 바뀐다.
+    fn pin_model(&mut self, chat: ChatId, model: ModelChoice) -> Vec<Effect> {
         let notice = self
             .lang
             .tr(i18n::MODEL_PINNED)
-            .replace("{provider}", i18n::provider_name(choice.provider))
-            .replace("{model}", &choice.model);
-        self.chat.pinned_model = Some(choice);
+            .replace("{provider}", i18n::provider_name(model.provider))
+            .replace("{model}", &model.model);
         self.push_cell(TranscriptCell::Warning(notice));
+        vec![Effect::Send(Request::SetModel { chat, model })]
     }
 }
 

@@ -313,7 +313,6 @@ mod tests {
                 chat: ChatId(1),
                 client_ref: 4,
                 text: "첫 줄\n둘째 줄".into(),
-                pinned_model: None,
                 skip_relation: false,
             },
         );

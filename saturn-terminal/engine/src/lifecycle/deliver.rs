@@ -315,7 +315,6 @@ async fn requests_are_answered_while_a_judgment_is_in_flight() {
                     chat,
                     client_ref: 7,
                     text: "fix the build".to_owned(),
-                    pinned_model: None,
                     skip_relation: false,
                 },
             )
@@ -391,7 +390,6 @@ async fn socket_submit_reports_input_and_task_states_in_order() {
                     chat,
                     client_ref: 7,
                     text: "fix the build".to_owned(),
-                    pinned_model: None,
                     skip_relation: false,
                 },
             )

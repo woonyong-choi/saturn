@@ -254,7 +254,6 @@ impl App {
                 chat,
                 client_ref: self.next_client_ref,
                 text: body,
-                pinned_model: self.chat.pinned_model.clone(),
                 skip_relation: queued && self.chat.is_running(),
             }),
         ]

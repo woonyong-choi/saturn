@@ -76,8 +76,6 @@ pub enum Request {
         chat: ChatId,
         client_ref: u64,
         text: String,
-        /// `/model`로 고른 모델. 있으면 provider도 이 모델이 정한다.
-        pinned_model: Option<ModelChoice>,
         skip_relation: bool,
     },
     /// 아직 보내지 않은 입력을 새 작업으로 보낸다.
@@ -143,6 +141,11 @@ pub enum Request {
         folder: Option<String>,
     },
     ListTasks,
+    /// 채팅이 다시 바꿀 때까지 쓸 모델을 정하고 저장한다. 모델이 provider도 정한다. 붙은 모든 TUI에 `ModelPinned`로 알린다.
+    SetModel {
+        chat: ChatId,
+        model: ModelChoice,
+    },
     /// 고를 수 있는 모델 목록을 `Models`로 보낸다. `provider`가 `None`이면 모든 provider.
     /// `chat`은 Codex 목록을 받을 연결을 고른다.
     ListModels {
@@ -269,6 +272,11 @@ pub enum Notification {
     },
     TaskList {
         items: Vec<TaskListItem>,
+    },
+    /// 채팅의 고정 모델. 고정한 채팅에 붙을 때와 고정을 바꿀 때 보낸다.
+    ModelPinned {
+        chat: ChatId,
+        model: ModelChoice,
     },
     /// `ListModels`의 답. provider 순서와 provider가 알려 준 순서를 지킨다.
     Models {

@@ -6,7 +6,7 @@ use saturn_core::queue::QueuedInput;
 use saturn_protocol::ids::{ChatId, Provider, SettingsRevision};
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, Notification};
 
-use crate::providers::{FIRST_INPUT_ORDER, is_installed, parse_pinned};
+use crate::providers::{FIRST_INPUT_ORDER, is_installed, parse_pinned, pinned_text};
 use crate::rpc::ClientId;
 use crate::settings::SettingsError;
 use crate::{Engine, EngineError, masked_chain};
@@ -25,6 +25,43 @@ pub(crate) fn pinned_model_name(record: &QueuedInput) -> Option<String> {
 }
 
 impl Engine {
+    /// 채팅의 고정 모델을 저장하고 그 채팅에 붙은 모든 TUI에 알린다. 다음 입력부터 쓴다.
+    ///
+    /// # Errors
+    /// 붙지 않은 채팅이면 `ChatNotAttached`, 저장 실패면 `Store`.
+    pub(crate) async fn set_model(
+        &mut self,
+        client: ClientId,
+        chat: ChatId,
+        model: &ModelChoice,
+    ) -> Result<(), EngineError> {
+        self.attached_workdir(client, chat)?;
+        self.store.set_chat_model(chat, &pinned_text(model)).await?;
+        let notification = Notification::ModelPinned {
+            chat,
+            model: model.clone(),
+        };
+        self.rpc.broadcast(Some(chat), notification).await;
+        Ok(())
+    }
+
+    /// 고정한 채팅에 붙을 때 그 모델을 알린다. 고정하지 않았으면 보내지 않는다.
+    ///
+    /// # Errors
+    /// 없는 채팅이면 `Store(NotFound)`.
+    pub(crate) async fn send_chat_model(
+        &self,
+        client: ClientId,
+        chat: ChatId,
+    ) -> Result<(), EngineError> {
+        let pinned = self.store.chat_model(chat).await?;
+        if let Some(model) = pinned.as_deref().and_then(parse_pinned) {
+            self.send(client, Notification::ModelPinned { chat, model })
+                .await;
+        }
+        Ok(())
+    }
+
     // cost: time O(m), heap O(m), stack O(1), io p
     // vars: m = 모델 수, p = provider 수
     // basis: estimate

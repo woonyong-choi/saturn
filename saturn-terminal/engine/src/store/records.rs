@@ -124,6 +124,32 @@ impl Store {
         ensure_found(done.rows_affected(), || format!("chat {}", chat.0))
     }
 
+    /// 채팅의 고정 모델 글. 다시 바꿀 때까지 이어지고 다음 입력부터 쓴다.
+    ///
+    /// # Errors
+    /// 없는 채팅이면 `NotFound`.
+    pub async fn set_chat_model(&self, chat: ChatId, model: &str) -> Result<(), StoreError> {
+        let done = sqlx::query("UPDATE chats SET pinned_model = ? WHERE id = ?")
+            .bind(model)
+            .bind(to_sql_int(chat.0))
+            .execute(&self.pool)
+            .await?;
+        ensure_found(done.rows_affected(), || format!("chat {}", chat.0))
+    }
+
+    /// 고정하지 않았으면 `None`.
+    ///
+    /// # Errors
+    /// 없는 채팅이면 `NotFound`.
+    pub async fn chat_model(&self, chat: ChatId) -> Result<Option<String>, StoreError> {
+        let row: Option<Option<String>> =
+            sqlx::query_scalar("SELECT pinned_model FROM chats WHERE id = ?")
+                .bind(to_sql_int(chat.0))
+                .fetch_optional(&self.pool)
+                .await?;
+        row.ok_or_else(|| not_found(format!("chat {}", chat.0)))
+    }
+
     /// 보조 에이전트도 같은 채팅이라 부모 채팅의 값을 그대로 읽는다.
     ///
     /// # Errors

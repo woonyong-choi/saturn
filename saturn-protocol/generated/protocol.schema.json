@@ -604,17 +604,6 @@
                   "minimum": 0,
                   "type": "integer"
                 },
-                "pinned_model": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/ModelChoice"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "description": "`/model`로 고른 모델. 있으면 provider도 이 모델이 정한다."
-                },
                 "skip_relation": {
                   "type": "boolean"
                 },
@@ -1036,6 +1025,35 @@
           },
           "required": [
             "method"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "채팅이 다시 바꿀 때까지 쓸 모델을 정하고 저장한다. 모델이 provider도 정한다. 붙은 모든 TUI에 `ModelPinned`로 알린다.",
+          "properties": {
+            "method": {
+              "const": "SetModel",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "model": {
+                  "$ref": "#/$defs/ModelChoice"
+                }
+              },
+              "required": [
+                "chat",
+                "model"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
           ],
           "type": "object"
         },
@@ -1817,6 +1835,35 @@
               },
               "required": [
                 "items"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "채팅의 고정 모델. 고정한 채팅에 붙을 때와 고정을 바꿀 때 보낸다.",
+          "properties": {
+            "method": {
+              "const": "ModelPinned",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "model": {
+                  "$ref": "#/$defs/ModelChoice"
+                }
+              },
+              "required": [
+                "chat",
+                "model"
               ],
               "type": "object"
             }
@@ -2654,6 +2701,35 @@
               },
               "required": [
                 "items"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "채팅의 고정 모델. 고정한 채팅에 붙을 때와 고정을 바꿀 때 보낸다.",
+          "properties": {
+            "method": {
+              "const": "ModelPinned",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "model": {
+                  "$ref": "#/$defs/ModelChoice"
+                }
+              },
+              "required": [
+                "chat",
+                "model"
               ],
               "type": "object"
             }

@@ -187,9 +187,11 @@ CREATE TABLE chat_dirs (
 );
 "#;
 
-/// session을 열 때 고른 모델. 없으면 provider 기본값이고 이관 전 session도 비어 있다.
+/// `sessions.model`은 session을 열 때 고른 모델이다. 없으면 provider 기본값이고 이관 전 session도 비어 있다.
+/// `chats.pinned_model`은 채팅이 다시 바꿀 때까지 쓰는 고정 모델이다.
 const V6: &str = r#"
 ALTER TABLE sessions ADD COLUMN model TEXT;
+ALTER TABLE chats ADD COLUMN pinned_model TEXT;
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

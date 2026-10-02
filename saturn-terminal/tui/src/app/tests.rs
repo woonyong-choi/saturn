@@ -139,7 +139,6 @@ fn enter_idle_submits_input_and_records_history() {
                 chat: ChatId(7),
                 client_ref: 1,
                 text: "버그 고쳐".to_string(),
-                pinned_model: None,
                 skip_relation: false,
             }),
         ]
@@ -1013,46 +1012,59 @@ fn model_command_with_a_provider_asks_only_for_that_provider() {
 }
 
 #[test]
-fn model_window_arrows_and_enter_pin_the_model_for_every_later_input() {
+fn model_window_enter_asks_the_engine_to_pin_the_model() {
     let mut app = model_window();
 
     press(&mut app, KeyCode::Down, KeyModifiers::NONE);
-    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
-    type_text(&mut app, "hello");
-    let first = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
-    type_text(&mut app, "again");
-    let second = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
-
-    assert!(app.window.is_none());
-    let pinned = Some(ModelChoice {
-        provider: Provider::Codex,
-        model: "gpt-x".to_owned(),
-    });
-    for effects in [first, second] {
-        assert!(matches!(
-            sent(&effects)[0],
-            Request::SubmitInput { pinned_model, .. } if *pinned_model == pinned
-        ));
-    }
-}
-
-#[test]
-fn model_window_escape_keeps_the_previous_pin() {
-    let mut app = model_window();
-
-    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
-    press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
-    type_text(&mut app, "hello");
     let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
 
     assert!(app.window.is_none());
-    assert!(matches!(
-        sent(&effects)[0],
-        Request::SubmitInput {
-            pinned_model: None,
-            ..
-        }
-    ));
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::SetModel {
+            chat: ChatId(7),
+            model: ModelChoice {
+                provider: Provider::Codex,
+                model: "gpt-x".to_owned(),
+            },
+        }]
+    );
+}
+
+#[test]
+fn model_window_escape_sends_nothing() {
+    let mut app = model_window();
+
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    let effects = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+
+    assert!(app.window.is_none());
+    assert!(sent(&effects).is_empty());
+}
+
+#[test]
+fn pinned_model_notice_marks_the_model_in_the_next_window() {
+    let mut app = attached();
+    let model = ModelChoice {
+        provider: Provider::Claude,
+        model: "opus".to_owned(),
+    };
+    notify(
+        &mut app,
+        Notification::ModelPinned {
+            chat: ChatId(7),
+            model: model.clone(),
+        },
+    );
+
+    type_text(&mut app, "/model");
+    app.popup = None;
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    let Some(Window::Model(picker)) = &app.window else {
+        panic!("model window should be open");
+    };
+    assert_eq!(picker.current, Some(model));
 }
 
 #[test]

@@ -6,6 +6,7 @@ use saturn_protocol::event::{
     Activity, PermissionCall, PermissionTool, ProviderEvent, ToolCategory, ToolDetail, TurnOrigin,
 };
 use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, SubagentId};
+use saturn_protocol::rpc::ModelChoice;
 use saturn_protocol::state::InputState;
 use serde_json::{Value, json};
 
@@ -140,6 +141,14 @@ impl Flow {
         self.transport.calls().len() - check_passes().len()
     }
 
+    /// 채팅의 고정 모델을 `/model`처럼 저장한다.
+    pub(super) async fn pin(&mut self, model: &ModelChoice) {
+        self.engine
+            .set_model(CLIENT, self.chat, model)
+            .await
+            .expect("model should be pinned");
+    }
+
     pub(super) async fn submit(&mut self, text: &str) -> InputId {
         self.submit_with(text, None, false).await
     }
@@ -147,19 +156,15 @@ impl Flow {
     pub(super) async fn submit_with(
         &mut self,
         text: &str,
-        pinned_model: Option<&str>,
+        pinned_model: Option<ModelChoice>,
         skip_relation: bool,
     ) -> InputId {
+        if let Some(model) = &pinned_model {
+            self.pin(model).await;
+        }
         let before = self.latest_input().await;
         self.engine
-            .submit_input(
-                CLIENT,
-                self.chat,
-                1,
-                text.to_owned(),
-                pinned_model.map(str::to_owned),
-                skip_relation,
-            )
+            .submit_input(CLIENT, self.chat, 1, text.to_owned(), skip_relation)
             .await
             .unwrap();
         self.settle().await;

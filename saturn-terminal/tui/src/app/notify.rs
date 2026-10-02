@@ -143,6 +143,11 @@ impl App {
                     screen.table = Some(UsageTable { range, rows });
                 }
             }
+            Notification::ModelPinned { chat, model } => {
+                if self.chat.chat == Some(chat) {
+                    self.chat.pinned_model = Some(model);
+                }
+            }
             Notification::Models { models } => {
                 if let Some(Window::Model(picker)) = &mut self.window {
                     picker.load(models);
