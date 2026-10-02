@@ -319,7 +319,6 @@ async fn send_now_with_judge_down_leaves_the_input_waiting_in_order() {
     flow.fake.verify_steer();
     flow.submit("fix the build").await;
     let waiting = flow.submit("also run the tests").await;
-    tokio::time::pause();
 
     flow.engine.send_now(CLIENT, waiting).await.unwrap();
 

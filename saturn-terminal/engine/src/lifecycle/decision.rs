@@ -139,7 +139,6 @@ async fn judge_failure_while_running_steers_the_current_agent() {
     .await;
     flow.fake.verify_steer();
     flow.submit("first request").await;
-    tokio::time::pause();
 
     let second = flow.submit("also this").await;
 
@@ -148,13 +147,12 @@ async fn judge_failure_while_running_steers_the_current_agent() {
         flow.fake.calls().last(),
         Some(Call::Steer { text, .. }) if text == "also this"
     ));
-    assert!(exported(&flow).await.contains("CostUnknown"));
+    assert!(exported(&flow).await.contains("NoResponse"));
 }
 
 #[tokio::test]
 async fn judge_failure_while_idle_sends_to_the_current_agent_not_the_queue() {
     let mut flow = Flow::new(judge_down()).await;
-    tokio::time::pause();
 
     let input = flow.submit("first request").await;
 

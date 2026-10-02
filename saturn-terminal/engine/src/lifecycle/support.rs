@@ -228,7 +228,7 @@ fn choice(options: &[&str], picked: &str) -> Value {
     json!({ "type": "choice", "choice": picked, "probabilities": probabilities, "confidence": 1.0 })
 }
 
-/// 재시도 횟수를 모두 쓰는 실패 답.
+/// 다시 보내지 않는 실패(키 거절)라 재시도 대기 없이 바로 판단 실패가 된다. 시계를 멈추면 기록 저장소 접근 시간 제한이 먼저 끝나므로 멈추지 않는다.
 pub(super) fn judge_down() -> Vec<FakeReply> {
-    vec![Err(TransportError::AfterSend); 3]
+    vec![key_rejected()]
 }
