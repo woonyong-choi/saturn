@@ -3,8 +3,8 @@
 | 항목 | 값 |
 |---|---|
 | 날짜 | 2026-09-29 |
-| 상태 | 채택 |
-| 대체 | 없음 |
+| 상태 | 채택. 연결 단위에 한해 대체됨 |
+| 대체 | 연결 단위에 한해 대체된 결정: [provider 연결을 채팅마다 따로 둔다](2026-10-02-per-chat-provider-connections.md) |
 | 관련 문서 | [아키텍처](../architecture.md), [provider 연결과 session](../design/providers-and-sessions.md), [입력 처리](../design/input-handling.md) |
 
 ## 배경
