@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::ids::{AgentId, SubagentId};
+use crate::input::InputRequest;
 
 /// provider 고유 필드는 engine에서 걸러 낸다.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
@@ -51,6 +52,12 @@ pub enum ProviderEvent {
         #[serde(default)]
         call: Option<PermissionCall>,
     },
+    /// provider가 사용자에게 묻는다. 답이 올 때까지 provider는 그 호출에서 멈춰 있다.
+    InputRequested {
+        agent: AgentId,
+        request_id: String,
+        request: InputRequest,
+    },
     /// Codex는 부모 작업의 `turn/completed`만 온다.
     TurnCompleted {
         agent: AgentId,
@@ -88,6 +95,7 @@ impl ProviderEvent {
             | Self::SubagentStarted { agent, .. }
             | Self::SubagentEnded { agent, .. }
             | Self::PermissionRequested { agent, .. }
+            | Self::InputRequested { agent, .. }
             | Self::TurnCompleted { agent, .. }
             | Self::ContextSize { agent, .. }
             | Self::StreamLost { agent }

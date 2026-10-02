@@ -88,6 +88,7 @@ impl AgentTracker {
             | ProviderEvent::ToolCall { .. }
             | ProviderEvent::ToolResult { .. }
             | ProviderEvent::PermissionRequested { .. }
+            | ProviderEvent::InputRequested { .. }
             | ProviderEvent::ContextSize { .. }
             | ProviderEvent::CacheWindow { .. }
             | ProviderEvent::SettingsApplied { .. }
@@ -141,6 +142,7 @@ fn agent_of(event: &ProviderEvent) -> AgentId {
         | ProviderEvent::SubagentStarted { agent, .. }
         | ProviderEvent::SubagentEnded { agent, .. }
         | ProviderEvent::PermissionRequested { agent, .. }
+        | ProviderEvent::InputRequested { agent, .. }
         | ProviderEvent::TurnCompleted { agent, .. }
         | ProviderEvent::ContextSize { agent, .. }
         | ProviderEvent::StreamLost { agent }

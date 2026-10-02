@@ -9,13 +9,14 @@ use saturn_core::providers::{
 };
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SubagentId};
+use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use tokio::sync::mpsc;
 
 use crate::processes::ProcessGroupId;
 
 /// provider가 받은 호출.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Call {
     Open {
         agent: AgentId,
@@ -42,6 +43,11 @@ pub(crate) enum Call {
         request_id: String,
         answer: PermissionAnswer,
     },
+    AnswerInput {
+        session: ProviderSessionId,
+        request_id: String,
+        answer: InputAnswer,
+    },
     Close {
         session: ProviderSessionId,
     },
@@ -56,6 +62,7 @@ struct Script {
     send: VecDeque<Answer>,
     steer: VecDeque<Answer>,
     answer_permission: VecDeque<Answer>,
+    answer_input: VecDeque<Answer>,
     steer_verified: bool,
     opened: u32,
     group: Option<ProcessGroupId>,
@@ -104,6 +111,10 @@ impl FakeProvider {
 
     pub(crate) fn answer_permission_with(&self, answers: impl IntoIterator<Item = Answer>) {
         self.lock().answer_permission.extend(answers);
+    }
+
+    pub(crate) fn answer_input_with(&self, answers: impl IntoIterator<Item = Answer>) {
+        self.lock().answer_input.extend(answers);
     }
 
     /// 멈춤 때 중지할 프로세스 묶음.
@@ -210,6 +221,21 @@ impl ProviderClient for FakeProvider {
             answer,
         });
         script.answer_permission.pop_front().unwrap_or(Ok(()))
+    }
+
+    async fn answer_input(
+        &mut self,
+        session: &ProviderSessionId,
+        request_id: &str,
+        answer: InputAnswer,
+    ) -> Result<(), ProviderError> {
+        let mut script = self.lock();
+        script.calls.push(Call::AnswerInput {
+            session: session.clone(),
+            request_id: request_id.to_owned(),
+            answer,
+        });
+        script.answer_input.pop_front().unwrap_or(Ok(()))
     }
 
     async fn close_session(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {

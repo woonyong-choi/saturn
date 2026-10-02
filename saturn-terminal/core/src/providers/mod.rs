@@ -5,6 +5,7 @@ use std::future::Future;
 
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, ProviderSessionId, SettingsRevision, SubagentId};
+use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelInfo, PermissionAnswer};
 
 #[derive(Debug, thiserror::Error)]
@@ -113,6 +114,18 @@ pub trait ProviderClient: Send {
         session: &ProviderSessionId,
         request_id: &str,
         answer: PermissionAnswer,
+    ) -> impl Future<Output = Result<(), ProviderError>> + Send;
+
+    /// `InputRequested`의 `request_id`에 사용자 답을 provider 값으로 바꿔 돌려준다. 답이 갈 때까지 provider는
+    /// 그 호출에서 멈춰 있다. provider에 `Decline`이나 `Cancel`에 맞는 값이 없으면 답 없이 끝낸다고 알린다.
+    ///
+    /// # Errors
+    /// 모르는 요청(이미 답했거나 끝난 요청)이면 `NotSent`이고, 쓰기에 실패하면 구현이 정한다.
+    fn answer_input(
+        &mut self,
+        session: &ProviderSessionId,
+        request_id: &str,
+        answer: InputAnswer,
     ) -> impl Future<Output = Result<(), ProviderError>> + Send;
 
     /// provider session id는 호출자가 보관해 재개에 쓴다.

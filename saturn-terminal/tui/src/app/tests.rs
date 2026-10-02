@@ -8,6 +8,7 @@ use ratatui::backend::TestBackend;
 use ratatui::layout::Rect;
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, ChatId, InputId, JudgmentId, Provider, TaskId, TaskLabel};
+use saturn_protocol::input::{InputAnswer, InputField, InputFieldKind, InputRequest, InputValue};
 use saturn_protocol::rpc::{
     Alert, ModelChoice, ModelInfo, Notification, PermissionAnswer, Request, UsageRange,
 };
@@ -542,6 +543,94 @@ fn permission_resolved_elsewhere_closes_window() {
 
     assert_eq!(area, KeyArea::Permission);
     assert!(app.permissions.is_empty());
+}
+
+fn input_requested(request_id: &str) -> Notification {
+    Notification::InputRequested {
+        task: TaskId(1),
+        label: TaskLabel('A'),
+        provider: Provider::Claude,
+        request_id: request_id.to_string(),
+        request: InputRequest {
+            message: String::new(),
+            fields: vec![InputField {
+                id: "q".to_string(),
+                title: "Which?".to_string(),
+                description: String::new(),
+                kind: InputFieldKind::Text,
+                is_required: true,
+                is_secret: false,
+            }],
+            url: None,
+        },
+        waiting: 0,
+    }
+}
+
+#[test]
+fn elicitation_window_takes_typed_text_and_sends_the_answer() {
+    let mut app = attached();
+    let now = Instant::now();
+    app.handle(AppEvent::Engine(input_requested("r1")), now);
+    let later = now + Duration::from_secs(1);
+
+    let early = press_at(
+        &mut app,
+        KeyCode::Char('x'),
+        now + Duration::from_millis(200),
+    );
+    press_at(&mut app, KeyCode::Char('o'), later);
+    press_at(&mut app, KeyCode::Char('k'), later);
+    let sent_answer = press_at(&mut app, KeyCode::Enter, later);
+
+    assert!(early.is_empty());
+    assert_eq!(
+        sent(&sent_answer),
+        vec![&Request::AnswerInput {
+            request_id: "r1".to_string(),
+            answer: InputAnswer::Submit {
+                values: vec![("q".to_string(), InputValue::Text("ok".to_string()))],
+            },
+        }]
+    );
+    assert_eq!(app.key_area(), KeyArea::Composer);
+}
+
+#[test]
+fn elicitation_window_takes_the_keyboard_and_clears_when_resolved_elsewhere() {
+    let mut app = attached();
+    notify(&mut app, input_requested("r1"));
+
+    let area = app.key_area();
+    notify(
+        &mut app,
+        Notification::InputResolved {
+            request_id: "r1".to_string(),
+        },
+    );
+
+    assert_eq!(area, KeyArea::Input);
+    assert!(app.inputs.is_empty());
+}
+
+#[test]
+fn elicitation_permission_window_comes_before_the_input_window() {
+    let mut app = attached();
+    notify(&mut app, input_requested("r1"));
+    notify(
+        &mut app,
+        Notification::PermissionRequested {
+            task: TaskId(1),
+            label: TaskLabel('A'),
+            provider: Provider::Claude,
+            request_id: "p1".to_string(),
+            summary: "rm".to_string(),
+            reason: "clean".to_string(),
+            waiting: 0,
+        },
+    );
+
+    assert_eq!(app.key_area(), KeyArea::Permission);
 }
 
 fn feedback(app: &mut App, now: Instant) {

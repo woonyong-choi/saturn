@@ -4,5 +4,6 @@ pub mod codegen;
 pub mod envelope;
 pub mod event;
 pub mod ids;
+pub mod input;
 pub mod rpc;
 pub mod state;

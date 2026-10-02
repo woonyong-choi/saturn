@@ -152,6 +152,18 @@ pub const RESUME_TITLE: &str = "보류된 작업이 있습니다";
 pub const RESUME_CONFIRM: &str = "고른 작업 이어서";
 pub const PERMISSION_REASON: &str = "이유";
 pub const PERMISSION_WAITING: &str = "허가를 기다리는 다른 작업";
+pub const INPUT_REQUESTED: &str = "입력 요청";
+pub const INPUT_LINK_NOTE: &str = "링크를 직접 열어 확인하세요. Saturn은 열지 않습니다";
+pub const INPUT_LINK_HELP: &str = "Enter 계속 · d 거절 · Esc 취소";
+pub const INPUT_FORM_HELP: &str =
+    "Tab 다음 칸 · ↑↓ 이동 · Space 선택 · Enter 확인 · Ctrl+D 거절 · Esc 취소";
+pub const INPUT_WAITING: &str = "답을 기다리는 다른 요청";
+pub const INPUT_REQUIRED: &str = "필수 항목입니다";
+pub const INPUT_NOT_NUMBER: &str = "숫자를 입력하세요";
+pub const INPUT_NOT_INTEGER: &str = "정수를 입력하세요";
+pub const INPUT_YES: &str = "예";
+pub const INPUT_NO: &str = "아니오";
+pub const INPUT_OTHER: &str = "직접 입력";
 pub const SHORTCUTS_TITLE: &str = "단축키";
 pub const TASKS_TITLE: &str = "작업 목록";
 pub const TASKS_EMPTY: &str = "작업 없음";
@@ -594,6 +606,26 @@ const ENGLISH: &[(&str, &str)] = &[
         "허가를 기다리는 다른 작업",
         "other tasks waiting for permission:",
     ),
+    ("입력 요청", "input requested"),
+    (
+        "링크를 직접 열어 확인하세요. Saturn은 열지 않습니다",
+        "open the link yourself, Saturn does not open it",
+    ),
+    (
+        "Enter 계속 · d 거절 · Esc 취소",
+        "Enter continue · d decline · Esc cancel",
+    ),
+    (
+        "Tab 다음 칸 · ↑↓ 이동 · Space 선택 · Enter 확인 · Ctrl+D 거절 · Esc 취소",
+        "Tab next field · ↑↓ move · Space pick · Enter confirm · Ctrl+D decline · Esc cancel",
+    ),
+    ("답을 기다리는 다른 요청", "other requests waiting:"),
+    ("필수 항목입니다", "required"),
+    ("숫자를 입력하세요", "enter a number"),
+    ("정수를 입력하세요", "enter an integer"),
+    ("예", "yes"),
+    ("아니오", "no"),
+    ("직접 입력", "other"),
     ("단축키", "shortcuts"),
     ("작업 목록", "tasks"),
     ("작업 없음", "no tasks"),

@@ -16,6 +16,7 @@
 | 메인 에이전트 | 채팅마다 하나인 주 에이전트다. | main agent, `main` |
 | 보류 | 사용자가 멈춘 작업과 그때 보내지 않은 입력의 상태다. 자동으로 이어 가지 않는다. | `held` |
 | 보조 에이전트 | router가 하던 일과 무관한 작업으로 판단해 같은 채팅 안에 따로 띄운 에이전트다. provider가 스스로 띄운 subagent와 다르다. | `sub` |
+| 입력 요청 | provider가 도구 호출 도중 사용자에게 묻는 질문이다. Codex의 MCP elicitation과 에이전트 질문, Claude의 `AskUserQuestion`을 하나로 다룬다. 허가 요청과 다르다. | input request, `InputRequest` |
 | 작업 | 채팅 안에서 한 에이전트가 맡은 일 하나다. 화면은 작업마다 이름표 A, B, C를 붙인다. | task, `task` |
 | 정리 모드 | 맥락 정리를 Saturn과 provider 중 누가 맡을지 정하는 설정이다. | context mode, `context.mode` |
 | 질문 세트 | router에 한 번에 묻는 질문 묶음과 그 버전이다. | question set, `question set` |

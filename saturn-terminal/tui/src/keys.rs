@@ -16,6 +16,8 @@ pub(crate) enum KeyArea {
     FolderTrust,
     ResumePrompt,
     Permission,
+    /// 글자를 직접 받으므로 `map`은 전역 키만 읽고 나머지는 `view::input_form`이 처리한다.
+    Input,
     TaskList,
     FullTranscript,
     Usage,
@@ -122,6 +124,7 @@ pub(crate) fn map(area: KeyArea, key: KeyEvent, ctx: KeyContext) -> Option<Actio
         KeyArea::FolderTrust => folder_trust(key),
         KeyArea::ResumePrompt => resume_prompt(key),
         KeyArea::Permission => permission(key),
+        KeyArea::Input => None,
         KeyArea::TaskList => task_list(key),
         KeyArea::FullTranscript => full_transcript(key),
         KeyArea::Usage => usage(key),

@@ -5,6 +5,7 @@ mod attach;
 mod decision;
 mod deliver;
 mod events;
+mod inputs;
 mod intake;
 mod model;
 mod outcomes;

@@ -16,12 +16,14 @@ use saturn_protocol::event::{
     UsageScope,
 };
 use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SubagentId};
+use saturn_protocol::input::{InputAnswer, InputRequest};
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStderr, ChildStdin, ChildStdout};
 use tokio::sync::{mpsc, oneshot};
 
+use super::codex_input::{self, InputKind};
 use super::codex_permission::{
     APPROVAL_POLICY, McpState, SANDBOX, call_of, check_applied, file_change_paths, mcp_state,
 };
@@ -69,8 +71,11 @@ const APPROVAL_METHODS: &[(&str, &str)] = &[
     ("applyPatchApproval", "change files"),
 ];
 
-/// MCP 도구 승인은 이 요청의 `_meta.codex_approval_kind`가 있는 것만 허가 요청으로 본다.
+/// MCP 도구 승인은 이 요청의 `_meta.codex_approval_kind`가 있는 것만 허가 요청으로 보고, 없는 것은 입력 요청이다.
 const ELICITATION_METHOD: &str = "mcpServer/elicitation/request";
+
+/// 에이전트 질문. `default_mode_request_user_input` 기능이 켜져 있을 때만 온다.
+const USER_INPUT_METHOD: &str = "item/tool/requestUserInput";
 
 const PERMISSIONS_METHOD: &str = "item/permissions/requestApproval";
 
@@ -94,6 +99,14 @@ struct PendingApproval {
     available: Option<Vec<String>>,
     /// `item/permissions/requestApproval`이 원한 권한. 허용 응답에 그대로 돌려준다.
     permissions: Value,
+    /// 입력 요청이면 응답 모양과 올린 요청. 승인이면 `None`.
+    input: Option<PendingInput>,
+}
+
+#[derive(Debug, Clone)]
+struct PendingInput {
+    kind: InputKind,
+    request: InputRequest,
 }
 
 #[derive(Debug)]
@@ -616,17 +629,52 @@ impl ProviderClient for CodexClient {
         request_id: &str,
         answer: PermissionAnswer,
     ) -> Result<(), ProviderError> {
-        let pending =
-            lock(&self.approvals)
-                .remove(request_id)
-                .ok_or_else(|| ProviderError::NotSent {
-                    reason: format!("unknown permission request {request_id}"),
-                })?;
+        let not_sent = || ProviderError::NotSent {
+            reason: format!("unknown permission request {request_id}"),
+        };
+        let pending = lock(&self.approvals)
+            .remove(request_id)
+            .ok_or_else(not_sent)?;
+        if pending.input.is_some() {
+            lock(&self.approvals).insert(request_id.to_owned(), pending);
+            return Err(not_sent());
+        }
         let message = json!({ "id": pending.id, "result": approval_result(&pending, &answer) });
         if let Err(error) = self.write_line(&message).await {
             lock(&self.approvals).insert(request_id.to_owned(), pending);
             return Err(ProviderError::NotSent {
                 reason: format!("failed to write approval response: {}", error.kind()),
+            });
+        }
+        Ok(())
+    }
+
+    /// 요청이 보낸 JSON-RPC 번호로 입력 요청에 답한다. 승인 요청이나 모르는 요청이면 `NotSent`이고, 쓰기에
+    /// 실패하면 요청을 되돌려 다시 답할 수 있게 한다.
+    async fn answer_input(
+        &mut self,
+        _session: &ProviderSessionId,
+        request_id: &str,
+        answer: InputAnswer,
+    ) -> Result<(), ProviderError> {
+        let not_sent = || ProviderError::NotSent {
+            reason: format!("unknown input request {request_id}"),
+        };
+        let pending = lock(&self.approvals)
+            .remove(request_id)
+            .ok_or_else(not_sent)?;
+        let Some(input) = pending.input.clone() else {
+            lock(&self.approvals).insert(request_id.to_owned(), pending);
+            return Err(not_sent());
+        };
+        let message = json!({
+            "id": pending.id,
+            "result": codex_input::result(input.kind, &input.request, &answer),
+        });
+        if let Err(error) = self.write_line(&message).await {
+            lock(&self.approvals).insert(request_id.to_owned(), pending);
+            return Err(ProviderError::NotSent {
+                reason: format!("failed to write input response: {}", error.kind()),
             });
         }
         Ok(())
@@ -904,8 +952,8 @@ fn convert_notification(
     }
 }
 
-/// 승인 요청만 `PermissionRequested`로 올리고 나머지는 버린다. 올린 요청은 답할 수 있게 `approvals`에 둔다.
-/// MCP 승인이 아닌 elicitation은 설계 초안대로 올리지도 응답하지도 않는다.
+/// 승인 요청은 `PermissionRequested`로, 입력 요청은 `InputRequested`로 올리고 나머지는 버린다. 올린 요청은
+/// 답할 수 있게 `approvals`에 둔다.
 fn convert_server_request(
     threads: &HashMap<ProviderSessionId, ThreadState>,
     approvals: &mut HashMap<String, PendingApproval>,
@@ -913,17 +961,15 @@ fn convert_server_request(
     id: &Value,
     params: &Value,
 ) -> Vec<ProviderEvent> {
+    if let Some(kind) = input_kind(method, params) {
+        return convert_input_request(threads, approvals, kind, id, params)
+            .into_iter()
+            .collect();
+    }
     let Some((_, summary)) = APPROVAL_METHODS.iter().find(|(name, _)| *name == method) else {
         return Vec::new();
     };
-    if method == ELICITATION_METHOD && !params["_meta"]["codex_approval_kind"].is_string() {
-        return Vec::new();
-    }
-    let thread = params["threadId"]
-        .as_str()
-        .or_else(|| params["conversationId"].as_str())
-        .map(|id| ProviderSessionId(id.to_owned()));
-    let Some(state) = thread.as_ref().and_then(|thread| threads.get(thread)) else {
+    let Some(state) = thread_of_request(threads, params) else {
         return Vec::new();
     };
     let summary = params["command"]
@@ -948,6 +994,7 @@ fn convert_server_request(
                     .collect()
             }),
             permissions: params["permissions"].clone(),
+            input: None,
         },
     );
     vec![ProviderEvent::PermissionRequested {
@@ -957,6 +1004,69 @@ fn convert_server_request(
         reason: params["reason"].as_str().unwrap_or_default().to_owned(),
         call: call_of(method, params, &state.file_changes),
     }]
+}
+
+/// 승인이 아닌 elicitation과 에이전트 질문.
+fn input_kind(method: &str, params: &Value) -> Option<InputKind> {
+    match method {
+        USER_INPUT_METHOD => Some(InputKind::UserInput),
+        ELICITATION_METHOD if !params["_meta"]["codex_approval_kind"].is_string() => {
+            Some(InputKind::Elicitation)
+        }
+        _ => None,
+    }
+}
+
+fn thread_of_request<'a>(
+    threads: &'a HashMap<ProviderSessionId, ThreadState>,
+    params: &Value,
+) -> Option<&'a ThreadState> {
+    let thread = params["threadId"]
+        .as_str()
+        .or_else(|| params["conversationId"].as_str())
+        .map(|id| ProviderSessionId(id.to_owned()))?;
+    threads.get(&thread)
+}
+
+/// 읽을 수 없는 요청(모르는 `mode`, 모르는 thread)은 올리지 않는다.
+fn convert_input_request(
+    threads: &HashMap<ProviderSessionId, ThreadState>,
+    approvals: &mut HashMap<String, PendingApproval>,
+    kind: InputKind,
+    id: &Value,
+    params: &Value,
+) -> Option<ProviderEvent> {
+    let state = thread_of_request(threads, params)?;
+    let request = match kind {
+        InputKind::Elicitation => codex_input::elicitation_request(params)?,
+        InputKind::UserInput => codex_input::user_input_request(params),
+    };
+    let request_id = value_text(id).unwrap_or_default();
+    approvals.insert(
+        request_id.clone(),
+        PendingApproval {
+            id: id.clone(),
+            method: request_method(kind).to_owned(),
+            available: None,
+            permissions: Value::Null,
+            input: Some(PendingInput {
+                kind,
+                request: request.clone(),
+            }),
+        },
+    );
+    Some(ProviderEvent::InputRequested {
+        agent: state.agent,
+        request_id,
+        request,
+    })
+}
+
+fn request_method(kind: InputKind) -> &'static str {
+    match kind {
+        InputKind::Elicitation => ELICITATION_METHOD,
+        InputKind::UserInput => USER_INPUT_METHOD,
+    }
 }
 
 /// 답을 요청 종류별 결정 값으로 바꾼다. `AllowAlways`는 Codex 세션 동안 허용(`acceptForSession`,
@@ -1461,6 +1571,7 @@ mod tests {
 
     use super::*;
     use crate::providers::{HomeInput, PermissionLaunch, SaturnDefaults, prepare_codex_home};
+    use saturn_protocol::input::InputValue;
 
     /// 받은 요청에 schema 모양 그대로 응답한다.
     const FAKE_APP_SERVER: &str = r#"#!/usr/bin/perl
@@ -1487,7 +1598,9 @@ my %gates = (
   "gate-mcp" => [0, "mcpServer/elicitation/request", { serverName => "probe", mode => "form", message => "Allow the probe MCP server to run tool \"echo\"?", _meta => { codex_approval_kind => "mcp_tool_call" }, requestedSchema => { type => "object", properties => {} } }],
   "gate-permissions" => [9, "item/permissions/requestApproval", { itemId => "item_g", reason => "needs network", permissions => { network => { enabled => JSON::PP::true } } }],
   "gate-legacy" => ["legacy-1", "execCommandApproval", { conversationId => "thr_main", command => ["ls"], reason => "legacy" }],
-  "gate-plain-elicitation" => [11, "mcpServer/elicitation/request", { serverName => "probe", mode => "form", message => "Pick a color", requestedSchema => { type => "object", properties => {} } }],
+  "gate-elicit-form" => [41, "mcpServer/elicitation/request", { serverName => "probe", mode => "form", message => "실험 입력을 작성하라", requestedSchema => { type => "object", properties => { choice => { type => "string", title => "단일 선택", enum => ["a", "b"] }, count => { type => "integer", title => "횟수" }, enabled => { type => "boolean", title => "사용" }, tags => { type => "array", title => "다중 선택", items => { type => "string", enum => ["x", "y"] } }, title => { type => "string", title => "제목" } }, required => ["title", "count", "enabled", "choice", "tags"] } }],
+  "gate-elicit-url" => [42, "mcpServer/elicitation/request", { serverName => "probe", mode => "url", message => "URL을 열어라", url => "https://example.invalid/experiment-252", elicitationId => "experiment-252-url" }],
+  "gate-user-input" => [43, "item/tool/requestUserInput", { itemId => "call_1", isBlocking => JSON::PP::false, autoResolutionMs => undef, questions => [ { id => "preference", header => "선호 확인", question => "무엇을 먼저 할까요?", isOther => JSON::PP::true, isSecret => JSON::PP::false, options => [ { label => "코드 변경", description => "구현을 고칩니다" }, { label => "설계 검토", description => "문서를 검토합니다" } ] } ] }],
 );
 while (my $line = <STDIN>) {
   my $m = eval { $json->decode($line) } or next;
@@ -1923,24 +2036,166 @@ while (my $line = <STDIN>) {
         assert_eq!(denied["result"], json!({ "decision": "denied" }));
     }
 
-    #[tokio::test]
-    async fn elicitation_that_is_not_an_approval_is_not_a_permission_request() {
+    /// `text` 턴이 입력 요청에서 멈추게 한 뒤, 답이 없는 동안 턴이 멈춰 있는지 확인하고 답한다.
+    /// 올라온 요청과 가짜 app-server가 받은 응답(`id`, `result`)을 돌려준다.
+    async fn answer_input_gate(text: &str, answer: InputAnswer) -> (ProviderEvent, Value) {
         let dir = tempfile::tempdir().unwrap();
         let (mut client, handle) = start(dir.path()).await;
         let main = handle.provider_session;
+        client.send_turn(&main, text).await.unwrap();
+        let requested = take(&mut client, 1).await.remove(0);
+        let ProviderEvent::InputRequested { request_id, .. } = &requested else {
+            panic!("expected an input request, got {requested:?}");
+        };
+        let stalled = tokio::time::timeout(Duration::from_millis(300), client.next_event()).await;
+        assert!(stalled.is_err(), "turn should wait for the answer");
+
         client
-            .send_turn(&main, "gate-plain-elicitation")
+            .answer_input(&main, request_id, answer)
             .await
             .unwrap();
+        let resumed = take(&mut client, 3).await;
 
-        let event = tokio::time::timeout(Duration::from_millis(300), client.next_event()).await;
+        let ProviderEvent::Text { text, .. } = &resumed[0] else {
+            panic!(
+                "expected the turn to continue with text, got {:?}",
+                resumed[0]
+            );
+        };
+        let received = text.strip_prefix("answer:").expect("answer prefix");
+        (requested, serde_json::from_str(received).unwrap())
+    }
 
-        assert!(event.is_err());
+    #[tokio::test]
+    async fn elicitation_form_round_trip_answers_accept_with_content() {
+        let submit = InputAnswer::Submit {
+            values: vec![
+                ("title".to_owned(), InputValue::Text("Saturn".to_owned())),
+                ("count".to_owned(), InputValue::Integer(3)),
+                ("enabled".to_owned(), InputValue::Boolean(true)),
+                (
+                    "choice".to_owned(),
+                    InputValue::Selected(vec!["a".to_owned()]),
+                ),
+                (
+                    "tags".to_owned(),
+                    InputValue::Selected(vec!["x".to_owned(), "y".to_owned()]),
+                ),
+            ],
+        };
+
+        let (requested, received) = answer_input_gate("gate-elicit-form", submit).await;
+
+        let ProviderEvent::InputRequested { request, .. } = requested else {
+            unreachable!("answer_input_gate returns an input request");
+        };
+        assert_eq!(request.message, "실험 입력을 작성하라");
+        assert_eq!(request.fields.len(), 5);
+        assert_eq!(request.fields[0].id, "title");
+        assert_eq!(received["id"], json!(41));
+        assert_eq!(
+            received["result"],
+            json!({ "action": "accept", "content": {
+                "title": "Saturn", "count": 3, "enabled": true, "choice": "a", "tags": ["x", "y"]
+            } })
+        );
+    }
+
+    #[tokio::test]
+    async fn elicitation_form_round_trip_answers_decline_and_cancel() {
+        let declined = answer_input_gate("gate-elicit-form", InputAnswer::Decline)
+            .await
+            .1;
+        let cancelled = answer_input_gate("gate-elicit-form", InputAnswer::Cancel)
+            .await
+            .1;
+
+        assert_eq!(declined["result"], json!({ "action": "decline" }));
+        assert_eq!(cancelled["result"], json!({ "action": "cancel" }));
+        assert_eq!(declined["id"], json!(41));
+    }
+
+    #[tokio::test]
+    async fn elicitation_url_round_trip_answers_accept_decline_and_cancel() {
+        let accepted = answer_input_gate(
+            "gate-elicit-url",
+            InputAnswer::Submit { values: Vec::new() },
+        )
+        .await;
+        let declined = answer_input_gate("gate-elicit-url", InputAnswer::Decline)
+            .await
+            .1;
+        let cancelled = answer_input_gate("gate-elicit-url", InputAnswer::Cancel)
+            .await
+            .1;
+
+        let ProviderEvent::InputRequested { request, .. } = &accepted.0 else {
+            unreachable!("answer_input_gate returns an input request");
+        };
+        assert_eq!(
+            request.url.as_deref(),
+            Some("https://example.invalid/experiment-252")
+        );
+        assert!(request.fields.is_empty());
+        assert_eq!(accepted.1["result"], json!({ "action": "accept" }));
+        assert_eq!(declined["result"], json!({ "action": "decline" }));
+        assert_eq!(cancelled["result"], json!({ "action": "cancel" }));
+    }
+
+    #[tokio::test]
+    async fn elicitation_user_input_round_trip_answers_by_question_id() {
+        let submit = InputAnswer::Submit {
+            values: vec![(
+                "preference".to_owned(),
+                InputValue::Selected(vec!["설계 검토".to_owned()]),
+            )],
+        };
+
+        let (requested, received) = answer_input_gate("gate-user-input", submit).await;
+        let cancelled = answer_input_gate("gate-user-input", InputAnswer::Cancel)
+            .await
+            .1;
+
+        let ProviderEvent::InputRequested { request, .. } = requested else {
+            unreachable!("answer_input_gate returns an input request");
+        };
+        assert_eq!(request.fields[0].id, "preference");
+        assert_eq!(received["id"], json!(43));
+        assert_eq!(
+            received["result"],
+            json!({ "answers": { "preference": { "answers": ["설계 검토"] } } })
+        );
+        assert_eq!(cancelled["result"], json!({ "answers": {} }));
+    }
+
+    #[tokio::test]
+    async fn elicitation_input_and_permission_answers_do_not_cross() {
+        let dir = tempfile::tempdir().unwrap();
+        let (mut client, handle) = start(dir.path()).await;
+        let main = handle.provider_session;
+        client.send_turn(&main, "gate-elicit-url").await.unwrap();
+        take(&mut client, 1).await;
+
+        let as_permission = client
+            .answer_permission(&main, "42", PermissionAnswer::AllowOnce)
+            .await;
+        let unknown = client.answer_input(&main, "99", InputAnswer::Cancel).await;
+        let as_input = client.answer_input(&main, "42", InputAnswer::Cancel).await;
+        let again = client.answer_input(&main, "42", InputAnswer::Cancel).await;
+
+        assert!(matches!(as_permission, Err(ProviderError::NotSent { .. })));
+        assert!(matches!(unknown, Err(ProviderError::NotSent { .. })));
+        assert!(as_input.is_ok());
+        assert!(matches!(again, Err(ProviderError::NotSent { .. })));
+    }
+
+    #[tokio::test]
+    async fn elicitation_approval_is_still_a_permission_request() {
+        let (requested, _) = answer_gate("gate-mcp", PermissionAnswer::AllowOnce).await;
+
         assert!(matches!(
-            client
-                .answer_permission(&main, "11", PermissionAnswer::AllowOnce)
-                .await,
-            Err(ProviderError::NotSent { .. })
+            requested,
+            ProviderEvent::PermissionRequested { .. }
         ));
     }
 

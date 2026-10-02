@@ -9,6 +9,7 @@ use crate::event::ProviderEvent;
 use crate::ids::{
     ChatId, InputId, JudgmentId, LedgerSeq, Provider, SettingsRevision, TaskId, TaskLabel,
 };
+use crate::input::{InputAnswer, InputRequest};
 use crate::state::{Disposition, InputState, QueueReason, TaskState};
 
 /// TUI가 `Attach`의 `env`에 담는 변수 이름. 이 밖의 변수는 보내지 않는다. 초안 목록.
@@ -109,6 +110,11 @@ pub enum Request {
     AnswerPermission {
         request_id: String,
         answer: PermissionAnswer,
+    },
+    /// 입력 요청에 답한다. `request_id`는 `InputRequested`의 값.
+    AnswerInput {
+        request_id: String,
+        answer: InputAnswer,
     },
     AnswerFeedback {
         judgment: JudgmentId,
@@ -254,6 +260,19 @@ pub enum Notification {
     },
     /// 다른 클라이언트가 먼저 답했다.
     PermissionResolved {
+        request_id: String,
+    },
+    /// provider의 입력 요청. 허가 요청처럼 답이 올 때까지 두고 나중에 붙는 TUI도 받는다.
+    InputRequested {
+        task: TaskId,
+        label: TaskLabel,
+        provider: Provider,
+        request_id: String,
+        request: InputRequest,
+        waiting: u32,
+    },
+    /// 다른 클라이언트가 먼저 답했거나 요청이 끝났다.
+    InputResolved {
         request_id: String,
     },
     FolderTrustRequested {

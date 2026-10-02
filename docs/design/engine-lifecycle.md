@@ -23,8 +23,8 @@
 2. 사용자가 TUI를 닫는다.
 3. `engine`은 `on_exit`가 기본값 `background`임을 확인하고 A를 계속 실행한다.
 4. A가 끝나면 `engine`은 대기 중이던 C를 이어서 보낸다.
-5. 실행 중 provider가 허가 요청을 보내면 `engine`은 답하지 않고 요청을 보관한다.
-6. 사용자가 TUI를 다시 열면 보관된 허가 요청 창이 가장 먼저 뜬다.
+5. 실행 중 provider가 허가 요청이나 입력 요청을 보내면 `engine`은 답하지 않고 요청을 보관한다.
+6. 사용자가 TUI를 다시 열면 보관된 허가 요청 창과 입력 요청 창이 가장 먼저 뜬다.
 
 ### 크래시 뒤 다시 켜면 보류 목록을 본다
 
@@ -84,7 +84,7 @@ TUI와 `cli`는 `engine` crate에 의존하지 않고, 이 경계는 Cargo 의�
 
 TUI와 `cli`는 Unix 소켓 위 JSON-RPC로 `engine`에 붙는다. 한 `engine`에 여러 TUI가 동시에 붙을 수 있다. TUI를 닫은 뒤에도 작업을 이어 가고 여러 TUI를 한 `engine`에 붙이기 위해 이 구조를 골랐다. 허가 요청 창은 다른 클라이언트가 먼저 답하면 사라진다.
 
-TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 답을 기다리는 허가 요청 순서로 보낸 뒤 `Attach`에 응답한다. `chat`이 없으면 새 채팅을 만든다. `HistoryChunk`는 그 채팅에 접수한 입력과 provider 이벤트를 시각 순서로 합친 끝 50개(초안)이고, 기록에 없는 작업 글자와 처리 방식은 비운다. provider는 첫 입력 때 연결하므로 `StartInfo`의 provider 버전은 비어 있다. `LoadHistory`는 한 번에 500개(초안)까지 보낸다.
+TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 답을 기다리는 허가 요청과 입력 요청 순서로 보낸 뒤 `Attach`에 응답한다. `chat`이 없으면 새 채팅을 만든다. `HistoryChunk`는 그 채팅에 접수한 입력과 provider 이벤트를 시각 순서로 합친 끝 50개(초안)이고, 기록에 없는 작업 글자와 처리 방식은 비운다. provider는 첫 입력 때 연결하므로 `StartInfo`의 provider 버전은 비어 있다. `LoadHistory`는 한 번에 500개(초안)까지 보낸다.
 
 `Attach`에는 그 TUI의 작업 폴더와 환경 변수(`env`)가 들어 있다. TUI는 터미널마다 따로 뜨고 터미널마다 PATH와 환경이 다르기 때문에, 상주 프로세스인 `engine`의 환경 대신 붙은 TUI의 값을 쓴다. `engine`은 새 채팅을 TUI가 넘긴 작업 폴더로 만들고 그 폴더를 채팅 기록에 고정한다. 이미 있는 채팅에 붙을 때는 TUI가 다른 폴더를 넘겨도 채팅의 폴더, 폴더 설정 층, 폴더 설정 신뢰 판단에 처음 폴더를 그대로 쓰고, 환경 변수만 그 채팅에 가장 최근에 붙은 TUI의 값으로 바꿔 저장한다. 채팅의 provider 실행 환경은 이 환경 변수로 정한다. 넘기는 변수는 `PATH`, `HOME`, `SHELL`, 로캘, 프록시 같은 실행에 필요한 것으로 한정하고(목록은 `saturn-protocol`의 `ATTACH_ENV_NAMES`, 초안), 넘겨받은 환경에 router 키 변수가 있어도 provider 자식 환경에는 넣지 않는다. 처음 친 `saturn`이 `engine`을 띄우고 붙으며, 이후의 `saturn`은 붙기만 한다.
 
@@ -123,7 +123,7 @@ TUI가 끝나면 `rpc`가 설정 `on_exit` 값을 확인한다. 값은 `backgrou
 
 `on_exit`가 `background`이면 `engine`은 접수된 대기 입력을 provider에 순서대로 계속 보낸다. `stop`과 `ask`의 동작은 아직 정하지 않았다([#70](https://github.com/woonyong-choi/saturn/issues/70)). TUI가 없는 동안 `engine`은 다음 규칙을 따른다.
 
-1. 허가 요청은 사용자 확인을 기다리는 상태로 보관하고, TUI가 다시 붙으면 가장 먼저 보낸다.
+1. 허가 요청과 입력 요청은 사용자 확인을 기다리는 상태로 보관하고, TUI가 다시 붙으면 가장 먼저 보낸다.
 2. 피드백 질문을 건너뛴다.
 3. 완료 알림(macOS)을 켠 경우에만 알림을 보낸다.
 4. 보류는 그대로 둔다.

@@ -128,6 +128,19 @@ impl<W: Write> PlainOutput<W> {
                 );
                 self.line(&text)?;
             }
+            Notification::InputRequested { label, request, .. } => {
+                let asked = request
+                    .url
+                    .clone()
+                    .or_else(|| request.fields.first().map(|field| field.title.clone()))
+                    .unwrap_or_else(|| request.message.clone());
+                let text = format!(
+                    "{} {}: {asked}",
+                    labels::format(label),
+                    self.lang.tr(i18n::INPUT_REQUESTED)
+                );
+                self.line(&text)?;
+            }
             Notification::ChatNotice { chat, notice, task } => {
                 self.chat.chat.get_or_insert(chat);
                 self.notice(task, notice)?;
