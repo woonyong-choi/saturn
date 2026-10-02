@@ -525,6 +525,7 @@ impl Queue {
         self.bump(chat);
     }
 
+    #[cfg(test)]
     pub fn write_gate(&mut self) -> &mut WriteGate {
         &mut self.gate
     }

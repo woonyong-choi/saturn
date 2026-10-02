@@ -9,7 +9,6 @@ publish.workspace = true
 saturn-protocol.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-tracing.workspace = true
 unicode-normalization.workspace = true
 
 [dev-dependencies]
@@ -17,6 +16,7 @@ anyhow.workspace = true
 clap.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+tracing.workspace = true
 tracing-subscriber.workspace = true
 
 [[example]]

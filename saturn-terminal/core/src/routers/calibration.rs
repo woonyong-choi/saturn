@@ -3,9 +3,6 @@
 
 pub const DEFAULT_TARGET_WRONG_RATE: f64 = 0.05;
 
-/// 되돌릴 수 없는 행동 질문의 `bounds.0`으로 넘긴다.
-pub const IRREVERSIBLE_FLOOR: f64 = 0.8;
-
 /// 빠른 조정이 중심값에서 벗어날 수 있는 폭.
 pub const FAST_RANGE: f64 = 0.05;
 
@@ -40,9 +37,6 @@ const SPRT_BETA: f64 = 0.2;
 
 /// 나빠진 틀림 비율은 목표 × 이 값이다(초안).
 const SPRT_WORSE_FACTOR: f64 = 2.0;
-
-// 초안
-const WEAK_LABEL_WEIGHT: f64 = 0.5;
 
 /// 관찰 시간(다음 입력 3개 또는 10분)이 지나면 확정한다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -280,15 +274,6 @@ pub fn gate_label(label: &Label) -> LabelUse {
     }
 }
 
-/// 뒤집기와 취소(틀림 신호)가 붙은 라벨은 약한 라벨이다.
-pub fn label_weight(label: &Label) -> f64 {
-    if label.signal == Some(Signal::Wrong) {
-        WEAK_LABEL_WEIGHT
-    } else {
-        1.0
-    }
-}
-
 /// 쌍은 모두 (새 모델, 현재 모델) 순서다.
 #[derive(Debug, Clone)]
 pub struct EvalReport {
@@ -363,6 +348,8 @@ fn majority(answers: &[String]) -> Option<&str> {
 
 #[cfg(test)]
 mod tests {
+    const IRREVERSIBLE_FLOOR: f64 = 0.8;
+
     use super::*;
 
     const QUESTION: &str = "keep_current";
@@ -982,14 +969,6 @@ mod tests {
         human.order_consistent = false;
 
         assert_eq!(gate_label(&human), LabelUse::Eval);
-    }
-
-    #[test]
-    fn label_weight_wrong_signal_is_weak() {
-        let mut flipped = label(&["yes"], None);
-        flipped.signal = Some(Signal::Wrong);
-
-        assert!(label_weight(&flipped) < label_weight(&label(&["yes"], None)));
     }
 
     #[test]

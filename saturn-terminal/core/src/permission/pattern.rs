@@ -8,9 +8,6 @@ const WILDCARD: char = '*';
 
 const ESCAPE: char = '\\';
 
-/// 끝이 ` *`인 패턴은 인자가 없는 명령에도 일치한다.
-const OPTIONAL_ARGS_SUFFIX: &str = " *";
-
 // cost: time O(p·t), heap O(t), stack O(1), alloc 2
 // vars: p = pattern 글자 수, t = text 글자 수
 // basis: estimate
