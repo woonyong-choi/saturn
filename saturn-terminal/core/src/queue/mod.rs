@@ -585,6 +585,79 @@ impl Queue {
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 대기열 입력 수
     // basis: estimate
+    /// 사용자가 바로 보내기를 눌렀다. judge를 거치지 않고 처리 방식을 끼워 넣기로 바꾸고, 같은 채팅의 대기 입력 중
+    /// 맨 앞으로 옮긴다. 끼워 넣을 수 없는 상황이면 그 자리에서 다음 차례를 기다린다. 바꾸기 전 처리 방식을 돌려준다.
+    ///
+    /// # Errors
+    /// 없는 입력이면 `NotFound`, `Queued`가 아니면 `InvalidTransition`, 이미 내준 입력이면 `AlreadySent`.
+    pub fn send_now(&mut self, input: InputId) -> Result<Option<Disposition>, QueueError> {
+        let index = self.index_of(input)?;
+        let entry = &mut self.inputs[index];
+        if entry.input.state != InputState::Queued {
+            return Err(QueueError::InvalidTransition {
+                from: entry.input.state,
+                to: InputState::Queued,
+            });
+        }
+        if entry.is_dispatched {
+            return Err(QueueError::AlreadySent);
+        }
+        let previous = entry.disposition.replace(Disposition::Steer);
+        let chat = entry.input.chat;
+        self.move_to_queue_front(index);
+        self.bump(chat);
+        Ok(previous)
+    }
+
+    // cost: time O(n), heap O(1), stack O(1)
+    // vars: n = 대기열 입력 수
+    // basis: estimate
+    /// provider가 끼워 넣기를 거절했다(보내지 않음이 확정). 입력을 `Queued`로 되돌려 같은 채팅 대기열 맨 앞에 두고,
+    /// 다시 끼워 넣지 않고 현재 작업이 끝난 뒤 다음 차례에 새 턴으로 가도록 처리 방식을 대기로 바꾼다.
+    ///
+    /// # Errors
+    /// 없는 입력이면 `NotFound`, `Delivering`이 아니면 `InvalidTransition`.
+    pub fn return_refused_steer(&mut self, input: InputId) -> Result<(), QueueError> {
+        let index = self.index_of(input)?;
+        let entry = &mut self.inputs[index];
+        if entry.input.state != InputState::Delivering {
+            return Err(QueueError::InvalidTransition {
+                from: entry.input.state,
+                to: InputState::Queued,
+            });
+        }
+        entry.input.state = InputState::Queued;
+        entry.input.reason = None;
+        entry.input.task = None;
+        entry.disposition = Some(Disposition::Queue);
+        entry.is_dispatched = false;
+        let chat = entry.input.chat;
+        self.move_to_queue_front(index);
+        self.bump(chat);
+        self.refresh_judge_order(chat);
+        Ok(())
+    }
+
+    // cost: time O(n), heap O(1), stack O(1)
+    // vars: n = 대기열 입력 수
+    // basis: estimate
+    /// 입력을 같은 채팅의 가장 앞 대기 입력 앞으로 옮긴다. 같은 채팅의 다른 대기 입력이 없으면 제자리다.
+    fn move_to_queue_front(&mut self, index: usize) {
+        let chat = self.inputs[index].input.chat;
+        let Some(entry) = self.inputs.remove(index) else {
+            return;
+        };
+        let at = self
+            .inputs
+            .iter()
+            .position(|other| other.input.chat == chat && other.input.state == InputState::Queued)
+            .unwrap_or(index.min(self.inputs.len()));
+        self.inputs.insert(at, entry);
+    }
+
+    // cost: time O(n), heap O(1), stack O(1)
+    // vars: n = 대기열 입력 수
+    // basis: estimate
     /// 입력에 붙은 처리 방식. 판단 전이면 `None`.
     pub fn disposition(&self, input: InputId) -> Option<Disposition> {
         self.inputs
@@ -1258,6 +1331,114 @@ mod tests {
         queue.defer_steer(InputId(2)).unwrap();
 
         assert_eq!(queue.next_to_send(), None);
+    }
+
+    #[test]
+    fn send_now_steers_a_running_task_ahead_of_earlier_waiting_inputs() {
+        let mut queue = Queue::new();
+        start_running(&mut queue, 1, Permission::Write, 7);
+        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_judged(&mut queue, 3, Permission::Write, Disposition::Queue);
+
+        let previous = queue.send_now(InputId(3)).unwrap();
+
+        assert_eq!(previous, Some(Disposition::Queue));
+        assert_eq!(
+            queue.inputs_in_state(CHAT, InputState::Queued),
+            vec![InputId(3), InputId(2)]
+        );
+        assert_eq!(
+            queue.next_to_send(),
+            Some(SendAction::Steer {
+                input: InputId(3),
+                agent: AgentId(7)
+            })
+        );
+    }
+
+    #[test]
+    fn send_now_that_cannot_steer_waits_first_in_line() {
+        let mut queue = Queue::new();
+        start_running(&mut queue, 1, Permission::Write, 7);
+        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_judged(&mut queue, 3, Permission::Write, Disposition::Queue);
+        queue.send_now(InputId(3)).unwrap();
+        let Some(SendAction::Steer { input, .. }) = queue.next_to_send() else {
+            panic!("input should steer");
+        };
+        queue.defer_steer(input).unwrap();
+
+        queue.finish_task(AgentId(7));
+
+        assert!(matches!(
+            queue.next_to_send(),
+            Some(SendAction::NewTurn {
+                input: InputId(3),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn send_now_refuses_inputs_that_are_not_waiting() {
+        let mut queue = Queue::new();
+        queue.accept(input(1, Permission::Write));
+        accept_judged(&mut queue, 2, Permission::Write, Disposition::NewTask);
+        queue.next_to_send();
+
+        assert!(matches!(
+            queue.send_now(InputId(1)),
+            Err(QueueError::InvalidTransition { .. })
+        ));
+        assert!(matches!(
+            queue.send_now(InputId(2)),
+            Err(QueueError::AlreadySent)
+        ));
+        assert!(matches!(
+            queue.send_now(InputId(9)),
+            Err(QueueError::NotFound(InputId(9)))
+        ));
+    }
+
+    #[test]
+    fn refused_steer_returns_to_the_front_as_a_queued_input() {
+        let mut queue = Queue::new();
+        start_running(&mut queue, 1, Permission::Write, 7);
+        accept_judged(&mut queue, 2, Permission::Write, Disposition::Queue);
+        accept_judged(&mut queue, 3, Permission::Write, Disposition::Steer);
+        let Some(SendAction::Steer { input, .. }) = queue.next_to_send() else {
+            panic!("input should steer");
+        };
+        queue.set_state(input, InputState::Delivering).unwrap();
+
+        queue.return_refused_steer(input).unwrap();
+
+        assert_eq!(state_of(&queue, 3), InputState::Queued);
+        assert_eq!(queue.disposition(InputId(3)), Some(Disposition::Queue));
+        assert_eq!(
+            queue.inputs_in_state(CHAT, InputState::Queued),
+            vec![InputId(3), InputId(2)]
+        );
+        assert_eq!(queue.next_to_send(), None);
+        queue.finish_task(AgentId(7));
+        assert!(matches!(
+            queue.next_to_send(),
+            Some(SendAction::NewTurn {
+                input: InputId(3),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn refused_steer_needs_a_delivering_input() {
+        let mut queue = Queue::new();
+        accept_judged(&mut queue, 1, Permission::Write, Disposition::Queue);
+
+        assert!(matches!(
+            queue.return_refused_steer(InputId(1)),
+            Err(QueueError::InvalidTransition { .. })
+        ));
     }
 
     #[test]

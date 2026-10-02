@@ -225,7 +225,7 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 | `자동 판단 일시 중단` | judge 호출 일시 실패, 질문별 대체 규칙 적용 |
 | `판단 모델 연결 끊김` | judge 호출 연속 3회 실패, 입력 접수는 계속하고 현재 모델로 처리 |
 | `바로 반영: 준비 중 (codex)` | 해당 provider의 끼워 넣기 확인 전, 끼워 넣기 대신 대기 처리 |
-| `판단기 연결 없음 · 차례에 보냅니다` | `[보내기]`를 눌렀으나 judge 실패, 차례에 전송 |
+| `판단기 연결 없음 · 차례에 보냅니다` | 바로 보내기가 judge를 부르지 않아 engine이 더는 보내지 않는 안내. 화면 쪽 표시는 남아 있고 제거 여부는 미정 |
 | `전달 중` | 에이전트로 입력 전달 중, 취소 불가 |
 | `반영됨` | 에이전트에 입력 전달 완료, 취소 불가 |
 | `[A] codex · 45초 · Token 3,210` | 결과 머리줄, 마지막으로 답한 provider와 경과와 토큰 |
@@ -301,6 +301,5 @@ judge 키 입력 창에서 받는 키의 처리는 [judge 키 보호](judge-key-
 - plain 출력을 켜는 조건과 우선순위, 설정 키 이름을 무엇으로 할지 ([#57](https://github.com/woonyong-choi/saturn/issues/57))
 - 좁은 가로 폭에서 폭 구간별로 버튼과 칸을 줄일지, 줄 끝부터 말줄임할지, 버튼 대신 명령 안내를 보일지 ([#58](https://github.com/woonyong-choi/saturn/issues/58))
 - 빈 입력창에서 `←`로 작업 목록 화면을 열지, `/tasks`로만 열지, 다른 전용 키를 둘지 ([#59](https://github.com/woonyong-choi/saturn/issues/59))
-- provider가 끼워 넣기를 거절한 입력을 대기 줄로 옮길지, judge로 다시 판단할지, 사용자에게 물을지 ([#60](https://github.com/woonyong-choi/saturn/issues/60))
 - 바로잡기 제안의 `[실행]`, `[그대로]`를 클릭으로 고를지, 숫자 키로 고를지, 명령으로만 고를지 ([#109](https://github.com/woonyong-choi/saturn/issues/109))
 - 위로 스크롤할 때 이전 기록 요청의 기준 위치를 `HistoryChunk`에 실을지, 항목마다 붙일지, engine이 기억할지 ([#110](https://github.com/woonyong-choi/saturn/issues/110))

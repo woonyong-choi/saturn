@@ -79,22 +79,14 @@ impl TaskBook {
     }
 }
 
-/// 별도 작업에서 도는 judge 호출이 무엇을 위한 것인지.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum JudgeKind {
-    /// 접수한 입력의 처리 방식 판단. `retried`는 revision이 어긋나 다시 묻는 호출이면 참.
-    Intake { retried: bool },
-    /// 대기 입력을 바로 보내기 위한 판단.
-    SendNow,
-}
-
-/// 돌고 있는 judge 호출 하나. 요청을 만들 때의 채팅 revision을 들고 있어 결과를 적용할 때 비교한다.
+/// 돌고 있는 judge 호출 하나(접수한 입력의 처리 방식 판단). 요청을 만들 때의 채팅 revision을 들고 있어 결과를
+/// 적용할 때 비교한다. `retried`는 revision이 어긋나 다시 묻는 호출이면 참이다.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct JudgeJob {
     pub(crate) chat: ChatId,
     pub(crate) input: InputId,
     pub(crate) revision: ChatRevision,
-    pub(crate) kind: JudgeKind,
+    pub(crate) retried: bool,
 }
 
 /// 별도 작업이 engine 루프로 돌려주는 호출 결과.
@@ -108,8 +100,6 @@ pub(crate) struct FlowState {
     pub(crate) judged: HashMap<InputId, Judged>,
     /// 채팅마다 판단 중인 접수 입력. 같은 채팅 입력은 하나씩만 판단한다.
     pub(crate) judging: HashMap<ChatId, InputId>,
-    /// 바로 보내기 판단이 돌고 있는 입력.
-    pub(crate) send_now_pending: HashSet<InputId>,
     pub(crate) judge_tx: mpsc::UnboundedSender<JudgeDone>,
     pub(crate) judge_rx: mpsc::UnboundedReceiver<JudgeDone>,
     /// 채팅의 가장 나중 판단이 정한 처리 방식. 다음 판단의 state에 넣는다.
@@ -176,7 +166,6 @@ impl Default for FlowState {
             stop_rx,
             judged: HashMap::new(),
             judging: HashMap::new(),
-            send_now_pending: HashSet::new(),
             judge_tx,
             judge_rx,
             last_disposition: HashMap::new(),

@@ -98,7 +98,7 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 - 대기열은 에이전트 session이 아니라 채팅에 둔다. session 교체 중 들어온 입력이 옛 session을 가리키는 일을 막기 위해서다.
 - session 교체는 턴이 끝난 경계에서만 한다. 진행 중인 턴이 session 교체로 끊기는 일을 막기 위해서다.
 - session 교체 중 들어온 입력은 새 session에 순서대로 보낸다. 입력 순서를 session 교체와 무관하게 지키기 위해서다.
-- 보내기 전에 확정된 실패만 다시 보낸다. 같은 작업이 두 번 실행되는 일을 막기 위해서다. 같은 입력은 처음 시도를 포함해 3번(초안)까지 보내고, 그래도 실패하면 `거절됨`으로 두고 시작하려던 작업은 닫는다.
+- 보내기 전에 확정된 실패만 다시 보낸다. 같은 작업이 두 번 실행되는 일을 막기 위해서다. 같은 입력은 처음 시도를 포함해 3번(초안)까지 보내고, 그래도 실패하면 `거절됨`으로 두고 시작하려던 작업은 닫는다. 끼워 넣기는 이 규칙을 따르지 않는다. provider가 끼워 넣기를 거절(`NotSent`)하면 다시 끼워 넣지 않고 입력을 대기열 맨 앞으로 옮겨 다음 차례에 새 턴으로 보낸다(사용자 결정, [#60](https://github.com/woonyong-choi/saturn/issues/60)). 사용자가 지금 반영되길 원한 입력이라 순서를 뒤로 미루지 않고, 거절은 보내지 않음이 확정된 실패라 다시 보내도 되기 때문이다. 입력은 `대기`로 돌아가고 `거절됨`이 되지 않는다.
 - 입력은 `전달 중`을 기록 저장소에 쓴 뒤에만 provider로 보내고, provider가 받으면 `반영됨`으로 바꾼다. 기록에 쓰지 못하면 보내지 않고 거절한다.
 - 보낼 provider는 채팅의 메인 session이 있으면 그 provider이고, 없으면 설치된 Claude, 없으면 설치된 Codex이며 둘 다 없으면 오류를 보이고 보내지 않는다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정). 모델을 고정한 입력의 모델은 그대로 넘기고 모델에서 provider로 가는 대응은 정해지기 전이다.
 - provider 연결은 채팅마다 둔다. 작업 폴더와 환경이 채팅마다 달라서다.
@@ -112,7 +112,7 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 
 - 대기는 보내기 전 채팅 대기열에 있는 입력의 상태다.
 - 사용자는 대기 입력을 바로 보내거나 새 작업으로 보내거나 취소할 수 있다.
-- 바로 보내기는 judge에 한 번 물어 끼워 넣기나 새 작업이면 그 처리 방식으로 바꾸고, 대기로 답하면 차례를 기다린다. 판단하지 못하면 `판단기 연결 없음 · 차례에 보냅니다`를 보이고 차례를 기다린다. 모델을 고정한 입력은 물을 것이 없어 차례를 기다린다.
+- 바로 보내기는 judge를 부르지 않는다(사용자 결정). 실행 중인 작업에 끼워 넣기를 시도하고, 끼워 넣을 수 없으면(실행 중인 작업이 없거나 provider가 끼워 넣기를 아직 지원하지 않으면) 같은 채팅 대기열 맨 앞에 두어 다음 차례를 기다린다. 사용자가 지금 반영되길 원했으므로 앞선 대기 입력보다 먼저 가게 하기 위해서다. 판단이 끼워 넣기가 아니었던 입력을 바로 보내면 판단을 놓친 신호로 기록하고, 모델을 고정한 입력도 같다.
 - 새 작업으로 보내기는 judge 없이 새 작업으로 시작한다. 쓰기 규칙은 그대로 적용한다.
 - 사용자가 판단을 뒤집은 것은 결과 신호로 남긴다. 취소는 `Wrong`, 대기로 판단한 입력을 바로 보내거나 새 작업으로 보내면 `Missed`다.
 - 취소는 에이전트에 보내기 전 입력에만 적용한다. `전달 중`과 `반영됨` 입력은 취소할 수 없다.
@@ -196,7 +196,8 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 | Claude 끼워 넣기 중 턴 종료 | provider가 추가 메시지를 다음 턴에 처리하므로 따로 처리하지 않는다. |
 | 보낸 뒤 결과 불명 | 자동으로 다시 보내지 않고 사용자 확인으로 넘긴다. 입력은 `전달 중`으로 두고 작업을 `결과 확인 필요`로 보이며, 실행 기록은 열어 둔다. 사용자는 `/continue <작업>`으로 확인 입력을 보내 잇는다. |
 | 패킷의 고정 구역이 `P_hard`를 넘어 새 session으로 옮기지 못함 | 보내지 않고 입력을 작업과 함께 보류하며 제약 목록을 보인다. `/continue`로 다시 시도한다. |
-| 보내기 전 확정 실패가 3번 이어짐 | 입력을 `거절됨`으로 두고 작업을 실패로 보인다. 끼워 넣기가 거절된 입력의 다음 처리는 [#60](https://github.com/woonyong-choi/saturn/issues/60)에서 정한다. |
+| 보내기 전 확정 실패가 3번 이어짐 | 입력을 `거절됨`으로 두고 작업을 실패로 보인다. |
+| provider가 끼워 넣기를 거절(`NotSent`) | 다시 끼워 넣지 않고 입력을 `대기`로 되돌려 대기열 맨 앞에 둔다. 현재 작업이 끝나면 다음 차례에 새 턴으로 보낸다. |
 | provider 연결이나 session 열기 실패, 설치된 provider 없음 | 보내지 않고 입력을 `거절됨`으로 두며 원인 한 줄을 작업 실패에 보인다. |
 | 접수나 `전달 중` 기록 실패 | 어디에도 보내지 않는다. 접수 실패는 요청 오류로, `전달 중` 실패는 입력 거절로 알린다. |
 | 멈춤 뒤 묶음 밖으로 빠져나간 프로세스 존재 | 완료라고 하지 않고 `멈춤 확인 안 됨 · N개 남음`을 보고한다. |
@@ -215,7 +216,8 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 | judge 호출이 도는 동안에도 다른 요청을 바로 처리하고, 판단 중 멈춤이나 취소가 있으면 늦게 온 판단은 적용하지 않는다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `requests_are_answered_while_a_judgment_is_in_flight`, `saturn-terminal/engine/src/lifecycle/decision.rs`의 `stop_while_judging_holds_the_input_and_drops_the_late_judgment` |
 | 쓰기 권한 에이전트는 같은 작업 폴더에서 한 번에 하나만 실행한다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `relation_answer_to_new_task_waits_for_the_write_turn_then_starts` |
 | 취소는 에이전트에 보내기 전 입력에만 적용한다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `cancel_applies_only_before_the_input_is_sent` |
-| 바로 보내기는 judge에 한 번 묻고, 판단하지 못하면 차례를 기다린다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `send_now_asks_the_judge_once_and_steers_into_the_running_turn`, `send_now_with_judge_down_leaves_the_input_waiting_in_order` |
+| 바로 보내기는 judge를 부르지 않고 끼워 넣기를 시도하며, 안 되면 대기열 맨 앞에 둔다. | `saturn-terminal/engine/src/lifecycle/send_now.rs`의 `send_now_steers_into_the_running_turn_without_calling_the_judge`, `send_now_does_not_need_the_judge_to_be_up`, `send_now_that_cannot_steer_goes_first_in_the_queue`, `send_now_without_verified_steer_goes_back_to_waiting`, `send_now_on_a_sent_input_is_refused`, `saturn-terminal/core/src/queue/mod.rs`의 `send_now_steers_a_running_task_ahead_of_earlier_waiting_inputs`, `send_now_that_cannot_steer_waits_first_in_line`, `send_now_refuses_inputs_that_are_not_waiting` |
+| provider가 거절한 끼워 넣기는 다시 끼워 넣지 않고 대기열 맨 앞으로 옮겨 다음 차례에 보낸다. | `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `refused_steer_is_not_sent_again_and_is_not_rejected`, `refused_steer_goes_to_the_front_and_takes_the_next_turn`, `refused_steer_through_send_now_also_goes_to_the_front`, `saturn-terminal/core/src/queue/mod.rs`의 `refused_steer_returns_to_the_front_as_a_queued_input`, `refused_steer_needs_a_delivering_input` |
 | 멈춘 작업은 자동으로 이어 가지 않고 보류한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stopped_work_is_not_continued_without_a_request`, `stop_with_nothing_running_holds_the_waiting_input_at_once`, `stop_twice_signals_once` |
 | 재개는 보류 입력을 접수 순서로 보내고 멈춘 작업에는 파일 상태 확인 입력을 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `continue_sends_held_input_and_then_a_state_check_for_the_interrupted_task`, `continue_input_resumes_the_task_of_that_input` |
 | 보류 종료는 보내지 않은 입력을 취소하고 session을 끝낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `close_held_cancels_unsent_input_and_ends_the_session` |
@@ -233,7 +235,6 @@ judge는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`,
 ## 미해결 질문
 
 - 실행 중 작업을 뒤집는 입력을 바로 멈출지, 사용자에게 확인할지, 대기로 둘지 ([#36](https://github.com/woonyong-choi/saturn/issues/36))
-- provider가 끼워 넣기를 거절한 입력을 대기로 옮길지, 다시 판단할지, 사용자에게 물을지 ([#60](https://github.com/woonyong-choi/saturn/issues/60))
 - 허가 거절 뒤 다르게 하라는 입력을 판단 없이 끼워 넣을지, 허가 창에서 받을지, 일반 입력으로 판단할지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
 - 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 보류 입력 하나만 재개할지, 같은 작업의 보류 입력을 함께 재개할지. 같은 작업에 보류 입력이 있을 때 확인 입력이 그 입력보다 앞서야 하는지 ([#90](https://github.com/woonyong-choi/saturn/issues/90))

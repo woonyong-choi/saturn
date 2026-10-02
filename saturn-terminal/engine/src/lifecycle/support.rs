@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 use super::*;
 use crate::Attachment;
 use crate::chat_env::ChatEnv;
-use crate::flow::{JudgeJob, JudgeKind};
+use crate::flow::JudgeJob;
 use crate::providers::ProviderConnection;
 use crate::providers::test_support::FakeProvider;
 use crate::rpc::ClientId;
@@ -227,7 +227,7 @@ impl Flow {
             chat: self.chat,
             input,
             revision,
-            kind: JudgeKind::Intake { retried: false },
+            retried: false,
         };
         self.engine
             .finish_judge(&job, &request, exchange)
@@ -248,7 +248,7 @@ impl Flow {
     }
 
     pub(super) fn is_judging(&self) -> bool {
-        !self.engine.flow.judging.is_empty() || !self.engine.flow.send_now_pending.is_empty()
+        !self.engine.flow.judging.is_empty()
     }
 
     /// 열려 있는 에이전트. 시험마다 하나뿐이다.
