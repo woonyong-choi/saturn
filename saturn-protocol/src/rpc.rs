@@ -160,6 +160,11 @@ pub enum Request {
         folder: Option<String>,
     },
     ListTasks,
+    /// `folder`에서 마지막 입력 접수가 가장 늦은 채팅(입력이 없으면 만든 시각)을 `LatestChat`으로 보낸다.
+    /// 붙지 않은 연결에서도 쓴다.
+    LatestChat {
+        folder: String,
+    },
     /// 채팅이 다시 바꿀 때까지 쓸 모델을 정하고 저장한다. 모델이 provider도 정한다. 붙은 모든 TUI에 `ModelPinned`로 알린다.
     SetModel {
         chat: ChatId,
@@ -317,6 +322,10 @@ pub enum Notification {
     Usage {
         range: UsageRange,
         rows: Vec<UsageRow>,
+    },
+    /// `LatestChat`의 답. 폴더에 채팅이 없으면 `None`.
+    LatestChat {
+        chat: Option<ChatId>,
     },
     RouterVersions {
         current: String,

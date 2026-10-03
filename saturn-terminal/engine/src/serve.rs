@@ -159,6 +159,7 @@ impl Engine {
             Request::Usage { scope, folder } => {
                 self.send_usage(client, scope, folder.as_deref()).await
             }
+            Request::LatestChat { folder } => self.send_latest_chat(client, &folder).await,
             Request::SetModel { chat, model } => self.set_model(client, chat, &model).await,
             Request::ListModels { chat, provider } => {
                 self.send_models(client, chat, provider).await
@@ -181,7 +182,9 @@ impl Engine {
         if let RouterGate::KeyRequired { reason } = &self.router_gate
             && !matches!(
                 request,
-                Request::Attach { .. } | Request::SubmitRouterKey { .. }
+                Request::Attach { .. }
+                    | Request::SubmitRouterKey { .. }
+                    | Request::LatestChat { .. }
             )
         {
             return Err(EngineError::RouterKeyRequired {

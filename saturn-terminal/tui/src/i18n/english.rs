@@ -128,8 +128,12 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("학습을 마쳤습니다", "Training finished"),
     ("학습을 취소했습니다", "Training cancelled"),
     (
-        "--continue는 아직 지원하지 않습니다: engine이 현재 폴더의 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰세요",
-        "--continue is not supported yet: engine cannot list chats of the current folder · Use --resume <chat id>",
+        "이 폴더에 이어 열 채팅이 없습니다 · saturn으로 새 채팅을 시작하세요",
+        "No chat to continue in this folder · Start a new chat with saturn",
+    ),
+    (
+        "engine이 최근 채팅 없이 답했습니다",
+        "Engine answered without the latest chat",
     ),
     (
         "채팅 id 없는 --resume과 --resume all은 아직 지원하지 않습니다: engine이 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰세요",

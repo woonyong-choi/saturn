@@ -58,6 +58,19 @@ impl Engine {
     }
 }
 
+impl Engine {
+    /// 폴더에 채팅이 없으면 `chat`이 `None`인 알림을 보낸다.
+    pub(super) async fn send_latest_chat(
+        &self,
+        client: ClientId,
+        folder: &str,
+    ) -> Result<(), EngineError> {
+        let chat = self.store.latest_chat_in(folder).await?;
+        self.send(client, Notification::LatestChat { chat }).await;
+        Ok(())
+    }
+}
+
 /// 기록에 없는 비용, 맥락 정리, 채점은 `None`이다. 여러 턴을 합친 행만 `turns`를 채운다.
 async fn usage_rows(
     store: &Store,

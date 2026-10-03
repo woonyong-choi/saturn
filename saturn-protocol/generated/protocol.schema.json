@@ -1115,6 +1115,31 @@
           "type": "object"
         },
         {
+          "description": "`folder`에서 마지막 입력 접수가 가장 늦은 채팅(입력이 없으면 만든 시각)을 `LatestChat`으로 보낸다.\n붙지 않은 연결에서도 쓴다.",
+          "properties": {
+            "method": {
+              "const": "LatestChat",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "folder": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "folder"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "description": "채팅이 다시 바꿀 때까지 쓸 모델을 정하고 저장한다. 모델이 provider도 정한다. 붙은 모든 TUI에 `ModelPinned`로 알린다.",
           "properties": {
             "method": {
@@ -2420,6 +2445,35 @@
           "type": "object"
         },
         {
+          "description": "`LatestChat`의 답. 폴더에 채팅이 없으면 `None`.",
+          "properties": {
+            "method": {
+              "const": "LatestChat",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/ChatId"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "properties": {
             "method": {
               "const": "RouterVersions",
@@ -3373,6 +3427,35 @@
                 "range",
                 "rows"
               ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`LatestChat`의 답. 폴더에 채팅이 없으면 `None`.",
+          "properties": {
+            "method": {
+              "const": "LatestChat",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/ChatId"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
               "type": "object"
             }
           },

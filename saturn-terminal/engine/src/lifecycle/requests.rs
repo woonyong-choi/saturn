@@ -81,6 +81,42 @@ async fn usage_request_without_attachment_reads_the_latest_chat_of_the_folder() 
     );
 }
 
+#[tokio::test]
+async fn latest_chat_request_answers_the_latest_chat_of_the_folder_without_attachment() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.ready().await;
+    let mut owner = Client::connect(&fixture.socket()).await;
+    let mut reader = Client::connect(&fixture.socket()).await;
+    let folder = fixture.workdir.display().to_string();
+
+    let (found, empty) = drive(&mut engine, async {
+        let attached = owner.attach(1, new_chat(&fixture.workdir)).await;
+        let Some(Notification::HistoryChunk { chat, .. }) = attached.get(1) else {
+            panic!("expected HistoryChunk, got {attached:?}");
+        };
+        let chat = *chat;
+        let ask = |folder: &str| Request::LatestChat {
+            folder: folder.to_owned(),
+        };
+        reader.send(2, ask(&folder)).await;
+        let found = reader.notification().await;
+        assert_eq!(reader.response().await, Response::ok(RequestId(2)));
+        reader.send(3, ask("/nowhere")).await;
+        let empty = reader.notification().await;
+        assert_eq!(reader.response().await, Response::ok(RequestId(3)));
+        ((chat, found), empty)
+    })
+    .await;
+
+    assert_eq!(
+        found.1,
+        Notification::LatestChat {
+            chat: Some(found.0)
+        }
+    );
+    assert_eq!(empty, Notification::LatestChat { chat: None });
+}
+
 fn set_recording(chat: u64) -> Request {
     Request::SetRecording {
         chat: ChatId(chat),
