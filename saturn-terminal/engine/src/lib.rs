@@ -16,9 +16,10 @@ pub(crate) mod training;
 
 pub use processes::Supervisor;
 pub use providers::{
-    LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults, UserProviderConfig,
+    HookInputError, LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults,
+    UserProviderConfig, run_pre_tool_use,
 };
-pub use secrets::Masker;
+pub use secrets::{Masker, pre_tool_use_hook_settings};
 
 mod add_dir;
 mod chat_env;
