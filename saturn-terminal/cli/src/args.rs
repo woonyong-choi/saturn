@@ -286,7 +286,7 @@ mod tests {
 
         assert_eq!(
             usage.get_about().map(ToString::to_string).as_deref(),
-            Some("show usage")
+            Some("Show usage")
         );
         assert!(day.is_some_and(|arg| {
             arg.get_help()

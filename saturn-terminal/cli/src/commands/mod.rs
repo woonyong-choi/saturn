@@ -102,6 +102,6 @@ mod tests {
         let error =
             confirm_from(Lang::En, "go?", false, "y\n".as_bytes(), &mut Vec::new()).unwrap_err();
 
-        assert!(error.to_string().contains("needs a terminal"));
+        assert!(error.to_string().contains("No terminal available"));
     }
 }

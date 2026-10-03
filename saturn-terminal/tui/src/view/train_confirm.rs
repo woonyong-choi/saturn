@@ -151,8 +151,8 @@ mod tests {
             .iter()
             .map(|cell| cell.symbol())
             .collect();
-        assert!(content.contains("candidates: 240"));
-        assert!(content.contains("estimated tokens: 1,200,000"));
-        assert!(content.contains("retrain model: no"));
+        assert!(content.contains("Candidates: 240"));
+        assert!(content.contains("Estimated tokens: 1,200,000"));
+        assert!(content.contains("Retrain model: No"));
     }
 }

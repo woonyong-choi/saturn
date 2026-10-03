@@ -89,7 +89,7 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 - 맥락 크기는 마지막 메인 `assistant` 메시지 `usage`의 입력, 캐시 읽기, 캐시 쓰기 합이다(초안).
 - interrupt 제어 응답은 10초, session 닫기 뒤 종료는 5초까지 기다리고, 넘으면 프로세스 묶음 중지로 넘어간다(초안).
 
-끼워 넣기 실측을 통과하기 전의 provider에서는 끼워 넣기를 대기로 바꿔 처리한다. 끼워 넣기 경로가 문서대로 동작하는지 실측으로 확인해야 하기 때문이다([#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27)). 이때 TUI는 `바로 반영: 준비 중`을 보인다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다. 입력을 어디로 보낼지는 [입력 처리](input-handling.md)가 정한다.
+끼워 넣기 실측을 통과하기 전의 provider에서는 끼워 넣기를 대기로 바꿔 처리한다. 끼워 넣기 경로가 문서대로 동작하는지 실측으로 확인해야 하기 때문이다([#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27)). 이때 TUI는 `바로 반영 준비 중`을 보인다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다. 입력을 어디로 보낼지는 [입력 처리](input-handling.md)가 정한다.
 
 ### provider 실행과 기본값 인자
 

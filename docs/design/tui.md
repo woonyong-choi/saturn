@@ -115,7 +115,7 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 ### 피드백 질문
 
-피드백 질문은 입력 에코 다음 줄에 뜬다. 어떤 판단에서 묻는지는 [router 학습](router-training.md)의 확률 q 규칙을 따른다. 질문은 8초 안에 답이 없으면 사라진다. 사용자가 `2`(아니에요)로 답했고 그 입력이 아직 보내지지 않았으면 바로 새 작업으로 실행할지 묻는 바로잡기 제안을 보인다. TUI가 붙어 있지 않은 동안에는 피드백 질문을 건너뛴다([engine 수명과 복구](engine-lifecycle.md)).
+피드백 질문은 입력 에코 다음 줄에 뜬다. 어떤 판단에서 묻는지는 [router 학습](router-training.md)의 확률 q 규칙을 따른다. 질문은 8초 안에 답이 없으면 사라진다. 사용자가 `2`(틀림)로 답했고 그 입력이 아직 보내지지 않았으면 바로 새 작업으로 실행할지 묻는 바로잡기 제안을 보인다. TUI가 붙어 있지 않은 동안에는 피드백 질문을 건너뛴다([engine 수명과 복구](engine-lifecycle.md)).
 
 ### 허가 요청 창
 
@@ -129,6 +129,15 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 
 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. engine은 화면 문구를 만들지 않고 알림 종류와 값만 보내며, 문구는 TUI의 번역표가 고른다. `saturn` 명령의 출력, 오류, 도움말도 같은 언어 판정과 같은 번역표를 쓴다. 도움말은 실행할 때 언어에 맞는 문구를 넣는다. provider와 검사기가 낸 원문(모델 답, 오류 원문)과 로그는 번역하지 않고, clap이 만드는 `Usage:` 같은 고정 문구도 영어로 남는다. 대기 줄과 보류 줄의 버튼은 전체 화면 방식에서 클릭할 수 있다. 파이프와 CI처럼 화면이 없는 환경에서는 전체 화면 대신 plain 출력을 쓰고, 같은 명령은 두 방식에서 같은 결과를 낸다. plain을 켜는 조건은 정해지지 않았고, 지금 구현은 표준 입력이나 표준 출력이 터미널이 아니면 plain으로 시작한다(초안, [#57](https://github.com/woonyong-choi/saturn/issues/57)).
 
+문구 형식은 Claude Code에 맞춘다. 서술문의 해요체(`넣었어요`)와 끝 마침표는 쓰지 않고, 질문은 물음표로 끝낸다. 영어는 문장 첫 글자만 대문자로 쓰고 같은 뜻은 같은 낱말로 쓴다. 키 안내 줄(`Enter 확인 · Esc 닫기`)과 버튼(`[보내기]`)은 이 표의 대상이 아니다.
+
+| 종류 | 형식 | 예 |
+|---|---|---|
+| 상태 표시(상태판, 라벨, 작업 상태) | 명사형, 마침표 없음 | `작업 중` / `Working`, `입력 기다림` / `Waiting for input`, `중단됨` / `Interrupted` |
+| 대화 기록 알림 | `상태 · 안내`, 합니다체, 마침표 없음 | `권한 설정 변경됨 · 다음 요청부터 적용됩니다` / `Permission settings changed · Applies from your next request` |
+| 오류 | `무엇을 하지 못했습니다: 대상`, 합니다체 | `engine을 시작하지 못했습니다: {binary}` / `Failed to start engine: {binary}` |
+| 안내와 질문 | 안내는 `~하세요`, 질문은 `~나요?`/`~할까요?` | `숫자를 입력하세요`, `판단이 맞았나요?` |
+
 ### 키
 
 | 키 | 동작 | 적용 영역 |
@@ -136,8 +145,8 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `Ctrl+T` | 전체 기록 표시 | 모든 영역 |
 | `Ctrl+Z` | 화면 일시 중지, `fg` 뒤 복원 | 모든 영역 |
 | `0` | 피드백 질문 해제 | 대화 기록 |
-| `1` | 피드백 질문에 맞아요 답, `/feedback 1`과 동일 | 대화 기록 |
-| `2` | 피드백 질문에 아니에요 답, `/feedback 2`와 동일 | 대화 기록 |
+| `1` | 피드백 질문에 맞음 답, `/feedback 1`과 동일 | 대화 기록 |
+| `2` | 피드백 질문에 틀림 답, `/feedback 2`와 동일 | 대화 기록 |
 | `Enter` | 보류 닫기 확인에서 보류 종료 | 상태판 |
 | `Esc` | 보류 닫기 확인에서 보류 유지 | 상태판 |
 | `Enter` | 명령 목록에서 고른 명령의 전체 경로를 입력창에 기입, 값 목록에서 값 선택 | 팝업 |
@@ -242,7 +251,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `[E] 보류를 닫았습니다` | 보류 종료 완료 |
 | `자동 판단 일시 중단` | router 호출 일시 실패, 질문별 대체 규칙 적용 |
 | `판단 모델 연결 끊김` | router 호출 연속 3회 실패, 입력 접수는 계속하고 현재 모델로 처리 |
-| `바로 반영: 준비 중 (codex)` | 해당 provider의 끼워 넣기 확인 전, 끼워 넣기 대신 대기 처리 |
+| `바로 반영 준비 중 (codex)` | 해당 provider의 끼워 넣기 확인 전, 끼워 넣기 대신 대기 처리 |
 | `라우터 연결 없음 · 차례에 보냅니다` | 바로 보내기가 router를 부르지 않아 engine이 더는 보내지 않는 안내. 화면 쪽 표시는 남아 있고 제거 여부는 미정 |
 | `전달 중` | 에이전트로 입력 전달 중, 취소 불가 |
 | `반영됨` | 에이전트에 입력 전달 완료, 취소 불가 |
@@ -252,11 +261,11 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `[A] 맥락 정리 후 이어서 진행` | 맥락 정리 뒤 같은 작업 계속 |
 | `고정 제약이 길어 맥락 정리를 미룹니다` | 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못함, 다음 줄부터 제약 목록 |
 | `[A] codex → claude로 전환` | 작업의 provider 전환 |
-| `권한 설정이 변경되었습니다. 다음 요청부터 적용됩니다.` | 채팅 중 권한 규칙이 바뀐 것을 처음 알아챔. 영어는 `Permission settings changed. They apply from your next request.` |
-| `변경된 권한 설정을 적용하기 위해 Codex를 다시 시작했습니다.` | 바뀐 권한 규칙을 적용하려고 턴이 끝난 뒤 Codex 연결을 다시 시작함. 영어는 `Restarted Codex to apply the changed permission settings.` |
+| `권한 설정 변경됨 · 다음 요청부터 적용됩니다` | 채팅 중 권한 규칙이 바뀐 것을 처음 알아챔. 영어는 `Permission settings changed · Applies from your next request` |
+| `Codex 다시 시작함 · 변경된 권한 설정을 적용했습니다` | 바뀐 권한 규칙을 적용하려고 턴이 끝난 뒤 Codex 연결을 다시 시작함. 영어는 `Restarted Codex · Applied the changed permission settings` |
 | `이번 요청 · codex Token 4,120 · 라우터 3회 Token 9,870 · 2분 31초` | 모든 작업이 끝난 순간의 합계, provider별 토큰과 router 호출과 경과 |
-| `[A]에 이어서 보냈어요 · 판단이 맞았나요? (선택)  1 맞아요  2 아니에요  0 닫기` | 피드백 질문 |
-| `[B] 바로 새 작업으로 실행할까요? [실행] [그대로]` | 아니에요 답 뒤 아직 보내지 않은 입력의 바로잡기 제안 |
+| `[A]에 이어서 보냄 · 판단이 맞았나요? (선택)  1 맞음  2 틀림  0 닫기` | 피드백 질문 |
+| `[B] 바로 새 작업으로 실행할까요? [실행] [그대로]` | 틀림 답 뒤 아직 보내지 않은 입력의 바로잡기 제안 |
 | `채점할 판단 83 / 200건 · 200건이 쌓이면 실행할 수 있습니다` | 채점할 판단 부족으로 `/train` 실행 불가 |
 | `맥락 38K/200K` | 현재 활성 맥락 크기와 Saturn 기준 |
 | `맥락 미확인` | 맥락 크기 측정 불가 |
@@ -286,7 +295,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 입력 기록 파일 | 한 줄에 입력 하나, 줄바꿈은 `\n`, 역슬래시는 `\\`, 오래된 것이 위. 쓰기 실패는 경고 로그만 남기고 계속 |
 | 결과 머리줄 토큰 | 새 입력, 캐시 쓰기, 출력, 추론의 합. 캐시 읽기는 뺀다 |
 | 폴더 설정 신뢰 창 두 번째 선택지 | `적용하지 않고 계속` |
-| 끼워 넣기가 아닌 판단의 피드백 질문 머리 | `[B] 새 작업으로 보냈어요`, `[C] 대기열에 넣었어요` |
+| 끼워 넣기가 아닌 판단의 피드백 질문 머리 | `[B] 새 작업으로 보냄`, `[C] 대기열에 넣음` |
 | 셸 명령 셀 | 출력 앞 10줄, 전체 기록에서 전체 |
 | `@` 파일 목록 | 2,000개까지. `.git`과 작업 폴더 `.gitignore`의 글로브 없는 이름은 뺀다 |
 | 스크롤 | 휠 한 칸 3줄, 맨 위에 닿으면 이전 기록 50개 요청 |
@@ -305,6 +314,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
 | 모든 한국어 문구에 영어가 있고, `saturn` 명령의 도움말도 같다. | `saturn-terminal/tui/src/i18n.rs`의 `english_covers_every_phrase_constant`, `saturn-terminal/cli/src/args.rs`의 `help_has_english_for_every_korean_text`, `localized_help_replaces_korean_with_english` |
+| 한국어 문구에 해요체 어미와 끝 마침표가 없다. | `saturn-terminal/tui/src/i18n.rs`의 `korean_phrases_follow_claude_code_format` |
 | router 연결이 끊겨도 입력창은 입력을 계속 보낸다. | `saturn-terminal/tui/src/app/tests.rs`의 `submit_while_router_disconnected_still_sends_input` |
 | `/add-dir`는 폴더 경로를 절대 경로로 바꿔 engine에 보내고, 시작 화면과 안내 줄이 더한 폴더를 보인다. | `saturn-terminal/tui/src/app/tests.rs`의 `add_dir_command_sends_an_absolute_path_relative_to_the_tui_folder`, `add_dir_notice_adds_a_cell_and_updates_the_start_screen_folders`, `saturn-terminal/tui/src/view/start_screen.rs`의 `lines_show_the_chat_folder_and_the_added_folders`, `saturn-terminal/tui/src/view/transcript.rs`의 `lines_folder_added_mentions_the_next_session_only_when_one_is_open` |
 | `/model`은 목록 창을 열고, `Enter`는 고른 모델을 engine에 저장하라고 보내고, `Esc`는 아무것도 보내지 않는다. 고정은 채팅에 붙을 때 알려져 창에 표시된다. `/model <provider>`는 그 provider 모델만 요청하고, provider의 `/model`은 넘기지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `model_command_asks_for_the_list_and_opens_the_window`, `model_command_with_a_provider_asks_only_for_that_provider`, `model_window_enter_asks_the_engine_to_pin_the_model`, `model_window_escape_sends_nothing`, `pinned_model_notice_marks_the_model_in_the_next_window`, `model_command_is_not_passed_to_the_provider`, `saturn-terminal/tui/src/view/model_picker.rs`의 `selection_stays_inside_the_list`, `list_starts_on_the_pinned_model`, `saturn-terminal/tui/src/commands.rs`의 `parse_model_reads_an_optional_provider_and_keeps_the_provider_command_out` |

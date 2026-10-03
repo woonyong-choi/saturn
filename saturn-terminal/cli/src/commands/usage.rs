@@ -131,7 +131,7 @@ mod tests {
         let text = String::from_utf8(out).unwrap();
         let line = text.lines().last().unwrap();
         assert_eq!(line, "codex · gpt\t10\t-\t-\t5\t-\t2\t-");
-        assert!(text.lines().next().unwrap().ends_with("last 24 hours"));
+        assert!(text.lines().next().unwrap().ends_with("Last 24 hours"));
     }
 
     #[tokio::test]

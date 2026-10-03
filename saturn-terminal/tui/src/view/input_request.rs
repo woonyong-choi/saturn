@@ -508,9 +508,9 @@ mod tests {
             text.contains("(•) Alpha  first") || text.contains("( ) Alpha  first"),
             "{text}"
         );
-        assert!(text.contains("( ) other:"), "{text}");
+        assert!(text.contains("( ) Other:"), "{text}");
         assert!(text.contains("Ctrl+D decline"), "{text}");
-        assert!(text.contains("other requests waiting: 1"), "{text}");
+        assert!(text.contains("Other requests waiting: 1"), "{text}");
     }
 
     #[test]

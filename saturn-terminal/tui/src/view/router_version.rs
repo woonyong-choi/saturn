@@ -296,7 +296,7 @@ mod tests {
             .iter()
             .map(|cell| cell.symbol())
             .collect();
-        assert!(content.contains("v2 · local/cal-2 · ECE - · in use"));
+        assert!(content.contains("v2 · local/cal-2 · ECE - · In use"));
         assert!(content.contains("relation · 0.100 · 0.620 · 7 / 200 · 200"));
     }
 }

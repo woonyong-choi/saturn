@@ -70,7 +70,7 @@ mod tests {
 
         assert_eq!(context_text(Lang::Ko, Some(size)), "맥락 38K/200K");
         assert_eq!(context_text(Lang::Ko, Some(unknown)), "맥락 미확인");
-        assert_eq!(context_text(Lang::En, None), "context unknown");
+        assert_eq!(context_text(Lang::En, None), "Context unknown");
     }
 
     // cost: time O(1), heap O(1), stack O(1)
@@ -93,6 +93,6 @@ mod tests {
         let buffer = terminal.backend().buffer();
         let row: String = (0..60).map(|x| buffer[(x, 0)].symbol()).collect();
         assert!(row.starts_with("/help help · Ctrl+C stop"));
-        assert!(row.ends_with("context 38K/200K"));
+        assert!(row.ends_with("Context 38K/200K"));
     }
 }

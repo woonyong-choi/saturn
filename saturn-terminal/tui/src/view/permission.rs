@@ -277,9 +277,9 @@ mod tests {
             .map(|cell| cell.symbol())
             .collect();
         assert!(content.contains("[A] codex"));
-        assert!(content.contains("y allow once"));
-        assert!(content.contains("a always allow"));
-        assert!(content.contains("d/Esc deny"));
-        assert!(content.contains("other tasks waiting for permission: 1"));
+        assert!(content.contains("y Allow once"));
+        assert!(content.contains("a Always allow"));
+        assert!(content.contains("d/Esc Deny"));
+        assert!(content.contains("Other tasks waiting for permission: 1"));
     }
 }

@@ -696,19 +696,19 @@ mod tests {
 
         assert_eq!(
             restarted.lines(Lang::Ko, true, false),
-            vec!["변경된 권한 설정을 적용하기 위해 Codex를 다시 시작했습니다."]
+            vec!["Codex 다시 시작함 · 변경된 권한 설정을 적용했습니다"]
         );
         assert_eq!(
             restarted.lines(Lang::En, true, false),
-            vec!["Restarted Codex to apply the changed permission settings."]
+            vec!["Restarted Codex · Applied the changed permission settings"]
         );
         assert_eq!(
             changed.lines(Lang::Ko, true, false),
-            vec!["권한 설정이 변경되었습니다. 다음 요청부터 적용됩니다."]
+            vec!["권한 설정 변경됨 · 다음 요청부터 적용됩니다"]
         );
         assert_eq!(
             changed.lines(Lang::En, true, false),
-            vec!["Permission settings changed. They apply from your next request."]
+            vec!["Permission settings changed · Applies from your next request"]
         );
     }
 
@@ -821,7 +821,7 @@ mod tests {
 
         assert_eq!(
             feedback.lines(Lang::Ko, false, false),
-            vec!["[A]에 이어서 보냈어요 · 판단이 맞았나요? (선택)  1 맞아요  2 아니에요  0 닫기"]
+            vec!["[A]에 이어서 보냄 · 판단이 맞았나요? (선택)  1 맞음  2 틀림  0 닫기"]
         );
         assert_eq!(
             check.lines(Lang::Ko, false, false),
