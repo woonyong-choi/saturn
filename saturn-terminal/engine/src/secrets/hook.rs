@@ -46,6 +46,8 @@ pub(crate) enum HookVerdict {
 /// engine 시작 때 한 번 만든다.
 #[derive(Debug, Clone)]
 pub(crate) struct HookPolicy {
+    /// 훅 명령에 `--home`으로 넘겨 훅 프로세스가 같은 키 파일을 막게 한다.
+    saturn_home: PathBuf,
     /// 셸 연결로 나뉜 각 부분을 따로 본다.
     blocked_commands: Vec<String>,
     /// 심볼릭 링크를 푼 뒤 비교한다.
@@ -69,6 +71,7 @@ impl HookPolicy {
         .flat_map(|path| [resolve(&path), path])
         .collect();
         Self {
+            saturn_home: saturn_home.to_path_buf(),
             blocked_commands,
             blocked_paths,
             user_home: user_home.to_path_buf(),
@@ -93,8 +96,9 @@ impl HookPolicy {
     /// 사용자 훅을 읽거나 바꾸지 않고, 사용자 설정과 합치는 일은 Claude가 한다.
     pub(crate) fn pre_tool_use_settings(&self, saturn_bin: &Path) -> serde_json::Value {
         let command = format!(
-            "{} hook pre-tool-use",
-            shell_quote(&saturn_bin.to_string_lossy())
+            "{} hook pre-tool-use --home {}",
+            shell_quote(&saturn_bin.to_string_lossy()),
+            shell_quote(&self.saturn_home.to_string_lossy())
         );
         json!({
             "hooks": {
@@ -166,6 +170,15 @@ impl HookPolicy {
         }
         PathBuf::from(word)
     }
+}
+
+/// 실행 파일이 `hook pre-tool-use`로 받는 훅 명령을 넣은 Claude 실행별 설정.
+pub fn pre_tool_use_hook_settings(
+    saturn_home: &Path,
+    user_home: &Path,
+    saturn_bin: &Path,
+) -> serde_json::Value {
+    HookPolicy::new(saturn_home, user_home).pre_tool_use_settings(saturn_bin)
 }
 
 fn shell_quote(word: &str) -> String {
@@ -277,7 +290,7 @@ mod tests {
 
     #[test]
     fn settings_add_one_saturn_hook_for_all_tools() {
-        let (_dir, policy) = policy();
+        let (dir, policy) = policy();
 
         let settings = policy.pre_tool_use_settings(Path::new("/opt/my apps/saturn"));
 
@@ -286,7 +299,10 @@ mod tests {
         assert_eq!(entries[0]["matcher"], "*");
         assert_eq!(
             entries[0]["hooks"][0]["command"],
-            "'/opt/my apps/saturn' hook pre-tool-use"
+            format!(
+                "'/opt/my apps/saturn' hook pre-tool-use --home '{}'",
+                dir.path().join("home/.saturn").display()
+            )
         );
     }
 }

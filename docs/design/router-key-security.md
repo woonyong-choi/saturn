@@ -101,7 +101,9 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 - 훅은 키 저장소 조회 명령, 대체 파일 읽기, Saturn 비밀 파일 접근을 막는다. subagent가 저장된 키를 찾아가 읽는 일을 막기 위해서다.
 - 사용자의 기존 훅은 감싸거나 지우지 않는다. provider 설정 파일을 고치지 않기 위해서다.
 - 훅은 권한 규칙과 따로 동작한다. 규칙이 `allow`여도 키 저장소 접근은 훅이 막는다(초안). 실행별 설정은 권한의 `--settings` 값에 합쳐 넘긴다([권한](permissions.md)).
-- 훅 명령은 `saturn hook pre-tool-use`이고 모든 도구에 건다(초안). 막는 명령은 `security`의 `find-generic-password`, `find-internet-password`, `dump-keychain`, `export`이고, 막는 경로는 `~/.saturn/router.key`, `~/Library/Keychains/`, `/Library/Keychains/` 아래다(초안). 셸 연결 기호로 나뉜 부분마다 보고, 경로는 심볼릭 링크를 푼 뒤 비교한다.
+- 훅 명령은 engine 실행 파일의 `hook pre-tool-use --home <Saturn 홈>`이고 모든 도구에 건다(초안). 이 명령은 engine 잠금과 소켓을 열지 않고 판정만 하고 끝난다. 훅은 provider 자식 프로세스에서 짧게 실행되기 때문이다. 막는 명령은 `security`의 `find-generic-password`, `find-internet-password`, `dump-keychain`, `export`이고, 막는 경로는 `~/.saturn/router.key`, `~/Library/Keychains/`, `/Library/Keychains/` 아래다(초안). 셸 연결 기호로 나뉜 부분마다 보고, 경로는 심볼릭 링크를 푼 뒤 비교한다.
+- 훅 입력은 Claude Code PreToolUse 규격의 stdin JSON(`tool_name`, `tool_input`, `cwd`)이다. `Bash`는 `command`를 명령으로, `Read`·`Edit`·`MultiEdit`·`Write`·`NotebookRead`·`NotebookEdit`·`Glob`·`Grep`·`LS`는 경로 필드를 경로로 판정하고, 상대 경로는 `cwd` 기준으로 바꾼다. 그 밖의 도구는 판정하지 않는다.
+- 훅 출력은 막을 때 stdout에 `hookSpecificOutput`(`permissionDecision: "deny"`와 이유 한 줄)을 쓰고 종료 코드 0으로 끝난다. 허용할 때는 아무것도 쓰지 않고 종료 코드 0으로 끝내 사용자의 다른 훅이 이어서 판정하게 한다. 입력이 JSON이 아니거나 `tool_name`이 없으면 stderr에 이유를 쓰고 종료 코드 2로 끝낸다(초안). 판정할 수 없는 호출을 통과시키지 않기 위해서다.
 - 훅이 키 저장소 접근을 실제로 막는지는 [#3](https://github.com/woonyong-choi/saturn/issues/3), subagent까지 적용되는지는 [#23](https://github.com/woonyong-choi/saturn/issues/23) 실험으로 확인한다.
 
 ### 전송
@@ -134,6 +136,7 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 | provider 자식 프로세스 환경에는 router 키 변수가 없다. | `secrets` 모듈 테스트로 자식 환경에 제외 목록의 이름이 없는지 확인한다. |
 | router 키는 기록 저장소, 로그, 오류 출력에 남지 않는다. | 키를 넣은 호출과 오류를 만든 뒤 저장소와 출력에 키 문자열이 없는지 확인한다. |
 | 키체인에 직접 저장한 키는 확인 창 없이 읽히지 않는다. | [#2](https://github.com/woonyong-choi/saturn/issues/2) 실험으로 확인 창 없이 읽는 경로를 확인한다. |
+| engine 실행 파일은 생성한 훅 명령(`hook pre-tool-use`)을 받아 허용과 거부를 훅 규격의 출력과 종료 코드로 돌려준다. | `saturn-terminal/engine/tests/key_hook.rs`의 `hook_command_denies_key_store_access`, `hook_command_allows_ordinary_calls_without_output`, `hook_command_blocks_unreadable_input_with_exit_code_2`, `hook_command_leaves_saturn_home_untouched` |
 | Saturn 소유 PreToolUse 훅은 키 저장소 접근을 막는다. | [#3](https://github.com/woonyong-choi/saturn/issues/3) 실험으로 훅의 차단을 확인한다. |
 | 훅은 subagent의 도구 호출에도 적용된다. | [#23](https://github.com/woonyong-choi/saturn/issues/23) 실험으로 전경, 백그라운드, 중첩 subagent에 훅이 걸리는지 확인한다. |
 

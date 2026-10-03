@@ -24,10 +24,12 @@ use crate::processes::{ProcessGroupId, ProcessSpec, StopScope, Supervisor};
 
 mod config;
 mod convert;
+mod hook;
 mod stream;
 
 use config::{default_args, read_user_config, with_ask_tools};
 use convert::permission_response;
+pub use hook::{HookInputError, run_pre_tool_use};
 use stream::{log_stderr, read_loop};
 
 /// `/usage` 행 이름 앞부분.

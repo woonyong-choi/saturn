@@ -28,6 +28,7 @@ use crate::processes::{ProcessGroupId, Supervisor};
 use crate::secrets::Masker;
 
 pub(crate) use claude::ClaudeClient;
+pub use claude::{HookInputError, run_pre_tool_use};
 pub(crate) use codex::CodexClient;
 pub(crate) use codex_home::{
     HomeInput, prepare as prepare_codex_home, rules_fingerprint, rules_of_home,

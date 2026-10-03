@@ -10,7 +10,8 @@ mod storage;
 use std::path::PathBuf;
 
 pub(crate) use env::{scrub, scrub_command};
-pub(crate) use hook::HookPolicy;
+pub use hook::pre_tool_use_hook_settings;
+pub(crate) use hook::{HookPolicy, HookVerdict, ToolCall};
 pub(crate) use keys::{
     KeyInfo, KeyInput, KeySource, ROUTER_KEY_ENV, RouterKey, acquire, input_order,
 };
