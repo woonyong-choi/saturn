@@ -1,0 +1,251 @@
+{
+  "conditions": [
+    {
+      "condition": "claude.resume-env-absent",
+      "known_n": 0,
+      "n": 3,
+      "rerun_count": 0,
+      "rerun_rate": null,
+      "rerun_wilson_95": [
+        null,
+        null
+      ],
+      "status": "cannot_distinguish",
+      "trial_ids": [
+        "claude-resume-env-absent-1",
+        "claude-resume-env-absent-2",
+        "claude-resume-env-absent-3"
+      ],
+      "trial_values": [
+        null,
+        null,
+        null
+      ],
+      "verdict": "확인 못 함"
+    },
+    {
+      "condition": "claude.resume-env-present",
+      "known_n": 0,
+      "n": 3,
+      "rerun_count": 0,
+      "rerun_rate": null,
+      "rerun_wilson_95": [
+        null,
+        null
+      ],
+      "status": "cannot_distinguish",
+      "trial_ids": [
+        "claude-resume-env-present-1",
+        "claude-resume-env-present-2",
+        "claude-resume-env-present-3"
+      ],
+      "trial_values": [
+        null,
+        null,
+        null
+      ],
+      "verdict": "확인 못 함"
+    },
+    {
+      "condition": "claude.task-subagent",
+      "known_n": 0,
+      "n": 1,
+      "rerun_count": 0,
+      "rerun_rate": null,
+      "rerun_wilson_95": [
+        null,
+        null
+      ],
+      "status": "cannot_distinguish",
+      "trial_ids": [
+        "claude-task-subagent-1"
+      ],
+      "trial_values": [
+        null
+      ],
+      "verdict": "확인 못 함"
+    },
+    {
+      "condition": "codex.cleaned-resume",
+      "known_n": 3,
+      "n": 3,
+      "rerun_count": 0,
+      "rerun_rate": 0.0,
+      "rerun_wilson_95": [
+        0.0,
+        0.561497
+      ],
+      "status": "confirmed",
+      "trial_ids": [
+        "codex-cleaned-resume-1",
+        "codex-cleaned-resume-2",
+        "codex-cleaned-resume-3"
+      ],
+      "trial_values": [
+        false,
+        false,
+        false
+      ],
+      "verdict": "확인"
+    },
+    {
+      "condition": "codex.raw-resume",
+      "known_n": 3,
+      "n": 3,
+      "rerun_count": 0,
+      "rerun_rate": 0.0,
+      "rerun_wilson_95": [
+        0.0,
+        0.561497
+      ],
+      "status": "confirmed",
+      "trial_ids": [
+        "codex-raw-resume-1",
+        "codex-raw-resume-2",
+        "codex-raw-resume-3"
+      ],
+      "trial_values": [
+        false,
+        false,
+        false
+      ],
+      "verdict": "기각"
+    }
+  ],
+  "experiment": "crash-resume",
+  "exploratory": [
+    {
+      "condition": "claude.task-subagent",
+      "known_n": 0,
+      "n": 1,
+      "rerun_count": 0,
+      "rerun_rate": null,
+      "rerun_wilson_95": [
+        null,
+        null
+      ],
+      "status": "cannot_distinguish",
+      "trial_ids": [
+        "claude-task-subagent-1"
+      ],
+      "trial_values": [
+        null
+      ],
+      "verdict": "확인 못 함"
+    }
+  ],
+  "hypotheses": [
+    {
+      "condition": "codex.raw-resume",
+      "hypothesis": "H1",
+      "result": {
+        "condition": "codex.raw-resume",
+        "known_n": 3,
+        "n": 3,
+        "rerun_count": 0,
+        "rerun_rate": 0.0,
+        "rerun_wilson_95": [
+          0.0,
+          0.561497
+        ],
+        "status": "confirmed",
+        "trial_ids": [
+          "codex-raw-resume-1",
+          "codex-raw-resume-2",
+          "codex-raw-resume-3"
+        ],
+        "trial_values": [
+          false,
+          false,
+          false
+        ],
+        "verdict": "기각"
+      }
+    },
+    {
+      "condition": "codex.cleaned-resume",
+      "hypothesis": "H2",
+      "result": {
+        "condition": "codex.cleaned-resume",
+        "known_n": 3,
+        "n": 3,
+        "rerun_count": 0,
+        "rerun_rate": 0.0,
+        "rerun_wilson_95": [
+          0.0,
+          0.561497
+        ],
+        "status": "confirmed",
+        "trial_ids": [
+          "codex-cleaned-resume-1",
+          "codex-cleaned-resume-2",
+          "codex-cleaned-resume-3"
+        ],
+        "trial_values": [
+          false,
+          false,
+          false
+        ],
+        "verdict": "확인"
+      }
+    },
+    {
+      "condition": "claude.resume-env-present",
+      "hypothesis": "H3",
+      "result": {
+        "condition": "claude.resume-env-present",
+        "known_n": 0,
+        "n": 3,
+        "rerun_count": 0,
+        "rerun_rate": null,
+        "rerun_wilson_95": [
+          null,
+          null
+        ],
+        "status": "cannot_distinguish",
+        "trial_ids": [
+          "claude-resume-env-present-1",
+          "claude-resume-env-present-2",
+          "claude-resume-env-present-3"
+        ],
+        "trial_values": [
+          null,
+          null,
+          null
+        ],
+        "verdict": "확인 못 함"
+      }
+    },
+    {
+      "condition": "claude.resume-env-absent",
+      "hypothesis": "H4",
+      "result": {
+        "condition": "claude.resume-env-absent",
+        "known_n": 0,
+        "n": 3,
+        "rerun_count": 0,
+        "rerun_rate": null,
+        "rerun_wilson_95": [
+          null,
+          null
+        ],
+        "status": "cannot_distinguish",
+        "trial_ids": [
+          "claude-resume-env-absent-1",
+          "claude-resume-env-absent-2",
+          "claude-resume-env-absent-3"
+        ],
+        "trial_values": [
+          null,
+          null,
+          null
+        ],
+        "verdict": "확인 못 함"
+      }
+    }
+  ],
+  "model_calls": {
+    "claude": 0,
+    "codex": 12
+  }
+}

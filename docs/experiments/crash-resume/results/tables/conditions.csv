@@ -1,0 +1,6 @@
+condition,n,known_n,rerun_count,rerun_rate,rerun_wilson_95,status,verdict
+claude.resume-env-absent,3,0,0,,"[null, null]",cannot_distinguish,확인 못 함
+claude.resume-env-present,3,0,0,,"[null, null]",cannot_distinguish,확인 못 함
+claude.task-subagent,1,0,0,,"[null, null]",cannot_distinguish,확인 못 함
+codex.cleaned-resume,3,3,0,0.0,"[0.0, 0.561497]",confirmed,확인
+codex.raw-resume,3,3,0,0.0,"[0.0, 0.561497]",confirmed,기각

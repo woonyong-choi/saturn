@@ -278,7 +278,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | `보류` | 멈춤이나 증명되지 않은 크래시로 보류한 session | `열림`, `종료` |
 | `종료` | 새 session으로 교체됐거나, 같은 provider의 새 보관 session에 밀렸거나, 보류 종료로 끝난 session | 없음 |
 
-크래시 뒤 session을 어떻게 나누는지는 [engine 수명과 복구](engine-lifecycle.md)에 있다.
+크래시 뒤 session을 어떻게 나누는지는 [engine 수명과 복구](engine-lifecycle.md)에 있고, Codex 자식 session 정리와 provider 재개 실측은 [강제 종료 뒤 provider session 재개 결과](../experiments/crash-resume/report.md)에 기록했다.
 
 ### 무응답 표시
 
