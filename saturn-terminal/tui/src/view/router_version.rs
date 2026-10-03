@@ -1,4 +1,4 @@
-//! router 버전 화면(`/router version`).
+//! router 버전 화면(`/router use`).
 //! 설계: docs/design/tui.md
 
 use ratatui::Frame;

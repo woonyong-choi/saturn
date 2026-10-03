@@ -68,7 +68,7 @@ pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
         values: &[],
     },
     CommandSpec {
-        path: "router version",
+        path: "router use",
         description: "판단 모델 버전",
         values: &[],
     },
@@ -130,7 +130,7 @@ pub(crate) enum SlashCommand {
         reset_thresholds: bool,
         from: Option<String>,
     },
-    /// `/router version`
+    /// `/router use`
     RouterVersion,
     /// 목록에 없는 provider 명령. 원문 그대로 메인 에이전트 provider에 넘긴다. TODO(#41): 비메인 provider 명령 처리
     Provider { line: String },
@@ -310,7 +310,7 @@ fn parse_train(args: &[&str]) -> Result<SlashCommand, CommandError> {
 // basis: estimate
 fn parse_router(args: &[&str]) -> Result<SlashCommand, CommandError> {
     match args {
-        ["version"] => Ok(SlashCommand::RouterVersion),
+        ["use"] => Ok(SlashCommand::RouterVersion),
         _ => Err(invalid("router", &args.join(" "))),
     }
 }
@@ -458,9 +458,9 @@ mod tests {
     }
 
     #[test]
-    fn parse_router_version_and_feedback() {
+    fn parse_router_use_and_feedback() {
         assert_eq!(
-            parse("/router version").unwrap(),
+            parse("/router use").unwrap(),
             Some(SlashCommand::RouterVersion)
         );
         assert_eq!(
