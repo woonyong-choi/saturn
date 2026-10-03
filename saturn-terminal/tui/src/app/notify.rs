@@ -7,13 +7,14 @@ use std::time::{Duration, Instant};
 
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{ChatId, InputId, JudgmentId, SettingsRevision, TaskId, TaskLabel};
-use saturn_protocol::rpc::{Alert, ChatNotice, Notification, SettingsWarning};
+use saturn_protocol::rpc::{Alert, ChatNotice, ExitPlan, Notification, SettingsWarning};
 use saturn_protocol::state::Disposition;
 
 use super::{App, Effect, Window};
 use crate::state::{
     Change, ChatState, ContextSize, FeedbackPrompt, InputUpdate, TaskUpdate, TrainingProgress,
 };
+use crate::view::exit_confirm::ExitConfirm;
 use crate::view::folder_trust::{FolderTrust, TrustChoice};
 use crate::view::live_area::LiveArea;
 use crate::view::permission::PermissionRequest;
@@ -111,9 +112,29 @@ impl App {
             Notification::InputResolved { request_id } => {
                 self.inputs.resolve(&request_id, now);
             }
+            Notification::ExitPlan { plan } => return self.on_exit_plan(plan),
             other => self.on_window_notification(other, now),
         }
         Vec::new()
+    }
+
+    /// 요청한 적 없는 계획은 무시한다.
+    fn on_exit_plan(&mut self, plan: ExitPlan) -> Vec<Effect> {
+        if !self.exit_requested {
+            return Vec::new();
+        }
+        match plan {
+            ExitPlan::Close => self.quit_now(),
+            ExitPlan::Notice { running } => {
+                self.exit_notice = Some(running);
+                self.quit_now()
+            }
+            ExitPlan::Ask { running } => {
+                self.exit_requested = false;
+                self.exit_confirm = Some(ExitConfirm::new(running));
+                Vec::new()
+            }
+        }
     }
 
     // cost: time O(m), heap O(m), stack O(1)

@@ -71,6 +71,10 @@ pub enum Request {
     },
     /// 마지막 TUI가 떨어지면 `OnExit`를 적용한다.
     Detach,
+    /// TUI를 닫기 전에 보낸다. 닫은 뒤의 처리를 `ExitPlan`으로 알린다.
+    PrepareExit {
+        chat: ChatId,
+    },
     /// `skip_relation`이 참이면 관계 판단 없이 대기(실행 중 `Tab`).
     /// `client_ref`는 TUI가 매긴 번호. `InputAccepted`로 입력 id와 짝지어 돌아온다.
     SubmitInput {
@@ -94,6 +98,8 @@ pub enum Request {
     Stop {
         chat: ChatId,
     },
+    /// 모든 채팅의 작업과 보내지 않은 입력을 보류한다. `ask`에서 멈춤을 고른 종료에 쓴다.
+    StopAll,
     /// `task`가 `None`이면 채팅의 보류 전부를 접수 순서로.
     Continue {
         chat: ChatId,
@@ -352,6 +358,21 @@ pub enum Notification {
     Alert {
         alert: Alert,
     },
+    /// `PrepareExit`의 답.
+    ExitPlan {
+        plan: ExitPlan,
+    },
+}
+
+/// TUI를 닫을 때 할 일. `running`은 계속 처리될 작업 수다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ExitPlan {
+    /// 묻지 않고 닫는다.
+    Close,
+    /// 계속할지 멈출지 묻는다.
+    Ask { running: u32 },
+    /// 닫으면 작업이 계속된다는 한 줄을 보이고 닫는다.
+    Notice { running: u32 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

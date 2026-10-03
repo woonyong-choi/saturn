@@ -26,6 +26,7 @@ mod chat_env;
 mod control;
 mod dispatch;
 mod events;
+mod exit;
 mod flow;
 mod handoff;
 mod inputs;
@@ -354,12 +355,6 @@ impl Engine {
         self.send_chat_model(client, chat).await?;
         self.send_start_notices(client, applied).await;
         Ok(())
-    }
-
-    /// TODO(#70): `stop`과 `ask`의 동작이 정해지기 전에는 `Background`와 같이 처리한다
-    #[expect(clippy::todo, reason = "#90 뼈대")]
-    async fn on_last_detach(&mut self) -> Result<(), EngineError> {
-        todo!("#90")
     }
 
     /// 보류는 자동으로 이어 가지 않는다.

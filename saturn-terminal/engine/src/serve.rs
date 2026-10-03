@@ -37,16 +37,21 @@ impl Engine {
         Ok(())
     }
 
-    async fn handle_event(&mut self, event: RpcEvent) -> Result<(), EngineError> {
+    pub(super) async fn handle_event(&mut self, event: RpcEvent) -> Result<(), EngineError> {
         match event {
             RpcEvent::Connected(_) => {}
             RpcEvent::Request(client, id, request) => {
                 self.handle_request(client, id, request).await?;
             }
             RpcEvent::Disconnected(client) => {
-                self.attachments.remove(&client);
+                let detached = self.attachments.remove(&client);
+                if let Some(attachment) = detached
+                    && self.attachments.is_empty()
+                {
+                    self.on_last_detach(attachment.chat).await;
+                }
             }
-            // TODO(#150): 마지막 TUI가 떨어진 뒤 `on_last_detach`와 유예 시계
+            // TODO(#150): 마지막 TUI가 떨어진 뒤 유예 시계
             RpcEvent::LastDetached => {}
         }
         Ok(())
@@ -118,6 +123,11 @@ impl Engine {
             Request::SendNow { input } => self.send_now(client, input).await,
             Request::CancelInput { input } => self.cancel_input(client, input).await,
             Request::Stop { chat } => self.stop_chat(chat).await,
+            Request::StopAll => {
+                self.stop_all_chats().await;
+                Ok(())
+            }
+            Request::PrepareExit { chat } => self.prepare_exit(client, chat).await,
             Request::Continue { chat, task } => self.continue_held(chat, task).await,
             Request::ContinueInput { input } => self.continue_input(input).await,
             Request::CloseHeld { chat, task } => self.close_held(chat, task).await,

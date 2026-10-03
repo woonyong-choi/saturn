@@ -8,6 +8,7 @@ use super::{App, Effect, Window};
 use crate::i18n;
 use crate::keys::Action;
 use crate::state::ChatState;
+use crate::view::exit_confirm::ExitChoice;
 use crate::view::folder_trust::TrustChoice;
 use crate::view::input_request::InputQueue;
 use crate::view::live_area::LiveArea;
@@ -97,6 +98,36 @@ impl App {
                 };
                 self.window = None;
                 return vec![Effect::Send(request)];
+            }
+            _ => {}
+        }
+        Vec::new()
+    }
+
+    /// `계속`은 작업을 두고 닫고 터미널에 한 줄을 남긴다. `멈추기`는 모든 채팅을 멈춘 뒤 닫는다.
+    pub(super) fn on_exit_confirm_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(confirm) = &mut self.exit_confirm else {
+            return Vec::new();
+        };
+        match action {
+            Action::Up => confirm.up(),
+            Action::Down => confirm.down(),
+            Action::Close => self.exit_confirm = None,
+            Action::Confirm => {
+                let running = confirm.running;
+                let choice = confirm.selected;
+                self.exit_confirm = None;
+                return match choice {
+                    ExitChoice::Continue => {
+                        self.exit_notice = Some(running);
+                        self.quit_now()
+                    }
+                    ExitChoice::Stop => {
+                        let mut effects = vec![Effect::Send(Request::StopAll)];
+                        effects.extend(self.quit_now());
+                        effects
+                    }
+                };
             }
             _ => {}
         }

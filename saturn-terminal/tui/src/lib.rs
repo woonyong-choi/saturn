@@ -17,6 +17,7 @@ pub mod view;
 pub(crate) const ROUTER_KEY_ENV: &str = "SATURN_KEY";
 
 use std::collections::VecDeque;
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -40,6 +41,8 @@ pub enum TuiError {
     History(#[from] history::HistoryError),
     #[error("plain output failed")]
     Plain(#[source] std::io::Error),
+    #[error("failed to write exit notice")]
+    ExitNotice(#[source] std::io::Error),
     /// 화면이 없어 키를 묻지 않고 방법을 안내하고 끝낸다.
     #[error(
         "router key required ({reason}): set the SATURN_KEY environment variable or the router.key.command setting"
@@ -91,6 +94,9 @@ pub async fn run(client: &mut EngineClient, options: RunOptions) -> Result<(), T
     let restored = terminal::leave();
     result?;
     restored?;
+    if let Some(line) = app.exit_line() {
+        writeln!(std::io::stdout().lock(), "{line}").map_err(TuiError::ExitNotice)?;
+    }
     Ok(())
 }
 

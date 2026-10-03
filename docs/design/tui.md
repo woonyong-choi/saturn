@@ -89,6 +89,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | 시작 화면 | 로고, Saturn 버전, provider 버전, router와 router 버전, 채팅 기본 폴더와 더한 폴더(다른 폴더의 채팅을 이어 열었으면 그 폴더를 보임) | 실행 때, 첫 결과가 오면 대화 기록 맨 위 머리 셀로 전환 |
 | router 키 입력 창 | router 확인 실패 원인, 가린 키 입력칸 | 시작 때 router 확인 실패 |
 | 폴더 설정 신뢰 창 | 폴더 설정 파일 경로, 지문, 적용되는 항목, 무시되는 항목, 바뀐 줄 | 처음 보거나 내용이 바뀐 폴더 설정을 만난 때, 실행 중이면 다음 입력 접수 전 |
+| 종료 확인 창 | 실행 중인 작업 수, 선택지 `계속 실행`과 `멈추기` | `on_exit`가 `ask`이고 다른 TUI 없이 작업이 남은 채 닫으려 할 때 |
 | 보류 재개 질문 | 보류된 작업 목록, 선택지 `모두 이어서`, `골라서 이어서`, `그대로 두기` | 보류 작업이 있는 채팅을 다시 열 때 한 번 |
 | 허가 요청 창 | 작업 이름표와 provider가 붙은 제목, 요청 내용, 이유, 선택지 세 개, 허가를 기다리는 다른 작업 수 | 허가 요청 도착 |
 | 입력 요청 창 | 허가 요청 창과 같은 제목, 요청 설명, 칸 목록(포커스한 칸만 펼침), 필수 표시 `*`, 오류 한 줄, 키 안내, 답을 기다리는 다른 요청 수. URL 요청은 설명과 링크 | 입력 요청 도착 |
@@ -100,6 +101,8 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | 학습 확인 창 | 채점 후보 수, 채점 모델, 예상 토큰, 기준값 조정 대상, 모델 추가 학습 여부 | 실행 조건을 채운 `/train` 실행 |
 
 router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-key-security.md)에, 폴더 설정 신뢰 규칙은 [설정](settings.md)에 있다.
+
+종료 확인 창은 닫으려 할 때 `engine`에 `PrepareExit`을 보내고 `ExitPlan`을 받은 뒤에 뜬다. 닫는 키는 입력창의 `Ctrl+D`와 유휴일 때의 `Ctrl+C`, 창의 종료 선택지다. `Ask`일 때만 창이 뜨고, `Close`는 그대로 닫고, `Notice`는 닫은 뒤 터미널에 한 줄을 남긴다. 창은 다른 창 위에 덮고 `Esc` 뒤에 아래 창이 그대로 남는다. 첫 선택은 작업을 잃지 않는 `계속 실행`이다. `engine`의 답을 기다리는 동안 닫기를 한 번 더 누르면 기다리지 않고 닫는다. router 키 입력 창에서는 `engine`이 요청을 받지 않으므로 묻지 않고 닫는다. 값별 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
 
 사용량 화면은 provider·모델마다 한 행, router마다 한 행을 보인다. 행 이름은 `codex · gpt-5.6-terra`, `claude · opus`, `router · jev` 형식이고, 모델을 보고하지 않았으면 provider 이름만 쓴다. `/usage`는 인자 없이 지금 채팅의 사용량을 열고, 화면에서 `d`는 모든 채팅의 최근 24시간, `w`는 모든 채팅의 최근 7일로 바꾼다. 같은 키를 다시 누르면 지금 채팅으로 돌아가고, 범위 이름과 키 안내는 화면에 보인다. 범위는 지금부터 거슬러 센 시간이고 달력 날짜가 아니다. 각 행은 고른 범위의 합계다. `saturn usage`는 지금 폴더에서 가장 최근에 입력을 접수한 채팅의 사용량을 표로 쓰고, `--day`는 최근 24시간, `--week`는 최근 7일(모든 채팅)로 바꾼다. 두 옵션은 함께 쓸 수 없고, 그 폴더에 채팅이 없으면 오류로 끝낸다. Claude Code의 `/usage`와 `/stats`가 기간을 키로 바꿔 보는 방식을 따랐다. provider 행의 토큰은 턴 값의 합이고, session 누적 보고는 같은 계열의 직전 누적을 뺀 값을 더한다. 여러 턴을 합친 행은 끝에 `n 토큰 · n 턴`을 보이고, 턴 수는 그 행에 합친 실행 수다. 중간 보고가 빠진 누적 보고는 그사이 보고 없는 실행까지 턴으로 센다. router 행은 호출 수와 입력·출력 토큰을 보인다. 예상 비용, 맥락 정리, 채점처럼 기록 저장소에 없는 값은 `-`로 표시한다. 지어낸 값을 보이지 않기 위해서다.
 
@@ -176,6 +179,9 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `3`, `q`, `Esc`, `Ctrl+C` | 종료 | 폴더 설정 신뢰 창 |
 | `Enter` | 강조한 선택지 확정 | 폴더 설정 신뢰 창 |
 | `↑`, `↓` | 선택지 이동 | 폴더 설정 신뢰 창 |
+| `↑`, `↓` | 선택지 이동 | 종료 확인 창 |
+| `Enter` | 고른 선택지 확정 | 종료 확인 창 |
+| `Esc`, `Ctrl+C` | 닫기 취소, 작업 중지 없음 | 종료 확인 창 |
 | `Enter` | 선택 | 보류 재개 질문 |
 | `↑`, `↓` | 선택지 이동 | 보류 재개 질문 |
 | `y` | 이번만 허용 | 허가 요청 창 |
@@ -279,6 +285,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `!` | 작업 목록의 허가 필요 작업 |
 | `?` | 작업 목록의 결과 확인 필요 작업 |
 | `다른 Saturn에서 실행 중` | 다른 Saturn 프로세스가 실행 중인 채팅, 작업 목록에서 읽기 전용 |
+| `작업 2개 계속 실행 중 · saturn으로 다시 여세요` | TUI를 닫은 뒤 터미널에 남기는 한 줄. `on_exit`가 `background`이거나 종료 확인 창에서 `계속 실행`을 고르고 작업이 남았을 때. 영어는 `Tasks still running: 2 · Reopen with saturn` |
 | `기록 저장소 v2로 옮김` | 시작할 때 기록 저장소 스키마를 이관함, 첫 TUI의 상태판 알림 줄 |
 | `모델 미보고` | 작업 상세에서 provider의 모델 보고 없음 |
 
@@ -318,6 +325,9 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 패킷이 넘쳐 맥락 정리를 미루면 안내 한 줄과 제약 목록을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_context_deferred_lists_the_constraints` |
 | 패킷이 맥락 한도로 거절돼 멈추면 안내 한 줄을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_packet_overflow_tells_the_user_how_to_retry` |
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
+| 닫으려 할 때 `engine`에 닫은 뒤의 처리를 먼저 묻고, 답이 오기 전에는 닫지 않으며 한 번 더 누르면 기다리지 않고 닫는다. | `saturn-terminal/tui/src/app/tests.rs`의 `quit_asks_the_engine_first_and_a_second_quit_closes_without_waiting`, `exit_plan_close_quits_without_a_line`, `exit_plan_nobody_asked_for_is_ignored` |
+| `Notice`와 종료 확인 창의 `계속 실행`은 닫은 뒤 터미널에 계속 실행 중인 작업 수와 다시 여는 방법을 한 줄로 남기고, 영어 문구가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_notice_quits_and_leaves_the_running_count_line`, `exit_plan_notice_line_is_translated`, `exit_confirm_continue_quits_and_leaves_the_running_count_line` |
+| `Ask`는 종료 확인 창을 띄우고, `멈추기`는 `StopAll`을 보낸 뒤 닫고, `Esc`와 `Ctrl+C`는 작업을 멈추지 않고 닫기를 취소한다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_ask_opens_the_confirm_window_and_waits`, `exit_confirm_stop_stops_every_chat_then_quits_without_a_line`, `exit_confirm_escape_and_ctrl_c_cancel_the_exit_without_stopping_work`, `saturn-terminal/tui/src/view/exit_confirm.rs`의 `render_shows_count_and_both_choices` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
 | 모든 한국어 문구에 영어가 있고, `saturn` 명령의 도움말도 같다. | `saturn-terminal/tui/src/i18n.rs`의 `english_covers_every_phrase_constant`, `saturn-terminal/cli/src/args.rs`의 `help_has_english_for_every_korean_text`, `localized_help_replaces_korean_with_english` |
 | 한국어 문구에 해요체 어미와 끝 마침표가 없다. | `saturn-terminal/tui/src/i18n.rs`의 `korean_phrases_follow_claude_code_format` |

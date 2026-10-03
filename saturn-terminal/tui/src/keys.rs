@@ -15,6 +15,7 @@ pub(crate) enum KeyArea {
     RouterKeyPrompt,
     FolderTrust,
     ResumePrompt,
+    ExitConfirm,
     Permission,
     /// 글자를 직접 받으므로 `map`은 전역 키만 읽고 나머지는 `view::input_form`이 처리한다.
     Input,
@@ -123,6 +124,7 @@ pub(crate) fn map(area: KeyArea, key: KeyEvent, ctx: KeyContext) -> Option<Actio
         KeyArea::RouterKeyPrompt => router_key_prompt(key),
         KeyArea::FolderTrust => folder_trust(key),
         KeyArea::ResumePrompt => resume_prompt(key),
+        KeyArea::ExitConfirm => exit_confirm(key),
         KeyArea::Permission => permission(key),
         KeyArea::Input => None,
         KeyArea::TaskList => task_list(key),
@@ -216,6 +218,20 @@ pub(crate) fn folder_trust(key: KeyEvent) -> Option<Action> {
 pub(crate) fn resume_prompt(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
+        KeyCode::Up => Some(Action::Up),
+        KeyCode::Down => Some(Action::Down),
+        _ => None,
+    }
+}
+
+/// `Ctrl+C`도 `Esc`처럼 닫기를 취소한다. 창 밖의 `Ctrl+C`처럼 작업을 멈추지 않는다.
+pub(crate) fn exit_confirm(key: KeyEvent) -> Option<Action> {
+    if is_ctrl(key, 'c') {
+        return Some(Action::Close);
+    }
+    match key.code {
+        KeyCode::Enter => Some(Action::Confirm),
+        KeyCode::Esc => Some(Action::Close),
         KeyCode::Up => Some(Action::Up),
         KeyCode::Down => Some(Action::Down),
         _ => None,

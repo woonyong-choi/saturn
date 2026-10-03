@@ -7,7 +7,7 @@
 
 ## 요약
 
-`engine`은 사용자마다 하나만 도는 상주 프로세스다. TUI와 `cli`는 Unix 소켓 위 JSON-RPC로 `engine`에 붙는 클라이언트이고, 여러 TUI가 한 `engine`에 동시에 붙는다. TUI를 닫아도 `engine`은 접수된 입력을 계속 처리하고, 할 일이 없어지면 유예 뒤 스스로 끝난다. `engine`이 비정상 종료되면 다음 실행에서 효과 범위 `effect_scope`를 보고 자동으로 이어 갈 실행과 보류할 실행을 나눈다.
+`engine`은 사용자마다 하나만 도는 상주 프로세스다. TUI와 `cli`는 Unix 소켓 위 JSON-RPC로 `engine`에 붙는 클라이언트이고, 여러 TUI가 한 `engine`에 동시에 붙는다. TUI를 닫아도 `engine`은 기본으로 접수된 입력을 계속 처리하고, 할 일이 없어지면 유예 뒤 스스로 끝난다. 설정 `on_exit`로 닫을 때 작업을 멈추거나 묻게 할 수 있다. `engine`이 비정상 종료되면 다음 실행에서 효과 범위 `effect_scope`를 보고 자동으로 이어 갈 실행과 보류할 실행을 나눈다.
 
 ## 동기
 
@@ -21,10 +21,18 @@
 
 1. 사용자가 작업 A를 실행 중이고 입력 C가 A 다음 차례로 대기 줄에 있다.
 2. 사용자가 TUI를 닫는다.
-3. `engine`은 `on_exit`가 기본값 `background`임을 확인하고 A를 계속 실행한다.
+3. `engine`은 `on_exit`가 기본값 `background`임을 확인하고 A를 계속 실행하고, 터미널에는 `작업 2개 계속 실행 중 · saturn으로 다시 여세요` 한 줄이 남는다.
 4. A가 끝나면 `engine`은 대기 중이던 C를 이어서 보낸다.
 5. 실행 중 provider가 허가 요청이나 입력 요청을 보내면 `engine`은 답하지 않고 요청을 보관한다.
 6. 사용자가 TUI를 다시 열면 보관된 허가 요청 창과 입력 요청 창이 가장 먼저 뜬다.
+
+### 닫을 때 작업을 멈춘다
+
+1. 사용자가 `on_exit = "ask"`로 두고 작업 A를 실행 중이고 입력 C가 대기 줄에 있다.
+2. 사용자가 `Ctrl+D`를 누르면 TUI가 `PrepareExit`을 보내고 `engine`이 작업 2개와 함께 `Ask`로 답한다.
+3. TUI가 `작업 2개 실행 중` 창을 띄우고, 사용자가 `멈추기`를 고른다.
+4. TUI가 `StopAll`을 보낸 뒤 닫고, `engine`이 A와 C를 보류한다.
+5. 사용자가 다시 열면 보류 재개 질문이 뜨고, 멈춘 작업은 자동으로 이어지지 않는다.
 
 ### 크래시 뒤 다시 켜면 보류 목록을 본다
 
@@ -121,15 +129,29 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 
 ### TUI 종료 뒤 동작
 
-TUI가 끝나면 `rpc`가 설정 `on_exit` 값을 확인한다. 값은 `background`, `stop`, `ask` 세 가지이고 기본값은 `background`다. 기본값을 `background`로 둔 것은 TUI를 닫아도 작업을 계속하게 하기 위해서다.
+TUI를 닫을 때 설정 `on_exit` 값이 닫은 뒤의 처리를 정한다. 값은 `background`, `stop`, `ask` 세 가지이고 기본값은 `background`다. 기본값을 `background`로 둔 것은 TUI를 닫아도 작업을 계속하게 하기 위해서다. 값은 닫는 TUI의 채팅 기준으로 폴더 층과 채팅 층까지 합쳐 읽는다.
 
-`on_exit`가 `background`이면 `engine`은 접수된 대기 입력을 provider에 순서대로 계속 보낸다. `stop`과 `ask`의 동작은 아직 정하지 않았다([#70](https://github.com/woonyong-choi/saturn/issues/70)). TUI가 없는 동안 `engine`은 다음 규칙을 따른다.
+`on_exit`는 마지막 TUI가 떨어질 때 적용한다. 마지막 TUI는 `Attach`한 접속 중 마지막이고, `saturn usage`처럼 `Attach`하지 않는 접속은 세지 않는다. 다른 TUI가 붙어 있는 동안에는 TUI를 닫아도 작업이 계속되므로 묻지도 안내하지도 않는다. 이 규칙에서 작업은 실행 중인 작업과 보내기 전에 판단하거나 기다리는 입력이고, 보류는 세지 않는다. 작업이 없으면 어느 값이든 묻지도 안내하지도 않고 닫는다.
 
-1. 허가 요청과 입력 요청은 사용자 확인을 기다리는 상태로 보관하고, TUI가 다시 붙으면 가장 먼저 보낸다.
-2. 피드백 질문을 건너뛴다.
-3. 완료 알림(macOS)을 켠 경우에만 알림을 보낸다.
-4. 보류는 그대로 둔다.
-5. 에이전트 트리 전체가 끝나면 5분을 기다린 뒤 session을 닫고 `engine`을 끝낸다.
+| 값 | 닫으려 할 때 | 마지막 TUI가 떨어질 때 | 터미널 |
+|---|---|---|---|
+| `background` | 묻지 않는다. | 작업을 계속한다. | 작업이 있으면 `작업 N개 계속 실행 중 · saturn으로 다시 여세요` 한 줄 |
+| `stop` | 묻지 않는다. | 모든 채팅의 작업을 멈춤과 같은 규칙으로 보류하고 끝낸다. | 없음 |
+| `ask` | 작업이 있으면 `계속 실행`과 `멈추기`를 묻는 창을 띄운다. `Esc`는 닫기를 취소한다. | `계속 실행`이면 `background`와 같고, `멈추기`면 닫기 전에 모든 채팅을 멈춰 둔다. | `계속 실행`이면 `background`와 같은 한 줄 |
+
+TUI는 닫기 전에 `PrepareExit`을 보내고, `engine`은 `ExitPlan`으로 답한다. `ExitPlan`은 그냥 닫는 `Close`, 묻는 `Ask`, 한 줄을 남기고 닫는 `Notice` 중 하나이고 작업 수 `running`을 싣는다. `ask`에서 `멈추기`를 고르면 TUI가 `StopAll`을 보내고 닫는다. 여러 채팅의 작업을 한 번에 멈추기 위해서다. 터미널을 닫거나 TUI가 강제로 끝나면 질문할 수 없으므로 `ask`도 `background`처럼 계속한다.
+
+`stop`과 `ask`의 `멈추기`는 입력 처리의 멈춤 규칙을 작업이 있는 모든 채팅에 그대로 적용한다. 멈춘 작업은 자동으로 이어 가지 않고, 다시 열면 보류 재개 질문이 뜬다([입력 처리](input-handling.md#멈춤과-보류)). 채팅마다 따로 정하지 않고 모든 채팅을 함께 멈추는 것은, 앞서 닫은 TUI의 채팅이 사용자 몰래 계속 도는 일을 막기 위해서다.
+
+TUI가 없는 동안 허가 요청, 입력 요청, 유예 종료는 값마다 다음과 같다.
+
+| 항목 | `background`, `ask`의 `계속 실행` | `stop`, `ask`의 `멈추기` |
+|---|---|---|
+| 허가 요청과 입력 요청 | 사용자 확인을 기다리는 상태로 보관하고, TUI가 다시 붙으면 가장 먼저 보낸다. | 멈춤이 끝날 때 그 작업의 대기 요청을 지우고 보관하지 않는다. |
+| 피드백 질문 | 건너뛴다. | 건너뛴다. |
+| 완료 알림(macOS) | 켠 경우에만 보낸다. | 켠 경우에만 보낸다. |
+| 보류 | 그대로 둔다. | 멈춘 작업을 보류로 두고 그대로 둔다. |
+| 유예 종료 | 에이전트 트리 전체가 끝난 뒤 5분을 기다려 session을 닫고 `engine`을 끝낸다. | 멈춤으로 트리가 모두 유휴가 된 뒤 같은 5분을 기다려 끝낸다. |
 
 TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작업을 자동으로 이어 가지 않기 위해서다. 보류와 대기 규칙은 [입력 처리](input-handling.md)에 있다.
 
@@ -205,6 +227,10 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | `engine`은 사용자당 하나만 실행된다. | 같은 사용자로 `engine`을 두 번 띄우면 두 번째가 잠금을 얻지 못하고 기존 `engine`에 붙는지 확인 |
 | `engine` 로그는 `~/.saturn/logs/engine-YYYY-MM-DD.log`에 로컬 날짜별로 하루 한 파일씩 쌓이고, 날짜가 바뀌면 새 파일을 연다. 30일 지난 `engine-YYYY-MM-DD.log`만 시작 때와 날짜가 바뀔 때 지우고, 옛 `engine.log`와 `engine.log.N`은 시작 때 지운다. | `saturn-terminal/engine/src/engine_log.rs`의 `engine_log_writes_to_a_file_named_after_the_day`, `engine_log_opens_a_new_file_when_the_day_changes`, `engine_log_start_removes_only_files_older_than_30_days`, `engine_log_removes_files_older_than_30_days_when_the_day_changes`, `engine_log_start_removes_the_old_engine_log_files`, `saturn-terminal/cli/src/launch.rs`의 `engine_log_tail_reads_the_latest_dated_file` |
 | TUI를 닫아도 `engine`은 접수된 입력을 계속 처리한다. | TUI 연결을 끊은 뒤 대기 입력이 순서대로 provider에 전달되는지 확인 |
+| `on_exit`가 `stop`이면 마지막 TUI가 떨어질 때 모든 채팅의 작업을 보류하고, 다른 TUI가 붙어 있는 동안에는 멈추지 않는다. 멈춘 작업은 자동으로 이어 가지 않는다. | `saturn-terminal/engine/src/lifecycle/exit.rs`의 `stop_holds_the_work_of_every_chat_only_when_the_last_tui_detaches`, `stop_on_exit_keeps_waiting_input_held_after_the_turn_ends` |
+| `on_exit`가 `ask`나 `background`이면 TUI가 떨어져도 작업을 멈추지 않는다. | `saturn-terminal/engine/src/lifecycle/exit.rs`의 `ask_and_background_keep_running_after_the_last_tui_detaches` |
+| 닫기 전 계획은 `on_exit`, 계속될 작업 수, 다른 TUI의 유무로 정한다. 작업이 없거나 다른 TUI가 붙어 있으면 묻지 않는다. | `saturn-terminal/engine/src/lifecycle/exit.rs`의 `exit_plan_follows_on_exit_work_and_other_tuis`, `prepare_exit_for_a_chat_the_client_is_not_attached_to_is_refused` |
+| `ask`에서 `멈추기`를 고르면 모든 채팅의 작업을 멈춘다. | `saturn-terminal/engine/src/lifecycle/exit.rs`의 `stop_all_holds_the_work_of_every_chat` |
 | router를 확인하기 전에는 router 키 제출과 채팅 붙기 밖의 요청을 받지 않는다. | router 키가 없는 환경에서 일반 요청이 오류 응답으로 거절되고, 키를 보낸 뒤에는 처리되는지 확인 |
 | 채팅의 폴더, 폴더 설정 층, 폴더 설정 신뢰 판단은 채팅을 만든 폴더로 정하고, provider 실행 환경은 가장 최근에 붙은 TUI의 환경으로 정한다. | 다른 폴더에서 같은 채팅에 붙어도 폴더와 신뢰 창이 처음 폴더 그대로이고 환경만 바뀌는지 확인 |
 | 더한 폴더는 채팅 기록에 저장돼 이어 열 때 되살아나고, 모든 provider session에 넘어가며, 그 폴더의 설정 파일은 읽지 않는다. | `saturn-terminal/engine/src/lifecycle/add_dir.rs`의 `add_dir_from_attach_is_saved_and_kept_when_the_chat_is_opened_again`, `add_dir_is_read_from_records_not_from_memory_when_a_chat_is_reopened`, `add_dir_reaches_the_session_spec_of_every_provider`, `add_dir_settings_file_is_not_read` |
@@ -230,6 +256,5 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 - 에이전트가 실행한 자식 Saturn을 부모 `engine` 소켓에 자식으로 붙일지, 독립 `engine`으로 띄우고 결과 파일로 돌려받을지 ([#33](https://github.com/woonyong-choi/saturn/issues/33))
 - 크래시 뒤 파일 상태 확인에 쓰는 수정 파일 목록을 실행 경계의 파일 상태 차이로 계산할지, provider 이벤트로 계산할지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))
 - 크래시 복구 때 실행 중으로 남은 subagent와 provider가 다시 불러오는 자식 session을 Saturn이 정리할지, 끊김 표시만 하고 provider 재개 동작은 그대로 둘지 ([#66](https://github.com/woonyong-choi/saturn/issues/66))
-- TUI를 닫을 때 `on_exit`가 `stop`이나 `ask`이면 무엇을 할지 ([#70](https://github.com/woonyong-choi/saturn/issues/70))
 - `ListTasks`, `Usage`, `LoadHistory` 같은 조회 요청의 결과를 알림으로 보낼지, 응답 `result`에 담을지 ([#177](https://github.com/woonyong-choi/saturn/issues/177))
 - 새 TUI나 `cli`가 버전이 다른 상주 `engine`에 붙을 때 그대로 붙을지, 거절할지, 옛 `engine`을 끝내고 새로 띄울지 ([#178](https://github.com/woonyong-choi/saturn/issues/178))
