@@ -57,6 +57,8 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 
 ### 입력 하나의 처리
 
+![입력은 기록 저장소에 접수된 뒤 router 판단을 거쳐 provider로 가고, 이벤트는 다시 기록되어 tui에 결과 줄로 돌아간다](assets/input-flow.svg)
+
 1. TUI가 입력을 engine에 보낸다.
 2. engine이 입력을 기록 저장소에 접수한다.
 3. `core`가 같은 채팅 입력의 판단 차례를 접수 순서로 정한다.

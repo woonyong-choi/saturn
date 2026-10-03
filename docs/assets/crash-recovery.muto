@@ -1,0 +1,25 @@
+flow down
+title "크래시 뒤 복구"
+subtitle "효과 범위가 증명된 실행만 자동으로 이어 가고, 나머지는 보류한다"
+
+box open "끝나지 않은 실행의 effect_scope 조회" "store"
+decision scope "effect_scope는"
+box auto "자동 재개 대상" "proven-by-config, proven-by-observation"
+box hold "보류로 기록, session도 보류" "network-possible, unobserved"
+box resume "파일 상태를 확인한 뒤 그 상태로 만든 새 입력을 provider에 보낸다" "engine"
+box suggest "보류 항목마다 /continue 제안을 보낸다" "rpc"
+
+open -> scope
+scope -> auto "증명됨"
+scope -> hold "증명 안 됨"
+auto -> resume
+hold -> suggest
+
+step "자동 재개" "증명된 실행은 사용자 확인 없이 이어 간다"
+  open -> scope
+  scope -> auto
+  auto -> resume
+step "보류" "증명되지 않은 실행은 사용자가 /continue로 이을 때까지 멈춘다"
+  open -> scope
+  scope -> hold
+  hold -> suggest

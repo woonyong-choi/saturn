@@ -191,6 +191,8 @@ session 교체는 같은 채팅·역할 안에서 턴이 끝난 경계에만 한
 
 ### 그 provider로 돌아가기
 
+![보관 session은 캐시 유지 시간 안이면 재개하고, 지났으면 패킷이 마지막 활성 맥락보다 작을 때만 새 session을 연다](../assets/provider-return.svg)
+
 provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 `sessions`는 다음 순서로 판정한다.
 
 1. 보관 session의 마지막 턴이 끝난 뒤 경과 시간이 그 provider의 캐시 유지 시간 안이면 재개한다.
@@ -264,6 +266,8 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 멈춤은 Saturn session의 모든 에이전트와 subagent에 닿는다. 에이전트 하나만 멈추는 기능은 취소와 모델 교체 같은 내부 처리에서만 쓰기 때문이다. 트리 전체 종료를 확인하기 전에는 완료라고 하지 않는다. subagent가 남은 채 멈췄다고 보이는 일을 막기 위해서다. Claude 백그라운드 subagent의 중지는 실측으로 확인한다([#18](https://github.com/woonyong-choi/saturn/issues/18)). 멈춘 작업의 보류와 재개는 [입력 처리](input-handling.md)에 있다.
 
 ### session 상태
+
+![열린 session은 닫힘·재개 가능이나 보류로 갔다가 다시 열릴 수 있고, 교체되거나 밀리거나 보류 종료되면 종료가 된다](../assets/session-states.svg)
 
 | 상태 | 뜻 | 다음 상태 |
 |---|---|---|
