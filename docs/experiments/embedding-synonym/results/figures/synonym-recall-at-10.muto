@@ -1,0 +1,9 @@
+chart bar
+title "같은 뜻 질의의 상위 10개 재현율"
+subtitle "n=60. 정답 짝이 same인 한국어 설명 질의, 정답은 주석을 뺀 코드 묶음"
+x "재현율(%)"
+decimals 1
+
+series candidate "단어 기반 + 임베딩" role=main
+series baseline "단어 기반" role=compare
+data "synonym-recall-at-10.json"

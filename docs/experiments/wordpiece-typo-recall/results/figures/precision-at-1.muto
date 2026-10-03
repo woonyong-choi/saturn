@@ -1,0 +1,9 @@
+chart dumbbell
+title "오타 없는 질의의 1위 정밀도"
+subtitle "n=한글 800, 영문 800. 후보는 한글 자모 3개, 영문 글자 4개 단위"
+x "정밀도(%)"
+decimals 1
+
+series candidate "후보" role=main
+series baseline "기준" role=compare
+data "precision-at-1.json"

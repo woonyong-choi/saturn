@@ -1,0 +1,14 @@
+[
+  {
+    "label": "judge-all − no-packet (A)",
+    "difference": 51.35416667,
+    "difference.low": 45.20833333,
+    "difference.high": 57.29166667
+  },
+  {
+    "label": "judge-all − rrf-fallback (B)",
+    "difference": 50.72916667,
+    "difference.low": 44.6875,
+    "difference.high": 56.66666667
+  }
+]

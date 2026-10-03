@@ -215,19 +215,13 @@ def main():
             *r["event_cut_pct_ci"], r["latency_cut_pct"], r["wasted_pct_of_pre_q"]] for r in rows])
 
     n = len(sessions)
-    figs = {
-        "token-ratio-all-candidates": base.line_figure(
-            "후보 전체 판단에서 미리 판단의 judge 입력 토큰 배수",
-            f"n={n} session. 기준선은 1.5배", "lazy 대비 추정 입력 토큰(배)", "tok_ratio", TOK_RATIO_LIMIT, rows),
-        "event-cut-all-candidates": base.line_figure(
-            "후보 전체 판단에서 전환 시점 대기 질문의 감소율",
-            f"n={n} session. 기준선은 50%", "전환 시점 대기 질문 감소율(%)", "event_cut_pct", CUT_LIMIT,
-            [dict(r, event_cut_pct_ci=r["event_cut_pct_ci"]) for r in rows]),
-    }
-    for name, fig in figs.items():
-        with open(os.path.join(results, "figures", f"{name}.vl.json"), "w", encoding="utf-8", newline="\n") as f:
-            json.dump(fig, f, ensure_ascii=False, indent=2)
-            f.write("\n")
+    figures = os.path.join(results, "figures")
+    base.write_line_chart(figures, base.LineChart(
+        "token-ratio-all-candidates", "후보 전체 판단에서 미리 판단의 judge 입력 토큰 배수",
+        f"n={n} session. 점선은 기준선 1.5배", "lazy 대비 추정 입력 토큰(배)", "tok_ratio", TOK_RATIO_LIMIT), rows)
+    base.write_line_chart(figures, base.LineChart(
+        "event-cut-all-candidates", "후보 전체 판단에서 전환 시점 대기 질문의 감소율",
+        f"n={n} session. 점선은 기준선 50%", "전환 시점 대기 질문 감소율(%)", "event_cut_pct", CUT_LIMIT), rows)
 
 
 if __name__ == "__main__":

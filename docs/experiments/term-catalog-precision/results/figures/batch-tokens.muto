@@ -1,0 +1,9 @@
+chart box
+title "짝 20개 묶음 요청의 추정 입력 토큰"
+subtitle "n=200. 수염은 최솟값과 최댓값, 점선은 가설 범위 2,000과 3,000"
+x "입력 토큰(토큰)"
+decimals 0
+
+rule 2000 "가설 범위 하한"
+rule 3000 "가설 범위 상한"
+data "batch-tokens.json"

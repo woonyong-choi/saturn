@@ -4,6 +4,7 @@ import csv
 import json
 import os
 from collections import OrderedDict
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -187,25 +188,42 @@ def write_csv(path, header, rows):
         w.writerows(rows)
 
 
-def line_figure(title, subtitle, y_title, field, threshold, rows):
-    values = [{"s": r["s"], "value": r[field], "lo": r[field + "_ci"][0], "hi": r[field + "_ci"][1]} for r in rows]
-    x = {"field": "s", "type": "quantitative", "title": "미리 판단 시작 비율 s(T 대비)"}
-    return {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": title, "subtitle": subtitle},
-        "width": 420,
-        "height": 220,
-        "layer": [
-            {"data": {"values": values}, "mark": {"type": "line", "point": True},
-             "encoding": {"x": x, "y": {"field": "value", "type": "quantitative", "title": y_title,
-                                        "scale": {"zero": True}}}},
-            {"data": {"values": values}, "mark": "errorbar",
-             "encoding": {"x": x, "y": {"field": "lo", "type": "quantitative", "title": y_title},
-                          "y2": {"field": "hi"}}},
-            {"data": {"values": [{"threshold": threshold}]}, "mark": "rule",
-             "encoding": {"y": {"field": "threshold", "type": "quantitative"}}},
-        ],
-    }
+@dataclass(frozen=True)
+class LineChart:
+    """시작 비율마다 지표와 95% 신뢰구간을 그리는 선 차트의 이름과 글."""
+
+    name: str
+    title: str
+    subtitle: str
+    y_title: str
+    field: str
+    threshold: float
+
+
+def write_chart(figures: str, name: str, header: str, rows: list[dict]) -> None:
+    """차트 입력 `{name}.muto`와 값 `{name}.json`을 mutoscope용으로 쓴다."""
+    os.makedirs(figures, exist_ok=True)
+    with open(os.path.join(figures, f"{name}.muto"), "w", encoding="utf-8", newline="\n") as f:
+        f.write(f'{header}data "{name}.json"\n')
+    with open(os.path.join(figures, f"{name}.json"), "w", encoding="utf-8", newline="\n") as f:
+        json.dump(rows, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+
+
+def write_line_chart(figures: str, chart: LineChart, rows: list[dict]) -> None:
+    header = f"""chart line
+title "{chart.title}"
+subtitle "{chart.subtitle}"
+x "미리 판단 시작 비율 s(T 대비)"
+y "{chart.y_title}"
+
+series measured "미리 판단" role=main
+rule {chart.threshold:g} "기준선"
+"""
+    field = chart.field
+    values = [{"x": r["s"], "measured": r[field], "measured.low": r[field + "_ci"][0],
+               "measured.high": r[field + "_ci"][1]} for r in rows]
+    write_chart(figures, chart.name, header, values)
 
 
 def main():
@@ -380,18 +398,13 @@ def main():
                for p, d in desc.items()])
 
     n = len(sessions)
-    figs = {
-        "token-ratio-by-start": line_figure(
-            "미리 판단의 judge 입력 토큰 배수", f"n={n} session. 기준선은 채택 기준 1.5배",
-            "lazy 대비 추정 입력 토큰(배)", "tok_ratio", 1.5, public_rows),
-        "pending-cut-by-start": line_figure(
-            "정리 시점에 남는 질문의 감소율", f"n={n} session. 기준선은 채택 기준 50%",
-            "남는 질문 감소율(%)", "pending_cut_pct", 50, public_rows),
-    }
-    for name, spec in figs.items():
-        with open(os.path.join(results, "figures", f"{name}.vl.json"), "w", encoding="utf-8", newline="\n") as f:
-            json.dump(spec, f, ensure_ascii=False, indent=2)
-            f.write("\n")
+    figures = os.path.join(results, "figures")
+    write_line_chart(figures, LineChart(
+        "token-ratio-by-start", "미리 판단의 judge 입력 토큰 배수", f"n={n} session. 점선은 채택 기준 1.5배",
+        "lazy 대비 추정 입력 토큰(배)", "tok_ratio", 1.5), public_rows)
+    write_line_chart(figures, LineChart(
+        "pending-cut-by-start", "정리 시점에 남는 질문의 감소율", f"n={n} session. 점선은 채택 기준 50%",
+        "남는 질문 감소율(%)", "pending_cut_pct", 50), public_rows)
 
 
 if __name__ == "__main__":

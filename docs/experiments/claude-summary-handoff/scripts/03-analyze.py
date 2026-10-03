@@ -135,27 +135,25 @@ def distribution(values: list[int]) -> dict:
     return {"n": len(ordered), "mean": mean, "sd": sd, "median": quantile(0.5), "p5": quantile(0.05), "p95": quantile(0.95)}
 
 
-def figure(table: dict) -> dict:
-    values = []
-    for condition, key in (("claude-summary", "accuracy_claude_summary"), ("saturn-packet", "accuracy_saturn_packet")):
-        low, high = table[f"{key}_ci95"]
-        values.append({"condition": condition, "accuracy": table[key], "low": low, "high": high})
-    return {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "description": "조건별 전환 뒤 질문 정답률과 95% Wilson 신뢰구간",
-        "data": {"values": values},
-        "layer": [
-            {"mark": "point", "encoding": {
-                "y": {"field": "condition", "type": "nominal", "title": "조건"},
-                "x": {"field": "accuracy", "type": "quantitative", "title": "정답률", "scale": {"domain": [0, 1]}},
-            }},
-            {"mark": "rule", "encoding": {
-                "y": {"field": "condition", "type": "nominal"},
-                "x": {"field": "low", "type": "quantitative"},
-                "x2": {"field": "high"},
-            }},
-        ],
-    }
+def write_accuracy_chart(table: dict) -> None:
+    """같은 질문에서 Claude 요약과 Saturn 패킷의 정답률과 95% Wilson 신뢰구간을 덤벨로 쓴다."""
+    header = f"""chart dumbbell
+title "전환 뒤 질문 정답률"
+subtitle "n={table['n']}. 오차 막대는 95% Wilson 신뢰구간"
+x "정답률(%)"
+decimals 1
+
+series saturn "Saturn 패킷" role=main
+series claude "Claude 요약" role=compare
+"""
+    row = {"label": "전환 뒤 질문"}
+    for key, field in (("claude", "accuracy_claude_summary"), ("saturn", "accuracy_saturn_packet")):
+        row[key] = round(table[field] * 100, 8)
+        row[f"{key}.low"], row[f"{key}.high"] = (round(v * 100, 8) for v in table[f"{field}_ci95"])
+    figures = RESULTS_DIR / "figures"
+    figures.mkdir(parents=True, exist_ok=True)
+    (figures / "h2-accuracy.muto").write_text(f'{header}data "h2-accuracy.json"\n', encoding="utf-8")
+    (figures / "h2-accuracy.json").write_text(json.dumps([row], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def write_json(path: Path, value: dict) -> None:
@@ -216,7 +214,8 @@ def main() -> int:
         writer.writerow(["claude_summary", "saturn_packet_correct", "saturn_packet_wrong"])
         writer.writerow(["correct", table["a"], table["b"]])
         writer.writerow(["wrong", table["c"], table["d"]])
-    write_json(RESULTS_DIR / "figures" / "h2-accuracy.vl.json", figure(table))
+    if table["n"]:
+        write_accuracy_chart(table)
     return 0
 
 

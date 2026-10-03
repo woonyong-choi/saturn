@@ -38,10 +38,6 @@ LABELS = {
     "asked-10": "10%",
 }
 SIGNAL_LABELS = {"behavior": "행동 신호", "asked": "물은 판단만"}
-_GROUPED_X = {
-    "x": {"field": "condition", "type": "nominal", "title": "시작 기준값의 틀림 비율", "sort": ["3%", "5%", "10%"], "axis": {"labelAngle": 0}},
-    "xOffset": {"field": "signal", "sort": ["행동 신호", "물은 판단만"]},
-}
 
 
 def main() -> int:
@@ -96,9 +92,9 @@ def main() -> int:
         file.write("\n")
     _write_checks(tables / "confirmatory.csv", checks)
     _write_conditions(tables / "conditions.csv", conditions)
-    _write_json(figures / "late-wrong-rate.vl.json", _wrong_rate_figure(conditions))
-    _write_json(figures / "window-range.vl.json", _window_figure(conditions))
-    _write_json(figures / "shift-threshold.vl.json", _shift_figure(shift))
+    _write_wrong_rate_chart(figures, conditions)
+    _write_window_chart(figures, conditions)
+    _write_shift_chart(figures, shift)
     logger.info("hypotheses: %s", {key: value["verdict"] for key, value in hypotheses.items()})
     return 0
 
@@ -333,136 +329,70 @@ def _round(value: float) -> float:
     return round(value, 6)
 
 
-def _wrong_rate_figure(conditions: dict) -> dict:
-    values = []
-    for condition in BEHAVIOR + ASKED:
-        stats = conditions[condition]["late_wrong_rate"]
-        values.append(
-            {
-                "condition": LABELS[condition],
-                "signal": SIGNAL_LABELS[conditions[condition]["population"]["signal_model"]],
-                "rate": round(stats["mean"] * 100, 3),
-                "low": round(stats["ci95"][0] * 100, 3),
-                "high": round(stats["ci95"][1] * 100, 3),
-            }
-        )
+def _write_chart(figures: Path, name: str, header: str, rows: list[dict]) -> None:
+    """차트 입력 `{name}.muto`와 값 `{name}.json`을 mutoscope용으로 쓴다."""
+    (figures / f"{name}.muto").write_text(f'{header}data "{name}.json"\n', encoding="utf-8", newline="\n")
+    _write_json(figures / f"{name}.json", rows)
+
+
+def _grouped_rows(conditions: dict, metric: str, scale: float) -> list[dict]:
+    """시작 기준값마다 행동 신호와 물은 판단만 조건의 평균과 95% 신뢰구간을 한 행으로 묶는다."""
+    rows = []
+    for behavior, asked in zip(BEHAVIOR, ASKED, strict=True):
+        row = {"label": f"시작 {LABELS[behavior]}"}
+        for key, condition in (("behavior", behavior), ("asked", asked)):
+            stats = conditions[condition][metric]
+            row[key] = round(stats["mean"] * scale, 6)
+            row[f"{key}.low"] = round(stats["ci95"][0] * scale, 6)
+            row[f"{key}.high"] = round(stats["ci95"][1] * scale, 6)
+        rows.append(row)
+    return rows
+
+
+def _write_wrong_rate_chart(figures: Path, conditions: dict) -> None:
     n = conditions["behavior-5"]["n"]
-    return {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {
-            "text": "후반 5,000건의 행동 중 틀림 비율",
-            "subtitle": f"조건마다 복제 n={n}. 기준선은 목표 5%",
-        },
-        "width": 420,
-        "height": 220,
-        "layer": [
-            {
-                "data": {"values": values},
-                "mark": "bar",
-                "encoding": {
-                    **_GROUPED_X,
-                    "y": {"field": "rate", "type": "quantitative", "title": "틀림 비율(%)", "scale": {"zero": True}},
-                    "color": {"field": "signal", "type": "nominal", "title": "신호 출처", "sort": ["행동 신호", "물은 판단만"]},
-                },
-            },
-            {
-                "data": {"values": values},
-                "mark": "errorbar",
-                "encoding": {
-                    **_GROUPED_X,
-                    "y": {"field": "low", "type": "quantitative", "title": None},
-                    "y2": {"field": "high"},
-                },
-            },
-            {
-                "data": {"values": [{"target": TARGET_WRONG_RATE * 100}]},
-                "mark": "rule",
-                "encoding": {"y": {"field": "target", "type": "quantitative"}},
-            },
-        ],
-    }
+    header = f"""chart bar
+title "후반 5,000건의 행동 중 틀림 비율"
+subtitle "조건마다 복제 n={n}. 행은 시작 기준값의 틀림 비율, 점선은 목표 {TARGET_WRONG_RATE * 100:g}%"
+x "틀림 비율(%)"
+decimals 1
+
+series behavior "{SIGNAL_LABELS['behavior']}" role=main
+series asked "{SIGNAL_LABELS['asked']}" role=compare
+rule {TARGET_WRONG_RATE * 100:g} "목표"
+"""
+    _write_chart(figures, "late-wrong-rate", header, _grouped_rows(conditions, "late_wrong_rate", 100))
 
 
-def _window_figure(conditions: dict) -> dict:
-    values = []
-    for condition in BEHAVIOR + ASKED:
-        stats = conditions[condition]["late_window_range"]
-        values.append(
-            {
-                "condition": LABELS[condition],
-                "signal": SIGNAL_LABELS[conditions[condition]["population"]["signal_model"]],
-                "range": stats["mean"],
-                "low": stats["ci95"][0],
-                "high": stats["ci95"][1],
-            }
-        )
+def _write_window_chart(figures: Path, conditions: dict) -> None:
     n = conditions["behavior-5"]["n"]
-    return {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {
-            "text": "후반 5,000건의 100건 안 기준값 폭",
-            "subtitle": f"조건마다 복제 n={n}. 기준선은 멈춤 폭 0.02",
-        },
-        "width": 420,
-        "height": 220,
-        "layer": [
-            {
-                "data": {"values": values},
-                "mark": "bar",
-                "encoding": {
-                    **_GROUPED_X,
-                    "y": {"field": "range", "type": "quantitative", "title": "기준값 폭(최대 − 최소)", "scale": {"zero": True}},
-                    "color": {"field": "signal", "type": "nominal", "title": "신호 출처", "sort": ["행동 신호", "물은 판단만"]},
-                },
-            },
-            {
-                "data": {"values": values},
-                "mark": "errorbar",
-                "encoding": {
-                    **_GROUPED_X,
-                    "y": {"field": "low", "type": "quantitative", "title": None},
-                    "y2": {"field": "high"},
-                },
-            },
-            {
-                "data": {"values": [{"limit": WINDOW_RANGE_LIMIT}]},
-                "mark": "rule",
-                "encoding": {"y": {"field": "limit", "type": "quantitative"}},
-            },
-        ],
-    }
+    header = f"""chart bar
+title "후반 5,000건의 100건 안 기준값 폭"
+subtitle "조건마다 복제 n={n}. 행은 시작 기준값의 틀림 비율, 점선은 멈춤 폭 {WINDOW_RANGE_LIMIT:g}"
+x "기준값 폭(최대 − 최소, 비율)"
+decimals 3
+
+series behavior "{SIGNAL_LABELS['behavior']}" role=main
+series asked "{SIGNAL_LABELS['asked']}" role=compare
+rule {WINDOW_RANGE_LIMIT:g} "멈춤 폭"
+"""
+    _write_chart(figures, "window-range", header, _grouped_rows(conditions, "late_window_range", 1))
 
 
-def _shift_figure(shift: dict) -> dict:
-    values = [
-        {"judgment": row["block"] * BLOCK, "threshold": row["threshold"]}
-        for row in shift["mean_threshold_by_block"]
-    ]
+def _write_shift_chart(figures: Path, shift: dict) -> None:
     n = shift["reached_within_limit"]["n"]
-    return {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {
-            "text": "사용 방식 급변 전후의 평균 기준값",
-            "subtitle": f"복제 n={n}, 5,000건에서 틀림 비율 3%→10%. 기준선은 10% 조건 후반 평균",
-        },
-        "width": 420,
-        "height": 220,
-        "layer": [
-            {
-                "data": {"values": values},
-                "mark": {"type": "line", "point": True},
-                "encoding": {
-                    "x": {"field": "judgment", "type": "quantitative", "title": "판단 수(건)"},
-                    "y": {"field": "threshold", "type": "quantitative", "title": "100건 평균 기준값", "scale": {"zero": False}},
-                },
-            },
-            {
-                "data": {"values": [{"target": shift["target_threshold"]}]},
-                "mark": "rule",
-                "encoding": {"y": {"field": "target", "type": "quantitative"}},
-            },
-        ],
-    }
+    header = f"""chart line
+title "사용 방식 급변 전후의 평균 기준값"
+subtitle "복제 n={n}, 5,000건에서 틀림 비율 3%→10%. 점선은 10% 조건 후반 평균"
+x "판단 수(건)"
+y "100건 평균 기준값(비율)"
+zero off
+
+series mean "평균 기준값" role=main
+rule {shift["target_threshold"]:g} "목표"
+"""
+    rows = [{"x": row["block"] * BLOCK, "mean": row["threshold"]} for row in shift["mean_threshold_by_block"]]
+    _write_chart(figures, "shift-threshold", header, rows)
 
 
 def _read(path: Path) -> list[dict]:
@@ -516,7 +446,7 @@ def _write_conditions(path: Path, conditions: dict) -> None:
             )
 
 
-def _write_json(path: Path, value: dict) -> None:
+def _write_json(path: Path, value: object) -> None:
     with path.open("w", encoding="utf-8", newline="\n") as file:
         json.dump(value, file, ensure_ascii=False, indent=2)
         file.write("\n")

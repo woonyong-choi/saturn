@@ -1,0 +1,10 @@
+chart bar
+title "출처별 짝 후보 정밀도"
+subtitle "paren n=200, comment n=200, cooc n=200. 오차 막대는 95% Wilson 신뢰구간, 점선은 기준 80%(H1, H2)와 50%(H3)"
+x "정밀도(%)"
+decimals 1
+
+series precision "정밀도" role=main
+rule 80 "기준 80%"
+rule 50 "기준 50%"
+data "precision-by-source.json"

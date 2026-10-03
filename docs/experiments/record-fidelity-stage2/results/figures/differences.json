@@ -1,0 +1,14 @@
+[
+  {
+    "label": "받는 쪽 claude",
+    "difference": 0.0,
+    "difference.low": 0.0,
+    "difference.high": 0.0
+  },
+  {
+    "label": "받는 쪽 codex",
+    "difference": 0.0,
+    "difference.low": 0.0,
+    "difference.high": 0.0
+  }
+]

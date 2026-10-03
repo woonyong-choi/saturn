@@ -1,0 +1,10 @@
+chart bar
+title "후반 5,000건의 행동 중 틀림 비율"
+subtitle "조건마다 복제 n=100. 행은 시작 기준값의 틀림 비율, 점선은 목표 5%"
+x "틀림 비율(%)"
+decimals 1
+
+series behavior "행동 신호" role=main
+series asked "물은 판단만" role=compare
+rule 5 "목표"
+data "late-wrong-rate.json"

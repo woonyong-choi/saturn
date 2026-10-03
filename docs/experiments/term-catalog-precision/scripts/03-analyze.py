@@ -2,7 +2,7 @@
 
 Inputs: data/processed/*.csv, data/raw/{labels-public,readme}-{run}.jsonl, and the private
 co-occurrence candidates, samples, labels, and collect log.
-Outputs: results/summary.json, results/tables/*.csv, results/figures/*.vl.json.
+Outputs: results/summary.json, results/tables/*.csv, results/figures/*.muto and *.json (mutoscope chart inputs).
 """
 
 import csv
@@ -99,7 +99,8 @@ def describe(values):
         return ordered[low] + (ordered[high] - ordered[low]) * (position - low)
 
     return {"mean": statistics.fmean(ordered), "sd": statistics.stdev(ordered) if len(ordered) > 1 else 0.0,
-            "median": pct(0.5), "p5": pct(0.05), "p95": pct(0.95), "min": ordered[0], "max": ordered[-1],
+            "median": pct(0.5), "p5": pct(0.05), "p25": pct(0.25), "p75": pct(0.75), "p95": pct(0.95),
+            "min": ordered[0], "max": ordered[-1],
             "n": len(ordered)}
 
 
@@ -229,44 +230,51 @@ def token_comparison(pool, project):
 
 # Figures ------------------------------------------------------------------
 
-def precision_figure(rows):
-    n_text = ", ".join(f"{r['source']} n={r['n']}" for r in rows)
-    return {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": "출처별 짝 후보 정밀도", "subtitle": f"{n_text}. 오차 막대는 95% Wilson 신뢰구간, 기준선은 80%(H1, H2)와 50%(H3)"},
-        "width": 420,
-        "height": 220,
-        "layer": [
-            {"data": {"values": rows}, "mark": "bar",
-             "encoding": {"x": {"field": "source", "type": "nominal", "title": "출처", "sort": None},
-                          "y": {"field": "precision", "type": "quantitative", "title": "정밀도(%)",
-                                "scale": {"domain": [0, 100]}}}},
-            {"data": {"values": rows}, "mark": "errorbar",
-             "encoding": {"x": {"field": "source", "type": "nominal", "sort": None},
-                          "y": {"field": "ci_low", "type": "quantitative", "title": "정밀도(%)"},
-                          "y2": {"field": "ci_high"}}},
-            {"data": {"values": [{"threshold": 80}, {"threshold": 50}]}, "mark": "rule",
-             "encoding": {"y": {"field": "threshold", "type": "quantitative"}}},
-        ],
-    }
+def write_chart(name: str, header: str, rows: list[dict]) -> None:
+    """차트 입력 `{name}.muto`와 값 `{name}.json`을 mutoscope용으로 쓴다."""
+    figures = RESULTS_DIR / "figures"
+    figures.mkdir(parents=True, exist_ok=True)
+    (figures / f"{name}.muto").write_text(f'{header}data "{name}.json"\n', encoding="utf-8")
+    (figures / f"{name}.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def token_figure(values):
-    rows = [{"batch": "짝 20개 묶음", "tokens": v} for v in values]
-    return {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": "짝 20개 묶음 요청의 추정 입력 토큰", "subtitle": f"n={len(values)}. 기준선은 가설 범위 2,000과 3,000"},
-        "width": 420,
-        "height": 220,
-        "layer": [
-            {"data": {"values": rows}, "mark": "boxplot",
-             "encoding": {"x": {"field": "batch", "type": "nominal", "title": None},
-                          "y": {"field": "tokens", "type": "quantitative", "title": "입력 토큰(토큰)",
-                                "scale": {"zero": True}}}},
-            {"data": {"values": [{"threshold": 2000}, {"threshold": 3000}]}, "mark": "rule",
-             "encoding": {"y": {"field": "threshold", "type": "quantitative"}}},
-        ],
-    }
+def write_precision_chart(stats: dict) -> None:
+    sources = ("paren", "comment", "cooc")
+    n_text = ", ".join(f"{source} n={stats[source]['n']}" for source in sources)
+    header = f"""chart bar
+title "출처별 짝 후보 정밀도"
+subtitle "{n_text}. 오차 막대는 95% Wilson 신뢰구간, 점선은 기준 80%(H1, H2)와 50%(H3)"
+x "정밀도(%)"
+decimals 1
+
+series precision "정밀도" role=main
+rule 80 "기준 80%"
+rule 50 "기준 50%"
+"""
+    rows = [{"label": source, "precision": percent(stats[source]["precision"] or 0),
+             "precision.low": percent(stats[source]["ci_low"] or 0),
+             "precision.high": percent(stats[source]["ci_high"] or 0)} for source in sources]
+    write_chart("precision-by-source", header, rows)
+
+
+def write_token_chart(batch_tokens: dict) -> None:
+    header = f"""chart box
+title "짝 20개 묶음 요청의 추정 입력 토큰"
+subtitle "n={batch_tokens['n']}. 수염은 최솟값과 최댓값, 점선은 가설 범위 2,000과 3,000"
+x "입력 토큰(토큰)"
+decimals 0
+
+rule 2000 "가설 범위 하한"
+rule 3000 "가설 범위 상한"
+"""
+    row = {"label": "짝 20개 묶음", **{key: batch_tokens[key] for key in ("min", "median", "max")},
+           "q1": batch_tokens["p25"], "q3": batch_tokens["p75"]}
+    write_chart("batch-tokens", header, [row])
+
+
+def percent(value: float) -> float:
+    """비율을 백분율로 바꾼다. 이진 부동소수점 잔차는 버린다."""
+    return round(value * 100, 8)
 
 
 # Main ---------------------------------------------------------------------
@@ -429,17 +437,8 @@ def main():
               ["hangul_factor", "batch_median", "single_median", "reduction_median"],
               [[f, t["batch_tokens"]["median"], t["single_tokens"]["median"], round(t["token_reduction"]["median"], 6)]
                for f, t in tokens.items()])
-    figure_rows = [{"source": s, "n": stats[s]["n"],
-                    "precision": round(100 * (stats[s]["precision"] or 0), 1),
-                    "ci_low": round(100 * (stats[s]["ci_low"] or 0), 1),
-                    "ci_high": round(100 * (stats[s]["ci_high"] or 0), 1)} for s in ("paren", "comment", "cooc")]
-    figures = RESULTS_DIR / "figures"
-    figures.mkdir(parents=True, exist_ok=True)
-    (figures / "precision-by-source.vl.json").write_text(
-        json.dumps(precision_figure(figure_rows), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    (figures / "batch-tokens.vl.json").write_text(
-        json.dumps(token_figure(primary["batch_tokens_values"]), ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8")
+    write_precision_chart(summary["precision"])
+    write_token_chart(summary["tokens"]["batch_tokens"])
     print(json.dumps(summary["verdicts"], ensure_ascii=False))
 
 

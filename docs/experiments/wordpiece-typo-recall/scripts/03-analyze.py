@@ -1,7 +1,7 @@
 """질의별 결과 표로 가설 판정, 탐색 표, 그림 원본을 만든다.
 
 입력: data/processed/outcomes.csv, data/processed/index.csv
-출력: results/summary.json, results/tables/*.csv, results/figures/*.vl.json
+출력: results/summary.json, results/tables/*.csv, results/figures/*.muto와 *.json(mutoscope 차트 입력)
 """
 
 import csv
@@ -227,44 +227,34 @@ def write_csv(path, rows):
         writer.writerows(rows)
 
 
-def dumbbell(title, subtitle, axis_title, values):
-    point = {"x": {"field": "value", "type": "quantitative", "title": axis_title,
-                   "scale": {"domain": [0, 100]}},
-             "y": {"field": "group", "type": "nominal", "title": None, "sort": None},
-             "color": {"field": "method", "type": "nominal", "title": "방식",
-                       "sort": ["기준", "후보"]}}
-    return {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": title, "subtitle": subtitle},
-        "width": 420,
-        "height": 160,
-        "data": {"values": values},
-        "layer": [
-            {"mark": "line",
-             "encoding": {"x": point["x"], "y": point["y"], "detail": {"field": "group"}}},
-            {"mark": "errorbar",
-             "encoding": {"x": {"field": "lo", "type": "quantitative", "title": axis_title},
-                          "x2": {"field": "hi"}, "y": point["y"],
-                          "yOffset": {"field": "method", "sort": ["기준", "후보"]},
-                          "color": point["color"]}},
-            {"mark": {"type": "point", "filled": True, "size": 80},
-             "encoding": {**point, "yOffset": {"field": "method", "sort": ["기준", "후보"]}}},
-        ],
-    }
+def write_dumbbell_chart(
+    name: str, title: str, subtitle: str, axis_title: str, results: list[dict], metric: str
+) -> None:
+    """언어마다 기준 단위에서 후보 단위로 바뀐 비율과 신뢰구간을 덤벨로 쓴다."""
+    header = f"""chart dumbbell
+title "{title}"
+subtitle "{subtitle}"
+x "{axis_title}"
+decimals 1
 
-
-def figure_values(results, metric):
-    values = []
+series candidate "후보" role=main
+series baseline "기준" role=compare
+"""
+    rows = []
     for r in results:
         if r["metric"] != metric:
             continue
-        for method, key, condition in (("기준", "baseline_result", r["baseline"]),
-                                       ("후보", "candidate_result", r["candidate"])):
-            values.append({"group": LANG_LABEL[r["lang"]], "method": method,
-                           "condition": condition,
-                           "value": r[key]["pct"], "lo": r[key]["ci_pct"][0],
-                           "hi": r[key]["ci_pct"][1]})
-    return values
+        row = {"label": LANG_LABEL[r["lang"]]}
+        for key, result in (("baseline", r["baseline_result"]), ("candidate", r["candidate_result"])):
+            row[key] = result["pct"]
+            row[f"{key}.low"], row[f"{key}.high"] = result["ci_pct"]
+        rows.append(row)
+    figures = os.path.join(RESULTS_DIR, "figures")
+    with open(os.path.join(figures, f"{name}.muto"), "w", encoding="utf-8") as f:
+        f.write(f'{header}data "{name}.json"\n')
+    with open(os.path.join(figures, f"{name}.json"), "w", encoding="utf-8") as f:
+        json.dump(rows, f, ensure_ascii=False, indent=2)
+        f.write("\n")
 
 
 def main():
@@ -297,21 +287,9 @@ def main():
     write_csv(os.path.join(RESULTS_DIR, "tables", "exploratory-pairs.csv"), pairs)
     write_csv(os.path.join(RESULTS_DIR, "tables", "index-size.csv"), index)
     n = summary["queries"]
-    figures = {
-        "recall-at-10": dumbbell(
-            "오타 질의의 상위 10개 재현율",
-            f"n=한글 {n['ko']}, 영문 {n['en']}. 후보는 한글 자모 3개, 영문 글자 4개 단위",
-            "재현율(%)", figure_values(results, "hit_at_10")),
-        "precision-at-1": dumbbell(
-            "오타 없는 질의의 1위 정밀도",
-            f"n=한글 {n['ko']}, 영문 {n['en']}. 후보는 한글 자모 3개, 영문 글자 4개 단위",
-            "정밀도(%)", figure_values(results, "hit_at_1")),
-    }
-    for name, spec in figures.items():
-        with open(os.path.join(RESULTS_DIR, "figures", f"{name}.vl.json"), "w",
-                  encoding="utf-8") as f:
-            json.dump(spec, f, ensure_ascii=False, indent=2)
-            f.write("\n")
+    subtitle = f"n=한글 {n['ko']}, 영문 {n['en']}. 후보는 한글 자모 3개, 영문 글자 4개 단위"
+    write_dumbbell_chart("recall-at-10", "오타 질의의 상위 10개 재현율", subtitle, "재현율(%)", results, "hit_at_10")
+    write_dumbbell_chart("precision-at-1", "오타 없는 질의의 1위 정밀도", subtitle, "정밀도(%)", results, "hit_at_1")
     for r in results:
         print(f"{r['id']}: {r['verdict']}")
 

@@ -1,0 +1,10 @@
+chart bar
+title "후반 5,000건의 100건 안 기준값 폭"
+subtitle "조건마다 복제 n=100. 행은 시작 기준값의 틀림 비율, 점선은 멈춤 폭 0.02"
+x "기준값 폭(최대 − 최소, 비율)"
+decimals 3
+
+series behavior "행동 신호" role=main
+series asked "물은 판단만" role=compare
+rule 0.02 "멈춤 폭"
+data "window-range.json"

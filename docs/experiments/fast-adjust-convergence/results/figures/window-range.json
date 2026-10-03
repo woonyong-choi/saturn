@@ -1,0 +1,29 @@
+[
+  {
+    "label": "시작 3%",
+    "behavior": 0.030238,
+    "behavior.low": 0.028643,
+    "behavior.high": 0.031834,
+    "asked": 0.00406,
+    "asked.low": 0.003668,
+    "asked.high": 0.004452
+  },
+  {
+    "label": "시작 5%",
+    "behavior": 0.05111,
+    "behavior.low": 0.050043,
+    "behavior.high": 0.052177,
+    "asked": 0.005096,
+    "asked.low": 0.004719,
+    "asked.high": 0.005472
+  },
+  {
+    "label": "시작 10%",
+    "behavior": 0.052562,
+    "behavior.low": 0.051622,
+    "behavior.high": 0.053503,
+    "asked": 0.005155,
+    "asked.low": 0.004848,
+    "asked.high": 0.005462
+  }
+]

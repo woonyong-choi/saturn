@@ -1,0 +1,8 @@
+chart bar
+title "간접 지시 입력의 조건별 정확도"
+subtitle "n=200. 오차 막대는 95% Wilson 신뢰구간"
+x "정확도(%)"
+decimals 1
+
+series accuracy "정확도" role=main
+data "arm-accuracy.json"

@@ -1,0 +1,44 @@
+[
+  {
+    "label": "H1",
+    "proportion": 91.5888,
+    "proportion.low": 84.7831,
+    "proportion.high": 95.5118,
+    "rule": 80.0
+  },
+  {
+    "label": "H2",
+    "proportion": 93.3333,
+    "proportion.low": 86.8744,
+    "proportion.high": 96.7334,
+    "rule": 80.0
+  },
+  {
+    "label": "H3",
+    "proportion": 93.75,
+    "proportion.low": 83.1646,
+    "proportion.high": 97.8517,
+    "rule": 90.0
+  },
+  {
+    "label": "H4",
+    "proportion": 76.087,
+    "proportion.low": 66.4379,
+    "proportion.high": 83.6449,
+    "rule": 80.0
+  },
+  {
+    "label": "H5",
+    "proportion": 80.0,
+    "proportion.low": 66.9629,
+    "proportion.high": 88.7562,
+    "rule": 80.0
+  },
+  {
+    "label": "H6",
+    "proportion": 86.6667,
+    "proportion.low": 70.3187,
+    "proportion.high": 94.6903,
+    "rule": 70.0
+  }
+]
