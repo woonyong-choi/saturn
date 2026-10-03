@@ -112,6 +112,10 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 사용량 화면은 provider·모델마다 한 행, router마다 한 행을 보인다. 행 이름은 `codex · gpt-5.6-terra`, `claude · opus`, `router · jev` 형식이고, 모델을 보고하지 않았으면 provider 이름만 쓴다. `/usage`는 인자 없이 지금 채팅의 사용량을 열고, 화면에서 `d`는 모든 채팅의 최근 24시간, `w`는 모든 채팅의 최근 7일로 바꾼다. 같은 키를 다시 누르면 지금 채팅으로 돌아가고, 범위 이름과 키 안내는 화면에 보인다. 범위는 지금부터 거슬러 센 시간이고 달력 날짜가 아니다. 각 행은 고른 범위의 합계다. `saturn usage`는 지금 폴더에서 가장 최근에 입력을 접수한 채팅의 사용량을 표로 쓰고, `--day`는 최근 24시간, `--week`는 최근 7일(모든 채팅)로 바꾼다. 두 옵션은 함께 쓸 수 없고, 그 폴더에 채팅이 없으면 오류로 끝낸다. Claude Code의 `/usage`와 `/stats`가 기간을 키로 바꿔 보는 방식을 따랐다. provider 행의 토큰은 턴 값의 합이고, session 누적 보고는 같은 계열의 직전 누적을 뺀 값을 더한다. 여러 턴을 합친 행은 끝에 `n 토큰 · n 턴`을 보이고, 턴 수는 그 행에 합친 실행 수다. 중간 보고가 빠진 누적 보고는 그사이 보고 없는 실행까지 턴으로 센다. router 행은 호출 수와 입력·출력 토큰을 보인다. 예상 비용, 맥락 정리, 채점처럼 기록 저장소에 없는 값은 `-`로 표시한다. 지어낸 값을 보이지 않기 위해서다.
 
+### 작업 목록 조회
+
+`/tasks`는 `ListTasks`를 보내고 `engine`은 `TaskList`로 답한다. 항목은 작업 글자(이름표)를 가진 메인 작업 하나이고, 채팅 번호와 작업 번호 순서로 보낸다. 항목마다 채팅 이름, 묶음, 채팅의 기본 폴더, 상태, 허가 대기 여부, 지금 도는 하위 에이전트 수를 싣는다. 이름이 없는 채팅은 `#채팅 번호`로 보인다. 상태는 결과 불명(`NeedsCheck`), 보류, 허가 기다림, 입력 기다림, 답은 나왔지만 하위 에이전트가 남음, 실행 중 순서로 정한다. 시작을 기다리는 작업, 턴을 마치고 쉬는 작업, 끝나 이름표를 돌려준 작업, 닫은 보류는 목록에 없다. 채팅 이름과 묶음은 `RenameChat`, `SetChatGroup`으로 바꾸고 바꾼 TUI가 `ListTasks`로 다시 받는다. 다른 TUI에는 알리지 않는다(초안). 목록에 작업이 없는 채팅은 보이지 않는다. 다른 Saturn 프로세스가 실행 중인 채팅(`busy_elsewhere`)은 `engine`이 사용자당 하나라 지금은 늘 거짓이고, 자식 채팅은 아직 없어 하위 에이전트만 센다.
+
 ### 이름표
 
 작업 이름표 `[A]`는 살아 있는 작업이 둘 이상이거나 대기 줄이나 보류 줄이 있을 때만 보인다. 작업이 하나이고 대기와 보류가 없으면 이름표를 숨긴다. 이름표가 가리킬 대상이 하나뿐일 때 줄을 짧게 두기 위해서다. 끝난 작업의 글자는 비어 있는 글자 중 가장 앞 글자로 다시 쓴다. 끼워 넣은 입력의 에코에는 그 입력이 합쳐진 작업의 이름표를 붙인다. provider가 띄운 subagent는 이름표 없이 부모 작업 줄 아래에 흐리게 접어 보인다.
@@ -363,6 +367,8 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `/constraints`는 유효 제약과 변경 내역을 보이고 `d`, `x`, `u`를 engine 요청으로 보내며 `Stale` 답에 목록을 새로 읽는다. 제약 변경 줄은 `constraint_events`에서 그려 다시 열어도 같다. | 화면을 연 사이 제약을 바꿔 거절과 새로 읽기를, 채팅을 다시 열어 같은 줄을 확인한다. |
 | `Ask`는 종료 확인 창을 띄우고, `멈추기`는 `StopAll`을 보낸 뒤 닫고, `Esc`와 `Ctrl+C`는 작업을 멈추지 않고 닫기를 취소한다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_ask_opens_the_confirm_window_and_waits`, `exit_confirm_stop_stops_every_chat_then_quits_without_a_line`, `exit_confirm_escape_and_ctrl_c_cancel_the_exit_without_stopping_work`, `saturn-terminal/tui/src/view/exit_confirm.rs`의 `render_shows_count_and_both_choices` |
 | 작업 목록에서 채팅을 옮기면 `Detach` 없이 `Attach`만 같은 연결로 보내고, `engine`은 연결을 유지한 채 붙은 채팅만 바꾸며 떠난 채팅의 작업을 멈추지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `moving_to_another_chat_only_attaches_without_detaching`, `saturn-terminal/engine/src/lifecycle/exit.rs`의 `attach_to_another_chat_on_the_same_connection_is_not_a_detach` |
+| 작업 목록 조회는 이름표를 가진 메인 작업을 채팅 이름, 묶음, 폴더, 상태와 함께 채팅과 작업 순서로 보내고, 채팅 이름과 묶음을 바꾸면 다음 조회에 반영하며 이름이 없으면 `#채팅 번호`로 보낸다. | `saturn-terminal/engine/src/lifecycle/tasks.rs`의 `task_list_reflects_the_chat_name_and_group_after_they_change`, `task_list_lists_tasks_of_every_chat_in_chat_order` |
+| 작업 목록의 상태는 허가 기다림, 입력 기다림, 보류를 가르고 하위 에이전트 수와 허가 대기를 싣고, 닫은 작업은 뺀다. | `saturn-terminal/engine/src/lifecycle/tasks.rs`의 `task_list_shows_waiting_states_and_running_subagents`, `task_list_shows_held_tasks_and_drops_closed_ones` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
 | 모든 한국어 문구에 영어가 있고, `saturn` 명령의 도움말도 같다. | `saturn-terminal/tui/src/i18n.rs`의 `english_covers_every_phrase_constant`, `saturn-terminal/cli/src/args.rs`의 `help_has_english_for_every_korean_text`, `localized_help_replaces_korean_with_english` |
 | 한국어 문구에 해요체 어미와 끝 마침표가 없다. | `saturn-terminal/tui/src/i18n.rs`의 `korean_phrases_follow_claude_code_format` |

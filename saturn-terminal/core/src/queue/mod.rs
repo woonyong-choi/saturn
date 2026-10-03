@@ -80,12 +80,24 @@ pub enum SendAction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TaskPhase {
+pub enum TaskPhase {
+    /// 시작을 기다린다. 에이전트가 아직 없다.
     Pending,
     Running,
+    /// 메인 에이전트가 턴을 마치고 쉰다.
     Idle,
     Held,
     Closed,
+}
+
+/// 작업 목록이 읽는 메인 작업 한 건.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TaskInfo {
+    pub task: TaskId,
+    pub chat: ChatId,
+    /// 시작하기 전이면 `None`.
+    pub agent: Option<AgentId>,
+    pub phase: TaskPhase,
 }
 
 #[derive(Debug, Clone)]

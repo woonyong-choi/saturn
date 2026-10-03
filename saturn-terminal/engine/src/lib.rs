@@ -45,6 +45,7 @@ mod settings_watch;
 mod startup;
 mod stop;
 mod switch;
+mod tasks;
 mod turn_end;
 mod usage;
 

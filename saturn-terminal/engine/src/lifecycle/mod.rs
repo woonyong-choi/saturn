@@ -32,6 +32,7 @@ mod stop;
 mod support;
 mod switch_round_trip;
 mod target_model;
+mod tasks;
 mod turn_end;
 mod write_scope;
 

@@ -105,6 +105,11 @@ impl AgentTracker {
         self.trees.get(&agent).map(AgentTree::status)
     }
 
+    /// 지금 도는 하위 에이전트 수. 이벤트를 받은 적 없는 에이전트는 0이다.
+    pub fn running_subagents(&self, agent: AgentId) -> usize {
+        self.trees.get(&agent).map_or(0, |tree| tree.running.len())
+    }
+
     /// 이벤트를 받은 적 없는 에이전트는 추적 중인 실행이 없으므로 참이다.
     pub fn is_tree_idle(&self, agent: AgentId) -> bool {
         self.trees
