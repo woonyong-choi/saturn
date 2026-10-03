@@ -237,9 +237,9 @@ def write_difference_chart(comparisons: dict) -> None:
     """비교마다 정답률 차이와 시나리오 군집 부트스트랩 95% 신뢰구간을 막대로 쓴다."""
     labels = {"H1": "judge-all − no-packet (A)", "H2": "judge-all − rrf-fallback (B)"}
     n_units = next(iter(comparisons.values()))["n"]
-    header = f"""chart bar
+    header = f"""chart difference
 title "정답률 차이"
-subtitle "n={n_units}. 막대는 차이, 오차 막대는 시나리오 군집 부트스트랩 95% 신뢰구간, 점선은 +{MARGIN * 100:g}%p"
+subtitle "n={n_units}. 점은 차이, 선은 시나리오 군집 부트스트랩 95% 신뢰구간, 점선은 +{MARGIN * 100:g}%p"
 x "정답률 차이(%p)"
 decimals 1
 

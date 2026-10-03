@@ -32,21 +32,18 @@ def write_chart(name: str, header: str, rows: list[dict]) -> None:
 
 
 def write_hypothesis_chart(hypotheses: list[dict]) -> None:
-    """가설마다 비율과 95% Wilson 신뢰구간을 막대로 쓴다. 기준은 행 이름과 점선에 적는다."""
+    """가설마다 비율과 95% Wilson 신뢰구간을 막대로 쓴다. 채택 기준은 행마다 그 행에만 점선으로 그린다."""
     n_text = ", ".join(f"{h['hypothesis']} {h['n']}" for h in hypotheses)
-    criteria = sorted({percent(h["criterion"]) for h in hypotheses})
-    rules = "".join(f'rule {criterion:g} "기준 {criterion:g}%"\n' for criterion in criteria)
     header = f"""chart bar
 title "가설별 비율"
-subtitle "n={n_text}. 오차 막대는 95% Wilson 신뢰구간, 점선은 가설별 채택 기준"
+subtitle "n={n_text}. 오차 막대는 95% Wilson 신뢰구간, 행의 점선은 그 가설의 채택 기준"
 x "비율(%)"
 decimals 1
 
 series proportion "측정 비율" role=main
-{rules}"""
-    rows = [{"label": f"{h['hypothesis']} (기준 {percent(h['criterion']):g}%)", "proportion": percent(h["value"]),
-             "proportion.low": percent(h["ci95_low"]), "proportion.high": percent(h["ci95_high"])}
-            for h in hypotheses]
+"""
+    rows = [{"label": h["hypothesis"], "proportion": percent(h["value"]), "proportion.low": percent(h["ci95_low"]),
+             "proportion.high": percent(h["ci95_high"]), "rule": percent(h["criterion"])} for h in hypotheses]
     write_chart("hypotheses", header, rows)
 
 

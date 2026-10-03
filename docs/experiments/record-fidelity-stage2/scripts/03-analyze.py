@@ -60,6 +60,28 @@ def metric_pairs(rows, column):
     return groups
 
 
+def write_difference_chart(receivers: dict) -> None:
+    """받는 쪽마다 정답률 차이와 작업 군집 부트스트랩 95% 신뢰구간을 차이 차트로 쓴다."""
+    header = """chart difference
+title "정답률 차이(Codex 기록 − Claude 기록)"
+subtitle "점은 차이, 선은 작업 군집 부트스트랩 95% 신뢰구간, 점선은 −10%p"
+x "정답률 차이(%p)"
+decimals 1
+
+series difference "정답률 차이" role=main
+rule -10 "기준선"
+"""
+    rows = [{"label": f"받는 쪽 {r}", "difference": round(m["paired"]["diff"] * 100, 8),
+             "difference.low": round(m["bootstrap_ci95"][0] * 100, 8),
+             "difference.high": round(m["bootstrap_ci95"][1] * 100, 8)} for r, m in receivers.items()]
+    figures = os.path.join(RESULTS, "figures")
+    with open(os.path.join(figures, "differences.muto"), "w", encoding="utf-8") as handle:
+        handle.write(f'{header}data "differences.json"\n')
+    with open(os.path.join(figures, "differences.json"), "w", encoding="utf-8") as handle:
+        json.dump(rows, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+
+
 def main():
     cfg = common.params()
     trials, flow = read("trials.csv"), read("flow.csv")
@@ -117,23 +139,7 @@ def main():
         for r, m in {**c2, "pooled": pooled}.items():
             writer.writerow([r, m["n"], m["codex"]["k"], m["claude"]["k"], round(m["paired"]["diff"], 4), *[round(v, 4) for v in m["bootstrap_ci95"]],
                              round(m["paired"]["lower"], 4), round(m["paired"]["upper"], 4), m["verdict"]])
-    values = [{"receiver": f"받는 쪽 {r}", "diff": m["paired"]["diff"] * 100, "low": m["bootstrap_ci95"][0] * 100,
-               "high": m["bootstrap_ci95"][1] * 100} for r, m in c2.items()]
-    axis = {"field": "receiver", "type": "nominal", "title": None, "axis": {"labelLimit": 300}}
-    figure = {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": "정답률 차이(Codex 기록 − Claude 기록)",
-                  "subtitle": "점은 차이, 막대는 작업 군집 부트스트랩 95% 신뢰구간, 기준선은 −10%p"},
-        "width": 420, "height": 100, "data": {"values": values},
-        "layer": [
-            {"mark": {"type": "errorbar"}, "encoding": {"y": axis, "x": {"field": "low", "type": "quantitative", "title": "정답률 차이(%p)", "scale": {"domain": [-15, 15]}}, "x2": {"field": "high"}}},
-            {"mark": {"type": "point", "filled": True}, "encoding": {"y": axis, "x": {"field": "diff", "type": "quantitative"}}},
-            {"mark": "rule", "encoding": {"x": {"datum": -10}}},
-        ],
-    }
-    with open(os.path.join(RESULTS, "figures", "differences.vl.json"), "w", encoding="utf-8") as handle:
-        json.dump(figure, handle, ensure_ascii=False, indent=2)
-        handle.write("\n")
+    write_difference_chart(c2)
     print(c2_verdict, {r: (m["verdict"], round(m["paired"]["diff"], 3), m["bootstrap_ci95"]) for r, m in c2.items()})
 
 
