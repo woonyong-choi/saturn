@@ -144,6 +144,23 @@ impl Engine {
         Ok(id)
     }
 
+    /// 이 클라이언트가 그 채팅에 붙어 있어야 한다.
+    pub(crate) fn require_attached(
+        &self,
+        client: ClientId,
+        chat: ChatId,
+    ) -> Result<(), EngineError> {
+        let is_attached = self
+            .attachments
+            .get(&client)
+            .is_some_and(|attachment| attachment.chat == chat);
+        if is_attached {
+            Ok(())
+        } else {
+            Err(EngineError::ChatNotAttached { chat })
+        }
+    }
+
     /// 이 클라이언트가 붙은 채팅의 작업 폴더.
     pub(crate) fn attached_workdir(
         &self,

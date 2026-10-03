@@ -27,6 +27,8 @@ pub(crate) struct PendingPermission {
     pub(crate) agent: AgentId,
     pub(crate) provider: Provider,
     pub(crate) task: TaskId,
+    /// provider가 그 연결에서 붙인 요청 ID. 답은 이 ID로 돌려준다.
+    pub(crate) provider_request: String,
     /// `항상 허용` 답을 저장할 호출. 규칙으로 읽지 못한 요청은 `None`.
     pub(crate) call: Option<PermissionCall>,
 }
@@ -474,13 +476,15 @@ impl Engine {
         };
         let label = self.flow.tasks.assign(task);
         let waiting = self.waiting_in_chat(chat);
+        let engine_request = self.flow.issue_request_id();
         self.flow.permissions.insert(
-            request_id.to_owned(),
+            engine_request.clone(),
             PendingPermission {
                 chat,
                 agent: live.agent,
                 provider: live.provider,
                 task,
+                provider_request: request_id.to_owned(),
                 call: call.cloned(),
             },
         );
@@ -488,7 +492,7 @@ impl Engine {
             task,
             label,
             provider: live.provider,
-            request_id: request_id.to_owned(),
+            request_id: engine_request,
             summary: summary.to_owned(),
             reason: reason.to_owned(),
             waiting,
@@ -508,8 +512,8 @@ impl Engine {
     /// 저장해 판정하므로 provider에는 이번만 허용으로 보낸다.
     ///
     /// # Errors
-    /// 묻지 않은 요청이면 `UnexpectedAnswer`, 열린 session이 없으면 `Provider(NotSent)`. provider가 받지 못했으면
-    /// 요청을 그대로 두어 다시 답할 수 있다.
+    /// 묻지 않은 요청이면 `UnexpectedAnswer`, 답한 TUI가 그 요청의 채팅에 붙어 있지 않으면 `ChatNotAttached`, 열린
+    /// session이 없으면 `Provider(NotSent)`. provider가 받지 못했으면 요청을 그대로 두어 다시 답할 수 있다.
     pub(crate) async fn answer_permission(
         &mut self,
         client: ClientId,
@@ -522,6 +526,7 @@ impl Engine {
             .get(&request_id)
             .cloned()
             .ok_or(EngineError::UnexpectedAnswer { what: "permission" })?;
+        self.require_attached(client, pending.chat)?;
         let live =
             self.flow
                 .live
@@ -537,7 +542,7 @@ impl Engine {
             answer
         };
         self.provider_mut(pending.chat, pending.provider)?
-            .answer_permission(&live.provider_session, &request_id, sent)
+            .answer_permission(&live.provider_session, &pending.provider_request, sent)
             .await?;
         self.flow.permissions.remove(&request_id);
         if let (true, Some(call)) = (is_saved_here, &pending.call) {

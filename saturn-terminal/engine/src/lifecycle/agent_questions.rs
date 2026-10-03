@@ -195,8 +195,11 @@ async fn agent_questions_asked_before_the_claude_restart_reach_the_tui() {
             _ => None,
         })
         .await;
-    assert_eq!(asked, ("ask-1".to_owned(), Provider::Claude));
-    assert!(flow.engine.flow.inputs.contains_key("ask-1"));
+    assert_eq!(
+        (Some(asked.0), asked.1),
+        (flow.input_id("ask-1"), Provider::Claude)
+    );
+    assert!(flow.input_id("ask-1").is_some());
     assert!(!answered(&flow.fake));
 }
 
@@ -222,7 +225,7 @@ async fn agent_questions_asked_before_codex_is_switched_off_reach_the_tui() {
             _ => None,
         })
         .await;
-    assert_eq!(asked, "ask-2");
+    assert_eq!(Some(asked), flow.input_id("ask-2"));
     assert!(
         flow.engine
             .flow

@@ -6,11 +6,12 @@ use saturn_protocol::event::{PermissionTool, ProviderEvent};
 use saturn_protocol::ids::{AgentId, Provider};
 use saturn_protocol::rpc::{ChatNotice, Notification, PermissionAnswer};
 
-use super::support::{Flow, idle_reply, permission, permission_for, turn_completed};
+use super::support::{
+    CLIENT, Flow, OTHER_CLIENT, idle_reply, permission, permission_for, turn_completed,
+};
 use super::*;
 use crate::chat_env::ChatEnv;
 use crate::providers::test_support::Call;
-use crate::rpc::ClientId;
 
 const ALLOW_CARGO_TEST: &str = "[permission.shell]\n\"cargo test\" = \"allow\"\n";
 
@@ -82,7 +83,7 @@ async fn rule_ask_goes_to_the_tui_and_waits_for_the_answer() {
 
     assert!(answers(&flow).is_empty());
     assert!(is_asked(&client.window().await));
-    assert!(flow.engine.flow.permissions.contains_key("r1"));
+    assert!(flow.permission_id("r1").is_some());
 }
 
 #[tokio::test]
@@ -110,7 +111,7 @@ async fn edit_inside_the_workdir_is_allowed_and_outside_is_asked_in_edit_mode() 
         answers(&flow),
         vec![("inside".to_owned(), PermissionAnswer::AllowOnce)]
     );
-    assert!(flow.engine.flow.permissions.contains_key("outside"));
+    assert!(flow.permission_id("outside").is_some());
 }
 
 #[tokio::test]
@@ -137,7 +138,7 @@ async fn edit_inside_an_added_folder_is_allowed_like_the_workdir_in_edit_mode() 
         answers(&flow),
         vec![("added".to_owned(), PermissionAnswer::AllowOnce)]
     );
-    assert!(flow.engine.flow.permissions.contains_key("sibling"));
+    assert!(flow.permission_id("sibling").is_some());
 }
 
 #[tokio::test]
@@ -162,7 +163,7 @@ async fn run_layer_rules_follow_the_user_rules() {
     flow.claude_event(shell(agent, "r1", "cargo test")).await;
 
     assert!(answers(&flow).is_empty());
-    assert!(flow.engine.flow.permissions.contains_key("r1"));
+    assert!(flow.permission_id("r1").is_some());
 }
 
 #[tokio::test]
@@ -175,8 +176,7 @@ async fn always_allow_is_stored_in_records() {
     flow.claude_event(shell(agent, "r1", "cargo test && make"))
         .await;
 
-    flow.engine
-        .answer_permission(ClientId(99), "r1".to_owned(), PermissionAnswer::AllowAlways)
+    flow.answer_permission("r1", PermissionAnswer::AllowAlways)
         .await
         .unwrap();
 
@@ -205,8 +205,7 @@ async fn always_allow_is_stored_in_records() {
 async fn always_allow_is_kept_per_workdir() {
     let (mut flow, agent) = started("").await;
     flow.claude_event(shell(agent, "r1", "cargo test")).await;
-    flow.engine
-        .answer_permission(ClientId(99), "r1".to_owned(), PermissionAnswer::AllowAlways)
+    flow.answer_permission("r1", PermissionAnswer::AllowAlways)
         .await
         .unwrap();
 
@@ -249,8 +248,7 @@ async fn always_allow_for_an_unreadable_request_goes_to_the_provider_as_given() 
     let (mut flow, agent) = started("").await;
     flow.claude_event(permission(agent, "r1")).await;
 
-    flow.engine
-        .answer_permission(ClientId(99), "r1".to_owned(), PermissionAnswer::AllowAlways)
+    flow.answer_permission("r1", PermissionAnswer::AllowAlways)
         .await
         .unwrap();
 
@@ -290,7 +288,7 @@ async fn mode_change_applies_next_request() {
         .unwrap();
     flow.claude_event(shell(agent, "r3", "touch c")).await;
 
-    assert!(flow.engine.flow.permissions.contains_key("r1"));
+    assert!(flow.permission_id("r1").is_some());
     assert_eq!(
         answers(&flow),
         vec![
@@ -355,7 +353,7 @@ async fn rule_answer_that_the_provider_does_not_take_falls_back_to_the_user() {
 
     flow.claude_event(shell(agent, "r1", "cargo test")).await;
 
-    assert!(flow.engine.flow.permissions.contains_key("r1"));
+    assert!(flow.permission_id("r1").is_some());
 }
 
 #[tokio::test]
@@ -596,4 +594,84 @@ async fn stale_codex_connection_waits_while_the_chat_is_running() {
             .stale_connections
             .contains(&(flow.chat, Provider::Codex))
     );
+}
+
+// #295: 채팅마다 따로 번호를 매기는 provider가 같은 요청 ID를 보내도 요청과 답이 섞이지 않는다
+#[tokio::test]
+async fn same_provider_request_id_in_two_chats_keeps_both_and_answers_stay_apart() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    flow.submit("fix the build").await;
+    let first_agent = flow.agent();
+    let other = flow.open_other_chat().await;
+
+    flow.claude_event(permission(first_agent, "1")).await;
+    flow.claude_event(permission(other.agent, "1")).await;
+    let (first_id, other_id) = {
+        let mut ids: Vec<(String, saturn_protocol::ids::ChatId)> = flow
+            .engine
+            .flow
+            .permissions
+            .iter()
+            .map(|(id, pending)| (id.clone(), pending.chat))
+            .collect();
+        ids.sort_by_key(|(_, chat)| *chat == other.chat);
+        (ids[0].0.clone(), ids[1].0.clone())
+    };
+    assert_ne!(first_id, other_id);
+    assert_eq!(flow.engine.flow.permissions.len(), 2);
+
+    flow.engine
+        .answer_permission(OTHER_CLIENT, other_id, PermissionAnswer::AllowOnce)
+        .await
+        .unwrap();
+
+    assert!(answers(&flow).is_empty());
+    assert_eq!(
+        other
+            .fake
+            .calls()
+            .iter()
+            .filter(|call| matches!(
+                call,
+                Call::AnswerPermission { request_id, answer: PermissionAnswer::AllowOnce, .. } if request_id == "1"
+            ))
+            .count(),
+        1
+    );
+    assert!(flow.engine.flow.permissions.contains_key(&first_id));
+    flow.engine
+        .answer_permission(CLIENT, first_id, PermissionAnswer::Deny { note: None })
+        .await
+        .unwrap();
+    assert_eq!(
+        answers(&flow),
+        vec![("1".to_owned(), PermissionAnswer::Deny { note: None })]
+    );
+}
+
+#[tokio::test]
+async fn permission_answer_from_a_tui_attached_to_another_chat_is_refused() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    flow.submit("fix the build").await;
+    let first_agent = flow.agent();
+    let other = flow.open_other_chat().await;
+    flow.claude_event(permission(first_agent, "1")).await;
+    let id = flow.permission_id("1").unwrap();
+
+    let error = flow
+        .engine
+        .answer_permission(OTHER_CLIENT, id.clone(), PermissionAnswer::AllowOnce)
+        .await
+        .unwrap_err();
+
+    assert!(matches!(error, EngineError::ChatNotAttached { .. }));
+    assert!(answers(&flow).is_empty());
+    assert!(
+        other
+            .fake
+            .calls()
+            .iter()
+            .all(|call| !matches!(call, Call::AnswerPermission { .. }))
+    );
+    assert!(flow.engine.flow.permissions.contains_key(&id));
 }

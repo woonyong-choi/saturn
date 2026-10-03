@@ -120,10 +120,12 @@ pub(crate) struct FlowState {
     pub(crate) context_tokens: HashMap<AgentId, Option<u64>>,
     /// 패킷 턴 수. 그 턴의 완료는 작업 끝이 아니다.
     pub(crate) packet_turns: HashMap<AgentId, u32>,
-    /// 답을 기다리는 허가 요청. 키는 `request_id`.
+    /// 답을 기다리는 허가 요청. 키는 engine이 발급해 TUI에 보낸 요청 ID이고 provider 요청 ID와 다르다.
     pub(crate) permissions: HashMap<String, PendingPermission>,
-    /// 답을 기다리는 입력 요청. 키는 `request_id`.
+    /// 답을 기다리는 입력 요청. 키는 허가 요청과 같은 engine 요청 ID.
     pub(crate) inputs: HashMap<String, PendingInput>,
+    /// 다음에 발급할 요청 번호. 허가 요청과 입력 요청이 함께 쓴다.
+    next_request: u64,
     /// 에이전트가 가장 나중에 시작한 입력의 설정 번호. 허가 요청 판정이 그 번호의 규칙을 쓴다.
     pub(crate) settings_of: HashMap<AgentId, SettingsRevision>,
     /// 채팅의 Codex 연결을 시작할 때 쓴 규칙 지문. 연결이 없으면 항목도 없다.
@@ -162,6 +164,7 @@ impl Default for FlowState {
             packet_turns: HashMap::new(),
             permissions: HashMap::new(),
             inputs: HashMap::new(),
+            next_request: 0,
             settings_of: HashMap::new(),
             rules_of_connection: HashMap::new(),
             stale_connections: HashSet::new(),
@@ -183,6 +186,16 @@ impl Default for FlowState {
             tasks: TaskBook::default(),
             live: HashMap::new(),
         }
+    }
+}
+
+impl FlowState {
+    // cost: time O(1), heap O(1), stack O(1), alloc 1
+    // basis: estimate
+    /// provider 요청 ID와 상관없이 engine이 사는 동안 겹치지 않는 요청 ID.
+    pub(crate) fn issue_request_id(&mut self) -> String {
+        self.next_request += 1;
+        format!("saturn-{}", self.next_request)
     }
 }
 

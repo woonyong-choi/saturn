@@ -25,13 +25,7 @@ impl Engine {
         chat: ChatId,
         path: &str,
     ) -> Result<(), EngineError> {
-        let is_attached = self
-            .attachments
-            .get(&client)
-            .is_some_and(|attachment| attachment.chat == chat);
-        if !is_attached {
-            return Err(EngineError::ChatNotAttached { chat });
-        }
+        self.require_attached(client, chat)?;
         let dir = resolve_folder(path)?;
         if self.register_dir(chat, dir.clone()).await? {
             let applies_from_next_session = self.sessions.live_main(chat).is_some();

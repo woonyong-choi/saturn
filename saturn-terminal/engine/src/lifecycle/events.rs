@@ -11,7 +11,6 @@ use super::support::{
 };
 use super::*;
 use crate::providers::test_support::Call;
-use crate::rpc::ClientId;
 
 #[tokio::test]
 async fn event_is_recorded_before_it_reaches_the_screen_and_the_state() {
@@ -239,15 +238,11 @@ async fn permission_request_reaches_the_tui_and_the_answer_reaches_the_provider(
             _ => None,
         })
         .await;
-    assert_eq!((request_id.as_str(), provider), ("req-1", Provider::Claude));
+    assert_eq!(Some(request_id), flow.permission_id("req-1"));
+    assert_eq!(provider, Provider::Claude);
     assert_eq!(waiting, TaskState::AwaitingPermission);
 
-    flow.engine
-        .answer_permission(
-            ClientId(99),
-            "req-1".to_owned(),
-            PermissionAnswer::AllowOnce,
-        )
+    flow.answer_permission("req-1", PermissionAnswer::AllowOnce)
         .await
         .unwrap();
 
@@ -271,8 +266,7 @@ async fn answer_for_a_request_nobody_asked_is_refused() {
     flow.submit("fix the build").await;
 
     let error = flow
-        .engine
-        .answer_permission(ClientId(99), "nope".to_owned(), PermissionAnswer::AllowOnce)
+        .answer_permission("nope", PermissionAnswer::AllowOnce)
         .await
         .unwrap_err();
 
@@ -291,14 +285,8 @@ async fn answer_the_provider_did_not_take_keeps_the_request_for_another_try() {
         })]);
     let deny = PermissionAnswer::Deny { note: None };
 
-    let first = flow
-        .engine
-        .answer_permission(ClientId(99), "req-1".to_owned(), deny.clone())
-        .await;
-    let second = flow
-        .engine
-        .answer_permission(ClientId(99), "req-1".to_owned(), deny)
-        .await;
+    let first = flow.answer_permission("req-1", deny.clone()).await;
+    let second = flow.answer_permission("req-1", deny).await;
 
     assert!(matches!(first, Err(EngineError::Provider(_))));
     assert!(second.is_ok());
@@ -312,6 +300,7 @@ async fn turn_end_withdraws_requests_nobody_answered() {
     let agent = flow.agent();
     let mut client = flow.client().await;
     flow.claude_event(permission(agent, "req-1")).await;
+    let engine_request = flow.permission_id("req-1");
 
     flow.claude_event(turn_completed(agent)).await;
 
@@ -321,6 +310,6 @@ async fn turn_end_withdraws_requests_nobody_answered() {
             _ => None,
         })
         .await;
-    assert_eq!(resolved, "req-1");
+    assert_eq!(Some(resolved), engine_request);
     assert!(flow.engine.flow.permissions.is_empty());
 }
