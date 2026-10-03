@@ -258,7 +258,8 @@ impl Engine {
         Ok(env.workdir().to_path_buf())
     }
 
-    /// 규칙을 읽지 못하면 묻는다. 호출을 규칙으로 읽지 못한 요청(`call`이 없음)도 묻는다.
+    /// 규칙을 읽지 못하면 묻는다. 호출을 규칙으로 읽지 못한 요청(`call`이 없음)도 묻는다. 읽기 전용으로 접수한 실행은
+    /// 쓰기 잠금 없이 도는 중이라 모드를 올려도 읽기 전용으로 판정하고, 그 때문에 판정이 달라지면 사용자에게 알린다.
     pub(crate) async fn router_permission(
         &self,
         chat: ChatId,
@@ -268,13 +269,27 @@ impl Engine {
         let Some(call) = call else {
             return Verdict::Ask;
         };
-        match self.permission_policy(chat, agent).await {
-            Ok(policy) => policy.decide(&resolved(&policy.workdir, call)),
+        let mut policy = match self.permission_policy(chat, agent).await {
+            Ok(policy) => policy,
             Err(error) => {
                 tracing::warn!(error = %self.failure_line(&error), "permission rules not read, asking the user");
-                Verdict::Ask
+                return Verdict::Ask;
             }
+        };
+        let call = resolved(&policy.workdir, call);
+        let verdict = policy.decide(&call);
+        if verdict == Verdict::Deny
+            || self.queue.running_permission(agent) != Some(Permission::ReadOnly)
+        {
+            return verdict;
         }
+        policy.mode = Mode::ReadOnly;
+        policy.always.clear();
+        let kept = policy.decide(&call);
+        if kept != verdict {
+            self.notify_chat(chat, ChatNotice::ReadOnlyRunKept).await;
+        }
+        kept
     }
 
     /// `항상 허용` 답이 온 호출의 허용 규칙을 작업 폴더에 저장한다. 저장하지 못해도 이번 허용은 이미 나갔으므로

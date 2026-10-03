@@ -7,7 +7,8 @@ use saturn_protocol::ids::{AgentId, Provider};
 use saturn_protocol::rpc::{ChatNotice, Notification, PermissionAnswer};
 
 use super::support::{
-    CLIENT, Flow, OTHER_CLIENT, idle_reply, permission, permission_for, turn_completed,
+    CLIENT, Flow, OTHER_CLIENT, idle_reply, permission, permission_for, running_reply,
+    turn_completed,
 };
 use super::*;
 use crate::chat_env::ChatEnv;
@@ -674,4 +675,64 @@ async fn permission_answer_from_a_tui_attached_to_another_chat_is_refused() {
             .all(|call| !matches!(call, Call::AnswerPermission { .. }))
     );
     assert!(flow.engine.flow.permissions.contains_key(&id));
+}
+
+#[tokio::test]
+async fn running_read_only_task_keeps_its_acceptance_permission_after_a_mode_change() {
+    let mut flow = Flow::with_config(
+        "[permission]\nmode = \"read-only\"\n",
+        vec![idle_reply(0.95), running_reply(0.9, "independent", "spawn")],
+    )
+    .await;
+    flow.submit("look around").await;
+    let reader = flow.agent();
+    flow.engine
+        .set_permission_mode(flow.chat, "edit")
+        .await
+        .unwrap();
+    flow.submit("write the cache module").await;
+    let writer = flow
+        .engine
+        .flow
+        .live
+        .keys()
+        .copied()
+        .find(|agent| *agent != reader)
+        .expect("the write task should have its own agent");
+    let inside = flow.fixture.workdir.join("src/a.rs").display().to_string();
+    let mut client = flow.client().await;
+
+    flow.claude_event(permission_for(
+        writer,
+        "writer",
+        PermissionTool::Edit,
+        "",
+        &[&inside],
+    ))
+    .await;
+    flow.claude_event(permission_for(
+        reader,
+        "reader",
+        PermissionTool::Edit,
+        "",
+        &[&inside],
+    ))
+    .await;
+
+    assert_eq!(
+        answers(&flow),
+        vec![
+            ("writer".to_owned(), PermissionAnswer::AllowOnce),
+            ("reader".to_owned(), PermissionAnswer::Deny { note: None }),
+        ]
+    );
+    client
+        .until(|notification| match notification {
+            Notification::ChatNotice {
+                notice: ChatNotice::ReadOnlyRunKept,
+                ..
+            } => Some(()),
+            _ => None,
+        })
+        .await;
 }

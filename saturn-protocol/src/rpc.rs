@@ -398,6 +398,8 @@ pub enum ChatNotice {
     },
     /// 권한 규칙이 바뀌었고 다음 요청부터 적용한다.
     PermissionsChanged,
+    /// 읽기 전용으로 접수한 실행이 쓰기 허가를 요청해 접수 때 권한대로 거부했다. 쓰려면 새 입력으로 보내야 한다.
+    ReadOnlyRunKept,
     /// 크래시 뒤 증명되지 않은 실행을 보류했다.
     ResumeSuggested {
         held: Vec<TaskLabel>,

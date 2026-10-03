@@ -545,6 +545,9 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         ChatNotice::PermissionsChanged => {
             vec![format!("{prefix}{}", lang.tr(i18n::PERMISSIONS_CHANGED))]
         }
+        ChatNotice::ReadOnlyRunKept => {
+            vec![format!("{prefix}{}", lang.tr(i18n::READ_ONLY_RUN_KEPT))]
+        }
         ChatNotice::ResumeSuggested { held } => vec![format!(
             "{} {} · {}",
             held_labels(held),

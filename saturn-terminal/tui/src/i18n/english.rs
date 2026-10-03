@@ -257,6 +257,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "권한 설정 변경됨 · 다음 요청부터 적용됩니다",
         "Permission settings changed · Applies from your next request",
     ),
+    (
+        "읽기 전용으로 접수한 작업의 쓰기를 거부함 · 쓰려면 새 입력으로 보내세요",
+        "Denied a write from a task accepted as read-only · Send a new input to write",
+    ),
     ("전달 중", "Delivering"),
     ("반영됨", "Applied"),
     ("실패", "Failed"),

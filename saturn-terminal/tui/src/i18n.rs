@@ -87,6 +87,8 @@ pub const COMPACTED: &str = "맥락 정리 후 이어서 진행";
 /// `{provider}`는 다시 시작한 provider 이름.
 pub const PROVIDER_RESTARTED: &str = "{provider} 다시 시작함 · 변경된 권한 설정을 적용했습니다";
 pub const PERMISSIONS_CHANGED: &str = "권한 설정 변경됨 · 다음 요청부터 적용됩니다";
+pub const READ_ONLY_RUN_KEPT: &str =
+    "읽기 전용으로 접수한 작업의 쓰기를 거부함 · 쓰려면 새 입력으로 보내세요";
 pub const CONTEXT_DEFERRED: &str = "고정 제약이 길어 맥락 정리를 미룹니다";
 pub const PACKET_OVERFLOW: &str = "맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요";
 pub const SWITCHED_SUFFIX: &str = "로 전환";
