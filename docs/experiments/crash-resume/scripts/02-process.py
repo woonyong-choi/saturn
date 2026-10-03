@@ -42,11 +42,22 @@ def public_row(row: dict) -> dict:
 def write_csv(rows: list[dict]) -> bytes:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     fields = [
-        "run_id", "trial_id", "condition", "ts_utc", "provider", "model", "request_result",
-        "marker_start_count", "marker_complete_count", "marker_touch_count",
-        "resume_child_execution", "observation_status", "private_log",
+        "run_id",
+        "trial_id",
+        "condition",
+        "ts_utc",
+        "provider",
+        "model",
+        "request_result",
+        "marker_start_count",
+        "marker_complete_count",
+        "marker_touch_count",
+        "resume_child_execution",
+        "observation_status",
+        "private_log",
     ]
     from io import StringIO
+
     buffer = StringIO(newline="")
     writer = csv.DictWriter(buffer, fieldnames=fields, lineterminator="\n")
     writer.writeheader()

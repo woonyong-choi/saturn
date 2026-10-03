@@ -13,6 +13,7 @@ RAW = ROOT / "data" / "raw"
 RESULTS = ROOT / "results"
 SUMMARY = RESULTS / "summary.json"
 TABLE = RESULTS / "tables" / "conditions.csv"
+ENV = ROOT / "env.json"
 
 
 def rows() -> list[dict]:
@@ -35,7 +36,13 @@ def wilson(k: int, n: int) -> list[float]:
 
 
 def condition_result(condition: str, values: list[dict]) -> dict:
-    observed = [row.get("resume_child_execution") for row in values]
+    observed = [
+        row.get("resume_child_execution")
+        if row.get("marker_start_count", 0) > 0
+        and row.get("request_result") not in {"error_or_timeout", "timeout"}
+        else None
+        for row in values
+    ]
     known = [value for value in observed if value is not None]
     k = sum(value is True for value in known)
     n = len(known)
@@ -77,37 +84,66 @@ def analyze() -> dict:
     grouped = defaultdict(list)
     for value in rows():
         grouped[value["condition"]].append(value)
-    condition_results = [condition_result(condition, grouped[condition]) for condition in sorted(grouped)]
+    condition_results = [
+        condition_result(condition, grouped[condition]) for condition in sorted(grouped)
+    ]
     expected_conditions = [
-        "codex.raw-resume", "codex.cleaned-resume",
-        "claude.resume-env-present", "claude.resume-env-absent",
+        "codex.raw-resume",
+        "codex.cleaned-resume",
+        "claude.resume-env-present",
+        "claude.resume-env-absent",
     ]
     hypotheses = []
     for index, condition in enumerate(expected_conditions, 1):
-        result = next((item for item in condition_results if item["condition"] == condition), None)
-        hypotheses.append({"hypothesis": f"H{index}", "condition": condition, "result": result})
-    exploratory = [item for item in condition_results if item["condition"] == "claude.task-subagent"]
+        result = next(
+            (item for item in condition_results if item["condition"] == condition), None
+        )
+        hypotheses.append(
+            {"hypothesis": f"H{index}", "condition": condition, "result": result}
+        )
+    exploratory = [
+        item
+        for item in condition_results
+        if item["condition"] == "claude.task-subagent"
+    ]
+    environment = json.loads(ENV.read_text(encoding="utf-8"))
     return {
         "experiment": "crash-resume",
         "conditions": condition_results,
         "hypotheses": hypotheses,
         "exploratory": exploratory,
-        "model_calls": {
-            "codex": sum(row.get("model_calls", 0) for row in rows() if row.get("provider") == "codex"),
-            "claude": sum(row.get("model_calls", 0) for row in rows() if row.get("provider") == "claude"),
-        },
+        "model_calls": environment.get("model_calls", {}),
     }
 
 
 def write_results(summary: dict) -> None:
     RESULTS.mkdir(parents=True, exist_ok=True)
     TABLE.parent.mkdir(parents=True, exist_ok=True)
-    summary_bytes = (json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
-    table_fields = ["condition", "n", "known_n", "rerun_count", "rerun_rate", "rerun_wilson_95", "status", "verdict"]
+    summary_bytes = (
+        json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    table_fields = [
+        "condition",
+        "n",
+        "known_n",
+        "rerun_count",
+        "rerun_rate",
+        "rerun_wilson_95",
+        "status",
+        "verdict",
+    ]
     table_rows = []
     for item in summary["conditions"]:
-        table_rows.append({key: json.dumps(item[key], ensure_ascii=False) if isinstance(item[key], list) else item[key] for key in table_fields})
+        table_rows.append(
+            {
+                key: json.dumps(item[key], ensure_ascii=False)
+                if isinstance(item[key], list)
+                else item[key]
+                for key in table_fields
+            }
+        )
     from io import StringIO
+
     buffer = StringIO(newline="")
     writer = csv.DictWriter(buffer, fieldnames=table_fields, lineterminator="\n")
     writer.writeheader()
@@ -116,7 +152,12 @@ def write_results(summary: dict) -> None:
     if "--check" not in sys.argv:
         SUMMARY.write_bytes(summary_bytes)
         TABLE.write_bytes(table_bytes)
-    elif not SUMMARY.exists() or SUMMARY.read_bytes() != summary_bytes or not TABLE.exists() or TABLE.read_bytes() != table_bytes:
+    elif (
+        not SUMMARY.exists()
+        or SUMMARY.read_bytes() != summary_bytes
+        or not TABLE.exists()
+        or TABLE.read_bytes() != table_bytes
+    ):
         raise SystemExit("results가 raw와 다릅니다")
 
 

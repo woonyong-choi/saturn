@@ -29,7 +29,16 @@ def redact(value):
     if isinstance(value, dict):
         result = {}
         for key, item in value.items():
-            if any(word in str(key).lower() for word in ("token", "secret", "authorization", "password", "credential")):
+            if any(
+                word in str(key).lower()
+                for word in (
+                    "token",
+                    "secret",
+                    "authorization",
+                    "password",
+                    "credential",
+                )
+            ):
                 result[key] = "[redacted]"
             else:
                 result[key] = redact(item)
@@ -51,7 +60,10 @@ def private_log(name: str, events: list[dict]) -> str:
     path = PRIVATE / name
     with path.open("w", encoding="utf-8", newline="\n") as stream:
         for event in events:
-            stream.write(json.dumps(redact(event), ensure_ascii=False, separators=(",", ":")) + "\n")
+            stream.write(
+                json.dumps(redact(event), ensure_ascii=False, separators=(",", ":"))
+                + "\n"
+            )
     return str(path.relative_to(MAIN_REPO))
 
 
@@ -77,13 +89,17 @@ class LineProcess:
         return self.proc.pid
 
     def send(self, value: dict) -> None:
-        data = (json.dumps(value, ensure_ascii=False, separators=(",", ":")) + "\n").encode()
+        data = (
+            json.dumps(value, ensure_ascii=False, separators=(",", ":")) + "\n"
+        ).encode()
         try:
             self.proc.stdin.write(data)
             self.proc.stdin.flush()
         except (BrokenPipeError, OSError):
             return
-        self.events.append({"direction": "out", "ts_ns": time.time_ns(), "message": value})
+        self.events.append(
+            {"direction": "out", "ts_ns": time.time_ns(), "message": value}
+        )
 
     def pump(self, timeout: float = 0.25) -> list[dict]:
         messages = []
@@ -106,19 +122,51 @@ class LineProcess:
                     message = json.loads(text)
                 except json.JSONDecodeError:
                     message = {"type": "non_json", "text": text}
-                event = {"direction": "in", "rawByteReceivedAtNs": received, "message": message}
+                event = {
+                    "direction": "in",
+                    "rawByteReceivedAtNs": received,
+                    "message": message,
+                }
                 self.events.append(event)
                 messages.append(message)
             if len(chunk) < 65536:
                 break
         return messages
 
-    def kill_self(self) -> None:
-        if self.proc.poll() is None:
+    def _descendants(self) -> list[int]:
+        result = subprocess.run(
+            ["ps", "-axo", "pid=,ppid="], capture_output=True, text=True, check=False
+        )
+        children: dict[int, list[int]] = {}
+        for line in result.stdout.splitlines():
+            fields = line.split()
+            if len(fields) != 2:
+                continue
+            pid, parent = (int(value) for value in fields)
+            children.setdefault(parent, []).append(pid)
+        pending = [self.proc.pid]
+        descendants = []
+        while pending:
+            parent = pending.pop()
+            for child in children.get(parent, []):
+                descendants.append(child)
+                pending.append(child)
+        return descendants
+
+    def _kill_tree(self, signum: int) -> None:
+        for pid in reversed(self._descendants()):
             try:
-                os.kill(self.proc.pid, signal.SIGKILL)
+                os.kill(pid, signum)
             except ProcessLookupError:
                 pass
+        try:
+            os.kill(self.proc.pid, signum)
+        except ProcessLookupError:
+            pass
+
+    def kill_self(self) -> None:
+        if self.proc.poll() is None:
+            self._kill_tree(signal.SIGKILL)
         try:
             self.proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
@@ -128,13 +176,10 @@ class LineProcess:
         self.selector.close()
         if self.proc.poll() is None:
             try:
-                os.kill(self.proc.pid, signal.SIGTERM)
+                self._kill_tree(signal.SIGTERM)
                 self.proc.wait(timeout=3)
             except (ProcessLookupError, subprocess.TimeoutExpired):
-                try:
-                    os.kill(self.proc.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
+                self._kill_tree(signal.SIGKILL)
         try:
             return redact(self.proc.stderr.read().decode("utf-8", errors="replace"))
         except OSError:
@@ -166,8 +211,8 @@ def marker_prompt(events: Path, done: Path, invocation_id: str, task_text: str) 
     event_path = events.relative_to(WORKTREE)
     done_path = done.relative_to(WORKTREE)
     command = (
-        f"sh -c 'printf \"start:{invocation_id}:$\\$\\n\" >> {event_path}; "
-        f"sleep 30; printf \"complete:{invocation_id}:$\\$\\n\" >> {event_path}; touch {done_path}'"
+        f'sh -c \'printf "start:{invocation_id}:$\\$\\n" >> {event_path}; '
+        f'sleep 30; printf "complete:{invocation_id}:$\\$\\n" >> {event_path}; touch {done_path}\''
     ).replace("$\\$", "$$")
     return f"{task_text} Use exactly this harmless command and do not do anything else: {command}"
 
@@ -178,13 +223,15 @@ def model_call_count(events: list[dict], provider: str) -> int:
             1
             for event in events
             if event.get("direction") == "in"
-            and event.get("message", {}).get("method") == "rawResponse/completed"
+            and event.get("message", {}).get("method") == "turn/started"
         )
     return sum(
         1
         for event in events
         if event.get("direction") == "in"
         and event.get("message", {}).get("type") == "assistant"
+        and not event.get("message", {}).get("is_api_error_message", False)
+        and not event.get("message", {}).get("error")
     )
 
 
@@ -200,7 +247,8 @@ def setup_codex_home(trial_id: str) -> Path:
     home = WORKTREE / ".runtime" / "codex-homes" / trial_id
     (home / "rules").mkdir(parents=True, exist_ok=True)
     (home / "config.toml").write_text(
-        'approval_policy = "never"\nsandbox_mode = "workspace-write"\n', encoding="utf-8"
+        'approval_policy = "never"\nsandbox_mode = "workspace-write"\n',
+        encoding="utf-8",
     )
     (home / "rules" / "default.rules").write_text("", encoding="utf-8")
     source = Path.home() / ".codex" / "auth.json"
@@ -231,7 +279,14 @@ class CodexDriver(LineProcess):
     def request(self, method: str, params=None, timeout: float = 30.0):
         request_id = self.next_id
         self.next_id += 1
-        self.send({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params or {}})
+        self.send(
+            {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "method": method,
+                "params": params or {},
+            }
+        )
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             for message in self.pump(0.25):
@@ -246,30 +301,58 @@ class CodexDriver(LineProcess):
 
     def answer_server_request(self, message: dict) -> None:
         method = message.get("method", "")
-        if method.endswith("requestApproval") or method in {"execCommandApproval", "applyPatchApproval"}:
-            self.send({"jsonrpc": "2.0", "id": message["id"], "result": {"decision": "accept"}})
+        if method.endswith("requestApproval") or method in {
+            "execCommandApproval",
+            "applyPatchApproval",
+        }:
+            self.send(
+                {
+                    "jsonrpc": "2.0",
+                    "id": message["id"],
+                    "result": {"decision": "accept"},
+                }
+            )
         elif method == "item/tool/requestUserInput":
             questions = message.get("params", {}).get("questions", [])
             answers = {
-                question.get("id", "question"): {"answers": [question.get("options", [{}])[0].get("label", "계속")]}
+                question.get("id", "question"): {
+                    "answers": [question.get("options", [{}])[0].get("label", "계속")]
+                }
                 for question in questions
             }
-            self.send({"jsonrpc": "2.0", "id": message["id"], "result": {"answers": answers}})
+            self.send(
+                {"jsonrpc": "2.0", "id": message["id"], "result": {"answers": answers}}
+            )
 
     def initialize(self):
-        result = self.request("initialize", {"clientInfo": {"name": "crash-resume", "version": "1"}})
+        result = self.request(
+            "initialize", {"clientInfo": {"name": "crash-resume", "version": "1"}}
+        )
         self.send({"jsonrpc": "2.0", "method": "initialized"})
         return result
 
     def start_thread(self):
-        return self.request("thread/start", {
-            "cwd": str(WORKTREE), "model": CODEX_MODEL, "ephemeral": False,
-            "approvalPolicy": "never", "sandbox": "workspace-write",
-        })
+        return self.request(
+            "thread/start",
+            {
+                "cwd": str(WORKTREE),
+                "model": CODEX_MODEL,
+                "ephemeral": False,
+                "approvalPolicy": "never",
+                "sandbox": "workspace-write",
+            },
+        )
 
 
 class ClaudeDriver(LineProcess):
-    def __init__(self, session_id: str, config: Path, resume: bool, resume_env: bool, task: bool = False):
+    def __init__(
+        self,
+        session_id: str,
+        config: Path,
+        resume: bool,
+        resume_env: bool,
+        task: bool = False,
+    ):
         env = os.environ.copy()
         env["CLAUDE_CONFIG_DIR"] = str(config)
         if resume_env:
@@ -277,10 +360,24 @@ class ClaudeDriver(LineProcess):
         else:
             env.pop("CLAUDE_CODE_RESUME_INTERRUPTED_TURN", None)
         args = [
-            "claude", "-p", "--input-format", "stream-json", "--output-format", "stream-json",
-            "--verbose", "--strict-mcp-config", "--setting-sources", "user",
-            "--model", CLAUDE_MODEL, "--permission-prompt-tool", "stdio",
-            "--permission-mode", "manual", "--tools", "Bash",
+            "claude",
+            "-p",
+            "--input-format",
+            "stream-json",
+            "--output-format",
+            "stream-json",
+            "--verbose",
+            "--strict-mcp-config",
+            "--setting-sources",
+            "user",
+            "--model",
+            CLAUDE_MODEL,
+            "--permission-prompt-tool",
+            "stdio",
+            "--permission-mode",
+            "manual",
+            "--tools",
+            "Bash",
         ]
         if task:
             args.extend(["Task"])
@@ -291,14 +388,29 @@ class ClaudeDriver(LineProcess):
         super().__init__(args, env)
 
     def send_user(self, text: str) -> None:
-        self.send({"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": text}]}})
+        self.send(
+            {
+                "type": "user",
+                "message": {
+                    "role": "user",
+                    "content": [{"type": "text", "text": text}],
+                },
+            }
+        )
 
     def allow_control_request(self, message: dict) -> None:
         request = message.get("request", {})
         response = {"behavior": "allow", "updatedInput": request.get("input", {})}
-        self.send({"type": "control_response", "response": {
-            "subtype": "success", "request_id": message.get("request_id"), "response": response,
-        }})
+        self.send(
+            {
+                "type": "control_response",
+                "response": {
+                    "subtype": "success",
+                    "request_id": message.get("request_id"),
+                    "response": response,
+                },
+            }
+        )
 
     def wait_initialised(self, timeout: float = 60.0) -> bool:
         deadline = time.monotonic() + timeout
