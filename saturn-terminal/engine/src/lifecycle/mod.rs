@@ -8,6 +8,7 @@ mod deliver;
 mod events;
 mod inputs;
 mod intake;
+mod live_settings;
 mod model;
 mod outcomes;
 mod packet_overflow;

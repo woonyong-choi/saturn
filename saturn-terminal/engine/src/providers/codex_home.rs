@@ -32,8 +32,8 @@ const MCP_STARTUP_GRACE_MS: i64 = 12_000;
 /// 폴더 이름에 쓰는 규칙 지문의 글자 수. 초안.
 const HOME_NAME_LEN: usize = 16;
 
-/// 에이전트 질문(`item/tool/requestUserInput`)을 켜는 기능 이름. `[features]`와 실행 중
-/// `experimentalFeature/enablement/set`이 같은 이름을 쓴다.
+/// 에이전트 질문(`item/tool/requestUserInput`)을 켜는 `[features]` 기능 이름. 실행 중 바꾸는 요청은 효과가 없어
+/// (docs/experiments/codex-live-reload) 질문 설정은 생성 설정에 쓰고 연결을 다시 시작해 적용한다.
 pub(super) const QUESTIONS_FEATURE: &str = "default_mode_request_user_input";
 
 /// 질문을 끈 폴더 이름 끝에 붙인다. 같은 규칙에 질문 설정이 다른 채팅이 생성 설정을 덮어쓰지 않게 한다. 초안.

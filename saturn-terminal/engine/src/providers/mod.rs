@@ -141,22 +141,6 @@ impl ProviderConnection {
         }
     }
 
-    /// 에이전트 질문 기능을 실행 중인 연결에서 켜고 끈다. Codex만 실행 중 바꿀 수 있다. Claude는 실행 인자라 연결을
-    /// 다시 시작해야 해서 `NotSent`다.
-    ///
-    /// # Errors
-    /// provider가 거절하면 `NotSent`, 연결이 끊겼으면 `ConnectionLost`.
-    pub async fn set_agent_questions(&mut self, enabled: bool) -> Result<(), ProviderError> {
-        match self {
-            Self::Codex(client) => client.set_agent_questions(enabled).await,
-            Self::Claude(_) => Err(ProviderError::NotSent {
-                reason: "claude tools change only at launch".to_owned(),
-            }),
-            #[cfg(test)]
-            Self::Fake(client) => client.set_agent_questions(enabled),
-        }
-    }
-
     /// 모든 session이 프로세스 묶음 하나를 같이 쓰는 provider의 그 묶음. 연결을 통째로 닫을 때 쓴다.
     pub fn shared_group(&self) -> Option<ProcessGroupId> {
         match self {
