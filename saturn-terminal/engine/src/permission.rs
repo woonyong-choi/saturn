@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use saturn_core::permission::{Mode, PermissionCall, PermissionTool, Policy, Verdict};
 use saturn_core::providers::ProviderClient;
 use saturn_core::queue::Permission;
-use saturn_protocol::ids::{AgentId, ChatId, Provider, SettingsRevision};
+use saturn_protocol::ids::{AgentId, ChatId, Provider, ProviderSessionId, SettingsRevision};
 use saturn_protocol::rpc::ChatNotice;
 
 use crate::providers::{ProviderConnection, rules_fingerprint};
@@ -57,21 +57,40 @@ impl Engine {
                 return;
             }
         };
+        let differs = self.stale_providers(chat, &rules, questions);
+        let deferred = self.mark_stale_connections(chat, differs);
+        if self.chat_is_running(chat) {
+            if deferred {
+                self.notify_chat(chat, ChatNotice::PermissionsChanged).await;
+            }
+        } else {
+            self.restart_stale_connections(chat).await;
+        }
+    }
+
+    /// provider마다 연결을 시작할 때의 설정이 지금 설정과 다른지.
+    fn stale_providers(&self, chat: ChatId, rules: &str, questions: bool) -> [(Provider, bool); 2] {
         let flow = &self.flow;
         let asked = |provider| flow.questions_of_connection.get(&(chat, provider));
-        let differs = [
+        let codex_rules_differ = flow
+            .rules_of_connection
+            .get(&chat)
+            .is_some_and(|started| started != rules);
+        [
             (
                 Provider::Codex,
-                flow.rules_of_connection
-                    .get(&chat)
-                    .is_some_and(|started| *started != rules)
+                codex_rules_differ
                     || asked(Provider::Codex).is_some_and(|started| *started != questions),
             ),
             (
                 Provider::Claude,
                 asked(Provider::Claude).is_some_and(|started| *started != questions),
             ),
-        ];
+        ]
+    }
+
+    /// 다시 시작할 연결 표시를 맞춘다. 이번에 처음 표시한 연결이 있으면 참.
+    fn mark_stale_connections(&mut self, chat: ChatId, differs: [(Provider, bool); 2]) -> bool {
         let mut deferred = false;
         for (provider, is_stale) in differs {
             if is_stale {
@@ -80,13 +99,7 @@ impl Engine {
                 self.flow.stale_connections.remove(&(chat, provider));
             }
         }
-        if self.chat_is_running(chat) {
-            if deferred {
-                self.notify_chat(chat, ChatNotice::PermissionsChanged).await;
-            }
-        } else {
-            self.restart_stale_connections(chat).await;
-        }
+        deferred
     }
 
     /// 채팅에 실행 중인 작업이 없을 때, 바뀐 설정을 적용하려고 표시한 연결을 모두 다시 시작한다. 작업 중이면 아무것도
@@ -113,8 +126,20 @@ impl Engine {
         let Some(mut connection) = self.providers.remove(&(chat, provider)) else {
             return;
         };
-        let closed: Vec<_> = self
-            .flow
+        let closed = self.open_sessions(chat, provider);
+        self.close_connection(&mut connection, provider, &closed)
+            .await;
+        drop(connection);
+        for (agent, _) in closed {
+            self.flow.live.remove(&agent);
+        }
+        self.notify_chat(chat, ChatNotice::ProviderRestarted { provider })
+            .await;
+    }
+
+    /// 그 채팅의 provider 연결에서 열려 있는 에이전트와 provider session.
+    fn open_sessions(&self, chat: ChatId, provider: Provider) -> Vec<(AgentId, ProviderSessionId)> {
+        self.flow
             .live
             .iter()
             .filter(|(_, live)| live.provider == provider)
@@ -123,23 +148,26 @@ impl Engine {
                     .is_ok_and(|owner| owner == chat)
             })
             .map(|(agent, live)| (*agent, live.provider_session.clone()))
-            .collect();
+            .collect()
+    }
+
+    /// Codex는 공유 연결의 프로세스 묶음을 멈추고, Claude는 session마다 닫는다.
+    async fn close_connection(
+        &self,
+        connection: &mut ProviderConnection,
+        provider: Provider,
+        sessions: &[(AgentId, ProviderSessionId)],
+    ) {
         match provider {
-            Provider::Codex => self.stop_shared_connection(&connection).await,
+            Provider::Codex => self.stop_shared_connection(connection).await,
             Provider::Claude => {
-                for (_, session) in &closed {
+                for (_, session) in sessions {
                     if let Err(error) = connection.close_session(session).await {
                         tracing::warn!(error = %self.failure_line(&error), "failed to close the claude session for restart");
                     }
                 }
             }
         }
-        drop(connection);
-        for (agent, _) in closed {
-            self.flow.live.remove(&agent);
-        }
-        self.notify_chat(chat, ChatNotice::ProviderRestarted { provider })
-            .await;
     }
 
     async fn stop_shared_connection(&self, connection: &ProviderConnection) {
