@@ -11,6 +11,7 @@ import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
+import random
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import PRIVATE_ROOT, ensure_private_root, read_jsonl  # noqa: E402
@@ -78,6 +79,48 @@ def run_labeler(command: str, prompt: str) -> tuple[int, str, str]:
     return result.returncode, result.stdout, result.stderr
 
 
+def write_disagreement_review(rows: list[dict]) -> None:
+    """두 라벨러가 다른 턴 중 최대 20개를 private 검토 목록으로 남긴다."""
+    label_paths = sorted((PRIVATE_ROOT / "labels").glob("*.jsonl"))
+    parsed: dict[tuple[str, str], dict] = {}
+    for path in label_paths:
+        for record in read_jsonl(path):
+            if record.get("status") != "ok" or not isinstance(record.get("parsed"), dict):
+                continue
+            labeler = record["labeler"]
+            conversation_id = record["conversation_id"]
+            for turn in record["parsed"].get("turns", []):
+                key = (conversation_id, turn.get("turn_id"))
+                parsed.setdefault(key, {})[labeler] = turn
+    by_key = {(row["conversation_id"], row["turn_id"]): row for row in rows}
+    disagreements = []
+    for key, labels in sorted(parsed.items()):
+        values = list(labels.values())
+        if len(values) < 2:
+            continue
+        left, right = values[0], values[1]
+        if (
+            left.get("is_constraint") == right.get("is_constraint")
+            and left.get("operation", "none") == right.get("operation", "none")
+            and sorted(left.get("targets", [])) == sorted(right.get("targets", []))
+        ):
+            continue
+        source = by_key.get(key, {})
+        disagreements.append({
+            "conversation_id": key[0],
+            "turn_id": key[1],
+            "turn_index": source.get("turn_index"),
+            "length_band": source.get("length_band"),
+            "text": source.get("text"),
+            "labels": labels,
+        })
+    random.Random(316).shuffle(disagreements)
+    target = PRIVATE_ROOT / "label-disagreement-review.jsonl"
+    with target.open("w", encoding="utf-8", newline="\n") as file:
+        for row in disagreements[:20]:
+            file.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
@@ -136,6 +179,7 @@ def main() -> int:
                 }, ensure_ascii=False) + "\n")
                 output.flush()
         print(f"라벨 끝: {labeler} {len(prompts)}회")
+    write_disagreement_review(rows)
     return 0
 
 

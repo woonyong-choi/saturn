@@ -28,6 +28,11 @@ SEED = 316
 BANDS = ((30, 119, "30-119"), (120, 399, "120-399"), (400, None, "400+"))
 
 
+def is_saturn_path(path: Path) -> bool:
+    value = str(path)
+    return "workspace/oss/saturn" in value or "workspace-oss-saturn" in value or "saturn" in path.parent.name.lower()
+
+
 def parse_file(path: Path) -> list[dict]:
     turns = []
     with path.open(encoding="utf-8") as file:
@@ -77,7 +82,7 @@ def select_files(files: list[Path]) -> list[tuple[Path, list[dict], str]]:
     for _, _, band in BANDS:
         members = [row for row in candidates if row[2] == band]
         members.sort(key=lambda row: (
-            0 if "workspace/oss/saturn" in str(row[0]) else 1,
+            0 if is_saturn_path(row[0]) else 1,
             hashlib.sha256(str(row[0]).encode("utf-8")).hexdigest(),
         ))
         chosen.extend(members[:2])
@@ -109,7 +114,7 @@ def main() -> int:
             "user_turn_count": len(turns),
             "sampled_turn_count": len(sampled),
             "source_sha256": sha256_file(path),
-            "is_saturn": "workspace/oss/saturn" in str(path),
+            "is_saturn": is_saturn_path(path),
         })
         for index, turn in enumerate(turns):
             rows.append({
