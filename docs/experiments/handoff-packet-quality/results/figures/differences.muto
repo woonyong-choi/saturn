@@ -1,6 +1,6 @@
-chart bar
+chart difference
 title "정답률 차이"
-subtitle "n=960. 막대는 차이, 오차 막대는 시나리오 군집 부트스트랩 95% 신뢰구간, 점선은 +10%p"
+subtitle "n=960. 점은 차이, 선은 시나리오 군집 부트스트랩 95% 신뢰구간, 점선은 +10%p"
 x "정답률 차이(%p)"
 decimals 1
 

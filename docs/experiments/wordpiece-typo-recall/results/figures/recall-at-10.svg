@@ -609,6 +609,17 @@
   stroke-width: var(--border-thin);
 }
 
+.fl .chart-zero {
+  stroke: var(--color-muted);
+  stroke-width: var(--border-tag);
+}
+
+.fl .chart-break {
+  fill: none;
+  stroke: var(--color-muted);
+  stroke-width: var(--border-tag);
+}
+
 .fl .chart-rule {
   stroke: var(--color-muted);
   stroke-width: var(--border-thin);
@@ -626,7 +637,8 @@
   stroke-width: var(--border-tag);
 }
 
-.fl .chart-ci-casing {
+.fl .chart-ci-casing,
+.fl .chart-rule-casing {
   stroke: var(--color-bg);
   stroke-width: var(--border-casing);
 }

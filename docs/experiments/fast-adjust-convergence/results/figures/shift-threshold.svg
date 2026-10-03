@@ -609,6 +609,17 @@
   stroke-width: var(--border-thin);
 }
 
+.fl .chart-zero {
+  stroke: var(--color-muted);
+  stroke-width: var(--border-tag);
+}
+
+.fl .chart-break {
+  fill: none;
+  stroke: var(--color-muted);
+  stroke-width: var(--border-tag);
+}
+
 .fl .chart-rule {
   stroke: var(--color-muted);
   stroke-width: var(--border-thin);
@@ -626,7 +637,8 @@
   stroke-width: var(--border-tag);
 }
 
-.fl .chart-ci-casing {
+.fl .chart-ci-casing,
+.fl .chart-rule-casing {
   stroke: var(--color-bg);
   stroke-width: var(--border-casing);
 }
@@ -720,300 +732,300 @@
 .fl .play .dot[data-at="0"] { animation-delay: 0ms; }
 .fl.chart-loop .dot[data-at="0"] { animation: chart-dot-loop-0 7000ms infinite both; }
 @keyframes chart-dot-loop-0 { 0%, 0% { opacity: 0; animation-timing-function: var(--easing-reveal); } 2.86%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.006"] { animation-delay: 5ms; }
-.fl.chart-loop .dot[data-at="0.006"] { animation: chart-dot-loop-1 7000ms infinite both; }
-@keyframes chart-dot-loop-1 { 0%, 0.08% { opacity: 0; animation-timing-function: var(--easing-reveal); } 2.93%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.012"] { animation-delay: 11ms; }
-.fl.chart-loop .dot[data-at="0.012"] { animation: chart-dot-loop-2 7000ms infinite both; }
-@keyframes chart-dot-loop-2 { 0%, 0.15% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.01%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.005"] { animation-delay: 5ms; }
+.fl.chart-loop .dot[data-at="0.005"] { animation: chart-dot-loop-1 7000ms infinite both; }
+@keyframes chart-dot-loop-1 { 0%, 0.06% { opacity: 0; animation-timing-function: var(--easing-reveal); } 2.92%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.013"] { animation-delay: 12ms; }
+.fl.chart-loop .dot[data-at="0.013"] { animation: chart-dot-loop-2 7000ms infinite both; }
+@keyframes chart-dot-loop-2 { 0%, 0.17% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.02%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.018"] { animation-delay: 16ms; }
 .fl.chart-loop .dot[data-at="0.018"] { animation: chart-dot-loop-3 7000ms infinite both; }
 @keyframes chart-dot-loop-3 { 0%, 0.23% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.09%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.024"] { animation-delay: 22ms; }
-.fl.chart-loop .dot[data-at="0.024"] { animation: chart-dot-loop-4 7000ms infinite both; }
-@keyframes chart-dot-loop-4 { 0%, 0.31% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.17%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.03"] { animation-delay: 27ms; }
-.fl.chart-loop .dot[data-at="0.03"] { animation: chart-dot-loop-5 7000ms infinite both; }
-@keyframes chart-dot-loop-5 { 0%, 0.39% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.24%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.036"] { animation-delay: 32ms; }
-.fl.chart-loop .dot[data-at="0.036"] { animation: chart-dot-loop-6 7000ms infinite both; }
-@keyframes chart-dot-loop-6 { 0%, 0.46% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.32%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.023"] { animation-delay: 21ms; }
+.fl.chart-loop .dot[data-at="0.023"] { animation: chart-dot-loop-4 7000ms infinite both; }
+@keyframes chart-dot-loop-4 { 0%, 0.3% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.15%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.028"] { animation-delay: 25ms; }
+.fl.chart-loop .dot[data-at="0.028"] { animation: chart-dot-loop-5 7000ms infinite both; }
+@keyframes chart-dot-loop-5 { 0%, 0.36% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.22%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.033"] { animation-delay: 30ms; }
+.fl.chart-loop .dot[data-at="0.033"] { animation: chart-dot-loop-6 7000ms infinite both; }
+@keyframes chart-dot-loop-6 { 0%, 0.42% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.28%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.037"] { animation-delay: 33ms; }
+.fl.chart-loop .dot[data-at="0.037"] { animation: chart-dot-loop-7 7000ms infinite both; }
+@keyframes chart-dot-loop-7 { 0%, 0.48% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.33%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.043"] { animation-delay: 39ms; }
-.fl.chart-loop .dot[data-at="0.043"] { animation: chart-dot-loop-7 7000ms infinite both; }
-@keyframes chart-dot-loop-7 { 0%, 0.55% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.41%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.049"] { animation-delay: 44ms; }
-.fl.chart-loop .dot[data-at="0.049"] { animation: chart-dot-loop-8 7000ms infinite both; }
-@keyframes chart-dot-loop-8 { 0%, 0.63% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.49%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.055"] { animation-delay: 50ms; }
-.fl.chart-loop .dot[data-at="0.055"] { animation: chart-dot-loop-9 7000ms infinite both; }
-@keyframes chart-dot-loop-9 { 0%, 0.71% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.56%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.061"] { animation-delay: 55ms; }
-.fl.chart-loop .dot[data-at="0.061"] { animation: chart-dot-loop-10 7000ms infinite both; }
-@keyframes chart-dot-loop-10 { 0%, 0.78% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.64%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.068"] { animation-delay: 61ms; }
-.fl.chart-loop .dot[data-at="0.068"] { animation: chart-dot-loop-11 7000ms infinite both; }
-@keyframes chart-dot-loop-11 { 0%, 0.87% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.73%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.074"] { animation-delay: 67ms; }
-.fl.chart-loop .dot[data-at="0.074"] { animation: chart-dot-loop-12 7000ms infinite both; }
-@keyframes chart-dot-loop-12 { 0%, 0.95% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.81%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.043"] { animation: chart-dot-loop-8 7000ms infinite both; }
+@keyframes chart-dot-loop-8 { 0%, 0.55% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.41%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.048"] { animation-delay: 43ms; }
+.fl.chart-loop .dot[data-at="0.048"] { animation: chart-dot-loop-9 7000ms infinite both; }
+@keyframes chart-dot-loop-9 { 0%, 0.62% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.47%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.053"] { animation-delay: 48ms; }
+.fl.chart-loop .dot[data-at="0.053"] { animation: chart-dot-loop-10 7000ms infinite both; }
+@keyframes chart-dot-loop-10 { 0%, 0.68% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.54%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.059"] { animation-delay: 53ms; }
+.fl.chart-loop .dot[data-at="0.059"] { animation: chart-dot-loop-11 7000ms infinite both; }
+@keyframes chart-dot-loop-11 { 0%, 0.76% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.62%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.065"] { animation-delay: 59ms; }
+.fl.chart-loop .dot[data-at="0.065"] { animation: chart-dot-loop-12 7000ms infinite both; }
+@keyframes chart-dot-loop-12 { 0%, 0.84% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.69%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.07"] { animation-delay: 63ms; }
+.fl.chart-loop .dot[data-at="0.07"] { animation: chart-dot-loop-13 7000ms infinite both; }
+@keyframes chart-dot-loop-13 { 0%, 0.9% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.76%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.076"] { animation-delay: 68ms; }
+.fl.chart-loop .dot[data-at="0.076"] { animation: chart-dot-loop-14 7000ms infinite both; }
+@keyframes chart-dot-loop-14 { 0%, 0.98% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.83%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.081"] { animation-delay: 73ms; }
-.fl.chart-loop .dot[data-at="0.081"] { animation: chart-dot-loop-13 7000ms infinite both; }
-@keyframes chart-dot-loop-13 { 0%, 1.04% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.9%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.087"] { animation-delay: 78ms; }
-.fl.chart-loop .dot[data-at="0.087"] { animation: chart-dot-loop-14 7000ms infinite both; }
-@keyframes chart-dot-loop-14 { 0%, 1.12% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.98%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.094"] { animation-delay: 85ms; }
-.fl.chart-loop .dot[data-at="0.094"] { animation: chart-dot-loop-15 7000ms infinite both; }
-@keyframes chart-dot-loop-15 { 0%, 1.21% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.07%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.1"] { animation-delay: 90ms; }
-.fl.chart-loop .dot[data-at="0.1"] { animation: chart-dot-loop-16 7000ms infinite both; }
-@keyframes chart-dot-loop-16 { 0%, 1.29% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.14%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.081"] { animation: chart-dot-loop-15 7000ms infinite both; }
+@keyframes chart-dot-loop-15 { 0%, 1.04% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.9%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.086"] { animation-delay: 77ms; }
+.fl.chart-loop .dot[data-at="0.086"] { animation: chart-dot-loop-16 7000ms infinite both; }
+@keyframes chart-dot-loop-16 { 0%, 1.11% { opacity: 0; animation-timing-function: var(--easing-reveal); } 3.96%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.091"] { animation-delay: 82ms; }
+.fl.chart-loop .dot[data-at="0.091"] { animation: chart-dot-loop-17 7000ms infinite both; }
+@keyframes chart-dot-loop-17 { 0%, 1.17% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.03%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.096"] { animation-delay: 86ms; }
+.fl.chart-loop .dot[data-at="0.096"] { animation: chart-dot-loop-18 7000ms infinite both; }
+@keyframes chart-dot-loop-18 { 0%, 1.23% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.09%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.102"] { animation-delay: 92ms; }
+.fl.chart-loop .dot[data-at="0.102"] { animation: chart-dot-loop-19 7000ms infinite both; }
+@keyframes chart-dot-loop-19 { 0%, 1.31% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.17%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.107"] { animation-delay: 96ms; }
-.fl.chart-loop .dot[data-at="0.107"] { animation: chart-dot-loop-17 7000ms infinite both; }
-@keyframes chart-dot-loop-17 { 0%, 1.38% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.23%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.107"] { animation: chart-dot-loop-20 7000ms infinite both; }
+@keyframes chart-dot-loop-20 { 0%, 1.38% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.23%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.113"] { animation-delay: 102ms; }
-.fl.chart-loop .dot[data-at="0.113"] { animation: chart-dot-loop-18 7000ms infinite both; }
-@keyframes chart-dot-loop-18 { 0%, 1.45% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.31%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.12"] { animation-delay: 108ms; }
-.fl.chart-loop .dot[data-at="0.12"] { animation: chart-dot-loop-19 7000ms infinite both; }
-@keyframes chart-dot-loop-19 { 0%, 1.54% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.4%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.127"] { animation-delay: 114ms; }
-.fl.chart-loop .dot[data-at="0.127"] { animation: chart-dot-loop-20 7000ms infinite both; }
-@keyframes chart-dot-loop-20 { 0%, 1.63% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.49%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.133"] { animation-delay: 120ms; }
-.fl.chart-loop .dot[data-at="0.133"] { animation: chart-dot-loop-21 7000ms infinite both; }
-@keyframes chart-dot-loop-21 { 0%, 1.71% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.57%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.14"] { animation-delay: 126ms; }
-.fl.chart-loop .dot[data-at="0.14"] { animation: chart-dot-loop-22 7000ms infinite both; }
-@keyframes chart-dot-loop-22 { 0%, 1.8% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.66%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.147"] { animation-delay: 132ms; }
-.fl.chart-loop .dot[data-at="0.147"] { animation: chart-dot-loop-23 7000ms infinite both; }
-@keyframes chart-dot-loop-23 { 0%, 1.89% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.75%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.154"] { animation-delay: 139ms; }
-.fl.chart-loop .dot[data-at="0.154"] { animation: chart-dot-loop-24 7000ms infinite both; }
-@keyframes chart-dot-loop-24 { 0%, 1.98% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.84%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.16"] { animation-delay: 144ms; }
-.fl.chart-loop .dot[data-at="0.16"] { animation: chart-dot-loop-25 7000ms infinite both; }
-@keyframes chart-dot-loop-25 { 0%, 2.06% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.91%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.167"] { animation-delay: 150ms; }
-.fl.chart-loop .dot[data-at="0.167"] { animation: chart-dot-loop-26 7000ms infinite both; }
-@keyframes chart-dot-loop-26 { 0%, 2.15% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.113"] { animation: chart-dot-loop-21 7000ms infinite both; }
+@keyframes chart-dot-loop-21 { 0%, 1.45% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.31%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.118"] { animation-delay: 106ms; }
+.fl.chart-loop .dot[data-at="0.118"] { animation: chart-dot-loop-22 7000ms infinite both; }
+@keyframes chart-dot-loop-22 { 0%, 1.52% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.37%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.123"] { animation-delay: 111ms; }
+.fl.chart-loop .dot[data-at="0.123"] { animation: chart-dot-loop-23 7000ms infinite both; }
+@keyframes chart-dot-loop-23 { 0%, 1.58% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.44%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.128"] { animation-delay: 115ms; }
+.fl.chart-loop .dot[data-at="0.128"] { animation: chart-dot-loop-24 7000ms infinite both; }
+@keyframes chart-dot-loop-24 { 0%, 1.65% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.5%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.134"] { animation-delay: 121ms; }
+.fl.chart-loop .dot[data-at="0.134"] { animation: chart-dot-loop-25 7000ms infinite both; }
+@keyframes chart-dot-loop-25 { 0%, 1.72% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.58%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.141"] { animation-delay: 127ms; }
+.fl.chart-loop .dot[data-at="0.141"] { animation: chart-dot-loop-26 7000ms infinite both; }
+@keyframes chart-dot-loop-26 { 0%, 1.81% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.67%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.146"] { animation-delay: 131ms; }
+.fl.chart-loop .dot[data-at="0.146"] { animation: chart-dot-loop-27 7000ms infinite both; }
+@keyframes chart-dot-loop-27 { 0%, 1.88% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.73%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.152"] { animation-delay: 137ms; }
+.fl.chart-loop .dot[data-at="0.152"] { animation: chart-dot-loop-28 7000ms infinite both; }
+@keyframes chart-dot-loop-28 { 0%, 1.95% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.81%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.157"] { animation-delay: 141ms; }
+.fl.chart-loop .dot[data-at="0.157"] { animation: chart-dot-loop-29 7000ms infinite both; }
+@keyframes chart-dot-loop-29 { 0%, 2.02% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.88%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.163"] { animation-delay: 147ms; }
+.fl.chart-loop .dot[data-at="0.163"] { animation: chart-dot-loop-30 7000ms infinite both; }
+@keyframes chart-dot-loop-30 { 0%, 2.1% { opacity: 0; animation-timing-function: var(--easing-reveal); } 4.95%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.168"] { animation-delay: 151ms; }
+.fl.chart-loop .dot[data-at="0.168"] { animation: chart-dot-loop-31 7000ms infinite both; }
+@keyframes chart-dot-loop-31 { 0%, 2.16% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.02%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.174"] { animation-delay: 157ms; }
-.fl.chart-loop .dot[data-at="0.174"] { animation: chart-dot-loop-27 7000ms infinite both; }
-@keyframes chart-dot-loop-27 { 0%, 2.24% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.09%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.181"] { animation-delay: 163ms; }
-.fl.chart-loop .dot[data-at="0.181"] { animation: chart-dot-loop-28 7000ms infinite both; }
-@keyframes chart-dot-loop-28 { 0%, 2.33% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.18%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.188"] { animation-delay: 169ms; }
-.fl.chart-loop .dot[data-at="0.188"] { animation: chart-dot-loop-29 7000ms infinite both; }
-@keyframes chart-dot-loop-29 { 0%, 2.42% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.27%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.195"] { animation-delay: 176ms; }
-.fl.chart-loop .dot[data-at="0.195"] { animation: chart-dot-loop-30 7000ms infinite both; }
-@keyframes chart-dot-loop-30 { 0%, 2.51% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.36%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.174"] { animation: chart-dot-loop-32 7000ms infinite both; }
+@keyframes chart-dot-loop-32 { 0%, 2.24% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.09%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.179"] { animation-delay: 161ms; }
+.fl.chart-loop .dot[data-at="0.179"] { animation: chart-dot-loop-33 7000ms infinite both; }
+@keyframes chart-dot-loop-33 { 0%, 2.3% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.16%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.186"] { animation-delay: 167ms; }
+.fl.chart-loop .dot[data-at="0.186"] { animation: chart-dot-loop-34 7000ms infinite both; }
+@keyframes chart-dot-loop-34 { 0%, 2.39% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.25%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.191"] { animation-delay: 172ms; }
+.fl.chart-loop .dot[data-at="0.191"] { animation: chart-dot-loop-35 7000ms infinite both; }
+@keyframes chart-dot-loop-35 { 0%, 2.46% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.31%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.197"] { animation-delay: 177ms; }
+.fl.chart-loop .dot[data-at="0.197"] { animation: chart-dot-loop-36 7000ms infinite both; }
+@keyframes chart-dot-loop-36 { 0%, 2.53% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.39%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.202"] { animation-delay: 182ms; }
-.fl.chart-loop .dot[data-at="0.202"] { animation: chart-dot-loop-31 7000ms infinite both; }
-@keyframes chart-dot-loop-31 { 0%, 2.6% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.45%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.209"] { animation-delay: 188ms; }
-.fl.chart-loop .dot[data-at="0.209"] { animation: chart-dot-loop-32 7000ms infinite both; }
-@keyframes chart-dot-loop-32 { 0%, 2.69% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.54%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.216"] { animation-delay: 194ms; }
-.fl.chart-loop .dot[data-at="0.216"] { animation: chart-dot-loop-33 7000ms infinite both; }
-@keyframes chart-dot-loop-33 { 0%, 2.78% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.63%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.223"] { animation-delay: 201ms; }
-.fl.chart-loop .dot[data-at="0.223"] { animation: chart-dot-loop-34 7000ms infinite both; }
-@keyframes chart-dot-loop-34 { 0%, 2.87% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.72%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.231"] { animation-delay: 208ms; }
-.fl.chart-loop .dot[data-at="0.231"] { animation: chart-dot-loop-35 7000ms infinite both; }
-@keyframes chart-dot-loop-35 { 0%, 2.97% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.83%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.238"] { animation-delay: 214ms; }
-.fl.chart-loop .dot[data-at="0.238"] { animation: chart-dot-loop-36 7000ms infinite both; }
-@keyframes chart-dot-loop-36 { 0%, 3.06% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.92%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.202"] { animation: chart-dot-loop-37 7000ms infinite both; }
+@keyframes chart-dot-loop-37 { 0%, 2.6% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.45%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.208"] { animation-delay: 187ms; }
+.fl.chart-loop .dot[data-at="0.208"] { animation: chart-dot-loop-38 7000ms infinite both; }
+@keyframes chart-dot-loop-38 { 0%, 2.67% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.53%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.214"] { animation-delay: 193ms; }
+.fl.chart-loop .dot[data-at="0.214"] { animation: chart-dot-loop-39 7000ms infinite both; }
+@keyframes chart-dot-loop-39 { 0%, 2.75% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.61%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.219"] { animation-delay: 197ms; }
+.fl.chart-loop .dot[data-at="0.219"] { animation: chart-dot-loop-40 7000ms infinite both; }
+@keyframes chart-dot-loop-40 { 0%, 2.82% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.67%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.226"] { animation-delay: 203ms; }
+.fl.chart-loop .dot[data-at="0.226"] { animation: chart-dot-loop-41 7000ms infinite both; }
+@keyframes chart-dot-loop-41 { 0%, 2.91% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.76%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.232"] { animation-delay: 209ms; }
+.fl.chart-loop .dot[data-at="0.232"] { animation: chart-dot-loop-42 7000ms infinite both; }
+@keyframes chart-dot-loop-42 { 0%, 2.98% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.84%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.239"] { animation-delay: 215ms; }
+.fl.chart-loop .dot[data-at="0.239"] { animation: chart-dot-loop-43 7000ms infinite both; }
+@keyframes chart-dot-loop-43 { 0%, 3.07% { opacity: 0; animation-timing-function: var(--easing-reveal); } 5.93%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.245"] { animation-delay: 221ms; }
-.fl.chart-loop .dot[data-at="0.245"] { animation: chart-dot-loop-37 7000ms infinite both; }
-@keyframes chart-dot-loop-37 { 0%, 3.15% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.01%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.253"] { animation-delay: 228ms; }
-.fl.chart-loop .dot[data-at="0.253"] { animation: chart-dot-loop-38 7000ms infinite both; }
-@keyframes chart-dot-loop-38 { 0%, 3.25% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.11%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.26"] { animation-delay: 234ms; }
-.fl.chart-loop .dot[data-at="0.26"] { animation: chart-dot-loop-39 7000ms infinite both; }
-@keyframes chart-dot-loop-39 { 0%, 3.34% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.2%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.267"] { animation-delay: 240ms; }
-.fl.chart-loop .dot[data-at="0.267"] { animation: chart-dot-loop-40 7000ms infinite both; }
-@keyframes chart-dot-loop-40 { 0%, 3.43% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.29%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.275"] { animation-delay: 248ms; }
-.fl.chart-loop .dot[data-at="0.275"] { animation: chart-dot-loop-41 7000ms infinite both; }
-@keyframes chart-dot-loop-41 { 0%, 3.54% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.39%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.282"] { animation-delay: 254ms; }
-.fl.chart-loop .dot[data-at="0.282"] { animation: chart-dot-loop-42 7000ms infinite both; }
-@keyframes chart-dot-loop-42 { 0%, 3.63% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.48%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.29"] { animation-delay: 261ms; }
-.fl.chart-loop .dot[data-at="0.29"] { animation: chart-dot-loop-43 7000ms infinite both; }
-@keyframes chart-dot-loop-43 { 0%, 3.73% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.59%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.298"] { animation-delay: 268ms; }
-.fl.chart-loop .dot[data-at="0.298"] { animation: chart-dot-loop-44 7000ms infinite both; }
-@keyframes chart-dot-loop-44 { 0%, 3.83% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.69%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.305"] { animation-delay: 275ms; }
-.fl.chart-loop .dot[data-at="0.305"] { animation: chart-dot-loop-45 7000ms infinite both; }
-@keyframes chart-dot-loop-45 { 0%, 3.92% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.78%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.313"] { animation-delay: 282ms; }
-.fl.chart-loop .dot[data-at="0.313"] { animation: chart-dot-loop-46 7000ms infinite both; }
-@keyframes chart-dot-loop-46 { 0%, 4.02% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.88%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.321"] { animation-delay: 289ms; }
-.fl.chart-loop .dot[data-at="0.321"] { animation: chart-dot-loop-47 7000ms infinite both; }
-@keyframes chart-dot-loop-47 { 0%, 4.13% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.98%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.328"] { animation-delay: 295ms; }
-.fl.chart-loop .dot[data-at="0.328"] { animation: chart-dot-loop-48 7000ms infinite both; }
-@keyframes chart-dot-loop-48 { 0%, 4.22% { opacity: 0; animation-timing-function: var(--easing-reveal); } 7.07%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.336"] { animation-delay: 302ms; }
-.fl.chart-loop .dot[data-at="0.336"] { animation: chart-dot-loop-49 7000ms infinite both; }
-@keyframes chart-dot-loop-49 { 0%, 4.32% { opacity: 0; animation-timing-function: var(--easing-reveal); } 7.18%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.347"] { animation-delay: 312ms; }
-.fl.chart-loop .dot[data-at="0.347"] { animation: chart-dot-loop-50 7000ms infinite both; }
-@keyframes chart-dot-loop-50 { 0%, 4.46% { opacity: 0; animation-timing-function: var(--easing-reveal); } 7.32%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.356"] { animation-delay: 320ms; }
-.fl.chart-loop .dot[data-at="0.356"] { animation: chart-dot-loop-51 7000ms infinite both; }
-@keyframes chart-dot-loop-51 { 0%, 4.58% { opacity: 0; animation-timing-function: var(--easing-reveal); } 7.43%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.365"] { animation-delay: 329ms; }
-.fl.chart-loop .dot[data-at="0.365"] { animation: chart-dot-loop-52 7000ms infinite both; }
-@keyframes chart-dot-loop-52 { 0%, 4.69% { opacity: 0; animation-timing-function: var(--easing-reveal); } 7.55%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.373"] { animation-delay: 336ms; }
-.fl.chart-loop .dot[data-at="0.373"] { animation: chart-dot-loop-53 7000ms infinite both; }
-@keyframes chart-dot-loop-53 { 0%, 4.8% { opacity: 0; animation-timing-function: var(--easing-reveal); } 7.65%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.381"] { animation-delay: 343ms; }
-.fl.chart-loop .dot[data-at="0.381"] { animation: chart-dot-loop-54 7000ms infinite both; }
-@keyframes chart-dot-loop-54 { 0%, 4.9% { opacity: 0; animation-timing-function: var(--easing-reveal); } 7.76%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.389"] { animation-delay: 350ms; }
-.fl.chart-loop .dot[data-at="0.389"] { animation: chart-dot-loop-55 7000ms infinite both; }
-@keyframes chart-dot-loop-55 { 0%, 5% { opacity: 0; animation-timing-function: var(--easing-reveal); } 7.86%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.398"] { animation-delay: 358ms; }
-.fl.chart-loop .dot[data-at="0.398"] { animation: chart-dot-loop-56 7000ms infinite both; }
-@keyframes chart-dot-loop-56 { 0%, 5.12% { opacity: 0; animation-timing-function: var(--easing-reveal); } 7.97%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.406"] { animation-delay: 365ms; }
-.fl.chart-loop .dot[data-at="0.406"] { animation: chart-dot-loop-57 7000ms infinite both; }
-@keyframes chart-dot-loop-57 { 0%, 5.22% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.08%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.414"] { animation-delay: 373ms; }
-.fl.chart-loop .dot[data-at="0.414"] { animation: chart-dot-loop-58 7000ms infinite both; }
-@keyframes chart-dot-loop-58 { 0%, 5.32% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.18%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.423"] { animation-delay: 381ms; }
-.fl.chart-loop .dot[data-at="0.423"] { animation: chart-dot-loop-59 7000ms infinite both; }
-@keyframes chart-dot-loop-59 { 0%, 5.44% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.3%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.432"] { animation-delay: 389ms; }
-.fl.chart-loop .dot[data-at="0.432"] { animation: chart-dot-loop-60 7000ms infinite both; }
-@keyframes chart-dot-loop-60 { 0%, 5.55% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.41%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.44"] { animation-delay: 396ms; }
-.fl.chart-loop .dot[data-at="0.44"] { animation: chart-dot-loop-61 7000ms infinite both; }
-@keyframes chart-dot-loop-61 { 0%, 5.66% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.51%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.449"] { animation-delay: 404ms; }
-.fl.chart-loop .dot[data-at="0.449"] { animation: chart-dot-loop-62 7000ms infinite both; }
-@keyframes chart-dot-loop-62 { 0%, 5.77% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.63%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.458"] { animation-delay: 412ms; }
-.fl.chart-loop .dot[data-at="0.458"] { animation: chart-dot-loop-63 7000ms infinite both; }
-@keyframes chart-dot-loop-63 { 0%, 5.89% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.75%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.245"] { animation: chart-dot-loop-44 7000ms infinite both; }
+@keyframes chart-dot-loop-44 { 0%, 3.15% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.01%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.251"] { animation-delay: 226ms; }
+.fl.chart-loop .dot[data-at="0.251"] { animation: chart-dot-loop-45 7000ms infinite both; }
+@keyframes chart-dot-loop-45 { 0%, 3.23% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.08%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.256"] { animation-delay: 230ms; }
+.fl.chart-loop .dot[data-at="0.256"] { animation: chart-dot-loop-46 7000ms infinite both; }
+@keyframes chart-dot-loop-46 { 0%, 3.29% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.15%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.263"] { animation-delay: 237ms; }
+.fl.chart-loop .dot[data-at="0.263"] { animation: chart-dot-loop-47 7000ms infinite both; }
+@keyframes chart-dot-loop-47 { 0%, 3.38% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.24%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.269"] { animation-delay: 242ms; }
+.fl.chart-loop .dot[data-at="0.269"] { animation: chart-dot-loop-48 7000ms infinite both; }
+@keyframes chart-dot-loop-48 { 0%, 3.46% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.32%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.274"] { animation-delay: 247ms; }
+.fl.chart-loop .dot[data-at="0.274"] { animation: chart-dot-loop-49 7000ms infinite both; }
+@keyframes chart-dot-loop-49 { 0%, 3.52% { opacity: 0; animation-timing-function: var(--easing-reveal); } 6.38%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.344"] { animation-delay: 310ms; }
+.fl.chart-loop .dot[data-at="0.344"] { animation: chart-dot-loop-50 7000ms infinite both; }
+@keyframes chart-dot-loop-50 { 0%, 4.42% { opacity: 0; animation-timing-function: var(--easing-reveal); } 7.28%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.391"] { animation-delay: 352ms; }
+.fl.chart-loop .dot[data-at="0.391"] { animation: chart-dot-loop-51 7000ms infinite both; }
+@keyframes chart-dot-loop-51 { 0%, 5.03% { opacity: 0; animation-timing-function: var(--easing-reveal); } 7.88%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.405"] { animation-delay: 365ms; }
+.fl.chart-loop .dot[data-at="0.405"] { animation: chart-dot-loop-52 7000ms infinite both; }
+@keyframes chart-dot-loop-52 { 0%, 5.21% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.06%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.412"] { animation-delay: 371ms; }
+.fl.chart-loop .dot[data-at="0.412"] { animation: chart-dot-loop-53 7000ms infinite both; }
+@keyframes chart-dot-loop-53 { 0%, 5.3% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.15%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.419"] { animation-delay: 377ms; }
+.fl.chart-loop .dot[data-at="0.419"] { animation: chart-dot-loop-54 7000ms infinite both; }
+@keyframes chart-dot-loop-54 { 0%, 5.39% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.24%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.428"] { animation-delay: 385ms; }
+.fl.chart-loop .dot[data-at="0.428"] { animation: chart-dot-loop-55 7000ms infinite both; }
+@keyframes chart-dot-loop-55 { 0%, 5.5% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.36%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.438"] { animation-delay: 394ms; }
+.fl.chart-loop .dot[data-at="0.438"] { animation: chart-dot-loop-56 7000ms infinite both; }
+@keyframes chart-dot-loop-56 { 0%, 5.63% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.49%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.445"] { animation-delay: 401ms; }
+.fl.chart-loop .dot[data-at="0.445"] { animation: chart-dot-loop-57 7000ms infinite both; }
+@keyframes chart-dot-loop-57 { 0%, 5.72% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.58%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.452"] { animation-delay: 407ms; }
+.fl.chart-loop .dot[data-at="0.452"] { animation: chart-dot-loop-58 7000ms infinite both; }
+@keyframes chart-dot-loop-58 { 0%, 5.81% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.67%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.46"] { animation-delay: 414ms; }
+.fl.chart-loop .dot[data-at="0.46"] { animation: chart-dot-loop-59 7000ms infinite both; }
+@keyframes chart-dot-loop-59 { 0%, 5.91% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.77%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.467"] { animation-delay: 420ms; }
-.fl.chart-loop .dot[data-at="0.467"] { animation: chart-dot-loop-64 7000ms infinite both; }
-@keyframes chart-dot-loop-64 { 0%, 6% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.86%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.467"] { animation: chart-dot-loop-60 7000ms infinite both; }
+@keyframes chart-dot-loop-60 { 0%, 6% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.86%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.476"] { animation-delay: 428ms; }
-.fl.chart-loop .dot[data-at="0.476"] { animation: chart-dot-loop-65 7000ms infinite both; }
-@keyframes chart-dot-loop-65 { 0%, 6.12% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.98%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.485"] { animation-delay: 437ms; }
-.fl.chart-loop .dot[data-at="0.485"] { animation: chart-dot-loop-66 7000ms infinite both; }
-@keyframes chart-dot-loop-66 { 0%, 6.24% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.09%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.494"] { animation-delay: 445ms; }
-.fl.chart-loop .dot[data-at="0.494"] { animation: chart-dot-loop-67 7000ms infinite both; }
-@keyframes chart-dot-loop-67 { 0%, 6.35% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.21%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.504"] { animation-delay: 454ms; }
-.fl.chart-loop .dot[data-at="0.504"] { animation: chart-dot-loop-68 7000ms infinite both; }
-@keyframes chart-dot-loop-68 { 0%, 6.48% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.34%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.513"] { animation-delay: 462ms; }
-.fl.chart-loop .dot[data-at="0.513"] { animation: chart-dot-loop-69 7000ms infinite both; }
-@keyframes chart-dot-loop-69 { 0%, 6.6% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.45%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.523"] { animation-delay: 471ms; }
-.fl.chart-loop .dot[data-at="0.523"] { animation: chart-dot-loop-70 7000ms infinite both; }
-@keyframes chart-dot-loop-70 { 0%, 6.72% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.58%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.532"] { animation-delay: 479ms; }
-.fl.chart-loop .dot[data-at="0.532"] { animation: chart-dot-loop-71 7000ms infinite both; }
-@keyframes chart-dot-loop-71 { 0%, 6.84% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.7%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.476"] { animation: chart-dot-loop-61 7000ms infinite both; }
+@keyframes chart-dot-loop-61 { 0%, 6.12% { opacity: 0; animation-timing-function: var(--easing-reveal); } 8.98%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.483"] { animation-delay: 435ms; }
+.fl.chart-loop .dot[data-at="0.483"] { animation: chart-dot-loop-62 7000ms infinite both; }
+@keyframes chart-dot-loop-62 { 0%, 6.21% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.07%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.49"] { animation-delay: 441ms; }
+.fl.chart-loop .dot[data-at="0.49"] { animation: chart-dot-loop-63 7000ms infinite both; }
+@keyframes chart-dot-loop-63 { 0%, 6.3% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.16%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.498"] { animation-delay: 448ms; }
+.fl.chart-loop .dot[data-at="0.498"] { animation: chart-dot-loop-64 7000ms infinite both; }
+@keyframes chart-dot-loop-64 { 0%, 6.4% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.26%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.506"] { animation-delay: 455ms; }
+.fl.chart-loop .dot[data-at="0.506"] { animation: chart-dot-loop-65 7000ms infinite both; }
+@keyframes chart-dot-loop-65 { 0%, 6.51% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.36%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.514"] { animation-delay: 463ms; }
+.fl.chart-loop .dot[data-at="0.514"] { animation: chart-dot-loop-66 7000ms infinite both; }
+@keyframes chart-dot-loop-66 { 0%, 6.61% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.47%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.522"] { animation-delay: 470ms; }
+.fl.chart-loop .dot[data-at="0.522"] { animation: chart-dot-loop-67 7000ms infinite both; }
+@keyframes chart-dot-loop-67 { 0%, 6.71% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.57%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.53"] { animation-delay: 477ms; }
+.fl.chart-loop .dot[data-at="0.53"] { animation: chart-dot-loop-68 7000ms infinite both; }
+@keyframes chart-dot-loop-68 { 0%, 6.81% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.67%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.542"] { animation-delay: 488ms; }
-.fl.chart-loop .dot[data-at="0.542"] { animation: chart-dot-loop-72 7000ms infinite both; }
-@keyframes chart-dot-loop-72 { 0%, 6.97% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.83%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.542"] { animation: chart-dot-loop-69 7000ms infinite both; }
+@keyframes chart-dot-loop-69 { 0%, 6.97% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.83%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.552"] { animation-delay: 497ms; }
-.fl.chart-loop .dot[data-at="0.552"] { animation: chart-dot-loop-73 7000ms infinite both; }
-@keyframes chart-dot-loop-73 { 0%, 7.1% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.95%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.562"] { animation-delay: 506ms; }
-.fl.chart-loop .dot[data-at="0.562"] { animation: chart-dot-loop-74 7000ms infinite both; }
-@keyframes chart-dot-loop-74 { 0%, 7.23% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.08%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.552"] { animation: chart-dot-loop-70 7000ms infinite both; }
+@keyframes chart-dot-loop-70 { 0%, 7.1% { opacity: 0; animation-timing-function: var(--easing-reveal); } 9.95%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.564"] { animation-delay: 508ms; }
+.fl.chart-loop .dot[data-at="0.564"] { animation: chart-dot-loop-71 7000ms infinite both; }
+@keyframes chart-dot-loop-71 { 0%, 7.25% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.11%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.572"] { animation-delay: 515ms; }
-.fl.chart-loop .dot[data-at="0.572"] { animation: chart-dot-loop-75 7000ms infinite both; }
-@keyframes chart-dot-loop-75 { 0%, 7.35% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.21%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.583"] { animation-delay: 525ms; }
-.fl.chart-loop .dot[data-at="0.583"] { animation: chart-dot-loop-76 7000ms infinite both; }
-@keyframes chart-dot-loop-76 { 0%, 7.5% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.35%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.593"] { animation-delay: 534ms; }
-.fl.chart-loop .dot[data-at="0.593"] { animation: chart-dot-loop-77 7000ms infinite both; }
-@keyframes chart-dot-loop-77 { 0%, 7.62% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.48%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.604"] { animation-delay: 544ms; }
-.fl.chart-loop .dot[data-at="0.604"] { animation: chart-dot-loop-78 7000ms infinite both; }
-@keyframes chart-dot-loop-78 { 0%, 7.77% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.62%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.615"] { animation-delay: 554ms; }
-.fl.chart-loop .dot[data-at="0.615"] { animation: chart-dot-loop-79 7000ms infinite both; }
-@keyframes chart-dot-loop-79 { 0%, 7.91% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.76%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.626"] { animation-delay: 563ms; }
-.fl.chart-loop .dot[data-at="0.626"] { animation: chart-dot-loop-80 7000ms infinite both; }
-@keyframes chart-dot-loop-80 { 0%, 8.05% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.91%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.638"] { animation-delay: 574ms; }
-.fl.chart-loop .dot[data-at="0.638"] { animation: chart-dot-loop-81 7000ms infinite both; }
-@keyframes chart-dot-loop-81 { 0%, 8.2% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.06%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.649"] { animation-delay: 584ms; }
-.fl.chart-loop .dot[data-at="0.649"] { animation: chart-dot-loop-82 7000ms infinite both; }
-@keyframes chart-dot-loop-82 { 0%, 8.34% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.2%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.572"] { animation: chart-dot-loop-72 7000ms infinite both; }
+@keyframes chart-dot-loop-72 { 0%, 7.35% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.21%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.58"] { animation-delay: 522ms; }
+.fl.chart-loop .dot[data-at="0.58"] { animation: chart-dot-loop-73 7000ms infinite both; }
+@keyframes chart-dot-loop-73 { 0%, 7.46% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.31%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.589"] { animation-delay: 530ms; }
+.fl.chart-loop .dot[data-at="0.589"] { animation: chart-dot-loop-74 7000ms infinite both; }
+@keyframes chart-dot-loop-74 { 0%, 7.57% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.43%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.597"] { animation-delay: 537ms; }
+.fl.chart-loop .dot[data-at="0.597"] { animation: chart-dot-loop-75 7000ms infinite both; }
+@keyframes chart-dot-loop-75 { 0%, 7.68% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.53%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.612"] { animation-delay: 551ms; }
+.fl.chart-loop .dot[data-at="0.612"] { animation: chart-dot-loop-76 7000ms infinite both; }
+@keyframes chart-dot-loop-76 { 0%, 7.87% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.73%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.622"] { animation-delay: 560ms; }
+.fl.chart-loop .dot[data-at="0.622"] { animation: chart-dot-loop-77 7000ms infinite both; }
+@keyframes chart-dot-loop-77 { 0%, 8% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.85%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.631"] { animation-delay: 568ms; }
+.fl.chart-loop .dot[data-at="0.631"] { animation: chart-dot-loop-78 7000ms infinite both; }
+@keyframes chart-dot-loop-78 { 0%, 8.11% { opacity: 0; animation-timing-function: var(--easing-reveal); } 10.97%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.642"] { animation-delay: 578ms; }
+.fl.chart-loop .dot[data-at="0.642"] { animation: chart-dot-loop-79 7000ms infinite both; }
+@keyframes chart-dot-loop-79 { 0%, 8.25% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.11%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.651"] { animation-delay: 586ms; }
+.fl.chart-loop .dot[data-at="0.651"] { animation: chart-dot-loop-80 7000ms infinite both; }
+@keyframes chart-dot-loop-80 { 0%, 8.37% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.23%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.661"] { animation-delay: 595ms; }
-.fl.chart-loop .dot[data-at="0.661"] { animation: chart-dot-loop-83 7000ms infinite both; }
-@keyframes chart-dot-loop-83 { 0%, 8.5% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.36%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.673"] { animation-delay: 606ms; }
-.fl.chart-loop .dot[data-at="0.673"] { animation: chart-dot-loop-84 7000ms infinite both; }
-@keyframes chart-dot-loop-84 { 0%, 8.65% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.51%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.686"] { animation-delay: 617ms; }
-.fl.chart-loop .dot[data-at="0.686"] { animation: chart-dot-loop-85 7000ms infinite both; }
-@keyframes chart-dot-loop-85 { 0%, 8.82% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.68%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.699"] { animation-delay: 629ms; }
-.fl.chart-loop .dot[data-at="0.699"] { animation: chart-dot-loop-86 7000ms infinite both; }
-@keyframes chart-dot-loop-86 { 0%, 8.99% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.84%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.712"] { animation-delay: 641ms; }
-.fl.chart-loop .dot[data-at="0.712"] { animation: chart-dot-loop-87 7000ms infinite both; }
-@keyframes chart-dot-loop-87 { 0%, 9.15% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.01%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.726"] { animation-delay: 653ms; }
-.fl.chart-loop .dot[data-at="0.726"] { animation: chart-dot-loop-88 7000ms infinite both; }
-@keyframes chart-dot-loop-88 { 0%, 9.33% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.19%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.74"] { animation-delay: 666ms; }
-.fl.chart-loop .dot[data-at="0.74"] { animation: chart-dot-loop-89 7000ms infinite both; }
-@keyframes chart-dot-loop-89 { 0%, 9.51% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.37%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.755"] { animation-delay: 680ms; }
-.fl.chart-loop .dot[data-at="0.755"] { animation: chart-dot-loop-90 7000ms infinite both; }
-@keyframes chart-dot-loop-90 { 0%, 9.71% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.56%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.77"] { animation-delay: 693ms; }
-.fl.chart-loop .dot[data-at="0.77"] { animation: chart-dot-loop-91 7000ms infinite both; }
-@keyframes chart-dot-loop-91 { 0%, 9.9% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.76%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.661"] { animation: chart-dot-loop-81 7000ms infinite both; }
+@keyframes chart-dot-loop-81 { 0%, 8.5% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.36%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.677"] { animation-delay: 609ms; }
+.fl.chart-loop .dot[data-at="0.677"] { animation: chart-dot-loop-82 7000ms infinite both; }
+@keyframes chart-dot-loop-82 { 0%, 8.7% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.56%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.689"] { animation-delay: 620ms; }
+.fl.chart-loop .dot[data-at="0.689"] { animation: chart-dot-loop-83 7000ms infinite both; }
+@keyframes chart-dot-loop-83 { 0%, 8.86% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.72%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.704"] { animation-delay: 634ms; }
+.fl.chart-loop .dot[data-at="0.704"] { animation: chart-dot-loop-84 7000ms infinite both; }
+@keyframes chart-dot-loop-84 { 0%, 9.05% { opacity: 0; animation-timing-function: var(--easing-reveal); } 11.91%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.714"] { animation-delay: 643ms; }
+.fl.chart-loop .dot[data-at="0.714"] { animation: chart-dot-loop-85 7000ms infinite both; }
+@keyframes chart-dot-loop-85 { 0%, 9.18% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.04%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.725"] { animation-delay: 653ms; }
+.fl.chart-loop .dot[data-at="0.725"] { animation: chart-dot-loop-86 7000ms infinite both; }
+@keyframes chart-dot-loop-86 { 0%, 9.32% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.18%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.736"] { animation-delay: 662ms; }
+.fl.chart-loop .dot[data-at="0.736"] { animation: chart-dot-loop-87 7000ms infinite both; }
+@keyframes chart-dot-loop-87 { 0%, 9.46% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.32%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.747"] { animation-delay: 672ms; }
+.fl.chart-loop .dot[data-at="0.747"] { animation: chart-dot-loop-88 7000ms infinite both; }
+@keyframes chart-dot-loop-88 { 0%, 9.6% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.46%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.759"] { animation-delay: 683ms; }
+.fl.chart-loop .dot[data-at="0.759"] { animation: chart-dot-loop-89 7000ms infinite both; }
+@keyframes chart-dot-loop-89 { 0%, 9.76% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.62%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.773"] { animation-delay: 696ms; }
+.fl.chart-loop .dot[data-at="0.773"] { animation: chart-dot-loop-90 7000ms infinite both; }
+@keyframes chart-dot-loop-90 { 0%, 9.94% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.8%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="0.786"] { animation-delay: 707ms; }
-.fl.chart-loop .dot[data-at="0.786"] { animation: chart-dot-loop-92 7000ms infinite both; }
-@keyframes chart-dot-loop-92 { 0%, 10.11% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.96%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.803"] { animation-delay: 723ms; }
-.fl.chart-loop .dot[data-at="0.803"] { animation: chart-dot-loop-93 7000ms infinite both; }
-@keyframes chart-dot-loop-93 { 0%, 10.32% { opacity: 0; animation-timing-function: var(--easing-reveal); } 13.18%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.822"] { animation-delay: 740ms; }
-.fl.chart-loop .dot[data-at="0.822"] { animation: chart-dot-loop-94 7000ms infinite both; }
-@keyframes chart-dot-loop-94 { 0%, 10.57% { opacity: 0; animation-timing-function: var(--easing-reveal); } 13.43%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.842"] { animation-delay: 758ms; }
-.fl.chart-loop .dot[data-at="0.842"] { animation: chart-dot-loop-95 7000ms infinite both; }
-@keyframes chart-dot-loop-95 { 0%, 10.83% { opacity: 0; animation-timing-function: var(--easing-reveal); } 13.68%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.865"] { animation-delay: 779ms; }
-.fl.chart-loop .dot[data-at="0.865"] { animation: chart-dot-loop-96 7000ms infinite both; }
-@keyframes chart-dot-loop-96 { 0%, 11.12% { opacity: 0; animation-timing-function: var(--easing-reveal); } 13.98%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.891"] { animation-delay: 802ms; }
-.fl.chart-loop .dot[data-at="0.891"] { animation: chart-dot-loop-97 7000ms infinite both; }
-@keyframes chart-dot-loop-97 { 0%, 11.46% { opacity: 0; animation-timing-function: var(--easing-reveal); } 14.31%, 100% { opacity: 1; } }
-.fl .play .dot[data-at="0.924"] { animation-delay: 832ms; }
-.fl.chart-loop .dot[data-at="0.924"] { animation: chart-dot-loop-98 7000ms infinite both; }
-@keyframes chart-dot-loop-98 { 0%, 11.88% { opacity: 0; animation-timing-function: var(--easing-reveal); } 14.74%, 100% { opacity: 1; } }
+.fl.chart-loop .dot[data-at="0.786"] { animation: chart-dot-loop-91 7000ms infinite both; }
+@keyframes chart-dot-loop-91 { 0%, 10.11% { opacity: 0; animation-timing-function: var(--easing-reveal); } 12.96%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.799"] { animation-delay: 719ms; }
+.fl.chart-loop .dot[data-at="0.799"] { animation: chart-dot-loop-92 7000ms infinite both; }
+@keyframes chart-dot-loop-92 { 0%, 10.27% { opacity: 0; animation-timing-function: var(--easing-reveal); } 13.13%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.814"] { animation-delay: 733ms; }
+.fl.chart-loop .dot[data-at="0.814"] { animation: chart-dot-loop-93 7000ms infinite both; }
+@keyframes chart-dot-loop-93 { 0%, 10.47% { opacity: 0; animation-timing-function: var(--easing-reveal); } 13.32%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.83"] { animation-delay: 747ms; }
+.fl.chart-loop .dot[data-at="0.83"] { animation: chart-dot-loop-94 7000ms infinite both; }
+@keyframes chart-dot-loop-94 { 0%, 10.67% { opacity: 0; animation-timing-function: var(--easing-reveal); } 13.53%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.849"] { animation-delay: 764ms; }
+.fl.chart-loop .dot[data-at="0.849"] { animation: chart-dot-loop-95 7000ms infinite both; }
+@keyframes chart-dot-loop-95 { 0%, 10.92% { opacity: 0; animation-timing-function: var(--easing-reveal); } 13.77%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.87"] { animation-delay: 783ms; }
+.fl.chart-loop .dot[data-at="0.87"] { animation: chart-dot-loop-96 7000ms infinite both; }
+@keyframes chart-dot-loop-96 { 0%, 11.19% { opacity: 0; animation-timing-function: var(--easing-reveal); } 14.04%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.9"] { animation-delay: 810ms; }
+.fl.chart-loop .dot[data-at="0.9"] { animation: chart-dot-loop-97 7000ms infinite both; }
+@keyframes chart-dot-loop-97 { 0%, 11.57% { opacity: 0; animation-timing-function: var(--easing-reveal); } 14.43%, 100% { opacity: 1; } }
+.fl .play .dot[data-at="0.934"] { animation-delay: 841ms; }
+.fl.chart-loop .dot[data-at="0.934"] { animation: chart-dot-loop-98 7000ms infinite both; }
+@keyframes chart-dot-loop-98 { 0%, 12.01% { opacity: 0; animation-timing-function: var(--easing-reveal); } 14.87%, 100% { opacity: 1; } }
 .fl .play .dot[data-at="1"] { animation-delay: 900ms; }
 .fl.chart-loop .dot[data-at="1"] { animation: chart-dot-loop-99 7000ms infinite both; }
 @keyframes chart-dot-loop-99 { 0%, 12.86% { opacity: 0; animation-timing-function: var(--easing-reveal); } 15.71%, 100% { opacity: 1; } }
@@ -1042,109 +1054,109 @@
 <text x="28" y="43" class="chart-title">사용 방식 급변 전후의 평균 기준값</text>
 <text x="28" y="62" class="chart-sub">복제 n=100, 5,000건에서 틀림 비율 3%→10%. 점선은 10% 조건 후반 평균</text>
 <rect x="28" y="76" width="12" height="12" rx="4" fill="var(--color-data-main)"/><text x="46" y="84" class="chart-legend">평균 기준값</text>
-<line x1="76" x2="921.8" y1="395" y2="395" class="chart-grid"/><text x="70" y="399" class="chart-tick end">0</text><line x1="76" x2="921.8" y1="343" y2="343" class="chart-grid"/><text x="70" y="347" class="chart-tick end">0.2</text><line x1="76" x2="921.8" y1="291" y2="291" class="chart-grid"/><text x="70" y="295" class="chart-tick end">0.4</text><line x1="76" x2="921.8" y1="239" y2="239" class="chart-grid"/><text x="70" y="243" class="chart-tick end">0.6</text><line x1="76" x2="921.8" y1="187" y2="187" class="chart-grid"/><text x="70" y="191" class="chart-tick end">0.8</text><line x1="76" x2="921.8" y1="135" y2="135" class="chart-grid"/><text x="70" y="139" class="chart-tick end">1</text><text x="76" y="412" class="chart-tick">0</text><text x="245.2" y="412" class="chart-tick">2k</text><text x="414.3" y="412" class="chart-tick">4k</text><text x="583.5" y="412" class="chart-tick">6k</text><text x="752.7" y="412" class="chart-tick">8k</text><text x="921.8" y="412" class="chart-tick">10k</text><text x="921.8" y="429" class="chart-unit">판단 수(건)</text><text x="28" y="119" class="chart-unit start">100건 평균 기준값(비율)</text>
-<g class="cs-0"><path d="M 84.5 196.2 L 92.9 196.3 L 101.4 197.3 L 109.8 197.4 L 118.3 197.2 L 126.8 197.5 L 135.2 197.7 L 143.7 197.6 L 152.1 198 L 160.6 197.9 L 169 197.8 L 177.5 197.2 L 186 197.7 L 194.4 197.9 L 202.9 197.6 L 211.3 197.6 L 219.8 197.8 L 228.3 197.9 L 236.7 198 L 245.2 197.6 L 253.6 197.6 L 262.1 198 L 270.5 198.1 L 279 198.1 L 287.5 197.8 L 295.9 198 L 304.4 197.4 L 312.8 197.5 L 321.3 197.9 L 329.8 197.8 L 338.2 197.5 L 346.7 197.5 L 355.1 197.8 L 363.6 197.9 L 372 197.5 L 380.5 197.6 L 389 197.7 L 397.4 197.8 L 405.9 198.1 L 414.3 198.1 L 422.8 197.9 L 431.3 197.5 L 439.7 197.7 L 448.2 198.2 L 456.6 198.2 L 465.1 197.9 L 473.5 197.8 L 482 198.1 L 490.5 198 L 498.9 197.9 L 507.4 190.1 L 515.8 185 L 524.3 183.7 L 532.8 183.4 L 541.2 183.3 L 549.7 183.9 L 558.1 183.2 L 566.6 182.9 L 575.1 183 L 583.5 182.7 L 592 182.7 L 600.4 183.3 L 608.9 183.2 L 617.3 183.2 L 625.8 183.3 L 634.3 183.6 L 642.7 184 L 651.2 183.6 L 659.6 183.4 L 668.1 184.2 L 676.6 183.7 L 685 182.9 L 693.5 183.2 L 701.9 183 L 710.4 183.1 L 718.8 183.1 L 727.3 182.1 L 735.8 182.6 L 744.2 182.6 L 752.7 183.1 L 761.1 183.4 L 769.6 183.5 L 778.1 182.6 L 786.5 183.1 L 795 183.9 L 803.4 183.8 L 811.9 183.7 L 820.3 183.7 L 828.8 183.8 L 837.3 183.9 L 845.7 183.5 L 854.2 183.6 L 862.6 183.6 L 871.1 183.4 L 879.6 183.8 L 888 183.3 L 896.5 182.9 L 904.9 183.6 L 913.4 183.2 L 921.8 183.1" fill="none" stroke="var(--color-data-main)" stroke-width="2.5" pathLength="1" class="draw"/></g>
-<g class="cr-0"><g class="cs-0"><circle cx="84.5" cy="196.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0"/></g></g>
-<g class="cr-1"><g class="cs-0"><circle cx="92.9" cy="196.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.006"/></g></g>
-<g class="cr-2"><g class="cs-0"><circle cx="101.4" cy="197.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.012"/></g></g>
-<g class="cr-3"><g class="cs-0"><circle cx="109.8" cy="197.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.018"/></g></g>
-<g class="cr-4"><g class="cs-0"><circle cx="118.3" cy="197.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.024"/></g></g>
-<g class="cr-5"><g class="cs-0"><circle cx="126.8" cy="197.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.03"/></g></g>
-<g class="cr-6"><g class="cs-0"><circle cx="135.2" cy="197.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.036"/></g></g>
-<g class="cr-7"><g class="cs-0"><circle cx="143.7" cy="197.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.043"/></g></g>
-<g class="cr-8"><g class="cs-0"><circle cx="152.1" cy="198" r="5" fill="var(--color-data-main)" class="dot" data-at="0.049"/></g></g>
-<g class="cr-9"><g class="cs-0"><circle cx="160.6" cy="197.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.055"/></g></g>
-<g class="cr-10"><g class="cs-0"><circle cx="169" cy="197.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.061"/></g></g>
-<g class="cr-11"><g class="cs-0"><circle cx="177.5" cy="197.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.068"/></g></g>
-<g class="cr-12"><g class="cs-0"><circle cx="186" cy="197.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.074"/></g></g>
-<g class="cr-13"><g class="cs-0"><circle cx="194.4" cy="197.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.081"/></g></g>
-<g class="cr-14"><g class="cs-0"><circle cx="202.9" cy="197.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.087"/></g></g>
-<g class="cr-15"><g class="cs-0"><circle cx="211.3" cy="197.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.094"/></g></g>
-<g class="cr-16"><g class="cs-0"><circle cx="219.8" cy="197.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.1"/></g></g>
-<g class="cr-17"><g class="cs-0"><circle cx="228.3" cy="197.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.107"/></g></g>
-<g class="cr-18"><g class="cs-0"><circle cx="236.7" cy="198" r="5" fill="var(--color-data-main)" class="dot" data-at="0.113"/></g></g>
-<g class="cr-19"><g class="cs-0"><circle cx="245.2" cy="197.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.12"/></g></g>
-<g class="cr-20"><g class="cs-0"><circle cx="253.6" cy="197.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.127"/></g></g>
-<g class="cr-21"><g class="cs-0"><circle cx="262.1" cy="198" r="5" fill="var(--color-data-main)" class="dot" data-at="0.133"/></g></g>
-<g class="cr-22"><g class="cs-0"><circle cx="270.5" cy="198.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.14"/></g></g>
-<g class="cr-23"><g class="cs-0"><circle cx="279" cy="198.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.147"/></g></g>
-<g class="cr-24"><g class="cs-0"><circle cx="287.5" cy="197.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.154"/></g></g>
-<g class="cr-25"><g class="cs-0"><circle cx="295.9" cy="198" r="5" fill="var(--color-data-main)" class="dot" data-at="0.16"/></g></g>
-<g class="cr-26"><g class="cs-0"><circle cx="304.4" cy="197.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.167"/></g></g>
-<g class="cr-27"><g class="cs-0"><circle cx="312.8" cy="197.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.174"/></g></g>
-<g class="cr-28"><g class="cs-0"><circle cx="321.3" cy="197.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.181"/></g></g>
-<g class="cr-29"><g class="cs-0"><circle cx="329.8" cy="197.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.188"/></g></g>
-<g class="cr-30"><g class="cs-0"><circle cx="338.2" cy="197.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.195"/></g></g>
-<g class="cr-31"><g class="cs-0"><circle cx="346.7" cy="197.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.202"/></g></g>
-<g class="cr-32"><g class="cs-0"><circle cx="355.1" cy="197.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.209"/></g></g>
-<g class="cr-33"><g class="cs-0"><circle cx="363.6" cy="197.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.216"/></g></g>
-<g class="cr-34"><g class="cs-0"><circle cx="372" cy="197.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.223"/></g></g>
-<g class="cr-35"><g class="cs-0"><circle cx="380.5" cy="197.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.231"/></g></g>
-<g class="cr-36"><g class="cs-0"><circle cx="389" cy="197.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.238"/></g></g>
-<g class="cr-37"><g class="cs-0"><circle cx="397.4" cy="197.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.245"/></g></g>
-<g class="cr-38"><g class="cs-0"><circle cx="405.9" cy="198.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.253"/></g></g>
-<g class="cr-39"><g class="cs-0"><circle cx="414.3" cy="198.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.26"/></g></g>
-<g class="cr-40"><g class="cs-0"><circle cx="422.8" cy="197.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.267"/></g></g>
-<g class="cr-41"><g class="cs-0"><circle cx="431.3" cy="197.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.275"/></g></g>
-<g class="cr-42"><g class="cs-0"><circle cx="439.7" cy="197.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.282"/></g></g>
-<g class="cr-43"><g class="cs-0"><circle cx="448.2" cy="198.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.29"/></g></g>
-<g class="cr-44"><g class="cs-0"><circle cx="456.6" cy="198.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.298"/></g></g>
-<g class="cr-45"><g class="cs-0"><circle cx="465.1" cy="197.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.305"/></g></g>
-<g class="cr-46"><g class="cs-0"><circle cx="473.5" cy="197.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.313"/></g></g>
-<g class="cr-47"><g class="cs-0"><circle cx="482" cy="198.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.321"/></g></g>
-<g class="cr-48"><g class="cs-0"><circle cx="490.5" cy="198" r="5" fill="var(--color-data-main)" class="dot" data-at="0.328"/></g></g>
-<g class="cr-49"><g class="cs-0"><circle cx="498.9" cy="197.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.336"/></g></g>
-<g class="cr-50"><g class="cs-0"><circle cx="507.4" cy="190.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.347"/></g></g>
-<g class="cr-51"><g class="cs-0"><circle cx="515.8" cy="185" r="5" fill="var(--color-data-main)" class="dot" data-at="0.356"/></g></g>
-<g class="cr-52"><g class="cs-0"><circle cx="524.3" cy="183.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.365"/></g></g>
-<g class="cr-53"><g class="cs-0"><circle cx="532.8" cy="183.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.373"/></g></g>
-<g class="cr-54"><g class="cs-0"><circle cx="541.2" cy="183.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.381"/></g></g>
-<g class="cr-55"><g class="cs-0"><circle cx="549.7" cy="183.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.389"/></g></g>
-<g class="cr-56"><g class="cs-0"><circle cx="558.1" cy="183.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.398"/></g></g>
-<g class="cr-57"><g class="cs-0"><circle cx="566.6" cy="182.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.406"/></g></g>
-<g class="cr-58"><g class="cs-0"><circle cx="575.1" cy="183" r="5" fill="var(--color-data-main)" class="dot" data-at="0.414"/></g></g>
-<g class="cr-59"><g class="cs-0"><circle cx="583.5" cy="182.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.423"/></g></g>
-<g class="cr-60"><g class="cs-0"><circle cx="592" cy="182.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.432"/></g></g>
-<g class="cr-61"><g class="cs-0"><circle cx="600.4" cy="183.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.44"/></g></g>
-<g class="cr-62"><g class="cs-0"><circle cx="608.9" cy="183.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.449"/></g></g>
-<g class="cr-63"><g class="cs-0"><circle cx="617.3" cy="183.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.458"/></g></g>
-<g class="cr-64"><g class="cs-0"><circle cx="625.8" cy="183.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.467"/></g></g>
-<g class="cr-65"><g class="cs-0"><circle cx="634.3" cy="183.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.476"/></g></g>
-<g class="cr-66"><g class="cs-0"><circle cx="642.7" cy="184" r="5" fill="var(--color-data-main)" class="dot" data-at="0.485"/></g></g>
-<g class="cr-67"><g class="cs-0"><circle cx="651.2" cy="183.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.494"/></g></g>
-<g class="cr-68"><g class="cs-0"><circle cx="659.6" cy="183.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.504"/></g></g>
-<g class="cr-69"><g class="cs-0"><circle cx="668.1" cy="184.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.513"/></g></g>
-<g class="cr-70"><g class="cs-0"><circle cx="676.6" cy="183.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.523"/></g></g>
-<g class="cr-71"><g class="cs-0"><circle cx="685" cy="182.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.532"/></g></g>
-<g class="cr-72"><g class="cs-0"><circle cx="693.5" cy="183.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.542"/></g></g>
-<g class="cr-73"><g class="cs-0"><circle cx="701.9" cy="183" r="5" fill="var(--color-data-main)" class="dot" data-at="0.552"/></g></g>
-<g class="cr-74"><g class="cs-0"><circle cx="710.4" cy="183.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.562"/></g></g>
-<g class="cr-75"><g class="cs-0"><circle cx="718.8" cy="183.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.572"/></g></g>
-<g class="cr-76"><g class="cs-0"><circle cx="727.3" cy="182.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.583"/></g></g>
-<g class="cr-77"><g class="cs-0"><circle cx="735.8" cy="182.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.593"/></g></g>
-<g class="cr-78"><g class="cs-0"><circle cx="744.2" cy="182.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.604"/></g></g>
-<g class="cr-79"><g class="cs-0"><circle cx="752.7" cy="183.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.615"/></g></g>
-<g class="cr-80"><g class="cs-0"><circle cx="761.1" cy="183.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.626"/></g></g>
-<g class="cr-81"><g class="cs-0"><circle cx="769.6" cy="183.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.638"/></g></g>
-<g class="cr-82"><g class="cs-0"><circle cx="778.1" cy="182.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.649"/></g></g>
-<g class="cr-83"><g class="cs-0"><circle cx="786.5" cy="183.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.661"/></g></g>
-<g class="cr-84"><g class="cs-0"><circle cx="795" cy="183.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.673"/></g></g>
-<g class="cr-85"><g class="cs-0"><circle cx="803.4" cy="183.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.686"/></g></g>
-<g class="cr-86"><g class="cs-0"><circle cx="811.9" cy="183.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.699"/></g></g>
-<g class="cr-87"><g class="cs-0"><circle cx="820.3" cy="183.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.712"/></g></g>
-<g class="cr-88"><g class="cs-0"><circle cx="828.8" cy="183.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.726"/></g></g>
-<g class="cr-89"><g class="cs-0"><circle cx="837.3" cy="183.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.74"/></g></g>
-<g class="cr-90"><g class="cs-0"><circle cx="845.7" cy="183.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.755"/></g></g>
-<g class="cr-91"><g class="cs-0"><circle cx="854.2" cy="183.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.77"/></g></g>
-<g class="cr-92"><g class="cs-0"><circle cx="862.6" cy="183.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.786"/></g></g>
-<g class="cr-93"><g class="cs-0"><circle cx="871.1" cy="183.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.803"/></g></g>
-<g class="cr-94"><g class="cs-0"><circle cx="879.6" cy="183.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.822"/></g></g>
-<g class="cr-95"><g class="cs-0"><circle cx="888" cy="183.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.842"/></g></g>
-<g class="cr-96"><g class="cs-0"><circle cx="896.5" cy="182.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.865"/></g></g>
-<g class="cr-97"><g class="cs-0"><circle cx="904.9" cy="183.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.891"/></g></g>
-<g class="cr-98"><g class="cs-0"><circle cx="913.4" cy="183.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.924"/></g></g>
-<g class="cr-99"><g class="cs-0"><circle cx="921.8" cy="183.1" r="5" fill="var(--color-data-main)" class="dot" data-at="1"/></g></g>
-<line x1="76" x2="921.8" y1="183.3" y2="183.3" class="chart-rule"/><text x="921.8" y="179.3" class="chart-rule-label end">목표</text>
+<line x1="100" x2="921.8" y1="395" y2="395" class="chart-grid"/><path d="M 76 395 L 82 391 L 88 399 L 94 391 L 100 399" class="chart-break"/><text x="70" y="399" class="chart-tick end">0.74</text><line x1="76" x2="921.8" y1="330" y2="330" class="chart-grid"/><text x="70" y="334" class="chart-tick end">0.76</text><line x1="76" x2="921.8" y1="265" y2="265" class="chart-grid"/><text x="70" y="269" class="chart-tick end">0.78</text><line x1="76" x2="921.8" y1="200" y2="200" class="chart-grid"/><text x="70" y="204" class="chart-tick end">0.8</text><line x1="76" x2="921.8" y1="135" y2="135" class="chart-grid"/><text x="70" y="139" class="chart-tick end">0.82</text><text x="76" y="412" class="chart-tick">0</text><text x="245.2" y="412" class="chart-tick">2k</text><text x="414.3" y="412" class="chart-tick">4k</text><text x="583.5" y="412" class="chart-tick">6k</text><text x="752.7" y="412" class="chart-tick">8k</text><text x="921.8" y="412" class="chart-tick">10k</text><text x="921.8" y="429" class="chart-unit">판단 수(건)</text><text x="28" y="119" class="chart-unit start">100건 평균 기준값(비율)</text>
+<g class="cs-0"><path d="M 84.5 314.8 L 92.9 316.7 L 101.4 329.1 L 109.8 330.5 L 118.3 327.3 L 126.8 331.2 L 135.2 333.4 L 143.7 332.2 L 152.1 337 L 160.6 335.8 L 169 335.2 L 177.5 328 L 186 333.4 L 194.4 336.8 L 202.9 333.1 L 211.3 332.7 L 219.8 334.8 L 228.3 335.8 L 236.7 337.7 L 245.2 332.2 L 253.6 332.6 L 262.1 337.4 L 270.5 338.5 L 279 338.6 L 287.5 335.5 L 295.9 337.7 L 304.4 329.6 L 312.8 331.2 L 321.3 335.7 L 329.8 334.6 L 338.2 331.8 L 346.7 331.6 L 355.1 334.9 L 363.6 336.1 L 372 330.7 L 380.5 331.9 L 389 333.7 L 397.4 334.7 L 405.9 338.5 L 414.3 339 L 422.8 336.5 L 431.3 330.8 L 439.7 333.4 L 448.2 339.9 L 456.6 339.5 L 465.1 336.8 L 473.5 334.5 L 482 339 L 490.5 337.5 L 498.9 336.6 L 507.4 238.4 L 515.8 174.7 L 524.3 158.3 L 532.8 155.1 L 541.2 153.1 L 549.7 161.8 L 558.1 152.9 L 566.6 149 L 575.1 149.9 L 583.5 146 L 592 146.4 L 600.4 154.3 L 608.9 152.5 L 617.3 152 L 625.8 153.9 L 634.3 157.8 L 642.7 162.2 L 651.2 157.4 L 659.6 154.8 L 668.1 165.5 L 676.6 159 L 685 149.1 L 693.5 152.1 L 701.9 150.5 L 710.4 151.5 L 718.8 151.3 L 727.3 138.9 L 735.8 144.5 L 744.2 145.2 L 752.7 151.7 L 761.1 155 L 769.6 156.2 L 778.1 144.5 L 786.5 151.5 L 795 160.7 L 803.4 160.1 L 811.9 158.2 L 820.3 159.3 L 828.8 159.6 L 837.3 161.4 L 845.7 155.7 L 854.2 157 L 862.6 157.1 L 871.1 155.5 L 879.6 159.6 L 888 154 L 896.5 149 L 904.9 157.6 L 913.4 152.3 L 921.8 151.4" fill="none" stroke="var(--color-data-main)" stroke-width="2.5" pathLength="1" class="draw"/></g>
+<g class="cr-0"><g class="cs-0"><circle cx="84.5" cy="314.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0"/></g></g>
+<g class="cr-1"><g class="cs-0"><circle cx="92.9" cy="316.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.005"/></g></g>
+<g class="cr-2"><g class="cs-0"><circle cx="101.4" cy="329.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.013"/></g></g>
+<g class="cr-3"><g class="cs-0"><circle cx="109.8" cy="330.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.018"/></g></g>
+<g class="cr-4"><g class="cs-0"><circle cx="118.3" cy="327.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.023"/></g></g>
+<g class="cr-5"><g class="cs-0"><circle cx="126.8" cy="331.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.028"/></g></g>
+<g class="cr-6"><g class="cs-0"><circle cx="135.2" cy="333.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.033"/></g></g>
+<g class="cr-7"><g class="cs-0"><circle cx="143.7" cy="332.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.037"/></g></g>
+<g class="cr-8"><g class="cs-0"><circle cx="152.1" cy="337" r="5" fill="var(--color-data-main)" class="dot" data-at="0.043"/></g></g>
+<g class="cr-9"><g class="cs-0"><circle cx="160.6" cy="335.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.048"/></g></g>
+<g class="cr-10"><g class="cs-0"><circle cx="169" cy="335.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.053"/></g></g>
+<g class="cr-11"><g class="cs-0"><circle cx="177.5" cy="328" r="5" fill="var(--color-data-main)" class="dot" data-at="0.059"/></g></g>
+<g class="cr-12"><g class="cs-0"><circle cx="186" cy="333.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.065"/></g></g>
+<g class="cr-13"><g class="cs-0"><circle cx="194.4" cy="336.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.07"/></g></g>
+<g class="cr-14"><g class="cs-0"><circle cx="202.9" cy="333.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.076"/></g></g>
+<g class="cr-15"><g class="cs-0"><circle cx="211.3" cy="332.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.081"/></g></g>
+<g class="cr-16"><g class="cs-0"><circle cx="219.8" cy="334.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.086"/></g></g>
+<g class="cr-17"><g class="cs-0"><circle cx="228.3" cy="335.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.091"/></g></g>
+<g class="cr-18"><g class="cs-0"><circle cx="236.7" cy="337.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.096"/></g></g>
+<g class="cr-19"><g class="cs-0"><circle cx="245.2" cy="332.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.102"/></g></g>
+<g class="cr-20"><g class="cs-0"><circle cx="253.6" cy="332.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.107"/></g></g>
+<g class="cr-21"><g class="cs-0"><circle cx="262.1" cy="337.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.113"/></g></g>
+<g class="cr-22"><g class="cs-0"><circle cx="270.5" cy="338.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.118"/></g></g>
+<g class="cr-23"><g class="cs-0"><circle cx="279" cy="338.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.123"/></g></g>
+<g class="cr-24"><g class="cs-0"><circle cx="287.5" cy="335.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.128"/></g></g>
+<g class="cr-25"><g class="cs-0"><circle cx="295.9" cy="337.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.134"/></g></g>
+<g class="cr-26"><g class="cs-0"><circle cx="304.4" cy="329.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.141"/></g></g>
+<g class="cr-27"><g class="cs-0"><circle cx="312.8" cy="331.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.146"/></g></g>
+<g class="cr-28"><g class="cs-0"><circle cx="321.3" cy="335.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.152"/></g></g>
+<g class="cr-29"><g class="cs-0"><circle cx="329.8" cy="334.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.157"/></g></g>
+<g class="cr-30"><g class="cs-0"><circle cx="338.2" cy="331.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.163"/></g></g>
+<g class="cr-31"><g class="cs-0"><circle cx="346.7" cy="331.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.168"/></g></g>
+<g class="cr-32"><g class="cs-0"><circle cx="355.1" cy="334.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.174"/></g></g>
+<g class="cr-33"><g class="cs-0"><circle cx="363.6" cy="336.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.179"/></g></g>
+<g class="cr-34"><g class="cs-0"><circle cx="372" cy="330.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.186"/></g></g>
+<g class="cr-35"><g class="cs-0"><circle cx="380.5" cy="331.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.191"/></g></g>
+<g class="cr-36"><g class="cs-0"><circle cx="389" cy="333.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.197"/></g></g>
+<g class="cr-37"><g class="cs-0"><circle cx="397.4" cy="334.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.202"/></g></g>
+<g class="cr-38"><g class="cs-0"><circle cx="405.9" cy="338.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.208"/></g></g>
+<g class="cr-39"><g class="cs-0"><circle cx="414.3" cy="339" r="5" fill="var(--color-data-main)" class="dot" data-at="0.214"/></g></g>
+<g class="cr-40"><g class="cs-0"><circle cx="422.8" cy="336.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.219"/></g></g>
+<g class="cr-41"><g class="cs-0"><circle cx="431.3" cy="330.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.226"/></g></g>
+<g class="cr-42"><g class="cs-0"><circle cx="439.7" cy="333.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.232"/></g></g>
+<g class="cr-43"><g class="cs-0"><circle cx="448.2" cy="339.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.239"/></g></g>
+<g class="cr-44"><g class="cs-0"><circle cx="456.6" cy="339.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.245"/></g></g>
+<g class="cr-45"><g class="cs-0"><circle cx="465.1" cy="336.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.251"/></g></g>
+<g class="cr-46"><g class="cs-0"><circle cx="473.5" cy="334.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.256"/></g></g>
+<g class="cr-47"><g class="cs-0"><circle cx="482" cy="339" r="5" fill="var(--color-data-main)" class="dot" data-at="0.263"/></g></g>
+<g class="cr-48"><g class="cs-0"><circle cx="490.5" cy="337.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.269"/></g></g>
+<g class="cr-49"><g class="cs-0"><circle cx="498.9" cy="336.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.274"/></g></g>
+<g class="cr-50"><g class="cs-0"><circle cx="507.4" cy="238.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.344"/></g></g>
+<g class="cr-51"><g class="cs-0"><circle cx="515.8" cy="174.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.391"/></g></g>
+<g class="cr-52"><g class="cs-0"><circle cx="524.3" cy="158.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.405"/></g></g>
+<g class="cr-53"><g class="cs-0"><circle cx="532.8" cy="155.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.412"/></g></g>
+<g class="cr-54"><g class="cs-0"><circle cx="541.2" cy="153.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.419"/></g></g>
+<g class="cr-55"><g class="cs-0"><circle cx="549.7" cy="161.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.428"/></g></g>
+<g class="cr-56"><g class="cs-0"><circle cx="558.1" cy="152.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.438"/></g></g>
+<g class="cr-57"><g class="cs-0"><circle cx="566.6" cy="149" r="5" fill="var(--color-data-main)" class="dot" data-at="0.445"/></g></g>
+<g class="cr-58"><g class="cs-0"><circle cx="575.1" cy="149.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.452"/></g></g>
+<g class="cr-59"><g class="cs-0"><circle cx="583.5" cy="146" r="5" fill="var(--color-data-main)" class="dot" data-at="0.46"/></g></g>
+<g class="cr-60"><g class="cs-0"><circle cx="592" cy="146.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.467"/></g></g>
+<g class="cr-61"><g class="cs-0"><circle cx="600.4" cy="154.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.476"/></g></g>
+<g class="cr-62"><g class="cs-0"><circle cx="608.9" cy="152.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.483"/></g></g>
+<g class="cr-63"><g class="cs-0"><circle cx="617.3" cy="152" r="5" fill="var(--color-data-main)" class="dot" data-at="0.49"/></g></g>
+<g class="cr-64"><g class="cs-0"><circle cx="625.8" cy="153.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.498"/></g></g>
+<g class="cr-65"><g class="cs-0"><circle cx="634.3" cy="157.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.506"/></g></g>
+<g class="cr-66"><g class="cs-0"><circle cx="642.7" cy="162.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.514"/></g></g>
+<g class="cr-67"><g class="cs-0"><circle cx="651.2" cy="157.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.522"/></g></g>
+<g class="cr-68"><g class="cs-0"><circle cx="659.6" cy="154.8" r="5" fill="var(--color-data-main)" class="dot" data-at="0.53"/></g></g>
+<g class="cr-69"><g class="cs-0"><circle cx="668.1" cy="165.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.542"/></g></g>
+<g class="cr-70"><g class="cs-0"><circle cx="676.6" cy="159" r="5" fill="var(--color-data-main)" class="dot" data-at="0.552"/></g></g>
+<g class="cr-71"><g class="cs-0"><circle cx="685" cy="149.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.564"/></g></g>
+<g class="cr-72"><g class="cs-0"><circle cx="693.5" cy="152.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.572"/></g></g>
+<g class="cr-73"><g class="cs-0"><circle cx="701.9" cy="150.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.58"/></g></g>
+<g class="cr-74"><g class="cs-0"><circle cx="710.4" cy="151.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.589"/></g></g>
+<g class="cr-75"><g class="cs-0"><circle cx="718.8" cy="151.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.597"/></g></g>
+<g class="cr-76"><g class="cs-0"><circle cx="727.3" cy="138.9" r="5" fill="var(--color-data-main)" class="dot" data-at="0.612"/></g></g>
+<g class="cr-77"><g class="cs-0"><circle cx="735.8" cy="144.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.622"/></g></g>
+<g class="cr-78"><g class="cs-0"><circle cx="744.2" cy="145.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.631"/></g></g>
+<g class="cr-79"><g class="cs-0"><circle cx="752.7" cy="151.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.642"/></g></g>
+<g class="cr-80"><g class="cs-0"><circle cx="761.1" cy="155" r="5" fill="var(--color-data-main)" class="dot" data-at="0.651"/></g></g>
+<g class="cr-81"><g class="cs-0"><circle cx="769.6" cy="156.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.661"/></g></g>
+<g class="cr-82"><g class="cs-0"><circle cx="778.1" cy="144.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.677"/></g></g>
+<g class="cr-83"><g class="cs-0"><circle cx="786.5" cy="151.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.689"/></g></g>
+<g class="cr-84"><g class="cs-0"><circle cx="795" cy="160.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.704"/></g></g>
+<g class="cr-85"><g class="cs-0"><circle cx="803.4" cy="160.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.714"/></g></g>
+<g class="cr-86"><g class="cs-0"><circle cx="811.9" cy="158.2" r="5" fill="var(--color-data-main)" class="dot" data-at="0.725"/></g></g>
+<g class="cr-87"><g class="cs-0"><circle cx="820.3" cy="159.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.736"/></g></g>
+<g class="cr-88"><g class="cs-0"><circle cx="828.8" cy="159.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.747"/></g></g>
+<g class="cr-89"><g class="cs-0"><circle cx="837.3" cy="161.4" r="5" fill="var(--color-data-main)" class="dot" data-at="0.759"/></g></g>
+<g class="cr-90"><g class="cs-0"><circle cx="845.7" cy="155.7" r="5" fill="var(--color-data-main)" class="dot" data-at="0.773"/></g></g>
+<g class="cr-91"><g class="cs-0"><circle cx="854.2" cy="157" r="5" fill="var(--color-data-main)" class="dot" data-at="0.786"/></g></g>
+<g class="cr-92"><g class="cs-0"><circle cx="862.6" cy="157.1" r="5" fill="var(--color-data-main)" class="dot" data-at="0.799"/></g></g>
+<g class="cr-93"><g class="cs-0"><circle cx="871.1" cy="155.5" r="5" fill="var(--color-data-main)" class="dot" data-at="0.814"/></g></g>
+<g class="cr-94"><g class="cs-0"><circle cx="879.6" cy="159.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.83"/></g></g>
+<g class="cr-95"><g class="cs-0"><circle cx="888" cy="154" r="5" fill="var(--color-data-main)" class="dot" data-at="0.849"/></g></g>
+<g class="cr-96"><g class="cs-0"><circle cx="896.5" cy="149" r="5" fill="var(--color-data-main)" class="dot" data-at="0.87"/></g></g>
+<g class="cr-97"><g class="cs-0"><circle cx="904.9" cy="157.6" r="5" fill="var(--color-data-main)" class="dot" data-at="0.9"/></g></g>
+<g class="cr-98"><g class="cs-0"><circle cx="913.4" cy="152.3" r="5" fill="var(--color-data-main)" class="dot" data-at="0.934"/></g></g>
+<g class="cr-99"><g class="cs-0"><circle cx="921.8" cy="151.4" r="5" fill="var(--color-data-main)" class="dot" data-at="1"/></g></g>
+<line x1="76" x2="921.8" y1="153.8" y2="153.8" class="chart-rule"/><text x="76" y="149.8" class="chart-rule-label">목표</text>
 </g>
 
 </svg>

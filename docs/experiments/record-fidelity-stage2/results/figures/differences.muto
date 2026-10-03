@@ -1,0 +1,9 @@
+chart difference
+title "정답률 차이(Codex 기록 − Claude 기록)"
+subtitle "점은 차이, 선은 작업 군집 부트스트랩 95% 신뢰구간, 점선은 −10%p"
+x "정답률 차이(%p)"
+decimals 1
+
+series difference "정답률 차이" role=main
+rule -10 "기준선"
+data "differences.json"
