@@ -89,8 +89,12 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 | `route` | `difficulty` | `score` | 3단계로 답 | 확신도 0.6 미만이면 미사용 |
 | `route` | `skills` | `choice` | 선택지에 `none` 포함 | 확신도 0.6 미만이면 힌트 생략 |
 | `route` | `resume_held` | `noul` | 0.85 이상에서만 보류 작업 재개 | 0.85 미만이면 무시 횟수 1 증가 |
-| `route` | `is_constraint` | `noul` | 0.7 이상이면 입력 원문을 제약으로 등록 | 판단이 없으면 미등록 |
-| `constraint` | `replaces_<n>` | `noul` | 기존 제약 최대 10개와 함께 질문. 0.8 이상이면 대체, 0.5 이상 0.8 미만이면 충돌 가능 | 판단이 없으면 대체와 충돌 가능 기록 생략 |
+| `route` | `is_constraint` | `noul` | 0.7 이상이면 제약으로 등록, `constraint_ask` 이상 0.7 미만이면 사용자에게 묻기 | 판단이 없으면 미등록 |
+| `route` | `is_release` | `noul` | `is_constraint`가 0.7 미만이고 `constraint_ask` 이상이면 `releases_<n>`을 묻는다 | 판단이 없으면 해제 판단 생략 |
+| `constraint` | `replaces_<n>` | `noul` | 기존 제약 최대 10개와 함께 질문. 0.8 이상이면 대체, `constraint_conflict` 0.5 이상 0.8 미만이면 사용자에게 묻기 | 판단이 없으면 대체 생략 |
+| `constraint` | `same_<n>` | `noul` | 기존 제약과 함께 질문. 0.8 이상이면 합침 | 판단이 없으면 새 제약으로 등록 |
+| `constraint` | `releases_<n>` | `noul` | 기존 제약 최대 10개와 함께 질문. 0.8 이상이면 해제, `constraint_ask` 이상 0.8 미만이면 사용자에게 묻기 | 판단이 없으면 해제 생략 |
+| `constraint` | `line_<k>_is_constraint` | `noul` | 200자를 넘는 입력의 문장마다 질문. 0.7 이상인 문장을 제약으로 등록 | 판단이 없으면 입력 전체 원문을 한 건으로 등록 |
 | `relation` | `relation_to_running` | `choice` | `refines`, `continues`, `independent`, `conflicts` 중 선택 | 확신도 0.6 미만이면 대기 |
 | `send-opt` | `steer_or_spawn` | `choice` | `target_model`과 함께 질문 | 확신도 0.6 미만이면 현재 에이전트에 대기 뒤 전송 |
 | `file-rank` | `file_<n>_relevant` | `noul` | 후보 파일 전체와 `answer_present`를 함께 질문. 0.7 이상은 존재, 0.35 미만은 없음 | 판단이 없으면 후보 순위 그대로 |
@@ -104,8 +108,8 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 - 실행 중이면 처리 방식을 `relation_to_running`과 `steer_or_spawn`으로 정한다. `refines`, `continues`면 `steer_or_spawn`의 `steer`, `queue`, `spawn`을 끼워 넣기, 대기, 새 작업으로 옮기고, `independent`면 새 작업이다. `conflicts`는 `steer_or_spawn` 답과 관계없이 끼워 넣기로 둔다. 모델이 다음 단계에서 입력을 읽고 방향을 바꾸게 하고, 끼워 넣을 수 없을 때의 확인은 [충돌 입력](input-handling.md#충돌-입력)이 정한다. 확신도가 0.6 미만이면 충돌로 보지 않고 대기로 둔다. 실행 중이 아니면 `keep_current`로 현재 에이전트 대기와 새 작업을 가른다.
 - `target_model`의 선택지는 허용 후보와 `other`이고, `other`를 고르면 대체 규칙을 따른다. 후보가 없으면 묻지 않는다. 허용 후보는 provider가 알려 주는 모델 목록으로, `/model`이 보이는 목록과 같다([모델 고르기](providers-and-sessions.md#모델-고르기)). 채팅에 고정한 모델이 있으면 `target_model`만 묻지 않고 그 모델을 쓰며, 관계 판단 질문은 똑같이 묻는다. engine은 provider 연결을 만들 때 받아 둔 모델 목록(`/model`이 보이는 목록)을 Claude, Codex 순으로 후보에 넣고, 선택지는 `<provider>/<model>` 글이다. 목록을 아직 못 받은 provider(연결 전이거나 목록 요청이 실패한 경우)는 후보에서 빠지고, 받은 목록이 없으면 묻지 않아 현재 모델(첫 입력은 기본 provider의 기본값)을 쓴다. 후보는 관계 판단과 같은 요청에서 묻지만, 고른 모델은 새 작업으로 판단된 입력에만 적용한다. 이어 가는 입력(대기)과 끼워 넣기는 현재 모델을 유지한다. 적용한 모델은 입력 기록(`inputs.pinned_model`)에 남겨 다시 시작해도 같은 모델로 보낸다. 그 새 작업이 메인이고 모델이 열린 메인 session의 모델과 다르면 새 메인 session 규칙을 따르고, 보조 에이전트면 그 모델로 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기))(초안).
 - `difficulty`와 `skills`는 답을 쓰는 곳이 생기기 전까지 묻지 않고 대체 규칙(미사용, 힌트 생략)으로 둔다. 쓰지 않는 질문으로 판단 비용을 늘리지 않기 위해서다.
-- 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `is_constraint`를 더한 `route`는 `route@1.1`이고, `constraint`는 `constraint@1.0`에서 시작한다. 기존 질문의 뜻은 바뀌지 않기 때문이다.
-- 행동 조건을 채운 선택지가 없으면(확신도 미만, `invalid`, 판단 없음, 허용 후보 없음) 질문마다 위 표의 대체 규칙으로 가고, 입력 처리 판단(`route`, `relation`, `send-opt`)은 사용자에게 따로 묻지 않는다. router 장애와 낮은 확신이 입력을 멈추지 않게 하기 위해서다([#103](https://github.com/woonyong-choi/saturn/issues/103), [#39](https://github.com/woonyong-choi/saturn/issues/39)).
+- 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `route@1.1`은 `is_constraint`를, `route@1.2`는 `is_release`를 더한다. `constraint@1.0`은 `replaces_<n>`으로 시작하고 `constraint@1.1`이 `same_<n>`, `releases_<n>`, `line_<k>_is_constraint`를 더한다. 기존 질문의 뜻은 바뀌지 않기 때문이다.
+- 행동 조건을 채운 선택지가 없으면(확신도 미만, `invalid`, 판단 없음, 허용 후보 없음) 질문마다 위 표의 대체 규칙으로 가고, 입력 처리 판단(`route`, `relation`, `send-opt`)은 사용자에게 따로 묻지 않는다. router 장애와 낮은 확신이 입력을 멈추지 않게 하기 위해서다. 제약 판단(`is_constraint`, `replaces_<n>`, `releases_<n>`)은 낮은 확신일 때 대체 규칙으로 가지 않고 입력 처리를 멈추지 않는 확인 창으로 사용자에게 묻는다([제약](constraints.md#사용자에게-묻기))([#103](https://github.com/woonyong-choi/saturn/issues/103), [#39](https://github.com/woonyong-choi/saturn/issues/39)).
 - 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다.
 - 기준값을 판단 기록으로 자동 조정하는 규칙은 [router 학습](router-training.md)에 있다.
 

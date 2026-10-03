@@ -139,10 +139,10 @@ T_hard = T + H
 
 | 구역 | 항목 | 넣는 규칙 |
 |---|---|---|
-| 고정 구역 | 1. 사용자가 명시한 제약과 결정의 원문 2. 지금 작업의 첫 사용자 입력과 마지막 사용자 입력의 원문 3. 끝나지 않은 항목과 효과를 모르는 항목 4. 최근 3턴의 대화(사용자 입력 원문과 에이전트 답 글) | 이 순서로 모두 넣는다 |
+| 고정 구역 | 1. 사용자가 명시한 제약의 규칙 한 줄(제약 칸 상한 안) 2. 지금 작업의 첫 사용자 입력과 마지막 사용자 입력의 원문 3. 끝나지 않은 항목과 효과를 모르는 항목 4. 최근 3턴의 대화(사용자 입력 원문과 에이전트 답 글) | 이 순서로 모두 넣는다. 1은 제약 칸 상한까지 |
 | 경쟁 구역 | 이 채팅의 도구 호출과 결과(최근 3턴 포함), 다른 에이전트 결과 요약, 파일 경로 | 남은 예산 안에서 고른 순서대로 넣는다 |
 
-- 1단계의 제약은 대체된 제약을 빼고 넣는다. 제약 식별과 대체는 [맥락 고르기](context-selection.md)에 있다.
+- 1단계의 제약은 유효 제약만 제약 칸 상한 `C_max` 안에서 넣고 못 넣은 수를 패킷과 대화 기록에 표시한다. 대체되거나 해제된 제약은 빼고 넣는다. 식별, 저장, 칸 채우기는 [제약](constraints.md)에 있다.
 - 목표는 작업의 첫 사용자 입력과 마지막 사용자 입력을 넣고, 끝나지 않은 항목은 대기·보류·결과 미확인 작업을 넣는다. 이 규칙은 [인계 패킷 목표와 남은 일 채우기 방식 실험](../experiments/packet-goal-fields/report.md)에서 마지막 입력보다 정답률이 33.8%p 높고 summary보다 토큰이 적어 채택했다.
 - 2단계의 지금 작업은 마지막 사용자 입력이 속한 작업이다. 첫 입력과 마지막 입력이 같으면 하나만 넣는다.
 - 3단계에는 대기·보류 상태의 입력, 보낸 뒤 결과를 모르는 작업(`NeedsCheck`)의 입력, 결과가 없는 도구 호출을 넣는다. 결과가 없는 도구 호출은 별도 경고 문장 없이 도구 결과 자리에 오류 결과(`Interrupted before a result was recorded · It may have partially run`)를 둔다. 결과를 모르는 작업의 입력도 같은 오류 결과를 붙인다. 항목은 기록의 실제 상태로 고르고 모델을 따로 부르지 않는다. 마지막 입력만 넣을 때보다 정답률이 33.8%p [30.8, 36.7] 높았고, 모델이 작성한 목표·남은 일과는 차이가 0.8%p [−2.5, 4.0]였다. 모델 작성은 호출 토큰이 평균 77,425 늘어 총 비용이 5.77배였다([실험 보고서](../experiments/packet-goal-fields/report.md)).
@@ -195,6 +195,21 @@ P_max = T / 10
 `compact` 판단은 패킷을 만들 때 한 번 묻는다. 턴마다 미리 묻지 않는다. 나눈 요청을 병렬로 보내면 후보 전체 판단의 지연이 조각 수와 거의 무관하게 약 0.3초이기 때문이다. 질문 40개와 약 7KB state 요청을 4개 동시에 보내면 0.26초, 8개 동시에 보내면 0.27초, 4개를 차례로 보내면 0.97초였다([#179](https://github.com/woonyong-choi/saturn/issues/179) 실측). 미리 판단은 후보 전체를 묻는 조건에서 패킷 때 물을 질문을 앞당길 뿐이다. 첫 턴부터 미리 판단하면 추정 입력 토큰이 1.118배 [1.088, 1.161]로 늘고, 사건에 닿지 않아 버려지는 질문이 9.7% [7.3, 13.1]이며, 미리 한 판단이 패킷 때 목표와 어긋날 위험이 남는다. 지연을 줄이는 이득은 순차 전송을 가정한 값이라 병렬 전송에서는 사라진다([후속 분석](../experiments/precompute-breakeven/report.md#후속-분석-후보-전체-판단-조건)). 이 기준은 사전 등록 판정이 아니라 설계 판단용이다.
 
 `compact` 질문의 확률 읽기와 router가 답하지 못할 때의 대체 규칙은 [router](router.md)에 있다.
+
+### 패킷 판단의 적용
+
+패킷을 만들 때의 `compact` 판단은 router 호출이 끝난 뒤 적용한다. 패킷 만들기는 세 단계다.
+
+1. `sessions`가 기록과 제약에서 재료(후보, 고정 구역 항목)를 모은다.
+2. engine이 후보 전체를 `compact` 요청으로 묻는다. 요청 처리와 별도 작업으로 돌고 그동안 다른 요청을 기다리지 않는다.
+3. 적용 직전에 전환 키를 비교하고, 같으면 `sessions`가 답으로 경쟁 구역을 채운다. 제약 칸은 판단에 쓰지 않고 이 시점의 제약 목록으로 만든다.
+
+전환 키는 채팅, 보내는 쪽 메인 session 번호, 받는 쪽 provider와 모델, 전환을 일으킨 입력 번호(맥락 정리면 `맥락 정리`)다.
+
+- 키가 같으면 적용한다. 기록은 추가만 되므로 판단 뒤 기록이 늘어도 키는 같다. 늘어난 후보는 답이 없는 항목처럼 답이 있는 항목 뒤에 후보 순위 순으로 둔다.
+- 키가 다르면 판단을 `superseded`로 기록하고 버린 뒤 재료를 다시 모아 한 번 다시 묻는다. 또 다르면 판단 없이 진행한다. router가 시작한 전환은 건너뛰고 사용자가 고정했거나 맥락 크기 규칙이 시작한 전환은 후보 순위 순서로 채운다([router 실패](router.md#router-실패)).
+- 채팅 revision 전체를 비교하지 않는다. 판단이 도는 사이 작업 상태와 대기열은 자주 바뀌지만 후보를 남길 확률은 틀리지 않는다. 전환 대상이 바뀌면 그 판단은 다른 상대를 향한 것이므로 버린다.
+- 맥락 정리로 여는 새 session은 키 비교에 더해 트리 유휴이고 합칠 대기 입력이 없는지 다시 확인한다. 아니면 정리를 다음 턴 경계로 미룬다.
 
 ### 패킷 표기
 
@@ -284,6 +299,8 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | 표기와 session 제목의 글자도 경쟁 구역 예산에 들어 패킷은 `P_max`를 넘지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_many_sessions_stay_within_packet_limit` |
 | 패킷은 구역마다 기록 번호 순서로 쓴다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_writes_competing_in_seq_order` |
 | `compact` 질문은 패킷을 만들 때 후보 전체를 한 번 router에 보내고 턴이 끝날 때는 보내지 않는다. | 턴 종료에서 router 호출이 없는지, 패킷을 만들 때 후보 전체가 한 번 묻히는지 확인한다. |
+| 패킷 판단은 전환 키가 같을 때만 적용하고, 다르면 한 번 다시 묻고, 또 다르면 판단 없이 진행한다. 기록이 늘어도 판단을 버리지 않는다. | 판단 중 전환 대상이나 기록을 바꿔 적용, 재판단, 판단 없이 진행하는지 확인한다. |
+| 제약 칸은 `C_max` 안에서 채우고 못 넣은 수를 표시한다. | [제약](constraints.md#요구사항)의 제약 칸 행 |
 | 고정 구역이 `P_max`를 넘으면 오래된 턴의 답부터 줄이고, 최근 턴 수를 줄인 뒤 `P_hard`까지 허용한다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_overflow_trims_oldest_answer_first`, `build_packet_fixed_overflow_drops_oldest_turns`, `build_packet_fixed_over_limit_allows_hard_limit_without_competing` |
 | 실험 수집기가 `saturn-core`의 `packet` 예제(`cargo run -p saturn-core --example packet`)로 두 실험 설계의 입력에서 패킷을 만들고, router 판단이 없으면 RRF 순서로 채운다. | `saturn-terminal/core/examples/packet/tests.rs`의 `packet_stream_input_prints_packet_text`, `packet_scenarios_input_prints_json_with_packet_and_rrf_order`, `packet_without_judgments_fills_in_rrf_order`, `packet_judgments_put_low_probability_item_before_unanswered` |
 | 고정 구역이 넘쳐도 provider 압축으로 대신하지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_over_hard_limit_defers_with_constraints` |
@@ -305,7 +322,7 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 - `T_abs`와 `N` 두 설정을 관리해야 한다.
 - `A`를 잴 수 없는 경로는 provider 자동 압축에 기댄다.
 - 정리 모드마다 전달 경로가 달라 두 경로를 함께 유지해야 한다.
-- 제약이 아주 길면 맥락 정리를 미루고 안전망에 기댄다.
+- 고정 구역이 아주 길면 맥락 정리를 미루고 안전망에 기댄다.
 - 항목마다 표기가 붙어 같은 예산에 드는 항목 수가 줄어든다. 순위 순서 패킷의 포함 항목은 평균 24.2개에서 20.2개로 줄었다. 날짜가 필요한 질문의 `router-all` 정답률은 `temporal` 0.0%에서 42.2%, `multi-session` 0.0%에서 78.1%로 올랐다([재측정 결과](../experiments/handoff-packet-quality-v2/report.md)).
 
 ## 대안

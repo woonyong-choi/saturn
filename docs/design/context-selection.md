@@ -7,11 +7,11 @@
 
 ## 요약
 
-맥락 고르기는 패킷, 결과 전달, 파일 순위에 넣을 항목을 고르는 기능이다. `core`의 `sessions`가 후보마다 파일 겹침, 단어 겹침, 최근성 순위를 매기고 RRF로 합친다. router는 후보 전체를 판단하고, 합친 순위는 router가 답하지 못했을 때의 순서와 같은 확률일 때의 순서로만 쓴다. 같은 흐름에서 router는 입력이 제약인지, 새 제약이 옛 제약을 대체하는지도 판단한다.
+맥락 고르기는 패킷, 결과 전달, 파일 순위에 넣을 항목을 고르는 기능이다. `core`의 `sessions`가 후보마다 파일 겹침, 단어 겹침, 최근성 순위를 매기고 RRF로 합친다. router는 후보 전체를 판단하고, 합친 순위는 router가 답하지 못했을 때의 순서와 같은 확률일 때의 순서로만 쓴다. 제약 식별과 대체는 [제약](constraints.md)에 있다.
 
 ## 동기
 
-긴 채팅에는 도구 호출과 다른 에이전트 결과가 수백 개 쌓인다. 후보를 코드 순위의 상위 N개로 좁혀 router에 물으면 router가 남길 항목을 놓친다. 후보 전체를 판단하게 한 측정에서 router가 남긴 항목 중 RRF 상위 10개에 든 비율은 12.0%였고 무작위 기대값은 8.7%였다. 상위 40개도 44.5%였다([#116](https://github.com/woonyong-choi/saturn/issues/116) 측정). router가 답하지 못하면 대체 규칙이 생략이나 경로만이라 확실히 관련 있는 항목까지 빠진다. 사용자가 뒤집은 제약이 옛 제약과 나란히 패킷에 들어가면 새 session은 어느 쪽을 따를지 모른다. 이 기능은 router가 후보 전체를 판단하게 하고, 큰 요청은 질문 단위로 나눠 보내며, router가 실패하면 강제한 전환만 순위로 고르고, 대체된 제약을 정리한다.
+긴 채팅에는 도구 호출과 다른 에이전트 결과가 수백 개 쌓인다. 후보를 코드 순위의 상위 N개로 좁혀 router에 물으면 router가 남길 항목을 놓친다. 후보 전체를 판단하게 한 측정에서 router가 남긴 항목 중 RRF 상위 10개에 든 비율은 12.0%였고 무작위 기대값은 8.7%였다. 상위 40개도 44.5%였다([#116](https://github.com/woonyong-choi/saturn/issues/116) 측정). router가 답하지 못하면 대체 규칙이 생략이나 경로만이라 확실히 관련 있는 항목까지 빠진다. 이 기능은 router가 후보 전체를 판단하게 하고, 큰 요청은 질문 단위로 나눠 보내며, router가 실패하면 강제한 전환만 순위로 고른다.
 
 ## 예시
 
@@ -29,14 +29,6 @@
 2. engine은 5초 간격으로 두 번 다시 보내고, 10초 뒤에도 실패하면 로그에 `판단 모델 실패로 기록 선택을 건너뜁니다`를 남긴다.
 3. `sessions`는 전환하고 RRF 순서대로 경쟁 구역의 예산까지 채운다.
 4. `/v2/auth` 응답은 순위 상위라 router 판단 없이도 패킷에 들어간다.
-
-### 제약이 뒤집힐 때
-
-1. 사용자가 3턴에 `에러 메시지는 영어로 통일해`를 보낸다.
-2. router가 `is_constraint`에 0.9를 답하고, `sessions`는 이 입력 원문을 제약으로 등록한다.
-3. 사용자가 25턴에 `아니, 한국어로 바꿔`를 보낸다.
-4. router가 두 원문을 나란히 놓은 `replaces_1`에 0.93을 답하고, `store`는 25턴 제약이 3턴 제약을 대체한다고 기록한다.
-5. 다음 패킷에는 25턴 원문과 `3턴의 "에러 메시지는 영어로 통일해"를 대체`가 함께 들어간다.
 
 ## 상세 설계
 
@@ -124,6 +116,19 @@
 - RRF 순위는 router 판단을 보조하는 값이다. router가 답하지 못할 때의 순서와 같은 확률일 때의 순서만 정하므로, 순위가 낮아도 router가 답하면 먼저 들어간다.
 - 나누는 규칙은 `core`가 요청 목록을 만드는 순수 함수이고, 전송과 응답 모으기는 engine이 한다. `core`가 네트워크를 다루지 않기 위해서다.
 
+### compact 요청의 state와 질문
+
+`compact` 요청은 후보의 내용을 질문에, 지금 하려는 일을 `state`에 싣는다.
+
+1. `state`는 마지막 사용자 입력 원문과 그 앞 사용자 입력 3개 원문이다. 입력 하나는 앞 2,000자까지 싣는다(초안).
+2. `call_<기록 번호>_keep` 질문에는 `<도구 이름> <인자 JSON>`을, `result_<기록 번호>_keep` 질문에는 같은 호출과 결과 앞 4,000자를 싣는다.
+3. 기록 번호로 결과를 전달할 때 후보인 다른 에이전트의 결과 요약은 결과 자리에 요약문을 싣는다(초안).
+4. `state`와 질문 모두 [router 호출](router.md#router-호출)의 규칙대로 비밀값을 가리고 절대 경로를 `[abs]/이름`으로 바꾼다.
+
+- 후보의 내용을 `state`가 아니라 질문에 싣는 것은 요청을 질문 단위로 나눌 때 조각마다 같은 `state`를 되풀이해도 그 크기가 후보 수에 따라 늘지 않게 하기 위해서다.
+- 제약 목록은 `state`에 넣지 않는다. 제약은 패킷의 고정 구역에 전부 들어가므로 후보를 남길지 판단하는 데 쓰지 않는다.
+- 이 형식(결과 앞 4,000자, 마지막 입력과 앞 입력 3개)으로 후보 전체를 판단한 패킷은 판단 없는 순위 패킷보다 정답률이 50.7%p [44.7, 56.7] 높았다([새 패킷 규칙의 전환 품질 재측정](../experiments/handoff-packet-quality-v2/report.md)).
+
 ### 도구 결과 메모
 
 축약본은 결과 앞 300자와 한 줄 메모다. 메모는 도구 종류별 틀로 `sessions`가 만든다. 모델 호출 없이 같은 결과에서 늘 같은 메모를 만들기 위해서다.
@@ -139,30 +144,6 @@
 
 engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바꾸고, 경로, 읽은 줄 범위, 바뀐 줄 수, 종료 코드를 이벤트에 싣는다. provider 고유 이름을 `providers/codex`, `providers/claude` 안에만 두기 위해서다. 이벤트 필드는 [provider 연결과 session](providers-and-sessions.md#이벤트-수신과-변환)에 있다.
 
-### 제약 식별
-
-1. engine은 `route` 질문 세트에 `is_constraint`를 함께 묻는다.
-2. 답이 기준값 이상이면 `sessions`는 그 입력 원문을 제약으로 등록한다.
-3. TUI는 등록한 입력에 제약 표시를 붙이고, 사용자는 등록을 취소할 수 있다.
-4. 사용자가 취소하면 `sessions`는 등록을 지우고 router 학습의 틀림 신호로 기록한다.
-
-- `is_constraint`는 세 조건을 모두 채우는 입력을 제약으로 본다. 사용자가 한 말이다. 이번 요청 하나가 아니라 앞으로도 적용된다. 무엇을 할지가 아니라 언어, 도구, 형식, 금지처럼 어떻게 할지를 제한한다.
-- 입력마다 이미 보내는 `route` 요청에 질문 하나를 더하므로 router 호출 수는 늘지 않는다. router는 state를 한 번 읽고 모든 질문에 답한다.
-- 원문을 그대로 등록한다. 요약하지 않아 뜻이 바뀌지 않게 하기 위해서다.
-
-### 제약 대체
-
-1. 새 제약이 등록되면 `sessions`는 단어 조각이나 파일이 겹치는 기존 제약을 최대 10개 고른다.
-2. engine은 `constraint` 질문 세트로 기존 제약마다 `replaces_<n>`을 묻는다. state에는 두 원문과 순서를 넣고, 질문은 `나중 제약을 따르면 앞 제약을 지킬 수 없다`이다.
-3. 답이 0.8 이상이면 `store`는 새 제약이 앞 제약을 대체한다고 기록한다.
-4. 답이 0.5 이상 0.8 미만이면 두 제약을 충돌 가능으로 기록한다.
-5. 패킷에는 대체된 제약을 따로 넣지 않고, 새 제약 원문 뒤에 `{턴}턴의 "{앞 제약 원문}"를 대체`를 붙인다.
-6. 충돌 가능한 두 제약은 둘 다 넣고 `충돌 가능` 표시를 붙인다.
-
-- 두 원문을 나란히 놓고 직접 비교해 묻는다. router는 앞 말을 가리키는 간접 지시와 여러 단계 추론에 약하기 때문이다.
-- 대체해도 원문은 지우지 않는다. 기록 원문을 정본으로 두기 위해서다.
-- 판단이 없거나 기준 밖이면 대체하지 않는다. 잘못 지운 제약은 새 session이 알 수 없기 때문이다.
-
 ### 오류 처리
 
 | 상황 | 동작 |
@@ -170,8 +151,6 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | `compact`, `file-rank` router 호출이 재시도 뒤에도 실패 | router가 시작한 전환은 건너뛰고 현재 모델로 진행한다. 그 밖에는 RRF 순서로 경쟁 구역의 예산까지 채운다. |
 | 요청 조각 일부 실패 | 실패한 조각의 항목은 남기고, 답이 있는 남긴 항목 뒤에 RRF 순으로 둔다. |
 | 크기 한도를 넘는 `state` | 질문 하나도 담을 수 없으므로 요청을 만들지 않고 RRF 순서로 채운다. |
-| `is_constraint` 판단 없음 | 제약으로 등록하지 않는다. |
-| `replaces_<n>` 판단 없음 | 대체도 충돌 가능도 기록하지 않는다. |
 | 도구 호출 인자에 경로 없음 | 파일 겹침 채널에서 그 후보를 뺀다. |
 
 ### 요구사항
@@ -189,10 +168,8 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 영문 식별자는 식별자 경계에서 나눈다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_identifier_splits_at_case_and_symbols` |
 | 자모로 풀린 한글도 음절 한글과 같은 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_nfd_hangul_matches_nfc` |
 | 같은 결과에서 늘 같은 메모를 만든다. | `saturn-terminal/core/src/sessions/memo.rs`의 `tool_memo_same_result_gives_same_memo` |
-| 대체된 제약 원문은 기록에 남고 패킷에서만 빠진다. | 대체 뒤 기록에 두 원문이 있고 패킷에는 새 원문과 대체 표시만 있는지 확인한다. |
 | 순위가 router 전체 판단과 얼마나 겹치는지 잰다. | [RRF k와 router 상위 N 실험 결과](../experiments/rrf-k-top-n/report.md): 상위 10개 12.0%, 상위 40개 44.5% |
 | 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [단어 조각 단위별 오타 재현율 실험 결과](../experiments/wordpiece-typo-recall/report.md) |
-| `is_constraint`와 `replaces_<n>`이 한국어 입력에서 기준 정확도를 넘는다. | [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에서 `is_constraint` 0.7은 확인했다. [간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)에서 `replaces_<n>` 구간과 간접 지시 입력은 기준을 가르지 못해 보류이고(간접 지시 입력 74.5% [68.0, 80.0]), 앞 입력의 제약 등록 여부를 state에 넣어도 정확도는 오르지 않았다. |
 | router 없이 순위로 채운 패킷은 router 전체 판단 패킷보다 정답률이 10%p를 넘게 낮지 않다. | [새 패킷 규칙의 전환 품질 재측정](../experiments/handoff-packet-quality-v2/report.md): 정답률 차이 +50.7%p [44.7, 56.7]로 기각. 판단 없는 패킷의 규칙은 [router 실패](router.md#router-실패)에 있다. |
 | router가 시작한 전환은 `compact` 판단이 실패하면 건너뛰고, 강제한 전환은 순위 순서로 채운다. | `saturn-terminal/core/src/routers/failure.rs`의 `compact_failure_skips_router_transition_and_fills_forced_one`, `compact_failure_forced_transition_orders_competing_zone_by_rank` |
 
@@ -206,8 +183,6 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 - 나뉜 요청은 조각마다 같은 state를 보내 입력 토큰이 조각 수만큼 늘고, 조각이 실패하면 그 항목은 순위로만 정해진다.
 - 동시 요청이 8개를 넘을 때의 속도 제한은 재지 않았다.
 - 기준 파일 범위를 실측으로 맞춰야 한다.
-- 일과 제약이 섞인 입력은 원문 전체가 제약으로 등록되어 패킷이 길어진다.
-- 앞 말을 가리키는 간접 지시 입력은 `is_constraint` 정확도가 74.5% [68.0, 80.0]이고, 앞 입력의 제약 등록 여부를 state에 넣어도 오르지 않았다([간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)).
 
 ## 대안
 
@@ -216,7 +191,3 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 - 남김 확률 0.5 이상만 경쟁 구역에 넣는 방식은 근거 항목의 88.0%를 버려 버렸다([결정 기록](../decisions/2026-10-02-fill-packet-by-probability.md)).
 - 임베딩 채널을 기본으로 넣는 방식은 같은 뜻 질의에서 이득이 없고 단어가 겹치는 질의의 재현율과 설치 크기, 상주 메모리를 잃어 버렸다([결정 기록](../decisions/2026-10-01-router-decides-synonyms.md), [실험 보고서](../experiments/embedding-synonym/report.md)).
 - 입력마다 LLM으로 사실 문장을 뽑는 방식은 호출과 출력 비용이 들고 원문 대신 생성문을 저장해 버렸다.
-
-## 미해결 질문
-
-- 간접 지시 입력에서 `is_constraint` 정확도를 올리되 일반 제약 입력의 재현율을 해치지 않는 질문 문장과 부분 충돌을 따로 묻는 질문이 있는지([#186](https://github.com/woonyong-choi/saturn/issues/186))
