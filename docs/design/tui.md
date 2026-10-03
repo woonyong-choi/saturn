@@ -260,7 +260,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `[A] 결과 확인 필요 · /continue A` | 결과 불명, 보류 줄과 함께 표시 |
 | `[A] 맥락 정리 후 이어서 진행` | 맥락 정리 뒤 같은 작업 계속 |
 | `고정 제약이 길어 맥락 정리를 미룹니다` | 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못함, 다음 줄부터 제약 목록 |
-| `맥락 한도를 넘어 멈췄습니다 · /continue 로 다시 시도합니다` | 패킷이 맥락 한도로 거절돼 줄여 다시 보냈지만 들어가지 않거나 줄일 수 없어 보내지 않고 멈춤. 영어는 `stopped, over the context limit · retry with /continue` |
+| `맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요` | 패킷이 맥락 한도로 거절돼 줄여 다시 보냈지만 들어가지 않거나 줄일 수 없어 보내지 않고 멈춤. 영어는 `Stopped over the context limit · Retry with /continue` |
 | `[A] codex → claude로 전환` | 작업의 provider 전환 |
 | `권한 설정 변경됨 · 다음 요청부터 적용됩니다` | 채팅 중 권한 규칙이 바뀐 것을 처음 알아챔. 영어는 `Permission settings changed · Applies from your next request` |
 | `Codex 다시 시작함 · 변경된 권한 설정을 적용했습니다` | 바뀐 권한 규칙을 적용하려고 턴이 끝난 뒤 Codex 연결을 다시 시작함. 영어는 `Restarted Codex · Applied the changed permission settings` |

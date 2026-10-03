@@ -141,7 +141,7 @@ impl Engine {
         Ok(())
     }
 
-    /// 끼워 넣기를 대기로 바꾸고 TUI에 `바로 반영: 준비 중`을 보인다.
+    /// 끼워 넣기를 대기로 바꾸고 TUI에 `바로 반영 준비 중`을 보인다.
     async fn defer_steer(
         &mut self,
         chat: ChatId,

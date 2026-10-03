@@ -254,8 +254,8 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Pinned constraints are long, deferring context compaction",
     ),
     (
-        "맥락 한도를 넘어 멈췄습니다 · /continue 로 다시 시도합니다",
-        "stopped, over the context limit · retry with /continue",
+        "맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요",
+        "Stopped over the context limit · Retry with /continue",
     ),
     ("로 전환", "switched"),
     ("이번 요청", "This request"),

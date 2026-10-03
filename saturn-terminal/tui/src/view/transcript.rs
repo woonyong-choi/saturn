@@ -819,11 +819,11 @@ mod tests {
 
         assert_eq!(
             overflow.lines(Lang::Ko, false, false),
-            vec!["맥락 한도를 넘어 멈췄습니다 · /continue 로 다시 시도합니다"]
+            vec!["맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요"]
         );
         assert_eq!(
             overflow.lines(Lang::En, false, false),
-            vec!["stopped, over the context limit · retry with /continue"]
+            vec!["Stopped over the context limit · Retry with /continue"]
         );
     }
 
