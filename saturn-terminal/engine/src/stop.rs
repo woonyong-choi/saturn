@@ -425,11 +425,7 @@ impl Engine {
     }
 }
 
-/// 멈춘 턴이 어디까지 갔는지는 에이전트가 파일 상태로 확인하게 한다.
+/// 멈춘 턴은 별도 경고 문장 없이 결과 자리의 오류 결과로만 알린다.
 fn confirmation_text(original: &str) -> String {
-    format!(
-        "Previous turn result (error): {INTERRUPTED_RESULT}\n\
-         Check the current state of the working files first, then continue the request below from that state \
-         without repeating what is already done.\n\nRequest:\n{original}"
-    )
+    format!("Previous turn result (error): {INTERRUPTED_RESULT}\n\nRequest:\n{original}")
 }

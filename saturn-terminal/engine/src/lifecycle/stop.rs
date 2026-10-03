@@ -259,7 +259,7 @@ async fn continue_sends_held_input_and_then_a_state_check_for_the_interrupted_ta
     assert!(sent[2].starts_with(&format!(
         "Previous turn result (error): {INTERRUPTED_RESULT}\n"
     )));
-    assert!(sent[2].contains("Check the current state of the working files"));
+    assert!(!sent[2].contains("Check the current state"));
     assert!(sent[2].ends_with("Request:\nfix the build"));
 }
 
