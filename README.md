@@ -67,7 +67,7 @@ The design documents are written in Korean.
 
 ## Development
 
-Run the following commands from the repository root. There is no CI yet.
+Run the following commands from the repository root. CI runs `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`, and a check that `saturn-protocol/generated` is up to date on every pull request.
 
 ```sh
 cargo build --workspace
