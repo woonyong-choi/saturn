@@ -1,0 +1,29 @@
+flow right
+title "허가 요청의 판정 흐름"
+subtitle "규칙이 allow나 deny로 답하면 바로 답하고, ask일 때만 사용자에게 묻는다"
+
+external provider "provider"
+box convert "providers" "요청을 도구 종류와 패턴으로 바꾼다"
+box permission "permission" "규칙과 저장된 항상 허용으로 값을 정한다"
+decision verdict "값은"
+box allow "providers" "허용 답을 바로 보낸다"
+box deny "providers" "거부 답을 바로 보낸다"
+box ask "engine" "TUI에 허가 요청을 올리고 답까지 보관한다"
+
+provider -> convert "도구 호출 허가 요청"
+convert -> permission "도구 종류, 패턴"
+permission -> verdict
+verdict -> allow "`allow`"
+verdict -> deny "`deny`"
+verdict -> ask "`ask`"
+
+step "allow" "규칙이 허용하면 사용자에게 묻지 않는다"
+  provider -> convert
+  convert -> permission
+  permission -> verdict
+  verdict -> allow
+step "ask" "규칙이 묻기로 하면 답이 올 때까지 요청을 보관한다"
+  provider -> convert
+  convert -> permission
+  permission -> verdict
+  verdict -> ask

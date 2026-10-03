@@ -1,0 +1,22 @@
+sequence
+title "Switching a chat from Claude Code to Codex"
+
+person user "Developer"
+box engine "Saturn engine"
+external claude "Claude Code"
+external codex "Codex"
+store store "Record store"
+
+step "Claude Code" "The input is recorded before it goes to the Claude session"
+  user -> engine "request in chat"
+  engine -> store "input recorded first"
+  engine -> claude "input to Claude session"
+  claude -> engine "events and result" dashed
+  engine -> store "result recorded"
+step "Codex" "A new Codex session gets a packet built from the record"
+  user -> engine "switch chat to Codex"
+  engine -> store "read record for packet"
+  engine -> codex "new session with packet"
+  codex -> engine "events and result" dashed
+  engine -> store "result recorded"
+  engine -> user "both results in one chat" dashed

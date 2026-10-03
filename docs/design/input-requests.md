@@ -70,6 +70,8 @@ provider 고유 이름(`mcpServer/elicitation/request`, `AskUserQuestion` 같은
 
 ### 흐름과 대기
 
+![provider의 입력 요청은 engine이 번호를 발급해 TUI에 올리고, 사용자의 답은 요청 번호로 원래 연결에 돌아간다](../assets/input-request-flow.svg)
+
 1. provider가 입력 요청을 보낸다. 어댑터가 요청의 번호를 기억하고 `InputRequested` 이벤트로 올린다.
 2. `engine`이 이벤트를 기록한 뒤 자체 고유 요청 번호를 발급해 `(채팅, provider 연결, provider 요청 번호)`에 대응시키고, TUI에 그 번호를 담은 `InputRequested`를 보내고, 작업 상태를 `AwaitingInput`(`입력 기다림`)으로 바꾼다. 경과 시간이 멈춘다.
 3. 사용자가 답하면 TUI가 `AnswerInput`을 보낸다. `engine`이 요청 번호로 찾은 요청의 원래 연결과 provider 요청 번호로 어댑터에 답을 넘긴다.

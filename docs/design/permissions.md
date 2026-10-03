@@ -94,6 +94,8 @@
 
 ### 판정 흐름
 
+![허가 요청은 규칙이 allow나 deny로 답하면 바로 답하고, ask일 때만 TUI에 올려 사용자에게 묻는다](../assets/permission-decision.svg)
+
 1. provider가 도구 호출 허가를 요청한다.
 2. `providers`가 요청을 도구 종류와 패턴으로 바꾼다.
 3. `permission`이 규칙과 저장된 항상 허용으로 값을 정한다.

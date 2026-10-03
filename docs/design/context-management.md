@@ -84,6 +84,8 @@ T = min(T_abs, N% × 창 크기)
 
 ### compaction 판정
 
+![sessions는 턴이 끝날 때마다 유휴 복귀 조건, 발동 기준, 본전 턴 수를 차례로 보고 새 session으로 옮길지 계속할지 정한다](../assets/compaction-decision.svg)
+
 `sessions`는 턴이 끝날 때마다 다음 순서로 판정한다.
 
 1. 트리 유휴가 아니거나 `A`에 합칠 대기 입력이 있으면 다음 턴 경계까지 판정을 미룬다.

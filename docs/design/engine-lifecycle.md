@@ -52,6 +52,8 @@ TUI와 `cli`는 `engine` crate에 의존하지 않고, 이 경계는 Cargo 의�
 
 ### engine 시작 순서
 
+![engine은 잠금, 스키마 이관, session 복원, 설정 병합, router 확인, 소켓 접속 순서로 시작한다](../assets/engine-start.svg)
+
 `saturn`을 실행했을 때 `engine`이 없으면 `cli`가 `saturn-engine`을 띄운다. `engine`은 다음 순서로 시작한다.
 
 1. `rpc`가 사용자당 `engine` 잠금을 얻는다.
@@ -165,6 +167,8 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 완료 신호 없이 흐름이 끝나거나, 읽는 도중 종료되거나, 끝 신호가 없는 subagent가 남으면 관찰이 끊긴 것으로 보고 `unobserved`를 기록한다. 관찰하지 못한 사이에 외부 효과가 있었을 수 있기 때문이다.
 
 ### 크래시 뒤 복구
+
+![크래시 뒤에는 효과 범위가 증명된 실행만 자동으로 이어 가고, 나머지는 보류해 /continue를 제안한다](../assets/crash-recovery.svg)
 
 `engine`이 비정상 종료된 뒤 사용자가 `saturn`을 실행하면 `cli`가 새 `engine`을 띄우고, `engine`은 다음 순서로 복구한다.
 

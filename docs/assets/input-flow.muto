@@ -1,0 +1,26 @@
+sequence
+title "입력 하나의 처리"
+subtitle "입력은 기록 저장소에 접수된 뒤에만 provider로 간다"
+
+box tui "tui"
+box engine "engine"
+box core "core"
+external router "router"
+external provider "provider"
+store database "database"
+
+step "접수" "engine이 입력을 기록 저장소에 접수하고, core가 판단 차례를 접수 순서로 정한다"
+  tui -> engine "입력"
+  engine -> database "입력 접수"
+  engine -> core "판단 차례 요청"
+  core -> engine "접수 순서" dashed
+step "판단" "router 답으로 core가 대상 에이전트와 처리 방식을 정한다"
+  engine -> router "판단 질문"
+  router -> engine "선택지별 확률" dashed
+  engine -> core "판단 결과 적용"
+  core -> engine "대상 에이전트, 처리 방식" dashed
+step "전달과 기록" "engine이 보내는 순간 session을 골라 전달하고, 이벤트와 사용량을 기록한다"
+  engine -> provider "대상 session에 전달"
+  provider -> engine "이벤트, 사용량 보고" dashed
+  engine -> database "이벤트 기록"
+  engine -> tui "결과 줄" dashed
