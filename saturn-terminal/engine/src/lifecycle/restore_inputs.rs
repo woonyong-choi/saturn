@@ -106,6 +106,41 @@ async fn waiting_inputs_are_sent_in_accept_order_after_a_clean_restart() {
     assert_eq!(turn_texts(&restarted), ["first", "second"]);
 }
 
+// 같은 채팅에서 되살린 여러 입력은 접수 순서대로 하나씩 판단한다
+#[tokio::test]
+async fn restored_inputs_of_one_chat_are_judged_one_at_a_time_in_accept_order() {
+    let mut flow = Flow::new(Vec::new()).await;
+    let waiting = flow.accept_only("waiting one").await;
+    set_state(&flow, waiting, InputState::Queued).await;
+    flow.accept_only("judging two").await;
+    flow.accept_only("judging three").await;
+    let (fixture, chat) = (flow.fixture, flow.chat);
+    drop(flow.engine);
+
+    let mut restarted = Restarted::start_with_replies(
+        fixture,
+        chat,
+        vec![running_reply(0.95, "continues", "queue"); 4],
+    )
+    .await;
+    restarted.settle().await;
+
+    // 적용 직전 채팅 revision이 바뀌면 같은 입력을 한 번 다시 판단하므로 호출이 늘 수 있다. 순서는 입력 단위로 본다
+    let mut judged: Vec<&str> = Vec::new();
+    for call in restarted.transport.calls().into_iter().skip(2) {
+        let body = call.2.unwrap_or_default();
+        let text = ["judging two", "judging three"]
+            .into_iter()
+            .find(|text| body.contains(text))
+            .expect("every judgment should be for a restored input");
+        if judged.last() != Some(&text) {
+            judged.push(text);
+        }
+    }
+    assert_eq!(judged, ["judging two", "judging three"]);
+    assert_eq!(turn_texts(&restarted), ["waiting one"]);
+}
+
 // 판단 중이던 입력은 다시 판단한 뒤 보낸다
 #[tokio::test]
 async fn judging_input_is_judged_again_and_sent_after_a_restart() {

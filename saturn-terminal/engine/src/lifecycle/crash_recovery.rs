@@ -18,6 +18,8 @@ pub(super) struct Restarted {
     pub(super) fake: FakeProvider,
     pub(super) chat: ChatId,
     pub(super) fixture: Fixture,
+    /// 다시 뜬 engine의 router가 받은 호출.
+    pub(super) transport: Arc<FakeTransport>,
 }
 
 impl Restarted {
@@ -60,7 +62,7 @@ impl Restarted {
         let mut script = check_passes();
         script.extend(router_replies);
         let transport = FakeTransport::new(script);
-        let env = fixture.env(true, transport).await;
+        let env = fixture.env(true, Arc::clone(&transport)).await;
         let mut engine = fixture.start(env).await.unwrap();
         let fake = FakeProvider::new(Provider::Claude);
         engine
@@ -74,6 +76,7 @@ impl Restarted {
             fake,
             chat,
             fixture,
+            transport,
         }
     }
 
