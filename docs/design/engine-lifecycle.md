@@ -224,8 +224,6 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 ## 미해결 질문
 
 - 에이전트가 실행한 자식 Saturn을 부모 `engine` 소켓에 자식으로 붙일지, 독립 `engine`으로 띄우고 결과 파일로 돌려받을지 ([#33](https://github.com/woonyong-choi/saturn/issues/33))
-- `codex exec`, `claude -p` 같은 한 번 실행 경로를 상시 연결의 대체 경로로 구현할지, 경로를 하나만 둘지 ([#34](https://github.com/woonyong-choi/saturn/issues/34))
-- Codex 자식 session의 승인 요청에 Saturn이 부모와 같은 정책으로 답할지, 사용자에게 따로 보일지, 모두 거절할지 ([#61](https://github.com/woonyong-choi/saturn/issues/61))
 - 크래시 뒤 파일 상태 확인에 쓰는 수정 파일 목록을 실행 경계의 파일 상태 차이로 계산할지, provider 이벤트로 계산할지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))
 - 크래시 복구 때 실행 중으로 남은 subagent와 provider가 다시 불러오는 자식 session을 Saturn이 정리할지, 끊김 표시만 하고 provider 재개 동작은 그대로 둘지 ([#66](https://github.com/woonyong-choi/saturn/issues/66))
 - TUI를 닫을 때 `on_exit`가 `stop`이나 `ask`이면 무엇을 할지 ([#70](https://github.com/woonyong-choi/saturn/issues/70))

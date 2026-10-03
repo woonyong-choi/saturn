@@ -1,6 +1,5 @@
 //! Codex 연결: `codex app-server` 프로세스 하나로 thread(= provider session) 여러 개를 다룬다.
 //! 설계: docs/design/providers-and-sessions.md
-//! TODO(#61): 자식 thread의 승인 요청 처리 미정. 정해지기 전에는 부모와 같이 `PermissionRequested`로 올린다
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -441,7 +440,6 @@ impl ProviderClient for CodexClient {
 
     /// 요청이 보낸 JSON-RPC 번호로 결정을 돌려준다. 모르는 요청이면 `NotSent`이고, 쓰기에 실패하면 요청을
     /// 되돌려 다시 답할 수 있게 한다. 자식 thread의 승인도 부모 요청과 같은 경로로 답한다.
-    /// TODO(#61): 자식 thread 승인 요청의 처리 방식
     async fn answer_permission(
         &mut self,
         _session: &ProviderSessionId,

@@ -122,7 +122,7 @@ engine은 Saturn 전용 `CODEX_HOME`으로 app-server를 시작한다(2026-10-02
 - 모드는 규칙 번역에 넣지 않는다. 모드를 바꿔도 provider를 다시 시작하지 않기 위해서다. 단 에이전트 질문 기능만 모드 `full`일 때 끈다([아래](#provider-설정과-질문-기능)).
 - 채팅 중에 규칙이 바뀌면(새 입력을 접수할 때 설정을 다시 읽어 규칙 지문이 연결을 시작할 때와 달라지면) 다음 턴이 끝난 뒤 그 채팅의 app-server를 다시 시작한다(사용자 결정). 채팅에 실행 중인 작업이 있으면 다음 턴 끝으로 미룬다. 연결은 통째로 닫고, 열려 있던 session은 기록에 남겨 다음 입력이 새 규칙의 `CODEX_HOME`으로 연결을 만들고 보관한 provider session id로 이어 연다. 규칙이 바뀐 것을 처음 알아챈 입력에서 `다음 요청부터 적용됩니다` 안내를, 다시 시작할 때 `다시 시작함 · 변경된 권한 설정을 적용했습니다` 안내를 대화 기록에 한 줄씩 남긴다. engine은 문구를 만들지 않고 알림 종류(`PermissionsChanged`, `ProviderRestarted`)만 보내며, 문구는 TUI가 시스템 언어로 고른다([TUI](tui.md#화면-언어와-출력-방식)).
 - `thread/start`와 `thread/resume`에 `approvalPolicy="untrusted"`와 `sandbox="read-only"`(읽기 전용 샌드박스)를 준다. 파일 편집도 `item/fileChange/requestApproval`로 받기 위해서다. `untrusted`는 설정 키로는 쓸 수 없고 `thread/start` 인자로만 줄 수 있다.
-- 자식 thread는 부모의 승인 정책과 규칙을 이어받아, 자식이 실행한 명령도 같은 규칙으로 승인 요청이 왔다(5/5 관측). Saturn은 자식 요청도 부모 에이전트의 요청으로 올려 같은 규칙으로 판정한다. 승인 요청에는 편집 경로가 없어 앞선 `item/started`의 `fileChange` 항목 경로를 기억해 쓴다.
+- 자식 thread는 부모의 승인 정책과 규칙을 이어받아, 자식이 실행한 명령도 같은 규칙으로 승인 요청이 왔다(5/5 관측). Saturn은 자식 요청도 부모 에이전트의 요청으로 올려 같은 규칙으로 판정한다([#61](https://github.com/woonyong-choi/saturn/issues/61) 결정). 승인 요청에는 편집 경로가 없어 앞선 `item/started`의 `fileChange` 항목 경로를 기억해 쓴다.
 - Codex 버전으로 열기를 막지 않는다. 버전은 `initialize` 응답의 `userAgent`를 로그에만 남긴다. 세션을 열 때 실제 적용된 승인 정책과 샌드박스를 확인하고, 기대와 다르면 첫 턴을 보내지 않는다. 정책은 `thread/start`와 `thread/resume` 응답의 `approvalPolicy`가 `untrusted`, `sandbox`가 읽기 전용, `approvalsReviewer`가 있으면 `user`인지 본다. 다르면 그 thread를 구독에서 빼고 `NotSent` 오류로 알린다.
 - 규칙이 다른 채팅은 규칙마다 app-server 프로세스와 `CODEX_HOME`을 따로 둔다. app-server 하나가 thread별로 execpolicy 파일을 고르게 하는 인자가 없기 때문이다.
 
@@ -260,5 +260,4 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 - Codex MCP `prompt`가 도구를 시도한 모든 호출에서 요청으로 오는지(마지막 실측은 31/31, 앞선 실측은 불안정) ([#232](https://github.com/woonyong-choi/saturn/issues/232))
 - 규칙으로 읽지 못한 요청의 `항상 허용`을 provider 값으로 보낼 방법: Claude 세션 규칙(`updatedPermissions`), Codex MCP의 `_meta.persist`, Codex 허용 응답과 권한 요청, 옛 이름 값의 실측 ([#232](https://github.com/woonyong-choi/saturn/issues/232))
 - Codex MCP 승인 요청에서 도구 이름을 읽는 필드(`_meta`의 이름 키)가 실제로 있는지. 지금은 `_meta.tool_name`, `_meta.tool`, 요청 문구의 `tool "이름"` 순으로 읽는다 ([#232](https://github.com/woonyong-choi/saturn/issues/232))
-- Codex 자식 thread의 승인 요청에 Saturn이 부모 규칙으로 응답할지, 사용자에게 따로 보일지 ([#61](https://github.com/woonyong-choi/saturn/issues/61))
 - 허가 거절 뒤 다르게 하라는 입력을 어떻게 받을지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
