@@ -15,6 +15,15 @@ impl Engine {
         self.chat_dirs.get(&chat).cloned().unwrap_or_default()
     }
 
+    /// 쓰기 잠금이 겹침을 보는 범위. 작업 폴더와 더한 폴더를 링크를 푼 경로로 만든다. 허가 판정이 경로를 푸는 방식과
+    /// 같아, 링크로 우회한 경로도 같은 폴더로 본다. 폴더가 없으면 푸는 대신 적은 그대로 쓴다.
+    pub(crate) fn write_scope_of(&self, chat: ChatId, workdir: &Path) -> Vec<PathBuf> {
+        std::iter::once(workdir.to_path_buf())
+            .chain(self.chat_dirs_of(chat))
+            .map(|dir| dir.canonicalize().unwrap_or(dir))
+            .collect()
+    }
+
     /// `AddDir` 요청. 새로 더했으면 그 채팅에 붙은 TUI에 알린다.
     ///
     /// # Errors

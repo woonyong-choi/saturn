@@ -447,6 +447,7 @@ impl Engine {
             settings: new.settings,
             permission: new.permission,
             workdir: new.workdir,
+            write_scope: source.write_scope,
             pinned_model: new.pinned_model,
             skip_relation: true,
             state: InputState::Judging,

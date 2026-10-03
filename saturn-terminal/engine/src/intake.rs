@@ -128,6 +128,7 @@ impl Engine {
             skip_relation,
         };
         let id = self.store.accept_input(&new).await?;
+        let write_scope = self.write_scope_of(chat, &new.workdir);
         self.queue.accept(QueuedInput {
             id,
             chat,
@@ -135,6 +136,7 @@ impl Engine {
             settings,
             permission: new.permission,
             workdir: new.workdir,
+            write_scope,
             pinned_model: new.pinned_model,
             skip_relation,
             state: InputState::Judging,

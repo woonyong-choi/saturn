@@ -1,6 +1,7 @@
 use saturn_protocol::ids::{AgentId, ChatId, InputId, TaskId};
 use saturn_protocol::state::{Disposition, InputState, QueueReason};
 
+use super::gate::overlaps;
 use super::{
     Entry, Permission, Queue, QueueError, QueuedInput, Route, SendAction, TaskPhase, TaskSlot,
 };
@@ -273,7 +274,7 @@ impl Queue {
     // cost: time O(t + h), heap O(1), stack O(1)
     // vars: t = 작업 수, h = 쓰기 잠금 수
     // basis: estimate
-    /// 같은 폴더에 다른 쓰는 에이전트나 시작을 기다리는 쓰기 작업이 있으면 기다린다.
+    /// 쓰기 범위가 겹치는 다른 쓰는 에이전트나 시작을 기다리는 쓰기 작업이 있으면 기다린다.
     fn check_write(&self, input: &QueuedInput, agent: Option<AgentId>, route: Route) -> Route {
         if input.permission == Permission::ReadOnly {
             return route;
@@ -281,9 +282,9 @@ impl Queue {
         let is_pending_writer = self.tasks.iter().any(|slot| {
             slot.phase == TaskPhase::Pending
                 && slot.permission == Permission::Write
-                && slot.workdir == input.workdir
+                && overlaps(&slot.write_scope, &input.write_scope)
         });
-        if is_pending_writer || self.gate.is_held_by_other(&input.workdir, agent) {
+        if is_pending_writer || self.gate.is_held_by_other(&input.write_scope, agent) {
             return Route::Wait(Some(QueueReason::WriteTurn));
         }
         route
@@ -337,13 +338,15 @@ impl Queue {
         let Some(index) = self.tasks.iter().position(|slot| slot.id == task) else {
             return false;
         };
-        if input.permission == Permission::Write && !self.gate.try_acquire(&input.workdir, agent) {
+        if input.permission == Permission::Write
+            && !self.gate.try_acquire(&input.write_scope, agent)
+        {
             return false;
         }
         let slot = &mut self.tasks[index];
         slot.phase = TaskPhase::Running;
         slot.permission = input.permission;
-        slot.workdir.clone_from(&input.workdir);
+        slot.write_scope.clone_from(&input.write_scope);
         self.bump(input.chat);
         true
     }
@@ -358,7 +361,7 @@ impl Queue {
             };
             slot.phase = TaskPhase::Pending;
             slot.permission = input.permission;
-            slot.workdir.clone_from(&input.workdir);
+            slot.write_scope.clone_from(&input.write_scope);
         } else {
             let is_main = self.main_task(input.chat).is_none();
             self.tasks.push(TaskSlot {
@@ -366,7 +369,7 @@ impl Queue {
                 chat: input.chat,
                 agent: None,
                 permission: input.permission,
-                workdir: input.workdir.clone(),
+                write_scope: input.write_scope.clone(),
                 is_main,
                 was_interrupted: false,
                 phase: TaskPhase::Pending,
@@ -411,7 +414,7 @@ impl Queue {
             chat: input.chat,
             agent: None,
             permission: input.permission,
-            workdir: input.workdir,
+            write_scope: input.write_scope,
             is_main: !is_new_task,
             was_interrupted: false,
             phase: TaskPhase::Held,
