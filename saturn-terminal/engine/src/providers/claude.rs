@@ -115,6 +115,8 @@ struct SessionState {
     agent: AgentId,
     /// 새 턴 입력을 쓴 때 참, `result`를 받은 때 거짓.
     turn_active: bool,
+    /// 진행 중인 턴에 멈춤 요청을 쓴 때 참, 다음 `result`를 받은 때 거짓. 그 결과는 요청한 완료다.
+    stop_requested: bool,
     origin: TurnOriginTracker,
     /// 키는 Task/Agent `tool_use` id, 값은 부모 subagent.
     running: HashMap<SubagentId, Option<SubagentId>>,
@@ -140,6 +142,7 @@ impl SessionState {
         Self {
             agent,
             turn_active: false,
+            stop_requested: false,
             origin: TurnOriginTracker::default(),
             running: HashMap::new(),
             shell_calls: HashSet::new(),
@@ -377,6 +380,8 @@ impl ProviderClient for ClaudeClient {
         let session = match &session_arg {
             SessionArg::Resume(id) | SessionArg::New(id) => ProviderSessionId(id.clone()),
         };
+        // 오류 결과로 흐름을 잃은 session의 프로세스는 아직 살아 있을 수 있다. 같은 session을 두 프로세스가 쓰지 않게 먼저 닫는다
+        self.close_session(&session).await?;
         let spawned = self
             .supervisor
             .spawn(ProcessSpec {
@@ -489,9 +494,11 @@ impl ProviderClient for ClaudeClient {
         let request_id = format!("saturn-{}", self.next_request_id);
         self.next_request_id += 1;
         let (reply, receive) = oneshot::channel();
-        lock(&state)
-            .control_waiters
-            .insert(request_id.clone(), reply);
+        {
+            let mut state = lock(&state);
+            state.stop_requested = state.turn_active;
+            state.control_waiters.insert(request_id.clone(), reply);
+        }
         let message = json!({
             "type": "control_request",
             "request_id": request_id,

@@ -28,29 +28,7 @@ pub(super) fn convert_line(
         Some("system") if line["subtype"] == "init" => apply_init(state, line),
         Some("assistant") => convert_assistant(state, line),
         Some("user") => convert_tool_results(state, line),
-        Some("result") => {
-            state.turn_active = false;
-            let origin = state.origin.on_turn_started();
-            let usage = &line["usage"];
-            vec![
-                ProviderEvent::Usage(UsageReport {
-                    agent,
-                    subagent: None,
-                    model: state.applied.model.clone(),
-                    scope: UsageScope::MainTurn,
-                    input: usage["input_tokens"].as_u64(),
-                    cache_read: usage["cache_read_input_tokens"].as_u64(),
-                    cache_write: usage["cache_creation_input_tokens"].as_u64(),
-                    output: usage["output_tokens"].as_u64(),
-                    reasoning: None,
-                }),
-                ProviderEvent::ContextSize {
-                    agent,
-                    tokens: state.context_tokens,
-                },
-                ProviderEvent::TurnCompleted { agent, origin },
-            ]
-        }
+        Some("result") => convert_result(state, line),
         Some("control_request") if line["request"]["subtype"] == "can_use_tool" => {
             let request = &line["request"];
             let tool = request["tool_name"].as_str().unwrap_or_default();
@@ -88,6 +66,55 @@ pub(super) fn convert_line(
         }
         _ => Vec::new(),
     }
+}
+
+/// 성공한 결과만 `TurnCompleted`로 올린다. 오류 결과는 완료 신호 없이 끊긴 흐름과 같게 `StreamLost`로 올려 작업을
+/// 결과 확인 필요로 두고 자동으로 다시 보내지 않는다. 턴이 이미 돌았을 수 있어 보내지 않음이 확정이 아니기 때문이다.
+/// 맥락 초과(`terminal_reason`이 `prompt_too_long`)도 같다. `ContextExceeded`는 보내지 않음이 확정일 때만 쓴다.
+/// 멈춤 요청 뒤의 결과는 오류 모양이어도 요청한 완료로 본다.
+fn convert_result(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
+    let agent = state.agent;
+    let stop_requested = std::mem::take(&mut state.stop_requested);
+    state.turn_active = false;
+    let origin = state.origin.on_turn_started();
+    let usage = &line["usage"];
+    let mut events = vec![
+        ProviderEvent::Usage(UsageReport {
+            agent,
+            subagent: None,
+            model: state.applied.model.clone(),
+            scope: UsageScope::MainTurn,
+            input: usage["input_tokens"].as_u64(),
+            cache_read: usage["cache_read_input_tokens"].as_u64(),
+            cache_write: usage["cache_creation_input_tokens"].as_u64(),
+            output: usage["output_tokens"].as_u64(),
+            reasoning: None,
+        }),
+        ProviderEvent::ContextSize {
+            agent,
+            tokens: state.context_tokens,
+        },
+    ];
+    if stop_requested || !is_error_result(line) {
+        events.push(ProviderEvent::TurnCompleted { agent, origin });
+        return events;
+    }
+    tracing::warn!(
+        subtype = line["subtype"].as_str().unwrap_or_default(),
+        terminal_reason = line["terminal_reason"].as_str().unwrap_or_default(),
+        "claude turn ended with an error result"
+    );
+    state.running.clear();
+    events.push(ProviderEvent::StreamLost { agent });
+    events
+}
+
+/// `is_error`가 참이거나 `subtype`이 `success`가 아니면 오류 결과다. `subtype`이 없으면 `is_error`만 본다.
+fn is_error_result(line: &Value) -> bool {
+    line["is_error"] == true
+        || line["subtype"]
+            .as_str()
+            .is_some_and(|kind| kind != "success")
 }
 
 /// 규칙 대상 도구의 요청만 규칙이 읽는 호출로 바꾼다. 그 밖의 도구는 `None`이라 사용자에게 묻는다.
