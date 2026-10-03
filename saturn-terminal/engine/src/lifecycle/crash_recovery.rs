@@ -2,7 +2,7 @@
 //! 마지막 TUI가 떠난 뒤 할 일이 없으면 유예 뒤 engine이 스스로 끝난다.
 
 use saturn_core::sessions::memo::INTERRUPTED_RESULT;
-use saturn_protocol::ids::{ChatId, Provider, TaskLabel};
+use saturn_protocol::ids::{ChatId, Provider, TaskId, TaskLabel};
 use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::{EffectScope, SessionState, TaskState};
 
@@ -32,6 +32,22 @@ impl Restarted {
         let run = engine.store.unfinished_runs().await.unwrap()[0].id;
         engine.store.set_effect_scope(run, scope).await.unwrap();
         drop(engine);
+        Self::start_again(fixture, chat).await
+    }
+
+    /// 정상 종료한 것처럼 engine을 버리고 같은 홈으로 다시 시작해, 크래시 복구와 기록에 남긴 보류 복구를 한 번 돌린다.
+    pub(super) async fn restart(self) -> Self {
+        let Self {
+            engine,
+            chat,
+            fixture,
+            ..
+        } = self;
+        drop(engine);
+        Self::start_again(fixture, chat).await
+    }
+
+    async fn start_again(fixture: Fixture, chat: ChatId) -> Self {
         let transport = FakeTransport::new(check_passes());
         let env = fixture.env(true, transport).await;
         let mut engine = fixture.start(env).await.unwrap();
@@ -98,7 +114,7 @@ async fn crashed_while_working(scope: EffectScope) -> Restarted {
     Restarted::after_crash(flow, scope).await
 }
 
-fn resume_suggested(seen: &[Notification]) -> Option<Vec<TaskLabel>> {
+pub(super) fn resume_suggested(seen: &[Notification]) -> Option<Vec<TaskLabel>> {
     seen.iter().find_map(|notification| match notification {
         Notification::ChatNotice {
             notice: ChatNotice::ResumeSuggested { held },
@@ -253,4 +269,81 @@ async fn engine_does_not_end_while_a_tui_is_attached() {
     let still_running = timeout(Duration::from_millis(600), flow.engine.serve()).await;
 
     assert!(still_running.is_err());
+}
+
+// #368: engine이 정상 종료했다 다시 떠도 크래시로 보류한 작업의 재개 제안이 처음 붙는 TUI에 다시 온다
+#[tokio::test]
+async fn held_task_is_suggested_again_after_the_engine_restarts() {
+    let restarted = crashed_while_working(EffectScope::NetworkPossible).await;
+
+    let mut restarted = restarted.restart().await;
+    let seen = restarted.attach().await;
+
+    assert_eq!(resume_suggested(&seen), Some(vec![TaskLabel('A')]));
+    assert!(restarted.fake.calls().is_empty());
+}
+
+// #368: 다시 뜬 engine에서도 `/continue`는 같은 패킷 대신 파일 상태를 확인하게 하는 새 입력으로 이어 간다
+#[tokio::test]
+async fn continue_works_after_the_engine_restarts() {
+    let mut restarted = crashed_while_working(EffectScope::NetworkPossible)
+        .await
+        .restart()
+        .await;
+    let chat = restarted.chat;
+
+    restarted.engine.continue_held(chat, None).await.unwrap();
+    restarted.settle().await;
+
+    let turns = restarted.turns();
+    assert_eq!(turns.len(), 1);
+    assert!(turns[0].ends_with("Request:\nfix the build"));
+}
+
+// #368: 재개하거나 닫은 작업은 다시 뜬 engine에서 제안하지 않는다
+#[tokio::test]
+async fn resumed_or_closed_task_is_not_suggested_after_the_engine_restarts() {
+    let mut resumed = crashed_while_working(EffectScope::NetworkPossible).await;
+    let chat = resumed.chat;
+    resumed.engine.continue_held(chat, None).await.unwrap();
+    resumed.settle().await;
+    let agent = *resumed.engine.flow.live.keys().next().unwrap();
+    resumed
+        .engine
+        .on_provider_event(Provider::Claude, turn_completed(agent))
+        .await
+        .unwrap();
+    let mut resumed = resumed.restart().await;
+    assert!(resume_suggested(&resumed.attach().await).is_none());
+
+    let mut closed = crashed_while_working(EffectScope::NetworkPossible).await;
+    let chat = closed.chat;
+    closed.engine.close_held(chat, TaskId(1)).await.unwrap();
+    let mut closed = closed.restart().await;
+    assert!(resume_suggested(&closed.attach().await).is_none());
+    assert!(closed.engine.flow.held.is_empty());
+}
+
+// #368: `on_exit = "stop"`으로 보류한 작업도 engine이 다시 뜬 뒤 붙는 TUI에 재개를 제안한다
+#[tokio::test]
+async fn task_held_by_on_exit_stop_is_suggested_after_the_engine_restarts() {
+    let mut flow = Flow::with_config("on_exit = \"stop\"\n", vec![idle_reply(0.95)]).await;
+    flow.submit("fix the build").await;
+    let (chat, agent) = (flow.chat, flow.agent());
+    flow.engine
+        .handle_event(RpcEvent::Disconnected(CLIENT))
+        .await
+        .unwrap();
+    flow.engine.confirm_stopped_agent(chat, agent);
+    flow.engine.check_stop_done(chat).await.unwrap();
+    assert!(flow.engine.flow.stopping.is_empty());
+    let Flow {
+        engine, fixture, ..
+    } = flow;
+    drop(engine);
+    let mut restarted = Restarted::start_again(fixture, chat).await;
+
+    let seen = restarted.attach().await;
+
+    assert_eq!(resume_suggested(&seen), Some(vec![TaskLabel('A')]));
 }

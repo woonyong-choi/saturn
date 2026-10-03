@@ -203,6 +203,14 @@ impl Engine {
             .filter_map(|id| self.sessions.get(id).cloned())
             .collect();
         self.store.upsert_sessions(&records).await?;
+        for record in records
+            .iter()
+            .filter(|record| record.state == SessionState::Ended)
+        {
+            self.store
+                .delete_interrupted_subagents(record.agent)
+                .await?;
+        }
         Ok(())
     }
 }

@@ -15,7 +15,7 @@ use saturn_protocol::state::{InputState, SessionState, TaskState};
 use crate::flow::LiveSession;
 use crate::intake::direct_decision;
 use crate::processes::{ProcessError, ProcessGroupId, StopOutcome, StopScope};
-use crate::store::{NewInput, RunEnd};
+use crate::store::{NewInput, RunEnd, StoredHold};
 use crate::{Engine, EngineError};
 
 /// 멈추는 중인 채팅이 기다리는 것.
@@ -62,7 +62,7 @@ impl Engine {
         let held = self.queue.stop(chat);
         let running = self.running_agents(chat);
         let mut groups: Vec<ProcessGroupId> = Vec::new();
-        self.remember_held(&held, &running).await;
+        self.remember_held(chat, &held, &running).await;
         for agent in &running {
             let Some(live) = self.flow.live.get(agent).cloned() else {
                 continue;
@@ -119,19 +119,21 @@ impl Engine {
     }
 
     /// 보류한 작업마다 멈출 때 하던 일을 기억한다. 작업 이름표가 없는 작업에는 새로 붙인다.
-    async fn remember_held(&mut self, held: &[TaskId], running: &[AgentId]) {
+    async fn remember_held(&mut self, chat: ChatId, held: &[TaskId], running: &[AgentId]) {
         for agent in running {
             let Some(task) = self.runs.task_of.get(agent).copied() else {
                 continue;
             };
             let input = self.run_input(*agent).await;
-            self.flow.held.insert(
+            self.hold_task(
+                chat,
                 task,
                 HeldTask {
                     agent: Some(*agent),
                     input,
                 },
-            );
+            )
+            .await;
         }
         for task in held {
             self.flow.tasks.assign(*task);
@@ -140,6 +142,34 @@ impl Engine {
                 input: None,
             });
         }
+    }
+
+    /// 보류를 메모리에 두고, 멈출 때 실행 중이던 작업(입력과 에이전트가 있는 보류)은 기록 저장소에도 남긴다. engine이 다시 떠도
+    /// 재개를 제안하기 위해서다. 기록 실패는 경고만 남기고 멈춤을 막지 않는다.
+    pub(crate) async fn hold_task(&mut self, chat: ChatId, task: TaskId, held: HeldTask) {
+        self.flow.held.insert(task, held);
+        if let (Some(agent), Some(input)) = (held.agent, held.input) {
+            let saved = self
+                .store
+                .save_held_task(&StoredHold {
+                    task,
+                    chat,
+                    agent,
+                    input,
+                })
+                .await;
+            self.warn_failure("failed to record held task", saved);
+        }
+    }
+
+    /// 보류를 메모리와 기록 저장소에서 함께 지운다. 재개하거나 닫아 끝난 작업의 정보를 남기지 않기 위해서다.
+    async fn release_held(&mut self, task: TaskId) -> Option<HeldTask> {
+        let held = self.flow.held.remove(&task)?;
+        if held.input.is_some() {
+            let deleted = self.store.delete_held_task(task).await;
+            self.warn_failure("failed to delete recorded held task", deleted);
+        }
+        Some(held)
     }
 
     /// 깊은 subagent부터 메인 순서로 멈춤 신호를 맡긴다. 연결 작업이 앞선 요청 뒤에 보내고, 연결이 끊겼으면 프로세스 중지로
@@ -373,7 +403,13 @@ impl Engine {
                 .await?;
             self.notify_input(input).await;
         }
-        if let Some(held) = self.flow.held.remove(&task) {
+        if let Some(held) = self.release_held(task).await {
+            if let Some(agent) = held.agent {
+                self.flow.interrupted_to_clean.remove(&agent);
+                self.flow.interrupted_watch.remove(&agent);
+                let deleted = self.store.delete_interrupted_subagents(agent).await;
+                self.warn_failure("failed to delete interrupted subagents", deleted);
+            }
             self.end_held_session(chat, held).await;
         }
         self.flow.tasks.release(task);
@@ -410,13 +446,15 @@ impl Engine {
         if let Some(run) = self.runs.forget(check.agent) {
             self.store.finish_run(run, RunEnd::Stopped).await?;
         }
-        self.flow.held.insert(
+        self.hold_task(
+            chat,
             task,
             HeldTask {
                 agent: Some(check.agent),
                 input: Some(check.input),
             },
-        );
+        )
+        .await;
         self.send_confirmation(chat, task).await
     }
 
@@ -431,7 +469,7 @@ impl Engine {
         else {
             return Ok(());
         };
-        self.flow.held.remove(&task);
+        self.release_held(task).await;
         let new = NewInput {
             chat,
             text: confirmation_text(&source.text),

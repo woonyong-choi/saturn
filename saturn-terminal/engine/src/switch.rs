@@ -453,7 +453,15 @@ impl Engine {
             }
             (OpenKind::Resume { stored, .. }, Some(handle)) => {
                 // provider가 끊긴 자식 정리를 시도한 뒤라 다시 넘기지 않는다
-                self.flow.interrupted_to_clean.remove(&stored.agent);
+                if self
+                    .flow
+                    .interrupted_to_clean
+                    .remove(&stored.agent)
+                    .is_some()
+                {
+                    let marked = self.store.mark_interrupted_cleaned(stored.agent).await;
+                    self.warn_failure("failed to record cleaned interrupted subagents", marked);
+                }
                 self.leave_main(chat, &plan).await?;
                 if stored.state != SessionState::Open {
                     self.resume_main(stored.id).await?;
