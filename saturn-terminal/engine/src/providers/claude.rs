@@ -19,7 +19,7 @@ use tokio::process::ChildStdin;
 use tokio::sync::{mpsc, oneshot};
 
 use super::claude_input;
-use super::{AppliedSettings, LaunchSpec, TurnOriginTracker, UserProviderConfig};
+use super::{AppliedSettings, LaunchSpec, REPLY_TIMEOUT, TurnOriginTracker, UserProviderConfig};
 use crate::processes::{ProcessGroupId, ProcessSpec, StopScope, Supervisor};
 
 mod config;
@@ -91,9 +91,6 @@ const AUTO_COMPACT_MAX: u64 = 1_000_000;
 
 /// `--resume` 뒤 이 안에 끝나면 재개 실패로 본다. 초안 값.
 const RESUME_SETTLE: Duration = Duration::from_millis(500);
-
-/// 넘으면 기다리지 않고 돌아가 호출자가 프로세스 묶음 중지로 넘어간다. 초안 값.
-const CONTROL_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// 넘으면 묶음을 멈춘다. 초안 값.
 const CLOSE_GRACE: Duration = Duration::from_secs(5);
@@ -504,7 +501,7 @@ impl ProviderClient for ClaudeClient {
             lock(&state).control_waiters.remove(&request_id);
             return Err(ProviderError::ConnectionLost);
         }
-        match tokio::time::timeout(CONTROL_TIMEOUT, receive).await {
+        match tokio::time::timeout(REPLY_TIMEOUT, receive).await {
             Ok(Ok(_)) => Ok(()),
             Ok(Err(_)) => Err(ProviderError::ConnectionLost),
             Err(_) => {

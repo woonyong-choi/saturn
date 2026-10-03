@@ -15,6 +15,7 @@ mod model;
 mod outcomes;
 mod packet_overflow;
 mod permissions;
+mod provider_stall;
 mod requests;
 mod send_now;
 mod sessions;

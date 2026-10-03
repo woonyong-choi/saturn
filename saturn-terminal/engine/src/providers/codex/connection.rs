@@ -12,7 +12,8 @@ use super::config::{default_args, read_user_config, with_codex_home};
 use super::stream::{log_stderr, read_loop};
 use super::{
     Approvals, COMMAND_DESCRIPTION_PREFIX, COMMAND_METHODS, CodexClient, EVENT_BUFFER,
-    MCP_READY_POLL, MCP_READY_TIMEOUT, Pending, Threads, error_message, lock,
+    MCP_READY_POLL, MCP_READY_TIMEOUT, OPEN_METHODS, OPEN_REPLY_TIMEOUT, Pending, REPLY_TIMEOUT,
+    Threads, error_message, lock,
 };
 use crate::processes::{ProcessSpec, Supervisor};
 use crate::providers::codex_permission::mcp_check;
@@ -71,6 +72,8 @@ impl CodexClient {
             mcp_servers: launch.permission.mcp_servers.clone(),
             is_mcp_ready: false,
             mcp_ready_timeout: MCP_READY_TIMEOUT,
+            reply_timeout: REPLY_TIMEOUT,
+            open_reply_timeout: OPEN_REPLY_TIMEOUT,
         };
         if let Err(error) = client.initialize().await {
             client.abort_start().await;
@@ -145,7 +148,9 @@ impl CodexClient {
         }
     }
 
-    /// 쓰기 전에 실패하면 `NotSent`, 쓴 뒤 응답 없이 연결이 끊기면 `Unknown`, JSON-RPC 오류 응답은 `Err(오류 객체)`.
+    /// 쓰기 전에 실패하면 `NotSent`, 쓴 뒤 응답 없이 연결이 끊기거나 요청 종류별 제한 시간(`OPEN_METHODS`이면 `open_reply_timeout`, 아니면 `reply_timeout`) 안에 응답이 오지 않으면 `Unknown`,
+    /// JSON-RPC 오류 응답은 `Err(오류 객체)`. 응답이 늦어도 app-server와 턴은 끊지 않고 이 요청만 포기한다.
+    /// 포기한 요청의 늦은 응답은 읽기 작업이 찾을 곳이 없어 버린다.
     pub(super) async fn request(
         &mut self,
         method: &str,
@@ -162,7 +167,19 @@ impl CodexClient {
                 reason: format!("failed to write request: {}", error.kind()),
             });
         }
-        receive.await.map_err(|_| ProviderError::Unknown)
+        let limit = if OPEN_METHODS.contains(&method) {
+            self.open_reply_timeout
+        } else {
+            self.reply_timeout
+        };
+        match tokio::time::timeout(limit, receive).await {
+            Ok(reply) => reply.map_err(|_| ProviderError::Unknown),
+            Err(_) => {
+                lock(&self.pending).remove(&id);
+                tracing::warn!(method, "codex app-server did not reply in time");
+                Err(ProviderError::Unknown)
+            }
+        }
     }
 
     pub(super) async fn write_line(&mut self, message: &Value) -> std::io::Result<()> {

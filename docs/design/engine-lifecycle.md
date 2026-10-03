@@ -221,6 +221,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | provider 흐름의 관찰 중단 | `effect_scope`를 `unobserved`로 기록하고 자동으로 이어 가지 않는다. |
 | 크래시 뒤 증명되지 않은 `effect_scope` | 자동으로 재개하지 않고 보류한 뒤 재개를 한 줄로 제안한다. |
 | 에이전트가 실행한 중첩 `saturn` | 실행을 거절한다. |
+| 한 채팅의 provider가 요청에 응답하지 않음 | 요청 처리 루프는 그 응답을 요청 종류별 제한(바로 돌아와야 하는 요청 10초, 시작·열기 요청 60초, 초안)까지만 기다리고 이어 간다. 다른 채팅의 요청과 멈춤 요청은 그 시간 안에 처리하고, 턴은 자동으로 끊지 않는다. 응답 없는 요청의 처리는 [provider 오류 처리](providers-and-sessions.md#오류-처리)를 따른다. |
 
 ### 요구사항
 
@@ -247,6 +248,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 자동으로 이어 갈 때 같은 패킷을 다시 보내지 않는다. | 자동 재개 때 파일 상태로 만든 새 입력만 전송되는지 확인 |
 | 강제 종료 뒤 subagent가 있던 session을 재개할 때의 동작을 확인한다. | [강제 종료 뒤 세션 재개 동작 측정](https://github.com/woonyong-choi/saturn/issues/24) |
 | 에이전트가 실행한 `saturn`은 거절한다. | [하위 에이전트 훅 적용 범위 측정](https://github.com/woonyong-choi/saturn/issues/23) |
+| 한 채팅의 provider 요청이 응답하지 않아도 다른 채팅의 입력과 조회, 같은 채팅의 멈춤 요청을 처리한다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_silent_provider_request_does_not_stall_other_chats_or_stop` |
 
 ## 대안
 

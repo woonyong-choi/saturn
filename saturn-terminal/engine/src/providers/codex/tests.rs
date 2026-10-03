@@ -71,6 +71,7 @@ while (my $line = <STDIN>) {
       { name => "lint", description => "Run the linter", shortDescription => "lint it", enabled => JSON::PP::true, path => "/skills/lint/SKILL.md", scope => "user" },
       { name => "off", description => "disabled", enabled => JSON::PP::false, path => "/skills/off/SKILL.md", scope => "user" } ] } ] } });
   } elsif ($method eq "thread/start" || $method eq "thread/resume") {
+    select(undef, undef, undef, $ENV{FAKE_SLOW_OPEN_MS} / 1000) if ($ENV{FAKE_SLOW_OPEN_MS} // "") ne "";
     my $model = $p->{model} // "";
     if (($ENV{FAKE_REQUIRE_ADD_DIR} // "") ne "") {
       my $roots = $p->{config}{sandbox_workspace_write}{writable_roots} // [];
@@ -98,6 +99,7 @@ while (my $line = <STDIN>) {
     out({ id => $id, result => { data => \@servers, nextCursor => undef } });
   } elsif ($method eq "turn/start") {
     my $first = $p->{input}[0];
+    next if ($first->{text} // "") eq "stall";
     if (($first->{text} // "") eq "crash") {
       out({ id => $id, result => { turn => { id => "turn_x", status => "inProgress", items => [] } } });
       note("turn/started", { threadId => $tid, turn => { id => "turn_x", status => "inProgress", items => [] } });
@@ -175,6 +177,7 @@ while (my $line = <STDIN>) {
       out({ id => $id, result => { turnId => $active } });
     }
   } elsif ($method eq "turn/interrupt") {
+    next if ($ENV{FAKE_INTERRUPT_SILENT} // "") ne "";
     out({ id => $id, result => {} });
     note("turn/completed", { threadId => $tid, turn => { id => $p->{turnId}, status => "interrupted", items => [] } });
     $active = "";
@@ -186,7 +189,7 @@ while (my $line = <STDIN>) {
 }
 "#;
 
-fn launch(dir: &Path, env: Vec<(std::ffi::OsString, std::ffi::OsString)>) -> LaunchSpec {
+pub(crate) fn launch(dir: &Path, env: Vec<(std::ffi::OsString, std::ffi::OsString)>) -> LaunchSpec {
     let program = dir.join("fake-codex");
     std::fs::write(&program, FAKE_APP_SERVER).unwrap();
     std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
@@ -1513,4 +1516,65 @@ fn rejected_turn_tells_context_overflow_from_other_rejections() {
         rejected_turn(&json!({ "message": "invalid input" })),
         ProviderError::NotSent { .. }
     ));
+}
+
+#[tokio::test]
+async fn a_silent_request_fails_alone_and_leaves_the_connection_usable() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut client = CodexClient::start(launch(dir.path(), Vec::new()), Supervisor::new())
+        .await
+        .unwrap()
+        .with_reply_timeouts(Duration::from_millis(300), Duration::from_secs(5));
+    let main = client
+        .open_session(spec(dir.path()))
+        .await
+        .unwrap()
+        .provider_session;
+
+    let silent = client.send_turn(&main, "stall").await;
+
+    assert!(matches!(silent, Err(ProviderError::Unknown)), "{silent:?}");
+    assert!(
+        lock(&client.pending).is_empty(),
+        "the abandoned request should be forgotten"
+    );
+    client.send_turn(&main, "quick").await.unwrap();
+    assert!(!take(&mut client, 3).await.is_empty());
+}
+
+#[tokio::test]
+async fn a_silent_interrupt_reports_the_lost_connection_instead_of_waiting() {
+    let dir = tempfile::tempdir().unwrap();
+    let env = vec![("FAKE_INTERRUPT_SILENT".into(), "1".into())];
+    let mut client = CodexClient::start(launch(dir.path(), env), Supervisor::new())
+        .await
+        .unwrap()
+        .with_reply_timeouts(Duration::from_millis(300), Duration::from_secs(5));
+    let main = client
+        .open_session(spec(dir.path()))
+        .await
+        .unwrap()
+        .provider_session;
+    client.send_turn(&main, "fix the build").await.unwrap();
+
+    let interrupted = client.interrupt(&main, InterruptTarget::Main).await;
+
+    assert!(
+        matches!(interrupted, Err(ProviderError::ConnectionLost)),
+        "{interrupted:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_slow_open_reply_is_waited_for_longer_than_a_quick_one() {
+    let dir = tempfile::tempdir().unwrap();
+    let env = vec![("FAKE_SLOW_OPEN_MS".into(), "1500".into())];
+    let mut client = CodexClient::start(launch(dir.path(), env), Supervisor::new())
+        .await
+        .unwrap()
+        .with_reply_timeouts(Duration::from_millis(300), Duration::from_secs(5));
+
+    let opened = client.open_session(spec(dir.path())).await;
+
+    assert!(opened.is_ok(), "{opened:?}");
 }

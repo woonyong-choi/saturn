@@ -297,6 +297,17 @@ Saturn은 오래 조용한 작업을 자동으로 죽이지 않는다. 실행 �
 
 두 provider의 스트림 무응답 기본값이 모두 5분이라 그 값을 쓴다. Claude Code의 Bash 도구는 조용한 채로 10분까지 돌 수 있어 긴 명령은 5분에 표시가 뜰 수 있다. 표시만 하고 멈추지 않으므로 오래 걸리는 작업에서도 잃는 것이 없다.
 
+### provider 요청 응답 제한
+
+engine은 요청 처리 루프 하나라 provider 요청이 응답하지 않으면 그 시간만큼 다른 채팅과 멈춤 요청도 늦어진다. 그래서 응답 대기에 제한을 두되, 턴 실행은 자동으로 끊지 않는다(무응답 표시와 같은 결정). 제한은 요청 종류별 상수 둘이고 설정 키는 없다.
+
+| 종류 | 요청 | 제한 | 근거 |
+|---|---|---|---|
+| 바로 돌아와야 하는 요청 | `turn/start`, `turn/steer`, `turn/interrupt` 등 | 10초 | 응답은 요청을 받았다는 확인이다. 멈춤 신호 뒤 프로세스 묶음 중지 유예(10초)와 Claude interrupt 응답 대기와 맞춘다. |
+| 시작·열기 요청 | `initialize`, `skills/list`, `thread/start`, `thread/resume`, `mcpServerStatus/list`, `model/list` | 60초 | 사용자 MCP 서버 7개 설정으로 `CODEX_HOME`을 만들어 codex-cli 0.158.0 `app-server`를 세 번 띄워 쟀다(모델 호출 없음). `initialize` 0.30~0.62초, `thread/start` 0.17~0.46초, `mcpServerStatus/list` 호출 하나 1.7~4.9초이고 MCP 서버가 준비되지 않은 동안 느려진다. 첫 턴 전 MCP 준비 대기(30초)와 그 마지막 호출을 덮고 측정 최댓값의 열 배인 60초로 둔다. `thread/resume`은 쓰기 없는 새 thread가 기록이 없어 오류로 즉시 돌아와 이어 가는 thread의 응답 시간은 재지 못했다. |
+
+`turn/start`가 모델 응답 전에 돌아오는지는 모델 호출 없이 확인할 수 없어 재지 않았다. 설계상 턴 시작 확인만 기다린다.
+
 ### 오류 처리
 
 | 상황 | 동작 |
@@ -308,6 +319,7 @@ Saturn은 오래 조용한 작업을 자동으로 죽이지 않는다. 실행 �
 | provider 흐름의 관찰 중단 | `effect_scope`를 `unobserved`로 기록하고 자동으로 이어 가지 않는다. |
 | 실행 중 작업의 provider 이벤트가 5분 동안 없음 | 죽이지 않고 상태판에 `응답 없음 N분`을 보인다. 사용자가 멈출 수 있고, 이벤트가 오면 지운다. |
 | 중간 사용량 보고 누락 | 차이가 여러 턴에 걸친다고 표시하고 0으로 채우지 않는다. |
+| provider 요청이 제한 시간 안에 응답하지 않음. 바로 돌아와야 하는 요청(`turn/start`, `turn/steer`, interrupt)은 10초, 시작·열기 요청(`initialize`, `thread/start`, `thread/resume`, MCP 상태·목록 조회)은 60초(둘 다 초안) | 그 요청만 응답 없음으로 돌려주고, 연결과 프로세스와 진행 중인 턴은 끊지 않는다. 보내던 입력은 결과를 모르는 것으로 보아 `NeedsCheck`로 두고, session 열기는 실패로 알리며, 멈춤 신호는 연결 끊김으로 보고 프로세스 묶음 중지로 넘어간다. 늦게 온 응답은 버린다. |
 
 관찰 끊김을 `unobserved`로 두는 것은 관찰하지 못한 외부 효과가 있을 수 있기 때문이다.
 
@@ -335,6 +347,7 @@ Saturn은 오래 조용한 작업을 자동으로 죽이지 않는다. 실행 �
 | 누적 범위 사용량의 턴 값은 같은 session의 직전 누적을 뺀 값이다. | Codex 누적 보고 두 개에서 턴 값이 차이로 나오는지 확인한다. |
 | 멈춤 신호는 추적된 subagent까지 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_signals_the_deepest_subagent_first_and_finishes_only_when_the_tree_is_idle` |
 | 멈춤 신호 10초 뒤 남은 프로세스 묶음에는 중지 신호를 보낸다. | `saturn-terminal/engine/src/processes/mod.rs`의 `stop_sends_term_after_grace` |
+| provider 요청 하나가 응답하지 않아도 그 요청만 제한 시간 뒤 실패하고 연결은 계속 쓸 수 있다. 응답 없는 멈춤 신호는 기다리지 않고 연결 끊김으로 돌려준다. 바로 돌아와야 하는 요청의 제한(10초)보다 느린 시작·열기 응답은 기다려 성공한다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `a_silent_request_fails_alone_and_leaves_the_connection_usable`, `a_silent_interrupt_reports_the_lost_connection_instead_of_waiting`, `a_slow_open_reply_is_waited_for_longer_than_a_quick_one` |
 | 트리 유휴와 프로세스 중지를 모두 확인한 뒤에만 멈춤 완료를 보고한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_is_not_complete_until_the_process_group_is_confirmed_stopped`, `stop_without_a_finished_turn_signal_is_not_complete`, `processes_left_outside_the_group_are_reported_instead_of_done` |
 | 끼워 넣기와 멈춤 신호가 문서대로 provider에 전달된다. | [#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27) |
 | 닫은 session을 보관한 ID로 재개한다. | [#10](https://github.com/woonyong-choi/saturn/issues/10) |
