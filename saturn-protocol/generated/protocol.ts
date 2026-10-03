@@ -14,6 +14,10 @@ export type ChatListItem = { chat: ChatId,
  */
 folder: string, 
 /**
+ * `RenameChat`으로 붙인 이름. 붙이지 않았으면 `None`.
+ */
+name: string | null, 
+/**
  * 마지막 입력을 접수한 시각(unix 밀리초). 입력이 없으면 채팅을 만든 시각.
  */
 last_active_ms: number, 

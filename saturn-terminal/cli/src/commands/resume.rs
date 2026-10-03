@@ -78,6 +78,7 @@ mod tests {
         ChatListItem {
             chat: ChatId(chat),
             folder: "/work".to_owned(),
+            name: None,
             last_active_ms: 0,
             preview: None,
         }

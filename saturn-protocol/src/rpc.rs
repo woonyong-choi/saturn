@@ -545,6 +545,9 @@ pub struct ChatListItem {
     pub chat: ChatId,
     /// 채팅의 기본 폴더.
     pub folder: String,
+    /// `RenameChat`으로 붙인 이름. 붙이지 않았으면 `None`.
+    #[serde(default)]
+    pub name: Option<String>,
     /// 마지막 입력을 접수한 시각(unix 밀리초). 입력이 없으면 채팅을 만든 시각.
     pub last_active_ms: u64,
     /// 채팅의 첫 입력 원문. 입력이 없으면 `None`.

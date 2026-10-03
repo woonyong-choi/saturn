@@ -23,6 +23,7 @@ pub use secrets::{Masker, pre_tool_use_hook_settings};
 
 mod add_dir;
 mod chat_env;
+mod chat_labels;
 mod control;
 mod delivery;
 mod dispatch;
@@ -104,6 +105,9 @@ pub enum EngineError {
     /// 채팅에 더하려는 경로가 이미 있는 폴더의 절대 경로가 아니다.
     #[error("invalid folder {path}: {reason}")]
     InvalidFolder { path: String, reason: &'static str },
+    /// 채팅 이름이나 묶음에 줄바꿈 같은 제어 문자가 들어 있다.
+    #[error("invalid chat {what}: contains a control character")]
+    InvalidLabel { what: &'static str },
     /// `ask`, `edit`, `read-only`, `full`이 아닌 권한 모드 이름이다.
     #[error("unknown permission mode: {mode}")]
     UnknownPermissionMode { mode: String },
@@ -146,6 +150,7 @@ impl EngineError {
             Self::UnexpectedAnswer { .. }
             | Self::UnknownPermissionMode { .. }
             | Self::InvalidFolder { .. }
+            | Self::InvalidLabel { .. }
             | Self::ChatNotAttached { .. }
             | Self::Store(StoreError::NotFound { .. })
             | Self::Queue(

@@ -113,7 +113,7 @@ impl ChatPicker {
     }
 }
 
-/// `번호. #채팅 id · 경과 · [폴더 ·] 첫 입력`
+/// `번호. #채팅 id · 경과 · [폴더 ·] [이름 ·] 첫 입력`
 fn row(lang: Lang, number: usize, chat: &ChatListItem, show_folder: bool, now_ms: u64) -> String {
     let mut parts = vec![
         format!("{number}. #{}", chat.chat.0),
@@ -121,6 +121,9 @@ fn row(lang: Lang, number: usize, chat: &ChatListItem, show_folder: bool, now_ms
     ];
     if show_folder {
         parts.push(chat.folder.clone());
+    }
+    if let Some(name) = &chat.name {
+        parts.push(name.clone());
     }
     parts.push(preview(lang, chat.preview.as_deref()));
     parts.join(" · ")
@@ -214,6 +217,7 @@ mod tests {
         ChatListItem {
             chat: ChatId(chat),
             folder: folder.to_owned(),
+            name: None,
             last_active_ms,
             preview: preview.map(str::to_owned),
         }
@@ -297,6 +301,17 @@ mod tests {
 
         assert!(!in_folder.contains("/work/a"));
         assert!(everywhere.contains("1. #9 · 2h ago · /work/a · fix login"));
+    }
+
+    #[test]
+    fn render_shows_the_chat_name_before_the_first_input() {
+        let mut named = list();
+        named[0].name = Some("login fix".to_owned());
+
+        let text = draw(&ChatPicker::new(named, false, NOW), 80, 12);
+
+        assert!(text.contains("1. #9 · 2h ago · login fix · fix login"));
+        assert!(text.contains("2. #4 · 3d ago · (no input)"));
     }
 
     #[test]

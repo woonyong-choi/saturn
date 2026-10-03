@@ -133,9 +133,10 @@ impl Engine {
                 before,
                 limit,
             } => self.load_history(client, chat, before, limit).await,
-            // TODO(#161): 채팅 이름과 묶음
-            Request::RenameChat { .. } => Err(unsupported("RenameChat")),
-            Request::SetChatGroup { .. } => Err(unsupported("SetChatGroup")),
+            Request::RenameChat { chat, name } => self.rename_chat(chat, &name).await,
+            Request::SetChatGroup { chat, group } => {
+                self.set_chat_group(chat, group.as_deref()).await
+            }
             // 서버가 응답하고 끊김으로 바꿔 여기까지 오지 않는다.
             Request::Detach => Ok(()),
             Request::SubmitInput {

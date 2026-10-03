@@ -208,15 +208,7 @@ async fn requests_each_get_one_response_in_order() {
     let responses = drive(&mut engine, async {
         client.send(1, set_recording(chat.0)).await;
         client.send(2, set_recording(999)).await;
-        client
-            .send(
-                3,
-                Request::RenameChat {
-                    chat,
-                    name: "build".to_owned(),
-                },
-            )
-            .await;
+        client.send(3, Request::ListRouterVersions).await;
         client
             .send(
                 4,
