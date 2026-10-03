@@ -2,6 +2,7 @@
 
 | 실험 | 확인할 것 | 관련 설계 | 결론 |
 |---|---|---|---|
+| [constraint-long-context](constraint-long-context/design.md) | 실제 긴 Claude Code 대화에서 Jev의 제약 등록·전이·보존 판단 | [맥락 고르기](../design/context-selection.md) | 측정 전 |
 | [rrf-k-top-n](rrf-k-top-n/report.md) | 후보 순위의 k와 judge 상위 N | [맥락 고르기](../design/context-selection.md) | H1 기각: recall 12.0% [9.2, 15.6] |
 | [precompute-breakeven](precompute-breakeven/report.md) | 도구 결과 미리 판단의 손익분기 | [맥락 정리](../design/context-management.md) | H2 기각: 남는 질문 감소 29.4% [26.4, 32.3], H3 기각: 토큰 4.967배 [4.337, 5.614] |
 | [claude-summary-handoff](claude-summary-handoff/design.md) | Claude 압축 요약 전환 품질 | [맥락 정리](../design/context-management.md), [provider 연결과 session](../design/providers-and-sessions.md) | 측정 전 |

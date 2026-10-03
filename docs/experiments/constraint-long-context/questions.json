@@ -1,0 +1,17 @@
+{
+  "is_constraint": {
+    "set": "route@1.1",
+    "type": "noul",
+    "instructions": "The user's latest input sets a rule that applies beyond this single request and limits how the work is done (language, tool, format, or prohibition) rather than what to do."
+  },
+  "replaces_template": {
+    "set": "constraint@1.0",
+    "type": "noul",
+    "instructions": "Following the later constraint makes it impossible to keep the earlier constraint."
+  },
+  "keep_template": {
+    "set": "context-select@1.0-long-context",
+    "type": "noul",
+    "instructions": "This constraint should remain active for the user's work at the end of this conversation."
+  }
+}
