@@ -98,7 +98,7 @@ impl Store {
 
     pub(crate) async fn unfinished_runs(&self) -> Result<Vec<RunRecord>, StoreError> {
         let rows = sqlx::query(
-            "SELECT id, input_id, task_id, session_id, effect_scope, started_at, end_kind FROM runs \
+            "SELECT id, chat_id, agent_id, input_id, task_id, session_id, effect_scope, started_at, end_kind FROM runs \
              WHERE end_kind IS NULL ORDER BY id",
         )
         .fetch_all(&self.pool)

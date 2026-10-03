@@ -3,7 +3,9 @@ use saturn_protocol::state::InputState;
 
 #[cfg(test)]
 use super::WriteGate;
-use super::{HELD_IGNORE_LIMIT, Permission, Queue, QueueError, TaskPhase, TaskSlot};
+use super::{
+    Entry, HELD_IGNORE_LIMIT, Permission, Queue, QueueError, QueuedInput, TaskPhase, TaskSlot,
+};
 
 impl Queue {
     // cost: time O(t + n·t), heap O(t), stack O(1), alloc 1
@@ -219,6 +221,43 @@ impl Queue {
         };
         slot.phase = TaskPhase::Closed;
         let chat = slot.chat;
+        self.bump(chat);
+    }
+
+    // cost: time O(n + t), heap O(1) amortized, stack O(1)
+    // vars: n = 대기열 입력 수, t = 작업 수
+    // basis: estimate
+    /// 크래시로 끊긴 실행의 작업을 보류로 되살린다. 멈춤 때 실행 중이던 작업과 같게 `resume`이 확인 입력을 보내게 하고,
+    /// 쓰기 잠금은 잡지 않는다. 입력은 보낸 상태 그대로 두어 `resume`이 같은 패킷을 다시 보내지 않는다.
+    /// 같은 작업이나 입력이 이미 있으면 아무것도 하지 않는다.
+    pub fn restore_interrupted(&mut self, input: QueuedInput, agent: AgentId, task: TaskId) {
+        if self.tasks.iter().any(|slot| slot.id == task) || self.input(input.id).is_some() {
+            return;
+        }
+        let chat = input.chat;
+        let is_main = self.main_task(chat).is_none();
+        self.tasks.push(TaskSlot {
+            id: task,
+            chat,
+            agent: Some(agent),
+            permission: input.permission,
+            write_scope: input.write_scope.clone(),
+            is_main,
+            was_interrupted: true,
+            phase: TaskPhase::Held,
+        });
+        self.chats.entry(chat).or_default();
+        self.inputs.push_back(Entry {
+            input: QueuedInput {
+                reason: None,
+                task: Some(task),
+                ..input
+            },
+            disposition: None,
+            is_dispatched: false,
+            is_conflict: false,
+            awaits_stop: false,
+        });
         self.bump(chat);
     }
 

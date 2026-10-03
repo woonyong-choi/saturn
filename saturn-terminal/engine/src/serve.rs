@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use saturn_protocol::envelope::{RequestId, Response};
 use saturn_protocol::rpc::Request;
@@ -9,12 +9,20 @@ use crate::outcomes;
 use crate::rpc::{ClientId, RpcEvent};
 use crate::settings_watch::SETTINGS_WATCH_TICK;
 
+/// 백그라운드에서 모든 작업이 끝났는지 보는 간격의 위쪽 한계. 초안.
+const IDLE_TICK: Duration = Duration::from_secs(1);
+
 impl Engine {
     /// # Errors
     /// 복구할 수 없는 오류만 돌려주고, 요청 하나의 오류는 그 클라이언트에 알리고 계속한다.
+    #[expect(
+        clippy::cognitive_complexity,
+        reason = "select! 분기마다 한 줄씩 넘기는 루프라 나누면 대응이 흩어지고, 분기마다 점수가 오른다"
+    )]
     pub(super) async fn serve(&mut self) -> Result<(), EngineError> {
         let mut tick = tokio::time::interval(outcomes::SETTLE_TICK);
         let mut watch = tokio::time::interval(SETTINGS_WATCH_TICK);
+        let mut idle = tokio::time::interval(self.idle_grace.min(IDLE_TICK));
         loop {
             tokio::select! {
                 event = self.rpc.next_event() => {
@@ -33,6 +41,11 @@ impl Engine {
                 _ = watch.tick() => {
                     self.watch_settings().await;
                 }
+                _ = idle.tick() => {
+                    if self.check_idle(Instant::now()) {
+                        break;
+                    }
+                }
                 _ = tick.tick() => {
                     let settled = self.settle_signals(Instant::now()).await;
                     self.warn_failure("failed to settle judgment signals", settled);
@@ -40,6 +53,16 @@ impl Engine {
             }
         }
         Ok(())
+    }
+
+    /// 유휴 시각을 갱신하고, 유예가 지나 engine이 끝나야 하면 참.
+    fn check_idle(&mut self, now: Instant) -> bool {
+        self.refresh_idle(now);
+        let is_expired = self.background_expired(now);
+        if is_expired {
+            tracing::info!("no tui and no work, engine is ending");
+        }
+        is_expired
     }
 
     pub(super) async fn handle_event(&mut self, event: RpcEvent) -> Result<(), EngineError> {
@@ -56,7 +79,7 @@ impl Engine {
                     self.on_last_detach(attachment.chat).await;
                 }
             }
-            // TODO(#150): 마지막 TUI가 떨어진 뒤 유예 시계
+            // 유예 시계는 `serve`의 유휴 점검이 돌린다. 마지막 TUI 이탈은 `Disconnected`에서 처리한다
             RpcEvent::LastDetached => {}
         }
         Ok(())

@@ -80,6 +80,8 @@ pub(super) fn run_record(row: &SqliteRow) -> Result<RunRecord, StoreError> {
         .transpose()?;
     Ok(RunRecord {
         id: RunId(from_sql_int(row.try_get("id")?)),
+        chat: ChatId(from_sql_int(row.try_get("chat_id")?)),
+        agent: AgentId(from_sql_int(row.try_get("agent_id")?)),
         input: row
             .try_get::<Option<i64>, _>("input_id")?
             .map(|id| InputId(from_sql_int(id))),

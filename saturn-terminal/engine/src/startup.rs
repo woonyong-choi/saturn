@@ -62,7 +62,10 @@ impl Engine {
             attachments: HashMap::new(),
             chats: HashMap::new(),
             chat_dirs: HashMap::new(),
-            notices: StartNotices { migration },
+            notices: StartNotices {
+                migration,
+                resume_suggested: HashMap::new(),
+            },
             queue: Queue::new(),
             sessions,
             signals: outcomes::SignalWatch::default(),
@@ -70,6 +73,7 @@ impl Engine {
             runs: Runs::default(),
             flow: flow::FlowState::default(),
             presence: Presence::Background { idle_since: None },
+            idle_grace: saturn_core::sessions::IDLE_GRACE,
             pending_train: None,
         })
     }
