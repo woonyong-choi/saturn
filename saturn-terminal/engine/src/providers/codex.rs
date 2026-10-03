@@ -1,7 +1,7 @@
 //! Codex 연결: `codex app-server` 프로세스 하나로 thread(= provider session) 여러 개를 다룬다.
 //! 설계: docs/design/providers-and-sessions.md
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
@@ -116,6 +116,11 @@ struct ThreadState {
     parent: Option<ProviderSessionId>,
     /// 없으면 활성 턴 없음.
     active_turn: Option<String>,
+    /// 가장 나중에 끝난 턴. `turn/start` 응답이 턴 끝 알림보다 늦게 처리돼도 끝난 턴을 활성으로 되살리지 않는다.
+    last_completed_turn: Option<String>,
+    /// 턴 진행 중에 받은 새 턴 입력. app-server는 진행 중인 턴에 온 `turn/start`를 그 턴에 합쳐 `turn/completed`를
+    /// 하나만 보내므로, 앞 턴의 완료를 전달한 뒤에 하나씩 보낸다.
+    queued_turns: VecDeque<String>,
     origin: TurnOriginTracker,
     applied: AppliedSettings,
     /// `turn/started`에서 정하고 `turn/completed`에서 쓴다.
@@ -131,6 +136,8 @@ impl ThreadState {
             agent,
             parent,
             active_turn: None,
+            last_completed_turn: None,
+            queued_turns: VecDeque::new(),
             origin: TurnOriginTracker::default(),
             applied,
             turn_origin: None,
@@ -153,6 +160,8 @@ pub struct CodexClient {
     /// 읽기 작업이 승인 요청을 넣고 `answer_permission`이 꺼낸다.
     approvals: Approvals,
     events: mpsc::Receiver<ProviderEvent>,
+    /// 읽기 작업을 거치지 않고 이 연결이 직접 알릴 이벤트. `next_event`가 먼저 돌려준다.
+    own_events: VecDeque<ProviderEvent>,
     /// 거르기 전 목록.
     commands: Vec<ProviderCommand>,
     /// 스킬 이름별 `SKILL.md` 경로.
@@ -170,6 +179,72 @@ impl CodexClient {
     fn with_mcp_ready_timeout(mut self, timeout: Duration) -> Self {
         self.mcp_ready_timeout = timeout;
         self
+    }
+
+    /// `turn/start`를 보내고 활성 턴을 기록한다. 보내기 전 실패면 `on_user_send`를 되돌린다.
+    async fn start_turn(
+        &mut self,
+        session: &ProviderSessionId,
+        text: &str,
+    ) -> Result<(), ProviderError> {
+        let input = self.turn_input(text);
+        if let Some(thread) = lock(&self.threads).get_mut(session) {
+            thread.origin.on_user_send();
+        }
+        let reply = self
+            .request(
+                "turn/start",
+                json!({ "threadId": session.0, "input": input }),
+            )
+            .await;
+        let cancel = |threads: &Threads| {
+            if let Some(thread) = lock(threads).get_mut(session) {
+                thread.origin.cancel_user_send();
+            }
+        };
+        match reply {
+            Ok(Ok(result)) => {
+                if let (Some(turn), Some(thread)) = (
+                    result["turn"]["id"].as_str(),
+                    lock(&self.threads).get_mut(session),
+                ) && thread.last_completed_turn.as_deref() != Some(turn)
+                {
+                    thread.active_turn = Some(turn.to_owned());
+                }
+                Ok(())
+            }
+            Ok(Err(error)) => {
+                cancel(&self.threads);
+                Err(rejected_turn(&error))
+            }
+            Err(error @ ProviderError::NotSent { .. }) => {
+                cancel(&self.threads);
+                Err(error)
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    /// 턴이 끝난 에이전트의 메인 thread에 줄 세워 둔 첫 입력을 보낸다. 보내지 못하면 입력의 작업이 끝나지 않으므로
+    /// `StreamLost`로 알린다.
+    async fn start_queued_turn(&mut self, agent: AgentId) {
+        let next = lock(&self.threads)
+            .iter_mut()
+            .filter(|(_, thread)| thread.agent == agent && thread.parent.is_none())
+            .find_map(|(id, thread)| {
+                thread
+                    .queued_turns
+                    .pop_front()
+                    .map(|text| (id.clone(), text))
+            });
+        let Some((session, text)) = next else {
+            return;
+        };
+        if let Err(error) = self.start_turn(&session, &text).await {
+            tracing::warn!(%error, "failed to send the queued turn");
+            self.own_events
+                .push_back(ProviderEvent::StreamLost { agent });
+        }
     }
 
     /// 묶음 중지는 이 연결의 다른 thread도 멈춘다.
@@ -325,41 +400,20 @@ impl ProviderClient for CodexClient {
         {
             return self.call_command(session, method).await;
         }
-        let input = self.turn_input(text);
-        if let Some(thread) = lock(&self.threads).get_mut(session) {
-            thread.origin.on_user_send();
-        }
-        let reply = self
-            .request(
-                "turn/start",
-                json!({ "threadId": session.0, "input": input }),
-            )
-            .await;
-        let cancel = |threads: &Threads| {
-            if let Some(thread) = lock(threads).get_mut(session) {
-                thread.origin.cancel_user_send();
-            }
-        };
-        match reply {
-            Ok(Ok(result)) => {
-                if let (Some(turn), Some(thread)) = (
-                    result["turn"]["id"].as_str(),
-                    lock(&self.threads).get_mut(session),
-                ) {
-                    thread.active_turn = Some(turn.to_owned());
+        let queued = {
+            let mut threads = lock(&self.threads);
+            threads.get_mut(session).is_some_and(|thread| {
+                let busy = thread.active_turn.is_some() || !thread.queued_turns.is_empty();
+                if busy {
+                    thread.queued_turns.push_back(text.to_owned());
                 }
-                Ok(())
-            }
-            Ok(Err(error)) => {
-                cancel(&self.threads);
-                Err(rejected_turn(&error))
-            }
-            Err(error @ ProviderError::NotSent { .. }) => {
-                cancel(&self.threads);
-                Err(error)
-            }
-            Err(error) => Err(error),
+                busy
+            })
+        };
+        if queued {
+            return Ok(());
         }
+        self.start_turn(session, text).await
     }
 
     /// 활성 턴 없음은 확정 미전달이라 `NoActiveTurn`으로 돌려주고, 그 밖의 거절은 `NotSent`.
@@ -405,9 +459,13 @@ impl ProviderClient for CodexClient {
         let Some(thread) = self.interrupt_thread(session, &target) else {
             return Ok(());
         };
-        let active = lock(&self.threads)
-            .get(&thread)
-            .and_then(|state| state.active_turn.clone());
+        let active = {
+            let mut threads = lock(&self.threads);
+            threads.get_mut(&thread).and_then(|state| {
+                state.queued_turns.clear();
+                state.active_turn.clone()
+            })
+        };
         let Some(turn) = active else {
             return Ok(());
         };
@@ -505,7 +563,14 @@ impl ProviderClient for CodexClient {
 
     /// 읽기 작업이 끝나 채널이 닫히면 `None`.
     async fn next_event(&mut self) -> Option<ProviderEvent> {
-        self.events.recv().await
+        if let Some(event) = self.own_events.pop_front() {
+            return Some(event);
+        }
+        let event = self.events.recv().await?;
+        if let ProviderEvent::TurnCompleted { agent, .. } = &event {
+            self.start_queued_turn(*agent).await;
+        }
+        Some(event)
     }
 
     /// app-server `model/list`. 숨긴 모델은 빼고 쪽마다 다음 쪽 표시(`nextCursor`)를 따라간다.

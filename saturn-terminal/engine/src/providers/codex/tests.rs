@@ -22,7 +22,7 @@ use crate::providers::{
 
 /// 받은 요청에 schema 모양 그대로 응답한다.
 const FAKE_APP_SERVER: &str = r#"#!/usr/bin/perl
-use strict; use warnings; use JSON::PP;
+use strict; use warnings; use JSON::PP; use IO::Handle;
 $| = 1;
 my $json = JSON::PP->new->canonical;
 sub out { print $json->encode($_[0]), "\n"; }
@@ -94,6 +94,30 @@ while (my $line = <STDIN>) {
       out({ id => $id, result => { turn => { id => "turn_x", status => "inProgress", items => [] } } });
       note("turn/started", { threadId => $tid, turn => { id => "turn_x", status => "inProgress", items => [] } });
       exit 1;
+    }
+    if (($first->{text} // "") eq "merging-packet") {
+      # 진행 중인 턴에 `turn/start`가 오면 같은 턴에 합쳐 `turn/completed`를 하나만 보낸다(codex-cli 0.158.0 실측 동작)
+      out({ id => $id, result => { turn => { id => "turn_m", status => "inProgress", items => [] } } });
+      note("turn/started", { threadId => $tid, turn => { id => "turn_m", status => "inProgress", items => [] } });
+      note("item/agentMessage/delta", { threadId => $tid, turnId => "turn_m", itemId => "m1", delta => "packet" });
+      select(undef, undef, undef, 0.5);
+      STDIN->blocking(0);
+      my $next = <STDIN>;
+      STDIN->blocking(1);
+      if (defined $next) {
+        my $merged = eval { $json->decode($next) } // {};
+        out({ id => $merged->{id}, result => { turn => { id => "turn_m", status => "inProgress", items => [] } } });
+        note("item/agentMessage/delta", { threadId => $tid, turnId => "turn_m", itemId => "m2", delta => "merged:" . ($merged->{params}{input}[0]{text} // "") });
+      }
+      note("turn/completed", { threadId => $tid, turn => { id => "turn_m", status => "completed", items => [] } });
+      next;
+    }
+    if (($first->{text} // "") eq "quick") {
+      out({ id => $id, result => { turn => { id => "turn_q", status => "inProgress", items => [] } } });
+      note("turn/started", { threadId => $tid, turn => { id => "turn_q", status => "inProgress", items => [] } });
+      note("item/agentMessage/delta", { threadId => $tid, turnId => "turn_q", itemId => "m3", delta => "quick-answer" });
+      note("turn/completed", { threadId => $tid, turn => { id => "turn_q", status => "completed", items => [] } });
+      next;
     }
     my $gate = $gates{$first->{text} // ""};
     if ($gate && ($first->{text} eq "run-sort") && rules_text() !~ /pattern = \["sort"\], decision = "prompt"/) {
@@ -1259,6 +1283,70 @@ async fn add_dir_goes_to_the_thread_config_when_a_session_opens() {
         without,
         Err(ProviderError::NotSent { ref reason }) if reason.contains("added folders")
     ));
+}
+
+#[tokio::test]
+async fn a_turn_sent_during_the_packet_turn_gets_its_own_completion() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut client = CodexClient::start(launch(dir.path(), Vec::new()), Supervisor::new())
+        .await
+        .unwrap();
+    let mut packet_spec = spec(dir.path());
+    packet_spec.packet = Some("merging-packet".to_owned());
+    let handle = client.open_session(packet_spec).await.unwrap();
+
+    client
+        .send_turn(&handle.provider_session, "quick")
+        .await
+        .unwrap();
+    let mut events = Vec::new();
+    while events
+        .iter()
+        .filter(|event| matches!(event, ProviderEvent::TurnCompleted { .. }))
+        .count()
+        < 2
+    {
+        assert!(events.len() < 12, "{events:?}");
+        events.extend(take(&mut client, 1).await);
+    }
+
+    assert!(events.iter().any(|event| matches!(
+        event,
+        ProviderEvent::Text { text, .. } if text == "quick-answer"
+    )));
+    assert!(!format!("{events:?}").contains("merged:"));
+}
+
+#[tokio::test]
+async fn interrupt_drops_the_turns_waiting_behind_the_running_one() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut client = CodexClient::start(launch(dir.path(), Vec::new()), Supervisor::new())
+        .await
+        .unwrap();
+    let mut packet_spec = spec(dir.path());
+    packet_spec.packet = Some("merging-packet".to_owned());
+    let handle = client.open_session(packet_spec).await.unwrap();
+    client
+        .send_turn(&handle.provider_session, "quick")
+        .await
+        .unwrap();
+
+    client
+        .interrupt(&handle.provider_session, InterruptTarget::Main)
+        .await
+        .unwrap();
+    let mut events = Vec::new();
+    while let Ok(Some(event)) =
+        tokio::time::timeout(Duration::from_millis(1500), client.next_event()).await
+    {
+        events.push(event);
+    }
+
+    assert!(!events.is_empty());
+    assert!(
+        !format!("{events:?}").contains("quick-answer"),
+        "the waiting turn must not be sent after the interrupt: {events:?}"
+    );
 }
 
 #[tokio::test]

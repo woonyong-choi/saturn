@@ -18,7 +18,7 @@ use crate::secrets::Masker;
 
 /// 받은 사용자 메시지 글에 따라 정해진 줄을 낸다.
 const FAKE_CLAUDE: &str = r#"#!/usr/bin/perl
-use strict; use warnings; use JSON::PP;
+use strict; use warnings; use JSON::PP; use IO::Handle;
 $| = 1;
 my $json = JSON::PP->new->canonical;
 my %arg; for (my $i = 0; $i < @ARGV; $i++) { $arg{$ARGV[$i]} = $ARGV[$i + 1] if $ARGV[$i] =~ /^--/; }
@@ -53,6 +53,18 @@ while (my $line = <STDIN>) {
     tool_result("toolu_read", [ { type => "text", text => "fn main" } ], "toolu_task");
     tool_result("toolu_task", "found it", undef);
     assistant([ { type => "text", text => "done" } ], undef, { input_tokens => 20, cache_read_input_tokens => 3000, cache_creation_input_tokens => 100, output_tokens => 7 });
+    result();
+  } elsif ($text eq "merging-packet") {
+    # 진행 중인 턴에 다음 사용자 메시지가 오면 합쳐서 `result`를 하나만 낸다(Claude Code 실측 동작)
+    assistant([ { type => "text", text => "packet" } ], undef);
+    select(undef, undef, undef, 0.5);
+    STDIN->blocking(0);
+    my $next = <STDIN>;
+    STDIN->blocking(1);
+    if (defined $next) {
+      my $merged = eval { $json->decode($next) } // {};
+      assistant([ { type => "text", text => "merged:" . ($merged->{message}{content}[0]{text} // "") } ], undef);
+    }
     result();
   } elsif ($text eq "wait") {
     assistant([ { type => "text", text => "working" } ], undef);
@@ -441,6 +453,64 @@ async fn steer_needs_active_turn_and_interrupt_waits_for_response() {
 }
 
 #[tokio::test]
+async fn a_turn_sent_during_the_packet_turn_gets_its_own_completion() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+    let mut packet_spec = spec(dir.path(), None);
+    packet_spec.packet = Some("merging-packet".to_owned());
+    let session = client
+        .open_session(packet_spec)
+        .await
+        .unwrap()
+        .provider_session;
+    let agent = AgentId(3);
+
+    client.send_turn(&session, "more").await.unwrap();
+    let events = take(&mut client, 8).await;
+
+    let completed = events
+        .iter()
+        .filter(|event| matches!(event, ProviderEvent::TurnCompleted { .. }))
+        .count();
+    assert_eq!(completed, 2, "{events:?}");
+    assert!(events.iter().any(|event| matches!(
+        event,
+        ProviderEvent::Text { agent: a, text, .. } if *a == agent && text == "got more"
+    )));
+    assert!(!format!("{events:?}").contains("merged:"));
+    client.close_session(&session).await.unwrap();
+}
+
+#[tokio::test]
+async fn interrupt_drops_the_turns_waiting_behind_the_running_one() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+    let session = client
+        .open_session(spec(dir.path(), None))
+        .await
+        .unwrap()
+        .provider_session;
+
+    client.send_turn(&session, "wait").await.unwrap();
+    take(&mut client, 1).await;
+    client.send_turn(&session, "more").await.unwrap();
+    client
+        .interrupt(&session, InterruptTarget::Main)
+        .await
+        .unwrap();
+    let events = take(&mut client, 3).await;
+
+    assert!(matches!(events[2], ProviderEvent::TurnCompleted { .. }));
+    assert!(
+        tokio::time::timeout(Duration::from_millis(300), client.next_event())
+            .await
+            .is_err(),
+        "the waiting turn must not be sent after the interrupt"
+    );
+    client.close_session(&session).await.unwrap();
+}
+
+#[tokio::test]
 async fn permission_request_and_stream_loss() {
     let dir = tempfile::tempdir().unwrap();
     let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
@@ -466,7 +536,7 @@ async fn permission_request_and_stream_loss() {
             }),
         }]
     );
-    client.send_turn(&session, "crash").await.unwrap();
+    client.steer(&session, "crash").await.unwrap();
     assert_eq!(
         take(&mut client, 1).await,
         vec![ProviderEvent::StreamLost { agent }]

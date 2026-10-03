@@ -55,7 +55,7 @@ pub(super) fn convert_notification(
     let subagent = state.parent.as_ref().map(|_| subagent_id(&thread));
     match method {
         "turn/started" => on_turn_started(state, params),
-        "turn/completed" => on_turn_completed(state, agent, subagent),
+        "turn/completed" => on_turn_completed(state, params, agent, subagent),
         "item/agentMessage/delta" => params["delta"]
             .as_str()
             .map(|text| ProviderEvent::Text {
@@ -95,10 +95,12 @@ fn on_turn_started(state: &mut ThreadState, params: &Value) -> Vec<ProviderEvent
 
 fn on_turn_completed(
     state: &mut ThreadState,
+    params: &Value,
     agent: AgentId,
     subagent: Option<SubagentId>,
 ) -> Vec<ProviderEvent> {
     state.active_turn = None;
+    state.last_completed_turn = params["turn"]["id"].as_str().map(str::to_owned);
     if let Some(subagent) = subagent {
         return vec![ProviderEvent::SubagentEnded { agent, subagent }];
     }

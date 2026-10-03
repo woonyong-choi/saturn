@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
@@ -65,6 +65,7 @@ impl CodexClient {
             threads,
             approvals,
             events,
+            own_events: VecDeque::new(),
             commands: Vec::new(),
             skill_paths: HashMap::new(),
             mcp_servers: launch.permission.mcp_servers.clone(),
