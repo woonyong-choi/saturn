@@ -248,6 +248,11 @@ impl Queue {
         };
         match (slot.phase, slot.agent) {
             (TaskPhase::Running, Some(agent)) if disposition == Disposition::Steer => {
+                // 쓰기 잠금 없이 도는 읽기 전용 실행에 쓰기 입력을 끼워 넣으면 그 입력이 잠금 없이 쓴다.
+                if input.permission == Permission::Write && slot.permission == Permission::ReadOnly
+                {
+                    return Route::Wait(Some(QueueReason::WriteTurn));
+                }
                 Route::Steer {
                     agent,
                     task: slot.id,

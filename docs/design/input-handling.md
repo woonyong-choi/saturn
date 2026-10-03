@@ -89,6 +89,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 대기 | 하던 작업 다음에 보낼 입력으로 대기열에 둔다. |
 
 - 관계 판단의 확신도가 0.6 미만이면 대기로 보낸다.
+- 쓰기 권한으로 접수한 입력은 읽기 전용으로 접수한 실행에 끼워 넣지 않고 대기한다([쓰기 규칙](#쓰기-규칙)). `refines`, `continues`, `conflicts`, 바로 보내기 모두 같다.
 - 관계가 `conflicts`이면 `steer_or_spawn` 답과 관계없이 끼워 넣는다. 충돌 입력을 멈추지 않고 모델이 읽게 하는 것이 사용자 결정이다(아래 [충돌 입력](#충돌-입력)).
 - 보내는 방식 판단의 확신도가 0.6 미만이면 현재 에이전트에 대기 뒤 보낸다. 같은 이유로 확신 없는 판단으로 행동하지 않기 위해서다.
 - 끼워 넣기 실측을 통과하기 전의 provider는 끼워 넣기를 대기로 바꿔 처리한다([#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27)). 끼워 넣기 경로가 문서대로 동작하는지 실측으로 확인해야 하기 때문이다.
@@ -194,6 +195,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 쓰기 범위는 작업 폴더와 더한 폴더를 링크를 푼 경로로 비교한다. | 허가 판정이 경로를 푸는 방식과 맞춰, 링크로 같은 폴더를 가리켜도 잠금을 피하지 못하게 하기 위해서다. 폴더가 없으면 푸는 대신 적은 그대로 비교한다. |
 | 쓰기 규칙 판정은 접수 때 고정된 권한으로 한다. | 쓰기 여부를 추정 없이 결정론으로 판정하기 위해서다. |
 | 읽기 전용으로 접수한 실행은 `/permissions`로 모드를 올려도 쓰기 허가를 받지 못한다. 쓰려면 새 입력으로 보내야 한다. | 쓰기 잠금 없이 도는 실행이 다른 쓰기 작업과 같은 폴더에 함께 쓰는 일을 막기 위해서다([권한](permissions.md#권한-규칙)). 거부는 알림으로 보인다. |
+| 쓰기 권한 입력은 읽기 전용으로 접수한 실행에 끼워 넣지 않고 `쓰기 차례` 대기로 둔다. 그 실행이 끝나면 쓰기 잠금을 얻어 새 턴으로 보낸다. | 쓰기 잠금 없이 도는 실행에 쓰기 입력을 끼워 넣으면 그 입력이 잠금 없이 쓰기 때문이다. 끼워 넣기가 활성 턴 없음으로 실패해 같은 session의 새 턴으로 갈 때도 같다. 대기 이유는 입력 줄의 `쓰기 차례`로 보인다. |
 | 파일 겹침 예측으로 병렬 쓰기를 허용하지 않는다. | 겹침 예측은 추정이라 충돌을 막지 못하기 때문이다. |
 | 쓰기 잠금은 트리 유휴일 때 푼다. | subagent가 쓰는 중에 다음 쓰기가 시작되는 일을 막기 위해서다. |
 | worktree 설정을 켜면 git 저장소일 때만 별도 worktree와 브랜치에서 병렬로 쓴다. | 쓰기 격리를 git이 맡기 위해서다. |
@@ -253,6 +255,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 쓰기 권한 에이전트는 같은 작업 폴더에서 한 번에 하나만 실행한다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `relation_answer_to_new_task_waits_for_the_write_turn_then_starts` |
 | 상하위 작업 폴더나 같은 더한 폴더를 가진 채팅의 쓰기 작업도 한 번에 하나만 실행하고, 이름의 앞부분만 같은 폴더는 따로 실행한다. 링크를 푼 경로로 비교한다. | `saturn-terminal/engine/src/lifecycle/write_scope.rs`의 `write_in_a_subfolder_waits_for_a_write_in_the_parent_folder`, `write_in_the_parent_folder_waits_for_a_write_in_a_subfolder`, `writes_with_a_shared_added_folder_wait_for_each_other`, `write_in_a_folder_that_only_shares_a_name_prefix_runs_at_once`, `write_in_a_symlink_to_a_subfolder_waits_for_a_write_in_the_parent_folder`, `saturn-terminal/core/src/queue/tests.rs`의 `try_acquire_overlapping_scopes_returns_false`, `try_acquire_shared_added_folder_returns_false` |
 | 취소는 에이전트에 보내기 전 입력에만 적용한다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `cancel_applies_only_before_the_input_is_sent` |
+| 쓰기 권한 입력은 읽기 전용으로 접수한 실행에 끼워 넣지 않고 쓰기 차례로 기다린다. | `saturn-terminal/engine/src/lifecycle/read_only_steer.rs`의 `write_input_is_not_steered_into_a_read_only_run_and_waits_for_a_write_turn`, `waiting_write_input_takes_a_new_turn_after_the_read_only_run_ends`, `write_input_that_would_be_sent_as_a_new_turn_cannot_write_during_a_read_only_run` |
 | 바로 보내기는 router를 부르지 않고 끼워 넣기를 시도하며, 안 되면 대기열 맨 앞에 둔다. | `saturn-terminal/engine/src/lifecycle/send_now.rs`의 `send_now_steers_into_the_running_turn_without_calling_the_router`, `send_now_does_not_need_the_router_to_be_up`, `send_now_that_cannot_steer_goes_first_in_the_queue`, `send_now_without_verified_steer_goes_back_to_waiting`, `send_now_on_a_sent_input_is_refused`, `saturn-terminal/core/src/queue/tests.rs`의 `send_now_steers_a_running_task_ahead_of_earlier_waiting_inputs`, `send_now_that_cannot_steer_waits_first_in_line`, `send_now_refuses_inputs_that_are_not_waiting` |
 | 충돌로 판단한 입력은 대기시키지 않고 진행 중인 턴에 끼워 넣는다. | `saturn-terminal/core/src/routers/tests.rs`의 `decide_route_conflicts_steers_and_marks_the_conflict`, `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `conflict_input_is_steered_into_the_running_turn` |
 | 충돌 입력을 provider가 받지 않으면 멈추지 않고 사용자에게 멈출지 묻고, 충돌이 아닌 입력은 묻지 않는다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `refused_conflict_steer_asks_whether_to_stop_and_does_not_stop`, `conflict_steer_to_a_provider_without_steer_asks_whether_to_stop`, `saturn-terminal/core/src/queue/tests.rs`의 `refused_steer_asks_the_user_only_for_a_conflict_input`, `deferred_steer_asks_the_user_only_for_a_conflict_input`, `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `refused_steer_is_not_sent_again_and_is_not_rejected` |
