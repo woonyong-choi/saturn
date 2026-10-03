@@ -10,11 +10,18 @@ use super::*;
 use crate::chat_env::ChatEnv;
 use crate::providers::ProviderConnection;
 use crate::providers::test_support::{Call, FakeProvider};
-use crate::providers::{CodexClient, fake_codex_launch};
+use crate::providers::{CodexClient, OPEN_REPLY_TIMEOUT, fake_codex_launch};
 use std::path::PathBuf;
 
 /// 시험이 기다리는 시간을 줄인다. 실제 값은 `providers::REPLY_TIMEOUT`.
 const SHORT_REPLY_TIMEOUT: Duration = Duration::from_secs(1);
+
+/// 바로 돌아와야 하는 요청의 제한보다 느린 `thread/start` 응답 시간(ms). 열기는 긴 제한으로 기다려 성공해야 한다.
+const SLOW_OPEN_MS: &str = "1500";
+
+fn slow_open() -> Vec<(std::ffi::OsString, std::ffi::OsString)> {
+    vec![("FAKE_SLOW_OPEN_MS".into(), SLOW_OPEN_MS.into())]
+}
 
 fn input_state(notification: &Notification) -> Option<InputState> {
     match notification {
@@ -28,12 +35,12 @@ async fn use_silent_codex(flow: &mut Flow) {
     let dir = flow.fixture.root.path().join("codex-bin");
     std::fs::create_dir_all(&dir).unwrap();
     let codex = CodexClient::start(
-        fake_codex_launch(&dir, Vec::new()),
+        fake_codex_launch(&dir, slow_open()),
         flow.engine.supervisor.clone(),
     )
     .await
     .unwrap()
-    .with_reply_timeout(SHORT_REPLY_TIMEOUT);
+    .with_reply_timeouts(SHORT_REPLY_TIMEOUT, OPEN_REPLY_TIMEOUT);
     flow.engine
         .flow
         .questions_of_connection

@@ -37,11 +37,17 @@ pub(crate) use codex_home::{
     HomeInput, prepare as prepare_codex_home, rules_fingerprint, rules_of_home,
 };
 
-/// provider 요청 하나의 응답을 기다리는 최대 시간. 넘으면 그 요청만 응답 없음으로 돌려주고 연결과 턴은 끊지 않는다.
-/// 응답은 요청을 받았다는 확인(`thread/start`, `turn/start`, interrupt)이지 턴 실행 시간이 아니라 평소에는 금방 온다.
-/// engine은 요청 처리 루프 하나라 이 시간이 한 채팅의 정지가 다른 채팅과 멈춤 요청을 늦추는 최대 시간이기도 하다.
+/// 바로 돌아와야 하는 provider 요청(`turn/start`, `turn/steer`, interrupt)의 응답을 기다리는 최대 시간. 넘으면 그 요청만
+/// 응답 없음으로 돌려주고 연결과 턴은 끊지 않는다. 응답은 요청을 받았다는 확인이지 턴 실행 시간이 아니라 평소에는 금방 온다.
+/// engine은 요청 처리 루프 하나라 이 시간은 한 채팅의 정지가 다른 채팅과 멈춤 요청을 늦추는 최대 시간이기도 하다.
 /// 멈춤 신호 뒤 프로세스 묶음 중지까지의 유예(10초)와 맞춘 초안 값이다.
 pub(crate) const REPLY_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// 시작·열기 요청(`initialize`, `thread/start`, `thread/resume`, `mcpServerStatus/list`와 목록 조회)의 응답을 기다리는
+/// 최대 시간. 사용자 MCP 서버 7개 설정에서 `initialize` 0.3~0.6초, `thread/start` 0.2~0.5초, `mcpServerStatus/list`
+/// 호출 하나 1.7~4.9초가 걸렸다(codex-cli 0.158.0, 호출은 서버 시작이 끝나지 않은 동안 느려진다). 첫 턴 전 MCP 준비
+/// 대기가 30초이고 그 대기의 마지막 호출이 뒤따르므로 측정 최댓값의 열 배, 준비 대기의 두 배인 값으로 둔다. 초안 값.
+pub(crate) const OPEN_REPLY_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// engine이 입력 접수 때 고정한 설정 번호로 만든다.
 #[derive(Debug, Clone)]

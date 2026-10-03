@@ -18,7 +18,7 @@ use tokio::sync::{mpsc, oneshot};
 
 use super::codex_input::{self, InputKind};
 use super::codex_permission::{APPROVAL_POLICY, SANDBOX, check_applied};
-use super::{AppliedSettings, REPLY_TIMEOUT, TurnOriginTracker};
+use super::{AppliedSettings, OPEN_REPLY_TIMEOUT, REPLY_TIMEOUT, TurnOriginTracker};
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::secrets::Masker;
 
@@ -55,6 +55,17 @@ const EVENT_BUFFER: usize = 1024;
 
 /// 첫 턴 전에 MCP 서버가 준비되기를 기다리는 최대 시간. 서버 유예 12초에 시작 시간 제한을 더한 값이다. 초안.
 const MCP_READY_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// 시작·열기 요청의 JSON-RPC 메서드. 서버 시작이 끝나기를 기다려 느릴 수 있어 `OPEN_REPLY_TIMEOUT`을 쓴다.
+/// 이 밖의 요청은 `REPLY_TIMEOUT`이다.
+const OPEN_METHODS: &[&str] = &[
+    "initialize",
+    "skills/list",
+    "thread/start",
+    "thread/resume",
+    "mcpServerStatus/list",
+    "model/list",
+];
 
 const MCP_READY_POLL: Duration = Duration::from_millis(250);
 
@@ -171,8 +182,10 @@ pub struct CodexClient {
     /// 서버가 모두 준비된 것을 확인했다.
     is_mcp_ready: bool,
     mcp_ready_timeout: Duration,
-    /// 요청 하나의 응답을 기다리는 최대 시간.
+    /// 바로 돌아와야 하는 요청의 응답을 기다리는 최대 시간.
     reply_timeout: Duration,
+    /// 시작·열기 요청(`OPEN_METHODS`)의 응답을 기다리는 최대 시간.
+    open_reply_timeout: Duration,
 }
 
 impl CodexClient {
@@ -185,8 +198,9 @@ impl CodexClient {
 
     /// 응답이 늦는 가짜 app-server 시험이 기다리는 시간을 줄이는 데 쓴다.
     #[cfg(test)]
-    pub(crate) fn with_reply_timeout(mut self, timeout: Duration) -> Self {
-        self.reply_timeout = timeout;
+    pub(crate) fn with_reply_timeouts(mut self, quick: Duration, open: Duration) -> Self {
+        self.reply_timeout = quick;
+        self.open_reply_timeout = open;
         self
     }
 

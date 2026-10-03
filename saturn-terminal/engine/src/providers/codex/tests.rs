@@ -71,6 +71,7 @@ while (my $line = <STDIN>) {
       { name => "lint", description => "Run the linter", shortDescription => "lint it", enabled => JSON::PP::true, path => "/skills/lint/SKILL.md", scope => "user" },
       { name => "off", description => "disabled", enabled => JSON::PP::false, path => "/skills/off/SKILL.md", scope => "user" } ] } ] } });
   } elsif ($method eq "thread/start" || $method eq "thread/resume") {
+    select(undef, undef, undef, $ENV{FAKE_SLOW_OPEN_MS} / 1000) if ($ENV{FAKE_SLOW_OPEN_MS} // "") ne "";
     my $model = $p->{model} // "";
     if (($ENV{FAKE_REQUIRE_ADD_DIR} // "") ne "") {
       my $roots = $p->{config}{sandbox_workspace_write}{writable_roots} // [];
@@ -1523,7 +1524,7 @@ async fn a_silent_request_fails_alone_and_leaves_the_connection_usable() {
     let mut client = CodexClient::start(launch(dir.path(), Vec::new()), Supervisor::new())
         .await
         .unwrap()
-        .with_reply_timeout(Duration::from_millis(300));
+        .with_reply_timeouts(Duration::from_millis(300), Duration::from_secs(5));
     let main = client
         .open_session(spec(dir.path()))
         .await
@@ -1548,7 +1549,7 @@ async fn a_silent_interrupt_reports_the_lost_connection_instead_of_waiting() {
     let mut client = CodexClient::start(launch(dir.path(), env), Supervisor::new())
         .await
         .unwrap()
-        .with_reply_timeout(Duration::from_millis(300));
+        .with_reply_timeouts(Duration::from_millis(300), Duration::from_secs(5));
     let main = client
         .open_session(spec(dir.path()))
         .await
@@ -1562,4 +1563,18 @@ async fn a_silent_interrupt_reports_the_lost_connection_instead_of_waiting() {
         matches!(interrupted, Err(ProviderError::ConnectionLost)),
         "{interrupted:?}"
     );
+}
+
+#[tokio::test]
+async fn a_slow_open_reply_is_waited_for_longer_than_a_quick_one() {
+    let dir = tempfile::tempdir().unwrap();
+    let env = vec![("FAKE_SLOW_OPEN_MS".into(), "1500".into())];
+    let mut client = CodexClient::start(launch(dir.path(), env), Supervisor::new())
+        .await
+        .unwrap()
+        .with_reply_timeouts(Duration::from_millis(300), Duration::from_secs(5));
+
+    let opened = client.open_session(spec(dir.path())).await;
+
+    assert!(opened.is_ok(), "{opened:?}");
 }
