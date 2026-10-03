@@ -26,7 +26,12 @@ impl Queue {
             match route {
                 Route::Steer { .. } => return self.commit(index, route),
                 Route::Wait(reason) => {
-                    self.inputs[index].input.reason = reason;
+                    let is_asking = entry.awaits_stop;
+                    self.inputs[index].input.reason = if is_asking {
+                        Some(QueueReason::ConfirmStop)
+                    } else {
+                        reason
+                    };
                     blocked_chats.push(chat);
                 }
                 _ if blocked_chats.contains(&chat) => {}
@@ -41,11 +46,12 @@ impl Queue {
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 대기열 입력 수
     // basis: estimate
-    /// 끼워 넣기 실측을 통과하지 않은 provider에 보낼 때 engine이 부른다.
+    /// 끼워 넣기 실측을 통과하지 않은 provider에 보낼 때 engine이 부른다. 충돌 입력이면 멈추고 실행할지 사용자에게
+    /// 물어야 하므로 참을 돌려준다.
     ///
     /// # Errors
     /// 없는 입력이면 `NotFound`, `Queued`가 아니면 `InvalidTransition`.
-    pub fn defer_steer(&mut self, input: InputId) -> Result<(), QueueError> {
+    pub fn defer_steer(&mut self, input: InputId) -> Result<bool, QueueError> {
         let index = self.index_of(input)?;
         let entry = &mut self.inputs[index];
         if entry.input.state != InputState::Queued {
@@ -58,8 +64,9 @@ impl Queue {
             entry.disposition = Some(Disposition::Queue);
             entry.is_dispatched = false;
             entry.input.task = None;
+            return Ok(self.ask_stop(index));
         }
-        Ok(())
+        Ok(false)
     }
 
     // cost: time O(n), heap O(1), stack O(1)
@@ -111,6 +118,8 @@ impl Queue {
             return Err(QueueError::AlreadySent);
         }
         let previous = entry.disposition.replace(Disposition::Steer);
+        entry.is_conflict = false;
+        entry.awaits_stop = false;
         let chat = entry.input.chat;
         self.move_to_queue_front(index);
         self.bump(chat);
@@ -121,11 +130,12 @@ impl Queue {
     // vars: n = 대기열 입력 수
     // basis: estimate
     /// provider가 끼워 넣기를 거절했다(보내지 않음이 확정). 입력을 `Queued`로 되돌려 같은 채팅 대기열 맨 앞에 두고,
-    /// 다시 끼워 넣지 않고 현재 작업이 끝난 뒤 다음 차례에 새 턴으로 가도록 처리 방식을 대기로 바꾼다.
+    /// 다시 끼워 넣지 않고 현재 작업이 끝난 뒤 다음 차례에 새 턴으로 가도록 처리 방식을 대기로 바꾼다. 충돌 입력이면
+    /// 멈추고 실행할지 사용자에게 물어야 하므로 참을 돌려준다.
     ///
     /// # Errors
     /// 없는 입력이면 `NotFound`, `Delivering`이 아니면 `InvalidTransition`.
-    pub fn return_refused_steer(&mut self, input: InputId) -> Result<(), QueueError> {
+    pub fn return_refused_steer(&mut self, input: InputId) -> Result<bool, QueueError> {
         let index = self.index_of(input)?;
         let entry = &mut self.inputs[index];
         if entry.input.state != InputState::Delivering {
@@ -140,20 +150,66 @@ impl Queue {
         entry.disposition = Some(Disposition::Queue);
         entry.is_dispatched = false;
         let chat = entry.input.chat;
-        self.move_to_queue_front(index);
+        let index = self.move_to_queue_front(index);
+        let is_asking = self.ask_stop(index);
         self.bump(chat);
         self.refresh_router_order(chat);
-        Ok(())
+        Ok(is_asking)
     }
 
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 대기열 입력 수
     // basis: estimate
-    /// 입력을 같은 채팅의 가장 앞 대기 입력 앞으로 옮긴다. 같은 채팅의 다른 대기 입력이 없으면 제자리다.
-    fn move_to_queue_front(&mut self, index: usize) {
+    /// 멈추고 실행할지 묻는 중인 입력이면 참.
+    pub fn awaits_stop(&self, input: InputId) -> bool {
+        self.inputs.iter().any(|entry| {
+            entry.input.id == input
+                && entry.awaits_stop
+                && entry.input.state == InputState::Queued
+                && !entry.is_dispatched
+        })
+    }
+
+    // cost: time O(n), heap O(1), stack O(1)
+    // vars: n = 대기열 입력 수
+    // basis: estimate
+    /// 사용자가 멈추지 않고 대기를 골랐다. 입력은 대기열 맨 앞에서 현재 작업이 끝나길 기다린다.
+    ///
+    /// # Errors
+    /// 묻는 중이 아니면 `NotAwaitingStop`, 없는 입력이면 `NotFound`.
+    pub fn keep_waiting(&mut self, input: InputId) -> Result<(), QueueError> {
+        let index = self.index_of(input)?;
+        if !self.awaits_stop(input) {
+            return Err(QueueError::NotAwaitingStop(input));
+        }
+        let entry = &mut self.inputs[index];
+        entry.awaits_stop = false;
+        entry.input.reason = None;
+        let chat = entry.input.chat;
+        self.bump(chat);
+        Ok(())
+    }
+
+    /// 충돌 입력을 대기로 돌렸으면 사용자에게 묻는 상태로 바꾸고 참을 돌려준다. 한 번만 묻는다.
+    fn ask_stop(&mut self, index: usize) -> bool {
+        let entry = &mut self.inputs[index];
+        if !entry.is_conflict {
+            return false;
+        }
+        entry.is_conflict = false;
+        entry.awaits_stop = true;
+        entry.input.reason = Some(QueueReason::ConfirmStop);
+        true
+    }
+
+    // cost: time O(n), heap O(1), stack O(1)
+    // vars: n = 대기열 입력 수
+    // basis: estimate
+    /// 입력을 같은 채팅의 가장 앞 대기 입력 앞으로 옮긴다. 같은 채팅의 다른 대기 입력이 없으면 제자리다. 옮긴 뒤의 위치를 돌려준다.
+    fn move_to_queue_front(&mut self, index: usize) -> usize {
         let chat = self.inputs[index].input.chat;
         let Some(entry) = self.inputs.remove(index) else {
-            return;
+            return index;
         };
         let at = self
             .inputs
@@ -161,6 +217,7 @@ impl Queue {
             .position(|other| other.input.chat == chat && other.input.state == InputState::Queued)
             .unwrap_or(index.min(self.inputs.len()));
         self.inputs.insert(at, entry);
+        at
     }
 
     // cost: time O(t + h), heap O(1), stack O(1)
@@ -269,6 +326,7 @@ impl Queue {
         };
         self.inputs[index].is_dispatched = true;
         self.inputs[index].input.reason = None;
+        self.inputs[index].awaits_stop = false;
         Some(action)
     }
 

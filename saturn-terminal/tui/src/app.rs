@@ -41,6 +41,7 @@ use crate::view::router_key_prompt::RouterKeyPrompt;
 use crate::view::router_version::RouterVersionScreen;
 use crate::view::start_screen::StartInfo;
 use crate::view::status_board;
+use crate::view::stop_confirm::StopConfirm;
 use crate::view::task_list::TaskList;
 use crate::view::train_confirm::TrainConfirm;
 use crate::view::transcript::{Transcript, TranscriptCell};
@@ -84,6 +85,7 @@ pub(crate) enum Window {
     Usage(UsageScreen),
     RouterVersion(RouterVersionScreen),
     TrainConfirm(TrainConfirm),
+    StopConfirm(StopConfirm),
     Model(ModelPicker),
     Shortcuts,
 }
@@ -254,6 +256,7 @@ impl App {
             Some(Window::Usage(_)) => return KeyArea::Usage,
             Some(Window::RouterVersion(_)) => return KeyArea::RouterVersion,
             Some(Window::TrainConfirm(_)) => return KeyArea::TrainConfirm,
+            Some(Window::StopConfirm(_)) => return KeyArea::StopConfirm,
             Some(Window::Model(_)) => return KeyArea::ModelPicker,
             _ => {}
         }
@@ -498,6 +501,7 @@ impl App {
                 self.on_screen_action(action)
             }
             KeyArea::TrainConfirm => self.on_train_action(action),
+            KeyArea::StopConfirm => self.on_stop_confirm_action(action),
             KeyArea::ModelPicker => self.on_model_action(action),
             KeyArea::Popup => self.on_popup_action(action),
             _ => self.on_composer_action(action),

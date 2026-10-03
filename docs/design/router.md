@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [판단 규격은 Saturn이 정하고 router는 중립 이름과 출처로 기록한다](../decisions/2026-09-29-vendor-neutral-router-spec.md), [engine만 router를 부르고 자식 프로세스 환경에서 router 키를 지운다](../decisions/2026-09-29-engine-as-router-proxy.md), [판단 기록은 로컬에 쌓고 동의한 레코드만 서버로 올린다](../decisions/2026-09-29-local-first-judgment-collection.md), [router가 실패하면 재시도한 뒤 판단 없이 현재 모델로 진행한다](../decisions/2026-10-02-router-failure-keeps-going.md) |
+| 관련 결정 | [판단 규격은 Saturn이 정하고 router는 중립 이름과 출처로 기록한다](../decisions/2026-09-29-vendor-neutral-router-spec.md), [engine만 router를 부르고 자식 프로세스 환경에서 router 키를 지운다](../decisions/2026-09-29-engine-as-router-proxy.md), [판단 기록은 로컬에 쌓고 동의한 레코드만 서버로 올린다](../decisions/2026-09-29-local-first-judgment-collection.md), [router가 실패하면 재시도한 뒤 판단 없이 현재 모델로 진행한다](../decisions/2026-10-02-router-failure-keeps-going.md), [반대 지시는 끼워 넣고, 끼워 넣을 수 없으면 사용자에게 멈출지 묻는다](../decisions/2026-10-03-conflict-steers-then-asks.md) |
 
 ## 요약
 
@@ -101,7 +101,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 | `feedback` | `wrong_doc` | `noul` | `misunderstood_intent`, `code_error`와 함께 질문. 0.7 이상인 원인만 사용 | 판단이 없으면 원문 그대로 전달 |
 
 - `keep_current`가 0.3 미만이면 새 작업으로 본다. 0.3 이상 0.8 미만은 판단 없음과 같다.
-- 실행 중이면 처리 방식을 `relation_to_running`과 `steer_or_spawn`으로 정한다. `refines`, `continues`면 `steer_or_spawn`의 `steer`, `queue`, `spawn`을 끼워 넣기, 대기, 새 작업으로 옮기고, `independent`면 새 작업이다. `conflicts`는 미해결 질문이 정해지기 전까지 대기로 둔다. 실행 중이 아니면 `keep_current`로 현재 에이전트 대기와 새 작업을 가른다.
+- 실행 중이면 처리 방식을 `relation_to_running`과 `steer_or_spawn`으로 정한다. `refines`, `continues`면 `steer_or_spawn`의 `steer`, `queue`, `spawn`을 끼워 넣기, 대기, 새 작업으로 옮기고, `independent`면 새 작업이다. `conflicts`는 `steer_or_spawn` 답과 관계없이 끼워 넣기로 둔다. 모델이 다음 단계에서 입력을 읽고 방향을 바꾸게 하고, 끼워 넣을 수 없을 때의 확인은 [충돌 입력](input-handling.md#충돌-입력)이 정한다. 확신도가 0.6 미만이면 충돌로 보지 않고 대기로 둔다. 실행 중이 아니면 `keep_current`로 현재 에이전트 대기와 새 작업을 가른다.
 - `target_model`의 선택지는 허용 후보와 `other`이고, `other`를 고르면 대체 규칙을 따른다. 후보가 없으면 묻지 않는다. 허용 후보는 provider가 알려 주는 모델 목록으로, `/model`이 보이는 목록과 같다([모델 고르기](providers-and-sessions.md#모델-고르기)). 채팅에 고정한 모델이 있으면 `target_model`만 묻지 않고 그 모델을 쓰며, 관계 판단 질문은 똑같이 묻는다. engine은 provider 연결을 만들 때 받아 둔 모델 목록(`/model`이 보이는 목록)을 Claude, Codex 순으로 후보에 넣고, 선택지는 `<provider>/<model>` 글이다. 목록을 아직 못 받은 provider(연결 전이거나 목록 요청이 실패한 경우)는 후보에서 빠지고, 받은 목록이 없으면 묻지 않아 현재 모델(첫 입력은 기본 provider의 기본값)을 쓴다. 후보는 관계 판단과 같은 요청에서 묻지만, 고른 모델은 새 작업으로 판단된 입력에만 적용한다. 이어 가는 입력(대기)과 끼워 넣기는 현재 모델을 유지한다. 적용한 모델은 입력 기록(`inputs.pinned_model`)에 남겨 다시 시작해도 같은 모델로 보낸다. 그 새 작업이 메인이고 모델이 열린 메인 session의 모델과 다르면 새 메인 session 규칙을 따르고, 보조 에이전트면 그 모델로 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기))(초안).
 - `difficulty`와 `skills`는 답을 쓰는 곳이 생기기 전까지 묻지 않고 대체 규칙(미사용, 힌트 생략)으로 둔다. 쓰지 않는 질문으로 판단 비용을 늘리지 않기 위해서다.
 - 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `is_constraint`를 더한 `route`는 `route@1.1`이고, `constraint`는 `constraint@1.0`에서 시작한다. 기존 질문의 뜻은 바뀌지 않기 때문이다.
@@ -248,5 +248,4 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 - 질문을 상위 범주에서 하위 판단으로 내려가는 계층 트리로 나눌지, 단계마다 호출할지, 지금처럼 한 번에 고를지 ([#68](https://github.com/woonyong-choi/saturn/issues/68))
 - 판단 방식 `collect`를 기준 router가 결정하고 Saturn 모델은 기록만 하는 방식으로 할지, 반대로 할지 ([#40](https://github.com/woonyong-choi/saturn/issues/40))
 - router에 넘기는 state에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))
-- 관계 판단이 `conflicts`일 때 바로 멈출지, 사용자에게 확인할지, 대기로 둘지 ([#36](https://github.com/woonyong-choi/saturn/issues/36))
 - 간접 지시 입력의 `is_constraint` 질문 문장과 부분 충돌 질문을 어떻게 고칠지([#186](https://github.com/woonyong-choi/saturn/issues/186))

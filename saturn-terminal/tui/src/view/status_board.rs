@@ -260,6 +260,7 @@ pub(crate) fn queue_reason_text(lang: Lang, reason: QueueReason) -> String {
         QueueReason::WriteTurn => i18n::WRITE_TURN,
         QueueReason::AfterCompaction => i18n::AFTER_COMPACTION,
         QueueReason::AfterAllTasks => i18n::AFTER_ALL_TASKS,
+        QueueReason::ConfirmStop => i18n::CONFIRM_STOP,
     };
     lang.tr(key).to_string()
 }

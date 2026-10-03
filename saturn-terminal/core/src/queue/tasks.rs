@@ -10,7 +10,6 @@ impl Queue {
     // vars: n = 대기열 입력 수, t = 작업 수
     // basis: estimate
     /// 채팅의 보류 작업 전부를 id 순서로 돌려준다.
-    /// TODO(#36): 뒤집는 입력을 바로 멈출지
     pub fn stop(&mut self, chat: ChatId) -> Vec<TaskId> {
         let main = self.main_task(chat).map(|slot| slot.id);
         for slot in &mut self.tasks {
@@ -31,6 +30,12 @@ impl Queue {
             entry.input.state = InputState::Held;
             entry.input.reason = None;
             entry.input.task = Some(task);
+        }
+        for entry in &mut self.inputs {
+            if entry.input.chat == chat {
+                entry.awaits_stop = false;
+                entry.is_conflict = false;
+            }
         }
         self.chats.entry(chat).or_default().held_ignored = 0;
         self.bump(chat);

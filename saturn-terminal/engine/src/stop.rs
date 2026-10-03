@@ -265,7 +265,32 @@ impl Engine {
             ChatNotice::Stopped { held: labels }
         };
         self.notify_chat(chat, notice).await;
+        self.run_after_stop(chat).await;
         Ok(ended?)
+    }
+
+    /// 멈춤을 고른 충돌 입력은 멈춤이 끝난 뒤에 그 입력이 붙은 작업을 재개해 실행한다. 멈춘 작업의 확인 입력과 쓰기
+    /// 규칙은 재개 규칙을 그대로 따른다. 보류가 아니게 된 입력은 건너뛴다.
+    async fn run_after_stop(&mut self, chat: ChatId) {
+        let (mine, others): (Vec<InputId>, Vec<InputId>) =
+            std::mem::take(&mut self.flow.run_after_stop)
+                .into_iter()
+                .partition(|input| {
+                    self.queue
+                        .input(*input)
+                        .is_some_and(|record| record.chat == chat)
+                });
+        self.flow.run_after_stop = others;
+        for input in mine {
+            let is_held = self
+                .queue
+                .input(input)
+                .is_some_and(|record| record.state == InputState::Held);
+            if is_held {
+                let resumed = self.continue_input(input).await;
+                self.warn_failure("failed to run the input after stopping", resumed);
+            }
+        }
     }
 
     async fn end_stopped_run(&mut self, agent: AgentId) {

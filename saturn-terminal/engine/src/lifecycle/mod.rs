@@ -3,6 +3,7 @@
 mod add_dir;
 mod agent_questions;
 mod attach;
+mod conflict_steer;
 mod decision;
 mod deliver;
 mod events;

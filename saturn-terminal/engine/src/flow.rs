@@ -139,6 +139,8 @@ pub(crate) struct FlowState {
     /// 사용자가 정한 다음 provider. 그 provider의 session이 열리면 지운다.
     pub(crate) switch_to: HashMap<ChatId, Provider>,
     pub(crate) stopping: HashMap<ChatId, StopProgress>,
+    /// 멈춤 뒤에 실행하기로 한 충돌 입력. 멈춤이 끝나면 재개한다.
+    pub(crate) run_after_stop: Vec<InputId>,
     /// 보류한 작업이 멈출 때 하던 일. 재개나 보류 종료 때 지운다.
     pub(crate) held: HashMap<TaskId, HeldTask>,
     pub(crate) stop_tx: mpsc::UnboundedSender<StopDone>,
@@ -172,6 +174,7 @@ impl Default for FlowState {
             needs_check: HashMap::new(),
             switch_to: HashMap::new(),
             stopping: HashMap::new(),
+            run_after_stop: Vec::new(),
             held: HashMap::new(),
             stop_tx,
             stop_rx,

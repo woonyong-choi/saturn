@@ -516,6 +516,7 @@ pub(crate) fn direct_decision(record: &QueuedInput, revision: ChatRevision) -> R
         revision,
         settings: record.settings,
         disposition: Disposition::Queue,
+        is_conflict: false,
         keep_current: true,
         model: record.pinned_model.clone(),
         resume_held: false,

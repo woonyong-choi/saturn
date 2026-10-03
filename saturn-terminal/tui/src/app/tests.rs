@@ -93,6 +93,17 @@ fn tool_call(task: u64, call_id: &str) -> Notification {
     }
 }
 
+fn asking_to_stop(id: u64, state: InputState, text: &str) -> Notification {
+    Notification::InputChanged {
+        input: InputId(id),
+        text: text.to_string(),
+        label: Some(TaskLabel('A')),
+        state,
+        disposition: Some(Disposition::Queue),
+        reason: (state == InputState::Queued).then_some(QueueReason::ConfirmStop),
+    }
+}
+
 fn input(id: u64, state: InputState, text: &str) -> Notification {
     Notification::InputChanged {
         input: InputId(id),
@@ -617,6 +628,46 @@ fn exit_confirm_escape_and_ctrl_c_cancel_the_exit_without_stopping_work() {
         assert_eq!(app.key_area(), KeyArea::Composer, "{code:?}");
         assert_eq!(app.exit_line(), None, "{code:?}");
     }
+}
+
+// #36: 끼워 넣기를 받지 않은 충돌 입력은 멈춤 확인 창을 띄우고, 다른 상태가 되면 지운다
+#[test]
+fn stop_confirm_window_opens_for_the_asking_input_and_closes_when_it_moves_on() {
+    let mut app = attached();
+
+    notify(
+        &mut app,
+        asking_to_stop(5, InputState::Queued, "use pytest"),
+    );
+    assert_eq!(app.key_area(), KeyArea::StopConfirm);
+    notify(
+        &mut app,
+        asking_to_stop(5, InputState::Delivering, "use pytest"),
+    );
+
+    assert_eq!(app.key_area(), KeyArea::Composer);
+}
+
+// #36: 첫 선택은 작업을 멈추지 않는 대기이고, Esc도 대기다
+#[test]
+fn stop_confirm_enter_and_escape_answer_wait_and_down_enter_answers_stop() {
+    let ask = |app: &mut App| notify(app, asking_to_stop(5, InputState::Queued, "use pytest"));
+    let answer = |stop| Request::AnswerStopConfirm {
+        input: InputId(5),
+        stop,
+    };
+    let mut app = attached();
+    ask(&mut app);
+    let enter = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    ask(&mut app);
+    let escape = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    ask(&mut app);
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    let down_enter = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(sent(&enter), vec![&answer(false)]);
+    assert_eq!(sent(&escape), vec![&answer(false)]);
+    assert_eq!(sent(&down_enter), vec![&answer(true)]);
 }
 
 #[test]

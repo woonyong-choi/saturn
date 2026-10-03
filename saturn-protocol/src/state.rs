@@ -27,6 +27,8 @@ pub enum QueueReason {
     AfterCompaction,
     /// session을 바꾸는 명령만.
     AfterAllTasks,
+    /// 반대 지시가 끼워 넣어지지 않아 멈추고 실행할지 사용자의 답을 기다린다. `[보내기]` 없이 확인 창만.
+    ConfirmStop,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]

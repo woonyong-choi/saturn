@@ -121,6 +121,9 @@ impl Engine {
             }
             Request::RunAsNewTask { input } => self.run_as_new_task(client, input).await,
             Request::SendNow { input } => self.send_now(client, input).await,
+            Request::AnswerStopConfirm { input, stop } => {
+                self.answer_stop_confirm(client, input, stop).await
+            }
             Request::CancelInput { input } => self.cancel_input(client, input).await,
             Request::Stop { chat } => self.stop_chat(chat).await,
             Request::StopAll => {

@@ -49,6 +49,7 @@ async fn refused_steer_is_not_sent_again_and_is_not_rejected() {
 
     assert_eq!(steers(&flow), vec!["also run the tests"]);
     assert_eq!(flow.state(second), InputState::Queued);
+    assert!(!flow.engine.queue.awaits_stop(second));
     assert_eq!(
         flow.engine.queue.disposition(second),
         Some(Disposition::Queue)

@@ -90,6 +90,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | router 키 입력 창 | router 확인 실패 원인, 가린 키 입력칸 | 시작 때 router 확인 실패 |
 | 폴더 설정 신뢰 창 | 폴더 설정 파일 경로, 지문, 적용되는 항목, 무시되는 항목, 바뀐 줄 | 처음 보거나 내용이 바뀐 폴더 설정을 만난 때, 실행 중이면 다음 입력 접수 전 |
 | 종료 확인 창 | 실행 중인 작업 수, 선택지 `계속 실행`과 `멈추기` | `on_exit`가 `ask`이고 다른 TUI 없이 작업이 남은 채 닫으려 할 때 |
+| 멈춤 확인 창 | 끼워 넣기를 받지 않은 충돌 입력의 원문, 질문 `지금 멈추고 새 입력을 실행할까요?`, 선택지 `대기`와 `멈추고 실행` | engine이 `ConfirmStop` 사유의 대기 입력을 알릴 때 |
 | 보류 재개 질문 | 보류된 작업 목록, 선택지 `모두 이어서`, `골라서 이어서`, `그대로 두기` | 보류 작업이 있는 채팅을 다시 열 때 한 번 |
 | 허가 요청 창 | 작업 이름표와 provider가 붙은 제목, 요청 내용, 이유, 선택지 세 개, 허가를 기다리는 다른 작업 수 | 허가 요청 도착 |
 | 입력 요청 창 | 허가 요청 창과 같은 제목, 요청 설명, 칸 목록(포커스한 칸만 펼침), 필수 표시 `*`, 오류 한 줄, 키 안내, 답을 기다리는 다른 요청 수. URL 요청은 설명과 링크 | 입력 요청 도착 |
@@ -103,6 +104,8 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-key-security.md)에, 폴더 설정 신뢰 규칙은 [설정](settings.md)에 있다.
 
 종료 확인 창은 닫으려 할 때 `engine`에 `PrepareExit`을 보내고 `ExitPlan`을 받은 뒤에 뜬다. 닫는 키는 입력창의 `Ctrl+D`와 유휴일 때의 `Ctrl+C`, 창의 종료 선택지다. `Ask`일 때만 창이 뜨고, `Close`는 그대로 닫고, `Notice`는 닫은 뒤 터미널에 한 줄을 남긴다. 창은 다른 창 위에 덮고 `Esc` 뒤에 아래 창이 그대로 남는다. 첫 선택은 작업을 잃지 않는 `계속 실행`이다. `engine`의 답을 기다리는 동안 닫기를 한 번 더 누르면 기다리지 않고 닫는다. router 키 입력 창에서는 `engine`이 요청을 받지 않으므로 묻지 않고 닫는다. 값별 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
+
+멈춤 확인 창은 하던 작업과 반대되는 입력(충돌 입력)을 provider가 끼워 넣기로 받지 않았을 때 뜬다. engine이 입력을 `ConfirmStop` 사유의 대기로 알리면 창을 띄우고, 입력이 다른 상태가 되면(다른 TUI가 먼저 답했거나 현재 작업이 끝나 다음 차례로 갔을 때) 창을 지운다. 첫 선택은 작업을 멈추지 않는 `대기`이고, `Esc`와 `Ctrl+C`도 `대기`다. 선택은 `AnswerStopConfirm`으로 보내고, 멈추는 일과 입력 실행은 engine이 한다([충돌 입력](input-handling.md#충돌-입력)). 질문과 선택지는 영어 문구가 있고, 질문은 `~할까요?` 형식을 따른다.
 
 사용량 화면은 provider·모델마다 한 행, router마다 한 행을 보인다. 행 이름은 `codex · gpt-5.6-terra`, `claude · opus`, `router · jev` 형식이고, 모델을 보고하지 않았으면 provider 이름만 쓴다. `/usage`는 인자 없이 지금 채팅의 사용량을 열고, 화면에서 `d`는 모든 채팅의 최근 24시간, `w`는 모든 채팅의 최근 7일로 바꾼다. 같은 키를 다시 누르면 지금 채팅으로 돌아가고, 범위 이름과 키 안내는 화면에 보인다. 범위는 지금부터 거슬러 센 시간이고 달력 날짜가 아니다. 각 행은 고른 범위의 합계다. `saturn usage`는 지금 폴더에서 가장 최근에 입력을 접수한 채팅의 사용량을 표로 쓰고, `--day`는 최근 24시간, `--week`는 최근 7일(모든 채팅)로 바꾼다. 두 옵션은 함께 쓸 수 없고, 그 폴더에 채팅이 없으면 오류로 끝낸다. Claude Code의 `/usage`와 `/stats`가 기간을 키로 바꿔 보는 방식을 따랐다. provider 행의 토큰은 턴 값의 합이고, session 누적 보고는 같은 계열의 직전 누적을 뺀 값을 더한다. 여러 턴을 합친 행은 끝에 `n 토큰 · n 턴`을 보이고, 턴 수는 그 행에 합친 실행 수다. 중간 보고가 빠진 누적 보고는 그사이 보고 없는 실행까지 턴으로 센다. router 행은 호출 수와 입력·출력 토큰을 보인다. 예상 비용, 맥락 정리, 채점처럼 기록 저장소에 없는 값은 `-`로 표시한다. 지어낸 값을 보이지 않기 위해서다.
 
@@ -192,6 +195,9 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `↑`, `↓` | 선택지 이동 | 종료 확인 창 |
 | `Enter` | 고른 선택지 확정 | 종료 확인 창 |
 | `Esc`, `Ctrl+C` | 닫기 취소, 작업 중지 없음 | 종료 확인 창 |
+| `↑`, `↓` | 선택지 이동 | 멈춤 확인 창 |
+| `Enter` | 고른 선택지 확정 | 멈춤 확인 창 |
+| `Esc`, `Ctrl+C` | `대기` 선택, 작업 중지 없음 | 멈춤 확인 창 |
 | `Enter` | 선택 | 보류 재개 질문 |
 | `↑`, `↓` | 선택지 이동 | 보류 재개 질문 |
 | `y` | 이번만 허용 | 허가 요청 창 |
@@ -259,6 +265,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `· [C] 대기 · 쓰기 차례` | 다른 에이전트의 쓰기가 끝나기를 기다리는 입력 |
 | `· [C] 대기 · 맥락 정리 뒤` | session 교체가 끝나기를 기다리는 입력 |
 | `· [C] 대기 · 모든 작업 뒤` | 모든 작업이 끝난 뒤 실행할 session 변경 명령 |
+| `· [C] 대기 · 멈출지 확인 중` | 끼워 넣기를 받지 않은 충돌 입력이 멈춤 확인 창의 답을 기다림. 영어는 `Confirming stop` |
 | `[보내기] [취소]` | 대기 줄 버튼, `/send`, `/cancel`과 같은 동작 |
 | `‖ [A] 보류` | 멈춘 작업이나 보내지 않은 입력, `/continue`로 재개 |
 | `[이어서] [취소]` | 보류 줄 버튼, `/continue`, `/cancel`과 같은 동작 |
@@ -337,6 +344,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
 | 닫으려 할 때 `engine`에 닫은 뒤의 처리를 먼저 묻고, 답이 오기 전에는 닫지 않으며 한 번 더 누르면 기다리지 않고 닫는다. | `saturn-terminal/tui/src/app/tests.rs`의 `quit_asks_the_engine_first_and_a_second_quit_closes_without_waiting`, `exit_plan_close_quits_without_a_line`, `exit_plan_nobody_asked_for_is_ignored` |
 | `Notice`와 종료 확인 창의 `계속 실행`은 닫은 뒤 터미널에 계속 실행 중인 작업 수와 다시 여는 방법을 한 줄로 남기고, 영어 문구가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_notice_quits_and_leaves_the_running_count_line`, `exit_plan_notice_line_is_translated`, `exit_confirm_continue_quits_and_leaves_the_running_count_line` |
+| 멈춤 확인 창은 `ConfirmStop` 대기 입력이 오면 뜨고 입력이 다른 상태가 되면 지워지며, 첫 선택과 `Esc`는 `대기`이고 `멈추고 실행`은 `AnswerStopConfirm`을 보낸다. 문구에 영어가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `stop_confirm_window_opens_for_the_asking_input_and_closes_when_it_moves_on`, `stop_confirm_enter_and_escape_answer_wait_and_down_enter_answers_stop`, `saturn-terminal/tui/src/view/stop_confirm.rs`의 `render_shows_the_input_and_both_choices` |
 | `Ask`는 종료 확인 창을 띄우고, `멈추기`는 `StopAll`을 보낸 뒤 닫고, `Esc`와 `Ctrl+C`는 작업을 멈추지 않고 닫기를 취소한다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_ask_opens_the_confirm_window_and_waits`, `exit_confirm_stop_stops_every_chat_then_quits_without_a_line`, `exit_confirm_escape_and_ctrl_c_cancel_the_exit_without_stopping_work`, `saturn-terminal/tui/src/view/exit_confirm.rs`의 `render_shows_count_and_both_choices` |
 | 작업 목록에서 채팅을 옮기면 `Detach` 없이 `Attach`만 같은 연결로 보내고, `engine`은 연결을 유지한 채 붙은 채팅만 바꾸며 떠난 채팅의 작업을 멈추지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `moving_to_another_chat_only_attaches_without_detaching`, `saturn-terminal/engine/src/lifecycle/exit.rs`의 `attach_to_another_chat_on_the_same_connection_is_not_a_detach` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |

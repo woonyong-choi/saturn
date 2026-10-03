@@ -247,6 +247,8 @@ pub struct RouteDecision {
     pub revision: ChatRevision,
     pub settings: SettingsRevision,
     pub disposition: Disposition,
+    /// 관계가 `conflicts`라 끼워 넣기로 정한 입력이다. provider가 끼워 넣기를 받지 않으면 사용자에게 멈출지 묻는다.
+    pub is_conflict: bool,
     /// 거짓이면 새 작업이나 보조 에이전트.
     pub keep_current: bool,
     /// `None`이면 사용자 고정 모델이나 현재 모델.
@@ -403,6 +405,7 @@ pub fn decide_route(
         revision,
         settings,
         disposition: Disposition::Queue,
+        is_conflict: false,
         keep_current: true,
         model: None,
         resume_held: false,
@@ -427,6 +430,7 @@ pub fn decide_route(
         Disposition::NewTask
     };
     decision.keep_current = decision.disposition != Disposition::NewTask;
+    decision.is_conflict = reader.is_conflict();
     decision
 }
 
@@ -593,14 +597,18 @@ impl AnswerReader<'_> {
         }
     }
 
-    /// 관계가 `conflicts`이거나 확신도 미달이면 대기로 둔다.
-    /// TODO(#36): `conflicts`일 때 바로 멈출지, 사용자에게 확인할지
+    /// 실행 중이고 관계가 `conflicts`이면 참. 확신도 미달은 관계 없음과 같아 거짓이다.
+    fn is_conflict(&self) -> bool {
+        self.is_running() && self.picked(question_ids::RELATION_TO_RUNNING) == Some("conflicts")
+    }
+
+    /// `conflicts`는 멈추지 않고 끼워 넣는다. 확신도 미달이면 대기로 둔다.
     fn running_disposition(&self, fallbacks: &mut Vec<String>) -> Disposition {
         let relation = self.picked(question_ids::RELATION_TO_RUNNING);
         match relation {
             Some("refines" | "continues") => self.send_disposition(fallbacks),
             Some("independent") => Disposition::NewTask,
-            Some("conflicts") => Disposition::Queue,
+            Some("conflicts") => Disposition::Steer,
             _ => {
                 fallbacks.push(question_ids::RELATION_TO_RUNNING.to_string());
                 Disposition::Queue

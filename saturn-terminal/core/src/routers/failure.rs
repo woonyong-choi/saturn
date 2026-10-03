@@ -90,6 +90,7 @@ pub fn route_after_failure(
         } else {
             Disposition::Queue
         },
+        is_conflict: false,
         keep_current: true,
         model: None,
         resume_held: false,

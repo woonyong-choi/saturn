@@ -3,11 +3,11 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [쓰기 에이전트는 기본으로 한 번에 하나만 실행한다](../decisions/2026-09-29-single-writer-default.md), [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md) |
+| 관련 결정 | [쓰기 에이전트는 기본으로 한 번에 하나만 실행한다](../decisions/2026-09-29-single-writer-default.md), [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md), [반대 지시는 끼워 넣고, 끼워 넣을 수 없으면 사용자에게 멈출지 묻는다](../decisions/2026-10-03-conflict-steers-then-asks.md) |
 
 ## 요약
 
-입력 처리는 사용자 입력을 기록 저장소에 먼저 접수하고, 채팅 상태에 맞춰 에이전트로 보내는 기능이다. 실행 중에 들어온 입력은 끼워 넣기, 새 작업, 대기 중 하나로 처리한다. 사용자가 멈춘 작업과 보내지 않은 입력은 보류로 두고, 사용자가 재개할 때만 이어 간다.
+입력 처리는 사용자 입력을 기록 저장소에 먼저 접수하고, 채팅 상태에 맞춰 에이전트로 보내는 기능이다. 실행 중에 들어온 입력은 끼워 넣기, 새 작업, 대기 중 하나로 처리하고, 하던 작업과 반대되는 입력도 끼워 넣는다. 사용자가 멈춘 작업과 보내지 않은 입력은 보류로 두고, 사용자가 재개할 때만 이어 간다.
 
 ## 동기
 
@@ -22,6 +22,14 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트가 일하는 중
 3. router가 이 입력을 하던 작업을 다듬는 입력으로 판단한다.
 4. engine이 진행 중인 턴에 입력을 끼워 넣는다.
 5. 사용자는 입력 상태가 `전달 중`에서 `반영됨`으로 바뀌는 것을 본다.
+
+### 반대 지시를 할 때
+
+1. 사용자가 에이전트 A가 jest로 테스트를 고치는 중에 "jest 말고 pytest로 해줘"를 입력한다.
+2. router가 이 입력을 하던 작업과 반대되는 지시(`conflicts`)로 판단한다.
+3. engine이 대기시키지 않고 진행 중인 턴에 입력을 끼워 넣는다. A는 다음 단계에서 입력을 읽고 방향을 바꾼다.
+4. provider가 끼워 넣기를 받지 않으면 입력은 대기열 맨 앞에 두고 TUI가 `지금 멈추고 새 입력을 실행할까요?`를 묻는다.
+5. 사용자가 `멈추고 실행`을 고르면 멈춤 규칙으로 A를 멈춘 뒤 그 입력을 실행하고, `대기`를 고르면 A가 끝난 뒤 다음 차례에 보낸다.
 
 ### 무관한 일을 맡길 때
 
@@ -76,16 +84,32 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 | 처리 방식 | 동작 |
 |---|---|
-| 끼워 넣기 | 진행 중인 턴에 입력을 더한다. Codex는 `turn/steer`, Claude는 스트림 입력 추가로 전달한다. |
+| 끼워 넣기 | 진행 중인 턴에 입력을 더한다. Codex는 `turn/steer`, Claude는 스트림 입력 추가로 전달한다. `refines`와 `continues`에서 router가 고르거나 `conflicts`일 때 쓴다. |
 | 새 작업 | router가 무관한 작업으로 판단하면 같은 채팅 안에 보조 에이전트를 시작한다. |
 | 대기 | 하던 작업 다음에 보낼 입력으로 대기열에 둔다. |
 
 - 관계 판단의 확신도가 0.6 미만이면 대기로 보낸다.
+- 관계가 `conflicts`이면 `steer_or_spawn` 답과 관계없이 끼워 넣는다. 충돌 입력을 멈추지 않고 모델이 읽게 하는 것이 사용자 결정이다(아래 [충돌 입력](#충돌-입력)).
 - 보내는 방식 판단의 확신도가 0.6 미만이면 현재 에이전트에 대기 뒤 보낸다. 같은 이유로 확신 없는 판단으로 행동하지 않기 위해서다.
 - 끼워 넣기 실측을 통과하기 전의 provider는 끼워 넣기를 대기로 바꿔 처리한다([#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27)). 끼워 넣기 경로가 문서대로 동작하는지 실측으로 확인해야 하기 때문이다.
-- 그 provider에 끼워 넣기를 대기로 바꿀 때 TUI에 `바로 반영 준비 중`을 보인다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다.
+- 그 provider에 끼워 넣기를 대기로 바꿀 때 TUI에 `바로 반영 준비 중`을 보인다. 충돌 입력은 이 표시 대신 멈출지 묻는다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다.
 - provider마다 켜 둔 채 입력을 받는 연결을 둔다. 한 번 실행 방식으로는 끼워 넣기가 불가능하기 때문이다.
 - 보조 에이전트는 끝나면 결과를 전달한 뒤 바로 종료한다. 쉬는 메인 에이전트를 깨우지 않고 메인 에이전트의 다음 입력 때 결과를 전달한다.
+
+### 충돌 입력
+
+1. router가 관계를 `conflicts`로 고르면 `queue`가 그 입력을 끼워 넣기로 적용하고 충돌 입력으로 표시한다.
+2. 끼워 넣기가 받아들여지면 일반 끼워 넣기와 같다.
+3. provider가 끼워 넣기를 받지 않으면(끼워 넣기 실측 전이거나 `NotSent`로 거절) `queue`가 입력을 대기열 맨 앞에 두고 멈출지 묻는 상태(`ConfirmStop`)로 바꾼다.
+4. TUI가 `지금 멈추고 새 입력을 실행할까요?` 창을 띄우고 `대기`와 `멈추고 실행` 중 하나를 `AnswerStopConfirm`으로 보낸다.
+5. `멈추고 실행`이면 engine이 멈춤 규칙으로 채팅을 멈추고, 완료를 확인한 뒤 그 입력이 붙은 작업을 재개해 입력을 실행한다. `대기`이면 입력은 맨 앞 대기 그대로 현재 작업이 끝난 뒤 다음 차례에 새 턴으로 간다.
+
+- 모델이 입력을 읽고 방향을 바꾸는 것이 기본이고, 작업을 완전히 멈추는 것은 사용자의 멈춤(`Ctrl+C`)이다. 충돌 판단이 틀려도 멀쩡한 작업이 멈추는 일을 막기 위해서다(사용자 결정, [#36](https://github.com/woonyong-choi/saturn/issues/36)).
+- engine은 사용자의 답 없이 멈추지 않는다. 묻는 동안 작업은 계속되고 입력은 맨 앞 대기와 같은 순서를 지킨다.
+- 묻는 동안 현재 작업이 먼저 끝나면 입력은 다음 차례로 가서 질문은 사라진다. 다른 TUI가 먼저 답해도 질문은 사라지고 늦은 답은 거절한다.
+- 질문은 입력마다 한 번만 한다. `대기`를 고른 입력을 바로 보내기로 다시 끼워 넣다가 거절되면 묻지 않고 맨 앞 대기로 둔다. `멈추고 실행`은 기존 멈춤 규칙이라 같은 채팅의 다른 대기 입력과 실행 중 작업도 보류하고, 입력이 붙은 작업의 보류 입력이 접수 순서대로 먼저 간다.
+- 충돌이 아닌 입력은 이 질문을 거치지 않고 [입력 전송과 재전송](#입력-전송과-재전송)의 규칙(거절되면 맨 앞 대기)을 그대로 따른다. 확신도가 0.6 미만인 관계는 충돌로 보지 않고 대기로 둔다.
+- 끼워 넣을 활성 턴이 없다는 실패(`NoActiveTurn`)는 질문 없이 같은 session의 새 턴으로 보내는 기존 규칙을 따른다. 멈출 턴이 없기 때문이다.
 
 ### 입력 전송과 재전송
 
@@ -97,7 +121,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 - 대기열은 에이전트 session이 아니라 채팅에 둔다. session 교체 중 들어온 입력이 옛 session을 가리키는 일을 막기 위해서다.
 - session 교체는 턴이 끝난 경계에서만 한다. 진행 중인 턴이 session 교체로 끊기는 일을 막기 위해서다.
 - session 교체 중 들어온 입력은 새 session에 순서대로 보낸다. 입력 순서를 session 교체와 무관하게 지키기 위해서다.
-- 보내기 전에 확정된 실패만 다시 보낸다. 같은 작업이 두 번 실행되는 일을 막기 위해서다. 같은 입력은 처음 시도를 포함해 3번(초안)까지 보내고, 그래도 실패하면 `거절됨`으로 두고 시작하려던 작업은 닫는다. 끼워 넣기는 이 규칙을 따르지 않는다. provider가 끼워 넣기를 거절(`NotSent`)하면 다시 끼워 넣지 않고 입력을 대기열 맨 앞으로 옮겨 다음 차례에 새 턴으로 보낸다(사용자 결정, [#60](https://github.com/woonyong-choi/saturn/issues/60)). 사용자가 지금 반영되길 원한 입력이라 순서를 뒤로 미루지 않고, 거절은 보내지 않음이 확정된 실패라 다시 보내도 되기 때문이다. 입력은 `대기`로 돌아가고 `거절됨`이 되지 않는다.
+- 보내기 전에 확정된 실패만 다시 보낸다. 같은 작업이 두 번 실행되는 일을 막기 위해서다. 같은 입력은 처음 시도를 포함해 3번(초안)까지 보내고, 그래도 실패하면 `거절됨`으로 두고 시작하려던 작업은 닫는다. 끼워 넣기는 이 규칙을 따르지 않는다. provider가 끼워 넣기를 거절(`NotSent`)하면 다시 끼워 넣지 않고 입력을 대기열 맨 앞으로 옮겨 다음 차례에 새 턴으로 보낸다(사용자 결정, [#60](https://github.com/woonyong-choi/saturn/issues/60)). 사용자가 지금 반영되길 원한 입력이라 순서를 뒤로 미루지 않고, 거절은 보내지 않음이 확정된 실패라 다시 보내도 되기 때문이다. 입력은 `대기`로 돌아가고 `거절됨`이 되지 않는다. 충돌 입력만 이 자리에서 사용자에게 멈출지 묻는다([충돌 입력](#충돌-입력)).
 - 입력은 `전달 중`을 기록 저장소에 쓴 뒤에만 provider로 보내고, provider가 받으면 `반영됨`으로 바꾼다. 기록에 쓰지 못하면 보내지 않고 거절한다.
 - 보낼 provider는 입력에 고정한 모델이나 router가 고른 모델의 provider, 없으면 채팅의 메인 session이 있으면 그 provider이고, 없으면 설치된 Claude, 없으면 설치된 Codex이며 둘 다 없으면 오류를 보이고 보내지 않는다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정). 고정한 모델은 session을 여는 모델로 넘기고 모델이 바뀌면 새 메인 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기)).
 - provider 연결은 채팅마다 둔다. 작업 폴더와 환경이 채팅마다 달라서다.
@@ -204,6 +228,8 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 보내기 전 확정 실패가 3번 이어짐 | 입력을 `거절됨`으로 두고 작업을 실패로 보인다. 입력 에코에 빨간색 `거절됨`이 붙고 마지막 실패의 이유가 빨간색으로 보인다. |
 | 도구 실행의 결과를 모른 채 작업이 실패하거나 멈추거나 결과 확인 필요가 됨 | 그 도구 셀에 빨간색 `중단됨`을 보인다. 이어 갈 때 provider에 넘기는 기록에는 그 도구 결과를 오류 결과(`Interrupted before a result was recorded · It may have partially run`)로 넣는다. |
 | provider가 끼워 넣기를 거절(`NotSent`) | 다시 끼워 넣지 않고 입력을 `대기`로 되돌려 대기열 맨 앞에 둔다. 현재 작업이 끝나면 다음 차례에 새 턴으로 보낸다. |
+| 충돌 입력을 provider가 끼워 넣기 거절이나 실측 전이라 받지 않음 | 입력을 대기열 맨 앞에 두고 `지금 멈추고 새 입력을 실행할까요?`를 묻는다. 답 전까지 멈추지 않는다. |
+| 멈춤 확인에 답했는데 이미 답했거나 다음 차례로 간 입력 | 요청을 거절하고(`INVALID_PARAMS`) 상태는 바꾸지 않는다. |
 | provider 연결이나 session 열기 실패, 설치된 provider 없음 | 보내지 않고 입력을 `거절됨`으로 두며 원인 한 줄을 작업 실패에 보인다. |
 | 접수나 `전달 중` 기록 실패 | 어디에도 보내지 않는다. 접수 실패는 요청 오류로, `전달 중` 실패는 입력 거절로 알린다. |
 | 멈춤 뒤 묶음 밖으로 빠져나간 프로세스 존재 | 완료라고 하지 않고 `멈춤 확인 안 됨 · N개 남음`을 보고한다. |
@@ -225,6 +251,10 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 쓰기 권한 에이전트는 같은 작업 폴더에서 한 번에 하나만 실행한다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `relation_answer_to_new_task_waits_for_the_write_turn_then_starts` |
 | 취소는 에이전트에 보내기 전 입력에만 적용한다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `cancel_applies_only_before_the_input_is_sent` |
 | 바로 보내기는 router를 부르지 않고 끼워 넣기를 시도하며, 안 되면 대기열 맨 앞에 둔다. | `saturn-terminal/engine/src/lifecycle/send_now.rs`의 `send_now_steers_into_the_running_turn_without_calling_the_router`, `send_now_does_not_need_the_router_to_be_up`, `send_now_that_cannot_steer_goes_first_in_the_queue`, `send_now_without_verified_steer_goes_back_to_waiting`, `send_now_on_a_sent_input_is_refused`, `saturn-terminal/core/src/queue/tests.rs`의 `send_now_steers_a_running_task_ahead_of_earlier_waiting_inputs`, `send_now_that_cannot_steer_waits_first_in_line`, `send_now_refuses_inputs_that_are_not_waiting` |
+| 충돌로 판단한 입력은 대기시키지 않고 진행 중인 턴에 끼워 넣는다. | `saturn-terminal/core/src/routers/tests.rs`의 `decide_route_conflicts_steers_and_marks_the_conflict`, `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `conflict_input_is_steered_into_the_running_turn` |
+| 충돌 입력을 provider가 받지 않으면 멈추지 않고 사용자에게 멈출지 묻고, 충돌이 아닌 입력은 묻지 않는다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `refused_conflict_steer_asks_whether_to_stop_and_does_not_stop`, `conflict_steer_to_a_provider_without_steer_asks_whether_to_stop`, `saturn-terminal/core/src/queue/tests.rs`의 `refused_steer_asks_the_user_only_for_a_conflict_input`, `deferred_steer_asks_the_user_only_for_a_conflict_input`, `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `refused_steer_is_not_sent_again_and_is_not_rejected` |
+| `대기`를 고르면 입력은 맨 앞 대기로 다음 차례에 가고, `멈추고 실행`을 고르면 기존 멈춤 규칙 뒤에 입력을 실행한다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `answering_wait_keeps_the_input_in_front_for_the_next_turn`, `answering_stop_stops_the_chat_and_then_runs_the_input`, `saturn-terminal/core/src/queue/tests.rs`의 `keep_waiting_ends_the_question_and_the_input_takes_the_next_turn`, `stop_ends_the_question_and_a_second_answer_is_refused` |
+| 묻는 중이 아닌 입력의 멈춤 확인 답은 거절한다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `answering_without_a_question_is_refused` |
 | provider가 거절한 끼워 넣기는 다시 끼워 넣지 않고 대기열 맨 앞으로 옮겨 다음 차례에 보낸다. | `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `refused_steer_is_not_sent_again_and_is_not_rejected`, `refused_steer_goes_to_the_front_and_takes_the_next_turn`, `refused_steer_through_send_now_also_goes_to_the_front`, `saturn-terminal/core/src/queue/tests.rs`의 `refused_steer_returns_to_the_front_as_a_queued_input`, `refused_steer_needs_a_delivering_input` |
 | 멈춘 작업은 자동으로 이어 가지 않고 보류한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stopped_work_is_not_continued_without_a_request`, `stop_with_nothing_running_holds_the_waiting_input_at_once`, `stop_twice_signals_once` |
 | 재개는 보류 입력을 접수 순서로 보내고 멈춘 작업에는 중단 결과를 붙인 새 입력을 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `continue_sends_held_input_and_then_a_state_check_for_the_interrupted_task`, `continue_input_resumes_the_task_of_that_input` |
@@ -242,7 +272,6 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 ## 미해결 질문
 
-- 실행 중 작업을 뒤집는 입력을 바로 멈출지, 사용자에게 확인할지, 대기로 둘지 ([#36](https://github.com/woonyong-choi/saturn/issues/36))
 - 허가 거절 뒤 다르게 하라는 입력을 판단 없이 끼워 넣을지, 허가 창에서 받을지, 일반 입력으로 판단할지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
 - 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 보류 입력 하나만 재개할지, 같은 작업의 보류 입력을 함께 재개할지. 같은 작업에 보류 입력이 있을 때 확인 입력이 그 입력보다 앞서야 하는지 ([#90](https://github.com/woonyong-choi/saturn/issues/90))

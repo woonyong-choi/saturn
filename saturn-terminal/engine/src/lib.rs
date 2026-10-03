@@ -148,6 +148,7 @@ impl EngineError {
             | Self::Queue(
                 QueueError::NotFound(_)
                 | QueueError::AlreadySent
+                | QueueError::NotAwaitingStop(_)
                 | QueueError::InvalidTransition { .. },
             ) => INVALID_PARAMS,
             _ => INTERNAL_ERROR,

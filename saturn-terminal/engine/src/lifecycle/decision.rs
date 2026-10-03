@@ -13,6 +13,7 @@ fn decision(flow: &Flow, revision: ChatRevision, disposition: Disposition) -> Ro
         revision,
         settings: flow.engine.settings.current().unwrap(),
         disposition,
+        is_conflict: false,
         keep_current: true,
         model: None,
         resume_held: false,
