@@ -1,10 +1,8 @@
-//! `saturn --resume`(채팅 id 없음)과 `--resume all`: 채팅 목록에서 번호로 골라 이어 연다.
+//! `saturn --resume`(채팅 id 없음)과 `--resume all`: 채팅 목록 선택 창에서 방향키로 골라 이어 연다.
 //! 설계: docs/design/engine-lifecycle.md
 
-use std::io::{BufRead, IsTerminal, Write};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::io::IsTerminal;
 
-use anyhow::Context;
 use saturn_protocol::ids::ChatId;
 use saturn_protocol::rpc::{ChatListItem, Notification, Request};
 use saturn_tui::client::EngineClient;
@@ -12,17 +10,10 @@ use saturn_tui::i18n::{self, Lang};
 
 use crate::commands::call;
 
-/// 목록 줄의 첫 입력 미리보기 글자 수. 초안 값.
-const PREVIEW_CHARS: usize = 60;
-
-const MINUTE_MS: u64 = 60_000;
-const HOUR_MS: u64 = 60 * MINUTE_MS;
-const DAY_MS: u64 = 24 * HOUR_MS;
-
-/// 목록을 받아 골라 채팅 id를 돌려준다. `folder`가 `None`이면 모든 폴더.
+/// 목록을 받아 선택 창에서 골라 채팅 id를 돌려준다. `folder`가 `None`이면 모든 폴더.
 ///
 /// # Errors
-/// 채팅이 없거나, 번호를 고르지 않았거나, 연결이 끊기면 오류.
+/// 채팅이 없거나, 창에서 `Esc`로 취소했거나, 연결이 끊기면 오류.
 pub(crate) async fn pick(
     lang: Lang,
     client: &mut EngineClient,
@@ -42,15 +33,7 @@ pub(crate) async fn pick(
     )
     .await?;
     let chats = answer.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_CHAT_LIST_ANSWER)))?;
-    let stdin = std::io::stdin();
-    pick_from(
-        lang,
-        &chats,
-        show_folder,
-        now_ms(),
-        stdin.lock(),
-        &mut std::io::stderr(),
-    )
+    pick_from(lang, chats, show_folder, saturn_tui::pick_chat)
 }
 
 /// 표준 입력이 터미널이 아니면 engine을 띄우기 전에 거절한다.
@@ -66,16 +49,12 @@ fn check_terminal(lang: Lang, is_terminal: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-// cost: time O(c), heap O(c), stack O(1), io c
-// vars: c = 목록의 채팅 수
-// basis: estimate
+/// 채팅이 없으면 창을 열지 않는다. `window`는 선택 창이고 취소하면 `None`.
 fn pick_from(
     lang: Lang,
-    chats: &[ChatListItem],
+    chats: Vec<ChatListItem>,
     show_folder: bool,
-    now_ms: u64,
-    mut input: impl BufRead,
-    out: &mut impl Write,
+    window: impl FnOnce(Lang, Vec<ChatListItem>, bool) -> Result<Option<ChatId>, saturn_tui::TuiError>,
 ) -> anyhow::Result<ChatId> {
     anyhow::ensure!(
         !chats.is_empty(),
@@ -85,71 +64,8 @@ fn pick_from(
             i18n::CLI_NO_CHAT_TO_CONTINUE
         })
     );
-    for (index, chat) in chats.iter().enumerate() {
-        writeln!(out, "{}", row(lang, index + 1, chat, show_folder, now_ms))?;
-    }
-    write!(out, "{} ", lang.tr(i18n::CLI_PICK_PROMPT))?;
-    out.flush()?;
-    let mut line = String::new();
-    input
-        .read_line(&mut line)
-        .context(lang.tr(i18n::CLI_PICK_CANCELLED))?;
-    let text = line.trim();
-    anyhow::ensure!(!text.is_empty(), lang.tr(i18n::CLI_PICK_CANCELLED));
-    let picked = text
-        .parse::<usize>()
-        .ok()
-        .and_then(|number| number.checked_sub(1))
-        .and_then(|index| chats.get(index))
-        .ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_PICK_INVALID).replace("{text}", text)))?;
-    Ok(picked.chat)
-}
-
-/// `번호. #채팅 id · 경과 · [폴더 ·] 첫 입력`
-fn row(lang: Lang, number: usize, chat: &ChatListItem, show_folder: bool, now_ms: u64) -> String {
-    let mut parts = vec![
-        format!("{number}. #{}", chat.chat.0),
-        age(lang, now_ms.saturating_sub(chat.last_active_ms)),
-    ];
-    if show_folder {
-        parts.push(chat.folder.clone());
-    }
-    parts.push(preview(lang, chat.preview.as_deref()));
-    parts.join(" · ")
-}
-
-fn age(lang: Lang, elapsed_ms: u64) -> String {
-    let (phrase, count) = if elapsed_ms >= DAY_MS {
-        (i18n::CLI_AGE_DAYS, elapsed_ms / DAY_MS)
-    } else if elapsed_ms >= HOUR_MS {
-        (i18n::CLI_AGE_HOURS, elapsed_ms / HOUR_MS)
-    } else if elapsed_ms >= MINUTE_MS {
-        (i18n::CLI_AGE_MINUTES, elapsed_ms / MINUTE_MS)
-    } else {
-        return lang.tr(i18n::CLI_AGE_NOW).to_owned();
-    };
-    lang.tr(phrase).replace("{n}", &count.to_string())
-}
-
-/// 첫 줄만, `PREVIEW_CHARS`자까지.
-fn preview(lang: Lang, text: Option<&str>) -> String {
-    let Some(first_line) = text.and_then(|text| text.lines().find(|line| !line.trim().is_empty()))
-    else {
-        return lang.tr(i18n::CLI_PICK_NO_INPUT).to_owned();
-    };
-    let first_line = first_line.trim();
-    if first_line.chars().count() <= PREVIEW_CHARS {
-        return first_line.to_owned();
-    }
-    let cut: String = first_line.chars().take(PREVIEW_CHARS).collect();
-    format!("{cut}…")
-}
-
-fn now_ms() -> u64 {
-    let elapsed = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default();
-    u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX)
+    let picked = window(lang, chats, show_folder)?;
+    picked.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_PICK_CANCELLED)))
 }
 
 #[cfg(test)]
@@ -158,85 +74,43 @@ mod tests {
 
     use super::*;
 
-    const NOW: u64 = 10 * DAY_MS;
-
-    fn item(chat: u64, folder: &str, last_active_ms: u64, preview: Option<&str>) -> ChatListItem {
+    fn item(chat: u64) -> ChatListItem {
         ChatListItem {
             chat: ChatId(chat),
-            folder: folder.to_owned(),
-            last_active_ms,
-            preview: preview.map(str::to_owned),
+            folder: "/work".to_owned(),
+            last_active_ms: 0,
+            preview: None,
         }
     }
 
-    fn list() -> Vec<ChatListItem> {
-        vec![
-            item(
-                9,
-                "/work/a",
-                NOW - 2 * HOUR_MS,
-                Some("fix login\nsecond line"),
-            ),
-            item(4, "/work/b", NOW - 3 * DAY_MS, None),
-        ]
-    }
-
     #[test]
-    fn resume_picker_lists_chats_and_returns_the_picked_chat() {
-        let mut out = Vec::new();
-
-        let chat = pick_from(Lang::En, &list(), false, NOW, "2\n".as_bytes(), &mut out);
+    fn resume_opens_the_chat_picked_in_the_window() {
+        let chat = pick_from(
+            Lang::En,
+            vec![item(9), item(4)],
+            true,
+            |_, chats, show_folder| {
+                assert_eq!(chats.len(), 2);
+                assert!(show_folder);
+                Ok(Some(ChatId(4)))
+            },
+        );
 
         assert_eq!(chat.unwrap(), ChatId(4));
-        assert_eq!(
-            String::from_utf8(out).unwrap(),
-            "1. #9 · 2h ago · fix login\n2. #4 · 3d ago · (no input)\n\
-             Enter the number of the chat to resume (Enter to cancel) "
-        );
     }
 
     #[test]
-    fn resume_picker_shows_the_folder_column_for_all_folders() {
-        let mut out = Vec::new();
+    fn resume_cancelled_in_the_window_opens_nothing_and_ends_with_an_error() {
+        let error = pick_from(Lang::En, vec![item(9)], false, |_, _, _| Ok(None)).unwrap_err();
 
-        pick_from(Lang::En, &list(), true, NOW, "1\n".as_bytes(), &mut out).unwrap();
-
-        assert!(
-            String::from_utf8(out)
-                .unwrap()
-                .starts_with("1. #9 · 2h ago · /work/a · fix login\n")
-        );
+        assert_eq!(error.to_string(), "No chat was picked");
     }
 
     #[test]
-    fn resume_picker_without_a_choice_or_with_a_bad_number_fails() {
-        for (answer, message) in [
-            ("\n", "No chat was picked"),
-            ("", "No chat was picked"),
-            ("3\n", "Not in the list: 3"),
-            ("0\n", "Not in the list: 0"),
-            ("abc\n", "Not in the list: abc"),
-        ] {
-            let error = pick_from(
-                Lang::En,
-                &list(),
-                false,
-                NOW,
-                answer.as_bytes(),
-                &mut Vec::new(),
-            )
-            .unwrap_err();
-
-            assert_eq!(error.to_string(), message, "{answer:?}");
-        }
-    }
-
-    #[test]
-    fn resume_picker_with_no_chats_ends_with_guidance_and_does_not_read() {
-        let in_folder =
-            pick_from(Lang::En, &[], false, 0, "1\n".as_bytes(), &mut Vec::new()).unwrap_err();
-        let in_all =
-            pick_from(Lang::En, &[], true, 0, "1\n".as_bytes(), &mut Vec::new()).unwrap_err();
+    fn resume_with_no_chats_ends_with_guidance_and_opens_no_window() {
+        let window = |_, _, _| panic!("window should not open without chats");
+        let in_folder = pick_from(Lang::En, Vec::new(), false, window).unwrap_err();
+        let in_all = pick_from(Lang::En, Vec::new(), true, window).unwrap_err();
 
         assert!(
             in_folder
@@ -247,21 +121,11 @@ mod tests {
     }
 
     #[test]
-    fn resume_picker_needs_a_terminal() {
+    fn resume_needs_a_terminal() {
         let error = check_terminal(Lang::En, false).unwrap_err();
 
         assert!(error.to_string().contains("No terminal to pick a chat in"));
         assert!(check_terminal(Lang::En, true).is_ok());
-    }
-
-    #[test]
-    fn long_previews_are_cut_to_the_first_line() {
-        let long = "가".repeat(PREVIEW_CHARS + 5);
-
-        let text = preview(Lang::En, Some(&long));
-
-        assert_eq!(text.chars().count(), PREVIEW_CHARS + 1);
-        assert!(text.ends_with('…'));
     }
 
     #[tokio::test]

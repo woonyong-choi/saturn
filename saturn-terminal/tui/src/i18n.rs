@@ -275,9 +275,9 @@ pub const CLI_NO_CHAT_TO_RESUME: &str = "이어 열 채팅이 없습니다 · sa
 pub const CLI_NO_CHAT_LIST_ANSWER: &str = "engine이 채팅 목록 없이 답했습니다";
 pub const CLI_PICK_NEEDS_TERMINAL: &str =
     "채팅을 고를 터미널이 없습니다 · --resume <chat id>를 쓰세요";
-pub const CLI_PICK_PROMPT: &str = "이어 열 채팅 번호를 입력하세요 (Enter: 취소)";
+pub const CHAT_PICKER_TITLE: &str = "채팅 이어 열기";
+pub const CHAT_PICKER_HINT: &str = "↑↓ 이동 · Enter 열기 · Esc 취소";
 pub const CLI_PICK_CANCELLED: &str = "채팅을 고르지 않았습니다";
-pub const CLI_PICK_INVALID: &str = "목록에 없는 번호입니다: {text}";
 pub const CLI_PICK_NO_INPUT: &str = "(입력 없음)";
 pub const CLI_AGE_NOW: &str = "방금";
 pub const CLI_AGE_MINUTES: &str = "{n}분 전";
