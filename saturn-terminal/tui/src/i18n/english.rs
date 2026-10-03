@@ -10,6 +10,7 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("허가 기다림", "Waiting for permission"),
     ("입력 기다림", "Waiting for input"),
     ("도구 사용 허가 준비 중", "Preparing tool permission"),
+    ("응답 없음 {minutes}분", "No response {minutes}m"),
     ("맥락 정리 중", "Compacting context"),
     ("공급자 전환 중", "Switching provider"),
     ("하위 에이전트", "Subagents"),

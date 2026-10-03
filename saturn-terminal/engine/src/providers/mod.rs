@@ -1,6 +1,5 @@
 //! provider 연결 구현: 종류별 생성, 공통 실행 준비, 끼워 넣기 경로 선택, 명령 목록 거르기.
 //! 설계: docs/design/providers-and-sessions.md
-//! TODO(#38): 추론과 도구 실행이 오래 걸릴 때 타임아웃을 둘지와 값. 정해지기 전에는 기다리기만 한다
 
 mod claude;
 mod claude_input;
