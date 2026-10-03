@@ -22,11 +22,11 @@ saturn -> saturn-key "router 키 조회"
 saturn -> config-files "설정 조회"
 
 step "Codex" "입력은 router 판단을 거쳐 대상 에이전트인 Codex로 간다"
-  user -> saturn "입력"
+  user -> saturn
   saturn -> router-api
   saturn -> codex-cli
 step "Claude Code" "같은 흐름에서 입력이 Claude Code로 간다"
-  user -> saturn "입력"
+  user -> saturn
   saturn -> router-api
   saturn -> claude-code
 step "로컬 모델" "판단 방식이 `saturn`이면 판단 질문을 로컬 Saturn 모델이 받는다"

@@ -1,22 +1,21 @@
-flow right
-width wide
+flow down
 title "그 provider로 돌아갈 때의 판정"
-subtitle "캐시가 살아 있으면 재개하고, 지났으면 패킷이 마지막 활성 맥락보다 작을 때만 새로 연다"
+subtitle "캐시 안은 마지막 턴 뒤 경과 시간이 캐시 유지 시간 안이라는 뜻이다. P는 패킷 크기, A는 마지막 활성 맥락"
 
 box switch "provider를 바꾸는 입력" "다음 입력을 보낼 때 판정"
-decision saved "보관 session 있음"
-decision cache "캐시 유지 시간 안"
+decision saved "보관 있음"
+decision cache "캐시 안"
 decision smaller "P < A"
-box fresh-none "새 session" "패킷을 넘김"
-box resume-cache "보관 session 재개" "변경분만 붙임"
-box fresh-small "새 session" "패킷을 넘김"
-box resume-large "보관 session 재개" "변경분만 붙임"
+box fresh-none "새 session"
+box resume-cache "보관 session 재개"
+box fresh-small "새 session"
+box resume-large "보관 session 재개"
 
 switch -> saved
-saved -> fresh-none "아니오"
 saved -> cache "예"
-cache -> resume-cache "예"
 cache -> smaller "아니오"
+saved -> fresh-none "아니오"
+cache -> resume-cache "예"
 smaller -> fresh-small "예"
 smaller -> resume-large "아니오"
 
@@ -24,7 +23,7 @@ step "캐시 안" "캐시 유지 시간 안이면 보관 session을 재개한다
   switch -> saved
   saved -> cache
   cache -> resume-cache
-step "캐시 지남, 패킷이 작음" "캐시가 끝난 뒤에는 패킷이 더 작으면 새 session이 싸다"
+step "캐시 지남, 패킷이 작음" "캐시 유지 시간이 지난 뒤에는 패킷이 마지막 활성 맥락보다 작을 때만 새 session을 연다"
   switch -> saved
   saved -> cache
   cache -> smaller
