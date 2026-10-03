@@ -16,6 +16,10 @@ use crate::labels;
 /// 도구 호출이 시작되고 허가 요청이나 진행 이벤트 없이 이만큼 지나면 상태판에 준비 중을 보인다.
 pub(crate) const APPROVAL_PENDING_AFTER: Duration = Duration::from_secs(3);
 
+/// 실행 중인 작업이 provider 이벤트 없이 이만큼 지나면 상태판에 `응답 없음`을 보인다. 두 provider의 스트림 무응답 대기
+/// 기본값(Claude Code 5분 이상, Codex 5분)과 같다. 자동으로 멈추지 않는다.
+pub(crate) const NO_RESPONSE_AFTER: Duration = Duration::from_secs(5 * 60);
+
 /// 허가를 기다리는 동안은 멈춘다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Stopwatch {
@@ -73,6 +77,8 @@ pub(crate) struct TaskView {
     pub failure: Option<String>,
     /// 도구 호출이 시작된 뒤 허가 요청이나 다른 진행 이벤트가 아직 없으면 그 호출이 시작된 시각.
     pub tool_started_at: Option<Instant>,
+    /// 마지막 provider 이벤트를 받았거나 작업 상태가 바뀐 시각. 허가나 입력을 기다린 시간은 무응답으로 세지 않는다.
+    pub last_event_at: Instant,
     /// 결과가 아직 오지 않은 도구 호출의 `call_id`. 시작 순서.
     open_calls: Vec<String>,
     /// 같은 종류 줄 안의 접수 순서 정렬에 쓴다.
@@ -264,10 +270,14 @@ impl ChatState {
             reported_elapsed: update.elapsed,
             failure: None,
             tool_started_at: None,
+            last_event_at: now,
             open_calls: Vec::new(),
             seq,
             cumulative: BTreeMap::new(),
         });
+        if previous != Some(update.state) {
+            view.last_event_at = now;
+        }
         view.label = update.label;
         view.state = update.state;
         view.reported_elapsed = update.elapsed;
@@ -338,6 +348,7 @@ impl ChatState {
         let Some(view) = self.tasks.get_mut(&task) else {
             return Change::Redraw;
         };
+        view.last_event_at = now;
         view.tool_started_at =
             matches!(event, ProviderEvent::ToolCall { subagent: None, .. }).then_some(now);
         match event {

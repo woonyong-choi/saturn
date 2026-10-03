@@ -18,6 +18,8 @@ pub const RUNNING_COMMAND: &str = "명령 실행 중";
 pub const AWAITING_PERMISSION: &str = "허가 기다림";
 pub const AWAITING_INPUT: &str = "입력 기다림";
 pub const APPROVAL_PENDING: &str = "도구 사용 허가 준비 중";
+/// `{minutes}`는 마지막 provider 이벤트 뒤 지난 분.
+pub const NO_RESPONSE: &str = "응답 없음 {minutes}분";
 pub const COMPACTING: &str = "맥락 정리 중";
 pub const SWITCHING_PROVIDER: &str = "공급자 전환 중";
 pub const SUBAGENTS: &str = "하위 에이전트";

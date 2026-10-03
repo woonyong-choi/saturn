@@ -16,7 +16,9 @@ use saturn_protocol::state::{InputState, TaskState};
 
 use crate::i18n::{self, Lang};
 use crate::labels;
-use crate::state::{APPROVAL_PENDING_AFTER, ChatState, InputView, TaskView, TrainingProgress};
+use crate::state::{
+    APPROVAL_PENDING_AFTER, ChatState, InputView, NO_RESPONSE_AFTER, TaskView, TrainingProgress,
+};
 use crate::view::transcript::held_labels;
 use crate::view::{EMPHASIS, text_width, truncate};
 
@@ -35,6 +37,8 @@ pub(crate) struct RunningLine {
     pub awaiting_permission: bool,
     /// `awaiting_permission` 다음으로 앞선다.
     pub awaiting_input: bool,
+    /// 마지막 provider 이벤트 뒤 `NO_RESPONSE_AFTER` 이상 조용했을 때의 분. `awaiting_input` 다음으로 앞선다.
+    pub no_response_minutes: Option<u64>,
     /// 도구 호출이 시작되고 3초 안에 허가 요청이나 진행 이벤트가 없다. `awaiting_permission` 다음으로 앞선다.
     pub approval_pending: bool,
     /// 0이 아니면 하는 일 대신 보인다.
@@ -397,6 +401,11 @@ fn running_text(lang: Lang, line: &RunningLine) -> String {
         Some(lang.tr(i18n::AWAITING_PERMISSION).to_string())
     } else if line.awaiting_input {
         Some(lang.tr(i18n::AWAITING_INPUT).to_string())
+    } else if let Some(minutes) = line.no_response_minutes {
+        Some(
+            lang.tr(i18n::NO_RESPONSE)
+                .replace("{minutes}", &minutes.to_string()),
+        )
     } else if line.approval_pending {
         Some(approval_pending_text(lang, line.provider))
     } else if line.subagents > 0 {
@@ -475,12 +484,23 @@ fn running_line(task: &TaskView, now: Instant) -> RunningLine {
         activity: task.activity.clone(),
         awaiting_permission: task.state == TaskState::AwaitingPermission,
         awaiting_input: task.state == TaskState::AwaitingInput,
+        no_response_minutes: no_response_minutes(task, now),
         approval_pending: task.tool_started_at.is_some_and(|started| {
             now.saturating_duration_since(started) >= APPROVAL_PENDING_AFTER
         }),
         subagents: task.subagents.len(),
         has_output: task.has_output,
     }
+}
+
+/// 실행 중(`Running`, `AnsweredTreeRunning`)일 때만 센다. 허가와 입력을 기다리는 동안은 무응답이 아니다.
+fn no_response_minutes(task: &TaskView, now: Instant) -> Option<u64> {
+    let is_working = matches!(
+        task.state,
+        TaskState::Running | TaskState::AnsweredTreeRunning
+    );
+    let silent = now.saturating_duration_since(task.last_event_at);
+    (is_working && silent >= NO_RESPONSE_AFTER).then_some(silent.as_secs() / 60)
 }
 
 fn queued_line(input: &InputView) -> Option<StatusLine> {
@@ -698,6 +718,7 @@ mod tests {
             activity: Some(Activity::Thinking),
             awaiting_permission: false,
             awaiting_input: false,
+            no_response_minutes: None,
             approval_pending: false,
             subagents: 2,
             has_output: true,
@@ -781,6 +802,75 @@ mod tests {
             !running_texts(&state, later + Duration::from_secs(5))[0]
                 .contains("도구 사용 허가 준비 중")
         );
+    }
+
+    fn text_event() -> ProviderEvent {
+        ProviderEvent::Text {
+            agent: AgentId(1),
+            subagent: None,
+            text: "working".to_string(),
+        }
+    }
+
+    // #38: 마지막 provider 이벤트 뒤 5분이 지나면 분 단위로 응답 없음을 보인다
+    #[test]
+    fn no_response_shows_in_minutes_after_the_threshold_without_events() {
+        let start = Instant::now();
+        let mut state = ChatState::new();
+        task(&mut state, 1, 'A', TaskState::Running, start);
+
+        let early = running_texts(&state, start + Duration::from_secs(299));
+        let at = running_texts(&state, start + Duration::from_secs(300));
+        let later = running_texts(&state, start + Duration::from_secs(7 * 60 + 10));
+
+        assert!(!early[0].contains("응답 없음"));
+        assert!(at[0].ends_with("응답 없음 5분"), "{}", at[0]);
+        assert!(later[0].ends_with("응답 없음 7분"), "{}", later[0]);
+    }
+
+    #[test]
+    fn no_response_text_is_translated() {
+        assert_eq!(
+            Lang::En.tr(i18n::NO_RESPONSE).replace("{minutes}", "5"),
+            "No response 5m"
+        );
+    }
+
+    // #38: 이벤트가 다시 오면 표시를 지우고 그 시각부터 다시 센다
+    #[test]
+    fn no_response_clears_when_an_event_arrives() {
+        let start = Instant::now();
+        let silent = start + Duration::from_secs(6 * 60);
+        let mut state = ChatState::new();
+        task(&mut state, 1, 'A', TaskState::Running, start);
+        assert!(running_texts(&state, silent)[0].contains("응답 없음 6분"));
+
+        state.apply_event(TaskId(1), text_event(), silent);
+
+        assert!(!running_texts(&state, silent)[0].contains("응답 없음"));
+        assert!(!running_texts(&state, silent + Duration::from_secs(299))[0].contains("응답 없음"));
+        assert!(
+            running_texts(&state, silent + Duration::from_secs(300))[0].contains("응답 없음 5분")
+        );
+    }
+
+    // #38: 허가나 입력 요청을 기다리는 동안은 무응답이 아니고, 답한 뒤 다시 센다
+    #[test]
+    fn no_response_does_not_show_while_waiting_for_permission_or_input() {
+        for waiting in [TaskState::AwaitingPermission, TaskState::AwaitingInput] {
+            let start = Instant::now();
+            let long_after = start + Duration::from_secs(20 * 60);
+            let mut state = ChatState::new();
+            task(&mut state, 1, 'A', TaskState::Running, start);
+            task(&mut state, 1, 'A', waiting, start + Duration::from_secs(60));
+
+            let while_waiting = running_texts(&state, long_after);
+            task(&mut state, 1, 'A', TaskState::Running, long_after);
+            let just_answered = running_texts(&state, long_after + Duration::from_secs(1));
+
+            assert!(!while_waiting[0].contains("응답 없음"), "{waiting:?}");
+            assert!(!just_answered[0].contains("응답 없음"), "{waiting:?}");
+        }
     }
 
     #[test]

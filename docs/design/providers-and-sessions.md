@@ -274,6 +274,23 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 
 크래시 뒤 session을 어떻게 나누는지는 [engine 수명과 복구](engine-lifecycle.md)에 있다.
 
+### 무응답 표시
+
+Saturn은 오래 조용한 작업을 자동으로 죽이지 않는다. 실행 중인 작업에서 마지막 provider 이벤트 뒤 5분(초안) 동안 이벤트가 없으면 TUI가 상태판 실행 줄에 `응답 없음 N분`을 보이고, 사용자가 기존 멈춤으로 멈출 수 있게 한다. 이벤트가 다시 오면 표시를 지우고 그 시각부터 다시 센다. 허가 요청이나 입력 요청을 기다리는 동안은 무응답으로 보지 않고, 답한 뒤 다시 센다. 오래 걸리는 빌드와 테스트를 잘못 끊지 않고 사용자 몰래 멈추지도 않기 위해서다. 시간은 TUI가 받은 이벤트 도착 시각으로 재므로 나중에 붙은 TUI는 붙은 때부터 센다.
+
+기준 시간 5분은 두 provider의 기본 대기값에서 정했다(2026-10-03 확인, Claude Code 2.1.288, Codex CLI 0.158.0). 상수 하나이고 설정 키는 두지 않는다.
+
+| provider | 값 | 기본값 | 출처 |
+|---|---|---|---|
+| Claude Code | 스트림 무응답 감시(`CLAUDE_STREAM_IDLE_TIMEOUT_MS`) | 5분(5분보다 짧게 설정할 수 없음) | 설치된 실행 파일의 문자열(`Math.max(값, 300000)`) |
+| Claude Code | 요청 시간 제한(`API_TIMEOUT_MS`) | 10분 | [환경 변수 문서](https://code.claude.com/docs/en/env-vars), 실행 파일 문자열 |
+| Claude Code | Bash 도구(`BASH_DEFAULT_TIMEOUT_MS`, `BASH_MAX_TIMEOUT_MS`) | 기본 2분, 모델이 늘려도 최대 10분 | 같은 문서, 실행 파일 문자열(`120000`, `600000`) |
+| Codex | SSE 무응답(`stream_idle_timeout_ms`) | 5분(`300000`) | [설정 참조](https://learn.chatgpt.com/docs/config-file/config-reference), 실행 파일에 키 존재 확인 |
+| Codex | MCP 도구(`tool_timeout_sec`) | 60초 | 같은 문서, 실행 파일에 키 존재 확인 |
+| Codex | 셸 명령 기본 제한 | 확인 불가 | 문서와 실행 파일에서 값을 찾지 못했다 |
+
+두 provider의 스트림 무응답 기본값이 모두 5분이라 그 값을 쓴다. Claude Code의 Bash 도구는 조용한 채로 10분까지 돌 수 있어 긴 명령은 5분에 표시가 뜰 수 있다. 표시만 하고 멈추지 않으므로 오래 걸리는 작업에서도 잃는 것이 없다.
+
 ### 오류 처리
 
 | 상황 | 동작 |
@@ -283,6 +300,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | 멈춤 뒤 묶음 밖으로 빠져나간 프로세스 존재 | 완료라고 하지 않고 `멈춤 확인 안 됨 · N개 남음`을 보고한다. |
 | 완료 신호 없는 흐름 끝, 읽는 중 종료, 끝이 없는 subagent | 관찰 끊김으로 보고 `effect_scope`를 `unobserved`로 기록한다. |
 | provider 흐름의 관찰 중단 | `effect_scope`를 `unobserved`로 기록하고 자동으로 이어 가지 않는다. |
+| 실행 중 작업의 provider 이벤트가 5분 동안 없음 | 죽이지 않고 상태판에 `응답 없음 N분`을 보인다. 사용자가 멈출 수 있고, 이벤트가 오면 지운다. |
 | 중간 사용량 보고 누락 | 차이가 여러 턴에 걸친다고 표시하고 0으로 채우지 않는다. |
 
 관찰 끊김을 `unobserved`로 두는 것은 관찰하지 못한 외부 효과가 있을 수 있기 때문이다.
@@ -331,6 +349,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | Codex 추론 항목은 `Reasoning` 종류로 남기고 도구 결과 후보에서 뺀다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `detail_of_reasoning_is_not_a_candidate`, `saturn-protocol/src/event.rs`의 `is_candidate_only_reasoning_is_excluded` |
 | 셸이 감싼 명령은 안쪽 명령으로 기록한다. | `saturn-terminal/engine/src/providers/tool_detail.rs`의 `unwrap_shell_login_shell_wrapper_gives_inner_command`, `unwrap_shell_escaped_single_quote_stays_in_inner_command`, `unwrap_shell_plain_or_unbalanced_command_is_unchanged`, `saturn-terminal/engine/src/providers/codex/tests.rs`의 `activity_of_wrapped_command_is_inner_command` |
 | Codex와 Claude Code의 도구 결과를 같은 충실도로 기록으로 바꾼다. | [변환 수정 뒤 기록 전환 품질 측정](../experiments/record-fidelity-stage2/report.md): 같은 받는 쪽에서 Codex 기록 패킷과 Claude Code 기록 패킷의 정답률 차이 0.0%p [0.0, 0.0]로 채택. 경로 120/120 대 120/120, 메모 필드 192/192 대 191/192 |
+| 실행 중 작업이 5분 동안 provider 이벤트가 없으면 `응답 없음 N분`을 보이고, 이벤트가 오면 지우며, 허가나 입력 요청을 기다리는 동안은 보이지 않는다. 자동으로 멈추지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `no_response_shows_in_minutes_after_the_threshold_without_events`, `no_response_clears_when_an_event_arrives`, `no_response_does_not_show_while_waiting_for_permission_or_input`, `no_response_text_is_translated` |
 
 ## 단점
 
