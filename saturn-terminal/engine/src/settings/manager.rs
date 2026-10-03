@@ -15,6 +15,9 @@ use super::{
 };
 use crate::store::Store;
 
+/// 설정 파일 경로마다 내용의 지문. 없는 파일은 `None`.
+pub(crate) type FileFingerprints = Vec<(PathBuf, Option<String>)>;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Applied {
     /// 검사 실패면 이전 번호.
@@ -32,7 +35,7 @@ pub(crate) struct SettingsManager {
     /// 검사 실패 때 돌아갈 번호.
     current: Option<SettingsRevision>,
     /// 작업 폴더마다 마지막 `apply` 때 본 설정 파일과 지문. 없던 파일은 `None`.
-    seen: HashMap<PathBuf, Vec<(PathBuf, Option<String>)>>,
+    seen: HashMap<PathBuf, FileFingerprints>,
 }
 
 impl SettingsManager {
@@ -250,9 +253,18 @@ impl SettingsManager {
     /// # Errors
     /// 파일 읽기 실패면 `Io`.
     pub(crate) async fn changed(&self, workdir: &Path) -> Result<bool, SettingsError> {
-        let Some(seen) = self.seen.get(workdir) else {
-            return Ok(true);
-        };
+        Ok(self.observe(workdir).await?.is_some())
+    }
+
+    /// 마지막 `apply` 뒤 설정 파일이 바뀌었으면 지금 파일의 지문을 돌려준다. 이 작업 폴더로 한 번도 적용하지 않았으면
+    /// 바뀐 것으로 본다. 파일 감시가 같은 지문을 두 번 연달아 본 뒤에만 적용하는 데 쓴다.
+    ///
+    /// # Errors
+    /// 파일 읽기 실패면 `Io`.
+    pub(crate) async fn observe(
+        &self,
+        workdir: &Path,
+    ) -> Result<Option<FileFingerprints>, SettingsError> {
         let mut now = Vec::new();
         let user_path = self.user_config_path();
         now.push((
@@ -263,7 +275,8 @@ impl SettingsManager {
             let content = read_file(&path)?;
             now.push((path, content.as_deref().map(fingerprint)));
         }
-        Ok(now != *seen)
+        let unchanged = self.seen.get(workdir).is_some_and(|seen| *seen == now);
+        Ok((!unchanged).then_some(now))
     }
 }
 

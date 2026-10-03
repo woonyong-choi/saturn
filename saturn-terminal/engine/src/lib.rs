@@ -38,6 +38,7 @@ mod permission;
 mod requests;
 mod serve;
 mod sessions;
+mod settings_watch;
 mod startup;
 mod stop;
 mod switch;

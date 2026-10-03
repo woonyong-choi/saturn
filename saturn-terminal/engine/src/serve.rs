@@ -6,6 +6,7 @@ use saturn_protocol::rpc::Request;
 
 use super::{AttachRequest, Engine, EngineError, RouterGate, masked_chain, unsupported};
 use crate::rpc::{ClientId, RpcEvent};
+use crate::settings_watch::SETTINGS_WATCH_TICK;
 use crate::{events, outcomes};
 
 impl Engine {
@@ -13,6 +14,7 @@ impl Engine {
     /// 복구할 수 없는 오류만 돌려주고, 요청 하나의 오류는 그 클라이언트에 알리고 계속한다.
     pub(super) async fn serve(&mut self) -> Result<(), EngineError> {
         let mut tick = tokio::time::interval(outcomes::SETTLE_TICK);
+        let mut watch = tokio::time::interval(SETTINGS_WATCH_TICK);
         loop {
             tokio::select! {
                 event = self.rpc.next_event() => {
@@ -27,6 +29,9 @@ impl Engine {
                 }
                 Some(done) = self.flow.stop_rx.recv() => {
                     self.on_stop_done(done).await;
+                }
+                _ = watch.tick() => {
+                    self.watch_settings().await;
                 }
                 _ = tick.tick() => {
                     let settled = self.settle_signals(Instant::now()).await;
