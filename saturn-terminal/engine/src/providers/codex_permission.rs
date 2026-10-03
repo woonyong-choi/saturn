@@ -57,47 +57,91 @@ fn normalize(text: &str) -> String {
         .to_ascii_lowercase()
 }
 
-/// 서버 준비 확인 한 번의 결과.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum McpState {
-    Ready,
-    /// 아직 준비되지 않았거나 도구 목록을 받지 못한 서버와 이유.
-    Waiting(String),
+/// 서버 준비 확인 한 번의 결과. 서버마다 준비, 기다림, 쓸 수 없음 셋 중 하나로 나눈다.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(super) struct McpCheck {
+    /// 아직 준비됐는지 알 수 없어 다시 물을 서버와 이유.
+    pub(super) waiting: Vec<String>,
+    /// 시작에 실패해 도구를 쓸 수 없는 서버와 이유.
+    pub(super) unavailable: Vec<String>,
 }
 
-// cost: time O(s·e), heap O(1), stack O(1)
-// vars: s = 기다릴 서버 수, e = 응답의 서버 수
+/// 서버 하나의 판정.
+enum ServerState {
+    Ready,
+    Waiting(String),
+    Unavailable(String),
+}
+
+// cost: time O(s·e), heap O(s), stack O(1), alloc s
+// vars: s = 확인할 서버 수, e = 응답의 서버 수
 // basis: estimate
-/// `mcpServerStatus/list` 응답에서 기다릴 서버가 모두 `ready`이고 도구 목록 오류가 없는지 본다.
-pub(super) fn mcp_state(result: &Value, servers: &[String]) -> McpState {
+/// `mcpServerStatus/list` 응답을 서버별로 판정한다. codex-cli 0.158.0은 `runtimeStatus`를 `null`로 주고
+/// 시작이 끝난 서버만 목록에 낸다. 그때 준비된 서버는 `serverInfo`가 있고 `toolsError`가 없으며, 시작에 실패한 서버는
+/// `toolsError`가 차 있다(빈 `tools`가 함께 온다). `runtimeStatus`가 문자열로 오는 버전은 그 값을 먼저 본다.
+pub(super) fn mcp_check(result: &Value, servers: &[String]) -> McpCheck {
     let entries = result["data"].as_array().map_or(&[][..], Vec::as_slice);
+    let mut check = McpCheck::default();
     for server in servers {
-        let Some(entry) = entries
+        let state = match entries
             .iter()
             .find(|entry| entry["name"].as_str() == Some(server))
-        else {
-            return McpState::Waiting(format!("{server} is not listed"));
+        {
+            Some(entry) => server_state(server, entry),
+            None => ServerState::Waiting(format!("{server} is not listed")),
         };
-        if !is_ready(&entry["runtimeStatus"]) {
-            return McpState::Waiting(format!("{server} is {}", entry["runtimeStatus"]));
-        }
-        if !entry["toolsError"].is_null() {
-            return McpState::Waiting(format!("{server} tools error {}", entry["toolsError"]));
-        }
-        if entry["tools"].is_null() {
-            return McpState::Waiting(format!("{server} has no tool list"));
+        match state {
+            ServerState::Ready => {}
+            ServerState::Waiting(reason) => check.waiting.push(reason),
+            ServerState::Unavailable(reason) => check.unavailable.push(reason),
         }
     }
-    McpState::Ready
+    check
 }
 
-fn is_ready(status: &Value) -> bool {
-    let text = status
+fn server_state(server: &str, entry: &Value) -> ServerState {
+    let failed = || {
+        ServerState::Unavailable(format!(
+            "{server} failed to start: {}",
+            value_line(&entry["toolsError"])
+        ))
+    };
+    match runtime_status(&entry["runtimeStatus"]) {
+        Some(status) if status.eq_ignore_ascii_case("ready") => {
+            if !entry["toolsError"].is_null() {
+                failed()
+            } else if entry["tools"].is_null() {
+                ServerState::Waiting(format!("{server} has no tool list"))
+            } else {
+                ServerState::Ready
+            }
+        }
+        Some(status)
+            if status.eq_ignore_ascii_case("failed")
+                || status.eq_ignore_ascii_case("cancelled") =>
+        {
+            ServerState::Unavailable(format!("{server} is {status}"))
+        }
+        Some(status) => ServerState::Waiting(format!("{server} is {status}")),
+        None if !entry["toolsError"].is_null() => failed(),
+        None if !entry["serverInfo"].is_null() => ServerState::Ready,
+        None => ServerState::Waiting(format!("{server} has no server info")),
+    }
+}
+
+fn runtime_status(status: &Value) -> Option<&str> {
+    status
         .as_str()
         .or_else(|| status["status"].as_str())
         .or_else(|| status["state"].as_str())
-        .or_else(|| status["type"].as_str());
-    text.is_some_and(|text| text.eq_ignore_ascii_case("ready"))
+        .or_else(|| status["type"].as_str())
+}
+
+/// 오류 값을 한 줄 글로.
+fn value_line(value: &Value) -> String {
+    value
+        .as_str()
+        .map_or_else(|| value.to_string(), str::to_owned)
 }
 
 // cost: time O(c), heap O(c), stack O(1), alloc 1
@@ -213,33 +257,76 @@ mod tests {
         );
     }
 
+    /// codex-cli 0.158.0 `mcpServerStatus/list` 실측 모양. `runtimeStatus`는 항상 `null`이다.
+    fn measured_list() -> Value {
+        json!({ "data": [
+            { "name": "bad", "runtimeStatus": null, "serverInfo": null, "serverCapabilities": null,
+              "tools": {}, "toolsError": "MCP startup failed: No such file or directory (os error 2)",
+              "resources": [], "resourceTemplates": [], "authStatus": "unsupported" },
+            { "name": "good", "runtimeStatus": null,
+              "serverInfo": { "name": "good", "title": null, "version": "1" },
+              "serverCapabilities": { "tools": {} },
+              "tools": { "echo": { "name": "echo", "description": "e", "inputSchema": { "type": "object" } } },
+              "toolsError": null, "resources": [], "resourceTemplates": [], "authStatus": "unsupported" },
+            { "name": "quiet", "runtimeStatus": null,
+              "serverInfo": { "name": "quiet", "title": null, "version": "1" },
+              "tools": {}, "toolsError": null },
+        ], "nextCursor": null })
+    }
+
+    fn names(names: &[&str]) -> Vec<String> {
+        names.iter().map(|name| (*name).to_owned()).collect()
+    }
+
     #[test]
-    fn mcp_state_waits_for_every_listed_server() {
-        let servers = vec!["docs".to_owned(), "web".to_owned()];
-        let list = |web_status: &str| {
+    fn null_runtime_status_with_server_info_is_ready() {
+        let check = mcp_check(&measured_list(), &names(&["good", "quiet"]));
+
+        assert_eq!(check, McpCheck::default());
+    }
+
+    #[test]
+    fn tools_error_is_unavailable_not_waiting() {
+        let check = mcp_check(&measured_list(), &names(&["bad", "good"]));
+
+        assert!(check.waiting.is_empty());
+        assert_eq!(check.unavailable.len(), 1);
+        assert!(check.unavailable[0].starts_with("bad failed to start"));
+        assert!(check.unavailable[0].contains("No such file"));
+    }
+
+    #[test]
+    fn missing_or_empty_entries_are_waiting() {
+        let silent = json!({ "data": [
+            { "name": "docs", "runtimeStatus": null, "serverInfo": null, "tools": {}, "toolsError": null },
+        ] });
+
+        assert_eq!(mcp_check(&silent, &names(&["docs"])).waiting.len(), 1);
+        assert_eq!(
+            mcp_check(&json!({ "data": [] }), &names(&["docs"]))
+                .waiting
+                .len(),
+            1
+        );
+        assert_eq!(mcp_check(&json!({ "data": [] }), &[]), McpCheck::default());
+    }
+
+    #[test]
+    fn string_runtime_status_is_read_first() {
+        let list = |status: &str| {
             json!({ "data": [
-                { "name": "docs", "runtimeStatus": "ready", "tools": {}, "toolsError": null },
-                { "name": "web", "runtimeStatus": web_status, "tools": [] },
+                { "name": "docs", "runtimeStatus": status, "tools": {}, "toolsError": null },
             ] })
         };
+        let servers = names(&["docs"]);
 
-        assert_eq!(mcp_state(&list("ready"), &servers), McpState::Ready);
-        assert!(matches!(
-            mcp_state(&list("starting"), &servers),
-            McpState::Waiting(_)
-        ));
-        assert!(matches!(
-            mcp_state(&json!({ "data": [] }), &servers),
-            McpState::Waiting(_)
-        ));
-        assert_eq!(mcp_state(&json!({ "data": [] }), &[]), McpState::Ready);
+        assert_eq!(mcp_check(&list("ready"), &servers), McpCheck::default());
+        assert_eq!(mcp_check(&list("starting"), &servers).waiting.len(), 1);
+        assert_eq!(mcp_check(&list("failed"), &servers).unavailable.len(), 1);
         let broken = json!({ "data": [
             { "name": "docs", "runtimeStatus": "ready", "tools": [], "toolsError": "boom" },
         ] });
-        assert!(matches!(
-            mcp_state(&broken, &["docs".to_owned()]),
-            McpState::Waiting(reason) if reason.contains("boom")
-        ));
+        assert!(mcp_check(&broken, &servers).unavailable[0].contains("boom"));
     }
 
     #[test]
