@@ -1,7 +1,7 @@
 //! 고를 수 있는 모델 목록과 입력에 고정한 모델 읽기.
 //! 설계: docs/design/providers-and-sessions.md#모델-고르기
 
-use saturn_core::providers::ProviderClient;
+use saturn_core::providers::ProviderError;
 use saturn_core::queue::QueuedInput;
 use saturn_protocol::ids::{ChatId, Provider, SettingsRevision};
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, Notification};
@@ -138,6 +138,16 @@ impl Engine {
             Ok(client) => client.list_models().await,
             Err(error) => Err(error),
         };
+        self.apply_models(provider, chat, listed);
+    }
+
+    /// 받은 모델 목록을 둔다. 못 받았으면 그 provider는 후보에 넣지 않는다.
+    pub(crate) fn apply_models(
+        &mut self,
+        provider: Provider,
+        chat: ChatId,
+        listed: Result<Vec<ModelInfo>, ProviderError>,
+    ) {
         match listed {
             Ok(models) => {
                 self.flow.models.insert((chat, provider), models);

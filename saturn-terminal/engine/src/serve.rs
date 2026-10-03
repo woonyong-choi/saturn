@@ -5,9 +5,9 @@ use saturn_protocol::envelope::{RequestId, Response};
 use saturn_protocol::rpc::Request;
 
 use super::{AttachRequest, Engine, EngineError, RouterGate, masked_chain, unsupported};
+use crate::outcomes;
 use crate::rpc::{ClientId, RpcEvent};
 use crate::settings_watch::SETTINGS_WATCH_TICK;
-use crate::{events, outcomes};
 
 impl Engine {
     /// # Errors
@@ -24,8 +24,8 @@ impl Engine {
                 Some(done) = self.flow.router_rx.recv() => {
                     self.on_routed(done).await;
                 }
-                arrival = events::next_arrival(&mut self.providers) => {
-                    self.on_arrival(arrival).await;
+                Some(message) = self.flow.provider_rx.recv() => {
+                    self.on_provider_msg(message).await;
                 }
                 Some(done) = self.flow.stop_rx.recv() => {
                     self.on_stop_done(done).await;

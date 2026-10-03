@@ -2,7 +2,7 @@
 //! 때까지 요청을 보관하고 작업을 `허가 기다림`으로 보인다.
 //! 설계: docs/design/permissions.md#입력-요청
 
-use saturn_core::providers::{ProviderClient, ProviderError};
+use saturn_core::providers::ProviderError;
 use saturn_protocol::ids::{AgentId, ChatId, Provider, TaskId};
 use saturn_protocol::input::{InputAnswer, InputRequest};
 use saturn_protocol::rpc::Notification;

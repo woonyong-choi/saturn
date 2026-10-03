@@ -10,6 +10,7 @@ mod codex_permission;
 #[cfg(test)]
 pub(crate) mod test_support;
 mod tool_detail;
+mod worker;
 
 use std::ffi::OsString;
 use std::os::unix::fs::PermissionsExt;
@@ -36,6 +37,7 @@ pub(crate) use codex::tests::launch as fake_codex_launch;
 pub(crate) use codex_home::{
     HomeInput, prepare as prepare_codex_home, rules_fingerprint, rules_of_home,
 };
+pub(crate) use worker::{Connected, ProviderHandle, ProviderMsg, Reply, spawn_connect};
 
 /// 바로 돌아와야 하는 provider 요청(`turn/start`, `turn/steer`, interrupt)의 응답을 기다리는 최대 시간. 넘으면 그 요청만
 /// 응답 없음으로 돌려주고 연결과 턴은 끊지 않는다. 응답은 요청을 받았다는 확인이지 턴 실행 시간이 아니라 평소에는 금방 온다.
@@ -172,6 +174,19 @@ impl ProviderConnection {
         match self {
             Self::Codex(client) => client.applied_settings(session),
             Self::Claude(client) => client.applied_settings(session),
+            #[cfg(test)]
+            Self::Fake(_) => None,
+        }
+    }
+
+    /// 적용값을 부를 때마다 읽는 함수. 연결 작업 밖에서 동기로 읽으려고 session을 열 때 받아 둔다.
+    pub(crate) fn applied_reader(
+        &self,
+        session: &ProviderSessionId,
+    ) -> Option<worker::AppliedReader> {
+        match self {
+            Self::Codex(client) => Some(client.applied_reader(session)),
+            Self::Claude(client) => client.applied_reader(session),
             #[cfg(test)]
             Self::Fake(_) => None,
         }

@@ -5,7 +5,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 use saturn_core::permission::Rule;
-use saturn_core::providers::{ProviderClient, ProviderError, SessionHandle, SessionSpec};
+use saturn_core::providers::{ProviderError, SessionHandle, SessionSpec};
 use saturn_core::queue::QueuedInput;
 use saturn_protocol::ids::{
     AgentId, ChatId, Provider, ProviderSessionId, SessionId, SettingsRevision,
@@ -15,25 +15,45 @@ use crate::dispatch::MAX_SEND_ATTEMPTS;
 use crate::flow::LiveSession;
 use crate::models::pinned_choice;
 use crate::providers::{
-    FIRST_INPUT_ORDER, HomeInput, LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults,
-    UserProviderConfig, is_installed, prepare_codex_home, program_name, rules_of_home,
+    FIRST_INPUT_ORDER, HomeInput, LaunchSpec, PermissionLaunch, ProviderConnection, ProviderHandle,
+    SaturnDefaults, UserProviderConfig, is_installed, prepare_codex_home, program_name,
+    rules_of_home,
 };
 use crate::secrets::HookPolicy;
 use crate::{Engine, EngineError};
 
+/// 연결을 시작할 때 쓴 값. 연결이 등록될 때 기억한다.
+#[derive(Debug)]
+pub(crate) struct ConnectionSeed {
+    /// 에이전트 질문 기능을 켰다.
+    questions: bool,
+    /// Codex 규칙 지문.
+    rules: Option<String>,
+}
+
+impl ConnectionSeed {
+    pub(crate) fn of(launch: &LaunchSpec) -> Self {
+        Self {
+            questions: !launch.permission.questions_disabled,
+            rules: launch
+                .permission
+                .codex_home
+                .as_deref()
+                .and_then(rules_of_home),
+        }
+    }
+}
+
 impl Engine {
-    /// 기록하지 못한 session은 쓰지 않으므로 provider 쪽도 닫는다.
-    pub(crate) async fn close_unregistered(
-        &mut self,
+    /// 기록하지 못한 session은 쓰지 않으므로 provider 쪽도 닫는다. 결과를 기다리지 않는다.
+    pub(crate) fn close_unregistered(
+        &self,
         chat: ChatId,
         provider: Provider,
         handle: &SessionHandle,
     ) {
-        let Ok(connection) = self.provider_mut(chat, provider) else {
-            return;
-        };
-        if let Err(error) = connection.close_session(&handle.provider_session).await {
-            tracing::warn!(%error, "failed to close unregistered session");
+        if let Some(connection) = self.providers.get(&(chat, provider)) {
+            connection.close_session_detached(handle.provider_session.clone());
         }
     }
 
@@ -75,27 +95,17 @@ impl Engine {
         }
     }
 
-    /// 열지 못하는 `NotSent`(재개 실패)만 다시 연다.
+    /// 열지 못하는 `NotSent`(재개 실패)만 다시 열고 끝날 때까지 기다린다. 요청 처리 루프가 기다리므로 입력 전달에는
+    /// 쓰지 않고 전달 작업(`delivery`)이 맡긴다.
     pub(crate) async fn open_with_retries(
         &mut self,
         chat: ChatId,
         provider: Provider,
         spec: SessionSpec,
     ) -> Result<SessionHandle, ProviderError> {
-        let mut attempt = 0;
-        loop {
-            attempt += 1;
-            let opened = self
-                .provider_mut(chat, provider)?
-                .open_session(spec.clone())
-                .await;
-            match opened {
-                Err(ProviderError::NotSent { .. }) if attempt < MAX_SEND_ATTEMPTS => {
-                    tracing::warn!(attempt, "session was not opened, trying again");
-                }
-                other => return other,
-            }
-        }
+        self.provider_mut(chat, provider)?
+            .open_session(spec, MAX_SEND_ATTEMPTS)
+            .await
     }
 
     /// 입력에 고정한 모델의 provider, 없으면 내부 호출로 정한 provider, 없으면 이어 갈 메인 session의 provider,
@@ -126,7 +136,8 @@ impl Engine {
             .ok_or(EngineError::NoProvider)
     }
 
-    /// 채팅의 provider 연결이 없으면 그 채팅의 작업 폴더와 환경으로 만든다.
+    /// 채팅의 provider 연결이 없으면 그 채팅의 작업 폴더와 환경으로 만들고 끝날 때까지 기다린다. 입력 전달은 이 함수 대신
+    /// 전달 작업이 연결을 맡긴다.
     pub(crate) async fn ensure_connected(
         &mut self,
         provider: Provider,
@@ -137,23 +148,41 @@ impl Engine {
             return Ok(());
         }
         let launch = self.launch_spec(provider, chat, settings).await?;
-        let rules = launch
-            .permission
-            .codex_home
-            .as_deref()
-            .and_then(rules_of_home);
-        let questions = !launch.permission.questions_disabled;
+        let seed = ConnectionSeed::of(&launch);
         let connection = ProviderConnection::connect(launch, self.supervisor.clone()).await?;
-        self.providers.insert((chat, provider), connection);
+        self.attach_connection(chat, connection, seed);
+        self.remember_models(provider, chat).await;
+        Ok(())
+    }
+
+    /// 맺은 연결을 맡는 작업을 띄우고 채팅에 등록한다.
+    pub(crate) fn add_connection(&mut self, chat: ChatId, connection: ProviderConnection) {
+        let provider = connection.provider();
+        let handle = ProviderHandle::spawn(
+            connection,
+            chat,
+            self.flow.provider_tx.clone(),
+            self.masker.clone(),
+        );
+        self.providers.insert((chat, provider), handle);
+    }
+
+    /// 새 연결을 등록하고 그 연결을 시작할 때 쓴 값을 기억한다.
+    pub(crate) fn attach_connection(
+        &mut self,
+        chat: ChatId,
+        connection: ProviderConnection,
+        seed: ConnectionSeed,
+    ) {
+        let provider = connection.provider();
+        self.add_connection(chat, connection);
         self.flow
             .questions_of_connection
-            .insert((chat, provider), questions);
+            .insert((chat, provider), seed.questions);
         self.flow.stale_connections.remove(&(chat, provider));
-        self.remember_models(provider, chat).await;
-        if let Some(rules) = rules {
+        if let Some(rules) = seed.rules {
             self.flow.rules_of_connection.insert(chat, rules);
         }
-        Ok(())
     }
 
     /// 작업 폴더와 환경은 채팅에 고정한 값이고, router 키 변수는 뺀다. 훅은 에이전트가 키 저장소를 읽지 못하게 막는다.

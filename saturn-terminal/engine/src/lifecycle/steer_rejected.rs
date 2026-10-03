@@ -85,6 +85,7 @@ async fn refused_steer_goes_to_the_front_and_takes_the_next_turn() {
         vec![refused, waiting]
     );
     flow.engine.finish_task(flow.chat, agent).await.unwrap();
+    flow.settle().await;
     assert_eq!(turns(&flow), vec!["fix the build", "also run the tests"]);
     assert_eq!(flow.state(refused), InputState::Applied);
     assert_eq!(flow.state(waiting), InputState::Queued);
@@ -106,6 +107,7 @@ async fn refused_steer_through_send_now_also_goes_to_the_front() {
     flow.fake.answer_steer([not_sent()]);
 
     flow.engine.send_now(CLIENT, later).await.unwrap();
+
     flow.settle().await;
 
     assert_eq!(steers(&flow), vec!["also run the tests"]);
@@ -117,5 +119,6 @@ async fn refused_steer_through_send_now_also_goes_to_the_front() {
         vec![later, earlier]
     );
     flow.engine.finish_task(flow.chat, agent).await.unwrap();
+    flow.settle().await;
     assert_eq!(turns(&flow), vec!["fix the build", "also run the tests"]);
 }

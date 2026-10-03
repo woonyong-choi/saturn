@@ -42,6 +42,7 @@ async fn send_now_steers_into_the_running_turn_without_calling_the_router() {
     let before = flow.router_calls();
 
     flow.engine.send_now(CLIENT, waiting).await.unwrap();
+
     flow.settle().await;
 
     assert_eq!(flow.router_calls(), before);
@@ -63,6 +64,7 @@ async fn send_now_does_not_need_the_router_to_be_up() {
     let waiting = flow.submit("also run the tests").await;
 
     flow.engine.send_now(CLIENT, waiting).await.unwrap();
+
     flow.settle().await;
 
     assert_eq!(steers(&flow), vec!["also run the tests"]);
@@ -89,6 +91,7 @@ async fn send_now_that_cannot_steer_goes_first_in_the_queue() {
     );
 
     flow.engine.send_now(CLIENT, later).await.unwrap();
+
     flow.settle().await;
 
     assert!(steers(&flow).is_empty());
@@ -100,6 +103,7 @@ async fn send_now_that_cannot_steer_goes_first_in_the_queue() {
         vec![later, earlier]
     );
     flow.engine.finish_task(flow.chat, agent).await.unwrap();
+    flow.settle().await;
     assert_eq!(
         turns(&flow),
         vec!["fix the build", "also run the tests"],
@@ -120,6 +124,8 @@ async fn send_now_without_verified_steer_goes_back_to_waiting() {
     let waiting = flow.submit("also run the tests").await;
 
     flow.engine.send_now(CLIENT, waiting).await.unwrap();
+
+    flow.settle().await;
 
     assert_eq!(
         flow.engine.queue.disposition(waiting),

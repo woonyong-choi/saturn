@@ -487,11 +487,14 @@ impl Engine {
     }
 
     /// 실행 중인 에이전트가 있는 채팅이면 참.
+    /// provider 응답을 기다리는 전달도 시작하는 작업이라 실행 중으로 본다.
     pub(crate) fn chat_is_running(&self, chat: ChatId) -> bool {
-        self.runs
-            .chat_of
-            .iter()
-            .any(|(agent, owner)| *owner == chat && self.runs.active.contains_key(agent))
+        self.flow.deliveries.contains_key(&chat)
+            || self
+                .runs
+                .chat_of
+                .iter()
+                .any(|(agent, owner)| *owner == chat && self.runs.active.contains_key(agent))
     }
 
     pub(crate) fn queued(&self, input: InputId) -> Result<QueuedInput, EngineError> {

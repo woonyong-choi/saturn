@@ -215,6 +215,7 @@ async fn relation_answer_to_new_task_waits_for_the_write_turn_then_starts() {
         Some(saturn_protocol::state::QueueReason::WriteTurn)
     );
     flow.engine.finish_task(flow.chat, agent).await.unwrap();
+    flow.settle().await;
 
     assert_eq!(flow.state(second), InputState::Applied);
     let opens = flow

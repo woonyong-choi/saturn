@@ -301,7 +301,7 @@ Saturn은 오래 조용한 작업을 자동으로 죽이지 않는다. 실행 �
 
 ### provider 요청 응답 제한
 
-engine은 요청 처리 루프 하나라 provider 요청이 응답하지 않으면 그 시간만큼 다른 채팅과 멈춤 요청도 늦어진다. 그래서 응답 대기에 제한을 두되, 턴 실행은 자동으로 끊지 않는다(무응답 표시와 같은 결정). 제한은 요청 종류별 상수 둘이고 설정 키는 없다.
+provider 요청이 끝없이 기다리지 않도록 응답 대기에 제한을 두되, 턴 실행은 자동으로 끊지 않는다(무응답 표시와 같은 결정). 제한은 요청 종류별 상수 둘이고 설정 키는 없다. 요청은 [연결 작업](#provider-요청-작업)이 실행하므로 이 시간 동안 engine의 다른 요청 처리는 기다리지 않는다.
 
 | 종류 | 요청 | 제한 | 근거 |
 |---|---|---|---|
@@ -309,6 +309,23 @@ engine은 요청 처리 루프 하나라 provider 요청이 응답하지 않으�
 | 시작·열기 요청 | `initialize`, `skills/list`, `thread/start`, `thread/resume`, `mcpServerStatus/list`, `model/list` | 60초 | 사용자 MCP 서버 7개 설정으로 `CODEX_HOME`을 만들어 codex-cli 0.158.0 `app-server`를 세 번 띄워 쟀다(모델 호출 없음). `initialize` 0.30~0.62초, `thread/start` 0.17~0.46초, `mcpServerStatus/list` 호출 하나 1.7~4.9초이고 MCP 서버가 준비되지 않은 동안 느려진다. 첫 턴 전 MCP 준비 대기(30초)와 그 마지막 호출을 덮고 측정 최댓값의 열 배인 60초로 둔다. `thread/resume`은 쓰기 없는 새 thread가 기록이 없어 오류로 즉시 돌아와 이어 가는 thread의 응답 시간은 재지 못했다. |
 
 `turn/start`가 모델 응답 전에 돌아오는지는 모델 호출 없이 확인할 수 없어 재지 않았다. 설계상 턴 시작 확인만 기다린다.
+
+### provider 요청 작업
+
+engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 않는다. 연결 시작, session 열기, 턴 시작, 끼워 넣기, 멈춤 신호 같은 provider 요청은 연결마다 하나인 연결 작업이 실행하고, 루프는 결과 메시지만 받아 다음 단계를 잇는다. 느리거나 막힌 요청 하나가 다른 채팅의 입력과 조회, 같은 채팅의 멈춤 요청 처리를 늦추지 않게 하기 위해서다.
+
+- 연결 작업은 연결(`ProviderConnection`)을 혼자 쥐고 요청을 줄 선 순서대로 하나씩 끝까지 실행한다. 같은 연결로 가는 요청은 순서가 바뀌지 않는다(턴 시작 뒤 끼워 넣기, 앞 턴이 끝난 뒤 다음 턴). 시작한 요청은 취소하지 않으므로 stdin 쓰기가 줄 중간에 끊겨 줄이 반쯤 쓰이는 일이 없다.
+- 이벤트와 요청 결과는 같은 메시지 통로로 일어난 순서대로 루프에 온다. 턴 시작 응답 뒤에 오는 `TurnStarted`가 그 응답보다 먼저 처리되지 않는다.
+- 상태 변경(기록 저장, 대기열, 작업 상태)은 루프 한 곳에서만 한다. 작업은 결과를 돌려주기만 한다.
+- 입력 전달은 채팅마다 하나만 진행한다. 연결을 시작하고 session을 열고 첫 턴을 보내는 동안 그 채팅의 다음 입력은 보내지 않고 대기열에 둔다. 끝나면 이어서 보낸다. 같은 채팅의 순서를 지키기 위해서다. 다른 채팅의 입력은 막지 않는다.
+- 전달은 단계마다 루프가 상태를 바꾼 뒤 다음 요청을 맡긴다. 입력을 `전달 중`으로 기록한 뒤 연결을 맺고(루프에서 실행 설정을 만들고 연결과 모델 목록은 별도 작업), session을 열고(번호 할당과 열 값 준비는 루프, `open_session`은 연결 작업), 작업과 실행을 기록한 뒤 턴을 보낸다. 결과를 적용하는 자리는 이 단계들의 앞 절반과 같은 루프다.
+- 멈춤은 진행 중인 요청을 기다리지 않는다. 멈춤 요청은 기록과 보류를 바로 처리하고 멈춤 신호만 연결 작업의 줄에 넣는다. 신호는 앞선 요청 뒤에 나가고, 프로세스 묶음 중지는 기다리지 않고 시작한다. 요청을 기다리던 전달은 `멈춤` 표시가 붙고, 결과가 와도 더 보내지 않는다.
+  - 연결이나 session 열기를 기다리던 전달은 열린 session을 쓰지 않고 닫고, 입력을 `보류`로 둔다. 보내지 않음이 확정이기 때문이다. 이으면 처음부터 보낸다.
+  - 턴 전송을 기다리던 전달은 결과가 오면 입력을 받은 것으로 기록하되 작업은 멈춘 채로 둔다. 응답이 없거나 결과를 모르는 경우도 같다. 이을 때 보내는 확인 입력이 파일 상태부터 확인하기 때문이다.
+- 결과를 적용할 때 그사이 채팅이 멈췄는지는 `멈춤` 표시로 판단한다. 판단 결과는 기존대로 적용 직전에 채팅 revision을 비교하고, 전달 중인 입력은 다시 판단하지 않는다.
+- 연결 작업은 stdin을 읽지 않는 provider 때문에 쓰기가 막히면 그 연결의 요청이 줄 서서 기다린다. 루프와 다른 채팅은 영향을 받지 않는다. 쓰기에는 제한 시간을 두지 않는다. 시간이 지나 쓰기를 포기하면 줄이 반쯤 쓰여 연결이 어긋나기 때문이다. 연결이 끊기면(프로세스 종료) 쓰기가 오류로 끝나고 연결 끊김으로 처리한다.
+- 연결 작업이 패닉하거나 중단돼 끝나면 루프에 연결 작업 종료를 알린다. 기다리던 전달은 보내기 전 단계(연결, session 열기, 변경분)면 연결 끊김으로 거절하고, 보낸 뒤 단계(턴 전송, 끼워 넣기)면 결과를 모르는 것으로 보아 `NeedsCheck`로 둔다. 연결은 끊긴 것으로 처리해 열려 있던 session의 흐름 끊김을 알린다. 채팅이 응답 없는 전달에 묶인 채 남지 않는다.
+- 아직 루프가 기다리는 provider 요청이 남아 있다: 허가·입력 답, session 닫기, `/model` 목록의 연결과 모델 조회, 맥락 정리의 새 session 열기. 이 요청들은 연결 작업을 거치지만 호출한 루프가 응답을 기다린다([#352](https://github.com/woonyong-choi/saturn/issues/352)의 후속).
 
 ### 오류 처리
 
@@ -322,6 +339,10 @@ engine은 요청 처리 루프 하나라 provider 요청이 응답하지 않으�
 | 실행 중 작업의 provider 이벤트가 5분 동안 없음 | 죽이지 않고 상태판에 `응답 없음 N분`을 보인다. 사용자가 멈출 수 있고, 이벤트가 오면 지운다. |
 | 중간 사용량 보고 누락 | 차이가 여러 턴에 걸친다고 표시하고 0으로 채우지 않는다. |
 | provider 요청이 제한 시간 안에 응답하지 않음. 바로 돌아와야 하는 요청(`turn/start`, `turn/steer`, interrupt)은 10초, 시작·열기 요청(`initialize`, `thread/start`, `thread/resume`, MCP 상태·목록 조회)은 60초(둘 다 초안) | 그 요청만 응답 없음으로 돌려주고, 연결과 프로세스와 진행 중인 턴은 끊지 않는다. 보내던 입력은 결과를 모르는 것으로 보아 `NeedsCheck`로 두고, session 열기는 실패로 알리며, 멈춤 신호는 연결 끊김으로 보고 프로세스 묶음 중지로 넘어간다. 늦게 온 응답은 버린다. |
+| provider 요청이 느리거나 막힌 동안 같은 채팅이나 다른 채팅의 요청이 옴 | 요청은 연결 작업이 실행하므로 루프는 다른 채팅의 입력과 조회, 같은 채팅의 멈춤을 바로 처리한다. 같은 채팅의 다음 입력은 앞선 전달이 끝날 때까지 대기열에 둔다. |
+| provider 요청을 기다리는 중 멈춤 | 멈춤은 기다리지 않고 처리한다. 열기 전의 전달은 입력을 보류하고, 턴 전송 중의 전달은 입력을 받은 것으로 기록한 채 작업을 멈춘 채로 둔다. |
+| stdin을 읽지 않아 provider 쓰기가 막힘 | 그 연결의 연결 작업만 기다린다. 쓰기를 중간에 끊지 않고, 프로세스가 끝나면 연결 끊김으로 처리한다. |
+| 연결 작업이 패닉하거나 중단돼 끝남 | 기다리던 전달은 보내기 전 단계면 거절하고 보낸 뒤 단계면 `NeedsCheck`로 둔다. 연결은 끊긴 것으로 처리한다. |
 
 관찰 끊김을 `unobserved`로 두는 것은 관찰하지 못한 외부 효과가 있을 수 있기 때문이다.
 
@@ -373,6 +394,9 @@ engine은 요청 처리 루프 하나라 provider 요청이 응답하지 않으�
 | Codex 추론 항목은 `Reasoning` 종류로 남기고 도구 결과 후보에서 뺀다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `detail_of_reasoning_is_not_a_candidate`, `saturn-protocol/src/event.rs`의 `is_candidate_only_reasoning_is_excluded` |
 | 셸이 감싼 명령은 안쪽 명령으로 기록한다. | `saturn-terminal/engine/src/providers/tool_detail.rs`의 `unwrap_shell_login_shell_wrapper_gives_inner_command`, `unwrap_shell_escaped_single_quote_stays_in_inner_command`, `unwrap_shell_plain_or_unbalanced_command_is_unchanged`, `saturn-terminal/engine/src/providers/codex/tests.rs`의 `activity_of_wrapped_command_is_inner_command` |
 | Codex와 Claude Code의 도구 결과를 같은 충실도로 기록으로 바꾼다. | [변환 수정 뒤 기록 전환 품질 측정](../experiments/record-fidelity-stage2/report.md): 같은 받는 쪽에서 Codex 기록 패킷과 Claude Code 기록 패킷의 정답률 차이 0.0%p [0.0, 0.0]로 채택. 경로 120/120 대 120/120, 메모 필드 192/192 대 191/192 |
+| 시작 요청이 느려도 다른 채팅의 입력과 조회, 같은 채팅의 멈춤을 바로 처리한다. 같은 연결의 요청 순서는 바뀌지 않는다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_slow_start_request_does_not_stall_other_chats_or_stop`, `a_provider_that_stops_reading_input_does_not_stall_other_chats_or_stop`, `a_silent_turn_start_asks_the_user_to_check_while_other_chats_keep_working`, `saturn-terminal/core/src/queue/tests.rs`의 `next_to_send_except_skips_busy_chats_but_not_others`, `saturn-terminal/engine/src/lifecycle/deliver.rs`와 `steer_rejected.rs`의 전달 순서 시험 |
+| 연결 작업이 패닉해도 그 채팅이 멈춘 채 남지 않고 알림이 나간다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_connection_task_that_panics_while_sending_leaves_the_task_to_check`, `a_connection_task_that_panics_while_opening_rejects_the_input` |
+| 시작 요청을 기다리는 중 멈추면 연 session을 쓰지 않고 입력을 보류하고, 턴 시작을 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_stop_during_a_slow_start_holds_the_input_instead_of_sending_it` |
 | 실행 중 작업이 5분 동안 provider 이벤트가 없으면 `응답 없음 N분`을 보이고, 이벤트가 오면 지우며, 허가나 입력 요청을 기다리는 동안은 보이지 않는다. 자동으로 멈추지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `no_response_shows_in_minutes_after_the_threshold_without_events`, `no_response_clears_when_an_event_arrives`, `no_response_does_not_show_while_waiting_for_permission_or_input`, `no_response_text_is_translated` |
 
 ## 단점

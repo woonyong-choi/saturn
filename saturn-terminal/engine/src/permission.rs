@@ -4,12 +4,11 @@
 use std::path::{Path, PathBuf};
 
 use saturn_core::permission::{Mode, PermissionCall, PermissionTool, Policy, Verdict};
-use saturn_core::providers::ProviderClient;
 use saturn_core::queue::Permission;
 use saturn_protocol::ids::{AgentId, ChatId, Provider, ProviderSessionId, SettingsRevision};
 use saturn_protocol::rpc::ChatNotice;
 
-use crate::providers::{ProviderConnection, rules_fingerprint};
+use crate::providers::{ProviderHandle, rules_fingerprint};
 use crate::settings::{self, SettingsError};
 use crate::{Engine, EngineError};
 
@@ -124,12 +123,11 @@ impl Engine {
         if provider == Provider::Codex {
             self.flow.rules_of_connection.remove(&chat);
         }
-        let Some(mut connection) = self.providers.remove(&(chat, provider)) else {
+        let Some(connection) = self.providers.remove(&(chat, provider)) else {
             return;
         };
         let closed = self.open_sessions(chat, provider);
-        self.close_connection(&mut connection, provider, &closed)
-            .await;
+        self.close_connection(&connection, provider, &closed).await;
         drop(connection);
         for (agent, _) in closed {
             self.flow.live.remove(&agent);
@@ -155,7 +153,7 @@ impl Engine {
     /// Codex는 공유 연결의 프로세스 묶음을 멈추고, Claude는 session마다 닫는다.
     async fn close_connection(
         &self,
-        connection: &mut ProviderConnection,
+        connection: &ProviderHandle,
         provider: Provider,
         sessions: &[(AgentId, ProviderSessionId)],
     ) {
@@ -171,7 +169,7 @@ impl Engine {
         }
     }
 
-    async fn stop_shared_connection(&self, connection: &ProviderConnection) {
+    async fn stop_shared_connection(&self, connection: &ProviderHandle) {
         let Some(group) = connection.shared_group() else {
             return;
         };
