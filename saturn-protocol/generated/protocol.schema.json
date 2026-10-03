@@ -573,6 +573,31 @@
           "type": "object"
         },
         {
+          "description": "TUI를 닫기 전에 보낸다. 닫은 뒤의 처리를 `ExitPlan`으로 알린다.",
+          "properties": {
+            "method": {
+              "const": "PrepareExit",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                }
+              },
+              "required": [
+                "chat"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "description": "`skip_relation`이 참이면 관계 판단 없이 대기(실행 중 `Tab`).\n`client_ref`는 TUI가 매긴 번호. `InputAccepted`로 입력 id와 짝지어 돌아온다.",
           "properties": {
             "method": {
@@ -707,6 +732,19 @@
           "required": [
             "method",
             "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "모든 채팅의 작업과 보내지 않은 입력을 보류한다. `ask`에서 멈춤을 고른 종료에 쓴다.",
+          "properties": {
+            "method": {
+              "const": "StopAll",
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
           ],
           "type": "object"
         },
@@ -1290,6 +1328,62 @@
         "Queue"
       ],
       "type": "string"
+    },
+    "ExitPlan": {
+      "description": "TUI를 닫을 때 할 일. `running`은 계속 처리될 작업 수다.",
+      "oneOf": [
+        {
+          "const": "Close",
+          "description": "묻지 않고 닫는다.",
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "계속할지 멈출지 묻는다.",
+          "properties": {
+            "Ask": {
+              "properties": {
+                "running": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "running"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "Ask"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "닫으면 작업이 계속된다는 한 줄을 보이고 닫는다.",
+          "properties": {
+            "Notice": {
+              "properties": {
+                "running": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "running"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "Notice"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "InputAnswer": {
       "oneOf": [
@@ -2611,6 +2705,31 @@
             "params"
           ],
           "type": "object"
+        },
+        {
+          "description": "`PrepareExit`의 답.",
+          "properties": {
+            "method": {
+              "const": "ExitPlan",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "plan": {
+                  "$ref": "#/$defs/ExitPlan"
+                }
+              },
+              "required": [
+                "plan"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -3540,6 +3659,31 @@
               },
               "required": [
                 "alert"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`PrepareExit`의 답.",
+          "properties": {
+            "method": {
+              "const": "ExitPlan",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "plan": {
+                  "$ref": "#/$defs/ExitPlan"
+                }
+              },
+              "required": [
+                "plan"
               ],
               "type": "object"
             }

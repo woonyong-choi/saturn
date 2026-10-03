@@ -157,6 +157,14 @@ pub const TRUST_CHANGED: &str = "바뀐 줄";
 pub const TRUST_APPLY: &str = "적용하고 계속";
 pub const TRUST_SKIP: &str = "적용하지 않고 계속";
 pub const TRUST_QUIT: &str = "종료";
+/// `{count}`는 계속 처리될 작업 수.
+pub const EXIT_TITLE: &str = "작업 {count}개 실행 중";
+pub const EXIT_QUESTION: &str = "닫은 뒤 작업을 어떻게 할까요?";
+pub const EXIT_CONTINUE: &str = "계속 실행";
+pub const EXIT_STOP: &str = "멈추기";
+pub const EXIT_HINT: &str = "↑↓ 이동 · Enter 선택 · Esc 닫지 않기";
+/// TUI를 닫은 뒤 터미널에 남기는 한 줄. `{count}`는 계속 처리될 작업 수.
+pub const EXIT_BACKGROUND: &str = "작업 {count}개 계속 실행 중 · saturn으로 다시 여세요";
 pub const RESUME_TITLE: &str = "보류된 작업이 있습니다";
 pub const RESUME_CONFIRM: &str = "고른 작업 이어서";
 pub const PERMISSION_REASON: &str = "이유";

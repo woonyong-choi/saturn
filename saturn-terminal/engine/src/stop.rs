@@ -90,6 +90,15 @@ impl Engine {
         self.check_stop_done(chat).await
     }
 
+    /// 채팅에서 계속 처리될 작업 수: 실행 중인 작업과 보내기 전에 판단하거나 기다리는 입력.
+    pub(crate) fn continuing_work(&self, chat: ChatId) -> usize {
+        let unsent = [InputState::Judging, InputState::Queued]
+            .into_iter()
+            .map(|state| self.queue.inputs_in_state(chat, state).len())
+            .sum::<usize>();
+        self.running_agents(chat).len() + unsent
+    }
+
     /// 진행 중인 실행이 있는 에이전트.
     fn running_agents(&self, chat: ChatId) -> Vec<AgentId> {
         let mut agents: Vec<AgentId> = self

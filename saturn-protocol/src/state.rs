@@ -85,8 +85,8 @@ pub enum Disposition {
 pub enum OnExit {
     #[default]
     Background,
-    /// TODO(#70): 동작 미정
+    /// 마지막 TUI가 떨어지면 모든 채팅의 작업을 멈춤과 같게 보류한다.
     Stop,
-    /// TODO(#70): 동작 미정
+    /// TUI를 닫으려 할 때 계속할지 멈출지 묻는다.
     Ask,
 }

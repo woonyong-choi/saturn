@@ -28,6 +28,7 @@ use crate::shell::{self, ShellOutput};
 use crate::state::ChatState;
 use crate::terminal::{self, Screen};
 use crate::view::composer::Composer;
+use crate::view::exit_confirm::ExitConfirm;
 use crate::view::folder_trust::FolderTrust;
 use crate::view::full_transcript::FullTranscript;
 use crate::view::input_request::InputQueue;
@@ -113,6 +114,12 @@ pub(crate) struct App {
     pub permissions: PermissionQueue,
     pub inputs: InputQueue,
     pub window: Option<Window>,
+    /// 닫기 전 계속할지 멈출지 묻는 창. 다른 창 위에 덮는다.
+    pub exit_confirm: Option<ExitConfirm>,
+    /// 닫기 전에 engine의 `ExitPlan`을 기다리는 중이다.
+    pub exit_requested: bool,
+    /// 닫은 뒤 계속 실행될 작업 수. 있으면 터미널에 한 줄 남긴다.
+    pub exit_notice: Option<u32>,
     /// 첫 대화 기록 셀이 생기면 머리 셀로 옮기고 `None`.
     pub start: Option<StartInfo>,
     /// 채팅의 기본 폴더. 시작 화면이 머리 셀로 바뀐 뒤에도 남는다.
@@ -162,6 +169,9 @@ impl App {
             permissions: PermissionQueue::new(),
             inputs: InputQueue::new(),
             window: None,
+            exit_confirm: None,
+            exit_requested: false,
+            exit_notice: None,
             start: None,
             chat_folder: None,
             history,
@@ -223,6 +233,9 @@ impl App {
     }
 
     pub(crate) fn key_area(&self) -> KeyArea {
+        if self.exit_confirm.is_some() {
+            return KeyArea::ExitConfirm;
+        }
         match &self.window {
             Some(Window::RouterKey(_)) => return KeyArea::RouterKeyPrompt,
             Some(Window::FolderTrust(_)) => return KeyArea::FolderTrust,
@@ -377,7 +390,9 @@ impl App {
     // basis: estimate
     fn on_mouse(&mut self, mouse: MouseEvent, now: Instant) -> Vec<Effect> {
         match mouse.kind {
-            MouseEventKind::Down(MouseButton::Left) if self.window.is_none() => {
+            MouseEventKind::Down(MouseButton::Left)
+                if self.window.is_none() && self.exit_confirm.is_none() =>
+            {
                 let lines = status_board::build(&self.chat, now);
                 let areas = self.areas(self.screen, lines.len());
                 let point = Position::new(mouse.column, mouse.row);
@@ -437,7 +452,7 @@ impl App {
             self.inputs.paste(&text, now);
             return;
         }
-        if self.window.is_some() || !self.permissions.is_empty() {
+        if self.window.is_some() || self.exit_confirm.is_some() || !self.permissions.is_empty() {
             return;
         }
         self.composer.paste(text);
@@ -477,6 +492,7 @@ impl App {
             KeyArea::RouterKeyPrompt => self.on_router_key_action(action),
             KeyArea::FolderTrust => self.on_trust_action(action),
             KeyArea::ResumePrompt => self.on_resume_action(action),
+            KeyArea::ExitConfirm => self.on_exit_confirm_action(action),
             KeyArea::TaskList => self.on_task_list_action(action),
             KeyArea::FullTranscript | KeyArea::Usage | KeyArea::RouterVersion => {
                 self.on_screen_action(action)
@@ -496,7 +512,30 @@ impl App {
         }
     }
 
+    /// 채팅에 붙어 있으면 닫기 전에 engine에 닫은 뒤의 처리를 묻는다. 이미 묻는 중이면 더 기다리지 않고 닫는다.
+    /// router 키 창은 engine이 요청을 받지 않는 때라 묻지 않는다.
     pub(super) fn quit_effects(&mut self) -> Vec<Effect> {
+        let asks_engine =
+            !self.exit_requested && !matches!(self.window, Some(Window::RouterKey(_)));
+        match self.chat.chat {
+            Some(chat) if asks_engine => {
+                self.exit_requested = true;
+                vec![Effect::Send(Request::PrepareExit { chat })]
+            }
+            _ => self.quit_now(),
+        }
+    }
+
+    /// 닫은 뒤에도 작업이 계속되면 터미널에 남길 한 줄.
+    pub(crate) fn exit_line(&self) -> Option<String> {
+        self.exit_notice.map(|count| {
+            self.lang
+                .tr(i18n::EXIT_BACKGROUND)
+                .replace("{count}", &count.to_string())
+        })
+    }
+
+    pub(super) fn quit_now(&mut self) -> Vec<Effect> {
         self.quit = true;
         vec![Effect::Quit]
     }

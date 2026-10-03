@@ -10,7 +10,7 @@ use saturn_protocol::event::{Activity, ProviderEvent, ToolDetail};
 use saturn_protocol::ids::{AgentId, ChatId, InputId, JudgmentId, Provider, TaskId, TaskLabel};
 use saturn_protocol::input::{InputAnswer, InputField, InputFieldKind, InputRequest, InputValue};
 use saturn_protocol::rpc::{
-    Alert, ModelChoice, ModelInfo, Notification, PermissionAnswer, Request, UsageRange,
+    Alert, ExitPlan, ModelChoice, ModelInfo, Notification, PermissionAnswer, Request, UsageRange,
 };
 use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 
@@ -463,11 +463,133 @@ fn ctrl_c_clears_draft_then_stops_then_quits() {
     let second = press(&mut app, KeyCode::Char('c'), KeyModifiers::CONTROL);
     notify(&mut app, task(1, 'A', TaskState::Held));
     let third = press(&mut app, KeyCode::Char('c'), KeyModifiers::CONTROL);
+    let closed = notify(&mut app, exit_plan(ExitPlan::Close));
 
     assert!(first.is_empty());
     assert!(app.composer.is_empty());
     assert_eq!(sent(&second), vec![&Request::Stop { chat: ChatId(7) }]);
-    assert_eq!(third, vec![Effect::Quit]);
+    assert_eq!(
+        sent(&third),
+        vec![&Request::PrepareExit { chat: ChatId(7) }]
+    );
+    assert_eq!(closed, vec![Effect::Quit]);
+}
+
+fn exit_plan(plan: ExitPlan) -> Notification {
+    Notification::ExitPlan { plan }
+}
+
+/// 채팅에 붙은 TUI가 빈 입력창에서 닫으려 하고 engine이 `plan`으로 답한 뒤의 화면.
+fn quit_with(plan: ExitPlan) -> (App, Vec<Effect>) {
+    let mut app = attached();
+    press(&mut app, KeyCode::Char('d'), KeyModifiers::CONTROL);
+    let effects = notify(&mut app, exit_plan(plan));
+    (app, effects)
+}
+
+// #70: 닫기 전에 engine에 닫은 뒤의 처리를 묻고, 답이 오기 전에는 닫지 않는다
+#[test]
+fn quit_asks_the_engine_first_and_a_second_quit_closes_without_waiting() {
+    let mut app = attached();
+
+    let first = press(&mut app, KeyCode::Char('d'), KeyModifiers::CONTROL);
+    let second = press(&mut app, KeyCode::Char('d'), KeyModifiers::CONTROL);
+
+    assert_eq!(
+        first,
+        vec![Effect::Send(Request::PrepareExit { chat: ChatId(7) })]
+    );
+    assert_eq!(second, vec![Effect::Quit]);
+}
+
+// #70: background로 닫을 때 계속 실행 중인 작업 수와 다시 여는 방법을 터미널에 한 줄 남긴다
+#[test]
+fn exit_plan_notice_quits_and_leaves_the_running_count_line() {
+    let (app, effects) = quit_with(ExitPlan::Notice { running: 2 });
+
+    assert_eq!(effects, vec![Effect::Quit]);
+    assert_eq!(
+        app.exit_line().as_deref(),
+        Some("작업 2개 계속 실행 중 · saturn으로 다시 여세요")
+    );
+}
+
+#[test]
+fn exit_plan_notice_line_is_translated() {
+    let (mut app, _) = quit_with(ExitPlan::Notice { running: 1 });
+    app.lang = Lang::En;
+
+    assert_eq!(
+        app.exit_line().as_deref(),
+        Some("Tasks still running: 1 · Reopen with saturn")
+    );
+}
+
+#[test]
+fn exit_plan_close_quits_without_a_line() {
+    let (app, effects) = quit_with(ExitPlan::Close);
+
+    assert_eq!(effects, vec![Effect::Quit]);
+    assert_eq!(app.exit_line(), None);
+}
+
+#[test]
+fn exit_plan_nobody_asked_for_is_ignored() {
+    let mut app = attached();
+
+    let effects = notify(&mut app, exit_plan(ExitPlan::Close));
+
+    assert!(effects.is_empty());
+}
+
+// #70: ask는 확인 창을 띄우고, 창이 떠 있는 동안에는 닫지 않는다
+#[test]
+fn exit_plan_ask_opens_the_confirm_window_and_waits() {
+    let (app, effects) = quit_with(ExitPlan::Ask { running: 2 });
+
+    assert!(effects.is_empty());
+    assert_eq!(app.key_area(), KeyArea::ExitConfirm);
+}
+
+#[test]
+fn exit_confirm_continue_quits_and_leaves_the_running_count_line() {
+    let (mut app, _) = quit_with(ExitPlan::Ask { running: 2 });
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(effects, vec![Effect::Quit]);
+    assert_eq!(
+        app.exit_line().as_deref(),
+        Some("작업 2개 계속 실행 중 · saturn으로 다시 여세요")
+    );
+}
+
+#[test]
+fn exit_confirm_stop_stops_every_chat_then_quits_without_a_line() {
+    let (mut app, _) = quit_with(ExitPlan::Ask { running: 2 });
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(effects, vec![Effect::Send(Request::StopAll), Effect::Quit]);
+    assert_eq!(app.exit_line(), None);
+}
+
+// #70: Esc는 닫기를 취소하고 Ctrl+C도 작업을 멈추지 않는다
+#[test]
+fn exit_confirm_escape_and_ctrl_c_cancel_the_exit_without_stopping_work() {
+    for (code, modifiers) in [
+        (KeyCode::Esc, KeyModifiers::NONE),
+        (KeyCode::Char('c'), KeyModifiers::CONTROL),
+    ] {
+        let (mut app, _) = quit_with(ExitPlan::Ask { running: 2 });
+
+        let effects = press(&mut app, code, modifiers);
+
+        assert!(effects.is_empty(), "{code:?}");
+        assert_eq!(app.key_area(), KeyArea::Composer, "{code:?}");
+        assert_eq!(app.exit_line(), None, "{code:?}");
+    }
 }
 
 #[test]
@@ -844,10 +966,14 @@ fn folder_trust_q_quits() {
         },
     );
 
+    let asked = press(&mut app, KeyCode::Char('q'), KeyModifiers::NONE);
+    let closed = notify(&mut app, exit_plan(ExitPlan::Close));
+
     assert_eq!(
-        press(&mut app, KeyCode::Char('q'), KeyModifiers::NONE),
-        vec![Effect::Quit]
+        sent(&asked),
+        vec![&Request::PrepareExit { chat: ChatId(7) }]
     );
+    assert_eq!(closed, vec![Effect::Quit]);
 }
 
 #[test]

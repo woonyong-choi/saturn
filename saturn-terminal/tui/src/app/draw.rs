@@ -10,6 +10,7 @@ use ratatui::text::Line;
 use super::{App, Window};
 use crate::i18n;
 use crate::view::composer::ComposerView;
+use crate::view::exit_confirm::ExitConfirmView;
 use crate::view::folder_trust::FolderTrustView;
 use crate::view::footer::FooterView;
 use crate::view::full_transcript::FullTranscriptView;
@@ -141,6 +142,9 @@ impl App {
             }
             Some(Window::FolderTrust(trust)) => FolderTrustView { trust, lang }.render(frame, area),
             _ => {}
+        }
+        if let Some(confirm) = &self.exit_confirm {
+            ExitConfirmView { confirm, lang }.render(frame, area);
         }
     }
 }

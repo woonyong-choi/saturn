@@ -6,6 +6,7 @@ mod attach;
 mod decision;
 mod deliver;
 mod events;
+mod exit;
 mod inputs;
 mod intake;
 mod live_settings;

@@ -320,6 +320,21 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("적용하고 계속", "Apply and continue"),
     ("적용하지 않고 계속", "Continue without applying"),
     ("종료", "Quit"),
+    ("작업 {count}개 실행 중", "Running tasks: {count}"),
+    (
+        "닫은 뒤 작업을 어떻게 할까요?",
+        "What should happen to the tasks after closing?",
+    ),
+    ("계속 실행", "Keep running"),
+    ("멈추기", "Stop"),
+    (
+        "↑↓ 이동 · Enter 선택 · Esc 닫지 않기",
+        "↑↓ move · Enter choose · Esc stay open",
+    ),
+    (
+        "작업 {count}개 계속 실행 중 · saturn으로 다시 여세요",
+        "Tasks still running: {count} · Reopen with saturn",
+    ),
     ("보류된 작업이 있습니다", "There are held tasks"),
     ("고른 작업 이어서", "Continue selected"),
     ("이유", "Reason"),
