@@ -345,7 +345,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 
 ## 미해결 질문
 
-- 채팅에 더한 폴더를 열린 session에 넣는 방법(Claude stream-json 제어 요청, Codex 턴 단위 쓰기 폴더)과, Codex 읽기 전용 샌드박스에서 `writable_roots`가 효과가 있는지. 지금은 다음 session부터 적용한다 ([#193](https://github.com/woonyong-choi/saturn/issues/193))
+- 채팅에 더한 폴더를 열린 session에 넣는 방법(Claude stream-json 제어 요청, Codex 턴 단위 쓰기 폴더)과, Codex 읽기 전용 샌드박스에서 `writable_roots`가 효과가 있는지. 지금은 다음 session부터 적용한다 ([#193](https://github.com/woonyong-choi/saturn/issues/301))
 - 메인이 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - router 상태에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))
 - 수정 파일 목록을 실행 경계의 파일 상태 차이로 계산할지, provider 이벤트로 계산할지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))
