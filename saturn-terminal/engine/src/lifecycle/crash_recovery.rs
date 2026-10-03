@@ -18,6 +18,8 @@ pub(super) struct Restarted {
     pub(super) fake: FakeProvider,
     pub(super) chat: ChatId,
     pub(super) fixture: Fixture,
+    /// 다시 뜬 engine의 router가 받은 호출.
+    pub(super) transport: Arc<FakeTransport>,
 }
 
 impl Restarted {
@@ -48,8 +50,19 @@ impl Restarted {
     }
 
     async fn start_again(fixture: Fixture, chat: ChatId) -> Self {
-        let transport = FakeTransport::new(check_passes());
-        let env = fixture.env(true, transport).await;
+        Self::start_with_replies(fixture, chat, Vec::new()).await
+    }
+
+    /// `router_replies`는 다시 뜬 engine의 router가 시작 확인 뒤 차례로 낼 답이다.
+    pub(super) async fn start_with_replies(
+        fixture: Fixture,
+        chat: ChatId,
+        router_replies: Vec<FakeReply>,
+    ) -> Self {
+        let mut script = check_passes();
+        script.extend(router_replies);
+        let transport = FakeTransport::new(script);
+        let env = fixture.env(true, Arc::clone(&transport)).await;
         let mut engine = fixture.start(env).await.unwrap();
         let fake = FakeProvider::new(Provider::Claude);
         engine
@@ -63,6 +76,7 @@ impl Restarted {
             fake,
             chat,
             fixture,
+            transport,
         }
     }
 
@@ -77,13 +91,14 @@ impl Restarted {
             .collect()
     }
 
-    /// provider 응답을 기다리는 전달이 모두 끝날 때까지 engine 루프 역할을 한다.
+    /// router 판단과 provider 응답을 기다리는 전달이 모두 끝날 때까지 engine 루프 역할을 한다.
     pub(super) async fn settle(&mut self) {
-        while !self.engine.flow.deliveries.is_empty() {
+        while !self.engine.flow.deliveries.is_empty() || !self.engine.flow.judging.is_empty() {
             let flow = &mut self.engine.flow;
             tokio::select! {
+                Some(done) = flow.router_rx.recv() => self.engine.on_routed(done).await,
                 Some(message) = flow.provider_rx.recv() => self.engine.on_provider_msg(message).await,
-                () = tokio::time::sleep(WAIT) => panic!("provider results should arrive in time"),
+                () = tokio::time::sleep(WAIT) => panic!("router and provider results should arrive in time"),
             }
         }
     }

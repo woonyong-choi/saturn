@@ -261,6 +261,75 @@ impl Queue {
         self.bump(chat);
     }
 
+    // cost: time O(t), heap O(1), stack O(1)
+    // vars: t = 작업 수
+    // basis: estimate
+    /// 채팅에 보류 작업이 있는지. engine을 다시 켠 뒤 같은 채팅의 보내지 않은 입력을 보류와 함께 둘지 정하는 데 쓴다.
+    pub fn has_held_task(&self, chat: ChatId) -> bool {
+        self.tasks
+            .iter()
+            .any(|slot| slot.chat == chat && slot.phase == TaskPhase::Held)
+    }
+
+    // cost: time O(n + t), heap O(1) amortized, stack O(1)
+    // vars: n = 대기열 입력 수, t = 작업 수
+    // basis: estimate
+    /// engine을 다시 켤 때 기록 저장소에 남은 보내지 않은 입력을 접수 순서대로 대기열에 되살린다. `Judging`은 다시 판단하고
+    /// `Queued`는 대기로 두며, `Held`는 채팅의 보류 메인 작업에 붙이고 없으면 그 입력의 작업을 보류로 새로 연다.
+    /// `Delivering`은 보냈는지 모르므로 그대로 두어 다시 보내지 않는다. 끝 상태이거나 이미 있는 입력이면 아무것도 하지 않는다.
+    pub fn restore_unsent(&mut self, input: QueuedInput, state: InputState) {
+        let is_open = matches!(
+            state,
+            InputState::Judging | InputState::Queued | InputState::Held | InputState::Delivering
+        );
+        if !is_open || self.input(input.id).is_some() {
+            return;
+        }
+        let chat = input.chat;
+        let task = (state == InputState::Held).then(|| self.held_main_task(&input));
+        self.chats.entry(chat).or_default();
+        self.inputs.push_back(Entry {
+            input: QueuedInput {
+                state,
+                reason: None,
+                task: task.or(input.task),
+                ..input
+            },
+            disposition: None,
+            is_dispatched: false,
+            is_conflict: false,
+            awaits_stop: false,
+        });
+        self.bump(chat);
+        self.refresh_router_order(chat);
+    }
+
+    // cost: time O(t), heap O(1) amortized, stack O(1)
+    // vars: t = 작업 수
+    // basis: estimate
+    /// 보류 메인 작업이 있으면 그것, 없으면 입력 번호를 작업 번호로 해 보류 작업을 연다.
+    fn held_main_task(&mut self, input: &QueuedInput) -> TaskId {
+        let held =
+            self.tasks.iter().rev().find(|slot| {
+                slot.chat == input.chat && slot.is_main && slot.phase == TaskPhase::Held
+            });
+        if let Some(slot) = held {
+            return slot.id;
+        }
+        let task = TaskId(input.id.0);
+        self.tasks.push(TaskSlot {
+            id: task,
+            chat: input.chat,
+            agent: None,
+            permission: input.permission,
+            write_scope: input.write_scope.clone(),
+            is_main: true,
+            was_interrupted: false,
+            phase: TaskPhase::Held,
+        });
+        task
+    }
+
     // cost: time O(n + t + h), heap O(1), stack O(1)
     // vars: n = 대기열 입력 수, t = 작업 수, h = 쓰기 잠금 수
     // basis: estimate

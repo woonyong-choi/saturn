@@ -76,6 +76,11 @@ impl Engine {
             }
         }
         for input in self.queue.inputs_in_state(chat, InputState::Held) {
+            let written = self
+                .store
+                .set_input_state(input, InputState::Held, None)
+                .await;
+            self.warn_failure("failed to record held input", written);
             self.notify_input(input).await;
         }
         let agents = running.iter().map(|agent| (*agent, false)).collect();

@@ -5,11 +5,11 @@ use saturn_core::queue::QueuedInput;
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, ChatId, InputId, SubagentId, TaskId};
 use saturn_protocol::rpc::ChatNotice;
-use saturn_protocol::state::SessionState;
+use saturn_protocol::state::{InputState, SessionState};
 
 use crate::chat_env::ChatEnv;
 use crate::stop::HeldTask;
-use crate::store::{RunEnd, RunRecord, StoredHold};
+use crate::store::{NewInput, RunEnd, RunRecord, StoredHold};
 use crate::{Engine, EngineError};
 
 impl Engine {
@@ -17,6 +17,7 @@ impl Engine {
     /// 새 입력으로 이어 가고 나머지는 보류한 채 TUI가 붙으면 `/continue`를 제안한다.
     /// 크래시 전에 보낸 패킷은 어느 경우에도 다시 보내지 않는다.
     /// 앞서 정상 종료한 engine이 기록에 남긴 보류 작업과 끊긴 하위 에이전트는 이 복구보다 먼저 되살린다.
+    /// 이 복구를 마친 뒤에는 기록에 남은 보내지 않은 입력을 대기열에 되살린다.
     ///
     /// # Errors
     /// 끝나지 않은 실행을 읽지 못하면 `Store`. 실행 하나의 복구 실패는 경고로 남기고 나머지를 이어서 복구한다.
@@ -24,6 +25,103 @@ impl Engine {
         self.restore_recorded_holds().await?;
         for run in self.latest_unfinished_runs().await? {
             self.recover_run(run).await?;
+        }
+        self.restore_open_inputs().await
+    }
+
+    /// 기록 저장소에 남은 보내지 않은 입력을 접수 순서대로 대기열에 되살리고, 채팅마다 보낼 것을 보내고 판단할 것을 판단한다.
+    /// 앞선 복구가 되살린 입력은 이미 대기열에 있어 건너뛴다. 입력 하나의 복원 실패는 경고로 남기고 나머지를 잇는다.
+    async fn restore_open_inputs(&mut self) -> Result<(), EngineError> {
+        let mut chats: Vec<ChatId> = Vec::new();
+        for (id, stored, state) in self.store.open_inputs().await? {
+            if self.queue.input(id).is_some() {
+                continue;
+            }
+            let chat = stored.chat;
+            let restored = self.restore_open_input(id, stored, state).await;
+            let is_restored = restored.is_ok();
+            self.warn_failure("failed to restore an open input", restored);
+            if is_restored && !chats.contains(&chat) {
+                chats.push(chat);
+            }
+        }
+        for chat in chats {
+            self.advance(chat).await;
+        }
+        Ok(())
+    }
+
+    /// 보냈는지 모르는 `Delivering` 입력은 대기열에 보이게만 두고 다시 보내지 않는다. 이어 가는 것은 사용자의 확인이다.
+    /// 채팅에 보류 작업이 있으면 판단 중이거나 대기하던 입력도 멈춤과 같게 보류해 그 작업과 함께 `/continue`를 기다린다.
+    /// 보류 입력은 보류 작업에 붙여 `/continue`를 제안한다.
+    async fn restore_open_input(
+        &mut self,
+        id: InputId,
+        stored: NewInput,
+        state: InputState,
+    ) -> Result<(), EngineError> {
+        let chat = stored.chat;
+        self.ensure_chat_env(chat).await?;
+        let is_unsent = matches!(state, InputState::Judging | InputState::Queued);
+        let state = if is_unsent && self.queue.has_held_task(chat) {
+            self.store
+                .set_input_state(id, InputState::Held, None)
+                .await?;
+            InputState::Held
+        } else {
+            state
+        };
+        let write_scope = self.write_scope_of(chat, &stored.workdir);
+        self.queue.restore_unsent(
+            QueuedInput {
+                id,
+                chat,
+                text: stored.text,
+                settings: stored.settings,
+                permission: stored.permission,
+                workdir: stored.workdir,
+                write_scope,
+                pinned_model: stored.pinned_model,
+                skip_relation: stored.skip_relation,
+                state,
+                reason: None,
+                task: None,
+            },
+            state,
+        );
+        match state {
+            InputState::Held => self.hold_restored_input(chat, id),
+            InputState::Delivering => {
+                tracing::warn!(
+                    input = id.0,
+                    "input delivery result is unknown, not resending"
+                );
+            }
+            _ => {}
+        }
+        Ok(())
+    }
+
+    /// 되살린 보류 입력의 작업을 보류로 등록하고 처음 붙는 TUI에 재개를 제안한다.
+    fn hold_restored_input(&mut self, chat: ChatId, input: InputId) {
+        let Some(task) = self.queue.input(input).and_then(|record| record.task) else {
+            return;
+        };
+        self.flow.tasks.assign(task);
+        self.flow.held.entry(task).or_insert(HeldTask {
+            agent: None,
+            input: None,
+        });
+        self.suggest_resume(chat, task);
+    }
+
+    /// 채팅의 작업 폴더와 더한 폴더를 읽고, 붙은 TUI가 없으면 `engine` 프로세스 환경으로 채팅 환경을 만든다.
+    async fn ensure_chat_env(&mut self, chat: ChatId) -> Result<(), EngineError> {
+        self.load_chat_dirs(chat).await?;
+        if self.chat_env(chat).is_none() {
+            let workdir = self.store.chat_workdir(chat).await?;
+            self.chats
+                .insert(chat, ChatEnv::new(workdir, std::env::vars().collect()));
         }
         Ok(())
     }
@@ -192,12 +290,7 @@ impl Engine {
         input: InputId,
     ) -> Result<(), EngineError> {
         let (stored, state) = self.store.stored_input(input).await?;
-        self.load_chat_dirs(chat).await?;
-        if self.chat_env(chat).is_none() {
-            let workdir = self.store.chat_workdir(chat).await?;
-            self.chats
-                .insert(chat, ChatEnv::new(workdir, std::env::vars().collect()));
-        }
+        self.ensure_chat_env(chat).await?;
         let write_scope = self.write_scope_of(chat, &stored.workdir);
         self.queue.restore_interrupted(
             QueuedInput {

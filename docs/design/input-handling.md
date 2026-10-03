@@ -166,6 +166,22 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 - 멈춘 에이전트의 session은 `보류`로 두고 provider에 열린 채 남긴다. 멈춘 작업을 다시 열지 않고 이어 가기 위해서다.
 - 완료를 확인하는 조건은 [provider 연결과 session](providers-and-sessions.md#트리-전체-중지)에 있다.
 
+### 재시작 뒤 입력 복원
+
+`engine`을 다시 켜면(정상 종료와 크래시 모두) 시작 복구의 마지막에 기록 저장소에서 끝 상태가 아닌 입력을 접수 순서로 읽어 대기열에 되살린다. 접수만 하고 보내지 않은 입력을 잃지 않기 위해서다. 앞선 복구가 이미 되살린 입력은 건너뛴다.
+
+| 기록의 상태 | 되살린 뒤 |
+|---|---|
+| `판단 중` | `판단 중`으로 되살려 접수 순서대로 다시 판단한다. 채팅에 보류 작업이 있으면 `보류`로 바꿔 둔다. |
+| `대기` | `대기`로 되살려 쓰기 규칙에 따라 차례로 보낸다. 판단 때 정한 처리 방식은 저장하지 않으므로 `대기` 입력으로 본다. 채팅에 보류 작업이 있으면 `보류`로 바꿔 둔다. |
+| `보류` | `보류`로 되살려 채팅의 보류 작업에 붙인다. 보류 작업이 없으면 그 입력을 첫 입력으로 하는 보류 작업을 연다. 처음 붙는 TUI에 `/continue`를 제안하고, `/continue`로만 보낸다. |
+| `전달 중` | 보냈는지 모르므로 다시 보내지 않고 `전달 중`으로 둔다. 실행 기록이 남은 입력은 크래시 복구가 보류와 확인 입력으로 잇는다. |
+
+- 채팅에 보류 작업이 있는데 보내지 않은 입력이 새 작업으로 앞서 나가면 멈춘 작업의 순서가 깨진다. 그래서 멈춤과 같게 그 입력들도 `보류`로 두고 사용자의 재개를 기다린다.
+- 멈춤은 보류가 된 입력의 상태를 기록 저장소에 바로 쓴다. 다시 켠 뒤에도 사용자가 멈춘 입력이 대기로 돌아가 자동으로 나가지 않게 하기 위해서다.
+- 복원한 채팅에 붙은 TUI가 없으면 `engine` 프로세스 환경으로 채팅 환경을 만든다. 붙는 TUI가 있으면 그 TUI의 환경으로 바뀐다.
+- 복원한 입력 하나가 실패하면 경고를 남기고 나머지를 잇는다.
+
 ### 보류 재개와 보류 종료
 
 1. 대상이 있는 재개 요청이면 `queue`가 그 작업만 재개한다.
@@ -236,6 +252,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 충돌 입력을 provider가 끼워 넣기 거절이나 실측 전이라 받지 않음 | 입력을 대기열 맨 앞에 두고 `지금 멈추고 새 입력을 실행할까요?`를 묻는다. 답 전까지 멈추지 않는다. |
 | 멈춤 확인에 답했는데 이미 답했거나 다음 차례로 간 입력 | 요청을 거절하고(`INVALID_PARAMS`) 상태는 바꾸지 않는다. |
 | provider 연결이나 session 열기 실패, 설치된 provider 없음 | 보내지 않고 입력을 `거절됨`으로 두며 원인 한 줄을 작업 실패에 보인다. |
+| 다시 켠 뒤 기록 저장소에서 입력 하나를 되살리지 못함 | 경고를 남기고 나머지 입력을 되살린다. 그 입력은 기록에 남아 다음 시작 때 다시 시도한다. |
 | 접수나 `전달 중` 기록 실패 | 어디에도 보내지 않는다. 접수 실패는 요청 오류로, `전달 중` 실패는 입력 거절로 알린다. |
 | 멈춤 뒤 묶음 밖으로 빠져나간 프로세스 존재 | 완료라고 하지 않고 `멈춤 확인 안 됨 · N개 남음`을 보고한다. |
 
@@ -263,6 +280,8 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | `대기`를 고르면 입력은 맨 앞 대기로 다음 차례에 가고, `멈추고 실행`을 고르면 기존 멈춤 규칙 뒤에 입력을 실행한다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `answering_wait_keeps_the_input_in_front_for_the_next_turn`, `answering_stop_stops_the_chat_and_then_runs_the_input`, `saturn-terminal/core/src/queue/tests.rs`의 `keep_waiting_ends_the_question_and_the_input_takes_the_next_turn`, `stop_ends_the_question_and_a_second_answer_is_refused` |
 | 묻는 중이 아닌 입력의 멈춤 확인 답은 거절한다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `answering_without_a_question_is_refused` |
 | provider가 거절한 끼워 넣기는 다시 끼워 넣지 않고 대기열 맨 앞으로 옮겨 다음 차례에 보낸다. | `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `refused_steer_is_not_sent_again_and_is_not_rejected`, `refused_steer_goes_to_the_front_and_takes_the_next_turn`, `refused_steer_through_send_now_also_goes_to_the_front`, `saturn-terminal/core/src/queue/tests.rs`의 `refused_steer_returns_to_the_front_as_a_queued_input`, `refused_steer_needs_a_delivering_input` |
+| 다시 켠 `engine`은 보내지 않은 입력을 접수 순서대로 되살린다. `판단 중`은 다시 판단하고 `대기`는 대기로 보내며, 보류 작업이 있는 채팅의 입력은 보류로 두고 `전달 중`은 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/restore_inputs.rs`의 `waiting_inputs_are_sent_in_accept_order_after_a_clean_restart`, `judging_input_is_judged_again_and_sent_after_a_restart`, `restored_inputs_of_one_chat_are_judged_one_at_a_time_in_accept_order`, `unsent_inputs_are_held_with_the_crashed_task_and_resume_in_order`, `delivering_input_is_never_resent_after_restart` |
+| 멈춤으로 보류한 입력은 다시 켠 뒤에도 보류로 남아 `/continue`로만 보낸다. | `saturn-terminal/engine/src/lifecycle/restore_inputs.rs`의 `held_input_stays_held_after_restart_until_continue` |
 | 멈춘 작업은 자동으로 이어 가지 않고 보류한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stopped_work_is_not_continued_without_a_request`, `stop_with_nothing_running_holds_the_waiting_input_at_once`, `stop_twice_signals_once` |
 | 재개는 보류 입력을 접수 순서로 보내고 멈춘 작업에는 중단 결과를 붙인 새 입력을 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `continue_sends_held_input_and_then_a_state_check_for_the_interrupted_task`, `continue_input_resumes_the_task_of_that_input` |
 | 보류 종료는 보내지 않은 입력을 취소하고 session을 끝낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `close_held_cancels_unsent_input_and_ends_the_session` |
