@@ -38,7 +38,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 provider마다 session과 압
 
 ## 상태
 
-Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine 부품, TUI는 `main`에 있지만 입력 흐름, 채팅을 시작하는 `saturn` 명령, 권한 처리는 아직 만들지 않았습니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
+Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `saturn` 명령은 `main`에 있습니다. 입력 접수부터 provider 전송까지의 입력 흐름, 멈춤과 재개, Saturn 권한 규칙, `/model`, `/usage`는 가짜 provider를 쓴 테스트에서 동작하지만, 실제 Codex와 Claude Code로 처음부터 끝까지 돌린 확인은 아직 없고 TUI 없이 계속 실행과 크래시 뒤 복구는 만들지 않았습니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
 
 ## 비교
 
@@ -49,11 +49,10 @@ Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine 부품, TUI
 
 첫 대화 이후의 순서는 아직 정하지 않았습니다.
 
-1. 첫 대화: `saturn` 명령, 입력 접수부터 provider 전송까지의 입력 흐름, provider 이벤트와 턴 끝, 멈춤과 재개, 허가 응답, 맥락 패킷으로 Codex와 Claude Code 전환. (진행 중)
-2. 권한: Saturn 권한 규칙으로 provider 실행 판단, 항상 허용 규칙 저장. (다음)
-3. 채팅 관리와 복구: TUI 없이 계속 실행, 크래시 뒤 복구, 채팅 이름과 묶음, 더한 폴더, 작업 완료 알림. (나중)
-4. 로컬 router 모델: 판단 기록 채점, 개인 router 모델 학습, 같은 평가 세트에서 현재 router보다 나쁘지 않을 때만 교체. (나중)
-5. 서비스: 동의 기반 데이터 수집, 원격 API, 인증, 인프라. (나중)
+1. 첫 대화: 실제 Codex와 Claude Code로 처음부터 끝까지 실행, 맥락 패킷의 사용자 제약, 빌드와 설치 안내. (진행 중)
+2. 채팅 관리와 복구: TUI 없이 계속 실행, 크래시 뒤 복구, 채팅 이름과 묶음, 작업 완료 알림. (다음)
+3. 로컬 router 모델: 판단 기록 채점, 개인 router 모델 학습, 같은 평가 세트에서 현재 router보다 나쁘지 않을 때만 교체. (나중)
+4. 서비스: 동의 기반 데이터 수집, 원격 API, 인증, 인프라. (나중)
 
 ## 문서
 
