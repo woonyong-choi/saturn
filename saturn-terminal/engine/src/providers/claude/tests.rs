@@ -818,6 +818,25 @@ fn launch_args_add_defaults_and_hook_settings() {
 }
 
 #[test]
+fn agent_questions_are_asked_by_default_and_disallowed_in_full_mode() {
+    let dir = tempfile::tempdir().unwrap();
+    let asking = launch(dir.path(), Vec::new());
+    let mut silent = launch(dir.path(), Vec::new());
+    silent.permission.questions_disabled = true;
+    let found = UserProviderConfig::default();
+
+    let asking_args = default_args(found, &asking);
+    let silent_args = default_args(found, &silent);
+
+    assert!(!asking_args.iter().any(|arg| arg == "--disallowedTools"));
+    let at = silent_args
+        .iter()
+        .position(|arg| arg == "--disallowedTools")
+        .expect("full mode should pass --disallowedTools");
+    assert_eq!(silent_args[at + 1], "AskUserQuestion");
+}
+
+#[test]
 fn default_model_is_not_passed_to_claude() {
     let dir = tempfile::tempdir().unwrap();
     let client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());

@@ -8,7 +8,7 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [입력 처리](design/input-handling.md) | 입력 접수, 실행 중 새 입력, 대기, 보류와 재개, 쓰기 규칙 |
 | [provider 연결과 session](design/providers-and-sessions.md) | provider 연결, session 수명과 전환, subagent 추적, 사용량 |
 | [권한](design/permissions.md) | 권한 규칙, 항상 허용 저장, Codex와 Claude 구성, 허가 대기 중 피드백 |
-| [입력 요청](design/input-requests.md) | provider 입력 요청 세 형식, 공통 입력 요청과 답, 대기와 보관, Codex 질문 기능 |
+| [입력 요청](design/input-requests.md) | provider 입력 요청 세 형식, 공통 입력 요청과 답, 대기와 보관, 에이전트 질문 설정 |
 | [맥락 정리](design/context-management.md) | 맥락 크기 측정, 정리 판정, 정리 모드, 패킷 구성 |
 | [맥락 고르기](design/context-selection.md) | 후보 순위, 단어 조각, 도구 결과 메모, 제약 식별과 대체 |
 | [router](design/router.md) | 판단 질문, 답 형식, 기준값과 대체 규칙, 판단 기록 |

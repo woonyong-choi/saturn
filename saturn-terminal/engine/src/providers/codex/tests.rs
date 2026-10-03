@@ -146,6 +146,9 @@ while (my $line = <STDIN>) {
     out({ id => $id, result => {} });
     note("turn/completed", { threadId => $tid, turn => { id => $p->{turnId}, status => "interrupted", items => [] } });
     $active = "";
+  } elsif ($method eq "experimentalFeature/enablement/set") {
+    note("item/agentMessage/delta", { threadId => "thr_main", turnId => "turn_e", itemId => "me", delta => "enablement:" . $json->encode($p) });
+    out({ id => $id, result => { enablement => $p->{enablement} } });
   } elsif ($method eq "thread/compact/start" || $method eq "thread/unsubscribe" || $method eq "review/start") {
     out({ id => $id, result => {} });
   } else {
@@ -668,6 +671,31 @@ async fn answering_an_unknown_or_answered_request_is_not_sent() {
 
     assert!(matches!(unknown, Err(ProviderError::NotSent { .. })));
     assert!(matches!(again, Err(ProviderError::NotSent { .. })));
+}
+
+#[tokio::test]
+async fn agent_questions_are_switched_with_the_live_enablement_request() {
+    let dir = tempfile::tempdir().unwrap();
+    let (mut client, _handle) = start(dir.path()).await;
+
+    client.set_agent_questions(false).await.unwrap();
+    client.set_agent_questions(true).await.unwrap();
+
+    let texts: Vec<String> = take(&mut client, 2)
+        .await
+        .into_iter()
+        .filter_map(|event| match event {
+            ProviderEvent::Text { text, .. } => Some(text),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        texts,
+        vec![
+            r#"enablement:{"enablement":{"default_mode_request_user_input":false}}"#,
+            r#"enablement:{"enablement":{"default_mode_request_user_input":true}}"#,
+        ]
+    );
 }
 
 #[tokio::test]
@@ -1308,6 +1336,7 @@ async fn codex_home_ignores_user_rules() {
         saturn_home: &dir.path().join("saturn"),
         user_codex_home: &user,
         rules: &[rule(PermissionTool::Shell, "sort *", Verdict::Ask)],
+        questions: true,
     })
     .unwrap();
     let env = vec![("CODEX_HOME".into(), user.clone().into_os_string())];

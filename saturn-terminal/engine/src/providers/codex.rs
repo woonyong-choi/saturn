@@ -17,6 +17,7 @@ use serde_json::{Value, json};
 use tokio::process::ChildStdin;
 use tokio::sync::{mpsc, oneshot};
 
+use super::codex_home::QUESTIONS_FEATURE;
 use super::codex_input::{self, InputKind};
 use super::codex_permission::{APPROVAL_POLICY, SANDBOX, check_applied};
 use super::{AppliedSettings, TurnOriginTracker};
@@ -216,6 +217,15 @@ impl CodexClient {
         Err(ProviderError::NotSent {
             reason: format!("unknown session {}", session.0),
         })
+    }
+
+    /// 실행 중인 app-server의 에이전트 질문 기능을 다시 시작 없이 켜고 끈다(실측: provider-live-settings 3/3).
+    pub(crate) async fn set_agent_questions(&mut self, enabled: bool) -> Result<(), ProviderError> {
+        let params = json!({ "enablement": { (QUESTIONS_FEATURE): enabled } });
+        rejected_as_not_sent(
+            self.request("experimentalFeature/enablement/set", params)
+                .await,
+        )
     }
 
     async fn call_command(

@@ -32,6 +32,13 @@ const MCP_STARTUP_GRACE_MS: i64 = 12_000;
 /// 폴더 이름에 쓰는 규칙 지문의 글자 수. 초안.
 const HOME_NAME_LEN: usize = 16;
 
+/// 에이전트 질문(`item/tool/requestUserInput`)을 켜는 기능 이름. `[features]`와 실행 중
+/// `experimentalFeature/enablement/set`이 같은 이름을 쓴다.
+pub(super) const QUESTIONS_FEATURE: &str = "default_mode_request_user_input";
+
+/// 질문을 끈 폴더 이름 끝에 붙인다. 같은 규칙에 질문 설정이 다른 채팅이 생성 설정을 덮어쓰지 않게 한다. 초안.
+const NO_QUESTIONS_SUFFIX: &str = "-no-questions";
+
 /// 사용자 설정에서 옮기지 않는 최상위 키. 권한을 정하거나 로그인 저장 방식을 바꾸는 키다.
 const DROPPED_KEYS: &[&str] = &[
     "approval_policy",
@@ -94,6 +101,8 @@ pub(crate) struct HomeInput<'a> {
     pub saturn_home: &'a Path,
     pub user_codex_home: &'a Path,
     pub rules: &'a [Rule],
+    /// 에이전트 질문 기능을 켠다. 권한 모드 `full`이면 끈다.
+    pub questions: bool,
 }
 
 // cost: time O(c + r·m), heap O(c), stack O(1), alloc c, io 6
@@ -110,11 +119,12 @@ pub(crate) fn prepare(input: HomeInput<'_>) -> Result<PreparedHome, HomeError> {
     let mcp_servers = translate_mcp(&mut doc, input.rules);
     doc[REVIEWER_KEY] = value("user");
     doc["mcp_optional_startup_grace_ms"] = value(MCP_STARTUP_GRACE_MS);
+    set_questions_feature(&mut doc, input.questions);
     let policy = execpolicy(input.rules);
     let path = input
         .saturn_home
         .join(HOMES_DIR)
-        .join(rules_fingerprint(input.rules));
+        .join(home_name(input.rules, input.questions));
     create_private_dir(&path.join("rules")).map_err(write_error(&path))?;
     write_private(&path.join(CONFIG_FILE), doc.to_string().as_bytes())?;
     write_private(&path.join(RULES_FILE), policy.as_bytes())?;
@@ -163,7 +173,24 @@ fn drop_permission_keys(doc: &mut DocumentMut) {
             for key in DROPPED_PROFILE_KEYS {
                 table.remove(key);
             }
+            if let Some(features) = table.get_mut("features").and_then(Item::as_table_like_mut) {
+                features.remove(QUESTIONS_FEATURE);
+            }
         }
+    }
+}
+
+// cost: time O(k), heap O(1), stack O(1)
+// vars: k = `[features]` 항목 수
+// basis: estimate
+/// 에이전트 질문 기능은 Saturn 설정이 정한다. 사용자 `[features]`에 같은 키가 있어도 덮어쓴다.
+fn set_questions_feature(doc: &mut DocumentMut, enabled: bool) {
+    let root = doc.as_table_mut();
+    if !root.get("features").is_some_and(Item::is_table_like) {
+        root.insert("features", Item::Table(Table::new()));
+    }
+    if let Some(features) = root.get_mut("features").and_then(Item::as_table_like_mut) {
+        features.insert(QUESTIONS_FEATURE, value(enabled));
     }
 }
 
@@ -345,6 +372,21 @@ fn prefix_tokens(pattern: &str) -> Option<(Vec<String>, bool)> {
 
 fn quote(token: &str) -> String {
     serde_json::to_string(token).expect("string should serialize as json")
+}
+
+/// 규칙 지문, 질문을 끄면 끝에 접미사를 붙인 폴더 이름.
+fn home_name(rules: &[Rule], questions: bool) -> String {
+    let mut name = rules_fingerprint(rules);
+    if !questions {
+        name.push_str(NO_QUESTIONS_SUFFIX);
+    }
+    name
+}
+
+/// 전용 폴더 이름에서 규칙 지문만 꺼낸다. 연결을 시작할 때의 규칙과 최신 규칙을 비교하는 데 쓴다.
+pub(crate) fn rules_of_home(home: &Path) -> Option<String> {
+    let name = home.file_name()?.to_string_lossy();
+    Some(name.get(..HOME_NAME_LEN)?.to_owned())
 }
 
 // cost: time O(r·p), heap O(r·p), stack O(1), alloc r

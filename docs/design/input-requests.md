@@ -83,9 +83,22 @@ provider 고유 이름(`mcpServer/elicitation/request`, `AskUserQuestion` 같은
 - 허가 요청의 답으로 입력 요청을, 입력 요청의 답으로 허가 요청을 닫지 않는다. 어댑터가 요청 종류를 확인한다.
 - Codex 질문의 `autoResolutionMs`로 provider가 먼저 요청을 거둔 경우는 알림을 받지 못해 턴이 끝날 때까지 창이 남는다(초안).
 
-### Codex 질문 기능
+### 에이전트 질문 설정
 
-Codex 에이전트 질문(`item/tool/requestUserInput`)은 `default_mode_request_user_input` 실험 기능을 켰을 때만 온다. Saturn은 전용 `CODEX_HOME`의 생성 설정에서 이 기능을 켜지 않는다. 이유는 셋이다. 실험 기능이라 버전마다 동작이 바뀔 수 있고, 켜면 모델이 전에는 진행하던 자리에서 멈춰 묻게 되어 작업 흐름이 바뀐다. provider 설정은 추적만 한다는 원칙([최소 provider 제어](../decisions/2026-09-29-minimal-provider-control.md))과 맞지 않는다. 사용자가 `~/.codex/config.toml`의 `[features]`에서 켠 값은 권한 외 설정이라 생성 설정으로 옮겨지므로, 사용자가 켜면 질문이 전달된다. Saturn 설정 키로 켜는 방법은 정해지지 않았다.
+모델이 작업 중 사용자에게 묻는 기능(에이전트 질문)은 Saturn 설정이 정하고, 두 provider에 같게 적용한다(사용자 결정, [#284](https://github.com/woonyong-choi/saturn/issues/284)). 설정 키는 새로 두지 않고 권한 모드로 정한다. 기본은 묻는다. 권한 모드가 `full`(바이패스)이면 질문 기능을 provider에서 뺀다. provider 설정 파일과 사용자가 `~/.codex/config.toml`의 `[features]`에 적은 값은 따르지 않는다. 이는 [권한](permissions.md#provider-설정과-질문-기능)이 말하는 provider 설정은 추적만 한다는 원칙의 예외다.
+
+| provider | 묻는다(`full`이 아님) | 묻지 않는다(`full`) | 모드가 바뀔 때 |
+|---|---|---|---|
+| Codex | 전용 `CODEX_HOME`의 생성 설정에서 `[features] default_mode_request_user_input = true` | 같은 키를 `false`로 쓴다 | 실행 중 app-server에 `experimentalFeature/enablement/set`으로 그 기능을 끄고 켠다. 다시 시작하지 않는다 |
+| Claude | `AskUserQuestion`을 그대로 둔다 | `--disallowedTools AskUserQuestion`으로 실행한다 | 실행 중 도구 목록을 바꾸는 공식 경로가 없어 인자가 달라지면 연결을 다시 시작해 session을 이어 연다. 작업 중이 아니면 바로, 작업 중이면 지금 턴이 끝난 뒤 바로 시작한다 |
+
+- 모드는 채팅 층의 `/permissions` 값이 먼저이고 없으면 설정 병합 결과다. 모드는 `/permissions`로 바꿀 때와 새 입력을 접수할 때 읽는다. 설정 파일을 고쳐 모드가 바뀐 경우도 다음 입력에서 적용된다.
+- 새로 여는 Codex app-server는 생성 설정에 현재 모드의 값을 넣는다. 질문을 끈 설정은 같은 규칙이어도 폴더를 따로 둬(규칙 지문 뒤에 `-no-questions`), 모드가 다른 채팅이 서로의 생성 설정을 덮어쓰지 않게 한다. 사용자 프로필(`profiles.*`)의 같은 키도 옮기지 않는다.
+- Claude 연결을 다시 시작하는 일은 [권한](permissions.md#codex-구성)의 규칙 변경 재시작과 같은 경로다. 열려 있던 session은 기록에 남겨 다음 입력이 보관한 provider session id로 이어 연다. 다시 시작할 때 `다시 시작함 · 변경된 권한 설정을 적용했습니다` 알림 한 줄(`ProviderRestarted`)을 남기고, 새 문구는 없다. 작업 중에 모드를 원래대로 돌리면 다시 시작하지 않는다.
+- 적용되기 전에 온 질문은 숨기거나 대신 답하지 않고 입력 요청 창으로 보인다. engine은 질문에 대신 답하지 않는다. 모드를 `full`로 바꾼 직후 Codex 요청이 이미 나갔거나 Claude가 다시 시작되기 전에 모델이 묻는 경우가 이에 해당한다.
+- Codex 에이전트 질문은 실험 기능이라 버전마다 동작이 바뀔 수 있다. 켜면 모델이 전에는 진행하던 자리에서 멈춰 묻게 된다. 이는 기본을 묻는 쪽으로 정한 사용자 결정에 따른 것이다.
+- Codex 끄기의 근거는 [provider 설정 즉시 적용](../experiments/provider-live-settings/report.md) 실측(`experimentalFeature/enablement/set` 3/3 확인)이다. 실제 `default_mode_request_user_input` 기능에 대한 끄기 확인은 아직 없다.
+- 실행 중 Codex 요청이 실패하면(`NotSent`) 로그만 남기고 연결 값은 이전 그대로 둔다. 다음 모드 변경이나 입력 접수에서 다시 시도한다.
 
 ### 요구사항
 
@@ -95,6 +108,7 @@ Codex 에이전트 질문(`item/tool/requestUserInput`)은 `default_mode_request
 | Codex URL 모드 요청이 링크만 담은 공통 요청이 되고 `accept`, `decline`, `cancel`로 답한다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `elicitation_url_round_trip_answers_accept_decline_and_cancel`, `saturn-terminal/engine/src/providers/codex_input.rs`의 `elicitation_url_mode_carries_the_link_only` |
 | Codex 에이전트 질문이 질문마다 칸이 되고 답이 질문 id별 `answers`로 나간다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `elicitation_user_input_round_trip_answers_by_question_id`, `saturn-terminal/engine/src/providers/codex_input.rs`의 `elicitation_user_input_questions_become_fields`, `elicitation_user_input_answers_are_keyed_by_question_id` |
 | Claude `AskUserQuestion`이 질문마다 칸이 되고 답이 `updatedInput.answers`로, 거절과 취소가 거부로 나간다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `elicitation_ask_user_question_round_trip_returns_answers_in_updated_input`, `elicitation_ask_user_question_decline_and_cancel_deny_the_call`, `saturn-terminal/engine/src/providers/claude_input.rs`의 `ask_user_question_becomes_one_choice_field_per_question`, `ask_user_question_answers_are_keyed_by_the_question_text` |
+| 기본 모드에서 두 provider가 묻고, `full`에서 Codex는 생성 설정과 실행 중 끄기 요청으로, Claude는 `--disallowedTools`와 턴 끝 다시 시작으로 질문을 뺀다. 적용 전에 온 질문은 TUI로 간다. | `saturn-terminal/engine/src/lifecycle/agent_questions.rs`의 `agent_questions_are_on_in_the_default_mode_for_both_providers`, `agent_questions_are_off_for_new_connections_in_full_mode`, `agent_questions_of_a_live_codex_turn_off_and_on_without_restart`, `agent_questions_restart_an_idle_claude_connection_at_once`, `agent_questions_restart_a_running_claude_connection_after_the_turn`, `agent_questions_restart_is_dropped_when_the_mode_returns_before_the_turn_ends`, `agent_questions_asked_before_the_claude_restart_reach_the_tui`, `agent_questions_asked_before_codex_is_switched_off_reach_the_tui`, `saturn-terminal/engine/src/providers/codex_home/tests.rs`의 `agent_questions_are_on_by_default_and_override_the_user_features`, `agent_questions_are_off_in_a_separate_home_when_disabled`, `agent_questions_feature_is_dropped_from_profiles`, `saturn-terminal/engine/src/providers/codex/tests.rs`의 `agent_questions_are_switched_with_the_live_enablement_request`, `saturn-terminal/engine/src/providers/claude/tests.rs`의 `agent_questions_are_asked_by_default_and_disallowed_in_full_mode` |
 | 입력 요청과 허가 요청이 서로의 답을 받지 않고, 승인 elicitation은 허가 요청으로 남는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `elicitation_input_and_permission_answers_do_not_cross`, `elicitation_approval_is_still_a_permission_request`, `saturn-terminal/engine/src/providers/claude/tests.rs`의 `elicitation_ask_user_question_is_not_answered_as_a_permission` |
 | 입력 요청이 TUI에 오르고 답이 provider에 넘어가며, 턴이 끝나면 답 없는 요청이 지워지고, 나중에 붙는 TUI가 받는다. | `saturn-terminal/engine/src/lifecycle/inputs.rs`의 `elicitation_request_reaches_the_tui_and_the_answer_reaches_the_provider`, `elicitation_decline_and_cancel_reach_the_provider_as_given`, `elicitation_answer_for_a_request_nobody_asked_is_refused`, `elicitation_answer_the_provider_did_not_take_keeps_the_request`, `elicitation_turn_end_withdraws_requests_nobody_answered`, `elicitation_request_waits_for_a_tui_that_attaches_later` |
 | TUI 입력 창이 칸 종류별 입력, 필수 칸 검사, 거절과 취소를 처리한다. | `saturn-terminal/tui/src/view/input_form.rs`의 `elicitation_form_collects_every_field_kind_into_one_answer`, `elicitation_boolean_takes_space_and_yes_no_keys`, `elicitation_missing_required_field_blocks_the_answer_and_takes_focus`, `elicitation_optional_field_left_empty_is_not_sent`, `elicitation_number_fields_reject_unreadable_values`, `elicitation_other_row_takes_typed_text_and_clears_the_single_pick`, `elicitation_decline_and_cancel_keys_end_the_request`, `elicitation_link_request_accepts_declines_and_cancels` |
@@ -102,8 +116,9 @@ Codex 에이전트 질문(`item/tool/requestUserInput`)은 `default_mode_request
 
 ## 단점
 
-- Codex 질문은 사용자가 기능을 켜야 쓸 수 있다.
+- 기본으로 질문을 켜서 모델이 묻느라 멈추는 자리가 늘 수 있다. 묻지 않게 하려면 권한 모드를 `full`로 한다.
+- Claude는 모드를 `full`로 바꾸거나 되돌리면 연결을 다시 시작해야 질문 기능이 바뀐다.
 
 ## 미해결 질문
 
-- Saturn 설정 키로 Codex 질문 기능을 켜게 할지, 기본값을 무엇으로 할지 ([#271](https://github.com/woonyong-choi/saturn/issues/271))
+- `experimentalFeature/enablement/set`으로 `default_mode_request_user_input`을 끄면 이미 열린 Codex thread에서 질문이 실제로 멈추는지. 지금은 같은 요청이 다른 기능 `tool_suggest`를 바꾼 실측만 있다

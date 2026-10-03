@@ -74,6 +74,11 @@ pub(crate) const ASK_TOOLS: &[&str] = &[
     "mcp__*",
 ];
 
+/// 에이전트 질문 도구. 권한 모드 `full`이면 `--disallowedTools`로 뺀다.
+const ASK_USER_QUESTION_TOOL: &str = "AskUserQuestion";
+
+const DISALLOWED_TOOLS_FLAG: &str = "--disallowedTools";
+
 const AUTO_COMPACT_FLAG: &str = "--autocompact";
 
 /// Claude Code 2.1.285 `--help`의 허용 범위 100k~1M에서 가져왔다.

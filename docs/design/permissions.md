@@ -119,7 +119,7 @@ engine은 Saturn 전용 `CODEX_HOME`으로 app-server를 시작한다(2026-10-02
 - 모델과 MCP 서버 같은 권한 외 설정은 사용자 설정을 그대로 옮기고 추적한다.
 - 생성한 설정에 `approvals_reviewer="user"`를 명시한다. 자동 검토자가 Saturn 앞에서 판단하는 일을 막기 위해서다.
 - Saturn의 개별 셸 규칙은 `rules/default.rules`의 `prefix_rule`로 번역한다. `allow`는 `allow`, `ask`는 `prompt`, `deny`는 `forbidden`이다. execpolicy는 접두사 일치만 하므로 `명령 *` 모양의 규칙만 `allow`로 옮기고, 글자 그대로 일치하는 `allow`와 `*`가 중간에 있거나 셸 문법이 든 패턴은 옮기지 않는다. 글자 그대로 일치하는 `ask`와 `deny`는 접두사 일치로 옮겨 더 엄하게 한다(초안). 옮기지 않은 규칙은 engine이 승인 요청에 답한다.
-- 모드는 번역에 넣지 않는다. 모드를 바꿔도 provider를 다시 시작하지 않기 위해서다.
+- 모드는 규칙 번역에 넣지 않는다. 모드를 바꿔도 provider를 다시 시작하지 않기 위해서다. 단 에이전트 질문 기능만 모드 `full`일 때 끈다([아래](#provider-설정과-질문-기능)).
 - 채팅 중에 규칙이 바뀌면(새 입력을 접수할 때 설정을 다시 읽어 규칙 지문이 연결을 시작할 때와 달라지면) 다음 턴이 끝난 뒤 그 채팅의 app-server를 다시 시작한다(사용자 결정). 채팅에 실행 중인 작업이 있으면 다음 턴 끝으로 미룬다. 연결은 통째로 닫고, 열려 있던 session은 기록에 남겨 다음 입력이 새 규칙의 `CODEX_HOME`으로 연결을 만들고 보관한 provider session id로 이어 연다. 규칙이 바뀐 것을 처음 알아챈 입력에서 `다음 요청부터 적용됩니다` 안내를, 다시 시작할 때 `다시 시작함 · 변경된 권한 설정을 적용했습니다` 안내를 대화 기록에 한 줄씩 남긴다. engine은 문구를 만들지 않고 알림 종류(`PermissionsChanged`, `ProviderRestarted`)만 보내며, 문구는 TUI가 시스템 언어로 고른다([TUI](tui.md#화면-언어와-출력-방식)).
 - `thread/start`와 `thread/resume`에 `approvalPolicy="untrusted"`와 `sandbox="read-only"`(읽기 전용 샌드박스)를 준다. 파일 편집도 `item/fileChange/requestApproval`로 받기 위해서다. `untrusted`는 설정 키로는 쓸 수 없고 `thread/start` 인자로만 줄 수 있다.
 - 자식 thread는 부모의 승인 정책과 규칙을 이어받아, 자식이 실행한 명령도 같은 규칙으로 승인 요청이 왔다(5/5 관측). Saturn은 자식 요청도 부모 에이전트의 요청으로 올려 같은 규칙으로 판정한다. 승인 요청에는 편집 경로가 없어 앞선 `item/started`의 `fileChange` 항목 경로를 기억해 쓴다.
@@ -154,6 +154,10 @@ engine은 Claude Code를 실행할 때 `--permission-prompt-tool stdio`와 `--se
 - router 키 보호 훅의 실행별 설정은 같은 `--settings` 값에 합쳐 넘긴다(초안). 훅이 막는 호출은 규칙이 `allow`여도 막는 것이 설계다(초안, [router 키 보호](router-key-security.md)).
 
 Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구가 같은 방식으로 오는지는 [이슈 232](https://github.com/woonyong-choi/saturn/issues/232)에서 실측한다.
+
+### provider 설정과 질문 기능
+
+provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions/2026-09-29-minimal-provider-control.md))에는 예외가 하나 있다. 에이전트 질문 기능(Codex `default_mode_request_user_input`, Claude `AskUserQuestion`)은 사용자 provider 설정이 아니라 Saturn 설정이 정하고, 두 provider에 같게 적용한다(사용자 결정, [#284](https://github.com/woonyong-choi/saturn/issues/284)). 기본은 켜고, 권한 모드가 `full`이면 끈다. 모드가 바뀌면 Codex는 실행 중 app-server에 바로 적용하고, Claude는 `--disallowedTools AskUserQuestion` 인자가 달라지므로 규칙 변경과 같은 경로로 작업이 끝난 뒤 다시 시작한다. 적용 전에 온 질문은 사용자에게 보이고 engine은 대신 답하지 않는다. 자세한 동작은 [입력 요청](input-requests.md#에이전트-질문-설정)에 있다.
 
 ### 허가 요청 창과 답
 
@@ -209,6 +213,7 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 | 모드의 기본 규칙이 표대로 판정되고, 기본 모드는 `edit`다. | `saturn-terminal/core/src/permission/tests.rs`의 `mode_default_rules`, `mode_edit_treats_dotdot_escape_as_outside` |
 | `edit`는 읽기 전용 셸 명령 목록을 허용하고, 셸 문법이 섞이면 묻고, 개별 규칙으로 덮을 수 있고 `deny`가 이기며, 다른 모드는 그대로다. | `saturn-terminal/core/src/permission/tests.rs`의 `mode_edit_allows_read_only_shell_commands_with_arguments`, `mode_edit_asks_when_shell_syntax_is_mixed_into_a_read_only_command`, `mode_edit_asks_when_a_read_only_command_gets_a_write_or_exec_option`, `mode_edit_asks_for_edits_under_git_internals_but_not_other_dot_files`, `read_only_shell_list_yields_to_individual_rules_and_deny_wins`, `read_only_shell_list_does_not_change_other_modes` |
 | 더한 폴더 안의 편집은 `edit`에서 작업 폴더처럼 허용하고, 읽기 전용과 `deny`는 그대로다. | `saturn-terminal/core/src/permission/tests.rs`의 `mode_edit_allows_edits_inside_added_folders_like_the_workdir`, `added_folders_do_not_widen_read_only_or_deny_rules`, `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `edit_inside_an_added_folder_is_allowed_like_the_workdir_in_edit_mode` |
+| 에이전트 질문 기능은 Saturn 권한 모드가 정하고, `full`이면 두 provider에서 뺀다(Codex는 다시 시작 없이, Claude는 턴 끝 다시 시작). | `saturn-terminal/engine/src/lifecycle/agent_questions.rs`의 테스트 전체([입력 요청](input-requests.md#요구사항) 표 참고) |
 | 모드를 바꾸면 다음 허가 요청부터 새 모드로 판정하고 provider를 다시 시작하지 않는다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `mode_change_applies_next_request`, `saturn-terminal/tui/src/commands.rs`의 `parse_permissions_reads_one_known_mode` |
 | 규칙의 `allow`와 `deny`는 사용자에게 묻지 않고 provider에 답하고, `ask`와 규칙으로 읽을 수 없는 요청만 TUI로 올린다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `rule_allow_answers_the_provider_without_asking_the_user`, `rule_deny_answers_the_provider_without_asking_the_user`, `rule_ask_goes_to_the_tui_and_waits_for_the_answer`, `request_without_a_readable_call_goes_to_the_tui_even_in_full_mode`, `rule_answer_that_the_provider_does_not_take_falls_back_to_the_user` |
 | Codex 셸, 파일 편집, subagent 명령, MCP가 Saturn 규칙대로 허용, 묻기, 거부로 처리된다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `permission_shell`, `permission_edit`, `permission_subagent`, `permission_mcp`, 가짜 app-server |
