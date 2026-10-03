@@ -49,7 +49,7 @@ pub(crate) struct Arrival {
     pub(crate) event: Option<ProviderEvent>,
 }
 
-/// 연결이 없으면 영원히 기다린다. 취소해도 이벤트를 잃지 않는다.
+/// 연결이 없으면 영원히 기다린다. 이벤트를 꺼내기만 하므로 취소해도 이벤트를 잃지 않는다(응답을 기다리는 일을 여기에 넣지 않는다).
 pub(crate) async fn next_arrival(
     providers: &mut HashMap<(ChatId, Provider), ProviderConnection>,
 ) -> Arrival {
@@ -69,6 +69,19 @@ pub(crate) async fn next_arrival(
     .await
 }
 
+/// 완료를 처리한 뒤 줄 세워 둔 다음 입력을 보낸다. 전송은 응답을 기다리므로 이벤트 수신(`next_arrival`)에 묶으면 안 된다.
+/// 수신 쪽 Future는 `select`에서 언제든 버려지고, 버려지면 이미 꺼낸 완료 이벤트와 전송이 함께 사라진다(#324).
+pub(crate) async fn start_queued_turn(
+    providers: &mut HashMap<(ChatId, Provider), ProviderConnection>,
+    chat: ChatId,
+    provider: Provider,
+    agent: AgentId,
+) {
+    if let Some(connection) = providers.get_mut(&(chat, provider)) {
+        connection.start_queued_turn(agent).await;
+    }
+}
+
 impl Engine {
     pub(crate) async fn on_arrival(&mut self, arrival: Arrival) {
         let Arrival {
@@ -80,8 +93,15 @@ impl Engine {
             self.on_connection_closed(chat, provider).await;
             return;
         };
+        let completed = match &event {
+            ProviderEvent::TurnCompleted { agent, .. } => Some(*agent),
+            _ => None,
+        };
         if let Err(error) = self.on_provider_event(provider, event).await {
             tracing::warn!(error = %self.failure_line(&error), "provider event not handled");
+        }
+        if let Some(agent) = completed {
+            start_queued_turn(&mut self.providers, chat, provider, agent).await;
         }
     }
 

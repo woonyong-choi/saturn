@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -7,7 +8,7 @@ use saturn_protocol::event::{
     Activity, LineChange, PermissionCall, PermissionTool, ToolCategory, ToolDetail, UsageReport,
     UsageScope,
 };
-use saturn_protocol::ids::{Provider, SettingsRevision, SubagentId};
+use saturn_protocol::ids::{ChatId, Provider, SettingsRevision, SubagentId};
 use saturn_protocol::input::InputValue;
 
 use super::config::{default_args, read_user_config, scan_user_config};
@@ -16,8 +17,10 @@ use super::convert::{
 };
 use super::threads::remove_thread_tree;
 use super::*;
+use crate::events::{next_arrival, start_queued_turn};
 use crate::providers::{
-    HomeInput, LaunchSpec, PermissionLaunch, SaturnDefaults, UserProviderConfig, prepare_codex_home,
+    HomeInput, LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults,
+    UserProviderConfig, prepare_codex_home,
 };
 
 /// 받은 요청에 schema 모양 그대로 응답한다.
@@ -1290,6 +1293,8 @@ async fn add_dir_goes_to_the_thread_config_when_a_session_opens() {
     ));
 }
 
+/// 패킷 턴 중에 온 입력은 줄 섰다가 자기 완료를 받는다(#318). 엔진처럼 `next_arrival`로 읽을 때 그 입력의 전송 응답이
+/// 늦어도(첫 poll이 `Pending`) 완료 이벤트와 그 입력을 잃지 않는다(#324).
 #[tokio::test]
 async fn a_turn_sent_during_the_packet_turn_gets_its_own_completion() {
     let dir = tempfile::tempdir().unwrap();
@@ -1299,11 +1304,15 @@ async fn a_turn_sent_during_the_packet_turn_gets_its_own_completion() {
     let mut packet_spec = spec(dir.path());
     packet_spec.packet = Some("merging-packet".to_owned());
     let handle = client.open_session(packet_spec).await.unwrap();
-
     client
         .send_turn(&handle.provider_session, "quick")
         .await
         .unwrap();
+    let mut providers = HashMap::from([(
+        (ChatId(1), Provider::Codex),
+        ProviderConnection::Codex(client),
+    )]);
+
     let mut events = Vec::new();
     while events
         .iter()
@@ -1312,7 +1321,13 @@ async fn a_turn_sent_during_the_packet_turn_gets_its_own_completion() {
         < 2
     {
         assert!(events.len() < 12, "{events:?}");
-        events.extend(take(&mut client, 1).await);
+        let arrival = tokio::time::timeout(Duration::from_secs(5), next_arrival(&mut providers))
+            .await
+            .expect("event should arrive");
+        if let Some(ProviderEvent::TurnCompleted { agent, .. }) = &arrival.event {
+            start_queued_turn(&mut providers, arrival.chat, arrival.provider, *agent).await;
+        }
+        events.extend(arrival.event);
     }
 
     assert!(events.iter().any(|event| matches!(

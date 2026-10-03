@@ -19,7 +19,7 @@ use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
 use saturn_protocol::event::{ProviderEvent, TurnOrigin};
-use saturn_protocol::ids::{Provider, ProviderSessionId, SettingsRevision};
+use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SettingsRevision};
 use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 
@@ -160,6 +160,17 @@ impl ProviderConnection {
             Self::Fake(_) => None,
         }
     }
+
+    /// 턴 완료를 처리한 뒤 그 에이전트에 줄 세워 둔 첫 입력을 보낸다. 줄 세우지 않는 연결은 아무것도 하지 않는다.
+    /// 응답을 기다리므로 `select` 가지 안에서 부르지 말고 가지 본문에서 끝까지 기다린다(#324).
+    pub(crate) async fn start_queued_turn(&mut self, agent: AgentId) {
+        match self {
+            Self::Codex(client) => client.start_queued_turn(agent).await,
+            Self::Claude(client) => client.start_queued_turn(agent).await,
+            #[cfg(test)]
+            Self::Fake(_) => {}
+        }
+    }
 }
 
 impl ProviderClient for ProviderConnection {
@@ -267,6 +278,7 @@ impl ProviderClient for ProviderConnection {
         }
     }
 
+    /// 취소해도 이벤트를 잃지 않는다. 줄 선 입력은 보내지 않으므로 완료를 처리한 뒤 `start_queued_turn`으로 보낸다.
     async fn next_event(&mut self) -> Option<ProviderEvent> {
         match self {
             Self::Codex(client) => client.next_event().await,

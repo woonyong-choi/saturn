@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ffi::OsString;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -7,14 +8,18 @@ use saturn_protocol::event::{
     Activity, LineChange, LineRange, PermissionCall, PermissionTool, ToolCategory, ToolDetail,
     TurnOrigin, UsageReport, UsageScope,
 };
-use saturn_protocol::ids::{Provider, SettingsRevision};
+use saturn_protocol::ids::{ChatId, Provider, SettingsRevision};
 use saturn_protocol::input::InputValue;
 
 use super::config::{default_args, read_user_config, with_ask_tools};
 use super::convert::{cache_ttl, detail_of, permission_call, shell_exit_code};
 use super::*;
-use crate::providers::{PermissionLaunch, SaturnDefaults};
+use crate::events::{next_arrival, start_queued_turn};
+use crate::providers::{PermissionLaunch, ProviderConnection, SaturnDefaults};
 use crate::secrets::Masker;
+
+/// 파이프 버퍼(64KiB)보다 커서 쓰는 도중 막히는 턴 크기. fake가 `big:<길이>`로 답한다.
+const BIG_TURN_BYTES: usize = 400_000;
 
 /// 받은 사용자 메시지 글에 따라 정해진 줄을 낸다.
 const FAKE_CLAUDE: &str = r#"#!/usr/bin/perl
@@ -65,6 +70,9 @@ while (my $line = <STDIN>) {
       my $merged = eval { $json->decode($next) } // {};
       assistant([ { type => "text", text => "merged:" . ($merged->{message}{content}[0]{text} // "") } ], undef);
     }
+    result();
+  } elsif (length($text) > 100000) {
+    assistant([ { type => "text", text => "big:" . length($text) } ], undef);
     result();
   } elsif ($text eq "wait") {
     assistant([ { type => "text", text => "working" } ], undef);
@@ -452,6 +460,8 @@ async fn steer_needs_active_turn_and_interrupt_waits_for_response() {
     client.close_session(&session).await.unwrap();
 }
 
+/// 패킷 턴 중에 온 입력은 줄 섰다가 자기 완료를 받는다(#318). 엔진처럼 `next_arrival`로 읽을 때 그 입력을 쓰는 중에
+/// 막혀(파이프가 가득 참) 첫 poll이 `Pending`이어도 완료 이벤트와 그 입력을 잃지 않는다(#324).
 #[tokio::test]
 async fn a_turn_sent_during_the_packet_turn_gets_its_own_completion() {
     let dir = tempfile::tempdir().unwrap();
@@ -463,22 +473,35 @@ async fn a_turn_sent_during_the_packet_turn_gets_its_own_completion() {
         .await
         .unwrap()
         .provider_session;
-    let agent = AgentId(3);
+    let big = "x".repeat(BIG_TURN_BYTES);
+    client.send_turn(&session, &big).await.unwrap();
+    let mut providers = HashMap::from([(
+        (ChatId(1), Provider::Claude),
+        ProviderConnection::Claude(client),
+    )]);
 
-    client.send_turn(&session, "more").await.unwrap();
-    let events = take(&mut client, 8).await;
-
-    let completed = events
+    let mut events = Vec::new();
+    while events
         .iter()
         .filter(|event| matches!(event, ProviderEvent::TurnCompleted { .. }))
-        .count();
-    assert_eq!(completed, 2, "{events:?}");
+        .count()
+        < 2
+    {
+        assert!(events.len() < 12, "{events:?}");
+        let arrival = tokio::time::timeout(Duration::from_secs(5), next_arrival(&mut providers))
+            .await
+            .expect("event should arrive");
+        if let Some(ProviderEvent::TurnCompleted { agent, .. }) = &arrival.event {
+            start_queued_turn(&mut providers, arrival.chat, arrival.provider, *agent).await;
+        }
+        events.extend(arrival.event);
+    }
+
     assert!(events.iter().any(|event| matches!(
         event,
-        ProviderEvent::Text { agent: a, text, .. } if *a == agent && text == "got more"
+        ProviderEvent::Text { text, .. } if *text == format!("big:{BIG_TURN_BYTES}")
     )));
     assert!(!format!("{events:?}").contains("merged:"));
-    client.close_session(&session).await.unwrap();
 }
 
 #[tokio::test]
