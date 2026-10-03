@@ -5,11 +5,11 @@
 | 항목 | 값 |
 |---|---|
 | 수집 방법 | `scripts/01-collect.py`가 전용 `CODEX_HOME`의 Codex app-server JSON-RPC를 비차단 바이트 읽기로 수집 |
-| 수집 기간 | 수집 뒤 기록 |
-| 개수 | 수집 뒤 기록 |
+| 수집 기간 | 2026-10-03~2026-10-03 |
+| 개수 | raw 5개, 정규화 trial 39행, 유효 execpolicy trial 21행, 질문 상태 15행 |
 | 표본 여부 | 조건별 지정 3회 전수 |
 | 라벨 | driver가 이벤트·marker·승인 요청을 규칙에 따라 기록 |
-| 알려진 문제 | 모델 출력 변동과 read-only sandbox 승인 정책은 기록하되 제외하지 않음 |
+| 알려진 문제 | 첫 수집은 config의 `approval_policy="untrusted"`가 0.158.0에서 거부되어 실패했다. driver 수정 재수집과 호출 상한 4회 초과를 모두 보존했다 |
 | 개인정보 | 인증 원본은 읽기만 하는 심볼릭 링크이며 raw/private log에 토큰·인증값을 저장하지 않음 |
 | 라이선스 | Saturn 저장소 문서 산출물 |
 

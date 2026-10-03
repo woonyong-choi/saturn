@@ -16,13 +16,14 @@ FIELDS = [
 
 
 def main() -> int:
-    rows = []
+    by_trial = {}
     for path in sorted(RAW.glob("*.jsonl")):
         for line in path.read_text(encoding="utf-8").splitlines():
             value = json.loads(line)
             if value.get("condition", "").startswith("inventory."):
                 continue
-            rows.append({field: value.get(field) for field in FIELDS})
+            by_trial[value["trial_id"]] = {field: value.get(field) for field in FIELDS}
+    rows = list(by_trial.values())
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=FIELDS)

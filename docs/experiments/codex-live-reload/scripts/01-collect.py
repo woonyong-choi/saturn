@@ -51,23 +51,19 @@ def row(run_id: str, trial_id: str, condition: str, **values) -> dict:
 
 
 def config_questions(enabled: bool) -> str:
-    return f'''approval_policy = "untrusted"
-sandbox_mode = "read-only"
+    return f'''sandbox_mode = "read-only"
 approvals_reviewer = "user"
 
 [features]
 default_mode_request_user_input = {str(enabled).lower()}
-suppress_unstable_features_warning = true
 '''
 
 
 def config_execpolicy() -> str:
-    return '''approval_policy = "untrusted"
-sandbox_mode = "read-only"
+    return '''sandbox_mode = "read-only"
 approvals_reviewer = "user"
 
 [features]
-suppress_unstable_features_warning = true
 '''
 
 
@@ -86,19 +82,28 @@ def question_trial(run_id: str, trial: int) -> list[dict]:
     events = []
     try:
         init = driver.initialize()
-        started = driver.start_thread()
+        started = driver.start_thread(approval_policy="on-request", sandbox="read-only")
         thread_id = (started or {}).get("result", {}).get("thread", {}).get("id")
         states = [("on-before", True), ("off", False), ("on-after", True)]
         rows = []
         for phase, enabled in states:
             if phase != "on-before":
                 changed = driver.request("experimentalFeature/enablement/set", {
-                    "threadId": thread_id,
                     "enablement": {"default_mode_request_user_input": enabled},
                 })
             else:
                 changed = None
-            if not thread_id or not count_turn():
+            if not thread_id:
+                rows.append(row(
+                    run_id,
+                    f"{trial_id}-start",
+                    "codex.questions.start",
+                    request_result=response_status(started),
+                    process_id=str(driver.pid),
+                    thread_id="none",
+                ))
+                break
+            if not count_turn():
                 break
             started_turn, turn_events = driver.turn(thread_id, question_prompt())
             events.extend(turn_events)
@@ -125,6 +130,50 @@ def question_trial(run_id: str, trial: int) -> list[dict]:
             driver.close()
 
 
+def question_reverse_trial(run_id: str, trial: int) -> list[dict]:
+    trial_id = f"questions-reverse-{trial}"
+    home = setup_codex_home(trial_id, config_questions(False), "")
+    driver = CodexDriver(home)
+    try:
+        init = driver.initialize()
+        started = driver.start_thread(approval_policy="on-request", sandbox="read-only")
+        thread_id = (started or {}).get("result", {}).get("thread", {}).get("id")
+        rows = []
+        for phase, enabled in (("off-before", False), ("on-after", True)):
+            changed = None
+            if phase == "on-after":
+                changed = driver.request("experimentalFeature/enablement/set", {
+                    "enablement": {"default_mode_request_user_input": True},
+                })
+            if not thread_id:
+                rows.append(row(run_id, f"{trial_id}-start", "codex.questions.reverse.start",
+                                request_result=response_status(started), process_id=str(driver.pid), thread_id="none"))
+                break
+            if not count_turn():
+                break
+            started_turn, turn_events = driver.turn(thread_id, question_prompt())
+            rows.append(row(
+                run_id,
+                f"{trial_id}-{phase}",
+                f"codex.questions.reverse.{phase}",
+                request_result=response_status(started_turn),
+                process_id=str(driver.pid),
+                thread_id=thread_id,
+                user_input_request=contains_method(turn_events, "item/tool/requestUserInput"),
+                feature_enabled=enabled,
+                enablement_result=response_status(changed) if changed else "initial_config",
+            ))
+        stderr = driver.close()
+        log = private_log(f"{run_id}-{trial_id}.jsonl", driver.events + [{"stderr": stderr, "init": init, "thread": started}])
+        for item in rows:
+            item["private_log"] = log
+            item["model_calls"] = model_call_events(driver)
+        return rows
+    finally:
+        if driver.proc.poll() is None:
+            driver.close()
+
+
 def schema_inventory(run_id: str) -> tuple[dict, list[str]]:
     schema_dir = WORKTREE / ".runtime" / f"schema-{run_id}"
     schema_dir.mkdir(parents=True, exist_ok=True)
@@ -133,12 +182,13 @@ def schema_inventory(run_id: str) -> tuple[dict, list[str]]:
     text = "\n".join(files) + f"\nexit={code}\nstdout={stdout}\nstderr={stderr}\n"
     log = private_log(f"{run_id}-schema.txt", [{"text": text}])
     methods = []
-    for path in schema_dir.rglob("*"):
-        if path.is_file():
-            content = path.read_text(encoding="utf-8", errors="replace")
-            for method in ("config/batchWrite", "config/read", "rules", "execpolicy"):
-                if method in content and method not in methods:
-                    methods.append(method)
+    schema_names = {path.name for path in schema_dir.rglob("*") if path.is_file()}
+    if "ConfigBatchWriteParams.json" in schema_names:
+        methods.append("config/batchWrite")
+    if "ConfigReadParams.json" in schema_names:
+        methods.append("config/read")
+    if any("rule" in name.lower() or "execpolicy" in name.lower() for name in schema_names):
+        methods.append("rule-or-execpolicy-named-schema")
     return {"request_result": "success" if code == 0 else "error", "schema_files": files,
             "schema_sha256": hashlib.sha256(text.encode()).hexdigest(), "private_log": log}, methods
 
@@ -171,7 +221,7 @@ def execpolicy_trial(run_id: str, trial: int, schema_methods: list[str]) -> list
     all_events = []
     try:
         driver.initialize()
-        started = driver.start_thread()
+        started = driver.start_thread(approval_policy="untrusted", sandbox="read-only")
         thread_id = (started or {}).get("result", {}).get("thread", {}).get("id")
         if not thread_id:
             return [row(run_id, trial_id, "codex.execpolicy.start", request_result=response_status(started))]
@@ -209,7 +259,7 @@ def execpolicy_trial(run_id: str, trial: int, schema_methods: list[str]) -> list
             fresh = CodexDriver(home)
             try:
                 fresh.initialize()
-                fresh_started = fresh.start_thread()
+                fresh_started = fresh.start_thread(approval_policy="untrusted", sandbox="read-only")
                 fresh_thread = (fresh_started or {}).get("result", {}).get("thread", {}).get("id")
                 if fresh_thread:
                     item = exec_turn(fresh, fresh_thread, fresh_id, f"new-process-{state}", state)
@@ -247,6 +297,10 @@ def main() -> int:
             if STOP:
                 break
             rows.extend(question_trial(run_id, trial))
+        for trial in range(1, 4):
+            if STOP:
+                break
+            rows.extend(question_reverse_trial(run_id, trial))
     if "execpolicy" in selected:
         for trial in range(1, 4):
             if STOP:

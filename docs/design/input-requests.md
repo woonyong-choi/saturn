@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 구현 |
-| 관련 실험 | [결정 전 provider 실측](../experiments/provider-decision-checks/report.md) 실험 3 |
+| 관련 실험 | [결정 전 provider 실측](../experiments/provider-decision-checks/report.md) 실험 3, [Codex 실행 중 설정 다시 읽기](../experiments/codex-live-reload/report.md) |
 
 ## 요약
 
@@ -89,7 +89,7 @@ provider 고유 이름(`mcpServer/elicitation/request`, `AskUserQuestion` 같은
 
 | provider | 묻는다(`full`이 아님) | 묻지 않는다(`full`) | 모드가 바뀔 때 |
 |---|---|---|---|
-| Codex | 전용 `CODEX_HOME`의 생성 설정에서 `[features] default_mode_request_user_input = true` | 같은 키를 `false`로 쓴다 | 실행 중 app-server에 `experimentalFeature/enablement/set`으로 그 기능을 끄고 켠다. 다시 시작하지 않는다 |
+| Codex | 전용 `CODEX_HOME`의 생성 설정에서 `[features] default_mode_request_user_input = true` | 같은 키를 `false`로 쓴다 | `experimentalFeature/enablement/set`의 RPC 응답은 성공하지만 codex-cli 0.158.0에서 같은 thread의 실제 질문 행동 변경은 확인하지 못했다. 버전별 재실측 전에는 실행 중 변경을 보장하지 않는다 |
 | Claude | `AskUserQuestion`을 그대로 둔다 | `--disallowedTools AskUserQuestion`으로 실행한다 | 실행 중 도구 목록을 바꾸는 공식 경로가 없어 인자가 달라지면 연결을 다시 시작해 session을 이어 연다. 작업 중이 아니면 바로, 작업 중이면 지금 턴이 끝난 뒤 바로 시작한다 |
 
 - 모드는 채팅 층의 `/permissions` 값이 먼저이고 없으면 설정 병합 결과다. 모드는 `/permissions`로 바꿀 때와 새 입력을 접수할 때 읽는다. 설정 파일을 고쳐 모드가 바뀐 경우도 다음 입력에서 적용된다.
@@ -97,7 +97,7 @@ provider 고유 이름(`mcpServer/elicitation/request`, `AskUserQuestion` 같은
 - Claude 연결을 다시 시작하는 일은 [권한](permissions.md#codex-구성)의 규칙 변경 재시작과 같은 경로다. 열려 있던 session은 기록에 남겨 다음 입력이 보관한 provider session id로 이어 연다. 다시 시작할 때 `다시 시작함 · 변경된 권한 설정을 적용했습니다` 알림 한 줄(`ProviderRestarted`)을 남기고, 새 문구는 없다. 작업 중에 모드를 원래대로 돌리면 다시 시작하지 않는다.
 - 적용되기 전에 온 질문은 숨기거나 대신 답하지 않고 입력 요청 창으로 보인다. engine은 질문에 대신 답하지 않는다. 모드를 `full`로 바꾼 직후 Codex 요청이 이미 나갔거나 Claude가 다시 시작되기 전에 모델이 묻는 경우가 이에 해당한다.
 - Codex 에이전트 질문은 실험 기능이라 버전마다 동작이 바뀔 수 있다. 켜면 모델이 전에는 진행하던 자리에서 멈춰 묻게 된다. 이는 기본을 묻는 쪽으로 정한 사용자 결정에 따른 것이다.
-- Codex 끄기의 근거는 [provider 설정 즉시 적용](../experiments/provider-live-settings/report.md) 실측(`experimentalFeature/enablement/set` 3/3 확인)이다. 실제 `default_mode_request_user_input` 기능에 대한 끄기 확인은 아직 없다.
+- Codex 끄기의 기존 근거는 [provider 설정 즉시 적용](../experiments/provider-live-settings/report.md)의 RPC 응답 3/3이었다. [Codex 실행 중 설정 다시 읽기](../experiments/codex-live-reload/report.md)에서 실제 `default_mode_request_user_input` 행동은 켜짐 시작 3/3에서 계속 왔고 꺼짐 시작 3/3에서 계속 오지 않아, live toggle 효과는 확인하지 못했다.
 - 실행 중 Codex 요청이 실패하면(`NotSent`) 로그만 남기고 연결 값은 이전 그대로 둔다. 다음 모드 변경이나 입력 접수에서 다시 시도한다.
 
 ### 요구사항
@@ -121,4 +121,4 @@ provider 고유 이름(`mcpServer/elicitation/request`, `AskUserQuestion` 같은
 
 ## 미해결 질문
 
-- `experimentalFeature/enablement/set`으로 `default_mode_request_user_input`을 끄면 이미 열린 Codex thread에서 질문이 실제로 멈추는지. 지금은 같은 요청이 다른 기능 `tool_suggest`를 바꾼 실측만 있다
+- codex-cli 버전별로 `experimentalFeature/enablement/set`이 이미 열린 thread의 `default_mode_request_user_input` 실제 행동을 바꾸는지. 0.158.0에서는 RPC 성공과 행동이 달랐다([실측](../experiments/codex-live-reload/report.md)).

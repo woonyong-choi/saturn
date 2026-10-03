@@ -161,7 +161,8 @@ class CodexDriver(LineProcess):
             answers = {}
             for question in questions:
                 options = question.get("options", [])
-                answers[question.get("id", "question")] = options[0].get("label", "실험 답변") if options else "실험 답변"
+                label = options[0].get("label", "실험 답변") if options else "실험 답변"
+                answers[question.get("id", "question")] = {"answers": [label]}
             self.send({"jsonrpc": "2.0", "id": message["id"], "result": {"answers": answers}})
         elif method.endswith("requestApproval") or method in {"execCommandApproval", "applyPatchApproval"}:
             self.send({"jsonrpc": "2.0", "id": message["id"], "result": {"decision": approval}})
@@ -171,8 +172,12 @@ class CodexDriver(LineProcess):
         self.send({"jsonrpc": "2.0", "method": "initialized"})
         return result
 
-    def start_thread(self):
+    def start_thread(self, *, approval_policy: str | None = None, sandbox: str | None = None):
         params = {"cwd": str(WORKTREE), "model": CODEX_MODEL, "ephemeral": True}
+        if approval_policy is not None:
+            params["approvalPolicy"] = approval_policy
+        if sandbox is not None:
+            params["sandbox"] = sandbox
         return self.request("thread/start", params)
 
     def turn(self, thread_id: str, text: str, approval: str = "decline"):

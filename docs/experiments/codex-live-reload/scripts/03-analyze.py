@@ -41,15 +41,25 @@ def main() -> int:
         if row["condition"].startswith("codex.questions."):
             question_states[row["condition"].rsplit(".", 1)[-1]].append(row)
     question_trials = defaultdict(dict)
+    reverse_trials = defaultdict(dict)
     for row in rows:
         if row["condition"].startswith("codex.questions."):
-            trial = row["trial_id"].split("-", 1)[0]
+            trial_parts = row["trial_id"].split("-")
+            trial = "-".join(trial_parts[:3] if ".reverse." in row["condition"] else trial_parts[:2])
             state = row["condition"].rsplit(".", 1)[-1]
-            question_trials[trial][state] = boolean(row["user_input_request"])
+            if ".reverse." in row["condition"]:
+                reverse_trials[trial][state] = boolean(row["user_input_request"])
+            else:
+                question_trials[trial][state] = boolean(row["user_input_request"])
     question_sequences = [tuple(question_trials[trial].get(state) for state in ("on-before", "off", "on-after")) for trial in sorted(question_trials)]
     routes["H1.codex.questions.toggle"] = {
         "n": len(question_sequences), "sequences": question_sequences,
-        "classification": "확인" if len(question_sequences) == 3 and all(value == (True, False, True) for value in question_sequences) else ("불안정" if question_sequences else "확인 못 함"),
+        "classification": "확인" if question_sequences and len(set(question_sequences)) == 1 else ("불안정" if question_sequences else "확인 못 함"),
+    }
+    reverse_sequences = [tuple(reverse_trials[trial].get(state) for state in ("off-before", "on-after")) for trial in sorted(reverse_trials)]
+    routes["H1.codex.questions.reverse"] = {
+        "n": len(reverse_sequences), "sequences": reverse_sequences,
+        "classification": "확인" if reverse_sequences and len(set(reverse_sequences)) == 1 else ("불안정" if reverse_sequences else "확인 못 함"),
     }
     for condition, condition_rows in sorted(grouped.items()):
         if condition.startswith("codex.questions."):
