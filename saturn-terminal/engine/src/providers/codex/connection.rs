@@ -15,7 +15,7 @@ use super::{
     MCP_READY_POLL, MCP_READY_TIMEOUT, Pending, Threads, error_message, lock,
 };
 use crate::processes::{ProcessSpec, Supervisor};
-use crate::providers::codex_permission::{McpState, mcp_state};
+use crate::providers::codex_permission::mcp_check;
 use crate::providers::{LaunchSpec, UserProviderConfig};
 
 impl CodexClient {
@@ -172,34 +172,44 @@ impl CodexClient {
         self.stdin.flush().await
     }
 
-    // cost: time O(t/p·s), heap O(1), stack O(1), io t/p
+    // cost: time O(t/p·s), heap O(s), stack O(1), io t/p
     // vars: t = 제한 시간, p = 확인 간격, s = 서버 수
     // basis: estimate
-    /// 첫 session을 열기 전에 대상 MCP 서버가 모두 준비될 때까지 `mcpServerStatus/list`로 확인한다.
-    /// 제한 시간 안에 준비되지 않으면 `NotSent`이고 첫 턴을 보내지 않는다.
+    /// 첫 session을 열기 전에 대상 MCP 서버의 시작이 끝날 때까지 `mcpServerStatus/list`로 확인한다.
+    /// 시작에 실패한 서버와 제한 시간까지 준비를 알 수 없던 서버는 그 서버의 도구만 쓸 수 없는 것으로 보고
+    /// 이유를 한 줄 남긴 채 통과시킨다. 첫 턴은 막지 않는다. 쓸 수 없는 서버의 도구는 모델이 부르면 승인 요청으로 온다.
+    ///
+    /// # Errors
+    /// 연결이 끊기면 `ConnectionLost`.
     pub(super) async fn wait_for_mcp(&mut self) -> Result<(), ProviderError> {
         if self.is_mcp_ready || self.mcp_servers.is_empty() {
             return Ok(());
         }
         let deadline = Instant::now() + self.mcp_ready_timeout;
+        let mut unavailable;
         loop {
-            let waiting = match self.request("mcpServerStatus/list", json!({})).await? {
-                Ok(result) => match mcp_state(&result, &self.mcp_servers) {
-                    McpState::Ready => {
-                        self.is_mcp_ready = true;
-                        return Ok(());
-                    }
-                    McpState::Waiting(reason) => reason,
-                },
-                Err(error) => error_message(&error),
+            let (waiting, failed) = match self.request("mcpServerStatus/list", json!({})).await? {
+                Ok(result) => {
+                    let check = mcp_check(&result, &self.mcp_servers);
+                    (check.waiting, check.unavailable)
+                }
+                Err(error) => (vec![error_message(&error)], Vec::new()),
             };
+            unavailable = failed;
+            if waiting.is_empty() {
+                break;
+            }
             if Instant::now() >= deadline {
-                return Err(ProviderError::NotSent {
-                    reason: format!("mcp servers are not ready: {waiting}"),
-                });
+                unavailable.extend(waiting);
+                break;
             }
             tokio::time::sleep(MCP_READY_POLL).await;
         }
+        for reason in &unavailable {
+            tracing::warn!(reason = %reason, "mcp server tools are unavailable, sending the first turn anyway");
+        }
+        self.is_mcp_ready = true;
+        Ok(())
     }
 }
 

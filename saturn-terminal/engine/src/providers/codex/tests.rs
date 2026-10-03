@@ -86,8 +86,13 @@ while (my $line = <STDIN>) {
     out({ id => $id, result => { thread => { id => $tid, sessionId => "s1", preview => "", turns => [], cliVersion => "0.158.0", createdAt => 1, updatedAt => 1, ephemeral => JSON::PP::false, modelProvider => "openai" }, model => "gpt-test", modelProvider => "openai", approvalPolicy => $policy, approvalsReviewer => "user", sandbox => $sandbox, cwd => "/w" } });
   } elsif ($method eq "mcpServerStatus/list") {
     $mcp_polls++;
-    my $ready = $mcp_polls >= 3;
-    out({ id => $id, result => { data => [ { name => "docs", runtimeStatus => ($ready ? "ready" : "starting"), tools => ($ready ? { echo => {} } : undef), toolsError => undef } ], nextCursor => undef } });
+    my $ready = $mcp_polls >= 3 && ($ENV{FAKE_MCP_STUCK} // "") eq "";
+    my @servers = ({ name => "docs", runtimeStatus => undef,
+      serverInfo => ($ready ? { name => "docs", title => undef, version => "1" } : undef),
+      tools => ($ready ? { echo => { name => "echo", inputSchema => { type => "object" } } } : {}), toolsError => undef });
+    push @servers, { name => $ENV{FAKE_MCP_FAILED}, runtimeStatus => undef, serverInfo => undef, tools => {},
+      toolsError => "MCP startup failed: No such file or directory (os error 2)" } if ($ENV{FAKE_MCP_FAILED} // "") ne "";
+    out({ id => $id, result => { data => \@servers, nextCursor => undef } });
   } elsif ($method eq "turn/start") {
     my $first = $p->{input}[0];
     if (($first->{text} // "") eq "crash") {
@@ -1365,21 +1370,40 @@ async fn first_turn_waits_for_mcp_ready() {
 }
 
 #[tokio::test]
-async fn first_turn_is_not_sent_when_mcp_never_gets_ready() {
+async fn first_turn_is_sent_when_a_server_failed_to_start() {
     let dir = tempfile::tempdir().unwrap();
-    let mut launch = launch(dir.path(), vec![("FAKE_REQUIRE_MCP".into(), "1".into())]);
+    let env = vec![
+        ("FAKE_REQUIRE_MCP".into(), "1".into()),
+        ("FAKE_MCP_FAILED".into(), "broken".into()),
+    ];
+    let mut launch = launch(dir.path(), env);
+    launch.permission.mcp_servers = vec!["docs".to_owned(), "broken".to_owned()];
+    let mut client = CodexClient::start(launch, Supervisor::new()).await.unwrap();
+
+    let handle = client.open_session(spec(dir.path())).await.unwrap();
+
+    client
+        .send_turn(&handle.provider_session, "hello")
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn first_turn_is_sent_when_a_server_stays_unknown_past_the_limit() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut launch = launch(dir.path(), vec![("FAKE_MCP_STUCK".into(), "1".into())]);
     launch.permission.mcp_servers = vec!["docs".to_owned()];
     let mut client = CodexClient::start(launch, Supervisor::new())
         .await
         .unwrap()
         .with_mcp_ready_timeout(Duration::from_millis(10));
 
-    let error = client.open_session(spec(dir.path())).await.unwrap_err();
+    let handle = client.open_session(spec(dir.path())).await.unwrap();
 
-    assert!(matches!(
-        error,
-        ProviderError::NotSent { ref reason } if reason.contains("not ready")
-    ));
+    client
+        .send_turn(&handle.provider_session, "hello")
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
