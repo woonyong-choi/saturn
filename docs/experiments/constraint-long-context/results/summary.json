@@ -1,0 +1,228 @@
+{
+  "execution_id": "20261003T235132Z-3ef1f22",
+  "calls": {
+    "jev": 360,
+    "label_calls_per_model": 3
+  },
+  "label_agreement": {
+    "turns": {
+      "correct": 247,
+      "n": 301,
+      "value": 0.820598,
+      "ci95_low": 0.773297,
+      "ci95_high": 0.859819
+    },
+    "by_length_band": {
+      "120-399": {
+        "correct": 117,
+        "n": 134,
+        "value": 0.873134,
+        "ci95_low": 0.80621,
+        "ci95_high": 0.919261
+      },
+      "30-119": {
+        "correct": 130,
+        "n": 167,
+        "value": 0.778443,
+        "ci95_low": 0.709594,
+        "ci95_high": 0.83477
+      }
+    },
+    "final_set": {
+      "correct": 0,
+      "n": 3,
+      "value": 0.0,
+      "ci95_low": 0.0,
+      "ci95_high": 0.561497
+    }
+  },
+  "registration": {
+    "precision": {
+      "correct": 6,
+      "n": 32,
+      "value": 0.1875,
+      "ci95_low": 0.088895,
+      "ci95_high": 0.353092
+    },
+    "recall": {
+      "correct": 6,
+      "n": 6,
+      "value": 1.0,
+      "ci95_low": 0.609666,
+      "ci95_high": 1.0
+    }
+  },
+  "length_bands": {
+    "120-399": {
+      "n": 108,
+      "precision": {
+        "correct": 6,
+        "n": 26,
+        "value": 0.230769,
+        "ci95_low": 0.110338,
+        "ci95_high": 0.420516
+      },
+      "recall": {
+        "correct": 6,
+        "n": 6,
+        "value": 1.0,
+        "ci95_low": 0.609666,
+        "ci95_high": 1.0
+      },
+      "accuracy": {
+        "correct": 88,
+        "n": 108,
+        "value": 0.814815,
+        "ci95_low": 0.731203,
+        "ci95_high": 0.8768
+      }
+    },
+    "30-119": {
+      "n": 198,
+      "precision": {
+        "correct": 0,
+        "n": 6,
+        "value": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.390334
+      },
+      "recall": {
+        "correct": 0,
+        "n": 0,
+        "value": null,
+        "ci95_low": null,
+        "ci95_high": null
+      },
+      "accuracy": {
+        "correct": 192,
+        "n": 198,
+        "value": 0.969697,
+        "ci95_low": 0.935476,
+        "ci95_high": 0.986039
+      }
+    }
+  },
+  "transition": {
+    "status": "not_estimable",
+    "reason": "합의된 표본에 replace·partial·release 전이가 없다",
+    "rows": 0
+  },
+  "distance_bands": {},
+  "final_set": {
+    "status": "not_estimable",
+    "reason": "두 라벨러의 대화 끝 유효 제약 집합이 3개 대화 모두 불일치했다",
+    "rows": 0
+  },
+  "confidence_bands": {
+    "registration": {
+      "<0.5": {
+        "correct": 242,
+        "n": 242,
+        "value": 1.0,
+        "ci95_low": 0.984374,
+        "ci95_high": 1.0
+      },
+      "0.5-0.7": {
+        "correct": 32,
+        "n": 32,
+        "value": 1.0,
+        "ci95_low": 0.892821,
+        "ci95_high": 1.0
+      },
+      "0.7-0.8": {
+        "correct": 0,
+        "n": 26,
+        "value": 0.0,
+        "ci95_low": 0.0,
+        "ci95_high": 0.128729
+      },
+      ">=0.8": {
+        "correct": 6,
+        "n": 6,
+        "value": 1.0,
+        "ci95_low": 0.609666,
+        "ci95_high": 1.0
+      }
+    },
+    "transition": {
+      "<0.5": {
+        "correct": 0,
+        "n": 0,
+        "value": null,
+        "ci95_low": null,
+        "ci95_high": null
+      },
+      "0.5-0.7": {
+        "correct": 0,
+        "n": 0,
+        "value": null,
+        "ci95_low": null,
+        "ci95_high": null
+      },
+      "0.7-0.8": {
+        "correct": 0,
+        "n": 0,
+        "value": null,
+        "ci95_low": null,
+        "ci95_high": null
+      },
+      ">=0.8": {
+        "correct": 0,
+        "n": 0,
+        "value": null,
+        "ci95_low": null,
+        "ci95_high": null
+      }
+    }
+  },
+  "repeats": {
+    "is_constraint_classification": {
+      "correct": 101,
+      "n": 102,
+      "value": 0.990196,
+      "ci95_low": 0.946542,
+      "ci95_high": 0.998267
+    },
+    "by_condition": {
+      "A_top10_overlap": {
+        "correct": 51,
+        "n": 51,
+        "value": 1.0,
+        "ci95_low": 0.929953,
+        "ci95_high": 1.0
+      },
+      "B_all_active": {
+        "correct": 50,
+        "n": 51,
+        "value": 0.980392,
+        "ci95_low": 0.896954,
+        "ci95_high": 0.99653
+      }
+    },
+    "mean_probability_stddev": 0.008454
+  },
+  "logs": {
+    "registration": {
+      "correct": 280,
+      "n": 306,
+      "value": 0.915033,
+      "ci95_low": 0.878416,
+      "ci95_high": 0.941358
+    },
+    "transition": {
+      "correct": 0,
+      "n": 0,
+      "value": null,
+      "ci95_low": null,
+      "ci95_high": null
+    },
+    "release_not_measured": 0
+  },
+  "statuses": {
+    "ok": 360
+  },
+  "exploratory": {
+    "transition_rows": 0,
+    "final_set_rows": 0
+  }
+}
