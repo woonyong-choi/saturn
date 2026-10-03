@@ -52,11 +52,11 @@ pub(crate) struct OpenPlan {
 
 /// 거절된 패킷을 줄여 만들 재료.
 #[derive(Debug)]
-struct Reduction {
-    source: PacketSource,
-    budget: ContextBudget,
+pub(crate) struct Reduction {
+    pub(crate) source: PacketSource,
+    pub(crate) budget: ContextBudget,
     /// 거절된 패킷의 추정 토큰 수.
-    sent_tokens: u64,
+    pub(crate) sent_tokens: u64,
 }
 
 /// 초안. 거절 응답이 한도를 알려 주지 않을 때 줄이는 목표를 정하는 상대 provider `P_max`의 몫(백분율).
@@ -65,7 +65,7 @@ const REDUCED_TARGET_PERCENT: u64 = 50;
 impl Reduction {
     /// 목표는 거절 응답이 알려 준 한도, 없으면 상대 provider `P_max`의 일부다. 어느 쪽이든 거절된 패킷보다 작아지게 반으로 줄인 값을 넘지 않는다.
     /// 고정 구역만으로 목표를 넘으면 `None`.
-    fn reduce(&self, limit_tokens: Option<u64>) -> Option<Handoff> {
+    pub(crate) fn reduce(&self, limit_tokens: Option<u64>) -> Option<Handoff> {
         let by_budget = self.budget.packet_limit() * REDUCED_TARGET_PERCENT / 100;
         let target = limit_tokens
             .unwrap_or(by_budget)
@@ -494,14 +494,17 @@ impl Engine {
 
     /// 맥락 정리로 같은 provider의 새 session으로 이어 간다. 옛 session은 `Ended`가 된다.
     /// 턴 경계(유휴로 표시한 session)에서만 부른다.
+    /// 패킷이 맥락 한도로 거절되면 `reduction`으로 줄여 한 번만 다시 연다. 옛 session은 그대로 열려 있다.
     ///
     /// # Errors
     /// 열지 못하면 `Provider`, 턴 경계가 아니면 `Session(NotAtTurnBoundary)`, 저장 실패면 `Store`.
+    /// 줄인 패킷도 거절됐거나 줄일 재료가 없으면 `Provider(ContextExceeded)`.
     pub(crate) async fn restart_session(
         &mut self,
         chat: ChatId,
         live: &LiveSession,
         packet: String,
+        reduction: Option<Reduction>,
         up_to: LedgerSeq,
     ) -> Result<(), EngineError> {
         let old = self
@@ -518,7 +521,7 @@ impl Engine {
             .workdir()
             .to_path_buf();
         let id = SessionId(self.store.allocate_id(IdKind::Session).await?);
-        let spec = SessionSpec {
+        let mut spec = SessionSpec {
             agent: old.agent,
             workdir,
             model: old.model.clone(),
@@ -530,7 +533,24 @@ impl Engine {
             packet: Some(packet),
             add_dirs: self.chat_dirs_of(chat),
         };
-        let handle = self.open_with_retries(chat, live.provider, spec).await?;
+        let handle = match self
+            .open_with_retries(chat, live.provider, spec.clone())
+            .await
+        {
+            Err(ProviderError::ContextExceeded { limit_tokens }) => {
+                let Some(reduced) = reduction.and_then(|reduction| reduction.reduce(limit_tokens))
+                else {
+                    return Err(ProviderError::ContextExceeded { limit_tokens }.into());
+                };
+                tracing::warn!(
+                    chat = chat.0,
+                    "packet was over the context limit, sending a reduced one"
+                );
+                spec.packet = Some(reduced.text);
+                self.open_with_retries(chat, live.provider, spec).await?
+            }
+            other => other?,
+        };
         let record = SessionRecord {
             id,
             chat,

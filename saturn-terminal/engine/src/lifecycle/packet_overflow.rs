@@ -1,11 +1,13 @@
 //! 패킷 맥락 초과 테스트: provider가 맥락 한도로 거절하면 낮은 순 항목을 빼 한 번만 다시 보내고, 안 되면 멈추고 알린다.
 
 use saturn_core::providers::ProviderError;
-use saturn_protocol::ids::Provider;
+use saturn_protocol::ids::{Provider, SessionId};
 use saturn_protocol::rpc::ChatNotice;
-use saturn_protocol::state::InputState;
+use saturn_protocol::state::{InputState, SessionState};
 
-use super::support::{Flow, idle_reply, text, tool_read, tool_result, turn_completed};
+use super::support::{
+    Flow, context_size, idle_reply, text, tool_read, tool_result, turn_completed,
+};
 use super::*;
 use crate::providers::test_support::{Call, FakeProvider};
 
@@ -121,4 +123,71 @@ async fn packet_overflow_with_only_the_fixed_zone_over_the_target_is_not_resent(
         })
         .await;
     assert_eq!(notice, ChatNotice::PacketOverflow);
+}
+
+/// 맥락이 기준을 넘은 채 도구 호출이 많은 턴을 끝내는 Claude 채팅. 턴이 끝나면 맥락 정리가 새 session을 열고, 그 열기에 `answers`를 준다.
+/// 돌려주는 session은 맥락 정리 전의 것이다.
+async fn restart_with(
+    answers: impl IntoIterator<Item = Result<(), ProviderError>>,
+) -> (Flow, Client, SessionId) {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.submit(FIRST_INPUT).await;
+    let agent = flow.agent();
+    let old = flow.engine.flow.live[&agent].session;
+    let client = flow.client().await;
+    flow.claude_event(text(agent, ANSWER)).await;
+    for call in CALLS {
+        flow.claude_event(tool_read(agent, call, "src/cache.rs"))
+            .await;
+        let output = format!("{call} body {}", "y".repeat(400));
+        flow.claude_event(tool_result(agent, call, &output)).await;
+    }
+    flow.claude_event(context_size(agent, 10_000_000)).await;
+    flow.fake.answer_open(answers);
+    flow.claude_event(turn_completed(agent)).await;
+    (flow, client, old)
+}
+
+async fn first_notice(client: &mut Client) -> ChatNotice {
+    client
+        .until(|notification| match notification {
+            Notification::ChatNotice { notice, .. } => Some(notice.clone()),
+            _ => None,
+        })
+        .await
+}
+
+#[tokio::test]
+async fn compaction_overflow_rejection_resends_once_without_the_lowest_items() {
+    let (flow, mut client, old) = restart_with([exceeded(), Ok(())]).await;
+
+    let sent = packets(&flow.fake);
+    assert_eq!(sent.len(), 2);
+    assert_eq!(kept_tools(&sent[0]), CALLS.len());
+    assert!(sent[1].len() < sent[0].len());
+    assert!(kept_tools(&sent[1]) < CALLS.len());
+    for packet in &sent {
+        assert!(packet.contains(FIRST_INPUT));
+        assert!(packet.contains(ANSWER));
+    }
+    let fresh = flow.engine.flow.live[&flow.agent()].session;
+    assert_ne!(fresh, old);
+    assert_eq!(
+        flow.engine.sessions.get(old).unwrap().state,
+        SessionState::Ended
+    );
+    assert_eq!(first_notice(&mut client).await, ChatNotice::Compacted);
+}
+
+#[tokio::test]
+async fn compaction_overflow_after_the_reduced_resend_keeps_the_session_and_tells_the_user() {
+    let (flow, mut client, old) = restart_with([exceeded(), exceeded(), Ok(())]).await;
+
+    assert_eq!(packets(&flow.fake).len(), 2);
+    assert_eq!(flow.engine.flow.live[&flow.agent()].session, old);
+    assert_eq!(
+        flow.engine.sessions.get(old).unwrap().state,
+        SessionState::Open
+    );
+    assert_eq!(first_notice(&mut client).await, ChatNotice::PacketOverflow);
 }
