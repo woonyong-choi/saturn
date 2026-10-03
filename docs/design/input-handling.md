@@ -186,11 +186,12 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 ### 쓰기 규칙
 
-`queue`는 접수 때 고정한 권한으로 쓰기 여부를 판정한다. 읽기 전용 권한의 작업은 같은 폴더에서 병렬로 실행한다. 쓰기 권한의 작업은 쓰는 에이전트가 있으면 대기한다.
+`queue`는 접수 때 고정한 권한으로 쓰기 여부를 판정한다. 읽기 전용 권한의 작업은 같은 폴더에서 병렬로 실행한다. 쓰기 권한의 작업은 쓰기 범위가 겹치는 쓰는 에이전트가 있으면 대기한다. 쓰기 범위는 채팅의 작업 폴더와 더한 폴더이고, engine이 링크를 푼 경로로 만들어 접수 때 고정한다. 두 범위에서 경로 하나씩 골랐을 때 같거나 한쪽이 다른 쪽의 조상이면 겹친다. 이름의 앞부분만 같은 폴더는 겹치지 않는다.
 
 | 규칙 | 이유 |
 |---|---|
-| 쓰기는 한 번에 한 에이전트만 한다. | 병렬 에이전트가 같은 작업 폴더에 쓰는 충돌을 막기 위해서다. |
+| 쓰기는 쓰기 범위가 겹치는 에이전트끼리 한 번에 하나만 한다. | 병렬 에이전트가 같은 작업 폴더나 상하위 폴더, 같은 더한 폴더에 쓰는 충돌을 막기 위해서다. |
+| 쓰기 범위는 작업 폴더와 더한 폴더를 링크를 푼 경로로 비교한다. | 허가 판정이 경로를 푸는 방식과 맞춰, 링크로 같은 폴더를 가리켜도 잠금을 피하지 못하게 하기 위해서다. 폴더가 없으면 푸는 대신 적은 그대로 비교한다. |
 | 쓰기 규칙 판정은 접수 때 고정된 권한으로 한다. | 쓰기 여부를 추정 없이 결정론으로 판정하기 위해서다. |
 | 읽기 전용으로 접수한 실행은 `/permissions`로 모드를 올려도 쓰기 허가를 받지 못한다. 쓰려면 새 입력으로 보내야 한다. | 쓰기 잠금 없이 도는 실행이 다른 쓰기 작업과 같은 폴더에 함께 쓰는 일을 막기 위해서다([권한](permissions.md#권한-규칙)). 거부는 알림으로 보인다. |
 | 파일 겹침 예측으로 병렬 쓰기를 허용하지 않는다. | 겹침 예측은 추정이라 충돌을 막지 못하기 때문이다. |
@@ -250,6 +251,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 판단 뒤 채팅 상태가 바뀌었으면 한 번 다시 판단하고, 또 바뀌면 대기로 둔다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `revision_conflict_supersedes_old_judgment_and_reroutes_once`, `second_conflict_puts_input_in_queue_without_another_router_call` |
 | router 호출이 도는 동안에도 다른 요청을 바로 처리하고, 판단 중 멈춤이나 취소가 있으면 늦게 온 판단은 적용하지 않는다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `requests_are_answered_while_a_judgment_is_in_flight`, `saturn-terminal/engine/src/lifecycle/decision.rs`의 `stop_while_judging_holds_the_input_and_drops_the_late_judgment` |
 | 쓰기 권한 에이전트는 같은 작업 폴더에서 한 번에 하나만 실행한다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `relation_answer_to_new_task_waits_for_the_write_turn_then_starts` |
+| 상하위 작업 폴더나 같은 더한 폴더를 가진 채팅의 쓰기 작업도 한 번에 하나만 실행하고, 이름의 앞부분만 같은 폴더는 따로 실행한다. 링크를 푼 경로로 비교한다. | `saturn-terminal/engine/src/lifecycle/write_scope.rs`의 `write_in_a_subfolder_waits_for_a_write_in_the_parent_folder`, `write_in_the_parent_folder_waits_for_a_write_in_a_subfolder`, `writes_with_a_shared_added_folder_wait_for_each_other`, `write_in_a_folder_that_only_shares_a_name_prefix_runs_at_once`, `write_in_a_symlink_to_a_subfolder_waits_for_a_write_in_the_parent_folder`, `saturn-terminal/core/src/queue/tests.rs`의 `try_acquire_overlapping_scopes_returns_false`, `try_acquire_shared_added_folder_returns_false` |
 | 취소는 에이전트에 보내기 전 입력에만 적용한다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `cancel_applies_only_before_the_input_is_sent` |
 | 바로 보내기는 router를 부르지 않고 끼워 넣기를 시도하며, 안 되면 대기열 맨 앞에 둔다. | `saturn-terminal/engine/src/lifecycle/send_now.rs`의 `send_now_steers_into_the_running_turn_without_calling_the_router`, `send_now_does_not_need_the_router_to_be_up`, `send_now_that_cannot_steer_goes_first_in_the_queue`, `send_now_without_verified_steer_goes_back_to_waiting`, `send_now_on_a_sent_input_is_refused`, `saturn-terminal/core/src/queue/tests.rs`의 `send_now_steers_a_running_task_ahead_of_earlier_waiting_inputs`, `send_now_that_cannot_steer_waits_first_in_line`, `send_now_refuses_inputs_that_are_not_waiting` |
 | 충돌로 판단한 입력은 대기시키지 않고 진행 중인 턴에 끼워 넣는다. | `saturn-terminal/core/src/routers/tests.rs`의 `decide_route_conflicts_steers_and_marks_the_conflict`, `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `conflict_input_is_steered_into_the_running_turn` |

@@ -118,6 +118,29 @@ impl Flow {
     pub(super) async fn open_other_chat(&mut self) -> OtherChat {
         let workdir = self.fixture.workdir.with_file_name("other-work");
         std::fs::create_dir_all(&workdir).unwrap();
+        let (chat, fake, _) = self.submit_in_chat_at(workdir, &[]).await;
+        let agent = self
+            .engine
+            .flow
+            .live
+            .values()
+            .find(|live| {
+                self.engine
+                    .session_chat(live.session)
+                    .is_ok_and(|owner| owner == chat)
+            })
+            .map(|live| live.agent)
+            .expect("a session should be open in the other chat");
+        OtherChat { chat, fake, agent }
+    }
+
+    /// `workdir`을 작업 폴더로 하고 `dirs`를 더한 두 번째 채팅을 `OTHER_CLIENT`로 붙여 입력 하나를 보낸다. 입력이
+    /// 바로 실행되는지 기다리는지는 돌려준 입력 번호의 상태로 본다. router 답이 하나 더 필요하다.
+    pub(super) async fn submit_in_chat_at(
+        &mut self,
+        workdir: PathBuf,
+        dirs: &[PathBuf],
+    ) -> (ChatId, FakeProvider, InputId) {
         let chat = self
             .engine
             .store
@@ -131,6 +154,9 @@ impl Flow {
                 vec![("PATH".to_owned(), "/nonexistent".to_owned())],
             ),
         );
+        for dir in dirs {
+            self.engine.register_dir(chat, dir.clone()).await.unwrap();
+        }
         self.engine.attachments.insert(
             OTHER_CLIENT,
             Attachment {
@@ -153,19 +179,16 @@ impl Flow {
             .await
             .unwrap();
         self.settle().await;
-        let agent = self
-            .engine
-            .flow
-            .live
-            .values()
-            .find(|live| {
-                self.engine
-                    .session_chat(live.session)
-                    .is_ok_and(|owner| owner == chat)
+        let (entries, _) = self.engine.store.recent_history(chat, 500).await.unwrap();
+        let input = entries
+            .into_iter()
+            .filter_map(|entry| match entry {
+                crate::store::HistoryEntry::Input { input, .. } => Some(input),
+                crate::store::HistoryEntry::Event { .. } => None,
             })
-            .map(|live| live.agent)
-            .expect("a session should be open in the other chat");
-        OtherChat { chat, fake, agent }
+            .max()
+            .expect("the other chat should have accepted the input");
+        (chat, fake, input)
     }
 
     /// 열려 있는 가짜 Claude가 낸 것처럼 이벤트를 처리한다.
@@ -342,6 +365,7 @@ impl Flow {
             text: new.text,
             settings: new.settings,
             permission: new.permission,
+            write_scope: self.engine.write_scope_of(new.chat, &new.workdir),
             workdir: new.workdir,
             pinned_model: None,
             skip_relation: false,

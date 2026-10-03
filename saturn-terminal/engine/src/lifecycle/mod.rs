@@ -26,6 +26,7 @@ mod support;
 mod switch_round_trip;
 mod target_model;
 mod turn_end;
+mod write_scope;
 
 use std::future::Future;
 use std::path::{Path, PathBuf};

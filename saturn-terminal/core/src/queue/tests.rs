@@ -1,8 +1,10 @@
-use std::path::Path;
-
 use super::*;
 
 const CHAT: ChatId = ChatId(1);
+
+fn scope(paths: &[&str]) -> Vec<PathBuf> {
+    paths.iter().map(PathBuf::from).collect()
+}
 
 fn input(id: u64, permission: Permission) -> QueuedInput {
     QueuedInput {
@@ -12,6 +14,7 @@ fn input(id: u64, permission: Permission) -> QueuedInput {
         settings: SettingsRevision(1),
         permission,
         workdir: PathBuf::from("/work"),
+        write_scope: vec![PathBuf::from("/work")],
         pinned_model: None,
         skip_relation: false,
         state: InputState::Queued,
@@ -826,7 +829,7 @@ fn close_held_releases_write_gate() {
     assert!(
         queue
             .write_gate()
-            .try_acquire(Path::new("/work"), AgentId(8))
+            .try_acquire(&scope(&["/work"]), AgentId(8))
     );
 }
 
@@ -846,7 +849,7 @@ fn start_task_write_conflict_keeps_task_pending() {
     assert!(queue.next_to_send().is_some());
     queue
         .write_gate()
-        .try_acquire(Path::new("/work"), AgentId(9));
+        .try_acquire(&scope(&["/work"]), AgentId(9));
 
     let result = queue.start_task(TaskId(1), AgentId(1));
 
@@ -858,11 +861,11 @@ fn start_task_write_conflict_keeps_task_pending() {
 #[test]
 fn try_acquire_other_agent_same_workdir_returns_false() {
     let mut gate = WriteGate::default();
-    assert!(gate.try_acquire(Path::new("/work"), AgentId(1)));
+    assert!(gate.try_acquire(&scope(&["/work"]), AgentId(1)));
 
-    let same = gate.try_acquire(Path::new("/work"), AgentId(1));
-    let other = gate.try_acquire(Path::new("/work"), AgentId(2));
-    let elsewhere = gate.try_acquire(Path::new("/other"), AgentId(2));
+    let same = gate.try_acquire(&scope(&["/work"]), AgentId(1));
+    let other = gate.try_acquire(&scope(&["/work"]), AgentId(2));
+    let elsewhere = gate.try_acquire(&scope(&["/other"]), AgentId(2));
 
     assert!(same);
     assert!(!other);
@@ -1007,7 +1010,7 @@ fn hold_unsent_on_an_idle_task_turn_frees_the_write_lock() {
     assert!(
         queue
             .write_gate()
-            .try_acquire(Path::new("/work"), AgentId(8))
+            .try_acquire(&scope(&["/work"]), AgentId(8))
     );
     assert_eq!(queue.resume(CHAT, Some(task)), Vec::<TaskId>::new());
     assert_eq!(state_of(&queue, 2), InputState::Queued);
@@ -1061,9 +1064,31 @@ fn has_waiting_and_inputs_in_state_follow_the_chat() {
 #[test]
 fn release_frees_workdir() {
     let mut gate = WriteGate::default();
-    gate.try_acquire(Path::new("/work"), AgentId(1));
+    gate.try_acquire(&scope(&["/work"]), AgentId(1));
 
     gate.release(AgentId(1));
 
-    assert!(gate.try_acquire(Path::new("/work"), AgentId(2)));
+    assert!(gate.try_acquire(&scope(&["/work"]), AgentId(2)));
+}
+
+// #327
+#[test]
+fn try_acquire_overlapping_scopes_returns_false() {
+    let mut gate = WriteGate::default();
+    assert!(gate.try_acquire(&scope(&["/repo"]), AgentId(1)));
+
+    assert!(!gate.try_acquire(&scope(&["/repo/sub"]), AgentId(2)));
+    assert!(!gate.try_acquire(&scope(&["/other", "/repo/sub/deep"]), AgentId(2)));
+    assert!(gate.try_acquire(&scope(&["/repo-extra"]), AgentId(3)));
+    assert!(gate.try_acquire(&scope(&["/elsewhere"]), AgentId(4)));
+}
+
+// #327
+#[test]
+fn try_acquire_shared_added_folder_returns_false() {
+    let mut gate = WriteGate::default();
+    assert!(gate.try_acquire(&scope(&["/a", "/shared"]), AgentId(1)));
+
+    assert!(!gate.try_acquire(&scope(&["/b", "/shared"]), AgentId(2)));
+    assert!(gate.try_acquire(&scope(&["/b"]), AgentId(2)));
 }

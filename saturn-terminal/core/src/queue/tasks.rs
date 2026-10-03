@@ -142,7 +142,7 @@ impl Queue {
         let slot = &self.tasks[index];
         if slot.phase == TaskPhase::Pending
             && slot.permission == Permission::Write
-            && !self.gate.try_acquire(&slot.workdir, agent)
+            && !self.gate.try_acquire(&slot.write_scope, agent)
         {
             return Err(QueueError::WriteConflict(task));
         }

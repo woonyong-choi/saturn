@@ -59,6 +59,8 @@ pub struct QueuedInput {
     /// 접수 때 고정한다.
     pub permission: Permission,
     pub workdir: PathBuf,
+    /// 쓰기 잠금이 겹침을 보는 범위. 작업 폴더와 더한 폴더를 정규화한 경로이고 접수 때 고정한다.
+    pub write_scope: Vec<PathBuf>,
     /// 사용자가 고정한 모델이나 router가 고른 모델. 있으면 그 모델로 보내고 router 호출에서 모델 질문을 뺀다.
     pub pinned_model: Option<String>,
     /// 관계 판단 없이 대기하고, 보낼 때 router를 한 번 부른다.
@@ -92,7 +94,7 @@ struct TaskSlot {
     chat: ChatId,
     agent: Option<AgentId>,
     permission: Permission,
-    workdir: PathBuf,
+    write_scope: Vec<PathBuf>,
     is_main: bool,
     was_interrupted: bool,
     phase: TaskPhase,
