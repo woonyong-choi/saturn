@@ -67,7 +67,7 @@ Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `satu
 
 ## 개발
 
-저장소 루트에서 다음 명령을 실행하세요. CI는 아직 없습니다.
+저장소 루트에서 다음 명령을 실행하세요. CI가 모든 PR에서 `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`와 `saturn-protocol/generated` 최신 여부를 검사합니다.
 
 ```sh
 cargo build --workspace
