@@ -229,6 +229,7 @@ fn decide_route_relation_low_confidence_queues() {
     let decision = decide(&request, &response, Method::Jev);
 
     assert_eq!(decision.disposition, Disposition::Queue);
+    assert!(!decision.is_conflict);
     assert!(has_fallback(&decision, "relation_to_running"));
 }
 
@@ -250,6 +251,30 @@ fn decide_route_refines_and_steer_steers() {
     let decision = decide(&request, &response, Method::Jev);
 
     assert_eq!(decision.disposition, Disposition::Steer);
+    assert!(decision.keep_current);
+    assert!(!decision.is_conflict);
+}
+
+// 근거: #36 결정, 충돌은 대기시키지 않고 끼워 넣는다
+#[test]
+fn decide_route_conflicts_steers_and_marks_the_conflict() {
+    let request = request(true, false);
+    let response = response(vec![
+        ("keep_current", Answer::Noul(0.91)),
+        (
+            "relation_to_running",
+            Answer::Choice(vec![0.01, 0.01, 0.01, 0.96, 0.01]),
+        ),
+        (
+            "steer_or_spawn",
+            Answer::Choice(vec![0.01, 0.97, 0.01, 0.01]),
+        ),
+    ]);
+
+    let decision = decide(&request, &response, Method::Jev);
+
+    assert_eq!(decision.disposition, Disposition::Steer);
+    assert!(decision.is_conflict);
     assert!(decision.keep_current);
 }
 

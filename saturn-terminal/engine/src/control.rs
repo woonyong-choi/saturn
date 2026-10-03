@@ -1,7 +1,7 @@
 //! 보내기 전 입력에 대한 사용자 요청: 새 작업으로 보내기, 바로 보내기, 취소.
 //! 설계: docs/design/input-handling.md
 
-use saturn_core::queue::QueuedInput;
+use saturn_core::queue::{QueueError, QueuedInput};
 use saturn_core::routers::calibration::Signal;
 use saturn_protocol::ids::InputId;
 use saturn_protocol::state::{Disposition, InputState};
@@ -45,6 +45,35 @@ impl Engine {
         self.notify_input(input).await;
         self.advance(record.chat).await;
         Ok(())
+    }
+
+    /// 끼워 넣기를 받지 않은 충돌 입력에 대한 사용자의 답. 멈추고 실행은 기존 멈춤 규칙을 쓴 뒤 그 입력을 재개하고,
+    /// 대기는 맨 앞 대기를 그대로 둔다. engine은 이 답 없이 멈추지 않는다.
+    ///
+    /// # Errors
+    /// `run_as_new_task`와 같고, 묻는 중이 아니면(다른 TUI가 먼저 답했거나 이미 다음 차례로 갔으면) `Queue(NotAwaitingStop)`.
+    pub(crate) async fn answer_stop_confirm(
+        &mut self,
+        client: ClientId,
+        input: InputId,
+        stop: bool,
+    ) -> Result<(), EngineError> {
+        let record = self.attached_input(client, input)?;
+        if !self.queue.awaits_stop(input) {
+            return Err(QueueError::NotAwaitingStop(input).into());
+        }
+        if !stop {
+            self.queue.keep_waiting(input)?;
+            self.notify_input(input).await;
+            self.advance(record.chat).await;
+            return Ok(());
+        }
+        self.flow.run_after_stop.push(input);
+        let stopped = self.stop_chat(record.chat).await;
+        if stopped.is_err() {
+            self.flow.run_after_stop.retain(|queued| *queued != input);
+        }
+        stopped
     }
 
     /// 보내기 전 입력만 취소한다. `전달 중`과 `반영됨` 입력은 거절한다.

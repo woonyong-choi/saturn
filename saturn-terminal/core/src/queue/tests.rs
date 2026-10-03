@@ -25,6 +25,7 @@ fn decision(revision: ChatRevision, disposition: Disposition) -> RouteDecision {
         revision,
         settings: SettingsRevision(1),
         disposition,
+        is_conflict: false,
         keep_current: true,
         model: None,
         resume_held: false,
@@ -42,6 +43,36 @@ fn accept_routed(queue: &mut Queue, id: u64, permission: Permission, disposition
     queue
         .apply(InputId(id), &decision(revision, disposition), revision)
         .expect("apply should succeed");
+}
+
+/// 관계 판단이 `conflicts`라 끼워 넣기로 정한 입력.
+fn accept_conflict(queue: &mut Queue, id: u64, permission: Permission) {
+    queue.accept(input(id, permission));
+    let revision = queue.revision(CHAT);
+    let conflict = RouteDecision {
+        is_conflict: true,
+        ..decision(revision, Disposition::Steer)
+    };
+    queue
+        .apply(InputId(id), &conflict, revision)
+        .expect("apply should succeed");
+}
+
+/// 끼워 넣기로 내주기만 하고 전송 중으로 바꾸지 않는다(provider가 끼워 넣기를 지원하지 않는 경우).
+fn deliver_steer_without_delivering(queue: &mut Queue) -> InputId {
+    let Some(SendAction::Steer { input, .. }) = queue.next_to_send() else {
+        panic!("input should steer");
+    };
+    input
+}
+
+/// 끼워 넣기로 내준 입력을 전송 중으로 바꾼다.
+fn deliver_steer(queue: &mut Queue) -> InputId {
+    let Some(SendAction::Steer { input, .. }) = queue.next_to_send() else {
+        panic!("input should steer");
+    };
+    queue.set_state(input, InputState::Delivering).unwrap();
+    input
 }
 
 fn start_running(queue: &mut Queue, id: u64, permission: Permission, agent: u64) -> TaskId {
@@ -419,6 +450,88 @@ fn refused_steer_returns_to_the_front_as_a_queued_input() {
             input: InputId(3),
             ..
         })
+    ));
+}
+
+// 근거: #36 결정 (충돌 입력만 끼워 넣기 거절 때 사용자에게 묻고, 그 밖의 입력은 #60 규칙 그대로)
+#[test]
+fn refused_steer_asks_the_user_only_for_a_conflict_input() {
+    let mut queue = Queue::new();
+    start_running(&mut queue, 1, Permission::Write, 7);
+    accept_conflict(&mut queue, 2, Permission::Write);
+    accept_routed(&mut queue, 3, Permission::Write, Disposition::Steer);
+    let conflict = deliver_steer(&mut queue);
+    let plain = deliver_steer(&mut queue);
+
+    let asks_for_conflict = queue.return_refused_steer(conflict).unwrap();
+    let asks_for_plain = queue.return_refused_steer(plain).unwrap();
+
+    assert!(asks_for_conflict);
+    assert!(!asks_for_plain);
+    assert!(queue.awaits_stop(conflict));
+    assert_eq!(
+        queue.input(conflict).unwrap().reason,
+        Some(QueueReason::ConfirmStop)
+    );
+    assert_eq!(queue.input(plain).unwrap().reason, None);
+    assert_eq!(queue.next_to_send(), None);
+    assert_eq!(
+        queue.input(conflict).unwrap().reason,
+        Some(QueueReason::ConfirmStop)
+    );
+}
+
+#[test]
+fn deferred_steer_asks_the_user_only_for_a_conflict_input() {
+    let mut queue = Queue::new();
+    start_running(&mut queue, 1, Permission::Write, 7);
+    accept_conflict(&mut queue, 2, Permission::Write);
+    accept_routed(&mut queue, 3, Permission::Write, Disposition::Steer);
+    let conflict = deliver_steer_without_delivering(&mut queue);
+    let plain = deliver_steer_without_delivering(&mut queue);
+
+    assert!(queue.defer_steer(conflict).unwrap());
+    assert!(!queue.defer_steer(plain).unwrap());
+}
+
+#[test]
+fn keep_waiting_ends_the_question_and_the_input_takes_the_next_turn() {
+    let mut queue = Queue::new();
+    start_running(&mut queue, 1, Permission::Write, 7);
+    accept_conflict(&mut queue, 2, Permission::Write);
+    let input = deliver_steer(&mut queue);
+    queue.return_refused_steer(input).unwrap();
+
+    queue.keep_waiting(input).unwrap();
+
+    assert!(!queue.awaits_stop(input));
+    assert_eq!(queue.next_to_send(), None);
+    assert_eq!(queue.input(input).unwrap().reason, None);
+    queue.finish_task(AgentId(7));
+    assert!(matches!(
+        queue.next_to_send(),
+        Some(SendAction::NewTurn {
+            input: InputId(2),
+            ..
+        })
+    ));
+}
+
+#[test]
+fn stop_ends_the_question_and_a_second_answer_is_refused() {
+    let mut queue = Queue::new();
+    start_running(&mut queue, 1, Permission::Write, 7);
+    accept_conflict(&mut queue, 2, Permission::Write);
+    let input = deliver_steer(&mut queue);
+    queue.return_refused_steer(input).unwrap();
+
+    queue.stop(CHAT);
+
+    assert!(!queue.awaits_stop(input));
+    assert_eq!(state_of(&queue, 2), InputState::Held);
+    assert!(matches!(
+        queue.keep_waiting(input),
+        Err(QueueError::NotAwaitingStop(InputId(2)))
     ));
 }
 

@@ -26,6 +26,16 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("쓰기 차례", "Waiting for write turn"),
     ("맥락 정리 뒤", "After compaction"),
     ("모든 작업 뒤", "After all tasks"),
+    ("멈출지 확인 중", "Confirming stop"),
+    (
+        "지금 멈추고 새 입력을 실행할까요?",
+        "Stop now and run the new input?",
+    ),
+    ("멈추고 실행", "Stop and run"),
+    (
+        "↑↓ 이동 · Enter 선택 · Esc 대기",
+        "↑↓ move · Enter select · Esc queue",
+    ),
     ("[보내기]", "[send]"),
     ("[취소]", "[cancel]"),
     ("보류", "Held"),

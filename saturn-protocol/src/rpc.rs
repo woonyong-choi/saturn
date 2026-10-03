@@ -91,6 +91,12 @@ pub enum Request {
     SendNow {
         input: InputId,
     },
+    /// 끼워 넣기를 받지 않은 충돌 입력(`QueueReason::ConfirmStop`)에 답한다. `stop`이 참이면 멈춘 뒤 그 입력을
+    /// 실행하고, 거짓이면 대기열 맨 앞에서 현재 작업이 끝나길 기다린다.
+    AnswerStopConfirm {
+        input: InputId,
+        stop: bool,
+    },
     /// 보내기 전 입력만.
     CancelInput {
         input: InputId,

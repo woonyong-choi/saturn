@@ -24,6 +24,7 @@ use crate::view::router_key_prompt::RouterKeyPromptView;
 use crate::view::router_version::RouterVersionView;
 use crate::view::start_screen::StartScreenView;
 use crate::view::status_board::{self, StatusBoardView};
+use crate::view::stop_confirm::StopConfirmView;
 use crate::view::task_list::TaskListView;
 use crate::view::train_confirm::TrainConfirmView;
 use crate::view::transcript::TranscriptView;
@@ -116,6 +117,9 @@ impl App {
             }
             Some(Window::TrainConfirm(confirm)) => {
                 TrainConfirmView { confirm, lang }.render(frame, area);
+            }
+            Some(Window::StopConfirm(confirm)) => {
+                StopConfirmView { confirm, lang }.render(frame, area);
             }
             Some(Window::Model(picker)) => ModelPickerView { picker, lang }.render(frame, area),
             Some(Window::Shortcuts) => render_shortcuts(self, frame, area),

@@ -35,6 +35,9 @@ pub enum QueueError {
     TaskNotFound(TaskId),
     #[error("write task workdir is already held: {0:?}")]
     WriteConflict(TaskId),
+    /// 다른 TUI가 먼저 답했거나 입력이 이미 다음 차례로 갔다.
+    #[error("input is not waiting for a stop answer: {0:?}")]
+    NotAwaitingStop(InputId),
 }
 
 /// 접수 때 고정해 쓰기 규칙을 결정론으로 판정한다.
@@ -101,6 +104,10 @@ struct Entry {
     disposition: Option<Disposition>,
     /// 내줬지만 아직 `Delivering`이 아닌 입력으로, 두 번 내주지 않는다.
     is_dispatched: bool,
+    /// 관계 판단이 `conflicts`라 끼워 넣기로 정한 입력. provider가 끼워 넣기를 받지 않으면 한 번 묻는다.
+    is_conflict: bool,
+    /// 끼워 넣기를 받지 않은 충돌 입력이 멈추고 실행할지 사용자의 답을 기다린다. 기다리는 동안 대기열 맨 앞에서 차례를 기다린다.
+    awaits_stop: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -161,6 +168,8 @@ impl Queue {
             },
             disposition: None,
             is_dispatched: false,
+            is_conflict: false,
+            awaits_stop: false,
         });
         self.refresh_router_order(chat);
     }
@@ -202,6 +211,7 @@ impl Queue {
         entry.input.state = InputState::Queued;
         entry.input.reason = None;
         entry.disposition = Some(decision.disposition);
+        entry.is_conflict = decision.is_conflict && decision.disposition == Disposition::Steer;
         // 모델 선택은 새 작업에만 쓴다. 이어 가기(대기)와 끼워 넣기는 현재 모델을 유지한다
         if decision.disposition == Disposition::NewTask && decision.model.is_some() {
             entry.input.pinned_model.clone_from(&decision.model);

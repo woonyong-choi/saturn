@@ -16,6 +16,7 @@ use crate::view::permission::PermissionQueue;
 use crate::view::resume_prompt::ResumeOutcome;
 use crate::view::router_version::RouterVersionCommand;
 use crate::view::status_board::Button;
+use crate::view::stop_confirm::StopChoice;
 use crate::view::task_list::TaskListCommand;
 use crate::view::train_confirm::TrainChoice;
 use crate::view::transcript::{Transcript, TranscriptCell};
@@ -308,6 +309,31 @@ impl App {
         };
         self.window = None;
         vec![Effect::Send(Request::ConfirmTrain { proceed })]
+    }
+}
+
+impl App {
+    /// `Esc`와 `Ctrl+C`는 작업을 멈추지 않는 `대기`와 같다. 답은 engine이 입력 상태로 알려 창을 지운다.
+    pub(super) fn on_stop_confirm_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(Window::StopConfirm(confirm)) = &mut self.window else {
+            return Vec::new();
+        };
+        let stop = match action {
+            Action::Up => {
+                confirm.up();
+                return Vec::new();
+            }
+            Action::Down => {
+                confirm.down();
+                return Vec::new();
+            }
+            Action::Confirm => confirm.selected == StopChoice::StopAndRun,
+            Action::Close => false,
+            _ => return Vec::new(),
+        };
+        let input = confirm.input;
+        self.window = None;
+        vec![Effect::Send(Request::AnswerStopConfirm { input, stop })]
     }
 }
 

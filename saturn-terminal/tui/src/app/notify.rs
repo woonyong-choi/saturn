@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{ChatId, InputId, JudgmentId, SettingsRevision, TaskId, TaskLabel};
 use saturn_protocol::rpc::{Alert, ChatNotice, ExitPlan, Notification, SettingsWarning};
-use saturn_protocol::state::Disposition;
+use saturn_protocol::state::{Disposition, InputState, QueueReason};
 
 use super::{App, Effect, Window};
 use crate::state::{
@@ -22,6 +22,7 @@ use crate::view::resume_prompt::ResumePrompt;
 use crate::view::router_key_prompt::RouterKeyPrompt;
 use crate::view::router_version::RouterVersionRow;
 use crate::view::start_screen::StartInfo;
+use crate::view::stop_confirm::StopConfirm;
 use crate::view::task_list::ChatGroup;
 use crate::view::train_confirm::{TrainChoice, TrainConfirm};
 use crate::view::transcript::{TranscriptCell, delivery_badge, echo_cell, result_cell};
@@ -259,6 +260,7 @@ impl App {
     fn on_input_changed(&mut self, update: InputUpdate) {
         let cell = echo_cell(&update);
         let (input, state) = (update.input, update.state);
+        self.sync_stop_confirm(&update);
         match self.chat.apply_input(update) {
             Change::Echo { .. } => self.push_cell(cell),
             _ => {
@@ -266,6 +268,22 @@ impl App {
                     self.transcript.set_badge(input, badge);
                 }
             }
+        }
+    }
+
+    /// 멈출지 묻는 입력이 오면 창을 띄우고, 그 입력이 답을 받아 다른 상태가 되면(다른 TUI가 먼저 답한 경우 포함) 창을 지운다.
+    fn sync_stop_confirm(&mut self, update: &InputUpdate) {
+        let is_asking =
+            update.state == InputState::Queued && update.reason == Some(QueueReason::ConfirmStop);
+        let shown = match &self.window {
+            Some(Window::StopConfirm(confirm)) => Some(confirm.input),
+            _ => None,
+        };
+        if is_asking && shown != Some(update.input) {
+            let text = update.text.clone();
+            self.open_window(Window::StopConfirm(StopConfirm::new(update.input, text)));
+        } else if !is_asking && shown == Some(update.input) {
+            self.window = None;
         }
     }
 

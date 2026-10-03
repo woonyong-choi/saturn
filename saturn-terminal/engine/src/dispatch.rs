@@ -124,6 +124,7 @@ impl Engine {
 
     /// provider가 끼워 넣기를 거절했다(보내지 않음이 확정). 다시 끼워 넣지 않고 입력을 대기열 맨 앞으로 되돌려
     /// 현재 작업이 끝난 뒤 다음 차례에 보낸다. 입력을 거절로 끝내지 않는다([#60](https://github.com/woonyong-choi/saturn/issues/60) 결정).
+    /// 충돌 입력이면 큐가 `ConfirmStop` 사유를 달아 알림이 사용자에게 멈추고 실행할지 묻는다([#36](https://github.com/woonyong-choi/saturn/issues/36) 결정).
     async fn return_refused_steer(
         &mut self,
         delivery: &Delivery,
@@ -148,8 +149,10 @@ impl Engine {
         input: InputId,
         provider: Option<Provider>,
     ) -> Result<(), EngineError> {
-        self.queue.defer_steer(input)?;
-        if let Some(provider) = provider {
+        let is_asking = self.queue.defer_steer(input)?;
+        if is_asking {
+            self.notify_input(input).await;
+        } else if let Some(provider) = provider {
             self.notify_alert(chat, Alert::SteerNotReady { provider })
                 .await;
         }

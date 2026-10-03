@@ -39,6 +39,7 @@ pub const ROUTER_CONNECTION: &str = "라우터 연결 기다림";
 pub const WRITE_TURN: &str = "쓰기 차례";
 pub const AFTER_COMPACTION: &str = "맥락 정리 뒤";
 pub const AFTER_ALL_TASKS: &str = "모든 작업 뒤";
+pub const CONFIRM_STOP: &str = "멈출지 확인 중";
 pub const BUTTON_SEND: &str = "[보내기]";
 pub const BUTTON_CANCEL: &str = "[취소]";
 
@@ -165,6 +166,9 @@ pub const EXIT_STOP: &str = "멈추기";
 pub const EXIT_HINT: &str = "↑↓ 이동 · Enter 선택 · Esc 닫지 않기";
 /// TUI를 닫은 뒤 터미널에 남기는 한 줄. `{count}`는 계속 처리될 작업 수.
 pub const EXIT_BACKGROUND: &str = "작업 {count}개 계속 실행 중 · saturn으로 다시 여세요";
+pub const STOP_CONFIRM_TITLE: &str = "지금 멈추고 새 입력을 실행할까요?";
+pub const STOP_CONFIRM_RUN: &str = "멈추고 실행";
+pub const STOP_CONFIRM_HINT: &str = "↑↓ 이동 · Enter 선택 · Esc 대기";
 pub const RESUME_TITLE: &str = "보류된 작업이 있습니다";
 pub const RESUME_CONFIRM: &str = "고른 작업 이어서";
 pub const PERMISSION_REASON: &str = "이유";
