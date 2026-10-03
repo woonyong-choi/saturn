@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 6;
+pub(crate) const SCHEMA_VERSION: u32 = 7;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,7 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6];
+pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -192,6 +192,26 @@ CREATE TABLE chat_dirs (
 const V6: &str = r#"
 ALTER TABLE sessions ADD COLUMN model TEXT;
 ALTER TABLE chats ADD COLUMN pinned_model TEXT;
+"#;
+
+/// `held_tasks`는 멈출 때 실행 중이던 보류 작업이다. 작업 번호는 첫 입력 번호라 engine을 다시 켜도 같다.
+/// `interrupted_subagents`는 크래시로 끊긴 하위 에이전트이고, `cleaned`는 provider에 정리를 넘겼다는 뜻이다.
+const V7: &str = r#"
+CREATE TABLE held_tasks (
+    task_id INTEGER PRIMARY KEY,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    agent_id INTEGER NOT NULL,
+    input_id INTEGER NOT NULL REFERENCES inputs(id) ON DELETE CASCADE
+);
+CREATE INDEX held_tasks_chat ON held_tasks(chat_id);
+CREATE TABLE interrupted_subagents (
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    agent_id INTEGER NOT NULL,
+    subagent TEXT NOT NULL,
+    cleaned INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (agent_id, subagent)
+);
+CREATE INDEX interrupted_subagents_chat ON interrupted_subagents(chat_id);
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -532,5 +552,31 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
+    }
+
+    #[tokio::test]
+    async fn v6_file_migrates_to_recovery_tables_keeping_chats_and_backing_up() {
+        let (dir, store) = temp_store_at(6).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (6, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
+        assert_eq!(
+            store
+                .chat_workdir(saturn_protocol::ids::ChatId(1))
+                .await
+                .unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.held_tasks().await.unwrap().is_empty());
+        assert!(store.interrupted_subagents().await.unwrap().is_empty());
     }
 }

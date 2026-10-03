@@ -207,9 +207,11 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 5. 실행 중으로 남은 하위 에이전트는 기록에서 `끊김`(`SubagentInterrupted`)으로 바꾼다. 끝 신호가 없는 `SubagentStarted`가 대상이다. 다시 할지는 사용자가 정하고, 자동으로 다시 실행하지 않는다.
 6. 보류한 작업마다 `/continue` 제안 한 줄(`ResumeSuggested`)을 보낸다. 크래시 직후에는 붙은 TUI가 없으므로 그 채팅에 처음 붙는 TUI에 보류 표시와 함께 한 번 보내고, 그 사이 재개하거나 닫은 작업은 뺀다.
 
-끊긴 하위 에이전트는 provider가 session을 다시 열 때 되살리지 못하게 막는다. 보류한 session을 `/continue`로 다시 열 때 `engine`이 끊긴 하위 에이전트 목록을 provider에 넘기고, provider별 정리는 [provider 연결과 session](providers-and-sessions.md#크래시-뒤-끊긴-하위-에이전트)에 있다. 다시 연 뒤 끊긴 하위 에이전트의 이벤트가 오면 provider가 업데이트로 동작을 바꿔 다시 실행한 것이다. `engine`은 그 이벤트를 기록하지 않고, 작업 중이면 채팅의 작업을 멈추고 아니면 그 하위 에이전트에 멈춤 신호를 보내며, TUI에 `InterruptedSubagentReturned`를 한 번 알린다. 이 목록은 크래시를 복구한 `engine` 프로세스의 메모리에만 있다.
+끊긴 하위 에이전트는 provider가 session을 다시 열 때 되살리지 못하게 막는다. 보류한 session을 `/continue`로 다시 열 때 `engine`이 끊긴 하위 에이전트 목록을 provider에 넘기고, provider별 정리는 [provider 연결과 session](providers-and-sessions.md#크래시-뒤-끊긴-하위-에이전트)에 있다. 다시 연 뒤 끊긴 하위 에이전트의 이벤트가 오면 provider가 업데이트로 동작을 바꿔 다시 실행한 것이다. `engine`은 그 이벤트를 기록하지 않고, 작업 중이면 채팅의 작업을 멈추고 아니면 그 하위 에이전트에 멈춤 신호를 보내며, TUI에 `InterruptedSubagentReturned`를 한 번 알린다. 끊긴 하위 에이전트 목록은 기록 저장소(표 `interrupted_subagents`)에 남기므로 `engine`을 다시 켜도 같은 정리와 막기가 이어진다. provider에 정리를 넘긴 뒤에는 `cleaned`로 표시해 다시 넘기지 않고 감시만 이어 가며, 에이전트의 session이 끝나거나 보류를 닫으면 지운다.
 
 자동으로 이어 갈 때 크래시 전에 보낸 패킷을 다시 보내지 않는다. 이미 반영된 입력을 두 번 실행하지 않기 위해서다. 보류한 실행은 사용자가 `/continue`로 이을 때까지 멈춰 있다. 입력 없이 provider가 시작한 턴은 확인 입력을 만들 원문이 없어 session을 보류하고 실행을 닫기만 한다. 한 실행의 복구가 실패하면 경고를 남기고 나머지를 복구하며, 실패한 실행은 끝나지 않은 채 남아 다음 시작 때 다시 시도한다. TUI가 보류 목록을 묻는 방식은 [TUI](tui.md)에 있다.
+
+보류한 작업은 기록 저장소에도 남겨(표 `held_tasks`, [기록 저장과 보존](records.md)) `engine`이 정상 종료했다 다시 떠도 이어 간다. 크래시 복구뿐 아니라 멈춤과 `on_exit = "stop"`으로 보류한 작업도 멈출 때 실행 중이던 것이면 같다. 시작할 때 복구 1번보다 먼저 이 기록을 읽어 작업을 보류로 되살리고, 되살린 작업마다 그 채팅에 처음 붙는 TUI에 `/continue`를 제안한다. 제안은 `engine` 프로세스마다 채팅의 첫 TUI에 한 번 보내고, 사용자가 재개하거나 닫기 전까지 `engine`이 다시 뜰 때마다 되풀이한다. 보류가 남아 있다는 사실을 잊지 않게 하기 위해서다. 재개하거나 닫은 작업은 그때 기록에서 지우므로 다시 제안하지 않는다. 보내기 전에 멈춰 입력만 보류된 작업은 기록하지 않는다. 그 입력을 되살리는 일은 대기열 복원의 몫이고 이 절은 다루지 않는다.
 
 현재 `effect_scope`는 `network-possible`로 시작하고 `proven-by-*`로 올리는 증명은 아직 없다. 그래서 지금은 모든 크래시 실행이 보류로 남는다.
 
@@ -230,6 +232,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | provider 흐름의 관찰 중단 | `effect_scope`를 `unobserved`로 기록하고 자동으로 이어 가지 않는다. |
 | 크래시 뒤 증명되지 않은 `effect_scope` | 자동으로 재개하지 않고 보류한 뒤 재개를 한 줄로 제안한다. |
 | 크래시 뒤 끊긴 하위 에이전트의 이벤트가 provider에서 다시 옴 | 이벤트를 기록하지 않고 작업을 멈추며 한 번 알린다. |
+| 보류 작업이나 끊긴 하위 에이전트를 기록 저장소에 쓰지 못함 | 경고를 남기고 멈춤과 복구는 계속한다. 그 정보는 `engine`을 다시 켜면 사라진다. |
 | 크래시 뒤 한 실행의 복구 실패 | 경고를 남기고 다른 실행은 복구한다. 그 실행은 끝나지 않은 채 남아 다음 시작 때 다시 시도한다. |
 | 에이전트가 실행한 중첩 `saturn` | 실행을 거절한다. |
 | 한 채팅의 provider 요청이 느리거나 응답하지 않음 | 요청은 연결 작업이 실행하고 요청 처리 루프는 결과 메시지만 받으므로, 다른 채팅의 요청과 같은 채팅의 멈춤 요청은 기다리지 않고 처리한다([provider 요청 작업](providers-and-sessions.md#provider-요청-작업)). 응답 대기에는 요청 종류별 제한(바로 돌아와야 하는 요청 10초, 시작·열기 요청 60초, 초안)을 두고 턴은 자동으로 끊지 않는다. 응답 없는 요청의 처리는 [provider 오류 처리](providers-and-sessions.md#오류-처리)를 따른다. |
@@ -263,6 +266,8 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 크래시 뒤 실행 중으로 남은 하위 에이전트는 끊김으로 기록하고 자동으로 다시 하지 않는다. | `saturn-terminal/engine/src/lifecycle/child_sessions.rs`의 `running_subagent_left_by_a_crash_is_recorded_as_interrupted` |
 | 보류한 session을 다시 열 때 끊긴 하위 에이전트 목록을 provider에 한 번만 넘긴다. | `saturn-terminal/engine/src/lifecycle/child_sessions.rs`의 `reopening_after_a_crash_hands_interrupted_children_to_the_provider_once` |
 | 다시 연 뒤 끊긴 하위 에이전트의 이벤트는 기록하지 않고 작업을 멈추며 한 번 알린다. 다른 하위 에이전트는 평소처럼 처리한다. | `saturn-terminal/engine/src/lifecycle/child_sessions.rs`의 `interrupted_subagent_coming_back_stops_the_task_and_is_reported_once`, `other_subagents_after_a_crash_are_handled_as_usual` |
+| 보류한 작업(크래시 복구, 멈춤, `on_exit = "stop"`)은 `engine`이 다시 떠도 되살아나 처음 붙는 TUI에 `/continue`를 제안하고, 재개하거나 닫은 작업은 제안하지 않는다. | `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `held_task_is_suggested_again_after_the_engine_restarts`, `continue_works_after_the_engine_restarts`, `resumed_or_closed_task_is_not_suggested_after_the_engine_restarts`, `task_held_by_on_exit_stop_is_suggested_after_the_engine_restarts` |
+| 끊긴 하위 에이전트 정리 목록과 감시는 `engine`을 다시 켜도 이어지고, 정리를 넘긴 뒤에는 다시 넘기지 않으며, 보류를 닫으면 지운다. | `saturn-terminal/engine/src/lifecycle/child_sessions.rs`의 `interrupted_children_are_handed_over_after_the_engine_restarts`, `cleaned_children_are_not_handed_over_again_but_still_blocked_after_a_restart`, `interrupted_subagent_is_still_blocked_after_the_engine_restarts`, `closing_a_held_task_forgets_its_interrupted_subagents` |
 | 에이전트가 실행한 `saturn`은 거절한다. | [하위 에이전트 훅 적용 범위 측정](https://github.com/woonyong-choi/saturn/issues/23) |
 | 한 채팅의 provider 요청이 느리거나 응답하지 않아도 다른 채팅의 입력과 조회, 같은 채팅의 멈춤 요청을 바로 처리한다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_slow_start_request_does_not_stall_other_chats_or_stop`, `a_silent_provider_request_does_not_stall_other_chats_or_stop`, `a_provider_that_stops_reading_input_does_not_stall_other_chats_or_stop` |
 

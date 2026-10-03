@@ -166,3 +166,91 @@ async fn other_subagents_after_a_crash_are_handled_as_usual() {
         ProviderEvent::SubagentStarted { subagent, .. } if *subagent == sub("sub-3")
     )));
 }
+
+// #368: engine이 다시 떠도 끊긴 하위 에이전트 정리 목록이 남아 보류 session을 다시 열 때 provider에 한 번 넘어간다
+#[tokio::test]
+async fn interrupted_children_are_handed_over_after_the_engine_restarts() {
+    let mut restarted = crashed_with_a_running_subagent().await.restart().await;
+    let chat = restarted.chat;
+
+    restarted.engine.continue_held(chat, None).await.unwrap();
+    restarted.settle().await;
+
+    let opened: Vec<Vec<SubagentId>> = restarted
+        .fake
+        .calls()
+        .into_iter()
+        .filter_map(|call| match call {
+            Call::Open {
+                interrupted_children,
+                ..
+            } => Some(interrupted_children),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(opened, vec![vec![sub("sub-1")]]);
+}
+
+// #368: 한 번 정리해 넘긴 뒤 engine이 다시 떠도 같은 목록을 다시 넘기지 않지만 감시는 이어진다
+#[tokio::test]
+async fn cleaned_children_are_not_handed_over_again_but_still_blocked_after_a_restart() {
+    let mut restarted = crashed_with_a_running_subagent().await;
+    let chat = restarted.chat;
+    restarted.engine.continue_held(chat, None).await.unwrap();
+    restarted.settle().await;
+    let mut restarted = restarted.restart().await;
+    let (mut client, _) = restarted.attach_client().await;
+    restarted.engine.continue_held(chat, None).await.unwrap();
+    restarted.settle().await;
+    let agent = *restarted.engine.flow.live.keys().next().unwrap();
+
+    restarted
+        .engine
+        .on_provider_event(Provider::Claude, subagent_started(agent, "sub-1", None))
+        .await
+        .unwrap();
+
+    assert!(restarted.fake.calls().iter().all(|call| !matches!(
+        call,
+        Call::Open { interrupted_children, .. } if !interrupted_children.is_empty()
+    )));
+    assert_eq!(returned_notices(&client.window().await), 1);
+}
+
+// #368: 끊긴 하위 에이전트가 다시 뜬 engine에서 다시 오면 기록하지 않고 막고 알린다
+#[tokio::test]
+async fn interrupted_subagent_is_still_blocked_after_the_engine_restarts() {
+    let mut restarted = crashed_with_a_running_subagent().await.restart().await;
+    let chat = restarted.chat;
+    let (mut client, _) = restarted.attach_client().await;
+    restarted.engine.continue_held(chat, None).await.unwrap();
+    restarted.settle().await;
+    let agent = *restarted.engine.flow.live.keys().next().unwrap();
+    let before = ledger(&restarted).await.len();
+
+    restarted
+        .engine
+        .on_provider_event(Provider::Claude, subagent_started(agent, "sub-1", None))
+        .await
+        .unwrap();
+
+    assert_eq!(returned_notices(&client.window().await), 1);
+    assert_eq!(ledger(&restarted).await.len(), before);
+}
+
+// #368: 닫은 보류 작업의 끊긴 하위 에이전트 정보는 기록에서 지운다
+#[tokio::test]
+async fn closing_a_held_task_forgets_its_interrupted_subagents() {
+    let mut restarted = crashed_with_a_running_subagent().await;
+    let chat = restarted.chat;
+    restarted
+        .engine
+        .close_held(chat, saturn_protocol::ids::TaskId(1))
+        .await
+        .unwrap();
+
+    let restarted = restarted.restart().await;
+
+    assert!(restarted.engine.flow.interrupted_watch.is_empty());
+    assert!(restarted.engine.flow.interrupted_to_clean.is_empty());
+}

@@ -28,6 +28,7 @@
 - Codex는 부모 thread를 다시 열기 전에 기록한 끊긴 자식 thread만 보관하고 구독을 끊는다. 부모 thread는 건드리지 않는다.
 - Claude는 실행 환경에서 `CLAUDE_CODE_RESUME_INTERRUPTED_TURN`만 뺀다. [provider 설정을 바꾸지 않는 원칙](2026-09-29-minimal-provider-control.md)의 예외는 router 키 보호에 이어 이것 하나다.
 - 다시 연 뒤 끊긴 하위 에이전트의 이벤트가 오면 기록하지 않고 작업을 멈추며 화면에 알린다.
+- 끊긴 하위 에이전트 목록과 보류한 작업은 기록 저장소에 남겨 `engine`을 다시 켜도 같은 제안과 막기가 이어진다.
 
 ## 다시 볼 조건
 

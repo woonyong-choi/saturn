@@ -63,6 +63,8 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - `sessions` 표의 `model`은 session을 열 때 고른 모델이다. 고르지 않았거나 이관 전 행은 NULL이고, 입력의 모델과 다르면 새 메인 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기)). 스키마 V6에서 더했다.
 - `chats` 표의 `pinned_model`은 `/model`로 고른 채팅의 고정 모델(`<provider>/<model>`)이다. 고르지 않았으면 NULL이고 입력 접수 때 읽어 `inputs.pinned_model`에 남긴다. 고정하지 않은 입력은 새 작업으로 판단되어 router가 고른 모델(`<provider>/<model>`)을 판단을 적용할 때 같은 열에 쓴다. 스키마 V6에서 더했다.
 - `chat_dirs` 표는 채팅에 더한 폴더를 채팅 `chat_id`, 링크를 푼 절대 경로 `path`, 더한 시각 `added_at`(unix 밀리초)으로 둔다. 같은 채팅의 같은 경로는 한 행이고 행 번호 순서가 더한 순서다. 채팅을 지우면 함께 지운다. 스키마 V5에서 더했다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)).
+- `held_tasks` 표는 멈출 때 실행 중이던 보류 작업을 작업 번호 `task_id`(첫 입력 번호라 engine을 다시 켜도 같다), 채팅 `chat_id`, 에이전트 `agent_id`, 멈출 때 진행 중이던 실행을 연 입력 `input_id`로 둔다. 멈춤이나 크래시 복구가 보류할 때 쓰고, 재개하거나 닫으면 지운다. 채팅이나 입력을 지우면 함께 지운다. 입력과 에이전트가 없는 보류(보내기 전에 멈춘 입력)는 남기지 않는다. 스키마 V7에서 더했다([engine 수명과 복구](engine-lifecycle.md#크래시-뒤-복구)).
+- `interrupted_subagents` 표는 크래시로 끊긴 하위 에이전트를 채팅 `chat_id`, 메인 에이전트 `agent_id`, provider의 하위 에이전트 번호 `subagent`, provider에 정리를 넘겼는지 `cleaned`로 둔다. 같은 에이전트의 같은 하위 에이전트는 한 행이다. 에이전트의 session이 끝나거나 보류를 닫으면, 채팅을 지우면 함께 지운다. 스키마 V7에서 더했다.
 - `permission_allows` 표는 항상 허용을 작업 폴더 `workdir`, 도구 `tool`, 패턴 `pattern`, 저장 시각 `created_at`(unix 밀리초)으로 둔다. 같은 `workdir`, `tool`, `pattern`은 한 행이다. 스키마 V4에서 더했고 채팅과 상관없이 작업 폴더 단위로 쓴다([권한](permissions.md#항상-허용-저장)).
 - 패킷과 돌아온 session의 변경분은 `events` 행을 그 이벤트를 연 실행의 session과 입력 원문, 기록 시각에 이어 읽어 만든다. 이벤트 행에 session을 따로 저장하지 않기 위해서다. `sessions.delivered`는 턴이 끝날 때와 session을 열거나 바꿀 때 저장한다.
 - session과 에이전트 번호는 `meta` 표에 마지막으로 준 번호를 두고, 기록에 있는 가장 큰 번호보다 큰 값을 한 거래로 새로 준다. 번호를 다시 쓰지 않기 위해서다.
@@ -166,6 +168,8 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 스키마 V3 이관은 판단 기록 행을 보존하고 결과 신호와 물은 답 칸을 NULL로 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v2_file_migrates_to_outcome_columns_keeping_judgments` |
 | 스키마 V4 이관은 채팅 행을 보존하고 항상 허용 표를 비어 있게 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v3_file_migrates_to_permission_allows_keeping_chats` |
 | 스키마 V5 이관은 채팅 행을 보존하고 더한 폴더 표를 비어 있게 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v4_file_migrates_to_chat_dirs_keeping_chats` |
+| 스키마 V7 이관은 채팅 행을 보존하고 보류 작업 표와 끊긴 하위 에이전트 표를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v6_file_migrates_to_recovery_tables_keeping_chats_and_backing_up` |
+| 보류 작업은 작업 번호 순서로 읽히고 같은 작업은 덮어쓰며 채팅을 지우면 함께 지워진다. 끊긴 하위 에이전트는 정리를 넘겼다는 표시를 유지하며 에이전트가 끝나면 지워진다. | `saturn-terminal/engine/src/store/recovery.rs`의 `held_task_is_saved_replaced_and_deleted`, `interrupted_subagents_keep_cleaned_flag_until_the_agent_ends`, `recovery_rows_follow_the_chat_when_it_is_deleted` |
 | 더한 폴더는 채팅마다 더한 순서대로 읽히고 같은 경로는 한 번만 저장되며 채팅을 지우면 함께 지워진다. | `saturn-terminal/engine/src/store/chat_dirs.rs`의 `add_dir_is_kept_per_chat_in_added_order_without_duplicates`, `add_dir_for_a_missing_chat_is_refused`, `add_dir_rows_follow_the_chat_when_it_is_deleted` |
 | 항상 허용은 작업 폴더마다 저장 순서대로 읽히고 같은 행은 한 번만 저장된다. | `saturn-terminal/engine/src/store/permissions.rs`의 `allows_are_kept_per_workdir_in_saved_order`, `saving_the_same_allow_twice_keeps_one_row` |
 | 결과 신호와 물은 답은 같은 판단 기록에 저장하고, 신호는 한 번 확정하면 바꾸지 않으며, 물은 답은 묻지 않은 판단에 쓰지 않는다. | `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`, `record_signal_keeps_first_confirmed_value`, `record_asked_answer_keeps_first_answer`, `record_asked_answer_for_unasked_judgment_returns_not_found` |
