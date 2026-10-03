@@ -9,6 +9,7 @@ use saturn_tui::i18n::{self, Lang};
 pub(crate) mod chat;
 pub(crate) mod export;
 pub(crate) mod prune;
+pub(crate) mod resume;
 pub(crate) mod router;
 pub(crate) mod train;
 pub(crate) mod usage;

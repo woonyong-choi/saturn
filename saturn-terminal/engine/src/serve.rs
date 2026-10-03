@@ -188,6 +188,7 @@ impl Engine {
                 self.send_usage(client, scope, folder.as_deref()).await
             }
             Request::LatestChat { folder } => self.send_latest_chat(client, &folder).await,
+            Request::ListChats { folder } => self.send_chat_list(client, folder.as_deref()).await,
             Request::SetModel { chat, model } => self.set_model(client, chat, &model).await,
             Request::ListModels { chat, provider } => {
                 self.send_models(client, chat, provider).await
@@ -213,6 +214,7 @@ impl Engine {
                 Request::Attach { .. }
                     | Request::SubmitRouterKey { .. }
                     | Request::LatestChat { .. }
+                    | Request::ListChats { .. }
             )
         {
             return Err(EngineError::RouterKeyRequired {

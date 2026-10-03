@@ -328,6 +328,37 @@ async fn latest_chat_in_prefers_the_chat_with_the_latest_input() {
 }
 
 #[tokio::test]
+async fn list_chats_orders_like_latest_chat_and_filters_by_folder() {
+    let (_dir, store) = temp_store().await;
+    let (older, _, _, _) = chat_with_run(&store).await;
+    let (newer, _, _, _) = chat_with_run(&store).await;
+    let other = store.create_chat(PathBuf::from("/other")).await.unwrap();
+    sqlx::query("UPDATE inputs SET accepted_at = 1 WHERE chat_id = ?")
+        .bind(to_sql_int(newer.0))
+        .execute(&store.pool)
+        .await
+        .unwrap();
+
+    let in_folder = store.list_chats(Some("/work")).await.unwrap();
+    let everywhere = store.list_chats(None).await.unwrap();
+
+    let ids = |list: &[saturn_protocol::rpc::ChatListItem]| {
+        list.iter().map(|item| item.chat).collect::<Vec<_>>()
+    };
+    assert_eq!(ids(&in_folder), [older, newer]);
+    assert_eq!(
+        Some(in_folder[0].chat),
+        store.latest_chat_in("/work").await.unwrap()
+    );
+    assert_eq!(in_folder[0].preview.as_deref(), Some("fix the build"));
+    assert_eq!(in_folder[1].last_active_ms, 1);
+    assert_eq!(ids(&everywhere), [other, older, newer]);
+    assert_eq!(everywhere[0].preview, None);
+    assert_eq!(everywhere[0].folder, "/other");
+    assert!(store.list_chats(Some("/nowhere")).await.unwrap().is_empty());
+}
+
+#[tokio::test]
 async fn cumulative_usage_marks_turn_spans() {
     let (_dir, store) = temp_store().await;
     let (chat, input, session, first) = chat_with_run(&store).await;

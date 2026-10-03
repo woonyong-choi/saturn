@@ -115,6 +115,37 @@
       "minimum": 0,
       "type": "integer"
     },
+    "ChatListItem": {
+      "description": "채팅 목록의 한 줄.",
+      "properties": {
+        "chat": {
+          "$ref": "#/$defs/ChatId"
+        },
+        "folder": {
+          "description": "채팅의 기본 폴더.",
+          "type": "string"
+        },
+        "last_active_ms": {
+          "description": "마지막 입력을 접수한 시각(unix 밀리초). 입력이 없으면 채팅을 만든 시각.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "preview": {
+          "description": "채팅의 첫 입력 원문. 입력이 없으면 `None`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "chat",
+        "folder",
+        "last_active_ms"
+      ],
+      "type": "object"
+    },
     "ChatNotice": {
       "oneOf": [
         {
@@ -1151,6 +1182,31 @@
               "required": [
                 "folder"
               ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`folder`의 채팅 목록을 `ChatList`로 보낸다. `folder`가 `None`이면 모든 폴더. 최근에 쓴 채팅이 앞이고\n순서는 `LatestChat`과 같다. 붙지 않은 연결에서도 쓴다.",
+          "properties": {
+            "method": {
+              "const": "ListChats",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "folder": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
               "type": "object"
             }
           },
@@ -2495,6 +2551,34 @@
           "type": "object"
         },
         {
+          "description": "`ListChats`의 답.",
+          "properties": {
+            "method": {
+              "const": "ChatList",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chats": {
+                  "items": {
+                    "$ref": "#/$defs/ChatListItem"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "chats"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "properties": {
             "method": {
               "const": "RouterVersions",
@@ -3477,6 +3561,34 @@
                   ]
                 }
               },
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`ListChats`의 답.",
+          "properties": {
+            "method": {
+              "const": "ChatList",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chats": {
+                  "items": {
+                    "$ref": "#/$defs/ChatListItem"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "chats"
+              ],
               "type": "object"
             }
           },

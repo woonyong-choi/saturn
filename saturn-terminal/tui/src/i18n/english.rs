@@ -136,9 +136,28 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Engine answered without the latest chat",
     ),
     (
-        "채팅 id 없는 --resume과 --resume all은 아직 지원하지 않습니다: engine이 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰세요",
-        "--resume without a chat id and --resume all are not supported yet: engine cannot list chats · Use --resume <chat id>",
+        "이어 열 채팅이 없습니다 · saturn으로 새 채팅을 시작하세요",
+        "No chat to resume · Start a new chat with saturn",
     ),
+    (
+        "engine이 채팅 목록 없이 답했습니다",
+        "Engine answered without a chat list",
+    ),
+    (
+        "채팅을 고를 터미널이 없습니다 · --resume <chat id>를 쓰세요",
+        "No terminal to pick a chat in · Use --resume <chat id>",
+    ),
+    (
+        "이어 열 채팅 번호를 입력하세요 (Enter: 취소)",
+        "Enter the number of the chat to resume (Enter to cancel)",
+    ),
+    ("채팅을 고르지 않았습니다", "No chat was picked"),
+    ("목록에 없는 번호입니다: {text}", "Not in the list: {text}"),
+    ("(입력 없음)", "(no input)"),
+    ("방금", "just now"),
+    ("{n}분 전", "{n}m ago"),
+    ("{n}시간 전", "{n}h ago"),
+    ("{n}일 전", "{n}d ago"),
     (
         "--add-dir 폴더를 읽지 못했습니다: {dir}",
         "Failed to read --add-dir folder: {dir}",

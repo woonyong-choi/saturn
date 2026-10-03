@@ -69,6 +69,17 @@ impl Engine {
         self.send(client, Notification::LatestChat { chat }).await;
         Ok(())
     }
+
+    /// `folder`가 `None`이면 모든 폴더의 채팅.
+    pub(super) async fn send_chat_list(
+        &self,
+        client: ClientId,
+        folder: Option<&str>,
+    ) -> Result<(), EngineError> {
+        let chats = self.store.list_chats(folder).await?;
+        self.send(client, Notification::ChatList { chats }).await;
+        Ok(())
+    }
 }
 
 /// 기록에 없는 비용, 맥락 정리, 채점은 `None`이다. 여러 턴을 합친 행만 `turns`를 채운다.
