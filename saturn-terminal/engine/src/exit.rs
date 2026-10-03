@@ -84,7 +84,7 @@ impl Engine {
     }
 
     /// 모든 채팅에서 계속 처리될 작업 수.
-    fn continuing_work_total(&self) -> u32 {
+    pub(crate) fn continuing_work_total(&self) -> u32 {
         let total: usize = self
             .chats
             .keys()

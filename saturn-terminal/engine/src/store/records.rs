@@ -61,6 +61,8 @@ pub(crate) enum RunEnd {
 #[derive(Debug, Clone)]
 pub(crate) struct RunRecord {
     pub id: RunId,
+    pub chat: ChatId,
+    pub agent: AgentId,
     pub input: Option<InputId>,
     pub task: TaskId,
     pub session: SessionId,
@@ -238,6 +240,34 @@ impl Store {
             .execute(&self.pool)
             .await?;
         ensure_found(done.rows_affected(), || format!("input {}", input.0))
+    }
+
+    /// 끝 상태인 입력도 읽는다. 크래시로 끊긴 실행의 입력을 되살리는 데 쓴다.
+    ///
+    /// # Errors
+    /// 없는 입력이면 `NotFound`.
+    pub(crate) async fn stored_input(
+        &self,
+        input: InputId,
+    ) -> Result<(NewInput, InputState), StoreError> {
+        let row = sqlx::query(
+            "SELECT chat_id, text, settings_revision, permission, workdir, pinned_model, skip_relation, state \
+             FROM inputs WHERE id = ?",
+        )
+        .bind(to_sql_int(input.0))
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| not_found(format!("input {}", input.0)))?;
+        let input = NewInput {
+            chat: ChatId(from_sql_int(row.try_get("chat_id")?)),
+            text: row.try_get("text")?,
+            settings: SettingsRevision(from_sql_int(row.try_get("settings_revision")?)),
+            permission: parse_permission(row.try_get("permission")?)?,
+            workdir: PathBuf::from(row.try_get::<String, _>("workdir")?),
+            pinned_model: row.try_get("pinned_model")?,
+            skip_relation: row.try_get("skip_relation")?,
+        };
+        Ok((input, parse_enum(row.try_get("state")?)?))
     }
 
     /// 시작 때 대기열을 되살리는 데 쓴다. 접수 순서.

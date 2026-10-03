@@ -72,6 +72,8 @@ TUI와 `cli`는 `engine` crate에 의존하지 않고, 이 경계는 Cargo 의�
 6. `rpc`가 Unix 소켓에서 JSON-RPC 접속을 받기 시작한다.
 7. `rpc`가 여러 TUI의 접속을 동시에 유지한다.
 
+소켓이 열린 뒤 요청을 처리하기 전에 `engine`은 한 번 크래시 복구를 한다. 끝나지 않은 실행이 없으면 아무것도 하지 않는다([크래시 뒤 복구](#크래시-뒤-복구)).
+
 앞 단계가 실패하면 뒤 단계를 하지 않는다. 판단 방식에 맞는 router를 만들 수 없으면(허용 호스트가 아닌 주소, 설정이 없는 판단 방식) 소켓을 열지 않고 끝낸다. 키를 받아도 확인할 수 없기 때문이다.
 
 등록된 router 키가 확인되면 화면이 있어도 키를 묻지 않는다. 키가 없거나 틀려 확인에 실패하면 `engine`은 `SATURN_KEY` 환경 변수, 비밀번호 관리자 명령(`router.key.command`) 순서로 키를 받아 다시 확인한다. 표준 입력으로는 키를 받지 않는다. 그래도 실패하면 소켓은 연다. 다만 router를 확인하기 전에는 `SubmitRouterKey`, `Attach`, `Detach`만 받고, 나머지 요청은 오류 번호 `-32001`(초안)의 오류 응답으로 거절한다. TUI가 붙으면 시작 정보와 기록 뒤에 `RouterKeyRequired`를 보내고, TUI가 보낸 키로 다시 확인해 성공하면 일반 요청을 받기 시작한다. 실패하면 오류 응답과 함께 `RouterKeyRequired`를 다시 보낸다. `engine`은 터미널에서 직접 숨김 입력을 받지 않는다. 사용자당 하나인 상주 프로세스라 키를 물을 터미널을 갖지 않기 때문이다. router 시작 확인은 [router](router.md)에, 키 요청과 저장 절차는 [router 키 보호](router-key-security.md)에 있다.
@@ -155,6 +157,8 @@ TUI가 없는 동안 허가 요청, 입력 요청, 유예 종료는 값마다 �
 | 보류 | 그대로 둔다. | 멈춘 작업을 보류로 두고 그대로 둔다. |
 | 유예 종료 | 에이전트 트리 전체가 끝난 뒤 5분을 기다려 session을 닫고 `engine`을 끝낸다. | 멈춤으로 트리가 모두 유휴가 된 뒤 같은 5분을 기다려 끝낸다. |
 
+유예 종료의 "모든 작업이 끝남"은 실행 중인 작업, 보내기 전에 판단하거나 기다리는 입력, 멈추는 중인 채팅, provider 응답을 기다리는 전달, 끝나지 않은 subagent가 모두 없는 상태다. 보류와 사용자 확인을 기다리는 요청은 세지 않는다. `engine`은 이 상태가 된 시각부터 5분을 재고, 그 사이 TUI가 붙거나 다시 일이 생기면 시계를 지운다. 5분이 지나면 `engine`이 스스로 끝나고, 다음 `saturn` 실행이 새로 띄운다. 마지막 TUI가 붙은 채로는 끝나지 않는다.
+
 TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작업을 자동으로 이어 가지 않기 위해서다. 보류와 대기 규칙은 [입력 처리](input-handling.md)에 있다.
 
 ### 프로세스 배치와 수명
@@ -194,15 +198,17 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 ![크래시 뒤에는 효과 범위가 증명된 실행만 자동으로 이어 가고, 나머지는 보류해 /continue를 제안한다](../assets/crash-recovery.svg)
 
-`engine`이 비정상 종료된 뒤 사용자가 `saturn`을 실행하면 `cli`가 새 `engine`을 띄우고, `engine`은 다음 순서로 복구한다.
+`engine`이 비정상 종료된 뒤 사용자가 `saturn`을 실행하면 `cli`가 새 `engine`을 띄우고, `engine`은 시작 직후 다음 순서로 복구한다. 크래시 흔적은 기록 저장소에 끝나지 않은 실행이 남아 있는 것이다. 정상 종료와 멈춤은 실행을 끝내고 기록하므로 흔적을 남기지 않는다.
 
-1. `store`가 끝나지 않은 실행의 `effect_scope`를 조회한다.
-2. `store`가 `proven-by-config`와 `proven-by-observation` 실행을 자동 재개 대상으로 분류한다.
-3. `engine`은 자동 재개 대상의 파일 상태를 확인한 뒤 그 상태로 만든 새 입력을 provider에 보낸다.
-4. `store`가 `network-possible`과 `unobserved` 실행을 보류로 기록하고 해당 session도 보류로 둔다.
-5. `rpc`가 보류 항목마다 `/continue` 제안을 한 줄씩 보낸다.
+1. `store`가 끝나지 않은 실행과 그 `effect_scope`를 조회한다. 같은 작업의 실행이 여럿이면 가장 나중 것만 되살리고 앞선 것은 닫는다.
+2. 실행마다 작업을 보류로 되살린다. 채팅의 작업 폴더와 더한 폴더를 읽고, 입력은 보낸 상태 그대로 둔 채 작업만 멈춤 때 실행 중이던 작업과 같게 보류로 둔다. session은 `보류`로 바꿔 기록하고 실행은 `Stopped`로 닫는다. 이 환경은 `engine` 프로세스 환경이고, TUI가 붙으면 그 TUI의 환경으로 바뀐다.
+3. `proven-by-config`와 `proven-by-observation` 실행은 자동 재개 대상이다. `engine`은 보류 재개와 같은 규칙으로 파일 상태를 확인하게 하는 새 입력을 보낸다. 보낼 수 없으면 4번으로 넘긴다.
+4. `network-possible`과 `unobserved` 실행은 보류한 채 둔다.
+5. 보류한 작업마다 `/continue` 제안 한 줄(`ResumeSuggested`)을 보낸다. 크래시 직후에는 붙은 TUI가 없으므로 그 채팅에 처음 붙는 TUI에 보류 표시와 함께 한 번 보내고, 그 사이 재개하거나 닫은 작업은 뺀다.
 
-자동으로 이어 갈 때 크래시 전에 보낸 패킷을 다시 보내지 않는다. 이미 반영된 입력을 두 번 실행하지 않기 위해서다. 보류한 실행은 사용자가 `/continue`로 이을 때까지 멈춰 있다. TUI가 보류 목록을 묻는 방식은 [TUI](tui.md)에 있다.
+자동으로 이어 갈 때 크래시 전에 보낸 패킷을 다시 보내지 않는다. 이미 반영된 입력을 두 번 실행하지 않기 위해서다. 보류한 실행은 사용자가 `/continue`로 이을 때까지 멈춰 있다. 입력 없이 provider가 시작한 턴은 확인 입력을 만들 원문이 없어 session을 보류하고 실행을 닫기만 한다. 한 실행의 복구가 실패하면 경고를 남기고 나머지를 복구하며, 실패한 실행은 끝나지 않은 채 남아 다음 시작 때 다시 시도한다. TUI가 보류 목록을 묻는 방식은 [TUI](tui.md)에 있다.
+
+현재 `effect_scope`는 `network-possible`로 시작하고 `proven-by-*`로 올리는 증명은 아직 없다. 그래서 지금은 모든 크래시 실행이 보류로 남는다.
 
 ### 중첩 saturn 거절
 
@@ -220,6 +226,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | `engine` 비정상 종료 | 다시 시작한 `engine`이 `effect_scope`로 자동 재개와 보류를 나눈다. |
 | provider 흐름의 관찰 중단 | `effect_scope`를 `unobserved`로 기록하고 자동으로 이어 가지 않는다. |
 | 크래시 뒤 증명되지 않은 `effect_scope` | 자동으로 재개하지 않고 보류한 뒤 재개를 한 줄로 제안한다. |
+| 크래시 뒤 한 실행의 복구 실패 | 경고를 남기고 다른 실행은 복구한다. 그 실행은 끝나지 않은 채 남아 다음 시작 때 다시 시도한다. |
 | 에이전트가 실행한 중첩 `saturn` | 실행을 거절한다. |
 | 한 채팅의 provider 요청이 느리거나 응답하지 않음 | 요청은 연결 작업이 실행하고 요청 처리 루프는 결과 메시지만 받으므로, 다른 채팅의 요청과 같은 채팅의 멈춤 요청은 기다리지 않고 처리한다([provider 요청 작업](providers-and-sessions.md#provider-요청-작업)). 응답 대기에는 요청 종류별 제한(바로 돌아와야 하는 요청 10초, 시작·열기 요청 60초, 초안)을 두고 턴은 자동으로 끊지 않는다. 응답 없는 요청의 처리는 [provider 오류 처리](providers-and-sessions.md#오류-처리)를 따른다. |
 
@@ -244,8 +251,10 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 넘겨받은 환경의 router 키 변수는 provider 자식 환경에 들어가지 않는다. | `Attach`의 `env`에 `SATURN_KEY`를 넣어도 그 채팅의 provider 환경에 없는지 확인 |
 | 판단 방식에 맞는 router를 만들 수 없으면 Saturn을 실행하지 않는다. | 허용 호스트가 아닌 router 주소로 `engine`을 띄워 소켓을 열지 않고 끝나는지 확인 |
 | 스키마를 올리기 전 백업 하나를 남긴다. | 옛 스키마 저장소로 새 버전을 실행한 뒤 백업이 하나만 남고 스키마가 올라갔는지 확인 |
-| 크래시 뒤 자동 재개는 효과 범위가 설정이나 관찰로 증명된 실행에만 한다. | [공급자 적용 설정의 보고 범위 측정](https://github.com/woonyong-choi/saturn/issues/4), [하위 에이전트 외부 효과 경로 측정](https://github.com/woonyong-choi/saturn/issues/22) |
-| 자동으로 이어 갈 때 같은 패킷을 다시 보내지 않는다. | 자동 재개 때 파일 상태로 만든 새 입력만 전송되는지 확인 |
+| 크래시 뒤 자동 재개는 효과 범위가 설정이나 관찰로 증명된 실행에만 한다. 증명되지 않은 실행은 다시 보내지 않고 보류하며 처음 붙는 TUI에 `/continue`를 한 번 제안한다. | `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `unproven_run_is_held_not_resent_and_suggested_when_a_tui_attaches`, `resume_suggestion_is_sent_only_to_the_first_tui`, `proven_run_resumes_by_itself_with_a_state_check_input`, 증명 규칙은 [공급자 적용 설정의 보고 범위 측정](https://github.com/woonyong-choi/saturn/issues/4), [하위 에이전트 외부 효과 경로 측정](https://github.com/woonyong-choi/saturn/issues/22) |
+| 자동으로 이어 갈 때 같은 패킷을 다시 보내지 않는다. 보류한 작업은 `/continue`로만 잇고 파일 상태를 확인하게 하는 새 입력을 보낸다. | `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `continue_after_crash_resumes_the_session_with_a_state_check_input`, `proven_run_resumes_by_itself_with_a_state_check_input` |
+| 크래시 흔적이 없으면 복구하지 않는다. | `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `start_without_unfinished_runs_recovers_nothing` |
+| 마지막 TUI가 떠난 뒤 모든 작업이 끝나고 유예(5분)가 지나면 `engine`이 스스로 끝나고, 일이 남았거나 TUI가 붙어 있으면 끝나지 않는다. | `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `engine_ends_by_itself_after_the_grace_when_the_last_tui_left_with_no_work`, `engine_keeps_running_while_work_remains_and_ends_after_it_finishes`, `engine_does_not_end_while_a_tui_is_attached` |
 | 강제 종료 뒤 subagent가 있던 session을 재개할 때의 동작을 확인한다. | [강제 종료 뒤 세션 재개 동작 측정](https://github.com/woonyong-choi/saturn/issues/24), [실측 결과](../experiments/crash-resume/report.md) |
 | 에이전트가 실행한 `saturn`은 거절한다. | [하위 에이전트 훅 적용 범위 측정](https://github.com/woonyong-choi/saturn/issues/23) |
 | 한 채팅의 provider 요청이 느리거나 응답하지 않아도 다른 채팅의 입력과 조회, 같은 채팅의 멈춤 요청을 바로 처리한다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_slow_start_request_does_not_stall_other_chats_or_stop`, `a_silent_provider_request_does_not_stall_other_chats_or_stop`, `a_provider_that_stops_reading_input_does_not_stall_other_chats_or_stop` |

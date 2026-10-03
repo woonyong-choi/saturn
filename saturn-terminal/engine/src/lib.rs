@@ -36,6 +36,7 @@ mod launch;
 mod models;
 mod outcomes;
 mod permission;
+mod recover;
 mod requests;
 mod serve;
 mod sessions;
@@ -52,7 +53,7 @@ mod lifecycle;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::path::PathBuf;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use saturn_core::agents::AgentTracker;
 use saturn_core::providers::ProviderError;
@@ -67,7 +68,7 @@ use crate::routers::{ActiveRouter, Routers, RoutersError, SharedSecrets};
 use crate::rpc::{ClientId, RpcError, RpcServer};
 use crate::secrets::{KeyInput, SecretsError};
 use crate::settings::{FolderTrustPrompt, SettingsError, SettingsManager};
-use crate::store::{MigrationNotice, RunRecord, Store, StoreError};
+use crate::store::{MigrationNotice, Store, StoreError};
 use crate::training::{TrainPlan, TrainingError};
 
 /// 초안. router 키를 기다리는 동안 거절한 요청의 오류 번호(JSON-RPC 서버 오류 범위).
@@ -198,6 +199,8 @@ enum RouterGate {
 #[derive(Debug, Default)]
 struct StartNotices {
     migration: Option<MigrationNotice>,
+    /// 크래시 복구가 보류한 작업. 그 채팅에 처음 붙는 TUI에 `/continue`를 제안하고 지운다.
+    resume_suggested: HashMap<ChatId, Vec<TaskId>>,
 }
 
 /// `Request::Attach`의 값.
@@ -274,6 +277,8 @@ pub struct Engine {
     /// 입력 접수부터 전송까지 메모리에 두는 값.
     flow: flow::FlowState,
     presence: Presence,
+    /// 백그라운드에서 모든 작업이 끝난 뒤 engine이 끝나기까지 기다리는 시간.
+    idle_grace: Duration,
     /// `ConfirmTrain`을 기다린다.
     pending_train: Option<TrainPlan>,
 }
@@ -281,29 +286,10 @@ pub struct Engine {
 impl Engine {
     pub async fn run(options: EngineOptions) -> Result<(), EngineError> {
         let mut engine = Self::start(options).await?;
-        // TODO(#150): 시작 직후 크래시 복구
+        engine.recover_after_crash().await?;
         let served = engine.serve().await;
         engine.shutdown().await?;
         served
-    }
-
-    /// 크래시 전에 보낸 패킷은 어느 경우에도 다시 보내지 않는다.
-    /// TODO(#66): 실행 중으로 남은 subagent와 provider가 다시 불러오는 자식 session을 정리할지, 끊김 표시만 할지
-    #[expect(clippy::todo, reason = "#90 뼈대")]
-    async fn recover_after_crash(&mut self) -> Result<(), EngineError> {
-        todo!("#90")
-    }
-
-    /// 파일 상태를 확인한 뒤 그 상태로 만든 새 입력을 접수해 보낸다.
-    /// TODO(#65): 수정 파일 목록을 실행 경계의 파일 상태 차이로 셀지, provider 이벤트로 셀지
-    #[expect(clippy::todo, reason = "#90 뼈대")]
-    async fn resume_proven(&mut self, run: RunRecord) -> Result<(), EngineError> {
-        todo!("#90")
-    }
-
-    #[expect(clippy::todo, reason = "#90 뼈대")]
-    async fn hold_unproven(&mut self, run: RunRecord) -> Result<(), EngineError> {
-        todo!("#90")
     }
 
     /// 순서: `StartInfo` → `HistoryChunk` → 답을 기다리는 허가 요청 → 고정 모델(`ModelPinned`, 고정했을 때만) → 시작 안내와 키·신뢰 창.
@@ -357,6 +343,7 @@ impl Engine {
         self.presence = Presence::Attached;
         self.send_chat_model(client, chat).await?;
         self.send_start_notices(client, applied).await;
+        self.send_resume_suggestions(chat).await;
         Ok(())
     }
 
@@ -367,10 +354,39 @@ impl Engine {
         todo!("#90")
     }
 
-    /// 트리 유휴 뒤 `sessions::IDLE_GRACE`가 지났고 그사이 TUI가 붙지 않았으면 참.
-    #[expect(clippy::todo, reason = "#90 뼈대")]
+    /// 모든 작업이 끝났는지 본다. 실행 중인 작업, 보내기 전에 판단하거나 기다리는 입력, 멈추는 중인 채팅, 응답을 기다리는
+    /// 전달, 끝나지 않은 subagent가 없을 때만 참이다. 보류와 TUI 확인을 기다리는 요청은 세지 않는다.
+    fn is_all_idle(&self) -> bool {
+        self.continuing_work_total() == 0
+            && self.flow.stopping.is_empty()
+            && self.flow.deliveries.is_empty()
+            && self
+                .flow
+                .live
+                .keys()
+                .all(|agent| self.agents.is_tree_idle(*agent))
+    }
+
+    /// 백그라운드에서 모든 작업이 끝난 시각을 기록하고, 다시 일이 생기면 지운다.
+    fn refresh_idle(&mut self, now: Instant) {
+        let is_idle = self.is_all_idle();
+        if let Presence::Background { idle_since } = &mut self.presence {
+            *idle_since = match (is_idle, *idle_since) {
+                (true, None) => Some(now),
+                (true, since) => since,
+                (false, _) => None,
+            };
+        }
+    }
+
+    /// TUI가 없고 트리 유휴가 된 뒤 유예(`sessions::IDLE_GRACE`)가 지났으면 참. 그사이 TUI가 붙거나 일이 생기면 거짓이다.
     fn background_expired(&self, now: Instant) -> bool {
-        todo!("#90")
+        match self.presence {
+            Presence::Background {
+                idle_since: Some(since),
+            } => now.saturating_duration_since(since) >= self.idle_grace,
+            Presence::Background { idle_since: None } | Presence::Attached => false,
+        }
     }
 
     /// provider session id는 기록 저장소에 남아 있어 따로 보관하지 않는다.
