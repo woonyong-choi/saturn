@@ -299,8 +299,14 @@ impl ProviderClient for CodexClient {
             permission: value_text(&result["approvalPolicy"]),
         };
         lock(&self.threads).insert(thread.clone(), ThreadState::new(spec.agent, None, applied));
-        if let Some(packet) = &spec.packet {
-            self.send_turn(&thread, packet).await?;
+        if let Some(packet) = &spec.packet
+            && let Err(error) = self.send_turn(&thread, packet).await
+        {
+            if matches!(error, ProviderError::ContextExceeded { .. }) {
+                lock(&self.threads).remove(&thread);
+                self.release_unchecked_thread(&thread).await;
+            }
+            return Err(error);
         }
         Ok(SessionHandle {
             provider_session: thread,
@@ -347,9 +353,7 @@ impl ProviderClient for CodexClient {
             }
             Ok(Err(error)) => {
                 cancel(&self.threads);
-                Err(ProviderError::NotSent {
-                    reason: error_message(&error),
-                })
+                Err(rejected_turn(&error))
             }
             Err(error @ ProviderError::NotSent { .. }) => {
                 cancel(&self.threads);
@@ -566,6 +570,43 @@ fn rejected_as_not_sent(
             reason: error_message(&error),
         }),
     }
+}
+
+/// `turn/start` 거절. 맥락 한도 초과는 `ContextExceeded`, 그 밖은 `NotSent`다.
+fn rejected_turn(error: &Value) -> ProviderError {
+    if !is_context_exceeded(error) {
+        return ProviderError::NotSent {
+            reason: error_message(error),
+        };
+    }
+    ProviderError::ContextExceeded {
+        limit_tokens: context_limit(error),
+    }
+}
+
+/// 오류 코드가 따로 없어 문구로 판정한다. 초안. 실제 거절 응답의 모양은 실측하지 못했다.
+fn is_context_exceeded(error: &Value) -> bool {
+    let text = error.to_string().to_ascii_lowercase();
+    [
+        "context_length_exceeded",
+        "contextwindowexceeded",
+        "context window",
+        "maximum context length",
+    ]
+    .iter()
+    .any(|pattern| text.contains(pattern))
+}
+
+/// 응답 문구가 한도를 숫자로 알려 줄 때만 값을 준다. 초안.
+fn context_limit(error: &Value) -> Option<u64> {
+    let message = error_message(error).to_ascii_lowercase();
+    ["maximum context length is ", "context window of "]
+        .iter()
+        .find_map(|marker| {
+            let (_, rest) = message.split_once(marker)?;
+            let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+            digits.parse().ok()
+        })
 }
 
 /// 오류 코드가 따로 없어 문구로 판정한다. 초안.

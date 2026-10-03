@@ -401,6 +401,40 @@ fn build_packet_fixed_over_hard_limit_defers_with_constraints() {
     assert_eq!(constraints, vec!["first rule".to_string(), long_rule]);
 }
 
+#[test]
+fn reduce_packet_drops_the_lowest_items_and_keeps_the_fixed_zone() {
+    let source = PacketSource {
+        goal_and_last_input: vec![entry(40, "fix login message")],
+        competitors: vec![
+            item(1, &filler("high", 300), None),
+            item(2, &filler("mid", 300), None),
+            item(3, &filler("low", 300), None),
+        ],
+        ..PacketSource::default()
+    };
+    let full = ready(build_packet(&source, &budget()));
+
+    let reduced =
+        reduce_packet(&source, &budget(), full.tokens / 2).expect("room for the fixed zone");
+
+    assert!(reduced.tokens <= full.tokens / 2);
+    assert!(reduced.text.contains("fix login message"));
+    assert!(reduced.text.contains("high"));
+    assert!(!reduced.text.contains("low"));
+    assert_eq!(reduced.included, vec![LedgerSeq(1)]);
+}
+
+#[test]
+fn reduce_packet_is_none_when_the_fixed_zone_alone_is_over_the_target() {
+    let source = PacketSource {
+        goal_and_last_input: vec![entry(40, &filler("goal", 800))],
+        competitors: vec![item(1, "tool output", None)],
+        ..PacketSource::default()
+    };
+
+    assert!(reduce_packet(&source, &budget(), 100).is_none());
+}
+
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = 테스트 데이터 크기
 // basis: estimate

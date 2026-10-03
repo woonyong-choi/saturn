@@ -13,6 +13,12 @@ pub enum ProviderError {
     /// 전달되지 않은 것이 확정이라 다시 보내도 된다.
     #[error("provider rejected before send: {reason}")]
     NotSent { reason: String },
+    /// provider가 맥락 한도 초과로 거절했다. 보내지 않음이 확정이지만 같은 글을 그대로 다시 보내지 않고 패킷을 줄여 보낸다.
+    #[error("provider rejected the input as over its context limit")]
+    ContextExceeded {
+        /// 거절 응답이 알려 준 한도(토큰). 알려 주지 않으면 `None`.
+        limit_tokens: Option<u64>,
+    },
     /// 다시 보내지 않고 사용자 확인으로 넘긴다.
     #[error("provider result unknown after send")]
     Unknown,

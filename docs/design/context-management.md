@@ -175,6 +175,14 @@ P_max = T / 10
 3. 이 패킷에 한해 `P_hard = T / 5`(초안)까지 허용하고 초과를 기록한다. 경쟁 구역은 비운다. 허용한 초과분을 고정 구역에만 쓰기 위해서다.
 4. `P_hard`도 넘으면 새 session으로 옮기지 않고 그대로 이어 가며, TUI에 `고정 제약이 길어 맥락 정리를 미룹니다`와 제약 목록을 보인다.
 
+패킷을 보냈는데 provider가 맥락 한도 초과로 거절하면 `engine`은 경쟁 구역을 줄여 한 번만 다시 보낸다. 거절은 보내지 않음이 확정된 실패라 다시 보내도 같은 작업이 두 번 실행되지 않는다([#162](https://github.com/woonyong-choi/saturn/issues/162) 결정).
+
+1. 줄이는 목표는 거절 응답이 한도를 알려 주면 그 값, 알려 주지 않으면 받는 provider의 `P_max`의 절반(초안)이다. 어느 쪽이든 거절된 패킷 크기의 절반을 넘지 않는다. 한도를 알려 줘도 패킷이 그 안에 이미 들어 있으면 줄이지 못해 같은 패킷을 되풀이하게 되기 때문이다.
+2. `sessions`는 고정 구역을 그대로 두고 경쟁 구역만 목표에 맞춰 같은 순서로 다시 채운다. 순서가 뒤인 남길 확률이 낮은 항목부터 빠진다. 고정 구역은 줄이지 않는다.
+3. 고정 구역만으로 목표를 넘거나 줄인 패킷도 거절되면 보내지 않고 입력을 작업과 함께 보류하며 TUI에 `맥락 한도를 넘어 멈췄습니다 · /continue 로 다시 시도합니다`를 보인다.
+
+`Deferred`(고정 구역이 `P_hard`도 넘음)는 경쟁 구역이 이미 비어 있어 줄일 항목이 없다. 그래서 다시 보내지 않고 위 3과 같이 멈추되 제약 목록을 보인다. provider가 맥락 초과로 거절했는지는 provider 고유 코드(`providers/codex`)가 판정해 공통 오류 `ContextExceeded`로 올린다. Codex는 `turn/start` 거절 응답의 문구로 판정하고, 실제 거절 응답의 모양은 실측하지 못했다. Claude는 쓰기 전 거절 경로가 없어 이 판정이 없다.
+
 고정 구역이 넘칠 때 provider 압축으로 대신하지 않는다. provider가 들고 있는 맥락과 Saturn 기록이 달라지고, Codex 원격 압축 요약은 무엇이 남았는지 볼 수 없기 때문이다. 4단계 뒤 맥락이 `T_hard`를 넘으면 provider 자동 압축 안전망이 받는다.
 
 `saturn` 모드에서 이어 갈 내용은 provider 요약이 아니라 맥락의 정본인 Saturn 기록 원문에서 고른다. provider 압축 요약은 읽을 수 있을 때만 경쟁 구역의 후보 하나로 쓴다. 기록 원문을 정본으로 두기 위해서다. `provider` 모드에서 Claude 압축 요약을 넘길 때는 그 요약을 경쟁 구역의 첫 항목으로 두고, 나머지 경쟁 구역은 요약 시점 뒤의 기록에서 고른다. 요약이 경쟁 구역 예산을 넘으면 요약을 쓰지 않고 Saturn 기록 원문으로 채운다(`build_packet_with_summary`). 어느 모드든 고정 구역은 Saturn 기록 원문으로 넣고, 패킷에 제약이 요약보다 우선한다고 적는다. 요약이 대체되기 전의 제약을 담고 있을 수 있기 때문이다. provider가 스스로 읽는 문서(`AGENTS.md`, `CLAUDE.md`)는 패킷에 넣지 않는다. 중복을 막기 위해서다.
@@ -249,6 +257,7 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | 경쟁 구역 예산 부족 | 고른 순서대로 원문, 축약본, 경로 중 들어가는 형태를 넣고 나머지는 건너뛴다. |
 | 고정 구역의 `P_max` 초과 | 최근 턴을 줄이고, 그래도 넘치면 `P_hard`까지 허용한다. |
 | 고정 구역의 `P_hard` 초과 | 새 session으로 옮기지 않고 사용자에게 제약 목록을 보인다. |
+| provider가 패킷을 맥락 한도 초과로 거절 | 경쟁 구역을 줄여 한 번만 다시 보낸다. 줄인 패킷도 거절되거나 고정 구역만으로 목표를 넘으면 보내지 않고 입력을 보류하며 사용자에게 알린다. |
 | 떠나는 provider의 압축 요약을 읽을 수 없음 | Saturn 기록 원문으로 패킷을 만든다. |
 
 ### 요구사항
@@ -273,6 +282,9 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | 고정 구역이 `P_max`를 넘으면 오래된 턴의 답부터 줄이고, 최근 턴 수를 줄인 뒤 `P_hard`까지 허용한다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_overflow_trims_oldest_answer_first`, `build_packet_fixed_overflow_drops_oldest_turns`, `build_packet_fixed_over_limit_allows_hard_limit_without_competing` |
 | 실험 수집기가 `saturn-core`의 `packet` 예제(`cargo run -p saturn-core --example packet`)로 두 실험 설계의 입력에서 패킷을 만들고, router 판단이 없으면 RRF 순서로 채운다. | `saturn-terminal/core/examples/packet/tests.rs`의 `packet_stream_input_prints_packet_text`, `packet_scenarios_input_prints_json_with_packet_and_rrf_order`, `packet_without_judgments_fills_in_rrf_order`, `packet_judgments_put_low_probability_item_before_unanswered` |
 | 고정 구역이 넘쳐도 provider 압축으로 대신하지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_over_hard_limit_defers_with_constraints` |
+| provider가 맥락 한도로 거절하면 낮은 순 항목을 빼 한 번만 다시 보내고, 고정 구역은 줄지 않는다. | `saturn-terminal/engine/src/lifecycle/packet_overflow.rs`의 `packet_overflow_rejection_resends_once_without_the_lowest_items`, `packet_overflow_reduction_keeps_the_fixed_zone`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `reduce_packet_drops_the_lowest_items_and_keeps_the_fixed_zone` |
+| 줄인 패킷도 거절되거나 고정 구역만으로 목표를 넘으면 보내지 않고 멈춘 뒤 알린다. | `saturn-terminal/engine/src/lifecycle/packet_overflow.rs`의 `packet_overflow_after_the_reduced_resend_stops_and_tells_the_user`, `packet_overflow_with_only_the_fixed_zone_over_the_target_is_not_resent`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `reduce_packet_is_none_when_the_fixed_zone_alone_is_over_the_target` |
+| Codex의 맥락 초과 거절을 다른 거절과 구별해 한도를 읽는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `rejected_turn_tells_context_overflow_from_other_rejections` |
 | `provider` 모드에서는 compaction을 판정하지 않고 안전망 값을 넣지 않는다. | `provider` 모드의 실행 인자와 판정 기록을 확인한다. |
 | 떠나는 provider의 압축 요약을 읽을 수 있으면 요약과 요약 뒤 기록으로 패킷을 만든다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_with_summary_puts_summary_first_in_competing_zone`, `build_packet_with_summary_over_competing_budget_falls_back_to_records`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_provider_mode_puts_summary_first_and_uses_records_after_it`, 전환 품질은 [#122](https://github.com/woonyong-choi/saturn/issues/122) |
 | 사용자가 자동 압축 값을 정했으면 안전망 값을 넣지 않는다. | 사용자 설정에 자동 압축 값이 있을 때 안전망 인자가 빠지는지 확인한다. |

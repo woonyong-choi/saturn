@@ -5,6 +5,8 @@ use std::time::SystemTime;
 
 use saturn_core::providers::{ProviderClient, ProviderError, SessionSpec};
 use saturn_core::queue::QueuedInput;
+use saturn_core::sessions::context::ContextBudget;
+use saturn_core::sessions::packet::PacketSource;
 use saturn_core::sessions::{AgentRole, SendTarget, SessionError, SessionRecord};
 use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq, Provider, SessionId};
 use saturn_protocol::rpc::ChatNotice;
@@ -12,7 +14,9 @@ use saturn_protocol::state::SessionState;
 
 use crate::dispatch::Start;
 use crate::flow::LiveSession;
-use crate::handoff::{HandoffOutcome, build_handoff, others_only};
+use crate::handoff::{
+    Handoff, HandoffOutcome, handoff_of, handoff_source, others_only, reduce_handoff,
+};
 use crate::models::pinned_model_name;
 use crate::sessions::SendRequest;
 use crate::store::IdKind;
@@ -42,6 +46,44 @@ pub(crate) struct OpenPlan {
     agent: Option<AgentId>,
     /// 열린 session이 받은 것으로 치는 기록 번호.
     synced: LedgerSeq,
+    /// 패킷이 맥락 한도로 거절되면 줄여 다시 보낼 재료. 이미 줄였거나 보낼 패킷이 없으면 `None`.
+    reduction: Option<Reduction>,
+}
+
+/// 거절된 패킷을 줄여 만들 재료.
+#[derive(Debug)]
+struct Reduction {
+    source: PacketSource,
+    budget: ContextBudget,
+    /// 거절된 패킷의 추정 토큰 수.
+    sent_tokens: u64,
+}
+
+/// 초안. 거절 응답이 한도를 알려 주지 않을 때 줄이는 목표를 정하는 상대 provider `P_max`의 몫(백분율).
+const REDUCED_TARGET_PERCENT: u64 = 50;
+
+impl Reduction {
+    /// 목표는 거절 응답이 알려 준 한도, 없으면 상대 provider `P_max`의 일부다. 어느 쪽이든 거절된 패킷보다 작아지게 반으로 줄인 값을 넘지 않는다.
+    /// 고정 구역만으로 목표를 넘으면 `None`.
+    fn reduce(&self, limit_tokens: Option<u64>) -> Option<Handoff> {
+        let by_budget = self.budget.packet_limit() * REDUCED_TARGET_PERCENT / 100;
+        let target = limit_tokens
+            .unwrap_or(by_budget)
+            .min(self.sent_tokens * REDUCED_TARGET_PERCENT / 100);
+        reduce_handoff(&self.source, &self.budget, target)
+    }
+}
+
+impl OpenPlan {
+    /// 거절된 계획의 패킷을 한 번만 줄인다. 줄일 재료가 없거나 이미 줄였거나 고정 구역만으로 넘치면 `None`.
+    fn reduced(self, limit_tokens: Option<u64>) -> Option<Self> {
+        let handoff = self.reduction.as_ref()?.reduce(limit_tokens)?;
+        Some(Self {
+            handoff: Some(handoff.text),
+            reduction: None,
+            ..self
+        })
+    }
 }
 
 /// 고른 모델이 없으면 어떤 session이든 이어 쓴다.
@@ -87,6 +129,7 @@ impl Engine {
             leaving: None,
             agent,
             synced: LedgerSeq(0),
+            reduction: None,
         };
         if role == AgentRole::Sub {
             return Ok(plain);
@@ -142,7 +185,10 @@ impl Engine {
             .map_err(|error| failed(error.into()))?;
         let synced = rows.last().map_or(LedgerSeq(0), |row| row.seq);
         let pending = self.pending_work(chat, Some(record.id));
-        let full = build_handoff(&rows, &pending, &budget);
+        let full_source = handoff_source(&rows, &pending);
+        let full = full_source
+            .as_ref()
+            .map_or(HandoffOutcome::Empty, |source| handoff_of(source, &budget));
         let packet = match &full {
             HandoffOutcome::Ready(handoff) => handoff.tokens,
             HandoffOutcome::Empty | HandoffOutcome::Deferred { .. } => 0,
@@ -159,13 +205,25 @@ impl Engine {
             .await
             .map_err(failed)?;
         let target = self.keep_pinned_model(target, plain.model.as_deref());
-        let outcome = match &target {
+        let (source, outcome) = match &target {
             SendTarget::Resume(id) => {
                 let after = self.sessions.attach_from(*id);
                 let changes = rows.into_iter().filter(|row| row.seq > after).collect();
-                build_handoff(&others_only(changes, *id), &pending, &budget)
+                let source = handoff_source(&others_only(changes, *id), &pending);
+                let outcome = source
+                    .as_ref()
+                    .map_or(HandoffOutcome::Empty, |source| handoff_of(source, &budget));
+                (source, outcome)
             }
-            SendTarget::New { .. } | SendTarget::Open(_) => full,
+            SendTarget::New { .. } | SendTarget::Open(_) => (full_source, full),
+        };
+        let reduction = match (&outcome, source) {
+            (HandoffOutcome::Ready(handoff), Some(source)) => Some(Reduction {
+                source,
+                budget,
+                sent_tokens: handoff.tokens,
+            }),
+            _ => None,
         };
         let handoff = match outcome {
             HandoffOutcome::Ready(handoff) => {
@@ -194,14 +252,16 @@ impl Engine {
             handoff,
             leaving,
             synced,
+            reduction,
             ..plain
         })
     }
 
     /// 계획대로 session을 연다. 떠나는 메인은 새 session이 열린 뒤에 보관한다. 열지 못하면 떠나는 메인은 그대로다.
+    /// 패킷이 맥락 한도로 거절되면 경쟁 구역을 줄여 한 번만 다시 연다.
     ///
     /// # Errors
-    /// 연결과 session 열기 실패는 `Provider`, 기록 저장 실패는 `Store`.
+    /// 연결과 session 열기 실패는 `Provider`, 기록 저장 실패는 `Store`. 줄인 패킷도 거절됐거나 고정 구역만으로 넘쳐 줄일 수 없으면 `Provider(ContextExceeded)`.
     pub(crate) async fn open_planned(
         &mut self,
         record: &QueuedInput,
@@ -209,16 +269,36 @@ impl Engine {
     ) -> Result<LiveSession, EngineError> {
         self.ensure_connected(plan.provider, record.chat, record.settings)
             .await?;
-        let live = match plan.target {
-            SendTarget::Open(id) => self.reuse_open(record, id).await?,
-            SendTarget::Resume(id) => self.resume_session(record, id, &plan).await?,
-            SendTarget::New { provider, role } => {
-                self.open_new_session(record, provider, role, &plan).await?
+        let (live, plan) = match self.open_target(record, &plan).await {
+            Err(EngineError::Provider(ProviderError::ContextExceeded { limit_tokens })) => {
+                let Some(reduced) = plan.reduced(limit_tokens) else {
+                    return Err(ProviderError::ContextExceeded { limit_tokens }.into());
+                };
+                tracing::warn!(
+                    chat = record.chat.0,
+                    "packet was over the context limit, sending a reduced one"
+                );
+                (self.open_target(record, &reduced).await?, reduced)
             }
+            other => (other?, plan),
         };
         self.flow.switch_to.remove(&record.chat);
         self.after_open(&live, &plan).await?;
         Ok(live)
+    }
+
+    async fn open_target(
+        &mut self,
+        record: &QueuedInput,
+        plan: &OpenPlan,
+    ) -> Result<LiveSession, EngineError> {
+        match plan.target {
+            SendTarget::Open(id) => self.reuse_open(record, id).await,
+            SendTarget::Resume(id) => self.resume_session(record, id, plan).await,
+            SendTarget::New { provider, role } => {
+                self.open_new_session(record, provider, role, plan).await
+            }
+        }
     }
 
     /// 이 프로세스에서 이미 열어 둔 session이면 그대로 쓴다.
@@ -251,6 +331,7 @@ impl Engine {
             leaving: None,
             agent,
             synced: LedgerSeq(0),
+            reduction: None,
         }
     }
 
@@ -273,11 +354,11 @@ impl Engine {
             .filter(|live| live.session == id)
             .cloned();
         if let Some(live) = still_open {
+            self.send_handoff_turn(record.chat, &live, plan).await?;
             self.leave_main(record.chat, plan).await?;
             if stored.state != SessionState::Open {
                 self.resume_main(id).await?;
             }
-            self.send_handoff_turn(record.chat, &live, plan).await?;
             return Ok(live);
         }
         let resume = stored

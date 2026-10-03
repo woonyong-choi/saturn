@@ -1,0 +1,124 @@
+//! 패킷 맥락 초과 테스트: provider가 맥락 한도로 거절하면 낮은 순 항목을 빼 한 번만 다시 보내고, 안 되면 멈추고 알린다.
+
+use saturn_core::providers::ProviderError;
+use saturn_protocol::ids::Provider;
+use saturn_protocol::rpc::ChatNotice;
+use saturn_protocol::state::InputState;
+
+use super::support::{Flow, idle_reply, text, tool_read, tool_result, turn_completed};
+use super::*;
+use crate::providers::test_support::{Call, FakeProvider};
+
+const FIRST_INPUT: &str = "write the cache module";
+const ANSWER: &str = "cache module written";
+const CALLS: [&str; 4] = ["c1", "c2", "c3", "c4"];
+
+fn exceeded() -> Result<(), ProviderError> {
+    Err(ProviderError::ContextExceeded { limit_tokens: None })
+}
+
+/// Claude가 도구 호출이 많은 턴 하나를 끝낸 채팅과, 거절 응답을 줄 Codex.
+async fn flow_with_codex(first_input: &str, tools: &[&str]) -> (Flow, FakeProvider) {
+    let replies = (0..3).map(|_| idle_reply(0.95)).collect();
+    let mut flow = Flow::new(replies).await;
+    let codex = flow.add_provider(Provider::Codex);
+    flow.submit(first_input).await;
+    let agent = flow.agent();
+    flow.claude_event(text(agent, ANSWER)).await;
+    for call in tools {
+        flow.claude_event(tool_read(agent, call, "src/cache.rs"))
+            .await;
+        let output = format!("{call} body {}", "y".repeat(400));
+        flow.claude_event(tool_result(agent, call, &output)).await;
+    }
+    flow.claude_event(turn_completed(agent)).await;
+    (flow, codex)
+}
+
+fn packets(fake: &FakeProvider) -> Vec<String> {
+    fake.calls()
+        .into_iter()
+        .filter_map(|call| match call {
+            Call::Open { packet, .. } => packet,
+            _ => None,
+        })
+        .collect()
+}
+
+fn kept_tools(packet: &str) -> usize {
+    CALLS
+        .iter()
+        .filter(|call| packet.contains(&format!("{call} body")))
+        .count()
+}
+
+#[tokio::test]
+async fn packet_overflow_rejection_resends_once_without_the_lowest_items() {
+    let (mut flow, codex) = flow_with_codex(FIRST_INPUT, &CALLS).await;
+    codex.answer_open([exceeded(), Ok(())]);
+    flow.engine.switch_provider(flow.chat, Provider::Codex);
+
+    let second = flow.submit("now with codex").await;
+
+    let sent = packets(&codex);
+    assert_eq!(sent.len(), 2);
+    assert_eq!(kept_tools(&sent[0]), CALLS.len());
+    assert!(sent[1].len() < sent[0].len());
+    assert!(kept_tools(&sent[1]) < CALLS.len());
+    assert_eq!(flow.state(second), InputState::Applied);
+}
+
+#[tokio::test]
+async fn packet_overflow_reduction_keeps_the_fixed_zone() {
+    let (mut flow, codex) = flow_with_codex(FIRST_INPUT, &CALLS).await;
+    codex.answer_open([exceeded(), Ok(())]);
+    flow.engine.switch_provider(flow.chat, Provider::Codex);
+
+    flow.submit("now with codex").await;
+
+    let sent = packets(&codex);
+    for packet in &sent {
+        assert!(packet.contains(FIRST_INPUT));
+        assert!(packet.contains(ANSWER));
+    }
+}
+
+#[tokio::test]
+async fn packet_overflow_after_the_reduced_resend_stops_and_tells_the_user() {
+    let (mut flow, codex) = flow_with_codex(FIRST_INPUT, &CALLS).await;
+    codex.answer_open([exceeded(), exceeded(), Ok(())]);
+    let mut client = flow.client().await;
+    flow.engine.switch_provider(flow.chat, Provider::Codex);
+
+    let second = flow.submit("now with codex").await;
+
+    assert_eq!(packets(&codex).len(), 2);
+    assert_eq!(flow.state(second), InputState::Held);
+    let notice = client
+        .until(|notification| match notification {
+            Notification::ChatNotice { notice, .. } => Some(notice.clone()),
+            _ => None,
+        })
+        .await;
+    assert_eq!(notice, ChatNotice::PacketOverflow);
+}
+
+#[tokio::test]
+async fn packet_overflow_with_only_the_fixed_zone_over_the_target_is_not_resent() {
+    let (mut flow, codex) = flow_with_codex(&"x".repeat(600), &[]).await;
+    codex.answer_open([exceeded(), Ok(())]);
+    let mut client = flow.client().await;
+    flow.engine.switch_provider(flow.chat, Provider::Codex);
+
+    let second = flow.submit("now with codex").await;
+
+    assert_eq!(packets(&codex).len(), 1);
+    assert_eq!(flow.state(second), InputState::Held);
+    let notice = client
+        .until(|notification| match notification {
+            Notification::ChatNotice { notice, .. } => Some(notice.clone()),
+            _ => None,
+        })
+        .await;
+    assert_eq!(notice, ChatNotice::PacketOverflow);
+}

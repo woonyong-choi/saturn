@@ -1363,3 +1363,26 @@ fn file_change_paths_are_remembered_from_the_item_start() {
     let state = threads.values().next().unwrap();
     assert_eq!(state.file_changes["item_f"], vec!["a.rs"]);
 }
+
+#[test]
+fn rejected_turn_tells_context_overflow_from_other_rejections() {
+    let overflow = json!({
+        "message": "This model's maximum context length is 128000 tokens",
+        "data": { "codexErrorInfo": "ContextWindowExceeded" },
+    });
+
+    assert!(matches!(
+        rejected_turn(&overflow),
+        ProviderError::ContextExceeded {
+            limit_tokens: Some(128_000)
+        }
+    ));
+    assert!(matches!(
+        rejected_turn(&json!({ "message": "context_length_exceeded" })),
+        ProviderError::ContextExceeded { limit_tokens: None }
+    ));
+    assert!(matches!(
+        rejected_turn(&json!({ "message": "invalid input" })),
+        ProviderError::NotSent { .. }
+    ));
+}

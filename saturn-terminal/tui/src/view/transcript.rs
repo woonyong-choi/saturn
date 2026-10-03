@@ -476,6 +476,7 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
             );
             lines
         }
+        ChatNotice::PacketOverflow => vec![format!("{prefix}{}", lang.tr(i18n::PACKET_OVERFLOW))],
         ChatNotice::ProviderSwitched { from, to } => {
             let (from, to) = (i18n::provider_name(*from), i18n::provider_name(*to));
             vec![match lang {
@@ -806,6 +807,23 @@ mod tests {
                 "고정 제약이 길어 맥락 정리를 미룹니다",
                 "- never touch the vendor folder"
             ]
+        );
+    }
+
+    #[test]
+    fn lines_packet_overflow_tells_the_user_how_to_retry() {
+        let overflow = TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::PacketOverflow,
+        };
+
+        assert_eq!(
+            overflow.lines(Lang::Ko, false, false),
+            vec!["맥락 한도를 넘어 멈췄습니다 · /continue 로 다시 시도합니다"]
+        );
+        assert_eq!(
+            overflow.lines(Lang::En, false, false),
+            vec!["stopped, over the context limit · retry with /continue"]
         );
     }
 
