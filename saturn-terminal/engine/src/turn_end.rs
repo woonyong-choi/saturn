@@ -3,13 +3,15 @@
 
 use std::time::{Duration, Instant, SystemTime};
 
+use saturn_core::providers::ProviderError;
 use saturn_core::sessions::LastTurn;
 use saturn_core::sessions::context::{CompactionDecision, ContextMeasure, decide};
 use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq};
 use saturn_protocol::rpc::{ChatNotice, Notification};
 
 use crate::flow::LiveSession;
-use crate::handoff::{HandoffOutcome, build_handoff};
+use crate::handoff::{HandoffOutcome, handoff_of, handoff_source};
+use crate::switch::Reduction;
 use crate::{Engine, EngineError};
 
 impl Engine {
@@ -69,7 +71,10 @@ impl Engine {
             return Ok(());
         }
         let rows = self.store.ledger_since(chat, LedgerSeq(0)).await?;
-        let outcome = build_handoff(&rows, &self.pending_work(chat, None), &budget);
+        let source = handoff_source(&rows, &self.pending_work(chat, None));
+        let outcome = source
+            .as_ref()
+            .map_or(HandoffOutcome::Empty, |source| handoff_of(source, &budget));
         let packet = match &outcome {
             HandoffOutcome::Ready(handoff) => handoff.tokens,
             HandoffOutcome::Empty | HandoffOutcome::Deferred { .. } => 0,
@@ -95,15 +100,42 @@ impl Engine {
                     );
                 }
                 let up_to = rows.last().map_or_else(Default::default, |row| row.seq);
-                self.restart_session(chat, live, handoff.text, up_to)
+                let reduction = source.map(|source| Reduction {
+                    source,
+                    budget,
+                    sent_tokens: handoff.tokens,
+                });
+                self.restart_and_notify(chat, live, handoff.text, reduction, up_to)
                     .await?;
-                self.notify_chat(chat, ChatNotice::Compacted).await;
             }
             HandoffOutcome::Deferred { constraints } => {
                 self.notify_chat(chat, ChatNotice::ContextDeferred { constraints })
                     .await;
             }
             HandoffOutcome::Empty => {}
+        }
+        Ok(())
+    }
+
+    /// 새 session으로 이어 가고 알린다. 줄인 패킷도 맥락 한도로 거절되면 옛 session을 그대로 두고 `PacketOverflow`를 알린다.
+    /// 맥락 정리는 기다리는 입력이 없을 때만 하므로 보류할 입력은 없다.
+    async fn restart_and_notify(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+        packet: String,
+        reduction: Option<Reduction>,
+        up_to: LedgerSeq,
+    ) -> Result<(), EngineError> {
+        match self
+            .restart_session(chat, live, packet, reduction, up_to)
+            .await
+        {
+            Ok(()) => self.notify_chat(chat, ChatNotice::Compacted).await,
+            Err(EngineError::Provider(ProviderError::ContextExceeded { .. })) => {
+                self.notify_chat(chat, ChatNotice::PacketOverflow).await;
+            }
+            Err(error) => return Err(error),
         }
         Ok(())
     }

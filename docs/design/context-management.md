@@ -178,11 +178,13 @@ P_max = T / 10
 3. 이 패킷에 한해 `P_hard = T / 5`(초안)까지 허용하고 초과를 기록한다. 경쟁 구역은 비운다. 허용한 초과분을 고정 구역에만 쓰기 위해서다.
 4. `P_hard`도 넘으면 새 session으로 옮기지 않고 그대로 이어 가며, TUI에 `고정 제약이 길어 맥락 정리를 미룹니다`와 제약 목록을 보인다.
 
-패킷을 보냈는데 provider가 맥락 한도 초과로 거절하면 `engine`은 경쟁 구역을 줄여 한 번만 다시 보낸다. 거절은 보내지 않음이 확정된 실패라 다시 보내도 같은 작업이 두 번 실행되지 않는다([#162](https://github.com/woonyong-choi/saturn/issues/162) 결정).
+패킷을 보냈는데 provider가 맥락 한도 초과로 거절하면 `engine`은 경쟁 구역을 줄여 한 번만 다시 보낸다. provider 전환과 맥락 정리로 여는 새 session이 같은 규칙을 쓴다. 거절은 보내지 않음이 확정된 실패라 다시 보내도 같은 작업이 두 번 실행되지 않는다([#162](https://github.com/woonyong-choi/saturn/issues/162) 결정).
 
 1. 줄이는 목표는 거절 응답이 한도를 알려 주면 그 값, 알려 주지 않으면 받는 provider의 `P_max`의 절반(초안)이다. 어느 쪽이든 거절된 패킷 크기의 절반을 넘지 않는다. 한도를 알려 줘도 패킷이 그 안에 이미 들어 있으면 줄이지 못해 같은 패킷을 되풀이하게 되기 때문이다.
 2. `sessions`는 고정 구역을 그대로 두고 경쟁 구역만 목표에 맞춰 같은 순서로 다시 채운다. 순서가 뒤인 남길 확률이 낮은 항목부터 빠진다. 고정 구역은 줄이지 않는다.
 3. 고정 구역만으로 목표를 넘거나 줄인 패킷도 거절되면 보내지 않고 입력을 작업과 함께 보류하며 TUI에 `맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요`를 보인다.
+
+맥락 정리는 기다리는 입력이 없을 때만 하므로 보류할 입력이 없다. 그래서 줄인 패킷도 거절되거나 고정 구역만으로 넘치면 새 session을 열지 않고 옛 session을 그대로 두며 같은 알림만 보인다. 맥락은 다음 턴 경계에서 다시 판정하고 그 사이에는 provider 자동 압축 안전망이 받는다.
 
 `Deferred`(고정 구역이 `P_hard`도 넘음)는 경쟁 구역이 이미 비어 있어 줄일 항목이 없다. 그래서 다시 보내지 않고 위 3과 같이 멈추되 제약 목록을 보인다. provider가 맥락 초과로 거절했는지는 provider 고유 코드(`providers/codex`)가 판정해 공통 오류 `ContextExceeded`로 올린다. Codex는 `turn/start` 거절 응답의 문구로 판정하고, 실제 거절 응답의 모양은 실측하지 못했다. Claude는 쓰기 전 거절 경로가 없어 이 판정이 없다. 진행 중인 턴이 맥락 초과로 끝나는 오류 결과(`terminal_reason`이 `prompt_too_long`)는 보내지 않음이 확정이 아니라 줄여 다시 보내지 않고, 결과 확인 필요로 둔다([providers-and-sessions](providers-and-sessions.md)).
 
@@ -286,6 +288,7 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | 실험 수집기가 `saturn-core`의 `packet` 예제(`cargo run -p saturn-core --example packet`)로 두 실험 설계의 입력에서 패킷을 만들고, router 판단이 없으면 RRF 순서로 채운다. | `saturn-terminal/core/examples/packet/tests.rs`의 `packet_stream_input_prints_packet_text`, `packet_scenarios_input_prints_json_with_packet_and_rrf_order`, `packet_without_judgments_fills_in_rrf_order`, `packet_judgments_put_low_probability_item_before_unanswered` |
 | 고정 구역이 넘쳐도 provider 압축으로 대신하지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_over_hard_limit_defers_with_constraints` |
 | provider가 맥락 한도로 거절하면 낮은 순 항목을 빼 한 번만 다시 보내고, 고정 구역은 줄지 않는다. | `saturn-terminal/engine/src/lifecycle/packet_overflow.rs`의 `packet_overflow_rejection_resends_once_without_the_lowest_items`, `packet_overflow_reduction_keeps_the_fixed_zone`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `reduce_packet_drops_the_lowest_items_and_keeps_the_fixed_zone` |
+| 맥락 정리로 여는 새 session도 거절되면 낮은 순 항목을 빼 한 번만 다시 열고, 줄인 패킷도 거절되면 옛 session을 그대로 두고 알린다. | `saturn-terminal/engine/src/lifecycle/packet_overflow.rs`의 `compaction_overflow_rejection_resends_once_without_the_lowest_items`, `compaction_overflow_after_the_reduced_resend_keeps_the_session_and_tells_the_user` |
 | 줄인 패킷도 거절되거나 고정 구역만으로 목표를 넘으면 보내지 않고 멈춘 뒤 알린다. | `saturn-terminal/engine/src/lifecycle/packet_overflow.rs`의 `packet_overflow_after_the_reduced_resend_stops_and_tells_the_user`, `packet_overflow_with_only_the_fixed_zone_over_the_target_is_not_resent`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `reduce_packet_is_none_when_the_fixed_zone_alone_is_over_the_target` |
 | Codex의 맥락 초과 거절을 다른 거절과 구별해 한도를 읽는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `rejected_turn_tells_context_overflow_from_other_rejections` |
 | `provider` 모드에서는 compaction을 판정하지 않고 안전망 값을 넣지 않는다. | `provider` 모드의 실행 인자와 판정 기록을 확인한다. |
