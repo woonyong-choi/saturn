@@ -1,0 +1,420 @@
+{
+  "routes": {
+    "claude.AskUserQuestion.deny_then_allow": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "deny->allow",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "success",
+          "allow->allow",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "success",
+          "deny->deny",
+          "True",
+          "True",
+          "False"
+        ]
+      ],
+      "classification": "불안정"
+    },
+    "claude.control.mcp_message": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "claude.control.rewind_files": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "claude.control.set_max_thinking_tokens": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "claude.control.set_model": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "claude.control.stop_task": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "unsupported_or_error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "claude.set_permission_mode": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.config.batchWrite.reloadUserConfig": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "success",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "success",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.experimentalFeature.enablement.set": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "success",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "success",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.file.config.toml": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "observed",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "observed",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "observed",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ]
+      ],
+      "classification": "확인 못 함"
+    },
+    "codex.file.rules/default.rules": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "observed",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "observed",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "observed",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ]
+      ],
+      "classification": "확인 못 함"
+    },
+    "codex.turn.start.approvalPolicy": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "success",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ],
+        [
+          "success",
+          "not_requested",
+          "True",
+          "True",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.turn.start.sandboxPolicy": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "approval",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "approval",
+          "False",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "불안정"
+    },
+    "inventory.claude.help": {
+      "n": 1,
+      "fingerprints": [
+        [
+          "observed",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인 못 함"
+    },
+    "inventory.claude.version": {
+      "n": 1,
+      "fingerprints": [
+        [
+          "observed",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인 못 함"
+    },
+    "inventory.codex.app-server-schema": {
+      "n": 1,
+      "fingerprints": [
+        [
+          "error",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인 못 함"
+    },
+    "inventory.codex.help": {
+      "n": 1,
+      "fingerprints": [
+        [
+          "observed",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인 못 함"
+    },
+    "inventory.codex.version": {
+      "n": 1,
+      "fingerprints": [
+        [
+          "observed",
+          "not_requested",
+          "False",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인 못 함"
+    }
+  }
+}
