@@ -413,6 +413,10 @@ pub enum ChatNotice {
     ResumeSuggested {
         held: Vec<TaskLabel>,
     },
+    /// 크래시로 끊긴 하위 에이전트의 이벤트가 provider에서 다시 왔다. 채팅의 작업을 바로 멈췄다.
+    InterruptedSubagentReturned {
+        provider: crate::ids::Provider,
+    },
     /// provider 프로세스 묶음 밖에 남은 프로세스 수.
     StopUnconfirmed {
         remaining: u32,

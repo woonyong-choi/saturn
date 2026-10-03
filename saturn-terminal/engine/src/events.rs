@@ -12,12 +12,15 @@ use std::task::Poll;
 
 use saturn_core::agents::TreeStatus;
 use saturn_core::permission::Verdict;
+use saturn_core::providers::InterruptTarget;
 #[cfg(test)]
 use saturn_core::providers::ProviderClient;
 use saturn_core::providers::ProviderError;
 use saturn_protocol::event::{PermissionCall, ProviderEvent};
-use saturn_protocol::ids::{AgentId, ChatId, InputId, LedgerSeq, Provider, RunId, TaskId};
-use saturn_protocol::rpc::{Notification, PermissionAnswer};
+use saturn_protocol::ids::{
+    AgentId, ChatId, InputId, LedgerSeq, Provider, RunId, SubagentId, TaskId,
+};
+use saturn_protocol::rpc::{ChatNotice, Notification, PermissionAnswer};
 use saturn_protocol::state::{EffectScope, SessionState, TaskState};
 
 use crate::flow::{LiveSession, NeedsCheck};
@@ -145,6 +148,9 @@ impl Engine {
             return Ok(());
         };
         let chat = self.session_chat(live.session)?;
+        if self.block_interrupted_subagent(chat, &live, &event).await {
+            return Ok(());
+        }
         let run = self.run_for_event(chat, &live, &event).await?;
         let seq = self.record_event(run, chat, &live, &event).await?;
         if let Some(seq) = seq {
@@ -152,6 +158,56 @@ impl Engine {
         }
         let status = self.agents.on_event(&event);
         self.apply_event(chat, &live, event, status).await
+    }
+
+    /// 크래시로 끊긴 하위 에이전트의 이벤트가 provider에서 다시 왔으면 기록하지 않고 막는다. 그 에이전트를 멈추고 화면에 알린다.
+    /// Saturn이 시작하지 않은 하위 에이전트라 provider가 업데이트로 동작을 바꿔 다시 실행한 것이다. 이미 막은 하위 에이전트의
+    /// 이벤트는 알림 없이 버린다.
+    async fn block_interrupted_subagent(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+        event: &ProviderEvent,
+    ) -> bool {
+        let Some(subagent) = event_subagent(event) else {
+            return false;
+        };
+        let is_watched = self
+            .flow
+            .interrupted_watch
+            .get(&live.agent)
+            .is_some_and(|ids| ids.contains(subagent));
+        if !is_watched {
+            return false;
+        }
+        if !self
+            .flow
+            .interrupted_blocked
+            .insert((live.agent, subagent.clone()))
+        {
+            return true;
+        }
+        tracing::warn!(agent = live.agent.0, subagent = %subagent.0, "an interrupted subagent was started again by the provider");
+        if self.runs.active.contains_key(&live.agent) {
+            let stopped = self.stop_chat(chat).await;
+            self.warn_failure(
+                "failed to stop after an interrupted subagent returned",
+                stopped,
+            );
+        } else if let Some(connection) = self.providers.get(&(chat, live.provider)) {
+            connection.interrupt_tree_detached(
+                live.provider_session.clone(),
+                vec![InterruptTarget::Subagent(subagent.clone())],
+            );
+        }
+        self.notify_chat(
+            chat,
+            ChatNotice::InterruptedSubagentReturned {
+                provider: live.provider,
+            },
+        )
+        .await;
+        true
     }
 
     async fn record_event(
@@ -659,4 +715,18 @@ fn starts_turn(event: &ProviderEvent) -> bool {
         event,
         ProviderEvent::Text { subagent: None, .. } | ProviderEvent::ToolCall { subagent: None, .. }
     )
+}
+
+/// 이벤트가 속한 하위 에이전트. 메인 에이전트의 이벤트면 `None`.
+fn event_subagent(event: &ProviderEvent) -> Option<&SubagentId> {
+    match event {
+        ProviderEvent::Text { subagent, .. }
+        | ProviderEvent::ToolCall { subagent, .. }
+        | ProviderEvent::ToolResult { subagent, .. } => subagent.as_ref(),
+        ProviderEvent::SubagentStarted { subagent, .. }
+        | ProviderEvent::SubagentEnded { subagent, .. }
+        | ProviderEvent::SubagentInterrupted { subagent, .. } => Some(subagent),
+        ProviderEvent::Usage(report) => report.subagent.as_ref(),
+        _ => None,
+    }
 }

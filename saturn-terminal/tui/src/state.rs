@@ -395,7 +395,8 @@ impl ChatState {
                 }
                 Change::Redraw
             }
-            ProviderEvent::SubagentEnded { subagent, .. } => {
+            ProviderEvent::SubagentEnded { subagent, .. }
+            | ProviderEvent::SubagentInterrupted { subagent, .. } => {
                 view.subagents.retain(|s| *s != subagent);
                 Change::Redraw
             }

@@ -64,6 +64,11 @@ while (my $line = <STDIN>) {
   }
   my $p = $m->{params} // {};
   my $tid = $p->{threadId} // "thr_main";
+  if (($ENV{FAKE_CALL_LOG} // "") ne "") {
+    open(my $log, ">>", $ENV{FAKE_CALL_LOG}) or die;
+    print $log "$method $tid\n";
+    close $log;
+  }
   if ($method eq "initialize") {
     out({ id => $id, result => { userAgent => ($ENV{FAKE_USER_AGENT} // "fake/0.158.0"), platformFamily => "unix", platformOs => "macos", codexHome => ($ENV{CODEX_HOME} // "/fake") } });
   } elsif ($method eq "skills/list") {
@@ -183,7 +188,7 @@ while (my $line = <STDIN>) {
     out({ id => $id, result => {} });
     note("turn/completed", { threadId => $tid, turn => { id => $p->{turnId}, status => "interrupted", items => [] } });
     $active = "";
-  } elsif ($method eq "thread/compact/start" || $method eq "thread/unsubscribe" || $method eq "review/start") {
+  } elsif ($method eq "thread/compact/start" || $method eq "thread/unsubscribe" || $method eq "thread/archive" || $method eq "review/start") {
     out({ id => $id, result => {} });
   } else {
     out({ id => $id, error => { code => -32601, message => "method not found: $method" } });
@@ -220,6 +225,7 @@ fn spec(dir: &Path) -> SessionSpec {
         resume: None,
         packet: None,
         add_dirs: Vec::new(),
+        interrupted_children: Vec::new(),
     }
 }
 
@@ -1579,4 +1585,60 @@ async fn a_slow_open_reply_is_waited_for_longer_than_a_quick_one() {
     let opened = client.open_session(spec(dir.path())).await;
 
     assert!(opened.is_ok(), "{opened:?}");
+}
+
+fn thread_calls(log: &Path) -> Vec<String> {
+    std::fs::read_to_string(log)
+        .unwrap_or_default()
+        .lines()
+        .filter(|line| line.starts_with("thread/"))
+        .map(str::to_owned)
+        .collect()
+}
+
+// #66: 끊긴 자식 thread는 부모를 다시 열기 전에 보관하고 구독을 끊으며, 부모 thread는 건드리지 않는다
+#[tokio::test]
+async fn interrupted_children_are_cleaned_before_the_parent_is_resumed() {
+    let dir = tempfile::tempdir().unwrap();
+    let log = dir.path().join("calls.log");
+    let env = vec![("FAKE_CALL_LOG".into(), log.clone().into_os_string())];
+    let mut client = CodexClient::start(launch(dir.path(), env), Supervisor::new())
+        .await
+        .unwrap();
+    let mut reopened = spec(dir.path());
+    reopened.resume = Some(ProviderSessionId("thr_main".to_owned()));
+    reopened.interrupted_children = vec![
+        SubagentId("thr_child".to_owned()),
+        SubagentId("thr_grandchild".to_owned()),
+    ];
+
+    client.open_session(reopened).await.unwrap();
+
+    assert_eq!(
+        thread_calls(&log),
+        vec![
+            "thread/archive thr_child",
+            "thread/unsubscribe thr_child",
+            "thread/archive thr_grandchild",
+            "thread/unsubscribe thr_grandchild",
+            "thread/resume thr_main",
+        ]
+    );
+}
+
+// #66: 끊긴 자식이 없으면 부모를 여는 요청만 보낸다
+#[tokio::test]
+async fn resume_without_interrupted_children_cleans_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let log = dir.path().join("calls.log");
+    let env = vec![("FAKE_CALL_LOG".into(), log.clone().into_os_string())];
+    let mut client = CodexClient::start(launch(dir.path(), env), Supervisor::new())
+        .await
+        .unwrap();
+    let mut reopened = spec(dir.path());
+    reopened.resume = Some(ProviderSessionId("thr_main".to_owned()));
+
+    client.open_session(reopened).await.unwrap();
+
+    assert_eq!(thread_calls(&log), vec!["thread/resume thr_main"]);
 }

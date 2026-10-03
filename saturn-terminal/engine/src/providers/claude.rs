@@ -47,6 +47,19 @@ const SUBSCRIPTION_CACHE_TTL: Duration = Duration::from_secs(60 * 60);
 /// API 키 없이 로그인으로 쓰면 `system/init`의 `apiKeySource`가 `none`이다. 키를 쓰면 다른 값이 온다.
 const SUBSCRIPTION_KEY_SOURCE: &str = "none";
 
+/// 설치본 Claude Code 2.1.288이 작업자 재시작으로 끊긴 턴을 `--resume`할 때 자동으로 다시 실행하게 하는 환경 변수.
+/// 크래시 뒤 끊긴 턴을 사용자 몰래 이어 가지 않도록 실행 환경에서 뺀다.
+const RESUME_INTERRUPTED_TURN_ENV: &str = "CLAUDE_CODE_RESUME_INTERRUPTED_TURN";
+
+/// 넘겨받은 환경에서 `RESUME_INTERRUPTED_TURN_ENV`만 뺀다.
+fn without_resume_interrupted_turn(
+    env: Vec<(std::ffi::OsString, std::ffi::OsString)>,
+) -> Vec<(std::ffi::OsString, std::ffi::OsString)> {
+    env.into_iter()
+        .filter(|(name, _)| name != RESUME_INTERRUPTED_TURN_ENV)
+        .collect()
+}
+
 const SUBAGENT_TOOLS: &[&str] = &["Task", "Agent"];
 
 const SHELL_TOOL: &str = "Bash";
@@ -400,7 +413,7 @@ impl ProviderClient for ClaudeClient {
                 program: self.launch.program.clone(),
                 args: self.launch_args(&spec, &session_arg),
                 workdir: spec.workdir.clone(),
-                env: self.launch.env.clone(),
+                env: without_resume_interrupted_turn(self.launch.env.clone()),
             })
             .map_err(|error| {
                 tracing::warn!(error = %error, "failed to start claude");

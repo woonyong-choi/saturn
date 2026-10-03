@@ -13,16 +13,16 @@ use crate::providers::test_support::{Call, FakeProvider};
 use crate::rpc::RpcEvent;
 
 /// 크래시 뒤 같은 홈으로 다시 시작한 engine과 새 가짜 provider.
-struct Restarted {
-    engine: Engine,
-    fake: FakeProvider,
-    chat: ChatId,
-    fixture: Fixture,
+pub(super) struct Restarted {
+    pub(super) engine: Engine,
+    pub(super) fake: FakeProvider,
+    pub(super) chat: ChatId,
+    pub(super) fixture: Fixture,
 }
 
 impl Restarted {
     /// 작업 중이던 `flow`의 engine을 정리 없이 버려 크래시를 흉내 낸 뒤 같은 홈으로 다시 시작하고, 크래시 복구를 한 번 돌린다.
-    async fn after_crash(flow: Flow, scope: EffectScope) -> Self {
+    pub(super) async fn after_crash(flow: Flow, scope: EffectScope) -> Self {
         let Flow {
             engine,
             fixture,
@@ -50,7 +50,7 @@ impl Restarted {
         }
     }
 
-    fn turns(&self) -> Vec<String> {
+    pub(super) fn turns(&self) -> Vec<String> {
         self.fake
             .calls()
             .into_iter()
@@ -62,7 +62,7 @@ impl Restarted {
     }
 
     /// provider 응답을 기다리는 전달이 모두 끝날 때까지 engine 루프 역할을 한다.
-    async fn settle(&mut self) {
+    pub(super) async fn settle(&mut self) {
         while !self.engine.flow.deliveries.is_empty() {
             let flow = &mut self.engine.flow;
             tokio::select! {
@@ -73,7 +73,12 @@ impl Restarted {
     }
 
     /// TUI가 소켓으로 붙을 때 받은 알림.
-    async fn attach(&mut self) -> Vec<Notification> {
+    pub(super) async fn attach(&mut self) -> Vec<Notification> {
+        self.attach_client().await.1
+    }
+
+    /// `attach`와 같고 붙은 TUI도 돌려준다.
+    pub(super) async fn attach_client(&mut self) -> (Client, Vec<Notification>) {
         let mut client = Client::connect(&self.fixture.socket()).await;
         let request = Request::Attach {
             chat: Some(self.chat),
@@ -82,7 +87,8 @@ impl Restarted {
             overrides: Vec::new(),
             add_dirs: Vec::new(),
         };
-        drive(&mut self.engine, async { client.attach(1, request).await }).await
+        let greeting = drive(&mut self.engine, async { client.attach(1, request).await }).await;
+        (client, greeting)
     }
 }
 

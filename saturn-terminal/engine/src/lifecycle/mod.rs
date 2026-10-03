@@ -3,6 +3,7 @@
 mod add_dir;
 mod agent_questions;
 mod attach;
+mod child_sessions;
 mod conflict_steer;
 mod crash_recovery;
 mod decision;

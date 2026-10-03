@@ -104,6 +104,7 @@ async fn run(args: &Args) -> anyhow::Result<()> {
             resume: None,
             packet: None,
             add_dirs: Vec::new(),
+            interrupted_children: Vec::new(),
         })
         .await
         .map_err(|error| anyhow::anyhow!("failed to open session: {error}"))?;

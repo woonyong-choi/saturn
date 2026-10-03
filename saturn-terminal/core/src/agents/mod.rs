@@ -74,7 +74,8 @@ impl AgentTracker {
             } => {
                 tree.running.insert(subagent.clone(), parent.clone());
             }
-            ProviderEvent::SubagentEnded { subagent, .. } => {
+            ProviderEvent::SubagentEnded { subagent, .. }
+            | ProviderEvent::SubagentInterrupted { subagent, .. } => {
                 tree.running.remove(subagent);
             }
             ProviderEvent::TurnCompleted { .. } => {
@@ -141,6 +142,7 @@ fn agent_of(event: &ProviderEvent) -> AgentId {
         | ProviderEvent::ToolResult { agent, .. }
         | ProviderEvent::SubagentStarted { agent, .. }
         | ProviderEvent::SubagentEnded { agent, .. }
+        | ProviderEvent::SubagentInterrupted { agent, .. }
         | ProviderEvent::PermissionRequested { agent, .. }
         | ProviderEvent::InputRequested { agent, .. }
         | ProviderEvent::TurnCompleted { agent, .. }

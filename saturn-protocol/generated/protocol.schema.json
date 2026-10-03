@@ -227,6 +227,27 @@
         },
         {
           "additionalProperties": false,
+          "description": "크래시로 끊긴 하위 에이전트의 이벤트가 provider에서 다시 왔다. 채팅의 작업을 바로 멈췄다.",
+          "properties": {
+            "InterruptedSubagentReturned": {
+              "properties": {
+                "provider": {
+                  "$ref": "#/$defs/Provider"
+                }
+              },
+              "required": [
+                "provider"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "InterruptedSubagentReturned"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "description": "provider 프로세스 묶음 밖에 남은 프로세스 수.",
           "properties": {
             "StopUnconfirmed": {
@@ -4088,6 +4109,31 @@
           },
           "required": [
             "SubagentEnded"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "크래시로 끝 신호 없이 끊긴 하위 에이전트. engine이 크래시 복구 때 기록에 남기고, 자동으로 다시 하지 않는다.",
+          "properties": {
+            "SubagentInterrupted": {
+              "properties": {
+                "agent": {
+                  "$ref": "#/$defs/AgentId"
+                },
+                "subagent": {
+                  "$ref": "#/$defs/SubagentId"
+                }
+              },
+              "required": [
+                "agent",
+                "subagent"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "SubagentInterrupted"
           ],
           "type": "object"
         },

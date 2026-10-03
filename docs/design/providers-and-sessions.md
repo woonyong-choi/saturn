@@ -70,7 +70,7 @@ engine은 채팅마다 provider별로 켜 둔 채 입력을 받는 연결을 두
 Codex app-server 규약은 codex-cli 0.158.0의 `codex app-server generate-json-schema` 결과로 확인했다.
 
 - 메시지는 한 줄에 JSON 하나이고 `jsonrpc` 필드가 없다. 초기화는 `initialize` 요청 뒤 `initialized` 알림이다.
-- session 닫기는 `thread/unsubscribe`다. 기록을 지우는 `thread/archive`, `thread/delete`는 쓰지 않는다.
+- session 닫기는 `thread/unsubscribe`다. 기록을 지우는 `thread/delete`는 쓰지 않고, `thread/archive`는 크래시로 끊긴 자식 thread를 정리할 때만 쓴다.
 - 자식 작업은 `thread/started` 알림의 `thread.parentThreadId`로 부모 thread에 잇는다.
 - 활성 턴 없음은 오류 코드가 따로 없어 `turn/steer` 오류 문구로 판정한다(초안).
 - 맥락 크기는 `thread/tokenUsage/updated`의 `last.totalTokens`이고 메인 턴 끝에 보낸다. 누적 사용량의 새 입력은 `total.inputTokens - cachedInputTokens`다.
@@ -282,6 +282,17 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 
 크래시 뒤 session을 어떻게 나누는지는 [engine 수명과 복구](engine-lifecycle.md)에 있고, Codex 자식 session 정리와 provider 재개 실측은 [강제 종료 뒤 provider session 재개 결과](../experiments/crash-resume/report.md)에 기록했다.
 
+### 크래시 뒤 끊긴 하위 에이전트
+
+크래시 복구가 하위 에이전트를 `끊김`으로 기록하면 `engine`은 그 목록을 보류한 session을 다시 열 때 `SessionSpec`의 `interrupted_children`으로 provider에 넘기고, 열린 뒤에는 지운다. 증명 없이 같은 작업이 사용자 몰래 다시 실행되지 않게 하기 위해서다([결정](../decisions/2026-10-04-crash-recovery-blocks-provider-resume.md)).
+
+| provider | 다시 열기 전 처리 |
+|---|---|
+| Codex | 부모 `thread/resume` 전에 목록의 자식 thread마다 `thread/archive`, `thread/unsubscribe`를 보낸다. 부모 thread는 보관하지 않는다. 요청이 거절되거나 연결이 끊겨도 경고만 남기고 부모를 연다. |
+| Claude | 실행 환경에서 `CLAUDE_CODE_RESUME_INTERRUPTED_TURN`만 뺀다. 설치본(2.1.288)은 이 변수가 작업자 재시작으로 끊긴 턴을 자동으로 다시 실행하게 한다고 설명한다. 이 변수는 크래시 뒤가 아니어도 Claude 실행마다 뺀다. |
+
+두 provider 모두 다시 연 뒤 끊긴 하위 에이전트의 이벤트가 오면 `engine`이 막는다([engine 수명과 복구](engine-lifecycle.md#크래시-뒤-복구)). Codex 정리 요청의 인과적 필요성과 Claude 변수의 효과는 실측하지 못했다([결과](../experiments/crash-resume/report.md)).
+
 ### 무응답 표시
 
 Saturn은 오래 조용한 작업을 자동으로 죽이지 않는다. 실행 중인 작업에서 마지막 provider 이벤트 뒤 5분(초안) 동안 이벤트가 없으면 TUI가 상태판 실행 줄에 `응답 없음 N분`을 보이고, 사용자가 기존 멈춤으로 멈출 수 있게 한다. 이벤트가 다시 오면 표시를 지우고 그 시각부터 다시 센다. 허가 요청이나 입력 요청을 기다리는 동안은 무응답으로 보지 않고, 답한 뒤 다시 센다. 오래 걸리는 빌드와 테스트를 잘못 끊지 않고 사용자 몰래 멈추지도 않기 위해서다. 시간은 TUI가 받은 이벤트 도착 시각으로 재므로 나중에 붙은 TUI는 붙은 때부터 센다.
@@ -398,6 +409,8 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 연결 작업이 패닉해도 그 채팅이 멈춘 채 남지 않고 알림이 나간다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_connection_task_that_panics_while_sending_leaves_the_task_to_check`, `a_connection_task_that_panics_while_opening_rejects_the_input` |
 | 시작 요청을 기다리는 중 멈추면 연 session을 쓰지 않고 입력을 보류하고, 턴 시작을 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_stop_during_a_slow_start_holds_the_input_instead_of_sending_it` |
 | 실행 중 작업이 5분 동안 provider 이벤트가 없으면 `응답 없음 N분`을 보이고, 이벤트가 오면 지우며, 허가나 입력 요청을 기다리는 동안은 보이지 않는다. 자동으로 멈추지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `no_response_shows_in_minutes_after_the_threshold_without_events`, `no_response_clears_when_an_event_arrives`, `no_response_does_not_show_while_waiting_for_permission_or_input`, `no_response_text_is_translated` |
+| Codex는 끊긴 자식 thread를 부모를 다시 열기 전에 보관하고 구독을 끊으며 부모는 건드리지 않는다. 끊긴 자식이 없으면 정리하지 않는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `interrupted_children_are_cleaned_before_the_parent_is_resumed`, `resume_without_interrupted_children_cleans_nothing` |
+| Claude 실행 환경에서 `CLAUDE_CODE_RESUME_INTERRUPTED_TURN`만 빠진다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `resume_interrupted_turn_variable_is_not_passed_to_claude` |
 
 ## 단점
 

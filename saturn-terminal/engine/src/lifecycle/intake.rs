@@ -61,6 +61,7 @@ async fn accepted_input_reaches_first_provider_after_it_is_recorded() {
                 resume: None,
                 packet: None,
                 add_dirs: Vec::new(),
+                interrupted_children: Vec::new(),
             },
             Call::SendTurn {
                 session,

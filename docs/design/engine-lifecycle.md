@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [engine을 상주 프로세스로 두고 TUI는 JSON-RPC로 붙는 클라이언트로 만든다](../decisions/2026-09-29-engine-centered-json-rpc.md), [외부 효과가 없음을 증명할 때만 크래시 뒤 자동으로 이어 간다](../decisions/2026-09-29-proof-based-auto-resume.md), [engine만 router를 부르고 자식 프로세스 환경에서 router 키를 지운다](../decisions/2026-09-29-engine-as-router-proxy.md) |
+| 관련 결정 | [크래시 뒤 provider가 끊긴 작업을 다시 하지 못하게 막는다](../decisions/2026-10-04-crash-recovery-blocks-provider-resume.md), [engine을 상주 프로세스로 두고 TUI는 JSON-RPC로 붙는 클라이언트로 만든다](../decisions/2026-09-29-engine-centered-json-rpc.md), [외부 효과가 없음을 증명할 때만 크래시 뒤 자동으로 이어 간다](../decisions/2026-09-29-proof-based-auto-resume.md), [engine만 router를 부르고 자식 프로세스 환경에서 router 키를 지운다](../decisions/2026-09-29-engine-as-router-proxy.md) |
 
 ## 요약
 
@@ -204,7 +204,10 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 2. 실행마다 작업을 보류로 되살린다. 채팅의 작업 폴더와 더한 폴더를 읽고, 입력은 보낸 상태 그대로 둔 채 작업만 멈춤 때 실행 중이던 작업과 같게 보류로 둔다. session은 `보류`로 바꿔 기록하고 실행은 `Stopped`로 닫는다. 이 환경은 `engine` 프로세스 환경이고, TUI가 붙으면 그 TUI의 환경으로 바뀐다.
 3. `proven-by-config`와 `proven-by-observation` 실행은 자동 재개 대상이다. `engine`은 보류 재개와 같은 규칙으로 파일 상태를 확인하게 하는 새 입력을 보낸다. 보낼 수 없으면 4번으로 넘긴다.
 4. `network-possible`과 `unobserved` 실행은 보류한 채 둔다.
-5. 보류한 작업마다 `/continue` 제안 한 줄(`ResumeSuggested`)을 보낸다. 크래시 직후에는 붙은 TUI가 없으므로 그 채팅에 처음 붙는 TUI에 보류 표시와 함께 한 번 보내고, 그 사이 재개하거나 닫은 작업은 뺀다.
+5. 실행 중으로 남은 하위 에이전트는 기록에서 `끊김`(`SubagentInterrupted`)으로 바꾼다. 끝 신호가 없는 `SubagentStarted`가 대상이다. 다시 할지는 사용자가 정하고, 자동으로 다시 실행하지 않는다.
+6. 보류한 작업마다 `/continue` 제안 한 줄(`ResumeSuggested`)을 보낸다. 크래시 직후에는 붙은 TUI가 없으므로 그 채팅에 처음 붙는 TUI에 보류 표시와 함께 한 번 보내고, 그 사이 재개하거나 닫은 작업은 뺀다.
+
+끊긴 하위 에이전트는 provider가 session을 다시 열 때 되살리지 못하게 막는다. 보류한 session을 `/continue`로 다시 열 때 `engine`이 끊긴 하위 에이전트 목록을 provider에 넘기고, provider별 정리는 [provider 연결과 session](providers-and-sessions.md#크래시-뒤-끊긴-하위-에이전트)에 있다. 다시 연 뒤 끊긴 하위 에이전트의 이벤트가 오면 provider가 업데이트로 동작을 바꿔 다시 실행한 것이다. `engine`은 그 이벤트를 기록하지 않고, 작업 중이면 채팅의 작업을 멈추고 아니면 그 하위 에이전트에 멈춤 신호를 보내며, TUI에 `InterruptedSubagentReturned`를 한 번 알린다. 이 목록은 크래시를 복구한 `engine` 프로세스의 메모리에만 있다.
 
 자동으로 이어 갈 때 크래시 전에 보낸 패킷을 다시 보내지 않는다. 이미 반영된 입력을 두 번 실행하지 않기 위해서다. 보류한 실행은 사용자가 `/continue`로 이을 때까지 멈춰 있다. 입력 없이 provider가 시작한 턴은 확인 입력을 만들 원문이 없어 session을 보류하고 실행을 닫기만 한다. 한 실행의 복구가 실패하면 경고를 남기고 나머지를 복구하며, 실패한 실행은 끝나지 않은 채 남아 다음 시작 때 다시 시도한다. TUI가 보류 목록을 묻는 방식은 [TUI](tui.md)에 있다.
 
@@ -226,6 +229,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | `engine` 비정상 종료 | 다시 시작한 `engine`이 `effect_scope`로 자동 재개와 보류를 나눈다. |
 | provider 흐름의 관찰 중단 | `effect_scope`를 `unobserved`로 기록하고 자동으로 이어 가지 않는다. |
 | 크래시 뒤 증명되지 않은 `effect_scope` | 자동으로 재개하지 않고 보류한 뒤 재개를 한 줄로 제안한다. |
+| 크래시 뒤 끊긴 하위 에이전트의 이벤트가 provider에서 다시 옴 | 이벤트를 기록하지 않고 작업을 멈추며 한 번 알린다. |
 | 크래시 뒤 한 실행의 복구 실패 | 경고를 남기고 다른 실행은 복구한다. 그 실행은 끝나지 않은 채 남아 다음 시작 때 다시 시도한다. |
 | 에이전트가 실행한 중첩 `saturn` | 실행을 거절한다. |
 | 한 채팅의 provider 요청이 느리거나 응답하지 않음 | 요청은 연결 작업이 실행하고 요청 처리 루프는 결과 메시지만 받으므로, 다른 채팅의 요청과 같은 채팅의 멈춤 요청은 기다리지 않고 처리한다([provider 요청 작업](providers-and-sessions.md#provider-요청-작업)). 응답 대기에는 요청 종류별 제한(바로 돌아와야 하는 요청 10초, 시작·열기 요청 60초, 초안)을 두고 턴은 자동으로 끊지 않는다. 응답 없는 요청의 처리는 [provider 오류 처리](providers-and-sessions.md#오류-처리)를 따른다. |
@@ -256,6 +260,9 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 크래시 흔적이 없으면 복구하지 않는다. | `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `start_without_unfinished_runs_recovers_nothing` |
 | 마지막 TUI가 떠난 뒤 모든 작업이 끝나고 유예(5분)가 지나면 `engine`이 스스로 끝나고, 일이 남았거나 TUI가 붙어 있으면 끝나지 않는다. | `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `engine_ends_by_itself_after_the_grace_when_the_last_tui_left_with_no_work`, `engine_keeps_running_while_work_remains_and_ends_after_it_finishes`, `engine_does_not_end_while_a_tui_is_attached` |
 | 강제 종료 뒤 subagent가 있던 session을 재개할 때의 동작을 확인한다. | [강제 종료 뒤 세션 재개 동작 측정](https://github.com/woonyong-choi/saturn/issues/24), [실측 결과](../experiments/crash-resume/report.md) |
+| 크래시 뒤 실행 중으로 남은 하위 에이전트는 끊김으로 기록하고 자동으로 다시 하지 않는다. | `saturn-terminal/engine/src/lifecycle/child_sessions.rs`의 `running_subagent_left_by_a_crash_is_recorded_as_interrupted` |
+| 보류한 session을 다시 열 때 끊긴 하위 에이전트 목록을 provider에 한 번만 넘긴다. | `saturn-terminal/engine/src/lifecycle/child_sessions.rs`의 `reopening_after_a_crash_hands_interrupted_children_to_the_provider_once` |
+| 다시 연 뒤 끊긴 하위 에이전트의 이벤트는 기록하지 않고 작업을 멈추며 한 번 알린다. 다른 하위 에이전트는 평소처럼 처리한다. | `saturn-terminal/engine/src/lifecycle/child_sessions.rs`의 `interrupted_subagent_coming_back_stops_the_task_and_is_reported_once`, `other_subagents_after_a_crash_are_handled_as_usual` |
 | 에이전트가 실행한 `saturn`은 거절한다. | [하위 에이전트 훅 적용 범위 측정](https://github.com/woonyong-choi/saturn/issues/23) |
 | 한 채팅의 provider 요청이 느리거나 응답하지 않아도 다른 채팅의 입력과 조회, 같은 채팅의 멈춤 요청을 바로 처리한다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_slow_start_request_does_not_stall_other_chats_or_stop`, `a_silent_provider_request_does_not_stall_other_chats_or_stop`, `a_provider_that_stops_reading_input_does_not_stall_other_chats_or_stop` |
 
@@ -269,6 +276,5 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 - 에이전트가 실행한 자식 Saturn을 부모 `engine` 소켓에 자식으로 붙일지, 독립 `engine`으로 띄우고 결과 파일로 돌려받을지 ([#33](https://github.com/woonyong-choi/saturn/issues/33))
 - 크래시 뒤 파일 상태 확인에 쓰는 수정 파일 목록을 실행 경계의 파일 상태 차이로 계산할지, provider 이벤트로 계산할지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))
-- 크래시 복구 때 실행 중으로 남은 subagent와 provider가 다시 불러오는 자식 session을 Saturn이 정리할지, 끊김 표시만 하고 provider 재개 동작은 그대로 둘지 ([#66](https://github.com/woonyong-choi/saturn/issues/66))
 - `ListTasks`, `Usage`, `LoadHistory` 같은 조회 요청의 결과를 알림으로 보낼지, 응답 `result`에 담을지 ([#177](https://github.com/woonyong-choi/saturn/issues/177))
 - 새 TUI나 `cli`가 버전이 다른 상주 `engine`에 붙을 때 그대로 붙을지, 거절할지, 옛 `engine`을 끝내고 새로 띄울지 ([#178](https://github.com/woonyong-choi/saturn/issues/178))

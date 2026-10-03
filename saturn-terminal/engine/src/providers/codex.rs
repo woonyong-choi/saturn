@@ -9,7 +9,7 @@ use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
 use saturn_protocol::event::{ProviderEvent, TurnOrigin};
-use saturn_protocol::ids::{AgentId, ProviderSessionId};
+use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
 use saturn_protocol::input::{InputAnswer, InputRequest};
 use saturn_protocol::rpc::{ModelInfo, PermissionAnswer};
 use serde_json::{Value, json};
@@ -320,6 +320,18 @@ impl CodexClient {
         }
     }
 
+    /// 크래시로 끊긴 자식 thread를 부모 thread를 다시 열기 전에 정리한다. 자식의 구독을 끊고 보관 처리해 부모를 열 때
+    /// 자식 명령이 다시 실행되지 않게 한다. 부모 thread는 건드리지 않는다. 실패는 로그만 남기고 부모를 연다. 그 뒤에도
+    /// 자식 이벤트가 오면 engine이 막는다.
+    async fn clean_interrupted_children(&mut self, children: &[SubagentId]) {
+        for child in children {
+            for method in ["thread/archive", "thread/unsubscribe"] {
+                let reply = self.request(method, json!({ "threadId": child.0 })).await;
+                warn_unless_accepted(method, reply);
+            }
+        }
+    }
+
     fn ensure_thread(&self, session: &ProviderSessionId) -> Result<(), ProviderError> {
         if lock(&self.threads).contains_key(session) {
             return Ok(());
@@ -372,6 +384,8 @@ impl ProviderClient for CodexClient {
         });
         let method = match &spec.resume {
             Some(thread) => {
+                self.clean_interrupted_children(&spec.interrupted_children)
+                    .await;
                 params["threadId"] = json!(thread.0);
                 "thread/resume"
             }
@@ -749,6 +763,16 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+/// 정리 요청의 거절이나 연결 끊김은 로그만 남긴다.
+fn warn_unless_accepted<E>(method: &str, reply: Result<Result<Value, Value>, E>) {
+    let problem = match reply {
+        Ok(Ok(_)) => return,
+        Ok(Err(error)) => error_message(&error),
+        Err(_) => "connection lost".to_owned(),
+    };
+    tracing::warn!(%problem, method, "interrupted codex child was not cleaned");
 }
 
 #[cfg(test)]

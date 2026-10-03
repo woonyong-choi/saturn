@@ -92,6 +92,7 @@ impl Engine {
             resume,
             packet,
             add_dirs: self.chat_dirs_of(record.chat),
+            interrupted_children: Vec::new(),
         }
     }
 

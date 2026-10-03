@@ -44,6 +44,9 @@ pub struct SessionSpec {
     pub packet: Option<String>,
     /// 채팅에 더한 폴더. session을 열 때 provider에 넘기고, 이미 열린 session에는 반영하지 않는다.
     pub add_dirs: Vec<std::path::PathBuf>,
+    /// 크래시로 끊긴 하위 에이전트. 재개할 때만 쓰고, provider는 부모 session을 다시 열기 전에 이 자식들을 정리해
+    /// 다시 실행하지 않게 한다. 정리를 지원하지 않는 provider는 무시한다.
+    pub interrupted_children: Vec<SubagentId>,
 }
 
 #[derive(Debug, Clone)]

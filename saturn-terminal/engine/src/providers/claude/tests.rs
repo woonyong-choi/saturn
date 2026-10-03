@@ -77,6 +77,9 @@ while (my $line = <STDIN>) {
     result();
   } elsif ($text eq "wait") {
     assistant([ { type => "text", text => "working" } ], undef);
+  } elsif ($text eq "env-check") {
+    assistant([ { type => "text", text => "env:" . ($ENV{CLAUDE_CODE_RESUME_INTERRUPTED_TURN} // "unset") . ":" . ($ENV{KEEP_ME} // "none") } ], undef);
+    result();
   } elsif ($text eq "more") {
     assistant([ { type => "text", text => "got more" } ], undef);
     result();
@@ -142,6 +145,7 @@ fn spec(dir: &Path, resume: Option<&str>) -> SessionSpec {
         resume: resume.map(|id| ProviderSessionId(id.to_owned())),
         packet: None,
         add_dirs: Vec::new(),
+        interrupted_children: Vec::new(),
     }
 }
 
@@ -1127,4 +1131,29 @@ fn session_uuid_is_version_four() {
     assert_eq!(id.len(), 36);
     assert_eq!(&id[14..15], "4");
     assert!(matches!(&id[19..20], "8" | "9" | "a" | "b"));
+}
+
+// #66: 끊긴 턴을 자동으로 이어 가는 환경 변수는 실행 환경에서 빼고, 다른 변수는 그대로 둔다
+#[tokio::test]
+async fn resume_interrupted_turn_variable_is_not_passed_to_claude() {
+    let dir = tempfile::tempdir().unwrap();
+    let env = vec![
+        (
+            OsString::from("CLAUDE_CODE_RESUME_INTERRUPTED_TURN"),
+            OsString::from("1"),
+        ),
+        (OsString::from("KEEP_ME"), OsString::from("yes")),
+    ];
+    let mut client = ClaudeClient::new(launch(dir.path(), env), Supervisor::new());
+    let session = client
+        .open_session(spec(dir.path(), Some("resumed-session")))
+        .await
+        .unwrap()
+        .provider_session;
+
+    client.send_turn(&session, "env-check").await.unwrap();
+    let events = take(&mut client, 1).await;
+
+    assert!(matches!(&events[0], ProviderEvent::Text { text, .. } if text == "env:unset:yes"));
+    client.close_session(&session).await.unwrap();
 }
