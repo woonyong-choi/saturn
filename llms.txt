@@ -26,3 +26,4 @@ Developers who use Codex and Claude Code together lose context each time they sw
 
 - [결정 기록](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/decisions/README.md): 설계를 정한 이유와 버린 선택지
 - [실험](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/README.md): 설계 값을 확인하는 실험과 결론
+- [Codex 권한 실제 동작 실험](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/provider-permission-real/design.md): 권한 우회, 파일 범위, 승인 요청의 실제 provider 측정
