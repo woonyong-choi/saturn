@@ -308,6 +308,7 @@ Saturn은 오래 조용한 작업을 자동으로 죽이지 않는다. 실행 �
 | provider 흐름의 관찰 중단 | `effect_scope`를 `unobserved`로 기록하고 자동으로 이어 가지 않는다. |
 | 실행 중 작업의 provider 이벤트가 5분 동안 없음 | 죽이지 않고 상태판에 `응답 없음 N분`을 보인다. 사용자가 멈출 수 있고, 이벤트가 오면 지운다. |
 | 중간 사용량 보고 누락 | 차이가 여러 턴에 걸친다고 표시하고 0으로 채우지 않는다. |
+| provider 요청이 10초(초안) 안에 응답하지 않음 | 그 요청만 응답 없음으로 돌려주고, 연결과 프로세스와 진행 중인 턴은 끊지 않는다. 보내던 입력은 결과를 모르는 것으로 보아 `NeedsCheck`로 두고, session 열기는 실패로 알리며, 멈춤 신호는 연결 끊김으로 보고 프로세스 묶음 중지로 넘어간다. 늦게 온 응답은 버린다. |
 
 관찰 끊김을 `unobserved`로 두는 것은 관찰하지 못한 외부 효과가 있을 수 있기 때문이다.
 
@@ -335,6 +336,7 @@ Saturn은 오래 조용한 작업을 자동으로 죽이지 않는다. 실행 �
 | 누적 범위 사용량의 턴 값은 같은 session의 직전 누적을 뺀 값이다. | Codex 누적 보고 두 개에서 턴 값이 차이로 나오는지 확인한다. |
 | 멈춤 신호는 추적된 subagent까지 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_signals_the_deepest_subagent_first_and_finishes_only_when_the_tree_is_idle` |
 | 멈춤 신호 10초 뒤 남은 프로세스 묶음에는 중지 신호를 보낸다. | `saturn-terminal/engine/src/processes/mod.rs`의 `stop_sends_term_after_grace` |
+| provider 요청 하나가 응답하지 않아도 그 요청만 10초 뒤 실패하고 연결은 계속 쓸 수 있다. 응답 없는 멈춤 신호는 기다리지 않고 연결 끊김으로 돌려준다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `a_silent_request_fails_alone_and_leaves_the_connection_usable`, `a_silent_interrupt_reports_the_lost_connection_instead_of_waiting` |
 | 트리 유휴와 프로세스 중지를 모두 확인한 뒤에만 멈춤 완료를 보고한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_is_not_complete_until_the_process_group_is_confirmed_stopped`, `stop_without_a_finished_turn_signal_is_not_complete`, `processes_left_outside_the_group_are_reported_instead_of_done` |
 | 끼워 넣기와 멈춤 신호가 문서대로 provider에 전달된다. | [#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27) |
 | 닫은 session을 보관한 ID로 재개한다. | [#10](https://github.com/woonyong-choi/saturn/issues/10) |

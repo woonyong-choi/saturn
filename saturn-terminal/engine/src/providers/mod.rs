@@ -14,6 +14,7 @@ mod tool_detail;
 use std::ffi::OsString;
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
@@ -29,9 +30,18 @@ use crate::secrets::Masker;
 pub(crate) use claude::ClaudeClient;
 pub use claude::{HookInputError, run_pre_tool_use};
 pub(crate) use codex::CodexClient;
+/// 응답을 보내지 않을 수도 있는 가짜 app-server를 띄우는 실행 설정.
+#[cfg(test)]
+pub(crate) use codex::tests::launch as fake_codex_launch;
 pub(crate) use codex_home::{
     HomeInput, prepare as prepare_codex_home, rules_fingerprint, rules_of_home,
 };
+
+/// provider 요청 하나의 응답을 기다리는 최대 시간. 넘으면 그 요청만 응답 없음으로 돌려주고 연결과 턴은 끊지 않는다.
+/// 응답은 요청을 받았다는 확인(`thread/start`, `turn/start`, interrupt)이지 턴 실행 시간이 아니라 평소에는 금방 온다.
+/// engine은 요청 처리 루프 하나라 이 시간이 한 채팅의 정지가 다른 채팅과 멈춤 요청을 늦추는 최대 시간이기도 하다.
+/// 멈춤 신호 뒤 프로세스 묶음 중지까지의 유예(10초)와 맞춘 초안 값이다.
+pub(crate) const REPLY_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// engine이 입력 접수 때 고정한 설정 번호로 만든다.
 #[derive(Debug, Clone)]

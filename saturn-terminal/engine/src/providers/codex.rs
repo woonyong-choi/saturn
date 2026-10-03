@@ -18,7 +18,7 @@ use tokio::sync::{mpsc, oneshot};
 
 use super::codex_input::{self, InputKind};
 use super::codex_permission::{APPROVAL_POLICY, SANDBOX, check_applied};
-use super::{AppliedSettings, TurnOriginTracker};
+use super::{AppliedSettings, REPLY_TIMEOUT, TurnOriginTracker};
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::secrets::Masker;
 
@@ -171,6 +171,8 @@ pub struct CodexClient {
     /// 서버가 모두 준비된 것을 확인했다.
     is_mcp_ready: bool,
     mcp_ready_timeout: Duration,
+    /// 요청 하나의 응답을 기다리는 최대 시간.
+    reply_timeout: Duration,
 }
 
 impl CodexClient {
@@ -178,6 +180,13 @@ impl CodexClient {
     #[cfg(test)]
     fn with_mcp_ready_timeout(mut self, timeout: Duration) -> Self {
         self.mcp_ready_timeout = timeout;
+        self
+    }
+
+    /// 응답이 늦는 가짜 app-server 시험이 기다리는 시간을 줄이는 데 쓴다.
+    #[cfg(test)]
+    pub(crate) fn with_reply_timeout(mut self, timeout: Duration) -> Self {
+        self.reply_timeout = timeout;
         self
     }
 
@@ -715,4 +724,4 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
