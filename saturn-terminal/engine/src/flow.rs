@@ -14,8 +14,10 @@ use saturn_protocol::state::{Disposition, TaskState};
 use tokio::sync::mpsc;
 
 use crate::Engine;
+use crate::delivery::Parked;
 use crate::events::PendingPermission;
 use crate::inputs::PendingInput;
+use crate::providers::ProviderMsg;
 use crate::routers::{RecordContext, RouterExchange};
 use crate::stop::{HeldTask, StopDone, StopProgress};
 
@@ -147,6 +149,11 @@ pub(crate) struct FlowState {
     pub(crate) held: HashMap<TaskId, HeldTask>,
     pub(crate) stop_tx: mpsc::UnboundedSender<StopDone>,
     pub(crate) stop_rx: mpsc::UnboundedReceiver<StopDone>,
+    /// provider 응답을 기다리는 전달. 채팅마다 하나이고, 있는 동안 그 채팅의 다음 입력은 보내지 않는다.
+    pub(crate) deliveries: HashMap<ChatId, Parked>,
+    /// 연결 작업이 보내는 provider 이벤트와 요청 결과.
+    pub(crate) provider_tx: mpsc::UnboundedSender<ProviderMsg>,
+    pub(crate) provider_rx: mpsc::UnboundedReceiver<ProviderMsg>,
 }
 
 /// 보낸 뒤 결과를 모르는 작업의 입력과 에이전트.
@@ -161,7 +168,11 @@ impl Default for FlowState {
     fn default() -> Self {
         let (router_tx, router_rx) = mpsc::unbounded_channel();
         let (stop_tx, stop_rx) = mpsc::unbounded_channel();
+        let (provider_tx, provider_rx) = mpsc::unbounded_channel();
         Self {
+            deliveries: HashMap::new(),
+            provider_tx,
+            provider_rx,
             last_run: HashMap::new(),
             last_task: HashMap::new(),
             context_tokens: HashMap::new(),

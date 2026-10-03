@@ -100,10 +100,7 @@ impl Flow {
             .flow
             .questions_of_connection
             .insert((chat, Provider::Claude), questions);
-        engine.providers.insert(
-            (chat, Provider::Claude),
-            ProviderConnection::Fake(fake.clone()),
-        );
+        engine.add_connection(chat, ProviderConnection::Fake(fake.clone()));
         Self {
             engine,
             fake,
@@ -170,10 +167,8 @@ impl Flow {
             .flow
             .questions_of_connection
             .insert((chat, Provider::Claude), true);
-        self.engine.providers.insert(
-            (chat, Provider::Claude),
-            ProviderConnection::Fake(fake.clone()),
-        );
+        self.engine
+            .add_connection(chat, ProviderConnection::Fake(fake.clone()));
         self.engine
             .submit_input(OTHER_CLIENT, chat, 1, "other work".to_owned(), false)
             .await
@@ -201,6 +196,7 @@ impl Flow {
             .on_provider_event(provider, event)
             .await
             .expect("event should be handled");
+        self.settle().await;
     }
 
     /// 채팅에 다른 provider의 가짜 연결을 더한다.
@@ -210,10 +206,8 @@ impl Flow {
             .flow
             .questions_of_connection
             .insert((self.chat, provider), true);
-        self.engine.providers.insert(
-            (self.chat, provider),
-            ProviderConnection::Fake(fake.clone()),
-        );
+        self.engine
+            .add_connection(self.chat, ProviderConnection::Fake(fake.clone()));
         fake
     }
 
@@ -395,15 +389,21 @@ impl Flow {
             .decision
     }
 
-    /// 별도 작업에서 도는 router 호출이 모두 돌아와 적용될 때까지 engine 루프 역할을 한다.
+    /// 별도 작업에서 도는 router 호출과 provider 요청이 모두 돌아와 적용될 때까지 engine 루프 역할을 한다.
     pub(super) async fn settle(&mut self) {
-        while self.is_judging() {
-            let done = timeout(WAIT, self.engine.flow.router_rx.recv())
-                .await
-                .expect("router result should arrive in time")
-                .expect("engine should keep the result channel open");
-            self.engine.on_routed(done).await;
+        while self.is_judging() || self.is_delivering() {
+            let flow = &mut self.engine.flow;
+            tokio::select! {
+                Some(done) = flow.router_rx.recv() => self.engine.on_routed(done).await,
+                Some(message) = flow.provider_rx.recv() => self.engine.on_provider_msg(message).await,
+                () = tokio::time::sleep(WAIT) => panic!("router and provider results should arrive in time"),
+            }
         }
+    }
+
+    /// provider 응답을 기다리는 전달이 있다.
+    pub(super) fn is_delivering(&self) -> bool {
+        !self.engine.flow.deliveries.is_empty()
     }
 
     pub(super) fn is_judging(&self) -> bool {

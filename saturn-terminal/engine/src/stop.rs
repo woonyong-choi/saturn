@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use saturn_core::agents::TreeStatus;
-use saturn_core::providers::{InterruptTarget, ProviderClient, ProviderError};
+use saturn_core::providers::InterruptTarget;
 use saturn_core::queue::{QueueError, QueuedInput};
 use saturn_core::sessions::memo::INTERRUPTED_RESULT;
 use saturn_protocol::ids::{AgentId, ChatId, InputId, TaskId};
@@ -55,6 +55,10 @@ impl Engine {
             return Ok(());
         }
         self.store.begin_stop(chat).await?;
+        if let Some(parked) = self.flow.deliveries.get_mut(&chat) {
+            // provider 응답을 기다리는 전달은 응답이 와도 더 보내지 않고 보류한다
+            parked.job.is_stopped = true;
+        }
         let held = self.queue.stop(chat);
         let running = self.running_agents(chat);
         let mut groups: Vec<ProcessGroupId> = Vec::new();
@@ -63,7 +67,7 @@ impl Engine {
             let Some(live) = self.flow.live.get(agent).cloned() else {
                 continue;
             };
-            self.interrupt_tree(chat, &live).await;
+            self.interrupt_tree(chat, &live);
             self.hold_session(&live).await;
             if let Some(group) = self.group_of(chat, &live)
                 && !groups.contains(&group)
@@ -96,7 +100,9 @@ impl Engine {
             .into_iter()
             .map(|state| self.queue.inputs_in_state(chat, state).len())
             .sum::<usize>();
-        self.running_agents(chat).len() + unsent
+        self.running_agents(chat).len()
+            + unsent
+            + usize::from(self.flow.deliveries.contains_key(&chat))
     }
 
     /// 진행 중인 실행이 있는 에이전트.
@@ -136,21 +142,17 @@ impl Engine {
         }
     }
 
-    /// 깊은 subagent부터 메인 순서로 멈춤 신호를 보낸다. 연결이 끊겼으면 프로세스 중지로 넘어간다.
-    async fn interrupt_tree(&mut self, chat: ChatId, live: &LiveSession) {
-        for target in self.agents.interrupt_order(live.agent) {
-            let target = target.map_or(InterruptTarget::Main, InterruptTarget::Subagent);
-            let sent = match self.provider_mut(chat, live.provider) {
-                Ok(connection) => connection.interrupt(&live.provider_session, target).await,
-                Err(error) => Err(error),
-            };
-            match sent {
-                Ok(()) => {}
-                Err(ProviderError::ConnectionLost) => break,
-                Err(error) => {
-                    tracing::warn!(error = %self.failure_line(&error), "interrupt was not delivered");
-                }
-            }
+    /// 깊은 subagent부터 메인 순서로 멈춤 신호를 맡긴다. 연결 작업이 앞선 요청 뒤에 보내고, 연결이 끊겼으면 프로세스 중지로
+    /// 넘어간다. 기다리지 않으므로 느린 provider 요청이 멈춤 요청 처리를 늦추지 않는다.
+    fn interrupt_tree(&mut self, chat: ChatId, live: &LiveSession) {
+        let targets: Vec<InterruptTarget> = self
+            .agents
+            .interrupt_order(live.agent)
+            .into_iter()
+            .map(|target| target.map_or(InterruptTarget::Main, InterruptTarget::Subagent))
+            .collect();
+        if let Some(connection) = self.providers.get(&(chat, live.provider)) {
+            connection.interrupt_tree_detached(live.provider_session.clone(), targets);
         }
     }
 

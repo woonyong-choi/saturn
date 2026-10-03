@@ -254,6 +254,8 @@ async fn continue_sends_held_input_and_then_a_state_check_for_the_interrupted_ta
 
     flow.engine.continue_held(flow.chat, None).await.unwrap();
 
+    flow.settle().await;
+
     assert_eq!(turns(&flow), vec!["fix the build", "also run the tests"]);
     assert_eq!(flow.state(waiting), InputState::Applied);
     assert_eq!(
@@ -292,6 +294,8 @@ async fn continue_input_resumes_the_task_of_that_input() {
     flow.claude_event(turn_completed(agent)).await;
 
     flow.engine.continue_input(waiting).await.unwrap();
+
+    flow.settle().await;
 
     assert_eq!(flow.state(waiting), InputState::Applied);
     let refused = flow.engine.continue_input(waiting).await.unwrap_err();
@@ -338,11 +342,14 @@ async fn task_with_unknown_result_is_continued_only_when_named() {
     assert!(flow.engine.flow.needs_check.contains_key(&task));
 
     flow.engine.continue_held(flow.chat, None).await.unwrap();
+
+    flow.settle().await;
     assert_eq!(turns(&flow), vec!["fix the build"]);
     flow.engine
         .continue_held(flow.chat, Some(task))
         .await
         .unwrap();
+    flow.settle().await;
 
     let sent = turns(&flow);
     assert_eq!(sent.len(), 2);

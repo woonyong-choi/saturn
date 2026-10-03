@@ -231,6 +231,33 @@ fn next_to_send_waits_for_dispatched_input_in_same_chat() {
 }
 
 #[test]
+fn next_to_send_except_skips_busy_chats_but_not_others() {
+    let other = ChatId(2);
+    let mut queue = Queue::new();
+    accept_routed(&mut queue, 1, Permission::ReadOnly, Disposition::Queue);
+    let mut second = input(2, Permission::ReadOnly);
+    second.chat = other;
+    queue.accept(second);
+    let revision = queue.revision(other);
+    queue
+        .apply(
+            InputId(2),
+            &decision(revision, Disposition::Queue),
+            revision,
+        )
+        .expect("apply should succeed");
+
+    let sent = queue.next_to_send_except(&[CHAT]);
+
+    assert!(matches!(sent, Some(SendAction::NewTask { input, .. }) if input == InputId(2)));
+    assert!(queue.next_to_send_except(&[CHAT, other]).is_none());
+    assert!(matches!(
+        queue.next_to_send(),
+        Some(SendAction::NewTask { input, .. }) if input == InputId(1)
+    ));
+}
+
+#[test]
 fn next_to_send_steer_goes_to_running_agent() {
     let mut queue = Queue::new();
     start_running(&mut queue, 1, Permission::Write, 7);

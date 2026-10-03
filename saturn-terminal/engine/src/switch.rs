@@ -3,7 +3,7 @@
 
 use std::time::SystemTime;
 
-use saturn_core::providers::{ProviderClient, ProviderError, SessionSpec};
+use saturn_core::providers::{ProviderError, SessionHandle, SessionSpec};
 use saturn_core::queue::QueuedInput;
 use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::packet::PacketSource;
@@ -75,6 +75,10 @@ impl Reduction {
 }
 
 impl OpenPlan {
+    pub(crate) fn provider(&self) -> Provider {
+        self.provider
+    }
+
     /// 거절된 계획의 패킷을 한 번만 줄인다. 줄일 재료가 없거나 이미 줄였거나 고정 구역만으로 넘치면 `None`.
     fn reduced(self, limit_tokens: Option<u64>) -> Option<Self> {
         let handoff = self.reduction.as_ref()?.reduce(limit_tokens)?;
@@ -83,6 +87,69 @@ impl OpenPlan {
             reduction: None,
             ..self
         })
+    }
+}
+
+/// provider를 부르기 전에 정해 둔 열기 방법.
+#[derive(Debug)]
+pub(crate) struct OpenPrep {
+    plan: OpenPlan,
+    kind: OpenKind,
+}
+
+#[derive(Debug)]
+enum OpenKind {
+    /// 이 프로세스에서 이미 열려 있어 provider를 부르지 않는다.
+    Live(LiveSession),
+    /// provider에 열려 있는 session에 변경분(`text`)을 턴으로 보낸다. 없으면 부르지 않는다.
+    Handoff {
+        live: LiveSession,
+        stored: SessionRecord,
+        text: Option<String>,
+    },
+    Resume {
+        stored: SessionRecord,
+        spec: SessionSpec,
+    },
+    New {
+        provider: Provider,
+        role: AgentRole,
+        agent: AgentId,
+        id: SessionId,
+        spec: SessionSpec,
+    },
+}
+
+/// provider에 보낼 열기 요청.
+pub(crate) enum OpenCall {
+    None,
+    /// 변경분 턴을 보낸다.
+    Handoff(LiveSession, String),
+    Open(Provider, SessionSpec),
+}
+
+impl OpenPrep {
+    pub(crate) fn provider(&self) -> Provider {
+        self.plan.provider
+    }
+
+    /// 이 준비가 provider에 요청할 것.
+    pub(crate) fn call(&self) -> OpenCall {
+        match &self.kind {
+            OpenKind::Live(_) | OpenKind::Handoff { text: None, .. } => OpenCall::None,
+            OpenKind::Handoff {
+                live,
+                text: Some(text),
+                ..
+            } => OpenCall::Handoff(live.clone(), text.clone()),
+            OpenKind::Resume { stored, spec } => OpenCall::Open(stored.provider, spec.clone()),
+            OpenKind::New { provider, spec, .. } => OpenCall::Open(*provider, spec.clone()),
+        }
+    }
+
+    /// 패킷이 맥락 한도로 거절됐을 때 줄인 패킷으로 다시 열 계획. 줄일 수 없으면 `None`.
+    pub(crate) fn reduced_plan(self, limit_tokens: Option<u64>) -> Option<OpenPlan> {
+        self.plan.reduced(limit_tokens)
     }
 }
 
@@ -257,62 +324,189 @@ impl Engine {
         })
     }
 
-    /// 계획대로 session을 연다. 떠나는 메인은 새 session이 열린 뒤에 보관한다. 열지 못하면 떠나는 메인은 그대로다.
-    /// 패킷이 맥락 한도로 거절되면 경쟁 구역을 줄여 한 번만 다시 연다.
+    /// 계획대로 session을 열기 위해 provider를 부르기 전까지 준비한다. 새 session의 번호를 받고 열 때 넘길 값을 정한다.
     ///
     /// # Errors
-    /// 연결과 session 열기 실패는 `Provider`, 기록 저장 실패는 `Store`. 줄인 패킷도 거절됐거나 고정 구역만으로 넘쳐 줄일 수 없으면 `Provider(ContextExceeded)`.
-    pub(crate) async fn open_planned(
+    /// 번호를 받지 못하면 `Store`, 보관 session을 찾지 못하거나 provider session id가 없으면 `Session`이나 `Provider`.
+    pub(crate) async fn prepare_open(
         &mut self,
         record: &QueuedInput,
         plan: OpenPlan,
-    ) -> Result<LiveSession, EngineError> {
-        self.ensure_connected(plan.provider, record.chat, record.settings)
-            .await?;
-        let (live, plan) = match self.open_target(record, &plan).await {
-            Err(EngineError::Provider(ProviderError::ContextExceeded { limit_tokens })) => {
-                let Some(reduced) = plan.reduced(limit_tokens) else {
-                    return Err(ProviderError::ContextExceeded { limit_tokens }.into());
-                };
-                tracing::warn!(
-                    chat = record.chat.0,
-                    "packet was over the context limit, sending a reduced one"
-                );
-                (self.open_target(record, &reduced).await?, reduced)
+    ) -> Result<OpenPrep, EngineError> {
+        match plan.target.clone() {
+            SendTarget::Open(id) => {
+                let agent = self.sessions.get(id).map(|session| session.agent);
+                if let Some(live) = agent.and_then(|agent| self.flow.live.get(&agent)) {
+                    // 이 프로세스에서 이미 열어 둔 session이면 그대로 쓴다
+                    let live = live.clone();
+                    return Ok(OpenPrep {
+                        plan,
+                        kind: OpenKind::Live(live),
+                    });
+                }
+                let reopened = self.reopen_plan(id);
+                self.prepare_resume(record, id, reopened)
             }
-            other => (other?, plan),
+            SendTarget::Resume(id) => self.prepare_resume(record, id, plan),
+            SendTarget::New { provider, role } => {
+                let agent = match plan.agent {
+                    Some(agent) => agent,
+                    None => AgentId(self.store.allocate_id(IdKind::Agent).await?),
+                };
+                let id = SessionId(self.store.allocate_id(IdKind::Session).await?);
+                let spec = self.session_spec(
+                    record,
+                    agent,
+                    plan.model.clone(),
+                    None,
+                    plan.handoff.clone(),
+                );
+                Ok(OpenPrep {
+                    plan,
+                    kind: OpenKind::New {
+                        provider,
+                        role,
+                        agent,
+                        id,
+                        spec,
+                    },
+                })
+            }
+        }
+    }
+
+    /// 보관한 provider session id로 다시 열 준비를 한다. 멈춤으로 보류됐어도 provider에 아직 열려 있으면 다시 열지 않는다.
+    fn prepare_resume(
+        &self,
+        record: &QueuedInput,
+        id: SessionId,
+        plan: OpenPlan,
+    ) -> Result<OpenPrep, EngineError> {
+        let stored = self
+            .sessions
+            .get(id)
+            .cloned()
+            .ok_or(SessionError::NotFound(id))?;
+        let still_open = self
+            .flow
+            .live
+            .get(&stored.agent)
+            .filter(|live| live.session == id)
+            .cloned();
+        if let Some(live) = still_open {
+            // provider에 이미 열려 있는 session에는 열 때 넘길 곳이 없어 변경분을 턴으로 보낸다
+            let text = plan.handoff.clone();
+            return Ok(OpenPrep {
+                plan,
+                kind: OpenKind::Handoff { live, stored, text },
+            });
+        }
+        let resume = stored
+            .provider_session
+            .clone()
+            .ok_or_else(|| ProviderError::NotSent {
+                reason: format!("session {} has no provider session id", id.0),
+            })?;
+        let spec = self.session_spec(
+            record,
+            stored.agent,
+            stored.model.clone(),
+            Some(resume),
+            plan.handoff.clone(),
+        );
+        Ok(OpenPrep {
+            plan,
+            kind: OpenKind::Resume { stored, spec },
+        })
+    }
+
+    /// provider 응답을 받은 뒤의 상태 변경을 한다. 떠나는 메인은 새 session이 열린 뒤에 보관하고, 열지 못하면 그대로다.
+    /// `opened`는 session을 연 요청의 결과이고, provider를 부르지 않은 경우는 `None`이다.
+    ///
+    /// # Errors
+    /// 기록 저장 실패는 `Store`.
+    pub(crate) async fn finish_open(
+        &mut self,
+        record: &QueuedInput,
+        prep: OpenPrep,
+        opened: Option<SessionHandle>,
+    ) -> Result<LiveSession, EngineError> {
+        let OpenPrep { plan, kind } = prep;
+        let chat = record.chat;
+        let live = match (kind, opened) {
+            (OpenKind::Live(live), _) => live,
+            (OpenKind::Handoff { live, stored, text }, _) => {
+                if text.is_some() {
+                    *self.flow.packet_turns.entry(live.agent).or_insert(0) += 1;
+                }
+                self.leave_main(chat, &plan).await?;
+                if stored.state != SessionState::Open {
+                    self.resume_main(stored.id).await?;
+                }
+                live
+            }
+            (OpenKind::Resume { stored, .. }, Some(handle)) => {
+                self.leave_main(chat, &plan).await?;
+                if stored.state != SessionState::Open {
+                    self.resume_main(stored.id).await?;
+                }
+                self.count_packet_turn(stored.agent, plan.handoff.is_some());
+                self.remember(stored.agent, stored.id, stored.provider, &handle)
+            }
+            (
+                OpenKind::New {
+                    provider,
+                    role,
+                    agent,
+                    id,
+                    ..
+                },
+                Some(handle),
+            ) => {
+                self.register_opened(record, &plan, (provider, role, agent, id), &handle)
+                    .await?
+            }
+            (OpenKind::Resume { .. } | OpenKind::New { .. }, None) => {
+                return Err(ProviderError::ConnectionLost.into());
+            }
         };
-        self.flow.switch_to.remove(&record.chat);
+        self.flow.switch_to.remove(&chat);
         self.after_open(&live, &plan).await?;
         Ok(live)
     }
 
-    async fn open_target(
+    /// 연 새 session을 기록에 등록한다. 기록하지 못하면 provider 쪽도 닫는다.
+    async fn register_opened(
         &mut self,
         record: &QueuedInput,
         plan: &OpenPlan,
+        (provider, role, agent, id): (Provider, AgentRole, AgentId, SessionId),
+        handle: &SessionHandle,
     ) -> Result<LiveSession, EngineError> {
-        match plan.target {
-            SendTarget::Open(id) => self.reuse_open(record, id).await,
-            SendTarget::Resume(id) => self.resume_session(record, id, plan).await,
-            SendTarget::New { provider, role } => {
-                self.open_new_session(record, provider, role, plan).await
+        let registered = match self.leave_main(record.chat, plan).await {
+            Ok(()) => {
+                self.register_session(SessionRecord {
+                    id,
+                    chat: record.chat,
+                    agent,
+                    role,
+                    provider,
+                    provider_session: Some(handle.provider_session.clone()),
+                    model: plan.model.clone(),
+                    state: SessionState::Open,
+                    delivered: LedgerSeq(0),
+                    idle_since: None,
+                })
+                .await
             }
+            Err(error) => Err(error),
+        };
+        if let Err(error) = registered {
+            self.close_unregistered(record.chat, provider, handle);
+            return Err(error);
         }
-    }
-
-    /// 이 프로세스에서 이미 열어 둔 session이면 그대로 쓴다.
-    async fn reuse_open(
-        &mut self,
-        record: &QueuedInput,
-        id: SessionId,
-    ) -> Result<LiveSession, EngineError> {
-        let agent = self.sessions.get(id).map(|session| session.agent);
-        if let Some(live) = agent.and_then(|agent| self.flow.live.get(&agent)) {
-            return Ok(live.clone());
-        }
-        let plan = self.reopen_plan(id);
-        self.resume_session(record, id, &plan).await
+        self.count_packet_turn(agent, plan.handoff.is_some());
+        Ok(self.remember(agent, id, provider, handle))
     }
 
     /// 보관한 provider session id로 다시 연다.
@@ -333,120 +527,6 @@ impl Engine {
             synced: LedgerSeq(0),
             reduction: None,
         }
-    }
-
-    /// 열린 뒤에만 상태를 `Open`으로 바꾼다. 멈춤으로 보류됐어도 provider에 아직 열려 있으면 다시 열지 않는다.
-    async fn resume_session(
-        &mut self,
-        record: &QueuedInput,
-        id: SessionId,
-        plan: &OpenPlan,
-    ) -> Result<LiveSession, EngineError> {
-        let stored = self
-            .sessions
-            .get(id)
-            .cloned()
-            .ok_or(SessionError::NotFound(id))?;
-        let still_open = self
-            .flow
-            .live
-            .get(&stored.agent)
-            .filter(|live| live.session == id)
-            .cloned();
-        if let Some(live) = still_open {
-            self.send_handoff_turn(record.chat, &live, plan).await?;
-            self.leave_main(record.chat, plan).await?;
-            if stored.state != SessionState::Open {
-                self.resume_main(id).await?;
-            }
-            return Ok(live);
-        }
-        let resume = stored
-            .provider_session
-            .clone()
-            .ok_or_else(|| ProviderError::NotSent {
-                reason: format!("session {} has no provider session id", id.0),
-            })?;
-        let spec = self.session_spec(
-            record,
-            stored.agent,
-            stored.model.clone(),
-            Some(resume),
-            plan.handoff.clone(),
-        );
-        let handle = self
-            .open_with_retries(record.chat, stored.provider, spec)
-            .await?;
-        self.leave_main(record.chat, plan).await?;
-        if stored.state != SessionState::Open {
-            self.resume_main(id).await?;
-        }
-        self.count_packet_turn(stored.agent, plan.handoff.is_some());
-        Ok(self.remember(stored.agent, id, stored.provider, &handle))
-    }
-
-    /// provider가 이미 열려 있는 session에는 열 때 넘길 곳이 없어 변경분을 턴으로 보낸다.
-    async fn send_handoff_turn(
-        &mut self,
-        chat: ChatId,
-        live: &LiveSession,
-        plan: &OpenPlan,
-    ) -> Result<(), EngineError> {
-        let Some(text) = &plan.handoff else {
-            return Ok(());
-        };
-        self.provider_mut(chat, live.provider)?
-            .send_turn(&live.provider_session, text)
-            .await?;
-        *self.flow.packet_turns.entry(live.agent).or_insert(0) += 1;
-        Ok(())
-    }
-
-    async fn open_new_session(
-        &mut self,
-        record: &QueuedInput,
-        provider: Provider,
-        role: AgentRole,
-        plan: &OpenPlan,
-    ) -> Result<LiveSession, EngineError> {
-        let agent = match plan.agent {
-            Some(agent) => agent,
-            None => AgentId(self.store.allocate_id(IdKind::Agent).await?),
-        };
-        let id = SessionId(self.store.allocate_id(IdKind::Session).await?);
-        let spec = self.session_spec(
-            record,
-            agent,
-            plan.model.clone(),
-            None,
-            plan.handoff.clone(),
-        );
-        let handle = self.open_with_retries(record.chat, provider, spec).await?;
-        let registered = match self.leave_main(record.chat, plan).await {
-            Ok(()) => {
-                self.register_session(SessionRecord {
-                    id,
-                    chat: record.chat,
-                    agent,
-                    role,
-                    provider,
-                    provider_session: Some(handle.provider_session.clone()),
-                    model: plan.model.clone(),
-                    state: SessionState::Open,
-                    delivered: LedgerSeq(0),
-                    idle_since: None,
-                })
-                .await
-            }
-            Err(error) => Err(error),
-        };
-        if let Err(error) = registered {
-            self.close_unregistered(record.chat, provider, &handle)
-                .await;
-            return Err(error);
-        }
-        self.count_packet_turn(agent, plan.handoff.is_some());
-        Ok(self.remember(agent, id, provider, &handle))
     }
 
     /// 떠나는 메인의 provider session을 닫고 보관한다. provider session id는 재개에 쓰려고 남긴다.
@@ -564,7 +644,7 @@ impl Engine {
             idle_since: None,
         };
         if let Err(error) = self.replace_session(live.session, record).await {
-            self.close_unregistered(chat, live.provider, &handle).await;
+            self.close_unregistered(chat, live.provider, &handle);
             return Err(error);
         }
         self.close_replaced(chat, live, &old).await;

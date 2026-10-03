@@ -1,20 +1,27 @@
 //! provider 이벤트: 기록한 뒤에만 화면과 상태에 반영하고, 허가 요청을 TUI에 올려 답을 provider로 돌려준다.
 //! 설계: docs/design/providers-and-sessions.md#이벤트-수신과-변환, docs/design/permissions.md
 
+#[cfg(test)]
 use std::collections::HashMap;
+#[cfg(test)]
 use std::future::{Future, poll_fn};
+#[cfg(test)]
 use std::pin::pin;
+#[cfg(test)]
 use std::task::Poll;
 
 use saturn_core::agents::TreeStatus;
 use saturn_core::permission::Verdict;
-use saturn_core::providers::{ProviderClient, ProviderError};
+#[cfg(test)]
+use saturn_core::providers::ProviderClient;
+use saturn_core::providers::ProviderError;
 use saturn_protocol::event::{PermissionCall, ProviderEvent};
 use saturn_protocol::ids::{AgentId, ChatId, InputId, LedgerSeq, Provider, RunId, TaskId};
 use saturn_protocol::rpc::{Notification, PermissionAnswer};
 use saturn_protocol::state::{EffectScope, SessionState, TaskState};
 
 use crate::flow::{LiveSession, NeedsCheck};
+#[cfg(test)]
 use crate::providers::ProviderConnection;
 use crate::rpc::ClientId;
 use crate::store::NewRun;
@@ -50,6 +57,7 @@ pub(crate) struct Arrival {
 }
 
 /// 연결이 없으면 영원히 기다린다. 이벤트를 꺼내기만 하므로 취소해도 이벤트를 잃지 않는다(응답을 기다리는 일을 여기에 넣지 않는다).
+#[cfg(test)]
 pub(crate) async fn next_arrival(
     providers: &mut HashMap<(ChatId, Provider), ProviderConnection>,
 ) -> Arrival {
@@ -71,6 +79,7 @@ pub(crate) async fn next_arrival(
 
 /// 완료를 처리한 뒤 줄 세워 둔 다음 입력을 보낸다. 전송은 응답을 기다리므로 이벤트 수신(`next_arrival`)에 묶으면 안 된다.
 /// 수신 쪽 Future는 `select`에서 언제든 버려지고, 버려지면 이미 꺼낸 완료 이벤트와 전송이 함께 사라진다(#324).
+#[cfg(test)]
 pub(crate) async fn start_queued_turn(
     providers: &mut HashMap<(ChatId, Provider), ProviderConnection>,
     chat: ChatId,
@@ -100,8 +109,11 @@ impl Engine {
         if let Err(error) = self.on_provider_event(provider, event).await {
             tracing::warn!(error = %self.failure_line(&error), "provider event not handled");
         }
-        if let Some(agent) = completed {
-            start_queued_turn(&mut self.providers, chat, provider, agent).await;
+        if let Some(agent) = completed
+            && let Some(connection) = self.providers.get(&(chat, provider))
+        {
+            // 쓰기가 막힐 수 있어 루프가 기다리지 않고 연결 작업이 끝까지 쓴다
+            connection.start_queued_turn_detached(agent);
         }
     }
 

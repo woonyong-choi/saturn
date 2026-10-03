@@ -116,10 +116,13 @@ async fn answering_wait_keeps_the_input_in_front_for_the_next_turn() {
         .await
         .unwrap();
 
+    flow.settle().await;
+
     assert_eq!(flow.state(second), InputState::Queued);
     assert_eq!(flow.record(second).reason, None);
     assert_eq!(interrupts(&flow), 0);
     flow.engine.finish_task(flow.chat, agent).await.unwrap();
+    flow.settle().await;
     assert_eq!(turns(&flow), vec!["fix the build", CONFLICT]);
     assert_eq!(flow.state(second), InputState::Applied);
 }
@@ -138,6 +141,8 @@ async fn answering_stop_stops_the_chat_and_then_runs_the_input() {
         .answer_stop_confirm(CLIENT, second, true)
         .await
         .unwrap();
+
+    flow.settle().await;
 
     assert_eq!(interrupts(&flow), 1);
     assert_eq!(flow.state(second), InputState::Held);

@@ -184,6 +184,7 @@ async fn unverified_steer_waits_and_goes_as_a_new_turn_when_the_task_ends() {
         Some(Disposition::Queue)
     );
     flow.engine.finish_task(flow.chat, agent).await.unwrap();
+    flow.settle().await;
     assert_eq!(flow.state(second), InputState::Applied);
     assert_eq!(turns(&flow), vec!["fix the build", "also run the tests"]);
     let ended = flow.engine.store.unfinished_runs().await.unwrap();
@@ -200,6 +201,8 @@ async fn finish_task_ends_the_run_and_releases_the_label() {
     assert!(flow.engine.flow.tasks.label(task).is_some());
 
     flow.engine.finish_task(flow.chat, agent).await.unwrap();
+
+    flow.settle().await;
 
     assert!(
         flow.engine
@@ -225,6 +228,7 @@ async fn cancel_applies_only_before_the_input_is_sent() {
 
     let refused = flow.engine.cancel_input(CLIENT, sent).await.unwrap_err();
     flow.engine.cancel_input(CLIENT, waiting).await.unwrap();
+    flow.settle().await;
 
     assert!(matches!(
         refused,
@@ -257,7 +261,10 @@ async fn run_as_new_task_moves_a_waiting_input_to_its_own_session() {
     assert_eq!(flow.state(waiting), InputState::Queued);
 
     flow.engine.run_as_new_task(CLIENT, waiting).await.unwrap();
+
+    flow.settle().await;
     flow.engine.finish_task(flow.chat, agent).await.unwrap();
+    flow.settle().await;
 
     assert_eq!(flow.state(waiting), InputState::Applied);
     let opens = flow
@@ -287,10 +294,7 @@ async fn requests_are_answered_while_a_judgment_is_in_flight() {
         .await
         .unwrap();
     let fake = FakeProvider::new(Provider::Claude);
-    engine.providers.insert(
-        (chat, Provider::Claude),
-        ProviderConnection::Fake(fake.clone()),
-    );
+    engine.add_connection(chat, ProviderConnection::Fake(fake.clone()));
     let mut client = Client::connect(&fixture.socket()).await;
     let workdir = fixture.workdir.display().to_string();
     let release = transport.hold_next_call();
@@ -363,10 +367,7 @@ async fn socket_submit_reports_input_and_task_states_in_order() {
         .await
         .unwrap();
     let fake = FakeProvider::new(Provider::Claude);
-    engine.providers.insert(
-        (chat, Provider::Claude),
-        ProviderConnection::Fake(fake.clone()),
-    );
+    engine.add_connection(chat, ProviderConnection::Fake(fake.clone()));
     let mut client = Client::connect(&fixture.socket()).await;
     let workdir = fixture.workdir.display().to_string();
 

@@ -132,10 +132,8 @@ async fn first_input_prefers_claude_then_codex() {
     let chat = flow.chat;
     flow.engine.providers.remove(&(chat, Provider::Claude));
     let codex = FakeProvider::new(Provider::Codex);
-    flow.engine.providers.insert(
-        (chat, Provider::Codex),
-        ProviderConnection::Fake(codex.clone()),
-    );
+    flow.engine
+        .add_connection(chat, ProviderConnection::Fake(codex.clone()));
 
     let input = flow.submit("hello").await;
 

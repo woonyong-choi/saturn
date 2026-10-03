@@ -24,6 +24,7 @@ pub use secrets::{Masker, pre_tool_use_hook_settings};
 mod add_dir;
 mod chat_env;
 mod control;
+mod delivery;
 mod dispatch;
 mod events;
 mod exit;
@@ -254,7 +255,7 @@ pub struct Engine {
     masker: Masker,
     supervisor: Supervisor,
     /// 연결은 채팅마다 둔다. 작업 폴더와 환경이 채팅마다 달라서다.
-    providers: HashMap<(ChatId, Provider), ProviderConnection>,
+    providers: HashMap<(ChatId, Provider), providers::ProviderHandle>,
     routers: Routers,
     router_gate: RouterGate,
     rpc: RpcServer,

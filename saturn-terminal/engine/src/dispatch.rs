@@ -1,14 +1,15 @@
 //! 대기열 맨 앞 입력을 provider session에 보내고 결과를 입력과 작업 상태에 반영한다.
 //! 설계: docs/design/input-handling.md, docs/design/providers-and-sessions.md
 
-use saturn_core::providers::{ProviderClient, ProviderError};
+use saturn_core::providers::ProviderError;
 use saturn_core::queue::{QueuedInput, SendAction};
 use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, RunId, TaskId};
 use saturn_protocol::rpc::{Alert, ChatNotice};
 use saturn_protocol::state::{EffectScope, InputState, TaskState};
 
+use crate::delivery::{DeliveryJob, Stage};
 use crate::flow::{LiveSession, NeedsCheck};
-use crate::providers::ProviderConnection;
+use crate::providers::ProviderHandle;
 use crate::store::{NewRun, RunEnd};
 use crate::switch::PlanError;
 use crate::{Engine, EngineError};
@@ -47,7 +48,12 @@ impl Engine {
     /// # Errors
     /// `deliver`와 같다. 오류가 나면 남은 입력은 다음 호출 때 보낸다.
     pub(crate) async fn dispatch_next(&mut self, chat: ChatId) -> Result<(), EngineError> {
-        while let Some(action) = self.queue.next_to_send() {
+        loop {
+            // 앞선 전달이 provider 응답을 기다리는 채팅은 끝날 때까지 건너뛴다. 같은 채팅의 순서를 지키기 위해서다
+            let busy: Vec<ChatId> = self.flow.deliveries.keys().copied().collect();
+            let Some(action) = self.queue.next_to_send_except(&busy) else {
+                break;
+            };
             let input = match action {
                 SendAction::Steer { input, .. }
                 | SendAction::NewTurn { input, .. }
@@ -105,27 +111,21 @@ impl Engine {
         delivery.live = Some(live.clone());
         delivery.run = self.runs.active.get(&agent).copied();
         self.mark_delivering(&delivery).await?;
-        let sent = match self.provider_mut(chat, live.provider) {
-            Ok(connection) => connection.steer(&live.provider_session, &record.text).await,
-            Err(error) => Err(error),
-        };
-        let result = match sent {
-            Err(ProviderError::NoActiveTurn) => self
-                .steer_as_new_turn(input, live.agent)
-                .await
-                .map_err(into_provider_error),
-            Err(ProviderError::NotSent { reason }) => {
-                return self.return_refused_steer(&delivery, &reason).await;
+        let job = DeliveryJob::new(delivery, record);
+        match self.provider_mut(chat, live.provider) {
+            Ok(connection) => {
+                connection.steer_detached(live.provider_session.clone(), job.record.text.clone());
+                self.park(job, Stage::Steering { live });
+                Ok(())
             }
-            other => other,
-        };
-        self.settle(delivery, result).await
+            Err(error) => self.settle(job.delivery, Err(error)).await,
+        }
     }
 
     /// provider가 끼워 넣기를 거절했다(보내지 않음이 확정). 다시 끼워 넣지 않고 입력을 대기열 맨 앞으로 되돌려
     /// 현재 작업이 끝난 뒤 다음 차례에 보낸다. 입력을 거절로 끝내지 않는다([#60](https://github.com/woonyong-choi/saturn/issues/60) 결정).
     /// 충돌 입력이면 큐가 `ConfirmStop` 사유를 달아 알림이 사용자에게 멈추고 실행할지 묻는다([#36](https://github.com/woonyong-choi/saturn/issues/36) 결정).
-    async fn return_refused_steer(
+    pub(crate) async fn return_refused_steer(
         &mut self,
         delivery: &Delivery,
         reason: &str,
@@ -167,7 +167,7 @@ impl Engine {
         start: Start,
     ) -> Result<(), EngineError> {
         let record = self.queued(input)?;
-        let mut delivery = self.delivery(&record, start)?;
+        let delivery = self.delivery(&record, start)?;
         let plan = match self.plan_open(&record, start).await {
             Err(PlanError::Deferred(constraints)) => {
                 let notice = ChatNotice::ContextDeferred { constraints };
@@ -180,43 +180,16 @@ impl Engine {
             self.release_task(&delivery);
             return Err(error);
         }
-        let opened = match plan {
-            Ok(plan) => match self.open_planned(&record, plan).await {
-                Err(EngineError::Provider(ProviderError::ContextExceeded { .. })) => {
-                    Err(OpenFailure::PacketOverflow)
-                }
-                other => other.map_err(|error| OpenFailure::Failed(self.failure_line(&error))),
-            },
-            Err(reason) => Err(OpenFailure::Failed(reason)),
-        };
-        let live = match opened {
-            Ok(live) => live,
-            Err(OpenFailure::PacketOverflow) => {
-                return self
-                    .hold_for_context(&delivery, ChatNotice::PacketOverflow)
-                    .await;
-            }
-            Err(OpenFailure::Failed(reason)) => return self.reject(delivery, reason).await,
-        };
-        delivery.live = Some(live.clone());
-        if let Err(reason) = self.begin_task(&mut delivery, &live) {
-            return self.reject(delivery, reason).await;
+        let job = DeliveryJob::new(delivery, record);
+        match plan {
+            Ok(plan) => self.start_open(job, plan).await,
+            Err(reason) => self.reject(job.delivery, reason).await,
         }
-        let run = self.begin_run(chat, input, delivery.task, &live).await;
-        match run {
-            Ok(run) => delivery.run = Some(run),
-            Err(error) => {
-                let reason = self.failure_line(&error);
-                return self.reject(delivery, reason).await;
-            }
-        }
-        let result = self.send_turn_with_retries(chat, &live, &record.text).await;
-        self.settle(delivery, result).await
     }
 
     /// 패킷의 고정 구역이 `P_hard`도 넘거나 줄인 패킷도 맥락 한도로 거절되면 보내지 않는다. 입력은 작업과 함께 보류하고
     /// `notice`를 보인다. 사용자가 `/continue`로 다시 시도한다.
-    async fn hold_for_context(
+    pub(crate) async fn hold_for_context(
         &mut self,
         delivery: &Delivery,
         notice: ChatNotice,
@@ -252,7 +225,11 @@ impl Engine {
     }
 
     /// 새 작업이면 열린 session의 에이전트로 작업을 시작하고, 새 턴이면 같은 에이전트인지 확인한다.
-    fn begin_task(&mut self, delivery: &mut Delivery, live: &LiveSession) -> Result<(), String> {
+    pub(crate) fn begin_task(
+        &mut self,
+        delivery: &mut Delivery,
+        live: &LiveSession,
+    ) -> Result<(), String> {
         match delivery.start {
             Start::Task(task) => {
                 self.queue
@@ -316,72 +293,11 @@ impl Engine {
         Ok(run)
     }
 
-    /// 활성 턴 없음은 확정 미전달이라 다시 판단하지 않고 같은 session에 새 턴으로 한 번 보낸다.
-    ///
-    /// # Errors
-    /// 새 턴 전송이 `Unknown`이면 다시 보내지 않고 `Provider`를 돌려준다.
-    pub(crate) async fn steer_as_new_turn(
-        &mut self,
-        input: InputId,
-        agent: AgentId,
-    ) -> Result<(), EngineError> {
-        let record = self.queued(input)?;
-        let live = self
-            .flow
-            .live
-            .get(&agent)
-            .cloned()
-            .ok_or_else(|| ProviderError::NotSent {
-                reason: format!("no open session for agent {}", agent.0),
-            })?;
-        let task = record
-            .task
-            .ok_or(saturn_core::queue::QueueError::NotFound(input))?;
-        if let Some(previous) = self.runs.active.remove(&agent) {
-            self.store.finish_run(previous, RunEnd::Completed).await?;
-        }
-        let run = self.begin_run(record.chat, input, task, &live).await?;
-        let sent = self
-            .provider_mut(record.chat, live.provider)?
-            .send_turn(&live.provider_session, &record.text)
-            .await;
-        if let Err(error) = &sent
-            && !matches!(error, ProviderError::Unknown)
-        {
-            self.runs.forget(live.agent);
-            let ended = self.store.finish_run(run, RunEnd::Failed).await;
-            self.warn_failure("failed to end fallback run", ended);
-        }
-        sent.map_err(EngineError::from)
-    }
-
-    async fn send_turn_with_retries(
-        &mut self,
-        chat: ChatId,
-        live: &LiveSession,
-        text: &str,
-    ) -> Result<(), ProviderError> {
-        let mut attempt = 0;
-        loop {
-            attempt += 1;
-            let sent = self
-                .provider_mut(chat, live.provider)?
-                .send_turn(&live.provider_session, text)
-                .await;
-            match sent {
-                Err(error) if should_resend(&error, attempt) => {
-                    tracing::warn!(attempt, "turn was not sent, sending again");
-                }
-                other => return other,
-            }
-        }
-    }
-
     pub(crate) fn provider_mut(
         &mut self,
         chat: ChatId,
         provider: Provider,
-    ) -> Result<&mut ProviderConnection, ProviderError> {
+    ) -> Result<&mut ProviderHandle, ProviderError> {
         self.providers
             .get_mut(&(chat, provider))
             .ok_or_else(|| ProviderError::NotSent {
@@ -390,7 +306,7 @@ impl Engine {
     }
 
     /// 보낸 결과를 입력과 작업 상태에 반영한다.
-    async fn settle(
+    pub(crate) async fn settle(
         &mut self,
         delivery: Delivery,
         result: Result<(), ProviderError>,
@@ -409,13 +325,8 @@ impl Engine {
     }
 
     /// provider가 받았다. 작업 끝은 `finish_task`가 알린다.
-    async fn mark_applied(&mut self, delivery: Delivery) -> Result<(), EngineError> {
-        let input = delivery.input;
-        self.queue.set_state(input, InputState::Applied)?;
-        self.store
-            .set_input_state(input, InputState::Applied, None)
-            .await?;
-        self.notify_input(input).await;
+    pub(crate) async fn mark_applied(&mut self, delivery: Delivery) -> Result<(), EngineError> {
+        self.record_applied(&delivery).await?;
         if !matches!(delivery.start, Start::Steer(_)) {
             let provider = delivery.live.as_ref().map(|live| live.provider);
             self.notify_task(
@@ -427,6 +338,17 @@ impl Engine {
             )
             .await;
         }
+        Ok(())
+    }
+
+    /// 입력을 받은 것으로 기록하고 알린다. 작업 상태는 건드리지 않는다.
+    pub(crate) async fn record_applied(&mut self, delivery: &Delivery) -> Result<(), EngineError> {
+        let input = delivery.input;
+        self.queue.set_state(input, InputState::Applied)?;
+        self.store
+            .set_input_state(input, InputState::Applied, None)
+            .await?;
+        self.notify_input(input).await;
         Ok(())
     }
 
@@ -459,7 +381,11 @@ impl Engine {
     }
 
     /// 보내기 전에 확정된 실패가 끝내 이어졌다. 입력은 `Rejected`, 시작하려던 작업은 닫는다.
-    async fn reject(&mut self, delivery: Delivery, reason: String) -> Result<(), EngineError> {
+    pub(crate) async fn reject(
+        &mut self,
+        delivery: Delivery,
+        reason: String,
+    ) -> Result<(), EngineError> {
         tracing::warn!(input = delivery.input.0, %reason, "input was not delivered");
         self.queue.set_state(delivery.input, InputState::Rejected)?;
         let written = self
@@ -559,20 +485,7 @@ impl Engine {
     }
 }
 
-/// session을 열지 못한 이유.
-enum OpenFailure {
-    /// 줄인 패킷도 맥락 한도로 거절됐거나 고정 구역만으로 넘쳐 보내지 않는다.
-    PacketOverflow,
-    /// 사용자에게 보일 원인 한 줄.
-    Failed(String),
-}
-
-/// 보내기 전에 확정된 실패만 다시 보낸다.
-fn should_resend(error: &ProviderError, attempt: u32) -> bool {
-    matches!(error, ProviderError::NotSent { .. }) && attempt < MAX_SEND_ATTEMPTS
-}
-
-fn into_provider_error(error: EngineError) -> ProviderError {
+pub(crate) fn into_provider_error(error: EngineError) -> ProviderError {
     match error {
         EngineError::Provider(error) => error,
         other => ProviderError::NotSent {

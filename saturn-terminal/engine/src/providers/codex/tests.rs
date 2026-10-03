@@ -88,6 +88,8 @@ while (my $line = <STDIN>) {
     my $asked = $p->{sandbox} // "";
     my $sandbox = $model eq "wrong-sandbox" ? { type => "dangerFullAccess" } : ($asked eq "read-only" ? { type => "readOnly" } : { type => "workspaceWrite" });
     out({ id => $id, result => { thread => { id => $tid, sessionId => "s1", preview => "", turns => [], cliVersion => "0.158.0", createdAt => 1, updatedAt => 1, ephemeral => JSON::PP::false, modelProvider => "openai" }, model => "gpt-test", modelProvider => "openai", approvalPolicy => $policy, approvalsReviewer => "user", sandbox => $sandbox, cwd => "/w" } });
+    # 표준 입력을 읽지 않는 provider. 파이프가 가득 차면 쓰는 쪽이 막힌다
+    select(undef, undef, undef, $ENV{FAKE_STOP_READING_SECS}) if ($ENV{FAKE_STOP_READING_SECS} // "") ne "";
   } elsif ($method eq "mcpServerStatus/list") {
     $mcp_polls++;
     my $ready = $mcp_polls >= 3 && ($ENV{FAKE_MCP_STUCK} // "") eq "";

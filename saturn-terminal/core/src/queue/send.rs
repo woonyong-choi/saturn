@@ -12,6 +12,15 @@ impl Queue {
     // basis: estimate
     /// 끼워 넣기는 바로 보내고, 그 밖은 같은 채팅의 앞 입력이 기다리면 함께 기다린다.
     pub fn next_to_send(&mut self) -> Option<SendAction> {
+        self.next_to_send_except(&[])
+    }
+
+    // cost: time O(n·(t + h)), heap O(c), stack O(1)
+    // vars: n = 대기열 입력 수, t = 작업 수, h = 쓰기 잠금 수, c = 막힌 채팅 수
+    // basis: estimate
+    /// `next_to_send`와 같되 `busy` 채팅의 입력은 내주지 않는다. 앞선 전달이 아직 끝나지 않은 채팅이라 순서를 지키려고
+    /// 끼워 넣기도 기다린다. 다른 채팅의 입력은 막지 않는다.
+    pub fn next_to_send_except(&mut self, busy: &[ChatId]) -> Option<SendAction> {
         let mut blocked_chats: Vec<ChatId> = Vec::new();
         for index in 0..self.inputs.len() {
             let entry = &self.inputs[index];
@@ -19,6 +28,9 @@ impl Queue {
                 continue;
             }
             let chat = entry.input.chat;
+            if busy.contains(&chat) {
+                continue;
+            }
             if entry.is_dispatched {
                 blocked_chats.push(chat);
                 continue;
