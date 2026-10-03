@@ -1,7 +1,7 @@
 //! Claude Code 연결: session마다 `claude` 프로세스 하나를 stream-json 입출력으로 켜 둔다.
 //! 설계: docs/design/providers-and-sessions.md
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::Read;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
@@ -163,6 +163,9 @@ struct SessionLink {
     /// 닫으면 프로그램이 끝난다.
     stdin: ChildStdin,
     state: Arc<Mutex<SessionState>>,
+    /// 턴 진행 중에 받은 새 턴 입력. Claude Code는 진행 중인 턴에 쓴 사용자 메시지를 그 턴에 합쳐 `result`를 하나만 내므로,
+    /// 앞 턴의 `result`를 전달한 뒤에 하나씩 쓴다.
+    queued_turns: VecDeque<String>,
 }
 
 #[derive(Debug)]
@@ -173,6 +176,8 @@ pub struct ClaudeClient {
     /// 키는 `--session-id`로 넘긴 id(새 session) 또는 `--resume` id.
     sessions: HashMap<ProviderSessionId, SessionLink>,
     events: mpsc::Receiver<ProviderEvent>,
+    /// 읽기 작업을 거치지 않고 이 연결이 직접 알릴 이벤트. `next_event`가 먼저 돌려준다.
+    own_events: VecDeque<ProviderEvent>,
     /// 새 session 읽기 작업에 복제해 준다.
     events_tx: mpsc::Sender<ProviderEvent>,
     next_request_id: u64,
@@ -190,6 +195,7 @@ impl ClaudeClient {
             launch,
             sessions: HashMap::new(),
             events,
+            own_events: VecDeque::new(),
             events_tx,
             next_request_id: 1,
             latest_commands: Arc::default(),
@@ -214,6 +220,50 @@ impl ClaudeClient {
         let link = self.sessions.get(session)?;
         let state = lock(&link.state);
         state.initialized.then(|| state.applied.clone())
+    }
+
+    /// 새 턴 입력을 쓰고 `turn_active`를 켠다. 실패하면 `on_user_send`와 `turn_active`를 되돌린다.
+    async fn write_turn(
+        &mut self,
+        session: &ProviderSessionId,
+        text: &str,
+    ) -> Result<(), ProviderError> {
+        let state = self
+            .sessions
+            .get(session)
+            .map(|link| Arc::clone(&link.state))
+            .ok_or_else(|| ProviderError::NotSent {
+                reason: format!("unknown session {}", session.0),
+            })?;
+        let was_active = {
+            let mut state = lock(&state);
+            state.origin.on_user_send();
+            std::mem::replace(&mut state.turn_active, true)
+        };
+        let written = self.write_user_message(session, text).await;
+        if let Err(ProviderError::NotSent { .. }) = &written {
+            let mut state = lock(&state);
+            state.origin.cancel_user_send();
+            state.turn_active = was_active;
+        }
+        written
+    }
+
+    /// 턴이 끝난 session에 줄 세워 둔 첫 입력을 쓴다.
+    async fn start_queued_turn(&mut self, agent: AgentId) {
+        let Some((session, text)) = self.sessions.iter_mut().find_map(|(id, link)| {
+            if lock(&link.state).agent != agent {
+                return None;
+            }
+            link.queued_turns.pop_front().map(|text| (id.clone(), text))
+        }) else {
+            return;
+        };
+        if let Err(error) = self.write_turn(&session, &text).await {
+            tracing::warn!(%error, "failed to send the queued turn");
+            self.own_events
+                .push_back(ProviderEvent::StreamLost { agent });
+        }
     }
 
     /// 모르는 session이거나 프로세스가 이미 끝났으면 `NotSent`, 쓰는 중 실패(끊긴 파이프)는 `Unknown`.
@@ -366,6 +416,7 @@ impl ProviderClient for ClaudeClient {
                 group,
                 stdin: spawned.io.stdin,
                 state,
+                queued_turns: VecDeque::new(),
             },
         );
         if let Some(packet) = &spec.packet {
@@ -377,31 +428,26 @@ impl ProviderClient for ClaudeClient {
         })
     }
 
-    /// 보내기 전 실패면 `on_user_send`와 `turn_active`를 되돌린다.
+    /// 앞 턴이 진행 중이면 쓰지 않고 줄 세워 두었다가 그 턴의 `TurnCompleted`를 전달할 때 쓴다.
+    /// 쓰기 전 실패면 `on_user_send`와 `turn_active`를 되돌린다.
     async fn send_turn(
         &mut self,
         session: &ProviderSessionId,
         text: &str,
     ) -> Result<(), ProviderError> {
-        let state = self
+        let link = self
             .sessions
-            .get(session)
-            .map(|link| Arc::clone(&link.state))
+            .get_mut(session)
             .ok_or_else(|| ProviderError::NotSent {
                 reason: format!("unknown session {}", session.0),
             })?;
-        let was_active = {
-            let mut state = lock(&state);
-            state.origin.on_user_send();
-            std::mem::replace(&mut state.turn_active, true)
-        };
-        let written = self.write_user_message(session, text).await;
-        if let Err(ProviderError::NotSent { .. }) = &written {
-            let mut state = lock(&state);
-            state.origin.cancel_user_send();
-            state.turn_active = was_active;
+        let state = Arc::clone(&link.state);
+        let busy = lock(&state).turn_active || !link.queued_turns.is_empty();
+        if busy {
+            link.queued_turns.push_back(text.to_owned());
+            return Ok(());
         }
-        written
+        self.write_turn(session, text).await
     }
 
     /// 쓰는 사이 턴이 끝나도 provider가 다음 턴에 처리하므로 `Ok`.
@@ -439,6 +485,9 @@ impl ProviderClient for ClaudeClient {
         else {
             return Ok(());
         };
+        if let Some(link) = self.sessions.get_mut(session) {
+            link.queued_turns.clear();
+        }
         let request_id = format!("saturn-{}", self.next_request_id);
         self.next_request_id += 1;
         let (reply, receive) = oneshot::channel();
@@ -572,7 +621,14 @@ impl ProviderClient for ClaudeClient {
 
     /// 모든 session이 닫혀도 채널은 남으므로 `None`은 연결을 버릴 때만.
     async fn next_event(&mut self) -> Option<ProviderEvent> {
-        self.events.recv().await
+        if let Some(event) = self.own_events.pop_front() {
+            return Some(event);
+        }
+        let event = self.events.recv().await?;
+        if let ProviderEvent::TurnCompleted { agent, .. } = &event {
+            self.start_queued_turn(*agent).await;
+        }
+        Some(event)
     }
 
     /// Claude Code `/model`이 보이는 별칭이다. 프로세스를 띄우지 않고 답한다.
