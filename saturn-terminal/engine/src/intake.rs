@@ -192,6 +192,17 @@ impl Engine {
                 .current()
                 .ok_or(SettingsError::NoPreviousRevision)?);
         }
+        self.apply_changed_settings(&[client], chat, workdir).await
+    }
+
+    /// 바뀐 설정 파일을 병합해 경고를 채팅에 알리고, 새로 보이는 폴더 설정의 신뢰 창을 `clients`에 연다.
+    /// 입력 접수와 설정 파일 감시가 함께 쓴다.
+    pub(crate) async fn apply_changed_settings(
+        &mut self,
+        clients: &[ClientId],
+        chat: ChatId,
+        workdir: &Path,
+    ) -> Result<SettingsRevision, EngineError> {
         let (applied, prompt) = self
             .settings
             .apply_trusted(&self.store, Some(chat), workdir)
@@ -203,8 +214,10 @@ impl Engine {
                 .await;
         }
         if let Some(prompt) = prompt {
-            self.send(client, trust_notification(&prompt)).await;
-            self.set_folder_trust(client, Some(prompt));
+            for client in clients {
+                self.send(*client, trust_notification(&prompt)).await;
+                self.set_folder_trust(*client, Some(prompt.clone()));
+            }
         }
         Ok(revision)
     }

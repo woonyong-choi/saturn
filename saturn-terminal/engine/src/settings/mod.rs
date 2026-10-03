@@ -23,7 +23,7 @@ use crate::secrets::{KeyInfo, StorageMode};
 use crate::store::{RetentionPolicy, StoreError, sha256_hex};
 
 pub(crate) use layers::default_layer;
-pub(crate) use manager::{Applied, SettingsManager};
+pub(crate) use manager::{Applied, FileFingerprints, SettingsManager};
 pub(crate) use permission::{PermissionSettings, chat_layer_mode, with_chat_layer_mode};
 pub(crate) use trust::{FolderTrustPrompt, TrustStatus, TrustStore};
 

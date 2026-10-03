@@ -94,7 +94,7 @@ provider 고유 이름(`mcpServer/elicitation/request`, `AskUserQuestion` 같은
 | Codex | 전용 `CODEX_HOME`의 생성 설정에서 `[features] default_mode_request_user_input = true` | 같은 키를 `false`로 쓴다 | 실행 중 `experimentalFeature/enablement/set`은 효과가 없어(codex-cli 0.158.0 실측) 쓰지 않는다. 연결을 다시 시작해 새 생성 설정으로 적용하고 session을 이어 연다. 작업 중이 아니면 바로, 작업 중이면 지금 턴이 끝난 뒤 바로 시작한다 |
 | Claude | `AskUserQuestion`을 그대로 둔다 | `--disallowedTools AskUserQuestion`으로 실행한다 | 실행 중 도구 목록을 바꾸는 공식 경로가 없어 인자가 달라지면 연결을 다시 시작해 session을 이어 연다. 작업 중이 아니면 바로, 작업 중이면 지금 턴이 끝난 뒤 바로 시작한다 |
 
-- 모드는 채팅 층의 `/permissions` 값이 먼저이고 없으면 설정 병합 결과다. 모드는 `/permissions`로 바꿀 때와 새 입력을 접수할 때 읽는다. 설정 파일을 고쳐 모드가 바뀐 경우는 파일을 감시하지 않으므로 다음 입력을 접수할 때 알아채고, 그 입력을 보내기 전에 다시 시작해 새 설정으로 보낸다.
+- 모드는 채팅 층의 `/permissions` 값이 먼저이고 없으면 설정 병합 결과다. 모드는 `/permissions`로 바꿀 때와 새 입력을 접수할 때 읽는다. 설정 파일을 고쳐 모드가 바뀐 경우는 engine이 파일 변경을 알아챌 때 같은 경로로 다시 시작하고([설정](settings.md#설정-변경-감지)), 그 전에 입력을 접수하면 그 입력을 보내기 전에 다시 시작해 새 설정으로 보낸다.
 - 새로 여는 Codex app-server는 생성 설정에 현재 모드의 값을 넣는다. 질문을 끈 설정은 같은 규칙이어도 폴더를 따로 둬(규칙 지문 뒤에 `-no-questions`), 모드가 다른 채팅이 서로의 생성 설정을 덮어쓰지 않게 한다. 사용자 프로필(`profiles.*`)의 같은 키도 옮기지 않는다.
 - 두 provider의 다시 시작은 [권한](permissions.md#codex-구성)의 규칙 변경 재시작과 같은 경로다. 열려 있던 session은 기록에 남겨 다음 입력이 보관한 provider session id로 이어 연다. 바로 다시 시작하면 `다시 시작함 · 변경된 권한 설정을 적용했습니다` 알림 한 줄(`ProviderRestarted`)만 남기고, 턴 끝으로 미루면 미룬 것을 알아챌 때 `PermissionsChanged`를 한 번, 다시 시작할 때 `ProviderRestarted`를 남긴다. 새 문구는 없다. 작업 중에 모드를 원래대로 돌리면 다시 시작하지 않는다.
 - 적용되기 전에 온 질문은 숨기거나 대신 답하지 않고 입력 요청 창으로 보인다. engine은 질문에 대신 답하지 않는다. 모드를 `full`로 바꾼 뒤 연결이 다시 시작되기 전(작업 중이라 턴 끝까지 미룬 동안)에 모델이 묻는 경우가 이에 해당한다.

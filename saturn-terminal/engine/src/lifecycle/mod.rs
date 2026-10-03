@@ -20,6 +20,7 @@ mod read_only_steer;
 mod requests;
 mod send_now;
 mod sessions;
+mod settings_watch;
 mod start;
 mod steer_rejected;
 mod stop;
