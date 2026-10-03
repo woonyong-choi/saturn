@@ -128,12 +128,10 @@ pub(crate) struct FlowState {
     pub(crate) settings_of: HashMap<AgentId, SettingsRevision>,
     /// 채팅의 Codex 연결을 시작할 때 쓴 규칙 지문. 연결이 없으면 항목도 없다.
     pub(crate) rules_of_connection: HashMap<ChatId, String>,
-    /// 연결이 시작할 때 읽은 규칙과 최신 규칙이 달라 다음 턴 끝에 연결을 다시 시작할 채팅.
-    pub(crate) rules_stale: HashSet<ChatId>,
-    /// 연결에 마지막으로 적용한 에이전트 질문 기능 값(켬이 참). Codex는 실행 중 바꿀 때마다, Claude는 시작할 때 쓴 값.
+    /// 바뀐 설정을 적용하려고 다시 시작할 연결. 채팅에 작업이 있으면 턴 끝에 시작한다.
+    pub(crate) stale_connections: HashSet<(ChatId, Provider)>,
+    /// 연결을 시작할 때 쓴 에이전트 질문 기능 값(켬이 참).
     pub(crate) questions_of_connection: HashMap<(ChatId, Provider), bool>,
-    /// 권한 모드가 바뀌어 Claude 연결의 `--disallowedTools`가 최신과 달라, 작업이 끝나면 연결을 다시 시작할 채팅.
-    pub(crate) questions_stale: HashSet<ChatId>,
     /// 보낸 뒤 결과를 모르는 작업.
     pub(crate) needs_check: HashMap<TaskId, NeedsCheck>,
     /// 사용자가 정한 다음 provider. 그 provider의 session이 열리면 지운다.
@@ -166,9 +164,8 @@ impl Default for FlowState {
             inputs: HashMap::new(),
             settings_of: HashMap::new(),
             rules_of_connection: HashMap::new(),
-            rules_stale: HashSet::new(),
+            stale_connections: HashSet::new(),
             questions_of_connection: HashMap::new(),
-            questions_stale: HashSet::new(),
             needs_check: HashMap::new(),
             switch_to: HashMap::new(),
             stopping: HashMap::new(),

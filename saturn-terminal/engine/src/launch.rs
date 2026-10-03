@@ -148,11 +148,10 @@ impl Engine {
         self.flow
             .questions_of_connection
             .insert((chat, provider), questions);
-        self.flow.questions_stale.remove(&chat);
+        self.flow.stale_connections.remove(&(chat, provider));
         self.remember_models(provider, chat).await;
         if let Some(rules) = rules {
             self.flow.rules_of_connection.insert(chat, rules);
-            self.flow.rules_stale.remove(&chat);
         }
         Ok(())
     }

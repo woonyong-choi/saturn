@@ -454,9 +454,17 @@ async fn chat_layer_mode_decides_the_input_permission() {
     );
 }
 
+async fn codex_chat_running(flow: &mut Flow) -> AgentId {
+    flow.add_provider(Provider::Codex);
+    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.submit("write the cache module").await;
+    flow.agent()
+}
+
 #[tokio::test]
-async fn changed_codex_rules_mark_the_connection_stale_until_they_match_again() {
-    let mut flow = Flow::new(Vec::new()).await;
+async fn changed_codex_rules_of_a_running_chat_mark_the_connection_stale_until_they_match_again() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    codex_chat_running(&mut flow).await;
     let mut client = flow.client().await;
     let revision = flow.engine.settings.current().unwrap();
     let current = crate::providers::rules_fingerprint(
@@ -469,16 +477,28 @@ async fn changed_codex_rules_mark_the_connection_stale_until_they_match_again() 
             .permission()
             .rules,
     );
-
-    flow.engine.note_rules_revision(flow.chat, revision).await;
-    assert!(flow.engine.flow.rules_stale.is_empty());
+    flow.engine
+        .flow
+        .rules_of_connection
+        .insert(flow.chat, current.clone());
+    flow.engine
+        .sync_provider_settings(flow.chat, revision)
+        .await;
+    assert!(flow.engine.flow.stale_connections.is_empty());
 
     flow.engine
         .flow
         .rules_of_connection
         .insert(flow.chat, "older-rules".to_owned());
-    flow.engine.note_rules_revision(flow.chat, revision).await;
-    assert!(flow.engine.flow.rules_stale.contains(&flow.chat));
+    flow.engine
+        .sync_provider_settings(flow.chat, revision)
+        .await;
+    assert!(
+        flow.engine
+            .flow
+            .stale_connections
+            .contains(&(flow.chat, Provider::Codex))
+    );
     client
         .until(|notification| match notification {
             Notification::ChatNotice {
@@ -493,23 +513,25 @@ async fn changed_codex_rules_mark_the_connection_stale_until_they_match_again() 
         .flow
         .rules_of_connection
         .insert(flow.chat, current);
-    flow.engine.note_rules_revision(flow.chat, revision).await;
-    assert!(flow.engine.flow.rules_stale.is_empty());
+    flow.engine
+        .sync_provider_settings(flow.chat, revision)
+        .await;
+    assert!(flow.engine.flow.stale_connections.is_empty());
 }
 
 #[tokio::test]
 async fn stale_codex_connection_restarts_after_the_turn_ends_and_reopens_the_session() {
     let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
-    flow.add_provider(Provider::Codex);
     let mut client = flow.client().await;
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
-    flow.submit("write the cache module").await;
-    let agent = flow.agent();
+    let agent = codex_chat_running(&mut flow).await;
     flow.engine
         .flow
         .rules_of_connection
         .insert(flow.chat, "older-rules".to_owned());
-    flow.engine.flow.rules_stale.insert(flow.chat);
+    flow.engine
+        .flow
+        .stale_connections
+        .insert((flow.chat, Provider::Codex));
 
     flow.event(Provider::Codex, turn_completed(agent)).await;
 
@@ -520,7 +542,7 @@ async fn stale_codex_connection_restarts_after_the_turn_ends_and_reopens_the_ses
             .contains_key(&(flow.chat, Provider::Codex))
     );
     assert!(flow.engine.flow.live.is_empty());
-    assert!(flow.engine.flow.rules_stale.is_empty());
+    assert!(flow.engine.flow.stale_connections.is_empty());
     assert!(flow.engine.flow.rules_of_connection.is_empty());
     let notice = client
         .until(|notification| match notification {
@@ -555,17 +577,23 @@ async fn stale_codex_connection_restarts_after_the_turn_ends_and_reopens_the_ses
 #[tokio::test]
 async fn stale_codex_connection_waits_while_the_chat_is_running() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    flow.add_provider(Provider::Codex);
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
-    flow.submit("write the cache module").await;
-    flow.engine.flow.rules_stale.insert(flow.chat);
+    codex_chat_running(&mut flow).await;
+    flow.engine
+        .flow
+        .stale_connections
+        .insert((flow.chat, Provider::Codex));
 
-    flow.engine.restart_stale_codex(flow.chat).await;
+    flow.engine.restart_stale_connections(flow.chat).await;
 
     assert!(
         flow.engine
             .providers
             .contains_key(&(flow.chat, Provider::Codex))
     );
-    assert!(flow.engine.flow.rules_stale.contains(&flow.chat));
+    assert!(
+        flow.engine
+            .flow
+            .stale_connections
+            .contains(&(flow.chat, Provider::Codex))
+    );
 }

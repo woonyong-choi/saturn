@@ -369,12 +369,9 @@ impl Engine {
     pub(crate) async fn on_connection_closed(&mut self, chat: ChatId, provider: Provider) {
         self.providers.remove(&(chat, provider));
         self.flow.questions_of_connection.remove(&(chat, provider));
-        if provider == Provider::Claude {
-            self.flow.questions_stale.remove(&chat);
-        }
+        self.flow.stale_connections.remove(&(chat, provider));
         if provider == Provider::Codex {
             self.flow.rules_of_connection.remove(&chat);
-            self.flow.rules_stale.remove(&chat);
         }
         let lost: Vec<LiveSession> = self
             .flow

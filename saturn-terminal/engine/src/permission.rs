@@ -41,58 +41,75 @@ impl Engine {
         }
     }
 
-    /// 입력을 접수할 때 그 번호의 Codex 규칙이 연결을 시작할 때 읽은 규칙과 다른지 본다. 다르면 다음 턴이 끝난 뒤
-    /// 연결을 다시 시작하도록 표시하며 처음 표시할 때 한 번 알리고, 다시 같아졌으면 표시를 지운다.
-    pub(crate) async fn note_rules_revision(&mut self, chat: ChatId, revision: SettingsRevision) {
-        let Some(started) = self.flow.rules_of_connection.get(&chat) else {
-            return;
-        };
-        let current = match self.settings.at(&self.store, revision).await {
-            Ok(settings) => rules_fingerprint(&settings.permission().rules),
+    /// 설정이 바뀌었는지 보고 바뀐 설정을 연결에 적용한다. `/permissions`로 모드를 바꿀 때와 입력을 접수하며 설정을
+    /// 다시 읽을 때 부른다. 다시 시작이 필요한 연결(Codex는 규칙 지문이나 질문 설정이, Claude는 질문 설정으로 달라지는
+    /// 도구 목록이 연결을 시작할 때와 다를 때)은 채팅에 실행 중인 작업이 없으면 바로 다시 시작하고, 있으면 턴 끝으로
+    /// 미루며 미룬 것을 처음 알아챌 때 한 번 알린다. 입력 접수에서 부르면 그 입력은 다시 시작한 뒤의 새 연결로 나간다.
+    pub(crate) async fn sync_provider_settings(
+        &mut self,
+        chat: ChatId,
+        revision: SettingsRevision,
+    ) {
+        let (rules, questions) = match self.connection_settings(chat, revision).await {
+            Ok(current) => current,
             Err(error) => {
-                tracing::warn!(error = %self.failure_line(&error), "rules not read, keeping the codex connection");
+                tracing::warn!(error = %self.failure_line(&error), "settings not read, keeping the provider connections");
                 return;
             }
         };
-        if *started == current {
-            self.flow.rules_stale.remove(&chat);
-        } else if self.flow.rules_stale.insert(chat) {
-            self.notify_chat(chat, ChatNotice::PermissionsChanged).await;
+        let flow = &self.flow;
+        let asked = |provider| flow.questions_of_connection.get(&(chat, provider));
+        let differs = [
+            (
+                Provider::Codex,
+                flow.rules_of_connection
+                    .get(&chat)
+                    .is_some_and(|started| *started != rules)
+                    || asked(Provider::Codex).is_some_and(|started| *started != questions),
+            ),
+            (
+                Provider::Claude,
+                asked(Provider::Claude).is_some_and(|started| *started != questions),
+            ),
+        ];
+        let mut deferred = false;
+        for (provider, is_stale) in differs {
+            if is_stale {
+                deferred |= self.flow.stale_connections.insert((chat, provider));
+            } else {
+                self.flow.stale_connections.remove(&(chat, provider));
+            }
+        }
+        if self.chat_is_running(chat) {
+            if deferred {
+                self.notify_chat(chat, ChatNotice::PermissionsChanged).await;
+            }
+        } else {
+            self.restart_stale_connections(chat).await;
         }
     }
 
-    /// 턴 끝에서 부른다. 바뀐 설정을 적용하려고 다시 시작할 연결을 모두 시작한다.
+    /// 채팅에 실행 중인 작업이 없을 때, 바뀐 설정을 적용하려고 표시한 연결을 모두 다시 시작한다. 작업 중이면 아무것도
+    /// 하지 않고 턴 끝에서 다시 부른다. 열려 있던 session은 기록에 남아, 다음 입력이 새 설정으로 연결을 만들고 보관한
+    /// provider session id로 이어 연다.
     pub(crate) async fn restart_stale_connections(&mut self, chat: ChatId) {
-        self.restart_stale_codex(chat).await;
-        self.restart_stale_claude(chat).await;
-    }
-
-    /// 규칙이 바뀐 Codex 연결은 채팅에 실행 중인 작업이 없을 때 통째로 닫는다. 열려 있던 session은
-    /// 기록에 그대로 남아, 다음 입력이 새 번호의 규칙으로 연결을 만들고 보관한 provider session id로 이어 연다.
-    pub(crate) async fn restart_stale_codex(&mut self, chat: ChatId) {
-        if !self.flow.rules_stale.contains(&chat) || self.chat_is_running(chat) {
+        if self.chat_is_running(chat) {
             return;
         }
-        self.flow.rules_stale.remove(&chat);
-        self.flow.rules_of_connection.remove(&chat);
-        self.restart_connection(chat, Provider::Codex).await;
-    }
-
-    /// 에이전트 질문 기능을 바꾸려고 Claude 연결을 다시 시작해야 하면, 채팅에 실행 중인 작업이 없을 때 시작한다.
-    /// 작업 중이면 턴 끝에서 다시 부른다. session은 보관한 provider session id로 이어 연다.
-    pub(crate) async fn restart_stale_claude(&mut self, chat: ChatId) {
-        if !self.flow.questions_stale.contains(&chat) || self.chat_is_running(chat) {
-            return;
+        for provider in [Provider::Codex, Provider::Claude] {
+            if self.flow.stale_connections.remove(&(chat, provider)) {
+                self.restart_connection(chat, provider).await;
+            }
         }
-        self.flow.questions_stale.remove(&chat);
-        self.flow
-            .questions_of_connection
-            .remove(&(chat, Provider::Claude));
-        self.restart_connection(chat, Provider::Claude).await;
     }
 
     /// 연결을 닫고 그 채팅에서 열려 있던 session을 흐름에서 뺀다. 기록의 session은 그대로 둬 다음 입력이 이어 연다.
     async fn restart_connection(&mut self, chat: ChatId, provider: Provider) {
+        self.flow.stale_connections.remove(&(chat, provider));
+        self.flow.questions_of_connection.remove(&(chat, provider));
+        if provider == Provider::Codex {
+            self.flow.rules_of_connection.remove(&chat);
+        }
         let Some(mut connection) = self.providers.remove(&(chat, provider)) else {
             return;
         };
@@ -154,50 +171,22 @@ impl Engine {
         Ok(mode != Mode::Full)
     }
 
-    /// 현재 모드에 맞춰 열려 있는 연결의 질문 기능을 바꾼다. Codex는 실행 중 app-server에 바로 적용하고, Claude는
-    /// 실행 인자가 달라지므로 작업 중이 아니면 바로, 작업 중이면 턴 끝에 다시 시작한다. 적용되기 전에 온 질문은
-    /// 그대로 사용자에게 간다.
-    pub(crate) async fn sync_agent_questions(&mut self, chat: ChatId, revision: SettingsRevision) {
-        let enabled = match self.agent_questions(chat, revision).await {
-            Ok(enabled) => enabled,
-            Err(error) => {
-                tracing::warn!(error = %self.failure_line(&error), "agent questions setting not read, keeping the connections");
-                return;
-            }
-        };
-        let known = |flow: &crate::flow::FlowState, provider| {
-            flow.questions_of_connection.get(&(chat, provider)).copied()
-        };
-        if known(&self.flow, Provider::Codex).is_some_and(|known| known != enabled) {
-            self.apply_codex_questions(chat, enabled).await;
-        }
-        match known(&self.flow, Provider::Claude) {
-            Some(known) if known != enabled => {
-                self.flow.questions_stale.insert(chat);
-            }
-            Some(_) => {
-                self.flow.questions_stale.remove(&chat);
-            }
-            None => {}
-        }
-        self.restart_stale_claude(chat).await;
-    }
-
-    async fn apply_codex_questions(&mut self, chat: ChatId, enabled: bool) {
-        let applied = match self.provider_mut(chat, Provider::Codex) {
-            Ok(connection) => connection.set_agent_questions(enabled).await,
-            Err(error) => Err(error),
-        };
-        match applied {
-            Ok(()) => {
-                self.flow
-                    .questions_of_connection
-                    .insert((chat, Provider::Codex), enabled);
-            }
-            Err(error) => {
-                tracing::warn!(error = %self.failure_line(&error), enabled, "failed to apply agent questions to codex");
-            }
-        }
+    /// 그 번호의 규칙 지문과 에이전트 질문 기능. 연결을 시작할 때 읽은 값과 비교한다.
+    async fn connection_settings(
+        &self,
+        chat: ChatId,
+        revision: SettingsRevision,
+    ) -> Result<(String, bool), EngineError> {
+        let rules = self
+            .settings
+            .at(&self.store, revision)
+            .await?
+            .permission()
+            .rules;
+        Ok((
+            rules_fingerprint(&rules),
+            self.agent_questions(chat, revision).await?,
+        ))
     }
 
     /// 규칙은 에이전트가 가장 나중에 시작한 입력에 고정한 설정 번호의 값이고, 모드는 채팅 층에 쓴 값이 있으면 그것이
@@ -281,8 +270,8 @@ impl Engine {
         }
     }
 
-    /// 다음 허가 요청부터 새 모드로 판정한다. 에이전트 질문 기능은 모드에 따라 provider에 바로 적용한다
-    /// ([`Self::sync_agent_questions`]).
+    /// 다음 허가 요청부터 새 모드로 판정한다. 에이전트 질문 기능은 모드에 따라 연결을 다시 시작해 적용한다
+    /// ([`Self::sync_provider_settings`]).
     ///
     /// # Errors
     /// 모르는 모드 이름이면 `UnknownPermissionMode`, 없는 채팅이면 `Store(NotFound)`.
@@ -298,7 +287,7 @@ impl Engine {
         let updated = settings::with_chat_layer_mode(layer.as_deref(), mode);
         self.store.set_chat_layer(chat, &updated).await?;
         if let Some(revision) = self.settings.current() {
-            self.sync_agent_questions(chat, revision).await;
+            self.sync_provider_settings(chat, revision).await;
         }
         Ok(())
     }
