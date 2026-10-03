@@ -13,13 +13,13 @@
 
 <p align="center">
   <a href="README.md">English</a> | 한국어<br>
-  <a href="#작동-방식">작동 방식</a> · <a href="#상태">상태</a> · <a href="#로드맵">로드맵</a> · <a href="#문서">문서</a>
+  <a href="#설치">설치</a> · <a href="#사용법">사용법</a> · <a href="#상태">상태</a> · <a href="#문서">문서</a>
 </p>
 
 Codex와 Claude Code를 함께 쓰는 개발자는 provider마다 session과 압축 방식이 달라서 도구를 바꿀 때마다 맥락을 잃습니다. Saturn은 모든 입력을 보내기 전에 로컬에 기록하고, 그 기록에서 각 provider session에 필요한 맥락만 골라 넘깁니다. 도구마다 터미널을 따로 띄우는 방식과 달리, provider를 바꾸거나 작업을 병렬로 돌리거나 새 session을 열어도 한 채팅의 기록과 작업 상태가 이어집니다.
 
 > [!NOTE]
-> 개발 중입니다. 실행할 수 있는 명령은 아직 없습니다.
+> 개발 중입니다. 배포판은 없고 소스에서 빌드해 실행합니다.
 
 ![설계: 채팅을 Claude Code에서 Codex로 바꾸면 새 Codex session이 Saturn 기록으로 만든 패킷을 받고, 두 결과가 한 채팅에 남습니다](docs/assets/provider-switch.svg)
 
@@ -36,6 +36,80 @@ Codex와 Claude Code를 함께 쓰는 개발자는 provider마다 session과 압
 
 전체 설계는 [설계 문서](docs/README.md)에 있고, 설계 문서는 한국어로 씁니다.
 
+## 설치
+
+Saturn은 Apple Silicon의 macOS에서 실행합니다. CI가 빌드에 쓰는 Rust 1.95.0이 필요합니다(2026-10-04 확인). 로그인을 마친 Codex CLI(`codex`), Claude Code(`claude`) 중 하나 이상도 필요합니다. Saturn은 대신 로그인하지 않으므로 각 CLI에 먼저 로그인하세요.
+
+`saturn`이 `saturn-engine`을 시작하므로 두 실행 파일을 함께 설치하세요.
+
+```sh
+cargo install --locked --git https://github.com/woonyong-choi/saturn saturn-cli saturn-engine
+```
+
+Cargo는 두 실행 파일을 bin 폴더(기본 `~/.cargo/bin`)에 넣습니다. 이 폴더가 `PATH`에 있는지 확인하세요. `saturn`은 `saturn-engine`을 자기 폴더에서 먼저 찾고, 없으면 `PATH`에서 찾습니다.
+
+클론에서 직접 빌드하려면 저장소 루트에서 `cargo build --release`를 실행하세요. `target/release/saturn`과 `target/release/saturn-engine`이 만들어집니다. 두 파일은 같은 폴더에 두세요.
+
+## 사용법
+
+> [!NOTE]
+> 아래 단계는 시작 화면과 모델 창까지 확인했습니다. 실제 provider에 요청을 보내는 단계는 아직 확인하지 않았습니다(상태 참고).
+
+### saturn 시작
+
+저장소에서 `saturn`을 실행하세요. engine을 뒤에서 시작하고 전체 화면 채팅을 엽니다. 처음 시작하면 `~/.saturn`이 만들어집니다.
+
+```sh
+saturn
+```
+
+router 키가 없으면 Router key 창이 숨김 입력으로 키를 묻습니다. `Enter`는 확정하고 `Esc`는 `saturn`을 끝냅니다. `saturn`이 끝나도 engine은 계속 실행됩니다.
+
+### router 키 넣기
+
+router는 API 키가 필요합니다. Saturn은 engine을 시작할 때 아래 방법을 순서대로 시도하고, 처음 성공한 방법에서 멈춥니다.
+
+1. 계정 이름이 `saturn-key`인 macOS 키체인 항목. Router key 창에 키를 입력하면 Saturn이 만듭니다.
+2. engine을 시작하는 셸의 `SATURN_KEY` 환경 변수.
+3. `router.key.command` 설정의 명령. `~/.saturn/config.toml`의 `[router.key]` 아래에 `command = ["op", "read", "<항목>"]`처럼 정합니다. Saturn은 셸 없이 명령을 실행하고 출력의 첫 줄을 키로 읽습니다.
+
+Saturn은 명령줄 인자나 표준 입력으로는 키를 받지 않습니다. 이미 실행 중인 engine은 `SATURN_KEY`를 다시 읽지 않습니다.
+
+```sh
+export SATURN_KEY=<your key>
+saturn
+```
+
+### 화면 없이 실행
+
+파이프나 CI처럼 화면이 없으면 Saturn은 키를 물을 수 없습니다. 키를 정하는 방법을 출력하고 종료 코드 1로 끝납니다.
+
+```sh
+saturn usage
+```
+
+```text
+Error: Router key required (router key required: router rejected the key): set the SATURN_KEY environment variable or the router.key.command setting, then run again
+```
+
+### 모델 바꾸기
+
+입력창에 `/model`을 입력하면 다음 입력부터 쓸 모델을 고를 수 있습니다. `/model codex`나 `/model claude`는 그 provider의 모델만 보여 줍니다. 목록에는 설치된 provider가 나옵니다.
+
+```text
+/model codex
+```
+
+`Enter`는 명령 완성을 받아들이고, 한 번 더 누르면 명령을 실행합니다. 방향키로 움직이고 `Enter`로 고르며 `Esc`로 취소합니다. 고른 모델은 다시 고를 때까지 그 채팅의 이후 모든 입력에 적용됩니다.
+
+### 채팅 이어 열기
+
+같은 폴더에서 `saturn --continue`를 실행하면 그 폴더에서 가장 최근 채팅을 엽니다. `saturn --resume`은 그 폴더의 채팅 목록에서 골라 엽니다.
+
+```sh
+saturn --continue
+```
+
 ## 상태
 
 Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `saturn` 명령은 `main`에 있습니다. 입력 접수부터 provider 전송까지의 입력 흐름, 멈춤과 재개, Saturn 권한 규칙, `/model`, `/usage`는 가짜 provider를 쓴 테스트에서 동작하지만, 실제 Codex와 Claude Code로 처음부터 끝까지 돌린 확인은 아직 없고 TUI 없이 계속 실행과 크래시 뒤 복구는 만들지 않았습니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
@@ -49,7 +123,7 @@ Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `satu
 
 첫 대화 이후의 순서는 아직 정하지 않았습니다.
 
-1. 첫 대화: 실제 Codex와 Claude Code로 처음부터 끝까지 실행, 맥락 패킷의 사용자 제약, 빌드와 설치 안내. (진행 중)
+1. 첫 대화: 실제 Codex와 Claude Code로 처음부터 끝까지 실행, 맥락 패킷의 사용자 제약. (진행 중)
 2. 채팅 관리와 복구: TUI 없이 계속 실행, 크래시 뒤 복구, 채팅 이름과 묶음, 작업 완료 알림. (다음)
 3. 로컬 router 모델: 판단 기록 채점, 개인 router 모델 학습, 같은 평가 세트에서 현재 router보다 나쁘지 않을 때만 교체. (나중)
 4. 서비스: 동의 기반 데이터 수집, 원격 API, 인증, 인프라. (나중)

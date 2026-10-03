@@ -13,13 +13,13 @@
 
 <p align="center">
   English | <a href="README.ko.md">한국어</a><br>
-  <a href="#how-it-works">How it works</a> · <a href="#status">Status</a> · <a href="#roadmap">Roadmap</a> · <a href="#documentation">Documentation</a>
+  <a href="#installation">Installation</a> · <a href="#usage">Usage</a> · <a href="#status">Status</a> · <a href="#documentation">Documentation</a>
 </p>
 
 Developers who use Codex and Claude Code together lose context each time they switch, because each provider keeps its own sessions and compacts them in its own way. Saturn records every input locally before sending it and gives each provider session only the context it needs from that record. Unlike running each tool in a separate terminal, one chat keeps its history and task state across provider switches, parallel tasks, and fresh sessions.
 
 > [!NOTE]
-> In development. There is no runnable command yet.
+> In development. There are no releases; build from source.
 
 ![Design: after you switch the chat from Claude Code to Codex, the new Codex session gets a packet from the Saturn record and both results stay in one chat](docs/assets/provider-switch.svg)
 
@@ -36,6 +36,80 @@ The following is the designed behavior.
 
 The full design is in the [design documents](docs/README.md), which are written in Korean.
 
+## Installation
+
+Saturn runs on macOS on Apple Silicon. It needs Rust 1.95.0, the version CI builds with (checked 2026-10-04). It also needs Codex CLI (`codex`), Claude Code (`claude`), or both, already signed in. Saturn does not sign in for you, so sign in with each CLI first.
+
+`saturn` starts `saturn-engine`, so install both executables together.
+
+```sh
+cargo install --locked --git https://github.com/woonyong-choi/saturn saturn-cli saturn-engine
+```
+
+Cargo puts both executables in its bin folder, `~/.cargo/bin` by default. Make sure that folder is on `PATH`. `saturn` looks for `saturn-engine` in its own folder first and then on `PATH`.
+
+To build from a clone instead, run `cargo build --release` in the repository root. This creates `target/release/saturn` and `target/release/saturn-engine`. Keep them in the same folder.
+
+## Usage
+
+> [!NOTE]
+> The steps below were checked up to the start screen and the model window. Sending a request to a real provider is not confirmed yet (see Status).
+
+### Start saturn
+
+Run `saturn` in a repository. It starts the engine in the background and opens the full-screen chat. The first start creates `~/.saturn`.
+
+```sh
+saturn
+```
+
+If Saturn has no router key, a Router key window asks for it with hidden input. `Enter` confirms and `Esc` quits `saturn`. The engine keeps running after `saturn` exits.
+
+### Provide the router key
+
+The router needs an API key. Saturn gets it by trying these in order when the engine starts, and stops at the first one that works.
+
+1. The macOS keychain entry with the account `saturn-key`, which Saturn creates when you enter a key in the Router key window.
+2. The `SATURN_KEY` environment variable of the shell that starts the engine.
+3. The command in the `router.key.command` setting. Set it in `~/.saturn/config.toml` as `command = ["op", "read", "<item>"]` under `[router.key]`. Saturn runs the command without a shell and reads the first line of its output.
+
+Saturn never takes the key from a command-line argument or standard input. A running engine does not read `SATURN_KEY` again.
+
+```sh
+export SATURN_KEY=<your key>
+saturn
+```
+
+### Run without a screen
+
+Without a screen, as in a pipe or CI, Saturn cannot ask for the key. It prints how to set the key and exits with code 1.
+
+```sh
+saturn usage
+```
+
+```text
+Error: Router key required (router key required: router rejected the key): set the SATURN_KEY environment variable or the router.key.command setting, then run again
+```
+
+### Switch the model
+
+Type `/model` in the input box to choose the model for the next inputs. `/model codex` or `/model claude` lists only that provider. The list shows the installed providers.
+
+```text
+/model codex
+```
+
+`Enter` accepts the command completion, and a second `Enter` runs it. Use the arrow keys to move, `Enter` to choose, and `Esc` to cancel. The chosen model applies to every later input in the chat until you choose again.
+
+### Continue a chat
+
+Run `saturn --continue` in the same folder to open its most recent chat. `saturn --resume` lists the chats of the folder to pick from.
+
+```sh
+saturn --continue
+```
+
 ## Status
 
 Saturn is in development. The message types, core rules, engine, TUI, and the `saturn` command are on `main`. The input flow from acceptance to provider send, stop and resume, Saturn permission rules, `/model`, and `/usage` work in tests with fake providers, but a full run against real Codex and Claude Code is not confirmed yet, and continuing without a TUI and crash recovery are not built. The design documents, decision records, and experiment reports are public. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
@@ -49,7 +123,7 @@ Saturn is in development. The message types, core rules, engine, TUI, and the `s
 
 The order after the first conversation is not fixed yet.
 
-1. First conversation: a full run against real Codex and Claude Code, user constraints in context packets, and a build and install guide. (in progress)
+1. First conversation: a full run against real Codex and Claude Code, user constraints in context packets. (in progress)
 2. Chat management and recovery: continue without a TUI, crash recovery, chat names and grouping, task-completion notifications. (next)
 3. Local router model: score recorded judgments, train a personal router model, and switch to it only when it is not worse than the current router on the same evaluation set. (later)
 4. Service: consent-based data collection, remote API, authentication, and infrastructure. (later)
