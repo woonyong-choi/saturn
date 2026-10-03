@@ -27,9 +27,10 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|error| error.exit());
     let mode = cli.open_mode(lang).unwrap_or_else(|error| error.exit());
     launch::ensure_not_nested(lang)?;
-    let chat = commands::chat::resolve_chat(lang, mode)?;
+    commands::chat::ensure_supported(lang, mode)?;
     let add_dirs = commands::chat::resolve_add_dirs(lang, &cli.add_dir)?;
     let mut client = launch::connect_or_start(lang).await?;
+    let chat = commands::chat::resolve_chat(lang, &mut client, mode).await?;
 
     match cli.command {
         None => commands::chat::run(lang, &mut client, chat, &cli.config, add_dirs).await,

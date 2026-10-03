@@ -38,7 +38,7 @@ saturn-engine --home ~/.saturn -c router.skip_check=true
 | f | 실행이 끝난 뒤 `notes.md`를 확인한다. | 다섯 줄이고 새 두 줄도 `- `로 시작한다. 실행 줄이 `claude · <모델> · <시간>`으로 끝나고 Claude의 답이 채팅에 보인다. |
 | g | `/usage`를 연다. | `claude`, `codex`, `router` 줄이 보이고 두 provider의 토큰이 0보다 크다. |
 | h | `Ctrl+D`로 TUI를 닫는다(`on_exit` 기본 `background`). | 실행 중인 작업이 없으면 바로 닫히고, 있으면 `Tasks still running: N · Reopen with saturn`이 남는다. |
-| i | 같은 폴더에서 `saturn --continue`를 실행한다. | 같은 채팅과 두 입력이 열린다. 아직 지원하지 않으면 [#319](https://github.com/woonyong-choi/saturn/issues/319)의 오류가 나오고 `saturn --resume <채팅 id>`로 같은 채팅을 연다. |
+| i | 같은 폴더에서 `saturn --continue`를 실행한다. | 같은 채팅과 두 입력이 열린다. |
 
 단계 e와 f의 기대 결과 중 제약 유지는 파일 내용으로만 본다. 인계 패킷에 사용자 제약을 담는 기능은 [#297](https://github.com/woonyong-choi/saturn/issues/297)에서 만든다.
 

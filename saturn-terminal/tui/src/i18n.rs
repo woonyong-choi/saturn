@@ -266,7 +266,9 @@ pub const CLI_TRAIN_PROMPT: &str = "학습을 실행할까요?";
 pub const CLI_TRAIN_PROGRESS: &str = "{stage} · 채점 {labeled}건 · {elapsed} · 토큰 {tokens}";
 pub const CLI_TRAIN_FINISHED: &str = "학습을 마쳤습니다";
 pub const CLI_TRAIN_CANCELLED: &str = "학습을 취소했습니다";
-pub const CLI_CONTINUE_UNSUPPORTED: &str = "--continue는 아직 지원하지 않습니다: engine이 현재 폴더의 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰세요";
+pub const CLI_NO_CHAT_TO_CONTINUE: &str =
+    "이 폴더에 이어 열 채팅이 없습니다 · saturn으로 새 채팅을 시작하세요";
+pub const CLI_NO_LATEST_CHAT_ANSWER: &str = "engine이 최근 채팅 없이 답했습니다";
 pub const CLI_RESUME_UNSUPPORTED: &str = "채팅 id 없는 --resume과 --resume all은 아직 지원하지 않습니다: engine이 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰세요";
 pub const CLI_ADD_DIR_UNREADABLE: &str = "--add-dir 폴더를 읽지 못했습니다: {dir}";
 pub const CLI_ADD_DIR_NOT_FOLDER: &str = "--add-dir은 폴더여야 합니다: {dir}";

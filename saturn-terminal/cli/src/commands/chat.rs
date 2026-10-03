@@ -6,11 +6,13 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use saturn_protocol::ids::ChatId;
+use saturn_protocol::rpc::{Notification, Request};
 use saturn_tui::RunOptions;
 use saturn_tui::client::EngineClient;
 use saturn_tui::i18n::{self, Lang};
 
 use crate::args::{ConfigOverride, OpenMode};
+use crate::commands::call;
 
 const HISTORY_FILE: &str = "history";
 
@@ -21,21 +23,61 @@ pub(crate) enum ScreenMode {
     Plain,
 }
 
-/// 이어 열 채팅을 정한다. engine에 붙기 전에 불러 지원하지 않는 방식이면 engine을 띄우지 않는다.
+/// engine에 붙기 전에 불러 지원하지 않는 방식이면 engine을 띄우지 않는다.
 ///
-/// TODO(#161): 현재 폴더의 최근 채팅과 채팅 목록을 engine에서 받을 수 있게 되면 `--continue`와 `--resume`(목록)을 구현한다
+/// TODO(#161): 채팅 목록을 engine에서 받을 수 있게 되면 `--resume`(목록)을 구현한다
 ///
 /// # Errors
-/// 채팅 id 없이 고르거나 가장 최근 채팅을 찾는 방식이면 오류(아직 지원하지 않음).
-pub(crate) fn resolve_chat(lang: Lang, mode: OpenMode) -> anyhow::Result<Option<ChatId>> {
+/// 채팅 id 없이 목록에서 고르는 방식이면 오류(아직 지원하지 않음).
+pub(crate) fn ensure_supported(lang: Lang, mode: OpenMode) -> anyhow::Result<()> {
+    match mode {
+        OpenMode::PickInFolder | OpenMode::PickInAll => {
+            anyhow::bail!(lang.tr(i18n::CLI_RESUME_UNSUPPORTED))
+        }
+        OpenMode::New | OpenMode::Chat(_) | OpenMode::ContinueLast => Ok(()),
+    }
+}
+
+// cost: time O(1), heap O(1), stack O(1), io 2
+// basis: estimate
+/// 이어 열 채팅을 정한다. `--continue`는 지금 폴더의 최근 채팅을 engine에 묻는다.
+///
+/// # Errors
+/// `--continue`인데 폴더에 채팅이 없거나 연결이 끊기면 오류. 새 채팅은 열지 않는다.
+pub(crate) async fn resolve_chat(
+    lang: Lang,
+    client: &mut EngineClient,
+    mode: OpenMode,
+) -> anyhow::Result<Option<ChatId>> {
     match mode {
         OpenMode::New => Ok(None),
         OpenMode::Chat(chat) => Ok(Some(chat)),
-        OpenMode::ContinueLast => anyhow::bail!(lang.tr(i18n::CLI_CONTINUE_UNSUPPORTED)),
+        OpenMode::ContinueLast => latest_chat(lang, client).await.map(Some),
         OpenMode::PickInFolder | OpenMode::PickInAll => {
             anyhow::bail!(lang.tr(i18n::CLI_RESUME_UNSUPPORTED))
         }
     }
+}
+
+async fn latest_chat(lang: Lang, client: &mut EngineClient) -> anyhow::Result<ChatId> {
+    let folder = std::env::current_dir()
+        .context(lang.tr(i18n::CLI_CURRENT_DIR_UNREADABLE))?
+        .display()
+        .to_string();
+    let mut answer = None;
+    call(
+        lang,
+        client,
+        Request::LatestChat { folder },
+        |notification| {
+            if let Notification::LatestChat { chat } = notification {
+                answer = Some(chat);
+            }
+        },
+    )
+    .await?;
+    let chat = answer.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_LATEST_CHAT_ANSWER)))?;
+    chat.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_CHAT_TO_CONTINUE)))
 }
 
 // cost: time O(d·p), heap O(d·p), stack O(1), io d·p
@@ -139,6 +181,8 @@ async fn run_plain(client: &mut EngineClient, options: RunOptions) -> anyhow::Re
 
 #[cfg(test)]
 mod tests {
+    use crate::testing::{FakeEngine, Reply};
+
     use super::*;
 
     fn entry(key: &str, value: &str) -> ConfigOverride {
@@ -148,28 +192,74 @@ mod tests {
         }
     }
 
-    #[test]
-    fn continue_resume_new_chat_has_no_chat_id() {
-        assert_eq!(resolve_chat(Lang::En, OpenMode::New).unwrap(), None);
+    #[tokio::test]
+    async fn continue_resume_new_chat_has_no_chat_id() {
+        let engine = FakeEngine::start(vec![]);
+        let mut client = engine.client().await;
+
+        let chat = resolve_chat(Lang::En, &mut client, OpenMode::New).await;
+
+        assert_eq!(chat.unwrap(), None);
+        assert!(engine.finish().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn continue_resume_chat_id_is_passed_to_attach() {
+        let engine = FakeEngine::start(vec![]);
+        let mut client = engine.client().await;
+
+        let chat = resolve_chat(Lang::En, &mut client, OpenMode::Chat(ChatId(7))).await;
+
+        assert_eq!(chat.unwrap(), Some(ChatId(7)));
+        assert!(engine.finish().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn continue_opens_the_latest_chat_of_the_current_folder() {
+        let engine = FakeEngine::start(vec![Reply::with(vec![Notification::LatestChat {
+            chat: Some(ChatId(5)),
+        }])]);
+        let mut client = engine.client().await;
+
+        let chat = resolve_chat(Lang::En, &mut client, OpenMode::ContinueLast).await;
+
+        assert_eq!(chat.unwrap(), Some(ChatId(5)));
+        let folder = std::env::current_dir().unwrap().display().to_string();
+        let requests = engine.finish().await;
+        assert!(matches!(
+            requests.as_slice(),
+            [Request::LatestChat { folder: asked }] if *asked == folder
+        ));
+    }
+
+    #[tokio::test]
+    async fn continue_without_a_chat_in_the_folder_ends_with_guidance_and_opens_nothing() {
+        let engine = FakeEngine::start(vec![Reply::with(vec![Notification::LatestChat {
+            chat: None,
+        }])]);
+        let mut client = engine.client().await;
+
+        let error = resolve_chat(Lang::En, &mut client, OpenMode::ContinueLast)
+            .await
+            .unwrap_err();
+
+        assert!(error.to_string().contains("No chat to continue"));
+        assert_eq!(engine.finish().await.len(), 1);
     }
 
     #[test]
-    fn continue_resume_chat_id_is_passed_to_attach() {
-        let chat = resolve_chat(Lang::En, OpenMode::Chat(ChatId(7))).unwrap();
-
-        assert_eq!(chat, Some(ChatId(7)));
-    }
-
-    #[test]
-    fn continue_resume_modes_that_need_a_chat_list_are_not_supported_yet() {
-        for mode in [
-            OpenMode::ContinueLast,
-            OpenMode::PickInFolder,
-            OpenMode::PickInAll,
-        ] {
-            let error = resolve_chat(Lang::En, mode).unwrap_err();
+    fn resume_modes_that_need_a_chat_list_are_not_supported_yet() {
+        for mode in [OpenMode::PickInFolder, OpenMode::PickInAll] {
+            let error = ensure_supported(Lang::En, mode).unwrap_err();
 
             assert!(error.to_string().contains("not supported yet"), "{mode:?}");
+        }
+        for mode in [
+            OpenMode::New,
+            OpenMode::ContinueLast,
+            OpenMode::Chat(ChatId(1)),
+        ] {
+            assert!(ensure_supported(Lang::En, mode).is_ok(), "{mode:?}");
         }
     }
 
