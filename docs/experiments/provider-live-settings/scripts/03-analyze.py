@@ -20,8 +20,14 @@ def main() -> int:
     routes = {}
     for condition, rows in sorted(grouped.items()):
         fingerprints = [tuple(row[field] for field in ("request_result", "tool_decision", "fixture_effect", "next_turn_effect", "restart_effect")) for row in rows]
+        if len(rows) < 3 or all(row.get("fixture_distinguishes") == "False" for row in rows):
+            classification = "확인 못 함"
+        elif len(set(fingerprints)) == 1:
+            classification = "확인"
+        else:
+            classification = "불안정"
         routes[condition] = {"n": len(rows), "fingerprints": [list(value) for value in fingerprints],
-                            "classification": "확인" if len(rows) >= 3 and len(set(fingerprints)) == 1 else "확인 못 함"}
+                            "classification": classification}
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps({"routes": routes}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return 0

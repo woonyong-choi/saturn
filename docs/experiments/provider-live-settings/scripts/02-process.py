@@ -11,15 +11,20 @@ RAW = ROOT / "data" / "raw"
 OUT = ROOT / "data" / "processed" / "trials.csv"
 FIELDS = ["run_id", "trial_id", "condition", "ts_utc", "provider", "request_result",
           "process_id", "tool_decision", "fixture_effect", "next_turn_effect",
-          "restart_effect", "private_log"]
+          "restart_effect", "private_log", "fixture_distinguishes"]
 
 
 def main() -> int:
-    rows = []
+    by_trial = {}
     for path in sorted(RAW.glob("*.jsonl")):
         for line in path.read_text(encoding="utf-8").splitlines():
             value = json.loads(line)
-            rows.append({field: value.get(field) for field in FIELDS})
+            # 같은 trial을 계측 필드 추가 뒤 다시 실행한 경우 최신 raw를 사용한다.
+            normalized = {field: value.get(field) for field in FIELDS}
+            if value.get("condition", "").startswith("codex.file."):
+                normalized["fixture_distinguishes"] = False
+            by_trial[value["trial_id"]] = normalized
+    rows = list(by_trial.values())
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with OUT.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=FIELDS)
