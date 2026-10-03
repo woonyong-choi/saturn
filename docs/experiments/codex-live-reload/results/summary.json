@@ -1,0 +1,338 @@
+{
+  "routes": {
+    "H1.codex.questions.toggle": {
+      "n": 3,
+      "sequences": [
+        [
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true
+        ]
+      ],
+      "classification": "확인"
+    },
+    "H1.codex.questions.reverse": {
+      "n": 3,
+      "sequences": [
+        [
+          false,
+          false
+        ],
+        [
+          false,
+          false
+        ],
+        [
+          false,
+          false
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.execpolicy.allow.config_batch-allow": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.execpolicy.allow.none-allow": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.execpolicy.forbidden.baseline-forbidden": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.execpolicy.forbidden.config_batch-forbidden": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.execpolicy.forbidden.none-forbidden": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.execpolicy.new_process.allow": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "True"
+        ],
+        [
+          "success",
+          "False",
+          "True"
+        ],
+        [
+          "success",
+          "False",
+          "True"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.execpolicy.new_process.forbidden": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "codex.execpolicy.start": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "timeout",
+          "False",
+          "False"
+        ],
+        [
+          "timeout",
+          "False",
+          "False"
+        ],
+        [
+          "timeout",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인 못 함"
+    },
+    "H2.allow.none": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "H2.allow.config_batch": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "H2.allow.new_process": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "True"
+        ],
+        [
+          "success",
+          "False",
+          "True"
+        ],
+        [
+          "success",
+          "False",
+          "True"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "H2.forbidden.none": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "H2.forbidden.config_batch": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    },
+    "H2.forbidden.new_process": {
+      "n": 3,
+      "fingerprints": [
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ],
+        [
+          "success",
+          "False",
+          "False"
+        ]
+      ],
+      "classification": "확인"
+    }
+  },
+  "turn_rows": 39
+}

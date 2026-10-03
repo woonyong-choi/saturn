@@ -138,7 +138,7 @@ MCP 도구는 규칙을 다음처럼 번역한다.
 - 첫 턴을 보내기 전에 대상 서버(사용자가 끄지 않았고 `enabled=false`로 옮기지 않은 서버)마다 `mcpServerStatus/list`를 호출해 `runtimeStatus`가 `ready`이고 `toolsError`가 없고 `tools`가 있는지 확인한다. 250 ms 간격으로 최대 30초(초안) 다시 묻고, 그래도 준비가 안 됐으면 첫 턴을 보내지 않고 `NotSent` 오류로 알린다. 도구 목록이 예상과 같은지 이름까지 대조하는 일은 하지 않는다.
 - `mcp_optional_startup_grace_ms`는 기본 1000 ms라 늦게 뜨는 서버의 도구가 첫 턴에서 빠질 수 있다. 예상 준비 시간만큼 늘린다. 실험은 12000 ms(초안)로 확인했고 생성한 설정에 그 값을 쓴다.
 - Codex는 subagent 실행 자체를 승인 요청으로 올리지 않아 `permission.subagent`를 적용하지 못한다. subagent가 실행하는 명령, 편집, MCP 도구는 부모와 같은 규칙으로 판정한다(초안). `permission.subagent`는 Claude의 `Task`, `Agent` 도구에만 적용한다.
-- Codex execpolicy와 MCP 설정은 app-server를 시작할 때 읽으므로, 채팅 도중 바뀐 개별 규칙은 engine이 답하는 요청에만 새 값이 쓰인다. 시작 때 정한 `forbidden`, `allow`, MCP `approve`는 새 설정 번호로 바뀌지 않는다.
+- Codex execpolicy와 MCP 설정은 app-server를 시작할 때 읽으므로, 채팅 도중 바뀐 개별 규칙은 engine이 답하는 요청에만 새 값이 쓰인다. 시작 때 정한 `forbidden`, `allow`, MCP `approve`는 새 설정 번호로 바뀌지 않는다. [Codex 실행 중 설정 다시 읽기 실측](../experiments/codex-live-reload/report.md)에서도 `rules/default.rules` 변경과 `config/batchWrite(reloadUserConfig=true)`는 같은 process에서 반영되지 않고 새 process에서만 반영됐다.
 - 호스트가 직접 부르는 `mcpServer/tool/call`은 `prompt` 설정을 우회해 실행되므로 쓰지 않는다. 모든 MCP 승인은 모델 경로의 요청으로만 받는다.
 
 ### Claude 구성
@@ -157,7 +157,7 @@ Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구�
 
 ### provider 설정과 질문 기능
 
-provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions/2026-09-29-minimal-provider-control.md))에는 예외가 하나 있다. 에이전트 질문 기능(Codex `default_mode_request_user_input`, Claude `AskUserQuestion`)은 사용자 provider 설정이 아니라 Saturn 설정이 정하고, 두 provider에 같게 적용한다(사용자 결정, [#284](https://github.com/woonyong-choi/saturn/issues/284)). 기본은 켜고, 권한 모드가 `full`이면 끈다. 모드가 바뀌면 Codex는 실행 중 app-server에 바로 적용하고, Claude는 `--disallowedTools AskUserQuestion` 인자가 달라지므로 규칙 변경과 같은 경로로 작업이 끝난 뒤 다시 시작한다. 적용 전에 온 질문은 사용자에게 보이고 engine은 대신 답하지 않는다. 자세한 동작은 [입력 요청](input-requests.md#에이전트-질문-설정)에 있다.
+provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions/2026-09-29-minimal-provider-control.md))에는 예외가 하나 있다. 에이전트 질문 기능(Codex `default_mode_request_user_input`, Claude `AskUserQuestion`)은 사용자 provider 설정이 아니라 Saturn 설정이 정하고, 두 provider에 같게 적용한다(사용자 결정, [#284](https://github.com/woonyong-choi/saturn/issues/284)). 기본은 켜고, 권한 모드가 `full`이면 끈다. Codex의 `experimentalFeature/enablement/set`은 codex-cli 0.158.0 실측에서 RPC는 성공했지만 같은 thread 질문 행동 변경을 확인하지 못했으므로 실행 중 적용을 보장하지 않는다. Claude는 `--disallowedTools AskUserQuestion` 인자가 달라지므로 규칙 변경과 같은 경로로 작업이 끝난 뒤 다시 시작한다. 적용 전에 온 질문은 사용자에게 보이고 engine은 대신 답하지 않는다. 자세한 동작은 [입력 요청](input-requests.md#에이전트-질문-설정)에 있다.
 
 ### 허가 요청 창과 답
 
