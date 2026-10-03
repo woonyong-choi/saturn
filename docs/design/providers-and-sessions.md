@@ -147,6 +147,7 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 - 진행 중인 실행이 없을 때 메인 에이전트의 글이나 도구 호출이 오면 입력 없이 provider가 시작한 턴으로 보고 입력 없는 새 실행을 기록한다. 사용량, 도구 결과처럼 그 밖의 늦은 이벤트는 가장 나중 실행에 붙인다. 멈춰 보류한 session의 늦은 출력은 새 실행을 만들지 않고 가장 나중 실행에 붙인다. 멈춘 작업이 저절로 이어지는 일을 막기 위해서다.
 - 사용량 보고는 `store`에 사용량 행으로만 쓰고 기록 번호를 받지 않는다. 사용량이 패킷 재료인 기록에 섞이지 않게 하기 위해서다.
 - 흐름이 완료 신호 없이 끊기면(`StreamLost`, 연결 종료) 효과 범위를 `unobserved`로 기록하고, 작업을 `결과 확인 필요`로 보이며, 실행 기록은 열어 두고, 열려 있던 session을 닫힌 것으로 다룬다. 다음 입력 때 보관한 ID로 다시 연다. 사용자에게 묻는 창은 띄우지 않고 그 작업만 확인으로 넘기며, 입력은 자동으로 다시 보내지 않는다([#245](https://github.com/woonyong-choi/saturn/issues/245), [#287](https://github.com/woonyong-choi/saturn/issues/287), [#39](https://github.com/woonyong-choi/saturn/issues/39)).
+- Claude의 `result`는 `is_error`가 참이거나 `subtype`이 `success`가 아니면 오류 결과라 `TurnCompleted`로 올리지 않는다. 사용량과 맥락 크기를 올린 뒤 완료 신호 없이 끊긴 흐름과 같게 `StreamLost`로 올려 작업을 `결과 확인 필요`로 두고 자동으로 다시 보내지 않는다. 턴이 이미 돌았을 수 있어 보내지 않음이 확정이 아니기 때문이다. 맥락 초과(`terminal_reason`이 `prompt_too_long`)도 같고, 공통 오류 `ContextExceeded`는 보내지 않음이 확정일 때만 쓰므로 여기에 쓰지 않는다. 멈춤 요청 뒤에 온 결과는 오류 모양이어도 요청한 완료로 본다. 오류 결과 뒤 같은 session을 다시 열 때 아직 남은 이전 프로세스는 먼저 닫는다. 오류 결과의 모양은 Claude Code 2.1.288 설치본에서 읽었고 실제 호출로 재지 않았다([#328](https://github.com/woonyong-choi/saturn/issues/328)).
 - 허가 요청은 TUI에 올리고 답을 기다리는 동안 작업을 `허가 기다림`으로 보인다. 답이 오기 전에 턴이 끝나거나 흐름이 끊기면 그 창을 모든 TUI에서 지운다. 더는 답할 수 없는 요청을 남기지 않기 위해서다.
 
 ### 메인 에이전트와 보조 에이전트
@@ -342,6 +343,7 @@ engine은 요청 처리 루프 하나라 provider 요청이 응답하지 않으�
 | 이벤트는 처리 전에 기록하고, 기록하지 못하면 화면과 상태에 반영하지 않는다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `event_is_recorded_before_it_reaches_the_screen_and_the_state`, `events_get_one_number_each_in_arrival_order`, `event_from_the_provider_pump_reaches_the_engine_loop` |
 | 입력 없이 시작한 턴과 늦은 이벤트, 끊긴 흐름을 기록한다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `output_after_the_turn_ended_starts_a_run_without_input`, `lost_stream_records_unobserved_and_needs_a_check`, `usage_is_recorded_as_a_usage_row_and_not_as_a_ledger_event` |
 | 턴 끝에서 마지막 턴 값을 기록하고 트리 유휴일 때만 작업을 끝낸다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `turn_end_records_the_last_turn_value_and_finishes_the_task`, `answer_with_a_running_subagent_ends_the_turn_only_when_the_tree_is_idle`, `waiting_input_is_sent_after_the_turn_ends` |
+| Claude 오류 결과(`is_error` 참, `success`가 아닌 `subtype`)는 성공한 턴 종료가 아니라 결과 확인 필요로 올라가고, 멈춤 요청 뒤의 결과는 완료로 남는다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `error_result_is_not_a_completed_turn`, `steer_needs_active_turn_and_interrupt_waits_for_response`, `reopening_a_session_still_linked_closes_the_old_process` |
 | 권한은 Saturn 규칙이 정본이고, 권한 외 Saturn 기본값은 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘긴다. | [권한](permissions.md)의 요구사항을 확인하고, 사용자 설정에 값이 있는 안전망 항목의 인자가 실행 명령에 없는지 확인한다. |
 | 작업 끝은 메인 에이전트와 모든 subagent가 끝난 때로 판정한다. | `saturn-core`의 `agents` 시험 `on_event_answer_with_subagent_left_is_answered_tree_running`, `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `answer_with_a_running_subagent_ends_the_turn_only_when_the_tree_is_idle` |
 | 누적 범위 사용량의 턴 값은 같은 session의 직전 누적을 뺀 값이다. | Codex 누적 보고 두 개에서 턴 값이 차이로 나오는지 확인한다. |

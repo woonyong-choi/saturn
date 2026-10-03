@@ -36,6 +36,7 @@ sub init { out({ type => "system", subtype => "init", session_id => $sid, model 
 sub assistant { my ($content, $parent, $usage) = @_; out({ type => "assistant", session_id => $sid, parent_tool_use_id => $parent, message => { role => "assistant", model => $model, content => $content, usage => $usage // { input_tokens => 10, cache_read_input_tokens => 1000, cache_creation_input_tokens => 200, output_tokens => 5 } } }); }
 sub tool_result { my ($id, $text, $parent) = @_; out({ type => "user", session_id => $sid, parent_tool_use_id => $parent, message => { role => "user", content => [ { type => "tool_result", tool_use_id => $id, content => $text } ] } }); }
 sub result { out({ type => "result", subtype => $_[0] // "success", is_error => JSON::PP::false, session_id => $sid, usage => { input_tokens => 30, cache_read_input_tokens => 2000, cache_creation_input_tokens => 200, output_tokens => 40 } }); }
+sub failed_result { my ($subtype, $is_error, %extra) = @_; out({ type => "result", subtype => $subtype, is_error => $is_error ? JSON::PP::true : JSON::PP::false, session_id => $sid, usage => { input_tokens => 30, cache_read_input_tokens => 2000, cache_creation_input_tokens => 200, output_tokens => 40 }, %extra }); }
 while (my $line = <STDIN>) {
   my $m = eval { $json->decode($line) } or next;
   if ($m->{type} eq "control_request") {
@@ -86,6 +87,12 @@ while (my $line = <STDIN>) {
   } elsif ($text eq "secret") {
     assistant([ { type => "text", text => "sk-secret-1234" } ], undef);
     result();
+  } elsif ($text eq "too-long") {
+    # 맥락 초과: `success` 종류이지만 `is_error`가 참이고 `terminal_reason`에 이유가 있다(Claude Code 2.1.288 설치본의 구조)
+    assistant([ { type => "text", text => "working" } ], undef);
+    failed_result("success", 1, terminal_reason => "prompt_too_long", result => "Prompt is too long");
+  } elsif ($text eq "max-turns") {
+    failed_result("error_max_turns", 0, terminal_reason => "max_turns", errors => []);
   } elsif ($text eq "/compact") {
     $model = "claude-other";
     init();
@@ -852,6 +859,59 @@ async fn subagent_without_result_is_stream_loss() {
 
     assert_eq!(events[4], ProviderEvent::StreamLost { agent: AgentId(3) });
     client.close_session(&session).await.unwrap();
+}
+
+#[tokio::test]
+async fn error_result_is_not_a_completed_turn() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+    let session = client
+        .open_session(spec(dir.path(), None))
+        .await
+        .unwrap()
+        .provider_session;
+    let agent = AgentId(3);
+
+    // `is_error`가 참인 `success` 결과(맥락 초과)
+    client.send_turn(&session, "too-long").await.unwrap();
+    let too_long = take(&mut client, 4).await;
+    assert!(matches!(too_long[1], ProviderEvent::Usage(_)));
+    assert_eq!(too_long[3], ProviderEvent::StreamLost { agent });
+
+    // 오류 종류(`error_max_turns`)의 결과. `is_error`가 거짓이어도 성공이 아니다
+    client.send_turn(&session, "max-turns").await.unwrap();
+    let max_turns = take(&mut client, 3).await;
+    assert_eq!(max_turns[2], ProviderEvent::StreamLost { agent });
+    assert!(
+        tokio::time::timeout(Duration::from_millis(300), client.next_event())
+            .await
+            .is_err(),
+        "a failed turn must not also report completion or a second loss"
+    );
+    client.close_session(&session).await.unwrap();
+}
+
+#[tokio::test]
+async fn reopening_a_session_still_linked_closes_the_old_process() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new())
+        .with_resume_settle(Duration::from_millis(100));
+    let first = client
+        .open_session(spec(dir.path(), None))
+        .await
+        .unwrap()
+        .provider_session;
+    let old_group = client.process_group(&first).unwrap();
+
+    let again = client
+        .open_session(spec(dir.path(), Some(&first.0)))
+        .await
+        .unwrap()
+        .provider_session;
+
+    assert_eq!(again, first);
+    assert_ne!(client.process_group(&again), Some(old_group));
+    client.close_session(&again).await.unwrap();
 }
 
 #[tokio::test]
