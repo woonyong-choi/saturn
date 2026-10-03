@@ -96,6 +96,20 @@ impl Store {
         Ok(())
     }
 
+    /// 실행에 붙은 이벤트를 기록 순서로 읽는다.
+    ///
+    /// # Errors
+    /// 저장된 JSON이 깨졌으면 `Json`.
+    pub(crate) async fn run_events(&self, run: RunId) -> Result<Vec<ProviderEvent>, StoreError> {
+        let rows = sqlx::query("SELECT body FROM events WHERE run_id = ? ORDER BY seq")
+            .bind(to_sql_int(run.0))
+            .fetch_all(&self.pool)
+            .await?;
+        rows.iter()
+            .map(|row| Ok(serde_json::from_str(row.try_get("body")?)?))
+            .collect()
+    }
+
     pub(crate) async fn unfinished_runs(&self) -> Result<Vec<RunRecord>, StoreError> {
         let rows = sqlx::query(
             "SELECT id, chat_id, agent_id, input_id, task_id, session_id, effect_scope, started_at, end_kind FROM runs \

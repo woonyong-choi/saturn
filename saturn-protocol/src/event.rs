@@ -43,6 +43,11 @@ pub enum ProviderEvent {
         agent: AgentId,
         subagent: SubagentId,
     },
+    /// 크래시로 끝 신호 없이 끊긴 하위 에이전트. engine이 크래시 복구 때 기록에 남기고, 자동으로 다시 하지 않는다.
+    SubagentInterrupted {
+        agent: AgentId,
+        subagent: SubagentId,
+    },
     PermissionRequested {
         agent: AgentId,
         request_id: String,
@@ -94,6 +99,7 @@ impl ProviderEvent {
             | Self::ToolResult { agent, .. }
             | Self::SubagentStarted { agent, .. }
             | Self::SubagentEnded { agent, .. }
+            | Self::SubagentInterrupted { agent, .. }
             | Self::PermissionRequested { agent, .. }
             | Self::InputRequested { agent, .. }
             | Self::TurnCompleted { agent, .. }

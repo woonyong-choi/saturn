@@ -7,7 +7,7 @@ use std::time::Instant;
 use saturn_core::routers::RouterRequest;
 use saturn_protocol::ids::{
     AgentId, ChatId, ChatRevision, InputId, JudgmentId, Provider, ProviderSessionId, RunId,
-    SessionId, SettingsRevision, TaskId, TaskLabel,
+    SessionId, SettingsRevision, SubagentId, TaskId, TaskLabel,
 };
 use saturn_protocol::rpc::{Alert, ModelInfo, Notification};
 use saturn_protocol::state::{Disposition, TaskState};
@@ -147,6 +147,13 @@ pub(crate) struct FlowState {
     pub(crate) run_after_stop: Vec<InputId>,
     /// 보류한 작업이 멈출 때 하던 일. 재개나 보류 종료 때 지운다.
     pub(crate) held: HashMap<TaskId, HeldTask>,
+    /// 크래시 복구가 끊긴 것으로 기록한 하위 에이전트 중 provider에서 아직 정리하지 않은 것. 키는 메인 에이전트이고,
+    /// session을 다시 열 때 provider에 넘기며 열리면 지운다.
+    pub(crate) interrupted_to_clean: HashMap<AgentId, Vec<SubagentId>>,
+    /// 끊긴 하위 에이전트 전부. 다시 연 뒤 이 하위 에이전트의 이벤트가 오면 provider가 다시 실행한 것으로 보고 막는다.
+    pub(crate) interrupted_watch: HashMap<AgentId, HashSet<SubagentId>>,
+    /// 이미 막고 알린 하위 에이전트. 같은 이벤트가 이어져도 한 번만 알린다.
+    pub(crate) interrupted_blocked: HashSet<(AgentId, SubagentId)>,
     pub(crate) stop_tx: mpsc::UnboundedSender<StopDone>,
     pub(crate) stop_rx: mpsc::UnboundedReceiver<StopDone>,
     /// provider 응답을 기다리는 전달. 채팅마다 하나이고, 있는 동안 그 채팅의 다음 입력은 보내지 않는다.
@@ -190,6 +197,9 @@ impl Default for FlowState {
             stopping: HashMap::new(),
             run_after_stop: Vec::new(),
             held: HashMap::new(),
+            interrupted_to_clean: HashMap::new(),
+            interrupted_watch: HashMap::new(),
+            interrupted_blocked: HashSet::new(),
             stop_tx,
             stop_rx,
             routed: HashMap::new(),

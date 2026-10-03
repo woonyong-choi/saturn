@@ -270,6 +270,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `‖ [A] 보류` | 멈춘 작업이나 보내지 않은 입력, `/continue`로 재개 |
 | `[이어서] [취소]` | 보류 줄 버튼, `/continue`, `/cancel`과 같은 동작 |
 | `‖ 멈춤 · [A] [C] 보류됨 · /continue 로 이어서` | 중지 결과, 멈춘 작업과 보내지 않은 입력의 보류 |
+| `{provider}가 크래시로 끊긴 하위 에이전트를 다시 시작해 작업을 멈췄습니다 · 이어 가려면 /continue` | 크래시로 끊긴 하위 에이전트의 이벤트가 provider에서 다시 와서 채팅의 작업을 멈춤. 영어는 `{provider} restarted a subagent cut off by the crash, so the task was stopped · /continue to resume` |
 | `멈춤 확인 안 됨 · N개 남음` | provider 프로세스 묶음 밖에 남은 프로세스 N개 |
 | `‖ [E] 보류를 닫을까요?` | 보류 닫기 확인, 보내지 않은 입력 취소, 수정된 파일 유지 |
 | `[E] 보류를 닫았습니다` | 보류 종료 완료 |

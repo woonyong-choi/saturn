@@ -2,7 +2,8 @@
 //! 설계: docs/design/engine-lifecycle.md#크래시-뒤-복구
 
 use saturn_core::queue::QueuedInput;
-use saturn_protocol::ids::{ChatId, TaskId};
+use saturn_protocol::event::ProviderEvent;
+use saturn_protocol::ids::{ChatId, SubagentId, TaskId};
 use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::SessionState;
 
@@ -91,8 +92,43 @@ impl Engine {
             let persisted = self.persist_sessions(run.session).await;
             self.warn_failure("failed to record held session", persisted);
         }
+        self.interrupt_subagents(run).await?;
         self.store.finish_run(run.id, RunEnd::Stopped).await?;
         Ok(restored)
+    }
+
+    /// 실행 중으로 남은 하위 에이전트를 기록에서 `끊김`으로 바꾼다. provider가 다시 실행하지 못하게 session을 다시 열 때
+    /// 정리할 목록에 넣고, 다시 연 뒤 이 하위 에이전트의 이벤트가 오면 막을 감시 목록에도 넣는다. 다시 할지는 사용자가 정한다.
+    async fn interrupt_subagents(&mut self, run: &RunRecord) -> Result<(), EngineError> {
+        let mut running: Vec<SubagentId> = Vec::new();
+        for event in self.store.run_events(run.id).await? {
+            match event {
+                ProviderEvent::SubagentStarted { subagent, .. } => running.push(subagent),
+                ProviderEvent::SubagentEnded { subagent, .. }
+                | ProviderEvent::SubagentInterrupted { subagent, .. } => {
+                    running.retain(|id| *id != subagent);
+                }
+                _ => {}
+            }
+        }
+        for subagent in running {
+            let event = ProviderEvent::SubagentInterrupted {
+                agent: run.agent,
+                subagent: subagent.clone(),
+            };
+            self.store.append_event(run.id, run.chat, &event).await?;
+            self.flow
+                .interrupted_to_clean
+                .entry(run.agent)
+                .or_default()
+                .push(subagent.clone());
+            self.flow
+                .interrupted_watch
+                .entry(run.agent)
+                .or_default()
+                .insert(subagent);
+        }
+        Ok(())
     }
 
     async fn restore_held_task(

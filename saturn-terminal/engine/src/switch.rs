@@ -407,13 +407,19 @@ impl Engine {
             .ok_or_else(|| ProviderError::NotSent {
                 reason: format!("session {} has no provider session id", id.0),
             })?;
-        let spec = self.session_spec(
+        let mut spec = self.session_spec(
             record,
             stored.agent,
             stored.model.clone(),
             Some(resume),
             plan.handoff.clone(),
         );
+        spec.interrupted_children = self
+            .flow
+            .interrupted_to_clean
+            .get(&stored.agent)
+            .cloned()
+            .unwrap_or_default();
         Ok(OpenPrep {
             plan,
             kind: OpenKind::Resume { stored, spec },
@@ -446,6 +452,8 @@ impl Engine {
                 live
             }
             (OpenKind::Resume { stored, .. }, Some(handle)) => {
+                // provider가 끊긴 자식 정리를 시도한 뒤라 다시 넘기지 않는다
+                self.flow.interrupted_to_clean.remove(&stored.agent);
                 self.leave_main(chat, &plan).await?;
                 if stored.state != SessionState::Open {
                     self.resume_main(stored.id).await?;
@@ -612,6 +620,7 @@ impl Engine {
             resume: None,
             packet: Some(packet),
             add_dirs: self.chat_dirs_of(chat),
+            interrupted_children: Vec::new(),
         };
         let handle = match self
             .open_with_retries(chat, live.provider, spec.clone())

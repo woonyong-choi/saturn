@@ -89,6 +89,8 @@ pub const PROVIDER_RESTARTED: &str = "{provider} 다시 시작함 · 변경된 �
 pub const PERMISSIONS_CHANGED: &str = "권한 설정 변경됨 · 다음 요청부터 적용됩니다";
 pub const READ_ONLY_RUN_KEPT: &str =
     "읽기 전용으로 접수한 작업의 쓰기를 거부함 · 쓰려면 새 입력으로 보내세요";
+/// `{provider}`는 끊긴 하위 에이전트를 다시 보낸 provider 이름.
+pub const INTERRUPTED_SUBAGENT_RETURNED: &str = "{provider}가 크래시로 끊긴 하위 에이전트를 다시 시작해 작업을 멈췄습니다 · 이어 가려면 /continue";
 pub const CONTEXT_DEFERRED: &str = "고정 제약이 길어 맥락 정리를 미룹니다";
 pub const PACKET_OVERFLOW: &str = "맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요";
 pub const SWITCHED_SUFFIX: &str = "로 전환";

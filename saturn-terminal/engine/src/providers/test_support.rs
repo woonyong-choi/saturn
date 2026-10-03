@@ -24,6 +24,7 @@ pub(crate) enum Call {
         resume: Option<ProviderSessionId>,
         packet: Option<String>,
         add_dirs: Vec<PathBuf>,
+        interrupted_children: Vec<SubagentId>,
     },
     SendTurn {
         session: ProviderSessionId,
@@ -164,6 +165,7 @@ impl ProviderClient for FakeProvider {
             resume: spec.resume.clone(),
             packet: spec.packet.clone(),
             add_dirs: spec.add_dirs.clone(),
+            interrupted_children: spec.interrupted_children.clone(),
         });
         assert!(!script.panic_on_open, "fake provider panics on open");
         script.open.pop_front().unwrap_or(Ok(()))?;

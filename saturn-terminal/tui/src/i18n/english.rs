@@ -265,6 +265,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "읽기 전용으로 접수한 작업의 쓰기를 거부함 · 쓰려면 새 입력으로 보내세요",
         "Denied a write from a task accepted as read-only · Send a new input to write",
     ),
+    (
+        "{provider}가 크래시로 끊긴 하위 에이전트를 다시 시작해 작업을 멈췄습니다 · 이어 가려면 /continue",
+        "{provider} restarted a subagent cut off by the crash, so the task was stopped · /continue to resume",
+    ),
     ("전달 중", "Delivering"),
     ("반영됨", "Applied"),
     ("실패", "Failed"),

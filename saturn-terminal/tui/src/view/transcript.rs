@@ -548,6 +548,11 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         ChatNotice::ReadOnlyRunKept => {
             vec![format!("{prefix}{}", lang.tr(i18n::READ_ONLY_RUN_KEPT))]
         }
+        ChatNotice::InterruptedSubagentReturned { provider } => vec![format!(
+            "{prefix}{}",
+            lang.tr(i18n::INTERRUPTED_SUBAGENT_RETURNED)
+                .replace("{provider}", i18n::provider_title(*provider))
+        )],
         ChatNotice::ResumeSuggested { held } => vec![format!(
             "{} {} · {}",
             held_labels(held),
