@@ -54,7 +54,7 @@ pub const HELD_CLOSED: &str = "보류를 닫았습니다";
 // 상태판 알림 줄
 pub const ROUTER_PAUSED: &str = "자동 판단 일시 중단";
 pub const ROUTER_DISCONNECTED: &str = "판단 모델 연결 끊김";
-pub const STEER_NOT_READY: &str = "바로 반영: 준비 중";
+pub const STEER_NOT_READY: &str = "바로 반영 준비 중";
 pub const ROUTER_UNAVAILABLE_SEND: &str = "라우터 연결 없음 · 차례에 보냅니다";
 pub const BUSY_ELSEWHERE: &str = "다른 Saturn에서 실행 중";
 /// `{to}`는 이관한 스키마 버전.
@@ -80,17 +80,16 @@ pub const FAILED: &str = "실패";
 pub const NEEDS_CHECK: &str = "결과 확인 필요";
 pub const COMPACTED: &str = "맥락 정리 후 이어서 진행";
 /// `{provider}`는 다시 시작한 provider 이름.
-pub const PROVIDER_RESTARTED: &str =
-    "변경된 권한 설정을 적용하기 위해 {provider}를 다시 시작했습니다.";
-pub const PERMISSIONS_CHANGED: &str = "권한 설정이 변경되었습니다. 다음 요청부터 적용됩니다.";
+pub const PROVIDER_RESTARTED: &str = "{provider} 다시 시작함 · 변경된 권한 설정을 적용했습니다";
+pub const PERMISSIONS_CHANGED: &str = "권한 설정 변경됨 · 다음 요청부터 적용됩니다";
 pub const CONTEXT_DEFERRED: &str = "고정 제약이 길어 맥락 정리를 미룹니다";
 pub const SWITCHED_SUFFIX: &str = "로 전환";
 pub const REQUEST_SUMMARY: &str = "이번 요청";
 pub const ROUTER_CALLS: &str = "라우터";
 pub const TIMES_SUFFIX: &str = "회";
-pub const FEEDBACK_STEERED: &str = "에 이어서 보냈어요";
-pub const FEEDBACK_QUESTION: &str = "판단이 맞았나요? (선택)";
-pub const FEEDBACK_CHOICES: &str = "1 맞아요  2 아니에요  0 닫기";
+pub const FEEDBACK_STEERED: &str = "에 이어서 보냄";
+pub const FEEDBACK_QUESTION: &str = "판단이 맞았습니까? (선택)";
+pub const FEEDBACK_CHOICES: &str = "1 맞음  2 틀림  0 닫기";
 pub const CORRECTION_QUESTION: &str = "바로 새 작업으로 실행할까요?";
 pub const BUTTON_RUN: &str = "[실행]";
 pub const BUTTON_KEEP: &str = "[그대로]";
@@ -124,8 +123,8 @@ pub const SOURCE_SATURN: &str = "Saturn";
 
 // 초안: 아래 문구는 설계 표에 없다.
 // 대화 기록 초안
-pub const FEEDBACK_NEW_TASK: &str = "새 작업으로 보냈어요";
-pub const FEEDBACK_QUEUED: &str = "대기열에 넣었어요";
+pub const FEEDBACK_NEW_TASK: &str = "새 작업으로 보냄";
+pub const FEEDBACK_QUEUED: &str = "대기열에 넣음";
 pub const SHELL_EXIT: &str = "종료 코드";
 pub const COMMAND_UNKNOWN: &str = "알 수 없는 명령";
 pub const COMMAND_INVALID: &str = "잘못된 인자";
@@ -158,14 +157,14 @@ pub const RESUME_CONFIRM: &str = "고른 작업 이어서";
 pub const PERMISSION_REASON: &str = "이유";
 pub const PERMISSION_WAITING: &str = "허가를 기다리는 다른 작업";
 pub const INPUT_REQUESTED: &str = "입력 요청";
-pub const INPUT_LINK_NOTE: &str = "링크를 직접 열어 확인하세요. Saturn은 열지 않습니다";
+pub const INPUT_LINK_NOTE: &str = "링크를 직접 열어 확인하십시오 · Saturn은 열지 않습니다";
 pub const INPUT_LINK_HELP: &str = "Enter 계속 · d 거절 · Esc 취소";
 pub const INPUT_FORM_HELP: &str =
     "Tab 다음 칸 · ↑↓ 이동 · Space 선택 · Enter 확인 · Ctrl+D 거절 · Esc 취소";
 pub const INPUT_WAITING: &str = "답을 기다리는 다른 요청";
 pub const INPUT_REQUIRED: &str = "필수 항목입니다";
-pub const INPUT_NOT_NUMBER: &str = "숫자를 입력하세요";
-pub const INPUT_NOT_INTEGER: &str = "정수를 입력하세요";
+pub const INPUT_NOT_NUMBER: &str = "숫자를 입력하십시오";
+pub const INPUT_NOT_INTEGER: &str = "정수를 입력하십시오";
 pub const INPUT_YES: &str = "예";
 pub const INPUT_NO: &str = "아니오";
 pub const INPUT_OTHER: &str = "직접 입력";
@@ -225,20 +224,20 @@ pub const CANCEL: &str = "취소";
 
 // CLI 출력. `{이름}` 자리는 호출하는 쪽이 채운다.
 /// `{message}`는 engine이 준 원인.
-pub const CLI_ROUTER_KEY_REQUIRED: &str = "router 키가 필요합니다({message}): SATURN_KEY 환경 변수나 router.key.command 설정을 정한 뒤 다시 실행하세요";
+pub const CLI_ROUTER_KEY_REQUIRED: &str = "router 키가 필요합니다({message}): SATURN_KEY 환경 변수나 router.key.command 설정을 정한 뒤 다시 실행하십시오";
 pub const CLI_CONFIRM_NEEDS_TERMINAL: &str = "확인을 받을 터미널이 없어 아무것도 바꾸지 않았습니다";
 pub const CLI_EXPORTED: &str = "판단 기록을 내보냈습니다: {path}";
 pub const CLI_PATH_UNRESOLVED: &str = "경로를 확인하지 못했습니다: {path}";
 pub const CLI_PRUNED: &str = "기록을 정리했습니다";
 pub const CLI_PRUNE_PREVIEW: &str =
-    "아무것도 지우지 않았습니다. 지울 기록 목록은 아직 볼 수 없으니 지우려면 --yes로 실행하세요";
+    "아무것도 지우지 않았습니다 · 지울 기록 목록은 아직 볼 수 없으니 지우려면 --yes로 실행하십시오";
 pub const CLI_ROUTER_VERSION_NOT_FOUND: &str =
     "router 버전을 찾지 못했습니다: {version} (사용 가능: {available})";
 pub const CLI_ROUTER_VERSION_ALREADY: &str = "이미 쓰는 router 버전입니다: {version}";
 pub const CLI_ROUTER_VERSION_PROMPT: &str =
     "다음 router 버전을 쓸까요? {version} (현재: {current})";
 pub const CLI_ROUTER_VERSION_NOT_CONFIRMED: &str =
-    "확인하지 않았습니다. router 버전은 {current} 그대로입니다";
+    "확인하지 않았습니다 · router 버전은 {current} 그대로입니다";
 pub const CLI_ROUTER_VERSION_NOW: &str = "router 버전을 바꿨습니다: {version}";
 pub const CLI_NO_ROUTER_VERSIONS: &str = "engine이 router 버전 목록 없이 답했습니다";
 pub const CLI_NO_USAGE_TABLE: &str = "engine이 사용량 표 없이 답했습니다";
@@ -248,8 +247,8 @@ pub const CLI_TRAIN_PROMPT: &str = "학습을 실행할까요?";
 pub const CLI_TRAIN_PROGRESS: &str = "{stage} · 채점 {labeled}건 · {elapsed} · 토큰 {tokens}";
 pub const CLI_TRAIN_FINISHED: &str = "학습을 마쳤습니다";
 pub const CLI_TRAIN_CANCELLED: &str = "학습을 취소했습니다";
-pub const CLI_CONTINUE_UNSUPPORTED: &str = "--continue는 아직 지원하지 않습니다: engine이 현재 폴더의 채팅 목록을 줄 수 없습니다. --resume <chat id>를 쓰세요";
-pub const CLI_RESUME_UNSUPPORTED: &str = "채팅 id 없는 --resume과 --resume all은 아직 지원하지 않습니다: engine이 채팅 목록을 줄 수 없습니다. --resume <chat id>를 쓰세요";
+pub const CLI_CONTINUE_UNSUPPORTED: &str = "--continue는 아직 지원하지 않습니다: engine이 현재 폴더의 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰십시오";
+pub const CLI_RESUME_UNSUPPORTED: &str = "채팅 id 없는 --resume과 --resume all은 아직 지원하지 않습니다: engine이 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰십시오";
 pub const CLI_ADD_DIR_UNREADABLE: &str = "--add-dir 폴더를 읽지 못했습니다: {dir}";
 pub const CLI_ADD_DIR_NOT_FOLDER: &str = "--add-dir은 폴더여야 합니다: {dir}";
 pub const CLI_CURRENT_DIR_UNREADABLE: &str = "현재 폴더를 읽지 못했습니다";
@@ -436,6 +435,27 @@ mod tests {
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
+    // cost: time O(p), heap O(1), stack O(1)
+    // vars: p = 문구 상수 수
+    // basis: estimate
+    #[test]
+    fn korean_phrases_follow_claude_code_format() {
+        const POLITE_ENDINGS: [&str; 6] = ["어요", "아요", "에요", "해요", "세요", "나요"];
+        let phrases = phrase_constants(include_str!("i18n.rs"));
+
+        let broken: Vec<&&str> = phrases
+            .iter()
+            .filter(|phrase| {
+                phrase.ends_with('.')
+                    || phrase
+                        .split(|c: char| !c.is_alphabetic())
+                        .any(|word| POLITE_ENDINGS.iter().any(|end| word.ends_with(end)))
+            })
+            .collect();
+
+        assert!(broken.is_empty(), "해요체 어미나 끝 마침표: {broken:?}");
+    }
+
     #[test]
     fn english_covers_shortcut_descriptions() {
         let missing: Vec<&str> = SHORTCUTS
@@ -462,7 +482,7 @@ mod tests {
     #[test]
     fn tr_ko_returns_key_and_en_returns_translation() {
         assert_eq!(Lang::Ko.tr(WORKING), "작업 중");
-        assert_eq!(Lang::En.tr(WORKING), "working");
+        assert_eq!(Lang::En.tr(WORKING), "Working");
     }
 
     #[test]

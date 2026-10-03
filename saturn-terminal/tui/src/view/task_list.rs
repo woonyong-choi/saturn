@@ -688,8 +688,8 @@ mod tests {
             list.toggle_scope();
         }
 
-        assert!(texts[0].contains("· this folder"));
-        assert!(texts[1].contains("· all folders"));
+        assert!(texts[0].contains("· This folder"));
+        assert!(texts[1].contains("· All folders"));
     }
 
     fn list() -> TaskList {
@@ -821,9 +821,9 @@ mod tests {
             .iter()
             .map(|cell| cell.symbol())
             .collect();
-        assert!(content.contains("all"));
-        assert!(content.contains("[B] held"));
-        assert!(content.contains("running in another Saturn"));
-        assert!(content.contains("model not reported"));
+        assert!(content.contains("All"));
+        assert!(content.contains("[B] Held"));
+        assert!(content.contains("Running in another Saturn"));
+        assert!(content.contains("Model not reported"));
     }
 }

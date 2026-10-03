@@ -613,7 +613,7 @@ mod tests {
         let alert = Alert::SchemaMigrated { from: 1, to: 2 };
 
         assert_eq!(alert_text(Lang::Ko, &alert), "기록 저장소 v2로 옮김");
-        assert_eq!(alert_text(Lang::En, &alert), "record store migrated to v2");
+        assert_eq!(alert_text(Lang::En, &alert), "Record store migrated to v2");
     }
 
     #[test]
@@ -684,7 +684,7 @@ mod tests {
 
         assert!(ko.contains("입력 기다림"), "{ko}");
         assert!(!ko.contains("허가 기다림"), "{ko}");
-        assert_eq!(Lang::En.tr(i18n::AWAITING_INPUT), "waiting for input");
+        assert_eq!(Lang::En.tr(i18n::AWAITING_INPUT), "Waiting for input");
     }
 
     #[test]
@@ -791,11 +791,11 @@ mod tests {
         );
         assert_eq!(
             approval_pending_text(Lang::En, Some(Provider::Claude)),
-            "preparing tool permission · claude"
+            "Preparing tool permission · claude"
         );
         assert_eq!(
             approval_pending_text(Lang::En, None),
-            "preparing tool permission"
+            "Preparing tool permission"
         );
     }
 
@@ -839,7 +839,7 @@ mod tests {
 
         let lines = texts(&build(&state, now));
 
-        assert!(lines.contains(&"바로 반영: 준비 중 (codex)".to_string()));
+        assert!(lines.contains(&"바로 반영 준비 중 (codex)".to_string()));
         assert!(lines.contains(&"멈춤 확인 안 됨 · 2개 남음".to_string()));
         assert!(
             lines.contains(&"폴더 설정 오류 · 이전 설정 번호 12로 계속 · 줄 7: ...".to_string())
@@ -865,11 +865,11 @@ mod tests {
         );
         assert_eq!(
             settings_warning_text(Lang::En, 3, &fallback),
-            "user settings error · continuing with settings revision 3 · router.endpoint: not https"
+            "User settings error · continuing with settings revision 3 · router.endpoint: not https"
         );
         assert_eq!(
             settings_warning_text(Lang::En, 3, &ignored),
-            "ignored folder settings items · router.endpoint, router.key"
+            "Ignored folder settings items · router.endpoint, router.key"
         );
     }
 

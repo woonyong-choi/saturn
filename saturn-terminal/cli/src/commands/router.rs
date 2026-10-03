@@ -178,7 +178,7 @@ mod tests {
         );
         assert_eq!(
             String::from_utf8(out).unwrap(),
-            "now using router version v2\n"
+            "Router version changed: v2\n"
         );
     }
 
@@ -236,7 +236,7 @@ mod tests {
 
         assert_eq!(
             String::from_utf8(out).unwrap(),
-            "already using router version v2\n"
+            "Already using router version: v2\n"
         );
     }
 

@@ -164,7 +164,7 @@ mod tests {
         );
         assert_eq!(
             info.lines(Lang::En).last().map(String::as_str),
-            Some("added folders /shared/lib, /docs")
+            Some("Added folders /shared/lib, /docs")
         );
     }
 

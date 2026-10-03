@@ -186,7 +186,7 @@ mod tests {
         let not_folder = resolve_add_dirs(Lang::En, &[file]).unwrap_err();
 
         assert_eq!(resolved, vec![folder.canonicalize().unwrap()]);
-        assert!(missing.to_string().contains("failed to read --add-dir"));
+        assert!(missing.to_string().contains("Failed to read --add-dir"));
         assert!(not_folder.to_string().contains("should be a folder"));
         assert!(resolve_add_dirs(Lang::En, &[]).unwrap().is_empty());
     }

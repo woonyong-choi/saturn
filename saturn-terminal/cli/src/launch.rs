@@ -362,7 +362,7 @@ mod tests {
             .unwrap_err();
 
         let message = error.to_string();
-        assert!(message.contains("engine exited"));
+        assert!(message.contains("Engine exited"));
         assert!(message.contains("router host is not allowed"));
     }
 

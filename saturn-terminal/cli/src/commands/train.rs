@@ -174,9 +174,9 @@ mod tests {
         .unwrap();
 
         let out = String::from_utf8(out).unwrap();
-        assert!(out.contains("candidates: 250"));
-        assert!(out.contains("retrain model: no"));
-        assert!(out.ends_with("training finished\n"));
+        assert!(out.contains("Candidates: 250"));
+        assert!(out.contains("Retrain model: No"));
+        assert!(out.ends_with("Training finished\n"));
         assert_eq!(
             String::from_utf8(progress).unwrap(),
             "grading · labeled 40 · 3s · 900 tokens\n"
@@ -213,7 +213,7 @@ mod tests {
         assert!(
             String::from_utf8(out)
                 .unwrap()
-                .ends_with("training cancelled\n")
+                .ends_with("Training cancelled\n")
         );
         let sent = engine.finish().await;
         assert_eq!(sent[1], Request::ConfirmTrain { proceed: false });

@@ -298,7 +298,7 @@ mod tests {
         assert!(content.contains("1,200"));
         assert!(content.contains("-"));
         assert!(
-            content.contains("router calls 3 · estimated cost $0.0120 · compactions 1 · labels -")
+            content.contains("Router calls 3 · Estimated cost $0.0120 · Compactions 1 · Labels -")
         );
         assert!(!content.contains("  router-model ·"));
     }
@@ -326,7 +326,7 @@ mod tests {
 
         screen.toggle_detail();
 
-        assert!(content(&screen).contains("router-model · router calls 3"));
+        assert!(content(&screen).contains("router-model · Router calls 3"));
     }
 
     // cost: time O(1), heap O(1), stack O(1)
@@ -345,6 +345,6 @@ mod tests {
     // basis: estimate
     #[test]
     fn render_before_response_shows_loading() {
-        assert!(content(&UsageScreen::new(UsageRange::Week)).contains("loading"));
+        assert!(content(&UsageScreen::new(UsageRange::Week)).contains("Loading"));
     }
 }
