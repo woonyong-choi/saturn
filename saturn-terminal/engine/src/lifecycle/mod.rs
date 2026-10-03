@@ -20,6 +20,7 @@ mod permissions;
 mod provider_stall;
 mod read_only_steer;
 mod requests;
+mod restore_inputs;
 mod send_now;
 mod sessions;
 mod settings_watch;
