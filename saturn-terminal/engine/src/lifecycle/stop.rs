@@ -51,19 +51,32 @@ fn is_stopped(notice: &ChatNotice) -> bool {
     matches!(notice, ChatNotice::Stopped { .. })
 }
 
-/// 1초 뒤 스스로 끝나는 자손을 가진 프로세스 묶음.
-fn slow_group(flow: &Flow) -> crate::processes::ProcessGroupId {
-    let spawned = flow
+/// 표준 입력이 닫힐 때까지 사는 자손을 가진 프로세스 묶음. 끝내는 때를 시험이 정하므로 실제 시간에 기대지 않는다.
+/// 자손이 생긴 뒤에 돌아온다. 멈춤은 그 전에 자손이 없다고 보고 끝날 수 있기 때문이다.
+async fn held_open_group(flow: &Flow) -> crate::processes::Spawned {
+    let mut spawned = flow
         .engine
         .supervisor
         .spawn(ProcessSpec {
             program: "/bin/sh".into(),
-            args: vec!["-c".to_owned(), "/bin/sleep 1; true".to_owned()],
+            args: vec![
+                "-c".to_owned(),
+                "(echo ready; exec /bin/cat); true".to_owned(),
+            ],
             workdir: flow.fixture.workdir.clone(),
             env: vec![(OsString::from("PATH"), OsString::from("/usr/bin:/bin"))],
         })
         .expect("test process should start");
-    spawned.group
+    let mut ready = String::new();
+    timeout(
+        WAIT,
+        BufReader::new(&mut spawned.io.stdout).read_line(&mut ready),
+    )
+    .await
+    .expect("test process should report ready in time")
+    .expect("test process output should be readable");
+    assert_eq!(ready.trim(), "ready");
+    spawned
 }
 
 #[tokio::test]
@@ -126,7 +139,8 @@ async fn stop_is_not_complete_until_the_process_group_is_confirmed_stopped() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     flow.submit("fix the build").await;
     let agent = flow.agent();
-    flow.fake.set_group(slow_group(&flow));
+    let held = held_open_group(&flow).await;
+    flow.fake.set_group(held.group);
     let mut client = flow.client().await;
     let chat = flow.chat;
     flow.engine.stop_chat(chat).await.unwrap();
@@ -134,6 +148,7 @@ async fn stop_is_not_complete_until_the_process_group_is_confirmed_stopped() {
 
     let (early, later) = drive(&mut flow.engine, async {
         let early = notices(&client.window().await);
+        drop(held.io);
         let later = client
             .until(|notification| match notification {
                 Notification::ChatNotice { notice, .. } => Some(notice.clone()),
