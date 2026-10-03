@@ -4,11 +4,12 @@
 use std::path::{Path, PathBuf};
 
 use saturn_core::permission::{Mode, PermissionCall, PermissionTool, Policy, Verdict};
+use saturn_core::providers::ProviderClient;
 use saturn_core::queue::Permission;
 use saturn_protocol::ids::{AgentId, ChatId, Provider, SettingsRevision};
 use saturn_protocol::rpc::ChatNotice;
 
-use crate::providers::rules_fingerprint;
+use crate::providers::{ProviderConnection, rules_fingerprint};
 use crate::settings::{self, SettingsError};
 use crate::{Engine, EngineError};
 
@@ -60,7 +61,13 @@ impl Engine {
         }
     }
 
-    /// 턴 끝에서 부른다. 규칙이 바뀐 Codex 연결은 채팅에 실행 중인 작업이 없을 때 통째로 닫는다. 열려 있던 session은
+    /// 턴 끝에서 부른다. 바뀐 설정을 적용하려고 다시 시작할 연결을 모두 시작한다.
+    pub(crate) async fn restart_stale_connections(&mut self, chat: ChatId) {
+        self.restart_stale_codex(chat).await;
+        self.restart_stale_claude(chat).await;
+    }
+
+    /// 규칙이 바뀐 Codex 연결은 채팅에 실행 중인 작업이 없을 때 통째로 닫는다. 열려 있던 session은
     /// 기록에 그대로 남아, 다음 입력이 새 번호의 규칙으로 연결을 만들고 보관한 provider session id로 이어 연다.
     pub(crate) async fn restart_stale_codex(&mut self, chat: ChatId) {
         if !self.flow.rules_stale.contains(&chat) || self.chat_is_running(chat) {
@@ -68,41 +75,129 @@ impl Engine {
         }
         self.flow.rules_stale.remove(&chat);
         self.flow.rules_of_connection.remove(&chat);
-        let Some(connection) = self.providers.remove(&(chat, Provider::Codex)) else {
+        self.restart_connection(chat, Provider::Codex).await;
+    }
+
+    /// 에이전트 질문 기능을 바꾸려고 Claude 연결을 다시 시작해야 하면, 채팅에 실행 중인 작업이 없을 때 시작한다.
+    /// 작업 중이면 턴 끝에서 다시 부른다. session은 보관한 provider session id로 이어 연다.
+    pub(crate) async fn restart_stale_claude(&mut self, chat: ChatId) {
+        if !self.flow.questions_stale.contains(&chat) || self.chat_is_running(chat) {
+            return;
+        }
+        self.flow.questions_stale.remove(&chat);
+        self.flow
+            .questions_of_connection
+            .remove(&(chat, Provider::Claude));
+        self.restart_connection(chat, Provider::Claude).await;
+    }
+
+    /// 연결을 닫고 그 채팅에서 열려 있던 session을 흐름에서 뺀다. 기록의 session은 그대로 둬 다음 입력이 이어 연다.
+    async fn restart_connection(&mut self, chat: ChatId, provider: Provider) {
+        let Some(mut connection) = self.providers.remove(&(chat, provider)) else {
             return;
         };
-        if let Some(group) = connection.shared_group() {
-            if let Err(error) = self
-                .supervisor
-                .stop_tree(group, crate::processes::StopScope::Whole)
-                .await
-            {
-                tracing::warn!(error = %self.failure_line(&error), "failed to stop the codex connection for restart");
-            }
-            self.supervisor.release(group);
-        }
-        drop(connection);
         let closed: Vec<_> = self
             .flow
             .live
             .iter()
-            .filter(|(_, live)| live.provider == Provider::Codex)
+            .filter(|(_, live)| live.provider == provider)
             .filter(|(_, live)| {
                 self.session_chat(live.session)
                     .is_ok_and(|owner| owner == chat)
             })
-            .map(|(agent, _)| *agent)
+            .map(|(agent, live)| (*agent, live.provider_session.clone()))
             .collect();
-        for agent in closed {
+        match provider {
+            Provider::Codex => self.stop_shared_connection(&connection).await,
+            Provider::Claude => {
+                for (_, session) in &closed {
+                    if let Err(error) = connection.close_session(session).await {
+                        tracing::warn!(error = %self.failure_line(&error), "failed to close the claude session for restart");
+                    }
+                }
+            }
+        }
+        drop(connection);
+        for (agent, _) in closed {
             self.flow.live.remove(&agent);
         }
-        self.notify_chat(
-            chat,
-            ChatNotice::ProviderRestarted {
-                provider: Provider::Codex,
-            },
-        )
-        .await;
+        self.notify_chat(chat, ChatNotice::ProviderRestarted { provider })
+            .await;
+    }
+
+    async fn stop_shared_connection(&self, connection: &ProviderConnection) {
+        let Some(group) = connection.shared_group() else {
+            return;
+        };
+        if let Err(error) = self
+            .supervisor
+            .stop_tree(group, crate::processes::StopScope::Whole)
+            .await
+        {
+            tracing::warn!(error = %self.failure_line(&error), "failed to stop the codex connection for restart");
+        }
+        self.supervisor.release(group);
+    }
+
+    /// 에이전트 질문 기능을 켤지. 권한 모드가 `full`이면 끈다. 모드는 채팅 층에 쓴 값이 먼저다.
+    ///
+    /// # Errors
+    /// 설정이나 기록 저장소를 읽지 못하면 그 오류.
+    pub(crate) async fn agent_questions(
+        &self,
+        chat: ChatId,
+        revision: SettingsRevision,
+    ) -> Result<bool, EngineError> {
+        let configured = self.settings.at(&self.store, revision).await?.permission();
+        let layer = self.store.chat_layer(chat).await?;
+        let mode = settings::chat_layer_mode(layer.as_deref()).unwrap_or(configured.mode);
+        Ok(mode != Mode::Full)
+    }
+
+    /// 현재 모드에 맞춰 열려 있는 연결의 질문 기능을 바꾼다. Codex는 실행 중 app-server에 바로 적용하고, Claude는
+    /// 실행 인자가 달라지므로 작업 중이 아니면 바로, 작업 중이면 턴 끝에 다시 시작한다. 적용되기 전에 온 질문은
+    /// 그대로 사용자에게 간다.
+    pub(crate) async fn sync_agent_questions(&mut self, chat: ChatId, revision: SettingsRevision) {
+        let enabled = match self.agent_questions(chat, revision).await {
+            Ok(enabled) => enabled,
+            Err(error) => {
+                tracing::warn!(error = %self.failure_line(&error), "agent questions setting not read, keeping the connections");
+                return;
+            }
+        };
+        let known = |flow: &crate::flow::FlowState, provider| {
+            flow.questions_of_connection.get(&(chat, provider)).copied()
+        };
+        if known(&self.flow, Provider::Codex).is_some_and(|known| known != enabled) {
+            self.apply_codex_questions(chat, enabled).await;
+        }
+        match known(&self.flow, Provider::Claude) {
+            Some(known) if known != enabled => {
+                self.flow.questions_stale.insert(chat);
+            }
+            Some(_) => {
+                self.flow.questions_stale.remove(&chat);
+            }
+            None => {}
+        }
+        self.restart_stale_claude(chat).await;
+    }
+
+    async fn apply_codex_questions(&mut self, chat: ChatId, enabled: bool) {
+        let applied = match self.provider_mut(chat, Provider::Codex) {
+            Ok(connection) => connection.set_agent_questions(enabled).await,
+            Err(error) => Err(error),
+        };
+        match applied {
+            Ok(()) => {
+                self.flow
+                    .questions_of_connection
+                    .insert((chat, Provider::Codex), enabled);
+            }
+            Err(error) => {
+                tracing::warn!(error = %self.failure_line(&error), enabled, "failed to apply agent questions to codex");
+            }
+        }
     }
 
     /// 규칙은 에이전트가 가장 나중에 시작한 입력에 고정한 설정 번호의 값이고, 모드는 채팅 층에 쓴 값이 있으면 그것이
@@ -186,7 +281,8 @@ impl Engine {
         }
     }
 
-    /// 다음 허가 요청부터 새 모드로 판정하고 provider는 다시 시작하지 않는다.
+    /// 다음 허가 요청부터 새 모드로 판정한다. 에이전트 질문 기능은 모드에 따라 provider에 바로 적용한다
+    /// ([`Self::sync_agent_questions`]).
     ///
     /// # Errors
     /// 모르는 모드 이름이면 `UnknownPermissionMode`, 없는 채팅이면 `Store(NotFound)`.
@@ -201,6 +297,9 @@ impl Engine {
         let layer = self.store.chat_layer(chat).await?;
         let updated = settings::with_chat_layer_mode(layer.as_deref(), mode);
         self.store.set_chat_layer(chat, &updated).await?;
+        if let Some(revision) = self.settings.current() {
+            self.sync_agent_questions(chat, revision).await;
+        }
         Ok(())
     }
 }

@@ -3,8 +3,8 @@ use std::path::Path;
 use serde_json::{Value, json};
 
 use super::{
-    ASK_TOOLS, AUTO_COMPACT_ENV, AUTO_COMPACT_FLAG, AUTO_COMPACT_MAX, AUTO_COMPACT_MIN,
-    PERMISSION_PROMPT_ARGS,
+    ASK_TOOLS, ASK_USER_QUESTION_TOOL, AUTO_COMPACT_ENV, AUTO_COMPACT_FLAG, AUTO_COMPACT_MAX,
+    AUTO_COMPACT_MIN, DISALLOWED_TOOLS_FLAG, PERMISSION_PROMPT_ARGS,
 };
 use crate::providers::{LaunchSpec, UserProviderConfig};
 
@@ -14,6 +14,10 @@ pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec
         .iter()
         .map(|arg| (*arg).to_owned())
         .collect();
+    if launch.permission.questions_disabled {
+        args.push(DISALLOWED_TOOLS_FLAG.to_owned());
+        args.push(ASK_USER_QUESTION_TOOL.to_owned());
+    }
     if !user.has_auto_compact {
         let tokens = launch
             .defaults

@@ -79,6 +79,17 @@ impl Flow {
             },
         );
         let fake = FakeProvider::new(Provider::Claude);
+        let questions = match engine.settings.current() {
+            Some(revision) => engine
+                .agent_questions(chat, revision)
+                .await
+                .expect("agent questions should be readable"),
+            None => true,
+        };
+        engine
+            .flow
+            .questions_of_connection
+            .insert((chat, Provider::Claude), questions);
         engine.providers.insert(
             (chat, Provider::Claude),
             ProviderConnection::Fake(fake.clone()),
@@ -107,6 +118,10 @@ impl Flow {
     /// 채팅에 다른 provider의 가짜 연결을 더한다.
     pub(super) fn add_provider(&mut self, provider: Provider) -> FakeProvider {
         let fake = FakeProvider::new(provider);
+        self.engine
+            .flow
+            .questions_of_connection
+            .insert((self.chat, provider), true);
         self.engine.providers.insert(
             (self.chat, provider),
             ProviderConnection::Fake(fake.clone()),

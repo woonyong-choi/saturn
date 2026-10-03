@@ -72,6 +72,7 @@ impl Fixture {
             saturn_home: &self.saturn_home,
             user_codex_home: &self.user_home,
             rules,
+            questions: true,
         })
         .unwrap()
     }
@@ -135,6 +136,7 @@ fn invalid_user_config_is_an_error() {
         saturn_home: &fixture.saturn_home,
         user_codex_home: &fixture.user_home,
         rules: &[],
+        questions: true,
     })
     .unwrap_err();
 
@@ -295,5 +297,58 @@ fn mode_never_enters_the_translation() {
     assert_eq!(
         config["mcp_servers"]["docs"]["default_tools_approval_mode"].as_str(),
         Some("prompt")
+    );
+}
+
+#[test]
+fn agent_questions_are_on_by_default_and_override_the_user_features() {
+    let fixture =
+        Fixture::new("[features]\ndefault_mode_request_user_input = false\nother = true\n");
+
+    let home = fixture.prepare(&[]);
+
+    let config = config_of(&home);
+    assert_eq!(config["features"][QUESTIONS_FEATURE].as_bool(), Some(true));
+    assert_eq!(config["features"]["other"].as_bool(), Some(true));
+}
+
+#[test]
+fn agent_questions_are_off_in_a_separate_home_when_disabled() {
+    let fixture = Fixture::new("[features]\ndefault_mode_request_user_input = true\n");
+    let rules = [rule(PermissionTool::Shell, "sort *", Verdict::Ask)];
+    let asking = fixture.prepare(&rules);
+
+    let silent = prepare(HomeInput {
+        saturn_home: &fixture.saturn_home,
+        user_codex_home: &fixture.user_home,
+        rules: &rules,
+        questions: false,
+    })
+    .unwrap();
+
+    assert_eq!(
+        config_of(&silent)["features"][QUESTIONS_FEATURE].as_bool(),
+        Some(false)
+    );
+    assert_eq!(
+        config_of(&asking)["features"][QUESTIONS_FEATURE].as_bool(),
+        Some(true)
+    );
+    assert_ne!(asking.path, silent.path);
+    assert_eq!(rules_of_home(&asking.path), rules_of_home(&silent.path));
+    assert_eq!(rules_of_home(&asking.path), Some(rules_fingerprint(&rules)));
+}
+
+#[test]
+fn agent_questions_feature_is_dropped_from_profiles() {
+    let fixture =
+        Fixture::new("[profiles.work.features]\ndefault_mode_request_user_input = true\n");
+
+    let home = fixture.prepare(&[]);
+
+    assert!(
+        config_of(&home)["profiles"]["work"]["features"]
+            .get(QUESTIONS_FEATURE)
+            .is_none()
     );
 }

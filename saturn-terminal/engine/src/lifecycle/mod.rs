@@ -1,6 +1,7 @@
 //! engine 시작 순서, 요청 분배, 채팅 붙기, 입력 흐름 테스트. 가짜 router 전송, 가짜 provider, 임시 폴더만 쓴다.
 
 mod add_dir;
+mod agent_questions;
 mod attach;
 mod decision;
 mod deliver;

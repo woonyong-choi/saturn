@@ -30,7 +30,9 @@ use crate::secrets::Masker;
 
 pub(crate) use claude::ClaudeClient;
 pub(crate) use codex::CodexClient;
-pub(crate) use codex_home::{HomeInput, prepare as prepare_codex_home, rules_fingerprint};
+pub(crate) use codex_home::{
+    HomeInput, prepare as prepare_codex_home, rules_fingerprint, rules_of_home,
+};
 
 /// engine이 입력 접수 때 고정한 설정 번호로 만든다.
 #[derive(Debug, Clone)]
@@ -60,6 +62,9 @@ pub struct PermissionLaunch {
     pub codex_home: Option<PathBuf>,
     /// 첫 턴 전에 준비를 확인할 Codex MCP 서버. 비면 확인하지 않는다.
     pub mcp_servers: Vec<String>,
+    /// 권한 모드 `full`이라 에이전트 질문 기능을 뺀다. 기본(거짓)은 묻는다. Codex는 `CODEX_HOME` 생성 설정으로,
+    /// Claude는 `--disallowedTools AskUserQuestion`으로 적용한다.
+    pub questions_disabled: bool,
 }
 
 /// 값 자체는 읽지 않고 있는지만 본다.
@@ -134,6 +139,22 @@ impl ProviderConnection {
             Self::Claude(client) => client.process_group(session),
             #[cfg(test)]
             Self::Fake(client) => client.group(),
+        }
+    }
+
+    /// 에이전트 질문 기능을 실행 중인 연결에서 켜고 끈다. Codex만 실행 중 바꿀 수 있다. Claude는 실행 인자라 연결을
+    /// 다시 시작해야 해서 `NotSent`다.
+    ///
+    /// # Errors
+    /// provider가 거절하면 `NotSent`, 연결이 끊겼으면 `ConnectionLost`.
+    pub async fn set_agent_questions(&mut self, enabled: bool) -> Result<(), ProviderError> {
+        match self {
+            Self::Codex(client) => client.set_agent_questions(enabled).await,
+            Self::Claude(_) => Err(ProviderError::NotSent {
+                reason: "claude tools change only at launch".to_owned(),
+            }),
+            #[cfg(test)]
+            Self::Fake(client) => client.set_agent_questions(enabled),
         }
     }
 

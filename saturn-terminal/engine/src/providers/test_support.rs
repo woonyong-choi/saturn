@@ -51,6 +51,9 @@ pub(crate) enum Call {
     Close {
         session: ProviderSessionId,
     },
+    AgentQuestions {
+        enabled: bool,
+    },
 }
 
 type Answer = Result<(), ProviderError>;
@@ -129,6 +132,11 @@ impl FakeProvider {
     /// 연결이 이벤트를 읽는 순서로 내보낸다.
     pub(crate) fn emit(&self, event: ProviderEvent) {
         let _ = self.events_tx.send(event); // 받는 쪽이 이미 사라진 시험은 이벤트가 필요 없다
+    }
+
+    pub(crate) fn set_agent_questions(&self, enabled: bool) -> Result<(), ProviderError> {
+        self.lock().calls.push(Call::AgentQuestions { enabled });
+        Ok(())
     }
 
     pub(crate) fn calls(&self) -> Vec<Call> {

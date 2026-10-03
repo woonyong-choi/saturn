@@ -2,7 +2,7 @@
 //! 설계: docs/design/providers-and-sessions.md
 
 use std::ffi::OsString;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use saturn_core::permission::Rule;
 use saturn_core::providers::{ProviderClient, ProviderError, SessionHandle, SessionSpec};
@@ -16,7 +16,7 @@ use crate::flow::LiveSession;
 use crate::models::pinned_choice;
 use crate::providers::{
     FIRST_INPUT_ORDER, HomeInput, LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults,
-    UserProviderConfig, is_installed, prepare_codex_home, program_name,
+    UserProviderConfig, is_installed, prepare_codex_home, program_name, rules_of_home,
 };
 use crate::secrets::HookPolicy;
 use crate::{Engine, EngineError};
@@ -141,10 +141,14 @@ impl Engine {
             .permission
             .codex_home
             .as_deref()
-            .and_then(Path::file_name)
-            .map(|name| name.to_string_lossy().into_owned());
+            .and_then(rules_of_home);
+        let questions = !launch.permission.questions_disabled;
         let connection = ProviderConnection::connect(launch, self.supervisor.clone()).await?;
         self.providers.insert((chat, provider), connection);
+        self.flow
+            .questions_of_connection
+            .insert((chat, provider), questions);
+        self.flow.questions_stale.remove(&chat);
         self.remember_models(provider, chat).await;
         if let Some(rules) = rules {
             self.flow.rules_of_connection.insert(chat, rules);
@@ -179,11 +183,15 @@ impl Engine {
         })?;
         let hook =
             HookPolicy::new(&self.options.home, &user_home).pre_tool_use_settings(&saturn_bin);
+        let questions = self.agent_questions(chat, revision).await?;
         let permission = match provider {
             Provider::Codex => {
-                self.codex_permission(&settings.permission().rules, &provider_env)?
+                self.codex_permission(&settings.permission().rules, &provider_env, questions)?
             }
-            Provider::Claude => PermissionLaunch::default(),
+            Provider::Claude => PermissionLaunch {
+                questions_disabled: !questions,
+                ..PermissionLaunch::default()
+            },
         };
         Ok(LaunchSpec {
             provider,
@@ -207,6 +215,7 @@ impl Engine {
         &self,
         rules: &[Rule],
         env: &[(OsString, OsString)],
+        questions: bool,
     ) -> Result<PermissionLaunch, ProviderError> {
         let value = |name: &str| {
             env.iter()
@@ -220,6 +229,7 @@ impl Engine {
             saturn_home: &self.options.home,
             user_codex_home: &user_codex_home,
             rules,
+            questions,
         })
         .map_err(|error| ProviderError::NotSent {
             reason: format!("failed to prepare codex home: {error}"),
@@ -227,6 +237,7 @@ impl Engine {
         Ok(PermissionLaunch {
             codex_home: Some(prepared.path),
             mcp_servers: prepared.mcp_servers,
+            questions_disabled: !questions,
         })
     }
 }

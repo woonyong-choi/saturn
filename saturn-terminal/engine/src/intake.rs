@@ -117,6 +117,7 @@ impl Engine {
         let pinned_model = self.store.chat_model(chat).await?;
         let settings = self.fix_settings(client, chat, &workdir).await?;
         self.note_rules_revision(chat, settings).await;
+        self.sync_agent_questions(chat, settings).await;
         let permission = self.input_permission(chat, settings).await;
         let new = crate::store::NewInput {
             chat,
