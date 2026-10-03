@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use saturn_core::sessions::context::ContextBudget;
-use saturn_core::sessions::memo::{ToolKind, tool_memo};
+use saturn_core::sessions::memo::{INTERRUPTED_RESULT, ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
     CompetingItem, Entry, PacketOutcome, PacketSource, RECENT_TURNS, RecentTurn, build_packet,
     reduce_packet,
@@ -39,7 +39,7 @@ pub(crate) enum HandoffOutcome {
     },
 }
 
-/// 한 도구 호출과 그 결과. 결과가 아직 없으면 끝나지 않은 항목이다.
+/// 한 도구 호출과 그 결과. 결과가 없으면 중단돼 결과를 모르는 호출이다.
 struct Tool {
     seq: LedgerSeq,
     stamp: Stamp,
@@ -125,11 +125,7 @@ pub(crate) struct Pending {
 impl Pending {
     /// 기록 번호가 없는 항목이라 모두 `at`에 둔다. 같은 번호 안에서는 대기, 보류, 결과 모름 순서다.
     fn entries(&self, at: LedgerSeq) -> Vec<Entry> {
-        let labeled = [
-            ("Queued input", &self.waiting),
-            ("Held input", &self.held),
-            ("Unknown result", &self.unchecked),
-        ];
+        let labeled = [("Queued input", &self.waiting), ("Held input", &self.held)];
         labeled
             .into_iter()
             .flat_map(|(label, texts)| texts.iter().map(move |text| (label, text)))
@@ -137,6 +133,10 @@ impl Pending {
                 seq: at,
                 text: format!("{label}: {text}"),
             })
+            .chain(self.unchecked.iter().map(|text| Entry {
+                seq: at,
+                text: interrupted_text("Input", text),
+            }))
             .collect()
     }
 }
@@ -332,9 +332,14 @@ fn open_items(tools: &[Tool]) -> Vec<Entry> {
         .filter(|tool| tool.output.is_none())
         .map(|tool| Entry {
             seq: tool.seq,
-            text: format!("Unfinished tool call: {}", tool.title),
+            text: interrupted_text("Tool call", &tool.title),
         })
         .collect()
+}
+
+/// 결과를 모르는 항목은 별도 경고 문장 없이 결과 자리에 오류 결과를 둔다.
+fn interrupted_text(label: &str, subject: &str) -> String {
+    format!("{label}: {subject}\nResult (error): {INTERRUPTED_RESULT}")
 }
 
 fn ordered_competitors(tools: &[Tool], turns: &[RecentTurn]) -> Vec<CompetingItem> {
@@ -363,7 +368,10 @@ fn ordered_competitors(tools: &[Tool], turns: &[RecentTurn]) -> Vec<CompetingIte
             seq: tool.seq,
             stamp: tool.stamp,
             text: item_text(tool),
-            memo: tool_memo(&tool.kind, tool.output.as_deref().unwrap_or_default()),
+            memo: tool.output.as_deref().map_or_else(
+                || INTERRUPTED_RESULT.to_owned(),
+                |output| tool_memo(&tool.kind, output),
+            ),
             path: tool.path.clone(),
         })
         .collect()
@@ -373,7 +381,7 @@ fn item_text(tool: &Tool) -> String {
     format!(
         "{}\n{}",
         tool.title,
-        tool.output.as_deref().unwrap_or_default()
+        tool.output.as_deref().unwrap_or(INTERRUPTED_RESULT)
     )
 }
 
@@ -522,7 +530,7 @@ mod tests {
     }
 
     #[test]
-    fn tool_call_without_a_result_is_listed_as_an_open_item() {
+    fn interrupted_tool_call_is_an_error_result_not_a_warning() {
         let rows = vec![
             row(1, 1, 5, Some("run it"), read_call("c1", "a.rs")),
             row(2, 1, 5, Some("run it"), text_event(AgentId(1), "waiting")),
@@ -533,7 +541,8 @@ mod tests {
             panic!("packet should be ready");
         };
 
-        assert!(handoff.text.contains("Unfinished tool call"));
+        assert!(handoff.text.contains("Tool call: FileRead a.rs"));
+        assert!(handoff.text.contains(INTERRUPTED_RESULT));
     }
 
     #[test]
@@ -579,7 +588,7 @@ mod tests {
     }
 
     #[test]
-    fn waiting_held_and_unknown_result_inputs_are_open_items() {
+    fn waiting_held_and_interrupted_inputs_are_open_items() {
         let rows = vec![row(7, 1, 5, Some("work"), text_event(AgentId(1), "a"))];
         let pending = Pending {
             waiting: vec!["run the suite".to_owned()],
@@ -593,7 +602,9 @@ mod tests {
         let open = open.split("## Recent turns").next().unwrap();
         assert!(open.contains("Queued input: run the suite"));
         assert!(open.contains("Held input: refactor later"));
-        assert!(open.contains("Unknown result: deploy it"));
+        assert!(open.contains(&format!(
+            "Input: deploy it\nResult (error): {INTERRUPTED_RESULT}"
+        )));
     }
 
     #[test]

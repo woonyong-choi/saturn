@@ -31,6 +31,10 @@ pub enum ToolKind {
     Other,
 }
 
+/// 결과를 기록하기 전에 끊긴 도구 실행의 결과 자리에 넣는 오류 글. 일부 실행됐을 수 있다.
+pub const INTERRUPTED_RESULT: &str =
+    "Interrupted before a result was recorded · It may have partially run";
+
 const SEPARATOR: &str = " · ";
 const ERROR_WORDS: [&str; 3] = ["error", "failed", "panic"];
 

@@ -6,7 +6,7 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, Mouse
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use ratatui::layout::Rect;
-use saturn_protocol::event::ProviderEvent;
+use saturn_protocol::event::{Activity, ProviderEvent, ToolDetail};
 use saturn_protocol::ids::{AgentId, ChatId, InputId, JudgmentId, Provider, TaskId, TaskLabel};
 use saturn_protocol::input::{InputAnswer, InputField, InputFieldKind, InputRequest, InputValue};
 use saturn_protocol::rpc::{
@@ -77,6 +77,19 @@ fn task(id: u64, label: char, state: TaskState) -> Notification {
         provider: Some(Provider::Codex),
         elapsed_ms: 45_000,
         failure: None,
+    }
+}
+
+fn tool_call(task: u64, call_id: &str) -> Notification {
+    Notification::TaskEvent {
+        task: TaskId(task),
+        event: ProviderEvent::ToolCall {
+            agent: AgentId(1),
+            subagent: None,
+            call_id: call_id.to_string(),
+            activity: Activity::ReadingFile,
+            detail: ToolDetail::default(),
+        },
     }
 }
 
@@ -1169,4 +1182,24 @@ fn model_command_is_not_passed_to_the_provider() {
             .iter()
             .all(|request| !matches!(request, Request::SubmitInput { .. }))
     );
+}
+
+#[test]
+fn interrupted_tool_is_marked_when_the_task_is_held_without_a_result() {
+    let mut app = attached();
+    notify(&mut app, task(1, 'A', TaskState::Running));
+    notify(&mut app, tool_call(1, "c1"));
+
+    notify(&mut app, task(1, 'A', TaskState::Held));
+
+    let marked = app.transcript.cells().iter().any(|cell| {
+        matches!(
+            cell,
+            TranscriptCell::Tool {
+                is_interrupted: true,
+                ..
+            }
+        )
+    });
+    assert!(marked);
 }

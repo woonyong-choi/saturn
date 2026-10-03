@@ -73,6 +73,8 @@ pub(crate) struct TaskView {
     pub failure: Option<String>,
     /// 도구 호출이 시작된 뒤 허가 요청이나 다른 진행 이벤트가 아직 없으면 그 호출이 시작된 시각.
     pub tool_started_at: Option<Instant>,
+    /// 결과가 아직 오지 않은 도구 호출의 `call_id`. 시작 순서.
+    open_calls: Vec<String>,
     /// 같은 종류 줄 안의 접수 순서 정렬에 쓴다.
     pub seq: u64,
     /// `ThreadCumulative` 보고의 에이전트별 직전 누적이며 차이만 합계에 더한다.
@@ -262,6 +264,7 @@ impl ChatState {
             reported_elapsed: update.elapsed,
             failure: None,
             tool_started_at: None,
+            open_calls: Vec::new(),
             seq,
             cumulative: BTreeMap::new(),
         });
@@ -296,6 +299,23 @@ impl ChatState {
         }
         self.clear_stop_if_no_holds();
         change
+    }
+
+    /// 실패하거나 멈추거나 결과를 모르는 상태(`Failed`, `Held`, `NeedsCheck`)가 된 작업에서 결과 없이
+    /// 남은 도구 호출을 꺼낸다. 그 호출은 중단돼 결과를 모른다. 정상으로 끝난(`Done`) 작업은 provider가
+    /// 결과를 내지 않는 도구가 있을 수 있어 건드리지 않는다. `finish_task`보다 먼저 부른다.
+    pub(crate) fn take_interrupted_calls(&mut self, task: TaskId) -> Vec<String> {
+        match self.tasks.get_mut(&task) {
+            Some(view)
+                if matches!(
+                    view.state,
+                    TaskState::Failed | TaskState::Held | TaskState::NeedsCheck
+                ) =>
+            {
+                std::mem::take(&mut view.open_calls)
+            }
+            _ => Vec::new(),
+        }
     }
 
     /// 결과 머리줄을 찍은 뒤 부른다.
@@ -336,6 +356,7 @@ impl ChatState {
                 ..
             } => {
                 view.activity = Some(activity.clone());
+                view.open_calls.push(call_id.clone());
                 Change::Tool {
                     task,
                     call_id,
@@ -348,12 +369,15 @@ impl ChatState {
                 call_id,
                 output,
                 ..
-            } => Change::Tool {
-                task,
-                call_id,
-                activity: None,
-                output: Some(output),
-            },
+            } => {
+                view.open_calls.retain(|open| *open != call_id);
+                Change::Tool {
+                    task,
+                    call_id,
+                    activity: None,
+                    output: Some(output),
+                }
+            }
             ProviderEvent::SubagentStarted { subagent, .. } => {
                 if !view.subagents.contains(&subagent) {
                     view.subagents.push(subagent);
@@ -741,6 +765,54 @@ mod tests {
         state.apply_task(task(1, 'A', TaskState::Running), Instant::now());
 
         assert_eq!(state.tasks[&TaskId(1)].provider, Some(Provider::Codex));
+    }
+
+    fn tool_call(call_id: &str) -> ProviderEvent {
+        ProviderEvent::ToolCall {
+            agent: AgentId(1),
+            subagent: None,
+            call_id: call_id.to_string(),
+            activity: Activity::ReadingFile,
+            detail: Default::default(),
+        }
+    }
+
+    #[test]
+    fn interrupted_calls_are_the_ones_without_a_result_when_the_task_stops() {
+        let mut state = ChatState::new();
+        let now = Instant::now();
+        state.apply_task(task(1, 'A', TaskState::Running), now);
+        state.apply_event(TaskId(1), tool_call("a"), now);
+        state.apply_event(TaskId(1), tool_call("b"), now);
+        state.apply_event(
+            TaskId(1),
+            ProviderEvent::ToolResult {
+                agent: AgentId(1),
+                subagent: None,
+                call_id: "a".to_string(),
+                output: "ok".to_string(),
+                exit_code: None,
+            },
+            now,
+        );
+        assert!(state.take_interrupted_calls(TaskId(1)).is_empty());
+
+        state.apply_task(task(1, 'A', TaskState::Held), now);
+
+        assert_eq!(state.take_interrupted_calls(TaskId(1)), vec!["b"]);
+        assert!(state.take_interrupted_calls(TaskId(1)).is_empty());
+    }
+
+    #[test]
+    fn interrupted_calls_skip_a_task_that_finished_normally() {
+        let mut state = ChatState::new();
+        let now = Instant::now();
+        state.apply_task(task(1, 'A', TaskState::Running), now);
+        state.apply_event(TaskId(1), tool_call("a"), now);
+
+        state.apply_task(task(1, 'A', TaskState::Done), now);
+
+        assert!(state.take_interrupted_calls(TaskId(1)).is_empty());
     }
 
     #[test]

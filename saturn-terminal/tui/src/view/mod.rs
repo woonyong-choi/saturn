@@ -24,7 +24,7 @@ pub mod usage;
 
 use ratatui::Frame;
 use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Clear, Paragraph};
 
@@ -33,7 +33,8 @@ pub const SPINNER: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦'
 /// 초안 값.
 pub const WINDOW_MIN_WIDTH: usize = 40;
 
-/// 색 없이 글자 속성만 쓴다.
+/// 오류와 중단 표시만 빨간색이고 나머지는 색 없이 글자 속성만 쓴다.
+pub const ERROR: Style = Style::new().fg(Color::Red);
 pub const MUTED: Style = Style::new().add_modifier(Modifier::DIM);
 pub const SELECTED: Style = Style::new().add_modifier(Modifier::REVERSED);
 pub const EMPHASIS: Style = Style::new().add_modifier(Modifier::BOLD);
