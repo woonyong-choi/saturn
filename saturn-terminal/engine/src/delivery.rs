@@ -62,6 +62,34 @@ pub(crate) enum Stage {
     },
 }
 
+impl Stage {
+    /// 이 요청을 맡은 연결의 provider.
+    fn provider(&self, job: &DeliveryJob) -> Provider {
+        match self {
+            Self::Connecting { plan, .. } => plan.provider(),
+            Self::Opening(prep) | Self::Handoff(prep) => prep.provider(),
+            Self::Steering { live } | Self::SteerFallback { live, .. } => live.provider,
+            Self::Sending => job
+                .delivery
+                .live
+                .as_ref()
+                .map_or(Provider::Claude, |live| live.provider),
+        }
+    }
+
+    /// 연결 작업이 끝나 이 요청의 결과가 오지 않을 때 대신 쓰는 결과. 보내기 전 단계는 `ConnectionLost`, 보낸 뒤
+    /// 단계는 결과를 모르는 `Unknown`이다.
+    fn lost_reply(&self) -> Reply {
+        match self {
+            Self::Connecting { .. } => Reply::Connected(Err(ProviderError::ConnectionLost)),
+            Self::Opening(_) => Reply::Opened(Err(ProviderError::ConnectionLost)),
+            Self::Handoff(_) => Reply::HandoffSent(Err(ProviderError::ConnectionLost)),
+            Self::Sending | Self::SteerFallback { .. } => Reply::Sent(Err(ProviderError::Unknown)),
+            Self::Steering { .. } => Reply::Steered(Err(ProviderError::Unknown)),
+        }
+    }
+}
+
 /// 채팅의 전달과 그것이 기다리는 요청.
 #[derive(Debug)]
 pub(crate) struct Parked {
@@ -105,7 +133,27 @@ impl Engine {
                 provider,
                 reply,
             } => self.on_reply(chat, provider, reply).await,
+            ProviderMsg::Lost { chat, provider } => self.on_task_lost(chat, provider).await,
         }
+    }
+
+    /// 연결 작업이 끝나 맡긴 요청의 결과가 오지 않는다. 기다리던 전달은 그 요청이 실패한 것으로 이어 가고(보내기 전
+    /// 단계는 연결 끊김으로 거절, 보낸 뒤 단계는 결과를 모르는 것으로 `NeedsCheck`), 연결은 끊긴 것으로 처리한다.
+    async fn on_task_lost(&mut self, chat: ChatId, provider: Provider) {
+        let waiting = self
+            .flow
+            .deliveries
+            .get(&chat)
+            .is_some_and(|parked| parked.stage.provider(&parked.job) == provider);
+        if waiting && let Some(Parked { job, stage }) = self.flow.deliveries.remove(&chat) {
+            let reply = stage.lost_reply();
+            let advanced = self
+                .advance_delivery(chat, provider, job, stage, reply)
+                .await;
+            self.warn_failure("delivery step failed", advanced);
+        }
+        self.on_connection_closed(chat, provider).await;
+        self.resume_chat(chat).await;
     }
 
     async fn on_reply(&mut self, chat: ChatId, provider: Provider, reply: Reply) {

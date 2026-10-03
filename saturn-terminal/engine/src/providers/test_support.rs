@@ -64,6 +64,9 @@ struct Script {
     answer_permission: VecDeque<Answer>,
     answer_input: VecDeque<Answer>,
     steer_verified: bool,
+    /// 호출을 받으면 패닉한다.
+    panic_on_open: bool,
+    panic_on_send: bool,
     opened: u32,
     group: Option<ProcessGroupId>,
 }
@@ -95,6 +98,16 @@ impl FakeProvider {
     /// 끼워 넣기 실측을 통과한 provider처럼 연다.
     pub(crate) fn verify_steer(&self) {
         self.lock().steer_verified = true;
+    }
+
+    /// 다음 `open_session`에서 연결 작업이 패닉하게 한다.
+    pub(crate) fn panic_on_open(&self) {
+        self.lock().panic_on_open = true;
+    }
+
+    /// 다음 `send_turn`에서 연결 작업이 패닉하게 한다.
+    pub(crate) fn panic_on_send(&self) {
+        self.lock().panic_on_send = true;
     }
 
     pub(crate) fn answer_open(&self, answers: impl IntoIterator<Item = Answer>) {
@@ -152,6 +165,7 @@ impl ProviderClient for FakeProvider {
             packet: spec.packet.clone(),
             add_dirs: spec.add_dirs.clone(),
         });
+        assert!(!script.panic_on_open, "fake provider panics on open");
         script.open.pop_front().unwrap_or(Ok(()))?;
         script.opened += 1;
         let provider_session = spec
@@ -173,6 +187,7 @@ impl ProviderClient for FakeProvider {
             session: session.clone(),
             text: text.to_owned(),
         });
+        assert!(!script.panic_on_send, "fake provider panics on send");
         script.send.pop_front().unwrap_or(Ok(()))
     }
 

@@ -32,6 +32,8 @@ pub(crate) enum ProviderMsg {
     },
     /// 연결의 이벤트 흐름이 끝났다.
     Closed { chat: ChatId, provider: Provider },
+    /// 연결 작업이 패닉하거나 중단돼 끝났다. 맡긴 요청의 결과는 오지 않는다.
+    Lost { chat: ChatId, provider: Provider },
     Reply {
         chat: ChatId,
         provider: Provider,
@@ -344,7 +346,8 @@ impl ProviderHandle {
             masker,
             shared: Arc::clone(&shared),
         };
-        tokio::spawn(run(connection, requests, context));
+        let task = tokio::spawn(run(connection, requests, context));
+        watch(task, chat, provider, msgs.clone(), None);
         Self {
             chat,
             provider,
@@ -589,7 +592,8 @@ pub(crate) fn spawn_connect(
     msgs: mpsc::UnboundedSender<ProviderMsg>,
 ) {
     let provider = launch.provider;
-    tokio::spawn(async move {
+    let lost = msgs.clone();
+    let task = tokio::spawn(async move {
         let connected = match ProviderConnection::connect(launch, supervisor).await {
             Ok(mut connection) => {
                 let models = connection.list_models().await;
@@ -602,5 +606,36 @@ pub(crate) fn spawn_connect(
             provider,
             reply: Reply::Connected(connected),
         }); // engine이 끝난 뒤에는 받을 곳이 없다
+    });
+    watch(
+        task,
+        chat,
+        provider,
+        lost,
+        Some(Reply::Connected(Err(ProviderError::ConnectionLost))),
+    );
+}
+
+/// 작업이 패닉하거나 중단돼 끝나면 루프에 알린다. 정상으로 끝난 작업(핸들을 버려 닫은 연결)은 알리지 않는다.
+/// `reply`가 있으면 그 결과를 기다리던 전달에 대신 돌려준다.
+fn watch(
+    task: tokio::task::JoinHandle<()>,
+    chat: ChatId,
+    provider: Provider,
+    msgs: mpsc::UnboundedSender<ProviderMsg>,
+    reply: Option<Reply>,
+) {
+    tokio::spawn(async move {
+        let Err(error) = task.await else { return };
+        tracing::warn!(%error, "provider task ended unexpectedly");
+        let message = match reply {
+            Some(reply) => ProviderMsg::Reply {
+                chat,
+                provider,
+                reply,
+            },
+            None => ProviderMsg::Lost { chat, provider },
+        };
+        let _ = msgs.send(message); // engine이 끝난 뒤에는 받을 곳이 없다
     });
 }

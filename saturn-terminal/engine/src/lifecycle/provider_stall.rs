@@ -365,3 +365,60 @@ async fn a_silent_turn_start_asks_the_user_to_check_while_other_chats_keep_worki
         [Call::Open { .. }, Call::SendTurn { .. }]
     ));
 }
+
+fn task_state(notification: &Notification) -> Option<TaskState> {
+    match notification {
+        Notification::TaskChanged { state, .. } => Some(*state),
+        _ => None,
+    }
+}
+
+#[tokio::test]
+async fn a_connection_task_that_panics_while_sending_leaves_the_task_to_check() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.fake.panic_on_send();
+    let chat = flow.chat;
+    let mut client = flow.client().await;
+
+    let state = drive(&mut flow.engine, async {
+        client.attach(2, submit(chat, "fix the build")).await;
+        client
+            .until(|n| task_state(n).filter(|state| *state == TaskState::NeedsCheck))
+            .await
+    })
+    .await;
+
+    assert_eq!(state, TaskState::NeedsCheck);
+    assert!(flow.engine.flow.deliveries.is_empty());
+    assert!(
+        !flow
+            .engine
+            .providers
+            .contains_key(&(chat, Provider::Claude))
+    );
+}
+
+#[tokio::test]
+async fn a_connection_task_that_panics_while_opening_rejects_the_input() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.fake.panic_on_open();
+    let chat = flow.chat;
+    let mut client = flow.client().await;
+
+    let state = drive(&mut flow.engine, async {
+        client.attach(2, submit(chat, "fix the build")).await;
+        client
+            .until(|n| task_state(n).filter(|state| *state == TaskState::Failed))
+            .await
+    })
+    .await;
+
+    assert_eq!(state, TaskState::Failed);
+    assert!(flow.engine.flow.deliveries.is_empty());
+    assert!(
+        !flow
+            .engine
+            .providers
+            .contains_key(&(chat, Provider::Claude))
+    );
+}

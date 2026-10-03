@@ -324,6 +324,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
   - 턴 전송을 기다리던 전달은 결과가 오면 입력을 받은 것으로 기록하되 작업은 멈춘 채로 둔다. 응답이 없거나 결과를 모르는 경우도 같다. 이을 때 보내는 확인 입력이 파일 상태부터 확인하기 때문이다.
 - 결과를 적용할 때 그사이 채팅이 멈췄는지는 `멈춤` 표시로 판단한다. 판단 결과는 기존대로 적용 직전에 채팅 revision을 비교하고, 전달 중인 입력은 다시 판단하지 않는다.
 - 연결 작업은 stdin을 읽지 않는 provider 때문에 쓰기가 막히면 그 연결의 요청이 줄 서서 기다린다. 루프와 다른 채팅은 영향을 받지 않는다. 쓰기에는 제한 시간을 두지 않는다. 시간이 지나 쓰기를 포기하면 줄이 반쯤 쓰여 연결이 어긋나기 때문이다. 연결이 끊기면(프로세스 종료) 쓰기가 오류로 끝나고 연결 끊김으로 처리한다.
+- 연결 작업이 패닉하거나 중단돼 끝나면 루프에 연결 작업 종료를 알린다. 기다리던 전달은 보내기 전 단계(연결, session 열기, 변경분)면 연결 끊김으로 거절하고, 보낸 뒤 단계(턴 전송, 끼워 넣기)면 결과를 모르는 것으로 보아 `NeedsCheck`로 둔다. 연결은 끊긴 것으로 처리해 열려 있던 session의 흐름 끊김을 알린다. 채팅이 응답 없는 전달에 묶인 채 남지 않는다.
 - 아직 루프가 기다리는 provider 요청이 남아 있다: 허가·입력 답, session 닫기, `/model` 목록의 연결과 모델 조회, 맥락 정리의 새 session 열기. 이 요청들은 연결 작업을 거치지만 호출한 루프가 응답을 기다린다([#352](https://github.com/woonyong-choi/saturn/issues/352)의 후속).
 
 ### 오류 처리
@@ -341,6 +342,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | provider 요청이 느리거나 막힌 동안 같은 채팅이나 다른 채팅의 요청이 옴 | 요청은 연결 작업이 실행하므로 루프는 다른 채팅의 입력과 조회, 같은 채팅의 멈춤을 바로 처리한다. 같은 채팅의 다음 입력은 앞선 전달이 끝날 때까지 대기열에 둔다. |
 | provider 요청을 기다리는 중 멈춤 | 멈춤은 기다리지 않고 처리한다. 열기 전의 전달은 입력을 보류하고, 턴 전송 중의 전달은 입력을 받은 것으로 기록한 채 작업을 멈춘 채로 둔다. |
 | stdin을 읽지 않아 provider 쓰기가 막힘 | 그 연결의 연결 작업만 기다린다. 쓰기를 중간에 끊지 않고, 프로세스가 끝나면 연결 끊김으로 처리한다. |
+| 연결 작업이 패닉하거나 중단돼 끝남 | 기다리던 전달은 보내기 전 단계면 거절하고 보낸 뒤 단계면 `NeedsCheck`로 둔다. 연결은 끊긴 것으로 처리한다. |
 
 관찰 끊김을 `unobserved`로 두는 것은 관찰하지 못한 외부 효과가 있을 수 있기 때문이다.
 
@@ -393,6 +395,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 셸이 감싼 명령은 안쪽 명령으로 기록한다. | `saturn-terminal/engine/src/providers/tool_detail.rs`의 `unwrap_shell_login_shell_wrapper_gives_inner_command`, `unwrap_shell_escaped_single_quote_stays_in_inner_command`, `unwrap_shell_plain_or_unbalanced_command_is_unchanged`, `saturn-terminal/engine/src/providers/codex/tests.rs`의 `activity_of_wrapped_command_is_inner_command` |
 | Codex와 Claude Code의 도구 결과를 같은 충실도로 기록으로 바꾼다. | [변환 수정 뒤 기록 전환 품질 측정](../experiments/record-fidelity-stage2/report.md): 같은 받는 쪽에서 Codex 기록 패킷과 Claude Code 기록 패킷의 정답률 차이 0.0%p [0.0, 0.0]로 채택. 경로 120/120 대 120/120, 메모 필드 192/192 대 191/192 |
 | 시작 요청이 느려도 다른 채팅의 입력과 조회, 같은 채팅의 멈춤을 바로 처리한다. 같은 연결의 요청 순서는 바뀌지 않는다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_slow_start_request_does_not_stall_other_chats_or_stop`, `a_provider_that_stops_reading_input_does_not_stall_other_chats_or_stop`, `a_silent_turn_start_asks_the_user_to_check_while_other_chats_keep_working`, `saturn-terminal/core/src/queue/tests.rs`의 `next_to_send_except_skips_busy_chats_but_not_others`, `saturn-terminal/engine/src/lifecycle/deliver.rs`와 `steer_rejected.rs`의 전달 순서 시험 |
+| 연결 작업이 패닉해도 그 채팅이 멈춘 채 남지 않고 알림이 나간다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_connection_task_that_panics_while_sending_leaves_the_task_to_check`, `a_connection_task_that_panics_while_opening_rejects_the_input` |
 | 시작 요청을 기다리는 중 멈추면 연 session을 쓰지 않고 입력을 보류하고, 턴 시작을 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_stop_during_a_slow_start_holds_the_input_instead_of_sending_it` |
 | 실행 중 작업이 5분 동안 provider 이벤트가 없으면 `응답 없음 N분`을 보이고, 이벤트가 오면 지우며, 허가나 입력 요청을 기다리는 동안은 보이지 않는다. 자동으로 멈추지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `no_response_shows_in_minutes_after_the_threshold_without_events`, `no_response_clears_when_an_event_arrives`, `no_response_does_not_show_while_waiting_for_permission_or_input`, `no_response_text_is_translated` |
 
