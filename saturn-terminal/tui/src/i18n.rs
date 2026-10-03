@@ -88,7 +88,7 @@ pub const REQUEST_SUMMARY: &str = "이번 요청";
 pub const ROUTER_CALLS: &str = "라우터";
 pub const TIMES_SUFFIX: &str = "회";
 pub const FEEDBACK_STEERED: &str = "에 이어서 보냄";
-pub const FEEDBACK_QUESTION: &str = "판단이 맞았습니까? (선택)";
+pub const FEEDBACK_QUESTION: &str = "판단이 맞았나요? (선택)";
 pub const FEEDBACK_CHOICES: &str = "1 맞음  2 틀림  0 닫기";
 pub const CORRECTION_QUESTION: &str = "바로 새 작업으로 실행할까요?";
 pub const BUTTON_RUN: &str = "[실행]";
@@ -157,14 +157,14 @@ pub const RESUME_CONFIRM: &str = "고른 작업 이어서";
 pub const PERMISSION_REASON: &str = "이유";
 pub const PERMISSION_WAITING: &str = "허가를 기다리는 다른 작업";
 pub const INPUT_REQUESTED: &str = "입력 요청";
-pub const INPUT_LINK_NOTE: &str = "링크를 직접 열어 확인하십시오 · Saturn은 열지 않습니다";
+pub const INPUT_LINK_NOTE: &str = "링크를 직접 열어 확인하세요 · Saturn은 열지 않습니다";
 pub const INPUT_LINK_HELP: &str = "Enter 계속 · d 거절 · Esc 취소";
 pub const INPUT_FORM_HELP: &str =
     "Tab 다음 칸 · ↑↓ 이동 · Space 선택 · Enter 확인 · Ctrl+D 거절 · Esc 취소";
 pub const INPUT_WAITING: &str = "답을 기다리는 다른 요청";
 pub const INPUT_REQUIRED: &str = "필수 항목입니다";
-pub const INPUT_NOT_NUMBER: &str = "숫자를 입력하십시오";
-pub const INPUT_NOT_INTEGER: &str = "정수를 입력하십시오";
+pub const INPUT_NOT_NUMBER: &str = "숫자를 입력하세요";
+pub const INPUT_NOT_INTEGER: &str = "정수를 입력하세요";
 pub const INPUT_YES: &str = "예";
 pub const INPUT_NO: &str = "아니오";
 pub const INPUT_OTHER: &str = "직접 입력";
@@ -224,13 +224,13 @@ pub const CANCEL: &str = "취소";
 
 // CLI 출력. `{이름}` 자리는 호출하는 쪽이 채운다.
 /// `{message}`는 engine이 준 원인.
-pub const CLI_ROUTER_KEY_REQUIRED: &str = "router 키가 필요합니다({message}): SATURN_KEY 환경 변수나 router.key.command 설정을 정한 뒤 다시 실행하십시오";
+pub const CLI_ROUTER_KEY_REQUIRED: &str = "router 키가 필요합니다({message}): SATURN_KEY 환경 변수나 router.key.command 설정을 정한 뒤 다시 실행하세요";
 pub const CLI_CONFIRM_NEEDS_TERMINAL: &str = "확인을 받을 터미널이 없어 아무것도 바꾸지 않았습니다";
 pub const CLI_EXPORTED: &str = "판단 기록을 내보냈습니다: {path}";
 pub const CLI_PATH_UNRESOLVED: &str = "경로를 확인하지 못했습니다: {path}";
 pub const CLI_PRUNED: &str = "기록을 정리했습니다";
 pub const CLI_PRUNE_PREVIEW: &str =
-    "아무것도 지우지 않았습니다 · 지울 기록 목록은 아직 볼 수 없으니 지우려면 --yes로 실행하십시오";
+    "아무것도 지우지 않았습니다 · 지울 기록 목록은 아직 볼 수 없으니 지우려면 --yes로 실행하세요";
 pub const CLI_ROUTER_VERSION_NOT_FOUND: &str =
     "router 버전을 찾지 못했습니다: {version} (사용 가능: {available})";
 pub const CLI_ROUTER_VERSION_ALREADY: &str = "이미 쓰는 router 버전입니다: {version}";
@@ -247,8 +247,8 @@ pub const CLI_TRAIN_PROMPT: &str = "학습을 실행할까요?";
 pub const CLI_TRAIN_PROGRESS: &str = "{stage} · 채점 {labeled}건 · {elapsed} · 토큰 {tokens}";
 pub const CLI_TRAIN_FINISHED: &str = "학습을 마쳤습니다";
 pub const CLI_TRAIN_CANCELLED: &str = "학습을 취소했습니다";
-pub const CLI_CONTINUE_UNSUPPORTED: &str = "--continue는 아직 지원하지 않습니다: engine이 현재 폴더의 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰십시오";
-pub const CLI_RESUME_UNSUPPORTED: &str = "채팅 id 없는 --resume과 --resume all은 아직 지원하지 않습니다: engine이 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰십시오";
+pub const CLI_CONTINUE_UNSUPPORTED: &str = "--continue는 아직 지원하지 않습니다: engine이 현재 폴더의 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰세요";
+pub const CLI_RESUME_UNSUPPORTED: &str = "채팅 id 없는 --resume과 --resume all은 아직 지원하지 않습니다: engine이 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰세요";
 pub const CLI_ADD_DIR_UNREADABLE: &str = "--add-dir 폴더를 읽지 못했습니다: {dir}";
 pub const CLI_ADD_DIR_NOT_FOLDER: &str = "--add-dir은 폴더여야 합니다: {dir}";
 pub const CLI_CURRENT_DIR_UNREADABLE: &str = "현재 폴더를 읽지 못했습니다";
@@ -440,7 +440,7 @@ mod tests {
     // basis: estimate
     #[test]
     fn korean_phrases_follow_claude_code_format() {
-        const POLITE_ENDINGS: [&str; 6] = ["어요", "아요", "에요", "해요", "세요", "나요"];
+        const POLITE_ENDINGS: [&str; 6] = ["었어요", "았어요", "에요", "예요", "해요", "했어요"];
         let phrases = phrase_constants(include_str!("i18n.rs"));
 
         let broken: Vec<&&str> = phrases

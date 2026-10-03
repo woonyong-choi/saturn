@@ -821,7 +821,7 @@ mod tests {
 
         assert_eq!(
             feedback.lines(Lang::Ko, false, false),
-            vec!["[A]에 이어서 보냄 · 판단이 맞았습니까? (선택)  1 맞음  2 틀림  0 닫기"]
+            vec!["[A]에 이어서 보냄 · 판단이 맞았나요? (선택)  1 맞음  2 틀림  0 닫기"]
         );
         assert_eq!(
             check.lines(Lang::Ko, false, false),

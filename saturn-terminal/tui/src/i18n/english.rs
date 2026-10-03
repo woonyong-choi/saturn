@@ -58,7 +58,7 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("채팅 설정", "Chat settings"),
     ("실행 설정", "Run settings"),
     (
-        "router 키가 필요합니다({message}): SATURN_KEY 환경 변수나 router.key.command 설정을 정한 뒤 다시 실행하십시오",
+        "router 키가 필요합니다({message}): SATURN_KEY 환경 변수나 router.key.command 설정을 정한 뒤 다시 실행하세요",
         "Router key required ({message}): set the SATURN_KEY environment variable or the router.key.command setting, then run again",
     ),
     (
@@ -75,7 +75,7 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ),
     ("기록을 정리했습니다", "Records pruned"),
     (
-        "아무것도 지우지 않았습니다 · 지울 기록 목록은 아직 볼 수 없으니 지우려면 --yes로 실행하십시오",
+        "아무것도 지우지 않았습니다 · 지울 기록 목록은 아직 볼 수 없으니 지우려면 --yes로 실행하세요",
         "Nothing was deleted · The list of records to delete is not available yet, run with --yes to delete",
     ),
     (
@@ -115,11 +115,11 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("학습을 마쳤습니다", "Training finished"),
     ("학습을 취소했습니다", "Training cancelled"),
     (
-        "--continue는 아직 지원하지 않습니다: engine이 현재 폴더의 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰십시오",
+        "--continue는 아직 지원하지 않습니다: engine이 현재 폴더의 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰세요",
         "--continue is not supported yet: engine cannot list chats of the current folder · Use --resume <chat id>",
     ),
     (
-        "채팅 id 없는 --resume과 --resume all은 아직 지원하지 않습니다: engine이 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰십시오",
+        "채팅 id 없는 --resume과 --resume all은 아직 지원하지 않습니다: engine이 채팅 목록을 줄 수 없습니다 · --resume <chat id>를 쓰세요",
         "--resume without a chat id and --resume all are not supported yet: engine cannot list chats · Use --resume <chat id>",
     ),
     (
@@ -258,7 +258,7 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("라우터", "Router"),
     ("회", "calls"),
     ("에 이어서 보냄", "Added to"),
-    ("판단이 맞았습니까? (선택)", "Was this right? (optional)"),
+    ("판단이 맞았나요? (선택)", "Was this right? (optional)"),
     ("1 맞음  2 틀림  0 닫기", "1 Right  2 Wrong  0 Dismiss"),
     ("바로 새 작업으로 실행할까요?", "Run as a new task now?"),
     ("[실행]", "[run]"),
@@ -322,7 +322,7 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ),
     ("입력 요청", "Input requested"),
     (
-        "링크를 직접 열어 확인하십시오 · Saturn은 열지 않습니다",
+        "링크를 직접 열어 확인하세요 · Saturn은 열지 않습니다",
         "Open the link yourself · Saturn does not open it",
     ),
     (
@@ -335,8 +335,8 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ),
     ("답을 기다리는 다른 요청", "Other requests waiting:"),
     ("필수 항목입니다", "Required"),
-    ("숫자를 입력하십시오", "Enter a number"),
-    ("정수를 입력하십시오", "Enter an integer"),
+    ("숫자를 입력하세요", "Enter a number"),
+    ("정수를 입력하세요", "Enter an integer"),
     ("예", "Yes"),
     ("아니오", "No"),
     ("직접 입력", "Other"),
