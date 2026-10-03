@@ -420,6 +420,33 @@ fn task_list_opened_from_a_chat_starts_in_the_chat_folder_scope() {
     assert_eq!(list.scope, crate::view::task_list::FolderScope::Current);
 }
 
+// #314: 채팅 이동은 연결을 끊지 않고 붙은 채팅만 바꾼다
+#[test]
+fn moving_to_another_chat_only_attaches_without_detaching() {
+    use crate::view::task_list::TaskListCommand;
+
+    let mut app = attached();
+    let moves = [
+        (
+            TaskListCommand::Open {
+                chat: ChatId(8),
+                task: TaskId(1),
+            },
+            Some(ChatId(8)),
+        ),
+        (TaskListCommand::NewChat, None),
+    ];
+
+    for (command, target) in moves {
+        let effects = app.on_task_list_command(command);
+
+        let requests = sent(&effects);
+        assert!(!requests.contains(&&Request::Detach));
+        assert_eq!(requests.len(), 1);
+        assert!(matches!(requests[0], Request::Attach { chat, .. } if *chat == target));
+    }
+}
+
 #[test]
 fn task_list_key_a_widens_the_scope_to_all_folders() {
     let mut app = attached();

@@ -68,6 +68,56 @@ async fn stop_holds_the_work_of_every_chat_only_when_the_last_tui_detaches() {
     );
 }
 
+// #314: 붙은 TUI가 같은 연결로 다른 채팅에 `Attach`하면 채팅만 옮기고 마지막 TUI 이탈로 세지 않는다
+#[tokio::test]
+async fn attach_to_another_chat_on_the_same_connection_is_not_a_detach() {
+    let mut flow = Flow::with_config(&on_exit("stop"), vec![idle_reply(0.95)]).await;
+    flow.submit("fix the build").await;
+    let (mut client, _) = flow.attach().await;
+    flow.engine.attachments.remove(&CLIENT);
+    let workdir = flow.fixture.workdir.clone();
+    let other = flow
+        .engine
+        .store
+        .create_chat(workdir.clone())
+        .await
+        .unwrap();
+
+    let greeting = drive(&mut flow.engine, async {
+        client
+            .attach(
+                2,
+                Request::Attach {
+                    chat: Some(other),
+                    workdir: workdir.display().to_string(),
+                    env: Vec::new(),
+                    overrides: Vec::new(),
+                    add_dirs: Vec::new(),
+                },
+            )
+            .await
+    })
+    .await;
+
+    assert!(
+        greeting
+            .iter()
+            .any(|notification| matches!(notification, Notification::HistoryChunk { chat, .. } if *chat == other))
+    );
+    let attached: Vec<_> = flow.engine.attachments.values().map(|a| a.chat).collect();
+    assert_eq!(attached, vec![other]);
+    assert!(!was_interrupted(&flow.fake));
+
+    drive(&mut flow.engine, async {
+        client.send(3, Request::Detach).await;
+        assert_eq!(client.response().await, Response::ok(RequestId(3)));
+        while !was_interrupted(&flow.fake) {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await;
+}
+
 // #70: 멈춘 작업은 자동으로 이어 가지 않는다
 #[tokio::test]
 async fn stop_on_exit_keeps_waiting_input_held_after_the_turn_ends() {

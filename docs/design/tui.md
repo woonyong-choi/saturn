@@ -128,6 +128,16 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순서대로 한 번에 하나씩 창으로 뜬다. 허가 요청 창이 함께 있으면 허가 요청 창이 먼저다. 창은 뜬 뒤 1초 동안 키 입력을 받지 않고, 다른 클라이언트가 먼저 답하면 지운다. 칸은 종류별로 입력한다. 글과 숫자와 정수는 글자를 쓰고, 예와 아니오는 `Space`나 `y`, `n`으로 정하고, 단일 선택과 다중 선택은 `↑`, `↓`로 줄을 옮겨 `Space`나 `Enter`로 고른다. 목록에 없는 글을 쓸 수 있는 선택 칸은 마지막 줄 `직접 입력`에 글을 쓴다. 필수 칸이 비었거나 숫자를 읽을 수 없으면 그 칸으로 돌아가 이유를 보이고 보내지 않는다. 비밀 칸은 입력을 `•`로 가린다. `거절`(`Ctrl+D`)은 묻는 내용에 답하지 않겠다는 뜻이고 `취소`(`Esc`)는 요청을 없던 일로 한다. URL 요청은 설명과 링크만 보이고 Saturn은 링크를 열지 않는다. 사용자가 직접 열고 `Enter`로 계속한다. 답을 기다리는 동안 실행 줄은 `입력 기다림`이다.
 
+### 채팅 이동
+
+작업 목록에서 다른 채팅을 고르거나 `n`으로 새 채팅을 만들면 TUI는 연결을 유지한 채 붙은 채팅만 바꾼다. 순서는 다음과 같다.
+
+1. TUI가 대화 기록, 실행 영역, 허가 요청과 입력 요청 대기열, 상태판을 비우고 같은 연결로 `Attach`(옮길 채팅 `chat`, 새 채팅이면 비움)를 보낸다.
+2. `engine`은 붙은 채팅을 옮길 채팅으로 바꾸고 `StartInfo`, `HistoryChunk`, 답을 기다리는 허가 요청 순서로 보낸 뒤 `Attach`에 응답한다([engine 수명과 복구](engine-lifecycle.md)).
+3. 떠난 채팅의 작업은 그대로 계속된다.
+
+`Detach`는 보내지 않는다. `Detach`는 연결을 끊고 마지막 TUI 이탈로 세어 `on_exit`를 적용하므로, 채팅을 옮기려고 보내면 연결이 끊기고 `on_exit`가 `stop`일 때 떠난 채팅의 작업이 멈춘다. 입력창, 입력 기록, provider 명령 목록은 채팅을 옮겨도 유지한다.
+
 ### 화면 언어와 출력 방식
 
 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. engine은 화면 문구를 만들지 않고 알림 종류와 값만 보내며, 문구는 TUI의 번역표가 고른다. `saturn` 명령의 출력, 오류, 도움말도 같은 언어 판정과 같은 번역표를 쓴다. 도움말은 실행할 때 언어에 맞는 문구를 넣는다. provider와 검사기가 낸 원문(모델 답, 오류 원문)과 로그는 번역하지 않고, clap이 만드는 `Usage:` 같은 고정 문구도 영어로 남는다. 대기 줄과 보류 줄의 버튼은 전체 화면 방식에서 클릭할 수 있다. 파이프와 CI처럼 화면이 없는 환경에서는 전체 화면 대신 plain 출력을 쓰고, 같은 명령은 두 방식에서 같은 결과를 낸다. plain을 켜는 조건은 정해지지 않았고, 지금 구현은 표준 입력이나 표준 출력이 터미널이 아니면 plain으로 시작한다(초안, [#57](https://github.com/woonyong-choi/saturn/issues/57)).
@@ -328,6 +338,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 닫으려 할 때 `engine`에 닫은 뒤의 처리를 먼저 묻고, 답이 오기 전에는 닫지 않으며 한 번 더 누르면 기다리지 않고 닫는다. | `saturn-terminal/tui/src/app/tests.rs`의 `quit_asks_the_engine_first_and_a_second_quit_closes_without_waiting`, `exit_plan_close_quits_without_a_line`, `exit_plan_nobody_asked_for_is_ignored` |
 | `Notice`와 종료 확인 창의 `계속 실행`은 닫은 뒤 터미널에 계속 실행 중인 작업 수와 다시 여는 방법을 한 줄로 남기고, 영어 문구가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_notice_quits_and_leaves_the_running_count_line`, `exit_plan_notice_line_is_translated`, `exit_confirm_continue_quits_and_leaves_the_running_count_line` |
 | `Ask`는 종료 확인 창을 띄우고, `멈추기`는 `StopAll`을 보낸 뒤 닫고, `Esc`와 `Ctrl+C`는 작업을 멈추지 않고 닫기를 취소한다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_ask_opens_the_confirm_window_and_waits`, `exit_confirm_stop_stops_every_chat_then_quits_without_a_line`, `exit_confirm_escape_and_ctrl_c_cancel_the_exit_without_stopping_work`, `saturn-terminal/tui/src/view/exit_confirm.rs`의 `render_shows_count_and_both_choices` |
+| 작업 목록에서 채팅을 옮기면 `Detach` 없이 `Attach`만 같은 연결로 보내고, `engine`은 연결을 유지한 채 붙은 채팅만 바꾸며 떠난 채팅의 작업을 멈추지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `moving_to_another_chat_only_attaches_without_detaching`, `saturn-terminal/engine/src/lifecycle/exit.rs`의 `attach_to_another_chat_on_the_same_connection_is_not_a_detach` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
 | 모든 한국어 문구에 영어가 있고, `saturn` 명령의 도움말도 같다. | `saturn-terminal/tui/src/i18n.rs`의 `english_covers_every_phrase_constant`, `saturn-terminal/cli/src/args.rs`의 `help_has_english_for_every_korean_text`, `localized_help_replaces_korean_with_english` |
 | 한국어 문구에 해요체 어미와 끝 마침표가 없다. | `saturn-terminal/tui/src/i18n.rs`의 `korean_phrases_follow_claude_code_format` |
