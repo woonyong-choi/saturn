@@ -38,7 +38,7 @@ The full design is in the [design documents](docs/README.md), which are written 
 
 ## Status
 
-Saturn is in development. The message types, core rules, engine parts, and TUI are on `main`, but the input flow, the `saturn` command that starts a chat, and permission handling are not built yet. The design documents, decision records, and experiment reports are public. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
+Saturn is in development. The message types, core rules, engine, TUI, and the `saturn` command are on `main`. The input flow from acceptance to provider send, stop and resume, Saturn permission rules, `/model`, and `/usage` work in tests with fake providers, but a full run against real Codex and Claude Code is not confirmed yet, and continuing without a TUI and crash recovery are not built. The design documents, decision records, and experiment reports are public. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
 
 ## Comparison
 
@@ -49,11 +49,10 @@ Saturn is in development. The message types, core rules, engine parts, and TUI a
 
 The order after the first conversation is not fixed yet.
 
-1. First conversation: the `saturn` command, the input flow from acceptance to provider send, provider events with turn end, stop, and resume, approval replies, switching between Codex and Claude Code with context packets. (in progress)
-2. Permissions: Saturn permission rules decide provider execution, and always-allow rules are stored. (next)
-3. Chat management and recovery: continue without a TUI, crash recovery, chat names and grouping, added folders, task-completion notifications. (later)
-4. Local router model: score recorded judgments, train a personal router model, and switch to it only when it is not worse than the current router on the same evaluation set. (later)
-5. Service: consent-based data collection, remote API, authentication, and infrastructure. (later)
+1. First conversation: a full run against real Codex and Claude Code, user constraints in context packets, and a build and install guide. (in progress)
+2. Chat management and recovery: continue without a TUI, crash recovery, chat names and grouping, task-completion notifications. (next)
+3. Local router model: score recorded judgments, train a personal router model, and switch to it only when it is not worse than the current router on the same evaluation set. (later)
+4. Service: consent-based data collection, remote API, authentication, and infrastructure. (later)
 
 ## Documentation
 
