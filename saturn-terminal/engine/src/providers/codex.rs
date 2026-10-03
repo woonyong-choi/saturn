@@ -226,8 +226,8 @@ impl CodexClient {
     }
 
     /// 턴이 끝난 에이전트의 메인 thread에 줄 세워 둔 첫 입력을 보낸다. 보내지 못하면 입력의 작업이 끝나지 않으므로
-    /// `StreamLost`로 알린다.
-    async fn start_queued_turn(&mut self, agent: AgentId) {
+    /// `StreamLost`로 알린다. 응답을 기다리므로 취소하면 안 된다. 완료 이벤트를 처리한 호출자가 끝까지 기다린다.
+    pub(crate) async fn start_queued_turn(&mut self, agent: AgentId) {
         let next = lock(&self.threads)
             .iter_mut()
             .filter(|(_, thread)| thread.agent == agent && thread.parent.is_none())
@@ -561,16 +561,12 @@ impl ProviderClient for CodexClient {
         }
     }
 
-    /// 읽기 작업이 끝나 채널이 닫히면 `None`.
+    /// 읽기 작업이 끝나 채널이 닫히면 `None`. 기다리기만 하므로 취소해도 이벤트를 잃지 않는다.
     async fn next_event(&mut self) -> Option<ProviderEvent> {
         if let Some(event) = self.own_events.pop_front() {
             return Some(event);
         }
-        let event = self.events.recv().await?;
-        if let ProviderEvent::TurnCompleted { agent, .. } = &event {
-            self.start_queued_turn(*agent).await;
-        }
-        Some(event)
+        self.events.recv().await
     }
 
     /// app-server `model/list`. 숨긴 모델은 빼고 쪽마다 다음 쪽 표시(`nextCursor`)를 따라간다.

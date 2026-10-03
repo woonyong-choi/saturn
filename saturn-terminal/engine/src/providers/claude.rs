@@ -249,8 +249,9 @@ impl ClaudeClient {
         written
     }
 
-    /// 턴이 끝난 session에 줄 세워 둔 첫 입력을 쓴다.
-    async fn start_queued_turn(&mut self, agent: AgentId) {
+    /// 턴이 끝난 session에 줄 세워 둔 첫 입력을 쓴다. 쓰는 도중 막힐 수 있어 취소하면 안 된다.
+    /// 완료 이벤트를 처리한 호출자가 끝까지 기다린다.
+    pub(crate) async fn start_queued_turn(&mut self, agent: AgentId) {
         let Some((session, text)) = self.sessions.iter_mut().find_map(|(id, link)| {
             if lock(&link.state).agent != agent {
                 return None;
@@ -619,16 +620,12 @@ impl ProviderClient for ClaudeClient {
         Ok(())
     }
 
-    /// 모든 session이 닫혀도 채널은 남으므로 `None`은 연결을 버릴 때만.
+    /// 모든 session이 닫혀도 채널은 남으므로 `None`은 연결을 버릴 때만. 기다리기만 하므로 취소해도 이벤트를 잃지 않는다.
     async fn next_event(&mut self) -> Option<ProviderEvent> {
         if let Some(event) = self.own_events.pop_front() {
             return Some(event);
         }
-        let event = self.events.recv().await?;
-        if let ProviderEvent::TurnCompleted { agent, .. } = &event {
-            self.start_queued_turn(*agent).await;
-        }
-        Some(event)
+        self.events.recv().await
     }
 
     /// Claude Code `/model`이 보이는 별칭이다. 프로세스를 띄우지 않고 답한다.
