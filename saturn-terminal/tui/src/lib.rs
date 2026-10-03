@@ -2,6 +2,7 @@
 //! 설계: docs/design/tui.md
 
 pub(crate) mod app;
+mod chat_picker;
 pub mod client;
 pub(crate) mod commands;
 pub(crate) mod history;
@@ -30,6 +31,8 @@ use crate::client::{ClientError, EngineClient};
 use crate::history::InputHistory;
 use crate::i18n::Lang;
 use crate::plain::PlainOutput;
+
+pub use crate::chat_picker::pick_chat;
 
 #[derive(Debug, thiserror::Error)]
 pub enum TuiError {

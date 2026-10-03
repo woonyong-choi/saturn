@@ -12,7 +12,7 @@ use saturn_tui::client::EngineClient;
 use saturn_tui::i18n::{self, Lang};
 
 use crate::args::{ConfigOverride, OpenMode};
-use crate::commands::call;
+use crate::commands::{call, resume};
 
 const HISTORY_FILE: &str = "history";
 
@@ -23,27 +23,23 @@ pub(crate) enum ScreenMode {
     Plain,
 }
 
-/// engine에 붙기 전에 불러 지원하지 않는 방식이면 engine을 띄우지 않는다.
-///
-/// TODO(#161): 채팅 목록을 engine에서 받을 수 있게 되면 `--resume`(목록)을 구현한다
+/// engine에 붙기 전에 불러, 목록에서 고르는 방식인데 터미널이 없으면 engine을 띄우지 않는다.
 ///
 /// # Errors
-/// 채팅 id 없이 목록에서 고르는 방식이면 오류(아직 지원하지 않음).
-pub(crate) fn ensure_supported(lang: Lang, mode: OpenMode) -> anyhow::Result<()> {
+/// 채팅 id 없이 목록에서 고르는 방식인데 표준 입력이 터미널이 아니면 오류.
+pub(crate) fn ensure_can_open(lang: Lang, mode: OpenMode) -> anyhow::Result<()> {
     match mode {
-        OpenMode::PickInFolder | OpenMode::PickInAll => {
-            anyhow::bail!(lang.tr(i18n::CLI_RESUME_UNSUPPORTED))
-        }
+        OpenMode::PickInFolder | OpenMode::PickInAll => resume::ensure_terminal(lang),
         OpenMode::New | OpenMode::Chat(_) | OpenMode::ContinueLast => Ok(()),
     }
 }
 
 // cost: time O(1), heap O(1), stack O(1), io 2
 // basis: estimate
-/// 이어 열 채팅을 정한다. `--continue`는 지금 폴더의 최근 채팅을 engine에 묻는다.
+/// 이어 열 채팅을 정한다. `--continue`는 지금 폴더의 최근 채팅을 engine에 묻고, `--resume`은 목록에서 고른다.
 ///
 /// # Errors
-/// `--continue`인데 폴더에 채팅이 없거나 연결이 끊기면 오류. 새 채팅은 열지 않는다.
+/// `--continue`인데 폴더에 채팅이 없거나, 목록에서 고르지 않았거나, 연결이 끊기면 오류. 새 채팅은 열지 않는다.
 pub(crate) async fn resolve_chat(
     lang: Lang,
     client: &mut EngineClient,
@@ -53,17 +49,23 @@ pub(crate) async fn resolve_chat(
         OpenMode::New => Ok(None),
         OpenMode::Chat(chat) => Ok(Some(chat)),
         OpenMode::ContinueLast => latest_chat(lang, client).await.map(Some),
-        OpenMode::PickInFolder | OpenMode::PickInAll => {
-            anyhow::bail!(lang.tr(i18n::CLI_RESUME_UNSUPPORTED))
+        OpenMode::PickInFolder => {
+            let folder = current_folder(lang)?;
+            resume::pick(lang, client, Some(folder)).await.map(Some)
         }
+        OpenMode::PickInAll => resume::pick(lang, client, None).await.map(Some),
     }
 }
 
-async fn latest_chat(lang: Lang, client: &mut EngineClient) -> anyhow::Result<ChatId> {
-    let folder = std::env::current_dir()
+fn current_folder(lang: Lang) -> anyhow::Result<String> {
+    Ok(std::env::current_dir()
         .context(lang.tr(i18n::CLI_CURRENT_DIR_UNREADABLE))?
         .display()
-        .to_string();
+        .to_string())
+}
+
+async fn latest_chat(lang: Lang, client: &mut EngineClient) -> anyhow::Result<ChatId> {
+    let folder = current_folder(lang)?;
     let mut answer = None;
     call(
         lang,
@@ -247,20 +249,45 @@ mod tests {
         assert_eq!(engine.finish().await.len(), 1);
     }
 
-    #[test]
-    fn resume_modes_that_need_a_chat_list_are_not_supported_yet() {
-        for mode in [OpenMode::PickInFolder, OpenMode::PickInAll] {
-            let error = ensure_supported(Lang::En, mode).unwrap_err();
+    #[tokio::test]
+    async fn resume_in_the_folder_picks_from_the_chats_of_the_current_folder() {
+        let engine = FakeEngine::start(vec![Reply::with(vec![Notification::ChatList {
+            chats: Vec::new(),
+        }])]);
+        let mut client = engine.client().await;
 
-            assert!(error.to_string().contains("not supported yet"), "{mode:?}");
-        }
-        for mode in [
-            OpenMode::New,
-            OpenMode::ContinueLast,
-            OpenMode::Chat(ChatId(1)),
-        ] {
-            assert!(ensure_supported(Lang::En, mode).is_ok(), "{mode:?}");
-        }
+        let error = resolve_chat(Lang::En, &mut client, OpenMode::PickInFolder)
+            .await
+            .unwrap_err();
+
+        assert!(
+            error
+                .to_string()
+                .contains("No chat to continue in this folder")
+        );
+        let folder = std::env::current_dir().unwrap().display().to_string();
+        assert!(matches!(
+            engine.finish().await.as_slice(),
+            [Request::ListChats { folder: Some(asked) }] if *asked == folder
+        ));
+    }
+
+    #[tokio::test]
+    async fn resume_all_picks_from_the_chats_of_every_folder() {
+        let engine = FakeEngine::start(vec![Reply::with(vec![Notification::ChatList {
+            chats: Vec::new(),
+        }])]);
+        let mut client = engine.client().await;
+
+        let error = resolve_chat(Lang::En, &mut client, OpenMode::PickInAll)
+            .await
+            .unwrap_err();
+
+        assert!(error.to_string().starts_with("No chat to resume"));
+        assert!(matches!(
+            engine.finish().await.as_slice(),
+            [Request::ListChats { folder: None }]
+        ));
     }
 
     #[test]

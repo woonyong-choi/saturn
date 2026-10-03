@@ -2,12 +2,16 @@
 //! 설계: docs/design/records.md
 
 use saturn_protocol::ids::{ChatId, RunId, SessionId};
-use saturn_protocol::rpc::UsageRange;
+use saturn_protocol::rpc::{ChatListItem, UsageRange};
 use sqlx::Row;
 use sqlx::sqlite::SqliteRow;
 
 use super::records::not_found;
 use super::{Store, StoreError, UsageRow, from_millis, from_sql_int, parse_enum, to_sql_int};
+
+/// 채팅의 마지막 활동 시각: 마지막 입력 접수, 입력이 없으면 만든 시각. `latest_chat_in`과 `list_chats`가 같은 기준을 쓴다.
+const LAST_ACTIVE: &str =
+    "COALESCE((SELECT MAX(accepted_at) FROM inputs WHERE chat_id = chats.id), created_at)";
 
 /// router 하나의 범위 안 호출 합계. 토큰을 보고한 호출이 없으면 `None`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,15 +51,41 @@ impl Store {
 
     /// 마지막 입력을 접수한 시각이 가장 늦은 채팅. 입력이 없는 채팅은 만든 시각으로 견준다.
     pub(crate) async fn latest_chat_in(&self, workdir: &str) -> Result<Option<ChatId>, StoreError> {
-        let id: Option<i64> = sqlx::query_scalar(
-            "SELECT id FROM chats WHERE workdir = ? ORDER BY \
-             COALESCE((SELECT MAX(accepted_at) FROM inputs WHERE chat_id = chats.id), created_at) \
-             DESC, id DESC LIMIT 1",
-        )
+        let id: Option<i64> = sqlx::query_scalar(&format!(
+            "SELECT id FROM chats WHERE workdir = ? ORDER BY {LAST_ACTIVE} DESC, id DESC LIMIT 1"
+        ))
         .bind(workdir)
         .fetch_optional(&self.pool)
         .await?;
         Ok(id.map(|id| ChatId(from_sql_int(id))))
+    }
+
+    // cost: time O(c log c), heap O(c), stack O(1), io 1
+    // vars: c = 조회 범위의 채팅 수
+    // basis: estimate
+    /// `workdir`의 채팅을 `latest_chat_in`과 같은 기준으로 최근 것부터 돌려준다. `None`이면 모든 폴더.
+    pub(crate) async fn list_chats(
+        &self,
+        workdir: Option<&str>,
+    ) -> Result<Vec<ChatListItem>, StoreError> {
+        let rows = sqlx::query(&format!(
+            "SELECT id, workdir, {LAST_ACTIVE} AS last_active, \
+             (SELECT text FROM inputs WHERE chat_id = chats.id ORDER BY id LIMIT 1) AS preview \
+             FROM chats WHERE (?1 IS NULL OR workdir = ?1) ORDER BY last_active DESC, id DESC"
+        ))
+        .bind(workdir)
+        .fetch_all(&self.pool)
+        .await?;
+        rows.iter()
+            .map(|row| {
+                Ok(ChatListItem {
+                    chat: ChatId(from_sql_int(row.try_get("id")?)),
+                    folder: row.try_get("workdir")?,
+                    last_active_ms: from_sql_int(row.try_get("last_active")?),
+                    preview: row.try_get("preview")?,
+                })
+            })
+            .collect()
     }
 
     /// router마다 한 행, 이름 순서.

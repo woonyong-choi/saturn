@@ -165,6 +165,11 @@ pub enum Request {
     LatestChat {
         folder: String,
     },
+    /// `folder`의 채팅 목록을 `ChatList`로 보낸다. `folder`가 `None`이면 모든 폴더. 최근에 쓴 채팅이 앞이고
+    /// 순서는 `LatestChat`과 같다. 붙지 않은 연결에서도 쓴다.
+    ListChats {
+        folder: Option<String>,
+    },
     /// 채팅이 다시 바꿀 때까지 쓸 모델을 정하고 저장한다. 모델이 provider도 정한다. 붙은 모든 TUI에 `ModelPinned`로 알린다.
     SetModel {
         chat: ChatId,
@@ -326,6 +331,10 @@ pub enum Notification {
     /// `LatestChat`의 답. 폴더에 채팅이 없으면 `None`.
     LatestChat {
         chat: Option<ChatId>,
+    },
+    /// `ListChats`의 답.
+    ChatList {
+        chats: Vec<ChatListItem>,
     },
     RouterVersions {
         current: String,
@@ -528,6 +537,18 @@ pub struct TaskListItem {
     /// 채팅의 기본 폴더. TUI가 작업 목록의 폴더 범위를 가를 때 쓴다.
     #[serde(default)]
     pub folder: Option<String>,
+}
+
+/// 채팅 목록의 한 줄.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct ChatListItem {
+    pub chat: ChatId,
+    /// 채팅의 기본 폴더.
+    pub folder: String,
+    /// 마지막 입력을 접수한 시각(unix 밀리초). 입력이 없으면 채팅을 만든 시각.
+    pub last_active_ms: u64,
+    /// 채팅의 첫 입력 원문. 입력이 없으면 `None`.
+    pub preview: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
