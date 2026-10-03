@@ -19,6 +19,8 @@
 | 입력 요청 | provider가 도구 호출 도중 사용자에게 묻는 질문이다. Codex의 MCP elicitation과 에이전트 질문, Claude의 `AskUserQuestion`을 하나로 다룬다. 허가 요청과 다르다. | input request, `InputRequest` |
 | 작업 | 채팅 안에서 한 에이전트가 맡은 일 하나다. 화면은 작업마다 이름표 A, B, C를 붙인다. | task, `task` |
 | 정리 모드 | 맥락 정리를 Saturn과 provider 중 누가 맡을지 정하는 설정이다. | context mode, `context.mode` |
+| 제약 | 사용자가 앞으로도 지키라고 한 말이다. | constraint, `constraint` |
+| 제약 칸 | 패킷 고정 구역에서 제약을 넣는 자리다. | constraint slot, `C_max`(상한) |
 | 질문 세트 | router에 한 번에 묻는 질문 묶음과 그 버전이다. | question set, `question set` |
 | 채점 | 판단 기록에 학습용 정답 라벨을 붙이는 처리다. | labeling, `labeling` |
 | 채팅 | 사용자가 보는 대화 하나다. 여러 provider session이 한 채팅에 이어진다. | chat, `chat` |

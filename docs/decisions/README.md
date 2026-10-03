@@ -26,3 +26,4 @@
 | 2026-10-02 | [provider 연결을 채팅마다 따로 둔다](2026-10-02-per-chat-provider-connections.md) | 채택 |
 | 2026-10-03 | [반대 지시는 끼워 넣고, 끼워 넣을 수 없으면 사용자에게 멈출지 묻는다](2026-10-03-conflict-steers-then-asks.md) | 채택 |
 | 2026-10-04 | [크래시 뒤 provider가 끊긴 작업을 다시 하지 못하게 막는다](2026-10-04-crash-recovery-blocks-provider-resume.md) | 채택 |
+| 2026-10-04 | [제약은 원문에서 자른 규칙 한 줄과 적용 범위로 저장하고 확신이 낮으면 사용자에게 묻는다](2026-10-04-constraints-as-rule-lines.md) | 채택 |

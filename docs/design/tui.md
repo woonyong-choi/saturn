@@ -92,9 +92,11 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | 종료 확인 창 | 실행 중인 작업 수, 선택지 `계속 실행`과 `멈추기` | `on_exit`가 `ask`이고 다른 TUI 없이 작업이 남은 채 닫으려 할 때 |
 | 멈춤 확인 창 | 끼워 넣기를 받지 않은 충돌 입력의 원문, 질문 `지금 멈추고 새 입력을 실행할까요?`, 선택지 `대기`와 `멈추고 실행` | engine이 `ConfirmStop` 사유의 대기 입력을 알릴 때 |
 | 보류 재개 질문 | 보류된 작업 목록, 선택지 `모두 이어서`, `골라서 이어서`, `그대로 두기` | 보류 작업이 있는 채팅을 다시 열 때 한 번 |
+| 제약 확인 창 | 확인 종류별 질문(`이 말을 앞으로 지킬 제약으로 등록할까요?`, `새 제약이 앞 제약을 대체할까요?`, `이 제약을 해제할까요?`), 대상 규칙 한 줄(대체는 앞 제약과 새 제약), 선택지 두 개, 답을 기다리는 다른 확인 수. 첫 선택은 지키는 쪽(`등록`, `둘 다 유지`, `유지`)이고 `Esc`는 답을 미룬다 | engine이 제약 확인을 알릴 때, 다시 열었을 때 열린 확인이 있을 때 |
 | 허가 요청 창 | 작업 이름표와 provider가 붙은 제목, 요청 내용, 이유, 선택지 세 개, 허가를 기다리는 다른 작업 수 | 허가 요청 도착 |
 | 입력 요청 창 | 허가 요청 창과 같은 제목, 요청 설명, 칸 목록(포커스한 칸만 펼침), 필수 표시 `*`, 오류 한 줄, 키 안내, 답을 기다리는 다른 요청 수. URL 요청은 설명과 링크 | 입력 요청 도착 |
 | 작업 목록 화면 | 필터 전체, 확인 필요, 실행 중, 대기, 보류, 끝남, 묶음 채팅, 폴더, 상태, 작업과 그 아래 subagent와 자식 채팅, 작업 상세. 기본 범위는 현재 채팅의 기본 폴더에서 만든 채팅이고 키 `a`로 모든 폴더로 넓히고 되돌린다. 필터 줄 끝에 범위(`현재 폴더`, `모든 폴더`)를 보인다. 채팅이나 현재 폴더를 알 수 없으면 범위로 거르지 않는다(초안) | `/tasks` 실행, `engine` 상태 변경 때 선택 유지 |
+| 제약 목록 화면 | 유효 제약 줄(`번호 · 범위 · 규칙 한 줄`), 확인 필요 줄, 마지막 전환에 들어갔는지 표시(`전환 포함`, `생략`), `Tab`으로 바꾸는 변경 내역(시각, 종류, 주체, 규칙). 키 `d` 해제, `x` 잘못 등록, `u` 되돌리기, `Esc` 닫기 | `/constraints` 실행, 제약 변경 알림 때 선택 유지 |
 | 전체 기록 | 도구 셀 전체와 줄인 셀을 펼친 대화 기록 | `Ctrl+T` 입력 |
 | 사용량 화면 | 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론, router 호출과 예상 비용, 맥락 정리, 채점, 여러 턴 합계 행 끝의 `n 토큰 · n 턴`. provider·모델마다 한 행, router 한 행 | `/usage` 실행, 키 `d`, `w`로 범위 변경 |
 | router 버전 화면 | router 버전 목록, 버전별 router와 보정값과 ECE, 질문별 목표 틀림 비율과 기준값과 최근 200건 틀림과 판단 수 | `/router use` 실행 |
@@ -291,6 +293,12 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `[A] 결과 확인 필요 · /continue A` | 결과 불명, 보류 줄과 함께 표시 |
 | `[A] 맥락 정리 후 이어서 진행` | 맥락 정리 뒤 같은 작업 계속 |
 | `고정 제약이 길어 맥락 정리를 미룹니다` | 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못함, 다음 줄부터 제약 목록 |
+| `제약 등록됨 · {규칙}` | 제약 등록(`Added`). 영어는 `Constraint added · {rule}`. 규칙은 사용자 원문 그대로이고 한 줄에 맞게 줄인다 |
+| `제약 합침 · {기존 규칙}` | 같은 뜻의 제약이라 새로 만들지 않고 합침(`Merged`). 영어는 `Constraint merged · {rule}` |
+| `제약 대체됨 · {앞 규칙} → {새 규칙}` | 새 제약이 앞 제약을 대체(`Superseded`). 영어는 `Constraint replaced · {earlier} → {new}` |
+| `제약 해제됨 · {규칙}` | 해제(`Released`), 사용자 해제, 확인 답, 입력 취소를 같은 줄로 보임. 영어는 `Constraint released · {rule}` |
+| `제약 되돌림 · {규칙}` | 변경 되돌리기(`Restored`). 영어는 `Constraint restored · {rule}` |
+| `제약 {N}개 생략 · /constraints에서 확인하세요` | 전환 패킷의 제약 칸이 가득 차 N개를 넣지 못함. 영어는 `{N} constraints omitted · Check /constraints` |
 | `맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요` | 패킷이 맥락 한도로 거절돼 줄여 다시 보냈지만 들어가지 않거나 줄일 수 없어 보내지 않고 멈춤. 영어는 `Stopped over the context limit · Retry with /continue` |
 | `[A] codex → claude로 전환` | 작업의 provider 전환 |
 | `권한 설정 변경됨 · 다음 요청부터 적용됩니다` | 채팅 중 설정이 바뀌었는데 작업 중이라 다시 시작을 턴 끝으로 미룸. 바로 다시 시작하면 이 줄 없이 아래 줄만 남김. 영어는 `Permission settings changed · Applies from your next request` |
@@ -338,6 +346,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `/add-dir` | 명령 목록에 넣고 값은 폴더 경로 하나. 명령 이름 뒤 나머지 줄 전체를 경로로 읽어 공백이 들어 있어도 된다. 상대 경로는 TUI의 현재 폴더 기준 절대 경로로, `~/`는 홈 폴더 아래로 바꿔 보낸다(초안). 더한 폴더는 채팅 기록에 저장하고 모든 provider session에 넘긴다. 폴더 설정은 읽지 않는다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)). 더한 뒤 안내 한 줄을 대화 기록에 남기고, 열린 session이 있으면 다음 session부터 적용한다고 덧붙인다 |
 | `/model` | 명령 목록에 넣고 값 목록은 `codex`, `claude`. 값 없이 실행하면 모든 provider의 모델 창이 열리고, 값을 주면 그 provider 모델만 보인다. 방향키로 고르고 `Enter`로 정한다. 고른 모델은 `SetModel`로 engine에 저장하고, 그 채팅의 모든 입력이 쓴다. 채팅에 붙을 때 engine이 `ModelPinned`로 알려 주므로 TUI를 다시 열거나 채팅을 옮겨도 유지된다. 정한 뒤 안내 한 줄을 대화 기록에 남긴다. provider 고유의 `/model`은 넘기지 않고 Saturn `/model`로 처리한다([모델 고르기](providers-and-sessions.md#모델-고르기)) |
 | `/permissions` | 명령 목록에 넣고 값 목록은 `ask`, `edit`, `read-only`, `full`(초안). 값을 주면 채팅 층 모드를 바꾼다. 값 없이 실행하면 현재 모드를 보이는 동작은 아직 없다([#177](https://github.com/woonyong-choi/saturn/issues/177), [권한](permissions.md)) |
+| `/constraints` | 명령 목록에 넣고 값은 없다. 제약 목록 화면을 연다. `d`는 `ReleaseConstraint`, `x`는 잘못 등록으로 `ReleaseConstraint`, `u`는 `UndoConstraintChange`를 보내고 확인 창의 답은 `AnswerConstraintAsk`로 보낸다. 요청은 화면이 본 제약 revision을 싣고 낡았으면 engine이 `Stale`로 거절해 목록을 새로 읽는다(초안, [제약](constraints.md#되돌리기)) |
 
 ### 요구사항
 
@@ -350,6 +359,8 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 닫으려 할 때 `engine`에 닫은 뒤의 처리를 먼저 묻고, 답이 오기 전에는 닫지 않으며 한 번 더 누르면 기다리지 않고 닫는다. | `saturn-terminal/tui/src/app/tests.rs`의 `quit_asks_the_engine_first_and_a_second_quit_closes_without_waiting`, `exit_plan_close_quits_without_a_line`, `exit_plan_nobody_asked_for_is_ignored` |
 | `Notice`와 종료 확인 창의 `계속 실행`은 닫은 뒤 터미널에 계속 실행 중인 작업 수와 다시 여는 방법을 한 줄로 남기고, 영어 문구가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_notice_quits_and_leaves_the_running_count_line`, `exit_plan_notice_line_is_translated`, `exit_confirm_continue_quits_and_leaves_the_running_count_line` |
 | 멈춤 확인 창은 `ConfirmStop` 대기 입력이 오면 뜨고 입력이 다른 상태가 되면 지워지며, 첫 선택과 `Esc`는 `대기`이고 `멈추고 실행`은 `AnswerStopConfirm`을 보낸다. 문구에 영어가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `stop_confirm_window_opens_for_the_asking_input_and_closes_when_it_moves_on`, `stop_confirm_enter_and_escape_answer_wait_and_down_enter_answers_stop`, `saturn-terminal/tui/src/view/stop_confirm.rs`의 `render_shows_the_input_and_both_choices` |
+| 제약 확인 창은 확인 알림이 오면 뜨고 대상이 바뀌거나 다른 TUI가 답하면 지워지며, 첫 선택은 지키는 쪽이고 `Esc`는 답을 미룬다. 문구에 영어가 있다. | 확인을 알리고 두 TUI 중 하나가 답한 뒤 창이 지워지는지, `Esc` 뒤 `/constraints`에 확인 필요 줄이 남는지 확인한다. |
+| `/constraints`는 유효 제약과 변경 내역을 보이고 `d`, `x`, `u`를 engine 요청으로 보내며 `Stale` 답에 목록을 새로 읽는다. 제약 변경 줄은 `constraint_events`에서 그려 다시 열어도 같다. | 화면을 연 사이 제약을 바꿔 거절과 새로 읽기를, 채팅을 다시 열어 같은 줄을 확인한다. |
 | `Ask`는 종료 확인 창을 띄우고, `멈추기`는 `StopAll`을 보낸 뒤 닫고, `Esc`와 `Ctrl+C`는 작업을 멈추지 않고 닫기를 취소한다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_ask_opens_the_confirm_window_and_waits`, `exit_confirm_stop_stops_every_chat_then_quits_without_a_line`, `exit_confirm_escape_and_ctrl_c_cancel_the_exit_without_stopping_work`, `saturn-terminal/tui/src/view/exit_confirm.rs`의 `render_shows_count_and_both_choices` |
 | 작업 목록에서 채팅을 옮기면 `Detach` 없이 `Attach`만 같은 연결로 보내고, `engine`은 연결을 유지한 채 붙은 채팅만 바꾸며 떠난 채팅의 작업을 멈추지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `moving_to_another_chat_only_attaches_without_detaching`, `saturn-terminal/engine/src/lifecycle/exit.rs`의 `attach_to_another_chat_on_the_same_connection_is_not_a_detach` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |

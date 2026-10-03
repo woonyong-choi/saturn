@@ -51,6 +51,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 | 사용량 | 사용량 보고 원값, 범위, 대상 에이전트, 모델 |
 | 판단 기록 | router 호출의 보낸 원문, 받은 원문, 질문별 답, 비용, 시간, 물은 확률 q, 결과 신호, 물은 답 |
 | 설정 스냅샷 | 설정 번호별 병합 결과와 층 목록 |
+| 제약 | 규칙 한 줄과 적용 범위, 변경 이벤트, 묻는 중인 확인, 전환마다 패킷에 넣은 제약 |
 
 - 기록 저장소에 쓰는 쪽은 engine 하나다. 쓰기 충돌을 막기 위해서다.
 - engine은 사용자당 하나이고 잠금으로 지킨다. 쓰는 프로세스를 하나로 유지하기 위해서다.
@@ -66,6 +67,11 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - `held_tasks` 표는 멈출 때 실행 중이던 보류 작업을 작업 번호 `task_id`(첫 입력 번호라 engine을 다시 켜도 같다), 채팅 `chat_id`, 에이전트 `agent_id`, 멈출 때 진행 중이던 실행을 연 입력 `input_id`로 둔다. 멈춤이나 크래시 복구가 보류할 때 쓰고, 재개하거나 닫으면 지운다. 채팅이나 입력을 지우면 함께 지운다. 입력과 에이전트가 없는 보류(보내기 전에 멈춘 입력)는 이 표에 남기지 않고 입력 행의 상태 `Held`로만 남긴다. 멈춤이 보류한 입력은 그때 `inputs.state`에 `Held`로 쓰고, 다시 켠 `engine`은 끝 상태가 아닌 입력을 접수 순서로 읽어 대기열에 되살린다([입력 처리](input-handling.md#재시작-뒤-입력-복원)). 스키마 V7에서 더했다([engine 수명과 복구](engine-lifecycle.md#크래시-뒤-복구)).
 - `interrupted_subagents` 표는 크래시로 끊긴 하위 에이전트를 채팅 `chat_id`, 메인 에이전트 `agent_id`, provider의 하위 에이전트 번호 `subagent`, provider에 정리를 넘겼는지 `cleaned`로 둔다. 같은 에이전트의 같은 하위 에이전트는 한 행이다. 에이전트의 session이 끝나거나 보류를 닫으면, 채팅을 지우면 함께 지운다. 스키마 V7에서 더했다.
 - `permission_allows` 표는 항상 허용을 작업 폴더 `workdir`, 도구 `tool`, 패턴 `pattern`, 저장 시각 `created_at`(unix 밀리초)으로 둔다. 같은 `workdir`, `tool`, `pattern`은 한 행이다. 스키마 V4에서 더했고 채팅과 상관없이 작업 폴더 단위로 쓴다([권한](permissions.md#항상-허용-저장)).
+- `constraints` 표는 제약 한 건을 `constraint_id`(다시 쓰지 않는 번호), 채팅 `chat_id`, 제약이 나온 입력 `input_id`, 입력 안 조각 번호 `line`(나누지 않았으면 0), 규칙 한 줄 `rule`, 적용 범위 `scope`(줄바꿈으로 이은 경로, NULL이면 전체), 상태 `state`(`Candidate`, `Active`, `Released`, `Superseded`), 대체한 제약 `superseded_by`(아니면 NULL), 만든 시각 `created_at`(unix 밀리초)로 둔다. 행은 지우지 않고 채팅을 지울 때만 함께 지운다([제약](constraints.md#제약의-모양)).
+- `constraint_events` 표는 제약의 변경 내역이다. 이벤트 번호 `event_id`, `chat_id`, `constraint_id`, 종류 `kind`(`Added`, `Merged`, `Released`, `Superseded`, `Restored`), 주체 `actor`(`Router`, `User`), 사유 `reason`(NULL, `Mistaken`, `InputCanceled`), 합치거나 대체한 상대 `other_id`, 변경을 일으킨 입력 `input_id`(사용자가 직접 바꿨으면 NULL), 판단 기록 `judgment_id`, 되돌린 이벤트 `undoes`, 시각 `created_at`을 둔다. 채팅의 제약 revision은 그 채팅의 마지막 `event_id`(없으면 0)이고 대화 기록의 제약 줄은 이 표에서 그린다. 행은 이어 쓰기만 한다.
+- `constraint_asks` 표는 사용자에게 묻는 중이거나 끝난 확인이다. `ask_id`, `chat_id`, 종류 `kind`(`Register`, `Replace`, `Release`), 대상 `constraint_id`, 대체 확인의 앞 제약 `other_id`(아니면 NULL), `judgment_id`, 물은 시각 `asked_at`, 답 `answer`(NULL은 대기, `Yes`, `No`, 대상이 바뀌어 닫은 `Void`), 답한 시각 `answered_at`을 둔다. `answer`가 NULL인 행은 engine을 다시 켜면 TUI에 되살린다. 열린 `Replace` 확인이 있는 두 제약이 `충돌 가능`이다.
+- `packet_constraints` 표는 전환마다 패킷에 넣은 제약을 새 session `session_id`, `constraint_id`, 단계 `tier`(`All`, `Scope`, `Relevance`, `Omitted`)로 둔다. 같은 session의 같은 제약은 한 행이고 session을 지우면 함께 지운다. 못 넣은 제약도 `Omitted`로 남긴다.
+- 제약 표 네 개는 스키마 V8(초안, 머지 순서에 따라 번호가 달라질 수 있다)에서 더했다. 이관은 표만 비어 있게 더하고 이관 전 채팅의 입력을 소급해 판단하지 않는다. 이관 직전 백업은 아래 스키마 이관 규칙을 따른다.
 - 패킷과 돌아온 session의 변경분은 `events` 행을 그 이벤트를 연 실행의 session과 입력 원문, 기록 시각에 이어 읽어 만든다. 이벤트 행에 session을 따로 저장하지 않기 위해서다. `sessions.delivered`는 턴이 끝날 때와 session을 열거나 바꿀 때 저장한다.
 - session과 에이전트 번호는 `meta` 표에 마지막으로 준 번호를 두고, 기록에 있는 가장 큰 번호보다 큰 값을 한 거래로 새로 준다. 번호를 다시 쓰지 않기 위해서다.
 - 기록 저장소 파일 권한은 0600이다(초안). 입력 원문과 판단 기록이 들어 있기 때문이다.
@@ -169,6 +175,10 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 스키마 V4 이관은 채팅 행을 보존하고 항상 허용 표를 비어 있게 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v3_file_migrates_to_permission_allows_keeping_chats` |
 | 스키마 V5 이관은 채팅 행을 보존하고 더한 폴더 표를 비어 있게 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v4_file_migrates_to_chat_dirs_keeping_chats` |
 | 스키마 V7 이관은 채팅 행을 보존하고 보류 작업 표와 끊긴 하위 에이전트 표를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v6_file_migrates_to_recovery_tables_keeping_chats_and_backing_up` |
+| 스키마 V8 이관은 채팅 행을 보존하고 제약 표 네 개를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | 옛 스키마 파일로 새 버전을 실행해 채팅 행, 빈 제약 표, 백업 1개를 확인한다. |
+| 제약 변경은 상태와 이벤트를 한 거래로 쓰고 이벤트는 이어 쓰기만 한다. 제약 revision은 마지막 이벤트 번호다. | 변경 뒤 `constraints`와 `constraint_events`가 함께 바뀌고 이벤트 행이 수정되지 않는지 확인한다. |
+| 묻는 중인 확인은 engine을 다시 켜도 되살아나고, 대상이 바뀌면 `Void`로 닫힌다. | 열린 확인을 둔 채 다시 시작하고, 대상을 바꾼 뒤 늦은 답을 거절하는지 확인한다. |
+| 채팅을 지우면 제약, 이벤트, 확인, 패킷 제약이 함께 지워진다. | 채팅을 지워 네 표의 행이 남지 않는지 확인한다. |
 | 보류 작업은 작업 번호 순서로 읽히고 같은 작업은 덮어쓰며 채팅을 지우면 함께 지워진다. 끊긴 하위 에이전트는 정리를 넘겼다는 표시를 유지하며 에이전트가 끝나면 지워진다. | `saturn-terminal/engine/src/store/recovery.rs`의 `held_task_is_saved_replaced_and_deleted`, `interrupted_subagents_keep_cleaned_flag_until_the_agent_ends`, `recovery_rows_follow_the_chat_when_it_is_deleted` |
 | 더한 폴더는 채팅마다 더한 순서대로 읽히고 같은 경로는 한 번만 저장되며 채팅을 지우면 함께 지워진다. | `saturn-terminal/engine/src/store/chat_dirs.rs`의 `add_dir_is_kept_per_chat_in_added_order_without_duplicates`, `add_dir_for_a_missing_chat_is_refused`, `add_dir_rows_follow_the_chat_when_it_is_deleted` |
 | 항상 허용은 작업 폴더마다 저장 순서대로 읽히고 같은 행은 한 번만 저장된다. | `saturn-terminal/engine/src/store/permissions.rs`의 `allows_are_kept_per_workdir_in_saved_order`, `saving_the_same_allow_twice_keeps_one_row` |

@@ -27,7 +27,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | `engine` | provider 연결, router 호출, 기록 저장, TUI 접속을 맡는 상주 프로세스 | Rust, `tokio` | `saturn-terminal/engine` |
 | `tui` | 채팅 기록, 실행 영역, 상태판, 입력창을 그리는 전체 화면 | Rust, `ratatui`, `crossterm` | `saturn-terminal/tui` |
 | `cli` | `saturn` 실행 파일, 명령줄 처리와 engine 시작 | Rust, `clap` | `saturn-terminal/cli` |
-| `database` | 기록 저장소. 입력, 실행, session, 사용량, 판단 기록, 설정 스냅샷 보관 | SQLite | `~/.saturn/saturn.db` |
+| `database` | 기록 저장소. 입력, 실행, session, 사용량, 판단 기록, 제약, 설정 스냅샷 보관 | SQLite | `~/.saturn/saturn.db` |
 
 의존 방향은 한쪽이다. `core`와 `tui`는 `protocol`에만 의존하고, `engine`은 `protocol`과 `core`에 의존해 `core`의 trait을 구현한다. `cli`는 `protocol`과 `tui`에 의존하고 `engine`에는 링크하지 않아, 실행 파일 `saturn-engine`을 띄워 소켓으로 붙는다. `core`는 파일, 네트워크, 프로세스를 직접 다루지 않는다.
 
@@ -44,7 +44,8 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | provider 연결, session, subagent 추적, 사용량 | [provider 연결과 session](design/providers-and-sessions.md) |
 | 권한 규칙, 권한 모드, 항상 허용 | [권한](design/permissions.md) |
 | 맥락 크기 측정과 새 session으로 이어 가기 | [맥락 정리](design/context-management.md) |
-| 후보 순위, 제약 식별과 대체 | [맥락 고르기](design/context-selection.md) |
+| 후보 순위, 단어 조각, 도구 결과 메모 | [맥락 고르기](design/context-selection.md) |
+| 제약 식별, 저장, 해제와 대체, 패킷 제약 칸 | [제약](design/constraints.md) |
 | 판단 질문, 기준값, 대체 규칙 | [router](design/router.md) |
 | router 키 입력, 저장, 차단 | [router 키 보호](design/router-key-security.md) |
 | 채점, 기준값 조정, 로컬 모델 승격 | [router 학습](design/router-training.md) |
@@ -77,6 +78,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 - 입력은 기록 저장소에 접수된 뒤에만 provider로 보낸다. 전달 여부를 잃지 않기 위해서다.
 - 보내기 전에 확정된 실패만 다시 보낸다. 같은 작업이 두 번 실행되는 것을 막기 위해서다.
 - 판단 결과는 적용 직전에 채팅 revision을 비교한다. 두 입력이 같은 상태를 보고 함께 끼워 넣어지는 것을 막기 위해서다.
+- 확신이 낮은 제약 판단은 자동으로 정하지 않고 사용자에게 묻는다. 잘못 해제한 제약은 새 session이 알 수 없기 때문이다.
 - engine은 사용자당 하나이고 잠금으로 지킨다. 두 engine이 같은 기록에 쓰는 것을 막기 위해서다.
 - 기록 저장소는 파일 하나이고 쓰는 쪽은 engine 하나다. 한 변경은 한 거래로 처리하고, provider가 보고하지 않은 값은 NULL로 둔다. 쓰기 충돌과 지어낸 값을 막기 위해서다.
 - `core`는 파일, 네트워크, 프로세스를 직접 다루지 않는다. 규칙을 외부 연결 없이 테스트하기 위해서다.
