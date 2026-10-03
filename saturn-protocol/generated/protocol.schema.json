@@ -560,7 +560,7 @@
           "type": "object"
         },
         {
-          "description": "마지막 TUI가 떨어지면 `OnExit`를 적용한다.",
+          "description": "연결을 끊는다. 마지막 TUI가 떨어지면 `OnExit`를 적용한다.\n채팅을 옮길 때는 보내지 않고 같은 연결로 `Attach`를 다시 보낸다.",
           "properties": {
             "method": {
               "const": "Detach",

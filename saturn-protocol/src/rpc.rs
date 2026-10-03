@@ -69,7 +69,8 @@ pub enum Request {
         chat: ChatId,
         group: Option<String>,
     },
-    /// 마지막 TUI가 떨어지면 `OnExit`를 적용한다.
+    /// 연결을 끊는다. 마지막 TUI가 떨어지면 `OnExit`를 적용한다.
+    /// 채팅을 옮길 때는 보내지 않고 같은 연결로 `Attach`를 다시 보낸다.
     Detach,
     /// TUI를 닫기 전에 보낸다. 닫은 뒤의 처리를 `ExitPlan`으로 알린다.
     PrepareExit {

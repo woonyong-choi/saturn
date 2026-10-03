@@ -240,6 +240,7 @@ impl App {
         vec![Effect::Send(request), Effect::Send(Request::ListTasks)]
     }
 
+    /// 같은 연결로 `Attach`만 다시 보내 붙은 채팅을 바꾼다. `Detach`는 연결을 끊고 마지막 TUI 이탈로 세므로 보내지 않는다.
     /// 입력창, 입력 기록, provider 명령 목록은 채팅을 옮겨도 유지한다.
     pub(super) fn reattach(&mut self, chat: Option<ChatId>) -> Vec<Effect> {
         self.chat = ChatState::new();
@@ -256,10 +257,7 @@ impl App {
         self.history_loaded = false;
         self.history_loading = false;
         self.history_has_more = true;
-        vec![
-            Effect::Send(Request::Detach),
-            Effect::Send(self.attach_request()),
-        ]
+        vec![Effect::Send(self.attach_request())]
     }
 
     pub(super) fn on_screen_action(&mut self, action: Action) -> Vec<Effect> {
