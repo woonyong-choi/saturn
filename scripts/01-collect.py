@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKTREE = ROOT.parents[2]
+WORKTREE = ROOT
 MAIN_REPO = Path.home() / "workspace" / "oss" / "saturn"
 PRIVATE = MAIN_REPO / ".local" / "experiments" / "provider-permission-real"
 CODEX_MODEL = "gpt-5.6-luna"
@@ -261,8 +261,20 @@ class AppServer:
                 if self.proc.poll() is None:
                     self.proc.kill()
                     self.proc.wait(timeout=5)
-        stderr = self.proc.stderr.read().decode("utf-8", errors="replace") if self.proc.stderr else ""
-        return redact(stderr)
+        if not self.proc.stderr:
+            return ""
+        fd = self.proc.stderr.fileno()
+        os.set_blocking(fd, False)
+        chunks = []
+        while True:
+            try:
+                chunk = os.read(fd, 65536)
+            except BlockingIOError:
+                break
+            if not chunk:
+                break
+            chunks.append(chunk)
+        return redact(b"".join(chunks).decode("utf-8", errors="replace"))
 
 
 def marker_for(run_id: str, trial_id: str, kind: str) -> Path:
