@@ -180,6 +180,18 @@ impl Queue {
         self.bump(chat);
     }
 
+    // cost: time O(t), heap O(1), stack O(1)
+    // vars: t = 작업 수
+    // basis: estimate
+    /// 에이전트가 지금 실행 중인 작업의 접수 때 권한. 실행 중인 작업이 없으면 `None`.
+    pub fn running_permission(&self, agent: AgentId) -> Option<Permission> {
+        self.tasks
+            .iter()
+            .rev()
+            .find(|slot| slot.agent == Some(agent) && slot.phase == TaskPhase::Running)
+            .map(|slot| slot.permission)
+    }
+
     #[cfg(test)]
     pub fn write_gate(&mut self) -> &mut WriteGate {
         &mut self.gate

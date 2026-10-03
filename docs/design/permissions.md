@@ -36,6 +36,7 @@
 2. 사용자가 `/permissions read-only`(초안)를 입력한다.
 3. engine은 다음 허가 요청부터 편집과 실행을 거부한다.
 4. 사용자가 `/permissions edit`를 입력하면 작업 폴더 안 편집이 다시 허용된다.
+5. 읽기 전용으로 접수한 작업이 실행 중일 때 모드를 `edit`로 올리면, 그 작업은 접수 때 권한대로 읽기 전용으로 남아 편집 요청을 거부하고 알림을 남긴다. 사용자가 새 입력을 보내면 쓰기 권한으로 접수해 쓰기 잠금 규칙을 따른다.
 
 ## 상세 설계
 
@@ -58,7 +59,7 @@
 - MCP 도구의 대상 이름은 `mcp__{서버}__{도구}`이고(Claude의 도구 이름과 같다. 초안), Codex 요청에서 도구 이름을 읽지 못하면 도구 자리를 `?`로 둔다. subagent의 대상 이름은 종류 이름이다(Claude `Task`의 `subagent_type`).
 - 도구 전체에 한 값을 준 규칙(`permission.shell = "ask"`)은 패턴 `*` 규칙과 같다.
 - 폴더 설정의 `permission`은 폴더 설정 신뢰 창의 적용되는 항목에 보인다. 저장소가 사용자 모르게 허용 규칙을 넣는 일을 막기 위해서다.
-- 개별 규칙은 입력 접수 때 고정한 설정 번호의 값을 쓴다. 한 입력을 한 규칙으로 끝까지 판단하기 위해서다. 모드는 예외로 다음 허가 요청부터 바뀐 값을 쓴다(초안). 모드를 낮추면 진행 중인 작업에도 바로 적용하기 위해서다.
+- 개별 규칙은 입력 접수 때 고정한 설정 번호의 값을 쓴다. 한 입력을 한 규칙으로 끝까지 판단하기 위해서다. 모드는 예외로 다음 허가 요청부터 바뀐 값을 쓴다(초안). 모드를 낮추면 진행 중인 작업에도 바로 적용하기 위해서다. 읽기 전용으로 접수한 실행은 쓰기 잠금 없이 도는 중이므로 모드를 올려도 그 실행의 허가 요청은 읽기 전용 모드로 판정하고 항상 허용도 보지 않는다(초안). 접수 때 읽기 전용이던 실행이 잠금 없이 다른 쓰기 작업과 같은 폴더에 함께 쓰는 일을 막기 위해서다. 이 때문에 거부나 묻기가 되면 `ReadOnlyRunKept` 알림을 대화 기록에 남기고(`읽기 전용으로 접수한 작업의 쓰기를 거부함 · 쓰려면 새 입력으로 보내세요`), 새 모드는 그다음 입력부터 쓰기 권한으로 접수해 적용한다. 실행 중에 쓰기 잠금을 얻어 올리는 방식은 잠금을 얻지 못할 때 허가 요청을 붙들고 있어야 해 쓰지 않는다.
 
 ### 권한 모드
 
@@ -232,6 +233,7 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 | 허가 창은 세 선택지이고, 도구 호출 뒤 3초 안에 허가 요청이나 진행 이벤트가 없으면 상태판에 준비 중을 보인다. | `saturn-terminal/tui/src/keys.rs`의 `permission_keys`, `saturn-terminal/tui/src/view/status_board.rs`의 `approval_pending_shows_after_three_seconds_without_events`, `approval_pending_clears_when_permission_request_or_progress_arrives` |
 | 항상 허용은 기록 저장소에 저장되고 provider 설정 파일은 바뀌지 않는다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `always_allow_is_stored_in_records`, `always_allow_is_kept_per_workdir`, `always_allow_for_an_unreadable_request_goes_to_the_provider_as_given`, `saturn-terminal/engine/src/store/permissions.rs`의 `allows_are_kept_per_workdir_in_saved_order`, `saving_the_same_allow_twice_keeps_one_row` |
 | 읽기 전용 모드의 입력은 읽기 전용 권한으로 접수한다. 쓰기를 허용하는 규칙이 있으면 쓰기다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `read_only_mode_accepts_inputs_as_read_only`, `read_only_mode_with_an_allow_rule_keeps_inputs_as_write`, `chat_layer_mode_decides_the_input_permission` |
+| 읽기 전용으로 접수한 실행은 모드를 올려도 읽기 전용으로 판정하고, 달라지면 `ReadOnlyRunKept`를 알린다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `running_read_only_task_keeps_its_acceptance_permission_after_a_mode_change` |
 | 채팅 중 바뀐 설정(Codex 규칙·질문 설정, Claude 도구 목록)은 작업 중이 아니면 바로, 입력 접수에서 알아챘으면 그 입력을 보내기 전에, 작업 중이면 턴이 끝난 뒤 연결을 다시 시작해 적용한다. | `saturn-terminal/engine/src/lifecycle/live_settings.rs`의 테스트 전체, `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `changed_codex_rules_of_a_running_chat_mark_the_connection_stale_until_they_match_again`, `stale_codex_connection_restarts_after_the_turn_ends_and_reopens_the_session`, `stale_codex_connection_waits_while_the_chat_is_running` |
 | 바로 다시 시작하면 `ProviderRestarted`만, 턴 끝으로 미루면 미룬 것을 알아챌 때 `PermissionsChanged`를 한 번과 다시 시작할 때 `ProviderRestarted`를 문구 없이 알린다. | `saturn-terminal/engine/src/lifecycle/live_settings.rs`의 `live_settings_idle_codex_restarts_at_once_and_the_next_input_uses_the_new_settings`, `live_settings_running_codex_restarts_after_the_turn_and_tells_both_notices`, `live_settings_notice_is_not_repeated_while_the_restart_waits`, `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `stale_codex_connection_restarts_after_the_turn_ends_and_reopens_the_session`, `saturn-terminal/tui/src/view/transcript.rs`의 `lines_permission_notices_follow_language` |
 | 개별 규칙의 `deny`는 항상 허용보다 앞선다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `deny_rule_beats_a_stored_always_allow` |
