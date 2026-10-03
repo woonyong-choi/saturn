@@ -1,0 +1,20 @@
+[
+  {
+    "label": "한글 질의",
+    "baseline": 93.6,
+    "baseline.low": 91.7,
+    "baseline.high": 95.1,
+    "candidate": 94.5,
+    "candidate.low": 92.7,
+    "candidate.high": 95.9
+  },
+  {
+    "label": "영문 질의",
+    "baseline": 75.5,
+    "baseline.low": 72.4,
+    "baseline.high": 78.4,
+    "candidate": 87.1,
+    "candidate.low": 84.6,
+    "candidate.high": 89.3
+  }
+]

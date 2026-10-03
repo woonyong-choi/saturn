@@ -1,0 +1,20 @@
+[
+  {
+    "label": "multilingual-e5-small",
+    "baseline": 0.0,
+    "baseline.low": 0.0,
+    "baseline.high": 6.0,
+    "candidate": 0.0,
+    "candidate.low": 0.0,
+    "candidate.high": 6.0
+  },
+  {
+    "label": "MiniLM-L12-v2",
+    "baseline": 0.0,
+    "baseline.low": 0.0,
+    "baseline.high": 6.0,
+    "candidate": 0.0,
+    "candidate.low": 0.0,
+    "candidate.high": 6.0
+  }
+]

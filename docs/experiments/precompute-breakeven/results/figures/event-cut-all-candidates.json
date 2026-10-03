@@ -1,0 +1,44 @@
+[
+  {
+    "x": 0.0,
+    "measured": 61.9,
+    "measured.low": 58.3,
+    "measured.high": 64.5
+  },
+  {
+    "x": 0.25,
+    "measured": 45.3,
+    "measured.low": 41.9,
+    "measured.high": 48.5
+  },
+  {
+    "x": 0.5,
+    "measured": 33.3,
+    "measured.low": 30.3,
+    "measured.high": 36.4
+  },
+  {
+    "x": 0.6,
+    "measured": 27.2,
+    "measured.low": 24.9,
+    "measured.high": 29.6
+  },
+  {
+    "x": 0.7,
+    "measured": 20.6,
+    "measured.low": 17.9,
+    "measured.high": 23.5
+  },
+  {
+    "x": 0.8,
+    "measured": 14.9,
+    "measured.low": 12.4,
+    "measured.high": 17.7
+  },
+  {
+    "x": 0.9,
+    "measured": 8.0,
+    "measured.low": 6.3,
+    "measured.high": 9.9
+  }
+]

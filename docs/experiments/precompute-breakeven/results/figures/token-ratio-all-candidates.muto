@@ -1,0 +1,9 @@
+chart line
+title "후보 전체 판단에서 미리 판단의 judge 입력 토큰 배수"
+subtitle "n=1154 session. 점선은 기준선 1.5배"
+x "미리 판단 시작 비율 s(T 대비)"
+y "lazy 대비 추정 입력 토큰(배)"
+
+series measured "미리 판단" role=main
+rule 1.5 "기준선"
+data "token-ratio-all-candidates.json"

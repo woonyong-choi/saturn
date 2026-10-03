@@ -1,0 +1,9 @@
+chart dumbbell
+title "오타 질의의 상위 10개 재현율"
+subtitle "n=한글 800, 영문 800. 후보는 한글 자모 3개, 영문 글자 4개 단위"
+x "재현율(%)"
+decimals 1
+
+series candidate "후보" role=main
+series baseline "기준" role=compare
+data "recall-at-10.json"

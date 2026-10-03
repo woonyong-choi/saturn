@@ -1,0 +1,38 @@
+[
+  {
+    "label": "H1 (기준 80%)",
+    "proportion": 74.5,
+    "proportion.low": 68.0371,
+    "proportion.high": 80.0395
+  },
+  {
+    "label": "H2 (기준 90%)",
+    "proportion": 96.7742,
+    "proportion.low": 90.9406,
+    "proportion.high": 98.8969
+  },
+  {
+    "label": "H3 (기준 80%)",
+    "proportion": 77.3481,
+    "proportion.low": 70.7187,
+    "proportion.high": 82.8407
+  },
+  {
+    "label": "H4 (기준 70%)",
+    "proportion": 81.6667,
+    "proportion.low": 70.0802,
+    "proportion.high": 89.4422
+  },
+  {
+    "label": "H7 (기준 90%)",
+    "proportion": 97.3333,
+    "proportion.low": 93.3446,
+    "proportion.high": 98.9582
+  },
+  {
+    "label": "H8 (기준 90%)",
+    "proportion": 96.6667,
+    "proportion.low": 92.4348,
+    "proportion.high": 98.568
+  }
+]

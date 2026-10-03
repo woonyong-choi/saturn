@@ -1,0 +1,9 @@
+chart bar
+title "RRF 상위 N이 judge가 남긴 항목을 덮는 비율(k=60)"
+subtitle "n=400. 점선은 H1 채택 기준 90%"
+x "재현율(%)"
+decimals 1
+
+series recall "상위 N이 덮은 비율" role=main
+rule 90 "H1 채택 기준"
+data "coverage.json"

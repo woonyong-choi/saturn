@@ -1,0 +1,9 @@
+chart line
+title "후보 전체 판단에서 전환 시점 대기 질문의 감소율"
+subtitle "n=1154 session. 점선은 기준선 50%"
+x "미리 판단 시작 비율 s(T 대비)"
+y "전환 시점 대기 질문 감소율(%)"
+
+series measured "미리 판단" role=main
+rule 50 "기준선"
+data "event-cut-all-candidates.json"

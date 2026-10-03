@@ -1,0 +1,32 @@
+[
+  {
+    "label": "baseline",
+    "accuracy": 74.5,
+    "accuracy.low": 68.0371,
+    "accuracy.high": 80.0395
+  },
+  {
+    "label": "flag",
+    "accuracy": 75.0,
+    "accuracy.low": 68.5659,
+    "accuracy.high": 80.4918
+  },
+  {
+    "label": "flag_text",
+    "accuracy": 69.0,
+    "accuracy.low": 62.2828,
+    "accuracy.high": 75.0011
+  },
+  {
+    "label": "oracle_flag",
+    "accuracy": 76.0,
+    "accuracy.low": 69.6267,
+    "accuracy.high": 81.3934
+  },
+  {
+    "label": "flag_hint",
+    "accuracy": 95.5,
+    "accuracy.low": 91.6703,
+    "accuracy.high": 97.6147
+  }
+]

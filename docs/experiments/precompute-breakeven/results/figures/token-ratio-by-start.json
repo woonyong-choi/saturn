@@ -1,0 +1,44 @@
+[
+  {
+    "x": 0.0,
+    "measured": 8.395,
+    "measured.low": 7.151,
+    "measured.high": 9.697
+  },
+  {
+    "x": 0.25,
+    "measured": 6.394,
+    "measured.low": 5.59,
+    "measured.high": 7.222
+  },
+  {
+    "x": 0.5,
+    "measured": 4.967,
+    "measured.low": 4.337,
+    "measured.high": 5.614
+  },
+  {
+    "x": 0.6,
+    "measured": 4.153,
+    "measured.low": 3.596,
+    "measured.high": 4.745
+  },
+  {
+    "x": 0.7,
+    "measured": 3.35,
+    "measured.low": 2.931,
+    "measured.high": 3.798
+  },
+  {
+    "x": 0.8,
+    "measured": 2.716,
+    "measured.low": 2.369,
+    "measured.high": 3.108
+  },
+  {
+    "x": 0.9,
+    "measured": 1.86,
+    "measured.low": 1.639,
+    "measured.high": 2.104
+  }
+]

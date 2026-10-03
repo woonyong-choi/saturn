@@ -1,0 +1,9 @@
+chart line
+title "정리 시점에 남는 질문의 감소율"
+subtitle "n=1154 session. 점선은 채택 기준 50%"
+x "미리 판단 시작 비율 s(T 대비)"
+y "남는 질문 감소율(%)"
+
+series measured "미리 판단" role=main
+rule 50 "기준선"
+data "pending-cut-by-start.json"

@@ -1,0 +1,20 @@
+[
+  {
+    "label": "paren",
+    "precision": 1.5,
+    "precision.low": 0.511424,
+    "precision.high": 4.31657
+  },
+  {
+    "label": "comment",
+    "precision": 1.0,
+    "precision.low": 0.274666,
+    "precision.high": 3.57218
+  },
+  {
+    "label": "cooc",
+    "precision": 0.5,
+    "precision.low": 0.0883169,
+    "precision.high": 2.77737
+  }
+]

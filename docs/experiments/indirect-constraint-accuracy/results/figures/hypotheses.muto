@@ -1,0 +1,11 @@
+chart bar
+title "가설별 비율"
+subtitle "n=H1 200, H2 93, H3 181, H4 60, H7 150, H8 150. 오차 막대는 95% Wilson 신뢰구간, 점선은 가설별 채택 기준"
+x "비율(%)"
+decimals 1
+
+series proportion "측정 비율" role=main
+rule 70 "기준 70%"
+rule 80 "기준 80%"
+rule 90 "기준 90%"
+data "hypotheses.json"

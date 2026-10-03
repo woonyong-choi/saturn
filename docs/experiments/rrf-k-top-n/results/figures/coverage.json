@@ -1,0 +1,26 @@
+[
+  {
+    "label": "N=5",
+    "recall": 6.25,
+    "recall.low": 4.27,
+    "recall.high": 9.06
+  },
+  {
+    "label": "N=10",
+    "recall": 12.0,
+    "recall.low": 9.17,
+    "recall.high": 15.55
+  },
+  {
+    "label": "N=20",
+    "recall": 25.5,
+    "recall.low": 21.48,
+    "recall.high": 29.99
+  },
+  {
+    "label": "N=40",
+    "recall": 44.25,
+    "recall.low": 39.46,
+    "recall.high": 49.15
+  }
+]
