@@ -14,8 +14,9 @@ use crate::settings::{self, SettingsError};
 use crate::{Engine, EngineError};
 
 impl Engine {
-    /// 접수하는 입력의 권한. 읽기 전용 모드이고 쓰기를 허용하는 규칙이 하나도 없을 때만 읽기 전용이라, 같은 폴더의
-    /// 다른 읽기 작업과 병렬로 실행한다. 규칙을 읽지 못하면 쓰기로 둔다.
+    /// 접수하는 입력의 권한. 읽기 전용 모드이고 쓰기를 열 수 있는 규칙(`allow`, `ask`)이 하나도 없을 때만 읽기 전용이라,
+    /// 같은 폴더의 다른 읽기 작업과 병렬로 실행한다. `ask`는 사용자가 승인하면 쓰기가 되므로 `allow`처럼 쓰기로 둔다.
+    /// 규칙을 읽지 못하면 쓰기로 둔다.
     pub(crate) async fn input_permission(
         &self,
         chat: ChatId,
@@ -25,11 +26,11 @@ impl Engine {
             let configured = self.settings.at(&self.store, revision).await?.permission();
             let layer = self.store.chat_layer(chat).await?;
             let mode = settings::chat_layer_mode(layer.as_deref()).unwrap_or(configured.mode);
-            let allows = configured
+            let can_open_writes = configured
                 .rules
                 .iter()
-                .any(|rule| rule.verdict == Verdict::Allow);
-            Ok::<bool, EngineError>(mode == Mode::ReadOnly && !allows)
+                .any(|rule| rule.verdict != Verdict::Deny);
+            Ok::<bool, EngineError>(mode == Mode::ReadOnly && !can_open_writes)
         };
         match read.await {
             Ok(true) => Permission::ReadOnly,

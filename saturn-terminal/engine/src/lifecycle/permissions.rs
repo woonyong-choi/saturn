@@ -5,6 +5,7 @@ use saturn_core::providers::ProviderError;
 use saturn_protocol::event::{PermissionTool, ProviderEvent};
 use saturn_protocol::ids::{AgentId, Provider};
 use saturn_protocol::rpc::{ChatNotice, Notification, PermissionAnswer};
+use saturn_protocol::state::{InputState, QueueReason};
 
 use super::support::{
     CLIENT, Flow, OTHER_CLIENT, idle_reply, permission, permission_for, running_reply,
@@ -434,6 +435,52 @@ async fn read_only_mode_with_an_allow_rule_keeps_inputs_as_write() {
     assert_eq!(
         permission_of_first_input(config).await,
         saturn_core::queue::Permission::Write
+    );
+}
+
+// #355
+#[tokio::test]
+async fn read_only_mode_with_an_ask_rule_keeps_inputs_as_write() {
+    let config = "[permission]\nmode = \"read-only\"\n[permission.edit]\n\"src/*\" = \"ask\"\n";
+
+    assert_eq!(
+        permission_of_first_input(config).await,
+        saturn_core::queue::Permission::Write
+    );
+}
+
+// #355
+#[tokio::test]
+async fn read_only_mode_with_only_a_deny_rule_keeps_inputs_as_read_only() {
+    let config = "[permission]\nmode = \"read-only\"\n[permission.edit]\n\"src/*\" = \"deny\"\n";
+
+    assert_eq!(
+        permission_of_first_input(config).await,
+        saturn_core::queue::Permission::ReadOnly
+    );
+}
+
+// #355
+#[tokio::test]
+async fn write_approved_through_an_ask_rule_in_read_only_mode_holds_the_write_lock() {
+    let config = "[permission]\nmode = \"read-only\"\n[permission.edit]\n\"src/*\" = \"ask\"\n";
+    let mut flow = Flow::with_config(
+        config,
+        vec![idle_reply(0.95), running_reply(0.9, "independent", "spawn")],
+    )
+    .await;
+    flow.submit("write the cache module").await;
+    flow.engine
+        .set_permission_mode(flow.chat, "edit")
+        .await
+        .unwrap();
+
+    let other_writer = flow.submit("write the parser module").await;
+
+    assert_eq!(flow.state(other_writer), InputState::Queued);
+    assert_eq!(
+        flow.record(other_writer).reason,
+        Some(QueueReason::WriteTurn)
     );
 }
 
