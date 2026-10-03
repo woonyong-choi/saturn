@@ -19,6 +19,8 @@ pub(crate) struct PendingInput {
     pub(crate) agent: AgentId,
     pub(crate) provider: Provider,
     pub(crate) task: TaskId,
+    /// provider가 그 연결에서 붙인 요청 ID. 답은 이 ID로 돌려준다.
+    pub(crate) provider_request: String,
 }
 
 impl Engine {
@@ -40,20 +42,22 @@ impl Engine {
         };
         let label = self.flow.tasks.assign(task);
         let waiting = self.waiting_in_chat(chat);
+        let engine_request = self.flow.issue_request_id();
         self.flow.inputs.insert(
-            request_id.to_owned(),
+            engine_request.clone(),
             PendingInput {
                 chat,
                 agent: live.agent,
                 provider: live.provider,
                 task,
+                provider_request: request_id.to_owned(),
             },
         );
         let notification = Notification::InputRequested {
             task,
             label,
             provider: live.provider,
-            request_id: request_id.to_owned(),
+            request_id: engine_request,
             request: request.clone(),
             waiting,
         };
@@ -74,8 +78,8 @@ impl Engine {
     /// 사용자 답을 provider 값으로 넘긴다. 다른 TUI의 창은 지운다.
     ///
     /// # Errors
-    /// 묻지 않은 요청이면 `UnexpectedAnswer`, 열린 session이 없으면 `Provider(NotSent)`. provider가 받지 못했으면
-    /// 요청을 그대로 두어 다시 답할 수 있다.
+    /// 묻지 않은 요청이면 `UnexpectedAnswer`, 답한 TUI가 그 요청의 채팅에 붙어 있지 않으면 `ChatNotAttached`, 열린
+    /// session이 없으면 `Provider(NotSent)`. provider가 받지 못했으면 요청을 그대로 두어 다시 답할 수 있다.
     pub(crate) async fn answer_input(
         &mut self,
         client: ClientId,
@@ -88,6 +92,7 @@ impl Engine {
             .get(&request_id)
             .cloned()
             .ok_or(EngineError::UnexpectedAnswer { what: "input" })?;
+        self.require_attached(client, pending.chat)?;
         let live =
             self.flow
                 .live
@@ -97,7 +102,7 @@ impl Engine {
                     reason: "no open session for the input request".to_owned(),
                 })?;
         self.provider_mut(pending.chat, pending.provider)?
-            .answer_input(&live.provider_session, &request_id, answer)
+            .answer_input(&live.provider_session, &pending.provider_request, answer)
             .await?;
         self.flow.inputs.remove(&request_id);
         self.rpc.resolve_input(client, &request_id).await;

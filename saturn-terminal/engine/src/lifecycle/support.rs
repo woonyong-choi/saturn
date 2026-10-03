@@ -6,8 +6,8 @@ use saturn_protocol::event::{
     Activity, PermissionCall, PermissionTool, ProviderEvent, ToolCategory, ToolDetail, TurnOrigin,
 };
 use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, SubagentId};
-use saturn_protocol::input::{InputField, InputFieldKind, InputRequest};
-use saturn_protocol::rpc::ModelChoice;
+use saturn_protocol::input::{InputAnswer, InputField, InputFieldKind, InputRequest};
+use saturn_protocol::rpc::{ModelChoice, PermissionAnswer};
 use saturn_protocol::state::InputState;
 use serde_json::{Value, json};
 
@@ -21,6 +21,16 @@ use crate::rpc::ClientId;
 use crate::store::NewInput;
 
 pub(super) const CLIENT: ClientId = ClientId(1);
+
+/// 두 번째 채팅에 붙은 TUI.
+pub(super) const OTHER_CLIENT: ClientId = ClientId(2);
+
+/// `Flow`에 더한 두 번째 채팅과 그 채팅의 가짜 Claude, 열린 에이전트.
+pub(super) struct OtherChat {
+    pub(super) chat: ChatId,
+    pub(super) fake: FakeProvider,
+    pub(super) agent: AgentId,
+}
 
 /// 소켓 없이 붙인 채팅 하나와, 그 채팅에 연결된 가짜 Claude를 가진 engine.
 pub(super) struct Flow {
@@ -103,6 +113,61 @@ impl Flow {
         }
     }
 
+    /// 다른 작업 폴더의 두 번째 채팅을 `OTHER_CLIENT`로 붙이고 입력 하나를 보내 에이전트를 연다. router 답이 하나 더 필요하다.
+    /// 같은 폴더면 쓰기 잠금 때문에 입력이 기다린다.
+    pub(super) async fn open_other_chat(&mut self) -> OtherChat {
+        let workdir = self.fixture.workdir.with_file_name("other-work");
+        std::fs::create_dir_all(&workdir).unwrap();
+        let chat = self
+            .engine
+            .store
+            .create_chat(workdir.clone())
+            .await
+            .unwrap();
+        self.engine.chats.insert(
+            chat,
+            ChatEnv::new(
+                workdir,
+                vec![("PATH".to_owned(), "/nonexistent".to_owned())],
+            ),
+        );
+        self.engine.attachments.insert(
+            OTHER_CLIENT,
+            Attachment {
+                chat,
+                overrides: Vec::new(),
+                folder_trust: None,
+            },
+        );
+        let fake = FakeProvider::new(Provider::Claude);
+        self.engine
+            .flow
+            .questions_of_connection
+            .insert((chat, Provider::Claude), true);
+        self.engine.providers.insert(
+            (chat, Provider::Claude),
+            ProviderConnection::Fake(fake.clone()),
+        );
+        self.engine
+            .submit_input(OTHER_CLIENT, chat, 1, "other work".to_owned(), false)
+            .await
+            .unwrap();
+        self.settle().await;
+        let agent = self
+            .engine
+            .flow
+            .live
+            .values()
+            .find(|live| {
+                self.engine
+                    .session_chat(live.session)
+                    .is_ok_and(|owner| owner == chat)
+            })
+            .map(|live| live.agent)
+            .expect("a session should be open in the other chat");
+        OtherChat { chat, fake, agent }
+    }
+
     /// 열려 있는 가짜 Claude가 낸 것처럼 이벤트를 처리한다.
     pub(super) async fn claude_event(&mut self, event: ProviderEvent) {
         self.event(Provider::Claude, event).await;
@@ -155,6 +220,50 @@ impl Flow {
         })
         .await;
         (client, greeting)
+    }
+
+    /// 가짜 provider가 낸 요청 ID에 engine이 발급한 허가 요청 ID. 아직 올라오지 않았으면 `None`.
+    pub(super) fn permission_id(&self, provider_request: &str) -> Option<String> {
+        self.engine
+            .flow
+            .permissions
+            .iter()
+            .find(|(_, pending)| pending.provider_request == provider_request)
+            .map(|(id, _)| id.clone())
+    }
+
+    /// `permission_id`의 입력 요청 쪽.
+    pub(super) fn input_id(&self, provider_request: &str) -> Option<String> {
+        self.engine
+            .flow
+            .inputs
+            .iter()
+            .find(|(_, pending)| pending.provider_request == provider_request)
+            .map(|(id, _)| id.clone())
+    }
+
+    /// 채팅에 붙은 TUI(`CLIENT`)가 provider 요청 ID로 올라온 허가 요청에 답한다. 올라오지 않은 ID는 그대로 넘긴다.
+    pub(super) async fn answer_permission(
+        &mut self,
+        provider_request: &str,
+        answer: PermissionAnswer,
+    ) -> Result<(), EngineError> {
+        let id = self
+            .permission_id(provider_request)
+            .unwrap_or_else(|| provider_request.to_owned());
+        self.engine.answer_permission(CLIENT, id, answer).await
+    }
+
+    /// `answer_permission`의 입력 요청 쪽.
+    pub(super) async fn answer_input(
+        &mut self,
+        provider_request: &str,
+        answer: InputAnswer,
+    ) -> Result<(), EngineError> {
+        let id = self
+            .input_id(provider_request)
+            .unwrap_or_else(|| provider_request.to_owned());
+        self.engine.answer_input(CLIENT, id, answer).await
     }
 
     /// router 호출 수. 시작 확인의 두 호출은 뺀다.
