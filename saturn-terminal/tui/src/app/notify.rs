@@ -250,7 +250,12 @@ impl App {
 
     /// 보류 재개 질문은 첫 기록을 모두 반영한 뒤 `on_history_chunk`가 띄운다.
     fn on_task_changed(&mut self, update: TaskUpdate, now: Instant) {
-        match self.chat.apply_task(update, now) {
+        let task = update.task;
+        let change = self.chat.apply_task(update, now);
+        for call_id in self.chat.take_interrupted_calls(task) {
+            self.transcript.set_tool_interrupted(&call_id);
+        }
+        match change {
             Change::TaskFinished { task } => {
                 let lines = self.live.finish(task);
                 let Some(view) = self.chat.finish_task(task) else {
@@ -340,6 +345,7 @@ impl App {
                 call_id,
                 activity,
                 output: String::new(),
+                is_interrupted: false,
             }),
             Change::Tool {
                 call_id,

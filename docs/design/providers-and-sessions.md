@@ -352,4 +352,4 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 - router 상태에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))
 - 수정 파일 목록을 실행 경계의 파일 상태 차이로 계산할지, provider 이벤트로 계산할지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))
 - 패킷 고정 구역의 "현재 목표"와 "끝나지 않은 항목"을 무엇으로 뽑을지. 정해지기 전에는 목표는 마지막 입력이고 제약은 빈 목록이며 끝나지 않은 항목은 결과가 없는 도구 호출이다 ([#90](https://github.com/woonyong-choi/saturn/issues/90))
-- 보낸 뒤 결과를 모르는 작업을 사용자가 푸는 방법. 지금은 `/continue <작업>`이 파일 상태를 확인하게 하는 새 입력을 보내고 원래 입력은 `전달 중`으로 둔다 ([#90](https://github.com/woonyong-choi/saturn/issues/90))
+- 보낸 뒤 결과를 모르는 작업을 사용자가 푸는 방법. 지금은 `/continue <작업>`이 중단 결과를 붙인 새 입력을 보내고 원래 입력은 `전달 중`으로 둔다 ([#90](https://github.com/woonyong-choi/saturn/issues/90))

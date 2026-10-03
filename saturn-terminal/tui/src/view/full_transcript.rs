@@ -79,6 +79,7 @@ mod tests {
             call_id: "c".to_string(),
             activity: Activity::ReadingFile,
             output: "contents".to_string(),
+            is_interrupted: false,
         });
         let state = FullTranscript::default();
         let mut terminal = Terminal::new(TestBackend::new(20, 3)).unwrap();

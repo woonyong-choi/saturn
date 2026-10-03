@@ -3,6 +3,7 @@
 use std::ffi::OsString;
 
 use saturn_core::providers::ProviderError;
+use saturn_core::sessions::memo::INTERRUPTED_RESULT;
 use saturn_protocol::ids::{SubagentId, TaskLabel};
 use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::{InputState, SessionState};
@@ -255,7 +256,10 @@ async fn continue_sends_held_input_and_then_a_state_check_for_the_interrupted_ta
     flow.claude_event(turn_completed(agent)).await;
     let sent = turns(&flow);
     assert_eq!(sent.len(), 3);
-    assert!(sent[2].contains("Check the current state of the working files"));
+    assert!(sent[2].starts_with(&format!(
+        "Previous turn result (error): {INTERRUPTED_RESULT}\n"
+    )));
+    assert!(!sent[2].contains("Check the current state"));
     assert!(sent[2].ends_with("Request:\nfix the build"));
 }
 

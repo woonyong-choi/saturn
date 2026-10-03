@@ -152,7 +152,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 - 재개할 때 같은 패킷을 다시 보내지 않는다. 이미 반영된 입력을 두 번 실행하는 일을 막기 위해서다.
 - 보류를 닫아도 기록은 지우지 않고 수정된 파일은 되돌리지 않는다. 사용자가 멈춘 작업의 결과를 사용자 뜻 없이 지우는 일을 막기 위해서다.
 - 확인된 상태로 만든 새 입력은 멈춤 때 실행 중이던 작업에만 보낸다. 실행 전이던 작업은 보류 입력을 대기로 되돌리기만 한다. 끝난 턴을 다시 이어 붙이지 않기 위해서다.
-- 새 입력은 멈춘 턴을 연 입력의 원문에 "턴이 끝나기 전에 멈췄으니 파일의 지금 상태를 먼저 확인하고, 이미 한 일은 되풀이하지 않고 이어 가라"는 말을 붙인 글이다. 파일 목록을 Saturn이 세는 방법이 정해지기 전이라([#65](https://github.com/woonyong-choi/saturn/issues/65)) 에이전트가 직접 확인하게 한다. 접수할 때 관계 판단 없이 그 작업에 대기로 붙이고, 쓰기 규칙을 그대로 적용한다.
+- 새 입력은 멈춘 턴을 연 입력의 원문 앞에 그 턴의 결과를 오류 결과(`Previous turn result (error): Interrupted before a result was recorded · It may have partially run`)로 두는 글이다. 중단돼 결과를 모른다는 사실은 별도 경고나 상태 확인 지시 문장 없이 Claude Code, Codex가 도구 결과를 보이는 방식과 같게 결과 자리의 오류 결과 하나로만 넣는다([#282](https://github.com/woonyong-choi/saturn/issues/282)). 접수할 때 관계 판단 없이 그 작업에 대기로 붙이고, 쓰기 규칙을 그대로 적용한다.
 - 같은 작업에 보류 입력이 있으면 접수 순서가 앞선 그 입력이 먼저 가고 새 입력은 그 턴이 끝난 뒤에 간다.
 - 입력 하나를 재개하는 요청은 그 입력이 붙은 작업을 재개한다. 입력 하나만 재개하는 규칙은 정해지기 전이다.
 - 보낸 뒤 결과를 모르는 작업은 `/continue`에 작업을 가리킬 때만 잇는다. 대상이 없는 재개가 결과를 모르는 작업을 건드리지 않는 것은 이미 반영됐을 수 있는 일을 사용자 뜻 없이 이어 가지 않기 위해서다. 잇는 방법은 멈춘 작업과 같은 확인 입력이고, 원래 입력은 `전달 중`으로 남기고 다시 보내지 않는다. 그 실행 기록은 닫는다.
@@ -197,7 +197,8 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 보낸 뒤 결과 불명 | 자동으로 다시 보내지 않고 사용자 확인으로 넘긴다. 입력은 `전달 중`으로 두고 작업을 `결과 확인 필요`로 보이며, 실행 기록은 열어 둔다. 사용자는 `/continue <작업>`으로 확인 입력을 보내 잇는다. |
 | 패킷의 고정 구역이 `P_hard`를 넘어 새 session으로 옮기지 못함 | 보내지 않고 입력을 작업과 함께 보류하며 제약 목록을 보인다. `/continue`로 다시 시도한다. |
 | 패킷이 맥락 한도 초과로 거절되고 줄인 패킷도 거절되거나 줄일 수 없음 | 보내지 않고 입력을 작업과 함께 보류하며 `맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요`를 보인다. `/continue`로 다시 시도한다. |
-| 보내기 전 확정 실패가 3번 이어짐 | 입력을 `거절됨`으로 두고 작업을 실패로 보인다. |
+| 보내기 전 확정 실패가 3번 이어짐 | 입력을 `거절됨`으로 두고 작업을 실패로 보인다. 입력 에코에 빨간색 `거절됨`이 붙고 마지막 실패의 이유가 빨간색으로 보인다. |
+| 도구 실행의 결과를 모른 채 작업이 실패하거나 멈추거나 결과 확인 필요가 됨 | 그 도구 셀에 빨간색 `중단됨`을 보인다. 이어 갈 때 provider에 넘기는 기록에는 그 도구 결과를 오류 결과(`Interrupted before a result was recorded · It may have partially run`)로 넣는다. |
 | provider가 끼워 넣기를 거절(`NotSent`) | 다시 끼워 넣지 않고 입력을 `대기`로 되돌려 대기열 맨 앞에 둔다. 현재 작업이 끝나면 다음 차례에 새 턴으로 보낸다. |
 | provider 연결이나 session 열기 실패, 설치된 provider 없음 | 보내지 않고 입력을 `거절됨`으로 두며 원인 한 줄을 작업 실패에 보인다. |
 | 접수나 `전달 중` 기록 실패 | 어디에도 보내지 않는다. 접수 실패는 요청 오류로, `전달 중` 실패는 입력 거절로 알린다. |
@@ -210,6 +211,8 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 입력은 기록 저장소에 접수된 뒤에만 에이전트로 보낸다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `record_write_failure_sends_nothing_anywhere`, `accepted_input_reaches_first_provider_after_it_is_recorded` |
 | 끼워 넣기가 활성 턴 없음으로 실패하면 다시 판단하지 않고 같은 session의 새 턴으로 보낸다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `steer_without_active_turn_sends_one_new_turn_without_rerouting`, `steer_new_turn_unknown_is_not_sent_again` |
 | 보낸 뒤 결과가 불명인 입력은 자동으로 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `unknown_is_never_sent_again_and_the_task_needs_check` |
+| 결과를 모르는 도구 실행은 `중단됨`으로 보이고 이어 가는 기록에 오류 결과로 들어간다. | `saturn-terminal/tui/src/view/transcript.rs`의 `interrupted_tool_shows_a_red_interrupted_line`, `saturn-terminal/tui/src/app/tests.rs`의 `interrupted_tool_is_marked_when_the_task_is_held_without_a_result`, `saturn-terminal/engine/src/handoff.rs`의 `interrupted_tool_call_is_an_error_result_not_a_warning`, `waiting_held_and_interrupted_inputs_are_open_items` |
+| 거절된 입력은 빨간색 `거절됨`으로 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `rejected_input_shows_a_red_rejected_badge`, `failed_cause_is_red` |
 | 보내기 전에 확정된 실패만 다시 보낸다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `not_sent_is_sent_again_and_then_applied`, `not_sent_every_time_is_rejected_and_the_next_input_still_goes`, `open_failure_that_is_not_a_resend_case_rejects_without_sending` |
 | 같은 채팅의 입력은 접수 순서대로 하나씩 판단한다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `inputs_are_routed_one_at_a_time_in_accept_order` |
 | router 호출이 재시도 뒤에도 실패하면 입력을 대기로 보내지 않고 현재 에이전트와 현재 모델로 보낸다. | `saturn-terminal/core/src/routers/failure.rs`의 `route_after_failure_idle_sends_to_current_agent_and_model`, `route_after_failure_running_steers_instead_of_queueing` |
@@ -220,7 +223,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 바로 보내기는 router를 부르지 않고 끼워 넣기를 시도하며, 안 되면 대기열 맨 앞에 둔다. | `saturn-terminal/engine/src/lifecycle/send_now.rs`의 `send_now_steers_into_the_running_turn_without_calling_the_router`, `send_now_does_not_need_the_router_to_be_up`, `send_now_that_cannot_steer_goes_first_in_the_queue`, `send_now_without_verified_steer_goes_back_to_waiting`, `send_now_on_a_sent_input_is_refused`, `saturn-terminal/core/src/queue/tests.rs`의 `send_now_steers_a_running_task_ahead_of_earlier_waiting_inputs`, `send_now_that_cannot_steer_waits_first_in_line`, `send_now_refuses_inputs_that_are_not_waiting` |
 | provider가 거절한 끼워 넣기는 다시 끼워 넣지 않고 대기열 맨 앞으로 옮겨 다음 차례에 보낸다. | `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `refused_steer_is_not_sent_again_and_is_not_rejected`, `refused_steer_goes_to_the_front_and_takes_the_next_turn`, `refused_steer_through_send_now_also_goes_to_the_front`, `saturn-terminal/core/src/queue/tests.rs`의 `refused_steer_returns_to_the_front_as_a_queued_input`, `refused_steer_needs_a_delivering_input` |
 | 멈춘 작업은 자동으로 이어 가지 않고 보류한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stopped_work_is_not_continued_without_a_request`, `stop_with_nothing_running_holds_the_waiting_input_at_once`, `stop_twice_signals_once` |
-| 재개는 보류 입력을 접수 순서로 보내고 멈춘 작업에는 파일 상태 확인 입력을 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `continue_sends_held_input_and_then_a_state_check_for_the_interrupted_task`, `continue_input_resumes_the_task_of_that_input` |
+| 재개는 보류 입력을 접수 순서로 보내고 멈춘 작업에는 중단 결과를 붙인 새 입력을 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `continue_sends_held_input_and_then_a_state_check_for_the_interrupted_task`, `continue_input_resumes_the_task_of_that_input` |
 | 보류 종료는 보내지 않은 입력을 취소하고 session을 끝낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `close_held_cancels_unsent_input_and_ends_the_session` |
 | 결과를 모르는 작업은 가리킬 때만 확인 입력으로 잇는다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `task_with_unknown_result_is_continued_only_when_named` |
 | 멈춤 신호는 추적된 subagent까지 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_signals_the_deepest_subagent_first_and_finishes_only_when_the_tree_is_idle` |

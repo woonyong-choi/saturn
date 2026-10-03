@@ -1,6 +1,8 @@
 /// 이 파일의 모든 문구 상수가 들어 있어야 한다(테스트로 확인).
 pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("작업 중", "Working"),
+    ("거절됨", "Rejected"),
+    ("중단됨", "Interrupted"),
     ("생각 중", "Thinking"),
     ("파일 읽는 중", "Reading files"),
     ("파일 수정 중", "Editing files"),

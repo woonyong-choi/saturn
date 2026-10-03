@@ -74,9 +74,11 @@ pub const SETTINGS_LAYER_RUN: &str = "실행 설정";
 // 입력 전달 상태
 pub const DELIVERING: &str = "전달 중";
 pub const APPLIED: &str = "반영됨";
+pub const REJECTED: &str = "거절됨";
 
 // 대화 기록
 pub const FAILED: &str = "실패";
+pub const INTERRUPTED: &str = "중단됨";
 pub const NEEDS_CHECK: &str = "결과 확인 필요";
 pub const COMPACTED: &str = "맥락 정리 후 이어서 진행";
 /// `{provider}`는 다시 시작한 provider 이름.

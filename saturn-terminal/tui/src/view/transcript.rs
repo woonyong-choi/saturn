@@ -20,7 +20,7 @@ use crate::shell::ShellOutput;
 use crate::state::{InputUpdate, TaskView};
 use crate::view::start_screen::StartInfo;
 use crate::view::status_board::activity_text;
-use crate::view::{MUTED, wrap};
+use crate::view::{ERROR, MUTED, wrap};
 
 /// 초안 값.
 pub(crate) const SHELL_PREVIEW_LINES: usize = 10;
@@ -29,6 +29,7 @@ pub(crate) const SHELL_PREVIEW_LINES: usize = 10;
 pub(crate) enum DeliveryBadge {
     Delivering,
     Applied,
+    Rejected,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -51,6 +52,8 @@ pub(crate) enum TranscriptCell {
         call_id: String,
         activity: Activity,
         output: String,
+        /// 결과를 모른 채 작업이 끝났거나 멈췄다.
+        is_interrupted: bool,
     },
     Result {
         label: Option<TaskLabel>,
@@ -109,8 +112,16 @@ impl TranscriptCell {
                 label,
                 activity,
                 output,
+                is_interrupted,
                 ..
-            } => tool_lines(lang, &prefix(*label), activity, output, expanded),
+            } => tool_lines(
+                lang,
+                &prefix(*label),
+                activity,
+                output,
+                *is_interrupted,
+                expanded,
+            ),
             Self::Result {
                 label,
                 provider,
@@ -168,8 +179,17 @@ impl TranscriptCell {
 
     fn line_style(&self, index: usize) -> Style {
         match self {
-            Self::Failed { .. } if index > 0 => MUTED,
+            Self::Failed { .. } if index > 0 => ERROR,
+            Self::Tool {
+                is_interrupted: true,
+                ..
+            } if index == 1 => ERROR,
             Self::Tool { .. } | Self::Shell(_) if index > 0 => MUTED,
+            Self::InputEcho {
+                text,
+                badge: Some(DeliveryBadge::Rejected),
+                ..
+            } if index + 1 == text.lines().count().max(1) => ERROR,
             _ => Style::new(),
         }
     }
@@ -267,6 +287,28 @@ impl Transcript {
         }
     }
 
+    // cost: time O(c), heap O(1), stack O(1)
+    // vars: c = 셀 수
+    // basis: estimate
+    /// 셀이 없으면 `false`.
+    pub(crate) fn set_tool_interrupted(&mut self, call_id: &str) -> bool {
+        let tool = self.cells.iter_mut().rev().find_map(|cell| match cell {
+            TranscriptCell::Tool {
+                call_id: shown,
+                is_interrupted,
+                ..
+            } if shown == call_id => Some(is_interrupted),
+            _ => None,
+        });
+        match tool {
+            Some(is_interrupted) => {
+                *is_interrupted = true;
+                true
+            }
+            None => false,
+        }
+    }
+
     // cost: time O(g), heap O(g), stack O(1)
     // vars: g = 대화 기록 글자 수
     // basis: estimate
@@ -356,6 +398,7 @@ pub(crate) fn delivery_badge(state: InputState) -> Option<DeliveryBadge> {
     match state {
         InputState::Delivering => Some(DeliveryBadge::Delivering),
         InputState::Applied => Some(DeliveryBadge::Applied),
+        InputState::Rejected => Some(DeliveryBadge::Rejected),
         _ => None,
     }
 }
@@ -415,6 +458,7 @@ fn echo_lines(lang: Lang, prefix: &str, text: &str, badge: Option<DeliveryBadge>
         let text = match badge {
             DeliveryBadge::Delivering => lang.tr(i18n::DELIVERING),
             DeliveryBadge::Applied => lang.tr(i18n::APPLIED),
+            DeliveryBadge::Rejected => lang.tr(i18n::REJECTED),
         };
         if let Some(last) = lines.last_mut() {
             last.push_str(&format!(" · {text}"));
@@ -431,13 +475,22 @@ fn tool_lines(
     prefix: &str,
     activity: &Activity,
     output: &str,
+    is_interrupted: bool,
     expanded: bool,
 ) -> Vec<String> {
     let mut lines = vec![format!("{prefix}• {}", activity_text(lang, activity))];
+    if is_interrupted {
+        lines.push(interrupted_line(lang));
+    }
     if expanded {
         lines.extend(output.lines().map(|line| format!("  {line}")));
     }
     lines
+}
+
+/// 결과를 모르는 도구 실행 아래에 보이는 줄. plain 출력도 같은 줄을 쓴다.
+pub(crate) fn interrupted_line(lang: Lang) -> String {
+    format!("  {}", lang.tr(i18n::INTERRUPTED))
 }
 
 fn result_line(
@@ -867,10 +920,71 @@ mod tests {
             call_id: "c1".to_string(),
             activity: Activity::ReadingFile,
             output: "line1\nline2".to_string(),
+            is_interrupted: false,
         };
 
         assert_eq!(cell.lines(Lang::Ko, true, false), vec!["• 파일 읽는 중"]);
         assert_eq!(cell.lines(Lang::Ko, true, true).len(), 3);
+    }
+
+    #[test]
+    fn interrupted_tool_shows_a_red_interrupted_line() {
+        let mut transcript = Transcript::new();
+        transcript.push(TranscriptCell::Tool {
+            label: None,
+            call_id: "c1".to_string(),
+            activity: Activity::ReadingFile,
+            output: String::new(),
+            is_interrupted: false,
+        });
+
+        assert!(transcript.set_tool_interrupted("c1"));
+        assert!(!transcript.set_tool_interrupted("missing"));
+
+        let cell = &transcript.cells()[0];
+        assert_eq!(
+            cell.lines(Lang::Ko, true, false),
+            vec!["• 파일 읽는 중", "  중단됨"]
+        );
+        assert_eq!(
+            cell.lines(Lang::En, true, false),
+            vec!["• Reading files", "  Interrupted"]
+        );
+        assert_eq!(cell.line_style(0), Style::new());
+        assert_eq!(cell.line_style(1), ERROR);
+    }
+
+    #[test]
+    fn rejected_input_shows_a_red_rejected_badge() {
+        let mut transcript = Transcript::new();
+        transcript.push(echo("a"));
+
+        transcript.set_badge(InputId(1), DeliveryBadge::Rejected);
+
+        let cell = &transcript.cells()[0];
+        assert_eq!(cell.lines(Lang::Ko, true, false), vec!["> [A] a · 거절됨"]);
+        assert_eq!(
+            cell.lines(Lang::En, true, false),
+            vec!["> [A] a · Rejected"]
+        );
+        assert_eq!(cell.line_style(0), ERROR);
+        assert_eq!(
+            delivery_badge(InputState::Rejected),
+            Some(DeliveryBadge::Rejected)
+        );
+    }
+
+    #[test]
+    fn failed_cause_is_red() {
+        let cell = TranscriptCell::Failed {
+            label: None,
+            provider: None,
+            elapsed: Duration::from_secs(1),
+            cause: "provider connection failed".to_string(),
+        };
+
+        assert_eq!(cell.line_style(0), Style::new());
+        assert_eq!(cell.line_style(1), ERROR);
     }
 
     #[test]

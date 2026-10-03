@@ -13,7 +13,7 @@ use crate::i18n::{self, Lang};
 use crate::labels;
 use crate::state::{Change, ChatState, InputUpdate, TaskUpdate};
 use crate::view::status_board::{StatusLine, alert_text};
-use crate::view::transcript::{TranscriptCell, echo_cell, result_cell};
+use crate::view::transcript::{TranscriptCell, echo_cell, interrupted_line, result_cell};
 
 #[derive(Debug)]
 pub(crate) struct PlainOutput<W: Write> {
@@ -174,7 +174,12 @@ impl<W: Write> PlainOutput<W> {
     // vars: t = 작업 수, l = 쓸 줄 수
     // basis: estimate
     fn task_changed(&mut self, update: TaskUpdate, now: Instant) -> std::io::Result<()> {
-        match self.chat.apply_task(update, now) {
+        let task = update.task;
+        let change = self.chat.apply_task(update, now);
+        for _ in self.chat.take_interrupted_calls(task) {
+            self.line(&interrupted_line(self.lang))?;
+        }
+        match change {
             Change::TaskFinished { task } => {
                 let rest = self.partial.remove(&task).unwrap_or_default();
                 let Some(view) = self.chat.tasks.get(&task) else {
@@ -228,6 +233,7 @@ impl<W: Write> PlainOutput<W> {
                     call_id,
                     activity,
                     output: String::new(),
+                    is_interrupted: false,
                 };
                 self.cell(&cell)?;
             }
@@ -386,6 +392,29 @@ mod tests {
              이번 요청 · codex Token 4,120 · 라우터 0회 Token 0 · 45초\n"
         );
         assert!(finished);
+    }
+
+    #[test]
+    fn interrupted_tool_without_result_is_marked_when_the_task_needs_a_check() {
+        let (text, _) = output(vec![
+            task(TaskState::Running, 0),
+            Notification::TaskEvent {
+                task: TaskId(1),
+                event: ProviderEvent::ToolCall {
+                    agent: AgentId(1),
+                    subagent: None,
+                    call_id: "c".to_string(),
+                    activity: Activity::RunningCommand {
+                        command: "cargo test".to_string(),
+                    },
+                    detail: ToolDetail::default(),
+                },
+            },
+            task(TaskState::NeedsCheck, 0),
+        ]);
+
+        assert!(text.starts_with("• "), "{text}");
+        assert!(text.contains("\n  중단됨\n"), "{text}");
     }
 
     #[test]
