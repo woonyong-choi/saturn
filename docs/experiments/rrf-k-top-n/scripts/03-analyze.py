@@ -29,6 +29,18 @@ def wilson(hits, n):
     return round(center - half, 4), round(center + half, 4)
 
 
+def percent(value: float) -> float:
+    """비율을 백분율로 바꾼다. 이진 부동소수점 잔차는 버린다."""
+    return round(value * 100, 8)
+
+
+def write_chart(figures: Path, name: str, header: str, rows: list[dict]) -> None:
+    """차트 입력 `{name}.muto`와 값 `{name}.json`을 mutoscope용으로 쓴다."""
+    figures.mkdir(parents=True, exist_ok=True)
+    (figures / f"{name}.muto").write_text(f'{header}data "{name}.json"\n', encoding="utf-8")
+    (figures / f"{name}.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
 CHANNELS = ("rank_file", "rank_word", "rank_recent")
 
 
@@ -170,29 +182,21 @@ def main():
         writer.writerow(["k", "top_n", "recall", "random_recall"])
         for c in curve:
             writer.writerow([c["k"], c["top_n"], c["recall"], random_recall(sets, c["top_n"])])
-    bars = [{"top_n": str(g["top_n"]), "recall": round(g["recall"] * 100, 1),
-             "low": round(g["ci95"][0] * 100, 1), "high": round(g["ci95"][1] * 100, 1)}
-            for g in grid if g["k"] == H1["k"]]
-    figure = {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": "RRF 상위 N이 judge가 남긴 항목을 덮는 비율(k=60)",
-                  "subtitle": f"n={h1['kept']}. 기준선은 H1 채택 기준 90%"},
-        "width": 420,
-        "height": 220,
-        "layer": [
-            {"data": {"values": bars}, "mark": "bar",
-             "encoding": {"x": {"field": "top_n", "type": "ordinal", "title": "N", "sort": None,
-                                "axis": {"labelAngle": 0}},
-                          "y": {"field": "recall", "type": "quantitative", "title": "recall(%)",
-                                "scale": {"domain": [0, 100]}}}},
-            {"data": {"values": bars}, "mark": "errorbar",
-             "encoding": {"x": {"field": "top_n", "type": "ordinal", "sort": None},
-                          "y": {"field": "low", "type": "quantitative", "title": None}, "y2": {"field": "high"}}},
-            {"data": {"values": [{"y": H1["lower_bound"] * 100}]}, "mark": "rule",
-             "encoding": {"y": {"field": "y", "type": "quantitative"}}},
-        ],
-    }
-    (RESULTS / "figures" / "coverage.vl.json").write_text(json.dumps(figure, ensure_ascii=False, indent=2) + "\n")
+    write_chart(
+        RESULTS / "figures",
+        "coverage",
+        f"""chart bar
+title "RRF 상위 N이 judge가 남긴 항목을 덮는 비율(k=60)"
+subtitle "n={h1['kept']}. 점선은 H1 채택 기준 90%"
+x "재현율(%)"
+decimals 1
+
+series recall "상위 N이 덮은 비율" role=main
+rule {H1['lower_bound'] * 100:g} "H1 채택 기준"
+""",
+        [{"label": f"N={g['top_n']}", "recall": percent(g["recall"]), "recall.low": percent(g["ci95"][0]),
+          "recall.high": percent(g["ci95"][1])} for g in grid if g["k"] == H1["k"]],
+    )
     return 0
 
 

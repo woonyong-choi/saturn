@@ -254,30 +254,33 @@ def main() -> None:
         for name, c in comparisons.items():
             writer.writerow([name, c["new"], c["old"], c["n"], c["b"], c["c"], c["diff"], *c["bootstrap"]["ci95"],
                              c["bootstrap"]["p_margin"], c["p_holm"], c["mcnemar_p"], c["verdict"]])
+    write_difference_chart(comparisons)
+
+
+def write_difference_chart(comparisons: dict) -> None:
+    """비교마다 정답률 차이와 시나리오 군집 부트스트랩 95% 신뢰구간을 막대로 쓴다."""
     labels = {"H1": "judge-all − no-packet (A)", "H2": "judge-all − rrf-fallback (B)"}
-    values = [{"comparison": labels[n], "diff": c["diff"] * 100, "low": c["bootstrap"]["ci95"][0] * 100,
-               "high": c["bootstrap"]["ci95"][1] * 100} for n, c in comparisons.items()]
-    comparison_axis = {"field": "comparison", "type": "nominal", "sort": list(labels.values()), "title": None,
-                       "axis": {"labelLimit": 300}}
     n_units = next(iter(comparisons.values()))["n"]
-    figure = {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": "정답률 차이", "subtitle": f"n={n_units}. 점은 차이, 막대는 시나리오 군집 부트스트랩 95% 신뢰구간, 기준선은 +10%p"},
-        "width": 420,
-        "height": 120,
-        "data": {"values": values},
-        "layer": [
-            {"mark": {"type": "errorbar"},
-             "encoding": {"y": comparison_axis,
-                          "x": {"field": "low", "type": "quantitative", "title": "정답률 차이(%p)"},
-                          "x2": {"field": "high"}}},
-            {"mark": {"type": "point", "filled": True},
-             "encoding": {"y": comparison_axis, "x": {"field": "diff", "type": "quantitative"}}},
-            {"mark": "rule", "encoding": {"x": {"datum": 10}}},
-        ],
-    }
-    (RESULTS / "figures" / "differences.vl.json").write_text(json.dumps(figure, ensure_ascii=False, indent=2) + "\n",
-                                                            encoding="utf-8")
+    header = f"""chart bar
+title "정답률 차이"
+subtitle "n={n_units}. 막대는 차이, 오차 막대는 시나리오 군집 부트스트랩 95% 신뢰구간, 점선은 +{MARGIN * 100:g}%p"
+x "정답률 차이(%p)"
+decimals 1
+
+series difference "정답률 차이" role=main
+rule {MARGIN * 100:g} "기준선"
+"""
+    rows = [{"label": labels[name], "difference": percent(c["diff"]),
+             "difference.low": percent(c["bootstrap"]["ci95"][0]),
+             "difference.high": percent(c["bootstrap"]["ci95"][1])} for name, c in comparisons.items()]
+    figures = RESULTS / "figures"
+    (figures / "differences.muto").write_text(f'{header}data "differences.json"\n', encoding="utf-8")
+    (figures / "differences.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def percent(value: float) -> float:
+    """비율을 %p 단위로 바꾼다. 이진 부동소수점 잔차는 버린다."""
+    return round(value * 100, 8)
 
 
 if __name__ == "__main__":

@@ -217,22 +217,31 @@ def main() -> None:
         for group, table in groups.items():
             for cond, row in table.items():
                 writer.writerow([group, cond, row["k"], row["n"], row["rate"], *row["ci95"]])
-    values = [{"condition": c, "rate": r["rate"], "low": r["ci95"][0], "high": r["ci95"][1]}
-              for c, r in summary["accuracy"].items()]
-    figure = {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": "조건별 정답률", "subtitle": "점은 정답률, 선은 95% Wilson 신뢰구간"},
-        "data": {"values": values},
-        "encoding": {"y": {"field": "condition", "type": "nominal", "sort": CONDITIONS, "title": None}},
-        "layer": [
-            {"mark": "rule", "encoding": {"x": {"field": "low", "type": "quantitative", "title": "정답률",
-                                                  "scale": {"domain": [0, 1]}, "axis": {"format": ".0%"}},
-                                           "x2": {"field": "high"}}},
-            {"mark": {"type": "point", "filled": True}, "encoding": {"x": {"field": "rate", "type": "quantitative"}}},
-        ],
-    }
-    (RESULTS / "figures" / "accuracy.vl.json").write_text(json.dumps(figure, ensure_ascii=False, indent=2) + "\n",
-                                                         encoding="utf-8")
+    if units:
+        write_accuracy_chart(summary["accuracy"])
+
+
+def write_accuracy_chart(accuracy: dict) -> None:
+    """조건마다 정답률과 95% Wilson 신뢰구간을 막대로 쓴다."""
+    n = accuracy[CONDITIONS[0]]["n"]
+    header = f"""chart bar
+title "조건별 정답률"
+subtitle "n={n}. 오차 막대는 95% Wilson 신뢰구간"
+x "정답률(%)"
+decimals 1
+
+series accuracy "정답률" role=main
+"""
+    rows = [{"label": condition, "accuracy": percent(row["rate"]), "accuracy.low": percent(row["ci95"][0]),
+             "accuracy.high": percent(row["ci95"][1])} for condition, row in accuracy.items()]
+    figures = RESULTS / "figures"
+    (figures / "accuracy.muto").write_text(f'{header}data "accuracy.json"\n', encoding="utf-8")
+    (figures / "accuracy.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def percent(value: float) -> float:
+    """비율을 백분율로 바꾼다. 이진 부동소수점 잔차는 버린다."""
+    return round(value * 100, 8)
 
 
 if __name__ == "__main__":

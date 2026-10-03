@@ -18,6 +18,38 @@ CONDITIONS = ("baseline", "flag", "flag_text", "oracle_flag", "flag_hint")
 PAIR_EXPECTED = {"replaces": "replace", "partial": "possible", "compatible": "none"}
 
 
+def percent(value: float) -> float:
+    """비율을 백분율로 바꾼다. 이진 부동소수점 잔차는 버린다."""
+    return round(value * 100, 8)
+
+
+def write_chart(name: str, header: str, rows: list[dict]) -> None:
+    """차트 입력 `{name}.muto`와 값 `{name}.json`을 mutoscope용으로 쓴다."""
+    figures = RESULTS / "figures"
+    figures.mkdir(parents=True, exist_ok=True)
+    (figures / f"{name}.muto").write_text(f'{header}data "{name}.json"\n', encoding="utf-8")
+    (figures / f"{name}.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def write_hypothesis_chart(hypotheses: list[dict]) -> None:
+    """가설마다 비율과 95% Wilson 신뢰구간을 막대로 쓴다. 기준은 행 이름과 점선에 적는다."""
+    n_text = ", ".join(f"{h['hypothesis']} {h['n']}" for h in hypotheses)
+    criteria = sorted({percent(h["criterion"]) for h in hypotheses})
+    rules = "".join(f'rule {criterion:g} "기준 {criterion:g}%"\n' for criterion in criteria)
+    header = f"""chart bar
+title "가설별 비율"
+subtitle "n={n_text}. 오차 막대는 95% Wilson 신뢰구간, 점선은 가설별 채택 기준"
+x "비율(%)"
+decimals 1
+
+series proportion "측정 비율" role=main
+{rules}"""
+    rows = [{"label": f"{h['hypothesis']} (기준 {percent(h['criterion']):g}%)", "proportion": percent(h["value"]),
+             "proportion.low": percent(h["ci95_low"]), "proportion.high": percent(h["ci95_high"])}
+            for h in hypotheses]
+    write_chart("hypotheses", header, rows)
+
+
 def read_csv(path: Path) -> list[dict]:
     with path.open(encoding="utf-8", newline="") as file:
         return list(csv.DictReader(file))
@@ -306,38 +338,20 @@ def main() -> int:
                        ("pair-categories", pair_categories)):
         write_table(name, rows)
 
-    proportion = [h for h in hypotheses if h["hypothesis"] in counts]
-    figure = {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": "가설별 비율과 95% Wilson 신뢰구간",
-                  "subtitle": "n=" + ", ".join(f"{h['hypothesis']} {h['n']}" for h in proportion) + ". 세로선은 가설별 채택 기준"},
-        "width": 420, "height": 200,
-        "data": {"values": [{"hypothesis": h["hypothesis"], "value": h["value"], "low": h["ci95_low"],
-                             "high": h["ci95_high"], "criterion": h["criterion"]} for h in proportion]},
-        "encoding": {"y": {"field": "hypothesis", "type": "nominal", "title": None}},
-        "layer": [
-            {"mark": "bar", "encoding": {"x": {"field": "value", "type": "quantitative", "scale": {"domain": [0, 1]}, "title": "비율"}}},
-            {"mark": "errorbar", "encoding": {"x": {"field": "low", "type": "quantitative"}, "x2": {"field": "high"}}},
-            {"mark": "rule", "encoding": {"x": {"field": "criterion", "type": "quantitative"},
-                                          "y": {"field": "hypothesis", "type": "nominal", "bandPosition": 0},
-                                          "y2": {"field": "hypothesis", "bandPosition": 1}}},
-        ],
-    }
-    (RESULTS / "figures" / "hypotheses.vl.json").write_text(json.dumps(figure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    indirect_arms = [a for a in arms if a["scope"] == "indirect"]
-    figure = {
-        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-        "title": {"text": "간접 지시 입력 200건의 조건별 정확도와 95% Wilson 신뢰구간"},
-        "width": 420, "height": 200,
-        "data": {"values": [{"condition": a["condition"], "value": a["accuracy"], "low": a["ci95_low"], "high": a["ci95_high"]}
-                            for a in indirect_arms]},
-        "encoding": {"y": {"field": "condition", "type": "nominal", "title": None, "sort": None}},
-        "layer": [
-            {"mark": "bar", "encoding": {"x": {"field": "value", "type": "quantitative", "scale": {"domain": [0, 1]}, "title": "정확도"}}},
-            {"mark": "errorbar", "encoding": {"x": {"field": "low", "type": "quantitative"}, "x2": {"field": "high"}}},
-        ],
-    }
-    (RESULTS / "figures" / "arm-accuracy.vl.json").write_text(json.dumps(figure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_hypothesis_chart([h for h in hypotheses if h["hypothesis"] in counts])
+    write_chart(
+        "arm-accuracy",
+        """chart bar
+title "간접 지시 입력의 조건별 정확도"
+subtitle "n=200. 오차 막대는 95% Wilson 신뢰구간"
+x "정확도(%)"
+decimals 1
+
+series accuracy "정확도" role=main
+""",
+        [{"label": a["condition"], "accuracy": percent(a["accuracy"]), "accuracy.low": percent(a["ci95_low"]),
+          "accuracy.high": percent(a["ci95_high"])} for a in arms if a["scope"] == "indirect"],
+    )
     return 0
 
 
