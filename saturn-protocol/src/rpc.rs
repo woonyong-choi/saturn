@@ -387,6 +387,8 @@ pub enum ChatNotice {
     ContextDeferred {
         constraints: Vec<String>,
     },
+    /// 새 session의 패킷이 맥락 한도로 거절됐고, 경쟁 구역을 줄여 다시 보내도 들어가지 않거나 고정 구역만으로 넘쳐 보내지 않고 멈췄다.
+    PacketOverflow,
     /// 모든 작업이 끝난 순간의 합계.
     RequestSummary {
         provider_tokens: Vec<(crate::ids::Provider, u64)>,

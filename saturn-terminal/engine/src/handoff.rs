@@ -7,6 +7,7 @@ use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::memo::{ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
     CompetingItem, Entry, PacketOutcome, PacketSource, RECENT_TURNS, RecentTurn, build_packet,
+    reduce_packet,
 };
 use saturn_core::sessions::ranking::{Candidate, DEFAULT_RRF_K, rank_candidates};
 use saturn_core::sessions::stamp::Stamp;
@@ -54,27 +55,39 @@ struct Tool {
 // basis: estimate
 /// 순서는 후보 순위(RRF)만 쓴다. 목표 칸은 지금 작업의 첫 입력과 마지막 입력, 남은 일 칸은 대기·보류 입력과 결과를 모르는 작업, 결과 없는 도구 호출이다(docs/experiments/packet-goal-fields/report.md).
 /// TODO(#90): 제약 식별(`constraints`)과 router `compact` 순서가 정해지기 전까지 제약은 빈 목록이다
-pub(crate) fn build_handoff(
-    rows: &[LedgerRow],
-    pending: &Pending,
-    budget: &ContextBudget,
-) -> HandoffOutcome {
-    let Some(last) = rows.last() else {
-        return HandoffOutcome::Empty;
-    };
+/// 넘길 기록이 없으면 `None`.
+pub(crate) fn handoff_source(rows: &[LedgerRow], pending: &Pending) -> Option<PacketSource> {
+    let last = rows.last()?;
     let turns = recent_turns(rows);
     let tools = tools(rows);
     let mut open = pending.entries(last.seq);
     open.extend(open_items(&tools));
-    let source = PacketSource {
+    Some(PacketSource {
         constraints: Vec::new(),
         goal_and_last_input: goal_inputs(rows),
         open_items: open,
         competitors: ordered_competitors(&tools, &turns),
         recent_turns: turns,
         up_to: last.seq,
-    };
-    match build_packet(&source, budget) {
+    })
+}
+
+pub(crate) fn build_handoff(
+    rows: &[LedgerRow],
+    pending: &Pending,
+    budget: &ContextBudget,
+) -> HandoffOutcome {
+    match handoff_source(rows, pending) {
+        Some(source) => handoff_of(&source, budget),
+        None => HandoffOutcome::Empty,
+    }
+}
+
+// cost: time O(t·L + m log m), heap O(L), stack O(1)
+// vars: t = 최근 턴 수(3 이하), L = 패킷 재료 글자 수, m = 경쟁 항목 수
+// basis: estimate
+pub(crate) fn handoff_of(source: &PacketSource, budget: &ContextBudget) -> HandoffOutcome {
+    match build_packet(source, budget) {
         PacketOutcome::Ready(packet) => HandoffOutcome::Ready(Handoff {
             text: packet.text,
             tokens: packet.tokens,
@@ -82,6 +95,20 @@ pub(crate) fn build_handoff(
         }),
         PacketOutcome::Deferred { constraints } => HandoffOutcome::Deferred { constraints },
     }
+}
+
+/// 거절된 패킷을 줄인 것. 고정 구역만으로 `target_tokens`를 넘으면 `None`이다.
+pub(crate) fn reduce_handoff(
+    source: &PacketSource,
+    budget: &ContextBudget,
+    target_tokens: u64,
+) -> Option<Handoff> {
+    let packet = reduce_packet(source, budget, target_tokens)?;
+    Some(Handoff {
+        text: packet.text,
+        tokens: packet.tokens,
+        is_over_limit: packet.is_over_limit,
+    })
 }
 
 /// 아직 기록에 실행이 없는 입력과 결과를 모르는 작업의 입력 원문. 남은 일 칸 재료다.

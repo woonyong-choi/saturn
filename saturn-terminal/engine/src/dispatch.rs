@@ -141,7 +141,7 @@ impl Engine {
         Ok(())
     }
 
-    /// 끼워 넣기를 대기로 바꾸고 TUI에 `바로 반영: 준비 중`을 보인다.
+    /// 끼워 넣기를 대기로 바꾸고 TUI에 `바로 반영 준비 중`을 보인다.
     async fn defer_steer(
         &mut self,
         chat: ChatId,
@@ -167,7 +167,8 @@ impl Engine {
         let mut delivery = self.delivery(&record, start)?;
         let plan = match self.plan_open(&record, start).await {
             Err(PlanError::Deferred(constraints)) => {
-                return self.hold_for_context(&delivery, constraints).await;
+                let notice = ChatNotice::ContextDeferred { constraints };
+                return self.hold_for_context(&delivery, notice).await;
             }
             Err(PlanError::Failed(reason)) => Err(reason),
             Ok(plan) => Ok(plan),
@@ -177,15 +178,22 @@ impl Engine {
             return Err(error);
         }
         let opened = match plan {
-            Ok(plan) => self
-                .open_planned(&record, plan)
-                .await
-                .map_err(|error| self.failure_line(&error)),
-            Err(reason) => Err(reason),
+            Ok(plan) => match self.open_planned(&record, plan).await {
+                Err(EngineError::Provider(ProviderError::ContextExceeded { .. })) => {
+                    Err(OpenFailure::PacketOverflow)
+                }
+                other => other.map_err(|error| OpenFailure::Failed(self.failure_line(&error))),
+            },
+            Err(reason) => Err(OpenFailure::Failed(reason)),
         };
         let live = match opened {
             Ok(live) => live,
-            Err(reason) => return self.reject(delivery, reason).await,
+            Err(OpenFailure::PacketOverflow) => {
+                return self
+                    .hold_for_context(&delivery, ChatNotice::PacketOverflow)
+                    .await;
+            }
+            Err(OpenFailure::Failed(reason)) => return self.reject(delivery, reason).await,
         };
         delivery.live = Some(live.clone());
         if let Err(reason) = self.begin_task(&mut delivery, &live) {
@@ -203,21 +211,19 @@ impl Engine {
         self.settle(delivery, result).await
     }
 
-    /// 패킷의 고정 구역이 `P_hard`도 넘으면 새 session으로 옮기지 않고 보내지도 않는다. 입력은 작업과 함께 보류하고
-    /// 제약 목록을 보인다.
-    /// TODO(#162): 맥락 한도로 provider가 거절하는 경우와 이 보류의 재개 조건. 지금은 `/continue`로 다시 시도한다
+    /// 패킷의 고정 구역이 `P_hard`도 넘거나 줄인 패킷도 맥락 한도로 거절되면 보내지 않는다. 입력은 작업과 함께 보류하고
+    /// `notice`를 보인다. 사용자가 `/continue`로 다시 시도한다.
     async fn hold_for_context(
         &mut self,
         delivery: &Delivery,
-        constraints: Vec<String>,
+        notice: ChatNotice,
     ) -> Result<(), EngineError> {
         self.queue.hold_unsent(delivery.input)?;
         self.store
             .set_input_state(delivery.input, InputState::Held, None)
             .await?;
         self.notify_input(delivery.input).await;
-        self.notify_chat(delivery.chat, ChatNotice::ContextDeferred { constraints })
-            .await;
+        self.notify_chat(delivery.chat, notice).await;
         self.notify_task(delivery.chat, delivery.task, TaskState::Held, None, None)
             .await;
         Ok(())
@@ -450,7 +456,6 @@ impl Engine {
     }
 
     /// 보내기 전에 확정된 실패가 끝내 이어졌다. 입력은 `Rejected`, 시작하려던 작업은 닫는다.
-    /// TODO(#162): 맥락 초과로 provider가 거절한 입력도 지금은 `NotSent`와 같이 처리한다
     async fn reject(&mut self, delivery: Delivery, reason: String) -> Result<(), EngineError> {
         tracing::warn!(input = delivery.input.0, %reason, "input was not delivered");
         self.queue.set_state(delivery.input, InputState::Rejected)?;
@@ -549,6 +554,14 @@ impl Engine {
             tracing::warn!(error = %self.failure_line(&error), "{what}");
         }
     }
+}
+
+/// session을 열지 못한 이유.
+enum OpenFailure {
+    /// 줄인 패킷도 맥락 한도로 거절됐거나 고정 구역만으로 넘쳐 보내지 않는다.
+    PacketOverflow,
+    /// 사용자에게 보일 원인 한 줄.
+    Failed(String),
 }
 
 /// 보내기 전에 확정된 실패만 다시 보낸다.

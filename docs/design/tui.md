@@ -260,6 +260,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `[A] 결과 확인 필요 · /continue A` | 결과 불명, 보류 줄과 함께 표시 |
 | `[A] 맥락 정리 후 이어서 진행` | 맥락 정리 뒤 같은 작업 계속 |
 | `고정 제약이 길어 맥락 정리를 미룹니다` | 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못함, 다음 줄부터 제약 목록 |
+| `맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요` | 패킷이 맥락 한도로 거절돼 줄여 다시 보냈지만 들어가지 않거나 줄일 수 없어 보내지 않고 멈춤. 영어는 `Stopped over the context limit · Retry with /continue` |
 | `[A] codex → claude로 전환` | 작업의 provider 전환 |
 | `권한 설정 변경됨 · 다음 요청부터 적용됩니다` | 채팅 중 권한 규칙이 바뀐 것을 처음 알아챔. 영어는 `Permission settings changed · Applies from your next request` |
 | `Codex 다시 시작함 · 변경된 권한 설정을 적용했습니다` | 바뀐 권한 규칙을 적용하려고 턴이 끝난 뒤 Codex 연결을 다시 시작함. 영어는 `Restarted Codex · Applied the changed permission settings` |
@@ -311,6 +312,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 |---|---|
 | 작업이 하나이고 대기와 보류가 없으면 이름표를 숨긴다. | `saturn-terminal/tui/src/app/tests.rs`의 `render_single_task_hides_labels`, `render_stacks_transcript_status_composer_and_footer` |
 | 패킷이 넘쳐 맥락 정리를 미루면 안내 한 줄과 제약 목록을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_context_deferred_lists_the_constraints` |
+| 패킷이 맥락 한도로 거절돼 멈추면 안내 한 줄을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_packet_overflow_tells_the_user_how_to_retry` |
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
 | 모든 한국어 문구에 영어가 있고, `saturn` 명령의 도움말도 같다. | `saturn-terminal/tui/src/i18n.rs`의 `english_covers_every_phrase_constant`, `saturn-terminal/cli/src/args.rs`의 `help_has_english_for_every_korean_text`, `localized_help_replaces_korean_with_english` |

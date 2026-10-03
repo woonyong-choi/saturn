@@ -138,10 +138,30 @@ pub fn build_packet_with_summary(
 // cost: time O(t·L + m log m), heap O(L), stack O(1)
 // vars: t = 최근 턴 수(3 이하), L = 패킷 재료 글자 수, m = 경쟁 항목 수
 // basis: estimate
+/// 거절된 패킷을 줄여 다시 만든다. 고정 구역은 `build_packet`과 같게 두고 경쟁 구역만 `target_tokens`에 맞춰 남길 확률이 낮은 항목부터 뺀다.
+/// 고정 구역만으로 `target_tokens`를 넘으면 줄일 수 없어 `None`이다.
+pub fn reduce_packet(
+    source: &PacketSource,
+    budget: &ContextBudget,
+    target_tokens: u64,
+) -> Option<Packet> {
+    let soft_chars = to_chars(budget.packet_limit());
+    let target_chars = to_chars(target_tokens).min(soft_chars);
+    let sections = fit_fixed_zone(source, soft_chars);
+    let fixed_chars = render(&sections).chars().count();
+    if fixed_chars > target_chars {
+        return None;
+    }
+    Some(assemble(source, sections, fixed_chars, target_chars, None))
+}
+
+// cost: time O(t·L + m log m), heap O(L), stack O(1)
+// vars: t = 최근 턴 수(3 이하), L = 패킷 재료 글자 수, m = 경쟁 항목 수
+// basis: estimate
 fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>) -> PacketOutcome {
     let soft_chars = to_chars(budget.packet_limit());
     let hard_chars = to_chars(budget.packet_hard_limit());
-    let mut sections = fit_fixed_zone(source, soft_chars);
+    let sections = fit_fixed_zone(source, soft_chars);
     let fixed_chars = render(&sections).chars().count();
     if fixed_chars > hard_chars {
         return PacketOutcome::Deferred {
@@ -151,11 +171,24 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
                 .collect(),
         };
     }
-    let is_over_limit = fixed_chars > soft_chars;
+    PacketOutcome::Ready(assemble(source, sections, fixed_chars, soft_chars, summary))
+}
+
+// cost: time O(m log m + L), heap O(L), stack O(1)
+// vars: m = 경쟁 항목 수, L = 패킷 재료 글자 수
+// basis: estimate
+/// 고정 구역 뒤에 경쟁 구역을 `limit_chars`까지 채운다. 고정 구역이 `limit_chars`를 넘으면 경쟁 구역은 빈다.
+fn assemble(
+    source: &PacketSource,
+    mut sections: Vec<Section>,
+    fixed_chars: usize,
+    limit_chars: usize,
+    summary: Option<&Entry>,
+) -> Packet {
     let header_chars = format!("## {COMPETING_TITLE}{ITEM_SEPARATOR}")
         .chars()
         .count();
-    let competing_chars = soft_chars.saturating_sub(fixed_chars + header_chars);
+    let competing_chars = limit_chars.saturating_sub(fixed_chars + header_chars);
     let summary = summary.filter(|entry| item_chars(&entry.text) <= competing_chars);
     let mut chosen: Vec<Chosen> = Vec::new();
     let mut rest_chars = competing_chars;
@@ -180,14 +213,14 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
     });
     let text = render(&sections);
     let tokens = estimate_tokens(&text);
-    PacketOutcome::Ready(Packet {
+    Packet {
         text,
         tokens,
         up_to: source.up_to,
-        is_over_limit,
+        is_over_limit: fixed_chars > limit_chars,
         included: chosen.iter().map(|item| item.seq).collect(),
         is_summary_used: summary.is_some(),
-    })
+    }
 }
 
 // cost: time O(t·L), heap O(L), stack O(1)

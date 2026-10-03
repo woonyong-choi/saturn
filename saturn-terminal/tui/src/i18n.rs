@@ -83,6 +83,7 @@ pub const COMPACTED: &str = "맥락 정리 후 이어서 진행";
 pub const PROVIDER_RESTARTED: &str = "{provider} 다시 시작함 · 변경된 권한 설정을 적용했습니다";
 pub const PERMISSIONS_CHANGED: &str = "권한 설정 변경됨 · 다음 요청부터 적용됩니다";
 pub const CONTEXT_DEFERRED: &str = "고정 제약이 길어 맥락 정리를 미룹니다";
+pub const PACKET_OVERFLOW: &str = "맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요";
 pub const SWITCHED_SUFFIX: &str = "로 전환";
 pub const REQUEST_SUMMARY: &str = "이번 요청";
 pub const ROUTER_CALLS: &str = "라우터";

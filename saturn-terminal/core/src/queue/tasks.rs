@@ -209,13 +209,15 @@ impl Queue {
     // vars: n = 대기열 입력 수, t = 작업 수, h = 쓰기 잠금 수
     // basis: estimate
     /// 내줬지만 보내지 못한 입력을 보류한다. 입력이 붙은 작업은 보류로 두고 쓰기 잠금은 푼다.
+    /// `Delivering`은 provider가 보내기 전에 거절해 보내지 않음이 확정된 입력이다.
     ///
     /// # Errors
-    /// 없는 입력이면 `NotFound`, 내준 `Queued` 입력이 아니면 `InvalidTransition`.
+    /// 없는 입력이면 `NotFound`, 내준 `Queued` 입력이나 `Delivering` 입력이 아니면 `InvalidTransition`.
     pub fn hold_unsent(&mut self, input: InputId) -> Result<(), QueueError> {
         let index = self.index_of(input)?;
         let entry = &self.inputs[index];
-        if entry.input.state != InputState::Queued || !entry.is_dispatched {
+        let is_handed_out = entry.input.state == InputState::Queued && entry.is_dispatched;
+        if !is_handed_out && entry.input.state != InputState::Delivering {
             return Err(QueueError::InvalidTransition {
                 from: entry.input.state,
                 to: InputState::Held,

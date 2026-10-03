@@ -901,6 +901,19 @@ fn hold_unsent_on_an_idle_task_turn_frees_the_write_lock() {
 }
 
 #[test]
+fn hold_unsent_holds_a_delivering_input_the_provider_refused() {
+    let mut queue = Queue::new();
+    accept_routed(&mut queue, 1, Permission::Write, Disposition::NewTask);
+    queue.next_to_send();
+    queue.set_state(InputId(1), InputState::Delivering).unwrap();
+
+    queue.hold_unsent(InputId(1)).unwrap();
+
+    assert_eq!(state_of(&queue, 1), InputState::Held);
+    assert_eq!(queue.next_to_send(), None);
+}
+
+#[test]
 fn hold_unsent_rejects_inputs_that_were_not_handed_out() {
     let mut queue = Queue::new();
     queue.accept(input(1, Permission::ReadOnly));
