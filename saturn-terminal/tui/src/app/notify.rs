@@ -38,6 +38,14 @@ impl App {
         match notification {
             Notification::StartInfo { .. } => {
                 self.start = StartInfo::from_notification(&notification);
+                if let Some(start) = &self.start {
+                    i18n::set_provider_names(
+                        start
+                            .providers
+                            .iter()
+                            .map(|info| (info.provider, info.display_name.as_str())),
+                    );
+                }
                 self.chat_folder = self.start.as_ref().map(|start| start.folder.clone());
             }
             Notification::InputAccepted { .. } => {}

@@ -115,7 +115,7 @@ async fn pinned_model_input_still_gets_the_relation_judgment_while_task_runs() {
     .await;
     flow.submit("first request").await;
     let model = ModelChoice {
-        provider: crate::providers::CLAUDE,
+        provider: crate::providers::test_support::CLAUDE,
         model: "opus".to_owned(),
     };
 

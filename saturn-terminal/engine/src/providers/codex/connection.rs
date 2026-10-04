@@ -8,7 +8,8 @@ use serde_json::{Value, json};
 use tokio::io::AsyncWriteExt;
 use tokio::sync::{mpsc, oneshot};
 
-use super::config::{default_args, read_user_config, with_codex_home};
+use super::config::{default_args, read_user_config, with_env_overrides};
+use super::permission::mcp_check;
 use super::stream::{log_stderr, read_loop};
 use super::{
     Approvals, COMMAND_DESCRIPTION_PREFIX, COMMAND_METHODS, CodexClient, EVENT_BUFFER,
@@ -16,17 +17,19 @@ use super::{
     Threads, error_message, lock,
 };
 use crate::processes::{ProcessSpec, Supervisor};
-use crate::providers::codex_permission::mcp_check;
 use crate::providers::{LaunchSpec, UserProviderConfig};
 
 impl CodexClient {
-    /// `launch.hook_settings`는 쓰지 않는다. `launch.permission.codex_home`이 있으면 `CODEX_HOME`을 그 폴더로 바꿔
+    /// `launch.hook_settings`는 쓰지 않는다. `launch.permission.env`의 `CODEX_HOME`으로 환경을 덮어써
     /// 사용자 설정과 규칙이 끼어들지 못하게 한다.
     ///
     /// # Errors
     /// 실행 실패나 `initialize` 응답 없이 stdout이 닫히면 `ConnectionLost`, 지원하지 않는 버전이면 `NotSent`.
-    pub async fn start(launch: LaunchSpec, supervisor: Supervisor) -> Result<Self, ProviderError> {
-        let launch = with_codex_home(launch);
+    pub(crate) async fn start(
+        launch: LaunchSpec,
+        supervisor: Supervisor,
+    ) -> Result<Self, ProviderError> {
+        let launch = with_env_overrides(launch);
         let found = read_user_config(&launch);
         let user = UserProviderConfig {
             has_auto_compact: launch.user_config.has_auto_compact || found.has_auto_compact,

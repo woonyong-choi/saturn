@@ -14,7 +14,6 @@ use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::{Disposition, InputState};
 
 use crate::flow::{Routed, RouterDone, RouterJob, Unrecorded};
-use crate::providers::parse_pinned;
 use crate::requests::{settings_notification, trust_notification};
 use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
 use crate::rpc::ClientId;
@@ -419,7 +418,7 @@ impl Engine {
                 .decision
                 .model
                 .take()
-                .filter(|model| parse_pinned(model).is_some());
+                .filter(|model| self.registry.parse_pinned(model).is_some());
         }
         let fallbacks = read.fallback_reasons();
         let context = RecordContext {

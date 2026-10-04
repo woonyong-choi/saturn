@@ -1,6 +1,8 @@
 //! 화면 문구 언어. 문구 키는 한국어 원문이고 `Lang::En`이면 번역표에서 찾는다.
 //! 설계: docs/design/tui.md
 
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::Duration;
 
 use saturn_protocol::ids::Provider;
@@ -433,17 +435,41 @@ pub fn format_kilo(tokens: u64) -> String {
     }
 }
 
-/// provider id 글자. 어댑터 설명자의 표시명을 받기 전까지는 id를 그대로 보인다.
-pub fn provider_name(provider: Provider) -> &'static str {
-    provider.as_str()
+/// engine이 붙을 때 알린 provider 표시명. 바뀌는 일이 거의 없는 짧은 글자라 이름마다 한 번만 잡아 둔다.
+fn provider_names() -> &'static Mutex<HashMap<Provider, &'static str>> {
+    static NAMES: OnceLock<Mutex<HashMap<Provider, &'static str>>> = OnceLock::new();
+    NAMES.get_or_init(Mutex::default)
 }
 
-/// 문장 안에서 쓰는 이름.
-pub fn provider_title(provider: Provider) -> &'static str {
-    match provider.as_str() {
-        "codex" => "Codex",
-        "claude" => "Claude",
-        other => other,
+/// 붙을 때 받은 표시명을 기억한다. 같은 이름이면 다시 잡지 않는다.
+pub fn set_provider_names<'a>(names: impl IntoIterator<Item = (Provider, &'a str)>) {
+    let mut table = provider_names()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    for (provider, name) in names {
+        if table.get(&provider) != Some(&name) {
+            table.insert(provider, Box::leak(name.to_owned().into_boxed_str()));
+        }
+    }
+}
+
+/// engine이 알린 표시명. 알리기 전이거나 모르는 provider는 id 글자를 그대로 보인다.
+pub fn provider_name(provider: Provider) -> &'static str {
+    provider_names()
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .get(&provider)
+        .copied()
+        .unwrap_or_else(|| provider.as_str())
+}
+
+/// 문장 안에서 쓰는 이름. 표시명의 첫 글자를 대문자로 쓴다.
+pub fn provider_title(provider: Provider) -> String {
+    let name = provider_name(provider);
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().chain(chars).collect(),
+        None => String::new(),
     }
 }
 
@@ -454,6 +480,19 @@ pub fn format_items(lang: Lang, n: u64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn provider_names_come_from_what_engine_announced() {
+        let known = Provider::from_static("name-table-agent");
+        let unknown = Provider::from_static("never-announced");
+        assert_eq!(provider_name(known), "name-table-agent");
+
+        set_provider_names([(known, "table agent")]);
+
+        assert_eq!(provider_name(known), "table agent");
+        assert_eq!(provider_title(known), "Table agent");
+        assert_eq!(provider_name(unknown), "never-announced");
+    }
 
     /// 값이 다음 줄로 넘어간 상수도 읽는다.
     fn phrase_constants(source: &str) -> Vec<&str> {

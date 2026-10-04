@@ -159,7 +159,7 @@ mod tests {
             .unwrap();
 
         let ttl = store
-            .cache_ttl_secs(crate::providers::CLAUDE)
+            .cache_ttl_secs(crate::providers::test_support::CLAUDE)
             .await
             .unwrap();
 

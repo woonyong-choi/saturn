@@ -18,13 +18,14 @@ use tokio::io::AsyncWriteExt;
 use tokio::process::ChildStdin;
 use tokio::sync::{mpsc, oneshot};
 
-use super::claude_input;
 use super::{AppliedSettings, LaunchSpec, REPLY_TIMEOUT, TurnOriginTracker, UserProviderConfig};
 use crate::processes::{ProcessGroupId, ProcessSpec, StopScope, Supervisor};
 
+mod adapter;
 mod config;
 mod convert;
 mod hook;
+mod input;
 mod stream;
 
 use config::{default_args, read_user_config, with_ask_tools};
@@ -32,15 +33,7 @@ use convert::permission_response;
 pub use hook::{HookInputError, run_pre_tool_use};
 use stream::{log_stderr, read_loop};
 
-/// provider id. 설정 키 `provider.claude.*`와 모델 고정 글 `claude/<model>`의 앞부분이다.
-pub(crate) const ID: saturn_protocol::ids::Provider =
-    saturn_protocol::ids::Provider::from_static("claude");
-
-/// `/usage` 행 이름 앞부분.
-pub(crate) const DISPLAY_NAME: &str = "claude";
-
-/// 설정에 실행 파일이 없을 때 `PATH`에서 찾는 이름.
-pub(crate) const PROGRAM: &str = "claude";
+pub(crate) use adapter::adapter;
 
 /// 끼워 넣기 실측(#5, #27) 통과 전이라 거짓이고, 거짓이면 끼워 넣기를 대기로 바꾼다.
 pub(crate) const STEER_VERIFIED: bool = false;
@@ -188,7 +181,7 @@ struct SessionLink {
 }
 
 #[derive(Debug)]
-pub struct ClaudeClient {
+pub(crate) struct ClaudeClient {
     supervisor: Supervisor,
     /// session을 열 때마다 이 값으로 프로세스를 띄운다.
     launch: LaunchSpec,
@@ -207,7 +200,7 @@ pub struct ClaudeClient {
 
 impl ClaudeClient {
     /// 프로세스는 `open_session`에서 띄운다.
-    pub fn new(launch: LaunchSpec, supervisor: Supervisor) -> Self {
+    pub(crate) fn new(launch: LaunchSpec, supervisor: Supervisor) -> Self {
         let (events_tx, events) = mpsc::channel(EVENT_BUFFER);
         Self {
             supervisor,
@@ -230,12 +223,12 @@ impl ClaudeClient {
     }
 
     /// 모르는 session이면 `None`.
-    pub fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId> {
+    pub(crate) fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId> {
         self.sessions.get(session).map(|link| link.group)
     }
 
     /// `system/init`을 받기 전이면 `None`.
-    pub fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
+    pub(crate) fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
         let link = self.sessions.get(session)?;
         let state = lock(&link.state);
         state.initialized.then(|| state.applied.clone())
@@ -245,7 +238,7 @@ impl ClaudeClient {
     pub(super) fn applied_reader(
         &self,
         session: &ProviderSessionId,
-    ) -> Option<super::worker::AppliedReader> {
+    ) -> Option<super::AppliedReader> {
         let state = Arc::clone(&self.sessions.get(session)?.state);
         Some(Arc::new(move || {
             let state = lock(&state);
@@ -630,7 +623,7 @@ impl ProviderClient for ClaudeClient {
             "response": {
                 "subtype": "success",
                 "request_id": request_id,
-                "response": claude_input::response(&input, &answer),
+                "response": input::response(&input, &answer),
             },
         });
         let written = self.write_line(session, &message).await;
@@ -669,7 +662,7 @@ impl ProviderClient for ClaudeClient {
             .iter()
             .map(|alias| ModelInfo {
                 choice: ModelChoice {
-                    provider: crate::providers::CLAUDE,
+                    provider: adapter::ID,
                     model: (*alias).to_owned(),
                 },
                 name: (*alias).to_owned(),

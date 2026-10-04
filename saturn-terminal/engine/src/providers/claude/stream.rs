@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 
 use super::convert::convert_line;
 use super::{SessionState, lock};
-use crate::providers::codex::mask_values;
+use crate::providers::mask_values;
 use crate::secrets::Masker;
 use saturn_protocol::ids::AgentId;
 

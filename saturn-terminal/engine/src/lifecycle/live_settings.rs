@@ -29,10 +29,10 @@ fn sent(calls: Vec<Call>) -> usize {
 #[tokio::test]
 async fn live_settings_idle_codex_restarts_at_once_and_the_next_input_uses_the_new_settings() {
     let mut flow = Flow::new(Vec::new()).await;
-    flow.add_provider(crate::providers::CODEX);
+    flow.add_provider(crate::providers::test_support::CODEX);
     let mut client = flow.client().await;
     assert_eq!(
-        launched(&flow, crate::providers::CODEX).await,
+        launched(&flow, crate::providers::test_support::CODEX).await,
         (false, Some(true))
     );
 
@@ -45,14 +45,14 @@ async fn live_settings_idle_codex_restarts_at_once_and_the_next_input_uses_the_n
         !flow
             .engine
             .providers
-            .contains_key(&(flow.chat, crate::providers::CODEX))
+            .contains_key(&(flow.chat, crate::providers::test_support::CODEX))
     );
     assert!(flow.engine.flow.stale_connections.is_empty());
     let notices = client.window().await;
-    assert!(restarted(&notices, crate::providers::CODEX));
+    assert!(restarted(&notices, crate::providers::test_support::CODEX));
     assert!(!permissions_changed(&notices));
     assert_eq!(
-        launched(&flow, crate::providers::CODEX).await,
+        launched(&flow, crate::providers::test_support::CODEX).await,
         (true, Some(false))
     );
 }
@@ -60,13 +60,13 @@ async fn live_settings_idle_codex_restarts_at_once_and_the_next_input_uses_the_n
 #[tokio::test]
 async fn live_settings_changed_codex_rules_restart_an_idle_chat_when_the_input_is_accepted() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    let codex = flow.add_provider(crate::providers::CODEX);
+    let codex = flow.add_provider(crate::providers::test_support::CODEX);
     flow.engine
-        .switch_provider(flow.chat, crate::providers::CODEX);
-    flow.engine
-        .flow
-        .rules_of_connection
-        .insert(flow.chat, "older-rules".to_owned());
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
+    flow.engine.flow.rules_of_connection.insert(
+        (flow.chat, crate::providers::test_support::CODEX),
+        "older-rules".to_owned(),
+    );
     let mut client = flow.client().await;
 
     let _ = flow
@@ -79,10 +79,10 @@ async fn live_settings_changed_codex_rules_restart_an_idle_chat_when_the_input_i
         !flow
             .engine
             .providers
-            .contains_key(&(flow.chat, crate::providers::CODEX))
+            .contains_key(&(flow.chat, crate::providers::test_support::CODEX))
     );
     let notices = client.window().await;
-    assert!(restarted(&notices, crate::providers::CODEX));
+    assert!(restarted(&notices, crate::providers::test_support::CODEX));
     assert!(!permissions_changed(&notices));
 }
 
@@ -103,17 +103,20 @@ async fn live_settings_changed_settings_file_restarts_before_the_input_is_sent()
         !flow
             .engine
             .providers
-            .contains_key(&(flow.chat, crate::providers::CLAUDE))
+            .contains_key(&(flow.chat, crate::providers::test_support::CLAUDE))
     );
-    assert!(restarted(&client.window().await, crate::providers::CLAUDE));
+    assert!(restarted(
+        &client.window().await,
+        crate::providers::test_support::CLAUDE
+    ));
 }
 
 #[tokio::test]
 async fn live_settings_running_codex_restarts_after_the_turn_and_tells_both_notices() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    flow.add_provider(crate::providers::CODEX);
+    flow.add_provider(crate::providers::test_support::CODEX);
     flow.engine
-        .switch_provider(flow.chat, crate::providers::CODEX);
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
     flow.submit("fix the build").await;
     let agent = flow.agent();
     let mut client = flow.client().await;
@@ -126,31 +129,34 @@ async fn live_settings_running_codex_restarts_after_the_turn_and_tells_both_noti
     assert!(
         flow.engine
             .providers
-            .contains_key(&(flow.chat, crate::providers::CODEX))
+            .contains_key(&(flow.chat, crate::providers::test_support::CODEX))
     );
     assert!(
         flow.engine
             .flow
             .stale_connections
-            .contains(&(flow.chat, crate::providers::CODEX))
+            .contains(&(flow.chat, crate::providers::test_support::CODEX))
     );
     let before = client.window().await;
     assert!(permissions_changed(&before));
-    assert!(!restarted(&before, crate::providers::CODEX));
+    assert!(!restarted(&before, crate::providers::test_support::CODEX));
 
-    flow.event(crate::providers::CODEX, turn_completed(agent))
+    flow.event(crate::providers::test_support::CODEX, turn_completed(agent))
         .await;
 
     assert!(
         !flow
             .engine
             .providers
-            .contains_key(&(flow.chat, crate::providers::CODEX))
+            .contains_key(&(flow.chat, crate::providers::test_support::CODEX))
     );
     assert!(flow.engine.flow.stale_connections.is_empty());
-    assert!(restarted(&client.window().await, crate::providers::CODEX));
+    assert!(restarted(
+        &client.window().await,
+        crate::providers::test_support::CODEX
+    ));
     assert_eq!(
-        launched(&flow, crate::providers::CODEX).await,
+        launched(&flow, crate::providers::test_support::CODEX).await,
         (true, Some(false))
     );
 }

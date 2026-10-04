@@ -93,7 +93,7 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 
 ### provider 계층과 어댑터
 
-provider 연결은 세 계층으로 나눈다. 이 절의 동작은 대부분 구현 전이고 구현 범위는 [#412](https://github.com/woonyong-choi/saturn/issues/412)다. 지금은 `ProviderClient` trait, `ProviderEvent`, provider id 값(`protocol`의 `Provider`)이 provider 중립이다.
+provider 연결은 세 계층으로 나눈다. 이 절의 계층 분리, 설명자, 레지스트리는 구현했고([#412](https://github.com/woonyong-choi/saturn/issues/412)), 명령 목록 전달, provider CLI 버전 알림, 확장 주입은 구현 전이다. 인터페이스는 `core`의 `ProviderClient` trait과 `ProviderEvent`, `protocol`의 `Provider`이고, engine `providers/adapter.rs`가 어댑터 계약(`Adapter`, `AdapterConnection`)을 정한다.
 
 | 계층 | 하는 일 | 위치 |
 |---|---|---|
@@ -145,7 +145,7 @@ engine은 시작할 때 레지스트리에 어댑터를 등록한다. 레지스�
 
 - 새 어댑터는 `providers/<id>` 폴더를 더하는 것으로 붙는다. 공통 코드의 수정은 없다. 이것을 가짜 provider 하나로 시험한다.
 - provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. 지금 `context.codex`, `context.claude` 키의 이관 규칙은 [설정](settings.md#설정-키)에 있다.
-- 등록 방식(컴파일할 때 폴더를 모으는 방식과 시작할 때 어댑터가 스스로 등록하는 방식)은 [미해결 질문](#미해결-질문)에 있다.
+- 등록은 컴파일할 때 정한 목록이다. engine `providers/builtin.rs`가 시작할 때 어댑터마다 한 줄씩 등록하고, 등록하지 못한 어댑터(같은 id나 지원하지 않는 판)는 로그만 남기고 건너뛴다(초안). 어댑터가 시작할 때 스스로 등록하는 방식은 프로세스 밖 어댑터를 붙일 때 다시 정한다.
 
 ### 직접 연결과 ACP 어댑터
 
@@ -477,11 +477,11 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 실행 중 작업이 5분 동안 provider 이벤트가 없으면 `응답 없음 N분`을 보이고, 이벤트가 오면 지우며, 허가나 입력 요청을 기다리는 동안은 보이지 않는다. 자동으로 멈추지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `no_response_shows_in_minutes_after_the_threshold_without_events`, `no_response_clears_when_an_event_arrives`, `no_response_does_not_show_while_waiting_for_permission_or_input`, `no_response_text_is_translated` |
 | Codex는 끊긴 자식 thread를 부모를 다시 열기 전에 보관하고 구독을 끊으며 부모는 건드리지 않는다. 끊긴 자식이 없으면 정리하지 않는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `interrupted_children_are_cleaned_before_the_parent_is_resumed`, `resume_without_interrupted_children_cleans_nothing` |
 | Claude 실행 환경에서 `CLAUDE_CODE_RESUME_INTERRUPTED_TURN`만 빠진다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `resume_interrupted_turn_variable_is_not_passed_to_claude` |
-| provider는 열린 id로 식별하고 어댑터 밖 공통 코드는 provider 이름으로 분기하지 않는다. | 구현 전(#412). `providers/<id>` 밖 비테스트 코드의 provider 이름 분기를 `grep`으로 확인한다. |
-| 어댑터 파일만 더해 가짜 provider를 붙일 수 있다. | 구현 전(#412). 공통 코드를 바꾸지 않고 가짜 어댑터 하나를 등록해 session 열기부터 턴 끝까지 확인한다. |
-| 어댑터 설명자의 표시명, 실행 파일, 기본 순서, 지시 문서 이름을 화면과 첫 입력 기본 provider, 패킷이 쓴다. | 구현 전(#412). 가짜 설명자의 값이 각각 반영되는지 확인한다. |
+| provider는 열린 id로 식별하고 어댑터 밖 공통 코드는 provider 이름으로 분기하지 않는다. | `providers/codex*`, `providers/claude*`, 시험 코드, 어댑터 등록 파일 `providers/builtin.rs`를 뺀 `saturn-terminal`과 `saturn-protocol`의 비테스트 코드에서 `rg -i "codex\|claude"`로 이름을 찾고, 남은 것이 설명 주석, 제품 소개 글, 개발용 예제(`core/examples/packet`)뿐인지 확인한다 |
+| 어댑터 파일만 더해 가짜 provider를 붙일 수 있다. | `saturn-terminal/engine/src/lifecycle/fake_provider.rs`의 `a_registered_adapter_runs_an_input_from_open_to_turn_end` |
+| 어댑터 설명자의 표시명, 실행 파일, 기본 순서, 지시 문서 이름, 맥락 기본값, 기능을 화면과 첫 입력 기본 provider, 패킷, 예산, 끼워 넣기가 쓴다. | `saturn-terminal/engine/src/providers/registry.rs`의 `descriptors_come_back_in_the_default_order`, `installed_means_an_executable_file_of_the_descriptor_on_the_given_path`, `saturn-terminal/engine/src/lifecycle/fake_provider.rs`의 `descriptor_values_reach_the_common_code`, `an_adapter_without_the_steer_feature_never_gets_a_steer`, `an_adapter_with_the_steer_feature_gets_the_steer`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_skips_provider_docs`, `saturn-terminal/tui/src/i18n.rs`의 `provider_names_come_from_what_engine_announced`, `saturn-terminal/tui/src/app/tests.rs`의 `model_command_values_are_the_provider_ids_engine_announced` |
 | 기록 저장소의 옛 provider 값 `Codex`, `Claude`와 모델 고정 글 `codex/<model>`, `claude/<model>`이 옛 값 그대로 읽힌다. | `saturn-terminal/engine/src/store/records/tests.rs`의 `old_provider_values_read_as_open_ids`, `saturn-protocol/src/ids.rs`의 `old_stored_values_read_as_the_same_id`, `saturn-terminal/engine/src/providers/mod.rs`의 `pinned_text_keeps_the_old_provider_prefix` |
-| 인터페이스 판이 지원 범위 밖인 어댑터는 등록하지 않는다. | 구현 전(#412). 판 번호가 다른 가짜 어댑터로 확인한다. |
+| 인터페이스 판이 지원 범위 밖인 어댑터는 등록하지 않는다. | `saturn-terminal/engine/src/providers/registry.rs`의 `duplicate_ids_and_other_interface_versions_are_not_registered` |
 | engine 시작 때 provider CLI 버전이 마지막으로 확인한 버전과 다르면 알리고, 버전이 바뀌면 실제 provider로 입력, 전환, 다시 열기만 도는 빠른 확인 절차가 `scripts/e2e`에 있다. | 구현 전(#412). 마지막 확인 버전을 바꿔 시작 알림을 확인하고, 실제 Codex와 Claude로 빠른 확인 절차를 실행한다. |
 
 ## 단점
@@ -501,7 +501,6 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 
 ## 미해결 질문
 
-- 어댑터 등록 방식. 컴파일할 때 폴더를 모아 등록할지, 어댑터가 시작할 때 스스로 등록할지 ([#412](https://github.com/woonyong-choi/saturn/issues/412))
 - 채팅에 더한 폴더를 열린 session에 넣는 방법(Claude stream-json 제어 요청, Codex 턴 단위 쓰기 폴더)과, Codex 읽기 전용 샌드박스에서 `writable_roots`가 효과가 있는지. 지금은 다음 session부터 적용한다 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
 - 메인이 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - router 상태에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))

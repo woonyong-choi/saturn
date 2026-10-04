@@ -20,7 +20,10 @@ async fn complete_turn(restarted: &mut Restarted) {
     let agent = *restarted.engine.flow.live.keys().next().unwrap();
     restarted
         .engine
-        .on_provider_event(crate::providers::CLAUDE, turn_completed(agent))
+        .on_provider_event(
+            crate::providers::test_support::CLAUDE,
+            turn_completed(agent),
+        )
         .await
         .unwrap();
     restarted.settle().await;

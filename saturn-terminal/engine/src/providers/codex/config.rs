@@ -1,5 +1,3 @@
-use std::ffi::OsString;
-
 use super::AUTO_COMPACT_KEY;
 use crate::providers::{LaunchSpec, UserProviderConfig};
 
@@ -14,15 +12,12 @@ pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec
     args
 }
 
-/// 전용 `CODEX_HOME`이 정해져 있으면 환경의 `CODEX_HOME`을 그 폴더로 바꾼다.
-pub(super) fn with_codex_home(mut launch: LaunchSpec) -> LaunchSpec {
-    let Some(home) = launch.permission.codex_home.clone() else {
-        return launch;
-    };
-    launch.env.retain(|(name, _)| name != "CODEX_HOME");
-    launch
-        .env
-        .push((OsString::from("CODEX_HOME"), home.into_os_string()));
+/// 권한 번역이 정한 환경 변수(전용 `CODEX_HOME`)를 부모 환경 값 위에 덮어쓴다.
+pub(super) fn with_env_overrides(mut launch: LaunchSpec) -> LaunchSpec {
+    for (name, value) in launch.permission.env.clone() {
+        launch.env.retain(|(existing, _)| *existing != name);
+        launch.env.push((name, value));
+    }
     launch
 }
 

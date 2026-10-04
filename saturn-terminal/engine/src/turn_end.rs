@@ -75,7 +75,11 @@ impl Engine {
             return Ok(());
         }
         let rows = self.store.ledger_since(chat, LedgerSeq(0)).await?;
-        let source = handoff_source(&rows, &self.pending_work(chat, None));
+        let source = handoff_source(
+            &rows,
+            &self.pending_work(chat, None),
+            &self.registry.instruction_docs(),
+        );
         let outcome = source
             .as_ref()
             .map_or(HandoffOutcome::Empty, |source| handoff_of(source, &budget));

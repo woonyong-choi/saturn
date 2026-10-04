@@ -127,7 +127,7 @@ async fn interrupted_subagent_coming_back_stops_the_task_and_is_reported_once() 
         restarted
             .engine
             .on_provider_event(
-                crate::providers::CLAUDE,
+                crate::providers::test_support::CLAUDE,
                 subagent_started(agent, "sub-1", None),
             )
             .await
@@ -159,7 +159,7 @@ async fn other_subagents_after_a_crash_are_handled_as_usual() {
     restarted
         .engine
         .on_provider_event(
-            crate::providers::CLAUDE,
+            crate::providers::test_support::CLAUDE,
             subagent_started(agent, "sub-3", None),
         )
         .await
@@ -213,7 +213,7 @@ async fn cleaned_children_are_not_handed_over_again_but_still_blocked_after_a_re
     restarted
         .engine
         .on_provider_event(
-            crate::providers::CLAUDE,
+            crate::providers::test_support::CLAUDE,
             subagent_started(agent, "sub-1", None),
         )
         .await
@@ -240,7 +240,7 @@ async fn interrupted_subagent_is_still_blocked_after_the_engine_restarts() {
     restarted
         .engine
         .on_provider_event(
-            crate::providers::CLAUDE,
+            crate::providers::test_support::CLAUDE,
             subagent_started(agent, "sub-1", None),
         )
         .await

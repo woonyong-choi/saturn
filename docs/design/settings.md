@@ -99,7 +99,7 @@
 
 ### provider 설정 키
 
-provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. `<id>`는 어댑터 레지스트리의 provider id이고, 키 목록과 기본값은 그 어댑터의 설명자가 알린다([provider id와 설명자](providers-and-sessions.md#provider-id와-설명자)). 키 이름공간과 옛 키 별칭은 구현했고, 어댑터 설명자가 알리는 키와 기본값, 레지스트리에 없는 id의 키 처리는 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)). 지금은 형식이 맞는 id(소문자 영문, 숫자, `-`)의 `context.*` 네 키만 허용하고, `codex`와 `claude` 밖의 id는 기본값이 없어 `window` 200000, `cache_write` 1.25를 쓴다.
+provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. `<id>`는 어댑터 레지스트리의 provider id이고, 키 목록과 기본값은 그 어댑터의 설명자가 알린다([provider id와 설명자](providers-and-sessions.md#provider-id와-설명자)). 키 이름공간, 옛 키 별칭, 어댑터 설명자의 `window`와 `cache_write` 기본값은 구현했고, 어댑터마다 다른 키 목록과 레지스트리에 없는 id의 키 처리는 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)). 지금은 형식이 맞는 id(소문자 영문, 숫자, `-`)의 `context.*` 네 키만 허용한다. 설명자가 없는 id는 `window` 200000, `cache_write` 1.25로 예산을 계산한다.
 
 | 키 | 값 | 기본값 |
 |---|---|---|

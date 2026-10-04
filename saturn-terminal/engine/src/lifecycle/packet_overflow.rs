@@ -23,7 +23,7 @@ fn exceeded() -> Result<(), ProviderError> {
 async fn flow_with_codex(first_input: &str, tools: &[&str]) -> (Flow, FakeProvider) {
     let replies = (0..3).map(|_| idle_reply(0.95)).collect();
     let mut flow = Flow::new(replies).await;
-    let codex = flow.add_provider(crate::providers::CODEX);
+    let codex = flow.add_provider(crate::providers::test_support::CODEX);
     flow.submit(first_input).await;
     let agent = flow.agent();
     flow.claude_event(text(agent, ANSWER)).await;
@@ -59,7 +59,7 @@ async fn packet_overflow_rejection_resends_once_without_the_lowest_items() {
     let (mut flow, codex) = flow_with_codex(FIRST_INPUT, &CALLS).await;
     codex.answer_open([exceeded(), Ok(())]);
     flow.engine
-        .switch_provider(flow.chat, crate::providers::CODEX);
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
 
     let second = flow.submit("now with codex").await;
 
@@ -76,7 +76,7 @@ async fn packet_overflow_reduction_keeps_the_fixed_zone() {
     let (mut flow, codex) = flow_with_codex(FIRST_INPUT, &CALLS).await;
     codex.answer_open([exceeded(), Ok(())]);
     flow.engine
-        .switch_provider(flow.chat, crate::providers::CODEX);
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
 
     flow.submit("now with codex").await;
 
@@ -93,7 +93,7 @@ async fn packet_overflow_after_the_reduced_resend_stops_and_tells_the_user() {
     codex.answer_open([exceeded(), exceeded(), Ok(())]);
     let mut client = flow.client().await;
     flow.engine
-        .switch_provider(flow.chat, crate::providers::CODEX);
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
 
     let second = flow.submit("now with codex").await;
 
@@ -114,7 +114,7 @@ async fn packet_overflow_with_only_the_fixed_zone_over_the_target_is_not_resent(
     codex.answer_open([exceeded(), Ok(())]);
     let mut client = flow.client().await;
     flow.engine
-        .switch_provider(flow.chat, crate::providers::CODEX);
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
 
     let second = flow.submit("now with codex").await;
 

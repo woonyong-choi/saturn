@@ -56,6 +56,7 @@ impl Engine {
             masker: verified.masker,
             supervisor: Supervisor::new(),
             providers: HashMap::new(),
+            registry: crate::Registry::builtin(),
             routers: verified.routers,
             router_gate: verified.gate,
             rpc,

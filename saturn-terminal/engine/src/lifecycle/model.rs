@@ -35,7 +35,7 @@ async fn pinned_model_opens_the_session_with_that_model_and_records_it() {
 
     flow.submit_with(
         "hello",
-        Some(pinned(crate::providers::CLAUDE, "sonnet")),
+        Some(pinned(crate::providers::test_support::CLAUDE, "sonnet")),
         false,
     )
     .await;
@@ -48,11 +48,11 @@ async fn pinned_model_opens_the_session_with_that_model_and_records_it() {
 #[tokio::test]
 async fn pinned_model_decides_the_provider() {
     let mut flow = Flow::new(judged(2)).await;
-    let codex = flow.add_provider(crate::providers::CODEX);
+    let codex = flow.add_provider(crate::providers::test_support::CODEX);
 
     flow.submit_with(
         "hello",
-        Some(pinned(crate::providers::CODEX, "gpt-x")),
+        Some(pinned(crate::providers::test_support::CODEX, "gpt-x")),
         false,
     )
     .await;
@@ -64,7 +64,7 @@ async fn pinned_model_decides_the_provider() {
 #[tokio::test]
 async fn same_model_keeps_using_the_open_session() {
     let mut flow = Flow::new(judged(2)).await;
-    let opus = pinned(crate::providers::CLAUDE, "opus");
+    let opus = pinned(crate::providers::test_support::CLAUDE, "opus");
     flow.submit_with("one", Some(opus.clone()), false).await;
     let agent = flow.agent();
     flow.claude_event(turn_completed(agent)).await;
@@ -77,14 +77,18 @@ async fn same_model_keeps_using_the_open_session() {
 #[tokio::test]
 async fn changing_the_model_opens_a_new_main_session_with_a_packet() {
     let mut flow = Flow::new(judged(2)).await;
-    flow.submit_with("one", Some(pinned(crate::providers::CLAUDE, "opus")), false)
-        .await;
+    flow.submit_with(
+        "one",
+        Some(pinned(crate::providers::test_support::CLAUDE, "opus")),
+        false,
+    )
+    .await;
     let agent = flow.agent();
     flow.claude_event(turn_completed(agent)).await;
 
     flow.submit_with(
         "two",
-        Some(pinned(crate::providers::CLAUDE, "haiku")),
+        Some(pinned(crate::providers::test_support::CLAUDE, "haiku")),
         false,
     )
     .await;
@@ -123,32 +127,38 @@ async fn list_models(flow: &mut Flow, provider: Option<Provider>) -> Vec<ModelIn
 #[tokio::test]
 async fn model_list_comes_in_provider_order() {
     let mut flow = Flow::new(judged(2)).await;
-    flow.add_provider(crate::providers::CODEX);
+    flow.add_provider(crate::providers::test_support::CODEX);
 
     let models = list_models(&mut flow, None).await;
 
     let providers: Vec<Provider> = models.iter().map(|info| info.choice.provider).collect();
     assert_eq!(
         providers,
-        vec![crate::providers::CLAUDE, crate::providers::CODEX]
+        vec![
+            crate::providers::test_support::CLAUDE,
+            crate::providers::test_support::CODEX
+        ]
     );
 }
 
 #[tokio::test]
 async fn model_list_can_be_limited_to_one_provider() {
     let mut flow = Flow::new(judged(2)).await;
-    flow.add_provider(crate::providers::CODEX);
+    flow.add_provider(crate::providers::test_support::CODEX);
 
-    let models = list_models(&mut flow, Some(crate::providers::CODEX)).await;
+    let models = list_models(&mut flow, Some(crate::providers::test_support::CODEX)).await;
 
     assert_eq!(models.len(), 1);
-    assert_eq!(models[0].choice.provider, crate::providers::CODEX);
+    assert_eq!(
+        models[0].choice.provider,
+        crate::providers::test_support::CODEX
+    );
 }
 
 #[tokio::test]
 async fn pinned_model_is_saved_and_told_to_every_tui_that_attaches() {
     let mut flow = Flow::new(Vec::new()).await;
-    let model = pinned(crate::providers::CODEX, "gpt-x");
+    let model = pinned(crate::providers::test_support::CODEX, "gpt-x");
     flow.pin(&model).await;
     let mut client = Client::connect(&flow.fixture.socket()).await;
     let (chat, workdir) = (flow.chat, flow.fixture.workdir.display().to_string());
@@ -178,7 +188,7 @@ async fn pinned_input_gets_the_relation_judgment_and_the_pinned_model() {
 
     flow.submit_with(
         "hello",
-        Some(pinned(crate::providers::CLAUDE, "haiku")),
+        Some(pinned(crate::providers::test_support::CLAUDE, "haiku")),
         false,
     )
     .await;

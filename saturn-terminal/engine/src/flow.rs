@@ -132,8 +132,8 @@ pub(crate) struct FlowState {
     next_request: u64,
     /// 에이전트가 가장 나중에 시작한 입력의 설정 번호. 허가 요청 판정이 그 번호의 규칙을 쓴다.
     pub(crate) settings_of: HashMap<AgentId, SettingsRevision>,
-    /// 채팅의 Codex 연결을 시작할 때 쓴 규칙 지문. 연결이 없으면 항목도 없다.
-    pub(crate) rules_of_connection: HashMap<ChatId, String>,
+    /// 채팅의 연결을 시작할 때 쓴 규칙 지문. 규칙이 연결을 시작할 때 고정되는 어댑터만 항목이 있다. 연결이 없으면 항목도 없다.
+    pub(crate) rules_of_connection: HashMap<(ChatId, Provider), String>,
     /// 바뀐 설정을 적용하려고 다시 시작할 연결. 채팅에 작업이 있으면 턴 끝에 시작한다.
     pub(crate) stale_connections: HashSet<(ChatId, Provider)>,
     /// 연결을 시작할 때 쓴 에이전트 질문 기능 값(켬이 참).

@@ -35,7 +35,7 @@ fn permission() -> Notification {
     Notification::PermissionRequested {
         task: TaskId(1),
         label: TaskLabel('A'),
-        provider: crate::providers::CODEX,
+        provider: crate::providers::test_support::CODEX,
         request_id: "p1".to_owned(),
         summary: "rm -rf target".to_owned(),
         reason: "cleanup".to_owned(),
@@ -74,7 +74,7 @@ async fn chat_with_history(engine: &Engine, workdir: &Path) -> ChatId {
             chat,
             agent: AgentId(1),
             role: AgentRole::Main,
-            provider: crate::providers::CODEX,
+            provider: crate::providers::test_support::CODEX,
             provider_session: None,
             model: None,
             state: SessionState::Open,
@@ -89,7 +89,7 @@ async fn chat_with_history(engine: &Engine, workdir: &Path) -> ChatId {
             task: TaskId(1),
             agent: AgentId(1),
             session,
-            provider: crate::providers::CODEX,
+            provider: crate::providers::test_support::CODEX,
             effect_scope: EffectScope::NetworkPossible,
         })
         .await
@@ -198,7 +198,7 @@ async fn add_finished_exchange(
             task: TaskId(task),
             agent: AgentId(1),
             session: SessionId(7),
-            provider: crate::providers::CODEX,
+            provider: crate::providers::test_support::CODEX,
             effect_scope: EffectScope::NetworkPossible,
         })
         .await
@@ -294,7 +294,7 @@ async fn chat_that_switched_providers(engine: &Engine, workdir: &Path) -> ChatId
             task: TaskId(2),
             agent: AgentId(1),
             session: SessionId(8),
-            provider: crate::providers::CLAUDE,
+            provider: crate::providers::test_support::CLAUDE,
             effect_scope: EffectScope::NetworkPossible,
         })
         .await
@@ -358,8 +358,8 @@ async fn attach_history_tells_the_provider_switch_before_the_run_that_switched()
             Notification::ChatNotice {
                 notice:
                     ChatNotice::ProviderSwitched {
-                        from: crate::providers::CODEX,
-                        to: crate::providers::CLAUDE,
+                        from: crate::providers::test_support::CODEX,
+                        to: crate::providers::test_support::CLAUDE,
                     },
                 task: None,
                 ..

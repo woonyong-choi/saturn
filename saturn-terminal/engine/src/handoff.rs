@@ -56,7 +56,11 @@ struct Tool {
 /// 순서는 후보 순위(RRF)만 쓴다. 목표 칸은 지금 작업의 첫 입력과 마지막 입력, 남은 일 칸은 대기·보류 입력과 결과를 모르는 작업, 결과 없는 도구 호출이다(docs/experiments/packet-goal-fields/report.md).
 /// TODO(#90): 제약 식별(`constraints`)과 router `compact` 순서가 정해지기 전까지 제약은 빈 목록이다
 /// 넘길 기록이 없으면 `None`.
-pub(crate) fn handoff_source(rows: &[LedgerRow], pending: &Pending) -> Option<PacketSource> {
+pub(crate) fn handoff_source(
+    rows: &[LedgerRow],
+    pending: &Pending,
+    provider_docs: &[String],
+) -> Option<PacketSource> {
     let last = rows.last()?;
     let turns = recent_turns(rows);
     let tools = tools(rows);
@@ -68,6 +72,7 @@ pub(crate) fn handoff_source(rows: &[LedgerRow], pending: &Pending) -> Option<Pa
         open_items: open,
         competitors: ordered_competitors(&tools, &turns),
         recent_turns: turns,
+        provider_docs: provider_docs.to_vec(),
         up_to: last.seq,
     })
 }
@@ -75,9 +80,10 @@ pub(crate) fn handoff_source(rows: &[LedgerRow], pending: &Pending) -> Option<Pa
 pub(crate) fn build_handoff(
     rows: &[LedgerRow],
     pending: &Pending,
+    provider_docs: &[String],
     budget: &ContextBudget,
 ) -> HandoffOutcome {
-    match handoff_source(rows, pending) {
+    match handoff_source(rows, pending, provider_docs) {
         Some(source) => handoff_of(&source, budget),
         None => HandoffOutcome::Empty,
     }
@@ -473,7 +479,7 @@ mod tests {
     }
 
     fn handoff_text(rows: &[LedgerRow], pending: &Pending) -> String {
-        let HandoffOutcome::Ready(handoff) = build_handoff(rows, pending, &budget()) else {
+        let HandoffOutcome::Ready(handoff) = build_handoff(rows, pending, &[], &budget()) else {
             panic!("packet should be ready");
         };
         handoff.text
@@ -507,7 +513,7 @@ mod tests {
     #[test]
     fn empty_rows_have_nothing_to_hand_over() {
         assert_eq!(
-            build_handoff(&[], &Pending::default(), &budget()),
+            build_handoff(&[], &Pending::default(), &[], &budget()),
             HandoffOutcome::Empty
         );
     }
@@ -539,7 +545,8 @@ mod tests {
             ),
         ];
 
-        let HandoffOutcome::Ready(handoff) = build_handoff(&rows, &Pending::default(), &budget())
+        let HandoffOutcome::Ready(handoff) =
+            build_handoff(&rows, &Pending::default(), &[], &budget())
         else {
             panic!("packet should be ready");
         };
@@ -558,7 +565,8 @@ mod tests {
             row(2, 1, 5, Some("run it"), text_event(AgentId(1), "waiting")),
         ];
 
-        let HandoffOutcome::Ready(handoff) = build_handoff(&rows, &Pending::default(), &budget())
+        let HandoffOutcome::Ready(handoff) =
+            build_handoff(&rows, &Pending::default(), &[], &budget())
         else {
             panic!("packet should be ready");
         };

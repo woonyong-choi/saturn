@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use saturn_protocol::event::{PermissionCall, PermissionTool};
 use serde_json::Value;
 
-use super::tool_detail::unwrap_shell;
+use crate::providers::tool_detail::unwrap_shell;
 
 /// 모든 요청을 Saturn에 올리려고 `thread/start`에 주는 승인 정책. 설정 키로는 쓸 수 없다.
 pub(super) const APPROVAL_POLICY: &str = "untrusted";
@@ -21,7 +21,7 @@ const UNKNOWN_MCP_TOOL: &str = "?";
 
 /// `thread/start`와 `thread/resume`의 응답이 실제로 적용한 승인 정책, 샌드박스, 검토자가 기대와 다르면 이유 한 줄.
 pub(super) fn check_applied(result: &Value) -> Result<(), String> {
-    let policy = super::codex::value_text(&result["approvalPolicy"]);
+    let policy = super::value_text(&result["approvalPolicy"]);
     if policy.as_deref() != Some(APPROVAL_POLICY) {
         return Err(format!(
             "codex applied approval policy {policy:?}, expected {APPROVAL_POLICY}"

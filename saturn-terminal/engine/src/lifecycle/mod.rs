@@ -12,6 +12,7 @@ mod decision;
 mod deliver;
 mod events;
 mod exit;
+mod fake_provider;
 mod inputs;
 mod intake;
 mod live_settings;

@@ -459,7 +459,7 @@ mod tests {
         Notification::PermissionRequested {
             task: TaskId(1),
             label: TaskLabel('A'),
-            provider: crate::providers::CODEX,
+            provider: crate::providers::test_support::CODEX,
             request_id: request_id.into(),
             summary: "rm".into(),
             reason: "cleanup".into(),

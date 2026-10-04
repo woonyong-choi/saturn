@@ -16,11 +16,18 @@ use crate::view::{EMPHASIS, centered, text_width};
 
 pub(crate) const LOGO: &[&str] = &["saturn"];
 
+/// 붙을 때 받은 provider 하나. 확인하지 못한 버전은 `None`이다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct StartProvider {
+    pub provider: Provider,
+    pub display_name: String,
+    pub version: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StartInfo {
     pub saturn_version: String,
-    /// 확인하지 못한 provider는 버전이 `None`.
-    pub providers: Vec<(Provider, Option<String>)>,
+    pub providers: Vec<StartProvider>,
     pub router: Option<String>,
     pub router_version: Option<String>,
     /// 채팅의 기본 폴더. 다른 폴더의 채팅을 이어 열었으면 그 채팅의 폴더다.
@@ -51,7 +58,11 @@ impl StartInfo {
             saturn_version: saturn_version.clone(),
             providers: providers
                 .iter()
-                .map(|(provider, version)| (*provider, non_empty(version)))
+                .map(|info| StartProvider {
+                    provider: info.provider,
+                    display_name: info.display_name.clone(),
+                    version: non_empty(&info.version),
+                })
                 .collect(),
             router: non_empty(router),
             router_version: non_empty(router_version),
@@ -67,11 +78,12 @@ impl StartInfo {
     pub(crate) fn lines(&self, lang: Lang) -> Vec<String> {
         let mut lines: Vec<String> = LOGO.iter().map(|line| line.to_string()).collect();
         lines.push(format!("Saturn {}", self.saturn_version));
-        lines.extend(self.providers.iter().map(|(provider, version)| {
-            let version = version
+        lines.extend(self.providers.iter().map(|info| {
+            let version = info
+                .version
                 .clone()
                 .unwrap_or_else(|| lang.tr(i18n::VERSION_UNKNOWN).to_string());
-            format!("{} {version}", i18n::provider_name(*provider))
+            format!("{} {version}", info.display_name)
         }));
         let router = match (&self.router, &self.router_version) {
             (Some(router), Some(version)) => format!("{router} · {version}"),
@@ -133,15 +145,24 @@ impl StartScreenView<'_> {
 #[cfg(test)]
 mod tests {
     use saturn_protocol::ids::Provider;
+    use saturn_protocol::rpc::ProviderInfo;
 
     use super::*;
+
+    fn start_provider(id: &'static str, version: Option<&str>) -> StartProvider {
+        StartProvider {
+            provider: Provider::from_static(id),
+            display_name: id.to_owned(),
+            version: version.map(str::to_owned),
+        }
+    }
 
     fn info() -> StartInfo {
         StartInfo {
             saturn_version: "0.1.0".to_string(),
             providers: vec![
-                (Provider::from_static("codex"), Some("0.40.0".to_string())),
-                (Provider::from_static("claude"), None),
+                start_provider("codex", Some("0.40.0")),
+                start_provider("claude", None),
             ],
             router: Some("remote".to_string()),
             router_version: Some("v3".to_string()),
@@ -187,7 +208,11 @@ mod tests {
     fn from_notification_treats_empty_values_as_unknown() {
         let notification = Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
-            providers: vec![(Provider::from_static("codex"), String::new())],
+            providers: vec![ProviderInfo {
+                provider: Provider::from_static("codex"),
+                display_name: "codex".to_owned(),
+                version: String::new(),
+            }],
             router: String::new(),
             router_version: String::new(),
             folder: "/w".to_string(),
@@ -196,7 +221,7 @@ mod tests {
 
         let info = StartInfo::from_notification(&notification).unwrap();
 
-        assert_eq!(info.providers, vec![(Provider::from_static("codex"), None)]);
+        assert_eq!(info.providers, vec![start_provider("codex", None)]);
         assert_eq!(info.router, None);
         assert_eq!(info.added_dirs, vec![PathBuf::from("/x")]);
     }

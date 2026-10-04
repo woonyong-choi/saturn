@@ -55,18 +55,6 @@ share_with_server = false
 [context]
 safety_percent = 70
 mode = "saturn"
-
-[provider.codex.context]
-t_abs = 200000
-window = 272000
-cache_read = 0.1
-cache_write = 1.0
-
-[provider.claude.context]
-t_abs = 200000
-window = 1000000
-cache_read = 0.1
-cache_write = 1.25
 "#;
 
 #[derive(Debug, Clone, Copy)]
@@ -669,6 +657,13 @@ fn canonical(path: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::providers::ContextDefaults;
+
+    /// 어댑터 설명자가 알리는 값을 대신하는 시험 값.
+    const DEFAULTS: ContextDefaults = ContextDefaults {
+        window: 1_000_000,
+        cache_write: 1.25,
+    };
 
     fn layer(layer: Layer, content: &str) -> (LayerSource, String) {
         let path = matches!(layer, Layer::User | Layer::Folder)
@@ -834,7 +829,9 @@ mod tests {
         assert_eq!(thresholds.resume_held, 0.85);
         assert_eq!(thresholds.file_relevant, (0.7, 0.35));
         assert_eq!(snapshot.settings.retention().max_age, None);
-        let budget = snapshot.settings.context_budget(crate::providers::CLAUDE);
+        let budget = snapshot
+            .settings
+            .context_budget(crate::providers::test_support::CLAUDE, DEFAULTS);
         assert_eq!(budget.window, 1_000_000);
     }
 
@@ -842,7 +839,7 @@ mod tests {
         merge(layers)
             .unwrap()
             .settings
-            .context_budget(provider)
+            .context_budget(provider, DEFAULTS)
             .window
     }
 
@@ -853,7 +850,10 @@ mod tests {
             layer(Layer::User, "[provider.codex.context]\nwindow = 111\n"),
         ];
 
-        assert_eq!(window_of(layers, crate::providers::CODEX), 111);
+        assert_eq!(
+            window_of(layers, crate::providers::test_support::CODEX),
+            111
+        );
     }
 
     #[test]
@@ -868,7 +868,7 @@ mod tests {
         assert_eq!(
             snapshot
                 .settings
-                .context_budget(crate::providers::CODEX)
+                .context_budget(crate::providers::test_support::CODEX, DEFAULTS)
                 .window,
             222
         );
@@ -887,7 +887,10 @@ mod tests {
             layer(Layer::User, content),
         ];
 
-        assert_eq!(window_of(layers, crate::providers::CODEX), 333);
+        assert_eq!(
+            window_of(layers, crate::providers::test_support::CODEX),
+            333
+        );
     }
 
     #[test]
@@ -898,7 +901,10 @@ mod tests {
             layer(Layer::Folder, "[context.codex]\nwindow = 444\n"),
         ];
 
-        assert_eq!(window_of(layers, crate::providers::CODEX), 444);
+        assert_eq!(
+            window_of(layers, crate::providers::test_support::CODEX),
+            444
+        );
     }
 
     #[test]
@@ -907,7 +913,11 @@ mod tests {
             values: serde_json::json!({ "context": { "safety_percent": 70, "codex": { "window": 555 } } }),
         };
 
-        assert_eq!(old.context_budget(crate::providers::CODEX).window, 555);
+        assert_eq!(
+            old.context_budget(crate::providers::test_support::CODEX, DEFAULTS)
+                .window,
+            555
+        );
     }
 
     #[test]

@@ -76,7 +76,10 @@ impl Engine {
         let inputs = ReturnInputs {
             budget: ContextBudget {
                 cache_ttl: self.cache_ttl(request.provider).await?,
-                ..settings.context_budget(request.provider)
+                ..settings.context_budget(
+                    request.provider,
+                    self.registry.context_defaults(request.provider),
+                )
             },
             packet: request.packet,
             now,
@@ -139,7 +142,7 @@ impl Engine {
             .settings
             .at(&self.store, revision)
             .await?
-            .context_budget(provider);
+            .context_budget(provider, self.registry.context_defaults(provider));
         Ok(ContextBudget {
             cache_ttl: self.cache_ttl(provider).await?,
             ..budget

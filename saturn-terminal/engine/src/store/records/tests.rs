@@ -45,7 +45,7 @@ pub(crate) fn new_run(input: Option<InputId>, session: SessionId) -> NewRun {
         task: TaskId(1),
         agent: AgentId(1),
         session,
-        provider: crate::providers::CODEX,
+        provider: crate::providers::test_support::CODEX,
         effect_scope: EffectScope::NetworkPossible,
     }
 }
@@ -56,7 +56,7 @@ pub(crate) fn session_record(id: SessionId, chat: ChatId, state: SessionState) -
         chat,
         agent: AgentId(1),
         role: AgentRole::Main,
-        provider: crate::providers::CLAUDE,
+        provider: crate::providers::test_support::CLAUDE,
         provider_session: Some(ProviderSessionId("thread-1".to_owned())),
         model: None,
         state,
@@ -440,12 +440,12 @@ async fn old_provider_values_read_as_open_ids() {
     let (history, _) = store.recent_history(chat, 10).await.unwrap();
 
     assert_eq!(mains[0].0.id, session);
-    assert_eq!(mains[0].0.provider, crate::providers::CLAUDE);
+    assert_eq!(mains[0].0.provider, crate::providers::test_support::CLAUDE);
     let provider = history.iter().find_map(|entry| match entry {
         HistoryEntry::Run { provider, .. } => Some(*provider),
         HistoryEntry::Input { .. } => None,
     });
-    assert_eq!(provider, Some(crate::providers::CODEX));
+    assert_eq!(provider, Some(crate::providers::test_support::CODEX));
     let stored: String = sqlx::query_scalar("SELECT provider FROM runs")
         .fetch_one(&store.pool)
         .await
