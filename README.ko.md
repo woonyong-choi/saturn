@@ -147,3 +147,7 @@ Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `satu
 cargo build --workspace
 cargo test --workspace
 ```
+
+## 라이선스
+
+[MIT](LICENSE)

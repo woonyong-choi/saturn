@@ -147,3 +147,7 @@ Run the following commands from the repository root. CI runs `cargo fmt --check`
 cargo build --workspace
 cargo test --workspace
 ```
+
+## License
+
+[MIT](LICENSE)
