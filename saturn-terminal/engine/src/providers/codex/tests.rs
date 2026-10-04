@@ -213,6 +213,7 @@ pub(crate) fn launch(dir: &Path, env: Vec<(std::ffi::OsString, std::ffi::OsStrin
         },
         env,
         hook_settings: None,
+        key_deny_read: Vec::new(),
         permission: PermissionLaunch::default(),
         masker: Masker::new(Vec::new()),
     }

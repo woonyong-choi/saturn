@@ -133,6 +133,19 @@ impl HookPolicy {
         }
     }
 
+    /// 키 저장소 경로(링크를 푼 경로 포함, 중복 없음). provider 명령 샌드박스의 읽기 금지 목록에 쓴다.
+    pub(crate) fn key_store_paths(&self) -> Vec<PathBuf> {
+        let mut paths: Vec<PathBuf> = Vec::new();
+        for path in &self.blocked_paths {
+            // 링크를 푼 경로는 끝에 `/`가 붙을 수 있어 구성 요소로 다시 이어 없앤다
+            let path: PathBuf = path.components().collect();
+            if !paths.contains(&path) {
+                paths.push(path);
+            }
+        }
+        paths
+    }
+
     /// 사용자 훅을 읽거나 바꾸지 않고, 사용자 설정과 합치는 일은 Claude가 한다.
     pub(crate) fn pre_tool_use_settings(&self, saturn_bin: &Path) -> serde_json::Value {
         let command = format!(

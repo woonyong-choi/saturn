@@ -172,8 +172,8 @@ impl Engine {
             tracing::warn!(%error, "failed to find saturn executable for the key hook");
             ProviderError::ConnectionLost
         })?;
-        let hook =
-            HookPolicy::new(&self.options.home, &user_home).pre_tool_use_settings(&saturn_bin);
+        let key_policy = HookPolicy::new(&self.options.home, &user_home);
+        let hook = key_policy.pre_tool_use_settings(&saturn_bin);
         let questions = self.agent_questions(chat, revision).await?;
         let adapter = self
             .registry
@@ -202,6 +202,7 @@ impl Engine {
             },
             env: provider_env,
             hook_settings: Some(hook),
+            key_deny_read: key_policy.key_store_paths(),
             permission,
             masker: self.masker.clone(),
         })

@@ -131,6 +131,7 @@ fn launch(dir: &Path, env: Vec<(OsString, OsString)>) -> LaunchSpec {
         },
         env,
         hook_settings: Some(json!({ "hooks": { "PreToolUse": [] } })),
+        key_deny_read: Vec::new(),
         permission: PermissionLaunch::default(),
         masker: Masker::new(Vec::new()),
     }
@@ -969,9 +970,75 @@ fn launch_args_add_defaults_and_hook_settings() {
             "--autocompact",
             "100000",
             "--settings",
-            "{\"hooks\":{\"PreToolUse\":[]},\"permissions\":{\"ask\":[\"Bash\",\"Edit\",\"MultiEdit\",\"Write\",\"NotebookEdit\",\"Task\",\"Agent\",\"mcp__*\"]}}",
+            "{\"hooks\":{\"PreToolUse\":[]},\"permissions\":{\"ask\":[\"Bash\",\"Edit\",\"MultiEdit\",\"Write\",\"NotebookEdit\",\"Task\",\"Agent\",\"mcp__*\"]},\"sandbox\":{\"allowUnsandboxedCommands\":false,\"enabled\":true,\"failIfUnavailable\":true,\"filesystem\":{\"denyRead\":[]}}}",
         ]
     );
+}
+
+fn key_paths() -> Vec<PathBuf> {
+    vec![
+        PathBuf::from("/Users/u/.saturn/router.key"),
+        PathBuf::from("/Users/u/Library/Keychains"),
+        PathBuf::from("/Library/Keychains"),
+    ]
+}
+
+fn settings_arg(args: &[String]) -> Value {
+    let at = args.iter().position(|arg| arg == "--settings").unwrap();
+    serde_json::from_str(&args[at + 1]).unwrap()
+}
+
+#[test]
+fn launch_args_enable_the_bash_sandbox_and_deny_reading_key_stores() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut launch = launch(dir.path(), Vec::new());
+    launch.key_deny_read = key_paths();
+    let client = ClaudeClient::new(launch, Supervisor::new());
+
+    let args = client.launch_args(&spec(dir.path(), None), &SessionArg::New("id-1".to_owned()));
+
+    let sandbox = &settings_arg(&args)["sandbox"];
+    assert_eq!(sandbox["enabled"], json!(true));
+    assert_eq!(sandbox["allowUnsandboxedCommands"], json!(false));
+    assert_eq!(sandbox["failIfUnavailable"], json!(true));
+    assert_eq!(
+        sandbox["filesystem"]["denyRead"],
+        json!([
+            "/Users/u/.saturn/router.key",
+            "/Users/u/Library/Keychains",
+            "/Library/Keychains"
+        ])
+    );
+}
+
+#[test]
+fn the_key_sandbox_stays_on_in_full_mode_and_keeps_the_other_settings() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut launch = launch(dir.path(), Vec::new());
+    launch.key_deny_read = key_paths();
+    // 모드 `full`은 에이전트 질문을 끈다. 그 launch에도 샌드박스가 그대로 들어가야 한다
+    launch.permission.questions_disabled = true;
+    let client = ClaudeClient::new(launch, Supervisor::new());
+
+    let args = client.launch_args(&spec(dir.path(), None), &SessionArg::New("id-1".to_owned()));
+
+    assert!(args.iter().any(|arg| arg == "--disallowedTools"));
+    let settings = settings_arg(&args);
+    assert_eq!(settings["sandbox"]["enabled"], json!(true));
+    assert_eq!(
+        settings["sandbox"]["allowUnsandboxedCommands"],
+        json!(false)
+    );
+    assert_eq!(settings["sandbox"]["failIfUnavailable"], json!(true));
+    assert_eq!(
+        settings["sandbox"]["filesystem"]["denyRead"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
+    assert_eq!(settings["hooks"], json!({ "PreToolUse": [] }));
+    assert_eq!(settings["permissions"]["ask"], json!(ASK_TOOLS));
 }
 
 #[test]
