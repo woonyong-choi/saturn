@@ -42,22 +42,41 @@ struct Report {
     skipped: Vec<PruneSkipped>,
     rows: u64,
     is_preview: bool,
+    /// 미리보기가 알린 확인 번호.
+    plan: Option<String>,
 }
 
+/// 확인 번호 없이 요청한다. 확인(`yes`)은 요청 순간의 기준으로 대상을 정해 지운다.
 async fn prune(engine: &mut Engine, client: &mut Client, id: u64, yes: bool) -> Report {
+    prune_with(engine, client, id, yes, None).await
+}
+
+/// 미리보기가 알린 번호를 실어 확인한다.
+async fn confirm(engine: &mut Engine, client: &mut Client, id: u64, preview: &Report) -> Report {
+    prune_with(engine, client, id, true, preview.plan.clone()).await
+}
+
+async fn prune_with(
+    engine: &mut Engine,
+    client: &mut Client,
+    id: u64,
+    yes: bool,
+    plan: Option<String>,
+) -> Report {
     drive(engine, async {
-        let (chats, skipped, rows, is_preview) =
-            match client.query(id, Request::Prune { yes }).await {
+        let (chats, skipped, rows, is_preview, plan) =
+            match client.query(id, Request::Prune { yes, plan }).await {
                 QueryResult::PrunePreview {
                     chats,
                     skipped,
                     rows,
-                } => (chats, skipped, rows, true),
+                    plan,
+                } => (chats, skipped, rows, true, Some(plan)),
                 QueryResult::Pruned {
                     chats,
                     skipped,
                     rows,
-                } => (chats, skipped, rows, false),
+                } => (chats, skipped, rows, false, None),
                 other => panic!("expected a prune report, got {other:?}"),
             };
         Report {
@@ -66,9 +85,21 @@ async fn prune(engine: &mut Engine, client: &mut Client, id: u64, yes: bool) -> 
             skipped,
             rows,
             is_preview,
+            plan,
         }
     })
     .await
+}
+
+/// 확인 번호를 실은 `Prune`이 거절됐는지.
+async fn refused_with_plan(engine: &mut Engine, client: &mut Client, id: u64, plan: &str) -> bool {
+    let plan = Some(plan.to_owned());
+    let response = drive(engine, async {
+        client.send(id, Request::Prune { yes: true, plan }).await;
+        client.response().await
+    })
+    .await;
+    error_code(&response) == INVALID_PARAMS
 }
 
 #[tokio::test]
@@ -211,7 +242,15 @@ async fn prune_without_a_retention_setting_is_refused_and_deletes_nothing() {
     let mut client = Client::connect(&fixture.socket()).await;
 
     let (told, refused) = drive(&mut engine, async {
-        client.send(1, Request::Prune { yes: true }).await;
+        client
+            .send(
+                1,
+                Request::Prune {
+                    yes: true,
+                    plan: None,
+                },
+            )
+            .await;
         (client.notification().await, client.response().await)
     })
     .await;
@@ -348,4 +387,189 @@ async fn auto_prune_failure_keeps_every_chat_and_still_tells_the_first_tui() {
     );
     assert_eq!(first, [Alert::AutoPruneFailed]);
     assert!(second.is_empty());
+}
+
+// #457
+#[tokio::test]
+async fn prune_confirmation_does_not_delete_a_chat_that_was_not_previewed() {
+    let fixture = Fixture::new();
+    let mut engine = ready_with_retention(&fixture).await;
+    let old = old_chat(&engine, "/work/previewed", "previewed work").await;
+    let later = chat_with_input(&engine, "/work/later", "later work").await;
+    finish_inputs(&engine, later).await;
+    let mut client = Client::connect(&fixture.socket()).await;
+    let preview = prune(&mut engine, &mut client, 1, false).await;
+    assert_eq!(preview.chats, [old]);
+    engine.store.age_chat(later, 3).await;
+
+    let deleted = confirm(&mut engine, &mut client, 2, &preview).await;
+
+    assert_eq!(
+        deleted.chats, preview.chats,
+        "confirmation must not expand the previewed deletion set"
+    );
+    assert!(engine.store.chat_workdir(later).await.is_ok());
+}
+
+// #457
+#[tokio::test]
+async fn prune_confirmation_keeps_a_previewed_chat_that_was_used_again() {
+    let fixture = Fixture::new();
+    let mut engine = ready_with_retention(&fixture).await;
+    let stays = old_chat(&engine, "/work/stays", "used again").await;
+    let goes = old_chat(&engine, "/work/goes", "left alone").await;
+    let mut client = Client::connect(&fixture.socket()).await;
+    let preview = prune(&mut engine, &mut client, 1, false).await;
+    assert_eq!(preview.chats, [stays, goes]);
+    engine
+        .store
+        .accept_input(&NewInput {
+            chat: stays,
+            text: "back again".to_owned(),
+            settings: SettingsRevision(1),
+            permission: saturn_core::queue::Permission::Write,
+            workdir: PathBuf::from("/work/stays"),
+            pinned_model: None,
+            skip_relation: false,
+        })
+        .await
+        .unwrap();
+    finish_inputs(&engine, stays).await;
+
+    let deleted = confirm(&mut engine, &mut client, 2, &preview).await;
+
+    assert_eq!(deleted.chats, [goes]);
+    assert_eq!(
+        deleted.skipped,
+        [PruneSkipped {
+            chat: stays,
+            reasons: vec![PruneSkipReason::UsedSincePreview]
+        }]
+    );
+    assert!(engine.store.chat_workdir(stays).await.is_ok());
+}
+
+// #457
+#[tokio::test]
+async fn prune_confirmation_keeps_a_previewed_chat_that_got_an_open_input() {
+    let fixture = Fixture::new();
+    let mut engine = ready_with_retention(&fixture).await;
+    let old = old_chat(&engine, "/work/old", "old work").await;
+    let mut client = Client::connect(&fixture.socket()).await;
+    let preview = prune(&mut engine, &mut client, 1, false).await;
+    engine
+        .store
+        .accept_input(&NewInput {
+            chat: old,
+            text: "one more".to_owned(),
+            settings: SettingsRevision(1),
+            permission: saturn_core::queue::Permission::Write,
+            workdir: PathBuf::from("/work/old"),
+            pinned_model: None,
+            skip_relation: false,
+        })
+        .await
+        .unwrap();
+    engine.store.age_chat(old, 3).await;
+
+    let deleted = confirm(&mut engine, &mut client, 2, &preview).await;
+
+    assert!(deleted.chats.is_empty());
+    assert_eq!(
+        deleted.skipped,
+        [PruneSkipped {
+            chat: old,
+            reasons: vec![PruneSkipReason::OpenInput]
+        }]
+    );
+    assert!(engine.store.chat_workdir(old).await.is_ok());
+}
+
+// #457
+#[tokio::test]
+async fn prune_confirmation_keeps_a_previewed_chat_a_tui_attached_to_afterwards() {
+    let fixture = Fixture::new();
+    let mut engine = ready_with_retention(&fixture).await;
+    let old = old_chat(&engine, "/work/old", "old work").await;
+    let mut viewer = Client::connect(&fixture.socket()).await;
+    let mut client = Client::connect(&fixture.socket()).await;
+    let preview = prune(&mut engine, &mut client, 1, false).await;
+    drive(&mut engine, async {
+        viewer
+            .attach(
+                1,
+                Request::Attach {
+                    chat: Some(old),
+                    workdir: fixture.workdir.display().to_string(),
+                    env: Vec::new(),
+                    overrides: Vec::new(),
+                    add_dirs: Vec::new(),
+                },
+            )
+            .await;
+    })
+    .await;
+    engine.store.age_chat(old, 3).await;
+
+    let deleted = confirm(&mut engine, &mut client, 2, &preview).await;
+
+    assert!(deleted.chats.is_empty());
+    assert_eq!(
+        deleted.skipped,
+        [PruneSkipped {
+            chat: old,
+            reasons: vec![PruneSkipReason::Attached]
+        }]
+    );
+    assert!(engine.store.chat_workdir(old).await.is_ok());
+}
+
+// #457
+#[tokio::test]
+async fn a_prune_plan_works_once_and_a_made_up_one_deletes_nothing() {
+    let fixture = Fixture::new();
+    let mut engine = ready_with_retention(&fixture).await;
+    let old = old_chat(&engine, "/work/old", "old work").await;
+    let mut client = Client::connect(&fixture.socket()).await;
+    let preview = prune(&mut engine, &mut client, 1, false).await;
+    let id = preview.plan.clone().unwrap();
+
+    assert!(refused_with_plan(&mut engine, &mut client, 2, "not-a-plan").await);
+    assert!(engine.store.chat_workdir(old).await.is_ok());
+    let deleted = confirm(&mut engine, &mut client, 3, &preview).await;
+    assert_eq!(deleted.chats, [old]);
+
+    assert!(refused_with_plan(&mut engine, &mut client, 4, &id).await);
+}
+
+// #457
+#[tokio::test]
+async fn a_prune_plan_from_another_connection_deletes_only_the_previewed_chats() {
+    let fixture = Fixture::new();
+    let mut engine = ready_with_retention(&fixture).await;
+    let old = old_chat(&engine, "/work/old", "old work").await;
+    let mut previewer = Client::connect(&fixture.socket()).await;
+    let preview = prune(&mut engine, &mut previewer, 1, false).await;
+    let later = old_chat(&engine, "/work/later", "later work").await;
+    let mut deleter = Client::connect(&fixture.socket()).await;
+
+    let deleted = confirm(&mut engine, &mut deleter, 1, &preview).await;
+
+    assert_eq!(deleted.chats, [old]);
+    assert!(engine.store.chat_workdir(later).await.is_ok());
+}
+
+// #457
+#[tokio::test]
+async fn confirming_without_a_plan_decides_the_targets_at_that_moment() {
+    let fixture = Fixture::new();
+    let mut engine = ready_with_retention(&fixture).await;
+    let old = old_chat(&engine, "/work/old", "old work").await;
+    let mut client = Client::connect(&fixture.socket()).await;
+    let _ = prune(&mut engine, &mut client, 1, false).await;
+    let later = old_chat(&engine, "/work/later", "later work").await;
+
+    let deleted = prune(&mut engine, &mut client, 2, true).await;
+
+    assert_eq!(deleted.chats, [old, later]);
 }

@@ -352,7 +352,10 @@ pub const CLI_PRUNE_PLAN: &str = "지울 채팅 {chats}개 · 기록 {rows}행";
 pub const CLI_PRUNE_DONE: &str = "지운 채팅 {chats}개 · 기록 {rows}행";
 pub const CLI_PRUNE_NOTHING: &str = "지울 채팅이 없습니다";
 pub const CLI_PRUNE_KEPT: &str = "남긴 채팅 {chats}개";
-pub const CLI_PRUNE_PREVIEW: &str = "아무것도 지우지 않았습니다 · 지우려면 --yes로 실행하세요";
+pub const CLI_PRUNE_PREVIEW: &str =
+    "아무것도 지우지 않았습니다 · 지우려면 saturn prune --yes --plan {plan} 으로 실행하세요";
+pub const CLI_PRUNE_PLAN_UNKNOWN: &str =
+    "정리 미리보기 번호를 찾지 못했습니다(만료됐거나 이미 썼습니다): 미리보기를 다시 실행하세요";
 pub const CLI_PRUNE_NO_RETENTION: &str =
     "정리 기준이 없습니다: retention.max_age_days 설정을 정한 뒤 다시 실행하세요";
 pub const CLI_NO_PRUNE_ANSWER: &str = "engine이 정리 결과 없이 답했습니다";
@@ -362,6 +365,7 @@ pub const CLI_SKIP_PENDING_STOP: &str = "멈춤 처리 중";
 pub const CLI_SKIP_ACTIVE_SESSION: &str = "열린 session";
 pub const CLI_SKIP_WAITING_SESSION: &str = "보관한 session";
 pub const CLI_SKIP_ATTACHED: &str = "TUI에 붙어 있음";
+pub const CLI_SKIP_USED_SINCE_PREVIEW: &str = "미리본 뒤 다시 쓰임";
 pub const CLI_ROUTER_VERSION_NOT_FOUND: &str =
     "router 버전을 찾지 못했습니다: {version} (사용 가능: {available})";
 pub const CLI_ROUTER_VERSION_ALREADY: &str = "이미 쓰는 router 버전입니다: {version}";

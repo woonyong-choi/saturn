@@ -186,9 +186,10 @@ impl App {
                 chats,
                 skipped,
                 rows,
+                plan,
             } => {
                 if let Some(Window::Prune(window)) = &mut self.window {
-                    window.load(chats, &skipped, rows);
+                    window.load(chats, &skipped, rows, plan);
                 }
             }
             QueryResult::Pruned { chats, rows, .. } => self.on_pruned(chats.len(), rows),

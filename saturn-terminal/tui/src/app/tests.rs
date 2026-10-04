@@ -592,7 +592,13 @@ fn prune_window_with(chats: Vec<saturn_protocol::rpc::ChatListItem>) -> App {
     type_text(&mut app, "/prune");
     app.popup = None;
     let opened = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
-    assert_eq!(sent(&opened), vec![&Request::Prune { yes: false }]);
+    assert_eq!(
+        sent(&opened),
+        vec![&Request::Prune {
+            yes: false,
+            plan: None
+        }]
+    );
     let rows = chats.iter().filter_map(|chat| chat.rows).sum();
     answered(
         &mut app,
@@ -600,6 +606,7 @@ fn prune_window_with(chats: Vec<saturn_protocol::rpc::ChatListItem>) -> App {
             chats,
             skipped: Vec::new(),
             rows,
+            plan: "plan-1".to_owned(),
         },
     );
     app
@@ -615,7 +622,13 @@ fn prune_window_asks_for_the_preview_and_only_y_deletes() {
     let again = press(&mut app, KeyCode::Char('y'), KeyModifiers::NONE);
 
     assert!(sent(&enter).is_empty() && sent(&other).is_empty());
-    assert_eq!(sent(&confirm), vec![&Request::Prune { yes: true }]);
+    assert_eq!(
+        sent(&confirm),
+        vec![&Request::Prune {
+            yes: true,
+            plan: Some("plan-1".to_owned())
+        }]
+    );
     assert!(sent(&again).is_empty());
     assert!(matches!(app.window, Some(Window::Prune(_))));
 }

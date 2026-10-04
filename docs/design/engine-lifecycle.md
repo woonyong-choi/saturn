@@ -129,8 +129,8 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 | `ListModels` | `Models` | `models` |
 | `ListRouterVersions` | `RouterVersions` | `current`, `versions`(아직 지원하지 않아 오류 응답) |
 | `PrepareExit` | `ExitPlan` | `plan` |
-| `Prune`(`yes`가 거짓) | `PrunePreview` | `chats`, `skipped`, `rows` |
-| `Prune`(`yes`가 참) | `Pruned` | `chats`, `skipped`, `rows` |
+| `Prune`(`yes`가 거짓) | `PrunePreview` | `chats`, `skipped`, `rows`, `plan`(확인 번호) |
+| `Prune`(`yes`가 참, `plan` 있음 또는 없음) | `Pruned` | `chats`, `skipped`, `rows` |
 
 상태 변화와 이벤트처럼 요청과 무관하게 실시간으로 일어나는 일은 계속 알림으로 보낸다. `Attach`가 접속 직후 보내는 `StartInfo`, `HistoryChunk`, 허가 요청과 입력 요청, `ModelPinned`, `ContextSize`도 알림이다. `Attach`는 조회가 아니라 접속이라 그렇다. `SetModel`의 `ModelPinned`처럼 같은 채팅에 붙은 모든 TUI가 알아야 하는 변화도 알림이다. `Prune`이 정리 기준 설정이 없어 거절될 때 요청한 접속에 보내는 `Alert::PruneNeedsRetention`은 TUI 상태판 안내라 알림으로 남긴다. `ListModels`는 모든 provider의 목록이 실패해도 창이 끝없이 기다리지 않도록 빈 목록을 결과로 돌려준다.
 
@@ -333,7 +333,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 0 | 성공 | 명령이 끝났다. `--help`. 전체 화면을 정상으로 닫았다. | 셸 관례 |
 | 1 | 그 밖의 실패 | 확인 질문에 아니라고 답했다. plain 모드에서 provider 작업이 실패로 끝났다. provider 설치 없음 등 예상한 실패. | 셸 관례 |
 | 2 | 사용법 오류 | 모르는 인자. 터미널 없이 `--resume`이나 확인 질문이 필요하다. 에이전트 작업 안인데 출입증이 없다. 하위 접속에 쓸 수 없는 인자를 줬다. `--add-dir`가 폴더가 아니다. engine이 `INVALID_PARAMS`로 거절했다. | 호출을 바꿔야 풀린다. 셸 관례 |
-| 66 | 대상 없음 | 이어 열 채팅이 없다. `--add-dir` 폴더가 없다. 없는 router 버전. | `EX_NOINPUT` |
+| 66 | 대상 없음 | 이어 열 채팅이 없다. `--add-dir` 폴더가 없다. 없는 router 버전. 모르거나 만료됐거나 이미 쓴 정리 미리보기 번호. | `EX_NOINPUT` |
 | 69 | engine을 쓸 수 없음 | engine 실행 파일이 없거나 시작에 실패했다. 하위 접속인데 떠 있는 engine이 없다. 소켓이 제때 열리지 않았다. 옛 engine 교체에 실패했다. 연결이 끊겼다. | `EX_UNAVAILABLE` |
 | 70 | engine 내부 오류 | engine이 원인 종류 없이 거절했다. 답에 필요한 알림이 빠졌다. engine 메시지를 해석하지 못했다. | `EX_SOFTWARE` |
 | 75 | 지금은 안 되고 나중에 가능 | 학습 표본이 모자란다. | `EX_TEMPFAIL` |

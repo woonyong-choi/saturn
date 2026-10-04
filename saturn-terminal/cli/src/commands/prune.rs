@@ -17,6 +17,8 @@ struct Report {
     chats: Vec<ChatListItem>,
     skipped: Vec<PruneSkipped>,
     rows: u64,
+    /// 미리보기가 알린 확인 번호. 지운 결과에는 없다.
+    plan: Option<String>,
 }
 
 // cost: time O(c), heap O(c), stack O(1), io 2
@@ -31,27 +33,41 @@ pub(crate) async fn run(
     client: &mut EngineClient,
     args: &PruneArgs,
 ) -> anyhow::Result<()> {
-    let called = call(lang, client, Request::Prune { yes: args.yes }, drop).await;
+    let called = call(
+        lang,
+        client,
+        Request::Prune {
+            yes: args.yes,
+            plan: args.plan.clone(),
+        },
+        drop,
+    )
+    .await;
     let result = match called {
         Ok(result) => result,
         Err(error) => return Err(prune_error(lang, error)),
     };
     let report = match result {
-        Some(
-            QueryResult::PrunePreview {
-                chats,
-                skipped,
-                rows,
-            }
-            | QueryResult::Pruned {
-                chats,
-                skipped,
-                rows,
-            },
-        ) => Report {
+        Some(QueryResult::PrunePreview {
             chats,
             skipped,
             rows,
+            plan,
+        }) => Report {
+            chats,
+            skipped,
+            rows,
+            plan: Some(plan),
+        },
+        Some(QueryResult::Pruned {
+            chats,
+            skipped,
+            rows,
+        }) => Report {
+            chats,
+            skipped,
+            rows,
+            plan: None,
         },
         _ => {
             return Err(Exit::error(
@@ -77,8 +93,17 @@ fn prune_error(lang: Lang, error: anyhow::Error) -> anyhow::Error {
             ..
         })
     );
+    let unknown_plan = matches!(
+        error.downcast_ref::<ClientError>(),
+        Some(ClientError::Rejected {
+            kind: Some(ErrorKind::NotFound),
+            ..
+        })
+    );
     if no_retention {
         Exit::error(ExitCode::Config, lang.tr(i18n::CLI_PRUNE_NO_RETENTION))
+    } else if unknown_plan {
+        Exit::error(ExitCode::NotFound, lang.tr(i18n::CLI_PRUNE_PLAN_UNKNOWN))
     } else {
         error
     }
@@ -128,7 +153,11 @@ fn render(lang: Lang, report: &Report, is_deleted: bool) -> String {
         }
     }
     if !is_deleted {
-        push_line(&mut out, lang.tr(i18n::CLI_PRUNE_PREVIEW));
+        let plan = report.plan.as_deref().unwrap_or_default();
+        push_line(
+            &mut out,
+            &lang.tr(i18n::CLI_PRUNE_PREVIEW).replace("{plan}", plan),
+        );
     }
     out
 }
@@ -146,6 +175,7 @@ fn reason_phrase(reason: PruneSkipReason) -> &'static str {
         PruneSkipReason::ActiveSession => i18n::CLI_SKIP_ACTIVE_SESSION,
         PruneSkipReason::WaitingSession => i18n::CLI_SKIP_WAITING_SESSION,
         PruneSkipReason::Attached => i18n::CLI_SKIP_ATTACHED,
+        PruneSkipReason::UsedSincePreview => i18n::CLI_SKIP_USED_SINCE_PREVIEW,
     }
 }
 
@@ -177,6 +207,7 @@ mod tests {
                 reasons: vec![PruneSkipReason::OpenInput, PruneSkipReason::Attached],
             }],
             rows: 12,
+            plan: Some("abc123".to_owned()),
         }
     }
 
@@ -190,7 +221,10 @@ mod tests {
         assert!(lines[1].ends_with("/work/a · login fix · fix login"));
         assert_eq!(lines[2], "Chats kept: 1");
         assert_eq!(lines[3], "  #9 · open input, attached to a TUI");
-        assert_eq!(lines[4], "Nothing was deleted · Run with --yes to delete");
+        assert_eq!(
+            lines[4],
+            "Nothing was deleted · To delete, run: saturn prune --yes --plan abc123"
+        );
     }
 
     #[test]
@@ -207,6 +241,7 @@ mod tests {
             chats: Vec::new(),
             skipped: Vec::new(),
             rows: 0,
+            plan: None,
         };
 
         assert_eq!(
@@ -221,14 +256,28 @@ mod tests {
             chats: vec![chat(4)],
             skipped: Vec::new(),
             rows: 3,
+            plan: "abc123".to_owned(),
         })]);
         let mut client = engine.client().await;
 
-        run(Lang::En, &mut client, &PruneArgs { yes: false })
-            .await
-            .unwrap();
+        run(
+            Lang::En,
+            &mut client,
+            &PruneArgs {
+                yes: false,
+                plan: None,
+            },
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(engine.finish().await, vec![Request::Prune { yes: false }]);
+        assert_eq!(
+            engine.finish().await,
+            vec![Request::Prune {
+                yes: false,
+                plan: None
+            }]
+        );
     }
 
     #[tokio::test]
@@ -240,11 +289,77 @@ mod tests {
         })]);
         let mut client = engine.client().await;
 
-        run(Lang::En, &mut client, &PruneArgs { yes: true })
-            .await
-            .unwrap();
+        run(
+            Lang::En,
+            &mut client,
+            &PruneArgs {
+                yes: true,
+                plan: None,
+            },
+        )
+        .await
+        .unwrap();
 
-        assert_eq!(engine.finish().await, vec![Request::Prune { yes: true }]);
+        assert_eq!(
+            engine.finish().await,
+            vec![Request::Prune {
+                yes: true,
+                plan: None
+            }]
+        );
+    }
+
+    #[tokio::test]
+    async fn run_with_a_plan_sends_the_previewed_id_back() {
+        let engine = FakeEngine::start(vec![Reply::result(QueryResult::Pruned {
+            chats: vec![chat(4)],
+            skipped: Vec::new(),
+            rows: 3,
+        })]);
+        let mut client = engine.client().await;
+
+        run(
+            Lang::En,
+            &mut client,
+            &PruneArgs {
+                yes: true,
+                plan: Some("abc123".to_owned()),
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            engine.finish().await,
+            vec![Request::Prune {
+                yes: true,
+                plan: Some("abc123".to_owned())
+            }]
+        );
+    }
+
+    #[tokio::test]
+    async fn run_with_an_unknown_plan_says_to_preview_again() {
+        let engine = FakeEngine::start(vec![Reply::error_of_kind(
+            INVALID_PARAMS,
+            ErrorKind::NotFound,
+            "unknown prune plan",
+        )]);
+        let mut client = engine.client().await;
+
+        let error = run(
+            Lang::En,
+            &mut client,
+            &PruneArgs {
+                yes: true,
+                plan: Some("old".to_owned()),
+            },
+        )
+        .await
+        .unwrap_err();
+
+        assert!(error.to_string().contains("run the preview again"));
+        assert_eq!(crate::exit::of(&error), ExitCode::NotFound);
     }
 
     #[tokio::test]
@@ -252,9 +367,16 @@ mod tests {
         let engine = FakeEngine::start(vec![Reply::ok()]);
         let mut client = engine.client().await;
 
-        let error = run(Lang::En, &mut client, &PruneArgs { yes: true })
-            .await
-            .unwrap_err();
+        let error = run(
+            Lang::En,
+            &mut client,
+            &PruneArgs {
+                yes: true,
+                plan: None,
+            },
+        )
+        .await
+        .unwrap_err();
 
         assert!(error.to_string().contains("without a prune result"));
     }
@@ -268,9 +390,16 @@ mod tests {
         )]);
         let mut client = engine.client().await;
 
-        let error = run(Lang::En, &mut client, &PruneArgs { yes: true })
-            .await
-            .unwrap_err();
+        let error = run(
+            Lang::En,
+            &mut client,
+            &PruneArgs {
+                yes: true,
+                plan: None,
+            },
+        )
+        .await
+        .unwrap_err();
 
         assert!(error.to_string().contains("retention.max_age_days"));
         assert_eq!(crate::exit::of(&error), ExitCode::Config);
@@ -281,7 +410,15 @@ mod tests {
         let engine = FakeEngine::start(vec![Reply::error(-32601, "unsupported: Prune")]);
         let mut client = engine.client().await;
 
-        let result = run(Lang::En, &mut client, &PruneArgs { yes: true }).await;
+        let result = run(
+            Lang::En,
+            &mut client,
+            &PruneArgs {
+                yes: true,
+                plan: None,
+            },
+        )
+        .await;
 
         assert!(result.is_err());
     }

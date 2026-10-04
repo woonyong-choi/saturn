@@ -127,6 +127,9 @@ pub enum EngineError {
     /// 채팅 이름이나 묶음에 줄바꿈 같은 제어 문자가 들어 있다.
     #[error("invalid chat {what}: contains a control character")]
     InvalidLabel { what: &'static str },
+    /// 정리 확인 번호가 없거나 만료됐거나 이미 썼다.
+    #[error("unknown prune plan: preview again")]
+    PrunePlanUnknown,
     /// 정리 기준 `retention.max_age_days`가 없어 어떤 채팅이 오래됐는지 정할 수 없다.
     #[error("no retention.max_age_days setting to decide which chats to prune")]
     NoRetention,
@@ -175,6 +178,7 @@ impl EngineError {
             | Self::InvalidFolder { .. }
             | Self::InvalidLabel { .. }
             | Self::NoRetention
+            | Self::PrunePlanUnknown
             | Self::ChatNotAttached { .. }
             | Self::Store(StoreError::NotFound { .. })
             | Self::Queue(
@@ -204,6 +208,7 @@ impl EngineError {
             )
             | Self::Training(TrainingError::NoGrader) => Some(ErrorKind::Config),
             Self::Store(StoreError::NotFound { .. })
+            | Self::PrunePlanUnknown
             | Self::Training(TrainingError::UnknownVersion { .. }) => Some(ErrorKind::NotFound),
             Self::Training(TrainingError::NotEnough { .. }) => Some(ErrorKind::RetryLater),
             Self::NoProvider
@@ -547,6 +552,7 @@ mod error_kind_tests {
                 Some(ErrorKind::RouterKey),
             ),
             (EngineError::NoRetention, Some(ErrorKind::Config)),
+            (EngineError::PrunePlanUnknown, Some(ErrorKind::NotFound)),
             (
                 EngineError::Training(TrainingError::NotEnough { have: 1, need: 200 }),
                 Some(ErrorKind::RetryLater),

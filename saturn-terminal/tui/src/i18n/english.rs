@@ -147,9 +147,14 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("지울 채팅이 없습니다", "No chats to delete"),
     ("남긴 채팅 {chats}개", "Chats kept: {chats}"),
     (
-        "아무것도 지우지 않았습니다 · 지우려면 --yes로 실행하세요",
-        "Nothing was deleted · Run with --yes to delete",
+        "아무것도 지우지 않았습니다 · 지우려면 saturn prune --yes --plan {plan} 으로 실행하세요",
+        "Nothing was deleted · To delete, run: saturn prune --yes --plan {plan}",
     ),
+    (
+        "정리 미리보기 번호를 찾지 못했습니다(만료됐거나 이미 썼습니다): 미리보기를 다시 실행하세요",
+        "Prune preview id not found (expired or already used): run the preview again",
+    ),
+    ("미리본 뒤 다시 쓰임", "used again since the preview"),
     (
         "정리 기준이 없습니다: retention.max_age_days 설정을 정한 뒤 다시 실행하세요",
         "No prune criterion: set retention.max_age_days and run again",
@@ -331,7 +336,14 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "기록 정리. `--yes`가 없으면 지울 대상만 미리 보인다",
         "Prune records; without `--yes` only the records to delete are previewed",
     ),
-    ("미리보기 없이 지운다", "Delete without a preview"),
+    (
+        "지운다. `--plan`이 없으면 지금 기준으로 대상을 정해 바로 지운다",
+        "Delete. Without `--plan`, the targets are decided now and deleted at once",
+    ),
+    (
+        "미리보기가 알려 준 번호. 그 미리보기에 있던 채팅만 지운다",
+        "The id a preview printed. Deletes only the chats in that preview",
+    ),
     (
         "판단 기록을 JSONL로 내보낸다. 채점하지 않은 기록도 내보낸다",
         "Export judgment records as JSONL, including records not yet graded",

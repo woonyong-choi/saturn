@@ -450,7 +450,7 @@ impl App {
             }
             SlashCommand::Prune => {
                 self.open_window(Window::Prune(PruneWindow::default()));
-                Some(Request::Prune { yes: false })
+                Some(prune_preview())
             }
             SlashCommand::Train {
                 reset_thresholds,
@@ -775,5 +775,13 @@ fn command_error_text(lang: Lang, error: &CommandError) -> String {
         CommandError::InvalidArgument { command, argument } => {
             format!("{}: /{command} {argument}", lang.tr(i18n::COMMAND_INVALID))
         }
+    }
+}
+
+/// 정리 미리보기 요청. 확인 번호는 미리보기가 돌려준다.
+fn prune_preview() -> Request {
+    Request::Prune {
+        yes: false,
+        plan: None,
     }
 }

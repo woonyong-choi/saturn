@@ -20,6 +20,8 @@ pub(crate) struct PruneListing {
     pub chats: Vec<ChatListItem>,
     pub kept: usize,
     pub rows: u64,
+    /// 미리보기가 알린 확인 번호. 확정 때 그대로 돌려보낸다.
+    pub plan: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -32,12 +34,19 @@ pub(crate) struct PruneWindow {
 }
 
 impl PruneWindow {
-    pub(crate) fn load(&mut self, chats: Vec<ChatListItem>, skipped: &[PruneSkipped], rows: u64) {
+    pub(crate) fn load(
+        &mut self,
+        chats: Vec<ChatListItem>,
+        skipped: &[PruneSkipped],
+        rows: u64,
+        plan: String,
+    ) {
         self.selected = 0;
         self.listing = Some(PruneListing {
             chats,
             kept: skipped.len(),
             rows,
+            plan,
         });
     }
 
@@ -208,6 +217,7 @@ mod tests {
                 reasons: Vec::new(),
             }],
             47,
+            "plan-1".to_owned(),
         );
 
         let screen = drawn(&window);
@@ -225,7 +235,7 @@ mod tests {
     fn nothing_to_delete_cannot_be_confirmed_and_loading_says_so() {
         let mut window = PruneWindow::default();
         let loading = drawn(&window);
-        window.load(Vec::new(), &[], 0);
+        window.load(Vec::new(), &[], 0, "plan-1".to_owned());
 
         let empty = drawn(&window);
 

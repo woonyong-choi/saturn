@@ -124,7 +124,7 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 ### 기록 정리 창
 
-`/prune`은 `Prune { yes: false }`를 보내고 응답 `result`의 `PrunePreview`를 받아 정리 창을 연다. 줄은 지울 채팅이고, 이름이 없으면 `#채팅 번호`, 마지막 사용 날짜는 `PrunePreview`의 마지막 활동 시각을 날짜로 줄인 값이다. 크기는 그 채팅의 기록 행 수(입력, 실행, 이벤트, 사용량, session)이고, 창 머리에 합계를 보인다. `y`를 누르면 `Prune { yes: true }`를 보내고 응답 `result`의 `Pruned`를 받아 `지운 채팅 N개 · 기록 M행`을 대화 기록에 남기고 창을 닫는다. `Esc`와 `Ctrl+C`는 아무것도 지우지 않고 닫는다. `↑`, `↓`는 줄이 화면보다 길 때 고른 줄이 보이게 스크롤한다. 창을 연 뒤 지울 채팅이 바뀌어도 `yes`는 보낸 시점에 다시 계산한 대상만 지우고(열린 항목이 생긴 채팅은 남김), 지운 채팅 수가 창에 보인 수와 다르면 `Pruned`의 결과 수를 그대로 알린다. 지금 붙은 채팅은 지우지 않는다. 정리 기준 설정이 없으면 `engine`이 거절하기 전에 `Alert::PruneNeedsRetention`을 요청한 접속에 보내고, TUI는 창을 닫고 `retention.max_age_days`를 설정하라는 줄을 대화 기록에 남긴다. 삭제는 되돌릴 수 없으므로 `y` 하나만 확정 키이고 `Enter`는 확정이 아니다.
+`/prune`은 `Prune { yes: false }`를 보내고 응답 `result`의 `PrunePreview`를 받아 정리 창을 연다. 창은 `PrunePreview`의 확인 번호(`plan`)를 들고 있다. 줄은 지울 채팅이고, 이름이 없으면 `#채팅 번호`, 마지막 사용 날짜는 `PrunePreview`의 마지막 활동 시각을 날짜로 줄인 값이다. 크기는 그 채팅의 기록 행 수(입력, 실행, 이벤트, 사용량, session)이고, 창 머리에 합계를 보인다. `y`를 누르면 그 번호를 실은 `Prune { yes: true, plan }`을 보내고 응답 `result`의 `Pruned`를 받아 `지운 채팅 N개 · 기록 M행`을 대화 기록에 남기고 창을 닫는다. `Esc`와 `Ctrl+C`는 아무것도 지우지 않고 닫는다. `↑`, `↓`는 줄이 화면보다 길 때 고른 줄이 보이게 스크롤한다. 창을 연 뒤 지울 채팅이 늘어도 번호를 실은 `yes`는 창에 보인 채팅만 지우고(그 사이 다시 쓰였거나 열린 항목이 생겼거나 TUI가 붙은 채팅은 남김), 지운 채팅 수가 창에 보인 수와 다르면 `Pruned`의 결과 수를 그대로 알린다. 지금 붙은 채팅은 지우지 않는다. 정리 기준 설정이 없으면 `engine`이 거절하기 전에 `Alert::PruneNeedsRetention`을 요청한 접속에 보내고, TUI는 창을 닫고 `retention.max_age_days`를 설정하라는 줄을 대화 기록에 남긴다. 삭제는 되돌릴 수 없으므로 `y` 하나만 확정 키이고 `Enter`는 확정이 아니다.
 
 ### 이름표
 
@@ -516,7 +516,7 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `/extensions` | 명령 목록에 넣고 값은 `install`, `remove`. 값 없이 실행하면 설치한 확장 목록을 대화 기록에 보인다. `install <원천>`은 폴더 경로(상대 경로는 `/add-dir`와 같이 절대 경로로 바꿈)나 git 주소를 `InstallExtension`으로, `remove <이름>`은 `RemoveExtension`으로 보낸다. 결과는 대화 기록 한 줄로 남고 열린 session에는 다음 session부터 적용한다([기능 목록과 확장](extensions.md#설치)) |
 | `/model` | 명령 목록에 넣고 값 목록은 engine이 붙을 때 알린 provider id(`StartInfo`의 `providers`). 값 없이 실행하면 모든 provider의 모델 창이 열리고, 값을 주면 그 provider 모델만 보인다. 방향키로 고르고 `Enter`로 정한다. `Enter`로 고른 모델은 `SetModel`로 engine에 저장하고, 그 채팅의 모든 입력이 쓴다. 채팅에 붙을 때 engine이 `ModelPinned`로 알려 주므로 TUI를 다시 열거나 채팅을 옮겨도 유지된다. 안내 한 줄(`다음 입력부터 {provider} · {model} 모델로 보냅니다`)은 `ModelPinned`를 받을 때 대화 기록에 남기므로, 정한 직후와 채팅을 다시 열 때 같은 줄이 나온다. provider 고유의 `/model`은 넘기지 않고 Saturn `/model`로 처리한다([모델 고르기](providers-and-sessions.md#모델-고르기)) |
 | `/permissions` | 명령 목록에 넣고 값 목록은 `ask`, `edit`, `read-only`, `full`(초안). 값을 주면 채팅 층 모드를 바꾼다. 값 없이 실행하면 현재 모드를 보이는 동작은 아직 없다([권한](permissions.md)) |
-| `/prune` | 명령 목록에 넣고 값은 없다. 기록 정리 창을 연다. 미리보기는 `Prune { yes: false }`, 확정은 `Prune { yes: true }`로 보낸다 |
+| `/prune` | 명령 목록에 넣고 값은 없다. 기록 정리 창을 연다. 미리보기는 `Prune { yes: false }`, 확정은 미리보기 번호를 실은 `Prune { yes: true, plan }`으로 보낸다 |
 | `/constraints` | 명령 목록에 넣고 값은 없다. 제약 목록 화면을 연다. `d`는 `ReleaseConstraint`, `x`는 잘못 등록으로 `ReleaseConstraint`, `e`는 예외 종류 바꾸기로 `ChangeConstraintException`, `u`는 `UndoConstraintChange`를 보내고 확인 창의 답은 `AnswerConstraintAsk`로 보낸다. 요청은 화면이 본 제약 revision을 싣고 낡았으면 engine이 `Stale`로 거절해 목록을 새로 읽는다(초안, [제약](constraints.md#되돌리기)) |
 
 ### 요구사항
