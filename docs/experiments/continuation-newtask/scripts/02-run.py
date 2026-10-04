@@ -22,6 +22,7 @@ from runtime import (
 )
 
 
+# cost: io up to 2*ceil(n/15) CLI calls per lane, capped globally; basis: estimate
 def label(lane: str) -> None:
     cases = read(PRIVATE / "sample.json")
     prior = {}
@@ -68,6 +69,7 @@ def label(lane: str) -> None:
     )
 
 
+# cost: io up to 2*n HTTPS calls, capped at 4000; vars: n = cases; basis: estimate
 def judge() -> None:
     if not os.environ.get("SATURN_JUDGE_KEY"):
         raise RuntimeError("missing judge key")

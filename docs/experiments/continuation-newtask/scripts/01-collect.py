@@ -190,6 +190,7 @@ def proportional(cases: list[dict], target: int, rng: random.Random) -> list[dic
     return selected
 
 
+# cost: io O(f) source reads and fixed git calls; vars: f = source files; basis: estimate
 def prepare() -> None:
     if (PRIVATE / "sample.json").exists():
         print("using frozen sample")
