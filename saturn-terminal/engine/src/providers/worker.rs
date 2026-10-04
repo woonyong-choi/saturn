@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use saturn_core::providers::{
-    InterruptTarget, ProviderClient, ProviderError, SessionHandle, SessionSpec,
+    InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, ChatId, Provider, ProviderSessionId};
@@ -26,6 +26,12 @@ pub(crate) enum ProviderMsg {
         chat: ChatId,
         provider: Provider,
         event: ProviderEvent,
+    },
+    /// 연결이 알리는 명령 목록이 바뀌었다. 연결 뒤 처음 알릴 때와 바뀔 때마다 온다.
+    Commands {
+        chat: ChatId,
+        provider: Provider,
+        commands: Vec<ProviderCommand>,
     },
     /// 연결의 이벤트 흐름이 끝났다.
     Closed { chat: ChatId, provider: Provider },
@@ -175,6 +181,27 @@ impl Context {
             }
             Sink::Ignore => {}
         }
+    }
+
+    /// 명령 목록이 마지막으로 알린 것과 다르면 알린다. 목록이 처음부터 비어 있으면 알리지 않는다. engine이 끝났으면
+    /// 거짓.
+    fn announce_commands(
+        &self,
+        connection: &ProviderConnection,
+        announced: &mut Vec<ProviderCommand>,
+    ) -> bool {
+        let current = connection.commands();
+        if current == *announced {
+            return true;
+        }
+        announced.clone_from(&current);
+        self.msgs
+            .send(ProviderMsg::Commands {
+                chat: self.chat,
+                provider: self.provider,
+                commands: current,
+            })
+            .is_ok()
     }
 
     fn warn(&self, what: &str, error: &ProviderError) {
@@ -534,7 +561,11 @@ async fn run(
     context: Context,
 ) {
     let mut is_streaming = true;
+    let mut announced: Vec<ProviderCommand> = Vec::new();
     loop {
+        if !context.announce_commands(&connection, &mut announced) {
+            break; // engine이 끝났다
+        }
         tokio::select! {
             biased;
             request = requests.recv() => {

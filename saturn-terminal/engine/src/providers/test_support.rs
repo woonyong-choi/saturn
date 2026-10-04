@@ -83,6 +83,7 @@ struct Script {
     panic_on_send: bool,
     opened: u32,
     group: Option<ProcessGroupId>,
+    commands: Vec<ProviderCommand>,
 }
 
 /// 복제본은 같은 기록과 답을 함께 쓴다. 답을 정해 두지 않은 호출은 성공한다.
@@ -195,6 +196,11 @@ impl FakeProvider {
 
     pub(crate) fn answer_input_with(&self, answers: impl IntoIterator<Item = Answer>) {
         self.lock().answer_input.extend(answers);
+    }
+
+    /// 이 연결이 알릴 명령 목록. 연결이 이미 돌고 있어도 다음 요청이나 이벤트 처리 뒤에 알려진다.
+    pub(crate) fn set_commands(&self, commands: Vec<ProviderCommand>) {
+        self.lock().commands = commands;
     }
 
     /// 멈춤 때 중지할 프로세스 묶음.
@@ -345,6 +351,6 @@ impl ProviderClient for FakeProvider {
     }
 
     fn commands(&self) -> Vec<ProviderCommand> {
-        Vec::new()
+        self.lock().commands.clone()
     }
 }
