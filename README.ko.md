@@ -38,7 +38,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 provider마다 session과 압
 
 ## 설치
 
-Saturn은 Apple Silicon의 macOS에서 실행합니다. CI가 빌드에 쓰는 Rust 1.95.0이 필요합니다(2026-10-04 확인). 로그인을 마친 Codex CLI(`codex`), Claude Code(`claude`) 중 하나 이상도 필요합니다. Saturn은 대신 로그인하지 않으므로 각 CLI에 먼저 로그인하세요.
+Saturn은 Apple Silicon의 macOS에서 실행합니다. CI가 빌드에 쓰는 Rust 1.95.0이 필요합니다(2026-10-04 확인). 로그인을 마친 Codex CLI(`codex`), Claude Code(`claude`) 중 하나 이상도 필요합니다. Saturn은 대신 로그인하지 않으므로 각 CLI에 먼저 로그인하세요. 로그인 상태는 `codex login status`, `claude auth status`로 확인합니다.
 
 `saturn`이 `saturn-engine`을 시작하므로 두 실행 파일을 함께 설치하세요.
 
@@ -53,7 +53,7 @@ Cargo는 두 실행 파일을 bin 폴더(기본 `~/.cargo/bin`)에 넣습니다.
 ## 사용법
 
 > [!NOTE]
-> 아래 단계는 시작 화면과 모델 창까지 확인했습니다. 실제 provider에 요청을 보내는 단계는 아직 확인하지 않았습니다(상태 참고).
+> 아래 단계는 실제 Codex와 Claude Code로 요청 전송과 `/model` 전환까지 확인했습니다(상태 참고).
 
 ### saturn 시작
 
@@ -112,7 +112,7 @@ saturn --continue
 
 ## 상태
 
-Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `saturn` 명령은 `main`에 있습니다. 입력 접수부터 provider 전송까지의 입력 흐름, 멈춤과 재개, Saturn 권한 규칙, `/model`, `/usage`는 가짜 provider를 쓴 테스트에서 동작하지만, 실제 Codex와 Claude Code로 처음부터 끝까지 돌린 확인은 아직 없고 TUI 없이 계속 실행과 크래시 뒤 복구는 만들지 않았습니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
+Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `saturn` 명령은 `main`에 있습니다. 입력 접수부터 provider 전송까지의 입력 흐름, 멈춤과 재개, Saturn 권한 규칙, `/model`, `/usage`는 가짜 provider를 쓴 테스트에서 동작하고, `scripts/e2e/README.md`의 확인 절차(단계 a~k)는 2026-10-04에 실제 Codex, Claude Code, router로 통과했습니다. 전환해 돌아올 때 오래된 사용자 제약이 인계 패킷에 담기는지는 실제 provider로 아직 확인하지 않았습니다([#296](https://github.com/woonyong-choi/saturn/issues/296) 완료 조건 2). TUI 없이 계속 실행과 크래시 뒤 복구는 만들지 않았습니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
 
 ## 비교
 
