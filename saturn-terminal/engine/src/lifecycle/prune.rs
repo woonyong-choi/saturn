@@ -64,21 +64,30 @@ async fn prune_with(
     plan: Option<String>,
 ) -> Report {
     drive(engine, async {
-        let (chats, skipped, rows, is_preview, plan) =
-            match client.query(id, Request::Prune { yes, plan }).await {
-                QueryResult::PrunePreview {
-                    chats,
-                    skipped,
-                    rows,
+        let (chats, skipped, rows, is_preview, plan) = match client
+            .query(
+                id,
+                Request::Prune {
+                    all: yes && plan.is_none(),
+                    yes,
                     plan,
-                } => (chats, skipped, rows, true, Some(plan)),
-                QueryResult::Pruned {
-                    chats,
-                    skipped,
-                    rows,
-                } => (chats, skipped, rows, false, None),
-                other => panic!("expected a prune report, got {other:?}"),
-            };
+                },
+            )
+            .await
+        {
+            QueryResult::PrunePreview {
+                chats,
+                skipped,
+                rows,
+                plan,
+            } => (chats, skipped, rows, true, Some(plan)),
+            QueryResult::Pruned {
+                chats,
+                skipped,
+                rows,
+            } => (chats, skipped, rows, false, None),
+            other => panic!("expected a prune report, got {other:?}"),
+        };
         Report {
             chat_rows: chats.iter().map(|item| item.rows).collect(),
             chats: chats.into_iter().map(|item| item.chat).collect(),
@@ -95,7 +104,16 @@ async fn prune_with(
 async fn refused_with_plan(engine: &mut Engine, client: &mut Client, id: u64, plan: &str) -> bool {
     let plan = Some(plan.to_owned());
     let response = drive(engine, async {
-        client.send(id, Request::Prune { yes: true, plan }).await;
+        client
+            .send(
+                id,
+                Request::Prune {
+                    yes: true,
+                    plan,
+                    all: false,
+                },
+            )
+            .await;
         client.response().await
     })
     .await;
@@ -248,6 +266,7 @@ async fn prune_without_a_retention_setting_is_refused_and_deletes_nothing() {
                 Request::Prune {
                     yes: true,
                     plan: None,
+                    all: true,
                 },
             )
             .await;
@@ -572,4 +591,29 @@ async fn confirming_without_a_plan_decides_the_targets_at_that_moment() {
     let deleted = prune(&mut engine, &mut client, 2, true).await;
 
     assert_eq!(deleted.chats, [old, later]);
+}
+
+// #457: 확인 번호를 모르는 옛 클라이언트가 미리보기 뒤에 보내는 `Prune { yes: true }`.
+#[tokio::test]
+async fn a_confirmation_from_a_client_without_plan_support_deletes_nothing() {
+    let fixture = Fixture::new();
+    let mut engine = ready_with_retention(&fixture).await;
+    let old = old_chat(&engine, "/work/old", "old work").await;
+    let mut client = Client::connect(&fixture.socket()).await;
+    let _ = prune(&mut engine, &mut client, 1, false).await;
+    let later = old_chat(&engine, "/work/later", "later work").await;
+    let legacy: Request =
+        serde_json::from_value(serde_json::json!({ "method": "Prune", "params": { "yes": true } }))
+            .unwrap();
+
+    let response = drive(&mut engine, async {
+        client.send(2, legacy).await;
+        client.response().await
+    })
+    .await;
+
+    assert_eq!(error_code(&response), INVALID_PARAMS);
+    for chat in [old, later] {
+        assert!(engine.store.chat_workdir(chat).await.is_ok(), "{chat:?}");
+    }
 }

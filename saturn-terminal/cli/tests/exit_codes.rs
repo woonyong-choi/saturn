@@ -30,6 +30,8 @@ enum Act {
     },
     /// 응답 없이 연결을 끊는다.
     Hangup,
+    /// 확인 번호(`plan`)가 없는 옛 모양의 `PrunePreview` 응답.
+    PlanlessPreview,
 }
 
 fn fail(code: i32, kind: ErrorKind) -> Act {
@@ -75,6 +77,22 @@ fn serve_at(
                     Response::error_of_kind(Some(message.id), code, kind, "refused"),
                 ),
                 Act::Hangup => return,
+                Act::PlanlessPreview => {
+                    let preview = QueryResult::PrunePreview {
+                        chats: Vec::new(),
+                        skipped: Vec::new(),
+                        rows: 0,
+                        plan: "legacy".to_owned(),
+                    };
+                    let message = ServerMessage::from(Response::result(message.id, preview));
+                    let mut value = serde_json::to_value(&message).unwrap();
+                    without_key(&mut value, "plan");
+                    let line = format!("{value}\n");
+                    if writer.write_all(line.as_bytes()).is_err() {
+                        return;
+                    }
+                    continue;
+                }
             };
             let mut lines: Vec<String> = notes
                 .into_iter()
@@ -92,6 +110,20 @@ fn serve_at(
             }
         }
     })
+}
+
+/// 옛 engine의 응답 모양을 흉내 내려고 키 하나를 어디에 있든 지운다.
+fn without_key(value: &mut serde_json::Value, key: &str) {
+    match value {
+        serde_json::Value::Object(map) => {
+            map.remove(key);
+            map.values_mut().for_each(|inner| without_key(inner, key));
+        }
+        serde_json::Value::Array(items) => {
+            items.iter_mut().for_each(|inner| without_key(inner, key))
+        }
+        _ => {}
+    }
 }
 
 struct Run {
@@ -450,4 +482,17 @@ fn plain_run_that_finishes_cleanly_exits_zero() {
 
     engine.join().unwrap();
     assert_eq!(run.code, Some(0), "{}", run.stderr);
+}
+
+// #457: 확인 번호를 모르는 옛 engine의 미리보기 응답은 읽지 못해도 기다리지 않고 실패로 끝낸다.
+#[test]
+fn prune_against_an_engine_that_answers_without_a_plan_fails_instead_of_waiting() {
+    let run = run_with_engine(&["prune"], |_| Act::PlanlessPreview);
+
+    assert!(
+        matches!(run.code, Some(code) if code != 0),
+        "{:?} {}",
+        run.code,
+        run.stderr
+    );
 }

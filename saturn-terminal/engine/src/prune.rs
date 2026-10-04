@@ -101,13 +101,15 @@ impl Engine {
     /// 요청 순간의 기준으로 정한 대상을 지운다. TUI가 붙어 있는 채팅은 열린 항목이 없어도 지우지 않고 `Attached`로 남긴다.
     ///
     /// # Errors
-    /// 정리 기준 설정이 없으면 `NoRetention`, 모르는 `plan`이면 `PrunePlanUnknown`, 기록 저장소 실패면 `Store`나 `Settings`.
+    /// 정리 기준 설정이 없으면 `NoRetention`, 모르는 `plan`이면 `PrunePlanUnknown`, `plan`도 `all`도 없는 `yes`면 `PruneNeedsPlan`, 기록 저장소 실패면 `Store`나 `Settings`.
     pub(super) async fn prune_records(
         &mut self,
         client: ClientId,
-        yes: bool,
-        plan: Option<String>,
+        (yes, plan, all): (bool, Option<String>, bool),
     ) -> Result<QueryResult, EngineError> {
+        if yes && plan.is_none() && !all {
+            return Err(EngineError::PruneNeedsPlan);
+        }
         let before = self.prune_cutoff_or_tell(client).await?;
         let previewed = match (yes, plan) {
             (true, Some(id)) => Some(

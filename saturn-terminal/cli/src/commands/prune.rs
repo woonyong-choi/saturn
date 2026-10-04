@@ -39,6 +39,7 @@ pub(crate) async fn run(
         Request::Prune {
             yes: args.yes,
             plan: args.plan.clone(),
+            all: args.yes && args.plan.is_none(),
         },
         drop,
     )
@@ -275,7 +276,8 @@ mod tests {
             engine.finish().await,
             vec![Request::Prune {
                 yes: false,
-                plan: None
+                plan: None,
+                all: false,
             }]
         );
     }
@@ -304,7 +306,8 @@ mod tests {
             engine.finish().await,
             vec![Request::Prune {
                 yes: true,
-                plan: None
+                plan: None,
+                all: true,
             }]
         );
     }
@@ -333,7 +336,8 @@ mod tests {
             engine.finish().await,
             vec![Request::Prune {
                 yes: true,
-                plan: Some("abc123".to_owned())
+                plan: Some("abc123".to_owned()),
+                all: false,
             }]
         );
     }

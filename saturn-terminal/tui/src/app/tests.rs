@@ -596,7 +596,8 @@ fn prune_window_with(chats: Vec<saturn_protocol::rpc::ChatListItem>) -> App {
         sent(&opened),
         vec![&Request::Prune {
             yes: false,
-            plan: None
+            plan: None,
+            all: false,
         }]
     );
     let rows = chats.iter().filter_map(|chat| chat.rows).sum();
@@ -626,7 +627,8 @@ fn prune_window_asks_for_the_preview_and_only_y_deletes() {
         sent(&confirm),
         vec![&Request::Prune {
             yes: true,
-            plan: Some("plan-1".to_owned())
+            plan: Some("plan-1".to_owned()),
+            all: false,
         }]
     );
     assert!(sent(&again).is_empty());

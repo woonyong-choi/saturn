@@ -818,7 +818,12 @@ mod tests {
     async fn connect_or_start_keeps_an_engine_of_a_newer_version() {
         let home = tempfile::tempdir().unwrap();
         let socket = home.path().join(SOCKET_FILE);
-        let newer = start_fake_engine(&socket, Some(version("999.0.0", 1)), None, true);
+        let newer = start_fake_engine(
+            &socket,
+            Some(version("999.0.0", PROTOCOL_VERSION)),
+            None,
+            true,
+        );
 
         let client = connect_or_start_at(
             Lang::En,
@@ -938,6 +943,16 @@ mod tests {
             judge(&own, &version("nightly", 2)),
             Verdict::Retire(Retire::Request)
         );
+    }
+
+    // #457: 확인 번호가 없는 `Prune`과 `PrunePreview` 모양을 쓰는 engine(판 1)은 제품 버전이 같아도 새 클라이언트가 교체한다.
+    #[test]
+    fn an_engine_of_the_protocol_before_the_prune_plan_is_retired_at_the_same_version() {
+        let own = own_version();
+        let old = version(&own.saturn_version, 1);
+
+        assert!(own.protocol_version >= 2);
+        assert_eq!(judge(&own, &old), Verdict::Retire(Retire::Request));
     }
 
     #[test]
