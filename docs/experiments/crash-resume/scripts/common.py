@@ -14,7 +14,7 @@ WORKTREE = ROOT.parents[2]
 MAIN_REPO = Path("/Users/woonyong/workspace/oss/saturn")
 PRIVATE = MAIN_REPO / ".local" / "experiments" / "crash-resume"
 CODEX_MODEL = "gpt-5.6-luna"
-CLAUDE_MODEL = "claude-haiku-4-5-20251001"
+CLAUDE_MODEL = "haiku"
 CODEX_CAP = 40
 CLAUDE_CAP = 30
 MARKER_WAIT_SECONDS = 90
@@ -68,10 +68,10 @@ def private_log(name: str, events: list[dict]) -> str:
 
 
 class LineProcess:
-    def __init__(self, args: list[str], env: dict[str, str]):
+    def __init__(self, args: list[str], env: dict[str, str], cwd: Path = WORKTREE):
         self.proc = subprocess.Popen(
             args,
-            cwd=WORKTREE,
+            cwd=cwd,
             env=env,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -207,9 +207,15 @@ def marker_counts(events: Path, done: Path) -> dict[str, int]:
     return counts
 
 
-def marker_prompt(events: Path, done: Path, invocation_id: str, task_text: str) -> str:
-    event_path = events.relative_to(WORKTREE)
-    done_path = done.relative_to(WORKTREE)
+def marker_prompt(
+    events: Path,
+    done: Path,
+    invocation_id: str,
+    task_text: str,
+    absolute: bool = False,
+) -> str:
+    event_path = events if absolute else events.relative_to(WORKTREE)
+    done_path = done if absolute else done.relative_to(WORKTREE)
     command = (
         f'sh -c \'printf "start:{invocation_id}:$\\$\\n" >> {event_path}; '
         f'sleep 30; printf "complete:{invocation_id}:$\\$\\n" >> {event_path}; touch {done_path}\''
@@ -266,6 +272,13 @@ def setup_claude_config(trial_id: str) -> Path:
     if source.exists() and not link.exists():
         link.symlink_to(source)
     return config
+
+
+def claude_work_dir(trial_id: str) -> Path:
+    """공식 CLI의 기본 로그인을 쓰는 재수집에서 조건마다 따로 쓰는 작업 폴더."""
+    work = WORKTREE / ".runtime" / "claude-work" / trial_id
+    work.mkdir(parents=True, exist_ok=True)
+    return work
 
 
 class CodexDriver(LineProcess):
@@ -352,9 +365,15 @@ class ClaudeDriver(LineProcess):
         resume: bool,
         resume_env: bool,
         task: bool = False,
+        work: Path | None = None,
     ):
         env = os.environ.copy()
-        env["CLAUDE_CONFIG_DIR"] = str(config)
+        if work is None:
+            env["CLAUDE_CONFIG_DIR"] = str(config)
+        else:
+            # 기본 로그인 그대로: 설정 폴더 변수와 credentials 링크를 쓰지 않는다.
+            env.pop("CLAUDE_CONFIG_DIR", None)
+            env["CLAUDE_CODE_DISABLE_CLAUDE_MDS"] = "1"
         if resume_env:
             env["CLAUDE_CODE_RESUME_INTERRUPTED_TURN"] = "1"
         else:
@@ -369,7 +388,7 @@ class ClaudeDriver(LineProcess):
             "--verbose",
             "--strict-mcp-config",
             "--setting-sources",
-            "user",
+            "user" if work is None else "project,local",
             "--model",
             CLAUDE_MODEL,
             "--permission-prompt-tool",
@@ -380,12 +399,12 @@ class ClaudeDriver(LineProcess):
             "Bash",
         ]
         if task:
-            args.extend(["Task"])
+            args.extend(["Task"] if work is None else ["Task", "Agent"])
         if resume:
             args.extend(["--resume", session_id])
         else:
             args.extend(["--session-id", session_id])
-        super().__init__(args, env)
+        super().__init__(args, env, work or WORKTREE)
 
     def send_user(self, text: str) -> None:
         self.send(

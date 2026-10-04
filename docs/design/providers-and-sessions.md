@@ -291,7 +291,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 | Codex | 부모 `thread/resume` 전에 목록의 자식 thread마다 `thread/archive`, `thread/unsubscribe`를 보낸다. 부모 thread는 보관하지 않는다. 요청이 거절되거나 연결이 끊겨도 경고만 남기고 부모를 연다. |
 | Claude | 실행 환경에서 `CLAUDE_CODE_RESUME_INTERRUPTED_TURN`만 뺀다. 설치본(2.1.288)은 이 변수가 작업자 재시작으로 끊긴 턴을 자동으로 다시 실행하게 한다고 설명한다. 이 변수는 크래시 뒤가 아니어도 Claude 실행마다 뺀다. |
 
-두 provider 모두 다시 연 뒤 끊긴 하위 에이전트의 이벤트가 오면 `engine`이 막는다([engine 수명과 복구](engine-lifecycle.md#크래시-뒤-복구)). Codex 정리 요청의 인과적 필요성과 Claude 변수의 효과는 실측하지 못했다([결과](../experiments/crash-resume/report.md)).
+두 provider 모두 다시 연 뒤 끊긴 하위 에이전트의 이벤트가 오면 `engine`이 막는다([engine 수명과 복구](engine-lifecycle.md#크래시-뒤-복구)). Claude 변수의 효과는 실측했다. 변수가 있으면 `--resume`만으로 끊긴 턴이 3/3회 다시 실행됐고, 빼면 0/3회였다. Codex 정리 요청의 인과적 필요성은 raw 재개에서도 재실행이 없어 확인하지 못했다([결과](../experiments/crash-resume/report.md)).
 
 ### 무응답 표시
 

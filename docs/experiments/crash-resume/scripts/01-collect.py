@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import platform
 import subprocess
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -18,6 +19,7 @@ from common import (
     ROOT,
     WORKTREE,
     ClaudeDriver,
+    claude_work_dir,
     CodexDriver,
     event_summary,
     marker_counts,
@@ -34,6 +36,27 @@ from common import (
 RAW = ROOT / "data" / "raw"
 RUN_ID = f"{utc_now().replace('-', '').replace(':', '')}-{subprocess.check_output(['git', 'rev-parse', '--short=7', 'HEAD'], cwd=WORKTREE, text=True).strip()}"
 CALLS = {"codex": 0, "claude": 0}
+RECOLLECT_CALL_LIMIT = 40
+COUNTER = WORKTREE / ".runtime" / "claude-call-count"
+
+
+def take_call() -> int:
+    """Claude 실행(`claude` 프로세스 시작) 직전에 센다. 상한에 닿으면 멈춘다."""
+    COUNTER.parent.mkdir(parents=True, exist_ok=True)
+    used = int(COUNTER.read_text()) if COUNTER.exists() else 0
+    if used >= RECOLLECT_CALL_LIMIT:
+        raise SystemExit(f"claude call limit {RECOLLECT_CALL_LIMIT} reached")
+    COUNTER.write_text(str(used + 1))
+    return used + 1
+
+
+def parent_tool_events(events: list[dict]) -> int:
+    return sum(
+        1
+        for event in events
+        if event.get("direction") == "in"
+        and event.get("message", {}).get("parent_tool_use_id")
+    )
 
 
 def command_version(name: str) -> dict:
@@ -303,25 +326,58 @@ def codex_trial(condition: str, trial_number: int, cleaned: bool) -> dict:
     )
 
 
+def subagent_bash_events(events: list[dict]) -> int:
+    """하위 에이전트(parent_tool_use_id가 있는 메시지)가 낸 Bash 호출 수."""
+    count = 0
+    for event in events:
+        message = event.get("message", {})
+        if event.get("direction") != "in" or not message.get("parent_tool_use_id"):
+            continue
+        content = (message.get("message") or {}).get("content")
+        if isinstance(content, list):
+            count += sum(
+                1
+                for item in content
+                if item.get("type") == "tool_use" and item.get("name") == "Bash"
+            )
+    return count
+
+
 def claude_trial(
-    condition: str, trial_number: int, resume_env: bool, task: bool = False
+    condition: str,
+    trial_number: int,
+    resume_env: bool,
+    task: bool = False,
+    default_login: bool = False,
 ) -> dict:
     trial_id = f"claude-{condition.replace('.', '-')}-{trial_number}"
     events_path, done_path = marker_paths(trial_id)
     session_id = str(uuid.uuid4())
-    config = setup_claude_config(trial_id)
+    work = claude_work_dir(trial_id) if default_login else None
+    config = None if default_login else setup_claude_config(trial_id)
+    if default_login:
+        take_call()
     first = ClaudeDriver(
-        session_id, config, resume=False, resume_env=resume_env, task=task
+        session_id, config, resume=False, resume_env=resume_env, task=task, work=work
     )
     first_init = False
     first_stderr = ""
     try:
         task_text = (
-            "Use the Task tool to start exactly one subagent, and tell it to"
+            (
+                "Use the Agent tool (also called Task) to start exactly one"
+                " subagent, and tell it to"
+                if default_login
+                else "Use the Task tool to start exactly one subagent, and tell it to"
+            )
             if task
             else "Run Bash and"
         )
-        first.send_user(marker_prompt(events_path, done_path, trial_id, task_text))
+        first.send_user(
+            marker_prompt(
+                events_path, done_path, trial_id, task_text, absolute=default_login
+            )
+        )
         deadline = time.monotonic() + MARKER_WAIT_SECONDS
         while (
             time.monotonic() < deadline
@@ -340,10 +396,13 @@ def claude_trial(
 
     initial_counts = marker_counts(events_path, done_path)
     resumed = None
+    if default_login:
+        take_call()
     second = ClaudeDriver(
-        session_id, config, resume=True, resume_env=resume_env, task=task
+        session_id, config, resume=True, resume_env=resume_env, task=task, work=work
     )
     second_init = False
+    resume_alive = False
     second_stderr = ""
     try:
         deadline = time.monotonic() + POST_RESUME_WAIT_SECONDS
@@ -355,10 +414,17 @@ def claude_trial(
                     second.allow_control_request(message)
         final_counts = marker_counts(events_path, done_path)
         resumed = final_counts["start"] > initial_counts["start"]
+        resume_alive = second.proc.poll() is None
     finally:
         second_stderr = second.close()
 
     final_counts = marker_counts(events_path, done_path)
+    child_bash = subagent_bash_events(first.events)
+    # 기본 로그인 재수집: 재개 process가 init 없이 관찰 구간 내내 살아 있고 stderr가 비어 있으면
+    # 세션을 열고 아무것도 하지 않은 것으로 본다. Task 탐색은 하위 에이전트 Bash가 있어야 유효하다.
+    observed_ok = first_init and (second_init or (resume_alive and not second_stderr))
+    if default_login and task and child_bash == 0:
+        resumed = None
     CALLS["claude"] += model_call_count(first.events, "claude") + model_call_count(
         second.events, "claude"
     )
@@ -372,6 +438,9 @@ def claude_trial(
                 "initialised": first_init,
                 "resume_initialised": second_init,
                 "resume_env_present": resume_env,
+                "default_login": default_login,
+                "resume_alive_at_end": resume_alive,
+                "initial_subagent_bash": child_bash,
                 "initial_counts": initial_counts,
                 "final_counts": final_counts,
                 "event_summary_initial": event_summary(first.events),
@@ -384,7 +453,11 @@ def claude_trial(
         f"claude.{condition}",
         "claude",
         CLAUDE_MODEL,
-        request_result="observed" if first_init and second_init else "error_or_timeout",
+        request_result=(
+            "observed"
+            if (observed_ok if default_login else first_init and second_init)
+            else "error_or_timeout"
+        ),
         marker_start_count=final_counts["start"],
         marker_complete_count=final_counts["complete"],
         marker_touch_count=final_counts["touch"],
@@ -393,9 +466,73 @@ def claude_trial(
         session_id=session_id,
         resume_env_present=resume_env,
         task_subagent=task,
+        default_login=default_login,
+        resume_process_alive=resume_alive,
+        resume_init_event=second_init,
+        initial_subagent_bash=child_bash,
+        resume_parent_tool_events=parent_tool_events(second.events),
+        resume_reason=next(
+            (
+                event["message"].get("resume_reason")
+                for event in second.events
+                if event.get("direction") == "in"
+                and event.get("message", {}).get("resume_reason")
+            ),
+            None,
+        ),
         model_calls=model_call_count(first.events, "claude")
         + model_call_count(second.events, "claude"),
         private_log=log,
+    )
+
+
+def recollect_claude() -> None:
+    """공식 CLI 기본 로그인으로 Claude 본 조건 6회와 Task 탐색 3회를 다시 수집한다."""
+    RAW.mkdir(parents=True, exist_ok=True)
+    path = RAW / f"crash-resume-{RUN_ID}.jsonl"
+    if path.exists():
+        path.unlink()
+    plan = [
+        ("resume-env-present", True, False),
+        ("resume-env-absent", False, False),
+        ("task-subagent", False, True),
+    ]
+    if "--only" in sys.argv:
+        keep = sys.argv[sys.argv.index("--only") + 1].split(",")
+        plan = [item for item in plan if item[0] in keep]
+    for condition, enabled, task in plan:
+        for trial in range(1, 4):
+            value = claude_trial(
+                condition, trial, enabled, task=task, default_login=True
+            )
+            value["recollect_of"] = "20261003T085117Z-0e500f0"
+            with path.open("a", encoding="utf-8", newline="\n") as stream:
+                stream.write(
+                    json.dumps(
+                        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                    )
+                    + "\n"
+                )
+    env_path = ROOT / "env.json"
+    env = json.loads(env_path.read_text(encoding="utf-8"))
+    runs = env.get("claude_recollect", [])
+    if isinstance(runs, dict):
+        runs = [runs]
+    runs.append({
+        "run_id": RUN_ID,
+        "ts_utc": utc_now(),
+        "version": command_version("claude"),
+        "model": CLAUDE_MODEL,
+        "login": "공식 CLI 기본 로그인(CLAUDE_CONFIG_DIR 없음, credentials 링크 없음)",
+        "cwd": ".runtime/claude-work/<trial>",
+        "claude_launches_cumulative": int(COUNTER.read_text()),
+        "launch_limit": RECOLLECT_CALL_LIMIT,
+        "model_calls": CALLS["claude"],
+        "conditions": [item[0] for item in plan],
+    })
+    env["claude_recollect"] = runs
+    env_path.write_text(
+        json.dumps(env, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
 
 
@@ -445,4 +582,7 @@ def collect() -> None:
 
 
 if __name__ == "__main__":
-    collect()
+    if "--claude-default-login" in sys.argv:
+        recollect_claude()
+    else:
+        collect()
