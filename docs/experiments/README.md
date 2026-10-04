@@ -29,3 +29,4 @@
 | [continuation-judgment-korean](continuation-judgment-korean/report.md) | 한국어 이어 가기 판단과 직전 작업 정보의 효과 | [router](../design/router.md), [입력 처리](../design/input-handling.md) | H1 채택: 0.80 이진 정확도 차이 +51.4%p [41.2, 57.4], 탐색 후보 A·B 0.50, 새 작업 오접합 70.8%·52.8%로 운영 채택 보류 |
 | [continuation-misjoin](continuation-misjoin/report.md) | 이어 가기 판단의 새 작업 오접합 줄이기 | [router](../design/router.md), [입력 처리](../design/input-handling.md) | H1·H2 기각: 0.80 재현율 37.1%·29.3%, 탐색 B1 0.50 오접합 4.2% [1.4, 11.5]·재현율 75.7%, 운영 채택 보류 |
 | [constraint-relation](constraint-relation/report.md) | 후보를 줄인 대체·해제 판단 | [제약](../design/constraints.md) | H1·H2 기각: 대체 정밀도 1.6%·0.0%, 사용자 선택 권고 |
+| [constraint-cancel-request](constraint-cancel-request/report.md) | 등록 기록을 본 사용자의 해제 요청과 대상 판단 | [제약](../design/constraints.md), [router](../design/router.md) | H1 정밀도 채택·재현율 보류, H2~H4 보류, H5 채택: 선택형 결합 정확도 +5.7%p [3.0, 8.4], 부분·조건부 영구 해제 위험으로 자동 기준값 보류 |
