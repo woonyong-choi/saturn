@@ -104,7 +104,7 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 - 훅 명령은 engine 실행 파일의 `hook pre-tool-use --home <Saturn 홈>`이고 모든 도구에 건다(초안). 이 명령은 engine 잠금과 소켓을 열지 않고 판정만 하고 끝난다. 훅은 provider 자식 프로세스에서 짧게 실행되기 때문이다. 막는 명령은 `security`의 `find-generic-password`, `find-internet-password`, `dump-keychain`, `export`이고, 막는 경로는 `~/.saturn/router.key`, `~/Library/Keychains/`, `/Library/Keychains/` 아래다(초안). 셸 연결 기호로 나뉜 부분마다 보고, 경로는 심볼릭 링크를 푼 뒤 비교한다.
 - 훅 입력은 Claude Code PreToolUse 규격의 stdin JSON(`tool_name`, `tool_input`, `cwd`)이다. `Bash`는 `command`를 명령으로, `Read`·`Edit`·`MultiEdit`·`Write`·`NotebookRead`·`NotebookEdit`·`Glob`·`Grep`·`LS`는 경로 필드를 경로로 판정하고, 상대 경로는 `cwd` 기준으로 바꾼다. 그 밖의 도구는 판정하지 않는다.
 - 훅 출력은 막을 때 stdout에 `hookSpecificOutput`(`permissionDecision: "deny"`와 이유 한 줄)을 쓰고 종료 코드 0으로 끝난다. 허용할 때는 아무것도 쓰지 않고 종료 코드 0으로 끝내 사용자의 다른 훅이 이어서 판정하게 한다. 입력이 JSON이 아니거나 `tool_name`이 없으면 stderr에 이유를 쓰고 종료 코드 2로 끝낸다(초안). 판정할 수 없는 호출을 통과시키지 않기 위해서다.
-- 훅이 키 저장소 접근을 실제로 막는지는 [#3](https://github.com/woonyong-choi/saturn/issues/3), subagent까지 적용되는지는 [#23](https://github.com/woonyong-choi/saturn/issues/23) 실험으로 확인한다.
+- Claude Code 2.1.288에서 Saturn 훅은 Bash로 쓴 `security find-generic-password` 조회를 요청이 호스트에 오기 전에 막았고, 전경과 백그라운드 subagent의 같은 조회도 막았다(각 3/3). 훅 입력에는 subagent 호출에 `agent_id`와 `agent_type`이 실린다. 중첩 subagent의 조회도 훅 기록에서 3/3 막혔지만 그 호출이 스트림에는 1/3만 보였다. 반면 `sh -c "/usr/bin/security find-generic-password ..."`는 3/3 막지 못했고 값이 도구 결과에 나왔다. `secrets/hook.rs` 133~146행이 첫 낱말과 첫 비옵션 낱말로 판정하는데 `sh`가 19행의 `COMMAND_WRAPPERS`에 없어서로 읽힌다(코드 읽기, 따로 실행해 확인하지 않음). 셸을 거치는 우회를 막는 수정은 아직 없다. Codex 훅은 재지 않았다([#3](https://github.com/woonyong-choi/saturn/issues/3), [#23](https://github.com/woonyong-choi/saturn/issues/23), [실험](../experiments/claude-provider-behavior/report.md)).
 
 ### 전송
 
@@ -137,8 +137,8 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 | router 키는 기록 저장소, 로그, 오류 출력에 남지 않는다. | 키를 넣은 호출과 오류를 만든 뒤 저장소와 출력에 키 문자열이 없는지 확인한다. |
 | 키체인에 직접 저장한 키는 확인 창 없이 읽히지 않는다. | [#2](https://github.com/woonyong-choi/saturn/issues/2) 실험으로 확인 창 없이 읽는 경로를 확인한다. |
 | engine 실행 파일은 생성한 훅 명령(`hook pre-tool-use`)을 받아 허용과 거부를 훅 규격의 출력과 종료 코드로 돌려준다. | `saturn-terminal/engine/tests/key_hook.rs`의 `hook_command_denies_key_store_access`, `hook_command_allows_ordinary_calls_without_output`, `hook_command_blocks_unreadable_input_with_exit_code_2`, `hook_command_leaves_saturn_home_untouched` |
-| Saturn 소유 PreToolUse 훅은 키 저장소 접근을 막는다. | [#3](https://github.com/woonyong-choi/saturn/issues/3) 실험으로 훅의 차단을 확인한다. |
-| 훅은 subagent의 도구 호출에도 적용된다. | [#23](https://github.com/woonyong-choi/saturn/issues/23) 실험으로 전경, 백그라운드, 중첩 subagent에 훅이 걸리는지 확인한다. |
+| Saturn 소유 PreToolUse 훅은 키 저장소 접근을 막는다. | Claude 직접 명령은 [실험](../experiments/claude-provider-behavior/report.md)에서 3/3 막혔고 `sh -c` 감싼 명령은 막지 못했다. Codex는 [#3](https://github.com/woonyong-choi/saturn/issues/3)에서 확인한다. |
+| 훅은 subagent의 도구 호출에도 적용된다. | Claude 전경, 백그라운드, 중첩 subagent의 조회가 [실험](../experiments/claude-provider-behavior/report.md)에서 훅에 막혔다. Codex는 [#23](https://github.com/woonyong-choi/saturn/issues/23)에서 확인한다. |
 
 ## 단점
 
