@@ -1369,6 +1369,7 @@ mod tests {
     #[test]
     fn board_counts_every_other_kind_in_a_fixed_order() {
         let (mut state, now) = three_running_three_queued();
+        input_at(&mut state, 9, 'F', InputState::Judging, "", now);
         task(&mut state, 5, 'E', TaskState::Held, now);
         state.apply_alert(Alert::RouterPaused);
         state.training = Some(TrainingProgress {
@@ -1378,11 +1379,11 @@ mod tests {
             tokens: 0,
         });
 
-        let text = board_text(&state, now, Lang::Ko).unwrap();
+        let text = board_text(&state, now + Duration::from_secs(1), Lang::Ko).unwrap();
 
         assert_eq!(
             text,
-            "⠙ [A] 작업 중 · 실행 2개 더 · 학습 1 · 대기 3 · 보류 1 · 알림 1"
+            "⠙ [A] 작업 중 · 실행 2개 더 · 판단 1 · 학습 1 · 대기 3 · 보류 1 · 알림 1"
         );
     }
 
