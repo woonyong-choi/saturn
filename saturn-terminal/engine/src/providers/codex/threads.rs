@@ -4,8 +4,8 @@ use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::ProviderSessionId;
 use serde_json::Value;
 
-use super::ThreadState;
 use super::convert::subagent_id;
+use super::{PendingApproval, ThreadState};
 use crate::providers::AppliedSettings;
 
 /// 한꺼번에 쥐어 둘 부모를 모르는 thread 수. 넘으면 가장 오래된 thread부터 버린다.
@@ -13,36 +13,107 @@ pub(super) const HELD_THREADS: usize = 8;
 /// thread 하나에서 쥐어 둘 알림 수. 넘으면 가장 오래된 알림부터 버린다.
 pub(super) const HELD_PER_THREAD: usize = 64;
 
-/// 부모 관계가 아직 확인되지 않은 thread의 알림을 한도 안에서 쥐어 둔다. codex-cli 0.158.0은 자식의 첫 알림을
-/// 부모의 `spawnAgent` 완료 항목보다 먼저 보낸다. 관계가 확인되면 받은 순서대로 한 번만 꺼내 처리하고, 끝내
-/// 확인되지 않는 thread의 알림은 한도에서 밀려나 버려진다.
+/// 쥐어 둔 항목 하나. 알림과 서버 요청을 받은 순서대로 한 줄에 둔다.
+#[derive(Debug, Clone)]
+pub(super) enum Held {
+    Notice {
+        method: String,
+        params: Value,
+    },
+    /// 답을 기다리는 서버 요청. `id`는 응답에 그대로 돌려줘야 한다.
+    Request {
+        method: String,
+        id: Value,
+        params: Value,
+    },
+}
+
+/// 부모 관계가 아직 확인되지 않은 thread의 알림과 서버 요청을 한도 안에서 쥐어 둔다. codex-cli 0.158.0은 자식의 첫
+/// 알림을 부모의 `spawnAgent` 완료 항목보다 먼저 보낸다. 관계가 확인되면 받은 순서대로 한 번만 꺼내 처리하고, 끝내
+/// 확인되지 않는 thread의 항목은 한도에서 밀려난다. 밀려난 서버 요청은 응답 없이 두면 provider가 멈추므로
+/// `dropped`에 모아 호출자가 거절 응답을 보낸다.
 #[derive(Debug, Default)]
 pub(super) struct HeldEvents {
     /// 오래된 순서.
     order: Vec<ProviderSessionId>,
-    held: HashMap<ProviderSessionId, Vec<(String, Value)>>,
+    held: HashMap<ProviderSessionId, Vec<Held>>,
+    /// 다시 처리하다 올린 승인과 입력 요청. 호출자가 `approvals`에 넣는다.
+    released: Vec<(String, PendingApproval)>,
+    /// 한도에서 밀려난 서버 요청.
+    dropped: Vec<Held>,
 }
 
 impl HeldEvents {
     pub(super) fn hold(&mut self, thread: &ProviderSessionId, method: &str, params: &Value) {
+        self.push(
+            thread,
+            Held::Notice {
+                method: method.to_owned(),
+                params: params.clone(),
+            },
+        );
+    }
+
+    pub(super) fn hold_request(
+        &mut self,
+        thread: &ProviderSessionId,
+        method: &str,
+        id: &Value,
+        params: &Value,
+    ) {
+        self.push(
+            thread,
+            Held::Request {
+                method: method.to_owned(),
+                id: id.clone(),
+                params: params.clone(),
+            },
+        );
+    }
+
+    fn push(&mut self, thread: &ProviderSessionId, item: Held) {
         if !self.held.contains_key(thread) {
             if self.order.len() >= HELD_THREADS {
                 let oldest = self.order.remove(0);
-                self.held.remove(&oldest);
+                self.drop_all(&oldest);
             }
             self.order.push(thread.clone());
         }
         let notes = self.held.entry(thread.clone()).or_default();
         if notes.len() >= HELD_PER_THREAD {
-            notes.remove(0);
+            let evicted = notes.remove(0);
+            if matches!(evicted, Held::Request { .. }) {
+                self.dropped.push(evicted);
+            }
         }
-        notes.push((method.to_owned(), params.clone()));
+        notes.push(item);
     }
 
-    /// 쥐어 둔 알림을 받은 순서대로 꺼내고 비운다.
-    pub(super) fn take(&mut self, thread: &ProviderSessionId) -> Vec<(String, Value)> {
+    fn drop_all(&mut self, thread: &ProviderSessionId) {
+        let evicted = self.held.remove(thread).unwrap_or_default();
+        self.dropped.extend(
+            evicted
+                .into_iter()
+                .filter(|item| matches!(item, Held::Request { .. })),
+        );
+    }
+
+    /// 쥐어 둔 항목을 받은 순서대로 꺼내고 비운다.
+    pub(super) fn take(&mut self, thread: &ProviderSessionId) -> Vec<Held> {
         self.order.retain(|held| held != thread);
         self.held.remove(thread).unwrap_or_default()
+    }
+
+    pub(super) fn release(&mut self, request_id: String, pending: PendingApproval) {
+        self.released.push((request_id, pending));
+    }
+
+    /// 다시 처리하다 올라온 요청과 한도에서 밀려난 요청을 꺼낸다.
+    pub(super) fn drain_requests(&mut self) -> (Vec<(String, PendingApproval)>, Vec<Held>) {
+        (
+            std::mem::take(&mut self.released),
+            std::mem::take(&mut self.dropped),
+        )
     }
 }
 

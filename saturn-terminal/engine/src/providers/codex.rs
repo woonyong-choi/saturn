@@ -91,6 +91,9 @@ const PERMISSIONS_METHOD: &str = "item/permissions/requestApproval";
 /// `ProviderSessionId`가 아니라 `request_id`로 찾는다.
 type Approvals = Arc<Mutex<HashMap<String, PendingApproval>>>;
 
+/// app-server의 입력. 쓰는 쪽(연결과 읽기 작업)이 나눠 쓰므로 한 번에 한 줄씩 쓴다.
+type Stdin = Arc<tokio::sync::Mutex<ChildStdin>>;
+
 /// `Ok`는 `result`, `Err`는 JSON-RPC `error` 객체.
 type RpcReply = oneshot::Sender<Result<serde_json::Value, serde_json::Value>>;
 
@@ -165,7 +168,7 @@ impl ThreadState {
 pub(crate) struct CodexClient {
     supervisor: Supervisor,
     group: ProcessGroupId,
-    stdin: ChildStdin,
+    stdin: Stdin,
     next_request_id: u64,
     /// 읽기 작업이 `id`로 찾아 결과를 넘긴다.
     pending: Pending,

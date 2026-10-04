@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 use super::input::{self, InputKind};
 use super::permission::{call_of, file_change_paths};
-use super::threads::{HeldEvents, close_child, register_child, register_spawned};
+use super::threads::{Held, HeldEvents, close_child, register_child, register_spawned};
 use super::{
     APPROVAL_METHODS, ELICITATION_METHOD, PERMISSIONS_METHOD, PendingApproval, PendingInput,
     ThreadState, USER_INPUT_METHOD, value_text,
@@ -35,8 +35,10 @@ pub(super) fn model_info(entry: &Value) -> Option<ModelInfo> {
     })
 }
 
-/// 변환하는 알림 이름. 부모 관계를 모르는 thread의 알림 가운데 이 알림만 쥐어 둔다.
-const CONVERTED_METHODS: [&str; 7] = [
+/// 변환하는 알림 이름. 부모 관계를 모르는 thread의 알림 가운데 이 알림만 쥐어 둔다. `thread/closed`도 쥐어 두었다가
+/// 자식을 등록한 직후 처리해, 등록 전에 닫힌 자식이 끝나지 않은 채 남지 않게 한다.
+const CONVERTED_METHODS: [&str; 8] = [
+    "thread/closed",
     "turn/started",
     "turn/completed",
     "item/agentMessage/delta",
@@ -75,7 +77,7 @@ pub(super) fn convert_notification(
         return Vec::new();
     };
     let thread = ProviderSessionId(thread_id.to_owned());
-    if method == "thread/closed" {
+    if method == "thread/closed" && threads.contains_key(&thread) {
         return close_child(threads, &thread);
     }
     if !threads.contains_key(&thread) {
@@ -101,10 +103,23 @@ fn replay_held(
     held: &mut HeldEvents,
     child: &ProviderSessionId,
 ) -> Vec<ProviderEvent> {
-    held.take(child)
-        .into_iter()
-        .flat_map(|(method, params)| convert_notification(threads, held, &method, &params))
-        .collect()
+    let mut events = Vec::new();
+    for item in held.take(child) {
+        match item {
+            Held::Notice { method, params } => {
+                events.extend(convert_notification(threads, held, &method, &params));
+            }
+            Held::Request { method, id, params } => {
+                if let Some((request_id, pending, event)) =
+                    build_request(threads, &method, &id, &params)
+                {
+                    held.release(request_id, pending);
+                    events.push(event);
+                }
+            }
+        }
+    }
+    events
 }
 
 fn convert_known(
@@ -266,21 +281,55 @@ fn on_settings_updated(
 pub(super) fn convert_server_request(
     threads: &HashMap<ProviderSessionId, ThreadState>,
     approvals: &mut HashMap<String, PendingApproval>,
+    held: &mut HeldEvents,
     method: &str,
     id: &Value,
     params: &Value,
 ) -> Vec<ProviderEvent> {
-    if let Some(kind) = input_kind(method, params) {
-        return convert_input_request(threads, approvals, kind, id, params)
-            .into_iter()
-            .collect();
+    if !is_request_method(method, params) {
+        return Vec::new();
     }
-    let Some((_, summary)) = APPROVAL_METHODS.iter().find(|(name, _)| *name == method) else {
+    if let Some(thread) = request_thread(params)
+        && !threads.contains_key(&thread)
+    {
+        // 자식이 부모의 `spawnAgent` 완료 항목보다 먼저 물은 요청이다. 응답 없이 버리면 provider가 멈추므로 쥐어 둔다
+        held.hold_request(&thread, method, id, params);
         return Vec::new();
-    };
-    let Some(state) = thread_of_request(threads, params) else {
-        return Vec::new();
-    };
+    }
+    build_request(threads, method, id, params)
+        .map(|(request_id, pending, event)| {
+            approvals.insert(request_id, pending);
+            event
+        })
+        .into_iter()
+        .collect()
+}
+
+/// 이 연결이 사용자에게 올리는 서버 요청(승인, 입력 요청)인지.
+fn is_request_method(method: &str, params: &Value) -> bool {
+    input_kind(method, params).is_some() || APPROVAL_METHODS.iter().any(|(name, _)| *name == method)
+}
+
+/// 요청이 속한 thread. `threadId`, 없으면 `conversationId`.
+fn request_thread(params: &Value) -> Option<ProviderSessionId> {
+    params["threadId"]
+        .as_str()
+        .or_else(|| params["conversationId"].as_str())
+        .map(|id| ProviderSessionId(id.to_owned()))
+}
+
+/// 등록된 thread의 요청을 올릴 이벤트와 답을 기다릴 기록으로 바꾼다. 읽을 수 없는 요청이면 `None`.
+pub(super) fn build_request(
+    threads: &HashMap<ProviderSessionId, ThreadState>,
+    method: &str,
+    id: &Value,
+    params: &Value,
+) -> Option<(String, PendingApproval, ProviderEvent)> {
+    if let Some(kind) = input_kind(method, params) {
+        return convert_input_request(threads, kind, id, params);
+    }
+    let (_, summary) = APPROVAL_METHODS.iter().find(|(name, _)| *name == method)?;
+    let state = thread_of_request(threads, params)?;
     let summary = params["command"]
         .as_str()
         .map(|command| format!("{summary}: {command}"))
@@ -291,28 +340,26 @@ pub(super) fn convert_server_request(
         })
         .unwrap_or_else(|| (*summary).to_owned());
     let request_id = value_text(id).unwrap_or_default();
-    approvals.insert(
-        request_id.clone(),
-        PendingApproval {
-            id: id.clone(),
-            method: method.to_owned(),
-            available: params["availableDecisions"].as_array().map(|decisions| {
-                decisions
-                    .iter()
-                    .filter_map(|decision| decision.as_str().map(str::to_owned))
-                    .collect()
-            }),
-            permissions: params["permissions"].clone(),
-            input: None,
-        },
-    );
-    vec![ProviderEvent::PermissionRequested {
+    let pending = PendingApproval {
+        id: id.clone(),
+        method: method.to_owned(),
+        available: params["availableDecisions"].as_array().map(|decisions| {
+            decisions
+                .iter()
+                .filter_map(|decision| decision.as_str().map(str::to_owned))
+                .collect()
+        }),
+        permissions: params["permissions"].clone(),
+        input: None,
+    };
+    let event = ProviderEvent::PermissionRequested {
         agent: state.agent,
-        request_id,
+        request_id: request_id.clone(),
         summary,
         reason: params["reason"].as_str().unwrap_or_default().to_owned(),
         call: call_of(method, params, &state.file_changes),
-    }]
+    };
+    Some((request_id, pending, event))
 }
 
 /// 승인이 아닌 elicitation과 에이전트 질문.
@@ -340,35 +387,62 @@ pub(super) fn thread_of_request<'a>(
 /// 읽을 수 없는 요청(모르는 `mode`, 모르는 thread)은 올리지 않는다.
 pub(super) fn convert_input_request(
     threads: &HashMap<ProviderSessionId, ThreadState>,
-    approvals: &mut HashMap<String, PendingApproval>,
     kind: InputKind,
     id: &Value,
     params: &Value,
-) -> Option<ProviderEvent> {
+) -> Option<(String, PendingApproval, ProviderEvent)> {
     let state = thread_of_request(threads, params)?;
     let request = match kind {
         InputKind::Elicitation => input::elicitation_request(params)?,
         InputKind::UserInput => input::user_input_request(params),
     };
     let request_id = value_text(id).unwrap_or_default();
-    approvals.insert(
-        request_id.clone(),
-        PendingApproval {
-            id: id.clone(),
-            method: request_method(kind).to_owned(),
-            available: None,
-            permissions: Value::Null,
-            input: Some(PendingInput {
-                kind,
-                request: request.clone(),
-            }),
-        },
-    );
-    Some(ProviderEvent::InputRequested {
+    let pending = PendingApproval {
+        id: id.clone(),
+        method: request_method(kind).to_owned(),
+        available: None,
+        permissions: Value::Null,
+        input: Some(PendingInput {
+            kind,
+            request: request.clone(),
+        }),
+    };
+    let event = ProviderEvent::InputRequested {
         agent: state.agent,
-        request_id,
+        request_id: request_id.clone(),
         request,
-    })
+    };
+    Some((request_id, pending, event))
+}
+
+/// 한도에서 밀려나 처리하지 못한 요청에 보낼 거절 응답. 승인은 거절 결정으로, 입력 요청은 오류 응답으로 답해
+/// provider가 답을 기다리며 멈추지 않게 한다. 쥐어 둔 요청이 아니면 `None`.
+pub(super) fn rejection(item: &Held) -> Option<Value> {
+    let Held::Request { method, id, params } = item else {
+        return None;
+    };
+    if input_kind(method, params).is_some() {
+        return Some(json!({
+            "id": id,
+            "error": { "code": -32000, "message": "the thread of this request is not known" },
+        }));
+    }
+    let pending = PendingApproval {
+        id: id.clone(),
+        method: method.clone(),
+        available: params["availableDecisions"].as_array().map(|decisions| {
+            decisions
+                .iter()
+                .filter_map(|decision| decision.as_str().map(str::to_owned))
+                .collect()
+        }),
+        permissions: params["permissions"].clone(),
+        input: None,
+    };
+    Some(json!({
+        "id": id,
+        "result": approval_result(&pending, &PermissionAnswer::Deny { note: None }),
+    }))
 }
 
 pub(super) fn request_method(kind: InputKind) -> &'static str {

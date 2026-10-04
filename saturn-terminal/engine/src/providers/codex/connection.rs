@@ -14,7 +14,7 @@ use super::stream::{log_stderr, read_loop};
 use super::{
     Approvals, COMMAND_DESCRIPTION_PREFIX, COMMAND_METHODS, CodexClient, EVENT_BUFFER,
     MCP_READY_POLL, MCP_READY_TIMEOUT, OPEN_METHODS, OPEN_REPLY_TIMEOUT, Pending, REPLY_TIMEOUT,
-    Threads, error_message, lock,
+    Stdin, Threads, error_message, lock,
 };
 use crate::processes::{ProcessSpec, Supervisor};
 use crate::providers::{LaunchSpec, UserProviderConfig};
@@ -51,8 +51,10 @@ impl CodexClient {
         let pending = Pending::default();
         let threads = Threads::default();
         let approvals = Approvals::default();
+        let stdin: Stdin = Arc::new(tokio::sync::Mutex::new(spawned.io.stdin));
         tokio::spawn(read_loop(
             spawned.io.stdout,
+            Arc::clone(&stdin),
             Arc::clone(&pending),
             Arc::clone(&threads),
             Arc::clone(&approvals),
@@ -63,7 +65,7 @@ impl CodexClient {
         let mut client = Self {
             supervisor,
             group: spawned.group,
-            stdin: spawned.io.stdin,
+            stdin,
             next_request_id: 1,
             pending,
             threads,
@@ -189,8 +191,9 @@ impl CodexClient {
     pub(super) async fn write_line(&mut self, message: &Value) -> std::io::Result<()> {
         let mut line = message.to_string();
         line.push('\n');
-        self.stdin.write_all(line.as_bytes()).await?;
-        self.stdin.flush().await
+        let mut stdin = self.stdin.lock().await;
+        stdin.write_all(line.as_bytes()).await?;
+        stdin.flush().await
     }
 
     // cost: time O(t/p·s), heap O(s), stack O(1), io t/p
