@@ -252,6 +252,25 @@ mod tests {
     }
 
     #[test]
+    fn read_layer_accepts_read_rules() {
+        let layer =
+            parsed("[permission.read]\n\"/etc/*\" = \"allow\"\n\"/etc/shadow\" = \"deny\"\n");
+
+        let rules: Vec<(PermissionTool, &str, Verdict)> = layer
+            .rules
+            .iter()
+            .map(|rule| (rule.tool, rule.pattern.as_str(), rule.verdict))
+            .collect();
+        assert_eq!(
+            rules,
+            vec![
+                (PermissionTool::Read, "/etc/*", Verdict::Allow),
+                (PermissionTool::Read, "/etc/shadow", Verdict::Deny),
+            ]
+        );
+    }
+
+    #[test]
     fn read_layer_accepts_inline_table_and_dotted_keys() {
         let layer =
             parsed("permission.shell = { \"ls\" = \"allow\" }\npermission.edit = \"ask\"\n");

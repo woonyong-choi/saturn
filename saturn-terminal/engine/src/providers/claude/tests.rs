@@ -1075,7 +1075,30 @@ fn permission_call_reads_rule_tools_and_leaves_the_rest_to_the_user() {
         "mcp__docs__read"
     );
     assert_eq!(call("WebFetch", json!({ "url": "https://x" })), None);
-    assert_eq!(call("Read", json!({ "file_path": "/etc/hosts" })), None);
+}
+
+#[test]
+fn permission_call_reads_file_reading_tools_as_read_calls() {
+    let call = |tool: &str, input: Value| permission_call(tool, &input);
+    let read = |path: &str| PermissionCall {
+        tool: PermissionTool::Read,
+        target: String::new(),
+        paths: vec![path.to_owned()],
+    };
+
+    assert_eq!(
+        call("Read", json!({ "file_path": "/etc/hosts" })),
+        Some(read("/etc/hosts"))
+    );
+    assert_eq!(
+        call("Grep", json!({ "pattern": "x", "path": "/etc" })),
+        Some(read("/etc"))
+    );
+    assert_eq!(call("LS", json!({ "path": "/etc" })), Some(read("/etc")));
+    assert_eq!(
+        call("Glob", json!({ "pattern": "*.rs" })).unwrap().paths,
+        Vec::<String>::new()
+    );
 }
 
 #[test]

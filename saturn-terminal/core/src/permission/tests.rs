@@ -357,13 +357,13 @@ fn rules_verdict_ignores_mode_and_returns_none_without_a_match() {
 
 #[test]
 fn tool_and_verdict_names_round_trip() {
-    for name in ["shell", "edit", "mcp", "subagent"] {
+    for name in ["shell", "edit", "read", "mcp", "subagent"] {
         assert_eq!(tool_name(parse_tool(name).unwrap()), name);
     }
     for name in ["allow", "ask", "deny"] {
         assert_eq!(Verdict::parse(name).unwrap().name(), name);
     }
-    assert_eq!(parse_tool("read"), None);
+    assert_eq!(parse_tool("glob"), None);
     assert_eq!(Verdict::parse("maybe"), None);
 }
 
@@ -491,4 +491,60 @@ fn mode_edit_asks_for_edits_under_git_internals_but_not_other_dot_files() {
     }
     policy.rules = vec![rule(PermissionTool::Edit, "*/.git/config", Verdict::Allow)];
     assert_eq!(policy.decide(&edit("/work/.git/config")), Verdict::Allow);
+}
+
+fn read(path: &str) -> PermissionCall {
+    call(PermissionTool::Read, "", &[path])
+}
+
+#[test]
+fn read_rules_decide_by_path_and_default_to_asking_without_a_rule() {
+    let rules = vec![
+        rule(PermissionTool::Read, "/etc/*", Verdict::Allow),
+        rule(PermissionTool::Read, "/etc/shadow", Verdict::Deny),
+    ];
+    let policy = policy(Mode::Edit, rules);
+
+    assert_eq!(policy.decide(&read("/etc/hosts")), Verdict::Allow);
+    assert_eq!(policy.decide(&read("/etc/shadow")), Verdict::Deny);
+    assert_eq!(policy.decide(&read("/var/log/a")), Verdict::Ask);
+}
+
+#[test]
+fn read_without_a_rule_asks_in_every_mode_but_full() {
+    for (mode, expected) in [
+        (Mode::ReadOnly, Verdict::Ask),
+        (Mode::Ask, Verdict::Ask),
+        (Mode::Edit, Verdict::Ask),
+        (Mode::Full, Verdict::Allow),
+    ] {
+        assert_eq!(
+            policy(mode, Vec::new()).decide(&read("/etc/hosts")),
+            expected
+        );
+    }
+}
+
+#[test]
+fn read_rules_do_not_touch_edit_or_shell_calls() {
+    let policy = policy(
+        Mode::Edit,
+        vec![rule(PermissionTool::Read, "*", Verdict::Allow)],
+    );
+
+    assert_eq!(policy.decide(&edit("/etc/hosts")), Verdict::Ask);
+    assert_eq!(policy.decide(&shell("cat /etc/hosts")), Verdict::Allow);
+    assert_eq!(policy.decide(&shell("touch a")), Verdict::Ask);
+}
+
+#[test]
+fn always_allow_for_a_read_stores_the_path() {
+    let policy = policy(Mode::Edit, Vec::new());
+
+    let stored = policy.always_rules(&read("/etc/hosts"));
+
+    assert_eq!(
+        stored,
+        vec![rule(PermissionTool::Read, "/etc/hosts", Verdict::Allow)]
+    );
 }

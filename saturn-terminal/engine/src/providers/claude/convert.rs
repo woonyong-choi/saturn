@@ -131,6 +131,14 @@ pub(super) fn permission_call(tool: &str, input: &Value) -> Option<PermissionCal
             paths: path.into_iter().collect(),
         });
     }
+    if READ_TOOLS.contains(&tool) {
+        let path = text("file_path").or_else(|| text("path"));
+        return Some(PermissionCall {
+            tool: PermissionTool::Read,
+            target: String::new(),
+            paths: path.into_iter().collect(),
+        });
+    }
     if SUBAGENT_TOOLS.contains(&tool) {
         return Some(PermissionCall {
             tool: PermissionTool::Subagent,
