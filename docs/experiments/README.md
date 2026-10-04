@@ -31,3 +31,4 @@
 | [constraint-relation](constraint-relation/report.md) | 후보를 줄인 대체·해제 판단 | [제약](../design/constraints.md) | H1·H2 기각: 대체 정밀도 1.6%·0.0%, 사용자 선택 권고 |
 | [constraint-cancel-request](constraint-cancel-request/report.md) | 등록 기록을 본 사용자의 해제 요청과 대상 판단 | [제약](../design/constraints.md), [router](../design/router.md) | H1 정밀도 채택·재현율 보류, H2~H4 보류, H5 채택: 선택형 결합 정확도 +5.7%p [3.0, 8.4], 부분·조건부 영구 해제 위험으로 자동 기준값 보류 |
 | [continuation-newtask](continuation-newtask/report.md) | 새 작업 표본을 늘린 B1·B2 오접합 확인 | [router](../design/router.md), [입력 처리](../design/input-handling.md) | H1·H2 채택·보류: 새 작업 277턴, B1 0.50 오접합 1.4% [0.6, 3.7]%·재현율 69.7% |
+| [constraint-exception-judge](constraint-exception-judge/design.md) | 제약 해제·예외와 이어 가기의 Jev·Haiku 비교 | [제약](../design/constraints.md), [router](../design/router.md) | 측정 전 |
