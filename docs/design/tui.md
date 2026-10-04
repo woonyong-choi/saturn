@@ -141,7 +141,7 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 ### 피드백 질문
 
-피드백 질문은 입력 에코 다음 줄에 뜬다. 어떤 판단에서 묻는지는 [router 학습](router-training.md)의 확률 q 규칙을 따른다. 질문은 8초 안에 답이 없으면 사라진다. 사용자가 `2`(틀림)로 답했고 그 입력이 아직 보내지지 않았으면 바로 새 작업으로 실행할지 묻는 바로잡기 제안을 보인다. TUI가 붙어 있지 않은 동안에는 피드백 질문을 건너뛴다([engine 수명과 복구](engine-lifecycle.md)).
+피드백 질문은 입력 에코 다음 줄에 뜬다. 어떤 판단에서 묻는지는 [router 학습](router-training.md)의 확률 q 규칙을 따른다. 질문은 8초 안에 답이 없으면 사라진다. 사용자가 `2`(틀림)로 답했고 그 입력이 아직 보내지지 않았으면 바로 새 작업으로 실행할지 묻는 바로잡기 제안을 보인다. 두 질문의 선택지는 [선택지 키](#선택지-키) 규칙으로 고른다. `0`, `Esc`, 8초 경과로 닫은 피드백 질문은 선택 질문이라 다시 열지 않는다. TUI가 붙어 있지 않은 동안에는 피드백 질문을 건너뛴다([engine 수명과 복구](engine-lifecycle.md)).
 
 ### 허가 요청 창
 
@@ -174,15 +174,34 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 오류 | `무엇을 하지 못했습니다: 대상`, 합니다체 | `engine을 시작하지 못했습니다: {binary}` / `Failed to start engine: {binary}` |
 | 안내와 질문 | 안내는 `~하세요`, 질문은 `~나요?`/`~할까요?` | `숫자를 입력하세요`, `판단이 맞았나요?` |
 
+### 선택지 키
+
+화면에 뜬 선택지는 뜨는 동안 키를 가져간다. `↑`, `↓`로 고르고(처음과 끝은 돌아간다), `Enter`로 정하고, `Esc`로 닫는다. 고른 선택지 앞에 `›`가 붙는다. 선택지에 키가 가 있을 때만 숫자 키로도 바로 고른다. 닫으면 방향키는 입력창의 입력 기록 이동으로 돌아간다. Claude Code 권한 창과 같은 조작이다.
+
+- 선택지에 키가 가 있다는 것은 선택지가 떠 있고 입력창이 비어 있다는 뜻이다. 입력창에 글자나 붙여넣은 요소가 있거나 입력 기록 검색 중이면 키는 입력창이 받는다. 숫자 초안(`12`)을 쓰는 중에 `1`이 답으로 가지 않고, 초안을 쓰기 시작한 뒤에는 `Enter`가 초안을 제출한다. 선택지는 그대로 남고 입력창을 비우면 다시 키를 가져간다.
+- 입력창이 빈 채로 선택지가 떠 있으면 첫 글자로 친 숫자도 답으로 간다. 그 숫자를 초안으로 쓰려면 선택지를 `Esc`로 닫는다.
+- 선택지가 여럿이면 키를 받는 순서는 종료 확인 창, router 키 창과 폴더 설정 신뢰 창, 허가 요청 창, 입력 요청 창, 그 밖의 창과 화면, 명령 목록 팝업, 보류 닫기 확인, 바로잡기 제안, 피드백 질문이다. 위에 있는 것이 떠 있는 동안 아래 것은 키를 받지 않고 그대로 남는다.
+- 같은 규칙을 따르는 선택지: 피드백 질문(`1` 맞음, `2` 틀림, `0` 닫기), 바로잡기 제안(`1` 실행, `2` 그대로), 멈춤 확인 창, 종료 확인 창, 제약 확인 창, `/model` 창(`Enter`, `↑`, `↓`, `Esc`). 허가 요청 창은 `y`, `a`, `d`를 쓴다.
+- `Esc`로 닫은 바로잡기 제안은 입력이 아직 보내지지 않았으면 남아 있고, 인자 없이 `/feedback`을 실행하면 다시 열린다(첫 선택은 `[실행]`). 입력이 보내졌거나 취소되면 제안은 사라진다. 새 틀림 답이 나오면 새 제안이 앞 제안을 대신한다.
+- `[실행]`은 `RunAsNewTask`로 그 입력을 새 작업으로 보내고, `[그대로]`는 요청 없이 닫는다.
+
 ### 키
 
 | 키 | 동작 | 적용 영역 |
 |---|---|---|
 | `Ctrl+T` | 전체 기록 표시 | 모든 영역 |
 | `Ctrl+Z` | 화면 일시 중지, `fg` 뒤 복원 | 모든 영역 |
-| `0` | 피드백 질문 해제 | 대화 기록 |
-| `1` | 피드백 질문에 맞음 답, `/feedback 1`과 동일 | 대화 기록 |
-| `2` | 피드백 질문에 틀림 답, `/feedback 2`와 동일 | 대화 기록 |
+| `0` | 피드백 질문 해제 | 대화 기록(피드백 질문, 입력창이 빌 때) |
+| `1` | 피드백 질문에 맞음 답, `/feedback 1`과 동일 | 대화 기록(피드백 질문, 입력창이 빌 때) |
+| `2` | 피드백 질문에 틀림 답, `/feedback 2`와 동일 | 대화 기록(피드백 질문, 입력창이 빌 때) |
+| `↑`, `↓` | 선택지 이동 | 대화 기록(피드백 질문, 입력창이 빌 때) |
+| `Enter` | 고른 답 확정 | 대화 기록(피드백 질문, 입력창이 빌 때) |
+| `Esc` | 피드백 질문 닫기 | 대화 기록(피드백 질문, 입력창이 빌 때) |
+| `1` | 바로잡기 제안 `[실행]` | 대화 기록(바로잡기 제안, 입력창이 빌 때) |
+| `2` | 바로잡기 제안 `[그대로]` | 대화 기록(바로잡기 제안, 입력창이 빌 때) |
+| `↑`, `↓` | `[실행]`, `[그대로]` 이동 | 대화 기록(바로잡기 제안, 입력창이 빌 때) |
+| `Enter` | 고른 쪽 확정 | 대화 기록(바로잡기 제안, 입력창이 빌 때) |
+| `Esc` | 바로잡기 제안 접기, `/feedback`으로 다시 열기 | 대화 기록(바로잡기 제안, 입력창이 빌 때) |
 | `Enter` | 보류 닫기 확인에서 보류 종료 | 상태판 |
 | `Esc` | 보류 닫기 확인에서 보류 유지 | 상태판 |
 | `Enter` | 명령 목록에서 고른 명령의 전체 경로를 입력창에 기입, 값 목록에서 값 선택 | 팝업 |
@@ -326,8 +345,8 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `Codex의 MCP 서버를 쓸 수 없습니다 · 그 서버의 도구만 빠지고 입력은 그대로 보냅니다` | provider의 MCP 서버가 시작에 실패했거나 준비를 알 수 없어 그 서버의 도구를 쓸 수 없음. 대화 기록 알림이고 아래에 서버마다 `- 서버 이름 이유` 줄이 붙는다. 이유는 provider가 낸 원문이라 번역하지 않는다. 연결마다 첫 session을 연 뒤 한 번 보낸다. 영어는 `Codex MCP servers unavailable · Only their tools are missing, your input is sent as is` |
 | `Codex 다시 시작함 · 변경된 권한 설정을 적용했습니다` | 바뀐 권한 설정을 적용하려고 provider 연결을 다시 시작함(바로 또는 턴이 끝난 뒤). Claude도 같은 줄. 영어는 `Restarted Codex · Applied the changed permission settings` |
 | `이번 요청 · codex Token 4,120 · 라우터 3회 Token 9,870 · 2분 31초` | 모든 작업이 끝난 순간의 합계, provider별 토큰과 router 호출과 경과 |
-| `[A]에 이어서 보냄 · 판단이 맞았나요? (선택)  1 맞음  2 틀림  0 닫기` | 피드백 질문 |
-| `[B] 바로 새 작업으로 실행할까요? [실행] [그대로]` | 틀림 답 뒤 아직 보내지 않은 입력의 바로잡기 제안 |
+| `[A]에 이어서 보냄 · 판단이 맞았나요? (선택)  ›1 맞음  2 틀림  0 닫기` | 피드백 질문, `›`는 고른 답 |
+| `[B] 바로 새 작업으로 실행할까요? ›1 [실행]  2 [그대로]` | 틀림 답 뒤 아직 보내지 않은 입력의 바로잡기 제안, `›`는 고른 쪽 |
 | `채점할 판단 83 / 200건 · 200건이 쌓이면 실행할 수 있습니다` | 채점할 판단 부족으로 `/train` 실행 불가 |
 | `맥락 38K/200K` | 현재 활성 맥락 크기와 Saturn 기준 |
 | `맥락 미확인` | 맥락 크기 측정 불가 |
@@ -382,6 +401,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 패킷이 넘쳐 맥락 정리를 미루면 안내 한 줄과 제약 목록을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_context_deferred_lists_the_constraints` |
 | 패킷이 맥락 한도로 거절돼 멈추면 안내 한 줄을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_packet_overflow_tells_the_user_how_to_retry` |
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
+| 피드백 질문과 바로잡기 제안은 입력창이 빌 때만 키를 가져가 `↑`, `↓`, `Enter`, `Esc`와 숫자로 고르고, `[실행]`은 `RunAsNewTask`를 보내며, `Esc` 뒤 방향키는 입력 기록으로 돌아간다. 초안이 있으면 숫자가 답으로 가지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `correction_enter_runs_the_first_choice_as_a_new_task`, `correction_down_then_enter_keeps_the_input_as_it_is`, `correction_digits_pick_a_choice_while_the_composer_is_empty`, `correction_takes_the_arrow_keys_until_escape_gives_them_back_to_history`, `correction_closed_with_escape_opens_again_with_the_feedback_command`, `correction_goes_away_when_the_input_is_no_longer_unsent`, `a_number_draft_is_not_taken_as_a_feedback_answer`, `digits_after_a_draft_start_do_not_answer_the_feedback_question`, `feedback_arrows_and_enter_pick_an_answer`, `feedback_escape_closes_without_a_request_and_arrows_return_to_history` |
 | 닫으려 할 때 `engine`에 닫은 뒤의 처리를 먼저 묻고, 답이 오기 전에는 닫지 않으며 한 번 더 누르면 기다리지 않고 닫는다. | `saturn-terminal/tui/src/app/tests.rs`의 `quit_asks_the_engine_first_and_a_second_quit_closes_without_waiting`, `exit_plan_close_quits_without_a_line`, `exit_plan_nobody_asked_for_is_ignored` |
 | `Notice`와 종료 확인 창의 `계속 실행`은 닫은 뒤 터미널에 계속 실행 중인 작업 수와 다시 여는 방법을 한 줄로 남기고, 영어 문구가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_notice_quits_and_leaves_the_running_count_line`, `exit_plan_notice_line_is_translated`, `exit_confirm_continue_quits_and_leaves_the_running_count_line` |
 | 멈춤 확인 창은 `ConfirmStop` 대기 입력이 오면 뜨고 입력이 다른 상태가 되면 지워지며, 첫 선택과 `Esc`는 `대기`이고 `멈추고 실행`은 `AnswerStopConfirm`을 보낸다. 문구에 영어가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `stop_confirm_window_opens_for_the_asking_input_and_closes_when_it_moves_on`, `stop_confirm_enter_and_escape_answer_wait_and_down_enter_answers_stop`, `saturn-terminal/tui/src/view/stop_confirm.rs`의 `render_shows_the_input_and_both_choices` |
@@ -412,11 +432,9 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 - 상태판 최대 높이를 화면 높이 비율로 둘지, 고정 줄 수로 둘지, 상한을 두지 않을지 ([#51](https://github.com/woonyong-choi/saturn/issues/51))
 - 상태판 버튼을 `Shift+Tab` 진입과 방향키로 고를지, `/send`, `/cancel`, `/continue` 명령만 쓸지, 줄마다 번호 키를 줄지 ([#52](https://github.com/woonyong-choi/saturn/issues/52))
 - 짧게 끝나는 판단의 판단 줄을 생략할지, 항상 그릴지, 지연 표시와 최소 표시 시간을 둘지 ([#53](https://github.com/woonyong-choi/saturn/issues/53))
-- 피드백 질문의 숫자 키를 입력창이 비었을 때만 답으로 받을지, 항상 받을지, `/feedback` 명령으로만 받을지 ([#54](https://github.com/woonyong-choi/saturn/issues/54))
 - `/stop`이 진행 중인 `/train`도 멈출지, 학습 전용 중지 명령을 둘지, 학습 줄에 중지 버튼을 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 허가 거절 뒤 다르게 하라는 입력을 접두 초안으로 받을지, 창 안 입력칸으로 받을지, 일반 입력처럼 router에 맡길지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
 - plain 출력을 켜는 조건과 우선순위, 설정 키 이름을 무엇으로 할지 ([#57](https://github.com/woonyong-choi/saturn/issues/57))
 - 좁은 가로 폭에서 폭 구간별로 버튼과 칸을 줄일지, 줄 끝부터 말줄임할지, 버튼 대신 명령 안내를 보일지 ([#58](https://github.com/woonyong-choi/saturn/issues/58))
 - 빈 입력창에서 `←`로 작업 목록 화면을 열지, `/tasks`로만 열지, 다른 전용 키를 둘지 ([#59](https://github.com/woonyong-choi/saturn/issues/59))
-- 바로잡기 제안의 `[실행]`, `[그대로]`를 클릭으로 고를지, 숫자 키로 고를지, 명령으로만 고를지 ([#109](https://github.com/woonyong-choi/saturn/issues/109))
 - 위로 스크롤할 때 이전 기록 요청의 기준 위치를 `HistoryChunk`에 실을지, 항목마다 붙일지, engine이 기억할지 ([#110](https://github.com/woonyong-choi/saturn/issues/110))

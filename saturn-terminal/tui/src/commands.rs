@@ -138,6 +138,8 @@ pub(crate) enum SlashCommand {
     Continue { target: Option<TaskLabel> },
     /// `/feedback 1|2`, `1`이면 `true`.
     Feedback { correct: bool },
+    /// 인자 없는 `/feedback`, `Esc`로 닫은 바로잡기 제안을 다시 연다.
+    ReopenCorrection,
     /// `/tasks`
     Tasks,
     /// `/usage`. 범위는 화면에서 `d`, `w`로 바꾼다.
@@ -184,6 +186,7 @@ pub(crate) fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         "continue" => SlashCommand::Continue {
             target: parse_target("continue", &args)?,
         },
+        "feedback" if args.is_empty() => SlashCommand::ReopenCorrection,
         "feedback" => SlashCommand::Feedback {
             correct: parse_feedback(&args)?,
         },

@@ -267,11 +267,22 @@ impl App {
             KeyArea::Popup
         } else if self.chat.close_held_confirm.is_some() {
             KeyArea::StatusBoard
-        } else if self.chat.feedback.is_some() {
+        } else if self.choice_has_keys() && self.correction_open() {
+            KeyArea::Correction
+        } else if self.choice_has_keys() && self.chat.feedback.is_some() {
             KeyArea::Transcript
         } else {
             KeyArea::Composer
         }
+    }
+
+    /// 화면에 뜬 선택지는 입력창이 비어 있는 동안만 키를 가져간다. 초안을 쓰기 시작하면 숫자도 방향키도 입력창이 받는다.
+    fn choice_has_keys(&self) -> bool {
+        self.composer.is_empty() && self.composer.search().is_none()
+    }
+
+    fn correction_open(&self) -> bool {
+        self.chat.correction.as_ref().is_some_and(|c| c.open)
     }
 
     pub(crate) fn key_context(&self) -> KeyContext {
@@ -313,7 +324,11 @@ impl App {
         let ctx = self.key_context();
         match keys::map(area, key, ctx) {
             Some(action) => self.on_action(action, now),
-            None if matches!(area, KeyArea::Popup | KeyArea::Transcript) => {
+            None if matches!(
+                area,
+                KeyArea::Popup | KeyArea::Transcript | KeyArea::Correction
+            ) =>
+            {
                 match keys::map(KeyArea::Composer, key, ctx) {
                     Some(action) => self.on_composer_action(action),
                     None => Vec::new(),
@@ -487,6 +502,8 @@ impl App {
             }
             Action::FeedbackAnswer(correct) => return self.answer_feedback(Some(correct)),
             Action::FeedbackDismiss => return self.answer_feedback(None),
+            Action::CorrectionRun => return self.finish_correction(true),
+            Action::CorrectionKeep => return self.finish_correction(false),
             Action::ConfirmCloseHeld => return self.close_held(),
             Action::KeepHeld => {
                 self.chat.close_held_confirm = None;
@@ -507,6 +524,8 @@ impl App {
             KeyArea::StopConfirm => self.on_stop_confirm_action(action),
             KeyArea::ModelPicker => self.on_model_action(action),
             KeyArea::PruneWindow => self.on_prune_action(action),
+            KeyArea::Transcript => self.on_feedback_action(action),
+            KeyArea::Correction => self.on_correction_action(action),
             KeyArea::Popup => self.on_popup_action(action),
             _ => self.on_composer_action(action),
         }

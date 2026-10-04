@@ -294,6 +294,7 @@ impl App {
                 }
             }
         }
+        self.drop_stale_correction();
     }
 
     /// 멈출지 묻는 입력이 오면 창을 띄우고, 그 입력이 답을 받아 다른 상태가 되면(다른 TUI가 먼저 답한 경우 포함) 창을 지운다.
@@ -491,8 +492,13 @@ impl App {
             label,
             disposition,
             shown_at: now,
+            selected: 0,
         });
-        self.push_cell(TranscriptCell::Feedback { label, disposition });
+        self.push_cell(TranscriptCell::Feedback {
+            label,
+            disposition,
+            selected: 0,
+        });
     }
 
     fn on_settings_applied(

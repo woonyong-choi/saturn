@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use saturn_protocol::ids::TaskLabel;
+use saturn_protocol::ids::{InputId, TaskLabel};
 use saturn_protocol::rpc::{Request, UsageRange};
 use saturn_protocol::state::InputState;
 
@@ -11,6 +11,7 @@ use super::{App, Effect, Window};
 use crate::commands::{self, CommandError, SATURN_COMMANDS, SlashCommand};
 use crate::i18n::{self, Lang};
 use crate::keys::Action;
+use crate::state::CorrectionPrompt;
 use crate::view::composer::Composer;
 use crate::view::model_picker::ModelPicker;
 use crate::view::popup::{self, Popup, PopupItem, PopupKind};
@@ -303,6 +304,10 @@ impl App {
             SlashCommand::Cancel { target } => self.cancel_target(target),
             SlashCommand::Continue { target } => self.continue_target(target),
             SlashCommand::Feedback { correct } => return self.answer_feedback(Some(correct)),
+            SlashCommand::ReopenCorrection => {
+                self.reopen_correction();
+                None
+            }
             SlashCommand::Tasks => {
                 let folder = self.chat_folder.clone();
                 self.open_window(Window::TaskList(TaskList::for_folder(folder)));
@@ -404,16 +409,139 @@ impl App {
                 matches!(input.state, InputState::Judging | InputState::Queued)
             });
         if !correct && unsent {
-            self.push_cell(TranscriptCell::Correction {
-                label: feedback.label,
-            });
+            self.offer_correction(feedback.input, feedback.label);
         }
         vec![Effect::Send(Request::AnswerFeedback {
             judgment: feedback.judgment,
             correct,
         })]
     }
+
+    /// 피드백 질문의 선택지. `↑`, `↓`는 돌아가며 옮기고 `Enter`는 고른 답, `Esc`는 닫기다.
+    pub(super) fn on_feedback_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(feedback) = self.chat.feedback.as_mut() else {
+            return Vec::new();
+        };
+        match action {
+            Action::Up | Action::Down => {
+                feedback.selected = step(feedback.selected, FEEDBACK_ANSWERS.len(), action);
+                let (label, selected) = (feedback.label, feedback.selected);
+                self.transcript.set_choice(label, selected);
+                Vec::new()
+            }
+            Action::Confirm => {
+                let answer = FEEDBACK_ANSWERS[feedback.selected];
+                self.answer_feedback(answer)
+            }
+            Action::Close => self.answer_feedback(None),
+            _ => Vec::new(),
+        }
+    }
+
+    /// 바로잡기 제안의 선택지. `↑`, `↓`는 `[실행]`과 `[그대로]`를 오가고 `Enter`는 고른 쪽, `Esc`는 닫기다.
+    pub(super) fn on_correction_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(correction) = self.chat.correction.as_mut() else {
+            return Vec::new();
+        };
+        match action {
+            Action::Up | Action::Down => {
+                correction.selected = step(correction.selected, CORRECTION_CHOICES, action);
+                let (label, selected) = (correction.label, correction.selected);
+                self.transcript.set_choice(label, selected);
+                Vec::new()
+            }
+            Action::Confirm => {
+                let run = correction.selected == 0;
+                self.finish_correction(run)
+            }
+            Action::Close => {
+                self.close_correction();
+                Vec::new()
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    fn offer_correction(&mut self, input: InputId, label: TaskLabel) {
+        if let Some(previous) = self.chat.correction.take() {
+            self.transcript.remove_correction(previous.label);
+        }
+        self.chat.correction = Some(CorrectionPrompt {
+            input,
+            label,
+            selected: 0,
+            open: true,
+        });
+        self.push_cell(TranscriptCell::Correction { label, selected: 0 });
+    }
+
+    /// `run`이면 입력을 새 작업으로 보내라고 요청하고, 아니면 입력을 그대로 둔다.
+    pub(super) fn finish_correction(&mut self, run: bool) -> Vec<Effect> {
+        let Some(correction) = self.chat.correction.take() else {
+            return Vec::new();
+        };
+        self.transcript.remove_correction(correction.label);
+        if run {
+            vec![Effect::Send(Request::RunAsNewTask {
+                input: correction.input,
+            })]
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// 제안은 남기고 화면에서만 접는다. 방향키는 입력창의 입력 기록으로 돌아간다.
+    fn close_correction(&mut self) {
+        if let Some(correction) = self.chat.correction.as_mut() {
+            correction.open = false;
+            let label = correction.label;
+            self.transcript.remove_correction(label);
+        }
+    }
+
+    /// `/feedback`을 인자 없이 실행하면 `Esc`로 닫은 바로잡기 제안을 다시 연다.
+    fn reopen_correction(&mut self) {
+        let Some(correction) = self.chat.correction.as_mut() else {
+            return;
+        };
+        if correction.open {
+            return;
+        }
+        correction.open = true;
+        correction.selected = 0;
+        let label = correction.label;
+        self.push_cell(TranscriptCell::Correction { label, selected: 0 });
+    }
+
+    /// 입력이 이미 보내졌거나 취소됐으면 제안을 지운다.
+    pub(super) fn drop_stale_correction(&mut self) {
+        let Some(correction) = &self.chat.correction else {
+            return;
+        };
+        let unsent = self
+            .chat
+            .inputs
+            .get(&correction.input)
+            .is_some_and(|input| matches!(input.state, InputState::Judging | InputState::Queued));
+        if !unsent {
+            let label = correction.label;
+            self.chat.correction = None;
+            self.transcript.remove_correction(label);
+        }
+    }
 }
+
+/// 선택지 수가 `count`일 때 `Up`은 앞, `Down`은 뒤로 돌아가며 옮긴다.
+fn step(selected: usize, count: usize, action: Action) -> usize {
+    match action {
+        Action::Up => (selected + count - 1) % count,
+        _ => (selected + 1) % count,
+    }
+}
+
+/// 피드백 질문의 선택지 순서(`1` 맞음, `2` 틀림, `0` 닫기). `None`은 닫기다.
+const FEEDBACK_ANSWERS: [Option<bool>; 3] = [Some(true), Some(false), None];
+const CORRECTION_CHOICES: usize = 2;
 
 /// 상대 경로는 TUI의 현재 폴더 기준 절대 경로로 바꾸고, `~/`로 시작하면 홈 폴더 아래로 읽는다. engine은 절대 경로만 받는다.
 fn absolute_path(workdir: &Path, path: &str) -> String {
