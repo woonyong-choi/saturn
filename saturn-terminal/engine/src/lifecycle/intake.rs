@@ -5,7 +5,9 @@ use saturn_protocol::envelope::INVALID_PARAMS;
 use saturn_protocol::ids::{ChatId, InputId, Provider, ProviderSessionId};
 use saturn_protocol::state::InputState;
 
-use super::support::{CLIENT, Flow, idle_reply, running_reply};
+use super::support::{
+    CLIENT, Flow, idle_held_reply, idle_reply, running_held_reply, running_reply, turn_completed,
+};
 use super::*;
 use crate::chat_env::ChatEnv;
 use crate::providers::ProviderConnection;
@@ -236,4 +238,121 @@ async fn unknown_input_is_invalid_params() {
         EngineError::Queue(QueueError::NotFound(InputId(77)))
     ));
     assert_eq!(error.code(), INVALID_PARAMS);
+}
+
+fn router_bodies(flow: &Flow) -> Vec<String> {
+    flow.transport
+        .calls()
+        .into_iter()
+        .filter_map(|call| call.2)
+        .collect()
+}
+
+/// 작업 하나와 대기 입력 하나를 멈춰 보류로 만든다. 보류된 대기 입력을 돌려준다.
+async fn hold_work(flow: &mut Flow) -> InputId {
+    flow.submit("fix the build").await;
+    let agent = flow.agent();
+    let waiting = flow.submit("also run the tests").await;
+    flow.engine.stop_chat(flow.chat).await.unwrap();
+    flow.claude_event(turn_completed(agent)).await;
+    assert_eq!(flow.state(waiting), InputState::Held);
+    waiting
+}
+
+#[tokio::test]
+async fn resume_held_is_asked_only_when_the_chat_has_held_work() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "continues", "queue"),
+        idle_held_reply(0.95, 0.1),
+    ])
+    .await;
+    hold_work(&mut flow).await;
+
+    flow.submit("what changed so far").await;
+
+    let bodies = router_bodies(&flow);
+    assert!(!bodies[1].contains("resume_held"));
+    assert!(!bodies[2].contains("resume_held"));
+    assert!(bodies[3].contains("resume_held"));
+}
+
+#[tokio::test]
+async fn resume_intent_at_threshold_resumes_every_held_task() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "continues", "queue"),
+        idle_held_reply(0.95, 0.85),
+    ])
+    .await;
+    let waiting = hold_work(&mut flow).await;
+
+    flow.submit("yes, go on with the build").await;
+
+    assert_ne!(flow.state(waiting), InputState::Held);
+    assert!(!flow.engine.queue.has_held_task(flow.chat));
+}
+
+#[tokio::test]
+async fn resume_intent_below_threshold_keeps_the_work_held_and_counts_the_input() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "continues", "queue"),
+        idle_held_reply(0.95, 0.84),
+    ])
+    .await;
+    let waiting = hold_work(&mut flow).await;
+
+    flow.submit("what changed so far").await;
+
+    assert_eq!(flow.state(waiting), InputState::Held);
+    assert!(flow.engine.queue.has_held_task(flow.chat));
+}
+
+#[tokio::test]
+async fn third_input_without_resume_intent_closes_the_held_work() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "continues", "queue"),
+        idle_held_reply(0.95, 0.1),
+        running_held_reply(0.95, "continues", "queue", 0.1),
+        running_held_reply(0.95, "continues", "queue", 0.1),
+    ])
+    .await;
+    let waiting = hold_work(&mut flow).await;
+    let session = flow.engine.flow.live.values().next().unwrap().session;
+
+    flow.submit("what changed so far").await;
+    flow.submit("and the second thing").await;
+    assert_eq!(flow.state(waiting), InputState::Held);
+    flow.submit("and the third thing").await;
+
+    assert_eq!(flow.state(waiting), InputState::Cancelled);
+    assert!(!flow.engine.queue.has_held_task(flow.chat));
+    assert_eq!(
+        flow.engine.sessions.get(session).unwrap().state,
+        saturn_protocol::state::SessionState::Ended
+    );
+}
+
+#[tokio::test]
+async fn provider_mode_leaves_out_the_auto_compact_safety_net() {
+    let flow = Flow::with_config("[context]\nmode = \"provider\"\n", Vec::new()).await;
+    let saturn = Flow::new(Vec::new()).await;
+
+    let revision = flow.engine.settings.current().unwrap();
+    let provider = flow
+        .engine
+        .launch_spec(Provider::Claude, flow.chat, revision)
+        .await
+        .unwrap();
+    let revision = saturn.engine.settings.current().unwrap();
+    let default = saturn
+        .engine
+        .launch_spec(Provider::Claude, saturn.chat, revision)
+        .await
+        .unwrap();
+
+    assert_eq!(provider.defaults.auto_compact_tokens, None);
+    assert!(default.defaults.auto_compact_tokens.is_some());
 }

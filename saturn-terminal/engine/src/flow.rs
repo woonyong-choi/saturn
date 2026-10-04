@@ -111,6 +111,8 @@ pub(crate) struct FlowState {
     pub(crate) unrecorded: HashMap<InputId, Unrecorded>,
     /// 판단을 적용한 뒤 아직 보내기 판정을 거치지 않은 입력. 대기 사유가 정해진 뒤 한 번 알린다.
     pub(crate) applied: Vec<InputId>,
+    /// 적용한 판단의 채팅과 `resume_held`. `on_routed`가 접수 순서대로 보류 작업에 반영한다.
+    pub(crate) resume_signals: Vec<(ChatId, bool)>,
     pub(crate) tasks: TaskBook,
     /// 키는 에이전트. provider를 연 뒤에만 들어간다.
     pub(crate) live: HashMap<AgentId, LiveSession>,
@@ -210,6 +212,7 @@ impl Default for FlowState {
             last_disposition: HashMap::new(),
             unrecorded: HashMap::new(),
             applied: Vec::new(),
+            resume_signals: Vec::new(),
             tasks: TaskBook::default(),
             live: HashMap::new(),
         }

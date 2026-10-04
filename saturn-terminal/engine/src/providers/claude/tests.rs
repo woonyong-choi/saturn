@@ -127,7 +127,7 @@ fn launch(dir: &Path, env: Vec<(OsString, OsString)>) -> LaunchSpec {
         settings: SettingsRevision(1),
         user_config: UserProviderConfig::default(),
         defaults: SaturnDefaults {
-            auto_compact_tokens: 60_000,
+            auto_compact_tokens: Some(60_000),
         },
         env,
         hook_settings: Some(json!({ "hooks": { "PreToolUse": [] } })),
@@ -1107,7 +1107,7 @@ fn user_settings_suppress_defaults() {
         vec!["--permission-prompt-tool", "stdio"]
     );
     let mut big = launch.clone();
-    big.defaults.auto_compact_tokens = 5_000_000;
+    big.defaults.auto_compact_tokens = Some(5_000_000);
     assert_eq!(
         default_args(
             UserProviderConfig {

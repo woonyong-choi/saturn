@@ -94,8 +94,8 @@ pub struct UserProviderConfig {
 /// 사용자 provider 설정에 값이 없을 때만 실행 인자로 넘기고, 사용자 설정 파일은 건드리지 않는다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SaturnDefaults {
-    /// `T_hard`(토큰). `ContextBudget::hard_limit` 값.
-    pub auto_compact_tokens: u64,
+    /// `T_hard`(토큰). `ContextBudget::hard_limit` 값. `context.mode`가 `provider`면 `None`이고 안전망 값을 넣지 않는다.
+    pub auto_compact_tokens: Option<u64>,
 }
 
 /// provider 설정을 바꾸는 명령도 막지 않고 이 값을 읽어 기록한다.

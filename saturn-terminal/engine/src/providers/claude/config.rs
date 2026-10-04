@@ -18,11 +18,10 @@ pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec
         args.push(DISALLOWED_TOOLS_FLAG.to_owned());
         args.push(ASK_USER_QUESTION_TOOL.to_owned());
     }
-    if !user.has_auto_compact {
-        let tokens = launch
-            .defaults
-            .auto_compact_tokens
-            .clamp(AUTO_COMPACT_MIN, AUTO_COMPACT_MAX);
+    if !user.has_auto_compact
+        && let Some(tokens) = launch.defaults.auto_compact_tokens
+    {
+        let tokens = tokens.clamp(AUTO_COMPACT_MIN, AUTO_COMPACT_MAX);
         args.push(AUTO_COMPACT_FLAG.to_owned());
         args.push(tokens.to_string());
     }
