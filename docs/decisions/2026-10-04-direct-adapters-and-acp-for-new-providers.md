@@ -22,7 +22,7 @@ Saturn은 Codex app-server와 Claude stream-json으로 끼워 넣기, 보내기 
 | 선택지 | 장점 | 단점 |
 |---|---|---|
 | Codex와 Claude는 직접 연결을 유지하고, 새 provider는 처음에 ACP 어댑터 하나로 붙이며, 주력이 되고 provider가 깊은 기능을 열면 직접 어댑터로 바꾼다 | 지금 쓰는 깊은 기능 유지, 새 provider를 공통 코드 수정 없이 기본 기능으로 시작, 교체가 어댑터만 바꾸는 일 | 직접 연결의 provider 업데이트 추적 부담, 새 provider는 처음에 깊은 기능 없음 |
-| ACP를 Saturn 계약으로 삼고 Codex와 Claude도 ACP로 연결 | 어댑터 형식 하나 | 끼워 넣기, 전달 실패 구분, 하위 에이전트 관리, 맥락 정리 지시, 사용량 상세를 잃음 |
+| ACP를 Saturn 계약으로 삼고 Codex와 Claude도 ACP로 연결 | 어댑터 형식 하나 | 끼워 넣기, 전달 실패 구분, 하위 에이전트 관리, 맥락 정리 지시, 사용량 상세의 손실 |
 | Saturn 자체 계약을 두고 ACP 어댑터를 지금 구현, 부족한 기능은 ACP 확장으로 보탬 | 모든 provider에 같은 경로 | provider, 원본 번역기, ACP 명세 세 겹을 따라가야 해 유지보수가 더 듦, 아직 ACP로 붙일 provider가 없음 |
 
 ## 결정
