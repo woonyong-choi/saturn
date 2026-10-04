@@ -9,7 +9,7 @@ use saturn_core::sessions::packet::{
     CompetingItem, Entry, PacketOutcome, PacketSource, RECENT_TURNS, RecentTurn, TurnStatus,
     build_packet, reduce_packet, status_item,
 };
-use saturn_core::sessions::ranking::{Candidate, DEFAULT_RRF_K, rank_candidates};
+use saturn_core::sessions::ranking::{Candidate, rank_candidates};
 use saturn_core::sessions::stamp::Stamp;
 use saturn_protocol::event::{Activity, ProviderEvent, ToolCategory, ToolDetail};
 use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId};
@@ -60,6 +60,7 @@ pub(crate) fn handoff_source(
     rows: &[LedgerRow],
     pending: &Pending,
     provider_docs: &[String],
+    rrf_k: u32,
 ) -> Option<PacketSource> {
     let last = rows.last()?;
     let turns = recent_turns(rows);
@@ -70,7 +71,7 @@ pub(crate) fn handoff_source(
         constraints: Vec::new(),
         goal_and_last_input: goal_inputs(rows),
         open_items: open,
-        competitors: ordered_competitors(&tools, &turns),
+        competitors: ordered_competitors(&tools, &turns, rrf_k),
         recent_turns: turns,
         provider_docs: provider_docs.to_vec(),
         up_to: last.seq,
@@ -83,7 +84,7 @@ pub(crate) fn build_handoff(
     provider_docs: &[String],
     budget: &ContextBudget,
 ) -> HandoffOutcome {
-    match handoff_source(rows, pending, provider_docs) {
+    match handoff_source(rows, pending, provider_docs, budget.rrf_k) {
         Some(source) => handoff_of(&source, budget),
         None => HandoffOutcome::Empty,
     }
@@ -369,7 +370,7 @@ fn interrupted_text(label: &str, subject: &str) -> String {
     format!("{label}: {subject}\nResult (error): {INTERRUPTED_RESULT}")
 }
 
-fn ordered_competitors(tools: &[Tool], turns: &[RecentTurn]) -> Vec<CompetingItem> {
+fn ordered_competitors(tools: &[Tool], turns: &[RecentTurn], rrf_k: u32) -> Vec<CompetingItem> {
     let last_input = turns.last().map_or("", |turn| turn.input.as_str());
     let first_recent = turns
         .len()
@@ -388,7 +389,7 @@ fn ordered_competitors(tools: &[Tool], turns: &[RecentTurn]) -> Vec<CompetingIte
             files: tool.files.clone(),
         })
         .collect();
-    rank_candidates(&candidates, &base_files, last_input, DEFAULT_RRF_K)
+    rank_candidates(&candidates, &base_files, last_input, rrf_k)
         .into_iter()
         .filter_map(|seq| tools.iter().find(|tool| tool.seq == seq))
         .map(|tool| CompetingItem {
@@ -430,6 +431,8 @@ pub(crate) fn others_only(rows: Vec<LedgerRow>, session: SessionId) -> Vec<Ledge
 mod tests {
     use std::time::Duration;
 
+    use saturn_core::sessions::context::{DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_DIVISOR};
+    use saturn_core::sessions::ranking::DEFAULT_RRF_K;
     use saturn_protocol::event::LineRange;
     use saturn_protocol::ids::{AgentId, TaskId};
 
@@ -451,6 +454,9 @@ mod tests {
             cache_read: 0.1,
             cache_write: 1.25,
             cache_ttl: Duration::from_secs(300),
+            packet_hard_divisor: DEFAULT_PACKET_HARD_DIVISOR,
+            item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
+            rrf_k: DEFAULT_RRF_K,
         }
     }
 

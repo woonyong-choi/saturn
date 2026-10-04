@@ -246,6 +246,9 @@ impl Settings {
             cache_read: number("cache_read", DEFAULT_CACHE_READ),
             cache_write: number("cache_write", defaults.cache_write),
             cache_ttl: DEFAULT_CACHE_TTL,
+            packet_hard_divisor: self.positive("context.packet_hard_divisor"),
+            item_cap_percent: self.positive("context.item_cap_percent"),
+            rrf_k: u32::try_from(self.whole("context.select.rrf_k")).unwrap_or(u32::MAX),
         }
     }
 
@@ -270,6 +273,18 @@ impl Settings {
         self.lookup(key)
             .and_then(Value::as_str)
             .expect("default layer should define every string setting")
+    }
+
+    /// 기본값 층에 반드시 있는 키만 받는다.
+    fn whole(&self, key: &str) -> u64 {
+        self.lookup(key)
+            .and_then(Value::as_u64)
+            .expect("default layer should define every integer setting")
+    }
+
+    /// 기본값 층에 반드시 있는 1 이상 정수 키만 받는다.
+    fn positive(&self, key: &str) -> u64 {
+        self.whole(key).max(1)
     }
 
     /// 기본값 층에 반드시 있는 키만 받는다.

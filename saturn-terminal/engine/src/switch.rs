@@ -319,7 +319,12 @@ impl Engine {
             .map_err(|error| failed(error.into()))?;
         let synced = rows.last().map_or(LedgerSeq(0), |row| row.seq);
         let pending = self.pending_work(chat, Some(record.id));
-        let full_source = handoff_source(&rows, &pending, &self.registry.instruction_docs());
+        let full_source = handoff_source(
+            &rows,
+            &pending,
+            &self.registry.instruction_docs(),
+            budget.rrf_k,
+        );
         let full = full_source
             .as_ref()
             .map_or(HandoffOutcome::Empty, |source| handoff_of(source, &budget));
@@ -350,6 +355,7 @@ impl Engine {
                     &others_only(changes, *id),
                     &pending,
                     &self.registry.instruction_docs(),
+                    budget.rrf_k,
                 );
                 let outcome = source
                     .as_ref()

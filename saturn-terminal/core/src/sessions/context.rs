@@ -9,6 +9,12 @@ pub const DEFAULT_EXPECTED_TURNS: u32 = 3;
 /// provider가 더 긴 유지 시간을 알려 주지 않을 때 쓰는 캐시 유지 시간.
 pub const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(300);
 
+/// 고정 구역의 하한 `packet_hard_limit`을 정하는 `threshold`의 나눗수(초안).
+pub const DEFAULT_PACKET_HARD_DIVISOR: u64 = 5;
+
+/// 항목 하나가 경쟁 구역 예산에서 원문으로 들어갈 수 있는 비율(%)(초안).
+pub const DEFAULT_ITEM_CAP_PERCENT: u64 = 30;
+
 #[derive(Debug, Clone, Copy)]
 pub struct ContextBudget {
     /// 절대 기준(토큰).
@@ -23,6 +29,12 @@ pub struct ContextBudget {
     pub cache_write: f64,
     /// 마지막 턴 뒤 이만큼 지나면 캐시가 끝났다고 본다. provider가 알려 준 값이고 모르면 `DEFAULT_CACHE_TTL`.
     pub cache_ttl: Duration,
+    /// 설정 `context.packet_hard_divisor`. 1 이상.
+    pub packet_hard_divisor: u64,
+    /// 설정 `context.item_cap_percent`. 1~100.
+    pub item_cap_percent: u64,
+    /// 설정 `context.select.rrf_k`.
+    pub rrf_k: u32,
 }
 
 impl ContextBudget {
@@ -46,7 +58,7 @@ impl ContextBudget {
 
     /// 고정 구역이 `packet_limit`을 넘는 패킷에만 쓴다(초안).
     pub fn packet_hard_limit(&self) -> u64 {
-        self.threshold() / 5
+        self.threshold() / self.packet_hard_divisor.max(1)
     }
 }
 
@@ -133,6 +145,7 @@ pub fn decide_return(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sessions::ranking::DEFAULT_RRF_K;
 
     fn budget() -> ContextBudget {
         ContextBudget {
@@ -142,6 +155,9 @@ mod tests {
             cache_read: 0.1,
             cache_write: 1.25,
             cache_ttl: Duration::from_secs(300),
+            packet_hard_divisor: DEFAULT_PACKET_HARD_DIVISOR,
+            item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
+            rrf_k: DEFAULT_RRF_K,
         }
     }
 
@@ -327,6 +343,15 @@ mod tests {
     #[test]
     fn packet_hard_limit_is_fifth_of_threshold() {
         assert_eq!(budget().packet_hard_limit(), 20_000);
+    }
+
+    #[test]
+    fn packet_hard_limit_follows_the_divisor() {
+        let quarter = ContextBudget {
+            packet_hard_divisor: 4,
+            ..budget()
+        };
+        assert_eq!(quarter.packet_hard_limit(), 25_000);
     }
 
     // cost: time O(n), heap O(n), stack O(1)

@@ -79,6 +79,7 @@ impl Engine {
             &rows,
             &self.pending_work(chat, None),
             &self.registry.instruction_docs(),
+            budget.rrf_k,
         );
         let outcome = source
             .as_ref()

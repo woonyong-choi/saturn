@@ -59,12 +59,12 @@
 
 ### 설정 키
 
-아래 표가 키 이름과 기본값의 1판이다. 측정으로 정할 값은 초안 표시를 유지한다. 병합 결과에 아래 표에 없는 키가 있으면 검사에 실패한다.
+아래 표가 키 이름과 기본값의 1판이다. 측정으로 정할 값은 초안 표시를 유지한다. 병합 결과에 아래 표에 없는 키가 있으면 검사에 실패한다. 기능과 함께 구현할 키는 표에 "구현 전"으로 적고, 그 키는 구현하기 전까지 검사에서 모르는 키로 실패한다. 표시와 스키마가 어긋나지 않는지는 시험이 문서를 읽어 확인한다.
 
 | 키 | 값 | 기본값 |
 |---|---|---|
 | `on_exit` | `background`, `stop`, `ask` | `background` |
-| `agents.worktree` | 참·거짓 | 거짓 |
+| `agents.worktree` | 참·거짓 | 거짓. 구현 전([#335](https://github.com/woonyong-choi/saturn/issues/335)) |
 | `permission.mode` | `ask`, `edit`, `read-only`, `full` | `edit`(초안) |
 | `permission.shell`, `permission.edit`, `permission.read`, `permission.mcp`, `permission.subagent` | `allow`, `ask`, `deny` 또는 패턴 → 값 표 | 모드를 따름 |
 | `router.method` | `jev`, `saturn`, `collect` | `jev` |
@@ -84,7 +84,7 @@
 | `context.mode` | `saturn`, `provider` | `saturn` |
 | `context.packet_hard_divisor` | 1 이상 정수 | 5 |
 | `context.item_cap_percent` | 1~100 정수 | 30 |
-| `context.constraint_slot_divisor` | 1 이상 정수 | 4(초안) |
+| `context.constraint_slot_divisor` | 1 이상 정수 | 4(초안). 구현 전([#380](https://github.com/woonyong-choi/saturn/issues/380)) |
 | `context.select.rrf_k` | 0 이상 정수 | 60 |
 
 - `on_exit`는 TUI를 닫을 때 작업을 어떻게 할지 정한다. `background`는 계속하고, `stop`은 모든 채팅의 작업을 멈춤과 같게 보류하고, `ask`는 작업이 있으면 닫기 전에 묻는다. 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
@@ -93,7 +93,9 @@
 - `permission.shell` 같은 개별 규칙은 셸 명령, 파일 편집, 파일 읽기(Claude만. Codex는 읽기 승인 요청이 오지 않아 해당 없음), MCP 도구, subagent 실행의 허용, 묻기, 거부 규칙이다. 문자열 하나면 그 도구 전체에 적용하고, 패턴 표를 주면 패턴마다 값을 준다. 모드 기본 규칙 뒤에 사용자 층 규칙, 폴더 층 규칙, 채팅 층 규칙, 실행 층 규칙을 잇고 마지막으로 일치한 규칙이 이긴다. 단 어느 층이든 `deny`가 하나라도 일치하면 거부한다(채팅 층과 실행 층까지 넣은 것은 초안). 같은 층 안의 순서는 파일에 적힌 순서다(초안). 병합 결과의 `permission`에는 합친 모드와 이은 규칙 목록이 들어가고, 입력은 접수 때 고정한 설정 번호의 목록을 쓴다. `permission` 아래 모르는 키, 모르는 모드, `allow`, `ask`, `deny`가 아닌 값은 검사에 실패한다. 패턴 문법과 판정 흐름, provider별 번역은 [권한](permissions.md)에 있다.
 - `context.mode`가 `provider`이면 `sessions`는 compaction과 유휴 복귀를 판정하지 않고 provider 실행 인자에 자동 압축 안전망 값을 넣지 않는다. 규칙은 [맥락 정리](context-management.md#정리-모드)에 있다. 기본은 `saturn`이다.
 - `context.select.rrf_k`는 router가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
-- 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_replace`, `constraint_conflict`, `constraint_ask`, `constraint_same`, `constraint_release`다. `constraint_conflict`는 대체 질문을 사용자에게 묻는 하한이고 `constraint_ask`는 등록과 해제 질문의 묻는 하한이다. 제약 칸 상한은 `context.constraint_slot_divisor`로 `P_max`를 나눈 값이다([제약](constraints.md)).
+- 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`다.
+- 구현 전 기준값은 `is_constraint`, `constraint_replace`, `constraint_conflict`, `constraint_ask`, `constraint_same`, `constraint_release`다([#378](https://github.com/woonyong-choi/saturn/issues/378), [#379](https://github.com/woonyong-choi/saturn/issues/379)). `constraint_conflict`는 대체 질문을 사용자에게 묻는 하한이고 `constraint_ask`는 등록과 해제 질문의 묻는 하한이다.
+- 제약 칸 상한은 `context.constraint_slot_divisor`로 `P_max`를 나눈 값이다. 이 키는 구현 전이다([#380](https://github.com/woonyong-choi/saturn/issues/380), [제약](constraints.md)).
 - 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
 - 실행 층 `-c key=value`의 값은 TOML 값 문법으로 읽고, 같은 키가 여러 번 오면 뒤 값이 이긴다.
 
@@ -107,7 +109,7 @@ provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. `
 | `provider.<id>.context.window` | 1 이상 정수 | 어댑터 설명자의 값(codex 272000, claude 1000000) |
 | `provider.<id>.context.cache_read`, `cache_write` | 0 이상 실수 | 0.1, 어댑터 설명자의 값(codex 1.0, claude 1.25) |
 
-- 옛 키 `context.<id>.<키>`는 새 키 `provider.<id>.context.<키>`의 별칭으로 계속 읽는다. 같은 값이 둘 다 있으면 새 키가 이긴다. 별칭은 층마다 병합 전에 새 키로 옮기므로 높은 층의 옛 키가 낮은 층의 새 키를 이긴다. 기존 설정 파일을 고치지 않고도 같은 값으로 동작하게 하기 위해서다(초안). 명령으로 설정을 쓸 때는 새 키로 쓰고, 설정 번호별 스냅샷은 새 키 이름으로 저장한다. 옛 스냅샷은 옛 키 이름 그대로 읽는다.
+- 옛 키 `context.<id>.<키>`는 새 키 `provider.<id>.context.<키>`의 별칭으로 계속 읽는다. 같은 값이 둘 다 있으면 새 키가 이긴다. `context.select`처럼 `context` 아래에 이미 있는 표는 별칭으로 읽지 않는다. 별칭은 층마다 병합 전에 새 키로 옮기므로 높은 층의 옛 키가 낮은 층의 새 키를 이긴다. 기존 설정 파일을 고치지 않고도 같은 값으로 동작하게 하기 위해서다(초안). 명령으로 설정을 쓸 때는 새 키로 쓰고, 설정 번호별 스냅샷은 새 키 이름으로 저장한다. 옛 스냅샷은 옛 키 이름 그대로 읽는다.
 - 병합 결과 검사는 `provider.<id>.*` 키를 그 어댑터가 알린 키로만 허용하고 모르는 키는 실패로 본다. 레지스트리에 없는 id의 키는 실패 대신 무시하고 경고한다. 저장소에 다른 사용자가 쓰는 provider의 설정이 있어도 이 사용자의 실행이 막히지 않게 하기 위해서다(초안).
 - `permission.<종류>`는 위 표의 다섯 종류에 더해 어댑터가 알린 권한 종류도 허용한다([권한](permissions.md#권한-규칙)).
 - provider 실행 파일이나 인자를 바꾸는 키는 설명자가 사용자 층 전용으로 표시하고, 폴더 층에서 바꾸지 못한다. 저장소가 사용자 모르게 다른 프로그램을 실행시키는 일을 막기 위해서다.

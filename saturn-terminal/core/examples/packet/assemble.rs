@@ -4,12 +4,16 @@
 use std::collections::HashSet;
 use std::time::Duration;
 
-use saturn_core::sessions::context::ContextBudget;
+use saturn_core::sessions::context::{
+    ContextBudget, DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_DIVISOR,
+};
 use saturn_core::sessions::memo::{ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
     CompetingItem, Entry, PacketSource, RECENT_TURNS, RecentTurn, TurnStatus,
 };
-use saturn_core::sessions::ranking::{Candidate, order_after_router, rank_candidates};
+use saturn_core::sessions::ranking::{
+    Candidate, DEFAULT_RRF_K, order_after_router, rank_candidates,
+};
 use saturn_core::sessions::stamp::Stamp;
 use saturn_protocol::ids::{LedgerSeq, SessionId};
 use serde::Deserialize;
@@ -159,6 +163,9 @@ pub(crate) fn budget_for(budget_tokens: u64) -> ContextBudget {
         cache_read: 0.1,
         cache_write: 1.25,
         cache_ttl: Duration::from_secs(300),
+        packet_hard_divisor: DEFAULT_PACKET_HARD_DIVISOR,
+        item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
+        rrf_k: DEFAULT_RRF_K,
     }
 }
 
