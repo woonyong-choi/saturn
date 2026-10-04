@@ -7,7 +7,13 @@ case "${1:-}" in
   prepare) python3 scripts/01-collect.py prepare ;;
   label) python3 scripts/01-collect.py label "$2" ;;
   judge) python3 scripts/01-collect.py judge ;;
-  process|analyze) python3 scripts/02-analyze.py ;;
+  process|analyze)
+    if [ ! -f ../../../.local/experiments/continuation-misjoin/extraction-audit.json ]; then
+      python3 scripts/audit-extraction.py
+    fi
+    python3 scripts/02-analyze.py
+    python3 scripts/report.py
+    ;;
   verify) python3 scripts/verify.py ;;
   all) "$0" collect; "$0" analyze; "$0" verify ;;
   *) echo 'usage: run.sh collect|process|analyze|verify|all' >&2; exit 2 ;;
