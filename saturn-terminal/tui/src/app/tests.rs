@@ -442,7 +442,7 @@ fn moving_to_another_chat_only_attaches_without_detaching() {
         (
             TaskListCommand::Open {
                 chat: ChatId(8),
-                task: TaskId(1),
+                task: Some(TaskId(1)),
             },
             Some(ChatId(8)),
         ),

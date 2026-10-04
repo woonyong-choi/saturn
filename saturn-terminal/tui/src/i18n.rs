@@ -131,6 +131,9 @@ pub const FILTER_RUNNING: &str = "실행 중";
 pub const FILTER_QUEUED: &str = "대기";
 pub const FILTER_HELD: &str = "보류";
 pub const FILTER_DONE: &str = "끝남";
+pub const FILTER_CHATS: &str = "채팅";
+/// `{n}`은 그 행으로 갈 대기 입력 수.
+pub const TASKS_QUEUED_COUNT: &str = "대기 {n}";
 pub const MODEL_UNREPORTED: &str = "모델 미보고";
 pub const SOURCE_SATURN: &str = "Saturn";
 

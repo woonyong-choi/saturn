@@ -551,9 +551,12 @@ pub struct TaskListItem {
     pub chat: ChatId,
     pub chat_name: String,
     pub group: Option<String>,
-    pub task: TaskId,
-    pub label: TaskLabel,
-    pub state: TaskState,
+    /// 작업 행과 끝난 작업 행에만 있다. `None`이면 작업 없는 채팅 행.
+    pub task: Option<TaskId>,
+    /// 작업 글자. 끝난 작업(글자를 돌려줬다)과 채팅 행은 `None`.
+    pub label: Option<TaskLabel>,
+    /// 채팅 행은 `None`. `Done`과 `Failed`는 끝난 작업 행.
+    pub state: Option<TaskState>,
     pub needs_permission: bool,
     /// 다른 Saturn이 실행 중이면 읽기 전용.
     pub busy_elsewhere: bool,
@@ -562,6 +565,15 @@ pub struct TaskListItem {
     /// 채팅의 기본 폴더. TUI가 작업 목록의 폴더 범위를 가를 때 쓴다.
     #[serde(default)]
     pub folder: Option<String>,
+    /// 이 행으로 갈 대기 입력을 접수 순서로. 갈 작업이 없는 새 대기 입력은 채팅 행에 붙는다.
+    #[serde(default)]
+    pub queued: Vec<InputId>,
+    /// 그 작업 session이 지금 쓰는 모델. 모르면 `None`.
+    #[serde(default)]
+    pub model: Option<String>,
+    /// 끝난 작업 행에서 마지막 실행이 끝난 시각(unix 밀리초).
+    #[serde(default)]
+    pub ended_at_ms: Option<u64>,
 }
 
 /// 정리하지 않고 남긴 채팅과 그 이유.

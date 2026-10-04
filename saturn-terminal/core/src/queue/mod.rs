@@ -315,6 +315,35 @@ impl Queue {
             .collect()
     }
 
+    // cost: time O(n·t), heap O(n), stack O(1), alloc 1
+    // vars: n = 대기열 입력 수, t = 작업 수
+    // basis: estimate
+    /// 보낼 차례를 기다리는 입력(`Queued`, 아직 보내지 않음)과 그 입력이 갈 작업을 접수 순서로 돌려준다.
+    /// 새 작업이 될 입력과 갈 작업이 없는 입력은 작업이 `None`이다.
+    pub fn waiting_inputs(&self) -> Vec<(ChatId, InputId, Option<TaskId>)> {
+        self.inputs
+            .iter()
+            .filter(|entry| entry.input.state == InputState::Queued && !entry.is_dispatched)
+            .map(|entry| (entry.input.chat, entry.input.id, self.target_task(entry)))
+            .collect()
+    }
+
+    /// `route_for`와 같은 기준으로 입력이 갈 작업을 고른다. 새 작업이 될 입력은 `None`.
+    fn target_task(&self, entry: &Entry) -> Option<TaskId> {
+        let input = &entry.input;
+        if entry.disposition == Some(Disposition::NewTask) && input.task.is_none() {
+            return None;
+        }
+        match input.task {
+            Some(id) => self
+                .tasks
+                .iter()
+                .find(|slot| slot.id == id && slot.phase != TaskPhase::Closed),
+            None => self.main_task(input.chat),
+        }
+        .map(|slot| slot.id)
+    }
+
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 대기열 입력 수
     // basis: estimate

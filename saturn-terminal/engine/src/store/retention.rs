@@ -421,6 +421,31 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn ended_tasks_come_from_runs_and_go_with_their_chat() {
+        let (_dir, store) = temp_store().await;
+        let chat = closed_chat(&store).await;
+        chat_with_run(&store).await; // 열린 실행만 있는 채팅은 끝난 작업이 아니다
+
+        let before = store.ended_tasks().await.unwrap();
+        let request = PruneRequest {
+            scope: PruneScope::Chats(vec![chat]),
+            yes: true,
+        };
+        store.prune(&request).await.unwrap();
+        let after = store.ended_tasks().await.unwrap();
+
+        assert_eq!(
+            before
+                .iter()
+                .map(|ended| (ended.chat, ended.end))
+                .collect::<Vec<_>>(),
+            [(chat, RunEnd::Completed)]
+        );
+        assert!(before[0].ended_at_ms > 0);
+        assert!(after.is_empty());
+    }
+
+    #[tokio::test]
     async fn prune_on_start_respects_policy() {
         let (_dir, store) = temp_store().await;
         let chat = closed_chat(&store).await;

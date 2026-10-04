@@ -216,7 +216,19 @@ export type TaskId = number;
 
 export type TaskLabel = string;
 
-export type TaskListItem = { chat: ChatId, chat_name: string, group: string | null, task: TaskId, label: TaskLabel, state: TaskState, needs_permission: boolean, 
+export type TaskListItem = { chat: ChatId, chat_name: string, group: string | null, 
+/**
+ * 작업 행과 끝난 작업 행에만 있다. `None`이면 작업 없는 채팅 행.
+ */
+task: TaskId | null, 
+/**
+ * 작업 글자. 끝난 작업(글자를 돌려줬다)과 채팅 행은 `None`.
+ */
+label: TaskLabel | null, 
+/**
+ * 채팅 행은 `None`. `Done`과 `Failed`는 끝난 작업 행.
+ */
+state: TaskState | null, needs_permission: boolean, 
 /**
  * 다른 Saturn이 실행 중이면 읽기 전용.
  */
@@ -228,7 +240,19 @@ children: number,
 /**
  * 채팅의 기본 폴더. TUI가 작업 목록의 폴더 범위를 가를 때 쓴다.
  */
-folder: string | null, };
+folder: string | null, 
+/**
+ * 이 행으로 갈 대기 입력을 접수 순서로. 갈 작업이 없는 새 대기 입력은 채팅 행에 붙는다.
+ */
+queued: Array<InputId>, 
+/**
+ * 그 작업 session이 지금 쓰는 모델. 모르면 `None`.
+ */
+model: string | null, 
+/**
+ * 끝난 작업 행에서 마지막 실행이 끝난 시각(unix 밀리초).
+ */
+ended_at_ms: number | null, };
 
 export type TaskState = "Running" | "AnsweredTreeRunning" | "AwaitingPermission" | "AwaitingInput" | "Held" | "NeedsCheck" | "Done" | "Failed";
 

@@ -1119,3 +1119,18 @@ fn try_acquire_shared_added_folder_returns_false() {
     assert!(!gate.try_acquire(&scope(&["/b", "/shared"]), AgentId(2)));
     assert!(gate.try_acquire(&scope(&["/b"]), AgentId(2)));
 }
+
+#[test]
+fn waiting_inputs_name_the_task_they_wait_for_and_none_for_a_new_task() {
+    let mut queue = Queue::new();
+    let task = start_running(&mut queue, 1, Permission::ReadOnly, 7);
+    accept_routed(&mut queue, 2, Permission::ReadOnly, Disposition::Queue);
+    accept_routed(&mut queue, 3, Permission::ReadOnly, Disposition::NewTask);
+
+    let waiting = queue.waiting_inputs();
+
+    assert_eq!(
+        waiting,
+        [(CHAT, InputId(2), Some(task)), (CHAT, InputId(3), None),]
+    );
+}
