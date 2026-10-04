@@ -281,7 +281,7 @@ fn packet_without_judgments_fills_in_rrf_order() {
 fn packet_judgments_put_low_probability_item_before_unanswered() {
     let dir = TempDir::new().unwrap();
     let scenarios = scenario_file(&dir);
-    let baseline = run_scenario_with_budget(&scenarios, "150", &[]);
+    let baseline = run_scenario_with_budget(&scenarios, "350", &[]);
     let last = *seqs(&baseline["rrf_order"]).last().unwrap();
     let judgments = write(
         &dir,
@@ -289,7 +289,7 @@ fn packet_judgments_put_low_probability_item_before_unanswered() {
         &json!({"compact": [{"seq": last, "probability": 0.1}]}).to_string(),
     );
 
-    let result = run_scenario_with_budget(&scenarios, "150", &["--judgments", &judgments]);
+    let result = run_scenario_with_budget(&scenarios, "350", &["--judgments", &judgments]);
 
     let note = format!("cache note {last} ");
     assert!(!baseline["packet"].as_str().unwrap().contains(&note));
@@ -324,7 +324,7 @@ fn packet_rrf_only_condition_ignores_judgments() {
 fn packet_rrf_router_ignores_verdicts_outside_top_n() {
     let dir = TempDir::new().unwrap();
     let scenarios = scenario_file(&dir);
-    let rrf = seqs(&run_scenario_with_budget(&scenarios, "150", &[])["rrf_order"]);
+    let rrf = seqs(&run_scenario_with_budget(&scenarios, "350", &[])["rrf_order"]);
     let last = *rrf.last().unwrap();
     let judgments = write(
         &dir,
@@ -342,8 +342,8 @@ fn packet_rrf_router_ignores_verdicts_outside_top_n() {
     args_all.extend(["--top-n", "6"]);
     let mut args_none = outside.to_vec();
     args_none.extend(["--top-n", "0"]);
-    let used = run_scenario_with_budget(&scenarios, "150", &args_all);
-    let skipped = run_scenario_with_budget(&scenarios, "150", &args_none);
+    let used = run_scenario_with_budget(&scenarios, "350", &args_all);
+    let skipped = run_scenario_with_budget(&scenarios, "350", &args_none);
 
     let note = format!("cache note {last} ");
     assert!(used["packet"].as_str().unwrap().contains(&note));
@@ -424,7 +424,9 @@ fn packet_scenario_session_and_time_appear_before_items() {
 
     let packet = result["packet"].as_str().unwrap();
     assert!(packet.contains("### Session 1\n\n#2 2026-09-12T10:05Z read"));
-    assert!(packet.contains("### Session 2\n\n#3 2026-09-13T09:00Z User: finish the cache module"));
+    assert!(packet.contains(
+        "### Session 2\n\n#3 2026-09-13T09:00Z [Finished] User: finish the cache module"
+    ));
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -437,6 +439,6 @@ fn packet_stream_without_time_writes_seq_only() {
     let rendered = run_with_stdin(&["--mode", "saturn", "--budget-tokens", "800"], &input).unwrap();
 
     let text = rendered.output;
-    assert!(text.contains("#5 User: fix login in src/auth.rs\nAgent: fixed it"));
+    assert!(text.contains("#5 [Finished] User: fix login in src/auth.rs\nAgent: fixed it"));
     assert!(text.contains("### Session 1\n\n#2 Read "));
 }
