@@ -7,6 +7,7 @@ pub mod client;
 pub(crate) mod commands;
 pub(crate) mod history;
 pub mod i18n;
+pub(crate) mod keymap;
 pub(crate) mod keys;
 pub(crate) mod labels;
 pub(crate) mod plain;

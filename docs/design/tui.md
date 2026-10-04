@@ -108,7 +108,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 
 router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-key-security.md)에, 폴더 설정 신뢰 규칙은 [설정](settings.md)에 있다.
 
-종료 확인 창은 닫으려 할 때 `engine`에 `PrepareExit`을 보내고 `ExitPlan`을 받은 뒤에 뜬다. 닫는 키는 입력창의 `Ctrl+D`와 유휴일 때의 `Ctrl+C`, 창의 종료 선택지다. `Ask`일 때만 창이 뜨고, `Close`는 그대로 닫고, `Notice`는 닫은 뒤 터미널에 한 줄을 남긴다. 창은 다른 창 위에 덮고 `Esc` 뒤에 아래 창이 그대로 남는다. 첫 선택은 작업을 잃지 않는 `계속 실행`이다. `engine`의 답을 기다리는 동안 닫기를 한 번 더 누르면 기다리지 않고 닫는다. router 키 입력 창에서는 `engine`이 요청을 받지 않으므로 묻지 않고 닫는다. 값별 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
+종료 확인 창은 닫으려 할 때 `engine`에 `PrepareExit`을 보내고 `ExitPlan`을 받은 뒤에 뜬다. 닫는 키는 입력창의 `Ctrl+D`와 유휴이고 입력창이 빌 때 두 번 누르는 `Ctrl+C`, 창의 종료 선택지다. `Ask`일 때만 창이 뜨고, `Close`는 그대로 닫고, `Notice`는 닫은 뒤 터미널에 한 줄을 남긴다. 창은 다른 창 위에 덮고 `Esc` 뒤에 아래 창이 그대로 남는다. 첫 선택은 작업을 잃지 않는 `계속 실행`이다. `engine`의 답을 기다리는 동안 닫기를 한 번 더 누르면 기다리지 않고 닫는다. router 키 입력 창에서는 `engine`이 요청을 받지 않으므로 묻지 않고 닫는다. 값별 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
 
 멈춤 확인 창은 하던 작업과 반대되는 입력(충돌 입력)을 provider가 끼워 넣기로 받지 않았을 때 뜬다. engine이 입력을 `ConfirmStop` 사유의 대기로 알리면 창을 띄우고, 입력이 다른 상태가 되면(다른 TUI가 먼저 답했거나 현재 작업이 끝나 다음 차례로 갔을 때) 창을 지운다. 첫 선택은 작업을 멈추지 않는 `대기`이고, `Esc`와 `Ctrl+C`도 `대기`다. 선택은 `AnswerStopConfirm`으로 보내고, 멈추는 일과 입력 실행은 engine이 한다([충돌 입력](input-handling.md#충돌-입력)). 질문과 선택지는 영어 문구가 있고, 질문은 `~할까요?` 형식을 따른다.
 
@@ -186,6 +186,63 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 - `Esc`로 닫은 바로잡기 제안은 입력이 아직 보내지지 않았으면 남아 있고, 인자 없이 `/feedback`을 실행하면 다시 열린다(첫 선택은 `[실행]`). 입력이 보내졌거나 취소되면 제안은 사라진다. 새 틀림 답이 나오면 새 제안이 앞 제안을 대신한다.
 - `[실행]`은 `RunAsNewTask`로 그 입력을 새 작업으로 보내고, `[그대로]`는 요청 없이 닫는다.
 
+### 상태판 버튼 고르기
+
+`F3`이나 `/agents`로 들어가 `↑`, `↓`로 줄, `←`, `→`로 버튼을 고르고 `Enter`로 실행하고 `Esc`로 입력창에 돌아간다. 버튼이 있는 줄(대기 줄, 보류 줄)이 없으면 들어가지 않는다. 고른 버튼은 반전해서 그린다. 버튼을 실행하거나 고른 버튼이 사라지면 고르기가 끝난다. 줄이 생기거나 사라져도 고른 버튼을 그대로 가리킨다. `보류 종료` 버튼은 확인 한 줄을 거치므로 실행 뒤 보류 닫기 확인이 이어진다. 마우스 클릭과 `/send`, `/cancel`, `/continue` 명령은 같은 일을 한다. 고르기 중에는 이 영역이 방향키, `Enter`, `Esc`를 가져가고(선택지 키 규칙과 같다) 키 받는 순서에서 보류 닫기 확인 바로 아래, 바로잡기 제안 위다.
+
+### 키 해석 계층
+
+TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작으로 바꾸는 일은 해석기(`Keymap`) 한 곳이 맡고(`saturn-terminal/tui/src/keymap/`), 구조는 세 층이다.
+
+| 층 | 내용 |
+|---|---|
+| 기본 표 | 동작별 키 표. 줄마다 동작, 적용 영역, 키(이어 누르는 두 키는 `esc esc`), 조건(실행 중, 빈 입력창, 기록 이동 가능), 같은 일을 하는 `/` 명령을 가진다 |
+| 프리셋 | 기본 표에서 다른 줄만 적은 표. 적지 않은 키는 기본 표를 물려받고, 적은 줄은 같은 동작의 그 영역 키를 바꾼다. 키가 없는 줄은 그 동작의 키를 걷고 명령은 남긴다 |
+| 해석기 | 기본 표와 프리셋을 합쳐 영역별로 키를 찾는다. 찾는 순서는 전역 표, 영역 표, 영역이 넘긴 입력창 표, 마지막 표(`Ctrl+C`)다. 표에 없는 글자 키는 영역의 입력 규칙(입력창은 글자 넣기와 `/`, `@`, `$`, `?`, 입력 칸과 검색은 글자 넣기)을 따른다 |
+
+새 프리셋은 표 함수 하나와 `PRESETS` 목록 한 줄이고, 이름은 설정 검사와 공유하는 `saturn_protocol::keymap::PRESET_NAMES`에 더한다. 시험이 모든 프리셋에서 다음을 강제한다: 표가 읽히고 한 영역 안에서 같은 키(같은 조건)가 두 동작에 묶이지 않는다. 모든 줄에 키나 `/` 명령이 있다. 사용자 동작 목록의 모든 동작이 키나 명령을 가진다. 전환 뒤 해석 결과가 프리셋 표대로 바뀐다. 제품 코드가 `keymap` 밖에서 `KeyCode`를 읽지 않는다.
+
+설정 `tui.keymap`이 시작 묶음을 정한다(기본 `saturn`, [설정](settings.md)). engine이 설정을 알릴 때마다(`SettingsApplied`의 `keymap`) 값이 바뀐 경우에만 따르고, `/keymap 이름`은 이 TUI만 바꾸며 설정 파일은 고치지 않는다. 같은 설정 값이 다시 오면 `/keymap`으로 고른 묶음을 그대로 둔다.
+
+기본 `saturn` 묶음은 네 도구(Claude Code, Codex, Gemini CLI, OpenCode)가 같은 뜻으로 쓰는 키를 그대로 두고, 뜻이 갈리는 키는 더 많은 도구가 쓰는 뜻을 따른다. 프리셋은 갈리는 키만 그 도구와 같게 바꾼다.
+
+| 키 | `saturn` | `claude` | `codex` | `gemini` | `opencode` |
+|---|---|---|---|---|---|
+| `Esc`(창이 없을 때) | 작업 중지 | 같음 | 같음 | 중지 안 함(창과 포커스만 닫음) | 같음 |
+| `Esc Esc` | 되돌리기(구현 전) | 같음 | 같음 | 같음 | 없음 |
+| `Shift+Tab` | 권한 모드 순환 | 같음 | 같음 | 같음 | 같음 |
+| `Tab` | 명령 목록 열기와 완성 | 같음 | 같음 | 실행 중이면 대기, 아니면 완성 | 권한 모드 순환, 명령 목록은 `Ctrl+P` |
+| `Ctrl+C` | 중지, 유휴이고 빈 입력창이면 두 번에 종료 | 같음 | 같음 | 유휴이고 빈 입력창이면 한 번에 종료 | 같음 |
+| `Ctrl+T` | 전체 기록 | `Ctrl+O` | 같음 | `Ctrl+O` | 같음 |
+| 대기 전송 | `Ctrl+Q` | `Ctrl+X Enter` | 같음 | `Tab`(실행 중) | 같음 |
+| 되돌려 붙이기 | `Ctrl+Y` | 같음 | 같음 | `Alt+Y`(`Ctrl+Y`는 Gemini CLI의 모두 허용 전환) | 같음 |
+
+공통 키는 `Enter` 제출, `Ctrl+J` 줄바꿈, `↑`, `↓` 입력 기록, 선택지의 `↑`, `↓`, `Enter`, `Esc`, `Ctrl+A`, `Ctrl+E`, `Ctrl+K`, `Ctrl+U`, `Ctrl+W` 줄 편집, `Ctrl+R` 기록 검색, `Ctrl+G` 외부 에디터, `Ctrl+L` 화면 다시 그리기, `Ctrl+D` 빈 입력창 종료, 줄 맨 앞 `/`, `F3` 상태판, `F5` 작업 목록이다.
+
+근거는 각 도구의 공식 키 문서다. Claude Code는 `interactive-mode`와 `keybindings`(기록 보기 `Ctrl+O`, 권한 모드 `Shift+Tab`, `Ctrl+X Enter` 대기 전송, `Esc Esc`), Gemini CLI는 `keyboard-shortcuts`(`Esc` 닫기, `Esc Esc`, `Tab` 대기, `Shift+Tab`, `Ctrl+C` 입력이 비면 종료, `Ctrl+Y` 모두 허용), OpenCode는 `keybinds`(`Esc` 중단, `Tab`과 `Shift+Tab` 에이전트 순환, `Ctrl+P` 명령 목록, `Ctrl+C` 입력 지우기와 종료)다. Codex는 공식 키 표가 없어 문서에서 확인한 `Esc Esc`와 `Ctrl+T`만 근거로 하고, 확인하지 못한 키는 `saturn` 값을 유지해 `codex`는 `saturn`과 같다. 이 표는 조사 시점의 문서 기준이다.
+
+### 명령과 키
+
+모든 키 동작은 `/` 명령으로도 할 수 있다. 명령은 어느 프리셋에서나 같다.
+
+| 명령 | 동작 | 키(`saturn`) |
+|---|---|---|
+| `/mode [모드]` | 권한 모드를 돌리거나(`ask`, `edit`, `read-only` 순서) `ask`, `edit`, `read-only`, `full` 중 하나로 정함. `/permissions 모드`와 같은 요청을 보낸다 | `Shift+Tab` |
+| `/tasks` | 작업 목록 화면 | `F5` |
+| `/agents` | 상태판 버튼 고르기 | `F3` |
+| `/stop` | 실행 중인 모든 작업을 멈추고 보류 | `Esc`, `Ctrl+C` |
+| `/rewind` | 되돌리기. 구현 전이라 안내 한 줄만 보인다 | `Esc Esc` |
+| `/keymap [이름]` | 이 TUI의 키 묶음을 `saturn`, `claude`, `codex`, `gemini`, `opencode` 중 하나로 바꿈. 이름이 없으면 지금 묶음과 목록을 보임 | 없음 |
+| `/transcript` | 전체 기록 | `Ctrl+T` |
+| `/redraw` | 화면 다시 그리기 | `Ctrl+L` |
+| `/suspend` | 화면 일시 중지 | `Ctrl+Z` |
+| `/quit` | 종료(닫은 뒤 처리를 engine에 묻는다) | `Ctrl+D` |
+| `/send`, `/cancel`, `/continue` | 대기 입력 보내기, 보내기 전 입력 취소나 보류 종료, 보류 이어서 | 상태판 버튼 고르기의 버튼 |
+| `/help` | 도움말과 단축키 안내 | `?`(빈 입력창) |
+| `/feedback 1`, `/feedback 2` | 피드백 질문에 맞음, 틀림 답. 인자 없이 쓰면 `Esc`로 닫은 바로잡기 제안을 다시 연다 | 피드백 질문의 `1`, `2` |
+| `/usage`, `/prune`, `/train`, `/router use` | 사용량 화면, 기록 정리 창, 판단 모델 학습, router 버전 화면 | 없음 |
+| `/record on`, `/record off`, `/permissions 모드`, `/add-dir 폴더`, `/model [provider]` | 판단 기록 켜고 끄기, 권한 모드 정하기, 폴더 더하기, 고정 모델 고르기 | 없음 |
+
 ### 키
 
 | 키 | 동작 | 적용 영역 |
@@ -216,16 +273,26 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `@` | 파일 목록 표시 | 입력창 |
 | `Alt+Enter`, `Ctrl+J`, `Shift+Enter` | 줄바꿈 | 입력창 |
 | `Alt+↑`, `Shift+←` | 대기나 판단 중인 가장 최근 입력을 취소하고 원문을 입력창으로 이동 | 입력창 |
-| `Ctrl+C` | 뷰 해제, 검색 취소, 초안 삭제 순서로 하나 처리, 그 밖에는 실행 중이면 모든 작업 중지와 보류, 유휴이면 종료 | 입력창 |
+| `Ctrl+C` | 열린 창 닫기, 검색 취소, 초안 삭제 순서로 하나 처리, 그 밖에는 실행 중이면 모든 작업 중지와 보류, 유휴이면 안내 한 줄 뒤 한 번 더 누르면 종료(사이에 다른 키가 오면 처음부터) | 입력창, 모든 창(표에 없을 때) |
 | `Ctrl+D` | 빈 입력창에서 종료 | 입력창 |
 | `Ctrl+G` | 외부 에디터로 초안 편집 | 입력창 |
-| `Ctrl+K` | 초안 글자 잘라 보관 | 입력창 |
-| `Ctrl+R` | 입력 기록 검색 | 입력창 |
+| `Ctrl+A`, `Ctrl+E` | 줄 처음, 줄 끝으로 | 입력창 |
+| `Ctrl+K` | 커서부터 줄 끝까지 잘라 보관 | 입력창 |
+| `Ctrl+U` | 줄 처음부터 커서까지 잘라 보관 | 입력창 |
+| `Ctrl+W` | 커서 앞 낱말 하나 잘라 보관 | 입력창 |
 | `Ctrl+Y` | 잘라 둔 글자 복원 | 입력창 |
+| `Ctrl+R` | 입력 기록 검색 | 입력창 |
+| `Ctrl+L` | 화면을 지우고 다시 그림, 초안은 그대로 | 입력창 |
 | `Enter` | 입력 제출, 유휴이면 새 작업, 실행 중이면 router가 끼워 넣기, 새 작업, 대기 중 하나 선택 | 입력창 |
-| `Esc` | 팝업과 선택 해제, 작업 중지 없음 | 입력창 |
-| `Tab` | 유휴이면 `Enter`와 동일, 실행 중이면 관계 판단 없이 대기, 보낼 때 router 1회 | 입력창 |
+| `Ctrl+Q` | 관계 판단 없이 대기, 보낼 때 router 1회 | 입력창 |
+| `Esc` | 열린 창이 있으면 그 창 닫기, 없으면 실행 중인 모든 작업 중지와 보류(유휴이면 아무것도 안 함) | 입력창 |
+| `Esc Esc` | 되돌리기. 구현 전이라 안내 한 줄만 보임 | 입력창 |
+| `Shift+Tab` | 권한 모드를 `ask`, `edit`, `read-only` 순서로 돌리고 `SetPermissionMode`를 보냄, 새 모드를 대화 기록에 한 줄로 남김. `full`은 `/mode full`로만 켜고 `full`에서 누르면 `ask`로 감 | 입력창 |
+| `Tab` | 명령 목록 열기와 완성. 입력창이 비었으면 `/`를 넣어 목록을 열고, 팝업이 닫혀 있으면 다시 연다 | 입력창 |
+| `F3` | 상태판 버튼 고르기 시작 | 입력창, 선택지 |
+| `F5` | 작업 목록 화면 열기 | 입력창, 선택지 |
 | `↑`, `↓` | 입력창이 비었거나 불러온 기록 그대로일 때 입력 기록 이동 | 입력창 |
+| `←`, `→` | 입력창 안 커서 이동. 빈 입력창에서도 다른 일을 하지 않는다 | 입력창 |
 | `Enter` | 키 확인 | router 키 입력 창 |
 | `Esc` | 종료 | router 키 입력 창 |
 | `1`, `y` | 적용하고 계속 강조 | 폴더 설정 신뢰 창 |
@@ -408,6 +475,10 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 패킷이 맥락 한도로 거절돼 멈추면 안내 한 줄을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_packet_overflow_tells_the_user_how_to_retry` |
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
 | 피드백 질문과 바로잡기 제안은 입력창이 빌 때만 키를 가져가 `↑`, `↓`, `Enter`, `Esc`와 숫자로 고르고, `[실행]`은 `RunAsNewTask`를 보내며, `Esc` 뒤 방향키는 입력 기록으로 돌아간다. 초안이 있으면 숫자가 답으로 가지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `correction_enter_runs_the_first_choice_as_a_new_task`, `correction_down_then_enter_keeps_the_input_as_it_is`, `correction_digits_pick_a_choice_while_the_composer_is_empty`, `correction_takes_the_arrow_keys_until_escape_gives_them_back_to_history`, `correction_closed_with_escape_opens_again_with_the_feedback_command`, `correction_goes_away_when_the_input_is_no_longer_unsent`, `a_number_draft_is_not_taken_as_a_feedback_answer`, `digits_after_a_draft_start_do_not_answer_the_feedback_question`, `feedback_arrows_and_enter_pick_an_answer`, `feedback_escape_closes_without_a_request_and_arrows_return_to_history` |
+| 키를 동작으로 바꾸는 일은 해석기 한 곳이 맡고, 모든 프리셋은 표가 읽히며 한 영역 안에서 같은 키가 두 동작에 묶이지 않고 모든 줄에 키나 명령이 있다. 프리셋 전환 뒤 `Esc`, `Tab`, `Shift+Tab`, `Ctrl+C`, `Ctrl+T`의 뜻이 프리셋 표대로 바뀐다. | `saturn-terminal/tui/src/keymap/tests.rs`의 `preset_names_match_the_protocol_list_and_all_load`, `every_binding_in_every_preset_has_a_key_or_a_command`, `every_user_action_is_bound_in_every_preset`, `no_preset_binds_one_key_to_two_actions_in_a_scope`, `an_override_replaces_only_its_own_keys_and_inherits_the_rest`, `common_keys_mean_the_same_in_every_preset`, `choice_keys_mean_the_same_in_every_preset`, `switching_presets_changes_escape_tab_shift_tab_and_ctrl_c`, `double_escape_means_rewind_only_inside_the_window`, `only_the_keymap_module_reads_key_codes`, `the_design_doc_names_every_preset_and_slash_command` |
+| `Esc`는 창이 없을 때 작업을 멈추고, `Esc Esc`는 되돌리기 안내를 보이며, `Shift+Tab`과 `/mode`는 권한 모드를 돌리고, `Tab`은 제출하지 않고 명령 목록을 연다. `Ctrl+C`는 유휴이고 빈 입력창이면 두 번에 종료하고 `Ctrl+A`, `Ctrl+E`, `Ctrl+U`, `Ctrl+W`, `Ctrl+L`이 동작한다. 빈 입력창 `←`는 작업 목록을 열지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `escape_stops_running_work_and_does_nothing_when_idle`, `double_escape_says_rewind_is_not_implemented_and_the_command_does_too`, `shift_tab_cycles_the_permission_mode_from_the_default`, `mode_command_cycles_without_a_value_and_sets_with_one`, `tab_completes_the_command_list_and_no_longer_submits`, `ctrl_c_twice_on_an_idle_empty_composer_quits_and_another_key_in_between_resets`, `line_editing_keys_move_and_delete_inside_the_draft`, `ctrl_l_redraws_the_screen_and_keeps_the_draft`, `left_arrow_on_an_empty_composer_does_not_open_the_task_list` |
+| `F5`와 `/tasks`는 작업 목록을, `F3`과 `/agents`는 상태판 버튼 고르기를 열고, 고르기는 줄과 버튼을 옮기며 `Enter`로 실행하고 `Esc`로 돌아가고, 버튼이 없거나 사라지면 끝난다. | `saturn-terminal/tui/src/app/tests.rs`의 `f5_and_the_tasks_command_open_the_task_list`, `f3_and_the_agents_command_enter_the_status_board_and_enter_runs_the_button`, `status_board_focus_moves_between_buttons_and_lines`, `status_board_focus_takes_arrows_until_escape_returns_them_to_history`, `status_board_focus_does_not_start_without_buttons_and_ends_when_the_line_goes` |
+| `/keymap`은 이 TUI의 프리셋을 바꾸고, 설정 `tui.keymap`은 바뀐 값일 때만 따르며, 설정 검사는 프리셋 이름만 받는다. | `saturn-terminal/tui/src/app/tests.rs`의 `keymap_command_switches_the_preset_and_changes_escape_tab_and_ctrl_c`, `keymap_command_without_a_name_lists_the_presets_and_a_bad_name_is_a_warning`, `opencode_preset_turns_tab_into_the_permission_mode_cycle`, `the_setting_picks_the_preset_and_a_repeated_value_keeps_the_keymap_command_choice`, `claude_preset_moves_the_full_transcript_to_ctrl_o`, `saturn-terminal/engine/src/settings/layers.rs`의 `documented_keys_match_the_schema` |
 | 닫으려 할 때 `engine`에 닫은 뒤의 처리를 먼저 묻고, 답이 오기 전에는 닫지 않으며 한 번 더 누르면 기다리지 않고 닫는다. | `saturn-terminal/tui/src/app/tests.rs`의 `quit_asks_the_engine_first_and_a_second_quit_closes_without_waiting`, `exit_plan_close_quits_without_a_line`, `exit_plan_nobody_asked_for_is_ignored` |
 | `Notice`와 종료 확인 창의 `계속 실행`은 닫은 뒤 터미널에 계속 실행 중인 작업 수와 다시 여는 방법을 한 줄로 남기고, 영어 문구가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_notice_quits_and_leaves_the_running_count_line`, `exit_plan_notice_line_is_translated`, `exit_confirm_continue_quits_and_leaves_the_running_count_line` |
 | 멈춤 확인 창은 `ConfirmStop` 대기 입력이 오면 뜨고 입력이 다른 상태가 되면 지워지며, 첫 선택과 `Esc`는 `대기`이고 `멈추고 실행`은 `AnswerStopConfirm`을 보낸다. 문구에 영어가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `stop_confirm_window_opens_for_the_asking_input_and_closes_when_it_moves_on`, `stop_confirm_enter_and_escape_answer_wait_and_down_enter_answers_stop`, `saturn-terminal/tui/src/view/stop_confirm.rs`의 `render_shows_the_input_and_both_choices` |
@@ -437,10 +508,8 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 - 메인 에이전트가 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - 실행 줄의 칸 순서를 provider와 모델 먼저로 둘지, 하는 일 먼저로 둘지, 모델 이름을 보고된 그대로 쓸지 별칭으로 쓸지 ([#50](https://github.com/woonyong-choi/saturn/issues/50))
 - 상태판 최대 높이를 화면 높이 비율로 둘지, 고정 줄 수로 둘지, 상한을 두지 않을지 ([#51](https://github.com/woonyong-choi/saturn/issues/51))
-- 상태판 버튼을 `Shift+Tab` 진입과 방향키로 고를지, `/send`, `/cancel`, `/continue` 명령만 쓸지, 줄마다 번호 키를 줄지 ([#52](https://github.com/woonyong-choi/saturn/issues/52))
 - 짧게 끝나는 판단의 판단 줄을 생략할지, 항상 그릴지, 지연 표시와 최소 표시 시간을 둘지 ([#53](https://github.com/woonyong-choi/saturn/issues/53))
 - `/stop`이 진행 중인 `/train`도 멈출지, 학습 전용 중지 명령을 둘지, 학습 줄에 중지 버튼을 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 허가 거절 뒤 다르게 하라는 입력을 접두 초안으로 받을지, 창 안 입력칸으로 받을지, 일반 입력처럼 router에 맡길지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
 - plain 출력을 켜는 조건과 우선순위, 설정 키 이름을 무엇으로 할지 ([#57](https://github.com/woonyong-choi/saturn/issues/57))
 - 좁은 가로 폭에서 폭 구간별로 버튼과 칸을 줄일지, 줄 끝부터 말줄임할지, 버튼 대신 명령 안내를 보일지 ([#58](https://github.com/woonyong-choi/saturn/issues/58))
-- 빈 입력창에서 `←`로 작업 목록 화면을 열지, `/tasks`로만 열지, 다른 전용 키를 둘지 ([#59](https://github.com/woonyong-choi/saturn/issues/59))

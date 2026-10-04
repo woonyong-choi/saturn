@@ -148,6 +148,7 @@ impl<W: Write> PlainOutput<W> {
             Notification::SettingsApplied {
                 revision,
                 warning: Some(warning),
+                ..
             } => {
                 let line = StatusLine::Settings {
                     revision: revision.0,

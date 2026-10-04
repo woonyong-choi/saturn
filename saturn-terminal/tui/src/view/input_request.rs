@@ -4,7 +4,6 @@
 use std::collections::VecDeque;
 use std::time::Instant;
 
-use crossterm::event::KeyEvent;
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
@@ -12,6 +11,7 @@ use saturn_protocol::ids::{Provider, TaskId, TaskLabel};
 use saturn_protocol::input::{InputAnswer, InputRequest};
 
 use crate::i18n::{self, Lang};
+use crate::keys::Action;
 use crate::labels;
 use crate::view::input_form::{ChoiceState, FieldState, FormError, FormEvent, InputForm};
 use crate::view::permission::INPUT_GUARD;
@@ -91,12 +91,16 @@ impl InputQueue {
     // vars: f = 칸 수, o = 선택지 수
     // basis: estimate
     /// 보호 시간 중이면 `None`. 답이 정해지면 창을 닫고 요청 번호와 답을 돌려준다.
-    pub(crate) fn on_key(&mut self, key: KeyEvent, now: Instant) -> Option<(String, InputAnswer)> {
+    pub(crate) fn on_action(
+        &mut self,
+        action: &Action,
+        now: Instant,
+    ) -> Option<(String, InputAnswer)> {
         if !self.accepts_input(now) {
             return None;
         }
         let entry = self.queue.front_mut()?;
-        let FormEvent::Answer(answer) = entry.form.on_key(key) else {
+        let FormEvent::Answer(answer) = entry.form.on_action(action) else {
             return None;
         };
         let request_id = self.queue.pop_front()?.request_id;
@@ -352,12 +356,14 @@ fn choice_line(choice: &ChoiceState, row: usize, lang: Lang) -> String {
 mod tests {
     use std::time::Duration;
 
-    use crossterm::event::{KeyCode, KeyModifiers};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
     use saturn_protocol::input::{InputField, InputFieldKind, InputOption, InputValue};
 
     use super::*;
+    use crate::keymap::resolve_in_tests;
+    use crate::keys::KeyArea;
     use crate::view::buffer_lines;
 
     fn text_field(id: &str, is_secret: bool) -> InputField {
@@ -415,8 +421,9 @@ mod tests {
         );
     }
 
-    fn key(code: KeyCode) -> KeyEvent {
-        KeyEvent::new(code, KeyModifiers::NONE)
+    fn key(code: KeyCode) -> Action {
+        resolve_in_tests(KeyArea::Input, KeyEvent::new(code, KeyModifiers::NONE))
+            .unwrap_or(Action::ShowShortcuts)
     }
 
     fn screen(queue: &InputQueue, lang: Lang, guarded: bool) -> Vec<String> {
@@ -438,8 +445,8 @@ mod tests {
         let mut queue = InputQueue::new();
         push(&mut queue, "r1", request(vec![text_field("a", false)]), now);
 
-        let early = queue.on_key(key(KeyCode::Esc), now + Duration::from_millis(300));
-        let late = queue.on_key(key(KeyCode::Esc), now + Duration::from_secs(1));
+        let early = queue.on_action(&key(KeyCode::Esc), now + Duration::from_millis(300));
+        let late = queue.on_action(&key(KeyCode::Esc), now + Duration::from_secs(1));
 
         assert_eq!(early, None);
         assert_eq!(late, Some(("r1".to_owned(), InputAnswer::Cancel)));
@@ -455,7 +462,7 @@ mod tests {
         push(&mut queue, "r2", request(vec![text_field("b", false)]), now);
         let later = now + Duration::from_secs(2);
 
-        queue.on_key(key(KeyCode::Esc), later);
+        queue.on_action(&key(KeyCode::Esc), later);
 
         assert_eq!(queue.current().map(|e| e.request_id.as_str()), Some("r2"));
         assert!(!queue.accepts_input(later));
@@ -471,7 +478,7 @@ mod tests {
         push(&mut queue, "r1", request(vec![text_field("a", false)]), now);
 
         queue.paste("hi", later);
-        let answer = queue.on_key(key(KeyCode::Enter), later);
+        let answer = queue.on_action(&key(KeyCode::Enter), later);
 
         assert_eq!(
             answer,
@@ -495,8 +502,8 @@ mod tests {
             now,
         );
         push(&mut queue, "r2", request(vec![choice_field()]), now);
-        queue.on_key(key(KeyCode::Char('x')), now + Duration::from_secs(2));
-        queue.on_key(key(KeyCode::Tab), now + Duration::from_secs(2));
+        queue.on_action(&key(KeyCode::Char('x')), now + Duration::from_secs(2));
+        queue.on_action(&key(KeyCode::Tab), now + Duration::from_secs(2));
 
         let text = screen(&queue, Lang::En, false).join("\n");
 

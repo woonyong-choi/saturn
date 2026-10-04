@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 
 use ratatui::Frame;
 use ratatui::layout::Rect;
+use ratatui::style::Modifier;
 use saturn_protocol::event::Activity;
 use saturn_protocol::ids::{InputId, Provider, TaskId, TaskLabel};
 use saturn_protocol::rpc::{Alert, SettingsFault, SettingsLayer, SettingsWarning};
@@ -379,6 +380,8 @@ pub(crate) struct StatusBoardView<'a> {
     pub lang: Lang,
     pub labels_visible: bool,
     pub spinner: char,
+    /// 상태판 버튼 고르기에서 고른 버튼. 반전해서 그린다.
+    pub focus: Option<Button>,
 }
 
 impl StatusBoardView<'_> {
@@ -405,7 +408,12 @@ impl StatusBoardView<'_> {
             .collect();
         frame.render_widget(Paragraph::new(rows), area);
         for (rect, button) in rects {
-            frame.render_widget(Span::styled(button.text(self.lang), EMPHASIS), rect);
+            let style = if self.focus == Some(button) {
+                EMPHASIS.add_modifier(Modifier::REVERSED)
+            } else {
+                EMPHASIS
+            };
+            frame.render_widget(Span::styled(button.text(self.lang), style), rect);
         }
     }
 }
@@ -1093,6 +1101,7 @@ mod tests {
             lang: Lang::Ko,
             labels_visible: true,
             spinner: '⠙',
+            focus: None,
         };
 
         terminal

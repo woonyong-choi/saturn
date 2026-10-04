@@ -3264,6 +3264,14 @@
             },
             "params": {
               "properties": {
+                "keymap": {
+                  "default": null,
+                  "description": "병합한 설정의 `tui.keymap`. 검사 실패로 이전 번호를 쓰면 `None`이다.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "revision": {
                   "$ref": "#/$defs/SettingsRevision"
                 },
@@ -4483,6 +4491,14 @@
             },
             "params": {
               "properties": {
+                "keymap": {
+                  "default": null,
+                  "description": "병합한 설정의 `tui.keymap`. 검사 실패로 이전 번호를 쓰면 `None`이다.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "revision": {
                   "$ref": "#/$defs/SettingsRevision"
                 },

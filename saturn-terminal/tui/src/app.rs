@@ -11,9 +11,7 @@ mod windows;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use crossterm::event::{
-    Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
-};
+use crossterm::event::{Event, KeyEvent, KeyEventKind, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Position, Rect};
 use saturn_protocol::ids::{ChatId, LedgerSeq, Provider};
 use saturn_protocol::rpc::{CommandInfo, Notification, Request};
@@ -23,7 +21,8 @@ use crate::TuiError;
 use crate::client::{ClientError, EngineClient};
 use crate::history::InputHistory;
 use crate::i18n::{self, Lang};
-use crate::keys::{self, Action, KeyArea, KeyContext};
+use crate::keymap::{Keymap, Resolved};
+use crate::keys::{Action, KeyArea, KeyContext};
 use crate::shell::{self, ShellOutput};
 use crate::state::ChatState;
 use crate::terminal::{self, Screen};
@@ -41,7 +40,7 @@ use crate::view::resume_prompt::ResumePrompt;
 use crate::view::router_key_prompt::RouterKeyPrompt;
 use crate::view::router_version::RouterVersionScreen;
 use crate::view::start_screen::StartInfo;
-use crate::view::status_board;
+use crate::view::status_board::{self, Button};
 use crate::view::stop_confirm::StopConfirm;
 use crate::view::task_list::TaskList;
 use crate::view::train_confirm::TrainConfirm;
@@ -70,6 +69,8 @@ pub(crate) enum AppEvent {
 pub(crate) enum Effect {
     Send(Request),
     Suspend,
+    /// 화면을 지우고 다시 그린다.
+    Redraw,
     OpenEditor,
     RunShell(String),
     RecordHistory(String),
@@ -113,6 +114,14 @@ pub(crate) struct App {
     pub transcript: Transcript,
     pub live: LiveArea,
     pub composer: Composer,
+    /// 키를 동작으로 바꾸는 해석기. 프리셋은 설정 `tui.keymap`과 `/keymap`이 정한다.
+    pub keymap: Keymap,
+    /// 마지막으로 받은 설정의 `tui.keymap`. 같은 값이 다시 오면 `/keymap`으로 고른 묶음을 바꾸지 않는다.
+    settings_keymap: Option<String>,
+    /// 상태판 버튼 고르기 중 고른 버튼. `None`이면 고르기 밖이다.
+    pub board_focus: Option<Button>,
+    /// `Ctrl+C`를 한 번 눌러 종료를 기다린다. 다른 동작이 오면 풀린다.
+    quit_armed: bool,
     pub popup: Option<Popup>,
     pub popup_suppress: PopupSuppress,
     pub permissions: PermissionQueue,
@@ -174,6 +183,10 @@ impl App {
             transcript: Transcript::new(),
             live: LiveArea::new(),
             composer: Composer::new(),
+            keymap: Keymap::saturn(),
+            settings_keymap: None,
+            board_focus: None,
+            quit_armed: false,
             popup: None,
             popup_suppress: PopupSuppress::default(),
             permissions: PermissionQueue::new(),
@@ -262,7 +275,13 @@ impl App {
         }
         match &self.window {
             Some(Window::Resume(_)) => return KeyArea::ResumePrompt,
-            Some(Window::TaskList(_)) => return KeyArea::TaskList,
+            Some(Window::TaskList(list)) => {
+                return if list.editing.is_some() {
+                    KeyArea::TaskListEdit
+                } else {
+                    KeyArea::TaskList
+                };
+            }
             Some(Window::FullTranscript(_)) => return KeyArea::FullTranscript,
             Some(Window::Usage(_)) => return KeyArea::Usage,
             Some(Window::RouterVersion(_)) => return KeyArea::RouterVersion,
@@ -276,10 +295,14 @@ impl App {
             KeyArea::Popup
         } else if self.chat.close_held_confirm.is_some() {
             KeyArea::StatusBoard
+        } else if self.board_focus.is_some() {
+            KeyArea::BoardFocus
         } else if self.choice_has_keys() && self.correction_open() {
             KeyArea::Correction
         } else if self.choice_has_keys() && self.chat.feedback.is_some() {
             KeyArea::Transcript
+        } else if self.composer.search().is_some() {
+            KeyArea::Search
         } else {
             KeyArea::Composer
         }
@@ -318,49 +341,31 @@ impl App {
         if area == KeyArea::Permission && !self.permissions.accepts_input(now) {
             return Vec::new();
         }
-        if area == KeyArea::Input {
-            return self.on_input_key(key, now);
-        }
-        if self.edit_text_line(area, key) {
-            return Vec::new();
-        }
-        if area == KeyArea::Composer
-            && self.composer.search().is_some()
-            && let Some(effects) = self.on_search_key(key)
-        {
-            return effects;
-        }
         let ctx = self.key_context();
-        match keys::map(area, key, ctx) {
-            Some(action) => self.on_action(action, now),
-            None if matches!(
-                area,
-                KeyArea::Popup | KeyArea::Transcript | KeyArea::Correction
-            ) =>
-            {
-                match keys::map(KeyArea::Composer, key, ctx) {
-                    Some(action) => self.on_composer_action(action),
-                    None => Vec::new(),
-                }
+        let fallback = match area {
+            KeyArea::Popup | KeyArea::Transcript | KeyArea::Correction | KeyArea::Search => {
+                Some(KeyArea::Composer)
             }
-            // 창 화면의 `Ctrl+C`는 입력창과 같이 뷰 해제부터 처리한다.
-            None if is_ctrl_c(key) => self.interrupt(),
-            None => Vec::new(),
+            KeyArea::TaskListEdit => Some(KeyArea::TaskList),
+            _ => None,
+        };
+        let Some(Resolved { action, scope }) = self.keymap.resolve(area, fallback, key, ctx, now)
+        else {
+            return Vec::new();
+        };
+        if !matches!(action, Action::Interrupt | Action::InterruptQuit) {
+            self.quit_armed = false;
+        }
+        if scope == KeyArea::Composer && area != KeyArea::Composer {
+            self.on_composer_action(action, now)
+        } else {
+            self.on_action(action, now)
         }
     }
 
-    // cost: time O(f·o), heap O(f·o), stack O(1)
-    // vars: f = 입력 요청의 칸 수, o = 선택지 수
-    // basis: estimate
-    /// 입력 요청 창은 전역 키와 `Ctrl+C`만 따로 읽고 나머지는 폼이 받는다.
-    fn on_input_key(&mut self, key: KeyEvent, now: Instant) -> Vec<Effect> {
-        if let Some(action) = keys::global(key) {
-            return self.on_action(action, now);
-        }
-        if is_ctrl_c(key) {
-            return self.interrupt();
-        }
-        match self.inputs.on_key(key, now) {
+    /// 입력 요청 창의 동작. 보호 시간 중이면 받지 않는다.
+    fn on_input_action(&mut self, action: &Action, now: Instant) -> Vec<Effect> {
+        match self.inputs.on_action(action, now) {
             Some((request_id, answer)) => {
                 vec![Effect::Send(Request::AnswerInput { request_id, answer })]
             }
@@ -368,47 +373,21 @@ impl App {
         }
     }
 
-    // cost: time O(1), heap O(1), stack O(1)
-    // basis: estimate
-    /// 키를 받았으면 `true`.
-    fn edit_text_line(&mut self, area: KeyArea, key: KeyEvent) -> bool {
-        let Some(Window::TaskList(list)) = &mut self.window else {
-            return false;
-        };
-        if area != KeyArea::TaskList || list.editing.is_none() {
-            return false;
-        }
-        match key.code {
-            KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-                list.edit_push(c);
-                true
-            }
-            KeyCode::Backspace => {
-                list.edit_pop();
-                true
-            }
-            _ => false,
-        }
-    }
-
-    // cost: time O(1), heap O(1), stack O(1)
-    // basis: estimate
-    /// 검색이 처리하지 않는 키는 `None`으로 보통 매핑에 넘긴다.
-    fn on_search_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
-        let plain = (key.modifiers - KeyModifiers::SHIFT).is_empty();
-        match key.code {
-            KeyCode::Char(c) if plain => self.composer.push_search_char(c),
-            KeyCode::Backspace => self.composer.pop_search_char(),
-            KeyCode::Enter => {
+    /// 입력 기록 검색 중의 동작. 검색이 받지 않는 동작은 입력창이 받는다.
+    fn on_search_action(&mut self, action: Action, now: Instant) -> Vec<Effect> {
+        match action {
+            Action::Insert(c) => self.composer.push_search_char(c),
+            Action::Backspace => self.composer.pop_search_char(),
+            Action::Confirm => {
                 let found = self.search_result().map(str::to_string);
                 self.composer.accept_search(found.as_deref());
             }
-            KeyCode::Esc => {
+            Action::Close => {
                 self.composer.cancel_search();
             }
-            _ => return None,
+            other => return self.on_composer_action(other, now),
         }
-        Some(Vec::new())
+        Vec::new()
     }
 
     pub(super) fn search_result(&self) -> Option<&str> {
@@ -493,7 +472,7 @@ impl App {
         self.refresh_popup();
     }
 
-    fn on_action(&mut self, action: Action, now: Instant) -> Vec<Effect> {
+    pub(super) fn on_action(&mut self, action: Action, now: Instant) -> Vec<Effect> {
         match action {
             Action::ShowFullTranscript => {
                 self.toggle_full_transcript();
@@ -501,6 +480,8 @@ impl App {
             }
             Action::Suspend => return vec![Effect::Suspend],
             Action::Quit => return self.quit_effects(),
+            Action::Interrupt => return self.interrupt(false),
+            Action::InterruptQuit => return self.interrupt(true),
             Action::Permission(answer) => {
                 return match self.permissions.answer(answer, now) {
                     Some((request_id, answer)) => {
@@ -528,7 +509,10 @@ impl App {
             KeyArea::FolderTrust => self.on_trust_action(action),
             KeyArea::ResumePrompt => self.on_resume_action(action),
             KeyArea::ExitConfirm => self.on_exit_confirm_action(action),
-            KeyArea::TaskList => self.on_task_list_action(action),
+            KeyArea::TaskList | KeyArea::TaskListEdit => self.on_task_list_action(action),
+            KeyArea::BoardFocus => self.on_board_action(action, now),
+            KeyArea::Input => self.on_input_action(&action, now),
+            KeyArea::Search => self.on_search_action(action, now),
             KeyArea::FullTranscript | KeyArea::Usage | KeyArea::RouterVersion => {
                 self.on_screen_action(action)
             }
@@ -539,11 +523,11 @@ impl App {
             KeyArea::Transcript => self.on_feedback_action(action),
             KeyArea::Correction => self.on_correction_action(action),
             KeyArea::Popup => self.on_popup_action(action),
-            _ => self.on_composer_action(action),
+            _ => self.on_composer_action(action, now),
         }
     }
 
-    fn toggle_full_transcript(&mut self) {
+    pub(super) fn toggle_full_transcript(&mut self) {
         match &self.window {
             Some(Window::FullTranscript(_)) => self.window = None,
             Some(window) if window.is_blocking() => {}
@@ -612,10 +596,6 @@ impl App {
     }
 }
 
-fn is_ctrl_c(key: KeyEvent) -> bool {
-    key.code == KeyCode::Char('c') && key.modifiers == KeyModifiers::CONTROL
-}
-
 // cost: time O(1), heap O(1), stack O(1)
 // basis: estimate
 /// 화면 복원은 호출자(`crate::run`)가 한다.
@@ -679,6 +659,7 @@ async fn apply_effect(
     match effect {
         Effect::Send(request) => client.send(request).await?,
         Effect::Suspend => terminal::suspend(screen)?,
+        Effect::Redraw => screen.clear().map_err(terminal::TerminalError::Draw)?,
         Effect::OpenEditor => {
             let text = terminal::edit_external(screen, &app.composer.text())?;
             app.set_draft(&text);
