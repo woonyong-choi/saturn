@@ -64,6 +64,19 @@ fn shell_program() -> String {
         .unwrap_or_else(|| "sh".to_string())
 }
 
+// cost: time O(1), heap O(1), stack O(1)
+// basis: estimate
+/// 셸은 router 키 환경 변수 없이 작업 폴더에서 띄운다.
+fn shell_command(program: &str, command: &str, workdir: &Path) -> Command {
+    let mut shell = Command::new(program);
+    shell
+        .arg("-c")
+        .arg(command)
+        .env_remove(ROUTER_KEY_ENV)
+        .current_dir(workdir);
+    shell
+}
+
 // cost: time O(n), heap O(n), stack O(1), io 1
 // vars: n = 출력 바이트 수
 // basis: estimate
@@ -73,11 +86,7 @@ fn run_blocking(command: &str, workdir: &Path) -> Result<ShellOutput, ShellError
     let mut child = {
         let stderr = writer.try_clone().map_err(ShellError::Spawn)?;
         // `Command`가 파이프 쓰는 쪽을 쥐고 있으므로 블록 끝에서 버려야 읽기가 끝난다.
-        Command::new(shell_program())
-            .arg("-c")
-            .arg(command)
-            .env_remove(ROUTER_KEY_ENV)
-            .current_dir(workdir)
+        shell_command(&shell_program(), command, workdir)
             .stdin(Stdio::null())
             .stdout(writer)
             .stderr(stderr)
@@ -111,6 +120,16 @@ mod tests {
         assert_eq!(output.status, Some(3));
         assert!(output.output.contains("out"));
         assert!(output.output.contains("err"));
+    }
+
+    #[test]
+    fn the_shell_is_started_in_the_workdir_without_the_router_key() {
+        let command = shell_command("sh", "ls", Path::new("/work"));
+
+        assert_eq!(command.get_program(), "sh");
+        assert_eq!(command.get_current_dir(), Some(Path::new("/work")));
+        let envs: Vec<_> = command.get_envs().collect();
+        assert_eq!(envs, [(std::ffi::OsStr::new(ROUTER_KEY_ENV), None)]);
     }
 
     #[test]

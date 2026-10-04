@@ -6,6 +6,8 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixListener;
 use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use saturn_protocol::envelope::{
@@ -41,10 +43,17 @@ const INTERNAL: i32 = -32603;
 const INVALID_PARAMS: i32 = -32602;
 const ROUTER_KEY_REQUIRED: i32 = -32001;
 
-fn serve(home: &Path, mut act: impl FnMut(&Request) -> Act + Send + 'static) -> JoinHandle<()> {
+fn serve(home: &Path, act: impl FnMut(&Request) -> Act + Send + 'static) -> JoinHandle<()> {
     let dir = home.join(".saturn");
     std::fs::create_dir_all(&dir).unwrap();
-    let listener = UnixListener::bind(dir.join("engine.sock")).unwrap();
+    serve_at(&dir.join("engine.sock"), act)
+}
+
+fn serve_at(
+    socket: &Path,
+    mut act: impl FnMut(&Request) -> Act + Send + 'static,
+) -> JoinHandle<()> {
+    let listener = UnixListener::bind(socket).unwrap();
     std::thread::spawn(move || {
         let (stream, _) = listener.accept().unwrap();
         let mut writer = stream.try_clone().unwrap();
@@ -98,6 +107,9 @@ fn saturn(home: &Path, args: &[&str], envs: &[(&str, &str)], stdin: &str) -> Run
         .env("HOME", home)
         .env_remove("SATURN_AGENT")
         .env_remove("SATURN_KEY")
+        .env_remove("SATURN_HOME")
+        .env_remove("SATURN_PASS")
+        .env_remove("SATURN_ENGINE_SOCKET")
         .envs(envs.iter().copied())
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
@@ -140,6 +152,85 @@ fn nested_run_inside_an_agent_exits_two() {
     let run = saturn(home.path(), &[], &[("SATURN_AGENT", "1")], "");
 
     assert_eq!(run.code, Some(2), "{}", run.stderr);
+}
+
+/// 에이전트 작업 안에서 도는 `saturn`의 환경. 출입증과 소켓은 engine이 넣어 주는 값이다.
+fn child_env(socket: &str) -> [(&str, &str); 3] {
+    [
+        ("SATURN_AGENT", "1"),
+        ("SATURN_PASS", "saturn-pass-test"),
+        ("SATURN_ENGINE_SOCKET", socket),
+    ]
+}
+
+#[test]
+fn a_child_attaches_with_its_pass_and_mode_on_the_socket_it_was_given() {
+    let home = tempfile::tempdir().unwrap();
+    let socket = home.path().join("child.sock");
+    let requests = Arc::new(Mutex::new(Vec::new()));
+    let seen = Arc::clone(&requests);
+    let engine = serve_at(&socket, move |request| {
+        seen.lock().unwrap().push(request.clone());
+        Act::Ok(vec![Notification::HistoryChunk {
+            chat: ChatId(2),
+            entries: Vec::new(),
+            oldest: None,
+            has_more: false,
+        }])
+    });
+    let socket_text = socket.display().to_string();
+
+    let run = saturn(
+        home.path(),
+        &["--mode", "read-only"],
+        &child_env(&socket_text),
+        "",
+    );
+    engine.join().unwrap();
+
+    assert_eq!(run.code, Some(0), "{}", run.stderr);
+    // 접속 요청 하나뿐이다. 새 채팅을 여는 `Attach`나 입력은 없다
+    assert_eq!(
+        *requests.lock().unwrap(),
+        vec![Request::AttachChild {
+            pass: "saturn-pass-test".to_owned(),
+            mode: Some("read-only".to_owned()),
+        }]
+    );
+}
+
+#[test]
+fn a_child_refuses_arguments_the_parent_already_decides() {
+    let home = tempfile::tempdir().unwrap();
+    let missing = home.path().join("none.sock");
+    let socket_text = missing.display().to_string();
+    let cases: [(&str, &[&str]); 5] = [
+        ("subcommand", &["usage"]),
+        ("config", &["-c", "a=1"]),
+        ("add-dir", &["--add-dir", "."]),
+        ("continue", &["--continue"]),
+        ("resume", &["--resume"]),
+    ];
+
+    for (name, args) in cases {
+        let run = saturn(home.path(), args, &child_env(&socket_text), "");
+
+        // 엔진 없이 사용법 오류(2)로 끝나므로 접속을 시도하기 전에 거절했다
+        assert_eq!(run.code, Some(2), "{name}: {}", run.stderr);
+    }
+}
+
+#[test]
+fn a_child_does_not_start_an_engine_when_none_is_running() {
+    let home = tempfile::tempdir().unwrap();
+    let socket = home.path().join("none.sock");
+    let socket_text = socket.display().to_string();
+
+    let run = saturn(home.path(), &[], &child_env(&socket_text), "");
+
+    assert_eq!(run.code, Some(69), "{}", run.stderr);
+    assert!(!socket.exists());
+    assert!(!home.path().join(".saturn").exists());
 }
 
 #[test]
@@ -269,7 +360,9 @@ fn expected_failure_exits_one() {
 
 #[test]
 fn training_without_a_terminal_to_confirm_exits_two_and_cancels() {
-    let run = run_with_engine(&["router", "train"], |request| match request {
+    let cancelled = Arc::new(AtomicBool::new(false));
+    let seen = Arc::clone(&cancelled);
+    let run = run_with_engine(&["router", "train"], move |request| match request {
         Request::Train { .. } => Act::Ok(vec![Notification::TrainPreview {
             candidates: 250,
             grader: "grader-a".to_owned(),
@@ -277,11 +370,18 @@ fn training_without_a_terminal_to_confirm_exits_two_and_cancels() {
             threshold_targets: Vec::new(),
             retrain_model: false,
         }]),
-        Request::ConfirmTrain { proceed: false } => Act::Ok(Vec::new()),
+        Request::ConfirmTrain { proceed: false } => {
+            seen.store(true, Ordering::SeqCst);
+            Act::Ok(Vec::new())
+        }
         other => panic!("unexpected {other:?}"),
     });
 
     assert_eq!(run.code, Some(2), "{}", run.stderr);
+    assert!(
+        cancelled.load(Ordering::SeqCst),
+        "no cancel request arrived"
+    );
 }
 
 #[test]

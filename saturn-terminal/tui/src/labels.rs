@@ -33,17 +33,6 @@ pub(crate) fn prefix(label: Option<TaskLabel>, visible: bool) -> String {
     }
 }
 
-// cost: time O(r·u), heap O(1), stack O(1)
-// vars: r = LABEL_RANGE 글자 수, u = used.len()
-// basis: estimate
-/// engine 규칙과 같은 계산이며 화면 쪽 검증에만 쓴다.
-#[cfg(test)]
-pub(crate) fn first_free(used: &[TaskLabel]) -> Option<TaskLabel> {
-    LABEL_RANGE
-        .map(TaskLabel)
-        .find(|candidate| !used.contains(candidate))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -66,22 +55,6 @@ mod tests {
         assert_eq!(prefix(Some(TaskLabel('A')), true), "[A] ");
         assert_eq!(prefix(Some(TaskLabel('A')), false), "");
         assert_eq!(prefix(None, true), "");
-    }
-
-    #[test]
-    fn first_free_returns_earliest_unused_letter() {
-        let used = [TaskLabel('A'), TaskLabel('C')];
-
-        assert_eq!(first_free(&used), Some(TaskLabel('B')));
-    }
-
-    // cost: time O(1), heap O(1), stack O(1)
-    // basis: estimate
-    #[test]
-    fn first_free_all_used_returns_none() {
-        let used: Vec<TaskLabel> = LABEL_RANGE.map(TaskLabel).collect();
-
-        assert_eq!(first_free(&used), None);
     }
 
     #[test]

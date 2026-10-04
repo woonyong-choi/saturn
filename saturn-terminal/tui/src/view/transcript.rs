@@ -1369,7 +1369,13 @@ mod tests {
 
         transcript.remove_feedback(TaskLabel('A'));
 
-        assert_eq!(transcript.cells().len(), 1);
+        assert!(matches!(
+            transcript.cells(),
+            [TranscriptCell::Feedback {
+                label: TaskLabel('B'),
+                ..
+            }]
+        ));
     }
 
     #[test]

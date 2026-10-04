@@ -128,10 +128,16 @@ async fn call_collects_notifications_until_response_and_reports_rejection() {
 }
 
 #[test]
-fn default_socket_ends_with_saturn_socket() {
+fn default_socket_is_the_socket_file_in_the_saturn_home() {
+    let home = saturn_protocol::home::resolve(
+        std::env::var_os(saturn_protocol::home::HOME_ENV),
+        std::env::var_os("HOME"),
+    )
+    .unwrap();
+
     let socket = EngineClient::default_socket();
 
-    assert!(socket.ends_with(".saturn/engine.sock"));
+    assert_eq!(socket, home.join(SOCKET_FILE));
 }
 
 fn tasks_result() -> QueryResult {

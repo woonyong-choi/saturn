@@ -571,9 +571,16 @@ mod tests {
 
     const SOCKET_FILE: &str = "engine.sock";
 
+    /// 옛 engine이 끝나지 않는 시험에서 기다림이 끝나게 하는 짧은 한도.
     const LIMITS: UpgradeLimits = UpgradeLimits {
         wait: Duration::from_millis(300),
         kill_wait: Duration::from_millis(300),
+    };
+
+    /// 옛 engine이 곧 끝나는 시험의 한도. 부하로 느려져도 강제 종료까지 가지 않게 넉넉하다.
+    const PATIENT: UpgradeLimits = UpgradeLimits {
+        wait: Duration::from_secs(30),
+        kill_wait: Duration::from_secs(30),
     };
 
     /// 신호를 보내지 않고 프로세스가 없다고 답하는 가짜.
@@ -700,17 +707,28 @@ mod tests {
     /// 실행하면 받은 인자를 `args`에 남기고 끝나는 가짜 새 engine 실행 파일.
     fn fake_binary(home: &Path) -> PathBuf {
         let script = home.join("fake-engine");
-        std::fs::write(&script, "#!/bin/sh\necho \"$*\" > \"$2/args\"\n").unwrap();
+        // 쓰는 도중의 파일을 읽지 않도록 다 쓴 뒤 이름을 바꿔 `args`를 만든다
+        std::fs::write(
+            &script,
+            "#!/bin/sh\necho \"$*\" > \"$2/args.partial\"\nmv \"$2/args.partial\" \"$2/args\"\n",
+        )
+        .unwrap();
         std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755))
             .unwrap();
         script
     }
 
-    /// 새 engine이 뜬 것처럼 잠시 뒤 소켓을 연다.
-    fn open_new_engine_later(socket: &Path) -> tokio::task::JoinHandle<UnixListener> {
+    /// 옛 engine이 끝난 것을 확인한 뒤 새 engine이 뜬 것처럼 소켓을 연다.
+    fn open_new_engine_later(
+        socket: &Path,
+        old: &Arc<FakeEngine>,
+    ) -> tokio::task::JoinHandle<UnixListener> {
         let socket = socket.to_owned();
+        let old = Arc::clone(old);
         tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_millis(600)).await;
+            while old.alive.load(Ordering::SeqCst) {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
             let _ = std::fs::remove_file(&socket); // 옛 소켓 파일이 남았을 수 있다
             UnixListener::bind(&socket).unwrap()
         })
@@ -738,44 +756,42 @@ mod tests {
     }
 
     #[test]
-    fn origin_with_marker_and_no_pass_is_error() {
+    fn origin_follows_the_marker_pass_and_socket() {
+        let child = Origin::Child {
+            pass: "pass-value".to_owned(),
+            socket: PathBuf::from("/run/engine.sock"),
+        };
+        // (사례, 표지, 출입증, 소켓, 기대 결과. 오류면 None)
+        let cases = [
+            ("marker without pass", Some("1"), None, None, None),
+            ("marker with empty pass", Some("1"), Some(""), None, None),
+            ("no marker or pass", None, None, None, Some(Origin::Outside)),
+            (
+                "pass on the given socket",
+                Some("1"),
+                Some("pass-value"),
+                Some("/run/engine.sock"),
+                Some(child),
+            ),
+        ];
+
+        for (name, marker, pass, socket, expected) in cases {
+            let result = origin_of(
+                Lang::En,
+                marker.map(OsStr::new),
+                pass.map(str::to_owned),
+                socket.map(PathBuf::from),
+            );
+
+            assert_eq!(result.ok(), expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn origin_with_marker_and_no_pass_names_the_pass_variable() {
         let error = origin_of(Lang::En, Some(OsStr::new("1")), None, None).unwrap_err();
 
         assert!(error.to_string().contains(PASS_ENV));
-    }
-
-    #[test]
-    fn origin_with_an_empty_pass_is_error() {
-        let result = origin_of(Lang::En, Some(OsStr::new("1")), Some(String::new()), None);
-
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn origin_without_marker_or_pass_is_outside() {
-        assert_eq!(
-            origin_of(Lang::En, None, None, None).unwrap(),
-            Origin::Outside
-        );
-    }
-
-    #[test]
-    fn origin_with_a_pass_is_a_child_on_the_given_socket() {
-        let origin = origin_of(
-            Lang::En,
-            Some(OsStr::new("1")),
-            Some("pass-value".to_owned()),
-            Some(PathBuf::from("/run/engine.sock")),
-        )
-        .unwrap();
-
-        assert_eq!(
-            origin,
-            Origin::Child {
-                pass: "pass-value".to_owned(),
-                socket: PathBuf::from("/run/engine.sock"),
-            }
-        );
     }
 
     #[tokio::test]
@@ -823,19 +839,17 @@ mod tests {
         let socket = home.path().join(SOCKET_FILE);
         let old = start_fake_engine(&socket, Some(version("0.0.1", 1)), None, true);
         let binary = fake_binary(home.path());
-        let opener = open_new_engine_later(&socket);
+        let opener = open_new_engine_later(&socket, &old);
 
-        let client = connect_or_start_at(Lang::En, &socket, || Ok(binary), &old, LIMITS).await;
+        let client = connect_or_start_at(Lang::En, &socket, || Ok(binary), &old, PATIENT).await;
 
         assert!(client.is_ok());
         let _listener = opener.await.unwrap();
         assert_eq!(old.shutdowns.load(Ordering::SeqCst), 1);
         assert!(old.signals.lock().unwrap().is_empty());
         let args = home.path().join("args");
-        for _ in 0..100 {
-            if args.exists() {
-                break;
-            }
+        // 새 engine 실행 파일은 `saturn`과 따로 돈다. 다 쓴 `args`가 나타나기를 기다린다
+        while !args.exists() {
             tokio::time::sleep(POLL_INTERVAL).await;
         }
         assert_eq!(
@@ -855,9 +869,13 @@ mod tests {
             false,
         );
         let binary = fake_binary(home.path());
-        let opener = open_new_engine_later(&socket);
+        let opener = open_new_engine_later(&socket, &stuck);
+        let limits = UpgradeLimits {
+            wait: LIMITS.wait,
+            kill_wait: PATIENT.kill_wait,
+        };
 
-        let client = connect_or_start_at(Lang::En, &socket, || Ok(binary), &stuck, LIMITS).await;
+        let client = connect_or_start_at(Lang::En, &socket, || Ok(binary), &stuck, limits).await;
 
         assert!(client.is_ok());
         let _listener = opener.await.unwrap();
@@ -891,9 +909,9 @@ mod tests {
         let socket = home.path().join(SOCKET_FILE);
         let legacy = start_fake_engine(&socket, None, Some(Signal::Term), false);
         let binary = fake_binary(home.path());
-        let opener = open_new_engine_later(&socket);
+        let opener = open_new_engine_later(&socket, &legacy);
 
-        let client = connect_or_start_at(Lang::En, &socket, || Ok(binary), &legacy, LIMITS).await;
+        let client = connect_or_start_at(Lang::En, &socket, || Ok(binary), &legacy, PATIENT).await;
 
         assert!(client.is_ok());
         let _listener = opener.await.unwrap();
@@ -950,14 +968,22 @@ mod tests {
     async fn wait_until_ready_attaches_when_socket_opens_later() {
         let home = tempfile::tempdir().unwrap();
         let socket = home.path().join(SOCKET_FILE);
-        let mut engine = exiting_engine(home.path(), "sleep 5");
+        let started = home.path().join("started");
+        let mut engine = exiting_engine(
+            home.path(),
+            &format!("touch '{}'; sleep 60", started.display()),
+        );
         let late_socket = socket.clone();
+        // engine 프로세스가 뜬 것을 확인한 뒤에 소켓이 열린다
         let opener = tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_millis(200)).await;
+            while !started.exists() {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
             UnixListener::bind(&late_socket).unwrap()
         });
 
-        let client = wait_until_ready(Lang::En, &socket, Duration::from_secs(5), &mut engine).await;
+        let client =
+            wait_until_ready(Lang::En, &socket, Duration::from_secs(120), &mut engine).await;
 
         assert!(client.is_ok());
         let _listener = opener.await.unwrap();
@@ -971,12 +997,18 @@ mod tests {
         let socket = home.path().join(SOCKET_FILE);
         let mut engine = exiting_engine(home.path(), "echo 'engine already running' >&2; exit 1");
         let late_socket = socket.clone();
+        // 먼저 뜬 engine이 잠금을 쥐고 있다는 로그를 남긴 뒤에 그 engine의 소켓이 열린다
+        let log = home.path().join(ENGINE_LOG_DIR).join(LOG_FILE);
         let opener = tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_millis(500)).await;
+            while !std::fs::read_to_string(&log).is_ok_and(|text| text.contains("already running"))
+            {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
             UnixListener::bind(&late_socket).unwrap()
         });
 
-        let client = wait_until_ready(Lang::En, &socket, Duration::from_secs(5), &mut engine).await;
+        let client =
+            wait_until_ready(Lang::En, &socket, Duration::from_secs(120), &mut engine).await;
 
         assert!(client.is_ok());
         let _listener = opener.await.unwrap();
@@ -989,7 +1021,8 @@ mod tests {
         let mut engine =
             exiting_engine(home.path(), "echo 'router host is not allowed' >&2; exit 1");
 
-        let error = wait_until_ready(Lang::En, &socket, Duration::from_secs(10), &mut engine)
+        // 시간 제한은 종료 뒤 유예(`EXIT_GRACE`)가 먼저 끝나도록 넉넉하다
+        let error = wait_until_ready(Lang::En, &socket, Duration::from_secs(120), &mut engine)
             .await
             .unwrap_err();
 
@@ -1020,7 +1053,8 @@ mod tests {
         let script = home.path().join("fake-engine");
         std::fs::write(
             &script,
-            "#!/bin/sh\necho \"args: $*\" > \"$2/args\"\necho noise >&2\n",
+            "#!/bin/sh\necho \"args: $*\" > \"$2/args\"\n\
+             if [ /dev/fd/2 -ef /dev/null ]; then echo null > \"$2/stderr\"; else echo inherited > \"$2/stderr\"; fi\n",
         )
         .unwrap();
         std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755))
@@ -1032,6 +1066,10 @@ mod tests {
         assert_eq!(
             std::fs::read_to_string(home.path().join("args")).unwrap(),
             format!("args: --home {}\n", home.path().display())
+        );
+        assert_eq!(
+            std::fs::read_to_string(home.path().join("stderr")).unwrap(),
+            "null\n"
         );
         assert_eq!(engine.log_dir, home.path().join("logs"));
         assert!(!home.path().join("logs").exists());

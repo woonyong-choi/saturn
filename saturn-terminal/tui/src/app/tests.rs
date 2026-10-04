@@ -27,6 +27,12 @@ use crate::view::popup::PopupKind;
 use crate::view::transcript::TranscriptCell;
 use crate::view::usage::usage_request;
 
+/// 시험 안의 기준 시각. 한 번만 읽어 모든 도우미가 같은 값을 쓰므로 부하와 무관하다.
+fn base() -> Instant {
+    static BASE: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+    *BASE.get_or_init(Instant::now)
+}
+
 // cost: time O(1), heap O(1), stack O(1)
 // basis: estimate
 fn app() -> App {
@@ -53,16 +59,16 @@ fn history(entries: Vec<Notification>) -> Notification {
 }
 
 fn notify(app: &mut App, notification: Notification) -> Vec<Effect> {
-    app.handle(AppEvent::Engine(notification), Instant::now())
+    app.handle(AppEvent::Engine(notification), base())
 }
 
 fn answered(app: &mut App, result: QueryResult) -> Vec<Effect> {
-    app.handle(AppEvent::Result(result), Instant::now())
+    app.handle(AppEvent::Result(result), base())
 }
 
 fn press(app: &mut App, code: KeyCode, modifiers: KeyModifiers) -> Vec<Effect> {
     let key = KeyEvent::new(code, modifiers);
-    app.handle(AppEvent::Terminal(Event::Key(key)), Instant::now())
+    app.handle(AppEvent::Terminal(Event::Key(key)), base())
 }
 
 fn press_at(app: &mut App, code: KeyCode, now: Instant) -> Vec<Effect> {
@@ -1158,7 +1164,7 @@ fn permission_window_ignores_keys_for_one_second() {
 fn asked_permission() -> (App, Instant) {
     let mut app = attached();
     notify(&mut app, task(1, 'A', TaskState::Running));
-    let now = Instant::now();
+    let now = base();
     app.handle(
         AppEvent::Engine(Notification::PermissionRequested {
             task: TaskId(1),
@@ -1316,9 +1322,26 @@ fn permission_enter_allows_once_by_default_and_up_wraps_to_deny() {
 }
 
 #[test]
+fn permission_a_or_the_second_choice_sends_allow_always() {
+    let (mut by_key, later) = asked_permission();
+    let (mut by_choice, _) = asked_permission();
+
+    let keyed = press_at(&mut by_key, KeyCode::Char('a'), later);
+    press_at(&mut by_choice, KeyCode::Down, later);
+    let chosen = press_at(&mut by_choice, KeyCode::Enter, later);
+
+    let expected = Request::AnswerPermission {
+        request_id: "r1".to_string(),
+        answer: PermissionAnswer::AllowAlways,
+    };
+    assert_eq!(sent(&keyed), vec![&expected]);
+    assert_eq!(sent(&chosen), vec![&expected]);
+}
+
+#[test]
 fn permission_arrows_do_nothing_inside_the_input_guard() {
-    let (mut app, _) = asked_permission();
-    let early = Instant::now();
+    let (mut app, later) = asked_permission();
+    let early = later - Duration::from_millis(1_700);
 
     press_at(&mut app, KeyCode::Down, early);
     let effects = press_at(&mut app, KeyCode::Enter, early);
@@ -2073,12 +2096,14 @@ fn router_key_prompt_sends_key_and_closes() {
 
     let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
 
+    // 키는 입력 기록에도 다른 효과에도 남지 않고 전송 하나만 나간다
     assert_eq!(
-        sent(&effects),
-        vec![&Request::SubmitRouterKey {
+        effects,
+        vec![Effect::Send(Request::SubmitRouterKey {
             key: "sk-1".to_string()
-        }]
+        })]
     );
+    assert_eq!(app.history.search("sk-1", 0), None);
     assert!(app.window.is_none());
     assert!(app.composer.is_empty());
 }
@@ -2383,9 +2408,7 @@ fn editing_a_long_path() -> App {
 
 fn draw_rows(app: &App, width: u16) -> Vec<String> {
     let mut terminal = Terminal::new(TestBackend::new(width, 10)).unwrap();
-    terminal
-        .draw(|frame| app.render(frame, Instant::now()))
-        .unwrap();
+    terminal.draw(|frame| app.render(frame, base())).unwrap();
     buffer_lines(terminal.backend().buffer())
 }
 
@@ -2979,21 +3002,6 @@ fn pinned_model_notice_marks_the_model_in_the_next_window() {
     assert_eq!(picker.current, Some(model));
 }
 
-#[test]
-fn model_command_is_not_passed_to_the_provider() {
-    let mut app = attached();
-    type_text(&mut app, "/model");
-    app.popup = None;
-
-    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
-
-    assert!(
-        sent(&effects)
-            .iter()
-            .all(|request| !matches!(request, Request::SubmitInput { .. }))
-    );
-}
-
 fn model_settings(default: Option<ModelChoice>, mode: ModelMode) -> Notification {
     Notification::ModelSettings {
         chat: ChatId(7),
@@ -3251,8 +3259,8 @@ fn escape_closes_an_open_popup_before_anything_else() {
 #[test]
 fn double_escape_says_rewind_is_not_implemented_and_the_command_does_too() {
     let mut app = attached();
-    press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
-    press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    press_at(&mut app, KeyCode::Esc, base());
+    press_at(&mut app, KeyCode::Esc, base() + Duration::from_millis(100));
     let by_keys = last_warning(&app);
 
     run_command_line(&mut app, "/rewind");

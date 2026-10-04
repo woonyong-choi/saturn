@@ -282,12 +282,26 @@ mod tests {
     // basis: estimate
     #[test]
     fn file_candidates_skip_git_and_ignored_names() {
-        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let root = tempfile::tempdir().unwrap();
+        let write = |relative: &str| {
+            let path = root.path().join(relative);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, "x").unwrap();
+        };
+        write("src/lib.rs");
+        write(".git/config");
+        write("target/debug/out.bin");
+        write("src/target/inner.rs");
+        write("notes.log");
+        std::fs::write(root.path().join(".gitignore"), "target\nnotes.log\n").unwrap();
 
-        let files = file_candidates(root);
+        let mut files: Vec<String> = file_candidates(root.path())
+            .into_iter()
+            .map(|f| f.value)
+            .collect();
+        files.sort();
 
-        assert!(files.iter().any(|f| f.value == "@src/lib.rs"));
-        assert!(files.iter().all(|f| !f.value.starts_with("@.git/")));
+        assert_eq!(files, ["@.gitignore", "@src/lib.rs"]);
     }
 
     // cost: time O(1), heap O(1), stack O(1)
