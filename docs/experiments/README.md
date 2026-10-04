@@ -2,7 +2,7 @@
 
 | 실험 | 확인할 것 | 관련 설계 | 결론 |
 |---|---|---|---|
-| [constraint-long-context](constraint-long-context/report.md) | 실제 긴 Claude Code 대화에서 Jev의 제약 등록·전이·보존 판단 | [맥락 고르기](../design/context-selection.md) | H1 기각: 등록 정밀도 18.8% [8.9, 35.3], H2 보류: 재현율 100.0% [61.0, 100.0], 전이·최종 집합은 합의 표본 부족으로 판정 안 함 |
+| [constraint-long-context](constraint-long-context/report.md) | 실제 긴 Claude Code 대화에서 Jev의 제약 등록·전이·보존 판단 | [맥락 고르기](../design/context-selection.md) | H1 기각: 등록 정밀도 18.8% [8.9, 35.3], H2 보류: 재현율 100.0% [61.0, 100.0], 전이·최종 집합은 합의 표본 부족으로 판정 보류 |
 | [rrf-k-top-n](rrf-k-top-n/report.md) | 후보 순위의 k와 judge 상위 N | [맥락 고르기](../design/context-selection.md) | H1 기각: recall 12.0% [9.2, 15.6] |
 | [precompute-breakeven](precompute-breakeven/report.md) | 도구 결과 미리 판단의 손익분기 | [맥락 정리](../design/context-management.md) | H2 기각: 남는 질문 감소 29.4% [26.4, 32.3], H3 기각: 토큰 4.967배 [4.337, 5.614] |
 | [claude-summary-handoff](claude-summary-handoff/design.md) | Claude 압축 요약 전환 품질 | [맥락 정리](../design/context-management.md), [provider 연결과 session](../design/providers-and-sessions.md) | 측정 전 |
@@ -31,4 +31,5 @@
 | [constraint-relation](constraint-relation/report.md) | 후보를 줄인 대체·해제 판단 | [제약](../design/constraints.md) | H1·H2 기각: 대체 정밀도 1.6%·0.0%, 사용자 선택 권고 |
 | [constraint-cancel-request](constraint-cancel-request/report.md) | 등록 기록을 본 사용자의 해제 요청과 대상 판단 | [제약](../design/constraints.md), [router](../design/router.md) | H1 정밀도 채택·재현율 보류, H2~H4 보류, H5 채택: 선택형 결합 정확도 +5.7%p [3.0, 8.4], 부분·조건부 영구 해제 위험으로 자동 기준값 보류 |
 | [continuation-newtask](continuation-newtask/report.md) | 새 작업 표본을 늘린 B1·B2 오접합 확인 | [router](../design/router.md), [입력 처리](../design/input-handling.md) | H1·H2 채택·보류: 새 작업 277턴, B1 0.50 오접합 1.4% [0.6, 3.7]%·재현율 69.7% |
+| [constraint-exception-judge](constraint-exception-judge/report.md) | 제약 해제·예외와 이어 가기의 Jev·Haiku 비교 | [제약](../design/constraints.md), [router](../design/router.md) | H1·H2 기각: J1 재현율 89.6%·종류 81.3%, L1 전 응답 코드 블록 형식 오류. 권장 없음. H3 채택은 형식 실패 포함 결과 |
 | [claude-provider-behavior](claude-provider-behavior/report.md) | Claude 하위 에이전트 이벤트·멈춤·사용량 범위, 훅 적용 범위와 키 저장소 차단, 슬래시 명령 결과, 적용 설정 보고 | [provider 연결과 session](../design/providers-and-sessions.md), [권한](../design/permissions.md), [router 키 보안](../design/router-key-security.md) | 가설 27개 중 채택 19, 기각 7, 보류 1. H17-1~3 채택: 하위 이벤트 연결 3/3, H17-4 기각: 두 번째 `result`가 작업 끝 뒤 2/3, H18-1~4 채택: 정지 각 3/3, H19-1~4 기각: 4칸 일치 0/3(`result.usage`는 메인 턴 사용량, `modelUsage`는 하위 포함 누적), H23-1·2 채택: 3/3, H23-3 보류: 1/3, H26-1~3 채택, H26-4 기각, H4-1~3 채택, H3-1 채택: 3/3, H3-2 기각: `sh -c` 감싸기 0/3 |

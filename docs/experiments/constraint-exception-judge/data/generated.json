@@ -1,0 +1,5790 @@
+[
+  {
+    "id": "s001",
+    "source": "prior_synthetic",
+    "text": "책 번역본을 찾아서 문체 기준으로 삼으라는 지시는 취소할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s002",
+    "source": "prior_synthetic",
+    "text": "비공개 자료 보관 위치랑 아카이브 정리에 관해 내린 지시는 전부 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440",
+      "r-beb5fd8e7be8",
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s003",
+    "source": "prior_synthetic",
+    "text": "표 너비를 강제했던 규칙은 취소할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde",
+      "r-f8c534abd159",
+      "r-0541020622fe",
+      "r-08731fdcfe6d",
+      "r-8f712c01cffa",
+      "r-086fe7c45c90",
+      "r-e8332c9f7819",
+      "r-d8a88b17fb38",
+      "r-cfa0c1122098",
+      "r-2e619539f65d"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s004",
+    "source": "prior_synthetic",
+    "text": "차트 너비에 관한 규칙은 이제 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s005",
+    "source": "prior_synthetic",
+    "text": "번역본을 찾아 문체를 따르라는 지시는 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9",
+      "r-5fc05b0843a9",
+      "r-0541020622fe"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s006",
+    "source": "prior_synthetic",
+    "text": "마지막에 등록한 코드 작업 지시는 모든 조건을 포함해서 통째로 취소할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-086fe7c45c90",
+      "r-fc92417541c9",
+      "r-9a432516dbf4",
+      "r-2e619539f65d",
+      "r-399d5e27c5a8",
+      "r-0541020622fe",
+      "r-59295cde96ac",
+      "r-08731fdcfe6d",
+      "r-8f712c01cffa"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s007",
+    "source": "prior_synthetic",
+    "text": "[원문 가림]자료를 옮기고 보관 방식을 바꾸라는 지시는 전부 취소할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s008",
+    "source": "prior_synthetic",
+    "text": "코틀린[원문 가림]문체 기준으로 지정했던 지시는 전부 철회할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-e8332c9f7819",
+      "r-cbdfaf45b684",
+      "r-0541020622fe"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s009",
+    "source": "prior_synthetic",
+    "text": "표를 넓게 채우도록 정한 제약은 취소할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cbdfaf45b684",
+      "r-5fc05b0843a9",
+      "r-8f712c01cffa",
+      "r-399d5e27c5a8",
+      "r-51897d53cb54",
+      "r-0541020622fe",
+      "r-82cc5c4b3e7d",
+      "r-cfa0c1122098",
+      "r-8e67fa51f440",
+      "r-2e619539f65d"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s010",
+    "source": "prior_synthetic",
+    "text": "작업 이름과 접두어에 관해 정했던 제약은 전부 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s011",
+    "source": "prior_synthetic",
+    "text": "마지막에 등록한 도구 사용과 응답 형식 관련 지시는 통째로 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-2e619539f65d",
+      "r-cbdfaf45b684",
+      "r-bb980f55ecde"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s012",
+    "source": "prior_synthetic",
+    "text": "문서에서 AI가 쓴 듯한 표현을 피하라는 규칙은 취소할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cfa0c1122098",
+      "r-5fc05b0843a9",
+      "r-51897d53cb54",
+      "r-2e619539f65d",
+      "r-f8c534abd159",
+      "r-086fe7c45c90",
+      "r-0541020622fe",
+      "r-beb5fd8e7be8",
+      "r-fc92417541c9",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s013",
+    "source": "prior_synthetic",
+    "text": "[원문 가림]추가했던 검토 기준은 전부 철회할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-cbdfaf45b684"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s014",
+    "source": "prior_synthetic",
+    "text": "새 에이전트 창의 표시 방식과 재시작에 관해 정한 규칙은 전부 취소할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cbdfaf45b684",
+      "r-beb5fd8e7be8",
+      "r-51897d53cb54"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s015",
+    "source": "prior_synthetic",
+    "text": "맨 마지막에 등록한 식별자 확인 지시는 도구 금지와 응답 형식 조건까지 모두 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cfa0c1122098",
+      "r-08731fdcfe6d",
+      "r-ca4e08864ba8",
+      "r-cbdfaf45b684",
+      "r-e8332c9f7819",
+      "r-59295cde96ac",
+      "r-9a432516dbf4",
+      "r-beb5fd8e7be8",
+      "r-82cc5c4b3e7d",
+      "r-bb980f55ecde"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s016",
+    "source": "prior_synthetic",
+    "text": "소스 하나씩[원문 가림]하라는 지시는 전부 철회할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-08731fdcfe6d"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s018",
+    "source": "prior_synthetic",
+    "text": "마지막 식별자[원문 가림]붙인 지시와 제약은 전부 철회할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-9a432516dbf4",
+      "r-82cc5c4b3e7d",
+      "r-399d5e27c5a8",
+      "r-8f712c01cffa",
+      "r-08731fdcfe6d",
+      "r-0541020622fe",
+      "r-d90305c977eb",
+      "r-cbdfaf45b684",
+      "r-086fe7c45c90",
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s019",
+    "source": "prior_synthetic",
+    "text": "아카이브와 비공개 자료 정리 방식에 관해 내린 지시는 전부 취소할게, 앞으로 안 따라도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s020",
+    "source": "prior_synthetic",
+    "text": "논문 이미지 비교 분석 요청과 거기에 붙인[원문 가림]는 모두 철회할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-beb5fd8e7be8",
+      "r-2e619539f65d",
+      "r-086fe7c45c90"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s021",
+    "source": "prior_synthetic",
+    "text": "절전으로 잘린 보고를 마저 작성하라는 지시는 관련 제약까지 전부 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-d8a88b17fb38",
+      "r-cfa0c1122098",
+      "r-82cc5c4b3e7d",
+      "r-bb980f55ecde",
+      "r-9a432516dbf4",
+      "r-086fe7c45c90",
+      "r-e8332c9f7819",
+      "r-ca4e08864ba8",
+      "r-59295cde96ac"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s022",
+    "source": "prior_synthetic",
+    "text": "방향 전환하면서 내린 pane 종료와 대기 지시는 부수 조건까지 모두 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s023",
+    "source": "prior_synthetic",
+    "text": "파일 하나씩 리팩토링하며[원문 가림]하라는 지시는 이제 전부 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-82cc5c4b3e7d",
+      "r-08731fdcfe6d"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s024",
+    "source": "prior_synthetic",
+    "text": "잘린 발견사항 보고를 완결하라는 요청[원문 가림]건까지 통째로 철회할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-82cc5c4b3e7d",
+      "r-51897d53cb54",
+      "r-8e67fa51f440",
+      "r-beb5fd8e7be8",
+      "r-d90305c977eb",
+      "r-bb980f55ecde",
+      "r-9a432516dbf4",
+      "r-fc92417541c9",
+      "r-59295cde96ac"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s025",
+    "source": "prior_synthetic",
+    "text": "[원문 가림] 중단 지시는 보존과 보고 조건까지 모두 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-fc92417541c9"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s026",
+    "source": "prior_synthetic",
+    "text": "리뷰 파일을 따라 독립 리뷰를 하라는 지시[원문 가림]건까지 전부 철회할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-82cc5c4b3e7d",
+      "r-e8332c9f7819",
+      "r-d8a88b17fb38"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s027",
+    "source": "prior_synthetic",
+    "text": "[원문 가림]멈추라고 내린 지시와 거기에 딸린 조건은 모두 철회할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-82cc5c4b3e7d",
+      "r-f8c534abd159",
+      "r-cfa0c1122098",
+      "r-2e619539f65d",
+      "r-8e67fa51f440",
+      "r-beb5fd8e7be8",
+      "r-08731fdcfe6d",
+      "r-51897d53cb54",
+      "r-0541020622fe",
+      "r-fc92417541c9"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s028",
+    "source": "prior_synthetic",
+    "text": "식별자 확인 요청과 함께 정한 제약은 전부 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-e8332c9f7819"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s029",
+    "source": "prior_synthetic",
+    "text": "표를 가로로 꽉 채우라는 규칙은 취소할게, 앞으로 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-82cc5c4b3e7d",
+      "r-086fe7c45c90",
+      "r-2e619539f65d"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s030",
+    "source": "prior_synthetic",
+    "text": "마지막 식별자 확인 지시는 거기에 붙인 모든 제약까지 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-5fc05b0843a9",
+      "r-8f712c01cffa",
+      "r-d90305c977eb",
+      "r-82cc5c4b3e7d",
+      "r-fc92417541c9",
+      "r-f8c534abd159",
+      "r-0541020622fe",
+      "r-cbdfaf45b684",
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s031",
+    "source": "prior_synthetic",
+    "text": "방금 정한 거 전부 해제할게, 이제 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s032",
+    "source": "prior_synthetic",
+    "text": "마지막에 말한 그 지시는 통째로 취소할게, 앞으로 적용하지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-399d5e27c5a8",
+      "r-bb980f55ecde"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s033",
+    "source": "prior_synthetic",
+    "text": "방금 그거는 전부 철회할게, 더는 따를 필요 없어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440",
+      "r-d8a88b17fb38",
+      "r-8f712c01cffa",
+      "r-086fe7c45c90",
+      "r-0541020622fe",
+      "r-cbdfaf45b684",
+      "r-cfa0c1122098",
+      "r-ca4e08864ba8",
+      "r-fc92417541c9",
+      "r-e8332c9f7819"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s034",
+    "source": "prior_synthetic",
+    "text": "아 방금 정한 그 규칙은 없던 걸로 해, 이제 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s035",
+    "source": "prior_synthetic",
+    "text": "방금 말한 그 기준은 취소할게, 앞으로 적용 안 해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9",
+      "r-f8c534abd159",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s036",
+    "source": "prior_synthetic",
+    "text": "마지막에 얘기한 그 지시는 전부 거둘게, 이제 따르지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-5fc05b0843a9",
+      "r-fc92417541c9",
+      "r-2e619539f65d",
+      "r-086fe7c45c90",
+      "r-e8332c9f7819",
+      "r-82cc5c4b3e7d",
+      "r-beb5fd8e7be8",
+      "r-59295cde96ac",
+      "r-0541020622fe"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s037",
+    "source": "prior_synthetic",
+    "text": "방금 그 요구는 철회할게, 앞으로 지킬 필요 없어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s038",
+    "source": "prior_synthetic",
+    "text": "방금 추가한 그 규칙은 통째로 해제해, 이제 적용하지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-5fc05b0843a9",
+      "r-9a432516dbf4"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s039",
+    "source": "prior_synthetic",
+    "text": "마지막에 붙인 그 기준은 전부 취소할게, 더는 지키지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-ca4e08864ba8",
+      "r-08731fdcfe6d",
+      "r-51897d53cb54",
+      "r-fc92417541c9",
+      "r-086fe7c45c90",
+      "r-8e67fa51f440",
+      "r-cfa0c1122098",
+      "r-d90305c977eb",
+      "r-cbdfaf45b684"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s040",
+    "source": "prior_synthetic",
+    "text": "아 방금 그 지시는 통째로 없던 걸로 하자, 이제 안 따라도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-086fe7c45c90"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s041",
+    "source": "prior_synthetic",
+    "text": "방금 말한 그 조건은 철회할게, 앞으로 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-e8332c9f7819",
+      "r-59295cde96ac",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s042",
+    "source": "prior_synthetic",
+    "text": "마지막에 말한 그 규칙은 해제할게, 이제 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb",
+      "r-e8332c9f7819",
+      "r-8f712c01cffa",
+      "r-9a432516dbf4",
+      "r-51897d53cb54",
+      "r-bb980f55ecde",
+      "r-086fe7c45c90",
+      "r-59295cde96ac",
+      "r-0541020622fe",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s043",
+    "source": "prior_synthetic",
+    "text": "방금 정한 그 기준은 전부 거둘게, 더는 적용하지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s044",
+    "source": "prior_synthetic",
+    "text": "방금 그 요구는 없던 걸로 할게, 앞으로 따를 필요 없어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-0541020622fe",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s045",
+    "source": "prior_synthetic",
+    "text": "마지막에 말한 그 지시는 전체 해제할게, 이제 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-ca4e08864ba8",
+      "r-beb5fd8e7be8",
+      "r-8e67fa51f440",
+      "r-cfa0c1122098",
+      "r-bb980f55ecde",
+      "r-399d5e27c5a8",
+      "r-086fe7c45c90",
+      "r-2e619539f65d",
+      "r-8f712c01cffa"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s046",
+    "source": "prior_synthetic",
+    "text": "방금 말한 제약은 전부 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-e8332c9f7819"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s049",
+    "source": "prior_synthetic",
+    "text": "방금 그 지시는 전부 해제해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s052",
+    "source": "prior_synthetic",
+    "text": "방금 말한 조건은 모두 없던 걸로 할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s055",
+    "source": "prior_synthetic",
+    "text": "방금 말한 지시 전체를 해제할게. 앞으로 적용 안 해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s061",
+    "source": "prior_synthetic",
+    "text": "영어를 기본으로 하고 한국어 번역을 붙이라는 조건은 이제 없애자.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s062",
+    "source": "prior_synthetic",
+    "text": "소스 하나씩 순서대로 리팩토링하라는 지시는 전부 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9",
+      "r-08731fdcfe6d",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "permanent",
+    "target": "c2"
+  },
+  {
+    "id": "s063",
+    "source": "prior_synthetic",
+    "text": "코틀린[원문 가림]찾아서 문체 기준으로 삼으라는 지시는 철회할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-cbdfaf45b684",
+      "r-bb980f55ecde",
+      "r-0541020622fe",
+      "r-cfa0c1122098",
+      "r-d8a88b17fb38",
+      "r-086fe7c45c90",
+      "r-e8332c9f7819",
+      "r-d90305c977eb",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "permanent",
+    "target": "c4"
+  },
+  {
+    "id": "s064",
+    "source": "prior_synthetic",
+    "text": "파일 하나씩[원문 가림]개선하라는 방식은 더는 안 따라도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-08731fdcfe6d"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s065",
+    "source": "prior_synthetic",
+    "text": "절전으로 잘린 보고를 기존 근거로만 마무리하라며 붙인 지시와 제한은 전부 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440",
+      "r-59295cde96ac",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "permanent",
+    "target": "c2"
+  },
+  {
+    "id": "s066",
+    "source": "prior_synthetic",
+    "text": "차트를 가로로 꽉 채우라는 조건은 없애자.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cfa0c1122098",
+      "r-d8a88b17fb38",
+      "r-fc92417541c9",
+      "r-e8332c9f7819",
+      "r-beb5fd8e7be8",
+      "r-8e67fa51f440",
+      "r-9a432516dbf4",
+      "r-8f712c01cffa",
+      "r-5fc05b0843a9",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s067",
+    "source": "prior_synthetic",
+    "text": "비공개 자료를[원문 가림]모으도록 저장 방식을 바꾸라는 지시는 통째로 철회할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s068",
+    "source": "prior_synthetic",
+    "text": "논문 이미지와 비교 분석하라면서 하드코딩도 금지했던 지시는 전부 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-d90305c977eb",
+      "r-086fe7c45c90"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s069",
+    "source": "prior_synthetic",
+    "text": "레거시 파일 정리와 코드 품질에 관해 묶어서 요구했던 조건은 전부 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-d90305c977eb",
+      "r-f8c534abd159",
+      "r-08731fdcfe6d",
+      "r-5fc05b0843a9",
+      "r-51897d53cb54",
+      "r-086fe7c45c90",
+      "r-beb5fd8e7be8",
+      "r-cfa0c1122098",
+      "r-8f712c01cffa"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s070",
+    "source": "prior_synthetic",
+    "text": "[원문 가림]구현을 멈추고[원문 가림]는 지시는 전부 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-fc92417541c9"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s071",
+    "source": "prior_synthetic",
+    "text": "스킬 수정은 꼭 코덱스에 맡기라는 제한은 이제 없애자.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-59295cde96ac",
+      "r-cfa0c1122098"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s072",
+    "source": "prior_synthetic",
+    "text": "문서에서 AI가 쓴 듯한 문체를 피하라는 조건은 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-fc92417541c9",
+      "r-d90305c977eb",
+      "r-086fe7c45c90",
+      "r-8e67fa51f440",
+      "r-d8a88b17fb38",
+      "r-51897d53cb54",
+      "r-399d5e27c5a8",
+      "r-2e619539f65d",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s073",
+    "source": "prior_synthetic",
+    "text": "표 너비를 항상 꽉 채우라는 제한은 이제 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-2e619539f65d"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s074",
+    "source": "prior_synthetic",
+    "text": "식별자 확인을 요구하면서 붙였던 도구 금지와 응답 형식 조건은 모두 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cbdfaf45b684",
+      "r-e8332c9f7819",
+      "r-086fe7c45c90"
+    ],
+    "kind": "permanent",
+    "target": "c2"
+  },
+  {
+    "id": "s075",
+    "source": "prior_synthetic",
+    "text": "기능 추가로 문법이 바뀌어도 깨지지 않게 구조화하라는 요구는 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-08731fdcfe6d",
+      "r-086fe7c45c90",
+      "r-82cc5c4b3e7d",
+      "r-bb980f55ecde",
+      "r-399d5e27c5a8",
+      "r-fc92417541c9",
+      "r-e8332c9f7819",
+      "r-8f712c01cffa",
+      "r-cfa0c1122098"
+    ],
+    "kind": "permanent",
+    "target": "c6"
+  },
+  {
+    "id": "s076",
+    "source": "prior_synthetic",
+    "text": "논문 그림이랑 비교 분석하[원문 가림]했던 지시는 전부 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-086fe7c45c90"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s077",
+    "source": "prior_synthetic",
+    "text": "[원문 가림]멈추고 변경 보존한 채[원문 가림]는 지시는 전부 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-086fe7c45c90",
+      "r-fc92417541c9",
+      "r-59295cde96ac"
+    ],
+    "kind": "permanent",
+    "target": "c2"
+  },
+  {
+    "id": "s078",
+    "source": "prior_synthetic",
+    "text": "새 에이전트 창의 표시 방식과 재시작 제한을 정했던 규칙은 통째로 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-2e619539f65d",
+      "r-e8332c9f7819",
+      "r-cfa0c1122098",
+      "r-8f712c01cffa",
+      "r-086fe7c45c90",
+      "r-9a432516dbf4",
+      "r-51897d53cb54",
+      "r-beb5fd8e7be8",
+      "r-08731fdcfe6d"
+    ],
+    "kind": "permanent",
+    "target": "c8"
+  },
+  {
+    "id": "s079",
+    "source": "prior_synthetic",
+    "text": "아카이브를 옮기고 비공개 자료[원문 가림]통일하라고 했던 지시는 전부 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s080",
+    "source": "prior_synthetic",
+    "text": "절전으로 잘린 보고를 기존 근거로만 마무리하라던 지시[원문 가림]한까지 전부 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-d90305c977eb",
+      "r-59295cde96ac",
+      "r-cbdfaf45b684"
+    ],
+    "kind": "permanent",
+    "target": "c2"
+  },
+  {
+    "id": "s081",
+    "source": "prior_synthetic",
+    "text": "표 너비를 항상 꽉 채우라는 규칙은 이제 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-8f712c01cffa",
+      "r-59295cde96ac",
+      "r-9a432516dbf4",
+      "r-fc92417541c9",
+      "r-beb5fd8e7be8",
+      "r-d8a88b17fb38",
+      "r-d90305c977eb",
+      "r-cbdfaf45b684",
+      "r-2e619539f65d"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s082",
+    "source": "prior_synthetic",
+    "text": "코틀린[원문 가림]찾아서 문체 기준으로 삼으라는 지시는 전부 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-0541020622fe"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s083",
+    "source": "prior_synthetic",
+    "text": "새 에이전트 창에서[원문 가림]지 정한 규칙은 재시작 제한까지 전부 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-cbdfaf45b684",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s084",
+    "source": "prior_synthetic",
+    "text": "플로차트 방향을 세로 배열과 분기 수로 정하라는 규칙은 전부 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8",
+      "r-51897d53cb54",
+      "r-cbdfaf45b684",
+      "r-f8c534abd159",
+      "r-fc92417541c9",
+      "r-9a432516dbf4",
+      "r-0541020622fe",
+      "r-82cc5c4b3e7d",
+      "r-d8a88b17fb38",
+      "r-cfa0c1122098"
+    ],
+    "kind": "permanent",
+    "target": "c6"
+  },
+  {
+    "id": "s085",
+    "source": "prior_synthetic",
+    "text": "에이전트 창 표시 방식에 관해 정한 규칙은 재시작 제한까지 모두 풀어도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s086",
+    "source": "prior_synthetic",
+    "text": "숫자나 wp 이름을 피하고 dev 접두사를 쓰라던 명명 규칙은 전부 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440",
+      "r-59295cde96ac",
+      "r-cbdfaf45b684"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s087",
+    "source": "prior_synthetic",
+    "text": "차트를 가로로 꽉 채우라는 규칙은 이제 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-5fc05b0843a9",
+      "r-d90305c977eb",
+      "r-bb980f55ecde",
+      "r-0541020622fe",
+      "r-8f712c01cffa",
+      "r-08731fdcfe6d",
+      "r-8e67fa51f440",
+      "r-086fe7c45c90",
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s088",
+    "source": "prior_synthetic",
+    "text": "식별자 확인하면서 걸었던 [원문 가림]와 응답 형식 제약은 전부 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-e8332c9f7819"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s089",
+    "source": "prior_synthetic",
+    "text": "코틀린 번역본을 검색해서 그 문체를 따르라는 지시는 이제 전부 풀게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb",
+      "r-0541020622fe",
+      "r-cfa0c1122098"
+    ],
+    "kind": "permanent",
+    "target": "c2"
+  },
+  {
+    "id": "s091",
+    "source": "prior_synthetic",
+    "text": "목록 1번 지시는 전부 해제할게. 이제 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s092",
+    "source": "prior_synthetic",
+    "text": "3번 규칙은 철회할게. 앞으로 적용하지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-d90305c977eb",
+      "r-51897d53cb54"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s093",
+    "source": "prior_synthetic",
+    "text": "5번 지시는 이제 전부 안 따라도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-08731fdcfe6d",
+      "r-2e619539f65d",
+      "r-59295cde96ac",
+      "r-0541020622fe",
+      "r-e8332c9f7819",
+      "r-fc92417541c9",
+      "r-51897d53cb54",
+      "r-9a432516dbf4",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "permanent",
+    "target": "c5"
+  },
+  {
+    "id": "s094",
+    "source": "prior_synthetic",
+    "text": "1번에 적은 지시는 통째로 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s095",
+    "source": "prior_synthetic",
+    "text": "목록 1번의 제약은 전부 풀어줘. 앞으로 지킬 필요 없어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8",
+      "r-cbdfaf45b684",
+      "r-cfa0c1122098"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s096",
+    "source": "prior_synthetic",
+    "text": "7번 규칙은 없던 걸로 할게. 더는 적용하지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-cfa0c1122098",
+      "r-51897d53cb54",
+      "r-399d5e27c5a8",
+      "r-d8a88b17fb38",
+      "r-e8332c9f7819",
+      "r-ca4e08864ba8",
+      "r-5fc05b0843a9",
+      "r-fc92417541c9",
+      "r-bb980f55ecde"
+    ],
+    "kind": "permanent",
+    "target": "c7"
+  },
+  {
+    "id": "s097",
+    "source": "prior_synthetic",
+    "text": "1번 지시는 전체 해제야. 이제 따르지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-086fe7c45c90"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s098",
+    "source": "prior_synthetic",
+    "text": "첫 번째 규칙은 철회할게. 앞으로 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-82cc5c4b3e7d",
+      "r-cbdfaf45b684",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s099",
+    "source": "prior_synthetic",
+    "text": "목록 5번 지시는 전부 거둘게. 더는 따를 필요 없어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-399d5e27c5a8",
+      "r-59295cde96ac",
+      "r-ca4e08864ba8",
+      "r-d90305c977eb",
+      "r-5fc05b0843a9",
+      "r-9a432516dbf4",
+      "r-cfa0c1122098",
+      "r-0541020622fe",
+      "r-fc92417541c9"
+    ],
+    "kind": "permanent",
+    "target": "c5"
+  },
+  {
+    "id": "s100",
+    "source": "prior_synthetic",
+    "text": "1번으로 등록한 지시는 이제 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s101",
+    "source": "prior_synthetic",
+    "text": "1번 규칙은 앞으로 적용 안 해도 돼. 완전히 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-2e619539f65d",
+      "r-d8a88b17fb38",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s102",
+    "source": "prior_synthetic",
+    "text": "첫 번째 지시는 전부 없던 걸로 해줘. 이제 안 따라도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-e8332c9f7819",
+      "r-8f712c01cffa",
+      "r-399d5e27c5a8",
+      "r-2e619539f65d",
+      "r-cfa0c1122098",
+      "r-f8c534abd159",
+      "r-ca4e08864ba8",
+      "r-cbdfaf45b684",
+      "r-8e67fa51f440"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s103",
+    "source": "prior_synthetic",
+    "text": "목록 1번 지시는 철회할게. 더는 지키지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s104",
+    "source": "prior_synthetic",
+    "text": "1번 규칙은 이제 풀게. 앞으로 적용할 필요 없어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cfa0c1122098",
+      "r-e8332c9f7819",
+      "r-8e67fa51f440"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s105",
+    "source": "prior_synthetic",
+    "text": "9번에 적은 제약은 통째로 해제할게. 이제 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-8e67fa51f440",
+      "r-e8332c9f7819",
+      "r-d8a88b17fb38",
+      "r-2e619539f65d",
+      "r-086fe7c45c90",
+      "r-f8c534abd159",
+      "r-bb980f55ecde",
+      "r-beb5fd8e7be8",
+      "r-0541020622fe"
+    ],
+    "kind": "permanent",
+    "target": "c9"
+  },
+  {
+    "id": "s106",
+    "source": "prior_synthetic",
+    "text": "1번 지시는 전부 철회할게, 이제 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s107",
+    "source": "prior_synthetic",
+    "text": "목록의 2번 규칙은 이제 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-9a432516dbf4",
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c2"
+  },
+  {
+    "id": "s108",
+    "source": "prior_synthetic",
+    "text": "2번으로 등록한 지시는 전부 취소할게, 앞으로 따르지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-8e67fa51f440",
+      "r-086fe7c45c90",
+      "r-59295cde96ac",
+      "r-cfa0c1122098",
+      "r-82cc5c4b3e7d",
+      "r-08731fdcfe6d",
+      "r-ca4e08864ba8",
+      "r-8f712c01cffa",
+      "r-d8a88b17fb38"
+    ],
+    "kind": "permanent",
+    "target": "c2"
+  },
+  {
+    "id": "s109",
+    "source": "prior_synthetic",
+    "text": "1번 지시의 제한은 모두 풀어도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s110",
+    "source": "prior_synthetic",
+    "text": "목록에서 1번 지시는 통째로 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-e8332c9f7819",
+      "r-d90305c977eb",
+      "r-0541020622fe"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s111",
+    "source": "prior_synthetic",
+    "text": "8번 지시는 이제 더 이상 지키지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9",
+      "r-08731fdcfe6d",
+      "r-ca4e08864ba8",
+      "r-8f712c01cffa",
+      "r-beb5fd8e7be8",
+      "r-e8332c9f7819",
+      "r-9a432516dbf4",
+      "r-59295cde96ac",
+      "r-cfa0c1122098",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "permanent",
+    "target": "c8"
+  },
+  {
+    "id": "s112",
+    "source": "prior_synthetic",
+    "text": "1번에 등록한 조건은 전부 해제해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s113",
+    "source": "prior_synthetic",
+    "text": "2번 지시는 전체 철회한 걸로 해, 이제 안 따라도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cfa0c1122098",
+      "r-beb5fd8e7be8",
+      "r-0541020622fe"
+    ],
+    "kind": "permanent",
+    "target": "c2"
+  },
+  {
+    "id": "s114",
+    "source": "prior_synthetic",
+    "text": "목록의 9번 지시는 전부 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-e8332c9f7819",
+      "r-086fe7c45c90",
+      "r-82cc5c4b3e7d",
+      "r-bb980f55ecde",
+      "r-51897d53cb54",
+      "r-d90305c977eb",
+      "r-8f712c01cffa",
+      "r-59295cde96ac",
+      "r-9a432516dbf4"
+    ],
+    "kind": "permanent",
+    "target": "c9"
+  },
+  {
+    "id": "s115",
+    "source": "prior_synthetic",
+    "text": "1번 지시는 취소할게, 앞으로 그 지시에 맞출 필요 없어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s116",
+    "source": "prior_synthetic",
+    "text": "3번에 적은 요구는 전부 철회할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-59295cde96ac",
+      "r-8f712c01cffa"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s117",
+    "source": "prior_synthetic",
+    "text": "목록의 3번 지시는 이제 따르지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cfa0c1122098",
+      "r-59295cde96ac",
+      "r-0541020622fe",
+      "r-fc92417541c9",
+      "r-8e67fa51f440",
+      "r-086fe7c45c90",
+      "r-cbdfaf45b684",
+      "r-2e619539f65d",
+      "r-08731fdcfe6d",
+      "r-9a432516dbf4"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s118",
+    "source": "prior_synthetic",
+    "text": "1번 규칙은 더는 적용하지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s119",
+    "source": "prior_synthetic",
+    "text": "3번 규칙은 해제할게, 앞으로 지킬 필요 없어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-bb980f55ecde",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s120",
+    "source": "prior_synthetic",
+    "text": "9번으로 등록한 요구는 전부 취소할게, 이제 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-d90305c977eb",
+      "r-cfa0c1122098",
+      "r-cbdfaf45b684",
+      "r-59295cde96ac",
+      "r-8e67fa51f440",
+      "r-5fc05b0843a9",
+      "r-e8332c9f7819",
+      "r-82cc5c4b3e7d",
+      "r-08731fdcfe6d"
+    ],
+    "kind": "permanent",
+    "target": "c9"
+  },
+  {
+    "id": "s121",
+    "source": "prior_synthetic",
+    "text": "문서 말투 제한은 내부 초안에서만 풀어도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s122",
+    "source": "prior_synthetic",
+    "text": "비공개 자료 보관 규칙에서 임시 메모만 지정 폴더 밖에 둬도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-0541020622fe",
+      "r-51897d53cb54"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s123",
+    "source": "prior_synthetic",
+    "text": "파일 하나씩 리팩토링하라는 제한은 서로 의존하는 파일끼리는 풀어도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-9a432516dbf4",
+      "r-e8332c9f7819",
+      "r-59295cde96ac",
+      "r-beb5fd8e7be8",
+      "r-399d5e27c5a8",
+      "r-82cc5c4b3e7d",
+      "r-08731fdcfe6d",
+      "r-cfa0c1122098",
+      "r-cbdfaf45b684"
+    ],
+    "kind": "scoped",
+    "target": "c8"
+  },
+  {
+    "id": "s124",
+    "source": "prior_synthetic",
+    "text": "책 번역체를 따르라는 건 제목에는 적용하지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s125",
+    "source": "prior_synthetic",
+    "text": "AI 같은 문체를 피하라는 건 자동 생성된 요약 부분에서는 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-82cc5c4b3e7d",
+      "r-0541020622fe",
+      "r-086fe7c45c90"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s126",
+    "source": "prior_synthetic",
+    "text": "브랜치 이름에서 숫자 쓰지 말라는 부분만 풀게, 접두사[원문 가림]해.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-086fe7c45c90",
+      "r-9a432516dbf4",
+      "r-fc92417541c9",
+      "r-f8c534abd159",
+      "r-d8a88b17fb38",
+      "r-d90305c977eb",
+      "r-399d5e27c5a8",
+      "r-2e619539f65d",
+      "r-8e67fa51f440",
+      "r-59295cde96ac"
+    ],
+    "kind": "scoped",
+    "target": "c9"
+  },
+  {
+    "id": "s127",
+    "source": "prior_synthetic",
+    "text": "아카이브 정리 지시에서 기존 폴더를 삭제하라는 부분만 취소할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s128",
+    "source": "prior_synthetic",
+    "text": "독립 리뷰[원문 가림]한은 리뷰 결과 파일을 저장할 때만 풀어도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-0541020622fe",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s129",
+    "source": "prior_synthetic",
+    "text": "문법 변경에도 호환성을 유지하라는 건 실험용 기능에는 적용하지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cfa0c1122098",
+      "r-cbdfaf45b684",
+      "r-59295cde96ac",
+      "r-beb5fd8e7be8",
+      "r-399d5e27c5a8",
+      "r-d8a88b17fb38",
+      "r-0541020622fe",
+      "r-51897d53cb54",
+      "r-bb980f55ecde",
+      "r-d90305c977eb"
+    ],
+    "kind": "scoped",
+    "target": "c5"
+  },
+  {
+    "id": "s130",
+    "source": "prior_synthetic",
+    "text": "응답을 한 줄로 쓰라는 부분만 취소할게, 나머지는 그대로야.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s131",
+    "source": "prior_synthetic",
+    "text": "보고서 검증 기준에서 특수문자 금지만 해제할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-086fe7c45c90",
+      "r-cbdfaf45b684",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "scoped",
+    "target": "c2"
+  },
+  {
+    "id": "s132",
+    "source": "prior_synthetic",
+    "text": "새[원문 가림]명령어를 숨기라는 건 조회 명령에 한해서 풀어도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-fc92417541c9",
+      "r-08731fdcfe6d",
+      "r-086fe7c45c90",
+      "r-f8c534abd159",
+      "r-cbdfaf45b684",
+      "r-bb980f55ecde",
+      "r-ca4e08864ba8",
+      "r-8e67fa51f440",
+      "r-51897d53cb54"
+    ],
+    "kind": "scoped",
+    "target": "c10"
+  },
+  {
+    "id": "s133",
+    "source": "prior_synthetic",
+    "text": "브랜치 이름에 숫자는 넣어도 돼, 나머지 이름 규칙은 유지해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s134",
+    "source": "prior_synthetic",
+    "text": "리팩토링을 한 파일씩 하라는 건 단순[원문 가림]한해서 안 지켜도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-59295cde96ac",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s137",
+    "source": "prior_synthetic",
+    "text": "문법 바뀌어도 호환되게 하라는 건 공개 기능[원문 가림]내부 실험 기능은 예외로 둬.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-399d5e27c5a8",
+      "r-cfa0c1122098"
+    ],
+    "kind": "scoped",
+    "target": "c2"
+  },
+  {
+    "id": "s138",
+    "source": "prior_synthetic",
+    "text": "영어 기본은 유지하되 짧은 변경 요약에는 한국어 번역을 안 붙여도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-d8a88b17fb38",
+      "r-5fc05b0843a9",
+      "r-cfa0c1122098",
+      "r-8e67fa51f440",
+      "r-fc92417541c9",
+      "r-8f712c01cffa",
+      "r-399d5e27c5a8",
+      "r-ca4e08864ba8",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "scoped",
+    "target": "c3"
+  },
+  {
+    "id": "s139",
+    "source": "prior_synthetic",
+    "text": "영어를 기본으로 쓰되 코드 예제의 주석까지 한국어로 번역할 필요는 없어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s140",
+    "source": "prior_synthetic",
+    "text": "책 번역본 문체를 따르라는 건 설명 본문[원문 가림]제목은 자유롭게 써도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-086fe7c45c90",
+      "r-d90305c977eb",
+      "r-0541020622fe"
+    ],
+    "kind": "scoped",
+    "target": "c3"
+  },
+  {
+    "id": "s141",
+    "source": "prior_synthetic",
+    "text": "문서 말투에서 AI 티를 빼라는 조건은 본문[원문 가림]정형화된 체크리스트는 예외로 둬.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-beb5fd8e7be8",
+      "r-82cc5c4b3e7d",
+      "r-086fe7c45c90",
+      "r-08731fdcfe6d",
+      "r-fc92417541c9",
+      "r-cbdfaf45b684",
+      "r-399d5e27c5a8",
+      "r-e8332c9f7819",
+      "r-f8c534abd159"
+    ],
+    "kind": "scoped",
+    "target": "c3"
+  },
+  {
+    "id": "s142",
+    "source": "prior_synthetic",
+    "text": "한 줄로만 답하라는 조건은 풀게, 도구 금지랑 마지막 단어 조건은 그대로 지켜.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-e8332c9f7819"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s143",
+    "source": "prior_synthetic",
+    "text": "재조사 금지에서 기존 근거의 링크 확인만 예외로 허용할게, 나머지[원문 가림]건은 유지해.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-59295cde96ac",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "scoped",
+    "target": "c2"
+  },
+  {
+    "id": "s144",
+    "source": "prior_synthetic",
+    "text": "표 너비는 두 열짜리 표만 내용에 맞춰 줄여도 되고 나머지는 그대로 꽉 채워.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-8e67fa51f440",
+      "r-8f712c01cffa",
+      "r-08731fdcfe6d",
+      "r-82cc5c4b3e7d",
+      "r-9a432516dbf4",
+      "r-d90305c977eb",
+      "r-5fc05b0843a9",
+      "r-59295cde96ac",
+      "r-2e619539f65d"
+    ],
+    "kind": "scoped",
+    "target": "c10"
+  },
+  {
+    "id": "s145",
+    "source": "prior_synthetic",
+    "text": "책 번역본 문체는 본문에서만[원문 가림]는 적용하지 않아도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-0541020622fe"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s146",
+    "source": "prior_synthetic",
+    "text": "이름에 숫자 쓰지 말라는 건 버전 번호만 예외로 허용하고 나머지 네이밍 조건은 유지해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-8e67fa51f440",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "scoped",
+    "target": "c2"
+  },
+  {
+    "id": "s147",
+    "source": "prior_synthetic",
+    "text": "4번에서 한 줄 응답 조건만 없앨게, 도구 금지와 끝 단어 지정은 그대로야.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-086fe7c45c90",
+      "r-d90305c977eb",
+      "r-51897d53cb54",
+      "r-beb5fd8e7be8",
+      "r-399d5e27c5a8",
+      "r-08731fdcfe6d",
+      "r-bb980f55ecde",
+      "r-2e619539f65d",
+      "r-d8a88b17fb38",
+      "r-59295cde96ac"
+    ],
+    "kind": "scoped",
+    "target": "c4"
+  },
+  {
+    "id": "s148",
+    "source": "prior_synthetic",
+    "text": "분기가 두 개인 흐름도도 TB를 허용할게, 분기 없는 일렬 흐름은 계속 LR로 해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-9a432516dbf4"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s149",
+    "source": "prior_synthetic",
+    "text": "문법 변경에 대한 호환성 보장은 내부 전용 명령에는 적용하지 않아도 되고 공개 명령에는 계속 적용해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-399d5e27c5a8",
+      "r-fc92417541c9"
+    ],
+    "kind": "scoped",
+    "target": "c2"
+  },
+  {
+    "id": "s150",
+    "source": "prior_synthetic",
+    "text": "pane 종료하고 대기하라는 지시에서 한 줄 보고 조건만 풀게, 나머지[원문 가림]해.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-086fe7c45c90",
+      "r-51897d53cb54",
+      "r-8f712c01cffa",
+      "r-8e67fa51f440",
+      "r-bb980f55ecde",
+      "r-d90305c977eb",
+      "r-9a432516dbf4",
+      "r-cfa0c1122098",
+      "r-ca4e08864ba8",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "scoped",
+    "target": "c6"
+  },
+  {
+    "id": "s151",
+    "source": "prior_synthetic",
+    "text": "이번 리뷰에서는 지정한 파일의 지시를 따르라는 조건[원문 가림]아도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-d8a88b17fb38"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s153",
+    "source": "prior_synthetic",
+    "text": "이번 응답에 한해서 4번 지시는 지키지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8",
+      "r-ca4e08864ba8",
+      "r-2e619539f65d",
+      "r-e8332c9f7819",
+      "r-cfa0c1122098",
+      "r-d8a88b17fb38",
+      "r-51897d53cb54",
+      "r-0541020622fe",
+      "r-f8c534abd159",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "once",
+    "target": "c4"
+  },
+  {
+    "id": "s154",
+    "source": "prior_synthetic",
+    "text": "이번 보고를 마칠 때까지는 잘린 응답을 이어 보고하라고 했던 지시 전체를 적용하지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s156",
+    "source": "prior_synthetic",
+    "text": "이번 응답만 5번 지시 전체에서 예외로 할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9",
+      "r-beb5fd8e7be8",
+      "r-8e67fa51f440",
+      "r-399d5e27c5a8",
+      "r-e8332c9f7819",
+      "r-086fe7c45c90",
+      "r-f8c534abd159",
+      "r-0541020622fe",
+      "r-d90305c977eb",
+      "r-bb980f55ecde"
+    ],
+    "kind": "once",
+    "target": "c5"
+  },
+  {
+    "id": "s164",
+    "source": "prior_synthetic",
+    "text": "이번 작업에 한해서 2번 지시 전체는 적용하지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-e8332c9f7819",
+      "r-d90305c977eb",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "once",
+    "target": "c2"
+  },
+  {
+    "id": "s167",
+    "source": "prior_synthetic",
+    "text": "이번 차트만 가로를 꽉 채우지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-8e67fa51f440",
+      "r-d90305c977eb"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s169",
+    "source": "prior_synthetic",
+    "text": "이번 응답만 방금 정한 제약 전부 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "s175",
+    "source": "prior_synthetic",
+    "text": "이번 문서만[원문 가림]을 붙이는 방식 안 따라도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-5fc05b0843a9"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "s181",
+    "source": "prior_synthetic",
+    "text": "구현 중단하면서 붙인 요구사항은 이제 전부 신경 쓰지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s182",
+    "source": "prior_synthetic",
+    "text": "마지막에 추가한 보고서 검토 기준은 이제 통째로 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-086fe7c45c90",
+      "r-bb980f55ecde",
+      "r-cbdfaf45b684"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s183",
+    "source": "prior_synthetic",
+    "text": "마지막에 말한 코드 정리와 완성 기준은 앞으로 전부 신경 쓰지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-82cc5c4b3e7d",
+      "r-2e619539f65d",
+      "r-beb5fd8e7be8",
+      "r-9a432516dbf4",
+      "r-59295cde96ac",
+      "r-f8c534abd159",
+      "r-d90305c977eb",
+      "r-8e67fa51f440",
+      "r-8f712c01cffa"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s184",
+    "source": "prior_synthetic",
+    "text": "흐름도 방향에 관해 정해 둔 기준은 이제 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-9a432516dbf4"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s185",
+    "source": "prior_synthetic",
+    "text": "방금 말한 이름 짓는 기준은 이제 전부 신경 쓰지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-9a432516dbf4",
+      "r-59295cde96ac",
+      "r-8e67fa51f440"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s186",
+    "source": "prior_synthetic",
+    "text": "문서에서 AI 느낌 나면 안 된다는 건 이제 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-fc92417541c9",
+      "r-beb5fd8e7be8",
+      "r-9a432516dbf4",
+      "r-bb980f55ecde",
+      "r-2e619539f65d",
+      "r-e8332c9f7819",
+      "r-5fc05b0843a9",
+      "r-d90305c977eb",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s187",
+    "source": "prior_synthetic",
+    "text": "이름 붙이는 방식에 걸어 둔 제한은 앞으로 신경 쓰지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s189",
+    "source": "prior_synthetic",
+    "text": "기능 추가나 문법 변경에도 안 깨지게 하라는 요구는 이제 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-82cc5c4b3e7d",
+      "r-08731fdcfe6d",
+      "r-fc92417541c9",
+      "r-ca4e08864ba8",
+      "r-51897d53cb54",
+      "r-beb5fd8e7be8",
+      "r-59295cde96ac",
+      "r-0541020622fe",
+      "r-f8c534abd159",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s190",
+    "source": "prior_synthetic",
+    "text": "추가로 붙였던 보고서 작성과 근거 검증 기준은 앞으로 전부 신경 쓰지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cbdfaf45b684"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s191",
+    "source": "prior_synthetic",
+    "text": "마지막 식별자 확인 때 붙인 지시는 이제 하나도 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-cbdfaf45b684",
+      "r-e8332c9f7819"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s192",
+    "source": "prior_synthetic",
+    "text": "마지막에 정한 네이밍 제한은 앞으로 전부 신경 쓰지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-8f712c01cffa",
+      "r-0541020622fe",
+      "r-2e619539f65d",
+      "r-ca4e08864ba8",
+      "r-beb5fd8e7be8",
+      "r-f8c534abd159",
+      "r-cbdfaf45b684",
+      "r-08731fdcfe6d",
+      "r-8e67fa51f440"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s193",
+    "source": "prior_synthetic",
+    "text": "방향 전환하면서 내린 지시 묶음은 이제 통째로 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s194",
+    "source": "prior_synthetic",
+    "text": "스킬 수정은 누구한테 맡겨야 한다는 제한은 이제 신경 쓰지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-9a432516dbf4",
+      "r-cfa0c1122098"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s195",
+    "source": "prior_synthetic",
+    "text": "방금 구현을 중단하라면서 붙인 요구는 이제 전부 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8",
+      "r-9a432516dbf4",
+      "r-bb980f55ecde",
+      "r-5fc05b0843a9",
+      "r-0541020622fe",
+      "r-cbdfaf45b684",
+      "r-e8332c9f7819",
+      "r-08731fdcfe6d",
+      "r-ca4e08864ba8",
+      "r-fc92417541c9"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s196",
+    "source": "prior_synthetic",
+    "text": "아카이브랑 비공개 자료 정리에 관해 했던 말은 이제 전부 신경 쓰지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s197",
+    "source": "prior_synthetic",
+    "text": "작업 이름 짓는 방식에 관해 했던 말은 이제 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8",
+      "r-9a432516dbf4",
+      "r-8e67fa51f440"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s198",
+    "source": "prior_synthetic",
+    "text": "마지막에 말한 자료 보관 방식은 앞으로 전부 신경 쓰지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-9a432516dbf4",
+      "r-cbdfaf45b684",
+      "r-d90305c977eb",
+      "r-8e67fa51f440",
+      "r-cfa0c1122098",
+      "r-fc92417541c9",
+      "r-08731fdcfe6d",
+      "r-e8332c9f7819",
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s199",
+    "source": "prior_synthetic",
+    "text": "방금 정한 제약은 이제 전부 신경 쓰지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s200",
+    "source": "prior_synthetic",
+    "text": "마지막에 붙인 제약은 앞으로 하나도 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440",
+      "r-399d5e27c5a8",
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s201",
+    "source": "prior_synthetic",
+    "text": "마지막 이미지 비교 분석 요청에 붙인 조건은 이제 전부 신경 쓰지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-d90305c977eb",
+      "r-5fc05b0843a9",
+      "r-8f712c01cffa",
+      "r-beb5fd8e7be8",
+      "r-f8c534abd159",
+      "r-9a432516dbf4",
+      "r-08731fdcfe6d",
+      "r-2e619539f65d",
+      "r-086fe7c45c90"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s202",
+    "source": "prior_synthetic",
+    "text": "끊긴 보고를 이어 쓰라고 하면서 붙인 조건들은 이제 전부 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s203",
+    "source": "prior_synthetic",
+    "text": "문서에서 AI 티 나면 안 된다고 한 건 이제 신경 쓰지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440",
+      "r-d8a88b17fb38",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s204",
+    "source": "prior_synthetic",
+    "text": "마지막에 추가한 보고서 검토 기준은 앞으로 전부 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde",
+      "r-ca4e08864ba8",
+      "r-5fc05b0843a9",
+      "r-cfa0c1122098",
+      "r-9a432516dbf4",
+      "r-82cc5c4b3e7d",
+      "r-d8a88b17fb38",
+      "r-8f712c01cffa",
+      "r-fc92417541c9",
+      "r-cbdfaf45b684"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s205",
+    "source": "prior_synthetic",
+    "text": "문법 바뀌어도 안 깨지게 하라는 조건은 이제 신경 쓰지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s206",
+    "source": "prior_synthetic",
+    "text": "흐름도 방향에 관해 정한 기준은 이제 전부 신경 쓰지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-2e619539f65d",
+      "r-cfa0c1122098",
+      "r-9a432516dbf4"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s207",
+    "source": "prior_synthetic",
+    "text": "마지막에 끊긴 보고를 마저 쓰라고 하면서 건 조건은 이제 전부 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde",
+      "r-399d5e27c5a8",
+      "r-cfa0c1122098",
+      "r-e8332c9f7819",
+      "r-cbdfaf45b684",
+      "r-2e619539f65d",
+      "r-0541020622fe",
+      "r-d90305c977eb",
+      "r-8f712c01cffa",
+      "r-59295cde96ac"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s208",
+    "source": "prior_synthetic",
+    "text": "에이전트 창 표시 방식에 관해 정한 조건은 앞으로 전부 신경 쓰지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s209",
+    "source": "prior_synthetic",
+    "text": "마지막에 말한 아카이브 정리와 비공개 자료 보관 지침은 이제 전부 신경 안 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde",
+      "r-8f712c01cffa",
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s210",
+    "source": "prior_synthetic",
+    "text": "문서가 AI처럼 보이면 안 된다는 요구는 앞으로 신경 쓰지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-0541020622fe",
+      "r-d8a88b17fb38",
+      "r-5fc05b0843a9",
+      "r-08731fdcfe6d",
+      "r-59295cde96ac",
+      "r-f8c534abd159",
+      "r-e8332c9f7819",
+      "r-d90305c977eb",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s211",
+    "source": "prior_synthetic",
+    "text": "논문 이미지 비교하면서 붙인 조건은 전부 drop해, 이제 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-086fe7c45c90"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s212",
+    "source": "prior_synthetic",
+    "text": "방금 pane 정리와 대기에 관해 내린 지시는 통째로 cancel할게, 더는 따르지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-5fc05b0843a9",
+      "r-d90305c977eb"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s213",
+    "source": "prior_synthetic",
+    "text": "마지막 구현 중단 지시는 전부[원문 가림]할게, 거기에 붙인 조건도 이제 안 지켜도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-cfa0c1122098",
+      "r-51897d53cb54",
+      "r-086fe7c45c90",
+      "r-beb5fd8e7be8",
+      "r-59295cde96ac",
+      "r-9a432516dbf4",
+      "r-5fc05b0843a9",
+      "r-cbdfaf45b684",
+      "r-fc92417541c9"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s214",
+    "source": "prior_synthetic",
+    "text": "방향 전환하면서 내린 지시 전체는 이제 ignore해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s215",
+    "source": "prior_synthetic",
+    "text": "방금 정한 네이밍 규칙은 완전히 drop할게, 앞으로 안 따라도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-e8332c9f7819",
+      "r-cfa0c1122098",
+      "r-8e67fa51f440"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s216",
+    "source": "prior_synthetic",
+    "text": "마지막에 말한 보관 폴더 정리 지시는 조건까지 전부 cancel할게, 더는 따를 필요 없어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9",
+      "r-beb5fd8e7be8",
+      "r-e8332c9f7819",
+      "r-82cc5c4b3e7d",
+      "r-bb980f55ecde",
+      "r-5fc05b0843a9",
+      "r-8e67fa51f440",
+      "r-9a432516dbf4",
+      "r-51897d53cb54",
+      "r-f8c534abd159"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s217",
+    "source": "prior_synthetic",
+    "text": "pane 종료부터 보고 방식까지 묶어서 내린 그 지시는 전부 revoke할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s218",
+    "source": "prior_synthetic",
+    "text": "방금 말한 문법 변경 대비 구조화 조건은 이제 drop해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-e8332c9f7819",
+      "r-9a432516dbf4",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s219",
+    "source": "prior_synthetic",
+    "text": "문서에서 AI 티 나지 않게 하라는 조건은 이제[원문 가림]할게, 앞으로 안 지켜도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-beb5fd8e7be8",
+      "r-086fe7c45c90",
+      "r-cbdfaf45b684",
+      "r-cfa0c1122098",
+      "r-d8a88b17fb38",
+      "r-0541020622fe",
+      "r-399d5e27c5a8",
+      "r-8f712c01cffa",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s220",
+    "source": "prior_synthetic",
+    "text": "이미지 비교 분석할 때 내건 요구는 통째로[원문 가림]야, 붙여 둔 제약도 모두 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-086fe7c45c90"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s221",
+    "source": "prior_synthetic",
+    "text": "기능 추가에 대비해 구조화하라는 마지막 조건은 앞으로 ignore해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-cfa0c1122098",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s222",
+    "source": "prior_synthetic",
+    "text": "방금 내린 구현 중단 지시는 전체 cancel할게, 보존이나 보고에 붙인 조건도 더는 안 따라도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-2e619539f65d",
+      "r-59295cde96ac",
+      "r-51897d53cb54",
+      "r-e8332c9f7819",
+      "r-cbdfaf45b684",
+      "r-086fe7c45c90",
+      "r-8f712c01cffa",
+      "r-08731fdcfe6d",
+      "r-399d5e27c5a8",
+      "r-fc92417541c9"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s223",
+    "source": "prior_synthetic",
+    "text": "논문 이미지 비교에 관한 지시 전체를 drop할게, 그 안의 금지 조건도 이제 없어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-086fe7c45c90"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s224",
+    "source": "prior_synthetic",
+    "text": "표 너비에 관한 규칙은 이제 off야, 앞으로 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-08731fdcfe6d",
+      "r-2e619539f65d"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s225",
+    "source": "prior_synthetic",
+    "text": "마지막 방향 전환 지시는 통째로 revoke할게, 거기에 묶인 조건은 모두 해제야.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-cbdfaf45b684",
+      "r-399d5e27c5a8",
+      "r-5fc05b0843a9",
+      "r-e8332c9f7819",
+      "r-fc92417541c9",
+      "r-51897d53cb54",
+      "r-086fe7c45c90",
+      "r-59295cde96ac",
+      "r-d90305c977eb"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s227",
+    "source": "prior_synthetic",
+    "text": "영어 기본에 번역 붙이라는 언어 방침은 이제 drop해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-59295cde96ac",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s228",
+    "source": "prior_synthetic",
+    "text": "방금 등록한 지시는 전체[원문 가림]야, 더는 따르지 않아도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-ca4e08864ba8",
+      "r-cfa0c1122098",
+      "r-0541020622fe",
+      "r-8f712c01cffa",
+      "r-2e619539f65d",
+      "r-399d5e27c5a8",
+      "r-82cc5c4b3e7d",
+      "r-e8332c9f7819",
+      "r-bb980f55ecde"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s229",
+    "source": "prior_synthetic",
+    "text": "잘린 보고 이어서 마무리하라고 했던 지시는 제한까지 전부 cancel할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s230",
+    "source": "prior_synthetic",
+    "text": "방금 구현 중단하면서 내린 지시는 전체 해제야, 이제[원문 가림]안 해도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-086fe7c45c90",
+      "r-8f712c01cffa",
+      "r-fc92417541c9"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s231",
+    "source": "prior_synthetic",
+    "text": "브랜치 이름에 관해 마지막으로 정한 규칙은 전부 drop할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-82cc5c4b3e7d",
+      "r-2e619539f65d",
+      "r-d90305c977eb",
+      "r-e8332c9f7819",
+      "r-51897d53cb54",
+      "r-5fc05b0843a9",
+      "r-399d5e27c5a8",
+      "r-8f712c01cffa",
+      "r-086fe7c45c90",
+      "r-8e67fa51f440"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s232",
+    "source": "prior_synthetic",
+    "text": "문서에서 AI가 쓴 티 내지 말라는 제약은 이제[원문 가림]야.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s233",
+    "source": "prior_synthetic",
+    "text": "방금 코드 정리랑 완성 기준으로 묶어서 말한 지시는 전부 drop해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-82cc5c4b3e7d",
+      "r-ca4e08864ba8",
+      "r-8f712c01cffa"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s234",
+    "source": "prior_synthetic",
+    "text": "마지막에 정한 흐름도 방향 규칙은 예외 조건까지 전부 cancel할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-d8a88b17fb38",
+      "r-399d5e27c5a8",
+      "r-8e67fa51f440",
+      "r-82cc5c4b3e7d",
+      "r-beb5fd8e7be8",
+      "r-8f712c01cffa",
+      "r-e8332c9f7819",
+      "r-bb980f55ecde",
+      "r-9a432516dbf4"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s235",
+    "source": "prior_synthetic",
+    "text": "언어랑 번역 방식 정해 둔 건 이제 reset이야, 그 방침은 더 안 지켜도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s236",
+    "source": "prior_synthetic",
+    "text": "방금 추가한 보고서 표기랑 검증 기준은 통째로 cancel할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-51897d53cb54",
+      "r-cbdfaf45b684"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s237",
+    "source": "prior_synthetic",
+    "text": "파일 하나씩[원문 가림]하라고 한 마지막 지시는 이제 drop해.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-82cc5c4b3e7d",
+      "r-5fc05b0843a9",
+      "r-beb5fd8e7be8",
+      "r-cfa0c1122098",
+      "r-51897d53cb54",
+      "r-cbdfaf45b684",
+      "r-8f712c01cffa",
+      "r-2e619539f65d",
+      "r-bb980f55ecde",
+      "r-08731fdcfe6d"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s238",
+    "source": "prior_synthetic",
+    "text": "영어와 한국어를 어떻게 쓸지 정한 기존 방침[원문 가림]할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-5fc05b0843a9"
+    ],
+    "kind": "permanent",
+    "target": "c1"
+  },
+  {
+    "id": "s239",
+    "source": "prior_synthetic",
+    "text": "번역본 찾아서 문체 기준으로 삼으라는 지시는 전부 drop해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9",
+      "r-086fe7c45c90",
+      "r-0541020622fe"
+    ],
+    "kind": "permanent",
+    "target": "c3"
+  },
+  {
+    "id": "s240",
+    "source": "prior_synthetic",
+    "text": "방금 추가한[원문 가림]방향 제약은 전체 해제할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-cbdfaf45b684",
+      "r-fc92417541c9",
+      "r-d8a88b17fb38",
+      "r-0541020622fe",
+      "r-bb980f55ecde",
+      "r-51897d53cb54",
+      "r-e8332c9f7819",
+      "r-beb5fd8e7be8",
+      "r-9a432516dbf4"
+    ],
+    "kind": "permanent",
+    "target": "c10"
+  },
+  {
+    "id": "s241",
+    "source": "prior_synthetic",
+    "text": "이 문단에서 핵심 주장만 뽑아줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s242",
+    "source": "prior_synthetic",
+    "text": "지금까지 확인한 결함 중 영향이 가장 큰 항목을 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-8f712c01cffa",
+      "r-59295cde96ac"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s243",
+    "source": "prior_synthetic",
+    "text": "리팩토링할 때 의존성이 문제가 되는 이유를 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-d90305c977eb",
+      "r-399d5e27c5a8",
+      "r-9a432516dbf4",
+      "r-82cc5c4b3e7d",
+      "r-f8c534abd159",
+      "r-086fe7c45c90",
+      "r-2e619539f65d",
+      "r-51897d53cb54",
+      "r-08731fdcfe6d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s244",
+    "source": "prior_synthetic",
+    "text": "현재 화면에 나온 오류가 무슨 뜻인지 알려줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s245",
+    "source": "prior_synthetic",
+    "text": "이 초안에 어울리는 제목 하나 추천해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde",
+      "r-cbdfaf45b684",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s246",
+    "source": "prior_synthetic",
+    "text": "지금까지 대화에서 결정된 사항을 요약해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-51897d53cb54",
+      "r-5fc05b0843a9",
+      "r-fc92417541c9",
+      "r-d90305c977eb",
+      "r-2e619539f65d",
+      "r-59295cde96ac",
+      "r-bb980f55ecde",
+      "r-8e67fa51f440",
+      "r-8f712c01cffa"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s247",
+    "source": "prior_synthetic",
+    "text": "리뷰에서 발견한 문제의 원인을 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d8a88b17fb38"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s248",
+    "source": "prior_synthetic",
+    "text": "이 흐름도에서 요청이 처리되는 순서를 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-cbdfaf45b684",
+      "r-9a432516dbf4"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s249",
+    "source": "prior_synthetic",
+    "text": "가상메모리에서 주소 변환이 필요한 이유를 알려줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-086fe7c45c90",
+      "r-e8332c9f7819",
+      "r-ca4e08864ba8",
+      "r-59295cde96ac",
+      "r-f8c534abd159",
+      "r-cbdfaf45b684",
+      "r-d8a88b17fb38",
+      "r-2e619539f65d",
+      "r-08731fdcfe6d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s250",
+    "source": "prior_synthetic",
+    "text": "비공개 문서를 따로 보관하면 어떤 장점이 있는지 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s251",
+    "source": "prior_synthetic",
+    "text": "이미 완료한 검증으로 어디까지 확인된 건지 알려줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9",
+      "r-08731fdcfe6d",
+      "r-8f712c01cffa"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s252",
+    "source": "prior_synthetic",
+    "text": "코틀린의 확장 함수가 뭔지 간단히 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-beb5fd8e7be8",
+      "r-f8c534abd159",
+      "r-086fe7c45c90",
+      "r-ca4e08864ba8",
+      "r-51897d53cb54",
+      "r-d90305c977eb",
+      "r-fc92417541c9",
+      "r-8e67fa51f440",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s253",
+    "source": "prior_synthetic",
+    "text": "보고한 발견사항 중 우선순위가 가장 높은 항목의 영향을 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s254",
+    "source": "prior_synthetic",
+    "text": "문법[원문 가림]기능에 영향을 주는 이유를 설명해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-399d5e27c5a8",
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s255",
+    "source": "prior_synthetic",
+    "text": "하드코딩이 유지보수를 어렵게 만드는 이유를 알려줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-8e67fa51f440",
+      "r-5fc05b0843a9",
+      "r-08731fdcfe6d",
+      "r-2e619539f65d",
+      "r-086fe7c45c90",
+      "r-beb5fd8e7be8",
+      "r-9a432516dbf4",
+      "r-bb980f55ecde",
+      "r-8f712c01cffa"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s256",
+    "source": "prior_synthetic",
+    "text": "기능 추가할 때 기존 문법이 깨지는 원인부터 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s257",
+    "source": "prior_synthetic",
+    "text": "지금 문서에서 핵심 내용만 간단히 요약해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-e8332c9f7819",
+      "r-5fc05b0843a9",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s258",
+    "source": "prior_synthetic",
+    "text": "지금까지 확인된 오류가 몇 개인지 알려줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-9a432516dbf4",
+      "r-e8332c9f7819",
+      "r-086fe7c45c90",
+      "r-bb980f55ecde",
+      "r-cbdfaf45b684",
+      "r-8e67fa51f440",
+      "r-d90305c977eb",
+      "r-08731fdcfe6d",
+      "r-8f712c01cffa"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s259",
+    "source": "prior_synthetic",
+    "text": "현재 작업 진행 상황 좀 알려줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s260",
+    "source": "prior_synthetic",
+    "text": "코틀린 확장 함수가 뭔지 예시로 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-8f712c01cffa",
+      "r-0541020622fe"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s261",
+    "source": "prior_synthetic",
+    "text": "지금까지 완료된 작업이 뭔지 알려줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-8e67fa51f440",
+      "r-cfa0c1122098",
+      "r-0541020622fe",
+      "r-51897d53cb54",
+      "r-8f712c01cffa",
+      "r-2e619539f65d",
+      "r-bb980f55ecde",
+      "r-beb5fd8e7be8",
+      "r-d90305c977eb"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s262",
+    "source": "prior_synthetic",
+    "text": "스택과 큐의 차이를 간단히 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s263",
+    "source": "prior_synthetic",
+    "text": "이 흐름도에서 분기가 어디서 생기는지 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-9a432516dbf4",
+      "r-2e619539f65d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s264",
+    "source": "prior_synthetic",
+    "text": "지금까[원문 가림]에서 가장 큰 문제 하나만 짚어줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-9a432516dbf4",
+      "r-bb980f55ecde",
+      "r-2e619539f65d",
+      "r-cbdfaf45b684",
+      "r-cfa0c1122098",
+      "r-0541020622fe",
+      "r-e8332c9f7819",
+      "r-51897d53cb54",
+      "r-086fe7c45c90"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s265",
+    "source": "prior_synthetic",
+    "text": "설치 과정을 처음 쓰는 사람도 이해하게 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s266",
+    "source": "prior_synthetic",
+    "text": "검토 결과에서 우선순위가 가장 높은 결함을 알려줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440",
+      "r-5fc05b0843a9",
+      "r-cbdfaf45b684"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s267",
+    "source": "prior_synthetic",
+    "text": "지금까지 파악한 구조에서 호환성이 깨질 만한 지점을 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-e8332c9f7819",
+      "r-08731fdcfe6d",
+      "r-9a432516dbf4",
+      "r-5fc05b0843a9",
+      "r-cfa0c1122098",
+      "r-fc92417541c9",
+      "r-59295cde96ac",
+      "r-086fe7c45c90",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s268",
+    "source": "prior_synthetic",
+    "text": "현재 스킬이 어떤 역할을 하는지 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cfa0c1122098"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s269",
+    "source": "prior_synthetic",
+    "text": "코틀린의 널 안전성이 어떻게 동작하는지 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-e8332c9f7819",
+      "r-0541020622fe"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s270",
+    "source": "prior_synthetic",
+    "text": "이미 확인한 내용으로 차트가 전달하는 핵심을 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-59295cde96ac",
+      "r-82cc5c4b3e7d",
+      "r-d8a88b17fb38",
+      "r-5fc05b0843a9",
+      "r-cfa0c1122098",
+      "r-cbdfaf45b684",
+      "r-086fe7c45c90",
+      "r-e8332c9f7819",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s271",
+    "source": "prior_synthetic",
+    "text": "문서에 나오는 취소 버튼 설명이[원문 가림]봐줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s272",
+    "source": "prior_synthetic",
+    "text": "취소 버튼은 영어로 Cancel이라고 쓰면 돼?",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-d8a88b17fb38",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s273",
+    "source": "prior_synthetic",
+    "text": "설정 화면의 제한 해제 버튼 이름이 너무 긴지 봐줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-9a432516dbf4",
+      "r-82cc5c4b3e7d",
+      "r-2e619539f65d",
+      "r-086fe7c45c90",
+      "r-e8332c9f7819",
+      "r-beb5fd8e7be8",
+      "r-fc92417541c9",
+      "r-8f712c01cffa",
+      "r-f8c534abd159"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s274",
+    "source": "prior_synthetic",
+    "text": "취소 버튼을 눌렀을 때 뜰 안내 문구 하나 추천해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8f712c01cffa"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s275",
+    "source": "prior_synthetic",
+    "text": "이[원문 가림]서 취소라는 말이 무슨 뜻인지 설명해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-cbdfaf45b684",
+      "r-beb5fd8e7be8",
+      "r-08731fdcfe6d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s276",
+    "source": "prior_synthetic",
+    "text": "이용권 해제 메뉴 이름이[원문 가림]의견만 줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-d90305c977eb",
+      "r-cbdfaf45b684",
+      "r-0541020622fe",
+      "r-399d5e27c5a8",
+      "r-51897d53cb54",
+      "r-9a432516dbf4",
+      "r-fc92417541c9",
+      "r-bb980f55ecde",
+      "r-8f712c01cffa",
+      "r-59295cde96ac"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s277",
+    "source": "prior_synthetic",
+    "text": "브랜치 이름에 취소 기능이라는 뜻을 담으려면 어떤 단어가 좋아?",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s278",
+    "source": "prior_synthetic",
+    "text": "화면에 표시할 등록 취소 문구를 짧게 다듬어줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-8e67fa51f440",
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s279",
+    "source": "prior_synthetic",
+    "text": "잠금 해제 버튼에 쓸 짧은 설명 문구를 추천해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-9a432516dbf4",
+      "r-ca4e08864ba8",
+      "r-8f712c01cffa",
+      "r-cfa0c1122098",
+      "r-fc92417541c9",
+      "r-0541020622fe",
+      "r-beb5fd8e7be8",
+      "r-d90305c977eb",
+      "r-e8332c9f7819"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s280",
+    "source": "prior_synthetic",
+    "text": "보고서에 나온 결제 취소 오류가 어떤 상황인지 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cbdfaf45b684"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s281",
+    "source": "prior_synthetic",
+    "text": "예약 취소라는 표현을 영어로 어떻게 쓰는지 알려줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb",
+      "r-0541020622fe",
+      "r-cfa0c1122098"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s282",
+    "source": "prior_synthetic",
+    "text": "차트 범례의 선택 해제라는 표현이 이해하기 쉬운지 봐줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8",
+      "r-8e67fa51f440",
+      "r-d8a88b17fb38",
+      "r-0541020622fe",
+      "r-cbdfaf45b684",
+      "r-9a432516dbf4",
+      "r-5fc05b0843a9",
+      "r-f8c534abd159",
+      "r-51897d53cb54",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s283",
+    "source": "prior_synthetic",
+    "text": "작업 취소 버튼에 붙일 도움말 문구만 추천해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s284",
+    "source": "prior_synthetic",
+    "text": "권한 해제와 로그아웃이 같은 뜻인지 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-beb5fd8e7be8",
+      "r-cfa0c1122098"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s285",
+    "source": "prior_synthetic",
+    "text": "문서에 넣을 구독 취소 안내 문장을 하나 써줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-399d5e27c5a8",
+      "r-0541020622fe",
+      "r-5fc05b0843a9",
+      "r-e8332c9f7819",
+      "r-beb5fd8e7be8",
+      "r-bb980f55ecde",
+      "r-f8c534abd159",
+      "r-51897d53cb54",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s287",
+    "source": "prior_synthetic",
+    "text": "권한 해제라는 표현이 무슨 뜻인지 짧게 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-d8a88b17fb38",
+      "r-bb980f55ecde"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s288",
+    "source": "prior_synthetic",
+    "text": "예약 취소 안내 문구를 영어랑 한국어로 보여줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-fc92417541c9",
+      "r-bb980f55ecde",
+      "r-beb5fd8e7be8",
+      "r-8f712c01cffa",
+      "r-ca4e08864ba8",
+      "r-e8332c9f7819",
+      "r-8e67fa51f440",
+      "r-f8c534abd159",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s289",
+    "source": "prior_synthetic",
+    "text": "취소 버튼을 눌렀을 때 어떤 안내가 필요한지 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s290",
+    "source": "prior_synthetic",
+    "text": "화면의 잠금 해제 버튼 이름이 알아보기 쉬운지 의견 줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb",
+      "r-51897d53cb54",
+      "r-f8c534abd159"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s291",
+    "source": "prior_synthetic",
+    "text": "구독 취소 안내 문구가 너무 딱딱한지 봐줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-bb980f55ecde",
+      "r-59295cde96ac",
+      "r-51897d53cb54",
+      "r-086fe7c45c90",
+      "r-82cc5c4b3e7d",
+      "r-2e619539f65d",
+      "r-f8c534abd159",
+      "r-cbdfaf45b684",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s292",
+    "source": "prior_synthetic",
+    "text": "주문 취소와 환불의 차이를 짧게 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s293",
+    "source": "prior_synthetic",
+    "text": "연결 해제라는 버튼 문구가[원문 가림]말해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-f8c534abd159",
+      "r-e8332c9f7819"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s294",
+    "source": "prior_synthetic",
+    "text": "취소 버튼과 뒤로 가기 버튼의 차이를 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-2e619539f65d",
+      "r-51897d53cb54",
+      "r-d90305c977eb",
+      "r-8e67fa51f440",
+      "r-9a432516dbf4",
+      "r-59295cde96ac",
+      "r-08731fdcfe6d",
+      "r-399d5e27c5a8",
+      "r-0541020622fe"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s295",
+    "source": "prior_synthetic",
+    "text": "취소 요청을 처리하는 함수 이름 좀 추천해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s296",
+    "source": "prior_synthetic",
+    "text": "작업 취소 알림에 쓸 짧은 문구 하나만 제안해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-5fc05b0843a9",
+      "r-fc92417541c9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s297",
+    "source": "prior_synthetic",
+    "text": "선택 해제 버튼을 어디에 두면 좋을지 의견 줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-e8332c9f7819",
+      "r-cfa0c1122098",
+      "r-8f712c01cffa",
+      "r-d90305c977eb",
+      "r-0541020622fe",
+      "r-f8c534abd159",
+      "r-ca4e08864ba8",
+      "r-9a432516dbf4",
+      "r-086fe7c45c90"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s298",
+    "source": "prior_synthetic",
+    "text": "화면에 뜬 취소됨이라는 상태가 무슨 뜻인지 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s299",
+    "source": "prior_synthetic",
+    "text": "표에 있는 주문 취소율이 무슨 지표인지 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde",
+      "r-59295cde96ac",
+      "r-2e619539f65d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s300",
+    "source": "prior_synthetic",
+    "text": "취소 버튼의 도움말로 쓸 문구 하나만 제안해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cbdfaf45b684",
+      "r-fc92417541c9",
+      "r-399d5e27c5a8",
+      "r-59295cde96ac",
+      "r-08731fdcfe6d",
+      "r-d8a88b17fb38",
+      "r-82cc5c4b3e7d",
+      "r-8f712c01cffa",
+      "r-cfa0c1122098",
+      "r-d90305c977eb"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s331",
+    "source": "prior_synthetic",
+    "text": "하드코딩 금지는 예시 코드에도 예외 없이 적용해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-086fe7c45c90"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s332",
+    "source": "prior_synthetic",
+    "text": "번역본 문체 기준은 제목이랑 짧은 설명에도 빠짐없이 적용해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-d90305c977eb",
+      "r-0541020622fe"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s333",
+    "source": "prior_synthetic",
+    "text": "파일 하나 개선한[원문 가림]다음 파일로 넘어가지 마.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-cfa0c1122098",
+      "r-beb5fd8e7be8",
+      "r-5fc05b0843a9",
+      "r-8e67fa51f440",
+      "r-bb980f55ecde",
+      "r-399d5e27c5a8",
+      "r-ca4e08864ba8",
+      "r-82cc5c4b3e7d",
+      "r-086fe7c45c90",
+      "r-08731fdcfe6d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s334",
+    "source": "prior_synthetic",
+    "text": "방금 정한 응답 형식은 오류를 알릴 때도 예외 없이 지켜.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s335",
+    "source": "prior_synthetic",
+    "text": "하드코딩한 값이 하나라도 남으면 분석 작업을 완료했다고 하지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440",
+      "r-9a432516dbf4",
+      "r-086fe7c45c90"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s336",
+    "source": "prior_synthetic",
+    "text": "문서 문체는 짧은 안내 문구까지 직접 쓴 글처럼 자연스럽게 다듬어.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9",
+      "r-5fc05b0843a9",
+      "r-51897d53cb54",
+      "r-2e619539f65d",
+      "r-9a432516dbf4",
+      "r-8f712c01cffa",
+      "r-cbdfaf45b684",
+      "r-ca4e08864ba8",
+      "r-086fe7c45c90",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s337",
+    "source": "prior_synthetic",
+    "text": "표는 작은 화면에서도 가용 너비를 남기지 않도록 확인해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-2e619539f65d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s338",
+    "source": "prior_synthetic",
+    "text": "중단한 구현은 내가 재개하라고 하기 전까지 사소한 수정도 하지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-8f712c01cffa",
+      "r-fc92417541c9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s339",
+    "source": "prior_synthetic",
+    "text": "비공개 자료는 임시 초안까지 지정한 보관 폴더 밖에 남기지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-82cc5c4b3e7d",
+      "r-086fe7c45c90",
+      "r-5fc05b0843a9",
+      "r-bb980f55ecde",
+      "r-cbdfaf45b684",
+      "r-beb5fd8e7be8",
+      "r-59295cde96ac",
+      "r-0541020622fe",
+      "r-f8c534abd159"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s340",
+    "source": "prior_synthetic",
+    "text": "방금 정한 마지막 단어 뒤에는 마침표도 붙이지 마.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-e8332c9f7819"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s341",
+    "source": "prior_synthetic",
+    "text": "방금 정한 한 줄 형식은 설명이 길어져도 반드시 유지해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-9a432516dbf4",
+      "r-f8c534abd159",
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s342",
+    "source": "prior_synthetic",
+    "text": "소스 하나씩 개선할 때 원인[원문 가림]다음 소스로 넘어가지 마.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-2e619539f65d",
+      "r-0541020622fe",
+      "r-ca4e08864ba8",
+      "r-59295cde96ac",
+      "r-bb980f55ecde",
+      "r-9a432516dbf4",
+      "r-fc92417541c9",
+      "r-82cc5c4b3e7d",
+      "r-08731fdcfe6d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s343",
+    "source": "prior_synthetic",
+    "text": "스킬은 오타 하나 고치는 것도 반드시 코덱스에 맡겨.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cfa0c1122098"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s344",
+    "source": "prior_synthetic",
+    "text": "브랜치 이름은[원문 가림]작업 의미가 드러나는지까지 확인해.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-2e619539f65d",
+      "r-8e67fa51f440"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s345",
+    "source": "prior_synthetic",
+    "text": "한국어 번역은 영어 본문의 짧은 안내 문구까지 빠짐없이 붙여.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde",
+      "r-2e619539f65d",
+      "r-e8332c9f7819",
+      "r-0541020622fe",
+      "r-cfa0c1122098",
+      "r-f8c534abd159",
+      "r-cbdfaf45b684",
+      "r-beb5fd8e7be8",
+      "r-8f712c01cffa",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s346",
+    "source": "prior_synthetic",
+    "text": "표 너비 기준은 작은 표에도 예외 없이 적용하고 제출 전에 확인해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-2e619539f65d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s347",
+    "source": "prior_synthetic",
+    "text": "문법 확장할 때 기존 입력이 그대로[원문 가림]까지 꼭 확인해.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-51897d53cb54",
+      "r-8f712c01cffa"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s348",
+    "source": "prior_synthetic",
+    "text": "방금 정한 응답 형식은 짧은 확인 답변에도 예외 없이 적용해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8",
+      "r-e8332c9f7819",
+      "r-9a432516dbf4",
+      "r-08731fdcfe6d",
+      "r-59295cde96ac",
+      "r-f8c534abd159",
+      "r-399d5e27c5a8",
+      "r-ca4e08864ba8",
+      "r-fc92417541c9",
+      "r-bb980f55ecde"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s349",
+    "source": "prior_synthetic",
+    "text": "응답 형식은 보내기 전[원문 가림]검사해서 어긋나는 일이 없게 해.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s350",
+    "source": "prior_synthetic",
+    "text": "[원문 가림]보고할 때는 각 판단마다 근거를 빠짐없이 붙여줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-d90305c977eb",
+      "r-59295cde96ac"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s351",
+    "source": "prior_synthetic",
+    "text": "흐름도 방향 기준은 작은 예시에도 적용하고 세로 배치는 분기 수를 꼭 확인해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-bb980f55ecde",
+      "r-08731fdcfe6d",
+      "r-ca4e08864ba8",
+      "r-82cc5c4b3e7d",
+      "r-e8332c9f7819",
+      "r-cfa0c1122098",
+      "r-d8a88b17fb38",
+      "r-8f712c01cffa",
+      "r-9a432516dbf4"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s352",
+    "source": "prior_synthetic",
+    "text": "[원문 가림]는 확인용 조회에도 예외를 두지 마.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s353",
+    "source": "prior_synthetic",
+    "text": "번역본 문체는 설명뿐 아니라 예시 해설에도[원문 가림]해.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-8e67fa51f440",
+      "r-fc92417541c9",
+      "r-0541020622fe"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s354",
+    "source": "prior_synthetic",
+    "text": "중단한 구현[원문 가림]정리한다는 이유로도 손대지 마.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-8e67fa51f440",
+      "r-5fc05b0843a9",
+      "r-0541020622fe",
+      "r-399d5e27c5a8",
+      "r-086fe7c45c90",
+      "r-51897d53cb54",
+      "r-8f712c01cffa",
+      "r-beb5fd8e7be8",
+      "r-d8a88b17fb38",
+      "r-fc92417541c9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s355",
+    "source": "prior_synthetic",
+    "text": "[원문 가림]한 항목은[원문 가림]근거가 둘 다 있어야 통과로 처리해.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-cbdfaf45b684"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s356",
+    "source": "prior_synthetic",
+    "text": "설계와 구현이[원문 가림]은 사소해 보여도 빠짐없이 결함으로 남겨.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-2e619539f65d",
+      "r-ca4e08864ba8",
+      "r-cbdfaf45b684"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s357",
+    "source": "prior_synthetic",
+    "text": "기능 추가로 문법[원문 가림]기존 사용 예시가 전부 통과해야 완료로 봐.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-cbdfaf45b684",
+      "r-5fc05b0843a9",
+      "r-0541020622fe",
+      "r-9a432516dbf4",
+      "r-d90305c977eb",
+      "r-8e67fa51f440",
+      "r-2e619539f65d",
+      "r-cfa0c1122098",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s358",
+    "source": "prior_synthetic",
+    "text": "논문 이미지와 비교할 때 부족하다고 본 기능마다 비교 근거를 꼭 붙여.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-086fe7c45c90"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s359",
+    "source": "prior_synthetic",
+    "text": "충족 여부를 검증할 때는 코드 근거의 위치까지 반드시 밝혀줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-51897d53cb54",
+      "r-cbdfaf45b684"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s360",
+    "source": "prior_synthetic",
+    "text": "문법 확장 시 기존 입력 호환성은 예외 없이 지키고 검증 결과도 남겨.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-9a432516dbf4",
+      "r-d8a88b17fb38",
+      "r-08731fdcfe6d",
+      "r-f8c534abd159",
+      "r-bb980f55ecde",
+      "r-d90305c977eb",
+      "r-59295cde96ac",
+      "r-8e67fa51f440",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s361",
+    "source": "prior_synthetic",
+    "text": "앞으로 전문 용어는 처음 나올 때 원어도 괄호에 적어줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s362",
+    "source": "prior_synthetic",
+    "text": "앞으로 설명할 때 확실[원문 가림]에는 추정이라고 표시해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-beb5fd8e7be8",
+      "r-8f712c01cffa"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s363",
+    "source": "prior_synthetic",
+    "text": "앞으로 날짜를 적을 때는 연도도 같이 적어줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde",
+      "r-d90305c977eb",
+      "r-5fc05b0843a9",
+      "r-59295cde96ac",
+      "r-e8332c9f7819",
+      "r-8e67fa51f440",
+      "r-9a432516dbf4",
+      "r-51897d53cb54",
+      "r-086fe7c45c90",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s364",
+    "source": "prior_synthetic",
+    "text": "앞으로 파일을 옮긴 결과를 보고할 때는 이동한 파일 수도 알려줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s365",
+    "source": "prior_synthetic",
+    "text": "앞으로 답변에서 약어를 처음 쓰면 뜻도 풀어줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-beb5fd8e7be8",
+      "r-8e67fa51f440"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s366",
+    "source": "prior_synthetic",
+    "text": "앞으로 수치를 인용할 때는 단위도 붙여줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-ca4e08864ba8",
+      "r-cbdfaf45b684",
+      "r-d8a88b17fb38",
+      "r-e8332c9f7819",
+      "r-5fc05b0843a9",
+      "r-cfa0c1122098",
+      "r-2e619539f65d",
+      "r-399d5e27c5a8",
+      "r-f8c534abd159"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s367",
+    "source": "prior_synthetic",
+    "text": "앞으로 발견사항마다 심각도를 함께 적어줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cbdfaf45b684"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s368",
+    "source": "prior_synthetic",
+    "text": "앞으로 예제에 나오는 입력값에는 어떤 의미인지 설명도 붙여줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-9a432516dbf4",
+      "r-5fc05b0843a9",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s369",
+    "source": "prior_synthetic",
+    "text": "앞으로 보고할 때[원문 가림]내용에는 미확인이라고 적어줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-d90305c977eb",
+      "r-d8a88b17fb38",
+      "r-8f712c01cffa",
+      "r-9a432516dbf4",
+      "r-beb5fd8e7be8",
+      "r-086fe7c45c90",
+      "r-cbdfaf45b684",
+      "r-e8332c9f7819",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s370",
+    "source": "prior_synthetic",
+    "text": "앞으로 수정 제안마다 기대 효과도 함께 적어줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cbdfaf45b684"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s371",
+    "source": "prior_synthetic",
+    "text": "앞으로 답변에 생소한 용어가 나오면 짧게 뜻도 설명해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde",
+      "r-08731fdcfe6d",
+      "r-f8c534abd159"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s372",
+    "source": "prior_synthetic",
+    "text": "앞으로 상태를 보고할 때 완료 여부를 맨 앞에 적어줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-82cc5c4b3e7d",
+      "r-cbdfaf45b684",
+      "r-8e67fa51f440",
+      "r-f8c534abd159",
+      "r-0541020622fe",
+      "r-9a432516dbf4",
+      "r-cfa0c1122098",
+      "r-e8332c9f7819",
+      "r-fc92417541c9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s373",
+    "source": "prior_synthetic",
+    "text": "앞으로 상태 보고에는 대기 이유도 짧게 적어줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s374",
+    "source": "prior_synthetic",
+    "text": "앞으로 표에 숫자를 넣을 때는 단위를 열 제목에 적어줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-82cc5c4b3e7d",
+      "r-2e619539f65d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s375",
+    "source": "prior_synthetic",
+    "text": "앞으로 차트에 색을 쓰면 색의 의미를 범례로 표시해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-e8332c9f7819",
+      "r-8f712c01cffa",
+      "r-8e67fa51f440",
+      "r-08731fdcfe6d",
+      "r-59295cde96ac",
+      "r-fc92417541c9",
+      "r-cbdfaf45b684",
+      "r-d90305c977eb",
+      "r-beb5fd8e7be8",
+      "r-ca4e08864ba8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s376",
+    "source": "prior_synthetic",
+    "text": "앞으로 문서 제목은 짧게 써줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s377",
+    "source": "prior_synthetic",
+    "text": "앞으로 전문 용어는 처음 나올 때 뜻도 붙여줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-086fe7c45c90",
+      "r-0541020622fe"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s378",
+    "source": "prior_synthetic",
+    "text": "앞으로 보고할 때 날짜는 연월일 순서로 써줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-2e619539f65d",
+      "r-59295cde96ac",
+      "r-cbdfaf45b684",
+      "r-bb980f55ecde",
+      "r-9a432516dbf4",
+      "r-8f712c01cffa",
+      "r-d90305c977eb",
+      "r-5fc05b0843a9",
+      "r-fc92417541c9",
+      "r-cfa0c1122098"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s379",
+    "source": "prior_synthetic",
+    "text": "앞으로 함수 이름은 역할을 알 수 있게 지어줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s380",
+    "source": "prior_synthetic",
+    "text": "앞으로 리뷰에서 추측하는 내용[원문 가림]해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-e8332c9f7819",
+      "r-82cc5c4b3e7d",
+      "r-d8a88b17fb38"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s381",
+    "source": "prior_synthetic",
+    "text": "앞으로 보고에 수치를 쓸 때는 단위도 붙여줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-086fe7c45c90",
+      "r-8f712c01cffa",
+      "r-bb980f55ecde",
+      "r-fc92417541c9",
+      "r-399d5e27c5a8",
+      "r-d8a88b17fb38",
+      "r-9a432516dbf4",
+      "r-ca4e08864ba8",
+      "r-cbdfaf45b684",
+      "r-59295cde96ac"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s382",
+    "source": "prior_synthetic",
+    "text": "앞으로 차트 범례는 아래쪽에 배치해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s383",
+    "source": "prior_synthetic",
+    "text": "앞으로 약어는 처음 쓸 때 풀어 써줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-086fe7c45c90",
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s384",
+    "source": "prior_synthetic",
+    "text": "앞으로 보고에서는 가장 중요한 결론부터 말해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-5fc05b0843a9",
+      "r-fc92417541c9",
+      "r-086fe7c45c90",
+      "r-cbdfaf45b684",
+      "r-bb980f55ecde",
+      "r-d90305c977eb",
+      "r-9a432516dbf4",
+      "r-e8332c9f7819",
+      "r-59295cde96ac"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s385",
+    "source": "prior_synthetic",
+    "text": "앞으로 상태 보고에서 완료한 항목[원문 가림]표시해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-fc92417541c9"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s386",
+    "source": "prior_synthetic",
+    "text": "앞으로 보고할 때[원문 가림]모른다고 명시해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-9a432516dbf4",
+      "r-399d5e27c5a8",
+      "r-d90305c977eb"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s387",
+    "source": "prior_synthetic",
+    "text": "앞으로 보고에 비율을 적을 때는 소수점 한 자리까지만 써줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb",
+      "r-ca4e08864ba8",
+      "r-5fc05b0843a9",
+      "r-0541020622fe",
+      "r-2e619539f65d",
+      "r-cbdfaf45b684",
+      "r-59295cde96ac",
+      "r-086fe7c45c90",
+      "r-fc92417541c9",
+      "r-9a432516dbf4"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s388",
+    "source": "prior_synthetic",
+    "text": "앞으로 커밋은 변경 목적별로 나눠줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s389",
+    "source": "prior_synthetic",
+    "text": "앞으로 공개 문서에 예시를 넣을 때는 가상 데이터로 써줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440",
+      "r-5fc05b0843a9",
+      "r-f8c534abd159"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "s390",
+    "source": "prior_synthetic",
+    "text": "앞으로 설명에서 같은 개념은 같은 용어로 불러줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-399d5e27c5a8",
+      "r-bb980f55ecde",
+      "r-8f712c01cffa",
+      "r-8e67fa51f440",
+      "r-e8332c9f7819",
+      "r-51897d53cb54",
+      "r-59295cde96ac",
+      "r-cbdfaf45b684",
+      "r-0541020622fe"
+    ],
+    "kind": "none",
+    "target": "none"
+  },
+  {
+    "id": "new-once-00",
+    "source": "new_synthetic",
+    "text": "이번만 영어를 기본으로 쓰는 규칙은 빼고 한국어로만 답해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-5fc05b0843a9"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-01",
+    "source": "new_synthetic",
+    "text": "이번 작업에 한해서는[원문 가림] 규칙을 예외로 하고 고정값을 직접 넣어줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-2e619539f65d",
+      "r-e8332c9f7819",
+      "r-8f712c01cffa"
+    ],
+    "kind": "once",
+    "target": "c3"
+  },
+  {
+    "id": "new-once-02",
+    "source": "new_synthetic",
+    "text": "이번 작업만 브랜치 이름의 dev/ 접두어 규칙을[원문 가림] wp/로 만들어줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-0541020622fe",
+      "r-8e67fa51f440",
+      "r-9a432516dbf4",
+      "r-08731fdcfe6d",
+      "r-f8c534abd159",
+      "r-399d5e27c5a8",
+      "r-e8332c9f7819",
+      "r-086fe7c45c90",
+      "r-51897d53cb54"
+    ],
+    "kind": "once",
+    "target": "c3"
+  },
+  {
+    "id": "new-once-03",
+    "source": "new_synthetic",
+    "text": "이번 리뷰만[원문 가림]한을 풀고 발견한 오류도 직접 수정해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-d8a88b17fb38"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-04",
+    "source": "new_synthetic",
+    "text": "이번 한 번은 흐름도 방향 규칙을 예외로 해서 일렬 구조도 TB로 그려줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-9a432516dbf4",
+      "r-0541020622fe"
+    ],
+    "kind": "once",
+    "target": "c2"
+  },
+  {
+    "id": "new-once-05",
+    "source": "new_synthetic",
+    "text": "이번 작업에서만 차트를 가로로 꽉 채우라는 규칙을 빼고 좁게 배치해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb",
+      "r-8e67fa51f440",
+      "r-beb5fd8e7be8",
+      "r-8f712c01cffa",
+      "r-51897d53cb54",
+      "r-399d5e27c5a8",
+      "r-ca4e08864ba8",
+      "r-d8a88b17fb38",
+      "r-f8c534abd159",
+      "r-cfa0c1122098"
+    ],
+    "kind": "once",
+    "target": "c7"
+  },
+  {
+    "id": "new-once-06",
+    "source": "new_synthetic",
+    "text": "이번에 하는 작업만 이름 규칙에서 예외로 두고 dev/ 대신 wp/를 써줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-08",
+    "source": "new_synthetic",
+    "text": "이번만 표 너비 규칙을[원문 가림] 내용에 맞게 줄여줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-8f712c01cffa",
+      "r-2e619539f65d",
+      "r-e8332c9f7819",
+      "r-d8a88b17fb38",
+      "r-beb5fd8e7be8",
+      "r-399d5e27c5a8",
+      "r-086fe7c45c90",
+      "r-cbdfaf45b684",
+      "r-59295cde96ac"
+    ],
+    "kind": "once",
+    "target": "c3"
+  },
+  {
+    "id": "new-once-09",
+    "source": "new_synthetic",
+    "text": "이번 작업에 한해서 구현 중단 지시의 예외로 파일 수정과 테스트를 허용해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-fc92417541c9"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-10",
+    "source": "new_synthetic",
+    "text": "이번 작업만 재조사 금지를 예외로 하고 근거를 다시 찾아봐줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-2e619539f65d",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-11",
+    "source": "new_synthetic",
+    "text": "딱 이번 작업만 표를 가로로 꽉 채우지 않아도 되게 해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-cbdfaf45b684",
+      "r-bb980f55ecde",
+      "r-82cc5c4b3e7d",
+      "r-2e619539f65d",
+      "r-5fc05b0843a9",
+      "r-59295cde96ac",
+      "r-8f712c01cffa",
+      "r-d90305c977eb",
+      "r-9a432516dbf4"
+    ],
+    "kind": "once",
+    "target": "c5"
+  },
+  {
+    "id": "new-once-12",
+    "source": "new_synthetic",
+    "text": "이번 작업 동안만 흐름도 방향 제한을 풀고 분기가 없어도 TB를 허용해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-9a432516dbf4"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-13",
+    "source": "new_synthetic",
+    "text": "[원문 가림]문법의 기존 호환성을 지키라는 규칙을 예외로 하고 호환성이 깨지는 변경을 허용해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-bb980f55ecde",
+      "r-f8c534abd159"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-14",
+    "source": "new_synthetic",
+    "text": "이번 작업만[원문 가림] 중단 규칙에서 예외로 두고 구현과 검증을 진행해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-d90305c977eb",
+      "r-086fe7c45c90",
+      "r-399d5e27c5a8",
+      "r-59295cde96ac",
+      "r-0541020622fe",
+      "r-8f712c01cffa",
+      "r-51897d53cb54",
+      "r-fc92417541c9",
+      "r-08731fdcfe6d",
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "once",
+    "target": "c8"
+  },
+  {
+    "id": "new-once-15",
+    "source": "new_synthetic",
+    "text": "[원문 가림]c1의 응답 형식 제한을 풀고 여러 줄로 답해 줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-e8332c9f7819"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-16",
+    "source": "new_synthetic",
+    "text": "이번 작업만 c2의[원문 가림]에 예외를 두고 고정값을 직접 넣어 줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-086fe7c45c90",
+      "r-e8332c9f7819"
+    ],
+    "kind": "once",
+    "target": "c2"
+  },
+  {
+    "id": "new-once-17",
+    "source": "new_synthetic",
+    "text": "이번 작업에 한해서만 c8의 레거시 삭제[원문 가림]둬.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-9a432516dbf4",
+      "r-82cc5c4b3e7d",
+      "r-d8a88b17fb38",
+      "r-ca4e08864ba8",
+      "r-f8c534abd159",
+      "r-8e67fa51f440",
+      "r-8f712c01cffa",
+      "r-bb980f55ecde",
+      "r-2e619539f65d"
+    ],
+    "kind": "once",
+    "target": "c8"
+  },
+  {
+    "id": "new-once-18",
+    "source": "new_synthetic",
+    "text": "이번만 파일 하나씩 개선하는 원칙에서 벗어나 여러 소스를 한꺼번에 리팩토링해 줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-19",
+    "source": "new_synthetic",
+    "text": "이번 작업 한 번은 c1의 방향 규칙을[원문 가림] 세로 한 줄 흐름도를 그대로 써 줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-9a432516dbf4",
+      "r-0541020622fe",
+      "r-f8c534abd159"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-20",
+    "source": "new_synthetic",
+    "text": "이번 리뷰만 c1에서 요구한 지침 파일 확인을 생략해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-82cc5c4b3e7d",
+      "r-bb980f55ecde",
+      "r-cbdfaf45b684",
+      "r-8f712c01cffa",
+      "r-08731fdcfe6d",
+      "r-5fc05b0843a9",
+      "r-e8332c9f7819",
+      "r-8e67fa51f440",
+      "r-59295cde96ac"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-21",
+    "source": "new_synthetic",
+    "text": "이번 작업 한 번만 구현 중단 규칙에 예외를 두고[원문 가림]해 줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-fc92417541c9"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-22",
+    "source": "new_synthetic",
+    "text": "c2의 한 줄 응답 제한은[원문 가림]예외로 하고 여러 줄로 설명해 줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-e8332c9f7819",
+      "r-bb980f55ecde"
+    ],
+    "kind": "once",
+    "target": "c2"
+  },
+  {
+    "id": "new-once-23",
+    "source": "new_synthetic",
+    "text": "이번 작업만 c4의 영어 기본[원문 가림] 한국어로만 작성해 줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-08731fdcfe6d",
+      "r-bb980f55ecde",
+      "r-5fc05b0843a9",
+      "r-51897d53cb54",
+      "r-8f712c01cffa",
+      "r-399d5e27c5a8",
+      "r-59295cde96ac",
+      "r-cbdfaf45b684",
+      "r-9a432516dbf4"
+    ],
+    "kind": "once",
+    "target": "c4"
+  },
+  {
+    "id": "new-once-24",
+    "source": "new_synthetic",
+    "text": "이번 작업에 한해서는 비공개 자료를 루트의[원문 가림]옮기는 규칙을 건너뛰어 줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-f8c534abd159"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-25",
+    "source": "new_synthetic",
+    "text": "이번 한 번은 c1의[원문 가림]를 풀고 상수를 코드에 직접 적어 줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-086fe7c45c90",
+      "r-51897d53cb54",
+      "r-59295cde96ac"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-26",
+    "source": "new_synthetic",
+    "text": "이번 작업만큼은 c1의 순차 개선 원칙에 예외를 두고 여러 소스를 묶어서 고쳐 줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-08731fdcfe6d",
+      "r-e8332c9f7819",
+      "r-d90305c977eb",
+      "r-f8c534abd159",
+      "r-51897d53cb54",
+      "r-399d5e27c5a8",
+      "r-ca4e08864ba8",
+      "r-9a432516dbf4",
+      "r-cbdfaf45b684",
+      "r-d8a88b17fb38"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-27",
+    "source": "new_synthetic",
+    "text": "이번 스킬 수정만은 코덱스에 맡기라는 규칙의 예외로 하고 네가 직접 처리해 줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cfa0c1122098"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-28",
+    "source": "new_synthetic",
+    "text": "이번 작업에서만 c1의 표 너비 규칙을 풀고 내용에 맞는 좁은 표를 써 줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-2e619539f65d",
+      "r-beb5fd8e7be8",
+      "r-086fe7c45c90"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-29",
+    "source": "new_synthetic",
+    "text": "이번 작업 한 번만 c5의 명령 문자열 숨김 규칙에 예외를 두고 명령도 화면에 보여 줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-8f712c01cffa",
+      "r-0541020622fe",
+      "r-9a432516dbf4",
+      "r-51897d53cb54",
+      "r-beb5fd8e7be8",
+      "r-f8c534abd159",
+      "r-59295cde96ac",
+      "r-8e67fa51f440",
+      "r-2e619539f65d"
+    ],
+    "kind": "once",
+    "target": "c5"
+  },
+  {
+    "id": "new-once-30",
+    "source": "new_synthetic",
+    "text": "이번만 번역본 문체 기준은 건너뛰고 평소 말투로 써줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-31",
+    "source": "new_synthetic",
+    "text": "이번 작업에 한해서[원문 가림]라는 제한을 풀고 빌더를 시작해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-59295cde96ac",
+      "r-d90305c977eb",
+      "r-0541020622fe"
+    ],
+    "kind": "once",
+    "target": "c2"
+  },
+  {
+    "id": "new-once-32",
+    "source": "new_synthetic",
+    "text": "이번 응답만 c9의 한 줄 형식과 끝말 제한 없이 작성해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-0541020622fe",
+      "r-d8a88b17fb38",
+      "r-8f712c01cffa",
+      "r-5fc05b0843a9",
+      "r-d90305c977eb",
+      "r-cbdfaf45b684",
+      "r-51897d53cb54",
+      "r-bb980f55ecde",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "once",
+    "target": "c9"
+  },
+  {
+    "id": "new-once-33",
+    "source": "new_synthetic",
+    "text": "지금 맡긴 작업 한 번은 책 번역체를 따르지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-34",
+    "source": "new_synthetic",
+    "text": "이번 작업만 구현 중단 지시의 예외로 두고 수정과 테스트를 재개해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-fc92417541c9",
+      "r-8e67fa51f440"
+    ],
+    "kind": "once",
+    "target": "c2"
+  },
+  {
+    "id": "new-once-35",
+    "source": "new_synthetic",
+    "text": "이번에 만드는 결과물만 표를 내용 너비에 맞춰 좁게 써줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-399d5e27c5a8",
+      "r-cbdfaf45b684",
+      "r-d8a88b17fb38",
+      "r-d90305c977eb",
+      "r-cfa0c1122098",
+      "r-5fc05b0843a9",
+      "r-ca4e08864ba8",
+      "r-8e67fa51f440",
+      "r-2e619539f65d"
+    ],
+    "kind": "once",
+    "target": "c10"
+  },
+  {
+    "id": "new-once-36",
+    "source": "new_synthetic",
+    "text": "이번 작업 한 번만 기존 문법 호환성[원문 가림] 변경도 허용할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-399d5e27c5a8"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-once-37",
+    "source": "new_synthetic",
+    "text": "이번 답변에 한해서 마지막 응답 형식 규칙을 면제하고 여러 줄로 자유롭게 써줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-2e619539f65d",
+      "r-08731fdcfe6d",
+      "r-e8332c9f7819"
+    ],
+    "kind": "once",
+    "target": "c3"
+  },
+  {
+    "id": "new-once-38",
+    "source": "new_synthetic",
+    "text": "이번 보고만 마지막 추가 기준의 기호 금지를 풀고 §를 사용해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-5fc05b0843a9",
+      "r-fc92417541c9",
+      "r-d90305c977eb",
+      "r-086fe7c45c90",
+      "r-2e619539f65d",
+      "r-d8a88b17fb38",
+      "r-e8332c9f7819",
+      "r-82cc5c4b3e7d",
+      "r-cbdfaf45b684"
+    ],
+    "kind": "once",
+    "target": "c10"
+  },
+  {
+    "id": "new-once-39",
+    "source": "new_synthetic",
+    "text": "딱 이번 답변만 지정된 끝말을 붙이지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "once",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-00",
+    "source": "new_synthetic",
+    "text": "이번 작업에서 안내문.md 파일만 영어 없이[원문 가림]해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-5fc05b0843a9"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-01",
+    "source": "new_synthetic",
+    "text": "테스트[원문 가림]는 파일을 하나씩 개선하라는 제한을 풀고 여러 파일을 묶어서 리팩토링해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-cbdfaf45b684",
+      "r-08731fdcfe6d",
+      "r-d8a88b17fb38"
+    ],
+    "kind": "scoped",
+    "target": "c2"
+  },
+  {
+    "id": "new-scoped-02",
+    "source": "new_synthetic",
+    "text": "지금은 c3[원문 가림]한을 풀고 리뷰 중 발견한 오류를 직접 수정해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-e8332c9f7819",
+      "r-8e67fa51f440",
+      "r-d8a88b17fb38",
+      "r-9a432516dbf4",
+      "r-8f712c01cffa",
+      "r-08731fdcfe6d",
+      "r-d90305c977eb",
+      "r-399d5e27c5a8",
+      "r-ca4e08864ba8",
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "scoped",
+    "target": "c3"
+  },
+  {
+    "id": "new-scoped-03",
+    "source": "new_synthetic",
+    "text": "잠깐[원문 가림]삭제 기준에서 샘플 폴더를 제외하고 남겨둬.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-8f712c01cffa"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-04",
+    "source": "new_synthetic",
+    "text": "내일 오후 6시까지이면서 로컬 데모에서만[원문 가림]의 예외를 허용해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-086fe7c45c90",
+      "r-08731fdcfe6d"
+    ],
+    "kind": "scoped",
+    "target": "c2"
+  },
+  {
+    "id": "new-scoped-05",
+    "source": "new_synthetic",
+    "text": "문서에서 AI 티 내지 말라는 조건은 지금은 빼고 써줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-399d5e27c5a8",
+      "r-f8c534abd159",
+      "r-cbdfaf45b684",
+      "r-08731fdcfe6d",
+      "r-beb5fd8e7be8",
+      "r-59295cde96ac",
+      "r-9a432516dbf4",
+      "r-82cc5c4b3e7d",
+      "r-8e67fa51f440",
+      "r-d90305c977eb"
+    ],
+    "kind": "scoped",
+    "target": "c8"
+  },
+  {
+    "id": "new-scoped-06",
+    "source": "new_synthetic",
+    "text": "이번 작업에서는[원문 가림] 파일만 표를 내용 너비에 맞춰 좁게 써도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-2e619539f65d"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-07",
+    "source": "new_synthetic",
+    "text": "하드코딩 금지는 테스트[원문 가림]예외로 해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-bb980f55ecde",
+      "r-086fe7c45c90",
+      "r-fc92417541c9"
+    ],
+    "kind": "scoped",
+    "target": "c2"
+  },
+  {
+    "id": "new-scoped-08",
+    "source": "new_synthetic",
+    "text": "내일 오후 6시까지는 책 번역본 문체를 따르지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-9a432516dbf4",
+      "r-08731fdcfe6d",
+      "r-cfa0c1122098",
+      "r-0541020622fe",
+      "r-fc92417541c9",
+      "r-5fc05b0843a9",
+      "r-cbdfaf45b684",
+      "r-399d5e27c5a8",
+      "r-8e67fa51f440",
+      "r-beb5fd8e7be8"
+    ],
+    "kind": "scoped",
+    "target": "c4"
+  },
+  {
+    "id": "new-scoped-09",
+    "source": "new_synthetic",
+    "text": "테스트 환경이고[원문 가림]끊긴 경우에만 하드코딩을 허용해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-086fe7c45c90"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-10",
+    "source": "new_synthetic",
+    "text": "새[원문 가림]명령어를 숨기는 규칙은 디버깅용 pane을 제외하고 적용해줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-bb980f55ecde",
+      "r-399d5e27c5a8"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-11",
+    "source": "new_synthetic",
+    "text": "잠깐은 스킬 수정을 코덱스에 맡기지 말고 네가 직접 해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-9a432516dbf4",
+      "r-d8a88b17fb38",
+      "r-8e67fa51f440",
+      "r-2e619539f65d",
+      "r-ca4e08864ba8",
+      "r-399d5e27c5a8",
+      "r-cfa0c1122098",
+      "r-f8c534abd159",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "scoped",
+    "target": "c8"
+  },
+  {
+    "id": "new-scoped-12",
+    "source": "new_synthetic",
+    "text": "화면 표시 테스트[원문 가림]새[원문 가림]셸 명령어 원문을 보여줘도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-51897d53cb54"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-13",
+    "source": "new_synthetic",
+    "text": "지금은 영어 기본 규칙을 쉬고 한국어로만 작성해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54",
+      "r-0541020622fe",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "scoped",
+    "target": "c3"
+  },
+  {
+    "id": "new-scoped-14",
+    "source": "new_synthetic",
+    "text": "실험용 브랜치에 한해서는 앞으로도 dev/ 접두사 없이 이름을 붙여도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-d90305c977eb",
+      "r-2e619539f65d",
+      "r-beb5fd8e7be8",
+      "r-bb980f55ecde",
+      "r-399d5e27c5a8",
+      "r-5fc05b0843a9",
+      "r-cfa0c1122098",
+      "r-8e67fa51f440",
+      "r-51897d53cb54"
+    ],
+    "kind": "scoped",
+    "target": "c9"
+  },
+  {
+    "id": "new-scoped-15",
+    "source": "new_synthetic",
+    "text": "답변 형식은 잠깐 여러 줄로 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-bb980f55ecde"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-16",
+    "source": "new_synthetic",
+    "text": "이번 수정에서는 intro.md 파일에 한해서 책 번역본 문체를 따르지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-cfa0c1122098",
+      "r-59295cde96ac"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-17",
+    "source": "new_synthetic",
+    "text": "내부 초안이고 검토자에게 전달하기 전인 경우에만 문서에 AI가 쓴 듯한 표현을 허용할게.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb",
+      "r-82cc5c4b3e7d",
+      "r-9a432516dbf4",
+      "r-f8c534abd159",
+      "r-0541020622fe",
+      "r-ca4e08864ba8",
+      "r-2e619539f65d",
+      "r-8e67fa51f440",
+      "r-beb5fd8e7be8",
+      "r-bb980f55ecde"
+    ],
+    "kind": "scoped",
+    "target": "c2"
+  },
+  {
+    "id": "new-scoped-18",
+    "source": "new_synthetic",
+    "text": "오늘 자정까지는 대기 지시의 예외로[원문 가림]워도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-d90305c977eb"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-19",
+    "source": "new_synthetic",
+    "text": "하드코딩 금지 대상에서 테스트용[원문 가림]은 빼줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-0541020622fe",
+      "r-086fe7c45c90",
+      "r-82cc5c4b3e7d"
+    ],
+    "kind": "scoped",
+    "target": "c2"
+  },
+  {
+    "id": "new-scoped-20",
+    "source": "new_synthetic",
+    "text": "이번 작업에서 초안.md만큼은 AI가 쓴 듯한 문체를 허용해.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cbdfaf45b684",
+      "r-8f712c01cffa",
+      "r-82cc5c4b3e7d",
+      "r-ca4e08864ba8",
+      "r-086fe7c45c90",
+      "r-08731fdcfe6d",
+      "r-fc92417541c9",
+      "r-59295cde96ac",
+      "r-9a432516dbf4",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "scoped",
+    "target": "c3"
+  },
+  {
+    "id": "new-scoped-21",
+    "source": "new_synthetic",
+    "text": "테스트[원문 가림]구현 중단 지시의 예외로 테스트 실행만 허용할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-fc92417541c9"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-22",
+    "source": "new_synthetic",
+    "text": "지금은 비공개 자료를 .레거시 밖에 보관해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-f8c534abd159",
+      "r-8f712c01cffa",
+      "r-086fe7c45c90"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-24",
+    "source": "new_synthetic",
+    "text": "내일 정오까지는 차트를 가로로 꽉 채우지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-25",
+    "source": "new_synthetic",
+    "text": "모바일 화면이고 미리보기 모드일 때만 차트 너비를 줄여도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-ca4e08864ba8",
+      "r-2e619539f65d",
+      "r-59295cde96ac"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-26",
+    "source": "new_synthetic",
+    "text": "영어 기본 작성과[원문 가림]원칙에서 내부 메모는 앞으로 계속 제외하고 한국어로만 써줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-5fc05b0843a9",
+      "r-ca4e08864ba8",
+      "r-08731fdcfe6d",
+      "r-f8c534abd159",
+      "r-82cc5c4b3e7d",
+      "r-beb5fd8e7be8",
+      "r-2e619539f65d",
+      "r-59295cde96ac",
+      "r-bb980f55ecde",
+      "r-d90305c977eb"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-27",
+    "source": "new_synthetic",
+    "text": "demo.ts 파일에서만 비교 시연용 값을 하드코딩해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-086fe7c45c90"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-28",
+    "source": "new_synthetic",
+    "text": "자료 이관 검증[원문 가림]비공개 문서를 기존 폴더에 두어도 돼.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-9a432516dbf4",
+      "r-bb980f55ecde",
+      "r-f8c534abd159"
+    ],
+    "kind": "scoped",
+    "target": "c3"
+  },
+  {
+    "id": "new-scoped-29",
+    "source": "new_synthetic",
+    "text": "c7의 한 줄 응답 제한은 지금은 풀고 여러 줄로 설명해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-cfa0c1122098",
+      "r-399d5e27c5a8",
+      "r-0541020622fe",
+      "r-8f712c01cffa",
+      "r-086fe7c45c90",
+      "r-08731fdcfe6d",
+      "r-beb5fd8e7be8",
+      "r-cbdfaf45b684",
+      "r-59295cde96ac",
+      "r-5fc05b0843a9"
+    ],
+    "kind": "scoped",
+    "target": "c7"
+  },
+  {
+    "id": "new-scoped-30",
+    "source": "new_synthetic",
+    "text": "잠깐 브랜치 이름에 dev/ 대신 debug/를 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8e67fa51f440"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-31",
+    "source": "new_synthetic",
+    "text": "오늘 자정까지는 응답 끝에 지정된 단어를 붙이지 않아도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d90305c977eb",
+      "r-f8c534abd159",
+      "r-bb980f55ecde"
+    ],
+    "kind": "scoped",
+    "target": "c3"
+  },
+  {
+    "id": "new-scoped-32",
+    "source": "new_synthetic",
+    "text": "긴급 수정이고 기존 빌더가 모두 종료된 경우에만 새 과업 금지를 풀고 빌더 둘을 띄워도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-d8a88b17fb38",
+      "r-d90305c977eb",
+      "r-82cc5c4b3e7d",
+      "r-399d5e27c5a8",
+      "r-bb980f55ecde",
+      "r-ca4e08864ba8",
+      "r-5fc05b0843a9",
+      "r-59295cde96ac",
+      "r-2e619539f65d",
+      "r-f8c534abd159"
+    ],
+    "kind": "scoped",
+    "target": "c2"
+  },
+  {
+    "id": "new-scoped-33",
+    "source": "new_synthetic",
+    "text": "새 pane의 명령어 숨김 규칙에서 진단용 pane은 계속 제외해서 명령어도 보이게 해줘.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-51897d53cb54"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-34",
+    "source": "new_synthetic",
+    "text": "이번 작업에서 결과.json을 확인할 때만 c1의 [원문 가림]를 풀어줘.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-bb980f55ecde",
+      "r-d90305c977eb",
+      "r-08731fdcfe6d"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-35",
+    "source": "new_synthetic",
+    "text": "이번 작업에서 lint 스킬 파일만 코덱스에 맡기지 말고 네가 직접 수정해도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-2e619539f65d",
+      "r-d90305c977eb",
+      "r-beb5fd8e7be8",
+      "r-82cc5c4b3e7d",
+      "r-0541020622fe",
+      "r-cfa0c1122098",
+      "r-399d5e27c5a8",
+      "r-d8a88b17fb38",
+      "r-f8c534abd159",
+      "r-086fe7c45c90"
+    ],
+    "kind": "scoped",
+    "target": "c6"
+  },
+  {
+    "id": "new-scoped-36",
+    "source": "new_synthetic",
+    "text": "호환성 테스트[원문 가림]는 기존[원문 가림]지 않는 변경도 허용할게.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-399d5e27c5a8"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  },
+  {
+    "id": "new-scoped-37",
+    "source": "new_synthetic",
+    "text": "지금은 응답을 여러 줄로 써도 돼.",
+    "text_redacted": false,
+    "rule_ids": [
+      "r-8f712c01cffa",
+      "r-2e619539f65d",
+      "r-bb980f55ecde"
+    ],
+    "kind": "scoped",
+    "target": "c3"
+  },
+  {
+    "id": "new-scoped-39",
+    "source": "new_synthetic",
+    "text": "레거시 파일 삭제 대상에서[원문 가림]폴더는 앞으로 계속 제외해.",
+    "text_redacted": true,
+    "rule_ids": [
+      "r-8f712c01cffa"
+    ],
+    "kind": "scoped",
+    "target": "c1"
+  }
+]
