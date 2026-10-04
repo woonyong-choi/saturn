@@ -58,7 +58,9 @@ def condition_result(condition: str, values: list[dict]) -> dict:
         "claude.resume-env-present": True,
         "claude.resume-env-absent": False,
     }.get(condition)
-    if status == "confirmed" and known[0] is expected:
+    if expected is None:
+        verdict = "탐색"
+    elif status == "confirmed" and known[0] is expected:
         verdict = "확인"
     elif status == "confirmed":
         verdict = "기각"
@@ -123,16 +125,31 @@ def analyze() -> dict:
         "conditions": condition_results,
         "hypotheses": hypotheses,
         "exploratory": exploratory,
-        "superseded_runs": {
-            condition: {
-                "run_id": values[0]["run_id"],
-                "n": len(values),
-                "marker_start_counts": [v.get("marker_start_count") for v in values],
-                "request_results": [v.get("request_result") for v in values],
+        "superseded_runs": [
+            {
+                "condition": condition,
+                "run_id": run_id,
+                "n": len(items),
+                "request_results": [v.get("request_result") for v in items],
+                "marker_start_counts": [v.get("marker_start_count") for v in items],
             }
             for condition, values in sorted(superseded.items())
-        },
+            for run_id, items in sorted(
+                {
+                    key: [v for v in values if v["run_id"] == key]
+                    for key in {v["run_id"] for v in values}
+                }.items()
+            )
+        ],
         "model_calls": environment.get("model_calls", {}),
+        "claude_recollect_calls": [
+            {
+                "run_id": item["run_id"],
+                "claude_launches_cumulative": item["claude_launches_cumulative"],
+                "model_calls": item["model_calls"],
+            }
+            for item in environment.get("claude_recollect", [])
+        ],
     }
 
 

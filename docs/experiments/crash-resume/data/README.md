@@ -4,7 +4,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 수집 방법 | `scripts/01-collect.py`가 전용 Codex app-server와 Claude stream-json process를 시작하고, marker 시작 후 자기 provider PID만 `SIGKILL`한 뒤 재개 event와 marker를 관찰했다. |
+| 수집 방법 | 재수집은 `scripts/01-collect.py --claude-default-login`. `scripts/01-collect.py`가 전용 Codex app-server와 Claude stream-json process를 시작하고, marker 시작 후 자기 provider PID만 `SIGKILL`한 뒤 재개 event와 marker를 관찰했다. |
 | 수집 기간 | 실행 시각에 `env.json`으로 기록 |
 | 개수 | 확인 조건 4개 × 3회와 가능하면 Claude Task 1회 |
 | 표본 여부 | 사용자가 정한 반복 수의 목적 표본 |
@@ -40,4 +40,11 @@
 | `marker_touch_count` | integer | 개수 | 0 이상 | 완료 marker의 관측 수 | `1` |
 | `resume_child_execution` | boolean 또는 null | 없음 | 식별 불가면 null | 재개 뒤 자식/끊긴 턴 재실행 여부 | `true` |
 | `observation_status` | string | 없음 | `confirmed`, `unstable`, `cannot_distinguish` | 반복 내 또는 개별 행 판정 상태 | `confirmed` |
+| `recollect_of` | string | 없음 | 재수집 행만 | 다시 수집한 앞 실행 id | `20261003T085117Z-0e500f0` |
+| `default_login` | boolean | 없음 | Claude 재수집 행만 | 전용 설정 폴더 없이 기본 로그인으로 실행했는지 | `true` |
+| `resume_process_alive` | boolean | 없음 | Claude 재수집 행만 | 관찰 구간 끝에 재개 process가 살아 있는지 | `true` |
+| `resume_init_event` | boolean | 없음 | Claude 재수집 행만 | 재개 process가 `system/init`을 냈는지 | `false` |
+| `initial_subagent_bash` | integer | 개수 | Claude 재수집 행만 | 강제 종료 전 하위 에이전트가 낸 `Bash` 호출 수 | `1` |
+| `resume_parent_tool_events` | integer | 개수 | Claude 재수집 행만 | 재개 뒤 `parent_tool_use_id`가 붙은 이벤트 수 | `0` |
+| `resume_reason` | string 또는 null | 없음 | Claude 재수집 행만 | 재개 결과 이벤트의 `resume_reason` | `interrupted_turn` |
 | `private_log` | string | 저장소 상대 경로 | 필수 | 큰 원문 event log 경로 | `.local/experiments/crash-resume/...` |

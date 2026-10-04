@@ -1,69 +1,85 @@
 {
+  "claude_recollect_calls": [
+    {
+      "claude_launches_cumulative": 20,
+      "model_calls": 32,
+      "run_id": "20261004T031212Z-00cad83"
+    },
+    {
+      "claude_launches_cumulative": 32,
+      "model_calls": 26,
+      "run_id": "20261004T032243Z-7f3fc43"
+    }
+  ],
   "conditions": [
     {
       "condition": "claude.resume-env-absent",
-      "known_n": 0,
+      "known_n": 3,
       "n": 3,
       "rerun_count": 0,
-      "rerun_rate": null,
+      "rerun_rate": 0.0,
       "rerun_wilson_95": [
-        null,
-        null
+        0.0,
+        0.561497
       ],
-      "status": "cannot_distinguish",
+      "status": "confirmed",
       "trial_ids": [
         "claude-resume-env-absent-1",
         "claude-resume-env-absent-2",
         "claude-resume-env-absent-3"
       ],
       "trial_values": [
-        null,
-        null,
-        null
+        false,
+        false,
+        false
       ],
-      "verdict": "확인 못 함"
+      "verdict": "확인"
     },
     {
       "condition": "claude.resume-env-present",
-      "known_n": 0,
+      "known_n": 3,
       "n": 3,
-      "rerun_count": 0,
-      "rerun_rate": null,
+      "rerun_count": 3,
+      "rerun_rate": 1.0,
       "rerun_wilson_95": [
-        null,
-        null
+        0.438503,
+        1.0
       ],
-      "status": "cannot_distinguish",
+      "status": "confirmed",
       "trial_ids": [
         "claude-resume-env-present-1",
         "claude-resume-env-present-2",
         "claude-resume-env-present-3"
       ],
       "trial_values": [
-        null,
-        null,
-        null
+        true,
+        true,
+        true
       ],
-      "verdict": "확인 못 함"
+      "verdict": "확인"
     },
     {
       "condition": "claude.task-subagent",
-      "known_n": 0,
-      "n": 1,
+      "known_n": 3,
+      "n": 3,
       "rerun_count": 0,
-      "rerun_rate": null,
+      "rerun_rate": 0.0,
       "rerun_wilson_95": [
-        null,
-        null
+        0.0,
+        0.561497
       ],
-      "status": "cannot_distinguish",
+      "status": "confirmed",
       "trial_ids": [
-        "claude-task-subagent-1"
+        "claude-task-subagent-1",
+        "claude-task-subagent-2",
+        "claude-task-subagent-3"
       ],
       "trial_values": [
-        null
+        false,
+        false,
+        false
       ],
-      "verdict": "확인 못 함"
+      "verdict": "탐색"
     },
     {
       "condition": "codex.cleaned-resume",
@@ -116,22 +132,26 @@
   "exploratory": [
     {
       "condition": "claude.task-subagent",
-      "known_n": 0,
-      "n": 1,
+      "known_n": 3,
+      "n": 3,
       "rerun_count": 0,
-      "rerun_rate": null,
+      "rerun_rate": 0.0,
       "rerun_wilson_95": [
-        null,
-        null
+        0.0,
+        0.561497
       ],
-      "status": "cannot_distinguish",
+      "status": "confirmed",
       "trial_ids": [
-        "claude-task-subagent-1"
+        "claude-task-subagent-1",
+        "claude-task-subagent-2",
+        "claude-task-subagent-3"
       ],
       "trial_values": [
-        null
+        false,
+        false,
+        false
       ],
-      "verdict": "확인 못 함"
+      "verdict": "탐색"
     }
   ],
   "hypotheses": [
@@ -194,26 +214,26 @@
       "hypothesis": "H3",
       "result": {
         "condition": "claude.resume-env-present",
-        "known_n": 0,
+        "known_n": 3,
         "n": 3,
-        "rerun_count": 0,
-        "rerun_rate": null,
+        "rerun_count": 3,
+        "rerun_rate": 1.0,
         "rerun_wilson_95": [
-          null,
-          null
+          0.438503,
+          1.0
         ],
-        "status": "cannot_distinguish",
+        "status": "confirmed",
         "trial_ids": [
           "claude-resume-env-present-1",
           "claude-resume-env-present-2",
           "claude-resume-env-present-3"
         ],
         "trial_values": [
-          null,
-          null,
-          null
+          true,
+          true,
+          true
         ],
-        "verdict": "확인 못 함"
+        "verdict": "확인"
       }
     },
     {
@@ -221,26 +241,26 @@
       "hypothesis": "H4",
       "result": {
         "condition": "claude.resume-env-absent",
-        "known_n": 0,
+        "known_n": 3,
         "n": 3,
         "rerun_count": 0,
-        "rerun_rate": null,
+        "rerun_rate": 0.0,
         "rerun_wilson_95": [
-          null,
-          null
+          0.0,
+          0.561497
         ],
-        "status": "cannot_distinguish",
+        "status": "confirmed",
         "trial_ids": [
           "claude-resume-env-absent-1",
           "claude-resume-env-absent-2",
           "claude-resume-env-absent-3"
         ],
         "trial_values": [
-          null,
-          null,
-          null
+          false,
+          false,
+          false
         ],
-        "verdict": "확인 못 함"
+        "verdict": "확인"
       }
     }
   ],
@@ -248,5 +268,77 @@
     "claude": 0,
     "codex": 12
   },
-  "superseded_runs": {}
+  "superseded_runs": [
+    {
+      "condition": "claude.resume-env-absent",
+      "marker_start_counts": [
+        0,
+        0,
+        0
+      ],
+      "n": 3,
+      "request_results": [
+        "error_or_timeout",
+        "error_or_timeout",
+        "error_or_timeout"
+      ],
+      "run_id": "20261003T085117Z-0e500f0"
+    },
+    {
+      "condition": "claude.resume-env-absent",
+      "marker_start_counts": [
+        1,
+        1,
+        1
+      ],
+      "n": 3,
+      "request_results": [
+        "error_or_timeout",
+        "error_or_timeout",
+        "error_or_timeout"
+      ],
+      "run_id": "20261004T031212Z-00cad83"
+    },
+    {
+      "condition": "claude.resume-env-present",
+      "marker_start_counts": [
+        0,
+        0,
+        0
+      ],
+      "n": 3,
+      "request_results": [
+        "observed",
+        "observed",
+        "observed"
+      ],
+      "run_id": "20261003T085117Z-0e500f0"
+    },
+    {
+      "condition": "claude.task-subagent",
+      "marker_start_counts": [
+        0
+      ],
+      "n": 1,
+      "request_results": [
+        "error_or_timeout"
+      ],
+      "run_id": "20261003T085117Z-0e500f0"
+    },
+    {
+      "condition": "claude.task-subagent",
+      "marker_start_counts": [
+        1,
+        0,
+        0
+      ],
+      "n": 3,
+      "request_results": [
+        "observed",
+        "error_or_timeout",
+        "error_or_timeout"
+      ],
+      "run_id": "20261004T031212Z-00cad83"
+    }
+  ]
 }
