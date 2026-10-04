@@ -134,7 +134,7 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 
 상태 변화와 이벤트처럼 요청과 무관하게 실시간으로 일어나는 일은 계속 알림으로 보낸다. `Attach`가 접속 직후 보내는 `StartInfo`, `HistoryChunk`, 허가 요청과 입력 요청, `ModelPinned`, `ContextSize`도 알림이다. `Attach`는 조회가 아니라 접속이라 그렇다. `SetModel`의 `ModelPinned`처럼 같은 채팅에 붙은 모든 TUI가 알아야 하는 변화도 알림이다. `Prune`이 정리 기준 설정이 없어 거절될 때 요청한 접속에 보내는 `Alert::PruneNeedsRetention`은 TUI 상태판 안내라 알림으로 남긴다. `ListModels`는 모든 provider의 목록이 실패해도 창이 끝없이 기다리지 않도록 빈 목록을 결과로 돌려준다.
 
-사용자당 잠금은 `~/.saturn/engine.lock`의 `flock`이다. 프로세스가 죽으면 운영체제가 풀기 때문에 남은 잠금 파일을 지울 필요가 없다. 소켓은 `~/.saturn/engine.sock`이고 권한은 0600이다. 남은 소켓 파일은 잠금을 얻은 뒤에만 지운다. 답을 기다리는 허가 요청은 TUI가 붙어 있어도 답이 올 때까지 보관한다. 나중에 붙는 TUI도 같은 창을 띄우게 하기 위해서다. 클라이언트마다 보낼 메시지를 1024개까지 쌓고, 넘치면 기다리지 않고 그 연결을 끊는다. 느린 TUI 하나가 `engine`을 멈추지 않게 하기 위해서다. 끊긴 TUI는 다시 붙어 기록으로 화면을 되살린다. 파일 이름, 권한, 쌓는 개수는 초안이다.
+사용자당 잠금은 `~/.saturn/engine.lock`의 `flock`이다. 프로세스가 죽으면 운영체제가 풀기 때문에 남은 잠금 파일을 지울 필요가 없다. 소켓은 `~/.saturn/engine.sock`이고 권한은 0600이다. 남은 소켓 파일은 잠금을 얻은 뒤에만 지운다. 답을 기다리는 허가 요청은 TUI가 붙어 있어도 답이 올 때까지 보관한다. 나중에 붙는 TUI도 같은 창을 띄우게 하기 위해서다. 클라이언트마다 보낼 메시지를 1024개까지 쌓고, 넘치면 기다리지 않고 그 연결을 끊는다. 소켓에 쓰는 도중에도 끊는 신호를 받아 줄 중간에서 쓰기를 멈추고, 쓰기가 끝나면 읽기도 멈춰 연결을 한 번만 정리한다(끊김 알림과 마지막 TUI 판정은 이 정리에서 나온다). 읽지 않는 TUI가 연결과 붙은 채팅을 영영 쥐지 않게 하기 위해서다. 느린 TUI 하나가 `engine`을 멈추지 않게 하기 위해서다. 끊긴 TUI는 다시 붙어 기록으로 화면을 되살린다. 파일 이름, 권한, 쌓는 개수는 초안이다.
 
 ### 채팅 폴더와 이어 열기
 
@@ -355,6 +355,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | `engine` 로그는 `~/.saturn/logs/engine-YYYY-MM-DD.log`에 로컬 날짜별로 하루 한 파일씩 쌓이고, 날짜가 바뀌면 새 파일을 연다. 30일 지난 `engine-YYYY-MM-DD.log`만 시작 때와 날짜가 바뀔 때 지우고, 옛 `engine.log`와 `engine.log.N`은 시작 때 지운다. | `saturn-terminal/engine/src/engine_log.rs`의 `engine_log_writes_to_a_file_named_after_the_day`, `engine_log_opens_a_new_file_when_the_day_changes`, `engine_log_start_removes_only_files_older_than_30_days`, `engine_log_removes_files_older_than_30_days_when_the_day_changes`, `engine_log_start_removes_the_old_engine_log_files`, `saturn-terminal/cli/src/launch.rs`의 `engine_log_tail_reads_the_latest_dated_file` |
 | 멈춘 작업을 이을 때 확인 입력에 멈출 때까지 바뀐 파일을 적고, 바뀐 파일이 없으면 적지 않는다. | `saturn-terminal/engine/src/lifecycle/changed_files.rs`의 `stop_confirmation_input_lists_the_files_changed_before_the_stop`, `confirmation_without_changes_has_no_file_line` |
 | TUI를 닫아도 `engine`은 접수된 입력을 계속 처리한다. | TUI 연결을 끊은 뒤 대기 입력이 순서대로 provider에 전달되는지 확인 |
+| 읽지 않는 TUI의 연결은 쓰는 도중에도 끊는 신호로 끝나고, 읽기도 함께 멈춰 연결이 한 번만 정리된다. | `saturn-terminal/engine/src/rpc/connection.rs`의 `kill_interrupts_a_write_blocked_by_a_client_that_does_not_read`, `saturn-terminal/engine/src/rpc/mod.rs`의 `a_client_that_never_reads_is_dropped_once_its_outbox_overflows` |
 | `tui.on_exit`가 `stop`이면 마지막 TUI가 떨어질 때 모든 채팅의 작업을 보류하고, 다른 TUI가 붙어 있는 동안에는 멈추지 않는다. 멈춘 작업은 자동으로 이어 가지 않는다. | `saturn-terminal/engine/src/lifecycle/exit.rs`의 `stop_holds_the_work_of_every_chat_only_when_the_last_tui_detaches`, `stop_on_exit_keeps_waiting_input_held_after_the_turn_ends` |
 | 붙은 TUI가 같은 연결로 다른 채팅에 `Attach`하면 연결이 유지되고 붙은 채팅만 바뀌며, `tui.on_exit`가 `stop`이어도 떠난 채팅의 작업을 멈추지 않는다. 그 뒤 `Detach`는 마지막 TUI 이탈로 센다. | `saturn-terminal/engine/src/lifecycle/exit.rs`의 `attach_to_another_chat_on_the_same_connection_is_not_a_detach` |
 | `tui.on_exit`가 `ask`나 `background`이면 TUI가 떨어져도 작업을 멈추지 않는다. | `saturn-terminal/engine/src/lifecycle/exit.rs`의 `ask_and_background_keep_running_after_the_last_tui_detaches` |

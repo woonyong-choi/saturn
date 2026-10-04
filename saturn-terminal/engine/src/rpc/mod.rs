@@ -504,6 +504,15 @@ mod tests {
         (home, server)
     }
 
+    impl RpcEvent {
+        fn disconnected(&self) -> Option<ClientId> {
+            match self {
+                RpcEvent::Disconnected(id) => Some(*id),
+                _ => None,
+            }
+        }
+    }
+
     async fn event(server: &mut RpcServer) -> RpcEvent {
         timeout(Duration::from_secs(5), server.next_event())
             .await
@@ -544,6 +553,31 @@ mod tests {
             ServerMessage::Notification(message) => message.notification,
             ServerMessage::Response(response) => panic!("expected notification, got {response:?}"),
         }
+    }
+
+    // #460
+    #[tokio::test]
+    async fn a_client_that_never_reads_is_dropped_once_its_outbox_overflows() {
+        let (home, mut server) = server().await;
+        let (id, _silent) = connected(&mut server, home.path()).await;
+        let big = Notification::PermissionRequested {
+            task: TaskId(1),
+            label: TaskLabel('A'),
+            provider: crate::providers::test_support::CODEX,
+            request_id: "r".into(),
+            summary: "x".repeat(64 * 1024),
+            reason: String::new(),
+            waiting: 0,
+        };
+
+        for _ in 0..(super::connection::OUTBOX_CAPACITY * 4) {
+            server.broadcast(None, big.clone()).await;
+            tokio::task::yield_now().await;
+        }
+
+        assert_eq!(event(&mut server).await.disconnected(), Some(id));
+        assert_eq!(server.client_count(), 0);
+        assert!(matches!(event(&mut server).await, RpcEvent::LastDetached));
     }
 
     #[tokio::test]
