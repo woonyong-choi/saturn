@@ -147,6 +147,16 @@
           "type": "string"
         },
         {
+          "const": "EngineRestarted",
+          "description": "업데이트를 적용하려고 옛 engine을 끝내고 이 engine을 새로 시작했다. 첫 TUI에만 보낸다.",
+          "type": "string"
+        },
+        {
+          "const": "EngineRestarting",
+          "description": "업데이트를 적용하려고 이 engine이 끝난다. 붙은 모든 TUI에 보내고 곧 연결을 끊는다. TUI는 다시 열어야 한다.",
+          "type": "string"
+        },
+        {
           "additionalProperties": false,
           "description": "시작할 때 읽은 provider CLI 버전이 마지막으로 확인한 버전과 다르다. 첫 TUI에만 보낸다.",
           "properties": {
@@ -727,6 +737,32 @@
           "required": [
             "method",
             "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "engine의 빌드 버전과 protocol 판을 `EngineVersion`으로 보낸다. `Attach` 전에도, router 키를 기다리는 동안에도 받는다.\n클라이언트는 `Attach` 전에 이 값을 자기 값과 비교해 옛 engine을 교체한다.",
+          "properties": {
+            "method": {
+              "const": "Version",
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "engine을 업데이트하려고 끝낸다. 새 요청을 받지 않고, 실행 중인 작업은 끝내지 않은 채 provider 프로세스를 정리한 뒤\n잠금을 풀고 끝난다. 끝나지 않은 실행은 다음 engine의 크래시 복구가 이어 받는다. 붙은 TUI에는 `Alert::EngineRestarting`을 보낸다.",
+          "properties": {
+            "method": {
+              "const": "Shutdown",
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
           ],
           "type": "object"
         },
@@ -2024,6 +2060,37 @@
       "description": "TUI는 이것만으로 화면을 그린다.",
       "oneOf": [
         {
+          "description": "`Version`의 답.",
+          "properties": {
+            "method": {
+              "const": "EngineVersion",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "protocol_version": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "saturn_version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "saturn_version",
+                "protocol_version"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "properties": {
             "method": {
               "const": "StartInfo",
@@ -2042,6 +2109,13 @@
                 "folder": {
                   "description": "채팅의 기본 폴더.",
                   "type": "string"
+                },
+                "protocol_version": {
+                  "default": 0,
+                  "description": "옛 engine이 보낸 값에는 없어 0으로 읽는다.",
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
                 },
                 "providers": {
                   "description": "어댑터 레지스트리의 기본 순서대로.",
@@ -3155,6 +3229,37 @@
       "description": "TUI는 이것만으로 화면을 그린다.",
       "oneOf": [
         {
+          "description": "`Version`의 답.",
+          "properties": {
+            "method": {
+              "const": "EngineVersion",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "protocol_version": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "saturn_version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "saturn_version",
+                "protocol_version"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "properties": {
             "method": {
               "const": "StartInfo",
@@ -3173,6 +3278,13 @@
                 "folder": {
                   "description": "채팅의 기본 폴더.",
                   "type": "string"
+                },
+                "protocol_version": {
+                  "default": 0,
+                  "description": "옛 engine이 보낸 값에는 없어 0으로 읽는다.",
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
                 },
                 "providers": {
                   "description": "어댑터 레지스트리의 기본 순서대로.",

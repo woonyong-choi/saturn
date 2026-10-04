@@ -53,7 +53,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 채점, 기준값 조정, 로컬 모델 승격 | [router 학습](design/router-training.md) |
 | 설정 층과 설정 번호 | [설정](design/settings.md) |
 | 스키마 이관, 보존, 삭제 | [기록 저장과 보존](design/records.md) |
-| engine 시작, TUI 종료 뒤 계속, 크래시 뒤 복구, 채팅 폴더와 이어 열기 | [engine 수명과 복구](design/engine-lifecycle.md) |
+| engine 시작, TUI 종료 뒤 계속, 크래시 뒤 복구, 업데이트로 engine 교체, 채팅 폴더와 이어 열기 | [engine 수명과 복구](design/engine-lifecycle.md) |
 | 화면 배치, 키, 상태 표시 | [TUI](design/tui.md) |
 
 ## 실행 흐름

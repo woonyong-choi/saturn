@@ -7,6 +7,7 @@ mod lock;
 use std::collections::HashMap;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use saturn_protocol::envelope::{CodecError, RequestId, Response, ServerMessage};
 use saturn_protocol::ids::ChatId;
@@ -28,6 +29,11 @@ pub(crate) const SOCKET_FILE: &str = "engine.sock";
 const SOCKET_MODE: u32 = 0o600;
 
 const INBOX_CAPACITY: usize = 1024;
+
+/// 닫기 전에 쌓인 메시지를 다 쓰기를 기다리는 시간의 위쪽 한계. 초안.
+const FLUSH_LIMIT: Duration = Duration::from_secs(1);
+
+const FLUSH_POLL: Duration = Duration::from_millis(10);
 
 #[derive(Debug, thiserror::Error)]
 pub enum RpcError {
@@ -307,14 +313,34 @@ impl RpcServer {
         self.clients.len()
     }
 
-    pub(crate) async fn close(self) {
+    /// 쌓인 메시지를 쓸 시간을 준 뒤 모든 접속을 끊고 소켓 파일을 지운다. 잠금은 그대로 쥔다.
+    /// 소켓 파일이 없어지므로 새 접속은 `NotRunning`을 받는다.
+    pub(crate) async fn close_connections(&mut self) {
+        let deadline = tokio::time::Instant::now() + FLUSH_LIMIT;
+        while tokio::time::Instant::now() < deadline
+            && self
+                .clients
+                .values()
+                .any(|handle| handle.outbox.sender.capacity() < handle.outbox.sender.max_capacity())
+        {
+            tokio::time::sleep(FLUSH_POLL).await;
+        }
         for handle in self.clients.values() {
             handle.outbox.kill.notify_one();
         }
-        drop(self.listener);
-        if let Err(error) = std::fs::remove_file(&self.socket) {
-            tracing::warn!(%error, path = %self.socket.display(), "failed to remove engine socket");
+        self.clients.clear();
+        match std::fs::remove_file(&self.socket) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => {
+                tracing::warn!(%error, path = %self.socket.display(), "failed to remove engine socket");
+            }
         }
+    }
+
+    pub(crate) async fn close(mut self) {
+        self.close_connections().await;
+        drop(self.listener);
         drop(self.lock);
     }
 

@@ -7,7 +7,7 @@
 
 ## 요약
 
-`engine`은 사용자마다 하나만 도는 상주 프로세스다. TUI와 `cli`는 Unix 소켓 위 JSON-RPC로 `engine`에 붙는 클라이언트이고, 여러 TUI가 한 `engine`에 동시에 붙는다. TUI를 닫아도 `engine`은 기본으로 접수된 입력을 계속 처리하고, 할 일이 없어지면 유예 뒤 스스로 끝난다. 설정 `on_exit`로 닫을 때 작업을 멈추거나 묻게 할 수 있다. `engine`이 비정상 종료되면 다음 실행에서 효과 범위 `effect_scope`를 보고 자동으로 이어 갈 실행과 보류할 실행을 나눈다.
+`engine`은 사용자마다 하나만 도는 상주 프로세스다. TUI와 `cli`는 Unix 소켓 위 JSON-RPC로 `engine`에 붙는 클라이언트이고, 여러 TUI가 한 `engine`에 동시에 붙는다. TUI를 닫아도 `engine`은 기본으로 접수된 입력을 계속 처리하고, 할 일이 없어지면 유예 뒤 스스로 끝난다. 설정 `on_exit`로 닫을 때 작업을 멈추거나 묻게 할 수 있다. `engine`이 비정상 종료되면 다음 실행에서 효과 범위 `effect_scope`를 보고 자동으로 이어 갈 실행과 보류할 실행을 나눈다. 업데이트 뒤 새 `saturn`이 옛 판 `engine`을 만나면 옛 `engine`을 끝내고 새로 띄우며, 실행 중이던 작업은 같은 크래시 복구 길로 이어 간다.
 
 ## 동기
 
@@ -49,6 +49,14 @@
 2. 두 번째 `saturn`은 이미 도는 `engine`을 찾아 같은 Unix 소켓에 접속한다.
 3. 허가 요청이 오면 두 TUI 모두 허가 요청 창을 띄운다.
 4. 한쪽에서 답하면 다른 쪽의 창은 사라진다.
+
+### 업데이트 뒤 옛 engine이 도는 경우
+
+1. 사용자가 `saturn`을 업데이트한 뒤 새 `saturn`을 실행한다. 옛 판 `engine`이 아직 떠 있고 작업 A가 실행 중이다.
+2. `cli`가 접속하자마자 `Version`을 보내 옛 `engine`의 판이 자기보다 낮은 것을 안다.
+3. `cli`가 옛 `engine`에 `Shutdown`을 보낸다. 옛 `engine`은 A를 끝내지 않은 채 provider 프로세스를 정리하고 잠금을 풀고 끝난다.
+4. `cli`가 새 `engine`을 띄우고, 새 `engine`은 크래시 뒤 복구로 A를 되살린다. A의 `effect_scope`가 증명되지 않았으면 보류하고 `/continue`를 제안한다.
+5. 화면에는 `업데이트를 적용하느라 engine을 다시 시작했습니다` 한 줄이 보인다. 사용자가 따로 할 일은 없다.
 
 ## 상세 설계
 
@@ -199,7 +207,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 ![크래시 뒤에는 효과 범위가 증명된 실행만 자동으로 이어 가고, 나머지는 보류해 /continue를 제안한다](../assets/crash-recovery.svg)
 
-`engine`이 비정상 종료된 뒤 사용자가 `saturn`을 실행하면 `cli`가 새 `engine`을 띄우고, `engine`은 시작 직후 다음 순서로 복구한다. 크래시 흔적은 기록 저장소에 끝나지 않은 실행이 남아 있는 것이다. 정상 종료와 멈춤은 실행을 끝내고 기록하므로 흔적을 남기지 않는다.
+`engine`이 비정상 종료된 뒤 사용자가 `saturn`을 실행하면 `cli`가 새 `engine`을 띄우고, `engine`은 시작 직후 다음 순서로 복구한다. 크래시 흔적은 기록 저장소에 끝나지 않은 실행이 남아 있는 것이다. 정상 종료와 멈춤은 실행을 끝내고 기록하므로 흔적을 남기지 않는다. 업데이트로 옛 `engine`을 끝낼 때만 의도로 같은 흔적을 남긴다([업데이트로 engine 교체](#업데이트로-engine-교체)).
 
 1. `store`가 끝나지 않은 실행과 그 `effect_scope`를 조회한다. 같은 작업의 실행이 여럿이면 가장 나중 것만 되살리고 앞선 것은 닫는다.
 2. 실행마다 작업을 보류로 되살린다. 채팅의 작업 폴더와 더한 폴더를 읽고, 입력은 보낸 상태 그대로 둔 채 작업만 멈춤 때 실행 중이던 작업과 같게 보류로 둔다. session은 `보류`로 바꿔 기록하고 실행은 `Stopped`로 닫는다. 이 환경은 `engine` 프로세스 환경이고, TUI가 붙으면 그 TUI의 환경으로 바뀐다.
@@ -218,6 +226,37 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 현재 `effect_scope`는 `network-possible`로 시작하고 `proven-by-*`로 올리는 증명은 아직 없다. 그래서 지금은 모든 크래시 실행이 보류로 남는다.
 
+### 업데이트로 engine 교체
+
+`cli`는 `engine`에 접속한 직후 `Attach`보다 먼저 `Version`을 보내 빌드 버전(`saturn_version`)과 protocol 판(`protocol_version`)을 받는다. `Attach`가 채팅을 만들고 설정을 병합하므로, 옛 `engine`에는 어떤 채팅도 붙이기 전에 판을 확인해야 하기 때문이다. `Version`은 `Attach` 전에도 router 키를 기다리는 동안에도 받는다. 붙을 때 보내는 `StartInfo`에도 같은 `protocol_version`이 실리고, 옛 판이 보낸 `StartInfo`에는 없어 0으로 읽는다. protocol 판은 `saturn-protocol`의 `PROTOCOL_VERSION`이고, 요청이나 알림의 모양을 호환되지 않게 바꿀 때 올린다.
+
+비교는 `cli`가 하고 `engine`이 자기 판을 낮춰 비교하지 않는다.
+
+| 비교 | 동작 |
+|---|---|
+| protocol 판이 같고 빌드 버전이 같다 | 그대로 붙는다. |
+| `engine`의 protocol 판이 낮다, 또는 판이 같고 빌드 버전이 낮다, 또는 빌드 버전을 숫자로 읽을 수 없고 다르다 | 옛 `engine`으로 보고 교체한다. |
+| `engine`의 판이 더 높다 | 그대로 붙는다. 판이 다른 두 `saturn`이 서로의 `engine`을 번갈아 끝내며 작업을 끊는 일을 막기 위해서다. |
+| `Version`이 오류 `-32600`(모르는 요청)으로 거절된다 | 이 기능 이전의 더 옛 `engine`으로 보고 신호로 끝낸다. |
+| `Version`에 5초(초안) 안에 답이 없거나 연결이 끊긴다 | 옛 `engine`으로 보지 않고 오류로 끝낸다. 느린 `engine`을 끝내 작업을 끊지 않기 위해서다. |
+
+빌드 버전은 점으로 나눈 숫자를 앞에서부터 비교하고 `-`나 `+` 뒤는 무시한다. 같은 빌드 버전의 서로 다른 개발 빌드는 구분하지 않는다.
+
+옛 `engine`을 끝내는 순서는 다음과 같다.
+
+1. `Shutdown`을 아는 `engine`에는 `Shutdown`을 보낸다. `engine`은 응답한 뒤 새 요청을 처리하지 않고 요청 처리 루프를 끝낸다. 붙은 모든 TUI에 `Alert::EngineRestarting`을 보내고 쌓인 메시지를 쓸 시간(최대 1초, 초안)을 준 뒤 모든 접속을 끊고 소켓 파일을 지운다. 그 뒤 provider 프로세스 묶음을 정리하고 잠금을 푼 채 프로세스가 끝난다. 소켓 파일이 먼저 사라지므로 종료 중에 새로 접속하려는 클라이언트는 `engine`이 없다고 본다.
+2. `Version`도 모르는 더 옛 `engine`에는 요청을 보낼 수 없다. `cli`는 소켓 반대편 프로세스 번호를 운영체제에서 받아(`getsockopt`의 피어 자격 정보, 잠금 파일에 번호를 적지 않은 옛 판에서도 쓸 수 있다) 그 프로세스에 `SIGTERM`을 보낸다. 이 `engine`은 신호를 처리하지 않으므로 provider 프로세스를 정리하지 못하고 남긴다. 이 기능이 들어가기 전 판에서 한 번만 겪는 한계이고, 남은 프로세스는 사용자가 직접 끝낸다. 프로세스 번호를 받지 못하면 오류로 끝낸다.
+3. `cli`는 프로세스가 없어질 때까지 15초(초안) 기다린다. 번호를 모르면 소켓이 닫힐 때까지 기다린다.
+4. 15초가 지나도 남아 있으면 `SIGKILL`을 보내고 5초(초안) 더 기다린다. 강제로 끝나도 기록은 크래시와 같아 새 `engine`이 복구한다. `Shutdown`이나 `SIGTERM`에 응답하지 않는 `engine`을 계속 기다리면 `saturn`이 열리지 않기 때문이다.
+5. 그래도 남으면 새 `engine`을 띄우지 않고 오류로 끝낸다. 잠금이 풀리지 않아 새 `engine`이 어차피 뜨지 못하기 때문이다. 오류에는 직접 프로세스를 끝낸 뒤 다시 실행하라는 안내가 들어간다.
+6. 끝나면 `cli`가 `saturn-engine`을 `--after-upgrade`로 띄운다. 이 인자로 뜬 `engine`은 첫 TUI에 `Alert::EngineRestarted`를 한 번 보내고, TUI는 `업데이트를 적용하느라 engine을 다시 시작했습니다` 한 줄을 상태판에 보인다. 교체를 일으킨 것이 `saturn usage`처럼 `Attach`하지 않는 명령이면 그 알림은 다음에 붙는 TUI가 받는다.
+
+`Shutdown`을 받은 `engine`은 실행 중인 작업을 끝내지 않는다. 실행을 `Stopped`로 닫지도 session을 보류로 바꾸지도 않고 기록 저장소에 끝나지 않은 실행으로 그대로 둔다. 이 상태는 크래시가 남기는 흔적과 같아서 새 `engine`이 시작 때 [크래시 뒤 복구](#크래시-뒤-복구)를 그대로 돌린다. 실행마다 보류로 되살리고, `effect_scope`가 증명된 실행은 파일 상태를 확인하게 하는 새 입력으로 이어 가고, 나머지는 보류한 채 `/continue`를 제안한다. 보내지 않은 입력과 `전달 중` 입력도 같은 복원 규칙을 따른다. 별도 경로를 두면 두 경로의 규칙이 어긋나므로 같은 길을 쓴다. 스키마 이관은 새 `engine`이 시작할 때 평소대로 한다([스키마 이관](#스키마-이관)).
+
+옛 `engine`에 붙어 있던 다른 TUI는 `Alert::EngineRestarting`을 받으면 오류 없이 끝나고 터미널에 `업데이트를 적용하느라 engine을 다시 시작합니다 · saturn으로 다시 여세요` 한 줄을 남긴다. 그 TUI의 화면에는 새 `engine`이 붙지 않으므로 사용자가 `saturn`을 다시 연다.
+
+교체 중에 다른 `saturn`이 시작하면 소켓이 없어 새 `engine`을 띄우려다 잠금을 얻지 못해 끝나고, 소켓이 열리기를 2초(초안) 기다리는 규칙을 따른다. 교체가 그보다 오래 걸리면 `saturn`이 오류로 끝나므로 다시 실행한다.
+
 ### 중첩 saturn 거절
 
 에이전트가 작업 중에 실행한 `saturn`은 거절한다. 이 거절은 자식 Saturn을 부모와 잇는 기능이 생길 때까지 유지한다. 부모와 자식의 연결 규칙 없이 에이전트가 Saturn을 다시 띄우는 일을 막기 위해서다.
@@ -232,6 +271,8 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 시작 때 이전 설정 번호 없음 | 실행하지 않는다. |
 | 설정 검사 실패 | 이전 설정 번호를 유지하고 경고한다. |
 | `engine` 비정상 종료 | 다시 시작한 `engine`이 `effect_scope`로 자동 재개와 보류를 나눈다. |
+| 옛 판 `engine`이 `Shutdown`이나 신호에 응답하지 않음 | 15초 뒤 `SIGKILL`, 5초 더 기다려도 남으면 새 `engine`을 띄우지 않고 직접 끝내라는 오류로 끝낸다. |
+| `Version`에 답이 없음 | 옛 `engine`으로 보지 않고 오류로 끝낸다. |
 | provider 흐름의 관찰 중단 | `effect_scope`를 `unobserved`로 기록하고 자동으로 이어 가지 않는다. |
 | 크래시 뒤 증명되지 않은 `effect_scope` | 자동으로 재개하지 않고 보류한 뒤 재개를 한 줄로 제안한다. |
 | 크래시 뒤 끊긴 하위 에이전트의 이벤트가 provider에서 다시 옴 | 이벤트를 기록하지 않고 작업을 멈추며 한 번 알린다. |
@@ -270,6 +311,15 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 스키마를 올리기 전 백업 하나를 남긴다. | 옛 스키마 저장소로 새 버전을 실행한 뒤 백업이 하나만 남고 스키마가 올라갔는지 확인 |
 | 크래시 뒤 자동 재개는 효과 범위가 설정이나 관찰로 증명된 실행에만 한다. 증명되지 않은 실행은 다시 보내지 않고 보류하며 처음 붙는 TUI에 `/continue`를 한 번 제안한다. | `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `unproven_run_is_held_not_resent_and_suggested_when_a_tui_attaches`, `resume_suggestion_is_sent_only_to_the_first_tui`, `proven_run_resumes_by_itself_with_a_state_check_input`, 증명 규칙은 [공급자 적용 설정의 보고 범위 측정](https://github.com/woonyong-choi/saturn/issues/4), [하위 에이전트 외부 효과 경로 측정](https://github.com/woonyong-choi/saturn/issues/22) |
 | 자동으로 이어 갈 때 같은 패킷을 다시 보내지 않는다. 보류한 작업은 `/continue`로만 잇고 파일 상태를 확인하게 하는 새 입력을 보낸다. | `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `continue_after_crash_resumes_the_session_with_a_state_check_input`, `proven_run_resumes_by_itself_with_a_state_check_input` |
+| `Version`은 `Attach` 전에도 router 키를 기다리는 동안에도 빌드 버전과 protocol 판을 답하고, `StartInfo`에도 protocol 판이 실린다. | `saturn-terminal/engine/src/lifecycle/upgrade.rs`의 `version_is_answered_before_attach`, `version_is_answered_while_waiting_for_the_router_key`, `start_info_carries_the_protocol_version` |
+| `cli`는 `engine`의 판이 자기보다 낮을 때만 교체하고, 같거나 더 높으면 그대로 붙는다. | `saturn-terminal/cli/src/launch.rs`의 `judge_replaces_only_an_engine_older_than_this_client`, `connect_or_start_with_running_engine_only_attaches`, `connect_or_start_keeps_an_engine_of_a_newer_version` |
+| 옛 판 `engine`에는 `Shutdown`을 보내 끝낸 뒤 `--after-upgrade`로 새 `engine`을 띄운다. | `saturn-terminal/cli/src/launch.rs`의 `connect_or_start_replaces_an_older_engine_by_asking_it_to_shut_down` |
+| `Version`을 모르는 더 옛 `engine`은 소켓 반대편 프로세스에 `SIGTERM`을 보내 끝낸다. | `saturn-terminal/cli/src/launch.rs`의 `connect_or_start_ends_an_engine_without_version_support_with_a_signal` |
+| 종료 상한을 넘기면 `SIGKILL`로 끝내고, 그래도 남으면 새 `engine`을 띄우지 않고 오류로 끝낸다. | `saturn-terminal/cli/src/launch.rs`의 `connect_or_start_kills_an_engine_that_ignores_the_shutdown_request`, `connect_or_start_fails_without_starting_when_the_old_engine_survives_the_kill` |
+| `Shutdown`을 받은 `engine`은 응답한 뒤 붙은 TUI에 `EngineRestarting`을 알리고 끝난다. | `saturn-terminal/engine/src/lifecycle/upgrade.rs`의 `shutdown_ends_the_engine_and_tells_the_attached_tui_before_closing` |
+| 실행 중이던 작업은 끝나지 않은 채 남아 새 `engine`이 크래시 복구로 보류하고 제안하거나, 증명된 작업은 스스로 잇는다. | `saturn-terminal/engine/src/lifecycle/upgrade.rs`의 `unproven_work_is_held_by_the_new_engine_and_suggested`, `proven_work_continues_by_itself_in_the_new_engine` |
+| `--after-upgrade`로 뜬 `engine`은 첫 TUI에만 다시 시작했다는 알림을 보낸다. | `saturn-terminal/engine/src/lifecycle/upgrade.rs`의 `engine_started_after_an_upgrade_tells_only_the_first_tui`, `engine_started_normally_sends_no_restart_alert` |
+| `EngineRestarting`을 받은 TUI는 연결이 끊겨도 오류 없이 끝나고 다시 열라는 한 줄을 남긴다. | `saturn-terminal/tui/src/app/tests.rs`의 `engine_restarting_alert_ends_the_tui_with_a_reopen_line` |
 | 크래시 흔적이 없으면 복구하지 않는다. | `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `start_without_unfinished_runs_recovers_nothing` |
 | 마지막 TUI가 떠난 뒤 모든 작업이 끝나고 유예(5분)가 지나면 `engine`이 스스로 끝나고, 일이 남았거나 TUI가 붙어 있으면 끝나지 않는다. | `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `engine_ends_by_itself_after_the_grace_when_the_last_tui_left_with_no_work`, `engine_keeps_running_while_work_remains_and_ends_after_it_finishes`, `engine_does_not_end_while_a_tui_is_attached` |
 | 강제 종료 뒤 subagent가 있던 session을 재개할 때의 동작을 확인한다. | [강제 종료 뒤 세션 재개 동작 측정](https://github.com/woonyong-choi/saturn/issues/24), [실측 결과](../experiments/crash-resume/report.md) |
@@ -287,6 +337,9 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 - TUI 프로세스 안에 `engine`을 넣는 방식은 TUI를 닫으면 작업이 멈추고 TUI마다 provider 연결과 기록 쓰기가 중복되어 버렸다([결정 기록](../decisions/2026-09-29-engine-centered-json-rpc.md)).
 - 로컬 작업을 추정해 크래시 뒤 자동 재개하는 방식은 외부 효과가 중복될 수 있어 버렸다([결정 기록](../decisions/2026-09-29-proof-based-auto-resume.md)).
+- 옛 `engine`에는 그대로 붙고 다음 `engine` 종료 때 바뀌게 두는 방식은 새 `saturn`이 옛 동작에 계속 붙어 업데이트가 반영되지 않아 버렸다.
+- 판이 다르면 거절하고 사용자가 `engine`을 직접 끝내게 하는 방식은 업데이트 때마다 사용자가 할 일이 생겨 버렸다.
+- 실행 중 작업을 모두 멈춰 보류로 바꾼 뒤 교체하는 방식은 증명된 작업까지 사용자가 이어야 하고 크래시 복구와 규칙이 둘로 갈려 버렸다.
 - Saturn이 provider의 네트워크 차단 설정을 고정하는 방식은 사용자의 provider 설정을 바꿔서 버렸다([결정 기록](../decisions/2026-09-29-proof-based-auto-resume.md)).
 
 ## 미해결 질문
@@ -294,4 +347,3 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 - 에이전트가 실행한 자식 Saturn을 부모 `engine` 소켓에 자식으로 붙일지, 독립 `engine`으로 띄우고 결과 파일로 돌려받을지 ([#33](https://github.com/woonyong-choi/saturn/issues/33))
 - 크래시 뒤 파일 상태 확인에 쓰는 수정 파일 목록을 실행 경계의 파일 상태 차이로 계산할지, provider 이벤트로 계산할지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))
 - `ListTasks`, `Usage`, `LoadHistory` 같은 조회 요청의 결과를 알림으로 보낼지, 응답 `result`에 담을지 ([#177](https://github.com/woonyong-choi/saturn/issues/177))
-- 새 TUI나 `cli`가 버전이 다른 상주 `engine`에 붙을 때 그대로 붙을지, 거절할지, 옛 `engine`을 끝내고 새로 띄울지 ([#178](https://github.com/woonyong-choi/saturn/issues/178))

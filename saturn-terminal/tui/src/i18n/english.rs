@@ -57,6 +57,14 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("다른 Saturn에서 실행 중", "Running in another Saturn"),
     ("기록 저장소 v{to}로 옮김", "Record store migrated to v{to}"),
     (
+        "업데이트를 적용하느라 engine을 다시 시작했습니다",
+        "Engine restarted to apply an update",
+    ),
+    (
+        "업데이트를 적용하느라 engine을 다시 시작합니다 · saturn으로 다시 여세요",
+        "Engine is restarting to apply an update · Reopen with saturn",
+    ),
+    (
         "{provider} CLI가 {from}에서 {to}로 바뀜",
         "{provider} CLI changed from {from} to {to}",
     ),
@@ -225,6 +233,14 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     (
         "engine이 {secs}초 안에 소켓을 열지 않았습니다: {socket}{tail}",
         "Engine did not open {socket} within {secs}s{tail}",
+    ),
+    (
+        "옛 engine이 종료 요청을 몰라 프로세스를 찾아야 하는데 번호를 알 수 없습니다: {socket}",
+        "The old engine does not know the shutdown request and its process id is unknown: {socket}",
+    ),
+    (
+        "옛 engine을 끝내지 못했습니다. 프로세스를 직접 끝낸 뒤 다시 실행하세요: {socket}",
+        "Could not end the old engine. End the process yourself and run again: {socket}",
     ),
     ("(로그: {path})", "(log: {path})"),
     (

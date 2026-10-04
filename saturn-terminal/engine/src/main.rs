@@ -74,10 +74,12 @@ fn run_hook(mut args: impl Iterator<Item = String>) -> anyhow::Result<()> {
 fn parse_options(args: impl Iterator<Item = String>) -> anyhow::Result<EngineOptions> {
     let mut home = None;
     let mut run_overrides = Vec::new();
+    let mut after_upgrade = false;
     let mut args = args;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--home" => home = Some(PathBuf::from(args.next().context("--home needs a path")?)),
+            "--after-upgrade" => after_upgrade = true,
             "-c" => run_overrides.push(args.next().context("-c needs key=value")?),
             other => anyhow::bail!("unknown argument: {other}"),
         }
@@ -89,6 +91,7 @@ fn parse_options(args: impl Iterator<Item = String>) -> anyhow::Result<EngineOpt
     Ok(EngineOptions {
         home,
         run_overrides,
+        after_upgrade,
     })
 }
 

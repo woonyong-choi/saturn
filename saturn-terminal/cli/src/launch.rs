@@ -10,7 +10,9 @@ use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 use anyhow::Context;
-use saturn_tui::client::{ClientError, EngineClient};
+use saturn_protocol::envelope::INVALID_REQUEST;
+use saturn_protocol::rpc::{PROTOCOL_VERSION, Request};
+use saturn_tui::client::{ClientError, EngineClient, EngineVersion};
 use saturn_tui::i18n::{self, Lang};
 
 const ENGINE_BINARY: &str = "saturn-engine";
@@ -32,6 +34,18 @@ const START_TIMEOUT: Duration = Duration::from_secs(30);
 const EXIT_GRACE: Duration = Duration::from_secs(2);
 
 const POLL_INTERVAL: Duration = Duration::from_millis(50);
+
+/// 옛 engine에 종료를 요청하거나 신호를 보낸 뒤 프로세스가 끝나기를 기다리는 시간. 초안 값.
+const UPGRADE_WAIT: Duration = Duration::from_secs(15);
+
+/// 강제 종료 신호를 보낸 뒤 프로세스가 끝나기를 기다리는 시간. 초안 값.
+const KILL_WAIT: Duration = Duration::from_secs(5);
+
+/// `Version`과 `Shutdown` 요청의 응답을 기다리는 시간. 초안 값.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// 업데이트로 옛 engine을 끝내고 띄우는 engine에 주는 인자. engine이 첫 TUI에 알림을 보낸다.
+const AFTER_UPGRADE_ARG: &str = "--after-upgrade";
 
 /// 실패 안내에 보이는 engine 로그 줄 수. 초안 값.
 const LOG_TAIL_LINES: usize = 5;
@@ -64,30 +78,260 @@ fn check_nested(lang: Lang, marker: Option<&OsStr>) -> anyhow::Result<()> {
 
 /// # Errors
 /// engine 실행 파일이 없거나, engine이 시작에 실패했거나 제때 소켓을 열지 않으면 오류.
+/// 옛 engine을 끝내지 못해도 오류.
 pub(crate) async fn connect_or_start(lang: Lang) -> anyhow::Result<EngineClient> {
-    connect_or_start_at(lang, &EngineClient::default_socket(), || {
-        engine_binary(lang)
-    })
+    connect_or_start_at(
+        lang,
+        &EngineClient::default_socket(),
+        || engine_binary(lang),
+        &OsProcesses,
+        UpgradeLimits::default(),
+    )
     .await
 }
 
-// cost: time O(t) , heap O(1), stack O(1), io t
+/// 옛 engine을 끝낼 때 기다리는 시간.
+#[derive(Debug, Clone, Copy)]
+struct UpgradeLimits {
+    /// 종료 요청이나 `SIGTERM` 뒤.
+    wait: Duration,
+    /// `SIGKILL` 뒤.
+    kill_wait: Duration,
+}
+
+impl Default for UpgradeLimits {
+    fn default() -> Self {
+        Self {
+            wait: UPGRADE_WAIT,
+            kill_wait: KILL_WAIT,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Signal {
+    Term,
+    Kill,
+}
+
+/// engine 프로세스를 다루는 자리. 시험은 가짜를 넣어 시험 프로세스에 신호를 보내지 않는다.
+trait Processes {
+    fn is_alive(&self, pid: i32) -> bool;
+    fn signal(&self, pid: i32, signal: Signal);
+}
+
+struct OsProcesses;
+
+impl Processes for OsProcesses {
+    fn is_alive(&self, pid: i32) -> bool {
+        // SAFETY: 신호 0은 프로세스 존재만 확인하고 아무것도 보내지 않는다.
+        #[expect(unsafe_code, reason = "libc kill 호출")]
+        let result = unsafe { libc::kill(pid, 0) };
+        result == 0 || std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
+    }
+
+    /// 자기 자신과 1 이하의 번호에는 보내지 않는다.
+    fn signal(&self, pid: i32, signal: Signal) {
+        let own = i32::try_from(std::process::id()).unwrap_or(0);
+        if pid <= 1 || pid == own {
+            return;
+        }
+        let number = match signal {
+            Signal::Term => libc::SIGTERM,
+            Signal::Kill => libc::SIGKILL,
+        };
+        // SAFETY: 확인한 번호의 프로세스에 종료 신호 하나를 보낸다.
+        #[expect(unsafe_code, reason = "libc kill 호출")]
+        let result = unsafe { libc::kill(pid, number) };
+        if result != 0 {
+            tracing::debug!(pid, ?signal, error = %std::io::Error::last_os_error(), "signal was not delivered");
+        }
+    }
+}
+
+/// 옛 engine을 끝내는 방법.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Retire {
+    /// `Shutdown`을 아는 engine. 정상 종료를 요청한다.
+    Request,
+    /// `Version`도 모르는 더 옛 engine. 소켓 반대편 프로세스에 `SIGTERM`을 보낸다.
+    Signal,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum Verdict {
+    Current,
+    Retire(Retire),
+}
+
+fn own_version() -> EngineVersion {
+    EngineVersion {
+        saturn_version: env!("CARGO_PKG_VERSION").to_owned(),
+        protocol_version: PROTOCOL_VERSION,
+    }
+}
+
+/// `1.2.3-rc1`에서 `[1, 2, 3]`. 숫자가 아닌 칸이 있으면 `None`.
+fn numeric_version(version: &str) -> Option<Vec<u64>> {
+    version
+        .split(['-', '+'])
+        .next()?
+        .split('.')
+        .map(|part| part.parse().ok())
+        .collect()
+}
+
+/// engine이 이 클라이언트보다 옛 판일 때만 교체한다. 더 새 engine에는 그대로 붙어, 판이 다른 두 `saturn`이
+/// 서로의 engine을 번갈아 끝내지 않게 한다.
+fn judge(own: &EngineVersion, engine: &EngineVersion) -> Verdict {
+    if engine.protocol_version != own.protocol_version {
+        return if engine.protocol_version < own.protocol_version {
+            Verdict::Retire(Retire::Request)
+        } else {
+            Verdict::Current
+        };
+    }
+    if engine.saturn_version == own.saturn_version {
+        return Verdict::Current;
+    }
+    match (
+        numeric_version(&engine.saturn_version),
+        numeric_version(&own.saturn_version),
+    ) {
+        (Some(theirs), Some(ours)) if theirs >= ours => Verdict::Current,
+        _ => Verdict::Retire(Retire::Request),
+    }
+}
+
+// cost: time O(1), heap O(1), stack O(1), io 2
+// basis: estimate
+/// `Version`을 모르는 옛 engine은 `Signal`로 교체한다.
+///
+/// # Errors
+/// 답이 없거나 연결이 끊겼으면 오류. 옛 engine으로 보고 끝내지 않는다.
+async fn engine_verdict(client: &mut EngineClient) -> anyhow::Result<Verdict> {
+    let asked = tokio::time::timeout(REQUEST_TIMEOUT, client.version())
+        .await
+        .context("engine did not answer the version request")?;
+    match asked {
+        Ok(version) => Ok(judge(&own_version(), &version)),
+        Err(ClientError::Rejected { code, .. }) if code == INVALID_REQUEST => {
+            Ok(Verdict::Retire(Retire::Signal))
+        }
+        Err(error) => Err(error.into()),
+    }
+}
+
+/// 옛 engine을 끝낸다. 정상 종료를 기다리다 상한을 넘으면 `SIGKILL`로 끝내고, 그래도 남으면 오류다.
+/// 끝나지 않은 실행은 기록에 그대로 남아 새 engine의 크래시 복구가 이어 받는다.
+///
+/// # Errors
+/// 프로세스 번호를 알 수 없는 옛 engine이거나, 강제 종료 뒤에도 끝나지 않으면 오류.
+async fn retire_engine(
+    lang: Lang,
+    socket: &Path,
+    client: EngineClient,
+    how: Retire,
+    processes: &dyn Processes,
+    limits: UpgradeLimits,
+) -> anyhow::Result<()> {
+    let pid = request_end(lang, socket, client, how, processes).await?;
+    if wait_until_gone(socket, pid, processes, limits.wait).await {
+        return Ok(());
+    }
+    tracing::warn!(?pid, "old engine did not end in time, killing it");
+    if let Some(pid) = pid {
+        processes.signal(pid, Signal::Kill);
+    }
+    if wait_until_gone(socket, pid, processes, limits.kill_wait).await {
+        return Ok(());
+    }
+    anyhow::bail!(
+        lang.tr(i18n::CLI_ENGINE_UPGRADE_FAILED)
+            .replace("{socket}", &socket.display().to_string())
+    )
+}
+
+/// 종료 요청을 보내거나 신호를 보내고 옛 engine의 프로세스 번호를 돌려준다. 접속은 여기서 닫는다.
+async fn request_end(
+    lang: Lang,
+    socket: &Path,
+    mut client: EngineClient,
+    how: Retire,
+    processes: &dyn Processes,
+) -> anyhow::Result<Option<i32>> {
+    let pid = client.peer_pid();
+    match how {
+        Retire::Request => {
+            // 응답이 오면 곧 연결이 끊긴다. 요청이 닿았는지는 프로세스가 끝나는지로 본다
+            let sent =
+                tokio::time::timeout(REQUEST_TIMEOUT, client.call(Request::Shutdown, drop)).await;
+            tracing::debug!(?sent, "engine shutdown requested");
+        }
+        Retire::Signal => {
+            let pid = pid.with_context(|| {
+                lang.tr(i18n::CLI_ENGINE_UPGRADE_NO_PID)
+                    .replace("{socket}", &socket.display().to_string())
+            })?;
+            processes.signal(pid, Signal::Term);
+        }
+    }
+    Ok(pid)
+}
+
+/// 프로세스 번호를 알면 그 프로세스가 없어질 때까지, 모르면 소켓이 닫힐 때까지 기다린다.
+async fn wait_until_gone(
+    socket: &Path,
+    pid: Option<i32>,
+    processes: &dyn Processes,
+    limit: Duration,
+) -> bool {
+    let started = Instant::now();
+    loop {
+        let gone = match pid {
+            Some(pid) => !processes.is_alive(pid),
+            None => matches!(
+                EngineClient::connect(socket).await,
+                Err(ClientError::NotRunning { .. })
+            ),
+        };
+        if gone {
+            return true;
+        }
+        if started.elapsed() >= limit {
+            return false;
+        }
+        tokio::time::sleep(POLL_INTERVAL).await;
+    }
+}
+
+// cost: time O(t), heap O(1), stack O(1), io t
 // vars: t = 소켓이 열릴 때까지의 접속 시도 수
 // basis: estimate
-/// 이미 도는 engine이 있으면 붙기만 한다. 없으면 `locate`가 준 실행 파일을 띄우고 소켓이 열리기를 기다린다.
+/// 이미 도는 engine이 같거나 더 새 판이면 붙기만 한다. 옛 판이면 끝내고 새로 띄운다.
+/// 없으면 `locate`가 준 실행 파일을 띄우고 소켓이 열리기를 기다린다.
 async fn connect_or_start_at(
     lang: Lang,
     socket: &Path,
     locate: impl FnOnce() -> anyhow::Result<PathBuf>,
+    processes: &dyn Processes,
+    limits: UpgradeLimits,
 ) -> anyhow::Result<EngineClient> {
+    let mut after_upgrade = false;
     match EngineClient::connect(socket).await {
-        Ok(client) => return Ok(client),
+        Ok(mut client) => match engine_verdict(&mut client).await? {
+            Verdict::Current => return Ok(client),
+            Verdict::Retire(how) => {
+                retire_engine(lang, socket, client, how, processes, limits).await?;
+                after_upgrade = true;
+            }
+        },
         Err(ClientError::NotRunning { .. }) => {}
         Err(error) => return Err(error.into()),
     }
     let binary = locate()?;
-    let mut engine = spawn_engine(lang, &binary, socket)?;
-    tracing::debug!(binary = %binary.display(), "engine started");
+    let mut engine = spawn_engine(lang, &binary, socket, after_upgrade)?;
+    tracing::debug!(binary = %binary.display(), after_upgrade, "engine started");
     wait_until_ready(lang, socket, START_TIMEOUT, &mut engine).await
 }
 
@@ -115,7 +359,12 @@ fn engine_binary(lang: Lang) -> anyhow::Result<PathBuf> {
 // cost: time O(1), heap O(1), stack O(1), io 3
 // basis: estimate
 /// `saturn`이 끝나도 남도록 새 프로세스 그룹으로 띄운다. engine은 터미널을 갖지 않으므로 router 키는 붙은 TUI가 보낸다.
-fn spawn_engine(lang: Lang, binary: &Path, socket: &Path) -> anyhow::Result<StartedEngine> {
+fn spawn_engine(
+    lang: Lang,
+    binary: &Path,
+    socket: &Path,
+    after_upgrade: bool,
+) -> anyhow::Result<StartedEngine> {
     let home = socket
         .parent()
         .context("engine socket path should have a parent folder")?;
@@ -125,9 +374,12 @@ fn spawn_engine(lang: Lang, binary: &Path, socket: &Path) -> anyhow::Result<Star
         (path, len)
     });
     // engine이 로그 파일을 직접 쓴다. 날짜가 바뀌면 새 파일로 옮겨야 해서 stderr는 파일에 잇지 않는다
-    let process = Command::new(binary)
-        .arg("--home")
-        .arg(home)
+    let mut command = Command::new(binary);
+    command.arg("--home").arg(home);
+    if after_upgrade {
+        command.arg(AFTER_UPGRADE_ARG);
+    }
+    let process = command
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -251,11 +503,164 @@ fn log_tail(lang: Lang, log_dir: &Path, before: Option<&(PathBuf, u64)>) -> Stri
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    use saturn_protocol::envelope::{
+        ClientMessage, Response, ServerMessage, decode_client_line, encode_line,
+    };
+    use saturn_protocol::rpc::Notification;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
     use tokio::net::UnixListener;
 
     use super::*;
 
     const SOCKET_FILE: &str = "engine.sock";
+
+    const LIMITS: UpgradeLimits = UpgradeLimits {
+        wait: Duration::from_millis(300),
+        kill_wait: Duration::from_millis(300),
+    };
+
+    /// 신호를 보내지 않고 프로세스가 없다고 답하는 가짜.
+    struct NoProcesses;
+
+    impl Processes for NoProcesses {
+        fn is_alive(&self, _pid: i32) -> bool {
+            false
+        }
+
+        fn signal(&self, _pid: i32, _signal: Signal) {}
+    }
+
+    /// 소켓에서 `Version`과 `Shutdown`에 답하는 가짜 engine과, 그 프로세스를 흉내 내는 상태.
+    struct FakeEngine {
+        socket: PathBuf,
+        alive: AtomicBool,
+        shutdowns: AtomicUsize,
+        signals: Mutex<Vec<Signal>>,
+        /// 이 신호를 받으면 프로세스가 끝난다. `None`이면 어떤 신호에도 끝나지 않는다.
+        dies_on: Option<Signal>,
+        /// 참이면 `Shutdown`을 받고 끝난다.
+        obeys_shutdown: bool,
+    }
+
+    impl FakeEngine {
+        fn die(&self) {
+            self.alive.store(false, Ordering::SeqCst);
+            let _ = std::fs::remove_file(&self.socket); // 이미 없어도 된다
+        }
+    }
+
+    impl Processes for Arc<FakeEngine> {
+        fn is_alive(&self, _pid: i32) -> bool {
+            self.alive.load(Ordering::SeqCst)
+        }
+
+        fn signal(&self, _pid: i32, signal: Signal) {
+            self.signals.lock().unwrap().push(signal);
+            if self.dies_on == Some(signal) {
+                self.die();
+            }
+        }
+    }
+
+    /// `version`이 `None`이면 `Version`을 모르는 옛 engine이다.
+    fn start_fake_engine(
+        socket: &Path,
+        version: Option<EngineVersion>,
+        dies_on: Option<Signal>,
+        obeys_shutdown: bool,
+    ) -> Arc<FakeEngine> {
+        let engine = Arc::new(FakeEngine {
+            socket: socket.to_owned(),
+            alive: AtomicBool::new(true),
+            shutdowns: AtomicUsize::new(0),
+            signals: Mutex::new(Vec::new()),
+            dies_on,
+            obeys_shutdown,
+        });
+        let listener = UnixListener::bind(socket).unwrap();
+        let state = Arc::clone(&engine);
+        tokio::spawn(async move {
+            while let Ok((stream, _)) = listener.accept().await {
+                tokio::spawn(answer(stream, Arc::clone(&state), version.clone()));
+            }
+        });
+        engine
+    }
+
+    async fn answer(
+        stream: tokio::net::UnixStream,
+        engine: Arc<FakeEngine>,
+        version: Option<EngineVersion>,
+    ) {
+        let (read_half, mut writer) = stream.into_split();
+        let mut lines = BufReader::new(read_half).lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            let message: ClientMessage = decode_client_line(&line).unwrap();
+            let mut replies: Vec<ServerMessage> = Vec::new();
+            match message.request {
+                Request::Version => match &version {
+                    Some(version) => {
+                        replies.push(
+                            Notification::EngineVersion {
+                                saturn_version: version.saturn_version.clone(),
+                                protocol_version: version.protocol_version,
+                            }
+                            .into(),
+                        );
+                        replies.push(Response::ok(message.id).into());
+                    }
+                    None => replies.push(
+                        Response::error(Some(message.id), INVALID_REQUEST, "invalid request")
+                            .into(),
+                    ),
+                },
+                Request::Shutdown => {
+                    engine.shutdowns.fetch_add(1, Ordering::SeqCst);
+                    replies.push(Response::ok(message.id).into());
+                }
+                _ => replies.push(Response::ok(message.id).into()),
+            }
+            for reply in replies {
+                writer
+                    .write_all(encode_line(&reply).unwrap().as_bytes())
+                    .await
+                    .unwrap();
+            }
+            if engine.obeys_shutdown && engine.shutdowns.load(Ordering::SeqCst) > 0 {
+                engine.die();
+                return;
+            }
+        }
+    }
+
+    fn version(text: &str, protocol: u32) -> EngineVersion {
+        EngineVersion {
+            saturn_version: text.to_owned(),
+            protocol_version: protocol,
+        }
+    }
+
+    /// 실행하면 받은 인자를 `args`에 남기고 끝나는 가짜 새 engine 실행 파일.
+    fn fake_binary(home: &Path) -> PathBuf {
+        let script = home.join("fake-engine");
+        std::fs::write(&script, "#!/bin/sh\necho \"$*\" > \"$2/args\"\n").unwrap();
+        std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755))
+            .unwrap();
+        script
+    }
+
+    /// 새 engine이 뜬 것처럼 잠시 뒤 소켓을 연다.
+    fn open_new_engine_later(socket: &Path) -> tokio::task::JoinHandle<UnixListener> {
+        let socket = socket.to_owned();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(600)).await;
+            let _ = std::fs::remove_file(&socket); // 옛 소켓 파일이 남았을 수 있다
+            UnixListener::bind(&socket).unwrap()
+        })
+    }
 
     const LOG_FILE: &str = "engine-2026-10-02.log";
 
@@ -292,12 +697,150 @@ mod tests {
     async fn connect_or_start_with_running_engine_only_attaches() {
         let home = tempfile::tempdir().unwrap();
         let socket = home.path().join(SOCKET_FILE);
-        let _listener = UnixListener::bind(&socket).unwrap();
+        let current = start_fake_engine(&socket, Some(own_version()), None, true);
 
-        let client =
-            connect_or_start_at(Lang::En, &socket, || anyhow::bail!("must not locate")).await;
+        let client = connect_or_start_at(
+            Lang::En,
+            &socket,
+            || anyhow::bail!("must not locate"),
+            &current,
+            LIMITS,
+        )
+        .await;
 
         assert!(client.is_ok());
+        assert_eq!(current.shutdowns.load(Ordering::SeqCst), 0);
+        assert!(current.signals.lock().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn connect_or_start_keeps_an_engine_of_a_newer_version() {
+        let home = tempfile::tempdir().unwrap();
+        let socket = home.path().join(SOCKET_FILE);
+        let newer = start_fake_engine(&socket, Some(version("999.0.0", 1)), None, true);
+
+        let client = connect_or_start_at(
+            Lang::En,
+            &socket,
+            || anyhow::bail!("must not locate"),
+            &newer,
+            LIMITS,
+        )
+        .await;
+
+        assert!(client.is_ok());
+        assert_eq!(newer.shutdowns.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn connect_or_start_replaces_an_older_engine_by_asking_it_to_shut_down() {
+        let home = tempfile::tempdir().unwrap();
+        let socket = home.path().join(SOCKET_FILE);
+        let old = start_fake_engine(&socket, Some(version("0.0.1", 1)), None, true);
+        let binary = fake_binary(home.path());
+        let opener = open_new_engine_later(&socket);
+
+        let client = connect_or_start_at(Lang::En, &socket, || Ok(binary), &old, LIMITS).await;
+
+        assert!(client.is_ok());
+        let _listener = opener.await.unwrap();
+        assert_eq!(old.shutdowns.load(Ordering::SeqCst), 1);
+        assert!(old.signals.lock().unwrap().is_empty());
+        let args = home.path().join("args");
+        for _ in 0..100 {
+            if args.exists() {
+                break;
+            }
+            tokio::time::sleep(POLL_INTERVAL).await;
+        }
+        assert_eq!(
+            std::fs::read_to_string(args).unwrap(),
+            format!("--home {} --after-upgrade\n", home.path().display())
+        );
+    }
+
+    #[tokio::test]
+    async fn connect_or_start_kills_an_engine_that_ignores_the_shutdown_request() {
+        let home = tempfile::tempdir().unwrap();
+        let socket = home.path().join(SOCKET_FILE);
+        let stuck = start_fake_engine(
+            &socket,
+            Some(version("0.0.1", 1)),
+            Some(Signal::Kill),
+            false,
+        );
+        let binary = fake_binary(home.path());
+        let opener = open_new_engine_later(&socket);
+
+        let client = connect_or_start_at(Lang::En, &socket, || Ok(binary), &stuck, LIMITS).await;
+
+        assert!(client.is_ok());
+        let _listener = opener.await.unwrap();
+        assert_eq!(stuck.shutdowns.load(Ordering::SeqCst), 1);
+        assert_eq!(*stuck.signals.lock().unwrap(), vec![Signal::Kill]);
+    }
+
+    #[tokio::test]
+    async fn connect_or_start_fails_without_starting_when_the_old_engine_survives_the_kill() {
+        let home = tempfile::tempdir().unwrap();
+        let socket = home.path().join(SOCKET_FILE);
+        let stuck = start_fake_engine(&socket, Some(version("0.0.1", 1)), None, false);
+
+        let error = connect_or_start_at(
+            Lang::En,
+            &socket,
+            || anyhow::bail!("must not locate"),
+            &stuck,
+            LIMITS,
+        )
+        .await
+        .unwrap_err();
+
+        assert!(error.to_string().contains("Could not end the old engine"));
+        assert_eq!(*stuck.signals.lock().unwrap(), vec![Signal::Kill]);
+    }
+
+    #[tokio::test]
+    async fn connect_or_start_ends_an_engine_without_version_support_with_a_signal() {
+        let home = tempfile::tempdir().unwrap();
+        let socket = home.path().join(SOCKET_FILE);
+        let legacy = start_fake_engine(&socket, None, Some(Signal::Term), false);
+        let binary = fake_binary(home.path());
+        let opener = open_new_engine_later(&socket);
+
+        let client = connect_or_start_at(Lang::En, &socket, || Ok(binary), &legacy, LIMITS).await;
+
+        assert!(client.is_ok());
+        let _listener = opener.await.unwrap();
+        assert_eq!(legacy.shutdowns.load(Ordering::SeqCst), 0);
+        assert_eq!(*legacy.signals.lock().unwrap(), vec![Signal::Term]);
+    }
+
+    #[test]
+    fn judge_replaces_only_an_engine_older_than_this_client() {
+        let own = version("0.3.0", 2);
+
+        assert_eq!(judge(&own, &own), Verdict::Current);
+        assert_eq!(
+            judge(&own, &version("0.2.9", 2)),
+            Verdict::Retire(Retire::Request)
+        );
+        assert_eq!(judge(&own, &version("0.10.0", 2)), Verdict::Current);
+        assert_eq!(
+            judge(&own, &version("0.3.0", 1)),
+            Verdict::Retire(Retire::Request)
+        );
+        assert_eq!(judge(&own, &version("0.1.0", 3)), Verdict::Current);
+        assert_eq!(
+            judge(&own, &version("nightly", 2)),
+            Verdict::Retire(Retire::Request)
+        );
+    }
+
+    #[test]
+    fn numeric_version_ignores_the_pre_release_suffix() {
+        assert_eq!(numeric_version("1.2.3-rc1"), Some(vec![1, 2, 3]));
+        assert_eq!(numeric_version("1.x"), None);
     }
 
     #[tokio::test]
@@ -305,9 +848,13 @@ mod tests {
         let home = tempfile::tempdir().unwrap();
         let socket = home.path().join(SOCKET_FILE);
 
-        let error = connect_or_start_at(Lang::En, &socket, || {
-            anyhow::bail!("saturn-engine not found")
-        })
+        let error = connect_or_start_at(
+            Lang::En,
+            &socket,
+            || anyhow::bail!("saturn-engine not found"),
+            &NoProcesses,
+            LIMITS,
+        )
         .await
         .unwrap_err();
 
@@ -394,7 +941,7 @@ mod tests {
         std::fs::set_permissions(&script, std::os::unix::fs::PermissionsExt::from_mode(0o755))
             .unwrap();
 
-        let mut engine = spawn_engine(Lang::En, &script, &socket).unwrap();
+        let mut engine = spawn_engine(Lang::En, &script, &socket, false).unwrap();
         engine.process.wait().unwrap();
 
         assert_eq!(

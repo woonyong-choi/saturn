@@ -37,6 +37,10 @@ impl Engine {
                 event = self.rpc.next_event() => {
                     let Some(event) = event else { break };
                     self.handle_event(event).await?;
+                    if self.upgrade_requested {
+                        self.announce_restart().await;
+                        break;
+                    }
                 }
                 Some(done) = self.flow.router_rx.recv() => {
                     self.on_routed(done).await;
@@ -183,6 +187,11 @@ impl Engine {
             }
             // 서버가 응답하고 끊김으로 바꿔 여기까지 오지 않는다.
             Request::Detach => Ok(()),
+            Request::Version => self.send_version(client).await,
+            Request::Shutdown => {
+                self.upgrade_requested = true;
+                Ok(())
+            }
             Request::SubmitInput {
                 chat,
                 client_ref,
@@ -250,6 +259,8 @@ impl Engine {
             && !matches!(
                 request,
                 Request::Attach { .. }
+                    | Request::Version
+                    | Request::Shutdown
                     | Request::SubmitRouterKey { .. }
                     | Request::LatestChat { .. }
                     | Request::ListChats { .. }

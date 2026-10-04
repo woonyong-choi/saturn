@@ -317,6 +317,7 @@ fn add_dir_notice_adds_a_cell_and_updates_the_start_screen_folders() {
         &mut app,
         Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
+            protocol_version: 1,
             providers: Vec::new(),
             router: String::new(),
             router_version: String::new(),
@@ -354,6 +355,7 @@ fn add_dir_notice_before_the_first_cell_updates_the_start_screen() {
         &mut app,
         Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
+            protocol_version: 1,
             providers: Vec::new(),
             router: String::new(),
             router_version: String::new(),
@@ -410,6 +412,7 @@ fn task_list_opened_from_a_chat_starts_in_the_chat_folder_scope() {
         &mut app,
         Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
+            protocol_version: 1,
             providers: Vec::new(),
             router: String::new(),
             router_version: String::new(),
@@ -708,6 +711,43 @@ fn exit_plan_notice_line_is_translated() {
         app.exit_line().as_deref(),
         Some("Tasks still running: 1 · Reopen with saturn")
     );
+}
+
+// #178: engine이 업데이트로 끝난다고 알리면 연결이 끊겨도 오류 없이 끝나고 다시 열라는 한 줄을 남긴다
+#[test]
+fn engine_restarting_alert_ends_the_tui_with_a_reopen_line() {
+    let mut app = attached();
+    notify(
+        &mut app,
+        Notification::Alert {
+            alert: Alert::EngineRestarting,
+        },
+    );
+
+    let effects = app.handle(AppEvent::EngineClosed, Instant::now());
+
+    assert!(effects.is_empty());
+    assert!(app.quit);
+    assert!(app.restarting);
+    assert_eq!(
+        app.exit_line().as_deref(),
+        Some("업데이트를 적용하느라 engine을 다시 시작합니다 · saturn으로 다시 여세요")
+    );
+}
+
+#[test]
+fn engine_restarted_alert_is_one_status_line() {
+    let mut app = attached();
+    notify(
+        &mut app,
+        Notification::Alert {
+            alert: Alert::EngineRestarted,
+        },
+    );
+
+    assert!(!app.restarting);
+    assert_eq!(app.chat.alerts, vec![Alert::EngineRestarted]);
+    assert_eq!(app.exit_line(), None);
 }
 
 #[test]
@@ -1274,6 +1314,7 @@ fn notifications_build_echo_live_output_and_result() {
         &mut app,
         Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
+            protocol_version: 1,
             providers: Vec::new(),
             router: String::new(),
             router_version: String::new(),
