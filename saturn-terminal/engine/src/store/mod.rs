@@ -32,7 +32,9 @@ pub(crate) use judgments::{JudgmentOutcome, NewJudgment};
 pub(crate) use ledger::LedgerRow;
 pub(crate) use records::{NewInput, NewRun, RunEnd, RunRecord, UsageRow};
 pub(crate) use recovery::StoredHold;
-pub(crate) use retention::{PruneOutcome, PruneRequest, PruneScope, RetentionPolicy, SkipReason};
+pub(crate) use retention::{
+    PruneOutcome, PrunePlan, PruneRequest, PruneScope, RetentionPolicy, SkipReason,
+};
 pub(crate) use schema::MigrationNotice;
 pub(crate) use sessions::IdKind;
 

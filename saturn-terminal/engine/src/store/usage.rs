@@ -84,6 +84,7 @@ impl Store {
                     name: row.try_get("name")?,
                     last_active_ms: from_sql_int(row.try_get("last_active")?),
                     preview: row.try_get("preview")?,
+                    rows: None,
                 })
             })
             .collect()

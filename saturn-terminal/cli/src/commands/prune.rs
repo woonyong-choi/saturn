@@ -158,6 +158,7 @@ mod tests {
             name: Some("login fix".to_owned()),
             last_active_ms: 0,
             preview: Some("fix login".to_owned()),
+            rows: None,
         }
     }
 

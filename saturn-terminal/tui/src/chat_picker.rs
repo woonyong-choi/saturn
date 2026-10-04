@@ -229,6 +229,7 @@ mod tests {
             name: None,
             last_active_ms,
             preview: preview.map(str::to_owned),
+            rows: None,
         }
     }
 

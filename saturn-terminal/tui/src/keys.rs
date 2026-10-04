@@ -26,6 +26,7 @@ pub(crate) enum KeyArea {
     RouterVersion,
     TrainConfirm,
     ModelPicker,
+    PruneWindow,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -106,6 +107,9 @@ pub(crate) enum Action {
     RenameChat,
     SendQueued,
 
+    // 기록 정리 창
+    PruneConfirm,
+
     // router 버전 화면
     ResetThresholds,
     TrainFrom,
@@ -135,6 +139,7 @@ pub(crate) fn map(area: KeyArea, key: KeyEvent, ctx: KeyContext) -> Option<Actio
         KeyArea::RouterVersion => router_version(key),
         KeyArea::TrainConfirm => train_confirm(key),
         KeyArea::ModelPicker => model_picker(key),
+        KeyArea::PruneWindow => prune_window(key),
     }
 }
 
@@ -310,6 +315,18 @@ pub(crate) fn model_picker(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Close),
+        KeyCode::Up => Some(Action::Up),
+        KeyCode::Down => Some(Action::Down),
+        _ => None,
+    }
+}
+
+/// 삭제는 되돌릴 수 없어 `y` 하나만 확정이다. `Enter`는 확정이 아니다.
+pub(crate) fn prune_window(key: KeyEvent) -> Option<Action> {
+    match key.code {
+        KeyCode::Char('y') if is_char(key, 'y') => Some(Action::PruneConfirm),
+        KeyCode::Esc => Some(Action::Close),
+        KeyCode::Char('c') if is_ctrl(key, 'c') => Some(Action::Close),
         KeyCode::Up => Some(Action::Up),
         KeyCode::Down => Some(Action::Down),
         _ => None,

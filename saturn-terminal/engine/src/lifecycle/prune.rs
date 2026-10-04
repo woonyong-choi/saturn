@@ -1,10 +1,13 @@
 use saturn_protocol::envelope::INVALID_PARAMS;
-use saturn_protocol::ids::ChatId;
+use std::path::PathBuf;
+
+use saturn_protocol::ids::{ChatId, SettingsRevision};
 use saturn_protocol::rpc::{Alert, PruneSkipReason, PruneSkipped};
 use saturn_protocol::state::InputState;
 
 use super::chats::chat_with_input;
 use super::*;
+use crate::store::NewInput;
 
 /// 사용자 설정에 정리 기준을 둔 engine.
 async fn ready_with_retention(fixture: &Fixture) -> Engine {
@@ -34,6 +37,8 @@ async fn finish_inputs(engine: &Engine, chat: ChatId) {
 
 struct Report {
     chats: Vec<ChatId>,
+    /// 채팅 줄마다의 행 수.
+    chat_rows: Vec<Option<u64>>,
     skipped: Vec<PruneSkipped>,
     rows: u64,
     is_preview: bool,
@@ -63,6 +68,7 @@ async fn prune(engine: &mut Engine, client: &mut Client, id: u64, yes: bool) -> 
                     let (chats, skipped, rows, is_preview) =
                         report.expect("a report should arrive before the response");
                     return Report {
+                        chat_rows: chats.iter().map(|item| item.rows).collect(),
                         chats: chats.into_iter().map(|item| item.chat).collect(),
                         skipped,
                         rows,
@@ -134,6 +140,40 @@ async fn prune_with_yes_deletes_only_the_old_finished_chats_and_reports_them() {
 }
 
 #[tokio::test]
+async fn prune_lines_carry_the_row_count_of_each_chat_and_add_up_to_the_total() {
+    let fixture = Fixture::new();
+    let mut engine = ready_with_retention(&fixture).await;
+    old_chat(&engine, "/work/old", "old work").await;
+    let second = chat_with_input(&engine, "/work/older", "older work").await;
+    engine
+        .store
+        .accept_input(&NewInput {
+            chat: second,
+            text: "and more".to_owned(),
+            settings: SettingsRevision(1),
+            permission: saturn_core::queue::Permission::Write,
+            workdir: PathBuf::from("/work/older"),
+            pinned_model: None,
+            skip_relation: false,
+        })
+        .await
+        .unwrap();
+    finish_inputs(&engine, second).await;
+    engine.store.age_chat(second, 3).await;
+    let mut client = Client::connect(&fixture.socket()).await;
+
+    let preview = prune(&mut engine, &mut client, 1, false).await;
+    let done = prune(&mut engine, &mut client, 2, true).await;
+
+    for report in [&preview, &done] {
+        let counts: Vec<u64> = report.chat_rows.iter().map(|rows| rows.unwrap()).collect();
+        assert_eq!(counts.len(), 2);
+        assert!(counts[1] > counts[0]);
+        assert_eq!(counts.iter().sum::<u64>(), report.rows);
+    }
+}
+
+#[tokio::test]
 async fn prune_keeps_a_chat_a_tui_is_attached_to() {
     let fixture = Fixture::new();
     let mut engine = ready_with_retention(&fixture).await;
@@ -180,12 +220,18 @@ async fn prune_without_a_retention_setting_is_refused_and_deletes_nothing() {
     let old = old_chat(&engine, "/work/old", "old work").await;
     let mut client = Client::connect(&fixture.socket()).await;
 
-    let refused = drive(&mut engine, async {
+    let (told, refused) = drive(&mut engine, async {
         client.send(1, Request::Prune { yes: true }).await;
-        client.response().await
+        (client.notification().await, client.response().await)
     })
     .await;
 
+    assert_eq!(
+        told,
+        Notification::Alert {
+            alert: Alert::PruneNeedsRetention
+        }
+    );
     assert_eq!(error_code(&refused), INVALID_PARAMS);
     assert!(engine.store.chat_workdir(old).await.is_ok());
 }

@@ -474,6 +474,113 @@ fn task_list_key_a_widens_the_scope_to_all_folders() {
     assert_eq!(list.scope, crate::view::task_list::FolderScope::All);
 }
 
+fn old_chat(id: u64, rows: u64) -> saturn_protocol::rpc::ChatListItem {
+    saturn_protocol::rpc::ChatListItem {
+        chat: ChatId(id),
+        folder: "/work".to_owned(),
+        name: None,
+        last_active_ms: 1_700_000_000_000,
+        preview: None,
+        rows: Some(rows),
+    }
+}
+
+fn prune_window_with(chats: Vec<saturn_protocol::rpc::ChatListItem>) -> App {
+    let mut app = attached();
+    type_text(&mut app, "/prune");
+    app.popup = None;
+    let opened = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    assert_eq!(sent(&opened), vec![&Request::Prune { yes: false }]);
+    let rows = chats.iter().filter_map(|chat| chat.rows).sum();
+    notify(
+        &mut app,
+        Notification::PrunePreview {
+            chats,
+            skipped: Vec::new(),
+            rows,
+        },
+    );
+    app
+}
+
+#[test]
+fn prune_window_asks_for_the_preview_and_only_y_deletes() {
+    let mut app = prune_window_with(vec![old_chat(3, 40), old_chat(5, 7)]);
+
+    let enter = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    let other = press(&mut app, KeyCode::Char('n'), KeyModifiers::NONE);
+    let confirm = press(&mut app, KeyCode::Char('y'), KeyModifiers::NONE);
+    let again = press(&mut app, KeyCode::Char('y'), KeyModifiers::NONE);
+
+    assert!(sent(&enter).is_empty() && sent(&other).is_empty());
+    assert_eq!(sent(&confirm), vec![&Request::Prune { yes: true }]);
+    assert!(sent(&again).is_empty());
+    assert!(matches!(app.window, Some(Window::Prune(_))));
+}
+
+#[test]
+fn prune_window_escape_closes_without_deleting() {
+    let mut app = prune_window_with(vec![old_chat(3, 40)]);
+
+    let effects = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+
+    assert!(sent(&effects).is_empty());
+    assert!(app.window.is_none());
+}
+
+#[test]
+fn prune_window_with_nothing_to_delete_ignores_y() {
+    let mut app = prune_window_with(Vec::new());
+
+    let effects = press(&mut app, KeyCode::Char('y'), KeyModifiers::NONE);
+
+    assert!(sent(&effects).is_empty());
+}
+
+#[test]
+fn pruned_result_closes_the_window_and_leaves_one_line() {
+    let mut app = prune_window_with(vec![old_chat(3, 40), old_chat(5, 7)]);
+    press(&mut app, KeyCode::Char('y'), KeyModifiers::NONE);
+
+    notify(
+        &mut app,
+        Notification::Pruned {
+            chats: vec![old_chat(3, 40), old_chat(5, 7)],
+            skipped: Vec::new(),
+            rows: 47,
+        },
+    );
+
+    assert!(app.window.is_none());
+    assert_eq!(
+        app.transcript.cells().last(),
+        Some(&TranscriptCell::Warning(
+            "지운 채팅 2개 · 기록 47행".to_string()
+        ))
+    );
+}
+
+#[test]
+fn missing_retention_closes_the_prune_window_and_says_how_to_set_it() {
+    let mut app = attached();
+    type_text(&mut app, "/prune");
+    app.popup = None;
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    notify(
+        &mut app,
+        Notification::Alert {
+            alert: saturn_protocol::rpc::Alert::PruneNeedsRetention,
+        },
+    );
+
+    assert!(app.window.is_none());
+    assert!(matches!(
+        app.transcript.cells().last(),
+        Some(TranscriptCell::Warning(text)) if text.contains("retention.max_age_days")
+    ));
+}
+
 #[test]
 fn chat_labeled_makes_an_open_task_list_read_the_list_again() {
     let mut app = attached();

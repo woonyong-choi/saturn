@@ -11,6 +11,7 @@ use saturn_protocol::rpc::{Alert, ChatNotice, ExitPlan, Notification, Request, S
 use saturn_protocol::state::{Disposition, InputState, QueueReason};
 
 use super::{App, Effect, Window};
+use crate::i18n;
 use crate::state::{
     Change, ChatState, ContextSize, FeedbackPrompt, InputUpdate, TaskUpdate, TrainingProgress,
 };
@@ -189,6 +190,16 @@ impl App {
                     self.chat.pinned_model = Some(model);
                 }
             }
+            Notification::PrunePreview {
+                chats,
+                skipped,
+                rows,
+            } => {
+                if let Some(Window::Prune(window)) = &mut self.window {
+                    window.load(chats, &skipped, rows);
+                }
+            }
+            Notification::Pruned { chats, rows, .. } => self.on_pruned(chats.len(), rows),
             Notification::Models { models } => {
                 if let Some(Window::Model(picker)) = &mut self.window {
                     picker.load(models);
@@ -485,7 +496,34 @@ impl App {
     }
 
     fn on_alert(&mut self, alert: Alert) {
+        if alert == Alert::PruneNeedsRetention {
+            self.on_prune_needs_retention();
+            return;
+        }
         self.chat.apply_alert(alert);
+    }
+
+    /// 지운 결과를 대화 기록에 한 줄 남기고 정리 창을 닫는다.
+    fn on_pruned(&mut self, chats: usize, rows: u64) {
+        if !matches!(self.window, Some(Window::Prune(_))) {
+            return;
+        }
+        self.window = None;
+        let line = self
+            .lang
+            .tr(i18n::CLI_PRUNE_DONE)
+            .replace("{chats}", &chats.to_string())
+            .replace("{rows}", &rows.to_string());
+        self.push_cell(TranscriptCell::Warning(line));
+    }
+
+    /// 정리 기준 설정이 없다는 거절. 창을 닫고 설정 방법을 대화 기록에 남긴다.
+    fn on_prune_needs_retention(&mut self) {
+        if matches!(self.window, Some(Window::Prune(_))) {
+            self.window = None;
+        }
+        let line = self.lang.tr(i18n::CLI_PRUNE_NO_RETENTION).to_owned();
+        self.push_cell(TranscriptCell::Warning(line));
     }
 
     /// 새 채팅 id는 접속 직후 `HistoryChunk`가 처음 알린다.

@@ -295,6 +295,24 @@ impl App {
         Vec::new()
     }
 
+    /// `y`만 `Prune { yes: true }`를 보낸다. 지울 채팅이 없거나 이미 확정했으면 받지 않는다.
+    pub(super) fn on_prune_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(Window::Prune(window)) = &mut self.window else {
+            return Vec::new();
+        };
+        match action {
+            Action::Up => window.up(),
+            Action::Down => window.down(),
+            Action::Close => self.window = None,
+            Action::PruneConfirm if window.can_confirm() => {
+                window.is_deleting = true;
+                return vec![Effect::Send(Request::Prune { yes: true })];
+            }
+            _ => {}
+        }
+        Vec::new()
+    }
+
     pub(super) fn on_train_action(&mut self, action: Action) -> Vec<Effect> {
         let Some(Window::TrainConfirm(confirm)) = &mut self.window else {
             return Vec::new();

@@ -19,6 +19,7 @@ use crate::view::live_area::LiveAreaView;
 use crate::view::model_picker::ModelPickerView;
 use crate::view::permission::PermissionView;
 use crate::view::popup::PopupView;
+use crate::view::prune_window::PruneWindowView;
 use crate::view::resume_prompt::ResumePromptView;
 use crate::view::router_key_prompt::RouterKeyPromptView;
 use crate::view::router_version::RouterVersionView;
@@ -122,6 +123,7 @@ impl App {
                 StopConfirmView { confirm, lang }.render(frame, area);
             }
             Some(Window::Model(picker)) => ModelPickerView { picker, lang }.render(frame, area),
+            Some(Window::Prune(window)) => PruneWindowView { window, lang }.render(frame, area),
             Some(Window::Shortcuts) => render_shortcuts(self, frame, area),
             _ => {}
         }
