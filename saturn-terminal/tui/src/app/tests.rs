@@ -1379,6 +1379,39 @@ fn slash_popup_completes_command_then_shows_values() {
 }
 
 #[test]
+fn commands_notification_fills_the_slash_and_dollar_popups() {
+    let mut app = attached();
+    notify(
+        &mut app,
+        Notification::Commands {
+            provider: Provider::from_static("fake-agent"),
+            commands: vec![
+                saturn_protocol::rpc::CommandInfo {
+                    name: "zz-review".to_owned(),
+                    description: "review".to_owned(),
+                    is_skill: false,
+                },
+                saturn_protocol::rpc::CommandInfo {
+                    name: "zz-deploy".to_owned(),
+                    description: "deploy".to_owned(),
+                    is_skill: true,
+                },
+            ],
+        },
+    );
+
+    type_text(&mut app, "/zz");
+    let command = app.popup.as_ref().map(|p| p.items[0].value.clone());
+    app.popup = None;
+    app.composer.clear();
+    type_text(&mut app, "$zz");
+    let skill = app.popup.as_ref().map(|p| p.items[0].value.clone());
+
+    assert_eq!(command.as_deref(), Some("zz-review"));
+    assert_eq!(skill.as_deref(), Some("$zz-deploy"));
+}
+
+#[test]
 fn model_command_values_are_the_provider_ids_engine_announced() {
     let mut app = attached();
     app.start = Some(crate::view::start_screen::StartInfo {

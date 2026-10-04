@@ -5,7 +5,7 @@
 | 상태 | 결정 |
 | 관련 결정 | [provider는 열린 id의 어댑터로 붙이고 확장은 Saturn 저장소에 설치해 session을 열 때 주입한다](../decisions/2026-10-04-open-providers-and-saturn-extensions.md) |
 
-이 문서의 동작은 모두 구현 전이다. 구현 범위는 [#412](https://github.com/woonyong-choi/saturn/issues/412)이고, 요구사항 표의 행은 같은 표시를 쓴다. provider 계층과 어댑터는 [provider 연결과 session](providers-and-sessions.md#provider-계층과-어댑터)에 있다.
+이 문서의 동작은 기능 목록을 TUI에 보내는 것 외에는 구현 전이다. 구현 범위는 [#412](https://github.com/woonyong-choi/saturn/issues/412)이고, 요구사항 표의 행은 같은 표시를 쓴다. provider 계층과 어댑터는 [provider 연결과 session](providers-and-sessions.md#provider-계층과-어댑터)에 있다.
 
 ## 요약
 
@@ -149,7 +149,7 @@ session을 열 때 engine이 그 provider의 어댑터에 설치된 확장 중 �
 
 | 요구사항 | 검증 계획 |
 |---|---|
-| 어댑터가 올린 기능 목록이 `Commands` 알림으로 TUI에 가고 `/`와 `$` 팝업에 보인다. | 구현 전(#412). 가짜 provider의 목록이 팝업에 오르는지와 실제 Codex와 Claude의 목록이 오르는지 확인한다. |
+| 어댑터가 올린 기능 목록이 `Commands` 알림으로 TUI에 가고 `/`와 `$` 팝업에 보인다. | `saturn-terminal/engine/src/lifecycle/commands.rs`의 `a_list_the_connection_reports_later_reaches_the_attached_tui`, `an_unchanged_list_is_not_sent_again`, `a_changed_list_replaces_the_earlier_one`, `a_tui_that_attaches_later_gets_the_latest_list`, `saturn-terminal/tui/src/app/tests.rs`의 `commands_notification_fills_the_slash_and_dollar_popups`. 실제 Codex와 Claude의 목록이 오르는지는 구현 전(#412)이고 실제 provider로 확인한다 |
 | 목록 항목은 종류, 이름, provider, 출처, 이동성을 가지고, 모르는 종류는 `기능` 종류로 표시한다. | 구현 전(#412). 모르는 종류를 올리는 가짜 어댑터로 확인한다. |
 | 권한 규칙이 어댑터가 올린 종류를 대상으로 쓸 수 있고, 규칙이 없으면 모드 기본을 따른다. | 구현 전(#412). 새 종류 항목에 `allow`, `ask`, `deny` 규칙을 걸어 판정을 확인한다. |
 | 설치 요청이 원본을 `~/.saturn/extensions/`에 두고 부분별 판정을 저장하며 판정을 대화 기록에 한 줄로 남긴다. | 구현 전(#412). 부분마다 판정이 다른 묶음을 설치해 확인한다. |

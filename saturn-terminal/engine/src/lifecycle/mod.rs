@@ -6,6 +6,7 @@ mod attach;
 mod chat_labels;
 mod chats;
 mod child_sessions;
+mod commands;
 mod conflict_steer;
 mod crash_recovery;
 mod decision;

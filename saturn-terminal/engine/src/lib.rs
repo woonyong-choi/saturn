@@ -24,6 +24,7 @@ pub use secrets::{Masker, pre_tool_use_hook_settings};
 mod add_dir;
 mod chat_env;
 mod chat_labels;
+mod commands;
 mod control;
 mod delivery;
 mod dispatch;
@@ -374,6 +375,7 @@ impl Engine {
         );
         self.presence = Presence::Attached;
         self.send_chat_model(client, chat).await?;
+        self.send_chat_commands(client, chat).await;
         self.send_start_notices(client, applied).await;
         self.send_resume_suggestions(chat).await;
         Ok(())

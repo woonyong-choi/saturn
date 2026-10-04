@@ -9,7 +9,7 @@ use saturn_protocol::ids::{
     AgentId, ChatId, ChatRevision, InputId, JudgmentId, Provider, ProviderSessionId, RunId,
     SessionId, SettingsRevision, SubagentId, TaskId, TaskLabel,
 };
-use saturn_protocol::rpc::{Alert, ModelInfo, Notification};
+use saturn_protocol::rpc::{Alert, CommandInfo, ModelInfo, Notification};
 use saturn_protocol::state::{Disposition, TaskState};
 use tokio::sync::mpsc;
 
@@ -104,6 +104,8 @@ pub(crate) struct FlowState {
     pub(crate) judging: HashMap<ChatId, InputId>,
     /// provider 연결에서 받아 둔 모델 목록. `target_model` 후보이고 `/model` 목록과 같다. 목록을 받기 전이면 항목이 없다.
     pub(crate) models: HashMap<(ChatId, Provider), Vec<ModelInfo>>,
+    /// 연결이 마지막으로 알린 명령 목록. 나중에 붙는 TUI에 그대로 보낸다.
+    pub(crate) commands: HashMap<(ChatId, Provider), Vec<CommandInfo>>,
     pub(crate) router_tx: mpsc::UnboundedSender<RouterDone>,
     pub(crate) router_rx: mpsc::UnboundedReceiver<RouterDone>,
     /// 채팅의 가장 나중 판단이 정한 처리 방식. 다음 판단의 state에 넣는다.
@@ -207,6 +209,7 @@ impl Default for FlowState {
             routed: HashMap::new(),
             judging: HashMap::new(),
             models: HashMap::new(),
+            commands: HashMap::new(),
             router_tx,
             router_rx,
             last_disposition: HashMap::new(),

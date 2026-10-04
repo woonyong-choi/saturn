@@ -116,6 +116,11 @@ impl Engine {
                 };
                 self.on_arrival(arrival).await;
             }
+            ProviderMsg::Commands {
+                chat,
+                provider,
+                commands,
+            } => self.on_commands(chat, provider, commands).await,
             ProviderMsg::Closed { chat, provider } => {
                 let arrival = Arrival {
                     chat,

@@ -184,7 +184,7 @@ Codex와 Claude는 지금처럼 직접 연결(Codex app-server, Claude stream-js
 | 명령 목록 수집 | 명령 대응표와 `skills/list` | `system/init`의 `slash_commands` |
 | 명령과 스킬 전달 | 명령 이름과 app-server 메서드 대응표로 호출 | 프롬프트에 `/이름`을 그대로 넣어 전송 |
 
-provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대신하는 명령은 뺀다. 뒤에서 연결할 때 쓸 수 없거나 Saturn session 기록과 어긋나기 때문이다. 어댑터가 올린 목록을 TUI에 보내는 연결은 구현 전이다. TUI는 `Commands` 알림을 받는 코드가 있지만 engine이 보내는 코드가 없다(main 67a6dad 확인). 목록의 항목 종류와 노출 규칙은 [기능 목록과 확장](extensions.md#기능-목록)에 있다. 채팅 이어 열기와 폴더 추가는 [engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)에 있다. Claude 스트림에서 provider 명령의 결과와 허가 요청이 어떻게 오는지는 실측으로 확인한다([#26](https://github.com/woonyong-choi/saturn/issues/26)).
+provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대신하는 명령은 뺀다. 뒤에서 연결할 때 쓸 수 없거나 Saturn session 기록과 어긋나기 때문이다. 어댑터가 올린 목록은 연결 작업이 요청과 이벤트를 처리한 뒤 다시 읽어 마지막으로 알린 것과 다르면 `Commands` 알림으로 그 채팅에 붙은 TUI에 보내고, 나중에 붙는 TUI에는 붙을 때 마지막 목록을 보낸다. 연결이 끝나면 기억한 목록을 버린다. 목록이 처음부터 비어 있으면 알리지 않는다. 목록의 항목 종류와 노출 규칙은 [기능 목록과 확장](extensions.md#기능-목록)에 있다. 채팅 이어 열기와 폴더 추가는 [engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)에 있다. Claude 스트림에서 provider 명령의 결과와 허가 요청이 어떻게 오는지는 실측으로 확인한다([#26](https://github.com/woonyong-choi/saturn/issues/26)).
 
 ### 이벤트 수신과 변환
 
