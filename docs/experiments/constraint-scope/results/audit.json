@@ -1,0 +1,19 @@
+{
+  "n": 90,
+  "agreement": 77,
+  "transitions": {
+    "not_constraint->not_constraint": 70,
+    "not_constraint->constraint": 3,
+    "constraint->not_constraint": 6,
+    "constraint->constraint": 7,
+    "not_constraint->uncertain": 1,
+    "constraint->uncertain": 3
+  },
+  "disagreement_categories": {
+    "persistent": 1,
+    "task_local": 5,
+    "insufficient_context": 3,
+    "task_goal": 1,
+    "pasted_adoption": 3
+  }
+}
