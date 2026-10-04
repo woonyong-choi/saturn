@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKTREE = ROOT
+WORKTREE = ROOT.parents[2]
 MAIN_REPO = Path.home() / "workspace" / "oss" / "saturn"
 PRIVATE = MAIN_REPO / ".local" / "experiments" / "provider-permission-real"
 CODEX_MODEL = "gpt-5.6-luna"
