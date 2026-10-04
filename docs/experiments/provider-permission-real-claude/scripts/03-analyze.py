@@ -58,8 +58,9 @@ def verdict(counts: Counter, n: int, expected: str) -> str:
 def main() -> int:
     rows = list(csv.DictReader((ROOT / "data" / "processed" / "trials.csv").open(encoding="utf-8")))
     paths = {}
+    main_rows = [r for r in rows if r["variant"] == "main"]
     for condition, expected in EXPECTED.items():
-        subset = [r for r in rows if r["condition"] == condition]
+        subset = [r for r in main_rows if r["condition"] == condition]
         counts = Counter(r["classification"] for r in subset)
         n = len(subset)
         hit = counts[expected]
@@ -77,8 +78,18 @@ def main() -> int:
         hypotheses[name] = {"paths": members, "verdicts": verdicts,
                             "verdict": "채택" if all(v == "확인" for v in verdicts) else
                             ("보류" if "보류" in verdicts and "기각" not in verdicts else "불채택")}
+    read_first = {}
+    for condition in ("workdir_edit", "outside_edit", "add_dir_edit"):
+        subset = [r for r in rows if r["variant"] == "read_first" and r["condition"] == condition]
+        if subset:
+            counts = Counter(r["classification"] for r in subset)
+            hit = counts[EXPECTED[condition]]
+            read_first[condition] = {"expected": EXPECTED[condition], "n": len(subset), "hit": hit,
+                                     "ci95_percent": list(clopper_pearson(hit, len(subset))),
+                                     "classifications": dict(sorted(counts.items()))}
     calls = max((int(r["model_call_ordinal"]) for r in rows), default=0)
-    summary = {"trials": len(rows), "last_call_ordinal": calls, "paths": paths, "hypotheses": hypotheses}
+    summary = {"trials": len(rows), "last_call_ordinal": calls, "paths": paths, "hypotheses": hypotheses,
+               "read_first_exploratory": read_first}
     results = ROOT / "results"
     (results / "tables").mkdir(parents=True, exist_ok=True)
     (results / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n",

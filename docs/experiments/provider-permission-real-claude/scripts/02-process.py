@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-FIELDS = ["run_id", "condition", "trial_id", "model_call_ordinal", "ts_utc", "turn_status", "classification",
+FIELDS = ["run_id", "variant", "condition", "trial_id", "model_call_ordinal", "ts_utc", "turn_status", "classification",
           "request_count", "touch_request_count", "request_tools", "saturn_responses", "tools_attempted",
           "marker_effect", "hook_calls", "mcp_fixture_calls", "token_seen", "tool_result_errors"]
 
@@ -20,7 +20,8 @@ def main() -> int:
             if row.get("kind") == "meta":
                 continue
             run = row["run"]
-            rows.append({"run_id": row["run_id"], **{k: run[k] for k in FIELDS if k != "run_id"}})
+            rows.append({"run_id": row["run_id"], "variant": row.get("variant", "main"),
+                         **{k: run[k] for k in FIELDS if k not in ("run_id", "variant")}})
     out = ROOT / "data" / "processed" / "trials.csv"
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8", newline="") as handle:
