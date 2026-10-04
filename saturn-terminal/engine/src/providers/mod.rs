@@ -34,7 +34,9 @@ pub(crate) use extension::{
 };
 pub use extension::{InjectedPart, InjectionFailure};
 pub use registry::Registry;
-pub(crate) use worker::{CallResult, Connected, ProviderHandle, ProviderMsg, Reply, spawn_connect};
+pub(crate) use worker::{
+    CallResult, Connected, ConnectionId, ProviderHandle, ProviderMsg, Reply, spawn_connect,
+};
 
 /// 바로 돌아와야 하는 provider 요청(`turn/start`, `turn/steer`, interrupt)의 응답을 기다리는 최대 시간. 넘으면 그 요청만
 /// 응답 없음으로 돌려주고 연결과 턴은 끊지 않는다. 응답은 요청을 받았다는 확인이지 턴 실행 시간이 아니라 평소에는 금방 온다.

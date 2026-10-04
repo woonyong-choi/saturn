@@ -2,6 +2,7 @@
 //! 설계: docs/design/providers-and-sessions.md#provider-요청-작업
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use saturn_core::providers::{
@@ -19,27 +20,53 @@ use crate::processes::{ProcessGroupId, Supervisor};
 use crate::providers::LaunchSpec;
 use crate::secrets::Masker;
 
-/// 연결 작업이 engine 루프로 보내는 메시지. 한 연결의 메시지는 일어난 순서대로 온다.
+/// 연결 작업 하나의 번호. 연결을 만들 때마다 새로 붙고 한 번 쓴 번호는 다시 쓰지 않는다. 같은 채팅과 provider의
+/// 연결을 교체해도 옛 연결의 늦은 메시지가 새 연결의 것으로 읽히지 않게 가른다. provider가 정하는 session 번호
+/// (`ProviderSessionId`)와는 다른 값이고, 그 연결 안에서 열린 session 여럿이 연결 번호 하나를 공유한다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct ConnectionId(u64);
+
+impl ConnectionId {
+    fn next() -> Self {
+        static NEXT: AtomicU64 = AtomicU64::new(1);
+        Self(NEXT.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
+/// 연결 작업이 engine 루프로 보내는 메시지. 한 연결의 메시지는 일어난 순서대로 온다. 모든 메시지는 보낸 연결의
+/// 번호를 싣고, engine은 지금 그 키의 연결이거나 그 연결에 맡긴 요청의 결과일 때만 적용한다.
 #[derive(Debug)]
 pub(crate) enum ProviderMsg {
     Event {
         chat: ChatId,
         provider: Provider,
+        connection: ConnectionId,
         event: ProviderEvent,
     },
     /// 연결이 알리는 명령 목록이 바뀌었다. 연결 뒤 처음 알릴 때와 바뀔 때마다 온다.
     Commands {
         chat: ChatId,
         provider: Provider,
+        connection: ConnectionId,
         commands: Vec<ProviderCommand>,
     },
     /// 연결의 이벤트 흐름이 끝났다.
-    Closed { chat: ChatId, provider: Provider },
+    Closed {
+        chat: ChatId,
+        provider: Provider,
+        connection: ConnectionId,
+    },
     /// 연결 작업이 패닉하거나 중단돼 끝났다. 맡긴 요청의 결과는 오지 않는다.
-    Lost { chat: ChatId, provider: Provider },
+    Lost {
+        chat: ChatId,
+        provider: Provider,
+        connection: ConnectionId,
+    },
+    /// `connection`이 없으면 아직 연결이 없는 요청(연결 맺기)의 결과다.
     Reply {
         chat: ChatId,
         provider: Provider,
+        connection: Option<ConnectionId>,
         reply: Reply,
     },
 }
@@ -175,6 +202,7 @@ impl Shared {
 struct Context {
     chat: ChatId,
     provider: Provider,
+    connection: ConnectionId,
     msgs: mpsc::UnboundedSender<ProviderMsg>,
     masker: Masker,
     shared: Arc<Shared>,
@@ -187,6 +215,7 @@ impl Context {
                 let _ = self.msgs.send(ProviderMsg::Reply {
                     chat: self.chat,
                     provider: self.provider,
+                    connection: Some(self.connection),
                     reply: wrap(value),
                 }); // engine이 끝난 뒤에는 받을 곳이 없다
             }
@@ -194,6 +223,7 @@ impl Context {
                 let _ = self.msgs.send(ProviderMsg::Reply {
                     chat: self.chat,
                     provider: self.provider,
+                    connection: Some(self.connection),
                     reply: Reply::Call {
                         tag,
                         result: wrap(value),
@@ -220,6 +250,7 @@ impl Context {
             .send(ProviderMsg::Commands {
                 chat: self.chat,
                 provider: self.provider,
+                connection: self.connection,
                 commands: current,
             })
             .is_ok()
@@ -359,6 +390,7 @@ async fn send_with_retries(
 pub(crate) struct ProviderHandle {
     chat: ChatId,
     provider: Provider,
+    id: ConnectionId,
     ops: mpsc::UnboundedSender<Op>,
     msgs: mpsc::UnboundedSender<ProviderMsg>,
     shared: Arc<Shared>,
@@ -373,24 +405,32 @@ impl ProviderHandle {
         masker: Masker,
     ) -> Self {
         let provider = connection.provider();
+        let id = ConnectionId::next();
         let shared = Arc::new(Shared::new(&connection));
         let (ops, requests) = mpsc::unbounded_channel();
         let context = Context {
             chat,
             provider,
+            connection: id,
             msgs: msgs.clone(),
             masker,
             shared: Arc::clone(&shared),
         };
         let task = tokio::spawn(run(connection, requests, context));
-        watch(task, chat, provider, msgs.clone(), None);
+        watch(task, (chat, provider), msgs.clone(), Err(id));
         Self {
             chat,
             provider,
+            id,
             ops,
             msgs,
             shared,
         }
+    }
+
+    /// 이 연결의 번호.
+    pub(crate) fn id(&self) -> ConnectionId {
+        self.id
     }
 
     /// 모르는 session이면 `None`.
@@ -419,6 +459,7 @@ impl ProviderHandle {
             let _ = self.msgs.send(ProviderMsg::Reply {
                 chat: self.chat,
                 provider: self.provider,
+                connection: Some(self.id),
                 reply,
             }); // engine이 끝난 뒤에는 받을 곳이 없다
         }
@@ -600,6 +641,7 @@ async fn run(
                     Some(event) => ProviderMsg::Event {
                         chat: context.chat,
                         provider: context.provider,
+                        connection: context.connection,
                         event,
                     },
                     None => {
@@ -607,6 +649,7 @@ async fn run(
                         ProviderMsg::Closed {
                             chat: context.chat,
                             provider: context.provider,
+                            connection: context.connection,
                         }
                     }
                 };
@@ -648,6 +691,7 @@ pub(crate) fn spawn_connect(
         let _ = msgs.send(ProviderMsg::Reply {
             chat,
             provider,
+            connection: None,
             reply: reply(connected),
         }); // engine이 끝난 뒤에는 받을 곳이 없다
     });
@@ -658,28 +702,33 @@ pub(crate) fn spawn_connect(
         },
         None => Reply::Connected(Err(ProviderError::ConnectionLost)),
     };
-    watch(task, chat, provider, lost, Some(lost_reply));
+    watch(task, (chat, provider), lost, Ok(lost_reply));
 }
 
 /// 작업이 패닉하거나 중단돼 끝나면 루프에 알린다. 정상으로 끝난 작업(핸들을 버려 닫은 연결)은 알리지 않는다.
-/// `reply`가 있으면 그 결과를 기다리던 전달에 대신 돌려준다.
+/// 연결 맺기 작업(`Ok(reply)`)은 그 결과를 기다리던 전달에 `reply`를 대신 돌려주고, 연결 작업(`Err(id)`)은
+/// 그 연결의 `Lost`를 알린다.
 fn watch(
     task: tokio::task::JoinHandle<()>,
-    chat: ChatId,
-    provider: Provider,
+    (chat, provider): (ChatId, Provider),
     msgs: mpsc::UnboundedSender<ProviderMsg>,
-    reply: Option<Reply>,
+    outcome: Result<Reply, ConnectionId>,
 ) {
     tokio::spawn(async move {
         let Err(error) = task.await else { return };
         tracing::warn!(%error, "provider task ended unexpectedly");
-        let message = match reply {
-            Some(reply) => ProviderMsg::Reply {
+        let message = match outcome {
+            Ok(reply) => ProviderMsg::Reply {
                 chat,
                 provider,
+                connection: None,
                 reply,
             },
-            None => ProviderMsg::Lost { chat, provider },
+            Err(connection) => ProviderMsg::Lost {
+                chat,
+                provider,
+                connection,
+            },
         };
         let _ = msgs.send(message); // engine이 끝난 뒤에는 받을 곳이 없다
     });

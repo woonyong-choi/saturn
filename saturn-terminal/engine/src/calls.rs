@@ -10,7 +10,7 @@ use saturn_protocol::rpc::QueryResult;
 use crate::events::{PermissionAnswering, RuleAnswering};
 use crate::inputs::InputAnswering;
 use crate::launch::ConnectionSeed;
-use crate::providers::{CallResult, ProviderHandle};
+use crate::providers::{CallResult, ConnectionId, ProviderHandle};
 use crate::rpc::ClientId;
 use crate::switch::Restart;
 use crate::{Engine, EngineError, masked_chain};
@@ -29,6 +29,8 @@ pub(crate) enum Responder {
 pub(crate) struct PendingCall {
     pub(crate) chat: ChatId,
     pub(crate) provider: Provider,
+    /// 요청을 맡긴 연결의 번호. 연결이 없어 맡기지 못했거나 연결을 맺는 요청이면 없다.
+    pub(crate) connection: Option<ConnectionId>,
     pub(crate) kind: CallKind,
 }
 
@@ -84,11 +86,16 @@ impl Engine {
         send: impl FnOnce(&ProviderHandle, u64),
     ) {
         let tag = self.flow.issue_call();
+        let connection = self
+            .providers
+            .get(&(chat, provider))
+            .map(ProviderHandle::id);
         self.flow.calls.insert(
             tag,
             PendingCall {
                 chat,
                 provider,
+                connection,
                 kind,
             },
         );
@@ -106,6 +113,7 @@ impl Engine {
         let message = crate::providers::ProviderMsg::Reply {
             chat: call.chat,
             provider: call.provider,
+            connection: call.connection,
             reply: crate::providers::Reply::Call {
                 tag,
                 result: call.kind.lost(),
@@ -124,6 +132,7 @@ impl Engine {
             chat,
             provider,
             kind,
+            ..
         }) = self.flow.calls.remove(&tag)
         else {
             tracing::warn!(tag, "provider reply without a waiting request");
@@ -156,12 +165,19 @@ impl Engine {
     }
 
     /// 연결 작업이 끝났다. 그 연결에 맡긴 요청은 결과가 오지 않으므로 연결 끊김으로 이어 간다.
-    pub(crate) async fn on_calls_lost(&mut self, chat: ChatId, provider: Provider) {
+    pub(crate) async fn on_calls_lost(
+        &mut self,
+        chat: ChatId,
+        provider: Provider,
+        connection: Option<ConnectionId>,
+    ) {
         let lost: Vec<(u64, CallResult)> = self
             .flow
             .calls
             .iter()
-            .filter(|(_, call)| call.chat == chat && call.provider == provider)
+            .filter(|(_, call)| {
+                call.chat == chat && call.provider == provider && call.connection == connection
+            })
             .map(|(tag, call)| (*tag, call.kind.lost()))
             .collect();
         for (tag, result) in lost {
