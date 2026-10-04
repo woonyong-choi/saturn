@@ -480,6 +480,52 @@
         },
         {
           "additionalProperties": false,
+          "description": "제약을 등록했다. 규칙은 사용자 원문 그대로다. `unconfirmed`는 권한 모드 `full`이라 묻지 않고 등록했다는 뜻이다.",
+          "properties": {
+            "ConstraintAdded": {
+              "properties": {
+                "rule": {
+                  "type": "string"
+                },
+                "unconfirmed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "rule",
+                "unconfirmed"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ConstraintAdded"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "제약을 해제했다. 입력을 취소해 그 입력의 제약을 함께 해제한 경우도 같다.",
+          "properties": {
+            "ConstraintReleased": {
+              "properties": {
+                "rule": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rule"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ConstraintReleased"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "description": "모든 작업이 끝난 순간의 합계.",
           "properties": {
             "RequestSummary": {
@@ -1158,6 +1204,35 @@
           "type": "object"
         },
         {
+          "description": "제약 확인(`ConstraintAsked`)에 답한다. 이미 답했거나 대상이 바뀌어 닫힌 확인이면 거절한다.",
+          "properties": {
+            "method": {
+              "const": "AnswerConstraintAsk",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "answer": {
+                  "$ref": "#/$defs/ConstraintAskAnswer"
+                },
+                "ask": {
+                  "$ref": "#/$defs/ConstraintAskId"
+                }
+              },
+              "required": [
+                "ask",
+                "answer"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "description": "기록하지 않는다(router 키).",
           "properties": {
             "method": {
@@ -1664,6 +1739,27 @@
         "is_skill"
       ],
       "type": "object"
+    },
+    "ConstraintAskAnswer": {
+      "description": "등록을 묻는 확인의 답.",
+      "oneOf": [
+        {
+          "const": "Yes",
+          "description": "제약으로 등록한다.",
+          "type": "string"
+        },
+        {
+          "const": "No",
+          "description": "등록하지 않는다.",
+          "type": "string"
+        }
+      ]
+    },
+    "ConstraintAskId": {
+      "description": "사용자에게 묻는 제약 확인 한 건.",
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
     },
     "Disposition": {
       "enum": [
@@ -3180,6 +3276,65 @@
           "type": "object"
         },
         {
+          "description": "이 말을 앞으로 지킬 제약으로 등록할지 묻는다. 허가 요청처럼 답이 올 때까지 두고 나중에 붙는 TUI도 받는다.",
+          "properties": {
+            "method": {
+              "const": "ConstraintAsked",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "ask": {
+                  "$ref": "#/$defs/ConstraintAskId"
+                },
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "rule": {
+                  "description": "등록할 규칙. 사용자 원문에서 자른 글이고 한 입력에서 여러 건이면 줄바꿈으로 잇는다.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ask",
+                "chat",
+                "rule"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "다른 클라이언트가 먼저 답했거나 대상이 바뀌어 확인이 닫혔다.",
+          "properties": {
+            "method": {
+              "const": "ConstraintAskResolved",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "ask": {
+                  "$ref": "#/$defs/ConstraintAskId"
+                }
+              },
+              "required": [
+                "ask"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "description": "8초 안에 답이 없으면 TUI가 지운다.",
           "properties": {
             "method": {
@@ -4396,6 +4551,65 @@
               "required": [
                 "chat",
                 "notice"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "이 말을 앞으로 지킬 제약으로 등록할지 묻는다. 허가 요청처럼 답이 올 때까지 두고 나중에 붙는 TUI도 받는다.",
+          "properties": {
+            "method": {
+              "const": "ConstraintAsked",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "ask": {
+                  "$ref": "#/$defs/ConstraintAskId"
+                },
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "rule": {
+                  "description": "등록할 규칙. 사용자 원문에서 자른 글이고 한 입력에서 여러 건이면 줄바꿈으로 잇는다.",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "ask",
+                "chat",
+                "rule"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "다른 클라이언트가 먼저 답했거나 대상이 바뀌어 확인이 닫혔다.",
+          "properties": {
+            "method": {
+              "const": "ConstraintAskResolved",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "ask": {
+                  "$ref": "#/$defs/ConstraintAskId"
+                }
+              },
+              "required": [
+                "ask"
               ],
               "type": "object"
             }

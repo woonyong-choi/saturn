@@ -279,6 +279,7 @@ fn choice_keys_mean_the_same_in_every_preset() {
             KeyArea::Correction,
             KeyArea::ModelPicker,
             KeyArea::StopConfirm,
+            KeyArea::ConstraintAsk,
         ] {
             assert_eq!(
                 at(area, plain(KeyCode::Up)),

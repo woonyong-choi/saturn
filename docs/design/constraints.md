@@ -56,7 +56,7 @@
 - 규칙 한 줄은 입력 원문에서 코드가 자른 글이고 요약하거나 생성하지 않는다. 원문을 정본으로 두고 뜻이 바뀌지 않게 하기 위해서다. 입력 원문은 `inputs`에 그대로 있고 제약은 그 입력과 조각 번호를 가리킨다.
 - 입력이 한 문장이거나 200자(초안) 이하이면 입력 전체가 규칙 한 줄이다.
 - 입력이 200자를 넘고 여러 문장이면 `sessions`가 줄바꿈, 문장 끝(`.`, `?`, `!`, `。`)에서 최대 20개(초안) 문장으로 나눈다. 코드 블록과 인용 줄은 나누기 전에 뺀다. engine이 문장마다 `line_<k>_is_constraint`를 묻고, `constraint_ask` 이상인 문장마다 제약 한 건을 만든다. 일과 제약이 섞인 입력의 패킷 낭비를 줄이기 위해서다. 자동 등록인지 묻기인지는 입력 전체의 `is_constraint`가 정한다.
-- 문장 나누기 질문이 실패하거나 문장이 20개를 넘으면 입력 전체 원문을 한 건으로 등록한다. 제약을 놓치는 것보다 길게 넣는 쪽이 안전하기 때문이다.
+- 문장 나누기 질문이 실패하거나 문장이 20개를 넘으면 입력 전체 원문을 한 건으로 등록한다. 입력 전체가 등록 후보인데 `constraint_ask` 이상인 문장이 하나도 없을 때도 같다. 제약을 놓치는 것보다 길게 넣는 쪽이 안전하기 때문이다. 문장 나누기 질문은 입력 전체 판단 뒤 별도 요청으로 보내고, 답이 오기 전에 입력이 취소되면 등록하지 않는다.
 - 적용 범위는 `전체`이거나 경로 목록이다. `sessions`가 규칙 글에서 경로 모양 글자를 뽑고 [순위 채널](context-selection.md#순위-채널)과 같은 정규화(NFC, 앞의 `./` 제거)를 거친다. 경로가 없으면 `전체`다(초안). `테스트에서는`처럼 경로 없는 범위 표현은 `전체`로 두고, 범위 제약 판단 품질은 긴 대화 실측으로 확인한다.
 - 새 제약이 앞 제약과 같은 뜻이거나 부딪쳐도 자동으로 합치거나 대체하지 않는다. 둘 다 유효로 남고, 정리는 사용자가 해제 요청이나 `/constraints`로 한다.
 
@@ -132,6 +132,7 @@
 
 - 제약 revision은 채팅의 마지막 `constraint_events` 번호다. 제약 판단은 제약 revision이 판단을 보낼 때와 같고 그 입력이 취소되지 않았을 때만 적용한다.
 - 다르면 한 번 다시 판단하고, 또 다르면 적용하지 않는다. 사용자가 `/constraints`로 바꾼 상태를 옛 판단으로 덮어쓰지 않기 위해서다. 판단 기록은 `superseded`로 쓴다.
+- 새 제약을 등록하는 판단은 새 행을 더할 뿐 다른 제약을 바꾸지 않으므로 제약 revision 비교 없이 적용한다. 비교는 대상 제약을 바꾸는 해제와 예외 판단에 쓴다.
 - 입력 처리 판단의 채팅 revision이 어긋나도 그 요청의 제약 답은 위 기준만 통과하면 적용한다. 작업 상태가 바뀌었다는 이유로 사용자가 한 말의 제약 여부를 버리지 않기 위해서다. 입력 처리를 다시 판단하는 요청에는 제약 질문을 넣지 않아 같은 입력을 두 번 등록하지 않는다.
 - 사용자의 해제, 예외 바꾸기, 되돌리기, 확인 답도 같은 비교를 거친다. 화면이 본 제약 revision과 다르면 engine이 `Stale`로 거절하고 TUI가 목록을 새로 읽는다.
 
@@ -229,16 +230,18 @@ C_max = P_max / 4
 
 | 요구사항 | 검증 계획 |
 |---|---|
-| 제약은 입력 원문에서 자른 규칙 한 줄과 범위로 저장하고 원문은 바뀌지 않는다. | 구현 전(#378). 긴 입력과 짧은 입력을 등록해 규칙 한 줄이 원문의 부분 글인지, 경로가 범위로 들어가는지 확인한다. |
-| 등록, 해제, 예외, 다시 유효, 되돌림마다 이벤트와 대화 기록 한 줄이 남는다. | 구현 전(#378, #379). 각 변경 뒤 `constraint_events` 행과 대화 기록 줄을 확인한다. |
-| `is_constraint` 0.8 이상은 자동 등록하고, 0.7 이상 0.8 미만은 묻고, 0.7 미만은 등록하지 않는다. | 구현 전(#378, #379). 0.85, 0.75, 0.65를 주어 등록, 질문, 미등록을 확인한다. |
+| 제약은 입력 원문에서 자른 규칙 한 줄과 범위로 저장하고 원문은 바뀌지 않는다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_scope_comes_from_paths_in_the_rule`, `constraint_long_input_registers_only_the_sentences_the_router_calls_constraints`, `constraint_long_input_registers_the_whole_text_when_the_split_question_fails`, `saturn-terminal/core/src/constraints/tests.rs`의 `rules_are_cut_from_the_original_text`, `scope_takes_path_like_words_normalized_and_unique` |
+| 등록, 해제, 예외, 다시 유효, 되돌림마다 이벤트와 대화 기록 한 줄이 남는다. | 등록과 입력 취소로 인한 해제는 `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_at_or_above_the_auto_threshold_is_registered_with_a_chat_line`, `constraint_of_an_input_canceled_after_registration_is_released_with_a_line`. 해제, 예외, 다시 유효, 되돌림은 구현 전(#379, #381) |
+| `is_constraint` 0.8 이상은 자동 등록하고, 0.7 이상 0.8 미만은 묻고, 0.7 미만은 등록하지 않는다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_at_or_above_the_auto_threshold_is_registered_with_a_chat_line`(0.85), `constraint_at_the_exact_auto_threshold_is_registered`(0.8), `constraint_in_the_ask_band_is_stored_as_candidate_and_asked`(0.75), `constraint_ask_answered_yes_registers_and_leaves_a_line`, `constraint_ask_answered_no_releases_it_without_a_chat_line`, `constraint_below_the_ask_threshold_is_not_registered`(0.65), `saturn-terminal/core/src/routers/tests.rs`의 `registration_follows_the_three_bands` |
 | 답이 오기 전의 제약은 지키는 쪽으로 패킷에 들어간다. | 구현 전(#379). 등록과 종류를 묻는 중인 경우 패킷의 제약 칸을 확인한다. |
 | 해제 요청은 선택형 질문 하나로 대상과 종류를 정하고, 영구 해제는 `Released`로, 이번 작업 예외는 제약을 지우지 않고 그 작업 동안만 멈춘다. | 구현 전(#379). 세 종류 입력으로 상태, 예외 기록, 대화 기록 줄을 확인한다. |
 | 이번 작업 예외는 작업이 끝나면 사라지고 `제약 다시 유효` 줄이 한 줄 남는다. | 구현 전(#379). 작업을 끝내고 예외 행과 줄을 확인한다. |
 | 조건·범위 예외는 조건 문장을 기록하고 패킷에 예외 표기로 들어간다. | 구현 전(#379, #380). 예외 뒤 패킷의 제약 칸을 확인한다. |
-| 권한 모드 `full`에서는 제약 질문을 띄우지 않고 `확인 없이` 줄을 남긴다. | 구현 전(#379). `full`에서 0.75와 종류 갈림 입력으로 질문 없음, 줄, 사유 `Unconfirmed`를 확인한다. |
-| 입력 처리 revision이 어긋나도 제약 판단은 제약 revision으로 적용한다. | 구현 전(#378). 판단 중 채팅 상태를 바꿔 제약이 한 번만 등록되는지 확인한다. |
-| 취소된 입력의 제약은 등록하지 않거나 함께 해제한다. | 구현 전(#378). 판단 중과 등록 뒤에 입력을 취소해 확인한다. |
+| 권한 모드 `full`에서는 제약 질문을 띄우지 않고 `확인 없이` 줄을 남긴다. | 등록은 `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_in_full_mode_registers_in_the_ask_band_without_asking_and_marks_it`, `constraint_in_full_mode_above_the_auto_threshold_has_no_unconfirmed_mark`. 종류 갈림 입력은 구현 전(#379) |
+| 입력 처리 revision이 어긋나도 제약 판단은 제약 revision으로 적용한다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_is_registered_once_when_the_chat_revision_changes_during_judgment`. 제약 revision 비교는 해제와 예외에만 쓰므로 구현 전(#379) |
+| 취소된 입력의 제약은 등록하지 않거나 함께 해제한다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_of_an_input_canceled_while_judging_is_not_registered`, `constraint_of_an_input_canceled_after_registration_is_released_with_a_line`, `constraint_ask_is_closed_when_its_input_is_canceled` |
+| router가 없거나 실패하거나 답이 없으면 등록하지 않고 입력은 평소대로 처리한다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_is_not_registered_when_the_router_fails`, `constraint_is_not_registered_when_the_answer_is_missing`, `constraint_input_without_the_router_is_never_judged` |
+| 기준값은 설정에서 읽는다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_thresholds_are_read_from_settings` |
 | 판단에 싣을 제약 고르기는 같은 입력에서 같은 결과를 내고 10개를 넘지 않는다. | 구현 전(#379). `core`의 순수 함수에 제약 목록을 주어 개수와 순서를 확인한다. |
 | 제약 칸은 `C_max` 안에서 전체, 범위 겹침, 관련도·최신 순으로 채우고 넘친 수를 표시한다. | 구현 전(#380). 제약 60개 표본으로 단계 순서와 `Constraints omitted: N`을 확인한다. |
 | 전환마다 들어간 제약과 빠진 제약을 기록한다. | 구현 전(#380). 전환 뒤 `packet_constraints` 행을 확인한다. |

@@ -142,6 +142,8 @@ impl Settings {
             injection: value("injection"),
             progressing: value("progressing"),
             feedback_cause: value("feedback_cause"),
+            is_constraint: value("is_constraint"),
+            constraint_ask: value("constraint_ask"),
         }
     }
 

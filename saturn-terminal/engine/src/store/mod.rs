@@ -3,6 +3,7 @@
 
 mod chat_dirs;
 mod chat_labels;
+mod constraints;
 mod history;
 mod judgments;
 mod ledger;
@@ -28,6 +29,12 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
+#[cfg(test)]
+pub(crate) use constraints::StoredConstraint;
+pub(crate) use constraints::{
+    Actor, AnswerOutcome, ConstraintState, EventKind, EventReason, NewRegistration, NewRule,
+    StoredAsk,
+};
 pub(crate) use history::HistoryEntry;
 pub(crate) use judgments::{JudgmentOutcome, NewJudgment};
 pub(crate) use ledger::LedgerRow;

@@ -223,6 +223,9 @@ impl Engine {
             Request::AnswerFeedback { judgment, correct } => {
                 self.answer_feedback(judgment, correct).await
             }
+            Request::AnswerConstraintAsk { ask, answer } => {
+                self.answer_constraint_ask(client, ask, answer).await
+            }
             Request::SubmitRouterKey { key } => self.submit_router_key(client, key).await,
             Request::AnswerFolderTrust {
                 path,

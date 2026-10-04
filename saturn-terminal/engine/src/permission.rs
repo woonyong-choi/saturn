@@ -41,6 +41,24 @@ impl Engine {
         }
     }
 
+    /// 채팅 층 모드를 먼저 읽고 없으면 설정 모드를 읽어 `full`인지 본다. 제약을 묻지 않고 지키는 쪽으로 등록할지 정하는 데 쓴다.
+    /// 읽지 못하면 묻는 쪽(거짓)으로 둔다.
+    pub(crate) async fn is_full_mode(&self, chat: ChatId, revision: SettingsRevision) -> bool {
+        let read = async {
+            let configured = self.settings.at(&self.store, revision).await?.permission();
+            let layer = self.store.chat_layer(chat).await?;
+            let mode = settings::chat_layer_mode(layer.as_deref()).unwrap_or(configured.mode);
+            Ok::<bool, EngineError>(mode == Mode::Full)
+        };
+        match read.await {
+            Ok(is_full) => is_full,
+            Err(error) => {
+                tracing::warn!(error = %self.failure_line(&error), "permission mode not read, taking it as not full");
+                false
+            }
+        }
+    }
+
     /// 설정이 바뀌었는지 보고 바뀐 설정을 연결에 적용한다. `/permissions`로 모드를 바꿀 때와 입력을 접수하며 설정을
     /// 다시 읽을 때 부른다. 다시 시작이 필요한 연결(규칙이 연결을 시작할 때 고정되는 어댑터는 규칙 지문이나 질문
     /// 설정이, 그 밖의 어댑터는 질문 설정이 연결을 시작할 때와 다를 때)은 채팅에 실행 중인 작업이 없으면 바로 다시 시작하고, 있으면 턴 끝으로

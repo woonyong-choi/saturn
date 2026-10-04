@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use saturn_protocol::envelope::{CodecError, RequestId, Response, ServerMessage};
-use saturn_protocol::ids::ChatId;
+use saturn_protocol::ids::{ChatId, ConstraintAskId};
 use saturn_protocol::rpc::{Notification, Request};
 use tokio::net::UnixListener;
 use tokio::sync::mpsc;
@@ -103,6 +103,11 @@ pub(crate) struct RpcServer {
     pending_permissions: Vec<PendingPermission>,
     next_client: u64,
     last_detached_due: bool,
+}
+
+/// 보관한 요청 목록에서 확인을 찾는 열쇠. provider 요청 ID와 겹치지 않게 접두사를 둔다.
+fn constraint_ask_key(ask: ConstraintAskId) -> String {
+    format!("constraint-ask-{}", ask.0)
 }
 
 impl RpcServer {
@@ -252,6 +257,32 @@ impl RpcServer {
             request_id,
             notification: request,
         });
+    }
+
+    /// 등록 확인도 허가 요청처럼 답이 올 때까지 두고 다음 `greet`에서 보낸다.
+    pub(crate) async fn offer_constraint_ask(
+        &mut self,
+        chat: ChatId,
+        ask: ConstraintAskId,
+        request: Notification,
+    ) {
+        self.offer(chat, constraint_ask_key(ask), request);
+    }
+
+    /// 다른 클라이언트에 `ConstraintAskResolved`를 보내 창을 지우게 한다.
+    pub(crate) async fn resolve_constraint_ask(
+        &mut self,
+        answered_by: ClientId,
+        ask: ConstraintAskId,
+    ) {
+        let resolved = Notification::ConstraintAskResolved { ask };
+        self.resolve(answered_by, &constraint_ask_key(ask), &resolved);
+    }
+
+    /// 답 없이 닫힌 확인(대상 제약이 바뀜)의 창을 모든 클라이언트에서 지운다. 모르는 확인이면 아무것도 하지 않는다.
+    pub(crate) async fn withdraw_constraint_ask(&mut self, ask: ConstraintAskId) {
+        let resolved = Notification::ConstraintAskResolved { ask };
+        self.withdraw(&constraint_ask_key(ask), &resolved);
     }
 
     /// 다른 클라이언트에 `PermissionResolved`를 보내 창을 지우게 한다.

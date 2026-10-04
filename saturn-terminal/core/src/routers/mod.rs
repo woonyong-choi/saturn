@@ -2,6 +2,7 @@
 //! 설계: docs/design/router.md
 
 pub mod calibration;
+pub mod constraint;
 pub mod failure;
 pub mod split;
 
@@ -22,6 +23,7 @@ pub const SET_ROUTE: &str = "route";
 pub const SET_RELATION: &str = "relation";
 pub const SET_SEND_OPT: &str = "send-opt";
 pub const SET_COMPACT: &str = "compact";
+pub const SET_CONSTRAINT: &str = "constraint";
 
 /// 판단 기록과 대체 규칙 기록에 그대로 남는다.
 pub mod question_ids {
@@ -29,6 +31,7 @@ pub mod question_ids {
     pub const IS_ACTIONABLE: &str = "is_actionable";
     pub const TARGET_MODEL: &str = "target_model";
     pub const RESUME_HELD: &str = "resume_held";
+    pub const IS_CONSTRAINT: &str = "is_constraint";
     pub const RELATION_TO_RUNNING: &str = "relation_to_running";
     pub const STEER_OR_SPAWN: &str = "steer_or_spawn";
 }
@@ -222,6 +225,10 @@ pub struct Thresholds {
     /// `loop`의 `is_progressing`이 이 값 미만이면 루프.
     pub progressing: f64,
     pub feedback_cause: f64,
+    /// 이 값 이상이면 제약으로 자동 등록한다.
+    pub is_constraint: f64,
+    /// 이 값 이상 `is_constraint` 미만이면 등록할지 사용자에게 묻고, 문장 나누기에서는 이 값 이상인 문장을 규칙으로 쓴다.
+    pub constraint_ask: f64,
 }
 
 impl Default for Thresholds {
@@ -236,6 +243,8 @@ impl Default for Thresholds {
             injection: 0.7,
             progressing: 0.2,
             feedback_cause: 0.7,
+            is_constraint: 0.8,
+            constraint_ask: 0.7,
         }
     }
 }
@@ -258,15 +267,25 @@ pub struct RouteDecision {
     pub fallbacks: Vec<String>,
 }
 
+/// 입력 처리 요청에 제약 등록 질문(`is_constraint`)을 넣을지.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConstraintQuestion {
+    With,
+    Without,
+}
+
 // cost: time O(m), heap O(m), stack O(1)
 // vars: m = 허용 모델 후보 수
 // basis: estimate
 /// 제어 명령이 아닌 입력에만 부르고, `models`가 비었거나 모델이 고정됐으면 `target_model`을 묻지 않는다.
+/// `constraint`가 `With`이면 `is_constraint`를 더해 질문 세트가 `route@1.1`이 된다. 입력 처리를 다시 판단하는
+/// 요청에는 `Without`을 줘서 같은 입력을 두 번 등록하지 않는다.
 pub fn questions_for_input(
     running: bool,
     model_pinned: bool,
     has_held: bool,
     models: &[String],
+    constraint: ConstraintQuestion,
 ) -> Vec<(QuestionSetId, Vec<Question>)> {
     let mut route = vec![
         noul(
@@ -292,7 +311,16 @@ pub fn questions_for_input(
             "Does the user want to resume the work that was stopped and held?",
         ));
     }
-    let mut sets = vec![(set_id(SET_ROUTE), route)];
+    let route_minor = if constraint == ConstraintQuestion::With {
+        route.push(noul(
+            question_ids::IS_CONSTRAINT,
+            constraint::IS_CONSTRAINT_TEXT,
+        ));
+        1
+    } else {
+        0
+    };
+    let mut sets = vec![(set_id_at(SET_ROUTE, 1, route_minor), route)];
     if running {
         sets.push((
             set_id(SET_RELATION),
@@ -420,6 +448,7 @@ pub fn decide_route(
     };
     let keep_current = reader.keep_current(&mut decision.fallbacks);
     reader.note_actionable(&mut decision.fallbacks);
+    reader.note_constraint(&mut decision.fallbacks);
     decision.model = reader.target_model(&mut decision.fallbacks);
     decision.resume_held = reader.resume_held(&mut decision.fallbacks);
     decision.disposition = if reader.is_running() {
@@ -569,6 +598,20 @@ impl AnswerReader<'_> {
         }
     }
 
+    /// 판단이 없으면 미등록이라 행동은 없고, 대체 규칙 기록만 남긴다.
+    fn note_constraint(&self, fallbacks: &mut Vec<String>) {
+        let is_asked = self.is_asked(question_ids::IS_CONSTRAINT);
+        let verdict = constraint::read_registration(
+            self.request,
+            self.response,
+            self.thresholds,
+            self.method,
+        );
+        if is_asked && verdict.probability.is_none() {
+            fallbacks.push(question_ids::IS_CONSTRAINT.to_string());
+        }
+    }
+
     /// 허용 후보 밖이면 대체 규칙으로 `None`(사용자 고정 모델이나 현재 모델).
     fn target_model(&self, fallbacks: &mut Vec<String>) -> Option<String> {
         if !self.is_asked(question_ids::TARGET_MODEL) {
@@ -640,10 +683,14 @@ fn compact_result_id(seq: LedgerSeq) -> String {
 }
 
 fn set_id(name: &str) -> QuestionSetId {
+    set_id_at(name, 1, 0)
+}
+
+fn set_id_at(name: &str, major: u16, minor: u16) -> QuestionSetId {
     QuestionSetId {
         name: name.to_string(),
-        major: 1,
-        minor: 0,
+        major,
+        minor,
     }
 }
 

@@ -8,9 +8,12 @@ use sqlx::Row;
 use sqlx::sqlite::SqliteRow;
 
 use super::records::parse_run_end;
-use super::{RunEnd, Store, StoreError, from_sql_int, parse_enum, to_sql_int};
+use super::{
+    EventKind, EventReason, RunEnd, Store, StoreError, from_sql_int, parse_enum, to_sql_int,
+};
 
 const INPUT_KIND: i64 = 0;
+const CONSTRAINT_KIND: i64 = 2;
 
 /// 기록 한 단위. 입력 하나, 또는 실행 하나와 그 답이다. 글자 조각과 도구 호출은 실행 안에 묶인다.
 #[derive(Debug, Clone, PartialEq)]
@@ -34,6 +37,12 @@ pub(crate) enum HistoryEntry {
         /// 같은 에이전트의 앞 실행이 다른 provider였으면 그 provider. 메인 전환을 이 차이로 되살린다.
         switched_from: Option<Provider>,
     },
+    /// 제약 변경 줄. `constraint_events`에서 그리므로 채팅을 다시 열어도 같은 자리에 보인다.
+    Constraint {
+        kind: EventKind,
+        reason: Option<EventReason>,
+        rule: String,
+    },
 }
 
 /// 한 번에 읽은 기록 묶음. `oldest`는 담긴 단위 중 가장 오래된 것의 기록 시각(unix 밀리초)이다.
@@ -51,7 +60,14 @@ const UNITS: &str = "SELECT 0 AS kind, id, id AS owner, NULL AS task, text, stat
      UNION ALL \
      SELECT 1 AS kind, id, COALESCE(input_id, 0) AS owner, task_id AS task, NULL AS text, \
      NULL AS state, NULL AS reason, provider, ended_at, end_kind, started_at AS at \
-     FROM runs WHERE chat_id = ?1";
+     FROM runs WHERE chat_id = ?1 \
+     UNION ALL \
+     SELECT 2 AS kind, events.event_id AS id, COALESCE(events.input_id, 0) AS owner, \
+     NULL AS task, constraints.rule AS text, events.kind AS state, events.reason AS reason, \
+     NULL AS provider, NULL AS ended_at, NULL AS end_kind, events.created_at AS at \
+     FROM constraint_events AS events \
+     JOIN constraints ON constraints.constraint_id = events.constraint_id \
+     WHERE events.chat_id = ?1 AND (events.reason IS NULL OR events.reason != 'Declined')";
 
 impl Store {
     /// `before`보다 앞 기록에서 끝 `limit`단위를 오래된 것부터 돌려준다. `before`가 없으면 가장 최근부터다.
@@ -113,6 +129,16 @@ impl Store {
 
     async fn history_entry(&self, row: &SqliteRow) -> Result<HistoryEntry, StoreError> {
         let id: i64 = row.try_get("id")?;
+        if row.try_get::<i64, _>("kind")? == CONSTRAINT_KIND {
+            return Ok(HistoryEntry::Constraint {
+                kind: parse_enum(&row.try_get::<String, _>("state")?)?,
+                reason: row
+                    .try_get::<Option<String>, _>("reason")?
+                    .map(|text| parse_enum(&text))
+                    .transpose()?,
+                rule: row.try_get("text")?,
+            });
+        }
         if row.try_get::<i64, _>("kind")? == INPUT_KIND {
             let reason = row
                 .try_get::<Option<String>, _>("reason")?

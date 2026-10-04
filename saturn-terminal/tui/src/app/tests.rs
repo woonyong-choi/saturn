@@ -8,12 +8,12 @@ use ratatui::backend::TestBackend;
 use ratatui::layout::Rect;
 use saturn_protocol::event::{Activity, ProviderEvent, ToolDetail, UsageReport, UsageScope};
 use saturn_protocol::ids::{
-    AgentId, ChatId, InputId, JudgmentId, LedgerSeq, Provider, TaskId, TaskLabel,
+    AgentId, ChatId, ConstraintAskId, InputId, JudgmentId, LedgerSeq, Provider, TaskId, TaskLabel,
 };
 use saturn_protocol::input::{InputAnswer, InputField, InputFieldKind, InputRequest, InputValue};
 use saturn_protocol::rpc::{
-    Alert, ChatNotice, ExitPlan, ModelChoice, ModelInfo, ModelMode, Notification, PermissionAnswer,
-    Request, UsageRange,
+    Alert, ChatNotice, ConstraintAskAnswer, ExitPlan, ModelChoice, ModelInfo, ModelMode,
+    Notification, PermissionAnswer, Request, UsageRange,
 };
 use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 
@@ -861,6 +861,148 @@ fn stop_confirm_enter_and_escape_answer_wait_and_down_enter_answers_stop() {
     assert_eq!(sent(&enter), vec![&answer(false)]);
     assert_eq!(sent(&escape), vec![&answer(false)]);
     assert_eq!(sent(&down_enter), vec![&answer(true)]);
+}
+
+fn constraint_asked(ask: u64, rule: &str) -> Notification {
+    Notification::ConstraintAsked {
+        ask: ConstraintAskId(ask),
+        chat: ChatId(1),
+        rule: rule.to_owned(),
+    }
+}
+
+// #378: 등록 확인 알림이 오면 창이 뜨고, 첫 선택은 지키는 쪽인 등록이며 Enter가 AnswerConstraintAsk를 보낸다
+#[test]
+fn constraint_ask_window_opens_for_the_notification_and_enter_answers_yes() {
+    let mut app = attached();
+
+    notify(&mut app, constraint_asked(3, "에러 메시지는 영어로 통일해"));
+    assert_eq!(app.key_area(), KeyArea::ConstraintAsk);
+    let enter = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&enter),
+        vec![&Request::AnswerConstraintAsk {
+            ask: ConstraintAskId(3),
+            answer: ConstraintAskAnswer::Yes,
+        }]
+    );
+    assert_eq!(app.key_area(), KeyArea::Composer);
+}
+
+#[test]
+fn constraint_ask_down_and_enter_answers_no() {
+    let mut app = attached();
+    notify(&mut app, constraint_asked(3, "에러 메시지는 영어로 통일해"));
+
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    let enter = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&enter),
+        vec![&Request::AnswerConstraintAsk {
+            ask: ConstraintAskId(3),
+            answer: ConstraintAskAnswer::No,
+        }]
+    );
+}
+
+// #378: 질문은 한 번에 하나씩 도착 순서로 띄우고, Esc는 답을 보내지 않고 미룬다
+#[test]
+fn constraint_ask_escape_defers_without_answering_and_shows_the_next_one() {
+    let mut app = attached();
+    notify(&mut app, constraint_asked(3, "first rule"));
+    notify(&mut app, constraint_asked(4, "second rule"));
+
+    let escape = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+
+    assert!(sent(&escape).is_empty());
+    assert!(
+        matches!(&app.window, Some(Window::ConstraintAsk(ask)) if ask.ask == ConstraintAskId(4))
+    );
+    press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    assert_eq!(app.key_area(), KeyArea::Composer);
+}
+
+// #378: 다른 TUI가 먼저 답하거나 대상이 바뀌어 닫힌 확인은 창에서 지운다
+#[test]
+fn constraint_ask_resolved_elsewhere_closes_the_window_and_shows_the_next() {
+    let mut app = attached();
+    notify(&mut app, constraint_asked(3, "first rule"));
+    notify(&mut app, constraint_asked(4, "second rule"));
+
+    notify(
+        &mut app,
+        Notification::ConstraintAskResolved {
+            ask: ConstraintAskId(3),
+        },
+    );
+
+    assert!(
+        matches!(&app.window, Some(Window::ConstraintAsk(ask)) if ask.ask == ConstraintAskId(4))
+    );
+    notify(
+        &mut app,
+        Notification::ConstraintAskResolved {
+            ask: ConstraintAskId(4),
+        },
+    );
+    assert!(app.window.is_none());
+}
+
+// #378: 같은 확인이 붙을 때 다시 와도 한 번만 띄운다
+#[test]
+fn constraint_ask_sent_again_on_attach_is_shown_once() {
+    let mut app = attached();
+    notify(&mut app, constraint_asked(3, "first rule"));
+    notify(&mut app, constraint_asked(3, "first rule"));
+
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert!(app.window.is_none());
+}
+
+#[test]
+fn constraint_notices_become_transcript_lines() {
+    let mut app = attached();
+
+    notify(
+        &mut app,
+        Notification::ChatNotice {
+            chat: ChatId(1),
+            task: None,
+            notice: ChatNotice::ConstraintAdded {
+                rule: "에러 메시지는\n영어로 통일해".to_owned(),
+                unconfirmed: true,
+            },
+        },
+    );
+    notify(
+        &mut app,
+        Notification::ChatNotice {
+            chat: ChatId(1),
+            task: None,
+            notice: ChatNotice::ConstraintReleased {
+                rule: "에러 메시지는 영어로 통일해".to_owned(),
+            },
+        },
+    );
+
+    let text: String = app
+        .transcript
+        .cells()
+        .iter()
+        .flat_map(|cell| cell.lines(Lang::Ko, false, false))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        text.contains("제약 등록됨 · 에러 메시지는 영어로 통일해 · 확인 없이"),
+        "{text}"
+    );
+    assert!(
+        text.contains("제약 해제됨 · 에러 메시지는 영어로 통일해"),
+        "{text}"
+    );
 }
 
 #[test]

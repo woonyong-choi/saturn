@@ -26,6 +26,7 @@ impl Engine {
         for run in self.latest_unfinished_runs().await? {
             self.recover_run(run).await?;
         }
+        self.restore_constraint_asks().await?;
         self.restore_open_inputs().await
     }
 

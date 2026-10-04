@@ -8,6 +8,7 @@ mod chats;
 mod child_sessions;
 mod commands;
 mod conflict_steer;
+mod constraints;
 mod crash_recovery;
 mod decision;
 mod deliver;

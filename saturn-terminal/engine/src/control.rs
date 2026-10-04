@@ -91,6 +91,7 @@ impl Engine {
             .set_input_state(input, InputState::Cancelled, None)
             .await?;
         self.note_user_override(input, Signal::Wrong);
+        self.release_canceled_input(input).await;
         self.notify_input(input).await;
         self.advance(record.chat).await;
         Ok(())

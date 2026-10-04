@@ -20,6 +20,7 @@ const LISTS: &[A] = &[
     A::ResumePrompt,
     A::ExitConfirm,
     A::StopConfirm,
+    A::ConstraintAsk,
     A::TaskList,
     A::FullTranscript,
     A::RouterVersion,
@@ -41,6 +42,7 @@ const CONFIRMS: &[A] = &[
     A::ResumePrompt,
     A::ExitConfirm,
     A::StopConfirm,
+    A::ConstraintAsk,
     A::TaskList,
     A::Usage,
     A::RouterVersion,
@@ -59,6 +61,7 @@ const CLOSES: &[A] = &[
     A::Popup,
     A::ExitConfirm,
     A::StopConfirm,
+    A::ConstraintAsk,
     A::TaskList,
     A::FullTranscript,
     A::Usage,
@@ -113,10 +116,10 @@ pub(super) fn table() -> Vec<Binding> {
             &["esc", "ctrl+c", "3", "q"],
         ),
         b(Action::TrustApply, &[A::FolderTrust], &["1", "y"]),
-        // 종료 확인 창과 멈춤 확인 창
+        // 종료 확인 창, 멈춤 확인 창, 제약 확인 창
         b(
             Action::Close,
-            &[A::ExitConfirm, A::StopConfirm],
+            &[A::ExitConfirm, A::StopConfirm, A::ConstraintAsk],
             &["ctrl+c"],
         ),
         // 허가 요청 창

@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 9;
+pub(crate) const SCHEMA_VERSION: u32 = 10;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,7 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7, V8, V9];
+pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7, V8, V9, V10];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -226,6 +226,65 @@ CREATE TABLE provider_versions (
     provider TEXT PRIMARY KEY,
     version TEXT NOT NULL,
     checked_at INTEGER NOT NULL
+);
+"#;
+
+/// 제약 표 다섯 개. 이관은 표만 비어 있게 더하고 이관 전 채팅의 입력을 소급해 판단하지 않는다.
+/// 행은 지우지 않고 채팅을 지울 때만 함께 지운다. `constraints.scope`는 줄바꿈으로 이은 경로이고 NULL이면 전체다.
+const V10: &str = r#"
+CREATE TABLE constraints (
+    constraint_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    input_id INTEGER NOT NULL,
+    line INTEGER NOT NULL,
+    rule TEXT NOT NULL,
+    scope TEXT,
+    state TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX constraints_chat ON constraints(chat_id);
+CREATE INDEX constraints_input ON constraints(input_id);
+CREATE TABLE constraint_events (
+    event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    constraint_id INTEGER NOT NULL REFERENCES constraints(constraint_id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    reason TEXT,
+    input_id INTEGER,
+    judgment_id INTEGER,
+    undoes INTEGER,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX constraint_events_chat ON constraint_events(chat_id);
+CREATE INDEX constraint_events_constraint ON constraint_events(constraint_id);
+CREATE TABLE constraint_asks (
+    ask_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    constraint_id INTEGER NOT NULL REFERENCES constraints(constraint_id) ON DELETE CASCADE,
+    judgment_id INTEGER,
+    asked_at INTEGER NOT NULL,
+    answer TEXT,
+    answered_at INTEGER
+);
+CREATE INDEX constraint_asks_chat ON constraint_asks(chat_id);
+CREATE TABLE constraint_exceptions (
+    exception_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    constraint_id INTEGER NOT NULL REFERENCES constraints(constraint_id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    event_id INTEGER NOT NULL,
+    task_id INTEGER,
+    condition TEXT,
+    ended_event_id INTEGER
+);
+CREATE INDEX constraint_exceptions_constraint ON constraint_exceptions(constraint_id);
+CREATE TABLE packet_constraints (
+    session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    constraint_id INTEGER NOT NULL REFERENCES constraints(constraint_id) ON DELETE CASCADE,
+    tier TEXT NOT NULL,
+    PRIMARY KEY (session_id, constraint_id)
 );
 "#;
 
@@ -641,5 +700,46 @@ mod tests {
             PathBuf::from("/work")
         );
         assert_eq!(store.chat_labels(chat).await.unwrap(), (None, None));
+    }
+
+    #[tokio::test]
+    async fn constraint_v9_file_migrates_to_empty_constraint_tables_keeping_chats() {
+        let (dir, store) = temp_store_at(9).await;
+        sqlx::raw_sql(
+            "INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0); \
+             INSERT INTO inputs (id, chat_id, text, settings_revision, permission, workdir, skip_relation, state, accepted_at) \
+             VALUES (3, 1, 'always answer in English', 1, 'Write', '/work', 0, 'Applied', 0)",
+        )
+        .execute(&store.pool)
+        .await
+        .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (9, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
+        let chat = saturn_protocol::ids::ChatId(1);
+        assert_eq!(
+            store.chat_workdir(chat).await.unwrap(),
+            PathBuf::from("/work")
+        );
+        for table in [
+            "constraints",
+            "constraint_events",
+            "constraint_asks",
+            "constraint_exceptions",
+            "packet_constraints",
+        ] {
+            let rows: i64 = sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {table}"))
+                .fetch_one(&store.pool)
+                .await
+                .unwrap();
+            assert_eq!(rows, 0, "{table}");
+        }
+        let inputs = store.history_page(chat, None, 10).await.unwrap().entries;
+        assert_eq!(inputs.len(), 1);
     }
 }

@@ -184,7 +184,8 @@ impl Flow {
             .into_iter()
             .filter_map(|entry| match entry {
                 crate::store::HistoryEntry::Input { input, .. } => Some(input),
-                crate::store::HistoryEntry::Run { .. } => None,
+                crate::store::HistoryEntry::Run { .. }
+                | crate::store::HistoryEntry::Constraint { .. } => None,
             })
             .max()
             .expect("the other chat should have accepted the input");
@@ -381,7 +382,8 @@ impl Flow {
             .into_iter()
             .filter_map(|entry| match entry {
                 crate::store::HistoryEntry::Input { input, .. } => Some(input),
-                crate::store::HistoryEntry::Run { .. } => None,
+                crate::store::HistoryEntry::Run { .. }
+                | crate::store::HistoryEntry::Constraint { .. } => None,
             })
             .max()
     }
@@ -424,13 +426,14 @@ impl Flow {
         let record = self.record(input);
         let revision = self.engine.queue.revision(self.chat);
         let plan = self.engine.model_plan(record.settings).await.unwrap();
-        let request = self.engine.router_request(&record, running, &plan);
+        let request = self.engine.router_request(&record, running, &plan, true);
         let exchange = self.engine.routers.shared().exchange(request.clone()).await;
         let job = RouterJob {
             chat: self.chat,
             input,
             revision,
             retried: false,
+            lines: false,
         };
         self.engine
             .finish_router(&job, &request, exchange)
@@ -441,7 +444,8 @@ impl Flow {
 
     /// 별도 작업에서 도는 router 호출과 provider 요청이 모두 돌아와 적용될 때까지 engine 루프 역할을 한다.
     pub(super) async fn settle(&mut self) {
-        while self.is_judging() || self.is_delivering() || self.is_calling() {
+        while self.is_judging() || self.is_delivering() || self.is_calling() || self.is_splitting()
+        {
             let flow = &mut self.engine.flow;
             tokio::select! {
                 Some(done) = flow.router_rx.recv() => self.engine.on_routed(done).await,
@@ -459,6 +463,11 @@ impl Flow {
     /// 입력 전달이 아닌 provider 요청(규칙의 허가 답, 맥락 정리의 session 열기 등)이 결과를 기다린다.
     pub(super) fn is_calling(&self) -> bool {
         !self.engine.flow.calls.is_empty()
+    }
+
+    /// 긴 입력의 문장 나누기 답을 기다리는 등록이 있다.
+    pub(super) fn is_splitting(&self) -> bool {
+        !self.engine.flow.pending_lines.is_empty()
     }
 
     pub(super) fn is_judging(&self) -> bool {
@@ -495,12 +504,70 @@ impl Flow {
 
 /// 실행 중이 아닐 때 묻는 질문에 대한 router 답.
 pub(super) fn idle_reply(keep_current: f64) -> FakeReply {
-    ok(&answers(keep_current, None, None, None))
+    ok(&answers(
+        keep_current,
+        None,
+        None,
+        None,
+        Some(NO_CONSTRAINT),
+    ))
+}
+
+/// `is_constraint`에 `constraint`를 답하는, 실행 중이 아닐 때의 router 답.
+pub(super) fn constraint_reply(keep_current: f64, constraint: f64) -> FakeReply {
+    ok(&answers(keep_current, None, None, None, Some(constraint)))
+}
+
+/// 입력 처리를 다시 판단하는 요청(`is_constraint`를 묻지 않는다)에 대한 router 답.
+pub(super) fn retry_reply(keep_current: f64) -> FakeReply {
+    ok(&answers(keep_current, None, None, None, None))
+}
+
+/// `is_constraint`에 `constraint`를 답하는, 실행 중일 때의 router 답.
+pub(super) fn running_constraint_reply(
+    keep_current: f64,
+    relation: &str,
+    send: &str,
+    constraint: f64,
+) -> FakeReply {
+    ok(&answers(
+        keep_current,
+        Some((relation, send)),
+        None,
+        None,
+        Some(constraint),
+    ))
+}
+
+/// 긴 입력의 문장 나누기 질문에 대한 router 답. 문장 번호 순서로 확률을 준다.
+pub(super) fn lines_reply(probabilities: &[f64]) -> FakeReply {
+    let answers: serde_json::Map<String, Value> = probabilities
+        .iter()
+        .enumerate()
+        .map(|(index, yes)| {
+            (
+                format!("line_{}_is_constraint", index + 1),
+                json!({ "type": "noul", "noul": yes }),
+            )
+        })
+        .collect();
+    ok(&json!({
+        "model": "jev-1.13.0",
+        "answers": answers,
+        "usage": { "input_tokens": 10, "output_tokens": 2 },
+    })
+    .to_string())
 }
 
 /// 보류 작업이 있는 채팅이 실행 중이 아닐 때 묻는 질문(`resume_held` 포함)에 대한 router 답.
 pub(super) fn idle_held_reply(keep_current: f64, resume_held: f64) -> FakeReply {
-    ok(&answers(keep_current, None, None, Some(resume_held)))
+    ok(&answers(
+        keep_current,
+        None,
+        None,
+        Some(resume_held),
+        Some(NO_CONSTRAINT),
+    ))
 }
 
 /// 보류 작업이 있는 채팅이 실행 중일 때 묻는 질문(`resume_held` 포함)에 대한 router 답.
@@ -515,29 +582,49 @@ pub(super) fn running_held_reply(
         Some((relation, send)),
         None,
         Some(resume_held),
+        Some(NO_CONSTRAINT),
     ))
 }
 
 /// `target_model`까지 묻는 요청에 대한 router 답. `options`는 질문의 선택지 전체(마지막은 `other`)다.
 pub(super) fn model_reply(keep_current: f64, options: &[&str], picked: &str) -> FakeReply {
-    ok(&answers(keep_current, None, Some((options, picked)), None))
+    ok(&answers(
+        keep_current,
+        None,
+        Some((options, picked)),
+        None,
+        Some(NO_CONSTRAINT),
+    ))
 }
 
 /// 실행 중일 때 묻는 질문에 대한 router 답. `relation`은 `RELATION_OPTIONS`, `send`는 `SEND_OPTIONS` 중 하나.
 pub(super) fn running_reply(keep_current: f64, relation: &str, send: &str) -> FakeReply {
-    ok(&answers(keep_current, Some((relation, send)), None, None))
+    ok(&answers(
+        keep_current,
+        Some((relation, send)),
+        None,
+        None,
+        Some(NO_CONSTRAINT),
+    ))
 }
+
+/// 제약이 아니라는 `is_constraint` 답. 기준값 미만이라 아무것도 등록하지 않는다.
+const NO_CONSTRAINT: f64 = 0.1;
 
 fn answers(
     keep_current: f64,
     running: Option<(&str, &str)>,
     model: Option<(&[&str], &str)>,
     resume_held: Option<f64>,
+    constraint: Option<f64>,
 ) -> String {
     let mut answers = json!({
         "keep_current": { "type": "noul", "noul": keep_current },
         "is_actionable": { "type": "noul", "noul": 0.9 },
     });
+    if let Some(constraint) = constraint {
+        answers["is_constraint"] = json!({ "type": "noul", "noul": constraint });
+    }
     if let Some((options, picked)) = model {
         answers["target_model"] = choice(options, picked);
     }

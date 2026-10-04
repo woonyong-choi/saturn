@@ -33,6 +33,20 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ),
     ("멈추고 실행", "Stop and run"),
     (
+        "이 말을 앞으로 지킬 제약으로 등록할까요?",
+        "Add this as a constraint?",
+    ),
+    ("등록", "Add"),
+    ("등록 안 함", "Don't add"),
+    ("답을 기다리는 다른 확인", "Other questions waiting"),
+    (
+        "↑↓ 이동 · Enter 선택 · Esc 나중에",
+        "↑↓ move · Enter select · Esc later",
+    ),
+    ("제약 등록됨", "Constraint added"),
+    ("제약 해제됨", "Constraint released"),
+    ("확인 없이", "Without confirmation"),
+    (
         "↑↓ 이동 · Enter 선택 · Esc 대기",
         "↑↓ move · Enter select · Esc queue",
     ),

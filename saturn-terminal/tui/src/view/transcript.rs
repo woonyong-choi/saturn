@@ -626,8 +626,42 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
             }
             vec![line]
         }
+        ChatNotice::ConstraintAdded { rule, unconfirmed } => {
+            let mut line = format!(
+                "{prefix}{} · {}",
+                lang.tr(i18n::CONSTRAINT_ADDED),
+                one_line(rule)
+            );
+            if *unconfirmed {
+                line.push_str(&format!(" · {}", lang.tr(i18n::CONSTRAINT_UNCONFIRMED)));
+            }
+            vec![line]
+        }
+        ChatNotice::ConstraintReleased { rule } => {
+            vec![format!(
+                "{prefix}{} · {}",
+                lang.tr(i18n::CONSTRAINT_RELEASED),
+                one_line(rule)
+            )]
+        }
         ChatNotice::Stopped { .. } | ChatNotice::StopUnconfirmed { .. } => Vec::new(),
     }
+}
+
+/// 제약 줄에 보이는 규칙의 최대 글자 수(초안). 넘으면 `…`로 줄인다.
+const CONSTRAINT_LINE_CHARS: usize = 80;
+
+// cost: time O(n), heap O(n), stack O(1)
+// vars: n = 규칙 글자 수
+// basis: estimate
+/// 줄바꿈과 겹친 공백을 한 칸으로 합쳐 한 줄로 만들고, 길면 줄인다.
+fn one_line(rule: &str) -> String {
+    let joined = rule.split_whitespace().collect::<Vec<_>>().join(" ");
+    if joined.chars().count() <= CONSTRAINT_LINE_CHARS {
+        return joined;
+    }
+    let cut: String = joined.chars().take(CONSTRAINT_LINE_CHARS - 1).collect();
+    format!("{cut}…")
 }
 
 // cost: time O(h), heap O(h), stack O(1)
@@ -961,6 +995,58 @@ mod tests {
                 "- never touch the vendor folder"
             ]
         );
+    }
+
+    #[test]
+    fn lines_constraint_added_marks_unconfirmed_registration() {
+        let added = |unconfirmed| TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::ConstraintAdded {
+                rule: "에러 메시지는 영어로 통일해".to_owned(),
+                unconfirmed,
+            },
+        };
+
+        assert_eq!(
+            added(false).lines(Lang::Ko, false, false),
+            vec!["제약 등록됨 · 에러 메시지는 영어로 통일해"]
+        );
+        assert_eq!(
+            added(true).lines(Lang::Ko, false, false),
+            vec!["제약 등록됨 · 에러 메시지는 영어로 통일해 · 확인 없이"]
+        );
+        assert_eq!(
+            added(true).lines(Lang::En, false, false),
+            vec!["Constraint added · 에러 메시지는 영어로 통일해 · Without confirmation"]
+        );
+        let released = TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::ConstraintReleased {
+                rule: "에러 메시지는 영어로 통일해".to_owned(),
+            },
+        };
+        assert_eq!(
+            released.lines(Lang::Ko, false, false),
+            vec!["제약 해제됨 · 에러 메시지는 영어로 통일해"]
+        );
+    }
+
+    #[test]
+    fn lines_constraint_rule_is_cut_to_one_line() {
+        let long = format!("첫 줄\n둘째   줄 {}", "가".repeat(CONSTRAINT_LINE_CHARS));
+        let added = TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::ConstraintAdded {
+                rule: long,
+                unconfirmed: false,
+            },
+        };
+
+        let lines = added.lines(Lang::Ko, false, false);
+
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].starts_with("제약 등록됨 · 첫 줄 둘째 줄 "));
+        assert!(lines[0].ends_with('…'));
     }
 
     #[test]

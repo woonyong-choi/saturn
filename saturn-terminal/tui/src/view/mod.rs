@@ -3,6 +3,7 @@
 //! TODO(#58): 좁은 가로 폭에서 버튼과 칸을 줄이는 방식
 
 pub(crate) mod composer;
+pub(crate) mod constraint_ask;
 pub(crate) mod exit_confirm;
 pub(crate) mod folder_trust;
 pub(crate) mod footer;
