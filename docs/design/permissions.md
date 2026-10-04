@@ -88,6 +88,7 @@
 - 모드의 순서는 낮은 쪽부터 `read-only`, `ask`, `edit`, `full`이다. `ask`는 묻기만 하고 거부하지 않으므로 `read-only`보다 높다.
 - 폴더 설정의 `permission.mode`는 사용자 층까지 합친 모드보다 낮은 값만 적용하고, 같거나 높은 값은 무시한다. 저장소가 모두 허용을 켜지 못하게 하기 위해서다. 무시한 사실은 폴더 설정 신뢰 창의 무시되는 항목에 보인다.
 - 모두 허용(`full`)은 사용자 설정이나 `/permissions`로만 켠다. Claude Code는 v2.1.257부터 프로젝트·로컬 설정의 `bypassPermissions`와 `auto`를 무시한다([설정 문서](https://code.claude.com/docs/en/settings), 2026-10-02 확인). Codex는 신뢰한 프로젝트 설정이 승인 정책을 정할 수 있다.
+- 모드가 `full`이면 Saturn이 제약에 대해서도 사용자에게 묻지 않는다. 등록의 중간 확신 구간(0.7 이상 0.8 미만)은 묻지 않고 지키는 쪽으로 등록하고, 예외 종류 확인도 묻지 않고 제약을 지우지 않는 `이번 작업 동안` 예외로 적용한다. 대신 대화 기록 줄에 `확인 없이`를 표시해 사용자가 보고 해제 요청이나 `/constraints`로 고치게 한다. 모드는 판단을 적용할 때 채팅 층 값을 먼저 읽는다. 규칙은 [제약](constraints.md#묻지-않고-진행하는-권한-모드)에 있다.
 
 ### 항상 허용 저장
 
@@ -246,6 +247,7 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 | 개별 규칙의 `deny`는 항상 허용보다 앞선다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `deny_rule_beats_a_stored_always_allow` |
 | 스키마 V4 이관은 채팅 행을 보존하고 항상 허용 표를 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v3_file_migrates_to_permission_allows_keeping_chats` |
 | 어댑터가 올린 종류가 `permission.<종류>` 규칙의 대상이 되고, 규칙이 없으면 `full`은 허용, 그 밖의 모드는 묻는다. | 구현 전(#412). 가짜 어댑터가 올린 새 종류에 규칙을 걸어 판정을 확인한다. |
+| 모드가 `full`이면 제약 등록과 예외 종류를 묻지 않고 `확인 없이` 줄을 남긴다. | 구현 전(#379). 모드 `full`과 다른 모드에서 같은 입력을 주어 확인 창 유무와 줄을 비교한다([제약](constraints.md#요구사항)). |
 
 ## 단점
 
