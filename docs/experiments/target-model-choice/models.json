@@ -1,0 +1,65 @@
+{
+  "candidates": [
+    "claude/default",
+    "claude/opus",
+    "claude/sonnet",
+    "claude/haiku",
+    "codex/gpt-6-astra",
+    "codex/gpt-6-sol",
+    "codex/gpt-6-luna",
+    "codex/gpt-5.6-sol",
+    "codex/gpt-5.6-terra",
+    "codex/gpt-5.6-luna",
+    "codex/gpt-5.5"
+  ],
+  "claude_ids": {
+    "default": "claude-opus-5-5",
+    "opus": "claude-opus-5-5",
+    "sonnet": "claude-sonnet-5-5",
+    "haiku": "claude-haiku-4-5-20251001"
+  },
+  "codex_models": [
+    {
+      "model": "gpt-6-astra",
+      "displayName": "GPT-6-Astra",
+      "description": "Frontier intelligence for the most demanding work.",
+      "isDefault": true
+    },
+    {
+      "model": "gpt-6-sol",
+      "displayName": "GPT-6-Sol",
+      "description": "Previous generation workhorse model.",
+      "isDefault": false
+    },
+    {
+      "model": "gpt-6-luna",
+      "displayName": "GPT-6-Luna",
+      "description": "Fast and affordable model for easier tasks.",
+      "isDefault": false
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "displayName": "GPT-5.6-Sol",
+      "description": "Older generation workhorse model.",
+      "isDefault": false
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "displayName": "GPT-5.6-Terra",
+      "description": "Older balanced model for straightforward work.",
+      "isDefault": false
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "displayName": "GPT-5.6-Luna",
+      "description": "Older fast and efficient model.",
+      "isDefault": false
+    },
+    {
+      "model": "gpt-5.5",
+      "displayName": "GPT-5.5",
+      "description": "Legacy coding model.",
+      "isDefault": false
+    }
+  ]
+}
