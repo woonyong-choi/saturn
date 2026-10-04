@@ -5,10 +5,12 @@ use std::collections::{HashMap, HashSet};
 use std::time::SystemTime;
 
 use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::{ChatListItem, Notification, PruneSkipReason, PruneSkipped};
+use saturn_protocol::rpc::{Alert, ChatListItem, Notification, PruneSkipReason, PruneSkipped};
 
 use crate::rpc::ClientId;
-use crate::store::{PruneOutcome, PruneRequest, PruneScope, RetentionPolicy, SkipReason};
+use crate::store::{
+    PruneOutcome, PrunePlan, PruneRequest, PruneScope, RetentionPolicy, SkipReason,
+};
 use crate::{AutoPruneNotice, Engine, EngineError};
 
 impl Engine {
@@ -22,7 +24,7 @@ impl Engine {
         client: ClientId,
         yes: bool,
     ) -> Result<(), EngineError> {
-        let before = self.prune_cutoff().await?;
+        let before = self.prune_cutoff_or_tell(client).await?;
         let plan = self
             .store
             .plan_prune(&PruneScope::InactiveBefore(before))
@@ -38,10 +40,11 @@ impl Engine {
         }));
         skipped.sort_by_key(|item| item.chat);
         if !yes {
+            let counted = self.count_rows(&candidates).await?;
             let notification = Notification::PrunePreview {
-                chats: summaries,
+                chats: with_rows(summaries, &counted.chat_rows),
                 skipped,
-                rows: self.rows_of(&candidates).await?,
+                rows: counted.rows,
             };
             self.send(client, notification).await;
             return Ok(());
@@ -62,10 +65,13 @@ impl Engine {
         skipped.dedup_by_key(|item| item.chat);
         let deleted: HashSet<ChatId> = done.chats.iter().copied().collect();
         let notification = Notification::Pruned {
-            chats: summaries
-                .into_iter()
-                .filter(|item| deleted.contains(&item.chat))
-                .collect(),
+            chats: with_rows(
+                summaries
+                    .into_iter()
+                    .filter(|item| deleted.contains(&item.chat))
+                    .collect(),
+                &done.chat_rows,
+            ),
             skipped,
             rows: done.rows,
         };
@@ -159,13 +165,32 @@ impl Engine {
     }
 
     /// 지울 채팅의 행 수. 판단 기록과 설정 스냅샷은 세지 않는다.
-    async fn rows_of(&self, chats: &[ChatId]) -> Result<u64, EngineError> {
-        let plan = self
+    async fn count_rows(&self, chats: &[ChatId]) -> Result<PrunePlan, EngineError> {
+        Ok(self
             .store
             .plan_prune(&PruneScope::Chats(chats.to_vec()))
-            .await?;
-        Ok(plan.rows)
+            .await?)
     }
+
+    /// 기준 설정이 없으면 요청한 TUI가 안내를 보일 수 있게 알리고 거절한다.
+    async fn prune_cutoff_or_tell(&self, client: ClientId) -> Result<SystemTime, EngineError> {
+        let cutoff = self.prune_cutoff().await;
+        if matches!(cutoff, Err(EngineError::NoRetention)) {
+            let alert = Alert::PruneNeedsRetention;
+            self.send(client, Notification::Alert { alert }).await;
+        }
+        cutoff
+    }
+}
+
+fn with_rows(mut chats: Vec<ChatListItem>, rows: &[(ChatId, u64)]) -> Vec<ChatListItem> {
+    for item in &mut chats {
+        item.rows = rows
+            .iter()
+            .find(|(chat, _)| *chat == item.chat)
+            .map(|(_, count)| *count);
+    }
+    chats
 }
 
 fn skipped_of(skipped: &[(ChatId, Vec<SkipReason>)]) -> Vec<PruneSkipped> {

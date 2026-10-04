@@ -4,7 +4,7 @@ export type Activity = "Thinking" | "ReadingFile" | "EditingFile" | { "RunningCo
 
 export type AgentId = number;
 
-export type Alert = "RouterPaused" | "RouterDisconnected" | { "SteerNotReady": { provider: Provider, } } | "RouterDownSendingInOrder" | { "SchemaMigrated": { from: number, to: number, } } | { "AutoPruned": { chats: number, rows: number, } } | "AutoPruneFailed";
+export type Alert = "RouterPaused" | "RouterDisconnected" | { "SteerNotReady": { provider: Provider, } } | "RouterDownSendingInOrder" | { "SchemaMigrated": { from: number, to: number, } } | { "AutoPruned": { chats: number, rows: number, } } | "AutoPruneFailed" | "PruneNeedsRetention";
 
 export type ChatId = number;
 
@@ -24,7 +24,11 @@ last_active_ms: number,
 /**
  * 채팅의 첫 입력 원문. 입력이 없으면 `None`.
  */
-preview: string | null, };
+preview: string | null, 
+/**
+ * 지울(지운) 채팅의 기록 행 수. 정리 응답에서만 채우고 `ListChats`에서는 `None`.
+ */
+rows: number | null, };
 
 export type ChatNotice = "Compacted" | { "ProviderSwitched": { from: Provider, to: Provider, } } | { "Stopped": { held: Array<TaskLabel>, } } | { "ProviderRestarted": { provider: Provider, } } | "PermissionsChanged" | "ReadOnlyRunKept" | { "ResumeSuggested": { held: Array<TaskLabel>, } } | { "InterruptedSubagentReturned": { provider: Provider, } } | { "StopUnconfirmed": { remaining: number, } } | { "FolderAdded": { path: string, applies_from_next_session: boolean, } } | { "ContextDeferred": { constraints: Array<string>, } } | "PacketOverflow" | { "RequestSummary": { provider_tokens: Array<[Provider, number]>, router_calls: number, router_tokens: number, elapsed_ms: number, } };
 

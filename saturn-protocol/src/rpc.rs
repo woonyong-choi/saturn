@@ -522,6 +522,8 @@ pub enum Alert {
     AutoPruned { chats: u32, rows: u64 },
     /// 시작할 때 자동 정리가 실패했다. 아무것도 지우지 않았다. 첫 TUI에만 보낸다.
     AutoPruneFailed,
+    /// `Prune`을 보냈는데 `retention.max_age_days`가 없어 거절했다. 요청한 접속에만 보낸다.
+    PruneNeedsRetention,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
@@ -611,6 +613,9 @@ pub struct ChatListItem {
     pub last_active_ms: u64,
     /// 채팅의 첫 입력 원문. 입력이 없으면 `None`.
     pub preview: Option<String>,
+    /// 지울(지운) 채팅의 기록 행 수. 정리 응답에서만 채우고 `ListChats`에서는 `None`.
+    #[serde(default)]
+    pub rows: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

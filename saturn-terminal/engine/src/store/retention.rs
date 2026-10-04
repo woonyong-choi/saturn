@@ -62,6 +62,8 @@ pub(crate) struct PrunePlan {
     pub skipped: Vec<(ChatId, Vec<SkipReason>)>,
     /// 판단 기록과 설정 스냅샷은 세지 않는다.
     pub rows: u64,
+    /// 지울 채팅마다의 행 수. 합이 `rows`다.
+    pub chat_rows: Vec<(ChatId, u64)>,
 }
 
 /// 같은 id가 다시 들어오면 알아보는 데 쓴다.
@@ -211,14 +213,17 @@ async fn plan_prune_on(
             plan.skipped.push((chat, reasons));
             continue;
         }
+        let mut chat_rows = 0;
         for table in COUNTED_TABLES {
             let count: i64 =
                 sqlx::query_scalar(&format!("SELECT COUNT(*) FROM {table} WHERE chat_id = ?"))
                     .bind(id)
                     .fetch_one(&mut *conn)
                     .await?;
-            plan.rows += from_sql_int(count);
+            chat_rows += from_sql_int(count);
         }
+        plan.rows += chat_rows;
+        plan.chat_rows.push((chat, chat_rows));
         plan.chats.push(chat);
     }
     Ok(plan)

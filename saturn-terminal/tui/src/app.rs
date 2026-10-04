@@ -36,6 +36,7 @@ use crate::view::live_area::LiveArea;
 use crate::view::model_picker::ModelPicker;
 use crate::view::permission::PermissionQueue;
 use crate::view::popup::{Popup, PopupItem, PopupSuppress};
+use crate::view::prune_window::PruneWindow;
 use crate::view::resume_prompt::ResumePrompt;
 use crate::view::router_key_prompt::RouterKeyPrompt;
 use crate::view::router_version::RouterVersionScreen;
@@ -87,6 +88,7 @@ pub(crate) enum Window {
     TrainConfirm(TrainConfirm),
     StopConfirm(StopConfirm),
     Model(ModelPicker),
+    Prune(PruneWindow),
     Shortcuts,
 }
 
@@ -258,6 +260,7 @@ impl App {
             Some(Window::TrainConfirm(_)) => return KeyArea::TrainConfirm,
             Some(Window::StopConfirm(_)) => return KeyArea::StopConfirm,
             Some(Window::Model(_)) => return KeyArea::ModelPicker,
+            Some(Window::Prune(_)) => return KeyArea::PruneWindow,
             _ => {}
         }
         if self.popup.is_some() {
@@ -503,6 +506,7 @@ impl App {
             KeyArea::TrainConfirm => self.on_train_action(action),
             KeyArea::StopConfirm => self.on_stop_confirm_action(action),
             KeyArea::ModelPicker => self.on_model_action(action),
+            KeyArea::PruneWindow => self.on_prune_action(action),
             KeyArea::Popup => self.on_popup_action(action),
             _ => self.on_composer_action(action),
         }

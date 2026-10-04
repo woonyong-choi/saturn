@@ -1570,6 +1570,7 @@ dependencies = [
 name = "saturn-tui"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "crossterm",
  "ratatui",
  "saturn-protocol",

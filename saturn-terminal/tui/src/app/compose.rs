@@ -14,6 +14,7 @@ use crate::keys::Action;
 use crate::view::composer::Composer;
 use crate::view::model_picker::ModelPicker;
 use crate::view::popup::{self, Popup, PopupItem, PopupKind};
+use crate::view::prune_window::PruneWindow;
 use crate::view::router_version::RouterVersionScreen;
 use crate::view::task_list::TaskList;
 use crate::view::transcript::TranscriptCell;
@@ -300,6 +301,10 @@ impl App {
             SlashCommand::Usage => {
                 self.open_window(Window::Usage(UsageScreen::new(UsageRange::Chat)));
                 Some(usage_request(UsageRange::Chat))
+            }
+            SlashCommand::Prune => {
+                self.open_window(Window::Prune(PruneWindow::default()));
+                Some(Request::Prune { yes: false })
             }
             SlashCommand::Train {
                 reset_thresholds,

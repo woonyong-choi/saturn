@@ -243,6 +243,12 @@ pub const MODEL_TITLE: &str = "모델 고르기";
 pub const MODEL_LOADING: &str = "모델 목록을 불러오는 중";
 pub const MODEL_EMPTY: &str = "고를 수 있는 모델이 없습니다";
 pub const MODEL_HINT: &str = "↑↓ 이동 · Enter 고르기 · Esc 취소";
+pub const PRUNE_TITLE: &str = "기록 정리";
+pub const PRUNE_HINT: &str = "↑↓ 이동 · y 지우기 · Esc 취소";
+pub const PRUNE_HINT_CLOSE: &str = "Esc 닫기";
+/// `{n}`은 그 채팅의 기록 행 수.
+pub const PRUNE_ROWS: &str = "{n}행";
+
 /// `{provider}`와 `{model}` 자리는 호출하는 쪽이 채운다.
 pub const MODEL_PINNED: &str = "다음 입력부터 {provider} · {model} 모델로 보냅니다";
 pub const YES: &str = "예";

@@ -493,6 +493,13 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("기준값 조정 대상", "Threshold targets"),
     ("모델 추가 학습", "Retrain model"),
     ("모델 고르기", "Choose model"),
+    ("기록 정리", "Prune records"),
+    (
+        "↑↓ 이동 · y 지우기 · Esc 취소",
+        "↑↓ Move · y Delete · Esc Cancel",
+    ),
+    ("Esc 닫기", "Esc Close"),
+    ("{n}행", "{n} rows"),
     ("모델 목록을 불러오는 중", "Loading models"),
     ("고를 수 있는 모델이 없습니다", "No models to choose from"),
     (

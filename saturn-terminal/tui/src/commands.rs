@@ -63,6 +63,11 @@ pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
         values: &[],
     },
     CommandSpec {
+        path: "prune",
+        description: "기록 정리",
+        values: &[],
+    },
+    CommandSpec {
         path: "train",
         description: "판단 모델 학습",
         values: &[],
@@ -125,6 +130,8 @@ pub(crate) enum SlashCommand {
     Tasks,
     /// `/usage`. 범위는 화면에서 `d`, `w`로 바꾼다.
     Usage,
+    /// `/prune`. 지울 채팅을 미리 보이는 창을 연다.
+    Prune,
     /// 채점 후보가 200건 미만이면 engine이 거절한다.
     Train {
         reset_thresholds: bool,
@@ -173,6 +180,7 @@ pub(crate) fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         "model" => parse_model(&args)?,
         "tasks" => no_args("tasks", &args, SlashCommand::Tasks)?,
         "usage" => no_args("usage", &args, SlashCommand::Usage)?,
+        "prune" => no_args("prune", &args, SlashCommand::Prune)?,
         "train" => parse_train(&args)?,
         "router" => parse_router(&args)?,
         "" => {
@@ -395,6 +403,8 @@ mod tests {
     #[test]
     fn parse_usage_takes_no_arguments() {
         assert_eq!(parse("/usage").unwrap(), Some(SlashCommand::Usage));
+        assert_eq!(parse("/prune").unwrap(), Some(SlashCommand::Prune));
+        assert!(parse("/prune all").is_err());
         assert!(matches!(
             parse("/usage week"),
             Err(CommandError::InvalidArgument {

@@ -13,6 +13,7 @@ pub(crate) mod live_area;
 pub(crate) mod model_picker;
 pub(crate) mod permission;
 pub(crate) mod popup;
+pub(crate) mod prune_window;
 pub(crate) mod resume_prompt;
 pub(crate) mod router_key_prompt;
 pub(crate) mod router_version;
