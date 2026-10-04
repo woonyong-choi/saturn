@@ -74,6 +74,7 @@ pub const HELD_CLOSED: &str = "보류를 닫았습니다";
 pub const ROUTER_PAUSED: &str = "자동 판단 일시 중단";
 pub const ROUTER_DISCONNECTED: &str = "판단 모델 연결 끊김";
 pub const STEER_NOT_READY: &str = "바로 반영 준비 중";
+pub const INPUT_NOT_RECORDED: &str = "입력은 전달됨 · 기록 저장이 늦어짐";
 pub const ROUTER_UNAVAILABLE_SEND: &str = "라우터 연결 없음 · 차례에 보냅니다";
 pub const BUSY_ELSEWHERE: &str = "다른 Saturn에서 실행 중";
 /// `{to}`는 이관한 스키마 버전.

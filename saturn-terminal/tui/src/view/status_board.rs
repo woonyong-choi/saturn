@@ -605,6 +605,7 @@ pub(crate) fn alert_text(lang: Lang, alert: &Alert) -> String {
             );
         }
         Alert::RouterDownSendingInOrder => i18n::ROUTER_UNAVAILABLE_SEND,
+        Alert::InputNotRecorded => i18n::INPUT_NOT_RECORDED,
         Alert::PruneNeedsRetention => i18n::CLI_PRUNE_NO_RETENTION,
         Alert::SchemaMigrated { to, .. } => {
             return lang

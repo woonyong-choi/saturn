@@ -115,6 +115,8 @@ pub(crate) struct FlowState {
     pub(crate) models: HashMap<(ChatId, Provider), Vec<ModelInfo>>,
     /// 접속마다 마지막으로 알린 기본 모델과 모델 선택 방식. 같은 값은 다시 알리지 않는다.
     pub(crate) model_shown: HashMap<ClientId, crate::models::ModelPlan>,
+    /// provider가 받았지만 기록 저장소에 연결을 쓰지 못한 끼워 넣기 입력. 기록만 다시 시도하고 provider에는 다시 보내지 않는다.
+    pub(crate) unrecorded_steers: Vec<crate::dispatch::UnrecordedSteer>,
     /// 연결이 마지막으로 알린 명령 목록. 나중에 붙는 TUI에 그대로 보낸다.
     pub(crate) commands: HashMap<(ChatId, Provider), Vec<CommandInfo>>,
     /// 시작 때 읽은 provider CLI 버전. 읽지 못한 provider는 항목이 없다.
@@ -272,6 +274,7 @@ impl Default for FlowState {
             judging: HashMap::new(),
             models: HashMap::new(),
             model_shown: HashMap::new(),
+            unrecorded_steers: Vec::new(),
             commands: HashMap::new(),
             cli_versions: HashMap::new(),
             router_tx,

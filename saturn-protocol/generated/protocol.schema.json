@@ -53,6 +53,11 @@
           "type": "string"
         },
         {
+          "const": "InputNotRecorded",
+          "description": "provider가 끼워 넣은 입력을 받았지만 기록 저장소에 쓰지 못했다. 입력은 `Delivering`으로 두고 기록만 다시 시도한다.",
+          "type": "string"
+        },
+        {
           "additionalProperties": false,
           "description": "끼워 넣기 실측 전이라 대기로 처리한다.",
           "properties": {

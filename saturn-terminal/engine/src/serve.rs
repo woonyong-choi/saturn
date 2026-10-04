@@ -65,6 +65,7 @@ impl Engine {
                 _ = tick.tick() => {
                     let settled = self.settle_signals(Instant::now()).await;
                     self.warn_failure("failed to settle judgment signals", settled);
+                    self.retry_unrecorded_steers().await;
                 }
             }
         }
