@@ -37,8 +37,8 @@ struct Args {
 /// 인자가 모자라거나 모르는 값이면 오류.
 fn parse_args(raw: &[String]) -> anyhow::Result<Args> {
     let provider = match raw.first().map(String::as_str) {
-        Some("codex") => Provider::Codex,
-        Some("claude") => Provider::Claude,
+        Some("codex") => Provider::from_static("codex"),
+        Some("claude") => Provider::from_static("claude"),
         _ => bail!("{USAGE}"),
     };
     let value = |name: &str| {
@@ -181,7 +181,7 @@ mod tests {
 
         let args = parse_args(&raw).unwrap();
 
-        assert_eq!(args.provider, Provider::Codex);
+        assert_eq!(args.provider, Provider::from_static("codex"));
         assert_eq!(args.model.as_deref(), Some("m"));
         assert_eq!(args.timeout, Duration::from_secs(600));
     }

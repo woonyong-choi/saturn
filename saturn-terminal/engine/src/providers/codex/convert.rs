@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use saturn_protocol::event::{
     Activity, LineChange, ProviderEvent, ToolCategory, ToolDetail, UsageReport, UsageScope,
 };
-use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SubagentId};
+use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use serde_json::{Value, json};
 
@@ -25,7 +25,7 @@ pub(super) fn model_info(entry: &Value) -> Option<ModelInfo> {
     let model = entry["model"].as_str().or_else(|| entry["id"].as_str())?;
     Some(ModelInfo {
         choice: ModelChoice {
-            provider: Provider::Codex,
+            provider: crate::providers::CODEX,
             model: model.to_owned(),
         },
         name: entry["displayName"].as_str().unwrap_or(model).to_owned(),

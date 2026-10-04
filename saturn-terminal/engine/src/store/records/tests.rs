@@ -4,6 +4,8 @@ use saturn_protocol::ids::{LedgerSeq, ProviderSessionId};
 use saturn_protocol::rpc::UsageRange;
 use saturn_protocol::state::SessionState;
 
+use crate::store::HistoryEntry;
+
 use super::*;
 use crate::store::tests::temp_store;
 
@@ -43,7 +45,7 @@ pub(crate) fn new_run(input: Option<InputId>, session: SessionId) -> NewRun {
         task: TaskId(1),
         agent: AgentId(1),
         session,
-        provider: Provider::Codex,
+        provider: crate::providers::CODEX,
         effect_scope: EffectScope::NetworkPossible,
     }
 }
@@ -54,7 +56,7 @@ pub(crate) fn session_record(id: SessionId, chat: ChatId, state: SessionState) -
         chat,
         agent: AgentId(1),
         role: AgentRole::Main,
-        provider: Provider::Claude,
+        provider: crate::providers::CLAUDE,
         provider_session: Some(ProviderSessionId("thread-1".to_owned())),
         model: None,
         state,
@@ -418,4 +420,49 @@ async fn stop_request_begins_and_ends_once() {
         store.end_stop(chat).await.unwrap_err(),
         StoreError::NotFound { .. }
     ));
+}
+
+/// 옛 버전이 `Codex`, `Claude`로 쓴 provider 열을 같은 id로 읽는다. 옛 행은 고치지 않는다.
+#[tokio::test]
+async fn old_provider_values_read_as_open_ids() {
+    let (_dir, store) = temp_store().await;
+    let (chat, _, session, _) = chat_with_run(&store).await;
+    sqlx::query("UPDATE sessions SET provider = 'Claude'")
+        .execute(&store.pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE runs SET provider = 'Codex'")
+        .execute(&store.pool)
+        .await
+        .unwrap();
+
+    let mains = store.live_mains().await.unwrap();
+    let (history, _) = store.recent_history(chat, 10).await.unwrap();
+
+    assert_eq!(mains[0].0.id, session);
+    assert_eq!(mains[0].0.provider, crate::providers::CLAUDE);
+    let provider = history.iter().find_map(|entry| match entry {
+        HistoryEntry::Run { provider, .. } => Some(*provider),
+        HistoryEntry::Input { .. } => None,
+    });
+    assert_eq!(provider, Some(crate::providers::CODEX));
+    let stored: String = sqlx::query_scalar("SELECT provider FROM runs")
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+    assert_eq!(stored, "Codex");
+}
+
+/// 새로 쓰는 값은 id 글자다.
+#[tokio::test]
+async fn new_provider_values_are_written_as_ids() {
+    let (_dir, store) = temp_store().await;
+    chat_with_run(&store).await;
+
+    let stored: String = sqlx::query_scalar("SELECT provider FROM runs")
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+
+    assert_eq!(stored, "codex");
 }

@@ -476,7 +476,7 @@ impl Engine {
         self.providers.remove(&(chat, provider));
         self.flow.questions_of_connection.remove(&(chat, provider));
         self.flow.stale_connections.remove(&(chat, provider));
-        if provider == Provider::Codex {
+        if provider == crate::providers::CODEX {
             self.flow.rules_of_connection.remove(&chat);
         }
         let lost: Vec<LiveSession> = self

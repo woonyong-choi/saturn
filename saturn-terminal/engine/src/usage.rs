@@ -359,8 +359,8 @@ mod tests {
     #[tokio::test]
     async fn usage_rows_group_by_provider_model_and_router() {
         let fixture = Fixture::new().await;
-        let codex = fixture.session(1, Provider::Codex).await;
-        let first = fixture.run(codex, Provider::Codex).await;
+        let codex = fixture.session(1, crate::providers::CODEX).await;
+        let first = fixture.run(codex, crate::providers::CODEX).await;
         fixture
             .report(
                 first,
@@ -371,8 +371,8 @@ mod tests {
                 Some(10),
             )
             .await;
-        let silent = fixture.run(codex, Provider::Codex).await;
-        let third = fixture.run(codex, Provider::Codex).await;
+        let silent = fixture.run(codex, crate::providers::CODEX).await;
+        let third = fixture.run(codex, crate::providers::CODEX).await;
         fixture
             .report(
                 third,
@@ -383,8 +383,8 @@ mod tests {
                 None,
             )
             .await;
-        let claude = fixture.session(2, Provider::Claude).await;
-        let turn = fixture.run(claude, Provider::Claude).await;
+        let claude = fixture.session(2, crate::providers::CLAUDE).await;
+        let turn = fixture.run(claude, crate::providers::CLAUDE).await;
         fixture
             .report(turn, claude, UsageScope::MainTurn, "opus", 40, Some(4))
             .await;
@@ -429,7 +429,7 @@ mod tests {
             id,
             run: RunId(run),
             session: SessionId(1),
-            provider: Provider::Codex,
+            provider: crate::providers::CODEX,
             report: UsageReport {
                 agent: AgentId(1),
                 subagent: None,

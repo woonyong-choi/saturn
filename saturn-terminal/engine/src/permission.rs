@@ -78,13 +78,13 @@ impl Engine {
             .is_some_and(|started| started != rules);
         [
             (
-                Provider::Codex,
+                crate::providers::CODEX,
                 codex_rules_differ
-                    || asked(Provider::Codex).is_some_and(|started| *started != questions),
+                    || asked(crate::providers::CODEX).is_some_and(|started| *started != questions),
             ),
             (
-                Provider::Claude,
-                asked(Provider::Claude).is_some_and(|started| *started != questions),
+                crate::providers::CLAUDE,
+                asked(crate::providers::CLAUDE).is_some_and(|started| *started != questions),
             ),
         ]
     }
@@ -109,7 +109,7 @@ impl Engine {
         if self.chat_is_running(chat) {
             return;
         }
-        for provider in [Provider::Codex, Provider::Claude] {
+        for provider in [crate::providers::CODEX, crate::providers::CLAUDE] {
             if self.flow.stale_connections.remove(&(chat, provider)) {
                 self.restart_connection(chat, provider).await;
             }
@@ -120,7 +120,7 @@ impl Engine {
     async fn restart_connection(&mut self, chat: ChatId, provider: Provider) {
         self.flow.stale_connections.remove(&(chat, provider));
         self.flow.questions_of_connection.remove(&(chat, provider));
-        if provider == Provider::Codex {
+        if provider == crate::providers::CODEX {
             self.flow.rules_of_connection.remove(&chat);
         }
         let Some(connection) = self.providers.remove(&(chat, provider)) else {
@@ -158,8 +158,8 @@ impl Engine {
         sessions: &[(AgentId, ProviderSessionId)],
     ) {
         match provider {
-            Provider::Codex => self.stop_shared_connection(connection).await,
-            Provider::Claude => {
+            crate::providers::CODEX => self.stop_shared_connection(connection).await,
+            _ => {
                 for (_, session) in sessions {
                     if let Err(error) = connection.close_session(session).await {
                         tracing::warn!(error = %self.failure_line(&error), "failed to close the claude session for restart");

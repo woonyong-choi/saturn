@@ -3,7 +3,6 @@
 
 use saturn_protocol::ids::{Provider, TaskLabel};
 
-use crate::i18n::provider_name;
 use crate::labels::LABEL_RANGE;
 
 #[derive(Debug, thiserror::Error)]
@@ -254,12 +253,7 @@ fn parse_add_dir(body: &str) -> Result<SlashCommand, CommandError> {
 fn parse_model(args: &[&str]) -> Result<SlashCommand, CommandError> {
     let provider = match args {
         [] => None,
-        [name] => Some(
-            [Provider::Codex, Provider::Claude]
-                .into_iter()
-                .find(|provider| provider_name(*provider) == *name)
-                .ok_or_else(|| invalid("model", name))?,
-        ),
+        [name] => Some(Provider::parse(name).map_err(|_| invalid("model", name))?),
         _ => return Err(invalid("model", &args.join(" "))),
     };
     Ok(SlashCommand::Model { provider })
@@ -343,11 +337,17 @@ mod tests {
         assert_eq!(
             parse("/model codex").unwrap(),
             Some(SlashCommand::Model {
-                provider: Some(Provider::Codex)
+                provider: Some(Provider::from_static("codex"))
+            })
+        );
+        assert_eq!(
+            parse("/model gemini").unwrap(),
+            Some(SlashCommand::Model {
+                provider: Some(Provider::from_static("gemini"))
             })
         );
         assert!(matches!(
-            parse("/model gemini"),
+            parse("/model Gem/ini"),
             Err(CommandError::InvalidArgument {
                 command: "model",
                 ..

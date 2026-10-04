@@ -5,6 +5,8 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Map, Value};
 
+use saturn_protocol::ids::Provider;
+
 use super::{
     CONFIG_FILE, Layer, LayerSource, Settings, SettingsError, SettingsSnapshot, permission,
 };
@@ -54,13 +56,13 @@ share_with_server = false
 safety_percent = 70
 mode = "saturn"
 
-[context.codex]
+[provider.codex.context]
 t_abs = 200000
 window = 272000
 cache_read = 0.1
 cache_write = 1.0
 
-[context.claude]
+[provider.claude.context]
 t_abs = 200000
 window = 1000000
 cache_read = 0.1
@@ -115,15 +117,94 @@ const SCHEMA: &[(&str, Kind)] = &[
     ("retention.auto_prune", Kind::Flag),
     ("context.safety_percent", Kind::Percent),
     ("context.mode", Kind::OneOf(&["saturn", "provider"])),
-    ("context.codex.t_abs", Kind::Positive),
-    ("context.codex.window", Kind::Positive),
-    ("context.codex.cache_read", Kind::NonNegative),
-    ("context.codex.cache_write", Kind::NonNegative),
-    ("context.claude.t_abs", Kind::Positive),
-    ("context.claude.window", Kind::Positive),
-    ("context.claude.cache_read", Kind::NonNegative),
-    ("context.claude.cache_write", Kind::NonNegative),
 ];
+
+/// provider마다 같은 모양으로 있는 키. `provider.<id>.` 뒤의 경로와 종류다.
+const PROVIDER_SCHEMA: &[(&str, Kind)] = &[
+    ("context.t_abs", Kind::Positive),
+    ("context.window", Kind::Positive),
+    ("context.cache_read", Kind::NonNegative),
+    ("context.cache_write", Kind::NonNegative),
+];
+
+/// `provider.<id>.<경로>` 키의 종류. 형식이 맞는 id와 `PROVIDER_SCHEMA`의 경로만 안다.
+fn provider_key_kind(key: &str) -> Option<Kind> {
+    let rest = key.strip_prefix("provider.")?;
+    let (id, path) = rest.split_once('.')?;
+    if !Provider::is_well_formed(id) {
+        return None;
+    }
+    PROVIDER_SCHEMA
+        .iter()
+        .find(|(name, _)| *name == path)
+        .map(|(_, kind)| *kind)
+}
+
+/// 표 `key`가 알려진 키의 앞부분이면 참. 표 자리에 값을 둔 오류를 "expected a table"로 알리는 데 쓴다.
+fn is_known_table(key: &str) -> bool {
+    if SCHEMA.iter().any(|(name, _)| {
+        name.strip_prefix(key)
+            .is_some_and(|rest| rest.starts_with('.'))
+    }) {
+        return true;
+    }
+    let Some(rest) = key.strip_prefix("provider.") else {
+        return key == "provider";
+    };
+    let (id, path) = rest.split_once('.').unwrap_or((rest, ""));
+    Provider::is_well_formed(id)
+        && PROVIDER_SCHEMA.iter().any(|(name, _)| {
+            path.is_empty()
+                || name
+                    .strip_prefix(path)
+                    .is_some_and(|tail| tail.starts_with('.'))
+        })
+}
+
+/// 옛 키 `context.<id>.<키>`를 새 키 `provider.<id>.context.<키>`로 옮긴다. 같은 층에 새 키가 이미 있으면 새 키가
+/// 이긴다. 층을 나누기 전에 층마다 부르므로 높은 층의 옛 키가 낮은 층의 새 키를 이긴다.
+fn move_context_aliases(values: &mut Value) {
+    let Some(context) = values.get_mut("context").and_then(Value::as_object_mut) else {
+        return;
+    };
+    let old_ids: Vec<String> = context
+        .iter()
+        .filter(|(id, value)| value.is_object() && Provider::is_well_formed(id))
+        .map(|(id, _)| id.clone())
+        .collect();
+    let mut moved = Vec::new();
+    for id in old_ids {
+        if let Some(Value::Object(entries)) = context.remove(&id) {
+            moved.push((id, entries));
+        }
+    }
+    let Some(root) = values.as_object_mut() else {
+        return;
+    };
+    for (id, entries) in moved {
+        let providers = root
+            .entry("provider")
+            .or_insert_with(|| Value::Object(Map::new()));
+        let Some(providers) = providers.as_object_mut() else {
+            continue;
+        };
+        let provider = providers
+            .entry(id)
+            .or_insert_with(|| Value::Object(Map::new()));
+        let Some(provider) = provider.as_object_mut() else {
+            continue;
+        };
+        let target = provider
+            .entry("context")
+            .or_insert_with(|| Value::Object(Map::new()));
+        let Some(target) = target.as_object_mut() else {
+            continue;
+        };
+        for (name, value) in entries {
+            target.entry(name).or_insert(value);
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum UserOnly {
@@ -208,6 +289,7 @@ pub(crate) fn merge(
     let mut permissions = Vec::with_capacity(layers.len());
     for (mut source, content) in layers {
         let mut values = parse_toml(&content, &layer_path(&source))?;
+        move_context_aliases(&mut values);
         let permission =
             permission::read_layer(&content).map_err(|(key, reason)| SettingsError::Invalid {
                 key,
@@ -451,12 +533,9 @@ fn validate(merged: &Map<String, Value>) -> Result<(), (String, String)> {
             .iter()
             .find(|(name, _)| name == key)
             .map(|(_, kind)| *kind)
+            .or_else(|| provider_key_kind(key))
         else {
-            let is_table = SCHEMA.iter().any(|(name, _)| {
-                name.strip_prefix(key.as_str())
-                    .is_some_and(|rest| rest.starts_with('.'))
-            });
-            let reason = if is_table {
+            let reason = if is_known_table(key) {
                 "expected a table"
             } else {
                 "unknown key"
@@ -755,10 +834,114 @@ mod tests {
         assert_eq!(thresholds.resume_held, 0.85);
         assert_eq!(thresholds.file_relevant, (0.7, 0.35));
         assert_eq!(snapshot.settings.retention().max_age, None);
-        let budget = snapshot
-            .settings
-            .context_budget(saturn_protocol::ids::Provider::Claude);
+        let budget = snapshot.settings.context_budget(crate::providers::CLAUDE);
         assert_eq!(budget.window, 1_000_000);
+    }
+
+    fn window_of(layers: Vec<(LayerSource, String)>, provider: Provider) -> u64 {
+        merge(layers)
+            .unwrap()
+            .settings
+            .context_budget(provider)
+            .window
+    }
+
+    #[test]
+    fn provider_context_key_reads_from_the_new_name() {
+        let layers = vec![
+            layer(Layer::Default, default_layer()),
+            layer(Layer::User, "[provider.codex.context]\nwindow = 111\n"),
+        ];
+
+        assert_eq!(window_of(layers, crate::providers::CODEX), 111);
+    }
+
+    #[test]
+    fn old_context_key_is_an_alias_of_the_new_key() {
+        let layers = vec![
+            layer(Layer::Default, default_layer()),
+            layer(Layer::User, "[context.codex]\nwindow = 222\n"),
+        ];
+
+        let snapshot = merge(layers).unwrap();
+
+        assert_eq!(
+            snapshot
+                .settings
+                .context_budget(crate::providers::CODEX)
+                .window,
+            222
+        );
+        assert_eq!(
+            get_path(&snapshot.settings.values, "provider.codex.context.window"),
+            Some(&Value::from(222))
+        );
+        assert_eq!(get_path(&snapshot.settings.values, "context.codex"), None);
+    }
+
+    #[test]
+    fn new_key_wins_over_the_old_alias_in_the_same_layer() {
+        let content = "[context.codex]\nwindow = 222\n[provider.codex.context]\nwindow = 333\n";
+        let layers = vec![
+            layer(Layer::Default, default_layer()),
+            layer(Layer::User, content),
+        ];
+
+        assert_eq!(window_of(layers, crate::providers::CODEX), 333);
+    }
+
+    #[test]
+    fn higher_layer_old_key_beats_lower_layer_new_key() {
+        let layers = vec![
+            layer(Layer::Default, default_layer()),
+            layer(Layer::User, "[provider.codex.context]\nwindow = 333\n"),
+            layer(Layer::Folder, "[context.codex]\nwindow = 444\n"),
+        ];
+
+        assert_eq!(window_of(layers, crate::providers::CODEX), 444);
+    }
+
+    #[test]
+    fn old_snapshot_keeps_its_old_key_name() {
+        let old = Settings {
+            values: serde_json::json!({ "context": { "safety_percent": 70, "codex": { "window": 555 } } }),
+        };
+
+        assert_eq!(old.context_budget(crate::providers::CODEX).window, 555);
+    }
+
+    #[test]
+    fn provider_keys_accept_any_well_formed_id_and_reject_unknown_names() {
+        let ok = vec![
+            layer(Layer::Default, default_layer()),
+            layer(Layer::User, "[provider.my-agent.context]\nwindow = 777\n"),
+        ];
+        assert_eq!(window_of(ok, Provider::parse("my-agent").unwrap()), 777);
+
+        for (content, key) in [
+            (
+                "[provider.codex.context]\nbogus = 1\n",
+                "provider.codex.context.bogus",
+            ),
+            (
+                "[provider.codex.context]\nwindow = 0\n",
+                "provider.codex.context.window",
+            ),
+            (
+                "[provider.Codex.context]\nwindow = 5\n",
+                "provider.Codex.context.window",
+            ),
+        ] {
+            let error = merge(vec![
+                layer(Layer::Default, default_layer()),
+                layer(Layer::User, content),
+            ])
+            .unwrap_err();
+            assert!(
+                matches!(&error, SettingsError::Invalid { key: found, .. } if found == key),
+                "{content}: {error:?}"
+            );
+        }
     }
 
     #[test]

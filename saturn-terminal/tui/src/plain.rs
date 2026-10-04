@@ -320,7 +320,7 @@ mod tests {
             task: TaskId(1),
             label: TaskLabel('A'),
             state,
-            provider: Some(Provider::Codex),
+            provider: Some(Provider::from_static("codex")),
             elapsed_ms,
             failure: None,
         }
@@ -378,7 +378,7 @@ mod tests {
                 chat: ChatId(1),
                 task: None,
                 notice: ChatNotice::RequestSummary {
-                    provider_tokens: vec![(Provider::Codex, 4_120)],
+                    provider_tokens: vec![(Provider::from_static("codex"), 4_120)],
                     router_calls: 0,
                     router_tokens: 0,
                     elapsed_ms: 45_000,

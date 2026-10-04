@@ -93,7 +93,7 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 
 ### provider 계층과 어댑터
 
-provider 연결은 세 계층으로 나눈다. 이 절의 동작은 모두 구현 전이고 구현 범위는 [#412](https://github.com/woonyong-choi/saturn/issues/412)다. 지금은 `ProviderClient` trait과 `ProviderEvent`만 provider 중립이다.
+provider 연결은 세 계층으로 나눈다. 이 절의 동작은 대부분 구현 전이고 구현 범위는 [#412](https://github.com/woonyong-choi/saturn/issues/412)다. 지금은 `ProviderClient` trait, `ProviderEvent`, provider id 값(`protocol`의 `Provider`)이 provider 중립이다.
 
 | 계층 | 하는 일 | 위치 |
 |---|---|---|
@@ -117,6 +117,8 @@ Saturn 인터페이스 계약은 아래 동작을 provider 이름 없이 정한�
 ### provider id와 설명자
 
 provider는 닫힌 enum이 아니라 열린 id 글자로 식별한다. id는 소문자 영문, 숫자, `-`만 쓰고 어댑터 폴더 이름과 같다(`codex`, `claude`). `/`를 쓰지 않는다. 모델 고정 글 `<provider>/<model>`을 첫 `/`에서 나누기 위해서다.
+
+id 값은 구현했다. `protocol`의 `Provider`는 id 글자를 담은 값이고 형식(1~32자의 소문자 영문, 숫자, `-`)이 틀린 글자는 만들지 못한다. 값은 프로세스 안에서 글자를 한 번만 잡아 두고 복사해 쓰므로, 서로 다른 id는 한 프로세스에 64개까지만 받는다. 엉뚱한 입력이 메모리를 늘리지 못하게 하기 위해서다. 값을 읽을 때는 대소문자를 가리지 않는다.
 
 어댑터는 등록할 때 설명자를 알린다.
 
@@ -478,7 +480,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | provider는 열린 id로 식별하고 어댑터 밖 공통 코드는 provider 이름으로 분기하지 않는다. | 구현 전(#412). `providers/<id>` 밖 비테스트 코드의 provider 이름 분기를 `grep`으로 확인한다. |
 | 어댑터 파일만 더해 가짜 provider를 붙일 수 있다. | 구현 전(#412). 공통 코드를 바꾸지 않고 가짜 어댑터 하나를 등록해 session 열기부터 턴 끝까지 확인한다. |
 | 어댑터 설명자의 표시명, 실행 파일, 기본 순서, 지시 문서 이름을 화면과 첫 입력 기본 provider, 패킷이 쓴다. | 구현 전(#412). 가짜 설명자의 값이 각각 반영되는지 확인한다. |
-| 기록 저장소의 옛 provider 값 `Codex`, `Claude`와 모델 고정 글 `codex/<model>`, `claude/<model>`이 옛 값 그대로 읽힌다. | 구현 전(#412). 옛 값이 든 기록 저장소를 열어 같은 id로 읽히는지 확인한다. |
+| 기록 저장소의 옛 provider 값 `Codex`, `Claude`와 모델 고정 글 `codex/<model>`, `claude/<model>`이 옛 값 그대로 읽힌다. | `saturn-terminal/engine/src/store/records/tests.rs`의 `old_provider_values_read_as_open_ids`, `saturn-protocol/src/ids.rs`의 `old_stored_values_read_as_the_same_id`, `saturn-terminal/engine/src/providers/mod.rs`의 `pinned_text_keeps_the_old_provider_prefix` |
 | 인터페이스 판이 지원 범위 밖인 어댑터는 등록하지 않는다. | 구현 전(#412). 판 번호가 다른 가짜 어댑터로 확인한다. |
 | engine 시작 때 provider CLI 버전이 마지막으로 확인한 버전과 다르면 알리고, 버전이 바뀌면 실제 provider로 입력, 전환, 다시 열기만 도는 빠른 확인 절차가 `scripts/e2e`에 있다. | 구현 전(#412). 마지막 확인 버전을 바꿔 시작 알림을 확인하고, 실제 Codex와 Claude로 빠른 확인 절차를 실행한다. |
 

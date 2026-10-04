@@ -28,20 +28,29 @@ fn last_turn(active: u64, secs_ago: u64) -> LastTurn {
 /// Claude가 열림, Codex 보관(id 1)인 채팅. Codex로 돌아가는 판정을 시험한다.
 fn archived_codex(active: u64, secs_ago: u64) -> SessionManager {
     let mut manager = manager_with(vec![
-        record(1, Provider::Codex, SessionState::ClosedResumable),
-        record(2, Provider::Claude, SessionState::Open),
+        record(
+            1,
+            Provider::from_static("codex"),
+            SessionState::ClosedResumable,
+        ),
+        record(2, Provider::from_static("claude"), SessionState::Open),
     ]);
     manager.record_last_turn(SessionId(1), last_turn(active, secs_ago));
     manager
 }
 
 fn return_target(manager: &SessionManager, packet: u64) -> SendTarget {
-    manager.target_for_send(CHAT, Provider::Codex, AgentRole::Main, &inputs(packet))
+    manager.target_for_send(
+        CHAT,
+        Provider::from_static("codex"),
+        AgentRole::Main,
+        &inputs(packet),
+    )
 }
 
 fn new_codex() -> SendTarget {
     SendTarget::New {
-        provider: Provider::Codex,
+        provider: Provider::from_static("codex"),
         role: AgentRole::Main,
     }
 }
@@ -76,12 +85,17 @@ fn manager_with(records: Vec<SessionRecord>) -> SessionManager {
 fn target_for_send_without_session_returns_new() {
     let manager = SessionManager::new();
 
-    let target = manager.target_for_send(CHAT, Provider::Claude, AgentRole::Main, &inputs(50_000));
+    let target = manager.target_for_send(
+        CHAT,
+        Provider::from_static("claude"),
+        AgentRole::Main,
+        &inputs(50_000),
+    );
 
     assert_eq!(
         target,
         SendTarget::New {
-            provider: Provider::Claude,
+            provider: Provider::from_static("claude"),
             role: AgentRole::Main
         }
     );
@@ -89,9 +103,18 @@ fn target_for_send_without_session_returns_new() {
 
 #[test]
 fn target_for_send_open_same_provider_returns_open() {
-    let manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
+    let manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Open,
+    )]);
 
-    let target = manager.target_for_send(CHAT, Provider::Claude, AgentRole::Main, &inputs(50_000));
+    let target = manager.target_for_send(
+        CHAT,
+        Provider::from_static("claude"),
+        AgentRole::Main,
+        &inputs(50_000),
+    );
 
     assert_eq!(target, SendTarget::Open(SessionId(1)));
 }
@@ -100,36 +123,59 @@ fn target_for_send_open_same_provider_returns_open() {
 fn target_for_send_closed_session_returns_resume() {
     let manager = manager_with(vec![record(
         1,
-        Provider::Codex,
+        Provider::from_static("codex"),
         SessionState::ClosedResumable,
     )]);
 
-    let target = manager.target_for_send(CHAT, Provider::Codex, AgentRole::Main, &inputs(50_000));
+    let target = manager.target_for_send(
+        CHAT,
+        Provider::from_static("codex"),
+        AgentRole::Main,
+        &inputs(50_000),
+    );
 
     assert_eq!(target, SendTarget::Resume(SessionId(1)));
 }
 
 #[test]
 fn target_for_send_closed_without_provider_id_returns_new() {
-    let mut closed = record(1, Provider::Codex, SessionState::ClosedResumable);
+    let mut closed = record(
+        1,
+        Provider::from_static("codex"),
+        SessionState::ClosedResumable,
+    );
     closed.provider_session = None;
     let manager = manager_with(vec![closed]);
 
-    let target = manager.target_for_send(CHAT, Provider::Codex, AgentRole::Main, &inputs(50_000));
+    let target = manager.target_for_send(
+        CHAT,
+        Provider::from_static("codex"),
+        AgentRole::Main,
+        &inputs(50_000),
+    );
 
     assert!(matches!(target, SendTarget::New { .. }));
 }
 
 #[test]
 fn target_for_send_other_provider_returns_new() {
-    let manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
+    let manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Open,
+    )]);
 
-    let target = manager.target_for_send(CHAT, Provider::Codex, AgentRole::Main, &inputs(50_000));
+    let target = manager.target_for_send(
+        CHAT,
+        Provider::from_static("codex"),
+        AgentRole::Main,
+        &inputs(50_000),
+    );
 
     assert_eq!(
         target,
         SendTarget::New {
-            provider: Provider::Codex,
+            provider: Provider::from_static("codex"),
             role: AgentRole::Main
         }
     );
@@ -137,14 +183,23 @@ fn target_for_send_other_provider_returns_new() {
 
 #[test]
 fn target_for_send_sub_always_returns_new() {
-    let manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
+    let manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Open,
+    )]);
 
-    let target = manager.target_for_send(CHAT, Provider::Claude, AgentRole::Sub, &inputs(50_000));
+    let target = manager.target_for_send(
+        CHAT,
+        Provider::from_static("claude"),
+        AgentRole::Sub,
+        &inputs(50_000),
+    );
 
     assert_eq!(
         target,
         SendTarget::New {
-            provider: Provider::Claude,
+            provider: Provider::from_static("claude"),
             role: AgentRole::Sub
         }
     );
@@ -152,18 +207,34 @@ fn target_for_send_sub_always_returns_new() {
 
 #[test]
 fn register_second_open_main_returns_error() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Open,
+    )]);
 
-    let result = manager.register(record(2, Provider::Codex, SessionState::Open));
+    let result = manager.register(record(
+        2,
+        Provider::from_static("codex"),
+        SessionState::Open,
+    ));
 
     assert!(matches!(result, Err(SessionError::MainAlreadyOpen)));
 }
 
 #[test]
 fn register_duplicate_id_returns_error() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Ended)]);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Ended,
+    )]);
 
-    let result = manager.register(record(1, Provider::Codex, SessionState::Open));
+    let result = manager.register(record(
+        1,
+        Provider::from_static("codex"),
+        SessionState::Open,
+    ));
 
     assert!(matches!(
         result,
@@ -173,8 +244,12 @@ fn register_duplicate_id_returns_error() {
 
 #[test]
 fn register_sub_beside_main_succeeds() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
-    let mut sub = record(2, Provider::Codex, SessionState::Open);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Open,
+    )]);
+    let mut sub = record(2, Provider::from_static("codex"), SessionState::Open);
     sub.role = AgentRole::Sub;
 
     let result = manager.register(sub);
@@ -184,9 +259,16 @@ fn register_sub_beside_main_succeeds() {
 
 #[test]
 fn replace_during_turn_returns_not_at_turn_boundary() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Open,
+    )]);
 
-    let result = manager.replace(SessionId(1), record(2, Provider::Codex, SessionState::Open));
+    let result = manager.replace(
+        SessionId(1),
+        record(2, Provider::from_static("codex"), SessionState::Open),
+    );
 
     assert!(matches!(result, Err(SessionError::NotAtTurnBoundary)));
 }
@@ -196,11 +278,18 @@ fn replace_during_turn_returns_not_at_turn_boundary() {
 // basis: estimate
 #[test]
 fn replace_keeps_one_live_session_per_chat() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Open,
+    )]);
     manager.mark_idle(SessionId(1), Instant::now());
 
     manager
-        .replace(SessionId(1), record(2, Provider::Codex, SessionState::Open))
+        .replace(
+            SessionId(1),
+            record(2, Provider::from_static("codex"), SessionState::Open),
+        )
         .unwrap();
 
     let live: Vec<SessionId> = manager
@@ -214,12 +303,19 @@ fn replace_keeps_one_live_session_per_chat() {
 
 #[test]
 fn replace_attaches_only_after_previous_delivered() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Open,
+    )]);
     manager.mark_delivered(SessionId(1), LedgerSeq(40));
     manager.mark_idle(SessionId(1), Instant::now());
 
     manager
-        .replace(SessionId(1), record(2, Provider::Codex, SessionState::Open))
+        .replace(
+            SessionId(1),
+            record(2, Provider::from_static("codex"), SessionState::Open),
+        )
         .unwrap();
 
     assert_eq!(manager.attach_from(SessionId(2)), LedgerSeq(40));
@@ -227,9 +323,13 @@ fn replace_attaches_only_after_previous_delivered() {
 
 #[test]
 fn replace_keeps_packet_seq_when_newer() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Held)]);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Held,
+    )]);
     manager.mark_delivered(SessionId(1), LedgerSeq(40));
-    let mut new = record(2, Provider::Codex, SessionState::Open);
+    let mut new = record(2, Provider::from_static("codex"), SessionState::Open);
     new.delivered = LedgerSeq(55);
 
     manager.replace(SessionId(1), new).unwrap();
@@ -241,15 +341,22 @@ fn replace_keeps_packet_seq_when_newer() {
 fn replace_unknown_session_returns_not_found() {
     let mut manager = SessionManager::new();
 
-    let result = manager.replace(SessionId(9), record(2, Provider::Codex, SessionState::Open));
+    let result = manager.replace(
+        SessionId(9),
+        record(2, Provider::from_static("codex"), SessionState::Open),
+    );
 
     assert!(matches!(result, Err(SessionError::NotFound(SessionId(9)))));
 }
 
 #[test]
 fn replace_other_chat_keeps_original_session() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Held)]);
-    let mut other_chat = record(2, Provider::Codex, SessionState::Open);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Held,
+    )]);
+    let mut other_chat = record(2, Provider::from_static("codex"), SessionState::Open);
     other_chat.chat = ChatId(2);
 
     let result = manager.replace(SessionId(1), other_chat);
@@ -260,9 +367,16 @@ fn replace_other_chat_keeps_original_session() {
 
 #[test]
 fn replace_duplicate_id_keeps_original_session() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Held)]);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Held,
+    )]);
 
-    let result = manager.replace(SessionId(1), record(1, Provider::Codex, SessionState::Open));
+    let result = manager.replace(
+        SessionId(1),
+        record(1, Provider::from_static("codex"), SessionState::Open),
+    );
 
     assert!(matches!(
         result,
@@ -273,7 +387,11 @@ fn replace_duplicate_id_keeps_original_session() {
 
 #[test]
 fn mark_delivered_never_lowers() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Open,
+    )]);
     manager.mark_delivered(SessionId(1), LedgerSeq(10));
 
     manager.mark_delivered(SessionId(1), LedgerSeq(3));
@@ -290,7 +408,11 @@ fn attach_from_unknown_session_returns_start() {
 
 #[test]
 fn set_state_follows_transition_table() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Open)]);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Open,
+    )]);
 
     manager.set_state(SessionId(1), SessionState::Held).unwrap();
     manager.set_state(SessionId(1), SessionState::Open).unwrap();
@@ -306,7 +428,11 @@ fn set_state_follows_transition_table() {
 
 #[test]
 fn set_state_from_ended_returns_error() {
-    let mut manager = manager_with(vec![record(1, Provider::Claude, SessionState::Ended)]);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("claude"),
+        SessionState::Ended,
+    )]);
 
     let result = manager.set_state(SessionId(1), SessionState::Open);
 
@@ -323,7 +449,7 @@ fn set_state_from_ended_returns_error() {
 fn set_state_closed_to_held_returns_error() {
     let mut manager = manager_with(vec![record(
         1,
-        Provider::Claude,
+        Provider::from_static("claude"),
         SessionState::ClosedResumable,
     )]);
 
@@ -372,8 +498,12 @@ fn target_for_send_expired_packet_not_smaller_resumes_archive() {
 #[test]
 fn target_for_send_archive_without_last_turn_resumes() {
     let manager = manager_with(vec![
-        record(1, Provider::Codex, SessionState::ClosedResumable),
-        record(2, Provider::Claude, SessionState::Open),
+        record(
+            1,
+            Provider::from_static("codex"),
+            SessionState::ClosedResumable,
+        ),
+        record(2, Provider::from_static("claude"), SessionState::Open),
     ]);
 
     assert_eq!(
@@ -385,8 +515,12 @@ fn target_for_send_archive_without_last_turn_resumes() {
 #[test]
 fn live_main_prefers_the_open_main_over_a_later_registered_archive() {
     let manager = manager_with(vec![
-        record(1, Provider::Codex, SessionState::Open),
-        record(2, Provider::Claude, SessionState::ClosedResumable),
+        record(1, Provider::from_static("codex"), SessionState::Open),
+        record(
+            2,
+            Provider::from_static("claude"),
+            SessionState::ClosedResumable,
+        ),
     ]);
 
     assert_eq!(
@@ -401,11 +535,15 @@ fn live_main_prefers_the_open_main_over_a_later_registered_archive() {
 
 #[test]
 fn target_for_send_archive_without_provider_id_returns_new() {
-    let mut archive = record(1, Provider::Codex, SessionState::ClosedResumable);
+    let mut archive = record(
+        1,
+        Provider::from_static("codex"),
+        SessionState::ClosedResumable,
+    );
     archive.provider_session = None;
     let manager = manager_with(vec![
         archive,
-        record(2, Provider::Claude, SessionState::Open),
+        record(2, Provider::from_static("claude"), SessionState::Open),
     ]);
 
     assert_eq!(return_target(&manager, 50_000), new_codex());
@@ -441,18 +579,30 @@ fn states(manager: &SessionManager) -> Vec<SessionState> {
 
 #[test]
 fn provider_switches_keep_one_open_and_one_archive_per_provider() {
-    let mut manager = manager_with(vec![record(1, Provider::Codex, SessionState::Open)]);
+    let mut manager = manager_with(vec![record(
+        1,
+        Provider::from_static("codex"),
+        SessionState::Open,
+    )]);
     manager
         .set_state(SessionId(1), SessionState::ClosedResumable)
         .unwrap();
     manager
-        .register(record(2, Provider::Claude, SessionState::Open))
+        .register(record(
+            2,
+            Provider::from_static("claude"),
+            SessionState::Open,
+        ))
         .unwrap();
     manager
         .set_state(SessionId(2), SessionState::ClosedResumable)
         .unwrap();
     manager
-        .register(record(3, Provider::Codex, SessionState::Open))
+        .register(record(
+            3,
+            Provider::from_static("codex"),
+            SessionState::Open,
+        ))
         .unwrap();
 
     manager
@@ -473,13 +623,17 @@ fn provider_switches_keep_one_open_and_one_archive_per_provider() {
 fn register_second_archive_ends_older_one_and_drops_its_last_turn() {
     let mut manager = manager_with(vec![record(
         1,
-        Provider::Codex,
+        Provider::from_static("codex"),
         SessionState::ClosedResumable,
     )]);
     manager.record_last_turn(SessionId(1), last_turn(1, 1));
 
     manager
-        .register(record(2, Provider::Codex, SessionState::ClosedResumable))
+        .register(record(
+            2,
+            Provider::from_static("codex"),
+            SessionState::ClosedResumable,
+        ))
         .unwrap();
 
     assert_eq!(
@@ -492,15 +646,23 @@ fn register_second_archive_ends_older_one_and_drops_its_last_turn() {
 #[test]
 fn replace_with_archive_ends_older_archive_of_same_provider() {
     let mut manager = manager_with(vec![
-        record(1, Provider::Codex, SessionState::ClosedResumable),
-        record(2, Provider::Claude, SessionState::Open),
+        record(
+            1,
+            Provider::from_static("codex"),
+            SessionState::ClosedResumable,
+        ),
+        record(2, Provider::from_static("claude"), SessionState::Open),
     ]);
     manager.mark_idle(SessionId(2), Instant::now());
 
     manager
         .replace(
             SessionId(2),
-            record(3, Provider::Codex, SessionState::ClosedResumable),
+            record(
+                3,
+                Provider::from_static("codex"),
+                SessionState::ClosedResumable,
+            ),
         )
         .unwrap();
 
@@ -517,12 +679,20 @@ fn replace_with_archive_ends_older_archive_of_same_provider() {
 #[test]
 fn archive_cap_keeps_held_session_and_other_provider() {
     let mut manager = manager_with(vec![
-        record(1, Provider::Codex, SessionState::Held),
-        record(2, Provider::Claude, SessionState::ClosedResumable),
+        record(1, Provider::from_static("codex"), SessionState::Held),
+        record(
+            2,
+            Provider::from_static("claude"),
+            SessionState::ClosedResumable,
+        ),
     ]);
 
     manager
-        .register(record(3, Provider::Codex, SessionState::ClosedResumable))
+        .register(record(
+            3,
+            Provider::from_static("codex"),
+            SessionState::ClosedResumable,
+        ))
         .unwrap();
 
     assert_eq!(

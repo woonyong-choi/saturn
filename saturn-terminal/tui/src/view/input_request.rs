@@ -409,7 +409,7 @@ mod tests {
             id.to_owned(),
             TaskId(1),
             TaskLabel('A'),
-            Some(Provider::Claude),
+            Some(Provider::from_static("claude")),
             request,
             now,
         );
@@ -547,7 +547,7 @@ mod tests {
             "r1".to_owned(),
             TaskId(1),
             TaskLabel('A'),
-            Some(Provider::Codex),
+            Some(Provider::from_static("codex")),
             InputRequest {
                 message: "open the page".to_owned(),
                 fields: Vec::new(),

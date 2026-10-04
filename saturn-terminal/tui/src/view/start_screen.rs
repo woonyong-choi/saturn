@@ -140,8 +140,8 @@ mod tests {
         StartInfo {
             saturn_version: "0.1.0".to_string(),
             providers: vec![
-                (Provider::Codex, Some("0.40.0".to_string())),
-                (Provider::Claude, None),
+                (Provider::from_static("codex"), Some("0.40.0".to_string())),
+                (Provider::from_static("claude"), None),
             ],
             router: Some("remote".to_string()),
             router_version: Some("v3".to_string()),
@@ -187,7 +187,7 @@ mod tests {
     fn from_notification_treats_empty_values_as_unknown() {
         let notification = Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
-            providers: vec![(Provider::Codex, String::new())],
+            providers: vec![(Provider::from_static("codex"), String::new())],
             router: String::new(),
             router_version: String::new(),
             folder: "/w".to_string(),
@@ -196,7 +196,7 @@ mod tests {
 
         let info = StartInfo::from_notification(&notification).unwrap();
 
-        assert_eq!(info.providers, vec![(Provider::Codex, None)]);
+        assert_eq!(info.providers, vec![(Provider::from_static("codex"), None)]);
         assert_eq!(info.router, None);
         assert_eq!(info.added_dirs, vec![PathBuf::from("/x")]);
     }

@@ -73,7 +73,7 @@ impl Stage {
                 .delivery
                 .live
                 .as_ref()
-                .map_or(Provider::Claude, |live| live.provider),
+                .map_or(crate::providers::CLAUDE, |live| live.provider),
         }
     }
 

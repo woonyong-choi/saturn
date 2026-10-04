@@ -88,7 +88,7 @@ impl Flow {
                 folder_trust: None,
             },
         );
-        let fake = FakeProvider::new(Provider::Claude);
+        let fake = FakeProvider::new(crate::providers::CLAUDE);
         let questions = match engine.settings.current() {
             Some(revision) => engine
                 .agent_questions(chat, revision)
@@ -99,7 +99,7 @@ impl Flow {
         engine
             .flow
             .questions_of_connection
-            .insert((chat, Provider::Claude), questions);
+            .insert((chat, crate::providers::CLAUDE), questions);
         engine.add_connection(chat, ProviderConnection::Fake(fake.clone()));
         Self {
             engine,
@@ -162,11 +162,11 @@ impl Flow {
                 folder_trust: None,
             },
         );
-        let fake = FakeProvider::new(Provider::Claude);
+        let fake = FakeProvider::new(crate::providers::CLAUDE);
         self.engine
             .flow
             .questions_of_connection
-            .insert((chat, Provider::Claude), true);
+            .insert((chat, crate::providers::CLAUDE), true);
         self.engine
             .add_connection(chat, ProviderConnection::Fake(fake.clone()));
         self.engine
@@ -188,7 +188,7 @@ impl Flow {
 
     /// 열려 있는 가짜 Claude가 낸 것처럼 이벤트를 처리한다.
     pub(super) async fn claude_event(&mut self, event: ProviderEvent) {
-        self.event(Provider::Claude, event).await;
+        self.event(crate::providers::CLAUDE, event).await;
     }
 
     pub(super) async fn event(&mut self, provider: Provider, event: ProviderEvent) {

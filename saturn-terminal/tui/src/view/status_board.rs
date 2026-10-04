@@ -605,7 +605,7 @@ mod tests {
                 task: TaskId(id),
                 label: TaskLabel(label),
                 state: task_state,
-                provider: Some(Provider::Codex),
+                provider: Some(Provider::from_static("codex")),
                 elapsed: Duration::ZERO,
                 failure: None,
             },
@@ -736,7 +736,7 @@ mod tests {
         let line = StatusLine::Running(RunningLine {
             task: TaskId(1),
             label: TaskLabel('A'),
-            provider: Some(Provider::Claude),
+            provider: Some(Provider::from_static("claude")),
             model: Some("opus".to_string()),
             elapsed: Duration::from_secs(60),
             activity: Some(Activity::Thinking),
@@ -900,11 +900,11 @@ mod tests {
     #[test]
     fn approval_pending_text_names_the_provider_in_both_languages() {
         assert_eq!(
-            approval_pending_text(Lang::Ko, Some(Provider::Codex)),
+            approval_pending_text(Lang::Ko, Some(Provider::from_static("codex"))),
             "도구 사용 허가 준비 중 · codex"
         );
         assert_eq!(
-            approval_pending_text(Lang::En, Some(Provider::Claude)),
+            approval_pending_text(Lang::En, Some(Provider::from_static("claude"))),
             "Preparing tool permission · claude"
         );
         assert_eq!(
@@ -948,7 +948,7 @@ mod tests {
             }),
         ));
         state.apply_alert(Alert::SteerNotReady {
-            provider: Provider::Codex,
+            provider: Provider::from_static("codex"),
         });
 
         let lines = texts(&build(&state, now));

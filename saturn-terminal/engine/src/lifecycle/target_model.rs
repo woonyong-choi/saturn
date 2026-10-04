@@ -44,9 +44,9 @@ fn last_request(flow: &Flow) -> String {
 #[tokio::test]
 async fn target_model_candidates_are_the_model_list_in_provider_order() {
     let mut flow = Flow::new(vec![idle_reply(0.1)]).await;
-    flow.add_provider(Provider::Codex);
-    know_models(&mut flow, Provider::Codex, &["gpt-x"]);
-    know_models(&mut flow, Provider::Claude, &["opus", "haiku"]);
+    flow.add_provider(crate::providers::CODEX);
+    know_models(&mut flow, crate::providers::CODEX, &["gpt-x"]);
+    know_models(&mut flow, crate::providers::CLAUDE, &["opus", "haiku"]);
 
     let input = flow.accept_only("hello").await;
     let request = flow.engine.router_request(&flow.record(input), false);
@@ -78,7 +78,7 @@ async fn target_model_is_not_asked_before_the_model_list_arrives() {
 async fn target_model_chosen_by_the_router_is_applied() {
     let options = ["claude/opus", "claude/haiku", "other"];
     let mut flow = Flow::new(vec![model_reply(0.1, &options, "claude/haiku")]).await;
-    know_models(&mut flow, Provider::Claude, &["opus", "haiku"]);
+    know_models(&mut flow, crate::providers::CLAUDE, &["opus", "haiku"]);
 
     flow.submit("hello").await;
 
@@ -92,9 +92,9 @@ async fn target_model_chosen_by_the_router_is_applied() {
 async fn target_model_picks_the_provider_of_the_chosen_model() {
     let options = ["claude/opus", "codex/gpt-x", "other"];
     let mut flow = Flow::new(vec![model_reply(0.1, &options, "codex/gpt-x")]).await;
-    let codex = flow.add_provider(Provider::Codex);
-    know_models(&mut flow, Provider::Claude, &["opus"]);
-    know_models(&mut flow, Provider::Codex, &["gpt-x"]);
+    let codex = flow.add_provider(crate::providers::CODEX);
+    know_models(&mut flow, crate::providers::CLAUDE, &["opus"]);
+    know_models(&mut flow, crate::providers::CODEX, &["gpt-x"]);
 
     flow.submit("hello").await;
 
@@ -110,7 +110,7 @@ async fn target_model_on_a_second_new_task_opens_a_session_with_that_model() {
         model_reply(0.1, &options, "claude/haiku"),
     ])
     .await;
-    know_models(&mut flow, Provider::Claude, &["opus", "haiku"]);
+    know_models(&mut flow, crate::providers::CLAUDE, &["opus", "haiku"]);
     flow.submit("one").await;
     let agent = flow.agent();
     flow.claude_event(turn_completed(agent)).await;
@@ -132,9 +132,9 @@ async fn target_model_on_a_second_new_task_opens_a_session_with_that_model() {
 #[tokio::test]
 async fn target_model_is_not_asked_when_the_model_is_pinned() {
     let mut flow = Flow::new(vec![idle_reply(0.1)]).await;
-    know_models(&mut flow, Provider::Claude, &["opus", "haiku"]);
+    know_models(&mut flow, crate::providers::CLAUDE, &["opus", "haiku"]);
     let pinned = ModelChoice {
-        provider: Provider::Claude,
+        provider: crate::providers::CLAUDE,
         model: "opus".to_owned(),
     };
 
@@ -148,7 +148,7 @@ async fn target_model_is_not_asked_when_the_model_is_pinned() {
 async fn target_model_other_keeps_the_default_model() {
     let options = ["claude/opus", "other"];
     let mut flow = Flow::new(vec![model_reply(0.1, &options, "other")]).await;
-    know_models(&mut flow, Provider::Claude, &["opus"]);
+    know_models(&mut flow, crate::providers::CLAUDE, &["opus"]);
 
     flow.submit("hello").await;
 
@@ -159,7 +159,7 @@ async fn target_model_other_keeps_the_default_model() {
 async fn target_model_outside_the_candidates_is_ignored() {
     let options = ["claude/opus", "claude/sonnet", "other"];
     let mut flow = Flow::new(vec![model_reply(0.1, &options, "claude/sonnet")]).await;
-    know_models(&mut flow, Provider::Claude, &["opus"]);
+    know_models(&mut flow, crate::providers::CLAUDE, &["opus"]);
 
     flow.submit("hello").await;
 
@@ -170,7 +170,7 @@ async fn target_model_outside_the_candidates_is_ignored() {
 async fn target_model_is_ignored_when_the_input_continues_current_work() {
     let options = ["claude/opus", "claude/haiku", "other"];
     let mut flow = Flow::new(vec![model_reply(0.95, &options, "claude/haiku")]).await;
-    know_models(&mut flow, Provider::Claude, &["opus", "haiku"]);
+    know_models(&mut flow, crate::providers::CLAUDE, &["opus", "haiku"]);
 
     flow.submit("hello").await;
 

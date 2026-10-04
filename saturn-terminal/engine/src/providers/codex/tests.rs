@@ -8,7 +8,7 @@ use saturn_protocol::event::{
     Activity, LineChange, PermissionCall, PermissionTool, ToolCategory, ToolDetail, UsageReport,
     UsageScope,
 };
-use saturn_protocol::ids::{ChatId, Provider, SettingsRevision, SubagentId};
+use saturn_protocol::ids::{ChatId, SettingsRevision, SubagentId};
 use saturn_protocol::input::InputValue;
 
 use super::config::{default_args, read_user_config, scan_user_config};
@@ -201,7 +201,7 @@ pub(crate) fn launch(dir: &Path, env: Vec<(std::ffi::OsString, std::ffi::OsStrin
     std::fs::write(&program, FAKE_APP_SERVER).unwrap();
     std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
     LaunchSpec {
-        provider: Provider::Codex,
+        provider: crate::providers::CODEX,
         program,
         workdir: dir.to_path_buf(),
         settings: SettingsRevision(1),
@@ -1320,7 +1320,7 @@ async fn a_turn_sent_during_the_packet_turn_gets_its_own_completion() {
         .await
         .unwrap();
     let mut providers = HashMap::from([(
-        (ChatId(1), Provider::Codex),
+        (ChatId(1), crate::providers::CODEX),
         ProviderConnection::Codex(client),
     )]);
 

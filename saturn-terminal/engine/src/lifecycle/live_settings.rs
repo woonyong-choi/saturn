@@ -1,7 +1,6 @@
 //! 설정 즉시 적용 테스트: 설정이 바뀌는 순간(`/permissions`, 입력 접수 때 다시 읽기) 다시 시작이 필요한 연결을
 //! 작업 중이 아니면 바로, 작업 중이면 턴 끝에 다시 시작한다.
 
-use saturn_protocol::ids::Provider;
 use saturn_protocol::rpc::{ChatNotice, Notification};
 
 use super::agent_questions::{launched, restarted};
@@ -30,9 +29,12 @@ fn sent(calls: Vec<Call>) -> usize {
 #[tokio::test]
 async fn live_settings_idle_codex_restarts_at_once_and_the_next_input_uses_the_new_settings() {
     let mut flow = Flow::new(Vec::new()).await;
-    flow.add_provider(Provider::Codex);
+    flow.add_provider(crate::providers::CODEX);
     let mut client = flow.client().await;
-    assert_eq!(launched(&flow, Provider::Codex).await, (false, Some(true)));
+    assert_eq!(
+        launched(&flow, crate::providers::CODEX).await,
+        (false, Some(true))
+    );
 
     flow.engine
         .set_permission_mode(flow.chat, "full")
@@ -43,20 +45,24 @@ async fn live_settings_idle_codex_restarts_at_once_and_the_next_input_uses_the_n
         !flow
             .engine
             .providers
-            .contains_key(&(flow.chat, Provider::Codex))
+            .contains_key(&(flow.chat, crate::providers::CODEX))
     );
     assert!(flow.engine.flow.stale_connections.is_empty());
     let notices = client.window().await;
-    assert!(restarted(&notices, Provider::Codex));
+    assert!(restarted(&notices, crate::providers::CODEX));
     assert!(!permissions_changed(&notices));
-    assert_eq!(launched(&flow, Provider::Codex).await, (true, Some(false)));
+    assert_eq!(
+        launched(&flow, crate::providers::CODEX).await,
+        (true, Some(false))
+    );
 }
 
 #[tokio::test]
 async fn live_settings_changed_codex_rules_restart_an_idle_chat_when_the_input_is_accepted() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    let codex = flow.add_provider(Provider::Codex);
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    let codex = flow.add_provider(crate::providers::CODEX);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::CODEX);
     flow.engine
         .flow
         .rules_of_connection
@@ -73,10 +79,10 @@ async fn live_settings_changed_codex_rules_restart_an_idle_chat_when_the_input_i
         !flow
             .engine
             .providers
-            .contains_key(&(flow.chat, Provider::Codex))
+            .contains_key(&(flow.chat, crate::providers::CODEX))
     );
     let notices = client.window().await;
-    assert!(restarted(&notices, Provider::Codex));
+    assert!(restarted(&notices, crate::providers::CODEX));
     assert!(!permissions_changed(&notices));
 }
 
@@ -97,16 +103,17 @@ async fn live_settings_changed_settings_file_restarts_before_the_input_is_sent()
         !flow
             .engine
             .providers
-            .contains_key(&(flow.chat, Provider::Claude))
+            .contains_key(&(flow.chat, crate::providers::CLAUDE))
     );
-    assert!(restarted(&client.window().await, Provider::Claude));
+    assert!(restarted(&client.window().await, crate::providers::CLAUDE));
 }
 
 #[tokio::test]
 async fn live_settings_running_codex_restarts_after_the_turn_and_tells_both_notices() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    flow.add_provider(Provider::Codex);
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.add_provider(crate::providers::CODEX);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::CODEX);
     flow.submit("fix the build").await;
     let agent = flow.agent();
     let mut client = flow.client().await;
@@ -119,29 +126,33 @@ async fn live_settings_running_codex_restarts_after_the_turn_and_tells_both_noti
     assert!(
         flow.engine
             .providers
-            .contains_key(&(flow.chat, Provider::Codex))
+            .contains_key(&(flow.chat, crate::providers::CODEX))
     );
     assert!(
         flow.engine
             .flow
             .stale_connections
-            .contains(&(flow.chat, Provider::Codex))
+            .contains(&(flow.chat, crate::providers::CODEX))
     );
     let before = client.window().await;
     assert!(permissions_changed(&before));
-    assert!(!restarted(&before, Provider::Codex));
+    assert!(!restarted(&before, crate::providers::CODEX));
 
-    flow.event(Provider::Codex, turn_completed(agent)).await;
+    flow.event(crate::providers::CODEX, turn_completed(agent))
+        .await;
 
     assert!(
         !flow
             .engine
             .providers
-            .contains_key(&(flow.chat, Provider::Codex))
+            .contains_key(&(flow.chat, crate::providers::CODEX))
     );
     assert!(flow.engine.flow.stale_connections.is_empty());
-    assert!(restarted(&client.window().await, Provider::Codex));
-    assert_eq!(launched(&flow, Provider::Codex).await, (true, Some(false)));
+    assert!(restarted(&client.window().await, crate::providers::CODEX));
+    assert_eq!(
+        launched(&flow, crate::providers::CODEX).await,
+        (true, Some(false))
+    );
 }
 
 #[tokio::test]

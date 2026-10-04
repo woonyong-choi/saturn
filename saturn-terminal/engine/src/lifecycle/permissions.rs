@@ -3,7 +3,7 @@
 use saturn_core::permission::{Mode, Rule, Verdict};
 use saturn_core::providers::ProviderError;
 use saturn_protocol::event::{PermissionTool, ProviderEvent};
-use saturn_protocol::ids::{AgentId, Provider};
+use saturn_protocol::ids::AgentId;
 use saturn_protocol::rpc::{ChatNotice, Notification, PermissionAnswer};
 use saturn_protocol::state::{InputState, QueueReason};
 
@@ -469,7 +469,7 @@ async fn codex_launch_builds_a_dedicated_home_from_the_rules() {
 
     let spec = flow
         .engine
-        .launch_spec(Provider::Codex, flow.chat, revision)
+        .launch_spec(crate::providers::CODEX, flow.chat, revision)
         .await
         .unwrap();
 
@@ -591,8 +591,9 @@ async fn chat_layer_mode_decides_the_input_permission() {
 }
 
 async fn codex_chat_running(flow: &mut Flow) -> AgentId {
-    flow.add_provider(Provider::Codex);
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.add_provider(crate::providers::CODEX);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::CODEX);
     flow.submit("write the cache module").await;
     flow.agent()
 }
@@ -633,7 +634,7 @@ async fn changed_codex_rules_of_a_running_chat_mark_the_connection_stale_until_t
         flow.engine
             .flow
             .stale_connections
-            .contains(&(flow.chat, Provider::Codex))
+            .contains(&(flow.chat, crate::providers::CODEX))
     );
     client
         .until(|notification| match notification {
@@ -667,15 +668,16 @@ async fn stale_codex_connection_restarts_after_the_turn_ends_and_reopens_the_ses
     flow.engine
         .flow
         .stale_connections
-        .insert((flow.chat, Provider::Codex));
+        .insert((flow.chat, crate::providers::CODEX));
 
-    flow.event(Provider::Codex, turn_completed(agent)).await;
+    flow.event(crate::providers::CODEX, turn_completed(agent))
+        .await;
 
     assert!(
         !flow
             .engine
             .providers
-            .contains_key(&(flow.chat, Provider::Codex))
+            .contains_key(&(flow.chat, crate::providers::CODEX))
     );
     assert!(flow.engine.flow.live.is_empty());
     assert!(flow.engine.flow.stale_connections.is_empty());
@@ -689,9 +691,9 @@ async fn stale_codex_connection_restarts_after_the_turn_ends_and_reopens_the_ses
             _ => None,
         })
         .await;
-    assert_eq!(notice, Provider::Codex);
+    assert_eq!(notice, crate::providers::CODEX);
 
-    let reconnected = flow.add_provider(Provider::Codex);
+    let reconnected = flow.add_provider(crate::providers::CODEX);
     flow.submit("add the tests").await;
 
     let resumed: Vec<_> = reconnected
@@ -717,20 +719,20 @@ async fn stale_codex_connection_waits_while_the_chat_is_running() {
     flow.engine
         .flow
         .stale_connections
-        .insert((flow.chat, Provider::Codex));
+        .insert((flow.chat, crate::providers::CODEX));
 
     flow.engine.restart_stale_connections(flow.chat).await;
 
     assert!(
         flow.engine
             .providers
-            .contains_key(&(flow.chat, Provider::Codex))
+            .contains_key(&(flow.chat, crate::providers::CODEX))
     );
     assert!(
         flow.engine
             .flow
             .stale_connections
-            .contains(&(flow.chat, Provider::Codex))
+            .contains(&(flow.chat, crate::providers::CODEX))
     );
 }
 
