@@ -139,8 +139,10 @@ fn hook_command_blocks_unreadable_input_with_exit_code_2() {
 fn hook_command_leaves_saturn_home_untouched() {
     let fixture = Fixture::new();
 
-    fixture.call("Bash", json!({ "command": "ls" }));
+    let output = fixture.call("Bash", json!({ "command": "ls" }));
 
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stdout.is_empty());
     let entries = std::fs::read_dir(fixture.home().join(".saturn")).unwrap();
     assert_eq!(entries.count(), 0);
 }

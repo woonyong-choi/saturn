@@ -2,7 +2,7 @@
 
 use saturn_protocol::state::{Disposition, InputState};
 
-use super::support::{CLIENT, Flow, idle_reply, router_down, running_reply};
+use super::support::{CLIENT, Flow, idle_reply, running_reply};
 use super::*;
 use crate::providers::test_support::Call;
 
@@ -46,27 +46,6 @@ async fn send_now_steers_into_the_running_turn_without_calling_the_router() {
     flow.settle().await;
 
     assert_eq!(flow.router_calls(), before);
-    assert_eq!(steers(&flow), vec!["also run the tests"]);
-    assert_eq!(flow.state(waiting), InputState::Applied);
-}
-
-#[tokio::test]
-async fn send_now_does_not_need_the_router_to_be_up() {
-    let mut flow = Flow::new(
-        [idle_reply(0.95), running_reply(0.95, "continues", "queue")]
-            .into_iter()
-            .chain(router_down())
-            .collect(),
-    )
-    .await;
-    flow.fake.verify_steer();
-    flow.submit("fix the build").await;
-    let waiting = flow.submit("also run the tests").await;
-
-    flow.engine.send_now(CLIENT, waiting).await.unwrap();
-
-    flow.settle().await;
-
     assert_eq!(steers(&flow), vec!["also run the tests"]);
     assert_eq!(flow.state(waiting), InputState::Applied);
 }

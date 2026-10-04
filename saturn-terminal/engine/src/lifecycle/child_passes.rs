@@ -1,7 +1,7 @@
 //! 하위 접속 테스트(#33): 에이전트 작업 안의 `saturn`이 출입증으로 부모 채팅의 하위 작업으로 붙고, 부모 권한과 상한을
 //! 넘지 못하며, 부모가 멈추면 함께 끝나고, 동시 요청이 서로 막지 않는다.
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use saturn_core::permission::Mode;
 use saturn_protocol::envelope::ServerMessage;
@@ -286,11 +286,11 @@ async fn child_cannot_raise_its_mode_above_the_parent_mode() {
 async fn unknown_pass_is_rejected_by_the_connection_without_the_engine_loop() {
     let mut family = family("", 0).await;
     let mut client = Client::connect(&family.flow.fixture.socket()).await;
-    // 연결을 받는 일은 요청 처리 루프가 한다
-    drive(
-        &mut family.flow.engine,
-        tokio::time::sleep(Duration::from_millis(100)),
-    )
+    // 연결을 받는 일은 요청 처리 루프가 한다. 응답이 오면 연결 작업이 떠 있으니 그 뒤로는 루프를 돌리지 않는다
+    drive(&mut family.flow.engine, async {
+        client.send(1, Request::Version).await;
+        while !matches!(client.recv().await, ServerMessage::Response(_)) {}
+    })
     .await;
     let guess = format!("{}{}", "saturn-pass-", "0".repeat(64));
 
@@ -495,10 +495,12 @@ async fn child_disconnect_ends_the_child_and_frees_its_place() {
     assert_eq!(family.flow.engine.passes.running_total(), 1);
 
     drop(child);
-    drive(
-        &mut family.flow.engine,
-        tokio::time::sleep(Duration::from_millis(200)),
-    )
+    let parent_agent = family.parent_agent;
+    drive_until(&mut family.flow.engine, WAIT, |engine| {
+        engine.children.is_empty()
+            && engine.passes.running_total() == 0
+            && engine.agents.running_subagents(parent_agent) == 0
+    })
     .await;
 
     let flow = &family.flow;
@@ -557,10 +559,20 @@ async fn queued_request_that_disconnects_does_not_take_a_place() {
     drive(&mut family.flow.engine, async {
         second.send(1, request).await;
         second.notification().await;
-        drop(second);
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        drop(first);
-        tokio::time::sleep(Duration::from_millis(200)).await;
+    })
+    .await;
+    assert_eq!(family.flow.engine.passes.queued_total(), 1);
+
+    // 대기 요청의 연결이 끊겨 줄에서 빠진 것을 확인한 뒤에 실행 중인 자리를 돌려준다
+    drop(second);
+    drive_until(&mut family.flow.engine, WAIT, |engine| {
+        engine.passes.queued_total() == 0
+    })
+    .await;
+    assert_eq!(family.flow.engine.passes.running_total(), 1);
+    drop(first);
+    drive_until(&mut family.flow.engine, WAIT, |engine| {
+        engine.passes.running_total() == 0 && engine.children.is_empty()
     })
     .await;
 
@@ -569,13 +581,11 @@ async fn queued_request_that_disconnects_does_not_take_a_place() {
     assert!(family.flow.engine.children.is_empty());
 }
 
-/// 새 접속으로 `Version`을 보내 응답이 올 때까지 걸린 시간.
-async fn version_latency(socket: std::path::PathBuf) -> Duration {
-    let started = Instant::now();
+/// 새 접속으로 `Version`을 보내 응답이 올 때까지 기다린다. 시간 수치는 재지 않는다(부하 시간은 `child_load`가 잰다).
+async fn version_answered(socket: std::path::PathBuf) {
     let mut client = Client::connect(&socket).await;
     client.send(1, Request::Version).await;
     while !matches!(client.recv().await, ServerMessage::Response(_)) {}
-    started.elapsed()
 }
 
 // #33: 대기열에 선 요청이 많아도 다른 요청은 기다리지 않고 바로 답을 받는다
@@ -587,7 +597,7 @@ async fn queued_children_do_not_hold_back_other_requests() {
     let (_first, _) = open_child(&mut family.flow, &pass, None).await;
     let socket = family.flow.fixture.socket();
 
-    let slowest = drive(&mut family.flow.engine, async {
+    drive(&mut family.flow.engine, async {
         let mut waiting = Vec::new();
         for _ in 0..QUEUED {
             let mut client = Client::connect(&socket).await;
@@ -596,21 +606,16 @@ async fn queued_children_do_not_hold_back_other_requests() {
         }
         let probes = (0..QUEUED).map(|_| {
             let socket = socket.clone();
-            tokio::spawn(version_latency(socket))
+            tokio::spawn(version_answered(socket))
         });
-        let mut slowest = Duration::ZERO;
         for probe in probes.collect::<Vec<_>>() {
-            slowest = slowest.max(probe.await.unwrap());
+            probe.await.unwrap();
         }
         drop(waiting);
-        slowest
     })
     .await;
 
-    assert!(
-        slowest < Duration::from_secs(2),
-        "version requests waited {slowest:?} behind queued children"
-    );
+    // 대기열이 그대로 찬 채로 다른 요청이 모두 응답을 받았다
     assert_eq!(family.flow.engine.passes.queued_total(), QUEUED as u32);
 }
 

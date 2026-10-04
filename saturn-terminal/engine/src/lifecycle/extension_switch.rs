@@ -89,56 +89,47 @@ async fn notices_after_switch(flow: &mut Flow, to: Provider) -> Vec<ChatNotice> 
 }
 
 #[tokio::test]
-async fn a_switch_tells_which_parts_the_new_provider_does_not_take_right_after_the_switch_line() {
-    let mut flow = flow_after_first_turn(WITH_COMMANDS, SKILLS_ONLY).await;
+async fn a_switch_tells_only_the_parts_the_new_provider_loses() {
+    let switched = ChatNotice::ProviderSwitched {
+        from: CLAUDE,
+        to: CODEX,
+    };
+    // (이름, 이전 확장 지원, 다음 확장 지원, 예상 알림)
+    let cases = [
+        (
+            "tells which parts the new provider does not take right after the switch line",
+            WITH_COMMANDS,
+            SKILLS_ONLY,
+            vec![
+                switched.clone(),
+                ChatNotice::ExtensionPartsNotApplied {
+                    provider: CODEX,
+                    parts: vec![(
+                        "review-kit".to_owned(),
+                        ExtensionPartKind::Command,
+                        "review".to_owned(),
+                    )],
+                },
+            ],
+        ),
+        (
+            "a switch that loses nothing adds no line",
+            WITH_COMMANDS,
+            WITH_COMMANDS,
+            vec![switched.clone()],
+        ),
+        (
+            "parts neither provider takes are not told again",
+            SKILLS_ONLY,
+            SKILLS_ONLY,
+            vec![switched],
+        ),
+    ];
+    for (name, before, after, expected) in cases {
+        let mut flow = flow_after_first_turn(before, after).await;
 
-    let notices = notices_after_switch(&mut flow, CODEX).await;
+        let notices = notices_after_switch(&mut flow, CODEX).await;
 
-    assert_eq!(
-        notices,
-        vec![
-            ChatNotice::ProviderSwitched {
-                from: CLAUDE,
-                to: CODEX
-            },
-            ChatNotice::ExtensionPartsNotApplied {
-                provider: CODEX,
-                parts: vec![(
-                    "review-kit".to_owned(),
-                    ExtensionPartKind::Command,
-                    "review".to_owned()
-                )],
-            },
-        ]
-    );
-}
-
-#[tokio::test]
-async fn a_switch_that_loses_nothing_adds_no_line() {
-    let mut flow = flow_after_first_turn(WITH_COMMANDS, WITH_COMMANDS).await;
-
-    let notices = notices_after_switch(&mut flow, CODEX).await;
-
-    assert_eq!(
-        notices,
-        vec![ChatNotice::ProviderSwitched {
-            from: CLAUDE,
-            to: CODEX
-        }]
-    );
-}
-
-#[tokio::test]
-async fn parts_neither_provider_takes_are_not_told_again() {
-    let mut flow = flow_after_first_turn(SKILLS_ONLY, SKILLS_ONLY).await;
-
-    let notices = notices_after_switch(&mut flow, CODEX).await;
-
-    assert_eq!(
-        notices,
-        vec![ChatNotice::ProviderSwitched {
-            from: CLAUDE,
-            to: CODEX
-        }]
-    );
+        assert_eq!(notices, expected, "{name}");
+    }
 }

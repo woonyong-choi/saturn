@@ -77,9 +77,10 @@ async fn start_info_carries_the_protocol_version() {
 /// 연결이 끊길 때까지 받은 알림.
 async fn until_closed(client: &mut Client) -> Vec<Notification> {
     let mut notified = Vec::new();
-    while let Ok(Some(line)) = timeout(WAIT, client.lines.next_line())
+    while let Some(line) = timeout(WAIT, client.lines.next_line())
         .await
-        .unwrap_or(Ok(None))
+        .expect("the connection should be closed, not left open")
+        .unwrap()
     {
         if let ServerMessage::Notification(message) = decode_server_line(&line).unwrap() {
             notified.push(message.notification);

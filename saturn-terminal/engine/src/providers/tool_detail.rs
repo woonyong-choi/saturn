@@ -179,52 +179,57 @@ mod tests {
     }
 
     #[test]
-    fn unwrap_shell_login_shell_wrapper_gives_inner_command() {
-        assert_eq!(
-            unwrap_shell("/bin/zsh -lc 'python3 -m unittest tests.test_rules'"),
-            "python3 -m unittest tests.test_rules"
-        );
-        assert_eq!(unwrap_shell("bash -c \"echo hi\""), "echo hi");
-    }
-
-    #[test]
-    fn unwrap_shell_escaped_single_quote_stays_in_inner_command() {
-        assert_eq!(
-            unwrap_shell(r"/bin/zsh -lc 'echo '\''hi'\'' there'"),
-            "echo 'hi' there"
-        );
-    }
-
-    #[test]
-    fn unwrap_shell_plain_or_unbalanced_command_is_unchanged() {
-        for command in [
-            "python3 scripts/check.py",
-            "zsh script.sh",
-            "/bin/zsh -lc 'oops",
-            "",
-        ] {
-            assert_eq!(unwrap_shell(command), command);
+    fn unwrap_shell_gives_the_inner_command_or_leaves_the_input() {
+        let cases = [
+            (
+                "login shell wrapper",
+                "/bin/zsh -lc 'python3 -m unittest tests.test_rules'",
+                "python3 -m unittest tests.test_rules",
+            ),
+            ("double quoted wrapper", "bash -c \"echo hi\"", "echo hi"),
+            (
+                "escaped single quote",
+                r"/bin/zsh -lc 'echo '\''hi'\'' there'",
+                "echo 'hi' there",
+            ),
+            (
+                "plain command",
+                "python3 scripts/check.py",
+                "python3 scripts/check.py",
+            ),
+            ("script argument", "zsh script.sh", "zsh script.sh"),
+            (
+                "unbalanced quote",
+                "/bin/zsh -lc 'oops",
+                "/bin/zsh -lc 'oops",
+            ),
+            ("empty", "", ""),
+        ];
+        for (name, command, expected) in cases {
+            assert_eq!(unwrap_shell(command), expected, "{name}: {command}");
         }
     }
 
     #[test]
-    fn line_change_replaced_lines_count_both_sides() {
-        let change = line_change("mode=draft\nretries=1", "mode=harbor\nretries=tundra");
-
-        assert_eq!((change.added, change.removed), (2, 2));
-    }
-
-    #[test]
-    fn line_change_common_lines_are_not_counted() {
-        let change = line_change("a\nb\nc", "a\nx\ny\nc");
-
-        assert_eq!((change.added, change.removed), (2, 1));
-    }
-
-    #[test]
-    fn line_change_empty_old_counts_only_added() {
-        let change = line_change("", "a\nb");
-
-        assert_eq!((change.added, change.removed), (2, 0));
+    fn line_change_counts_only_the_lines_that_differ() {
+        let cases = [
+            (
+                "replaced lines count both sides",
+                "mode=draft\nretries=1",
+                "mode=harbor\nretries=tundra",
+                (2, 2),
+            ),
+            (
+                "common lines are not counted",
+                "a\nb\nc",
+                "a\nx\ny\nc",
+                (2, 1),
+            ),
+            ("empty old counts only added", "", "a\nb", (2, 0)),
+        ];
+        for (name, old, new, expected) in cases {
+            let change = line_change(old, new);
+            assert_eq!((change.added, change.removed), expected, "{name}");
+        }
     }
 }

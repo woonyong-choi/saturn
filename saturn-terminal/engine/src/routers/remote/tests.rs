@@ -327,79 +327,56 @@ fn scripted_router(secrets: SharedSecrets, transport: Arc<ScriptedTransport>) ->
 }
 
 #[tokio::test(start_paused = true)]
-async fn no_response_at_all_gives_up_within_fifteen_seconds() {
-    let dir = tempfile::tempdir().unwrap();
-    let transport = ScriptedTransport::new(vec![None, None, None]);
-    let router = scripted_router(secrets_with_key(dir.path()).await, Arc::clone(&transport));
+async fn router_retry_gives_up_at_the_deadline_for_every_response_pattern() {
+    type Script = Vec<Option<Result<HttpReply, TransportError>>>;
+    let before_send = || Some(Err(TransportError::BeforeSend));
+    // (이름, 호출마다 줄 응답(None은 응답 없음), 걸린 시간(초), 호출 시각(초), 비용 불명 횟수)
+    let cases: Vec<(&str, Script, u64, Vec<u64>, u32)> = vec![
+        (
+            "no response at all gives up within fifteen seconds",
+            vec![None, None, None],
+            15,
+            vec![0, 10],
+            2,
+        ),
+        (
+            "immediate failure retries at five and ten seconds then gives up at the deadline",
+            vec![before_send(), before_send(), None],
+            10,
+            vec![0, 5, 10],
+            1,
+        ),
+        (
+            "attempt started near the deadline waits only the remaining time",
+            vec![before_send(), None, None],
+            10,
+            vec![0, 5],
+            1,
+        ),
+        (
+            "attempt after a slow first failure is cut at the new deadline",
+            vec![None, before_send(), None],
+            15,
+            vec![0, 10, 15],
+            2,
+        ),
+    ];
+    for (name, script, elapsed, called_at, unknown_cost) in cases {
+        let dir = tempfile::tempdir().unwrap();
+        let transport = ScriptedTransport::new(script);
+        let router = scripted_router(secrets_with_key(dir.path()).await, Arc::clone(&transport));
 
-    let started = tokio::time::Instant::now();
-    let exchange = router.exchange(request()).await;
+        let started = tokio::time::Instant::now();
+        let exchange = router.exchange(request()).await;
 
-    assert!(matches!(
-        exchange.result,
-        Err(RouterError::TimedOutAfterSend)
-    ));
-    assert_eq!(started.elapsed(), Duration::from_secs(15));
-    assert_eq!(transport.called_at_seconds(), vec![0, 10]);
-    assert_eq!(exchange.unknown_cost_calls, 2);
-}
-
-#[tokio::test(start_paused = true)]
-async fn immediate_failure_retries_at_five_and_ten_seconds_then_gives_up_at_the_deadline() {
-    let dir = tempfile::tempdir().unwrap();
-    let transport = ScriptedTransport::new(vec![
-        Some(Err(TransportError::BeforeSend)),
-        Some(Err(TransportError::BeforeSend)),
-        None,
-    ]);
-    let router = scripted_router(secrets_with_key(dir.path()).await, Arc::clone(&transport));
-
-    let started = tokio::time::Instant::now();
-    let exchange = router.exchange(request()).await;
-
-    assert!(matches!(
-        exchange.result,
-        Err(RouterError::TimedOutAfterSend)
-    ));
-    assert_eq!(started.elapsed(), Duration::from_secs(10));
-    assert_eq!(transport.called_at_seconds(), vec![0, 5, 10]);
-    assert_eq!(exchange.unknown_cost_calls, 1);
-}
-
-#[tokio::test(start_paused = true)]
-async fn attempt_started_near_the_deadline_waits_only_the_remaining_time() {
-    let dir = tempfile::tempdir().unwrap();
-    let transport = ScriptedTransport::new(vec![Some(Err(TransportError::BeforeSend)), None, None]);
-    let router = scripted_router(secrets_with_key(dir.path()).await, Arc::clone(&transport));
-
-    let started = tokio::time::Instant::now();
-    let exchange = router.exchange(request()).await;
-
-    assert!(matches!(
-        exchange.result,
-        Err(RouterError::TimedOutAfterSend)
-    ));
-    assert_eq!(started.elapsed(), Duration::from_secs(10));
-    assert_eq!(transport.called_at_seconds(), vec![0, 5]);
-    assert_eq!(exchange.unknown_cost_calls, 1);
-}
-
-#[tokio::test(start_paused = true)]
-async fn attempt_after_a_slow_first_failure_is_cut_at_the_new_deadline() {
-    let dir = tempfile::tempdir().unwrap();
-    let transport = ScriptedTransport::new(vec![None, Some(Err(TransportError::BeforeSend)), None]);
-    let router = scripted_router(secrets_with_key(dir.path()).await, Arc::clone(&transport));
-
-    let started = tokio::time::Instant::now();
-    let exchange = router.exchange(request()).await;
-
-    assert!(matches!(
-        exchange.result,
-        Err(RouterError::TimedOutAfterSend)
-    ));
-    assert_eq!(started.elapsed(), Duration::from_secs(15));
-    assert_eq!(transport.called_at_seconds(), vec![0, 10, 15]);
-    assert_eq!(exchange.unknown_cost_calls, 2);
+        assert!(
+            matches!(exchange.result, Err(RouterError::TimedOutAfterSend)),
+            "{name}"
+        );
+        assert_eq!(started.elapsed(), Duration::from_secs(elapsed), "{name}");
+        assert_eq!(transport.called_at_seconds(), called_at, "{name}");
+        assert_eq!(exchange.unknown_cost_calls, unknown_cost, "{name}");
+    }
 }
 
 #[tokio::test(start_paused = true)]
@@ -615,4 +592,79 @@ fn many_choices_split_and_merge_back() {
     assert_eq!(probabilities.len(), 600);
     assert!((probabilities[254 + 3] - 1.0).abs() < 1e-9);
     assert!((probabilities.iter().sum::<f64>() - 1.0).abs() < 1e-9);
+}
+
+/// 아무 신뢰 기관도 보증하지 않는 자체 서명 인증서(localhost, 100년). 시험에서만 쓰는 버려도 되는 키다.
+const UNTRUSTED_CERT: &str = "-----BEGIN CERTIFICATE-----\nMIIBlDCCATugAwIBAgIUMAVim+rpai1Iy1z/YTVhtoAQlsowCgYIKoZIzj0EAwIw\nFDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MTAwNDE1MTgzN1oYDzIxMjYwOTEw\nMTUxODM3WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjO\nPQMBBwNCAATiiFdrt2IbtnmSBq6CLpjLph3zsdTEQbL/NVs8JqUgwo6KkTzevGiV\nAJLwmRCTTRwMv4HHJRZZC8axh7LMDxr+o2kwZzAdBgNVHQ4EFgQU5s6PABZm7UP+\nJqAQU9HLWlK1IrQwHwYDVR0jBBgwFoAU5s6PABZm7UP+JqAQU9HLWlK1IrQwDwYD\nVR0TAQH/BAUwAwEB/zAUBgNVHREEDTALgglsb2NhbGhvc3QwCgYIKoZIzj0EAwID\nRwAwRAIgKh3SWRKDXMDAcLGedoy6OJKxNaiPfa2ltgvbhu6MHYwCIFTN2S/zYBlC\nuV4WJV1Dc9yhKPT+0SrCQ9cr7ipoh1vD\n-----END CERTIFICATE-----\n";
+const UNTRUSTED_KEY: &str = "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgADtVrssszo/cGjNi\n9T774LFH8Ko2K8N6OvZT1e1DafqhRANCAATiiFdrt2IbtnmSBq6CLpjLph3zsdTE\nQbL/NVs8JqUgwo6KkTzevGiVAJLwmRCTTRwMv4HHJRZZC8axh7LMDxr+\n-----END PRIVATE KEY-----\n";
+
+/// 자체 서명 인증서로 TLS를 받는 로컬 서버. 핸드셰이크를 마친 요청 수를 센다.
+async fn serve_untrusted_tls() -> (u16, Arc<std::sync::atomic::AtomicUsize>) {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio_rustls::rustls::pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject};
+
+    let certs = vec![CertificateDer::from_pem_slice(UNTRUSTED_CERT.as_bytes()).unwrap()];
+    let key = PrivateKeyDer::from_pem_slice(UNTRUSTED_KEY.as_bytes()).unwrap();
+    let config = tokio_rustls::rustls::ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(certs, key)
+        .unwrap();
+    let acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(config));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let served = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counter = Arc::clone(&served);
+    tokio::spawn(async move {
+        loop {
+            let Ok((stream, _)) = listener.accept().await else {
+                return;
+            };
+            let (acceptor, counter) = (acceptor.clone(), Arc::clone(&counter));
+            tokio::spawn(async move {
+                let Ok(mut tls) = acceptor.accept(stream).await else {
+                    return;
+                };
+                let mut head = [0_u8; 1024];
+                if tls.read(&mut head).await.unwrap_or(0) == 0 {
+                    return;
+                }
+                counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                let reply = "HTTP/1.1 200 OK\r\ncontent-length: 2\r\nconnection: close\r\n\r\nok";
+                let _ = tls.write_all(reply.as_bytes()).await;
+                let _ = tls.shutdown().await;
+            });
+        }
+    });
+    (port, served)
+}
+
+// docs/design/router-key-security.md: TLS 검증을 끄지 않는다. 실제 reqwest 클라이언트가 신뢰할 수 없는 인증서를 거부해야 한다
+#[tokio::test]
+async fn real_client_rejects_an_untrusted_certificate_and_sends_nothing() {
+    let (port, served) = serve_untrusted_tls().await;
+    let url = format!("https://localhost:{port}/models");
+    let headers = || vec![("authorization".to_owned(), "Bearer sk-test".to_owned())];
+
+    // 대조: 검증을 일부러 끈 클라이언트는 같은 서버에서 응답을 받는다. 서버와 시험 틀이 멀쩡하다는 증거다
+    let lax = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+    let control = send_with(&lax, &url, headers(), None, Duration::from_secs(5))
+        .await
+        .unwrap();
+    assert_eq!((control.status, control.body.as_str()), (200, "ok"));
+    assert_eq!(served.load(std::sync::atomic::Ordering::SeqCst), 1);
+
+    let strict = ReqwestTransport::new().unwrap();
+    let rejected = strict
+        .send(&url, headers(), None, Duration::from_secs(5))
+        .await;
+
+    assert_eq!(rejected.unwrap_err(), TransportError::BeforeSend);
+    assert_eq!(
+        served.load(std::sync::atomic::Ordering::SeqCst),
+        1,
+        "no request should reach a server whose certificate is not trusted"
+    );
 }

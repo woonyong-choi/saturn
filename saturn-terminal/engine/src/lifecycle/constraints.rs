@@ -2,11 +2,12 @@
 //! 설계: docs/design/constraints.md
 
 use saturn_core::constraints::split_sentences;
-use saturn_protocol::ids::{ChatId, ConstraintAskId};
+use saturn_protocol::ids::ConstraintAskId;
 use saturn_protocol::rpc::{ChatNotice, ConstraintAskAnswer, Notification};
 use saturn_protocol::state::{Disposition, InputState};
 
 use super::Client;
+use super::crash_recovery::Restarted;
 use super::support::{
     CLIENT, Flow, constraint_reply, idle_reply, lines_reply, retry_reply, router_down,
     running_constraint_reply,
@@ -622,35 +623,17 @@ async fn constraint_ask_reaches_a_tui_that_attaches_later_and_after_a_restart() 
     let (_client, greeting): (Client, Vec<Notification>) = flow.attach().await;
 
     assert_eq!(asked(&greeting).len(), 1);
-    // engine을 다시 켠 뒤에는 기록 저장소의 열린 확인이 같은 알림으로 돌아온다
-    let mut restarted = Flow::new(Vec::new()).await;
-    let chat = restarted.chat;
-    stored_candidate(&mut restarted, chat).await;
-    restarted.engine.restore_constraint_asks().await.unwrap();
-    let (_other, greeting) = restarted.attach().await;
+    // engine을 버리고 같은 홈으로 다시 켠 뒤에는 기록 저장소의 열린 확인이 같은 알림으로 돌아온다
+    let Flow {
+        engine,
+        fixture,
+        chat,
+        ..
+    } = flow;
+    drop(engine);
+    let mut restarted = Restarted::start_with_replies(fixture, chat, Vec::new()).await;
+    let greeting = restarted.attach().await;
     assert_eq!(asked(&greeting).len(), 1);
-}
-
-/// 열린 확인이 하나 있는 기록 저장소.
-async fn stored_candidate(flow: &mut Flow, chat: ChatId) {
-    let input = flow.accept_only("keep it short").await;
-    flow.engine
-        .store
-        .register_constraints(&crate::store::NewRegistration {
-            chat,
-            input,
-            rules: &[crate::store::NewRule {
-                line: 0,
-                rule: "keep it short".to_owned(),
-                scope: Vec::new(),
-            }],
-            state: ConstraintState::Candidate,
-            actor: Actor::Router,
-            reason: None,
-            judgment: None,
-        })
-        .await
-        .unwrap();
 }
 
 #[tokio::test]

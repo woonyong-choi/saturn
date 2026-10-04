@@ -677,8 +677,9 @@ mod tests {
     #[tokio::test]
     async fn escaped_process_is_reported_not_signalled() {
         let supervisor = Supervisor::new();
-        let script = "/usr/bin/perl -e 'use POSIX qw(setsid); setsid(); sleep 20' & \
-                      sleep 0.3; echo ready; read line";
+        // 자식 perl이 `setsid()`를 마친 뒤 직접 `ready`를 쓴다. 고정 시간을 기다리지 않는다
+        let script = "/usr/bin/perl -e 'use POSIX qw(setsid); setsid(); $| = 1; print qq(ready\\n); sleep 20' & \
+                      read line";
         let mut spawned = supervisor.spawn(shell(script, &[])).unwrap();
         assert_eq!(first_line(&mut spawned.io).await, "ready");
 

@@ -247,7 +247,7 @@ mod tests {
     #[tokio::test]
     async fn command_first_stdout_line_is_key() {
         let input = KeyInput::Command {
-            argv: argv(&["/bin/echo", "sk-from-manager"]),
+            argv: argv(&["/usr/bin/printf", "sk-from-manager\\nsecond-line\\n"]),
         };
 
         let (key, source) = acquire_with_env(input, None).await.unwrap();

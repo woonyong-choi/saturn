@@ -279,54 +279,93 @@ mod tests {
     }
 
     #[test]
-    fn null_runtime_status_with_server_info_is_ready() {
-        let check = mcp_check(&measured_list(), &names(&["good", "quiet"]));
-
-        assert_eq!(check, McpCheck::default());
-    }
-
-    #[test]
-    fn tools_error_is_unavailable_not_waiting() {
-        let check = mcp_check(&measured_list(), &names(&["bad", "good"]));
-
-        assert!(check.waiting.is_empty());
-        assert_eq!(check.unavailable.len(), 1);
-        assert!(check.unavailable[0].starts_with("bad failed to start"));
-        assert!(check.unavailable[0].contains("No such file"));
-    }
-
-    #[test]
-    fn missing_or_empty_entries_are_waiting() {
-        let silent = json!({ "data": [
-            { "name": "docs", "runtimeStatus": null, "serverInfo": null, "tools": {}, "toolsError": null },
-        ] });
-
-        assert_eq!(mcp_check(&silent, &names(&["docs"])).waiting.len(), 1);
-        assert_eq!(
-            mcp_check(&json!({ "data": [] }), &names(&["docs"]))
-                .waiting
-                .len(),
-            1
-        );
-        assert_eq!(mcp_check(&json!({ "data": [] }), &[]), McpCheck::default());
-    }
-
-    #[test]
-    fn string_runtime_status_is_read_first() {
-        let list = |status: &str| {
+    fn mcp_check_sorts_each_server_into_ready_waiting_or_unavailable() {
+        let status_list = |status: &str| {
             json!({ "data": [
                 { "name": "docs", "runtimeStatus": status, "tools": {}, "toolsError": null },
             ] })
         };
-        let servers = names(&["docs"]);
-
-        assert_eq!(mcp_check(&list("ready"), &servers), McpCheck::default());
-        assert_eq!(mcp_check(&list("starting"), &servers).waiting.len(), 1);
-        assert_eq!(mcp_check(&list("failed"), &servers).unavailable.len(), 1);
+        let silent = json!({ "data": [
+            { "name": "docs", "runtimeStatus": null, "serverInfo": null, "tools": {}, "toolsError": null },
+        ] });
         let broken = json!({ "data": [
             { "name": "docs", "runtimeStatus": "ready", "tools": [], "toolsError": "boom" },
         ] });
-        assert!(mcp_check(&broken, &servers).unavailable[0].contains("boom"));
+        let empty = json!({ "data": [] });
+        // (이름, 서버 응답, 대상 서버, 기다리는 수, 쓸 수 없는 서버 메시지에 든 글)
+        let cases = [
+            (
+                "null runtime status with server info is ready",
+                measured_list(),
+                names(&["good", "quiet"]),
+                0,
+                vec![],
+            ),
+            (
+                "tools error is unavailable, not waiting",
+                measured_list(),
+                names(&["bad", "good"]),
+                0,
+                vec!["No such file"],
+            ),
+            (
+                "no server info is waiting",
+                silent,
+                names(&["docs"]),
+                1,
+                vec![],
+            ),
+            (
+                "missing entry is waiting",
+                empty.clone(),
+                names(&["docs"]),
+                1,
+                vec![],
+            ),
+            ("no servers asked for is ready", empty, vec![], 0, vec![]),
+            (
+                "string status ready",
+                status_list("ready"),
+                names(&["docs"]),
+                0,
+                vec![],
+            ),
+            (
+                "string status starting",
+                status_list("starting"),
+                names(&["docs"]),
+                1,
+                vec![],
+            ),
+            (
+                "string status failed",
+                status_list("failed"),
+                names(&["docs"]),
+                0,
+                vec![""],
+            ),
+            (
+                "tools error beats a ready string status",
+                broken,
+                names(&["docs"]),
+                0,
+                vec!["boom"],
+            ),
+        ];
+        for (name, list, servers, waiting, unavailable) in cases {
+            let check = mcp_check(&list, &servers);
+
+            assert_eq!(check.waiting.len(), waiting, "{name}");
+            assert_eq!(check.unavailable.len(), unavailable.len(), "{name}");
+            for (message, fragment) in check.unavailable.iter().zip(&unavailable) {
+                assert!(message.contains(fragment), "{name}: {message}");
+            }
+            if waiting == 0 && unavailable.is_empty() {
+                assert_eq!(check, McpCheck::default(), "{name}");
+            }
+        }
+        let failed = mcp_check(&measured_list(), &names(&["bad", "good"]));
+        assert!(failed.unavailable[0].starts_with("bad failed to start"));
     }
 
     #[test]

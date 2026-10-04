@@ -116,18 +116,24 @@ fn set_recording(chat: u64) -> Request {
     }
 }
 
+/// `dir` 아래(하위 폴더 포함)에서 `needle`이 든 파일. 로그 폴더도 본다.
 fn files_containing(dir: &Path, needle: &str) -> Vec<PathBuf> {
-    std::fs::read_dir(dir)
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .filter(|path| path.is_file())
-        .filter(|path| {
-            let bytes = std::fs::read(path).unwrap();
-            bytes
+    let mut found = Vec::new();
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            found.extend(files_containing(&path, needle));
+        } else if path.is_file() {
+            let bytes = std::fs::read(&path).unwrap();
+            if bytes
                 .windows(needle.len())
                 .any(|window| window == needle.as_bytes())
-        })
-        .collect()
+            {
+                found.push(path);
+            }
+        }
+    }
+    found
 }
 
 #[tokio::test]
@@ -300,4 +306,32 @@ async fn query_result_goes_only_to_the_connection_that_asked() {
         Outcome::Ok(Some(QueryResult::History { .. }))
     ));
     assert!(heard.is_empty(), "other connection heard {heard:?}");
+}
+
+// docs/design/router-key-security.md: 키가 든 오류도 실제 engine 로그 파일에는 가린 채로 남는다
+#[tokio::test]
+async fn engine_log_file_never_holds_the_router_key() {
+    let fixture = Fixture::new();
+    let engine = fixture.ready().await;
+    let log = crate::engine_log::EngineLog::start(&fixture.options.home).unwrap();
+    let subscriber = tracing_subscriber::fmt()
+        .with_writer(log)
+        .with_ansi(false)
+        .finish();
+    let guard = tracing::subscriber::set_default(subscriber);
+
+    engine.warn_failure(
+        "provider call failed",
+        Err::<(), _>(std::io::Error::other(format!("rejected key {KEY}"))),
+    );
+    drop(guard);
+
+    let logs = fixture.options.home.join("logs");
+    let written = std::fs::read_dir(&logs)
+        .unwrap()
+        .map(|entry| std::fs::read_to_string(entry.unwrap().path()).unwrap())
+        .collect::<String>();
+    assert!(written.contains("provider call failed"), "{written}");
+    assert!(written.contains("rejected key [redacted]"), "{written}");
+    assert!(files_containing(&fixture.options.home, KEY).is_empty());
 }
