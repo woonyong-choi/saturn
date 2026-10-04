@@ -177,6 +177,8 @@ pub const SHELL_EXIT: &str = "종료 코드";
 pub const COMMAND_UNKNOWN: &str = "알 수 없는 명령";
 pub const COMMAND_INVALID: &str = "잘못된 인자";
 pub const SHELL_FAILED: &str = "셸 명령을 실행하지 못했습니다";
+pub const INPUT_NOT_ACCEPTED: &str = "입력을 접수하지 못했습니다: {reason}";
+pub const REQUEST_REJECTED: &str = "engine이 요청을 거절했습니다: {reason}";
 pub const ITEMS_SUFFIX: &str = "개";
 
 // 시작 화면 초안

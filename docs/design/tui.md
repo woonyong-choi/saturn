@@ -180,6 +180,10 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 
 보내기, 취소, 허용, 거절 같은 행동은 폭과 관계없이 세로 목록이고 `↑`, `↓`로 고르고 `Enter`로 정한다. 대기 줄과 보류 줄의 버튼과 허가 요청 창의 선택지가 그렇다. 그릴 자리가 모자라면 앞부분만 그린다. 줄은 끝을 `…`로 줄이고 폭이 0인 칸은 아무것도 그리지 않으며, 접거나 세로로 늘어놓다가 깨지지 않는다. Gemini CLI와 OpenCode가 80칸을 기준으로 삼고 Codex와 Gemini CLI가 선택지를 세로로 둔다.
 
+### 요청 거절
+
+`engine`이 요청 하나를 거절하면(응답 `error`) 클라이언트는 그 응답을 요청 번호와 함께 화면에 올린다. 연결은 닫지 않고 다른 요청의 상태도 바꾸지 않는다. 전체 화면은 거절 원인을 대화 기록에 `engine이 요청을 거절했습니다: 원인`(영어 `The engine rejected the request: ...`)으로 남긴다. 접수하지 못한 입력(`SubmitInput`의 거절)은 `입력을 접수하지 못했습니다: 원인`(영어 `Failed to accept input: ...`)으로 남기고, 입력창이 비어 있으면 그 입력을 입력창에 되돌려 다시 고치게 한다. 입력창에 쓰던 글이 있으면 덮지 않는다. 자동으로 다시 보내지 않는다. 이미 접수한 입력의 실행 실패, 허가 거절, router의 정상 보류는 거절 응답이 아니라 알림이므로 이 줄을 쓰지 않는다. 단순 방식은 같은 문구를 `Saturn: ` 줄로 쓰고, 접수 거절만 온 입력은 실행 결과를 기다리지 않는다. 모든 입력이 끝나면 접수 거절의 원인 종류로 종료 코드를 정하고([종료 코드](engine-lifecycle.md#종료-코드)), 작업 실패가 있으면 1이다. `Attach`처럼 입력과 짝지을 수 없는 요청이 거절되면 바로 같은 방식으로 끝낸다. 조회 요청과 `cli` 하위 명령의 거절은 지금처럼 응답을 기다리는 호출이 오류로 받는다.
+
 ### 단순 방식
 
 단순 방식은 화면 낭독기와 파이프, CI를 위한 그리기 방식이다. 박스와 애니메이션을 없애고, 줄마다 누가 말했는지 적고, 선택지를 번호 목록으로 바꾸고, 입력이 필요하면 터미널 벨을 울린다. Claude Code와 Gemini CLI의 화면 낭독기 모드를 참고했다.
@@ -568,6 +572,9 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | 단순 방식은 박스와 움직임과 색 없이 그리고 줄마다 말한 쪽을 적으며, 선택지는 번호 목록이고 번호 키로 정한다. | `saturn-terminal/tui/src/app/tests.rs`의 `plain_draws_no_box_a_still_spinner_and_a_speaker_on_every_line`, `the_same_screen_without_plain_has_the_boxes_and_the_moving_spinner`, `plain_permission_window_is_a_numbered_list_without_a_box`, `plain_number_keys_pick_a_choice_and_plain_off_ignores_them`, `plain_number_keys_pick_in_the_other_choice_windows_too`, `plain_removes_the_color_and_full_screen_keeps_it`, `saturn-terminal/tui/src/view/transcript.rs`의 `plain_lines_name_the_speaker_on_every_line_and_saturn_speaks_for_notices`, `plain_feedback_and_correction_questions_are_numbered_lists` |
 | 단순 방식에서 입력이 필요하면 벨을 울리고 그 밖의 알림에는 울리지 않으며, 파이프 출력에는 벨을 섞지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `plain_rings_the_bell_when_input_is_needed_and_full_screen_does_not`, `plain_does_not_ring_for_notifications_that_need_no_answer`, `saturn-terminal/tui/src/plain.rs`의 `bell_precedes_the_permission_line_only_when_enabled` |
 | 화면이 없는 파이프와 CI에서도 같은 명령이 같은 결과를 낸다. | `saturn-terminal/tui/src/plain.rs`의 `plain_and_full_screen_cells_use_same_text`, `apply_writes_echo_output_result_and_summary` |
+| 요청 거절 응답은 연결을 닫지 않고 요청 번호와 함께 클라이언트에 전달된다. | `saturn-terminal/tui/src/client/tests.rs`의 `next_returns_a_rejection_with_its_request_id_and_keeps_the_connection` |
+| 전체 화면은 거절 원인을 대화 기록에 남기고, 접수하지 못한 입력만 비어 있는 입력창에 되돌리며 다른 요청을 건드리지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `a_rejected_input_shows_the_cause_and_comes_back_to_the_composer`, `a_rejection_changes_only_the_request_it_answers`, `a_rejection_of_another_request_is_shown_without_touching_the_composer` |
+| 단순 방식은 접수 거절만 온 채 입력이 끝나면 완료 알림 없이 거절 원인의 종료 코드로 끝나고, 접수된 입력이 남아 있으면 계속 기다린다. | `saturn-terminal/tui/src/tests.rs`의 `plain_ends_with_the_rejection_when_the_only_input_is_refused`, `plain_refused_attach_ends_instead_of_waiting_for_a_chat`, `plain_keeps_waiting_for_an_accepted_input_when_another_is_refused` |
 
 ## 미해결 질문
 

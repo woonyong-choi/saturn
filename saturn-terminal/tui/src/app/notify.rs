@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
+use saturn_protocol::envelope::RequestId;
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{
     ChatId, ConstraintAskId, InputId, JudgmentId, LedgerSeq, SettingsRevision, TaskId, TaskLabel,
@@ -15,6 +16,7 @@ use saturn_protocol::rpc::{
 use saturn_protocol::state::{Disposition, InputState, QueueReason};
 
 use super::{App, Effect, Window};
+use crate::client::Rejection;
 use crate::i18n;
 use crate::keymap::Keymap;
 use crate::state::{
@@ -34,6 +36,9 @@ use crate::view::task_list::ChatGroup;
 use crate::view::train_confirm::{TrainChoice, TrainConfirm};
 use crate::view::transcript::{TranscriptCell, delivery_badge, echo_cell, result_cell};
 use crate::view::usage::UsageTable;
+
+/// 거절 응답을 기다리며 원문을 들고 있는 입력 요청 수의 상한. 초안 값.
+const SENT_INPUTS_KEPT: usize = 64;
 
 impl App {
     fn on_start_info(&mut self, notification: &Notification) {
@@ -607,6 +612,37 @@ impl App {
         warning: Option<SettingsWarning>,
     ) {
         self.chat.settings = Some((revision, warning));
+    }
+
+    /// 보낸 입력의 원문을 기억한다. 오래된 것은 접수됐다고 보고 버린다.
+    pub(crate) fn note_sent(&mut self, id: RequestId, request: &Request) {
+        let Request::SubmitInput { text, .. } = request else {
+            return;
+        };
+        self.sent_inputs.insert(id, text.clone());
+        while self.sent_inputs.len() > SENT_INPUTS_KEPT {
+            self.sent_inputs.pop_first();
+        }
+    }
+
+    /// 거절된 요청 하나만 알린다. 접수하지 못한 입력은 입력창이 비었을 때 되돌려 다시 고치게 하고, 자동으로 다시 보내지 않는다.
+    pub(super) fn on_rejected(&mut self, rejection: Rejection) {
+        let text = rejection.id.and_then(|id| self.sent_inputs.remove(&id));
+        let template = if text.is_some() {
+            i18n::INPUT_NOT_ACCEPTED
+        } else {
+            i18n::REQUEST_REJECTED
+        };
+        let line = self
+            .lang
+            .tr(template)
+            .replace("{reason}", &rejection.message);
+        self.push_cell(TranscriptCell::Warning(line));
+        if let Some(text) = text
+            && self.composer.is_empty()
+        {
+            self.set_draft(&text);
+        }
     }
 
     fn on_alert(&mut self, alert: Alert) {

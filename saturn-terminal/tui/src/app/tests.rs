@@ -3578,3 +3578,68 @@ fn stop_transcript_redraw_and_quit_commands_do_what_their_keys_do() {
     assert!(transcript);
     assert_eq!(sent(&quit), vec![&Request::PrepareExit { chat: ChatId(7) }]);
 }
+
+fn rejection(id: u64, message: &str) -> crate::client::Rejection {
+    crate::client::Rejection {
+        id: Some(saturn_protocol::envelope::RequestId(id)),
+        code: -32602,
+        kind: None,
+        message: message.to_string(),
+    }
+}
+
+fn submit(app: &mut App, id: u64, text: &str) {
+    type_text(app, text);
+    let effects = press(app, KeyCode::Enter, KeyModifiers::NONE);
+    let request = sent(&effects)[0].clone();
+    app.note_sent(saturn_protocol::envelope::RequestId(id), &request);
+}
+
+#[test]
+fn a_rejected_input_shows_the_cause_and_comes_back_to_the_composer() {
+    let mut app = attached();
+    submit(&mut app, 1, "고쳐 줘");
+    assert!(app.composer.is_empty());
+
+    app.handle(AppEvent::Rejected(rejection(1, "chat is closed")), base());
+
+    assert_eq!(app.composer.text(), "고쳐 줘");
+    assert!(matches!(
+        app.transcript.cells().last(),
+        Some(TranscriptCell::Warning(text))
+            if text.contains("입력을 접수하지 못했습니다") && text.contains("chat is closed")
+    ));
+}
+
+#[test]
+fn a_rejection_changes_only_the_request_it_answers() {
+    let mut app = attached();
+    submit(&mut app, 1, "첫째");
+    submit(&mut app, 2, "둘째");
+
+    app.handle(AppEvent::Rejected(rejection(2, "busy")), base());
+
+    assert_eq!(app.composer.text(), "둘째");
+    // 입력창에 초안이 있으면 늦게 거절된 입력은 줄로만 알린다
+    app.handle(AppEvent::Rejected(rejection(1, "late")), base());
+    assert_eq!(app.composer.text(), "둘째");
+    assert!(matches!(
+        app.transcript.cells().last(),
+        Some(TranscriptCell::Warning(text)) if text.contains("late")
+    ));
+}
+
+#[test]
+fn a_rejection_of_another_request_is_shown_without_touching_the_composer() {
+    let mut app = attached();
+    type_text(&mut app, "쓰던 글");
+
+    app.handle(AppEvent::Rejected(rejection(9, "not found")), base());
+
+    assert_eq!(app.composer.text(), "쓰던 글");
+    assert!(matches!(
+        app.transcript.cells().last(),
+        Some(TranscriptCell::Warning(text))
+            if text.contains("engine이 요청을 거절했습니다") && text.contains("not found")
+    ));
+}

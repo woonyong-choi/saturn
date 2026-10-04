@@ -194,3 +194,53 @@ async fn call_returns_the_result_of_a_query() {
     assert_eq!(result, Some(tasks_result()));
     server.await.unwrap();
 }
+
+#[tokio::test]
+async fn next_returns_a_rejection_with_its_request_id_and_keeps_the_connection() {
+    let home = tempfile::tempdir().unwrap();
+    let socket = home.path().join(SOCKET_FILE);
+    let listener = UnixListener::bind(&socket).unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let (read_half, mut writer) = stream.into_split();
+        let mut lines = BufReader::new(read_half).lines();
+        for _ in 0..2 {
+            lines.next_line().await.unwrap().unwrap();
+        }
+        let replies = [
+            ServerMessage::from(Response::ok(RequestId(0))),
+            ServerMessage::from(Response::error_of_kind(
+                Some(RequestId(1)),
+                -32602,
+                Some(ErrorKind::NotFound),
+                "no such chat",
+            )),
+            ServerMessage::Notification(NotificationMessage::new(notice())),
+        ];
+        for reply in replies {
+            writer
+                .write_all(encode_line(&reply).unwrap().as_bytes())
+                .await
+                .unwrap();
+        }
+    });
+    let mut client = EngineClient::connect(&socket).await.unwrap();
+    let first = client.send(Request::ListTasks).await.unwrap();
+    let second = client.send(Request::ListTasks).await.unwrap();
+
+    let rejected = client.next().await;
+    let after = client.next().await;
+
+    assert_eq!((first, second), (RequestId(0), RequestId(1)));
+    assert_eq!(
+        rejected,
+        Some(Incoming::Rejected(Rejection {
+            id: Some(RequestId(1)),
+            code: -32602,
+            kind: Some(ErrorKind::NotFound),
+            message: "no such chat".to_string(),
+        }))
+    );
+    assert_eq!(after, Some(Incoming::Notification(notice())));
+    server.await.unwrap();
+}

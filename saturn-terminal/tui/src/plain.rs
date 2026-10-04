@@ -30,6 +30,10 @@ pub(crate) struct PlainOutput<W: Write> {
     failed: bool,
     /// 입력이 필요한 줄 앞에 터미널 벨을 쓴다. 표준 출력이 터미널일 때만 켠다.
     bell: bool,
+    /// 마지막으로 끝난 때 이후 보냈고 거절되지 않은 입력 수.
+    open: u64,
+    /// 입력을 보낸 적이 있다.
+    sent: bool,
 }
 
 impl<W: Write> PlainOutput<W> {
@@ -46,6 +50,8 @@ impl<W: Write> PlainOutput<W> {
             alerts_written: 0,
             key_required: None,
             failed: false,
+            open: 0,
+            sent: false,
         }
     }
 
@@ -68,7 +74,37 @@ impl<W: Write> PlainOutput<W> {
     /// 원문은 engine이 `InputChanged`로 돌려주므로 여기서 쓰지 않는다.
     pub(crate) fn submitted(&mut self, text: String) {
         let _ = text;
+        if self.finished {
+            self.open = 0;
+        }
+        self.open += 1;
+        self.sent = true;
         self.finished = false;
+    }
+
+    /// engine이 접수하지 않은 입력. 그 입력의 실행은 오지 않으므로 기다리는 수에서 뺀다.
+    ///
+    /// # Errors
+    /// 쓰기 실패.
+    pub(crate) fn input_rejected(&mut self, message: &str) -> std::io::Result<()> {
+        self.open = self.open.saturating_sub(1);
+        let line = self
+            .lang
+            .tr(i18n::INPUT_NOT_ACCEPTED)
+            .replace("{reason}", message);
+        self.saturn_line(&line)
+    }
+
+    /// 접속 자체를 거절당한 줄처럼, 입력과 짝지을 수 없는 거절을 쓴다.
+    ///
+    /// # Errors
+    /// 쓰기 실패.
+    pub(crate) fn request_rejected(&mut self, message: &str) -> std::io::Result<()> {
+        let line = self
+            .lang
+            .tr(i18n::REQUEST_REJECTED)
+            .replace("{reason}", message);
+        self.saturn_line(&line)
     }
 
     /// 접속 직후 `HistoryChunk`가 알려 준다.
@@ -185,9 +221,9 @@ impl<W: Write> PlainOutput<W> {
         Ok(())
     }
 
-    /// `ChatNotice::RequestSummary`를 쓴 뒤 참.
+    /// `ChatNotice::RequestSummary`를 쓴 뒤 참. 보낸 입력이 모두 거절돼 기다릴 실행이 없어도 참.
     pub(crate) fn is_finished(&self) -> bool {
-        self.finished
+        self.finished || (self.sent && self.open == 0)
     }
 
     // cost: time O(t + l), heap O(l), stack O(1), io l

@@ -343,6 +343,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 - `saturn-engine hook pre-tool-use`는 Claude Code 훅 규약이라 입력 오류에 종료 코드 2를 유지한다. 위 표는 `saturn`에만 적용한다.
 - engine이 요청을 거절하면 응답 오류에 원인 종류(`ErrorKind`: `NotFound`, `RetryLater`, `RouterKey`, `Config`, `Failed`)를 싣는다. `cli`는 원인 종류가 있으면 그것으로, 없으면 `INVALID_PARAMS`는 2, 그 밖은 70으로 정한다. 같은 JSON-RPC 오류 번호 안의 원인을 가르기 위해서다. 옛 engine은 원인 종류를 보내지 않으므로 70이 된다.
+- plain 모드에서 입력을 접수하지 못하면(응답 `error`) 거절 줄을 출력하고, 더 기다릴 입력이 없으면 그 거절의 원인 종류로 위 규칙에 따라 끝난다. 완료 알림이 오지 않아도 기다리지 않는다. 작업 실패가 함께 있으면 1이다. 전체 화면은 거절을 화면에 보이고 닫기를 기다린다([TUI](tui.md#요청-거절)).
 - plain 모드에서 provider 작업이 실패로 끝나면 실패 줄을 출력하고 입력을 모두 처리한 뒤 1로 끝낸다. engine은 멀쩡하고 실패한 것은 작업이라 69가 아니다. 전체 화면에서는 작업 실패가 화면에 보이므로 정상으로 닫으면 0이다.
 - `saturn router train`은 확인 질문에 아니라고 답하면 1이다. 학습이 끝난 뒤 승격 여부를 알리는 알림이 아직 없어 승격 실패는 종료 코드로 알리지 못한다. 승격 알림은 학습 구현([#91](https://github.com/woonyong-choi/saturn/issues/91))에서 정한다.
 
