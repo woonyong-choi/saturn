@@ -180,6 +180,7 @@ impl App {
             }
             Notification::ModelPinned { chat, model } => {
                 if self.chat.chat == Some(chat) {
+                    self.push_cell(TranscriptCell::Warning(self.model_pinned_notice(&model)));
                     self.chat.pinned_model = Some(model);
                 }
             }

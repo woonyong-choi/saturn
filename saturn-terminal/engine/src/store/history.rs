@@ -1,7 +1,7 @@
 //! TUI가 붙을 때 화면을 되살리는 채팅 기록 조회. 접수한 입력과 provider 실행(답)을 시각 순서로 합친다.
 //! 설계: docs/design/engine-lifecycle.md
 
-use saturn_protocol::event::ProviderEvent;
+use saturn_protocol::event::{ProviderEvent, UsageReport};
 use saturn_protocol::ids::{ChatId, InputId, Provider, TaskId};
 use saturn_protocol::state::{InputState, QueueReason};
 use sqlx::Row;
@@ -29,6 +29,10 @@ pub(crate) enum HistoryEntry {
         /// 끝난 실행의 걸린 시간. 끝나지 않았으면 0.
         elapsed_ms: u64,
         events: Vec<ProviderEvent>,
+        /// 이 실행이 보고한 사용량. `usage` 표의 원값을 보고 순서로 담는다. 이벤트 표에는 없다.
+        usage: Vec<UsageReport>,
+        /// 같은 에이전트의 앞 실행이 다른 provider였으면 그 provider. 메인 전환을 이 차이로 되살린다.
+        switched_from: Option<Provider>,
     },
 }
 
@@ -92,17 +96,40 @@ impl Store {
             .iter()
             .map(|body| serde_json::from_str(body))
             .collect::<Result<Vec<_>, _>>()?;
+        let usage =
+            sqlx::query_scalar::<_, String>("SELECT body FROM usage WHERE run_id = ? ORDER BY id")
+                .bind(id)
+                .fetch_all(&self.pool)
+                .await?
+                .iter()
+                .map(|body| serde_json::from_str(body))
+                .collect::<Result<Vec<UsageReport>, _>>()?;
+        let provider: Provider = parse_enum(row.try_get("provider")?)?;
+        let previous: Option<String> = sqlx::query_scalar(
+            "SELECT previous.provider FROM runs AS previous JOIN runs AS current \
+             ON previous.chat_id = current.chat_id AND previous.agent_id = current.agent_id \
+             AND previous.id < current.id WHERE current.id = ? ORDER BY previous.id DESC LIMIT 1",
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
+        let switched_from = previous
+            .map(|text| parse_enum::<Provider>(&text))
+            .transpose()?
+            .filter(|before| *before != provider);
         let started: i64 = row.try_get("at")?;
         let ended: Option<i64> = row.try_get("ended_at")?;
         Ok(HistoryEntry::Run {
             task: TaskId(from_sql_int(row.try_get("task")?)),
-            provider: parse_enum(row.try_get("provider")?)?,
+            provider,
             end: row
                 .try_get::<Option<String>, _>("end_kind")?
                 .map(|text| parse_run_end(&text))
                 .transpose()?,
             elapsed_ms: ended.map_or(0, |ended| u64::try_from(ended - started).unwrap_or(0)),
             events,
+            usage,
+            switched_from,
         })
     }
 }

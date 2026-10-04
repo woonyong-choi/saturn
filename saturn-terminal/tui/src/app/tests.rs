@@ -6,11 +6,12 @@ use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, Mouse
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use ratatui::layout::Rect;
-use saturn_protocol::event::{Activity, ProviderEvent, ToolDetail};
+use saturn_protocol::event::{Activity, ProviderEvent, ToolDetail, UsageReport, UsageScope};
 use saturn_protocol::ids::{AgentId, ChatId, InputId, JudgmentId, Provider, TaskId, TaskLabel};
 use saturn_protocol::input::{InputAnswer, InputField, InputFieldKind, InputRequest, InputValue};
 use saturn_protocol::rpc::{
-    Alert, ExitPlan, ModelChoice, ModelInfo, Notification, PermissionAnswer, Request, UsageRange,
+    Alert, ChatNotice, ExitPlan, ModelChoice, ModelInfo, Notification, PermissionAnswer, Request,
+    UsageRange,
 };
 use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 
@@ -1021,6 +1022,105 @@ fn first_history_chunk_shows_earlier_input_and_finished_reply() {
     assert!(cells.iter().any(|cell| matches!(
         cell,
         TranscriptCell::AgentText { lines, .. } if lines.join("") == "old answer"
+    )));
+}
+
+fn usage_event(task: u64, input: u64, output: u64) -> Notification {
+    Notification::TaskEvent {
+        task: TaskId(task),
+        event: ProviderEvent::Usage(UsageReport {
+            agent: AgentId(1),
+            subagent: None,
+            model: Some("gpt-x".to_owned()),
+            scope: UsageScope::MainTurn,
+            input: Some(input),
+            cache_read: None,
+            cache_write: None,
+            output: Some(output),
+            reasoning: None,
+        }),
+    }
+}
+
+/// 다시 열 때 실행 줄이 실시간처럼 토큰 수를 보인다(#384).
+#[test]
+fn reattached_result_line_shows_the_usage_of_the_run() {
+    let mut app = app();
+
+    notify(
+        &mut app,
+        history(vec![
+            input(1, InputState::Applied, "question"),
+            task(1, 'A', TaskState::Running),
+            reply_piece(1, "answer"),
+            usage_event(1, 100, 20),
+            task(1, 'A', TaskState::Done),
+        ]),
+    );
+
+    assert!(app.transcript.cells().iter().any(|cell| matches!(
+        cell,
+        TranscriptCell::Result {
+            tokens: Some(120),
+            ..
+        }
+    )));
+}
+
+/// 다시 열 때 provider 전환 줄이 실시간처럼 나온다(#384).
+#[test]
+fn reattached_chat_shows_the_provider_switch_line() {
+    let mut app = app();
+
+    notify(
+        &mut app,
+        history(vec![
+            input(1, InputState::Applied, "question"),
+            Notification::ChatNotice {
+                chat: ChatId(7),
+                task: None,
+                notice: ChatNotice::ProviderSwitched {
+                    from: Provider::Codex,
+                    to: Provider::Claude,
+                },
+            },
+            task(1, 'A', TaskState::Running),
+            task(1, 'A', TaskState::Done),
+        ]),
+    );
+
+    assert!(app.transcript.cells().iter().any(|cell| matches!(
+        cell,
+        TranscriptCell::Notice {
+            notice: ChatNotice::ProviderSwitched {
+                from: Provider::Codex,
+                to: Provider::Claude,
+            },
+            ..
+        }
+    )));
+}
+
+/// 다시 열 때 고정 모델 안내 줄이 실시간처럼 나온다(#384).
+#[test]
+fn reattached_chat_shows_the_pinned_model_line() {
+    let mut app = app();
+    notify(&mut app, history(vec![input(1, InputState::Applied, "q")]));
+
+    notify(
+        &mut app,
+        Notification::ModelPinned {
+            chat: ChatId(7),
+            model: ModelChoice {
+                provider: Provider::Codex,
+                model: "gpt-x".to_owned(),
+            },
+        },
+    );
+
+    assert!(app.transcript.cells().iter().any(|cell| matches!(
+        cell,
+        TranscriptCell::Warning(text) if text.contains("codex") && text.contains("gpt-x")
     )));
 }
 

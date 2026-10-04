@@ -80,7 +80,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 
 | 영역 | 보이는 것 | 갱신 시점 |
 |---|---|---|
-| 대화 기록 | 입력 에코 `> [A] 원문`, 도구 셀, 결과 줄, 맥락 정리와 provider 전환 한 줄, 피드백 질문, 이번 요청 합계 | 판단 확정, 작업 종료, 다시 실행할 때 기록 저장소에서 최근 부분부터 로드, 위로 스크롤할 때 이전 부분 로드 |
+| 대화 기록 | 입력 에코 `> [A] 원문`, 도구 셀, 결과 줄, 맥락 정리와 provider 전환 한 줄, 피드백 질문, 이번 요청 합계 | 판단 확정, 작업 종료, 다시 실행할 때 기록 저장소에서 최근 부분부터 로드(고정 모델 줄, provider 전환 줄, 실행 줄의 토큰 합계도 실시간과 같게 되살림), 위로 스크롤할 때 이전 부분 로드 |
 | 작업별 출력 칸 | 출력이 흐르는 작업마다 최근 줄, 높이 상한 8줄, 화면이 작으면 상한 축소 | 완성된 줄 단위 갱신, 출력 시작 때 한 번 이동, 작업 종료 때 전체 내용을 대화 기록으로 옮기고 삭제 |
 | 상태판 | 실행 줄, 판단 줄, 학습 줄, 대기 줄, 보류 줄, 알림 줄 | `engine` 상태 변경 |
 | 팝업 | `/` 명령 목록과 값 목록, `@` 파일 목록, `$` 스킬 목록, 명령 목록 최대 8행과 오른쪽 출처 표시 | 글자 입력마다 목록 필터 |
@@ -348,7 +348,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | router 키 입력 창 붙여넣기 | 제어 문자를 뺀 글을 가린 입력칸에 넣는다 |
 | `/record` | 명령 목록에 넣고 값 목록은 `on`, `off` |
 | `/add-dir` | 명령 목록에 넣고 값은 폴더 경로 하나. 명령 이름 뒤 나머지 줄 전체를 경로로 읽어 공백이 들어 있어도 된다. 상대 경로는 TUI의 현재 폴더 기준 절대 경로로, `~/`는 홈 폴더 아래로 바꿔 보낸다(초안). 더한 폴더는 채팅 기록에 저장하고 모든 provider session에 넘긴다. 폴더 설정은 읽지 않는다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)). 더한 뒤 안내 한 줄을 대화 기록에 남기고, 열린 session이 있으면 다음 session부터 적용한다고 덧붙인다 |
-| `/model` | 명령 목록에 넣고 값 목록은 `codex`, `claude`. 값 없이 실행하면 모든 provider의 모델 창이 열리고, 값을 주면 그 provider 모델만 보인다. 방향키로 고르고 `Enter`로 정한다. 고른 모델은 `SetModel`로 engine에 저장하고, 그 채팅의 모든 입력이 쓴다. 채팅에 붙을 때 engine이 `ModelPinned`로 알려 주므로 TUI를 다시 열거나 채팅을 옮겨도 유지된다. 정한 뒤 안내 한 줄을 대화 기록에 남긴다. provider 고유의 `/model`은 넘기지 않고 Saturn `/model`로 처리한다([모델 고르기](providers-and-sessions.md#모델-고르기)) |
+| `/model` | 명령 목록에 넣고 값 목록은 `codex`, `claude`. 값 없이 실행하면 모든 provider의 모델 창이 열리고, 값을 주면 그 provider 모델만 보인다. 방향키로 고르고 `Enter`로 정한다. 고른 모델은 `SetModel`로 engine에 저장하고, 그 채팅의 모든 입력이 쓴다. 채팅에 붙을 때 engine이 `ModelPinned`로 알려 주므로 TUI를 다시 열거나 채팅을 옮겨도 유지된다. 안내 한 줄(`다음 입력부터 {provider} · {model} 모델로 보냅니다`)은 `ModelPinned`를 받을 때 대화 기록에 남기므로, 정한 직후와 채팅을 다시 열 때 같은 줄이 나온다. provider 고유의 `/model`은 넘기지 않고 Saturn `/model`로 처리한다([모델 고르기](providers-and-sessions.md#모델-고르기)) |
 | `/permissions` | 명령 목록에 넣고 값 목록은 `ask`, `edit`, `read-only`, `full`(초안). 값을 주면 채팅 층 모드를 바꾼다. 값 없이 실행하면 현재 모드를 보이는 동작은 아직 없다([#177](https://github.com/woonyong-choi/saturn/issues/177), [권한](permissions.md)) |
 | `/constraints` | 명령 목록에 넣고 값은 없다. 제약 목록 화면을 연다. `d`는 `ReleaseConstraint`, `x`는 잘못 등록으로 `ReleaseConstraint`, `u`는 `UndoConstraintChange`를 보내고 확인 창의 답은 `AnswerConstraintAsk`로 보낸다. 요청은 화면이 본 제약 revision을 싣고 낡았으면 engine이 `Stale`로 거절해 목록을 새로 읽는다(초안, [제약](constraints.md#되돌리기)) |
 
