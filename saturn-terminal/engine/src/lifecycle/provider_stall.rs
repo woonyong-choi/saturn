@@ -18,7 +18,6 @@ use crate::providers::test_support::{Call, FakeAdapter, FakeProvider, Stall, fak
 use crate::providers::test_support::{CodexClient, fake_codex_launch};
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
-use std::time::Instant;
 
 /// 시험이 기다리는 시간을 줄인다. 실제 값은 `providers::REPLY_TIMEOUT`.
 const SHORT_REPLY_TIMEOUT: Duration = Duration::from_secs(1);
@@ -29,8 +28,8 @@ const SLOW_OPEN_MS: &str = "1500";
 /// 시작 요청이 느린 동안 engine이 다른 요청에 답해야 하는 시간. 시작 요청(`SLOW_START_MS`)이 끝나기 전이어야 한다.
 const PROMPT: Duration = Duration::from_secs(1);
 
-/// 시작 요청 `thread/start`가 걸리는 시간(ms). 제한 시간(60초)보다 훨씬 짧고 `PROMPT`보다 길다.
-const SLOW_START_MS: &str = "5000";
+/// 막힌 시작 요청이 있는 동안 다른 요청이 끝나기를 기다리는 한도. 시작 요청은 문 파일이 생겨야 끝나므로 시간 경쟁이 없고, 이 값은 engine이 멈췄을 때 실패로 치는 한도일 뿐이다.
+const BLOCKED_LIMIT: Duration = Duration::from_secs(30);
 
 fn slow_open() -> Vec<(std::ffi::OsString, std::ffi::OsString)> {
     vec![("FAKE_SLOW_OPEN_MS".into(), SLOW_OPEN_MS.into())]
@@ -169,6 +168,13 @@ async fn prompt<T>(what: &str, work: impl Future<Output = T>) -> T {
         .unwrap_or_else(|_| panic!("{what} should be handled while a provider start is slow"))
 }
 
+/// 막힌 시작 요청이 끝나기 전에 engine이 `work`에 답하는지 본다. 한도는 `BLOCKED_LIMIT`.
+async fn blocked<T>(what: &str, work: impl Future<Output = T>) -> T {
+    timeout(BLOCKED_LIMIT, work)
+        .await
+        .unwrap_or_else(|_| panic!("{what} should be handled while a provider start is blocked"))
+}
+
 fn attach_request(chat: ChatId, workdir: &std::path::Path) -> Request {
     Request::Attach {
         chat: Some(chat),
@@ -192,14 +198,15 @@ fn is_running(notification: &Notification) -> bool {
 #[tokio::test]
 async fn a_slow_start_request_does_not_stall_other_chats_or_stop() {
     let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
-    let start = vec![("FAKE_SLOW_OPEN_MS".into(), SLOW_START_MS.into())];
+    // 문 파일은 만들지 않으므로 `thread/start`는 시험이 끝날 때까지 끝나지 않는다
+    let gate = flow.fixture.root.path().join("open-gate");
+    let start = vec![("FAKE_OPEN_GATE_FILE".into(), gate.into_os_string())];
     let codex = start_fake_codex(&flow, start).await;
     use_codex(&mut flow, codex).await;
     let (other, other_dir, other_fake) = add_other_chat(&mut flow).await;
     let chat = flow.chat;
     let mut first = flow.client().await;
     let mut second = Client::connect(&flow.fixture.socket()).await;
-    let begun = Instant::now();
 
     let stopped = drive(&mut flow.engine, async {
         first.attach(2, submit(chat, "slow start")).await;
@@ -207,11 +214,11 @@ async fn a_slow_start_request_does_not_stall_other_chats_or_stop() {
             .until(|n| (input_state(n) == Some(InputState::Delivering)).then_some(()))
             .await;
 
-        prompt("an attach of another chat", async {
+        blocked("an attach of another chat", async {
             second.attach(1, attach_request(other, &other_dir)).await
         })
         .await;
-        prompt("an input of another chat", async {
+        blocked("an input of another chat", async {
             second.attach(2, submit(other, "other work")).await;
             second
                 .until(|n| (input_state(n) == Some(InputState::Applied)).then_some(()))
@@ -223,8 +230,8 @@ async fn a_slow_start_request_does_not_stall_other_chats_or_stop() {
             before: None,
             limit: 10,
         };
-        prompt("a history load of the same chat", first.query(3, history)).await;
-        prompt(
+        blocked("a history load of the same chat", first.query(3, history)).await;
+        blocked(
             "a stop of the same chat",
             first.attach(4, Request::Stop { chat }),
         )
@@ -232,10 +239,6 @@ async fn a_slow_start_request_does_not_stall_other_chats_or_stop() {
     })
     .await;
 
-    assert!(
-        begun.elapsed() < Duration::from_millis(4500),
-        "the requests should have been handled before the slow start finished"
-    );
     assert!(
         stopped.iter().any(|n| matches!(
             n,

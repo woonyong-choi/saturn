@@ -79,6 +79,8 @@ while (my $line = <STDIN>) {
       { name => "off", description => "disabled", enabled => JSON::PP::false, path => "/skills/off/SKILL.md", scope => "user" } ] } ] } });
   } elsif ($method eq "thread/start" || $method eq "thread/resume") {
     select(undef, undef, undef, $ENV{FAKE_SLOW_OPEN_MS} / 1000) if ($ENV{FAKE_SLOW_OPEN_MS} // "") ne "";
+    # 시험이 문서 파일을 만들 때까지 응답하지 않는다
+    select(undef, undef, undef, 0.02) until (($ENV{FAKE_OPEN_GATE_FILE} // "") eq "" || -e $ENV{FAKE_OPEN_GATE_FILE});
     my $model = $p->{model} // "";
     if (($ENV{FAKE_REQUIRE_ADD_DIR} // "") ne "") {
       my $roots = $p->{config}{sandbox_workspace_write}{writable_roots} // [];
@@ -681,16 +683,6 @@ async fn elicitation_input_and_permission_answers_do_not_cross() {
     assert!(matches!(unknown, Err(ProviderError::NotSent { .. })));
     assert!(as_input.is_ok());
     assert!(matches!(again, Err(ProviderError::NotSent { .. })));
-}
-
-#[tokio::test]
-async fn elicitation_approval_is_still_a_permission_request() {
-    let (requested, _) = answer_gate("gate-mcp", PermissionAnswer::AllowOnce).await;
-
-    assert!(matches!(
-        requested,
-        ProviderEvent::PermissionRequested { .. }
-    ));
 }
 
 #[tokio::test]

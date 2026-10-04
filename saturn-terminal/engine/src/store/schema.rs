@@ -796,16 +796,28 @@ mod tests {
     #[tokio::test]
     async fn v10_file_migrates_to_run_changes_keeping_runs() {
         let (dir, store) = temp_store_at(10).await;
-        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
-            .execute(&store.pool)
-            .await
-            .unwrap();
+        sqlx::raw_sql(
+            "INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0);
+             INSERT INTO runs (id, chat_id, task_id, agent_id, session_id, provider, effect_scope, started_at)
+             VALUES (7, 1, 3, 4, 5, 'claude', 'unobserved', 100)",
+        )
+        .execute(&store.pool)
+        .await
+        .unwrap();
         store.pool.close().await;
 
         let (store, notice) = Store::open(dir.path()).await.unwrap();
 
         let notice = notice.unwrap();
         assert_eq!((notice.from, notice.to), (10, SCHEMA_VERSION));
+        // 이관 전 실행은 측정하지 않았으므로 `changes_state`가 비어 있다
+        let kept: (i64, i64, String, i64, Option<String>) = sqlx::query_as(
+            "SELECT chat_id, task_id, provider, started_at, changes_state FROM runs WHERE id = 7",
+        )
+        .fetch_one(&store.pool)
+        .await
+        .unwrap();
+        assert_eq!(kept, (1, 3, "claude".to_owned(), 100, None));
         assert!(notice.backup.exists());
         assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
         let chat = saturn_protocol::ids::ChatId(1);

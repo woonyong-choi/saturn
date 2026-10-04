@@ -37,6 +37,7 @@ tempfile = "3"
 thiserror = "2"
 toml_edit = "0.22"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "process", "sync", "time", "signal", "io-util"] }
+tokio-rustls = { version = "0.26", default-features = false }
 tracing = "0.1"
 ts-rs = "12"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

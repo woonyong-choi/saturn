@@ -81,6 +81,8 @@ async fn packet_overflow_reduction_keeps_the_fixed_zone() {
     flow.submit("now with codex").await;
 
     let sent = packets(&codex);
+    assert_eq!(sent.len(), 2);
+    assert!(sent[1].len() < sent[0].len());
     for packet in &sent {
         assert!(packet.contains(FIRST_INPUT));
         assert!(packet.contains(ANSWER));

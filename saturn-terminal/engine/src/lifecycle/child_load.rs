@@ -118,7 +118,7 @@ async fn measure(count: usize) {
             })
         })
         .collect();
-    let (running, samples) = drive(&mut family.flow.engine, async {
+    let running = drive(&mut family.flow.engine, async {
         let mut clients = Vec::new();
         for task in tasks {
             clients.push(task.await.unwrap());
@@ -126,11 +126,16 @@ async fn measure(count: usize) {
         tokio::time::sleep(Duration::from_millis(500)).await;
         let running = rss_kib();
         drop(clients);
-        tokio::time::sleep(Duration::from_secs(2)).await;
-        let _ = stop_tx.send(());
-        (running, probe.await.unwrap())
+        running
     })
     .await;
+    // 측정 구간은 끊기 전까지다. 끊긴 하위 접속의 정리는 완료를 기다린 뒤에 확인한다
+    drive_until(&mut family.flow.engine, PATIENCE, |engine| {
+        engine.passes.running_total() == 0
+    })
+    .await;
+    let _ = stop_tx.send(());
+    let samples = drive(&mut family.flow.engine, async { probe.await.unwrap() }).await;
     let mut samples = samples;
     samples.sort();
     let after = rss_kib();

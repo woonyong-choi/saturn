@@ -299,6 +299,20 @@ fn error_code(response: &Response) -> i32 {
     }
 }
 
+/// `done`이 참이 될 때까지 engine 요청 처리를 돌린다. 고정 시간을 재는 대신 상태가 바뀌기를 기다리며, `limit`은 실패로 칠 한도일 뿐이다.
+async fn drive_until(engine: &mut Engine, limit: Duration, mut done: impl FnMut(&Engine) -> bool) {
+    let deadline = tokio::time::Instant::now() + limit;
+    while !done(engine) {
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "engine state did not settle within {limit:?}"
+        );
+        if let Ok(served) = timeout(Duration::from_millis(10), engine.serve()).await {
+            panic!("serve should not end: {served:?}");
+        }
+    }
+}
+
 /// `script`가 끝날 때까지 같은 작업에서 engine 요청 처리를 돌린다.
 async fn drive<T>(engine: &mut Engine, script: impl Future<Output = T>) -> T {
     tokio::select! {
