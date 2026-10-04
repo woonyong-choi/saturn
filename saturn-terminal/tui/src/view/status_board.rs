@@ -333,6 +333,12 @@ pub(crate) fn alert_text(lang: Lang, alert: &Alert) -> String {
                 .tr(i18n::SCHEMA_MIGRATED)
                 .replace("{to}", &to.to_string());
         }
+        Alert::AutoPruned { chats, .. } => {
+            return lang
+                .tr(i18n::AUTO_PRUNED)
+                .replace("{chats}", &chats.to_string());
+        }
+        Alert::AutoPruneFailed => i18n::AUTO_PRUNE_FAILED,
     };
     lang.tr(key).to_string()
 }
@@ -635,6 +641,22 @@ mod tests {
 
         assert_eq!(alert_text(Lang::Ko, &alert), "기록 저장소 v2로 옮김");
         assert_eq!(alert_text(Lang::En, &alert), "Record store migrated to v2");
+    }
+
+    #[test]
+    fn alert_text_auto_prune_shows_deleted_count_or_failure() {
+        let done = Alert::AutoPruned { chats: 3, rows: 40 };
+
+        assert_eq!(alert_text(Lang::Ko, &done), "오래된 채팅 3개를 지웠습니다");
+        assert_eq!(alert_text(Lang::En, &done), "Deleted 3 old chats");
+        assert_eq!(
+            alert_text(Lang::Ko, &Alert::AutoPruneFailed),
+            "자동 정리에 실패했습니다 · 로그를 확인하세요"
+        );
+        assert_eq!(
+            alert_text(Lang::En, &Alert::AutoPruneFailed),
+            "Auto prune failed · Check the log"
+        );
     }
 
     #[test]

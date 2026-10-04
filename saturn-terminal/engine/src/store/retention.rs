@@ -23,6 +23,8 @@ const COUNTED_TABLES: [&str; 5] = ["inputs", "runs", "events", "usage", "session
 pub(crate) struct RetentionPolicy {
     /// `None`이면 자동 정리하지 않는다.
     pub max_age: Option<Duration>,
+    /// 거짓이면 시작 때 정리하지 않는다. `max_age`만으로 켜지지 않는다.
+    pub auto_prune: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -431,6 +433,7 @@ mod tests {
         assert_eq!(off, None);
         let policy = RetentionPolicy {
             max_age: Some(Duration::from_secs(3600)),
+            auto_prune: true,
         };
         let recent = store.prune_on_start(policy, now).await.unwrap().unwrap();
         assert!(matches!(recent, PruneOutcome::Deleted { ref plan, .. } if plan.chats.is_empty()));

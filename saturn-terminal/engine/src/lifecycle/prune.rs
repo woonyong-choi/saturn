@@ -1,6 +1,6 @@
 use saturn_protocol::envelope::INVALID_PARAMS;
 use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::{PruneSkipReason, PruneSkipped};
+use saturn_protocol::rpc::{Alert, PruneSkipReason, PruneSkipped};
 use saturn_protocol::state::InputState;
 
 use super::chats::chat_with_input;
@@ -188,4 +188,128 @@ async fn prune_without_a_retention_setting_is_refused_and_deletes_nothing() {
 
     assert_eq!(error_code(&refused), INVALID_PARAMS);
     assert!(engine.store.chat_workdir(old).await.is_ok());
+}
+
+/// 오래 쓰지 않아 정리 대상인 채팅, 최근 채팅, 오래됐지만 열린 입력이 있는 채팅을 둔 engine.
+struct AutoPruneSetup {
+    engine: Engine,
+    old: ChatId,
+    recent: ChatId,
+    open: ChatId,
+}
+
+async fn auto_prune_setup(fixture: &Fixture, config: &str) -> AutoPruneSetup {
+    fixture.write_user_config(config);
+    let engine = fixture.ready().await;
+    let old = old_chat(&engine, "/work/old", "old work").await;
+    let recent = chat_with_input(&engine, "/work/recent", "new work").await;
+    let open = chat_with_input(&engine, "/work/open", "still going").await;
+    engine.store.age_chat(open, 3).await;
+    AutoPruneSetup {
+        engine,
+        old,
+        recent,
+        open,
+    }
+}
+
+async fn survivors(setup: &AutoPruneSetup) -> Vec<ChatId> {
+    let mut found = Vec::new();
+    for chat in [setup.old, setup.recent, setup.open] {
+        if setup.engine.store.chat_workdir(chat).await.is_ok() {
+            found.push(chat);
+        }
+    }
+    found
+}
+
+/// 처음 붙는 TUI와 그다음 TUI가 받은 알림 가운데 자동 정리 알림.
+async fn auto_prune_alerts(fixture: &Fixture, engine: &mut Engine) -> (Vec<Alert>, Vec<Alert>) {
+    let mut first = Client::connect(&fixture.socket()).await;
+    let mut second = Client::connect(&fixture.socket()).await;
+    let (first_seen, second_seen) = drive(engine, async {
+        let first_seen = first.attach(1, new_chat(&fixture.workdir)).await;
+        let second_seen = second.attach(1, new_chat(&fixture.workdir)).await;
+        (first_seen, second_seen)
+    })
+    .await;
+    let alerts = |seen: Vec<Notification>| {
+        seen.into_iter()
+            .filter_map(|notification| match notification {
+                Notification::Alert { alert } => Some(alert),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    (alerts(first_seen), alerts(second_seen))
+}
+
+#[tokio::test]
+async fn auto_prune_on_start_deletes_old_finished_chats_and_tells_the_first_tui_only() {
+    let fixture = Fixture::new();
+    let mut setup = auto_prune_setup(
+        &fixture,
+        "retention.max_age_days = 1\nretention.auto_prune = true\n",
+    )
+    .await;
+
+    setup.engine.finish_start().await.unwrap();
+    let (first, second) = auto_prune_alerts(&fixture, &mut setup.engine).await;
+
+    assert_eq!(survivors(&setup).await, [setup.recent, setup.open]);
+    assert!(
+        setup
+            .engine
+            .store
+            .tombstone(setup.old)
+            .await
+            .unwrap()
+            .is_some()
+    );
+    assert_eq!(first.len(), 1);
+    assert!(matches!(first[0], Alert::AutoPruned { chats: 1, rows } if rows > 0));
+    assert!(second.is_empty());
+}
+
+#[tokio::test]
+async fn auto_prune_on_start_does_nothing_unless_the_switch_is_on_with_a_max_age() {
+    for config in [
+        "retention.max_age_days = 1\n",
+        "retention.auto_prune = true\n",
+        "retention.auto_prune = false\nretention.max_age_days = 1\n",
+    ] {
+        let fixture = Fixture::new();
+        let mut setup = auto_prune_setup(&fixture, config).await;
+
+        setup.engine.finish_start().await.unwrap();
+        let (first, second) = auto_prune_alerts(&fixture, &mut setup.engine).await;
+
+        assert_eq!(
+            survivors(&setup).await,
+            [setup.old, setup.recent, setup.open],
+            "{config}"
+        );
+        assert!(first.is_empty() && second.is_empty(), "{config}");
+    }
+}
+
+#[tokio::test]
+async fn auto_prune_failure_keeps_every_chat_and_still_tells_the_first_tui() {
+    let fixture = Fixture::new();
+    let mut setup = auto_prune_setup(
+        &fixture,
+        "retention.max_age_days = 1\nretention.auto_prune = true\n",
+    )
+    .await;
+    setup.engine.store.break_tombstones().await;
+
+    setup.engine.finish_start().await.unwrap();
+    let (first, second) = auto_prune_alerts(&fixture, &mut setup.engine).await;
+
+    assert_eq!(
+        survivors(&setup).await,
+        [setup.old, setup.recent, setup.open]
+    );
+    assert_eq!(first, [Alert::AutoPruneFailed]);
+    assert!(second.is_empty());
 }

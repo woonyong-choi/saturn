@@ -57,6 +57,14 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("다른 Saturn에서 실행 중", "Running in another Saturn"),
     ("기록 저장소 v{to}로 옮김", "Record store migrated to v{to}"),
     (
+        "오래된 채팅 {chats}개를 지웠습니다",
+        "Deleted {chats} old chats",
+    ),
+    (
+        "자동 정리에 실패했습니다 · 로그를 확인하세요",
+        "Auto prune failed · Check the log",
+    ),
+    (
         "{layer} 오류 · 이전 설정 번호 {previous}로 계속 · {detail}",
         "{layer} error · continuing with settings revision {previous} · {detail}",
     ),

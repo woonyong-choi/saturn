@@ -64,6 +64,7 @@ impl Engine {
             chat_dirs: HashMap::new(),
             notices: StartNotices {
                 migration,
+                auto_prune: None,
                 resume_suggested: HashMap::new(),
             },
             queue: Queue::new(),

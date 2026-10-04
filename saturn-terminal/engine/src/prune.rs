@@ -8,8 +8,8 @@ use saturn_protocol::ids::ChatId;
 use saturn_protocol::rpc::{ChatListItem, Notification, PruneSkipReason, PruneSkipped};
 
 use crate::rpc::ClientId;
-use crate::store::{PruneOutcome, PruneRequest, PruneScope, SkipReason};
-use crate::{Engine, EngineError};
+use crate::store::{PruneOutcome, PruneRequest, PruneScope, RetentionPolicy, SkipReason};
+use crate::{AutoPruneNotice, Engine, EngineError};
 
 impl Engine {
     /// `yes`가 거짓이면 아무것도 지우지 않고 `PrunePreview`를, 참이면 지우고 `Pruned`를 보낸다.
@@ -71,6 +71,63 @@ impl Engine {
         };
         self.send(client, notification).await;
         Ok(())
+    }
+
+    /// 시작 때 한 번 `retention.auto_prune`이 참이면 오래 쓰지 않은 채팅을 지운다.
+    /// 실패해도 시작은 이어 가고, 지웠거나 실패했으면 첫 TUI에 알린다.
+    pub(super) async fn auto_prune_on_start(&mut self) {
+        let Some(policy) = self.auto_prune_policy().await else {
+            return;
+        };
+        self.notices.auto_prune = self.run_auto_prune(policy).await;
+    }
+
+    /// 스위치가 꺼져 있거나 기준 기한이 없으면 `None`.
+    async fn auto_prune_policy(&self) -> Option<RetentionPolicy> {
+        let policy = self.user_retention().await.ok()?;
+        if !policy.auto_prune {
+            return None;
+        }
+        if policy.max_age.is_none() {
+            tracing::warn!("자동 정리를 건너뜀: retention.max_age_days가 없음");
+            return None;
+        }
+        Some(policy)
+    }
+
+    async fn run_auto_prune(&mut self, policy: RetentionPolicy) -> Option<AutoPruneNotice> {
+        let outcome = self.store.prune_on_start(policy, SystemTime::now()).await;
+        match outcome {
+            Ok(Some(PruneOutcome::Deleted { plan, .. })) => {
+                self.forget_pruned(&plan.chats, plan.rows)
+            }
+            Ok(_) => None,
+            Err(error) => {
+                tracing::error!(%error, "auto prune failed, starting without deleting");
+                Some(AutoPruneNotice::Failed)
+            }
+        }
+    }
+
+    /// 지운 채팅의 메모리 사본을 버리고, 지운 채팅이 있으면 알림을 돌려준다.
+    fn forget_pruned(&mut self, deleted: &[ChatId], rows: u64) -> Option<AutoPruneNotice> {
+        for chat in deleted {
+            self.chats.remove(chat);
+            self.chat_dirs.remove(chat);
+        }
+        if deleted.is_empty() {
+            return None;
+        }
+        let chats = u32::try_from(deleted.len()).unwrap_or(u32::MAX);
+        tracing::warn!(chats, rows, "auto prune deleted old chats");
+        Some(AutoPruneNotice::Deleted { chats, rows })
+    }
+
+    async fn user_retention(&self) -> Result<RetentionPolicy, EngineError> {
+        let Some(revision) = self.settings.current() else {
+            return Ok(RetentionPolicy::default());
+        };
+        Ok(self.settings.at(&self.store, revision).await?.retention())
     }
 
     /// 이 시각보다 오래 쓰지 않은 채팅이 정리 대상이다. 사용자 설정의 `retention.max_age_days`로 정한다.

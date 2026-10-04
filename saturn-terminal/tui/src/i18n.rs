@@ -62,6 +62,9 @@ pub const ROUTER_UNAVAILABLE_SEND: &str = "라우터 연결 없음 · 차례에 
 pub const BUSY_ELSEWHERE: &str = "다른 Saturn에서 실행 중";
 /// `{to}`는 이관한 스키마 버전.
 pub const SCHEMA_MIGRATED: &str = "기록 저장소 v{to}로 옮김";
+/// `{chats}`는 시작 때 자동 정리가 지운 채팅 수.
+pub const AUTO_PRUNED: &str = "오래된 채팅 {chats}개를 지웠습니다";
+pub const AUTO_PRUNE_FAILED: &str = "자동 정리에 실패했습니다 · 로그를 확인하세요";
 /// `{layer}`는 설정 층 이름, `{previous}`는 계속 쓰는 설정 번호, `{detail}`는 원인.
 pub const SETTINGS_FALLBACK: &str = "{layer} 오류 · 이전 설정 번호 {previous}로 계속 · {detail}";
 /// `{keys}`는 쉼표로 이은 키 이름.
