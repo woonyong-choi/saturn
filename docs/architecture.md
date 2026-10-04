@@ -108,7 +108,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | `~/.saturn/config.toml` | 사용자 설정 | `engine` |
 | `<작업 폴더>/.saturn/config.toml` | 폴더 설정 | `engine` |
 | `~/.saturn/backup/` | 스키마를 옮기기 전 백업 | `engine` |
-| `~/.saturn/extensions/` | 사용자가 설치한 확장 원본. 구현 전([기능 목록과 확장](design/extensions.md#확장-저장소)) | `engine` |
+| `~/.saturn/extensions/` | 사용자가 설치한 확장 원본. 설치와 제거는 구현, 주입은 구현 전([기능 목록과 확장](design/extensions.md#확장-저장소)) | `engine` |
 | `~/.saturn/history` | 입력 기록 | `tui` |
 
 ## 기술 선택

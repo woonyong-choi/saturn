@@ -13,7 +13,7 @@ use saturn_core::providers::{
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId};
 use saturn_protocol::input::InputAnswer;
-use saturn_protocol::rpc::{ModelInfo, PermissionAnswer};
+use saturn_protocol::rpc::{ExtensionPartKind, Injectability, ModelInfo, PermissionAnswer};
 
 use super::{AppliedSettings, LaunchSpec, PermissionLaunch};
 use crate::processes::{ProcessGroupId, Supervisor};
@@ -31,6 +31,9 @@ pub(crate) type AppliedReader = Arc<dyn Fn() -> Option<AppliedSettings> + Send +
 pub(crate) enum Feature {
     /// 진행 중인 턴에 입력을 끼워 넣는다. 없으면 입력은 대기로 처리한다.
     Steer,
+    /// 설치한 확장의 이 종류 부분을 session을 열 때 provider 형식으로 넣는다. 없으면 그 종류는 주입하지 못하는
+    /// provider다([기능 목록과 확장](../../../../docs/design/extensions.md#설치)).
+    Inject(ExtensionPartKind),
     /// 맥락 정리를 요청한다.
     Compact,
 }
@@ -95,6 +98,16 @@ pub(crate) trait Adapter: Send + Sync + std::fmt::Debug {
             questions_disabled: !input.questions,
             ..PermissionLaunch::default()
         })
+    }
+
+    /// 이 provider에 `kind` 부분을 주입할 수 있는지. 기본은 설명자의 기능 목록을 따라 `Inject(kind)`가 있으면
+    /// `Injectable`, 없으면 `Unavailable`이다. 기능 목록만으로 답할 수 없는 어댑터는 `Unknown`을 돌려주도록 바꾼다.
+    fn injectability(&self, kind: ExtensionPartKind) -> Injectability {
+        if self.descriptor().features.contains(&Feature::Inject(kind)) {
+            Injectability::Injectable
+        } else {
+            Injectability::Unavailable
+        }
     }
 
     /// 설치된 provider CLI의 버전을 읽는다. 설치되지 않았거나 읽지 못하면 `None`. 기본은 실행 파일에 `--version`을

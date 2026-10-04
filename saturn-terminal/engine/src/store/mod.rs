@@ -5,6 +5,7 @@ mod changes;
 mod chat_dirs;
 mod chat_labels;
 mod constraints;
+mod extensions;
 mod history;
 mod judgments;
 mod ledger;
@@ -37,6 +38,7 @@ pub(crate) use constraints::{
     Actor, AnswerOutcome, ConstraintState, EventKind, EventReason, NewRegistration, NewRule,
     StoredAsk,
 };
+pub(crate) use extensions::ExtensionRow;
 pub(crate) use history::HistoryEntry;
 pub(crate) use judgments::{JudgmentOutcome, NewJudgment};
 pub(crate) use ledger::LedgerRow;

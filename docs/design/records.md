@@ -53,7 +53,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 | 설정 스냅샷 | 설정 번호별 병합 결과와 층 목록 |
 | 제약 | 규칙 한 줄과 적용 범위, 변경 이벤트, 묻는 중인 확인, 전환마다 패킷에 넣은 제약 |
 | provider CLI 버전 | provider마다 마지막으로 확인한 CLI 버전과 확인 시각 |
-| 확장 | 설치한 확장의 이름, 출처, 부분별 provider 사용 가능 판정, 옮기자는 질문의 거절(구현 전, [#412](https://github.com/woonyong-choi/saturn/issues/412)) |
+| 확장 | 설치한 확장의 이름, 출처, 부분별 provider 사용 가능 판정, 옮기자는 질문의 거절(거절은 구현 전, [#412](https://github.com/woonyong-choi/saturn/issues/412)) |
 
 - 기록 저장소에 쓰는 쪽은 engine 하나다. 쓰기 충돌을 막기 위해서다.
 - engine은 사용자당 하나이고 잠금으로 지킨다. 쓰는 프로세스를 하나로 유지하기 위해서다.
@@ -68,7 +68,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - `chat_dirs` 표는 채팅에 더한 폴더를 채팅 `chat_id`, 링크를 푼 절대 경로 `path`, 더한 시각 `added_at`(unix 밀리초)으로 둔다. 같은 채팅의 같은 경로는 한 행이고 행 번호 순서가 더한 순서다. 채팅을 지우면 함께 지운다. 스키마 V5에서 더했다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)).
 - `chats` 표의 `name`은 사용자가 붙인 채팅 이름, `group_name`은 작업 목록의 묶음 이름이다. 붙이지 않았으면 NULL이고 이관 전 채팅도 NULL이다. 앞뒤 공백을 지우고 비면 NULL로 저장하며, 줄바꿈 같은 제어 문자가 들어 있으면 저장하지 않고 요청을 거절한다(초안). 채팅을 지우면 함께 지운다. 스키마 V8에서 더했다.
 - `sessions`와 `runs` 표의 `provider`는 열린 provider id를 담는다. 지금 값 `Codex`, `Claude`는 대소문자를 가리지 않고 id `codex`, `claude`로 읽고 옛 행은 고치지 않는다. `chats.pinned_model`과 `inputs.pinned_model`의 `<provider>/<model>`은 provider 자리가 이미 id와 같아 그대로 읽힌다([provider 연결과 session](providers-and-sessions.md#provider-id와-설명자)). 새 행은 id 글자로 쓴다. `meta`의 캐시 유지 시간 키는 `cache_ttl_secs_<id>`라 옛 키가 그대로 읽힌다.
-- `extensions` 표는 설치한 확장을 이름, 출처, 설치 시각, 부분별 판정으로 둔다. 확장 원본 파일은 `~/.saturn/extensions/`에 두고 이 표에 넣지 않는다. 새 표이므로 이관은 표만 비어 있게 더하고, 정리 대상이 아니다([기능 목록과 확장](extensions.md#확장-저장소)). 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)).
+- `extensions` 표는 설치한 확장을 이름, 출처, 설치 시각, 부분별 판정으로 둔다. 확장 원본 파일은 `~/.saturn/extensions/`에 두고 이 표에 넣지 않는다. 열은 `name`(기본 키), `source`, `installed_at`(unix 밀리초), `parts`(부분별 판정 JSON)다. 스키마 V12에서 더했고 이관은 표만 비어 있게 더하며, 정리 대상이 아니다([기능 목록과 확장](extensions.md#확장-저장소)). 옮기자는 질문의 거절을 담는 열은 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)).
 - `held_tasks` 표는 멈출 때 실행 중이던 보류 작업을 작업 번호 `task_id`(첫 입력 번호라 engine을 다시 켜도 같다), 채팅 `chat_id`, 에이전트 `agent_id`, 멈출 때 진행 중이던 실행을 연 입력 `input_id`로 둔다. 멈춤이나 크래시 복구가 보류할 때 쓰고, 재개하거나 닫으면 지운다. 채팅이나 입력을 지우면 함께 지운다. 입력과 에이전트가 없는 보류(보내기 전에 멈춘 입력)는 이 표에 남기지 않고 입력 행의 상태 `Held`로만 남긴다. 멈춤이 보류한 입력은 그때 `inputs.state`에 `Held`로 쓰고, 다시 켠 `engine`은 끝 상태가 아닌 입력을 접수 순서로 읽어 대기열에 되살린다([입력 처리](input-handling.md#재시작-뒤-입력-복원)). 스키마 V7에서 더했다([engine 수명과 복구](engine-lifecycle.md#크래시-뒤-복구)).
 - `run_changes` 표는 실행이 시작 뒤 바꾼 파일을 실행 `run_id`, 채팅 `chat_id`, 경로 `path`(절대 경로), 종류 `kind`(`added`, `modified`, `deleted`), 수정 주체 `actors`(줄바꿈으로 이은 글, 비면 이벤트에 없는 수정)로 둔다. `runs` 표의 `changes_state`는 측정했으면 `complete`, 폴더가 커서 일부만 훑었으면 `partial`이고, 측정하지 못한 실행(크래시, 보내기 전 실패, 이관 전 행)은 NULL이다. 실행이나 채팅을 지우면 함께 지운다. 스키마 V11에서 더했고 이관은 열과 표만 비어 있게 더한다([provider 연결과 session](providers-and-sessions.md#수정-파일-목록)).
 - `provider_versions` 표는 provider id `provider`마다 마지막으로 확인한 CLI 버전 `version`과 확인 시각 `checked_at`(unix 밀리초)을 한 행으로 둔다. engine이 시작할 때 설치된 CLI의 버전을 읽어 다르면 덮어쓴다([provider 연결과 session](providers-and-sessions.md#직접-연결과-acp-어댑터)). 스키마 V9에서 더했고 이관은 표만 비어 있게 더한다. 채팅 정리의 대상이 아니다.
@@ -221,4 +221,5 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 채점하지 않아도 판단 기록을 JSONL로 내보낼 수 있다. | 채점 없는 판단 기록을 내보내 줄마다 JSON 한 건인지 확인한다. |
 | provider 기록은 지우지 않는다. | 정리 뒤 `~/.claude`, `~/.codex`의 파일이 그대로인지 확인한다. |
 | 옛 provider 값 `Codex`, `Claude`가 옛 값 그대로 읽히고 새 값은 id 글자로 쓰이며, 모델 고정 글은 그대로 읽힌다. | `saturn-terminal/engine/src/store/records/tests.rs`의 `old_provider_values_read_as_open_ids`, `new_provider_values_are_written_as_ids`, `saturn-terminal/engine/src/store/sessions.rs`의 `cache_ttl_reads_the_key_an_old_version_wrote`, `saturn-terminal/engine/src/providers/mod.rs`의 `pinned_text_keeps_the_old_provider_prefix` |
-| 확장 저장소는 채팅 정리의 대상이 아니다. | 구현 전(#412). 확장 저장소가 생긴 뒤 정리를 실행해 `~/.saturn/extensions/`가 그대로인지 확인한다. |
+| 확장 저장소는 채팅 정리의 대상이 아니다. | `saturn-terminal/engine/src/lifecycle/extensions.rs`의 `pruning_old_chats_leaves_installed_extensions_alone` |
+| 스키마 V12 이관은 채팅 행을 보존하고 확장 표를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v11_file_migrates_to_extensions_keeping_chats`, `saturn-terminal/engine/src/store/extensions.rs`의 `extension_rows_keep_install_order_and_refuse_a_second_row_with_the_same_name` |

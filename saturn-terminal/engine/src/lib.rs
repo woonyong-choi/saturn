@@ -32,6 +32,7 @@ mod delivery;
 mod dispatch;
 mod events;
 mod exit;
+mod extensions;
 mod flow;
 mod handoff;
 mod inputs;
@@ -365,6 +366,7 @@ impl Engine {
     /// 크래시 복구가 기록 저장소를 읽지 못하면 `Store`. 자동 정리 실패는 오류로 끝내지 않는다.
     async fn finish_start(&mut self) -> Result<(), EngineError> {
         self.recover_after_crash().await?;
+        self.rejudge_unknown_extensions().await;
         self.auto_prune_on_start().await;
         Ok(())
     }

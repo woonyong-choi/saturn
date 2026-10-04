@@ -5,6 +5,7 @@
 pub(crate) mod composer;
 pub(crate) mod constraint_ask;
 pub(crate) mod exit_confirm;
+pub(crate) mod extensions;
 pub(crate) mod folder_trust;
 pub(crate) mod footer;
 pub(crate) mod full_transcript;

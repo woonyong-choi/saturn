@@ -186,6 +186,24 @@ pub const FOLDER_ADDED: &str = "폴더 더함";
 pub const FOLDER_NEXT_SESSION: &str = "열린 session에는 다음 session부터 적용";
 pub const VERSION_UNKNOWN: &str = "확인 안 됨";
 
+// 확장 줄. `{name}`은 확장 이름, `{part}`는 `종류(이름)`, `{topic}`은 한국어 주제 조사다.
+pub const EXT_INSTALLED_USABLE: &str = "{name} 설치 · {providers}에서 사용 가능";
+pub const EXT_INSTALLED_LIMITED: &str = "{name} 설치 · {limits}";
+pub const EXT_INSTALLED_BARE: &str = "{name} 설치";
+pub const EXT_LIMIT_ONLY: &str = "{part}{topic} {only} 전용이라 {others}에서 쓰지 못함";
+pub const EXT_LIMIT_NONE: &str = "{part}{topic} 어느 provider에서도 쓰지 못함";
+pub const EXT_REMOVED: &str = "{name} 제거";
+pub const EXT_FAILED: &str = "확장 처리 실패";
+pub const EXT_LIST_HEAD: &str = "설치한 확장";
+pub const EXT_LIST_EMPTY: &str = "설치한 확장 없음";
+pub const EXT_KIND_SKILL: &str = "스킬";
+pub const EXT_KIND_MCP: &str = "MCP 서버";
+pub const EXT_KIND_COMMAND: &str = "명령";
+pub const EXT_KIND_HOOK: &str = "훅";
+pub const EXT_USABLE: &str = "가능";
+pub const EXT_UNUSABLE: &str = "불가";
+pub const EXT_UNKNOWN: &str = "모름";
+
 // 창 초안
 pub const ROUTER_KEY_TITLE: &str = "라우터 키 입력";
 pub const ROUTER_KEY_HINT: &str = "Enter 확인 · Esc 종료";

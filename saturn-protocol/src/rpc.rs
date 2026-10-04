@@ -59,6 +59,19 @@ pub enum Request {
         chat: ChatId,
         path: String,
     },
+    /// 확장을 Saturn 확장 저장소에 설치한다. `source`는 로컬 폴더 경로나 git 저장소 주소다.
+    /// 결과는 `chat`의 대화 기록에 한 줄로 남고, 설치와 제거는 다음 session부터 적용한다.
+    InstallExtension {
+        chat: ChatId,
+        source: String,
+    },
+    /// 설치한 확장을 지운다. 없는 이름이면 이유를 `chat`의 대화 기록에 남긴다.
+    RemoveExtension {
+        chat: ChatId,
+        name: String,
+    },
+    /// 설치한 확장 목록을 `ExtensionList` 알림으로 요청한 접속에 보낸다.
+    ListExtensions,
     /// `before`(앞서 받은 결과의 `oldest`)보다 앞 기록 `limit`단위를 `QueryResult::History`로 돌려준다. 없으면 가장 최근부터.
     LoadHistory {
         chat: ChatId,
@@ -494,6 +507,51 @@ pub enum QueryResult {
         skipped: Vec<PruneSkipped>,
         rows: u64,
     },
+    /// `ListExtensions`의 답. 설치한 순서대로.
+    ExtensionList {
+        extensions: Vec<ExtensionInfo>,
+    },
+}
+
+/// 설치한 확장 하나. 부분마다 provider별 판정을 가진다.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct ExtensionInfo {
+    pub name: String,
+    /// 설치할 때 사용자가 준 원천 글자.
+    pub source: String,
+    /// 설치 시각(unix 밀리초).
+    pub installed_at_ms: u64,
+    pub parts: Vec<ExtensionPart>,
+}
+
+/// 확장을 나눈 부분 하나.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct ExtensionPart {
+    pub kind: ExtensionPartKind,
+    pub name: String,
+    /// 등록한 어댑터마다 하나. 어댑터 등록 순서대로.
+    pub verdicts: Vec<(Provider, Injectability)>,
+}
+
+/// 확장 부분의 종류. 어댑터가 부분을 주입할 수 있는지 종류별로 답한다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ExtensionPartKind {
+    /// `SKILL.md`가 든 폴더.
+    Skill,
+    /// MCP 서버 정의 하나.
+    McpServer,
+    /// 프롬프트 파일 하나.
+    Command,
+    /// 훅 정의 하나.
+    Hook,
+}
+
+/// provider 하나에 부분을 주입할 수 있는지에 대한 어댑터의 답. `Unknown`은 `Unavailable`과 같게 알리되 어댑터가 바뀌면 다시 판정한다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum Injectability {
+    Injectable,
+    Unavailable,
+    Unknown,
 }
 
 /// TUI를 닫을 때 할 일. `running`은 계속 처리될 작업 수다.
@@ -546,6 +604,19 @@ pub enum ChatNotice {
     FolderAdded {
         path: String,
         applies_from_next_session: bool,
+    },
+    /// 확장을 설치했다. 부분마다 provider별 판정은 `extension`에 있다.
+    ExtensionInstalled {
+        extension: ExtensionInfo,
+    },
+    /// 확장을 지웠다. 열린 session은 그대로이고 다음 session부터 빠진다.
+    ExtensionRemoved {
+        name: String,
+    },
+    /// 설치하거나 지우지 못했다. 기존 설치는 바뀌지 않았다. `reason`은 engine이 낸 원문이라 번역하지 않는다.
+    ExtensionFailed {
+        name: Option<String>,
+        reason: String,
     },
     /// 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못했다. 맥락 정리를 미루고 제약 목록을 보인다.
     ContextDeferred {

@@ -319,6 +319,47 @@ fn add_dir_command_keeps_an_absolute_path_as_it_is() {
 }
 
 #[test]
+fn extensions_install_sends_a_folder_as_an_absolute_path_and_a_git_address_as_it_is() {
+    let mut app = attached();
+    let mut send = |line: &str| {
+        type_text(&mut app, line);
+        app.popup = None;
+        sent(&press(&mut app, KeyCode::Enter, KeyModifiers::NONE))
+            .into_iter()
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+
+    let folder = send("/extensions install kits/review-kit");
+    let git = send("/extensions install https://example.com/kits/review-kit.git");
+    let remove = send("/extensions remove review-kit");
+    let list = send("/extensions");
+
+    assert_eq!(
+        folder,
+        vec![Request::InstallExtension {
+            chat: ChatId(7),
+            source: "/work/kits/review-kit".to_owned(),
+        }]
+    );
+    assert_eq!(
+        git,
+        vec![Request::InstallExtension {
+            chat: ChatId(7),
+            source: "https://example.com/kits/review-kit.git".to_owned(),
+        }]
+    );
+    assert_eq!(
+        remove,
+        vec![Request::RemoveExtension {
+            chat: ChatId(7),
+            name: "review-kit".to_owned(),
+        }]
+    );
+    assert_eq!(list, vec![Request::ListExtensions]);
+}
+
+#[test]
 fn add_dir_notice_adds_a_cell_and_updates_the_start_screen_folders() {
     let mut app = attached();
     notify(

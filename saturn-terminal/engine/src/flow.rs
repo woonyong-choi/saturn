@@ -2,6 +2,7 @@
 //! 설계: docs/design/input-handling.md
 
 use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::time::Instant;
 
 use saturn_core::routers::RouterRequest;
@@ -196,6 +197,13 @@ pub(crate) struct FlowState {
     /// 연결 작업이 보내는 provider 이벤트와 요청 결과.
     pub(crate) provider_tx: mpsc::UnboundedSender<ProviderMsg>,
     pub(crate) provider_rx: mpsc::UnboundedReceiver<ProviderMsg>,
+    /// git 주소를 내려받는 작업이 보내는 설치 결과.
+    pub(crate) install_tx: mpsc::UnboundedSender<crate::extensions::InstallDone>,
+    pub(crate) install_rx: mpsc::UnboundedReceiver<crate::extensions::InstallDone>,
+    /// 내려받는 중인 확장 이름. 같은 이름의 설치를 겹쳐 시작하지 않는다.
+    pub(crate) installing: HashSet<String>,
+    /// 내려받기에 쓸 실행 파일. 시험이 느린 가짜로 바꾼다.
+    pub(crate) git_program: PathBuf,
 }
 
 /// 보낸 뒤 결과를 모르는 작업의 입력과 에이전트.
@@ -211,7 +219,12 @@ impl Default for FlowState {
         let (router_tx, router_rx) = mpsc::unbounded_channel();
         let (stop_tx, stop_rx) = mpsc::unbounded_channel();
         let (provider_tx, provider_rx) = mpsc::unbounded_channel();
+        let (install_tx, install_rx) = mpsc::unbounded_channel();
         Self {
+            install_tx,
+            install_rx,
+            installing: HashSet::new(),
+            git_program: PathBuf::from("git"),
             deliveries: HashMap::new(),
             calls: HashMap::new(),
             next_call: 0,
