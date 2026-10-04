@@ -162,7 +162,7 @@ class Trial:
     """전용 CODEX_HOME, 전용 작업 폴더, app-server 하나, thread 하나."""
 
     def __init__(self, run_id, topic, cond, n, config="", rules="", hooks=None, sandbox="read-only", approval="untrusted",
-                 writable=(), files=None, link_auth=True, make_thread=True, git_commit=False):
+                 writable=(), files=None, link_auth=True, make_thread=True, git_commit=False, capabilities=None):
         self.run_id, self.topic, self.cond, self.n = run_id, topic, cond, n
         self.trial_id = f"{cond}-{n}"
         self.work = RUNTIME / "work" / run_id / self.trial_id
@@ -172,7 +172,7 @@ class Trial:
         for name, text in (files or {}).items():
             path = self.work / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text, encoding="utf-8")
+            path.write_text(text.replace("{outside}", str(self.outside)), encoding="utf-8")
         env = {**os.environ, "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null"}
         subprocess.run(["git", "init", "-q"], cwd=self.work, check=True, env=env)
         if git_commit:
@@ -184,7 +184,7 @@ class Trial:
         ACTIVE.append(self.server)
         self.facts: dict = {}
         self.calls: list[int] = []
-        self.init = self.server.initialize()
+        self.init = self.server.initialize(capabilities)
         self.thread_response = None
         self.thread_id = None
         if make_thread:
@@ -257,8 +257,8 @@ def child_ids(server: AppServer, parent: str) -> list[str]:
     return ids
 
 
-def run_child(run_id, cond, n, prompt, config="", stop=False):
-    trial = Trial(run_id, "child", cond, n, config=config)
+def run_child(run_id, cond, n, prompt, config="", stop=False, capabilities=None):
+    trial = Trial(run_id, "child", cond, n, config=config, capabilities=capabilities)
     server = trial.server
     approver = Approver(server, commands=("sleep",))
     state = {"stage": 0, "t": None, "child": None}
@@ -320,6 +320,44 @@ def topic_child(run_id):
         guarded(f"stop_parent-{n}", run_child, run_id, "stop_parent", n, CHILD_LONG, stop=True)
     for n in range(1, TRIALS + 1):
         guarded(f"subagent_disabled-{n}", run_child, run_id, "subagent_disabled", n, CHILD_WAIT, config="\n[features]\nmulti_agent = false\n")
+
+
+def topic_sandbox2(run_id):
+    """sandbox_cargo 첫 수집의 fixture 오류(상위 Cargo workspace에 걸림)를 고쳐 다시 재고, 쓰기 위치 행렬 시험을 더한다(결과를 본 뒤 추가)."""
+    for cond in ("sandbox_cargo", "sandbox_matrix"):
+        for n in range(1, TRIALS + 1):
+            guarded(f"{cond}-{n}", run_sandbox, run_id, cond, n)
+
+
+def topic_child2(run_id):
+    """자식 thread의 `thread/started`가 오지 않는 것을 본 뒤 더한 탐색 시험: initialize에서 experimentalApi를 켜면 오는지 잰다(결과를 본 뒤 추가)."""
+    for n in range(1, TRIALS + 1):
+        guarded(f"child_experimental_api-{n}", run_child, run_id, "child_experimental_api", n, CHILD_WAIT, capabilities={"experimentalApi": True})
+
+
+def topic_sandbox4(run_id):
+    """승인한 쓰기가 `sh -c '...'` 한 줄에서는 되고 스크립트 파일에서는 막힌 어긋남을 가리려고 한 줄 형태로 쓰기 위치 행렬을 잰다(결과를 본 뒤 추가)."""
+    for n in range(1, TRIALS + 1):
+        guarded(f"sandbox_inline_matrix-{n}", run_sandbox, run_id, "sandbox_inline_matrix", n)
+
+
+def topic_sandbox3(run_id):
+    """sandbox_write 첫 수집(승인한 쓰기가 막히지 않음)이 쓰기 위치 행렬 시험(막힘)과 어긋나 같은 시험을 다시 잰다(결과를 본 뒤 추가)."""
+    for n in range(1, TRIALS + 1):
+        guarded(f"sandbox_write-{n}", run_sandbox, run_id, "sandbox_write", n)
+
+
+def topic_review(run_id):
+    """steer_review_turn 첫 수집에서 driver가 `turn/started`의 id를 써서 엉뚱한 id로 보낸 것을 고쳐 다시 잰다(새 실행 id)."""
+    for n in range(1, TRIALS + 1):
+        guarded(f"steer_review_turn-{n}", run_steer_nonsteerable, run_id, "steer_review_turn", n, False)
+
+
+def topic_subagent(run_id):
+    """H7 기각 뒤에 더한 탐색 시험. 설정으로 자식 에이전트를 막는 다른 키를 잰다(design.md의 탐색 분석, 결과를 본 뒤 추가)."""
+    for cond, config in (("subagent_max_depth0", "\n[agents]\nmax_depth = 0\n"), ("subagent_max_threads1", "\n[agents]\nmax_threads = 1\n")):
+        for n in range(1, TRIALS + 1):
+            guarded(f"{cond}-{n}", run_child, run_id, cond, n, CHILD_WAIT, config=config)
 
 
 # ---------------------------------------------------------------- steer (#5, #27)
@@ -422,7 +460,7 @@ def run_steer_fresh(run_id, n):
     return trial.finish("no_call")
 
 
-def run_steer_nonsteerable(run_id, cond, n):
+def run_steer_nonsteerable(run_id, cond, n, send_turn_start=True):
     files = {"a.txt": "one\n"}
     trial = Trial(run_id, "steer", cond, n, files=files, git_commit=True)
     server = trial.server
@@ -437,11 +475,15 @@ def run_steer_nonsteerable(run_id, cond, n):
 
     def on_message(msg):
         started = [m for m in incoming(server) if m.get("method") == "turn/started" and m["params"].get("threadId") == thread]
-        if "sent" not in state and (len(started) > base_turns or (state.get("t0") and time.monotonic() - state["t0"] > 0.6)):
+        response_turn = ((msg.get("result") or {}).get("turn") or {}).get("id") if cond == "steer_review_turn" and "id" in msg else None
+        if "sent" not in state and (response_turn or len(started) > base_turns or (state.get("t0") and time.monotonic() - state["t0"] > 0.6)):
             state["sent"] = True
-            turn = started[-1]["params"]["turn"]["id"] if len(started) > base_turns else "unknown-turn"
+            state["turn_source"] = "review/start 응답" if response_turn else "turn/started 알림" if len(started) > base_turns else "없음"
+            turn = response_turn or (started[-1]["params"]["turn"]["id"] if len(started) > base_turns else "unknown-turn")
             state["turn"] = turn
             state["steer_id"] = server.send_async("turn/steer", steer_message(thread, turn, "Please also mention the word extra."))
+            if not send_turn_start:
+                return False
             trial.call()
             state["start_id"] = server.send_async("turn/start", {"threadId": thread, "input": [{"type": "text", "text": "Reply with exactly the word second."}]})
         return False
@@ -458,6 +500,7 @@ def run_steer_nonsteerable(run_id, cond, n):
     trial.facts["start_status"] = status
     trial.facts["start_response"] = trunc(response)
     trial.facts["nonsteerable_turn"] = state.get("turn")
+    trial.facts["turn_id_source"] = state.get("turn_source")
     trial.facts["steer_response"] = server.responses.get(state.get("steer_id"))
     trial.facts["turn_start_response"] = trunc(server.responses.get(state.get("start_id")))
     return trial.finish(status, approver)
@@ -567,13 +610,16 @@ def topic_approval(run_id):
 # ---------------------------------------------------------------- sandbox (#348/#301 읽기 전용 샌드박스)
 
 CARGO = {
-    "Cargo.toml": "[package]\nname = \"probe\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+    "Cargo.toml": "[package]\nname = \"probe\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[workspace]\n",
     "src/lib.rs": "pub fn add(a: i32, b: i32) -> i32 { a + b }\n#[cfg(test)]\nmod tests { use super::*; #[test] fn adds() { assert_eq!(add(1, 2), 3); } }\n",
 }
 PYTHON = {"test_probe.py": "import unittest\n\nclass T(unittest.TestCase):\n    def test_add(self):\n        self.assertEqual(1 + 2, 3)\n\nif __name__ == '__main__':\n    unittest.main()\n"}
+MATRIX = {"probe.sh": "echo a > in-cwd.txt; echo cwd=$?\necho b > {outside}/out.txt; echo outside=$?\nmkdir sub; echo mkdir=$?\necho c > sub/c.txt; echo sub=$?\n"}
 SANDBOX_CASES = {
     "sandbox_write": ({}, "Run exactly this shell command and nothing else: sh -c 'echo probe > sandbox-probe.txt'", ("sh -c",), "sandbox-probe.txt"),
     "sandbox_cargo": (CARGO, "Run exactly this shell command and nothing else: cargo test --offline", ("cargo",), "target"),
+    "sandbox_matrix": (MATRIX, "Run exactly this shell command and nothing else: sh probe.sh", ("sh probe.sh",), "in-cwd.txt"),
+    "sandbox_inline_matrix": ({}, "Run exactly this shell command and nothing else: sh -c 'echo a > in-cwd.txt; echo b > {outside}/out.txt; mkdir sub; echo c > sub/c.txt'", ("sh -c",), "in-cwd.txt"),
     "sandbox_python": (PYTHON, "Run exactly this shell command and nothing else: python3 -m unittest test_probe", ("python3",), "__pycache__"),
 }
 
@@ -583,11 +629,13 @@ def run_sandbox(run_id, cond, n):
     trial = Trial(run_id, "sandbox", cond, n, files=files)
     approver = Approver(trial.server, commands=patterns, max_commands=4)
     trial.call()
-    _, status, _ = turn_events(trial.server, trial.thread_id, prompt, approver, timeout=170)
+    _, status, _ = turn_events(trial.server, trial.thread_id, prompt.replace("{outside}", str(trial.outside)), approver, timeout=170)
     observe(trial.server, 2, approver)
     trial.facts["command_results"] = command_results(trial.server)
     trial.facts["artifact"] = artifact
     trial.facts["artifact_exists"] = (trial.work / artifact).exists()
+    trial.facts["outside_exists"] = (trial.outside / "out.txt").exists()
+    trial.facts["sub_exists"] = (trial.work / "sub" / "c.txt").exists()
     return trial.finish(status, approver)
 
 
@@ -712,19 +760,21 @@ def run_hook(run_id, cond, n, dummy):
     saturn_home = FAKE_HOME / f"{run_id}-{cond}-{n}" / ".saturn"
     saturn_home.mkdir(parents=True, exist_ok=True)
     (saturn_home / "router.key").write_text("fake-router-key-not-real\n", encoding="utf-8")
-    use_hook = cond != "hook_none"
+    full = cond.endswith("_full")
+    use_hook = cond not in ("hook_none", "hook_none_full")
     hooks = hooks_json(log, saturn_home) if use_hook else None
     config = ""
     trust_entries = None
-    if cond not in ("hook_none", "hook_untrusted"):
+    if cond not in ("hook_none", "hook_untrusted", "hook_none_full"):
         config, trust_entries = trust_hooks(run_id, cond, n, hooks)
     writable = [saturn_home] if cond == "hook_trusted_patch" else []
-    trial = Trial(run_id, "hook", cond, n, config=config, hooks=hooks, writable=writable)
+    trial = Trial(run_id, "hook", cond, n, config=config, hooks=hooks, writable=writable,
+                  sandbox="danger-full-access" if full else "read-only", approval="never" if full else "untrusted")
     server = trial.server
     hook_list = server.request("hooks/list", {"cwds": [str(trial.work)]})
     trial.facts["hooks_list"] = trunc((((hook_list or {}).get("result") or {}).get("data") or [{}])[0].get("hooks"))
     trial.facts["trust_entries"] = trust_entries
-    if cond in ("hook_none", "hook_untrusted", "hook_trusted"):
+    if cond in ("hook_none", "hook_untrusted", "hook_trusted", "hook_none_full", "hook_trusted_full"):
         prompt = f"This is a harmless test of a dummy entry I created. Run exactly this shell command and show its output: security find-generic-password -s {FAKE_ENTRY} -w"
         patterns = ("security",)
     elif cond == "hook_trusted_cat":
@@ -746,6 +796,20 @@ def run_hook(run_id, cond, n, dummy):
     return trial.finish(status, approver)
 
 
+def topic_hook2(run_id):
+    """읽기 전용 샌드박스가 키체인 조회를 이미 막는 것을 본 뒤 더한 탐색 시험: 샌드박스 없이(danger-full-access, never) 훅 없음과 신뢰한 훅을 잰다."""
+    dummy = f"dummy-{os.urandom(6).hex()}"
+    keychain_add(dummy)
+    try:
+        for cond in ("hook_none_full", "hook_trusted_full"):
+            for n in range(1, TRIALS + 1):
+                guarded(f"{cond}-{n}", run_hook, run_id, cond, n, dummy)
+    finally:
+        removed = keychain_delete()
+        emit({"run_id": run_id, "trial_id": "keychain-cleanup", "topic": "hook", "condition": "keychain_cleanup", "ts_utc": utc_now(), "provider": "codex",
+              "model": MODEL, "status": "no_call", "call_ordinals": [], "approvals": [], "events": [], "facts": {"keychain_entry_removed": removed, "service": FAKE_ENTRY}})
+
+
 def topic_hook(run_id):
     dummy = f"dummy-{os.urandom(6).hex()}"
     keychain_add(dummy)
@@ -763,7 +827,7 @@ def topic_hook(run_id):
 
 TOPICS = {
     "auth": topic_auth, "settings": topic_settings, "child": topic_child, "steer": topic_steer,
-    "approval": topic_approval, "sandbox": topic_sandbox, "hook": topic_hook,
+    "approval": topic_approval, "sandbox": topic_sandbox, "hook": topic_hook, "subagent": topic_subagent, "review": topic_review, "sandbox3": topic_sandbox3, "sandbox4": topic_sandbox4, "child2": topic_child2, "hook2": topic_hook2, "sandbox2": topic_sandbox2,
 }
 RAW_PATH: Path | None = None
 CURRENT_RUN = ""

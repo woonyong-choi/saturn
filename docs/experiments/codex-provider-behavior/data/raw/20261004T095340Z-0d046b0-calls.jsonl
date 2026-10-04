@@ -1,0 +1,12 @@
+{"ordinal": 96, "run_id": "20261004T095340Z-0d046b0", "trial_id": "subagent_max_depth0-1", "kind": "turn/start", "ts_utc": "2026-10-04T09:53:43Z"}
+{"ordinal": 97, "run_id": "20261004T095340Z-0d046b0", "trial_id": "subagent_max_depth0-2", "kind": "turn/start", "ts_utc": "2026-10-04T09:54:37Z"}
+{"ordinal": 98, "run_id": "20261004T095340Z-0d046b0", "trial_id": "subagent_max_depth0-3", "kind": "turn/start", "ts_utc": "2026-10-04T09:55:58Z"}
+{"ordinal": 99, "run_id": "20261004T095340Z-0d046b0", "trial_id": "subagent_max_threads1-1", "kind": "turn/start", "ts_utc": "2026-10-04T09:57:00Z"}
+{"ordinal": 100, "run_id": "20261004T095340Z-0d046b0", "trial_id": "subagent_max_threads1-2", "kind": "turn/start", "ts_utc": "2026-10-04T09:57:48Z"}
+{"ordinal": 101, "run_id": "20261004T095340Z-0d046b0", "trial_id": "subagent_max_threads1-3", "kind": "turn/start", "ts_utc": "2026-10-04T09:58:44Z"}
+{"ordinal": 102, "run_id": "20261004T095340Z-0d046b0", "trial_id": "hook_none_full-1", "kind": "turn/start", "ts_utc": "2026-10-04T09:59:37Z"}
+{"ordinal": 103, "run_id": "20261004T095340Z-0d046b0", "trial_id": "hook_none_full-2", "kind": "turn/start", "ts_utc": "2026-10-04T09:59:55Z"}
+{"ordinal": 104, "run_id": "20261004T095340Z-0d046b0", "trial_id": "hook_none_full-3", "kind": "turn/start", "ts_utc": "2026-10-04T10:00:17Z"}
+{"ordinal": 105, "run_id": "20261004T095340Z-0d046b0", "trial_id": "hook_trusted_full-1", "kind": "turn/start", "ts_utc": "2026-10-04T10:00:38Z"}
+{"ordinal": 106, "run_id": "20261004T095340Z-0d046b0", "trial_id": "hook_trusted_full-2", "kind": "turn/start", "ts_utc": "2026-10-04T10:01:03Z"}
+{"ordinal": 107, "run_id": "20261004T095340Z-0d046b0", "trial_id": "hook_trusted_full-3", "kind": "turn/start", "ts_utc": "2026-10-04T10:01:26Z"}

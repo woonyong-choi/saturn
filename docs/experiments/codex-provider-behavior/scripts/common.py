@@ -83,6 +83,7 @@ class AppServer:
         env = os.environ.copy()
         env["CODEX_HOME"] = str(home)
         env.pop("HERDR_ENV", None)
+        env.pop("PYTHONDONTWRITEBYTECODE", None)
         self.proc = subprocess.Popen(
             ["codex", "app-server"], cwd=cwd, env=env, stdin=subprocess.PIPE,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True,
@@ -171,8 +172,11 @@ class AppServer:
     def default_request(self, msg: dict) -> None:
         self.respond(msg, error={"code": -32601, "message": "driver does not handle this request"})
 
-    def initialize(self) -> dict | None:
-        res = self.request("initialize", {"clientInfo": {"name": "saturn-codex-behavior", "title": "Saturn Codex behavior experiment", "version": "1"}})
+    def initialize(self, capabilities: dict | None = None) -> dict | None:
+        params = {"clientInfo": {"name": "saturn-codex-behavior", "title": "Saturn Codex behavior experiment", "version": "1"}}
+        if capabilities is not None:
+            params["capabilities"] = capabilities
+        res = self.request("initialize", params)
         self.send({"jsonrpc": "2.0", "method": "initialized"})
         return res
 

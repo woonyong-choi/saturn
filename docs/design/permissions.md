@@ -146,7 +146,10 @@ MCP 도구는 규칙을 다음처럼 번역한다.
 - 패턴으로 쓴 MCP 규칙은 준비 확인 때 받은 도구 목록에 적용해 도구별 값으로 펼치지 않고, 서버 기본값과 이름이 정해진 도구의 값으로만 옮긴다(초안). 사용자 설정의 서버마다 개별 규칙만으로 정한다: 서버 전체가 `allow`이고 겹치는 규칙이 모두 `allow`면 `default_tools_approval_mode="approve"`, 서버 전체가 `deny`이고 겹치는 `allow`가 없으면 `enabled=false`, 그 밖에는 `"prompt"`다. 규칙 패턴이 `mcp__{서버}__{도구}`로 이름을 정한 도구는 `allow`면 도구별 `approval_mode="approve"`, `ask`면 `"prompt"`, `deny`면 `disabled_tools`에 넣는다. `prompt`로 온 요청은 engine이 규칙으로 답한다. 모드를 `full`로 바꿔도 `prompt`는 그대로이고 engine이 허용으로 답한다.
 - 첫 턴을 보내기 전에 대상 서버(사용자가 끄지 않았고 `enabled=false`로 옮기지 않은 서버)마다 `mcpServerStatus/list`를 호출해 시작이 끝났는지 확인한다. codex-cli 0.158.0은 `runtimeStatus`를 항상 `null`로 주고, 이 호출은 서버 시작이 모두 끝난 뒤에 응답한다(실측, [#317](https://github.com/woonyong-choi/saturn/issues/317)). 준비된 서버는 `serverInfo`가 차 있고 `toolsError`가 `null`이며, 시작에 실패한 서버(실행 파일 없음, 시작 시간 초과)는 `serverInfo`가 `null`이고 `toolsError`가 차 있다(빈 `tools`가 함께 온다). `runtimeStatus`가 문자열로 오는 버전은 그 값을 먼저 본다(`ready`, `failed`, `cancelled`, 그 밖은 기다림). 준비를 알 수 없는 서버(`serverInfo`와 `toolsError`가 모두 비었거나 목록에 없음)는 250 ms 간격으로 최대 30초(초안) 다시 묻는다. 시작에 실패한 서버와 30초 안에 준비를 알 수 없던 서버는 그 서버의 도구만 쓸 수 없는 것으로 보고 이유를 한 줄 로그로 남기고 첫 session을 연 뒤 한 번 화면에도 알린 채 첫 턴을 보낸다(`McpUnavailable`, [TUI](tui.md#상태-표시)). 알림은 서버마다 한 줄로 이유를 보이고, 연결마다 한 번이다. 서버 하나가 시작에 실패했다고 모든 입력을 막지 않기 위해서다. 쓸 수 없는 서버의 도구를 모델이 부르면 승인 요청으로 오고 Saturn 규칙이 판정한다. 확인은 연결마다 한 번이다. 도구 목록이 예상과 같은지 이름까지 대조하는 일은 하지 않는다.
 - `mcp_optional_startup_grace_ms`는 기본 1000 ms라 늦게 뜨는 서버의 도구가 첫 턴에서 빠질 수 있다. 예상 준비 시간만큼 늘린다. 실험은 12000 ms(초안)로 확인했고 생성한 설정에 그 값을 쓴다.
-- Codex는 subagent 실행 자체를 승인 요청으로 올리지 않아 `permission.subagent`를 적용하지 못한다. subagent가 실행하는 명령, 편집, MCP 도구는 부모와 같은 규칙으로 판정한다(초안). `permission.subagent`는 Claude의 `Task`, `Agent` 도구에만 적용한다.
+- Codex는 subagent 실행 자체를 승인 요청으로 올리지 않아(자식을 만든 18회 모두 생성 구간에 승인 요청 없음, [실측](../experiments/codex-provider-behavior/report.md)) `permission.subagent`를 승인 응답으로 적용하지 못한다. subagent가 실행하는 명령, 편집, MCP 도구는 부모와 같은 규칙으로 판정한다(초안). 승인 응답으로 적용하는 `permission.subagent`는 Claude의 `Task`, `Agent` 도구에만 쓴다.
+- Codex에서 subagent 실행을 막는 설정은 `[agents] max_depth = 0`이다(자식 생성 시도 0/3, 모델이 도구를 부르지 않음). `[features] multi_agent = false`(자식 3/3 생성)와 `[agents] max_threads = 1`(자식 3/3 생성)은 막지 못했다. `max_depth = 0`은 app-server 전체에 걸려 subagent 종류별로 나눌 수 없다. 전용 `CODEX_HOME`의 설정이라 바꾸면 다른 규칙 변경처럼 연결을 다시 시작해야 적용된다. 코드는 아직 이 키를 만들지 않는다(`saturn-terminal/engine/src/providers/codex_home.rs`).
+- MCP 승인 요청은 `_meta`에 도구 이름 키(`tool_name`, `tool`, `toolName`, `name`)가 없다. `_meta`는 `codex_approval_kind`, `tool_description`, `tool_params`, `tool_params_display`만 싣는다. 도구 이름은 `message`의 `Allow the <서버> MCP server to run tool "<도구>"?`에서만 읽히고 서버 이름은 `serverName`에 있다(요청이 온 10/10, [실측](../experiments/codex-provider-behavior/report.md)). 지금 코드가 `_meta.tool_name`을 먼저 보는 것은(`saturn-terminal/engine/src/providers/codex_permission.rs:224`) 이 버전에서는 항상 건너뛴다.
+- 모델이 도구를 시도한 회차는 모두 승인 요청이 왔다(4/4). 앞선 실험의 1/3은 승인 경로의 문제가 아니라 모델이 도구를 부르지 않은 것이었다. 앞선 문구는 시도율이 1/3이었고 서버와 도구를 지목한 문구는 3/3이었다. 같은 설정에서 `mcpServerStatus/list`는 설정에 없는 서버 `codex_apps`(계정 연동 서비스, 도구 253개)도 보여 줬다.
 - Codex execpolicy와 MCP 설정은 app-server를 시작할 때 읽으므로, 채팅 도중 바뀐 개별 규칙은 engine이 답하는 요청에만 새 값이 쓰인다. 시작 때 정한 `forbidden`, `allow`, MCP `approve`는 새 설정 번호로 바뀌지 않는다. [Codex 실행 중 설정 다시 읽기 실측](../experiments/codex-live-reload/report.md)에서도 `rules/default.rules` 변경과 `config/batchWrite(reloadUserConfig=true)`는 같은 process에서 반영되지 않고 새 process에서만 반영됐다.
 - `prompt`로 설정한 MCP 도구는 모델이 시도한 모든 호출에서 승인 요청이 왔다(실험 9에서 보고서 31회·원문 로그 29회 모두, 고친 드라이버의 실험 10에서 10/10. [실험](../experiments/provider-permission-gating/report.md)). 도구를 시도하지 않고 끝난 회차는 요청이 없는 것이 맞다.
 - Claude Code 2.1.288은 `Bash`, `Write`, subagent(`Agent`), MCP(`mcp__*`) 호출을 모두 `can_use_tool`로 올렸고, 폴더 설정과 `--settings`의 `deny` 규칙과 훅은 요청이 오기 전에 호출을 막았다. 모델이 `Read` 없이 낸 `Edit`은 요청 없이 도구 오류로 끝난다([실험](../experiments/provider-permission-real-claude/report.md)).
@@ -197,7 +200,10 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 - engine은 허가 요청 이벤트를 기록한 뒤 TUI에 올리고 작업을 `허가 기다림`으로 보인다. engine은 요청마다 자체 고유 요청 번호를 발급해 TUI에 보내고, 안에서는 `(채팅, provider 연결, provider 요청 번호)`에 대응시켜 보관한다. 사용자 답은 TUI가 돌려준 engine 요청 번호로 찾은 요청의 원래 연결과 provider 요청 번호로 넘기고, provider가 받은 뒤 다른 TUI의 창을 지우고 작업을 다시 `실행 중`으로 보인다. 답은 연결 작업이 보내고 TUI의 응답은 그 결과를 받은 뒤에 한다([provider 요청 작업](providers-and-sessions.md#provider-요청-작업)). 같은 요청에 답이 가는 중이면 다른 답은 거절한다. 묻지 않은 요청의 답은 거절한다. 답한 TUI가 그 요청의 채팅에 붙어 있지 않아도 거절한다(`ChatNotAttached`). 허가 요청의 답은 그 요청을 보낸 에이전트에만 가야 하기 때문이다. provider가 받지 못했으면 요청을 그대로 두어 다시 답할 수 있다.
 - 답이 오기 전에 턴이 끝나거나 흐름이 끊기면 그 요청의 창을 모든 TUI에서 지운다. provider 요청 번호는 채팅 연결마다 따로 매겨져 서로 겹칠 수 있으므로 TUI와 주고받는 번호로 쓰지 않는다. 같은 provider 요청 번호가 두 채팅에서 동시에 와도 요청은 따로 보관되고 답이 섞이지 않는다.
 - 규칙으로 읽은 호출의 `항상 허용`은 engine이 기록 저장소에 저장하고 provider에는 `이번만 허용` 값으로 보낸다. 위 표의 `항상 허용` 열은 규칙으로 읽지 못한 요청에만 쓰인다. 그 요청에서 provider에 맞는 값이 없으면(Codex MCP, Claude) `이번만 허용`으로 보내고 같은 호출이 다시 오면 다시 묻는다.
-- Codex에서 실측한 응답은 셸 명령의 `decline`과 MCP의 `decline`이다. 허용 응답과 권한 요청, 옛 이름의 값은 schema에서 가져온 것이라 실측하지 않았다([#301](https://github.com/woonyong-choi/saturn/issues/301)).
+- Codex에서 실측한 응답은 셸 명령과 파일 편집의 `accept`, `decline`, `acceptForSession`과 MCP의 `accept`(`{"action":"accept","content":{}}`), `decline`이다([실측](../experiments/codex-provider-behavior/report.md)). 권한 요청(`item/permissions/requestApproval`)과 옛 이름(`execCommandApproval`, `applyPatchApproval`)은 실험 전체에서 한 번도 오지 않아 값은 schema에서 가져온 그대로이고 실측하지 않았다.
+- 셸 명령 요청의 `availableDecisions`는 `accept`, `acceptWithExecpolicyAmendment`(제안한 접두사를 넣은 영구 허용), `cancel`이고 `acceptForSession`은 없었다(3/3). 그래도 `acceptForSession`으로 답하면 같은 명령을 다시 실행할 때 묻지 않았다(3/3). 표의 "`availableDecisions`에 없으면 `accept`" 규칙은 이 목록 때문에 항상 `accept`로 나가고, 세션 허용 효과는 내지 못한다.
+- 파일 편집에 `acceptForSession`으로 답하면 같은 파일의 다음 편집은 묻지 않고 다른 파일의 편집은 물었다(편집 3번에 요청 2번, 2/3회. 나머지 1회는 모델이 편집을 2번만 해 요청 1번).
+- MCP 응답의 `_meta.persist`는 효과가 없었다. `{"persist":"session"}`을 넣어도 같은 도구의 두 번째 호출은 다시 물었고(3/3) 요청의 `_meta`에도 영구 허용 선택지가 없었다.
 - 거부 응답에 붙는 고정 문구(`The user denied this tool call in Saturn.`)는 초안이다. 모델에 전달된다.
 - `_meta.codex_approval_kind`가 없는 `mcpServer/elicitation/request`와 Claude `AskUserQuestion`은 승인이 아니라 사용자에게 묻는 입력 요청이라서 허가 요청이 아니다. 이 요청은 [입력 요청](input-requests.md)으로 올린다.
 
@@ -254,7 +260,7 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 
 - provider마다 구성을 구현하고, Codex와 Claude Code가 바뀌면 계속 따라가야 한다.
 - 사용자가 provider 설정에 둔 권한은 Saturn 실행에서 적용되지 않는다.
-- Codex는 읽기 전용 샌드박스로 실행해 일반 작업이 승인 요청으로 몰릴 수 있다. 불편 정도는 측정 전이다.
+- Codex는 읽기 전용 샌드박스로 실행해 일반 작업이 승인 요청으로 몰릴 수 있다. 승인한 뒤에도 샌드박스가 막는 작업이 있다. 승인한 `cargo test --offline`은 `Cargo.lock`을 쓰지 못해 3/3 실패했다(종료 코드 101). `python3 -m unittest`는 끝났지만 임시 폴더 쓰기 거부 문구가 2/3 나왔다. 승인한 쓰기 명령은 `sh -c 'echo > 파일'` 한 줄이 6/6 성공했고 같은 방식의 쓰기 네 개를 이은 한 줄은 1/3, 스크립트 파일은 0/3 성공이어서 승인 뒤 샌드박스 적용이 명령 모양에 따라 달랐다([실측](../experiments/codex-provider-behavior/report.md)).
 - 규칙이 다른 채팅마다 Codex app-server 프로세스가 늘어난다.
 - `deny`를 뺀 규칙은 마지막 일치가 이기므로 폴더 설정이 사용자 설정의 `allow`를 바꿀 수 있다. 모드는 폴더 설정이 낮추기만 할 수 있다. 폴더 설정 신뢰 창이 이를 사용자에게 보인다.
 - 모든 모드가 같은 provider 구성을 쓰므로 `full`에서도 Codex는 승인 요청을 거치고, 요청마다 engine 응답을 기다린다.
@@ -264,16 +270,13 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 - 권한을 사용자 설정에 맡기고 추적만 하는 방식은 Codex 허용 규칙 명령을 묻지 못해 버렸다([결정 기록](../decisions/2026-10-02-saturn-permission-authority.md)).
 - Saturn 설정을 provider 설정에 번역해 사용자 설정과 병합하는 방식은 사용자 허용 규칙이 이겨 묻기를 강제하지 못해 버렸다.
 - provider 설정 파일에 규칙을 기록하는 방식은 사용자가 정한 설정을 덮어써 버렸다.
-- Codex PreToolUse 훅으로 묻는 방식은 훅이 `ask`를 지원하지 않고(openai/codex#28437, 2026-10-02 확인), 시간 초과와 오류에서 도구를 실행하며, subagent 생성과 파일 편집에 걸리지 않아 버렸다.
+- Codex PreToolUse 훅으로 묻는 방식은 훅이 `ask`를 지원하지 않고(openai/codex#28437, 2026-10-02 확인), 시간 초과와 오류에서 도구를 실행하며, subagent 생성에 걸리지 않아 버렸다. 파일 편집(`apply_patch`)은 훅이 불렸다([실측](../experiments/codex-provider-behavior/report.md)).
 
 ## 미해결 질문
 
 - Claude `Edit`, `Write`, MCP 도구, subagent 도구가 모두 `can_use_tool`로 오는지 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
 - Claude 사용자와 폴더의 `deny` 규칙과 훅이 Saturn 판정 앞에서 호출을 막는지 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
-- Codex 읽기 전용 샌드박스에서 일반 읽기, 빌드, 테스트 작업이 얼마나 막히는지 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
-- 키체인 로그인(`cli_auth_credentials_store=keyring`)에서 전용 `CODEX_HOME`이 로그인을 공유하는지 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
-- Codex가 승인된 편집과 명령을 읽기 전용 샌드박스에 막히지 않고 실행하는지 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
-- Codex subagent 실행 자체를 막을 방법. 지금은 승인 요청이 없어 안의 명령만 판정한다 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
-- 규칙으로 읽지 못한 요청의 `항상 허용`을 provider 값으로 보낼 방법: Claude 세션 규칙(`updatedPermissions`), Codex MCP의 `_meta.persist`, Codex 허용 응답과 권한 요청, 옛 이름 값의 실측 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
-- Codex MCP 승인 요청에서 도구 이름을 읽는 필드(`_meta`의 이름 키)가 실제로 있는지. 지금은 `_meta.tool_name`, `_meta.tool`, 요청 문구의 `tool "이름"` 순으로 읽는다 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
+- Codex 읽기 전용 샌드박스의 막힘 정도를 `cargo test`와 `python3 -m unittest` 두 명령보다 넓은 작업 표본으로 재는 일. 승인한 명령에 샌드박스가 적용되는 기준(같은 명령도 달랐음)이 무엇인지
+- 키체인 로그인(`cli_auth_credentials_store=keyring`) 사용자의 전용 `CODEX_HOME`이 로그인을 공유하는지. `auth.json` 심볼릭 링크는 로그인을 공유했고(3/3), 링크 없이 keyring으로 설정한 전용 폴더는 로그인되지 않았다(3/3). 실제 keyring 로그인은 새 로그인 없이는 만들 수 없어 측정하지 못했다([실측](../experiments/codex-provider-behavior/report.md))
+- 규칙으로 읽지 못한 요청의 `항상 허용`을 provider 값으로 보낼 방법: Claude 세션 규칙(`updatedPermissions`), Codex 권한 요청과 옛 이름 값의 실측 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
 - 허가 거절 뒤 다르게 하라는 입력을 어떻게 받을지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
