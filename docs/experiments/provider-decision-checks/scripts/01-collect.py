@@ -458,7 +458,7 @@ def mcp_handler(action: str, request_rows: list[dict]):
         elif method == "item/tool/requestUserInput":
             request_rows.append({"method": method, "params": message.get("params")})
             questions = message.get("params", {}).get("questions", [])
-            server.send_result(message["id"], {"answers": {q.get("id", str(i)): "experiment-answer" for i, q in enumerate(questions)}})
+            server.send_result(message["id"], {"answers": {q.get("id", str(i)): {"answers": ["experiment-answer"]} for i, q in enumerate(questions)}})
         elif method.endswith("requestApproval"):
             server.send_result(message["id"], {"decision": "accept"})
         elif message.get("id") is not None:
@@ -517,7 +517,7 @@ def exp3(run_id: str):
     rows.append({"run_id": run_id, "trial_id": feature_trial, "condition": "agent-request", "ts_utc": utc_now(),
                  "provider": "codex", "model": CODEX_MODEL, "request_method": [r["method"] for r in requests],
                  "request_params": [r.get("params") for r in requests], "response": [], "server_observation": redact(messages),
-                 "round_trip": int(any(r["method"] == "item/tool/requestUserInput" for r in requests)),
+                 "round_trip": int("experiment-answer" in json.dumps(messages, ensure_ascii=False)),
                  "private_log": save_private(feature_trial, app.events, "", stderr), "status": status,
                  "feature_flag": "default_mode_request_user_input"})
     for index in range(1, 4):

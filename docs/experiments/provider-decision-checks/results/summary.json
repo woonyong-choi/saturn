@@ -32,6 +32,7 @@
       "left": "tail-preserve",
       "left_k": 64,
       "left_rate": 0.2,
+      "mcnemar_exact_p": 1.0,
       "n": 320,
       "right": "oldest-first",
       "right_k": 64,
@@ -1426,10 +1427,10 @@
     ],
     "tokens": {
       "ci95": [
-        0.028430113017702645,
-        0.11209889990389837
+        0.02843011301770265,
+        0.11209889990389836
       ],
-      "mean": 0.07088170812920103,
+      "mean": 0.07088170812920104,
       "median": 0.09200841219768664,
       "n": 32,
       "p5": -0.12195121951219512,
@@ -1456,6 +1457,30 @@
         "k": 1,
         "n": 10,
         "rate": 0.1
+      }
+    },
+    "paired": {
+      "duplicate_touch": {
+        "b": 0,
+        "c": 4,
+        "ci95": [
+          -0.7,
+          -0.1
+        ],
+        "difference": -0.4,
+        "exact_p": 0.125,
+        "n": 10
+      },
+      "state_checked_first": {
+        "b": 0,
+        "c": 0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "difference": 0.0,
+        "exact_p": 1.0,
+        "n": 10
       }
     },
     "state_checked_first": {
@@ -1492,12 +1517,12 @@
       },
       "item/tool/requestUserInput": {
         "ci95": [
-          0.20654931437723745,
-          1.0
+          0.0,
+          0.7934506856227626
         ],
-        "k": 1,
+        "k": 0,
         "n": 1,
-        "rate": 1.0
+        "rate": 0.0
       },
       "mcpServer/elicitation/request": {
         "ci95": [
@@ -1587,7 +1612,7 @@
         "provider": "codex",
         "request": "{\"threadId\": \"01a0fceb-4ee4-7b43-b2fe-6f72da17d3ca\", \"turnId\": \"01a0fceb-5263-7a43-967f-e13ea532d424\", \"itemId\": \"call_lq17UL86gmHOBYwZOE25d3n8\", \"questions\": [{\"id\": \"preference\", \"header\": \"선호 확인\", \"question\": \"지금 가장 우선해서 도와드릴 작업은 무엇인가요?\", \"isOther\": true, \"isSecret\": false, \"options\": [{\"label\": \"코드 변경 (Recommended)\", \"description\": \"저장소의 구현이나 버그를 수정합니다.\"}, {\"label\": \"설계 검토\", \"description\": \"문서와 구조를 검토하고 개선점을 정리합니다.\"}, {\"label\": \"테스트 실행\", \"description\": \"현재 상태를 점검하고 테스트 결과를 확인합니다.\"}]}], \"isBlocking\": false, \"autoResolutionMs\": null}",
         "request_method": "item/tool/requestUserInput",
-        "round_trip": "1",
+        "round_trip": "0",
         "run_id": "20261002T135843Z-1e4de2b",
         "trial_id": "exp3-codex-agent-request"
       },
@@ -1904,6 +1929,10 @@
     "exp2": 20,
     "exp3": 12,
     "exp4": 12
+  },
+  "holm": {
+    "performed": false,
+    "reason": "H2는 구간 기준만 사전 등록했고 p값이 없어 H1~H3 세 검정의 보정을 만들 수 없다. 위 p값은 보정 전 값이다."
   },
   "provider_calls": {
     "claude": 51,
