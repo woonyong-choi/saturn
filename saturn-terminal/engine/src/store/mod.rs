@@ -17,6 +17,7 @@ mod sessions;
 mod snapshots;
 mod task_history;
 mod usage;
+mod versions;
 
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};

@@ -57,6 +57,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("다른 Saturn에서 실행 중", "Running in another Saturn"),
     ("기록 저장소 v{to}로 옮김", "Record store migrated to v{to}"),
     (
+        "{provider} CLI가 {from}에서 {to}로 바뀜",
+        "{provider} CLI changed from {from} to {to}",
+    ),
+    (
         "오래된 채팅 {chats}개를 지웠습니다",
         "Deleted {chats} old chats",
     ),

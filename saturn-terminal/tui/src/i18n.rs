@@ -64,6 +64,8 @@ pub const ROUTER_UNAVAILABLE_SEND: &str = "라우터 연결 없음 · 차례에 
 pub const BUSY_ELSEWHERE: &str = "다른 Saturn에서 실행 중";
 /// `{to}`는 이관한 스키마 버전.
 pub const SCHEMA_MIGRATED: &str = "기록 저장소 v{to}로 옮김";
+/// `{provider}`는 provider 이름, `{from}`과 `{to}`는 마지막으로 확인한 버전과 지금 버전.
+pub const PROVIDER_UPDATED: &str = "{provider} CLI가 {from}에서 {to}로 바뀜";
 /// `{chats}`는 시작 때 자동 정리가 지운 채팅 수.
 pub const AUTO_PRUNED: &str = "오래된 채팅 {chats}개를 지웠습니다";
 pub const AUTO_PRUNE_FAILED: &str = "자동 정리에 실패했습니다 · 로그를 확인하세요";

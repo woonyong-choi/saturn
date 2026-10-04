@@ -97,11 +97,73 @@ pub(crate) trait Adapter: Send + Sync + std::fmt::Debug {
         })
     }
 
+    /// 설치된 provider CLI의 버전을 읽는다. 설치되지 않았거나 읽지 못하면 `None`. 기본은 실행 파일에 `--version`을
+    /// 주어 첫 줄에서 버전을 꺼낸다. 다른 방식으로 읽어야 하는 어댑터가 바꾼다.
+    fn read_version(
+        &self,
+        env: &[(std::ffi::OsString, std::ffi::OsString)],
+    ) -> BoxFuture<'_, Option<String>> {
+        let program = self.descriptor().program;
+        let env = env.to_vec();
+        Box::pin(async move { read_cli_version(program, &env).await })
+    }
+
     /// 규칙이 연결을 시작할 때 고정되는 어댑터가 규칙 지문을 돌려준다. 지문이 연결을 시작할 때와 다르면 연결을 다시
     /// 시작한다. 규칙을 실행 중에 바꿀 수 있는 어댑터는 `None`이다.
     fn rules_fingerprint(&self, _rules: &[Rule]) -> Option<String> {
         None
     }
+}
+
+/// 버전을 읽는 데 기다리는 최대 시간. 넘으면 읽지 못한 것으로 본다. 시작이 멈추지 않게 하는 초안 값이다.
+const VERSION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// `PATH`에서 `program`을 찾아 `--version`을 실행하고 출력 첫 줄에서 버전을 꺼낸다. 자식 환경에는 `PATH`와 `HOME`만
+/// 준다. 버전을 읽는 데 다른 설정이 필요 없고 router 키가 새지 않게 하기 위해서다.
+async fn read_cli_version(
+    program: &str,
+    env: &[(std::ffi::OsString, std::ffi::OsString)],
+) -> Option<String> {
+    let path = env
+        .iter()
+        .find(|(name, _)| name == "PATH")
+        .map(|(_, value)| value.clone())?;
+    let file = std::env::split_paths(&path)
+        .map(|dir| dir.join(program))
+        .find(|candidate| candidate.is_file())?;
+    let mut command = tokio::process::Command::new(file);
+    command
+        .arg("--version")
+        .env_clear()
+        .envs(
+            env.iter()
+                .filter(|(name, _)| name == "PATH" || name == "HOME")
+                .map(|(name, value)| (name, value)),
+        )
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true);
+    let output = tokio::time::timeout(VERSION_TIMEOUT, command.output())
+        .await
+        .ok()?
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    parse_version(&String::from_utf8_lossy(&output.stdout))
+}
+
+/// 출력 첫 줄에서 숫자로 시작하는 첫 낱말을 버전으로 본다(`codex-cli 0.158.0`, `2.1.285 (Claude Code)`). 그런 낱말이
+/// 없으면 첫 줄 전체를 쓰고, 빈 출력이면 `None`이다.
+fn parse_version(output: &str) -> Option<String> {
+    let line = output
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())?;
+    let word = line
+        .split_whitespace()
+        .find(|word| word.starts_with(|c: char| c.is_ascii_digit()));
+    Some(word.unwrap_or(line).to_owned())
 }
 
 /// 어댑터 연결 하나의 동작. `ProviderClient`에 프로세스 묶음, 적용값, 줄 세운 입력 전송을 더한다.
@@ -399,5 +461,27 @@ impl ProviderClient for ProviderConnection {
 
     fn commands(&self) -> Vec<ProviderCommand> {
         self.inner.commands()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn version_is_the_first_word_that_starts_with_a_digit() {
+        assert_eq!(
+            parse_version("codex-cli 0.158.0\n").as_deref(),
+            Some("0.158.0")
+        );
+        assert_eq!(
+            parse_version("2.1.285 (Claude Code)\n").as_deref(),
+            Some("2.1.285")
+        );
+        assert_eq!(
+            parse_version("\n  tool beta\nsecond").as_deref(),
+            Some("tool beta")
+        );
+        assert_eq!(parse_version("  \n"), None);
     }
 }

@@ -525,6 +525,12 @@ pub enum Alert {
     AutoPruneFailed,
     /// `Prune`을 보냈는데 `retention.max_age_days`가 없어 거절했다. 요청한 접속에만 보낸다.
     PruneNeedsRetention,
+    /// 시작할 때 읽은 provider CLI 버전이 마지막으로 확인한 버전과 다르다. 첫 TUI에만 보낸다.
+    ProviderUpdated {
+        provider: crate::ids::Provider,
+        from: String,
+        to: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

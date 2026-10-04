@@ -52,6 +52,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 | 판단 기록 | router 호출의 보낸 원문, 받은 원문, 질문별 답, 비용, 시간, 물은 확률 q, 결과 신호, 물은 답 |
 | 설정 스냅샷 | 설정 번호별 병합 결과와 층 목록 |
 | 제약 | 규칙 한 줄과 적용 범위, 변경 이벤트, 묻는 중인 확인, 전환마다 패킷에 넣은 제약 |
+| provider CLI 버전 | provider마다 마지막으로 확인한 CLI 버전과 확인 시각 |
 | 확장 | 설치한 확장의 이름, 출처, 부분별 provider 사용 가능 판정, 옮기자는 질문의 거절(구현 전, [#412](https://github.com/woonyong-choi/saturn/issues/412)) |
 
 - 기록 저장소에 쓰는 쪽은 engine 하나다. 쓰기 충돌을 막기 위해서다.
@@ -69,6 +70,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - `sessions`와 `runs` 표의 `provider`는 열린 provider id를 담는다. 지금 값 `Codex`, `Claude`는 대소문자를 가리지 않고 id `codex`, `claude`로 읽고 옛 행은 고치지 않는다. `chats.pinned_model`과 `inputs.pinned_model`의 `<provider>/<model>`은 provider 자리가 이미 id와 같아 그대로 읽힌다([provider 연결과 session](providers-and-sessions.md#provider-id와-설명자)). 새 행은 id 글자로 쓴다. `meta`의 캐시 유지 시간 키는 `cache_ttl_secs_<id>`라 옛 키가 그대로 읽힌다.
 - `extensions` 표는 설치한 확장을 이름, 출처, 설치 시각, 부분별 판정으로 둔다. 확장 원본 파일은 `~/.saturn/extensions/`에 두고 이 표에 넣지 않는다. 새 표이므로 이관은 표만 비어 있게 더하고, 정리 대상이 아니다([기능 목록과 확장](extensions.md#확장-저장소)). 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)).
 - `held_tasks` 표는 멈출 때 실행 중이던 보류 작업을 작업 번호 `task_id`(첫 입력 번호라 engine을 다시 켜도 같다), 채팅 `chat_id`, 에이전트 `agent_id`, 멈출 때 진행 중이던 실행을 연 입력 `input_id`로 둔다. 멈춤이나 크래시 복구가 보류할 때 쓰고, 재개하거나 닫으면 지운다. 채팅이나 입력을 지우면 함께 지운다. 입력과 에이전트가 없는 보류(보내기 전에 멈춘 입력)는 이 표에 남기지 않고 입력 행의 상태 `Held`로만 남긴다. 멈춤이 보류한 입력은 그때 `inputs.state`에 `Held`로 쓰고, 다시 켠 `engine`은 끝 상태가 아닌 입력을 접수 순서로 읽어 대기열에 되살린다([입력 처리](input-handling.md#재시작-뒤-입력-복원)). 스키마 V7에서 더했다([engine 수명과 복구](engine-lifecycle.md#크래시-뒤-복구)).
+- `provider_versions` 표는 provider id `provider`마다 마지막으로 확인한 CLI 버전 `version`과 확인 시각 `checked_at`(unix 밀리초)을 한 행으로 둔다. engine이 시작할 때 설치된 CLI의 버전을 읽어 다르면 덮어쓴다([provider 연결과 session](providers-and-sessions.md#직접-연결과-acp-어댑터)). 스키마 V9에서 더했고 이관은 표만 비어 있게 더한다. 채팅 정리의 대상이 아니다.
 - `interrupted_subagents` 표는 크래시로 끊긴 하위 에이전트를 채팅 `chat_id`, 메인 에이전트 `agent_id`, provider의 하위 에이전트 번호 `subagent`, provider에 정리를 넘겼는지 `cleaned`로 둔다. 같은 에이전트의 같은 하위 에이전트는 한 행이다. 에이전트의 session이 끝나거나 보류를 닫으면, 채팅을 지우면 함께 지운다. 스키마 V7에서 더했다.
 - `permission_allows` 표는 항상 허용을 작업 폴더 `workdir`, 도구 `tool`, 패턴 `pattern`, 저장 시각 `created_at`(unix 밀리초)으로 둔다. 같은 `workdir`, `tool`, `pattern`은 한 행이다. 스키마 V4에서 더했고 채팅과 상관없이 작업 폴더 단위로 쓴다([권한](permissions.md#항상-허용-저장)).
 - `constraints` 표는 제약 한 건을 `constraint_id`(다시 쓰지 않는 번호), 채팅 `chat_id`, 제약이 나온 입력 `input_id`, 입력 안 조각 번호 `line`(나누지 않았으면 0), 규칙 한 줄 `rule`, 적용 범위 `scope`(줄바꿈으로 이은 경로, NULL이면 전체), 상태 `state`(`Candidate`, `Active`, `Released`, `Superseded`), 대체한 제약 `superseded_by`(아니면 NULL), 만든 시각 `created_at`(unix 밀리초)로 둔다. 행은 지우지 않고 채팅을 지울 때만 함께 지운다([제약](constraints.md#제약의-모양)).
@@ -187,6 +189,7 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 스키마 V5 이관은 채팅 행을 보존하고 더한 폴더 표를 비어 있게 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v4_file_migrates_to_chat_dirs_keeping_chats` |
 | 스키마 V8 이관은 채팅 행을 보존하고 이름과 묶음 칸을 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v7_file_migrates_to_chat_name_and_group_keeping_chats` |
 | 채팅 이름과 묶음은 앞뒤 공백을 지워 저장하고, 비면 지우며, 없는 채팅이나 제어 문자가 든 값은 거절하고 바꾸지 않는다. 이름은 채팅 목록에 보인다. | `saturn-terminal/engine/src/lifecycle/chat_labels.rs`의 `rename_and_group_are_saved_trimmed_and_shown_in_the_chat_list`, `blank_name_and_no_group_clear_the_labels`, `unknown_chat_and_control_characters_are_refused_without_changing_anything` |
+| 스키마 V9 이관은 채팅 행을 보존하고 provider 버전 표를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v8_file_migrates_to_provider_versions_keeping_chats`, `saturn-terminal/engine/src/store/versions.rs`의 `recorded_version_is_read_back_and_overwritten_per_provider` |
 | 스키마 V7 이관은 채팅 행을 보존하고 보류 작업 표와 끊긴 하위 에이전트 표를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v6_file_migrates_to_recovery_tables_keeping_chats_and_backing_up` |
 | 스키마 V8 이관은 채팅 행을 보존하고 제약 표 네 개를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | 옛 스키마 파일로 새 버전을 실행해 채팅 행, 빈 제약 표, 백업 1개를 확인한다. |
 | 제약 변경은 상태와 이벤트를 한 거래로 쓰고 이벤트는 이어 쓰기만 한다. 제약 revision은 마지막 이벤트 번호다. | 변경 뒤 `constraints`와 `constraint_events`가 함께 바뀌고 이벤트 행이 수정되지 않는지 확인한다. |
