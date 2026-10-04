@@ -104,7 +104,13 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 - 훅 명령은 engine 실행 파일의 `hook pre-tool-use --home <Saturn 홈>`이고 모든 도구에 건다(초안). 이 명령은 engine 잠금과 소켓을 열지 않고 판정만 하고 끝난다. 훅은 provider 자식 프로세스에서 짧게 실행되기 때문이다. 막는 명령은 `security`의 `find-generic-password`, `find-internet-password`, `dump-keychain`, `export`이고, 막는 경로는 `~/.saturn/router.key`, `~/Library/Keychains/`, `/Library/Keychains/` 아래다(초안). 셸 연결 기호로 나뉜 부분마다 보고, 경로는 심볼릭 링크를 푼 뒤 비교한다.
 - 훅 입력은 Claude Code PreToolUse 규격의 stdin JSON(`tool_name`, `tool_input`, `cwd`)이다. `Bash`는 `command`를 명령으로, `Read`·`Edit`·`MultiEdit`·`Write`·`NotebookRead`·`NotebookEdit`·`Glob`·`Grep`·`LS`는 경로 필드를 경로로 판정하고, 상대 경로는 `cwd` 기준으로 바꾼다. 그 밖의 도구는 판정하지 않는다.
 - 훅 출력은 막을 때 stdout에 `hookSpecificOutput`(`permissionDecision: "deny"`와 이유 한 줄)을 쓰고 종료 코드 0으로 끝난다. 허용할 때는 아무것도 쓰지 않고 종료 코드 0으로 끝내 사용자의 다른 훅이 이어서 판정하게 한다. 입력이 JSON이 아니거나 `tool_name`이 없으면 stderr에 이유를 쓰고 종료 코드 2로 끝낸다(초안). 판정할 수 없는 호출을 통과시키지 않기 위해서다.
-- Claude Code 2.1.288에서 Saturn 훅은 Bash로 쓴 `security find-generic-password` 조회를 요청이 호스트에 오기 전에 막았고, 전경과 백그라운드 subagent의 같은 조회도 막았다(각 3/3). 훅 입력에는 subagent 호출에 `agent_id`와 `agent_type`이 실린다. 중첩 subagent의 조회도 훅 기록에서 3/3 막혔지만 그 호출이 스트림에는 1/3만 보였다. 반면 `sh -c "/usr/bin/security find-generic-password ..."`는 3/3 막지 못했고 값이 도구 결과에 나왔다. `secrets/hook.rs` 133~146행이 첫 낱말과 첫 비옵션 낱말로 판정하는데 `sh`가 19행의 `COMMAND_WRAPPERS`에 없어서로 읽힌다(코드 읽기, 따로 실행해 확인하지 않음). 셸을 거치는 우회를 막는 수정은 아직 없다. Codex 훅은 재지 않았다([#3](https://github.com/woonyong-choi/saturn/issues/3), [#23](https://github.com/woonyong-choi/saturn/issues/23), [실험](../experiments/claude-provider-behavior/report.md)).
+- 명령 판정은 낱말을 따옴표와 이스케이프를 푼 뒤 본다. `sec"ur"ity`, `s\ecurity`처럼 섞은 형태도 같은 낱말로 읽는다. `sudo`, `env`, `xargs`, `timeout` 같은 감싸는 명령은 옵션을 알 수 없어 뒤의 낱말마다 명령 시작 자리로 본다.
+- 셸(`sh`, `bash`, `zsh`, `dash`, `ksh`, `fish`, `ash`, `csh`, `tcsh`)의 `-c` 인자와 `eval` 인자는 같은 판정기로 다시 해석한다. 표준 입력으로 받는 경우(`echo ... | sh`, `sh <<< ...`, `sh <<EOF`)도 넘어가는 문자열을 다시 해석한다. 재귀 깊이는 4단계까지이고 넘으면 막는다(초안).
+- 인터프리터(`python*`, `perl`, `ruby`, `node`, `php`, `lua`, `osascript`, `deno`, `bun`, `swift`, `awk`)의 인자와 heredoc 본문은 해석하지 않고 문자열만 본다. `security`와 막는 하위 명령이 함께 나오거나 키 저장소 경로(`Library/Keychains`, `router.key`, 훅이 아는 차단 경로)가 나오면 막는다. 막는 쪽으로 치우친 검사라 스크립트가 그 낱말을 일반 글로 담아도 막힌다.
+- `security -i`(표준 입력으로 하위 명령을 받는 모드)는 막는다.
+- 해석할 수 없는 명령은 막는다. 따옴표 짝이 안 맞는 경우, `<<` 뒤에 구분자가 없는 경우, 재귀 깊이를 넘은 경우다. `#` 뒤 주석과 heredoc 본문의 따옴표는 짝을 보지 않는다.
+- 이 판정은 차단 목록 방식이라 막지 못하는 형태가 남는다. 문자열을 조립하거나 인코딩해 실행하는 명령(`base64 -d | sh`), 내려받은 스크립트나 사용자가 만든 스크립트 파일 실행, 인터프리터가 이름을 조립해 부르는 `security`, `find -exec`처럼 목록에 없는 실행기, 작업 폴더를 옮긴 뒤의 상대 경로가 그렇다. 키 항목 자체에 접근 제어를 거는 근본 대책은 [#2](https://github.com/woonyong-choi/saturn/issues/2)와 [#102](https://github.com/woonyong-choi/saturn/issues/102)에서 정한다. 훅은 그 앞의 한 겹이다.
+- Claude Code 2.1.288에서 Saturn 훅은 Bash로 쓴 `security find-generic-password` 조회를 요청이 호스트에 오기 전에 막았고, 전경과 백그라운드 subagent의 같은 조회도 막았다(각 3/3). 훅 입력에는 subagent 호출에 `agent_id`와 `agent_type`이 실린다. 중첩 subagent의 조회도 훅 기록에서 3/3 막혔지만 그 호출이 스트림에는 1/3만 보였다. 반면 `sh -c "/usr/bin/security find-generic-password ..."`는 3/3 막지 못했고 값이 도구 결과에 나왔다. 원인은 첫 낱말과 첫 비옵션 낱말만 보는 판정이었고, 셸·`eval`·인터프리터 인자를 해석하는 수정은 위 항목대로 단위 테스트로만 확인했다. 실제 provider로 다시 재지 않았다. Codex 훅은 재지 않았다([#3](https://github.com/woonyong-choi/saturn/issues/3), [#23](https://github.com/woonyong-choi/saturn/issues/23), [실험](../experiments/claude-provider-behavior/report.md)).
 
 ### 전송
 
@@ -137,12 +143,14 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 | router 키는 기록 저장소, 로그, 오류 출력에 남지 않는다. | 키를 넣은 호출과 오류를 만든 뒤 저장소와 출력에 키 문자열이 없는지 확인한다. |
 | 키체인에 직접 저장한 키는 확인 창 없이 읽히지 않는다. | [#2](https://github.com/woonyong-choi/saturn/issues/2) 실험으로 확인 창 없이 읽는 경로를 확인한다. |
 | engine 실행 파일은 생성한 훅 명령(`hook pre-tool-use`)을 받아 허용과 거부를 훅 규격의 출력과 종료 코드로 돌려준다. | `saturn-terminal/engine/tests/key_hook.rs`의 `hook_command_denies_key_store_access`, `hook_command_allows_ordinary_calls_without_output`, `hook_command_blocks_unreadable_input_with_exit_code_2`, `hook_command_leaves_saturn_home_untouched` |
-| Saturn 소유 PreToolUse 훅은 키 저장소 접근을 막는다. | Claude 직접 명령은 [실험](../experiments/claude-provider-behavior/report.md)에서 3/3 막혔고 `sh -c` 감싼 명령은 막지 못했다. Codex는 [#3](https://github.com/woonyong-choi/saturn/issues/3)에서 확인한다. |
+| 훅은 셸·`eval`·인터프리터로 감싼 키 저장소 조회도 막고, 해석할 수 없는 명령은 막으며, 목록 밖 하위 명령은 막지 않는다. | `saturn-terminal/engine/src/secrets/hook.rs`의 `shell_wrapped_lookups_are_denied`, `quoting_and_escapes_inside_shell_strings_do_not_hide_lookups`, `separators_inside_shell_strings_are_split`, `eval_strings_are_judged_again`, `nested_shells_are_judged_down_to_the_limit`, `nesting_beyond_the_limit_is_denied`, `unparseable_commands_are_denied`, `interpreter_one_liners_naming_key_stores_are_denied`, `shells_fed_by_pipe_here_string_or_here_document_are_judged`, `interactive_security_is_denied`, `wrapped_commands_outside_the_list_are_allowed`, `quotes_comments_and_here_documents_in_ordinary_commands_are_allowed` |
+| Saturn 소유 PreToolUse 훅은 키 저장소 접근을 막는다. | Claude 직접 명령은 [실험](../experiments/claude-provider-behavior/report.md)에서 3/3 막혔고 `sh -c` 감싼 명령은 수정 전에 막지 못했다(수정 뒤 실제 provider 재측정은 아직). Codex는 [#3](https://github.com/woonyong-choi/saturn/issues/3)에서 확인한다. |
 | 훅은 subagent의 도구 호출에도 적용된다. | Claude 전경, 백그라운드, 중첩 subagent의 조회가 [실험](../experiments/claude-provider-behavior/report.md)에서 훅에 막혔다. Codex는 [#23](https://github.com/woonyong-choi/saturn/issues/23)에서 확인한다. |
 
 ## 단점
 
 - 제외 목록과 훅 검사를 provider 변화에 맞춰 계속 유지한다.
+- 훅의 명령 판정은 차단 목록이라 위의 남은 한계를 근본적으로 없애지 못한다.
 - 강화 방식에서는 session을 시작할 때마다 키체인 암호를 입력한다.
 
 ## 대안
