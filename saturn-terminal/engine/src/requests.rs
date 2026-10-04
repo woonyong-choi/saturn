@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{ChatId, LedgerSeq, Provider, TaskLabel};
-use saturn_protocol::rpc::{Alert, Notification};
+use saturn_protocol::rpc::{Alert, ChatNotice, Notification};
 use saturn_protocol::state::TaskState;
 
 use crate::rpc::ClientId;
@@ -50,7 +50,7 @@ impl Engine {
             chat,
             entries: entries
                 .into_iter()
-                .flat_map(|entry| self.history_notifications(entry))
+                .flat_map(|entry| self.history_notifications(chat, entry))
                 .collect(),
             has_more,
         })
@@ -58,7 +58,8 @@ impl Engine {
 
     /// 기록에 없는 작업 글자와 처리 방식은 비운다. 실행은 TUI가 작업 상태를 알도록 시작과 끝 알림으로 감싼다.
     /// 허가와 입력 요청 이벤트는 이미 처리됐거나 접속 때 따로 보내므로 되살리지 않는다.
-    fn history_notifications(&self, entry: HistoryEntry) -> Vec<Notification> {
+    /// 실행이 보고한 사용량은 이벤트 뒤에 이어 보내고, 앞 실행과 provider가 다르면 실행 앞에 전환 알림을 둔다.
+    fn history_notifications(&self, chat: ChatId, entry: HistoryEntry) -> Vec<Notification> {
         match entry {
             HistoryEntry::Input {
                 input,
@@ -79,6 +80,8 @@ impl Engine {
                 end,
                 elapsed_ms,
                 events,
+                usage,
+                switched_from,
             } => {
                 let label = self.flow.tasks.label(task).unwrap_or(TaskLabel('?'));
                 let changed = |state, elapsed_ms| Notification::TaskChanged {
@@ -98,6 +101,7 @@ impl Engine {
                                 | ProviderEvent::InputRequested { .. }
                         )
                     })
+                    .chain(usage.into_iter().map(ProviderEvent::Usage))
                     .map(|event| Notification::TaskEvent { task, event });
                 let finished = end.map(|end| {
                     let state = match end {
@@ -106,7 +110,14 @@ impl Engine {
                     };
                     changed(state, elapsed_ms)
                 });
-                std::iter::once(changed(TaskState::Running, 0))
+                let switched = switched_from.map(|from| Notification::ChatNotice {
+                    chat,
+                    task: None,
+                    notice: ChatNotice::ProviderSwitched { from, to: provider },
+                });
+                switched
+                    .into_iter()
+                    .chain(std::iter::once(changed(TaskState::Running, 0)))
                     .chain(replayed)
                     .chain(finished)
                     .collect()

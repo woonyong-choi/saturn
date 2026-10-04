@@ -362,15 +362,17 @@ impl App {
         Vec::new()
     }
 
-    /// 저장은 engine이 하고, 고정 상태는 돌아오는 `ModelPinned`로 바뀐다.
+    /// 저장은 engine이 하고, 고정 상태와 안내 한 줄은 돌아오는 `ModelPinned`로 바뀐다.
+    /// 채팅에 붙을 때 오는 `ModelPinned`도 같은 줄을 그려 다시 열어도 실시간과 같다.
     fn pin_model(&mut self, chat: ChatId, model: ModelChoice) -> Vec<Effect> {
-        let notice = self
-            .lang
+        vec![Effect::Send(Request::SetModel { chat, model })]
+    }
+
+    pub(super) fn model_pinned_notice(&self, model: &ModelChoice) -> String {
+        self.lang
             .tr(i18n::MODEL_PINNED)
             .replace("{provider}", i18n::provider_name(model.provider))
-            .replace("{model}", &model.model);
-        self.push_cell(TranscriptCell::Warning(notice));
-        vec![Effect::Send(Request::SetModel { chat, model })]
+            .replace("{model}", &model.model)
     }
 }
 

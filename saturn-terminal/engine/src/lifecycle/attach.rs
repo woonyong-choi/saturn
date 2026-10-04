@@ -3,11 +3,11 @@ use std::ffi::OsString;
 use saturn_core::queue::Permission;
 use saturn_core::sessions::{AgentRole, SessionRecord};
 use saturn_protocol::envelope::INVALID_PARAMS;
-use saturn_protocol::event::ProviderEvent;
+use saturn_protocol::event::{ProviderEvent, UsageReport, UsageScope};
 use saturn_protocol::ids::{
-    AgentId, ChatId, LedgerSeq, Provider, SessionId, SettingsRevision, TaskId, TaskLabel,
+    AgentId, ChatId, LedgerSeq, Provider, RunId, SessionId, SettingsRevision, TaskId, TaskLabel,
 };
-use saturn_protocol::rpc::Alert;
+use saturn_protocol::rpc::{Alert, ChatNotice};
 use saturn_protocol::state::{EffectScope, InputState, SessionState, TaskState};
 
 use super::*;
@@ -253,6 +253,129 @@ async fn attach_history_keeps_earlier_inputs_and_replies_when_the_last_reply_is_
         })
         .count();
     assert_eq!(pieces, 80);
+}
+
+/// 다른 provider의 실행과 사용량 보고가 있는 채팅. 첫 실행은 Codex, 둘째는 Claude다(#384).
+async fn chat_that_switched_providers(engine: &Engine, workdir: &Path) -> ChatId {
+    let chat = chat_with_history(engine, workdir).await;
+    let store = &engine.store;
+    let first = store.recent_history(chat, 10).await.unwrap().0;
+    assert_eq!(first.len(), 2);
+    let report = |input: u64| UsageReport {
+        agent: AgentId(1),
+        subagent: None,
+        model: Some("m".to_owned()),
+        scope: UsageScope::MainTurn,
+        input: Some(input),
+        cache_read: None,
+        cache_write: None,
+        output: Some(5),
+        reasoning: None,
+    };
+    store
+        .record_usage(RunId(1), SessionId(7), &report(100))
+        .await
+        .unwrap();
+    let input = store
+        .accept_input(&NewInput {
+            chat,
+            text: "second".to_owned(),
+            settings: SettingsRevision(1),
+            permission: Permission::Write,
+            workdir: workdir.to_path_buf(),
+            pinned_model: None,
+            skip_relation: false,
+        })
+        .await
+        .unwrap();
+    let run = store
+        .start_run(&NewRun {
+            input: Some(input),
+            task: TaskId(2),
+            agent: AgentId(1),
+            session: SessionId(8),
+            provider: Provider::Claude,
+            effect_scope: EffectScope::NetworkPossible,
+        })
+        .await
+        .unwrap();
+    store.append_event(run, chat, &text("ok")).await.unwrap();
+    store
+        .record_usage(run, SessionId(8), &report(7))
+        .await
+        .unwrap();
+    store.finish_run(run, RunEnd::Completed).await.unwrap();
+    chat
+}
+
+async fn attach_entries(engine: &mut Engine, fixture: &Fixture, chat: ChatId) -> Vec<Notification> {
+    let mut client = Client::connect(&fixture.socket()).await;
+    let received = drive(engine, async {
+        client.attach(1, attach_to(chat, &fixture.workdir)).await
+    })
+    .await;
+    let Notification::HistoryChunk { entries, .. } = &received[1] else {
+        panic!("expected HistoryChunk, got {:?}", received[1]);
+    };
+    entries.clone()
+}
+
+/// 실행이 보고한 사용량은 기록에서 읽어 그 실행의 이벤트로 보낸다. 실시간 `Token` 합계의 재료다(#384).
+#[tokio::test]
+async fn attach_history_carries_the_usage_reported_by_each_run() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.ready().await;
+    let chat = chat_that_switched_providers(&engine, &fixture.workdir).await;
+
+    let entries = attach_entries(&mut engine, &fixture, chat).await;
+
+    let usage: Vec<(TaskId, Option<u64>)> = entries
+        .iter()
+        .filter_map(|entry| match entry {
+            Notification::TaskEvent {
+                task,
+                event: ProviderEvent::Usage(report),
+            } => Some((*task, report.input)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(usage, vec![(TaskId(1), Some(100)), (TaskId(2), Some(7))]);
+}
+
+/// 앞 실행과 provider가 다른 실행 앞에는 실시간과 같은 전환 알림이 온다. 첫 실행 앞에는 없다(#384).
+#[tokio::test]
+async fn attach_history_tells_the_provider_switch_before_the_run_that_switched() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.ready().await;
+    let chat = chat_that_switched_providers(&engine, &fixture.workdir).await;
+
+    let entries = attach_entries(&mut engine, &fixture, chat).await;
+
+    let switches: Vec<usize> = entries
+        .iter()
+        .enumerate()
+        .filter_map(|(at, entry)| match entry {
+            Notification::ChatNotice {
+                notice:
+                    ChatNotice::ProviderSwitched {
+                        from: Provider::Codex,
+                        to: Provider::Claude,
+                    },
+                task: None,
+                ..
+            } => Some(at),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(switches.len(), 1);
+    assert!(matches!(
+        &entries[switches[0] + 1],
+        Notification::TaskChanged {
+            task: TaskId(2),
+            state: TaskState::Running,
+            ..
+        }
+    ));
 }
 
 #[tokio::test]
