@@ -49,8 +49,15 @@ impl Engine {
     /// `deliver`와 같다. 오류가 나면 남은 입력은 다음 호출 때 보낸다.
     pub(crate) async fn dispatch_next(&mut self, chat: ChatId) -> Result<(), EngineError> {
         loop {
-            // 앞선 전달이 provider 응답을 기다리는 채팅은 끝날 때까지 건너뛴다. 같은 채팅의 순서를 지키기 위해서다
-            let busy: Vec<ChatId> = self.flow.deliveries.keys().copied().collect();
+            // 앞선 전달이 provider 응답을 기다리는 채팅은 끝날 때까지 건너뛴다. 같은 채팅의 순서를 지키기 위해서다.
+            // 새 session 열기를 기다리는 맥락 정리도 같다
+            let busy: Vec<ChatId> = self
+                .flow
+                .deliveries
+                .keys()
+                .chain(&self.flow.restarting)
+                .copied()
+                .collect();
             let Some(action) = self.queue.next_to_send_except(&busy) else {
                 break;
             };

@@ -430,8 +430,7 @@ impl Engine {
             return;
         };
         if let Ok(connection) = self.provider_mut(chat, live.provider) {
-            let closed = connection.close_session(&live.provider_session).await;
-            self.warn_failure("failed to close held session", closed);
+            connection.close_session_detached(live.provider_session.clone());
         }
         let ended = self.sessions.set_state(live.session, SessionState::Ended);
         if ended.is_err() {

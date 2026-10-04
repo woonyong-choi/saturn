@@ -3,7 +3,6 @@
 
 use std::time::{Duration, Instant, SystemTime};
 
-use saturn_core::providers::ProviderError;
 use saturn_core::sessions::LastTurn;
 use saturn_core::sessions::context::{CompactionDecision, ContextMeasure, decide};
 use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq};
@@ -35,8 +34,13 @@ impl Engine {
         self.clear_permissions(agent).await;
         self.record_turn_value(&live).await?;
         self.end_task(chat, agent).await?;
-        if let Err(error) = self.compact_at_boundary(chat, &live).await {
-            tracing::warn!(chat = chat.0, error = %self.failure_line(&error), "context compaction skipped");
+        match self.compact_at_boundary(chat, &live).await {
+            // 새 session 열기를 기다린다. 끝나면 거기서 이어 간다
+            Ok(true) => return Ok(()),
+            Ok(false) => {}
+            Err(error) => {
+                tracing::warn!(chat = chat.0, error = %self.failure_line(&error), "context compaction skipped");
+            }
         }
         self.restart_stale_connections(chat).await;
         self.dispatch_next(chat).await
@@ -56,23 +60,24 @@ impl Engine {
         self.persist_sessions(live.session).await
     }
 
-    /// 트리 유휴이고 합칠 대기 입력이 없으며 `A`를 알 때만 `decide`를 부르고, `Restart`면 새 session으로 이어 간다.
+    /// 트리 유휴이고 합칠 대기 입력이 없으며 `A`를 알 때만 `decide`를 부르고, `Restart`면 새 session 열기를 맡긴다.
+    /// 맡겼으면 참이고, 다음 입력은 새 session이 열린 뒤에 보낸다.
     /// 유휴 복귀 조건(경과 시간)은 다음 입력이 올 때 판정할 일(`plan_open`)이라 여기서는 경과 0으로 본다.
     /// `context.mode`가 `provider`면 판정하지 않고 provider 자동 압축에 맡긴다. 기대 잔여 턴은 모르는 값(기본 3)으로 둔다.
     async fn compact_at_boundary(
         &mut self,
         chat: ChatId,
         live: &LiveSession,
-    ) -> Result<(), EngineError> {
+    ) -> Result<bool, EngineError> {
         let Some(active) = self.flow.context_tokens.get(&live.agent).copied().flatten() else {
-            return Ok(());
+            return Ok(false);
         };
         if self.context_mode().await? == ContextMode::Provider {
-            return Ok(());
+            return Ok(false);
         }
         let budget = self.context_budget(live.provider).await?;
         if active < budget.threshold() {
-            return Ok(());
+            return Ok(false);
         }
         let rows = self.store.ledger_since(chat, LedgerSeq(0)).await?;
         let source = handoff_source(
@@ -97,7 +102,7 @@ impl Engine {
             expected_turns: None,
         };
         if decide(&budget, &measure) != CompactionDecision::Restart {
-            return Ok(());
+            return Ok(false);
         }
         match outcome {
             HandoffOutcome::Ready(handoff) => {
@@ -114,8 +119,9 @@ impl Engine {
                     budget,
                     sent_tokens: handoff.tokens,
                 });
-                self.restart_and_notify(chat, live, handoff.text, reduction, up_to)
+                self.restart_session(chat, live, handoff.text, reduction, up_to)
                     .await?;
+                return Ok(true);
             }
             HandoffOutcome::Deferred { constraints } => {
                 self.notify_chat(chat, ChatNotice::ContextDeferred { constraints })
@@ -123,30 +129,7 @@ impl Engine {
             }
             HandoffOutcome::Empty => {}
         }
-        Ok(())
-    }
-
-    /// 새 session으로 이어 가고 알린다. 줄인 패킷도 맥락 한도로 거절되면 옛 session을 그대로 두고 `PacketOverflow`를 알린다.
-    /// 맥락 정리는 기다리는 입력이 없을 때만 하므로 보류할 입력은 없다.
-    async fn restart_and_notify(
-        &mut self,
-        chat: ChatId,
-        live: &LiveSession,
-        packet: String,
-        reduction: Option<Reduction>,
-        up_to: LedgerSeq,
-    ) -> Result<(), EngineError> {
-        match self
-            .restart_session(chat, live, packet, reduction, up_to)
-            .await
-        {
-            Ok(()) => self.notify_chat(chat, ChatNotice::Compacted).await,
-            Err(EngineError::Provider(ProviderError::ContextExceeded { .. })) => {
-                self.notify_chat(chat, ChatNotice::PacketOverflow).await;
-            }
-            Err(error) => return Err(error),
-        }
-        Ok(())
+        Ok(false)
     }
 
     pub(crate) async fn notify_chat(&self, chat: ChatId, notice: ChatNotice) {

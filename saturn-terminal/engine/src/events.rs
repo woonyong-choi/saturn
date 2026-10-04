@@ -23,6 +23,7 @@ use saturn_protocol::ids::{
 use saturn_protocol::rpc::{ChatNotice, Notification, PermissionAnswer};
 use saturn_protocol::state::{EffectScope, SessionState, TaskState};
 
+use crate::calls::{CallKind, Responder};
 use crate::flow::{LiveSession, NeedsCheck};
 #[cfg(test)]
 use crate::providers::ProviderConnection;
@@ -41,6 +42,29 @@ pub(crate) struct PendingPermission {
     pub(crate) provider_request: String,
     /// `항상 허용` 답을 저장할 호출. 규칙으로 읽지 못한 요청은 `None`.
     pub(crate) call: Option<PermissionCall>,
+}
+
+/// 사용자 답을 provider가 받는 중인 허가 요청.
+#[derive(Debug)]
+pub(crate) struct PermissionAnswering {
+    responder: Responder,
+    client: ClientId,
+    /// engine이 발급한 요청 ID.
+    request_id: String,
+    pending: PendingPermission,
+    is_saved_here: bool,
+}
+
+/// Saturn 규칙이 낸 답을 provider가 받는 중인 허가 요청. 받지 못하면 사용자에게 올릴 값을 들고 있다.
+#[derive(Debug)]
+pub(crate) struct RuleAnswering {
+    live: LiveSession,
+    /// provider가 붙인 요청 ID.
+    id: String,
+    summary: String,
+    reason: String,
+    call: Option<PermissionCall>,
+    is_allow: bool,
 }
 
 /// provider가 올린 허가 요청 한 건.
@@ -521,52 +545,94 @@ impl Engine {
             Verdict::Ask => None,
         };
         if let Some(answer) = answer
-            && self.answer_by_rule(chat, live, request.id, answer).await
+            && self.start_rule_answer(chat, live, request, answer)
         {
             return;
         }
         self.offer_permission(chat, live, request).await;
     }
 
-    /// provider가 답을 받았으면 참. 받지 못했으면 사용자에게 물어야 하므로 거짓.
+    /// 규칙의 답을 연결 작업에 맡긴다. 맡기지 못하면 거짓이라 사용자에게 묻는다. provider가 답을 받지 못하면 결과가 올
+    /// 때 사용자에게 묻는다.
+    fn start_rule_answer(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+        request: PermissionRequest<'_>,
+        answer: PermissionAnswer,
+    ) -> bool {
+        if !self.providers.contains_key(&(chat, live.provider)) {
+            tracing::warn!(
+                request = request.id,
+                "rule answer not sent, asking the user"
+            );
+            return false;
+        }
+        let answering = RuleAnswering {
+            live: live.clone(),
+            id: request.id.to_owned(),
+            summary: request.summary.to_owned(),
+            reason: request.reason.to_owned(),
+            call: request.call.cloned(),
+            is_allow: answer != PermissionAnswer::Deny { note: None },
+        };
+        let (session, request_id) = (live.provider_session.clone(), request.id.to_owned());
+        self.start_call(
+            (chat, live.provider),
+            CallKind::Rule(answering),
+            |connection, tag| connection.answer_permission_call(tag, session, request_id, answer),
+        );
+        true
+    }
+
+    /// 규칙의 답이 끝났다. provider가 받지 못했으면 사용자에게 묻는다. 그사이 그 session이 닫혔으면 묻지 않는다.
     #[expect(
         clippy::cognitive_complexity,
         reason = "성공과 실패 로그 매크로 둘이 점수를 올리고 흐름은 단순하다"
     )]
-    async fn answer_by_rule(
+    pub(crate) async fn finish_rule_answer(
         &mut self,
         chat: ChatId,
-        live: &LiveSession,
-        request_id: &str,
-        answer: PermissionAnswer,
-    ) -> bool {
-        let is_allow = answer != PermissionAnswer::Deny { note: None };
-        match self.send_rule_answer(chat, live, request_id, answer).await {
-            Ok(()) => {
-                tracing::debug!(
-                    request = request_id,
-                    is_allow,
-                    "permission answered by rule"
-                );
-                true
-            }
+        answering: RuleAnswering,
+        result: Result<(), ProviderError>,
+    ) {
+        match result {
+            Ok(()) => tracing::debug!(
+                request = answering.id,
+                is_allow = answering.is_allow,
+                "permission answered by rule"
+            ),
             Err(error) => {
-                tracing::warn!(request = request_id, %error, "rule answer not sent, asking the user");
-                false
+                tracing::warn!(request = answering.id, %error, "rule answer not sent, asking the user");
+                self.ask_after_rule(chat, answering).await;
             }
         }
     }
 
-    async fn send_rule_answer(
-        &mut self,
-        chat: ChatId,
-        live: &LiveSession,
-        request_id: &str,
-        answer: PermissionAnswer,
-    ) -> Result<(), ProviderError> {
-        self.provider_mut(chat, live.provider)?
-            .answer_permission(&live.provider_session, request_id, answer)
-            .await
+    async fn ask_after_rule(&mut self, chat: ChatId, answering: RuleAnswering) {
+        let RuleAnswering {
+            live,
+            id,
+            summary,
+            reason,
+            call,
+            ..
+        } = answering;
+        let is_open = self
+            .flow
+            .live
+            .get(&live.agent)
+            .is_some_and(|open| open.provider_session == live.provider_session);
+        if !is_open {
+            return;
+        }
+        let request = PermissionRequest {
+            id: &id,
+            summary: &summary,
+            reason: &reason,
+            call: call.as_ref(),
+        };
+        self.offer_permission(chat, &live, request).await;
     }
 
     /// 허가 요청을 기록 뒤에 TUI로 올린다. 답이 올 때까지 provider는 그 호출에서 멈춰 있고 작업 시계도 멈춘다.
@@ -621,21 +687,54 @@ impl Engine {
     }
 
     /// 사용자 답을 provider 값으로 넘긴다. 다른 TUI의 창은 지운다. 규칙으로 읽은 호출의 `항상 허용`은 Saturn이
-    /// 저장해 판정하므로 provider에는 이번만 허용으로 보낸다.
+    /// 저장해 판정하므로 provider에는 이번만 허용으로 보낸다. 답은 연결 작업이 보내고, `responder`에는 provider가
+    /// 받은 뒤에 응답한다.
     ///
-    /// # Errors
-    /// 묻지 않은 요청이면 `UnexpectedAnswer`, 답한 TUI가 그 요청의 채팅에 붙어 있지 않으면 `ChatNotAttached`, 열린
-    /// session이 없으면 `Provider(NotSent)`. provider가 받지 못했으면 요청을 그대로 두어 다시 답할 수 있다.
+    /// 응답 오류: 묻지 않은 요청이거나 같은 요청의 답이 이미 가는 중이면 `UnexpectedAnswer`, 답한 TUI가 그 요청의
+    /// 채팅에 붙어 있지 않으면 `ChatNotAttached`, 열린 session이 없으면 `Provider(NotSent)`. provider가 받지
+    /// 못했으면 요청을 그대로 두어 다시 답할 수 있다.
     pub(crate) async fn answer_permission(
         &mut self,
         client: ClientId,
         request_id: String,
         answer: PermissionAnswer,
-    ) -> Result<(), EngineError> {
+        responder: Responder,
+    ) {
+        let (pending, live) = match self.check_permission_answer(client, &request_id) {
+            Ok(checked) => checked,
+            Err(error) => return self.respond(responder, Err(error)).await,
+        };
+        let is_saved_here = answer == PermissionAnswer::AllowAlways && pending.call.is_some();
+        let sent = if is_saved_here {
+            PermissionAnswer::AllowOnce
+        } else {
+            answer
+        };
+        self.flow.answering.insert(request_id.clone());
+        let route = (pending.chat, pending.provider);
+        let provider_request = pending.provider_request.clone();
+        let answering = PermissionAnswering {
+            responder,
+            client,
+            request_id,
+            pending,
+            is_saved_here,
+        };
+        self.start_call(route, CallKind::Permission(answering), |connection, tag| {
+            connection.answer_permission_call(tag, live.provider_session, provider_request, sent);
+        });
+    }
+
+    fn check_permission_answer(
+        &self,
+        client: ClientId,
+        request_id: &str,
+    ) -> Result<(PendingPermission, LiveSession), EngineError> {
         let pending = self
             .flow
             .permissions
-            .get(&request_id)
+            .get(request_id)
+            .filter(|_| !self.flow.answering.contains(request_id))
             .cloned()
             .ok_or(EngineError::UnexpectedAnswer { what: "permission" })?;
         self.require_attached(client, pending.chat)?;
@@ -647,33 +746,56 @@ impl Engine {
                 .ok_or_else(|| ProviderError::NotSent {
                     reason: "no open session for the permission request".to_owned(),
                 })?;
-        let is_saved_here = answer == PermissionAnswer::AllowAlways && pending.call.is_some();
-        let sent = if is_saved_here {
-            PermissionAnswer::AllowOnce
-        } else {
-            answer
-        };
-        self.provider_mut(pending.chat, pending.provider)?
-            .answer_permission(&live.provider_session, &pending.provider_request, sent)
-            .await?;
-        self.flow.permissions.remove(&request_id);
+        if !self
+            .providers
+            .contains_key(&(pending.chat, pending.provider))
+        {
+            return Err(ProviderError::NotSent {
+                reason: "provider is not connected".to_owned(),
+            }
+            .into());
+        }
+        Ok((pending, live))
+    }
+
+    /// provider가 사용자 답을 받았거나 받지 못했다. 받았으면 요청을 지우고 창을 닫는다.
+    pub(crate) async fn finish_permission_answer(
+        &mut self,
+        answering: PermissionAnswering,
+        result: Result<(), ProviderError>,
+    ) {
+        let PermissionAnswering {
+            responder,
+            client,
+            request_id,
+            pending,
+            is_saved_here,
+        } = answering;
+        self.flow.answering.remove(&request_id);
+        if let Err(error) = result {
+            return self.respond(responder, Err(error.into())).await;
+        }
+        // 기다리는 동안 턴이 끝나 요청이 이미 지워졌으면 창과 작업 상태는 그대로 둔다
+        let is_pending = self.flow.permissions.remove(&request_id).is_some();
         if let (true, Some(call)) = (is_saved_here, &pending.call) {
             self.save_always_allow(pending.chat, pending.agent, call)
                 .await;
         }
-        self.rpc.resolve_permission(client, &request_id).await;
-        let state = self
-            .waiting_state(pending.task)
-            .unwrap_or(TaskState::Running);
-        self.notify_task(
-            pending.chat,
-            pending.task,
-            state,
-            Some(pending.provider),
-            None,
-        )
-        .await;
-        Ok(())
+        if is_pending {
+            self.rpc.resolve_permission(client, &request_id).await;
+            let state = self
+                .waiting_state(pending.task)
+                .unwrap_or(TaskState::Running);
+            self.notify_task(
+                pending.chat,
+                pending.task,
+                state,
+                Some(pending.provider),
+                None,
+            )
+            .await;
+        }
+        self.respond(responder, Ok(())).await;
     }
 
     // cost: time O(p + i), heap O(1), stack O(1)

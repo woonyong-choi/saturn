@@ -138,7 +138,7 @@ impl Engine {
         }
     }
 
-    /// 연결 작업이 끝나 맡긴 요청의 결과가 오지 않는다. 기다리던 전달은 그 요청이 실패한 것으로 이어 가고(보내기 전
+    /// 연결 작업이 끝나 맡긴 요청의 결과가 오지 않는다. 입력 전달이 아닌 요청은 연결 끊김으로 끝낸다. 기다리던 전달은 그 요청이 실패한 것으로 이어 가고(보내기 전
     /// 단계는 연결 끊김으로 거절, 보낸 뒤 단계는 결과를 모르는 것으로 `NeedsCheck`), 연결은 끊긴 것으로 처리한다.
     async fn on_task_lost(&mut self, chat: ChatId, provider: Provider) {
         let waiting = self
@@ -154,10 +154,15 @@ impl Engine {
             self.warn_failure("delivery step failed", advanced);
         }
         self.on_connection_closed(chat, provider).await;
+        self.on_calls_lost(chat, provider).await;
         self.resume_chat(chat).await;
     }
 
     async fn on_reply(&mut self, chat: ChatId, provider: Provider, reply: Reply) {
+        if let Reply::Call { tag, result } = reply {
+            self.on_call_reply(tag, result).await;
+            return;
+        }
         let Some(Parked { job, stage }) = self.flow.deliveries.remove(&chat) else {
             tracing::warn!(chat = chat.0, "provider reply without a waiting delivery");
             return;
@@ -224,8 +229,11 @@ impl Engine {
             Err(error) => return self.fail_open(job, error.into()).await,
         };
         let Connected { connection, models } = connected;
-        self.attach_connection(chat, connection, seed);
-        self.apply_models(provider, chat, models);
+        // 그사이 `/model` 목록이 같은 연결을 먼저 맺었으면 그 연결을 쓴다
+        if !self.providers.contains_key(&(chat, provider)) {
+            self.attach_connection(chat, connection, seed);
+            self.apply_models(provider, chat, models);
+        }
         if job.is_stopped {
             return self.hold_stopped(job).await;
         }
@@ -298,6 +306,7 @@ impl Engine {
                     adapter,
                     self.supervisor.clone(),
                     self.flow.provider_tx.clone(),
+                    None,
                 );
                 self.park(job, Stage::Connecting { plan, seed });
                 Ok(())

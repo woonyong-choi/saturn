@@ -1,16 +1,25 @@
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use saturn_protocol::envelope::{RequestId, Response};
+use saturn_protocol::envelope::RequestId;
 use saturn_protocol::rpc::Request;
 
-use super::{AttachRequest, Engine, EngineError, RouterGate, masked_chain, unsupported};
+use super::{AttachRequest, Engine, EngineError, RouterGate, unsupported};
+use crate::calls::Responder;
 use crate::outcomes;
 use crate::rpc::{ClientId, RpcEvent};
 use crate::settings_watch::SETTINGS_WATCH_TICK;
 
 /// 백그라운드에서 모든 작업이 끝났는지 보는 간격의 위쪽 한계. 초안.
 const IDLE_TICK: Duration = Duration::from_secs(1);
+
+/// `route_deferred`의 결과.
+enum Deferred {
+    /// 응답을 이미 했거나 결과가 오면 한다.
+    Responded,
+    /// 이 요청은 `route`가 처리한다.
+    Route(RequestId, Request),
+}
 
 impl Engine {
     /// # Errors
@@ -85,23 +94,58 @@ impl Engine {
         Ok(())
     }
 
-    /// 요청마다 응답 하나를 돌려준다. `SubmitRouterKey` 메시지는 기록하지 않는다.
+    /// 요청마다 응답 하나를 돌려준다. `SubmitRouterKey` 메시지는 기록하지 않는다. provider 응답을 기다리는
+    /// 요청(허가·입력 답, 모델 목록)은 루프가 기다리지 않고 맡긴 뒤 결과가 오면 응답한다.
     async fn handle_request(
         &mut self,
         client: ClientId,
         id: RequestId,
         request: Request,
     ) -> Result<(), EngineError> {
-        let response = match self.route(client, request).await {
-            Ok(()) => Response::ok(id),
-            Err(error) => {
-                let message = masked_chain(&self.masker, &error);
-                tracing::warn!(client = client.0, error = %message, "request failed");
-                Response::error(Some(id), error.code(), message)
-            }
+        let (id, request) = match self.route_deferred(client, id, request).await {
+            Deferred::Responded => return Ok(()),
+            Deferred::Route(id, request) => (id, request),
         };
-        let _ = self.rpc.respond(client, response).await; // 이미 끊긴 클라이언트에는 응답할 곳이 없다
+        let result = self.route(client, request).await;
+        self.respond(Responder::Rpc(client, id), result).await;
         Ok(())
+    }
+
+    /// provider 응답을 기다리는 요청은 여기서 맡기고 응답은 나중에 한다. 그 밖의 요청은 `route`로 돌려준다.
+    async fn route_deferred(
+        &mut self,
+        client: ClientId,
+        id: RequestId,
+        request: Request,
+    ) -> Deferred {
+        if !matches!(
+            request,
+            Request::AnswerPermission { .. }
+                | Request::AnswerInput { .. }
+                | Request::ListModels { .. }
+        ) {
+            return Deferred::Route(id, request);
+        }
+        let responder = Responder::Rpc(client, id);
+        if let Err(error) = self.ensure_router_open(&request) {
+            self.respond(responder, Err(error)).await;
+            return Deferred::Responded;
+        }
+        match request {
+            Request::AnswerPermission { request_id, answer } => {
+                self.answer_permission(client, request_id, answer, responder)
+                    .await;
+            }
+            Request::AnswerInput { request_id, answer } => {
+                self.answer_input(client, request_id, answer, responder)
+                    .await;
+            }
+            Request::ListModels { chat, provider } => {
+                self.send_models(client, chat, provider, responder).await;
+            }
+            _ => {}
+        }
+        Deferred::Responded
     }
 
     #[expect(
@@ -163,12 +207,10 @@ impl Engine {
             Request::Continue { chat, task } => self.continue_held(chat, task).await,
             Request::ContinueInput { input } => self.continue_input(input).await,
             Request::CloseHeld { chat, task } => self.close_held(chat, task).await,
-            Request::AnswerPermission { request_id, answer } => {
-                self.answer_permission(client, request_id, answer).await
-            }
-            Request::AnswerInput { request_id, answer } => {
-                self.answer_input(client, request_id, answer).await
-            }
+            // 응답을 기다리는 요청은 `route_deferred`가 맡아 여기까지 오지 않는다.
+            Request::AnswerPermission { .. } => Err(unsupported("AnswerPermission")),
+            Request::AnswerInput { .. } => Err(unsupported("AnswerInput")),
+            Request::ListModels { .. } => Err(unsupported("ListModels")),
             Request::AnswerFeedback { judgment, correct } => {
                 self.answer_feedback(judgment, correct).await
             }
@@ -191,9 +233,6 @@ impl Engine {
             Request::LatestChat { folder } => self.send_latest_chat(client, &folder).await,
             Request::ListChats { folder } => self.send_chat_list(client, folder.as_deref()).await,
             Request::SetModel { chat, model } => self.set_model(client, chat, &model).await,
-            Request::ListModels { chat, provider } => {
-                self.send_models(client, chat, provider).await
-            }
             Request::ListTasks => self.send_task_list(client).await,
             // TODO(#91): 학습과 router 버전
             Request::Train { .. } => Err(unsupported("Train")),

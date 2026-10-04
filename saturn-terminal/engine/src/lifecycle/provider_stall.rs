@@ -1,17 +1,22 @@
 //! provider 요청 하나가 응답하지 않거나 느려도 engine의 다른 요청 처리가 멈추지 않는다(#325, #352).
 //! 실제 Codex 연결이 가짜 app-server와 말하고, 시험은 소켓 요청과 응답만 본다.
 
-use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::{ChatNotice, ModelChoice, Notification};
+use saturn_protocol::ids::{ChatId, Provider};
+use saturn_protocol::input::InputAnswer;
+use saturn_protocol::rpc::{ChatNotice, ModelChoice, Notification, PermissionAnswer};
 use saturn_protocol::state::{InputState, TaskState};
 
-use super::support::{Flow, idle_reply};
+use super::support::{
+    CLIENT, Flow, context_size, idle_reply, input_request, permission, text, turn_completed,
+};
 use super::*;
+use crate::calls::Responder;
 use crate::chat_env::ChatEnv;
 use crate::providers::OPEN_REPLY_TIMEOUT;
 use crate::providers::ProviderConnection;
-use crate::providers::test_support::{Call, FakeProvider};
+use crate::providers::test_support::{Call, FakeAdapter, FakeProvider, Stall, fake_descriptor};
 use crate::providers::test_support::{CodexClient, fake_codex_launch};
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -423,4 +428,353 @@ async fn a_connection_task_that_panics_while_opening_rejects_the_input() {
             .providers
             .contains_key(&(chat, crate::providers::test_support::CLAUDE))
     );
+}
+
+// 아래는 #364: 허가·입력 답, session 닫기, `/model` 목록, 맥락 정리의 새 session 열기도 연결 작업이 실행해
+// 느린 provider가 루프를 막지 못한다. 느린 호출은 `FakeProvider::stall`로 풀어 줄 때까지 멈춰 세운다.
+
+/// 가짜 provider가 `found`인 호출을 받을 때까지 기다린다. 호출이 provider까지 갔다는 뜻이다.
+async fn reached(fake: &FakeProvider, what: &str, found: impl Fn(&Call) -> bool) {
+    let wait = async {
+        while !fake.calls().iter().any(&found) {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    };
+    timeout(Duration::from_secs(3), wait)
+        .await
+        .unwrap_or_else(|_| panic!("{what} should reach the provider"));
+}
+
+/// `id` 요청의 응답까지 읽는다.
+async fn response_to(client: &mut Client, id: u64) -> Response {
+    loop {
+        if let ServerMessage::Response(response) = client.recv().await {
+            assert_eq!(response.id, Some(RequestId(id)));
+            return response;
+        }
+    }
+}
+
+/// 멈춰 선 provider 요청이 있어도 다른 채팅의 붙기와 입력, 같은 채팅의 멈춤과 조회를 바로 처리한다.
+async fn others_keep_working(
+    (other, other_dir): (ChatId, &std::path::Path),
+    (chat, stopper): (ChatId, &mut Client),
+    second: &mut Client,
+) {
+    prompt("an attach of another chat", async {
+        second.attach(1, attach_request(other, other_dir)).await
+    })
+    .await;
+    prompt("an input of another chat", async {
+        second.attach(2, submit(other, "other work")).await;
+        second
+            .until(|n| (input_state(n) == Some(InputState::Applied)).then_some(()))
+            .await;
+    })
+    .await;
+    let history = Request::LoadHistory {
+        chat,
+        before: None,
+        limit: 10,
+    };
+    prompt(
+        "a history load of the same chat",
+        stopper.attach(3, history),
+    )
+    .await;
+    prompt(
+        "a stop of the same chat",
+        stopper.attach(4, Request::Stop { chat }),
+    )
+    .await;
+}
+
+fn is_answer(call: &Call) -> bool {
+    matches!(
+        call,
+        Call::AnswerPermission { .. } | Call::AnswerInput { .. }
+    )
+}
+
+#[tokio::test]
+async fn a_slow_permission_answer_does_not_stall_other_chats_or_stop() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    let (other, other_dir, other_fake) = add_other_chat(&mut flow).await;
+    flow.submit("fix the build").await;
+    let (agent, chat, fake) = (flow.agent(), flow.chat, flow.fake.clone());
+    let mut asker = flow.client().await;
+    let mut stopper = flow.client().await;
+    let mut second = Client::connect(&flow.fixture.socket()).await;
+    fake.stall(Stall::Answer);
+
+    let answered = drive(&mut flow.engine, async {
+        fake.emit(permission(agent, "req-1"));
+        let request_id = asker
+            .until(|n| match n {
+                Notification::PermissionRequested { request_id, .. } => Some(request_id.clone()),
+                _ => None,
+            })
+            .await;
+        let answer = Request::AnswerPermission {
+            request_id,
+            answer: PermissionAnswer::AllowOnce,
+        };
+        asker.send(10, answer).await;
+        reached(&fake, "the permission answer", is_answer).await;
+
+        others_keep_working((other, &other_dir), (chat, &mut stopper), &mut second).await;
+
+        fake.release(Stall::Answer);
+        response_to(&mut asker, 10).await
+    })
+    .await;
+
+    assert_eq!(answered, Response::ok(RequestId(10)));
+    assert!(matches!(
+        &other_fake.calls()[..],
+        [Call::Open { .. }, Call::SendTurn { .. }]
+    ));
+}
+
+#[tokio::test]
+async fn a_slow_input_answer_does_not_stall_other_chats_or_stop() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    let (other, other_dir, _) = add_other_chat(&mut flow).await;
+    flow.submit("fix the build").await;
+    let (agent, chat, fake) = (flow.agent(), flow.chat, flow.fake.clone());
+    let mut asker = flow.client().await;
+    let mut stopper = flow.client().await;
+    let mut second = Client::connect(&flow.fixture.socket()).await;
+    fake.stall(Stall::Answer);
+
+    let answered = drive(&mut flow.engine, async {
+        fake.emit(input_request(agent, "ask-1"));
+        let request_id = asker
+            .until(|n| match n {
+                Notification::InputRequested { request_id, .. } => Some(request_id.clone()),
+                _ => None,
+            })
+            .await;
+        let answer = Request::AnswerInput {
+            request_id,
+            answer: InputAnswer::Cancel,
+        };
+        asker.send(10, answer).await;
+        reached(&fake, "the input answer", is_answer).await;
+
+        others_keep_working((other, &other_dir), (chat, &mut stopper), &mut second).await;
+
+        fake.release(Stall::Answer);
+        response_to(&mut asker, 10).await
+    })
+    .await;
+
+    assert_eq!(answered, Response::ok(RequestId(10)));
+}
+
+#[tokio::test]
+async fn a_slow_session_close_does_not_stall_other_chats_or_stop() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95), idle_reply(0.95)]).await;
+    let (other, other_dir, _) = add_other_chat(&mut flow).await;
+    let claude = crate::providers::test_support::CLAUDE;
+    let opus = ModelChoice {
+        provider: claude,
+        model: "opus".to_owned(),
+    };
+    flow.submit_with("one", Some(opus), false).await;
+    let (agent, chat, fake) = (flow.agent(), flow.chat, flow.fake.clone());
+    flow.claude_event(turn_completed(agent)).await;
+    // 모델이 바뀌면 떠나는 session을 닫는다
+    flow.pin(&ModelChoice {
+        provider: claude,
+        model: "haiku".to_owned(),
+    })
+    .await;
+    let mut first = flow.client().await;
+    let mut stopper = flow.client().await;
+    let mut second = Client::connect(&flow.fixture.socket()).await;
+    fake.stall(Stall::Close);
+
+    drive(&mut flow.engine, async {
+        first.attach(2, submit(chat, "two")).await;
+        reached(&fake, "the close of the leaving session", |call| {
+            matches!(call, Call::Close { .. })
+        })
+        .await;
+
+        others_keep_working((other, &other_dir), (chat, &mut stopper), &mut second).await;
+        fake.release(Stall::Close);
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn a_slow_model_list_does_not_stall_other_chats_or_stop() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    let (other, other_dir, _) = add_other_chat(&mut flow).await;
+    let (chat, fake) = (flow.chat, flow.fake.clone());
+    let mut asker = flow.client().await;
+    let mut stopper = flow.client().await;
+    let mut second = Client::connect(&flow.fixture.socket()).await;
+    fake.stall(Stall::Models);
+
+    let models = drive(&mut flow.engine, async {
+        let list = Request::ListModels {
+            chat,
+            provider: None,
+        };
+        asker.send(10, list).await;
+
+        others_keep_working((other, &other_dir), (chat, &mut stopper), &mut second).await;
+
+        fake.release(Stall::Models);
+        let models = asker
+            .until(|n| match n {
+                Notification::Models { models } => Some(models.clone()),
+                _ => None,
+            })
+            .await;
+        (models, response_to(&mut asker, 10).await)
+    })
+    .await;
+
+    assert_eq!(models.0.len(), 1);
+    assert_eq!(models.1, Response::ok(RequestId(10)));
+}
+
+#[tokio::test]
+async fn a_slow_connection_for_the_model_list_does_not_stall_other_chats_or_stop() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    let (other, other_dir, _) = add_other_chat(&mut flow).await;
+    let (chat, workdir) = (flow.chat, flow.fixture.workdir.clone());
+    let fake_agent = Provider::from_static("fake-agent");
+    let fake = FakeProvider::new(fake_agent);
+    flow.engine
+        .registry
+        .register(std::sync::Arc::new(FakeAdapter {
+            descriptor: fake_descriptor(fake_agent),
+            provider: fake.clone(),
+        }))
+        .unwrap();
+    // 어댑터 실행 파일이 PATH에 있어야 설치된 provider로 본다
+    let bin = flow.fixture.root.path().join("fake-bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    let program = bin.join("fake-agent");
+    std::fs::write(&program, "#!/bin/sh\n").unwrap();
+    std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let mut asker = flow.client().await;
+    let mut stopper = flow.client().await;
+    let mut second = Client::connect(&flow.fixture.socket()).await;
+    // 붙을 때 채팅 환경이 덮이므로 붙은 뒤에 바꾼다
+    flow.engine.chats.insert(
+        chat,
+        ChatEnv::new(
+            workdir,
+            vec![("PATH".to_owned(), bin.display().to_string())],
+        ),
+    );
+    fake.stall(Stall::Connect);
+
+    let models = drive(&mut flow.engine, async {
+        let list = Request::ListModels {
+            chat,
+            provider: Some(fake_agent),
+        };
+        asker.send(10, list).await;
+
+        others_keep_working((other, &other_dir), (chat, &mut stopper), &mut second).await;
+
+        fake.release(Stall::Connect);
+        asker
+            .until(|n| match n {
+                Notification::Models { models } => Some(models.clone()),
+                _ => None,
+            })
+            .await
+    })
+    .await;
+
+    assert_eq!(models.len(), 1);
+    assert_eq!(models[0].choice.provider, fake_agent);
+}
+
+#[tokio::test]
+async fn a_slow_context_restart_does_not_stall_other_chats_and_holds_the_next_input() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95), idle_reply(0.95)]).await;
+    let (other, other_dir, _) = add_other_chat(&mut flow).await;
+    flow.submit("fix the build").await;
+    let (agent, chat, fake) = (flow.agent(), flow.chat, flow.fake.clone());
+    let mut first = flow.client().await;
+    let mut stopper = flow.client().await;
+    let mut second = Client::connect(&flow.fixture.socket()).await;
+    fake.stall(Stall::Open);
+
+    drive(&mut flow.engine, async {
+        fake.emit(text(agent, "the cache is fixed"));
+        fake.emit(context_size(agent, 10_000_000));
+        fake.emit(turn_completed(agent));
+        // 턴이 끝나면 맥락 정리가 새 session 열기를 맡기고 멈춘다
+        reached(&fake, "the restart open", |call| {
+            matches!(
+                call,
+                Call::Open {
+                    packet: Some(_),
+                    ..
+                }
+            )
+        })
+        .await;
+
+        others_keep_working((other, &other_dir), (chat, &mut stopper), &mut second).await;
+        // 멈춤은 대기 입력을 보류하므로 멈춘 뒤에 접수한다
+        first.attach(2, submit(chat, "next")).await;
+        let turns = || {
+            fake.calls()
+                .into_iter()
+                .filter(|call| matches!(call, Call::SendTurn { .. }))
+                .count()
+        };
+        assert_eq!(turns(), 1, "the next input should wait for the new session");
+
+        fake.release(Stall::Open);
+        first
+            .until(|n| (input_state(n) == Some(InputState::Applied)).then_some(()))
+            .await;
+    })
+    .await;
+
+    let sent: Vec<Call> = fake
+        .calls()
+        .into_iter()
+        .filter(|call| matches!(call, Call::SendTurn { .. }))
+        .collect();
+    assert!(
+        matches!(&sent[1], Call::SendTurn { session, text } if session.0 == "fake-session-2" && text == "next"),
+        "the next input should go to the new session: {sent:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_second_answer_to_a_request_already_being_answered_is_refused() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.submit("fix the build").await;
+    let agent = flow.agent();
+    flow.claude_event(permission(agent, "req-1")).await;
+    let id = flow.permission_id("req-1").unwrap();
+    flow.fake.stall(Stall::Answer);
+    let (responder, first) = Responder::local();
+    flow.engine
+        .answer_permission(CLIENT, id.clone(), PermissionAnswer::AllowOnce, responder)
+        .await;
+
+    let second = flow
+        .answer_permission_as(CLIENT, id, PermissionAnswer::Deny { note: None })
+        .await;
+
+    assert!(matches!(second, Err(EngineError::UnexpectedAnswer { .. })));
+    flow.fake.release(Stall::Answer);
+    flow.answered(first).await.unwrap();
+    assert!(flow.engine.flow.permissions.is_empty());
+    let answers = flow.fake.calls().into_iter().filter(is_answer).count();
+    assert_eq!(answers, 1);
 }
