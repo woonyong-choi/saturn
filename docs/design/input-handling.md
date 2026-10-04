@@ -94,7 +94,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 - 쓰기 권한으로 접수한 입력은 읽기 전용으로 접수한 실행에 끼워 넣지 않고 대기한다([쓰기 규칙](#쓰기-규칙)). `refines`, `continues`, `conflicts`, 바로 보내기 모두 같다.
 - 관계가 `conflicts`이면 `steer_or_spawn` 답과 관계없이 끼워 넣는다. 충돌 입력을 멈추지 않고 모델이 읽게 하는 것이 사용자 결정이다(아래 [충돌 입력](#충돌-입력)).
 - 보내는 방식 판단의 확신도가 0.6 미만이면 현재 에이전트에 대기 뒤 보낸다. 같은 이유로 확신 없는 판단으로 행동하지 않기 위해서다.
-- 끼워 넣기 실측을 통과하지 못한 provider는 끼워 넣기를 대기로 바꿔 처리한다. Codex는 실측을 통과했고([실측](../experiments/codex-provider-behavior/report.md), 거절 상태 목록은 [provider 연결과 session](providers-and-sessions.md)), Claude는 실측 전이다([#5](https://github.com/woonyong-choi/saturn/issues/5)).
+- 끼워 넣기를 켠 provider만 끼워 넣고, 켜지 않은 provider는 끼워 넣기를 대기로 바꿔 처리한다. 지금은 Codex와 Claude 모두 켜지 않아(어댑터의 `STEER_VERIFIED`가 거짓) 끼워 넣기 대신 대기로 바뀐다. Codex `turn/steer`는 실측에서 받아들여졌으나([실측](../experiments/codex-provider-behavior/report.md), 거절 상태 목록은 [provider 연결과 session](providers-and-sessions.md)) 끼워 넣기 실패 경로 측정([#5](https://github.com/woonyong-choi/saturn/issues/5))이 끝나기 전에는 켜지 않는다.
 - 그 provider에 끼워 넣기를 대기로 바꿀 때 TUI에 `바로 반영 준비 중`을 보인다. 충돌 입력은 이 표시 대신 멈출지 묻는다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다.
 - provider마다 켜 둔 채 입력을 받는 연결을 둔다. 한 번 실행 방식으로는 끼워 넣기가 불가능하기 때문이다.
 - 보조 에이전트는 끝나면 결과를 전달한 뒤 바로 종료한다. 쉬는 메인 에이전트를 깨우지 않고 메인 에이전트의 다음 입력 때 결과를 전달한다.
@@ -103,7 +103,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 1. router가 관계를 `conflicts`로 고르면 `queue`가 그 입력을 끼워 넣기로 적용하고 충돌 입력으로 표시한다.
 2. 끼워 넣기가 받아들여지면 일반 끼워 넣기와 같다.
-3. provider가 끼워 넣기를 받지 않으면(실측 전인 provider이거나 `NotSent`로 거절) `queue`가 입력을 대기열 맨 앞에 두고 멈출지 묻는 상태(`ConfirmStop`)로 바꾼다.
+3. provider가 끼워 넣기를 받지 않으면(끼워 넣기를 켜지 않은 provider이거나 `NotSent`로 거절) `queue`가 입력을 대기열 맨 앞에 두고 멈출지 묻는 상태(`ConfirmStop`)로 바꾼다.
 4. TUI가 `지금 멈추고 새 입력을 실행할까요?` 창을 띄우고 `대기`와 `멈추고 실행` 중 하나를 `AnswerStopConfirm`으로 보낸다.
 5. `멈추고 실행`이면 engine이 멈춤 규칙으로 채팅을 멈추고, 완료를 확인한 뒤 그 입력이 붙은 작업을 재개해 입력을 실행한다. `대기`이면 입력은 맨 앞 대기 그대로 현재 작업이 끝난 뒤 다음 차례에 새 턴으로 간다.
 
@@ -260,7 +260,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 보내기 전 확정 실패가 3번 이어짐 | 입력을 `거절됨`으로 두고 작업을 실패로 보인다. 입력 에코에 빨간색 `거절됨`이 붙고 마지막 실패의 이유가 빨간색으로 보인다. |
 | 도구 실행의 결과를 모른 채 작업이 실패하거나 멈추거나 결과 확인 필요가 됨 | 그 도구 셀에 빨간색 `중단됨`을 보인다. 이어 갈 때 provider에 넘기는 기록에는 그 도구 결과를 오류 결과(`Interrupted before a result was recorded · It may have partially run`)로 넣는다. |
 | provider가 끼워 넣기를 거절(`NotSent`) | 다시 끼워 넣지 않고 입력을 `대기`로 되돌려 대기열 맨 앞에 둔다. 현재 작업이 끝나면 다음 차례에 새 턴으로 보낸다. |
-| 충돌 입력을 provider가 끼워 넣기 거절이나 실측 전이라 받지 않음 | 입력을 대기열 맨 앞에 두고 `지금 멈추고 새 입력을 실행할까요?`를 묻는다. 답 전까지 멈추지 않는다. |
+| 충돌 입력을 provider가 끼워 넣기 거절이나 끼워 넣기를 켜지 않아 받지 않음 | 입력을 대기열 맨 앞에 두고 `지금 멈추고 새 입력을 실행할까요?`를 묻는다. 답 전까지 멈추지 않는다. |
 | 멈춤 확인에 답했는데 이미 답했거나 다음 차례로 간 입력 | 요청을 거절하고(`INVALID_PARAMS`) 상태는 바꾸지 않는다. |
 | provider 연결이나 session 열기 실패, 설치된 provider 없음 | 보내지 않고 입력을 `거절됨`으로 두며 원인 한 줄을 작업 실패에 보인다. |
 | 다시 켠 뒤 기록 저장소에서 입력 하나를 되살리지 못함 | 경고를 남기고 나머지 입력을 되살린다. 그 입력은 기록에 남아 다음 시작 때 다시 시도한다. |
@@ -317,4 +317,4 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 - 직전 작업 입력·목표·진행 내용을 state에 추가할 범위와 새 작업 오접합을 줄일 대체 규칙. 측정은 끝났다([한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md), [오접합 실험](../experiments/continuation-misjoin/report.md), [새 작업 표본 확대](../experiments/continuation-newtask/report.md), [#6](https://github.com/woonyong-choi/saturn/issues/6)). 합친 새 작업 표본의 오접합은 2.0%이고 재현율은 71.3%다. 구현 방식(Jev 또는 저렴한 LLM)은 [#382](https://github.com/woonyong-choi/saturn/issues/382)의 비교 실험 뒤에 정한다. 실제 Saturn 실행 중 작업 상태를 수집하는 구현은 검증하지 않았다.
 
 - 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
-- 멈춘 작업의 트리 유휴 신호가 끝내 오지 않을 때 완료 보고를 기다리는 한도 ([#90](https://github.com/woonyong-choi/saturn/issues/90))
+- 멈춘 작업의 트리 유휴 신호가 끝내 오지 않을 때 완료 보고를 기다리는 한도 ([#464](https://github.com/woonyong-choi/saturn/issues/464))

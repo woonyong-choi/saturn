@@ -1,17 +1,13 @@
-flow right
+flow down
 title "Switching providers and handing off"
 subtitle "The chat stays one, and the new Codex session gets a packet picked from the Saturn record"
 
 person user "Developer"
-group chat "One chat" direction=right {
-  group saturn "Saturn" direction=down {
-    box engine "engine" "Accepts and delivers input"
-    store record "Record store" "Raw record"
-  }
-  group sessions "Provider sessions" direction=down {
-    external claude "Claude Code" "session 1"
-    external codex "Codex" "session 2, newly opened"
-  }
+group chat "One chat" direction=down {
+  box engine "engine" "Accepts and delivers input"
+  store record "Record store" "Raw record"
+  external claude "Claude Code" "session 1"
+  external codex "Codex" "session 2, newly opened"
 }
 
 user -> engine "input"

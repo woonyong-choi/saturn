@@ -9,8 +9,8 @@ group system "Saturn" direction=down {
   box engine "engine" "provider connections, router calls, record store"
   box core "core" "queue, session, decision rules"
   store database "database" "record store, SQLite"
-  box protocol "protocol" "message types every component uses"
 }
+box protocol "protocol" "message types every component uses"
 external codex-cli "Codex CLI"
 external claude-code "Claude Code"
 external router-api "router API"
@@ -24,9 +24,6 @@ engine -> codex-cli "`app-server`"
 engine -> claude-code "`stream-json`"
 engine -> router-api "judgment query"
 engine -> core "decision rules"
-tui -> protocol "uses types" quiet
-core -> protocol "uses types" quiet
-engine -> protocol "uses types" quiet
 
 step "Run saturn" "If no engine is running, cli starts saturn-engine and tui attaches over the socket"
   user -> cli
@@ -42,8 +39,7 @@ step "Handling one input" "The input reaches the provider only after the record 
 step "When the target is Claude Code" "In the same flow, engine passes the input to Claude Code"
   engine -> router-api
   engine -> claude-code
-step "Dependency direction" "core and tui depend on protocol, and engine depends on protocol and core"
+step "Shared types" "tui, core, and engine all use the message types of protocol, and engine implements the core traits"
   engine -> core
-  tui -> protocol
-  core -> protocol
-  engine -> protocol
+  light protocol
+      

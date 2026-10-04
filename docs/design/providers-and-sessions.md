@@ -76,7 +76,7 @@ Codex app-server 규약은 codex-cli 0.158.0의 `codex app-server generate-json-
 - 맥락 크기는 `thread/tokenUsage/updated`의 `last.totalTokens`이고 메인 턴 끝에 보낸다. 누적 사용량의 새 입력은 `total.inputTokens - cachedInputTokens`다.
 - 명령 대응표는 `compact` → `thread/compact/start`, `review` → `review/start`(대상 `uncommittedChanges`)이고, 명령 목록에서 `new`, `resume`, `fork`, `quit`, `exit`를 뺀다(초안). 스킬은 `turn/start` 입력에 `{"type":"skill","name","path"}` 항목으로 넣는다.
 - 승인 요청(`item/commandExecution/requestApproval`, `item/fileChange/requestApproval`, `item/permissions/requestApproval`, 옛 이름 `execCommandApproval`·`applyPatchApproval`, `_meta.codex_approval_kind`가 있는 `mcpServer/elicitation/request`)은 요청의 JSON-RPC 번호를 숫자와 문자열 그대로 기억했다가 같은 번호로 응답한다. 번호는 `PermissionRequested`의 `request_id`로 올린다. 승인이 아닌 elicitation과 `item/tool/requestUserInput`은 `InputRequested`로 올리고 같은 방식으로 번호를 기억했다가 응답한다([입력 요청](input-requests.md)). 사용자 답을 provider 값으로 바꾸는 표는 [권한](permissions.md#허가-요청-창과-답)에 있다.
-- 채팅에 더한 폴더([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기))는 `thread/start`와 `thread/resume`의 `config`에 `sandbox_workspace_write.writable_roots`로 넘긴다(초안). app-server에는 `--add-dir`에 해당하는 인자가 없어서다. 읽기 전용 샌드박스에서도 이 값은 효과가 있다. `writable_roots`에 넣은 폴더 안 편집은 승인 응답 뒤 3/3회 적용됐다([실측](../experiments/provider-permission-real/report.md)).
+- 채팅에 더한 폴더([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기))는 `thread/start`와 `thread/resume`의 `config`에 `sandbox_workspace_write.writable_roots`로 넘긴다(초안). app-server에는 `--add-dir`에 해당하는 인자가 없어서다. 읽기 전용 샌드박스에서도 이 값은 효과가 있다. `writable_roots`에 넣은 폴더 안 편집은 승인 응답 뒤 3/3회 적용됐다([실측](../experiments/provider-permission-real/report.md)). 값은 session을 열 때만 넘기고 열린 session에는 넣지 않아 다음 session부터 적용한다.
 - `thread/start`와 `thread/resume` 응답은 적용된 `approvalPolicy`, `approvalsReviewer`, `sandbox`(`type`과 `networkAccess`), `cwd`, `runtimeWorkspaceRoots`를 싣는다(6/6). `turn/start`의 `sandboxPolicy` 덮어쓰기는 적용됐지만(네트워크를 허용한 `curl` 3/3 성공) 덮어썼다는 알림은 없었다. `thread/settings/updated` 알림도 `turn/started`의 설정 값도 오지 않았고(0/3), 새 process의 `thread/resume`은 덮어쓰기 전 값(`networkAccess=false`)을 돌려줬다(3/3). `config/read`는 `thread/start` 인자를 반영하지 않는다(`approval_policy`, `sandbox_mode`가 비어 있음, 6/6). 그래서 적용 설정의 근거는 `thread/start`와 `thread/resume` 응답뿐이고 턴 단위 덮어쓰기는 보낸 Saturn만 안다([실측](../experiments/codex-provider-behavior/report.md)).
 - `/review` 턴에서는 `turn/started` 알림의 턴 id가 `review/start` 응답과 `turn/completed`의 턴 id와 다르다(3/3). 서버가 활성으로 보는 id는 응답의 id였다. 코드는 `turn/started`의 id를 활성 턴으로 둔다(`codex/convert.rs:114`).
 - 권한은 Saturn 규칙을 전용 `CODEX_HOME`과 `thread/start` 인자로 넘기고([권한](permissions.md)), 사용자 설정은 `~/.codex/config.toml`의 루트와 선택된 프로필에서 `model_auto_compact_token_limit` 키가 있는지만 본다.
@@ -91,7 +91,7 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 - 맥락 크기는 마지막 메인 `assistant` 메시지 `usage`의 입력, 캐시 읽기, 캐시 쓰기 합이다(초안).
 - interrupt 제어 응답은 10초, session 닫기 뒤 종료는 5초까지 기다리고, 넘으면 프로세스 묶음 중지로 넘어간다(초안).
 
-Codex `turn/steer`는 실측을 통과했다([실측](../experiments/codex-provider-behavior/report.md)). 실행 중인 턴에 활성 턴 id로 보낸 입력은 받아들여지고 `turnId`를 돌려주며 끼워 넣은 지시가 실행에 반영됐다(3/3). 승인 요청에 답하기 전의 턴도 받아들였다(3/3). 거절은 모두 JSON-RPC 오류 -32600이고 문구로 구분한다.
+Codex `turn/steer`는 실측에서 받아들여졌다([실측](../experiments/codex-provider-behavior/report.md)). 실행 중인 턴에 활성 턴 id로 보낸 입력은 받아들여지고 `turnId`를 돌려주며 끼워 넣은 지시가 실행에 반영됐다(3/3). 승인 요청에 답하기 전의 턴도 받아들였다(3/3). 거절은 모두 JSON-RPC 오류 -32600이고 문구로 구분한다.
 
 | 상태 | 오류 문구 |
 |---|---|
@@ -102,7 +102,7 @@ Codex `turn/steer`는 실측을 통과했다([실측](../experiments/codex-provi
 | 없는 thread | `thread not found: id` |
 | 빈 `input` | `input must not be empty` |
 
-같은 두 턴에 보낸 `turn/start`는 `failed to submit turn input: ActiveTurnNotSteerable { turn_kind: Review }`(코드 -32603)로 거절돼 구조화된 정보가 없다. Claude는 실측 전이라 끼워 넣기를 대기로 바꿔 처리한다([#5](https://github.com/woonyong-choi/saturn/issues/5)). 이때 TUI는 `바로 반영 준비 중`을 보인다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다. 입력을 어디로 보낼지는 [입력 처리](input-handling.md)가 정한다.
+같은 두 턴에 보낸 `turn/start`는 `failed to submit turn input: ActiveTurnNotSteerable { turn_kind: Review }`(코드 -32603)로 거절돼 구조화된 정보가 없다. 지금은 Codex와 Claude 모두 어댑터의 `STEER_VERIFIED`가 거짓이라 끼워 넣기를 대기로 바꿔 처리한다([#5](https://github.com/woonyong-choi/saturn/issues/5)). 이때 TUI는 `바로 반영 준비 중`을 보인다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다. 입력을 어디로 보낼지는 [입력 처리](input-handling.md)가 정한다.
 
 ### provider 계층과 어댑터
 
@@ -208,7 +208,7 @@ Codex와 Claude는 지금처럼 직접 연결(Codex app-server, Claude stream-js
 | 명령 목록 수집 | 명령 대응표와 `skills/list` | `system/init`의 `slash_commands` |
 | 명령과 스킬 전달 | 명령 이름과 app-server 메서드 대응표로 호출 | 프롬프트에 `/이름`을 그대로 넣어 전송 |
 
-provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대신하는 명령은 뺀다. 뒤에서 연결할 때 쓸 수 없거나 Saturn session 기록과 어긋나기 때문이다. 어댑터가 올린 목록은 연결 작업이 요청과 이벤트를 처리한 뒤 다시 읽어 마지막으로 알린 것과 다르면 `Commands` 알림으로 그 채팅에 붙은 TUI에 보내고, 나중에 붙는 TUI에는 붙을 때 마지막 목록을 보낸다. 연결이 끝나면 기억한 목록을 버린다. 목록이 처음부터 비어 있으면 알리지 않는다. 목록의 항목 종류와 노출 규칙은 [기능 목록과 확장](extensions.md#기능-목록)에 있다. 채팅 이어 열기와 폴더 추가는 [engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)에 있다. Claude 스트림에서 슬래시 명령은 사용자 입력 줄에 글 그대로 보내면 되고, 결과와 허가 요청은 명령 종류에 따라 다르게 온다. 프로젝트 명령은 모델 턴으로 확장되어 도구 호출이 `can_use_tool`로 오고 `result` 하나로 끝난다. `/context` 같은 로컬 명령은 허가 요청 없이 `assistant` 이벤트 하나(글이 `local_command_source`에 실린다)와 글이 있는 `result` 하나로 끝난다. `/compact`는 `status`, `compact_boundary`, 합성 `user` 이벤트를 거쳐 글이 빈 `result`로 끝난다. `init`의 목록에 없는 명령은 오류 없이 모델에 글로 전달되어 모델이 답하는 한 턴이 된다(Claude Code 2.1.288, 각 3/3, [실험](../experiments/claude-provider-behavior/report.md)).
+provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대신하는 명령은 뺀다. 뒤에서 연결할 때 쓸 수 없거나 Saturn session 기록과 어긋나기 때문이다. 어댑터가 올린 목록은 연결 작업이 요청과 이벤트를 처리한 뒤 다시 읽어 마지막으로 알린 것과 다르면 `Commands` 알림으로 그 채팅에 붙은 TUI에 보내고, 나중에 붙는 TUI에는 붙을 때 마지막 목록을 보낸다. 연결이 끝나면 기억한 목록을 버린다. 목록이 처음부터 비어 있으면 알리지 않는다. Saturn 명령이 아닌 `/이름`은 고른 항목이 어느 provider의 것이든 원문 그대로 메인 에이전트의 provider에 보내고, 다른 provider session을 새로 열거나 전환을 묻지 않는다. 목록의 항목 종류와 노출 규칙은 [기능 목록과 확장](extensions.md#기능-목록)에 있다. 채팅 이어 열기와 폴더 추가는 [engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)에 있다. Claude 스트림에서 슬래시 명령은 사용자 입력 줄에 글 그대로 보내면 되고, 결과와 허가 요청은 명령 종류에 따라 다르게 온다. 프로젝트 명령은 모델 턴으로 확장되어 도구 호출이 `can_use_tool`로 오고 `result` 하나로 끝난다. `/context` 같은 로컬 명령은 허가 요청 없이 `assistant` 이벤트 하나(글이 `local_command_source`에 실린다)와 글이 있는 `result` 하나로 끝난다. `/compact`는 `status`, `compact_boundary`, 합성 `user` 이벤트를 거쳐 글이 빈 `result`로 끝난다. `init`의 목록에 없는 명령은 오류 없이 모델에 글로 전달되어 모델이 답하는 한 턴이 된다(Claude Code 2.1.288, 각 3/3, [실험](../experiments/claude-provider-behavior/report.md)).
 
 ### 이벤트 수신과 변환
 
@@ -610,6 +610,4 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 
 ## 미해결 질문
 
-- 채팅에 더한 폴더를 열린 session에 넣는 방법(Claude stream-json 제어 요청, Codex 턴 단위 쓰기 폴더). 지금은 다음 session부터 적용한다 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
-- 메인이 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - router 상태에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))

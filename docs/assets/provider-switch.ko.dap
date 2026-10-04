@@ -1,17 +1,13 @@
-flow right
+flow down
 title "provider 전환과 인계"
 subtitle "chat은 하나로 이어지고, 새 Codex session은 Saturn 기록에서 고른 패킷을 받는다"
 
 person user "개발자"
-group chat "chat 하나" direction=right {
-  group saturn "Saturn" direction=down {
-    box engine "engine" "입력 접수와 전달"
-    store record "기록 저장소" "기록 원문"
-  }
-  group sessions "provider session" direction=down {
-    external claude "Claude Code" "session 1"
-    external codex "Codex" "session 2, 새로 연다"
-  }
+group chat "chat 하나" direction=down {
+  box engine "engine" "입력 접수와 전달"
+  store record "기록 저장소" "기록 원문"
+  external claude "Claude Code" "session 1"
+  external codex "Codex" "session 2, 새로 연다"
 }
 
 user -> engine "입력"
