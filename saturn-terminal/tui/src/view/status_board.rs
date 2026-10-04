@@ -22,7 +22,7 @@ use crate::state::{
     TrainingProgress,
 };
 use crate::view::transcript::{held_labels, tokens_text};
-use crate::view::{EMPHASIS, MUTED, text_width, truncate, wrap};
+use crate::view::{EMPHASIS, MUTED, NARROW_WIDTH, text_width, truncate, wrap};
 
 pub(crate) const COMMAND_PREVIEW_COLS: usize = 40;
 
@@ -179,6 +179,20 @@ impl StatusLine {
     // basis: estimate
     /// `spinner`는 실행·판단·학습 줄의 머리 글자.
     pub(crate) fn text(&self, lang: Lang, labels_visible: bool, spinner: char) -> String {
+        self.text_at(lang, labels_visible, spinner, u16::MAX)
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 줄 글자 수
+    // basis: estimate
+    /// `width`가 `NARROW_WIDTH` 미만이면 실행 줄에서 토큰과 모델 이름부터 뺀다.
+    pub(crate) fn text_at(
+        &self,
+        lang: Lang,
+        labels_visible: bool,
+        spinner: char,
+        width: u16,
+    ) -> String {
         let prefix = |label: Option<TaskLabel>| labels::prefix(label, labels_visible);
         match self {
             Self::Running(line) => {
@@ -189,7 +203,11 @@ impl StatusLine {
                 } else {
                     " "
                 };
-                format!("{spinner} {named}{gap}{}", running_text(lang, line))
+                let compact = width < NARROW_WIDTH;
+                format!(
+                    "{spinner} {named}{gap}{}",
+                    running_text(lang, line, compact)
+                )
             }
             Self::Judging { label, text, .. } => with_text(
                 format!("{spinner} {}{}", prefix(*label), lang.tr(i18n::JUDGING)),
@@ -434,8 +452,14 @@ impl Board {
     // vars: n = 줄 글자 수
     // basis: estimate
     /// 줄 글 뒤에 나머지 개수를 ` · 실행 2개 더 · 대기 3`처럼 붙인다.
-    pub(crate) fn text(&self, lang: Lang, labels_visible: bool, spinner: char) -> String {
-        let mut text = self.line.text(lang, labels_visible, spinner);
+    pub(crate) fn text(
+        &self,
+        lang: Lang,
+        labels_visible: bool,
+        spinner: char,
+        width: u16,
+    ) -> String {
+        let mut text = self.line.text_at(lang, labels_visible, spinner, width);
         let shown = self.line.kind();
         for (kind, count) in &self.others {
             text.push_str(" · ");
@@ -660,7 +684,7 @@ impl StatusBoardView<'_> {
             return;
         };
         let width = usize::from(area.width);
-        let text = board.text(self.lang, self.labels_visible, self.spinner);
+        let text = board.text(self.lang, self.labels_visible, self.spinner, area.width);
         let head = Rect::new(area.x, area.y, area.width, area.height.min(1));
         frame.render_widget(Paragraph::new(Line::from(truncate(&text, width))), head);
         if let Some((rect, _)) = detail_rect(Some(board), area) {
@@ -690,7 +714,7 @@ impl StatusBoardView<'_> {
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = 줄 글자 수
 // basis: estimate
-fn running_text(lang: Lang, line: &RunningLine) -> String {
+fn running_text(lang: Lang, line: &RunningLine, compact: bool) -> String {
     let doing = line.doing(lang);
     if !line.has_output && doing.is_none() {
         return lang.tr(i18n::WORKING).to_string();
@@ -699,7 +723,7 @@ fn running_text(lang: Lang, line: &RunningLine) -> String {
         .provider
         .map(|p| i18n::provider_name(p).to_string())
         .into_iter()
-        .chain(line.model.clone())
+        .chain(line.model.clone().filter(|_| !compact))
         .collect();
     let mut columns: Vec<String> = Vec::new();
     if !who.is_empty() {
@@ -707,7 +731,9 @@ fn running_text(lang: Lang, line: &RunningLine) -> String {
     }
     columns.push(i18n::format_elapsed(lang, line.elapsed));
     columns.push(doing.unwrap_or_else(|| lang.tr(i18n::WORKING).to_string()));
-    columns.push(tokens_text(lang, line.tokens));
+    if !compact {
+        columns.push(tokens_text(lang, line.tokens));
+    }
     columns.join("  ")
 }
 
@@ -1509,7 +1535,7 @@ mod tests {
     }
 
     fn board_text(state: &ChatState, now: Instant, lang: Lang) -> Option<String> {
-        board(state, now).map(|board| board.text(lang, true, '⠙'))
+        board(state, now).map(|board| board.text(lang, true, '⠙', 120))
     }
 
     fn three_running_three_queued() -> (ChatState, Instant) {
@@ -1679,7 +1705,7 @@ mod tests {
 
         let board = board(&state, now).unwrap();
 
-        let text = board.text(Lang::Ko, true, '⠙');
+        let text = board.text(Lang::Ko, true, '⠙', 120);
         assert!(text.contains("명령 실행 중  Token -"), "{text}");
         assert!(!text.contains("cargo"));
         assert_eq!(board.detail_rows(60), vec!["  └ cargo test --workspace"]);
@@ -1760,6 +1786,44 @@ mod tests {
 
         assert_eq!(rows.len(), DETAIL_MAX_ROWS);
         assert_eq!(rows[DETAIL_MAX_ROWS - 1], "    …");
+    }
+
+    #[test]
+    fn running_line_drops_the_model_and_tokens_below_the_narrow_width() {
+        let (state, now) = editing_task(&["src/main.rs"], Activity::EditingFile, Some(2_100));
+        let board = board(&state, now).unwrap();
+
+        let narrow = board.text(Lang::Ko, true, '⠙', NARROW_WIDTH - 1);
+        let edge = board.text(Lang::Ko, true, '⠙', NARROW_WIDTH);
+
+        assert_eq!(narrow, "⠙ [A]  codex  12초  파일 수정 중");
+        assert_eq!(
+            edge,
+            "⠙ [A]  codex · gpt-5.6-luna  12초  파일 수정 중  Token 2,100"
+        );
+    }
+
+    #[test]
+    fn a_line_wider_than_the_area_keeps_its_front_and_ends_in_an_ellipsis() {
+        let (state, now) = editing_task(&["a.rs"], Activity::EditingFile, Some(2_100));
+        let board = board(&state, now).unwrap();
+        let view = StatusBoardView {
+            board: Some(&board),
+            lang: Lang::Ko,
+            labels_visible: true,
+            spinner: '⠙',
+            focus: None,
+        };
+        let mut terminal = Terminal::new(TestBackend::new(24, 3)).unwrap();
+
+        terminal
+            .draw(|frame| view.render(frame, frame.area()))
+            .unwrap();
+
+        let rows = buffer_lines(terminal.backend().buffer());
+        assert!(rows[0].starts_with("⠙ [A]  codex"), "{rows:?}");
+        assert!(rows[0].ends_with('…'), "{rows:?}");
+        assert!(text_width(&rows[0]) <= 24);
     }
 
     #[test]

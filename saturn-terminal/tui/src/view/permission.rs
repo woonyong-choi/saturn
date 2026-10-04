@@ -35,7 +35,16 @@ pub(crate) struct PermissionRequest {
 pub(crate) struct PermissionQueue {
     queue: VecDeque<PermissionRequest>,
     shown_at: Option<Instant>,
+    /// `CHOICES`의 자리. `↑`, `↓`로 옮기고 `Enter`로 정한다. 다음 요청은 첫 선택으로 시작한다.
+    selected: usize,
 }
+
+/// 허가 창의 선택지. 위에서 아래 순서이고 첫 선택이 `이번만 허용`이다.
+const CHOICES: [(&str, &str); 3] = [
+    ("y", i18n::PERMISSION_ALLOW_ONCE),
+    ("a", i18n::PERMISSION_ALLOW_ALWAYS),
+    ("d/Esc", i18n::PERMISSION_DENY),
+];
 
 impl PermissionQueue {
     pub(crate) fn new() -> Self {
@@ -60,6 +69,25 @@ impl PermissionQueue {
         self.queue.push_back(request);
     }
 
+    /// 처음과 끝은 돌아간다.
+    pub(crate) fn move_selection(&mut self, down: bool) {
+        let count = CHOICES.len();
+        self.selected = if down {
+            (self.selected + 1) % count
+        } else {
+            (self.selected + count - 1) % count
+        };
+    }
+
+    /// 고른 선택지의 답.
+    pub(crate) fn selected_answer(&self) -> PermissionAnswer {
+        match self.selected {
+            0 => PermissionAnswer::AllowOnce,
+            1 => PermissionAnswer::AllowAlways,
+            _ => PermissionAnswer::Deny { note: None },
+        }
+    }
+
     pub(crate) fn current(&self) -> Option<&PermissionRequest> {
         self.queue.front()
     }
@@ -79,6 +107,7 @@ impl PermissionQueue {
             return None;
         }
         let request = self.queue.pop_front()?;
+        self.selected = 0;
         self.shown_at = (!self.queue.is_empty()).then_some(now);
         Some((request.request_id, answer))
     }
@@ -133,20 +162,17 @@ impl PermissionView<'_> {
             )),
             Line::from(""),
         ];
-        lines.extend(
-            [
-                ("y", i18n::PERMISSION_ALLOW_ONCE),
-                ("a", i18n::PERMISSION_ALLOW_ALWAYS),
-                ("d/Esc", i18n::PERMISSION_DENY),
-            ]
-            .into_iter()
-            .map(|(key, text)| {
-                Line::from(Span::styled(
-                    format!("{key} {}", lang.tr(text)),
-                    choice_style,
-                ))
-            }),
-        );
+        lines.extend(CHOICES.into_iter().enumerate().map(|(at, (key, text))| {
+            let marker = if at == self.queue.selected {
+                "›"
+            } else {
+                " "
+            };
+            Line::from(Span::styled(
+                format!("{marker} {key} {}", lang.tr(text)),
+                choice_style,
+            ))
+        }));
         let others = self.queue.others_waiting();
         if others > 0 {
             lines.push(Line::from(""));

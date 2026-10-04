@@ -91,7 +91,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | 제약 확인 창 | 확인 종류별 질문(`이 말을 앞으로 지킬 제약으로 등록할까요?`, `이 제약을 어떻게 풀까요?`), 대상 규칙 한 줄, 선택지(`등록`, `등록 안 함` / `유지`, `이번 작업 동안`, `영구 해제`), 답을 기다리는 다른 확인 수. 첫 선택은 지키는 쪽(`등록`, `유지`)이고 `Esc`는 답을 미룬다. 권한 모드가 `full`이면 띄우지 않는다 | engine이 제약 확인을 알릴 때, 다시 열었을 때 열린 확인이 있을 때 |
 | 허가 요청 창 | 작업 이름표와 provider가 붙은 제목, 요청 내용, 이유, 선택지 세 개, 허가를 기다리는 다른 작업 수 | 허가 요청 도착 |
 | 입력 요청 창 | 허가 요청 창과 같은 제목, 요청 설명, 칸 목록(포커스한 칸만 펼침), 필수 표시 `*`, 오류 한 줄, 키 안내, 답을 기다리는 다른 요청 수. URL 요청은 설명과 링크 | 입력 요청 도착 |
-| 작업 목록 화면 | 필터 전체, 확인 필요, 실행 중, 대기, 보류, 끝남, 채팅, 묶음 채팅, 폴더, 상태, 작업과 그 아래 subagent와 자식 채팅, 작업 상세. 작업 행에는 상태와 함께 대기 입력 수와 모델을 보인다. `끝남` 필터는 끝난 작업의 결과(완료, 실패)와 끝난 시각을, `채팅` 필터는 작업이 없는 채팅을 한 줄로 보인다. `전체`는 끝난 작업과 대기 입력이 없는 채팅 행을 뺀 나머지를 보인다. 키 `r`과 `g`는 한 줄 입력으로 채팅 이름과 묶음을 바꾸고 `RenameChat`, `SetChatGroup`으로 engine에 저장한다(작업 행과 채팅 행 모두). 앞뒤 공백은 지우고 비우면 이름과 묶음을 지운다. 다른 TUI가 이름이나 묶음을 바꾸면 알림을 받아 목록과 상태판을 갱신한다. 기본 범위는 현재 채팅의 기본 폴더에서 만든 채팅이고 키 `a`로 모든 폴더로 넓히고 되돌린다. 필터 줄 끝에 범위(`현재 폴더`, `모든 폴더`)를 보인다. 채팅이나 현재 폴더를 알 수 없으면 범위로 거르지 않는다(초안) | `/tasks` 실행, `engine` 상태 변경 때 선택 유지 |
+| 작업 목록 화면 | 필터 전체, 확인 필요, 실행 중, 대기, 보류, 끝남, 채팅, 묶음 채팅, 폴더, 상태, 작업과 그 아래 subagent와 자식 채팅, 작업 상세(폭이 120칸을 넘으면 오른쪽 칸, 그 이하는 `Enter`로, [폭에 따른 화면](#폭에-따른-화면)). 작업 행에는 상태와 함께 대기 입력 수와 모델을 보인다. `끝남` 필터는 끝난 작업의 결과(완료, 실패)와 끝난 시각을, `채팅` 필터는 작업이 없는 채팅을 한 줄로 보인다. `전체`는 끝난 작업과 대기 입력이 없는 채팅 행을 뺀 나머지를 보인다. 키 `r`과 `g`는 한 줄 입력으로 채팅 이름과 묶음을 바꾸고 `RenameChat`, `SetChatGroup`으로 engine에 저장한다(작업 행과 채팅 행 모두). 앞뒤 공백은 지우고 비우면 이름과 묶음을 지운다. 다른 TUI가 이름이나 묶음을 바꾸면 알림을 받아 목록과 상태판을 갱신한다. 기본 범위는 현재 채팅의 기본 폴더에서 만든 채팅이고 키 `a`로 모든 폴더로 넓히고 되돌린다. 필터 줄 끝에 범위(`현재 폴더`, `모든 폴더`)를 보인다. 채팅이나 현재 폴더를 알 수 없으면 범위로 거르지 않는다(초안) | `/tasks` 실행, `engine` 상태 변경 때 선택 유지 |
 | 제약 목록 화면 | 유효 제약 줄(`번호 · 범위 · 규칙 한 줄`, 예외가 걸리면 종류와 조건), 확인 필요 줄, 마지막 전환에 들어갔는지 표시(`전환 포함`, `생략`), `Tab`으로 바꾸는 변경 내역(시각, 종류, 주체, 규칙). 키 `d` 해제, `x` 잘못 등록, `e` 예외 종류 바꾸기, `u` 되돌리기, `Esc` 닫기 | `/constraints` 실행, 제약 변경 알림 때 선택 유지 |
 | 전체 기록 | 도구 셀 전체와 줄인 셀을 펼친 대화 기록 | `Ctrl+T` 입력 |
 | 사용량 화면 | 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론, router 호출과 예상 비용, 맥락 정리, 채점, 여러 턴 합계 행 끝의 `n 토큰 · n 턴`. provider·모델마다 한 행, router 한 행 | `/usage` 실행, 키 `d`, `w`로 범위 변경 |
@@ -168,6 +168,18 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 
 `Detach`는 보내지 않는다. `Detach`는 연결을 끊고 마지막 TUI 이탈로 세어 `tui.on_exit`를 적용하므로, 채팅을 옮기려고 보내면 연결이 끊기고 `tui.on_exit`가 `stop`일 때 떠난 채팅의 작업이 멈춘다. 입력창, 입력 기록, provider 명령 목록은 채팅을 옮겨도 유지한다.
 
+### 폭에 따른 화면
+
+창 크기가 바뀌면 TUI는 그 이벤트에서 바로 다시 그린다. 폭이 줄었다고 단순 방식으로 갑자기 바꾸지는 않는다(단순 방식을 켜는 조건은 [화면 언어와 출력 방식](#화면-언어와-출력-방식)). 폭 기준은 `saturn-terminal/tui/src/view/mod.rs`의 `WIDE_WIDTH`(120)와 `NARROW_WIDTH`(80) 상수 두 개뿐이다.
+
+| 폭 | 작업 목록 | 실행 줄 |
+|---|---|---|
+| 120칸 초과 | 목록과 상세 두 칸. 오른쪽 칸이 고른 행의 상세(채팅, 상태, 모델, 하위 항목)를 늘 보이고 `Enter`는 바로 그 채팅으로 이동 | 모든 칸 |
+| 80칸부터 120칸 | 한 칸. 상세는 `Enter`로 보이고 다시 `Enter`로 이동하며 `Esc`는 상세부터 닫는다 | 모든 칸 |
+| 80칸 미만 | 한 칸, 위와 같다 | 모델 이름과 토큰 칸부터 뺀다. provider, 경과, 하는 일은 남는다 |
+
+보내기, 취소, 허용, 거절 같은 행동은 폭과 관계없이 세로 목록이고 `↑`, `↓`로 고르고 `Enter`로 정한다. 대기 줄과 보류 줄의 버튼과 허가 요청 창의 선택지가 그렇다. 그릴 자리가 모자라면 앞부분만 그린다. 줄은 끝을 `…`로 줄이고 폭이 0인 칸은 아무것도 그리지 않으며, 접거나 세로로 늘어놓다가 깨지지 않는다. Gemini CLI와 OpenCode가 80칸을 기준으로 삼고 Codex와 Gemini CLI가 선택지를 세로로 둔다.
+
 ### 화면 언어와 출력 방식
 
 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. engine은 화면 문구를 만들지 않고 알림 종류와 값만 보내며, 문구는 TUI의 번역표가 고른다. `saturn` 명령의 출력, 오류, 도움말도 같은 언어 판정과 같은 번역표를 쓴다. 도움말은 실행할 때 언어에 맞는 문구를 넣는다. provider와 검사기가 낸 원문(모델 답, 오류 원문)과 로그는 번역하지 않고, clap이 만드는 `Usage:` 같은 고정 문구도 영어로 남는다. 대기 줄과 보류 줄의 버튼은 전체 화면 방식에서 클릭할 수 있다. 파이프와 CI처럼 화면이 없는 환경에서는 전체 화면 대신 plain 출력을 쓰고, 같은 명령은 두 방식에서 같은 결과를 낸다. plain을 켜는 조건은 정해지지 않았고, 지금 구현은 표준 입력이나 표준 출력이 터미널이 아니면 plain으로 시작한다(초안, [#57](https://github.com/woonyong-choi/saturn/issues/57)).
@@ -188,7 +200,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 - 선택지에 키가 가 있다는 것은 선택지가 떠 있고 입력창이 비어 있다는 뜻이다. 입력창에 글자나 붙여넣은 요소가 있거나 입력 기록 검색 중이면 키는 입력창이 받는다. 숫자 초안(`12`)을 쓰는 중에 `1`이 답으로 가지 않고, 초안을 쓰기 시작한 뒤에는 `Enter`가 초안을 제출한다. 선택지는 그대로 남고 입력창을 비우면 다시 키를 가져간다.
 - 입력창이 빈 채로 선택지가 떠 있으면 첫 글자로 친 숫자도 답으로 간다. 그 숫자를 초안으로 쓰려면 선택지를 `Esc`로 닫는다.
 - 선택지가 여럿이면 키를 받는 순서는 종료 확인 창, router 키 창과 폴더 설정 신뢰 창, 허가 요청 창, 입력 요청 창, 그 밖의 창과 화면, 명령 목록 팝업, 보류 닫기 확인, 바로잡기 제안, 피드백 질문, 실행 줄의 세부 줄이다. 위에 있는 것이 떠 있는 동안 아래 것은 키를 받지 않고 그대로 남는다.
-- 같은 규칙을 따르는 선택지: 피드백 질문(`1` 맞음, `2` 틀림, `0` 닫기), 바로잡기 제안(`1` 실행, `2` 그대로), 멈춤 확인 창, 종료 확인 창, 제약 확인 창, `/model` 창(`Enter`, `↑`, `↓`, `Esc`). 허가 요청 창은 `y`, `a`, `d`를 쓴다.
+- 같은 규칙을 따르는 선택지: 피드백 질문(`1` 맞음, `2` 틀림, `0` 닫기), 바로잡기 제안(`1` 실행, `2` 그대로), 멈춤 확인 창, 종료 확인 창, 제약 확인 창, `/model` 창(`Enter`, `↑`, `↓`, `Esc`). 허가 요청 창은 `↑`, `↓`, `Enter`로 고르고 `y`, `a`, `d`로도 바로 정한다.
 - `Esc`로 닫은 바로잡기 제안은 입력이 아직 보내지지 않았으면 남아 있고, 인자 없이 `/feedback`을 실행하면 다시 열린다(첫 선택은 `[실행]`). 입력이 보내졌거나 취소되면 제안은 사라진다. 새 틀림 답이 나오면 새 제안이 앞 제안을 대신한다.
 - `[실행]`은 `RunAsNewTask`로 그 입력을 새 작업으로 보내고, `[그대로]`는 요청 없이 닫는다.
 
@@ -314,6 +326,8 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `Esc`, `Ctrl+C` | `대기` 선택, 작업 중지 없음 | 멈춤 확인 창 |
 | `Enter` | 선택 | 보류 재개 질문 |
 | `↑`, `↓` | 선택지 이동 | 보류 재개 질문 |
+| `↑`, `↓` | 선택지 이동(처음과 끝은 돌아간다), 첫 선택은 `이번만 허용` | 허가 요청 창 |
+| `Enter` | 고른 선택지 확정 | 허가 요청 창 |
 | `y` | 이번만 허용 | 허가 요청 창 |
 | `a` | 항상 허용, Saturn 기록 저장소에 저장 | 허가 요청 창 |
 | `d`, `Esc` | 거부하고 계속 | 허가 요청 창 |
@@ -326,8 +340,8 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `y` | 정리 확정 | 기록 정리 창 |
 | `Esc` | 취소 | 기록 정리 창 |
 | `?` | 도움말 | 작업 목록 화면 |
-| `Enter` | 그 채팅으로 이동해 해당 작업 결과로 스크롤(채팅 행은 채팅으로 이동) | 작업 목록 화면 |
-| `Esc` | 화면 종료 | 작업 목록 화면 |
+| `Enter` | 그 채팅으로 이동해 해당 작업 결과로 스크롤(채팅 행은 채팅으로 이동). 폭이 120칸 이하이면 먼저 상세를 보이고 상세가 보이는 동안 누르면 이동 | 작업 목록 화면 |
+| `Esc` | 상세가 보이면 상세 닫기, 아니면 화면 종료 | 작업 목록 화면 |
 | `Tab`, `Shift+Tab` | 필터 변경 | 작업 목록 화면 |
 | `a` | 폴더 범위 바꾸기(현재 폴더, 모든 폴더) | 작업 목록 화면 |
 | `c` | 보류 작업 재개 | 작업 목록 화면 |
@@ -494,6 +508,11 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `F5`와 `/tasks`는 작업 목록을, `F3`과 `/agents`는 상태판 버튼 고르기를 열고, 고르기는 세로 버튼 목록을 `↑`, `↓`로 옮기며 `Enter`로 실행하고 `Esc`로 돌아가고, 버튼이 없거나 사라지면 끝난다. | `saturn-terminal/tui/src/app/tests.rs`의 `f5_and_the_tasks_command_open_the_task_list`, `f3_and_the_agents_command_enter_the_status_board_and_enter_runs_the_button`, `status_board_focus_moves_down_the_vertical_action_list_and_wraps`, `status_board_focus_takes_arrows_until_escape_returns_them_to_history`, `status_board_focus_does_not_start_without_buttons_and_ends_when_the_line_goes` |
 | `/keymap`은 이 TUI의 프리셋을 바꾸고, 설정 `tui.keymap`은 바뀐 값일 때만 따르며, 설정 검사는 프리셋 이름만 받는다. | `saturn-terminal/tui/src/app/tests.rs`의 `keymap_command_switches_the_preset_and_changes_escape_tab_and_ctrl_c`, `keymap_command_without_a_name_lists_the_presets_and_a_bad_name_is_a_warning`, `opencode_preset_turns_tab_into_the_permission_mode_cycle`, `the_setting_picks_the_preset_and_a_repeated_value_keeps_the_keymap_command_choice`, `claude_preset_moves_the_full_transcript_to_ctrl_o`, `saturn-terminal/engine/src/settings/layers.rs`의 `documented_keys_match_the_schema` |
 | 허가를 거부하면 입력창이 `[A]에게: ` 접두로 열리고, 이어 쓴 말은 `SubmitToTask`로 router 없이 그 작업에 가며, 접두만 있거나 고쳤거나 쓰던 초안이 있으면 보통 입력이다. 이름표 접두는 영어 문구가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `denying_a_permission_opens_the_draft_addressed_to_that_task`, `allowing_a_permission_leaves_the_draft_empty`, `denying_keeps_a_draft_the_user_was_already_writing`, `words_after_the_prefix_go_to_that_task_without_the_router`, `only_the_prefix_sends_nothing_and_keeps_the_draft`, `erasing_the_prefix_makes_it_an_ordinary_input_again`, `clearing_the_prefix_draft_forgets_the_target` |
+| 창 크기가 바뀌면 그 이벤트에서 바로 새 폭으로 그리고 키 영역도 새 폭을 따른다. | `saturn-terminal/tui/src/app/tests.rs`의 `resize_applies_at_once_to_the_next_frame_and_to_the_keys` |
+| 실행 줄은 80칸 미만에서 모델 이름과 토큰 칸부터 빼고, 줄이 영역보다 길면 앞부분만 그리고 끝을 `…`로 줄인다. | `saturn-terminal/tui/src/view/status_board.rs`의 `running_line_drops_the_model_and_tokens_below_the_narrow_width`, `a_line_wider_than_the_area_keeps_its_front_and_ends_in_an_ellipsis` |
+| 작업 목록은 120칸을 넘으면 목록과 상세 두 칸이고 `Enter`가 바로 이동하며, 120칸 이하는 한 칸이고 `Enter`가 먼저 상세를 보이고 `Esc`가 상세부터 닫는다. | `saturn-terminal/tui/src/view/task_list.rs`의 `one_pane_hides_the_detail_until_enter_and_the_second_enter_opens_the_chat`, `one_pane_escape_closes_the_detail_before_the_screen_and_moving_closes_it`, `two_panes_show_the_detail_beside_the_list_and_enter_opens_at_once`, `the_pane_switch_is_at_the_wide_width_constant`, `saturn-terminal/tui/src/app/tests.rs`의 `enter_in_the_task_list_shows_the_detail_first_up_to_the_wide_width_and_opens_at_once_beyond` |
+| 허가 요청 창의 선택지는 세로 목록이고 `↑`, `↓`, `Enter`로 고르며 보호 시간 안에는 받지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `permission_choices_are_a_vertical_list_the_arrows_and_enter_pick_from`, `permission_enter_allows_once_by_default_and_up_wraps_to_deny`, `permission_arrows_do_nothing_inside_the_input_guard` |
+| 그릴 자리가 없을 만큼 좁거나 낮은 화면에서도 깨지지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `nothing_breaks_on_a_screen_too_small_to_draw_everything` |
 | 닫으려 할 때 `engine`에 닫은 뒤의 처리를 먼저 묻고, 답이 오기 전에는 닫지 않으며 한 번 더 누르면 기다리지 않고 닫는다. | `saturn-terminal/tui/src/app/tests.rs`의 `quit_asks_the_engine_first_and_a_second_quit_closes_without_waiting`, `exit_plan_close_quits_without_a_line`, `exit_plan_nobody_asked_for_is_ignored` |
 | `Notice`와 종료 확인 창의 `계속 실행`은 닫은 뒤 터미널에 계속 실행 중인 작업 수와 다시 여는 방법을 한 줄로 남기고, 영어 문구가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_notice_quits_and_leaves_the_running_count_line`, `exit_plan_notice_line_is_translated`, `exit_confirm_continue_quits_and_leaves_the_running_count_line` |
 | 멈춤 확인 창은 `ConfirmStop` 대기 입력이 오면 뜨고 입력이 다른 상태가 되면 지워지며, 첫 선택과 `Esc`는 `대기`이고 `멈추고 실행`은 `AnswerStopConfirm`을 보낸다. 문구에 영어가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `stop_confirm_window_opens_for_the_asking_input_and_closes_when_it_moves_on`, `stop_confirm_enter_and_escape_answer_wait_and_down_enter_answers_stop`, `saturn-terminal/tui/src/view/stop_confirm.rs`의 `render_shows_the_input_and_both_choices` |
@@ -524,4 +543,3 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 - 메인 에이전트가 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - `/stop`이 진행 중인 `/train`도 멈출지, 학습 전용 중지 명령을 둘지, 학습 줄에 중지 버튼을 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - plain 출력을 켜는 조건과 우선순위, 설정 키 이름을 무엇으로 할지 ([#57](https://github.com/woonyong-choi/saturn/issues/57))
-- 좁은 가로 폭에서 폭 구간별로 버튼과 칸을 줄일지, 줄 끝부터 말줄임할지, 버튼 대신 명령 안내를 보일지 ([#58](https://github.com/woonyong-choi/saturn/issues/58))
