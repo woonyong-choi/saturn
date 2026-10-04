@@ -5,7 +5,7 @@
 | 상태 | 결정 |
 | 관련 결정 | [provider는 열린 id의 어댑터로 붙이고 확장은 Saturn 저장소에 설치해 session을 열 때 주입한다](../decisions/2026-10-04-open-providers-and-saturn-extensions.md) |
 
-이 문서의 동작 중 기능 목록을 TUI에 보내는 것과 확장 저장소(설치, 제거, 목록, 부분 판정, 설치 알림)는 구현했고, 스킬과 명령과 MCP 서버 주입의 형식과 연결 구성(실제 provider에서의 동작은 실측 전)도 구현했다. 훅 주입과 전환 알림과 권한 규칙과 직접 설치 추적은 구현 전이다. 구현 범위는 [#412](https://github.com/woonyong-choi/saturn/issues/412)이고, 요구사항 표의 행은 같은 표시를 쓴다. provider 계층과 어댑터는 [provider 연결과 session](providers-and-sessions.md#provider-계층과-어댑터)에 있다.
+이 문서의 동작 중 기능 목록을 TUI에 보내는 것과 확장 저장소(설치, 제거, 목록, 부분 판정, 설치 알림)는 구현했고, 스킬과 명령과 MCP 서버 주입의 형식과 연결 구성(실제 provider에서의 동작은 실측 전)도 구현했다. provider 전환 알림도 구현했다. 훅 주입과 권한 규칙과 직접 설치 추적은 구현 전이다. 구현 범위는 [#412](https://github.com/woonyong-choi/saturn/issues/412)이고, 요구사항 표의 행은 같은 표시를 쓴다. provider 계층과 어댑터는 [provider 연결과 session](providers-and-sessions.md#provider-계층과-어댑터)에 있다.
 
 ## 요약
 
@@ -160,6 +160,9 @@ session을 열 때 engine이 그 provider의 어댑터에 설치된 확장 중 �
 
 전환 줄은 provider가 바뀌는 전환에만 남기고, 같은 provider 안에서 모델만 바꾼 교체에는 남기지 않는다([모델 고르기](providers-and-sessions.md#모델-고르기)). 문구는 초안이다.
 
+- 전환 줄 대상은 바뀌기 전 provider에 주입했고 새 provider는 받지 못하는 부분이다. 처음부터 어느 쪽도 받지 못하던 부분은 설치할 때 알렸으므로 다시 알리지 않는다. 부분마다 한 줄이고, 대상이 없으면 줄을 더하지 않는다.
+- 이 줄은 전환하는 순간에만 보내고 기록에는 저장하지 않는다. 채팅을 다시 열어 기록에서 되살리는 전환 줄에는 붙지 않는다. 당시의 설치 상태를 저장하지 않아 지금 상태로 다시 계산하면 사실과 달라질 수 있기 때문이다.
+
 ### 전용 기능이 필요한 작업
 
 입력이 특정 provider 전용 기능을 필요로 하면 두 경로 중 하나를 따른다.
@@ -197,7 +200,7 @@ session을 열 때 engine이 그 provider의 어댑터에 설치된 확장 중 �
 | 이름이 겹치거나 정의가 깨진 부분은 그 부분만 주입하지 않고, 원본이 사라진 확장은 주입하지 않으며, 둘 다 대화 기록에 한 줄 남긴다. | `saturn-terminal/engine/src/lifecycle/extension_inject.rs`의 `a_missing_original_is_told_and_the_other_extensions_are_still_injected`, `a_part_the_adapter_could_not_inject_is_told_with_its_provider`, `saturn-terminal/engine/src/providers/claude/extensions.rs`의 `a_name_used_twice_keeps_the_first_and_fails_the_second_and_hooks_are_refused`, `a_server_missing_from_its_definition_file_fails_alone`, `a_server_name_used_by_two_extensions_keeps_the_first`, `saturn-terminal/tui/src/view/extensions.rs`의 `inject_failure_line_names_the_provider_and_the_part` |
 | 설치와 제거는 주입 부분이 바뀐 연결만 다시 시작한다. | `saturn-terminal/engine/src/lifecycle/extension_inject.rs`의 `an_install_restarts_only_the_connections_whose_parts_changed`, `a_remove_restarts_the_connection_that_had_the_parts`, `an_extension_with_nothing_for_a_provider_leaves_its_connection_alone` |
 | Codex 전용 폴더에 확장 부분이 들어가고 폴더 이름이 확장 지문을 담는다. | `saturn-terminal/engine/src/providers/codex/home/tests.rs`의 `extension_parts::the_folder_name_carries_the_extension_fingerprint_after_the_rules_fingerprint` |
-| 옮길 수 없는 부분을 설치 때와 provider 전환 때 대화 기록에 한 줄씩 알린다. | 구현 전(#412). 한쪽 전용 부분이 있는 확장으로 설치와 전환 줄을 확인한다. |
+| 옮길 수 없는 부분을 설치 때와 provider 전환 때 대화 기록에 한 줄씩 알린다. | 설치 줄은 위 설치 행의 시험이다. 전환 줄은 `saturn-terminal/engine/src/lifecycle/extension_switch.rs`의 `a_switch_tells_which_parts_the_new_provider_does_not_take_right_after_the_switch_line`, `a_switch_that_loses_nothing_adds_no_line`, `parts_neither_provider_takes_are_not_told_again`, `saturn-terminal/tui/src/view/extensions.rs`의 `switch_lines_name_each_part_the_new_provider_does_not_take` |
 | provider에 직접 설치한 항목은 추적하고 옮길 수 있으면 항목마다 한 번만 묻는다. | 구현 전(#412). 거절한 항목이 다음 session에서 다시 묻지 않는지 확인한다. |
 | 전용 기능이 필요한 작업은 router가 그 provider를 고르거나 전환 전에 사용자에게 묻는다. | 구현 전(#412). 고정 모델과 고정 없음 두 경우로 확인한다. |
 

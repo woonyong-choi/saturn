@@ -197,6 +197,7 @@ pub const EXT_LIMIT_NONE: &str = "{part}{topic} 어느 provider에서도 쓰지 
 pub const EXT_REMOVED: &str = "{name} 제거";
 pub const EXT_FAILED: &str = "확장 처리 실패";
 pub const EXT_INJECT_FAILED: &str = "확장 주입 실패";
+pub const EXT_NOT_APPLIED: &str = "{extension}의 {part}{topic} {provider}에 적용되지 않음";
 pub const EXT_LIST_HEAD: &str = "설치한 확장";
 pub const EXT_LIST_EMPTY: &str = "설치한 확장 없음";
 pub const EXT_KIND_SKILL: &str = "스킬";

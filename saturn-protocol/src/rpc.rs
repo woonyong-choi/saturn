@@ -621,6 +621,13 @@ pub enum ChatNotice {
     ExtensionRemoved {
         name: String,
     },
+    /// provider가 바뀌어 새 provider에 적용되지 않는 확장 부분이다. 바뀌기 전 provider에는 주입했고 새 provider는 받지
+    /// 못하는 부분만 담는다. `ProviderSwitched` 바로 뒤에 보낸다.
+    ExtensionPartsNotApplied {
+        provider: crate::ids::Provider,
+        /// 확장 이름, 부분 종류, 부분 이름.
+        parts: Vec<(String, ExtensionPartKind, String)>,
+    },
     /// 설치한 확장의 부분을 주입하지 못했다. 나머지 부분은 주입한 채 연결을 시작했다. `part`가 `None`이면 확장 전체의
     /// 원본이 확장 저장소에서 사라진 것이다. `reason`은 engine이나 어댑터가 낸 원문이라 번역하지 않는다.
     ExtensionInjectFailed {

@@ -16,6 +16,7 @@ mod deliver;
 mod events;
 mod exit;
 mod extension_inject;
+mod extension_switch;
 mod extensions;
 mod fake_provider;
 mod history_paging;

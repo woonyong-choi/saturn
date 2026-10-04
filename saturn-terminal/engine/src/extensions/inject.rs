@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use saturn_protocol::ids::{ChatId, Provider};
-use saturn_protocol::rpc::{ChatNotice, Injectability};
+use saturn_protocol::rpc::{ChatNotice, ExtensionPartKind, Injectability};
 
 use super::{StoredPart, decode_parts};
 use crate::Engine;
@@ -109,6 +109,49 @@ impl Engine {
                     part: Some(failure.part.clone()),
                     provider,
                     reason: self.masker.mask(&failure.reason).as_str().to_owned(),
+                },
+            )
+            .await;
+        }
+    }
+
+    // cost: time O(e·p), heap O(e·p), stack O(1)
+    // vars: e = 설치한 확장 수, p = 확장당 부분 수
+    // basis: estimate
+    /// provider가 `from`에서 `to`로 바뀔 때 `to`가 받지 못하는 부분을 대화 기록에 알린다. `from`에는 주입했고 `to`에는
+    /// 주입하지 못하는 부분만이다. 처음부터 어느 쪽도 쓰지 못하던 부분은 설치할 때 알렸으므로 다시 알리지 않는다. 없으면
+    /// 아무것도 보내지 않는다. 알림 실패가 전환을 막지 않게 읽기 실패는 로그만 남긴다.
+    pub(crate) async fn tell_parts_left_behind(&self, chat: ChatId, from: Provider, to: Provider) {
+        let (Some(old), Some(new)) = (self.registry.get(from), self.registry.get(to)) else {
+            return;
+        };
+        let rows = match self.store.extension_rows().await {
+            Ok(rows) => rows,
+            Err(error) => {
+                self.warn_failure("failed to read installed extensions", Err::<(), _>(error));
+                return;
+            }
+        };
+        let parts: Vec<(String, ExtensionPartKind, String)> = rows
+            .iter()
+            .filter_map(|row| Some((row, decode_parts(row)?)))
+            .flat_map(|(row, parts)| {
+                parts
+                    .into_iter()
+                    .filter(|part| {
+                        old.injectability(part.kind) == Injectability::Injectable
+                            && new.injectability(part.kind) != Injectability::Injectable
+                    })
+                    .map(|part| (row.name.clone(), part.kind, part.name))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        if !parts.is_empty() {
+            self.notify_chat(
+                chat,
+                ChatNotice::ExtensionPartsNotApplied {
+                    provider: to,
+                    parts,
                 },
             )
             .await;
