@@ -33,7 +33,11 @@ def replay_labels(active: set[str], labels: list[dict]) -> set[str]:
 
 
 def validate_labels(value: dict, expected: list[str], active: set[str]) -> dict:
+    if not isinstance(value, dict):
+        raise ValueError("label response must be an object")
     labels = value.get("turns", [])
+    if not isinstance(labels, list) or any(not isinstance(row, dict) for row in labels):
+        raise ValueError("label turns must be a list of objects")
     if [row.get("turn_id") for row in labels] != expected:
         raise ValueError("label turn coverage or order mismatch")
     running = set(active)
@@ -123,10 +127,15 @@ def signature(row: dict) -> tuple:
 
 
 # cost: io 1 process, tokens input + output; basis: estimate
-def call_codex(model: str, prompt: str, trial_id: str) -> dict:
+def call_codex(
+    model: str, prompt: str, trial_id: str, schema: dict | None = None
+) -> dict:
     reserve_call("codex", trial_id)
     target = PRIVATE / "codex" / trial_id
     target.mkdir(parents=True, exist_ok=True)
+    key = os.environ.get("SATURN_JUDGE_KEY")
+    if key:
+        prompt = prompt.replace(key, "[secret]")
     (target / "prompt.txt").write_text(prompt)
     environment = {
         k: v
@@ -160,10 +169,11 @@ def call_codex(model: str, prompt: str, trial_id: str) -> dict:
         "features.shell_tool=false",
         "-c",
         "features.apply_patch=false",
-        "--output-last-message",
-        str(target / "answer.txt"),
         "-",
     ]
+    if schema:
+        write_json(target / "schema.json", schema)
+        command[-1:-1] = ["--output-schema", str(target / "schema.json")]
     started = now()
     try:
         result = subprocess.run(
@@ -182,8 +192,12 @@ def call_codex(model: str, prompt: str, trial_id: str) -> dict:
             "started": started,
             "ts_utc": now(),
             "returncode": result.returncode,
-            "stdout": mask_text(result.stdout),
-            "stderr": mask_text(result.stderr),
+            "stdout": mask_text(
+                result.stdout.replace(key, "[secret]") if key else result.stdout
+            ),
+            "stderr": mask_text(
+                result.stderr.replace(key, "[secret]") if key else result.stderr
+            ),
         }
     except subprocess.TimeoutExpired:
         record = {
@@ -196,29 +210,67 @@ def call_codex(model: str, prompt: str, trial_id: str) -> dict:
         }
     write_json(target / "receipt.json", record)
     answer = target / "answer.txt"
-    if record["returncode"] != 0 or not answer.exists():
+    if record["returncode"] != 0:
         raise RuntimeError(f"label call failed: {trial_id}")
-    text = mask_text(answer.read_text())
+    text = record["stdout"]
     answer.write_text(text)
     return json.loads(text[text.find("{") : text.rfind("}") + 1])
 
 
+# cost: io up to 2n processes, capped by journal; vars: n = turns; basis: estimate
 def run_lane(conversation: dict, lane: str) -> None:
     path = PRIVATE / "labels" / lane / (conversation["conversation_id"] + ".jsonl")
     previous_chunks = read_rows(path)
     prior = [row for chunk in previous_chunks for row in chunk["turns"]]
     model = "gpt-6-astra" if lane == "adjudicated" else lane
-    for start in range(len(prior), len(conversation["turns"]), CHUNK_SIZE):
-        chunk = conversation["turns"][start : start + CHUNK_SIZE]
+    partial_chunks = [row for row in previous_chunks if row.get("partial_output")]
+    chunk_size = (
+        min(10, len(partial_chunks[-1]["turns"])) if partial_chunks else CHUNK_SIZE
+    )
+    structured = os.environ.get("SATURN_LABEL_FORMAT") == "structured" or any(
+        (PRIVATE / "codex").glob(
+            f"{lane}-{conversation['conversation_id']}-*-structured-*"
+        )
+    )
+    structured |= any(
+        row["kind"] == "codex"
+        and row["trial_id"].startswith(f"{lane}-{conversation['conversation_id']}-")
+        and "-structured-" in row["trial_id"]
+        for row in read_rows(PRIVATE / "calls.jsonl")
+    )
+    if structured:
+        chunk_size = 20
+    while len(prior) < len(conversation["turns"]):
+        start = len(prior)
+        chunk = conversation["turns"][start : start + chunk_size]
         prompt = build_prompt(conversation, chunk, prior)
         if lane == "adjudicated":
-            prompt += _adjudication_prompt(conversation, start, len(chunk))
+            adjudication = _adjudication_prompt(conversation, start, len(chunk))
+            if adjudication is None:
+                print(
+                    json.dumps(
+                        {
+                            "lane": lane,
+                            "waiting_for_independent_turn": start + len(chunk),
+                        }
+                    ),
+                    flush=True,
+                )
+                return
+            prompt += adjudication
         trial = f"{lane}-{conversation['conversation_id']}-{start:04d}"
+        if structured:
+            trial += f"-structured-{len(chunk)}"
         active = replay_labels(set(), prior)
         expected = [row["turn_id"] for row in chunk]
-        value = _run_validated(model, prompt, trial, expected, active)
+        schema = _label_schema(expected, active) if structured else None
+        value = _run_validated(model, prompt, trial, expected, active, schema)
+        if structured:
+            value = {**value, "structured_output": True, "protocol_deviation": True}
         append_row(path, {**value, "trial_id": trial, "ts_utc": now()})
         prior.extend(value["turns"])
+        if value.get("partial_output"):
+            chunk_size = min(10, len(value["turns"]))
         print(
             json.dumps(
                 {
@@ -232,44 +284,126 @@ def run_lane(conversation: dict, lane: str) -> None:
 
 
 def _run_validated(
-    model: str, prompt: str, trial: str, expected: list[str], active: set[str]
+    model: str,
+    prompt: str,
+    trial: str,
+    expected: list[str],
+    active: set[str],
+    schema: dict | None = None,
 ) -> dict:
     for attempt in range(2):
         trial_id = trial if attempt == 0 else trial + "-repair"
-        receipt = PRIVATE / "codex" / trial_id / "receipt.json"
-        if receipt.exists():
-            answer = receipt.parent / "answer.txt"
-            if not answer.exists() or read_json(receipt).get("returncode") != 0:
-                raise RuntimeError(f"previous model failure: {trial_id}")
-            text = answer.read_text()
-            value = json.loads(text[text.find("{") : text.rfind("}") + 1])
-        else:
-            value = call_codex(model, prompt, trial_id)
+        value = None
         try:
+            value = _load_or_call(model, prompt, trial_id, schema)
             return validate_labels(value, expected, active)
-        except ValueError as error:
+        except (ValueError, TypeError, KeyError) as error:
             if attempt:
+                if str(error) in (
+                    "final set does not match transition replay",
+                    "invalid final set",
+                ):
+                    return {
+                        **value,
+                        "final_set_valid": False,
+                        "protocol_deviation": True,
+                    }
+                if str(error) == "label turn coverage or order mismatch":
+                    return _validated_prefix(value, expected, active)
                 raise
+            expected_final = (
+                sorted(replay_labels(active, value["turns"]))
+                if str(error) == "final set does not match transition replay"
+                else None
+            )
             prompt += (
                 "\n앞 응답은 형식 검증에 실패했다: "
                 + str(error)
                 + "\n앞 응답:\n"
                 + json.dumps(value, ensure_ascii=False)
+                + "\n현재 턴별 판정이 의도한 판정이면 끝 집합은 다음과 같아야 한다: "
+                + json.dumps(expected_final)
             )
     raise RuntimeError("label repair failed")
 
 
-def _adjudication_prompt(conversation: dict, start: int, count: int) -> str:
+def _load_or_call(
+    model: str, prompt: str, trial_id: str, schema: dict | None = None
+) -> dict:
+    receipt = PRIVATE / "codex" / trial_id / "receipt.json"
+    if not receipt.exists():
+        return call_codex(model, prompt, trial_id, schema)
+    answer = receipt.parent / "answer.txt"
+    if not answer.exists() or read_json(receipt).get("returncode") != 0:
+        raise RuntimeError(f"previous model failure: {trial_id}")
+    text = answer.read_text()
+    return json.loads(text[text.find("{") : text.rfind("}") + 1])
+
+
+def _label_schema(expected: list[str], active: set[str]) -> dict:
+    fields = {
+        "turn_id": {"type": "string", "enum": expected},
+        "is_constraint": {"type": "boolean"},
+        "operation": {"type": "string", "enum": list(OPERATIONS)},
+        "targets": {
+            "type": "array",
+            "items": {"type": "string", "enum": sorted(active | set(expected))},
+        },
+        "scope": {"type": "string"},
+        "reason": {"type": "string"},
+        "ambiguous": {"type": "boolean"},
+    }
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["turns", "final_active_turn_ids"],
+        "properties": {
+            "turns": {
+                "type": "array",
+                "minItems": len(expected),
+                "maxItems": len(expected),
+                "items": {
+                    "type": "object",
+                    "properties": fields,
+                    "required": list(fields),
+                    "additionalProperties": False,
+                },
+            },
+            "final_active_turn_ids": {
+                "type": "array",
+                "items": {"type": "string", "enum": sorted(active | set(expected))},
+            },
+        },
+    }
+
+
+def _validated_prefix(value: dict, expected: list[str], active: set[str]) -> dict:
+    ids = [row["turn_id"] for row in value.get("turns", [])]
+    if not ids or ids != expected[: len(ids)] or len(ids) >= len(expected):
+        raise ValueError("invalid or unordered partial label response")
+    check = {
+        **value,
+        "final_active_turn_ids": sorted(replay_labels(active, value["turns"])),
+    }
+    validate_labels(check, ids, active)
+    return {
+        **value,
+        "partial_output": True,
+        "protocol_deviation": True,
+        "final_set_valid": set(value.get("final_active_turn_ids", []))
+        == set(check["final_active_turn_ids"]),
+    }
+
+
+def _adjudication_prompt(conversation: dict, start: int, count: int) -> str | None:
     labels = {}
     for model in ("gpt-6-astra", "gpt-5.6-luna"):
         chunks = read_rows(
             PRIVATE / "labels" / model / (conversation["conversation_id"] + ".jsonl")
         )
         rows = [row for chunk in chunks for row in chunk["turns"]]
-        if len(rows) != len(conversation["turns"]):
-            raise RuntimeError(
-                "both independent labelers must finish before adjudication"
-            )
+        if len(rows) < start + count:
+            return None
         labels[model] = rows[start : start + count]
     return (
         "\n너는 최초 라벨러가 아니라 제3 판정자다. 다음 두 독립 라벨의 근거를 비교해 판정 질문에 비춰 재판정한다. "

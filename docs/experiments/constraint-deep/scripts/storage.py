@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 PUBLIC = Path(__file__).resolve().parents[1]
-MAIN = Path("/Users/woonyong/workspace/oss/saturn")
+MAIN = Path.home() / "workspace/oss/saturn"
 PRIVATE = MAIN / ".local/experiments/constraint-deep"
 SEED = 382
 BANDS = ("10-29", "30-119", "120-399", "400+")
@@ -24,9 +24,13 @@ _SPEC = importlib.util.spec_from_file_location(
 )
 previous = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(previous)
-mask_text = previous.mask_text
 is_human_user_row = previous.is_human_user_row
 get_text = previous.get_text
+
+
+def mask_text(text: str) -> str:
+    key = os.environ.get("SATURN_JUDGE_KEY")
+    return previous.mask_text(text.replace(key, "[secret]") if key else text)
 
 
 def now() -> str:
@@ -61,6 +65,7 @@ def write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n")
 
 
+# cost: io 1 append and fsync; basis: estimate
 def append_row(path: Path, row: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a") as stream:
@@ -83,6 +88,7 @@ def ensure_private() -> None:
     os.umask(0o077)
 
 
+# cost: time O(n), heap O(n), io 1 locked journal; vars: n = previous calls; basis: estimate
 def reserve_call(kind: str, trial_id: str) -> int:
     with (PRIVATE / "budget.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)

@@ -249,6 +249,7 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 
 ## 미해결 질문
 
+- 실제 프로젝트 대화의 기준값 곡선과 질문 대안 비교로 `is_constraint` 기준을 확정할 수 있는지 ([전수 측정](../experiments/constraint-deep/report.md), [#382](https://github.com/woonyong-choi/saturn/issues/382))
 - 질문을 상위 범주에서 하위 판단으로 내려가는 계층 트리로 나눌지, 단계마다 호출할지, 지금처럼 한 번에 고를지 ([#68](https://github.com/woonyong-choi/saturn/issues/68))
 - 판단 방식 `collect`를 기준 router가 결정하고 Saturn 모델은 기록만 하는 방식으로 할지, 반대로 할지 ([#40](https://github.com/woonyong-choi/saturn/issues/40))
 - router에 넘기는 state에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))

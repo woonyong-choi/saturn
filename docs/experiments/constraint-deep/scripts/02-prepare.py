@@ -34,6 +34,7 @@ def project_key(name: str) -> str:
     return normalized
 
 
+# cost: time O(b), heap O(b), io 1 file; vars: b = file bytes; basis: estimate
 def extract_turns(meta: dict) -> list[dict]:
     turns = []
     for line_number, line in enumerate(Path(meta["source_path"]).open(), 1):
@@ -81,10 +82,12 @@ def build_conversation(files: list[dict], key: str) -> dict:
     }
 
 
+# cost: time O(b), heap O(p), io f files; vars: b = source bytes, p = largest project bytes, f = source files; basis: estimate
 def main() -> None:
     ensure_private()
     if (PRIVATE / "selection.json").exists():
-        raise RuntimeError("selection already frozen")
+        print("using frozen selection")
+        return
     census = read_json(PRIVATE / "census.json")
     grouped = defaultdict(list)
     changed = []

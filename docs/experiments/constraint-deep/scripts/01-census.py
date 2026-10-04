@@ -41,7 +41,7 @@ def inspect_file(path: Path) -> dict:
         "source_path": str(path),
         "project_id": digest(path.parent.name),
         "project": path.parent.name,
-        "is_saturn": "workspace-oss-saturn" in path.parent.name,
+        "is_saturn": "workspace-oss-saturn" in path.parent.name.lower(),
         "user_turns": count,
         "length_band": band_for(count),
         "start": min(timestamps, default=None),
@@ -53,6 +53,7 @@ def inspect_file(path: Path) -> dict:
     }
 
 
+# cost: time O(b), heap O(f), io f files; vars: b = source bytes, f = source files; basis: estimate
 def main() -> None:
     ensure_private()
     target = PRIVATE / "census.json"

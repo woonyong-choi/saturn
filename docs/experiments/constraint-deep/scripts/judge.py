@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import http.client
 import json
 import math
 import os
@@ -10,6 +11,8 @@ import random
 import time
 import urllib.error
 import urllib.request
+from typing import Any
+from urllib.error import HTTPError
 
 from storage import (
     BANDS,
@@ -36,11 +39,15 @@ RELEASE_QUESTION = (
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        raise urllib.error.HTTPError(req.full_url, code, "redirect denied", headers, fp)
+    def redirect_request(
+        self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str
+    ) -> None:
+        raise HTTPError(req.full_url, code, "redirect denied", headers, fp)
 
 
 def parse_answers(reply: dict, questions: dict) -> dict:
+    if not isinstance(reply, dict):
+        return {name: None for name in questions}
     answers = reply.get("answers", {})
     if not isinstance(answers, dict) or set(answers) != set(questions):
         return {name: None for name in questions}
@@ -65,6 +72,7 @@ def post_trial(trial: dict, repeat: int) -> dict:
         raise RuntimeError("SATURN_JUDGE_KEY missing")
     body = {name: trial[name] for name in ("model", "state", "questions")}
     encoded = json.dumps(body, ensure_ascii=False).replace(key, "[secret]").encode()
+    body = json.loads(encoded)
     request = urllib.request.Request(
         ENDPOINT,
         data=encoded,
@@ -90,7 +98,7 @@ def post_trial(trial: dict, repeat: int) -> dict:
                 http_status=response.status,
                 raw_response=reply,
                 probabilities=parse_answers(reply, body["questions"]),
-                model=reply.get("model"),
+                model=reply.get("model") if isinstance(reply, dict) else None,
             )
             row["status"] = (
                 "ok"
@@ -98,8 +106,24 @@ def post_trial(trial: dict, repeat: int) -> dict:
                 else "invalid"
             )
     except urllib.error.HTTPError as error:
-        row.update(status="http_error", http_status=error.code)
-    except (urllib.error.URLError, TimeoutError, ValueError) as error:
+        text = error.read().decode(errors="replace").replace(key, "[secret]")
+        row.update(
+            status="http_error",
+            http_status=error.code,
+            error_response=previous.mask_text(text),
+        )
+        lowered = text.lower()
+        row["model_unavailable"] = "model" in lowered and any(
+            marker in lowered
+            for marker in (
+                "not found",
+                "unsupported",
+                "not available",
+                "does not exist",
+                "not supported",
+            )
+        )
+    except (OSError, http.client.HTTPException, ValueError) as error:
         row.update(status="failed", error=type(error).__name__)
     row["latency_ms"] = (time.monotonic() - start) * 1000
     return row
@@ -116,22 +140,26 @@ def run_repeats(trial: dict, receipts: dict[str, dict]) -> list[dict]:
         elif trial_id not in reserved:
             pending.append(repeat)
         else:
-            rows.append(
-                {
-                    "trial_id": trial_id,
-                    "repeat": repeat,
-                    "status": "incomplete",
-                    "meta": trial["meta"],
-                    "request": {k: trial[k] for k in ("model", "state", "questions")},
-                }
-            )
+            incomplete = {
+                "trial_id": trial_id,
+                "repeat": repeat,
+                "status": "incomplete",
+                "meta": trial["meta"],
+                "request": {k: trial[k] for k in ("model", "state", "questions")},
+            }
+            append_row(PRIVATE / "jev.jsonl", incomplete)
+            receipts[trial_id] = incomplete
+            rows.append(incomplete)
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
         for row in executor.map(lambda repeat: post_trial(trial, repeat), pending):
             append_row(PRIVATE / "jev.jsonl", row)
             receipts[row["trial_id"]] = row
             rows.append(row)
-    if any(row.get("http_status") in (401, 403) for row in rows):
-        raise RuntimeError("judge authentication rejected")
+    if any(
+        row.get("http_status") in (401, 403) or row.get("model_unavailable")
+        for row in rows
+    ):
+        raise RuntimeError("judge authentication or requested model rejected")
     return sorted(rows, key=lambda row: row["repeat"])
 
 
@@ -164,6 +192,7 @@ def make_route(conversation: dict, turn: dict, candidates: list[dict]) -> dict:
     }
 
 
+# cost: io 3n HTTPS calls; vars: n = distinct turns; basis: estimate
 def collect_routes(conversations: list[dict]) -> None:
     receipts = load_receipts()
     for conversation in conversations:
@@ -283,6 +312,7 @@ def select_relations(conversations: list[dict], receipts: dict) -> list[dict]:
     return selected
 
 
+# cost: io 3n HTTPS calls; vars: n = selected relationship requests; basis: estimate
 def collect_relations(conversations: list[dict]) -> None:
     receipts = load_receipts()
     trials = select_relations(conversations, receipts)
