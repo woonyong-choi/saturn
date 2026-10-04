@@ -261,8 +261,12 @@ pub enum Request {
     },
     /// `retention.max_age_days`보다 오래 쓰지 않은 채팅을 정리한다. `yes`가 거짓이면 아무것도 지우지 않고
     /// `QueryResult::PrunePreview`로, 참이면 지우고 `QueryResult::Pruned`로 돌려준다. 설정이 없으면 거절한다.
+    /// `plan`은 미리보기가 돌려준 번호다. `yes`가 참이고 `plan`이 있으면 그 미리보기에 있던 채팅만 지운다.
+    /// 모르거나 만료됐거나 이미 쓴 번호면 거절한다. `plan`이 없으면 요청 순간의 기준으로 대상을 정해 지운다.
     Prune {
         yes: bool,
+        #[serde(default)]
+        plan: Option<String>,
     },
     /// 채점하지 않은 기록도 내보낸다.
     ExportJudgments {
@@ -532,6 +536,8 @@ pub enum QueryResult {
         skipped: Vec<PruneSkipped>,
         /// 지울 채팅의 입력, 실행, 이벤트, 사용량, session 행 수. 판단 기록과 설정 스냅샷은 세지 않는다.
         rows: u64,
+        /// 이 미리보기의 번호. `Prune { yes: true, plan }`에 실어 보내면 이 목록의 채팅만 지운다. 한 번만 쓸 수 있다.
+        plan: String,
     },
     /// `Prune`의 `yes`가 참일 때. 지운 채팅과 남긴 채팅.
     Pruned {
@@ -846,6 +852,8 @@ pub enum PruneSkipReason {
     WaitingSession,
     /// TUI가 붙어 있다.
     Attached,
+    /// 미리본 뒤에 다시 쓰여 정리 기한 안으로 돌아왔다.
+    UsedSincePreview,
 }
 
 /// 채팅 목록의 한 줄.

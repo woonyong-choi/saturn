@@ -541,7 +541,7 @@ async fn pruning_old_chats_leaves_installed_extensions_alone() {
         .unwrap();
     flow.engine.store.age_chat(old, 3).await;
 
-    flow.engine.prune_records(CLIENT, true).await.unwrap();
+    flow.engine.prune_records(CLIENT, true, None).await.unwrap();
 
     assert!(flow.engine.store.chat_workdir(old).await.is_err());
     assert_eq!(flow.engine.store.extension_rows().await.unwrap().len(), 1);

@@ -185,9 +185,12 @@ pub(crate) fn parse_router_version(text: &str) -> Result<String, String> {
 /// `prune` 인자.
 #[derive(Debug, Args)]
 pub(crate) struct PruneArgs {
-    /// 미리보기 없이 지운다.
+    /// 지운다. `--plan`이 없으면 지금 기준으로 대상을 정해 바로 지운다.
     #[arg(long)]
     pub(crate) yes: bool,
+    /// 미리보기가 알려 준 번호. 그 미리보기에 있던 채팅만 지운다.
+    #[arg(long, value_name = "ID", requires = "yes")]
+    pub(crate) plan: Option<String>,
 }
 
 /// `export` 인자.
@@ -484,5 +487,16 @@ mod tests {
         let cli = parse(&["-c", "a=1", "-c", "b=2", "usage"]).unwrap();
 
         assert_eq!(cli.config.len(), 2);
+    }
+
+    #[test]
+    fn prune_plan_needs_yes() {
+        assert!(parse(&["prune", "--plan", "abc"]).is_err());
+        let Some(Command::Prune(args)) =
+            parse(&["prune", "--yes", "--plan", "abc"]).unwrap().command
+        else {
+            panic!("prune should parse");
+        };
+        assert_eq!(args.plan.as_deref(), Some("abc"));
     }
 }

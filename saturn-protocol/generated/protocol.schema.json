@@ -1945,7 +1945,7 @@
           "type": "object"
         },
         {
-          "description": "`retention.max_age_days`보다 오래 쓰지 않은 채팅을 정리한다. `yes`가 거짓이면 아무것도 지우지 않고\n`QueryResult::PrunePreview`로, 참이면 지우고 `QueryResult::Pruned`로 돌려준다. 설정이 없으면 거절한다.",
+          "description": "`retention.max_age_days`보다 오래 쓰지 않은 채팅을 정리한다. `yes`가 거짓이면 아무것도 지우지 않고\n`QueryResult::PrunePreview`로, 참이면 지우고 `QueryResult::Pruned`로 돌려준다. 설정이 없으면 거절한다.\n`plan`은 미리보기가 돌려준 번호다. `yes`가 참이고 `plan`이 있으면 그 미리보기에 있던 채팅만 지운다.\n모르거나 만료됐거나 이미 쓴 번호면 거절한다. `plan`이 없으면 요청 순간의 기준으로 대상을 정해 지운다.",
           "properties": {
             "method": {
               "const": "Prune",
@@ -1953,6 +1953,13 @@
             },
             "params": {
               "properties": {
+                "plan": {
+                  "default": null,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "yes": {
                   "type": "boolean"
                 }
@@ -5344,6 +5351,11 @@
           "const": "Attached",
           "description": "TUI가 붙어 있다.",
           "type": "string"
+        },
+        {
+          "const": "UsedSincePreview",
+          "description": "미리본 뒤에 다시 쓰여 정리 기한 안으로 돌아왔다.",
+          "type": "string"
         }
       ]
     },
@@ -5626,6 +5638,10 @@
                   },
                   "type": "array"
                 },
+                "plan": {
+                  "description": "이 미리보기의 번호. `Prune { yes: true, plan }`에 실어 보내면 이 목록의 채팅만 지운다. 한 번만 쓸 수 있다.",
+                  "type": "string"
+                },
                 "rows": {
                   "description": "지울 채팅의 입력, 실행, 이벤트, 사용량, session 행 수. 판단 기록과 설정 스냅샷은 세지 않는다.",
                   "format": "uint64",
@@ -5642,7 +5658,8 @@
               "required": [
                 "chats",
                 "skipped",
-                "rows"
+                "rows",
+                "plan"
               ],
               "type": "object"
             },
