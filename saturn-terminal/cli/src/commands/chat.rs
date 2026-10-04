@@ -13,6 +13,7 @@ use saturn_tui::i18n::{self, Lang};
 
 use crate::args::{ConfigOverride, OpenMode};
 use crate::commands::{call, resume};
+use crate::exit::{Exit, ExitCode};
 
 const HISTORY_FILE: &str = "history";
 
@@ -69,9 +70,12 @@ async fn latest_chat(lang: Lang, client: &mut EngineClient) -> anyhow::Result<Ch
     let Some(QueryResult::LatestChat { chat }) =
         call(lang, client, Request::LatestChat { folder }, drop).await?
     else {
-        anyhow::bail!(lang.tr(i18n::CLI_NO_LATEST_CHAT_ANSWER));
+        return Err(Exit::error(
+            ExitCode::EngineInternal,
+            lang.tr(i18n::CLI_NO_LATEST_CHAT_ANSWER),
+        ));
     };
-    chat.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_CHAT_TO_CONTINUE)))
+    chat.ok_or_else(|| Exit::error(ExitCode::NotFound, lang.tr(i18n::CLI_NO_CHAT_TO_CONTINUE)))
 }
 
 // cost: time O(d·p), heap O(d·p), stack O(1), io d·p
@@ -85,15 +89,24 @@ pub(crate) fn resolve_add_dirs(lang: Lang, dirs: &[PathBuf]) -> anyhow::Result<V
     dirs.iter()
         .map(|dir| {
             let shown = dir.display().to_string();
-            let resolved = std::fs::canonicalize(dir).with_context(|| {
-                lang.tr(i18n::CLI_ADD_DIR_UNREADABLE)
-                    .replace("{dir}", &shown)
+            let resolved = std::fs::canonicalize(dir).map_err(|error| {
+                let code = if error.kind() == std::io::ErrorKind::NotFound {
+                    ExitCode::NotFound
+                } else {
+                    ExitCode::Failure
+                };
+                let message = lang
+                    .tr(i18n::CLI_ADD_DIR_UNREADABLE)
+                    .replace("{dir}", &shown);
+                Exit::wrap(code, anyhow::Error::new(error).context(message))
             })?;
-            anyhow::ensure!(
-                resolved.is_dir(),
-                lang.tr(i18n::CLI_ADD_DIR_NOT_FOLDER)
-                    .replace("{dir}", &shown)
-            );
+            if !resolved.is_dir() {
+                return Err(Exit::error(
+                    ExitCode::Usage,
+                    lang.tr(i18n::CLI_ADD_DIR_NOT_FOLDER)
+                        .replace("{dir}", &shown),
+                ));
+            }
             Ok(resolved)
         })
         .collect()

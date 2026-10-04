@@ -2,9 +2,12 @@
 
 use std::io::{BufRead, IsTerminal, Write};
 
+use saturn_protocol::envelope::ErrorKind;
 use saturn_protocol::rpc::{Notification, QueryResult, Request};
 use saturn_tui::client::{ClientError, EngineClient};
 use saturn_tui::i18n::{self, Lang};
+
+use crate::exit::{Exit, ExitCode};
 
 pub(crate) mod chat;
 pub(crate) mod export;
@@ -13,9 +16,6 @@ pub(crate) mod resume;
 pub(crate) mod router;
 pub(crate) mod train;
 pub(crate) mod usage;
-
-/// engine의 router 키 대기 오류 번호(`-32001`, 초안)와 같다.
-const ROUTER_KEY_REQUIRED: i32 = -32001;
 
 // cost: time O(m), heap O(1), stack O(1), io m
 // vars: m = 응답이 오기까지 받은 알림 수
@@ -33,12 +33,14 @@ pub(crate) async fn call(
 ) -> anyhow::Result<Option<QueryResult>> {
     match client.call(request, on_notification).await {
         Err(ClientError::Rejected {
-            code: ROUTER_KEY_REQUIRED,
+            kind: Some(ErrorKind::RouterKey),
             message,
-        }) => anyhow::bail!(
+            ..
+        }) => Err(Exit::error(
+            ExitCode::RouterKey,
             lang.tr(i18n::CLI_ROUTER_KEY_REQUIRED)
-                .replace("{message}", &message)
-        ),
+                .replace("{message}", &message),
+        )),
         other => Ok(other?),
     }
 }
@@ -66,7 +68,12 @@ fn confirm_from(
     mut input: impl BufRead,
     prompt_out: &mut impl Write,
 ) -> anyhow::Result<bool> {
-    anyhow::ensure!(interactive, lang.tr(i18n::CLI_CONFIRM_NEEDS_TERMINAL));
+    if !interactive {
+        return Err(Exit::error(
+            ExitCode::Usage,
+            lang.tr(i18n::CLI_CONFIRM_NEEDS_TERMINAL),
+        ));
+    }
     write!(prompt_out, "{prompt} [y/N] ")?;
     prompt_out.flush()?;
     let mut line = String::new();

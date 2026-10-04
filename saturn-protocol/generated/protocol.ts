@@ -46,6 +46,8 @@ export type ConstraintAskId = number;
 
 export type Disposition = "Steer" | "NewTask" | "Queue";
 
+export type ErrorKind = "NotFound" | "RetryLater" | "RouterKey" | "Config" | "Failed";
+
 export type ExitPlan = "Close" | { "Ask": { running: number, } } | { "Notice": { running: number, } };
 
 export type InputAnswer = { "Submit": { values: Array<[string, InputValue]>, } } | "Decline" | "Cancel";
@@ -248,7 +250,11 @@ export type RouterVersionInfo = { version: string, router: string, ece: number |
  */
 questions: Array<[string, number, number, number, number]>, };
 
-export type RpcError = { code: number, message: string, };
+export type RpcError = { code: number, 
+/**
+ * 같은 `code` 안의 원인 종류. 옛 engine은 보내지 않는다.
+ */
+kind?: ErrorKind, message: string, };
 
 export type ServerMessage = Response | NotificationMessage;
 

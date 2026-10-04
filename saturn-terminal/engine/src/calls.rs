@@ -205,7 +205,7 @@ impl Engine {
             Err(error) => {
                 let message = masked_chain(&self.masker, &error);
                 tracing::warn!(client = client.0, error = %message, "request failed");
-                Response::error(Some(id), error.code(), message)
+                Response::error_of_kind(Some(id), error.code(), error.kind(), message)
             }
         }
     }

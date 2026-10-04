@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use saturn_protocol::envelope::{
-    self, ClientMessage, CodecError, Outcome, RequestId, ServerMessage,
+    self, ClientMessage, CodecError, ErrorKind, Outcome, RequestId, ServerMessage,
 };
 use saturn_protocol::rpc::{ATTACH_ENV_NAMES, Notification, QueryResult, Request};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
@@ -26,7 +26,12 @@ pub enum ClientError {
     Closed,
     /// `message`에는 사용자 입력과 비밀값이 없다.
     #[error("engine rejected the request ({code}): {message}")]
-    Rejected { code: i32, message: String },
+    Rejected {
+        code: i32,
+        /// 옛 engine은 보내지 않는다.
+        kind: Option<ErrorKind>,
+        message: String,
+    },
     #[error("failed to decode engine message")]
     Decode(#[from] CodecError),
 }
@@ -185,6 +190,7 @@ impl EngineClient {
                         Outcome::Ok(result) => Ok(result),
                         Outcome::Err(error) => Err(ClientError::Rejected {
                             code: error.code,
+                            kind: error.kind,
                             message: error.message,
                         }),
                     };

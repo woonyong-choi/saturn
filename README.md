@@ -82,7 +82,7 @@ saturn
 
 ### Run without a screen
 
-Without a screen, as in a pipe or CI, Saturn cannot ask for the key. It prints how to set the key and exits with code 1.
+Without a screen, as in a pipe or CI, Saturn cannot ask for the key. It prints how to set the key and exits with code 77.
 
 ```sh
 saturn usage
@@ -91,6 +91,21 @@ saturn usage
 ```text
 Error: Router key required (router key required: router rejected the key): set the SATURN_KEY environment variable or the router.key.command setting, then run again
 ```
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Success |
+| 1 | Other failure, including answering no to a confirmation and a failed task in plain mode |
+| 2 | Usage error: change the call, for example no terminal for a picker or a nested run inside an agent |
+| 66 | Nothing to open: no chat to continue, missing folder, unknown router version |
+| 69 | Engine unavailable: failed to start, no answer, failed to replace, connection lost |
+| 70 | Engine internal error |
+| 75 | Not now, try later: for example too few judgments to train |
+| 77 | Router key missing or rejected |
+| 78 | Configuration error |
+| 130 | Quit from a window with `Esc` or `Ctrl+C` |
 
 ### Switch the model
 

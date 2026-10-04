@@ -9,6 +9,7 @@ use saturn_tui::client::EngineClient;
 use saturn_tui::i18n::{self, Lang};
 
 use crate::commands::call;
+use crate::exit::{Exit, ExitCode};
 
 /// 목록을 받아 선택 창에서 골라 채팅 id를 돌려준다. `folder`가 `None`이면 모든 폴더.
 ///
@@ -23,7 +24,10 @@ pub(crate) async fn pick(
     let Some(QueryResult::Chats { chats }) =
         call(lang, client, Request::ListChats { folder }, drop).await?
     else {
-        anyhow::bail!(lang.tr(i18n::CLI_NO_CHAT_LIST_ANSWER));
+        return Err(Exit::error(
+            ExitCode::EngineInternal,
+            lang.tr(i18n::CLI_NO_CHAT_LIST_ANSWER),
+        ));
     };
     pick_from(lang, chats, show_folder, saturn_tui::pick_chat)
 }
@@ -37,8 +41,14 @@ pub(crate) fn ensure_terminal(lang: Lang) -> anyhow::Result<()> {
 }
 
 fn check_terminal(lang: Lang, is_terminal: bool) -> anyhow::Result<()> {
-    anyhow::ensure!(is_terminal, lang.tr(i18n::CLI_PICK_NEEDS_TERMINAL));
-    Ok(())
+    if is_terminal {
+        Ok(())
+    } else {
+        Err(Exit::error(
+            ExitCode::Usage,
+            lang.tr(i18n::CLI_PICK_NEEDS_TERMINAL),
+        ))
+    }
 }
 
 /// 채팅이 없으면 창을 열지 않는다. `window`는 선택 창이고 취소하면 `None`.
@@ -48,16 +58,18 @@ fn pick_from(
     show_folder: bool,
     window: impl FnOnce(Lang, Vec<ChatListItem>, bool) -> Result<Option<ChatId>, saturn_tui::TuiError>,
 ) -> anyhow::Result<ChatId> {
-    anyhow::ensure!(
-        !chats.is_empty(),
-        lang.tr(if show_folder {
-            i18n::CLI_NO_CHAT_TO_RESUME
-        } else {
-            i18n::CLI_NO_CHAT_TO_CONTINUE
-        })
-    );
+    if chats.is_empty() {
+        return Err(Exit::error(
+            ExitCode::NotFound,
+            lang.tr(if show_folder {
+                i18n::CLI_NO_CHAT_TO_RESUME
+            } else {
+                i18n::CLI_NO_CHAT_TO_CONTINUE
+            }),
+        ));
+    }
     let picked = window(lang, chats, show_folder)?;
-    picked.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_PICK_CANCELLED)))
+    picked.ok_or_else(|| Exit::error(ExitCode::Interrupted, lang.tr(i18n::CLI_PICK_CANCELLED)))
 }
 
 #[cfg(test)]

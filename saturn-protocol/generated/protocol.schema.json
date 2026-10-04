@@ -1771,6 +1771,36 @@
       ],
       "type": "string"
     },
+    "ErrorKind": {
+      "description": "요청이 거절된 원인의 종류. `cli`의 종료 코드(66, 75, 77, 78, 1)로 이어진다.\n설계: docs/design/engine-lifecycle.md",
+      "oneOf": [
+        {
+          "const": "NotFound",
+          "description": "요청이 가리킨 대상(채팅, router 버전)이 없다.",
+          "type": "string"
+        },
+        {
+          "const": "RetryLater",
+          "description": "지금은 조건이 모자라 못 하지만 나중에 된다. 예: 학습 표본 부족.",
+          "type": "string"
+        },
+        {
+          "const": "RouterKey",
+          "description": "router 키가 없거나 확인에 실패했다.",
+          "type": "string"
+        },
+        {
+          "const": "Config",
+          "description": "설정이 없거나 틀렸다.",
+          "type": "string"
+        },
+        {
+          "const": "Failed",
+          "description": "예상한 실패로 engine 오류가 아니다. 예: 설치된 provider 없음, provider 실패.",
+          "type": "string"
+        }
+      ]
+    },
     "ExitPlan": {
       "description": "TUI를 닫을 때 할 일. `running`은 계속 처리될 작업 수다.",
       "oneOf": [
@@ -5374,6 +5404,17 @@
         "code": {
           "format": "int32",
           "type": "integer"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "같은 `code` 안의 원인 종류. 옛 engine은 보내지 않는다."
         },
         "message": {
           "type": "string"

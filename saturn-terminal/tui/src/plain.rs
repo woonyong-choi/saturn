@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 
 use saturn_protocol::ids::{ChatId, TaskId, TaskLabel};
 use saturn_protocol::rpc::{ChatNotice, Notification};
+use saturn_protocol::state::TaskState;
 
 use crate::i18n::{self, Lang};
 use crate::labels;
@@ -26,6 +27,8 @@ pub(crate) struct PlainOutput<W: Write> {
     alerts_written: usize,
     /// engine가 키를 요청한 원인. 화면이 없어 묻지 않는다.
     key_required: Option<String>,
+    /// 실패로 끝난 작업이 하나라도 있다.
+    failed: bool,
 }
 
 impl<W: Write> PlainOutput<W> {
@@ -40,12 +43,18 @@ impl<W: Write> PlainOutput<W> {
             partial: BTreeMap::new(),
             alerts_written: 0,
             key_required: None,
+            failed: false,
         }
     }
 
     /// engine가 router 키를 요청했으면 그 원인. 호출자는 묻지 않고 안내하고 끝낸다.
     pub(crate) fn key_required(&self) -> Option<&str> {
         self.key_required.as_deref()
+    }
+
+    /// provider 작업이 실패로 끝난 적이 있으면 참. 호출자는 실패 종료 코드로 끝낸다.
+    pub(crate) fn has_failed(&self) -> bool {
+        self.failed
     }
 
     /// 원문은 engine이 `InputChanged`로 돌려주므로 여기서 쓰지 않는다.
@@ -176,6 +185,7 @@ impl<W: Write> PlainOutput<W> {
     // basis: estimate
     fn task_changed(&mut self, update: TaskUpdate, now: Instant) -> std::io::Result<()> {
         let task = update.task;
+        self.failed |= update.state == TaskState::Failed;
         let change = self.chat.apply_task(update, now);
         for _ in self.chat.take_interrupted_calls(task) {
             self.line(&interrupted_line(self.lang))?;

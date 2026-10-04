@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use saturn_protocol::envelope::{
-    NotificationMessage, Response, ServerMessage, decode_client_line, encode_line,
+    ErrorKind, NotificationMessage, Response, ServerMessage, decode_client_line, encode_line,
 };
 use saturn_protocol::rpc::{Notification, QueryResult, Request};
 use saturn_tui::client::EngineClient;
@@ -17,7 +17,7 @@ use tokio::task::JoinHandle;
 pub(crate) struct Reply {
     notifications: Vec<Notification>,
     result: Option<QueryResult>,
-    error: Option<(i32, String)>,
+    error: Option<(i32, Option<ErrorKind>, String)>,
 }
 
 impl Reply {
@@ -42,7 +42,14 @@ impl Reply {
 
     pub(crate) fn error(code: i32, message: &str) -> Self {
         Self {
-            error: Some((code, message.to_owned())),
+            error: Some((code, None, message.to_owned())),
+            ..Self::default()
+        }
+    }
+
+    pub(crate) fn error_of_kind(code: i32, kind: ErrorKind, message: &str) -> Self {
+        Self {
+            error: Some((code, Some(kind), message.to_owned())),
             ..Self::default()
         }
     }
@@ -79,7 +86,9 @@ impl FakeEngine {
                         .unwrap();
                 }
                 let response = match (reply.error, reply.result) {
-                    (Some((code, text)), _) => Response::error(Some(message.id), code, text),
+                    (Some((code, kind, text)), _) => {
+                        Response::error_of_kind(Some(message.id), code, kind, text)
+                    }
                     (None, Some(result)) => Response::result(message.id, result),
                     (None, None) => Response::ok(message.id),
                 };

@@ -141,6 +141,8 @@ pub(crate) struct App {
     pub exit_notice: Option<u32>,
     /// engine이 업데이트로 끝난다고 알렸다. 연결이 끊겨도 오류로 끝내지 않고 다시 열라는 한 줄을 남긴다.
     pub restarting: bool,
+    /// router 키나 폴더 신뢰 창을 닫아 끝냈다.
+    pub aborted: bool,
     /// 첫 대화 기록 셀이 생기면 머리 셀로 옮기고 `None`.
     pub start: Option<StartInfo>,
     /// 채팅의 기본 폴더. 시작 화면이 머리 셀로 바뀐 뒤에도 남는다.
@@ -203,6 +205,7 @@ impl App {
             exit_requested: false,
             exit_notice: None,
             restarting: false,
+            aborted: false,
             start: None,
             chat_folder: None,
             history,
@@ -548,6 +551,7 @@ impl App {
     /// 채팅에 붙어 있으면 닫기 전에 engine에 닫은 뒤의 처리를 묻는다. 이미 묻는 중이면 더 기다리지 않고 닫는다.
     /// router 키 창은 engine이 요청을 받지 않는 때라 묻지 않는다.
     pub(super) fn quit_effects(&mut self) -> Vec<Effect> {
+        self.aborted |= self.window.as_ref().is_some_and(Window::is_blocking);
         let asks_engine =
             !self.exit_requested && !matches!(self.window, Some(Window::RouterKey(_)));
         match self.chat.chat {

@@ -196,11 +196,22 @@ impl Response {
     }
 
     pub fn error(id: Option<RequestId>, code: i32, message: impl Into<String>) -> Self {
+        Self::error_of_kind(id, code, None, message)
+    }
+
+    /// 원인 종류를 함께 싣는다. `cli`가 종료 코드를 가르는 데 쓴다.
+    pub fn error_of_kind(
+        id: Option<RequestId>,
+        code: i32,
+        kind: Option<ErrorKind>,
+        message: impl Into<String>,
+    ) -> Self {
         Self {
             jsonrpc: JsonRpcVersion,
             id,
             outcome: Outcome::Err(RpcError {
                 code,
+                kind,
                 message: message.into(),
             }),
         }
@@ -220,7 +231,27 @@ pub enum Outcome {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct RpcError {
     pub code: i32,
+    /// 같은 `code` 안의 원인 종류. 옛 engine은 보내지 않는다.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub kind: Option<ErrorKind>,
     pub message: String,
+}
+
+/// 요청이 거절된 원인의 종류. `cli`의 종료 코드(66, 75, 77, 78, 1)로 이어진다.
+/// 설계: docs/design/engine-lifecycle.md
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ErrorKind {
+    /// 요청이 가리킨 대상(채팅, router 버전)이 없다.
+    NotFound,
+    /// 지금은 조건이 모자라 못 하지만 나중에 된다. 예: 학습 표본 부족.
+    RetryLater,
+    /// router 키가 없거나 확인에 실패했다.
+    RouterKey,
+    /// 설정이 없거나 틀렸다.
+    Config,
+    /// 예상한 실패로 engine 오류가 아니다. 예: 설치된 provider 없음, provider 실패.
+    Failed,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
@@ -428,6 +459,7 @@ mod tests {
             response.outcome,
             Outcome::Err(RpcError {
                 code: INVALID_REQUEST,
+                kind: None,
                 message: "invalid request".into(),
             })
         );
