@@ -41,9 +41,21 @@ impl Connection {
     pub(crate) fn spawn(self, inbox: mpsc::Sender<RpcEvent>, gate: PassGate) -> Outbox {
         let (sender, receiver) = mpsc::channel(OUTBOX_CAPACITY);
         let kill = Arc::new(Notify::new());
+        let closed = Arc::new(Notify::new());
         let (read_half, write_half) = self.stream.into_split();
-        tokio::spawn(write_loop(write_half, receiver, Arc::clone(&kill)));
-        tokio::spawn(read_loop(self.id, read_half, inbox, sender.clone(), gate));
+        tokio::spawn(write_loop(
+            write_half,
+            receiver,
+            Arc::clone(&kill),
+            Arc::clone(&closed),
+        ));
+        tokio::spawn(read_loop(
+            self.id,
+            read_half,
+            inbox,
+            sender.clone(),
+            (gate, closed),
+        ));
         Outbox { sender, kill }
     }
 }
@@ -53,7 +65,7 @@ async fn read_loop(
     read_half: tokio::net::unix::OwnedReadHalf,
     inbox: mpsc::Sender<RpcEvent>,
     replies: mpsc::Sender<ServerMessage>,
-    gate: PassGate,
+    (gate, closed): (PassGate, Arc<Notify>),
 ) {
     let mut lines = BufReader::new(read_half).lines();
     let mut line_in = Line {
@@ -63,7 +75,8 @@ async fn read_loop(
         gate: &gate,
         queued: Vec::new(),
     };
-    while let Some(line) = next_line(&mut lines, id).await {
+    // 쓰기 쪽이 끝나면(종료 신호, 쓰기 실패) 읽기도 멈춰 이 연결을 정리한다
+    while let Some(line) = next_line(&mut lines, id, &closed).await {
         if line.trim().is_empty() {
             continue;
         }
@@ -80,8 +93,13 @@ async fn read_loop(
 async fn next_line(
     lines: &mut Lines<BufReader<tokio::net::unix::OwnedReadHalf>>,
     id: ClientId,
+    closed: &Notify,
 ) -> Option<String> {
-    match lines.next_line().await {
+    let read = tokio::select! {
+        read = lines.next_line() => Some(read),
+        () = closed.notified() => None,
+    };
+    match read? {
         Ok(line) => line,
         Err(error) => {
             tracing::debug!(client = id.0, %error, "client read failed");
@@ -219,10 +237,13 @@ fn reject_message(reject: Reject) -> String {
     }
 }
 
+/// 종료 신호는 기다리는 동안과 소켓에 쓰는 동안 모두 받는다. 줄 중간에서 끊으면 그 연결은 닫아 이어 쓰지 않는다.
+/// 끝나면 `closed`로 읽기 쪽에 알려 연결을 함께 정리한다.
 async fn write_loop(
     mut write_half: tokio::net::unix::OwnedWriteHalf,
     mut receiver: mpsc::Receiver<ServerMessage>,
     kill: Arc<Notify>,
+    closed: Arc<Notify>,
 ) {
     loop {
         let message = tokio::select! {
@@ -233,15 +254,56 @@ async fn write_loop(
         let Some(line) = encode_logged(&message) else {
             continue;
         };
-        if write_half.write_all(line.as_bytes()).await.is_err() {
+        let written = tokio::select! {
+            written = write_half.write_all(line.as_bytes()) => written.is_ok(),
+            () = kill.notified() => false,
+        };
+        if !written {
             break;
         }
     }
     let _ = write_half.shutdown().await; // 상대가 이미 끊었다
+    closed.notify_one();
 }
 
 fn encode_logged(message: &ServerMessage) -> Option<String> {
     envelope::encode_line(message)
         .inspect_err(|error| tracing::error!(%error, "failed to encode server message"))
         .ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::*;
+
+    // #460
+    #[tokio::test]
+    async fn kill_interrupts_a_write_blocked_by_a_client_that_does_not_read() {
+        let (stream, _unread_peer) = UnixStream::pair().unwrap();
+        let (_read, writer) = stream.into_split();
+        let (sender, receiver) = mpsc::channel(1);
+        let kill = Arc::new(Notify::new());
+        sender
+            .send(Response::error(None, -1, "x".repeat(8 * 1024 * 1024)).into())
+            .await
+            .unwrap();
+        let mut task = tokio::spawn(write_loop(
+            writer,
+            receiver,
+            Arc::clone(&kill),
+            Arc::new(Notify::new()),
+        ));
+        tokio::time::sleep(Duration::from_millis(250)).await;
+
+        kill.notify_one();
+
+        let finished = tokio::time::timeout(Duration::from_secs(2), &mut task).await;
+        task.abort();
+        assert!(
+            finished.is_ok(),
+            "the kill signal should end a blocked write"
+        );
+    }
 }
