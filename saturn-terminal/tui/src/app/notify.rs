@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{ChatId, InputId, JudgmentId, SettingsRevision, TaskId, TaskLabel};
-use saturn_protocol::rpc::{Alert, ChatNotice, ExitPlan, Notification, SettingsWarning};
+use saturn_protocol::rpc::{Alert, ChatNotice, ExitPlan, Notification, Request, SettingsWarning};
 use saturn_protocol::state::{Disposition, InputState, QueueReason};
 
 use super::{App, Effect, Window};
@@ -114,6 +114,11 @@ impl App {
                 self.inputs.resolve(&request_id, now);
             }
             Notification::ExitPlan { plan } => return self.on_exit_plan(plan),
+            Notification::ChatLabeled { .. } => {
+                if matches!(self.window, Some(Window::TaskList(_))) {
+                    return vec![Effect::Send(Request::ListTasks)];
+                }
+            }
             other => self.on_window_notification(other, now),
         }
         Vec::new()

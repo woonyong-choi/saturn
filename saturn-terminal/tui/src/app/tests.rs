@@ -475,6 +475,45 @@ fn task_list_key_a_widens_the_scope_to_all_folders() {
 }
 
 #[test]
+fn chat_labeled_makes_an_open_task_list_read_the_list_again() {
+    let mut app = attached();
+    let labeled = Notification::ChatLabeled {
+        chat: ChatId(9),
+        name: Some("login fix".to_owned()),
+        group: None,
+    };
+
+    let closed = notify(&mut app, labeled.clone());
+    type_text(&mut app, "/tasks");
+    app.popup = None;
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    let open = notify(&mut app, labeled);
+
+    assert!(sent(&closed).is_empty());
+    assert_eq!(sent(&open), vec![&Request::ListTasks]);
+}
+
+#[test]
+fn renaming_from_the_task_list_waits_for_the_labeled_notification_to_refresh() {
+    use crate::view::task_list::TaskListCommand;
+
+    let mut app = attached();
+
+    let effects = app.on_task_list_command(TaskListCommand::Rename {
+        chat: ChatId(7),
+        name: "login fix".to_owned(),
+    });
+
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::RenameChat {
+            chat: ChatId(7),
+            name: "login fix".to_owned(),
+        }]
+    );
+}
+
+#[test]
 fn invalid_command_adds_warning_and_keeps_draft() {
     let mut app = attached();
     type_text(&mut app, "/usage year");
