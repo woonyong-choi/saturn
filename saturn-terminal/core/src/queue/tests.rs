@@ -1210,3 +1210,19 @@ fn rescope_unsent_ignores_other_chats() {
         scope(&["/work"])
     );
 }
+
+// #488
+#[test]
+fn rescope_unsent_also_changes_held_inputs() {
+    let mut queue = Queue::new();
+    queue.accept(input(1, Permission::Write));
+    queue.stop(CHAT);
+    assert_eq!(state_of(&queue, 1), InputState::Held);
+
+    queue.rescope_unsent(CHAT, |_| scope(&["/work", "/shared"]));
+
+    assert_eq!(
+        queue.input(InputId(1)).unwrap().write_scope,
+        scope(&["/work", "/shared"])
+    );
+}

@@ -28,6 +28,45 @@ impl Engine {
             .collect()
     }
 
+    /// 폴더를 더한 뒤 아직 보내지 않은 입력의 쓰기 범위를 다시 잡는다. 새 session이 더한 폴더를 받을 수 있어서다.
+    /// 이미 보낸 입력의 범위는 그대로다. `AddDir` 요청과 `Attach`의 `--add-dir`이 함께 쓴다.
+    pub(crate) fn rescope_unsent_inputs(&mut self, chat: ChatId) {
+        let scopes: std::collections::HashMap<_, _> = self
+            .queue
+            .inputs_in_state(chat, saturn_protocol::state::InputState::Judging)
+            .into_iter()
+            .chain(
+                self.queue
+                    .inputs_in_state(chat, saturn_protocol::state::InputState::Queued),
+            )
+            .chain(
+                self.queue
+                    .inputs_in_state(chat, saturn_protocol::state::InputState::Held),
+            )
+            .filter_map(|id| self.queue.input(id))
+            .map(|record| (record.id, self.write_scope_of(chat, &record.workdir)))
+            .collect();
+        self.queue.rescope_unsent(chat, |record| {
+            scopes.get(&record.id).cloned().unwrap_or_default()
+        });
+    }
+
+    /// `Attach`가 받은 `--add-dir`을 채팅에 더한다. 새로 더한 폴더가 있으면 `AddDir`과 같게 보내기 전 입력의 쓰기 범위를 다시 잡는다.
+    pub(crate) async fn register_attach_dirs(
+        &mut self,
+        chat: ChatId,
+        dirs: Vec<PathBuf>,
+    ) -> Result<(), EngineError> {
+        let mut added = false;
+        for dir in dirs {
+            added |= self.register_dir(chat, dir).await?;
+        }
+        if added {
+            self.rescope_unsent_inputs(chat);
+        }
+        Ok(())
+    }
+
     /// `AddDir` 요청. 새로 더했으면 그 채팅에 붙은 TUI에 알린다.
     ///
     /// # Errors
@@ -41,21 +80,7 @@ impl Engine {
         self.require_attached(client, chat)?;
         let dir = resolve_folder(path)?;
         if self.register_dir(chat, dir.clone()).await? {
-            // 아직 보내지 않은 입력은 새 session이 더한 폴더를 받을 수 있으므로 쓰기 범위에도 넣는다
-            let scopes: std::collections::HashMap<_, _> = self
-                .queue
-                .inputs_in_state(chat, saturn_protocol::state::InputState::Judging)
-                .into_iter()
-                .chain(
-                    self.queue
-                        .inputs_in_state(chat, saturn_protocol::state::InputState::Queued),
-                )
-                .filter_map(|id| self.queue.input(id))
-                .map(|record| (record.id, self.write_scope_of(chat, &record.workdir)))
-                .collect();
-            self.queue.rescope_unsent(chat, |record| {
-                scopes.get(&record.id).cloned().unwrap_or_default()
-            });
+            self.rescope_unsent_inputs(chat);
             let applies_from_next_session = self.sessions.live_main(chat).is_some();
             self.notify_chat(
                 chat,

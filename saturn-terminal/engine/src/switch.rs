@@ -1,6 +1,7 @@
 //! 입력을 보낼 session을 정하고 연다: provider 전환 패킷, 돌아온 session의 변경분, 맥락 정리로 바꾸는 새 session.
 //! 설계: docs/design/providers-and-sessions.md#provider-전환, docs/design/context-management.md
 
+use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
 use saturn_core::providers::{ProviderError, SessionHandle, SessionSpec};
@@ -445,6 +446,7 @@ impl Engine {
     pub(crate) async fn prepare_open(
         &mut self,
         record: &QueuedInput,
+        add_dirs: Vec<PathBuf>,
         plan: OpenPlan,
     ) -> Result<OpenPrep, EngineError> {
         match plan.target.clone() {
@@ -459,9 +461,9 @@ impl Engine {
                     });
                 }
                 let reopened = self.reopen_plan(id)?;
-                self.prepare_resume(record, id, reopened)
+                self.prepare_resume(record, add_dirs, id, reopened)
             }
-            SendTarget::Resume(id) => self.prepare_resume(record, id, plan),
+            SendTarget::Resume(id) => self.prepare_resume(record, add_dirs, id, plan),
             SendTarget::New { provider, role } => {
                 let agent = match plan.agent {
                     Some(agent) => agent,
@@ -474,6 +476,7 @@ impl Engine {
                     plan.model.clone(),
                     None,
                     plan.handoff.clone(),
+                    add_dirs,
                 );
                 Ok(OpenPrep {
                     plan,
@@ -493,6 +496,7 @@ impl Engine {
     fn prepare_resume(
         &self,
         record: &QueuedInput,
+        add_dirs: Vec<PathBuf>,
         id: SessionId,
         plan: OpenPlan,
     ) -> Result<OpenPrep, EngineError> {
@@ -527,6 +531,7 @@ impl Engine {
             stored.model.clone(),
             Some(resume),
             plan.handoff.clone(),
+            add_dirs,
         );
         spec.interrupted_children = self
             .flow

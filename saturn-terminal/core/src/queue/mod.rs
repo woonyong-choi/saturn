@@ -192,12 +192,16 @@ impl Queue {
     // cost: time O(n·s), heap O(1) amortized, stack O(1)
     // vars: n = 대기열 입력 수, s = 쓰기 범위 경로 수
     // basis: estimate
-    /// 채팅에서 아직 보내지 않은 입력(`Judging`, `Queued`)의 쓰기 범위를 `scope`가 돌려주는 값으로 다시 정한다.
+    /// 채팅에서 아직 보내지 않은 입력(`Judging`, `Queued`, `Held`)의 쓰기 범위를 `scope`가 돌려주는 값으로 다시 정한다.
+    /// `Held`는 보내기 전에 멈춘 입력이라 재개할 때 이 범위로 잠금을 기다린다.
     /// 보냈거나 실행 중인 입력은 이미 잠금을 쥐었거나 기다리는 자리가 정해져 그대로 둔다.
     pub fn rescope_unsent(&mut self, chat: ChatId, scope: impl Fn(&QueuedInput) -> Vec<PathBuf>) {
         for entry in &mut self.inputs {
             let is_unsent = !entry.is_dispatched
-                && matches!(entry.input.state, InputState::Judging | InputState::Queued);
+                && matches!(
+                    entry.input.state,
+                    InputState::Judging | InputState::Queued | InputState::Held
+                );
             if entry.input.chat == chat && is_unsent {
                 entry.input.write_scope = scope(&entry.input);
             }

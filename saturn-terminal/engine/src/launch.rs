@@ -72,7 +72,8 @@ impl Engine {
         live
     }
 
-    /// `model`은 session에 기록한 모델이고, `packet`은 첫 턴으로 보낼 글이다.
+    /// `model`은 session에 기록한 모델이고, `packet`은 첫 턴으로 보낼 글이다. `add_dirs`는 입력을 보낼 때 채팅이 가진
+    /// 더한 폴더로, 그 입력이 잡은 쓰기 잠금 범위와 같은 시점의 값이다.
     pub(crate) fn session_spec(
         &self,
         record: &QueuedInput,
@@ -80,6 +81,7 @@ impl Engine {
         model: Option<String>,
         resume: Option<ProviderSessionId>,
         packet: Option<String>,
+        add_dirs: Vec<PathBuf>,
     ) -> SessionSpec {
         SessionSpec {
             agent,
@@ -88,7 +90,7 @@ impl Engine {
             settings: record.settings,
             resume,
             packet,
-            add_dirs: self.chat_dirs_of(record.chat),
+            add_dirs,
             interrupted_children: Vec::new(),
         }
     }

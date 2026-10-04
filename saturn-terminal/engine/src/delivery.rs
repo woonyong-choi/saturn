@@ -27,15 +27,22 @@ use saturn_protocol::ids::RunId;
 pub(crate) struct DeliveryJob {
     pub(crate) delivery: Delivery,
     pub(crate) record: QueuedInput,
+    /// 보낼 때 채팅이 가진 더한 폴더. 쓰기 잠금 범위와 같은 시점의 값이라 기다리는 동안 더한 폴더는 다음 session부터 받는다.
+    pub(crate) add_dirs: Vec<std::path::PathBuf>,
     /// 기다리는 동안 채팅이 멈췄다. 결과가 와도 더 보내지 않는다.
     pub(crate) is_stopped: bool,
 }
 
 impl DeliveryJob {
-    pub(crate) fn new(delivery: Delivery, record: QueuedInput) -> Self {
+    pub(crate) fn new(
+        delivery: Delivery,
+        record: QueuedInput,
+        add_dirs: Vec<std::path::PathBuf>,
+    ) -> Self {
         Self {
             delivery,
             record,
+            add_dirs,
             is_stopped: false,
         }
     }
@@ -423,7 +430,10 @@ impl Engine {
         job: DeliveryJob,
         plan: OpenPlan,
     ) -> Result<(), EngineError> {
-        match self.prepare_open(&job.record, plan).await {
+        match self
+            .prepare_open(&job.record, job.add_dirs.clone(), plan)
+            .await
+        {
             Ok(prep) => self.run_open(job, prep).await,
             Err(error) => self.fail_open(job, error).await,
         }

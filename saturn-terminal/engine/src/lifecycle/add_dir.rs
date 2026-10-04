@@ -146,9 +146,14 @@ async fn add_dir_reaches_the_session_spec_of_every_provider() {
         .collect();
     assert_eq!(opened, vec![vec![extra.clone()]]);
     let record = flow.record(input);
-    let other_provider_spec =
-        flow.engine
-            .session_spec(&record, flow.agent(), None, None, Some("packet".to_owned()));
+    let other_provider_spec = flow.engine.session_spec(
+        &record,
+        flow.agent(),
+        None,
+        None,
+        Some("packet".to_owned()),
+        flow.engine.chat_dirs_of(flow.chat),
+    );
     assert_eq!(other_provider_spec.add_dirs, vec![extra]);
 }
 

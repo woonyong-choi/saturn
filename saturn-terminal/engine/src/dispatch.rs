@@ -121,7 +121,8 @@ impl Engine {
         delivery.live = Some(live.clone());
         delivery.run = self.runs.active.get(&agent).copied();
         self.mark_delivering(&delivery).await?;
-        let job = DeliveryJob::new(delivery, record);
+        let add_dirs = self.chat_dirs_of(chat);
+        let job = DeliveryJob::new(delivery, record, add_dirs);
         match self.provider_mut(chat, live.provider) {
             Ok(connection) => {
                 connection.steer_detached(live.provider_session.clone(), job.record.text.clone());
@@ -190,7 +191,8 @@ impl Engine {
             self.release_task(&delivery);
             return Err(error);
         }
-        let job = DeliveryJob::new(delivery, record);
+        let add_dirs = self.chat_dirs_of(chat);
+        let job = DeliveryJob::new(delivery, record, add_dirs);
         match plan {
             Ok(plan) => self.start_open(job, plan).await,
             Err(reason) => self.reject(job.delivery, reason).await,
