@@ -10,6 +10,7 @@ use saturn_tui::i18n::{self, Lang};
 use crate::exit::{Exit, ExitCode};
 
 pub(crate) mod chat;
+pub(crate) mod child;
 pub(crate) mod export;
 pub(crate) mod prune;
 pub(crate) mod resume;

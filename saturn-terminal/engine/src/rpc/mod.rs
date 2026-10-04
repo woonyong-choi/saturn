@@ -16,10 +16,12 @@ use tokio::net::UnixListener;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TrySendError;
 
+use crate::passes::PassGate;
 use connection::{Connection, Outbox};
 pub(crate) use lock::EngineLock;
 #[cfg(test)]
 pub(crate) use lock::LOCK_FILE;
+use saturn_core::passes::Grant;
 
 /// 홈 폴더 아래. TUI `EngineClient::default_socket`과 같은 이름.
 pub(crate) const SOCKET_FILE: &str = saturn_protocol::home::SOCKET_FILE;
@@ -69,6 +71,8 @@ pub(crate) enum RpcEvent {
     /// 아직 `Request::Attach` 전.
     Connected(ClientId),
     Request(ClientId, RequestId, Request),
+    /// 연결 작업이 출입증과 상한을 확인해 허용한 `Request::AttachChild`.
+    Child(ClientId, RequestId, Grant),
     /// `Request::Detach` 포함. `Detach`의 응답은 서버가 보낸다.
     Disconnected(ClientId),
     /// `Disconnected` 바로 뒤에 한 번 온다.
@@ -99,6 +103,8 @@ pub(crate) struct RpcServer {
     clients: HashMap<ClientId, ClientHandle>,
     inbox: mpsc::Receiver<RpcEvent>,
     inbox_tx: mpsc::Sender<RpcEvent>,
+    /// 연결 작업이 출입증을 확인하는 관문. 요청 처리 루프와 공유한다.
+    gate: PassGate,
     pending_permissions: Vec<PendingPermission>,
     next_client: u64,
     last_detached_due: bool,
@@ -114,7 +120,11 @@ impl RpcServer {
     ///
     /// # Errors
     /// 소켓 파일을 지우거나 열거나 권한을 바꾸지 못하면 `Bind`.
-    pub(crate) async fn bind(home: &Path, lock: EngineLock) -> Result<Self, RpcError> {
+    pub(crate) async fn bind(
+        home: &Path,
+        lock: EngineLock,
+        gate: PassGate,
+    ) -> Result<Self, RpcError> {
         let socket = home.join(SOCKET_FILE);
         let bind_error = |source| RpcError::Bind {
             path: socket.clone(),
@@ -136,6 +146,7 @@ impl RpcServer {
             clients: HashMap::new(),
             inbox,
             inbox_tx,
+            gate,
             pending_permissions: Vec::new(),
             next_client: 0,
             last_detached_due: false,
@@ -377,7 +388,7 @@ impl RpcServer {
     fn accept(&mut self, stream: tokio::net::UnixStream) -> RpcEvent {
         let id = ClientId(self.next_client);
         self.next_client += 1;
-        let outbox = Connection::new(id, stream).spawn(self.inbox_tx.clone());
+        let outbox = Connection::new(id, stream).spawn(self.inbox_tx.clone(), self.gate.clone());
         self.clients.insert(id, ClientHandle { outbox, chat: None });
         RpcEvent::Connected(id)
     }
@@ -390,6 +401,10 @@ impl RpcServer {
                 self.disconnect(client)
             }
             RpcEvent::Request(client, ..) if !self.clients.contains_key(&client) => None,
+            RpcEvent::Child(client, _, grant) if !self.clients.contains_key(&client) => {
+                self.gate.abandon(&grant); // 허용받고 끊긴 접속의 자리는 다음 요청에 준다
+                None
+            }
             RpcEvent::Disconnected(client) => self.disconnect(client),
             other => Some(other),
         }
@@ -484,7 +499,8 @@ mod tests {
     async fn server() -> (tempfile::TempDir, RpcServer) {
         let home = tempfile::tempdir().unwrap();
         let lock = EngineLock::acquire(home.path()).unwrap();
-        let server = RpcServer::bind(home.path(), lock).await.unwrap();
+        let gate = PassGate::new(saturn_core::passes::PassLimits::DEFAULT);
+        let server = RpcServer::bind(home.path(), lock, gate).await.unwrap();
         (home, server)
     }
 
@@ -548,7 +564,8 @@ mod tests {
         std::fs::write(home.path().join(SOCKET_FILE), b"stale").unwrap();
         let lock = EngineLock::acquire(home.path()).unwrap();
 
-        let server = RpcServer::bind(home.path(), lock).await;
+        let gate = PassGate::new(saturn_core::passes::PassLimits::DEFAULT);
+        let server = RpcServer::bind(home.path(), lock, gate).await;
 
         assert!(server.is_ok());
     }

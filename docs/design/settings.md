@@ -115,6 +115,9 @@
 | `router.thresholds.<이름>` | 0~1 실수 | [router](router.md) 표의 값 |
 | `grading.model` | 문자열 | 없음 |
 | `consent.share_with_server` | 참·거짓 | 거짓 |
+| `child.max_depth` | 0 이상 정수 | 2. 하위 접속의 깊이 상한이고 0이면 하위 접속을 받지 않는다([하위 접속](child-sessions.md#상한과-대기열)) |
+| `child.max_concurrent` | 1 이상 정수 | 5. 한 채팅이 동시에 거느리는 하위 접속 수 |
+| `child.max_total` | 1 이상 정수 | 10. `engine` 전체의 동시 하위 접속 수 |
 | `retention.max_age_days` | 1 이상 정수 | 없음(무제한 보존). `saturn prune`과 `/prune`이 오래된 채팅을 정하는 기준이기도 하다([기록](records.md)) |
 | `retention.auto_prune` | 참·거짓 | 거짓. 참이고 `max_age_days`가 있을 때만 engine 시작 때 한 번 그 기한보다 오래 쓰지 않은 채팅을 지운다. 삭제라 `max_age_days`만으로 켜지지 않는다([기록](records.md#보존과-정리)) |
 | `context.safety_percent` | 0~100 정수 | 70 |
@@ -181,8 +184,9 @@ provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. `
 | 데이터 공유 동의 | [router 학습](router-training.md) |
 | 판단 방식 | [router](router.md) |
 | 보존 기간과 자동 삭제 | [기록](records.md#보존과-정리) |
+| 하위 접속 상한 | [하위 접속](child-sessions.md#상한과-대기열) |
 
-사용자 전용 키는 `router.endpoint`, `router.key`, `grading.model`, `consent`, `router.mode`, `retention`과 같거나 그 아래 키다(초안). 옛 이름 `router.method`도 새 이름으로 옮긴 뒤 같은 규칙을 받는다. `retention`은 보존 기간과 자동 삭제라 비용과 삭제가 걸려 있어 사용자만 정한다. router 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([router 키 보호](router-key-security.md)).
+사용자 전용 키는 `router.endpoint`, `router.key`, `grading.model`, `consent`, `router.mode`, `retention`, `child`와 같거나 그 아래 키다(초안). 옛 이름 `router.method`도 새 이름으로 옮긴 뒤 같은 규칙을 받는다. `retention`은 보존 기간과 자동 삭제라 비용과 삭제가 걸려 있어 사용자만 정한다. `child`는 하위 접속 상한이라 저장소가 provider 프로세스 수를 늘리지 못하게 사용자만 정한다. router 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([router 키 보호](router-key-security.md)).
 
 ### 병합과 설정 번호
 

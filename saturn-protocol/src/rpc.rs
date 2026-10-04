@@ -16,6 +16,15 @@ use crate::state::{Disposition, InputState, QueueReason, TaskState};
 /// engine과 클라이언트가 주고받는 메시지 판. 요청이나 알림의 모양을 호환되지 않게 바꿀 때 올린다.
 pub const PROTOCOL_VERSION: u32 = 1;
 
+/// engine이 에이전트 작업의 환경에 넣는 출입증 변수 이름. `saturn`이 이 값으로 `AttachChild`를 보낸다.
+pub const PASS_ENV: &str = "SATURN_PASS";
+
+/// engine이 에이전트 작업의 환경에 넣는 engine 소켓 경로 변수 이름. 없으면 기본 경로를 쓴다.
+pub const SOCKET_ENV: &str = "SATURN_ENGINE_SOCKET";
+
+/// `AttachChild`를 거절한 오류 번호(JSON-RPC 서버 오류 범위). 출입증이 없거나 회수됐거나 상한과 부모 권한을 넘었다.
+pub const CHILD_REJECTED: i32 = -32002;
+
 /// TUI가 `Attach`의 `env`에 담는 변수 이름. 이 밖의 변수는 보내지 않는다. 초안 목록.
 pub const ATTACH_ENV_NAMES: &[&str] = &[
     "PATH",
@@ -52,6 +61,14 @@ pub enum Request {
         overrides: Vec<(String, String)>,
         #[serde(default)]
         add_dirs: Vec<String>,
+    },
+    /// 에이전트 작업 안의 `saturn`이 출입증(`pass`)으로 붙는다. engine은 출입증을 준 채팅의 하위 작업으로 새 채팅을 만들어
+    /// 붙인다. 작업 폴더, 더한 폴더, 환경, 권한 규칙은 부모 채팅의 것을 물려받아 요청으로 바꿀 수 없다.
+    /// `mode`는 부모 모드를 넘지 않는 모드이고 없으면 부모 모드다. 동시 상한이 차면 `ChildQueued`를 보내고 자리가 날 때까지
+    /// 응답하지 않는다. 출입증이 없거나 회수됐거나 깊이 상한을 넘거나 부모 모드를 넘으면 거절한다. 응답과 알림 순서는 `Attach`와 같다.
+    AttachChild {
+        pass: String,
+        mode: Option<String>,
     },
     /// 채팅의 provider session이 다룰 폴더를 더한다. `path`는 이미 있는 폴더의 절대 경로.
     /// 열려 있는 session에는 반영하지 못하고 다음 session부터 적용한다.
@@ -310,6 +327,10 @@ pub enum Notification {
         /// 더한 폴더. 기본 폴더는 들어 있지 않다.
         #[serde(default)]
         added_dirs: Vec<String>,
+    },
+    /// `AttachChild`가 상한 때문에 대기열에 섰다. `position`은 1부터 센 자리이고 자리가 나면 `Attach`와 같은 알림이 이어진다.
+    ChildQueued {
+        position: u32,
     },
     InputAccepted {
         client_ref: u64,

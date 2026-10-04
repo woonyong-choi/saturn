@@ -3,12 +3,18 @@
 
 use std::sync::Arc;
 
-use saturn_protocol::envelope::{self, CodecError, ServerMessage};
+use saturn_core::passes::{Reject, Waiter};
+use saturn_core::permission::Mode;
+use saturn_protocol::envelope::{
+    self, CodecError, ErrorKind, INVALID_PARAMS, RequestId, Response, ServerMessage,
+};
+use saturn_protocol::rpc::{CHILD_REJECTED, Notification, Request};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
 use tokio::net::UnixStream;
 use tokio::sync::{Notify, mpsc};
 
 use super::{ClientId, RpcEvent};
+use crate::passes::{Entry, PassGate, Waited};
 
 /// 초안. 넘치면 그 클라이언트를 끊는다. 다시 붙으면 기록으로 화면을 되살린다.
 pub(crate) const OUTBOX_CAPACITY: usize = 1024;
@@ -32,12 +38,12 @@ impl Connection {
     }
 
     /// 읽기가 끝나면 `RpcEvent::Disconnected`를 inbox로 보낸다.
-    pub(crate) fn spawn(self, inbox: mpsc::Sender<RpcEvent>) -> Outbox {
+    pub(crate) fn spawn(self, inbox: mpsc::Sender<RpcEvent>, gate: PassGate) -> Outbox {
         let (sender, receiver) = mpsc::channel(OUTBOX_CAPACITY);
         let kill = Arc::new(Notify::new());
         let (read_half, write_half) = self.stream.into_split();
         tokio::spawn(write_loop(write_half, receiver, Arc::clone(&kill)));
-        tokio::spawn(read_loop(self.id, read_half, inbox, sender.clone()));
+        tokio::spawn(read_loop(self.id, read_half, inbox, sender.clone(), gate));
         Outbox { sender, kill }
     }
 }
@@ -47,15 +53,26 @@ async fn read_loop(
     read_half: tokio::net::unix::OwnedReadHalf,
     inbox: mpsc::Sender<RpcEvent>,
     replies: mpsc::Sender<ServerMessage>,
+    gate: PassGate,
 ) {
     let mut lines = BufReader::new(read_half).lines();
+    let mut line_in = Line {
+        id,
+        inbox: &inbox,
+        replies: &replies,
+        gate: &gate,
+        queued: Vec::new(),
+    };
     while let Some(line) = next_line(&mut lines, id).await {
         if line.trim().is_empty() {
             continue;
         }
-        if !forward_line(id, &line, &inbox, &replies).await {
+        if !line_in.forward(&line).await {
             return; // 서버가 이미 닫혔다
         }
+    }
+    for waiter in line_in.queued {
+        gate.cancel(waiter); // 끊긴 연결의 대기 요청은 자리를 받지 않는다
     }
     let _ = inbox.send(RpcEvent::Disconnected(id)).await; // 서버가 이미 닫혔다
 }
@@ -73,24 +90,131 @@ async fn next_line(
     }
 }
 
-/// 서버가 이미 닫혀 요청을 넘기지 못하면 거짓.
-async fn forward_line(
+/// 연결 하나가 읽은 줄을 처리하는 데 쓰는 값.
+struct Line<'a> {
     id: ClientId,
-    line: &str,
-    inbox: &mpsc::Sender<RpcEvent>,
-    replies: &mpsc::Sender<ServerMessage>,
-) -> bool {
-    match envelope::decode_client_line(line) {
-        Ok(message) => {
-            let event = RpcEvent::Request(id, message.id, message.request);
-            inbox.send(event).await.is_ok()
-        }
-        Err(error) => {
-            if let CodecError::Decode { kind, column, .. } = &error {
-                tracing::warn!(client = id.0, %kind, column, "dropped client line");
+    inbox: &'a mpsc::Sender<RpcEvent>,
+    replies: &'a mpsc::Sender<ServerMessage>,
+    gate: &'a PassGate,
+    /// 이 연결이 대기열에 세워 둔 하위 접속 요청.
+    queued: Vec<Waiter>,
+}
+
+impl Line<'_> {
+    /// 서버가 이미 닫혀 요청을 넘기지 못하면 거짓.
+    async fn forward(&mut self, line: &str) -> bool {
+        match envelope::decode_client_line(line) {
+            Ok(message) => match message.request {
+                Request::AttachChild { pass, mode } => {
+                    self.admit_child(message.id, &pass, mode.as_deref()).await
+                }
+                request => {
+                    let event = RpcEvent::Request(self.id, message.id, request);
+                    self.inbox.send(event).await.is_ok()
+                }
+            },
+            Err(error) => {
+                if let CodecError::Decode { kind, column, .. } = &error {
+                    tracing::warn!(client = self.id.0, %kind, column, "dropped client line");
+                }
+                let _ = self.replies.try_send(error.to_response().into()); // 넘치면 쓰기 쪽이 곧 끊긴다
+                true
             }
-            let _ = replies.try_send(error.to_response().into()); // 넘치면 쓰기 쪽이 곧 끊긴다
-            true
+        }
+    }
+
+    /// 출입증과 상한은 요청 처리 루프를 거치지 않고 여기서 확인한다. 거절은 바로 답하고, 상한이 차면 기다리는 동안에도
+    /// 이 연결의 다음 줄을 계속 읽는다.
+    async fn admit_child(&mut self, request: RequestId, pass: &str, mode: Option<&str>) -> bool {
+        let wanted = match mode.map(Mode::parse) {
+            None => None,
+            Some(Some(mode)) => Some(mode),
+            Some(None) => {
+                let message = "unknown permission mode";
+                let _ = self
+                    .replies
+                    .try_send(Response::error(Some(request), INVALID_PARAMS, message).into()); // 넘치면 쓰기 쪽이 곧 끊긴다
+                return true;
+            }
+        };
+        match self.gate.request(pass, wanted) {
+            Entry::Rejected(reject) => {
+                let message = reject_message(reject);
+                let _ = self.replies.try_send(
+                    Response::error_of_kind(
+                        Some(request),
+                        CHILD_REJECTED,
+                        Some(ErrorKind::Failed),
+                        message,
+                    )
+                    .into(),
+                ); // 넘치면 쓰기 쪽이 곧 끊긴다
+                true
+            }
+            Entry::Admitted(grant) => {
+                let event = RpcEvent::Child(self.id, request, grant);
+                self.inbox.send(event).await.is_ok()
+            }
+            Entry::Queued {
+                position,
+                waiter,
+                wait,
+            } => {
+                let queued = Notification::ChildQueued { position };
+                let _ = self.replies.try_send(queued.into()); // 넘치면 쓰기 쪽이 곧 끊긴다
+                self.queued.push(waiter);
+                tokio::spawn(await_place(
+                    self.id,
+                    request,
+                    wait,
+                    self.inbox.clone(),
+                    self.replies.clone(),
+                    self.gate.clone(),
+                ));
+                true
+            }
+        }
+    }
+}
+
+/// 자리가 날 때까지 기다렸다가 요청 처리 루프에 넘긴다. 이 연결의 읽기는 막지 않는다.
+async fn await_place(
+    id: ClientId,
+    request: RequestId,
+    wait: tokio::sync::oneshot::Receiver<Waited>,
+    inbox: mpsc::Sender<RpcEvent>,
+    replies: mpsc::Sender<ServerMessage>,
+    gate: PassGate,
+) {
+    match wait.await {
+        Ok(Waited::Granted(grant)) => {
+            if let Err(error) = inbox.send(RpcEvent::Child(id, request, grant)).await
+                && let RpcEvent::Child(_, _, grant) = error.0
+            {
+                gate.abandon(&grant); // 서버가 이미 닫혔다
+            }
+        }
+        Ok(Waited::Cancelled) | Err(_) => {
+            let message = "parent was stopped before a place opened";
+            let _ = replies.try_send(
+                Response::error_of_kind(
+                    Some(request),
+                    CHILD_REJECTED,
+                    Some(ErrorKind::Failed),
+                    message,
+                )
+                .into(),
+            ); // 연결이 이미 끊겼을 수 있다
+        }
+    }
+}
+
+fn reject_message(reject: Reject) -> String {
+    match reject {
+        Reject::UnknownPass => "pass is unknown or revoked".to_owned(),
+        Reject::DepthExceeded { max } => format!("child depth limit {max} exceeded"),
+        Reject::ModeAboveParent { parent } => {
+            format!("requested mode is above the parent mode {}", parent.name())
         }
     }
 }

@@ -29,6 +29,9 @@ pub(crate) struct Cli {
     /// 채팅에 폴더를 더한다(여러 번). 더한 폴더는 채팅 기록에 저장되고 모든 provider session이 그 폴더에 접근한다.
     #[arg(long = "add-dir", value_name = "DIR")]
     pub(crate) add_dir: Vec<PathBuf>,
+    /// 에이전트 작업 안의 하위 접속이 쓸 권한 모드. 부모 모드를 넘으면 거절하고, 없으면 부모 모드를 쓴다.
+    #[arg(long, value_name = "MODE")]
+    pub(crate) mode: Option<String>,
     /// 하위 명령. 없으면 대화 화면(터미널이면 전체 화면, 파이프나 CI면 plain)을 연다.
     #[command(subcommand)]
     pub(crate) command: Option<Command>,

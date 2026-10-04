@@ -221,6 +221,22 @@ impl Settings {
         self.text("tui.keymap")
     }
 
+    /// 하위 접속 상한 `child.*`. 사용자 전용이고 없는 키는 기본값이다.
+    pub(crate) fn child_limits(&self) -> saturn_core::passes::PassLimits {
+        let defaults = saturn_core::passes::PassLimits::DEFAULT;
+        let number = |key: &str, fallback: u32| {
+            self.get(key)
+                .and_then(Value::as_u64)
+                .and_then(|value| u32::try_from(value).ok())
+                .unwrap_or(fallback)
+        };
+        saturn_core::passes::PassLimits {
+            max_depth: number("child.max_depth", defaults.max_depth),
+            max_concurrent: number("child.max_concurrent", defaults.max_concurrent),
+            max_total: number("child.max_total", defaults.max_total),
+        }
+    }
+
     /// 옛 스냅샷의 `on_exit`도 읽는다.
     pub(crate) fn on_exit(&self) -> OnExit {
         match self.text_or_old("tui.on_exit", "on_exit") {

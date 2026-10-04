@@ -25,6 +25,7 @@ mod add_dir;
 mod calls;
 mod chat_env;
 mod chat_labels;
+mod children;
 mod commands;
 mod constraints;
 mod control;
@@ -40,6 +41,7 @@ mod intake;
 mod launch;
 mod models;
 mod outcomes;
+mod passes;
 mod permission;
 mod prune;
 mod recover;
@@ -73,6 +75,8 @@ use saturn_protocol::envelope::{ErrorKind, INTERNAL_ERROR, INVALID_PARAMS, METHO
 use saturn_protocol::ids::{AgentId, ChatId, Provider, RunId, TaskId};
 
 use crate::chat_env::ChatEnv;
+use crate::children::ChildLink;
+use crate::passes::PassGate;
 use crate::processes::{NESTED_MARKER_ENV, ProcessError};
 use crate::routers::{ActiveRouter, Routers, RoutersError, SharedSecrets};
 use crate::rpc::{ClientId, RpcError, RpcServer};
@@ -90,9 +94,15 @@ const ATTACH_HISTORY: u32 = 50;
 /// 시작 단계 오류면 원인 한 줄을 stderr에 보이고 소켓을 열지 않고 끝난다.
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
-    /// 자식 Saturn을 부모에 잇는 방식이 정해질 때까지 에이전트 작업 안의 실행을 거절한다.
-    #[error("nested saturn is not allowed inside an agent task")]
+    /// 에이전트 작업 안에서는 engine을 띄우지 않는다. 하위 Saturn은 떠 있는 engine에 출입증으로 접속한다.
+    #[error("engine must not be started inside an agent task")]
     Nested,
+    /// 하위 접속을 받지 않았다. 부모에 실행 중인 작업이 없거나 요청 모드가 부모 모드를 넘는다.
+    #[error("child session rejected: {reason}")]
+    ChildRejected {
+        /// 원인 한 줄. 출입증 글자는 담지 않는다.
+        reason: String,
+    },
     /// 판단 방식에 맞는 router를 만들 수 없어 키를 받아도 확인할 수 없다.
     #[error("router is not available: {reason}")]
     RouterUnavailable {
@@ -158,6 +168,7 @@ impl EngineError {
     fn code(&self) -> i32 {
         match self {
             Self::RouterKeyRequired { .. } => ROUTER_KEY_REQUIRED,
+            Self::ChildRejected { .. } => saturn_protocol::rpc::CHILD_REJECTED,
             Self::Unsupported { .. } => METHOD_NOT_FOUND,
             Self::UnexpectedAnswer { .. }
             | Self::UnknownPermissionMode { .. }
@@ -196,6 +207,7 @@ impl EngineError {
             | Self::Training(TrainingError::UnknownVersion { .. }) => Some(ErrorKind::NotFound),
             Self::Training(TrainingError::NotEnough { .. }) => Some(ErrorKind::RetryLater),
             Self::NoProvider
+            | Self::ChildRejected { .. }
             | Self::Provider(_)
             | Self::Training(TrainingError::Grader(_) | TrainingError::Trainer { .. }) => {
                 Some(ErrorKind::Failed)
@@ -324,6 +336,10 @@ pub struct Engine {
     routers: Routers,
     router_gate: RouterGate,
     rpc: RpcServer,
+    /// 하위 접속 출입증과 상한. 연결 작업이 요청 처리 루프를 거치지 않고 함께 쓴다.
+    passes: PassGate,
+    /// 하위 접속으로 만든 채팅과 그 부모 작업.
+    children: HashMap<ChatId, ChildLink>,
     attachments: HashMap<ClientId, Attachment>,
     /// 채팅마다 가장 나중에 붙은 TUI가 넘긴 작업 폴더와 환경.
     chats: HashMap<ChatId, ChatEnv>,

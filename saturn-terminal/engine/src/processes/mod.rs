@@ -140,10 +140,15 @@ struct Watched {
     exited: Option<ExitInfo>,
 }
 
+/// 읽은 시각과 프로세스 표.
+type TableCache = Arc<tokio::sync::Mutex<Option<(Instant, Arc<Vec<ProcessRow>>)>>>;
+
 /// engine에 하나, 복제해 provider 연결마다 나눠 준다(내부는 공유).
 #[derive(Debug, Clone, Default)]
 pub struct Supervisor {
     groups: Arc<Mutex<HashMap<ProcessGroupId, Watched>>>,
+    /// 감시 작업들이 나눠 쓰는 프로세스 표. 묶음마다 `ps`를 띄우지 않아 묶음 수와 상관없이 한 번에 하나만 돈다.
+    table: TableCache,
 }
 
 impl Supervisor {
@@ -347,7 +352,7 @@ impl Supervisor {
             let Ok(exit) = self.reap(group) else {
                 return;
             };
-            let Ok(rows) = process_table().await else {
+            let Ok(rows) = self.shared_table().await else {
                 continue;
             };
             self.remember_descendants(group, &rows);
@@ -359,6 +364,22 @@ impl Supervisor {
                 return;
             }
         }
+    }
+
+    // cost: time O(r), heap O(r), stack O(1), io 1 per interval
+    // vars: r = 시스템 프로세스 수
+    // basis: estimate
+    /// 감시 간격의 절반보다 새로운 표가 있으면 그것을 쓰고, 없으면 한 작업만 새로 읽는다. 기다리던 다른 작업은 그 결과를 쓴다.
+    async fn shared_table(&self) -> Result<Arc<Vec<ProcessRow>>, ProcessError> {
+        let mut cached = self.table.lock().await;
+        if let Some((read_at, rows)) = cached.as_ref()
+            && read_at.elapsed() < WATCH_INTERVAL / 2
+        {
+            return Ok(Arc::clone(rows));
+        }
+        let rows = Arc::new(process_table().await?);
+        *cached = Some((Instant::now(), Arc::clone(&rows)));
+        Ok(rows)
     }
 
     fn reap(&self, group: ProcessGroupId) -> Result<Option<ExitInfo>, ProcessError> {

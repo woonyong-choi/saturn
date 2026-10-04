@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::Context;
 use saturn_protocol::envelope::INVALID_REQUEST;
-use saturn_protocol::rpc::{PROTOCOL_VERSION, Request};
+use saturn_protocol::rpc::{PASS_ENV, PROTOCOL_VERSION, Request, SOCKET_ENV};
 use saturn_tui::client::{ClientError, EngineClient, EngineVersion};
 use saturn_tui::i18n::{self, Lang};
 
@@ -61,23 +61,57 @@ struct StartedEngine {
     log_before: Option<(PathBuf, u64)>,
 }
 
-/// TODO(#33): 자식 Saturn을 부모와 잇는 방식과 판별 신호가 정해지면 거절 대신 연결한다
-///
-/// # Errors
-/// 에이전트 작업 안에서 실행됐으면 오류.
-pub(crate) fn ensure_not_nested(lang: Lang) -> anyhow::Result<()> {
-    check_nested(lang, std::env::var_os(NESTED_MARKER_ENV).as_deref())
+/// 에이전트 작업 안에서 실행됐는지와 출입증이 있는지. engine이 띄운 provider 프로세스 환경에만 이 변수가 있다.
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) enum Origin {
+    /// 사용자 터미널이나 Saturn 밖의 도구. 일반 접속이다.
+    Outside,
+    /// Saturn이 띄운 에이전트 작업 안. 출입증으로 부모 채팅의 하위 작업이 된다.
+    Child { pass: String, socket: PathBuf },
 }
 
-fn check_nested(lang: Lang, marker: Option<&OsStr>) -> anyhow::Result<()> {
-    if marker.is_some() {
-        return Err(Exit::error(
-            ExitCode::Usage,
-            lang.tr(i18n::CLI_NESTED)
-                .replace("{marker}", NESTED_MARKER_ENV),
-        ));
+impl std::fmt::Debug for Origin {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Outside => f.write_str("Outside"),
+            Self::Child { socket, .. } => f
+                .debug_struct("Child")
+                .field("socket", socket)
+                .finish_non_exhaustive(),
+        }
     }
-    Ok(())
+}
+
+/// 출입증은 engine이 provider 프로세스에만 주므로 표지는 있는데 출입증이 없으면 회수됐거나 만들지 못한 것이다.
+///
+/// # Errors
+/// 에이전트 작업 안인데 출입증이 없으면 오류.
+pub(crate) fn origin(lang: Lang) -> anyhow::Result<Origin> {
+    origin_of(
+        lang,
+        std::env::var_os(NESTED_MARKER_ENV).as_deref(),
+        std::env::var(PASS_ENV).ok(),
+        std::env::var_os(SOCKET_ENV).map(PathBuf::from),
+    )
+}
+
+fn origin_of(
+    lang: Lang,
+    marker: Option<&OsStr>,
+    pass: Option<String>,
+    socket: Option<PathBuf>,
+) -> anyhow::Result<Origin> {
+    match (marker, pass.filter(|pass| !pass.is_empty())) {
+        (_, Some(pass)) => Ok(Origin::Child {
+            pass,
+            socket: socket.unwrap_or_else(EngineClient::default_socket),
+        }),
+        (None, None) => Ok(Origin::Outside),
+        (Some(_), None) => Err(Exit::error(
+            ExitCode::Usage,
+            lang.tr(i18n::CLI_PASS_MISSING).replace("{pass}", PASS_ENV),
+        )),
+    }
 }
 
 /// # Errors
@@ -704,13 +738,44 @@ mod tests {
     }
 
     #[test]
-    fn check_nested_with_marker_is_error() {
-        assert!(check_nested(Lang::En, Some(OsStr::new("1"))).is_err());
+    fn origin_with_marker_and_no_pass_is_error() {
+        let error = origin_of(Lang::En, Some(OsStr::new("1")), None, None).unwrap_err();
+
+        assert!(error.to_string().contains(PASS_ENV));
     }
 
     #[test]
-    fn check_nested_without_marker_is_ok() {
-        assert!(check_nested(Lang::En, None).is_ok());
+    fn origin_with_an_empty_pass_is_error() {
+        let result = origin_of(Lang::En, Some(OsStr::new("1")), Some(String::new()), None);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn origin_without_marker_or_pass_is_outside() {
+        assert_eq!(
+            origin_of(Lang::En, None, None, None).unwrap(),
+            Origin::Outside
+        );
+    }
+
+    #[test]
+    fn origin_with_a_pass_is_a_child_on_the_given_socket() {
+        let origin = origin_of(
+            Lang::En,
+            Some(OsStr::new("1")),
+            Some("pass-value".to_owned()),
+            Some(PathBuf::from("/run/engine.sock")),
+        )
+        .unwrap();
+
+        assert_eq!(
+            origin,
+            Origin::Child {
+                pass: "pass-value".to_owned(),
+                socket: PathBuf::from("/run/engine.sock"),
+            }
+        );
     }
 
     #[tokio::test]

@@ -23,8 +23,7 @@ impl Engine {
     ) -> Permission {
         let read = async {
             let configured = self.settings.at(&self.store, revision).await?.permission();
-            let layer = self.store.chat_layer(chat).await?;
-            let mode = settings::chat_layer_mode(layer.as_deref()).unwrap_or(configured.mode);
+            let mode = self.chat_mode(chat, revision).await?;
             let can_open_writes = configured
                 .rules
                 .iter()
@@ -41,13 +40,38 @@ impl Engine {
         }
     }
 
+    /// 채팅 층 모드를 먼저 읽고 없으면 설정 모드다. 하위 채팅은 부모 채팅의 모드를 넘을 수 없으므로, 부모 쪽으로 올라가며
+    /// 가장 낮은 모드를 쓴다. 부모가 모드를 낮추거나 설정이 바뀌면 하위 채팅도 다음 판정부터 따라간다.
+    ///
+    /// # Errors
+    /// 설정이나 기록 저장소를 읽지 못하면 그 오류.
+    pub(crate) async fn chat_mode(
+        &self,
+        chat: ChatId,
+        revision: SettingsRevision,
+    ) -> Result<Mode, EngineError> {
+        let configured = self
+            .settings
+            .at(&self.store, revision)
+            .await?
+            .permission()
+            .mode;
+        let mut lowest: Option<Mode> = None;
+        let mut current = Some(chat);
+        while let Some(id) = current {
+            let layer = self.store.chat_layer(id).await?;
+            let own = settings::chat_layer_mode(layer.as_deref()).unwrap_or(configured);
+            lowest = Some(lowest.map_or(own, |lowest| lowest.min(own)));
+            current = self.passes.parent_of(id);
+        }
+        Ok(lowest.unwrap_or(configured))
+    }
+
     /// 채팅 층 모드를 먼저 읽고 없으면 설정 모드를 읽어 `full`인지 본다. 제약을 묻지 않고 지키는 쪽으로 등록할지 정하는 데 쓴다.
     /// 읽지 못하면 묻는 쪽(거짓)으로 둔다.
     pub(crate) async fn is_full_mode(&self, chat: ChatId, revision: SettingsRevision) -> bool {
         let read = async {
-            let configured = self.settings.at(&self.store, revision).await?.permission();
-            let layer = self.store.chat_layer(chat).await?;
-            let mode = settings::chat_layer_mode(layer.as_deref()).unwrap_or(configured.mode);
+            let mode = self.chat_mode(chat, revision).await?;
             Ok::<bool, EngineError>(mode == Mode::Full)
         };
         match read.await {
@@ -212,10 +236,10 @@ impl Engine {
         chat: ChatId,
         revision: SettingsRevision,
     ) -> Result<bool, EngineError> {
-        let configured = self.settings.at(&self.store, revision).await?.permission();
-        let layer = self.store.chat_layer(chat).await?;
-        let mode = settings::chat_layer_mode(layer.as_deref()).unwrap_or(configured.mode);
-        Ok(mode != Mode::Full)
+        if self.children.contains_key(&chat) {
+            return Ok(false); // 하위 채팅에는 답할 사용자가 없다
+        }
+        Ok(self.chat_mode(chat, revision).await? != Mode::Full)
     }
 
     /// 그 번호의 규칙 지문과 에이전트 질문 기능. 연결을 시작할 때 읽은 값과 비교한다.
@@ -252,9 +276,8 @@ impl Engine {
             .or(self.settings.current())
             .ok_or(SettingsError::NoPreviousRevision)?;
         let configured = self.settings.at(&self.store, revision).await?.permission();
-        let layer = self.store.chat_layer(chat).await?;
         Ok(Policy {
-            mode: settings::chat_layer_mode(layer.as_deref()).unwrap_or(configured.mode),
+            mode: self.chat_mode(chat, revision).await?,
             always: self.store.permission_allows(&key).await?,
             rules: configured.rules,
             extra_dirs: self
@@ -342,9 +365,15 @@ impl Engine {
         let mode = Mode::parse(mode).ok_or_else(|| EngineError::UnknownPermissionMode {
             mode: mode.to_owned(),
         })?;
+        if let Err(parent) = self.passes.check_mode(chat, mode) {
+            return Err(EngineError::ChildRejected {
+                reason: format!("requested mode is above the parent mode {}", parent.name()),
+            });
+        }
         let layer = self.store.chat_layer(chat).await?;
         let updated = settings::with_chat_layer_mode(layer.as_deref(), mode);
         self.store.set_chat_layer(chat, &updated).await?;
+        self.passes.set_mode(chat, mode);
         if let Some(revision) = self.settings.current() {
             self.sync_provider_settings(chat, revision).await;
         }

@@ -131,6 +131,9 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("model.mode", Kind::OneOf(&["auto", "manual"])),
     ("grading.model", Kind::Text),
     ("consent.share_with_server", Kind::Flag),
+    ("child.max_depth", Kind::Whole),
+    ("child.max_concurrent", Kind::Positive),
+    ("child.max_total", Kind::Positive),
     ("retention.max_age_days", Kind::Positive),
     ("retention.auto_prune", Kind::Flag),
     ("context.safety_percent", Kind::Percent),
@@ -243,6 +246,8 @@ pub(crate) enum UserOnly {
     RouterMode,
     /// 보존 기간과 자동 삭제. 비용과 삭제가 걸려 사용자만 정한다.
     Retention,
+    /// 하위 접속 상한. 저장소가 상한을 올려 provider 프로세스를 늘리지 못하게 한다.
+    ChildLimits,
 }
 
 impl UserOnly {
@@ -255,6 +260,7 @@ impl UserOnly {
             Self::DataSharingConsent => "consent",
             Self::RouterMode => "router.mode",
             Self::Retention => "retention",
+            Self::ChildLimits => "child",
         }
     }
 
@@ -274,6 +280,7 @@ pub(crate) const USER_ONLY: &[UserOnly] = &[
     UserOnly::DataSharingConsent,
     UserOnly::RouterMode,
     UserOnly::Retention,
+    UserOnly::ChildLimits,
 ];
 
 /// 옛 이름과 새 이름. 옛 이름은 층마다 병합 전에 새 이름으로 옮기고 경고 한 줄을 남긴다.

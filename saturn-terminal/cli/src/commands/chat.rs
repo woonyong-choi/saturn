@@ -172,6 +172,7 @@ fn run_options(
             .collect(),
         add_dirs,
         history,
+        child: None,
     }
 }
 

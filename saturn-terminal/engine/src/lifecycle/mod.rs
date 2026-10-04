@@ -6,6 +6,8 @@ mod attach;
 mod changed_files;
 mod chat_labels;
 mod chats;
+mod child_load;
+mod child_passes;
 mod child_sessions;
 mod commands;
 mod conflict_steer;
@@ -193,7 +195,12 @@ impl Client {
     }
 
     async fn recv(&mut self) -> ServerMessage {
-        let line = timeout(WAIT, self.lines.next_line())
+        self.recv_within(WAIT).await
+    }
+
+    /// 부하 시험처럼 응답이 오래 걸릴 수 있는 곳에서 기다리는 시간을 늘려 쓴다.
+    async fn recv_within(&mut self, limit: Duration) -> ServerMessage {
+        let line = timeout(limit, self.lines.next_line())
             .await
             .expect("engine should reply in time")
             .unwrap()

@@ -805,6 +805,37 @@
           "type": "object"
         },
         {
+          "description": "에이전트 작업 안의 `saturn`이 출입증(`pass`)으로 붙는다. engine은 출입증을 준 채팅의 하위 작업으로 새 채팅을 만들어\n붙인다. 작업 폴더, 더한 폴더, 환경, 권한 규칙은 부모 채팅의 것을 물려받아 요청으로 바꿀 수 없다.\n`mode`는 부모 모드를 넘지 않는 모드이고 없으면 부모 모드다. 동시 상한이 차면 `ChildQueued`를 보내고 자리가 날 때까지\n응답하지 않는다. 출입증이 없거나 회수됐거나 깊이 상한을 넘거나 부모 모드를 넘으면 거절한다. 응답과 알림 순서는 `Attach`와 같다.",
+          "properties": {
+            "method": {
+              "const": "AttachChild",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "mode": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "pass": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "pass"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "description": "채팅의 provider session이 다룰 폴더를 더한다. `path`는 이미 있는 폴더의 절대 경로.\n열려 있는 session에는 반영하지 못하고 다음 session부터 적용한다.",
           "properties": {
             "method": {
@@ -2700,6 +2731,33 @@
           "type": "object"
         },
         {
+          "description": "`AttachChild`가 상한 때문에 대기열에 섰다. `position`은 1부터 센 자리이고 자리가 나면 `Attach`와 같은 알림이 이어진다.",
+          "properties": {
+            "method": {
+              "const": "ChildQueued",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "position": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "position"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "properties": {
             "method": {
               "const": "InputAccepted",
@@ -3693,6 +3751,33 @@
                 "router",
                 "router_version",
                 "folder"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`AttachChild`가 상한 때문에 대기열에 섰다. `position`은 1부터 센 자리이고 자리가 나면 `Attach`와 같은 알림이 이어진다.",
+          "properties": {
+            "method": {
+              "const": "ChildQueued",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "position": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "position"
               ],
               "type": "object"
             }

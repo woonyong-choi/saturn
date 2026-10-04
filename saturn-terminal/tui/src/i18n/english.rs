@@ -244,8 +244,24 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Failed to read the current folder",
     ),
     (
-        "saturn은 에이전트 작업 안에서 실행할 수 없습니다({marker} 변수가 설정되어 있습니다)",
-        "Saturn cannot run inside an agent task (the {marker} variable is set)",
+        "에이전트 작업 안의 saturn은 출입증({pass} 변수)이 있어야 하위 접속을 열 수 있습니다",
+        "Saturn inside an agent task needs a pass (the {pass} variable) to open a child session",
+    ),
+    (
+        "에이전트 작업 안의 하위 접속이 쓸 권한 모드. 부모 모드를 넘으면 거절하고, 없으면 부모 모드를 쓴다",
+        "Permission mode for a child session inside an agent task. Rejected above the parent mode; defaults to the parent mode.",
+    ),
+    (
+        "하위 접속은 표준 입력의 글을 plain 방식으로만 보내므로 --continue, --resume, --add-dir, -c, 하위 명령은 쓸 수 없습니다",
+        "A child session only sends stdin text in plain mode, so --continue, --resume, --add-dir, -c and subcommands are not allowed",
+    ),
+    (
+        "떠 있는 engine에 접속하지 못했습니다. 하위 접속은 engine을 새로 띄우지 않습니다",
+        "Could not reach a running engine. A child session never starts a new engine",
+    ),
+    (
+        "--mode는 에이전트 작업 안의 하위 접속에서만 쓸 수 있습니다",
+        "--mode can only be used by a child session inside an agent task",
     ),
     (
         "{binary} 실행 파일을 saturn 옆이나 PATH에서 찾지 못했습니다",
