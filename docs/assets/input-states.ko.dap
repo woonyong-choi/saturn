@@ -1,0 +1,41 @@
+state down
+title "입력 전달 상태"
+subtitle "입력은 판단 중으로 시작해 반영됨, 거절됨, 취소됨 중 하나로 끝난다"
+
+state judging "판단 중"
+state waiting "대기"
+state delivering "전달 중"
+state applied "반영됨"
+state rejected "거절됨"
+state held "보류"
+state cancelled "취소됨"
+start judging
+final applied
+final rejected
+final cancelled
+
+judging -> waiting "대기로 판단"
+judging -> delivering "끼워 넣기, 새 작업 적용"
+judging -> held "멈춤"
+judging -> cancelled "취소"
+waiting -> delivering "보냄"
+waiting -> held "멈춤"
+waiting -> cancelled "취소"
+delivering -> applied "provider가 받음"
+delivering -> waiting "끼워 넣기 거절"
+delivering -> rejected "확정 실패 3번"
+held -> waiting "재개"
+held -> cancelled "보류 종료"
+
+step "실행 중 지시를 더할 때" "router가 끼워 넣기로 판단하면 전달 중을 거쳐 반영됨이 된다"
+  judging -> delivering
+  delivering -> applied
+step "멈춘 뒤 이어 갈 때" "멈춤은 대기 입력을 보류로 바꾸고, 재개하면 대기로 돌아와 다시 순서를 기다린다"
+  judging -> waiting
+  waiting -> held
+  held -> waiting
+  waiting -> delivering
+step "끼워 넣기를 거절당할 때" "provider가 끼워 넣기를 거절하면 입력은 대기 맨 앞으로 돌아가 다음 차례에 새 턴으로 간다"
+  judging -> delivering
+  delivering -> waiting
+  waiting -> delivering

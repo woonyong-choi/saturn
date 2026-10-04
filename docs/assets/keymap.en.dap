@@ -1,0 +1,42 @@
+flow down
+title "Keymap resolution"
+subtitle "A preset layers over the base table, then the resolver turns a key into an action in table order"
+
+group build "Build the table" direction=right {
+  store base "Base table" "action, scope, keys, condition, command"
+  box preset "Preset" "tui.keymap or /keymap"
+}
+box keymap "Keymap" "final table after inheritance"
+group lookup "Find the key (resolve)" direction=down {
+  box global "Global table" "checked first"
+  box area "Scope table" "Composer, Popup, ..."
+  box composer "Composer table" "keys the scope passes on"
+  box last "Last table" "Ctrl+C"
+}
+box typed "Typing rule" "character keys not in a table"
+box action "Action" "what the TUI receives"
+
+base -> keymap "base" no=1
+preset -> keymap "overrides" no=1
+keymap -> global "use table" no=2
+global -> area no=3
+area -> composer no=4
+composer -> last no=5
+last -> typed "no matching line" dashed
+typed -> action "insert char"
+global -> action "matching line" quiet
+
+step "Merge tables" "Keys not listed inherit the base table, a listed line replaces that action's keys in its scope"
+  base -> keymap
+  preset -> keymap
+  say "One key bound to two actions in a scope makes the table unreadable"
+step "Find the key" "Global, scope, composer, then last table, in that order"
+  keymap -> global
+  global -> area
+  area -> composer
+  composer -> last
+step "On a match" "The first matching line returns its action to the TUI"
+  global -> action
+step "No table match" "A character key follows the scope's typing rule"
+  last -> typed
+  typed -> action

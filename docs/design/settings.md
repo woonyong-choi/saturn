@@ -42,6 +42,11 @@
 
 ### 설정 층
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/settings-layers.ko.dark.svg">
+  <img src="../assets/settings-layers.ko.light.svg" alt="설정은 기본값, 사용자, 폴더, 채팅, 실행 층을 차례로 병합하고 뒤 층의 값이 앞 층을 이긴다" width="100%">
+</picture>
+
 뒤 층의 값이 앞 층의 값보다 우선한다.
 
 | 순서 | 층 | 위치 |
@@ -122,8 +127,8 @@
 | `retention.auto_prune` | 참·거짓 | 거짓. 참이고 `max_age_days`가 있을 때만 engine 시작 때 한 번 그 기한보다 오래 쓰지 않은 채팅을 지운다. 삭제라 `max_age_days`만으로 켜지지 않는다([기록](records.md#보존과-정리)) |
 | `context.safety_percent` | 0~100 정수 | 70 |
 | `context.mode` | `saturn`, `provider` | `saturn` |
-| `context.packet_hard_percent` | 1~100 정수 | 20 |
-| `context.item_cap_percent` | 1~100 정수 | 30 |
+| `context.packet_hard_percent` | 1~100 정수 | 20. 키는 검사하지만 engine이 아직 읽지 않아 적용되지 않는다. 패킷은 기본 상수를 쓴다([#380](https://github.com/woonyong-choi/saturn/issues/380)) |
+| `context.item_cap_percent` | 1~100 정수 | 30. 키는 검사하지만 engine이 아직 읽지 않아 적용되지 않는다. 패킷은 기본 상수를 쓴다([#380](https://github.com/woonyong-choi/saturn/issues/380)) |
 | `context.constraint_slot_percent` | 1~100 정수 | 25(초안). 구현 전([#380](https://github.com/woonyong-choi/saturn/issues/380)) |
 | `context.select.rrf_k` | 0 이상 정수 | 60 |
 

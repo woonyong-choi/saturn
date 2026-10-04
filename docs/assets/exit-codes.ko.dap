@@ -1,0 +1,36 @@
+flow right
+title "종료 코드"
+subtitle "코드 값만 보고 호출을 바꿀지, 다시 시도할지, 설정을 고칠지 가른다"
+
+group call "호출을 바꾼다" direction=down {
+  box c2 "2" "사용법 오류"
+  box c66 "66" "대상 없음"
+}
+group retry "다시 시도한다" direction=down {
+  box c69 "69" "engine을 쓸 수 없음"
+  box c75 "75" "지금은 안 되고 나중에 가능"
+}
+group config "설정을 고친다" direction=down {
+  box c77 "77" "router 키 없음이나 확인 실패"
+  box c78 "78" "설정 오류"
+}
+group other "그 밖의 실패" direction=down {
+  box c1 "1" "그 밖의 실패"
+  box c70 "70" "engine 내부 오류"
+}
+group done "정상과 중단" direction=down {
+  box c0 "0" "성공"
+  box c130 "130" "사용자 중단"
+}
+
+
+step "호출을 바꾼다" "모르는 인자, 이어 열 채팅이나 폴더가 없음은 같은 호출을 다시 해도 같다"
+  light c2 c66
+step "다시 시도한다" "engine 시작과 연결 실패, 학습 표본 부족은 다시 실행하면 풀릴 수 있다"
+  light c69 c75
+step "설정을 고친다" "router 키와 설정 파일이나 값을 고쳐야 풀린다"
+  light c77 c78
+step "그 밖의 실패" "예상한 실패는 1, engine이 원인 없이 거절하면 70이다"
+  light c1 c70
+step "정상과 중단" "끝났거나, 사용자가 창을 닫아 멈췄다"
+  light c0 c130

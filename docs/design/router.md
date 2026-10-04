@@ -79,7 +79,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 
 ### 질문별 기준값과 대체 규칙
 
-행동 조건은 router 답으로 행동하는 기준이다. 대체 규칙은 판단이 없거나, 확신도가 기준보다 낮거나, 답이 `invalid`일 때 따르는 동작이다. `keep_current` 0.8은 [#6](https://github.com/woonyong-choi/saturn/issues/6), `resume_held` 0.85는 [#9](https://github.com/woonyong-choi/saturn/issues/9) 실험으로 확인한다.
+행동 조건은 router 답으로 행동하는 기준이다. 대체 규칙은 판단이 없거나, 확신도가 기준보다 낮거나, 답이 `invalid`일 때 따르는 동작이다. `keep_current` 0.8은 [한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md)에서 측정했고 기본값을 유지한다. `resume_held` 0.85는 [#9](https://github.com/woonyong-choi/saturn/issues/9) 실험으로 확인한다.
 
 | 질문 세트 | 질문 | 형식 | 행동 조건 | 대체 규칙 |
 |---|---|---|---|---|
@@ -106,7 +106,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 - 실행 중이면 처리 방식을 `relation_to_running`과 `steer_or_spawn`으로 정한다. `refines`, `continues`면 `steer_or_spawn`의 `steer`, `queue`, `spawn`을 끼워 넣기, 대기, 새 작업으로 옮기고, `independent`면 새 작업이다. `conflicts`는 `steer_or_spawn` 답과 관계없이 끼워 넣기로 둔다. 모델이 다음 단계에서 입력을 읽고 방향을 바꾸게 하고, 끼워 넣을 수 없을 때의 확인은 [충돌 입력](input-handling.md#충돌-입력)이 정한다. 확신도가 0.6 미만이면 충돌로 보지 않고 대기로 둔다. 실행 중이 아니면 `keep_current`로 현재 에이전트 대기와 새 작업을 가른다.
 - `target_model`의 선택지는 허용 후보와 `other`이고, `other`를 고르면 대체 규칙을 따른다. 후보가 없으면 묻지 않는다. 허용 후보는 provider가 알려 주는 모델 목록으로, `/model`이 보이는 목록과 같다([모델 고르기](providers-and-sessions.md#모델-고르기)). 채팅에 고정한 모델이 있으면 `target_model`만 묻지 않고 그 모델을 쓰며, 관계 판단 질문은 똑같이 묻는다. 모델 선택 방식이 매뉴얼(`model.mode`)이어도 `target_model`만 묻지 않고 기본 모델을 쓴다. `other`나 확신도 0.6 미만, 후보 밖 값, router 장애도 기본 모델로 받는다. 기본 모델이 없으면 현재 모델이다([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)). engine은 provider 연결을 만들 때 받아 둔 모델 목록(`/model`이 보이는 목록)을 Claude, Codex 순으로 후보에 넣고, 선택지는 `<provider>/<model>` 글이다. 목록을 아직 못 받은 provider(연결 전이거나 목록 요청이 실패한 경우)는 후보에서 빠지고, 받은 목록이 없으면 묻지 않아 현재 모델(첫 입력은 기본 provider의 기본값)을 쓴다. 후보는 관계 판단과 같은 요청에서 묻지만, 고른 모델은 새 작업으로 판단된 입력에만 적용한다. 이어 가는 입력(대기)과 끼워 넣기는 현재 모델을 유지한다. 적용한 모델은 입력 기록(`inputs.pinned_model`)에 남겨 다시 시작해도 같은 모델로 보낸다. 그 새 작업이 메인이고 모델이 열린 메인 session의 모델과 다르면 새 메인 session 규칙을 따르고, 보조 에이전트면 그 모델로 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기))(초안).
 - `difficulty`와 `skills`는 답을 쓰는 곳이 생기기 전까지 묻지 않고 대체 규칙(미사용, 힌트 생략)으로 둔다. 쓰지 않는 질문으로 판단 비용을 늘리지 않기 위해서다.
-- 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `route@1.1`은 `is_constraint`를 더한다. `constraint@1.0`은 `constraint_change`와 `line_<k>_is_constraint`로 시작한다. 기존 질문의 뜻은 바뀌지 않기 때문이다.
+- 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `route@1.1`은 `is_constraint`를 더한다. `constraint@1.0`은 `constraint_change`와 `line_<k>_is_constraint`로 시작한다. 기존 질문의 뜻은 바뀌지 않기 때문이다. `constraint_change`와 기준값 `constraint_release`는 구현 전이고 지금 코드의 `constraint@1.0`은 `line_<k>_is_constraint`만 묻는다([#379](https://github.com/woonyong-choi/saturn/issues/379)).
 - 행동 조건을 채운 선택지가 없으면(확신도 미만, `invalid`, 판단 없음, 허용 후보 없음) 질문마다 위 표의 대체 규칙으로 가고, 입력 처리 판단(`route`, `relation`, `send-opt`)은 사용자에게 따로 묻지 않는다. router 장애와 낮은 확신이 입력을 멈추지 않게 하기 위해서다. 제약 판단(`is_constraint`, `constraint_change`)은 낮은 확신일 때 대체 규칙으로 가지 않고 입력 처리를 멈추지 않는 확인 창으로 사용자에게 묻는다. 단 권한 모드가 `full`이면 묻지 않고 기록 줄로 대신한다([제약](constraints.md#사용자에게-묻기))([#103](https://github.com/woonyong-choi/saturn/issues/103), [#39](https://github.com/woonyong-choi/saturn/issues/39)).
 - 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다.
 - 기준값을 판단 기록으로 자동 조정하는 규칙은 [router 학습](router-training.md)에 있다.
@@ -157,6 +157,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 - router 전송의 HTTPS, 허용 호스트, 인증 헤더 규칙은 [router 키 보호](router-key-security.md)에 있다.
 - 기준 router는 `POST https://api.typesafe.ai/v1/systemone`에 `{"model","state","questions"}`를 보낸다. `choice` 기준은 선택지별 `null`, `score` 기준은 질문에 단계 설명이 없어 `level 1`..`level N`이다(초안). 답은 `noul`이나 `probabilities`를 읽고, 0~1 밖이거나 없으면 `invalid`다.
 - 나눈 요청은 동시에 최대 8개(초안)까지 병렬로 보내고, 먼저 끝난 요청을 기다리지 않고 남은 요청을 이어 보낸다. 질문 40개와 약 7KB state 요청의 실측은 1개 0.22초, 4개 동시 0.26초, 8개 동시 0.27초, 4개 차례로 0.97초였다([#179](https://github.com/woonyong-choi/saturn/issues/179) 실측). 8개보다 많은 동시 요청의 속도 제한과 64KB에 가까운 요청의 지연은 재지 않았다.
+- 조각을 병렬로 보내는 일과 조각별 실패 처리, 429 때 동시 수 감소는 구현 전이다. 지금 코드는 조각을 차례로 보내고 한 조각이 실패하면 거기서 멈춰 그 실패를 결과로 쓴다(`saturn-terminal/engine/src/routers/remote.rs`의 `exchange`).
 - 조각마다 응답과 실패를 따로 처리한다. 실패한 조각의 항목은 순위 대체 규칙을 적용하고, 다른 조각의 답은 그대로 쓴다.
 - 속도 제한(429, 529)을 받으면 다른 실패와 같이 5초 뒤 다시 보내고, 남은 요청은 동시 수를 줄여 보낸다. 줄이는 폭은 정하지 않았다(초안).
 - 크기 한도는 토큰을 셀 수 없어 본문 바이트로 잰다(초안, 바이트 수는 토큰 수 이상이다). 나눌 때는 질문 단위로 나누고 조각마다 `state`를 그대로 싣는다. `core`의 `split_request`가 나눈 요청 목록을 만들고 `engine`이 보낸다. `state`와 질문 하나만으로 한도를 넘으면 나누지 못해 오류다.
@@ -226,7 +227,7 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | 요청이 크기 한도를 넘으면 질문 단위로 나눠 같은 state로 보낸다. | `saturn-terminal/core/src/routers/split.rs`의 `split_request_over_limit_splits_by_question_with_same_state` |
 | 나눈 요청은 동시 최대 8개까지 병렬로 보내고 조각마다 실패를 따로 처리한다. | 조각 수가 8을 넘는 요청에서 동시 전송이 8개를 넘지 않는지, 한 조각만 실패시켜 그 항목만 순위 대체인지, 429에서 동시 수가 줄어드는지 확인한다. |
 | 255개 초과 선택지는 나뉘어 전송된다. | 255개 초과 선택지가 나뉘어 전송되는지 확인한다. |
-| `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [#6](https://github.com/woonyong-choi/saturn/issues/6) 실험으로 한국어 평가 세트의 오분류율을 확인한다. |
+| `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md): 0.80에서 현재 state의 재현율 10.1%, 작업 정보를 더한 state 69.7%. 작업 정보를 state에 싣는 일은 구현 전이다. |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
 | 후보를 순위로 자르지 않고 전체를 묻는다. | `saturn-terminal/core/src/routers/tests.rs`의 `compact_questions_150_candidates_ask_all` |
 | 고정하지 않은 입력에 모델 목록을 `target_model` 후보로 묻고 고른 모델로 보낸다. 고정 모델이거나 매뉴얼 모드이거나 목록이 없으면 묻지 않고, 후보 밖이면 기본 모델이나 현재 모델이다. | [모델 고르기](providers-and-sessions.md#모델-고르기)의 `target_model` 테스트 |
@@ -251,4 +252,3 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 - 질문을 상위 범주에서 하위 판단으로 내려가는 계층 트리로 나눌지, 단계마다 호출할지, 지금처럼 한 번에 고를지 ([#68](https://github.com/woonyong-choi/saturn/issues/68))
 - 판단 방식 `collect`를 기준 router가 결정하고 Saturn 모델은 기록만 하는 방식으로 할지, 반대로 할지 ([#40](https://github.com/woonyong-choi/saturn/issues/40))
 - router에 넘기는 state에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))
-- 간접 지시 입력의 `is_constraint` 질문 문장과 부분 충돌 질문을 어떻게 고칠지([#186](https://github.com/woonyong-choi/saturn/issues/186))

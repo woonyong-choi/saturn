@@ -1,0 +1,32 @@
+flow down
+title "provider 전환과 인계"
+subtitle "chat은 하나로 이어지고, 새 Codex session은 Saturn 기록에서 고른 패킷을 받는다"
+
+person user "개발자"
+group chat "chat 하나" direction=down {
+  box engine "engine" "입력 접수와 전달"
+  store record "기록 저장소" "기록 원문"
+  external claude "Claude Code" "session 1"
+  external codex "Codex" "session 2, 새로 연다"
+}
+
+user -> engine "입력"
+engine -> record "기록"
+engine -> claude "입력 전달"
+engine -> codex "패킷, 입력"
+
+step "Claude Code로 작업" "입력은 기록 저장소에 접수된 뒤 Claude session으로 간다"
+  user -> engine "요청"
+  engine -> record
+  engine -> claude
+  claude -> engine "결과"
+  engine -> record
+step "Codex로 전환" "새 Codex session은 기록 원문에서 고른 패킷을 받는다"
+  user -> engine "Codex로 전환"
+  record -> engine "패킷 재료"
+  engine -> codex
+  codex -> engine "결과"
+  engine -> record
+step "한 chat" "두 결과가 한 chat에 남고, 닫힌 Claude session은 ID로 다시 열 수 있다"
+  engine -> user "두 결과"
+  light chat claude codex

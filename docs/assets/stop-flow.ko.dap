@@ -1,0 +1,25 @@
+sequence
+title "멈춤 요청의 처리"
+subtitle "트리 전체의 종료를 확인한 뒤에만 완료를 보고한다"
+
+person user "사용자"
+box tui "tui"
+box engine "engine"
+box core "core"
+store database "database"
+external provider "provider"
+
+step "보류" "core가 실행 중 작업과 보내지 않은 대기 입력을 보류로 바꾸고, engine이 그 상태를 바로 기록한다"
+  user -> tui "멈춤 요청"
+  tui -> engine "`Stop`"
+  engine -> core "작업과 대기 입력을 보류로"
+  core -> engine "보류한 작업과 입력" dashed
+  engine -> database "보류 입력 기록"
+step "멈춤 신호" "core가 subagent부터 대상 순서를 정하고, engine이 신호를 보낸다. 10초 뒤 남은 프로세스에는 중지 신호를, 그래도 남으면 강제 종료를 보낸다"
+  engine -> core "멈춤 대상 순서 요청"
+  core -> engine "subagent부터 대상 순서" dashed
+  engine -> provider "멈춤 신호"
+  engine -> provider "10초 뒤 프로세스 묶음에 중지 신호"
+  engine -> provider "그래도 남으면 강제 종료"
+step "완료 확인" "트리 전체가 끝난 것을 확인하면 완료를, 확인하지 못하면 남은 수를 보고한다"
+  engine -> tui "멈춤 완료, 확인 못하면 남은 수" dashed

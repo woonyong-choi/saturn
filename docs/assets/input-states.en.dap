@@ -1,0 +1,41 @@
+state down
+title "Input delivery states"
+subtitle "An input starts as judging and ends as applied, rejected, or cancelled"
+
+state judging "judging"
+state queued "queued"
+state delivering "delivering"
+state applied "applied"
+state rejected "rejected"
+state held "held"
+state cancelled "cancelled"
+start judging
+final applied
+final rejected
+final cancelled
+
+judging -> queued "judged to queue"
+judging -> delivering "steer, apply as new task"
+judging -> held "stop"
+judging -> cancelled "cancel"
+queued -> delivering "sent"
+queued -> held "stop"
+queued -> cancelled "cancel"
+delivering -> applied "provider accepted"
+delivering -> queued "steer refused"
+delivering -> rejected "3 confirmed failures"
+held -> queued "resume"
+held -> cancelled "end hold"
+
+step "Adding an instruction while running" "When the router judges steer, the input goes through delivering and ends as applied"
+  judging -> delivering
+  delivering -> applied
+step "Continuing after a stop" "A stop turns queued inputs into held, and resuming returns them to queued to wait for their turn again"
+  judging -> queued
+  queued -> held
+  held -> queued
+  queued -> delivering
+step "When a steer is refused" "If the provider refuses the steer, the input returns to the front of the queue and goes in a new turn next"
+  judging -> delivering
+  delivering -> queued
+  queued -> delivering

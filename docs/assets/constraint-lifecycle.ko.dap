@@ -1,0 +1,32 @@
+state right
+title "제약의 생애"
+subtitle "등록과 묻기는 구현됨. 설계: 해제, 예외, 되돌리기, 패킷 제약 칸"
+
+state input "입력 판단"
+state active "Active"
+state candidate "Candidate"
+state released "Released"
+state ignored "등록 안 함"
+start input
+final ignored
+
+input -> active "0.8 이상"
+input -> candidate "0.7 이상 0.8 미만"
+input -> ignored "0.7 미만"
+candidate -> active "등록"
+candidate -> released "등록 안 함"
+active -> released "해제(설계)"
+released -> active "되돌리기(설계)"
+active -> active "이번 작업 예외(설계)"
+
+step "자동 등록" "is_constraint 확신이 높으면 규칙 한 줄을 등록하고 대화 기록에 한 줄 남긴다"
+  input -> active
+step "묻기" "중간 확신이면 작업을 계속하며 사용자에게 묻고, 답이 없으면 Active처럼 지킨다"
+  input -> candidate
+  candidate -> active
+  candidate -> released
+step "해제" "설계: 사용자가 풀라고 하거나, 등록 뒤 취소한 입력이면 해제한다"
+  active -> released
+  released -> active
+step "예외" "설계: 작업 하나 동안 규칙을 멈추고 작업이 끝나면 다시 지킨다"
+  active -> active

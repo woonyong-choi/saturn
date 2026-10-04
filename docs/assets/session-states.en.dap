@@ -1,0 +1,28 @@
+state right
+title "Session states"
+subtitle "A chat has one open main session, and a closed session reopens by its provider session ID"
+
+state open "Open"
+state closed "Closed, resumable"
+state held "Held"
+state ended "Ended"
+final ended
+
+open -> closed "after grace, after provider switch"
+open -> held "stop, unproven crash"
+open -> ended "replaced by a new session"
+closed -> open "resume on new input"
+closed -> ended "pushed out by a new archive"
+held -> open "continue"
+held -> ended "hold closed"
+
+step "Resume after grace" "Five minutes after the tree goes idle the session closes, and new input reopens it by the saved ID"
+  open -> closed
+  closed -> open
+step "Stop" "A stopped session is held and stays open on the provider"
+  open -> held
+  held -> open
+step "End" "A replaced, pushed-out, or closed-hold session ends and never reopens"
+  open -> ended
+  closed -> ended
+  held -> ended

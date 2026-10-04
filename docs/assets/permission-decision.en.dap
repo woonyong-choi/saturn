@@ -1,0 +1,38 @@
+flow down
+title "How a permission request is decided"
+subtitle "Individual rules and the permission mode set the value, and only ask goes through always allow to the user"
+
+external provider "provider" "permission request"
+box rules "Individual rules" "deny wins, else last match"
+box mode "Permission mode" "default if no rule"
+box granted "providers" "Send allow"
+box reply "providers" "Send allow or deny"
+decision verdict "Value"
+decision always "Always allowed?"
+box ask "engine" "Ask in TUI, save on always allow"
+store saved "Record store" "Always allow rules"
+
+provider -> rules "kind, pattern"
+rules -> mode "no match"
+mode -> verdict "value"
+verdict -> reply "`allow`, `deny`"
+saved -> always "read"
+verdict -> always "`ask`"
+always -> granted "yes"
+always -> ask "no"
+
+step "deny" "A deny in an individual rule wins in any order, and always allow cannot override it"
+  provider -> rules
+  rules -> mode
+  mode -> verdict
+  verdict -> reply
+step "allow" "If the matching rule or the mode default is allow, it is allowed at once"
+  verdict -> reply
+step "Always allow" "Even when the value is ask, a saved always allow that matches is allowed without asking"
+  verdict -> always
+  saved -> always
+  always -> granted
+step "ask" "With no saved allow either, the request is held until the answer arrives, and choosing always allow saves it"
+  verdict -> always
+  always -> ask
+  light ask

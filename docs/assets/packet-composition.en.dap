@@ -1,0 +1,43 @@
+flow right
+width wide
+title "Handoff packet composition"
+subtitle "Fixed zone first, then the competing zone fills the rest of the budget. Design: the constraint slot"
+
+store record "Record" "source of the packet"
+group packet "packet, up to P_max" direction=right {
+  group fixed "Fixed zone" direction=down {
+    box slot "Constraint slot" "up to C_max" badge="Design"
+    box goal "Goal" "first and last input"
+    box open "Open items" "queued, held, unknown"
+    box recent "Recent turns" "last 3"
+  }
+  group ranked "Competing zone" direction=down {
+    box rank "Candidate ranking" "files, words, recency"
+    box keep "Keep probability" "router, no threshold"
+    box fill "Fill" "original, digest, path"
+  }
+}
+external router "router" "compact question"
+external session "New session"
+
+record -> slot "rule lines"
+record -> goal
+record -> rank "tool calls and results"
+rank -> keep "all candidates"
+router -> keep "probability"
+keep -> fill "high first"
+fixed -> session "first"
+ranked -> session "rest of budget"
+
+step "Fixed zone" "Constraints, goal, open items, and recent turns always go in, trimmed only if they exceed P_max"
+  record -> slot
+  record -> goal
+step "Rank" "Candidates are ranked by file overlap, word overlap, and recency"
+  record -> rank
+step "Judge" "The router gives a keep probability to every candidate, and no threshold cuts any"
+  rank -> keep
+  router -> keep
+step "Fill" "Items go in by probability until the budget is full, as original, digest, or path"
+  keep -> fill
+  fixed -> session
+  ranked -> session

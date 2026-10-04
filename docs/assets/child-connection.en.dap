@@ -1,0 +1,38 @@
+flow right
+title "Child connection"
+subtitle "No new engine starts. A caller connects to the running engine and only asks. Only the engine holds the router key"
+
+group parent "Parent chat" direction=down {
+  box task "Agent task" "run by the provider"
+  box child "saturn" "reads SATURN_PASS"
+}
+external outside "Outside agent" "Claude Code, Codex"
+box engine "engine" "one per user, holds the router key"
+box sub "Child chat" "subagent of the parent task"
+external router "router" "HTTPS"
+
+engine -> task "SATURN_PASS pass" no=1
+task -> child "runs saturn" no=2
+child -> engine "asks over the socket" no=3
+engine -> sub "creates child chat" no=4
+outside -> engine "asks without a pass" no=5
+engine -> router "judgment request" no=6
+
+step "Issue the pass" "For each chat the engine makes a pass and puts it in the provider environment as SATURN_PASS"
+  engine -> task "SATURN_PASS"
+step "Child connection" "The saturn the task runs connects to the engine over the socket without a new engine, and only asks"
+  task -> child
+  child -> engine "pass and request"
+step "Child chat" "The engine creates a chat that inherits the parent folder and lists it as a subagent of the parent task"
+  engine -> sub
+  light sub
+step "Pass scope" "The engine accepts only what the pass allows"
+  light engine
+  show engine "child chats of that chat only" tag="pass"
+  show engine "not above the parent mode" tag="pass"
+  show engine "depth 2, 5 per chat, 10 total" tag="pass"
+  show engine "ends when the parent stops" tag="pass"
+step "Outside connection" "A connection without a pass follows the Saturn permission rules like a chat you opened"
+  outside -> engine "asks"
+step "Router call" "Only the engine holds the router key and never hands it to a child or an outside caller"
+  engine -> router

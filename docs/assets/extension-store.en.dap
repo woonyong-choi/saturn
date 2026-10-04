@@ -1,0 +1,44 @@
+flow down
+title "Extension store and injection"
+subtitle "Install, split, judge, and inject are built. Design: the notice when a switch drops a part"
+
+group sources "Source" direction=right {
+  store folder "Folder" "absolute path"
+  external git "git address" "https, ssh, file"
+}
+group saturn "Saturn engine" direction=down {
+  box install "install" "copy, drop .git"
+  store extstore "Extension store" "~/.saturn/extensions/name/"
+  box parts "Parts" "skill, command, MCP server, hook"
+  box verdict "Verdict" "per provider: yes, no, unknown"
+  box inject "inject" "when a connection starts"
+}
+group providers "Providers" direction=right {
+  external claude "Claude Code"
+  external codex "Codex"
+}
+box notice "Switch notice" "parts that do not carry over" badge="Design"
+
+folder -> install "copy"
+git -> install "clone"
+install -> extstore
+extstore -> parts "split"
+parts -> verdict "ask adapter"
+verdict -> inject "yes parts only"
+inject -> claude "plugin folder"
+inject -> codex "own CODEX_HOME"
+inject -> notice "switch"
+
+step "Install" "A folder or git address is copied into the extension store, never provider files"
+  folder -> install
+  git -> install
+  install -> extstore
+step "Split and judge" "The engine splits the bundle into parts, and each adapter says which parts it can take"
+  extstore -> parts
+  parts -> verdict
+step "Inject" "When a connection starts, only the parts that provider can take go in, in its own format"
+  verdict -> inject
+  inject -> claude
+  inject -> codex
+step "Switch" "Design: a part that cannot move gets one chat line after the switch notice"
+  inject -> notice

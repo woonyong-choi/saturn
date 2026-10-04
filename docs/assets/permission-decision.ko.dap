@@ -1,0 +1,38 @@
+flow down
+title "허가 요청의 판정 흐름"
+subtitle "개별 규칙과 권한 모드로 값을 정하고, ask일 때만 항상 허용을 거쳐 사용자에게 묻는다"
+
+external provider "provider" "허가 요청"
+box rules "개별 규칙" "deny 우선, 아니면 마지막 일치"
+box mode "권한 모드" "규칙이 없을 때 기본값"
+box granted "providers" "허용 답을 보냄"
+box reply "providers" "allow, deny 답을 보냄"
+decision verdict "값은"
+decision always "항상 허용과 일치"
+box ask "engine" "TUI에 묻고 항상 허용이면 저장"
+store saved "기록 저장소" "항상 허용 규칙"
+
+provider -> rules "종류, 패턴"
+rules -> mode "일치 없음"
+mode -> verdict "값"
+verdict -> reply "`allow`, `deny`"
+saved -> always "읽음"
+verdict -> always "`ask`"
+always -> granted "예"
+always -> ask "아니오"
+
+step "deny" "개별 규칙의 deny는 순서와 상관없이 이기고, 항상 허용도 이를 뒤집지 못한다"
+  provider -> rules
+  rules -> mode
+  mode -> verdict
+  verdict -> reply
+step "allow" "일치하는 규칙이나 모드의 기본값이 allow면 바로 허용한다"
+  verdict -> reply
+step "항상 허용" "값이 ask여도 저장된 항상 허용과 맞으면 묻지 않고 허용한다"
+  verdict -> always
+  saved -> always
+  always -> granted
+step "ask" "저장된 허용에도 없으면 답이 올 때까지 요청을 보관하고, 항상 허용을 고르면 저장한다"
+  verdict -> always
+  always -> ask
+  light ask

@@ -1,0 +1,20 @@
+sequence
+title "입력 요청의 흐름"
+subtitle "요청은 답이 올 때까지 engine이 보관하고, 답은 요청 번호로 원래 연결에 돌려준다"
+
+external provider "provider"
+box engine "engine"
+person user "사용자"
+box tui "tui"
+store database "database"
+
+step "요청" "engine이 이벤트를 기록하고 고유 요청 번호를 발급해 tui에 올린다"
+  provider -> engine "입력 요청"
+  engine -> database "이벤트 기록"
+  engine -> engine "요청 번호 발급"
+  engine -> tui "`InputRequested`, 입력 기다림"
+step "답" "답은 요청 번호로 찾은 원래 연결에 provider 형식으로 돌아간다"
+  user -> tui "답 입력"
+  tui -> engine "`AnswerInput`"
+  engine -> provider "provider 형식의 답"
+  engine -> tui "다른 tui의 창을 지우고 실행 중으로 되돌림" dashed

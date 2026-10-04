@@ -15,6 +15,7 @@
 | 기준값 | router가 낸 확률로 행동할지 가르는 값이다. | threshold, `threshold` |
 | 끼워 넣기 | 진행 중인 턴에 입력을 더하는 처리다. | steer, `steer` |
 | 대기 | 보내기 전 채팅 대기열에 있는 입력의 상태다. | `queued` |
+| 단순 방식 | 박스와 애니메이션 없이 줄마다 말한 쪽을 적는 TUI 그리기 방식이다. `--plain`, `/plain`, 설정 `tui.screen`으로 정한다. | plain mode, `plain` |
 | 더한 폴더 | `--add-dir`나 `/add-dir`로 채팅에 더한 기본 폴더 밖의 폴더다. 모든 provider session에 넘기고 폴더 설정은 읽지 않는다. | added folder |
 | 메인 에이전트 | 채팅마다 하나인 주 에이전트다. | main agent, `main` |
 | 보류 | 사용자가 멈춘 작업과 그때 보내지 않은 입력의 상태다. 자동으로 이어 가지 않는다. | `held` |
@@ -29,7 +30,7 @@
 | 채점 | 판단 기록에 학습용 정답 라벨을 붙이는 처리다. | labeling, `labeling` |
 | 채팅 | 사용자가 보는 대화 하나다. 여러 provider session이 한 채팅에 이어진다. | chat, `chat` |
 | 트리 유휴 | 에이전트와 그 아래 모든 subagent가 끝난 상태다. | tree idle, `tree idle` |
-| 판단 방식 | 행동을 정하는 router를 고르는 설정이다. | method, `method` |
+| 판단 방식 | 행동을 정하는 router를 고르는 설정이다. | router mode, `router.mode` |
 | 패킷 | 새 session에 넘기는 맥락 묶음이다. Saturn 기록 원문에서 고른다. | handoff packet, `packet` |
 | 항상 허용 | 허가 요청 창에서 `항상`을 골라 그 호출의 도구 종류와 패턴을 허용 규칙으로 저장한 것이다. Saturn 기록 저장소에만 저장하고 provider 설정 파일에는 쓰지 않는다. | always allow |
 | 확장 저장소 | 사용자가 Saturn에 설치한 확장의 원본을 두는 폴더다. provider 형식 파일은 두지 않는다. | extension store, `~/.saturn/extensions/` |

@@ -33,7 +33,7 @@
 ### 작업 중 모드 바꾸기
 
 1. 사용자가 기본 모드 `edit`로 작업하고, Codex가 작업 폴더 안의 파일을 고치면 허가 창 없이 적용된다.
-2. 사용자가 `/permissions read-only`(초안)를 입력한다.
+2. 사용자가 `/permissions read-only`를 입력한다.
 3. engine은 다음 허가 요청부터 편집과 실행을 거부한다.
 4. 사용자가 `/permissions edit`를 입력하면 작업 폴더 안 편집이 다시 허용된다.
 5. 읽기 전용으로 접수한 작업이 실행 중일 때 모드를 `edit`로 올리면, 그 작업은 접수 때 권한대로 읽기 전용으로 남아 편집 요청을 거부하고 알림을 남긴다. 사용자가 새 입력을 보내면 쓰기 권한으로 접수해 쓰기 잠금 규칙을 따르고, 읽기 전용 작업에는 끼워 넣지 않고 그 작업이 끝난 뒤 새 턴으로 보낸다.
@@ -67,7 +67,7 @@
 
 ### 권한 모드
 
-`permission.mode`(초안 이름)는 기본 규칙 묶음을 고른다. 기본값은 `edit`다. 모드 이름과 값은 초안이다.
+`permission.mode`는 기본 규칙 묶음을 고른다. 기본값은 `edit`다(초안).
 
 | 모드 | 기본 규칙 | Claude의 같은 모드 | Codex의 같은 모드 |
 |---|---|---|---|
@@ -84,7 +84,7 @@
 - `permission.shell` 같은 개별 규칙은 모드 기본 규칙 위에 덧붙는다.
 - 모드마다 provider 구성은 같다. Codex는 `untrusted`와 읽기 전용 샌드박스, Claude는 모든 대상 도구의 `ask` 목록을 쓴다. 모드에 따라 달라지는 것은 engine이 허가 요청에 하는 답이다. `deny` 패턴이 모든 요청에 걸리게 하고, 모드를 바꿔도 provider를 다시 시작하지 않기 위해서다(초안).
 - Codex execpolicy에는 개별 셸 규칙만 번역한다. `"*"` 패턴은 어떤 명령도 매치하지 않았기 때문이다. 모드 기본 규칙과 번역하지 않은 요청은 engine이 승인 요청에 규칙으로 답한다.
-- 세션 중에는 TUI 명령 `/permissions`(초안)로 모드를 본다. `/permissions {모드}`는 채팅 층의 `permission.mode`를 바꾼다. 입력창의 `Shift+Tab`과 `/mode`는 같은 요청을 보내며 `ask`, `edit`, `read-only` 순서로 돈다(`full`은 `/mode full`로만, [TUI 키](tui.md#키-해석-계층)). engine은 채팅 층 원문에 `permission.mode`만 고쳐 쓰고 요청마다 그 값을 먼저 읽는다. 값 없이 실행해 현재 모드를 보이는 동작은 아직 없다. 넣으려면 조회 요청을 하나 더해 응답 `result`로 돌려준다([조회 요청과 결과](engine-lifecycle.md#조회-요청과-결과)). 화면은 [TUI](tui.md)에 있다.
+- 세션 중에는 TUI 명령 `/permissions {모드}`가 채팅 층의 `permission.mode`를 바꾼다. 입력창의 `Shift+Tab`과 `/mode`는 같은 요청을 보내며 `ask`, `edit`, `read-only` 순서로 돈다(`full`은 `/mode full`로만, [TUI 키](tui.md#키-해석-계층)). engine은 채팅 층 원문에 `permission.mode`만 고쳐 쓰고 요청마다 그 값을 먼저 읽는다. 값 없이 실행해 현재 모드를 보이는 동작은 아직 없다. 넣으려면 조회 요청을 하나 더해 응답 `result`로 돌려준다([조회 요청과 결과](engine-lifecycle.md#조회-요청과-결과)). 화면은 [TUI](tui.md)에 있다.
 - 모드의 순서는 낮은 쪽부터 `read-only`, `ask`, `edit`, `full`이다. `ask`는 묻기만 하고 거부하지 않으므로 `read-only`보다 높다.
 - 하위 접속으로 만든 채팅의 모드는 부모 채팅의 모드를 넘지 못하고, 묻기로 판정된 호출은 묻지 않고 거부한다. 규칙은 [하위 접속](child-sessions.md#권한-상속)에 있다.
 - 폴더 설정의 `permission.mode`는 사용자 층까지 합친 모드보다 낮은 값만 적용하고, 같거나 높은 값은 무시한다. 저장소가 모두 허용을 켜지 못하게 하기 위해서다. 무시한 사실은 폴더 설정 신뢰 창의 무시되는 항목에 보인다.
@@ -102,7 +102,10 @@
 
 ### 판정 흐름
 
-![허가 요청은 규칙이 allow나 deny로 답하면 바로 답하고, ask일 때만 TUI에 올려 사용자에게 묻는다](../assets/permission-decision.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/permission-decision.ko.dark.svg">
+  <img src="../assets/permission-decision.ko.light.svg" alt="허가 요청은 규칙이 allow나 deny로 답하면 바로 답하고, ask일 때만 TUI에 올려 사용자에게 묻는다" width="100%">
+</picture>
 
 1. provider가 도구 호출 허가를 요청한다.
 2. `providers`가 요청을 도구 종류와 패턴으로 바꾼다.
@@ -160,7 +163,7 @@ MCP 도구는 규칙을 다음처럼 번역한다.
 
 engine은 Claude Code를 실행할 때 `--permission-prompt-tool stdio`와 `--settings '{"permissions":{"ask":[...]}}'`를 함께 준다(2026-10-02 확인, Claude Code 2.1.285).
 
-- `ask` 목록에는 provider가 스스로 묻지 않는 규칙 대상 도구 이름을 나열한다. 도구를 나열해야 요청이 오기 때문이다. 읽기 도구는 나열하지 않는다. 나열하면 작업 폴더 안 읽기까지 요청이 되기 때문이다. 목록은 `Bash`, `Edit`, `MultiEdit`, `Write`, `NotebookEdit`, `Task`, `Agent`, `mcp__*`이다(초안). MCP는 서버를 알 수 없어 `mcp__*` 하나로 두고, 이 패턴이 실제로 통하는지는 실측한다.
+- `ask` 목록에는 provider가 스스로 묻지 않는 규칙 대상 도구 이름을 나열한다. 도구를 나열해야 요청이 오기 때문이다. 읽기 도구는 나열하지 않는다. 나열하면 작업 폴더 안 읽기까지 요청이 되기 때문이다. 목록은 `Bash`, `Edit`, `MultiEdit`, `Write`, `NotebookEdit`, `Task`, `Agent`, `mcp__*`이다(초안). MCP는 서버를 알 수 없어 `mcp__*` 하나로 두고, 이 패턴은 서버 이름 없이도 통했다([실험](../experiments/provider-permission-real-claude/report.md)).
 - Saturn 기본 `--permission-mode`는 넣지 않는다. 이전 기본값 `acceptEdits`는 권한을 provider 모드에 맡기는 것이라 규칙과 어긋난다. 규칙 대상이 아닌 도구(`WebFetch` 등)의 요청은 `call` 없이 올라와 사용자에게 묻는다.
 - 요청의 도구를 `Bash`는 셸 명령(`input.command`), `Edit`, `MultiEdit`, `Write`는 편집(`input.file_path`), `NotebookEdit`는 편집(`input.notebook_path`), `Read`, `Glob`, `Grep`, `LS`는 읽기(`input.file_path` 또는 `input.path`), `Task`와 `Agent`는 subagent(`input.subagent_type`), `mcp__`로 시작하는 이름은 MCP 도구(도구 이름 그대로)로 읽는다.
 - 사용자 설정이 `bypassPermissions`이고 폴더 허용 목록이 있어도 `Bash` 호출은 모두 `can_use_tool`로 왔다.
@@ -169,7 +172,7 @@ engine은 Claude Code를 실행할 때 `--permission-prompt-tool stdio`와 `--se
 - router 키 보호의 Bash 샌드박스(`sandbox`)와 키 저장소 `filesystem.denyRead`도 같은 `--settings` 값에 합쳐 넘긴다. 권한 모드와 무관하게 늘 넣고, 모드 `full`도 끄지 못한다(router 키 보호는 Saturn 규칙의 예외, [router 키 보호](router-key-security.md#provider-명령-샌드박스)).
 - router 키 보호 훅의 실행별 설정은 같은 `--settings` 값에 합쳐 넘긴다(초안). 훅이 막는 호출은 규칙이 `allow`여도 막는 것이 설계다(초안, [router 키 보호](router-key-security.md)).
 
-Claude 읽기는 작업 폴더 밖 `Read`가 사유 `Path is outside allowed working directories`로 요청되고, `--add-dir` 폴더 안 `Read`는 요청 없이 실행됐다(각 3/3, [실험](../experiments/provider-permission-real-claude/report.md)). `Glob`, `Grep`, `LS`가 같은 방식으로 오는지는 실측하지 않았고, 요청이 오면 같은 읽기 규칙으로 판정한다. Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구가 같은 방식으로 오는지는 [#301](https://github.com/woonyong-choi/saturn/issues/301)에서 실측한다.
+Claude 읽기는 작업 폴더 밖 `Read`가 사유 `Path is outside allowed working directories`로 요청되고, `--add-dir` 폴더 안 `Read`는 요청 없이 실행됐다(각 3/3, [실험](../experiments/provider-permission-real-claude/report.md)). `Glob`, `Grep`, `LS`가 같은 방식으로 오는지는 실측하지 않았고, 요청이 오면 같은 읽기 규칙으로 판정한다. Claude Code 2.1.288 실측에서 `Bash`, `Write`, MCP 도구, subagent 도구(`Agent`)는 `can_use_tool`로 왔다. `Edit`는 `Read` 없이 부르면 요청 전에 provider가 막아 Saturn에 요청이 오지 않았다. 사용자 설정 위치의 `deny` 규칙과 훅은 측정하지 못했다([#348](https://github.com/woonyong-choi/saturn/issues/348)).
 
 ### provider 설정과 질문 기능
 
@@ -242,7 +245,7 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 | MCP 준비를 확인하기 전에는 첫 턴을 보내지 않고, 시작에 실패했거나 준비를 알 수 없는 서버는 그 서버의 도구만 쓸 수 없는 것으로 보고 첫 턴을 보낸다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `first_turn_waits_for_mcp_ready`, `first_turn_is_sent_when_a_server_failed_to_start`, `first_turn_is_sent_when_a_server_stays_unknown_past_the_limit`, `saturn-terminal/engine/src/providers/codex/permission.rs`의 `mcp_check_sorts_each_server_into_ready_waiting_or_unavailable` |
 | 버전과 상관없이 적용된 정책을 확인하고 다르면 첫 턴을 보내지 않는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `startup_checks_applied_policy_whatever_the_version`, `saturn-terminal/engine/src/providers/codex_permission.rs`의 `applied_policy_must_be_untrusted_read_only` |
 | Claude `can_use_tool`에 Saturn 규칙대로 `allow`, `deny`를 답한다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `permission_rules`, `launch_args_add_defaults_and_hook_settings` |
-| Claude 규칙 대상 도구의 호출이 모두 `can_use_tool`로 온다. | [#301](https://github.com/woonyong-choi/saturn/issues/301) 실측 |
+| Claude 규칙 대상 도구의 호출이 `can_use_tool`로 온다. | [실험](../experiments/provider-permission-real-claude/report.md): `Bash`, `Write`, MCP, `Agent` 3/3. `Edit`는 `Read` 없이 provider가 막는다. 나머지는 [#348](https://github.com/woonyong-choi/saturn/issues/348) |
 | 허가 답이 provider에 요청 번호와 같은 번호로 나가고, 답이 없는 동안 턴이 멈춰 있다가 답한 뒤 이어진다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `command_approval_is_answered_with_the_same_numeric_request_id`, `command_decisions_follow_the_answer_and_the_available_list`, `mcp_tool_approval_is_answered_with_an_elicitation_action`, `saturn-terminal/engine/src/providers/claude/tests.rs`의 `allow_once_answers_can_use_tool_with_the_request_input`, `deny_answers_can_use_tool_without_the_note` |
 | 두 채팅이 같은 provider 요청 번호로 허가 요청을 보내도 각각 보관되고 답이 섞이지 않으며, 다른 채팅에 붙은 TUI의 답은 거절한다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `same_provider_request_id_in_two_chats_keeps_both_and_answers_stay_apart`, `permission_answer_from_a_tui_attached_to_another_chat_is_refused` |
 | 허가 요청이 TUI에 오르고 사용자 답이 provider에 넘어가며 턴이 끝나면 답 없는 요청이 지워진다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `permission_request_reaches_the_tui_and_the_answer_reaches_the_provider`, `answer_for_a_request_nobody_asked_is_refused`, `answer_the_provider_did_not_take_keeps_the_request_for_another_try`, `turn_end_withdraws_requests_nobody_answered` |
@@ -275,8 +278,7 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 
 ## 미해결 질문
 
-- Claude `Edit`, `Write`, MCP 도구, subagent 도구가 모두 `can_use_tool`로 오는지 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
-- Claude 사용자와 폴더의 `deny` 규칙과 훅이 Saturn 판정 앞에서 호출을 막는지 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
+- Claude `Edit`가 `Read` 없이도 `can_use_tool`로 오는지, 사용자 설정 위치의 `deny` 규칙과 훅이 Saturn 판정 앞에서 호출을 막는지 ([#348](https://github.com/woonyong-choi/saturn/issues/348))
 - Codex 읽기 전용 샌드박스의 막힘 정도를 `cargo test`와 `python3 -m unittest` 두 명령보다 넓은 작업 표본으로 재는 일. 승인한 명령에 샌드박스가 적용되는 기준(같은 명령도 달랐음)이 무엇인지
 - 키체인 로그인(`cli_auth_credentials_store=keyring`) 사용자의 전용 `CODEX_HOME`이 로그인을 공유하는지. `auth.json` 심볼릭 링크는 로그인을 공유했고(3/3), 링크 없이 keyring으로 설정한 전용 폴더는 로그인되지 않았다(3/3). 실제 keyring 로그인은 새 로그인 없이는 만들 수 없어 측정하지 못했다([실측](../experiments/codex-provider-behavior/report.md))
-- 규칙으로 읽지 못한 요청의 `항상 허용`을 provider 값으로 보낼 방법: Claude 세션 규칙(`updatedPermissions`), Codex 권한 요청과 옛 이름 값의 실측 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
+- 규칙으로 읽지 못한 요청의 `항상 허용`을 provider 값으로 보낼 방법: Claude 세션 규칙(`updatedPermissions`), Codex 권한 요청과 옛 이름 값의 실측

@@ -1,0 +1,42 @@
+flow right
+width wide
+title "Claude Code와 Codex를 오가는 하나의 chat"
+subtitle "모든 입력이 기록에 먼저 접수되고, 새 session은 기록에서 만든 packet만 받는다. 설계: packet의 제약 칸"
+
+person user "개발자"
+group saturn "Saturn" direction=right {
+  box tui "tui" "하나의 chat"
+  box engine "engine" "계속 실행"
+  store record "기록 저장소" "SQLite, 정본"
+  box constraints "제약" "지킬 규칙" badge="설계"
+  box packet "packet" "목표, 최근 턴, 남은 일"
+}
+external router "router" "작은 판단 모델"
+group providers "provider" direction=down {
+  external claude "Claude Code"
+  external codex "Codex"
+}
+
+user -> tui "입력"
+tui -> engine "`JSON-RPC`"
+engine -> record "먼저 접수"
+engine -> router "판단"
+engine -> claude "입력 전달"
+record -> packet "고르기"
+constraints -> packet "규칙 한 줄"
+packet -> codex "새 session"
+
+step "입력 접수" "engine이 무엇이든 보내기 전에 입력을 기록에 저장한다"
+  user -> tui "요청"
+  tui -> engine
+  engine -> record
+step "판단과 전달" "router가 끼워 넣기, 새 작업, 대기를 정하고 입력은 Claude Code로 간다"
+  engine -> router
+  engine -> claude
+step "provider 전환" "chat이 Codex로 넘어가고 새 session은 기록에서 만든 packet을 받는다"
+  record -> packet
+  constraints -> packet
+  packet -> codex
+step "터미널 닫기" "이미 보낸 입력은 engine이 계속 처리하고 tui는 나중에 다시 붙는다"
+  light engine record
+  say "tui를 닫아도 engine은 멈추지 않는다"

@@ -1,0 +1,30 @@
+flow right
+title "engine start order"
+subtitle "If an earlier step fails, the later steps do not run. After the socket opens, crash recovery runs before requests"
+
+box lock "rpc" "Take the per-user engine lock"
+box schema "store" "Migrate the schema if its version rose"
+box sessions "sessions" "Restore last-turn values of unfinished sessions"
+box settings "settings" "Merge default, user, and run layers"
+box routers "routers" "Check that the router answers"
+box listen "rpc" "Accept JSON-RPC connections on a Unix socket"
+box multi "rpc" "Keep several TUI connections at once"
+box recover "engine" "Crash recovery and restoring unsent inputs"
+
+lock -> schema no=1
+schema -> sessions no=2
+sessions -> settings no=3
+settings -> routers no=4
+routers -> listen no=5
+listen -> multi no=6
+listen -> recover "before requests"
+
+step "Start" "The engine started by the cli prepares in order"
+  lock -> schema
+  schema -> sessions
+  sessions -> settings
+  settings -> routers
+  routers -> listen
+step "Connect and recover" "Once the socket opens it accepts TUI connections, and recovery runs before any request"
+  listen -> multi
+  listen -> recover

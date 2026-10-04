@@ -1,0 +1,42 @@
+flow right
+width wide
+title "One chat across Claude Code and Codex"
+subtitle "Every input reaches the record first, and a new session gets only a packet built from it. Design: the constraints slot of the packet"
+
+person user "Developer"
+group saturn "Saturn" direction=right {
+  box tui "tui" "one chat"
+  box engine "engine" "keeps running"
+  store record "Record" "SQLite, the source of truth"
+  box constraints "Constraints" "rules to keep" badge="Design"
+  box packet "packet" "goal, recent turns, open items"
+}
+external router "router" "small judging model"
+group providers "Providers" direction=down {
+  external claude "Claude Code"
+  external codex "Codex"
+}
+
+user -> tui "input"
+tui -> engine "`JSON-RPC`"
+engine -> record "accept first"
+engine -> router "judge"
+engine -> claude "input"
+record -> packet "select"
+constraints -> packet "rule lines"
+packet -> codex "new session"
+
+step "Input accepted" "The engine stores the input in the record before anything is sent"
+  user -> tui "request"
+  tui -> engine
+  engine -> record
+step "Judge and send" "The router decides to add, start a task, or queue, then the input goes to Claude Code"
+  engine -> router
+  engine -> claude
+step "Switch provider" "The chat moves to Codex, and the new session gets a packet from the record"
+  record -> packet
+  constraints -> packet
+  packet -> codex
+step "Close the terminal" "The engine keeps processing inputs already sent, and tui attaches again later"
+  light engine record
+  say "Closing the tui does not stop the engine"

@@ -1,0 +1,999 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="fl" width="960" height="902" viewBox="0 0 960 902" role="img">
+<title>Handling one input</title>
+<style>@font-face{font-family:FigSans;font-weight:500;src:url(data:font/woff2;base64,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) format("woff2")}
+@font-face{font-family:FigSans;font-weight:400;src:url(data:font/woff2;base64,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) format("woff2")}
+@font-face{font-family:FigSans;font-weight:600;src:url(data:font/woff2;base64,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) format("woff2")}
+/* tokens.json: 생성물, 손으로 고치지 않음 */
+:root {
+  --color-palette-gray-0: #ffffff;
+  --color-palette-gray-25: #f8f8f8;
+  --color-palette-gray-outline: #787878;
+  --color-palette-gray-group-1: #ededed;
+  --color-palette-gray-group-2: #e1e1e1;
+  --color-palette-gray-group-3: #d6d6d6;
+  --color-palette-gray-40: #f0f0f0;
+  --color-palette-gray-100: #e7e7e7;
+  --color-palette-gray-200: #dadada;
+  --color-palette-gray-500: #8a8a8a;
+  --color-palette-gray-50: #f4f4f4;
+  --color-palette-gray-150: #e4e4e4;
+  --color-palette-gray-300: #b7b7b7;
+  --color-palette-neutral-group-1: #202020;
+  --color-palette-neutral-group-2: #2a2a2a;
+  --color-palette-neutral-group-3: #343434;
+  --color-palette-neutral-outline: #888888;
+  --color-palette-neutral-100: #f0f0f0;
+  --color-palette-neutral-400: #aaaaaa;
+  --color-palette-neutral-500: #757575;
+  --color-palette-neutral-750: #393939;
+  --color-palette-neutral-800: #363636;
+  --color-palette-neutral-850: #3e3e3e;
+  --color-palette-neutral-875: #1c1c1c;
+  --color-palette-neutral-900: #171717;
+  --color-palette-neutral-950: #121212;
+  --color-palette-neutral-600: #595959;
+  --color-palette-blue-light-fill: #edf4ff;
+  --color-palette-blue-light-stroke: #125de6;
+  --color-palette-blue-light-ink: #0151d9;
+  --color-palette-blue-light-heat-low: #b7cdf5;
+  --color-palette-blue-light-heat-high: #004dd2;
+  --color-palette-blue-light-icon: #125de6;
+  --color-palette-blue-dark-fill: #1c2a43;
+  --color-palette-blue-dark-stroke: #70a3ff;
+  --color-palette-blue-dark-ink: #78a9ff;
+  --color-palette-blue-dark-heat-low: #293751;
+  --color-palette-blue-dark-heat-high: #4474cc;
+  --color-palette-blue-dark-icon: #70a3ff;
+  --color-palette-blue-light-outline: #658dd5;
+  --color-palette-blue-dark-outline: #6789c4;
+  --color-palette-ink-200: #c9c9c9;
+  --color-palette-ink-600: #5d5d5d;
+  --color-palette-ink-700: #595959;
+  --color-palette-ink-850: #111111;
+  --color-palette-ink-900: #1f1f1f;
+  --color-palette-ink-1000: #000000;
+  --color-palette-red-light-fill: #ffefed;
+  --color-palette-red-light-stroke: #c70005;
+  --color-palette-red-light-ink: #be0004;
+  --color-palette-red-light-dot: #6c0001;
+  --color-palette-red-dark-fill: #40201c;
+  --color-palette-red-dark-stroke: #fc7182;
+  --color-palette-red-dark-ink: #ff8390;
+  --color-palette-red-dark-dot: #e25971;
+  --color-palette-red-light-outline: #cd7367;
+  --color-palette-red-dark-outline: #c56f73;
+  --color-palette-amber-light-fill: #fff0ea;
+  --color-palette-amber-light-stroke: #d44b00;
+  --color-palette-amber-light-ink: #a63900;
+  --color-palette-amber-dark-fill: #3f2116;
+  --color-palette-amber-dark-stroke: #fa7a49;
+  --color-palette-amber-dark-ink: #ff875a;
+  --color-palette-amber-light-outline: #c47a5f;
+  --color-palette-amber-dark-outline: #c37356;
+  --color-palette-green-light-fill: #eaf8e9;
+  --color-palette-green-light-stroke: #008c1a;
+  --color-palette-green-light-ink: #006d12;
+  --color-palette-green-light-dot: #006d12;
+  --color-palette-green-dark-fill: #1a301a;
+  --color-palette-green-dark-stroke: #58bf5a;
+  --color-palette-green-dark-ink: #58bf5a;
+  --color-palette-green-dark-dot: #62c963;
+  --color-palette-green-light-outline: #629a61;
+  --color-palette-green-dark-outline: #5a9659;
+  --color-palette-teal-light-fill: #eaf8e9;
+  --color-palette-teal-light-stroke: #008c1a;
+  --color-palette-teal-light-ink: #006d12;
+  --color-palette-teal-light-dot: #006d12;
+  --color-palette-teal-dark-fill: #1a301a;
+  --color-palette-teal-dark-stroke: #58bf5a;
+  --color-palette-teal-dark-ink: #58bf5a;
+  --color-palette-teal-dark-dot: #62c963;
+  --color-palette-teal-light-outline: #629a61;
+  --color-palette-teal-dark-outline: #5a9659;
+  --color-palette-navy-light-fill: #edf4ff;
+  --color-palette-navy-light-stroke: #125de6;
+  --color-palette-navy-light-ink: #0151d9;
+  --color-palette-navy-dark-fill: #1c2a43;
+  --color-palette-navy-dark-stroke: #70a3ff;
+  --color-palette-navy-dark-ink: #78a9ff;
+  --color-palette-navy-light-outline: #658dd5;
+  --color-palette-navy-dark-outline: #6789c4;
+  --color-palette-purple-light-fill: #f7f0ff;
+  --color-palette-purple-light-stroke: #8c6aaa;
+  --color-palette-purple-light-ink: #704f8c;
+  --color-palette-purple-light-dot: #704f8c;
+  --color-palette-purple-light-tint-1: #f1eaf9;
+  --color-palette-purple-light-tint-2: #e6ddf0;
+  --color-palette-purple-light-tint-3: #dcd1e8;
+  --color-palette-purple-dark-fill: #31233d;
+  --color-palette-purple-dark-stroke: #b693d6;
+  --color-palette-purple-dark-ink: #be9ade;
+  --color-palette-purple-dark-dot: #9c7abb;
+  --color-palette-purple-dark-tint-1: #231d28;
+  --color-palette-purple-dark-tint-2: #2e2635;
+  --color-palette-purple-dark-tint-3: #393042;
+  --color-palette-purple-light-outline: #9884ac;
+  --color-palette-purple-dark-outline: #977eae;
+  --color-palette-pink-light-fill: #f7f0ff;
+  --color-palette-pink-light-stroke: #8c6aaa;
+  --color-palette-pink-light-ink: #704f8c;
+  --color-palette-pink-dark-fill: #31233d;
+  --color-palette-pink-dark-stroke: #b693d6;
+  --color-palette-pink-dark-ink: #be9ade;
+  --color-palette-pink-light-outline: #9884ac;
+  --color-palette-pink-dark-outline: #977eae;
+  --color-palette-slate-light-fill: #e7e7e7;
+  --color-palette-slate-light-stroke: #5d5d5d;
+  --color-palette-slate-light-ink: #5d5d5d;
+  --color-palette-slate-light-dot: #747474;
+  --color-palette-slate-dark-fill: #363636;
+  --color-palette-slate-dark-stroke: #aaaaaa;
+  --color-palette-slate-dark-ink: #aaaaaa;
+  --color-palette-slate-dark-dot: #c7c7c7;
+  --color-palette-slate-light-outline: #848484;
+  --color-palette-slate-dark-outline: #888888;
+  --color-palette-orange-light-fill: #fff0ea;
+  --color-palette-orange-light-stroke: #d44b00;
+  --color-palette-orange-light-ink: #a63900;
+  --color-palette-orange-dark-fill: #3f2116;
+  --color-palette-orange-dark-stroke: #fa7a49;
+  --color-palette-orange-dark-ink: #ff875a;
+  --color-palette-orange-light-outline: #c47a5f;
+  --color-palette-orange-dark-outline: #c37356;
+  --color-palette-sky-light-fill: #e9f1fe;
+  --color-palette-sky-light-stroke: #125de6;
+  --color-palette-sky-light-ink: #0151d9;
+  --color-palette-sky-light-tint-1: #e5eefc;
+  --color-palette-sky-light-tint-2: #d7e2f4;
+  --color-palette-sky-light-tint-3: #cad7ed;
+  --color-palette-sky-dark-fill: #1c2a43;
+  --color-palette-sky-dark-stroke: #70a3ff;
+  --color-palette-sky-dark-ink: #78a9ff;
+  --color-palette-sky-dark-tint-1: #1a202b;
+  --color-palette-sky-dark-tint-2: #222a38;
+  --color-palette-sky-dark-tint-3: #2a3446;
+  --color-palette-sky-light-outline: #628ad3;
+  --color-palette-sky-dark-outline: #6789c4;
+  --color-state-active: var(--color-palette-blue-light-stroke);
+  --color-state-active-fill: var(--color-palette-blue-light-ink);
+  --color-state-active-text: var(--color-palette-blue-light-ink);
+  --color-state-on-active: var(--color-palette-gray-0);
+  --color-state-error: var(--color-paint-red-stroke);
+  --color-state-success: var(--color-paint-green-stroke);
+  --color-state-warning: var(--color-paint-amber-stroke);
+  --color-state-glow: var(--color-palette-blue-light-fill);
+  --color-flow-brand: var(--color-state-active);
+  --color-flow-purple: var(--color-paint-purple-dot);
+  --color-flow-green: var(--color-paint-green-dot);
+  --color-flow-gray: var(--color-paint-gray-dot);
+  --color-flow-red: var(--color-paint-red-dot);
+  --color-figure-icon: var(--color-palette-blue-light-icon);
+  --color-figure-icon-tile: var(--color-palette-blue-light-fill);
+  --color-paint-red-fill: var(--color-palette-red-light-fill);
+  --color-paint-red-stroke: var(--color-palette-red-light-stroke);
+  --color-paint-red-outline: var(--color-palette-red-light-outline);
+  --color-paint-red-ink: var(--color-palette-red-light-ink);
+  --color-paint-red-dot: var(--color-palette-red-light-dot);
+  --color-paint-amber-fill: var(--color-palette-amber-light-fill);
+  --color-paint-amber-stroke: var(--color-palette-amber-light-stroke);
+  --color-paint-amber-outline: var(--color-palette-amber-light-outline);
+  --color-paint-amber-ink: var(--color-palette-amber-light-ink);
+  --color-paint-green-fill: var(--color-palette-green-light-fill);
+  --color-paint-green-stroke: var(--color-palette-green-light-stroke);
+  --color-paint-green-outline: var(--color-palette-green-light-outline);
+  --color-paint-green-ink: var(--color-palette-green-light-ink);
+  --color-paint-green-dot: var(--color-palette-green-light-dot);
+  --color-paint-teal-fill: var(--color-palette-teal-light-fill);
+  --color-paint-teal-stroke: var(--color-palette-teal-light-stroke);
+  --color-paint-teal-outline: var(--color-palette-teal-light-outline);
+  --color-paint-teal-ink: var(--color-palette-teal-light-ink);
+  --color-paint-teal-dot: var(--color-palette-teal-light-dot);
+  --color-paint-navy-fill: var(--color-palette-navy-light-fill);
+  --color-paint-navy-stroke: var(--color-palette-navy-light-stroke);
+  --color-paint-navy-outline: var(--color-palette-navy-light-outline);
+  --color-paint-navy-ink: var(--color-palette-navy-light-ink);
+  --color-paint-purple-fill: var(--color-palette-purple-light-fill);
+  --color-paint-purple-stroke: var(--color-palette-purple-light-stroke);
+  --color-paint-purple-outline: var(--color-palette-purple-light-outline);
+  --color-paint-purple-ink: var(--color-palette-purple-light-ink);
+  --color-paint-purple-dot: var(--color-palette-purple-light-dot);
+  --color-paint-purple-group-1: var(--color-palette-purple-light-tint-1);
+  --color-paint-purple-group-2: var(--color-palette-purple-light-tint-2);
+  --color-paint-purple-group-3: var(--color-palette-purple-light-tint-3);
+  --color-paint-pink-fill: var(--color-palette-pink-light-fill);
+  --color-paint-pink-stroke: var(--color-palette-pink-light-stroke);
+  --color-paint-pink-outline: var(--color-palette-pink-light-outline);
+  --color-paint-pink-ink: var(--color-palette-pink-light-ink);
+  --color-paint-sky-fill: var(--color-palette-sky-light-fill);
+  --color-paint-sky-stroke: var(--color-palette-sky-light-stroke);
+  --color-paint-sky-outline: var(--color-palette-sky-light-outline);
+  --color-paint-sky-ink: var(--color-palette-sky-light-ink);
+  --color-paint-sky-group-1: var(--color-palette-sky-light-tint-1);
+  --color-paint-sky-group-2: var(--color-palette-sky-light-tint-2);
+  --color-paint-sky-group-3: var(--color-palette-sky-light-tint-3);
+  --color-paint-gray-fill: var(--color-palette-slate-light-fill);
+  --color-paint-gray-stroke: var(--color-palette-slate-light-stroke);
+  --color-paint-gray-outline: var(--color-palette-slate-light-outline);
+  --color-paint-gray-ink: var(--color-palette-slate-light-ink);
+  --color-paint-gray-dot: var(--color-palette-slate-light-dot);
+  --color-ui-link: var(--color-palette-blue-light-ink);
+  --color-ui-focus: var(--color-palette-blue-light-stroke);
+  --color-ui-progress: var(--color-palette-blue-light-stroke);
+  --color-ui-control-on: var(--color-palette-gray-0);
+  --color-data-main: var(--color-palette-blue-light-stroke);
+  --color-data-compare: var(--color-palette-orange-light-stroke);
+  --color-data-heat-low: var(--color-palette-blue-light-heat-low);
+  --color-data-heat-high: var(--color-palette-blue-light-heat-high);
+  --color-data-heat-ink: var(--color-palette-ink-1000);
+  --color-data-heat-ink-on: var(--color-palette-gray-0);
+  --color-data-grid: var(--color-palette-ink-200);
+  --color-fg: var(--color-palette-ink-900);
+  --color-muted: var(--color-palette-ink-600);
+  --color-group-title: var(--color-palette-ink-700);
+  --color-bg: var(--color-palette-gray-25);
+  --color-node: var(--color-palette-gray-0);
+  --color-surface: var(--color-palette-gray-40);
+  --color-card: var(--color-palette-gray-50);
+  --color-outline: var(--color-palette-gray-outline);
+  --color-border: var(--color-palette-gray-150);
+  --color-card-on: var(--color-palette-blue-light-fill);
+  --color-group-1: var(--color-palette-gray-group-1);
+  --color-plate-border: var(--color-palette-gray-200);
+  --color-page: var(--color-palette-gray-0);
+  --color-tag-purple: var(--color-paint-purple-stroke);
+  --color-tag-green: var(--color-paint-green-stroke);
+  --color-tag-gray: var(--color-paint-gray-stroke);
+  --color-tag-red: var(--color-paint-red-stroke);
+  --color-tag-brand: var(--color-state-active);
+  --color-line: var(--color-palette-gray-300);
+  --color-group-2: var(--color-palette-gray-group-2);
+  --color-group-3: var(--color-palette-gray-group-3);
+  --font-sans: FigSans, FigSansSym, FigSansMath, Pretendard, 'Pretendard Variable', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+  --font-mono: FigMono, FigSans, FigSansSym, FigSansMath, ui-monospace, SFMono-Regular, Menlo, monospace;
+  --size-text-9: 9px;
+  --size-text-11: 11px;
+  --size-text-13: 13px;
+  --size-text-15: 15px;
+  --size-text-22: 22px;
+  --size-control-outer: 36px;
+  --size-control-inner: 28px;
+  --size-control-icon: 16px;
+  --size-control-icon-stroke: 1.75px;
+  --size-pill-height: 18px;
+  --size-icon-node: 20px;
+  --size-icon-group: 18px;
+  --size-icon-tile: 32px;
+  --size-icon-tile-gap: 6px;
+  --size-tag-height: 14px;
+  --size-packet-radius: 4.5px;
+  --size-packet-halo: 10px;
+  --size-packet-hop-ref: 300px;
+  --size-packet-chip-reach: 16px;
+  --size-arrow-head: 5px;
+  --size-arrow-head-lit: 4px;
+  --size-node-card-width: 176px;
+  --size-node-min-width: 100px;
+  --size-node-max-width: 210px;
+  --size-node-min-height: 46px;
+  --size-node-store-cap: 12px;
+  --size-node-state-dot: 14px;
+  --size-node-table-row: 26px;
+  --size-node-circle: 40px;
+  --size-node-tile-width: 80px;
+  --size-node-tile-pad: 8px;
+  --size-grid-cell: 32px;
+  --size-figure-canvas: 960px;
+  --size-figure-canvas-wide: 1440px;
+  --size-chip-max-width: 210px;
+  --size-player-caption-max: 720px;
+  --size-player-embedded-chrome: 150px;
+  --size-gallery-column: var(--size-figure-canvas);
+  --size-gallery-frame: 820px;
+  --size-document-column: var(--size-figure-canvas);
+  --size-chart-width: var(--size-figure-canvas);
+  --size-chart-label: 140px;
+  --size-chart-label-max: 240px;
+  --size-chart-bar: 12px;
+  --size-chart-row: 40px;
+  --size-chart-dot: 5px;
+  --size-chart-plot-h: 260px;
+  --size-chart-axis: 48px;
+  --size-chart-cell: 40px;
+  --size-chart-cap: 8px;
+  --size-chart-range: 6px;
+  --size-chart-arrow-min: 16px;
+  --size-person-width: 56px;
+  --size-person-head: 20px;
+  --size-person-shoulder: 14px;
+  --size-person-body: 22px;
+  --size-sequence-row: 44px;
+  --size-group-title: 28px;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --leading-normal: 1.5;
+  --leading-snug: 1.35;
+  --tracking-tag: 0.03em;
+  --tracking-frame: 0.04em;
+  --tracking-text: -0.3px;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 14px;
+  --space-8: 16px;
+  --space-9: 18px;
+  --space-11: 22px;
+  --space-12: 24px;
+  --space-14: 28px;
+  --space-15: 30px;
+  --space-16: 32px;
+  --space-20: 40px;
+  --space-22: 44px;
+  --space-30: 60px;
+  --space-0-5: 1px;
+  --space-1-5: 3px;
+  --space-2-5: 5px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 14px;
+  --radius-route: 22px;
+  --radius-full: 999px;
+  --border-hair: 0.75px;
+  --border-thin: 1px;
+  --border-lifeline: 1.25px;
+  --border-tag: 1.5px;
+  --border-edge: 1.75px;
+  --border-strong: 2.5px;
+  --border-casing: 4.5px;
+  --border-halo: 8px;
+  --dash-line: 5;
+  --dash-gap: 4;
+  --dash-card: 3;
+  --opacity-tag: 0.15;
+  --opacity-halo: 0.2;
+  --opacity-dim: 0.3;
+  --opacity-dim-ink: 0.9;
+  --opacity-band: 0.22;
+  --opacity-range: 0.4;
+  --opacity-chip-visible-min: 0.1;
+  --distance-card-min: 0.015;
+  --distance-card-max: 0.04;
+  --distance-flow: 0.1;
+  --distance-neighbor: 0.06;
+  --distance-neighbor-cvd: 0.025;
+  --distance-fill: 0.015;
+  --distance-fill-dark-bg: 0.07;
+  --distance-fill-dark-node: 0.03;
+  --z-raised: 2;
+  --z-overlay: 10;
+  --duration-fast: 200ms;
+  --duration-hop: 3750ms;
+  --duration-caption-fade: 200ms;
+  --duration-hop-min: 500ms;
+  --duration-chip-slide: 300ms;
+  --duration-chip-fade: 150ms;
+  --duration-dwell: 700ms;
+  --duration-dwell-per-char: 45ms;
+  --duration-dwell-max: 3200ms;
+  --duration-step-end: 1600ms;
+  --duration-chart-cycle: 7000ms;
+  --duration-reveal: 900ms;
+  --duration-value-flash: 700ms;
+  --duration-pulse: 450ms;
+  --duration-chip-frame: 16.666666666666668ms;
+  --duration-flow-step: 12000ms;
+  --duration-cut-fade: 600ms;
+  --easing-move: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+  --easing-reveal: cubic-bezier(0, 0, 0.58, 1);
+  --scale-zoom-max: 6;
+  --scale-aspect-fit-max: 1.6;
+  --scale-fold-aspect: var(--scale-aspect-fit-max);
+  --scale-fold-step: 0.75;
+  --scale-aspect-max: 3;
+  --scale-zoom-step: 1.25;
+  --scale-flow-dots-max: 80;
+  --scale-chip-visible-share: 0.6;
+}
+
+  :root {
+    --color-state-active: var(--color-palette-blue-dark-stroke);
+    --color-state-active-fill: var(--color-palette-blue-dark-stroke);
+    --color-state-active-text: var(--color-palette-blue-dark-ink);
+    --color-state-on-active: var(--color-palette-ink-850);
+    --color-state-glow: var(--color-palette-blue-dark-fill);
+    --color-figure-icon: var(--color-palette-blue-dark-icon);
+    --color-figure-icon-tile: var(--color-palette-blue-dark-fill);
+    --color-paint-red-fill: var(--color-palette-red-dark-fill);
+    --color-paint-red-stroke: var(--color-palette-red-dark-stroke);
+    --color-paint-red-outline: var(--color-palette-red-dark-outline);
+    --color-paint-red-ink: var(--color-palette-red-dark-ink);
+    --color-paint-red-dot: var(--color-palette-red-dark-dot);
+    --color-paint-amber-fill: var(--color-palette-amber-dark-fill);
+    --color-paint-amber-stroke: var(--color-palette-amber-dark-stroke);
+    --color-paint-amber-outline: var(--color-palette-amber-dark-outline);
+    --color-paint-amber-ink: var(--color-palette-amber-dark-ink);
+    --color-paint-green-fill: var(--color-palette-green-dark-fill);
+    --color-paint-green-stroke: var(--color-palette-green-dark-stroke);
+    --color-paint-green-outline: var(--color-palette-green-dark-outline);
+    --color-paint-green-ink: var(--color-palette-green-dark-ink);
+    --color-paint-green-dot: var(--color-palette-green-dark-dot);
+    --color-paint-teal-fill: var(--color-palette-teal-dark-fill);
+    --color-paint-teal-stroke: var(--color-palette-teal-dark-stroke);
+    --color-paint-teal-outline: var(--color-palette-teal-dark-outline);
+    --color-paint-teal-ink: var(--color-palette-teal-dark-ink);
+    --color-paint-teal-dot: var(--color-palette-teal-dark-dot);
+    --color-paint-navy-fill: var(--color-palette-navy-dark-fill);
+    --color-paint-navy-stroke: var(--color-palette-navy-dark-stroke);
+    --color-paint-navy-outline: var(--color-palette-navy-dark-outline);
+    --color-paint-navy-ink: var(--color-palette-navy-dark-ink);
+    --color-paint-purple-fill: var(--color-palette-purple-dark-fill);
+    --color-paint-purple-stroke: var(--color-palette-purple-dark-stroke);
+    --color-paint-purple-outline: var(--color-palette-purple-dark-outline);
+    --color-paint-purple-ink: var(--color-palette-purple-dark-ink);
+    --color-paint-purple-dot: var(--color-palette-purple-dark-dot);
+    --color-paint-purple-group-1: var(--color-palette-purple-dark-tint-1);
+    --color-paint-purple-group-2: var(--color-palette-purple-dark-tint-2);
+    --color-paint-purple-group-3: var(--color-palette-purple-dark-tint-3);
+    --color-paint-pink-fill: var(--color-palette-pink-dark-fill);
+    --color-paint-pink-stroke: var(--color-palette-pink-dark-stroke);
+    --color-paint-pink-outline: var(--color-palette-pink-dark-outline);
+    --color-paint-pink-ink: var(--color-palette-pink-dark-ink);
+    --color-paint-sky-fill: var(--color-palette-sky-dark-fill);
+    --color-paint-sky-stroke: var(--color-palette-sky-dark-stroke);
+    --color-paint-sky-outline: var(--color-palette-sky-dark-outline);
+    --color-paint-sky-ink: var(--color-palette-sky-dark-ink);
+    --color-paint-sky-group-1: var(--color-palette-sky-dark-tint-1);
+    --color-paint-sky-group-2: var(--color-palette-sky-dark-tint-2);
+    --color-paint-sky-group-3: var(--color-palette-sky-dark-tint-3);
+    --color-paint-gray-fill: var(--color-palette-slate-dark-fill);
+    --color-paint-gray-stroke: var(--color-palette-slate-dark-stroke);
+    --color-paint-gray-outline: var(--color-palette-slate-dark-outline);
+    --color-paint-gray-ink: var(--color-palette-slate-dark-ink);
+    --color-paint-gray-dot: var(--color-palette-slate-dark-dot);
+    --color-ui-link: var(--color-palette-blue-dark-ink);
+    --color-ui-focus: var(--color-palette-blue-dark-stroke);
+    --color-ui-progress: var(--color-palette-blue-dark-stroke);
+    --color-ui-control-on: var(--color-palette-neutral-750);
+    --color-data-main: var(--color-palette-blue-dark-stroke);
+    --color-data-compare: var(--color-palette-orange-dark-stroke);
+    --color-data-heat-low: var(--color-palette-blue-dark-heat-low);
+    --color-data-heat-high: var(--color-palette-blue-dark-heat-high);
+    --color-data-heat-ink: var(--color-palette-gray-0);
+    --color-data-heat-ink-on: var(--color-palette-gray-0);
+    --color-data-grid: var(--color-palette-neutral-750);
+    --color-fg: var(--color-palette-neutral-100);
+    --color-muted: var(--color-palette-neutral-400);
+    --color-group-title: var(--color-palette-neutral-400);
+    --color-bg: var(--color-palette-neutral-900);
+    --color-node: var(--color-palette-neutral-850);
+    --color-surface: var(--color-palette-neutral-800);
+    --color-card: var(--color-palette-neutral-800);
+    --color-outline: var(--color-palette-neutral-outline);
+    --color-border: var(--color-palette-neutral-750);
+    --color-card-on: var(--color-palette-blue-dark-fill);
+    --color-page: var(--color-palette-neutral-950);
+    --color-group-1: var(--color-palette-neutral-group-1);
+    --color-plate-border: var(--color-palette-neutral-800);
+    --color-line: var(--color-palette-neutral-600);
+    --color-group-2: var(--color-palette-neutral-group-2);
+    --color-group-3: var(--color-palette-neutral-group-3);
+  }
+
+[data-theme='dark'] {
+  --color-state-active: var(--color-palette-blue-dark-stroke);
+  --color-state-active-fill: var(--color-palette-blue-dark-stroke);
+  --color-state-active-text: var(--color-palette-blue-dark-ink);
+  --color-state-on-active: var(--color-palette-ink-850);
+  --color-state-glow: var(--color-palette-blue-dark-fill);
+  --color-figure-icon: var(--color-palette-blue-dark-icon);
+  --color-figure-icon-tile: var(--color-palette-blue-dark-fill);
+  --color-paint-red-fill: var(--color-palette-red-dark-fill);
+  --color-paint-red-stroke: var(--color-palette-red-dark-stroke);
+  --color-paint-red-outline: var(--color-palette-red-dark-outline);
+  --color-paint-red-ink: var(--color-palette-red-dark-ink);
+  --color-paint-red-dot: var(--color-palette-red-dark-dot);
+  --color-paint-amber-fill: var(--color-palette-amber-dark-fill);
+  --color-paint-amber-stroke: var(--color-palette-amber-dark-stroke);
+  --color-paint-amber-outline: var(--color-palette-amber-dark-outline);
+  --color-paint-amber-ink: var(--color-palette-amber-dark-ink);
+  --color-paint-green-fill: var(--color-palette-green-dark-fill);
+  --color-paint-green-stroke: var(--color-palette-green-dark-stroke);
+  --color-paint-green-outline: var(--color-palette-green-dark-outline);
+  --color-paint-green-ink: var(--color-palette-green-dark-ink);
+  --color-paint-green-dot: var(--color-palette-green-dark-dot);
+  --color-paint-teal-fill: var(--color-palette-teal-dark-fill);
+  --color-paint-teal-stroke: var(--color-palette-teal-dark-stroke);
+  --color-paint-teal-outline: var(--color-palette-teal-dark-outline);
+  --color-paint-teal-ink: var(--color-palette-teal-dark-ink);
+  --color-paint-teal-dot: var(--color-palette-teal-dark-dot);
+  --color-paint-navy-fill: var(--color-palette-navy-dark-fill);
+  --color-paint-navy-stroke: var(--color-palette-navy-dark-stroke);
+  --color-paint-navy-outline: var(--color-palette-navy-dark-outline);
+  --color-paint-navy-ink: var(--color-palette-navy-dark-ink);
+  --color-paint-purple-fill: var(--color-palette-purple-dark-fill);
+  --color-paint-purple-stroke: var(--color-palette-purple-dark-stroke);
+  --color-paint-purple-outline: var(--color-palette-purple-dark-outline);
+  --color-paint-purple-ink: var(--color-palette-purple-dark-ink);
+  --color-paint-purple-dot: var(--color-palette-purple-dark-dot);
+  --color-paint-purple-group-1: var(--color-palette-purple-dark-tint-1);
+  --color-paint-purple-group-2: var(--color-palette-purple-dark-tint-2);
+  --color-paint-purple-group-3: var(--color-palette-purple-dark-tint-3);
+  --color-paint-pink-fill: var(--color-palette-pink-dark-fill);
+  --color-paint-pink-stroke: var(--color-palette-pink-dark-stroke);
+  --color-paint-pink-outline: var(--color-palette-pink-dark-outline);
+  --color-paint-pink-ink: var(--color-palette-pink-dark-ink);
+  --color-paint-sky-fill: var(--color-palette-sky-dark-fill);
+  --color-paint-sky-stroke: var(--color-palette-sky-dark-stroke);
+  --color-paint-sky-outline: var(--color-palette-sky-dark-outline);
+  --color-paint-sky-ink: var(--color-palette-sky-dark-ink);
+  --color-paint-sky-group-1: var(--color-palette-sky-dark-tint-1);
+  --color-paint-sky-group-2: var(--color-palette-sky-dark-tint-2);
+  --color-paint-sky-group-3: var(--color-palette-sky-dark-tint-3);
+  --color-paint-gray-fill: var(--color-palette-slate-dark-fill);
+  --color-paint-gray-stroke: var(--color-palette-slate-dark-stroke);
+  --color-paint-gray-outline: var(--color-palette-slate-dark-outline);
+  --color-paint-gray-ink: var(--color-palette-slate-dark-ink);
+  --color-paint-gray-dot: var(--color-palette-slate-dark-dot);
+  --color-ui-link: var(--color-palette-blue-dark-ink);
+  --color-ui-focus: var(--color-palette-blue-dark-stroke);
+  --color-ui-progress: var(--color-palette-blue-dark-stroke);
+  --color-ui-control-on: var(--color-palette-neutral-750);
+  --color-data-main: var(--color-palette-blue-dark-stroke);
+  --color-data-compare: var(--color-palette-orange-dark-stroke);
+  --color-data-heat-low: var(--color-palette-blue-dark-heat-low);
+  --color-data-heat-high: var(--color-palette-blue-dark-heat-high);
+  --color-data-heat-ink: var(--color-palette-gray-0);
+  --color-data-heat-ink-on: var(--color-palette-gray-0);
+  --color-data-grid: var(--color-palette-neutral-750);
+  --color-fg: var(--color-palette-neutral-100);
+  --color-muted: var(--color-palette-neutral-400);
+  --color-group-title: var(--color-palette-neutral-400);
+  --color-bg: var(--color-palette-neutral-900);
+  --color-node: var(--color-palette-neutral-850);
+  --color-surface: var(--color-palette-neutral-800);
+  --color-card: var(--color-palette-neutral-800);
+  --color-outline: var(--color-palette-neutral-outline);
+  --color-border: var(--color-palette-neutral-750);
+  --color-card-on: var(--color-palette-blue-dark-fill);
+  --color-page: var(--color-palette-neutral-950);
+  --color-group-1: var(--color-palette-neutral-group-1);
+  --color-plate-border: var(--color-palette-neutral-800);
+  --color-line: var(--color-palette-neutral-600);
+  --color-group-2: var(--color-palette-neutral-group-2);
+  --color-group-3: var(--color-palette-neutral-group-3);
+}
+/* 그림 안 글자와 모양. HTML 재생기와 움직이는 SVG가 같이 쓴다. */
+.fl text {
+  font-family: var(--font-sans);
+  letter-spacing: var(--tracking-text);
+}
+
+.fl .label {
+  font-size: var(--size-text-13);
+  font-weight: var(--weight-medium);
+  text-anchor: middle;
+  fill: var(--color-fg);
+}
+
+.fl .sub {
+  font-size: var(--size-text-11);
+  text-anchor: middle;
+  fill: var(--color-muted);
+}
+
+.fl .frame {
+  font-size: var(--size-text-11);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-frame);
+  fill: var(--color-group-title);
+}
+
+.fl .edgelabel {
+  font-size: var(--size-text-11);
+  text-anchor: middle;
+  fill: var(--color-muted);
+}
+
+.fl .row {
+  font-size: var(--size-text-11);
+  fill: var(--color-fg);
+}
+
+.fl .row.mono {
+  font-family: var(--font-mono);
+  letter-spacing: normal;
+  font-size: var(--size-text-11);
+}
+
+/* 백틱으로 감싼 글. 코드 글꼴로 그린다. */
+.fl .code {
+  font-family: var(--font-mono);
+  letter-spacing: normal;
+}
+
+.fl .muted {
+  fill: var(--color-muted);
+}
+
+.fl .tag {
+  font-size: var(--size-text-9);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tag);
+  text-anchor: middle;
+  fill: var(--color-fg);
+}
+
+.fl .mark {
+  font-size: var(--size-text-11);
+  font-weight: var(--weight-semibold);
+  text-anchor: end;
+  fill: var(--color-state-active-text);
+}
+
+/* 값 카드 줄의 값 글자. 줄의 이름(row)은 카드 층이 그리고 값은 오른쪽 끝에 얹힌다. */
+.fl .value {
+  font-size: var(--size-text-11);
+  font-weight: var(--weight-semibold);
+  text-anchor: end;
+  fill: var(--color-fg);
+}
+
+.fl .mini {
+  font-size: var(--size-text-11);
+  text-anchor: middle;
+  fill: var(--color-fg);
+}
+
+.fl .mini.on {
+  fill: var(--color-state-on-active);
+}
+
+.fl .chip {
+  font-size: var(--size-text-11);
+  text-anchor: middle;
+  fill: var(--color-state-on-active);
+}
+
+.fl .cell {
+  font-size: var(--size-text-13);
+  fill: var(--color-fg);
+}
+
+.fl .item {
+  font-size: var(--size-text-13);
+  text-anchor: middle;
+  fill: var(--color-fg);
+}
+
+.fl .item.gap {
+  fill: var(--color-muted);
+}
+
+.fl .cell.type {
+  font-family: var(--font-mono);
+  letter-spacing: normal;
+  font-size: var(--size-text-11);
+  text-anchor: end;
+  fill: var(--color-muted);
+}
+
+.fl .fl-stroke {
+  stroke: var(--color-outline);
+  stroke-width: var(--border-thin);
+}
+
+.fl .fl-path {
+  fill: none;
+  stroke: var(--color-line);
+  stroke-width: var(--border-edge);
+}
+
+.fl .cell .key {
+  font-size: var(--size-text-9);
+  font-weight: var(--weight-semibold);
+  fill: var(--color-muted);
+}
+
+.fl .frame-box {
+  fill: var(--color-group-1);
+  stroke: none;
+}
+
+.fl .frame-box.d2 {
+  fill: var(--color-group-2);
+}
+
+.fl .frame-box.d3 {
+  fill: var(--color-group-3);
+}
+
+.fl .frame-box.dashed {
+  stroke: var(--color-line);
+}
+
+.fl .lifeline {
+  stroke: var(--color-line);
+  stroke-width: var(--border-lifeline);
+  stroke-dasharray: var(--dash-gap) var(--dash-gap);
+}
+
+.fl .note-box {
+  fill: var(--color-surface);
+  stroke: var(--color-line);
+  stroke-dasharray: var(--dash-card) var(--dash-card);
+}
+
+.fl .pill {
+  fill: var(--color-node);
+  stroke: var(--color-outline);
+}
+
+.fl .part-bg {
+  fill: transparent;
+}
+
+.fl .col-line {
+  stroke: var(--color-outline);
+  stroke-width: var(--border-hair);
+}
+
+.fl .grid-cell {
+  fill: var(--color-node);
+  stroke: var(--color-outline);
+  stroke-width: var(--border-thin);
+}
+
+.fl .grid-ring {
+  fill: none;
+  stroke: none;
+}
+
+.fl .grid-cell.gap {
+  fill: var(--color-surface);
+  stroke: var(--color-line);
+  stroke-dasharray: var(--dash-card) var(--dash-card);
+}
+
+.fl .grid-cell.empty {
+  fill: none;
+  stroke: var(--color-line);
+  stroke-dasharray: var(--dash-card) var(--dash-card);
+}
+
+.fl .fl-edge.mark .fl-path {
+  stroke: var(--color-fg);
+}
+
+/* 도형 윗줄과 그룹 제목 줄의 장식: 글자 배지, 아이콘 */
+.fl .badge {
+  font-size: var(--size-text-11);
+  font-weight: var(--weight-semibold);
+  text-anchor: middle;
+  fill: var(--color-fg);
+}
+
+.fl .badge-pill {
+  fill: var(--color-node);
+  stroke: var(--color-outline);
+  stroke-width: var(--border-thin);
+}
+
+.fl .fl-icon {
+  color: var(--color-figure-icon);
+}
+
+.fl .icon-tile {
+  fill: var(--color-figure-icon-tile);
+}
+
+.fl .fl-icon.in-tile {
+  color: var(--color-figure-icon);
+}
+
+/* 선 번호 원. 라벨 알약과 달리 켜져도 색이 바뀌지 않아 정지 그림과 같은 순서로 읽힌다. */
+.fl .number-pill {
+  fill: var(--color-fg);
+}
+
+.fl .number {
+  font-size: var(--size-text-11);
+  font-weight: var(--weight-semibold);
+  text-anchor: middle;
+  fill: var(--color-bg);
+}
+/* 움직이는 SVG에만 있는 단계 이름과 설명 줄 */
+.fl .steplabel {
+  font-family: var(--font-sans);
+  letter-spacing: var(--tracking-text);
+  font-size: var(--size-text-15);
+  font-weight: var(--weight-semibold);
+  text-anchor: middle;
+  fill: var(--color-fg);
+}
+
+.fl .caption {
+  font-size: var(--size-text-13);
+  text-anchor: middle;
+  fill: var(--color-muted);
+}
+
+@keyframes a0 { 0%,9.162% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 9.162%,18.933% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 18.933%,22.179% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 22.179%,27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 27.797%,36.25% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 36.25%,41.671% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 41.671%,44.917% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 44.917%,50.271% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 50.272%,56.813% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 56.813%,60.058% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 60.059%,69.83% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 69.83%,77.426% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 77.426%,85.021% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 85.022%,94.793% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 94.793% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 95.056%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } }
+.fl .a0 { animation: a0 75.856s infinite linear; }
+@keyframes a1 { 0%,9.162% { opacity: 1 } 9.162%,18.933% { opacity: 1 } 18.933%,22.179% { opacity: 1 } 22.179%,27.534% { opacity: 1 } 27.534% { opacity: 1 } 27.797%,36.25% { opacity: 0 } 36.25%,41.671% { opacity: 0 } 41.671%,44.917% { opacity: 0 } 44.917%,50.271% { opacity: 0 } 50.272%,56.813% { opacity: 0 } 56.813%,60.058% { opacity: 0 } 60.059%,69.83% { opacity: 0 } 69.83%,77.426% { opacity: 0 } 77.426%,85.021% { opacity: 0 } 85.022%,94.793% { opacity: 0 } 94.793% { opacity: 0 } 95.056%,100% { opacity: 1 } }
+.fl .a1 { animation: a1 75.856s infinite linear; }
+@keyframes a2 { 0%,9.162% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 9.162%,18.933% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 18.933%,22.179% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 22.179%,27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 27.534%,36.25% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 36.25%,41.671% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 41.671%,44.917% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 44.917%,50.271% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 50.272%,56.813% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 56.813%,60.058% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 60.059%,69.83% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 69.83%,77.426% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 77.426%,85.021% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 85.022%,94.793% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 94.793%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } }
+.fl .a2 { animation: a2 75.856s infinite linear; }
+@keyframes a3 { 0%,9.162% { opacity: 1 } 9.162%,18.933% { opacity: 1 } 18.933%,22.179% { opacity: 1 } 22.179%,27.534% { opacity: 1 } 27.534%,36.25% { opacity: 1 } 36.25%,41.671% { opacity: 1 } 41.671%,44.917% { opacity: 1 } 44.917%,50.271% { opacity: 1 } 50.272%,56.813% { opacity: 1 } 56.813%,60.058% { opacity: 1 } 60.059%,69.83% { opacity: 1 } 69.83%,77.426% { opacity: 1 } 77.426%,85.021% { opacity: 1 } 85.022%,94.793% { opacity: 1 } 94.793%,100% { opacity: 1 } }
+.fl .a3 { animation: a3 75.856s infinite linear; }
+@keyframes a4 { 0%,9.162% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 9.162%,18.933% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 18.933% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 19.197%,22.179% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 22.179%,27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 27.797%,36.25% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 36.25%,41.671% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 41.671% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 41.935%,44.917% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 44.917%,50.271% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 50.272%,56.813% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 56.813%,60.058% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 60.059%,69.83% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 69.83%,77.426% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 77.426%,85.021% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 85.022%,94.793% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 94.793%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } }
+.fl .a4 { animation: a4 75.856s infinite linear; }
+@keyframes a5 { 0%,9.162% { opacity: 0 } 9.162%,18.933% { opacity: 0 } 18.933% { opacity: 0 } 19.197%,22.179% { opacity: 1 } 22.179%,27.534% { opacity: 1 } 27.534% { opacity: 1 } 27.797%,36.25% { opacity: 0 } 36.25%,41.671% { opacity: 0 } 41.671% { opacity: 0 } 41.935%,44.917% { opacity: 1 } 44.917%,50.271% { opacity: 1 } 50.272%,56.813% { opacity: 1 } 56.813%,60.058% { opacity: 1 } 60.059%,69.83% { opacity: 1 } 69.83%,77.426% { opacity: 1 } 77.426%,85.021% { opacity: 1 } 85.022%,94.793% { opacity: 1 } 94.793%,100% { opacity: 1 } }
+.fl .a5 { animation: a5 75.856s infinite linear; }
+@keyframes a6 { 0%,9.162% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 9.162%,18.933% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 18.933%,22.179% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 22.179%,27.534% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 27.534% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 27.797%,36.25% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 36.25%,41.671% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 41.671%,44.917% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 44.917%,50.271% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 50.272% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 50.535%,56.813% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 56.813%,60.058% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 60.059%,69.83% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 69.83%,77.426% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 77.426%,85.021% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 85.022%,94.793% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 94.793%,100% { stroke: var(--color-outline); stroke-width: var(--border-thin) } }
+.fl .a6 { animation: a6 75.856s infinite linear; }
+@keyframes a7 { 0%,9.162% { opacity: 0 } 9.162%,18.933% { opacity: 0 } 18.933%,22.179% { opacity: 0 } 22.179%,27.534% { opacity: 0 } 27.534% { opacity: 0 } 27.797%,36.25% { opacity: 1 } 36.25%,41.671% { opacity: 1 } 41.671%,44.917% { opacity: 1 } 44.917%,50.271% { opacity: 1 } 50.272% { opacity: 1 } 50.535%,56.813% { opacity: 0 } 56.813%,60.058% { opacity: 0 } 60.059%,69.83% { opacity: 0 } 69.83%,77.426% { opacity: 0 } 77.426%,85.021% { opacity: 0 } 85.022%,94.793% { opacity: 0 } 94.793%,100% { opacity: 0 } }
+.fl .a7 { animation: a7 75.856s infinite linear; }
+@keyframes a8 { 0%,9.162% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 9.162%,18.933% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 18.933%,22.179% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 22.179%,27.534% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 27.534%,36.25% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 36.25%,41.671% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 41.671%,44.917% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 44.917%,50.271% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 50.272%,56.813% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 56.813%,60.058% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 60.059%,69.83% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 69.83% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 70.093%,77.426% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 77.426%,85.021% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 85.022%,94.793% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 94.793%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } }
+.fl .a8 { animation: a8 75.856s infinite linear; }
+@keyframes a9 { 0%,9.162% { opacity: 0 } 9.162%,18.933% { opacity: 0 } 18.933%,22.179% { opacity: 0 } 22.179%,27.534% { opacity: 0 } 27.534%,36.25% { opacity: 0 } 36.25%,41.671% { opacity: 0 } 41.671%,44.917% { opacity: 0 } 44.917%,50.271% { opacity: 0 } 50.272%,56.813% { opacity: 0 } 56.813%,60.058% { opacity: 0 } 60.059%,69.83% { opacity: 0 } 69.83% { opacity: 0 } 70.093%,77.426% { opacity: 1 } 77.426%,85.021% { opacity: 1 } 85.022%,94.793% { opacity: 1 } 94.793%,100% { opacity: 1 } }
+.fl .a9 { animation: a9 75.856s infinite linear; }
+@keyframes a10 { 0%,9.162% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 9.162% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 9.426%,18.933% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 18.933%,22.179% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 22.179%,27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 27.797%,36.25% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 36.25%,41.671% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 41.671%,44.917% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 44.917%,50.271% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 50.272%,56.813% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 56.813%,60.058% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 60.059% { stroke: var(--color-outline); stroke-width: var(--border-thin) } 60.322%,69.83% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 69.83%,77.426% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 77.426%,85.021% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 85.022%,94.793% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } 94.793%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong) } }
+.fl .a10 { animation: a10 75.856s infinite linear; }
+@keyframes a11 { 0%,9.162% { opacity: 0 } 9.162% { opacity: 0 } 9.426%,18.933% { opacity: 1 } 18.933%,22.179% { opacity: 1 } 22.179%,27.534% { opacity: 1 } 27.534% { opacity: 1 } 27.797%,36.25% { opacity: 0 } 36.25%,41.671% { opacity: 0 } 41.671%,44.917% { opacity: 0 } 44.917%,50.271% { opacity: 0 } 50.272%,56.813% { opacity: 0 } 56.813%,60.058% { opacity: 0 } 60.059% { opacity: 0 } 60.322%,69.83% { opacity: 1 } 69.83%,77.426% { opacity: 1 } 77.426%,85.021% { opacity: 1 } 85.022%,94.793% { opacity: 1 } 94.793%,100% { opacity: 1 } }
+.fl .a11 { animation: a11 75.856s infinite linear; }
+@keyframes a12 { 0%,9.162% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 9.162%,18.933% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 18.933%,22.179% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 22.179%,27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 27.797%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917%,50.271% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.272%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83%,77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.426%,85.021% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 85.022%,94.793% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 94.793%,100% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } }
+.fl .a12 { animation: a12 75.856s infinite linear; }
+@keyframes a13 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.426%,18.933% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 18.933%,22.179% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 22.179%,27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 27.797%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917%,50.271% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.272%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83%,77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.426%,85.021% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 85.022%,94.793% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 94.793%,100% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } }
+.fl .a13 { animation: a13 75.856s infinite linear; }
+@keyframes a14 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 19.197%,22.179% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 22.179%,27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 27.797%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917%,50.271% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.272%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83%,77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.426%,85.021% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 85.022%,94.793% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 94.793%,100% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } }
+.fl .a14 { animation: a14 75.856s infinite linear; }
+@keyframes a15 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.443%,27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 27.534% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 27.797%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917%,50.271% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.272%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83%,77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.426%,85.021% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 85.022%,94.793% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 94.793%,100% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } }
+.fl .a15 { animation: a15 75.856s infinite linear; }
+@keyframes a16 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179%,27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.797%,36.25% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 36.25%,41.671% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 41.671%,44.917% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 44.917%,50.271% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 50.272% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 50.535%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83%,77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.426%,85.021% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 85.022%,94.793% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 94.793%,100% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } }
+.fl .a16 { animation: a16 75.856s infinite linear; }
+@keyframes a17 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179%,27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.534%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.514%,41.671% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 41.671%,44.917% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 44.917%,50.271% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 50.272% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 50.535%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83%,77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.426%,85.021% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 85.022%,94.793% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 94.793%,100% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } }
+.fl .a17 { animation: a17 75.856s infinite linear; }
+@keyframes a18 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179%,27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.534%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.935%,44.917% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 44.917%,50.271% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 50.272% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 50.535%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83%,77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.426%,85.021% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 85.022%,94.793% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 94.793%,100% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } }
+.fl .a18 { animation: a18 75.856s infinite linear; }
+@keyframes a19 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179%,27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.534%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 45.18%,50.271% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 50.272% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 50.535%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83%,77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.426%,85.021% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 85.022%,94.793% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 94.793%,100% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } }
+.fl .a19 { animation: a19 75.856s infinite linear; }
+@keyframes a20 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179%,27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.534%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917%,50.271% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.272% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.535%,56.813% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 56.813%,60.058% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 60.059%,69.83% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 69.83%,77.426% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 77.426%,85.021% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 85.022%,94.793% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 94.793%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } }
+.fl .a20 { animation: a20 75.856s infinite linear; }
+@keyframes a21 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179%,27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.534%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917%,50.271% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.272%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 57.077%,60.058% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 60.059%,69.83% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 69.83%,77.426% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 77.426%,85.021% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 85.022%,94.793% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 94.793%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } }
+.fl .a21 { animation: a21 75.856s infinite linear; }
+@keyframes a22 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179%,27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.534%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917%,50.271% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.272%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.322%,69.83% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 69.83%,77.426% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 77.426%,85.021% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 85.022%,94.793% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 94.793%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } }
+.fl .a22 { animation: a22 75.856s infinite linear; }
+@keyframes a23 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179%,27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.534%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917%,50.271% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.272%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 70.093%,77.426% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 77.426%,85.021% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 85.022%,94.793% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 94.793%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } }
+.fl .a23 { animation: a23 75.856s infinite linear; }
+@keyframes a24 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179%,27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.534%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917%,50.271% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.272%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83%,77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.689%,85.021% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 85.022%,94.793% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 94.793%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } }
+.fl .a24 { animation: a24 75.856s infinite linear; }
+@keyframes a25 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179%,27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.534%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917%,50.271% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.272%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83%,77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.426%,85.021% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 85.022% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 85.285%,94.793% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } 94.793%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } }
+.fl .a25 { animation: a25 75.856s infinite linear; }
+@keyframes a26 { 0%,9.162% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 9.162%,18.933% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 18.933%,22.179% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 22.179%,27.534% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 27.534%,36.25% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 36.25%,41.671% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 41.671%,44.917% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 44.917%,50.271% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 50.272%,56.813% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 56.813%,60.058% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 60.059%,69.83% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 69.83%,77.426% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 77.426%,85.021% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 85.022%,94.793% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 94.793% { stroke: var(--color-line); stroke-width: var(--border-edge); marker-end: url(#fl-arrow) } 95.056%,100% { stroke: var(--color-state-active); stroke-width: var(--border-strong); marker-end: url(#fl-arrow-on) } }
+.fl .a26 { animation: a26 75.856s infinite linear; }
+@keyframes a27 { 0%,9.162% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 9.162%,18.933% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 18.933%,22.179% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 22.179%,27.534% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 27.534% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 27.797%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917%,50.271% { fill: var(--color-node); stroke: var(--color-border) } 50.272%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83%,77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.426%,85.021% { fill: var(--color-node); stroke: var(--color-border) } 85.022%,94.793% { fill: var(--color-node); stroke: var(--color-border) } 94.793%,100% { fill: var(--color-node); stroke: var(--color-border) } }
+.fl .a27 { animation: a27 75.856s infinite linear; }
+@keyframes a28 { 0%,9.162% { fill: var(--color-state-on-active) } 9.162%,18.933% { fill: var(--color-state-on-active) } 18.933%,22.179% { fill: var(--color-state-on-active) } 22.179%,27.534% { fill: var(--color-state-on-active) } 27.534% { fill: var(--color-state-on-active) } 27.797%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917%,50.271% { fill: var(--color-muted) } 50.272%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83%,77.426% { fill: var(--color-muted) } 77.426%,85.021% { fill: var(--color-muted) } 85.022%,94.793% { fill: var(--color-muted) } 94.793%,100% { fill: var(--color-muted) } }
+.fl .a28 { animation: a28 75.856s infinite linear; }
+@keyframes a29 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.426%,18.933% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 18.933%,22.179% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 22.179%,27.534% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 27.534% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 27.797%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917%,50.271% { fill: var(--color-node); stroke: var(--color-border) } 50.272%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83%,77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.426%,85.021% { fill: var(--color-node); stroke: var(--color-border) } 85.022%,94.793% { fill: var(--color-node); stroke: var(--color-border) } 94.793%,100% { fill: var(--color-node); stroke: var(--color-border) } }
+.fl .a29 { animation: a29 75.856s infinite linear; }
+@keyframes a30 { 0%,9.162% { fill: var(--color-muted) } 9.162% { fill: var(--color-muted) } 9.426%,18.933% { fill: var(--color-state-on-active) } 18.933%,22.179% { fill: var(--color-state-on-active) } 22.179%,27.534% { fill: var(--color-state-on-active) } 27.534% { fill: var(--color-state-on-active) } 27.797%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917%,50.271% { fill: var(--color-muted) } 50.272%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83%,77.426% { fill: var(--color-muted) } 77.426%,85.021% { fill: var(--color-muted) } 85.022%,94.793% { fill: var(--color-muted) } 94.793%,100% { fill: var(--color-muted) } }
+.fl .a30 { animation: a30 75.856s infinite linear; }
+@keyframes a31 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933% { fill: var(--color-node); stroke: var(--color-border) } 19.197%,22.179% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 22.179%,27.534% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 27.534% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 27.797%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917%,50.271% { fill: var(--color-node); stroke: var(--color-border) } 50.272%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83%,77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.426%,85.021% { fill: var(--color-node); stroke: var(--color-border) } 85.022%,94.793% { fill: var(--color-node); stroke: var(--color-border) } 94.793%,100% { fill: var(--color-node); stroke: var(--color-border) } }
+.fl .a31 { animation: a31 75.856s infinite linear; }
+@keyframes a32 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933% { fill: var(--color-muted) } 19.197%,22.179% { fill: var(--color-state-on-active) } 22.179%,27.534% { fill: var(--color-state-on-active) } 27.534% { fill: var(--color-state-on-active) } 27.797%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917%,50.271% { fill: var(--color-muted) } 50.272%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83%,77.426% { fill: var(--color-muted) } 77.426%,85.021% { fill: var(--color-muted) } 85.022%,94.793% { fill: var(--color-muted) } 94.793%,100% { fill: var(--color-muted) } }
+.fl .a32 { animation: a32 75.856s infinite linear; }
+@keyframes a33 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.443%,27.534% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 27.534% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 27.797%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917%,50.271% { fill: var(--color-node); stroke: var(--color-border) } 50.272%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83%,77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.426%,85.021% { fill: var(--color-node); stroke: var(--color-border) } 85.022%,94.793% { fill: var(--color-node); stroke: var(--color-border) } 94.793%,100% { fill: var(--color-node); stroke: var(--color-border) } }
+.fl .a33 { animation: a33 75.856s infinite linear; }
+@keyframes a34 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179% { fill: var(--color-muted) } 22.443%,27.534% { fill: var(--color-state-on-active) } 27.534% { fill: var(--color-state-on-active) } 27.797%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917%,50.271% { fill: var(--color-muted) } 50.272%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83%,77.426% { fill: var(--color-muted) } 77.426%,85.021% { fill: var(--color-muted) } 85.022%,94.793% { fill: var(--color-muted) } 94.793%,100% { fill: var(--color-muted) } }
+.fl .a34 { animation: a34 75.856s infinite linear; }
+@keyframes a35 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179%,27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.797%,36.25% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 36.25%,41.671% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 41.671%,44.917% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 44.917%,50.271% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 50.272% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 50.535%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83%,77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.426%,85.021% { fill: var(--color-node); stroke: var(--color-border) } 85.022%,94.793% { fill: var(--color-node); stroke: var(--color-border) } 94.793%,100% { fill: var(--color-node); stroke: var(--color-border) } }
+.fl .a35 { animation: a35 75.856s infinite linear; }
+@keyframes a36 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179%,27.534% { fill: var(--color-muted) } 27.534% { fill: var(--color-muted) } 27.797%,36.25% { fill: var(--color-state-on-active) } 36.25%,41.671% { fill: var(--color-state-on-active) } 41.671%,44.917% { fill: var(--color-state-on-active) } 44.917%,50.271% { fill: var(--color-state-on-active) } 50.272% { fill: var(--color-state-on-active) } 50.535%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83%,77.426% { fill: var(--color-muted) } 77.426%,85.021% { fill: var(--color-muted) } 85.022%,94.793% { fill: var(--color-muted) } 94.793%,100% { fill: var(--color-muted) } }
+.fl .a36 { animation: a36 75.856s infinite linear; }
+@keyframes a37 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179%,27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.534%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.514%,41.671% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 41.671%,44.917% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 44.917%,50.271% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 50.272% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 50.535%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83%,77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.426%,85.021% { fill: var(--color-node); stroke: var(--color-border) } 85.022%,94.793% { fill: var(--color-node); stroke: var(--color-border) } 94.793%,100% { fill: var(--color-node); stroke: var(--color-border) } }
+.fl .a37 { animation: a37 75.856s infinite linear; }
+@keyframes a38 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179%,27.534% { fill: var(--color-muted) } 27.534%,36.25% { fill: var(--color-muted) } 36.25% { fill: var(--color-muted) } 36.514%,41.671% { fill: var(--color-state-on-active) } 41.671%,44.917% { fill: var(--color-state-on-active) } 44.917%,50.271% { fill: var(--color-state-on-active) } 50.272% { fill: var(--color-state-on-active) } 50.535%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83%,77.426% { fill: var(--color-muted) } 77.426%,85.021% { fill: var(--color-muted) } 85.022%,94.793% { fill: var(--color-muted) } 94.793%,100% { fill: var(--color-muted) } }
+.fl .a38 { animation: a38 75.856s infinite linear; }
+@keyframes a39 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179%,27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.534%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.935%,44.917% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 44.917%,50.271% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 50.272% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 50.535%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83%,77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.426%,85.021% { fill: var(--color-node); stroke: var(--color-border) } 85.022%,94.793% { fill: var(--color-node); stroke: var(--color-border) } 94.793%,100% { fill: var(--color-node); stroke: var(--color-border) } }
+.fl .a39 { animation: a39 75.856s infinite linear; }
+@keyframes a40 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179%,27.534% { fill: var(--color-muted) } 27.534%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671% { fill: var(--color-muted) } 41.935%,44.917% { fill: var(--color-state-on-active) } 44.917%,50.271% { fill: var(--color-state-on-active) } 50.272% { fill: var(--color-state-on-active) } 50.535%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83%,77.426% { fill: var(--color-muted) } 77.426%,85.021% { fill: var(--color-muted) } 85.022%,94.793% { fill: var(--color-muted) } 94.793%,100% { fill: var(--color-muted) } }
+.fl .a40 { animation: a40 75.856s infinite linear; }
+@keyframes a41 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179%,27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.534%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917% { fill: var(--color-node); stroke: var(--color-border) } 45.18%,50.271% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 50.272% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 50.535%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83%,77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.426%,85.021% { fill: var(--color-node); stroke: var(--color-border) } 85.022%,94.793% { fill: var(--color-node); stroke: var(--color-border) } 94.793%,100% { fill: var(--color-node); stroke: var(--color-border) } }
+.fl .a41 { animation: a41 75.856s infinite linear; }
+@keyframes a42 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179%,27.534% { fill: var(--color-muted) } 27.534%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917% { fill: var(--color-muted) } 45.18%,50.271% { fill: var(--color-state-on-active) } 50.272% { fill: var(--color-state-on-active) } 50.535%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83%,77.426% { fill: var(--color-muted) } 77.426%,85.021% { fill: var(--color-muted) } 85.022%,94.793% { fill: var(--color-muted) } 94.793%,100% { fill: var(--color-muted) } }
+.fl .a42 { animation: a42 75.856s infinite linear; }
+@keyframes a43 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179%,27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.534%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917%,50.271% { fill: var(--color-node); stroke: var(--color-border) } 50.272% { fill: var(--color-node); stroke: var(--color-border) } 50.535%,56.813% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 56.813%,60.058% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 60.059%,69.83% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 69.83%,77.426% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 77.426%,85.021% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 85.022%,94.793% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 94.793%,100% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } }
+.fl .a43 { animation: a43 75.856s infinite linear; }
+@keyframes a44 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179%,27.534% { fill: var(--color-muted) } 27.534%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917%,50.271% { fill: var(--color-muted) } 50.272% { fill: var(--color-muted) } 50.535%,56.813% { fill: var(--color-state-on-active) } 56.813%,60.058% { fill: var(--color-state-on-active) } 60.059%,69.83% { fill: var(--color-state-on-active) } 69.83%,77.426% { fill: var(--color-state-on-active) } 77.426%,85.021% { fill: var(--color-state-on-active) } 85.022%,94.793% { fill: var(--color-state-on-active) } 94.793%,100% { fill: var(--color-state-on-active) } }
+.fl .a44 { animation: a44 75.856s infinite linear; }
+@keyframes a45 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179%,27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.534%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917%,50.271% { fill: var(--color-node); stroke: var(--color-border) } 50.272%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813% { fill: var(--color-node); stroke: var(--color-border) } 57.077%,60.058% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 60.059%,69.83% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 69.83%,77.426% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 77.426%,85.021% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 85.022%,94.793% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 94.793%,100% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } }
+.fl .a45 { animation: a45 75.856s infinite linear; }
+@keyframes a46 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179%,27.534% { fill: var(--color-muted) } 27.534%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917%,50.271% { fill: var(--color-muted) } 50.272%,56.813% { fill: var(--color-muted) } 56.813% { fill: var(--color-muted) } 57.077%,60.058% { fill: var(--color-state-on-active) } 60.059%,69.83% { fill: var(--color-state-on-active) } 69.83%,77.426% { fill: var(--color-state-on-active) } 77.426%,85.021% { fill: var(--color-state-on-active) } 85.022%,94.793% { fill: var(--color-state-on-active) } 94.793%,100% { fill: var(--color-state-on-active) } }
+.fl .a46 { animation: a46 75.856s infinite linear; }
+@keyframes a47 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179%,27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.534%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917%,50.271% { fill: var(--color-node); stroke: var(--color-border) } 50.272%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059% { fill: var(--color-node); stroke: var(--color-border) } 60.322%,69.83% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 69.83%,77.426% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 77.426%,85.021% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 85.022%,94.793% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 94.793%,100% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } }
+.fl .a47 { animation: a47 75.856s infinite linear; }
+@keyframes a48 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179%,27.534% { fill: var(--color-muted) } 27.534%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917%,50.271% { fill: var(--color-muted) } 50.272%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059% { fill: var(--color-muted) } 60.322%,69.83% { fill: var(--color-state-on-active) } 69.83%,77.426% { fill: var(--color-state-on-active) } 77.426%,85.021% { fill: var(--color-state-on-active) } 85.022%,94.793% { fill: var(--color-state-on-active) } 94.793%,100% { fill: var(--color-state-on-active) } }
+.fl .a48 { animation: a48 75.856s infinite linear; }
+@keyframes a49 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179%,27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.534%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917%,50.271% { fill: var(--color-node); stroke: var(--color-border) } 50.272%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83% { fill: var(--color-node); stroke: var(--color-border) } 70.093%,77.426% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 77.426%,85.021% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 85.022%,94.793% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 94.793%,100% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } }
+.fl .a49 { animation: a49 75.856s infinite linear; }
+@keyframes a50 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179%,27.534% { fill: var(--color-muted) } 27.534%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917%,50.271% { fill: var(--color-muted) } 50.272%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83% { fill: var(--color-muted) } 70.093%,77.426% { fill: var(--color-state-on-active) } 77.426%,85.021% { fill: var(--color-state-on-active) } 85.022%,94.793% { fill: var(--color-state-on-active) } 94.793%,100% { fill: var(--color-state-on-active) } }
+.fl .a50 { animation: a50 75.856s infinite linear; }
+@keyframes a51 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179%,27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.534%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917%,50.271% { fill: var(--color-node); stroke: var(--color-border) } 50.272%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83%,77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.689%,85.021% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 85.022%,94.793% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 94.793%,100% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } }
+.fl .a51 { animation: a51 75.856s infinite linear; }
+@keyframes a52 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179%,27.534% { fill: var(--color-muted) } 27.534%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917%,50.271% { fill: var(--color-muted) } 50.272%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83%,77.426% { fill: var(--color-muted) } 77.426% { fill: var(--color-muted) } 77.689%,85.021% { fill: var(--color-state-on-active) } 85.022%,94.793% { fill: var(--color-state-on-active) } 94.793%,100% { fill: var(--color-state-on-active) } }
+.fl .a52 { animation: a52 75.856s infinite linear; }
+@keyframes a53 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179%,27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.534%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917%,50.271% { fill: var(--color-node); stroke: var(--color-border) } 50.272%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83%,77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.426%,85.021% { fill: var(--color-node); stroke: var(--color-border) } 85.022% { fill: var(--color-node); stroke: var(--color-border) } 85.285%,94.793% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } 94.793%,100% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } }
+.fl .a53 { animation: a53 75.856s infinite linear; }
+@keyframes a54 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179%,27.534% { fill: var(--color-muted) } 27.534%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917%,50.271% { fill: var(--color-muted) } 50.272%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83%,77.426% { fill: var(--color-muted) } 77.426%,85.021% { fill: var(--color-muted) } 85.022% { fill: var(--color-muted) } 85.285%,94.793% { fill: var(--color-state-on-active) } 94.793%,100% { fill: var(--color-state-on-active) } }
+.fl .a54 { animation: a54 75.856s infinite linear; }
+@keyframes a55 { 0%,9.162% { fill: var(--color-node); stroke: var(--color-border) } 9.162%,18.933% { fill: var(--color-node); stroke: var(--color-border) } 18.933%,22.179% { fill: var(--color-node); stroke: var(--color-border) } 22.179%,27.534% { fill: var(--color-node); stroke: var(--color-border) } 27.534%,36.25% { fill: var(--color-node); stroke: var(--color-border) } 36.25%,41.671% { fill: var(--color-node); stroke: var(--color-border) } 41.671%,44.917% { fill: var(--color-node); stroke: var(--color-border) } 44.917%,50.271% { fill: var(--color-node); stroke: var(--color-border) } 50.272%,56.813% { fill: var(--color-node); stroke: var(--color-border) } 56.813%,60.058% { fill: var(--color-node); stroke: var(--color-border) } 60.059%,69.83% { fill: var(--color-node); stroke: var(--color-border) } 69.83%,77.426% { fill: var(--color-node); stroke: var(--color-border) } 77.426%,85.021% { fill: var(--color-node); stroke: var(--color-border) } 85.022%,94.793% { fill: var(--color-node); stroke: var(--color-border) } 94.793% { fill: var(--color-node); stroke: var(--color-border) } 95.056%,100% { fill: var(--color-state-active-fill); stroke: var(--color-state-active-fill) } }
+.fl .a55 { animation: a55 75.856s infinite linear; }
+@keyframes a56 { 0%,9.162% { fill: var(--color-muted) } 9.162%,18.933% { fill: var(--color-muted) } 18.933%,22.179% { fill: var(--color-muted) } 22.179%,27.534% { fill: var(--color-muted) } 27.534%,36.25% { fill: var(--color-muted) } 36.25%,41.671% { fill: var(--color-muted) } 41.671%,44.917% { fill: var(--color-muted) } 44.917%,50.271% { fill: var(--color-muted) } 50.272%,56.813% { fill: var(--color-muted) } 56.813%,60.058% { fill: var(--color-muted) } 60.059%,69.83% { fill: var(--color-muted) } 69.83%,77.426% { fill: var(--color-muted) } 77.426%,85.021% { fill: var(--color-muted) } 85.022%,94.793% { fill: var(--color-muted) } 94.793% { fill: var(--color-muted) } 95.056%,100% { fill: var(--color-state-on-active) } }
+.fl .a56 { animation: a56 75.856s infinite linear; }
+@keyframes a57 { 0%,9.162% { opacity: 1 } 9.162%,18.933% { opacity: 1 } 18.933%,22.179% { opacity: 1 } 22.179%,27.534% { opacity: 1 } 27.534% { opacity: 1 } 27.797%,36.25% { opacity: 0 } 36.25%,41.671% { opacity: 0 } 41.671%,44.917% { opacity: 0 } 44.917%,50.271% { opacity: 0 } 50.272%,56.813% { opacity: 0 } 56.813%,60.058% { opacity: 0 } 60.059%,69.83% { opacity: 0 } 69.83%,77.426% { opacity: 0 } 77.426%,85.021% { opacity: 0 } 85.022%,94.793% { opacity: 0 } 94.793%,100% { opacity: 0 } }
+.fl .a57 { animation: a57 75.856s infinite linear; }
+@keyframes a58 { 0%,9.162% { opacity: 0 } 9.162%,18.933% { opacity: 0 } 18.933%,22.179% { opacity: 0 } 22.179%,27.797% { opacity: 0 } 27.797% { opacity: 0 } 28.061%,36.25% { opacity: 1 } 36.25%,41.671% { opacity: 1 } 41.671%,44.917% { opacity: 1 } 44.917%,50.271% { opacity: 1 } 50.272% { opacity: 1 } 50.535%,56.813% { opacity: 0 } 56.813%,60.058% { opacity: 0 } 60.059%,69.83% { opacity: 0 } 69.83%,77.426% { opacity: 0 } 77.426%,85.021% { opacity: 0 } 85.022%,94.793% { opacity: 0 } 94.793%,100% { opacity: 0 } }
+.fl .a58 { animation: a58 75.856s infinite linear; }
+@keyframes a59 { 0%,9.162% { opacity: 0 } 9.162%,18.933% { opacity: 0 } 18.933%,22.179% { opacity: 0 } 22.179%,27.534% { opacity: 0 } 27.534%,36.25% { opacity: 0 } 36.25%,41.671% { opacity: 0 } 41.671%,44.917% { opacity: 0 } 44.917%,50.535% { opacity: 0 } 50.535% { opacity: 0 } 50.799%,56.813% { opacity: 1 } 56.813%,60.058% { opacity: 1 } 60.059%,69.83% { opacity: 1 } 69.83%,77.426% { opacity: 1 } 77.426%,85.021% { opacity: 1 } 85.022%,94.793% { opacity: 1 } 94.793%,100% { opacity: 1 } }
+.fl .a59 { animation: a59 75.856s infinite linear; }
+</style>
+<defs><marker id="fl-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="var(--color-line)"/></marker><marker id="fl-arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="var(--color-state-active)"/></marker><marker id="fl-arrow-main" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M 0 1 L 9 5 L 0 9 z" fill="var(--color-data-main)"/></marker></defs>
+<rect x="0.5" y="0.5" width="959" height="901" rx="10" fill="var(--color-bg)" stroke="var(--color-plate-border)" stroke-width="1"/>
+<g transform="translate(67.5 0)">
+<line x1="78" x2="78" y1="98" y2="798" class="lifeline"/>
+<line x1="210" x2="210" y1="98" y2="798" class="lifeline"/>
+<line x1="350.9" x2="350.9" y1="98" y2="798" class="lifeline"/>
+<line x1="482.9" x2="482.9" y1="98" y2="798" class="lifeline"/>
+<line x1="614.9" x2="614.9" y1="98" y2="798" class="lifeline"/>
+<line x1="746.9" x2="746.9" y1="98" y2="798" class="lifeline"/>
+<g id="n-0" class="fl-node" data-id="tui"><g class="fl-halo a1" fill="none" opacity="0"><rect x="28" y="52" width="100" height="46" rx="10" stroke="var(--color-state-glow)" stroke-width="12.5" stroke-linejoin="round"/></g><rect x="28" y="52" width="100" height="46" rx="10" fill="var(--color-node)" class="fl-stroke a0"/><text x="78" y="79.7" class="label">tui</text></g>
+<g id="n-1" class="fl-node" data-id="engine"><g class="fl-halo a3" fill="none" opacity="0"><rect x="160" y="52" width="100" height="46" rx="10" stroke="var(--color-state-glow)" stroke-width="12.5" stroke-linejoin="round"/></g><rect x="160" y="52" width="100" height="46" rx="10" fill="var(--color-node)" class="fl-stroke a2"/><text x="210" y="79.7" class="label">engine</text></g>
+<g id="n-2" class="fl-node" data-id="core"><g class="fl-halo a5" fill="none" opacity="0"><rect x="300.9" y="52" width="100" height="46" rx="10" stroke="var(--color-state-glow)" stroke-width="12.5" stroke-linejoin="round"/></g><rect x="300.9" y="52" width="100" height="46" rx="10" fill="var(--color-node)" class="fl-stroke a4"/><text x="350.9" y="79.7" class="label">core</text></g>
+<g id="n-3" class="fl-node" data-id="router"><g class="fl-halo a7" fill="none" opacity="0"><rect x="432.9" y="52" width="100" height="46" rx="10" stroke="var(--color-state-glow)" stroke-width="12.5" stroke-linejoin="round"/></g><rect x="432.9" y="52" width="100" height="46" rx="10" fill="var(--color-node)" class="fl-stroke ext a6" stroke-dasharray="5 4"/><text x="482.9" y="79.7" class="label">router</text></g>
+<g id="n-4" class="fl-node" data-id="provider"><g class="fl-halo a9" fill="none" opacity="0"><rect x="564.9" y="52" width="100" height="46" rx="10" stroke="var(--color-state-glow)" stroke-width="12.5" stroke-linejoin="round"/></g><rect x="564.9" y="52" width="100" height="46" rx="10" fill="var(--color-node)" class="fl-stroke ext a8" stroke-dasharray="5 4"/><text x="614.9" y="79.7" class="label">provider</text></g>
+<g id="n-5" class="fl-node" data-id="database"><g class="fl-halo a11" fill="none" opacity="0"><path d="M696.9 40 a 50 12 0 0 1 100 0 v 46 a 50 12 0 0 1 -100 0 z" stroke="var(--color-state-glow)" stroke-width="12.5" stroke-linejoin="round"/></g><path d="M696.9 40 a 50 12 0 0 1 100 0 v 46 a 50 12 0 0 1 -100 0 z" fill="var(--color-node)" class="fl-stroke a10"/><path d="M696.9 40 a 50 12 0 0 0 100 0" fill="none" class="fl-stroke a10"/><text x="746.9" y="67.7" class="label">database</text></g>
+<g id="e-0" class="fl-edge"><path id="p-0" d="M 78 150 L 210 150" class="fl-path a12" marker-end="url(#fl-arrow)"/></g>
+<g id="e-1" class="fl-edge"><path id="p-1" d="M 210 194 L 746.9 194" class="fl-path a13" marker-end="url(#fl-arrow)"/></g>
+<g id="e-2" class="fl-edge"><path id="p-2" d="M 210 238 L 350.9 238" class="fl-path a14" marker-end="url(#fl-arrow)"/></g>
+<g id="e-3" class="fl-edge"><path id="p-3" d="M 350.93193359375 282 L 210 282" class="fl-path a15" stroke-dasharray="5 4" marker-end="url(#fl-arrow)"/></g>
+<g id="e-4" class="fl-edge"><path id="p-4" d="M 210 326 L 482.9 326" class="fl-path a16" marker-end="url(#fl-arrow)"/></g>
+<g id="e-5" class="fl-edge"><path id="p-5" d="M 482.93193359375 370 L 210 370" class="fl-path a17" stroke-dasharray="5 4" marker-end="url(#fl-arrow)"/></g>
+<g id="e-6" class="fl-edge"><path id="p-6" d="M 210 414 L 350.9 414" class="fl-path a18" marker-end="url(#fl-arrow)"/></g>
+<g id="e-7" class="fl-edge"><path id="p-7" d="M 350.93193359375 458 L 210 458" class="fl-path a19" stroke-dasharray="5 4" marker-end="url(#fl-arrow)"/></g>
+<g id="e-8" class="fl-edge"><path id="p-8" d="M 210 502 L 350.9 502" class="fl-path a20" marker-end="url(#fl-arrow)"/></g>
+<g id="e-9" class="fl-edge"><path id="p-9" d="M 350.93193359375 546 L 210 546" class="fl-path a21" stroke-dasharray="5 4" marker-end="url(#fl-arrow)"/></g>
+<g id="e-10" class="fl-edge"><path id="p-10" d="M 210 590 L 746.9 590" class="fl-path a22" marker-end="url(#fl-arrow)"/></g>
+<g id="e-11" class="fl-edge"><path id="p-11" d="M 210 634 L 614.9 634" class="fl-path a23" marker-end="url(#fl-arrow)"/></g>
+<g id="e-12" class="fl-edge"><path id="p-12" d="M 614.93193359375 678 L 210 678" class="fl-path a24" stroke-dasharray="5 4" marker-end="url(#fl-arrow)"/></g>
+<g id="e-13" class="fl-edge"><path id="p-13" d="M 210 722 L 746.9 722" class="fl-path a25" marker-end="url(#fl-arrow)"/></g>
+<g id="e-14" class="fl-edge"><path id="p-14" d="M 210 766 L 78 766" class="fl-path a26" stroke-dasharray="5 4" marker-end="url(#fl-arrow)"/></g>
+
+<g class="p0-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.02175" values="1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.02175;1" keySplines="0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;1;1"><mpath href="#p-0" xlink:href="#p-0"/></animateMotion></g>
+<g class="p1-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.09162;0.1801" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.09162;0.1801;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-1" xlink:href="#p-1"/></animateMotion></g>
+<g class="p2-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.18933;0.21256" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.18933;0.21256;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-2" xlink:href="#p-2"/></animateMotion></g>
+<g class="p3-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.22179;0.24502" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.22179;0.24502;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-3" xlink:href="#p-3"/></animateMotion></g>
+<g class="p4-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.27534;0.32032" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.27534;0.32032;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-4" xlink:href="#p-4"/></animateMotion></g>
+<g class="p5-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.3625;0.40748" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.3625;0.40748;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-5" xlink:href="#p-5"/></animateMotion></g>
+<g class="p6-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.41671;0.43994" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.41671;0.43994;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-6" xlink:href="#p-6"/></animateMotion></g>
+<g class="p7-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.44917;0.4724" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.44917;0.4724;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-7" xlink:href="#p-7"/></animateMotion></g>
+<g class="p8-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.50272;0.52594" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.50272;0.52594;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-8" xlink:href="#p-8"/></animateMotion></g>
+<g class="p9-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.56813;0.59136" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.56813;0.59136;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-9" xlink:href="#p-9"/></animateMotion></g>
+<g class="p10-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.60059;0.68907" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.60059;0.68907;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-10" xlink:href="#p-10"/></animateMotion></g>
+<g class="p11-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.6983;0.76503" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.6983;0.76503;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-11" xlink:href="#p-11"/></animateMotion></g>
+<g class="p12-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.77426;0.84099" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.77426;0.84099;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-12" xlink:href="#p-12"/></animateMotion></g>
+<g class="p13-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.85022;0.9387" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.85022;0.9387;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-13" xlink:href="#p-13"/></animateMotion></g>
+<g class="p14-0" opacity="0"><circle r="10" fill="var(--color-state-active)" opacity="0.2"/><circle r="4.5" fill="var(--color-state-active)"/><animate attributeName="opacity" dur="75.856s" repeatCount="indefinite" calcMode="discrete" keyTimes="0;0.94793;0.96968" values="0;1;0"/><animateMotion dur="75.856s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.94793;0.96968;1" keySplines="0 0 1 1;0.455 0.03 0.515 0.955;0 0 1 1" keyPoints="0;0;1;1"><mpath href="#p-14" xlink:href="#p-14"/></animateMotion></g>
+<g class="fl-pills"><g id="l-0" class="fl-edge"><g class="fl-pill"><rect x="125.4" y="128" width="37.2" height="18" rx="9" class="pill a27"/><text x="144" y="141" class="edgelabel a28">input</text></g></g><g id="l-1" class="fl-edge"><g class="fl-pill"><rect x="442.7" y="172" width="71.6" height="18" rx="9" class="pill a29"/><text x="478.5" y="185" class="edgelabel a30">accept input</text></g></g><g id="l-2" class="fl-edge"><g class="fl-pill"><rect x="222" y="216" width="116.9" height="18" rx="9" class="pill a31"/><text x="280.5" y="229" class="edgelabel a32">request judgment turn</text></g></g><g id="l-3" class="fl-edge"><g class="fl-pill"><rect x="232.5" y="260" width="95.9" height="18" rx="9" class="pill a33"/><text x="280.5" y="273" class="edgelabel a34">acceptance order</text></g></g><g id="l-4" class="fl-edge"><g class="fl-pill"><rect x="302.8" y="304" width="87.4" height="18" rx="9" class="pill a35"/><text x="346.5" y="317" class="edgelabel a36">judgment query</text></g></g><g id="l-5" class="fl-edge"><g class="fl-pill"><rect x="289.6" y="348" width="113.7" height="18" rx="9" class="pill a37"/><text x="346.5" y="361" class="edgelabel a38">probability per choice</text></g></g><g id="l-6" class="fl-edge"><g class="fl-pill"><rect x="237.5" y="392" width="85.9" height="18" rx="9" class="pill a39"/><text x="280.5" y="405" class="edgelabel a40">apply judgment</text></g></g><g id="l-7" class="fl-edge"><g class="fl-pill"><rect x="222.8" y="436" width="115.4" height="18" rx="9" class="pill a41"/><text x="280.5" y="449" class="edgelabel a42">target agent, handling</text></g></g><g id="l-8" class="fl-edge"><g class="fl-pill"><rect x="230.1" y="480" width="100.8" height="18" rx="9" class="pill a43"/><text x="280.5" y="493" class="edgelabel a44">pick target session</text></g></g><g id="l-9" class="fl-edge"><g class="fl-pill"><rect x="240.8" y="524" width="79.2" height="18" rx="9" class="pill a45"/><text x="280.5" y="537" class="edgelabel a46">target session</text></g></g><g id="l-10" class="fl-edge"><g class="fl-pill"><rect x="432.8" y="568" width="91.4" height="18" rx="9" class="pill a47"/><text x="478.5" y="581" class="edgelabel a48">record delivering</text></g></g><g id="l-11" class="fl-edge"><g class="fl-pill"><rect x="350.3" y="612" width="124.3" height="18" rx="9" class="pill a49"/><text x="412.5" y="625" class="edgelabel a50">deliver to target session</text></g></g><g id="l-12" class="fl-edge"><g class="fl-pill"><rect x="357.8" y="656" width="109.3" height="18" rx="9" class="pill a51"/><text x="412.5" y="669" class="edgelabel a52">events, usage report</text></g></g><g id="l-13" class="fl-edge"><g class="fl-pill"><rect x="439.7" y="700" width="77.6" height="18" rx="9" class="pill a53"/><text x="478.5" y="713" class="edgelabel a54">record events</text></g></g><g id="l-14" class="fl-edge"><g class="fl-pill"><rect x="115.1" y="744" width="57.9" height="18" rx="9" class="pill a55"/><text x="144" y="757" class="edgelabel a56">result line</text></g></g></g>
+</g>
+<text x="480" y="844" opacity="0" class="steplabel a57">Accept</text>
+<text x="480" y="844" opacity="0" class="steplabel a58">Judge</text>
+<text x="480" y="844" opacity="0" class="steplabel a59">Deliver and record</text>
+<g opacity="0" class="a57"><text x="480" y="870" class="caption">engine has the record store accept the input, and core sets the judgment turn in acceptance order</text></g>
+<g opacity="0" class="a58"><text x="480" y="870" class="caption">From the router's answer, core decides the target agent and how to handle the input</text></g>
+<g opacity="0" class="a59"><text x="480" y="870" class="caption">At send time engine picks the target session and sends to the provider only after recording delivering</text></g>
+</svg>

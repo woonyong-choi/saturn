@@ -1,0 +1,32 @@
+state right
+title "Constraint lifecycle"
+subtitle "Registration and the ask are built. Design: release, exceptions, undo, and the packet slot"
+
+state input "Input judged"
+state active "Active"
+state candidate "Candidate"
+state released "Released"
+state ignored "Not registered"
+start input
+final ignored
+
+input -> active "0.8 or more"
+input -> candidate "0.7 to 0.8"
+input -> ignored "below 0.7"
+candidate -> active "register"
+candidate -> released "decline"
+active -> released "release (Design)"
+released -> active "undo (Design)"
+active -> active "exception for this task (Design)"
+
+step "Registered" "A confident is_constraint answer registers the rule line, and a chat line records it"
+  input -> active
+step "Ask" "A middle answer asks the user while work continues, and an unanswered one is kept like Active"
+  input -> candidate
+  candidate -> active
+  candidate -> released
+step "Release" "Design: the user says to drop it, or an input canceled after registration releases it"
+  active -> released
+  released -> active
+step "Exception" "Design: the rule pauses for one task and applies again when the task ends"
+  active -> active

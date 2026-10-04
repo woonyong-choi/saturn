@@ -1,0 +1,32 @@
+flow down
+title "Switching providers and handing off"
+subtitle "The chat stays one, and the new Codex session gets a packet picked from the Saturn record"
+
+person user "Developer"
+group chat "One chat" direction=down {
+  box engine "engine" "Accepts and delivers input"
+  store record "Record store" "Raw record"
+  external claude "Claude Code" "session 1"
+  external codex "Codex" "session 2, newly opened"
+}
+
+user -> engine "input"
+engine -> record "record"
+engine -> claude "send input"
+engine -> codex "packet, input"
+
+step "Work in Claude Code" "The input is accepted by the record store before it goes to the Claude session"
+  user -> engine "request"
+  engine -> record
+  engine -> claude
+  claude -> engine "result"
+  engine -> record
+step "Switch to Codex" "The new Codex session gets a packet picked from the raw record"
+  user -> engine "switch to Codex"
+  record -> engine "packet material"
+  engine -> codex
+  codex -> engine "result"
+  engine -> record
+step "One chat" "Both results stay in one chat, and the closed Claude session can reopen by its ID"
+  engine -> user "both results"
+  light chat claude codex

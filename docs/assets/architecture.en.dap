@@ -1,0 +1,45 @@
+flow right
+title "Saturn code map"
+subtitle "tui and cli attach only to engine, and engine uses core rules to handle providers and the router"
+
+person user "Developer"
+group system "Saturn" direction=down {
+  box cli "cli" "command line, runs tui, starts engine"
+  box tui "tui" "chat history, input box"
+  box engine "engine" "provider connections, router calls, record store"
+  box core "core" "queue, session, decision rules"
+  store database "database" "record store, SQLite"
+}
+box protocol "protocol" "message types every component uses"
+external codex-cli "Codex CLI"
+external claude-code "Claude Code"
+external router-api "router API"
+
+user -> cli "command"
+user -> tui "input"
+cli -> engine "start engine"
+tui -> engine "`JSON-RPC`"
+engine -> database "record"
+engine -> codex-cli "`app-server`"
+engine -> claude-code "`stream-json`"
+engine -> router-api "judgment query"
+engine -> core "decision rules"
+
+step "Run saturn" "If no engine is running, cli starts saturn-engine and tui attaches over the socket"
+  user -> cli
+  cli -> engine
+  tui -> engine
+step "Handling one input" "The input reaches the provider only after the record store has accepted it"
+  user -> tui
+  tui -> engine
+  engine -> database
+  engine -> router-api
+  engine -> codex-cli
+  engine -> database
+step "When the target is Claude Code" "In the same flow, engine passes the input to Claude Code"
+  engine -> router-api
+  engine -> claude-code
+step "Shared types" "tui, core, and engine all use the message types of protocol, and engine implements the core traits"
+  engine -> core
+  light protocol
+      

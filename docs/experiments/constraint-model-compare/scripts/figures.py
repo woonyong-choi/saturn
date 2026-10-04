@@ -1,4 +1,4 @@
-"""공개 집계에서 차트 입력을 만들고 같은 도구로 정지 SVG를 생성한다."""
+"""공개 집계에서 차트 입력을 만들고 daphnis로 라이트와 다크 SVG를 생성한다."""
 
 from __future__ import annotations
 
@@ -27,27 +27,19 @@ def main() -> None:
                 point[key + ".high"] = row[key]["ci95"][1] * 100
             data[group].append(point)
     write(PUBLIC / "results/chart.json", data)
-    cli = Path(
-        os.environ.get(
-            "MUTOSCOPE_CLI",
-            str(Path.home() / "workspace/oss/mutoscope/src/cli.js"),
-        )
+    daphnis = os.environ.get(
+        "DAPHNIS_PATH", str(Path.home() / "workspace/oss/daphnis")
     )
-    for name in ("precision-recall", "f1"):
-        source = ROOT / f"docs/assets/constraint-model-compare-{name}.muto"
-        for operation in ("check", "render"):
-            command = [
-                "node",
-                str(cli),
-                operation,
-                str(source),
-                "--strict",
-                "--require-data",
-                "--require-ci",
-            ]
-            if operation == "render":
-                command.append("--static")
-            subprocess.run(command, cwd=ROOT, check=True)
+    sources = [
+        ROOT / f"docs/assets/constraint-model-compare-{name}.ko.dap"
+        for name in ("precision-recall", "f1")
+    ]
+    subprocess.run(
+        ["node", "scripts/figures/render.mjs", *map(str, sources)],
+        cwd=ROOT,
+        check=True,
+        env={**os.environ, "DAPHNIS_PATH": daphnis},
+    )
 
 
 if __name__ == "__main__":

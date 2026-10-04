@@ -1,0 +1,25 @@
+sequence
+title "Handling a stop request"
+subtitle "Completion is reported only after the whole tree is confirmed ended"
+
+person user "User"
+box tui "tui"
+box engine "engine"
+box core "core"
+store database "database"
+external provider "provider"
+
+step "Hold" "core turns running tasks and unsent queued inputs into held, and engine records that state right away"
+  user -> tui "stop request"
+  tui -> engine "`Stop`"
+  engine -> core "tasks and queued inputs to held"
+  core -> engine "held tasks and inputs" dashed
+  engine -> database "record held inputs"
+step "Stop signal" "core orders targets starting with subagents and engine sends the signal. After 10 seconds a terminate signal goes to what remains, then a forced kill"
+  engine -> core "request stop target order"
+  core -> engine "targets, subagents first" dashed
+  engine -> provider "stop signal"
+  engine -> provider "after 10 s, terminate signal to process group"
+  engine -> provider "if still alive, forced kill"
+step "Confirm" "Report completion once the whole tree is confirmed ended, or the remaining count if not"
+  engine -> tui "stop complete, or remaining count if unconfirmed" dashed

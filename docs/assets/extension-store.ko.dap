@@ -1,0 +1,44 @@
+flow down
+title "확장 저장소와 주입"
+subtitle "설치, 부분 나누기, 판정, 주입은 구현됨. 설계: provider 전환 때 빠지는 부분 알림"
+
+group sources "원천" direction=right {
+  store folder "폴더" "절대 경로"
+  external git "git 주소" "https, ssh, file"
+}
+group saturn "Saturn engine" direction=down {
+  box install "설치" "복사, .git 제외"
+  store extstore "확장 저장소" "~/.saturn/extensions/이름/"
+  box parts "부분" "스킬, 명령, MCP 서버, 훅"
+  box verdict "판정" "provider별 가능, 불가, 모름"
+  box inject "주입" "연결을 시작할 때"
+}
+group providers "provider" direction=right {
+  external claude "Claude Code"
+  external codex "Codex"
+}
+box notice "전환 알림" "옮길 수 없는 부분" badge="설계"
+
+folder -> install "복사"
+git -> install "clone"
+install -> extstore
+extstore -> parts "나누기"
+parts -> verdict "어댑터에 묻기"
+verdict -> inject "가능한 부분만"
+inject -> claude "플러그인 폴더"
+inject -> codex "전용 CODEX_HOME"
+inject -> notice "전환"
+
+step "설치" "폴더나 git 주소를 확장 저장소에 복사하고 provider 설정 파일은 건드리지 않는다"
+  folder -> install
+  git -> install
+  install -> extstore
+step "나누고 판정" "engine이 묶음을 부분으로 나누고 어댑터가 받을 수 있는 부분을 답한다"
+  extstore -> parts
+  parts -> verdict
+step "주입" "연결을 시작할 때 그 provider가 받는 부분만 provider 형식으로 넣는다"
+  verdict -> inject
+  inject -> claude
+  inject -> codex
+step "전환" "설계: 옮길 수 없는 부분은 전환 안내 뒤에 대화 기록 한 줄로 알린다"
+  inject -> notice

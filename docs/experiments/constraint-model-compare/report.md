@@ -128,9 +128,15 @@ Luna의 일부 답은 false와 높은 P(제약)을 함께 반환했다. 원래 �
 
 ### Jev 곡선과 기준값
 
-![Jev는 기준값을 높여도 관측 정밀도 90%에 도달하지 못하고 재현율이 감소](../../assets/constraint-model-compare-precision-recall.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../assets/constraint-model-compare-precision-recall.ko.dark.svg">
+  <img src="../../assets/constraint-model-compare-precision-recall.ko.light.svg" alt="Jev는 기준값을 높여도 관측 정밀도 90%에 도달하지 못하고 재현율이 감소" width="100%">
+</picture>
 
-![Jev F1은 측정한 기준값 중 0.80에서 가장 높지만 구간이 넓게 중첩](../../assets/constraint-model-compare-f1.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../../assets/constraint-model-compare-f1.ko.dark.svg">
+  <img src="../../assets/constraint-model-compare-f1.ko.light.svg" alt="Jev F1은 측정한 기준값 중 0.80에서 가장 높지만 구간이 넓게 중첩" width="100%">
+</picture>
 
 | 기준값 | 정밀도 | 재현율 | F1 |
 |---|---|---|---|
@@ -225,7 +231,7 @@ Jev에는 기존 route 질문을 그대로 주었고, LLM에는 일회성 작업
 
 verify의 정확 키 잔존 검사는 키체인 값을 프로세스 환경으로 받은 상태에서 실행한다. 원문·응답은 비공개 실험 저장소에만 있으며 공개 저장소에는 [데이터 설명](data/README.md), 해시, 스크립트와 집계만 남겼다. analyze는 원응답에서 정규화와 분석을 다시 수행한다.
 
-그림은 집계 JSON에서 만든 [차트 입력](results/chart.json)을 사용한다. figures는 기존 mutoscope 작업본을 사용하며 `MUTOSCOPE_CLI`로 CLI 경로를 지정할 수 있다. 도구 커밋과 Node 버전은 env.json에 기록했다. 정밀도 분모가 0인 점은 그래프에서 제외하고 차트 입력의 omitted에 남긴다. 전체 기준값은 위 표에 유지한다.
+그림은 집계 JSON에서 만든 [차트 입력](results/chart.json)을 사용한다. figures는 daphnis 작업본을 사용하며 `DAPHNIS_PATH`로 경로를 지정하고, `docs/assets/constraint-model-compare-<이름>.ko.dap`를 `node scripts/figures/render.mjs`로 그려 라이트와 다크 SVG를 만든다. 도구 커밋과 Node 버전은 env.json에 기록했다. 정밀도 분모가 0인 점은 그래프에서 제외하고 차트 입력의 omitted에 남긴다. 전체 기준값은 위 표에 유지한다.
 
 | 자료 | SHA-256 |
 |---|---|

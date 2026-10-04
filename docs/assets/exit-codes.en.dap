@@ -1,0 +1,36 @@
+flow right
+title "Exit codes"
+subtitle "The code alone tells a script whether to change the call, retry, or fix the settings"
+
+group call "Change the call" direction=down {
+  box c2 "2" "usage error"
+  box c66 "66" "target not found"
+}
+group retry "Retry" direction=down {
+  box c69 "69" "engine unavailable"
+  box c75 "75" "not now, possible later"
+}
+group config "Fix the settings" direction=down {
+  box c77 "77" "router key missing or rejected"
+  box c78 "78" "configuration error"
+}
+group other "Other failures" direction=down {
+  box c1 "1" "other failure"
+  box c70 "70" "engine internal error"
+}
+group done "Success and abort" direction=down {
+  box c0 "0" "success"
+  box c130 "130" "user abort"
+}
+
+
+step "Change the call" "An unknown argument, or a chat or folder to resume that does not exist, fails the same way on every rerun"
+  light c2 c66
+step "Retry" "A failed engine start or lost connection, or too few training samples, can pass on a rerun"
+  light c69 c75
+step "Fix the settings" "The router key, or a settings file or value, has to be fixed"
+  light c77 c78
+step "Other failures" "An expected failure is 1, and an engine rejection with no cause is 70"
+  light c1 c70
+step "Success and abort" "The command finished, or the user closed a prompt"
+  light c0 c130

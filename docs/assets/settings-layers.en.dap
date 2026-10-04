@@ -1,0 +1,39 @@
+flow right
+title "Settings layers and merge"
+subtitle "Layers merge from defaults to the run layer and the later layer wins. A folder settings file applies only once trusted"
+
+external env "SATURN_HOME" "environment variable, else ~/.saturn"
+box default "Defaults" "values inside Saturn"
+box user "User" "<home>/config.toml"
+box folder "Folder" "<work folder>/.saturn/config.toml"
+box trust "Folder settings trust" "only trusted files pass"
+box chat "Chat" "values set per chat"
+box run "Run" "-c values of this run"
+box settings "settings" "merges and validates"
+store snap "Settings number" "snapshot of the merged result"
+
+env -> user "home location" quiet
+default -> settings no=1
+user -> settings no=2
+folder -> trust "new or changed"
+trust -> settings "trusted" no=3
+chat -> settings no=4
+run -> settings no=5
+settings -> snap "passes validation"
+
+step "Find the home" "If SATURN_HOME is set, that folder is the home. The location is not a settings key, so it is fixed before any layer is read"
+  env -> user
+step "Defaults and user" "The user file layers over the defaults"
+  default -> settings
+  user -> settings
+step "Folder settings and trust" "A folder settings file that is new or changed applies only after the user confirms it"
+  folder -> trust
+  show trust "trust recorded by path and fingerprint" tag="trust"
+  show trust "user-only items such as the router address are ignored" tag="ignored"
+  trust -> settings
+step "Chat and run" "The chat layer and the run -c layer go on last"
+  chat -> settings
+  run -> settings
+step "Validate and number" "A passing result becomes a numbered snapshot, and the same content reuses the same number"
+  settings -> snap
+  show snap "an input pins the number when accepted" tag="pinned"

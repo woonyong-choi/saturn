@@ -1,0 +1,42 @@
+flow down
+title "키 해석"
+subtitle "프리셋이 기본 표 위에 얹힌 표를 만들고, 해석기가 표 순서대로 키를 동작으로 바꾼다"
+
+group build "표 만들기" direction=right {
+  store base "기본 표" "동작, 영역, 키, 조건, 명령"
+  box preset "프리셋" "tui.keymap 또는 /keymap"
+}
+box keymap "Keymap" "상속을 거친 최종 표"
+group lookup "키 찾기 (resolve)" direction=down {
+  box global "전역 표" "먼저 본다"
+  box area "영역 표" "Composer, Popup 등"
+  box composer "입력창 표" "영역이 넘긴 키"
+  box last "마지막 표" "Ctrl+C"
+}
+box typed "입력 규칙" "표에 없는 글자 키"
+box action "Action" "TUI가 받는 동작"
+
+base -> keymap "기본" no=1
+preset -> keymap "덮어씀" no=1
+keymap -> global "표 사용" no=2
+global -> area no=3
+area -> composer no=4
+composer -> last no=5
+last -> typed "맞는 줄 없음" dashed
+typed -> action "글자 넣기"
+global -> action "맞는 줄" quiet
+
+step "표 합치기" "적지 않은 키는 기본 표를 물려받고, 적은 줄은 같은 동작의 그 영역 키를 바꾼다"
+  base -> keymap
+  preset -> keymap
+  say "한 영역에서 같은 키가 두 동작에 묶이면 표를 읽지 못한다"
+step "키 찾기" "전역, 영역, 입력창, 마지막 표 순서로 찾는다"
+  keymap -> global
+  global -> area
+  area -> composer
+  composer -> last
+step "맞는 줄을 찾으면" "먼저 맞는 줄의 동작을 TUI에 돌려준다"
+  global -> action
+step "표에 없으면" "글자 키는 영역의 입력 규칙을 따른다"
+  last -> typed
+  typed -> action
