@@ -12,6 +12,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 PUBLIC = Path(__file__).resolve().parents[1]
 ROOT = PUBLIC.parents[2]
@@ -20,42 +21,42 @@ LIMITS = {"codex": 500, "claude": 300, "jev": 400}
 SEED = 338100
 
 
-def now():
+def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def read(path):
+def read(path: Path) -> Any:
     return json.loads(path.read_text())
 
 
-def redact(text):
+def redact(text: str) -> str:
     key = os.environ.get("SATURN_JUDGE_KEY")
     return text.replace(key, "[secret]") if key else text
 
 
-def write(path, value):
+def write(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(redact(json.dumps(value, ensure_ascii=False, indent=2)) + "\n")
 
 
-def rows(path):
+def rows(path: Path) -> list[dict]:
     return (
         [json.loads(s) for s in path.read_text().splitlines()] if path.exists() else []
     )
 
 
-def digest(path):
+def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def setup():
+def setup() -> None:
     os.umask(0o077)
     for path in (PRIVATE / "runtime/cache", ROOT / ".runtime/claude-work"):
         path.mkdir(parents=True, exist_ok=True)
 
 
 # cost: io 1 locked journal append and fsync; basis: estimate
-def reserve(kind, trial):
+def reserve(kind: str, trial: str) -> bool:
     with (PRIVATE / "budget.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         ledger = rows(PRIVATE / "calls.jsonl")
@@ -76,7 +77,7 @@ def reserve(kind, trial):
     return True
 
 
-def child_env():
+def child_env() -> dict[str, str]:
     env = {
         k: v
         for k, v in os.environ.items()
@@ -90,7 +91,7 @@ def child_env():
     return env
 
 
-def command(kind, model):
+def command(kind: str, model: str) -> list[str]:
     if kind == "codex":
         return [
             "codex",
@@ -139,7 +140,7 @@ def command(kind, model):
 
 
 # cost: io 1 CLI process, tokens input plus answer; basis: estimate
-def call_cli(kind, model, prompt, trial):
+def call_cli(kind: str, model: str, prompt: str, trial: str) -> dict:
     target = PRIVATE / "raw" / (trial + ".json")
     if target.exists():
         return read(target)
@@ -173,12 +174,14 @@ def call_cli(kind, model, prompt, trial):
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
+    def redirect_request(
+        self, req: Any, fp: Any, code: int, msg: Any, headers: Any, newurl: Any
+    ) -> None:
         raise urllib.error.HTTPError(req.full_url, code, "redirect denied", headers, fp)
 
 
 # cost: io 1 HTTPS call, no retry; basis: estimate
-def call_jev(body, trial):
+def call_jev(body: dict, trial: str) -> dict:
     target = PRIVATE / "raw" / (trial + ".json")
     if target.exists():
         return read(target)
@@ -217,7 +220,7 @@ def call_jev(body, trial):
     return record
 
 
-def response_text(record):
+def response_text(record: dict) -> tuple[str, dict]:
     if record.get("status") != "ok":
         return "", {}
     if record["kind"] == "claude":
@@ -244,7 +247,7 @@ def response_text(record):
     )
 
 
-def parse_json(text):
+def parse_json(text: str) -> Any:
     text = text.strip()
     if text.startswith("```") and text.endswith("```") and text.count("```") == 2:
         text = text.split("\n", 1)[1].rsplit("```", 1)[0]

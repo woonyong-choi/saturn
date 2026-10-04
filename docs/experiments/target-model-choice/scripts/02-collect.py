@@ -1,9 +1,13 @@
 """정답을 먼저 봉인한 뒤 모델별 독립 질의를 재개 가능하게 실행한다."""
 
+from __future__ import annotations
+
 import json
 import sys
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Event
+
 from protocol import (
     REFERENCE,
     SOL,
@@ -26,14 +30,18 @@ from runtime import (
     write,
 )
 
+GOLD_STOP = Event()
 
-def validate_seal(name):
+
+def validate_seal(name: str) -> None:
     for path, checksum in read(PRIVATE / name).items():
         if digest(PRIVATE / path) != checksum:
             raise RuntimeError("sealed input changed: " + path)
 
 
-def label_case(case):
+def label_case(case: dict) -> dict:
+    if GOLD_STOP.is_set():
+        raise RuntimeError("gold lane stopped")
     trial = "gold-" + case["sample_id"]
     labels = []
     for repeat in (1, 2, 3):
@@ -43,7 +51,12 @@ def label_case(case):
             and gold_key(labels[0]) == gold_key(labels[1])
         ):
             break
+        if GOLD_STOP.is_set():
+            raise RuntimeError("gold lane stopped")
         record = call_cli("codex", SOL, gold_prompt(case), trial + "-" + str(repeat))
+        if record.get("status") == "process_error":
+            GOLD_STOP.set()
+            raise RuntimeError("gold CLI lane stopped after process error")
         text, meta = response_text(record)
         value = None if meta.get("tool_events") else normalize_gold(parse_json(text))
         labels.append(value)
@@ -59,7 +72,7 @@ def label_case(case):
     )
 
 
-def collect_gold(samples):
+def collect_gold(samples: list) -> None:
     target = PRIVATE / "labels.json"
     if target.exists():
         validate_seal("gold-seal.json")
@@ -86,7 +99,7 @@ def collect_gold(samples):
     )
 
 
-def collect_lane(lane, samples):
+def collect_lane(lane: str, samples: list) -> None:
     for number, case in enumerate(samples, 1):
         for repeat in range(1, 4 if lane == "jev" else 2):
             trial = lane + "-" + case["sample_id"] + "-" + str(repeat)
@@ -105,10 +118,10 @@ def collect_lane(lane, samples):
         )
 
 
-def main():
+def main() -> None:
     setup()
     validate_seal("sample-seal.json")
-    seal = read(PRIVATE / "design-seal.json")
+    seal = read(PRIVATE / "collection-seal.json")
     for name, checksum in seal["files"].items():
         if digest(PUBLIC / name) != checksum:
             raise RuntimeError("preregistered file changed: " + name)

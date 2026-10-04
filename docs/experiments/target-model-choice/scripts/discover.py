@@ -1,9 +1,13 @@
 """공식 CLI의 모델 목록과 Claude 별칭의 실제 ID를 확인한다."""
 
+from __future__ import annotations
+
 import json
 import selectors
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
+
 from runtime import (
     PRIVATE,
     PUBLIC,
@@ -17,7 +21,7 @@ from runtime import (
 
 
 # cost: io 1 app-server and model/list pages; basis: estimate
-def codex_models():
+def codex_models() -> list[dict]:
     target = PRIVATE / "codex-models.json"
     if target.exists():
         return read(target)
@@ -33,7 +37,7 @@ def codex_models():
     selector = selectors.DefaultSelector()
     selector.register(proc.stdout, selectors.EVENT_READ)
 
-    def request(identifier, method, params):
+    def request(identifier: str, method: str, params: dict) -> Any:
         proc.stdin.write(
             json.dumps(dict(id=identifier, method=method, params=params)) + "\n"
         )
@@ -77,7 +81,7 @@ def codex_models():
         selector.close()
 
 
-def claude_model(alias):
+def claude_model(alias: str) -> tuple[str, str]:
     record = call_cli(
         "claude", alias, 'Return exactly {"ready":true}.', "discovery-" + alias
     )

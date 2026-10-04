@@ -1,5 +1,7 @@
 """사용자 입력만 추출해 세션 첫 작업을 종류와 프로젝트로 층화한다."""
 
+from __future__ import annotations
+
 import hashlib
 import importlib.util
 import json
@@ -7,6 +9,7 @@ import random
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
+
 from runtime import PRIVATE, PUBLIC, SEED, digest, read, redact, setup, write
 
 SPEC = importlib.util.spec_from_file_location(
@@ -16,11 +19,11 @@ MASK = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MASK)
 
 
-def hash_text(text):
+def hash_text(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()[:16]
 
 
-def category(text):
+def category(text: str) -> str:
     groups = [
         ("debugging", r"버그|오류|에러|실패|debug|error|broken|작동.*않|안\s*돼"),
         ("research", r"조사|비교|찾아|검색|research|찾아봐|알아봐"),
@@ -33,14 +36,14 @@ def category(text):
     )
 
 
-def project_id(name):
+def project_id(name: str) -> str:
     name = name.lower().replace("/", "-").replace(".", "-")
     if "workspace-oss-saturn" in name and "saturn-cli" not in name:
         name = "saturn"
     return hash_text(name)
 
 
-def codex_user(row):
+def codex_user(row: dict) -> str | None:
     if row.get("type") != "response_item":
         return None
     item = row.get("payload", {})
@@ -52,7 +55,7 @@ def codex_user(row):
     )
 
 
-def is_content(text):
+def is_content(text: str) -> bool:
     prefixes = (
         "# AGENTS.md instructions",
         "<environment_context>",
@@ -67,7 +70,7 @@ def is_content(text):
 
 
 # cost: time O(b), heap O(u), io 1 session read; vars: b = bytes, u = user text; basis: estimate
-def extract(path, source):
+def extract(path: Path, source: str) -> tuple[list[dict], dict]:
     turns, seen = [], set()
     checksum = hashlib.sha256()
     project = path.parent.name if source == "claude" else "unknown"
@@ -105,7 +108,7 @@ def extract(path, source):
     return turns, meta
 
 
-def make_case(turns, meta, excluded):
+def make_case(turns: list, meta: dict, excluded: Counter) -> dict | None:
     if len(turns) < 3:
         excluded["fewer_than_2_followups"] += 1
         return None
@@ -136,7 +139,7 @@ def make_case(turns, meta, excluded):
     )
 
 
-def select(cases):
+def select(cases: list) -> list[dict]:
     rng = random.Random(SEED)
     strata = defaultdict(list)
     for case in cases:
@@ -157,7 +160,7 @@ def select(cases):
 
 
 # cost: time O(b), heap O(u), io session inventory; vars: b = bytes, u = eligible user text; basis: estimate
-def main():
+def main() -> None:
     setup()
     if (PRIVATE / "samples.json").exists():
         print(json.dumps(read(PRIVATE / "sampling.json")))
