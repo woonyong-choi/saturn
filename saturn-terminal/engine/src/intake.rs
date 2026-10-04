@@ -13,6 +13,7 @@ use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRe
 use saturn_protocol::rpc::{ModelMode, Notification};
 use saturn_protocol::state::{Disposition, InputState};
 
+use crate::Attachment;
 use crate::constraints::ConstraintPlan;
 use crate::flow::{Routed, RouterDone, RouterJob, Unrecorded};
 use crate::models::ModelPlan;
@@ -243,26 +244,48 @@ impl Engine {
         chat: ChatId,
         workdir: &Path,
     ) -> Result<SettingsRevision, EngineError> {
-        if !self.settings.changed(workdir).await? {
+        let run = self.run_layer_of(client);
+        if !self.settings.changed(Some(chat), workdir, &run).await? {
             return Ok(self
                 .settings
-                .current()
+                .revision_in(chat, &run)
                 .ok_or(SettingsError::NoPreviousRevision)?);
         }
         self.apply_changed_settings(&[client], chat, workdir).await
     }
 
+    /// 이 접속의 실행 `-c`(`키=값`). 붙지 않은 접속이면 없다.
+    pub(crate) fn run_layer_of(&self, client: ClientId) -> Vec<String> {
+        self.attachments
+            .get(&client)
+            .map(Attachment::run_layer)
+            .unwrap_or_default()
+    }
+
+    /// 이 채팅에 붙은 첫 접속의 실행 `-c`. 접속을 특정할 수 없는 일(종료 때 설정 읽기)이 쓴다.
+    pub(crate) fn run_layer_of_chat(&self, chat: ChatId) -> Vec<String> {
+        self.attachments
+            .values()
+            .find(|attachment| attachment.chat == chat)
+            .map(Attachment::run_layer)
+            .unwrap_or_default()
+    }
+
     /// 바뀐 설정 파일을 병합해 경고를 채팅에 알리고, 새로 보이는 폴더 설정의 신뢰 창을 `clients`에 연다.
-    /// 입력 접수와 설정 파일 감시가 함께 쓴다.
+    /// `clients`는 같은 접속 `-c`를 쓰는 접속들이다. 입력 접수와 설정 파일 감시가 함께 쓴다.
     pub(crate) async fn apply_changed_settings(
         &mut self,
         clients: &[ClientId],
         chat: ChatId,
         workdir: &Path,
     ) -> Result<SettingsRevision, EngineError> {
+        let run = clients
+            .first()
+            .map(|client| self.run_layer_of(*client))
+            .unwrap_or_default();
         let (applied, prompt) = self
             .settings
-            .apply_trusted(&self.store, Some(chat), workdir)
+            .apply_trusted(&self.store, Some(chat), workdir, &run)
             .await?;
         let revision = applied.revision;
         if applied.warning.is_some() {

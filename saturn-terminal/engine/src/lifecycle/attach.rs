@@ -19,7 +19,7 @@ fn attach_to(chat: ChatId, workdir: &Path) -> Request {
         chat: Some(chat),
         workdir: workdir.display().to_string(),
         env: tui_env(),
-        overrides: vec![("model".to_owned(), "fast".to_owned())],
+        overrides: vec![("router.thresholds.injection".to_owned(), "0.9".to_owned())],
         add_dirs: Vec::new(),
     }
 }
@@ -160,7 +160,7 @@ async fn attach_sends_start_info_then_history_then_permissions() {
     assert_eq!(attachment.chat, chat);
     assert_eq!(
         attachment.overrides,
-        vec![("model".to_owned(), "fast".to_owned())]
+        vec![("router.thresholds.injection".to_owned(), "0.9".to_owned())]
     );
     let chat_env = engine.chat_env(chat).unwrap();
     assert_eq!(chat_env.workdir(), fixture.workdir);

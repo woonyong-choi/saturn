@@ -329,19 +329,23 @@ impl Engine {
             .expect("attached chat should have an environment")
             .workdir()
             .to_path_buf();
-        let (applied, changed) = self
-            .settings
-            .apply_trusted(&self.store, Some(chat), &workdir)
-            .await?;
         let peers: Vec<ClientId> = self
             .attachments
             .iter()
             .filter(|(_, attachment)| attachment.chat == chat)
             .map(|(peer, _)| *peer)
             .collect();
+        let mut changed = None;
         for peer in peers {
-            self.send(peer, settings_notification(applied.clone()))
-                .await;
+            let run = self.run_layer_of(peer);
+            let (applied, prompt) = self
+                .settings
+                .apply_trusted(&self.store, Some(chat), &workdir, &run)
+                .await?;
+            if peer == client {
+                changed = prompt;
+            }
+            self.send(peer, settings_notification(applied)).await;
         }
         if let Some(prompt) = changed {
             self.send(client, trust_notification(&prompt)).await;

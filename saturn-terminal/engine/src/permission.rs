@@ -273,7 +273,7 @@ impl Engine {
             .settings_of
             .get(&agent)
             .copied()
-            .or(self.settings.current())
+            .or(self.settings.latest_of(chat))
             .ok_or(SettingsError::NoPreviousRevision)?;
         let configured = self.settings.at(&self.store, revision).await?.permission();
         Ok(Policy {
@@ -374,7 +374,7 @@ impl Engine {
         let updated = settings::with_chat_layer_mode(layer.as_deref(), mode);
         self.store.set_chat_layer(chat, &updated).await?;
         self.passes.set_mode(chat, mode);
-        if let Some(revision) = self.settings.current() {
+        if let Some(revision) = self.settings.latest_of(chat) {
             self.sync_provider_settings(chat, revision).await;
         }
         Ok(())

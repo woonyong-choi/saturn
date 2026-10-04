@@ -141,7 +141,7 @@ impl Engine {
             .settings_of
             .get(&parent_agent)
             .copied()
-            .or(self.settings.current())
+            .or(self.settings.latest_of(parent))
             .ok_or(SettingsError::NoPreviousRevision)?;
         let parent_mode = self.chat_mode(parent, revision).await?;
         if grant.mode > parent_mode {
