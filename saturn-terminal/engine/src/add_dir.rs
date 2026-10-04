@@ -50,6 +50,10 @@ impl Engine {
                     self.queue
                         .inputs_in_state(chat, saturn_protocol::state::InputState::Queued),
                 )
+                .chain(
+                    self.queue
+                        .inputs_in_state(chat, saturn_protocol::state::InputState::Held),
+                )
                 .filter_map(|id| self.queue.input(id))
                 .map(|record| (record.id, self.write_scope_of(chat, &record.workdir)))
                 .collect();
