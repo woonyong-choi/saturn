@@ -223,23 +223,72 @@ mod tests {
     }
 
     #[test]
-    fn on_event_running_until_turn_completed() {
-        let mut tracker = AgentTracker::new();
+    fn on_event_tracks_the_tree_status() {
+        // (사례, 이벤트 열, 예상 상태, 트리가 유휴인지 확인할 때의 예상)
+        let cases = [
+            (
+                "running until turn completed",
+                vec![text(None)],
+                TreeStatus::Running,
+                Some(false),
+            ),
+            (
+                "answer with subagent left",
+                vec![started("a", None), completed()],
+                TreeStatus::AnsweredTreeRunning,
+                Some(false),
+            ),
+            (
+                "all subagents ended",
+                vec![
+                    started("a", None),
+                    started("b", Some("a")),
+                    completed(),
+                    ended("b"),
+                    ended("a"),
+                ],
+                TreeStatus::TreeIdle,
+                Some(true),
+            ),
+            (
+                "subagent end alone is not task end",
+                vec![started("a", None), ended("a")],
+                TreeStatus::Running,
+                None,
+            ),
+            (
+                "main text after completion starts a new turn",
+                vec![completed(), text(None)],
+                TreeStatus::Running,
+                None,
+            ),
+            (
+                "subagent text after completion keeps main done",
+                vec![started("a", None), completed(), text(Some("a"))],
+                TreeStatus::AnsweredTreeRunning,
+                None,
+            ),
+            (
+                "stream lost ends tree",
+                vec![
+                    started("a", None),
+                    ProviderEvent::StreamLost { agent: AGENT },
+                ],
+                TreeStatus::TreeIdle,
+                None,
+            ),
+        ];
 
-        let status = feed(&mut tracker, &[text(None)]);
+        for (name, events, expected, idle) in cases {
+            let mut tracker = AgentTracker::new();
 
-        assert_eq!(status, TreeStatus::Running);
-        assert!(!tracker.is_tree_idle(AGENT));
-    }
+            let status = feed(&mut tracker, &events);
 
-    #[test]
-    fn on_event_answer_with_subagent_left_is_answered_tree_running() {
-        let mut tracker = AgentTracker::new();
-
-        let status = feed(&mut tracker, &[started("a", None), completed()]);
-
-        assert_eq!(status, TreeStatus::AnsweredTreeRunning);
-        assert!(!tracker.is_tree_idle(AGENT));
+            assert_eq!(status, expected, "{name}");
+            if let Some(is_idle) = idle {
+                assert_eq!(tracker.is_tree_idle(AGENT), is_idle, "{name}: idle");
+            }
+        }
     }
 
     #[test]
@@ -250,70 +299,6 @@ mod tests {
         feed(&mut tracker, &[started("a", None), completed()]);
 
         assert_eq!(tracker.status(AGENT), Some(TreeStatus::AnsweredTreeRunning));
-    }
-
-    #[test]
-    fn on_event_all_subagents_ended_is_tree_idle() {
-        let mut tracker = AgentTracker::new();
-
-        let status = feed(
-            &mut tracker,
-            &[
-                started("a", None),
-                started("b", Some("a")),
-                completed(),
-                ended("b"),
-                ended("a"),
-            ],
-        );
-
-        assert_eq!(status, TreeStatus::TreeIdle);
-        assert!(tracker.is_tree_idle(AGENT));
-    }
-
-    #[test]
-    fn on_event_subagent_end_alone_is_not_task_end() {
-        let mut tracker = AgentTracker::new();
-
-        let status = feed(&mut tracker, &[started("a", None), ended("a")]);
-
-        assert_eq!(status, TreeStatus::Running);
-    }
-
-    #[test]
-    fn on_event_main_text_after_completion_starts_new_turn() {
-        let mut tracker = AgentTracker::new();
-
-        let status = feed(&mut tracker, &[completed(), text(None)]);
-
-        assert_eq!(status, TreeStatus::Running);
-    }
-
-    #[test]
-    fn on_event_subagent_text_after_completion_keeps_main_done() {
-        let mut tracker = AgentTracker::new();
-
-        let status = feed(
-            &mut tracker,
-            &[started("a", None), completed(), text(Some("a"))],
-        );
-
-        assert_eq!(status, TreeStatus::AnsweredTreeRunning);
-    }
-
-    #[test]
-    fn on_event_stream_lost_ends_tree() {
-        let mut tracker = AgentTracker::new();
-
-        let status = feed(
-            &mut tracker,
-            &[
-                started("a", None),
-                ProviderEvent::StreamLost { agent: AGENT },
-            ],
-        );
-
-        assert_eq!(status, TreeStatus::TreeIdle);
     }
 
     #[test]

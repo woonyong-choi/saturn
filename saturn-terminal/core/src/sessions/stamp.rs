@@ -64,33 +64,34 @@ mod tests {
 
     #[test]
     fn label_formats_seq_and_utc_minute() {
-        assert_eq!(
-            label(LedgerSeq(41), Some(1_789_207_200_000)),
-            "#41 2026-09-12T10:00Z"
-        );
-    }
+        // (사례, 기록 번호, 시각(ms), 예상 문자열)
+        let cases = [
+            (
+                "utc minute",
+                41,
+                Some(1_789_207_200_000),
+                "#41 2026-09-12T10:00Z",
+            ),
+            (
+                "drops seconds on a leap day",
+                1,
+                Some(1_709_164_800_000 + 59_999),
+                "#1 2024-02-29T00:00Z",
+            ),
+            (
+                "last minute of february",
+                2,
+                Some(1_772_323_199_000),
+                "#2 2026-02-28T23:59Z",
+            ),
+            ("epoch", 0, Some(0), "#0 1970-01-01T00:00Z"),
+            ("before epoch", 0, Some(-60_000), "#0 1969-12-31T23:59Z"),
+            ("without time is seq only", 7, None, "#7"),
+        ];
 
-    #[test]
-    fn label_drops_seconds_and_handles_leap_day() {
-        assert_eq!(
-            label(LedgerSeq(1), Some(1_709_164_800_000 + 59_999)),
-            "#1 2024-02-29T00:00Z"
-        );
-        assert_eq!(
-            label(LedgerSeq(2), Some(1_772_323_199_000)),
-            "#2 2026-02-28T23:59Z"
-        );
-    }
-
-    #[test]
-    fn label_epoch_and_before_epoch() {
-        assert_eq!(label(LedgerSeq(0), Some(0)), "#0 1970-01-01T00:00Z");
-        assert_eq!(label(LedgerSeq(0), Some(-60_000)), "#0 1969-12-31T23:59Z");
-    }
-
-    #[test]
-    fn label_without_time_is_seq_only() {
-        assert_eq!(label(LedgerSeq(7), None), "#7");
+        for (name, seq, time, expected) in cases {
+            assert_eq!(label(LedgerSeq(seq), time), expected, "{name}");
+        }
     }
 
     #[test]

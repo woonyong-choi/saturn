@@ -111,7 +111,13 @@ fn packet_provider_mode_puts_summary_first_and_uses_records_after_it() {
     .unwrap();
 
     let text = rendered.output;
-    assert!(text.find("SUMMARY of the early work") < text.find("auth file body"));
+    let summary_at = text
+        .find("SUMMARY of the early work")
+        .expect("summary should be in the packet");
+    let records_at = text
+        .find("auth file body")
+        .expect("records should follow the summary");
+    assert!(summary_at < records_at);
     assert!(!text.contains("old file body"));
     assert!(!rendered.is_summary_fallback);
 }
@@ -301,20 +307,31 @@ fn packet_judgments_put_low_probability_item_before_unanswered() {
 fn packet_rrf_only_condition_ignores_judgments() {
     let dir = TempDir::new().unwrap();
     let scenarios = scenario_file(&dir);
-    let baseline = seqs(&run_scenario(&scenarios, &[])["included"]);
-    let top = seqs(&run_scenario(&scenarios, &[])["rrf_order"])[0];
+    let baseline = run_scenario_with_budget(&scenarios, "350", &[]);
+    let last = *seqs(&baseline["rrf_order"]).last().unwrap();
     let judgments = write(
         &dir,
         "judgments.json",
-        &json!({"compact": [{"seq": top, "probability": 0.1}]}).to_string(),
+        &json!({"compact": [{"seq": last, "probability": 0.1}]}).to_string(),
     );
+    let note = format!("cache note {last} ");
 
-    let result = run_scenario(
+    let ignored = run_scenario_with_budget(
         &scenarios,
+        "350",
         &["--judgments", &judgments, "--condition", "rrf-only"],
     );
+    let used = run_scenario_with_budget(
+        &scenarios,
+        "350",
+        &["--judgments", &judgments, "--condition", "router-only"],
+    );
 
-    assert_eq!(seqs(&result["included"]), baseline);
+    assert!(used["packet"].as_str().unwrap().contains(&note));
+    assert_eq!(used["routed"], 1);
+    assert!(!ignored["packet"].as_str().unwrap().contains(&note));
+    assert_eq!(ignored["routed"], 0);
+    assert_eq!(ignored["included"], baseline["included"]);
 }
 
 // cost: time O(n), heap O(n), stack O(1)

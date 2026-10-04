@@ -578,96 +578,109 @@ fn ask_probability_overall_rate_stays_under_limit() {
 }
 
 #[test]
-fn gate_label_unanimous_with_matching_hindsight_is_eval() {
-    assert_eq!(
-        gate_label(&label(&["yes", "yes"], Some("yes"))),
-        LabelUse::Eval
-    );
-}
-
-#[test]
-fn gate_label_majority_without_hindsight_is_train() {
-    assert_eq!(
-        gate_label(&label(&["yes", "yes", "no"], None)),
-        LabelUse::Train
-    );
-    assert_eq!(gate_label(&label(&["yes", "yes"], None)), LabelUse::Train);
-}
-
-#[test]
-fn gate_label_order_inconsistent_is_dropped() {
-    let mut inconsistent = label(&["yes", "yes"], Some("yes"));
-    inconsistent.order_consistent = false;
-
-    assert_eq!(gate_label(&inconsistent), LabelUse::Drop);
-}
-
-#[test]
-fn gate_label_no_majority_or_opposite_hindsight_is_dropped() {
-    assert_eq!(gate_label(&label(&["yes", "no"], None)), LabelUse::Drop);
-    assert_eq!(gate_label(&label(&[], None)), LabelUse::Drop);
-    assert_eq!(
-        gate_label(&label(&["yes", "yes"], Some("no"))),
-        LabelUse::Drop
-    );
-}
-
-#[test]
-fn gate_label_human_answer_is_eval() {
-    let mut human = label(&["no"], None);
-    human.human = true;
-    human.order_consistent = false;
-
-    assert_eq!(gate_label(&human), LabelUse::Eval);
-}
-
-#[test]
-fn should_promote_passes_when_nothing_worse() {
-    assert!(should_promote(&report()));
-}
-
-#[test]
-fn should_promote_rejects_low_accuracy_bound() {
-    let worse = EvalReport {
-        accuracy_diff_ci: (-1.0, 3.0),
-        ..report()
+fn gate_label_decides_the_label_use() {
+    let inconsistent = {
+        let mut label = label(&["yes", "yes"], Some("yes"));
+        label.order_consistent = false;
+        label
     };
+    let human = {
+        let mut label = label(&["no"], None);
+        label.human = true;
+        label.order_consistent = false;
+        label
+    };
+    // (사례, 라벨, 예상 사용처)
+    let cases = [
+        (
+            "unanimous with matching hindsight",
+            label(&["yes", "yes"], Some("yes")),
+            LabelUse::Eval,
+        ),
+        (
+            "majority without hindsight",
+            label(&["yes", "yes", "no"], None),
+            LabelUse::Train,
+        ),
+        (
+            "unanimous without hindsight",
+            label(&["yes", "yes"], None),
+            LabelUse::Train,
+        ),
+        ("order inconsistent", inconsistent, LabelUse::Drop),
+        ("no majority", label(&["yes", "no"], None), LabelUse::Drop),
+        ("no answers", label(&[], None), LabelUse::Drop),
+        (
+            "opposite hindsight",
+            label(&["yes", "yes"], Some("no")),
+            LabelUse::Drop,
+        ),
+        ("human answer", human, LabelUse::Eval),
+    ];
 
-    assert!(!should_promote(&worse));
+    for (name, label, expected) in cases {
+        assert_eq!(gate_label(&label), expected, "{name}");
+    }
 }
 
 // cost: time O(1), heap O(1), stack O(1)
 // basis: estimate
 #[test]
-fn should_promote_rejects_any_regression() {
-    let brier = EvalReport {
-        brier: (0.13, 0.12),
-        ..report()
-    };
-    let ece = EvalReport {
-        ece: (0.05, 0.04),
-        ..report()
-    };
-    let coverage = EvalReport {
-        coverage: (0.89, 0.9),
-        ..report()
-    };
-    let order = EvalReport {
-        order_consistency: (0.95, 0.96),
-        ..report()
-    };
+fn should_promote_only_when_nothing_is_worse() {
+    // (사례, 보고서, 승격 여부)
+    let cases = [
+        ("nothing worse", report(), true),
+        (
+            "low accuracy bound",
+            EvalReport {
+                accuracy_diff_ci: (-1.0, 3.0),
+                ..report()
+            },
+            false,
+        ),
+        (
+            "brier regression",
+            EvalReport {
+                brier: (0.13, 0.12),
+                ..report()
+            },
+            false,
+        ),
+        (
+            "ece regression",
+            EvalReport {
+                ece: (0.05, 0.04),
+                ..report()
+            },
+            false,
+        ),
+        (
+            "coverage regression",
+            EvalReport {
+                coverage: (0.89, 0.9),
+                ..report()
+            },
+            false,
+        ),
+        (
+            "order consistency regression",
+            EvalReport {
+                order_consistency: (0.95, 0.96),
+                ..report()
+            },
+            false,
+        ),
+        (
+            "nan",
+            EvalReport {
+                brier: (f64::NAN, 0.12),
+                ..report()
+            },
+            false,
+        ),
+    ];
 
-    for regressed in [brier, ece, coverage, order] {
-        assert!(!should_promote(&regressed));
+    for (name, report, expected) in cases {
+        assert_eq!(should_promote(&report), expected, "{name}");
     }
-}
-
-#[test]
-fn should_promote_nan_is_rejected() {
-    let nan = EvalReport {
-        brier: (f64::NAN, 0.12),
-        ..report()
-    };
-
-    assert!(!should_promote(&nan));
 }

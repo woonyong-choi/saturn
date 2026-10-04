@@ -317,14 +317,40 @@ fn next_to_send_second_writer_waits_for_tree_idle() {
 
 #[test]
 fn next_to_send_pending_writer_blocks_other_writer() {
+    let other = ChatId(2);
     let mut queue = Queue::new();
-    accept_routed(&mut queue, 1, Permission::Write, Disposition::NewTask);
+    let mut first = input(1, Permission::Write);
+    first.chat = other;
+    queue.accept(first);
+    let revision = queue.revision(other);
+    queue
+        .apply(
+            InputId(1),
+            &decision(revision, Disposition::NewTask),
+            revision,
+        )
+        .unwrap();
     accept_routed(&mut queue, 2, Permission::Write, Disposition::NewTask);
-    assert!(queue.next_to_send().is_some());
+    let Some(SendAction::NewTask { task, .. }) = queue.next_to_send() else {
+        panic!("first writer should start a new task");
+    };
 
-    let second = queue.next_to_send();
+    let blocked = queue.next_to_send();
+    let reason = queue.input(InputId(2)).unwrap().reason;
+    queue.set_state(InputId(1), InputState::Delivering).unwrap();
+    queue.start_task(task, AgentId(7)).unwrap();
+    queue.finish_task(AgentId(7));
+    let released = queue.next_to_send();
 
-    assert_eq!(second, None);
+    assert_eq!(blocked, None);
+    assert_eq!(reason, Some(QueueReason::WriteTurn));
+    assert_eq!(
+        released,
+        Some(SendAction::NewTask {
+            input: InputId(2),
+            task: TaskId(2)
+        })
+    );
 }
 
 #[test]
@@ -383,7 +409,16 @@ fn defer_steer_turns_steer_into_queue() {
 
     queue.defer_steer(InputId(2)).unwrap();
 
+    assert_eq!(queue.disposition(InputId(2)), Some(Disposition::Queue));
     assert_eq!(queue.next_to_send(), None);
+    queue.finish_task(AgentId(7));
+    assert_eq!(
+        queue.next_to_send(),
+        Some(SendAction::NewTurn {
+            input: InputId(2),
+            agent: AgentId(7)
+        })
+    );
 }
 
 #[test]
@@ -885,18 +920,52 @@ fn start_task_write_conflict_keeps_task_pending() {
     assert_eq!(queue.tasks[0].agent, None);
 }
 
+// #327
 #[test]
-fn try_acquire_other_agent_same_workdir_returns_false() {
-    let mut gate = WriteGate::default();
-    assert!(gate.try_acquire(&scope(&["/work"]), AgentId(1)));
+fn try_acquire_follows_the_write_scope_overlap() {
+    // (사례, 먼저 잡은 범위, [(요청 범위, 요청 에이전트, 잡히는지)])
+    type Attempt<'a> = (&'a [&'a str], u64, bool);
+    let cases: [(&str, &[&str], &[Attempt]); 3] = [
+        (
+            "same workdir",
+            &["/work"],
+            &[
+                (&["/work"], 1, true),
+                (&["/work"], 2, false),
+                (&["/other"], 2, true),
+            ],
+        ),
+        (
+            "overlapping scopes",
+            &["/repo"],
+            &[
+                (&["/repo/sub"], 2, false),
+                (&["/other", "/repo/sub/deep"], 2, false),
+                (&["/repo-extra"], 3, true),
+                (&["/elsewhere"], 4, true),
+            ],
+        ),
+        (
+            "shared added folder",
+            &["/a", "/shared"],
+            &[(&["/b", "/shared"], 2, false), (&["/b"], 2, true)],
+        ),
+    ];
 
-    let same = gate.try_acquire(&scope(&["/work"]), AgentId(1));
-    let other = gate.try_acquire(&scope(&["/work"]), AgentId(2));
-    let elsewhere = gate.try_acquire(&scope(&["/other"]), AgentId(2));
-
-    assert!(same);
-    assert!(!other);
-    assert!(elsewhere);
+    for (name, held, attempts) in cases {
+        let mut gate = WriteGate::default();
+        assert!(
+            gate.try_acquire(&scope(held), AgentId(1)),
+            "{name}: first holder"
+        );
+        for (paths, agent, expected) in attempts {
+            assert_eq!(
+                gate.try_acquire(&scope(paths), AgentId(*agent)),
+                *expected,
+                "{name}: agent {agent} asks for {paths:?}"
+            );
+        }
+    }
 }
 
 #[test]
@@ -1096,28 +1165,6 @@ fn release_frees_workdir() {
     gate.release(AgentId(1));
 
     assert!(gate.try_acquire(&scope(&["/work"]), AgentId(2)));
-}
-
-// #327
-#[test]
-fn try_acquire_overlapping_scopes_returns_false() {
-    let mut gate = WriteGate::default();
-    assert!(gate.try_acquire(&scope(&["/repo"]), AgentId(1)));
-
-    assert!(!gate.try_acquire(&scope(&["/repo/sub"]), AgentId(2)));
-    assert!(!gate.try_acquire(&scope(&["/other", "/repo/sub/deep"]), AgentId(2)));
-    assert!(gate.try_acquire(&scope(&["/repo-extra"]), AgentId(3)));
-    assert!(gate.try_acquire(&scope(&["/elsewhere"]), AgentId(4)));
-}
-
-// #327
-#[test]
-fn try_acquire_shared_added_folder_returns_false() {
-    let mut gate = WriteGate::default();
-    assert!(gate.try_acquire(&scope(&["/a", "/shared"]), AgentId(1)));
-
-    assert!(!gate.try_acquire(&scope(&["/b", "/shared"]), AgentId(2)));
-    assert!(gate.try_acquire(&scope(&["/b"]), AgentId(2)));
 }
 
 #[test]

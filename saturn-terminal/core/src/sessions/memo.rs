@@ -111,63 +111,65 @@ mod tests {
     }
 
     #[test]
-    fn tool_memo_shell_lists_command_exit_lines_and_first_error() {
-        let result = "Compiling a\nerror[E0425]: cannot find value\nerror: aborting";
+    fn tool_memo_summarizes_each_tool_kind() {
+        // (사례, 도구 종류, 결과 원문, 예상 메모)
+        let cases = [
+            (
+                "shell lists command, exit, lines and first error",
+                shell(Some(101)),
+                "Compiling a\nerror[E0425]: cannot find value\nerror: aborting",
+                "cargo build · exit 101 · 3 lines · error[E0425]: cannot find value",
+            ),
+            (
+                "shell without error line or code",
+                shell(None),
+                "ok",
+                "cargo build · no exit code · 1 lines",
+            ),
+            (
+                "test run lists counts and failed names",
+                ToolKind::TestRun {
+                    passed: 10,
+                    failed: 2,
+                    failed_names: vec!["login_ok".into(), "logout_ok".into()],
+                },
+                "",
+                "passed 10, failed 2: login_ok, logout_ok",
+            ),
+            (
+                "file read",
+                ToolKind::FileRead {
+                    path: "src/a.rs".into(),
+                    lines: Some((1, 40)),
+                },
+                "",
+                "src/a.rs · lines 1-40",
+            ),
+            (
+                "file edit",
+                ToolKind::FileEdit {
+                    path: "src/a.rs".into(),
+                    added: 3,
+                    removed: 1,
+                },
+                "",
+                "src/a.rs · +3 -1",
+            ),
+            (
+                "web fetch",
+                ToolKind::WebFetch {
+                    url: "https://example.com".into(),
+                    status: Some(200),
+                },
+                "",
+                "https://example.com · 200",
+            ),
+            ("other is empty", ToolKind::Other, "anything", ""),
+        ];
 
-        let memo = tool_memo(&shell(Some(101)), result);
-
-        assert_eq!(
-            memo,
-            "cargo build · exit 101 · 3 lines · error[E0425]: cannot find value"
-        );
-    }
-
-    #[test]
-    fn tool_memo_shell_without_error_line_or_code() {
-        assert_eq!(
-            tool_memo(&shell(None), "ok"),
-            "cargo build · no exit code · 1 lines"
-        );
-    }
-
-    #[test]
-    fn tool_memo_test_run_lists_counts_and_failed_names() {
-        let kind = ToolKind::TestRun {
-            passed: 10,
-            failed: 2,
-            failed_names: vec!["login_ok".into(), "logout_ok".into()],
-        };
-
-        assert_eq!(
-            tool_memo(&kind, ""),
-            "passed 10, failed 2: login_ok, logout_ok"
-        );
-    }
-
-    #[test]
-    fn tool_memo_file_read_edit_and_web() {
-        let read = ToolKind::FileRead {
-            path: "src/a.rs".into(),
-            lines: Some((1, 40)),
-        };
-        let edit = ToolKind::FileEdit {
-            path: "src/a.rs".into(),
-            added: 3,
-            removed: 1,
-        };
-        let web = ToolKind::WebFetch {
-            url: "https://example.com".into(),
-            status: Some(200),
-        };
-
-        assert_eq!(tool_memo(&read, ""), "src/a.rs · lines 1-40");
-        assert_eq!(tool_memo(&edit, ""), "src/a.rs · +3 -1");
-        assert_eq!(tool_memo(&web, ""), "https://example.com · 200");
-    }
-
-    #[test]
-    fn tool_memo_other_is_empty() {
-        assert_eq!(tool_memo(&ToolKind::Other, "anything"), "");
+        for (name, kind, result, expected) in cases {
+            assert_eq!(tool_memo(&kind, result), expected, "{name}");
+        }
     }
 
     #[test]

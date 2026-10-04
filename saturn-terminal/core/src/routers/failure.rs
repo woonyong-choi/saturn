@@ -102,9 +102,6 @@ pub fn route_after_failure(
 mod tests {
     use super::*;
     use crate::routers::{ConstraintQuestion, questions_for_input};
-    use crate::sessions::ranking::order_after_router;
-
-    use saturn_protocol::ids::LedgerSeq;
 
     const REVISION: ChatRevision = ChatRevision(3);
     const SETTINGS: SettingsRevision = SettingsRevision(2);
@@ -158,41 +155,44 @@ mod tests {
     }
 
     #[test]
-    fn route_after_failure_idle_sends_to_current_agent_and_model() {
-        let decision = route_after_failure(&request(false), REVISION, SETTINGS);
+    fn route_after_failure_keeps_the_current_agent_and_model() {
+        // (사례, 실행 중인지, 예상 처리 방식, 건너뛴 질문으로 기록돼야 할 목록)
+        let cases = [
+            (
+                "idle sends to the current agent",
+                false,
+                Disposition::Queue,
+                &[][..],
+            ),
+            (
+                "running steers instead of queueing",
+                true,
+                Disposition::Steer,
+                &[
+                    "keep_current",
+                    "is_actionable",
+                    "target_model",
+                    "relation_to_running",
+                    "steer_or_spawn",
+                ][..],
+            ),
+        ];
 
-        assert_eq!(decision.disposition, Disposition::Queue);
-        assert!(decision.keep_current);
-        assert_eq!(decision.model, None);
-        assert!(!decision.resume_held);
-        assert_eq!(decision.revision, REVISION);
-        assert_eq!(decision.settings, SETTINGS);
-    }
+        for (name, running, disposition, skipped) in cases {
+            let decision = route_after_failure(&request(running), REVISION, SETTINGS);
 
-    #[test]
-    fn route_after_failure_running_steers_instead_of_queueing() {
-        let decision = route_after_failure(&request(true), REVISION, SETTINGS);
-
-        assert_eq!(decision.disposition, Disposition::Steer);
-        assert!(decision.keep_current);
-        assert_eq!(decision.model, None);
-    }
-
-    #[test]
-    fn route_after_failure_records_every_skipped_question() {
-        let decision = route_after_failure(&request(true), REVISION, SETTINGS);
-
-        for id in [
-            "keep_current",
-            "is_actionable",
-            "target_model",
-            "relation_to_running",
-            "steer_or_spawn",
-        ] {
-            assert!(
-                decision.fallbacks.iter().any(|skipped| skipped == id),
-                "{id}"
-            );
+            assert_eq!(decision.disposition, disposition, "{name}");
+            assert!(decision.keep_current, "{name}");
+            assert_eq!(decision.model, None, "{name}");
+            assert!(!decision.resume_held, "{name}");
+            assert_eq!(decision.revision, REVISION, "{name}");
+            assert_eq!(decision.settings, SETTINGS, "{name}");
+            for id in skipped {
+                assert!(
+                    decision.fallbacks.iter().any(|recorded| recorded == id),
+                    "{name}: {id}"
+                );
+            }
         }
     }
 
@@ -206,16 +206,6 @@ mod tests {
             compact_failure(TransitionStarter::Forced),
             CompactFailure::FillByRank
         );
-    }
-
-    #[test]
-    fn compact_failure_forced_transition_orders_competing_zone_by_rank() {
-        let ranked: Vec<LedgerSeq> = [7, 3, 9].map(LedgerSeq).to_vec();
-
-        let action = compact_failure(TransitionStarter::Forced);
-
-        assert_eq!(action, CompactFailure::FillByRank);
-        assert_eq!(order_after_router(&ranked, &[]), ranked);
     }
 
     #[test]

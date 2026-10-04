@@ -165,13 +165,13 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 답이 없는 항목(실패한 조각 포함)은 RRF 순으로 뒤에 둔다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_unanswered_follow_answered_in_rrf_order`, `saturn-terminal/core/src/routers/tests.rs`의 `compact_verdicts_merges_pieces_and_skips_failed_piece` |
 | router가 전부 답하지 못하면 RRF 순서로 예산까지 채운다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_no_verdicts_keeps_rrf_order`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_router_no_response_fills_in_rrf_order` |
 | 띄어쓰기와 조사가 달라도 같은 한글 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_spacing_and_particle_share_hangul_bigrams` |
-| 영문 식별자는 식별자 경계에서 나눈다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_identifier_splits_at_case_and_symbols` |
+| 영문 식별자는 식별자 경계에서 나눈다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_split_text_into_search_fragments` |
 | 자모로 풀린 한글도 음절 한글과 같은 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_nfd_hangul_matches_nfc` |
 | 같은 결과에서 늘 같은 메모를 만든다. | `saturn-terminal/core/src/sessions/memo.rs`의 `tool_memo_same_result_gives_same_memo` |
 | 순위가 router 전체 판단과 얼마나 겹치는지 잰다. | [RRF k와 router 상위 N 실험 결과](../experiments/rrf-k-top-n/report.md): 상위 10개 12.0%, 상위 40개 44.5% |
 | 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [단어 조각 단위별 오타 재현율 실험 결과](../experiments/wordpiece-typo-recall/report.md) |
 | router 없이 순위로 채운 패킷은 router 전체 판단 패킷보다 정답률이 10%p를 넘게 낮지 않다. | [새 패킷 규칙의 전환 품질 재측정](../experiments/handoff-packet-quality-v2/report.md): 정답률 차이 +50.7%p [44.7, 56.7]로 기각. 판단 없는 패킷의 규칙은 [router 실패](router.md#router-실패)에 있다. |
-| router가 시작한 전환은 `compact` 판단이 실패하면 건너뛰고, 강제한 전환은 순위 순서로 채운다. | `saturn-terminal/core/src/routers/failure.rs`의 `compact_failure_skips_router_transition_and_fills_forced_one`, `compact_failure_forced_transition_orders_competing_zone_by_rank` |
+| router가 시작한 전환은 `compact` 판단이 실패하면 건너뛰고, 강제한 전환은 순위 순서로 채운다. | `saturn-terminal/core/src/routers/failure.rs`의 `compact_failure_skips_router_transition_and_fills_forced_one`, `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_no_verdicts_keeps_rrf_order` |
 
 ## 단점
 

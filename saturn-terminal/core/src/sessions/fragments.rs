@@ -177,11 +177,51 @@ mod tests {
     }
 
     #[test]
-    fn fragments_hangul_makes_overlapping_bigrams() {
-        assert_eq!(
-            fragments("로그인실패"),
-            strings(&["로그", "그인", "인실", "실패"])
-        );
+    fn fragments_split_text_into_search_fragments() {
+        // (사례, 원문, 예상 조각 목록)
+        let cases: [(&str, &str, &[&str]); 12] = [
+            (
+                "hangul makes overlapping bigrams",
+                "로그인실패",
+                &["로그", "그인", "인실", "실패"],
+            ),
+            (
+                "camel case and extension",
+                "authLogin.rs",
+                &["auth", "login", "rs"],
+            ),
+            ("snake case", "auth_login", &["auth", "login"]),
+            ("kebab case", "auth-login", &["auth", "login"]),
+            (
+                "acronym splits before last capital",
+                "HTTPServer",
+                &["http", "server"],
+            ),
+            ("accented latin is lowercased", "Café", &["café"]),
+            (
+                "kind change splits hangul and latin",
+                "로그인login",
+                &["로그", "그인", "login"],
+            ),
+            ("digits stay one run", "404", &["404"]),
+            ("letter then digit splits", "v2", &["v", "2"]),
+            ("han makes a bigram", "設定", &["設定"]),
+            ("kana makes bigrams", "ログイン", &["ログ", "グイ", "イン"]),
+            ("single hangul char is kept", "왜 a", &["왜", "a"]),
+        ];
+
+        for (name, text, expected) in cases {
+            assert_eq!(fragments(text), strings(expected), "{name}");
+        }
+        for (name, text) in [
+            (
+                "symbols, space, emoji and control",
+                "/ . _ - :: \t\n\u{7}🚀",
+            ),
+            ("empty input", ""),
+        ] {
+            assert!(fragments(text).is_empty(), "{name}");
+        }
     }
 
     // cost: time O(n), heap O(n), stack O(1)
@@ -199,61 +239,9 @@ mod tests {
     }
 
     #[test]
-    fn fragments_identifier_splits_at_case_and_symbols() {
-        assert_eq!(fragments("authLogin.rs"), strings(&["auth", "login", "rs"]));
-        assert_eq!(fragments("auth_login"), strings(&["auth", "login"]));
-        assert_eq!(fragments("auth-login"), strings(&["auth", "login"]));
-    }
-
-    #[test]
-    fn fragments_acronym_splits_before_last_capital() {
-        assert_eq!(fragments("HTTPServer"), strings(&["http", "server"]));
-    }
-
-    #[test]
-    fn fragments_accented_latin_is_lowercased() {
-        assert_eq!(fragments("Café"), strings(&["café"]));
-    }
-
-    #[test]
-    fn fragments_kind_change_splits_hangul_and_latin() {
-        assert_eq!(
-            fragments("로그인login"),
-            strings(&["로그", "그인", "login"])
-        );
-    }
-
-    #[test]
-    fn fragments_digits_stay_one_run() {
-        assert_eq!(fragments("404"), strings(&["404"]));
-        assert_eq!(fragments("v2"), strings(&["v", "2"]));
-    }
-
-    #[test]
-    fn fragments_han_and_kana_make_bigrams() {
-        assert_eq!(fragments("設定"), strings(&["設定"]));
-        assert_eq!(fragments("ログイン"), strings(&["ログ", "グイ", "イン"]));
-    }
-
-    #[test]
-    fn fragments_symbols_space_emoji_and_control_make_nothing() {
-        assert!(fragments("/ . _ - :: \t\n\u{7}🚀").is_empty());
-    }
-
-    #[test]
     fn fragments_nfd_hangul_matches_nfc() {
         let decomposed = "\u{1105}\u{1169}\u{1100}\u{1173}\u{110B}\u{1175}\u{11AB}.md";
 
         assert_eq!(fragments(decomposed), fragments("로그인.md"));
-    }
-
-    #[test]
-    fn fragments_single_hangul_char_is_kept() {
-        assert_eq!(fragments("왜 a"), strings(&["왜", "a"]));
-    }
-
-    #[test]
-    fn fragments_empty_input_is_empty() {
-        assert!(fragments("").is_empty());
     }
 }

@@ -67,6 +67,7 @@ fn rules_are_cut_from_the_original_text() {
 
     let sentences = split_sentences(&text).unwrap();
 
+    assert_eq!(sentences[..2], ["Reply in English.", "Fix the build."]);
     assert!(
         sentences
             .iter()
