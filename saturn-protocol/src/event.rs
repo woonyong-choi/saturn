@@ -94,6 +94,11 @@ pub enum ProviderEvent {
         agent: AgentId,
         values: Vec<(String, String)>,
     },
+    /// 쓸 수 없는 MCP 서버와 이유(서버마다 한 줄). 첫 session을 연 뒤 한 번 알리고, 기록하지 않는다.
+    McpUnavailable {
+        agent: AgentId,
+        reasons: Vec<String>,
+    },
 }
 
 impl ProviderEvent {
@@ -113,7 +118,8 @@ impl ProviderEvent {
             | Self::ContextSize { agent, .. }
             | Self::StreamLost { agent }
             | Self::CacheWindow { agent, .. }
-            | Self::SettingsApplied { agent, .. } => *agent,
+            | Self::SettingsApplied { agent, .. }
+            | Self::McpUnavailable { agent, .. } => *agent,
             Self::Usage(report) => report.agent,
         }
     }

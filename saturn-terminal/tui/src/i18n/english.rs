@@ -320,6 +320,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Denied a write from a task accepted as read-only · Send a new input to write",
     ),
     (
+        "{provider}의 MCP 서버를 쓸 수 없습니다 · 그 서버의 도구만 빠지고 입력은 그대로 보냅니다",
+        "{provider} MCP servers unavailable · Only their tools are missing, your input is sent as is",
+    ),
+    (
         "{provider}가 크래시로 끊긴 하위 에이전트를 다시 시작해 작업을 멈췄습니다 · 이어 가려면 /continue",
         "{provider} restarted a subagent cut off by the crash, so the task was stopped · /continue to resume",
     ),

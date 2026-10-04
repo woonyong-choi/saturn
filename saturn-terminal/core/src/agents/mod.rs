@@ -94,6 +94,7 @@ impl AgentTracker {
             | ProviderEvent::ContextSize { .. }
             | ProviderEvent::CacheWindow { .. }
             | ProviderEvent::SettingsApplied { .. }
+            | ProviderEvent::McpUnavailable { .. }
             | ProviderEvent::Usage(_) => {}
         }
         tree.status()
@@ -156,7 +157,8 @@ fn agent_of(event: &ProviderEvent) -> AgentId {
         | ProviderEvent::ContextSize { agent, .. }
         | ProviderEvent::StreamLost { agent }
         | ProviderEvent::CacheWindow { agent, .. }
-        | ProviderEvent::SettingsApplied { agent, .. } => *agent,
+        | ProviderEvent::SettingsApplied { agent, .. }
+        | ProviderEvent::McpUnavailable { agent, .. } => *agent,
         ProviderEvent::Usage(report) => report.agent,
     }
 }

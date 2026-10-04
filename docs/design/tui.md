@@ -321,6 +321,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요` | 패킷이 맥락 한도로 거절돼 줄여 다시 보냈지만 들어가지 않거나 줄일 수 없어 보내지 않고 멈춤. 영어는 `Stopped over the context limit · Retry with /continue` |
 | `[A] codex → claude로 전환` | 작업의 provider 전환 |
 | `권한 설정 변경됨 · 다음 요청부터 적용됩니다` | 채팅 중 설정이 바뀌었는데 작업 중이라 다시 시작을 턴 끝으로 미룸. 바로 다시 시작하면 이 줄 없이 아래 줄만 남김. 영어는 `Permission settings changed · Applies from your next request` |
+| `Codex의 MCP 서버를 쓸 수 없습니다 · 그 서버의 도구만 빠지고 입력은 그대로 보냅니다` | provider의 MCP 서버가 시작에 실패했거나 준비를 알 수 없어 그 서버의 도구를 쓸 수 없음. 대화 기록 알림이고 아래에 서버마다 `- 서버 이름 이유` 줄이 붙는다. 이유는 provider가 낸 원문이라 번역하지 않는다. 연결마다 첫 session을 연 뒤 한 번 보낸다. 영어는 `Codex MCP servers unavailable · Only their tools are missing, your input is sent as is` |
 | `Codex 다시 시작함 · 변경된 권한 설정을 적용했습니다` | 바뀐 권한 설정을 적용하려고 provider 연결을 다시 시작함(바로 또는 턴이 끝난 뒤). Claude도 같은 줄. 영어는 `Restarted Codex · Applied the changed permission settings` |
 | `이번 요청 · codex Token 4,120 · 라우터 3회 Token 9,870 · 2분 31초` | 모든 작업이 끝난 순간의 합계, provider별 토큰과 router 호출과 경과 |
 | `[A]에 이어서 보냄 · 판단이 맞았나요? (선택)  1 맞음  2 틀림  0 닫기` | 피드백 질문 |
