@@ -519,6 +519,9 @@ impl App {
             self.on_prune_needs_retention();
             return;
         }
+        if alert == Alert::EngineRestarting {
+            self.restarting = true;
+        }
         self.chat.apply_alert(alert);
     }
 

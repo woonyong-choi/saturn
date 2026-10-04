@@ -347,6 +347,8 @@ pub(crate) fn alert_text(lang: Lang, alert: &Alert) -> String {
                 .replace("{chats}", &chats.to_string());
         }
         Alert::AutoPruneFailed => i18n::AUTO_PRUNE_FAILED,
+        Alert::EngineRestarted => i18n::ENGINE_RESTARTED,
+        Alert::EngineRestarting => i18n::ENGINE_RESTARTING,
     };
     lang.tr(key).to_string()
 }

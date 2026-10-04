@@ -124,6 +124,8 @@ pub(crate) struct App {
     pub exit_requested: bool,
     /// 닫은 뒤 계속 실행될 작업 수. 있으면 터미널에 한 줄 남긴다.
     pub exit_notice: Option<u32>,
+    /// engine이 업데이트로 끝난다고 알렸다. 연결이 끊겨도 오류로 끝내지 않고 다시 열라는 한 줄을 남긴다.
+    pub restarting: bool,
     /// 첫 대화 기록 셀이 생기면 머리 셀로 옮기고 `None`.
     pub start: Option<StartInfo>,
     /// 채팅의 기본 폴더. 시작 화면이 머리 셀로 바뀐 뒤에도 남는다.
@@ -178,6 +180,7 @@ impl App {
             exit_confirm: None,
             exit_requested: false,
             exit_notice: None,
+            restarting: false,
             start: None,
             chat_folder: None,
             history,
@@ -559,8 +562,11 @@ impl App {
         }
     }
 
-    /// 닫은 뒤에도 작업이 계속되면 터미널에 남길 한 줄.
+    /// 닫은 뒤에도 작업이 계속되거나 engine이 업데이트로 끝났을 때 터미널에 남길 한 줄.
     pub(crate) fn exit_line(&self) -> Option<String> {
+        if self.restarting {
+            return Some(self.lang.tr(i18n::ENGINE_RESTARTING).to_owned());
+        }
         self.exit_notice.map(|count| {
             self.lang
                 .tr(i18n::EXIT_BACKGROUND)
@@ -644,6 +650,9 @@ pub(crate) async fn run_loop(
                 return Ok(());
             }
             apply_effect(effect, app, client, screen, &tx).await?;
+        }
+        if closed && app.restarting {
+            return Ok(());
         }
         if closed {
             return Err(ClientError::Closed.into());

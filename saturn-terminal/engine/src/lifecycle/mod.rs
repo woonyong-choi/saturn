@@ -38,6 +38,7 @@ mod switch_round_trip;
 mod target_model;
 mod tasks;
 mod turn_end;
+mod upgrade;
 mod versions;
 mod write_scope;
 
@@ -86,6 +87,7 @@ impl Fixture {
         let options = EngineOptions {
             home: root.path().join("home"),
             run_overrides: Vec::new(),
+            after_upgrade: false,
         };
         Self {
             root,

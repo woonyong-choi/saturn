@@ -68,6 +68,9 @@ pub const SCHEMA_MIGRATED: &str = "기록 저장소 v{to}로 옮김";
 pub const PROVIDER_UPDATED: &str = "{provider} CLI가 {from}에서 {to}로 바뀜";
 /// `{chats}`는 시작 때 자동 정리가 지운 채팅 수.
 pub const AUTO_PRUNED: &str = "오래된 채팅 {chats}개를 지웠습니다";
+pub const ENGINE_RESTARTED: &str = "업데이트를 적용하느라 engine을 다시 시작했습니다";
+pub const ENGINE_RESTARTING: &str =
+    "업데이트를 적용하느라 engine을 다시 시작합니다 · saturn으로 다시 여세요";
 pub const AUTO_PRUNE_FAILED: &str = "자동 정리에 실패했습니다 · 로그를 확인하세요";
 /// `{layer}`는 설정 층 이름, `{previous}`는 계속 쓰는 설정 번호, `{detail}`는 원인.
 pub const SETTINGS_FALLBACK: &str = "{layer} 오류 · 이전 설정 번호 {previous}로 계속 · {detail}";
@@ -328,6 +331,11 @@ pub const CLI_ENGINE_POLL_FAILED: &str = "engine 상태를 확인하지 못했�
 pub const CLI_ENGINE_EXITED: &str = "engine이 소켓을 열기 전에 끝났습니다: {socket}{tail}";
 pub const CLI_ENGINE_TIMEOUT: &str =
     "engine이 {secs}초 안에 소켓을 열지 않았습니다: {socket}{tail}";
+/// `{socket}`은 소켓 경로.
+pub const CLI_ENGINE_UPGRADE_NO_PID: &str =
+    "옛 engine이 종료 요청을 몰라 프로세스를 찾아야 하는데 번호를 알 수 없습니다: {socket}";
+pub const CLI_ENGINE_UPGRADE_FAILED: &str =
+    "옛 engine을 끝내지 못했습니다. 프로세스를 직접 끝낸 뒤 다시 실행하세요: {socket}";
 pub const CLI_LOG_PATH: &str = "(로그: {path})";
 pub const CLI_ARGS_CONFLICT: &str =
     "--continue, --resume, --add-dir은 대화 화면을 여는 인자라 하위 명령과 함께 쓸 수 없습니다";

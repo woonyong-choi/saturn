@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{ChatId, LedgerSeq, TaskLabel};
-use saturn_protocol::rpc::{Alert, ChatNotice, Notification};
+use saturn_protocol::rpc::{Alert, ChatNotice, Notification, PROTOCOL_VERSION};
 use saturn_protocol::state::TaskState;
 
 use crate::rpc::ClientId;
@@ -25,6 +25,7 @@ impl Engine {
         };
         Notification::StartInfo {
             saturn_version: env!("CARGO_PKG_VERSION").to_owned(),
+            protocol_version: PROTOCOL_VERSION,
             providers: self.provider_infos(),
             router: active.router_id().to_owned(),
             router_version,
@@ -34,6 +35,26 @@ impl Engine {
                 .map(|dir| dir.display().to_string())
                 .collect(),
         }
+    }
+
+    /// `Attach` 전에도 보낸다. 클라이언트는 이 값으로 옛 engine을 교체할지 정한다.
+    pub(super) async fn send_version(&self, client: ClientId) -> Result<(), EngineError> {
+        let version = Notification::EngineVersion {
+            saturn_version: env!("CARGO_PKG_VERSION").to_owned(),
+            protocol_version: PROTOCOL_VERSION,
+        };
+        self.send(client, version).await;
+        Ok(())
+    }
+
+    /// 붙은 모든 TUI에 engine이 업데이트로 끝난다고 알린다. 끝난 뒤 연결이 끊긴다.
+    pub(super) async fn announce_restart(&self) {
+        tracing::info!("engine is ending to apply an update");
+        self.rpc
+            .broadcast_attached(Notification::Alert {
+                alert: Alert::EngineRestarting,
+            })
+            .await;
     }
 
     pub(super) async fn history_chunk(
@@ -127,6 +148,10 @@ impl Engine {
     /// 키 창이 떠 있으면 신뢰 창은 키를 받은 뒤 보낸다. TUI 창은 하나씩 뜬다.
     /// `applied`는 이 채팅의 설정 병합 결과로, 경고가 있을 때만 보낸다.
     pub(super) async fn send_start_notices(&mut self, client: ClientId, applied: Applied) {
+        if std::mem::take(&mut self.notices.restarted) {
+            let alert = Alert::EngineRestarted;
+            self.send(client, Notification::Alert { alert }).await;
+        }
         if let Some(notice) = self.notices.migration.take() {
             let alert = Alert::SchemaMigrated {
                 from: notice.from,

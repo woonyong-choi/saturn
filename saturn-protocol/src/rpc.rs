@@ -12,6 +12,9 @@ use crate::ids::{
 use crate::input::{InputAnswer, InputRequest};
 use crate::state::{Disposition, InputState, QueueReason, TaskState};
 
+/// engine과 클라이언트가 주고받는 메시지 판. 요청이나 알림의 모양을 호환되지 않게 바꿀 때 올린다.
+pub const PROTOCOL_VERSION: u32 = 1;
+
 /// TUI가 `Attach`의 `env`에 담는 변수 이름. 이 밖의 변수는 보내지 않는다. 초안 목록.
 pub const ATTACH_ENV_NAMES: &[&str] = &[
     "PATH",
@@ -69,6 +72,12 @@ pub enum Request {
         chat: ChatId,
         group: Option<String>,
     },
+    /// engine의 빌드 버전과 protocol 판을 `EngineVersion`으로 보낸다. `Attach` 전에도, router 키를 기다리는 동안에도 받는다.
+    /// 클라이언트는 `Attach` 전에 이 값을 자기 값과 비교해 옛 engine을 교체한다.
+    Version,
+    /// engine을 업데이트하려고 끝낸다. 새 요청을 받지 않고, 실행 중인 작업은 끝내지 않은 채 provider 프로세스를 정리한 뒤
+    /// 잠금을 풀고 끝난다. 끝나지 않은 실행은 다음 engine의 크래시 복구가 이어 받는다. 붙은 TUI에는 `Alert::EngineRestarting`을 보낸다.
+    Shutdown,
     /// 연결을 끊는다. 마지막 TUI가 떨어지면 `OnExit`를 적용한다.
     /// 채팅을 옮길 때는 보내지 않고 같은 연결로 `Attach`를 다시 보낸다.
     Detach,
@@ -234,8 +243,16 @@ pub enum UsageRange {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "method", content = "params")]
 pub enum Notification {
+    /// `Version`의 답.
+    EngineVersion {
+        saturn_version: String,
+        protocol_version: u32,
+    },
     StartInfo {
         saturn_version: String,
+        /// 옛 engine이 보낸 값에는 없어 0으로 읽는다.
+        #[serde(default)]
+        protocol_version: u32,
         /// 어댑터 레지스트리의 기본 순서대로.
         providers: Vec<ProviderInfo>,
         router: String,
@@ -534,6 +551,10 @@ pub enum Alert {
     AutoPruneFailed,
     /// `Prune`을 보냈는데 `retention.max_age_days`가 없어 거절했다. 요청한 접속에만 보낸다.
     PruneNeedsRetention,
+    /// 업데이트를 적용하려고 옛 engine을 끝내고 이 engine을 새로 시작했다. 첫 TUI에만 보낸다.
+    EngineRestarted,
+    /// 업데이트를 적용하려고 이 engine이 끝난다. 붙은 모든 TUI에 보내고 곧 연결을 끊는다. TUI는 다시 열어야 한다.
+    EngineRestarting,
     /// 시작할 때 읽은 provider CLI 버전이 마지막으로 확인한 버전과 다르다. 첫 TUI에만 보낸다.
     ProviderUpdated {
         provider: crate::ids::Provider,

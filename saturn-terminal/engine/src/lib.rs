@@ -177,6 +177,8 @@ impl EngineError {
 pub struct EngineOptions {
     pub home: PathBuf,
     pub run_overrides: Vec<String>,
+    /// 업데이트를 적용하려고 옛 engine을 끝내고 띄운 engine이면 참. 첫 TUI에 `Alert::EngineRestarted`를 한 번 보낸다.
+    pub after_upgrade: bool,
 }
 
 /// 시작 단계가 프로세스 환경, 키 저장소, router API와 닿는 자리. 테스트는 가짜를 넣는다.
@@ -219,6 +221,8 @@ enum AutoPruneNotice {
 #[derive(Debug, Default)]
 struct StartNotices {
     migration: Option<MigrationNotice>,
+    /// 업데이트로 다시 시작했다는 알림. 첫 TUI에 보내고 지운다.
+    restarted: bool,
     /// 시작 때 자동 정리의 결과. 지운 채팅이 있거나 실패했을 때만 둔다.
     auto_prune: Option<AutoPruneNotice>,
     /// 크래시 복구가 보류한 작업. 그 채팅에 처음 붙는 TUI에 `/continue`를 제안하고 지운다.
@@ -307,6 +311,8 @@ pub struct Engine {
     idle_grace: Duration,
     /// `ConfirmTrain`을 기다린다.
     pending_train: Option<TrainPlan>,
+    /// `Shutdown`을 받았다. 요청 처리 루프는 붙은 TUI에 알린 뒤 끝난다.
+    upgrade_requested: bool,
 }
 
 impl Engine {
@@ -430,7 +436,9 @@ impl Engine {
     }
 
     /// provider session id는 기록 저장소에 남아 있어 따로 보관하지 않는다.
-    async fn shutdown(self) -> Result<(), EngineError> {
+    async fn shutdown(mut self) -> Result<(), EngineError> {
+        // 소켓을 먼저 닫아 종료 중에 새 접속이 붙지 않게 한다. 잠금은 provider 프로세스를 정리한 뒤에 푼다
+        self.rpc.close_connections().await;
         self.stop_process_groups().await;
         self.rpc.close().await;
         tracing::info!("engine stopped");

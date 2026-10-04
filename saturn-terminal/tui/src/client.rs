@@ -37,6 +37,15 @@ pub struct EngineClient {
     lines: Lines<BufReader<OwnedReadHalf>>,
     writer: OwnedWriteHalf,
     next_request: u64,
+    /// 소켓 반대편 프로세스 번호. 운영체제가 알려 주지 않으면 `None`.
+    peer_pid: Option<i32>,
+}
+
+/// engine이 `Version`에 답한 빌드 버전과 protocol 판.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EngineVersion {
+    pub saturn_version: String,
+    pub protocol_version: u32,
 }
 
 /// 이 TUI의 환경 변수 중 `Attach`로 넘길 것. 없는 변수와 문자열이 아닌 값은 뺀다.
@@ -70,13 +79,42 @@ impl EngineClient {
                     path: socket.to_owned(),
                     source,
                 })?;
+        let peer_pid = stream.peer_cred().ok().and_then(|cred| cred.pid());
         let (read_half, writer) = stream.into_split();
         Ok(Self {
             socket: socket.to_owned(),
             lines: BufReader::new(read_half).lines(),
             writer,
             next_request: 0,
+            peer_pid,
         })
+    }
+
+    /// 소켓을 받는 engine의 프로세스 번호. 종료 요청을 모르는 옛 engine을 끝낼 때 쓴다.
+    pub fn peer_pid(&self) -> Option<i32> {
+        self.peer_pid
+    }
+
+    /// `Attach` 전에 engine의 빌드 버전과 protocol 판을 묻는다.
+    ///
+    /// # Errors
+    /// `Version`을 모르는 옛 engine은 `Rejected`, 연결이 끊겼거나 답에 버전이 없으면 `Closed`.
+    pub async fn version(&mut self) -> Result<EngineVersion, ClientError> {
+        let mut found = None;
+        self.call(Request::Version, |notification| {
+            if let Notification::EngineVersion {
+                saturn_version,
+                protocol_version,
+            } = notification
+            {
+                found = Some(EngineVersion {
+                    saturn_version,
+                    protocol_version,
+                });
+            }
+        })
+        .await?;
+        found.ok_or(ClientError::Closed)
     }
 
     pub fn socket(&self) -> &Path {

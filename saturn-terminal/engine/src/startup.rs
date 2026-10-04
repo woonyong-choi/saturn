@@ -48,6 +48,7 @@ impl Engine {
         let settings = Self::merge_settings(&options, &store).await?;
         let verified = Self::verify_router(&options, &store, &settings, env).await?;
         let rpc = Self::listen(&options, lock).await?;
+        let restarted = options.after_upgrade;
         Ok(Self {
             options,
             store,
@@ -65,6 +66,7 @@ impl Engine {
             chat_dirs: HashMap::new(),
             notices: StartNotices {
                 migration,
+                restarted,
                 auto_prune: None,
                 resume_suggested: HashMap::new(),
                 provider_updates: Vec::new(),
@@ -78,6 +80,7 @@ impl Engine {
             presence: Presence::Background { idle_since: None },
             idle_grace: saturn_core::sessions::IDLE_GRACE,
             pending_train: None,
+            upgrade_requested: false,
         })
     }
 

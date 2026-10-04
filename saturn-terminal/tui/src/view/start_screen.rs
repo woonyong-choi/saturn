@@ -44,6 +44,7 @@ impl StartInfo {
     pub(crate) fn from_notification(notification: &Notification) -> Option<Self> {
         let Notification::StartInfo {
             saturn_version,
+            protocol_version: _,
             providers,
             router,
             router_version,
@@ -208,6 +209,7 @@ mod tests {
     fn from_notification_treats_empty_values_as_unknown() {
         let notification = Notification::StartInfo {
             saturn_version: "0.1.0".to_string(),
+            protocol_version: 1,
             providers: vec![ProviderInfo {
                 provider: Provider::from_static("codex"),
                 display_name: "codex".to_owned(),
