@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import concurrent.futures
 import os
 import subprocess
 import sys
@@ -166,6 +167,35 @@ def call(cases: list[dict], lane: str, trial: str, labels: dict) -> list[dict]:
     return parsed
 
 
+def label_batch(index: int, chunk: list[dict], lane: str, prior: dict) -> list[dict]:
+    trial = f"{lane}-{index:03}"
+    saved = PRIVATE / "labels" / (trial + ".json")
+    if saved.exists():
+        return read(saved)
+    reserved = {r["trial_id"] for r in rows(PRIVATE / "calls.jsonl")}
+    answer = None
+    for attempt in range(2):
+        call_id = trial if not attempt else trial + "-repair"
+        if call_id in reserved:
+            continue
+        try:
+            answer = call(chunk, lane, call_id, prior)
+            break
+        except (ValueError, KeyError, TypeError):
+            continue
+    if answer is None:
+        answer = [
+            {
+                "id": c["id"],
+                "label": "uncertain",
+                "reason": "format failure or incomplete call",
+            }
+            for c in chunk
+        ]
+    write(saved, answer)
+    return answer
+
+
 def main() -> None:
     setup()
     lane = sys.argv[1]
@@ -191,39 +221,27 @@ def main() -> None:
             or prior[c["id"]][0]["label"] == "uncertain"
         ]
     result = []
-    for start in range(0, len(sample), 15):
-        chunk = sample[start : start + 15]
-        trial = f"{lane}-{start // 15:03}"
-        saved = PRIVATE / "labels" / (trial + ".json")
-        if saved.exists():
-            result.extend(read(saved))
-            continue
-        reserved = {r["trial_id"] for r in rows(PRIVATE / "calls.jsonl")}
-        answer = None
-        for attempt in range(2):
-            call_id = trial if not attempt else trial + "-repair"
-            if call_id in reserved:
-                continue
-            try:
-                answer = call(chunk, lane, call_id, prior)
-                break
-            except (ValueError, KeyError, TypeError):
-                continue
-        if answer is None:
-            answer = [
-                {
-                    "id": c["id"],
-                    "label": "uncertain",
-                    "reason": "format failure or incomplete call",
-                }
-                for c in chunk
-            ]
-        write(saved, answer)
-        result.extend(answer)
-        print(
-            json.dumps({"lane": lane, "completed": len(result), "total": len(sample)}),
-            flush=True,
-        )
+    chunks = [
+        (start // 15, sample[start : start + 15]) for start in range(0, len(sample), 15)
+    ]
+    workers = 2 if lane == "adjudicated" else 1
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        for offset in range(0, len(chunks), workers):
+            futures = {
+                pool.submit(label_batch, index, chunk, lane, prior): index
+                for index, chunk in chunks[offset : offset + workers]
+            }
+            completed = {}
+            for future in concurrent.futures.as_completed(futures):
+                completed[futures[future]] = future.result()
+            for index in sorted(completed):
+                result.extend(completed[index])
+            print(
+                json.dumps(
+                    {"lane": lane, "completed": len(result), "total": len(sample)}
+                ),
+                flush=True,
+            )
     write(PRIVATE / f"labels-{lane}.json", result)
 
 
