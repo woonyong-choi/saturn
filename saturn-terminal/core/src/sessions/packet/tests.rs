@@ -47,6 +47,7 @@ fn turn(seq: u64, input: &str, answer: &str) -> RecentTurn {
         stamp: stamp(1, AT_MS),
         status: TurnStatus::Finished,
         input: input.into(),
+        steers: Vec::new(),
         answer: answer.into(),
     }
 }

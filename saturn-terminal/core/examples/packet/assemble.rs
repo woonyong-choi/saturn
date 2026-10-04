@@ -214,6 +214,7 @@ fn recent_turns(records: &[Record]) -> Vec<RecentTurn> {
                 stamp: stamp_of(record),
                 status: TurnStatus::Finished,
                 input: text.clone(),
+                steers: Vec::new(),
                 answer: String::new(),
             }),
             Body::Agent(text) => {

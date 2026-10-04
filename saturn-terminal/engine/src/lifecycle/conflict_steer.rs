@@ -165,3 +165,28 @@ async fn answering_without_a_question_is_refused() {
     ));
     assert_eq!(interrupts(&flow), 0);
 }
+
+// #456
+#[tokio::test]
+async fn applied_steer_is_kept_with_its_run_and_a_refused_one_is_not() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "conflicts", "queue"),
+        running_reply(0.95, "refines", "steer"),
+    ])
+    .await;
+    flow.fake.verify_steer();
+    flow.submit("fix the build").await;
+    let applied = flow.submit(CONFLICT).await;
+    flow.fake.answer_steer([not_sent()]);
+    let refused = flow.submit("also bump the version").await;
+
+    let steered = flow.engine.store.steered_inputs(flow.chat).await.unwrap();
+
+    assert_eq!(flow.state(applied), InputState::Applied);
+    assert_eq!(flow.state(refused), InputState::Queued);
+    assert_eq!(
+        steered.iter().map(|steer| steer.input).collect::<Vec<_>>(),
+        vec![applied]
+    );
+}

@@ -334,6 +334,11 @@ impl Engine {
             .ledger_since(chat, LedgerSeq(0))
             .await
             .map_err(|error| failed(error.into()))?;
+        let steers = self
+            .store
+            .steered_inputs(chat)
+            .await
+            .map_err(|error| failed(error.into()))?;
         let changes = self
             .store
             .run_changes(chat)
@@ -343,6 +348,7 @@ impl Engine {
         let pending = self.pending_work(chat, Some(record.id));
         let full_source = handoff_source(
             &rows,
+            &steers,
             &changes,
             &pending,
             &self.registry.instruction_docs(),
@@ -376,6 +382,7 @@ impl Engine {
                 let newer = rows.into_iter().filter(|row| row.seq > after).collect();
                 let source = handoff_source(
                     &others_only(newer, *id),
+                    &steers,
                     &changes_of_others(changes, *id, after),
                     &pending,
                     &self.registry.instruction_docs(),

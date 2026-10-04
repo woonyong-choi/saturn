@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 12;
+pub(crate) const SCHEMA_VERSION: u32 = 13;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,7 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12];
+pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -311,6 +311,13 @@ CREATE TABLE extensions (
     installed_at INTEGER NOT NULL,
     parts TEXT NOT NULL
 );
+"#;
+
+/// `steered_run`은 실행 중에 끼워 넣어 적용한 입력이 들어간 실행이고, `steered_after`는 그때까지 채팅에 쌓인 마지막
+/// 기록 번호다. 실행을 연 입력과 아직 끼워 넣지 않았거나 거절된 입력은 NULL이고, 이관 전 입력도 NULL이다.
+const V13: &str = r#"
+ALTER TABLE inputs ADD COLUMN steered_run INTEGER;
+ALTER TABLE inputs ADD COLUMN steered_after INTEGER;
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -677,6 +684,41 @@ mod tests {
         );
         assert!(store.held_tasks().await.unwrap().is_empty());
         assert!(store.interrupted_subagents().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v12_file_migrates_to_steered_input_columns_keeping_inputs() {
+        let (dir, store) = temp_store_at(12).await;
+        sqlx::raw_sql(
+            "INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0); \
+             INSERT INTO inputs (id, chat_id, text, settings_revision, permission, workdir, skip_relation, state, accepted_at) \
+             VALUES (1, 1, 'old input', 1, 'Write', '/work', 0, 'Applied', 0)",
+        )
+        .execute(&store.pool)
+        .await
+        .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (12, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
+        assert!(
+            store
+                .steered_inputs(saturn_protocol::ids::ChatId(1))
+                .await
+                .unwrap()
+                .is_empty()
+        );
+        assert_eq!(
+            store
+                .chat_workdir(saturn_protocol::ids::ChatId(1))
+                .await
+                .unwrap(),
+            PathBuf::from("/work")
+        );
     }
 
     #[tokio::test]

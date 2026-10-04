@@ -78,6 +78,8 @@ pub struct RecentTurn {
     pub stamp: Stamp,
     pub status: TurnStatus,
     pub input: String,
+    /// 이 턴이 도는 중에 끼워 넣어 적용한 사용자 입력. 적용한 순서다.
+    pub steers: Vec<String>,
     pub answer: String,
 }
 
@@ -311,12 +313,17 @@ fn fixed_sections(source: &PacketSource, turns: &[RecentTurn]) -> Vec<Section> {
         .iter()
         .map(|turn| {
             let mut text = format!(
-                "{} {} User: {}\nAgent: {}",
+                "{} {} User: {}",
                 label(turn.seq, turn.stamp.at_ms),
                 turn.status.tag(),
                 turn.input,
-                turn.answer
             );
+            for steer in &turn.steers {
+                text.push_str("\nUser (sent while this turn was running): ");
+                text.push_str(steer);
+            }
+            text.push_str("\nAgent: ");
+            text.push_str(&turn.answer);
             push_unknown_result(&mut text, turn.status);
             SectionItem {
                 session: Some(turn.stamp.session),
