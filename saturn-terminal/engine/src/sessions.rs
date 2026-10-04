@@ -8,11 +8,12 @@ use saturn_core::sessions::{
     AgentRole, LastTurn, ReturnInputs, SendTarget, SessionError, SessionManager, SessionRecord,
 };
 use saturn_protocol::ids::{ChatId, LedgerSeq, Provider, SessionId, SettingsRevision};
+use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::SessionState;
 
 use crate::settings::{ContextMode, SettingsError};
 use crate::store::Store;
-use crate::{Engine, EngineError};
+use crate::{ClientId, Engine, EngineError};
 
 /// 입력 하나를 어느 session에 보낼지 정하는 데 쓰는 값.
 #[derive(Debug, Clone, Copy)]
@@ -58,6 +59,41 @@ impl Engine {
         self.store.record_last_turn(session, last_turn).await?;
         self.sessions.record_last_turn(session, last_turn);
         Ok(())
+    }
+
+    // cost: time O(s), heap O(1), stack O(1)
+    // vars: s = session 수
+    // basis: estimate
+    /// 붙는 TUI에 그 채팅 메인 session의 맥락 사용량을 알린다. 열려 있는 session이 이번 턴 값을 알면 그 값을, 아니면 기록에서
+    /// 되살린 마지막 턴 값을 쓴다. 둘 다 모르면 보내지 않아 TUI가 `미확인`으로 둔다. 기준값을 읽지 못하면 로그만 남긴다.
+    pub(crate) async fn send_chat_context(&self, client: ClientId, chat: ChatId) {
+        let Some(main) = self.sessions.live_main(chat) else {
+            return;
+        };
+        let live_tokens = self
+            .flow
+            .live
+            .values()
+            .find(|live| live.session == main.id)
+            .and_then(|live| self.flow.context_tokens.get(&live.agent).copied().flatten());
+        let Some(tokens) =
+            live_tokens.or_else(|| self.sessions.last_turn(main.id).map(|last| last.active))
+        else {
+            return;
+        };
+        let threshold = match self.context_budget(main.provider).await {
+            Ok(budget) => budget.threshold(),
+            Err(error) => {
+                tracing::warn!(error = %self.failure_line(&error), "failed to read context budget");
+                return;
+            }
+        };
+        let notification = Notification::ContextSize {
+            chat,
+            tokens: Some(tokens),
+            threshold,
+        };
+        self.send(client, notification).await;
     }
 
     // cost: time O(s), heap O(1), stack O(1), io 1

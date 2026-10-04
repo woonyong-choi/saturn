@@ -342,6 +342,71 @@ async fn attach_history_carries_the_usage_reported_by_each_run() {
     assert_eq!(usage, vec![(TaskId(1), Some(100)), (TaskId(2), Some(7))]);
 }
 
+/// 다시 열 때 기록에서 되살린 마지막 턴의 맥락 사용량을 `ContextSize`로 받는다. 엔진을 다시 켜도 같다(#395).
+#[tokio::test]
+async fn attach_sends_the_context_size_of_the_last_turn() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.ready().await;
+    let chat = chat_with_history(&engine, &fixture.workdir).await;
+    engine
+        .store
+        .record_last_turn(
+            SessionId(7),
+            saturn_core::sessions::LastTurn {
+                active: 18_000,
+                ended_at: std::time::SystemTime::now(),
+            },
+        )
+        .await
+        .unwrap();
+    engine.sessions = crate::sessions::restore_sessions(&engine.store)
+        .await
+        .unwrap();
+    let mut client = Client::connect(&fixture.socket()).await;
+
+    let received = drive(&mut engine, async {
+        client.attach(1, attach_to(chat, &fixture.workdir)).await
+    })
+    .await;
+
+    let sizes: Vec<(Option<u64>, u64)> = received
+        .iter()
+        .filter_map(|notification| match notification {
+            Notification::ContextSize {
+                tokens, threshold, ..
+            } => Some((*tokens, *threshold)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(sizes.len(), 1, "{received:?}");
+    assert_eq!(sizes[0].0, Some(18_000));
+    assert!(sizes[0].1 > 18_000);
+}
+
+/// 마지막 턴 값을 모르면 `ContextSize`를 보내지 않는다.
+#[tokio::test]
+async fn attach_without_a_last_turn_sends_no_context_size() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.ready().await;
+    let chat = chat_with_history(&engine, &fixture.workdir).await;
+    engine.sessions = crate::sessions::restore_sessions(&engine.store)
+        .await
+        .unwrap();
+    let mut client = Client::connect(&fixture.socket()).await;
+
+    let received = drive(&mut engine, async {
+        client.attach(1, attach_to(chat, &fixture.workdir)).await
+    })
+    .await;
+
+    assert!(
+        !received
+            .iter()
+            .any(|notification| matches!(notification, Notification::ContextSize { .. })),
+        "{received:?}"
+    );
+}
+
 /// 앞 실행과 provider가 다른 실행 앞에는 실시간과 같은 전환 알림이 온다. 첫 실행 앞에는 없다(#384).
 #[tokio::test]
 async fn attach_history_tells_the_provider_switch_before_the_run_that_switched() {
