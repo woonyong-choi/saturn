@@ -87,127 +87,71 @@ fn manager_with(records: Vec<SessionRecord>) -> SessionManager {
 }
 
 #[test]
-fn target_for_send_without_session_returns_new() {
-    let manager = SessionManager::new();
+fn target_for_send_picks_the_session_to_use() {
+    let claude = Provider::from_static("claude");
+    let codex = Provider::from_static("codex");
+    let new = |provider: &Provider, role| SendTarget::New {
+        provider: *provider,
+        role,
+    };
+    let no_provider_id = {
+        let mut closed = record(1, codex, SessionState::ClosedResumable);
+        closed.provider_session = None;
+        closed
+    };
+    // (사례, 등록한 session, 대상 provider, 역할, 예상 대상)
+    let cases = [
+        (
+            "without session",
+            vec![],
+            claude,
+            AgentRole::Main,
+            new(&claude, AgentRole::Main),
+        ),
+        (
+            "open same provider",
+            vec![record(1, claude, SessionState::Open)],
+            claude,
+            AgentRole::Main,
+            SendTarget::Open(SessionId(1)),
+        ),
+        (
+            "closed session",
+            vec![record(1, codex, SessionState::ClosedResumable)],
+            codex,
+            AgentRole::Main,
+            SendTarget::Resume(SessionId(1)),
+        ),
+        (
+            "closed without provider id",
+            vec![no_provider_id],
+            codex,
+            AgentRole::Main,
+            new(&codex, AgentRole::Main),
+        ),
+        (
+            "other provider",
+            vec![record(1, claude, SessionState::Open)],
+            codex,
+            AgentRole::Main,
+            new(&codex, AgentRole::Main),
+        ),
+        (
+            "sub always new",
+            vec![record(1, claude, SessionState::Open)],
+            claude,
+            AgentRole::Sub,
+            new(&claude, AgentRole::Sub),
+        ),
+    ];
 
-    let target = manager.target_for_send(
-        CHAT,
-        Provider::from_static("claude"),
-        AgentRole::Main,
-        &inputs(50_000),
-    );
+    for (name, records, provider, role, expected) in cases {
+        let manager = manager_with(records);
 
-    assert_eq!(
-        target,
-        SendTarget::New {
-            provider: Provider::from_static("claude"),
-            role: AgentRole::Main
-        }
-    );
-}
+        let target = manager.target_for_send(CHAT, provider, role, &inputs(50_000));
 
-#[test]
-fn target_for_send_open_same_provider_returns_open() {
-    let manager = manager_with(vec![record(
-        1,
-        Provider::from_static("claude"),
-        SessionState::Open,
-    )]);
-
-    let target = manager.target_for_send(
-        CHAT,
-        Provider::from_static("claude"),
-        AgentRole::Main,
-        &inputs(50_000),
-    );
-
-    assert_eq!(target, SendTarget::Open(SessionId(1)));
-}
-
-#[test]
-fn target_for_send_closed_session_returns_resume() {
-    let manager = manager_with(vec![record(
-        1,
-        Provider::from_static("codex"),
-        SessionState::ClosedResumable,
-    )]);
-
-    let target = manager.target_for_send(
-        CHAT,
-        Provider::from_static("codex"),
-        AgentRole::Main,
-        &inputs(50_000),
-    );
-
-    assert_eq!(target, SendTarget::Resume(SessionId(1)));
-}
-
-#[test]
-fn target_for_send_closed_without_provider_id_returns_new() {
-    let mut closed = record(
-        1,
-        Provider::from_static("codex"),
-        SessionState::ClosedResumable,
-    );
-    closed.provider_session = None;
-    let manager = manager_with(vec![closed]);
-
-    let target = manager.target_for_send(
-        CHAT,
-        Provider::from_static("codex"),
-        AgentRole::Main,
-        &inputs(50_000),
-    );
-
-    assert!(matches!(target, SendTarget::New { .. }));
-}
-
-#[test]
-fn target_for_send_other_provider_returns_new() {
-    let manager = manager_with(vec![record(
-        1,
-        Provider::from_static("claude"),
-        SessionState::Open,
-    )]);
-
-    let target = manager.target_for_send(
-        CHAT,
-        Provider::from_static("codex"),
-        AgentRole::Main,
-        &inputs(50_000),
-    );
-
-    assert_eq!(
-        target,
-        SendTarget::New {
-            provider: Provider::from_static("codex"),
-            role: AgentRole::Main
-        }
-    );
-}
-
-#[test]
-fn target_for_send_sub_always_returns_new() {
-    let manager = manager_with(vec![record(
-        1,
-        Provider::from_static("claude"),
-        SessionState::Open,
-    )]);
-
-    let target = manager.target_for_send(
-        CHAT,
-        Provider::from_static("claude"),
-        AgentRole::Sub,
-        &inputs(50_000),
-    );
-
-    assert_eq!(
-        target,
-        SendTarget::New {
-            provider: Provider::from_static("claude"),
-            role: AgentRole::Sub
-        }
-    );
+        assert_eq!(target, expected, "{name}");
+    }
 }
 
 #[test]
@@ -464,40 +408,38 @@ fn set_state_closed_to_held_returns_error() {
 }
 
 #[test]
-fn target_for_send_warm_below_threshold_resumes_archive() {
-    let manager = archived_codex(99_999, 300);
+fn target_for_send_decides_returning_to_the_archive_by_cache_and_packet_size() {
+    // (사례, 활성 크기, 마지막 턴 뒤 경과 초, 패킷 크기, 예상 대상)
+    let cases = [
+        (
+            "warm below threshold",
+            99_999,
+            300,
+            50_000,
+            SendTarget::Resume(SessionId(1)),
+        ),
+        (
+            "warm above threshold",
+            150_000,
+            10,
+            50_000,
+            SendTarget::Resume(SessionId(1)),
+        ),
+        ("expired smaller packet", 80_000, 301, 79_999, new_codex()),
+        (
+            "expired packet not smaller",
+            80_000,
+            301,
+            80_000,
+            SendTarget::Resume(SessionId(1)),
+        ),
+    ];
 
-    assert_eq!(
-        return_target(&manager, 50_000),
-        SendTarget::Resume(SessionId(1))
-    );
-}
+    for (name, active, secs_ago, packet, expected) in cases {
+        let manager = archived_codex(active, secs_ago);
 
-#[test]
-fn target_for_send_warm_above_threshold_resumes_archive() {
-    let manager = archived_codex(150_000, 10);
-
-    assert_eq!(
-        return_target(&manager, 50_000),
-        SendTarget::Resume(SessionId(1))
-    );
-}
-
-#[test]
-fn target_for_send_expired_smaller_packet_returns_new() {
-    let manager = archived_codex(80_000, 301);
-
-    assert_eq!(return_target(&manager, 79_999), new_codex());
-}
-
-#[test]
-fn target_for_send_expired_packet_not_smaller_resumes_archive() {
-    let manager = archived_codex(80_000, 301);
-
-    assert_eq!(
-        return_target(&manager, 80_000),
-        SendTarget::Resume(SessionId(1))
-    );
+        assert_eq!(return_target(&manager, packet), expected, "{name}");
+    }
 }
 
 #[test]

@@ -218,100 +218,93 @@ mod tests {
     }
 
     #[test]
-    fn decide_not_tree_idle_defers() {
-        let busy = ContextMeasure {
-            tree_idle: false,
-            ..measure(150_000, 5_000)
-        };
-
-        assert_eq!(decide(&budget(), &busy), CompactionDecision::Defer);
-    }
-
-    #[test]
-    fn decide_mergeable_queue_defers() {
-        let queued = ContextMeasure {
-            has_mergeable_queue: true,
-            ..measure(150_000, 5_000)
-        };
-
-        assert_eq!(decide(&budget(), &queued), CompactionDecision::Defer);
-    }
-
-    #[test]
-    fn decide_unmeasured_active_continues() {
-        let unknown = ContextMeasure {
-            active: None,
-            since_last_turn: Duration::from_secs(3_600),
-            ..measure(0, 5_000)
-        };
-
-        assert_eq!(decide(&budget(), &unknown), CompactionDecision::Continue);
-    }
-
-    #[test]
-    fn decide_cache_expired_and_packet_smaller_restarts() {
-        let idle = ContextMeasure {
-            since_last_turn: Duration::from_secs(301),
-            ..measure(20_000, 5_000)
-        };
-
-        assert_eq!(decide(&budget(), &idle), CompactionDecision::Restart);
-    }
-
-    #[test]
-    fn decide_cache_expired_but_packet_larger_continues() {
-        let idle = ContextMeasure {
-            since_last_turn: Duration::from_secs(301),
-            ..measure(4_000, 5_000)
-        };
-
-        assert_eq!(decide(&budget(), &idle), CompactionDecision::Continue);
-    }
-
-    #[test]
-    fn decide_below_threshold_continues() {
-        assert_eq!(
-            decide(&budget(), &measure(99_999, 5_000)),
-            CompactionDecision::Continue
-        );
-    }
-
-    #[test]
-    fn decide_at_threshold_with_break_even_within_turns_restarts() {
-        // k* = (5000×1.25 − 100000×0.1) / (95000×0.1) < 0 → 0 ≤ 3
-        assert_eq!(
-            decide(&budget(), &measure(100_000, 5_000)),
-            CompactionDecision::Restart
-        );
-    }
-
-    #[test]
-    fn decide_at_threshold_with_break_even_beyond_turns_continues() {
+    fn decide_follows_the_context_measure() {
         let expensive_write = ContextBudget {
             cache_write: 10.0,
             ..budget()
         };
-        // k* = (9000×10 − 100000×0.1) / (91000×0.1) ≈ 8.8 > 3
-        let result = decide(&expensive_write, &measure(100_000, 9_000));
+        // (사례, 예산, 측정값, 예상 결정)
+        let cases = [
+            (
+                "not tree idle defers",
+                budget(),
+                ContextMeasure {
+                    tree_idle: false,
+                    ..measure(150_000, 5_000)
+                },
+                CompactionDecision::Defer,
+            ),
+            (
+                "mergeable queue defers",
+                budget(),
+                ContextMeasure {
+                    has_mergeable_queue: true,
+                    ..measure(150_000, 5_000)
+                },
+                CompactionDecision::Defer,
+            ),
+            (
+                "unmeasured active continues",
+                budget(),
+                ContextMeasure {
+                    active: None,
+                    since_last_turn: Duration::from_secs(3_600),
+                    ..measure(0, 5_000)
+                },
+                CompactionDecision::Continue,
+            ),
+            (
+                "cache expired and packet smaller restarts",
+                budget(),
+                ContextMeasure {
+                    since_last_turn: Duration::from_secs(301),
+                    ..measure(20_000, 5_000)
+                },
+                CompactionDecision::Restart,
+            ),
+            (
+                "cache expired but packet larger continues",
+                budget(),
+                ContextMeasure {
+                    since_last_turn: Duration::from_secs(301),
+                    ..measure(4_000, 5_000)
+                },
+                CompactionDecision::Continue,
+            ),
+            (
+                "below threshold continues",
+                budget(),
+                measure(99_999, 5_000),
+                CompactionDecision::Continue,
+            ),
+            (
+                // k* = (5000×1.25 − 100000×0.1) / (95000×0.1) < 0 → 0 ≤ 3
+                "at threshold with break even within turns restarts",
+                budget(),
+                measure(100_000, 5_000),
+                CompactionDecision::Restart,
+            ),
+            (
+                // k* = (9000×10 − 100000×0.1) / (91000×0.1) ≈ 8.8 > 3
+                "at threshold with break even beyond turns continues",
+                expensive_write,
+                measure(100_000, 9_000),
+                CompactionDecision::Continue,
+            ),
+            (
+                "expected turns overrides default",
+                expensive_write,
+                ContextMeasure {
+                    expected_turns: Some(10),
+                    ..measure(100_000, 9_000)
+                },
+                CompactionDecision::Restart,
+            ),
+        ];
 
-        assert_eq!(result, CompactionDecision::Continue);
-    }
-
-    #[test]
-    fn decide_expected_turns_overrides_default() {
-        let expensive_write = ContextBudget {
-            cache_write: 10.0,
-            ..budget()
-        };
-        let long_run = ContextMeasure {
-            expected_turns: Some(10),
-            ..measure(100_000, 9_000)
-        };
-
-        assert_eq!(
-            decide(&expensive_write, &long_run),
-            CompactionDecision::Restart
-        );
+        for (name, budget, measure, expected) in cases {
+            assert_eq!(decide(&budget, &measure), expected, "{name}");
+        }
     }
 
     #[test]

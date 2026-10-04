@@ -559,7 +559,15 @@ fn build_packet_with_summary_puts_summary_first_in_competing_zone() {
 
     assert!(packet.is_summary_used);
     assert_eq!(packet.included, vec![LedgerSeq(9), LedgerSeq(20)]);
-    assert!(packet.text.find("summary body") < packet.text.find("after summary"));
+    let summary_at = packet
+        .text
+        .find("summary body")
+        .expect("summary should be in the packet");
+    let record_at = packet
+        .text
+        .find("after summary")
+        .expect("record should follow the summary");
+    assert!(summary_at < record_at);
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -572,15 +580,18 @@ fn build_packet_with_summary_over_competing_budget_falls_back_to_records() {
         ..PacketSource::default()
     };
 
+    let summary = filler("S", 1_600);
+
     let packet = ready(build_packet_with_summary(
         &source,
         &budget(),
-        &entry(9, &filler("S", 1_600)),
+        &entry(9, &summary),
     ));
 
     assert!(!packet.is_summary_used);
     assert_eq!(packet.included, vec![LedgerSeq(20)]);
-    assert!(!packet.text.contains("SSS"));
+    assert!(!packet.text.contains(&summary[..40]));
+    assert!(packet.text.contains("after summary"));
 }
 
 #[test]

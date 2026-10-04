@@ -203,7 +203,13 @@ fn ending_children_returns_every_descendant_deepest_first_and_keeps_the_root_pas
     let ended = table.end_children(ROOT);
 
     assert_eq!(ended.chats.len(), 3);
-    let position = |chat: u64| ended.chats.iter().position(|c| *c == ChatId(chat));
+    let position = |chat: u64| {
+        ended
+            .chats
+            .iter()
+            .position(|c| *c == ChatId(chat))
+            .unwrap_or_else(|| panic!("chat {chat} should be ended"))
+    };
     assert!(position(3) < position(2));
     assert_eq!(table.running_total(), 0);
     assert_eq!(table.lookup(&token("root")), Some(ROOT));

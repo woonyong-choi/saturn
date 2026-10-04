@@ -368,46 +368,84 @@ fn tool_and_verdict_names_round_trip() {
 }
 
 #[test]
-fn mode_edit_allows_read_only_shell_commands_with_arguments() {
+fn mode_edit_decides_shell_commands_by_their_read_only_form() {
     let policy = policy(Mode::Edit, Vec::new());
+    // (사례, 명령 목록, 예상 판정)
+    let cases: [(&str, &[&str], Verdict); 5] = [
+        (
+            "read-only commands with arguments",
+            &[
+                "ls",
+                "ls -la src",
+                "cat Cargo.toml",
+                "rg todo src",
+                "grep -rn todo .",
+                "git status",
+                "git diff HEAD~1",
+                "git log --oneline",
+                r#"grep "a|b" file"#,
+                "cat",
+            ],
+            Verdict::Allow,
+        ),
+        (
+            "commands outside the read-only list",
+            &["lsof", "git push", "git statusx", "rm -rf x", "make"],
+            Verdict::Ask,
+        ),
+        (
+            "shell syntax mixed into a read-only command",
+            &[
+                "ls | wc -l",
+                "ls > out.txt",
+                "cat < in.txt",
+                "ls; ls",
+                "ls && ls",
+                "ls || ls",
+                "ls &",
+                "ls\nls",
+                "cat $(echo a)",
+                "cat `echo a`",
+                "ls;",
+            ],
+            Verdict::Ask,
+        ),
+        (
+            "read-only command with a write or exec option",
+            &[
+                "rg --pre cat foo",
+                "rg --pre=cat foo",
+                "rg --hostname-bin=/bin/x foo",
+                r#"rg --"pre" cat foo"#,
+                "git diff --output=out.patch",
+                "git diff --output out.patch",
+                "git log --output=out.txt",
+                "git diff --ext-diff",
+                "git log --textconv",
+                "git diff --out=out.patch",
+            ],
+            Verdict::Ask,
+        ),
+        (
+            "read-only command with a safe option",
+            &[
+                "git diff --no-ext-diff",
+                "git log --pretty=oneline",
+                "rg --pre-glob '*.gz' foo",
+                "git diff --no-textconv HEAD",
+            ],
+            Verdict::Allow,
+        ),
+    ];
 
-    for command in [
-        "ls",
-        "ls -la src",
-        "cat Cargo.toml",
-        "rg todo src",
-        "grep -rn todo .",
-        "git status",
-        "git diff HEAD~1",
-        "git log --oneline",
-        r#"grep "a|b" file"#,
-    ] {
-        assert_eq!(policy.decide(&shell(command)), Verdict::Allow, "{command}");
-    }
-    assert_eq!(policy.decide(&shell("cat")), Verdict::Allow);
-    for command in ["lsof", "git push", "git statusx", "rm -rf x", "make"] {
-        assert_eq!(policy.decide(&shell(command)), Verdict::Ask, "{command}");
-    }
-}
-
-#[test]
-fn mode_edit_asks_when_shell_syntax_is_mixed_into_a_read_only_command() {
-    let policy = policy(Mode::Edit, Vec::new());
-
-    for command in [
-        "ls | wc -l",
-        "ls > out.txt",
-        "cat < in.txt",
-        "ls; ls",
-        "ls && ls",
-        "ls || ls",
-        "ls &",
-        "ls\nls",
-        "cat $(echo a)",
-        "cat `echo a`",
-        "ls;",
-    ] {
-        assert_eq!(policy.decide(&shell(command)), Verdict::Ask, "{command}");
+    for (name, commands, expected) in cases {
+        for command in commands {
+            assert_eq!(
+                policy.decide(&shell(command)),
+                expected,
+                "{name}: {command}"
+            );
+        }
     }
 }
 
@@ -442,34 +480,6 @@ fn read_only_shell_list_does_not_change_other_modes() {
         policy(Mode::Full, Vec::new()).decide(&shell("rm x")),
         Verdict::Allow
     );
-}
-
-#[test]
-fn mode_edit_asks_when_a_read_only_command_gets_a_write_or_exec_option() {
-    let policy = policy(Mode::Edit, Vec::new());
-
-    for command in [
-        "rg --pre cat foo",
-        "rg --pre=cat foo",
-        "rg --hostname-bin=/bin/x foo",
-        r#"rg --"pre" cat foo"#,
-        "git diff --output=out.patch",
-        "git diff --output out.patch",
-        "git log --output=out.txt",
-        "git diff --ext-diff",
-        "git log --textconv",
-        "git diff --out=out.patch",
-    ] {
-        assert_eq!(policy.decide(&shell(command)), Verdict::Ask, "{command}");
-    }
-    for command in [
-        "git diff --no-ext-diff",
-        "git log --pretty=oneline",
-        "rg --pre-glob '*.gz' foo",
-        "git diff --no-textconv HEAD",
-    ] {
-        assert_eq!(policy.decide(&shell(command)), Verdict::Allow, "{command}");
-    }
 }
 
 #[test]

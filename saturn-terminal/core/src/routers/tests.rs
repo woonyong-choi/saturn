@@ -69,31 +69,31 @@ fn has_fallback(decision: &RouteDecision, id: &str) -> bool {
 }
 
 #[test]
-fn confidence_uniform_is_zero_and_certain_is_one() {
-    assert_eq!(Answer::Choice(vec![0.25; 4]).confidence(), 0.0);
-    assert_eq!(Answer::Choice(vec![0.0, 1.0, 0.0]).confidence(), 1.0);
-}
+fn confidence_follows_the_formula() {
+    // (사례, 답, 예상 확신도)
+    let cases = [
+        ("uniform choice", Answer::Choice(vec![0.25; 4]), 0.0),
+        ("certain choice", Answer::Choice(vec![0.0, 1.0, 0.0]), 1.0),
+        (
+            "formula",
+            Answer::Choice(vec![0.7, 0.2, 0.1]),
+            (3.0 * 0.7 - 1.0) / 2.0,
+        ),
+        ("noul high", Answer::Noul(0.9), 0.8),
+        ("noul low", Answer::Noul(0.1), 0.8),
+        ("noul even", Answer::Noul(0.5), 0.0),
+        ("nan choice", Answer::Choice(vec![f64::NAN, 0.5]), 0.0),
+        ("empty choice", Answer::Choice(Vec::new()), 0.0),
+        ("nan noul", Answer::Noul(f64::NAN), 0.0),
+    ];
 
-#[test]
-fn confidence_matches_formula() {
-    let answer = Answer::Choice(vec![0.7, 0.2, 0.1]);
-
-    let expected = (3.0 * 0.7 - 1.0) / 2.0;
-    assert!((answer.confidence() - expected).abs() < 1e-12);
-}
-
-#[test]
-fn confidence_noul_is_two_choices() {
-    assert!((Answer::Noul(0.9).confidence() - 0.8).abs() < 1e-12);
-    assert!((Answer::Noul(0.1).confidence() - 0.8).abs() < 1e-12);
-    assert_eq!(Answer::Noul(0.5).confidence(), 0.0);
-}
-
-#[test]
-fn confidence_nan_or_empty_is_zero() {
-    assert_eq!(Answer::Choice(vec![f64::NAN, 0.5]).confidence(), 0.0);
-    assert_eq!(Answer::Choice(Vec::new()).confidence(), 0.0);
-    assert_eq!(Answer::Noul(f64::NAN).confidence(), 0.0);
+    for (name, answer, expected) in cases {
+        assert!(
+            (answer.confidence() - expected).abs() < 1e-12,
+            "{name}: {} != {expected}",
+            answer.confidence()
+        );
+    }
 }
 
 #[test]
@@ -150,14 +150,20 @@ fn questions_for_input_pinned_model_skips_target_model() {
 fn questions_for_input_choice_has_other_option() {
     let sets = questions_for_input(true, false, false, &models(), ConstraintQuestion::Without);
 
-    let has_other =
-        sets.iter()
-            .flat_map(|(_, questions)| questions)
-            .all(|question| match &question.kind {
-                AnswerKind::Choice { options } => options.iter().any(|option| option == "other"),
-                _ => true,
-            });
-    assert!(has_other);
+    let choices: Vec<&Vec<String>> = sets
+        .iter()
+        .flat_map(|(_, questions)| questions)
+        .filter_map(|question| match &question.kind {
+            AnswerKind::Choice { options } => Some(options),
+            _ => None,
+        })
+        .collect();
+    assert!(!choices.is_empty());
+    assert!(
+        choices
+            .iter()
+            .all(|options| options.iter().any(|option| option == "other"))
+    );
 }
 
 #[test]
@@ -345,81 +351,71 @@ fn decide_route_saturn_method_ignores_unsure_noul() {
 }
 
 #[test]
-fn validate_well_formed_answer_passes() {
+fn validate_accepts_only_well_formed_answers() {
     let request = request(false, false);
-    let response = response(vec![
-        ("keep_current", Answer::Noul(0.9)),
-        ("is_actionable", Answer::Noul(0.8)),
-        ("target_model", Answer::Choice(vec![0.6, 0.3, 0.1])),
-    ]);
+    let keep = || ("keep_current", Answer::Noul(0.9));
+    let actionable = || ("is_actionable", Answer::Noul(0.8));
+    let model = |probabilities: Vec<f64>| ("target_model", Answer::Choice(probabilities));
+    // (사례, 응답, 통과해야 하는지)
+    let cases = [
+        (
+            "well formed",
+            vec![keep(), actionable(), model(vec![0.6, 0.3, 0.1])],
+            true,
+        ),
+        ("missing answer", vec![keep()], false),
+        (
+            "unknown question",
+            vec![
+                keep(),
+                actionable(),
+                model(vec![0.6, 0.3, 0.1]),
+                ("model-c", Answer::Noul(0.5)),
+            ],
+            false,
+        ),
+        (
+            "nan",
+            vec![
+                ("keep_current", Answer::Noul(f64::NAN)),
+                actionable(),
+                model(vec![0.6, 0.3, 0.1]),
+            ],
+            false,
+        ),
+        (
+            "wrong length",
+            vec![keep(), actionable(), model(vec![0.6, 0.4])],
+            false,
+        ),
+        (
+            "sum not one",
+            vec![keep(), actionable(), model(vec![0.6, 0.6, 0.1])],
+            false,
+        ),
+        (
+            "kind mismatch",
+            vec![
+                ("keep_current", Answer::Choice(vec![0.5, 0.5])),
+                actionable(),
+                model(vec![0.6, 0.3, 0.1]),
+            ],
+            false,
+        ),
+    ];
 
-    assert!(validate(&request, &response).is_ok());
-}
+    for (name, answers, is_valid) in cases {
+        let result = validate(&request, &response(answers));
 
-#[test]
-fn validate_missing_answer_is_invalid() {
-    let request = request(false, false);
-    let response = response(vec![("keep_current", Answer::Noul(0.9))]);
-
-    assert!(matches!(
-        validate(&request, &response),
-        Err(RouterError::Invalid { .. })
-    ));
-}
-
-#[test]
-fn validate_unknown_question_is_invalid() {
-    let request = request(false, false);
-    let response = response(vec![
-        ("keep_current", Answer::Noul(0.9)),
-        ("is_actionable", Answer::Noul(0.8)),
-        ("target_model", Answer::Choice(vec![0.6, 0.3, 0.1])),
-        ("model-c", Answer::Noul(0.5)),
-    ]);
-
-    assert!(validate(&request, &response).is_err());
-}
-
-#[test]
-fn validate_nan_or_wrong_length_is_invalid() {
-    let request = request(false, false);
-    let nan = response(vec![
-        ("keep_current", Answer::Noul(f64::NAN)),
-        ("is_actionable", Answer::Noul(0.8)),
-        ("target_model", Answer::Choice(vec![0.6, 0.3, 0.1])),
-    ]);
-    let short = response(vec![
-        ("keep_current", Answer::Noul(0.9)),
-        ("is_actionable", Answer::Noul(0.8)),
-        ("target_model", Answer::Choice(vec![0.6, 0.4])),
-    ]);
-
-    assert!(validate(&request, &nan).is_err());
-    assert!(validate(&request, &short).is_err());
-}
-
-#[test]
-fn validate_sum_not_one_is_invalid() {
-    let request = request(false, false);
-    let response = response(vec![
-        ("keep_current", Answer::Noul(0.9)),
-        ("is_actionable", Answer::Noul(0.8)),
-        ("target_model", Answer::Choice(vec![0.6, 0.6, 0.1])),
-    ]);
-
-    assert!(validate(&request, &response).is_err());
-}
-
-#[test]
-fn validate_kind_mismatch_is_invalid() {
-    let request = request(false, false);
-    let response = response(vec![
-        ("keep_current", Answer::Choice(vec![0.5, 0.5])),
-        ("is_actionable", Answer::Noul(0.8)),
-        ("target_model", Answer::Choice(vec![0.6, 0.3, 0.1])),
-    ]);
-
-    assert!(validate(&request, &response).is_err());
+        if is_valid {
+            assert!(result.is_ok(), "{name}");
+        } else {
+            assert!(
+                matches!(result, Err(RouterError::Invalid { .. })),
+                "{name}: {result:?}"
+            );
+        }
+    }
 }
 
 // cost: time O(c), heap O(c), stack O(1)

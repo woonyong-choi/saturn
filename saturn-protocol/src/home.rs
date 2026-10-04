@@ -42,23 +42,38 @@ mod tests {
     }
 
     #[test]
-    fn saturn_home_wins_over_the_user_home() {
-        assert_eq!(
-            resolve(os("/data/saturn"), os("/home/me")),
-            Some(PathBuf::from("/data/saturn"))
-        );
-    }
+    fn resolve_follows_saturn_home_then_the_user_home() {
+        // (사례, SATURN_HOME, HOME, 예상 경로)
+        let cases = [
+            (
+                "saturn home wins",
+                os("/data/saturn"),
+                os("/home/me"),
+                Some("/data/saturn"),
+            ),
+            (
+                "unset saturn home",
+                None,
+                os("/home/me"),
+                Some("/home/me/.saturn"),
+            ),
+            (
+                "empty saturn home",
+                os(""),
+                os("/home/me"),
+                Some("/home/me/.saturn"),
+            ),
+            ("no home at all", None, None, None),
+            ("empty user home", None, os(""), None),
+        ];
 
-    #[test]
-    fn default_is_dot_saturn_under_the_user_home() {
-        assert_eq!(
-            resolve(None, os("/home/me")),
-            Some(PathBuf::from("/home/me/.saturn"))
-        );
-        assert_eq!(
-            resolve(os(""), os("/home/me")),
-            Some(PathBuf::from("/home/me/.saturn"))
-        );
+        for (name, saturn_home, user_home, expected) in cases {
+            assert_eq!(
+                resolve(saturn_home, user_home),
+                expected.map(PathBuf::from),
+                "{name}"
+            );
+        }
     }
 
     #[test]
@@ -66,11 +81,5 @@ mod tests {
         let path = resolve(os("rel/saturn"), None).unwrap();
         assert!(path.is_absolute());
         assert!(path.ends_with("rel/saturn"));
-    }
-
-    #[test]
-    fn no_home_at_all_gives_none() {
-        assert_eq!(resolve(None, None), None);
-        assert_eq!(resolve(None, os("")), None);
     }
 }
