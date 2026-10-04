@@ -150,6 +150,8 @@ pub(crate) struct FlowState {
     next_request: u64,
     /// 에이전트가 가장 나중에 시작한 입력의 설정 번호. 허가 요청 판정이 그 번호의 규칙을 쓴다.
     pub(crate) settings_of: HashMap<AgentId, SettingsRevision>,
+    /// 에이전트의 provider session을 열 때 넘긴 더한 폴더. 허가 판정이 실제로 열린 범위만 보게 한다.
+    pub(crate) session_dirs: HashMap<AgentId, Vec<std::path::PathBuf>>,
     /// 채팅의 연결을 시작할 때 쓴 규칙 지문. 규칙이 연결을 시작할 때 고정되는 어댑터만 항목이 있다. 연결이 없으면 항목도 없다.
     pub(crate) rules_of_connection: HashMap<(ChatId, Provider), String>,
     /// 채팅의 연결을 시작할 때 쓴 확장 지문. 확장이 없었으면 빈 글자다.
@@ -243,6 +245,7 @@ impl Default for FlowState {
             inputs: HashMap::new(),
             next_request: 0,
             settings_of: HashMap::new(),
+            session_dirs: HashMap::new(),
             rules_of_connection: HashMap::new(),
             extensions_of_connection: HashMap::new(),
             stale_connections: HashSet::new(),

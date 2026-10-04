@@ -281,7 +281,11 @@ impl Engine {
             always: self.store.permission_allows(&key).await?,
             rules: configured.rules,
             extra_dirs: self
-                .chat_dirs_of(chat)
+                .flow
+                .session_dirs
+                .get(&agent)
+                .cloned()
+                .unwrap_or_else(|| self.chat_dirs_of(chat))
                 .into_iter()
                 .map(|dir| dir.canonicalize().unwrap_or(dir))
                 .collect(),

@@ -41,6 +41,21 @@ impl Engine {
         self.require_attached(client, chat)?;
         let dir = resolve_folder(path)?;
         if self.register_dir(chat, dir.clone()).await? {
+            // 아직 보내지 않은 입력은 새 session이 더한 폴더를 받을 수 있으므로 쓰기 범위에도 넣는다
+            let scopes: std::collections::HashMap<_, _> = self
+                .queue
+                .inputs_in_state(chat, saturn_protocol::state::InputState::Judging)
+                .into_iter()
+                .chain(
+                    self.queue
+                        .inputs_in_state(chat, saturn_protocol::state::InputState::Queued),
+                )
+                .filter_map(|id| self.queue.input(id))
+                .map(|record| (record.id, self.write_scope_of(chat, &record.workdir)))
+                .collect();
+            self.queue.rescope_unsent(chat, |record| {
+                scopes.get(&record.id).cloned().unwrap_or_default()
+            });
             let applies_from_next_session = self.sessions.live_main(chat).is_some();
             self.notify_chat(
                 chat,
