@@ -64,6 +64,7 @@ async fn accepted_input_reaches_first_provider_after_it_is_recorded() {
                 packet: None,
                 add_dirs: Vec::new(),
                 interrupted_children: Vec::new(),
+                settings: flow.engine.settings.current().unwrap(),
             },
             Call::SendTurn {
                 session,
@@ -566,7 +567,7 @@ async fn applied_steer_is_preserved_in_handoff() {
     let steers = flow.engine.store.steered_inputs(flow.chat).await.unwrap();
     let budget = flow
         .engine
-        .context_budget(crate::providers::test_support::CLAUDE)
+        .context_budget(flow.chat, agent, crate::providers::test_support::CLAUDE)
         .await
         .unwrap();
     let packet = crate::handoff::build_handoff(

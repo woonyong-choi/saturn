@@ -5,7 +5,7 @@ use saturn_protocol::ids::Provider;
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, ModelMode, Notification, Request};
 
 use super::drive;
-use super::support::{Flow, idle_reply, model_reply};
+use super::support::{CLIENT, Flow, idle_reply, model_reply};
 use crate::providers::test_support::{CLAUDE, CODEX, Call, FakeProvider};
 use crate::rpc::ClientId;
 
@@ -260,4 +260,42 @@ async fn setting_the_default_from_a_client_that_is_not_attached_is_refused() {
         .await;
 
     assert!(result.is_err());
+}
+
+// #490
+#[tokio::test]
+async fn connection_layer_model_mode_reaches_the_tui_of_that_connection() {
+    let mut flow = Flow::new(Vec::new()).await;
+    let (mut client, _) = flow.attach().await;
+    let chat = flow.chat;
+    let attached = *flow
+        .engine
+        .attachments
+        .keys()
+        .find(|id| **id != CLIENT)
+        .expect("the TUI should be attached");
+    flow.engine
+        .attachments
+        .get_mut(&attached)
+        .unwrap()
+        .overrides = vec![("model.mode".into(), "manual".into())];
+    let run = flow.engine.run_layer_of(attached);
+    flow.engine
+        .settings
+        .apply_trusted(&flow.engine.store, Some(chat), &flow.fixture.workdir, &run)
+        .await
+        .unwrap();
+
+    flow.engine
+        .send_model_settings(attached, chat)
+        .await
+        .unwrap();
+
+    let told = client
+        .until(|notification| match notification {
+            Notification::ModelSettings { mode, .. } => Some(*mode),
+            _ => None,
+        })
+        .await;
+    assert_eq!(told, ModelMode::Manual);
 }

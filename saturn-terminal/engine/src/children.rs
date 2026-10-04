@@ -12,7 +12,7 @@ use saturn_protocol::rpc::{PASS_ENV, SOCKET_ENV};
 use crate::calls::Responder;
 use crate::flow::LiveSession;
 use crate::rpc::{ClientId, SOCKET_FILE};
-use crate::settings::{self, SettingsError};
+use crate::settings;
 use crate::{AttachRequest, Engine, EngineError};
 
 /// 하위 접속으로 만든 채팅과 부모 작업의 연결.
@@ -136,13 +136,7 @@ impl Engine {
             .into_iter()
             .find_map(|agent| Some((agent, self.flow.live.get(&agent)?.clone())))
             .ok_or_else(|| rejected("parent has no running task"))?;
-        let revision = self
-            .flow
-            .settings_of
-            .get(&parent_agent)
-            .copied()
-            .or(self.settings.latest_of(parent))
-            .ok_or(SettingsError::NoPreviousRevision)?;
+        let revision = self.revision_of_agent(parent, parent_agent)?;
         let parent_mode = self.chat_mode(parent, revision).await?;
         if grant.mode > parent_mode {
             return Err(rejected(format!(

@@ -72,10 +72,10 @@ impl Engine {
         let Some(active) = self.flow.context_tokens.get(&live.agent).copied().flatten() else {
             return Ok(false);
         };
-        if self.context_mode().await? == ContextMode::Provider {
+        if self.context_mode(chat, live.agent).await? == ContextMode::Provider {
             return Ok(false);
         }
-        let budget = self.context_budget(live.provider).await?;
+        let budget = self.context_budget(chat, live.agent, live.provider).await?;
         if active < budget.threshold() {
             return Ok(false);
         }

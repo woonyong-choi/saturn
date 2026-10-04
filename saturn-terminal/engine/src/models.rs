@@ -146,7 +146,7 @@ impl Engine {
     ) -> Result<(), EngineError> {
         let revision = self
             .settings
-            .current()
+            .revision_in(chat, &self.run_layer_of(client))
             .ok_or(SettingsError::NoPreviousRevision)?;
         let plan = self.model_plan(revision).await?;
         self.flow.model_shown.insert(chat, plan.clone());
@@ -253,7 +253,7 @@ impl Engine {
         self.attached_workdir(client, chat)?;
         let revision = self
             .settings
-            .current()
+            .revision_in(chat, &self.run_layer_of(client))
             .ok_or(SettingsError::NoPreviousRevision)?;
         let env = self
             .chat_env(chat)
