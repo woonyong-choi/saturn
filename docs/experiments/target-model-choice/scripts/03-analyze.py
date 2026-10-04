@@ -29,10 +29,12 @@ def accepts(model: str, label: dict) -> bool:
 
 
 def cost_of(record: dict, meta: dict) -> float | None:
+    if not isinstance(meta, dict):
+        return None
     if record["kind"] == "claude":
         return meta.get("total_cost_usd")
     usage = meta.get("usage", {})
-    if not usage or "input_tokens" not in usage:
+    if not isinstance(usage, dict) or "input_tokens" not in usage:
         return None
     if record["kind"] == "jev":
         return usage["input_tokens"] * 0.042 / 1e6
@@ -58,6 +60,8 @@ def normalize_record(case: dict, label: dict, lane: str, repeat: int) -> dict:
     )
     if lane == "jev":
         envelope = record.get("response", {})
+        if not isinstance(envelope, dict):
+            envelope = {}
         meta = dict(usage=envelope.get("usage", {}))
         choice = normalize_choice(envelope) if record.get("status") == "ok" else None
     else:
@@ -268,7 +272,11 @@ def analyze(data: list) -> None:
     )
     ledger = rows(PRIVATE / "calls.jsonl")
     raw_costs = []
-    for path in sorted((PRIVATE / "raw").glob("*.json")):
+    for reservation in ledger:
+        path = PRIVATE / "raw" / (reservation["trial_id"] + ".json")
+        if not path.exists():
+            raw_costs.append(None)
+            continue
         record = read(path)
         if record["kind"] == "jev":
             meta = record.get("response", {})
@@ -284,6 +292,9 @@ def analyze(data: list) -> None:
         verdict=verdict(conditions["jev-1"]),
         calls=dict(Counter(r["kind"] for r in ledger)),
         call_limits={"codex": 500, "claude": 300, "jev": 400},
+        incomplete_reserved_calls=sum(
+            not (PRIVATE / "raw" / (r["trial_id"] + ".json")).exists() for r in ledger
+        ),
         all_known_cost_usd=sum(c for c in raw_costs if c is not None),
         all_unknown_cost_calls=sum(c is None for c in raw_costs),
         design_commit=read(PRIVATE / "design-seal.json")["commit"],
@@ -293,36 +304,12 @@ def analyze(data: list) -> None:
         switch_target_percent=80,
         planned_n=100,
     )
-    summary["by_category"] = {
-        c: summarize_condition(
-            [
-                r
-                for r in data
-                if r["condition"] == "jev" and r["repeat"] == 1 and r["category"] == c
-            ]
-        )
-        for c in sorted({r["category"] for r in data})
-    }
-    summary["by_source"] = {
-        c: summarize_condition(
-            [
-                r
-                for r in data
-                if r["condition"] == "jev" and r["repeat"] == 1 and r["source"] == c
-            ]
-        )
-        for c in sorted({r["source"] for r in data})
-    }
-    summary["by_signal"] = {
-        c: summarize_condition(
-            [
-                r
-                for r in data
-                if r["condition"] == "jev" and r["repeat"] == 1 and r["signal"] == c
-            ]
-        )
-        for c in sorted({r["signal"] for r in data if r["signal"]})
-    }
+    primary = [r for r in data if r["condition"] == "jev" and r["repeat"] == 1]
+    for field in ("category", "source", "signal"):
+        summary["by_" + field] = {
+            value: summarize_condition([r for r in primary if r[field] == value])
+            for value in sorted({r[field] for r in primary if r[field] is not None})
+        }
     write(PUBLIC / "results/summary.json", summary)
     with (PUBLIC / "results/conditions.csv").open("w") as stream:
         writer = csv.writer(stream)

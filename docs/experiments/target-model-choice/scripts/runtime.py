@@ -224,11 +224,18 @@ def response_text(record: dict) -> tuple[str, dict]:
     if record.get("status") != "ok":
         return "", {}
     if record["kind"] == "claude":
-        envelope = json.loads(record["stdout"])
+        envelope = parse_json(record.get("stdout", ""))
+        if not isinstance(envelope, dict):
+            return "", {}
         return (
             "" if envelope.get("is_error") else envelope.get("result", "")
         ), envelope
-    events = [json.loads(s) for s in record["stdout"].splitlines() if s.startswith("{")]
+    events = [
+        parse_json(s)
+        for s in record.get("stdout", "").splitlines()
+        if s.startswith("{")
+    ]
+    events = [e for e in events if isinstance(e, dict)]
     messages = [
         e["item"]["text"]
         for e in events
@@ -248,8 +255,15 @@ def response_text(record: dict) -> tuple[str, dict]:
 
 
 def parse_json(text: str) -> Any:
+    if not isinstance(text, str):
+        return None
     text = text.strip()
-    if text.startswith("```") and text.endswith("```") and text.count("```") == 2:
+    if (
+        text.startswith("```")
+        and text.endswith("```")
+        and text.count("```") == 2
+        and "\n" in text
+    ):
         text = text.split("\n", 1)[1].rsplit("```", 1)[0]
     try:
         return json.loads(text)
