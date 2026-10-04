@@ -41,6 +41,7 @@
 | sample_id, project_id | string | 없음 | 필수 | 가명 표본·프로젝트 | 해시 |
 | selected, effective | string | 없음 | selected 실패 시 null | 원래 답·대체 후 모델 | codex/gpt-6-sol |
 | valid, fallback, low_confidence | boolean | 없음 | 필수 | 형식 유효·대체·확신 미달 | false |
+| invalid_reason | string | 없음 | 유효 응답이면 null | 실행 상태·JSON·후보 계약 실패 원인 | invalid_json_object |
 | best_match, raw_hit, effective_hit | boolean | 없음 | 정답 제외 시 null | 최선 일치·허용 집합 적중 | true |
 | switch, switch_hit | boolean | 없음 | 미전환 switch_hit null | 기본 provider 전환·그 적중 | false |
 | latency_s | number | 초 | 미실행 시 null | CLI·HTTP 벽시계 지연 | 1.0 |

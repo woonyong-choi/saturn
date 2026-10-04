@@ -73,9 +73,22 @@ def normalize_record(
             envelope = {}
         meta = dict(usage=envelope.get("usage", {}))
         choice = normalize_choice(envelope) if record.get("status") == "ok" else None
+        parsed = envelope
     else:
         text, meta = response_text(record)
-        choice = None if meta.get("tool_events") else normalize_choice(parse_json(text))
+        parsed = parse_json(text)
+        choice = None if meta.get("tool_events") else normalize_choice(parsed)
+    invalid_reason = (
+        None
+        if choice
+        else record["status"]
+        if record["status"] != "ok"
+        else "tool_event"
+        if meta.get("tool_events")
+        else "invalid_json_object"
+        if not isinstance(parsed, dict)
+        else "invalid_choice_schema"
+    )
     selected = choice["selected"] if choice else None
     effective = choice["effective"] if choice else DEFAULT
     row = dict(
@@ -91,6 +104,7 @@ def normalize_record(
         selected=selected,
         effective=effective,
         valid=choice is not None,
+        invalid_reason=invalid_reason,
         status=record["status"],
         fallback=choice["fallback"] if choice else True,
         low_confidence=choice["low_confidence"] if choice else False,
@@ -150,6 +164,9 @@ def summarize_condition(all_rows: list) -> dict:
         fallback=rate([r["fallback"] for r in attempted]),
         low_confidence=rate([r["low_confidence"] for r in attempted]),
         invalid=sum(not r["valid"] for r in attempted),
+        invalid_reasons=dict(
+            Counter(r["invalid_reason"] for r in attempted if not r["valid"])
+        ),
         not_run=len(all_rows) - len(attempted),
         attempted=len(attempted),
         statuses=dict(Counter(r["status"] for r in all_rows)),
@@ -160,7 +177,7 @@ def summarize_condition(all_rows: list) -> dict:
         known_cost_usd=sum(costs),
         unknown_cost_calls=len(attempted) - len(costs),
         mean_known_cost_usd=sum(costs) / len(costs) if costs else None,
-        choices=dict(Counter(r["selected"] or "invalid" for r in all_rows)),
+        choices=dict(Counter(r["selected"] or "invalid" for r in attempted)),
     )
 
 
@@ -284,6 +301,7 @@ def analyze(data: list) -> None:
             and all(r["valid"] for r in g)
             and len({r["selected"] for r in g}) == 1
             for g in by_sample.values()
+            if all(r["status"] != "not_run" for r in g)
         ]
     )
     ledger = rows(PRIVATE / "calls.jsonl")
@@ -307,6 +325,10 @@ def analyze(data: list) -> None:
         manual_sensitivity=sensitivity(data),
         verdict=verdict(conditions["jev-1"]),
         calls=dict(Counter(r["kind"] for r in ledger)),
+        reserved_gold_third_calls=sum(
+            r["trial_id"].startswith("gold-") and r["trial_id"].endswith("-3")
+            for r in ledger
+        ),
         call_limits={"codex": 500, "claude": 300, "jev": 400},
         incomplete_reserved_calls=sum(
             not (PRIVATE / "raw" / (r["trial_id"] + ".json")).exists() for r in ledger
@@ -335,8 +357,8 @@ def analyze(data: list) -> None:
             for value in sorted({r[field] for r in primary if r[field] is not None})
         }
     write(PUBLIC / "results/summary.json", summary)
-    with (PUBLIC / "results/conditions.csv").open("w") as stream:
-        writer = csv.writer(stream)
+    with (PUBLIC / "results/conditions.csv").open("w", newline="") as stream:
+        writer = csv.writer(stream, lineterminator="\n")
         writer.writerow(
             [
                 "condition",

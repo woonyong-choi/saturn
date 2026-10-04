@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 from collections import Counter
 
 from protocol import REFERENCE, choice_prompt, make_body
-from runtime import LIMITS, PRIVATE, PUBLIC, ROOT, digest, read, rows
+from runtime import LIMITS, PRIVATE, PUBLIC, ROOT, digest, read, response_text, rows
 
 
 def check_seal(name: str) -> None:
@@ -20,6 +21,18 @@ def check_seal(name: str) -> None:
 def main() -> None:
     for seal in ("sample-seal.json", "gold-seal.json"):
         check_seal(seal)
+    design = read(PRIVATE / "design-seal.json")
+    for name, checksum in design["files"].items():
+        content = subprocess.check_output(
+            [
+                "git",
+                "show",
+                design["commit"] + ":docs/experiments/target-model-choice/" + name,
+            ],
+            cwd=ROOT,
+        )
+        if hashlib.sha256(content).hexdigest() != checksum:
+            raise RuntimeError("original preregistration mismatch: " + name)
     for name, checksum in read(PRIVATE / "collection-seal.json")["files"].items():
         if digest(PUBLIC / name) != checksum:
             raise RuntimeError("preregistered collection changed: " + name)
@@ -31,6 +44,14 @@ def main() -> None:
     raw = {p.stem: read(p) for p in (PRIVATE / "raw").glob("*.json")}
     if not set(raw) <= set(trials):
         raise RuntimeError("unreserved completed calls")
+    claude_ids = read(PUBLIC / "models.json")["claude_ids"]
+    for record in raw.values():
+        if record["kind"] != "claude" or record["status"] != "ok":
+            continue
+        _, metadata = response_text(record)
+        expected = claude_ids.get(record["model"], record["model"])
+        if set(metadata.get("modelUsage", {})) != {expected}:
+            raise RuntimeError("Claude response model drift")
     samples = read(PRIVATE / "samples.json")
     if len(samples) != 100 or len({s["sample_id"] for s in samples}) != 100:
         raise RuntimeError("sample identity failure")

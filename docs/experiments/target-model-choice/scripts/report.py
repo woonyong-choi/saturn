@@ -40,7 +40,7 @@ def opening(summary: dict) -> list[str]:
         "",
         "## 요약",
         "",
-        f"Jev의 대체 후 허용 적중률은 {proportion(jev['effective'])}, 매뉴얼 sol은 {proportion(jev['manual'])}였다. 대응 차이는 {difference(jev['paired']['delta'])}%p, 프로젝트 군집 95% 구간은 {bounds(jev['paired']['cluster95'])}%p였다. provider 전환 적중은 {proportion(jev['switch_hit'])}였다. {verdict['recommendation']}이 이번 판정이다. 제품 설계 문서는 사용자 지시에 따라 변경하지 않았다.",
+        f"Jev의 대체 후 허용 적중률은 {proportion(jev['effective'])}, 매뉴얼 sol은 {proportion(jev['manual'])}였다. 대응 차이는 {difference(jev['paired']['delta'])}%p, 프로젝트 군집 95% 구간은 {bounds(jev['paired']['cluster95'])}%p였다. provider 전환 적중은 {proportion(jev['switch_hit'])}였다. 이번 판정은 ‘{verdict['recommendation']}’다. 제품 설계 문서는 사용자 지시에 따라 변경하지 않았다.",
         "",
         "## 방법",
         "",
@@ -95,6 +95,8 @@ def opening(summary: dict) -> list[str]:
         "",
         f"대응 불일치는 오토만 적중 {jev['paired']['auto_only']}개, 매뉴얼만 적중 {jev['paired']['manual_only']}개였다. 정확 McNemar p값은 {jev['paired']['mcnemar_exact_p']:.6g}였다. 이 p값은 두 방식의 주변 적중률이 같다는 귀무가설의 검정이며 비열등 판정에는 사전 지정 군집 구간을 사용했다.",
         "",
+        "모든 표본에서 두 방식의 적중 여부가 같으면 재표집 차이도 항상 0이므로 군집 구간이 [0, 0]으로 퇴화한다. 이때 H1 채택은 사전 등록 계산 규칙의 결과이며, 모집단에서 차이가 없거나 비열등성이 정밀하게 입증됐다는 뜻은 아니다. 이번 오토 기본값 권고에는 작은 전환 표본과 이 구간의 한계를 함께 반영했다.",
+        "",
         "### 탐색 분석",
         "",
         "| 선택 모델 | 최선 일치 | 원래 선택 허용 | 대체 후 허용 | 매뉴얼 대비 | 전환 비율 | 전환 적중 |",
@@ -126,7 +128,18 @@ def main() -> None:
         )
     lines += [
         "",
-        f"sol의 첫 두 판정 완전 일치는 {proportion(gold['first_complete_agreement'])}, 최선 후보 일치는 {proportion(gold['first_best_agreement'])}, 허용 집합 일치는 {proportion(gold['first_set_agreement'])}였다. 세 번째 판정은 {gold['third_calls']}건이었다. Jev 세 번 선택 완전 일치는 {proportion(summary['jev_three_way_agreement'])}였다.",
+        "| 선택 모델 | 실패 원인 | 유효 응답 조건부 원래 선택 허용 |",
+        "|---|---|---|",
+    ]
+    for name, c in conditions.items():
+        lines.append(
+            f"| {name} | `{c['invalid_reasons']}` | {proportion(c['success_conditional_raw'])} |"
+        )
+    lines += [
+        "",
+        "invalid_json_object는 JSON 전체를 해석할 수 없는 응답, invalid_choice_schema는 후보 키·확률 범위·합계 계약을 충족하지 못한 응답이다. 뒤에 붙은 문자 제거, 확률 재정규화, 추가 질의로 답을 고치지 않았다. 유효 응답 조건부 적중률은 형식 성공 표본에 한정되므로 전체 적중률과 직접 비교하지 않는다.",
+        "",
+        f"sol의 첫 두 판정 완전 일치는 {proportion(gold['first_complete_agreement'])}, 최선 후보 일치는 {proportion(gold['first_best_agreement'])}, 허용 집합 일치는 {proportion(gold['first_set_agreement'])}였다. 다수결에 세 번째 판정을 사용한 표본은 {gold['third_calls']}건이고, 중단 전 추가 호출을 포함한 세 번째 판정 예약은 {summary['reserved_gold_third_calls']}회였다. Jev 세 번 선택 완전 일치는 {proportion(summary['jev_three_way_agreement'])}였다.",
         "",
         f"사후 사용자 입력의 신호 분포는 `{gold['signal_counts']}`였다. 신호는 실제 실행 성공 판정이 아니다.",
         "",
@@ -149,11 +162,11 @@ def main() -> None:
         "",
         "| 종류 | 위협 | 이 실험에서 |",
         "|---|---|---|",
-        "| 내적 | sol 정답 편향 | 독립 호출 자기 일치와 판단 불가를 보고했으나 사람 검토나 후보별 실제 실행으로 검증하지 않음 |",
-        "| 구성 | 사후 근거 부족 | 사용자 후속 입력만 사용, assistant·tool 성공을 추정하지 않음 |",
-        "| 구성 | 초기 상태 제한 | 실행·보류·고정 없는 새 채팅만 재생, 중간 작업 전환이나 관계 판단 성공을 검증하지 않음 |",
-        "| 구성 | 품질·비용·속도 계열 가정 | 봉인한 판정 지침에 의존하며 실제 작업 수행 비용·속도를 비교하지 않음 |",
-        "| 외적 | 개인 기록과 층 균형 | 한 사용자 기록, 제품 전체 작업 분포로 일반화하지 않음 |",
+        "| 내적 | sol 정답 편향 | 자기 일치를 측정했으나 사람 검토·후보별 실제 실행 검증은 미수행 |",
+        "| 구성 | 사후 근거 부족 | 사용자 후속 입력만 사용, assistant·tool의 실제 실행 결과는 근거에서 제외 |",
+        "| 구성 | 초기 상태 제한 | 실행·보류·고정 없는 새 채팅만 재생. 중간 작업 전환과 관계 판단은 평가 범위 밖 |",
+        "| 구성 | 품질·비용·속도 계열 가정 | 봉인한 지침에 따른 라벨이며 실제 작업 수행 비용·속도는 측정 범위 밖 |",
+        "| 외적 | 개인 기록과 층 균형 | 한 사용자 기록의 층 균형 표본이므로 제품 전체 작업 분포로 일반화 제한 |",
         "| 통계 | 작은 군집과 전환 분모 | Wilson·군집 구간과 빈 분모를 함께 보고 |",
         "| 시간 | CLI·모델·동시 자원 경쟁 | 버전·usage·요청 지연 기록, 구독 실제 청구액과 분리 |",
         "",
@@ -180,12 +193,6 @@ def main() -> None:
         f"| H2 | {verdict['H2']} | 없음 |",
     ]
     text = "\n".join(lines) + "\n"
-    text = (
-        text.replace("검증하지 않음", "검증 없음")
-        .replace("추정하지 않음", "추정 제외")
-        .replace("비교하지 않음", "비교 제외")
-        .replace("일반화하지 않음", "일반화 제외")
-    )
     (PUBLIC / "report.md").write_text(text)
 
 
