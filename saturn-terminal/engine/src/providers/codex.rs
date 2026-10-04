@@ -16,30 +16,25 @@ use serde_json::{Value, json};
 use tokio::process::ChildStdin;
 use tokio::sync::{mpsc, oneshot};
 
-use super::codex_input::{self, InputKind};
-use super::codex_permission::{APPROVAL_POLICY, SANDBOX, check_applied};
 use super::{AppliedSettings, OPEN_REPLY_TIMEOUT, REPLY_TIMEOUT, TurnOriginTracker};
 use crate::processes::{ProcessGroupId, Supervisor};
-use crate::secrets::Masker;
+use input::InputKind;
+use permission::{APPROVAL_POLICY, SANDBOX, check_applied};
 
+mod adapter;
 mod config;
 mod connection;
 mod convert;
+pub(crate) mod home;
+mod input;
+mod permission;
 mod stream;
 mod threads;
 
 use convert::{approval_result, model_info};
 use threads::remove_thread_tree;
 
-/// provider id. 설정 키 `provider.codex.*`와 모델 고정 글 `codex/<model>`의 앞부분이다.
-pub(crate) const ID: saturn_protocol::ids::Provider =
-    saturn_protocol::ids::Provider::from_static("codex");
-
-/// `/usage` 행 이름 앞부분.
-pub(crate) const DISPLAY_NAME: &str = "codex";
-
-/// 설정에 실행 파일이 없을 때 `PATH`에서 찾는 이름.
-pub(crate) const PROGRAM: &str = "codex";
+pub(crate) use adapter::adapter;
 
 /// 끼워 넣기 실측(#5, #27) 통과 전이라 거짓이고, 거짓이면 끼워 넣기를 대기로 바꾼다.
 pub(crate) const STEER_VERIFIED: bool = false;
@@ -163,7 +158,7 @@ impl ThreadState {
 }
 
 #[derive(Debug)]
-pub struct CodexClient {
+pub(crate) struct CodexClient {
     supervisor: Supervisor,
     group: ProcessGroupId,
     stdin: ChildStdin,
@@ -275,22 +270,19 @@ impl CodexClient {
     }
 
     /// 묶음 중지는 이 연결의 다른 thread도 멈춘다.
-    pub fn process_group(&self) -> ProcessGroupId {
+    pub(crate) fn process_group(&self) -> ProcessGroupId {
         self.group
     }
 
     /// 모르는 thread면 `None`.
-    pub fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
+    pub(crate) fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
         lock(&self.threads)
             .get(session)
             .map(|thread| thread.applied.clone())
     }
 
     /// 연결 작업 밖에서 적용값을 읽는 함수.
-    pub(super) fn applied_reader(
-        &self,
-        session: &ProviderSessionId,
-    ) -> super::worker::AppliedReader {
+    pub(super) fn applied_reader(&self, session: &ProviderSessionId) -> super::AppliedReader {
         let threads = Arc::clone(&self.threads);
         let session = session.clone();
         Arc::new(move || {
@@ -589,7 +581,7 @@ impl ProviderClient for CodexClient {
         };
         let message = json!({
             "id": pending.id,
-            "result": codex_input::result(input.kind, &input.request, &answer),
+            "result": input::result(input.kind, &input.request, &answer),
         });
         if let Err(error) = self.write_line(&message).await {
             lock(&self.approvals).insert(request_id.to_owned(), pending);
@@ -654,23 +646,6 @@ impl ProviderClient for CodexClient {
 
     fn commands(&self) -> Vec<ProviderCommand> {
         super::filter_commands(self.commands.clone(), EXCLUDED_COMMANDS)
-    }
-}
-
-pub(super) fn mask_values(value: &mut Value, masker: &Masker) {
-    match value {
-        Value::String(text) => *text = masker.mask(text).as_str().to_owned(),
-        Value::Array(items) => {
-            for item in items {
-                mask_values(item, masker);
-            }
-        }
-        Value::Object(fields) => {
-            for item in fields.values_mut() {
-                mask_values(item, masker);
-            }
-        }
-        _ => {}
     }
 }
 

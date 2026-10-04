@@ -1987,18 +1987,9 @@
                   "type": "string"
                 },
                 "providers": {
+                  "description": "어댑터 레지스트리의 기본 순서대로.",
                   "items": {
-                    "maxItems": 2,
-                    "minItems": 2,
-                    "prefixItems": [
-                      {
-                        "$ref": "#/$defs/Provider"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ],
-                    "type": "array"
+                    "$ref": "#/$defs/ProviderInfo"
                   },
                   "type": "array"
                 },
@@ -3127,18 +3118,9 @@
                   "type": "string"
                 },
                 "providers": {
+                  "description": "어댑터 레지스트리의 기본 순서대로.",
                   "items": {
-                    "maxItems": 2,
-                    "minItems": 2,
-                    "prefixItems": [
-                      {
-                        "$ref": "#/$defs/Provider"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ],
-                    "type": "array"
+                    "$ref": "#/$defs/ProviderInfo"
                   },
                   "type": "array"
                 },
@@ -4794,6 +4776,28 @@
           "type": "object"
         }
       ]
+    },
+    "ProviderInfo": {
+      "description": "붙을 때 알리는 provider 하나. 어댑터 설명자에서 온 값이다.",
+      "properties": {
+        "display_name": {
+          "description": "화면과 사용량에 보이는 이름.",
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/Provider"
+        },
+        "version": {
+          "description": "확인하지 못했으면 빈 글자.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "display_name",
+        "version"
+      ],
+      "type": "object"
     },
     "PruneSkipReason": {
       "oneOf": [

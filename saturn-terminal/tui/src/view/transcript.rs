@@ -540,7 +540,7 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         ChatNotice::ProviderRestarted { provider } => vec![format!(
             "{prefix}{}",
             lang.tr(i18n::PROVIDER_RESTARTED)
-                .replace("{provider}", i18n::provider_title(*provider))
+                .replace("{provider}", &i18n::provider_title(*provider))
         )],
         ChatNotice::PermissionsChanged => {
             vec![format!("{prefix}{}", lang.tr(i18n::PERMISSIONS_CHANGED))]
@@ -551,7 +551,7 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         ChatNotice::InterruptedSubagentReturned { provider } => vec![format!(
             "{prefix}{}",
             lang.tr(i18n::INTERRUPTED_SUBAGENT_RETURNED)
-                .replace("{provider}", i18n::provider_title(*provider))
+                .replace("{provider}", &i18n::provider_title(*provider))
         )],
         ChatNotice::ResumeSuggested { held } => vec![format!(
             "{} {} · {}",

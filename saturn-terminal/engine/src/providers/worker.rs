@@ -13,14 +13,11 @@ use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelInfo, PermissionAnswer};
 use tokio::sync::{mpsc, oneshot};
 
-use super::{AppliedSettings, ProviderConnection};
+use super::{Adapter, AppliedReader, AppliedSettings, ProviderConnection};
 use crate::masked_chain;
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::providers::LaunchSpec;
 use crate::secrets::Masker;
-
-/// 열린 session의 적용값을 읽는 함수. 읽기 작업이 갱신하는 값이라 부를 때마다 읽는다.
-pub(crate) type AppliedReader = Arc<dyn Fn() -> Option<AppliedSettings> + Send + Sync>;
 
 /// 연결 작업이 engine 루프로 보내는 메시지. 한 연결의 메시지는 일어난 순서대로 온다.
 #[derive(Debug)]
@@ -122,8 +119,6 @@ struct Shared {
     /// 모든 session이 같이 쓰는 프로세스 묶음.
     shared_group: Option<ProcessGroupId>,
     sessions: Mutex<HashMap<ProviderSessionId, SessionView>>,
-    #[cfg(test)]
-    fake: Option<super::test_support::FakeProvider>,
 }
 
 struct SessionView {
@@ -142,13 +137,6 @@ impl std::fmt::Debug for Shared {
 
 impl Shared {
     fn new(connection: &ProviderConnection) -> Self {
-        #[cfg(test)]
-        if let ProviderConnection::Fake(fake) = connection {
-            return Self {
-                fake: Some(fake.clone()),
-                ..Self::default()
-            };
-        }
         Self {
             shared_group: connection.shared_group(),
             ..Self::default()
@@ -359,10 +347,6 @@ impl ProviderHandle {
 
     /// 모르는 session이면 `None`.
     pub(crate) fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId> {
-        #[cfg(test)]
-        if let Some(fake) = &self.shared.fake {
-            return fake.group();
-        }
         self.shared
             .shared_group
             .or_else(|| self.shared.sessions().get(session)?.group)
@@ -370,10 +354,6 @@ impl ProviderHandle {
 
     /// 모든 session이 프로세스 묶음 하나를 같이 쓰는 provider의 그 묶음.
     pub(crate) fn shared_group(&self) -> Option<ProcessGroupId> {
-        #[cfg(test)]
-        if let Some(fake) = &self.shared.fake {
-            return fake.group();
-        }
         self.shared.shared_group
     }
 
@@ -588,13 +568,14 @@ async fn run(
 pub(crate) fn spawn_connect(
     chat: ChatId,
     launch: LaunchSpec,
+    adapter: Arc<dyn Adapter>,
     supervisor: Supervisor,
     msgs: mpsc::UnboundedSender<ProviderMsg>,
 ) {
     let provider = launch.provider;
     let lost = msgs.clone();
     let task = tokio::spawn(async move {
-        let connected = match ProviderConnection::connect(launch, supervisor).await {
+        let connected = match adapter.connect(launch, supervisor).await {
             Ok(mut connection) => {
                 let models = connection.list_models().await;
                 Ok(Box::new(Connected { connection, models }))

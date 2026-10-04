@@ -17,6 +17,8 @@ use serde_json::Value;
 use saturn_core::routers::{Method, Thresholds};
 use saturn_core::sessions::context::{ContextBudget, DEFAULT_CACHE_TTL};
 use saturn_protocol::ids::Provider;
+
+use crate::providers::ContextDefaults;
 use saturn_protocol::state::OnExit;
 
 use crate::secrets::{KeyInfo, StorageMode};
@@ -27,11 +29,9 @@ pub(crate) use manager::{Applied, FileFingerprints, SettingsManager};
 pub(crate) use permission::{PermissionSettings, chat_layer_mode, with_chat_layer_mode};
 pub(crate) use trust::{FolderTrustPrompt, TrustStatus, TrustStore};
 
-/// 기본값 층에 값이 없는 provider의 맥락 값. 어댑터 설명자가 값을 알리기 전까지의 임시 기본값이다.
-const FALLBACK_T_ABS: u64 = 200_000;
-const FALLBACK_WINDOW: u64 = 200_000;
-const FALLBACK_CACHE_READ: f64 = 0.1;
-const FALLBACK_CACHE_WRITE: f64 = 1.25;
+/// 모든 provider가 같은 맥락 기본값. `window`와 `cache_write`는 어댑터 설명자가 알린다.
+const DEFAULT_T_ABS: u64 = 200_000;
+const DEFAULT_CACHE_READ: f64 = 0.1;
 
 /// 사용자 층은 `~/.saturn/`, 폴더 층은 `<폴더>/.saturn/` 아래 파일 이름.
 pub(crate) const CONFIG_FILE: &str = "config.toml";
@@ -217,8 +217,13 @@ impl Settings {
     }
 
     /// 안전 비율 `context.safety_percent`(초안)는 모든 provider 공통이다. provider 값은 `provider.<id>.context.*`이고,
-    /// 옛 스냅샷의 `context.<id>.*`도 읽는다. 기본값에 없는 provider의 값은 `FALLBACK_*`다.
-    pub(crate) fn context_budget(&self, provider: Provider) -> ContextBudget {
+    /// 옛 스냅샷의 `context.<id>.*`도 읽는다. 설정에 없으면 `window`와 `cache_write`는 어댑터 설명자의 값(`defaults`),
+    /// `t_abs`와 `cache_read`는 모든 provider 공통 기본값이다.
+    pub(crate) fn context_budget(
+        &self,
+        provider: Provider,
+        defaults: ContextDefaults,
+    ) -> ContextBudget {
         let integer = |name: &str, fallback: u64| {
             self.provider_context(provider, name)
                 .and_then(Value::as_u64)
@@ -230,16 +235,16 @@ impl Settings {
                 .unwrap_or(fallback)
         };
         ContextBudget {
-            t_abs: integer("t_abs", FALLBACK_T_ABS),
+            t_abs: integer("t_abs", DEFAULT_T_ABS),
             safety_percent: u8::try_from(
                 self.lookup("context.safety_percent")
                     .and_then(Value::as_u64)
                     .expect("default layer should define the safety percent"),
             )
             .unwrap_or(100),
-            window: integer("window", FALLBACK_WINDOW),
-            cache_read: number("cache_read", FALLBACK_CACHE_READ),
-            cache_write: number("cache_write", FALLBACK_CACHE_WRITE),
+            window: integer("window", defaults.window),
+            cache_read: number("cache_read", DEFAULT_CACHE_READ),
+            cache_write: number("cache_write", defaults.cache_write),
             cache_ttl: DEFAULT_CACHE_TTL,
         }
     }
@@ -248,9 +253,6 @@ impl Settings {
     fn provider_context(&self, provider: Provider, name: &str) -> Option<&Value> {
         self.get(&format!("provider.{provider}.context.{name}"))
             .or_else(|| self.get(&format!("context.{provider}.{name}")))
-            .or_else(|| {
-                layers::get_path(defaults(), &format!("provider.{provider}.context.{name}"))
-            })
     }
 
     /// 모르는 키면 `None`.

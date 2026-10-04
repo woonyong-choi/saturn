@@ -95,6 +95,7 @@ fn build_packet_fixed_zone_in_order_and_tool_results_only_in_competing() {
         open_items: vec![entry(38, "tests pending")],
         recent_turns: vec![turn(39, "run tests", "ran them")],
         competitors: vec![item(37, "cargo test output", None)],
+        provider_docs: Vec::new(),
         up_to: LedgerSeq(42),
     };
 
@@ -459,6 +460,7 @@ fn reduce_packet_is_none_when_the_fixed_zone_alone_is_over_the_target() {
 #[test]
 fn build_packet_skips_provider_docs() {
     let source = PacketSource {
+        provider_docs: vec!["AGENTS.md".to_owned(), "CLAUDE.md".to_owned()],
         competitors: vec![
             item(1, "agents doc body", Some("AGENTS.md")),
             item(2, "claude doc body", Some("docs/CLAUDE.md")),

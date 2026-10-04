@@ -118,7 +118,11 @@ export type ModelInfo = { choice: ModelChoice,
  */
 name: string, };
 
-export type Notification = { "method": "StartInfo", "params": { saturn_version: string, providers: Array<[Provider, string]>, router: string, router_version: string, 
+export type Notification = { "method": "StartInfo", "params": { saturn_version: string, 
+/**
+ * 어댑터 레지스트리의 기본 순서대로.
+ */
+providers: Array<ProviderInfo>, router: string, router_version: string, 
 /**
  * 채팅의 기본 폴더.
  */
@@ -132,7 +136,11 @@ added_dirs: Array<string>, } } | { "method": "InputAccepted", "params": { client
  */
 rows: number, } } | { "method": "Pruned", "params": { chats: Array<ChatListItem>, skipped: Array<PruneSkipped>, rows: number, } } | { "method": "RouterVersions", "params": { current: string, versions: Array<RouterVersionInfo>, } } | { "method": "TrainPreview", "params": { candidates: number, grader: string, estimated_tokens: number, threshold_targets: Array<string>, retrain_model: boolean, } } | { "method": "TrainProgress", "params": { stage: string, labeled: number, elapsed_ms: number, tokens: number, } } | { "method": "TaskEvent", "params": { task: TaskId, event: ProviderEvent, } } | { "method": "ChatNotice", "params": { chat: ChatId, task: TaskId | null, notice: ChatNotice, } } | { "method": "FeedbackQuestion", "params": { judgment: JudgmentId, input: InputId, label: TaskLabel, disposition: Disposition, } } | { "method": "ContextSize", "params": { chat: ChatId, tokens: number | null, threshold: number, } } | { "method": "SettingsApplied", "params": { revision: SettingsRevision, warning: SettingsWarning | null, } } | { "method": "Alert", "params": { alert: Alert, } } | { "method": "ExitPlan", "params": { plan: ExitPlan, } };
 
-export type NotificationMessage = { jsonrpc: JsonRpcVersion, } & ({ "method": "StartInfo", "params": { saturn_version: string, providers: Array<[Provider, string]>, router: string, router_version: string, 
+export type NotificationMessage = { jsonrpc: JsonRpcVersion, } & ({ "method": "StartInfo", "params": { saturn_version: string, 
+/**
+ * 어댑터 레지스트리의 기본 순서대로.
+ */
+providers: Array<ProviderInfo>, router: string, router_version: string, 
 /**
  * 채팅의 기본 폴더.
  */
@@ -175,6 +183,16 @@ exit_code: number | null, } } | { "SubagentStarted": { agent: AgentId, subagent:
  * 규칙으로 판정할 수 있는 호출만 담는다. 없으면 사용자에게 묻는다.
  */
 call: PermissionCall | null, } } | { "InputRequested": { agent: AgentId, request_id: string, request: InputRequest, } } | { "TurnCompleted": { agent: AgentId, origin: TurnOrigin, } } | { "Usage": UsageReport } | { "ContextSize": { agent: AgentId, tokens: number | null, } } | { "StreamLost": { agent: AgentId, } } | { "CacheWindow": { agent: AgentId, ttl_secs: number, } } | { "SettingsApplied": { agent: AgentId, values: Array<[string, string]>, } };
+
+export type ProviderInfo = { provider: Provider, 
+/**
+ * 화면과 사용량에 보이는 이름.
+ */
+display_name: string, 
+/**
+ * 확인하지 못했으면 빈 글자.
+ */
+version: string, };
 
 export type PruneSkipReason = "OpenInput" | "OpenRun" | "PendingStop" | "ActiveSession" | "WaitingSession" | "Attached";
 

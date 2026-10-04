@@ -10,12 +10,12 @@ use saturn_protocol::ids::SubagentId;
 use saturn_protocol::rpc::PermissionAnswer;
 use serde_json::{Value, json};
 
+use super::input::{self, ASK_TOOL};
 use super::{
     DENY_MESSAGE, EDIT_TOOLS, READ_TOOLS, SHELL_TOOL, SUBAGENT_TOOLS, SUBSCRIPTION_CACHE_TTL,
     SUBSCRIPTION_KEY_SOURCE, SessionState,
 };
 use crate::providers::AppliedSettings;
-use crate::providers::claude_input::{self, ASK_TOOL};
 use crate::providers::tool_detail::{classify_command, line_change};
 
 /// subagent 등록과 `turn_active`, 적용값, 명령 목록 갱신도 여기서 한다. 버릴 줄이면 빈 목록.
@@ -39,7 +39,7 @@ pub(super) fn convert_line(
                 target.map_or_else(|| tool.to_owned(), |target| format!("{tool}: {target}"));
             let request_id = line["request_id"].as_str().unwrap_or_default().to_owned();
             if tool == ASK_TOOL
-                && let Some(asked) = claude_input::request(&request["input"])
+                && let Some(asked) = input::request(&request["input"])
             {
                 state
                     .inputs

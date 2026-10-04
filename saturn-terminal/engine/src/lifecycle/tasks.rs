@@ -215,7 +215,7 @@ async fn task_list_attaches_a_waiting_input_to_the_task_it_waits_for() {
 async fn task_list_reports_the_model_of_the_task_session() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     let pinned = ModelChoice {
-        provider: crate::providers::CLAUDE,
+        provider: crate::providers::test_support::CLAUDE,
         model: "opus".to_owned(),
     };
     flow.submit_with("fix the build", Some(pinned), false).await;

@@ -137,10 +137,11 @@ async fn stop_without_a_finished_turn_signal_is_not_complete() {
 #[tokio::test]
 async fn stop_is_not_complete_until_the_process_group_is_confirmed_stopped() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    flow.submit("fix the build").await;
-    let agent = flow.agent();
+    // 프로세스 묶음은 session을 열 때 연결에서 읽어 두므로 열기 전에 정한다
     let held = held_open_group(&flow).await;
     flow.fake.set_group(held.group);
+    flow.submit("fix the build").await;
+    let agent = flow.agent();
     let mut client = flow.client().await;
     let chat = flow.chat;
     flow.engine.stop_chat(chat).await.unwrap();

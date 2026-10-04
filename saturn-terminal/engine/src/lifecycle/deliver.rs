@@ -7,7 +7,6 @@ use saturn_protocol::state::{Disposition, InputState, TaskState};
 use super::support::{CLIENT, Flow, idle_reply, running_reply};
 use super::*;
 use crate::dispatch::MAX_SEND_ATTEMPTS;
-use crate::providers::ProviderConnection;
 use crate::providers::test_support::{Call, FakeProvider};
 
 fn not_sent() -> Result<(), ProviderError> {
@@ -292,8 +291,8 @@ async fn requests_are_answered_while_a_judgment_is_in_flight() {
         .create_chat(fixture.workdir.clone())
         .await
         .unwrap();
-    let fake = FakeProvider::new(crate::providers::CLAUDE);
-    engine.add_connection(chat, ProviderConnection::Fake(fake.clone()));
+    let fake = FakeProvider::new(crate::providers::test_support::CLAUDE);
+    engine.add_connection(chat, fake.connection());
     let mut client = Client::connect(&fixture.socket()).await;
     let workdir = fixture.workdir.display().to_string();
     let release = transport.hold_next_call();
@@ -365,8 +364,8 @@ async fn socket_submit_reports_input_and_task_states_in_order() {
         .create_chat(fixture.workdir.clone())
         .await
         .unwrap();
-    let fake = FakeProvider::new(crate::providers::CLAUDE);
-    engine.add_connection(chat, ProviderConnection::Fake(fake.clone()));
+    let fake = FakeProvider::new(crate::providers::test_support::CLAUDE);
+    engine.add_connection(chat, fake.connection());
     let mut client = Client::connect(&fixture.socket()).await;
     let workdir = fixture.workdir.display().to_string();
 

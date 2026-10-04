@@ -22,6 +22,8 @@ pub(crate) struct CommandSpec {
     /// `Lang::tr`의 한국어 키.
     pub description: &'static str,
     pub values: &'static [&'static str],
+    /// 값이 engine이 알린 provider id 중 하나다. `values` 대신 붙을 때 받은 목록을 쓴다.
+    pub takes_provider: bool,
 }
 
 /// TODO(#41): 메인이 아닌 provider의 명령을 골랐을 때 처리
@@ -30,76 +32,87 @@ pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
         path: "help",
         description: "도움말",
         values: &[],
+        takes_provider: false,
     },
     CommandSpec {
         path: "send",
         description: "대기 입력 지금 보내기",
         values: &[],
+        takes_provider: false,
     },
     CommandSpec {
         path: "cancel",
         description: "보내기 전 입력 취소",
         values: &[],
+        takes_provider: false,
     },
     CommandSpec {
         path: "continue",
         description: "보류 이어서",
         values: &[],
+        takes_provider: false,
     },
     CommandSpec {
         path: "feedback",
         description: "판단 피드백",
         values: &["1", "2"],
+        takes_provider: false,
     },
     CommandSpec {
         path: "tasks",
         description: "작업 목록",
         values: &[],
+        takes_provider: false,
     },
     CommandSpec {
         path: "usage",
         description: "사용량",
         values: &[],
+        takes_provider: false,
     },
     CommandSpec {
         path: "prune",
         description: "기록 정리",
         values: &[],
+        takes_provider: false,
     },
     CommandSpec {
         path: "train",
         description: "판단 모델 학습",
         values: &[],
+        takes_provider: false,
     },
     CommandSpec {
         path: "router use",
         description: "판단 모델 버전",
         values: &[],
+        takes_provider: false,
     },
     CommandSpec {
         path: "record",
         description: "판단 기록 켜기와 끄기",
         values: &["on", "off"],
+        takes_provider: false,
     },
     CommandSpec {
         path: "permissions",
         description: "권한 모드 바꾸기",
         values: &PERMISSION_MODES,
+        takes_provider: false,
     },
     CommandSpec {
         path: "add-dir",
         description: "폴더 더하기",
         values: &[],
+        takes_provider: false,
     },
     CommandSpec {
         path: "model",
         description: "다음 입력부터 쓸 모델 고르기",
-        values: &MODEL_PROVIDERS,
+        values: &[],
+        takes_provider: true,
     },
 ];
-
-/// `/model <provider>`에서 고를 수 있는 이름. `i18n::provider_name`과 같다.
-const MODEL_PROVIDERS: [&str; 2] = ["codex", "claude"];
 
 /// engine이 받는 권한 모드 이름. 초안.
 const PERMISSION_MODES: [&str; 4] = ["ask", "edit", "read-only", "full"];

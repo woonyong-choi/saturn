@@ -1379,6 +1379,35 @@ fn slash_popup_completes_command_then_shows_values() {
 }
 
 #[test]
+fn model_command_values_are_the_provider_ids_engine_announced() {
+    let mut app = attached();
+    app.start = Some(crate::view::start_screen::StartInfo {
+        saturn_version: "0.1.0".to_string(),
+        providers: ["alpha-agent", "beta-agent"]
+            .into_iter()
+            .map(|id| crate::view::start_screen::StartProvider {
+                provider: Provider::from_static(id),
+                display_name: id.to_uppercase(),
+                version: None,
+            })
+            .collect(),
+        router: None,
+        router_version: None,
+        folder: std::path::PathBuf::from("/w"),
+        added_dirs: Vec::new(),
+    });
+
+    type_text(&mut app, "/model ");
+
+    let values: Vec<String> = app
+        .popup
+        .as_ref()
+        .map(|p| p.items.iter().map(|item| item.value.clone()).collect())
+        .unwrap_or_default();
+    assert_eq!(values, ["alpha-agent", "beta-agent"]);
+}
+
+#[test]
 fn popup_escape_suppresses_until_token_changes() {
     let mut app = attached();
     type_text(&mut app, "/ta");

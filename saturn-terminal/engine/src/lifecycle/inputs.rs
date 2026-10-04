@@ -47,7 +47,7 @@ async fn elicitation_request_reaches_the_tui_and_the_answer_reaches_the_provider
     assert_eq!(Some(request_id), flow.input_id("ask-1"));
     assert_eq!(
         (provider, title.as_str()),
-        (crate::providers::CLAUDE, "Which?")
+        (crate::providers::test_support::CLAUDE, "Which?")
     );
     assert_eq!(waiting, TaskState::AwaitingInput);
 

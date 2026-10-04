@@ -8,9 +8,10 @@ use saturn_protocol::state::{InputState, TaskState};
 use super::support::{Flow, idle_reply};
 use super::*;
 use crate::chat_env::ChatEnv;
+use crate::providers::OPEN_REPLY_TIMEOUT;
 use crate::providers::ProviderConnection;
 use crate::providers::test_support::{Call, FakeProvider};
-use crate::providers::{CodexClient, OPEN_REPLY_TIMEOUT, fake_codex_launch};
+use crate::providers::test_support::{CodexClient, fake_codex_launch};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -62,11 +63,13 @@ async fn use_codex(flow: &mut Flow, codex: CodexClient) {
     flow.engine
         .flow
         .questions_of_connection
-        .insert((flow.chat, crate::providers::CODEX), true);
-    flow.engine
-        .add_connection(flow.chat, ProviderConnection::Codex(codex));
+        .insert((flow.chat, crate::providers::test_support::CODEX), true);
+    flow.engine.add_connection(
+        flow.chat,
+        ProviderConnection::new(crate::providers::test_support::CODEX, codex),
+    );
     flow.pin(&ModelChoice {
-        provider: crate::providers::CODEX,
+        provider: crate::providers::test_support::CODEX,
         model: "gpt-test".to_owned(),
     })
     .await;
@@ -81,13 +84,12 @@ async fn add_other_chat(flow: &mut Flow) -> (ChatId, PathBuf, FakeProvider) {
     flow.engine
         .chats
         .insert(chat, ChatEnv::new(dir.clone(), env));
-    let fake = FakeProvider::new(crate::providers::CLAUDE);
+    let fake = FakeProvider::new(crate::providers::test_support::CLAUDE);
     flow.engine
         .flow
         .questions_of_connection
-        .insert((chat, crate::providers::CLAUDE), true);
-    flow.engine
-        .add_connection(chat, ProviderConnection::Fake(fake.clone()));
+        .insert((chat, crate::providers::test_support::CLAUDE), true);
+    flow.engine.add_connection(chat, fake.connection());
     (chat, dir, fake)
 }
 
@@ -394,7 +396,7 @@ async fn a_connection_task_that_panics_while_sending_leaves_the_task_to_check() 
         !flow
             .engine
             .providers
-            .contains_key(&(chat, crate::providers::CLAUDE))
+            .contains_key(&(chat, crate::providers::test_support::CLAUDE))
     );
 }
 
@@ -419,6 +421,6 @@ async fn a_connection_task_that_panics_while_opening_rejects_the_input() {
         !flow
             .engine
             .providers
-            .contains_key(&(chat, crate::providers::CLAUDE))
+            .contains_key(&(chat, crate::providers::test_support::CLAUDE))
     );
 }

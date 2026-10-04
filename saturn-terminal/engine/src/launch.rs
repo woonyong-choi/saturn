@@ -1,10 +1,8 @@
 //! provider 연결을 만들고 session을 여는 공통 도구. 채팅의 작업 폴더와 환경은 `chat_env`를 쓴다.
 //! 설계: docs/design/providers-and-sessions.md
 
-use std::ffi::OsString;
 use std::path::PathBuf;
 
-use saturn_core::permission::Rule;
 use saturn_core::providers::{ProviderError, SessionHandle, SessionSpec};
 use saturn_core::queue::QueuedInput;
 use saturn_protocol::ids::{
@@ -15,9 +13,8 @@ use crate::dispatch::MAX_SEND_ATTEMPTS;
 use crate::flow::LiveSession;
 use crate::models::pinned_choice;
 use crate::providers::{
-    FIRST_INPUT_ORDER, HomeInput, LaunchSpec, PermissionLaunch, ProviderConnection, ProviderHandle,
-    SaturnDefaults, UserProviderConfig, is_installed, prepare_codex_home, program_name,
-    rules_of_home,
+    LaunchSpec, PermissionInput, ProviderConnection, ProviderHandle, SaturnDefaults,
+    UserProviderConfig,
 };
 use crate::secrets::HookPolicy;
 use crate::settings::ContextMode;
@@ -28,7 +25,7 @@ use crate::{Engine, EngineError};
 pub(crate) struct ConnectionSeed {
     /// 에이전트 질문 기능을 켰다.
     questions: bool,
-    /// Codex 규칙 지문.
+    /// 번역한 규칙의 지문. 규칙이 연결을 시작할 때 고정되는 어댑터만 있다.
     rules: Option<String>,
 }
 
@@ -36,11 +33,7 @@ impl ConnectionSeed {
     pub(crate) fn of(launch: &LaunchSpec) -> Self {
         Self {
             questions: !launch.permission.questions_disabled,
-            rules: launch
-                .permission
-                .codex_home
-                .as_deref()
-                .and_then(rules_of_home),
+            rules: launch.permission.rules_fingerprint.clone(),
         }
     }
 }
@@ -117,7 +110,7 @@ impl Engine {
     /// 모두 정하지 못하면 `NoProvider`.
     pub(crate) fn pick_provider(&self, record: &QueuedInput) -> Result<Provider, EngineError> {
         let chat = record.chat;
-        if let Some(choice) = pinned_choice(record) {
+        if let Some(choice) = pinned_choice(&self.registry, record) {
             return Ok(choice.provider);
         }
         if let Some(provider) = self.flow.switch_to.get(&chat) {
@@ -130,10 +123,9 @@ impl Engine {
             .chat_env(chat)
             .map(crate::chat_env::ChatEnv::provider_env)
             .unwrap_or_default();
-        FIRST_INPUT_ORDER
-            .into_iter()
-            .find(|provider| {
-                self.providers.contains_key(&(chat, *provider)) || is_installed(*provider, &env)
+        self.registry
+            .first_installed(&env, |provider| {
+                self.providers.contains_key(&(chat, provider))
             })
             .ok_or(EngineError::NoProvider)
     }
@@ -151,7 +143,10 @@ impl Engine {
         }
         let launch = self.launch_spec(provider, chat, settings).await?;
         let seed = ConnectionSeed::of(&launch);
-        let connection = ProviderConnection::connect(launch, self.supervisor.clone()).await?;
+        let connection = self
+            .registry
+            .connect(launch, self.supervisor.clone())
+            .await?;
         self.attach_connection(chat, connection, seed);
         self.remember_models(provider, chat).await;
         Ok(())
@@ -183,7 +178,9 @@ impl Engine {
             .insert((chat, provider), seed.questions);
         self.flow.stale_connections.remove(&(chat, provider));
         if let Some(rules) = seed.rules {
-            self.flow.rules_of_connection.insert(chat, rules);
+            self.flow
+                .rules_of_connection
+                .insert((chat, provider), rules);
         }
     }
 
@@ -214,64 +211,35 @@ impl Engine {
         let hook =
             HookPolicy::new(&self.options.home, &user_home).pre_tool_use_settings(&saturn_bin);
         let questions = self.agent_questions(chat, revision).await?;
-        let program = program_name(provider).ok_or_else(|| ProviderError::NotSent {
-            reason: format!("unknown provider: {provider}"),
+        let adapter = self
+            .registry
+            .get(provider)
+            .ok_or_else(|| ProviderError::NotSent {
+                reason: format!("unknown provider: {provider}"),
+            })?;
+        let permission = adapter.translate_permission(PermissionInput {
+            saturn_home: &self.options.home,
+            rules: &settings.permission().rules,
+            env: &provider_env,
+            questions,
         })?;
-        let permission = match provider {
-            crate::providers::CODEX => {
-                self.codex_permission(&settings.permission().rules, &provider_env, questions)?
-            }
-            _ => PermissionLaunch {
-                questions_disabled: !questions,
-                ..PermissionLaunch::default()
-            },
-        };
         Ok(LaunchSpec {
             provider,
-            program: PathBuf::from(program),
+            program: PathBuf::from(adapter.descriptor().program),
             workdir: env.workdir().to_path_buf(),
             settings: revision,
             user_config: UserProviderConfig::default(),
             defaults: SaturnDefaults {
-                auto_compact_tokens: (settings.context_mode() == ContextMode::Saturn)
-                    .then(|| settings.context_budget(provider).hard_limit(None)),
+                auto_compact_tokens: (settings.context_mode() == ContextMode::Saturn).then(|| {
+                    settings
+                        .context_budget(provider, adapter.descriptor().context)
+                        .hard_limit(None)
+                }),
             },
             env: provider_env,
             hook_settings: Some(hook),
             permission,
             masker: self.masker.clone(),
-        })
-    }
-
-    /// 사용자 `~/.codex`는 읽기만 하고 전용 `CODEX_HOME`을 만든다. 사용자 폴더는 환경의 `CODEX_HOME`, 없으면
-    /// `HOME/.codex`다.
-    fn codex_permission(
-        &self,
-        rules: &[Rule],
-        env: &[(OsString, OsString)],
-        questions: bool,
-    ) -> Result<PermissionLaunch, ProviderError> {
-        let value = |name: &str| {
-            env.iter()
-                .find(|(key, _)| key == name)
-                .map(|(_, value)| PathBuf::from(value))
-        };
-        let user_codex_home = value("CODEX_HOME")
-            .or_else(|| value("HOME").map(|home| home.join(".codex")))
-            .unwrap_or_else(|| PathBuf::from("/.codex"));
-        let prepared = prepare_codex_home(HomeInput {
-            saturn_home: &self.options.home,
-            user_codex_home: &user_codex_home,
-            rules,
-            questions,
-        })
-        .map_err(|error| ProviderError::NotSent {
-            reason: format!("failed to prepare codex home: {error}"),
-        })?;
-        Ok(PermissionLaunch {
-            codex_home: Some(prepared.path),
-            mcp_servers: prepared.mcp_servers,
-            questions_disabled: !questions,
         })
     }
 }

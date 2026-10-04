@@ -8,7 +8,6 @@ use saturn_protocol::state::{EffectScope, SessionState, TaskState};
 
 use super::support::{CLIENT, Flow, idle_reply, turn_completed};
 use super::*;
-use crate::providers::ProviderConnection;
 use crate::providers::test_support::{Call, FakeProvider};
 use crate::rpc::RpcEvent;
 
@@ -64,12 +63,12 @@ impl Restarted {
         let transport = FakeTransport::new(script);
         let env = fixture.env(true, Arc::clone(&transport)).await;
         let mut engine = fixture.start(env).await.unwrap();
-        let fake = FakeProvider::new(crate::providers::CLAUDE);
+        let fake = FakeProvider::new(crate::providers::test_support::CLAUDE);
         engine
             .flow
             .questions_of_connection
-            .insert((chat, crate::providers::CLAUDE), true);
-        engine.add_connection(chat, ProviderConnection::Fake(fake.clone()));
+            .insert((chat, crate::providers::test_support::CLAUDE), true);
+        engine.add_connection(chat, fake.connection());
         engine.recover_after_crash().await.unwrap();
         Self {
             engine,
@@ -325,7 +324,10 @@ async fn resumed_or_closed_task_is_not_suggested_after_the_engine_restarts() {
     let agent = *resumed.engine.flow.live.keys().next().unwrap();
     resumed
         .engine
-        .on_provider_event(crate::providers::CLAUDE, turn_completed(agent))
+        .on_provider_event(
+            crate::providers::test_support::CLAUDE,
+            turn_completed(agent),
+        )
         .await
         .unwrap();
     let mut resumed = resumed.restart().await;

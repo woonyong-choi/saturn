@@ -10,14 +10,13 @@ use std::time::Duration;
 use anyhow::{Context, bail};
 use saturn_core::providers::{ProviderClient, SessionSpec};
 use saturn_engine::{
-    LaunchSpec, Masker, PermissionLaunch, ProviderConnection, SaturnDefaults, Supervisor,
-    UserProviderConfig,
+    LaunchSpec, Masker, PermissionLaunch, Registry, SaturnDefaults, Supervisor, UserProviderConfig,
 };
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, Provider, SettingsRevision};
 use saturn_protocol::rpc::PermissionAnswer;
 
-const USAGE: &str = "usage: record-fidelity <codex|claude> --program FILE --workdir DIR --prompt-file FILE --out FILE [--model NAME] [--timeout-s N]";
+const USAGE: &str = "usage: record-fidelity <provider-id> --program FILE --workdir DIR --prompt-file FILE --out FILE [--model NAME] [--timeout-s N]";
 
 #[derive(Debug)]
 struct Args {
@@ -36,10 +35,8 @@ struct Args {
 /// # Errors
 /// 인자가 모자라거나 모르는 값이면 오류.
 fn parse_args(raw: &[String]) -> anyhow::Result<Args> {
-    let provider = match raw.first().map(String::as_str) {
-        Some("codex") => Provider::from_static("codex"),
-        Some("claude") => Provider::from_static("claude"),
-        _ => bail!("{USAGE}"),
+    let Some(provider) = raw.first().and_then(|id| Provider::parse(id).ok()) else {
+        bail!("{USAGE}");
     };
     let value = |name: &str| {
         raw.iter()
@@ -92,7 +89,8 @@ fn launch_spec(args: &Args) -> LaunchSpec {
 async fn run(args: &Args) -> anyhow::Result<()> {
     let prompt = std::fs::read_to_string(&args.prompt_file).context("failed to read prompt")?;
     let mut out = std::fs::File::create(&args.out).context("failed to create output")?;
-    let mut connection = ProviderConnection::connect(launch_spec(args), Supervisor::new())
+    let mut connection = Registry::builtin()
+        .connect(launch_spec(args), Supervisor::new())
         .await
         .map_err(|error| anyhow::anyhow!("failed to connect: {error}"))?;
     let handle = connection

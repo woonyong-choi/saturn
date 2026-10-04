@@ -16,7 +16,7 @@ pub(crate) mod training;
 
 pub use processes::Supervisor;
 pub use providers::{
-    HookInputError, LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults,
+    HookInputError, LaunchSpec, PermissionLaunch, ProviderConnection, Registry, SaturnDefaults,
     UserProviderConfig, run_pre_tool_use,
 };
 pub use secrets::{Masker, pre_tool_use_hook_settings};
@@ -278,6 +278,8 @@ pub struct Engine {
     supervisor: Supervisor,
     /// 연결은 채팅마다 둔다. 작업 폴더와 환경이 채팅마다 달라서다.
     providers: HashMap<(ChatId, Provider), providers::ProviderHandle>,
+    /// 붙은 어댑터. 설명자와 연결 만들기는 모두 여기서 찾는다.
+    registry: Registry,
     routers: Routers,
     router_gate: RouterGate,
     rpc: RpcServer,

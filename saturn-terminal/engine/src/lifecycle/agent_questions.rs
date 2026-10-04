@@ -6,6 +6,7 @@ use saturn_protocol::rpc::{ChatNotice, Notification};
 use toml_edit::DocumentMut;
 
 use super::support::{Flow, idle_reply, input_request, turn_completed};
+use crate::providers::PermissionLaunch;
 use crate::providers::test_support::{Call, FakeProvider};
 
 pub(super) fn restarted(notifications: &[Notification], expected: Provider) -> bool {
@@ -26,6 +27,15 @@ fn answered(fake: &FakeProvider) -> bool {
         .any(|call| matches!(call, Call::AnswerInput { .. }))
 }
 
+/// 권한 번역이 만든 전용 `CODEX_HOME` 폴더.
+pub(super) fn codex_home(permission: &PermissionLaunch) -> Option<std::path::PathBuf> {
+    permission
+        .env
+        .iter()
+        .find(|(name, _)| name == "CODEX_HOME")
+        .map(|(_, home)| std::path::PathBuf::from(home))
+}
+
 /// 지금 모드로 `provider`를 새로 열 때의 실행 설정에서 질문 기능을 뺐는지와 Codex 생성 설정의 값.
 pub(super) async fn launched(flow: &Flow, provider: Provider) -> (bool, Option<bool>) {
     let revision = flow.engine.settings.current().unwrap();
@@ -34,7 +44,7 @@ pub(super) async fn launched(flow: &Flow, provider: Provider) -> (bool, Option<b
         .launch_spec(provider, flow.chat, revision)
         .await
         .unwrap();
-    let feature = launch.permission.codex_home.as_ref().map(|home| {
+    let feature = codex_home(&launch.permission).map(|home| {
         let config = std::fs::read_to_string(home.join("config.toml"))
             .unwrap()
             .parse::<DocumentMut>()
@@ -51,11 +61,11 @@ async fn agent_questions_are_on_in_the_default_mode_for_both_providers() {
     let flow = Flow::new(Vec::new()).await;
 
     assert_eq!(
-        launched(&flow, crate::providers::CLAUDE).await,
+        launched(&flow, crate::providers::test_support::CLAUDE).await,
         (false, None)
     );
     assert_eq!(
-        launched(&flow, crate::providers::CODEX).await,
+        launched(&flow, crate::providers::test_support::CODEX).await,
         (false, Some(true))
     );
 }
@@ -65,11 +75,11 @@ async fn agent_questions_are_off_for_new_connections_in_full_mode() {
     let mut flow = Flow::with_config("[permission]\nmode = \"full\"\n", Vec::new()).await;
 
     assert_eq!(
-        launched(&flow, crate::providers::CLAUDE).await,
+        launched(&flow, crate::providers::test_support::CLAUDE).await,
         (true, None)
     );
     assert_eq!(
-        launched(&flow, crate::providers::CODEX).await,
+        launched(&flow, crate::providers::test_support::CODEX).await,
         (true, Some(false))
     );
 
@@ -79,11 +89,11 @@ async fn agent_questions_are_off_for_new_connections_in_full_mode() {
         .unwrap();
 
     assert_eq!(
-        launched(&flow, crate::providers::CLAUDE).await,
+        launched(&flow, crate::providers::test_support::CLAUDE).await,
         (false, None)
     );
     assert_eq!(
-        launched(&flow, crate::providers::CODEX).await,
+        launched(&flow, crate::providers::test_support::CODEX).await,
         (false, Some(true))
     );
 }
@@ -91,7 +101,7 @@ async fn agent_questions_are_off_for_new_connections_in_full_mode() {
 #[tokio::test]
 async fn agent_questions_keep_asking_while_the_mode_stays_below_full() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    flow.add_provider(crate::providers::CODEX);
+    flow.add_provider(crate::providers::test_support::CODEX);
     flow.submit("fix the build").await;
 
     for mode in ["ask", "read-only", "edit"] {
@@ -121,13 +131,16 @@ async fn agent_questions_restart_an_idle_claude_connection_at_once() {
         !flow
             .engine
             .providers
-            .contains_key(&(flow.chat, crate::providers::CLAUDE))
+            .contains_key(&(flow.chat, crate::providers::test_support::CLAUDE))
     );
     assert!(flow.engine.flow.live.is_empty());
     assert!(flow.engine.flow.stale_connections.is_empty());
-    assert!(restarted(&client.window().await, crate::providers::CLAUDE));
+    assert!(restarted(
+        &client.window().await,
+        crate::providers::test_support::CLAUDE
+    ));
     assert_eq!(
-        launched(&flow, crate::providers::CLAUDE).await,
+        launched(&flow, crate::providers::test_support::CLAUDE).await,
         (true, None)
     );
 }
@@ -147,15 +160,18 @@ async fn agent_questions_restart_a_running_claude_connection_after_the_turn() {
     assert!(
         flow.engine
             .providers
-            .contains_key(&(flow.chat, crate::providers::CLAUDE))
+            .contains_key(&(flow.chat, crate::providers::test_support::CLAUDE))
     );
     assert!(
         flow.engine
             .flow
             .stale_connections
-            .contains(&(flow.chat, crate::providers::CLAUDE))
+            .contains(&(flow.chat, crate::providers::test_support::CLAUDE))
     );
-    assert!(!restarted(&client.window().await, crate::providers::CLAUDE));
+    assert!(!restarted(
+        &client.window().await,
+        crate::providers::test_support::CLAUDE
+    ));
 
     flow.claude_event(turn_completed(agent)).await;
 
@@ -163,10 +179,13 @@ async fn agent_questions_restart_a_running_claude_connection_after_the_turn() {
         !flow
             .engine
             .providers
-            .contains_key(&(flow.chat, crate::providers::CLAUDE))
+            .contains_key(&(flow.chat, crate::providers::test_support::CLAUDE))
     );
     assert!(flow.engine.flow.stale_connections.is_empty());
-    assert!(restarted(&client.window().await, crate::providers::CLAUDE));
+    assert!(restarted(
+        &client.window().await,
+        crate::providers::test_support::CLAUDE
+    ));
 }
 
 #[tokio::test]
@@ -189,7 +208,7 @@ async fn agent_questions_restart_is_dropped_when_the_mode_returns_before_the_tur
     assert!(
         flow.engine
             .providers
-            .contains_key(&(flow.chat, crate::providers::CLAUDE))
+            .contains_key(&(flow.chat, crate::providers::test_support::CLAUDE))
     );
 }
 
@@ -218,7 +237,10 @@ async fn agent_questions_asked_before_the_claude_restart_reach_the_tui() {
         .await;
     assert_eq!(
         (Some(asked.0), asked.1),
-        (flow.input_id("ask-1"), crate::providers::CLAUDE)
+        (
+            flow.input_id("ask-1"),
+            crate::providers::test_support::CLAUDE
+        )
     );
     assert!(flow.input_id("ask-1").is_some());
     assert!(!answered(&flow.fake));
@@ -227,9 +249,9 @@ async fn agent_questions_asked_before_the_claude_restart_reach_the_tui() {
 #[tokio::test]
 async fn agent_questions_asked_before_codex_is_switched_off_reach_the_tui() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    flow.add_provider(crate::providers::CODEX);
+    flow.add_provider(crate::providers::test_support::CODEX);
     flow.engine
-        .switch_provider(flow.chat, crate::providers::CODEX);
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
     flow.submit("fix the build").await;
     let agent = flow.agent();
     let mut client = flow.client().await;
@@ -238,8 +260,11 @@ async fn agent_questions_asked_before_codex_is_switched_off_reach_the_tui() {
         .await
         .unwrap();
 
-    flow.event(crate::providers::CODEX, input_request(agent, "ask-2"))
-        .await;
+    flow.event(
+        crate::providers::test_support::CODEX,
+        input_request(agent, "ask-2"),
+    )
+    .await;
 
     let asked = client
         .until(|notification| match notification {
@@ -252,7 +277,7 @@ async fn agent_questions_asked_before_codex_is_switched_off_reach_the_tui() {
         flow.engine
             .flow
             .stale_connections
-            .contains(&(flow.chat, crate::providers::CODEX))
+            .contains(&(flow.chat, crate::providers::test_support::CODEX))
     );
     assert!(!answered(&flow.fake));
 }

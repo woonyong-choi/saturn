@@ -7,13 +7,13 @@ use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use serde_json::{Value, json};
 
+use super::input::{self, InputKind};
+use super::permission::{call_of, file_change_paths};
 use super::threads::{close_child, register_child};
 use super::{
     APPROVAL_METHODS, ELICITATION_METHOD, PERMISSIONS_METHOD, PendingApproval, PendingInput,
     ThreadState, USER_INPUT_METHOD, value_text,
 };
-use crate::providers::codex_input::{self, InputKind};
-use crate::providers::codex_permission::{call_of, file_change_paths};
 use crate::providers::tool_detail::{classify_command, unwrap_shell};
 
 /// 권한은 Saturn 규칙이 정하므로 권한 인자는 넣지 않는다. 승인 정책과 샌드박스는 `thread/start`가 정한다.
@@ -25,7 +25,7 @@ pub(super) fn model_info(entry: &Value) -> Option<ModelInfo> {
     let model = entry["model"].as_str().or_else(|| entry["id"].as_str())?;
     Some(ModelInfo {
         choice: ModelChoice {
-            provider: crate::providers::CODEX,
+            provider: super::adapter::ID,
             model: model.to_owned(),
         },
         name: entry["displayName"].as_str().unwrap_or(model).to_owned(),
@@ -259,8 +259,8 @@ pub(super) fn convert_input_request(
 ) -> Option<ProviderEvent> {
     let state = thread_of_request(threads, params)?;
     let request = match kind {
-        InputKind::Elicitation => codex_input::elicitation_request(params)?,
-        InputKind::UserInput => codex_input::user_input_request(params),
+        InputKind::Elicitation => input::elicitation_request(params)?,
+        InputKind::UserInput => input::user_input_request(params),
     };
     let request_id = value_text(id).unwrap_or_default();
     approvals.insert(

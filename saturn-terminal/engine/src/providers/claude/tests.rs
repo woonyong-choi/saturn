@@ -121,7 +121,7 @@ fn launch(dir: &Path, env: Vec<(OsString, OsString)>) -> LaunchSpec {
         .unwrap();
     assert_eq!(warmed.code(), Some(3));
     LaunchSpec {
-        provider: crate::providers::CLAUDE,
+        provider: crate::providers::test_support::CLAUDE,
         program,
         workdir: dir.to_path_buf(),
         settings: SettingsRevision(1),
@@ -487,8 +487,8 @@ async fn a_turn_sent_during_the_packet_turn_gets_its_own_completion() {
     let big = "x".repeat(BIG_TURN_BYTES);
     client.send_turn(&session, &big).await.unwrap();
     let mut providers = HashMap::from([(
-        (ChatId(1), crate::providers::CLAUDE),
-        ProviderConnection::Claude(client),
+        (ChatId(1), crate::providers::test_support::CLAUDE),
+        ProviderConnection::new(super::adapter::ID, client),
     )]);
 
     let mut events = Vec::new();
