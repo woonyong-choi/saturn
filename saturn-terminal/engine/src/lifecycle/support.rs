@@ -423,7 +423,8 @@ impl Flow {
     pub(super) async fn router_now(&mut self, input: InputId, running: bool) -> RouteDecision {
         let record = self.record(input);
         let revision = self.engine.queue.revision(self.chat);
-        let request = self.engine.router_request(&record, running);
+        let plan = self.engine.model_plan(record.settings).await.unwrap();
+        let request = self.engine.router_request(&record, running, &plan);
         let exchange = self.engine.routers.shared().exchange(request.clone()).await;
         let job = RouterJob {
             chat: self.chat,

@@ -19,6 +19,7 @@ mod inputs;
 mod intake;
 mod live_settings;
 mod model;
+mod model_mode;
 mod outcomes;
 mod packet_overflow;
 mod permissions;

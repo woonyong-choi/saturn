@@ -17,6 +17,7 @@ use serde_json::Value;
 use saturn_core::routers::{Method, Thresholds};
 use saturn_core::sessions::context::{ContextBudget, DEFAULT_CACHE_TTL};
 use saturn_protocol::ids::Provider;
+use saturn_protocol::rpc::ModelMode;
 
 use crate::providers::ContextDefaults;
 use saturn_protocol::state::OnExit;
@@ -206,6 +207,19 @@ impl Settings {
             "ask" => OnExit::Ask,
             _ => OnExit::Background,
         }
+    }
+
+    /// 모델 선택 방식 `model.mode`. 옛 스냅샷에 없거나 모르는 값이면 오토다.
+    pub(crate) fn model_mode(&self) -> ModelMode {
+        match self.get("model.mode").and_then(Value::as_str) {
+            Some("manual") => ModelMode::Manual,
+            _ => ModelMode::Auto,
+        }
+    }
+
+    /// 기본 모델 `model.default`의 원문(`<provider>/<model>`). 고르지 않았으면 `None`.
+    pub(crate) fn model_default(&self) -> Option<&str> {
+        self.get("model.default")?.as_str()
     }
 
     /// 정리 모드 `context.mode`. 모르는 값은 검사에서 걸러져 기본값(`saturn`)으로 본다.

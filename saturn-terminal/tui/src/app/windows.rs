@@ -2,7 +2,7 @@
 //! 설계: docs/design/tui.md
 
 use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::{ModelChoice, Request};
+use saturn_protocol::rpc::{ModelChoice, ModelMode, Request};
 
 use super::{App, Effect, Window};
 use crate::i18n;
@@ -12,6 +12,7 @@ use crate::view::exit_confirm::ExitChoice;
 use crate::view::folder_trust::TrustChoice;
 use crate::view::input_request::InputQueue;
 use crate::view::live_area::LiveArea;
+use crate::view::model_picker::{ModelPicker, ModelPurpose};
 use crate::view::permission::PermissionQueue;
 use crate::view::resume_prompt::ResumeOutcome;
 use crate::view::router_version::RouterVersionCommand;
@@ -377,11 +378,79 @@ impl App {
                 if let (Some(choice), Some(chat)) =
                     (picker.selected_choice().cloned(), self.chat.chat)
                 {
+                    let first_default = picker.purpose == ModelPurpose::Default;
                     self.window = None;
-                    return self.pin_model(chat, choice);
+                    return if first_default {
+                        vec![Effect::Send(Request::SetDefaultModel {
+                            chat,
+                            model: choice,
+                        })]
+                    } else {
+                        self.pin_model(chat, choice)
+                    };
+                }
+            }
+            Action::SetDefaultModel if picker.purpose == ModelPurpose::Pin => {
+                if let (Some(choice), Some(chat)) =
+                    (picker.selected_choice().cloned(), self.chat.chat)
+                {
+                    return vec![Effect::Send(Request::SetDefaultModel {
+                        chat,
+                        model: choice,
+                    })];
+                }
+            }
+            Action::ToggleModelMode if picker.purpose == ModelPurpose::Pin => {
+                if let Some(chat) = self.chat.chat {
+                    let mode = match picker.mode {
+                        ModelMode::Auto => ModelMode::Manual,
+                        ModelMode::Manual => ModelMode::Auto,
+                    };
+                    return vec![Effect::Send(Request::SetModelMode { chat, mode })];
                 }
             }
             _ => {}
+        }
+        Vec::new()
+    }
+
+    /// engine가 알린 기본 모델과 선택 방식을 받는다. 이미 알던 값이 바뀌면 안내 한 줄을 남기고, 열린 `/model` 창에 반영한다.
+    /// 기본 모델이 없으면 실행마다 한 번 처음 고르기 창을 열고 모든 provider의 목록을 요청한다.
+    pub(super) fn on_model_settings(
+        &mut self,
+        chat: ChatId,
+        default: Option<ModelChoice>,
+        mode: ModelMode,
+    ) -> Vec<Effect> {
+        let known = self.chat.model_mode.is_some();
+        if let (true, Some(model)) = (known && default != self.chat.model_default, &default) {
+            let text = self
+                .lang
+                .tr(i18n::MODEL_DEFAULT_SET)
+                .replace("{provider}", i18n::provider_name(model.provider))
+                .replace("{model}", &model.model);
+            self.push_cell(TranscriptCell::Warning(text));
+        }
+        if known && self.chat.model_mode != Some(mode) {
+            let text = self
+                .lang
+                .tr(i18n::MODEL_MODE_SET)
+                .replace("{mode}", self.lang.tr(i18n::model_mode_name(mode)));
+            self.push_cell(TranscriptCell::Warning(text));
+        }
+        self.chat.model_default.clone_from(&default);
+        self.chat.model_mode = Some(mode);
+        if let Some(Window::Model(picker)) = &mut self.window {
+            picker.default = default.clone();
+            picker.mode = mode;
+        }
+        if default.is_none() && !self.default_model_asked {
+            self.default_model_asked = true;
+            self.open_window(Window::Model(ModelPicker::first_default(mode)));
+            return vec![Effect::Send(Request::ListModels {
+                chat,
+                provider: None,
+            })];
         }
         Vec::new()
     }

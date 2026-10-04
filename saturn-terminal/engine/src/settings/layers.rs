@@ -49,6 +49,9 @@ injection = 0.7
 progressing = 0.2
 feedback_cause = 0.7
 
+[model]
+mode = "auto"
+
 [consent]
 share_with_server = false
 
@@ -108,6 +111,8 @@ const SCHEMA: &[(&str, Kind)] = &[
     ("router.local.endpoint", Kind::Text),
     ("router.local.version", Kind::Text),
     ("router.skip_check", Kind::Flag),
+    ("model.default", Kind::Text),
+    ("model.mode", Kind::OneOf(&["auto", "manual"])),
     ("grading.model", Kind::Text),
     ("consent.share_with_server", Kind::Flag),
     ("retention.max_age_days", Kind::Positive),

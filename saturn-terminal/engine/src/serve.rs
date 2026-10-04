@@ -242,6 +242,10 @@ impl Engine {
             Request::LatestChat { folder } => self.send_latest_chat(client, &folder).await,
             Request::ListChats { folder } => self.send_chat_list(client, folder.as_deref()).await,
             Request::SetModel { chat, model } => self.set_model(client, chat, &model).await,
+            Request::SetDefaultModel { chat, model } => {
+                self.set_default_model(client, chat, &model).await
+            }
+            Request::SetModelMode { chat, mode } => self.set_model_mode(client, chat, mode).await,
             Request::ListTasks => self.send_task_list(client).await,
             // TODO(#91): 학습과 router 버전
             Request::Train { .. } => Err(unsupported("Train")),

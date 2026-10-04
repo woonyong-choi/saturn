@@ -53,7 +53,9 @@ async fn target_model_candidates_are_the_model_list_in_provider_order() {
     );
 
     let input = flow.accept_only("hello").await;
-    let request = flow.engine.router_request(&flow.record(input), false);
+    let record = flow.record(input);
+    let plan = flow.engine.model_plan(record.settings).await.unwrap();
+    let request = flow.engine.router_request(&record, false, &plan);
 
     let (_, questions) = &request.sets[0];
     let target = questions

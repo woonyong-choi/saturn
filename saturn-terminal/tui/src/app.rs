@@ -133,6 +133,8 @@ pub(crate) struct App {
     pub history: InputHistory,
     /// 채팅을 열 때 한 번만 묻는다.
     pub resume_asked: bool,
+    /// 기본 모델을 고르지 않았을 때 처음 고르기 창은 실행마다 한 번만 연다.
+    pub default_model_asked: bool,
     /// 메인 에이전트의 다음 입력에 붙이고 비운다.
     pub pending_attachments: Vec<ShellOutput>,
     pub tick: u64,
@@ -185,6 +187,7 @@ impl App {
             chat_folder: None,
             history,
             resume_asked: false,
+            default_model_asked: false,
             pending_attachments: Vec::new(),
             tick: 0,
             quit: false,

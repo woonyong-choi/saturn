@@ -184,6 +184,16 @@ pub enum Request {
         chat: ChatId,
         model: ModelChoice,
     },
+    /// 기본 모델을 정해 사용자 설정(`model.default`)에 저장한다. 붙은 모든 TUI에 `ModelSettings`로 알린다.
+    SetDefaultModel {
+        chat: ChatId,
+        model: ModelChoice,
+    },
+    /// 모델 선택 방식을 정해 사용자 설정(`model.mode`)에 저장한다. 붙은 모든 TUI에 `ModelSettings`로 알린다.
+    SetModelMode {
+        chat: ChatId,
+        mode: ModelMode,
+    },
     /// 고를 수 있는 모델 목록을 `Models`로 보낸다. `provider`가 `None`이면 모든 provider.
     /// `chat`은 Codex 목록을 받을 연결을 고른다.
     ListModels {
@@ -342,6 +352,12 @@ pub enum Notification {
     ModelPinned {
         chat: ChatId,
         model: ModelChoice,
+    },
+    /// 기본 모델과 모델 선택 방식. 채팅에 붙을 때와 설정이 바뀔 때 보낸다. `default`가 `None`이면 기본 모델을 아직 고르지 않았다.
+    ModelSettings {
+        chat: ChatId,
+        default: Option<ModelChoice>,
+        mode: ModelMode,
     },
     /// `ListModels`의 답. provider 순서와 provider가 알려 준 순서를 지킨다.
     Models {
@@ -586,6 +602,14 @@ pub struct ProviderInfo {
 pub struct ModelChoice {
     pub provider: Provider,
     pub model: String,
+}
+
+/// 새 작업의 모델을 누가 고르는지. 오토는 router, 매뉴얼은 사용자(기본 모델이나 `/model`로 고정한 모델).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "snake_case")]
+pub enum ModelMode {
+    Auto,
+    Manual,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

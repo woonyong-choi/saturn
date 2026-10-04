@@ -12,8 +12,8 @@ use saturn_protocol::ids::{
 };
 use saturn_protocol::input::{InputAnswer, InputField, InputFieldKind, InputRequest, InputValue};
 use saturn_protocol::rpc::{
-    Alert, ChatNotice, ExitPlan, ModelChoice, ModelInfo, Notification, PermissionAnswer, Request,
-    UsageRange,
+    Alert, ChatNotice, ExitPlan, ModelChoice, ModelInfo, ModelMode, Notification, PermissionAnswer,
+    Request, UsageRange,
 };
 use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 
@@ -22,6 +22,7 @@ use crate::history::InputHistory;
 use crate::i18n::Lang;
 use crate::keys::KeyArea;
 use crate::view::buffer_lines;
+use crate::view::model_picker::ModelPurpose;
 use crate::view::popup::PopupKind;
 use crate::view::transcript::TranscriptCell;
 use crate::view::usage::usage_request;
@@ -2038,6 +2039,169 @@ fn model_command_is_not_passed_to_the_provider() {
             .iter()
             .all(|request| !matches!(request, Request::SubmitInput { .. }))
     );
+}
+
+fn model_settings(default: Option<ModelChoice>, mode: ModelMode) -> Notification {
+    Notification::ModelSettings {
+        chat: ChatId(7),
+        default,
+        mode,
+    }
+}
+
+fn opus() -> ModelChoice {
+    ModelChoice {
+        provider: Provider::from_static("claude"),
+        model: "opus".to_owned(),
+    }
+}
+
+/// 기본 모델이 없다는 알림을 받아 처음 고르기 창이 열리고 목록 두 개가 도착한 상태.
+fn first_default_window() -> App {
+    let mut app = attached();
+    notify(&mut app, model_settings(None, ModelMode::Auto));
+    notify(
+        &mut app,
+        Notification::Models {
+            models: vec![
+                model_info(Provider::from_static("claude"), "opus"),
+                model_info(Provider::from_static("codex"), "gpt-x"),
+            ],
+        },
+    );
+    app
+}
+
+#[test]
+fn missing_default_model_opens_the_first_choice_window_with_every_provider() {
+    let mut app = attached();
+
+    let effects = notify(&mut app, model_settings(None, ModelMode::Auto));
+
+    let Some(Window::Model(picker)) = &app.window else {
+        panic!("first choice window should be open");
+    };
+    assert_eq!(picker.purpose, ModelPurpose::Default);
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::ListModels {
+            chat: ChatId(7),
+            provider: None,
+        }]
+    );
+}
+
+#[test]
+fn chosen_default_model_does_not_open_the_first_choice_window() {
+    let mut app = attached();
+
+    let effects = notify(&mut app, model_settings(Some(opus()), ModelMode::Auto));
+
+    assert!(app.window.is_none());
+    assert!(sent(&effects).is_empty());
+}
+
+#[test]
+fn first_choice_window_enter_saves_the_default_model() {
+    let mut app = first_default_window();
+
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert!(app.window.is_none());
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::SetDefaultModel {
+            chat: ChatId(7),
+            model: ModelChoice {
+                provider: Provider::from_static("codex"),
+                model: "gpt-x".to_owned(),
+            },
+        }]
+    );
+}
+
+#[test]
+fn first_choice_window_escape_saves_nothing_and_is_not_reopened_in_this_run() {
+    let mut app = first_default_window();
+
+    let effects = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    let again = notify(&mut app, model_settings(None, ModelMode::Auto));
+
+    assert!(sent(&effects).is_empty());
+    assert!(sent(&again).is_empty());
+    assert!(app.window.is_none());
+}
+
+#[test]
+fn first_choice_window_ignores_the_mode_key() {
+    let mut app = first_default_window();
+
+    let effects = press(&mut app, KeyCode::Char('m'), KeyModifiers::NONE);
+
+    assert!(sent(&effects).is_empty());
+}
+
+#[test]
+fn model_window_d_saves_the_highlighted_model_as_the_default() {
+    let mut app = model_window();
+
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    let effects = press(&mut app, KeyCode::Char('d'), KeyModifiers::NONE);
+
+    assert!(matches!(app.window, Some(Window::Model(_))));
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::SetDefaultModel {
+            chat: ChatId(7),
+            model: ModelChoice {
+                provider: Provider::from_static("codex"),
+                model: "gpt-x".to_owned(),
+            },
+        }]
+    );
+}
+
+#[test]
+fn model_window_m_switches_between_auto_and_manual() {
+    let mut app = attached();
+    notify(&mut app, model_settings(Some(opus()), ModelMode::Auto));
+    type_text(&mut app, "/model");
+    app.popup = None;
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    let to_manual = press(&mut app, KeyCode::Char('m'), KeyModifiers::NONE);
+    notify(&mut app, model_settings(Some(opus()), ModelMode::Manual));
+    let to_auto = press(&mut app, KeyCode::Char('m'), KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&to_manual),
+        vec![&Request::SetModelMode {
+            chat: ChatId(7),
+            mode: ModelMode::Manual,
+        }]
+    );
+    assert_eq!(
+        sent(&to_auto),
+        vec![&Request::SetModelMode {
+            chat: ChatId(7),
+            mode: ModelMode::Auto,
+        }]
+    );
+}
+
+#[test]
+fn model_settings_change_leaves_a_notice_and_updates_the_footer_state() {
+    let mut app = attached();
+    notify(&mut app, model_settings(Some(opus()), ModelMode::Auto));
+
+    notify(&mut app, model_settings(Some(opus()), ModelMode::Manual));
+
+    assert_eq!(app.chat.model_mode, Some(ModelMode::Manual));
+    assert!(app.transcript.cells().iter().any(|cell| matches!(
+        cell,
+        TranscriptCell::Warning(text) if text.contains("매뉴얼")
+    )));
 }
 
 #[test]

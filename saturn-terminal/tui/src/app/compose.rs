@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use saturn_protocol::ids::{InputId, TaskLabel};
-use saturn_protocol::rpc::{Request, UsageRange};
+use saturn_protocol::rpc::{ModelMode, Request, UsageRange};
 use saturn_protocol::state::InputState;
 
 use super::{App, Effect, Window};
@@ -336,7 +336,9 @@ impl App {
                 Some(Request::ListRouterVersions)
             }
             SlashCommand::Model { provider } => {
-                let picker = ModelPicker::new(provider, self.chat.pinned_model.clone());
+                let mut picker = ModelPicker::new(provider, self.chat.pinned_model.clone());
+                picker.default.clone_from(&self.chat.model_default);
+                picker.mode = self.chat.model_mode.unwrap_or(ModelMode::Auto);
                 self.open_window(Window::Model(picker));
                 chat.map(|chat| Request::ListModels { chat, provider })
             }

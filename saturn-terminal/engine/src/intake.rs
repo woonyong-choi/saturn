@@ -10,10 +10,11 @@ use saturn_core::routers::{
     question_ids, questions_for_input, validate,
 };
 use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision};
-use saturn_protocol::rpc::Notification;
+use saturn_protocol::rpc::{ModelMode, Notification};
 use saturn_protocol::state::{Disposition, InputState};
 
 use crate::flow::{Routed, RouterDone, RouterJob, Unrecorded};
+use crate::models::ModelPlan;
 use crate::requests::{settings_notification, trust_notification};
 use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
 use crate::rpc::ClientId;
@@ -221,6 +222,7 @@ impl Engine {
                 self.set_folder_trust(*client, Some(prompt.clone()));
             }
         }
+        self.announce_model_settings(chat, revision).await?;
         Ok(revision)
     }
 
@@ -239,7 +241,7 @@ impl Engine {
                 let decision = direct_decision(&record, revision);
                 self.apply_decision(input, decision, false).await?;
             } else {
-                self.start_router(&record, revision, false);
+                self.start_router(&record, revision, false).await?;
             }
         }
         Ok(())
@@ -284,7 +286,7 @@ impl Engine {
                     }
                     retried = true;
                     if !record.skip_relation {
-                        self.start_router(&record, current, retried);
+                        self.start_router(&record, current, retried).await?;
                         return Ok(());
                     }
                     decision = direct_decision(&record, current);
@@ -367,14 +369,18 @@ impl Engine {
 
     /// router 호출을 별도 작업으로 시작하고 기다리지 않는다. 요청은 지금 상태로 만들고 `revision`은
     /// 결과를 적용할 때 비교하려고 호출 결과와 함께 돌려받는다.
-    pub(crate) fn start_router(
+    ///
+    /// # Errors
+    /// 입력의 설정 번호를 읽지 못하면 `Settings`.
+    pub(crate) async fn start_router(
         &mut self,
         record: &QueuedInput,
         revision: ChatRevision,
         retried: bool,
-    ) {
+    ) -> Result<(), EngineError> {
         let running = self.chat_is_running(record.chat);
-        let request = self.router_request(record, running);
+        let plan = self.model_plan(record.settings).await?;
+        let request = self.router_request(record, running, &plan);
         let job = RouterJob {
             chat: record.chat,
             input: record.id,
@@ -393,6 +399,7 @@ impl Engine {
                 exchange,
             });
         });
+        Ok(())
     }
 
     /// 돌아온 호출 결과를 읽는다. 기록은 적용 결과를 안 뒤 `settle_record`가 쓴다.
@@ -410,16 +417,19 @@ impl Engine {
         let mut read =
             self.read_verdict(request, &exchange, &settings, job.revision, record.settings);
         // 고정 모델은 `target_model` 선택만 대신하고 관계 판단은 그대로 받는다.
-        // 고정하지 않았으면 후보가 아닌 글은 버려 현재 모델로 둔다
-        if record.pinned_model.is_some() {
-            read.decision.model.clone_from(&record.pinned_model);
+        // 고정하지 않았으면 오토 모드에서 후보 글인 router 선택을, 아니면 기본 모델을 쓴다. 둘 다 없으면 현재 모델이다
+        let plan = ModelPlan::from_settings(&settings, &self.registry);
+        read.decision.model = if record.pinned_model.is_some() {
+            record.pinned_model.clone()
         } else {
-            read.decision.model = read
+            let routed = read
                 .decision
                 .model
                 .take()
-                .filter(|model| self.registry.parse_pinned(model).is_some());
-        }
+                .filter(|model| self.registry.parse_pinned(model).is_some())
+                .filter(|_| plan.mode == ModelMode::Auto);
+            routed.or(plan.default)
+        };
         let fallbacks = read.fallback_reasons();
         let context = RecordContext {
             chat: record.chat,
@@ -440,7 +450,17 @@ impl Engine {
         })
     }
 
-    pub(crate) fn router_request(&self, record: &QueuedInput, running: bool) -> RouterRequest {
+    pub(crate) fn router_request(
+        &self,
+        record: &QueuedInput,
+        running: bool,
+        plan: &ModelPlan,
+    ) -> RouterRequest {
+        // 매뉴얼 모드는 후보를 주지 않아 `target_model`을 묻지 않는다
+        let candidates = match plan.mode {
+            ModelMode::Auto => self.model_candidates(record.chat),
+            ModelMode::Manual => Vec::new(),
+        };
         let activity = if running { "running" } else { "idle" };
         let previous = self
             .flow
@@ -458,7 +478,7 @@ impl Engine {
                 running,
                 record.pinned_model.is_some(),
                 self.queue.has_held_task(record.chat),
-                &self.model_candidates(record.chat),
+                &candidates,
             ),
         }
     }

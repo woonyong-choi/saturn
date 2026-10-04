@@ -254,7 +254,30 @@ pub const TRAIN_RETRAIN: &str = "모델 추가 학습";
 pub const MODEL_TITLE: &str = "모델 고르기";
 pub const MODEL_LOADING: &str = "모델 목록을 불러오는 중";
 pub const MODEL_EMPTY: &str = "고를 수 있는 모델이 없습니다";
-pub const MODEL_HINT: &str = "↑↓ 이동 · Enter 고르기 · Esc 취소";
+pub const MODEL_HINT: &str =
+    "↑↓ 이동 · Enter 이 채팅에 고정 · d 기본 모델로 · m 오토/매뉴얼 · Esc 닫기";
+pub const MODEL_DEFAULT_TITLE: &str = "기본 모델을 고르세요";
+pub const MODEL_DEFAULT_INTRO: &str = "연결할 수 있는 provider의 모델을 모두 보입니다. 고른 모델이 기본 모델로 저장되고, /model로 언제든 바꿀 수 있습니다";
+pub const MODEL_DEFAULT_HINT: &str = "↑↓ 이동 · Enter 기본 모델로 저장 · Esc 나중에";
+/// `{model}`은 `provider · 모델 이름`이거나 `MODEL_NONE`, `{mode}`는 오토나 매뉴얼.
+pub const MODEL_STATUS: &str = "기본 모델 {model} · 선택 방식 {mode}";
+pub const MODEL_NONE: &str = "없음";
+pub const MODEL_MODE_AUTO: &str = "오토";
+pub const MODEL_MODE_MANUAL: &str = "매뉴얼";
+/// `{mode}`는 오토나 매뉴얼.
+pub const FOOTER_MODEL_MODE: &str = "모델 {mode}";
+/// `{provider}`와 `{model}` 자리는 호출하는 쪽이 채운다.
+pub const MODEL_DEFAULT_SET: &str = "기본 모델을 {provider} · {model}로 정했습니다";
+/// `{mode}`는 오토나 매뉴얼.
+pub const MODEL_MODE_SET: &str = "모델 선택 방식을 {mode} 모드로 바꿨습니다";
+
+/// 모델 선택 방식 이름의 번역 키.
+pub fn model_mode_name(mode: saturn_protocol::rpc::ModelMode) -> &'static str {
+    match mode {
+        saturn_protocol::rpc::ModelMode::Auto => MODEL_MODE_AUTO,
+        saturn_protocol::rpc::ModelMode::Manual => MODEL_MODE_MANUAL,
+    }
+}
 pub const PRUNE_TITLE: &str = "기록 정리";
 pub const PRUNE_HINT: &str = "↑↓ 이동 · y 지우기 · Esc 취소";
 pub const PRUNE_HINT_CLOSE: &str = "Esc 닫기";
