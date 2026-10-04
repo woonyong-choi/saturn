@@ -1,0 +1,2 @@
+{"run_id":"20261004T092421Z-f2334e7","trial_id":"env-001","condition":"child_env_is_scrubbed_and_marked","ts_utc":"2026-10-04T09:28:35Z","layer":"env","passed":true,"cli_exit":0}
+{"run_id":"20261004T092421Z-f2334e7","trial_id":"env-002","condition":"provider_env_drops_router_key_variable_and_keeps_the_rest","ts_utc":"2026-10-04T09:28:36Z","layer":"env","passed":true,"cli_exit":0}

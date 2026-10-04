@@ -112,6 +112,10 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 - 이 판정은 차단 목록 방식이라 막지 못하는 형태가 남는다. 문자열을 조립하거나 인코딩해 실행하는 명령(`base64 -d | sh`), 내려받은 스크립트나 사용자가 만든 스크립트 파일 실행, 인터프리터가 이름을 조립해 부르는 `security`, `find -exec`처럼 목록에 없는 실행기, 작업 폴더를 옮긴 뒤의 상대 경로가 그렇다. 키 항목 자체에 접근 제어를 거는 근본 대책은 [#2](https://github.com/woonyong-choi/saturn/issues/2)와 [#102](https://github.com/woonyong-choi/saturn/issues/102)에서 정한다. 훅은 그 앞의 한 겹이다.
 - Claude Code 2.1.288에서 Saturn 훅은 Bash로 쓴 `security find-generic-password` 조회를 요청이 호스트에 오기 전에 막았고, 전경과 백그라운드 subagent의 같은 조회도 막았다(각 3/3). 훅 입력에는 subagent 호출에 `agent_id`와 `agent_type`이 실린다. 중첩 subagent의 조회도 훅 기록에서 3/3 막혔지만 그 호출이 스트림에는 1/3만 보였다. 반면 `sh -c "/usr/bin/security find-generic-password ..."`는 3/3 막지 못했고 값이 도구 결과에 나왔다. 원인은 첫 낱말과 첫 비옵션 낱말만 보는 판정이었고, 셸·`eval`·인터프리터 인자를 해석하는 수정은 위 항목대로 단위 테스트로만 확인했다. 실제 provider로 다시 재지 않았다. Codex 훅은 재지 않았다([#3](https://github.com/woonyong-choi/saturn/issues/3), [#23](https://github.com/woonyong-choi/saturn/issues/23), [실험](../experiments/claude-provider-behavior/report.md)).
 
+### OS 수준 방어
+
+[실측](../experiments/router-key-defense/report.md)에서 Codex의 `:read-only`와 `:workspace` 샌드박스는 감싼 조회를 포함한 세 호출 형태의 키체인 조회를 모두 막았다. Claude Code 샌드박스는 켜기만 해서는 막지 못했고 키체인 폴더를 `filesystem.denyRead`에 더했을 때 막았다. 키체인 접근 제어는 창을 띄우지만 클릭 한 번으로 열려 보조층이다. 구현은 아직 없다(초안): Claude 실행별 설정에 샌드박스와 키체인 폴더 읽기 금지를 합쳐 넘기는 안을 정한다.
+
 ### 전송
 
 - router는 `engine`만 부른다. router 키가 자식 프로세스나 다른 호스트로 새는 일을 막기 위해서다.

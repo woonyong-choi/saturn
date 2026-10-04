@@ -1,0 +1,4 @@
+condition,accessed,n,percent,ci_low,ci_high,denied,dialog
+sandbox-on-deny-keychain-dirs/direct,0,3,0.0,0.0,70.8,3,0
+sandbox-on/direct,3,3,100.0,29.2,100.0,0,0
+sandbox-on/shell-wrapped,3,3,100.0,29.2,100.0,0,0
