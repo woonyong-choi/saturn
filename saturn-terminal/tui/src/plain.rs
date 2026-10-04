@@ -33,10 +33,10 @@ pub(crate) struct PlainOutput<W: Write> {
     unanswered: u64,
     /// 입력을 보낸 적이 있다.
     sent: bool,
-    /// 이 접속이 접수시킨 입력 중 끝 상태가 아닌 것과 그 입력의 작업 이름표. 다른 접속의 입력은 넣지 않는다.
-    pending: BTreeMap<InputId, Option<TaskLabel>>,
-    /// 이 접속의 입력이 적용돼 끝나기를 기다리는 작업의 이름표.
-    owed: Vec<TaskLabel>,
+    /// 이 접속이 접수시킨 입력 중 끝 상태가 아닌 것과 그 입력의 작업. 다른 접속의 입력은 넣지 않는다.
+    pending: BTreeMap<InputId, Option<TaskId>>,
+    /// 이 접속의 입력이 적용돼 끝나기를 기다리는 작업. 표시 글자(`TaskLabel`)는 작업 27개째부터 겹치므로 `TaskId`로 센다.
+    owed: Vec<TaskId>,
 }
 
 impl<W: Write> PlainOutput<W> {
@@ -129,23 +129,11 @@ impl<W: Write> PlainOutput<W> {
                 self.unanswered = self.unanswered.saturating_sub(1);
                 self.pending.insert(input, None);
             }
-            Notification::InputChanged {
-                input,
-                text,
-                label,
-                state,
-                disposition,
-                reason,
-            } => {
-                let update = InputUpdate {
-                    input,
-                    text,
-                    label,
-                    state,
-                    disposition,
-                    reason,
-                };
-                self.input_changed(update, now)?;
+            changed @ Notification::InputChanged { .. } => {
+                if let Some((update, task)) = InputUpdate::of(changed) {
+                    self.track_input(update.input, update.state, task, update.disposition);
+                    self.input_changed(update, now)?;
+                }
             }
             Notification::TaskChanged {
                 task,
@@ -163,7 +151,7 @@ impl<W: Write> PlainOutput<W> {
                     elapsed: Duration::from_millis(elapsed_ms),
                     failure,
                 };
-                self.track_task(label, state);
+                self.track_task(task, state);
                 self.task_changed(update, now)?;
             }
             Notification::TaskEvent { task, event } => {
@@ -233,7 +221,6 @@ impl<W: Write> PlainOutput<W> {
     // vars: t = 작업 수, o = 기다리는 작업 수, l = 쓸 줄 수
     // basis: estimate
     fn input_changed(&mut self, update: InputUpdate, now: Instant) -> std::io::Result<()> {
-        self.track_input(update.input, update.state, update.label, update.disposition);
         let cell = echo_cell(&update);
         if let Change::Echo { .. } = self.chat.apply_input(update, now) {
             self.cell(&cell)?;
@@ -249,30 +236,30 @@ impl<W: Write> PlainOutput<W> {
         &mut self,
         input: InputId,
         state: InputState,
-        label: Option<TaskLabel>,
+        task: Option<TaskId>,
         disposition: Option<Disposition>,
     ) {
         let Some(known) = self.pending.get_mut(&input) else {
             return;
         };
-        if label.is_some() {
-            *known = label;
+        if task.is_some() {
+            *known = task;
         }
-        let label = *known;
+        let task = *known;
         match state {
             InputState::Rejected => self.failed = true,
             InputState::Applied => {
                 // 끼워 넣을 작업이 이미 끝났다면 기다릴 끝이 오지 않는다
-                let is_open = label.is_some_and(|label| {
+                let is_open = task.is_some_and(|task| {
                     self.chat
                         .tasks
-                        .values()
-                        .any(|view| view.label == label && is_active(view.state))
+                        .get(&task)
+                        .is_some_and(|view| is_active(view.state))
                 });
-                if let Some(label) = label
+                if let Some(task) = task
                     && (disposition != Some(Disposition::Steer) || is_open)
                 {
-                    self.owed.push(label);
+                    self.owed.push(task);
                 }
             }
             _ => {}
@@ -286,21 +273,21 @@ impl<W: Write> PlainOutput<W> {
     }
 
     /// 이 접속의 입력이 기다리는 작업의 끝을 따라간다. 결과를 모르거나 멈춘 작업은 기다리지 않고 실패로 센다.
-    fn track_task(&mut self, label: TaskLabel, state: TaskState) {
+    fn track_task(&mut self, task: TaskId, state: TaskState) {
         let before = self.owed.len();
-        self.owed.retain(|owed| *owed != label);
+        self.owed.retain(|owed| *owed != task);
         let is_ours = self.owed.len() != before;
         match state {
             TaskState::Done => {}
             TaskState::Failed => self.failed |= is_ours,
             TaskState::NeedsCheck | TaskState::Held => {
                 let before = self.pending.len();
-                self.pending.retain(|_, pending| *pending != Some(label));
+                self.pending.retain(|_, pending| *pending != Some(task));
                 self.failed |= is_ours || self.pending.len() != before;
             }
             _ => {
                 if is_ours {
-                    self.owed.push(label);
+                    self.owed.push(task);
                 }
             }
         }
@@ -537,6 +524,7 @@ mod tests {
                 input: InputId(1),
                 text: "버그 고쳐".to_string(),
                 label: Some(TaskLabel('A')),
+                task: Some(TaskId(1)),
                 state: InputState::Delivering,
                 disposition: None,
                 reason: None,
@@ -689,6 +677,7 @@ mod tests {
                     input: InputId(input),
                     text: "일".to_string(),
                     label: Some(TaskLabel(label)),
+                    task: Some(TaskId(input)),
                     state: InputState::Applied,
                     disposition: Some(Disposition::NewTask),
                     reason: None,
@@ -720,6 +709,100 @@ mod tests {
 
         assert!(plain.is_finished());
         assert!(!plain.has_failed());
+    }
+
+    #[test]
+    fn a_task_sharing_the_label_finishing_first_does_not_end_or_fail_this_connections_wait() {
+        let now = Instant::now();
+        let mut plain = PlainOutput::new(Vec::new(), Lang::Ko);
+        accepted_and_applied(&mut plain, 1, 'Z');
+        plain
+            .apply(labeled_task(1, 'Z', TaskState::Running), now)
+            .unwrap();
+        plain
+            .apply(labeled_task(2, 'Z', TaskState::Running), now)
+            .unwrap();
+
+        plain
+            .apply(labeled_task(2, 'Z', TaskState::Failed), now)
+            .unwrap();
+
+        assert!(!plain.is_finished());
+        assert!(!plain.has_failed());
+        plain
+            .apply(labeled_task(1, 'Z', TaskState::Done), now)
+            .unwrap();
+        assert!(plain.is_finished());
+        assert!(!plain.has_failed());
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    fn steered_onto(plain: &mut PlainOutput<Vec<u8>>, input: u64, task: u64, label: char) {
+        let now = Instant::now();
+        plain.submitted("일".to_string());
+        plain
+            .apply(
+                Notification::InputAccepted {
+                    client_ref: input,
+                    input: InputId(input),
+                },
+                now,
+            )
+            .unwrap();
+        plain
+            .apply(
+                Notification::InputChanged {
+                    input: InputId(input),
+                    text: "일".to_string(),
+                    label: Some(TaskLabel(label)),
+                    task: Some(TaskId(task)),
+                    state: InputState::Applied,
+                    disposition: Some(Disposition::Steer),
+                    reason: None,
+                },
+                now,
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn a_steer_waits_for_the_task_it_joined_not_for_one_sharing_its_label() {
+        let now = Instant::now();
+        let mut plain = PlainOutput::new(Vec::new(), Lang::Ko);
+        plain
+            .apply(labeled_task(1, 'Z', TaskState::Running), now)
+            .unwrap();
+        plain
+            .apply(labeled_task(3, 'Z', TaskState::Running), now)
+            .unwrap();
+        steered_onto(&mut plain, 7, 1, 'Z');
+
+        plain
+            .apply(labeled_task(3, 'Z', TaskState::Done), now)
+            .unwrap();
+        assert!(!plain.is_finished());
+        plain
+            .apply(labeled_task(1, 'Z', TaskState::Done), now)
+            .unwrap();
+
+        assert!(plain.is_finished());
+    }
+
+    #[test]
+    fn a_steer_onto_a_finished_task_does_not_wait_for_another_task_sharing_its_label() {
+        let now = Instant::now();
+        let mut plain = PlainOutput::new(Vec::new(), Lang::Ko);
+        plain
+            .apply(labeled_task(1, 'Z', TaskState::Done), now)
+            .unwrap();
+        plain
+            .apply(labeled_task(3, 'Z', TaskState::Running), now)
+            .unwrap();
+
+        steered_onto(&mut plain, 7, 1, 'Z');
+
+        assert!(plain.is_finished());
     }
 
     #[test]

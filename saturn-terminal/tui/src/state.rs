@@ -8,7 +8,7 @@ use saturn_protocol::event::{Activity, ProviderEvent, ToolDetail, UsageReport, U
 use saturn_protocol::ids::{
     AgentId, ChatId, InputId, JudgmentId, Provider, SettingsRevision, SubagentId, TaskId, TaskLabel,
 };
-use saturn_protocol::rpc::{Alert, ModelChoice, ModelMode, SettingsWarning};
+use saturn_protocol::rpc::{Alert, ModelChoice, ModelMode, Notification, SettingsWarning};
 use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 
 use crate::labels;
@@ -136,6 +136,33 @@ pub(crate) struct InputUpdate {
     pub state: InputState,
     pub disposition: Option<Disposition>,
     pub reason: Option<QueueReason>,
+}
+
+impl InputUpdate {
+    /// `InputChanged` 알림을 화면 갱신 값과 입력이 연결된 작업으로 나눈다. 다른 알림이면 `None`.
+    pub(crate) fn of(notification: Notification) -> Option<(Self, Option<TaskId>)> {
+        let Notification::InputChanged {
+            input,
+            text,
+            label,
+            task,
+            state,
+            disposition,
+            reason,
+        } = notification
+        else {
+            return None;
+        };
+        let update = Self {
+            input,
+            text,
+            label,
+            state,
+            disposition,
+            reason,
+        };
+        Some((update, task))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

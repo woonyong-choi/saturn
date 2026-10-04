@@ -435,6 +435,7 @@ fn accepted_and_ended(end: TaskState, failure: Option<&str>) -> Vec<Notification
             input: InputId(1),
             text: "go".to_owned(),
             label: Some(TaskLabel('A')),
+            task: Some(TaskId(1)),
             state: InputState::Applied,
             disposition: Some(Disposition::NewTask),
             reason: None,

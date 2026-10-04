@@ -328,6 +328,7 @@ impl Engine {
             input,
             text: record.text.clone(),
             label,
+            task: record.task,
             state: record.state,
             disposition: self.queue.disposition(input),
             reason: record.reason,
