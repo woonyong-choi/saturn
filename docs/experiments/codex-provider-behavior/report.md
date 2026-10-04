@@ -218,14 +218,14 @@ MCP와 `항상 허용`(H15~H21)은 아래와 같았다.
 
 - `thread/start`와 `thread/resume` 응답이 승인 정책, 승인 검토자, 샌드박스 종류, 네트워크 허용 여부, 작업 폴더를 싣는다(6/6). 기록 흐름으로 오는 알림은 없다. 턴 단위 덮어쓰기는 알림도, `turn/started`의 설정도, 이후 재개 응답도 반영하지 않는다(0/3, 3/3). 덮어쓴 네트워크 허용은 실제로 적용됐다(`curl` 3/3 성공). `config/read`는 `thread/start` 인자를 반영하지 않는다(6/6).
 - 증명 규칙에 주는 뜻: Saturn이 고정한 읽기 전용과 `networkAccess=false`는 응답으로 확인되고 실제로 네트워크가 막혔다(3/3). 사용자나 provider가 턴 단위로 올린 설정은 응답으로 확인할 수 없으므로 증명 규칙은 Saturn이 보낸 값만 근거로 삼아야 한다. [증명 기반 자동 재개 결정](../../decisions/2026-09-29-proof-based-auto-resume.md)의 다시 볼 조건 가운데 Codex는 해당하지 않는다.
-- 이슈: Claude 쪽이 남아 닫지 않는다.
+- 이슈: Claude 쪽은 [Claude provider 실측](../claude-provider-behavior/report.md)이 이미 답해 두 provider의 답이 모두 나왔다.
 
 #### #3 훅의 키 저장소 접근 차단(Codex)
 
 - 신뢰한 Saturn 훅은 `security find-generic-password`와 가짜 키 파일의 `cat`을 승인 요청 전에 막는다(각 3/3, 샌드박스 없이도 3/3). 신뢰 값이 없는 훅은 불리지 않는다(0/3). 훅 입력은 Claude와 같은 키다.
 - 읽기 전용 샌드박스는 훅 없이도 키체인 조회를 막았고(0/3 출력), 샌드박스가 없으면 훅 없이는 가짜 값이 출력됐다(3/3).
 - 구멍: Codex 파일 편집은 `tool_name=apply_patch`로 훅이 불리지만 Saturn 훅이 이 이름을 몰라 허용해(`providers/claude/hook.rs:55`, `secrets/hook.rs`의 `ToolCall::Other`) 가짜 키 파일 편집이 3/3 적용됐다. 지금 engine은 Codex에 훅을 넘기지 않는다.
-- 이슈: Claude 훅이 남아 닫지 않는다.
+- 이슈: Claude 직접 명령 차단은 [Claude provider 실측](../claude-provider-behavior/report.md)이 3/3으로 확인했지만 `sh -c`로 감싼 명령은 수정 뒤 실제 provider 재측정이 남아 닫지 않는다.
 
 #### 측정하지 못한 것
 
