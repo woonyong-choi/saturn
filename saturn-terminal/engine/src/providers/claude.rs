@@ -24,6 +24,7 @@ use crate::processes::{ProcessGroupId, ProcessSpec, StopScope, Supervisor};
 mod adapter;
 mod config;
 mod convert;
+mod extensions;
 mod hook;
 mod input;
 mod stream;

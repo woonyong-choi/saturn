@@ -106,7 +106,7 @@ Codex `turn/steer`는 실측을 통과했다([실측](../experiments/codex-provi
 
 ### provider 계층과 어댑터
 
-provider 연결은 세 계층으로 나눈다. 이 절의 계층 분리, 설명자, 레지스트리는 구현했고([#412](https://github.com/woonyong-choi/saturn/issues/412)), 명령 목록 전달, provider CLI 버전 알림, 확장 주입은 구현 전이다. 인터페이스는 `core`의 `ProviderClient` trait과 `ProviderEvent`, `protocol`의 `Provider`이고, engine `providers/adapter.rs`가 어댑터 계약(`Adapter`, `AdapterConnection`)을 정한다.
+provider 연결은 세 계층으로 나눈다. 이 절의 계층 분리, 설명자, 레지스트리는 구현했고([#412](https://github.com/woonyong-choi/saturn/issues/412)), 명령 목록 전달과 provider CLI 버전 알림은 구현했고, 확장 주입은 스킬, 명령, MCP 서버의 형식만 구현했다(실제 provider 확인 전, [기능 목록과 확장](extensions.md#주입)). 인터페이스는 `core`의 `ProviderClient` trait과 `ProviderEvent`, `protocol`의 `Provider`이고, engine `providers/adapter.rs`가 어댑터 계약(`Adapter`, `AdapterConnection`)을 정한다.
 
 | 계층 | 하는 일 | 위치 |
 |---|---|---|
@@ -158,6 +158,16 @@ engine은 시작할 때 레지스트리에 어댑터를 등록한다. 레지스�
 
 - 새 어댑터는 `providers/<id>` 폴더를 더하는 것으로 붙는다. 공통 코드의 수정은 없다. 이것을 가짜 provider 하나로 시험한다.
 - provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. 지금 `context.codex`, `context.claude` 키의 이관 규칙은 [설정](settings.md#설정-키)에 있다.
+- 새 provider를 더할 때 구현해야 하는 것. 공통 동작은 `Adapter` trait의 기본 메서드와 공용 도우미가 하고, 어댑터는 provider마다 다른 부분만 채운다.
+
+| 구분 | 필수 | 선택(기본 구현이 있다) |
+|---|---|---|
+| 설명자 | id, 표시명, 실행 파일, 기본 순서, 지시 문서 이름, 인터페이스 판, 맥락 기본값 | 기능 목록(끼워 넣기, 맥락 정리 요청), 확장 주입 형식(`extensions`, 기본은 주입하지 않음) |
+| 연결 | `connect`와 `AdapterConnection`(session 열기, 턴, 이벤트 변환) | 끼워 넣기, 맥락 정리, 줄 세운 입력 보내기 |
+| 실행 설정 | 없음 | `translate_permission`(기본은 규칙을 번역하지 않고 질문 기능만 따름), `rules_fingerprint`, `read_version`(기본은 `--version`), `injectability`(기본은 설명자의 주입 형식) |
+| 설정 키 | 없음 | `provider.<id>.*` 키와 기본값은 설명자가 알린다([설정](settings.md#설정-키)) |
+| 확장 주입 | 설명자의 주입 형식과, provider 형식으로 바꾸는 코드(설정 파일 쓰기, 실행 인자) | 파일 배치, 정의 읽기, 이름 겹침 처리는 공용 도우미([기능 목록과 확장](extensions.md#새-provider에-확장-주입을-붙일-때)) |
+
 - 등록은 컴파일할 때 정한 목록이다. engine `providers/builtin.rs`가 시작할 때 어댑터마다 한 줄씩 등록하고, 등록하지 못한 어댑터(같은 id나 지원하지 않는 판)는 로그만 남기고 건너뛴다(초안). 어댑터가 시작할 때 스스로 등록하는 방식은 프로세스 밖 어댑터를 붙일 때 다시 정한다.
 
 ### 직접 연결과 ACP 어댑터

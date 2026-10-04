@@ -1061,6 +1061,25 @@ fn agent_questions_are_asked_by_default_and_disallowed_in_full_mode() {
 }
 
 #[test]
+fn extension_arguments_come_after_the_defaults_and_before_the_settings() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut with_extensions = launch(dir.path(), Vec::new());
+    with_extensions.permission.extra_args = vec!["--plugin-dir".to_owned(), "/x".to_owned()];
+    let client = ClaudeClient::new(with_extensions, Supervisor::new());
+    let args = client.launch_args(
+        &spec(dir.path(), None),
+        &SessionArg::New("11111111-1111-4111-8111-111111111111".to_owned()),
+    );
+
+    let at = args
+        .iter()
+        .position(|arg| arg == "--plugin-dir")
+        .expect("the extension arguments should reach claude");
+    assert_eq!(args[at + 1], "/x");
+    assert!(args.iter().position(|arg| arg == "--settings").unwrap() > at);
+}
+
+#[test]
 fn default_model_is_not_passed_to_claude() {
     let dir = tempfile::tempdir().unwrap();
     let client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());

@@ -5,6 +5,7 @@ mod adapter;
 mod builtin;
 mod claude;
 mod codex;
+mod extension;
 mod registry;
 #[cfg(test)]
 pub(crate) mod test_support;
@@ -28,6 +29,10 @@ pub(crate) use adapter::{
     INTERFACE_VERSION, PermissionInput,
 };
 pub use builtin::{HookInputError, run_pre_tool_use};
+pub(crate) use extension::{
+    Definition, ExtensionInput, ExtensionLayout, collect_definitions, place_files,
+};
+pub use extension::{InjectedPart, InjectionFailure};
 pub use registry::Registry;
 pub(crate) use worker::{CallResult, Connected, ProviderHandle, ProviderMsg, Reply, spawn_connect};
 
@@ -66,9 +71,15 @@ pub struct LaunchSpec {
     pub masker: Masker,
 }
 
-/// Saturn 권한 규칙을 provider 실행 설정으로 번역한 결과. 어댑터가 번역해 채운다.
+/// Saturn 권한 규칙과 확장을 provider 실행 설정으로 번역한 결과. 어댑터가 번역해 채운다.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PermissionLaunch {
+    /// 어댑터가 provider 실행 인자 뒤에 더할 인자. 확장 주입이 쓴다.
+    pub extra_args: Vec<String>,
+    /// 주입하지 못한 부분. 나머지 부분은 주입한 채 session을 연다.
+    pub injection_failures: Vec<InjectionFailure>,
+    /// 이 실행 설정이 담은 확장의 지문. engine이 채우고, 지금 지문과 다르면 연결을 다시 시작한다.
+    pub extension_fingerprint: String,
     /// 어댑터가 provider 프로세스 환경에 덮어쓸 변수. 비면 `LaunchSpec.env`를 그대로 쓴다.
     pub env: Vec<(OsString, OsString)>,
     /// 번역한 규칙의 지문. 규칙이 연결을 시작할 때 고정되는 어댑터만 채운다. 설정이 바뀌어 지문이 달라지면 연결을

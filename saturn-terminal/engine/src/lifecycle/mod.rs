@@ -15,6 +15,7 @@ mod decision;
 mod deliver;
 mod events;
 mod exit;
+mod extension_inject;
 mod extensions;
 mod fake_provider;
 mod history_paging;

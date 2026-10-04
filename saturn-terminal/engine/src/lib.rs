@@ -16,8 +16,8 @@ pub(crate) mod training;
 
 pub use processes::Supervisor;
 pub use providers::{
-    HookInputError, LaunchSpec, PermissionLaunch, ProviderConnection, Registry, SaturnDefaults,
-    UserProviderConfig, run_pre_tool_use,
+    HookInputError, InjectedPart, InjectionFailure, LaunchSpec, PermissionLaunch,
+    ProviderConnection, Registry, SaturnDefaults, UserProviderConfig, run_pre_tool_use,
 };
 pub use secrets::{Masker, pre_tool_use_hook_settings};
 

@@ -511,6 +511,7 @@ impl Engine {
         self.flow.stale_connections.remove(&(chat, provider));
         self.flow.commands.remove(&(chat, provider));
         self.flow.rules_of_connection.remove(&(chat, provider));
+        self.flow.extensions_of_connection.remove(&(chat, provider));
         let lost: Vec<LiveSession> = self
             .flow
             .live

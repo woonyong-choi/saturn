@@ -364,3 +364,142 @@ fn read_rules_do_not_change_the_rules_fingerprint() {
         rules_fingerprint(&[shell, read])
     );
 }
+
+mod extension_parts {
+    use super::*;
+    use crate::providers::InjectedPart;
+    use saturn_protocol::rpc::ExtensionPartKind;
+
+    const LAYOUT: ExtensionLayout = ExtensionLayout {
+        skills_dir: Some("skills"),
+        commands: Some(("prompts", "md")),
+        mcp_servers: true,
+        hooks: false,
+    };
+
+    fn write(root: &Path, file: &str, content: &str) -> PathBuf {
+        let path = root.join(file);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, content).unwrap();
+        path
+    }
+
+    fn part(kind: ExtensionPartKind, name: &str, source: PathBuf) -> InjectedPart {
+        InjectedPart {
+            extension: "kit".to_owned(),
+            kind,
+            name: name.to_owned(),
+            source,
+        }
+    }
+
+    fn kit_parts(root: &Path) -> Vec<InjectedPart> {
+        write(root, "kit/skills/commit-helper/SKILL.md", "# commit helper");
+        write(root, "kit/commands/review.md", "review the diff");
+        let servers = write(
+            root,
+            "kit/.mcp.json",
+            r#"{"mcpServers":{"lint":{"command":"lint","args":["--x"],"env":{"A":"1"},"type":"stdio"},"web":{"command":"mine"},"empty":{}}}"#,
+        );
+        vec![
+            part(
+                ExtensionPartKind::Skill,
+                "commit-helper",
+                root.join("kit/skills/commit-helper"),
+            ),
+            part(
+                ExtensionPartKind::Command,
+                "review",
+                root.join("kit/commands/review.md"),
+            ),
+            part(ExtensionPartKind::McpServer, "lint", servers.clone()),
+            part(ExtensionPartKind::McpServer, "web", servers.clone()),
+            part(ExtensionPartKind::McpServer, "empty", servers),
+        ]
+    }
+
+    fn prepare_with_kit(
+        fixture: &Fixture,
+        parts: &[InjectedPart],
+        rules: &[Rule],
+    ) -> (PreparedHome, Vec<InjectionFailure>) {
+        prepare_with(
+            HomeInput {
+                saturn_home: &fixture.saturn_home,
+                user_codex_home: &fixture.user_home,
+                rules,
+                questions: true,
+            },
+            &LAYOUT,
+            ExtensionInput {
+                parts,
+                fingerprint: "abc123",
+            },
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn skills_and_commands_are_copied_and_servers_follow_the_permission_rules() {
+        let fixture = Fixture::new(USER_CONFIG);
+        let parts = kit_parts(&fixture._root.path().join("store"));
+        let rules = [rule(PermissionTool::Mcp, "mcp__lint__*", Verdict::Allow)];
+
+        let (home, failures) = prepare_with_kit(&fixture, &parts, &rules);
+
+        assert_eq!(
+            std::fs::read_to_string(home.path.join("skills/commit-helper/SKILL.md")).unwrap(),
+            "# commit helper"
+        );
+        assert_eq!(
+            std::fs::read_to_string(home.path.join("prompts/review.md")).unwrap(),
+            "review the diff"
+        );
+        let config = config_of(&home);
+        let lint = &config["mcp_servers"]["lint"];
+        assert_eq!(lint["command"].as_str(), Some("lint"));
+        assert_eq!(lint["args"][0].as_str(), Some("--x"));
+        assert_eq!(lint["env"]["A"].as_str(), Some("1"));
+        assert!(lint.get("type").is_none());
+        assert_eq!(
+            lint["default_tools_approval_mode"].as_str(),
+            Some("approve")
+        );
+        assert!(home.mcp_servers.contains(&"lint".to_owned()));
+        let failed: Vec<&str> = failures
+            .iter()
+            .map(|failure| failure.part.as_str())
+            .collect();
+        assert_eq!(failed, vec!["web", "empty"]);
+    }
+
+    #[test]
+    fn the_folder_name_carries_the_extension_fingerprint_after_the_rules_fingerprint() {
+        let fixture = Fixture::new(USER_CONFIG);
+        let parts = kit_parts(&fixture._root.path().join("store"));
+
+        let (with, _) = prepare_with_kit(&fixture, &parts, &[]);
+        let without = fixture.prepare(&[]);
+
+        assert_ne!(with.path, without.path);
+        assert!(with.path.to_string_lossy().ends_with("-xabc123"));
+        assert_eq!(rules_of_home(&with.path), rules_of_home(&without.path));
+        assert!(!without.path.join("skills").exists());
+    }
+
+    #[test]
+    fn the_user_codex_folder_is_left_as_it_was() {
+        let fixture = Fixture::new(USER_CONFIG);
+        let parts = kit_parts(&fixture._root.path().join("store"));
+        let before = std::fs::read_to_string(fixture.user_home.join(CONFIG_FILE)).unwrap();
+
+        prepare_with_kit(&fixture, &parts, &[]);
+
+        assert_eq!(
+            std::fs::read_to_string(fixture.user_home.join(CONFIG_FILE)).unwrap(),
+            before
+        );
+        assert!(!fixture.user_home.join("skills").exists());
+        assert!(!fixture.user_home.join("prompts").exists());
+    }
+}

@@ -145,6 +145,7 @@ impl Engine {
         self.flow.stale_connections.remove(&(chat, provider));
         self.flow.questions_of_connection.remove(&(chat, provider));
         self.flow.rules_of_connection.remove(&(chat, provider));
+        self.flow.extensions_of_connection.remove(&(chat, provider));
         let Some(connection) = self.providers.remove(&(chat, provider)) else {
             return;
         };
