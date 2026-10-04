@@ -180,6 +180,26 @@ async fn held_input_resumed_after_adding_a_folder_waits_for_the_write_turn() {
 
 // #488
 #[tokio::test]
+async fn held_input_resumed_after_attaching_with_an_added_folder_waits_for_the_write_turn() {
+    let (mut flow, _, _, input, shared) = held_input_with_other_chat_writing_in_shared().await;
+    let (_client, _) = flow
+        .attach_with_dirs(vec![shared.canonicalize().unwrap().display().to_string()])
+        .await;
+    flow.engine.queue.resume(flow.chat, None);
+    flow.engine.advance(flow.chat).await;
+    flow.settle().await;
+
+    assert!(
+        is_waiting_for_write_turn(&flow, input),
+        "resumed writer must wait; state={:?}, calls={:?}",
+        flow.state(input),
+        flow.fake.calls()
+    );
+    assert_eq!(sends_to_provider(&flow, "write after resume"), 0);
+}
+
+// #488
+#[tokio::test]
 async fn held_input_sends_once_after_the_shared_write_turn_is_released() {
     let (mut flow, other_chat, other_agent, input, shared) =
         held_input_with_other_chat_writing_in_shared().await;

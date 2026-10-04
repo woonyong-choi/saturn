@@ -434,9 +434,7 @@ impl Engine {
             None => (self.store.create_chat(workdir.clone()).await?, workdir),
         };
         self.load_chat_dirs(chat).await?;
-        for dir in add_dirs {
-            self.register_dir(chat, dir).await?;
-        }
+        self.register_attach_dirs(chat, add_dirs).await?;
         let chat_env = ChatEnv::new(workdir, env);
         let run: Vec<String> = overrides
             .iter()

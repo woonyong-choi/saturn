@@ -224,6 +224,14 @@ impl Flow {
 
     /// `client`와 같고 붙을 때 받은 알림도 돌려준다.
     pub(super) async fn attach(&mut self) -> (Client, Vec<Notification>) {
+        self.attach_with_dirs(Vec::new()).await
+    }
+
+    /// `attach`와 같고 붙을 때 `--add-dir`로 폴더를 더한다.
+    pub(super) async fn attach_with_dirs(
+        &mut self,
+        add_dirs: Vec<String>,
+    ) -> (Client, Vec<Notification>) {
         let mut client = Client::connect(&self.fixture.socket()).await;
         let chat = self.chat;
         let workdir = self.fixture.workdir.display().to_string();
@@ -236,7 +244,7 @@ impl Flow {
                         workdir,
                         env: vec![("PATH".to_owned(), "/nonexistent".to_owned())],
                         overrides: Vec::new(),
-                        add_dirs: Vec::new(),
+                        add_dirs,
                     },
                 )
                 .await
