@@ -803,6 +803,7 @@ mod tests {
         let start = Instant::now();
         let mut state = ChatState::new();
         input_at(&mut state, 1, 'C', InputState::Judging, "테스트", start);
+        let while_judging = judging_texts(&state, start + Duration::from_millis(250));
 
         input_at(
             &mut state,
@@ -813,6 +814,7 @@ mod tests {
             start + Duration::from_millis(250),
         );
 
+        assert!(while_judging.is_empty());
         for ms in [250, 300, 400, 900] {
             assert!(judging_texts(&state, start + Duration::from_millis(ms)).is_empty());
         }

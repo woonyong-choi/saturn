@@ -2096,12 +2096,14 @@ fn judging_that_ends_inside_the_delay_never_reaches_the_screen() {
         AppEvent::Engine(input(1, InputState::Judging, "테스트도")),
         start,
     );
+    let during = board_rows(&app, start + Duration::from_millis(150));
     app.handle(
         AppEvent::Engine(input(1, InputState::Applied, "테스트도")),
         start + Duration::from_millis(200),
     );
 
-    for ms in [100, 200, 350, 600] {
+    assert!(during.iter().all(|row| !row.contains("판단 중")));
+    for ms in [200, 350, 600] {
         let rows = board_rows(&app, start + Duration::from_millis(ms));
         assert!(rows.iter().all(|row| !row.contains("판단 중")));
     }
