@@ -147,7 +147,7 @@ engine은 시작할 때 레지스트리에 어댑터를 등록한다. 레지스�
 
 ### 직접 연결과 ACP 어댑터
 
-Codex와 Claude는 지금처럼 직접 연결(Codex app-server, Claude stream-json)을 유지하고 ACP로 연결하지 않는다. 끼워 넣기, 보내기 전 실패와 보낸 뒤 불명의 구분, 하위 에이전트 관리, 맥락 정리 지시, 사용량 상세가 ACP 안정판에 없고, 확장으로 보태면 provider, 원본 번역기, ACP 명세 세 겹을 따라가야 해 유지보수가 더 들기 때문이다([결정 기록](../decisions/2026-10-04-direct-adapters-and-acp-for-new-providers.md)).
+Codex와 Claude는 지금처럼 직접 연결(Codex app-server, Claude stream-json)을 유지하고 ACP로 연결하지 않는다. 끼워 넣기, 하위 에이전트 관리, 맥락 정리 지시, 사용량 상세가 ACP 안정판에 없거나 RFD 단계이고, 보내기 전 실패와 보낸 뒤 불명의 구분은 명세에서 확인하지 못했으며(2026-10-04 확인), 확장으로 보태면 provider, 원본 번역기, ACP 명세 세 겹을 따라가야 해 유지보수가 더 들기 때문이다([결정 기록](../decisions/2026-10-04-direct-adapters-and-acp-for-new-providers.md)).
 
 - 새 provider는 처음에 ACP 어댑터 하나로 붙여 기본 기능으로 쓴다. 주력으로 쓰게 되고 그 provider가 깊은 기능을 열어 주면 직접 어댑터로 바꾼다. 계층이 나뉘어 있으므로 이 교체는 어댑터만 바꾸는 일이다. ACP 어댑터는 지금 구현하지 않는다.
 - ACP는 Zed와 JetBrains가 함께 관리하는 공개 표준이고([관리 문서](https://agentclientprotocol.com/community/governance), 2026-10-04 확인), 저장소 라이선스는 Apache-2.0이다([저장소](https://github.com/agentclientprotocol/agent-client-protocol), 2026-10-04 확인). 확장 메서드는 `_` 접두사와 `_meta` 필드로 한다([확장 문서](https://agentclientprotocol.com/protocol/extensibility), 2026-10-04 확인).

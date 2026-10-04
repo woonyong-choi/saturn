@@ -15,7 +15,13 @@
 - 저장소 라이선스는 Apache-2.0이다([저장소](https://github.com/agentclientprotocol/agent-client-protocol), 2026-10-04 확인).
 - 확장은 `_`로 시작하는 메서드 이름과 `_meta` 필드로 한다([확장 문서](https://agentclientprotocol.com/protocol/extensibility), 2026-10-04 확인).
 
-Saturn은 Codex app-server와 Claude stream-json으로 끼워 넣기, 보내기 전 실패와 보낸 뒤 불명의 구분, 하위 에이전트 관리, 맥락 정리 지시, 사용량 상세를 쓴다. 사용자가 결정 때 정리한 바로는 이 다섯은 ACP 안정판에 없다.
+Saturn은 Codex app-server와 Claude stream-json으로 끼워 넣기, 보내기 전 실패와 보낸 뒤 불명의 구분, 하위 에이전트 관리, 맥락 정리 지시, 사용량 상세를 쓴다. 이 다섯을 ACP 명세와 대조한 결과는 아래와 같다(모두 2026-10-04 확인).
+
+- 진행 중인 턴에 입력을 더하는 메서드가 없다. 클라이언트가 턴 중에 할 수 있는 것은 취소이고, 취소가 끝난 뒤 새 `session/prompt`를 보낸다([프롬프트 턴](https://agentclientprotocol.com/protocol/prompt-turn)).
+- 보내기 전 실패와 보낸 뒤 불명을 구분하는 규정은 명세에서 확인하지 못했다([프롬프트 턴](https://agentclientprotocol.com/protocol/prompt-turn)).
+- 하위 에이전트는 초안 RFD이고 `unstable_subagents` 뒤에 둔다([하위 에이전트 RFD](https://agentclientprotocol.com/rfds/subagents)).
+- 맥락 정리는 미리보기 RFD이고 `unstable_session_compaction` 뒤에 있어 안정판 스키마에 없다. 에이전트가 정리를 시작하고 알리는 방식이며, 클라이언트가 정리를 시키는 표준 메서드는 없다([세션 압축 RFD](https://agentclientprotocol.com/rfds/session-compaction)).
+- 사용량 알림의 값은 사용 중인 토큰 `used`, 창 크기 `size`, 선택 값 `cost`뿐이다. 턴별 토큰 집계는 별도 초안 RFD로 나뉘어 있다([세션 사용량 RFD](https://agentclientprotocol.com/rfds/session-usage)).
 
 ## 선택지
 
