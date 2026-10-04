@@ -1,7 +1,7 @@
 //! 모델 고르기 테스트: 목록, 고정 모델로 보내기, 모델이 바뀌면 새 메인 session.
 
 use saturn_protocol::ids::{Provider, SessionId};
-use saturn_protocol::rpc::{ModelChoice, ModelInfo, Notification, Request};
+use saturn_protocol::rpc::{ModelChoice, ModelInfo, Notification, QueryResult, Request};
 use saturn_protocol::state::SessionState;
 
 use super::support::{Flow, idle_reply, turn_completed};
@@ -113,13 +113,11 @@ async fn list_models(flow: &mut Flow, provider: Option<Provider>) -> Vec<ModelIn
     let mut client = flow.client().await;
     let chat = flow.chat;
     drive(&mut flow.engine, async {
-        client.send(2, Request::ListModels { chat, provider }).await;
-        client
-            .until(|notification| match notification {
-                Notification::Models { models } => Some(models.clone()),
-                _ => None,
-            })
-            .await
+        let request = Request::ListModels { chat, provider };
+        let QueryResult::Models { models } = client.query(2, request).await else {
+            panic!("expected Models");
+        };
+        models
     })
     .await
 }

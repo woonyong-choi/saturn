@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use saturn_protocol::envelope::{
     NotificationMessage, Response, ServerMessage, decode_client_line, encode_line,
 };
-use saturn_protocol::rpc::{Notification, Request};
+use saturn_protocol::rpc::{Notification, QueryResult, Request};
 use saturn_tui::client::EngineClient;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixListener;
@@ -16,6 +16,7 @@ use tokio::task::JoinHandle;
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Reply {
     notifications: Vec<Notification>,
+    result: Option<QueryResult>,
     error: Option<(i32, String)>,
 }
 
@@ -27,14 +28,22 @@ impl Reply {
     pub(crate) fn with(notifications: Vec<Notification>) -> Self {
         Self {
             notifications,
-            error: None,
+            ..Self::default()
+        }
+    }
+
+    /// 조회 요청의 응답 `result`.
+    pub(crate) fn result(result: QueryResult) -> Self {
+        Self {
+            result: Some(result),
+            ..Self::default()
         }
     }
 
     pub(crate) fn error(code: i32, message: &str) -> Self {
         Self {
-            notifications: Vec::new(),
             error: Some((code, message.to_owned())),
+            ..Self::default()
         }
     }
 }
@@ -69,9 +78,10 @@ impl FakeEngine {
                         .await
                         .unwrap();
                 }
-                let response = match reply.error {
-                    None => Response::ok(message.id),
-                    Some((code, text)) => Response::error(Some(message.id), code, text),
+                let response = match (reply.error, reply.result) {
+                    (Some((code, text)), _) => Response::error(Some(message.id), code, text),
+                    (None, Some(result)) => Response::result(message.id, result),
+                    (None, None) => Response::ok(message.id),
                 };
                 writer
                     .write_all(

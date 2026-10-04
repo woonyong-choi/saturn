@@ -28,7 +28,7 @@ use saturn_protocol::rpc::Request;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::app::App;
-use crate::client::{ClientError, EngineClient};
+use crate::client::{ClientError, EngineClient, Incoming};
 use crate::history::InputHistory;
 use crate::i18n::Lang;
 use crate::plain::PlainOutput;
@@ -153,10 +153,11 @@ pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result
                 Some(_) => {}
                 None => stdin_open = false,
             },
-            notification = client.next() => match notification {
-                Some(notification) => output
+            incoming = client.next() => match incoming {
+                Some(Incoming::Notification(notification)) => output
                     .apply(notification, Instant::now())
                     .map_err(TuiError::Plain)?,
+                Some(Incoming::Result(_)) => {}
                 None => return Err(ClientError::Closed.into()),
             },
         }

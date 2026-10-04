@@ -13,7 +13,7 @@ use saturn_protocol::ids::{
 use saturn_protocol::input::{InputAnswer, InputField, InputFieldKind, InputRequest, InputValue};
 use saturn_protocol::rpc::{
     Alert, ChatNotice, ConstraintAskAnswer, ExitPlan, ModelChoice, ModelInfo, ModelMode,
-    Notification, PermissionAnswer, Request, UsageRange,
+    Notification, PermissionAnswer, QueryResult, Request, UsageRange,
 };
 use saturn_protocol::state::{Disposition, InputState, QueueReason, TaskState};
 
@@ -54,6 +54,10 @@ fn history(entries: Vec<Notification>) -> Notification {
 
 fn notify(app: &mut App, notification: Notification) -> Vec<Effect> {
     app.handle(AppEvent::Engine(notification), Instant::now())
+}
+
+fn answered(app: &mut App, result: QueryResult) -> Vec<Effect> {
+    app.handle(AppEvent::Result(result), Instant::now())
 }
 
 fn press(app: &mut App, code: KeyCode, modifiers: KeyModifiers) -> Vec<Effect> {
@@ -499,9 +503,9 @@ fn prune_window_with(chats: Vec<saturn_protocol::rpc::ChatListItem>) -> App {
     let opened = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
     assert_eq!(sent(&opened), vec![&Request::Prune { yes: false }]);
     let rows = chats.iter().filter_map(|chat| chat.rows).sum();
-    notify(
+    answered(
         &mut app,
-        Notification::PrunePreview {
+        QueryResult::PrunePreview {
             chats,
             skipped: Vec::new(),
             rows,
@@ -549,9 +553,9 @@ fn pruned_result_closes_the_window_and_leaves_one_line() {
     let mut app = prune_window_with(vec![old_chat(3, 40), old_chat(5, 7)]);
     press(&mut app, KeyCode::Char('y'), KeyModifiers::NONE);
 
-    notify(
+    answered(
         &mut app,
-        Notification::Pruned {
+        QueryResult::Pruned {
             chats: vec![old_chat(3, 40), old_chat(5, 7)],
             skipped: Vec::new(),
             rows: 47,
@@ -656,7 +660,7 @@ fn ctrl_c_clears_draft_then_stops_then_asks_to_press_again_then_quits() {
     notify(&mut app, task(1, 'A', TaskState::Held));
     let third = press(&mut app, KeyCode::Char('c'), KeyModifiers::CONTROL);
     let fourth = press(&mut app, KeyCode::Char('c'), KeyModifiers::CONTROL);
-    let closed = notify(&mut app, exit_plan(ExitPlan::Close));
+    let closed = answered(&mut app, exit_plan(ExitPlan::Close));
 
     assert!(first.is_empty());
     assert!(app.composer.is_empty());
@@ -669,15 +673,15 @@ fn ctrl_c_clears_draft_then_stops_then_asks_to_press_again_then_quits() {
     assert_eq!(closed, vec![Effect::Quit]);
 }
 
-fn exit_plan(plan: ExitPlan) -> Notification {
-    Notification::ExitPlan { plan }
+fn exit_plan(plan: ExitPlan) -> QueryResult {
+    QueryResult::ExitPlan { plan }
 }
 
 /// 채팅에 붙은 TUI가 빈 입력창에서 닫으려 하고 engine이 `plan`으로 답한 뒤의 화면.
 fn quit_with(plan: ExitPlan) -> (App, Vec<Effect>) {
     let mut app = attached();
     press(&mut app, KeyCode::Char('d'), KeyModifiers::CONTROL);
-    let effects = notify(&mut app, exit_plan(plan));
+    let effects = answered(&mut app, exit_plan(plan));
     (app, effects)
 }
 
@@ -768,7 +772,7 @@ fn exit_plan_close_quits_without_a_line() {
 fn exit_plan_nobody_asked_for_is_ignored() {
     let mut app = attached();
 
-    let effects = notify(&mut app, exit_plan(ExitPlan::Close));
+    let effects = answered(&mut app, exit_plan(ExitPlan::Close));
 
     assert!(effects.is_empty());
 }
@@ -1571,6 +1575,15 @@ fn history_page(oldest: Option<u64>, has_more: bool) -> Notification {
     }
 }
 
+fn history_result(oldest: Option<u64>, has_more: bool) -> QueryResult {
+    QueryResult::History {
+        chat: ChatId(7),
+        entries: vec![input(1, InputState::Applied, "old question")],
+        oldest: oldest.map(LedgerSeq),
+        has_more,
+    }
+}
+
 fn wheel_up(app: &mut App) -> Vec<Effect> {
     app.handle(
         AppEvent::Terminal(Event::Mouse(MouseEvent {
@@ -1597,7 +1610,7 @@ fn scrolling_to_the_top_asks_for_history_before_the_oldest_received() {
     notify(&mut app, history_page(Some(400), true));
 
     let first = wheel_up(&mut app);
-    notify(&mut app, history_page(Some(150), true));
+    answered(&mut app, history_result(Some(150), true));
     let second = wheel_up(&mut app);
 
     assert_eq!(sent(&first), vec![&load_history(400)]);
@@ -1609,7 +1622,7 @@ fn scrolling_stops_asking_once_the_start_of_the_chat_is_reached() {
     let mut app = app();
     notify(&mut app, history_page(Some(400), true));
     wheel_up(&mut app);
-    notify(&mut app, history_page(Some(150), false));
+    answered(&mut app, history_result(Some(150), false));
 
     let effects = wheel_up(&mut app);
 
@@ -1780,7 +1793,7 @@ fn folder_trust_q_quits() {
     );
 
     let asked = press(&mut app, KeyCode::Char('q'), KeyModifiers::NONE);
-    let closed = notify(&mut app, exit_plan(ExitPlan::Close));
+    let closed = answered(&mut app, exit_plan(ExitPlan::Close));
 
     assert_eq!(
         sent(&asked),
@@ -2067,9 +2080,9 @@ fn model_window() -> App {
     type_text(&mut app, "/model");
     app.popup = None;
     press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
-    notify(
+    answered(
         &mut app,
-        Notification::Models {
+        QueryResult::Models {
             models: vec![
                 model_info(Provider::from_static("claude"), "opus"),
                 model_info(Provider::from_static("codex"), "gpt-x"),
@@ -2204,9 +2217,9 @@ fn opus() -> ModelChoice {
 fn first_default_window() -> App {
     let mut app = attached();
     notify(&mut app, model_settings(None, ModelMode::Auto));
-    notify(
+    answered(
         &mut app,
-        Notification::Models {
+        QueryResult::Models {
             models: vec![
                 model_info(Provider::from_static("claude"), "opus"),
                 model_info(Provider::from_static("codex"), "gpt-x"),

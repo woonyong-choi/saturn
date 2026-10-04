@@ -27,18 +27,12 @@ pub(super) async fn chat_with_input(engine: &Engine, folder: &str, text: &str) -
 }
 
 async fn chat_list(client: &mut Client, id: u64, folder: Option<&str>) -> Vec<ChatListItem> {
-    client
-        .send(
-            id,
-            Request::ListChats {
-                folder: folder.map(str::to_owned),
-            },
-        )
-        .await;
-    let Notification::ChatList { chats } = client.notification().await else {
-        panic!("expected ChatList");
+    let request = Request::ListChats {
+        folder: folder.map(str::to_owned),
     };
-    assert_eq!(client.response().await, Response::ok(RequestId(id)));
+    let QueryResult::Chats { chats } = client.query(id, request).await else {
+        panic!("expected Chats");
+    };
     chats
 }
 

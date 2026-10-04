@@ -1,6 +1,6 @@
 use saturn_protocol::envelope::{INVALID_PARAMS, METHOD_NOT_FOUND};
 use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::UsageRange;
+use saturn_protocol::rpc::{QueryResult, UsageRange};
 
 use super::*;
 use crate::{ROUTER_KEY_REQUIRED, RouterGate};
@@ -23,8 +23,8 @@ async fn usage_request_answers_rows_for_attached_chat() {
             .await;
         let unattached = client.response().await;
         client.attach(2, new_chat(&fixture.workdir)).await;
-        client
-            .send(
+        let usage = client
+            .query(
                 3,
                 Request::Usage {
                     scope: UsageRange::Chat,
@@ -32,8 +32,6 @@ async fn usage_request_answers_rows_for_attached_chat() {
                 },
             )
             .await;
-        let usage = client.notification().await;
-        assert_eq!(client.response().await, Response::ok(RequestId(3)));
         (unattached, usage)
     })
     .await;
@@ -41,7 +39,7 @@ async fn usage_request_answers_rows_for_attached_chat() {
     assert_eq!(error_code(&unattached), INVALID_PARAMS);
     assert_eq!(
         usage,
-        Notification::Usage {
+        QueryResult::Usage {
             range: UsageRange::Chat,
             rows: Vec::new(),
         }
@@ -64,9 +62,7 @@ async fn usage_request_without_attachment_reads_the_latest_chat_of_the_folder() 
         };
         reader.send(2, request("/nowhere")).await;
         let other_folder = reader.response().await;
-        reader.send(3, request(&folder)).await;
-        let usage = reader.notification().await;
-        assert_eq!(reader.response().await, Response::ok(RequestId(3)));
+        let usage = reader.query(3, request(&folder)).await;
         (other_folder, usage)
     })
     .await;
@@ -74,7 +70,7 @@ async fn usage_request_without_attachment_reads_the_latest_chat_of_the_folder() 
     assert_eq!(error_code(&other_folder), INVALID_PARAMS);
     assert_eq!(
         usage,
-        Notification::Usage {
+        QueryResult::Usage {
             range: UsageRange::Chat,
             rows: Vec::new(),
         }
@@ -98,23 +94,19 @@ async fn latest_chat_request_answers_the_latest_chat_of_the_folder_without_attac
         let ask = |folder: &str| Request::LatestChat {
             folder: folder.to_owned(),
         };
-        reader.send(2, ask(&folder)).await;
-        let found = reader.notification().await;
-        assert_eq!(reader.response().await, Response::ok(RequestId(2)));
-        reader.send(3, ask("/nowhere")).await;
-        let empty = reader.notification().await;
-        assert_eq!(reader.response().await, Response::ok(RequestId(3)));
+        let found = reader.query(2, ask(&folder)).await;
+        let empty = reader.query(3, ask("/nowhere")).await;
         ((chat, found), empty)
     })
     .await;
 
     assert_eq!(
         found.1,
-        Notification::LatestChat {
+        QueryResult::LatestChat {
             chat: Some(found.0)
         }
     );
-    assert_eq!(empty, Notification::LatestChat { chat: None });
+    assert_eq!(empty, QueryResult::LatestChat { chat: None });
 }
 
 fn set_recording(chat: u64) -> Request {
@@ -244,4 +236,68 @@ async fn requests_each_get_one_response_in_order() {
     assert_eq!(responses[3], Response::ok(RequestId(4)));
     assert!(export.exists());
     assert_eq!(error_code(&responses[4]), INVALID_PARAMS);
+}
+
+#[tokio::test]
+async fn query_result_goes_only_to_the_connection_that_asked() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.ready().await;
+    let mut asker = Client::connect(&fixture.socket()).await;
+    let mut other = Client::connect(&fixture.socket()).await;
+
+    let (usage, tasks, history, heard) = drive(&mut engine, async {
+        let attached = asker.attach(1, new_chat(&fixture.workdir)).await;
+        let Some(Notification::HistoryChunk { chat, .. }) = attached.get(1) else {
+            panic!("expected HistoryChunk, got {attached:?}");
+        };
+        let chat = *chat;
+        other
+            .attach(
+                2,
+                Request::Attach {
+                    chat: Some(chat),
+                    workdir: fixture.workdir.display().to_string(),
+                    env: Vec::new(),
+                    overrides: Vec::new(),
+                    add_dirs: Vec::new(),
+                },
+            )
+            .await;
+        asker.window().await;
+        let usage = Request::Usage {
+            scope: UsageRange::Chat,
+            folder: None,
+        };
+        asker.send(3, usage).await;
+        asker.send(4, Request::ListTasks).await;
+        asker
+            .send(
+                5,
+                Request::LoadHistory {
+                    chat,
+                    before: None,
+                    limit: 10,
+                },
+            )
+            .await;
+        let usage = asker.response().await;
+        let tasks = asker.response().await;
+        let history = asker.response().await;
+        (usage, tasks, history, other.window().await)
+    })
+    .await;
+
+    assert!(matches!(
+        usage.outcome,
+        Outcome::Ok(Some(QueryResult::Usage { .. }))
+    ));
+    assert!(matches!(
+        tasks.outcome,
+        Outcome::Ok(Some(QueryResult::Tasks { .. }))
+    ));
+    assert!(matches!(
+        history.outcome,
+        Outcome::Ok(Some(QueryResult::History { .. }))
+    ));
+    assert!(heard.is_empty(), "other connection heard {heard:?}");
 }

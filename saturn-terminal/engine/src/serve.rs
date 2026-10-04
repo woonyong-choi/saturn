@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use saturn_protocol::envelope::RequestId;
-use saturn_protocol::rpc::Request;
+use saturn_protocol::rpc::{QueryResult, Request};
 
 use super::{AttachRequest, Engine, EngineError, RouterGate, unsupported};
 use crate::calls::Responder;
@@ -110,9 +110,39 @@ impl Engine {
             Deferred::Responded => return Ok(()),
             Deferred::Route(id, request) => (id, request),
         };
-        let result = self.route(client, request).await;
-        self.respond(Responder::Rpc(client, id), result).await;
+        let result = self.dispatch(client, request).await;
+        self.respond_with(Responder::Rpc(client, id), result).await;
         Ok(())
+    }
+
+    /// 조회 요청은 결과를, 명령 요청은 `None`을 돌려준다. 결과는 응답의 `result`에 실려 요청한 접속에만 간다.
+    async fn dispatch(
+        &mut self,
+        client: ClientId,
+        request: Request,
+    ) -> Result<Option<QueryResult>, EngineError> {
+        self.ensure_router_open(&request)?;
+        let result = match request {
+            Request::LoadHistory {
+                chat,
+                before,
+                limit,
+            } => self.load_history(chat, before, limit).await?,
+            Request::PrepareExit { chat } => self.prepare_exit(client, chat).await?,
+            Request::Usage { scope, folder } => {
+                self.usage_result(client, scope, folder.as_deref()).await?
+            }
+            Request::LatestChat { folder } => self.latest_chat_result(&folder).await?,
+            Request::ListChats { folder } => self.chat_list_result(folder.as_deref()).await?,
+            Request::ListTasks => self.task_list_result().await?,
+            Request::ListRouterVersions => return Err(unsupported("ListRouterVersions")),
+            Request::Prune { yes } => self.prune_records(client, yes).await?,
+            command => {
+                self.route(client, command).await?;
+                return Ok(None);
+            }
+        };
+        Ok(Some(result))
     }
 
     /// provider 응답을 기다리는 요청은 여기서 맡기고 응답은 나중에 한다. 그 밖의 요청은 `route`로 돌려준다.
@@ -176,11 +206,6 @@ impl Engine {
                 self.attach(client, request).await
             }
             Request::AddDir { chat, path } => self.add_dir(client, chat, &path).await,
-            Request::LoadHistory {
-                chat,
-                before,
-                limit,
-            } => self.load_history(client, chat, before, limit).await,
             Request::RenameChat { chat, name } => self.rename_chat(chat, &name).await,
             Request::SetChatGroup { chat, group } => {
                 self.set_chat_group(chat, group.as_deref()).await
@@ -212,7 +237,6 @@ impl Engine {
                 self.stop_all_chats().await;
                 Ok(())
             }
-            Request::PrepareExit { chat } => self.prepare_exit(client, chat).await,
             Request::Continue { chat, task } => self.continue_held(chat, task).await,
             Request::ContinueInput { input } => self.continue_input(input).await,
             Request::CloseHeld { chat, task } => self.close_held(chat, task).await,
@@ -239,24 +263,24 @@ impl Engine {
             Request::SetPermissionMode { chat, mode } => {
                 self.set_permission_mode(chat, &mode).await
             }
-            Request::Usage { scope, folder } => {
-                self.send_usage(client, scope, folder.as_deref()).await
-            }
-            Request::LatestChat { folder } => self.send_latest_chat(client, &folder).await,
-            Request::ListChats { folder } => self.send_chat_list(client, folder.as_deref()).await,
             Request::SetModel { chat, model } => self.set_model(client, chat, &model).await,
             Request::SetDefaultModel { chat, model } => {
                 self.set_default_model(client, chat, &model).await
             }
             Request::SetModelMode { chat, mode } => self.set_model_mode(client, chat, mode).await,
-            Request::ListTasks => self.send_task_list(client).await,
             // TODO(#91): 학습과 router 버전
             Request::Train { .. } => Err(unsupported("Train")),
             Request::ConfirmTrain { .. } => Err(unsupported("ConfirmTrain")),
-            Request::ListRouterVersions => Err(unsupported("ListRouterVersions")),
             Request::UseRouterVersion { .. } => Err(unsupported("UseRouterVersion")),
-            Request::Prune { yes } => self.prune_records(client, yes).await,
             Request::ExportJudgments { path } => self.export_judgments(&path).await,
+            Request::LoadHistory { .. }
+            | Request::PrepareExit { .. }
+            | Request::Usage { .. }
+            | Request::LatestChat { .. }
+            | Request::ListChats { .. }
+            | Request::ListTasks
+            | Request::ListRouterVersions
+            | Request::Prune { .. } => unreachable!("query requests are answered by dispatch"),
         }
     }
 

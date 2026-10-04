@@ -3,7 +3,7 @@
 
 use std::io::Write;
 
-use saturn_protocol::rpc::{Notification, Request, RouterVersionInfo};
+use saturn_protocol::rpc::{QueryResult, Request, RouterVersionInfo};
 use saturn_tui::client::EngineClient;
 use saturn_tui::i18n::{self, Lang};
 
@@ -118,14 +118,10 @@ async fn list_versions(
     lang: Lang,
     client: &mut EngineClient,
 ) -> anyhow::Result<(String, Vec<RouterVersionInfo>)> {
-    let mut listed = None;
-    call(lang, client, Request::ListRouterVersions, |notification| {
-        if let Notification::RouterVersions { current, versions } = notification {
-            listed = Some((current, versions));
-        }
-    })
-    .await?;
-    listed.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_ROUTER_VERSIONS)))
+    match call(lang, client, Request::ListRouterVersions, drop).await? {
+        Some(QueryResult::RouterVersions { current, versions }) => Ok((current, versions)),
+        _ => Err(anyhow::anyhow!(lang.tr(i18n::CLI_NO_ROUTER_VERSIONS))),
+    }
 }
 
 #[cfg(test)]
@@ -144,10 +140,10 @@ mod tests {
     }
 
     fn versions(current: &str) -> Reply {
-        Reply::with(vec![Notification::RouterVersions {
+        Reply::result(QueryResult::RouterVersions {
             current: current.to_owned(),
             versions: vec![info("v1"), info("v2")],
-        }])
+        })
     }
 
     fn args(version: &str) -> RouterUseArgs {

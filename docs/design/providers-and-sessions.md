@@ -245,7 +245,7 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 사용자는 TUI `/model`로 다음 입력부터 쓸 모델을 고른다([TUI](tui.md#영역)). Claude Code와 Codex의 `/model`이 session 안에서 다시 바꿀 때까지 유지되는 것과 같게, 고른 모델은 그 채팅에서 다시 고를 때까지 모든 입력에 붙는다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정).
 
 - 목록은 provider가 알려 준다. Codex는 app-server `model/list`에서 숨기지 않은 모델을 쪽마다 `nextCursor`를 따라 모으고, Claude는 Claude Code `/model`이 보이는 별칭(기본, `opus`, `sonnet`, `haiku`)이다. 기본은 `--model`을 넘기지 않는 것과 같다. 설치된 provider만 보이고, 목록은 Claude, Codex 순이다. 첫 입력의 기본 provider와 같은 순서다.
-- TUI가 `ListModels`(provider를 주면 그 provider만)로 요청하면 engine이 `Models` 알림으로 답한다. 연결과 조회가 끝난 뒤에 알리고 응답하며, 그동안 engine의 다른 요청 처리는 기다리지 않는다([provider 요청 작업](#provider-요청-작업)). provider 하나가 목록을 못 주면 그 provider를 빼고 로그만 남기고, 모두 못 주면 빈 목록을 보내고 오류로 답한다. TUI 창이 끝없이 기다리지 않게 하기 위해서다.
+- TUI가 `ListModels`(provider를 주면 그 provider만)로 요청하면 engine이 응답 `result`의 `Models`로 답한다. 연결과 조회가 끝난 뒤에 응답하며, 그동안 engine의 다른 요청 처리는 기다리지 않는다([provider 요청 작업](#provider-요청-작업)). provider 하나가 목록을 못 주면 그 provider를 빼고 로그만 남기고, 모두 못 주면 빈 목록을 돌려주고 로그만 남긴다. TUI 창이 끝없이 기다리지 않게 하기 위해서다.
 - 고른 모델은 TUI가 `SetModel`로 알리면 engine이 채팅별로 기록 저장소에 저장하고(`chats.pinned_model`) 붙은 모든 TUI에 `ModelPinned`로 알린다. 고정한 채팅에 붙을 때도 같은 알림을 보낸다. 그래서 TUI를 다시 열거나 채팅을 옮겨도 다시 바꿀 때까지 유지된다. 입력은 모델을 싣지 않고, engine이 접수 때 채팅의 고정값을 읽어 입력에 남긴다. 모델이 provider를 정하고, 같은 이름이 두 provider에 있어도 구분되도록 `<provider>/<model>` 글로 저장한다.
 - `sessions` 기록은 session을 열 때 고른 모델(`model`)을 남긴다. 고르지 않았으면 provider 기본값이라 비어 있다. 입력의 모델이 열린 메인의 모델과 다르면 그 메인을 쓰지 않고 새 메인 session을 열어 패킷을 넘기고, 떠나는 메인은 보관한다([provider 전환](#provider-전환)). 다른 모델로 연 보관 session은 되돌아갈 때도 재개하지 않는다. 열린 session의 모델을 provider 안에서 바꾸는 방식은 쓰지 않는다. session 기록의 모델과 실제 모델이 어긋나지 않게 하기 위해서다. 같은 provider 안에서 모델만 바뀐 교체는 provider 전환 안내 줄을 남기지 않는다.
 - 맥락 정리로 여는 새 session은 이전 session의 모델을 이어 쓴다.
@@ -442,7 +442,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 - 입력 전달이 아닌 요청도 같은 방식이다. 루프는 요청마다 번호를 붙여 맡기고, 결과가 오면 그 번호의 요청이 남긴 값으로 이어 간다. 연결 작업이 끝나 결과가 오지 않으면 연결 끊김으로 이어 간다.
   - 허가·입력 답은 TUI의 응답을 provider가 받은 뒤에 한다. 받았으면 요청을 지우고 창을 닫고 작업을 다시 `실행 중`으로 보이며, 받지 못했으면 오류로 응답하고 요청을 그대로 두어 다시 답할 수 있다. 답이 가는 동안 같은 요청의 다른 답은 `UnexpectedAnswer`로 거절한다. 답이 가는 동안 턴이 끝나 요청이 이미 지워졌으면 창과 작업 상태는 건드리지 않는다. Saturn 규칙이 낸 답은 provider가 받지 못한 것이 결과로 오면 그때 사용자에게 올린다. 그사이 그 session이 닫혔으면 올리지 않는다.
   - session 닫기는 결과를 쓰지 않고 맡긴다. 실패는 연결 작업이 로그로 남기고, 같은 연결의 뒤따르는 요청은 줄 선 순서대로 나간다.
-  - `/model` 목록은 provider마다 연결과 모델 조회를 맡기고, 모든 목록이 모이면 `Models`를 알리고 응답한다. 알리는 순서는 기본 provider 순서다. 연결을 맺는 동안 다른 요청이 같은 연결을 먼저 맺었으면 그 연결을 쓰고 새 연결은 닫는다.
+  - `/model` 목록은 provider마다 연결과 모델 조회를 맡기고, 모든 목록이 모이면 응답 `result`의 `Models`로 돌려준다. 알리는 순서는 기본 provider 순서다. 연결을 맺는 동안 다른 요청이 같은 연결을 먼저 맺었으면 그 연결을 쓰고 새 연결은 닫는다.
   - 맥락 정리의 새 session 열기를 맡긴 채팅은 열릴 때까지 다음 입력을 보내지 않고 대기열에 둔다. 열리면 옛 session을 바꿔 기록하고 닫은 뒤 기다리던 입력을 보낸다. 맥락 한도 초과는 패킷을 줄여 한 번만 다시 연다. 열지 못하면 옛 session을 그대로 두고 입력을 보낸다.
 
 ### 오류 처리

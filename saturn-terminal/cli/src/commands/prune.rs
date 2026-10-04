@@ -4,7 +4,7 @@
 use std::io::Write;
 
 use saturn_protocol::envelope::INVALID_PARAMS;
-use saturn_protocol::rpc::{ChatListItem, Notification, PruneSkipReason, PruneSkipped, Request};
+use saturn_protocol::rpc::{ChatListItem, PruneSkipReason, PruneSkipped, QueryResult, Request};
 use saturn_tui::client::{ClientError, EngineClient};
 use saturn_tui::i18n::{self, Lang};
 
@@ -30,52 +30,52 @@ pub(crate) async fn run(
     client: &mut EngineClient,
     args: &PruneArgs,
 ) -> anyhow::Result<()> {
-    let mut report = None;
-    let called = call(
-        lang,
-        client,
-        Request::Prune { yes: args.yes },
-        |notification| match notification {
-            Notification::PrunePreview {
+    let called = call(lang, client, Request::Prune { yes: args.yes }, drop).await;
+    let result = match called {
+        Ok(result) => result,
+        Err(error) => return Err(prune_error(lang, error)),
+    };
+    let report = match result {
+        Some(
+            QueryResult::PrunePreview {
                 chats,
                 skipped,
                 rows,
             }
-            | Notification::Pruned {
+            | QueryResult::Pruned {
                 chats,
                 skipped,
                 rows,
-            } => {
-                report = Some(Report {
-                    chats,
-                    skipped,
-                    rows,
-                })
-            }
-            _ => {}
+            },
+        ) => Report {
+            chats,
+            skipped,
+            rows,
         },
-    )
-    .await;
-    if let Err(error) = called {
-        let no_retention = matches!(
-            error.downcast_ref::<ClientError>(),
-            Some(ClientError::Rejected {
-                code: INVALID_PARAMS,
-                ..
-            })
-        );
-        if no_retention {
-            anyhow::bail!(lang.tr(i18n::CLI_PRUNE_NO_RETENTION));
-        }
-        return Err(error);
-    }
-    let report = report.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_PRUNE_ANSWER)))?;
+        _ => anyhow::bail!(lang.tr(i18n::CLI_NO_PRUNE_ANSWER)),
+    };
     write!(
         std::io::stdout().lock(),
         "{}",
         render(lang, &report, args.yes)
     )?;
     Ok(())
+}
+
+/// 기준 설정이 없다는 거절은 설정 방법을 안내한다.
+fn prune_error(lang: Lang, error: anyhow::Error) -> anyhow::Error {
+    let no_retention = matches!(
+        error.downcast_ref::<ClientError>(),
+        Some(ClientError::Rejected {
+            code: INVALID_PARAMS,
+            ..
+        })
+    );
+    if no_retention {
+        anyhow::anyhow!(lang.tr(i18n::CLI_PRUNE_NO_RETENTION))
+    } else {
+        error
+    }
 }
 
 fn render(lang: Lang, report: &Report, is_deleted: bool) -> String {
@@ -210,11 +210,11 @@ mod tests {
 
     #[tokio::test]
     async fn run_without_yes_asks_for_preview_only_and_reads_the_preview() {
-        let engine = FakeEngine::start(vec![Reply::with(vec![Notification::PrunePreview {
+        let engine = FakeEngine::start(vec![Reply::result(QueryResult::PrunePreview {
             chats: vec![chat(4)],
             skipped: Vec::new(),
             rows: 3,
-        }])]);
+        })]);
         let mut client = engine.client().await;
 
         run(Lang::En, &mut client, &PruneArgs { yes: false })
@@ -226,11 +226,11 @@ mod tests {
 
     #[tokio::test]
     async fn run_with_yes_deletes_and_reads_the_result() {
-        let engine = FakeEngine::start(vec![Reply::with(vec![Notification::Pruned {
+        let engine = FakeEngine::start(vec![Reply::result(QueryResult::Pruned {
             chats: vec![chat(4)],
             skipped: Vec::new(),
             rows: 3,
-        }])]);
+        })]);
         let mut client = engine.client().await;
 
         run(Lang::En, &mut client, &PruneArgs { yes: true })

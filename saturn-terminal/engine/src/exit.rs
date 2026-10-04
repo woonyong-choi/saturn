@@ -2,14 +2,14 @@
 //! 설계: docs/design/engine-lifecycle.md#tui-종료-뒤-동작
 
 use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::{ExitPlan, Notification};
+use saturn_protocol::rpc::{ExitPlan, QueryResult};
 use saturn_protocol::state::OnExit;
 
 use crate::rpc::ClientId;
 use crate::{Engine, EngineError, Presence};
 
 impl Engine {
-    /// `PrepareExit` 요청. 닫은 뒤의 처리를 `ExitPlan`으로 보낸다.
+    /// `PrepareExit` 요청. 닫은 뒤의 처리를 `ExitPlan` 결과로 돌려준다.
     ///
     /// # Errors
     /// 이 클라이언트가 붙지 않은 채팅이면 `ChatNotAttached`, 설정을 읽지 못하면 `Settings`나 `Store`.
@@ -17,11 +17,10 @@ impl Engine {
         &mut self,
         client: ClientId,
         chat: ChatId,
-    ) -> Result<(), EngineError> {
+    ) -> Result<QueryResult, EngineError> {
         self.require_attached(client, chat)?;
         let plan = self.exit_plan(client, chat).await?;
-        self.send(client, Notification::ExitPlan { plan }).await;
-        Ok(())
+        Ok(QueryResult::ExitPlan { plan })
     }
 
     /// 다른 TUI가 붙어 있으면 `on_exit`는 적용되지 않으므로 묻지 않는다.

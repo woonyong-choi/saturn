@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use saturn_core::queue::Permission;
 use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq, SessionId, SettingsRevision, TaskId};
-use saturn_protocol::rpc::{Notification, Request};
+use saturn_protocol::rpc::{Notification, QueryResult, Request};
 use saturn_protocol::state::EffectScope;
 
 use super::*;
@@ -62,17 +62,15 @@ struct Chunk {
     has_more: bool,
 }
 
-fn chunk_of(received: &[Notification]) -> Chunk {
-    let Some(Notification::HistoryChunk {
+fn chunk_of(result: QueryResult) -> Chunk {
+    let QueryResult::History {
         entries,
         oldest,
         has_more,
         ..
-    }) = received
-        .iter()
-        .find(|n| matches!(n, Notification::HistoryChunk { .. }))
+    } = result
     else {
-        panic!("expected HistoryChunk, got {received:?}");
+        panic!("expected History, got {result:?}");
     };
     Chunk {
         inputs: entries
@@ -82,8 +80,8 @@ fn chunk_of(received: &[Notification]) -> Chunk {
                 _ => None,
             })
             .collect(),
-        oldest: *oldest,
-        has_more: *has_more,
+        oldest,
+        has_more,
     }
 }
 
@@ -94,18 +92,12 @@ async fn load(
     before: Option<LedgerSeq>,
     limit: u32,
 ) -> Chunk {
-    chunk_of(
-        &client
-            .attach(
-                id,
-                Request::LoadHistory {
-                    chat,
-                    before,
-                    limit,
-                },
-            )
-            .await,
-    )
+    let request = Request::LoadHistory {
+        chat,
+        before,
+        limit,
+    };
+    chunk_of(client.query(id, request).await)
 }
 
 #[tokio::test]

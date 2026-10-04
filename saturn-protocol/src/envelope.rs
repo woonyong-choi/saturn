@@ -6,7 +6,7 @@ use serde::de::{self, DeserializeOwned};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use ts_rs::TS;
 
-use crate::rpc::{Notification, Request};
+use crate::rpc::{Notification, QueryResult, Request};
 
 const VERSION: &str = "2.0";
 
@@ -167,7 +167,7 @@ impl<'de> Deserialize<'de> for ServerMessage {
     }
 }
 
-/// 요청 결과의 화면 갱신은 알림으로 따로 온다.
+/// 조회 요청의 결과는 `result`에, 상태 변화와 화면 갱신은 알림으로 따로 온다.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct Response {
     pub jsonrpc: JsonRpcVersion,
@@ -182,7 +182,16 @@ impl Response {
         Self {
             jsonrpc: JsonRpcVersion,
             id: Some(id),
-            outcome: Outcome::Ok(()),
+            outcome: Outcome::Ok(None),
+        }
+    }
+
+    /// 조회 요청의 답.
+    pub fn result(id: RequestId, result: QueryResult) -> Self {
+        Self {
+            jsonrpc: JsonRpcVersion,
+            id: Some(id),
+            outcome: Outcome::Ok(Some(result)),
         }
     }
 
@@ -198,11 +207,11 @@ impl Response {
     }
 }
 
-/// TODO(#177): 조회 결과를 알림 대신 `result`로 돌려줄지
+/// `result`는 명령 요청이면 `null`, 조회 요청이면 `QueryResult`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 pub enum Outcome {
     #[serde(rename = "result")]
-    Ok(()),
+    Ok(Option<QueryResult>),
     #[serde(rename = "error")]
     Err(RpcError),
 }
@@ -372,6 +381,24 @@ mod tests {
         );
         assert_eq!(decode_server_line(&ok_line).unwrap(), ok);
         assert_eq!(decode_server_line(&error_line).unwrap(), error);
+    }
+
+    #[test]
+    fn query_result_rides_in_the_response_result() {
+        let message = ServerMessage::from(Response::result(
+            RequestId(4),
+            QueryResult::LatestChat {
+                chat: Some(ChatId(2)),
+            },
+        ));
+
+        let line = encode_line(&message).unwrap();
+
+        assert_eq!(
+            line,
+            "{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{\"kind\":\"LatestChat\",\"data\":{\"chat\":2}}}\n"
+        );
+        assert_eq!(decode_server_line(&line).unwrap(), message);
     }
 
     #[test]

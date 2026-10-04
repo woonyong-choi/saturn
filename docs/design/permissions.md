@@ -84,7 +84,7 @@
 - `permission.shell` 같은 개별 규칙은 모드 기본 규칙 위에 덧붙는다.
 - 모드마다 provider 구성은 같다. Codex는 `untrusted`와 읽기 전용 샌드박스, Claude는 모든 대상 도구의 `ask` 목록을 쓴다. 모드에 따라 달라지는 것은 engine이 허가 요청에 하는 답이다. `deny` 패턴이 모든 요청에 걸리게 하고, 모드를 바꿔도 provider를 다시 시작하지 않기 위해서다(초안).
 - Codex execpolicy에는 개별 셸 규칙만 번역한다. `"*"` 패턴은 어떤 명령도 매치하지 않았기 때문이다. 모드 기본 규칙과 번역하지 않은 요청은 engine이 승인 요청에 규칙으로 답한다.
-- 세션 중에는 TUI 명령 `/permissions`(초안)로 모드를 본다. `/permissions {모드}`는 채팅 층의 `permission.mode`를 바꾼다. 입력창의 `Shift+Tab`과 `/mode`는 같은 요청을 보내며 `ask`, `edit`, `read-only` 순서로 돈다(`full`은 `/mode full`로만, [TUI 키](tui.md#키-해석-계층)). engine은 채팅 층 원문에 `permission.mode`만 고쳐 쓰고 요청마다 그 값을 먼저 읽는다. 값 없이 실행해 현재 모드를 보이는 동작은 조회 결과를 돌려주는 방식([#177](https://github.com/woonyong-choi/saturn/issues/177))이 정해진 뒤에 넣는다. 화면은 [TUI](tui.md)에 있다.
+- 세션 중에는 TUI 명령 `/permissions`(초안)로 모드를 본다. `/permissions {모드}`는 채팅 층의 `permission.mode`를 바꾼다. 입력창의 `Shift+Tab`과 `/mode`는 같은 요청을 보내며 `ask`, `edit`, `read-only` 순서로 돈다(`full`은 `/mode full`로만, [TUI 키](tui.md#키-해석-계층)). engine은 채팅 층 원문에 `permission.mode`만 고쳐 쓰고 요청마다 그 값을 먼저 읽는다. 값 없이 실행해 현재 모드를 보이는 동작은 아직 없다. 넣으려면 조회 요청을 하나 더해 응답 `result`로 돌려준다([조회 요청과 결과](engine-lifecycle.md#조회-요청과-결과)). 화면은 [TUI](tui.md)에 있다.
 - 모드의 순서는 낮은 쪽부터 `read-only`, `ask`, `edit`, `full`이다. `ask`는 묻기만 하고 거부하지 않으므로 `read-only`보다 높다.
 - 폴더 설정의 `permission.mode`는 사용자 층까지 합친 모드보다 낮은 값만 적용하고, 같거나 높은 값은 무시한다. 저장소가 모두 허용을 켜지 못하게 하기 위해서다. 무시한 사실은 폴더 설정 신뢰 창의 무시되는 항목에 보인다.
 - 모두 허용(`full`)은 사용자 설정이나 `/permissions`로만 켠다. Claude Code는 v2.1.257부터 프로젝트·로컬 설정의 `bypassPermissions`와 `auto`를 무시한다([설정 문서](https://code.claude.com/docs/en/settings), 2026-10-02 확인). Codex는 신뢰한 프로젝트 설정이 승인 정책을 정할 수 있다.

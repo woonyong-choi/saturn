@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use saturn_core::providers::ProviderError;
 use saturn_core::queue::QueuedInput;
 use saturn_protocol::ids::{ChatId, Provider, SettingsRevision};
-use saturn_protocol::rpc::{ModelChoice, ModelInfo, ModelMode, Notification};
+use saturn_protocol::rpc::{ModelChoice, ModelInfo, ModelMode, Notification, QueryResult};
 
 use crate::calls::{CallKind, PendingCall, Responder};
 use crate::launch::ConnectionSeed;
@@ -31,11 +31,10 @@ pub(crate) fn pinned_model_name(registry: &Registry, record: &QueuedInput) -> Op
     }
 }
 
-/// 모델 목록을 모으는 `/model` 요청. 모든 조회가 돌아오면 알리고 응답한다.
+/// 모델 목록을 모으는 `/model` 요청. 모든 조회가 돌아오면 목록을 응답의 `result`로 돌려준다.
 #[derive(Debug)]
 pub(crate) struct ModelsQuery {
     responder: Responder,
-    client: ClientId,
     /// 목록을 받을 provider. 알리는 순서다.
     providers: Vec<Provider>,
     listed: HashMap<Provider, Result<Vec<ModelInfo>, EngineError>>,
@@ -212,12 +211,11 @@ impl Engine {
     // cost: time O(m), heap O(m), stack O(1), io p
     // vars: m = 모델 수, p = provider 수
     // basis: estimate
-    /// 설치된 provider마다 모델 목록을 받아 `Models`로 보낸다. 연결과 조회는 연결 작업이 하고, 모든 목록이 모이면
-    /// 알리고 `responder`에 응답한다. 목록을 못 받은 provider는 건너뛰고 로그만 남긴다. 모든 provider가 실패하면 빈
-    /// 목록을 보내고 마지막 오류로 응답한다.
+    /// 설치된 provider마다 모델 목록을 받아 `Models` 결과로 돌려준다. 연결과 조회는 연결 작업이 하고, 모든 목록이
+    /// 모이면 `responder`에 응답한다. 목록을 못 받은 provider는 건너뛰고 로그만 남긴다. 모든 provider가 실패해도
+    /// 창이 끝없이 기다리지 않도록 빈 목록을 결과로 돌려준다.
     ///
-    /// 응답 오류: 붙지 않은 채팅이면 `ChatNotAttached`, 설정이 없으면 `Settings`, 모든 provider의 목록이 실패하면
-    /// `Provider`.
+    /// 응답 오류: 붙지 않은 채팅이면 `ChatNotAttached`, 설정이 없으면 `Settings`.
     pub(crate) async fn send_models(
         &mut self,
         client: ClientId,
@@ -234,7 +232,6 @@ impl Engine {
             query,
             ModelsQuery {
                 responder,
-                client,
                 providers: providers.clone(),
                 listed: HashMap::new(),
                 waiting: 0,
@@ -413,7 +410,6 @@ impl Engine {
         }
         let Some(ModelsQuery {
             responder,
-            client,
             providers,
             mut listed,
             ..
@@ -422,29 +418,17 @@ impl Engine {
             return;
         };
         let mut models: Vec<ModelInfo> = Vec::new();
-        let mut failure = None;
         for provider in providers {
             match listed.remove(&provider) {
                 Some(Ok(list)) => models.extend(list),
                 Some(Err(error)) => {
                     tracing::warn!(error = %masked_chain(&self.masker, &error), "failed to list models");
-                    failure = Some(error);
                 }
                 None => {}
             }
         }
-        self.send(
-            client,
-            Notification::Models {
-                models: models.clone(),
-            },
-        )
-        .await;
-        let result = match failure {
-            Some(error) if models.is_empty() => Err(error),
-            _ => Ok(()),
-        };
-        self.respond(responder, result).await;
+        self.respond_with(responder, Ok(Some(QueryResult::Models { models })))
+            .await;
     }
 
     /// 받은 모델 목록을 둔다. 못 받았으면 그 provider는 후보에 넣지 않는다.

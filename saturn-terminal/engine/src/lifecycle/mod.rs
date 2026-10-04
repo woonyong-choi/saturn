@@ -52,7 +52,7 @@ use std::time::Duration;
 use saturn_protocol::envelope::{
     ClientMessage, Outcome, RequestId, Response, ServerMessage, decode_server_line, encode_line,
 };
-use saturn_protocol::rpc::{Notification, Request};
+use saturn_protocol::rpc::{Notification, QueryResult, Request};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
 use tokio::net::UnixStream;
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
@@ -238,6 +238,23 @@ impl Client {
         }
     }
 
+    /// 조회 요청을 보내고 그 응답의 `result`를 받는다. 응답 전에 온 알림은 버린다.
+    async fn query(&mut self, id: u64, request: Request) -> QueryResult {
+        self.send(id, request).await;
+        loop {
+            match self.recv().await {
+                ServerMessage::Notification(_) => {}
+                ServerMessage::Response(response) => {
+                    assert_eq!(response.id, Some(RequestId(id)));
+                    return match response.outcome {
+                        Outcome::Ok(Some(result)) => result,
+                        other => panic!("expected a query result, got {other:?}"),
+                    };
+                }
+            }
+        }
+    }
+
     /// `Attach` 응답까지 받은 알림.
     async fn attach(&mut self, id: u64, request: Request) -> Vec<Notification> {
         self.send(id, request).await;
@@ -267,7 +284,7 @@ fn new_chat(workdir: &Path) -> Request {
 fn error_code(response: &Response) -> i32 {
     match &response.outcome {
         Outcome::Err(error) => error.code,
-        Outcome::Ok(()) => panic!("expected error response, got ok"),
+        Outcome::Ok(_) => panic!("expected error response, got ok"),
     }
 }
 

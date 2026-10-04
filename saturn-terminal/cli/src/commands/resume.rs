@@ -4,7 +4,7 @@
 use std::io::IsTerminal;
 
 use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::{ChatListItem, Notification, Request};
+use saturn_protocol::rpc::{ChatListItem, QueryResult, Request};
 use saturn_tui::client::EngineClient;
 use saturn_tui::i18n::{self, Lang};
 
@@ -20,19 +20,11 @@ pub(crate) async fn pick(
     folder: Option<String>,
 ) -> anyhow::Result<ChatId> {
     let show_folder = folder.is_none();
-    let mut answer = None;
-    call(
-        lang,
-        client,
-        Request::ListChats { folder },
-        |notification| {
-            if let Notification::ChatList { chats } = notification {
-                answer = Some(chats);
-            }
-        },
-    )
-    .await?;
-    let chats = answer.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_CHAT_LIST_ANSWER)))?;
+    let Some(QueryResult::Chats { chats }) =
+        call(lang, client, Request::ListChats { folder }, drop).await?
+    else {
+        anyhow::bail!(lang.tr(i18n::CLI_NO_CHAT_LIST_ANSWER));
+    };
     pick_from(lang, chats, show_folder, saturn_tui::pick_chat)
 }
 
@@ -133,9 +125,9 @@ mod tests {
     #[tokio::test]
     async fn pick_asks_the_engine_for_the_folder_or_every_folder() {
         for folder in [Some("/work".to_owned()), None] {
-            let engine = FakeEngine::start(vec![Reply::with(vec![Notification::ChatList {
+            let engine = FakeEngine::start(vec![Reply::result(QueryResult::Chats {
                 chats: Vec::new(),
-            }])]);
+            })]);
             let mut client = engine.client().await;
 
             let error = pick(Lang::En, &mut client, folder.clone())

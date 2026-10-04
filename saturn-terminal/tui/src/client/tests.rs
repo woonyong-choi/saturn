@@ -75,7 +75,7 @@ async fn send_numbers_requests_and_next_skips_responses() {
     client.send(Request::ListRouterVersions).await.unwrap();
     let received = client.next().await;
 
-    assert_eq!(received, Some(notice()));
+    assert_eq!(received, Some(Incoming::Notification(notice())));
     assert_eq!(server.await.unwrap(), vec![RequestId(0), RequestId(1)]);
     assert_eq!(client.next().await, None);
 }
@@ -118,7 +118,7 @@ async fn call_collects_notifications_until_response_and_reports_rejection() {
         .await;
     let second = client.call(Request::ListTasks, |_| {}).await;
 
-    assert!(first.is_ok());
+    assert_eq!(first.unwrap(), None);
     assert_eq!(seen, vec![notice()]);
     assert!(matches!(
         second,
@@ -132,4 +132,59 @@ fn default_socket_ends_with_saturn_socket() {
     let socket = EngineClient::default_socket();
 
     assert!(socket.ends_with(".saturn/engine.sock"));
+}
+
+fn tasks_result() -> QueryResult {
+    QueryResult::Tasks { items: Vec::new() }
+}
+
+#[tokio::test]
+async fn next_returns_the_result_carried_by_a_response() {
+    let home = tempfile::tempdir().unwrap();
+    let socket = home.path().join(SOCKET_FILE);
+    let listener = UnixListener::bind(&socket).unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let (read_half, mut writer) = stream.into_split();
+        let mut lines = BufReader::new(read_half).lines();
+        let line = lines.next_line().await.unwrap().unwrap();
+        let id = decode_client_line(&line).unwrap().id;
+        let reply = ServerMessage::from(Response::result(id, tasks_result()));
+        writer
+            .write_all(encode_line(&reply).unwrap().as_bytes())
+            .await
+            .unwrap();
+    });
+    let mut client = EngineClient::connect(&socket).await.unwrap();
+
+    client.send(Request::ListTasks).await.unwrap();
+    let received = client.next().await;
+
+    assert_eq!(received, Some(Incoming::Result(tasks_result())));
+    server.await.unwrap();
+}
+
+#[tokio::test]
+async fn call_returns_the_result_of_a_query() {
+    let home = tempfile::tempdir().unwrap();
+    let socket = home.path().join(SOCKET_FILE);
+    let listener = UnixListener::bind(&socket).unwrap();
+    let server = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        let (read_half, mut writer) = stream.into_split();
+        let mut lines = BufReader::new(read_half).lines();
+        let line = lines.next_line().await.unwrap().unwrap();
+        let id = decode_client_line(&line).unwrap().id;
+        let reply = ServerMessage::from(Response::result(id, tasks_result()));
+        writer
+            .write_all(encode_line(&reply).unwrap().as_bytes())
+            .await
+            .unwrap();
+    });
+    let mut client = EngineClient::connect(&socket).await.unwrap();
+
+    let result = client.call(Request::ListTasks, |_| {}).await.unwrap();
+
+    assert_eq!(result, Some(tasks_result()));
+    server.await.unwrap();
 }

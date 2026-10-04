@@ -18,11 +18,10 @@ fn regroup(chat: ChatId, group: Option<&str>) -> Request {
 }
 
 async fn names_in_list(client: &mut Client, id: u64) -> Vec<Option<String>> {
-    client.send(id, Request::ListChats { folder: None }).await;
-    let Notification::ChatList { chats } = client.notification().await else {
-        panic!("expected ChatList");
+    let request = Request::ListChats { folder: None };
+    let QueryResult::Chats { chats } = client.query(id, request).await else {
+        panic!("expected Chats");
     };
-    assert_eq!(client.response().await, Response::ok(RequestId(id)));
     chats.into_iter().map(|item| item.name).collect()
 }
 
