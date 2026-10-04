@@ -145,6 +145,35 @@
           "const": "PruneNeedsRetention",
           "description": "`Prune`을 보냈는데 `retention.max_age_days`가 없어 거절했다. 요청한 접속에만 보낸다.",
           "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "description": "시작할 때 읽은 provider CLI 버전이 마지막으로 확인한 버전과 다르다. 첫 TUI에만 보낸다.",
+          "properties": {
+            "ProviderUpdated": {
+              "properties": {
+                "from": {
+                  "type": "string"
+                },
+                "provider": {
+                  "$ref": "#/$defs/Provider"
+                },
+                "to": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "provider",
+                "from",
+                "to"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ProviderUpdated"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -1987,18 +2016,9 @@
                   "type": "string"
                 },
                 "providers": {
+                  "description": "어댑터 레지스트리의 기본 순서대로.",
                   "items": {
-                    "maxItems": 2,
-                    "minItems": 2,
-                    "prefixItems": [
-                      {
-                        "$ref": "#/$defs/Provider"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ],
-                    "type": "array"
+                    "$ref": "#/$defs/ProviderInfo"
                   },
                   "type": "array"
                 },
@@ -3127,18 +3147,9 @@
                   "type": "string"
                 },
                 "providers": {
+                  "description": "어댑터 레지스트리의 기본 순서대로.",
                   "items": {
-                    "maxItems": 2,
-                    "minItems": 2,
-                    "prefixItems": [
-                      {
-                        "$ref": "#/$defs/Provider"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ],
-                    "type": "array"
+                    "$ref": "#/$defs/ProviderInfo"
                   },
                   "type": "array"
                 },
@@ -4324,11 +4335,7 @@
       "type": "string"
     },
     "Provider": {
-      "description": "provider 고유 이름은 engine 안에만 둔다.",
-      "enum": [
-        "Codex",
-        "Claude"
-      ],
+      "description": "provider는 닫힌 목록이 아니라 열린 id 글자로 식별한다. id는 소문자 영문, 숫자, `-`만 쓴다(1~32자).\n공통 코드는 id를 불투명한 글자로 저장하고 전달하고 같은지 비교만 한다.\n\n값은 프로세스 안에서 한 번만 만들어 두고 계속 쓰는 글자라 `Copy`다. 서로 다른 id는 `MAX_PROVIDER_IDS`개까지만\n받는다. 글자를 영구히 잡아 두므로 엉뚱한 입력이 메모리를 늘리지 못하게 하기 위해서다.",
       "type": "string"
     },
     "ProviderEvent": {
@@ -4798,6 +4805,28 @@
           "type": "object"
         }
       ]
+    },
+    "ProviderInfo": {
+      "description": "붙을 때 알리는 provider 하나. 어댑터 설명자에서 온 값이다.",
+      "properties": {
+        "display_name": {
+          "description": "화면과 사용량에 보이는 이름.",
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/Provider"
+        },
+        "version": {
+          "description": "확인하지 못했으면 빈 글자.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "display_name",
+        "version"
+      ],
+      "type": "object"
     },
     "PruneSkipReason": {
       "oneOf": [

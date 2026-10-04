@@ -620,7 +620,7 @@ mod tests {
             task: TaskId(id),
             label: TaskLabel(label),
             state,
-            provider: Some(Provider::Codex),
+            provider: Some(Provider::from_static("codex")),
             elapsed: Duration::from_secs(5),
             failure: None,
         }
@@ -776,7 +776,10 @@ mod tests {
 
         state.apply_task(task(1, 'A', TaskState::Running), Instant::now());
 
-        assert_eq!(state.tasks[&TaskId(1)].provider, Some(Provider::Codex));
+        assert_eq!(
+            state.tasks[&TaskId(1)].provider,
+            Some(Provider::from_static("codex"))
+        );
     }
 
     fn tool_call(call_id: &str) -> ProviderEvent {

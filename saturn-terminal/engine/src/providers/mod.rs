@@ -1,42 +1,34 @@
-//! provider 연결 구현: 종류별 생성, 공통 실행 준비, 끼워 넣기 경로 선택, 명령 목록 거르기.
+//! provider 어댑터 계층: 계약과 설명자, 레지스트리, 공통 실행 값, 끼워 넣기 경로 선택, 명령 목록 거르기.
 //! 설계: docs/design/providers-and-sessions.md
 
+mod adapter;
+mod builtin;
 mod claude;
-mod claude_input;
 mod codex;
-mod codex_home;
-mod codex_input;
-mod codex_permission;
+mod registry;
 #[cfg(test)]
 pub(crate) mod test_support;
 mod tool_detail;
 mod worker;
 
 use std::ffi::OsString;
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use saturn_core::providers::{
-    InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
-};
-use saturn_protocol::event::{ProviderEvent, TurnOrigin};
-use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SettingsRevision};
-use saturn_protocol::input::InputAnswer;
-use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
+use saturn_core::providers::{ProviderCommand, SessionHandle};
+use saturn_protocol::event::TurnOrigin;
+use saturn_protocol::ids::{Provider, SettingsRevision};
+use serde_json::Value;
 
-use crate::processes::{ProcessGroupId, Supervisor};
 use crate::secrets::Masker;
 
-pub(crate) use claude::ClaudeClient;
-pub use claude::{HookInputError, run_pre_tool_use};
-pub(crate) use codex::CodexClient;
-/// 응답을 보내지 않을 수도 있는 가짜 app-server를 띄우는 실행 설정.
-#[cfg(test)]
-pub(crate) use codex::tests::launch as fake_codex_launch;
-pub(crate) use codex_home::{
-    HomeInput, prepare as prepare_codex_home, rules_fingerprint, rules_of_home,
+pub use adapter::ProviderConnection;
+pub(crate) use adapter::{
+    Adapter, AdapterConnection, AppliedReader, BoxFuture, ContextDefaults, Descriptor, Feature,
+    INTERFACE_VERSION, PermissionInput,
 };
+pub use builtin::{HookInputError, run_pre_tool_use};
+pub use registry::Registry;
 pub(crate) use worker::{Connected, ProviderHandle, ProviderMsg, Reply, spawn_connect};
 
 /// 바로 돌아와야 하는 provider 요청(`turn/start`, `turn/steer`, interrupt)의 응답을 기다리는 최대 시간. 넘으면 그 요청만
@@ -64,7 +56,7 @@ pub struct LaunchSpec {
     pub defaults: SaturnDefaults,
     /// 부모 환경을 `secrets::scrub`으로 거른 값.
     pub env: Vec<(OsString, OsString)>,
-    /// Claude만 `--settings`로 넘기고 Codex는 무시한다.
+    /// Saturn 소유 PreToolUse 훅 설정. 훅을 받는 어댑터만 쓰고 나머지는 무시한다.
     pub hook_settings: Option<serde_json::Value>,
     /// Saturn 규칙을 번역한 provider 실행 설정.
     pub permission: PermissionLaunch,
@@ -72,15 +64,17 @@ pub struct LaunchSpec {
     pub masker: Masker,
 }
 
-/// Saturn 권한 규칙을 provider 실행 설정으로 번역한 결과. Claude의 `ask` 목록은 `hook_settings`에 합쳐 넘긴다.
+/// Saturn 권한 규칙을 provider 실행 설정으로 번역한 결과. 어댑터가 번역해 채운다.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PermissionLaunch {
-    /// Codex 전용 `CODEX_HOME`. 없으면 환경의 값을 그대로 쓴다.
-    pub codex_home: Option<PathBuf>,
-    /// 첫 턴 전에 준비를 확인할 Codex MCP 서버. 비면 확인하지 않는다.
+    /// 어댑터가 provider 프로세스 환경에 덮어쓸 변수. 비면 `LaunchSpec.env`를 그대로 쓴다.
+    pub env: Vec<(OsString, OsString)>,
+    /// 번역한 규칙의 지문. 규칙이 연결을 시작할 때 고정되는 어댑터만 채운다. 설정이 바뀌어 지문이 달라지면 연결을
+    /// 다시 시작한다.
+    pub rules_fingerprint: Option<String>,
+    /// 첫 턴 전에 준비를 확인할 MCP 서버. 비면 확인하지 않는다.
     pub mcp_servers: Vec<String>,
-    /// 권한 모드 `full`이라 에이전트 질문 기능을 뺀다. 기본(거짓)은 묻는다. Codex는 `CODEX_HOME` 생성 설정으로,
-    /// Claude는 `--disallowedTools AskUserQuestion`으로 적용한다.
+    /// 권한 모드 `full`이라 에이전트 질문 기능을 뺀다. 기본(거짓)은 묻는다. 적용 방식은 어댑터가 정한다.
     pub questions_disabled: bool,
 }
 
@@ -100,7 +94,7 @@ pub struct SaturnDefaults {
 
 /// provider 설정을 바꾸는 명령도 막지 않고 이 값을 읽어 기록한다.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct AppliedSettings {
+pub(crate) struct AppliedSettings {
     /// 보고하지 않으면 `None`.
     pub model: Option<String>,
     /// provider가 쓴 문자열 그대로. 보고하지 않으면 `None`.
@@ -112,221 +106,6 @@ pub(crate) enum SteerRoute {
     Steer,
     /// 실측 전 provider라 대기로 바꾼다.
     Queue,
-}
-
-/// `ProviderClient`는 `impl Future`를 돌려 dyn으로 못 쓰므로 enum으로 나눈다.
-#[derive(Debug)]
-pub enum ProviderConnection {
-    Codex(CodexClient),
-    Claude(ClaudeClient),
-    /// 입력 흐름 테스트가 실제 provider 없이 보낸 내용과 답을 정한다.
-    #[cfg(test)]
-    #[allow(private_interfaces)]
-    Fake(test_support::FakeProvider),
-}
-
-impl ProviderConnection {
-    /// Codex는 app-server를 바로 띄우고, Claude는 session을 열 때 띄운다.
-    ///
-    /// # Errors
-    /// 실행 실패나 초기화 응답 없음은 `ConnectionLost`.
-    pub async fn connect(
-        launch: LaunchSpec,
-        supervisor: Supervisor,
-    ) -> Result<Self, ProviderError> {
-        match launch.provider {
-            Provider::Codex => Ok(Self::Codex(CodexClient::start(launch, supervisor).await?)),
-            Provider::Claude => Ok(Self::Claude(ClaudeClient::new(launch, supervisor))),
-        }
-    }
-
-    pub fn provider(&self) -> Provider {
-        match self {
-            Self::Codex(_) => Provider::Codex,
-            Self::Claude(_) => Provider::Claude,
-            #[cfg(test)]
-            Self::Fake(client) => client.provider(),
-        }
-    }
-
-    /// Codex는 모든 session이 app-server 묶음 하나를 같이 쓴다.
-    pub fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId> {
-        match self {
-            Self::Codex(client) => Some(client.process_group()),
-            Self::Claude(client) => client.process_group(session),
-            #[cfg(test)]
-            Self::Fake(client) => client.group(),
-        }
-    }
-
-    /// 모든 session이 프로세스 묶음 하나를 같이 쓰는 provider의 그 묶음. 연결을 통째로 닫을 때 쓴다.
-    pub fn shared_group(&self) -> Option<ProcessGroupId> {
-        match self {
-            Self::Codex(client) => Some(client.process_group()),
-            Self::Claude(_) => None,
-            #[cfg(test)]
-            Self::Fake(client) => client.group(),
-        }
-    }
-
-    /// 적용값을 받기 전이면 `None`.
-    pub fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
-        match self {
-            Self::Codex(client) => client.applied_settings(session),
-            Self::Claude(client) => client.applied_settings(session),
-            #[cfg(test)]
-            Self::Fake(_) => None,
-        }
-    }
-
-    /// 적용값을 부를 때마다 읽는 함수. 연결 작업 밖에서 동기로 읽으려고 session을 열 때 받아 둔다.
-    pub(crate) fn applied_reader(
-        &self,
-        session: &ProviderSessionId,
-    ) -> Option<worker::AppliedReader> {
-        match self {
-            Self::Codex(client) => Some(client.applied_reader(session)),
-            Self::Claude(client) => client.applied_reader(session),
-            #[cfg(test)]
-            Self::Fake(_) => None,
-        }
-    }
-
-    /// 턴 완료를 처리한 뒤 그 에이전트에 줄 세워 둔 첫 입력을 보낸다. 줄 세우지 않는 연결은 아무것도 하지 않는다.
-    /// 응답을 기다리므로 `select` 가지 안에서 부르지 말고 가지 본문에서 끝까지 기다린다(#324).
-    pub(crate) async fn start_queued_turn(&mut self, agent: AgentId) {
-        match self {
-            Self::Codex(client) => client.start_queued_turn(agent).await,
-            Self::Claude(client) => client.start_queued_turn(agent).await,
-            #[cfg(test)]
-            Self::Fake(_) => {}
-        }
-    }
-}
-
-impl ProviderClient for ProviderConnection {
-    async fn open_session(&mut self, spec: SessionSpec) -> Result<SessionHandle, ProviderError> {
-        match self {
-            Self::Codex(client) => client.open_session(spec).await,
-            Self::Claude(client) => client.open_session(spec).await,
-            #[cfg(test)]
-            Self::Fake(client) => client.open_session(spec).await,
-        }
-    }
-
-    async fn send_turn(
-        &mut self,
-        session: &ProviderSessionId,
-        text: &str,
-    ) -> Result<(), ProviderError> {
-        match self {
-            Self::Codex(client) => client.send_turn(session, text).await,
-            Self::Claude(client) => client.send_turn(session, text).await,
-            #[cfg(test)]
-            Self::Fake(client) => client.send_turn(session, text).await,
-        }
-    }
-
-    /// 호출 전에 `steer_route`로 경로를 고른다.
-    async fn steer(
-        &mut self,
-        session: &ProviderSessionId,
-        text: &str,
-    ) -> Result<(), ProviderError> {
-        match self {
-            Self::Codex(client) => client.steer(session, text).await,
-            Self::Claude(client) => client.steer(session, text).await,
-            #[cfg(test)]
-            Self::Fake(client) => client.steer(session, text).await,
-        }
-    }
-
-    async fn interrupt(
-        &mut self,
-        session: &ProviderSessionId,
-        target: InterruptTarget,
-    ) -> Result<(), ProviderError> {
-        match self {
-            Self::Codex(client) => client.interrupt(session, target).await,
-            Self::Claude(client) => client.interrupt(session, target).await,
-            #[cfg(test)]
-            Self::Fake(client) => client.interrupt(session, target).await,
-        }
-    }
-
-    async fn compact(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
-        match self {
-            Self::Codex(client) => client.compact(session).await,
-            Self::Claude(client) => client.compact(session).await,
-            #[cfg(test)]
-            Self::Fake(client) => client.compact(session).await,
-        }
-    }
-
-    async fn answer_permission(
-        &mut self,
-        session: &ProviderSessionId,
-        request_id: &str,
-        answer: PermissionAnswer,
-    ) -> Result<(), ProviderError> {
-        match self {
-            Self::Codex(client) => client.answer_permission(session, request_id, answer).await,
-            Self::Claude(client) => client.answer_permission(session, request_id, answer).await,
-            #[cfg(test)]
-            Self::Fake(client) => client.answer_permission(session, request_id, answer).await,
-        }
-    }
-
-    async fn answer_input(
-        &mut self,
-        session: &ProviderSessionId,
-        request_id: &str,
-        answer: InputAnswer,
-    ) -> Result<(), ProviderError> {
-        match self {
-            Self::Codex(client) => client.answer_input(session, request_id, answer).await,
-            Self::Claude(client) => client.answer_input(session, request_id, answer).await,
-            #[cfg(test)]
-            Self::Fake(client) => client.answer_input(session, request_id, answer).await,
-        }
-    }
-
-    async fn close_session(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
-        match self {
-            Self::Codex(client) => client.close_session(session).await,
-            Self::Claude(client) => client.close_session(session).await,
-            #[cfg(test)]
-            Self::Fake(client) => client.close_session(session).await,
-        }
-    }
-
-    async fn list_models(&mut self) -> Result<Vec<ModelInfo>, ProviderError> {
-        match self {
-            Self::Codex(client) => client.list_models().await,
-            Self::Claude(client) => client.list_models().await,
-            #[cfg(test)]
-            Self::Fake(client) => client.list_models().await,
-        }
-    }
-
-    /// 취소해도 이벤트를 잃지 않는다. 줄 선 입력은 보내지 않으므로 완료를 처리한 뒤 `start_queued_turn`으로 보낸다.
-    async fn next_event(&mut self) -> Option<ProviderEvent> {
-        match self {
-            Self::Codex(client) => client.next_event().await,
-            Self::Claude(client) => client.next_event().await,
-            #[cfg(test)]
-            Self::Fake(client) => client.next_event().await,
-        }
-    }
-
-    fn commands(&self) -> Vec<ProviderCommand> {
-        match self {
-            Self::Codex(client) => client.commands(),
-            Self::Claude(client) => client.commands(),
-            #[cfg(test)]
-            Self::Fake(client) => client.commands(),
-        }
-    }
 }
 
 /// session마다 하나 둔다.
@@ -357,51 +136,22 @@ impl TurnOriginTracker {
     }
 }
 
-/// 고정 모델도 현재 provider도 없는 첫 입력을 설치된 앞쪽 provider로 보낸다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정).
-pub(crate) const FIRST_INPUT_ORDER: [Provider; 2] = [Provider::Claude, Provider::Codex];
-
-/// 설정에 실행 파일 경로가 없을 때 `PATH`에서 찾는 이름.
-pub(crate) fn program_name(provider: Provider) -> &'static str {
-    match provider {
-        Provider::Codex => codex::PROGRAM,
-        Provider::Claude => claude::PROGRAM,
+/// JSON 값 안의 모든 글자에서 router 키를 가린다.
+pub(crate) fn mask_values(value: &mut Value, masker: &Masker) {
+    match value {
+        Value::String(text) => *text = masker.mask(text).as_str().to_owned(),
+        Value::Array(items) => {
+            for item in items {
+                mask_values(item, masker);
+            }
+        }
+        Value::Object(fields) => {
+            for item in fields.values_mut() {
+                mask_values(item, masker);
+            }
+        }
+        _ => {}
     }
-}
-
-/// `env`의 `PATH`에서 실행 권한이 있는 파일을 찾는다. `PATH`가 없으면 없는 것으로 본다.
-pub(crate) fn is_installed(provider: Provider, env: &[(OsString, OsString)]) -> bool {
-    let Some((_, path)) = env.iter().find(|(name, _)| name == "PATH") else {
-        return false;
-    };
-    std::env::split_paths(path).any(|dir| {
-        std::fs::metadata(dir.join(program_name(provider)))
-            .is_ok_and(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
-    })
-}
-
-/// 사용량 화면처럼 사용자에게 provider를 이름으로 보일 때 쓴다.
-pub(crate) fn display_name(provider: Provider) -> &'static str {
-    match provider {
-        Provider::Codex => codex::DISPLAY_NAME,
-        Provider::Claude => claude::DISPLAY_NAME,
-    }
-}
-
-/// 입력 접수 기록에 남기는 고정 모델 글 `<provider>/<model>`. 같은 모델 이름이 두 provider에 있어도 구분된다.
-pub(crate) fn pinned_text(choice: &ModelChoice) -> String {
-    format!("{}/{}", display_name(choice.provider), choice.model)
-}
-
-/// `pinned_text`가 만든 글을 되돌린다. provider 접두사가 없으면 `None`.
-pub(crate) fn parse_pinned(text: &str) -> Option<ModelChoice> {
-    let (name, model) = text.split_once('/')?;
-    let provider = [Provider::Codex, Provider::Claude]
-        .into_iter()
-        .find(|provider| display_name(*provider) == name)?;
-    Some(ModelChoice {
-        provider,
-        model: model.to_owned(),
-    })
 }
 
 /// `handle.steer_verified`가 거짓(끼워 넣기 실측 #5, #27 통과 전)이면 `Queue`.
@@ -452,35 +202,12 @@ mod tests {
     #[test]
     fn unverified_steer_goes_to_queue() {
         let handle = |steer_verified| SessionHandle {
-            provider_session: ProviderSessionId("s".to_owned()),
+            provider_session: saturn_protocol::ids::ProviderSessionId("s".to_owned()),
             steer_verified,
         };
 
         assert_eq!(steer_route(&handle(false)), SteerRoute::Queue);
         assert_eq!(steer_route(&handle(true)), SteerRoute::Steer);
-    }
-
-    #[test]
-    fn installed_means_executable_file_on_the_given_path() {
-        let dir = tempfile::tempdir().unwrap();
-        let program = dir.path().join(program_name(Provider::Claude));
-        std::fs::write(&program, "#!/bin/sh\n").unwrap();
-        let path =
-            |dir: &std::path::Path| vec![(OsString::from("PATH"), dir.as_os_str().to_owned())];
-
-        let plain_file = is_installed(Provider::Claude, &path(dir.path()));
-        std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
-        let executable = is_installed(Provider::Claude, &path(dir.path()));
-
-        assert!(!plain_file);
-        assert!(executable);
-        assert!(!is_installed(Provider::Codex, &path(dir.path())));
-        assert!(!is_installed(Provider::Claude, &[]));
-    }
-
-    #[test]
-    fn first_input_prefers_claude_over_codex() {
-        assert_eq!(FIRST_INPUT_ORDER, [Provider::Claude, Provider::Codex]);
     }
 
     #[test]

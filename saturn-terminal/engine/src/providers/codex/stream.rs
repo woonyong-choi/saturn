@@ -6,7 +6,8 @@ use tokio::process::{ChildStderr, ChildStdout};
 use tokio::sync::mpsc;
 
 use super::convert::{convert_notification, convert_server_request};
-use super::{Approvals, Pending, Threads, lock, mask_values};
+use super::{Approvals, Pending, Threads, lock};
+use crate::providers::mask_values;
 use crate::secrets::Masker;
 
 /// 끝나면 진행 중이던 에이전트마다 `StreamLost`.

@@ -8,7 +8,7 @@ use saturn_protocol::event::UsageScope;
 use saturn_protocol::ids::{AgentId, ChatId, RunId, SessionId, SubagentId};
 use saturn_protocol::rpc::{Notification, UsageRange, UsageRow};
 
-use crate::providers::display_name;
+use crate::providers::Registry;
 use crate::rpc::ClientId;
 use crate::store::{Store, StoreError, UsageRow as StoredUsage};
 use crate::{Engine, EngineError};
@@ -52,7 +52,7 @@ impl Engine {
         if let (None, UsageRange::Chat, Some(folder)) = (chat, range, folder) {
             chat = self.store.latest_chat_in(folder).await?;
         }
-        let rows = usage_rows(&self.store, range, chat).await?;
+        let rows = usage_rows(&self.store, &self.registry, range, chat).await?;
         self.send(client, Notification::Usage { range, rows }).await;
         Ok(())
     }
@@ -85,6 +85,7 @@ impl Engine {
 /// 기록에 없는 비용, 맥락 정리, 채점은 `None`이다. 여러 턴을 합친 행만 `turns`를 채운다.
 async fn usage_rows(
     store: &Store,
+    registry: &Registry,
     range: UsageRange,
     chat: Option<ChatId>,
 ) -> Result<Vec<UsageRow>, StoreError> {
@@ -96,7 +97,7 @@ async fn usage_rows(
         let Some(value) = turn_values.get(&row.id) else {
             continue;
         };
-        let group = groups.entry(who(row)).or_default();
+        let group = groups.entry(who(registry, row)).or_default();
         for (sum, value) in group.tokens.iter_mut().zip(value.tokens) {
             if let Some(value) = value {
                 *sum = Some(sum.unwrap_or(0) + value);
@@ -153,8 +154,8 @@ async fn usage_rows(
 }
 
 /// 모델을 보고하지 않았으면 provider 이름만.
-fn who(row: &StoredUsage) -> String {
-    let provider = display_name(row.provider);
+fn who(registry: &Registry, row: &StoredUsage) -> String {
+    let provider = registry.display_name(row.provider);
     match &row.report.model {
         Some(model) => format!("{provider} · {model}"),
         None => provider.to_owned(),
@@ -359,8 +360,12 @@ mod tests {
     #[tokio::test]
     async fn usage_rows_group_by_provider_model_and_router() {
         let fixture = Fixture::new().await;
-        let codex = fixture.session(1, Provider::Codex).await;
-        let first = fixture.run(codex, Provider::Codex).await;
+        let codex = fixture
+            .session(1, crate::providers::test_support::CODEX)
+            .await;
+        let first = fixture
+            .run(codex, crate::providers::test_support::CODEX)
+            .await;
         fixture
             .report(
                 first,
@@ -371,8 +376,12 @@ mod tests {
                 Some(10),
             )
             .await;
-        let silent = fixture.run(codex, Provider::Codex).await;
-        let third = fixture.run(codex, Provider::Codex).await;
+        let silent = fixture
+            .run(codex, crate::providers::test_support::CODEX)
+            .await;
+        let third = fixture
+            .run(codex, crate::providers::test_support::CODEX)
+            .await;
         fixture
             .report(
                 third,
@@ -383,17 +392,26 @@ mod tests {
                 None,
             )
             .await;
-        let claude = fixture.session(2, Provider::Claude).await;
-        let turn = fixture.run(claude, Provider::Claude).await;
+        let claude = fixture
+            .session(2, crate::providers::test_support::CLAUDE)
+            .await;
+        let turn = fixture
+            .run(claude, crate::providers::test_support::CLAUDE)
+            .await;
         fixture
             .report(turn, claude, UsageScope::MainTurn, "opus", 40, Some(4))
             .await;
         fixture.judgment((30, 3)).await;
         fixture.judgment((20, 2)).await;
 
-        let rows = usage_rows(&fixture.store, UsageRange::Chat, Some(fixture.chat))
-            .await
-            .unwrap();
+        let rows = usage_rows(
+            &fixture.store,
+            &Registry::builtin(),
+            UsageRange::Chat,
+            Some(fixture.chat),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(silent.0 + 1, third.0);
         let who: Vec<&str> = rows.iter().map(|row| row.who.as_str()).collect();
@@ -416,7 +434,7 @@ mod tests {
     async fn usage_rows_chat_range_without_chat_is_not_found() {
         let fixture = Fixture::new().await;
 
-        let error = usage_rows(&fixture.store, UsageRange::Chat, None)
+        let error = usage_rows(&fixture.store, &Registry::builtin(), UsageRange::Chat, None)
             .await
             .unwrap_err();
 
@@ -429,7 +447,7 @@ mod tests {
             id,
             run: RunId(run),
             session: SessionId(1),
-            provider: Provider::Codex,
+            provider: crate::providers::test_support::CODEX,
             report: UsageReport {
                 agent: AgentId(1),
                 subagent: None,

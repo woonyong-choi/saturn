@@ -141,7 +141,7 @@ impl App {
         if let Some(rest) = text.strip_prefix('/').filter(|rest| !rest.contains('\n')) {
             let value = SATURN_COMMANDS
                 .iter()
-                .filter(|spec| !spec.values.is_empty())
+                .filter(|spec| !spec.values.is_empty() || spec.takes_provider)
                 .find_map(|spec| rest.strip_prefix(spec.path)?.strip_prefix(' '));
             return match value {
                 Some(arg) if arg.contains(' ') => None,
@@ -178,7 +178,17 @@ impl App {
                 SATURN_COMMANDS
                     .iter()
                     .find(|spec| text.starts_with(&format!("/{} ", spec.path)))
-                    .map(|spec| spec.values.iter().map(|v| value_item(v)).collect())
+                    .map(|spec| {
+                        if spec.takes_provider {
+                            self.start
+                                .iter()
+                                .flat_map(|start| &start.providers)
+                                .map(|info| value_item(info.provider.as_str()))
+                                .collect()
+                        } else {
+                            spec.values.iter().map(|v| value_item(v)).collect()
+                        }
+                    })
                     .unwrap_or_default()
             }
             PopupKind::File => self

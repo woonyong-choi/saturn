@@ -22,9 +22,6 @@ const ITEM_SHARE_PERCENT: usize = 30;
 // 초안
 const CHARS_PER_TOKEN: usize = 4;
 
-/// provider가 스스로 읽으므로 패킷에 넣지 않는다.
-const PROVIDER_DOCS: [&str; 2] = ["AGENTS.md", "CLAUDE.md"];
-
 const ITEM_SEPARATOR: &str = "\n\n";
 
 /// 패킷 맨 앞에 두는 지시. 아래 기록이 요청이 아니라 이미 일어난 일이고, 이 턴에서는 아무것도 하지 말고 다음 사용자 입력을 기다리라고 알린다.
@@ -112,6 +109,8 @@ pub struct PacketSource {
     pub recent_turns: Vec<RecentTurn>,
     /// 맥락 고르기가 정한 순서.
     pub competitors: Vec<CompetingItem>,
+    /// provider가 스스로 읽는 지시 문서 이름. 어댑터 설명자가 알린다. 이 이름의 파일은 패킷에 넣지 않는다.
+    pub provider_docs: Vec<String>,
     pub up_to: LedgerSeq,
 }
 
@@ -244,7 +243,11 @@ fn assemble(
             text: entry.text.clone(),
         });
     }
-    chosen.extend(fill_competing_zone(&source.competitors, rest_chars));
+    chosen.extend(fill_competing_zone(
+        &source.competitors,
+        &source.provider_docs,
+        rest_chars,
+    ));
     sections.push(Section {
         title: COMPETING_TITLE,
         items: chosen
@@ -336,12 +339,19 @@ fn fixed_sections(source: &PacketSource, turns: &[RecentTurn]) -> Vec<Section> {
 // basis: estimate
 /// 고른 순서대로 원문, 축약본, 경로 중 처음 들어가는 형태를 넣고 기록 번호 순으로 돌려준다.
 /// 항목 앞의 기록 번호와 시각, session의 첫 항목이 쓰는 제목도 예산에 든다.
-fn fill_competing_zone(items: &[CompetingItem], budget_chars: usize) -> Vec<Chosen> {
+fn fill_competing_zone(
+    items: &[CompetingItem],
+    provider_docs: &[String],
+    budget_chars: usize,
+) -> Vec<Chosen> {
     let item_cap = budget_chars * ITEM_SHARE_PERCENT / 100;
     let mut remaining = budget_chars;
     let mut titled: HashSet<SessionId> = HashSet::new();
     let mut chosen: Vec<Chosen> = Vec::new();
-    for item in items.iter().filter(|item| !is_provider_doc(item)) {
+    for item in items
+        .iter()
+        .filter(|item| !is_provider_doc(item, provider_docs))
+    {
         let session = item.stamp.session;
         let title_chars = if titled.contains(&session) {
             0
@@ -455,12 +465,12 @@ fn estimate_tokens(text: &str) -> u64 {
 // cost: time O(l), heap O(1), stack O(1)
 // vars: l = 경로 글자 수
 // basis: estimate
-fn is_provider_doc(item: &CompetingItem) -> bool {
+fn is_provider_doc(item: &CompetingItem, provider_docs: &[String]) -> bool {
     item.path
         .as_deref()
         .and_then(|path| Path::new(path).file_name())
         .and_then(|name| name.to_str())
-        .is_some_and(|name| PROVIDER_DOCS.contains(&name))
+        .is_some_and(|name| provider_docs.iter().any(|doc| doc == name))
 }
 
 #[cfg(test)]

@@ -1,7 +1,6 @@
 //! provider 입력 요청 테스트: 요청이 TUI와 provider 사이를 오가고, 답이 없는 동안 작업이 기다린다.
 
 use saturn_core::providers::ProviderError;
-use saturn_protocol::ids::Provider;
 use saturn_protocol::input::{InputAnswer, InputValue};
 use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::TaskState;
@@ -46,7 +45,10 @@ async fn elicitation_request_reaches_the_tui_and_the_answer_reaches_the_provider
         })
         .await;
     assert_eq!(Some(request_id), flow.input_id("ask-1"));
-    assert_eq!((provider, title.as_str()), (Provider::Claude, "Which?"));
+    assert_eq!(
+        (provider, title.as_str()),
+        (crate::providers::test_support::CLAUDE, "Which?")
+    );
     assert_eq!(waiting, TaskState::AwaitingInput);
 
     flow.answer_input("ask-1", typed("ok")).await.unwrap();

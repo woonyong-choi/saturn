@@ -63,17 +63,13 @@ pub(crate) enum Stage {
 }
 
 impl Stage {
-    /// 이 요청을 맡은 연결의 provider.
-    fn provider(&self, job: &DeliveryJob) -> Provider {
+    /// 이 요청을 맡은 연결의 provider. 보내는 단계인데 열린 session이 없으면 `None`.
+    fn provider(&self, job: &DeliveryJob) -> Option<Provider> {
         match self {
-            Self::Connecting { plan, .. } => plan.provider(),
-            Self::Opening(prep) | Self::Handoff(prep) => prep.provider(),
-            Self::Steering { live } | Self::SteerFallback { live, .. } => live.provider,
-            Self::Sending => job
-                .delivery
-                .live
-                .as_ref()
-                .map_or(Provider::Claude, |live| live.provider),
+            Self::Connecting { plan, .. } => Some(plan.provider()),
+            Self::Opening(prep) | Self::Handoff(prep) => Some(prep.provider()),
+            Self::Steering { live } | Self::SteerFallback { live, .. } => Some(live.provider),
+            Self::Sending => job.delivery.live.as_ref().map(|live| live.provider),
         }
     }
 
@@ -120,6 +116,11 @@ impl Engine {
                 };
                 self.on_arrival(arrival).await;
             }
+            ProviderMsg::Commands {
+                chat,
+                provider,
+                commands,
+            } => self.on_commands(chat, provider, commands).await,
             ProviderMsg::Closed { chat, provider } => {
                 let arrival = Arrival {
                     chat,
@@ -144,7 +145,7 @@ impl Engine {
             .flow
             .deliveries
             .get(&chat)
-            .is_some_and(|parked| parked.stage.provider(&parked.job) == provider);
+            .is_some_and(|parked| parked.stage.provider(&parked.job) == Some(provider));
         if waiting && let Some(Parked { job, stage }) = self.flow.deliveries.remove(&chat) {
             let reply = stage.lost_reply();
             let advanced = self
@@ -286,9 +287,15 @@ impl Engine {
         match self.launch_spec(provider, chat, job.record.settings).await {
             Ok(launch) => {
                 let seed = ConnectionSeed::of(&launch);
+                let Some(adapter) = self.registry.get(provider).cloned() else {
+                    return self
+                        .fail_open(job, ProviderError::ConnectionLost.into())
+                        .await;
+                };
                 spawn_connect(
                     chat,
                     launch,
+                    adapter,
                     self.supervisor.clone(),
                     self.flow.provider_tx.clone(),
                 );

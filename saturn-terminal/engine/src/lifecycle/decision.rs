@@ -1,7 +1,7 @@
 //! 판단 적용 테스트: 적용 직전 채팅 revision을 비교하고, 어긋나면 한 번만 다시 판단한다.
 
 use saturn_core::routers::RouteDecision;
-use saturn_protocol::ids::{ChatRevision, InputId, Provider};
+use saturn_protocol::ids::{ChatRevision, InputId};
 use saturn_protocol::rpc::ModelChoice;
 use saturn_protocol::state::{Disposition, InputState};
 
@@ -115,7 +115,7 @@ async fn pinned_model_input_still_gets_the_relation_judgment_while_task_runs() {
     .await;
     flow.submit("first request").await;
     let model = ModelChoice {
-        provider: Provider::Claude,
+        provider: crate::providers::test_support::CLAUDE,
         model: "opus".to_owned(),
     };
 

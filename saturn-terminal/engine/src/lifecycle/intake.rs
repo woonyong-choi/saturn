@@ -2,7 +2,7 @@
 
 use saturn_core::queue::QueueError;
 use saturn_protocol::envelope::INVALID_PARAMS;
-use saturn_protocol::ids::{ChatId, InputId, Provider, ProviderSessionId};
+use saturn_protocol::ids::{ChatId, InputId, ProviderSessionId};
 use saturn_protocol::state::InputState;
 
 use super::support::{
@@ -10,7 +10,6 @@ use super::support::{
 };
 use super::*;
 use crate::chat_env::ChatEnv;
-use crate::providers::ProviderConnection;
 use crate::providers::test_support::{Call, FakeProvider};
 use crate::rpc::ClientId;
 use crate::secrets::ROUTER_KEY_ENV;
@@ -136,24 +135,27 @@ async fn inputs_are_routed_one_at_a_time_in_accept_order() {
 async fn first_input_prefers_claude_then_codex() {
     let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
     let chat = flow.chat;
-    flow.engine.providers.remove(&(chat, Provider::Claude));
-    let codex = FakeProvider::new(Provider::Codex);
     flow.engine
-        .add_connection(chat, ProviderConnection::Fake(codex.clone()));
+        .providers
+        .remove(&(chat, crate::providers::test_support::CLAUDE));
+    let codex = FakeProvider::new(crate::providers::test_support::CODEX);
+    flow.engine.add_connection(chat, codex.connection());
 
     let input = flow.submit("hello").await;
 
     assert_eq!(flow.state(input), InputState::Applied);
     assert_eq!(codex.calls().len(), 2);
     let main = flow.engine.sessions.live_main(chat).unwrap();
-    assert_eq!(main.provider, Provider::Codex);
+    assert_eq!(main.provider, crate::providers::test_support::CODEX);
 }
 
 #[tokio::test]
 async fn first_input_without_any_provider_is_rejected_and_sent_nowhere() {
     let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
     let chat = flow.chat;
-    flow.engine.providers.remove(&(chat, Provider::Claude));
+    flow.engine
+        .providers
+        .remove(&(chat, crate::providers::test_support::CLAUDE));
 
     let input = flow.submit("hello").await;
 
@@ -173,7 +175,7 @@ async fn first_input_without_any_provider_is_rejected_and_sent_nowhere() {
 async fn pinned_model_input_is_judged_and_goes_to_the_session_with_that_model() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     let model = saturn_protocol::rpc::ModelChoice {
-        provider: Provider::Claude,
+        provider: crate::providers::test_support::CLAUDE,
         model: "the-pinned-model".to_owned(),
     };
 
@@ -206,7 +208,7 @@ async fn launch_spec_takes_workdir_and_env_from_the_chat() {
     let revision = engine.settings.current().unwrap();
 
     let launch = engine
-        .launch_spec(Provider::Claude, chat, revision)
+        .launch_spec(crate::providers::test_support::CLAUDE, chat, revision)
         .await
         .unwrap();
 
@@ -344,13 +346,17 @@ async fn provider_mode_leaves_out_the_auto_compact_safety_net() {
     let revision = flow.engine.settings.current().unwrap();
     let provider = flow
         .engine
-        .launch_spec(Provider::Claude, flow.chat, revision)
+        .launch_spec(crate::providers::test_support::CLAUDE, flow.chat, revision)
         .await
         .unwrap();
     let revision = saturn.engine.settings.current().unwrap();
     let default = saturn
         .engine
-        .launch_spec(Provider::Claude, saturn.chat, revision)
+        .launch_spec(
+            crate::providers::test_support::CLAUDE,
+            saturn.chat,
+            revision,
+        )
         .await
         .unwrap();
 

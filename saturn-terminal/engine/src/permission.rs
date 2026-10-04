@@ -3,12 +3,12 @@
 
 use std::path::{Path, PathBuf};
 
-use saturn_core::permission::{Mode, PermissionCall, PermissionTool, Policy, Verdict};
+use saturn_core::permission::{Mode, PermissionCall, PermissionTool, Policy, Rule, Verdict};
 use saturn_core::queue::Permission;
 use saturn_protocol::ids::{AgentId, ChatId, Provider, ProviderSessionId, SettingsRevision};
 use saturn_protocol::rpc::ChatNotice;
 
-use crate::providers::{ProviderHandle, rules_fingerprint};
+use crate::providers::ProviderHandle;
 use crate::settings::{self, SettingsError};
 use crate::{Engine, EngineError};
 
@@ -42,8 +42,8 @@ impl Engine {
     }
 
     /// 설정이 바뀌었는지 보고 바뀐 설정을 연결에 적용한다. `/permissions`로 모드를 바꿀 때와 입력을 접수하며 설정을
-    /// 다시 읽을 때 부른다. 다시 시작이 필요한 연결(Codex는 규칙 지문이나 질문 설정이, Claude는 질문 설정으로 달라지는
-    /// 도구 목록이 연결을 시작할 때와 다를 때)은 채팅에 실행 중인 작업이 없으면 바로 다시 시작하고, 있으면 턴 끝으로
+    /// 다시 읽을 때 부른다. 다시 시작이 필요한 연결(규칙이 연결을 시작할 때 고정되는 어댑터는 규칙 지문이나 질문
+    /// 설정이, 그 밖의 어댑터는 질문 설정이 연결을 시작할 때와 다를 때)은 채팅에 실행 중인 작업이 없으면 바로 다시 시작하고, 있으면 턴 끝으로
     /// 미루며 미룬 것을 처음 알아챌 때 한 번 알린다. 입력 접수에서 부르면 그 입력은 다시 시작한 뒤의 새 연결로 나간다.
     pub(crate) async fn sync_provider_settings(
         &mut self,
@@ -68,29 +68,35 @@ impl Engine {
         }
     }
 
-    /// provider마다 연결을 시작할 때의 설정이 지금 설정과 다른지.
-    fn stale_providers(&self, chat: ChatId, rules: &str, questions: bool) -> [(Provider, bool); 2] {
+    /// provider마다 연결을 시작할 때의 설정이 지금 설정과 다른지. 규칙 지문은 어댑터가 정한다.
+    fn stale_providers(
+        &self,
+        chat: ChatId,
+        rules: &[Rule],
+        questions: bool,
+    ) -> Vec<(Provider, bool)> {
         let flow = &self.flow;
-        let asked = |provider| flow.questions_of_connection.get(&(chat, provider));
-        let codex_rules_differ = flow
-            .rules_of_connection
-            .get(&chat)
-            .is_some_and(|started| started != rules);
-        [
-            (
-                Provider::Codex,
-                codex_rules_differ
-                    || asked(Provider::Codex).is_some_and(|started| *started != questions),
-            ),
-            (
-                Provider::Claude,
-                asked(Provider::Claude).is_some_and(|started| *started != questions),
-            ),
-        ]
+        self.registry
+            .ids()
+            .into_iter()
+            .map(|provider| {
+                let rules_differ = self
+                    .registry
+                    .get(provider)
+                    .and_then(|adapter| adapter.rules_fingerprint(rules))
+                    .zip(flow.rules_of_connection.get(&(chat, provider)))
+                    .is_some_and(|(current, started)| *started != current);
+                let questions_differ = flow
+                    .questions_of_connection
+                    .get(&(chat, provider))
+                    .is_some_and(|started| *started != questions);
+                (provider, rules_differ || questions_differ)
+            })
+            .collect()
     }
 
     /// 다시 시작할 연결 표시를 맞춘다. 이번에 처음 표시한 연결이 있으면 참.
-    fn mark_stale_connections(&mut self, chat: ChatId, differs: [(Provider, bool); 2]) -> bool {
+    fn mark_stale_connections(&mut self, chat: ChatId, differs: Vec<(Provider, bool)>) -> bool {
         let mut deferred = false;
         for (provider, is_stale) in differs {
             if is_stale {
@@ -109,7 +115,7 @@ impl Engine {
         if self.chat_is_running(chat) {
             return;
         }
-        for provider in [Provider::Codex, Provider::Claude] {
+        for provider in self.registry.ids() {
             if self.flow.stale_connections.remove(&(chat, provider)) {
                 self.restart_connection(chat, provider).await;
             }
@@ -120,9 +126,7 @@ impl Engine {
     async fn restart_connection(&mut self, chat: ChatId, provider: Provider) {
         self.flow.stale_connections.remove(&(chat, provider));
         self.flow.questions_of_connection.remove(&(chat, provider));
-        if provider == Provider::Codex {
-            self.flow.rules_of_connection.remove(&chat);
-        }
+        self.flow.rules_of_connection.remove(&(chat, provider));
         let Some(connection) = self.providers.remove(&(chat, provider)) else {
             return;
         };
@@ -150,21 +154,20 @@ impl Engine {
             .collect()
     }
 
-    /// Codex는 공유 연결의 프로세스 묶음을 멈추고, Claude는 session마다 닫는다.
+    /// 모든 session이 프로세스 묶음 하나를 같이 쓰는 연결은 그 묶음을 멈추고, 아니면 session마다 닫는다.
     async fn close_connection(
         &self,
         connection: &ProviderHandle,
         provider: Provider,
         sessions: &[(AgentId, ProviderSessionId)],
     ) {
-        match provider {
-            Provider::Codex => self.stop_shared_connection(connection).await,
-            Provider::Claude => {
-                for (_, session) in sessions {
-                    if let Err(error) = connection.close_session(session).await {
-                        tracing::warn!(error = %self.failure_line(&error), "failed to close the claude session for restart");
-                    }
-                }
+        if connection.shared_group().is_some() {
+            self.stop_shared_connection(connection).await;
+            return;
+        }
+        for (_, session) in sessions {
+            if let Err(error) = connection.close_session(session).await {
+                tracing::warn!(error = %self.failure_line(&error), %provider, "failed to close the session for restart");
             }
         }
     }
@@ -178,7 +181,7 @@ impl Engine {
             .stop_tree(group, crate::processes::StopScope::Whole)
             .await
         {
-            tracing::warn!(error = %self.failure_line(&error), "failed to stop the codex connection for restart");
+            tracing::warn!(error = %self.failure_line(&error), "failed to stop the shared connection for restart");
         }
         self.supervisor.release(group);
     }
@@ -203,17 +206,14 @@ impl Engine {
         &self,
         chat: ChatId,
         revision: SettingsRevision,
-    ) -> Result<(String, bool), EngineError> {
+    ) -> Result<(Vec<Rule>, bool), EngineError> {
         let rules = self
             .settings
             .at(&self.store, revision)
             .await?
             .permission()
             .rules;
-        Ok((
-            rules_fingerprint(&rules),
-            self.agent_questions(chat, revision).await?,
-        ))
+        Ok((rules, self.agent_questions(chat, revision).await?))
     }
 
     /// 규칙은 에이전트가 가장 나중에 시작한 입력에 고정한 설정 번호의 값이고, 모드는 채팅 층에 쓴 값이 있으면 그것이

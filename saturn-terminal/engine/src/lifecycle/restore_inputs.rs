@@ -1,7 +1,7 @@
 //! 재시작 뒤 입력 복원 테스트(#370): 기록 저장소에 접수만 되고 보내지 않은 입력이 접수 순서대로 대기열에 돌아와
 //! 상태별 규칙에 따라 처리된다.
 
-use saturn_protocol::ids::{InputId, Provider, TaskLabel};
+use saturn_protocol::ids::{InputId, TaskLabel};
 use saturn_protocol::state::{EffectScope, InputState};
 
 use super::crash_recovery::{Restarted, resume_suggested};
@@ -20,7 +20,10 @@ async fn complete_turn(restarted: &mut Restarted) {
     let agent = *restarted.engine.flow.live.keys().next().unwrap();
     restarted
         .engine
-        .on_provider_event(Provider::Claude, turn_completed(agent))
+        .on_provider_event(
+            crate::providers::test_support::CLAUDE,
+            turn_completed(agent),
+        )
         .await
         .unwrap();
     restarted.settle().await;

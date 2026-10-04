@@ -236,7 +236,8 @@ pub enum UsageRange {
 pub enum Notification {
     StartInfo {
         saturn_version: String,
-        providers: Vec<(Provider, String)>,
+        /// 어댑터 레지스트리의 기본 순서대로.
+        providers: Vec<ProviderInfo>,
         router: String,
         router_version: String,
         /// 채팅의 기본 폴더.
@@ -524,6 +525,12 @@ pub enum Alert {
     AutoPruneFailed,
     /// `Prune`을 보냈는데 `retention.max_age_days`가 없어 거절했다. 요청한 접속에만 보낸다.
     PruneNeedsRetention,
+    /// 시작할 때 읽은 provider CLI 버전이 마지막으로 확인한 버전과 다르다. 첫 TUI에만 보낸다.
+    ProviderUpdated {
+        provider: crate::ids::Provider,
+        from: String,
+        to: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
@@ -532,6 +539,16 @@ pub struct CommandInfo {
     pub name: String,
     pub description: String,
     pub is_skill: bool,
+}
+
+/// 붙을 때 알리는 provider 하나. 어댑터 설명자에서 온 값이다.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct ProviderInfo {
+    pub provider: Provider,
+    /// 화면과 사용량에 보이는 이름.
+    pub display_name: String,
+    /// 확인하지 못했으면 빈 글자.
+    pub version: String,
 }
 
 /// provider가 받는 모델 이름. 같은 이름이 두 provider에 있어도 provider로 구분한다.

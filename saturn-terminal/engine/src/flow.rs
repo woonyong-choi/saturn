@@ -9,7 +9,7 @@ use saturn_protocol::ids::{
     AgentId, ChatId, ChatRevision, InputId, JudgmentId, Provider, ProviderSessionId, RunId,
     SessionId, SettingsRevision, SubagentId, TaskId, TaskLabel,
 };
-use saturn_protocol::rpc::{Alert, ModelInfo, Notification};
+use saturn_protocol::rpc::{Alert, CommandInfo, ModelInfo, Notification};
 use saturn_protocol::state::{Disposition, TaskState};
 use tokio::sync::mpsc;
 
@@ -104,6 +104,10 @@ pub(crate) struct FlowState {
     pub(crate) judging: HashMap<ChatId, InputId>,
     /// provider 연결에서 받아 둔 모델 목록. `target_model` 후보이고 `/model` 목록과 같다. 목록을 받기 전이면 항목이 없다.
     pub(crate) models: HashMap<(ChatId, Provider), Vec<ModelInfo>>,
+    /// 연결이 마지막으로 알린 명령 목록. 나중에 붙는 TUI에 그대로 보낸다.
+    pub(crate) commands: HashMap<(ChatId, Provider), Vec<CommandInfo>>,
+    /// 시작 때 읽은 provider CLI 버전. 읽지 못한 provider는 항목이 없다.
+    pub(crate) cli_versions: HashMap<Provider, String>,
     pub(crate) router_tx: mpsc::UnboundedSender<RouterDone>,
     pub(crate) router_rx: mpsc::UnboundedReceiver<RouterDone>,
     /// 채팅의 가장 나중 판단이 정한 처리 방식. 다음 판단의 state에 넣는다.
@@ -132,8 +136,8 @@ pub(crate) struct FlowState {
     next_request: u64,
     /// 에이전트가 가장 나중에 시작한 입력의 설정 번호. 허가 요청 판정이 그 번호의 규칙을 쓴다.
     pub(crate) settings_of: HashMap<AgentId, SettingsRevision>,
-    /// 채팅의 Codex 연결을 시작할 때 쓴 규칙 지문. 연결이 없으면 항목도 없다.
-    pub(crate) rules_of_connection: HashMap<ChatId, String>,
+    /// 채팅의 연결을 시작할 때 쓴 규칙 지문. 규칙이 연결을 시작할 때 고정되는 어댑터만 항목이 있다. 연결이 없으면 항목도 없다.
+    pub(crate) rules_of_connection: HashMap<(ChatId, Provider), String>,
     /// 바뀐 설정을 적용하려고 다시 시작할 연결. 채팅에 작업이 있으면 턴 끝에 시작한다.
     pub(crate) stale_connections: HashSet<(ChatId, Provider)>,
     /// 연결을 시작할 때 쓴 에이전트 질문 기능 값(켬이 참).
@@ -207,6 +211,8 @@ impl Default for FlowState {
             routed: HashMap::new(),
             judging: HashMap::new(),
             models: HashMap::new(),
+            commands: HashMap::new(),
+            cli_versions: HashMap::new(),
             router_tx,
             router_rx,
             last_disposition: HashMap::new(),

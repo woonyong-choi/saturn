@@ -2,7 +2,7 @@
 
 use saturn_core::providers::ProviderError;
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::{AgentId, LedgerSeq, Provider};
+use saturn_protocol::ids::{AgentId, LedgerSeq};
 use saturn_protocol::rpc::{Notification, PermissionAnswer};
 use saturn_protocol::state::{EffectScope, TaskState};
 
@@ -22,7 +22,10 @@ async fn event_is_recorded_before_it_reaches_the_screen_and_the_state() {
 
     let refused = flow
         .engine
-        .on_provider_event(Provider::Claude, text(agent, "working"))
+        .on_provider_event(
+            crate::providers::test_support::CLAUDE,
+            text(agent, "working"),
+        )
         .await;
 
     assert!(matches!(refused, Err(EngineError::Store(_))));
@@ -239,7 +242,7 @@ async fn permission_request_reaches_the_tui_and_the_answer_reaches_the_provider(
         })
         .await;
     assert_eq!(Some(request_id), flow.permission_id("req-1"));
-    assert_eq!(provider, Provider::Claude);
+    assert_eq!(provider, crate::providers::test_support::CLAUDE);
     assert_eq!(waiting, TaskState::AwaitingPermission);
 
     flow.answer_permission("req-1", PermissionAnswer::AllowOnce)

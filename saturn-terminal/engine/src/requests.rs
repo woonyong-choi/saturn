@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::{ChatId, LedgerSeq, Provider, TaskLabel};
+use saturn_protocol::ids::{ChatId, LedgerSeq, TaskLabel};
 use saturn_protocol::rpc::{Alert, ChatNotice, Notification};
 use saturn_protocol::state::TaskState;
 
@@ -25,11 +25,7 @@ impl Engine {
         };
         Notification::StartInfo {
             saturn_version: env!("CARGO_PKG_VERSION").to_owned(),
-            // provider는 첫 입력 때 연결해 버전을 아직 모른다.
-            providers: [Provider::Codex, Provider::Claude]
-                .into_iter()
-                .map(|provider| (provider, String::new()))
-                .collect(),
+            providers: self.provider_infos(),
             router: active.router_id().to_owned(),
             router_version,
             folder: workdir.display().to_string(),
@@ -134,6 +130,15 @@ impl Engine {
                 to: notice.to,
             };
             self.send(client, Notification::Alert { alert }).await;
+        }
+        for change in std::mem::take(&mut self.notices.provider_updates) {
+            self.send(
+                client,
+                Notification::Alert {
+                    alert: change.alert(),
+                },
+            )
+            .await;
         }
         if let Some(notice) = self.notices.auto_prune.take() {
             let alert = match notice {

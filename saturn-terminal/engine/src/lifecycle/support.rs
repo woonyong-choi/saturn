@@ -15,7 +15,6 @@ use super::*;
 use crate::Attachment;
 use crate::chat_env::ChatEnv;
 use crate::flow::RouterJob;
-use crate::providers::ProviderConnection;
 use crate::providers::test_support::FakeProvider;
 use crate::rpc::ClientId;
 use crate::store::NewInput;
@@ -88,7 +87,7 @@ impl Flow {
                 folder_trust: None,
             },
         );
-        let fake = FakeProvider::new(Provider::Claude);
+        let fake = FakeProvider::new(crate::providers::test_support::CLAUDE);
         let questions = match engine.settings.current() {
             Some(revision) => engine
                 .agent_questions(chat, revision)
@@ -99,8 +98,8 @@ impl Flow {
         engine
             .flow
             .questions_of_connection
-            .insert((chat, Provider::Claude), questions);
-        engine.add_connection(chat, ProviderConnection::Fake(fake.clone()));
+            .insert((chat, crate::providers::test_support::CLAUDE), questions);
+        engine.add_connection(chat, fake.connection());
         Self {
             engine,
             fake,
@@ -162,13 +161,12 @@ impl Flow {
                 folder_trust: None,
             },
         );
-        let fake = FakeProvider::new(Provider::Claude);
+        let fake = FakeProvider::new(crate::providers::test_support::CLAUDE);
         self.engine
             .flow
             .questions_of_connection
-            .insert((chat, Provider::Claude), true);
-        self.engine
-            .add_connection(chat, ProviderConnection::Fake(fake.clone()));
+            .insert((chat, crate::providers::test_support::CLAUDE), true);
+        self.engine.add_connection(chat, fake.connection());
         self.engine
             .submit_input(OTHER_CLIENT, chat, 1, "other work".to_owned(), false)
             .await
@@ -188,7 +186,8 @@ impl Flow {
 
     /// 열려 있는 가짜 Claude가 낸 것처럼 이벤트를 처리한다.
     pub(super) async fn claude_event(&mut self, event: ProviderEvent) {
-        self.event(Provider::Claude, event).await;
+        self.event(crate::providers::test_support::CLAUDE, event)
+            .await;
     }
 
     pub(super) async fn event(&mut self, provider: Provider, event: ProviderEvent) {
@@ -206,8 +205,7 @@ impl Flow {
             .flow
             .questions_of_connection
             .insert((self.chat, provider), true);
-        self.engine
-            .add_connection(self.chat, ProviderConnection::Fake(fake.clone()));
+        self.engine.add_connection(self.chat, fake.connection());
         fake
     }
 

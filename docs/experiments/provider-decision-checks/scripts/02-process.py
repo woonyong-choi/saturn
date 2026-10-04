@@ -115,6 +115,9 @@ def main():
     write("exp2_trials", exp2, ["run_id", "trial_id", "condition", "ts_utc", "provider", "state_checked_first", "duplicate_touch", "status"])
     request_rows = []
     for row in exp3:
+        if "item/tool/requestUserInput" in row.get("request_method", []):
+            # 수집 당시 지표는 요청 도착만 봤다. 모델 후속 출력에 드라이버의 답이 반영됐는지로 다시 센다.
+            row["round_trip"] = int("experiment-answer" in json.dumps(row.get("server_observation"), ensure_ascii=False))
         methods = row.get("request_method", [])
         for index, method in enumerate(methods):
             request_rows.append({"run_id": row["run_id"], "trial_id": row["trial_id"], "condition": row["condition"],

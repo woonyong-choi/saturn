@@ -1,6 +1,5 @@
 //! 설정 파일 감시 테스트: 입력 없이도 파일이 바뀌면 적용하고, 쓰는 도중의 파일은 적용하지 않는다.
 
-use saturn_protocol::ids::Provider;
 use saturn_protocol::rpc::{ChatNotice, Notification, SettingsWarning};
 
 use super::agent_questions::restarted;
@@ -11,7 +10,7 @@ const FULL: &str = "[permission]\nmode = \"full\"\n";
 fn connected(flow: &Flow) -> bool {
     flow.engine
         .providers
-        .contains_key(&(flow.chat, Provider::Claude))
+        .contains_key(&(flow.chat, crate::providers::test_support::CLAUDE))
 }
 
 fn permissions_changed(notifications: &[Notification]) -> bool {
@@ -38,7 +37,10 @@ async fn settings_watch_restarts_an_idle_chat_without_any_input() {
     flow.engine.watch_settings().await;
 
     assert!(!connected(&flow));
-    assert!(restarted(&client.window().await, Provider::Claude));
+    assert!(restarted(
+        &client.window().await,
+        crate::providers::test_support::CLAUDE
+    ));
 }
 
 #[tokio::test]
@@ -55,12 +57,19 @@ async fn settings_watch_waits_for_the_turn_end_when_the_chat_is_running() {
     assert!(connected(&flow));
     let before = client.window().await;
     assert!(permissions_changed(&before));
-    assert!(!restarted(&before, Provider::Claude));
+    assert!(!restarted(&before, crate::providers::test_support::CLAUDE));
 
-    flow.event(Provider::Claude, turn_completed(agent)).await;
+    flow.event(
+        crate::providers::test_support::CLAUDE,
+        turn_completed(agent),
+    )
+    .await;
 
     assert!(!connected(&flow));
-    assert!(restarted(&client.window().await, Provider::Claude));
+    assert!(restarted(
+        &client.window().await,
+        crate::providers::test_support::CLAUDE
+    ));
 }
 
 #[tokio::test]
@@ -104,7 +113,7 @@ async fn settings_watch_keeps_the_connection_and_warns_when_the_file_is_invalid(
         })
         .count();
     assert_eq!(warnings, 1);
-    assert!(!restarted(&notices, Provider::Claude));
+    assert!(!restarted(&notices, crate::providers::test_support::CLAUDE));
 }
 
 #[tokio::test]
@@ -126,5 +135,5 @@ async fn settings_watch_runs_in_the_serve_loop() {
     })
     .await;
 
-    assert_eq!(provider, Provider::Claude);
+    assert_eq!(provider, crate::providers::test_support::CLAUDE);
 }

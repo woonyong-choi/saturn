@@ -42,6 +42,8 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 |---|---|
 | 입력 접수, 대기, 보류와 재개, 쓰기 규칙 | [입력 처리](design/input-handling.md) |
 | provider 연결, session, subagent 추적, 사용량 | [provider 연결과 session](design/providers-and-sessions.md) |
+| provider 계층, 열린 provider id, 어댑터 등록 | [provider 연결과 session](design/providers-and-sessions.md#provider-계층과-어댑터) |
+| provider 기능 목록, 확장 설치와 주입 | [기능 목록과 확장](design/extensions.md) |
 | 권한 규칙, 권한 모드, 항상 허용 | [권한](design/permissions.md) |
 | 맥락 크기 측정과 새 session으로 이어 가기 | [맥락 정리](design/context-management.md) |
 | 후보 순위, 단어 조각, 도구 결과 메모 | [맥락 고르기](design/context-selection.md) |
@@ -82,7 +84,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 - engine은 사용자당 하나이고 잠금으로 지킨다. 두 engine이 같은 기록에 쓰는 것을 막기 위해서다.
 - 기록 저장소는 파일 하나이고 쓰는 쪽은 engine 하나다. 한 변경은 한 거래로 처리하고, provider가 보고하지 않은 값은 NULL로 둔다. 쓰기 충돌과 지어낸 값을 막기 위해서다.
 - `core`는 파일, 네트워크, 프로세스를 직접 다루지 않는다. 규칙을 외부 연결 없이 테스트하기 위해서다.
-- provider 고유 이름은 `providers/codex`, `providers/claude` 안에서만 쓴다. TUI가 provider를 몰라도 그릴 수 있게 하기 위해서다.
+- provider 고유 이름은 어댑터 폴더 `providers/<id>`(지금은 `providers/codex`, `providers/claude`) 안에서만 쓴다. 어댑터 밖 공통 코드는 provider id를 불투명한 글자로 다루고 id 값으로 동작을 가르지 않으며, 표시명과 기본값과 기능은 어댑터 설명자와 기능 목록으로 받는다. TUI가 provider를 몰라도 그릴 수 있게 하고 provider를 더할 때 공통 코드를 고치지 않기 위해서다. provider id는 열린 값이고 어댑터는 레지스트리에 등록한다([provider 계층과 어댑터](design/providers-and-sessions.md#provider-계층과-어댑터)).
 - 에이전트끼리 직접 통신하지 않는다. 맥락 전달을 기록 번호 하나로 맞추기 위해서다.
 - 권한은 Saturn 설정의 `permission` 규칙이 정본이고 provider 설정 파일은 고치지 않는다. 사용자 설정이 Saturn의 허가 판단을 우회하는 일을 막기 위해서다. 그 밖의 provider 설정과 subagent 사용은 막거나 바꾸지 않고 추적만 하고, 예외는 router 키 보호 하나다.
 - 채팅의 폴더 설정과 작업 폴더는 채팅을 만든 기본 폴더 하나만 따르고, provider 실행 환경은 그 채팅에 가장 최근에 붙은 TUI의 환경으로 정한다. 다른 폴더의 설정과 상주 engine의 환경이 섞이지 않게 하기 위해서다.
@@ -106,6 +108,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | `~/.saturn/config.toml` | 사용자 설정 | `engine` |
 | `<작업 폴더>/.saturn/config.toml` | 폴더 설정 | `engine` |
 | `~/.saturn/backup/` | 스키마를 옮기기 전 백업 | `engine` |
+| `~/.saturn/extensions/` | 사용자가 설치한 확장 원본. 구현 전([기능 목록과 확장](design/extensions.md#확장-저장소)) | `engine` |
 | `~/.saturn/history` | 입력 기록 | `tui` |
 
 ## 기술 선택
@@ -115,7 +118,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 언어 | Rust | TUI가 가장 큰 작업이고 가벼운 실행 파일이 기준이다([결정 기록](decisions/2026-09-29-rust-for-all-components.md)). |
 | TUI | `ratatui`, `crossterm` | Codex TUI와 같은 라이브러리라 그 코드를 본보기로 쓴다. |
 | 구성 요소 연결 | Unix 소켓 위 JSON-RPC | 여러 TUI가 한 engine에 동시에 붙는다([결정 기록](decisions/2026-09-29-engine-centered-json-rpc.md)). |
-| provider 연결 | 채팅마다 Codex app-server, Claude stream-json | 실행 중 입력을 끼워 넣을 수 있고([결정 기록](decisions/2026-09-29-persistent-provider-connections.md)), 채팅별 환경과 권한 규칙이 섞이지 않는다([결정 기록](decisions/2026-10-02-per-chat-provider-connections.md)). |
+| provider 연결 | 채팅마다 Codex app-server, Claude stream-json. 어댑터는 열린 id로 레지스트리에 등록([결정 기록](decisions/2026-10-04-open-providers-and-saturn-extensions.md)) | 실행 중 입력을 끼워 넣을 수 있고([결정 기록](decisions/2026-09-29-persistent-provider-connections.md)), 채팅별 환경과 권한 규칙이 섞이지 않는다([결정 기록](decisions/2026-10-02-per-chat-provider-connections.md)). |
 | 비동기 실행 | `tokio` | provider 연결과 TUI 접속을 한 engine에서 동시에 처리한다. |
 | 기록 저장소 | SQLite, `sqlx` | 단일 파일과 원자 거래로 입력을 먼저 기록한다. |
 | 설정 편집 | `toml_edit` | 명령으로 설정 파일을 고칠 때 주석을 보존한다. |

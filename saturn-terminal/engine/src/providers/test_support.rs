@@ -13,7 +13,20 @@ use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use tokio::sync::mpsc;
 
-use crate::processes::ProcessGroupId;
+use crate::processes::{ProcessGroupId, Supervisor};
+use crate::providers::{
+    Adapter, AdapterConnection, BoxFuture, ContextDefaults, Descriptor, Feature, INTERFACE_VERSION,
+    LaunchSpec, ProviderConnection,
+};
+
+/// 실제 어댑터 연결과 가짜 app-server를 쓰는 시험이 가져다 쓴다.
+pub(crate) use super::codex::CodexClient;
+/// 응답을 보내지 않을 수도 있는 가짜 app-server를 띄우는 실행 설정.
+pub(crate) use super::codex::tests::launch as fake_codex_launch;
+
+/// 시험이 이름으로 부르는 어댑터 id. 어댑터 밖 공통 코드는 이 이름을 쓰지 않는다.
+pub(crate) const CODEX: Provider = Provider::from_static("codex");
+pub(crate) const CLAUDE: Provider = Provider::from_static("claude");
 
 /// provider가 받은 호출.
 #[derive(Debug, Clone, PartialEq)]
@@ -70,6 +83,7 @@ struct Script {
     panic_on_send: bool,
     opened: u32,
     group: Option<ProcessGroupId>,
+    commands: Vec<ProviderCommand>,
 }
 
 /// 복제본은 같은 기록과 답을 함께 쓴다. 답을 정해 두지 않은 호출은 성공한다.
@@ -81,7 +95,60 @@ pub(crate) struct FakeProvider {
     events_rx: Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<ProviderEvent>>>,
 }
 
+impl AdapterConnection for FakeProvider {
+    fn process_group(&self, _session: &ProviderSessionId) -> Option<ProcessGroupId> {
+        self.group()
+    }
+
+    fn shared_group(&self) -> Option<ProcessGroupId> {
+        self.group()
+    }
+}
+
+/// 가짜 어댑터의 설명자. 시험이 값을 바꿔 쓴다.
+pub(crate) fn fake_descriptor(id: Provider) -> Descriptor {
+    Descriptor {
+        id,
+        display_name: "fake",
+        program: "fake-agent",
+        order: 100,
+        features: &[Feature::Steer, Feature::Compact],
+        instruction_doc: "FAKE.md",
+        interface_version: INTERFACE_VERSION,
+        context: ContextDefaults {
+            window: 50_000,
+            cache_write: 2.0,
+        },
+    }
+}
+
+/// 설명자와 연결 하나로 이루어진 어댑터. 공통 코드를 고치지 않고 provider를 붙이는 시험에 쓴다.
+#[derive(Debug)]
+pub(crate) struct FakeAdapter {
+    pub(crate) descriptor: Descriptor,
+    pub(crate) provider: FakeProvider,
+}
+
+impl Adapter for FakeAdapter {
+    fn descriptor(&self) -> &Descriptor {
+        &self.descriptor
+    }
+
+    fn connect(
+        &self,
+        _launch: LaunchSpec,
+        _supervisor: Supervisor,
+    ) -> BoxFuture<'_, Result<ProviderConnection, ProviderError>> {
+        Box::pin(async move { Ok(self.provider.connection()) })
+    }
+}
+
 impl FakeProvider {
+    /// 이 가짜를 가리키는 연결. 복제본이라 호출 기록과 답은 이 가짜와 함께 쓴다.
+    pub(crate) fn connection(&self) -> ProviderConnection {
+        ProviderConnection::new(self.provider, self.clone())
+    }
+
     pub(crate) fn new(provider: Provider) -> Self {
         let (events_tx, events_rx) = mpsc::unbounded_channel();
         Self {
@@ -129,6 +196,11 @@ impl FakeProvider {
 
     pub(crate) fn answer_input_with(&self, answers: impl IntoIterator<Item = Answer>) {
         self.lock().answer_input.extend(answers);
+    }
+
+    /// 이 연결이 알릴 명령 목록. 연결이 이미 돌고 있어도 다음 요청이나 이벤트 처리 뒤에 알려진다.
+    pub(crate) fn set_commands(&self, commands: Vec<ProviderCommand>) {
+        self.lock().commands = commands;
     }
 
     /// 멈춤 때 중지할 프로세스 묶음.
@@ -268,7 +340,7 @@ impl ProviderClient for FakeProvider {
 
     /// 정해 둔 모델 없이 provider마다 모델 하나를 돌려준다.
     async fn list_models(&mut self) -> Result<Vec<ModelInfo>, ProviderError> {
-        let model = format!("fake-{:?}", self.provider).to_lowercase();
+        let model = format!("fake-{}", self.provider);
         Ok(vec![ModelInfo {
             choice: ModelChoice {
                 provider: self.provider,
@@ -279,6 +351,6 @@ impl ProviderClient for FakeProvider {
     }
 
     fn commands(&self) -> Vec<ProviderCommand> {
-        Vec::new()
+        self.lock().commands.clone()
     }
 }

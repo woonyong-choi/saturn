@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use saturn_core::providers::{
-    InterruptTarget, ProviderClient, ProviderError, SessionHandle, SessionSpec,
+    InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, ChatId, Provider, ProviderSessionId};
@@ -13,14 +13,11 @@ use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelInfo, PermissionAnswer};
 use tokio::sync::{mpsc, oneshot};
 
-use super::{AppliedSettings, ProviderConnection};
+use super::{Adapter, AppliedReader, AppliedSettings, ProviderConnection};
 use crate::masked_chain;
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::providers::LaunchSpec;
 use crate::secrets::Masker;
-
-/// 열린 session의 적용값을 읽는 함수. 읽기 작업이 갱신하는 값이라 부를 때마다 읽는다.
-pub(crate) type AppliedReader = Arc<dyn Fn() -> Option<AppliedSettings> + Send + Sync>;
 
 /// 연결 작업이 engine 루프로 보내는 메시지. 한 연결의 메시지는 일어난 순서대로 온다.
 #[derive(Debug)]
@@ -29,6 +26,12 @@ pub(crate) enum ProviderMsg {
         chat: ChatId,
         provider: Provider,
         event: ProviderEvent,
+    },
+    /// 연결이 알리는 명령 목록이 바뀌었다. 연결 뒤 처음 알릴 때와 바뀔 때마다 온다.
+    Commands {
+        chat: ChatId,
+        provider: Provider,
+        commands: Vec<ProviderCommand>,
     },
     /// 연결의 이벤트 흐름이 끝났다.
     Closed { chat: ChatId, provider: Provider },
@@ -122,8 +125,6 @@ struct Shared {
     /// 모든 session이 같이 쓰는 프로세스 묶음.
     shared_group: Option<ProcessGroupId>,
     sessions: Mutex<HashMap<ProviderSessionId, SessionView>>,
-    #[cfg(test)]
-    fake: Option<super::test_support::FakeProvider>,
 }
 
 struct SessionView {
@@ -142,13 +143,6 @@ impl std::fmt::Debug for Shared {
 
 impl Shared {
     fn new(connection: &ProviderConnection) -> Self {
-        #[cfg(test)]
-        if let ProviderConnection::Fake(fake) = connection {
-            return Self {
-                fake: Some(fake.clone()),
-                ..Self::default()
-            };
-        }
         Self {
             shared_group: connection.shared_group(),
             ..Self::default()
@@ -187,6 +181,27 @@ impl Context {
             }
             Sink::Ignore => {}
         }
+    }
+
+    /// 명령 목록이 마지막으로 알린 것과 다르면 알린다. 목록이 처음부터 비어 있으면 알리지 않는다. engine이 끝났으면
+    /// 거짓.
+    fn announce_commands(
+        &self,
+        connection: &ProviderConnection,
+        announced: &mut Vec<ProviderCommand>,
+    ) -> bool {
+        let current = connection.commands();
+        if current == *announced {
+            return true;
+        }
+        announced.clone_from(&current);
+        self.msgs
+            .send(ProviderMsg::Commands {
+                chat: self.chat,
+                provider: self.provider,
+                commands: current,
+            })
+            .is_ok()
     }
 
     fn warn(&self, what: &str, error: &ProviderError) {
@@ -359,10 +374,6 @@ impl ProviderHandle {
 
     /// 모르는 session이면 `None`.
     pub(crate) fn process_group(&self, session: &ProviderSessionId) -> Option<ProcessGroupId> {
-        #[cfg(test)]
-        if let Some(fake) = &self.shared.fake {
-            return fake.group();
-        }
         self.shared
             .shared_group
             .or_else(|| self.shared.sessions().get(session)?.group)
@@ -370,10 +381,6 @@ impl ProviderHandle {
 
     /// 모든 session이 프로세스 묶음 하나를 같이 쓰는 provider의 그 묶음.
     pub(crate) fn shared_group(&self) -> Option<ProcessGroupId> {
-        #[cfg(test)]
-        if let Some(fake) = &self.shared.fake {
-            return fake.group();
-        }
         self.shared.shared_group
     }
 
@@ -554,7 +561,11 @@ async fn run(
     context: Context,
 ) {
     let mut is_streaming = true;
+    let mut announced: Vec<ProviderCommand> = Vec::new();
     loop {
+        if !context.announce_commands(&connection, &mut announced) {
+            break; // engine이 끝났다
+        }
         tokio::select! {
             biased;
             request = requests.recv() => {
@@ -588,13 +599,14 @@ async fn run(
 pub(crate) fn spawn_connect(
     chat: ChatId,
     launch: LaunchSpec,
+    adapter: Arc<dyn Adapter>,
     supervisor: Supervisor,
     msgs: mpsc::UnboundedSender<ProviderMsg>,
 ) {
     let provider = launch.provider;
     let lost = msgs.clone();
     let task = tokio::spawn(async move {
-        let connected = match ProviderConnection::connect(launch, supervisor).await {
+        let connected = match adapter.connect(launch, supervisor).await {
             Ok(mut connection) => {
                 let models = connection.list_models().await;
                 Ok(Box::new(Connected { connection, models }))

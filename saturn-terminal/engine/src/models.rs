@@ -6,19 +6,22 @@ use saturn_core::queue::QueuedInput;
 use saturn_protocol::ids::{ChatId, Provider, SettingsRevision};
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, Notification};
 
-use crate::providers::{FIRST_INPUT_ORDER, is_installed, parse_pinned, pinned_text};
+use crate::providers::Registry;
 use crate::rpc::ClientId;
 use crate::settings::SettingsError;
 use crate::{Engine, EngineError, masked_chain};
 
-/// 입력에 고정한 모델. provider 접두사가 없는 글은 모델 이름으로만 읽어 provider를 정하지 않는다.
-pub(crate) fn pinned_choice(record: &QueuedInput) -> Option<ModelChoice> {
-    record.pinned_model.as_deref().and_then(parse_pinned)
+/// 입력에 고정한 모델. provider 접두사가 없거나 등록하지 않은 id인 글은 모델 이름으로만 읽어 provider를 정하지 않는다.
+pub(crate) fn pinned_choice(registry: &Registry, record: &QueuedInput) -> Option<ModelChoice> {
+    record
+        .pinned_model
+        .as_deref()
+        .and_then(|text| registry.parse_pinned(text))
 }
 
 /// provider에 넘길 모델 이름.
-pub(crate) fn pinned_model_name(record: &QueuedInput) -> Option<String> {
-    match pinned_choice(record) {
+pub(crate) fn pinned_model_name(registry: &Registry, record: &QueuedInput) -> Option<String> {
+    match pinned_choice(registry, record) {
         Some(choice) => Some(choice.model),
         None => record.pinned_model.clone(),
     }
@@ -36,7 +39,9 @@ impl Engine {
         model: &ModelChoice,
     ) -> Result<(), EngineError> {
         self.attached_workdir(client, chat)?;
-        self.store.set_chat_model(chat, &pinned_text(model)).await?;
+        self.store
+            .set_chat_model(chat, &Registry::pinned_text(model))
+            .await?;
         let notification = Notification::ModelPinned {
             chat,
             model: model.clone(),
@@ -55,7 +60,10 @@ impl Engine {
         chat: ChatId,
     ) -> Result<(), EngineError> {
         let pinned = self.store.chat_model(chat).await?;
-        if let Some(model) = pinned.as_deref().and_then(parse_pinned) {
+        if let Some(model) = pinned
+            .as_deref()
+            .and_then(|text| self.registry.parse_pinned(text))
+        {
             self.send(client, Notification::ModelPinned { chat, model })
                 .await;
         }
@@ -87,11 +95,15 @@ impl Engine {
             .unwrap_or_default();
         let mut models: Vec<ModelInfo> = Vec::new();
         let mut failure = None;
-        for provider in FIRST_INPUT_ORDER
+        for provider in self
+            .registry
+            .ids()
             .into_iter()
             .filter(|provider| only.is_none_or(|only| only == *provider))
         {
-            if !self.providers.contains_key(&(chat, provider)) && !is_installed(provider, &env) {
+            if !self.providers.contains_key(&(chat, provider))
+                && !self.registry.is_installed(provider, &env)
+            {
                 continue;
             }
             match self.list_provider_models(provider, chat, revision).await {
@@ -159,13 +171,14 @@ impl Engine {
         }
     }
 
-    /// router에 물을 허용 후보. 받아 둔 목록을 Claude, Codex 순으로 `<provider>/<model>` 글로 만든다.
+    /// router에 물을 허용 후보. 받아 둔 목록을 기본 순서로 `<provider>/<model>` 글로 만든다.
     pub(crate) fn model_candidates(&self, chat: ChatId) -> Vec<String> {
-        FIRST_INPUT_ORDER
+        self.registry
+            .ids()
             .into_iter()
             .filter_map(|provider| self.flow.models.get(&(chat, provider)))
             .flatten()
-            .map(|info| pinned_text(&info.choice))
+            .map(|info| Registry::pinned_text(&info.choice))
             .collect()
     }
 }

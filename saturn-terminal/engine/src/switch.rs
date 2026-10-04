@@ -218,7 +218,7 @@ impl Engine {
         let provider = self
             .pick_provider(record)
             .map_err(|error| PlanError::Failed(self.failure_line(&error)))?;
-        let model = pinned_model_name(record);
+        let model = pinned_model_name(&self.registry, record);
         let main = self.sessions.live_main(record.chat).cloned();
         let agent = match (start, role, &main) {
             (Start::Turn(agent), _, _) => Some(agent),
@@ -311,7 +311,7 @@ impl Engine {
             .at(&self.store, record.settings)
             .await
             .map_err(|error| failed(error.into()))?;
-        let budget = settings.context_budget(provider);
+        let budget = settings.context_budget(provider, self.registry.context_defaults(provider));
         let rows = self
             .store
             .ledger_since(chat, LedgerSeq(0))
@@ -319,7 +319,7 @@ impl Engine {
             .map_err(|error| failed(error.into()))?;
         let synced = rows.last().map_or(LedgerSeq(0), |row| row.seq);
         let pending = self.pending_work(chat, Some(record.id));
-        let full_source = handoff_source(&rows, &pending);
+        let full_source = handoff_source(&rows, &pending, &self.registry.instruction_docs());
         let full = full_source
             .as_ref()
             .map_or(HandoffOutcome::Empty, |source| handoff_of(source, &budget));
@@ -346,7 +346,11 @@ impl Engine {
             SendTarget::Resume(id) => {
                 let after = self.sessions.attach_from(*id);
                 let changes = rows.into_iter().filter(|row| row.seq > after).collect();
-                let source = handoff_source(&others_only(changes, *id), &pending);
+                let source = handoff_source(
+                    &others_only(changes, *id),
+                    &pending,
+                    &self.registry.instruction_docs(),
+                );
                 let outcome = source
                     .as_ref()
                     .map_or(HandoffOutcome::Empty, |source| handoff_of(source, &budget));
@@ -417,7 +421,7 @@ impl Engine {
                         kind: OpenKind::Live(live),
                     });
                 }
-                let reopened = self.reopen_plan(id);
+                let reopened = self.reopen_plan(id)?;
                 self.prepare_resume(record, id, reopened)
             }
             SendTarget::Resume(id) => self.prepare_resume(record, id, plan),
@@ -599,23 +603,21 @@ impl Engine {
     }
 
     /// 보관한 provider session id로 다시 연다.
-    fn reopen_plan(&self, id: SessionId) -> OpenPlan {
-        let (provider, agent) = self
-            .sessions
-            .get(id)
-            .map_or((Provider::Claude, None), |session| {
-                (session.provider, Some(session.agent))
-            });
-        OpenPlan {
-            provider,
+    ///
+    /// # Errors
+    /// 모르는 session이면 `Session(NotFound)`.
+    fn reopen_plan(&self, id: SessionId) -> Result<OpenPlan, EngineError> {
+        let session = self.sessions.get(id).ok_or(SessionError::NotFound(id))?;
+        Ok(OpenPlan {
+            provider: session.provider,
             model: None,
             target: SendTarget::Resume(id),
             handoff: None,
             leaving: None,
-            agent,
+            agent: Some(session.agent),
             synced: LedgerSeq(0),
             reduction: None,
-        }
+        })
     }
 
     /// 떠나는 메인의 provider session을 닫고 보관한다. provider session id는 재개에 쓰려고 남긴다.

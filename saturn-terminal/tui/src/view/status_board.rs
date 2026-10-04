@@ -334,6 +334,13 @@ pub(crate) fn alert_text(lang: Lang, alert: &Alert) -> String {
                 .tr(i18n::SCHEMA_MIGRATED)
                 .replace("{to}", &to.to_string());
         }
+        Alert::ProviderUpdated { provider, from, to } => {
+            return lang
+                .tr(i18n::PROVIDER_UPDATED)
+                .replace("{provider}", i18n::provider_name(*provider))
+                .replace("{from}", from)
+                .replace("{to}", to);
+        }
         Alert::AutoPruned { chats, .. } => {
             return lang
                 .tr(i18n::AUTO_PRUNED)
@@ -605,7 +612,7 @@ mod tests {
                 task: TaskId(id),
                 label: TaskLabel(label),
                 state: task_state,
-                provider: Some(Provider::Codex),
+                provider: Some(Provider::from_static("codex")),
                 elapsed: Duration::ZERO,
                 failure: None,
             },
@@ -642,6 +649,24 @@ mod tests {
 
         assert_eq!(alert_text(Lang::Ko, &alert), "기록 저장소 v2로 옮김");
         assert_eq!(alert_text(Lang::En, &alert), "Record store migrated to v2");
+    }
+
+    #[test]
+    fn alert_text_provider_updated_shows_both_versions() {
+        let alert = Alert::ProviderUpdated {
+            provider: Provider::from_static("codex"),
+            from: "0.158.0".to_owned(),
+            to: "0.159.0".to_owned(),
+        };
+
+        assert_eq!(
+            alert_text(Lang::Ko, &alert),
+            "codex CLI가 0.158.0에서 0.159.0로 바뀜"
+        );
+        assert_eq!(
+            alert_text(Lang::En, &alert),
+            "codex CLI changed from 0.158.0 to 0.159.0"
+        );
     }
 
     #[test]
@@ -736,7 +761,7 @@ mod tests {
         let line = StatusLine::Running(RunningLine {
             task: TaskId(1),
             label: TaskLabel('A'),
-            provider: Some(Provider::Claude),
+            provider: Some(Provider::from_static("claude")),
             model: Some("opus".to_string()),
             elapsed: Duration::from_secs(60),
             activity: Some(Activity::Thinking),
@@ -900,11 +925,11 @@ mod tests {
     #[test]
     fn approval_pending_text_names_the_provider_in_both_languages() {
         assert_eq!(
-            approval_pending_text(Lang::Ko, Some(Provider::Codex)),
+            approval_pending_text(Lang::Ko, Some(Provider::from_static("codex"))),
             "도구 사용 허가 준비 중 · codex"
         );
         assert_eq!(
-            approval_pending_text(Lang::En, Some(Provider::Claude)),
+            approval_pending_text(Lang::En, Some(Provider::from_static("claude"))),
             "Preparing tool permission · claude"
         );
         assert_eq!(
@@ -948,7 +973,7 @@ mod tests {
             }),
         ));
         state.apply_alert(Alert::SteerNotReady {
-            provider: Provider::Codex,
+            provider: Provider::from_static("codex"),
         });
 
         let lines = texts(&build(&state, now));

@@ -8,19 +8,21 @@ use saturn_protocol::event::{
     Activity, LineChange, PermissionCall, PermissionTool, ToolCategory, ToolDetail, UsageReport,
     UsageScope,
 };
-use saturn_protocol::ids::{ChatId, Provider, SettingsRevision, SubagentId};
+use saturn_protocol::ids::{ChatId, SettingsRevision, SubagentId};
 use saturn_protocol::input::InputValue;
 
 use super::config::{default_args, read_user_config, scan_user_config};
 use super::convert::{
     activity_of, convert_notification, detail_of, exit_code_of, model_info, tool_output,
 };
+use super::home::{HomeInput, prepare as prepare_codex_home};
 use super::threads::remove_thread_tree;
 use super::*;
+use crate::Masker;
 use crate::events::{next_arrival, start_queued_turn};
+use crate::providers::mask_values;
 use crate::providers::{
-    HomeInput, LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults,
-    UserProviderConfig, prepare_codex_home,
+    LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults, UserProviderConfig,
 };
 
 /// 받은 요청에 schema 모양 그대로 응답한다.
@@ -201,7 +203,7 @@ pub(crate) fn launch(dir: &Path, env: Vec<(std::ffi::OsString, std::ffi::OsStrin
     std::fs::write(&program, FAKE_APP_SERVER).unwrap();
     std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
     LaunchSpec {
-        provider: Provider::Codex,
+        provider: crate::providers::test_support::CODEX,
         program,
         workdir: dir.to_path_buf(),
         settings: SettingsRevision(1),
@@ -1320,8 +1322,8 @@ async fn a_turn_sent_during_the_packet_turn_gets_its_own_completion() {
         .await
         .unwrap();
     let mut providers = HashMap::from([(
-        (ChatId(1), Provider::Codex),
-        ProviderConnection::Codex(client),
+        (ChatId(1), crate::providers::test_support::CODEX),
+        ProviderConnection::new(super::adapter::ID, client),
     )]);
 
     let mut events = Vec::new();
@@ -1451,7 +1453,7 @@ async fn codex_home_ignores_user_rules() {
     .unwrap();
     let env = vec![("CODEX_HOME".into(), user.clone().into_os_string())];
     let mut dedicated = launch(dir.path(), env.clone());
-    dedicated.permission.codex_home = Some(prepared.path.clone());
+    dedicated.permission.env = vec![("CODEX_HOME".into(), prepared.path.clone().into_os_string())];
     let mut with_user_home = CodexClient::start(launch(dir.path(), env), Supervisor::new())
         .await
         .unwrap();

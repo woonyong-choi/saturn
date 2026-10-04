@@ -540,7 +540,7 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         ChatNotice::ProviderRestarted { provider } => vec![format!(
             "{prefix}{}",
             lang.tr(i18n::PROVIDER_RESTARTED)
-                .replace("{provider}", i18n::provider_title(*provider))
+                .replace("{provider}", &i18n::provider_title(*provider))
         )],
         ChatNotice::PermissionsChanged => {
             vec![format!("{prefix}{}", lang.tr(i18n::PERMISSIONS_CHANGED))]
@@ -551,7 +551,7 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         ChatNotice::InterruptedSubagentReturned { provider } => vec![format!(
             "{prefix}{}",
             lang.tr(i18n::INTERRUPTED_SUBAGENT_RETURNED)
-                .replace("{provider}", i18n::provider_title(*provider))
+                .replace("{provider}", &i18n::provider_title(*provider))
         )],
         ChatNotice::ResumeSuggested { held } => vec![format!(
             "{} {} · {}",
@@ -748,7 +748,7 @@ mod tests {
         let restarted = TranscriptCell::Notice {
             label: None,
             notice: ChatNotice::ProviderRestarted {
-                provider: Provider::Codex,
+                provider: Provider::from_static("codex"),
             },
         };
         let changed = TranscriptCell::Notice {
@@ -778,7 +778,7 @@ mod tests {
     fn lines_result_matches_design_text() {
         let cell = TranscriptCell::Result {
             label: Some(TaskLabel('A')),
-            provider: Some(Provider::Codex),
+            provider: Some(Provider::from_static("codex")),
             elapsed: Duration::from_secs(45),
             tokens: Some(3_210),
         };
@@ -793,7 +793,7 @@ mod tests {
     fn lines_failed_adds_cause_line() {
         let cell = TranscriptCell::Failed {
             label: Some(TaskLabel('A')),
-            provider: Some(Provider::Codex),
+            provider: Some(Provider::from_static("codex")),
             elapsed: Duration::from_secs(45),
             cause: "network".to_string(),
         };
@@ -809,14 +809,14 @@ mod tests {
         let switched = TranscriptCell::Notice {
             label: Some(TaskLabel('A')),
             notice: ChatNotice::ProviderSwitched {
-                from: Provider::Codex,
-                to: Provider::Claude,
+                from: Provider::from_static("codex"),
+                to: Provider::from_static("claude"),
             },
         };
         let summary = TranscriptCell::Notice {
             label: None,
             notice: ChatNotice::RequestSummary {
-                provider_tokens: vec![(Provider::Codex, 4_120)],
+                provider_tokens: vec![(Provider::from_static("codex"), 4_120)],
                 router_calls: 3,
                 router_tokens: 9_870,
                 elapsed_ms: 151_000,

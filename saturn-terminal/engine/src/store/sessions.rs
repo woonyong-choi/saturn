@@ -35,11 +35,8 @@ impl IdKind {
 }
 
 /// provider가 마지막으로 알려 준 캐시 유지 시간(초)을 두는 `meta` 키.
-fn cache_ttl_key(provider: Provider) -> &'static str {
-    match provider {
-        Provider::Codex => "cache_ttl_secs_codex",
-        Provider::Claude => "cache_ttl_secs_claude",
-    }
+fn cache_ttl_key(provider: Provider) -> String {
+    format!("cache_ttl_secs_{provider}")
 }
 
 impl Store {
@@ -152,6 +149,22 @@ mod tests {
     use super::*;
     use crate::store::records::tests::{chat_with_run, session_record};
     use crate::store::tests::temp_store;
+
+    #[tokio::test]
+    async fn cache_ttl_reads_the_key_an_old_version_wrote() {
+        let (_dir, store) = temp_store().await;
+        sqlx::query("INSERT INTO meta (key, value) VALUES ('cache_ttl_secs_claude', 300)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+
+        let ttl = store
+            .cache_ttl_secs(crate::providers::test_support::CLAUDE)
+            .await
+            .unwrap();
+
+        assert_eq!(ttl, Some(300));
+    }
 
     fn last_turn(active: u64) -> LastTurn {
         LastTurn {

@@ -17,6 +17,8 @@ use serde_json::Value;
 use saturn_core::routers::{Method, Thresholds};
 use saturn_core::sessions::context::{ContextBudget, DEFAULT_CACHE_TTL};
 use saturn_protocol::ids::Provider;
+
+use crate::providers::ContextDefaults;
 use saturn_protocol::state::OnExit;
 
 use crate::secrets::{KeyInfo, StorageMode};
@@ -26,6 +28,10 @@ pub(crate) use layers::default_layer;
 pub(crate) use manager::{Applied, FileFingerprints, SettingsManager};
 pub(crate) use permission::{PermissionSettings, chat_layer_mode, with_chat_layer_mode};
 pub(crate) use trust::{FolderTrustPrompt, TrustStatus, TrustStore};
+
+/// 모든 provider가 같은 맥락 기본값. `window`와 `cache_write`는 어댑터 설명자가 알린다.
+const DEFAULT_T_ABS: u64 = 200_000;
+const DEFAULT_CACHE_READ: f64 = 0.1;
 
 /// 사용자 층은 `~/.saturn/`, 폴더 층은 `<폴더>/.saturn/` 아래 파일 이름.
 pub(crate) const CONFIG_FILE: &str = "config.toml";
@@ -210,25 +216,43 @@ impl Settings {
         }
     }
 
-    /// 안전 비율 `context.safety_percent`(초안)는 두 provider 공통이다.
-    pub(crate) fn context_budget(&self, provider: Provider) -> ContextBudget {
-        let section = match provider {
-            Provider::Codex => "context.codex",
-            Provider::Claude => "context.claude",
-        };
-        let integer = |key: &str| {
-            self.lookup(key)
+    /// 안전 비율 `context.safety_percent`(초안)는 모든 provider 공통이다. provider 값은 `provider.<id>.context.*`이고,
+    /// 옛 스냅샷의 `context.<id>.*`도 읽는다. 설정에 없으면 `window`와 `cache_write`는 어댑터 설명자의 값(`defaults`),
+    /// `t_abs`와 `cache_read`는 모든 provider 공통 기본값이다.
+    pub(crate) fn context_budget(
+        &self,
+        provider: Provider,
+        defaults: ContextDefaults,
+    ) -> ContextBudget {
+        let integer = |name: &str, fallback: u64| {
+            self.provider_context(provider, name)
                 .and_then(Value::as_u64)
-                .expect("default layer should define every context integer")
+                .unwrap_or(fallback)
+        };
+        let number = |name: &str, fallback: f64| {
+            self.provider_context(provider, name)
+                .and_then(Value::as_f64)
+                .unwrap_or(fallback)
         };
         ContextBudget {
-            t_abs: integer(&format!("{section}.t_abs")),
-            safety_percent: u8::try_from(integer("context.safety_percent")).unwrap_or(100),
-            window: integer(&format!("{section}.window")),
-            cache_read: self.number(&format!("{section}.cache_read")),
-            cache_write: self.number(&format!("{section}.cache_write")),
+            t_abs: integer("t_abs", DEFAULT_T_ABS),
+            safety_percent: u8::try_from(
+                self.lookup("context.safety_percent")
+                    .and_then(Value::as_u64)
+                    .expect("default layer should define the safety percent"),
+            )
+            .unwrap_or(100),
+            window: integer("window", defaults.window),
+            cache_read: number("cache_read", DEFAULT_CACHE_READ),
+            cache_write: number("cache_write", defaults.cache_write),
             cache_ttl: DEFAULT_CACHE_TTL,
         }
+    }
+
+    /// 새 키, 옛 스냅샷의 옛 키, 기본값 층 순서로 찾는다.
+    fn provider_context(&self, provider: Provider, name: &str) -> Option<&Value> {
+        self.get(&format!("provider.{provider}.context.{name}"))
+            .or_else(|| self.get(&format!("context.{provider}.{name}")))
     }
 
     /// 모르는 키면 `None`.

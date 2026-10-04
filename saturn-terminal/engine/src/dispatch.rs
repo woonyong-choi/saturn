@@ -9,7 +9,7 @@ use saturn_protocol::state::{EffectScope, InputState, TaskState};
 
 use crate::delivery::{DeliveryJob, Stage};
 use crate::flow::{LiveSession, NeedsCheck};
-use crate::providers::ProviderHandle;
+use crate::providers::{Feature, ProviderHandle};
 use crate::store::{NewRun, RunEnd};
 use crate::switch::PlanError;
 use crate::{Engine, EngineError};
@@ -94,7 +94,7 @@ impl Engine {
         }
     }
 
-    /// 끼워 넣기 실측 전 provider는 대기로 바꾸고, 그 밖에는 진행 중인 턴에 보낸다.
+    /// 끼워 넣기를 구현하지 않았거나 실측 전인 provider는 대기로 바꾸고, 그 밖에는 진행 중인 턴에 보낸다.
     async fn deliver_steer(
         &mut self,
         chat: ChatId,
@@ -103,7 +103,10 @@ impl Engine {
     ) -> Result<(), EngineError> {
         let record = self.queued(input)?;
         let live = self.flow.live.get(&agent).cloned();
-        let Some(live) = live.filter(|live| live.steer_verified) else {
+        let can_steer = |live: &LiveSession| {
+            live.steer_verified && self.registry.supports(live.provider, Feature::Steer)
+        };
+        let Some(live) = live.filter(can_steer) else {
             let provider = self.flow.live.get(&agent).map(|live| live.provider);
             return self.defer_steer(chat, input, provider).await;
         };

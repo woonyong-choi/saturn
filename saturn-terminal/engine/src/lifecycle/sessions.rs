@@ -36,7 +36,7 @@ fn last_turn(active: u64, ended_ago: Duration, now: SystemTime) -> LastTurn {
 fn to_codex(engine: &Engine, chat: ChatId, packet: u64) -> SendRequest {
     SendRequest {
         chat,
-        provider: Provider::Codex,
+        provider: crate::providers::test_support::CODEX,
         role: AgentRole::Main,
         packet,
         settings: engine.settings.current().unwrap(),
@@ -45,7 +45,7 @@ fn to_codex(engine: &Engine, chat: ChatId, packet: u64) -> SendRequest {
 
 fn new_codex() -> SendTarget {
     SendTarget::New {
-        provider: Provider::Codex,
+        provider: crate::providers::test_support::CODEX,
         role: AgentRole::Main,
     }
 }
@@ -59,17 +59,32 @@ async fn switched_to_claude(engine: &mut Engine, workdir: &Path, last: LastTurn)
         .unwrap();
     engine
         .store
-        .upsert_session(&record(CODEX, chat, Provider::Codex, SessionState::Open))
+        .upsert_session(&record(
+            CODEX,
+            chat,
+            crate::providers::test_support::CODEX,
+            SessionState::Open,
+        ))
         .await
         .unwrap();
     engine
         .sessions
-        .register(record(CODEX, chat, Provider::Codex, SessionState::Open))
+        .register(record(
+            CODEX,
+            chat,
+            crate::providers::test_support::CODEX,
+            SessionState::Open,
+        ))
         .unwrap();
     engine.finish_turn(CODEX, last).await.unwrap();
     engine.archive_main(CODEX).await.unwrap();
     engine
-        .register_session(record(CLAUDE, chat, Provider::Claude, SessionState::Open))
+        .register_session(record(
+            CLAUDE,
+            chat,
+            crate::providers::test_support::CLAUDE,
+            SessionState::Open,
+        ))
         .await
         .unwrap();
     chat
@@ -151,7 +166,12 @@ async fn target_back_to_claude(provider_ttl: Option<u64>) -> SendTarget {
         .await
         .unwrap();
     engine
-        .register_session(record(CLAUDE, chat, Provider::Claude, SessionState::Open))
+        .register_session(record(
+            CLAUDE,
+            chat,
+            crate::providers::test_support::CLAUDE,
+            SessionState::Open,
+        ))
         .await
         .unwrap();
     engine
@@ -163,7 +183,12 @@ async fn target_back_to_claude(provider_ttl: Option<u64>) -> SendTarget {
         .unwrap();
     engine.archive_main(CLAUDE).await.unwrap();
     engine
-        .register_session(record(CODEX, chat, Provider::Codex, SessionState::Open))
+        .register_session(record(
+            CODEX,
+            chat,
+            crate::providers::test_support::CODEX,
+            SessionState::Open,
+        ))
         .await
         .unwrap();
     if let Some(ttl_secs) = provider_ttl {
@@ -172,7 +197,7 @@ async fn target_back_to_claude(provider_ttl: Option<u64>) -> SendTarget {
             ttl_secs,
         };
         engine
-            .on_provider_event(Provider::Claude, event)
+            .on_provider_event(crate::providers::test_support::CLAUDE, event)
             .await
             .unwrap();
     }
@@ -180,7 +205,7 @@ async fn target_back_to_claude(provider_ttl: Option<u64>) -> SendTarget {
     engine.shutdown().await.unwrap();
     let engine = fixture.ready().await;
     let request = SendRequest {
-        provider: Provider::Claude,
+        provider: crate::providers::test_support::CLAUDE,
         ..to_codex(&engine, chat, 50_000)
     };
     engine.send_target(request, now).await.unwrap()
@@ -193,7 +218,7 @@ async fn cache_window_without_provider_report_is_five_minutes() {
     assert_eq!(
         target,
         SendTarget::New {
-            provider: Provider::Claude,
+            provider: crate::providers::test_support::CLAUDE,
             role: AgentRole::Main
         }
     );
@@ -216,8 +241,16 @@ async fn restart_without_last_turn_resumes_archived_session() {
         .await
         .unwrap();
     for (id, provider, state) in [
-        (CODEX, Provider::Codex, SessionState::ClosedResumable),
-        (CLAUDE, Provider::Claude, SessionState::Open),
+        (
+            CODEX,
+            crate::providers::test_support::CODEX,
+            SessionState::ClosedResumable,
+        ),
+        (
+            CLAUDE,
+            crate::providers::test_support::CLAUDE,
+            SessionState::Open,
+        ),
     ] {
         engine
             .store
@@ -266,7 +299,7 @@ async fn archive_main_ends_older_archive_and_saves_both_states() {
         .register_session(record(
             newer_codex,
             chat,
-            Provider::Codex,
+            crate::providers::test_support::CODEX,
             SessionState::Open,
         ))
         .await
@@ -340,7 +373,12 @@ async fn restore_keeps_open_main_left_by_a_crash() {
         .unwrap();
     engine
         .store
-        .upsert_session(&record(CLAUDE, chat, Provider::Claude, SessionState::Open))
+        .upsert_session(&record(
+            CLAUDE,
+            chat,
+            crate::providers::test_support::CLAUDE,
+            SessionState::Open,
+        ))
         .await
         .unwrap();
     engine.shutdown().await.unwrap();

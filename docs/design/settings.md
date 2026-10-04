@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md) |
+| 관련 결정 | [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md), [provider는 열린 id의 어댑터로 붙이고 확장은 Saturn 저장소에 설치해 session을 열 때 주입한다](../decisions/2026-10-04-open-providers-and-saturn-extensions.md) |
 
 ## 요약
 
@@ -81,9 +81,6 @@
 | `retention.max_age_days` | 1 이상 정수 | 없음(무제한 보존). `saturn prune`과 `/prune`이 오래된 채팅을 정하는 기준이기도 하다([기록](records.md)) |
 | `retention.auto_prune` | 참·거짓 | 거짓. 참이고 `max_age_days`가 있을 때만 engine 시작 때 한 번 그 기한보다 오래 쓰지 않은 채팅을 지운다. 삭제라 `max_age_days`만으로 켜지지 않는다([기록](records.md#보존과-정리)) |
 | `context.safety_percent` | 0~100 정수 | 70 |
-| `context.<codex\|claude>.t_abs` | 1 이상 정수 | 200000 |
-| `context.<codex\|claude>.window` | 1 이상 정수 | codex 272000, claude 1000000 |
-| `context.<codex\|claude>.cache_read`, `cache_write` | 0 이상 실수 | 0.1, codex 1.0 · claude 1.25 |
 | `context.mode` | `saturn`, `provider` | `saturn` |
 | `context.packet_hard_divisor` | 1 이상 정수 | 5 |
 | `context.item_cap_percent` | 1~100 정수 | 30 |
@@ -99,6 +96,21 @@
 - 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_replace`, `constraint_conflict`, `constraint_ask`, `constraint_same`, `constraint_release`다. `constraint_conflict`는 대체 질문을 사용자에게 묻는 하한이고 `constraint_ask`는 등록과 해제 질문의 묻는 하한이다. 제약 칸 상한은 `context.constraint_slot_divisor`로 `P_max`를 나눈 값이다([제약](constraints.md)).
 - 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
 - 실행 층 `-c key=value`의 값은 TOML 값 문법으로 읽고, 같은 키가 여러 번 오면 뒤 값이 이긴다.
+
+### provider 설정 키
+
+provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. `<id>`는 어댑터 레지스트리의 provider id이고, 키 목록과 기본값은 그 어댑터의 설명자가 알린다([provider id와 설명자](providers-and-sessions.md#provider-id와-설명자)). 키 이름공간, 옛 키 별칭, 어댑터 설명자의 `window`와 `cache_write` 기본값은 구현했고, 어댑터마다 다른 키 목록과 레지스트리에 없는 id의 키 처리는 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)). 지금은 형식이 맞는 id(소문자 영문, 숫자, `-`)의 `context.*` 네 키만 허용한다. 설명자가 없는 id는 `window` 200000, `cache_write` 1.25로 예산을 계산한다.
+
+| 키 | 값 | 기본값 |
+|---|---|---|
+| `provider.<id>.context.t_abs` | 1 이상 정수 | 200000 |
+| `provider.<id>.context.window` | 1 이상 정수 | 어댑터 설명자의 값(codex 272000, claude 1000000) |
+| `provider.<id>.context.cache_read`, `cache_write` | 0 이상 실수 | 0.1, 어댑터 설명자의 값(codex 1.0, claude 1.25) |
+
+- 옛 키 `context.<id>.<키>`는 새 키 `provider.<id>.context.<키>`의 별칭으로 계속 읽는다. 같은 값이 둘 다 있으면 새 키가 이긴다. 별칭은 층마다 병합 전에 새 키로 옮기므로 높은 층의 옛 키가 낮은 층의 새 키를 이긴다. 기존 설정 파일을 고치지 않고도 같은 값으로 동작하게 하기 위해서다(초안). 명령으로 설정을 쓸 때는 새 키로 쓰고, 설정 번호별 스냅샷은 새 키 이름으로 저장한다. 옛 스냅샷은 옛 키 이름 그대로 읽는다.
+- 병합 결과 검사는 `provider.<id>.*` 키를 그 어댑터가 알린 키로만 허용하고 모르는 키는 실패로 본다. 레지스트리에 없는 id의 키는 실패 대신 무시하고 경고한다. 저장소에 다른 사용자가 쓰는 provider의 설정이 있어도 이 사용자의 실행이 막히지 않게 하기 위해서다(초안).
+- `permission.<종류>`는 위 표의 다섯 종류에 더해 어댑터가 알린 권한 종류도 허용한다([권한](permissions.md#권한-규칙)).
+- provider 실행 파일이나 인자를 바꾸는 키는 설명자가 사용자 층 전용으로 표시하고, 폴더 층에서 바꾸지 못한다. 저장소가 사용자 모르게 다른 프로그램을 실행시키는 일을 막기 위해서다.
 
 ### 폴더 층에서 바꿀 수 없는 항목
 
@@ -205,3 +217,5 @@ Saturn 설정은 provider 설정 파일을 바꾸지 않는다. 권한은 `permi
 | 설정 파일을 바꾸면 입력 없이도 engine이 알아채 provider에 적용한다. 쓰는 도중의 파일은 적용하지 않고, 잘못된 파일은 이전 설정을 유지하며 경고한다. | `saturn-terminal/engine/src/lifecycle/settings_watch.rs`의 `settings_watch_restarts_an_idle_chat_without_any_input`, `settings_watch_waits_for_the_turn_end_when_the_chat_is_running`, `settings_watch_ignores_a_file_that_is_still_being_written`, `settings_watch_keeps_the_connection_and_warns_when_the_file_is_invalid`, `settings_watch_runs_in_the_serve_loop` |
 | 명령으로 설정 파일을 고쳐도 주석이 남는다. | 주석이 있는 파일을 명령으로 고친 뒤 주석이 그대로인지 확인한다. |
 | 설정 파일은 읽은 버전을 확인한 뒤 쓴다. | 읽기와 쓰기 사이에 파일을 고쳐도 그 변경이 사라지지 않는지 확인한다. |
+| 옛 `context.<id>.*` 키를 새 `provider.<id>.context.*` 키의 별칭으로 읽고, 새 키를 알려진 이름으로만 허용한다. | `saturn-terminal/engine/src/settings/layers.rs`의 `provider_context_key_reads_from_the_new_name`, `old_context_key_is_an_alias_of_the_new_key`, `new_key_wins_over_the_old_alias_in_the_same_layer`, `higher_layer_old_key_beats_lower_layer_new_key`, `old_snapshot_keeps_its_old_key_name`, `provider_keys_accept_any_well_formed_id_and_reject_unknown_names`. 어댑터가 알린 키로만 허용하는 부분은 구현 전(#412) |
+| 레지스트리에 없는 id의 `provider.<id>.*` 키는 검사에 실패하지 않고 경고한다. | 구현 전(#412). 등록하지 않은 id의 키를 폴더 설정에 두고 실행이 계속되는지 확인한다. |

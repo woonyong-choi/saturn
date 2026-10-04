@@ -62,7 +62,7 @@ pub enum InterruptTarget {
     Main,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProviderCommand {
     /// `/` 없이.
     pub name: String,

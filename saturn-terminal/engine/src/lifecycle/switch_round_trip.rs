@@ -17,7 +17,7 @@ const CLAUDE_FIRST: SessionId = SessionId(2);
 async fn round_trip_flow() -> (Flow, FakeProvider) {
     let replies = (0..4).map(|_| idle_reply(0.95)).collect();
     let mut flow = Flow::new(replies).await;
-    let codex = flow.add_provider(Provider::Codex);
+    let codex = flow.add_provider(crate::providers::test_support::CODEX);
     (flow, codex)
 }
 
@@ -58,14 +58,23 @@ async fn codex_to_claude_to_codex_hands_over_without_duplicates_or_gaps() {
     let (mut flow, codex) = round_trip_flow().await;
     let claude = flow.fake.clone();
 
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
     flow.submit("write the cache module").await;
-    run_turn(&mut flow, Provider::Codex, "codex wrote cache", "c1", false).await;
+    run_turn(
+        &mut flow,
+        crate::providers::test_support::CODEX,
+        "codex wrote cache",
+        "c1",
+        false,
+    )
+    .await;
     let codex_end = delivered(&flow, CODEX_FIRST);
     assert_eq!(codex_end, LedgerSeq(4));
     assert_eq!(opened(&codex), vec![(None, None)]);
 
-    flow.engine.switch_provider(flow.chat, Provider::Claude);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CLAUDE);
     flow.submit("review the cache module").await;
 
     let to_claude = opened(&claude);
@@ -88,7 +97,7 @@ async fn codex_to_claude_to_codex_hands_over_without_duplicates_or_gaps() {
     );
     run_turn(
         &mut flow,
-        Provider::Claude,
+        crate::providers::test_support::CLAUDE,
         "claude reviewed cache",
         "c2",
         true,
@@ -98,7 +107,8 @@ async fn codex_to_claude_to_codex_hands_over_without_duplicates_or_gaps() {
     assert_eq!(claude_end, LedgerSeq(9));
     assert_eq!(delivered(&flow, CODEX_FIRST), codex_end);
 
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
     flow.submit("apply the review notes").await;
 
     let back = opened(&codex);
@@ -117,7 +127,7 @@ async fn codex_to_claude_to_codex_hands_over_without_duplicates_or_gaps() {
     assert_eq!(delivered(&flow, CODEX_FIRST), claude_end);
     run_turn(
         &mut flow,
-        Provider::Codex,
+        crate::providers::test_support::CODEX,
         "codex applied notes",
         "c3",
         true,
@@ -127,7 +137,8 @@ async fn codex_to_claude_to_codex_hands_over_without_duplicates_or_gaps() {
     assert_eq!(codex_again, LedgerSeq(14));
     assert_eq!(delivered(&flow, CLAUDE_FIRST), claude_end);
 
-    flow.engine.switch_provider(flow.chat, Provider::Claude);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CLAUDE);
     flow.submit("final check").await;
 
     let again = opened(&claude);
@@ -149,17 +160,26 @@ async fn codex_to_claude_to_codex_hands_over_without_duplicates_or_gaps() {
 #[tokio::test]
 async fn delivered_numbers_never_go_down_across_switches() {
     let (mut flow, _codex) = round_trip_flow().await;
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
     flow.submit("write the cache module").await;
-    run_turn(&mut flow, Provider::Codex, "codex wrote cache", "c1", false).await;
+    run_turn(
+        &mut flow,
+        crate::providers::test_support::CODEX,
+        "codex wrote cache",
+        "c1",
+        false,
+    )
+    .await;
     let mut seen = vec![delivered(&flow, CODEX_FIRST)];
 
-    flow.engine.switch_provider(flow.chat, Provider::Claude);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CLAUDE);
     flow.submit("review the cache module").await;
     seen.push(delivered(&flow, CLAUDE_FIRST));
     run_turn(
         &mut flow,
-        Provider::Claude,
+        crate::providers::test_support::CLAUDE,
         "claude reviewed cache",
         "c2",
         true,
@@ -182,17 +202,34 @@ async fn delivered_numbers_never_go_down_across_switches() {
 #[tokio::test]
 async fn packet_turn_completion_does_not_end_the_task_on_the_new_provider() {
     let (mut flow, _codex) = round_trip_flow().await;
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
     flow.submit("write the cache module").await;
-    run_turn(&mut flow, Provider::Codex, "codex wrote cache", "c1", false).await;
-    flow.engine.switch_provider(flow.chat, Provider::Claude);
+    run_turn(
+        &mut flow,
+        crate::providers::test_support::CODEX,
+        "codex wrote cache",
+        "c1",
+        false,
+    )
+    .await;
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CLAUDE);
     flow.submit("review the cache module").await;
     let agent = flow.agent();
 
-    flow.event(Provider::Claude, turn_completed(agent)).await;
+    flow.event(
+        crate::providers::test_support::CLAUDE,
+        turn_completed(agent),
+    )
+    .await;
 
     assert!(flow.engine.chat_is_running(flow.chat));
-    flow.event(Provider::Claude, turn_completed(agent)).await;
+    flow.event(
+        crate::providers::test_support::CLAUDE,
+        turn_completed(agent),
+    )
+    .await;
     assert!(!flow.engine.chat_is_running(flow.chat));
 }
 
@@ -200,20 +237,43 @@ async fn packet_turn_completion_does_not_end_the_task_on_the_new_provider() {
 #[tokio::test]
 async fn packet_turn_reply_is_not_shown_as_the_input_reply() {
     let (mut flow, _codex) = round_trip_flow().await;
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
     flow.submit("write the cache module").await;
-    run_turn(&mut flow, Provider::Codex, "codex wrote cache", "c1", false).await;
-    flow.engine.switch_provider(flow.chat, Provider::Claude);
+    run_turn(
+        &mut flow,
+        crate::providers::test_support::CODEX,
+        "codex wrote cache",
+        "c1",
+        false,
+    )
+    .await;
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CLAUDE);
     flow.submit("review the cache module").await;
     let mut client = flow.client().await;
     let agent = flow.agent();
 
-    flow.event(Provider::Claude, text(agent, "알겠습니다"))
-        .await;
-    flow.event(Provider::Claude, turn_completed(agent)).await;
-    flow.event(Provider::Claude, text(agent, "리뷰했습니다"))
-        .await;
-    flow.event(Provider::Claude, turn_completed(agent)).await;
+    flow.event(
+        crate::providers::test_support::CLAUDE,
+        text(agent, "알겠습니다"),
+    )
+    .await;
+    flow.event(
+        crate::providers::test_support::CLAUDE,
+        turn_completed(agent),
+    )
+    .await;
+    flow.event(
+        crate::providers::test_support::CLAUDE,
+        text(agent, "리뷰했습니다"),
+    )
+    .await;
+    flow.event(
+        crate::providers::test_support::CLAUDE,
+        turn_completed(agent),
+    )
+    .await;
 
     let live = client
         .until(|notification| match notification {
@@ -255,12 +315,21 @@ async fn packet_turn_reply_is_not_shown_as_the_input_reply() {
 #[tokio::test]
 async fn switch_tells_the_user_which_provider_took_over() {
     let (mut flow, _codex) = round_trip_flow().await;
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
     flow.submit("write the cache module").await;
-    run_turn(&mut flow, Provider::Codex, "codex wrote cache", "c1", false).await;
+    run_turn(
+        &mut flow,
+        crate::providers::test_support::CODEX,
+        "codex wrote cache",
+        "c1",
+        false,
+    )
+    .await;
     let mut client = flow.client().await;
 
-    flow.engine.switch_provider(flow.chat, Provider::Claude);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CLAUDE);
     flow.submit("review the cache module").await;
 
     let notice = client
@@ -272,8 +341,8 @@ async fn switch_tells_the_user_which_provider_took_over() {
     assert_eq!(
         notice,
         ChatNotice::ProviderSwitched {
-            from: Provider::Codex,
-            to: Provider::Claude
+            from: crate::providers::test_support::CODEX,
+            to: crate::providers::test_support::CLAUDE
         }
     );
 }
@@ -285,13 +354,14 @@ const SMALL_CODEX: &str = "[context.codex]\nt_abs = 400\nwindow = 400\n";
 async fn packet_over_the_hard_limit_is_not_sent_and_the_input_is_held() {
     let replies = (0..2).map(|_| idle_reply(0.95)).collect();
     let mut flow = Flow::with_config(SMALL_CODEX, replies).await;
-    let codex = flow.add_provider(Provider::Codex);
+    let codex = flow.add_provider(crate::providers::test_support::CODEX);
     let first = flow.submit(&"x".repeat(600)).await;
     let agent = flow.agent();
     flow.claude_event(text(agent, "done")).await;
     flow.claude_event(turn_completed(agent)).await;
     let mut client = flow.client().await;
-    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.engine
+        .switch_provider(flow.chat, crate::providers::test_support::CODEX);
 
     let second = flow.submit("now with codex").await;
 

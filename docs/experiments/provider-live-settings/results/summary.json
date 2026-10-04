@@ -133,7 +133,8 @@
           "False"
         ]
       ],
-      "classification": "확인"
+      "classification": "확인 못 함",
+      "reason": "control response만 성공. 실제 모델 변경은 검증하지 않음"
     },
     "claude.control.stop_task": {
       "n": 3,
@@ -214,7 +215,8 @@
           "False"
         ]
       ],
-      "classification": "확인"
+      "classification": "확인 못 함",
+      "reason": "config/read의 readback만 확인. 다음 턴 행동 차이는 입증하지 못함"
     },
     "codex.experimentalFeature.enablement.set": {
       "n": 3,
@@ -241,7 +243,8 @@
           "False"
         ]
       ],
-      "classification": "확인"
+      "classification": "확인 못 함",
+      "reason": "feature list의 값만 확인. 후속 codex-live-reload에서 같은 thread 행동은 3/3 바뀌지 않음"
     },
     "codex.file.config.toml": {
       "n": 3,
@@ -322,7 +325,8 @@
           "False"
         ]
       ],
-      "classification": "확인"
+      "classification": "확인 못 함",
+      "reason": "approval request가 발생하지 않아 승인 정책 차이를 입증하지 못함"
     },
     "codex.turn.start.sandboxPolicy": {
       "n": 3,

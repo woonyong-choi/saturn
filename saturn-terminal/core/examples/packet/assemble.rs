@@ -15,6 +15,9 @@ use saturn_protocol::ids::{LedgerSeq, SessionId};
 use serde::Deserialize;
 
 use crate::args::PacketCondition;
+
+/// 개발용 예제라 어댑터 설명자 없이 두 provider의 지시 문서 이름을 직접 적는다.
+const PROVIDER_DOCS: [&str; 2] = ["AGENTS.md", "CLAUDE.md"];
 use crate::records::{Body, Record};
 
 /// `T`는 `P_max`의 10배다(`P_max = T / 10`).
@@ -126,6 +129,10 @@ pub(crate) fn assemble(
         open_items,
         recent_turns: turns,
         competitors,
+        provider_docs: PROVIDER_DOCS
+            .iter()
+            .map(|name| (*name).to_owned())
+            .collect(),
         up_to: LedgerSeq(records.iter().map(|record| record.seq).max().unwrap_or(0)),
     };
     Assembled {

@@ -6,7 +6,8 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 |---|---|
 | [아키텍처](architecture.md) | 구성 요소, 코드 지도, 불변 조건 |
 | [입력 처리](design/input-handling.md) | 입력 접수, 실행 중 새 입력, 대기, 보류와 재개, 쓰기 규칙 |
-| [provider 연결과 session](design/providers-and-sessions.md) | provider 연결, session 수명과 전환, subagent 추적, 사용량 |
+| [provider 연결과 session](design/providers-and-sessions.md) | provider 계층과 어댑터, provider 연결, session 수명과 전환, subagent 추적, 사용량 |
+| [기능 목록과 확장](design/extensions.md) | provider 기능 목록, 확장 저장소, 설치와 주입, 옮길 수 없는 부분 알림 |
 | [권한](design/permissions.md) | 권한 규칙, 항상 허용 저장, Codex와 Claude 구성, 허가 대기 중 피드백 |
 | [입력 요청](design/input-requests.md) | provider 입력 요청 세 형식, 공통 입력 요청과 답, 대기와 보관, 에이전트 질문 설정 |
 | [맥락 정리](design/context-management.md) | 맥락 크기 측정, 정리 판정, 정리 모드, 패킷 구성 |

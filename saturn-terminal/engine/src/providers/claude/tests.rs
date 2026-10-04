@@ -8,7 +8,7 @@ use saturn_protocol::event::{
     Activity, LineChange, LineRange, PermissionCall, PermissionTool, ToolCategory, ToolDetail,
     TurnOrigin, UsageReport, UsageScope,
 };
-use saturn_protocol::ids::{ChatId, Provider, SettingsRevision};
+use saturn_protocol::ids::{ChatId, SettingsRevision};
 use saturn_protocol::input::InputValue;
 
 use super::config::{default_args, read_user_config, with_ask_tools};
@@ -121,7 +121,7 @@ fn launch(dir: &Path, env: Vec<(OsString, OsString)>) -> LaunchSpec {
         .unwrap();
     assert_eq!(warmed.code(), Some(3));
     LaunchSpec {
-        provider: Provider::Claude,
+        provider: crate::providers::test_support::CLAUDE,
         program,
         workdir: dir.to_path_buf(),
         settings: SettingsRevision(1),
@@ -487,8 +487,8 @@ async fn a_turn_sent_during_the_packet_turn_gets_its_own_completion() {
     let big = "x".repeat(BIG_TURN_BYTES);
     client.send_turn(&session, &big).await.unwrap();
     let mut providers = HashMap::from([(
-        (ChatId(1), Provider::Claude),
-        ProviderConnection::Claude(client),
+        (ChatId(1), crate::providers::test_support::CLAUDE),
+        ProviderConnection::new(super::adapter::ID, client),
     )]);
 
     let mut events = Vec::new();
