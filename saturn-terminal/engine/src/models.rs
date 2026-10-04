@@ -2,6 +2,7 @@
 //! 설계: docs/design/providers-and-sessions.md#모델-고르기
 
 use std::collections::HashMap;
+use std::path::Path;
 
 use saturn_core::providers::ProviderError;
 use saturn_core::queue::QueuedInput;
@@ -90,8 +91,7 @@ impl Engine {
         self.settings
             .set_user_value("model.default", &value)
             .await?;
-        self.apply_changed_settings(&[client], chat, &workdir)
-            .await?;
+        self.apply_user_setting_change(chat, &workdir).await?;
         Ok(())
     }
 
@@ -111,27 +111,53 @@ impl Engine {
             ModelMode::Manual => "\"manual\"",
         };
         self.settings.set_user_value("model.mode", value).await?;
-        self.apply_changed_settings(&[client], chat, &workdir)
-            .await?;
+        self.apply_user_setting_change(chat, &workdir).await?;
         Ok(())
     }
 
-    /// 채팅에 쓰는 설정의 기본 모델과 방식을 붙은 TUI에 알린다. 마지막으로 알린 값과 같으면 보내지 않는다.
+    /// `revision`을 쓰는 접속들(`clients`)에 기본 모델과 방식을 알린다. 접속마다 마지막으로 알린 값과 같으면 그 접속에는
+    /// 보내지 않는다. 같은 채팅의 다른 접속은 자기 실행 `-c`로 만든 설정을 따로 받는다.
     ///
     /// # Errors
     /// 없는 설정 번호면 `Settings`.
     pub(crate) async fn announce_model_settings(
         &mut self,
         chat: ChatId,
+        clients: &[ClientId],
         revision: SettingsRevision,
     ) -> Result<(), EngineError> {
         let plan = self.model_plan(revision).await?;
-        if self.flow.model_shown.get(&chat) == Some(&plan) {
-            return Ok(());
-        }
-        self.flow.model_shown.insert(chat, plan.clone());
         let notification = self.model_settings_notification(chat, &plan);
-        self.rpc.broadcast(Some(chat), notification).await;
+        for client in clients {
+            if self.flow.model_shown.get(client) == Some(&plan) {
+                continue;
+            }
+            self.flow.model_shown.insert(*client, plan.clone());
+            self.send(*client, notification.clone()).await;
+        }
+        Ok(())
+    }
+
+    /// 사용자 설정 파일을 바꾼 뒤, 그 채팅에 붙은 접속을 실행 `-c`가 같은 묶음마다 다시 병합하고 각자의 설정을 알린다.
+    async fn apply_user_setting_change(
+        &mut self,
+        chat: ChatId,
+        workdir: &Path,
+    ) -> Result<(), EngineError> {
+        let mut groups: Vec<(Vec<String>, Vec<ClientId>)> = Vec::new();
+        for (client, attachment) in &self.attachments {
+            if attachment.chat != chat {
+                continue;
+            }
+            let run = attachment.run_layer();
+            match groups.iter_mut().find(|(scope, _)| *scope == run) {
+                Some((_, clients)) => clients.push(*client),
+                None => groups.push((run, vec![*client])),
+            }
+        }
+        for (_, clients) in groups {
+            self.apply_changed_settings(&clients, chat, workdir).await?;
+        }
         Ok(())
     }
 
@@ -149,7 +175,7 @@ impl Engine {
             .revision_in(chat, &self.run_layer_of(client))
             .ok_or(SettingsError::NoPreviousRevision)?;
         let plan = self.model_plan(revision).await?;
-        self.flow.model_shown.insert(chat, plan.clone());
+        self.flow.model_shown.insert(client, plan.clone());
         let notification = self.model_settings_notification(chat, &plan);
         self.send(client, notification).await;
         Ok(())

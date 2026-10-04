@@ -92,6 +92,7 @@ impl Engine {
             }
             RpcEvent::Disconnected(client) => {
                 let detached = self.attachments.remove(&client);
+                self.flow.model_shown.remove(&client);
                 if let Some(attachment) = detached {
                     // 하위 접속을 건 쪽이 끊기면 그 하위 작업은 받을 곳이 없으므로 함께 끝낸다
                     if self.is_child_chat(attachment.chat) {
