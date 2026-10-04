@@ -42,6 +42,7 @@ def write_json(path: Path, value: object) -> None:
     path.write_text(text.replace(key, "[secret]") if key else text)
 
 
+# cost: io 1 append and fsync; basis: estimate
 def append_row(path: Path, value: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(value, ensure_ascii=False)

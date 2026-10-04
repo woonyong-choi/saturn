@@ -24,9 +24,13 @@ from common import (
 
 def parse_answers(reply: dict, questions: dict) -> dict:
     answers = reply.get("answers", {}) if isinstance(reply, dict) else {}
+    if not isinstance(answers, dict):
+        answers = {}
     parsed = {}
     for name, q in questions.items():
         a = answers.get(name, {})
+        if not isinstance(a, dict):
+            a = {}
         p = a.get("probabilities") if q["type"] == "choice" else a.get("noul")
         vals = list(p.values()) if isinstance(p, dict) else [p]
         ok = bool(vals) and all(
@@ -39,6 +43,8 @@ def parse_answers(reply: dict, questions: dict) -> dict:
                 and set(p) == set(q["criteria"])
                 and abs(sum(vals) - 1) < 0.01
             )
+        if q["type"] != "choice":
+            ok = ok and type(p) in (int, float)
         parsed[name] = p if ok else None
     return parsed
 
@@ -84,6 +90,7 @@ def trial(item: dict, form: str, record: bool) -> dict:
     )
 
 
+# cost: io 12n HTTPS requests, capped at 5000; vars: n = retained inputs; basis: estimate
 def main() -> None:
     initialize()
     if not os.environ.get("SATURN_JUDGE_KEY"):
@@ -111,19 +118,30 @@ def main() -> None:
     rng.shuffle(trials)
     reserved = {r["trial_id"] for r in read_rows(PRIVATE / "calls.jsonl")}
     run = read_json(PRIVATE / "run.json")
-    for index, t in enumerate(trials):
+    pending = []
+    for t in trials:
         body = json.dumps(
             {k: t[k] for k in ("model", "state", "questions")}, ensure_ascii=False
         ).encode()
         if len(body) > 100000:
             raise RuntimeError("request exceeds byte limit")
-        pending = [r for r in (1, 2, 3) if f"{t['trial_id']}-r{r}" not in reserved]
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            for row in executor.map(lambda r: judge.post_trial(t, r), pending):
+        pending.extend(
+            (t, r, len(body))
+            for r in (1, 2, 3)
+            if f"{t['trial_id']}-r{r}" not in reserved
+        )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        for start in range(0, len(pending), 8):
+            batch = pending[start : start + 8]
+            for task, row in zip(
+                batch,
+                executor.map(lambda task: judge.post_trial(task[0], task[1]), batch),
+            ):
+                t, _, size = task
                 row.update(
                     run_id=run["run_id"],
                     condition=f"{t['meta']['form']}-{int(t['meta']['record'])}",
-                    request_bytes=len(body),
+                    request_bytes=size,
                 )
                 append_row(PRIVATE / "jev.jsonl", row)
                 if row.get("http_status") in (401, 403) or row.get("model_unavailable"):
@@ -134,13 +152,15 @@ def main() -> None:
                             trial_id=row["trial_id"],
                         ),
                     )
-        if (PRIVATE / "stopped.json").exists():
-            raise RuntimeError("authentication or model rejected")
-        if index % 50 == 0:
-            print(
-                json.dumps(dict(phase="jev", done=index + 1, total=len(trials))),
-                flush=True,
-            )
+            if (PRIVATE / "stopped.json").exists():
+                raise RuntimeError("authentication or model rejected")
+            if start % 200 == 0:
+                print(
+                    json.dumps(
+                        dict(phase="jev", done=start + len(batch), total=len(pending))
+                    ),
+                    flush=True,
+                )
 
 
 if __name__ == "__main__":

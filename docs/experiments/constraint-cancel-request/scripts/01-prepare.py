@@ -153,6 +153,7 @@ def independent(items: list[dict], lane: str, trial: str) -> list[dict]:
     )
 
 
+# cost: io up to 400 official model calls plus local receipts; basis: estimate
 def main() -> None:
     initialize()
     if not (PRIVATE / "run.json").exists():
@@ -244,16 +245,6 @@ def main() -> None:
             excluded=len(excluded),
             categories=dict(Counter(i["category"] for i in selected)),
         ),
-    )
-    write_json(
-        PUBLIC / "data/generated.json",
-        [
-            {
-                k: (legacy.mask_text(i[k]) if k == "text" else i[k])
-                for k in ("id", "category", "n", "text", "intent", "target", "rule_ids")
-            }
-            for i in retained
-        ],
     )
     print(json.dumps(read_json(PRIVATE / "flow.json")))
 
