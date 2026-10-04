@@ -1,0 +1,404 @@
+{
+ "human_check": {
+  "counts": {
+   "total": 40,
+   "sure": 24,
+   "unsure": 16
+  },
+  "labeler_agreement": {
+   "gpt-6-astra": 21,
+   "gpt-5.6-luna": 5,
+   "adjudicated": 21
+  },
+  "sure_n": 24,
+  "jev_curve": [
+   {
+    "threshold": 0.5,
+    "predicted": 16,
+    "true_positive": 14,
+    "gold_positive": 14,
+    "precision": {
+     "k": 14,
+     "n": 16,
+     "pct": 87.5,
+     "wilson95": [
+      64.0,
+      96.5
+     ]
+    },
+    "recall": {
+     "k": 14,
+     "n": 14,
+     "pct": 100.0,
+     "wilson95": [
+      78.5,
+      100.0
+     ]
+    }
+   },
+   {
+    "threshold": 0.6,
+    "predicted": 15,
+    "true_positive": 13,
+    "gold_positive": 14,
+    "precision": {
+     "k": 13,
+     "n": 15,
+     "pct": 86.7,
+     "wilson95": [
+      62.1,
+      96.3
+     ]
+    },
+    "recall": {
+     "k": 13,
+     "n": 14,
+     "pct": 92.9,
+     "wilson95": [
+      68.5,
+      98.7
+     ]
+    }
+   },
+   {
+    "threshold": 0.65,
+    "predicted": 12,
+    "true_positive": 11,
+    "gold_positive": 14,
+    "precision": {
+     "k": 11,
+     "n": 12,
+     "pct": 91.7,
+     "wilson95": [
+      64.6,
+      98.5
+     ]
+    },
+    "recall": {
+     "k": 11,
+     "n": 14,
+     "pct": 78.6,
+     "wilson95": [
+      52.4,
+      92.4
+     ]
+    }
+   },
+   {
+    "threshold": 0.7,
+    "predicted": 11,
+    "true_positive": 10,
+    "gold_positive": 14,
+    "precision": {
+     "k": 10,
+     "n": 11,
+     "pct": 90.9,
+     "wilson95": [
+      62.3,
+      98.4
+     ]
+    },
+    "recall": {
+     "k": 10,
+     "n": 14,
+     "pct": 71.4,
+     "wilson95": [
+      45.4,
+      88.3
+     ]
+    }
+   },
+   {
+    "threshold": 0.75,
+    "predicted": 8,
+    "true_positive": 8,
+    "gold_positive": 14,
+    "precision": {
+     "k": 8,
+     "n": 8,
+     "pct": 100.0,
+     "wilson95": [
+      67.6,
+      100.0
+     ]
+    },
+    "recall": {
+     "k": 8,
+     "n": 14,
+     "pct": 57.1,
+     "wilson95": [
+      32.6,
+      78.6
+     ]
+    }
+   },
+   {
+    "threshold": 0.8,
+    "predicted": 6,
+    "true_positive": 6,
+    "gold_positive": 14,
+    "precision": {
+     "k": 6,
+     "n": 6,
+     "pct": 100.0,
+     "wilson95": [
+      61.0,
+      100.0
+     ]
+    },
+    "recall": {
+     "k": 6,
+     "n": 14,
+     "pct": 42.9,
+     "wilson95": [
+      21.4,
+      67.4
+     ]
+    }
+   },
+   {
+    "threshold": 0.85,
+    "predicted": 3,
+    "true_positive": 3,
+    "gold_positive": 14,
+    "precision": {
+     "k": 3,
+     "n": 3,
+     "pct": 100.0,
+     "wilson95": [
+      43.8,
+      100.0
+     ]
+    },
+    "recall": {
+     "k": 3,
+     "n": 14,
+     "pct": 21.4,
+     "wilson95": [
+      7.6,
+      47.6
+     ]
+    }
+   },
+   {
+    "threshold": 0.9,
+    "predicted": 0,
+    "true_positive": 0,
+    "gold_positive": 14,
+    "precision": {
+     "k": 0,
+     "n": 0,
+     "pct": null,
+     "wilson95": null
+    },
+    "recall": {
+     "k": 0,
+     "n": 14,
+     "pct": 0.0,
+     "wilson95": [
+      0.0,
+      21.5
+     ]
+    }
+   }
+  ]
+ },
+ "astra_curve": {
+  "turns": 868,
+  "gold_positive": 448,
+  "curve": [
+   {
+    "threshold": 0.5,
+    "predicted": 577,
+    "true_positive": 422,
+    "gold_positive": 448,
+    "precision": {
+     "k": 422,
+     "n": 577,
+     "pct": 73.1,
+     "wilson95": [
+      69.4,
+      76.6
+     ]
+    },
+    "recall": {
+     "k": 422,
+     "n": 448,
+     "pct": 94.2,
+     "wilson95": [
+      91.6,
+      96.0
+     ]
+    }
+   },
+   {
+    "threshold": 0.6,
+    "predicted": 517,
+    "true_positive": 397,
+    "gold_positive": 448,
+    "precision": {
+     "k": 397,
+     "n": 517,
+     "pct": 76.8,
+     "wilson95": [
+      73.0,
+      80.2
+     ]
+    },
+    "recall": {
+     "k": 397,
+     "n": 448,
+     "pct": 88.6,
+     "wilson95": [
+      85.3,
+      91.2
+     ]
+    }
+   },
+   {
+    "threshold": 0.65,
+    "predicted": 452,
+    "true_positive": 367,
+    "gold_positive": 448,
+    "precision": {
+     "k": 367,
+     "n": 452,
+     "pct": 81.2,
+     "wilson95": [
+      77.3,
+      84.5
+     ]
+    },
+    "recall": {
+     "k": 367,
+     "n": 448,
+     "pct": 81.9,
+     "wilson95": [
+      78.1,
+      85.2
+     ]
+    }
+   },
+   {
+    "threshold": 0.7,
+    "predicted": 408,
+    "true_positive": 346,
+    "gold_positive": 448,
+    "precision": {
+     "k": 346,
+     "n": 408,
+     "pct": 84.8,
+     "wilson95": [
+      81.0,
+      88.0
+     ]
+    },
+    "recall": {
+     "k": 346,
+     "n": 448,
+     "pct": 77.2,
+     "wilson95": [
+      73.1,
+      80.9
+     ]
+    }
+   },
+   {
+    "threshold": 0.75,
+    "predicted": 349,
+    "true_positive": 310,
+    "gold_positive": 448,
+    "precision": {
+     "k": 310,
+     "n": 349,
+     "pct": 88.8,
+     "wilson95": [
+      85.1,
+      91.7
+     ]
+    },
+    "recall": {
+     "k": 310,
+     "n": 448,
+     "pct": 69.2,
+     "wilson95": [
+      64.8,
+      73.3
+     ]
+    }
+   },
+   {
+    "threshold": 0.8,
+    "predicted": 299,
+    "true_positive": 273,
+    "gold_positive": 448,
+    "precision": {
+     "k": 273,
+     "n": 299,
+     "pct": 91.3,
+     "wilson95": [
+      87.6,
+      94.0
+     ]
+    },
+    "recall": {
+     "k": 273,
+     "n": 448,
+     "pct": 60.9,
+     "wilson95": [
+      56.3,
+      65.3
+     ]
+    }
+   },
+   {
+    "threshold": 0.85,
+    "predicted": 228,
+    "true_positive": 219,
+    "gold_positive": 448,
+    "precision": {
+     "k": 219,
+     "n": 228,
+     "pct": 96.1,
+     "wilson95": [
+      92.7,
+      97.9
+     ]
+    },
+    "recall": {
+     "k": 219,
+     "n": 448,
+     "pct": 48.9,
+     "wilson95": [
+      44.3,
+      53.5
+     ]
+    }
+   },
+   {
+    "threshold": 0.9,
+    "predicted": 47,
+    "true_positive": 46,
+    "gold_positive": 448,
+    "precision": {
+     "k": 46,
+     "n": 47,
+     "pct": 97.9,
+     "wilson95": [
+      88.9,
+      99.6
+     ]
+    },
+    "recall": {
+     "k": 46,
+     "n": 448,
+     "pct": 10.3,
+     "wilson95": [
+      7.8,
+      13.4
+     ]
+    }
+   }
+  ]
+ }
+}

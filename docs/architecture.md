@@ -47,7 +47,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 권한 규칙, 권한 모드, 항상 허용 | [권한](design/permissions.md) |
 | 맥락 크기 측정과 새 session으로 이어 가기 | [맥락 정리](design/context-management.md) |
 | 후보 순위, 단어 조각, 도구 결과 메모 | [맥락 고르기](design/context-selection.md) |
-| 제약 식별, 저장, 해제와 대체, 패킷 제약 칸 | [제약](design/constraints.md) |
+| 제약 식별, 저장, 해제와 예외, 패킷 제약 칸 | [제약](design/constraints.md) |
 | 판단 질문, 기준값, 대체 규칙 | [router](design/router.md) |
 | router 키 입력, 저장, 차단 | [router 키 보호](design/router-key-security.md) |
 | 채점, 기준값 조정, 로컬 모델 승격 | [router 학습](design/router-training.md) |

@@ -27,5 +27,6 @@
 | 2026-10-03 | [반대 지시는 끼워 넣고, 끼워 넣을 수 없으면 사용자에게 멈출지 묻는다](2026-10-03-conflict-steers-then-asks.md) | 채택 |
 | 2026-10-04 | [크래시 뒤 provider가 끊긴 작업을 다시 하지 못하게 막는다](2026-10-04-crash-recovery-blocks-provider-resume.md) | 채택 |
 | 2026-10-04 | [제약은 원문에서 자른 규칙 한 줄과 적용 범위로 저장하고 확신이 낮으면 사용자에게 묻는다](2026-10-04-constraints-as-rule-lines.md) | 채택 |
+| 2026-10-04 | [제약 해제와 예외는 등록 기록을 본 사용자의 입력을 Jev로 판단한다](2026-10-04-constraint-release-exception-judge.md) | 채택 |
 | 2026-10-04 | [provider는 열린 id의 어댑터로 붙이고 확장은 Saturn 저장소에 설치해 session을 열 때 주입한다](2026-10-04-open-providers-and-saturn-extensions.md) | 채택 |
 | 2026-10-04 | [Codex와 Claude는 직접 연결을 유지하고 새 provider는 ACP 어댑터로 시작한다](2026-10-04-direct-adapters-and-acp-for-new-providers.md) | 채택 |

@@ -94,7 +94,7 @@
 - `context.mode`가 `provider`이면 `sessions`는 compaction과 유휴 복귀를 판정하지 않고 provider 실행 인자에 자동 압축 안전망 값을 넣지 않는다. 규칙은 [맥락 정리](context-management.md#정리-모드)에 있다. 기본은 `saturn`이다.
 - `context.select.rrf_k`는 router가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
 - 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`다.
-- 구현 전 기준값은 `is_constraint`, `constraint_replace`, `constraint_conflict`, `constraint_ask`, `constraint_same`, `constraint_release`다([#378](https://github.com/woonyong-choi/saturn/issues/378), [#379](https://github.com/woonyong-choi/saturn/issues/379)). `constraint_conflict`는 대체 질문을 사용자에게 묻는 하한이고 `constraint_ask`는 등록과 해제 질문의 묻는 하한이다.
+- 구현 전 기준값은 `is_constraint`, `constraint_ask`, `constraint_release`다([#378](https://github.com/woonyong-choi/saturn/issues/378), [#379](https://github.com/woonyong-choi/saturn/issues/379)). `is_constraint`는 자동 등록 기준값(기본 0.8), `constraint_ask`는 등록 질문의 묻는 하한(기본 0.7), `constraint_release`는 해제·예외 판단을 적용하는 기준값(기본 0.8)이다. 권한 모드가 `full`이면 제약 질문을 묻지 않는다([제약](constraints.md#묻지-않고-진행하는-권한-모드)).
 - 제약 칸 상한은 `context.constraint_slot_divisor`로 `P_max`를 나눈 값이다. 이 키는 구현 전이다([#380](https://github.com/woonyong-choi/saturn/issues/380), [제약](constraints.md)).
 - 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
 - 실행 층 `-c key=value`의 값은 TOML 값 문법으로 읽고, 같은 키가 여러 번 오면 뒤 값이 이긴다.
