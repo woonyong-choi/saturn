@@ -30,3 +30,4 @@
 | 2026-10-04 | [제약 해제와 예외는 등록 기록을 본 사용자의 입력을 Jev로 판단한다](2026-10-04-constraint-release-exception-judge.md) | 채택 |
 | 2026-10-04 | [provider는 열린 id의 어댑터로 붙이고 확장은 Saturn 저장소에 설치해 session을 열 때 주입한다](2026-10-04-open-providers-and-saturn-extensions.md) | 채택 |
 | 2026-10-04 | [Codex와 Claude는 직접 연결을 유지하고 새 provider는 ACP 어댑터로 시작한다](2026-10-04-direct-adapters-and-acp-for-new-providers.md) | 채택 |
+| 2026-10-04 | [하위 접속은 새 engine 대신 떠 있는 engine에 출입증으로 붙는다](2026-10-04-child-sessions-via-engine-pass.md) | 채택 |

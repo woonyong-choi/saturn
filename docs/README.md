@@ -18,6 +18,7 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [router 학습](design/router-training.md) | 기준값 조정, 채점, 로컬 모델 승격 |
 | [설정](design/settings.md) | 설정 층, 폴더 설정 신뢰, 설정 번호 |
 | [기록 저장과 보존](design/records.md) | 기록 저장소, 스키마 이관, 보존과 삭제 |
+| [하위 접속](design/child-sessions.md) | 에이전트 안팎에서 온 접속, 출입증, 상한과 대기열, 부모와 함께 끝나기, 부하 시험 |
 | [engine 수명과 복구](design/engine-lifecycle.md) | engine 시작, TUI 종료 뒤 계속, 크래시 뒤 복구, 업데이트로 engine 교체, 채팅 폴더와 이어 열기 |
 | [TUI](design/tui.md) | 화면 배치, 키, 상태 표시 |
 | [용어](glossary.md) | 이 프로젝트에서만 쓰는 말 |

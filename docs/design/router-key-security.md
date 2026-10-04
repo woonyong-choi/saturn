@@ -87,6 +87,8 @@ router 키 보호는 외부 router API 키를 provider와 subagent가 어떤 경
 
 ### 자식 환경의 변수 제거
 
+하위 접속으로 만든 채팅의 환경도 같은 규칙을 따르고, 권한 모드 `full`이어도 훅과 샌드박스는 같다. 하위 접속의 출입증은 키가 아니며 [하위 접속](child-sessions.md#출입증)이 다룬다.
+
 1. engine이 `Supervisor`로 넘길 때 제외 목록의 변수를 지운다.
 2. `Supervisor`가 provider로 넘길 때 제외 목록의 변수를 다시 지운다.
 

@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use saturn_core::agents::AgentTracker;
+use saturn_core::passes::PassLimits;
 use saturn_core::queue::Queue;
 use tokio::sync::Mutex;
 
@@ -12,6 +13,7 @@ use super::{
     Engine, EngineError, EngineOptions, Presence, RouterGate, Runs, StartEnv, StartNotices,
     masked_chain,
 };
+use crate::passes::PassGate;
 use crate::processes::Supervisor;
 use crate::routers::{ActiveRouter, Routers, SharedSecrets, StartCheck};
 use crate::rpc::{EngineLock, RpcServer};
@@ -47,7 +49,8 @@ impl Engine {
         let sessions = sessions::restore_sessions(&store).await?;
         let settings = Self::merge_settings(&options, &store).await?;
         let verified = Self::verify_router(&options, &store, &settings, env).await?;
-        let rpc = Self::listen(&options, lock).await?;
+        let passes = PassGate::new(Self::child_limits(&settings, &store).await);
+        let rpc = Self::listen(&options, lock, passes.clone()).await?;
         let restarted = options.after_upgrade;
         Ok(Self {
             options,
@@ -61,6 +64,8 @@ impl Engine {
             routers: verified.routers,
             router_gate: verified.gate,
             rpc,
+            passes,
+            children: HashMap::new(),
             attachments: HashMap::new(),
             chats: HashMap::new(),
             chat_dirs: HashMap::new(),
@@ -84,8 +89,22 @@ impl Engine {
         })
     }
 
-    /// 판정 기준은 cli와 같다: 중첩 표지 변수가 있으면 거절한다.
-    /// TODO(#33): 자식 Saturn을 부모 engine에 붙일지, 독립 engine으로 띄울지
+    /// 설정의 하위 접속 상한. 읽지 못하면 기본값이다.
+    pub(super) async fn child_limits(settings: &SettingsManager, store: &Store) -> PassLimits {
+        let Some(revision) = settings.current() else {
+            return PassLimits::DEFAULT;
+        };
+        match settings.at(store, revision).await {
+            Ok(current) => current.child_limits(),
+            Err(error) => {
+                tracing::warn!(%error, "child limits not read, using the defaults");
+                PassLimits::DEFAULT
+            }
+        }
+    }
+
+    /// 에이전트 작업 안에서는 engine을 띄우지 않는다. 하위 Saturn은 떠 있는 engine에 출입증으로 접속해 부탁만 하고,
+    /// engine은 사용자당 하나다.
     fn ensure_not_nested(marker: Option<&OsStr>) -> Result<(), EngineError> {
         match marker {
             Some(_) => Err(EngineError::Nested),
@@ -203,8 +222,12 @@ impl Engine {
         }
     }
 
-    async fn listen(options: &EngineOptions, lock: EngineLock) -> Result<RpcServer, EngineError> {
-        Ok(RpcServer::bind(&options.home, lock).await?)
+    async fn listen(
+        options: &EngineOptions,
+        lock: EngineLock,
+        passes: PassGate,
+    ) -> Result<RpcServer, EngineError> {
+        Ok(RpcServer::bind(&options.home, lock, passes).await?)
     }
 }
 

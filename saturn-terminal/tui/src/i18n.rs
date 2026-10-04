@@ -394,8 +394,12 @@ pub const CLI_AGE_DAYS: &str = "{n}일 전";
 pub const CLI_ADD_DIR_UNREADABLE: &str = "--add-dir 폴더를 읽지 못했습니다: {dir}";
 pub const CLI_ADD_DIR_NOT_FOLDER: &str = "--add-dir은 폴더여야 합니다: {dir}";
 pub const CLI_CURRENT_DIR_UNREADABLE: &str = "현재 폴더를 읽지 못했습니다";
-pub const CLI_NESTED: &str =
-    "saturn은 에이전트 작업 안에서 실행할 수 없습니다({marker} 변수가 설정되어 있습니다)";
+pub const CLI_PASS_MISSING: &str =
+    "에이전트 작업 안의 saturn은 출입증({pass} 변수)이 있어야 하위 접속을 열 수 있습니다";
+pub const CLI_CHILD_ARGS: &str = "하위 접속은 표준 입력의 글을 plain 방식으로만 보내므로 --continue, --resume, --add-dir, -c, 하위 명령은 쓸 수 없습니다";
+pub const CLI_CHILD_NO_ENGINE: &str =
+    "떠 있는 engine에 접속하지 못했습니다. 하위 접속은 engine을 새로 띄우지 않습니다";
+pub const CLI_MODE_NEEDS_PASS: &str = "--mode는 에이전트 작업 안의 하위 접속에서만 쓸 수 있습니다";
 pub const CLI_ENGINE_NOT_FOUND: &str =
     "{binary} 실행 파일을 saturn 옆이나 PATH에서 찾지 못했습니다";
 pub const CLI_ENGINE_START_FAILED: &str = "engine을 시작하지 못했습니다: {binary}";

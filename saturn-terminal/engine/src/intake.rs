@@ -170,6 +170,9 @@ impl Engine {
         let workdir = self.attached_workdir(client, chat)?;
         let pinned_model = self.store.chat_model(chat).await?;
         let settings = self.fix_settings(client, chat, &workdir).await?;
+        if let Ok(mode) = self.chat_mode(chat, settings).await {
+            self.passes.set_mode(chat, mode);
+        }
         self.sync_provider_settings(chat, settings).await;
         let permission = self.input_permission(chat, settings).await;
         let new = crate::store::NewInput {

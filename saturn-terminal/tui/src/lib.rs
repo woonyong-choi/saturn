@@ -73,6 +73,24 @@ pub struct RunOptions {
     pub add_dirs: Vec<PathBuf>,
     /// 기본 `~/.saturn/history`.
     pub history: PathBuf,
+    /// 에이전트 작업 안에서 출입증으로 붙을 때만 둔다. 있으면 `Attach` 대신 `AttachChild`를 보낸다.
+    pub child: Option<ChildAccess>,
+}
+
+/// 하위 접속의 출입증과 요청 모드. 작업 폴더, 환경, 더한 폴더, 실행 층은 engine이 부모에게서 물려주므로 없다.
+#[derive(Clone)]
+pub struct ChildAccess {
+    pub pass: String,
+    /// 부모 모드를 넘지 않는 모드. `None`이면 부모 모드.
+    pub mode: Option<String>,
+}
+
+impl std::fmt::Debug for ChildAccess {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ChildAccess")
+            .field("mode", &self.mode)
+            .finish_non_exhaustive()
+    }
 }
 
 // cost: time O(d), heap O(d), stack O(1), alloc d
@@ -124,15 +142,32 @@ pub async fn run(client: &mut EngineClient, options: RunOptions) -> Result<(), T
 pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result<(), TuiError> {
     let lang = options.lang.unwrap_or_else(Lang::detect);
     let mut output = PlainOutput::new(std::io::stdout(), lang);
-    client
-        .send(Request::Attach {
-            chat: options.chat,
-            workdir: options.workdir.display().to_string(),
-            env: client::attach_env(),
-            overrides: options.overrides,
-            add_dirs: path_texts(&options.add_dirs),
-        })
-        .await?;
+    if let Some(child) = options.child {
+        // 상한이 차면 자리가 날 때까지 응답이 없다. 거절은 오류로 끝낸다
+        let mut written = Ok(());
+        let request = Request::AttachChild {
+            pass: child.pass,
+            mode: child.mode,
+        };
+        client
+            .call(request, |notification| {
+                if written.is_ok() {
+                    written = output.apply(notification, Instant::now());
+                }
+            })
+            .await?;
+        written.map_err(TuiError::Plain)?;
+    } else {
+        client
+            .send(Request::Attach {
+                chat: options.chat,
+                workdir: options.workdir.display().to_string(),
+                env: client::attach_env(),
+                overrides: options.overrides,
+                add_dirs: path_texts(&options.add_dirs),
+            })
+            .await?;
+    }
     let mut stdin = BufReader::new(tokio::io::stdin()).lines();
     let mut waiting: VecDeque<String> = VecDeque::new();
     let mut stdin_open = true;

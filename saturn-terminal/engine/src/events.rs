@@ -530,6 +530,15 @@ impl Engine {
                 self.flow.live.remove(&live.agent);
             }
         }
+        // 연결이 모두 사라지면 그 채팅의 출입증은 만료되고 하위 접속도 함께 끝난다
+        if !self.providers.keys().any(|(owner, _)| *owner == chat) {
+            self.end_children_of(chat).await;
+            if self.is_child_chat(chat) {
+                self.finish_child(chat).await;
+            } else {
+                self.passes.end(chat);
+            }
+        }
     }
 
     /// Saturn 규칙이 `allow`나 `deny`로 판정하면 사용자에게 묻지 않고 바로 답한다. `ask`이거나 답이 provider에
@@ -543,6 +552,8 @@ impl Engine {
         let answer = match self.router_permission(chat, live.agent, request.call).await {
             Verdict::Allow => Some(PermissionAnswer::AllowOnce),
             Verdict::Deny => Some(PermissionAnswer::Deny { note: None }),
+            // 하위 채팅에는 답할 사용자가 없어 묻지 않고 거부한다. 규칙으로 허용하거나 부모 모드를 올려야 한다
+            Verdict::Ask if self.is_child_chat(chat) => Some(PermissionAnswer::Deny { note: None }),
             Verdict::Ask => None,
         };
         if let Some(answer) = answer

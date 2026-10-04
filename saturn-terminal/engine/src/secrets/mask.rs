@@ -3,6 +3,8 @@
 
 use std::io::Write;
 
+use crate::passes::TOKEN_PREFIX;
+
 /// 끝 4자리도 남기지 않는다. 초안 값.
 pub(crate) const REDACTED: &str = "[redacted]";
 
@@ -22,6 +24,22 @@ impl Masked {
     pub(crate) fn assume_masked(text: &str) -> Self {
         Self(text.to_owned())
     }
+}
+
+/// 하위 접속 출입증은 키가 아니지만 채팅 범위의 권한이라 로그와 오류에 글자를 남기지 않는다. 발급한 토큰마다 대상을 늘리지
+/// 않고, 토큰의 모양(앞부분과 16진수)으로 가린다. 회수된 토큰도 가린다.
+fn mask_passes(text: &str) -> String {
+    let mut masked = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find(TOKEN_PREFIX) {
+        masked.push_str(&rest[..at]);
+        let after = &rest[at + TOKEN_PREFIX.len()..];
+        let digits = after.bytes().take_while(u8::is_ascii_hexdigit).count();
+        masked.push_str(REDACTED);
+        rest = &after[digits..];
+    }
+    masked.push_str(rest);
+    masked
 }
 
 /// 대상이 키 원문이라 `Debug`는 개수만 보인다.
@@ -49,6 +67,9 @@ impl Masker {
             if masked.contains(needle.as_str()) {
                 masked = masked.replace(needle.as_str(), REDACTED);
             }
+        }
+        if masked.contains(TOKEN_PREFIX) {
+            masked = mask_passes(&masked);
         }
         if SENSITIVE_HEADERS
             .iter()
@@ -149,6 +170,19 @@ mod tests {
     use super::*;
 
     const KEY: &str = "sk-test-0123456789abcdef";
+
+    #[test]
+    fn pass_tokens_are_masked_by_shape() {
+        let masker = Masker::new(Vec::new());
+        let token = format!("{TOKEN_PREFIX}{}", "ab01".repeat(16));
+
+        let masked = masker.mask(&format!("env SATURN_PASS={token} and {token}."));
+
+        assert_eq!(
+            masked.as_str(),
+            "env SATURN_PASS=[redacted] and [redacted]."
+        );
+    }
 
     #[test]
     fn mask_replaces_every_key_occurrence() {

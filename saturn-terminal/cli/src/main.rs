@@ -7,7 +7,7 @@ use clap::FromArgMatches;
 use saturn_tui::i18n::Lang;
 
 use crate::args::{Cli, Command, OpenMode, RouterCommand};
-use crate::exit::ExitCode;
+use crate::exit::{Exit, ExitCode};
 
 mod args;
 mod commands;
@@ -55,7 +55,15 @@ fn parse(lang: Lang) -> Result<(Cli, OpenMode), clap::Error> {
 }
 
 async fn run(lang: Lang, cli: Cli, mode: OpenMode) -> anyhow::Result<()> {
-    launch::ensure_not_nested(lang)?;
+    if let launch::Origin::Child { pass, socket } = launch::origin(lang)? {
+        return commands::child::run(lang, &cli, pass, &socket).await;
+    }
+    if cli.mode.is_some() {
+        return Err(Exit::error(
+            ExitCode::Usage,
+            lang.tr(saturn_tui::i18n::CLI_MODE_NEEDS_PASS),
+        ));
+    }
     commands::chat::ensure_can_open(lang, mode)?;
     let add_dirs = commands::chat::resolve_add_dirs(lang, &cli.add_dir)?;
     let mut client = launch::connect_or_start(lang).await?;

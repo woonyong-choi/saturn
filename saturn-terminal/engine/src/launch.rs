@@ -8,6 +8,7 @@ use saturn_core::queue::QueuedInput;
 use saturn_protocol::ids::{
     AgentId, ChatId, Provider, ProviderSessionId, SessionId, SettingsRevision,
 };
+use saturn_protocol::rpc::{PASS_ENV, SOCKET_ENV};
 
 use crate::flow::LiveSession;
 use crate::models::pinned_choice;
@@ -169,7 +170,9 @@ impl Engine {
             .chat_env(chat)
             .ok_or(EngineError::ChatNotAttached { chat })?;
         let settings = self.settings.at(&self.store, revision).await?;
-        let provider_env = env.provider_env();
+        let mut provider_env = env.provider_env();
+        provider_env.retain(|(name, _)| name != PASS_ENV && name != SOCKET_ENV);
+        provider_env.extend(self.pass_env(chat, revision).await?);
         let user_home = provider_env
             .iter()
             .find(|(name, _)| name == "HOME")

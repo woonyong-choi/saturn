@@ -3,6 +3,7 @@
 
 pub mod agents;
 pub mod constraints;
+pub mod passes;
 pub mod permission;
 pub mod providers;
 pub mod queue;

@@ -52,6 +52,13 @@ impl Engine {
     /// # Errors
     /// 멈춤 기록을 쓰지 못하면 `Store`. 이때는 아무것도 멈추지 않는다.
     pub(crate) async fn stop_chat(&mut self, chat: ChatId) -> Result<(), EngineError> {
+        self.end_children_of(chat).await;
+        self.stop_chat_core(chat).await
+    }
+
+    /// 하위 접속을 거느린 채널이면 `stop_chat`이 먼저 하위 접속을 끝낸다. 이 함수는 하위 접속을 건드리지 않아
+    /// `end_children_of`가 하위 채팅을 멈출 때 되돌아오지 않는다.
+    pub(crate) async fn stop_chat_core(&mut self, chat: ChatId) -> Result<(), EngineError> {
         if self.flow.stopping.contains_key(&chat) {
             return Ok(());
         }
@@ -112,7 +119,7 @@ impl Engine {
     }
 
     /// 진행 중인 실행이 있는 에이전트.
-    fn running_agents(&self, chat: ChatId) -> Vec<AgentId> {
+    pub(crate) fn running_agents(&self, chat: ChatId) -> Vec<AgentId> {
         let mut agents: Vec<AgentId> = self
             .runs
             .chat_of

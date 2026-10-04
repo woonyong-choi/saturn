@@ -87,12 +87,19 @@ impl Engine {
             RpcEvent::Request(client, id, request) => {
                 self.handle_request(client, id, request).await?;
             }
+            RpcEvent::Child(client, id, grant) => {
+                self.on_child_request(client, id, grant).await;
+            }
             RpcEvent::Disconnected(client) => {
                 let detached = self.attachments.remove(&client);
-                if let Some(attachment) = detached
-                    && self.attachments.is_empty()
-                {
-                    self.on_last_detach(attachment.chat).await;
+                if let Some(attachment) = detached {
+                    // 하위 접속을 건 쪽이 끊기면 그 하위 작업은 받을 곳이 없으므로 함께 끝낸다
+                    if self.is_child_chat(attachment.chat) {
+                        self.finish_child(attachment.chat).await;
+                    }
+                    if self.attachments.is_empty() {
+                        self.on_last_detach(attachment.chat).await;
+                    }
                 }
             }
             // 유예 시계는 `serve`의 유휴 점검이 돌린다. 마지막 TUI 이탈은 `Disconnected`에서 처리한다
@@ -270,7 +277,8 @@ impl Engine {
             Request::Continue { chat, task } => self.continue_held(chat, task).await,
             Request::ContinueInput { input } => self.continue_input(input).await,
             Request::CloseHeld { chat, task } => self.close_held(chat, task).await,
-            // 응답을 기다리는 요청은 `route_deferred`가 맡아 여기까지 오지 않는다.
+            // 응답을 기다리는 요청은 `route_deferred`가, `AttachChild`는 연결 작업이 맡아 여기까지 오지 않는다.
+            Request::AttachChild { .. } => Err(unsupported("AttachChild")),
             Request::AnswerPermission { .. } => Err(unsupported("AnswerPermission")),
             Request::AnswerInput { .. } => Err(unsupported("AnswerInput")),
             Request::ListModels { .. } => Err(unsupported("ListModels")),

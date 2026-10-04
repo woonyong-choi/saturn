@@ -18,6 +18,10 @@ impl Engine {
     /// 쓰기 잠금이 겹침을 보는 범위. 작업 폴더와 더한 폴더를 링크를 푼 경로로 만든다. 허가 판정이 경로를 푸는 방식과
     /// 같아, 링크로 우회한 경로도 같은 폴더로 본다. 폴더가 없으면 푸는 대신 적은 그대로 쓴다.
     pub(crate) fn write_scope_of(&self, chat: ChatId, workdir: &Path) -> Vec<PathBuf> {
+        if self.is_child_chat(chat) {
+            // 하위 채팅은 부모 작업이 쥔 쓰기 잠금 아래에서 돈다. 부모는 트리가 유휴가 될 때까지 잠금을 놓지 않는다
+            return Vec::new();
+        }
         std::iter::once(workdir.to_path_buf())
             .chain(self.chat_dirs_of(chat))
             .map(|dir| dir.canonicalize().unwrap_or(dir))
