@@ -538,21 +538,16 @@ impl App {
             Action::Quit => return self.quit_effects(),
             Action::Interrupt => return self.interrupt(false),
             Action::InterruptQuit => return self.interrupt(true),
-            Action::Permission(answer) => {
-                let denied = matches!(answer, PermissionAnswer::Deny { .. });
-                let target = self.permissions.current().map(|r| (r.task, r.label));
-                return match self.permissions.answer(answer, now) {
-                    Some((request_id, answer)) => {
-                        if let Some((task, label)) = target.filter(|_| denied) {
-                            self.open_directed_draft(task, label);
-                        }
-                        vec![Effect::Send(Request::AnswerPermission {
-                            request_id,
-                            answer,
-                        })]
-                    }
-                    None => Vec::new(),
-                };
+            Action::Permission(answer) => return self.answer_permission(answer, now),
+            Action::Up | Action::Down | Action::Confirm
+                if self.key_area() == KeyArea::Permission =>
+            {
+                if action == Action::Confirm {
+                    let answer = self.permissions.selected_answer();
+                    return self.answer_permission(answer, now);
+                }
+                self.permissions.move_selection(action == Action::Down);
+                return Vec::new();
             }
             Action::FeedbackAnswer(correct) => return self.answer_feedback(Some(correct)),
             Action::FeedbackDismiss => return self.answer_feedback(None),
@@ -590,6 +585,23 @@ impl App {
             KeyArea::Correction => self.on_correction_action(action),
             KeyArea::Popup => self.on_popup_action(action),
             _ => self.on_composer_action(action, now),
+        }
+    }
+
+    fn answer_permission(&mut self, answer: PermissionAnswer, now: Instant) -> Vec<Effect> {
+        let denied = matches!(answer, PermissionAnswer::Deny { .. });
+        let target = self.permissions.current().map(|r| (r.task, r.label));
+        match self.permissions.answer(answer, now) {
+            Some((request_id, answer)) => {
+                if let Some((task, label)) = target.filter(|_| denied) {
+                    self.open_directed_draft(task, label);
+                }
+                vec![Effect::Send(Request::AnswerPermission {
+                    request_id,
+                    answer,
+                })]
+            }
+            None => Vec::new(),
         }
     }
 

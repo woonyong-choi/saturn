@@ -10,6 +10,7 @@ use super::{App, Effect, Window};
 use crate::i18n;
 use crate::keys::Action;
 use crate::state::ChatState;
+use crate::view::WIDE_WIDTH;
 use crate::view::constraint_ask::ConstraintAskQueue;
 use crate::view::exit_confirm::ExitChoice;
 use crate::view::folder_trust::TrustChoice;
@@ -220,9 +221,11 @@ impl App {
     }
 
     pub(super) fn on_task_list_action(&mut self, action: Action) -> Vec<Effect> {
+        let wide = self.screen.width > WIDE_WIDTH;
         let Some(Window::TaskList(list)) = &mut self.window else {
             return Vec::new();
         };
+        list.detail_on_enter = !wide;
         let command = match action {
             Action::Insert(c) => {
                 list.edit_push(c);

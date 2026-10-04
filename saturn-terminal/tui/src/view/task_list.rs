@@ -16,7 +16,7 @@ use crate::chat_picker;
 use crate::i18n::{self, Lang};
 use crate::keys::Action;
 use crate::labels;
-use crate::view::{EMPHASIS, MUTED, SELECTED, truncate, window_block};
+use crate::view::{EMPHASIS, MUTED, SELECTED, WIDE_WIDTH, truncate, window_block};
 
 /// 끝에서 처음으로 돈다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -221,6 +221,10 @@ pub(crate) struct TaskList {
     pub pending: Option<TaskListCommand>,
     pub editing: Option<(TaskListInput, String)>,
     pub help: bool,
+    /// 한 칸으로 그리는 폭이라 `Enter`가 먼저 상세를 보이고, 상세가 보이는 동안 `Enter`가 채팅으로 이동한다.
+    pub detail_on_enter: bool,
+    /// 한 칸일 때 고른 행의 상세를 보이는 중이다.
+    pub detail_open: bool,
 }
 
 impl TaskList {
@@ -271,12 +275,14 @@ impl TaskList {
     }
 
     pub(crate) fn up(&mut self) {
+        self.detail_open = false;
         let rows = self.visible_keys();
         let index = self.selected_index().unwrap_or(0).saturating_sub(1);
         self.selected = rows.get(index).copied();
     }
 
     pub(crate) fn down(&mut self) {
+        self.detail_open = false;
         let rows = self.visible_keys();
         let index = match self.selected_index() {
             Some(index) => (index + 1).min(rows.len().saturating_sub(1)),
@@ -347,6 +353,8 @@ impl TaskList {
             self.pending = None;
         } else if self.editing.is_some() {
             self.editing = None;
+        } else if self.detail_open {
+            self.detail_open = false;
         } else {
             return false;
         }
@@ -392,6 +400,10 @@ impl TaskList {
             };
         }
         let (group, row) = self.selected_row()?;
+        if self.detail_on_enter && !self.detail_open {
+            self.detail_open = true;
+            return None;
+        }
         Some(TaskListCommand::Open {
             chat: group.chat,
             task: row.task,
@@ -469,12 +481,71 @@ impl TaskListView<'_> {
         let inner = block.inner(area);
         frame.render_widget(Clear, area);
         frame.render_widget(block, area);
-        let width = usize::from(inner.width);
+        let wide = area.width > WIDE_WIDTH;
+        let list_area = if wide {
+            Rect::new(inner.x, inner.y, inner.width * 3 / 5, inner.height)
+        } else {
+            inner
+        };
+        let width = usize::from(list_area.width);
         let mut lines = vec![self.filter_line(), Line::from("")];
         lines.extend(self.row_lines(width));
         lines.push(Line::from(""));
         lines.extend(self.footer_lines(width));
-        frame.render_widget(Paragraph::new(lines), inner);
+        if wide {
+            let detail_x = list_area.right() + 1;
+            let detail_area = Rect::new(
+                detail_x,
+                inner.y,
+                inner.right().saturating_sub(detail_x),
+                inner.height,
+            );
+            let rule: Vec<Line> = (0..inner.height).map(|_| Line::from("│")).collect();
+            frame.render_widget(
+                Paragraph::new(rule),
+                Rect::new(list_area.right(), inner.y, 1.min(inner.width), inner.height),
+            );
+            let detail: Vec<Line> = self
+                .detail_lines()
+                .into_iter()
+                .map(|line| truncate(&line, usize::from(detail_area.width)))
+                .map(Line::from)
+                .collect();
+            frame.render_widget(Paragraph::new(detail), detail_area);
+        } else if self.list.detail_open {
+            lines.extend(
+                self.detail_lines()
+                    .into_iter()
+                    .map(|line| Line::from(truncate(&line, width))),
+            );
+        }
+        frame.render_widget(Paragraph::new(lines), list_area);
+    }
+
+    // cost: time O(r·q), heap O(1), stack O(1)
+    // vars: r = 행 수, q = 검색어 길이
+    // basis: estimate
+    /// 고른 행의 상세. 채팅 이름과 폴더, 상태, 모델, 하위 항목, 대기 입력 수.
+    fn detail_lines(&self) -> Vec<String> {
+        let lang = self.lang;
+        let Some((group, row)) = self.list.selected_row() else {
+            return Vec::new();
+        };
+        let mut lines = vec![self.chat_head(group)];
+        lines.push(row_text(lang, row, chat_picker::now_ms()).trim().to_owned());
+        if !row.is_chat() {
+            let model = row
+                .model
+                .clone()
+                .unwrap_or_else(|| lang.tr(i18n::MODEL_UNREPORTED).to_string());
+            lines.push(format!("{}: {model}", lang.tr(i18n::TASKS_MODEL)));
+            lines.push(format!(
+                "{}: {}",
+                lang.tr(i18n::TASKS_CHILDREN),
+                row.children
+            ));
+        }
+        lines
     }
 
     // cost: time O(1), heap O(1), stack O(1)
@@ -545,18 +616,6 @@ impl TaskListView<'_> {
     fn footer_lines(&self, width: usize) -> Vec<Line<'static>> {
         let lang = self.lang;
         let mut lines = Vec::new();
-        if let Some((_, row)) = self.list.selected_row().filter(|(_, row)| !row.is_chat()) {
-            let model = row
-                .model
-                .clone()
-                .unwrap_or_else(|| lang.tr(i18n::MODEL_UNREPORTED).to_string());
-            lines.push(Line::from(format!(
-                "{}: {model} · {}: {}",
-                lang.tr(i18n::TASKS_MODEL),
-                lang.tr(i18n::TASKS_CHILDREN),
-                row.children
-            )));
-        }
         if let Some(TaskListCommand::CloseHeld { .. }) = &self.list.pending {
             lines.push(Line::from(lang.tr(i18n::CLOSE_HELD_QUESTION)));
         }
@@ -967,7 +1026,11 @@ mod tests {
     }
 
     fn screen(list: &TaskList) -> String {
-        let mut terminal = Terminal::new(TestBackend::new(70, 16)).unwrap();
+        screen_at(list, 70)
+    }
+
+    fn screen_at(list: &TaskList, width: u16) -> String {
+        let mut terminal = Terminal::new(TestBackend::new(width, 16)).unwrap();
         let view = TaskListView {
             list,
             lang: Lang::En,
@@ -989,6 +1052,7 @@ mod tests {
     #[test]
     fn render_shows_queue_count_model_ended_result_and_chat_rows() {
         let mut list = mixed();
+        list.detail_open = true;
         let all = screen(&list);
         list.set_filter(TaskFilter::Done);
         let done = screen(&list);
@@ -1007,7 +1071,8 @@ mod tests {
     // basis: estimate
     #[test]
     fn render_shows_filters_rows_and_busy_chat() {
-        let list = list();
+        let mut list = list();
+        list.detail_open = true;
         let mut terminal = Terminal::new(TestBackend::new(60, 16)).unwrap();
         let view = TaskListView {
             list: &list,
@@ -1029,5 +1094,81 @@ mod tests {
         assert!(content.contains("[B] Held"));
         assert!(content.contains("Running in another Saturn"));
         assert!(content.contains("Model not reported"));
+    }
+
+    /// 고른 행이 작업 A인 목록.
+    fn selected_running() -> TaskList {
+        let mut list = mixed();
+        list.selected = Some((ChatId(1), Some(TaskId(1))));
+        list
+    }
+
+    #[test]
+    fn one_pane_hides_the_detail_until_enter_and_the_second_enter_opens_the_chat() {
+        let mut list = selected_running();
+        list.detail_on_enter = true;
+
+        let hidden = screen_at(&list, 100);
+        let first = list.command(&Action::Confirm);
+        let shown = screen_at(&list, 100);
+        let second = list.command(&Action::Confirm);
+
+        assert!(!hidden.contains("Model: opus"), "{hidden}");
+        assert_eq!(first, None);
+        assert!(shown.contains("Model: opus"), "{shown}");
+        assert_eq!(
+            second,
+            Some(TaskListCommand::Open {
+                chat: ChatId(1),
+                task: Some(TaskId(1))
+            })
+        );
+    }
+
+    #[test]
+    fn one_pane_escape_closes_the_detail_before_the_screen_and_moving_closes_it() {
+        let mut list = selected_running();
+        list.detail_on_enter = true;
+        list.command(&Action::Confirm);
+
+        let closed_detail = list.cancel();
+        list.command(&Action::Confirm);
+        list.down();
+
+        assert!(closed_detail);
+        assert!(!list.detail_open);
+        assert!(!list.cancel());
+    }
+
+    #[test]
+    fn two_panes_show_the_detail_beside_the_list_and_enter_opens_at_once() {
+        let mut list = selected_running();
+        list.detail_on_enter = false;
+
+        let wide = screen_at(&list, 130);
+        let enter = list.command(&Action::Confirm);
+
+        let model_row = wide
+            .lines()
+            .find(|row| row.contains("Model: opus"))
+            .unwrap();
+        let list_row = wide
+            .lines()
+            .find(|row| row.contains("[A] Running"))
+            .unwrap();
+        assert!(model_row.contains('│'), "{wide}");
+        assert!(list_row.contains('│'), "{wide}");
+        assert!(matches!(enter, Some(TaskListCommand::Open { .. })));
+    }
+
+    #[test]
+    fn the_pane_switch_is_at_the_wide_width_constant() {
+        let list = selected_running();
+
+        let at_limit = screen_at(&list, WIDE_WIDTH);
+        let over = screen_at(&list, WIDE_WIDTH + 1);
+
+        assert!(!at_limit.contains("Model: opus"));
+        assert!(over.contains("Model: opus"));
     }
 }

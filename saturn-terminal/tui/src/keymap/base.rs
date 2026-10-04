@@ -14,6 +14,7 @@ fn b(action: Action, scopes: &[A], keys: &[&'static str]) -> Binding {
 
 /// 목록을 `↑`, `↓`로 고르는 영역.
 const LISTS: &[A] = &[
+    A::Permission,
     A::BoardFocus,
     A::Popup,
     A::FolderTrust,
@@ -35,6 +36,7 @@ const LISTS: &[A] = &[
 
 /// `Enter`로 정하는 영역.
 const CONFIRMS: &[A] = &[
+    A::Permission,
     A::BoardFocus,
     A::Popup,
     A::RouterKeyPrompt,

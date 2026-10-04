@@ -419,6 +419,10 @@ impl ComposerView<'_> {
     // vars: n = 조각 수와 붙여넣은 글자 수
     // basis: estimate
     pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
+        // 그릴 자리가 없으면 아무것도 그리지 않는다
+        if area.is_empty() {
+            return;
+        }
         if let Some(search) = self.composer.search() {
             let found = self.search_result.unwrap_or_default();
             let head = format!("{}: {}", self.lang.tr(i18n::TASKS_SEARCH), search.query);
@@ -444,8 +448,8 @@ impl ComposerView<'_> {
             })
             .collect();
         frame.render_widget(Paragraph::new(rows), area);
-        let x = area.x + 2 + col.min(width) as u16;
-        let y = area.y + (row - first_row) as u16;
+        let x = area.x.saturating_add(2 + col.min(width) as u16);
+        let y = area.y.saturating_add(row.saturating_sub(first_row) as u16);
         frame.set_cursor_position(Position::new(x.min(area.right().saturating_sub(1)), y));
     }
 }

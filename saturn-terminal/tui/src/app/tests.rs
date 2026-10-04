@@ -1219,6 +1219,71 @@ fn clearing_the_prefix_draft_forgets_the_target() {
 }
 
 #[test]
+fn permission_choices_are_a_vertical_list_the_arrows_and_enter_pick_from() {
+    let (mut app, later) = asked_permission();
+
+    let first = draw_rows(&app, 60);
+    press_at(&mut app, KeyCode::Down, later);
+    let moved = draw_rows(&app, 60);
+    press_at(&mut app, KeyCode::Down, later);
+    let effects = press_at(&mut app, KeyCode::Enter, later);
+
+    assert!(
+        first.iter().any(|row| row.contains("› y 이번만 허용")),
+        "{first:?}"
+    );
+    assert!(
+        moved.iter().any(|row| row.contains("› a 항상 허용")),
+        "{moved:?}"
+    );
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::AnswerPermission {
+            request_id: "r1".to_string(),
+            answer: PermissionAnswer::Deny { note: None },
+        }]
+    );
+    assert_eq!(app.composer.text(), "[A]에게: ");
+}
+
+#[test]
+fn permission_enter_allows_once_by_default_and_up_wraps_to_deny() {
+    let (mut by_enter, later) = asked_permission();
+    let (mut by_up, _) = asked_permission();
+
+    let allowed = press_at(&mut by_enter, KeyCode::Enter, later);
+    press_at(&mut by_up, KeyCode::Up, later);
+    let denied = press_at(&mut by_up, KeyCode::Enter, later);
+
+    assert!(matches!(
+        sent(&allowed)[0],
+        Request::AnswerPermission {
+            answer: PermissionAnswer::AllowOnce,
+            ..
+        }
+    ));
+    assert!(matches!(
+        sent(&denied)[0],
+        Request::AnswerPermission {
+            answer: PermissionAnswer::Deny { .. },
+            ..
+        }
+    ));
+}
+
+#[test]
+fn permission_arrows_do_nothing_inside_the_input_guard() {
+    let (mut app, _) = asked_permission();
+    let early = Instant::now();
+
+    press_at(&mut app, KeyCode::Down, early);
+    let effects = press_at(&mut app, KeyCode::Enter, early);
+
+    assert!(effects.is_empty());
+    assert_eq!(app.key_area(), KeyArea::Permission);
+}
+
+#[test]
 fn permission_resolved_elsewhere_closes_window() {
     let mut app = attached();
     notify(
@@ -2287,14 +2352,14 @@ fn detail_row(rows: &[String]) -> Option<usize> {
 #[test]
 fn render_draws_the_detail_one_level_below_the_running_line() {
     let mut app = attached();
-    app.screen = Rect::new(0, 0, 50, 10);
+    app.screen = Rect::new(0, 0, 90, 10);
     notify(&mut app, task(1, 'A', TaskState::Running));
     notify(
         &mut app,
         tool_call_on(1, Activity::EditingFile, &["src/main.rs"]),
     );
 
-    let rows = draw_rows(&app, 50);
+    let rows = draw_rows(&app, 90);
 
     let at = detail_row(&rows).unwrap();
     assert_eq!(rows[at - 1], "⠋ codex  45초  파일 수정 중  Token -");
@@ -2361,6 +2426,80 @@ fn clicking_the_detail_row_opens_it() {
 
     let open = draw_rows(&app, 30);
     assert!(open.iter().any(|row| row == "    s"), "{open:?}");
+}
+
+#[test]
+fn resize_applies_at_once_to_the_next_frame_and_to_the_keys() {
+    let mut app = editing_a_long_path();
+    let narrow_area = app.key_area();
+
+    app.handle(AppEvent::Terminal(Event::Resize(100, 10)), Instant::now());
+    let wide_area = app.key_area();
+    let wide_rows = draw_rows(&app, 100);
+    app.handle(AppEvent::Terminal(Event::Resize(30, 10)), Instant::now());
+    let narrow_rows = draw_rows(&app, 30);
+
+    assert_eq!(narrow_area, KeyArea::Detail);
+    assert_eq!(wide_area, KeyArea::Composer);
+    assert!(wide_rows[detail_row(&wide_rows).unwrap()].ends_with("main.rs"));
+    assert!(narrow_rows[detail_row(&narrow_rows).unwrap()].ends_with('…'));
+}
+
+#[test]
+fn nothing_breaks_on_a_screen_too_small_to_draw_everything() {
+    for (width, height) in (0..=14).flat_map(|w| (0..=8).map(move |h| (w, h))) {
+        let mut app = attached();
+        app.screen = Rect::new(0, 0, width, height);
+        notify(&mut app, task(1, 'A', TaskState::Running));
+        notify(&mut app, task(2, 'B', TaskState::Running));
+        notify(
+            &mut app,
+            tool_call_on(1, Activity::EditingFile, &["crates/long/path/main.rs"]),
+        );
+        notify(
+            &mut app,
+            input(1, InputState::Queued, "테스트도 같이 돌려줘"),
+        );
+        let mut terminal = Terminal::new(TestBackend::new(width, height)).unwrap();
+        let draw = |app: &App, terminal: &mut Terminal<TestBackend>| {
+            terminal
+                .draw(|frame| app.render(frame, Instant::now()))
+                .unwrap();
+        };
+        draw(&app, &mut terminal);
+        press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+        draw(&app, &mut terminal);
+        press(&mut app, KeyCode::F(5), KeyModifiers::NONE);
+        draw(&app, &mut terminal);
+        app.window = None;
+        notify(
+            &mut app,
+            Notification::PermissionRequested {
+                task: TaskId(1),
+                label: TaskLabel('A'),
+                provider: Provider::from_static("codex"),
+                request_id: "r1".to_string(),
+                summary: "rm -rf build".to_string(),
+                reason: "clean".to_string(),
+                waiting: 0,
+            },
+        );
+        draw(&app, &mut terminal);
+        app.permissions = crate::view::permission::PermissionQueue::new();
+        for window in [
+            Window::Shortcuts,
+            Window::FullTranscript(crate::view::full_transcript::FullTranscript::default()),
+        ] {
+            app.window = Some(window);
+            draw(&app, &mut terminal);
+        }
+        app.window = None;
+        notify(
+            &mut app,
+            asking_to_stop(5, InputState::Queued, "멈추고 실행"),
+        );
+        draw(&app, &mut terminal);
+    }
 }
 
 #[test]

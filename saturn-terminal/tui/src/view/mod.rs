@@ -1,6 +1,5 @@
 //! 화면 그리기. 그리기 함수는 상태를 바꾸지 않는다.
 //! 설계: docs/design/tui.md
-//! TODO(#58): 좁은 가로 폭에서 버튼과 칸을 줄이는 방식
 
 pub(crate) mod composer;
 pub(crate) mod constraint_ask;
@@ -37,6 +36,12 @@ pub const SPINNER: [char; 10] = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦'
 
 /// 초안 값.
 pub const WINDOW_MIN_WIDTH: usize = 40;
+
+/// 이 칸을 넘으면 작업 목록을 목록과 상세 두 칸으로 그린다. 폭 기준은 이 상수 두 개뿐이다.
+pub const WIDE_WIDTH: u16 = 120;
+
+/// 이 칸 미만이면 실행 줄에서 토큰과 모델 이름부터 뺀다. `NARROW_WIDTH`부터 `WIDE_WIDTH`까지는 작업 목록이 한 칸이고 상세는 `Enter`로 본다.
+pub const NARROW_WIDTH: u16 = 80;
 
 /// 오류와 중단 표시만 빨간색이고 나머지는 색 없이 글자 속성만 쓴다.
 pub const ERROR: Style = Style::new().fg(Color::Red);
