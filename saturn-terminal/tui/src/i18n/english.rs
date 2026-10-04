@@ -77,6 +77,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("판단 모델 연결 끊김", "Router model disconnected"),
     ("바로 반영 준비 중", "Steer not ready"),
     (
+        "입력은 전달됨 · 기록 저장이 늦어짐",
+        "Input delivered · record save delayed",
+    ),
+    (
         "라우터 연결 없음 · 차례에 보냅니다",
         "Router unavailable · sending in order",
     ),

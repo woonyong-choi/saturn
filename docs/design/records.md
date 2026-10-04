@@ -231,5 +231,5 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 확장 저장소는 채팅 정리의 대상이 아니다. | `saturn-terminal/engine/src/lifecycle/extensions.rs`의 `pruning_old_chats_leaves_installed_extensions_alone` |
 | 스키마 V13 이관은 입력 행을 보존하고 끼워 넣은 입력 열 둘을 NULL로 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v12_file_migrates_to_steered_input_columns_keeping_inputs` |
 | 끼워 넣어 적용한 입력은 적용한 순서와 쌓여 있던 기록 번호와 함께 읽히고, 대기로 돌아온 입력과 실행을 연 입력은 읽히지 않는다. | `saturn-terminal/engine/src/store/ledger.rs`의 `steered_inputs_keep_acceptance_order_and_the_sequence_they_arrived_after`, `steered_inputs_leave_out_inputs_that_are_not_applied_and_run_openers` |
-| 끼워 넣기 연결 쓰기가 실패하면 입력은 연결 없는 `Applied`로 남지 않는다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `steer_is_not_applied_without_its_run_link_when_the_link_write_fails` |
+| 끼워 넣기 연결 쓰기가 실패하면 입력은 연결 없는 `Applied`로 남지 않는다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `steer_is_not_applied_without_its_run_link_when_the_link_write_fails`, `failed_steer_record_keeps_the_input_delivering_tells_the_user_and_retries_only_the_record` |
 | 스키마 V12 이관은 채팅 행을 보존하고 확장 표를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v11_file_migrates_to_extensions_keeping_chats`, `saturn-terminal/engine/src/store/extensions.rs`의 `extension_rows_keep_install_order_and_refuse_a_second_row_with_the_same_name` |

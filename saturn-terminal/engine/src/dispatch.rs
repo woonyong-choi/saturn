@@ -42,6 +42,14 @@ pub(crate) struct Delivery {
     pub(crate) run: Option<RunId>,
 }
 
+/// 기록 저장소에 연결을 쓰지 못한 끼워 넣기 입력.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct UnrecordedSteer {
+    pub(crate) chat: ChatId,
+    pub(crate) input: InputId,
+    pub(crate) run: RunId,
+}
+
 impl Engine {
     /// 보낼 것이 없을 때까지 반복한다.
     ///
@@ -367,16 +375,46 @@ impl Engine {
         Ok(())
     }
 
-    /// 끼워 넣은 입력을 받은 것으로 기록하고 알린다. 들어간 실행 연결과 `Applied`를 함께 저장하므로
-    /// 저장에 실패해도 연결 없는 `Applied`가 남지 않고, 이미 보낸 입력은 다시 보내지 않는다.
+    /// 끼워 넣은 입력을 받은 것으로 기록하고 알린다. 들어간 실행 연결과 `Applied`를 함께 저장한 뒤에만 메모리 상태를
+    /// 바꾸고 알린다. 저장에 실패하면 입력은 `Delivering`으로 두고 사용자에게 알리며, 기록만 다시 시도한다
+    /// (`retry_unrecorded_steers`). provider는 이미 받았으므로 다시 보내지 않는다.
     pub(crate) async fn record_steered(&mut self, delivery: &Delivery) -> Result<(), EngineError> {
         let (input, Some(run)) = (delivery.input, delivery.run) else {
             return self.record_applied(delivery).await;
         };
+        if let Err(error) = self.store.apply_steered(input, run).await {
+            tracing::warn!(
+                input = input.0,
+                error = %self.failure_line(&error),
+                "steered input was not recorded, retrying the record only"
+            );
+            self.flow.unrecorded_steers.push(UnrecordedSteer {
+                chat: delivery.chat,
+                input,
+                run,
+            });
+            self.notify_alert(delivery.chat, Alert::InputNotRecorded)
+                .await;
+            return Ok(());
+        }
         self.queue.set_state(input, InputState::Applied)?;
-        self.store.apply_steered(input, run).await?;
         self.notify_input(input).await;
         Ok(())
+    }
+
+    /// 저장하지 못한 끼워 넣기 기록을 다시 쓴다. 성공하면 그때 `Applied`로 바꾸고 알린다. 지워진 입력은 그만둔다.
+    pub(crate) async fn retry_unrecorded_steers(&mut self) {
+        for steer in std::mem::take(&mut self.flow.unrecorded_steers) {
+            match self.store.apply_steered(steer.input, steer.run).await {
+                Ok(()) => {
+                    let applied = self.queue.set_state(steer.input, InputState::Applied);
+                    self.warn_failure("failed to apply the recorded steer", applied);
+                    self.notify_input(steer.input).await;
+                }
+                Err(crate::store::StoreError::NotFound { .. }) => {}
+                Err(_) => self.flow.unrecorded_steers.push(steer),
+            }
+        }
     }
 
     /// 보낸 뒤 결과를 모른다. 다시 보내지 않고 입력은 `Delivering`으로 두며 실행 기록도 열어 둔다.

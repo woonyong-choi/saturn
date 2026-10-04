@@ -742,6 +742,8 @@ pub enum Alert {
     RouterPaused,
     /// 연속 3회 실패로 판단 모델 연결이 끊겼다. 입력은 계속 접수하고 현재 모델로 보낸다.
     RouterDisconnected,
+    /// provider가 끼워 넣은 입력을 받았지만 기록 저장소에 쓰지 못했다. 입력은 `Delivering`으로 두고 기록만 다시 시도한다.
+    InputNotRecorded,
     /// 끼워 넣기 실측 전이라 대기로 처리한다.
     SteerNotReady { provider: crate::ids::Provider },
     /// router 실패로 `[보내기]` 입력을 차례에 보낸다.

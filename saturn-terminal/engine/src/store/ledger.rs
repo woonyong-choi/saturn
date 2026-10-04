@@ -69,6 +69,15 @@ impl Store {
         .unwrap();
     }
 
+    /// `fail_steer_link_updates`로 만든 실패를 거둔다.
+    #[cfg(test)]
+    pub(crate) async fn allow_steer_link_updates(&self) {
+        sqlx::raw_sql("DROP TRIGGER fail_steer_link")
+            .execute(&self.pool)
+            .await
+            .unwrap();
+    }
+
     /// 채팅에서 끼워 넣어 적용한 입력을 접수 순서로 돌려준다.
     ///
     /// # Errors

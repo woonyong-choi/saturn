@@ -610,6 +610,68 @@ async fn steer_is_not_applied_without_its_run_link_when_the_link_write_fails() {
     );
 }
 
+// #494
+#[tokio::test]
+async fn failed_steer_record_keeps_the_input_delivering_tells_the_user_and_retries_only_the_record()
+{
+    use saturn_protocol::rpc::Alert;
+
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "refines", "steer"),
+    ])
+    .await;
+    flow.fake.verify_steer();
+    let (mut client, _) = flow.attach().await;
+    flow.submit("implement authentication").await;
+    flow.engine.store.fail_steer_link_updates().await;
+
+    let steer = flow
+        .submit("use unrecorded_unique_refinement_branch for this work")
+        .await;
+
+    assert_eq!(flow.state(steer), InputState::Delivering);
+    let (_, stored) = flow.engine.store.stored_input(steer).await.unwrap();
+    assert_eq!(stored, InputState::Delivering);
+    let told = client.window().await;
+    assert!(
+        told.contains(&Notification::Alert {
+            alert: Alert::InputNotRecorded
+        }),
+        "the user was not told about the unrecorded steer: {told:?}"
+    );
+    assert!(!told.iter().any(|notification| matches!(
+        notification,
+        Notification::InputChanged { input, state: InputState::Applied, .. } if *input == steer
+    )));
+
+    flow.engine.store.allow_steer_link_updates().await;
+    flow.engine.retry_unrecorded_steers().await;
+
+    assert_eq!(flow.state(steer), InputState::Applied);
+    let (_, stored) = flow.engine.store.stored_input(steer).await.unwrap();
+    assert_eq!(stored, InputState::Applied);
+    let linked = flow.engine.store.steered_inputs(flow.chat).await.unwrap();
+    assert!(linked.iter().any(|row| row.input == steer));
+    let steers = flow
+        .fake
+        .calls()
+        .iter()
+        .filter(|call| matches!(call, Call::Steer { .. }))
+        .count();
+    assert_eq!(
+        steers, 1,
+        "the accepted steer must not go to the provider again"
+    );
+    let sends = flow
+        .fake
+        .calls()
+        .iter()
+        .filter(|call| matches!(call, Call::SendTurn { .. }))
+        .count();
+    assert_eq!(sends, 1);
+}
+
 // #458
 fn current_id(
     flow: &Flow,

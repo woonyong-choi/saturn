@@ -96,6 +96,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 - 보내는 방식 판단의 확신도가 0.6 미만이면 현재 에이전트에 대기 뒤 보낸다. 같은 이유로 확신 없는 판단으로 행동하지 않기 위해서다.
 - 끼워 넣기를 켠 provider만 끼워 넣고, 켜지 않은 provider는 끼워 넣기를 대기로 바꿔 처리한다. 지금은 Codex와 Claude 모두 켜지 않아(어댑터의 `STEER_VERIFIED`가 거짓) 끼워 넣기 대신 대기로 바뀐다. Codex `turn/steer`는 실측에서 받아들여졌으나([실측](../experiments/codex-provider-behavior/report.md), 거절 상태 목록은 [provider 연결과 session](providers-and-sessions.md)) 끼워 넣기 실패 경로 측정([#5](https://github.com/woonyong-choi/saturn/issues/5))이 끝나기 전에는 켜지 않는다.
 - 그 provider에 끼워 넣기를 대기로 바꿀 때 TUI에 `바로 반영 준비 중`을 보인다. 충돌 입력은 이 표시 대신 멈출지 묻는다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다.
+- provider가 끼워 넣은 입력을 받았는데 기록 저장소에 실행 연결과 `Applied`를 쓰지 못하면, 입력은 `Delivering`으로 두고 메모리 상태와 `InputChanged` 알림은 저장에 성공한 뒤에만 바꾼다. 그 사실은 `Alert::InputNotRecorded`로 알리고(TUI는 `입력은 전달됨 · 기록 저장이 늦어짐`), engine이 기록만 주기적으로 다시 쓴다. 이미 받은 입력이므로 provider에는 다시 보내지 않는다.
 - provider마다 켜 둔 채 입력을 받는 연결을 둔다. 한 번 실행 방식으로는 끼워 넣기가 불가능하기 때문이다.
 - 보조 에이전트는 끝나면 결과를 전달한 뒤 바로 종료한다. 쉬는 메인 에이전트를 깨우지 않고 메인 에이전트의 다음 입력 때 결과를 전달한다.
 
