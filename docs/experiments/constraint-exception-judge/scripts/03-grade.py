@@ -7,6 +7,7 @@ import hashlib
 import json
 import sys
 
+from exploration import unwrap
 from protocol import SEMANTIC_GUIDE
 from runtime import PRIVATE, codex, read, schema_rows, setup, write
 
@@ -61,6 +62,8 @@ def main() -> None:
     for path in sorted((PRIVATE / "workflows").glob("*.json")):
         row = read(path)
         item = items[row["item_id"]]
+        if row["condition"] == "L1":
+            row = unwrap(row, item)
         if (
             item["task"] != "constraint"
             or item["gold"]["kind"] not in ("once", "scoped")

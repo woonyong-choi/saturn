@@ -241,6 +241,7 @@ def continuation() -> list[dict]:
         "label": {"type": "string", "enum": ["continue", "new", "uncertain"]},
     }
     labeled = []
+    excluded = []
     for start in range(0, len(candidates), 15):
         batch = candidates[start : start + 15]
         prompt = (
@@ -249,12 +250,19 @@ def continuation() -> list[dict]:
             + "\n"
             + json.dumps(batch, ensure_ascii=False)
         )
-        answers = [
-            checked_rows(
-                codex(m, prompt, f"continuation-{m}-{start}", schema_rows(props)), batch
+        try:
+            answers = [
+                checked_rows(
+                    codex(m, prompt, f"continuation-{m}-{start}", schema_rows(props)),
+                    batch,
+                )
+                for m in ("gpt-6-astra", "gpt-5.6-luna")
+            ]
+        except (ValueError, KeyError, TypeError):
+            excluded.extend(
+                dict(id=i["id"], reason="invalid_label_batch") for i in batch
             )
-            for m in ("gpt-6-astra", "gpt-5.6-luna")
-        ]
+            continue
         for item, a, b in zip(batch, *answers):
             if a["label"] == b["label"] != "uncertain":
                 labeled.append(
@@ -266,12 +274,25 @@ def continuation() -> list[dict]:
                         "cluster": item["session"],
                     }
                 )
+            else:
+                excluded.append(dict(id=item["id"], reason="disagreement_or_uncertain"))
+        print(
+            json.dumps(
+                {
+                    "phase": "continuation",
+                    "candidates_labeled": start + len(batch),
+                    "agreements": len(labeled),
+                }
+            ),
+            flush=True,
+        )
         if all(
             sum(i["gold"]["continue"] == flag for i in labeled) >= 24
             for flag in (True, False)
         ):
             break
     write(PRIVATE / "continuation-labels.json", labeled)
+    write(PRIVATE / "continuation-exclusions.json", excluded)
     return [
         i
         for flag in (True, False)

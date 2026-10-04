@@ -22,7 +22,7 @@ from protocol import (
     state,
     validate,
 )
-from runtime import STOP, PRIVATE, cli, jev, now, read, setup, write
+from runtime import PRIVATE, STOP, cli, jev, now, read, setup, write
 
 CLAUDE_SLOTS = threading.Semaphore(4)
 
@@ -184,6 +184,8 @@ def run_claude(item: dict, trial: str) -> dict:
     result = dict(prediction=None, status="failed", stages=[trial])
     try:
         wrapper = json.loads(receipt.get("stdout", ""))
+        if not isinstance(wrapper, dict):
+            raise ValueError("cli result must be an object")
         result.update(
             usage=wrapper.get("usage"),
             model_usage=wrapper.get("modelUsage"),
@@ -316,8 +318,8 @@ def main() -> None:
             ),
             flush=True,
         )
-        if r["status"] != "ok":
-            raise RuntimeError("first claude workflow failed; inspect receipt")
+        if not r.get("model_usage") or r.get("num_turns") != 1:
+            raise RuntimeError("first claude process contract failed; inspect receipt")
         pending.remove(first)
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
         futures = [pool.submit(trial, t) for t in pending]

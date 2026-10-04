@@ -7,8 +7,8 @@ import json
 import math
 import os
 import subprocess
-import time
 import threading
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -282,6 +282,8 @@ def jev(body: dict, trial: str) -> dict:
             record["http_status"] = response.status
             record["raw_response"] = redact(response.read().decode())
         reply = json.loads(record["raw_response"])
+        if not isinstance(reply, dict):
+            raise ValueError("reply must be an object")
         record.update(
             model=reply.get("model"),
             usage=reply.get("usage"),
