@@ -36,6 +36,7 @@ mod exit;
 mod extensions;
 mod flow;
 mod handoff;
+mod idle_close;
 mod inputs;
 mod intake;
 mod launch;

@@ -22,6 +22,7 @@ mod extension_switch;
 mod extensions;
 mod fake_provider;
 mod history_paging;
+mod idle_close;
 mod inputs;
 mod intake;
 mod live_settings;

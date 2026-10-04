@@ -200,10 +200,12 @@ fn leaving_main(
     is_idle_return: bool,
 ) -> Option<SessionId> {
     main.filter(|main| {
-        main.state == SessionState::Open
-            && (is_idle_return
-                || main.provider != plan.provider
-                || !keeps_model(main, plan.model.as_deref()))
+        matches!(
+            main.state,
+            SessionState::Open | SessionState::ClosedResumable
+        ) && (is_idle_return
+            || main.provider != plan.provider
+            || !keeps_model(main, plan.model.as_deref()))
     })
     .map(|main| main.id)
 }
@@ -255,6 +257,20 @@ impl Engine {
         };
         if role == AgentRole::Sub {
             return Ok(plain);
+        }
+        if let Some(main) = main.as_ref().filter(|main| {
+            main.provider == provider
+                && main.state == SessionState::ClosedResumable
+                && keeps_model(main, model.as_deref())
+        }) {
+            // 유휴로 닫은 메인도 캐시 유지 시간을 넘겼으면 열려 있을 때와 같은 유휴 복귀 판정을 받는다
+            let stale = self
+                .idle_return_input(record, main)
+                .await
+                .map_err(|error| PlanError::Failed(self.failure_line(&error)))?;
+            if stale.is_some() {
+                return self.plan_handoff(record, plain, Some(main), stale).await;
+            }
         }
         if let Some(main) = main.as_ref().filter(|main| {
             main.provider == provider
@@ -675,7 +691,10 @@ impl Engine {
             return Ok(());
         };
         self.flow.live.retain(|_, live| live.session != leaving);
-        if let (Some(provider_session), Ok(connection)) = (
+        // 유휴로 이미 닫은 session은 provider에 다시 닫으라고 하지 않는다
+        let is_open = main.state == SessionState::Open;
+        if let (true, Some(provider_session), Ok(connection)) = (
+            is_open,
             main.provider_session.as_ref(),
             self.provider_mut(chat, main.provider),
         ) {

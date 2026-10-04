@@ -36,6 +36,18 @@ impl Restarted {
         Self::start_again(fixture, chat).await
     }
 
+    /// 정상 종료한 것처럼 `flow`의 engine을 버리고 같은 홈으로 다시 시작한다.
+    pub(super) async fn after_shutdown(flow: Flow) -> Self {
+        let Flow {
+            engine,
+            fixture,
+            chat,
+            ..
+        } = flow;
+        drop(engine);
+        Self::start_again(fixture, chat).await
+    }
+
     /// 정상 종료한 것처럼 engine을 버리고 같은 홈으로 다시 시작해, 크래시 복구와 기록에 남긴 보류 복구를 한 번 돌린다.
     pub(super) async fn restart(self) -> Self {
         let Self {
