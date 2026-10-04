@@ -38,7 +38,7 @@ The full design is in the [design documents](docs/README.md), which are written 
 
 ## Installation
 
-Saturn runs on macOS on Apple Silicon. It needs Rust 1.95.0, the version CI builds with (checked 2026-10-04). It also needs Codex CLI (`codex`), Claude Code (`claude`), or both, already signed in. Saturn does not sign in for you, so sign in with each CLI first.
+Saturn runs on macOS on Apple Silicon. It needs Rust 1.95.0, the version CI builds with (checked 2026-10-04). It also needs Codex CLI (`codex`), Claude Code (`claude`), or both, already signed in. Saturn does not sign in for you, so sign in with each CLI first. Check the sign-in with `codex login status` and `claude auth status`.
 
 `saturn` starts `saturn-engine`, so install both executables together.
 
@@ -53,7 +53,7 @@ To build from a clone instead, run `cargo build --release` in the repository roo
 ## Usage
 
 > [!NOTE]
-> The steps below were checked up to the start screen and the model window. Sending a request to a real provider is not confirmed yet (see Status).
+> The steps below were checked with real Codex and Claude Code, including sending requests and switching with `/model` (see Status).
 
 ### Start saturn
 
@@ -112,7 +112,7 @@ saturn --continue
 
 ## Status
 
-Saturn is in development. The message types, core rules, engine, TUI, and the `saturn` command are on `main`. The input flow from acceptance to provider send, stop and resume, Saturn permission rules, `/model`, and `/usage` work in tests with fake providers, but a full run against real Codex and Claude Code is not confirmed yet, and continuing without a TUI and crash recovery are not built. The design documents, decision records, and experiment reports are public. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
+Saturn is in development. The message types, core rules, engine, TUI, and the `saturn` command are on `main`. The input flow from acceptance to provider send, stop and resume, Saturn permission rules, `/model`, and `/usage` work in tests with fake providers, and the procedure in `scripts/e2e/README.md` (steps a to k) passed against real Codex, Claude Code, and the router on 2026-10-04. Keeping an old user constraint in the handoff packet across a switch back is not confirmed against real providers yet ([#296](https://github.com/woonyong-choi/saturn/issues/296) condition 2). Continuing without a TUI and crash recovery are not built. The design documents, decision records, and experiment reports are public. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
 
 ## Comparison
 
