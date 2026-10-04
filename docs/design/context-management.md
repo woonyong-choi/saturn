@@ -22,7 +22,7 @@ session이 길어지면 맥락이 쌓여 토큰이 늘고 답의 품질이 떨�
 3. 활성 맥락 크기가 발동 기준에 닿았고, 트리 유휴이며 합칠 대기 입력이 없다.
 4. 본전 턴 수가 기대 잔여 턴 이하이므로 `sessions`는 새 session으로 이어 가기로 판정한다.
 5. `sessions`는 Saturn 기록 원문에서 패킷을 만들고, engine은 새 session에 패킷을 넘긴다.
-6. engine은 옛 session을 닫고 채팅의 session 기록을 새 session으로 바꾼다.
+6. engine은 새 session이 열리면 옛 session을 닫고 채팅의 session 기록을 새 session으로 바꾼다. 새 session을 여는 동안 그 채팅의 다음 입력은 대기열에서 기다리고, 다른 채팅과 멈춤은 기다리지 않는다([provider 요청 작업](providers-and-sessions.md#provider-요청-작업)).
 7. TUI는 `맥락 정리 후 이어서 진행` 한 줄을 보인다.
 
 ### subagent가 도는 동안 미루기

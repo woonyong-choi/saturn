@@ -14,9 +14,11 @@ use saturn_protocol::state::{Disposition, TaskState};
 use tokio::sync::mpsc;
 
 use crate::Engine;
+use crate::calls::PendingCall;
 use crate::delivery::Parked;
 use crate::events::PendingPermission;
 use crate::inputs::PendingInput;
+use crate::models::ModelsQuery;
 use crate::providers::ProviderMsg;
 use crate::routers::{RecordContext, RouterExchange};
 use crate::stop::{HeldTask, StopDone, StopProgress};
@@ -164,6 +166,16 @@ pub(crate) struct FlowState {
     pub(crate) stop_rx: mpsc::UnboundedReceiver<StopDone>,
     /// provider 응답을 기다리는 전달. 채팅마다 하나이고, 있는 동안 그 채팅의 다음 입력은 보내지 않는다.
     pub(crate) deliveries: HashMap<ChatId, Parked>,
+    /// 입력 전달이 아닌 provider 요청 중 결과를 기다리는 것. 키는 요청을 맡길 때 받은 번호다.
+    pub(crate) calls: HashMap<u64, PendingCall>,
+    /// 다음에 맡길 요청 번호. `calls`와 `model_queries`가 함께 쓴다.
+    next_call: u64,
+    /// provider가 답을 받는 중인 허가·입력 요청의 engine 요청 ID. 같은 요청에 답이 겹쳐 가지 않게 한다.
+    pub(crate) answering: HashSet<String>,
+    /// 새 session 열기를 기다리는 맥락 정리가 있는 채팅. 있는 동안 그 채팅의 다음 입력은 보내지 않는다.
+    pub(crate) restarting: HashSet<ChatId>,
+    /// 모델 목록을 모으는 중인 `/model` 요청.
+    pub(crate) model_queries: HashMap<u64, ModelsQuery>,
     /// 연결 작업이 보내는 provider 이벤트와 요청 결과.
     pub(crate) provider_tx: mpsc::UnboundedSender<ProviderMsg>,
     pub(crate) provider_rx: mpsc::UnboundedReceiver<ProviderMsg>,
@@ -184,6 +196,11 @@ impl Default for FlowState {
         let (provider_tx, provider_rx) = mpsc::unbounded_channel();
         Self {
             deliveries: HashMap::new(),
+            calls: HashMap::new(),
+            next_call: 0,
+            answering: HashSet::new(),
+            restarting: HashSet::new(),
+            model_queries: HashMap::new(),
             provider_tx,
             provider_rx,
             last_run: HashMap::new(),
@@ -226,6 +243,12 @@ impl Default for FlowState {
 }
 
 impl FlowState {
+    /// 맡길 요청의 번호.
+    pub(crate) fn issue_call(&mut self) -> u64 {
+        self.next_call += 1;
+        self.next_call
+    }
+
     // cost: time O(1), heap O(1), stack O(1), alloc 1
     // basis: estimate
     /// provider 요청 ID와 상관없이 engine이 사는 동안 겹치지 않는 요청 ID.

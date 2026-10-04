@@ -8,6 +8,7 @@ use saturn_protocol::input::{InputAnswer, InputRequest};
 use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::TaskState;
 
+use crate::calls::{CallKind, Responder};
 use crate::flow::LiveSession;
 use crate::rpc::ClientId;
 use crate::{Engine, EngineError};
@@ -21,6 +22,16 @@ pub(crate) struct PendingInput {
     pub(crate) task: TaskId,
     /// provider가 그 연결에서 붙인 요청 ID. 답은 이 ID로 돌려준다.
     pub(crate) provider_request: String,
+}
+
+/// 사용자 답을 provider가 받는 중인 입력 요청.
+#[derive(Debug)]
+pub(crate) struct InputAnswering {
+    responder: Responder,
+    client: ClientId,
+    /// engine이 발급한 요청 ID.
+    request_id: String,
+    pending: PendingInput,
 }
 
 impl Engine {
@@ -72,24 +83,47 @@ impl Engine {
         .await;
     }
 
-    // cost: time O(p + i), heap O(1), stack O(1), io 2
-    // vars: p = 대기 허가 요청 수, i = 대기 입력 요청 수
-    // basis: estimate
-    /// 사용자 답을 provider 값으로 넘긴다. 다른 TUI의 창은 지운다.
+    /// 사용자 답을 provider 값으로 넘긴다. 다른 TUI의 창은 지운다. 답은 연결 작업이 보내고, `responder`에는 provider가
+    /// 받은 뒤에 응답한다.
     ///
-    /// # Errors
-    /// 묻지 않은 요청이면 `UnexpectedAnswer`, 답한 TUI가 그 요청의 채팅에 붙어 있지 않으면 `ChatNotAttached`, 열린
-    /// session이 없으면 `Provider(NotSent)`. provider가 받지 못했으면 요청을 그대로 두어 다시 답할 수 있다.
+    /// 응답 오류: 묻지 않은 요청이거나 같은 요청의 답이 이미 가는 중이면 `UnexpectedAnswer`, 답한 TUI가 그 요청의
+    /// 채팅에 붙어 있지 않으면 `ChatNotAttached`, 열린 session이 없으면 `Provider(NotSent)`. provider가 받지
+    /// 못했으면 요청을 그대로 두어 다시 답할 수 있다.
     pub(crate) async fn answer_input(
         &mut self,
         client: ClientId,
         request_id: String,
         answer: InputAnswer,
-    ) -> Result<(), EngineError> {
+        responder: Responder,
+    ) {
+        let (pending, live) = match self.check_input_answer(client, &request_id) {
+            Ok(checked) => checked,
+            Err(error) => return self.respond(responder, Err(error)).await,
+        };
+        self.flow.answering.insert(request_id.clone());
+        let route = (pending.chat, pending.provider);
+        let provider_request = pending.provider_request.clone();
+        let answering = InputAnswering {
+            responder,
+            client,
+            request_id,
+            pending,
+        };
+        self.start_call(route, CallKind::Input(answering), |connection, tag| {
+            connection.answer_input_call(tag, live.provider_session, provider_request, answer);
+        });
+    }
+
+    fn check_input_answer(
+        &self,
+        client: ClientId,
+        request_id: &str,
+    ) -> Result<(PendingInput, LiveSession), EngineError> {
         let pending = self
             .flow
             .inputs
-            .get(&request_id)
+            .get(request_id)
+            .filter(|_| !self.flow.answering.contains(request_id))
             .cloned()
             .ok_or(EngineError::UnexpectedAnswer { what: "input" })?;
         self.require_attached(client, pending.chat)?;
@@ -101,23 +135,50 @@ impl Engine {
                 .ok_or_else(|| ProviderError::NotSent {
                     reason: "no open session for the input request".to_owned(),
                 })?;
-        self.provider_mut(pending.chat, pending.provider)?
-            .answer_input(&live.provider_session, &pending.provider_request, answer)
-            .await?;
-        self.flow.inputs.remove(&request_id);
-        self.rpc.resolve_input(client, &request_id).await;
-        let state = self
-            .waiting_state(pending.task)
-            .unwrap_or(TaskState::Running);
-        self.notify_task(
-            pending.chat,
-            pending.task,
-            state,
-            Some(pending.provider),
-            None,
-        )
-        .await;
-        Ok(())
+        if !self
+            .providers
+            .contains_key(&(pending.chat, pending.provider))
+        {
+            return Err(ProviderError::NotSent {
+                reason: "provider is not connected".to_owned(),
+            }
+            .into());
+        }
+        Ok((pending, live))
+    }
+
+    /// provider가 사용자 답을 받았거나 받지 못했다. 받았으면 요청을 지우고 창을 닫는다.
+    pub(crate) async fn finish_input_answer(
+        &mut self,
+        answering: InputAnswering,
+        result: Result<(), ProviderError>,
+    ) {
+        let InputAnswering {
+            responder,
+            client,
+            request_id,
+            pending,
+        } = answering;
+        self.flow.answering.remove(&request_id);
+        if let Err(error) = result {
+            return self.respond(responder, Err(error.into())).await;
+        }
+        // 기다리는 동안 턴이 끝나 요청이 이미 지워졌으면 창과 작업 상태는 그대로 둔다
+        if self.flow.inputs.remove(&request_id).is_some() {
+            self.rpc.resolve_input(client, &request_id).await;
+            let state = self
+                .waiting_state(pending.task)
+                .unwrap_or(TaskState::Running);
+            self.notify_task(
+                pending.chat,
+                pending.task,
+                state,
+                Some(pending.provider),
+                None,
+            )
+            .await;
+        }
+        self.respond(responder, Ok(())).await;
     }
 
     // cost: time O(i), heap O(i), stack O(1), alloc 1

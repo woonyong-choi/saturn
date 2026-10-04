@@ -11,7 +11,7 @@ use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, ChatId, Provider, ProviderSessionId};
 use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelInfo, PermissionAnswer};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::mpsc;
 
 use super::{Adapter, AppliedReader, AppliedSettings, ProviderConnection};
 use crate::masked_chain;
@@ -53,6 +53,20 @@ pub(crate) enum Reply {
     HandoffSent(Result<(), ProviderError>),
     Sent(Result<(), ProviderError>),
     Steered(Result<(), ProviderError>),
+    /// 입력 전달이 아닌 요청(허가·입력 답, 모델 조회, 맥락 정리의 session 열기)의 결과. `tag`는 맡길 때 받은 번호다.
+    Call {
+        tag: u64,
+        result: CallResult,
+    },
+}
+
+/// 입력 전달이 아닌 요청이 돌려주는 결과. 요청 종류마다 값이 다르다.
+#[derive(Debug)]
+pub(crate) enum CallResult {
+    Done(Result<(), ProviderError>),
+    Opened(Result<SessionHandle, ProviderError>),
+    Models(Result<Vec<ModelInfo>, ProviderError>),
+    Connected(Result<Box<Connected>, ProviderError>),
 }
 
 /// 새로 맺은 연결과, 맺은 직후 받은 모델 목록.
@@ -64,10 +78,10 @@ pub(crate) struct Connected {
 
 /// 요청 결과를 받는 곳.
 pub(crate) enum Sink<T> {
-    /// 호출자가 기다린다.
-    Wait(oneshot::Sender<T>),
     /// 루프에 메시지로 보낸다.
     Notify(fn(T) -> Reply),
+    /// 루프에 번호를 붙여 보낸다.
+    Call(u64, fn(T) -> CallResult),
     /// 결과를 쓰지 않는다. 실패는 작업이 로그로 남긴다.
     Ignore,
 }
@@ -169,14 +183,21 @@ struct Context {
 impl Context {
     fn put<T>(&self, sink: Sink<T>, value: T) {
         match sink {
-            Sink::Wait(reply) => {
-                let _ = reply.send(value); // 기다리던 호출자가 이미 사라졌다
-            }
             Sink::Notify(wrap) => {
                 let _ = self.msgs.send(ProviderMsg::Reply {
                     chat: self.chat,
                     provider: self.provider,
                     reply: wrap(value),
+                }); // engine이 끝난 뒤에는 받을 곳이 없다
+            }
+            Sink::Call(tag, wrap) => {
+                let _ = self.msgs.send(ProviderMsg::Reply {
+                    chat: self.chat,
+                    provider: self.provider,
+                    reply: Reply::Call {
+                        tag,
+                        result: wrap(value),
+                    },
                 }); // engine이 끝난 뒤에는 받을 곳이 없다
             }
             Sink::Ignore => {}
@@ -403,17 +424,6 @@ impl ProviderHandle {
         }
     }
 
-    async fn wait<T>(
-        &self,
-        make: impl FnOnce(Sink<Result<T, ProviderError>>) -> Op,
-    ) -> Result<T, ProviderError> {
-        let (reply, receive) = oneshot::channel();
-        if self.ops.send(make(Sink::Wait(reply))).is_err() {
-            return Err(ProviderError::ConnectionLost);
-        }
-        receive.await.unwrap_or(Err(ProviderError::ConnectionLost))
-    }
-
     /// 열기 요청을 맡기고 기다리지 않는다. 결과는 `Reply::Opened`로 온다.
     pub(crate) fn open_session_detached(&self, spec: SessionSpec, attempts: u32) {
         self.submit(
@@ -494,63 +504,76 @@ impl ProviderHandle {
         );
     }
 
-    /// 열기 요청을 맡기고 끝날 때까지 기다린다.
-    pub(crate) async fn open_session(
-        &self,
-        spec: SessionSpec,
-        attempts: u32,
-    ) -> Result<SessionHandle, ProviderError> {
-        self.wait(|sink| Op::Open {
-            spec,
-            attempts,
-            sink,
-        })
-        .await
+    /// 열기 요청을 맡기고 기다리지 않는다. 결과는 `CallResult::Opened`로 온다. 맥락 정리가 쓴다.
+    pub(crate) fn open_session_call(&self, tag: u64, spec: SessionSpec, attempts: u32) {
+        self.submit(
+            Op::Open {
+                spec,
+                attempts,
+                sink: Sink::Call(tag, CallResult::Opened),
+            },
+            Some(Reply::Call {
+                tag,
+                result: CallResult::Opened(Err(ProviderError::ConnectionLost)),
+            }),
+        );
     }
 
-    pub(crate) async fn answer_permission(
+    /// 허가 답을 맡기고 기다리지 않는다. 결과는 `CallResult::Done`으로 온다.
+    pub(crate) fn answer_permission_call(
         &self,
-        session: &ProviderSessionId,
-        request_id: &str,
+        tag: u64,
+        session: ProviderSessionId,
+        request_id: String,
         answer: PermissionAnswer,
-    ) -> Result<(), ProviderError> {
-        self.wait(|sink| Op::AnswerPermission {
-            session: session.clone(),
-            request_id: request_id.to_owned(),
-            answer,
-            sink,
-        })
-        .await
+    ) {
+        self.submit(
+            Op::AnswerPermission {
+                session,
+                request_id,
+                answer,
+                sink: Sink::Call(tag, CallResult::Done),
+            },
+            Some(Reply::Call {
+                tag,
+                result: CallResult::Done(Err(ProviderError::ConnectionLost)),
+            }),
+        );
     }
 
-    pub(crate) async fn answer_input(
+    /// 입력 요청 답을 맡기고 기다리지 않는다. 결과는 `CallResult::Done`으로 온다.
+    pub(crate) fn answer_input_call(
         &self,
-        session: &ProviderSessionId,
-        request_id: &str,
+        tag: u64,
+        session: ProviderSessionId,
+        request_id: String,
         answer: InputAnswer,
-    ) -> Result<(), ProviderError> {
-        self.wait(|sink| Op::AnswerInput {
-            session: session.clone(),
-            request_id: request_id.to_owned(),
-            answer,
-            sink,
-        })
-        .await
+    ) {
+        self.submit(
+            Op::AnswerInput {
+                session,
+                request_id,
+                answer,
+                sink: Sink::Call(tag, CallResult::Done),
+            },
+            Some(Reply::Call {
+                tag,
+                result: CallResult::Done(Err(ProviderError::ConnectionLost)),
+            }),
+        );
     }
 
-    pub(crate) async fn close_session(
-        &self,
-        session: &ProviderSessionId,
-    ) -> Result<(), ProviderError> {
-        self.wait(|sink| Op::Close {
-            session: session.clone(),
-            sink,
-        })
-        .await
-    }
-
-    pub(crate) async fn list_models(&self) -> Result<Vec<ModelInfo>, ProviderError> {
-        self.wait(|sink| Op::ListModels { sink }).await
+    /// 모델 목록 조회를 맡기고 기다리지 않는다. 결과는 `CallResult::Models`로 온다.
+    pub(crate) fn list_models_call(&self, tag: u64) {
+        self.submit(
+            Op::ListModels {
+                sink: Sink::Call(tag, CallResult::Models),
+            },
+            Some(Reply::Call {
+                tag,
+                result: CallResult::Models(Err(ProviderError::ConnectionLost)),
+            }),
+        );
     }
 }
 
@@ -595,16 +618,25 @@ async fn run(
     }
 }
 
-/// 연결을 맺고 모델 목록까지 받아 `Reply::Connected`로 보낸다. 루프는 기다리지 않는다.
+/// 연결을 맺고 모델 목록까지 받아 보낸다. 루프는 기다리지 않는다. `tag`가 없으면 입력 전달이 기다리는
+/// `Reply::Connected`로, 있으면 그 번호의 `CallResult::Connected`로 보낸다.
 pub(crate) fn spawn_connect(
     chat: ChatId,
     launch: LaunchSpec,
     adapter: Arc<dyn Adapter>,
     supervisor: Supervisor,
     msgs: mpsc::UnboundedSender<ProviderMsg>,
+    tag: Option<u64>,
 ) {
     let provider = launch.provider;
     let lost = msgs.clone();
+    let reply = move |connected: Result<Box<Connected>, ProviderError>| match tag {
+        Some(tag) => Reply::Call {
+            tag,
+            result: CallResult::Connected(connected),
+        },
+        None => Reply::Connected(connected),
+    };
     let task = tokio::spawn(async move {
         let connected = match adapter.connect(launch, supervisor).await {
             Ok(mut connection) => {
@@ -616,16 +648,17 @@ pub(crate) fn spawn_connect(
         let _ = msgs.send(ProviderMsg::Reply {
             chat,
             provider,
-            reply: Reply::Connected(connected),
+            reply: reply(connected),
         }); // engine이 끝난 뒤에는 받을 곳이 없다
     });
-    watch(
-        task,
-        chat,
-        provider,
-        lost,
-        Some(Reply::Connected(Err(ProviderError::ConnectionLost))),
-    );
+    let lost_reply = match tag {
+        Some(tag) => Reply::Call {
+            tag,
+            result: CallResult::Connected(Err(ProviderError::ConnectionLost)),
+        },
+        None => Reply::Connected(Err(ProviderError::ConnectionLost)),
+    };
+    watch(task, chat, provider, lost, Some(lost_reply));
 }
 
 /// 작업이 패닉하거나 중단돼 끝나면 루프에 알린다. 정상으로 끝난 작업(핸들을 버려 닫은 연결)은 알리지 않는다.

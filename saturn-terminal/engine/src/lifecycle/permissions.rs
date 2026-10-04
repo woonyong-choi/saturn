@@ -764,8 +764,7 @@ async fn same_provider_request_id_in_two_chats_keeps_both_and_answers_stay_apart
     assert_ne!(first_id, other_id);
     assert_eq!(flow.engine.flow.permissions.len(), 2);
 
-    flow.engine
-        .answer_permission(OTHER_CLIENT, other_id, PermissionAnswer::AllowOnce)
+    flow.answer_permission_as(OTHER_CLIENT, other_id, PermissionAnswer::AllowOnce)
         .await
         .unwrap();
 
@@ -783,8 +782,7 @@ async fn same_provider_request_id_in_two_chats_keeps_both_and_answers_stay_apart
         1
     );
     assert!(flow.engine.flow.permissions.contains_key(&first_id));
-    flow.engine
-        .answer_permission(CLIENT, first_id, PermissionAnswer::Deny { note: None })
+    flow.answer_permission_as(CLIENT, first_id, PermissionAnswer::Deny { note: None })
         .await
         .unwrap();
     assert_eq!(
@@ -803,8 +801,7 @@ async fn permission_answer_from_a_tui_attached_to_another_chat_is_refused() {
     let id = flow.permission_id("1").unwrap();
 
     let error = flow
-        .engine
-        .answer_permission(OTHER_CLIENT, id.clone(), PermissionAnswer::AllowOnce)
+        .answer_permission_as(OTHER_CLIENT, id.clone(), PermissionAnswer::AllowOnce)
         .await
         .unwrap_err();
 

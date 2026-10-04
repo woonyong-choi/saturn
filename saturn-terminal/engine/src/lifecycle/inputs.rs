@@ -182,8 +182,7 @@ async fn same_provider_input_id_in_two_chats_keeps_both_and_answers_stay_apart()
     assert_eq!(ids.len(), 2);
     assert_ne!(first_id, other_id);
 
-    flow.engine
-        .answer_input(OTHER_CLIENT, other_id, typed("other"))
+    flow.answer_input_as(OTHER_CLIENT, other_id, typed("other"))
         .await
         .unwrap();
 
@@ -210,8 +209,7 @@ async fn input_answer_from_a_tui_attached_to_another_chat_is_refused() {
     let id = flow.input_id("1").unwrap();
 
     let error = flow
-        .engine
-        .answer_input(OTHER_CLIENT, id.clone(), typed("x"))
+        .answer_input_as(OTHER_CLIENT, id.clone(), typed("x"))
         .await
         .unwrap_err();
 

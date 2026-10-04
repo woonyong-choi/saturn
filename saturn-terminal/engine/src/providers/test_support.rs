@@ -1,6 +1,6 @@
 //! 입력 흐름 테스트용 가짜 provider. 프로세스를 띄우지 않고 받은 호출을 기록하며 정해 둔 답과 이벤트를 낸다.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
@@ -11,7 +11,7 @@ use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SubagentId};
 use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
-use tokio::sync::mpsc;
+use tokio::sync::{Semaphore, mpsc};
 
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::providers::{
@@ -67,6 +67,17 @@ pub(crate) enum Call {
     },
 }
 
+/// 시험이 풀어 줄 때까지 멈춰 세울 수 있는 호출. 느린 provider를 시간 맞추기 없이 흉내 낸다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum Stall {
+    /// 어댑터의 `connect`.
+    Connect,
+    Open,
+    Answer,
+    Close,
+    Models,
+}
+
 type Answer = Result<(), ProviderError>;
 
 #[derive(Debug, Default)]
@@ -81,6 +92,7 @@ struct Script {
     /// 호출을 받으면 패닉한다.
     panic_on_open: bool,
     panic_on_send: bool,
+    stalls: HashMap<Stall, Arc<Semaphore>>,
     opened: u32,
     group: Option<ProcessGroupId>,
     commands: Vec<ProviderCommand>,
@@ -139,7 +151,10 @@ impl Adapter for FakeAdapter {
         _launch: LaunchSpec,
         _supervisor: Supervisor,
     ) -> BoxFuture<'_, Result<ProviderConnection, ProviderError>> {
-        Box::pin(async move { Ok(self.provider.connection()) })
+        Box::pin(async move {
+            self.provider.stalled(Stall::Connect).await;
+            Ok(self.provider.connection())
+        })
     }
 }
 
@@ -176,6 +191,28 @@ impl FakeProvider {
     /// 다음 `send_turn`에서 연결 작업이 패닉하게 한다.
     pub(crate) fn panic_on_send(&self) {
         self.lock().panic_on_send = true;
+    }
+
+    /// 이 종류의 호출을 `release`까지 멈춰 세운다. 호출 기록은 멈추기 전에 남는다.
+    pub(crate) fn stall(&self, call: Stall) {
+        self.lock().stalls.insert(call, Arc::new(Semaphore::new(0)));
+    }
+
+    /// 멈춰 세운 호출과 이후 호출을 모두 보낸다.
+    pub(crate) fn release(&self, call: Stall) {
+        if let Some(gate) = self.lock().stalls.remove(&call) {
+            gate.add_permits(Semaphore::MAX_PERMITS >> 1);
+        }
+    }
+
+    async fn stalled(&self, call: Stall) {
+        let gate = self.lock().stalls.get(&call).cloned();
+        if let Some(gate) = gate {
+            // 닫지 않는 세마포어라 얻기 실패는 없다
+            if let Ok(permit) = gate.acquire().await {
+                permit.forget();
+            }
+        }
     }
 
     pub(crate) fn answer_open(&self, answers: impl IntoIterator<Item = Answer>) {
@@ -230,16 +267,20 @@ impl FakeProvider {
 
 impl ProviderClient for FakeProvider {
     async fn open_session(&mut self, spec: SessionSpec) -> Result<SessionHandle, ProviderError> {
+        {
+            let mut script = self.lock();
+            script.calls.push(Call::Open {
+                agent: spec.agent,
+                model: spec.model.clone(),
+                resume: spec.resume.clone(),
+                packet: spec.packet.clone(),
+                add_dirs: spec.add_dirs.clone(),
+                interrupted_children: spec.interrupted_children.clone(),
+            });
+            assert!(!script.panic_on_open, "fake provider panics on open");
+        }
+        self.stalled(Stall::Open).await;
         let mut script = self.lock();
-        script.calls.push(Call::Open {
-            agent: spec.agent,
-            model: spec.model.clone(),
-            resume: spec.resume.clone(),
-            packet: spec.packet.clone(),
-            add_dirs: spec.add_dirs.clone(),
-            interrupted_children: spec.interrupted_children.clone(),
-        });
-        assert!(!script.panic_on_open, "fake provider panics on open");
         script.open.pop_front().unwrap_or(Ok(()))?;
         script.opened += 1;
         let provider_session = spec
@@ -303,13 +344,13 @@ impl ProviderClient for FakeProvider {
         request_id: &str,
         answer: PermissionAnswer,
     ) -> Result<(), ProviderError> {
-        let mut script = self.lock();
-        script.calls.push(Call::AnswerPermission {
+        self.lock().calls.push(Call::AnswerPermission {
             session: session.clone(),
             request_id: request_id.to_owned(),
             answer,
         });
-        script.answer_permission.pop_front().unwrap_or(Ok(()))
+        self.stalled(Stall::Answer).await;
+        self.lock().answer_permission.pop_front().unwrap_or(Ok(()))
     }
 
     async fn answer_input(
@@ -318,19 +359,20 @@ impl ProviderClient for FakeProvider {
         request_id: &str,
         answer: InputAnswer,
     ) -> Result<(), ProviderError> {
-        let mut script = self.lock();
-        script.calls.push(Call::AnswerInput {
+        self.lock().calls.push(Call::AnswerInput {
             session: session.clone(),
             request_id: request_id.to_owned(),
             answer,
         });
-        script.answer_input.pop_front().unwrap_or(Ok(()))
+        self.stalled(Stall::Answer).await;
+        self.lock().answer_input.pop_front().unwrap_or(Ok(()))
     }
 
     async fn close_session(&mut self, session: &ProviderSessionId) -> Result<(), ProviderError> {
         self.lock().calls.push(Call::Close {
             session: session.clone(),
         });
+        self.stalled(Stall::Close).await;
         Ok(())
     }
 
@@ -340,6 +382,7 @@ impl ProviderClient for FakeProvider {
 
     /// 정해 둔 모델 없이 provider마다 모델 하나를 돌려준다.
     async fn list_models(&mut self) -> Result<Vec<ModelInfo>, ProviderError> {
+        self.stalled(Stall::Models).await;
         let model = format!("fake-{}", self.provider);
         Ok(vec![ModelInfo {
             choice: ModelChoice {

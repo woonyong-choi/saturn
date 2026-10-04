@@ -12,7 +12,8 @@ use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq, Provider, SessionId};
 use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::SessionState;
 
-use crate::dispatch::Start;
+use crate::calls::CallKind;
+use crate::dispatch::{MAX_SEND_ATTEMPTS, Start};
 use crate::flow::LiveSession;
 use crate::handoff::{
     Handoff, HandoffOutcome, handoff_of, handoff_source, others_only, reduce_handoff,
@@ -52,6 +53,21 @@ pub(crate) struct OpenPlan {
     synced: LedgerSeq,
     /// 패킷이 맥락 한도로 거절되면 줄여 다시 보낼 재료. 이미 줄였거나 보낼 패킷이 없으면 `None`.
     reduction: Option<Reduction>,
+}
+
+/// 새 session 열기를 기다리는 맥락 정리. 열리면 옛 session을 바꾼다.
+#[derive(Debug)]
+pub(crate) struct Restart {
+    live: LiveSession,
+    old: SessionRecord,
+    /// 새 session 번호.
+    id: SessionId,
+    spec: SessionSpec,
+    /// 패킷이 맥락 한도로 거절되면 줄일 재료.
+    reduction: Option<Reduction>,
+    up_to: LedgerSeq,
+    /// 줄인 패킷으로 다시 열었다. 한 번만 줄인다.
+    is_reduced: bool,
 }
 
 /// 거절된 패킷을 줄여 만들 재료.
@@ -638,9 +654,9 @@ impl Engine {
         if let (Some(provider_session), Ok(connection)) = (
             main.provider_session.as_ref(),
             self.provider_mut(chat, main.provider),
-        ) && let Err(error) = connection.close_session(provider_session).await
-        {
-            tracing::warn!(%error, "failed to close the leaving session");
+        ) {
+            // 닫는 요청은 기다리지 않는다. 같은 연결의 뒤따르는 요청은 줄 선 순서대로 나간다
+            connection.close_session_detached(provider_session.clone());
         }
         if main.provider == plan.provider && keeps_model(&main, plan.model.as_deref()) {
             // 같은 provider와 모델의 새 session으로 바꾸는 유휴 복귀라 되돌아갈 보관 session이 없다
@@ -675,13 +691,12 @@ impl Engine {
         }
     }
 
-    /// 맥락 정리로 같은 provider의 새 session으로 이어 간다. 옛 session은 `Ended`가 된다.
+    /// 맥락 정리로 같은 provider의 새 session으로 이어 가는 첫 단계. 새 session 열기를 연결 작업에 맡기고 기다리지 않는다.
+    /// 열리면 `finish_restart`가 옛 session을 `Ended`로 바꾸고 이어 간다. 그동안 그 채팅의 다음 입력은 보내지 않는다.
     /// 턴 경계(유휴로 표시한 session)에서만 부른다.
-    /// 패킷이 맥락 한도로 거절되면 `reduction`으로 줄여 한 번만 다시 연다. 옛 session은 그대로 열려 있다.
     ///
     /// # Errors
-    /// 열지 못하면 `Provider`, 턴 경계가 아니면 `Session(NotAtTurnBoundary)`, 저장 실패면 `Store`.
-    /// 줄인 패킷도 거절됐거나 줄일 재료가 없으면 `Provider(ContextExceeded)`.
+    /// 턴 경계가 아니면 `Session(NotAtTurnBoundary)`, 연결이 없으면 `Provider(NotSent)`, 저장 실패면 `Store`.
     pub(crate) async fn restart_session(
         &mut self,
         chat: ChatId,
@@ -704,7 +719,7 @@ impl Engine {
             .workdir()
             .to_path_buf();
         let id = SessionId(self.store.allocate_id(IdKind::Session).await?);
-        let mut spec = SessionSpec {
+        let spec = SessionSpec {
             agent: old.agent,
             workdir,
             model: old.model.clone(),
@@ -717,26 +732,106 @@ impl Engine {
             add_dirs: self.chat_dirs_of(chat),
             interrupted_children: Vec::new(),
         };
-        let handle = match self
-            .open_with_retries(chat, live.provider, spec.clone())
-            .await
-        {
-            Err(ProviderError::ContextExceeded { limit_tokens }) => {
-                let Some(reduced) = reduction.and_then(|reduction| reduction.reduce(limit_tokens))
-                else {
-                    return Err(ProviderError::ContextExceeded { limit_tokens }.into());
-                };
-                tracing::warn!(
-                    chat = chat.0,
-                    "packet was over the context limit, sending a reduced one"
-                );
-                spec.packet = Some(reduced.text);
-                self.open_with_retries(chat, live.provider, spec).await?
-            }
-            other => other?,
-        };
-        let record = SessionRecord {
+        self.provider_mut(chat, live.provider)?;
+        let restart = Restart {
+            live: live.clone(),
+            old,
             id,
+            spec,
+            reduction,
+            up_to,
+            is_reduced: false,
+        };
+        self.flow.restarting.insert(chat);
+        self.submit_restart(chat, restart);
+        Ok(())
+    }
+
+    /// 새 session 열기를 맡긴다. 연결이 있는지 호출자가 먼저 확인한다.
+    fn submit_restart(&mut self, chat: ChatId, restart: Restart) {
+        let (provider, spec) = (restart.live.provider, restart.spec.clone());
+        self.start_call(
+            (chat, provider),
+            CallKind::Restart(Box::new(restart)),
+            |connection, tag| connection.open_session_call(tag, spec, MAX_SEND_ATTEMPTS),
+        );
+    }
+
+    /// 새 session 열기의 결과. 패킷이 맥락 한도로 거절되면 `reduction`으로 줄여 한 번만 다시 연다. 옛 session은 그대로
+    /// 열려 있다. 끝나면 기다리던 입력을 보낸다. 맥락 정리 오류는 로그만 남기고 입력은 보낸다.
+    pub(crate) async fn finish_restart(
+        &mut self,
+        chat: ChatId,
+        restart: Restart,
+        opened: Result<SessionHandle, ProviderError>,
+    ) {
+        let restarted = match opened {
+            Ok(handle) => self.replace_with_new(chat, &restart, &handle).await,
+            Err(ProviderError::ContextExceeded { limit_tokens }) if !restart.is_reduced => {
+                match self.reopen_restart_reduced(chat, restart, limit_tokens) {
+                    Ok(()) => return,
+                    Err(error) => Err(error),
+                }
+            }
+            Err(error) => Err(error.into()),
+        };
+        self.end_restart(chat, restarted).await;
+    }
+
+    /// 줄인 패킷으로 새 session 열기를 다시 맡긴다.
+    ///
+    /// # Errors
+    /// 줄일 재료가 없거나 고정 구역만으로 목표를 넘으면 `Provider(ContextExceeded)`, 연결이 없으면 `Provider(NotSent)`.
+    fn reopen_restart_reduced(
+        &mut self,
+        chat: ChatId,
+        mut restart: Restart,
+        limit_tokens: Option<u64>,
+    ) -> Result<(), EngineError> {
+        let reduced = restart
+            .reduction
+            .take()
+            .and_then(|reduction| reduction.reduce(limit_tokens))
+            .ok_or(ProviderError::ContextExceeded { limit_tokens })?;
+        tracing::warn!(
+            chat = chat.0,
+            "packet was over the context limit, sending a reduced one"
+        );
+        restart.spec.packet = Some(reduced.text);
+        restart.is_reduced = true;
+        self.provider_mut(chat, restart.live.provider)?;
+        self.submit_restart(chat, restart);
+        Ok(())
+    }
+
+    /// 맥락 정리를 끝내고 결과를 알린 뒤 기다리던 입력을 보낸다. 줄인 패킷도 맥락 한도로 거절되면 옛 session을 그대로
+    /// 두고 `PacketOverflow`를 알린다.
+    async fn end_restart(&mut self, chat: ChatId, restarted: Result<(), EngineError>) {
+        self.flow.restarting.remove(&chat);
+        match restarted {
+            Ok(()) => self.notify_chat(chat, ChatNotice::Compacted).await,
+            Err(EngineError::Provider(ProviderError::ContextExceeded { .. })) => {
+                self.notify_chat(chat, ChatNotice::PacketOverflow).await;
+            }
+            Err(error) => {
+                tracing::warn!(chat = chat.0, error = %self.failure_line(&error), "context compaction skipped");
+            }
+        }
+        self.restart_stale_connections(chat).await;
+        let next = self.dispatch_next(chat).await;
+        self.warn_failure("failed to send the next input", next);
+    }
+
+    /// 연 새 session으로 옛 session을 바꿔 기록하고 옛 session을 닫는다. 기록하지 못하면 새 session을 닫는다.
+    async fn replace_with_new(
+        &mut self,
+        chat: ChatId,
+        restart: &Restart,
+        handle: &SessionHandle,
+    ) -> Result<(), EngineError> {
+        let (live, old) = (&restart.live, &restart.old);
+        let record = SessionRecord {
+            id: restart.id,
             chat,
             agent: old.agent,
             role: old.role,
@@ -744,27 +839,25 @@ impl Engine {
             provider_session: Some(handle.provider_session.clone()),
             model: old.model.clone(),
             state: SessionState::Open,
-            delivered: up_to,
+            delivered: restart.up_to,
             idle_since: None,
         };
         if let Err(error) = self.replace_session(live.session, record).await {
-            self.close_unregistered(chat, live.provider, &handle);
+            self.close_unregistered(chat, live.provider, handle);
             return Err(error);
         }
-        self.close_replaced(chat, live, &old).await;
-        self.remember(old.agent, id, live.provider, &handle);
+        self.close_replaced(chat, live, old);
+        self.remember(old.agent, restart.id, live.provider, handle);
         self.count_packet_turn(old.agent, true);
         Ok(())
     }
 
-    async fn close_replaced(&mut self, chat: ChatId, live: &LiveSession, old: &SessionRecord) {
+    fn close_replaced(&mut self, chat: ChatId, live: &LiveSession, old: &SessionRecord) {
         let Some(provider_session) = old.provider_session.as_ref() else {
             return;
         };
-        if let Ok(connection) = self.provider_mut(chat, live.provider)
-            && let Err(error) = connection.close_session(provider_session).await
-        {
-            tracing::warn!(%error, "failed to close the replaced session");
+        if let Ok(connection) = self.provider_mut(chat, live.provider) {
+            connection.close_session_detached(provider_session.clone());
         }
     }
 }

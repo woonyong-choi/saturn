@@ -232,7 +232,7 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 사용자는 TUI `/model`로 다음 입력부터 쓸 모델을 고른다([TUI](tui.md#영역)). Claude Code와 Codex의 `/model`이 session 안에서 다시 바꿀 때까지 유지되는 것과 같게, 고른 모델은 그 채팅에서 다시 고를 때까지 모든 입력에 붙는다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정).
 
 - 목록은 provider가 알려 준다. Codex는 app-server `model/list`에서 숨기지 않은 모델을 쪽마다 `nextCursor`를 따라 모으고, Claude는 Claude Code `/model`이 보이는 별칭(기본, `opus`, `sonnet`, `haiku`)이다. 기본은 `--model`을 넘기지 않는 것과 같다. 설치된 provider만 보이고, 목록은 Claude, Codex 순이다. 첫 입력의 기본 provider와 같은 순서다.
-- TUI가 `ListModels`(provider를 주면 그 provider만)로 요청하면 engine이 `Models` 알림으로 답한다. provider 하나가 목록을 못 주면 그 provider를 빼고 로그만 남기고, 모두 못 주면 빈 목록을 보내고 오류로 답한다. TUI 창이 끝없이 기다리지 않게 하기 위해서다.
+- TUI가 `ListModels`(provider를 주면 그 provider만)로 요청하면 engine이 `Models` 알림으로 답한다. 연결과 조회가 끝난 뒤에 알리고 응답하며, 그동안 engine의 다른 요청 처리는 기다리지 않는다([provider 요청 작업](#provider-요청-작업)). provider 하나가 목록을 못 주면 그 provider를 빼고 로그만 남기고, 모두 못 주면 빈 목록을 보내고 오류로 답한다. TUI 창이 끝없이 기다리지 않게 하기 위해서다.
 - 고른 모델은 TUI가 `SetModel`로 알리면 engine이 채팅별로 기록 저장소에 저장하고(`chats.pinned_model`) 붙은 모든 TUI에 `ModelPinned`로 알린다. 고정한 채팅에 붙을 때도 같은 알림을 보낸다. 그래서 TUI를 다시 열거나 채팅을 옮겨도 다시 바꿀 때까지 유지된다. 입력은 모델을 싣지 않고, engine이 접수 때 채팅의 고정값을 읽어 입력에 남긴다. 모델이 provider를 정하고, 같은 이름이 두 provider에 있어도 구분되도록 `<provider>/<model>` 글로 저장한다.
 - `sessions` 기록은 session을 열 때 고른 모델(`model`)을 남긴다. 고르지 않았으면 provider 기본값이라 비어 있다. 입력의 모델이 열린 메인의 모델과 다르면 그 메인을 쓰지 않고 새 메인 session을 열어 패킷을 넘기고, 떠나는 메인은 보관한다([provider 전환](#provider-전환)). 다른 모델로 연 보관 session은 되돌아갈 때도 재개하지 않는다. 열린 session의 모델을 provider 안에서 바꾸는 방식은 쓰지 않는다. session 기록의 모델과 실제 모델이 어긋나지 않게 하기 위해서다. 같은 provider 안에서 모델만 바뀐 교체는 provider 전환 안내 줄을 남기지 않는다.
 - 맥락 정리로 여는 새 session은 이전 session의 모델을 이어 쓴다.
@@ -389,7 +389,7 @@ provider 요청이 끝없이 기다리지 않도록 응답 대기에 제한을 �
 
 ### provider 요청 작업
 
-engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 않는다. 연결 시작, session 열기, 턴 시작, 끼워 넣기, 멈춤 신호 같은 provider 요청은 연결마다 하나인 연결 작업이 실행하고, 루프는 결과 메시지만 받아 다음 단계를 잇는다. 느리거나 막힌 요청 하나가 다른 채팅의 입력과 조회, 같은 채팅의 멈춤 요청 처리를 늦추지 않게 하기 위해서다.
+engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 않는다. 연결 시작, session 열기와 닫기, 턴 시작, 끼워 넣기, 멈춤 신호, 허가·입력 답, 모델 목록 조회 같은 provider 요청은 연결마다 하나인 연결 작업이 실행하고, 루프는 결과 메시지만 받아 다음 단계를 잇는다. 느리거나 막힌 요청 하나가 다른 채팅의 입력과 조회, 같은 채팅의 멈춤 요청 처리를 늦추지 않게 하기 위해서다.
 
 - 연결 작업은 연결(`ProviderConnection`)을 혼자 쥐고 요청을 줄 선 순서대로 하나씩 끝까지 실행한다. 같은 연결로 가는 요청은 순서가 바뀌지 않는다(턴 시작 뒤 끼워 넣기, 앞 턴이 끝난 뒤 다음 턴). 시작한 요청은 취소하지 않으므로 stdin 쓰기가 줄 중간에 끊겨 줄이 반쯤 쓰이는 일이 없다.
 - 이벤트와 요청 결과는 같은 메시지 통로로 일어난 순서대로 루프에 온다. 턴 시작 응답 뒤에 오는 `TurnStarted`가 그 응답보다 먼저 처리되지 않는다.
@@ -402,7 +402,11 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 - 결과를 적용할 때 그사이 채팅이 멈췄는지는 `멈춤` 표시로 판단한다. 판단 결과는 기존대로 적용 직전에 채팅 revision을 비교하고, 전달 중인 입력은 다시 판단하지 않는다.
 - 연결 작업은 stdin을 읽지 않는 provider 때문에 쓰기가 막히면 그 연결의 요청이 줄 서서 기다린다. 루프와 다른 채팅은 영향을 받지 않는다. 쓰기에는 제한 시간을 두지 않는다. 시간이 지나 쓰기를 포기하면 줄이 반쯤 쓰여 연결이 어긋나기 때문이다. 연결이 끊기면(프로세스 종료) 쓰기가 오류로 끝나고 연결 끊김으로 처리한다.
 - 연결 작업이 패닉하거나 중단돼 끝나면 루프에 연결 작업 종료를 알린다. 기다리던 전달은 보내기 전 단계(연결, session 열기, 변경분)면 연결 끊김으로 거절하고, 보낸 뒤 단계(턴 전송, 끼워 넣기)면 결과를 모르는 것으로 보아 `NeedsCheck`로 둔다. 연결은 끊긴 것으로 처리해 열려 있던 session의 흐름 끊김을 알린다. 채팅이 응답 없는 전달에 묶인 채 남지 않는다.
-- 아직 루프가 기다리는 provider 요청이 남아 있다: 허가·입력 답, session 닫기, `/model` 목록의 연결과 모델 조회, 맥락 정리의 새 session 열기. 이 요청들은 연결 작업을 거치지만 호출한 루프가 응답을 기다린다([#352](https://github.com/woonyong-choi/saturn/issues/352)의 후속).
+- 입력 전달이 아닌 요청도 같은 방식이다. 루프는 요청마다 번호를 붙여 맡기고, 결과가 오면 그 번호의 요청이 남긴 값으로 이어 간다. 연결 작업이 끝나 결과가 오지 않으면 연결 끊김으로 이어 간다.
+  - 허가·입력 답은 TUI의 응답을 provider가 받은 뒤에 한다. 받았으면 요청을 지우고 창을 닫고 작업을 다시 `실행 중`으로 보이며, 받지 못했으면 오류로 응답하고 요청을 그대로 두어 다시 답할 수 있다. 답이 가는 동안 같은 요청의 다른 답은 `UnexpectedAnswer`로 거절한다. 답이 가는 동안 턴이 끝나 요청이 이미 지워졌으면 창과 작업 상태는 건드리지 않는다. Saturn 규칙이 낸 답은 provider가 받지 못한 것이 결과로 오면 그때 사용자에게 올린다. 그사이 그 session이 닫혔으면 올리지 않는다.
+  - session 닫기는 결과를 쓰지 않고 맡긴다. 실패는 연결 작업이 로그로 남기고, 같은 연결의 뒤따르는 요청은 줄 선 순서대로 나간다.
+  - `/model` 목록은 provider마다 연결과 모델 조회를 맡기고, 모든 목록이 모이면 `Models`를 알리고 응답한다. 알리는 순서는 기본 provider 순서다. 연결을 맺는 동안 다른 요청이 같은 연결을 먼저 맺었으면 그 연결을 쓰고 새 연결은 닫는다.
+  - 맥락 정리의 새 session 열기를 맡긴 채팅은 열릴 때까지 다음 입력을 보내지 않고 대기열에 둔다. 열리면 옛 session을 바꿔 기록하고 닫은 뒤 기다리던 입력을 보낸다. 맥락 한도 초과는 패킷을 줄여 한 번만 다시 연다. 열지 못하면 옛 session을 그대로 두고 입력을 보낸다.
 
 ### 오류 처리
 
@@ -417,6 +421,8 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 중간 사용량 보고 누락 | 차이가 여러 턴에 걸친다고 표시하고 0으로 채우지 않는다. |
 | provider 요청이 제한 시간 안에 응답하지 않음. 바로 돌아와야 하는 요청(`turn/start`, `turn/steer`, interrupt)은 10초, 시작·열기 요청(`initialize`, `thread/start`, `thread/resume`, MCP 상태·목록 조회)은 60초(둘 다 초안) | 그 요청만 응답 없음으로 돌려주고, 연결과 프로세스와 진행 중인 턴은 끊지 않는다. 보내던 입력은 결과를 모르는 것으로 보아 `NeedsCheck`로 두고, session 열기는 실패로 알리며, 멈춤 신호는 연결 끊김으로 보고 프로세스 묶음 중지로 넘어간다. 늦게 온 응답은 버린다. |
 | provider 요청이 느리거나 막힌 동안 같은 채팅이나 다른 채팅의 요청이 옴 | 요청은 연결 작업이 실행하므로 루프는 다른 채팅의 입력과 조회, 같은 채팅의 멈춤을 바로 처리한다. 같은 채팅의 다음 입력은 앞선 전달이 끝날 때까지 대기열에 둔다. |
+| 허가·입력 답이 가는 중에 같은 요청에 다른 답이 옴 | 기다리던 답의 결과가 올 때까지 `UnexpectedAnswer`로 거절한다. 앞선 답이 실패하면 요청이 남아 다시 답할 수 있다. |
+| 맥락 정리의 새 session 열기를 기다리는 동안 입력이 옴 | 입력은 접수하고 대기열에 둔다. 열린 뒤 새 session으로 보낸다. 멈춤은 그대로 처리하고 대기 입력은 보류된다. |
 | provider 요청을 기다리는 중 멈춤 | 멈춤은 기다리지 않고 처리한다. 열기 전의 전달은 입력을 보류하고, 턴 전송 중의 전달은 입력을 받은 것으로 기록한 채 작업을 멈춘 채로 둔다. |
 | stdin을 읽지 않아 provider 쓰기가 막힘 | 그 연결의 연결 작업만 기다린다. 쓰기를 중간에 끊지 않고, 프로세스가 끝나면 연결 끊김으로 처리한다. |
 | 연결 작업이 패닉하거나 중단돼 끝남 | 기다리던 전달은 보내기 전 단계면 거절하고 보낸 뒤 단계면 `NeedsCheck`로 둔다. 연결은 끊긴 것으로 처리한다. |
@@ -451,6 +457,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 멈춤 신호는 추적된 subagent까지 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_signals_the_deepest_subagent_first_and_finishes_only_when_the_tree_is_idle` |
 | 멈춤 신호 10초 뒤 남은 프로세스 묶음에는 중지 신호를 보낸다. | `saturn-terminal/engine/src/processes/mod.rs`의 `stop_sends_term_after_grace` |
 | provider 요청 하나가 응답하지 않아도 그 요청만 제한 시간 뒤 실패하고 연결은 계속 쓸 수 있다. 응답 없는 멈춤 신호는 기다리지 않고 연결 끊김으로 돌려준다. 바로 돌아와야 하는 요청의 제한(10초)보다 느린 시작·열기 응답은 기다려 성공한다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `a_silent_request_fails_alone_and_leaves_the_connection_usable`, `a_silent_interrupt_reports_the_lost_connection_instead_of_waiting`, `a_slow_open_reply_is_waited_for_longer_than_a_quick_one` |
+| 허가·입력 답, session 닫기, `/model` 목록의 연결과 조회, 맥락 정리의 새 session 열기가 느려도 다른 채팅의 붙기와 입력, 같은 채팅의 멈춤과 조회를 바로 처리하고, 풀리면 응답한다. 답이 가는 중인 요청에 겹친 답은 거절한다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_slow_permission_answer_does_not_stall_other_chats_or_stop`, `a_slow_input_answer_does_not_stall_other_chats_or_stop`, `a_slow_session_close_does_not_stall_other_chats_or_stop`, `a_slow_model_list_does_not_stall_other_chats_or_stop`, `a_slow_connection_for_the_model_list_does_not_stall_other_chats_or_stop`, `a_slow_context_restart_does_not_stall_other_chats_and_holds_the_next_input`, `a_second_answer_to_a_request_already_being_answered_is_refused` |
 | 트리 유휴와 프로세스 중지를 모두 확인한 뒤에만 멈춤 완료를 보고한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_is_not_complete_until_the_process_group_is_confirmed_stopped`, `stop_without_a_finished_turn_signal_is_not_complete`, `processes_left_outside_the_group_are_reported_instead_of_done` |
 | 끼워 넣기와 멈춤 신호가 문서대로 provider에 전달된다. | [#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27) |
 | 닫은 session을 보관한 ID로 재개한다. | [#10](https://github.com/woonyong-choi/saturn/issues/10) |

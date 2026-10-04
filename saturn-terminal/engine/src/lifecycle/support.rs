@@ -13,6 +13,7 @@ use serde_json::{Value, json};
 
 use super::*;
 use crate::Attachment;
+use crate::calls::Responder;
 use crate::chat_env::ChatEnv;
 use crate::flow::RouterJob;
 use crate::providers::test_support::FakeProvider;
@@ -266,7 +267,21 @@ impl Flow {
         let id = self
             .permission_id(provider_request)
             .unwrap_or_else(|| provider_request.to_owned());
-        self.engine.answer_permission(CLIENT, id, answer).await
+        self.answer_permission_as(CLIENT, id, answer).await
+    }
+
+    /// `client`가 engine 요청 ID로 허가 요청에 답하고 응답을 돌려준다.
+    pub(super) async fn answer_permission_as(
+        &mut self,
+        client: ClientId,
+        id: String,
+        answer: PermissionAnswer,
+    ) -> Result<(), EngineError> {
+        let (responder, answered) = Responder::local();
+        self.engine
+            .answer_permission(client, id, answer, responder)
+            .await;
+        self.answered(answered).await
     }
 
     /// `answer_permission`의 입력 요청 쪽.
@@ -278,7 +293,37 @@ impl Flow {
         let id = self
             .input_id(provider_request)
             .unwrap_or_else(|| provider_request.to_owned());
-        self.engine.answer_input(CLIENT, id, answer).await
+        self.answer_input_as(CLIENT, id, answer).await
+    }
+
+    /// `client`가 engine 요청 ID로 입력 요청에 답하고 응답을 돌려준다.
+    pub(super) async fn answer_input_as(
+        &mut self,
+        client: ClientId,
+        id: String,
+        answer: InputAnswer,
+    ) -> Result<(), EngineError> {
+        let (responder, answered) = Responder::local();
+        self.engine
+            .answer_input(client, id, answer, responder)
+            .await;
+        self.answered(answered).await
+    }
+
+    /// 연결 작업이 답을 보낸 결과가 올 때까지 engine 루프 역할을 하고, 그 응답을 돌려준다.
+    pub(super) async fn answered(
+        &mut self,
+        mut answered: tokio::sync::oneshot::Receiver<Result<(), EngineError>>,
+    ) -> Result<(), EngineError> {
+        loop {
+            tokio::select! {
+                result = &mut answered => return result.expect("the answer should be responded to"),
+                Some(message) = self.engine.flow.provider_rx.recv() => {
+                    self.engine.on_provider_msg(message).await;
+                }
+                () = tokio::time::sleep(WAIT) => panic!("the provider should take the answer in time"),
+            }
+        }
     }
 
     /// router 호출 수. 시작 확인의 두 호출은 뺀다.
@@ -389,7 +434,7 @@ impl Flow {
 
     /// 별도 작업에서 도는 router 호출과 provider 요청이 모두 돌아와 적용될 때까지 engine 루프 역할을 한다.
     pub(super) async fn settle(&mut self) {
-        while self.is_judging() || self.is_delivering() {
+        while self.is_judging() || self.is_delivering() || self.is_calling() {
             let flow = &mut self.engine.flow;
             tokio::select! {
                 Some(done) = flow.router_rx.recv() => self.engine.on_routed(done).await,
@@ -402,6 +447,11 @@ impl Flow {
     /// provider 응답을 기다리는 전달이 있다.
     pub(super) fn is_delivering(&self) -> bool {
         !self.engine.flow.deliveries.is_empty()
+    }
+
+    /// 입력 전달이 아닌 provider 요청(규칙의 허가 답, 맥락 정리의 session 열기 등)이 결과를 기다린다.
+    pub(super) fn is_calling(&self) -> bool {
+        !self.engine.flow.calls.is_empty()
     }
 
     pub(super) fn is_judging(&self) -> bool {

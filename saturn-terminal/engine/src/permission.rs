@@ -166,9 +166,7 @@ impl Engine {
             return;
         }
         for (_, session) in sessions {
-            if let Err(error) = connection.close_session(session).await {
-                tracing::warn!(error = %self.failure_line(&error), %provider, "failed to close the session for restart");
-            }
+            connection.close_session_detached(session.clone());
         }
     }
 

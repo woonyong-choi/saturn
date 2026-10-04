@@ -1,12 +1,16 @@
 //! 고를 수 있는 모델 목록과 입력에 고정한 모델 읽기.
 //! 설계: docs/design/providers-and-sessions.md#모델-고르기
 
+use std::collections::HashMap;
+
 use saturn_core::providers::ProviderError;
 use saturn_core::queue::QueuedInput;
 use saturn_protocol::ids::{ChatId, Provider, SettingsRevision};
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, Notification};
 
-use crate::providers::Registry;
+use crate::calls::{CallKind, PendingCall, Responder};
+use crate::launch::ConnectionSeed;
+use crate::providers::{Connected, Registry, spawn_connect};
 use crate::rpc::ClientId;
 use crate::settings::SettingsError;
 use crate::{Engine, EngineError, masked_chain};
@@ -25,6 +29,18 @@ pub(crate) fn pinned_model_name(registry: &Registry, record: &QueuedInput) -> Op
         Some(choice) => Some(choice.model),
         None => record.pinned_model.clone(),
     }
+}
+
+/// 모델 목록을 모으는 `/model` 요청. 모든 조회가 돌아오면 알리고 응답한다.
+#[derive(Debug)]
+pub(crate) struct ModelsQuery {
+    responder: Responder,
+    client: ClientId,
+    /// 목록을 받을 provider. 알리는 순서다.
+    providers: Vec<Provider>,
+    listed: HashMap<Provider, Result<Vec<ModelInfo>, EngineError>>,
+    /// 맡겨 두고 결과를 기다리는 조회 수.
+    waiting: usize,
 }
 
 impl Engine {
@@ -73,17 +89,47 @@ impl Engine {
     // cost: time O(m), heap O(m), stack O(1), io p
     // vars: m = 모델 수, p = provider 수
     // basis: estimate
-    /// 설치된 provider마다 모델 목록을 받아 `Models`로 보낸다. 목록을 못 받은 provider는 건너뛰고 로그만 남긴다.
-    /// 모든 provider가 실패하면 빈 목록을 보내고 마지막 오류를 돌려준다.
+    /// 설치된 provider마다 모델 목록을 받아 `Models`로 보낸다. 연결과 조회는 연결 작업이 하고, 모든 목록이 모이면
+    /// 알리고 `responder`에 응답한다. 목록을 못 받은 provider는 건너뛰고 로그만 남긴다. 모든 provider가 실패하면 빈
+    /// 목록을 보내고 마지막 오류로 응답한다.
     ///
-    /// # Errors
-    /// 붙지 않은 채팅이면 `ChatNotAttached`, 설정이 없으면 `Settings`, 모든 provider의 목록이 실패하면 `Provider`.
+    /// 응답 오류: 붙지 않은 채팅이면 `ChatNotAttached`, 설정이 없으면 `Settings`, 모든 provider의 목록이 실패하면
+    /// `Provider`.
     pub(crate) async fn send_models(
         &mut self,
         client: ClientId,
         chat: ChatId,
         only: Option<Provider>,
-    ) -> Result<(), EngineError> {
+        responder: Responder,
+    ) {
+        let (revision, providers) = match self.models_wanted(client, chat, only) {
+            Ok(wanted) => wanted,
+            Err(error) => return self.respond(responder, Err(error)).await,
+        };
+        let query = self.flow.issue_call();
+        self.flow.model_queries.insert(
+            query,
+            ModelsQuery {
+                responder,
+                client,
+                providers: providers.clone(),
+                listed: HashMap::new(),
+                waiting: 0,
+            },
+        );
+        for provider in providers {
+            self.request_models(query, chat, provider, revision).await;
+        }
+        self.finish_models(query).await;
+    }
+
+    /// 목록을 받을 provider를 기본 순서로. 연결이 없고 설치되지도 않은 provider는 뺀다.
+    fn models_wanted(
+        &self,
+        client: ClientId,
+        chat: ChatId,
+        only: Option<Provider>,
+    ) -> Result<(SettingsRevision, Vec<Provider>), EngineError> {
         self.attached_workdir(client, chat)?;
         let revision = self
             .settings
@@ -93,28 +139,177 @@ impl Engine {
             .chat_env(chat)
             .map(crate::chat_env::ChatEnv::provider_env)
             .unwrap_or_default();
-        let mut models: Vec<ModelInfo> = Vec::new();
-        let mut failure = None;
-        for provider in self
+        let providers = self
             .registry
             .ids()
             .into_iter()
             .filter(|provider| only.is_none_or(|only| only == *provider))
-        {
-            if !self.providers.contains_key(&(chat, provider))
-                && !self.registry.is_installed(provider, &env)
-            {
-                continue;
+            .filter(|provider| {
+                self.providers.contains_key(&(chat, *provider))
+                    || self.registry.is_installed(*provider, &env)
+            })
+            .collect();
+        Ok((revision, providers))
+    }
+
+    /// 연결할 때 받아 둔 목록이 있으면 그것을 쓰고, 없으면 연결 작업에 조회를 맡긴다. 연결이 없으면 연결부터 맡긴다.
+    async fn request_models(
+        &mut self,
+        query: u64,
+        chat: ChatId,
+        provider: Provider,
+        revision: SettingsRevision,
+    ) {
+        if self.providers.contains_key(&(chat, provider)) {
+            if let Some(models) = self.flow.models.get(&(chat, provider)) {
+                let models = models.clone();
+                self.note_models(query, provider, Ok(models));
+                return;
             }
-            match self.list_provider_models(provider, chat, revision).await {
-                Ok(list) => models.extend(list),
-                Err(error) => {
+            self.start_call(
+                (chat, provider),
+                CallKind::ModelList { query },
+                |connection, tag| connection.list_models_call(tag),
+            );
+            self.wait_for_models(query);
+            return;
+        }
+        let started = self
+            .start_models_connect(query, chat, provider, revision)
+            .await;
+        match started {
+            Ok(()) => self.wait_for_models(query),
+            Err(error) => self.note_models(query, provider, Err(error)),
+        }
+    }
+
+    /// 연결을 맺고 모델 목록까지 받는 작업을 맡긴다.
+    async fn start_models_connect(
+        &mut self,
+        query: u64,
+        chat: ChatId,
+        provider: Provider,
+        revision: SettingsRevision,
+    ) -> Result<(), EngineError> {
+        let launch = self.launch_spec(provider, chat, revision).await?;
+        let seed = ConnectionSeed::of(&launch);
+        let adapter = self
+            .registry
+            .get(provider)
+            .cloned()
+            .ok_or(ProviderError::ConnectionLost)?;
+        let tag = self.flow.issue_call();
+        self.flow.calls.insert(
+            tag,
+            PendingCall {
+                chat,
+                provider,
+                kind: CallKind::ModelConnect { query, seed },
+            },
+        );
+        spawn_connect(
+            chat,
+            launch,
+            adapter,
+            self.supervisor.clone(),
+            self.flow.provider_tx.clone(),
+            Some(tag),
+        );
+        Ok(())
+    }
+
+    fn wait_for_models(&mut self, query: u64) {
+        if let Some(entry) = self.flow.model_queries.get_mut(&query) {
+            entry.waiting += 1;
+        }
+    }
+
+    fn note_models(
+        &mut self,
+        query: u64,
+        provider: Provider,
+        listed: Result<Vec<ModelInfo>, EngineError>,
+    ) {
+        if let Some(entry) = self.flow.model_queries.get_mut(&query) {
+            entry.listed.insert(provider, listed);
+        }
+    }
+
+    /// 맡긴 조회의 결과. 받았으면 연결의 목록으로 두어 다음 요청과 후보가 쓴다.
+    pub(crate) async fn on_models_listed(
+        &mut self,
+        query: u64,
+        (chat, provider): (ChatId, Provider),
+        listed: Result<Vec<ModelInfo>, ProviderError>,
+    ) {
+        let recorded = self.record_models(provider, chat, listed);
+        self.note_models(query, provider, recorded.map_err(EngineError::from));
+        self.models_arrived(query).await;
+    }
+
+    /// 맡긴 연결의 결과. 그사이 다른 요청이 같은 연결을 맺었으면 그쪽을 쓰고 이 연결은 닫는다.
+    pub(crate) async fn on_models_connected(
+        &mut self,
+        query: u64,
+        (chat, provider): (ChatId, Provider),
+        seed: ConnectionSeed,
+        connected: Result<Box<Connected>, ProviderError>,
+    ) {
+        let listed = match connected {
+            Ok(connected) => {
+                let Connected { connection, models } = *connected;
+                if self.providers.contains_key(&(chat, provider)) {
+                    models
+                } else {
+                    self.attach_connection(chat, connection, seed);
+                    self.record_models(provider, chat, models)
+                }
+            }
+            Err(error) => Err(error),
+        };
+        self.note_models(query, provider, listed.map_err(EngineError::from));
+        self.models_arrived(query).await;
+    }
+
+    async fn models_arrived(&mut self, query: u64) {
+        if let Some(entry) = self.flow.model_queries.get_mut(&query) {
+            entry.waiting = entry.waiting.saturating_sub(1);
+        }
+        self.finish_models(query).await;
+    }
+
+    /// 기다리는 조회가 없으면 모은 목록을 알리고 응답한다. 창이 끝없이 기다리지 않도록 실패해도 빈 목록은 보낸다.
+    async fn finish_models(&mut self, query: u64) {
+        if self
+            .flow
+            .model_queries
+            .get(&query)
+            .is_none_or(|entry| entry.waiting > 0)
+        {
+            return;
+        }
+        let Some(ModelsQuery {
+            responder,
+            client,
+            providers,
+            mut listed,
+            ..
+        }) = self.flow.model_queries.remove(&query)
+        else {
+            return;
+        };
+        let mut models: Vec<ModelInfo> = Vec::new();
+        let mut failure = None;
+        for provider in providers {
+            match listed.remove(&provider) {
+                Some(Ok(list)) => models.extend(list),
+                Some(Err(error)) => {
                     tracing::warn!(error = %masked_chain(&self.masker, &error), "failed to list models");
                     failure = Some(error);
                 }
+                None => {}
             }
         }
-        // 창이 끝없이 기다리지 않도록 실패해도 빈 목록은 보낸다.
         self.send(
             client,
             Notification::Models {
@@ -122,35 +317,11 @@ impl Engine {
             },
         )
         .await;
-        match failure {
+        let result = match failure {
             Some(error) if models.is_empty() => Err(error),
             _ => Ok(()),
-        }
-    }
-
-    /// 연결할 때 받아 둔 목록이 있으면 그것을 쓰고, 없으면 받아서 둔다.
-    async fn list_provider_models(
-        &mut self,
-        provider: Provider,
-        chat: ChatId,
-        revision: SettingsRevision,
-    ) -> Result<Vec<ModelInfo>, EngineError> {
-        self.ensure_connected(provider, chat, revision).await?;
-        if let Some(models) = self.flow.models.get(&(chat, provider)) {
-            return Ok(models.clone());
-        }
-        let models = self.provider_mut(chat, provider)?.list_models().await?;
-        self.flow.models.insert((chat, provider), models.clone());
-        Ok(models)
-    }
-
-    /// 방금 연결한 provider의 모델 목록을 받아 둔다. 못 받으면 로그만 남기고 그 provider는 후보에 넣지 않는다.
-    pub(crate) async fn remember_models(&mut self, provider: Provider, chat: ChatId) {
-        let listed = match self.provider_mut(chat, provider) {
-            Ok(client) => client.list_models().await,
-            Err(error) => Err(error),
         };
-        self.apply_models(provider, chat, listed);
+        self.respond(responder, result).await;
     }
 
     /// 받은 모델 목록을 둔다. 못 받았으면 그 provider는 후보에 넣지 않는다.
@@ -160,13 +331,26 @@ impl Engine {
         chat: ChatId,
         listed: Result<Vec<ModelInfo>, ProviderError>,
     ) {
+        if let Err(error) = self.record_models(provider, chat, listed) {
+            tracing::warn!(error = %masked_chain(&self.masker, &EngineError::from(error)), "failed to list models");
+        }
+    }
+
+    /// `apply_models`와 같고 둔 목록이나 못 받은 이유를 돌려준다.
+    fn record_models(
+        &mut self,
+        provider: Provider,
+        chat: ChatId,
+        listed: Result<Vec<ModelInfo>, ProviderError>,
+    ) -> Result<Vec<ModelInfo>, ProviderError> {
         match listed {
             Ok(models) => {
-                self.flow.models.insert((chat, provider), models);
+                self.flow.models.insert((chat, provider), models.clone());
+                Ok(models)
             }
             Err(error) => {
                 self.flow.models.remove(&(chat, provider));
-                tracing::warn!(error = %masked_chain(&self.masker, &EngineError::from(error)), "failed to list models");
+                Err(error)
             }
         }
     }

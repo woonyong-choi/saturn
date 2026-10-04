@@ -9,7 +9,6 @@ use saturn_protocol::ids::{
     AgentId, ChatId, Provider, ProviderSessionId, SessionId, SettingsRevision,
 };
 
-use crate::dispatch::MAX_SEND_ATTEMPTS;
 use crate::flow::LiveSession;
 use crate::models::pinned_choice;
 use crate::providers::{
@@ -90,19 +89,6 @@ impl Engine {
         }
     }
 
-    /// 열지 못하는 `NotSent`(재개 실패)만 다시 열고 끝날 때까지 기다린다. 요청 처리 루프가 기다리므로 입력 전달에는
-    /// 쓰지 않고 전달 작업(`delivery`)이 맡긴다.
-    pub(crate) async fn open_with_retries(
-        &mut self,
-        chat: ChatId,
-        provider: Provider,
-        spec: SessionSpec,
-    ) -> Result<SessionHandle, ProviderError> {
-        self.provider_mut(chat, provider)?
-            .open_session(spec, MAX_SEND_ATTEMPTS)
-            .await
-    }
-
     /// 입력에 고정한 모델의 provider, 없으면 내부 호출로 정한 provider, 없으면 이어 갈 메인 session의 provider,
     /// 그것도 없으면 설치된 앞쪽 provider.
     ///
@@ -128,28 +114,6 @@ impl Engine {
                 self.providers.contains_key(&(chat, provider))
             })
             .ok_or(EngineError::NoProvider)
-    }
-
-    /// 채팅의 provider 연결이 없으면 그 채팅의 작업 폴더와 환경으로 만들고 끝날 때까지 기다린다. 입력 전달은 이 함수 대신
-    /// 전달 작업이 연결을 맡긴다.
-    pub(crate) async fn ensure_connected(
-        &mut self,
-        provider: Provider,
-        chat: ChatId,
-        settings: SettingsRevision,
-    ) -> Result<(), EngineError> {
-        if self.providers.contains_key(&(chat, provider)) {
-            return Ok(());
-        }
-        let launch = self.launch_spec(provider, chat, settings).await?;
-        let seed = ConnectionSeed::of(&launch);
-        let connection = self
-            .registry
-            .connect(launch, self.supervisor.clone())
-            .await?;
-        self.attach_connection(chat, connection, seed);
-        self.remember_models(provider, chat).await;
-        Ok(())
     }
 
     /// 맺은 연결을 맡는 작업을 띄우고 채팅에 등록한다.

@@ -22,6 +22,7 @@ pub use providers::{
 pub use secrets::{Masker, pre_tool_use_hook_settings};
 
 mod add_dir;
+mod calls;
 mod chat_env;
 mod chat_labels;
 mod commands;
