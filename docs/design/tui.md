@@ -95,13 +95,14 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | 제약 확인 창 | 확인 종류별 질문(`이 말을 앞으로 지킬 제약으로 등록할까요?`, `새 제약이 앞 제약을 대체할까요?`, `이 제약을 해제할까요?`), 대상 규칙 한 줄(대체는 앞 제약과 새 제약), 선택지 두 개, 답을 기다리는 다른 확인 수. 첫 선택은 지키는 쪽(`등록`, `둘 다 유지`, `유지`)이고 `Esc`는 답을 미룬다 | engine이 제약 확인을 알릴 때, 다시 열었을 때 열린 확인이 있을 때 |
 | 허가 요청 창 | 작업 이름표와 provider가 붙은 제목, 요청 내용, 이유, 선택지 세 개, 허가를 기다리는 다른 작업 수 | 허가 요청 도착 |
 | 입력 요청 창 | 허가 요청 창과 같은 제목, 요청 설명, 칸 목록(포커스한 칸만 펼침), 필수 표시 `*`, 오류 한 줄, 키 안내, 답을 기다리는 다른 요청 수. URL 요청은 설명과 링크 | 입력 요청 도착 |
-| 작업 목록 화면 | 필터 전체, 확인 필요, 실행 중, 대기, 보류, 끝남, 묶음 채팅, 폴더, 상태, 작업과 그 아래 subagent와 자식 채팅, 작업 상세. 키 `r`과 `g`는 한 줄 입력으로 채팅 이름과 묶음을 바꾸고 `RenameChat`, `SetChatGroup`으로 engine에 저장한다. 앞뒤 공백은 지우고 비우면 이름과 묶음을 지운다. 기본 범위는 현재 채팅의 기본 폴더에서 만든 채팅이고 키 `a`로 모든 폴더로 넓히고 되돌린다. 필터 줄 끝에 범위(`현재 폴더`, `모든 폴더`)를 보인다. 채팅이나 현재 폴더를 알 수 없으면 범위로 거르지 않는다(초안) | `/tasks` 실행, `engine` 상태 변경 때 선택 유지 |
+| 작업 목록 화면 | 필터 전체, 확인 필요, 실행 중, 대기, 보류, 끝남, 채팅, 묶음 채팅, 폴더, 상태, 작업과 그 아래 subagent와 자식 채팅, 작업 상세. 작업 행에는 상태와 함께 대기 입력 수와 모델을 보인다. `끝남` 필터는 끝난 작업의 결과(완료, 실패)와 끝난 시각을, `채팅` 필터는 작업이 없는 채팅을 한 줄로 보인다. `전체`는 끝난 작업과 대기 입력이 없는 채팅 행을 뺀 나머지를 보인다. 키 `r`과 `g`는 한 줄 입력으로 채팅 이름과 묶음을 바꾸고 `RenameChat`, `SetChatGroup`으로 engine에 저장한다(작업 행과 채팅 행 모두). 앞뒤 공백은 지우고 비우면 이름과 묶음을 지운다. 다른 TUI가 이름이나 묶음을 바꾸면 알림을 받아 목록과 상태판을 갱신한다. 기본 범위는 현재 채팅의 기본 폴더에서 만든 채팅이고 키 `a`로 모든 폴더로 넓히고 되돌린다. 필터 줄 끝에 범위(`현재 폴더`, `모든 폴더`)를 보인다. 채팅이나 현재 폴더를 알 수 없으면 범위로 거르지 않는다(초안) | `/tasks` 실행, `engine` 상태 변경 때 선택 유지 |
 | 제약 목록 화면 | 유효 제약 줄(`번호 · 범위 · 규칙 한 줄`), 확인 필요 줄, 마지막 전환에 들어갔는지 표시(`전환 포함`, `생략`), `Tab`으로 바꾸는 변경 내역(시각, 종류, 주체, 규칙). 키 `d` 해제, `x` 잘못 등록, `u` 되돌리기, `Esc` 닫기 | `/constraints` 실행, 제약 변경 알림 때 선택 유지 |
 | 전체 기록 | 도구 셀 전체와 줄인 셀을 펼친 대화 기록 | `Ctrl+T` 입력 |
 | 사용량 화면 | 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론, router 호출과 예상 비용, 맥락 정리, 채점, 여러 턴 합계 행 끝의 `n 토큰 · n 턴`. provider·모델마다 한 행, router 한 행 | `/usage` 실행, 키 `d`, `w`로 범위 변경 |
 | router 버전 화면 | router 버전 목록, 버전별 router와 보정값과 ECE, 질문별 목표 틀림 비율과 기준값과 최근 200건 틀림과 판단 수 | `/router use` 실행 |
 | 모델 선택 창 | 고정할 수 있는 모델 목록(`provider · 모델 이름` 줄), 지금 고정한 모델 표시, 키 안내. 목록이 오기 전에는 불러오는 중, 비었으면 안내 한 줄 | `/model` 실행(`/model codex`처럼 provider를 주면 그 provider 모델만), 목록 알림 도착 |
 | 채팅 선택 창 | 이어 열 채팅 목록(`번호. #채팅 id · 경과 · [폴더 ·] [이름 ·] 첫 입력` 줄), 고른 줄 강조, 키 안내. 목록이 화면보다 길면 고른 줄이 보이게 스크롤. 대화 화면을 열기 전에 `saturn --resume`이 연다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)) | `saturn --resume`, `saturn --resume all` 실행 |
+| 기록 정리 창 | 지울 채팅 목록(`#채팅 번호 · [이름 ·] 마지막 사용 날짜 · 크기` 줄), 지울 채팅 수와 기록 행 수, 남긴 채팅 수, 키 안내 `y` 지우기 `Esc` 취소. 지울 채팅이 없으면 안내 한 줄만 보이고 `y`는 받지 않는다. 기준 설정(`retention.max_age_days`)이 없으면 창 대신 설정 방법을 알리는 줄을 남긴다 | `/prune` 실행 |
 | 학습 확인 창 | 채점 후보 수, 채점 모델, 예상 토큰, 기준값 조정 대상, 모델 추가 학습 여부 | 실행 조건을 채운 `/train` 실행 |
 
 router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-key-security.md)에, 폴더 설정 신뢰 규칙은 [설정](settings.md)에 있다.
@@ -114,7 +115,19 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 ### 작업 목록 조회
 
-`/tasks`는 `ListTasks`를 보내고 `engine`은 `TaskList`로 답한다. 항목은 작업 글자(이름표)를 가진 메인 작업 하나이고, 채팅 번호와 작업 번호 순서로 보낸다. 항목마다 채팅 이름, 묶음, 채팅의 기본 폴더, 상태, 허가 대기 여부, 지금 도는 하위 에이전트 수를 싣는다. 이름이 없는 채팅은 `#채팅 번호`로 보인다. 상태는 결과 불명(`NeedsCheck`), 보류, 허가 기다림, 입력 기다림, 답은 나왔지만 하위 에이전트가 남음, 실행 중 순서로 정한다. 시작을 기다리는 작업, 턴을 마치고 쉬는 작업, 끝나 이름표를 돌려준 작업, 닫은 보류는 목록에 없다. 채팅 이름과 묶음은 `RenameChat`, `SetChatGroup`으로 바꾸고 바꾼 TUI가 `ListTasks`로 다시 받는다. 다른 TUI에는 알리지 않는다(초안). 목록에 작업이 없는 채팅은 보이지 않는다. 다른 Saturn 프로세스가 실행 중인 채팅(`busy_elsewhere`)은 `engine`이 사용자당 하나라 지금은 늘 거짓이고, 자식 채팅은 아직 없어 하위 에이전트만 센다.
+`/tasks`는 `ListTasks`를 보내고 `engine`은 `TaskList`로 답한다. 항목은 채팅 번호와 작업 번호 순서로 보내고 세 종류다.
+
+- 작업 행: 작업 글자(이름표)를 가진 메인 작업 하나. 채팅 이름, 묶음, 채팅의 기본 폴더, 상태, 허가 대기 여부, 지금 도는 하위 에이전트 수, 그 작업으로 갈 대기 입력(입력 번호, 접수 순서), 그 작업 session이 지금 쓰는 모델을 싣는다. 모델을 아직 모르면 비운다. 상태는 결과 불명(`NeedsCheck`), 보류, 허가 기다림, 입력 기다림, 답은 나왔지만 하위 에이전트가 남음, 실행 중 순서로 정한다. 시작을 기다리는 작업(그 작업의 입력은 아래 대기 입력으로 센다), 턴을 마치고 쉬는 작업, 닫은 보류는 작업 행이 아니다. 쉬는 작업은 아래 끝난 작업 행으로 보인다.
+- 끝난 작업 행: `끝남` 필터에 보인다. 기록 저장소 `runs`에서 채팅마다 작업별 마지막 실행을 읽어, 그 실행이 `Completed`이면 완료(`Done`), `Failed`이면 실패(`Failed`)로 하고 실행이 끝난 시각을 싣는다. 턴을 마치고 쉬는 작업은 마지막 실행이 끝났으므로 끝난 작업이다. `Stopped`로 끝나거나 아직 열린 실행이 마지막인 작업, 도는 작업, 시작을 기다리는 작업, 보류는 끝난 작업이 아니다. 끝난 작업의 글자는 돌려줬으므로 글자 없이 작업 번호만 보이고, 채팅마다 최근 20개까지(초안) 보낸다. 새 저장 칸과 스키마 변경 없이 `runs`만 읽으므로 채팅을 지우면 함께 사라진다.
+- 채팅 행: 작업 행도 끝난 작업 행도 없는 채팅 한 줄. `채팅` 필터에 보인다. 갈 작업이 없는 새 대기 입력이 있으면 그 채팅에 작업 행이 있어도 채팅 행을 하나 더 두고 대기 입력을 싣는다. 채팅 이름은 `#채팅 번호`, 폴더, 마지막 입력을 접수한 시각을 싣는다.
+
+대기 입력은 보내기 전에 차례를 기다리는 입력(`Queued`)이다. 갈 작업이 정해져 있으면(그 입력이 이어 갈 작업이나 끼워 넣을 작업이 있으면) 그 작업 행에 개수로 붙고, 키 `d`와 `s`는 그 행의 가장 앞 대기 입력을 다룬다. 갈 작업이 없는 새 대기 입력(새 작업이 될 입력)은 그 채팅의 채팅 행에 개수로 붙는다. `대기` 필터에는 대기 입력이 붙은 작업 행과 채팅 행이 모두 보인다. 이름이 없는 채팅은 `#채팅 번호`로 보인다. 채팅 이름과 묶음은 `RenameChat`, `SetChatGroup`으로 바꾸고, 바꾸면 `engine`이 같은 `engine`에 붙은 모든 TUI(바꾼 TUI 포함)에 `ChatLabeled` 알림(채팅, 이름, 묶음)을 보낸다. 작업 목록 화면이 열려 있으면 받은 TUI가 `ListTasks`로 목록을 다시 받는다. 상태판에는 채팅 이름이 없어 따로 바꿀 것이 없고, 목록 화면을 다시 열면 `engine`이 저장한 이름을 읽는다. 다른 Saturn 프로세스가 실행 중인 채팅(`busy_elsewhere`)은 `engine`이 사용자당 하나라 지금은 늘 거짓이고, 자식 채팅은 아직 없어 하위 에이전트만 센다.
+
+채팅 행에서 `Enter`는 그 채팅으로 이동한다. 작업 행에서 `Enter`는 해당 작업 결과로 스크롤하고, 끝난 작업 행도 같다. 채팅 행에서 `c`, `d`, `s`는 받지 않는다.
+
+### 기록 정리 창
+
+`/prune`은 `Prune { yes: false }`를 보내고 `PrunePreview`를 받아 정리 창을 연다. 줄은 지울 채팅이고, 이름이 없으면 `#채팅 번호`, 마지막 사용 날짜는 `PrunePreview`의 마지막 활동 시각을 날짜로 줄인 값이다. 크기는 그 채팅의 기록 행 수(입력, 실행, 이벤트, 사용량, session)이고, 창 머리에 합계를 보인다. `y`를 누르면 `Prune { yes: true }`를 보내고 `Pruned`를 받아 `지운 채팅 N개 · 기록 M행`을 대화 기록에 남기고 창을 닫는다. `Esc`와 `Ctrl+C`는 아무것도 지우지 않고 닫는다. `↑`, `↓`는 줄이 화면보다 길 때 고른 줄이 보이게 스크롤한다. 창을 연 뒤 지울 채팅이 바뀌어도 `yes`는 보낸 시점에 다시 계산한 대상만 지우고(열린 항목이 생긴 채팅은 남김), 지운 채팅 수가 창에 보인 수와 다르면 `Pruned`의 결과 수를 그대로 알린다. 지금 붙은 채팅은 지우지 않는다. 정리 기준 설정이 없으면 `engine`이 거절하기 전에 `Alert::PruneNeedsRetention`을 요청한 접속에 보내고, TUI는 창을 닫고 `retention.max_age_days`를 설정하라는 줄을 대화 기록에 남긴다. 삭제는 되돌릴 수 없으므로 `y` 하나만 확정 키이고 `Enter`는 확정이 아니다.
 
 ### 이름표
 
@@ -216,17 +229,19 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `Enter` | 단일 선택 고르기, 다음 칸으로 이동, 마지막 칸이면 보내기. URL 요청은 계속 | 입력 요청 창 |
 | `Ctrl+D` | 거절. URL 요청은 `d`도 같다 | 입력 요청 창 |
 | `Esc` | 취소 | 입력 요청 창 |
+| `y` | 정리 확정 | 기록 정리 창 |
+| `Esc` | 취소 | 기록 정리 창 |
 | `?` | 도움말 | 작업 목록 화면 |
-| `Enter` | 그 채팅으로 이동해 해당 작업 결과로 스크롤 | 작업 목록 화면 |
+| `Enter` | 그 채팅으로 이동해 해당 작업 결과로 스크롤(채팅 행은 채팅으로 이동) | 작업 목록 화면 |
 | `Esc` | 화면 종료 | 작업 목록 화면 |
 | `Tab`, `Shift+Tab` | 필터 변경 | 작업 목록 화면 |
 | `a` | 폴더 범위 바꾸기(현재 폴더, 모든 폴더) | 작업 목록 화면 |
 | `c` | 보류 작업 재개 | 작업 목록 화면 |
 | `d` | 대기 취소, 확인 한 줄 뒤 보류 종료 | 작업 목록 화면 |
 | `f` | 검색 | 작업 목록 화면 |
-| `g` | 묶음 변경 | 작업 목록 화면 |
+| `g` | 묶음 변경(채팅 행 포함) | 작업 목록 화면 |
 | `n` | 새 채팅 | 작업 목록 화면 |
-| `r` | 채팅 이름 변경 | 작업 목록 화면 |
+| `r` | 채팅 이름 변경(채팅 행 포함) | 작업 목록 화면 |
 | `s` | 대기 입력 전송 | 작업 목록 화면 |
 | `↑`, `↓` | 목록 이동 | 작업 목록 화면 |
 | `Enter` | router 실제 모델 상세 표시 | 사용량 화면 |
@@ -320,6 +335,8 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `?` | 작업 목록의 결과 확인 필요 작업 |
 | `다른 Saturn에서 실행 중` | 다른 Saturn 프로세스가 실행 중인 채팅, 작업 목록에서 읽기 전용 |
 | `작업 2개 계속 실행 중 · saturn으로 다시 여세요` | TUI를 닫은 뒤 터미널에 남기는 한 줄. `on_exit`가 `background`이거나 종료 확인 창에서 `계속 실행`을 고르고 작업이 남았을 때. 영어는 `Tasks still running: 2 · Reopen with saturn` |
+| `오래된 채팅 {N}개를 지웠습니다` | 시작 때 자동 정리가 채팅을 지움, 첫 TUI의 상태판 알림 줄. 영어는 `Deleted {N} old chats` |
+| `자동 정리에 실패했습니다 · 로그를 확인하세요` | 시작 때 자동 정리 실패, 첫 TUI의 상태판 알림 줄. 영어는 `Auto prune failed · Check the log` |
 | `기록 저장소 v2로 옮김` | 시작할 때 기록 저장소 스키마를 이관함, 첫 TUI의 상태판 알림 줄 |
 | `모델 미보고` | 작업 상세에서 provider의 모델 보고 없음 |
 
@@ -350,6 +367,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `/add-dir` | 명령 목록에 넣고 값은 폴더 경로 하나. 명령 이름 뒤 나머지 줄 전체를 경로로 읽어 공백이 들어 있어도 된다. 상대 경로는 TUI의 현재 폴더 기준 절대 경로로, `~/`는 홈 폴더 아래로 바꿔 보낸다(초안). 더한 폴더는 채팅 기록에 저장하고 모든 provider session에 넘긴다. 폴더 설정은 읽지 않는다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)). 더한 뒤 안내 한 줄을 대화 기록에 남기고, 열린 session이 있으면 다음 session부터 적용한다고 덧붙인다 |
 | `/model` | 명령 목록에 넣고 값 목록은 `codex`, `claude`. 값 없이 실행하면 모든 provider의 모델 창이 열리고, 값을 주면 그 provider 모델만 보인다. 방향키로 고르고 `Enter`로 정한다. 고른 모델은 `SetModel`로 engine에 저장하고, 그 채팅의 모든 입력이 쓴다. 채팅에 붙을 때 engine이 `ModelPinned`로 알려 주므로 TUI를 다시 열거나 채팅을 옮겨도 유지된다. 안내 한 줄(`다음 입력부터 {provider} · {model} 모델로 보냅니다`)은 `ModelPinned`를 받을 때 대화 기록에 남기므로, 정한 직후와 채팅을 다시 열 때 같은 줄이 나온다. provider 고유의 `/model`은 넘기지 않고 Saturn `/model`로 처리한다([모델 고르기](providers-and-sessions.md#모델-고르기)) |
 | `/permissions` | 명령 목록에 넣고 값 목록은 `ask`, `edit`, `read-only`, `full`(초안). 값을 주면 채팅 층 모드를 바꾼다. 값 없이 실행하면 현재 모드를 보이는 동작은 아직 없다([#177](https://github.com/woonyong-choi/saturn/issues/177), [권한](permissions.md)) |
+| `/prune` | 명령 목록에 넣고 값은 없다. 기록 정리 창을 연다. 미리보기는 `Prune { yes: false }`, 확정은 `Prune { yes: true }`로 보낸다 |
 | `/constraints` | 명령 목록에 넣고 값은 없다. 제약 목록 화면을 연다. `d`는 `ReleaseConstraint`, `x`는 잘못 등록으로 `ReleaseConstraint`, `u`는 `UndoConstraintChange`를 보내고 확인 창의 답은 `AnswerConstraintAsk`로 보낸다. 요청은 화면이 본 제약 revision을 싣고 낡았으면 engine이 `Stale`로 거절해 목록을 새로 읽는다(초안, [제약](constraints.md#되돌리기)) |
 
 ### 요구사항
@@ -369,6 +387,11 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 작업 목록에서 채팅을 옮기면 `Detach` 없이 `Attach`만 같은 연결로 보내고, `engine`은 연결을 유지한 채 붙은 채팅만 바꾸며 떠난 채팅의 작업을 멈추지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `moving_to_another_chat_only_attaches_without_detaching`, `saturn-terminal/engine/src/lifecycle/exit.rs`의 `attach_to_another_chat_on_the_same_connection_is_not_a_detach` |
 | 작업 목록 조회는 이름표를 가진 메인 작업을 채팅 이름, 묶음, 폴더, 상태와 함께 채팅과 작업 순서로 보내고, 채팅 이름과 묶음을 바꾸면 다음 조회에 반영하며 이름이 없으면 `#채팅 번호`로 보낸다. | `saturn-terminal/engine/src/lifecycle/tasks.rs`의 `task_list_reflects_the_chat_name_and_group_after_they_change`, `task_list_lists_tasks_of_every_chat_in_chat_order` |
 | 작업 목록의 상태는 허가 기다림, 입력 기다림, 보류를 가르고 하위 에이전트 수와 허가 대기를 싣고, 닫은 작업은 뺀다. | `saturn-terminal/engine/src/lifecycle/tasks.rs`의 `task_list_shows_waiting_states_and_running_subagents`, `task_list_shows_held_tasks_and_drops_closed_ones` |
+| 작업 목록은 갈 작업이 있는 대기 입력을 그 작업 행의 개수로, 작업 session이 쓰는 모델을 모델 칸으로 싣고, 갈 작업이 없는 새 대기 입력은 채팅 행에 개수로 싣는다. | `saturn-terminal/engine/src/lifecycle/tasks.rs`의 `task_list_attaches_a_waiting_input_to_the_task_it_waits_for`, `task_list_attaches_a_waiting_new_task_to_the_chat_row`, `task_list_reports_the_model_of_the_task_session`, `saturn-terminal/core/src/queue/tests.rs`의 `waiting_inputs_name_the_task_they_wait_for_and_none_for_a_new_task`, `saturn-terminal/tui/src/view/task_list.rs`의 `filters_split_task_rows_ended_tasks_and_chat_rows`, `cancel_and_send_act_on_the_next_waiting_input_of_the_row` |
+| `끝남` 필터는 `runs`의 작업별 마지막 실행(완료, 실패)과 끝난 시각을 보이고, 채팅을 지우면 함께 사라지며, 새 저장 칸이 없다. | `saturn-terminal/engine/src/lifecycle/tasks.rs`의 `task_list_shows_a_finished_task_as_done_with_its_end_time_and_no_label`, `task_list_shows_a_failed_last_run_as_failed`, `saturn-terminal/engine/src/store/retention.rs`의 `ended_tasks_come_from_runs_and_go_with_their_chat` |
+| 작업이 없는 채팅은 `채팅` 필터에 행으로 보이고 `r`, `g`로 이름과 묶음을 바꾸며 `Enter`로 열린다. | `saturn-terminal/engine/src/lifecycle/tasks.rs`의 `task_list_shows_a_chat_without_tasks_as_a_chat_row`, `saturn-terminal/tui/src/view/task_list.rs`의 `chat_row_renames_regroups_and_opens_but_ignores_task_keys`, `render_shows_queue_count_model_ended_result_and_chat_rows` |
+| 이름이나 묶음을 바꾸면 같은 `engine`에 붙은 모든 TUI에 `ChatLabeled`를 보내고 받은 TUI는 열린 작업 목록을 갱신한다. | `saturn-terminal/engine/src/lifecycle/chat_labels.rs`의 `rename_and_group_notify_every_attached_tui_but_not_unattached_connections`, `saturn-terminal/tui/src/app/tests.rs`의 `chat_labeled_makes_an_open_task_list_read_the_list_again`, `renaming_from_the_task_list_waits_for_the_labeled_notification_to_refresh` |
+| `/prune` 창은 지울 채팅의 이름, 마지막 사용 날짜, 크기를 보이고 `y`로 지우며 `Esc`로 아무것도 지우지 않고 닫는다. | `saturn-terminal/tui/src/view/prune_window.rs`의 `lists_name_last_used_date_and_size_of_each_chat_to_delete`, `nothing_to_delete_cannot_be_confirmed_and_loading_says_so`, `saturn-terminal/tui/src/app/tests.rs`의 `prune_window_asks_for_the_preview_and_only_y_deletes`, `prune_window_escape_closes_without_deleting`, `pruned_result_closes_the_window_and_leaves_one_line`, `missing_retention_closes_the_prune_window_and_says_how_to_set_it` |
 | 화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. | `saturn-terminal/tui/src/i18n.rs`의 `from_locale_korean_prefix_returns_ko`, `english_covers_every_phrase_constant` |
 | 모든 한국어 문구에 영어가 있고, `saturn` 명령의 도움말도 같다. | `saturn-terminal/tui/src/i18n.rs`의 `english_covers_every_phrase_constant`, `saturn-terminal/cli/src/args.rs`의 `help_has_english_for_every_korean_text`, `localized_help_replaces_korean_with_english` |
 | 한국어 문구에 해요체 어미와 끝 마침표가 없다. | `saturn-terminal/tui/src/i18n.rs`의 `korean_phrases_follow_claude_code_format` |
