@@ -2,13 +2,15 @@
 
 use std::path::{Path, PathBuf};
 
-use saturn_protocol::ids::{ChatId, LedgerSeq, Provider};
+use saturn_protocol::event::ProviderEvent;
+use saturn_protocol::ids::{ChatId, LedgerSeq, Provider, TaskLabel};
 use saturn_protocol::rpc::{Alert, Notification};
+use saturn_protocol::state::TaskState;
 
 use crate::rpc::ClientId;
 use crate::secrets::{KeyInput, Masker};
 use crate::settings::{Applied, FolderTrustPrompt};
-use crate::store::HistoryEntry;
+use crate::store::{HistoryEntry, RunEnd};
 use crate::{Engine, EngineError, RouterGate, masked_chain};
 
 /// 초안. `LoadHistory` 한 번에 보내는 최대 기록 수.
@@ -46,9 +48,70 @@ impl Engine {
         let (entries, has_more) = self.store.recent_history(chat, limit).await?;
         Ok(Notification::HistoryChunk {
             chat,
-            entries: entries.into_iter().map(history_notification).collect(),
+            entries: entries
+                .into_iter()
+                .flat_map(|entry| self.history_notifications(entry))
+                .collect(),
             has_more,
         })
+    }
+
+    /// 기록에 없는 작업 글자와 처리 방식은 비운다. 실행은 TUI가 작업 상태를 알도록 시작과 끝 알림으로 감싼다.
+    /// 허가와 입력 요청 이벤트는 이미 처리됐거나 접속 때 따로 보내므로 되살리지 않는다.
+    fn history_notifications(&self, entry: HistoryEntry) -> Vec<Notification> {
+        match entry {
+            HistoryEntry::Input {
+                input,
+                text,
+                state,
+                reason,
+            } => vec![Notification::InputChanged {
+                input,
+                text,
+                label: None,
+                state,
+                disposition: None,
+                reason,
+            }],
+            HistoryEntry::Run {
+                task,
+                provider,
+                end,
+                elapsed_ms,
+                events,
+            } => {
+                let label = self.flow.tasks.label(task).unwrap_or(TaskLabel('?'));
+                let changed = |state, elapsed_ms| Notification::TaskChanged {
+                    task,
+                    label,
+                    state,
+                    provider: Some(provider),
+                    elapsed_ms,
+                    failure: None,
+                };
+                let replayed = events
+                    .into_iter()
+                    .filter(|event| {
+                        !matches!(
+                            event,
+                            ProviderEvent::PermissionRequested { .. }
+                                | ProviderEvent::InputRequested { .. }
+                        )
+                    })
+                    .map(|event| Notification::TaskEvent { task, event });
+                let finished = end.map(|end| {
+                    let state = match end {
+                        RunEnd::Failed => TaskState::Failed,
+                        RunEnd::Completed | RunEnd::Stopped => TaskState::Done,
+                    };
+                    changed(state, elapsed_ms)
+                });
+                std::iter::once(changed(TaskState::Running, 0))
+                    .chain(replayed)
+                    .chain(finished)
+                    .collect()
+            }
+        }
     }
 
     /// 키 창이 떠 있으면 신뢰 창은 키를 받은 뒤 보낸다. TUI 창은 하나씩 뜬다.
@@ -199,26 +262,6 @@ impl Engine {
         if let Some(attachment) = self.attachments.get_mut(&client) {
             attachment.folder_trust = prompt;
         }
-    }
-}
-
-/// 기록에 없는 작업 글자와 처리 방식은 비워 둔다.
-fn history_notification(entry: HistoryEntry) -> Notification {
-    match entry {
-        HistoryEntry::Input {
-            input,
-            text,
-            state,
-            reason,
-        } => Notification::InputChanged {
-            input,
-            text,
-            label: None,
-            state,
-            disposition: None,
-            reason,
-        },
-        HistoryEntry::Event { task, event, .. } => Notification::TaskEvent { task, event },
     }
 }
 

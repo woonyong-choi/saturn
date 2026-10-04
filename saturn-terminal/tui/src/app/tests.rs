@@ -987,6 +987,43 @@ fn initial_history_with_held_task_asks_resume_once() {
     assert!(app.window.is_none());
 }
 
+fn reply_piece(task: u64, text: &str) -> Notification {
+    Notification::TaskEvent {
+        task: TaskId(task),
+        event: ProviderEvent::Text {
+            agent: AgentId(1),
+            subagent: None,
+            text: text.to_string(),
+        },
+    }
+}
+
+#[test]
+fn first_history_chunk_shows_earlier_input_and_finished_reply() {
+    let mut app = app();
+
+    notify(
+        &mut app,
+        history(vec![
+            input(1, InputState::Applied, "old question"),
+            task(1, 'A', TaskState::Running),
+            reply_piece(1, "old "),
+            reply_piece(1, "answer"),
+            task(1, 'A', TaskState::Done),
+        ]),
+    );
+
+    let cells = app.transcript.cells();
+    assert!(cells.iter().any(|cell| matches!(
+        cell,
+        TranscriptCell::InputEcho { text, .. } if text == "old question"
+    )));
+    assert!(cells.iter().any(|cell| matches!(
+        cell,
+        TranscriptCell::AgentText { lines, .. } if lines.join("") == "old answer"
+    )));
+}
+
 #[test]
 fn later_history_chunk_is_prepended_without_state() {
     let mut app = attached();

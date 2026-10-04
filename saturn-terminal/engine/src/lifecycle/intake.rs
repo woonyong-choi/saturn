@@ -78,7 +78,10 @@ async fn accepted_input_reaches_first_provider_after_it_is_recorded() {
         .unwrap();
     assert!(matches!(
         entries.as_slice(),
-        [HistoryEntry::Input { state: InputState::Applied, text, .. }] if text == "fix the build"
+        [
+            HistoryEntry::Input { state: InputState::Applied, text, .. },
+            HistoryEntry::Run { end: None, .. },
+        ] if text == "fix the build"
     ));
 }
 

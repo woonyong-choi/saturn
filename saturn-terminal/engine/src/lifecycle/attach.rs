@@ -8,11 +8,11 @@ use saturn_protocol::ids::{
     AgentId, ChatId, LedgerSeq, Provider, SessionId, SettingsRevision, TaskId, TaskLabel,
 };
 use saturn_protocol::rpc::Alert;
-use saturn_protocol::state::{EffectScope, InputState, SessionState};
+use saturn_protocol::state::{EffectScope, InputState, SessionState, TaskState};
 
 use super::*;
 use crate::secrets::ROUTER_KEY_ENV;
-use crate::store::{MigrationNotice, NewInput, NewRun};
+use crate::store::{MigrationNotice, NewInput, NewRun, RunEnd};
 
 fn attach_to(chat: ChatId, workdir: &Path) -> Request {
     Request::Attach {
@@ -138,8 +138,16 @@ async fn attach_sends_start_info_then_history_then_permissions() {
         &entries[0],
         Notification::InputChanged { text, state: InputState::Judging, .. } if text == "fix the build"
     ));
+    assert!(matches!(
+        &entries[1],
+        Notification::TaskChanged {
+            task: TaskId(1),
+            state: TaskState::Running,
+            ..
+        }
+    ));
     assert_eq!(
-        entries[1],
+        entries[2],
         Notification::TaskEvent {
             task: TaskId(1),
             event: text("done"),
@@ -161,6 +169,90 @@ async fn attach_sends_start_info_then_history_then_permissions() {
             OsString::from("/opt/tui/bin:/usr/bin")
         )]
     );
+}
+
+/// 입력과 끝난 실행 하나. 답은 글자 조각 `pieces`개로 쌓인다.
+async fn add_finished_exchange(
+    engine: &Engine,
+    chat: ChatId,
+    workdir: &Path,
+    task: u64,
+    pieces: usize,
+) {
+    let store = &engine.store;
+    let input = store
+        .accept_input(&NewInput {
+            chat,
+            text: format!("question {task}"),
+            settings: SettingsRevision(1),
+            permission: Permission::Write,
+            workdir: workdir.to_path_buf(),
+            pinned_model: None,
+            skip_relation: false,
+        })
+        .await
+        .unwrap();
+    let run = store
+        .start_run(&NewRun {
+            input: Some(input),
+            task: TaskId(task),
+            agent: AgentId(1),
+            session: SessionId(7),
+            provider: Provider::Codex,
+            effect_scope: EffectScope::NetworkPossible,
+        })
+        .await
+        .unwrap();
+    for piece in 0..pieces {
+        let event = text(&format!("answer {task} piece {piece}\n"));
+        store.append_event(run, chat, &event).await.unwrap();
+    }
+    store.finish_run(run, RunEnd::Completed).await.unwrap();
+}
+
+/// 답이 글자 조각 수십 개여도 끝 몇 개 조각이 앞 입력과 답을 밀어내지 않는다(#384).
+#[tokio::test]
+async fn attach_history_keeps_earlier_inputs_and_replies_when_the_last_reply_is_long() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.ready().await;
+    let chat = chat_with_history(&engine, &fixture.workdir).await;
+    add_finished_exchange(&engine, chat, &fixture.workdir, 2, 80).await;
+    add_finished_exchange(&engine, chat, &fixture.workdir, 3, 80).await;
+    let mut client = Client::connect(&fixture.socket()).await;
+
+    let received = drive(&mut engine, async {
+        client.attach(1, attach_to(chat, &fixture.workdir)).await
+    })
+    .await;
+
+    let Notification::HistoryChunk {
+        entries, has_more, ..
+    } = &received[1]
+    else {
+        panic!("expected HistoryChunk, got {:?}", received[1]);
+    };
+    assert!(!has_more);
+    let inputs: Vec<&str> = entries
+        .iter()
+        .filter_map(|entry| match entry {
+            Notification::InputChanged { text, .. } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(inputs, vec!["fix the build", "question 2", "question 3"]);
+    let pieces = entries
+        .iter()
+        .filter(|entry| {
+            matches!(
+                entry,
+                Notification::TaskEvent {
+                    task: TaskId(2),
+                    ..
+                }
+            )
+        })
+        .count();
+    assert_eq!(pieces, 80);
 }
 
 #[tokio::test]
