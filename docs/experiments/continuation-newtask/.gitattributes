@@ -1,0 +1,3 @@
+results/** linguist-generated=true
+data/SHA256SUMS linguist-generated=true
+results/tables/*.csv -text whitespace=cr-at-eol
