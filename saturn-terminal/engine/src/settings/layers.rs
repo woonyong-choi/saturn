@@ -51,6 +51,8 @@ context_gate = 0.3
 injection = 0.7
 progressing = 0.2
 feedback_cause = 0.7
+is_constraint = 0.8
+constraint_ask = 0.7
 
 [model]
 mode = "auto"
@@ -114,6 +116,8 @@ const SCHEMA: &[(&str, Kind)] = &[
     ("router.thresholds.injection", Kind::Unit),
     ("router.thresholds.progressing", Kind::Unit),
     ("router.thresholds.feedback_cause", Kind::Unit),
+    ("router.thresholds.is_constraint", Kind::Unit),
+    ("router.thresholds.constraint_ask", Kind::Unit),
     ("router.model", Kind::Text),
     ("router.local.endpoint", Kind::Text),
     ("router.local.version", Kind::Text),
@@ -863,6 +867,10 @@ mod tests {
         assert_eq!(thresholds.keep_current, 0.8);
         assert_eq!(thresholds.resume_held, 0.85);
         assert_eq!(thresholds.file_relevant, (0.7, 0.35));
+        assert_eq!(
+            (thresholds.is_constraint, thresholds.constraint_ask),
+            (0.8, 0.7)
+        );
         assert_eq!(snapshot.settings.retention().max_age, None);
         let budget = snapshot
             .settings

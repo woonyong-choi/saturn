@@ -7,7 +7,8 @@ use ts_rs::TS;
 
 use crate::event::ProviderEvent;
 use crate::ids::{
-    ChatId, InputId, JudgmentId, LedgerSeq, Provider, SettingsRevision, TaskId, TaskLabel,
+    ChatId, ConstraintAskId, InputId, JudgmentId, LedgerSeq, Provider, SettingsRevision, TaskId,
+    TaskLabel,
 };
 use crate::input::{InputAnswer, InputRequest};
 use crate::state::{Disposition, InputState, QueueReason, TaskState};
@@ -142,6 +143,11 @@ pub enum Request {
         judgment: JudgmentId,
         correct: bool,
     },
+    /// 제약 확인(`ConstraintAsked`)에 답한다. 이미 답했거나 대상이 바뀌어 닫힌 확인이면 거절한다.
+    AnswerConstraintAsk {
+        ask: ConstraintAskId,
+        answer: ConstraintAskAnswer,
+    },
     /// 기록하지 않는다(router 키).
     SubmitRouterKey {
         key: String,
@@ -247,6 +253,15 @@ pub enum UsageRange {
     Day,
     /// 지금부터 7일 전까지 모든 채팅.
     Week,
+}
+
+/// 등록을 묻는 확인의 답.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ConstraintAskAnswer {
+    /// 제약으로 등록한다.
+    Yes,
+    /// 등록하지 않는다.
+    No,
 }
 
 /// TUI는 이것만으로 화면을 그린다.
@@ -421,6 +436,17 @@ pub enum Notification {
         task: Option<TaskId>,
         notice: ChatNotice,
     },
+    /// 이 말을 앞으로 지킬 제약으로 등록할지 묻는다. 허가 요청처럼 답이 올 때까지 두고 나중에 붙는 TUI도 받는다.
+    ConstraintAsked {
+        ask: ConstraintAskId,
+        chat: ChatId,
+        /// 등록할 규칙. 사용자 원문에서 자른 글이고 한 입력에서 여러 건이면 줄바꿈으로 잇는다.
+        rule: String,
+    },
+    /// 다른 클라이언트가 먼저 답했거나 대상이 바뀌어 확인이 닫혔다.
+    ConstraintAskResolved {
+        ask: ConstraintAskId,
+    },
     /// 8초 안에 답이 없으면 TUI가 지운다.
     FeedbackQuestion {
         judgment: JudgmentId,
@@ -508,6 +534,15 @@ pub enum ChatNotice {
     },
     /// 새 session의 패킷이 맥락 한도로 거절됐고, 경쟁 구역을 줄여 다시 보내도 들어가지 않거나 고정 구역만으로 넘쳐 보내지 않고 멈췄다.
     PacketOverflow,
+    /// 제약을 등록했다. 규칙은 사용자 원문 그대로다. `unconfirmed`는 권한 모드 `full`이라 묻지 않고 등록했다는 뜻이다.
+    ConstraintAdded {
+        rule: String,
+        unconfirmed: bool,
+    },
+    /// 제약을 해제했다. 입력을 취소해 그 입력의 제약을 함께 해제한 경우도 같다.
+    ConstraintReleased {
+        rule: String,
+    },
     /// 모든 작업이 끝난 순간의 합계.
     RequestSummary {
         provider_tokens: Vec<(crate::ids::Provider, u64)>,

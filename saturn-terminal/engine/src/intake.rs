@@ -6,13 +6,14 @@ use std::time::Instant;
 
 use saturn_core::queue::{QueueError, QueuedInput};
 use saturn_core::routers::{
-    JudgmentOutcome, RouteDecision, RouterError, RouterRequest, RouterResponse, decide_route,
-    question_ids, questions_for_input, validate,
+    ConstraintQuestion, JudgmentOutcome, RouteDecision, RouterError, RouterRequest, RouterResponse,
+    decide_route, question_ids, questions_for_input, validate,
 };
 use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision};
 use saturn_protocol::rpc::{ModelMode, Notification};
 use saturn_protocol::state::{Disposition, InputState};
 
+use crate::constraints::ConstraintPlan;
 use crate::flow::{Routed, RouterDone, RouterJob, Unrecorded};
 use crate::models::ModelPlan;
 use crate::requests::{settings_notification, trust_notification};
@@ -20,6 +21,9 @@ use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
 use crate::rpc::ClientId;
 use crate::settings::{Settings, SettingsError};
 use crate::{Engine, EngineError, masked_chain};
+
+/// 사용자에게 묻는 제약 등록의 확률 q. 구간에서는 항상 묻는다.
+const ASKED_CONSTRAINT_Q: f64 = 1.0;
 
 /// 판단 한 번의 결과.
 pub(crate) struct Verdict {
@@ -72,6 +76,10 @@ impl Engine {
     /// 별도 작업이 끝낸 router 호출의 결과를 받는다. 적용 직전에 채팅 revision을 비교하므로 호출이 도는 사이
     /// 멈춤이나 취소가 있었으면 결과는 버려진다. 적용하지 못한 오류는 입력을 지우지 않고 로그만 남긴다.
     pub(crate) async fn on_routed(&mut self, done: RouterDone) {
+        if done.job.lines {
+            self.on_lines_done(done).await;
+            return;
+        }
         let RouterDone {
             job,
             request,
@@ -380,14 +388,22 @@ impl Engine {
     ) -> Result<(), EngineError> {
         let running = self.chat_is_running(record.chat);
         let plan = self.model_plan(record.settings).await?;
-        let request = self.router_request(record, running, &plan);
+        // 입력 처리를 다시 판단하는 요청에는 제약 질문을 넣지 않아 같은 입력을 두 번 등록하지 않는다
+        let request = self.router_request(record, running, &plan, !retried);
         let job = RouterJob {
             chat: record.chat,
             input: record.id,
             revision,
             retried,
+            lines: false,
         };
         self.flow.judging.insert(record.chat, record.id);
+        self.spawn_router_job(job, request);
+        Ok(())
+    }
+
+    /// router 호출을 별도 작업으로 보내고 기다리지 않는다. 결과는 `on_routed`로 온다.
+    pub(crate) fn spawn_router_job(&mut self, job: RouterJob, request: RouterRequest) {
         let router = self.routers.shared();
         let results = self.flow.router_tx.clone();
         tokio::spawn(async move {
@@ -399,7 +415,6 @@ impl Engine {
                 exchange,
             });
         });
-        Ok(())
     }
 
     /// 돌아온 호출 결과를 읽는다. 기록은 적용 결과를 안 뒤 `settle_record`가 쓴다.
@@ -431,6 +446,9 @@ impl Engine {
             routed.or(plan.default)
         };
         let fallbacks = read.fallback_reasons();
+        let constraint = self
+            .constraint_plan(request, &exchange, &record, &settings)
+            .await;
         let context = RecordContext {
             chat: record.chat,
             input: Some(record.id),
@@ -439,11 +457,18 @@ impl Engine {
             fallbacks,
             outcome: read.outcome,
             thresholds: threshold_list(&settings),
-            asked_with: None,
+            asked_with: constraint
+                .filter(ConstraintPlan::asks_user)
+                .map(|_| ASKED_CONSTRAINT_Q),
         };
-        self.flow
-            .unrecorded
-            .insert(record.id, Unrecorded { context, exchange });
+        self.flow.unrecorded.insert(
+            record.id,
+            Unrecorded {
+                context,
+                exchange,
+                constraint,
+            },
+        );
         Ok(Verdict {
             decision: read.decision,
             failed: read.failed,
@@ -455,6 +480,7 @@ impl Engine {
         record: &QueuedInput,
         running: bool,
         plan: &ModelPlan,
+        with_constraint: bool,
     ) -> RouterRequest {
         // 매뉴얼 모드는 후보를 주지 않아 `target_model`을 묻지 않는다
         let candidates = match plan.mode {
@@ -479,6 +505,11 @@ impl Engine {
                 record.pinned_model.is_some(),
                 self.queue.has_held_task(record.chat),
                 &candidates,
+                if with_constraint {
+                    ConstraintQuestion::With
+                } else {
+                    ConstraintQuestion::Without
+                },
             ),
         }
     }
@@ -543,13 +574,17 @@ impl Engine {
             .routers
             .record(&self.store, unrecorded.context, &unrecorded.exchange)
             .await;
-        match recorded {
+        let judgment = match recorded {
             Ok(id) => id,
             Err(error) => {
                 tracing::warn!(error = %masked_chain(&self.masker, &error), "failed to record judgment");
                 None
             }
+        };
+        if let Some(plan) = unrecorded.constraint {
+            self.apply_constraint_plan(input, plan, judgment).await;
         }
+        judgment
     }
 
     /// 실행 중인 에이전트가 있는 채팅이면 참.
@@ -616,6 +651,8 @@ fn threshold_list(settings: &Settings) -> Vec<(String, f64)> {
         ("is_actionable".to_owned(), thresholds.is_actionable),
         ("min_confidence".to_owned(), thresholds.min_confidence),
         ("resume_held".to_owned(), thresholds.resume_held),
+        ("is_constraint".to_owned(), thresholds.is_constraint),
+        ("constraint_ask".to_owned(), thresholds.constraint_ask),
     ]
 }
 

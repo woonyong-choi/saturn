@@ -5,7 +5,7 @@ use saturn_protocol::ids::{ChatRevision, InputId};
 use saturn_protocol::rpc::ModelChoice;
 use saturn_protocol::state::{Disposition, InputState};
 
-use super::support::{CLIENT, Flow, idle_reply, router_down, running_reply};
+use super::support::{CLIENT, Flow, idle_reply, retry_reply, router_down, running_reply};
 use crate::providers::test_support::Call;
 
 fn decision(flow: &Flow, revision: ChatRevision, disposition: Disposition) -> RouteDecision {
@@ -40,7 +40,8 @@ async fn exported(flow: &Flow) -> String {
 
 #[tokio::test]
 async fn revision_conflict_supersedes_old_judgment_and_reroutes_once() {
-    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    // 다시 판단하는 요청에는 `is_constraint`가 없다
+    let mut flow = Flow::new(vec![idle_reply(0.95), retry_reply(0.95)]).await;
     let first = flow.accept_only("first").await;
     let second = flow.accept_only("second").await;
     let stale = flow.router_now(first, false).await;

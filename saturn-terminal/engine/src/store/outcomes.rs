@@ -122,6 +122,28 @@ impl Store {
         Ok(observations)
     }
 
+    /// 물은 판단마다 `(물은 확률 q, 사용자의 답)`을 기록 순서로. 신호를 확정하지 않은 판단도 포함한다. 시험이 쓴다.
+    #[cfg(test)]
+    pub(crate) async fn asked_judgments(
+        &self,
+    ) -> Result<Vec<(f64, Option<AskedAnswer>)>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT asked_with, asked_answer FROM judgments WHERE asked_with IS NOT NULL ORDER BY id",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        rows.iter()
+            .map(|row| {
+                Ok((
+                    row.try_get("asked_with")?,
+                    row.try_get::<Option<&str>, _>("asked_answer")?
+                        .map(parse_asked_answer)
+                        .transpose()?,
+                ))
+            })
+            .collect()
+    }
+
     async fn ensure_judgment(&self, judgment: JudgmentId) -> Result<(), StoreError> {
         let found: Option<i64> = sqlx::query_scalar("SELECT id FROM judgments WHERE id = ?")
             .bind(to_sql_int(judgment.0))

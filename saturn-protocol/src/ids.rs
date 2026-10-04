@@ -86,6 +86,18 @@ pub struct ChatRevision(pub u64);
 )]
 pub struct JudgmentId(pub u64);
 
+/// 제약 한 건. 다시 쓰지 않는 번호다.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, JsonSchema, TS,
+)]
+pub struct ConstraintId(pub u64);
+
+/// 사용자에게 묻는 제약 확인 한 건.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, JsonSchema, TS,
+)]
+pub struct ConstraintAskId(pub u64);
+
 /// provider는 닫힌 목록이 아니라 열린 id 글자로 식별한다. id는 소문자 영문, 숫자, `-`만 쓴다(1~32자).
 /// 공통 코드는 id를 불투명한 글자로 저장하고 전달하고 같은지 비교만 한다.
 ///

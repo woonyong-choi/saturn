@@ -254,7 +254,7 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 | 개별 규칙의 `deny`는 항상 허용보다 앞선다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `deny_rule_beats_a_stored_always_allow` |
 | 스키마 V4 이관은 채팅 행을 보존하고 항상 허용 표를 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v3_file_migrates_to_permission_allows_keeping_chats` |
 | 어댑터가 올린 종류가 `permission.<종류>` 규칙의 대상이 되고, 규칙이 없으면 `full`은 허용, 그 밖의 모드는 묻는다. | 구현 전(#412). 가짜 어댑터가 올린 새 종류에 규칙을 걸어 판정을 확인한다. |
-| 모드가 `full`이면 제약 등록과 예외 종류를 묻지 않고 `확인 없이` 줄을 남긴다. | 구현 전(#379). 모드 `full`과 다른 모드에서 같은 입력을 주어 확인 창 유무와 줄을 비교한다([제약](constraints.md#요구사항)). |
+| 모드가 `full`이면 제약 등록과 예외 종류를 묻지 않고 `확인 없이` 줄을 남긴다. | 등록은 `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_in_full_mode_registers_in_the_ask_band_without_asking_and_marks_it`와 같은 입력의 다른 모드 `constraint_in_the_ask_band_is_stored_as_candidate_and_asked`를 비교한다([제약](constraints.md#요구사항)). 예외 종류는 구현 전(#379) |
 
 ## 단점
 

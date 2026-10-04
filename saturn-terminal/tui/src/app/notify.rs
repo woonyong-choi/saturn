@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{
-    ChatId, InputId, JudgmentId, LedgerSeq, SettingsRevision, TaskId, TaskLabel,
+    ChatId, ConstraintAskId, InputId, JudgmentId, LedgerSeq, SettingsRevision, TaskId, TaskLabel,
 };
 use saturn_protocol::rpc::{Alert, ChatNotice, ExitPlan, Notification, Request, SettingsWarning};
 use saturn_protocol::state::{Disposition, InputState, QueueReason};
@@ -18,6 +18,7 @@ use crate::keymap::Keymap;
 use crate::state::{
     Change, ChatState, ContextSize, FeedbackPrompt, InputUpdate, TaskUpdate, TrainingProgress,
 };
+use crate::view::constraint_ask::ConstraintAsk;
 use crate::view::exit_confirm::ExitConfirm;
 use crate::view::folder_trust::{FolderTrust, TrustChoice};
 use crate::view::live_area::LiveArea;
@@ -275,6 +276,11 @@ impl App {
             Notification::ChatNotice { chat, task, notice } => {
                 self.on_chat_notice(chat, task, notice);
             }
+            Notification::ConstraintAsked { ask, rule, .. } => {
+                self.constraint_asks.push(ConstraintAsk::new(ask, rule));
+                self.show_next_constraint_ask();
+            }
+            Notification::ConstraintAskResolved { ask } => self.on_constraint_ask_resolved(ask),
             Notification::FeedbackQuestion {
                 judgment,
                 input,
@@ -495,6 +501,17 @@ impl App {
             }
             notice => self.push_cell(TranscriptCell::Notice { label, notice }),
         }
+    }
+
+    /// 다른 TUI가 먼저 답했거나 대상이 바뀌어 닫힌 확인은 창에서 지우고 다음 확인을 띄운다.
+    fn on_constraint_ask_resolved(&mut self, ask: ConstraintAskId) {
+        self.constraint_asks.remove(ask);
+        let is_shown =
+            matches!(&self.window, Some(Window::ConstraintAsk(shown)) if shown.ask == ask);
+        if is_shown {
+            self.window = None;
+        }
+        self.show_next_constraint_ask();
     }
 
     fn on_feedback_question(

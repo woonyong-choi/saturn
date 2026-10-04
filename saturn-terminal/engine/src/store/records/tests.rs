@@ -443,7 +443,7 @@ async fn old_provider_values_read_as_open_ids() {
     assert_eq!(mains[0].0.provider, crate::providers::test_support::CLAUDE);
     let provider = history.iter().find_map(|entry| match entry {
         HistoryEntry::Run { provider, .. } => Some(*provider),
-        HistoryEntry::Input { .. } => None,
+        HistoryEntry::Input { .. } | HistoryEntry::Constraint { .. } => None,
     });
     assert_eq!(provider, Some(crate::providers::test_support::CODEX));
     let stored: String = sqlx::query_scalar("SELECT provider FROM runs")

@@ -406,6 +406,7 @@ impl Engine {
             self.store
                 .set_input_state(input, InputState::Cancelled, None)
                 .await?;
+            self.release_canceled_input(input).await;
             self.notify_input(input).await;
         }
         if let Some(held) = self.release_held(task).await {

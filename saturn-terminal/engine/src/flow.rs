@@ -6,8 +6,8 @@ use std::time::Instant;
 
 use saturn_core::routers::RouterRequest;
 use saturn_protocol::ids::{
-    AgentId, ChatId, ChatRevision, InputId, JudgmentId, Provider, ProviderSessionId, RunId,
-    SessionId, SettingsRevision, SubagentId, TaskId, TaskLabel,
+    AgentId, ChatId, ChatRevision, ConstraintAskId, InputId, JudgmentId, Provider,
+    ProviderSessionId, RunId, SessionId, SettingsRevision, SubagentId, TaskId, TaskLabel,
 };
 use saturn_protocol::rpc::{Alert, CommandInfo, ModelInfo, Notification};
 use saturn_protocol::state::{Disposition, TaskState};
@@ -15,6 +15,7 @@ use tokio::sync::mpsc;
 
 use crate::Engine;
 use crate::calls::PendingCall;
+use crate::constraints::{ConstraintPlan, PendingLines};
 use crate::delivery::Parked;
 use crate::events::PendingPermission;
 use crate::inputs::PendingInput;
@@ -44,6 +45,8 @@ pub(crate) struct Routed {
 pub(crate) struct Unrecorded {
     pub(crate) context: RecordContext,
     pub(crate) exchange: RouterExchange,
+    /// 이 판단이 정한 제약 등록. 판단 기록을 쓴 뒤 적용한다.
+    pub(crate) constraint: Option<ConstraintPlan>,
 }
 
 /// 작업 글자. `A`부터 쓰고 끝난 작업의 글자는 비어 있는 가장 앞 글자로 다시 쓴다.
@@ -85,12 +88,14 @@ impl TaskBook {
 
 /// 돌고 있는 router 호출 하나(접수한 입력의 처리 방식 판단). 요청을 만들 때의 채팅 revision을 들고 있어 결과를
 /// 적용할 때 비교한다. `retried`는 revision이 어긋나 다시 묻는 호출이면 참이다.
+/// `lines`가 참이면 긴 입력의 문장 나누기 질문이라 입력 처리 판단이 아니다.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct RouterJob {
     pub(crate) chat: ChatId,
     pub(crate) input: InputId,
     pub(crate) revision: ChatRevision,
     pub(crate) retried: bool,
+    pub(crate) lines: bool,
 }
 
 /// 별도 작업이 engine 루프로 돌려주는 호출 결과.
@@ -117,6 +122,10 @@ pub(crate) struct FlowState {
     /// 채팅의 가장 나중 판단이 정한 처리 방식. 다음 판단의 state에 넣는다.
     pub(crate) last_disposition: HashMap<ChatId, Disposition>,
     pub(crate) unrecorded: HashMap<InputId, Unrecorded>,
+    /// 문장 나누기 답을 기다리는 제약 등록.
+    pub(crate) pending_lines: HashMap<InputId, PendingLines>,
+    /// 등록 확인을 만든 판단에서 router가 등록 쪽을 더 높게 봤는지. 답이 router와 다른지 가리는 데 쓴다.
+    pub(crate) ask_leaned_yes: HashMap<ConstraintAskId, bool>,
     /// 판단을 적용한 뒤 아직 보내기 판정을 거치지 않은 입력. 대기 사유가 정해진 뒤 한 번 알린다.
     pub(crate) applied: Vec<InputId>,
     /// 적용한 판단의 채팅과 `resume_held`. 판단이 없으면 `None`. `on_routed`가 접수 순서대로 보류 작업에 반영한다.
@@ -237,6 +246,8 @@ impl Default for FlowState {
             router_rx,
             last_disposition: HashMap::new(),
             unrecorded: HashMap::new(),
+            pending_lines: HashMap::new(),
+            ask_leaned_yes: HashMap::new(),
             applied: Vec::new(),
             resume_signals: Vec::new(),
             tasks: TaskBook::default(),

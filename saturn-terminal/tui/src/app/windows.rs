@@ -10,6 +10,7 @@ use super::{App, Effect, Window};
 use crate::i18n;
 use crate::keys::Action;
 use crate::state::ChatState;
+use crate::view::constraint_ask::ConstraintAskQueue;
 use crate::view::exit_confirm::ExitChoice;
 use crate::view::folder_trust::TrustChoice;
 use crate::view::input_request::InputQueue;
@@ -326,6 +327,7 @@ impl App {
         self.live = LiveArea::new();
         self.popup = None;
         self.permissions = PermissionQueue::new();
+        self.constraint_asks = ConstraintAskQueue::default();
         self.inputs = InputQueue::new();
         self.window = None;
         self.start = None;
@@ -409,6 +411,51 @@ impl App {
 }
 
 impl App {
+    /// `Esc`와 `Ctrl+C`는 답을 미룬다. 확인은 engine에 남고 이 TUI는 다음 확인을 띄운다.
+    pub(super) fn on_constraint_ask_action(&mut self, action: Action) -> Vec<Effect> {
+        let Some(Window::ConstraintAsk(ask)) = &mut self.window else {
+            return Vec::new();
+        };
+        let answered = match action {
+            Action::Up => {
+                ask.up();
+                return Vec::new();
+            }
+            Action::Down => {
+                ask.down();
+                return Vec::new();
+            }
+            Action::Confirm => Some(ask.selected.answer()),
+            Action::Close => None,
+            _ => return Vec::new(),
+        };
+        let id = ask.ask;
+        self.window = None;
+        let mut effects = Vec::new();
+        match answered {
+            Some(answer) => {
+                self.constraint_asks.remove(id);
+                effects.push(Effect::Send(Request::AnswerConstraintAsk {
+                    ask: id,
+                    answer,
+                }));
+            }
+            None => self.constraint_asks.defer(id),
+        }
+        self.show_next_constraint_ask();
+        effects
+    }
+
+    /// 지금 띄울 확인이 있고 확인 창이 떠 있지 않으면 띄운다.
+    pub(super) fn show_next_constraint_ask(&mut self) {
+        if matches!(self.window, Some(Window::ConstraintAsk(_))) {
+            return;
+        }
+        if let Some(ask) = self.constraint_asks.next() {
+            self.open_window(Window::ConstraintAsk(ask));
+        }
+    }
+
     /// `Esc`와 `Ctrl+C`는 작업을 멈추지 않는 `대기`와 같다. 답은 engine이 입력 상태로 알려 창을 지운다.
     pub(super) fn on_stop_confirm_action(&mut self, action: Action) -> Vec<Effect> {
         let Some(Window::StopConfirm(confirm)) = &mut self.window else {

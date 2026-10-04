@@ -10,7 +10,7 @@ use saturn_protocol::state::TaskState;
 use crate::rpc::ClientId;
 use crate::secrets::{KeyInput, Masker};
 use crate::settings::{Applied, FolderTrustPrompt};
-use crate::store::{HistoryEntry, RunEnd};
+use crate::store::{EventKind, EventReason, HistoryEntry, RunEnd};
 use crate::{AutoPruneNotice, Engine, EngineError, RouterGate, masked_chain};
 
 /// 초안. `LoadHistory` 한 번에 보내는 최대 기록 수.
@@ -94,6 +94,20 @@ impl Engine {
                 disposition: None,
                 reason,
             }],
+            HistoryEntry::Constraint { kind, reason, rule } => {
+                let notice = match kind {
+                    EventKind::Added => ChatNotice::ConstraintAdded {
+                        rule,
+                        unconfirmed: reason == Some(EventReason::Unconfirmed),
+                    },
+                    EventKind::Released => ChatNotice::ConstraintReleased { rule },
+                };
+                vec![Notification::ChatNotice {
+                    chat,
+                    task: None,
+                    notice,
+                }]
+            }
             HistoryEntry::Run {
                 task,
                 provider,

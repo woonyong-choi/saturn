@@ -2,6 +2,7 @@
 //! 설계: docs/architecture.md
 
 pub mod agents;
+pub mod constraints;
 pub mod permission;
 pub mod providers;
 pub mod queue;

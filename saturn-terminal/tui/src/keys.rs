@@ -28,6 +28,8 @@ pub(crate) enum KeyArea {
     ResumePrompt,
     ExitConfirm,
     StopConfirm,
+    /// 제약 등록 확인 창.
+    ConstraintAsk,
     Permission,
     /// 입력 요청 창. 글자는 칸 입력이다.
     Input,

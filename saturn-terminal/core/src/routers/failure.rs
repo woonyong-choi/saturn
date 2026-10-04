@@ -101,7 +101,7 @@ pub fn route_after_failure(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::routers::questions_for_input;
+    use crate::routers::{ConstraintQuestion, questions_for_input};
     use crate::sessions::ranking::order_after_router;
 
     use saturn_protocol::ids::LedgerSeq;
@@ -113,7 +113,13 @@ mod tests {
         RouterRequest {
             model: "router".into(),
             state: "state".into(),
-            sets: questions_for_input(running, false, false, &["model-a".to_string()]),
+            sets: questions_for_input(
+                running,
+                false,
+                false,
+                &["model-a".to_string()],
+                ConstraintQuestion::Without,
+            ),
         }
     }
 

@@ -78,7 +78,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - `constraint_asks` 표는 사용자에게 묻는 중이거나 끝난 확인이다. `ask_id`, `chat_id`, 종류 `kind`(`Register`, `ExceptionKind`), 대상 `constraint_id`, `judgment_id`, 물은 시각 `asked_at`, 답 `answer`(NULL은 대기, `Yes`, `No`, 예외 종류 답 `Keep`, `Once`, `Permanent`, 대상이 바뀌어 닫은 `Void`), 답한 시각 `answered_at`을 둔다. `answer`가 NULL인 행은 engine을 다시 켜면 TUI에 되살린다.
 - `constraint_exceptions` 표는 제약에 걸린 예외다. `exception_id`, `chat_id`, `constraint_id`, 종류 `kind`(`Once`, `Scoped`), 건 이벤트 `event_id`, 이번 작업 예외의 작업 `task_id`(아니면 NULL), 조건 문장 `condition`(`Scoped`만, 입력 원문의 연속된 글), 닫은 이벤트 `ended_event_id`(NULL이면 유효)를 둔다. 한 제약에 열린 예외는 하나다.
 - `packet_constraints` 표는 전환마다 패킷에 넣은 제약을 새 session `session_id`, `constraint_id`, 단계 `tier`(`All`, `Scope`, `Relevance`, `Omitted`)로 둔다. 같은 session의 같은 제약은 한 행이고 session을 지우면 함께 지운다. 못 넣은 제약도 `Omitted`로 남긴다.
-- 제약 표 다섯 개는 스키마 V8(초안, 머지 순서에 따라 번호가 달라질 수 있다)에서 더했다. 이관은 표만 비어 있게 더하고 이관 전 채팅의 입력을 소급해 판단하지 않는다. 이관 직전 백업은 아래 스키마 이관 규칙을 따른다.
+- 제약 표 다섯 개는 스키마 V10에서 더했다. 이관은 표만 비어 있게 더하고 이관 전 채팅의 입력을 소급해 판단하지 않는다. 이관 직전 백업은 아래 스키마 이관 규칙을 따른다.
 - 패킷과 돌아온 session의 변경분은 `events` 행을 그 이벤트를 연 실행의 session과 입력 원문, 기록 시각에 이어 읽어 만든다. 이벤트 행에 session을 따로 저장하지 않기 위해서다. `sessions.delivered`는 턴이 끝날 때와 session을 열거나 바꿀 때 저장한다.
 - session과 에이전트 번호는 `meta` 표에 마지막으로 준 번호를 두고, 기록에 있는 가장 큰 번호보다 큰 값을 한 거래로 새로 준다. 번호를 다시 쓰지 않기 위해서다.
 - 기록 저장소 파일 권한은 0600이다(초안). 입력 원문과 판단 기록이 들어 있기 때문이다.
@@ -192,10 +192,10 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 채팅 이름과 묶음은 앞뒤 공백을 지워 저장하고, 비면 지우며, 없는 채팅이나 제어 문자가 든 값은 거절하고 바꾸지 않는다. 이름은 채팅 목록에 보인다. | `saturn-terminal/engine/src/lifecycle/chat_labels.rs`의 `rename_and_group_are_saved_trimmed_and_shown_in_the_chat_list`, `blank_name_and_no_group_clear_the_labels`, `unknown_chat_and_control_characters_are_refused_without_changing_anything` |
 | 스키마 V9 이관은 채팅 행을 보존하고 provider 버전 표를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v8_file_migrates_to_provider_versions_keeping_chats`, `saturn-terminal/engine/src/store/versions.rs`의 `recorded_version_is_read_back_and_overwritten_per_provider` |
 | 스키마 V7 이관은 채팅 행을 보존하고 보류 작업 표와 끊긴 하위 에이전트 표를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v6_file_migrates_to_recovery_tables_keeping_chats_and_backing_up` |
-| 스키마 V8 이관은 채팅 행을 보존하고 제약 표 다섯 개를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | 옛 스키마 파일로 새 버전을 실행해 채팅 행, 빈 제약 표, 백업 1개를 확인한다. |
-| 제약 변경은 상태와 이벤트를 한 거래로 쓰고 이벤트는 이어 쓰기만 한다. 제약 revision은 마지막 이벤트 번호다. | 변경 뒤 `constraints`와 `constraint_events`가 함께 바뀌고 이벤트 행이 수정되지 않는지 확인한다. |
-| 묻는 중인 확인은 engine을 다시 켜도 되살아나고, 대상이 바뀌면 `Void`로 닫힌다. | 열린 확인을 둔 채 다시 시작하고, 대상을 바꾼 뒤 늦은 답을 거절하는지 확인한다. |
-| 채팅을 지우면 제약, 이벤트, 확인, 패킷 제약이 함께 지워진다. | 채팅을 지워 네 표의 행이 남지 않는지 확인한다. |
+| 스키마 V10 이관은 채팅 행을 보존하고 제약 표 다섯 개를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `constraint_v9_file_migrates_to_empty_constraint_tables_keeping_chats` |
+| 제약 변경은 상태와 이벤트를 한 거래로 쓰고 이벤트는 이어 쓰기만 한다. 제약 revision은 마지막 이벤트 번호다. | `saturn-terminal/engine/src/store/constraints.rs`의 `constraint_active_registration_writes_rows_and_events_in_one_transaction`, `constraint_revision_is_the_last_event_number_and_zero_without_events`, `constraint_registration_that_fails_midway_writes_nothing`, `constraint_candidate_gets_one_ask_and_answers_apply_to_the_whole_input` |
+| 묻는 중인 확인은 engine을 다시 켜도 되살아나고, 대상이 바뀌면 `Void`로 닫힌다. | 다시 열기는 `saturn-terminal/engine/src/store/constraints.rs`의 `constraint_open_asks_survive_reopening_the_store`, `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_ask_reaches_a_tui_that_attaches_later_and_after_a_restart`. 입력 취소로 닫고 늦은 답을 거절하는 것은 같은 파일의 `constraint_ask_is_closed_when_its_input_is_canceled`. 해제와 예외로 대상이 바뀌는 경우는 구현 전(#379) |
+| 채팅을 지우면 제약, 이벤트, 확인, 패킷 제약이 함께 지워진다. | 제약, 이벤트, 확인은 `saturn-terminal/engine/src/store/constraints.rs`의 `constraint_rows_are_removed_only_with_their_chat`. 패킷 제약은 구현 전(#380) |
 | 보류 작업은 작업 번호 순서로 읽히고 같은 작업은 덮어쓰며 채팅을 지우면 함께 지워진다. 끊긴 하위 에이전트는 정리를 넘겼다는 표시를 유지하며 에이전트가 끝나면 지워진다. | `saturn-terminal/engine/src/store/recovery.rs`의 `held_task_is_saved_replaced_and_deleted`, `interrupted_subagents_keep_cleaned_flag_until_the_agent_ends`, `recovery_rows_follow_the_chat_when_it_is_deleted` |
 | 더한 폴더는 채팅마다 더한 순서대로 읽히고 같은 경로는 한 번만 저장되며 채팅을 지우면 함께 지워진다. | `saturn-terminal/engine/src/store/chat_dirs.rs`의 `add_dir_is_kept_per_chat_in_added_order_without_duplicates`, `add_dir_for_a_missing_chat_is_refused`, `add_dir_rows_follow_the_chat_when_it_is_deleted` |
 | 항상 허용은 작업 폴더마다 저장 순서대로 읽히고 같은 행은 한 번만 저장된다. | `saturn-terminal/engine/src/store/permissions.rs`의 `allows_are_kept_per_workdir_in_saved_order`, `saving_the_same_allow_twice_keeps_one_row` |

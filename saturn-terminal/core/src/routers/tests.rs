@@ -11,7 +11,13 @@ fn request(running: bool, has_held: bool) -> RouterRequest {
     RouterRequest {
         model: "router".into(),
         state: "state".into(),
-        sets: questions_for_input(running, false, has_held, &models()),
+        sets: questions_for_input(
+            running,
+            false,
+            has_held,
+            &models(),
+            ConstraintQuestion::Without,
+        ),
     }
 }
 
@@ -103,11 +109,13 @@ fn default_thresholds_match_design_table() {
     assert_eq!(thresholds.injection, 0.7);
     assert_eq!(thresholds.progressing, 0.2);
     assert_eq!(thresholds.feedback_cause, 0.7);
+    assert_eq!(thresholds.is_constraint, 0.8);
+    assert_eq!(thresholds.constraint_ask, 0.7);
 }
 
 #[test]
 fn questions_for_input_idle_asks_route_only() {
-    let sets = questions_for_input(false, false, false, &models());
+    let sets = questions_for_input(false, false, false, &models(), ConstraintQuestion::Without);
 
     assert_eq!(
         ids(&sets),
@@ -121,7 +129,7 @@ fn questions_for_input_idle_asks_route_only() {
 // basis: estimate
 #[test]
 fn questions_for_input_running_adds_relation_and_send_opt() {
-    let sets = questions_for_input(true, false, true, &models());
+    let sets = questions_for_input(true, false, true, &models(), ConstraintQuestion::Without);
 
     let names: Vec<&str> = sets.iter().map(|(set, _)| set.name.as_str()).collect();
     assert_eq!(names, vec!["route", "relation", "send-opt"]);
@@ -130,7 +138,7 @@ fn questions_for_input_running_adds_relation_and_send_opt() {
 
 #[test]
 fn questions_for_input_pinned_model_skips_target_model() {
-    let sets = questions_for_input(false, true, false, &models());
+    let sets = questions_for_input(false, true, false, &models(), ConstraintQuestion::Without);
 
     assert!(!asks(&sets, "target_model"));
 }
@@ -140,7 +148,7 @@ fn questions_for_input_pinned_model_skips_target_model() {
 // basis: estimate
 #[test]
 fn questions_for_input_choice_has_other_option() {
-    let sets = questions_for_input(true, false, false, &models());
+    let sets = questions_for_input(true, false, false, &models(), ConstraintQuestion::Without);
 
     let has_other =
         sets.iter()
@@ -482,4 +490,114 @@ fn compact_verdicts_takes_larger_of_call_and_result() {
 #[test]
 fn compact_verdicts_no_responses_is_empty() {
     assert!(compact_verdicts(&[LedgerSeq(1)], &[]).is_empty());
+}
+
+fn constraint_request() -> RouterRequest {
+    RouterRequest {
+        model: "router".into(),
+        state: "state".into(),
+        sets: questions_for_input(false, false, false, &models(), ConstraintQuestion::With),
+    }
+}
+
+fn constraint_response(yes: f64) -> RouterResponse {
+    response(vec![
+        ("keep_current", Answer::Noul(0.9)),
+        ("is_actionable", Answer::Noul(0.9)),
+        ("target_model", Answer::Choice(vec![1.0, 0.0, 0.0])),
+        ("is_constraint", Answer::Noul(yes)),
+    ])
+}
+
+fn registration(yes: f64, method: Method) -> constraint::RegistrationAction {
+    constraint::read_registration(
+        &constraint_request(),
+        &constraint_response(yes),
+        &Thresholds::default(),
+        method,
+    )
+    .action
+}
+
+#[test]
+fn questions_with_constraint_use_route_1_1_and_ask_is_constraint() {
+    let sets = questions_for_input(false, false, false, &models(), ConstraintQuestion::With);
+
+    assert!(asks(&sets, "is_constraint"));
+    assert_eq!((sets[0].0.major, sets[0].0.minor), (1, 1));
+    assert!(validate(&constraint_request(), &constraint_response(0.9)).is_ok());
+}
+
+#[test]
+fn registration_follows_the_three_bands() {
+    use constraint::RegistrationAction::{Ask, Auto, Skip};
+
+    assert_eq!(registration(0.85, Method::Jev), Auto);
+    assert_eq!(registration(0.8, Method::Jev), Auto);
+    assert_eq!(registration(0.75, Method::Jev), Ask);
+    assert_eq!(registration(0.7, Method::Jev), Ask);
+    assert_eq!(registration(0.65, Method::Jev), Skip);
+}
+
+#[test]
+fn saturn_method_treats_a_low_confidence_answer_as_ask() {
+    use constraint::RegistrationAction::{Ask, Skip};
+
+    assert_eq!(registration(0.5, Method::Saturn), Ask);
+    assert_eq!(registration(0.5, Method::Jev), Skip);
+}
+
+#[test]
+fn registration_without_an_answer_is_skipped_and_noted_as_fallback() {
+    let request = constraint_request();
+    let empty = response(Vec::new());
+
+    let verdict =
+        constraint::read_registration(&request, &empty, &Thresholds::default(), Method::Jev);
+    let decision = decide(&request, &empty, Method::Jev);
+
+    assert_eq!(verdict.action, constraint::RegistrationAction::Skip);
+    assert_eq!(verdict.probability, None);
+    assert!(decision.fallbacks.iter().any(|id| id == "is_constraint"));
+}
+
+#[test]
+fn registration_ignores_a_question_that_was_not_asked() {
+    let verdict = constraint::read_registration(
+        &request(false, false),
+        &constraint_response(0.95),
+        &Thresholds::default(),
+        Method::Jev,
+    );
+
+    assert_eq!(verdict.action, constraint::RegistrationAction::Skip);
+}
+
+#[test]
+fn line_answers_pick_sentences_at_or_above_the_ask_threshold() {
+    let answers = response(vec![
+        ("line_1_is_constraint", Answer::Noul(0.9)),
+        ("line_2_is_constraint", Answer::Noul(0.3)),
+        ("line_3_is_constraint", Answer::Noul(0.7)),
+    ]);
+
+    let picked = constraint::read_lines(&answers, 3, &Thresholds::default());
+
+    assert_eq!(picked, Some(vec![1, 3]));
+    let (set, questions) = constraint::line_questions(3);
+    assert_eq!(
+        (set.name.as_str(), set.major, set.minor),
+        ("constraint", 1, 0)
+    );
+    assert_eq!(questions.len(), 3);
+}
+
+#[test]
+fn a_missing_line_answer_fails_the_whole_line_question() {
+    let answers = response(vec![("line_1_is_constraint", Answer::Noul(0.9))]);
+
+    assert_eq!(
+        constraint::read_lines(&answers, 2, &Thresholds::default()),
+        None
+    );
 }

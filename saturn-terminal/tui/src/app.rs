@@ -27,6 +27,7 @@ use crate::shell::{self, ShellOutput};
 use crate::state::ChatState;
 use crate::terminal::{self, Screen};
 use crate::view::composer::Composer;
+use crate::view::constraint_ask::{ConstraintAsk, ConstraintAskQueue};
 use crate::view::exit_confirm::ExitConfirm;
 use crate::view::folder_trust::FolderTrust;
 use crate::view::full_transcript::FullTranscript;
@@ -88,6 +89,7 @@ pub(crate) enum Window {
     RouterVersion(RouterVersionScreen),
     TrainConfirm(TrainConfirm),
     StopConfirm(StopConfirm),
+    ConstraintAsk(ConstraintAsk),
     Model(ModelPicker),
     Prune(PruneWindow),
     Shortcuts,
@@ -125,6 +127,8 @@ pub(crate) struct App {
     pub popup: Option<Popup>,
     pub popup_suppress: PopupSuppress,
     pub permissions: PermissionQueue,
+    /// 답을 기다리는 제약 등록 확인. 도착 순서대로 한 번에 하나씩 창으로 띄운다.
+    pub constraint_asks: ConstraintAskQueue,
     pub inputs: InputQueue,
     pub window: Option<Window>,
     /// 닫기 전 계속할지 멈출지 묻는 창. 다른 창 위에 덮는다.
@@ -190,6 +194,7 @@ impl App {
             popup: None,
             popup_suppress: PopupSuppress::default(),
             permissions: PermissionQueue::new(),
+            constraint_asks: ConstraintAskQueue::default(),
             inputs: InputQueue::new(),
             window: None,
             exit_confirm: None,
@@ -287,6 +292,7 @@ impl App {
             Some(Window::RouterVersion(_)) => return KeyArea::RouterVersion,
             Some(Window::TrainConfirm(_)) => return KeyArea::TrainConfirm,
             Some(Window::StopConfirm(_)) => return KeyArea::StopConfirm,
+            Some(Window::ConstraintAsk(_)) => return KeyArea::ConstraintAsk,
             Some(Window::Model(_)) => return KeyArea::ModelPicker,
             Some(Window::Prune(_)) => return KeyArea::PruneWindow,
             _ => {}
@@ -518,6 +524,7 @@ impl App {
             }
             KeyArea::TrainConfirm => self.on_train_action(action),
             KeyArea::StopConfirm => self.on_stop_confirm_action(action),
+            KeyArea::ConstraintAsk => self.on_constraint_ask_action(action),
             KeyArea::ModelPicker => self.on_model_action(action),
             KeyArea::PruneWindow => self.on_prune_action(action),
             KeyArea::Transcript => self.on_feedback_action(action),

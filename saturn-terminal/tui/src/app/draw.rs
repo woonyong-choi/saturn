@@ -10,6 +10,7 @@ use ratatui::text::Line;
 use super::{App, Window};
 use crate::i18n;
 use crate::view::composer::ComposerView;
+use crate::view::constraint_ask::ConstraintAskView;
 use crate::view::exit_confirm::ExitConfirmView;
 use crate::view::folder_trust::FolderTrustView;
 use crate::view::footer::FooterView;
@@ -124,6 +125,12 @@ impl App {
             Some(Window::StopConfirm(confirm)) => {
                 StopConfirmView { confirm, lang }.render(frame, area);
             }
+            Some(Window::ConstraintAsk(ask)) => ConstraintAskView {
+                ask,
+                waiting: self.constraint_asks.waiting_besides(ask.ask),
+                lang,
+            }
+            .render(frame, area),
             Some(Window::Model(picker)) => ModelPickerView { picker, lang }.render(frame, area),
             Some(Window::Prune(window)) => PruneWindowView { window, lang }.render(frame, area),
             Some(Window::Shortcuts) => render_shortcuts(self, frame, area),
