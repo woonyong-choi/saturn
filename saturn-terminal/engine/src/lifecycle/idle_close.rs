@@ -8,9 +8,7 @@ use saturn_protocol::ids::{AgentId, LedgerSeq, SessionId};
 use saturn_protocol::state::SessionState;
 
 use super::crash_recovery::Restarted;
-use super::support::{
-    Flow, context_size, idle_reply, permission, subagent_started, text, turn_completed,
-};
+use super::support::{Flow, context_size, idle_reply, subagent_started, text, turn_completed};
 use crate::providers::test_support::Call;
 use crate::sessions::SendRequest;
 
@@ -124,7 +122,7 @@ async fn a_new_turn_during_the_grace_cancels_the_clock() {
 }
 
 #[tokio::test]
-async fn a_running_subagent_or_a_pending_permission_keeps_the_session() {
+async fn a_running_subagent_keeps_the_session() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     let (agent, session, since) = finished_turn(&mut flow).await;
     let far = since + flow.engine.idle_grace * 2;
@@ -133,16 +131,71 @@ async fn a_running_subagent_or_a_pending_permission_keeps_the_session() {
         .await;
     flow.engine.check_idle(far).await;
     assert_eq!(state_of(&flow, session), SessionState::Open);
+}
 
-    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+// #463: 유휴 시계와 트리 유휴는 그대로 두고 대기 중인 허가 요청 guard만으로 닫기가 막히는지 본다. 턴이 끝난 뒤의 허가
+// 요청은 engine이 올리지 않으므로 대기 목록에 직접 넣고, guard를 거두면 닫히는 것까지 확인한다.
+#[tokio::test]
+async fn a_pending_permission_alone_keeps_an_idle_session_open() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
     let (agent, session, since) = finished_turn(&mut flow).await;
-    flow.submit("now run the tests").await;
-    flow.claude_event(permission(agent, "req-1")).await;
-    flow.engine
-        .check_idle(since + flow.engine.idle_grace * 2)
-        .await;
+    let chat = flow.chat;
+    let task = flow.engine.runs.task_of.get(&agent).copied();
+    let task = task.unwrap_or(saturn_protocol::ids::TaskId(1));
+    flow.engine.flow.permissions.insert(
+        "perm-1".to_owned(),
+        crate::events::PendingPermission {
+            chat,
+            agent,
+            provider: crate::providers::test_support::CLAUDE,
+            task,
+            provider_request: "req-1".to_owned(),
+            call: None,
+        },
+    );
+    assert_eq!(
+        flow.engine.sessions.get(session).unwrap().idle_since,
+        Some(since)
+    );
+    assert!(flow.engine.agents.is_tree_idle(agent));
+    let far = since + flow.engine.idle_grace * 2;
+
+    flow.engine.check_idle(far).await;
+
     assert_eq!(state_of(&flow, session), SessionState::Open);
     assert_eq!(closes(&flow), 0);
+
+    flow.engine.flow.permissions.clear();
+    flow.engine.check_idle(far).await;
+
+    assert_eq!(state_of(&flow, session), SessionState::ClosedResumable);
+}
+
+#[tokio::test]
+async fn a_failed_archive_write_keeps_the_session_open_and_the_next_check_closes_it() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    let (agent, session, since) = finished_turn(&mut flow).await;
+    let grace = flow.engine.idle_grace;
+    flow.engine.store.deny_writes().await;
+
+    flow.engine.check_idle(since + grace).await;
+
+    assert_eq!(state_of(&flow, session), SessionState::Open);
+    assert_eq!(
+        flow.engine.sessions.get(session).unwrap().idle_since,
+        Some(since)
+    );
+    assert!(flow.engine.flow.live.contains_key(&agent));
+    assert_eq!(closes(&flow), 0);
+
+    flow.engine.store.allow_writes().await;
+    flow.engine.check_idle(since + grace).await;
+
+    assert_eq!(state_of(&flow, session), SessionState::ClosedResumable);
+    assert!(!flow.engine.flow.live.contains_key(&agent));
+    assert_eq!(closes_after_settling(&flow).await, 1);
+    let stored = flow.engine.store.live_mains().await.unwrap();
+    assert_eq!(stored[0].0.state, SessionState::ClosedResumable);
 }
 
 #[tokio::test]

@@ -235,6 +235,22 @@ impl SessionManager {
         }
     }
 
+    /// 닫기를 저장하지 못해 `ClosedResumable`로 바꾼 session을 `Open`과 그 유휴 시각(`idle_since`)으로 되돌린다.
+    /// 시계를 되돌리므로 다음 유휴 검사가 이 session을 다시 고른다.
+    ///
+    /// # Errors
+    /// 없는 session이면 `NotFound`, 되돌릴 수 없는 상태면 `InvalidTransition`, 다른 열린 메인이 있으면 `MainAlreadyOpen`.
+    pub fn undo_idle_close(
+        &mut self,
+        session: SessionId,
+        idle_since: Option<Instant>,
+    ) -> Result<(), SessionError> {
+        self.set_state(session, SessionState::Open)?;
+        let index = self.index_of(session)?;
+        self.sessions[index].idle_since = idle_since;
+        Ok(())
+    }
+
     // cost: time O(s), heap O(k), stack O(1)
     // vars: s = session 수, k = 만료된 session 수
     // basis: estimate

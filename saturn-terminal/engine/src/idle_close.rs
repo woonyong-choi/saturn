@@ -42,6 +42,7 @@ impl Engine {
     }
 
     /// provider session을 닫고 `ClosedResumable`로 보관한다. provider session ID와 전달 기록 번호는 그대로 남는다.
+    /// 보관 상태를 저장하지 못하면 상태와 유휴 시계를 되돌리고 오류를 돌려주며, provider session은 닫지 않는다.
     /// 같은 연결을 쓰는 다른 session과 다른 채팅은 건드리지 않는다.
     async fn close_idle_session(&mut self, session: SessionId) -> Result<(), EngineError> {
         let record = self
@@ -51,7 +52,11 @@ impl Engine {
             .ok_or(saturn_core::sessions::SessionError::NotFound(session))?;
         self.sessions
             .set_state(session, SessionState::ClosedResumable)?;
-        self.persist_sessions(session).await?;
+        if let Err(error) = self.persist_sessions(session).await {
+            // 저장하지 못한 채 닫으면 메모리와 기록이 갈린다. 상태와 유휴 시계를 되돌려 다음 검사가 다시 닫게 한다
+            self.sessions.undo_idle_close(session, record.idle_since)?;
+            return Err(error);
+        }
         let is_live = self
             .flow
             .live

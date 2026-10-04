@@ -709,3 +709,25 @@ fn idle_expired_counts_only_idle_open_mains_past_the_grace_with_an_idle_tree() {
         .unwrap();
     assert!(manager.idle_expired(at, IDLE_GRACE, all_idle).is_empty());
 }
+
+#[test]
+fn undoing_an_idle_close_restores_the_open_state_and_the_idle_clock() {
+    let claude = Provider::from_static("claude");
+    let start = Instant::now();
+    let mut manager = manager_with(vec![record(1, claude, SessionState::Open)]);
+    manager.mark_idle(SessionId(1), start);
+    manager
+        .set_state(SessionId(1), SessionState::ClosedResumable)
+        .unwrap();
+    assert!(manager.get(SessionId(1)).unwrap().idle_since.is_none());
+
+    manager.undo_idle_close(SessionId(1), Some(start)).unwrap();
+
+    let restored = manager.get(SessionId(1)).unwrap();
+    assert_eq!(restored.state, SessionState::Open);
+    assert_eq!(restored.idle_since, Some(start));
+    assert_eq!(
+        manager.idle_expired(start + IDLE_GRACE, IDLE_GRACE, |_| true),
+        vec![SessionId(1)]
+    );
+}
