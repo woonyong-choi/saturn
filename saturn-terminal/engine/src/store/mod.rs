@@ -2,6 +2,7 @@
 //! 설계: docs/design/records.md
 
 mod chat_dirs;
+mod chat_labels;
 mod history;
 mod judgments;
 mod ledger;

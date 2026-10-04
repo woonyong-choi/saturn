@@ -131,6 +131,14 @@
           "minimum": 0,
           "type": "integer"
         },
+        "name": {
+          "default": null,
+          "description": "`RenameChat`으로 붙인 이름. 붙이지 않았으면 `None`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "preview": {
           "description": "채팅의 첫 입력 원문. 입력이 없으면 `None`.",
           "type": [

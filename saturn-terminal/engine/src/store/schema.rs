@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 7;
+pub(crate) const SCHEMA_VERSION: u32 = 8;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,7 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7];
+pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7, V8];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -212,6 +212,12 @@ CREATE TABLE interrupted_subagents (
     PRIMARY KEY (agent_id, subagent)
 );
 CREATE INDEX interrupted_subagents_chat ON interrupted_subagents(chat_id);
+"#;
+
+/// `chats.name`은 사용자가 붙인 채팅 이름, `chats.group_name`은 작업 목록의 묶음 이름이다. 비어 있으면 NULL이고 이관 전 채팅도 NULL이다.
+const V8: &str = r#"
+ALTER TABLE chats ADD COLUMN name TEXT;
+ALTER TABLE chats ADD COLUMN group_name TEXT;
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -578,5 +584,27 @@ mod tests {
         );
         assert!(store.held_tasks().await.unwrap().is_empty());
         assert!(store.interrupted_subagents().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v7_file_migrates_to_chat_name_and_group_keeping_chats() {
+        let (dir, store) = temp_store_at(7).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (7, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        let chat = saturn_protocol::ids::ChatId(1);
+        assert_eq!(
+            store.chat_workdir(chat).await.unwrap(),
+            PathBuf::from("/work")
+        );
+        assert_eq!(store.chat_labels(chat).await.unwrap(), (None, None));
     }
 }

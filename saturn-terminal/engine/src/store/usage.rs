@@ -69,7 +69,7 @@ impl Store {
         workdir: Option<&str>,
     ) -> Result<Vec<ChatListItem>, StoreError> {
         let rows = sqlx::query(&format!(
-            "SELECT id, workdir, {LAST_ACTIVE} AS last_active, \
+            "SELECT id, workdir, name, {LAST_ACTIVE} AS last_active, \
              (SELECT text FROM inputs WHERE chat_id = chats.id ORDER BY id LIMIT 1) AS preview \
              FROM chats WHERE (?1 IS NULL OR workdir = ?1) ORDER BY last_active DESC, id DESC"
         ))
@@ -81,6 +81,7 @@ impl Store {
                 Ok(ChatListItem {
                     chat: ChatId(from_sql_int(row.try_get("id")?)),
                     folder: row.try_get("workdir")?,
+                    name: row.try_get("name")?,
                     last_active_ms: from_sql_int(row.try_get("last_active")?),
                     preview: row.try_get("preview")?,
                 })

@@ -64,6 +64,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - `sessions` 표의 `model`은 session을 열 때 고른 모델이다. 고르지 않았거나 이관 전 행은 NULL이고, 입력의 모델과 다르면 새 메인 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기)). 스키마 V6에서 더했다.
 - `chats` 표의 `pinned_model`은 `/model`로 고른 채팅의 고정 모델(`<provider>/<model>`)이다. 고르지 않았으면 NULL이고 입력 접수 때 읽어 `inputs.pinned_model`에 남긴다. 고정하지 않은 입력은 새 작업으로 판단되어 router가 고른 모델(`<provider>/<model>`)을 판단을 적용할 때 같은 열에 쓴다. 스키마 V6에서 더했다.
 - `chat_dirs` 표는 채팅에 더한 폴더를 채팅 `chat_id`, 링크를 푼 절대 경로 `path`, 더한 시각 `added_at`(unix 밀리초)으로 둔다. 같은 채팅의 같은 경로는 한 행이고 행 번호 순서가 더한 순서다. 채팅을 지우면 함께 지운다. 스키마 V5에서 더했다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)).
+- `chats` 표의 `name`은 사용자가 붙인 채팅 이름, `group_name`은 작업 목록의 묶음 이름이다. 붙이지 않았으면 NULL이고 이관 전 채팅도 NULL이다. 앞뒤 공백을 지우고 비면 NULL로 저장하며, 줄바꿈 같은 제어 문자가 들어 있으면 저장하지 않고 요청을 거절한다(초안). 채팅을 지우면 함께 지운다. 스키마 V8에서 더했다.
 - `held_tasks` 표는 멈출 때 실행 중이던 보류 작업을 작업 번호 `task_id`(첫 입력 번호라 engine을 다시 켜도 같다), 채팅 `chat_id`, 에이전트 `agent_id`, 멈출 때 진행 중이던 실행을 연 입력 `input_id`로 둔다. 멈춤이나 크래시 복구가 보류할 때 쓰고, 재개하거나 닫으면 지운다. 채팅이나 입력을 지우면 함께 지운다. 입력과 에이전트가 없는 보류(보내기 전에 멈춘 입력)는 이 표에 남기지 않고 입력 행의 상태 `Held`로만 남긴다. 멈춤이 보류한 입력은 그때 `inputs.state`에 `Held`로 쓰고, 다시 켠 `engine`은 끝 상태가 아닌 입력을 접수 순서로 읽어 대기열에 되살린다([입력 처리](input-handling.md#재시작-뒤-입력-복원)). 스키마 V7에서 더했다([engine 수명과 복구](engine-lifecycle.md#크래시-뒤-복구)).
 - `interrupted_subagents` 표는 크래시로 끊긴 하위 에이전트를 채팅 `chat_id`, 메인 에이전트 `agent_id`, provider의 하위 에이전트 번호 `subagent`, provider에 정리를 넘겼는지 `cleaned`로 둔다. 같은 에이전트의 같은 하위 에이전트는 한 행이다. 에이전트의 session이 끝나거나 보류를 닫으면, 채팅을 지우면 함께 지운다. 스키마 V7에서 더했다.
 - `permission_allows` 표는 항상 허용을 작업 폴더 `workdir`, 도구 `tool`, 패턴 `pattern`, 저장 시각 `created_at`(unix 밀리초)으로 둔다. 같은 `workdir`, `tool`, `pattern`은 한 행이다. 스키마 V4에서 더했고 채팅과 상관없이 작업 폴더 단위로 쓴다([권한](permissions.md#항상-허용-저장)).
@@ -174,6 +175,8 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 스키마 V3 이관은 판단 기록 행을 보존하고 결과 신호와 물은 답 칸을 NULL로 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v2_file_migrates_to_outcome_columns_keeping_judgments` |
 | 스키마 V4 이관은 채팅 행을 보존하고 항상 허용 표를 비어 있게 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v3_file_migrates_to_permission_allows_keeping_chats` |
 | 스키마 V5 이관은 채팅 행을 보존하고 더한 폴더 표를 비어 있게 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v4_file_migrates_to_chat_dirs_keeping_chats` |
+| 스키마 V8 이관은 채팅 행을 보존하고 이름과 묶음 칸을 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v7_file_migrates_to_chat_name_and_group_keeping_chats` |
+| 채팅 이름과 묶음은 앞뒤 공백을 지워 저장하고, 비면 지우며, 없는 채팅이나 제어 문자가 든 값은 거절하고 바꾸지 않는다. 이름은 채팅 목록에 보인다. | `saturn-terminal/engine/src/lifecycle/chat_labels.rs`의 `rename_and_group_are_saved_trimmed_and_shown_in_the_chat_list`, `blank_name_and_no_group_clear_the_labels`, `unknown_chat_and_control_characters_are_refused_without_changing_anything` |
 | 스키마 V7 이관은 채팅 행을 보존하고 보류 작업 표와 끊긴 하위 에이전트 표를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | `saturn-terminal/engine/src/store/schema.rs`의 `v6_file_migrates_to_recovery_tables_keeping_chats_and_backing_up` |
 | 스키마 V8 이관은 채팅 행을 보존하고 제약 표 네 개를 비어 있게 더한다. 이관 직전 백업은 하나만 남는다. | 옛 스키마 파일로 새 버전을 실행해 채팅 행, 빈 제약 표, 백업 1개를 확인한다. |
 | 제약 변경은 상태와 이벤트를 한 거래로 쓰고 이벤트는 이어 쓰기만 한다. 제약 revision은 마지막 이벤트 번호다. | 변경 뒤 `constraints`와 `constraint_events`가 함께 바뀌고 이벤트 행이 수정되지 않는지 확인한다. |
