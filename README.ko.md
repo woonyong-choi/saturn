@@ -100,11 +100,11 @@ router 키가 없으면 Router key 창이 숨김 입력으로 키를 묻습니�
 
 router는 API 키가 필요합니다. Saturn은 engine을 시작할 때 아래 방법을 순서대로 시도하고, 처음 성공한 방법에서 멈춥니다.
 
-1. 계정 이름이 `saturn-key`인 macOS 키체인 항목. Router key 창에 키를 입력하면 Saturn이 만듭니다.
-2. engine을 시작하는 셸의 `SATURN_KEY` 환경 변수.
+1. engine을 시작하는 셸의 `SATURN_KEY` 환경 변수. 설정돼 있으면 저장된 키보다 먼저 읽습니다.
+2. 저장된 키. macOS에서는 계정 이름이 `saturn-key`인 키체인 항목이고, Router key 창에 키를 입력하면 Saturn이 만듭니다. 다른 시스템에서는 Saturn 홈의 `router.key` 파일(권한 0600)입니다.
 3. `router.key.command` 설정의 명령. `~/.saturn/config.toml`의 `[router.key]` 아래에 `command = ["op", "read", "<항목>"]`처럼 정합니다. Saturn은 셸 없이 명령을 실행하고 출력의 첫 줄을 키로 읽습니다.
 
-Saturn은 명령줄 인자나 표준 입력으로는 키를 받지 않습니다. 이미 실행 중인 engine은 `SATURN_KEY`를 다시 읽지 않습니다.
+`SATURN_KEY`가 설정돼 있는데 router가 거절하면 저장된 키로 넘어가지 않고 명령, Router key 창 순서로 갑니다. Saturn은 명령줄 인자나 표준 입력으로는 키를 받지 않습니다. 이미 실행 중인 engine은 `SATURN_KEY`를 다시 읽지 않습니다.
 
 ```sh
 export SATURN_KEY=<your key>

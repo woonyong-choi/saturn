@@ -100,11 +100,11 @@ If Saturn has no router key, a Router key window asks for it with hidden input. 
 
 The router needs an API key. Saturn gets it by trying these in order when the engine starts, and stops at the first one that works.
 
-1. The macOS keychain entry with the account `saturn-key`, which Saturn creates when you enter a key in the Router key window.
-2. The `SATURN_KEY` environment variable of the shell that starts the engine.
+1. The `SATURN_KEY` environment variable of the shell that starts the engine. When it is set, Saturn reads it before the saved key.
+2. The saved key. On macOS this is the keychain entry with the account `saturn-key`, which Saturn creates when you enter a key in the Router key window. On other systems it is the file `router.key` in the Saturn home with mode 0600.
 3. The command in the `router.key.command` setting. Set it in `~/.saturn/config.toml` as `command = ["op", "read", "<item>"]` under `[router.key]`. Saturn runs the command without a shell and reads the first line of its output.
 
-Saturn never takes the key from a command-line argument or standard input. A running engine does not read `SATURN_KEY` again.
+If `SATURN_KEY` is set but the router rejects it, Saturn does not fall back to the saved key and goes on to the command, then the Router key window. Saturn never takes the key from a command-line argument or standard input. A running engine does not read `SATURN_KEY` again.
 
 ```sh
 export SATURN_KEY=<your key>
