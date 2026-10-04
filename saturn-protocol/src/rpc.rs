@@ -652,6 +652,8 @@ pub enum SettingsWarning {
     },
     /// 폴더 설정의 사용자 전용 키를 무시했다.
     IgnoredFolderKeys { keys: Vec<String> },
+    /// 옛 이름으로 적힌 키를 새 이름으로 읽었다. `(옛 이름, 새 이름)`.
+    RenamedKeys { keys: Vec<(String, String)> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

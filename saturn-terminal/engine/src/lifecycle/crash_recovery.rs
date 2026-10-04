@@ -341,10 +341,10 @@ async fn resumed_or_closed_task_is_not_suggested_after_the_engine_restarts() {
     assert!(closed.engine.flow.held.is_empty());
 }
 
-// #368: `on_exit = "stop"`으로 보류한 작업도 engine이 다시 뜬 뒤 붙는 TUI에 재개를 제안한다
+// #368: `tui.on_exit = "stop"`으로 보류한 작업도 engine이 다시 뜬 뒤 붙는 TUI에 재개를 제안한다
 #[tokio::test]
 async fn task_held_by_on_exit_stop_is_suggested_after_the_engine_restarts() {
-    let mut flow = Flow::with_config("on_exit = \"stop\"\n", vec![idle_reply(0.95)]).await;
+    let mut flow = Flow::with_config("tui.on_exit = \"stop\"\n", vec![idle_reply(0.95)]).await;
     flow.submit("fix the build").await;
     let (chat, agent) = (flow.chat, flow.agent());
     flow.engine

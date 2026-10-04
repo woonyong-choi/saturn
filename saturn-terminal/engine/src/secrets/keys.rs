@@ -80,14 +80,18 @@ impl std::fmt::Debug for KeyInput {
     }
 }
 
-/// 설정에는 이것과 끝 4자리만 남긴다.
+/// 설정에는 이것과 끝 4자리만 남긴다. 쓰기는 소문자, 읽기는 옛 대문자 시작 값도 받는다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub(crate) enum KeySource {
     /// 키체인(또는 0600 파일)에 저장했다.
+    #[serde(alias = "Stored")]
     Stored,
     /// 저장하지 않는다.
+    #[serde(alias = "Env")]
     Env,
     /// 메모리에만 둔다.
+    #[serde(alias = "Command")]
     Command,
 }
 

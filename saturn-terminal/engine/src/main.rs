@@ -52,7 +52,10 @@ fn run_hook(mut args: impl Iterator<Item = String>) -> anyhow::Result<()> {
         }
     }
     let user_home = PathBuf::from(std::env::var_os("HOME").context("HOME should be set")?);
-    let saturn_home = saturn_home.unwrap_or_else(|| user_home.join(".saturn"));
+    let saturn_home = match saturn_home {
+        Some(home) => home,
+        None => default_home()?,
+    };
     let mut input = String::new();
     std::io::stdin()
         .read_to_string(&mut input)
@@ -95,8 +98,7 @@ fn parse_options(args: impl Iterator<Item = String>) -> anyhow::Result<EngineOpt
     })
 }
 
-/// TODO(#235): 경로 설정 키
+/// `--home`이 없을 때의 홈 폴더. 환경 변수 `SATURN_HOME`, 없으면 `~/.saturn`.
 fn default_home() -> anyhow::Result<PathBuf> {
-    let home = std::env::var_os("HOME").context("HOME should be set")?;
-    Ok(PathBuf::from(home).join(".saturn"))
+    saturn_protocol::home::from_env().context("SATURN_HOME or HOME should be set")
 }

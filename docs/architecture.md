@@ -103,6 +103,8 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | Codex app-server | `saturn-engine` | 채팅마다 연결 창구로 유지, session은 턴 끝 뒤 5분 유예에 정리 |
 | Claude Code | `saturn-engine` | 턴 진행 중과 턴 끝 뒤 5분 유예까지 |
 
+`~/.saturn`은 기본 위치이고 환경 변수 `SATURN_HOME`으로 바꾼다([설정](design/settings.md#설정-층)).
+
 | 경로 | 내용 | 쓰는 구성 요소 |
 |---|---|---|
 | `~/.saturn/config.toml` | 사용자 설정 | `engine` |

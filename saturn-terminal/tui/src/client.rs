@@ -10,8 +10,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
 use tokio::net::UnixStream;
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 
-/// engine `rpc::SOCKET_FILE`과 같은 값.
-const SOCKET_FILE: &str = "engine.sock";
+use saturn_protocol::home::SOCKET_FILE;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
@@ -74,12 +73,11 @@ fn collect_attach_env(lookup: impl Fn(&str) -> Option<String>) -> Vec<(String, S
 }
 
 impl EngineClient {
-    /// `~/.saturn/engine.sock`. TODO(#235): 경로 설정 키
+    /// 홈 폴더 안의 `engine.sock`. 홈 폴더는 환경 변수 `SATURN_HOME`, 없으면 `~/.saturn`.
     pub fn default_socket() -> PathBuf {
-        let home = std::env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_default();
-        home.join(".saturn").join(SOCKET_FILE)
+        saturn_protocol::home::from_env()
+            .unwrap_or_else(|| PathBuf::from(saturn_protocol::home::DEFAULT_DIR))
+            .join(SOCKET_FILE)
     }
 
     /// # Errors

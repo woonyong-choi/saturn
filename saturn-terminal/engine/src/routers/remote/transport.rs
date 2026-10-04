@@ -3,8 +3,8 @@ use std::future::Future;
 use std::pin::Pin;
 use std::time::Duration;
 
-/// 재시도 횟수와 간격은 `saturn_core::routers::failure`가 정한다.
-/// TODO(#235): 설정 키 이름과 기본값
+/// 재시도 횟수와 간격은 `saturn_core::routers::failure`의 고정 상수이고 설정 키가 없다.
+/// 응답 제한 시간도 같은 이유로 고정이다. 값은 docs/design/settings.md의 상수 표에 있다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RetryPolicy {
     /// 시도마다(첫 시도 포함) 보낸 뒤 이 시간이 지나면 `TimedOutAfterSend`.
@@ -12,7 +12,7 @@ pub(crate) struct RetryPolicy {
 }
 
 impl Default for RetryPolicy {
-    /// 초안 값.
+    /// 초안 값. 설정 키 없음.
     fn default() -> Self {
         Self {
             response_timeout: Duration::from_secs(5),

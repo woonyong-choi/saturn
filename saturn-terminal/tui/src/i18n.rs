@@ -90,6 +90,8 @@ pub const AUTO_PRUNE_FAILED: &str = "자동 정리에 실패했습니다 · 로�
 pub const SETTINGS_FALLBACK: &str = "{layer} 오류 · 이전 설정 번호 {previous}로 계속 · {detail}";
 /// `{keys}`는 쉼표로 이은 키 이름.
 pub const SETTINGS_IGNORED: &str = "폴더 설정의 무시한 항목 · {keys}";
+/// `{keys}`는 `옛 이름 → 새 이름`을 쉼표로 이은 목록.
+pub const SETTINGS_RENAMED: &str = "옛 설정 이름을 새 이름으로 읽음 · {keys}";
 /// `{line}`은 줄 번호, `{message}`는 검사기 원문.
 pub const SETTINGS_PARSE_LINE: &str = "줄 {line}: {message}";
 pub const SETTINGS_LAYER_DEFAULT: &str = "기본 설정";
@@ -406,6 +408,8 @@ pub const CLI_ENGINE_UPGRADE_FAILED: &str =
 pub const CLI_LOG_PATH: &str = "(로그: {path})";
 pub const CLI_ARGS_CONFLICT: &str =
     "--continue, --resume, --add-dir은 대화 화면을 여는 인자라 하위 명령과 함께 쓸 수 없습니다";
+pub const CLI_ROUTER_VERSION_FORMAT: &str =
+    "router 버전은 `v3`처럼 v와 1 이상 정수여야 합니다: `{text}`";
 pub const CLI_RESUME_VALUE: &str = "채팅 id(숫자)나 `all`이어야 합니다: `{text}`";
 pub const CLI_CONFIG_FORMAT: &str = "KEY=VALUE 형식이어야 합니다: `{text}`";
 pub const CLI_CONFIG_EMPTY_KEY: &str = "키가 비어 있습니다: `{text}`";

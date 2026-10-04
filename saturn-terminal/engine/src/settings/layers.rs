@@ -27,13 +27,16 @@ const IRREVERSIBLE_MIN: f64 = 0.8;
 
 /// 질문별 기준값과 맥락 창 크기 외의 값은 초안이다(맥락 기준값은 #7 실측 전).
 const DEFAULT_LAYER: &str = r#"# Saturn 기본값
-on_exit = "background"
-
 [tui]
 keymap = "saturn"
+screen = "auto"
+on_exit = "background"
+
+[notify]
+on_done = false
 
 [router]
-method = "jev"
+mode = "jev"
 endpoint = "https://api.typesafe.ai"
 model = "jev-1.13.0"
 
@@ -63,7 +66,7 @@ share_with_server = false
 [context]
 safety_percent = 70
 mode = "saturn"
-packet_hard_divisor = 5
+packet_hard_percent = 20
 item_cap_percent = 30
 
 [context.select]
@@ -71,7 +74,7 @@ rrf_k = 60
 "#;
 
 #[derive(Debug, Clone, Copy)]
-enum Kind {
+pub(super) enum Kind {
     Text,
     OneOf(&'static [&'static str]),
     TextList,
@@ -91,17 +94,19 @@ enum Kind {
 }
 
 /// 이 밖의 키는 모르는 키로 검사에 실패한다.
-const SCHEMA: &[(&str, Kind)] = &[
-    ("on_exit", Kind::OneOf(&["background", "stop", "ask"])),
+pub(super) const SCHEMA: &[(&str, Kind)] = &[
     (
         "tui.keymap",
         Kind::OneOf(&saturn_protocol::keymap::PRESET_NAMES),
     ),
-    ("router.method", Kind::OneOf(&["jev", "saturn", "collect"])),
+    ("tui.screen", Kind::OneOf(&["auto", "full", "plain"])),
+    ("tui.on_exit", Kind::OneOf(&["background", "stop", "ask"])),
+    ("notify.on_done", Kind::Flag),
+    ("router.mode", Kind::OneOf(&["jev", "saturn", "collect"])),
     ("router.endpoint", Kind::Text),
     (
         "router.key.info.source",
-        Kind::OneOf(&["Stored", "Env", "Command"]),
+        Kind::OneOf(&["stored", "env", "command"]),
     ),
     ("router.key.info.last4", Kind::Text),
     ("router.key.command", Kind::TextList),
@@ -130,13 +135,13 @@ const SCHEMA: &[(&str, Kind)] = &[
     ("retention.auto_prune", Kind::Flag),
     ("context.safety_percent", Kind::Percent),
     ("context.mode", Kind::OneOf(&["saturn", "provider"])),
-    ("context.packet_hard_divisor", Kind::Positive),
+    ("context.packet_hard_percent", Kind::PercentFrom1),
     ("context.item_cap_percent", Kind::PercentFrom1),
     ("context.select.rrf_k", Kind::Whole),
 ];
 
 /// provider마다 같은 모양으로 있는 키. `provider.<id>.` 뒤의 경로와 종류다.
-const PROVIDER_SCHEMA: &[(&str, Kind)] = &[
+pub(super) const PROVIDER_SCHEMA: &[(&str, Kind)] = &[
     ("context.t_abs", Kind::Positive),
     ("context.window", Kind::Positive),
     ("context.cache_read", Kind::NonNegative),
@@ -234,7 +239,10 @@ pub(crate) enum UserOnly {
     RouterKeyRef,
     GradingModel,
     DataSharingConsent,
-    Method,
+    /// `router.mode`.
+    RouterMode,
+    /// 보존 기간과 자동 삭제. 비용과 삭제가 걸려 사용자만 정한다.
+    Retention,
 }
 
 impl UserOnly {
@@ -245,7 +253,8 @@ impl UserOnly {
             Self::RouterKeyRef => "router.key",
             Self::GradingModel => "grading.model",
             Self::DataSharingConsent => "consent",
-            Self::Method => "router.method",
+            Self::RouterMode => "router.mode",
+            Self::Retention => "retention",
         }
     }
 
@@ -263,8 +272,71 @@ pub(crate) const USER_ONLY: &[UserOnly] = &[
     UserOnly::RouterKeyRef,
     UserOnly::GradingModel,
     UserOnly::DataSharingConsent,
-    UserOnly::Method,
+    UserOnly::RouterMode,
+    UserOnly::Retention,
 ];
+
+/// 옛 이름과 새 이름. 옛 이름은 층마다 병합 전에 새 이름으로 옮기고 경고 한 줄을 남긴다.
+/// 같은 층에 새 이름이 이미 있으면 새 이름이 이긴다.
+pub(crate) const RENAMED_KEYS: &[RenamedKey] = &[
+    RenamedKey {
+        old: "on_exit",
+        new: "tui.on_exit",
+        convert: None,
+    },
+    RenamedKey {
+        old: "router.method",
+        new: "router.mode",
+        convert: None,
+    },
+    RenamedKey {
+        old: "context.packet_hard_divisor",
+        new: "context.packet_hard_percent",
+        convert: Some(divisor_to_percent),
+    },
+];
+
+/// 키 이름이 바뀐 항목.
+pub(crate) struct RenamedKey {
+    pub(crate) old: &'static str,
+    pub(crate) new: &'static str,
+    /// 값 뜻이 바뀐 항목의 변환. 변환할 수 없는 값은 그대로 옮겨 새 키의 검사가 실패하게 한다.
+    convert: Option<fn(&Value) -> Option<Value>>,
+}
+
+/// 나눗수 `d`를 퍼센트 `100 / d`로 바꾼다. 나누어떨어지지 않으면 버린다.
+pub(crate) fn divisor_to_percent(value: &Value) -> Option<Value> {
+    let divisor = value.as_u64().filter(|divisor| *divisor >= 1)?;
+    Some(Value::from(100 / divisor))
+}
+
+/// 옛 키를 새 키로 옮기고 옮긴 `(옛, 새)`를 돌려준다.
+fn move_renamed_keys(values: &mut Value) -> Vec<(String, String)> {
+    let mut moved = Vec::new();
+    for item in RENAMED_KEYS {
+        let Some(old) = take_path(values, item.old) else {
+            continue;
+        };
+        let value = item
+            .convert
+            .and_then(|convert| convert(&old))
+            .unwrap_or(old);
+        if get_path(values, item.new).is_none() {
+            set_json_path(values, item.new, value);
+        }
+        moved.push((item.old.to_owned(), item.new.to_owned()));
+    }
+    moved
+}
+
+/// 키 출처 값은 소문자가 정본이고 옛 대문자 시작 값도 읽는다.
+fn lowercase_key_source(values: &mut Value) {
+    if let Some(Value::String(text)) = get_path_mut(values, KEY_SOURCE_KEY) {
+        *text = text.to_lowercase();
+    }
+}
+
+const KEY_SOURCE_KEY: &str = "router.key.info.source";
 
 /// git 맨 위(`.git`이 있는 폴더)에서 멈추고, git 저장소가 아니면 `workdir` 하나만 본다.
 ///
@@ -311,6 +383,8 @@ pub(crate) fn merge(
     for (mut source, content) in layers {
         let mut values = parse_toml(&content, &layer_path(&source))?;
         move_context_aliases(&mut values);
+        source.renamed = move_renamed_keys(&mut values);
+        lowercase_key_source(&mut values);
         let permission =
             permission::read_layer(&content).map_err(|(key, reason)| SettingsError::Invalid {
                 key,
@@ -387,6 +461,7 @@ pub(crate) fn source(layer: Layer, path: Option<PathBuf>, content: &str) -> Laye
         path,
         fingerprint,
         ignored: Vec::new(),
+        renamed: Vec::new(),
     }
 }
 
@@ -433,6 +508,46 @@ pub(crate) fn leaf_keys(value: &Value, prefix: &str, out: &mut Vec<String>) {
     for (key, child) in map {
         let path = join_key(prefix, key);
         leaf_keys(child, &path, out);
+    }
+}
+
+fn get_path_mut<'a>(value: &'a mut Value, key: &str) -> Option<&'a mut Value> {
+    key.split('.').try_fold(value, |current, segment| {
+        current.as_object_mut()?.get_mut(segment)
+    })
+}
+
+/// 경로의 값을 떼어 낸다. 비게 된 표는 병합에 영향이 없어 남겨 둔다.
+fn take_path(value: &mut Value, key: &str) -> Option<Value> {
+    let (parent, last) = match key.rsplit_once('.') {
+        Some((parent, last)) => (Some(parent), last),
+        None => (None, key),
+    };
+    let table = match parent {
+        Some(parent) => get_path_mut(value, parent)?,
+        None => value,
+    };
+    table.as_object_mut()?.remove(last)
+}
+
+/// 중간 표가 없거나 표가 아니면 새 표로 바꾸고 값을 둔다.
+fn set_json_path(value: &mut Value, key: &str, new: Value) {
+    let mut current = value;
+    let mut segments = key.split('.').peekable();
+    while let Some(segment) = segments.next() {
+        if !current.is_object() {
+            *current = Value::Object(Map::new());
+        }
+        let map = current
+            .as_object_mut()
+            .expect("current should be an object after conversion");
+        if segments.peek().is_none() {
+            map.insert(segment.to_owned(), new);
+            return;
+        }
+        current = map
+            .entry(segment.to_owned())
+            .or_insert_with(|| Value::Object(Map::new()));
     }
 }
 
@@ -740,8 +855,8 @@ mod tests {
 
     #[test]
     fn folder_cannot_change_user_only_items() {
-        let folder = "on_exit = \"ask\"\n\
-            [router]\nmethod = \"saturn\"\nendpoint = \"https://evil.example\"\n\
+        let folder = "tui.on_exit = \"ask\"\n\
+            [router]\nmode = \"saturn\"\nendpoint = \"https://evil.example\"\n\
             [router.key]\ncommand = [\"steal\"]\n\
             [grading]\nmodel = \"other\"\n\
             [consent]\nshare_with_server = true\n";
@@ -769,7 +884,7 @@ mod tests {
                 "grading.model",
                 "router.endpoint",
                 "router.key.command",
-                "router.method",
+                "router.mode",
             ]
         );
     }
@@ -787,7 +902,8 @@ mod tests {
                 "router.thresholds.keep_current",
             ),
             ("router.thresholds = 0.5\n", "router.thresholds"),
-            ("on_exit = \"later\"\n", "on_exit"),
+            ("tui.on_exit = \"later\"\n", "tui.on_exit"),
+            ("on_exit = \"later\"\n", "tui.on_exit"),
             ("context.safety_percent = 120\n", "context.safety_percent"),
         ];
         for (content, expected) in cases {
@@ -1256,7 +1372,7 @@ mod tests {
             .is_ok()
         };
         for good in [
-            "context.packet_hard_divisor = 5\n",
+            "context.packet_hard_percent = 20\n",
             "context.item_cap_percent = 30\n",
             "context.select.rrf_k = 0\n",
         ] {
@@ -1268,17 +1384,17 @@ mod tests {
             .context_budget(crate::providers::test_support::CODEX, DEFAULTS);
         assert_eq!(
             (
-                budget.packet_hard_divisor,
+                budget.packet_hard_percent,
                 budget.item_cap_percent,
                 budget.rrf_k
             ),
-            (5, 30, 60)
+            (20, 30, 60)
         );
         let tuned = merge(vec![
             layer(Layer::Default, default_layer()),
             layer(
                 Layer::User,
-                "[context]\npacket_hard_divisor = 4\nitem_cap_percent = 50\n[context.select]\nrrf_k = 10\n",
+                "[context]\npacket_hard_percent = 25\nitem_cap_percent = 50\n[context.select]\nrrf_k = 10\n",
             ),
         ])
         .unwrap();
@@ -1287,14 +1403,14 @@ mod tests {
             .context_budget(crate::providers::test_support::CODEX, DEFAULTS);
         assert_eq!(
             (
-                budget.packet_hard_divisor,
+                budget.packet_hard_percent,
                 budget.item_cap_percent,
                 budget.rrf_k
             ),
-            (4, 50, 10)
+            (25, 50, 10)
         );
         for bad in [
-            "context.packet_hard_divisor = 0\n",
+            "context.packet_hard_percent = 0\n",
             "context.item_cap_percent = 0\n",
             "context.item_cap_percent = 101\n",
             "context.select.rrf_k = -1\n",

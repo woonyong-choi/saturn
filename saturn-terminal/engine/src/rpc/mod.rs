@@ -21,9 +21,8 @@ pub(crate) use lock::EngineLock;
 #[cfg(test)]
 pub(crate) use lock::LOCK_FILE;
 
-/// 초안. `~/.saturn/` 아래. TUI `EngineClient::default_socket`과 같은 경로.
-/// TODO(#235): 경로 설정 키
-pub(crate) const SOCKET_FILE: &str = "engine.sock";
+/// 홈 폴더 아래. TUI `EngineClient::default_socket`과 같은 이름.
+pub(crate) const SOCKET_FILE: &str = saturn_protocol::home::SOCKET_FILE;
 
 /// 초안. 소켓을 같은 사용자만 열 수 있게 한다.
 const SOCKET_MODE: u32 = 0o600;

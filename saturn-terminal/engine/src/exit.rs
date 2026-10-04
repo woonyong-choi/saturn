@@ -52,7 +52,7 @@ impl Engine {
 
     /// 마지막 TUI가 떨어졌다. `stop`이면 모든 채팅을 멈춤과 같게 보류하고, `background`와 `ask`는 계속한다.
     /// 보류는 자동으로 이어 가지 않고, 유예 종료는 `serve`의 유휴 점검이 센다.
-    /// TODO(#235): 완료 알림 설정 키. TODO(#151): 알림 보내는 방법
+    /// TODO(#151): `notify.on_done`이 참일 때 알림 보내는 방법
     /// `ask`의 질문은 TUI가 닫히기 전에 끝나 있어서, 질문 없이 떨어진 `ask`는 계속으로 본다.
     pub(crate) async fn on_last_detach(&mut self, chat: ChatId) {
         self.presence = Presence::Background { idle_since: None };
