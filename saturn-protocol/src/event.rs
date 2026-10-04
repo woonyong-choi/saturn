@@ -124,6 +124,7 @@ impl ProviderEvent {
 pub enum PermissionTool {
     Shell,
     Edit,
+    Read,
     Mcp,
     Subagent,
 }
@@ -132,9 +133,9 @@ pub enum PermissionTool {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct PermissionCall {
     pub tool: PermissionTool,
-    /// 셸은 명령, MCP는 `mcp__<서버>__<도구>`, subagent는 종류 이름, 편집은 비어 있다.
+    /// 셸은 명령, MCP는 `mcp__<서버>__<도구>`, subagent는 종류 이름, 편집과 읽기는 비어 있다.
     pub target: String,
-    /// 편집이 건드리는 경로. provider가 낸 경로 그대로.
+    /// 편집과 읽기가 건드리는 경로. provider가 낸 경로 그대로.
     pub paths: Vec<String>,
 }
 

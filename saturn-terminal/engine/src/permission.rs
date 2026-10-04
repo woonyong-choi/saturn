@@ -13,7 +13,7 @@ use crate::settings::{self, SettingsError};
 use crate::{Engine, EngineError};
 
 impl Engine {
-    /// 접수하는 입력의 권한. 읽기 전용 모드이고 쓰기를 열 수 있는 규칙(`allow`, `ask`)이 하나도 없을 때만 읽기 전용이라,
+    /// 접수하는 입력의 권한. 읽기 전용 모드이고 쓰기를 열 수 있는 규칙(읽기 규칙을 뺀 `allow`, `ask`)이 하나도 없을 때만 읽기 전용이라,
     /// 같은 폴더의 다른 읽기 작업과 병렬로 실행한다. `ask`는 사용자가 승인하면 쓰기가 되므로 `allow`처럼 쓰기로 둔다.
     /// 규칙을 읽지 못하면 쓰기로 둔다.
     pub(crate) async fn input_permission(
@@ -28,7 +28,7 @@ impl Engine {
             let can_open_writes = configured
                 .rules
                 .iter()
-                .any(|rule| rule.verdict != Verdict::Deny);
+                .any(|rule| rule.tool != PermissionTool::Read && rule.verdict != Verdict::Deny);
             Ok::<bool, EngineError>(mode == Mode::ReadOnly && !can_open_writes)
         };
         match read.await {
@@ -338,9 +338,9 @@ impl Engine {
 // cost: time O(p·d), heap O(p·d), stack O(1), alloc p, io p·d
 // vars: p = 경로 수, d = 경로 깊이
 // basis: estimate
-/// 편집 경로를 작업 폴더 기준 절대 경로로 바꾸고 링크를 풀어, 폴더 밖을 가리키는 링크가 안으로 보이지 않게 한다.
+/// 편집과 읽기 경로를 작업 폴더 기준 절대 경로로 바꾸고 링크를 풀어, 폴더 밖을 가리키는 링크가 안으로 보이지 않게 한다.
 fn resolved(workdir: &Path, call: &PermissionCall) -> PermissionCall {
-    if call.tool != PermissionTool::Edit {
+    if !matches!(call.tool, PermissionTool::Edit | PermissionTool::Read) {
         return call.clone();
     }
     PermissionCall {

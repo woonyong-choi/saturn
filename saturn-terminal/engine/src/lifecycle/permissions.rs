@@ -99,6 +99,85 @@ async fn request_without_a_readable_call_goes_to_the_tui_even_in_full_mode() {
     assert!(is_asked(&client.window().await));
 }
 
+fn read_of(agent: AgentId, id: &str, path: &str) -> ProviderEvent {
+    permission_for(agent, id, PermissionTool::Read, "", &[path])
+}
+
+/// 작업 폴더 밖 폴더를 만들고 안의 파일 경로를 돌려준다. 링크를 푼 경로라 기계마다 같다.
+fn outside_file(flow: &Flow, name: &str) -> String {
+    let dir = flow.fixture.root.path().join("outside-lib");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join(name), "x").unwrap();
+    dir.join(name).canonicalize().unwrap().display().to_string()
+}
+
+// #348
+#[tokio::test]
+async fn read_rule_allow_answers_without_asking_the_user() {
+    let (mut flow, agent) = started("[permission.read]\n\"*/outside-lib/*\" = \"allow\"\n").await;
+    let mut client = flow.client().await;
+    let path = outside_file(&flow, "a.txt");
+
+    flow.claude_event(read_of(agent, "r1", &path)).await;
+
+    assert_eq!(
+        answers(&flow),
+        vec![("r1".to_owned(), PermissionAnswer::AllowOnce)]
+    );
+    assert!(!is_asked(&client.window().await));
+}
+
+// #348
+#[tokio::test]
+async fn read_rule_deny_answers_without_asking_the_user() {
+    let (mut flow, agent) = started("[permission.read]\n\"*/outside-lib/*\" = \"deny\"\n").await;
+    let mut client = flow.client().await;
+    let path = outside_file(&flow, "a.txt");
+
+    flow.claude_event(read_of(agent, "r1", &path)).await;
+
+    assert_eq!(
+        answers(&flow),
+        vec![("r1".to_owned(), PermissionAnswer::Deny { note: None })]
+    );
+    assert!(!is_asked(&client.window().await));
+}
+
+// #348
+#[tokio::test]
+async fn read_without_a_rule_or_with_an_ask_rule_goes_to_the_tui() {
+    let (mut flow, agent) =
+        started("[permission.read]\n\"*/outside-lib/ask.txt\" = \"ask\"\n").await;
+    let mut client = flow.client().await;
+    let asked = outside_file(&flow, "ask.txt");
+    let unruled = outside_file(&flow, "other.txt");
+
+    flow.claude_event(read_of(agent, "none", &unruled)).await;
+    flow.claude_event(read_of(agent, "ask", &asked)).await;
+
+    assert!(answers(&flow).is_empty());
+    assert!(flow.permission_id("none").is_some());
+    assert!(flow.permission_id("ask").is_some());
+    assert!(is_asked(&client.window().await));
+}
+
+// #348
+#[tokio::test]
+async fn read_through_a_link_is_judged_by_the_real_path() {
+    let (mut flow, agent) = started("[permission.read]\n\"*/outside-lib/*\" = \"deny\"\n").await;
+    let target = outside_file(&flow, "linked.txt");
+    let link = flow.fixture.workdir.join("linked");
+    std::os::unix::fs::symlink(&target, &link).unwrap();
+
+    flow.claude_event(read_of(agent, "r1", &link.display().to_string()))
+        .await;
+
+    assert_eq!(
+        answers(&flow),
+        vec![("r1".to_owned(), PermissionAnswer::Deny { note: None })]
+    );
+}
+
 #[tokio::test]
 async fn edit_inside_the_workdir_is_allowed_and_outside_is_asked_in_edit_mode() {
     let (mut flow, agent) = started("").await;
@@ -481,6 +560,17 @@ async fn write_approved_through_an_ask_rule_in_read_only_mode_holds_the_write_lo
     assert_eq!(
         flow.record(other_writer).reason,
         Some(QueueReason::WriteTurn)
+    );
+}
+
+// #348
+#[tokio::test]
+async fn read_only_mode_with_only_a_read_allow_rule_keeps_inputs_as_read_only() {
+    let config = "[permission]\nmode = \"read-only\"\n[permission.read]\n\"/etc/*\" = \"allow\"\n";
+
+    assert_eq!(
+        permission_of_first_input(config).await,
+        saturn_core::queue::Permission::ReadOnly
     );
 }
 

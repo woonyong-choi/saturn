@@ -7,7 +7,7 @@
 
 ## 요약
 
-권한은 provider의 셸 명령, 파일 편집, MCP 도구, subagent 실행을 허용, 묻기, 거부 중 무엇으로 처리할지 정하는 기능이다. 정본은 Saturn 설정의 `permission` 규칙 하나다. 권한 모드는 기본 규칙 묶음이고 개별 규칙이 그 위에 덧붙는다. engine은 규칙을 Codex와 Claude Code 각각의 방식으로 바꿔 넘기고, 묻기로 판정된 호출은 TUI 허가 요청 창으로 올린다. provider 설정 파일은 고치지 않는다.
+권한은 provider의 셸 명령, 파일 편집, 파일 읽기, MCP 도구, subagent 실행을 허용, 묻기, 거부 중 무엇으로 처리할지 정하는 기능이다. 정본은 Saturn 설정의 `permission` 규칙 하나다. 권한 모드는 기본 규칙 묶음이고 개별 규칙이 그 위에 덧붙는다. engine은 규칙을 Codex와 Claude Code 각각의 방식으로 바꿔 넘기고, 묻기로 판정된 호출은 TUI 허가 요청 창으로 올린다. provider 설정 파일은 고치지 않는다.
 
 ## 동기
 
@@ -42,7 +42,7 @@
 
 ### 권한 규칙
 
-규칙 대상은 셸 명령, 파일 편집, MCP 도구, subagent 실행 네 가지다. 값은 `allow`, `ask`, `deny` 셋이다. 키 이름과 형식은 [설정](settings.md)의 `permission` 키 표에 있다.
+규칙 대상은 셸 명령, 파일 편집, 파일 읽기, MCP 도구, subagent 실행 다섯 가지다. 값은 `allow`, `ask`, `deny` 셋이다. 키 이름과 형식은 [설정](settings.md)의 `permission` 키 표에 있다.
 
 1. `settings`가 현재 권한 모드의 기본 규칙을 앞에 둔다.
 2. `settings`가 사용자 설정의 개별 규칙을 그 뒤에 잇는다.
@@ -56,6 +56,9 @@
 - 셸 명령은 `&&`, `||`, `;`, `|`, `&`, 줄바꿈, 괄호, 역따옴표로 나뉜 부분마다 판정하고 가장 엄한 값(`deny`, `ask`, `allow` 순)을 쓴다(초안). 따옴표 안의 구분 글자는 나누지 않는다. 허용된 명령 뒤에 막힌 명령을 붙이는 우회를 막기 위해서다.
 - 명령 치환(`$(...)`, 역따옴표)이 들어 있거나 따옴표가 닫히지 않은 셸 명령은 실제 실행을 글자만으로 알 수 없어, 거부가 아니면 규칙이 `allow`여도 `ask`로 판정한다(초안). 명령 전체가 항상 허용과 일치할 때만 `allow`다.
 - 편집은 경로마다 판정하고 가장 엄한 값을 쓴다. 상대 경로는 작업 폴더 기준으로 읽고 링크를 풀어 판단하므로, 작업 폴더 안의 링크가 밖을 가리키면 밖의 편집이다. 패턴은 절대 경로와 작업 폴더 안일 때의 상대 경로 둘 다에 맞춰 본다(초안). 경로를 알 수 없는 편집 요청(Codex 승인 요청이 경로를 싣지 않고 앞선 `fileChange` 항목에서도 얻지 못한 경우)은 작업 폴더 밖으로 본다.
+- 읽기는 provider의 파일 읽기 도구(파일 읽기, 목록, 검색)가 보내는 승인 요청의 경로를 규칙으로 판정한다(사용자 결정, [#348](https://github.com/woonyong-choi/saturn/issues/348)). 키는 `permission.read`이고 경로 판정은 편집과 같다. 상대 경로는 작업 폴더 기준, 링크는 풀어서 보고, 패턴은 절대 경로와 작업 폴더 안일 때의 상대 경로 둘 다에 맞춰 본다. 경로가 없는 요청은 빈 글자열로 본다. 읽기 규칙 `allow`는 허가 창을 건너뛰고, `deny`는 읽기를 거부하고, `ask`는 사용자에게 묻는다.
+- 읽기 규칙은 provider가 승인을 요청한 읽기에만 닿는다. 작업 폴더와 더한 폴더 안의 읽기는 provider가 묻지 않고 실행하므로 규칙 판정이 일어나지 않고, 그 안의 읽기를 `deny`로 막을 수도 없다. 승인 요청은 폴더 밖 읽기처럼 provider가 스스로 묻는 경우에만 온다. 규칙이 없을 때 기본은 지금처럼 `ask`이고 `read-only`에서도 `deny`가 아니라 `ask`다(읽기는 읽기 전용 모드가 막는 대상이 아니기 때문이다. 초안). `full`은 모두 `allow`다. 읽기 규칙은 입력의 읽기 전용 접수에 쓰기를 열 수 있는 규칙으로 세지 않는다.
+- Codex는 읽기를 승인 요청으로 올린 실측이 없다(파일 편집과 명령 실행만 승인 요청으로 왔다. [실측](../experiments/provider-permission-real/report.md)). 파일을 읽는 명령(`cat` 등)은 셸 규칙으로 판정한다. 그래서 `permission.read`는 Codex에 해당 없고 execpolicy와 MCP 설정으로 옮기지 않는다.
 - MCP 도구의 대상 이름은 `mcp__{서버}__{도구}`이고(Claude의 도구 이름과 같다. 초안), Codex 요청에서 도구 이름을 읽지 못하면 도구 자리를 `?`로 둔다. subagent의 대상 이름은 종류 이름이다(Claude `Task`의 `subagent_type`).
 - 도구 전체에 한 값을 준 규칙(`permission.shell = "ask"`)은 패턴 `*` 규칙과 같다.
 - 폴더 설정의 `permission`은 폴더 설정 신뢰 창의 적용되는 항목에 보인다. 저장소가 사용자 모르게 허용 규칙을 넣는 일을 막기 위해서다.
@@ -151,15 +154,15 @@ MCP 도구는 규칙을 다음처럼 번역한다.
 
 engine은 Claude Code를 실행할 때 `--permission-prompt-tool stdio`와 `--settings '{"permissions":{"ask":[...]}}'`를 함께 준다(2026-10-02 확인, Claude Code 2.1.285).
 
-- `ask` 목록에는 규칙 대상인 도구 이름을 모두 나열한다. 도구를 나열해야 요청이 오기 때문이다. 목록은 `Bash`, `Edit`, `MultiEdit`, `Write`, `NotebookEdit`, `Task`, `Agent`, `mcp__*`이다(초안). MCP는 서버를 알 수 없어 `mcp__*` 하나로 두고, 이 패턴이 실제로 통하는지는 실측한다.
-- Saturn 기본 `--permission-mode`는 넣지 않는다. 이전 기본값 `acceptEdits`는 권한을 provider 모드에 맡기는 것이라 규칙과 어긋난다. 규칙 대상이 아닌 도구(`Read`, `WebFetch` 등)의 요청은 `call` 없이 올라와 사용자에게 묻는다.
-- 요청의 도구를 `Bash`는 셸 명령(`input.command`), `Edit`, `MultiEdit`, `Write`는 편집(`input.file_path`), `NotebookEdit`는 편집(`input.notebook_path`), `Task`와 `Agent`는 subagent(`input.subagent_type`), `mcp__`로 시작하는 이름은 MCP 도구(도구 이름 그대로)로 읽는다.
+- `ask` 목록에는 provider가 스스로 묻지 않는 규칙 대상 도구 이름을 나열한다. 도구를 나열해야 요청이 오기 때문이다. 읽기 도구는 나열하지 않는다. 나열하면 작업 폴더 안 읽기까지 요청이 되기 때문이다. 목록은 `Bash`, `Edit`, `MultiEdit`, `Write`, `NotebookEdit`, `Task`, `Agent`, `mcp__*`이다(초안). MCP는 서버를 알 수 없어 `mcp__*` 하나로 두고, 이 패턴이 실제로 통하는지는 실측한다.
+- Saturn 기본 `--permission-mode`는 넣지 않는다. 이전 기본값 `acceptEdits`는 권한을 provider 모드에 맡기는 것이라 규칙과 어긋난다. 규칙 대상이 아닌 도구(`WebFetch` 등)의 요청은 `call` 없이 올라와 사용자에게 묻는다.
+- 요청의 도구를 `Bash`는 셸 명령(`input.command`), `Edit`, `MultiEdit`, `Write`는 편집(`input.file_path`), `NotebookEdit`는 편집(`input.notebook_path`), `Read`, `Glob`, `Grep`, `LS`는 읽기(`input.file_path` 또는 `input.path`), `Task`와 `Agent`는 subagent(`input.subagent_type`), `mcp__`로 시작하는 이름은 MCP 도구(도구 이름 그대로)로 읽는다.
 - 사용자 설정이 `bypassPermissions`이고 폴더 허용 목록이 있어도 `Bash` 호출은 모두 `can_use_tool`로 왔다.
 - 요청은 `control_request`의 `can_use_tool`로 오고, 답은 `control_response`로 보낸다. 허용은 `{"behavior":"allow","updatedInput":<요청 input>}`, 거부는 `{"behavior":"deny","message":"..."}`다.
 - `--permission-prompt-tool` 없이 `ask`만 주면 요청이 호스트로 오지 않고 자동 거부된다.
 - router 키 보호 훅의 실행별 설정은 같은 `--settings` 값에 합쳐 넘긴다(초안). 훅이 막는 호출은 규칙이 `allow`여도 막는 것이 설계다(초안, [router 키 보호](router-key-security.md)).
 
-Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구가 같은 방식으로 오는지는 [#301](https://github.com/woonyong-choi/saturn/issues/301)에서 실측한다.
+Claude 읽기는 작업 폴더 밖 `Read`가 사유 `Path is outside allowed working directories`로 요청되고, `--add-dir` 폴더 안 `Read`는 요청 없이 실행됐다(각 3/3, [실험](../experiments/provider-permission-real-claude/report.md)). `Glob`, `Grep`, `LS`가 같은 방식으로 오는지는 실측하지 않았고, 요청이 오면 같은 읽기 규칙으로 판정한다. Claude는 `Bash`만 실측했다. `Edit`, `Write`, MCP 도구, subagent 도구가 같은 방식으로 오는지는 [#301](https://github.com/woonyong-choi/saturn/issues/301)에서 실측한다.
 
 ### provider 설정과 질문 기능
 
@@ -221,6 +224,7 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 | 더한 폴더 안의 편집은 `edit`에서 작업 폴더처럼 허용하고, 읽기 전용과 `deny`는 그대로다. | `saturn-terminal/core/src/permission/tests.rs`의 `mode_edit_allows_edits_inside_added_folders_like_the_workdir`, `added_folders_do_not_widen_read_only_or_deny_rules`, `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `edit_inside_an_added_folder_is_allowed_like_the_workdir_in_edit_mode` |
 | 에이전트 질문 기능은 Saturn 권한 모드가 정하고, `full`이면 두 provider에서 뺀다(둘 다 다시 시작으로 적용). | `saturn-terminal/engine/src/lifecycle/agent_questions.rs`의 테스트 전체([입력 요청](input-requests.md#요구사항) 표 참고) |
 | 모드를 바꾸면 다음 허가 요청부터 새 모드로 판정하고 provider를 다시 시작하지 않는다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `mode_change_applies_next_request`, `saturn-terminal/tui/src/commands.rs`의 `parse_permissions_reads_one_known_mode` |
+| 읽기 요청이 `permission.read` 규칙으로 판정된다: `allow`는 바로 허용, `deny`는 바로 거부, `ask`와 규칙 없음은 사용자에게 묻는다. 링크는 풀어 판정하고, `read-only` 접수와 Codex 규칙 지문에는 영향이 없다. | `saturn-terminal/core/src/permission/tests.rs`의 `read_rules_decide_by_path_and_default_to_asking_without_a_rule`, `read_without_a_rule_asks_in_every_mode_but_full`, `read_rules_do_not_touch_edit_or_shell_calls`, `always_allow_for_a_read_stores_the_path`, `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `read_rule_allow_answers_without_asking_the_user`, `read_rule_deny_answers_without_asking_the_user`, `read_without_a_rule_or_with_an_ask_rule_goes_to_the_tui`, `read_through_a_link_is_judged_by_the_real_path`, `read_only_mode_with_only_a_read_allow_rule_keeps_inputs_as_read_only`, `saturn-terminal/engine/src/providers/claude/tests.rs`의 `permission_call_reads_file_reading_tools_as_read_calls`, `saturn-terminal/engine/src/settings/permission.rs`의 `read_layer_accepts_read_rules`, `saturn-terminal/engine/src/providers/codex_home/tests.rs`의 `read_rules_do_not_change_the_rules_fingerprint` |
 | 규칙의 `allow`와 `deny`는 사용자에게 묻지 않고 provider에 답하고, `ask`와 규칙으로 읽을 수 없는 요청만 TUI로 올린다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `rule_allow_answers_the_provider_without_asking_the_user`, `rule_deny_answers_the_provider_without_asking_the_user`, `rule_ask_goes_to_the_tui_and_waits_for_the_answer`, `request_without_a_readable_call_goes_to_the_tui_even_in_full_mode`, `rule_answer_that_the_provider_does_not_take_falls_back_to_the_user` |
 | Codex 셸, 파일 편집, subagent 명령, MCP가 Saturn 규칙대로 허용, 묻기, 거부로 처리된다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `permission_shell`, `permission_edit`, `permission_subagent`, `permission_mcp`, 가짜 app-server |
 | 사용자 Codex 규칙, 훅, 자동 검토자가 Saturn 판단에 끼어들지 않는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `codex_home_ignores_user_rules`, `saturn-terminal/engine/src/providers/codex_home/tests.rs`의 `generated_config_has_no_permission_keys`, `home_links_login_without_copying_and_leaves_user_files_alone` |
