@@ -107,7 +107,7 @@ engine은 어댑터가 올린 목록을 붙은 모든 TUI에 `Commands` 알림�
 
 session을 열 때 engine이 그 provider의 어댑터에 설치된 확장 중 주입 가능한 부분을 넘기고, 어댑터가 provider 형식으로 session에 넣는다. 사용자 provider 설정 파일은 고치지 않는다([결정 기록](../decisions/2026-10-02-saturn-permission-authority.md)). 어디에 무엇을 놓을지는 어댑터가 정한다.
 
-- 지금 Saturn이 provider 실행에 쓰는 통로는 Codex의 채팅별 전용 `CODEX_HOME`과 Claude의 실행별 `--settings`다([권한](permissions.md)). 스킬, MCP 서버, 명령, 훅을 이 통로로 주입할 수 있는지는 어댑터 구현 때 실측한다.
+- 지금 Saturn이 provider 실행에 쓰는 통로는 Codex의 채팅별 전용 `CODEX_HOME`과 Claude의 실행별 `--settings`다([권한](permissions.md)). 스킬, MCP 서버, 명령, 훅을 이 통로로 주입할 수 있는지는 어댑터 구현 때 실측한다. Codex의 훅은 전용 `CODEX_HOME`의 `hooks.json`과 `config.toml`의 `hooks.state` 신뢰 값으로 주입할 수 있었다([실측](../experiments/codex-provider-behavior/report.md)).
 - 주입한 MCP 서버와 훅 스크립트도 provider 자식 프로세스이므로 router 키를 제외한 환경으로 실행한다([router 키 보호](router-key-security.md)).
 - 주입한 MCP 도구 호출은 Saturn `permission.mcp` 규칙으로 판정한다. 확장이 권한 판정을 우회하지 않게 하기 위해서다.
 - 설치와 제거는 다음 session을 열 때 적용한다. 열린 session의 구성은 바꾸지 않는다. 한 session 안에서 기능 목록이 바뀌는 일을 막기 위해서다.

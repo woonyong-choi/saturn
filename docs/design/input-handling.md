@@ -93,7 +93,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 - 쓰기 권한으로 접수한 입력은 읽기 전용으로 접수한 실행에 끼워 넣지 않고 대기한다([쓰기 규칙](#쓰기-규칙)). `refines`, `continues`, `conflicts`, 바로 보내기 모두 같다.
 - 관계가 `conflicts`이면 `steer_or_spawn` 답과 관계없이 끼워 넣는다. 충돌 입력을 멈추지 않고 모델이 읽게 하는 것이 사용자 결정이다(아래 [충돌 입력](#충돌-입력)).
 - 보내는 방식 판단의 확신도가 0.6 미만이면 현재 에이전트에 대기 뒤 보낸다. 같은 이유로 확신 없는 판단으로 행동하지 않기 위해서다.
-- 끼워 넣기 실측을 통과하기 전의 provider는 끼워 넣기를 대기로 바꿔 처리한다([#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27)). 끼워 넣기 경로가 문서대로 동작하는지 실측으로 확인해야 하기 때문이다.
+- 끼워 넣기 실측을 통과하지 못한 provider는 끼워 넣기를 대기로 바꿔 처리한다. Codex는 실측을 통과했고([실측](../experiments/codex-provider-behavior/report.md), 거절 상태 목록은 [provider 연결과 session](providers-and-sessions.md)), Claude는 실측 전이다([#5](https://github.com/woonyong-choi/saturn/issues/5)).
 - 그 provider에 끼워 넣기를 대기로 바꿀 때 TUI에 `바로 반영 준비 중`을 보인다. 충돌 입력은 이 표시 대신 멈출지 묻는다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다.
 - provider마다 켜 둔 채 입력을 받는 연결을 둔다. 한 번 실행 방식으로는 끼워 넣기가 불가능하기 때문이다.
 - 보조 에이전트는 끝나면 결과를 전달한 뒤 바로 종료한다. 쉬는 메인 에이전트를 깨우지 않고 메인 에이전트의 다음 입력 때 결과를 전달한다.
@@ -102,7 +102,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 1. router가 관계를 `conflicts`로 고르면 `queue`가 그 입력을 끼워 넣기로 적용하고 충돌 입력으로 표시한다.
 2. 끼워 넣기가 받아들여지면 일반 끼워 넣기와 같다.
-3. provider가 끼워 넣기를 받지 않으면(끼워 넣기 실측 전이거나 `NotSent`로 거절) `queue`가 입력을 대기열 맨 앞에 두고 멈출지 묻는 상태(`ConfirmStop`)로 바꾼다.
+3. provider가 끼워 넣기를 받지 않으면(실측 전인 provider이거나 `NotSent`로 거절) `queue`가 입력을 대기열 맨 앞에 두고 멈출지 묻는 상태(`ConfirmStop`)로 바꾼다.
 4. TUI가 `지금 멈추고 새 입력을 실행할까요?` 창을 띄우고 `대기`와 `멈추고 실행` 중 하나를 `AnswerStopConfirm`으로 보낸다.
 5. `멈추고 실행`이면 engine이 멈춤 규칙으로 채팅을 멈추고, 완료를 확인한 뒤 그 입력이 붙은 작업을 재개해 입력을 실행한다. `대기`이면 입력은 맨 앞 대기 그대로 현재 작업이 끝난 뒤 다음 차례에 새 턴으로 간다.
 
@@ -294,7 +294,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 멈춤 신호는 추적된 subagent까지 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_signals_the_deepest_subagent_first_and_finishes_only_when_the_tree_is_idle` |
 | 멈춤 신호 10초 뒤 남은 프로세스 묶음에는 중지 신호를 보낸다. | `saturn-terminal/engine/src/processes/mod.rs`의 `stop_sends_term_after_grace` |
 | 트리 유휴와 프로세스 중지를 모두 확인한 뒤에만 멈춤 완료를 보고한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_is_not_complete_until_the_process_group_is_confirmed_stopped`, `stop_without_a_finished_turn_signal_is_not_complete`, `processes_left_outside_the_group_are_reported_instead_of_done` |
-| 끼워 넣기와 멈춤 신호는 provider별 경로로 전달된다. | [#5](https://github.com/woonyong-choi/saturn/issues/5)와 [#27](https://github.com/woonyong-choi/saturn/issues/27) 실험으로 경로와 불가 상태를 확인한다. |
+| 끼워 넣기와 멈춤 신호는 provider별 경로로 전달된다. | Codex는 [실측](../experiments/codex-provider-behavior/report.md)으로 경로와 불가 상태를 확인했다. Claude는 [#5](https://github.com/woonyong-choi/saturn/issues/5) 실험으로 확인한다. |
 | 판단이 없는 입력은 무시 횟수를 올리지 않아 보류를 닫지 않는다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `inputs_without_a_resume_judgment_never_close_the_held_work` |
 | 보류 작업이 있는 채팅의 새 입력만 `resume_held`를 묻고, 0.85 이상이면 보류를 재개하고 0.85 미만이 3번 쌓이면 보류를 닫는다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `resume_held_is_asked_only_when_the_chat_has_held_work`, `resume_intent_at_threshold_resumes_every_held_task`, `resume_intent_below_threshold_keeps_the_work_held_and_counts_the_input`, `third_input_without_resume_intent_closes_the_held_work` |
 | `resume_held` 기준값 0.85는 보류 작업을 잘못 재개하지 않는다. | [#9](https://github.com/woonyong-choi/saturn/issues/9) 실험으로 오탐 비율을 확인한다. |
