@@ -14,7 +14,7 @@ use crate::input::{InputAnswer, InputRequest};
 use crate::state::{Disposition, InputState, QueueReason, TaskState};
 
 /// engine과 클라이언트가 주고받는 메시지 판. 요청이나 알림의 모양을 호환되지 않게 바꿀 때 올린다.
-pub const PROTOCOL_VERSION: u32 = 2;
+pub const PROTOCOL_VERSION: u32 = 3;
 
 /// engine이 에이전트 작업의 환경에 넣는 출입증 변수 이름. `saturn`이 이 값으로 `AttachChild`를 보낸다.
 pub const PASS_ENV: &str = "SATURN_PASS";
@@ -349,6 +349,10 @@ pub enum Notification {
         input: InputId,
         text: String,
         label: Option<TaskLabel>,
+        /// 입력이 시작했거나 끼워 넣어진 작업. `label`은 표시용이라 작업 27개째부터 겹치므로 작업을 가리킬 때는 이 값을 쓴다.
+        /// 아직 작업에 연결되지 않았으면 `None`이다.
+        #[serde(default)]
+        task: Option<TaskId>,
         state: InputState,
         disposition: Option<Disposition>,
         reason: Option<QueueReason>,

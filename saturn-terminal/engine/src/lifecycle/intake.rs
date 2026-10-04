@@ -588,6 +588,39 @@ async fn applied_steer_is_preserved_in_handoff() {
     );
 }
 
+// #495
+#[tokio::test]
+async fn input_notice_carries_the_task_a_steered_input_joined() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "refines", "steer"),
+    ])
+    .await;
+    flow.fake.verify_steer();
+    let (mut client, _) = flow.attach().await;
+    let first = flow.submit("implement authentication").await;
+    let steer = flow.submit("use a different branch name").await;
+
+    let seen = client.window().await;
+
+    let task_of = |wanted: InputId| {
+        seen.iter()
+            .rev()
+            .find_map(|notification| match notification {
+                Notification::InputChanged {
+                    input,
+                    task,
+                    state: InputState::Applied,
+                    ..
+                } if *input == wanted => Some(*task),
+                _ => None,
+            })
+    };
+    let started = task_of(first).expect("first input should be applied");
+    assert!(started.is_some());
+    assert_eq!(task_of(steer), Some(started));
+}
+
 // #494
 #[tokio::test]
 async fn steer_is_not_applied_without_its_run_link_when_the_link_write_fails() {

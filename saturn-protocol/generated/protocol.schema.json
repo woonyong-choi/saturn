@@ -2848,6 +2848,18 @@
                 "state": {
                   "$ref": "#/$defs/InputState"
                 },
+                "task": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/TaskId"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null,
+                  "description": "입력이 시작했거나 끼워 넣어진 작업. `label`은 표시용이라 작업 27개째부터 겹치므로 작업을 가리킬 때는 이 값을 쓴다.\n아직 작업에 연결되지 않았으면 `None`이다."
+                },
                 "text": {
                   "type": "string"
                 }
@@ -3886,6 +3898,18 @@
                 },
                 "state": {
                   "$ref": "#/$defs/InputState"
+                },
+                "task": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/TaskId"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null,
+                  "description": "입력이 시작했거나 끼워 넣어진 작업. `label`은 표시용이라 작업 27개째부터 겹치므로 작업을 가리킬 때는 이 값을 쓴다.\n아직 작업에 연결되지 않았으면 `None`이다."
                 },
                 "text": {
                   "type": "string"

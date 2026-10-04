@@ -182,7 +182,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 
 ### 요청 거절
 
-`engine`이 요청 하나를 거절하면(응답 `error`) 클라이언트는 그 응답을 요청 번호와 함께 화면에 올린다. 연결은 닫지 않고 다른 요청의 상태도 바꾸지 않는다. 전체 화면은 거절 원인을 대화 기록에 `engine이 요청을 거절했습니다: 원인`(영어 `The engine rejected the request: ...`)으로 남긴다. 접수하지 못한 입력(`SubmitInput`의 거절)은 `입력을 접수하지 못했습니다: 원인`(영어 `Failed to accept input: ...`)으로 남기고, 입력창이 비어 있으면 그 입력을 입력창에 되돌려 다시 고치게 한다. 입력창에 쓰던 글이 있으면 덮지 않는다. 자동으로 다시 보내지 않는다. 이미 접수한 입력의 실행 실패, 허가 거절, router의 정상 보류는 거절 응답이 아니라 알림이므로 이 줄을 쓰지 않는다. 단순 방식은 같은 문구를 `Saturn: ` 줄로 쓰고, 접수 거절만 온 입력은 실행 결과를 기다리지 않는다. 모든 입력이 끝나면 접수 거절의 원인 종류로 종료 코드를 정하고([종료 코드](engine-lifecycle.md#종료-코드)), 작업 실패가 있으면 1이다. `Attach`처럼 입력과 짝지을 수 없는 요청이 거절되면 바로 같은 방식으로 끝낸다. 조회 요청과 `cli` 하위 명령의 거절은 지금처럼 응답을 기다리는 호출이 오류로 받는다.
+`engine`이 요청 하나를 거절하면(응답 `error`) 클라이언트는 그 응답을 요청 번호와 함께 화면에 올린다. 연결은 닫지 않고 다른 요청의 상태도 바꾸지 않는다. 전체 화면은 거절 원인을 대화 기록에 `engine이 요청을 거절했습니다: 원인`(영어 `The engine rejected the request: ...`)으로 남긴다. 접수하지 못한 입력(`SubmitInput`의 거절)은 `입력을 접수하지 못했습니다: 원인`(영어 `Failed to accept input: ...`)으로 남기고, 입력창이 비어 있으면 그 입력을 입력창에 되돌려 다시 고치게 한다. 입력창에 쓰던 글이 있으면 덮지 않는다. 자동으로 다시 보내지 않는다. 이미 접수한 입력의 실행 실패, 허가 거절, router의 정상 보류는 거절 응답이 아니라 알림이므로 이 줄을 쓰지 않는다. 단순 방식은 같은 문구를 `Saturn: ` 줄로 쓰고, 접수 거절만 온 입력은 실행 결과를 기다리지 않는다. 모든 입력이 끝나면([단순 방식](#단순-방식)) 접수 거절의 원인 종류로 종료 코드를 정하고([종료 코드](engine-lifecycle.md#종료-코드)), 작업 실패가 있으면 1이다. `Attach`처럼 입력과 짝지을 수 없는 요청이 거절되면 바로 같은 방식으로 끝낸다. 조회 요청과 `cli` 하위 명령의 거절은 지금처럼 응답을 기다리는 호출이 오류로 받는다.
 
 ### 단순 방식
 
@@ -205,6 +205,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 - 대화 기록은 줄마다 말한 쪽을 앞에 적는다. 작업의 말은 `[A] `(작업이 하나여도 늘), Saturn 자신의 안내와 경고는 `Saturn: `이고 입력 에코는 `>`로 시작한다. 화면 없는 plain 출력도 같다
 - 선택지는 `› 1. 이번만 허용 (y)`처럼 번호 목록이고 고른 줄에 `›`를 붙인다. 번호 키(`1`, `2`, `3`)로 바로 정한다. 피드백 질문과 바로잡기 제안은 질문 한 줄과 번호 줄이고 번호는 이미 쓰는 키(`1`, `2`, `0`)다
 - 허가 요청, 입력 요청, 폴더 설정 신뢰, router 키 요청, 제약 확인, 멈춤 확인이 도착하면 터미널 벨(`BEL`)을 울린다. 파이프로 받는 plain 출력에는 벨을 섞지 않고 표준 출력이 터미널일 때만 쓴다
+- 화면 없는 plain 출력은 표준 입력이 끝나고 아래가 모두 참이면 끝난다. 보낸 입력마다 접수(`InputAccepted`)나 거절 응답을 받았다. 접수된 입력이 끝 상태(`Applied`, `Rejected`, `Cancelled`)가 됐다. 적용된 입력이 시작했거나 끼워 넣어진 작업이 끝(`Done`, `Failed`)났다. 작업은 표시 글자(`TaskLabel`)가 아니라 `InputChanged`의 `task`(`TaskId`)로 이어 따라간다. 작업 27개째부터는 글자가 겹쳐 다른 작업의 끝을 이 접속의 끝으로 잘못 읽기 때문이다. engine이 합계 알림(`RequestSummary`)을 보내지 않아도 끝나고, 그 알림이 와도 끝나는 때를 바꾸지 않는다. 다른 접속의 입력과 작업은 기다리지도 실패로 세지도 않는다. 입력이 `Rejected`가 되거나 작업이 `Failed`, `NeedsCheck`, `Held`이면 그 입력은 더 기다리지 않고 종료 코드 1로 끝낸다. 결과를 모르거나 멈춘 작업을 성공으로 끝내지 않기 위해서다
 
 ### 화면 언어와 출력 방식
 
@@ -575,6 +576,7 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | 요청 거절 응답은 연결을 닫지 않고 요청 번호와 함께 클라이언트에 전달된다. | `saturn-terminal/tui/src/client/tests.rs`의 `next_returns_a_rejection_with_its_request_id_and_keeps_the_connection` |
 | 전체 화면은 거절 원인을 대화 기록에 남기고, 접수하지 못한 입력만 비어 있는 입력창에 되돌리며 다른 요청을 건드리지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `a_rejected_input_shows_the_cause_and_comes_back_to_the_composer`, `a_rejection_changes_only_the_request_it_answers`, `a_rejection_of_another_request_is_shown_without_touching_the_composer` |
 | 단순 방식은 접수 거절만 온 채 입력이 끝나면 완료 알림 없이 거절 원인의 종료 코드로 끝나고, 접수된 입력이 남아 있으면 계속 기다린다. | `saturn-terminal/tui/src/tests.rs`의 `plain_ends_with_the_rejection_when_the_only_input_is_refused`, `plain_refused_attach_ends_instead_of_waiting_for_a_chat`, `plain_keeps_waiting_for_an_accepted_input_when_another_is_refused` |
+| 단순 방식은 실제 engine에 붙어도 입력과 그 작업이 끝나면 합계 알림 없이 끝나고, 작업 실패와 결과 모름은 종료 코드 1이며, 대기 입력, 끼워 넣은 입력, 다른 접속의 작업은 끝나는 때를 어긋나게 하지 않는다. | `saturn-terminal/engine/src/lifecycle/plain_exit.rs`의 `plain_ends_with_success_when_the_only_task_is_done`, `plain_ends_with_a_failure_when_the_provider_refuses_the_turn`, `plain_ends_with_a_failure_when_the_turn_result_is_unknown`, `plain_waits_for_a_queued_input_and_ends_after_its_task`, `plain_ends_after_the_task_that_took_a_steered_input`, `saturn-terminal/tui/src/plain.rs`의 `another_connections_task_neither_holds_the_end_nor_fails_it`, `an_input_applied_before_its_task_starts_is_not_finished_yet`, `a_task_sharing_the_label_finishing_first_does_not_end_or_fail_this_connections_wait`, `a_steer_waits_for_the_task_it_joined_not_for_one_sharing_its_label`, `a_steer_onto_a_finished_task_does_not_wait_for_another_task_sharing_its_label`, `saturn-terminal/engine/src/lifecycle/intake.rs`의 `input_notice_carries_the_task_a_steered_input_joined` |
 
 ## 미해결 질문
 

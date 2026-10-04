@@ -65,24 +65,11 @@ impl App {
         match notification {
             Notification::StartInfo { .. } => self.on_start_info(&notification),
             Notification::InputAccepted { .. } => {}
-            Notification::InputChanged {
-                input,
-                text,
-                label,
-                state,
-                disposition,
-                reason,
-            } => self.on_input_changed(
-                InputUpdate {
-                    input,
-                    text,
-                    label,
-                    state,
-                    disposition,
-                    reason,
-                },
-                now,
-            ),
+            changed @ Notification::InputChanged { .. } => {
+                if let Some((update, _)) = InputUpdate::of(changed) {
+                    self.on_input_changed(update, now);
+                }
+            }
             Notification::TaskChanged {
                 task,
                 label,
@@ -707,6 +694,7 @@ fn history_cells(entries: Vec<Notification>) -> Vec<TranscriptCell> {
                 state,
                 disposition,
                 reason,
+                ..
             } => {
                 let update = InputUpdate {
                     input,

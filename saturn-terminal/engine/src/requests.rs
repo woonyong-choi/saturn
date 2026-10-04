@@ -112,6 +112,7 @@ impl Engine {
                 input,
                 text,
                 label: None,
+                task: None,
                 state,
                 disposition: None,
                 reason,
