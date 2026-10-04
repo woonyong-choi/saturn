@@ -1210,6 +1210,102 @@ fn a_duplicate_close_before_registration_ends_the_child_once() {
     assert!(!threads.contains_key(&ProviderSessionId("kid".to_owned())));
 }
 
+// #438: 턴 시작 없이 닫힌 자식도 시작과 종료를 짝으로 알린다. 그렇지 않으면 시작만 전달돼 트리가 유휴가 되지 않는다.
+#[test]
+fn a_child_closed_without_any_turn_is_started_and_ended_once() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    convert_notification(
+        &mut threads,
+        &mut held,
+        "thread/closed",
+        &json!({ "threadId": "kid" }),
+    );
+
+    let events = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+
+    assert_eq!(started_ids(&events).len(), 1);
+    assert_eq!(ended_ids(&events), ["kid"]);
+    assert!(!threads.contains_key(&ProviderSessionId("kid".to_owned())));
+}
+
+// #438: 보관 한도로 `turn/started`가 밀려난 뒤 닫힌 자식.
+#[test]
+fn a_child_whose_turn_start_was_evicted_from_the_hold_is_still_ended() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    convert_notification(
+        &mut threads,
+        &mut held,
+        "turn/started",
+        &child_turn_started("kid"),
+    );
+    for _ in 0..HELD_PER_THREAD {
+        convert_notification(
+            &mut threads,
+            &mut held,
+            "item/agentMessage/delta",
+            &json!({ "threadId": "kid", "itemId": "m", "delta": "x" }),
+        );
+    }
+    convert_notification(
+        &mut threads,
+        &mut held,
+        "thread/closed",
+        &json!({ "threadId": "kid" }),
+    );
+
+    let events = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+
+    assert_eq!(started_ids(&events).len(), 1);
+    assert_eq!(ended_ids(&events), ["kid"]);
+}
+
+// #438: 턴이 끝나 종료를 알린 자식의 닫힘은 종료를 다시 알리지 않는다.
+#[test]
+fn closing_a_child_that_already_ended_does_not_end_it_again() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+    convert_notification(
+        &mut threads,
+        &mut held,
+        "turn/started",
+        &child_turn_started("kid"),
+    );
+    let completed = convert_notification(
+        &mut threads,
+        &mut held,
+        "turn/completed",
+        &json!({ "threadId": "kid", "turn": { "id": "turn_kid" } }),
+    );
+
+    let closed = convert_notification(
+        &mut threads,
+        &mut held,
+        "thread/closed",
+        &json!({ "threadId": "kid" }),
+    );
+
+    assert_eq!(ended_ids(&completed), ["kid"]);
+    assert!(ended_ids(&closed).is_empty());
+}
+
 // #438
 #[test]
 fn a_nested_child_closed_before_registration_is_ended_under_its_parent() {

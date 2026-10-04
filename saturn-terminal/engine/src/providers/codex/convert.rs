@@ -205,6 +205,7 @@ fn on_turn_completed(
     state.active_turn = None;
     state.last_completed_turn = params["turn"]["id"].as_str().map(str::to_owned);
     if let Some(subagent) = subagent {
+        state.subagent_open = false;
         return vec![ProviderEvent::SubagentEnded { agent, subagent }];
     }
     let origin = state

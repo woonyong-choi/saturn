@@ -152,10 +152,9 @@ fn adopt_child(
         model: model.map(str::to_owned),
         permission: None,
     };
-    threads.insert(
-        child.clone(),
-        ThreadState::new(agent, Some(parent.clone()), applied),
-    );
+    let mut state = ThreadState::new(agent, Some(parent.clone()), applied);
+    state.subagent_open = true;
+    threads.insert(child.clone(), state);
     vec![ProviderEvent::SubagentStarted {
         agent,
         subagent: subagent_id(child),
@@ -187,7 +186,8 @@ pub(super) fn register_spawned(
     started
 }
 
-/// 턴이 진행 중이었으면 끝으로 보고, 메인 thread는 그대로 둔다.
+/// 시작을 알렸고 종료는 아직 알리지 않은 자식이면 끝으로 보고, 메인 thread는 그대로 둔다. 턴이 있었는지와 무관하게
+/// 시작과 종료를 짝으로 알려야 하위 트리가 유휴가 된다.
 pub(super) fn close_child(
     threads: &mut HashMap<ProviderSessionId, ThreadState>,
     thread: &ProviderSessionId,
@@ -198,13 +198,10 @@ pub(super) fn close_child(
     if state.parent.is_none() {
         return Vec::new();
     }
-    let ended = state
-        .active_turn
-        .is_some()
-        .then(|| ProviderEvent::SubagentEnded {
-            agent: state.agent,
-            subagent: subagent_id(thread),
-        });
+    let ended = state.subagent_open.then(|| ProviderEvent::SubagentEnded {
+        agent: state.agent,
+        subagent: subagent_id(thread),
+    });
     threads.remove(thread);
     ended.into_iter().collect()
 }
