@@ -3,11 +3,11 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md), [provider 연결을 채팅마다 따로 둔다](../decisions/2026-10-02-per-chat-provider-connections.md) |
+| 관련 결정 | [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md), [provider 연결을 채팅마다 따로 둔다](../decisions/2026-10-02-per-chat-provider-connections.md), [provider는 열린 id의 어댑터로 붙이고 확장은 Saturn 저장소에 설치해 session을 열 때 주입한다](../decisions/2026-10-04-open-providers-and-saturn-extensions.md) |
 
 ## 요약
 
-engine은 Codex와 Claude Code에 켜 둔 연결을 두고, 한 채팅 안에서 여러 provider session을 이어 쓴다. 채팅마다 메인 에이전트가 하나 있고, 무관한 작업은 보조 에이전트가 맡는다. engine은 provider 이벤트를 Saturn 용어로 바꿔 기록하고, subagent 트리와 사용량을 추적한다.
+engine은 Codex와 Claude Code에 켜 둔 연결을 두고, 한 채팅 안에서 여러 provider session을 이어 쓴다. 채팅마다 메인 에이전트가 하나 있고, 무관한 작업은 보조 에이전트가 맡는다. engine은 provider 이벤트를 Saturn 용어로 바꿔 기록하고, subagent 트리와 사용량을 추적한다. provider는 Saturn 인터페이스, 어댑터, 기능 전달 세 계층으로 연결하고, 열린 id로 식별하며, 어댑터 레지스트리에 등록한다. 이 계층 구조는 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)).
 
 ## 동기
 
@@ -54,7 +54,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트를 바꿀 때마
 
 engine은 채팅마다 provider별로 켜 둔 채 입력을 받는 연결을 두고([결정 기록](../decisions/2026-10-02-per-chat-provider-connections.md)), 작업 폴더와 환경은 그 채팅에 고정한 값을 쓴다. Codex는 app-server로, Claude Code는 stream-json 입력으로 연결한다. 한 번 실행 방식으로는 끼워 넣기가 불가능하기 때문이다. 고정 모델도 이어 갈 메인 session도 없는 첫 입력은 설치된 Claude로, 없으면 Codex로 보내고 둘 다 없으면 보내지 않는다([입력 처리](input-handling.md#입력-전송과-재전송)).
 
-`core`는 provider 연결 공통 규격인 `ProviderClient` trait을 정의하고, engine의 `providers` 모듈이 `CodexClient`와 `ClaudeClient`로 구현한다. 구현은 끼워 넣기, 멈춤 신호, compaction, 사용량 보고를 Saturn 용어로 넘긴다. provider 고유 이름은 `providers/codex`, `providers/claude` 안에서만 쓴다. TUI와 앱이 provider를 몰라도 화면을 그리게 하기 위해서다.
+`core`는 provider 연결 공통 규격인 `ProviderClient` trait을 정의하고, engine의 `providers` 모듈이 `CodexClient`와 `ClaudeClient`로 구현한다. 구현은 끼워 넣기, 멈춤 신호, compaction, 사용량 보고를 Saturn 용어로 넘긴다. provider 고유 이름은 어댑터 폴더 `providers/codex`, `providers/claude` 안에서만 쓴다. TUI와 앱이 provider를 몰라도 화면을 그리게 하기 위해서다. 어댑터를 열린 id로 더하는 구조는 [provider 계층과 어댑터](#provider-계층과-어댑터)에 있다.
 
 | 동작 | Codex | Claude Code |
 |---|---|---|
@@ -91,6 +91,60 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 
 끼워 넣기 실측을 통과하기 전의 provider에서는 끼워 넣기를 대기로 바꿔 처리한다. 끼워 넣기 경로가 문서대로 동작하는지 실측으로 확인해야 하기 때문이다([#5](https://github.com/woonyong-choi/saturn/issues/5), [#27](https://github.com/woonyong-choi/saturn/issues/27)). 이때 TUI는 `바로 반영 준비 중`을 보인다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다. 입력을 어디로 보낼지는 [입력 처리](input-handling.md)가 정한다.
 
+### provider 계층과 어댑터
+
+provider 연결은 세 계층으로 나눈다. 이 절의 동작은 모두 구현 전이고 구현 범위는 [#412](https://github.com/woonyong-choi/saturn/issues/412)다. 지금은 `ProviderClient` trait과 `ProviderEvent`만 provider 중립이다.
+
+| 계층 | 하는 일 | 위치 |
+|---|---|---|
+| Saturn 인터페이스 | provider와 무관하게 정한 계약. 판 번호를 붙여 따로 유지한다. | `core`의 `providers`와 `protocol` |
+| 어댑터 | provider마다 계약을 구현한다. 실행 인자, provider 설정, 이벤트 변환, 권한 번역, 확장 주입은 여기에만 있다. | engine의 `providers/<id>` |
+| 기능 전달 | 어댑터가 알린 명령, 스킬, 플러그인, 모드를 이름과 종류로 TUI 명령과 권한 규칙에 보인다. | engine의 `providers`와 TUI |
+
+Saturn 인터페이스 계약은 아래 동작을 provider 이름 없이 정한다.
+
+- session 열기, 닫기, 재개
+- 턴 보내기, 끼워 넣기, 멈춤, 맥락 정리 요청
+- 권한 요청과 입력 요청에 대한 답
+- 이벤트 수신
+- 모델 목록과 기능 목록
+- 오류 구분. 보내기 전 실패는 `NotSent`, 보낸 뒤 결과를 모르는 실패는 `Unknown`이다.
+
+- 계약에는 판 번호(`interface_version`)를 붙인다. 한 판 안에서는 항목의 뜻을 바꾸거나 빼지 않고, 바꿀 때는 판을 올린다. 1판은 지금 `ProviderClient`의 동작이다. 어댑터가 알린 판을 engine이 지원하지 않으면 그 어댑터를 등록하지 않고 로그만 남긴다. 판이 어긋난 어댑터가 session 도중에 동작이 달라지는 일을 막기 위해서다.
+- 어댑터 밖 공통 코드는 `protocol`, `core`, `providers/<id>` 밖의 engine 모듈, `tui`, `cli`다. 공통 코드는 provider id를 불투명한 글자로 저장하고 전달하고 같은지 비교할 뿐, id 값으로 동작을 가르지 않는다. provider마다 달라지는 값(표시명, 기본값, 지원하는 기능)은 어댑터 설명자와 기능 목록으로 받는다. 비테스트 코드에서 `providers/<id>` 밖에 provider 이름 분기가 없게 하기 위해서다.
+- 어댑터를 engine 프로세스 밖에 두는 방식은 미해결이다([미해결 질문](#미해결-질문)).
+
+### provider id와 설명자
+
+provider는 닫힌 enum이 아니라 열린 id 글자로 식별한다. id는 소문자 영문, 숫자, `-`만 쓰고 어댑터 폴더 이름과 같다(`codex`, `claude`). `/`를 쓰지 않는다. 모델 고정 글 `<provider>/<model>`을 첫 `/`에서 나누기 위해서다.
+
+어댑터는 등록할 때 설명자를 알린다.
+
+| 값 | 뜻 |
+|---|---|
+| id | provider 식별 글자 |
+| 표시명 | 화면과 사용량에 보이는 이름 |
+| 실행 파일 | 설치 여부를 확인하고 실행할 파일 이름 |
+| 기본 순서 | 고정 모델도 이어 갈 메인 session도 없는 첫 입력과 모델 목록이 provider를 고르는 순서. 지금은 Claude, Codex 순이다. |
+| 기능 | 이 어댑터가 구현하는 동작 중 선택 항목(끼워 넣기, 맥락 정리 요청 등) |
+| 지시 문서 이름 | provider가 스스로 읽는 문서의 이름. 패킷에 넣지 않을 문서를 정한다(`AGENTS.md`, `CLAUDE.md`). |
+| 인터페이스 판 | 구현한 계약의 판 번호 |
+| 설정 키와 기본값 | `provider.<id>.*` 아래의 키와 기본값([설정](settings.md#설정-키)) |
+
+옛 기록은 그대로 읽힌다.
+
+- 기록 저장소의 `sessions`와 `runs` 표 provider 열은 지금 `Codex`, `Claude`로 쓰여 있다. 열린 id로 바뀐 뒤에도 이 값은 대소문자를 가리지 않고 같은 id(`codex`, `claude`)로 읽는다. 옛 행은 고치지 않고 스키마 이관도 하지 않는다. 새로 쓰는 값은 id 글자다. 옛 버전으로 되돌리는 것은 지원하지 않는다([기록 저장과 보존](records.md#스키마-이관)).
+- 모델 고정 글 `<provider>/<model>`의 provider 자리는 지금도 소문자 `codex`, `claude`이고 id와 같다. 기존 값이 그대로 읽힌다.
+- 레지스트리에 없는 id가 기록에 있으면(어댑터를 뺀 뒤) 기록은 그대로 두고 그 provider의 session은 열지 않는다. 화면은 id 글자를 표시명 대신 보인다.
+
+### 어댑터 등록
+
+engine은 시작할 때 레지스트리에 어댑터를 등록한다. 레지스트리는 설명자 목록을 기본 순서로 돌려주고, id로 어댑터를 만들고, 실행 파일이 있는지 확인한다. 지금 `Provider` enum과 `match`가 하던 일(표시명, 설치 확인, 연결 만들기, 첫 입력 기본 provider)을 레지스트리가 맡는다.
+
+- 새 어댑터는 `providers/<id>` 폴더를 더하는 것으로 붙는다. 공통 코드의 수정은 없다. 이것을 가짜 provider 하나로 시험한다.
+- provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. 지금 `context.codex`, `context.claude` 키의 이관 규칙은 [설정](settings.md#설정-키)에 있다.
+- 등록 방식(컴파일할 때 폴더를 모으는 방식과 시작할 때 어댑터가 스스로 등록하는 방식)은 [미해결 질문](#미해결-질문)에 있다.
+
 ### provider 실행과 기본값 인자
 
 1. `settings`는 입력 접수 때 고정한 설정 번호의 값을 읽는다.
@@ -120,7 +174,7 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 | 명령 목록 수집 | 명령 대응표와 `skills/list` | `system/init`의 `slash_commands` |
 | 명령과 스킬 전달 | 명령 이름과 app-server 메서드 대응표로 호출 | 프롬프트에 `/이름`을 그대로 넣어 전송 |
 
-provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대신하는 명령은 뺀다. 뒤에서 연결할 때 쓸 수 없거나 Saturn session 기록과 어긋나기 때문이다. 채팅 이어 열기와 폴더 추가는 [engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)에 있다. Claude 스트림에서 provider 명령의 결과와 허가 요청이 어떻게 오는지는 실측으로 확인한다([#26](https://github.com/woonyong-choi/saturn/issues/26)).
+provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대신하는 명령은 뺀다. 뒤에서 연결할 때 쓸 수 없거나 Saturn session 기록과 어긋나기 때문이다. 어댑터가 올린 목록을 TUI에 보내는 연결은 구현 전이다. TUI는 `Commands` 알림을 받는 코드가 있지만 engine이 보내는 코드가 없다(main 67a6dad 확인). 목록의 항목 종류와 노출 규칙은 [기능 목록과 확장](extensions.md#기능-목록)에 있다. 채팅 이어 열기와 폴더 추가는 [engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)에 있다. Claude 스트림에서 provider 명령의 결과와 허가 요청이 어떻게 오는지는 실측으로 확인한다([#26](https://github.com/woonyong-choi/saturn/issues/26)).
 
 ### 이벤트 수신과 변환
 
@@ -413,20 +467,29 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 실행 중 작업이 5분 동안 provider 이벤트가 없으면 `응답 없음 N분`을 보이고, 이벤트가 오면 지우며, 허가나 입력 요청을 기다리는 동안은 보이지 않는다. 자동으로 멈추지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `no_response_shows_in_minutes_after_the_threshold_without_events`, `no_response_clears_when_an_event_arrives`, `no_response_does_not_show_while_waiting_for_permission_or_input`, `no_response_text_is_translated` |
 | Codex는 끊긴 자식 thread를 부모를 다시 열기 전에 보관하고 구독을 끊으며 부모는 건드리지 않는다. 끊긴 자식이 없으면 정리하지 않는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `interrupted_children_are_cleaned_before_the_parent_is_resumed`, `resume_without_interrupted_children_cleans_nothing` |
 | Claude 실행 환경에서 `CLAUDE_CODE_RESUME_INTERRUPTED_TURN`만 빠진다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `resume_interrupted_turn_variable_is_not_passed_to_claude` |
+| provider는 열린 id로 식별하고 어댑터 밖 공통 코드는 provider 이름으로 분기하지 않는다. | 구현 전(#412). `providers/<id>` 밖 비테스트 코드의 provider 이름 분기를 `grep`으로 확인한다. |
+| 어댑터 파일만 더해 가짜 provider를 붙일 수 있다. | 구현 전(#412). 공통 코드를 바꾸지 않고 가짜 어댑터 하나를 등록해 session 열기부터 턴 끝까지 확인한다. |
+| 어댑터 설명자의 표시명, 실행 파일, 기본 순서, 지시 문서 이름을 화면과 첫 입력 기본 provider, 패킷이 쓴다. | 구현 전(#412). 가짜 설명자의 값이 각각 반영되는지 확인한다. |
+| 기록 저장소의 옛 provider 값 `Codex`, `Claude`와 모델 고정 글 `codex/<model>`, `claude/<model>`이 옛 값 그대로 읽힌다. | 구현 전(#412). 옛 값이 든 기록 저장소를 열어 같은 id로 읽히는지 확인한다. |
+| 인터페이스 판이 지원 범위 밖인 어댑터는 등록하지 않는다. | 구현 전(#412). 판 번호가 다른 가짜 어댑터로 확인한다. |
 
 ## 단점
 
 - provider별 연결 규약을 구현하고, 규약이 바뀌면 계속 따라가야 한다.
 - subagent 추적을 직접 구현해야 한다.
 - 설정으로 증명하지 못한 실행은 크래시 뒤 자동으로 이어 가지 못한다.
+- 계약에 판 번호를 붙여 유지하므로 provider가 늘어도 한 판의 뜻을 바꾸지 못한다.
 
 ## 대안
 
+- provider를 닫힌 enum으로 두는 방식은 provider를 더할 때마다 공통 코드를 고쳐야 해 버렸다([결정 기록](../decisions/2026-10-04-open-providers-and-saturn-extensions.md)).
 - 한 번 실행 방식(`codex exec`, `claude -p`)은 끼워 넣기와 Codex 맥락 크기 관찰이 불가능해 버렸다([결정 기록](../decisions/2026-09-29-persistent-provider-connections.md)).
 - 실행 인자로 subagent와 네트워크를 고정하는 방식은 사용자 설정을 무시해 버렸다([결정 기록](../decisions/2026-09-29-minimal-provider-control.md)).
 
 ## 미해결 질문
 
+- 어댑터를 engine 프로세스 밖의 별도 프로세스로 붙여 표준 메시지로 대화하게 할지. "공통 코드 수정 없이"를 완전히 지키려면 필요하다. 공개 표준 Agent Client Protocol(ACP)이 후보이고, 지원 범위와 Saturn 계약(끼워 넣기, 멈춤, 권한 답, 맥락 정리 요청)을 담을 수 있는지는 확인하지 않았다. 조사 뒤 결정한다 ([#412](https://github.com/woonyong-choi/saturn/issues/412))
+- 어댑터 등록 방식. 컴파일할 때 폴더를 모아 등록할지, 어댑터가 시작할 때 스스로 등록할지 ([#412](https://github.com/woonyong-choi/saturn/issues/412))
 - 채팅에 더한 폴더를 열린 session에 넣는 방법(Claude stream-json 제어 요청, Codex 턴 단위 쓰기 폴더)과, Codex 읽기 전용 샌드박스에서 `writable_roots`가 효과가 있는지. 지금은 다음 session부터 적용한다 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
 - 메인이 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - router 상태에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))

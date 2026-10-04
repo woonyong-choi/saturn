@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md) |
+| 관련 결정 | [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [provider는 열린 id의 어댑터로 붙이고 확장은 Saturn 저장소에 설치해 session을 열 때 주입한다](../decisions/2026-10-04-open-providers-and-saturn-extensions.md) |
 
 ## 요약
 
@@ -50,6 +50,7 @@
 4. engine이 호출마다 이어 붙인 규칙에서 마지막으로 일치한 규칙의 값을 쓴다.
 5. 개별 규칙 중 `deny`가 하나라도 일치하면 순서와 상관없이 `deny`를 쓴다.
 
+- 어댑터가 [기능 목록](extensions.md#기능-목록)에 올린 종류(스킬, 명령, 플러그인 같은)도 규칙 대상이 된다. 코드는 대상 종류를 닫힌 다섯 가지 대신 어댑터가 알린 종류를 더한 열린 목록으로 다룬다. 새 종류의 키는 `permission.<종류>`이고 대상 이름은 항목의 이름이다. 규칙이 없으면 모드 `full`은 `allow`, 그 밖의 모드는 `ask`다(초안). 모르는 종류가 규칙 없이 실행되는 일을 막기 위해서다. 이 항목은 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)).
 - 마지막 일치가 이긴다. OpenCode의 규칙 방식을 따른다.
 - `deny`는 예외다. 폴더 설정이 사용자 설정의 `deny`를 뒤집어 저장소가 사용자의 금지를 풀지 못하게 하기 위해서다. 채팅 층과 실행 층의 개별 `deny`도 같게 본다(초안). 거부가 순서 때문에 풀리는 일을 없애기 위해서다. 모드의 기본 규칙에는 이 예외가 없고, 개별 `allow`가 모드의 기본 `deny`를 덮을 수 있다.
 - 패턴은 `*`를 포함할 수 있는 글자 일치다(초안). `*`는 `/`와 공백을 포함한 아무 글자열이고 `\*`는 글자 `*` 그대로다. 끝이 ` *`인 패턴(`git status *`)은 인자가 없는 명령(`git status`)에도 일치한다.
@@ -244,6 +245,7 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 | 바로 다시 시작하면 `ProviderRestarted`만, 턴 끝으로 미루면 미룬 것을 알아챌 때 `PermissionsChanged`를 한 번과 다시 시작할 때 `ProviderRestarted`를 문구 없이 알린다. | `saturn-terminal/engine/src/lifecycle/live_settings.rs`의 `live_settings_idle_codex_restarts_at_once_and_the_next_input_uses_the_new_settings`, `live_settings_running_codex_restarts_after_the_turn_and_tells_both_notices`, `live_settings_notice_is_not_repeated_while_the_restart_waits`, `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `stale_codex_connection_restarts_after_the_turn_ends_and_reopens_the_session`, `saturn-terminal/tui/src/view/transcript.rs`의 `lines_permission_notices_follow_language` |
 | 개별 규칙의 `deny`는 항상 허용보다 앞선다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `deny_rule_beats_a_stored_always_allow` |
 | 스키마 V4 이관은 채팅 행을 보존하고 항상 허용 표를 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v3_file_migrates_to_permission_allows_keeping_chats` |
+| 어댑터가 올린 종류가 `permission.<종류>` 규칙의 대상이 되고, 규칙이 없으면 `full`은 허용, 그 밖의 모드는 묻는다. | 구현 전(#412). 가짜 어댑터가 올린 새 종류에 규칙을 걸어 판정을 확인한다. |
 
 ## 단점
 

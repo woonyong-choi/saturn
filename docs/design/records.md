@@ -52,6 +52,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 | 판단 기록 | router 호출의 보낸 원문, 받은 원문, 질문별 답, 비용, 시간, 물은 확률 q, 결과 신호, 물은 답 |
 | 설정 스냅샷 | 설정 번호별 병합 결과와 층 목록 |
 | 제약 | 규칙 한 줄과 적용 범위, 변경 이벤트, 묻는 중인 확인, 전환마다 패킷에 넣은 제약 |
+| 확장 | 설치한 확장의 이름, 출처, 부분별 provider 사용 가능 판정, 옮기자는 질문의 거절(구현 전, [#412](https://github.com/woonyong-choi/saturn/issues/412)) |
 
 - 기록 저장소에 쓰는 쪽은 engine 하나다. 쓰기 충돌을 막기 위해서다.
 - engine은 사용자당 하나이고 잠금으로 지킨다. 쓰는 프로세스를 하나로 유지하기 위해서다.
@@ -65,6 +66,8 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - `chats` 표의 `pinned_model`은 `/model`로 고른 채팅의 고정 모델(`<provider>/<model>`)이다. 고르지 않았으면 NULL이고 입력 접수 때 읽어 `inputs.pinned_model`에 남긴다. 고정하지 않은 입력은 새 작업으로 판단되어 router가 고른 모델(`<provider>/<model>`)을 판단을 적용할 때 같은 열에 쓴다. 스키마 V6에서 더했다.
 - `chat_dirs` 표는 채팅에 더한 폴더를 채팅 `chat_id`, 링크를 푼 절대 경로 `path`, 더한 시각 `added_at`(unix 밀리초)으로 둔다. 같은 채팅의 같은 경로는 한 행이고 행 번호 순서가 더한 순서다. 채팅을 지우면 함께 지운다. 스키마 V5에서 더했다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)).
 - `chats` 표의 `name`은 사용자가 붙인 채팅 이름, `group_name`은 작업 목록의 묶음 이름이다. 붙이지 않았으면 NULL이고 이관 전 채팅도 NULL이다. 앞뒤 공백을 지우고 비면 NULL로 저장하며, 줄바꿈 같은 제어 문자가 들어 있으면 저장하지 않고 요청을 거절한다(초안). 채팅을 지우면 함께 지운다. 스키마 V8에서 더했다.
+- `sessions`와 `runs` 표의 `provider`는 열린 provider id를 담는다. 지금 값 `Codex`, `Claude`는 대소문자를 가리지 않고 id `codex`, `claude`로 읽고 옛 행은 고치지 않는다. `chats.pinned_model`과 `inputs.pinned_model`의 `<provider>/<model>`은 provider 자리가 이미 id와 같아 그대로 읽힌다([provider 연결과 session](providers-and-sessions.md#provider-id와-설명자)). 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)).
+- `extensions` 표는 설치한 확장을 이름, 출처, 설치 시각, 부분별 판정으로 둔다. 확장 원본 파일은 `~/.saturn/extensions/`에 두고 이 표에 넣지 않는다. 새 표이므로 이관은 표만 비어 있게 더하고, 정리 대상이 아니다([기능 목록과 확장](extensions.md#확장-저장소)). 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)).
 - `held_tasks` 표는 멈출 때 실행 중이던 보류 작업을 작업 번호 `task_id`(첫 입력 번호라 engine을 다시 켜도 같다), 채팅 `chat_id`, 에이전트 `agent_id`, 멈출 때 진행 중이던 실행을 연 입력 `input_id`로 둔다. 멈춤이나 크래시 복구가 보류할 때 쓰고, 재개하거나 닫으면 지운다. 채팅이나 입력을 지우면 함께 지운다. 입력과 에이전트가 없는 보류(보내기 전에 멈춘 입력)는 이 표에 남기지 않고 입력 행의 상태 `Held`로만 남긴다. 멈춤이 보류한 입력은 그때 `inputs.state`에 `Held`로 쓰고, 다시 켠 `engine`은 끝 상태가 아닌 입력을 접수 순서로 읽어 대기열에 되살린다([입력 처리](input-handling.md#재시작-뒤-입력-복원)). 스키마 V7에서 더했다([engine 수명과 복구](engine-lifecycle.md#크래시-뒤-복구)).
 - `interrupted_subagents` 표는 크래시로 끊긴 하위 에이전트를 채팅 `chat_id`, 메인 에이전트 `agent_id`, provider의 하위 에이전트 번호 `subagent`, provider에 정리를 넘겼는지 `cleaned`로 둔다. 같은 에이전트의 같은 하위 에이전트는 한 행이다. 에이전트의 session이 끝나거나 보류를 닫으면, 채팅을 지우면 함께 지운다. 스키마 V7에서 더했다.
 - `permission_allows` 표는 항상 허용을 작업 폴더 `workdir`, 도구 `tool`, 패턴 `pattern`, 저장 시각 `created_at`(unix 밀리초)으로 둔다. 같은 `workdir`, `tool`, `pattern`은 한 행이다. 스키마 V4에서 더했고 채팅과 상관없이 작업 폴더 단위로 쓴다([권한](permissions.md#항상-허용-저장)).
@@ -206,3 +209,4 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 일반 정리는 판단 기록을 지우지 않는다. | 일반 정리 뒤 판단 기록 수가 그대로인지 확인한다. |
 | 채점하지 않아도 판단 기록을 JSONL로 내보낼 수 있다. | 채점 없는 판단 기록을 내보내 줄마다 JSON 한 건인지 확인한다. |
 | provider 기록은 지우지 않는다. | 정리 뒤 `~/.claude`, `~/.codex`의 파일이 그대로인지 확인한다. |
+| 옛 provider 값 `Codex`, `Claude`와 모델 고정 글이 옛 값 그대로 읽히고, 확장 저장소는 채팅 정리의 대상이 아니다. | 구현 전(#412). 옛 값이 든 기록 저장소를 열고 정리를 실행해 값과 `~/.saturn/extensions/`가 그대로인지 확인한다. |
