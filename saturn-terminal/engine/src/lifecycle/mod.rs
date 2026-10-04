@@ -14,6 +14,7 @@ mod deliver;
 mod events;
 mod exit;
 mod fake_provider;
+mod history_paging;
 mod inputs;
 mod intake;
 mod live_settings;

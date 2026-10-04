@@ -632,7 +632,7 @@
           "type": "object"
         },
         {
-          "description": "`before`보다 앞 기록 `limit`개.",
+          "description": "`before`(앞서 받은 `HistoryChunk`의 `oldest`)보다 앞 기록 `limit`단위. 없으면 가장 최근부터.",
           "properties": {
             "method": {
               "const": "LoadHistory",
@@ -2225,7 +2225,7 @@
           "type": "object"
         },
         {
-          "description": "`LoadHistory`의 답. 항목은 실시간 알림과 같은 형식.",
+          "description": "`LoadHistory`의 답. 항목은 실시간 알림과 같은 형식.\n`oldest`는 이 묶음에서 가장 오래된 기록 위치로, 더 앞을 받으려면 `LoadHistory`의 `before`에 그대로 보낸다.\n묶음이 비면 `None`. 더 앞 기록이 없으면 `has_more`가 거짓이니 더 요청하지 않는다.",
           "properties": {
             "method": {
               "const": "HistoryChunk",
@@ -2244,6 +2244,17 @@
                 },
                 "has_more": {
                   "type": "boolean"
+                },
+                "oldest": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/LedgerSeq"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
                 }
               },
               "required": [
@@ -3356,7 +3367,7 @@
           "type": "object"
         },
         {
-          "description": "`LoadHistory`의 답. 항목은 실시간 알림과 같은 형식.",
+          "description": "`LoadHistory`의 답. 항목은 실시간 알림과 같은 형식.\n`oldest`는 이 묶음에서 가장 오래된 기록 위치로, 더 앞을 받으려면 `LoadHistory`의 `before`에 그대로 보낸다.\n묶음이 비면 `None`. 더 앞 기록이 없으면 `has_more`가 거짓이니 더 요청하지 않는다.",
           "properties": {
             "method": {
               "const": "HistoryChunk",
@@ -3375,6 +3386,17 @@
                 },
                 "has_more": {
                   "type": "boolean"
+                },
+                "oldest": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/LedgerSeq"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
                 }
               },
               "required": [

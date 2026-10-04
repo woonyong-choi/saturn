@@ -7,7 +7,9 @@ use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use ratatui::layout::Rect;
 use saturn_protocol::event::{Activity, ProviderEvent, ToolDetail, UsageReport, UsageScope};
-use saturn_protocol::ids::{AgentId, ChatId, InputId, JudgmentId, Provider, TaskId, TaskLabel};
+use saturn_protocol::ids::{
+    AgentId, ChatId, InputId, JudgmentId, LedgerSeq, Provider, TaskId, TaskLabel,
+};
 use saturn_protocol::input::{InputAnswer, InputField, InputFieldKind, InputRequest, InputValue};
 use saturn_protocol::rpc::{
     Alert, ChatNotice, ExitPlan, ModelChoice, ModelInfo, Notification, PermissionAnswer, Request,
@@ -44,6 +46,7 @@ fn history(entries: Vec<Notification>) -> Notification {
     Notification::HistoryChunk {
         chat: ChatId(7),
         entries,
+        oldest: None,
         has_more: false,
     }
 }
@@ -1371,6 +1374,70 @@ fn first_history_chunk_shows_earlier_input_and_finished_reply() {
         cell,
         TranscriptCell::AgentText { lines, .. } if lines.join("") == "old answer"
     )));
+}
+
+fn history_page(oldest: Option<u64>, has_more: bool) -> Notification {
+    Notification::HistoryChunk {
+        chat: ChatId(7),
+        entries: vec![input(1, InputState::Applied, "old question")],
+        oldest: oldest.map(LedgerSeq),
+        has_more,
+    }
+}
+
+fn wheel_up(app: &mut App) -> Vec<Effect> {
+    app.handle(
+        AppEvent::Terminal(Event::Mouse(MouseEvent {
+            kind: MouseEventKind::ScrollUp,
+            column: 1,
+            row: 1,
+            modifiers: KeyModifiers::NONE,
+        })),
+        Instant::now(),
+    )
+}
+
+fn load_history(before: u64) -> Request {
+    Request::LoadHistory {
+        chat: ChatId(7),
+        before: Some(LedgerSeq(before)),
+        limit: super::HISTORY_PAGE,
+    }
+}
+
+#[test]
+fn scrolling_to_the_top_asks_for_history_before_the_oldest_received() {
+    let mut app = app();
+    notify(&mut app, history_page(Some(400), true));
+
+    let first = wheel_up(&mut app);
+    notify(&mut app, history_page(Some(150), true));
+    let second = wheel_up(&mut app);
+
+    assert_eq!(sent(&first), vec![&load_history(400)]);
+    assert_eq!(sent(&second), vec![&load_history(150)]);
+}
+
+#[test]
+fn scrolling_stops_asking_once_the_start_of_the_chat_is_reached() {
+    let mut app = app();
+    notify(&mut app, history_page(Some(400), true));
+    wheel_up(&mut app);
+    notify(&mut app, history_page(Some(150), false));
+
+    let effects = wheel_up(&mut app);
+
+    assert!(sent(&effects).is_empty());
+}
+
+#[test]
+fn scrolling_without_a_known_position_does_not_ask() {
+    let mut app = app();
+    notify(&mut app, history_page(None, true));
+
+    let effects = wheel_up(&mut app);
+
+    assert!(sent(&effects).is_empty());
 }
 
 fn usage_event(task: u64, input: u64, output: u64) -> Notification {

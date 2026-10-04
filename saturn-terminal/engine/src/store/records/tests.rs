@@ -437,7 +437,7 @@ async fn old_provider_values_read_as_open_ids() {
         .unwrap();
 
     let mains = store.live_mains().await.unwrap();
-    let (history, _) = store.recent_history(chat, 10).await.unwrap();
+    let history = store.history_page(chat, None, 10).await.unwrap().entries;
 
     assert_eq!(mains[0].0.id, session);
     assert_eq!(mains[0].0.provider, crate::providers::test_support::CLAUDE);

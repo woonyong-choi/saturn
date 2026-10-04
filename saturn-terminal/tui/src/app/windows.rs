@@ -262,6 +262,7 @@ impl App {
         self.attach_chat = chat;
         self.history_loaded = false;
         self.history_loading = false;
+        self.history_before = None;
         self.history_has_more = true;
         vec![Effect::Send(self.attach_request())]
     }

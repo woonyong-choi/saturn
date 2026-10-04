@@ -128,6 +128,7 @@ async fn attach_sends_start_info_then_history_then_permissions() {
         chat: history_chat,
         entries,
         has_more,
+        ..
     } = &received[1]
     else {
         panic!("expected HistoryChunk second, got {:?}", received[1]);
@@ -259,7 +260,7 @@ async fn attach_history_keeps_earlier_inputs_and_replies_when_the_last_reply_is_
 async fn chat_that_switched_providers(engine: &Engine, workdir: &Path) -> ChatId {
     let chat = chat_with_history(engine, workdir).await;
     let store = &engine.store;
-    let first = store.recent_history(chat, 10).await.unwrap().0;
+    let first = store.history_page(chat, None, 10).await.unwrap().entries;
     assert_eq!(first.len(), 2);
     let report = |input: u64| UsageReport {
         agent: AgentId(1),

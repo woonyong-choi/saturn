@@ -234,12 +234,13 @@ async fn cancel_applies_only_before_the_input_is_sent() {
     ));
     assert_eq!(flow.state(sent), InputState::Applied);
     assert_eq!(flow.state(waiting), InputState::Cancelled);
-    let (entries, _) = flow
+    let entries = flow
         .engine
         .store
-        .recent_history(flow.chat, 10)
+        .history_page(flow.chat, None, 10)
         .await
-        .unwrap();
+        .unwrap()
+        .entries;
     assert!(entries.iter().any(|entry| matches!(
         entry,
         crate::store::HistoryEntry::Input { input, state: InputState::Cancelled, .. } if *input == waiting

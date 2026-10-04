@@ -15,7 +15,7 @@ use crossterm::event::{
     Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
 };
 use ratatui::layout::{Position, Rect};
-use saturn_protocol::ids::{ChatId, Provider};
+use saturn_protocol::ids::{ChatId, LedgerSeq, Provider};
 use saturn_protocol::rpc::{CommandInfo, Notification, Request};
 use tokio::sync::mpsc;
 
@@ -142,6 +142,8 @@ pub(crate) struct App {
     /// 첫 `HistoryChunk` 뒤의 묶음은 위로 스크롤한 이전 부분이다.
     history_loaded: bool,
     history_loading: bool,
+    /// 받은 가장 오래된 기록 위치. 더 앞 기록을 요청할 때 `before`로 보낸다.
+    history_before: Option<LedgerSeq>,
     history_has_more: bool,
     /// 마지막 `/train`이 `--reset-thresholds`였다.
     train_reset: bool,
@@ -189,6 +191,7 @@ impl App {
             next_client_ref: 0,
             history_loaded: false,
             history_loading: false,
+            history_before: None,
             history_has_more: true,
             train_reset: false,
             file_cache: None,
@@ -439,7 +442,6 @@ impl App {
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
-    /// TODO(#110): 기록 번호가 정해지면 `before`를 채운다
     fn scroll_up(&mut self, rows: usize) -> Vec<Effect> {
         if let Some(Window::FullTranscript(full)) = &mut self.window {
             (0..rows).for_each(|_| full.up());
@@ -452,10 +454,14 @@ impl App {
         if !at_top || self.history_loading || !self.history_has_more {
             return Vec::new();
         }
+        // 첫 묶음이 오기 전이나 묶음이 비어 위치를 모르면 요청하지 않는다.
+        let Some(before) = self.history_before else {
+            return Vec::new();
+        };
         self.history_loading = true;
         vec![Effect::Send(Request::LoadHistory {
             chat,
-            before: None,
+            before: Some(before),
             limit: HISTORY_PAGE,
         })]
     }
