@@ -146,7 +146,9 @@ impl Engine {
             Request::ListChats { folder } => self.chat_list_result(folder.as_deref()).await?,
             Request::ListTasks => self.task_list_result().await?,
             Request::ListRouterVersions => return Err(unsupported("ListRouterVersions")),
-            Request::Prune { yes, plan } => self.prune_records(client, yes, plan).await?,
+            Request::Prune { yes, plan, all } => {
+                self.prune_records(client, (yes, plan, all)).await?
+            }
             Request::ListExtensions => self.extension_list_result().await?,
             command => {
                 self.route(client, command).await?;

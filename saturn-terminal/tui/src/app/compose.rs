@@ -783,5 +783,6 @@ fn prune_preview() -> Request {
     Request::Prune {
         yes: false,
         plan: None,
+        all: false,
     }
 }

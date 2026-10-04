@@ -130,6 +130,9 @@ pub enum EngineError {
     /// 정리 확인 번호가 없거나 만료됐거나 이미 썼다.
     #[error("unknown prune plan: preview again")]
     PrunePlanUnknown,
+    /// `yes`에 미리보기 번호도 `all`도 없다. 미리보기 확인을 모르는 옛 클라이언트의 요청이라 지우지 않는다.
+    #[error("prune confirmation needs the plan of a preview or an explicit all: update the client")]
+    PruneNeedsPlan,
     /// 정리 기준 `retention.max_age_days`가 없어 어떤 채팅이 오래됐는지 정할 수 없다.
     #[error("no retention.max_age_days setting to decide which chats to prune")]
     NoRetention,
@@ -179,6 +182,7 @@ impl EngineError {
             | Self::InvalidLabel { .. }
             | Self::NoRetention
             | Self::PrunePlanUnknown
+            | Self::PruneNeedsPlan
             | Self::ChatNotAttached { .. }
             | Self::Store(StoreError::NotFound { .. })
             | Self::Queue(

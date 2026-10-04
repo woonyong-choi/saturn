@@ -130,7 +130,8 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 | `ListRouterVersions` | `RouterVersions` | `current`, `versions`(아직 지원하지 않아 오류 응답) |
 | `PrepareExit` | `ExitPlan` | `plan` |
 | `Prune`(`yes`가 거짓) | `PrunePreview` | `chats`, `skipped`, `rows`, `plan`(확인 번호) |
-| `Prune`(`yes`가 참, `plan` 있음 또는 없음) | `Pruned` | `chats`, `skipped`, `rows` |
+| `Prune`(`yes`가 참, `plan` 있음 또는 `all`이 참) | `Pruned` | `chats`, `skipped`, `rows` |
+| `Prune`(`yes`가 참, `plan`도 `all`도 없음) | 거절(`INVALID_PARAMS`) | 지우지 않는다 |
 
 상태 변화와 이벤트처럼 요청과 무관하게 실시간으로 일어나는 일은 계속 알림으로 보낸다. `Attach`가 접속 직후 보내는 `StartInfo`, `HistoryChunk`, 허가 요청과 입력 요청, `ModelPinned`, `ContextSize`도 알림이다. `Attach`는 조회가 아니라 접속이라 그렇다. `SetModel`의 `ModelPinned`처럼 같은 채팅에 붙은 모든 TUI가 알아야 하는 변화도 알림이다. `Prune`이 정리 기준 설정이 없어 거절될 때 요청한 접속에 보내는 `Alert::PruneNeedsRetention`은 TUI 상태판 안내라 알림으로 남긴다. `ListModels`는 모든 provider의 목록이 실패해도 창이 끝없이 기다리지 않도록 빈 목록을 결과로 돌려준다.
 
@@ -257,7 +258,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 ### 업데이트로 engine 교체
 
-`cli`는 `engine`에 접속한 직후 `Attach`보다 먼저 `Version`을 보내 빌드 버전(`saturn_version`)과 protocol 판(`protocol_version`)을 받는다. `Attach`가 채팅을 만들고 설정을 병합하므로, 옛 `engine`에는 어떤 채팅도 붙이기 전에 판을 확인해야 하기 때문이다. `Version`은 `Attach` 전에도 router 키를 기다리는 동안에도 받는다. 붙을 때 보내는 `StartInfo`에도 같은 `protocol_version`이 실리고, 옛 판이 보낸 `StartInfo`에는 없어 0으로 읽는다. protocol 판은 `saturn-protocol`의 `PROTOCOL_VERSION`이고, 요청이나 알림의 모양을 호환되지 않게 바꿀 때 올린다.
+`cli`는 `engine`에 접속한 직후 `Attach`보다 먼저 `Version`을 보내 빌드 버전(`saturn_version`)과 protocol 판(`protocol_version`)을 받는다. `Attach`가 채팅을 만들고 설정을 병합하므로, 옛 `engine`에는 어떤 채팅도 붙이기 전에 판을 확인해야 하기 때문이다. `Version`은 `Attach` 전에도 router 키를 기다리는 동안에도 받는다. 붙을 때 보내는 `StartInfo`에도 같은 `protocol_version`이 실리고, 옛 판이 보낸 `StartInfo`에는 없어 0으로 읽는다. protocol 판은 `saturn-protocol`의 `PROTOCOL_VERSION`이고, 요청이나 알림의 모양을 호환되지 않게 바꿀 때 올린다. 새 `cli`는 판이 낮은 engine을 제품 버전이 같아도 교체하고, 새 engine에 판이 낮은 클라이언트가 붙는 것은 막지 않는다. 그 클라이언트의 요청 가운데 의미가 바뀐 것은 요청 단위로 거절한다(기록 정리 확인은 [기록 저장소](records.md)). 판 2는 `Prune`의 `plan`과 `all`, `PrunePreview`의 `plan`을 더했다.
 
 비교는 `cli`가 하고 `engine`이 자기 판을 낮춰 비교하지 않는다.
 

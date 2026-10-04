@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 
 use saturn_protocol::envelope::{
-    self, ClientMessage, CodecError, ErrorKind, Outcome, RequestId, ServerMessage,
+    self, ClientMessage, CodecError, ErrorKind, Outcome, RequestId, Response, ServerMessage,
 };
 use saturn_protocol::rpc::{ATTACH_ENV_NAMES, Notification, QueryResult, Request};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
@@ -233,7 +233,17 @@ impl EngineClient {
             let line = self.read_line().await?;
             match envelope::decode_server_line(&line) {
                 Ok(message) => return Some(message),
-                Err(error) => tracing::warn!(%error, "dropped engine line"),
+                Err(error) => {
+                    tracing::warn!(%error, "dropped engine line");
+                    if let Some(id) = unreadable_response_id(&line) {
+                        // 요청의 응답을 읽지 못하면 영영 오지 않는 응답을 기다리지 않고 그 요청의 실패로 돌려준다
+                        return Some(ServerMessage::Response(Response::error(
+                            Some(id),
+                            envelope::INTERNAL_ERROR,
+                            "the engine answer could not be read; the engine may be a different version",
+                        )));
+                    }
+                }
             }
         }
     }
@@ -247,6 +257,14 @@ impl EngineClient {
             }
         }
     }
+}
+
+/// 읽지 못한 줄이 요청에 대한 응답(번호와 `result`나 `error`가 있다)이면 그 번호. 알림이면 `None`이라 건너뛴다.
+fn unreadable_response_id(line: &str) -> Option<RequestId> {
+    let value: serde_json::Value = serde_json::from_str(line).ok()?;
+    let is_response = value.get("result").is_some() || value.get("error").is_some();
+    let id = value.get("id")?.as_u64()?;
+    is_response.then_some(RequestId(id))
 }
 
 #[cfg(test)]

@@ -447,7 +447,11 @@ impl App {
             Action::PruneConfirm if window.can_confirm() => {
                 window.is_deleting = true;
                 let plan = window.listing.as_ref().map(|listing| listing.plan.clone());
-                return vec![Effect::Send(Request::Prune { yes: true, plan })];
+                return vec![Effect::Send(Request::Prune {
+                    yes: true,
+                    plan,
+                    all: false,
+                })];
             }
             _ => {}
         }

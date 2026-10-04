@@ -14,7 +14,7 @@ use crate::input::{InputAnswer, InputRequest};
 use crate::state::{Disposition, InputState, QueueReason, TaskState};
 
 /// engine과 클라이언트가 주고받는 메시지 판. 요청이나 알림의 모양을 호환되지 않게 바꿀 때 올린다.
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 2;
 
 /// engine이 에이전트 작업의 환경에 넣는 출입증 변수 이름. `saturn`이 이 값으로 `AttachChild`를 보낸다.
 pub const PASS_ENV: &str = "SATURN_PASS";
@@ -262,11 +262,15 @@ pub enum Request {
     /// `retention.max_age_days`보다 오래 쓰지 않은 채팅을 정리한다. `yes`가 거짓이면 아무것도 지우지 않고
     /// `QueryResult::PrunePreview`로, 참이면 지우고 `QueryResult::Pruned`로 돌려준다. 설정이 없으면 거절한다.
     /// `plan`은 미리보기가 돌려준 번호다. `yes`가 참이고 `plan`이 있으면 그 미리보기에 있던 채팅만 지운다.
-    /// 모르거나 만료됐거나 이미 쓴 번호면 거절한다. `plan`이 없으면 요청 순간의 기준으로 대상을 정해 지운다.
+    /// 모르거나 만료됐거나 이미 쓴 번호면 거절한다. `plan`이 없으면 `all`이 참일 때만 요청 순간의 기준으로 대상을 정해
+    /// 지우고, `all`도 없으면 아무것도 지우지 않고 거절한다. 미리보기 확인을 모르는 옛 클라이언트의 `yes`가 지금 대상
+    /// 전체의 삭제로 읽히지 않게 하기 위해서다.
     Prune {
         yes: bool,
         #[serde(default)]
         plan: Option<String>,
+        #[serde(default)]
+        all: bool,
     },
     /// 채점하지 않은 기록도 내보낸다.
     ExportJudgments {
