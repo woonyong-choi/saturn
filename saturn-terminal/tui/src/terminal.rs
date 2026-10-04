@@ -4,6 +4,7 @@ use std::io::Stdout;
 use std::io::Write;
 use std::ops::ControlFlow;
 use std::os::unix::fs::OpenOptionsExt;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
@@ -108,24 +109,10 @@ pub(crate) fn edit_external(screen: &mut Screen, draft: &str) -> Result<String, 
         .map_err(TerminalError::Editor)?
         .as_nanos();
     let path = std::env::temp_dir().join(format!("saturn-draft-{}-{nonce}.md", std::process::id()));
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(&path)
-        .map_err(TerminalError::Editor)?;
-    file.write_all(draft.as_bytes())
-        .map_err(TerminalError::Editor)?;
-    drop(file);
+    write_draft(&path, draft).map_err(TerminalError::Editor)?;
     READER_PAUSED.store(true, Ordering::SeqCst);
     leave()?;
-    let editor = editor_program();
-    let mut words = editor.split_whitespace();
-    let program = words.next().unwrap_or("vi");
-    let status = std::process::Command::new(program)
-        .args(words)
-        .arg(&path)
-        .env_remove(ROUTER_KEY_ENV)
+    let status = editor_command(&editor_program(), &path)
         .status()
         .map_err(TerminalError::Editor);
     let restored = configure().map_err(TerminalError::Configure);
@@ -141,6 +128,30 @@ pub(crate) fn edit_external(screen: &mut Screen, draft: &str) -> Result<String, 
         text.pop();
     }
     Ok(text)
+}
+
+// cost: time O(n), heap O(1), stack O(1), io 1
+// vars: n = 초안 길이
+/// 이미 있는 파일은 쓰지 않고, 만든 파일은 소유자만 읽고 쓴다.
+fn write_draft(path: &Path, draft: &str) -> std::io::Result<()> {
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)?;
+    file.write_all(draft.as_bytes())
+}
+
+// cost: time O(w), heap O(w), stack O(1)
+// vars: w = 에디터 설정의 단어 수
+// basis: estimate
+/// 에디터는 router 키 환경 변수 없이 띄운다.
+fn editor_command(editor: &str, path: &Path) -> std::process::Command {
+    let mut words = editor.split_whitespace();
+    let program = words.next().unwrap_or("vi");
+    let mut command = std::process::Command::new(program);
+    command.args(words).arg(path).env_remove(ROUTER_KEY_ENV);
+    command
 }
 
 // cost: time O(e), heap O(1), stack O(1), io e
@@ -222,4 +233,54 @@ fn editor_program() -> String {
         .filter_map(|name| std::env::var(name).ok())
         .find(|value| !value.is_empty())
         .unwrap_or_else(|| "vi".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsStr;
+    use std::os::unix::fs::PermissionsExt;
+
+    use super::*;
+
+    #[test]
+    fn a_draft_file_is_new_and_only_the_owner_can_read_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("draft.md");
+
+        write_draft(&path, "초안").unwrap();
+
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "초안");
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600);
+    }
+
+    #[test]
+    fn a_draft_never_reuses_an_existing_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("draft.md");
+        std::fs::write(&path, "남의 파일").unwrap();
+
+        let result = write_draft(&path, "초안");
+
+        assert!(result.is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "남의 파일");
+    }
+
+    #[test]
+    fn the_editor_gets_its_arguments_then_the_draft_and_no_router_key() {
+        let command = editor_command("code --wait", Path::new("/p/draft.md"));
+
+        assert_eq!(command.get_program(), "code");
+        let args: Vec<&OsStr> = command.get_args().collect();
+        assert_eq!(args, ["--wait", "/p/draft.md"]);
+        let envs: Vec<_> = command.get_envs().collect();
+        assert_eq!(envs, [(OsStr::new(ROUTER_KEY_ENV), None)]);
+    }
+
+    #[test]
+    fn an_empty_editor_setting_falls_back_to_vi() {
+        let command = editor_command("  ", Path::new("/p/draft.md"));
+
+        assert_eq!(command.get_program(), "vi");
+    }
 }

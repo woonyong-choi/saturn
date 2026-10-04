@@ -366,6 +366,12 @@ mod tests {
                 ("a".to_owned(), "1".to_owned())
             ]
         );
-        assert!(options.history.ends_with(".saturn/history"));
+        assert_eq!(
+            options.history,
+            EngineClient::default_socket()
+                .parent()
+                .unwrap()
+                .join(HISTORY_FILE)
+        );
     }
 }

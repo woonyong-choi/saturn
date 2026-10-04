@@ -381,39 +381,32 @@ mod tests {
     }
 
     #[test]
-    fn config_override_splits_at_first_equals() {
-        let parsed: ConfigOverride = "router.url=https://a.example/?x=1".parse().unwrap();
+    fn config_override_splits_at_the_first_equals_and_needs_a_key() {
+        // (사례, 입력, 기대하는 key와 value. 오류면 None)
+        let cases = [
+            (
+                "splits at first equals",
+                "router.url=https://a.example/?x=1",
+                Some(("router.url", "https://a.example/?x=1")),
+            ),
+            ("without equals", "permission.mode", None),
+            ("without key", "=full", None),
+            (
+                "allows empty value",
+                "router.key.command=",
+                Some(("router.key.command", "")),
+            ),
+        ];
 
-        assert_eq!(parsed.key, "router.url");
-        assert_eq!(parsed.value, "https://a.example/?x=1");
-    }
+        for (name, input, expected) in cases {
+            let parsed = input.parse::<ConfigOverride>().ok();
 
-    #[test]
-    fn config_override_without_equals_or_key_is_error() {
-        assert!("permission.mode".parse::<ConfigOverride>().is_err());
-        assert!("=full".parse::<ConfigOverride>().is_err());
-    }
-
-    #[test]
-    fn config_override_allows_empty_value() {
-        let parsed: ConfigOverride = "router.key.command=".parse().unwrap();
-
-        assert_eq!(parsed.value, "");
-    }
-
-    #[test]
-    fn continue_resume_without_arguments_opens_new_chat() {
-        assert_eq!(
-            parse(&[]).unwrap().open_mode(Lang::En).unwrap(),
-            OpenMode::New
-        );
-    }
-
-    #[test]
-    fn continue_resume_continue_flag_picks_last_chat() {
-        let mode = parse(&["--continue"]).unwrap().open_mode(Lang::En).unwrap();
-
-        assert_eq!(mode, OpenMode::ContinueLast);
+            assert_eq!(
+                parsed.as_ref().map(|c| (c.key.as_str(), c.value.as_str())),
+                expected,
+                "{name}"
+            );
+        }
     }
 
     #[test]
@@ -424,30 +417,25 @@ mod tests {
     }
 
     #[test]
-    fn continue_resume_without_id_picks_in_folder() {
-        let mode = parse(&["--resume"]).unwrap().open_mode(Lang::En).unwrap();
+    fn continue_resume_arguments_pick_how_the_chat_opens() {
+        // (사례, 인자, 기대하는 열기 방식)
+        let cases: [(&str, &[&str], OpenMode); 5] = [
+            ("without arguments", &[], OpenMode::New),
+            ("continue flag", &["--continue"], OpenMode::ContinueLast),
+            ("resume without id", &["--resume"], OpenMode::PickInFolder),
+            ("resume all", &["--resume", "all"], OpenMode::PickInAll),
+            (
+                "resume numeric id",
+                &["--resume", "42"],
+                OpenMode::Chat(ChatId(42)),
+            ),
+        ];
 
-        assert_eq!(mode, OpenMode::PickInFolder);
-    }
+        for (name, args, expected) in cases {
+            let mode = parse(args).unwrap().open_mode(Lang::En).unwrap();
 
-    #[test]
-    fn continue_resume_all_picks_in_every_folder() {
-        let mode = parse(&["--resume", "all"])
-            .unwrap()
-            .open_mode(Lang::En)
-            .unwrap();
-
-        assert_eq!(mode, OpenMode::PickInAll);
-    }
-
-    #[test]
-    fn continue_resume_numeric_id_opens_that_chat() {
-        let mode = parse(&["--resume", "42"])
-            .unwrap()
-            .open_mode(Lang::En)
-            .unwrap();
-
-        assert_eq!(mode, OpenMode::Chat(ChatId(42)));
+            assert_eq!(mode, expected, "{name}");
+        }
     }
 
     #[test]

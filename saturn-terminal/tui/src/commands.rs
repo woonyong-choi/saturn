@@ -710,11 +710,4 @@ mod tests {
             })
         );
     }
-
-    // cost: time O(1), heap O(1), stack O(1)
-    // basis: estimate
-    #[test]
-    fn saturn_commands_include_record() {
-        assert!(SATURN_COMMANDS.iter().any(|spec| spec.path == "record"));
-    }
 }

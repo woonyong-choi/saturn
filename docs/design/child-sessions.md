@@ -169,7 +169,7 @@ Saturn 안의 에이전트가 `saturn`을 실행해 다른 일을 맡기는 것�
 | 하위 채팅의 쓰기 입력은 부모의 쓰기 잠금을 기다리지 않는다. | 같은 파일의 `child_write_input_does_not_wait_for_the_parent_write_lock` |
 | 부모에 실행 중인 작업이 없으면 거절한다. | 같은 파일의 `child_is_rejected_when_the_parent_has_no_running_task` |
 | 출입증 확인은 요청 처리 루프 없이 하고, 대기 요청과 다른 요청이 서로 기다리지 않는다. | 같은 파일의 `unknown_pass_is_rejected_by_the_connection_without_the_engine_loop`, `queued_children_do_not_hold_back_other_requests`, `queued_request_does_not_block_the_next_request_on_the_same_connection` |
-| 출입증이 있으면 하위 접속, 없고 표지만 있으면 거절, 둘 다 없으면 바깥 접속이다. | `saturn-terminal/cli/src/launch.rs`의 `origin_with_marker_and_no_pass_is_error`, `origin_with_an_empty_pass_is_error`, `origin_without_marker_or_pass_is_outside`, `origin_with_a_pass_is_a_child_on_the_given_socket` |
+| 출입증이 있으면 하위 접속, 없고 표지만 있으면 거절, 둘 다 없으면 바깥 접속이다. | `saturn-terminal/cli/src/launch.rs`의 `origin_follows_the_marker_pass_and_socket`, `origin_with_marker_and_no_pass_names_the_pass_variable` |
 | 동시 하위 작업 10, 50, 100개에서 응답 시간과 메모리를 잰다. | `saturn-terminal/engine/src/lifecycle/child_load.rs`의 `load_10_children`, `load_50_children`, `load_100_children`(`#[ignore]`) |
 
 ## 단점

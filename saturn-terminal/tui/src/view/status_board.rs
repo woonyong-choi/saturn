@@ -989,48 +989,44 @@ mod tests {
             .collect()
     }
 
-    // cost: time O(1), heap O(1), stack O(1)
-    // basis: estimate
     #[test]
-    fn alert_text_schema_migrated_shows_target_version() {
-        let alert = Alert::SchemaMigrated { from: 1, to: 2 };
+    fn alert_text_shows_the_version_or_count_the_alert_carries() {
+        // (사례, 경고, 한국어 문구, 영어 문구)
+        let cases = [
+            (
+                "schema migrated shows target version",
+                Alert::SchemaMigrated { from: 1, to: 2 },
+                "기록 저장소 v2로 옮김",
+                "Record store migrated to v2",
+            ),
+            (
+                "provider updated shows both versions",
+                Alert::ProviderUpdated {
+                    provider: Provider::from_static("codex"),
+                    from: "0.158.0".to_owned(),
+                    to: "0.159.0".to_owned(),
+                },
+                "codex CLI가 0.158.0에서 0.159.0로 바뀜",
+                "codex CLI changed from 0.158.0 to 0.159.0",
+            ),
+            (
+                "auto prune shows deleted count",
+                Alert::AutoPruned { chats: 3, rows: 40 },
+                "오래된 채팅 3개를 지웠습니다",
+                "Deleted 3 old chats",
+            ),
+            (
+                "auto prune failure",
+                Alert::AutoPruneFailed,
+                "자동 정리에 실패했습니다 · 로그를 확인하세요",
+                "Auto prune failed · Check the log",
+            ),
+        ];
 
-        assert_eq!(alert_text(Lang::Ko, &alert), "기록 저장소 v2로 옮김");
-        assert_eq!(alert_text(Lang::En, &alert), "Record store migrated to v2");
-    }
-
-    #[test]
-    fn alert_text_provider_updated_shows_both_versions() {
-        let alert = Alert::ProviderUpdated {
-            provider: Provider::from_static("codex"),
-            from: "0.158.0".to_owned(),
-            to: "0.159.0".to_owned(),
-        };
-
-        assert_eq!(
-            alert_text(Lang::Ko, &alert),
-            "codex CLI가 0.158.0에서 0.159.0로 바뀜"
-        );
-        assert_eq!(
-            alert_text(Lang::En, &alert),
-            "codex CLI changed from 0.158.0 to 0.159.0"
-        );
-    }
-
-    #[test]
-    fn alert_text_auto_prune_shows_deleted_count_or_failure() {
-        let done = Alert::AutoPruned { chats: 3, rows: 40 };
-
-        assert_eq!(alert_text(Lang::Ko, &done), "오래된 채팅 3개를 지웠습니다");
-        assert_eq!(alert_text(Lang::En, &done), "Deleted 3 old chats");
-        assert_eq!(
-            alert_text(Lang::Ko, &Alert::AutoPruneFailed),
-            "자동 정리에 실패했습니다 · 로그를 확인하세요"
-        );
-        assert_eq!(
-            alert_text(Lang::En, &Alert::AutoPruneFailed),
-            "Auto prune failed · Check the log"
-        );
+        for (name, alert, korean, english) in cases {
+            assert_eq!(alert_text(Lang::Ko, &alert), korean, "{name}");
+            assert_eq!(alert_text(Lang::En, &alert), english, "{name}");
+        }
     }
 
     #[test]

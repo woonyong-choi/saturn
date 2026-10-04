@@ -570,6 +570,39 @@ fn sources(dir: &std::path::Path, found: &mut Vec<std::path::PathBuf>) {
     }
 }
 
+/// `#[cfg(test)]`가 붙은 항목(`mod tests;` 선언, 인라인 모듈, 함수)만 빼고 제품 코드를 돌려준다.
+fn product_code(text: &str) -> String {
+    let mut product = String::new();
+    let mut lines = text.lines();
+    while let Some(line) = lines.next() {
+        if line.trim() != "#[cfg(test)]" {
+            product.push_str(line);
+            product.push('\n');
+            continue;
+        }
+        let mut depth = 0i32;
+        for item in lines.by_ref() {
+            depth += item.matches('{').count() as i32 - item.matches('}').count() as i32;
+            if depth == 0 && (item.trim_end().ends_with(';') || item.trim_end().ends_with('}')) {
+                break;
+            }
+        }
+    }
+    product
+}
+
+#[test]
+fn product_code_drops_only_the_test_items() {
+    let text = "use a;\n#[cfg(test)]\nmod tests;\nfn live() { KeyCode::Esc }\n#[cfg(test)]\nmod inline {\n    fn t() {}\n}\nfn also_live() {}\n";
+
+    let product = product_code(text);
+
+    assert!(product.contains("use a;") && product.contains("fn live()"));
+    assert!(product.contains("fn also_live()"));
+    assert!(!product.contains("mod tests") && !product.contains("mod inline"));
+    assert!(!product.contains("fn t()"));
+}
+
 /// 키를 동작으로 바꾸는 일은 `keymap` 한 곳이 맡는다. 다른 파일의 제품 코드는 `KeyCode`와 `KeyModifiers`를 읽지 않는다.
 #[test]
 fn only_the_keymap_module_reads_key_codes() {
@@ -591,7 +624,7 @@ fn only_the_keymap_module_reads_key_codes() {
             continue;
         }
         let text = std::fs::read_to_string(&path).unwrap();
-        let product = text.split("#[cfg(test)]").next().unwrap_or_default();
+        let product = product_code(&text);
         if product.contains("KeyCode::") || product.contains("KeyModifiers::") {
             offenders.push(relative);
         }

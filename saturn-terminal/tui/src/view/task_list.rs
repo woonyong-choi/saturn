@@ -994,6 +994,9 @@ mod tests {
         list.command(&Action::RenameChat);
         list.edit_push('!');
         let renamed = list.command(&Action::Confirm);
+        list.command(&Action::ChangeGroup);
+        list.edit_push('g');
+        let regrouped = list.command(&Action::Confirm);
         let open = list.command(&Action::Confirm);
 
         assert_eq!(list.command(&Action::ContinueHeld), None);
@@ -1003,6 +1006,13 @@ mod tests {
             Some(TaskListCommand::Rename {
                 chat: ChatId(4),
                 name: "chat4!".to_owned()
+            })
+        );
+        assert_eq!(
+            regrouped,
+            Some(TaskListCommand::Regroup {
+                chat: ChatId(4),
+                group: "g".to_owned()
             })
         );
         assert_eq!(
