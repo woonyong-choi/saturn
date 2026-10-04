@@ -3,7 +3,7 @@
 | 항목 | 값 |
 |---|---|
 | 상태 | 결정 |
-| 관련 결정 | [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md), [provider 연결을 채팅마다 따로 둔다](../decisions/2026-10-02-per-chat-provider-connections.md), [provider는 열린 id의 어댑터로 붙이고 확장은 Saturn 저장소에 설치해 session을 열 때 주입한다](../decisions/2026-10-04-open-providers-and-saturn-extensions.md) |
+| 관련 결정 | [provider마다 입력을 계속 받는 상시 연결을 만든다](../decisions/2026-09-29-persistent-provider-connections.md), [provider 설정과 subagent 사용은 사용자 설정을 따르고 Saturn은 추적만 한다](../decisions/2026-09-29-minimal-provider-control.md), [권한 판단의 정본은 Saturn 설정의 `permission` 규칙 하나로 둔다](../decisions/2026-10-02-saturn-permission-authority.md), [provider 연결을 채팅마다 따로 둔다](../decisions/2026-10-02-per-chat-provider-connections.md), [provider는 열린 id의 어댑터로 붙이고 확장은 Saturn 저장소에 설치해 session을 열 때 주입한다](../decisions/2026-10-04-open-providers-and-saturn-extensions.md), [Codex와 Claude는 직접 연결을 유지하고 새 provider는 ACP 어댑터로 시작한다](../decisions/2026-10-04-direct-adapters-and-acp-for-new-providers.md) |
 
 ## 요약
 
@@ -112,7 +112,7 @@ Saturn 인터페이스 계약은 아래 동작을 provider 이름 없이 정한�
 
 - 계약에는 판 번호(`interface_version`)를 붙인다. 한 판 안에서는 항목의 뜻을 바꾸거나 빼지 않고, 바꿀 때는 판을 올린다. 1판은 지금 `ProviderClient`의 동작이다. 어댑터가 알린 판을 engine이 지원하지 않으면 그 어댑터를 등록하지 않고 로그만 남긴다. 판이 어긋난 어댑터가 session 도중에 동작이 달라지는 일을 막기 위해서다.
 - 어댑터 밖 공통 코드는 `protocol`, `core`, `providers/<id>` 밖의 engine 모듈, `tui`, `cli`다. 공통 코드는 provider id를 불투명한 글자로 저장하고 전달하고 같은지 비교할 뿐, id 값으로 동작을 가르지 않는다. provider마다 달라지는 값(표시명, 기본값, 지원하는 기능)은 어댑터 설명자와 기능 목록으로 받는다. 비테스트 코드에서 `providers/<id>` 밖에 provider 이름 분기가 없게 하기 위해서다.
-- 어댑터를 engine 프로세스 밖에 두는 방식은 미해결이다([미해결 질문](#미해결-질문)).
+- 어댑터를 engine 프로세스 밖에 두는 방식은 [직접 연결과 ACP 어댑터](#직접-연결과-acp-어댑터)에 있다.
 
 ### provider id와 설명자
 
@@ -144,6 +144,14 @@ engine은 시작할 때 레지스트리에 어댑터를 등록한다. 레지스�
 - 새 어댑터는 `providers/<id>` 폴더를 더하는 것으로 붙는다. 공통 코드의 수정은 없다. 이것을 가짜 provider 하나로 시험한다.
 - provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. 지금 `context.codex`, `context.claude` 키의 이관 규칙은 [설정](settings.md#설정-키)에 있다.
 - 등록 방식(컴파일할 때 폴더를 모으는 방식과 시작할 때 어댑터가 스스로 등록하는 방식)은 [미해결 질문](#미해결-질문)에 있다.
+
+### 직접 연결과 ACP 어댑터
+
+Codex와 Claude는 지금처럼 직접 연결(Codex app-server, Claude stream-json)을 유지하고 ACP로 연결하지 않는다. 끼워 넣기, 보내기 전 실패와 보낸 뒤 불명의 구분, 하위 에이전트 관리, 맥락 정리 지시, 사용량 상세가 ACP 안정판에 없고, 확장으로 보태면 provider, 원본 번역기, ACP 명세 세 겹을 따라가야 해 유지보수가 더 들기 때문이다([결정 기록](../decisions/2026-10-04-direct-adapters-and-acp-for-new-providers.md)).
+
+- 새 provider는 처음에 ACP 어댑터 하나로 붙여 기본 기능으로 쓴다. 주력으로 쓰게 되고 그 provider가 깊은 기능을 열어 주면 직접 어댑터로 바꾼다. 계층이 나뉘어 있으므로 이 교체는 어댑터만 바꾸는 일이다. ACP 어댑터는 지금 구현하지 않는다.
+- ACP는 Zed와 JetBrains가 함께 관리하는 공개 표준이고([관리 문서](https://agentclientprotocol.com/community/governance), 2026-10-04 확인), 저장소 라이선스는 Apache-2.0이다([저장소](https://github.com/agentclientprotocol/agent-client-protocol), 2026-10-04 확인). 확장 메서드는 `_` 접두사와 `_meta` 필드로 한다([확장 문서](https://agentclientprotocol.com/protocol/extensibility), 2026-10-04 확인).
+- 직접 연결의 업데이트는 engine이 시작할 때 provider CLI 버전을 읽어 마지막으로 확인한 버전과 다르면 알리는 것으로 대응한다. 버전이 바뀌면 실제 provider로 핵심 흐름(입력, 전환, 다시 열기)만 도는 빠른 확인 절차를 `scripts/e2e`에 둔다. 차이는 어댑터 안에서만 고친다. 이 항목은 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)).
 
 ### provider 실행과 기본값 인자
 
@@ -472,6 +480,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 어댑터 설명자의 표시명, 실행 파일, 기본 순서, 지시 문서 이름을 화면과 첫 입력 기본 provider, 패킷이 쓴다. | 구현 전(#412). 가짜 설명자의 값이 각각 반영되는지 확인한다. |
 | 기록 저장소의 옛 provider 값 `Codex`, `Claude`와 모델 고정 글 `codex/<model>`, `claude/<model>`이 옛 값 그대로 읽힌다. | 구현 전(#412). 옛 값이 든 기록 저장소를 열어 같은 id로 읽히는지 확인한다. |
 | 인터페이스 판이 지원 범위 밖인 어댑터는 등록하지 않는다. | 구현 전(#412). 판 번호가 다른 가짜 어댑터로 확인한다. |
+| engine 시작 때 provider CLI 버전이 마지막으로 확인한 버전과 다르면 알리고, 버전이 바뀌면 실제 provider로 입력, 전환, 다시 열기만 도는 빠른 확인 절차가 `scripts/e2e`에 있다. | 구현 전(#412). 마지막 확인 버전을 바꿔 시작 알림을 확인하고, 실제 Codex와 Claude로 빠른 확인 절차를 실행한다. |
 
 ## 단점
 
@@ -482,13 +491,14 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 
 ## 대안
 
+- ACP를 Saturn 계약으로 삼고 Codex와 Claude도 ACP로 연결하는 방식은 끼워 넣기와 전달 실패 구분 같은 깊은 기능을 잃어 버렸다([결정 기록](../decisions/2026-10-04-direct-adapters-and-acp-for-new-providers.md)).
+- 자체 계약을 두고 ACP 어댑터를 지금 구현해 확장으로 보태는 방식은 세 겹을 따라가야 해 버렸다([결정 기록](../decisions/2026-10-04-direct-adapters-and-acp-for-new-providers.md)).
 - provider를 닫힌 enum으로 두는 방식은 provider를 더할 때마다 공통 코드를 고쳐야 해 버렸다([결정 기록](../decisions/2026-10-04-open-providers-and-saturn-extensions.md)).
 - 한 번 실행 방식(`codex exec`, `claude -p`)은 끼워 넣기와 Codex 맥락 크기 관찰이 불가능해 버렸다([결정 기록](../decisions/2026-09-29-persistent-provider-connections.md)).
 - 실행 인자로 subagent와 네트워크를 고정하는 방식은 사용자 설정을 무시해 버렸다([결정 기록](../decisions/2026-09-29-minimal-provider-control.md)).
 
 ## 미해결 질문
 
-- 어댑터를 engine 프로세스 밖의 별도 프로세스로 붙여 표준 메시지로 대화하게 할지. "공통 코드 수정 없이"를 완전히 지키려면 필요하다. 공개 표준 Agent Client Protocol(ACP)이 후보이고, 지원 범위와 Saturn 계약(끼워 넣기, 멈춤, 권한 답, 맥락 정리 요청)을 담을 수 있는지는 확인하지 않았다. 조사 뒤 결정한다 ([#412](https://github.com/woonyong-choi/saturn/issues/412))
 - 어댑터 등록 방식. 컴파일할 때 폴더를 모아 등록할지, 어댑터가 시작할 때 스스로 등록할지 ([#412](https://github.com/woonyong-choi/saturn/issues/412))
 - 채팅에 더한 폴더를 열린 session에 넣는 방법(Claude stream-json 제어 요청, Codex 턴 단위 쓰기 폴더)과, Codex 읽기 전용 샌드박스에서 `writable_roots`가 효과가 있는지. 지금은 다음 session부터 적용한다 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
 - 메인이 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
