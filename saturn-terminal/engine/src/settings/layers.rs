@@ -55,6 +55,11 @@ share_with_server = false
 [context]
 safety_percent = 70
 mode = "saturn"
+packet_hard_divisor = 5
+item_cap_percent = 30
+
+[context.select]
+rrf_k = 60
 "#;
 
 #[derive(Debug, Clone, Copy)]
@@ -71,6 +76,10 @@ enum Kind {
     Positive,
     /// 0~100 정수.
     Percent,
+    /// 1~100 정수.
+    PercentFrom1,
+    /// 0 이상 정수.
+    Whole,
 }
 
 /// 이 밖의 키는 모르는 키로 검사에 실패한다.
@@ -105,6 +114,9 @@ const SCHEMA: &[(&str, Kind)] = &[
     ("retention.auto_prune", Kind::Flag),
     ("context.safety_percent", Kind::Percent),
     ("context.mode", Kind::OneOf(&["saturn", "provider"])),
+    ("context.packet_hard_divisor", Kind::Positive),
+    ("context.item_cap_percent", Kind::PercentFrom1),
+    ("context.select.rrf_k", Kind::Whole),
 ];
 
 /// provider마다 같은 모양으로 있는 키. `provider.<id>.` 뒤의 경로와 종류다.
@@ -149,7 +161,8 @@ fn is_known_table(key: &str) -> bool {
         })
 }
 
-/// 옛 키 `context.<id>.<키>`를 새 키 `provider.<id>.context.<키>`로 옮긴다. 같은 층에 새 키가 이미 있으면 새 키가
+/// 옛 키 `context.<id>.<키>`를 새 키 `provider.<id>.context.<키>`로 옮긴다. `context.select`처럼 `context` 아래의
+/// 알려진 표는 옮기지 않는다. 같은 층에 새 키가 이미 있으면 새 키가
 /// 이긴다. 층을 나누기 전에 층마다 부르므로 높은 층의 옛 키가 낮은 층의 새 키를 이긴다.
 fn move_context_aliases(values: &mut Value) {
     let Some(context) = values.get_mut("context").and_then(Value::as_object_mut) else {
@@ -157,7 +170,11 @@ fn move_context_aliases(values: &mut Value) {
     };
     let old_ids: Vec<String> = context
         .iter()
-        .filter(|(id, value)| value.is_object() && Provider::is_well_formed(id))
+        .filter(|(id, value)| {
+            value.is_object()
+                && Provider::is_well_formed(id)
+                && !is_known_table(&format!("context.{id}"))
+        })
         .map(|(id, _)| id.clone())
         .collect();
     let mut moved = Vec::new();
@@ -568,6 +585,10 @@ fn check_kind(kind: Kind, value: &Value) -> Result<(), String> {
         Kind::NonNegative => value.as_f64().is_some_and(|number| number >= 0.0),
         Kind::Positive => value.as_u64().is_some_and(|number| number >= 1),
         Kind::Percent => value.as_u64().is_some_and(|number| number <= 100),
+        Kind::PercentFrom1 => value
+            .as_u64()
+            .is_some_and(|number| (1..=100).contains(&number)),
+        Kind::Whole => value.as_u64().is_some(),
     };
     if ok {
         Ok(())
@@ -585,6 +606,8 @@ fn kind_name(kind: Kind) -> &'static str {
         Kind::NonNegative => "a non-negative number",
         Kind::Positive => "a positive integer",
         Kind::Percent => "an integer between 0 and 100",
+        Kind::PercentFrom1 => "an integer between 1 and 100",
+        Kind::Whole => "a non-negative integer",
     }
 }
 
@@ -1088,5 +1111,175 @@ mod tests {
             panic!("expected an invalid setting, got {error:?}");
         };
         assert_eq!((key.as_str(), layer), ("permission.shell", Layer::Folder));
+    }
+
+    const SETTINGS_DOC: &str = include_str!("../../../../docs/design/settings.md");
+
+    fn backticked(text: &str) -> Vec<&str> {
+        text.split('`').skip(1).step_by(2).collect()
+    }
+
+    fn schema_has(key: &str) -> bool {
+        SCHEMA.iter().any(|(name, _)| {
+            *name == key
+                || name
+                    .strip_prefix(key)
+                    .is_some_and(|rest| rest.starts_with('.'))
+        })
+    }
+
+    /// 설계 문서 `설정 키` 표의 첫 칸 키를 `(키, 구현 전 표시 여부)`로 읽는다. `<`가 든 자리표시 키와
+    /// `permission.*`는 다른 검사가 다루므로 건너뛴다.
+    fn documented_keys() -> Vec<(String, bool)> {
+        let section = SETTINGS_DOC
+            .split("### 설정 키")
+            .nth(1)
+            .and_then(|rest| rest.split("### provider 설정 키").next())
+            .expect("settings doc should have the key section");
+        section
+            .lines()
+            .filter(|line| line.starts_with("| `"))
+            .flat_map(|line| {
+                let first = line.split(" | ").next().unwrap_or_default();
+                let pending = line.contains("구현 전(");
+                backticked(first)
+                    .into_iter()
+                    .filter(|key| !key.contains('<') && !key.starts_with("permission."))
+                    .map(move |key| (key.to_owned(), pending))
+            })
+            .collect()
+    }
+
+    fn documented_thresholds(prefix: &str) -> Vec<String> {
+        let line = SETTINGS_DOC
+            .lines()
+            .find(|line| line.starts_with(prefix))
+            .unwrap_or_else(|| panic!("settings doc should have a bullet starting {prefix}"));
+        backticked(line).into_iter().map(str::to_owned).collect()
+    }
+
+    #[test]
+    fn documented_keys_match_the_schema() {
+        let keys = documented_keys();
+        assert!(keys.len() > 20, "{keys:?}");
+        for (key, pending) in &keys {
+            assert_eq!(
+                schema_has(key),
+                !pending,
+                "{key}: the doc says {}, the schema disagrees",
+                if *pending {
+                    "not implemented"
+                } else {
+                    "implemented"
+                },
+            );
+        }
+        for (name, _) in SCHEMA {
+            let documented = keys.iter().any(|(key, pending)| {
+                !pending
+                    && (key == name
+                        || name
+                            .strip_prefix(key.as_str())
+                            .is_some_and(|rest| rest.starts_with('.')))
+            }) || name
+                .strip_prefix("router.thresholds.")
+                .is_some_and(|short| {
+                    documented_thresholds("- 기준값 이름은 ")
+                        .iter()
+                        .any(|n| n == short)
+                });
+            assert!(documented, "{name} is in the schema but not in the doc");
+        }
+    }
+
+    #[test]
+    fn documented_threshold_names_match_the_schema() {
+        let schema_has_threshold = |name: &str| schema_has(&format!("router.thresholds.{name}"));
+        let accepted = documented_thresholds("- 기준값 이름은 ");
+        assert!(accepted.len() >= 9, "{accepted:?}");
+        for name in &accepted {
+            assert!(
+                schema_has_threshold(name),
+                "{name} is documented but rejected"
+            );
+        }
+        for name in documented_thresholds("- 구현 전 기준값은 ") {
+            assert!(
+                !schema_has_threshold(&name),
+                "{name} is marked as not implemented but the schema accepts it"
+            );
+        }
+    }
+
+    #[test]
+    fn context_select_table_is_not_taken_for_an_old_provider_alias() {
+        let snapshot = merge(vec![
+            layer(Layer::Default, default_layer()),
+            layer(Layer::User, "[context.select]\nrrf_k = 7\n"),
+        ])
+        .unwrap();
+
+        assert_eq!(
+            get_path(&snapshot.settings.values, "context.select.rrf_k"),
+            Some(&Value::from(7))
+        );
+        assert_eq!(get_path(&snapshot.settings.values, "provider.select"), None);
+    }
+
+    #[test]
+    fn documented_context_keys_are_accepted_with_their_defaults_and_checks() {
+        let accepts = |content: &str| {
+            merge(vec![
+                layer(Layer::Default, default_layer()),
+                layer(Layer::User, content),
+            ])
+            .is_ok()
+        };
+        for good in [
+            "context.packet_hard_divisor = 5\n",
+            "context.item_cap_percent = 30\n",
+            "context.select.rrf_k = 0\n",
+        ] {
+            assert!(accepts(good), "{good}");
+        }
+        let snapshot = merge(vec![layer(Layer::Default, default_layer())]).unwrap();
+        let budget = snapshot
+            .settings
+            .context_budget(crate::providers::test_support::CODEX, DEFAULTS);
+        assert_eq!(
+            (
+                budget.packet_hard_divisor,
+                budget.item_cap_percent,
+                budget.rrf_k
+            ),
+            (5, 30, 60)
+        );
+        let tuned = merge(vec![
+            layer(Layer::Default, default_layer()),
+            layer(
+                Layer::User,
+                "[context]\npacket_hard_divisor = 4\nitem_cap_percent = 50\n[context.select]\nrrf_k = 10\n",
+            ),
+        ])
+        .unwrap();
+        let budget = tuned
+            .settings
+            .context_budget(crate::providers::test_support::CODEX, DEFAULTS);
+        assert_eq!(
+            (
+                budget.packet_hard_divisor,
+                budget.item_cap_percent,
+                budget.rrf_k
+            ),
+            (4, 50, 10)
+        );
+        for bad in [
+            "context.packet_hard_divisor = 0\n",
+            "context.item_cap_percent = 0\n",
+            "context.item_cap_percent = 101\n",
+            "context.select.rrf_k = -1\n",
+        ] {
+            assert!(!accepts(bad), "{bad}");
+        }
     }
 }

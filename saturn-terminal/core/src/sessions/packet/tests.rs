@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use super::*;
+use crate::sessions::context::{DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_DIVISOR};
 use crate::sessions::ranking::{Candidate, DEFAULT_RRF_K, order_after_router, rank_candidates};
 
 // 2026-09-12T10:00Z
@@ -20,6 +21,9 @@ fn budget() -> ContextBudget {
         cache_read: 0.1,
         cache_write: 1.25,
         cache_ttl: Duration::from_secs(300),
+        packet_hard_divisor: DEFAULT_PACKET_HARD_DIVISOR,
+        item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
+        rrf_k: DEFAULT_RRF_K,
     }
 }
 

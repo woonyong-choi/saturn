@@ -17,9 +17,6 @@ pub const DIGEST_HEAD_CHARS: usize = 300;
 pub const RECENT_TURNS: usize = 3;
 
 // 초안
-const ITEM_SHARE_PERCENT: usize = 30;
-
-// 초안
 const CHARS_PER_TOKEN: usize = 4;
 
 const ITEM_SEPARATOR: &str = "\n\n";
@@ -195,7 +192,13 @@ pub fn reduce_packet(
     if fixed_chars > target_chars {
         return None;
     }
-    Some(assemble(source, sections, fixed_chars, target_chars, None))
+    Some(assemble(
+        source,
+        sections,
+        (fixed_chars, target_chars),
+        budget.item_cap_percent,
+        None,
+    ))
 }
 
 // cost: time O(t·L + m log m), heap O(L), stack O(1)
@@ -214,7 +217,13 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
                 .collect(),
         };
     }
-    PacketOutcome::Ready(assemble(source, sections, fixed_chars, soft_chars, summary))
+    PacketOutcome::Ready(assemble(
+        source,
+        sections,
+        (fixed_chars, soft_chars),
+        budget.item_cap_percent,
+        summary,
+    ))
 }
 
 // cost: time O(m log m + L), heap O(L), stack O(1)
@@ -224,8 +233,8 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
 fn assemble(
     source: &PacketSource,
     mut sections: Vec<Section>,
-    fixed_chars: usize,
-    limit_chars: usize,
+    (fixed_chars, limit_chars): (usize, usize),
+    item_cap_percent: u64,
     summary: Option<&Entry>,
 ) -> Packet {
     let header_chars = format!("## {COMPETING_TITLE}{ITEM_SEPARATOR}")
@@ -247,6 +256,7 @@ fn assemble(
         &source.competitors,
         &source.provider_docs,
         rest_chars,
+        item_cap_percent,
     ));
     sections.push(Section {
         title: COMPETING_TITLE,
@@ -343,8 +353,10 @@ fn fill_competing_zone(
     items: &[CompetingItem],
     provider_docs: &[String],
     budget_chars: usize,
+    item_cap_percent: u64,
 ) -> Vec<Chosen> {
-    let item_cap = budget_chars * ITEM_SHARE_PERCENT / 100;
+    let percent = usize::try_from(item_cap_percent.min(100)).unwrap_or(100);
+    let item_cap = budget_chars * percent / 100;
     let mut remaining = budget_chars;
     let mut titled: HashSet<SessionId> = HashSet::new();
     let mut chosen: Vec<Chosen> = Vec::new();
