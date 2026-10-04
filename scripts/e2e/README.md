@@ -12,20 +12,22 @@
 
 ### Saturn 홈
 
-`saturn`과 `saturn-engine`은 환경 변수 `SATURN_HOME`이 있고 비어 있지 않으면 그 폴더를, 없으면 `~/.saturn`을 홈으로 쓴다(`saturn-engine`은 `--home`도 받는다). 실제 `~/.saturn`을 건드리지 않도록 실행마다 `SATURN_HOME`을 저장소의 git 무시 폴더(예: `.local/e2e/<실행>/home`)로 지정하고, tmux 세션의 시작 환경에 넣는다. 그 폴더는 시작 전에 비어 있어야 한다. 끝난 뒤 실험이 만든 파일을 목록으로 남기고 지운다. 전용 `CODEX_HOME`(`$SATURN_HOME/codex-home/*`)의 `auth.json` 심볼릭 링크는 링크만 지운다.
+`saturn`과 `saturn-engine`은 환경 변수 `SATURN_HOME`이 있고 비어 있지 않으면 그 폴더를, 없으면 `~/.saturn`을 홈으로 쓴다(`saturn-engine`은 `--home`도 받는다). 실제 `~/.saturn`을 건드리지 않도록 실행마다 `SATURN_HOME`을 저장소의 git 무시 폴더(예: `.local/e2e/<실행>/home`)로 지정하되 tmux를 시작하기 전에 절대 경로로 확정하고(상대 경로는 tmux의 작업 폴더 기준으로 달라진다), tmux 세션의 시작 환경에 넣는다. 그 폴더는 시작 전에 비어 있어야 한다. 끝난 뒤 실험이 만든 파일을 목록으로 남기고 지운다. 전용 `CODEX_HOME`(`$SATURN_HOME/codex-home/*`)의 `auth.json` 심볼릭 링크는 링크만 지운다.
 
 ### router 키
 
 router 판단까지 실제로 쓰는 절차다. 키는 새로 만들지 않고, 사용이 승인된 기존 자격증명(사용자가 준 시험용 키나 승인한 `SATURN_KEY` 환경 변수)을 쓴다. 키체인 항목을 조회하는 명령은 이 절차에 넣지 않는다. 키는 tmux를 띄우는 셸의 환경 변수 `SATURN_KEY`로만 넘기고, 화면, 로그, 파일, 명령 인자에 남기지 않는다. 키체인에 새로 저장하지 않으며 `router.skip_check`나 가짜 router로 확인을 건너뛴 결과를 정상 router 검증으로 쓰지 않는다. Saturn은 시작할 때 `SATURN_KEY`를 저장된 키보다 먼저 읽는다.
 
 ```sh
+E2E_RUN="$(pwd)/.local/e2e/<실행>"   # 저장소 루트에서 실행, 절대 경로로 확정
+mkdir -p "$E2E_RUN/home" "$E2E_RUN/practice"
 SATURN_KEY=<승인된 키를 이미 환경에 둔 셸에서> \
-SATURN_HOME=.local/e2e/<실행>/home \
-tmux new-session -d -s saturn-e2e-1 -c .local/e2e/<실행>/practice \
+SATURN_HOME="$E2E_RUN/home" \
+tmux new-session -d -s saturn-e2e-1 -c "$E2E_RUN/practice" \
   "zsh -c 'export PATH=<저장소 경로>/target/release:\$PATH; exec zsh -f'"
 ```
 
-환경 변수는 tmux 서버가 이미 떠 있으면 세션에 전달되지 않을 수 있으므로, 세션 안에서 `env | grep -c '^SATURN_KEY='`로 값을 드러내지 않고 있는지만 확인한다. 세션 안에서 `saturn`을 실행하면 engine이 `SATURN_KEY`로 router 확인을 통과하고 시작 화면에 `Router jev · <버전>`이 보인다.
+환경 변수는 tmux 서버가 이미 떠 있으면 세션에 전달되지 않을 수 있으므로, 세션 안에서 `env | grep -c '^SATURN_KEY='`로 키 값을 드러내지 않고 있는지만 확인하고, `tmux send-keys -t saturn-e2e-1 'printf %s "$SATURN_HOME"' Enter` 뒤 `tmux capture-pane -p`로 `SATURN_HOME`이 `$E2E_RUN/home`과 정확히 같은 절대 경로인지 확인한다. 다르면 세션을 닫고 새로 시작한다. 세션 안에서 `saturn`을 실행하면 engine이 `SATURN_KEY`로 router 확인을 통과하고 시작 화면에 `Router jev · <버전>`이 보인다.
 
 ## 절차와 기대 결과
 
