@@ -749,10 +749,7 @@ impl Engine {
             agent: old.agent,
             workdir,
             model: old.model.clone(),
-            settings: self
-                .settings
-                .current()
-                .ok_or(crate::settings::SettingsError::NoPreviousRevision)?,
+            settings: self.revision_of_agent(chat, old.agent)?,
             resume: None,
             packet: Some(packet),
             add_dirs: self.chat_dirs_of(chat),

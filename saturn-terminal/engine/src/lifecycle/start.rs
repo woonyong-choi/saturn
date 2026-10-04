@@ -135,3 +135,47 @@ async fn shutdown_removes_socket_and_releases_lock() {
     }
     assert!(acquired.is_ok());
 }
+
+// #491
+#[tokio::test]
+async fn restart_with_broken_user_settings_does_not_adopt_a_connection_layer() {
+    let fixture = Fixture::new();
+    fixture.write_user_config("[permission]\nmode = \"read-only\"\n");
+    let mut engine = fixture.ready().await;
+    let user_revision = engine.settings.current().unwrap();
+    let chat = engine
+        .store
+        .create_chat(fixture.workdir.clone())
+        .await
+        .unwrap();
+    let (full, _) = engine
+        .settings
+        .apply_trusted(
+            &engine.store,
+            Some(chat),
+            &fixture.workdir,
+            &["permission.mode=full".to_owned()],
+        )
+        .await
+        .unwrap();
+    assert_ne!(full.revision, user_revision);
+    drop(engine);
+    fixture.write_user_config("broken = = 1\n");
+
+    let transport = FakeTransport::new(check_passes());
+    let engine = fixture
+        .start(fixture.env(true, Arc::clone(&transport)).await)
+        .await
+        .unwrap();
+
+    let current = engine.settings.current().unwrap();
+    let mode = engine
+        .settings
+        .at(&engine.store, current)
+        .await
+        .unwrap()
+        .permission()
+        .mode;
+    assert_eq!(current, user_revision);
+    assert_eq!(mode, saturn_core::permission::Mode::ReadOnly);
+}

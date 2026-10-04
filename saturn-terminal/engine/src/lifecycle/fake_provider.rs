@@ -84,7 +84,11 @@ async fn descriptor_values_reach_the_common_code() {
     assert_eq!(registry.display_name(FAKE), "Fake Agent");
     assert!(registry.instruction_docs().contains(&"FAKE.md".to_owned()));
     assert_eq!(registry.ids().last(), Some(&FAKE));
-    let budget = flow.engine.context_budget(FAKE).await.unwrap();
+    let budget = flow
+        .engine
+        .context_budget(flow.chat, saturn_protocol::ids::AgentId(1), FAKE)
+        .await
+        .unwrap();
     assert_eq!(budget.window, 50_000);
     assert_eq!(budget.cache_write, 2.0);
     assert_eq!(

@@ -299,7 +299,8 @@ impl Engine {
                 self.set_folder_trust(*client, Some(prompt.clone()));
             }
         }
-        self.announce_model_settings(chat, revision).await?;
+        self.announce_model_settings(chat, clients, revision)
+            .await?;
         Ok(revision)
     }
 

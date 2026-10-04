@@ -7,7 +7,7 @@ use saturn_core::sessions::context::{ContextBudget, DEFAULT_CACHE_TTL};
 use saturn_core::sessions::{
     AgentRole, LastTurn, ReturnInputs, SendTarget, SessionError, SessionManager, SessionRecord,
 };
-use saturn_protocol::ids::{ChatId, LedgerSeq, Provider, SessionId, SettingsRevision};
+use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq, Provider, SessionId, SettingsRevision};
 use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::SessionState;
 
@@ -81,7 +81,7 @@ impl Engine {
         else {
             return;
         };
-        let threshold = match self.context_budget(main.provider).await {
+        let threshold = match self.context_budget(chat, main.agent, main.provider).await {
             Ok(budget) => budget.threshold(),
             Err(error) => {
                 tracing::warn!(error = %self.failure_line(&error), "failed to read context budget");
@@ -162,18 +162,36 @@ impl Engine {
         self.persist_sessions(id).await
     }
 
-    /// 입력 접수 때 고정한 설정이 아니라 지금 설정으로 잰다. 턴이 끝난 session의 맥락 정리를 판정할 때 쓴다.
+    /// 입력 없이 에이전트와 채팅의 설정을 읽는 곳이 쓰는 번호. 에이전트가 가장 나중에 시작한 입력에 고정한 번호이고,
+    /// 시작한 입력이 없으면(engine을 다시 켠 뒤 등) 그 채팅에서 마지막에 적용한 번호다.
+    ///
+    /// # Errors
+    /// 번호가 없으면 `Settings`.
+    pub(crate) fn revision_of_agent(
+        &self,
+        chat: ChatId,
+        agent: AgentId,
+    ) -> Result<SettingsRevision, EngineError> {
+        Ok(self
+            .flow
+            .settings_of
+            .get(&agent)
+            .copied()
+            .or(self.settings.latest_of(chat))
+            .ok_or(SettingsError::NoPreviousRevision)?)
+    }
+
+    /// 그 에이전트의 입력에 고정한 설정으로 잰다. 턴이 끝난 session의 맥락 정리를 판정할 때 쓴다.
     ///
     /// # Errors
     /// 설정 번호를 읽지 못하면 `Settings`.
     pub(crate) async fn context_budget(
         &self,
+        chat: ChatId,
+        agent: AgentId,
         provider: Provider,
     ) -> Result<ContextBudget, EngineError> {
-        let revision = self
-            .settings
-            .current()
-            .ok_or(SettingsError::NoPreviousRevision)?;
+        let revision = self.revision_of_agent(chat, agent)?;
         let budget = self
             .settings
             .at(&self.store, revision)
@@ -185,15 +203,16 @@ impl Engine {
         })
     }
 
-    /// 지금 적용 중인 설정의 정리 모드 `context.mode`.
+    /// 그 에이전트의 입력에 고정한 설정의 정리 모드 `context.mode`.
     ///
     /// # Errors
     /// 설정 번호를 읽지 못하면 `Settings`.
-    pub(crate) async fn context_mode(&self) -> Result<ContextMode, EngineError> {
-        let revision = self
-            .settings
-            .current()
-            .ok_or(SettingsError::NoPreviousRevision)?;
+    pub(crate) async fn context_mode(
+        &self,
+        chat: ChatId,
+        agent: AgentId,
+    ) -> Result<ContextMode, EngineError> {
+        let revision = self.revision_of_agent(chat, agent)?;
         Ok(self
             .settings
             .at(&self.store, revision)

@@ -8,7 +8,7 @@ use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SubagentId};
+use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SettingsRevision, SubagentId};
 use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use tokio::sync::{Semaphore, mpsc};
@@ -38,6 +38,7 @@ pub(crate) enum Call {
         packet: Option<String>,
         add_dirs: Vec<PathBuf>,
         interrupted_children: Vec<SubagentId>,
+        settings: SettingsRevision,
     },
     SendTurn {
         session: ProviderSessionId,
@@ -277,6 +278,7 @@ impl ProviderClient for FakeProvider {
                 packet: spec.packet.clone(),
                 add_dirs: spec.add_dirs.clone(),
                 interrupted_children: spec.interrupted_children.clone(),
+                settings: spec.settings,
             });
             assert!(!script.panic_on_open, "fake provider panics on open");
         }

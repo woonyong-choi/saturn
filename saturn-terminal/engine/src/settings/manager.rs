@@ -43,7 +43,8 @@ pub(crate) struct SettingsManager {
     home: PathBuf,
     run_overrides: Vec<String>,
     trust: TrustStore,
-    /// engine 시작 때 병합한 번호(사용자 층과 시작 `-c`). 범위에 이전 번호가 없을 때 돌아간다.
+    /// engine 시작 때 병합한 번호(사용자 층과 시작 `-c`). 범위에 이전 번호가 없을 때 돌아간다. 병합이 실패한 시작은
+    /// 채팅과 접속 설정 없이 마지막으로 성공한 번호에서 출발한다.
     base: Option<SettingsRevision>,
     /// 범위마다 마지막으로 성공한 번호.
     scoped: HashMap<ScopeKey, SettingsRevision>,
@@ -62,7 +63,7 @@ impl SettingsManager {
         store: &Store,
     ) -> Result<Self, SettingsError> {
         let trust = TrustStore::load(&home).await?;
-        let base = store.latest_settings_revision().await?;
+        let base = store.common_settings_revision().await?;
         Ok(Self {
             home,
             run_overrides,
@@ -153,6 +154,9 @@ impl SettingsManager {
         let applied = self
             .merge_and_save(store, layers, (None, Vec::new()))
             .await?;
+        if !matches!(applied.warning, Some(SettingsWarning::Fallback { .. })) {
+            store.mark_common_settings_applied(applied.revision).await?;
+        }
         self.base = Some(applied.revision);
         Ok(applied)
     }
@@ -258,7 +262,6 @@ impl SettingsManager {
             Err(error) => return Err(error),
         };
         let revision = store.save_settings_snapshot(&snapshot).await?;
-        store.mark_settings_applied(revision).await?;
         self.scoped.insert(key.clone(), revision);
         let ignored: Vec<&str> = snapshot
             .layers
@@ -498,10 +501,7 @@ mod tests {
         fixture.write_user("[router.thresholds]\ninjection = 0.9\n");
         let mut manager = fixture.manager(&[]).await;
 
-        let first = manager
-            .apply(&fixture.store, None, &fixture.workdir, &[])
-            .await
-            .unwrap();
+        let first = manager.apply_user(&fixture.store).await.unwrap();
         let second = manager
             .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
@@ -517,7 +517,7 @@ mod tests {
         assert_eq!(third.revision, first.revision);
         assert_eq!(fixture.snapshot_count().await, 1);
         assert_eq!(
-            fixture.store.latest_settings_revision().await.unwrap(),
+            fixture.store.common_settings_revision().await.unwrap(),
             Some(first.revision)
         );
     }

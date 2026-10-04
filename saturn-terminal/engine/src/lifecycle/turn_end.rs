@@ -8,7 +8,7 @@ use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::{InputState, SessionState, TaskState};
 
 use super::support::{
-    Flow, context_size, idle_reply, running_reply, subagent_ended, subagent_started, text,
+    CLIENT, Flow, context_size, idle_reply, running_reply, subagent_ended, subagent_started, text,
     turn_completed,
 };
 use super::*;
@@ -333,4 +333,86 @@ async fn provider_mode_neither_restarts_on_return_nor_at_the_threshold() {
 
     assert_eq!(opens(&flow).len(), 1);
     assert_eq!(flow.engine.flow.live[&agent].session, old);
+}
+
+/// 접속 실행 설정으로 줄인 발동 기준. engine 시작 설정은 기본값이다.
+fn small_context_override() -> Vec<(String, String)> {
+    vec![
+        ("provider.claude.context.t_abs".into(), "100000".into()),
+        ("provider.claude.context.window".into(), "100000".into()),
+    ]
+}
+
+// #490
+#[tokio::test]
+async fn connection_layer_context_mode_provider_skips_compaction_at_the_turn_end() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.engine.attachments.get_mut(&CLIENT).unwrap().overrides =
+        vec![("context.mode".into(), "provider".into())];
+    flow.submit("fix the build").await;
+    let agent = flow.agent();
+
+    flow.claude_event(context_size(agent, HUGE)).await;
+    flow.claude_event(turn_completed(agent)).await;
+
+    assert_eq!(opens(&flow).len(), 1);
+    assert_eq!(
+        flow.engine.context_mode(flow.chat, agent).await.unwrap(),
+        crate::settings::ContextMode::Provider
+    );
+}
+
+// #490
+#[tokio::test]
+async fn connection_layer_context_budget_decides_compaction_and_survives_it() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.engine.attachments.get_mut(&CLIENT).unwrap().overrides = small_context_override();
+    let input = flow.submit("fix the build").await;
+    let (agent, chat) = (flow.agent(), flow.chat);
+    let start = flow.engine.settings.current().unwrap();
+    let pinned = flow.record(input).settings;
+    assert_ne!(pinned, start);
+    let budget = flow
+        .engine
+        .context_budget(chat, agent, crate::providers::test_support::CLAUDE)
+        .await
+        .unwrap();
+    assert_eq!(budget.t_abs, 100_000);
+
+    flow.claude_event(text(agent, "the cache is fixed")).await;
+    flow.claude_event(context_size(agent, 150_000)).await;
+    flow.claude_event(turn_completed(agent)).await;
+
+    let calls = opens(&flow);
+    assert_eq!(calls.len(), 2, "the chat's own threshold should compact");
+    let Call::Open { settings, .. } = &calls[1] else {
+        panic!("second call should open a session");
+    };
+    assert_eq!(*settings, pinned);
+    assert_eq!(flow.engine.revision_of_agent(chat, agent).unwrap(), pinned);
+}
+
+// #490
+#[tokio::test]
+async fn context_settings_of_two_chats_do_not_affect_each_other() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    flow.engine.attachments.get_mut(&CLIENT).unwrap().overrides = small_context_override();
+    flow.submit("fix the build").await;
+    let (agent, chat) = (flow.agent(), flow.chat);
+    let other = flow.open_other_chat().await;
+    let claude = crate::providers::test_support::CLAUDE;
+
+    let own = flow
+        .engine
+        .context_budget(chat, agent, claude)
+        .await
+        .unwrap();
+    let theirs = flow
+        .engine
+        .context_budget(other.chat, other.agent, claude)
+        .await
+        .unwrap();
+
+    assert_eq!(own.t_abs, 100_000);
+    assert!(theirs.t_abs > 100_000);
 }

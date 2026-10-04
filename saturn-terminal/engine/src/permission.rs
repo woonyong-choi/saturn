@@ -9,7 +9,7 @@ use saturn_protocol::ids::{AgentId, ChatId, Provider, ProviderSessionId, Setting
 use saturn_protocol::rpc::ChatNotice;
 
 use crate::providers::ProviderHandle;
-use crate::settings::{self, SettingsError};
+use crate::settings;
 use crate::{Engine, EngineError};
 
 impl Engine {
@@ -268,13 +268,7 @@ impl Engine {
         agent: AgentId,
     ) -> Result<Policy, EngineError> {
         let key = self.workdir_key(chat)?;
-        let revision = self
-            .flow
-            .settings_of
-            .get(&agent)
-            .copied()
-            .or(self.settings.latest_of(chat))
-            .ok_or(SettingsError::NoPreviousRevision)?;
+        let revision = self.revision_of_agent(chat, agent)?;
         let configured = self.settings.at(&self.store, revision).await?.permission();
         Ok(Policy {
             mode: self.chat_mode(chat, revision).await?,

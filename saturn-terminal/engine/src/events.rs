@@ -437,7 +437,7 @@ impl Engine {
 
     async fn on_context_size(&mut self, chat: ChatId, live: &LiveSession, tokens: Option<u64>) {
         self.flow.context_tokens.insert(live.agent, tokens);
-        let threshold = match self.context_budget(live.provider).await {
+        let threshold = match self.context_budget(chat, live.agent, live.provider).await {
             Ok(budget) => budget.threshold(),
             Err(error) => {
                 tracing::warn!(error = %self.failure_line(&error), "failed to read context budget");

@@ -5,7 +5,7 @@ use saturn_protocol::ids::Provider;
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, ModelMode, Notification, Request};
 
 use super::drive;
-use super::support::{Flow, idle_reply, model_reply};
+use super::support::{CLIENT, Flow, idle_reply, model_reply};
 use crate::providers::test_support::{CLAUDE, CODEX, Call, FakeProvider};
 use crate::rpc::ClientId;
 
@@ -260,4 +260,94 @@ async fn setting_the_default_from_a_client_that_is_not_attached_is_refused() {
         .await;
 
     assert!(result.is_err());
+}
+
+// #490
+#[tokio::test]
+async fn connection_layer_model_mode_reaches_the_tui_of_that_connection() {
+    let mut flow = Flow::new(Vec::new()).await;
+    let (mut client, _) = flow.attach().await;
+    let chat = flow.chat;
+    let attached = *flow
+        .engine
+        .attachments
+        .keys()
+        .find(|id| **id != CLIENT)
+        .expect("the TUI should be attached");
+    flow.engine
+        .attachments
+        .get_mut(&attached)
+        .unwrap()
+        .overrides = vec![("model.mode".into(), "manual".into())];
+    let run = flow.engine.run_layer_of(attached);
+    flow.engine
+        .settings
+        .apply_trusted(&flow.engine.store, Some(chat), &flow.fixture.workdir, &run)
+        .await
+        .unwrap();
+
+    flow.engine
+        .send_model_settings(attached, chat)
+        .await
+        .unwrap();
+
+    let told = client
+        .until(|notification| match notification {
+            Notification::ModelSettings { mode, .. } => Some(*mode),
+            _ => None,
+        })
+        .await;
+    assert_eq!(told, ModelMode::Manual);
+}
+
+// #490
+#[tokio::test]
+async fn model_settings_notice_follows_the_settings_of_each_connection_of_the_chat() {
+    let mut flow = Flow::new(Vec::new()).await;
+    let (mut auto_client, _) = flow.attach().await;
+    let (mut manual_client, _) = flow.attach().await;
+    let chat = flow.chat;
+    let mut attached: Vec<_> = flow.engine.attachments.keys().copied().collect();
+    attached.sort_by_key(|id| id.0);
+    let (auto_id, manual_id) = (attached[0], attached[1]);
+    flow.engine
+        .attachments
+        .get_mut(&manual_id)
+        .unwrap()
+        .overrides = vec![("model.mode".into(), "manual".into())];
+    let run = flow.engine.run_layer_of(manual_id);
+    flow.engine
+        .settings
+        .apply_trusted(&flow.engine.store, Some(chat), &flow.fixture.workdir, &run)
+        .await
+        .unwrap();
+    flow.engine
+        .send_model_settings(manual_id, chat)
+        .await
+        .unwrap();
+    auto_client.window().await;
+    manual_client.window().await;
+    let model = choice(CLAUDE, "sonnet");
+
+    flow.engine
+        .set_default_model(auto_id, chat, &model)
+        .await
+        .unwrap();
+
+    let modes = |seen: Vec<Notification>| -> Vec<(Option<ModelChoice>, ModelMode)> {
+        seen.into_iter()
+            .filter_map(|notification| match notification {
+                Notification::ModelSettings { default, mode, .. } => Some((default, mode)),
+                _ => None,
+            })
+            .collect()
+    };
+    assert_eq!(
+        modes(auto_client.window().await),
+        vec![(Some(model.clone()), ModelMode::Auto)]
+    );
+    assert_eq!(
+        modes(manual_client.window().await),
+        vec![(Some(model), ModelMode::Manual)]
+    );
 }

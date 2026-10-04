@@ -211,9 +211,9 @@ engine이 시작하면 사용자당 잠금을 얻고 스키마 이관을 마친 
 #### 적용 범위
 
 - 병합 결과는 채팅 하나와 접속의 `-c` 목록을 합친 범위마다 따로 정한다. 접속의 `-c`는 그 접속이 접수하는 입력에만 적용하고, engine 전체나 채팅의 영구 설정(채팅 층)으로 올리지 않는다. 같은 채팅에 붙은 두 접속이 다른 `-c`를 쓰면 입력마다 자기 접속의 값이 고정된다.
-- 검사에 실패하면 그 범위에서 마지막으로 성공한 설정 번호로 계속하고, 그 범위에 성공한 적이 없으면 engine 시작 때 확정한 설정 번호로 계속한다. 다른 채팅이나 다른 접속이 만든 번호로 돌아가지 않는다. 잘못된 접속 `-c`는 그 접속에서만 경고로 나타난다.
+- 검사에 실패하면 그 범위에서 마지막으로 성공한 설정 번호로 계속하고, 그 범위에 성공한 적이 없으면 engine 시작 때 확정한 설정 번호로 계속한다. 다른 채팅이나 다른 접속이 만든 번호로 돌아가지 않는다. engine 시작 때 사용자 층 병합이 실패하면 채팅과 접속 설정 없이 마지막으로 성공한 번호(기록 저장소에 따로 남긴다)로 시작하고, 그런 번호가 없으면 시작하지 않는다. 접속이나 채팅 층이 섞인 번호로 시작하면 설정 파일 오류가 접속별 `-c`의 권한(예 `permission.mode=full`)을 그대로 이어받기 때문이다. 잘못된 접속 `-c`는 그 접속에서만 경고로 나타난다.
 - 파일 지문(마지막 병합 때 본 설정 파일)도 범위마다 기억한다. 같은 폴더의 채팅 둘이 서로의 변경을 소비하지 않고, 파일이 바뀌면 범위마다 한 번씩 다시 병합한다.
-- 접속을 특정할 수 없는 일(종료 때 `on_exit` 읽기)은 그 채팅에 붙은 첫 접속의 범위를 쓴다. 입력 없이 채팅의 설정을 읽는 곳(허가 판정, 하위 접속 만들기)은 입력의 번호를 먼저 쓰고, 없으면 그 채팅에서 마지막에 적용한 번호를 쓴다.
+- 접속을 특정할 수 없는 일(종료 때 `on_exit` 읽기)은 그 채팅에 붙은 첫 접속의 범위를 쓴다. 입력 없이 채팅의 설정을 읽는 곳(허가 판정, 하위 접속 만들기, 맥락 정리 판단과 정리 뒤 session 다시 열기)은 그 에이전트가 가장 나중에 시작한 입력의 번호를 먼저 쓰고, 없으면 그 채팅에서 마지막에 적용한 번호를 쓴다. 모델 창과 기본 모델 알림은 그 접속이 접수할 입력의 번호를 쓴다. engine 전체 값(보관 기간, 시작 확인의 router, 하위 접속 상한)만 engine 시작 때 번호를 쓴다. 실행 중인 입력의 설정은 그 입력이 끝날 때까지 고정이고, 이후 접수하는 입력부터 바뀐 값을 쓰므로 맥락 정리 판단도 바뀐 값은 다음 입력의 시작부터 따른다.
 - router 판단 기록에는 질문 버전과 함께 설정 번호를 남긴다. 버전이 바뀐 뒤에도 옛 기록을 다시 해석하기 위해서다.
 
 ### 입력마다 설정 번호 고정
@@ -289,6 +289,8 @@ Saturn 설정은 provider 설정 파일을 바꾸지 않는다. 권한은 `permi
 | 같은 내용의 설정은 같은 설정 번호를 쓴다. | 같은 설정으로 두 번 병합해 설정 번호가 하나만 생기는지 확인한다. |
 | 입력은 접수 때 고정한 설정 번호로 끝까지 처리한다. | 처리 중 설정을 바꿔도 그 입력의 provider 실행 값이 접수 때 값인지 확인한다. |
 | 검사에 실패한 설정은 적용하지 않고 이전 설정 번호를 쓴다. | 잘못된 폴더 설정으로 바꾼 뒤 이전 설정 번호가 유지되는지 확인한다. |
+| 시작 때 사용자 층 병합이 실패하면 접속·채팅 층이 섞이지 않은 마지막 번호로 시작한다. | 접속 `-c permission.mode=full`을 적용한 뒤 사용자 설정을 깨뜨려 다시 시작하고 시작 번호의 권한이 사용자 설정 값인지 확인한다(`saturn-terminal/engine/src/lifecycle/start.rs`의 `restart_with_broken_user_settings_does_not_adopt_a_connection_layer`). |
+| 맥락 정리 판단과 모델 알림은 입력의 접속 설정을 따른다. | 접속 `-c`로 `context.mode`와 맥락 기준을 바꾼 채팅의 판정과 다른 채팅의 기준이 서로 다른지 확인한다(`saturn-terminal/engine/src/lifecycle/turn_end.rs`, `model_mode.rs`의 `connection_layer_model_mode_reaches_the_tui_of_that_connection`, `model_settings_notice_follows_the_settings_of_each_connection_of_the_chat`). |
 | 설정 파일을 바꾸면 입력 없이도 engine이 알아채 provider에 적용한다. 쓰는 도중의 파일은 적용하지 않고, 잘못된 파일은 이전 설정을 유지하며 경고한다. | `saturn-terminal/engine/src/lifecycle/settings_watch.rs`의 `settings_watch_restarts_an_idle_chat_without_any_input`, `settings_watch_waits_for_the_turn_end_when_the_chat_is_running`, `settings_watch_ignores_a_file_that_is_still_being_written`, `settings_watch_keeps_the_connection_and_warns_when_the_file_is_invalid`, `settings_watch_runs_in_the_serve_loop` |
 | `model.default`와 `model.mode`를 알려진 키로 읽고 값을 검사하며, 기본 모델이나 방식을 바꾸면 사용자 설정 파일에 쓰고 붙은 TUI에 알린다. | `saturn-terminal/engine/src/lifecycle/model_mode.rs`의 `choosing_the_default_model_writes_the_user_config_and_tells_the_tui`, `changing_the_mode_writes_the_user_config_and_applies_to_the_next_input` |
 | 명령으로 설정 파일을 고쳐도 주석이 남는다. | 주석이 있는 파일을 명령으로 고친 뒤 주석이 그대로인지 확인한다. |
