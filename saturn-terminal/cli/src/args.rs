@@ -32,6 +32,9 @@ pub(crate) struct Cli {
     /// 에이전트 작업 안의 하위 접속이 쓸 권한 모드. 부모 모드를 넘으면 거절하고, 없으면 부모 모드를 쓴다.
     #[arg(long, value_name = "MODE")]
     pub(crate) mode: Option<String>,
+    /// 대화 화면을 단순 방식(박스와 움직임 없이 줄마다 말한 쪽을 적고 선택지를 번호 목록으로)으로 그린다. `--plain=false`는 `NO_COLOR`와 설정을 이긴다.
+    #[arg(long, value_name = "BOOL", num_args = 0..=1, default_missing_value = "true", require_equals = true)]
+    pub(crate) plain: Option<bool>,
     /// 하위 명령. 없으면 대화 화면(터미널이면 전체 화면, 파이프나 CI면 plain)을 연다.
     #[command(subcommand)]
     pub(crate) command: Option<Command>,
@@ -411,6 +414,13 @@ mod tests {
         let mode = parse(&["--continue"]).unwrap().open_mode(Lang::En).unwrap();
 
         assert_eq!(mode, OpenMode::ContinueLast);
+    }
+
+    #[test]
+    fn plain_flag_is_true_alone_false_with_a_value_and_absent_by_default() {
+        assert_eq!(parse(&["--plain"]).unwrap().plain, Some(true));
+        assert_eq!(parse(&["--plain=false"]).unwrap().plain, Some(false));
+        assert_eq!(parse(&[]).unwrap().plain, None);
     }
 
     #[test]

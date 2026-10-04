@@ -57,6 +57,8 @@ pub(crate) struct KeyContext {
     /// 입력창이 비었거나 불러온 기록 그대로다.
     pub history_browsable: bool,
     pub running: bool,
+    /// 단순 방식이다. 선택지가 번호 목록이라 번호 키로 바로 정한다.
+    pub plain: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,6 +66,9 @@ pub(crate) enum Action {
     // 모든 영역
     ShowFullTranscript,
     Suspend,
+
+    /// 단순 방식의 번호 목록에서 `n`번째(0부터) 선택지를 바로 정한다.
+    Choose(usize),
 
     // 공통 목록 조작(팝업, 창, 화면)
     Up,

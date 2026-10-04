@@ -8,7 +8,7 @@ use ratatui::text::{Line, Span};
 use saturn_protocol::ids::InputId;
 
 use crate::i18n::{self, Lang};
-use crate::view::{MUTED, SELECTED, render_window};
+use crate::view::{MUTED, SELECTED, choice_text, render_window};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum StopChoice {
@@ -55,16 +55,19 @@ impl StopConfirmView<'_> {
     pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
         let lang = self.lang;
         let mut lines = vec![Line::from(self.confirm.text.clone()), Line::from("")];
-        for (choice, text) in [
+        for (index, (choice, text)) in [
             (StopChoice::Wait, i18n::QUEUED),
             (StopChoice::StopAndRun, i18n::STOP_CONFIRM_RUN),
-        ] {
-            let style = if choice == self.confirm.selected {
-                SELECTED
-            } else {
-                Style::new()
-            };
-            lines.push(Line::from(Span::styled(lang.tr(text), style)));
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let selected = choice == self.confirm.selected;
+            let style = if selected { SELECTED } else { Style::new() };
+            lines.push(Line::from(Span::styled(
+                choice_text(index, selected, lang.tr(text)),
+                style,
+            )));
         }
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(

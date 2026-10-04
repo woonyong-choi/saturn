@@ -43,6 +43,7 @@ pub(crate) async fn run(lang: Lang, cli: &Cli, pass: String, socket: &Path) -> a
             pass,
             mode: cli.mode.clone(),
         }),
+        plain: None,
     };
     Ok(saturn_tui::run_plain(&mut client, options).await?)
 }

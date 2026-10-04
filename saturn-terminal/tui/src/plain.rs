@@ -1,6 +1,5 @@
 //! 화면 없는 plain 출력. 파이프와 CI에서 전체 화면 대신 쓴다.
-//! 설계: docs/design/tui.md
-//! TODO(#57): plain을 켜는 조건과 우선순위, 설정 키 이름
+//! 설계: docs/design/tui.md. 켜는 조건은 터미널이 아닐 때, `--plain`, `NO_COLOR`, 설정 `tui.screen`이다
 
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -29,6 +28,8 @@ pub(crate) struct PlainOutput<W: Write> {
     key_required: Option<String>,
     /// 실패로 끝난 작업이 하나라도 있다.
     failed: bool,
+    /// 입력이 필요한 줄 앞에 터미널 벨을 쓴다. 표준 출력이 터미널일 때만 켠다.
+    bell: bool,
 }
 
 impl<W: Write> PlainOutput<W> {
@@ -36,6 +37,7 @@ impl<W: Write> PlainOutput<W> {
     // basis: estimate
     pub(crate) fn new(out: W, lang: Lang) -> Self {
         Self {
+            bell: false,
             out,
             lang,
             chat: ChatState::new(),
@@ -45,6 +47,12 @@ impl<W: Write> PlainOutput<W> {
             key_required: None,
             failed: false,
         }
+    }
+
+    /// 입력이 필요한 줄(허가, 입력 요청) 앞에 벨을 쓴다.
+    pub(crate) fn with_bell(mut self, bell: bool) -> Self {
+        self.bell = bell;
+        self
     }
 
     /// engine가 router 키를 요청했으면 그 원인. 호출자는 묻지 않고 안내하고 끝낸다.
@@ -135,6 +143,7 @@ impl<W: Write> PlainOutput<W> {
                     labels::format(label),
                     self.lang.tr(i18n::PERMISSION_REASON)
                 );
+                self.ring()?;
                 self.line(&text)?;
             }
             Notification::InputRequested { label, request, .. } => {
@@ -148,6 +157,7 @@ impl<W: Write> PlainOutput<W> {
                     labels::format(label),
                     self.lang.tr(i18n::INPUT_REQUESTED)
                 );
+                self.ring()?;
                 self.line(&text)?;
             }
             Notification::ChatNotice { chat, notice, task } => {
@@ -163,7 +173,7 @@ impl<W: Write> PlainOutput<W> {
                     revision: revision.0,
                     warning,
                 };
-                self.line(&line.text(self.lang, false, ' '))?;
+                self.saturn_line(&line.text(self.lang, false, ' '))?;
             }
             Notification::Alert { alert } => {
                 self.chat.apply_alert(alert);
@@ -187,8 +197,14 @@ impl<W: Write> PlainOutput<W> {
         let task = update.task;
         self.failed |= update.state == TaskState::Failed;
         let change = self.chat.apply_task(update, now);
+        let speaker = self
+            .chat
+            .tasks
+            .get(&task)
+            .map(|view| format!("{} ", labels::format(view.label)))
+            .unwrap_or_default();
         for _ in self.chat.take_interrupted_calls(task) {
-            self.line(&interrupted_line(self.lang))?;
+            self.line(&format!("{speaker}{}", interrupted_line(self.lang)))?;
         }
         match change {
             Change::TaskFinished { task } => {
@@ -274,7 +290,7 @@ impl<W: Write> PlainOutput<W> {
             }
         };
         match line {
-            Some(line) => self.line(&line.text(self.lang, false, ' ')),
+            Some(line) => self.saturn_line(&line.text(self.lang, false, ' ')),
             None => Ok(()),
         }
     }
@@ -288,7 +304,7 @@ impl<W: Write> PlainOutput<W> {
             .map(|alert| alert_text(self.lang, alert))
             .collect();
         self.alerts_written = self.chat.alerts.len();
-        fresh.iter().try_for_each(|text| self.line(text))
+        fresh.iter().try_for_each(|text| self.saturn_line(text))
     }
 
     /// 대화 기록 `AgentText` 셀과 같은 문구.
@@ -305,10 +321,22 @@ impl<W: Write> PlainOutput<W> {
     // basis: estimate
     /// 이름표 보임은 지금 상태로 정한다.
     fn cell(&mut self, cell: &TranscriptCell) -> std::io::Result<()> {
-        let visible = self.chat.labels_visible();
-        cell.lines(self.lang, visible, false)
+        cell.plain_lines(self.lang, false)
             .iter()
             .try_for_each(|line| self.line(line))
+    }
+
+    /// 말하는 쪽이 Saturn인 줄이다.
+    fn saturn_line(&mut self, text: &str) -> std::io::Result<()> {
+        self.line(&format!("Saturn: {text}"))
+    }
+
+    /// 입력이 필요하다는 뜻으로 터미널 벨을 울린다.
+    fn ring(&mut self) -> std::io::Result<()> {
+        if self.bell {
+            self.out.write_all(b"\x07")?;
+        }
+        Ok(())
     }
 
     /// 파이프 버퍼에 머물지 않게 바로 비운다.
@@ -347,6 +375,29 @@ mod tests {
         }
         let finished = plain.is_finished();
         (String::from_utf8(plain.out).unwrap(), finished)
+    }
+
+    #[test]
+    fn bell_precedes_the_permission_line_only_when_enabled() {
+        let request = Notification::PermissionRequested {
+            task: TaskId(1),
+            label: TaskLabel('A'),
+            provider: Provider::from_static("codex"),
+            request_id: "r1".to_string(),
+            summary: "rm".to_string(),
+            reason: "clean".to_string(),
+            waiting: 0,
+        };
+        let mut quiet = PlainOutput::new(Vec::new(), Lang::Ko);
+        let mut ringing = PlainOutput::new(Vec::new(), Lang::Ko).with_bell(true);
+
+        quiet.apply(request.clone(), Instant::now()).unwrap();
+        ringing.apply(request, Instant::now()).unwrap();
+
+        let quiet = String::from_utf8(quiet.out).unwrap();
+        let ringing = String::from_utf8(ringing.out).unwrap();
+        assert_eq!(quiet, "[A] rm · 이유: clean\n");
+        assert_eq!(ringing, "\x07[A] rm · 이유: clean\n");
     }
 
     #[test]
@@ -400,8 +451,8 @@ mod tests {
 
         assert_eq!(
             text,
-            "> 버그 고쳐 · 전달 중\n• 파일 읽는 중\n고쳤습니다\n끝\ncodex · 45초 · Token -\n\
-             이번 요청 · codex Token 4,120 · 라우터 0회 Token 0 · 45초\n"
+            "> [A] 버그 고쳐 · 전달 중\n[A] • 파일 읽는 중\n[A] 고쳤습니다\n[A] 끝\n[A] codex · 45초 · Token -\n\
+             Saturn: 이번 요청 · codex Token 4,120 · 라우터 0회 Token 0 · 45초\n"
         );
         assert!(finished);
     }
@@ -425,8 +476,8 @@ mod tests {
             task(TaskState::NeedsCheck, 0),
         ]);
 
-        assert!(text.starts_with("• "), "{text}");
-        assert!(text.contains("\n  중단됨\n"), "{text}");
+        assert!(text.starts_with("[A] • "), "{text}");
+        assert!(text.contains("\n[A]   중단됨\n"), "{text}");
     }
 
     #[test]
@@ -466,7 +517,7 @@ mod tests {
 
         assert_eq!(
             text,
-            "자동 판단 일시 중단\n‖ 멈춤 · [A] 보류됨 · /continue 로 이어서\n"
+            "Saturn: 자동 판단 일시 중단\nSaturn: ‖ 멈춤 · [A] 보류됨 · /continue 로 이어서\n"
         );
         assert!(!finished);
     }

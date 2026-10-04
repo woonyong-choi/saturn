@@ -123,16 +123,26 @@ pub(crate) async fn run(
     chat: Option<ChatId>,
     config: &[ConfigOverride],
     add_dirs: Vec<PathBuf>,
+    plain: Option<bool>,
 ) -> anyhow::Result<()> {
     let workdir = std::env::current_dir().context(lang.tr(i18n::CLI_CURRENT_DIR_UNREADABLE))?;
-    let options = run_options(chat, config, add_dirs, workdir);
+    let options = run_options(chat, config, add_dirs, workdir, plain);
     match detect_mode() {
         ScreenMode::FullScreen => run_full_screen(client, options).await,
         ScreenMode::Plain => run_plain(client, options).await,
     }
 }
 
-/// TODO(#57): plain을 켜는 조건과 우선순위, 설정 키. 지금은 표준 입력이나 표준 출력이 터미널이 아니면 plain
+// cost: time O(1), heap O(1), stack O(1)
+// basis: estimate
+/// 단순 방식을 시작할 때 정하는 값. 옵션(`--plain`)이 환경 변수(`NO_COLOR`, 비어 있지 않은 값)보다 앞서고, 둘 다 없으면
+/// `None`이라 설정 `tui.screen`이 engine 알림으로 정한다. 터미널이 아니면 이 값과 관계없이 plain 출력이다.
+pub(crate) fn plain_override(flag: Option<bool>, no_color: Option<String>) -> Option<bool> {
+    flag.or_else(|| no_color.filter(|value| !value.is_empty()).map(|_| true))
+}
+
+/// 표준 입력이나 표준 출력이 터미널이 아니면 화면 없이 plain 출력이다. 터미널이면 전체 화면이고, 단순 방식은 그 화면을 다시
+/// 그리는 방식이라 `RunOptions::plain`과 설정이 정한다.
 fn detect_mode() -> ScreenMode {
     mode_for(
         std::io::stdin().is_terminal(),
@@ -157,6 +167,7 @@ fn run_options(
     config: &[ConfigOverride],
     add_dirs: Vec<PathBuf>,
     workdir: PathBuf,
+    plain: Option<bool>,
 ) -> RunOptions {
     let history = EngineClient::default_socket()
         .parent()
@@ -173,6 +184,7 @@ fn run_options(
         add_dirs,
         history,
         child: None,
+        plain,
     }
 }
 
@@ -313,6 +325,18 @@ mod tests {
     }
 
     #[test]
+    fn plain_option_beats_the_environment_and_the_environment_is_read_when_there_is_no_option() {
+        assert_eq!(plain_override(Some(true), None), Some(true));
+        assert_eq!(
+            plain_override(Some(false), Some("1".to_owned())),
+            Some(false)
+        );
+        assert_eq!(plain_override(None, Some("1".to_owned())), Some(true));
+        assert_eq!(plain_override(None, Some(String::new())), None);
+        assert_eq!(plain_override(None, None), None);
+    }
+
+    #[test]
     fn mode_for_needs_terminal_input_and_output_for_full_screen() {
         assert_eq!(mode_for(true, true), ScreenMode::FullScreen);
         assert_eq!(mode_for(true, false), ScreenMode::Plain);
@@ -329,6 +353,7 @@ mod tests {
             &config,
             vec![PathBuf::from("/shared")],
             PathBuf::from("/work"),
+            None,
         );
 
         assert_eq!(options.chat, Some(ChatId(3)));

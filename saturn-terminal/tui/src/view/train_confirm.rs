@@ -8,7 +8,7 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 
 use crate::i18n::{self, Lang};
-use crate::view::{SELECTED, render_window};
+use crate::view::{SELECTED, choice_text, render_window};
 
 #[expect(dead_code, reason = "#91 학습 실행 구현 전")]
 pub(crate) const MIN_CANDIDATES: u32 = 200;
@@ -83,16 +83,19 @@ impl TrainConfirmView<'_> {
             )),
             Line::from(""),
         ];
-        for (choice, text) in [
+        for (index, (choice, text)) in [
             (TrainChoice::Run, i18n::TRAIN_RUN),
             (TrainChoice::Cancel, i18n::CANCEL),
-        ] {
-            let style = if choice == confirm.selected {
-                SELECTED
-            } else {
-                Style::new()
-            };
-            lines.push(Line::from(Span::styled(lang.tr(text), style)));
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let selected = choice == confirm.selected;
+            let style = if selected { SELECTED } else { Style::new() };
+            lines.push(Line::from(Span::styled(
+                choice_text(index, selected, lang.tr(text)),
+                style,
+            )));
         }
         render_window(frame, area, lang.tr(i18n::TRAIN_TITLE), lines);
     }

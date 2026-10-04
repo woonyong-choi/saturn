@@ -11,7 +11,7 @@ use ratatui::text::{Line, Span};
 use crate::i18n::{self, Lang};
 use crate::labels;
 use crate::view::transcript::held_labels;
-use crate::view::{SELECTED, render_window};
+use crate::view::{SELECTED, choice_text, render_window};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ResumeChoice {
@@ -151,10 +151,14 @@ impl ResumePromptView<'_> {
                 rows
             }
         };
-        lines.extend(rows.into_iter().map(|(text, selected)| {
-            let style = if selected { SELECTED } else { Style::new() };
-            Line::from(Span::styled(text, style))
-        }));
+        lines.extend(
+            rows.into_iter()
+                .enumerate()
+                .map(|(index, (text, selected))| {
+                    let style = if selected { SELECTED } else { Style::new() };
+                    Line::from(Span::styled(choice_text(index, selected, text), style))
+                }),
+        );
         render_window(frame, area, lang.tr(i18n::RESUME_TITLE), lines);
     }
 }

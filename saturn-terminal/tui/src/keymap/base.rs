@@ -171,8 +171,26 @@ pub(super) fn table() -> Vec<Binding> {
         // 시작할 채팅 고르기
         b(Action::Close, &[A::ChatPicker], &["ctrl+c"]),
     ];
+    table.extend(plain_choices());
     table.extend(composer());
     table
+}
+
+/// 단순 방식의 번호 목록은 번호 키로 바로 정한다. 선택지가 둘이나 셋인 창이 대상이다.
+fn plain_choices() -> Vec<Binding> {
+    const WINDOWS: &[A] = &[
+        A::Permission,
+        A::ExitConfirm,
+        A::StopConfirm,
+        A::TrainConfirm,
+        A::ConstraintAsk,
+        A::FolderTrust,
+        A::ResumePrompt,
+    ];
+    [(0, "1"), (1, "2"), (2, "3")]
+        .into_iter()
+        .map(|(index, key)| b(Action::Choose(index), WINDOWS, &[key]).when(Cond::Plain))
+        .collect()
 }
 
 /// 입력창 키. `Esc`와 `Tab`, `Shift+Tab`, `Ctrl+C`처럼 도구마다 뜻이 갈리는 키가 여기 있다.

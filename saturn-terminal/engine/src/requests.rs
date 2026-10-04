@@ -362,6 +362,7 @@ pub(crate) fn settings_notification(applied: Applied) -> Notification {
         revision: applied.revision,
         warning: applied.warning,
         keymap: applied.keymap,
+        screen: applied.screen,
     }
 }
 

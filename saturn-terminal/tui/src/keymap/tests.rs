@@ -26,6 +26,7 @@ fn idle() -> KeyContext {
         at_word_start: true,
         history_browsable: true,
         running: false,
+        plain: false,
     }
 }
 

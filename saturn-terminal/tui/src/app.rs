@@ -130,6 +130,14 @@ pub(crate) struct App {
     pub keymap: Keymap,
     /// 마지막으로 받은 설정의 `tui.keymap`. 같은 값이 다시 오면 `/keymap`으로 고른 묶음을 바꾸지 않는다.
     settings_keymap: Option<String>,
+    /// 단순 방식으로 그린다. 박스와 움직임 없이 줄마다 말한 쪽을 적고 선택지를 번호 목록으로 둔다.
+    pub plain: bool,
+    /// 옵션이나 환경 변수가 단순 방식을 정했다. 설정 `tui.screen`보다 앞서므로 설정이 바뀌어도 따르지 않는다.
+    plain_fixed: bool,
+    /// 마지막으로 받은 설정의 `tui.screen`. 같은 값이 다시 오면 `/plain`으로 바꾼 상태를 바꾸지 않는다.
+    settings_screen: Option<String>,
+    /// 단순 방식에서 입력이 필요해 터미널 벨을 울릴 차례다. `take_bell`이 비운다.
+    bell: bool,
     /// 상태판 버튼 고르기 중 고른 버튼. `None`이면 고르기 밖이다.
     pub board_focus: Option<Button>,
     /// `Ctrl+C`를 한 번 눌러 종료를 기다린다. 다른 동작이 오면 풀린다.
@@ -205,6 +213,10 @@ impl App {
             settings_keymap: None,
             board_focus: None,
             quit_armed: false,
+            plain: false,
+            plain_fixed: false,
+            settings_screen: None,
+            bell: false,
             directed: None,
             popup: None,
             popup_suppress: PopupSuppress::default(),
@@ -236,6 +248,17 @@ impl App {
             train_reset: false,
             file_cache: None,
         }
+    }
+
+    /// 옵션이나 환경 변수로 정한 단순 방식. `None`이면 정하지 않았고 설정 `tui.screen`을 따른다.
+    pub(crate) fn set_plain_override(&mut self, plain: Option<bool>) {
+        self.plain = plain == Some(true);
+        self.plain_fixed = plain.is_some();
+    }
+
+    /// 벨을 울릴 차례였으면 참이고 비운다.
+    pub(crate) fn take_bell(&mut self) -> bool {
+        std::mem::take(&mut self.bell)
     }
 
     pub(crate) fn attach_request(&self) -> Request {
@@ -369,6 +392,7 @@ impl App {
             at_word_start: self.composer.at_word_start(),
             history_browsable: self.composer.history_browsable(),
             running: self.chat.is_running(),
+            plain: self.plain,
         }
     }
 
@@ -539,6 +563,7 @@ impl App {
             Action::Interrupt => return self.interrupt(false),
             Action::InterruptQuit => return self.interrupt(true),
             Action::Permission(answer) => return self.answer_permission(answer, now),
+            Action::Choose(index) => return self.choose(index, now),
             Action::Up | Action::Down | Action::Confirm
                 if self.key_area() == KeyArea::Permission =>
             {
@@ -707,7 +732,11 @@ pub(crate) async fn run_loop(
             _ = ticker.tick() => AppEvent::Tick,
         };
         let closed = matches!(event, AppEvent::EngineClosed);
-        for effect in app.handle(event, Instant::now()) {
+        let effects = app.handle(event, Instant::now());
+        if app.take_bell() {
+            ring_bell()?;
+        }
+        for effect in effects {
             if effect == Effect::Quit {
                 client.send(Request::Detach).await?;
                 return Ok(());
@@ -721,6 +750,20 @@ pub(crate) async fn run_loop(
             return Err(ClientError::Closed.into());
         }
     }
+}
+
+// cost: time O(1), heap O(1), stack O(1), io 1
+// basis: estimate
+/// 단순 방식에서 입력이 필요할 때 터미널 벨을 울린다.
+///
+/// # Errors
+/// 표준 출력에 쓰지 못하면 `Terminal` 오류.
+fn ring_bell() -> Result<(), TuiError> {
+    use std::io::Write;
+    let mut out = std::io::stdout().lock();
+    out.write_all(b"\x07")
+        .and_then(|()| out.flush())
+        .map_err(|error| terminal::TerminalError::Draw(error).into())
 }
 
 // cost: time O(1), heap O(1), stack O(1)

@@ -353,6 +353,17 @@ impl App {
         body
     }
 
+    /// `/plain`. 엔진과 따로 떠 있어 그리는 방식만 바꾸면 된다.
+    pub(super) fn toggle_plain(&mut self) {
+        self.plain = !self.plain;
+        let text = if self.plain {
+            i18n::PLAIN_ON
+        } else {
+            i18n::PLAIN_OFF
+        };
+        self.push_cell(TranscriptCell::Warning(self.lang.tr(text).to_string()));
+    }
+
     pub(super) fn clear_draft(&mut self) {
         self.directed = None;
         self.composer.take();
@@ -422,6 +433,10 @@ impl App {
                 None
             }
             SlashCommand::Redraw => return vec![Effect::Redraw],
+            SlashCommand::Plain => {
+                self.toggle_plain();
+                None
+            }
             SlashCommand::Suspend => return vec![Effect::Suspend],
             SlashCommand::Quit => return self.quit_effects(),
             SlashCommand::Tasks => {

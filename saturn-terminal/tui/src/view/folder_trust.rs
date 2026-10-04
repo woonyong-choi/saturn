@@ -10,7 +10,7 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 
 use crate::i18n::{self, Lang};
-use crate::view::{EMPHASIS, SELECTED, render_window};
+use crate::view::{EMPHASIS, SELECTED, choice_text, is_plain, render_window};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TrustChoice {
@@ -84,7 +84,7 @@ impl FolderTrustView<'_> {
             lines.extend(items.iter().map(|item| Line::from(format!("  {item}"))));
         }
         lines.push(Line::from(""));
-        for (choice, text) in [
+        for (index, (choice, text)) in [
             (
                 TrustChoice::Apply,
                 format!("1 {}", lang.tr(i18n::TRUST_APPLY)),
@@ -97,13 +97,23 @@ impl FolderTrustView<'_> {
                 TrustChoice::Quit,
                 format!("3 {}", lang.tr(i18n::TRUST_QUIT)),
             ),
-        ] {
-            let style = if choice == trust.selected {
-                SELECTED
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let selected = choice == trust.selected;
+            let style = if selected { SELECTED } else { Style::new() };
+            // 단순 방식은 번호를 목록이 매기므로 앞의 번호 글자를 뺀다
+            let text = if is_plain() {
+                text.trim_start_matches(|c: char| c.is_ascii_digit() || c == ' ')
+                    .to_owned()
             } else {
-                Style::new()
+                text
             };
-            lines.push(Line::from(Span::styled(text, style)));
+            lines.push(Line::from(Span::styled(
+                choice_text(index, selected, text),
+                style,
+            )));
         }
         render_window(frame, area, lang.tr(i18n::TRUST_TITLE), lines);
     }
