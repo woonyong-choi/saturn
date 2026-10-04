@@ -47,6 +47,7 @@ impl Mode {
 
     fn default_verdict(self, tool: PermissionTool, unit: &Unit) -> Verdict {
         match self {
+            Self::ReadOnly if tool == PermissionTool::Read => Verdict::Ask,
             Self::ReadOnly => Verdict::Deny,
             Self::Ask => Verdict::Ask,
             Self::Edit if tool == PermissionTool::Edit && unit.is_inside => Verdict::Allow,
@@ -111,6 +112,7 @@ pub fn parse_tool(text: &str) -> Option<PermissionTool> {
     match text {
         "shell" => Some(PermissionTool::Shell),
         "edit" => Some(PermissionTool::Edit),
+        "read" => Some(PermissionTool::Read),
         "mcp" => Some(PermissionTool::Mcp),
         "subagent" => Some(PermissionTool::Subagent),
         _ => None,
@@ -121,6 +123,7 @@ pub fn tool_name(tool: PermissionTool) -> &'static str {
     match tool {
         PermissionTool::Shell => "shell",
         PermissionTool::Edit => "edit",
+        PermissionTool::Read => "read",
         PermissionTool::Mcp => "mcp",
         PermissionTool::Subagent => "subagent",
     }
@@ -279,7 +282,7 @@ impl Policy {
                     .collect();
                 (non_empty(units), split.is_opaque)
             }
-            PermissionTool::Edit => {
+            PermissionTool::Edit | PermissionTool::Read => {
                 let units = call
                     .paths
                     .iter()
@@ -318,7 +321,7 @@ impl Policy {
     }
 }
 
-/// 판정 대상 하나: 셸 명령 조각이나 편집 경로 하나.
+/// 판정 대상 하나: 셸 명령 조각이나 편집, 읽기 경로 하나.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Unit {
     /// 패턴과 맞춰 볼 글자열. 하나라도 일치하면 일치다.

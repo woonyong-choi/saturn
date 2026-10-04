@@ -146,15 +146,15 @@ export type PermissionAnswer = "AllowOnce" | "AllowAlways" | { "Deny": { note: s
 
 export type PermissionCall = { tool: PermissionTool, 
 /**
- * 셸은 명령, MCP는 `mcp__<서버>__<도구>`, subagent는 종류 이름, 편집은 비어 있다.
+ * 셸은 명령, MCP는 `mcp__<서버>__<도구>`, subagent는 종류 이름, 편집과 읽기는 비어 있다.
  */
 target: string, 
 /**
- * 편집이 건드리는 경로. provider가 낸 경로 그대로.
+ * 편집과 읽기가 건드리는 경로. provider가 낸 경로 그대로.
  */
 paths: Array<string>, };
 
-export type PermissionTool = "Shell" | "Edit" | "Mcp" | "Subagent";
+export type PermissionTool = "Shell" | "Edit" | "Read" | "Mcp" | "Subagent";
 
 export type Provider = "Codex" | "Claude";
 

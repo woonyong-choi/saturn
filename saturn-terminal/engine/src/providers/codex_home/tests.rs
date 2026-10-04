@@ -352,3 +352,15 @@ fn agent_questions_feature_is_dropped_from_profiles() {
             .is_none()
     );
 }
+
+// #348
+#[test]
+fn read_rules_do_not_change_the_rules_fingerprint() {
+    let shell = rule(PermissionTool::Shell, "rm *", Verdict::Deny);
+    let read = rule(PermissionTool::Read, "/etc/*", Verdict::Allow);
+
+    assert_eq!(
+        rules_fingerprint(std::slice::from_ref(&shell)),
+        rules_fingerprint(&[shell, read])
+    );
+}

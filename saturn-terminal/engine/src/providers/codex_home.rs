@@ -392,10 +392,13 @@ pub(crate) fn rules_of_home(home: &Path) -> Option<String> {
 // cost: time O(r·p), heap O(r·p), stack O(1), alloc r
 // vars: r = 규칙 수, p = 패턴 글자 수
 // basis: estimate
-/// 규칙 목록 전체의 지문. 규칙이 같은 채팅은 같은 폴더를 쓴다.
+/// 규칙 목록의 지문. 규칙이 같은 채팅은 같은 폴더를 쓴다. Codex는 읽기 승인 요청이 오지 않아 읽기 규칙은 뺀다.
 pub(crate) fn rules_fingerprint(rules: &[Rule]) -> String {
     let mut text = String::new();
-    for rule in rules {
+    for rule in rules
+        .iter()
+        .filter(|rule| rule.tool != PermissionTool::Read)
+    {
         let _ = writeln!(
             text,
             "{}\t{}\t{}",
