@@ -32,7 +32,7 @@ use crate::history::InputHistory;
 use crate::i18n::Lang;
 use crate::plain::PlainOutput;
 
-pub use crate::chat_picker::pick_chat;
+pub use crate::chat_picker::{chat_summary, pick_chat};
 
 #[derive(Debug, thiserror::Error)]
 pub enum TuiError {

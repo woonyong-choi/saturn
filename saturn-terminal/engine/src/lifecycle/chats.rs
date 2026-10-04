@@ -4,7 +4,7 @@ use saturn_protocol::rpc::ChatListItem;
 use super::*;
 use crate::store::NewInput;
 
-async fn chat_with_input(engine: &Engine, folder: &str, text: &str) -> ChatId {
+pub(super) async fn chat_with_input(engine: &Engine, folder: &str, text: &str) -> ChatId {
     let chat = engine
         .store
         .create_chat(PathBuf::from(folder))

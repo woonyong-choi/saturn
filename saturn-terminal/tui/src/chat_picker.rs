@@ -113,10 +113,19 @@ impl ChatPicker {
     }
 }
 
-/// `번호. #채팅 id · 경과 · [폴더 ·] [이름 ·] 첫 입력`
+/// `번호. ` 뒤에 `chat_summary`.
 fn row(lang: Lang, number: usize, chat: &ChatListItem, show_folder: bool, now_ms: u64) -> String {
+    format!("{number}. {}", summary(lang, chat, show_folder, now_ms))
+}
+
+/// `#채팅 id · 경과 · [폴더 ·] [이름 ·] 첫 입력`. 채팅 목록과 정리 미리보기가 같은 줄을 쓴다.
+pub fn chat_summary(lang: Lang, chat: &ChatListItem, show_folder: bool) -> String {
+    summary(lang, chat, show_folder, now_ms())
+}
+
+fn summary(lang: Lang, chat: &ChatListItem, show_folder: bool, now_ms: u64) -> String {
     let mut parts = vec![
-        format!("{number}. #{}", chat.chat.0),
+        format!("#{}", chat.chat.0),
         age(lang, now_ms.saturating_sub(chat.last_active_ms)),
     ];
     if show_folder {

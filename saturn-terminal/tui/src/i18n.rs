@@ -249,9 +249,20 @@ pub const CLI_ROUTER_KEY_REQUIRED: &str = "router 키가 필요합니다({messag
 pub const CLI_CONFIRM_NEEDS_TERMINAL: &str = "확인을 받을 터미널이 없어 아무것도 바꾸지 않았습니다";
 pub const CLI_EXPORTED: &str = "판단 기록을 내보냈습니다: {path}";
 pub const CLI_PATH_UNRESOLVED: &str = "경로를 확인하지 못했습니다: {path}";
-pub const CLI_PRUNED: &str = "기록을 정리했습니다";
-pub const CLI_PRUNE_PREVIEW: &str =
-    "아무것도 지우지 않았습니다 · 지울 기록 목록은 아직 볼 수 없으니 지우려면 --yes로 실행하세요";
+pub const CLI_PRUNE_PLAN: &str = "지울 채팅 {chats}개 · 기록 {rows}행";
+pub const CLI_PRUNE_DONE: &str = "지운 채팅 {chats}개 · 기록 {rows}행";
+pub const CLI_PRUNE_NOTHING: &str = "지울 채팅이 없습니다";
+pub const CLI_PRUNE_KEPT: &str = "남긴 채팅 {chats}개";
+pub const CLI_PRUNE_PREVIEW: &str = "아무것도 지우지 않았습니다 · 지우려면 --yes로 실행하세요";
+pub const CLI_PRUNE_NO_RETENTION: &str =
+    "정리 기준이 없습니다: retention.max_age_days 설정을 정한 뒤 다시 실행하세요";
+pub const CLI_NO_PRUNE_ANSWER: &str = "engine이 정리 결과 없이 답했습니다";
+pub const CLI_SKIP_OPEN_INPUT: &str = "열린 입력";
+pub const CLI_SKIP_OPEN_RUN: &str = "열린 실행";
+pub const CLI_SKIP_PENDING_STOP: &str = "멈춤 처리 중";
+pub const CLI_SKIP_ACTIVE_SESSION: &str = "열린 session";
+pub const CLI_SKIP_WAITING_SESSION: &str = "보관한 session";
+pub const CLI_SKIP_ATTACHED: &str = "TUI에 붙어 있음";
 pub const CLI_ROUTER_VERSION_NOT_FOUND: &str =
     "router 버전을 찾지 못했습니다: {version} (사용 가능: {available})";
 pub const CLI_ROUTER_VERSION_ALREADY: &str = "이미 쓰는 router 버전입니다: {version}";

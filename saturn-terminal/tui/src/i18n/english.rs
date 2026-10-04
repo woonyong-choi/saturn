@@ -86,11 +86,34 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "경로를 확인하지 못했습니다: {path}",
         "Failed to resolve path: {path}",
     ),
-    ("기록을 정리했습니다", "Records pruned"),
     (
-        "아무것도 지우지 않았습니다 · 지울 기록 목록은 아직 볼 수 없으니 지우려면 --yes로 실행하세요",
-        "Nothing was deleted · The list of records to delete is not available yet, run with --yes to delete",
+        "지울 채팅 {chats}개 · 기록 {rows}행",
+        "Chats to delete: {chats} · Rows: {rows}",
     ),
+    (
+        "지운 채팅 {chats}개 · 기록 {rows}행",
+        "Deleted chats: {chats} · Rows: {rows}",
+    ),
+    ("지울 채팅이 없습니다", "No chats to delete"),
+    ("남긴 채팅 {chats}개", "Chats kept: {chats}"),
+    (
+        "아무것도 지우지 않았습니다 · 지우려면 --yes로 실행하세요",
+        "Nothing was deleted · Run with --yes to delete",
+    ),
+    (
+        "정리 기준이 없습니다: retention.max_age_days 설정을 정한 뒤 다시 실행하세요",
+        "No prune criterion: set retention.max_age_days and run again",
+    ),
+    (
+        "engine이 정리 결과 없이 답했습니다",
+        "Engine answered without a prune result",
+    ),
+    ("열린 입력", "open input"),
+    ("열린 실행", "open run"),
+    ("멈춤 처리 중", "stop in progress"),
+    ("열린 session", "open session"),
+    ("보관한 session", "kept session"),
+    ("TUI에 붙어 있음", "attached to a TUI"),
     (
         "router 버전을 찾지 못했습니다: {version} (사용 가능: {available})",
         "Router version not found: {version} (available: {available})",

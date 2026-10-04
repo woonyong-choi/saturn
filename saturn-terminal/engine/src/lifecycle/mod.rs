@@ -20,6 +20,7 @@ mod outcomes;
 mod packet_overflow;
 mod permissions;
 mod provider_stall;
+mod prune;
 mod read_only_steer;
 mod requests;
 mod restore_inputs;

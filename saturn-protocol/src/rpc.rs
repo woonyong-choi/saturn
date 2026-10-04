@@ -194,7 +194,8 @@ pub enum Request {
     UseRouterVersion {
         version: String,
     },
-    /// `yes`가 거짓이면 미리보기만.
+    /// `retention.max_age_days`보다 오래 쓰지 않은 채팅을 정리한다. `yes`가 거짓이면 아무것도 지우지 않고
+    /// `PrunePreview`만 보내고, 참이면 지우고 `Pruned`를 보낸다. 설정이 없으면 거절한다.
     Prune {
         yes: bool,
     },
@@ -335,6 +336,19 @@ pub enum Notification {
     /// `ListChats`의 답.
     ChatList {
         chats: Vec<ChatListItem>,
+    },
+    /// `Prune`의 `yes`가 거짓일 때의 답. 지울 채팅과 남길 채팅. 아무것도 지우지 않았다.
+    PrunePreview {
+        chats: Vec<ChatListItem>,
+        skipped: Vec<PruneSkipped>,
+        /// 지울 채팅의 입력, 실행, 이벤트, 사용량, session 행 수. 판단 기록과 설정 스냅샷은 세지 않는다.
+        rows: u64,
+    },
+    /// `Prune`의 `yes`가 참일 때의 답. 지운 채팅과 남긴 채팅.
+    Pruned {
+        chats: Vec<ChatListItem>,
+        skipped: Vec<PruneSkipped>,
+        rows: u64,
     },
     RouterVersions {
         current: String,
@@ -537,6 +551,28 @@ pub struct TaskListItem {
     /// 채팅의 기본 폴더. TUI가 작업 목록의 폴더 범위를 가를 때 쓴다.
     #[serde(default)]
     pub folder: Option<String>,
+}
+
+/// 정리하지 않고 남긴 채팅과 그 이유.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct PruneSkipped {
+    pub chat: ChatId,
+    /// 이유가 여럿이면 모두.
+    pub reasons: Vec<PruneSkipReason>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub enum PruneSkipReason {
+    OpenInput,
+    OpenRun,
+    /// 멈춤 요청을 처리하는 중.
+    PendingStop,
+    /// 열린 session이 있다.
+    ActiveSession,
+    /// 보관했거나 보류한 session이 있다.
+    WaitingSession,
+    /// TUI가 붙어 있다.
+    Attached,
 }
 
 /// 채팅 목록의 한 줄.

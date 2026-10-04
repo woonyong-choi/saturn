@@ -78,7 +78,7 @@
 | `router.thresholds.<이름>` | 0~1 실수 | [router](router.md) 표의 값 |
 | `grading.model` | 문자열 | 없음 |
 | `consent.share_with_server` | 참·거짓 | 거짓 |
-| `retention.max_age_days` | 1 이상 정수 | 없음(무제한 보존) |
+| `retention.max_age_days` | 1 이상 정수 | 없음(무제한 보존). `saturn prune`이 오래된 채팅을 정하는 기준이기도 하다([기록](records.md)) |
 | `context.safety_percent` | 0~100 정수 | 70 |
 | `context.<codex\|claude>.t_abs` | 1 이상 정수 | 200000 |
 | `context.<codex\|claude>.window` | 1 이상 정수 | codex 272000, claude 1000000 |

@@ -31,7 +31,7 @@ pub(crate) use judgments::{JudgmentOutcome, NewJudgment};
 pub(crate) use ledger::LedgerRow;
 pub(crate) use records::{NewInput, NewRun, RunEnd, RunRecord, UsageRow};
 pub(crate) use recovery::StoredHold;
-pub(crate) use retention::RetentionPolicy;
+pub(crate) use retention::{PruneOutcome, PruneRequest, PruneScope, RetentionPolicy, SkipReason};
 pub(crate) use schema::MigrationNotice;
 pub(crate) use sessions::IdKind;
 
@@ -168,6 +168,24 @@ impl Store {
             .execute(&self.pool)
             .await
             .expect("pragma should apply");
+    }
+
+    /// 채팅과 그 입력의 시각을 `days`일 전으로 미룬다. 정리 대상이 되는 오래된 채팅을 만든다.
+    #[cfg(test)]
+    pub(crate) async fn age_chat(&self, chat: saturn_protocol::ids::ChatId, days: u64) {
+        let millis = to_sql_int(days * 24 * 60 * 60 * 1000);
+        sqlx::query("UPDATE chats SET created_at = created_at - ? WHERE id = ?")
+            .bind(millis)
+            .bind(to_sql_int(chat.0))
+            .execute(&self.pool)
+            .await
+            .expect("chat should be aged");
+        sqlx::query("UPDATE inputs SET accepted_at = accepted_at - ? WHERE chat_id = ?")
+            .bind(millis)
+            .bind(to_sql_int(chat.0))
+            .execute(&self.pool)
+            .await
+            .expect("inputs should be aged");
     }
 
     /// `deny_writes`로 막은 쓰기를 다시 연다.
