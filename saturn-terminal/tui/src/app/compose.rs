@@ -2,19 +2,23 @@
 //! 설계: docs/design/tui.md
 
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use saturn_protocol::ids::{InputId, TaskLabel};
 use saturn_protocol::rpc::{ModelMode, Request, UsageRange};
 use saturn_protocol::state::InputState;
 
 use super::{App, Effect, Window};
-use crate::commands::{self, CommandError, SATURN_COMMANDS, SlashCommand};
+use crate::commands::{
+    self, CommandError, DEFAULT_PERMISSION_MODE, PERMISSION_CYCLE, SATURN_COMMANDS, SlashCommand,
+};
 use crate::i18n::{self, Lang};
+use crate::keymap::Keymap;
 use crate::keys::Action;
 use crate::state::CorrectionPrompt;
 use crate::view::composer::Composer;
 use crate::view::model_picker::ModelPicker;
-use crate::view::popup::{self, Popup, PopupItem, PopupKind};
+use crate::view::popup::{self, Popup, PopupItem, PopupKind, PopupSuppress};
 use crate::view::prune_window::PruneWindow;
 use crate::view::router_version::RouterVersionScreen;
 use crate::view::task_list::TaskList;
@@ -25,7 +29,7 @@ impl App {
     // cost: time O(n + p), heap O(n + p), stack O(1)
     // vars: n = 초안 길이, p = 팝업 후보 수
     // basis: estimate
-    pub(super) fn on_composer_action(&mut self, action: Action) -> Vec<Effect> {
+    pub(super) fn on_composer_action(&mut self, action: Action, now: Instant) -> Vec<Effect> {
         match action {
             Action::Insert(c) => self.edit(|composer| composer.insert(c)),
             Action::OpenPopup(kind) => {
@@ -41,7 +45,11 @@ impl App {
             Action::Backspace => self.edit(Composer::backspace),
             Action::CursorLeft => self.edit(Composer::left),
             Action::CursorRight => self.edit(Composer::right),
+            Action::LineStart => self.composer.line_start(),
+            Action::LineEnd => self.composer.line_end(),
             Action::KillToEnd => self.edit(Composer::kill_to_end),
+            Action::KillToStart => self.edit(Composer::kill_to_start),
+            Action::DeleteWordBack => self.edit(Composer::delete_word_back),
             Action::Yank => self.edit(Composer::yank),
             Action::Up => self.composer.cursor_up(),
             Action::Down => self.composer.cursor_down(),
@@ -59,7 +67,27 @@ impl App {
             Action::ClearSelection => self.close_popup(),
             Action::ExternalEditor => return vec![Effect::OpenEditor],
             Action::RecallLatestInput => return self.recall_latest_input(),
-            Action::Interrupt => return self.interrupt(),
+            Action::Interrupt => return self.interrupt(false),
+            Action::InterruptQuit => return self.interrupt(true),
+            Action::Quit => return self.quit_effects(),
+            Action::StopWork => return self.stop_work(),
+            Action::Rewind => self.push_cell(TranscriptCell::Warning(
+                self.lang.tr(i18n::REWIND_NOT_READY).to_string(),
+            )),
+            Action::CompleteCommand => {
+                if self.composer.is_empty() {
+                    self.edit(|composer| composer.insert('/'));
+                } else {
+                    self.popup_suppress = PopupSuppress::default();
+                    self.refresh_popup();
+                }
+            }
+            Action::CyclePermissionMode => return self.cycle_permission_mode(None),
+            Action::EnterBoard => self.enter_board(now),
+            Action::OpenTaskList => return self.run_command(SlashCommand::Tasks),
+            Action::Redraw => return vec![Effect::Redraw],
+            Action::ShowFullTranscript => self.toggle_full_transcript(),
+            Action::Suspend => return vec![Effect::Suspend],
             Action::Submit => return self.submit(false),
             Action::SubmitQueued => return self.submit(true),
             _ => {}
@@ -289,10 +317,13 @@ impl App {
                 None
             }
             SlashCommand::Record { on } => chat.map(|chat| Request::SetRecording { chat, on }),
-            SlashCommand::Permissions { mode } => chat.map(|chat| Request::SetPermissionMode {
-                chat,
-                mode: mode.to_owned(),
-            }),
+            SlashCommand::Permissions { mode } => {
+                self.chat.permission_mode = Some(mode);
+                chat.map(|chat| Request::SetPermissionMode {
+                    chat,
+                    mode: mode.to_owned(),
+                })
+            }
             SlashCommand::AddDir { path } => chat.map(|chat| Request::AddDir {
                 chat,
                 path: absolute_path(&self.workdir, &path),
@@ -308,6 +339,24 @@ impl App {
                 self.reopen_correction();
                 None
             }
+            SlashCommand::Mode { target } => return self.cycle_permission_mode(target),
+            SlashCommand::Agents => {
+                self.enter_board(Instant::now());
+                None
+            }
+            SlashCommand::Stop => return self.stop_work(),
+            SlashCommand::Rewind => return self.on_composer_action(Action::Rewind, Instant::now()),
+            SlashCommand::Keymap { name } => {
+                self.set_keymap(name);
+                None
+            }
+            SlashCommand::Transcript => {
+                self.toggle_full_transcript();
+                None
+            }
+            SlashCommand::Redraw => return vec![Effect::Redraw],
+            SlashCommand::Suspend => return vec![Effect::Suspend],
+            SlashCommand::Quit => return self.quit_effects(),
             SlashCommand::Tasks => {
                 let folder = self.chat_folder.clone();
                 self.open_window(Window::TaskList(TaskList::for_folder(folder)));
@@ -366,7 +415,61 @@ impl App {
         Some(Request::Continue { chat, task })
     }
 
-    pub(super) fn interrupt(&mut self) -> Vec<Effect> {
+    /// 실행 중인 작업을 모두 멈추고 보류한다. 멈출 것이 없으면 아무것도 하지 않는다.
+    pub(super) fn stop_work(&mut self) -> Vec<Effect> {
+        match self.chat.chat {
+            Some(chat) if self.chat.is_running() => vec![Effect::Send(Request::Stop { chat })],
+            _ => Vec::new(),
+        }
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    /// `mode`가 없으면 `PERMISSION_CYCLE` 순서로 다음 모드를 고르고, 새 모드를 대화 기록에 한 줄 남긴다.
+    pub(super) fn cycle_permission_mode(&mut self, mode: Option<&'static str>) -> Vec<Effect> {
+        let Some(chat) = self.chat.chat else {
+            return Vec::new();
+        };
+        let next = mode.unwrap_or_else(|| {
+            let current = self.chat.permission_mode.unwrap_or(DEFAULT_PERMISSION_MODE);
+            match PERMISSION_CYCLE.iter().position(|name| *name == current) {
+                Some(at) => PERMISSION_CYCLE[(at + 1) % PERMISSION_CYCLE.len()],
+                None => PERMISSION_CYCLE[0],
+            }
+        });
+        self.chat.permission_mode = Some(next);
+        let line = format!("{}: {next}", self.lang.tr(i18n::PERMISSION_MODE));
+        self.push_cell(TranscriptCell::Warning(line));
+        vec![Effect::Send(Request::SetPermissionMode {
+            chat,
+            mode: next.to_owned(),
+        })]
+    }
+
+    /// `name`이 없으면 지금 키 묶음과 목록을 한 줄로 보인다. 이 TUI만 바꾸고 설정 파일은 고치지 않는다.
+    pub(super) fn set_keymap(&mut self, name: Option<&'static str>) {
+        let line = match name.map(Keymap::load) {
+            None => format!(
+                "{}: {} ({})",
+                self.lang.tr(i18n::KEYMAP),
+                self.keymap.name(),
+                saturn_protocol::keymap::PRESET_NAMES.join(", ")
+            ),
+            Some(Ok(keymap)) => {
+                self.keymap = keymap;
+                format!("{}: {}", self.lang.tr(i18n::KEYMAP), self.keymap.name())
+            }
+            Some(Err(error)) => format!("{}: {error}", self.lang.tr(i18n::KEYMAP)),
+        };
+        self.push_cell(TranscriptCell::Warning(line));
+    }
+
+    /// 열린 창과 초안을 먼저 정리하고, 없으면 작업을 멈추고, 멈출 것이 없으면 종료한다.
+    /// `quit_now`가 아니면 종료는 두 번째로 누를 때다(첫 번째는 안내 한 줄).
+    pub(super) fn interrupt(&mut self, quit_now: bool) -> Vec<Effect> {
+        if self.board_focus.take().is_some() {
+            return Vec::new();
+        }
         if self.window.as_ref().is_some_and(|w| !w.is_blocking()) {
             self.window = None;
             return Vec::new();
@@ -380,7 +483,14 @@ impl App {
         }
         match self.chat.chat {
             Some(chat) if self.chat.is_running() => vec![Effect::Send(Request::Stop { chat })],
-            _ => self.quit_effects(),
+            _ if quit_now || self.quit_armed => self.quit_effects(),
+            _ => {
+                self.quit_armed = true;
+                self.push_cell(TranscriptCell::Warning(
+                    self.lang.tr(i18n::QUIT_AGAIN).to_string(),
+                ));
+                Vec::new()
+            }
         }
     }
 

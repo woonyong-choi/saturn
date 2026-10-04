@@ -4,6 +4,8 @@
 use saturn_protocol::ids::ChatId;
 use saturn_protocol::rpc::{ModelChoice, ModelMode, Request};
 
+use std::time::Instant;
+
 use super::{App, Effect, Window};
 use crate::i18n;
 use crate::keys::Action;
@@ -16,7 +18,7 @@ use crate::view::model_picker::{ModelPicker, ModelPurpose};
 use crate::view::permission::PermissionQueue;
 use crate::view::resume_prompt::ResumeOutcome;
 use crate::view::router_version::RouterVersionCommand;
-use crate::view::status_board::Button;
+use crate::view::status_board::{self, Button};
 use crate::view::stop_confirm::StopChoice;
 use crate::view::task_list::TaskListCommand;
 use crate::view::train_confirm::TrainChoice;
@@ -46,6 +48,67 @@ impl App {
             }
         };
         vec![Effect::Send(request)]
+    }
+
+    // cost: time O(l), heap O(l), stack O(1)
+    // vars: l = 상태판 줄 수
+    // basis: estimate
+    /// 버튼이 있는 줄마다 그 줄의 버튼들을 위에서 아래 순서로 모은다.
+    fn button_rows(&self, now: Instant) -> Vec<Vec<Button>> {
+        status_board::build(&self.chat, now)
+            .iter()
+            .map(status_board::StatusLine::buttons)
+            .filter(|buttons| !buttons.is_empty())
+            .collect()
+    }
+
+    /// 버튼이 없으면 들어가지 않는다.
+    pub(super) fn enter_board(&mut self, now: Instant) {
+        self.board_focus = self
+            .button_rows(now)
+            .first()
+            .and_then(|buttons| buttons.first().copied());
+    }
+
+    /// `↑`, `↓`는 줄, `←`, `→`는 버튼, `Enter`는 실행, `Esc`는 돌아가기다. 고른 버튼이 사라졌으면 고르기를 끝낸다.
+    pub(super) fn on_board_action(&mut self, action: Action, now: Instant) -> Vec<Effect> {
+        let rows = self.button_rows(now);
+        let position = self.board_focus.and_then(|focus| {
+            rows.iter().enumerate().find_map(|(row, buttons)| {
+                buttons
+                    .iter()
+                    .position(|button| *button == focus)
+                    .map(|col| (row, col))
+            })
+        });
+        let Some((row, col)) = position else {
+            self.board_focus = None;
+            return Vec::new();
+        };
+        let target = match action {
+            Action::Up => Some((row.saturating_sub(1), col)),
+            Action::Down => Some(((row + 1).min(rows.len() - 1), col)),
+            Action::CursorLeft => Some((row, col.saturating_sub(1))),
+            Action::CursorRight => Some((row, col + 1)),
+            _ => None,
+        };
+        if let Some((row, col)) = target {
+            let buttons = &rows[row];
+            self.board_focus = buttons.get(col.min(buttons.len() - 1)).copied();
+            return Vec::new();
+        }
+        match action {
+            Action::Confirm => {
+                self.board_focus = None;
+                let button = rows[row][col];
+                self.on_button(button)
+            }
+            Action::Close => {
+                self.board_focus = None;
+                Vec::new()
+            }
+            _ => Vec::new(),
+        }
     }
 
     pub(super) fn close_held(&mut self) -> Vec<Effect> {
@@ -179,6 +242,14 @@ impl App {
             return Vec::new();
         };
         let command = match action {
+            Action::Insert(c) => {
+                list.edit_push(c);
+                None
+            }
+            Action::Backspace => {
+                list.edit_pop();
+                None
+            }
             Action::Up => {
                 list.up();
                 None

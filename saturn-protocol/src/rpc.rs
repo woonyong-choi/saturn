@@ -438,6 +438,9 @@ pub enum Notification {
     SettingsApplied {
         revision: SettingsRevision,
         warning: Option<SettingsWarning>,
+        /// 병합한 설정의 `tui.keymap`. 검사 실패로 이전 번호를 쓰면 `None`이다.
+        #[serde(default)]
+        keymap: Option<String>,
     },
     Alert {
         alert: Alert,

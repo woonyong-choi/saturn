@@ -24,6 +24,8 @@ pub(crate) struct Applied {
     pub revision: SettingsRevision,
     /// 검사 실패나 무시한 사용자 전용 키가 있을 때의 경고.
     pub warning: Option<SettingsWarning>,
+    /// 병합한 `tui.keymap`. 이전 번호로 계속하면 `None`.
+    pub keymap: Option<String>,
 }
 
 /// engine에 하나. 실행 `-c`는 engine 시작 때 정하고, 작업 폴더는 채팅마다 호출 때 받는다.
@@ -208,7 +210,12 @@ impl SettingsManager {
         let warning = (!ignored.is_empty()).then(|| SettingsWarning::IgnoredFolderKeys {
             keys: ignored.iter().map(|key| (*key).to_owned()).collect(),
         });
-        Ok(Applied { revision, warning })
+        let keymap = Some(snapshot.settings.keymap().to_owned());
+        Ok(Applied {
+            revision,
+            warning,
+            keymap,
+        })
     }
 
     /// 이전 번호로 계속한다.
@@ -224,6 +231,7 @@ impl SettingsManager {
         Ok(Applied {
             revision: previous,
             warning: Some(SettingsWarning::Fallback { layer, fault }),
+            keymap: None,
         })
     }
 

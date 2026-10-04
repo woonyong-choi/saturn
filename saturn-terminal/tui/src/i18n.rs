@@ -112,6 +112,10 @@ pub const ROUTER_CALLS: &str = "라우터";
 pub const TIMES_SUFFIX: &str = "회";
 pub const FEEDBACK_STEERED: &str = "에 이어서 보냄";
 pub const FEEDBACK_QUESTION: &str = "판단이 맞았나요? (선택)";
+pub const PERMISSION_MODE: &str = "권한 모드";
+pub const KEYMAP: &str = "키 묶음";
+pub const QUIT_AGAIN: &str = "한 번 더 누르면 종료합니다";
+pub const REWIND_NOT_READY: &str = "되돌리기는 아직 구현되지 않았습니다";
 pub const FEEDBACK_RIGHT: &str = "맞음";
 pub const FEEDBACK_WRONG: &str = "틀림";
 pub const FEEDBACK_DISMISS: &str = "닫기";
@@ -369,14 +373,21 @@ pub const CLI_CONFIG_EMPTY_KEY: &str = "키가 비어 있습니다: `{text}`";
 /// (키, `Lang::tr`의 한국어 설명) 쌍.
 pub const SHORTCUTS: &[(&str, &str)] = &[
     ("Enter", "입력 제출"),
-    ("Tab", "관계 판단 없이 대기"),
-    ("Alt+Enter", "줄바꿈"),
+    ("Ctrl+Q", "관계 판단 없이 대기"),
+    ("Ctrl+J", "줄바꿈"),
     ("Alt+↑", "최근 입력 되돌리기"),
+    ("Esc", "작업 멈춤"),
+    ("Esc Esc", "되돌리기(구현 전)"),
+    ("Shift+Tab", "권한 모드 전환"),
+    ("Tab", "명령 목록"),
     ("Ctrl+C", "멈춤"),
     ("Ctrl+D", "종료"),
     ("Ctrl+G", "외부 에디터"),
+    ("Ctrl+L", "화면 다시 그리기"),
     ("Ctrl+R", "입력 기록 검색"),
     ("Ctrl+T", "전체 기록"),
+    ("F3", "상태판 버튼 고르기"),
+    ("F5", "작업 목록"),
     ("!", "셸 명령"),
     ("/", "명령 목록"),
     ("@", "파일 목록"),

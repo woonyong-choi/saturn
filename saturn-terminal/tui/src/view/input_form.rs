@@ -1,7 +1,7 @@
 //! provider 입력 요청의 폼 상태. 칸 종류별 입력과 검사, 답 만들기를 맡고 그리기는 `input_request`가 한다.
 //! 설계: docs/design/tui.md#입력-요청-창
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crate::keys::Action;
 use saturn_protocol::input::{
     InputAnswer, InputField, InputFieldKind, InputOption, InputRequest, InputValue,
 };
@@ -265,27 +265,20 @@ impl InputForm {
     // cost: time O(f·o), heap O(f·o), stack O(1), alloc f
     // vars: f = 칸 수, o = 선택지 수
     // basis: estimate
-    /// 키 하나를 처리한다. `Ctrl+D`는 거절, `Esc`는 취소이고 칸 입력은 칸 종류를 따른다.
-    pub(crate) fn on_key(&mut self, key: KeyEvent) -> FormEvent {
+    /// 동작 하나를 처리한다. `FormDecline`은 거절, `Close`는 취소이고 칸 입력은 칸 종류를 따른다.
+    pub(crate) fn on_action(&mut self, action: &Action) -> FormEvent {
         self.error = None;
-        let plain = !key
-            .modifiers
-            .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT);
-        match key.code {
-            KeyCode::Esc => FormEvent::Answer(InputAnswer::Cancel),
-            KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                FormEvent::Answer(InputAnswer::Decline)
-            }
-            KeyCode::Char('d' | 'D') if plain && self.is_link() => {
-                FormEvent::Answer(InputAnswer::Decline)
-            }
-            KeyCode::Enter => self.on_enter(),
-            KeyCode::Tab => self.move_focus(1),
-            KeyCode::BackTab => self.move_focus(-1),
-            KeyCode::Up => self.on_vertical(-1),
-            KeyCode::Down => self.on_vertical(1),
-            KeyCode::Backspace => self.edit(FieldState::pop),
-            KeyCode::Char(c) if plain => self.on_char(c),
+        match action {
+            Action::Close => FormEvent::Answer(InputAnswer::Cancel),
+            Action::FormDecline => FormEvent::Answer(InputAnswer::Decline),
+            Action::Insert('d' | 'D') if self.is_link() => FormEvent::Answer(InputAnswer::Decline),
+            Action::Confirm => self.on_enter(),
+            Action::NextField => self.move_focus(1),
+            Action::PrevField => self.move_focus(-1),
+            Action::Up => self.on_vertical(-1),
+            Action::Down => self.on_vertical(1),
+            Action::Backspace => self.edit(FieldState::pop),
+            Action::Insert(c) => self.on_char(*c),
             _ => FormEvent::Edited,
         }
     }
@@ -395,7 +388,11 @@ impl InputForm {
 
 #[cfg(test)]
 mod tests {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
     use super::*;
+    use crate::keymap::resolve_in_tests;
+    use crate::keys::KeyArea;
 
     fn option(value: &str) -> InputOption {
         InputOption {
@@ -425,7 +422,15 @@ mod tests {
     }
 
     fn press(form: &mut InputForm, code: KeyCode) -> FormEvent {
-        form.on_key(KeyEvent::new(code, KeyModifiers::NONE))
+        press_with(form, code, KeyModifiers::NONE)
+    }
+
+    fn press_with(form: &mut InputForm, code: KeyCode, modifiers: KeyModifiers) -> FormEvent {
+        let key = KeyEvent::new(code, modifiers);
+        match resolve_in_tests(KeyArea::Input, key) {
+            Some(action) => form.on_action(&action),
+            None => FormEvent::Edited,
+        }
     }
 
     fn type_text(form: &mut InputForm, text: &str) {
@@ -616,7 +621,7 @@ mod tests {
         let mut declined = all_kinds();
         let mut cancelled = all_kinds();
 
-        let decline = declined.on_key(KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL));
+        let decline = press_with(&mut declined, KeyCode::Char('d'), KeyModifiers::CONTROL);
         let cancel = press(&mut cancelled, KeyCode::Esc);
 
         assert_eq!(decline, FormEvent::Answer(InputAnswer::Decline));

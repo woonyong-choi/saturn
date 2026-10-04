@@ -94,6 +94,58 @@ impl Composer {
         self.from_history = false;
     }
 
+    // cost: time O(n), heap O(1), stack O(1)
+    // vars: n = 조각 수
+    // basis: estimate
+    /// 커서가 있는 줄의 처음과 끝 자리.
+    fn line_bounds(&self) -> (usize, usize) {
+        let start = self.segments[..self.cursor]
+            .iter()
+            .rposition(|s| *s == Segment::Char('\n'))
+            .map_or(0, |at| at + 1);
+        let end = self.segments[self.cursor..]
+            .iter()
+            .position(|s| *s == Segment::Char('\n'))
+            .map_or(self.segments.len(), |offset| self.cursor + offset);
+        (start, end)
+    }
+
+    pub(crate) fn line_start(&mut self) {
+        self.cursor = self.line_bounds().0;
+    }
+
+    pub(crate) fn line_end(&mut self) {
+        self.cursor = self.line_bounds().1;
+    }
+
+    /// 줄 처음에서는 앞 줄바꿈 하나를 지운다. 지운 글은 보관한다.
+    pub(crate) fn kill_to_start(&mut self) {
+        let mut start = self.line_bounds().0;
+        if start == self.cursor && start > 0 {
+            start -= 1;
+        }
+        let killed: Vec<Segment> = self.segments.drain(start..self.cursor).collect();
+        self.cursor = start;
+        self.kill_buffer = segments_text(&killed);
+        self.from_history = false;
+    }
+
+    /// 커서 앞의 공백을 건너뛰고 그 앞 낱말을 지운다. 붙여넣은 요소는 낱말 하나로 센다. 지운 글은 보관한다.
+    pub(crate) fn delete_word_back(&mut self) {
+        let is_space = |segment: &Segment| matches!(segment, Segment::Char(c) if c.is_whitespace());
+        let mut start = self.cursor;
+        while start > 0 && is_space(&self.segments[start - 1]) {
+            start -= 1;
+        }
+        while start > 0 && !is_space(&self.segments[start - 1]) {
+            start -= 1;
+        }
+        let killed: Vec<Segment> = self.segments.drain(start..self.cursor).collect();
+        self.cursor = start;
+        self.kill_buffer = segments_text(&killed);
+        self.from_history = false;
+    }
+
     pub(crate) fn yank(&mut self) {
         let text = self.kill_buffer.clone();
         text.chars()
@@ -447,6 +499,47 @@ mod tests {
         let mut composer = Composer::new();
         text.chars().for_each(|c| composer.insert(c));
         composer
+    }
+
+    #[test]
+    fn line_start_and_end_move_within_the_current_line() {
+        let mut composer = typed("ab\ncd ef");
+
+        composer.line_start();
+        composer.insert('>');
+        composer.line_end();
+        composer.insert('<');
+
+        assert_eq!(composer.text(), "ab\n>cd ef<");
+    }
+
+    #[test]
+    fn kill_to_start_keeps_the_text_for_yank_and_joins_at_a_line_start() {
+        let mut composer = typed("ab\ncd ef");
+        composer.left();
+        composer.left();
+
+        composer.kill_to_start();
+
+        assert_eq!(composer.text(), "ab\nef");
+        composer.yank();
+        assert_eq!(composer.text(), "ab\ncd ef");
+        composer.line_start();
+        composer.kill_to_start();
+        assert_eq!(composer.text(), "abcd ef");
+    }
+
+    #[test]
+    fn delete_word_back_skips_spaces_then_removes_one_word() {
+        let mut composer = typed("one two  ");
+
+        composer.delete_word_back();
+
+        assert_eq!(composer.text(), "one ");
+        composer.delete_word_back();
+        assert_eq!(composer.text(), "");
+        composer.delete_word_back();
+        assert_eq!(composer.text(), "");
     }
 
     #[test]

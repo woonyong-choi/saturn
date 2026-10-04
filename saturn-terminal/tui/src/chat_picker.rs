@@ -1,9 +1,9 @@
 //! 채팅 선택 창(`saturn --resume`). `/model` 선택 창처럼 방향키로 고르고 `Enter`로 연다.
 //! 설계: docs/design/engine-lifecycle.md
 
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{self, Event, KeyEvent, KeyEventKind};
 use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
@@ -13,6 +13,8 @@ use saturn_protocol::rpc::ChatListItem;
 
 use crate::TuiError;
 use crate::i18n::{self, Lang};
+use crate::keymap::Keymap;
+use crate::keys::{Action, KeyArea, KeyContext};
 use crate::terminal::{self, TerminalError};
 use crate::view::{MUTED, SELECTED, render_window, truncate};
 
@@ -59,22 +61,26 @@ impl ChatPicker {
         if key.kind == KeyEventKind::Release {
             return None;
         }
-        match key.code {
-            KeyCode::Up => self.selected = self.selected.saturating_sub(1),
-            KeyCode::Down => {
+        let found = Keymap::saturn().resolve(
+            KeyArea::ChatPicker,
+            None,
+            key,
+            KeyContext::default(),
+            Instant::now(),
+        )?;
+        match found.action {
+            Action::Up => self.selected = self.selected.saturating_sub(1),
+            Action::Down => {
                 let last = self.chats.len().saturating_sub(1);
                 self.selected = (self.selected + 1).min(last);
             }
-            KeyCode::Enter => {
+            Action::Confirm => {
                 return self
                     .chats
                     .get(self.selected)
                     .map(|chat| PickerOutcome::Open(chat.chat));
             }
-            KeyCode::Esc => return Some(PickerOutcome::Cancel),
-            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                return Some(PickerOutcome::Cancel);
-            }
+            Action::Close => return Some(PickerOutcome::Cancel),
             _ => {}
         }
         None
@@ -214,6 +220,7 @@ pub fn pick_chat(
 
 #[cfg(test)]
 mod tests {
+    use crossterm::event::{KeyCode, KeyModifiers};
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
 

@@ -1,35 +1,47 @@
-//! 키 → 동작 매핑. 순수 함수이고 상태가 필요한 조건은 `KeyContext`로 받는다.
+//! 키 영역과 동작 이름. 키를 동작으로 바꾸는 일은 `crate::keymap`이 맡는다.
 //! 설계: docs/design/tui.md
 
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use saturn_protocol::rpc::{PermissionAnswer, UsageRange};
 
 use crate::view::popup::PopupKind;
 
+/// 키를 받는 영역. 영역마다 키 표가 따로 있다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum KeyArea {
+    /// 모든 영역이 먼저 보는 표.
+    Global,
+    /// 영역의 표와 영역이 넘긴 표에 없을 때 마지막으로 보는 표.
+    Fallback,
     /// 피드백 질문이 입력창이 빈 동안 키를 가져간다.
     Transcript,
     /// 바로잡기 제안이 입력창이 빈 동안 키를 가져간다.
     Correction,
     StatusBoard,
+    /// 사용자가 상태판 버튼 고르기에 들어간 동안 방향키, `Enter`, `Esc`를 가져간다.
+    BoardFocus,
     Popup,
     Composer,
+    /// 입력 기록 검색 중. 글자는 검색어이고 나머지는 입력창 표로 넘긴다.
+    Search,
     RouterKeyPrompt,
     FolderTrust,
     ResumePrompt,
     ExitConfirm,
     StopConfirm,
     Permission,
-    /// 글자를 직접 받으므로 `map`은 전역 키만 읽고 나머지는 `view::input_form`이 처리한다.
+    /// 입력 요청 창. 글자는 칸 입력이다.
     Input,
     TaskList,
+    /// 작업 목록에서 이름이나 묶음을 쓰는 중. 글자는 그 줄 입력이다.
+    TaskListEdit,
     FullTranscript,
     Usage,
     RouterVersion,
     TrainConfirm,
     ModelPicker,
     PruneWindow,
+    /// 시작할 채팅 고르기 화면.
+    ChatPicker,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -80,11 +92,27 @@ pub(crate) enum Action {
     ShowShortcuts,
     Newline,
     Backspace,
-    /// TODO(#59): 빈 입력창 `←`로 작업 목록 화면을 열지
+    /// 빈 입력창에서도 입력창 이동일 뿐이다. 작업 목록은 `OpenTaskList`로만 연다.
     CursorLeft,
     CursorRight,
+    LineStart,
+    LineEnd,
+    KillToStart,
+    DeleteWordBack,
     RecallLatestInput,
+    /// 열린 창과 초안을 먼저 정리하고, 없으면 작업을 멈추고, 멈출 것이 없으면 종료 확인(두 번 눌러 종료).
     Interrupt,
+    /// `Interrupt`와 같지만 멈출 것이 없으면 바로 종료한다.
+    InterruptQuit,
+    /// 실행 중인 작업을 모두 멈추고 보류한다. 닫을 창이 있으면 창이 먼저 닫힌다.
+    StopWork,
+    /// 구현 전. 키와 명령 이름만 잡아 두었다.
+    Rewind,
+    CompleteCommand,
+    CyclePermissionMode,
+    EnterBoard,
+    OpenTaskList,
+    Redraw,
     ExternalEditor,
     KillToEnd,
     HistorySearch,
@@ -94,6 +122,11 @@ pub(crate) enum Action {
     ClearSelection,
     HistoryPrev,
     HistoryNext,
+
+    // 입력 요청 창
+    FormDecline,
+    NextField,
+    PrevField,
 
     // 폴더 설정 신뢰 창
     TrustApply,
@@ -125,603 +158,4 @@ pub(crate) enum Action {
     ResetThresholds,
     TrainFrom,
     UseVersion,
-}
-
-/// `global`을 먼저 적용하고, 뜻이 없는 키는 `None`.
-pub(crate) fn map(area: KeyArea, key: KeyEvent, ctx: KeyContext) -> Option<Action> {
-    if let Some(action) = global(key) {
-        return Some(action);
-    }
-    match area {
-        KeyArea::Transcript => transcript(key),
-        KeyArea::Correction => correction(key),
-        KeyArea::StatusBoard => status_board(key),
-        KeyArea::Popup => popup(key),
-        KeyArea::Composer => composer(key, ctx),
-        KeyArea::RouterKeyPrompt => router_key_prompt(key),
-        KeyArea::FolderTrust => folder_trust(key),
-        KeyArea::ResumePrompt => resume_prompt(key),
-        KeyArea::ExitConfirm => exit_confirm(key),
-        KeyArea::StopConfirm => exit_confirm(key),
-        KeyArea::Permission => permission(key),
-        KeyArea::Input => None,
-        KeyArea::TaskList => task_list(key),
-        KeyArea::FullTranscript => full_transcript(key),
-        KeyArea::Usage => usage(key),
-        KeyArea::RouterVersion => router_version(key),
-        KeyArea::TrainConfirm => train_confirm(key),
-        KeyArea::ModelPicker => model_picker(key),
-        KeyArea::PruneWindow => prune_window(key),
-    }
-}
-
-pub(crate) fn global(key: KeyEvent) -> Option<Action> {
-    if is_ctrl(key, 't') {
-        Some(Action::ShowFullTranscript)
-    } else if is_ctrl(key, 'z') {
-        Some(Action::Suspend)
-    } else {
-        None
-    }
-}
-
-/// 피드백 질문은 `1` 맞음, `2` 틀림, `0` 닫기를 숫자로 고르고 `↑`, `↓`, `Enter`, `Esc`도 받는다.
-/// 그 밖의 키는 `None`으로 입력창에 넘긴다.
-pub(crate) fn transcript(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Char('0') if is_char(key, '0') => Some(Action::FeedbackDismiss),
-        KeyCode::Char('1') if is_char(key, '1') => Some(Action::FeedbackAnswer(true)),
-        KeyCode::Char('2') if is_char(key, '2') => Some(Action::FeedbackAnswer(false)),
-        _ => choice_navigation(key),
-    }
-}
-
-/// 바로잡기 제안은 `1` 실행, `2` 그대로를 숫자로 고르고 `↑`, `↓`, `Enter`, `Esc`도 받는다.
-pub(crate) fn correction(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Char('1') if is_char(key, '1') => Some(Action::CorrectionRun),
-        KeyCode::Char('2') if is_char(key, '2') => Some(Action::CorrectionKeep),
-        _ => choice_navigation(key),
-    }
-}
-
-fn choice_navigation(key: KeyEvent) -> Option<Action> {
-    if !key.modifiers.is_empty() {
-        return None;
-    }
-    match key.code {
-        KeyCode::Up => Some(Action::Up),
-        KeyCode::Down => Some(Action::Down),
-        KeyCode::Enter => Some(Action::Confirm),
-        KeyCode::Esc => Some(Action::Close),
-        _ => None,
-    }
-}
-
-/// TODO(#52): 상태판 버튼을 `Shift+Tab` 진입과 방향키로 고를지, 명령만 쓸지, 줄마다 번호 키를 줄지
-pub(crate) fn status_board(key: KeyEvent) -> Option<Action> {
-    if is(key, KeyCode::Enter, KeyModifiers::NONE) {
-        Some(Action::ConfirmCloseHeld)
-    } else if is(key, KeyCode::Esc, KeyModifiers::NONE) {
-        Some(Action::KeepHeld)
-    } else {
-        None
-    }
-}
-
-/// 그 밖의 키는 `None`으로 입력창에 넘긴다.
-pub(crate) fn popup(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Enter if key.modifiers.is_empty() => Some(Action::Confirm),
-        KeyCode::Esc => Some(Action::Close),
-        KeyCode::Tab if key.modifiers.is_empty() => Some(Action::PopupComplete),
-        KeyCode::Up if key.modifiers.is_empty() => Some(Action::Up),
-        KeyCode::Down if key.modifiers.is_empty() => Some(Action::Down),
-        _ => None,
-    }
-}
-
-pub(crate) fn composer(key: KeyEvent, ctx: KeyContext) -> Option<Action> {
-    if let Some(action) = composer_control(key, ctx) {
-        return Some(action);
-    }
-    match key.code {
-        KeyCode::Char(c) if is_text_input(key) => Some(composer_char(c, ctx)),
-        _ => None,
-    }
-}
-
-pub(crate) fn router_key_prompt(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Enter => Some(Action::Confirm),
-        KeyCode::Esc => Some(Action::Quit),
-        KeyCode::Backspace => Some(Action::Backspace),
-        KeyCode::Char(c) if is_text_input(key) => Some(Action::Insert(c)),
-        _ => None,
-    }
-}
-
-/// 설계 표에 `2`가 없어 두 번째 선택지는 방향키와 `Enter`로만 고른다.
-pub(crate) fn folder_trust(key: KeyEvent) -> Option<Action> {
-    if is_ctrl(key, 'c') {
-        return Some(Action::Quit);
-    }
-    match key.code {
-        KeyCode::Char('1' | 'y') if is_text_input(key) => Some(Action::TrustApply),
-        KeyCode::Char('3' | 'q') if is_text_input(key) => Some(Action::Quit),
-        KeyCode::Esc => Some(Action::Quit),
-        KeyCode::Enter => Some(Action::Confirm),
-        KeyCode::Up => Some(Action::Up),
-        KeyCode::Down => Some(Action::Down),
-        _ => None,
-    }
-}
-
-pub(crate) fn resume_prompt(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Enter => Some(Action::Confirm),
-        KeyCode::Up => Some(Action::Up),
-        KeyCode::Down => Some(Action::Down),
-        _ => None,
-    }
-}
-
-/// `Ctrl+C`도 `Esc`처럼 닫기를 취소한다. 창 밖의 `Ctrl+C`처럼 작업을 멈추지 않는다. 멈춤 확인 창은 같은 키로 `대기`를 고른다.
-pub(crate) fn exit_confirm(key: KeyEvent) -> Option<Action> {
-    if is_ctrl(key, 'c') {
-        return Some(Action::Close);
-    }
-    match key.code {
-        KeyCode::Enter => Some(Action::Confirm),
-        KeyCode::Esc => Some(Action::Close),
-        KeyCode::Up => Some(Action::Up),
-        KeyCode::Down => Some(Action::Down),
-        _ => None,
-    }
-}
-
-/// 1초 입력 보호는 `view::permission`이 건다.
-pub(crate) fn permission(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Char('y') if is_char(key, 'y') => {
-            Some(Action::Permission(PermissionAnswer::AllowOnce))
-        }
-        KeyCode::Char('a') if is_char(key, 'a') => {
-            Some(Action::Permission(PermissionAnswer::AllowAlways))
-        }
-        KeyCode::Char('d') if is_char(key, 'd') => {
-            Some(Action::Permission(PermissionAnswer::Deny { note: None }))
-        }
-        KeyCode::Esc => Some(Action::Permission(PermissionAnswer::Deny { note: None })),
-        _ => None,
-    }
-}
-
-// cost: time O(1), heap O(1), stack O(1)
-// basis: estimate
-pub(crate) fn task_list(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Enter => Some(Action::Confirm),
-        KeyCode::Esc => Some(Action::Close),
-        KeyCode::BackTab => Some(Action::PrevFilter),
-        KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => Some(Action::PrevFilter),
-        KeyCode::Tab => Some(Action::NextFilter),
-        KeyCode::Up => Some(Action::Up),
-        KeyCode::Down => Some(Action::Down),
-        KeyCode::Char(c) if is_text_input(key) => task_list_char(c),
-        _ => None,
-    }
-}
-
-/// 닫기와 스크롤 키는 초안.
-pub(crate) fn full_transcript(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Esc => Some(Action::Close),
-        KeyCode::Up => Some(Action::Up),
-        KeyCode::Down => Some(Action::Down),
-        _ => None,
-    }
-}
-
-pub(crate) fn usage(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Enter => Some(Action::Confirm),
-        KeyCode::Esc => Some(Action::Close),
-        KeyCode::Char('d') if is_char(key, 'd') => Some(Action::UsageRange(UsageRange::Day)),
-        KeyCode::Char('w') if is_char(key, 'w') => Some(Action::UsageRange(UsageRange::Week)),
-        _ => None,
-    }
-}
-
-pub(crate) fn router_version(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Enter => Some(Action::Confirm),
-        KeyCode::Esc => Some(Action::Close),
-        KeyCode::Up => Some(Action::Up),
-        KeyCode::Down => Some(Action::Down),
-        KeyCode::Char('r') if is_char(key, 'r') => Some(Action::ResetThresholds),
-        KeyCode::Char('t') if is_char(key, 't') => Some(Action::TrainFrom),
-        KeyCode::Char('u') if is_char(key, 'u') => Some(Action::UseVersion),
-        _ => None,
-    }
-}
-
-pub(crate) fn model_picker(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Char('d') if is_char(key, 'd') => Some(Action::SetDefaultModel),
-        KeyCode::Char('m') if is_char(key, 'm') => Some(Action::ToggleModelMode),
-        KeyCode::Enter => Some(Action::Confirm),
-        KeyCode::Esc => Some(Action::Close),
-        KeyCode::Up => Some(Action::Up),
-        KeyCode::Down => Some(Action::Down),
-        _ => None,
-    }
-}
-
-/// 삭제는 되돌릴 수 없어 `y` 하나만 확정이다. `Enter`는 확정이 아니다.
-pub(crate) fn prune_window(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Char('y') if is_char(key, 'y') => Some(Action::PruneConfirm),
-        KeyCode::Esc => Some(Action::Close),
-        KeyCode::Char('c') if is_ctrl(key, 'c') => Some(Action::Close),
-        KeyCode::Up => Some(Action::Up),
-        KeyCode::Down => Some(Action::Down),
-        _ => None,
-    }
-}
-
-pub(crate) fn train_confirm(key: KeyEvent) -> Option<Action> {
-    match key.code {
-        KeyCode::Enter => Some(Action::Confirm),
-        KeyCode::Esc => Some(Action::Close),
-        KeyCode::Up => Some(Action::Up),
-        KeyCode::Down => Some(Action::Down),
-        _ => None,
-    }
-}
-
-fn composer_control(key: KeyEvent, ctx: KeyContext) -> Option<Action> {
-    let ctrl_action = if key.modifiers == KeyModifiers::CONTROL {
-        control_chord(key.code, ctx)
-    } else {
-        None
-    };
-    ctrl_action.or_else(|| composer_navigation(key, ctx))
-}
-
-fn control_chord(code: KeyCode, ctx: KeyContext) -> Option<Action> {
-    match code {
-        KeyCode::Char('c') => Some(Action::Interrupt),
-        KeyCode::Char('d') => ctx.composer_empty.then_some(Action::Quit),
-        KeyCode::Char('g') => Some(Action::ExternalEditor),
-        KeyCode::Char('j') => Some(Action::Newline),
-        KeyCode::Char('k') => Some(Action::KillToEnd),
-        KeyCode::Char('r') => Some(Action::HistorySearch),
-        KeyCode::Char('y') => Some(Action::Yank),
-        _ => None,
-    }
-}
-
-fn composer_navigation(key: KeyEvent, ctx: KeyContext) -> Option<Action> {
-    let alt = key.modifiers == KeyModifiers::ALT;
-    let shift = key.modifiers == KeyModifiers::SHIFT;
-    let plain = key.modifiers.is_empty();
-    match key.code {
-        KeyCode::Enter if alt || shift => Some(Action::Newline),
-        KeyCode::Enter if plain => Some(Action::Submit),
-        KeyCode::Tab if plain && ctx.running => Some(Action::SubmitQueued),
-        KeyCode::Tab if plain => Some(Action::Submit),
-        KeyCode::Esc => Some(Action::ClearSelection),
-        KeyCode::Up if alt => Some(Action::RecallLatestInput),
-        KeyCode::Left if shift => Some(Action::RecallLatestInput),
-        KeyCode::Up if ctx.history_browsable => Some(Action::HistoryPrev),
-        KeyCode::Down if ctx.history_browsable => Some(Action::HistoryNext),
-        KeyCode::Up => Some(Action::Up),
-        KeyCode::Down => Some(Action::Down),
-        KeyCode::Backspace => Some(Action::Backspace),
-        KeyCode::Left => Some(Action::CursorLeft),
-        KeyCode::Right => Some(Action::CursorRight),
-        _ => None,
-    }
-}
-
-fn composer_char(c: char, ctx: KeyContext) -> Action {
-    match c {
-        '$' if ctx.at_word_start => Action::OpenPopup(PopupKind::Skill),
-        '/' => Action::OpenPopup(PopupKind::Command),
-        '@' => Action::OpenPopup(PopupKind::File),
-        '?' if ctx.composer_empty => Action::ShowShortcuts,
-        _ => Action::Insert(c),
-    }
-}
-
-fn task_list_char(c: char) -> Option<Action> {
-    match c {
-        '?' => Some(Action::Help),
-        'a' => Some(Action::ToggleFolderScope),
-        'c' => Some(Action::ContinueHeld),
-        'd' => Some(Action::CancelOrCloseHeld),
-        'f' => Some(Action::Search),
-        'g' => Some(Action::ChangeGroup),
-        'n' => Some(Action::NewChat),
-        'r' => Some(Action::RenameChat),
-        's' => Some(Action::SendQueued),
-        _ => None,
-    }
-}
-
-/// 수정 키가 없거나 `Shift`뿐이다.
-fn is_text_input(key: KeyEvent) -> bool {
-    (key.modifiers - KeyModifiers::SHIFT).is_empty()
-}
-
-/// 대문자는 crossterm이 보낸 글자 그대로 비교한다.
-fn is_char(key: KeyEvent, c: char) -> bool {
-    key.code == KeyCode::Char(c) && (key.modifiers - KeyModifiers::SHIFT).is_empty()
-}
-
-fn is_ctrl(key: KeyEvent, c: char) -> bool {
-    key.code == KeyCode::Char(c) && key.modifiers == KeyModifiers::CONTROL
-}
-
-fn is(key: KeyEvent, code: KeyCode, modifiers: KeyModifiers) -> bool {
-    key.code == code && key.modifiers == modifiers
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn key(code: KeyCode, modifiers: KeyModifiers) -> KeyEvent {
-        KeyEvent::new(code, modifiers)
-    }
-
-    fn plain(c: char) -> KeyEvent {
-        key(KeyCode::Char(c), KeyModifiers::NONE)
-    }
-
-    fn ctx() -> KeyContext {
-        KeyContext {
-            composer_empty: true,
-            at_line_start: true,
-            at_word_start: true,
-            history_browsable: true,
-            running: false,
-        }
-    }
-
-    #[test]
-    fn map_global_keys_apply_in_every_area() {
-        let ctrl_t = key(KeyCode::Char('t'), KeyModifiers::CONTROL);
-
-        assert_eq!(
-            map(KeyArea::Permission, ctrl_t, ctx()),
-            Some(Action::ShowFullTranscript)
-        );
-        assert_eq!(
-            map(
-                KeyArea::TaskList,
-                key(KeyCode::Char('z'), KeyModifiers::CONTROL),
-                ctx()
-            ),
-            Some(Action::Suspend)
-        );
-    }
-
-    #[test]
-    fn composer_enter_and_tab_depend_on_running() {
-        let tab = key(KeyCode::Tab, KeyModifiers::NONE);
-        let running = KeyContext {
-            running: true,
-            ..ctx()
-        };
-
-        assert_eq!(composer(tab, ctx()), Some(Action::Submit));
-        assert_eq!(composer(tab, running), Some(Action::SubmitQueued));
-        assert_eq!(
-            composer(key(KeyCode::Enter, KeyModifiers::NONE), ctx()),
-            Some(Action::Submit)
-        );
-    }
-
-    // cost: time O(1), heap O(1), stack O(1)
-    // basis: estimate
-    #[test]
-    fn composer_newline_keys() {
-        for event in [
-            key(KeyCode::Enter, KeyModifiers::ALT),
-            key(KeyCode::Enter, KeyModifiers::SHIFT),
-            key(KeyCode::Char('j'), KeyModifiers::CONTROL),
-        ] {
-            assert_eq!(composer(event, ctx()), Some(Action::Newline));
-        }
-    }
-
-    #[test]
-    fn composer_special_chars() {
-        let typed = KeyContext {
-            composer_empty: false,
-            at_word_start: false,
-            ..ctx()
-        };
-
-        assert_eq!(
-            composer(plain('/'), ctx()),
-            Some(Action::OpenPopup(PopupKind::Command))
-        );
-        assert_eq!(
-            composer(plain('@'), ctx()),
-            Some(Action::OpenPopup(PopupKind::File))
-        );
-        assert_eq!(
-            composer(plain('$'), ctx()),
-            Some(Action::OpenPopup(PopupKind::Skill))
-        );
-        assert_eq!(composer(plain('$'), typed), Some(Action::Insert('$')));
-        assert_eq!(composer(plain('?'), ctx()), Some(Action::ShowShortcuts));
-        assert_eq!(composer(plain('?'), typed), Some(Action::Insert('?')));
-        assert_eq!(composer(plain('!'), ctx()), Some(Action::Insert('!')));
-    }
-
-    #[test]
-    fn composer_ctrl_d_only_on_empty_draft() {
-        let ctrl_d = key(KeyCode::Char('d'), KeyModifiers::CONTROL);
-        let typed = KeyContext {
-            composer_empty: false,
-            ..ctx()
-        };
-
-        assert_eq!(composer(ctrl_d, ctx()), Some(Action::Quit));
-        assert_eq!(composer(ctrl_d, typed), None);
-    }
-
-    #[test]
-    fn composer_arrows_browse_history_or_move_cursor() {
-        let up = key(KeyCode::Up, KeyModifiers::NONE);
-        let editing = KeyContext {
-            history_browsable: false,
-            ..ctx()
-        };
-
-        assert_eq!(composer(up, ctx()), Some(Action::HistoryPrev));
-        assert_eq!(composer(up, editing), Some(Action::Up));
-        assert_eq!(
-            composer(key(KeyCode::Up, KeyModifiers::ALT), ctx()),
-            Some(Action::RecallLatestInput)
-        );
-        assert_eq!(
-            composer(key(KeyCode::Left, KeyModifiers::SHIFT), ctx()),
-            Some(Action::RecallLatestInput)
-        );
-    }
-
-    // cost: time O(1), heap O(1), stack O(1)
-    // basis: estimate
-    #[test]
-    fn composer_control_keys() {
-        let cases = [
-            ('c', Action::Interrupt),
-            ('g', Action::ExternalEditor),
-            ('k', Action::KillToEnd),
-            ('r', Action::HistorySearch),
-            ('y', Action::Yank),
-        ];
-        for (c, action) in cases {
-            let event = key(KeyCode::Char(c), KeyModifiers::CONTROL);
-            assert_eq!(composer(event, ctx()), Some(action));
-        }
-    }
-
-    #[test]
-    fn transcript_takes_feedback_digits_and_choice_keys_only() {
-        assert_eq!(transcript(plain('0')), Some(Action::FeedbackDismiss));
-        assert_eq!(transcript(plain('1')), Some(Action::FeedbackAnswer(true)));
-        assert_eq!(transcript(plain('2')), Some(Action::FeedbackAnswer(false)));
-        assert_eq!(transcript(plain('3')), None);
-        assert_eq!(transcript(plain('a')), None);
-        assert_eq!(
-            transcript(key(KeyCode::Up, KeyModifiers::NONE)),
-            Some(Action::Up)
-        );
-        assert_eq!(
-            transcript(key(KeyCode::Enter, KeyModifiers::NONE)),
-            Some(Action::Confirm)
-        );
-        assert_eq!(
-            transcript(key(KeyCode::Esc, KeyModifiers::NONE)),
-            Some(Action::Close)
-        );
-        assert_eq!(transcript(key(KeyCode::Up, KeyModifiers::ALT)), None);
-    }
-
-    #[test]
-    fn correction_takes_one_and_two_and_choice_keys_only() {
-        assert_eq!(correction(plain('1')), Some(Action::CorrectionRun));
-        assert_eq!(correction(plain('2')), Some(Action::CorrectionKeep));
-        assert_eq!(correction(plain('0')), None);
-        assert_eq!(
-            correction(key(KeyCode::Down, KeyModifiers::NONE)),
-            Some(Action::Down)
-        );
-        assert_eq!(
-            correction(key(KeyCode::Esc, KeyModifiers::NONE)),
-            Some(Action::Close)
-        );
-        assert_eq!(correction(plain('x')), None);
-    }
-
-    #[test]
-    fn popup_unknown_keys_fall_through() {
-        assert_eq!(
-            popup(key(KeyCode::Tab, KeyModifiers::NONE)),
-            Some(Action::PopupComplete)
-        );
-        assert_eq!(popup(plain('a')), None);
-    }
-
-    #[test]
-    fn folder_trust_keys() {
-        assert_eq!(folder_trust(plain('y')), Some(Action::TrustApply));
-        assert_eq!(folder_trust(plain('1')), Some(Action::TrustApply));
-        assert_eq!(folder_trust(plain('3')), Some(Action::Quit));
-        assert_eq!(
-            folder_trust(key(KeyCode::Char('c'), KeyModifiers::CONTROL)),
-            Some(Action::Quit)
-        );
-        assert_eq!(folder_trust(plain('2')), None);
-    }
-
-    #[test]
-    fn permission_keys() {
-        let deny = Some(Action::Permission(PermissionAnswer::Deny { note: None }));
-        assert_eq!(
-            permission(plain('y')),
-            Some(Action::Permission(PermissionAnswer::AllowOnce))
-        );
-        assert_eq!(
-            permission(plain('a')),
-            Some(Action::Permission(PermissionAnswer::AllowAlways))
-        );
-        assert_eq!(permission(plain('d')), deny);
-        assert_eq!(permission(key(KeyCode::Esc, KeyModifiers::NONE)), deny);
-        assert_eq!(permission(plain('x')), None);
-    }
-
-    #[test]
-    fn task_list_keys() {
-        assert_eq!(
-            task_list(key(KeyCode::BackTab, KeyModifiers::SHIFT)),
-            Some(Action::PrevFilter)
-        );
-        assert_eq!(
-            task_list(key(KeyCode::Tab, KeyModifiers::NONE)),
-            Some(Action::NextFilter)
-        );
-        assert_eq!(task_list(plain('s')), Some(Action::SendQueued));
-        assert_eq!(task_list(plain('a')), Some(Action::ToggleFolderScope));
-        assert_eq!(task_list(plain('?')), Some(Action::Help));
-    }
-
-    #[test]
-    fn router_version_and_status_board_keys() {
-        assert_eq!(router_version(plain('u')), Some(Action::UseVersion));
-        assert_eq!(router_version(plain('t')), Some(Action::TrainFrom));
-        assert_eq!(
-            status_board(key(KeyCode::Enter, KeyModifiers::NONE)),
-            Some(Action::ConfirmCloseHeld)
-        );
-        assert_eq!(
-            status_board(key(KeyCode::Esc, KeyModifiers::NONE)),
-            Some(Action::KeepHeld)
-        );
-    }
-
-    #[test]
-    fn router_key_prompt_takes_text() {
-        assert_eq!(router_key_prompt(plain('k')), Some(Action::Insert('k')));
-        assert_eq!(
-            router_key_prompt(key(KeyCode::Esc, KeyModifiers::NONE)),
-            Some(Action::Quit)
-        );
-    }
 }

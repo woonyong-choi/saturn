@@ -29,6 +29,9 @@ const IRREVERSIBLE_MIN: f64 = 0.8;
 const DEFAULT_LAYER: &str = r#"# Saturn 기본값
 on_exit = "background"
 
+[tui]
+keymap = "saturn"
+
 [router]
 method = "jev"
 endpoint = "https://api.typesafe.ai"
@@ -88,6 +91,10 @@ enum Kind {
 /// 이 밖의 키는 모르는 키로 검사에 실패한다.
 const SCHEMA: &[(&str, Kind)] = &[
     ("on_exit", Kind::OneOf(&["background", "stop", "ask"])),
+    (
+        "tui.keymap",
+        Kind::OneOf(&saturn_protocol::keymap::PRESET_NAMES),
+    ),
     ("router.method", Kind::OneOf(&["jev", "saturn", "collect"])),
     ("router.endpoint", Kind::Text),
     (

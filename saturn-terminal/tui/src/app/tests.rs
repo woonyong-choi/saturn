@@ -177,12 +177,12 @@ fn enter_idle_submits_input_and_records_history() {
 }
 
 #[test]
-fn tab_while_running_queues_without_relation_judgment() {
+fn queue_key_while_running_queues_without_relation_judgment() {
     let mut app = attached();
     notify(&mut app, task(1, 'A', TaskState::Running));
     type_text(&mut app, "테스트도");
 
-    let effects = press(&mut app, KeyCode::Tab, KeyModifiers::NONE);
+    let effects = press(&mut app, KeyCode::Char('q'), KeyModifiers::CONTROL);
 
     assert!(matches!(
         sent(&effects)[0],
@@ -646,7 +646,7 @@ fn invalid_command_adds_warning_and_keeps_draft() {
 }
 
 #[test]
-fn ctrl_c_clears_draft_then_stops_then_quits() {
+fn ctrl_c_clears_draft_then_stops_then_asks_to_press_again_then_quits() {
     let mut app = attached();
     notify(&mut app, task(1, 'A', TaskState::Running));
     type_text(&mut app, "draft");
@@ -655,13 +655,15 @@ fn ctrl_c_clears_draft_then_stops_then_quits() {
     let second = press(&mut app, KeyCode::Char('c'), KeyModifiers::CONTROL);
     notify(&mut app, task(1, 'A', TaskState::Held));
     let third = press(&mut app, KeyCode::Char('c'), KeyModifiers::CONTROL);
+    let fourth = press(&mut app, KeyCode::Char('c'), KeyModifiers::CONTROL);
     let closed = notify(&mut app, exit_plan(ExitPlan::Close));
 
     assert!(first.is_empty());
     assert!(app.composer.is_empty());
     assert_eq!(sent(&second), vec![&Request::Stop { chat: ChatId(7) }]);
+    assert!(sent(&third).is_empty());
     assert_eq!(
-        sent(&third),
+        sent(&fourth),
         vec![&Request::PrepareExit { chat: ChatId(7) }]
     );
     assert_eq!(closed, vec![Effect::Quit]);
@@ -2222,4 +2224,378 @@ fn interrupted_tool_is_marked_when_the_task_is_held_without_a_result() {
         )
     });
     assert!(marked);
+}
+
+fn queued_and_held() -> App {
+    let mut app = attached();
+    notify(&mut app, input(1, InputState::Queued, "x"));
+    notify(&mut app, task(5, 'E', TaskState::Held));
+    app
+}
+
+fn settings_applied(keymap: Option<&str>) -> Notification {
+    Notification::SettingsApplied {
+        revision: saturn_protocol::ids::SettingsRevision(2),
+        warning: None,
+        keymap: keymap.map(str::to_owned),
+    }
+}
+
+fn last_warning(app: &App) -> String {
+    match app.transcript.cells().last() {
+        Some(TranscriptCell::Warning(text)) => text.clone(),
+        other => panic!("expected a warning line, got {other:?}"),
+    }
+}
+
+fn mode_of(effects: &[Effect]) -> String {
+    match sent(effects)[..] {
+        [Request::SetPermissionMode { mode, .. }] => mode.clone(),
+        _ => String::new(),
+    }
+}
+
+fn run_command_line(app: &mut App, line: &str) -> Vec<Effect> {
+    type_text(app, line);
+    app.popup = None;
+    press(app, KeyCode::Enter, KeyModifiers::NONE)
+}
+
+#[test]
+fn escape_stops_running_work_and_does_nothing_when_idle() {
+    let mut idle_app = attached();
+    let mut app = attached();
+    notify(&mut app, task(1, 'A', TaskState::Running));
+
+    let idle = press(&mut idle_app, KeyCode::Esc, KeyModifiers::NONE);
+    let running = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+
+    assert!(idle.is_empty());
+    assert_eq!(sent(&running), vec![&Request::Stop { chat: ChatId(7) }]);
+}
+
+#[test]
+fn escape_closes_an_open_popup_before_anything_else() {
+    let mut app = attached();
+    notify(&mut app, task(1, 'A', TaskState::Running));
+    type_text(&mut app, "/rec");
+    assert!(app.popup.is_some());
+
+    let effects = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+
+    assert!(app.popup.is_none());
+    assert!(sent(&effects).is_empty());
+}
+
+#[test]
+fn double_escape_says_rewind_is_not_implemented_and_the_command_does_too() {
+    let mut app = attached();
+    press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    let by_keys = last_warning(&app);
+
+    run_command_line(&mut app, "/rewind");
+
+    assert_eq!(by_keys, "되돌리기는 아직 구현되지 않았습니다");
+    assert_eq!(last_warning(&app), by_keys);
+}
+
+#[test]
+fn shift_tab_cycles_the_permission_mode_from_the_default() {
+    let mut app = attached();
+
+    let first = press(&mut app, KeyCode::BackTab, KeyModifiers::SHIFT);
+    let second = press(&mut app, KeyCode::BackTab, KeyModifiers::SHIFT);
+    let third = press(&mut app, KeyCode::BackTab, KeyModifiers::SHIFT);
+
+    assert_eq!(mode_of(&first), "read-only");
+    assert_eq!(mode_of(&second), "ask");
+    assert_eq!(mode_of(&third), "edit");
+    assert_eq!(last_warning(&app), "권한 모드: edit");
+    assert!(app.composer.is_empty());
+}
+
+#[test]
+fn mode_command_cycles_without_a_value_and_sets_with_one() {
+    let mut app = attached();
+
+    let cycled = run_command_line(&mut app, "/mode");
+    let set = run_command_line(&mut app, "/mode full");
+    let after_full = press(&mut app, KeyCode::BackTab, KeyModifiers::SHIFT);
+
+    assert_eq!(mode_of(&cycled), "read-only");
+    assert_eq!(mode_of(&set), "full");
+    assert_eq!(mode_of(&after_full), "ask");
+}
+
+#[test]
+fn permissions_command_sets_where_shift_tab_continues() {
+    let mut app = attached();
+    run_command_line(&mut app, "/permissions read-only");
+
+    let effects = press(&mut app, KeyCode::BackTab, KeyModifiers::SHIFT);
+
+    assert_eq!(mode_of(&effects), "ask");
+}
+
+#[test]
+fn tab_completes_the_command_list_and_no_longer_submits() {
+    let mut app = attached();
+    type_text(&mut app, "hello");
+    let submit = press(&mut app, KeyCode::Tab, KeyModifiers::NONE);
+    app.composer.clear();
+    type_text(&mut app, "/ta");
+    press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    let closed = app.popup.is_none();
+
+    press(&mut app, KeyCode::Tab, KeyModifiers::NONE);
+
+    assert!(sent(&submit).is_empty());
+    assert_eq!(app.composer.text(), "/ta");
+    assert!(closed);
+    assert!(app.popup.is_some());
+}
+
+#[test]
+fn left_arrow_on_an_empty_composer_does_not_open_the_task_list() {
+    let mut app = attached();
+
+    press(&mut app, KeyCode::Left, KeyModifiers::NONE);
+
+    assert!(app.window.is_none());
+}
+
+#[test]
+fn f5_and_the_tasks_command_open_the_task_list() {
+    let mut by_key = attached();
+    let mut by_command = attached();
+
+    let key_effects = press(&mut by_key, KeyCode::F(5), KeyModifiers::NONE);
+    let command_effects = run_command_line(&mut by_command, "/tasks");
+
+    assert!(matches!(by_key.window, Some(Window::TaskList(_))));
+    assert_eq!(sent(&key_effects), vec![&Request::ListTasks]);
+    assert_eq!(sent(&command_effects), vec![&Request::ListTasks]);
+}
+
+#[test]
+fn f3_and_the_agents_command_enter_the_status_board_and_enter_runs_the_button() {
+    let mut by_key = queued_and_held();
+    let mut by_command = queued_and_held();
+
+    press(&mut by_key, KeyCode::F(3), KeyModifiers::NONE);
+    run_command_line(&mut by_command, "/agents");
+    let area = by_key.key_area();
+    let effects = press(&mut by_key, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(area, KeyArea::BoardFocus);
+    assert_eq!(by_command.key_area(), KeyArea::BoardFocus);
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::SendNow { input: InputId(1) }]
+    );
+    assert_eq!(by_key.key_area(), KeyArea::Composer);
+}
+
+#[test]
+fn status_board_focus_moves_between_buttons_and_lines() {
+    let mut app = queued_and_held();
+    press(&mut app, KeyCode::F(3), KeyModifiers::NONE);
+
+    press(&mut app, KeyCode::Right, KeyModifiers::NONE);
+    let cancel = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    press(&mut app, KeyCode::F(3), KeyModifiers::NONE);
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    let held = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&cancel),
+        vec![&Request::CancelInput { input: InputId(1) }]
+    );
+    assert_eq!(
+        sent(&held),
+        vec![&Request::Continue {
+            chat: ChatId(7),
+            task: Some(TaskId(5))
+        }]
+    );
+}
+
+#[test]
+fn status_board_focus_takes_arrows_until_escape_returns_them_to_history() {
+    let mut app = queued_and_held();
+    app.history = InputHistory::with_entries(&["one", "two"]);
+    press(&mut app, KeyCode::F(3), KeyModifiers::NONE);
+
+    press(&mut app, KeyCode::Up, KeyModifiers::NONE);
+    let while_focused = app.composer.text();
+    let effects = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    press(&mut app, KeyCode::Up, KeyModifiers::NONE);
+
+    assert_eq!(while_focused, "");
+    assert!(sent(&effects).is_empty());
+    assert_eq!(app.composer.text(), "two");
+}
+
+#[test]
+fn status_board_focus_does_not_start_without_buttons_and_ends_when_the_line_goes() {
+    let mut app = attached();
+    press(&mut app, KeyCode::F(3), KeyModifiers::NONE);
+    let without = app.key_area();
+    notify(&mut app, input(1, InputState::Queued, "x"));
+    press(&mut app, KeyCode::F(3), KeyModifiers::NONE);
+
+    notify(&mut app, input(1, InputState::Cancelled, "x"));
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(without, KeyArea::Composer);
+    assert!(sent(&effects).is_empty());
+    assert_eq!(app.key_area(), KeyArea::Composer);
+}
+
+#[test]
+fn ctrl_c_twice_on_an_idle_empty_composer_quits_and_another_key_in_between_resets() {
+    let mut app = attached();
+    let first = press(&mut app, KeyCode::Char('c'), KeyModifiers::CONTROL);
+    let hint = last_warning(&app);
+    type_text(&mut app, "x");
+    app.composer.clear();
+    let after_typing = press(&mut app, KeyCode::Char('c'), KeyModifiers::CONTROL);
+    let second = press(&mut app, KeyCode::Char('c'), KeyModifiers::CONTROL);
+
+    assert!(sent(&first).is_empty());
+    assert_eq!(hint, "한 번 더 누르면 종료합니다");
+    assert!(sent(&after_typing).is_empty());
+    assert_eq!(
+        sent(&second),
+        vec![&Request::PrepareExit { chat: ChatId(7) }]
+    );
+}
+
+#[test]
+fn line_editing_keys_move_and_delete_inside_the_draft() {
+    let mut app = attached();
+    type_text(&mut app, "one two three");
+
+    press(&mut app, KeyCode::Char('w'), KeyModifiers::CONTROL);
+    let after_word = app.composer.text();
+    press(&mut app, KeyCode::Char('a'), KeyModifiers::CONTROL);
+    type_text(&mut app, ">");
+    press(&mut app, KeyCode::Char('e'), KeyModifiers::CONTROL);
+    type_text(&mut app, "<");
+    let marked = app.composer.text();
+    press(&mut app, KeyCode::Char('u'), KeyModifiers::CONTROL);
+
+    assert_eq!(after_word, "one two ");
+    assert_eq!(marked, ">one two <");
+    assert_eq!(app.composer.text(), "");
+}
+
+#[test]
+fn ctrl_l_redraws_the_screen_and_keeps_the_draft() {
+    let mut app = attached();
+    type_text(&mut app, "draft");
+
+    let effects = press(&mut app, KeyCode::Char('l'), KeyModifiers::CONTROL);
+
+    assert!(effects.contains(&Effect::Redraw));
+    assert_eq!(app.composer.text(), "draft");
+}
+
+#[test]
+fn keymap_command_switches_the_preset_and_changes_escape_tab_and_ctrl_c() {
+    let mut app = attached();
+    notify(&mut app, task(1, 'A', TaskState::Running));
+    run_command_line(&mut app, "/keymap gemini");
+    let announced = last_warning(&app);
+
+    let escape = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    type_text(&mut app, "later");
+    let tab = press(&mut app, KeyCode::Tab, KeyModifiers::NONE);
+
+    assert_eq!(announced, "키 묶음: gemini");
+    assert!(sent(&escape).is_empty());
+    assert!(matches!(
+        sent(&tab)[0],
+        Request::SubmitInput {
+            skip_relation: true,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn keymap_command_without_a_name_lists_the_presets_and_a_bad_name_is_a_warning() {
+    let mut app = attached();
+
+    run_command_line(&mut app, "/keymap");
+    let listed = last_warning(&app);
+    run_command_line(&mut app, "/keymap vim");
+
+    assert_eq!(
+        listed,
+        "키 묶음: saturn (saturn, claude, codex, gemini, opencode)"
+    );
+    assert!(last_warning(&app).contains("/keymap vim"));
+    assert_eq!(app.keymap.name(), "saturn");
+}
+
+#[test]
+fn opencode_preset_turns_tab_into_the_permission_mode_cycle() {
+    let mut app = attached();
+    run_command_line(&mut app, "/keymap opencode");
+
+    let tab = press(&mut app, KeyCode::Tab, KeyModifiers::NONE);
+
+    assert_eq!(mode_of(&tab), "read-only");
+}
+
+#[test]
+fn the_setting_picks_the_preset_and_a_repeated_value_keeps_the_keymap_command_choice() {
+    let mut app = attached();
+    notify(&mut app, settings_applied(Some("claude")));
+    let from_setting = app.keymap.name();
+    run_command_line(&mut app, "/keymap gemini");
+
+    notify(&mut app, settings_applied(Some("claude")));
+    let kept = app.keymap.name();
+    notify(&mut app, settings_applied(None));
+    let kept_without_value = app.keymap.name();
+    notify(&mut app, settings_applied(Some("opencode")));
+
+    assert_eq!(from_setting, "claude");
+    assert_eq!(kept, "gemini");
+    assert_eq!(kept_without_value, "gemini");
+    assert_eq!(app.keymap.name(), "opencode");
+}
+
+#[test]
+fn claude_preset_moves_the_full_transcript_to_ctrl_o() {
+    let mut app = attached();
+    run_command_line(&mut app, "/keymap claude");
+
+    press(&mut app, KeyCode::Char('t'), KeyModifiers::CONTROL);
+    let ctrl_t = app.window.is_none();
+    press(&mut app, KeyCode::Char('o'), KeyModifiers::CONTROL);
+
+    assert!(ctrl_t);
+    assert!(matches!(app.window, Some(Window::FullTranscript(_))));
+}
+
+#[test]
+fn stop_transcript_redraw_and_quit_commands_do_what_their_keys_do() {
+    let mut app = attached();
+    notify(&mut app, task(1, 'A', TaskState::Running));
+
+    let stop = run_command_line(&mut app, "/stop");
+    let redraw = run_command_line(&mut app, "/redraw");
+    run_command_line(&mut app, "/transcript");
+    let transcript = matches!(app.window, Some(Window::FullTranscript(_)));
+    app.window = None;
+    let quit = run_command_line(&mut app, "/quit");
+
+    assert_eq!(sent(&stop), vec![&Request::Stop { chat: ChatId(7) }]);
+    assert!(redraw.contains(&Effect::Redraw));
+    assert!(transcript);
+    assert_eq!(sent(&quit), vec![&Request::PrepareExit { chat: ChatId(7) }]);
 }

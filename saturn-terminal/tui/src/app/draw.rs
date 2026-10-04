@@ -71,6 +71,7 @@ impl App {
             lang,
             labels_visible,
             spinner: view::spinner(self.tick),
+            focus: self.board_focus,
         };
         board.render(frame, areas.status);
         if let Some(popup) = &self.popup {

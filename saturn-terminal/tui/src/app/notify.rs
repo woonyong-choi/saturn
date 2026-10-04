@@ -14,6 +14,7 @@ use saturn_protocol::state::{Disposition, InputState, QueueReason};
 
 use super::{App, Effect, Window};
 use crate::i18n;
+use crate::keymap::Keymap;
 use crate::state::{
     Change, ChatState, ContextSize, FeedbackPrompt, InputUpdate, TaskUpdate, TrainingProgress,
 };
@@ -288,8 +289,13 @@ impl App {
                 self.learn_chat(chat);
                 self.chat.context = Some(ContextSize { tokens, threshold });
             }
-            Notification::SettingsApplied { revision, warning } => {
+            Notification::SettingsApplied {
+                revision,
+                warning,
+                keymap,
+            } => {
                 self.on_settings_applied(revision, warning);
+                self.on_settings_keymap(keymap);
             }
             Notification::Alert { alert } => self.on_alert(alert),
             _ => {}
@@ -515,6 +521,20 @@ impl App {
             disposition,
             selected: 0,
         });
+    }
+
+    /// 설정의 `tui.keymap`이 바뀌었을 때만 따른다. 같은 값이 다시 오면 `/keymap`으로 고른 묶음을 지키지 않고 바꾸지도 않는다.
+    fn on_settings_keymap(&mut self, keymap: Option<String>) {
+        let Some(name) = keymap else {
+            return;
+        };
+        if self.settings_keymap.as_deref() == Some(name.as_str()) {
+            return;
+        }
+        if let Ok(loaded) = Keymap::load(&name) {
+            self.keymap = loaded;
+        }
+        self.settings_keymap = Some(name);
     }
 
     fn on_settings_applied(

@@ -201,6 +201,11 @@ impl Settings {
         permission::from_value(self.get(permission::KEY))
     }
 
+    /// TUI 키 묶음 이름 `tui.keymap`.
+    pub(crate) fn keymap(&self) -> &str {
+        self.text("tui.keymap")
+    }
+
     pub(crate) fn on_exit(&self) -> OnExit {
         match self.text("on_exit") {
             "stop" => OnExit::Stop,

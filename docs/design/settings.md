@@ -65,6 +65,7 @@
 |---|---|---|
 | `on_exit` | `background`, `stop`, `ask` | `background` |
 | `agents.worktree` | 참·거짓 | 거짓. 구현 전([#335](https://github.com/woonyong-choi/saturn/issues/335)) |
+| `tui.keymap` | `saturn`, `claude`, `codex`, `gemini`, `opencode` | `saturn`. TUI 키 묶음이고 `/keymap`은 이 TUI만 바꾼다([TUI](tui.md#키-해석-계층)) |
 | `permission.mode` | `ask`, `edit`, `read-only`, `full` | `edit`(초안) |
 | `permission.shell`, `permission.edit`, `permission.read`, `permission.mcp`, `permission.subagent` | `allow`, `ask`, `deny` 또는 패턴 → 값 표 | 모드를 따름 |
 | `model.default` | `<provider>/<model>` 문자열 | 없음. 처음 고르기 창이 사용자 설정 파일에 쓴다([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)) |

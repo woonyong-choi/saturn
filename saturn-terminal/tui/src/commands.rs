@@ -112,10 +112,70 @@ pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
         values: &[],
         takes_provider: true,
     },
+    CommandSpec {
+        path: "mode",
+        description: "권한 모드 돌리기와 정하기",
+        values: &PERMISSION_MODES,
+        takes_provider: false,
+    },
+    CommandSpec {
+        path: "agents",
+        description: "상태판 버튼 고르기",
+        values: &[],
+        takes_provider: false,
+    },
+    CommandSpec {
+        path: "stop",
+        description: "작업 모두 멈추기",
+        values: &[],
+        takes_provider: false,
+    },
+    CommandSpec {
+        path: "rewind",
+        description: "되돌리기(구현 전)",
+        values: &[],
+        takes_provider: false,
+    },
+    CommandSpec {
+        path: "keymap",
+        description: "키 묶음 고르기",
+        values: &saturn_protocol::keymap::PRESET_NAMES,
+        takes_provider: false,
+    },
+    CommandSpec {
+        path: "transcript",
+        description: "전체 기록",
+        values: &[],
+        takes_provider: false,
+    },
+    CommandSpec {
+        path: "redraw",
+        description: "화면 다시 그리기",
+        values: &[],
+        takes_provider: false,
+    },
+    CommandSpec {
+        path: "suspend",
+        description: "화면 일시 중지",
+        values: &[],
+        takes_provider: false,
+    },
+    CommandSpec {
+        path: "quit",
+        description: "종료",
+        values: &[],
+        takes_provider: false,
+    },
 ];
 
 /// engine이 받는 권한 모드 이름. 초안.
-const PERMISSION_MODES: [&str; 4] = ["ask", "edit", "read-only", "full"];
+pub(crate) const PERMISSION_MODES: [&str; 4] = ["ask", "edit", "read-only", "full"];
+
+/// `Shift+Tab`과 `/mode`가 돌아가는 순서. `full`은 `/mode full`이나 `/permissions full`로만 켠다.
+pub(crate) const PERMISSION_CYCLE: [&str; 3] = ["ask", "edit", "read-only"];
+
+/// 현재 모드를 모를 때 시작하는 기본 모드(`permission.mode`의 기본값).
+pub(crate) const DEFAULT_PERMISSION_MODE: &str = "edit";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SlashCommand {
@@ -142,6 +202,24 @@ pub(crate) enum SlashCommand {
     ReopenCorrection,
     /// `/tasks`
     Tasks,
+    /// `/mode [값]`. 값이 없으면 권한 모드를 돌리고, 있으면 `/permissions`처럼 그 모드로 정한다.
+    Mode { target: Option<&'static str> },
+    /// `/agents`. 상태판 버튼 고르기를 시작한다.
+    Agents,
+    /// `/stop`. 실행 중인 작업을 모두 멈춘다.
+    Stop,
+    /// `/rewind`. 구현 전.
+    Rewind,
+    /// `/keymap [이름]`. 이름이 없으면 지금 키 묶음과 목록을 보인다.
+    Keymap { name: Option<&'static str> },
+    /// `/transcript`
+    Transcript,
+    /// `/redraw`
+    Redraw,
+    /// `/suspend`
+    Suspend,
+    /// `/quit`
+    Quit,
     /// `/usage`. 범위는 화면에서 `d`, `w`로 바꾼다.
     Usage,
     /// `/prune`. 지울 채팅을 미리 보이는 창을 연다.
@@ -194,6 +272,15 @@ pub(crate) fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         "add-dir" => parse_add_dir(body)?,
         "model" => parse_model(&args)?,
         "tasks" => no_args("tasks", &args, SlashCommand::Tasks)?,
+        "mode" => parse_mode(&args)?,
+        "agents" => no_args("agents", &args, SlashCommand::Agents)?,
+        "stop" => no_args("stop", &args, SlashCommand::Stop)?,
+        "rewind" => no_args("rewind", &args, SlashCommand::Rewind)?,
+        "keymap" => parse_keymap(&args)?,
+        "transcript" => no_args("transcript", &args, SlashCommand::Transcript)?,
+        "redraw" => no_args("redraw", &args, SlashCommand::Redraw)?,
+        "suspend" => no_args("suspend", &args, SlashCommand::Suspend)?,
+        "quit" => no_args("quit", &args, SlashCommand::Quit)?,
         "usage" => no_args("usage", &args, SlashCommand::Usage)?,
         "prune" => no_args("prune", &args, SlashCommand::Prune)?,
         "train" => parse_train(&args)?,
@@ -273,6 +360,36 @@ fn parse_model(args: &[&str]) -> Result<SlashCommand, CommandError> {
         _ => return Err(invalid("model", &args.join(" "))),
     };
     Ok(SlashCommand::Model { provider })
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 인자 글자 수(오류 문구를 만들 때만)
+// basis: estimate
+fn parse_mode(args: &[&str]) -> Result<SlashCommand, CommandError> {
+    match args {
+        [] => Ok(SlashCommand::Mode { target: None }),
+        [argument] => PERMISSION_MODES
+            .iter()
+            .find(|mode| *mode == argument)
+            .map(|mode| SlashCommand::Mode { target: Some(mode) })
+            .ok_or_else(|| invalid("mode", argument)),
+        _ => Err(invalid("mode", &args.join(" "))),
+    }
+}
+
+// cost: time O(a), heap O(a), stack O(1)
+// vars: a = 인자 글자 수(오류 문구를 만들 때만)
+// basis: estimate
+fn parse_keymap(args: &[&str]) -> Result<SlashCommand, CommandError> {
+    match args {
+        [] => Ok(SlashCommand::Keymap { name: None }),
+        [argument] => saturn_protocol::keymap::PRESET_NAMES
+            .iter()
+            .find(|name| *name == argument)
+            .map(|name| SlashCommand::Keymap { name: Some(name) })
+            .ok_or_else(|| invalid("keymap", argument)),
+        _ => Err(invalid("keymap", &args.join(" "))),
+    }
 }
 
 // cost: time O(a), heap O(a), stack O(1)
