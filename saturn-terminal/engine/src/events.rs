@@ -148,6 +148,15 @@ impl Engine {
             return Ok(());
         };
         let chat = self.session_chat(live.session)?;
+        if let ProviderEvent::McpUnavailable { reasons, .. } = event {
+            let reasons = reasons
+                .iter()
+                .map(|reason| self.masker.mask(reason).as_str().to_owned())
+                .collect();
+            self.notify_chat(chat, ChatNotice::McpUnavailable { provider, reasons })
+                .await;
+            return Ok(());
+        }
         if self.block_interrupted_subagent(chat, &live, &event).await {
             return Ok(());
         }

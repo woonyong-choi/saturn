@@ -1417,6 +1417,48 @@ async fn first_turn_is_sent_when_a_server_failed_to_start() {
 }
 
 #[tokio::test]
+async fn unavailable_mcp_server_is_reported_once_after_the_session_opens() {
+    let dir = tempfile::tempdir().unwrap();
+    let env = vec![
+        ("FAKE_REQUIRE_MCP".into(), "1".into()),
+        ("FAKE_MCP_FAILED".into(), "broken".into()),
+    ];
+    let mut launch = launch(dir.path(), env);
+    launch.permission.mcp_servers = vec!["docs".to_owned(), "broken".to_owned()];
+    let mut client = CodexClient::start(launch, Supervisor::new()).await.unwrap();
+
+    client.open_session(spec(dir.path())).await.unwrap();
+    client.open_session(spec(dir.path())).await.unwrap();
+
+    let event = tokio::time::timeout(Duration::from_secs(5), client.next_event()).await;
+    let text = format!("{event:?}");
+    assert!(text.contains("McpUnavailable"), "{text}");
+    assert!(text.contains("broken failed to start"), "{text}");
+    assert!(!text.contains("docs"), "{text}");
+    let more = tokio::time::timeout(Duration::from_millis(200), client.next_event()).await;
+    assert!(
+        more.is_err() || !format!("{more:?}").contains("McpUnavailable"),
+        "reported twice: {more:?}"
+    );
+}
+
+#[tokio::test]
+async fn ready_mcp_servers_are_not_reported() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut launch = launch(dir.path(), vec![("FAKE_REQUIRE_MCP".into(), "1".into())]);
+    launch.permission.mcp_servers = vec!["docs".to_owned()];
+    let mut client = CodexClient::start(launch, Supervisor::new()).await.unwrap();
+
+    client.open_session(spec(dir.path())).await.unwrap();
+
+    let next = tokio::time::timeout(Duration::from_millis(200), client.next_event()).await;
+    assert!(
+        next.is_err() || !format!("{next:?}").contains("McpUnavailable"),
+        "{next:?}"
+    );
+}
+
+#[tokio::test]
 async fn first_turn_is_sent_when_a_server_stays_unknown_past_the_limit() {
     let dir = tempfile::tempdir().unwrap();
     let mut launch = launch(dir.path(), vec![("FAKE_MCP_STUCK".into(), "1".into())]);

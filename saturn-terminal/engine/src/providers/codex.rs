@@ -180,6 +180,8 @@ pub(crate) struct CodexClient {
     mcp_servers: Vec<String>,
     /// 서버가 모두 준비된 것을 확인했다.
     is_mcp_ready: bool,
+    /// 쓸 수 없던 서버와 이유. 첫 session을 연 뒤 한 번 알리고 비운다.
+    mcp_unavailable: Vec<String>,
     mcp_ready_timeout: Duration,
     /// 바로 돌아와야 하는 요청의 응답을 기다리는 최대 시간.
     reply_timeout: Duration,
@@ -428,6 +430,13 @@ impl ProviderClient for CodexClient {
                 self.release_unchecked_thread(&thread).await;
             }
             return Err(error);
+        }
+        if !self.mcp_unavailable.is_empty() {
+            // session이 열려 engine이 에이전트를 알게 된 뒤에 전달되도록 열기에 성공한 뒤에만 낸다
+            self.own_events.push_back(ProviderEvent::McpUnavailable {
+                agent: spec.agent,
+                reasons: std::mem::take(&mut self.mcp_unavailable),
+            });
         }
         Ok(SessionHandle {
             provider_session: thread,

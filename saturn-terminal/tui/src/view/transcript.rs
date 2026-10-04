@@ -553,6 +553,15 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
             lang.tr(i18n::INTERRUPTED_SUBAGENT_RETURNED)
                 .replace("{provider}", &i18n::provider_title(*provider))
         )],
+        ChatNotice::McpUnavailable { provider, reasons } => {
+            let mut lines = vec![format!(
+                "{prefix}{}",
+                lang.tr(i18n::MCP_UNAVAILABLE)
+                    .replace("{provider}", &i18n::provider_title(*provider))
+            )];
+            lines.extend(reasons.iter().map(|reason| format!("- {reason}")));
+            lines
+        }
         ChatNotice::ResumeSuggested { held } => vec![format!(
             "{} {} · {}",
             held_labels(held),
@@ -771,6 +780,29 @@ mod tests {
         assert_eq!(
             changed.lines(Lang::En, true, false),
             vec!["Permission settings changed · Applies from your next request"]
+        );
+    }
+
+    #[test]
+    fn lines_mcp_unavailable_lists_each_reason() {
+        let cell = TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::McpUnavailable {
+                provider: Provider::from_static("codex"),
+                reasons: vec!["broken failed to start: no such file".to_string()],
+            },
+        };
+
+        assert_eq!(
+            cell.lines(Lang::Ko, true, false),
+            vec![
+                "Codex의 MCP 서버를 쓸 수 없습니다 · 그 서버의 도구만 빠지고 입력은 그대로 보냅니다",
+                "- broken failed to start: no such file",
+            ]
+        );
+        assert_eq!(
+            cell.lines(Lang::En, true, false)[0],
+            "Codex MCP servers unavailable · Only their tools are missing, your input is sent as is"
         );
     }
 

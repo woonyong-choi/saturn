@@ -344,6 +344,34 @@
         },
         {
           "additionalProperties": false,
+          "description": "provider의 MCP 서버를 쓸 수 없다. `reasons`는 서버마다 한 줄이다. 그 서버의 도구만 못 쓰고 입력은 막지 않는다.",
+          "properties": {
+            "McpUnavailable": {
+              "properties": {
+                "provider": {
+                  "$ref": "#/$defs/Provider"
+                },
+                "reasons": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "provider",
+                "reasons"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "McpUnavailable"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "description": "크래시로 끊긴 하위 에이전트의 이벤트가 provider에서 다시 왔다. 채팅의 작업을 바로 멈췄다.",
           "properties": {
             "InterruptedSubagentReturned": {
@@ -4801,6 +4829,34 @@
           },
           "required": [
             "SettingsApplied"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "쓸 수 없는 MCP 서버와 이유(서버마다 한 줄). 첫 session을 연 뒤 한 번 알리고, 기록하지 않는다.",
+          "properties": {
+            "McpUnavailable": {
+              "properties": {
+                "agent": {
+                  "$ref": "#/$defs/AgentId"
+                },
+                "reasons": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "agent",
+                "reasons"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "McpUnavailable"
           ],
           "type": "object"
         }

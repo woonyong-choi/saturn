@@ -3,7 +3,7 @@
 use saturn_core::providers::ProviderError;
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, LedgerSeq};
-use saturn_protocol::rpc::{Notification, PermissionAnswer};
+use saturn_protocol::rpc::{ChatNotice, Notification, PermissionAnswer};
 use saturn_protocol::state::{EffectScope, TaskState};
 
 use super::support::{
@@ -215,6 +215,35 @@ async fn context_size_goes_to_the_screen_with_the_threshold() {
         .await;
     assert_eq!(tokens, Some(1_234));
     assert!(threshold > 1_234);
+}
+
+#[tokio::test]
+async fn unavailable_mcp_servers_reach_the_screen_as_a_chat_notice() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.submit("fix the build").await;
+    let agent = flow.agent();
+    let mut client = flow.client().await;
+
+    flow.claude_event(ProviderEvent::McpUnavailable {
+        agent,
+        reasons: vec!["broken failed to start: spawn error".to_owned()],
+    })
+    .await;
+
+    let (provider, reasons) = client
+        .until(|notification| match notification {
+            Notification::ChatNotice {
+                notice: ChatNotice::McpUnavailable { provider, reasons },
+                ..
+            } => Some((*provider, reasons.clone())),
+            _ => None,
+        })
+        .await;
+    assert_eq!(
+        provider,
+        saturn_protocol::ids::Provider::from_static("claude")
+    );
+    assert_eq!(reasons, vec!["broken failed to start: spawn error"]);
 }
 
 #[tokio::test]

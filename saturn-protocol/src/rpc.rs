@@ -444,6 +444,11 @@ pub enum ChatNotice {
     ResumeSuggested {
         held: Vec<TaskLabel>,
     },
+    /// provider의 MCP 서버를 쓸 수 없다. `reasons`는 서버마다 한 줄이다. 그 서버의 도구만 못 쓰고 입력은 막지 않는다.
+    McpUnavailable {
+        provider: crate::ids::Provider,
+        reasons: Vec<String>,
+    },
     /// 크래시로 끊긴 하위 에이전트의 이벤트가 provider에서 다시 왔다. 채팅의 작업을 바로 멈췄다.
     InterruptedSubagentReturned {
         provider: crate::ids::Provider,

@@ -74,6 +74,7 @@ impl CodexClient {
             skill_paths: HashMap::new(),
             mcp_servers: launch.permission.mcp_servers.clone(),
             is_mcp_ready: false,
+            mcp_unavailable: Vec::new(),
             mcp_ready_timeout: MCP_READY_TIMEOUT,
             reply_timeout: REPLY_TIMEOUT,
             open_reply_timeout: OPEN_REPLY_TIMEOUT,
@@ -197,7 +198,7 @@ impl CodexClient {
     // basis: estimate
     /// 첫 session을 열기 전에 대상 MCP 서버의 시작이 끝날 때까지 `mcpServerStatus/list`로 확인한다.
     /// 시작에 실패한 서버와 제한 시간까지 준비를 알 수 없던 서버는 그 서버의 도구만 쓸 수 없는 것으로 보고
-    /// 이유를 한 줄 남긴 채 통과시킨다. 첫 턴은 막지 않는다. 쓸 수 없는 서버의 도구는 모델이 부르면 승인 요청으로 온다.
+    /// 이유를 로그에 한 줄 남기고 `mcp_unavailable`에 담아 통과시킨다. 첫 턴은 막지 않는다. 쓸 수 없는 서버의 도구는 모델이 부르면 승인 요청으로 온다.
     ///
     /// # Errors
     /// 연결이 끊기면 `ConnectionLost`.
@@ -228,6 +229,7 @@ impl CodexClient {
         for reason in &unavailable {
             tracing::warn!(reason = %reason, "mcp server tools are unavailable, sending the first turn anyway");
         }
+        self.mcp_unavailable = unavailable;
         self.is_mcp_ready = true;
         Ok(())
     }
