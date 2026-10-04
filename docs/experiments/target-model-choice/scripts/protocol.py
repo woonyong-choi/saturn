@@ -115,9 +115,12 @@ def gold_key(value):
 def normalize_choice(value):
     if not isinstance(value, dict):
         return None
-    probabilities = (
-        value.get("answers", {}).get("target_model", {}).get("probabilities")
-    )
+    answers = value.get("answers")
+    if not isinstance(answers, dict) or not isinstance(
+        answers.get("target_model"), dict
+    ):
+        return None
+    probabilities = answers["target_model"].get("probabilities")
     if not isinstance(probabilities, dict) or set(probabilities) != set(OPTIONS):
         return None
     if any(
