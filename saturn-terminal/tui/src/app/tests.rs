@@ -484,6 +484,50 @@ fn task_list_opened_from_a_chat_starts_in_the_chat_folder_scope() {
     assert_eq!(list.scope, crate::view::task_list::FolderScope::Current);
 }
 
+/// 작업 A가 도는 채팅 하나만 있는 작업 목록을 열어 둔다.
+fn open_task_list_at(width: u16) -> App {
+    use crate::view::task_list::ChatGroup;
+    use saturn_protocol::rpc::TaskListItem;
+
+    let mut app = attached();
+    app.screen = Rect::new(0, 0, width, 20);
+    press(&mut app, KeyCode::F(5), KeyModifiers::NONE);
+    let Some(Window::TaskList(list)) = &mut app.window else {
+        panic!("task list should be open");
+    };
+    list.replace(ChatGroup::from_items(vec![TaskListItem {
+        chat: ChatId(7),
+        chat_name: "chat7".to_owned(),
+        group: None,
+        task: Some(TaskId(1)),
+        label: Some(TaskLabel('A')),
+        state: Some(TaskState::Running),
+        needs_permission: false,
+        busy_elsewhere: false,
+        children: 0,
+        folder: None,
+        queued: Vec::new(),
+        model: Some("opus".to_owned()),
+        ended_at_ms: None,
+    }]));
+    app
+}
+
+#[test]
+fn enter_in_the_task_list_shows_the_detail_first_up_to_the_wide_width_and_opens_at_once_beyond() {
+    let mut one_pane = open_task_list_at(crate::view::WIDE_WIDTH);
+    let mut two_panes = open_task_list_at(crate::view::WIDE_WIDTH + 1);
+
+    press(&mut one_pane, KeyCode::Enter, KeyModifiers::NONE);
+    let after_first = one_pane.window.is_some();
+    press(&mut one_pane, KeyCode::Enter, KeyModifiers::NONE);
+    press(&mut two_panes, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert!(after_first);
+    assert!(one_pane.window.is_none());
+    assert!(two_panes.window.is_none());
+}
+
 // #314: 채팅 이동은 연결을 끊지 않고 붙은 채팅만 바꾼다
 #[test]
 fn moving_to_another_chat_only_attaches_without_detaching() {
