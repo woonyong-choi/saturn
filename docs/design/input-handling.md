@@ -303,6 +303,8 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 ## 미해결 질문
 
+- 직전 작업 입력·목표·진행 내용을 state에 추가할 범위와 새 작업 오접합을 줄일 대체 규칙 ([한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md), [#6](https://github.com/woonyong-choi/saturn/issues/6)). 실험은 Claude 기록의 상태 복원과 작업 발췌를 비교했으며 실제 Saturn 실행 중 작업 상태를 수집하는 구현은 검증하지 않았다.
+
 - 허가 거절 뒤 다르게 하라는 입력을 판단 없이 끼워 넣을지, 허가 창에서 받을지, 일반 입력으로 판단할지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
 - 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 보류 입력 하나만 재개할지, 같은 작업의 보류 입력을 함께 재개할지. 같은 작업에 보류 입력이 있을 때 확인 입력이 그 입력보다 앞서야 하는지 ([#90](https://github.com/woonyong-choi/saturn/issues/90))
