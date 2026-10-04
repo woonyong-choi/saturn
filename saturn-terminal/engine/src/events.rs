@@ -421,7 +421,8 @@ impl Engine {
 
     /// 완료 신호 없이 흐름이 끝났다. 관찰이 끊겼으므로 효과 범위를 `Unobserved`로 기록하고, 자동으로 이어 가지 않고
     /// 결과 확인 필요로 둔다. 실행 기록은 열어 둔다.
-    /// TODO(#90): 결과를 모르는 작업을 사용자가 푸는 방법. 지금은 `/continue <작업>`이 확인 입력을 보낸다
+    /// 사용자는 `/continue <작업>`으로 확인 입력을 보내 잇는다. 원래 입력은 `전달 중`으로 두고 다시 보내지 않는다.
+    /// 이미 반영됐을 수 있는 일을 두 번 하지 않기 위해서다.
     async fn on_stream_lost(&mut self, chat: ChatId, live: &LiveSession) {
         self.clear_permissions(live.agent).await;
         self.flow.live.remove(&live.agent);

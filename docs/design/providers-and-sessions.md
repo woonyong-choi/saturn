@@ -146,7 +146,7 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 - 이벤트를 기록하지 못하면 화면에도 상태에도 반영하지 않는다. 화면이 기록에 없는 일을 보이는 것을 막기 위해서다.
 - 진행 중인 실행이 없을 때 메인 에이전트의 글이나 도구 호출이 오면 입력 없이 provider가 시작한 턴으로 보고 입력 없는 새 실행을 기록한다. 사용량, 도구 결과처럼 그 밖의 늦은 이벤트는 가장 나중 실행에 붙인다. 멈춰 보류한 session의 늦은 출력은 새 실행을 만들지 않고 가장 나중 실행에 붙인다. 멈춘 작업이 저절로 이어지는 일을 막기 위해서다.
 - 사용량 보고는 `store`에 사용량 행으로만 쓰고 기록 번호를 받지 않는다. 사용량이 패킷 재료인 기록에 섞이지 않게 하기 위해서다.
-- 흐름이 완료 신호 없이 끊기면(`StreamLost`, 연결 종료) 효과 범위를 `unobserved`로 기록하고, 작업을 `결과 확인 필요`로 보이며, 실행 기록은 열어 두고, 열려 있던 session을 닫힌 것으로 다룬다. 다음 입력 때 보관한 ID로 다시 연다. 사용자에게 묻는 창은 띄우지 않고 그 작업만 확인으로 넘기며, 입력은 자동으로 다시 보내지 않는다([#245](https://github.com/woonyong-choi/saturn/issues/245), [#287](https://github.com/woonyong-choi/saturn/issues/287), [#39](https://github.com/woonyong-choi/saturn/issues/39)).
+- 흐름이 완료 신호 없이 끊기면(`StreamLost`, 연결 종료) 효과 범위를 `unobserved`로 기록하고, 작업을 `결과 확인 필요`로 보이며, 실행 기록은 열어 두고, 열려 있던 session을 닫힌 것으로 다룬다. 다음 입력 때 보관한 ID로 다시 연다. 사용자에게 묻는 창은 띄우지 않고 그 작업만 확인으로 넘기며, 입력은 자동으로 다시 보내지 않는다. 사용자는 `/continue <작업>`으로 확인 입력을 보내 잇고, 원래 입력은 `전달 중`으로 남겨 다시 보내지 않는다. 이미 반영됐을 수 있는 일을 두 번 하지 않기 위해서다([#245](https://github.com/woonyong-choi/saturn/issues/245), [#287](https://github.com/woonyong-choi/saturn/issues/287), [#39](https://github.com/woonyong-choi/saturn/issues/39)).
 - Claude의 `result`는 `is_error`가 참이거나 `subtype`이 `success`가 아니면 오류 결과라 `TurnCompleted`로 올리지 않는다. 사용량과 맥락 크기를 올린 뒤 완료 신호 없이 끊긴 흐름과 같게 `StreamLost`로 올려 작업을 `결과 확인 필요`로 두고 자동으로 다시 보내지 않는다. 턴이 이미 돌았을 수 있어 보내지 않음이 확정이 아니기 때문이다. 맥락 초과(`terminal_reason`이 `prompt_too_long`)도 같고, 공통 오류 `ContextExceeded`는 보내지 않음이 확정일 때만 쓰므로 여기에 쓰지 않는다. 멈춤 요청 뒤에 온 결과는 오류 모양이어도 요청한 완료로 본다. 오류 결과 뒤 같은 session을 다시 열 때 아직 남은 이전 프로세스는 먼저 닫는다. 오류 결과의 모양은 Claude Code 2.1.288 설치본에서 읽었고 실제 호출로 재지 않았다([#328](https://github.com/woonyong-choi/saturn/issues/328)).
 - 허가 요청은 TUI에 올리고 답을 기다리는 동안 작업을 `허가 기다림`으로 보인다. 답이 오기 전에 턴이 끝나거나 흐름이 끊기면 그 창을 모든 TUI에서 지운다. 더는 답할 수 없는 요청을 남기지 않기 위해서다.
 
@@ -432,4 +432,3 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 - router 상태에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))
 - 수정 파일 목록을 실행 경계의 파일 상태 차이로 계산할지, provider 이벤트로 계산할지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))
 - 패킷 고정 구역의 "현재 목표"와 "끝나지 않은 항목"을 무엇으로 뽑을지. 정해지기 전에는 목표는 마지막 입력이고 제약은 빈 목록이며 끝나지 않은 항목은 결과가 없는 도구 호출이다 ([#90](https://github.com/woonyong-choi/saturn/issues/90))
-- 보낸 뒤 결과를 모르는 작업을 사용자가 푸는 방법. 지금은 `/continue <작업>`이 중단 결과를 붙인 새 입력을 보내고 원래 입력은 `전달 중`으로 둔다 ([#90](https://github.com/woonyong-choi/saturn/issues/90))
