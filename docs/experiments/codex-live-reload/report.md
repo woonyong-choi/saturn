@@ -26,7 +26,7 @@ app-server stdout은 기존 실험과 같은 비차단 byte read와 줄 큐를 �
 | `approval_policy="untrusted"`를 config에서 제거하고 `thread/start.approvalPolicy`로 이동 | 수집 중 | Codex 0.158.0이 config의 해당 키를 “no longer supported”로 거부했지만 app-server schema와 thread 응답은 `untrusted`를 지원했다 | Saturn 조건을 유지한 유효 execpolicy 수집을 가능하게 했다 |
 | 첫 질문 수집을 raw에 보존하고 driver 수정 뒤 같은 trial id로 재수집 | 수집 중 | 첫 driver가 `threadId`를 enablement 요청에 넣었고 질문 답 구조도 잘못 보내 실제 off 결과를 검증할 수 없었다 | 첫 raw는 실패 흐름으로 남기고 최신 raw를 정규화에 사용했다 |
 | 초기 설계에 없던 `꺼짐 시작 → 켜짐` 역방향을 3회 추가 | 수집 중 | 사용자가 요구한 반대 방향을 별도로 확인하기 위해 추가했다 | 역방향도 실행 중 토글 효과가 없다는 결과를 얻었다 |
-| Codex 호출 상한을 4회 초과 | 수집 중 | driver 수정 재수집과 역방향 추가가 필요했다 | 실제 누적 54회에서 provider 수집을 중단했고, 초과를 결과에 명시한다 |
+| Codex 호출 상한 50회를 4회 초과(54회) | 수집 중 | driver 수정 재수집과 역방향 추가가 필요했다 | 실제 누적 54회에서 provider 수집을 중단했고, 초과를 결과에 명시한다. 상한에 닿으면 멈추는 사전 중단 규칙을 지키지 못한 점은 한계 절에 적었다 |
 
 ## 결과
 
@@ -41,7 +41,7 @@ app-server stdout은 기존 실험과 같은 비차단 byte read와 줄 큐를 �
 | execpolicy 유효 행동 상태 | 21 |
 | schema inventory만 수집 | 2 |
 | 분석 | 39 trial 행 |
-| 호출 상한 초과 | 4회 |
+| 호출 상한 50회 초과(실제 54회) | 4회 |
 
 초기 실패 3회는 제외하지 않았고 `codex.execpolicy.start`의 `확인 못 함` 흐름으로 남겼다. 결과 판정은 수정된 driver의 유효 trial을 사용했다.
 
@@ -80,7 +80,7 @@ schema inventory에는 `config/batchWrite`와 `config/read`가 있었고, 규칙
 
 ### 한계
 
-- 사용자가 지정한 Codex model call cap 50회를 driver turn-start 기준 4회 초과했다. 이후 provider 호출은 하지 않았다.
+- 사용자가 지정한 Codex model call cap 50회를 driver turn-start 기준 4회 초과해 54회가 되었다. 상한에 닿기 전에 멈춘다는 사전 중단 규칙을 지키지 못했고, 이후 provider 호출은 하지 않았다.
 - 모델의 실제 내부 API 호출 수가 app-server stdout에 별도 usage event로 노출되지 않아, 호출 수는 driver가 보낸 `turn/start` 요청 수로 정의했다.
 - 별도 규칙 reload RPC가 schema에 없었으므로 해당 경로는 `확인 못 함`이 아니라 “발견되지 않아 실행하지 못함”으로 기록했다.
 

@@ -64,7 +64,30 @@ def paired_binary(rows: list[dict], left: str, right: str) -> dict:
     c = sum(values[left] == 0 and values[right] == 1 for values in usable)
     return {"left": left, "right": right, "left_k": lk, "right_k": rk, "n": len(usable),
             "left_rate": lk / len(usable) if usable else None, "right_rate": rk / len(usable) if usable else None,
-            "difference": (lk - rk) / len(usable) if usable else None, "ci95": ci, "b": b, "c": c}
+            "difference": (lk - rk) / len(usable) if usable else None, "ci95": ci, "b": b, "c": c, "mcnemar_exact_p": exact_sign_p(b, c)}
+
+
+def exact_sign_p(b: int, c: int) -> float:
+    """McNemar 정확 검정과 같은 양측 이항 검정(p=0.5)."""
+    n = b + c
+    if not n:
+        return 1.0
+    tail = sum(math.comb(n, i) for i in range(min(b, c) + 1)) / 2 ** n
+    return min(1.0, 2 * tail)
+
+
+def paired_exp2(rows: list[dict], measure: str) -> dict:
+    """provider와 반복 번호가 같은 두 조건의 시행을 짝지어 차이를 센다(state-warning - no-warning)."""
+    pair = defaultdict(dict)
+    for row in rows:
+        pair[(row["provider"], row["trial_id"].rsplit("-", 1)[1])][row["condition"]] = int(row[measure])
+    usable = {key: values for key, values in pair.items() if "state-warning" in values and "no-warning" in values}
+    diffs = {"|".join(key): values["state-warning"] - values["no-warning"] for key, values in usable.items()}
+    b = sum(value == 1 for value in diffs.values())
+    c = sum(value == -1 for value in diffs.values())
+    n = len(diffs)
+    return {"n": n, "difference": sum(diffs.values()) / n if n else None,
+            "ci95": bootstrap(diffs, {key: key for key in diffs}), "b": b, "c": c, "exact_p": exact_sign_p(b, c)}
 
 
 def token_summary(rows: list[dict]) -> dict:
@@ -126,6 +149,7 @@ def main():
     exp3_calls = [{"provider": provider, "trial_id": trial_id}
                   for provider, trial_id in sorted({(r["provider"], r["trial_id"]) for r in requests})]
     summary = {"seed": SEED, "bootstrap_reps": BOOTSTRAP,
+               "holm": {"performed": False, "reason": "H2는 구간 기준만 사전 등록했고 p값이 없어 H1~H3 세 검정의 보정을 만들 수 없다. 위 p값은 보정 전 값이다."},
                "provider_calls": provider_calls(trials, exp2, exp3_calls, stops),
                "provider_calls_by_experiment": {
                    "exp1": calls_by_provider(trials),
@@ -137,7 +161,8 @@ def main():
                "exp1": {"accuracy": accuracy, "comparison": comparison, "tokens": token_summary(trials),
                         "manipulation_check": manipulation_checks(trials)},
                "exp2": {"state_checked_first": {condition: proportion(exp2, "state_checked_first", condition) for condition in ("no-warning", "state-warning")},
-                        "duplicate_touch": {condition: proportion(exp2, "duplicate_touch", condition) for condition in ("no-warning", "state-warning")}},
+                        "duplicate_touch": {condition: proportion(exp2, "duplicate_touch", condition) for condition in ("no-warning", "state-warning")},
+                        "paired": {measure: paired_exp2(exp2, measure) for measure in ("state_checked_first", "duplicate_touch")}},
                "exp3": {"requests": requests, "by_method": {method: proportion([r for r in requests if r["request_method"] == method], "round_trip") for method in sorted({r["request_method"] for r in requests})}},
                "exp4": {"stops": stops, "by_provider_kind": {f"{provider}-{kind}": [r for r in stops if r["provider"] == provider and r["stop_kind"] == kind]
                                                     for provider in ("claude", "codex") for kind in ("interrupt", "force-kill")}}}
