@@ -247,5 +247,6 @@
   "model_calls": {
     "claude": 0,
     "codex": 12
-  }
+  },
+  "superseded_runs": {}
 }

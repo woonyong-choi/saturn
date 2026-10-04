@@ -82,8 +82,19 @@ def condition_result(condition: str, values: list[dict]) -> dict:
 
 def analyze() -> dict:
     grouped = defaultdict(list)
-    for value in rows():
-        grouped[value["condition"]].append(value)
+    all_rows = rows()
+    # 같은 조건을 다시 수집한 실행이 있으면 그 실행의 행만 분석하고, 앞 실행은 따로 적는다.
+    latest = {}
+    for value in all_rows:
+        latest[value["condition"]] = max(
+            latest.get(value["condition"], ""), value["run_id"]
+        )
+    superseded = defaultdict(list)
+    for value in all_rows:
+        if value["run_id"] == latest[value["condition"]]:
+            grouped[value["condition"]].append(value)
+        else:
+            superseded[value["condition"]].append(value)
     condition_results = [
         condition_result(condition, grouped[condition]) for condition in sorted(grouped)
     ]
@@ -112,6 +123,15 @@ def analyze() -> dict:
         "conditions": condition_results,
         "hypotheses": hypotheses,
         "exploratory": exploratory,
+        "superseded_runs": {
+            condition: {
+                "run_id": values[0]["run_id"],
+                "n": len(values),
+                "marker_start_counts": [v.get("marker_start_count") for v in values],
+                "request_results": [v.get("request_result") for v in values],
+            }
+            for condition, values in sorted(superseded.items())
+        },
         "model_calls": environment.get("model_calls", {}),
     }
 
