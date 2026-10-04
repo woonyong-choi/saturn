@@ -1,0 +1,1487 @@
+{
+  "claude_turns": 72,
+  "event_census": {
+    "assistant/None": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "eff_flag",
+        "eff_mode_change",
+        "hk_sub_bg",
+        "hk_sub_fg",
+        "hk_sub_nested",
+        "kc_hook_direct",
+        "kc_hook_shc",
+        "kc_nohook",
+        "kc_sub_nohook",
+        "plain_two_turn",
+        "slash_compact",
+        "slash_context",
+        "slash_custom_bash",
+        "slash_unknown",
+        "sub_bg",
+        "sub_fg"
+      ],
+      "count": 354,
+      "keys": [
+        "context_usage",
+        "local_command_run",
+        "local_command_source",
+        "message",
+        "parent_tool_use_id",
+        "request_id",
+        "session_id",
+        "subagent_type",
+        "task_description",
+        "thinking_duration_ms",
+        "timestamp",
+        "type",
+        "uuid",
+        "wire_tool_inputs"
+      ]
+    },
+    "control_request/None": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "hk_sub_bg",
+        "hk_sub_fg",
+        "hk_sub_nested",
+        "kc_hook_shc",
+        "kc_nohook",
+        "kc_sub_nohook",
+        "slash_custom_bash",
+        "sub_bg",
+        "sub_fg"
+      ],
+      "count": 63,
+      "keys": [
+        "request",
+        "request_id",
+        "type"
+      ]
+    },
+    "control_response/success": {
+      "conditions": [
+        "bg_interrupt",
+        "eff_flag",
+        "eff_mode_change"
+      ],
+      "count": 21,
+      "keys": [
+        "response",
+        "type"
+      ]
+    },
+    "rate_limit_event/None": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "eff_flag",
+        "eff_mode_change",
+        "hk_sub_bg",
+        "hk_sub_fg",
+        "hk_sub_nested",
+        "kc_hook_direct",
+        "kc_hook_shc",
+        "kc_nohook",
+        "kc_sub_nohook",
+        "plain_two_turn",
+        "slash_compact",
+        "slash_custom_bash",
+        "slash_unknown",
+        "sub_bg",
+        "sub_fg"
+      ],
+      "count": 60,
+      "keys": [
+        "rate_limit_info",
+        "session_id",
+        "type",
+        "uuid"
+      ]
+    },
+    "result/error_during_execution": {
+      "conditions": [
+        "bg_interrupt"
+      ],
+      "count": 1,
+      "keys": [
+        "duration_api_ms",
+        "duration_ms",
+        "errors",
+        "fast_mode_disabled_reason",
+        "fast_mode_state",
+        "is_error",
+        "modelUsage",
+        "num_turns",
+        "origin",
+        "permission_denials",
+        "queued_turn_count",
+        "result_index",
+        "session_id",
+        "stop_reason",
+        "subagent_stats",
+        "subtype",
+        "terminal_reason",
+        "total_cost_usd",
+        "type",
+        "usage",
+        "uuid"
+      ]
+    },
+    "result/success": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "eff_flag",
+        "eff_mode_change",
+        "hk_sub_bg",
+        "hk_sub_fg",
+        "hk_sub_nested",
+        "json_sub_fg",
+        "kc_hook_direct",
+        "kc_hook_shc",
+        "kc_nohook",
+        "kc_sub_nohook",
+        "plain_two_turn",
+        "slash_compact",
+        "slash_context",
+        "slash_custom_bash",
+        "slash_unknown",
+        "sub_bg",
+        "sub_fg"
+      ],
+      "count": 88,
+      "keys": [
+        "api_error_status",
+        "duration_api_ms",
+        "duration_ms",
+        "fast_mode_disabled_reason",
+        "fast_mode_state",
+        "first_content_frame_ms",
+        "is_error",
+        "local_command",
+        "modelUsage",
+        "num_turns",
+        "origin",
+        "permission_denials",
+        "queued_turn_count",
+        "result",
+        "result_index",
+        "session_id",
+        "stop_reason",
+        "subagent_stats",
+        "subtype",
+        "terminal_reason",
+        "time_to_request_ms",
+        "total_cost_usd",
+        "ttft_ms",
+        "ttft_stream_ms",
+        "type",
+        "usage",
+        "uuid"
+      ]
+    },
+    "system/background_tasks_changed": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "eff_mode_change",
+        "hk_sub_bg",
+        "hk_sub_nested",
+        "sub_bg"
+      ],
+      "count": 74,
+      "keys": [
+        "session_id",
+        "subtype",
+        "tasks",
+        "type",
+        "uuid"
+      ]
+    },
+    "system/compact_boundary": {
+      "conditions": [
+        "slash_compact"
+      ],
+      "count": 3,
+      "keys": [
+        "compact_metadata",
+        "logical_parent_uuid",
+        "session_id",
+        "subtype",
+        "type",
+        "uuid"
+      ]
+    },
+    "system/init": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "eff_flag",
+        "eff_mode_change",
+        "hk_sub_bg",
+        "hk_sub_fg",
+        "hk_sub_nested",
+        "kc_hook_direct",
+        "kc_hook_shc",
+        "kc_nohook",
+        "kc_sub_nohook",
+        "plain_two_turn",
+        "slash_compact",
+        "slash_context",
+        "slash_custom_bash",
+        "slash_unknown",
+        "sub_bg",
+        "sub_fg"
+      ],
+      "count": 88,
+      "keys": [
+        "agents",
+        "analytics_disabled",
+        "apiKeySource",
+        "capabilities",
+        "claude_code_version",
+        "cwd",
+        "fast_mode_disabled_reason",
+        "fast_mode_state",
+        "mcp_servers",
+        "memory_paths",
+        "messaging_socket_path",
+        "model",
+        "output_style",
+        "per_turn_effort_active",
+        "permissionMode",
+        "plugins",
+        "product_feedback_disabled",
+        "session_id",
+        "skills",
+        "slash_commands",
+        "subtype",
+        "terminal_slash_commands",
+        "tools",
+        "type",
+        "uuid",
+        "view_mode"
+      ]
+    },
+    "system/status": {
+      "conditions": [
+        "eff_mode_change",
+        "slash_compact"
+      ],
+      "count": 9,
+      "keys": [
+        "compact_result",
+        "permissionMode",
+        "session_id",
+        "status",
+        "subtype",
+        "type",
+        "uuid"
+      ]
+    },
+    "system/task_notification": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "hk_sub_bg",
+        "hk_sub_fg",
+        "hk_sub_nested",
+        "kc_sub_nohook",
+        "sub_bg",
+        "sub_fg"
+      ],
+      "count": 51,
+      "keys": [
+        "output_file",
+        "session_id",
+        "status",
+        "subtype",
+        "summary",
+        "task_id",
+        "tool_use_id",
+        "type",
+        "usage",
+        "uuid"
+      ]
+    },
+    "system/task_progress": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "hk_sub_bg",
+        "hk_sub_fg",
+        "hk_sub_nested",
+        "kc_sub_nohook",
+        "sub_bg",
+        "sub_fg"
+      ],
+      "count": 41,
+      "keys": [
+        "description",
+        "last_tool_name",
+        "session_id",
+        "subagent_type",
+        "subtype",
+        "task_id",
+        "tool_use_id",
+        "type",
+        "usage",
+        "uuid"
+      ]
+    },
+    "system/task_started": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "hk_sub_bg",
+        "hk_sub_fg",
+        "hk_sub_nested",
+        "kc_sub_nohook",
+        "sub_bg",
+        "sub_fg"
+      ],
+      "count": 52,
+      "keys": [
+        "description",
+        "is_backgrounded",
+        "owned_by_subagent",
+        "prompt",
+        "session_id",
+        "spawn_depth",
+        "subagent_type",
+        "subtype",
+        "task_id",
+        "task_type",
+        "tool_use_id",
+        "type",
+        "uuid"
+      ]
+    },
+    "system/task_updated": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "hk_sub_bg",
+        "hk_sub_fg",
+        "hk_sub_nested",
+        "kc_sub_nohook",
+        "sub_bg",
+        "sub_fg"
+      ],
+      "count": 50,
+      "keys": [
+        "patch",
+        "session_id",
+        "subtype",
+        "task_id",
+        "type",
+        "uuid"
+      ]
+    },
+    "system/thinking_tokens": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "hk_sub_bg",
+        "hk_sub_fg",
+        "hk_sub_nested",
+        "kc_hook_direct",
+        "kc_hook_shc",
+        "kc_nohook",
+        "kc_sub_nohook",
+        "slash_custom_bash",
+        "slash_unknown",
+        "sub_bg",
+        "sub_fg"
+      ],
+      "count": 162,
+      "keys": [
+        "estimated_tokens",
+        "estimated_tokens_delta",
+        "session_id",
+        "subtype",
+        "type",
+        "uuid"
+      ]
+    },
+    "user/None": {
+      "conditions": [
+        "bg_close_stdin",
+        "bg_interrupt",
+        "bg_none",
+        "bg_sigterm_leader",
+        "hk_sub_bg",
+        "hk_sub_fg",
+        "hk_sub_nested",
+        "kc_hook_direct",
+        "kc_hook_shc",
+        "kc_nohook",
+        "kc_sub_nohook",
+        "slash_compact",
+        "slash_custom_bash",
+        "sub_bg",
+        "sub_fg"
+      ],
+      "count": 102,
+      "keys": [
+        "isReplay",
+        "isSynthetic",
+        "message",
+        "parent_tool_use_id",
+        "session_id",
+        "subagent_type",
+        "task_description",
+        "timestamp",
+        "tool_result_meta",
+        "tool_use_result",
+        "type",
+        "uuid"
+      ]
+    }
+  },
+  "exploratory": {
+    "bg_none_marker_at_s": [
+      36.541,
+      38.716,
+      38.56
+    ],
+    "bg_none_results": [
+      3,
+      3,
+      3
+    ],
+    "bg_stop_results": {
+      "bg_close_stdin": [
+        [
+          "1",
+          "completed",
+          "completed",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "completed",
+          "completed",
+          "0",
+          "0"
+        ],
+        [
+          "3",
+          "completed",
+          "completed",
+          "0",
+          "0"
+        ]
+      ],
+      "bg_interrupt": [
+        [
+          "1",
+          "completed",
+          "",
+          "0",
+          ""
+        ],
+        [
+          "2",
+          "completed",
+          "aborted_streaming",
+          "0",
+          "1"
+        ],
+        [
+          "3",
+          "completed",
+          "",
+          "0",
+          ""
+        ]
+      ],
+      "bg_none": [
+        [
+          "1",
+          "completed",
+          "completed",
+          "0",
+          "0"
+        ],
+        [
+          "2",
+          "completed",
+          "completed",
+          "0",
+          "0"
+        ],
+        [
+          "3",
+          "completed",
+          "completed",
+          "0",
+          "0"
+        ]
+      ],
+      "bg_sigterm_leader": [
+        [
+          "1",
+          "completed",
+          "",
+          "0",
+          ""
+        ],
+        [
+          "2",
+          "completed",
+          "",
+          "0",
+          ""
+        ],
+        [
+          "3",
+          "completed",
+          "",
+          "0",
+          ""
+        ]
+      ]
+    },
+    "hook_input_keys": [
+      "agent_id",
+      "agent_type",
+      "cwd",
+      "hook_event_name",
+      "permission_mode",
+      "prompt_id",
+      "session_id",
+      "tool_input",
+      "tool_name",
+      "tool_use_id",
+      "transcript_path"
+    ],
+    "modelusage_equal_cumulative_usage": {
+      "json_sub_fg": {
+        "k": 0,
+        "n": 3
+      },
+      "plain_two_turn": {
+        "k": 6,
+        "n": 6
+      },
+      "sub_bg": {
+        "k": 3,
+        "n": 6
+      },
+      "sub_fg": {
+        "k": 0,
+        "n": 3
+      }
+    },
+    "modelusage_exceeds_cumulative_usage_input3": {
+      "json_sub_fg": {
+        "k": 3,
+        "n": 3
+      },
+      "plain_two_turn": {
+        "k": 0,
+        "n": 6
+      },
+      "sub_bg": {
+        "k": 3,
+        "n": 6
+      },
+      "sub_fg": {
+        "k": 3,
+        "n": 3
+      }
+    },
+    "nested_created_hk_sub_nested": 3,
+    "nested_inner_bash_denied_by_hook": 3,
+    "nested_inner_bash_visible_in_stream": 1,
+    "sandbox_in_control_response": 3,
+    "sandbox_in_init": 0,
+    "second_result_origin_task_notification": {
+      "k": 6,
+      "n": 6
+    },
+    "slash_unknown_result_is_error": [
+      "False",
+      "False",
+      "False"
+    ],
+    "status_event_with_permission_mode_trials": {
+      "eff_mode_change": 3
+    },
+    "stop_alive_3s_after": {
+      "bg_close_stdin": [
+        2,
+        2,
+        2
+      ],
+      "bg_interrupt": [
+        0,
+        0,
+        0
+      ],
+      "bg_sigterm_leader": [
+        0,
+        0,
+        0
+      ]
+    },
+    "stop_exit_code": {
+      "bg_close_stdin": [
+        "0",
+        "0",
+        "0"
+      ],
+      "bg_interrupt": [
+        null,
+        null,
+        null
+      ],
+      "bg_sigterm_leader": [
+        "143",
+        "143",
+        "143"
+      ]
+    },
+    "stop_exit_delay_s": {
+      "bg_close_stdin": [
+        8.7,
+        9.6,
+        7.8
+      ],
+      "bg_interrupt": [
+        null,
+        null,
+        null
+      ],
+      "bg_sigterm_leader": [
+        0.8,
+        1.0,
+        0.8
+      ]
+    },
+    "sub_bg_times_s": [
+      {
+        "agent_tool_result": 4.258,
+        "first_result": 5.303,
+        "marker": 21.934,
+        "second_result": 26.228
+      },
+      {
+        "agent_tool_result": 4.36,
+        "first_result": 5.552,
+        "marker": 21.114,
+        "second_result": 26.14
+      },
+      {
+        "agent_tool_result": 3.718,
+        "first_result": 5.249,
+        "marker": 26.269,
+        "second_result": 18.15
+      }
+    ],
+    "sub_fg_sub_events": [
+      3,
+      3,
+      3
+    ],
+    "usage_input3_equal_cumulative_main_result2": {
+      "plain_two_turn": {
+        "k": 0,
+        "n": 3
+      },
+      "sub_bg": {
+        "k": 0,
+        "n": 3
+      }
+    },
+    "usage_input3_equal_main": {
+      "plain_two_turn": {
+        "k": 6,
+        "n": 6
+      },
+      "sub_bg": {
+        "k": 6,
+        "n": 6
+      },
+      "sub_fg": {
+        "k": 3,
+        "n": 3
+      }
+    },
+    "usage_input3_equal_tree": {
+      "sub_bg": {
+        "k": 3,
+        "n": 6
+      },
+      "sub_fg": {
+        "k": 0,
+        "n": 3
+      }
+    }
+  },
+  "hypotheses": {
+    "H17-1": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "sub_fg"
+      ],
+      "fail": 0,
+      "issue": 17,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "sub_fg": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H17-2": {
+      "ci95_percent": [
+        54.1,
+        100.0
+      ],
+      "conditions": [
+        "sub_fg",
+        "sub_bg"
+      ],
+      "fail": 0,
+      "issue": 17,
+      "k": 6,
+      "n": 6,
+      "pass": 6,
+      "per_trial": {
+        "sub_bg": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "sub_fg": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H17-3": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "sub_bg"
+      ],
+      "fail": 0,
+      "issue": 17,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "sub_bg": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H17-4": {
+      "ci95_percent": [
+        9.4,
+        99.2
+      ],
+      "conditions": [
+        "sub_bg"
+      ],
+      "fail": 1,
+      "issue": 17,
+      "k": 2,
+      "n": 3,
+      "pass": 2,
+      "per_trial": {
+        "sub_bg": [
+          "pass",
+          "pass",
+          "fail"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "기각"
+    },
+    "H18-1": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "bg_none"
+      ],
+      "fail": 0,
+      "issue": 18,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "bg_none": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H18-2": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "bg_interrupt"
+      ],
+      "fail": 0,
+      "issue": 18,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "bg_interrupt": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H18-3": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "bg_close_stdin"
+      ],
+      "fail": 0,
+      "issue": 18,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "bg_close_stdin": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H18-4": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "bg_sigterm_leader"
+      ],
+      "fail": 0,
+      "issue": 18,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "bg_sigterm_leader": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H19-1": {
+      "ci95_percent": [
+        0.0,
+        70.8
+      ],
+      "conditions": [
+        "plain_two_turn"
+      ],
+      "fail": 3,
+      "issue": 19,
+      "k": 0,
+      "n": 3,
+      "pass": 0,
+      "per_trial": {
+        "plain_two_turn": [
+          "fail",
+          "fail",
+          "fail"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "기각"
+    },
+    "H19-2": {
+      "ci95_percent": [
+        0.0,
+        70.8
+      ],
+      "conditions": [
+        "sub_fg"
+      ],
+      "fail": 3,
+      "issue": 19,
+      "k": 0,
+      "n": 3,
+      "pass": 0,
+      "per_trial": {
+        "sub_fg": [
+          "fail",
+          "fail",
+          "fail"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "기각"
+    },
+    "H19-3": {
+      "ci95_percent": [
+        0.0,
+        70.8
+      ],
+      "conditions": [
+        "sub_bg"
+      ],
+      "fail": 3,
+      "issue": 19,
+      "k": 0,
+      "n": 3,
+      "pass": 0,
+      "per_trial": {
+        "sub_bg": [
+          "fail",
+          "fail",
+          "fail"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "기각"
+    },
+    "H19-4": {
+      "ci95_percent": [
+        0.0,
+        70.8
+      ],
+      "conditions": [
+        "json_sub_fg"
+      ],
+      "fail": 3,
+      "issue": 19,
+      "k": 0,
+      "n": 3,
+      "pass": 0,
+      "per_trial": {
+        "json_sub_fg": [
+          "fail",
+          "fail",
+          "fail"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "기각"
+    },
+    "H23-0": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "kc_sub_nohook"
+      ],
+      "fail": 0,
+      "issue": 23,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "kc_sub_nohook": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H23-1": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "hk_sub_fg"
+      ],
+      "fail": 0,
+      "issue": 23,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "hk_sub_fg": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H23-2": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "hk_sub_bg"
+      ],
+      "fail": 0,
+      "issue": 23,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "hk_sub_bg": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H23-3": {
+      "ci95_percent": [
+        0.8,
+        90.6
+      ],
+      "conditions": [
+        "hk_sub_nested"
+      ],
+      "fail": 0,
+      "issue": 23,
+      "k": 1,
+      "n": 3,
+      "pass": 1,
+      "per_trial": {
+        "hk_sub_nested": [
+          "pass",
+          "unobserved",
+          "unobserved"
+        ]
+      },
+      "unobserved": 2,
+      "verdict": "보류"
+    },
+    "H26-1": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "slash_custom_bash"
+      ],
+      "fail": 0,
+      "issue": 26,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "slash_custom_bash": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H26-2": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "slash_context"
+      ],
+      "fail": 0,
+      "issue": 26,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "slash_context": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H26-3": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "slash_compact"
+      ],
+      "fail": 0,
+      "issue": 26,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "slash_compact": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H26-4": {
+      "ci95_percent": [
+        0.0,
+        70.8
+      ],
+      "conditions": [
+        "slash_unknown"
+      ],
+      "fail": 3,
+      "issue": 26,
+      "k": 0,
+      "n": 3,
+      "pass": 0,
+      "per_trial": {
+        "slash_unknown": [
+          "fail",
+          "fail",
+          "fail"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "기각"
+    },
+    "H3-0": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "kc_nohook"
+      ],
+      "fail": 0,
+      "issue": 3,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "kc_nohook": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H3-1": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "kc_hook_direct"
+      ],
+      "fail": 0,
+      "issue": 3,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "kc_hook_direct": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H3-2": {
+      "ci95_percent": [
+        0.0,
+        70.8
+      ],
+      "conditions": [
+        "kc_hook_shc"
+      ],
+      "fail": 3,
+      "issue": 3,
+      "k": 0,
+      "n": 3,
+      "pass": 0,
+      "per_trial": {
+        "kc_hook_shc": [
+          "fail",
+          "fail",
+          "fail"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "기각"
+    },
+    "H4-1a": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "eff_flag"
+      ],
+      "fail": 0,
+      "issue": 4,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "eff_flag": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H4-1b": {
+      "ci95_percent": [
+        93.7,
+        100.0
+      ],
+      "conditions": [
+        "sub_fg",
+        "sub_bg",
+        "plain_two_turn",
+        "bg_none",
+        "bg_interrupt",
+        "bg_close_stdin",
+        "bg_sigterm_leader",
+        "kc_sub_nohook",
+        "hk_sub_fg",
+        "hk_sub_bg",
+        "hk_sub_nested",
+        "kc_nohook",
+        "kc_hook_direct",
+        "kc_hook_shc",
+        "slash_context",
+        "slash_custom_bash",
+        "slash_unknown",
+        "slash_compact",
+        "eff_mode_change"
+      ],
+      "fail": 0,
+      "issue": 4,
+      "k": 57,
+      "n": 57,
+      "pass": 57,
+      "per_trial": {
+        "bg_close_stdin": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "bg_interrupt": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "bg_none": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "bg_sigterm_leader": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "eff_mode_change": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "hk_sub_bg": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "hk_sub_fg": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "hk_sub_nested": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "kc_hook_direct": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "kc_hook_shc": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "kc_nohook": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "kc_sub_nohook": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "plain_two_turn": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "slash_compact": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "slash_context": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "slash_custom_bash": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "slash_unknown": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "sub_bg": [
+          "pass",
+          "pass",
+          "pass"
+        ],
+        "sub_fg": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H4-2": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "eff_flag"
+      ],
+      "fail": 0,
+      "issue": 4,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "eff_flag": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    },
+    "H4-3": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "conditions": [
+        "eff_mode_change"
+      ],
+      "fail": 0,
+      "issue": 4,
+      "k": 3,
+      "n": 3,
+      "pass": 3,
+      "per_trial": {
+        "eff_mode_change": [
+          "pass",
+          "pass",
+          "pass"
+        ]
+      },
+      "unobserved": 0,
+      "verdict": "채택"
+    }
+  },
+  "trials": 63
+}

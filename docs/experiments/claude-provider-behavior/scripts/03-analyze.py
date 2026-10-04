@@ -239,6 +239,19 @@ def census() -> dict:
             for k, v in sorted(kinds.items())}
 
 
+def status_mode_events() -> dict:
+    """`system/status`가 `permissionMode`를 싣고 온 회차 수(탐색용). raw를 직접 읽는다."""
+    seen: dict = defaultdict(int)
+    for path in sorted((ROOT / "data" / "raw").glob("claude-*.jsonl")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            if row.get("kind") == "trial" and any(
+                    e.get("type") == "system" and e.get("subtype") == "status" and e.get("permissionMode")
+                    for e in row["events"]):
+                seen[row["condition"]] += 1
+    return dict(sorted(seen.items()))
+
+
 def main() -> int:
     rows = list(csv.DictReader((ROOT / "data" / "processed" / "metrics.csv").open(encoding="utf-8")))
     by = defaultdict(list)
@@ -270,7 +283,48 @@ def main() -> int:
                         "eq_cum_main": r[f"r{k}_eq_cum_main"], "eq_cum_tree": r[f"r{k}_eq_cum_tree"],
                         "models": r[f"r{k}_models"], "modelusage_eq_usage": r[f"r{k}_modelusage_eq_usage"],
                         "cost": r[f"r{k}_cost"]})
-    summary = {"trials": len(rows), "claude_turns": calls, "hypotheses": hypotheses, "event_census": census()}
+    def count(conditions, field, value="True", k=None):
+        ks = (1, 2) if k is None else (k,)
+        picked = [r.get(f"r{x}_{field}") if field[0] != "_" else None for r in rows if r["condition"] in conditions
+                  for x in ks if r.get(f"r{x}_usage_out", "") != ""]
+        return {"k": sum(1 for v in picked if v == value), "n": len(picked)}
+
+    exploratory = {
+        "usage_input3_equal_main": {c: count([c], "eq_main3") for c in ("plain_two_turn", "sub_fg", "sub_bg")},
+        "usage_input3_equal_tree": {c: count([c], "eq_tree3") for c in ("sub_fg", "sub_bg")},
+        "usage_input3_equal_cumulative_main_result2": {c: count([c], "eq_cum_main3", k=2)
+                                                       for c in ("plain_two_turn", "sub_bg")},
+        "modelusage_equal_cumulative_usage": {c: count([c], "mu_eq_cum_usage")
+                                              for c in ("plain_two_turn", "sub_fg", "sub_bg", "json_sub_fg")},
+        "modelusage_exceeds_cumulative_usage_input3": {c: count([c], "mu_gt_cum_usage3")
+                                                       for c in ("plain_two_turn", "sub_fg", "sub_bg", "json_sub_fg")},
+        "second_result_origin_task_notification": count(["sub_bg", "bg_none"], "origin", "task-notification", k=2),
+        "sandbox_in_init": sum(1 for r in rows if b(r["sandbox_in_init"])),
+        "sandbox_in_control_response": sum(1 for r in rows if b(r["sandbox_in_control"])),
+        "nested_created_hk_sub_nested": sum(1 for r in by["hk_sub_nested"] if b(r["nested_created"])),
+        "nested_inner_bash_denied_by_hook": sum(1 for r in by["hk_sub_nested"] if i(r["hook_bash_agent_denied"]) >= 1),
+        "nested_inner_bash_visible_in_stream": sum(1 for r in by["hk_sub_nested"] if b(r["security_attempted"])),
+        "stop_exit_delay_s": {c: [round(float(r["exit_at"]) - float(r["stop_at"]), 1) if r["exit_at"] and r["stop_at"] else None
+                                  for r in by[c]] for c in ("bg_interrupt", "bg_close_stdin", "bg_sigterm_leader")},
+        "stop_exit_code": {c: [r["exit_code"] or None for r in by[c]]
+                           for c in ("bg_interrupt", "bg_close_stdin", "bg_sigterm_leader")},
+        "stop_alive_3s_after": {c: [i(r["alive_3s_after_stop"]) for r in by[c]]
+                                for c in ("bg_interrupt", "bg_close_stdin", "bg_sigterm_leader")},
+        "bg_none_marker_at_s": [num(r["marker_at"]) for r in by["bg_none"]],
+        "bg_none_results": [i(r["results"]) for r in by["bg_none"]],
+        "sub_bg_times_s": [{"agent_tool_result": num(r["agent_result_at"]), "first_result": num(r["first_result_at"]),
+                            "marker": num(r["marker_at"]), "second_result": num(r["second_result_at"])}
+                           for r in by["sub_bg"]],
+        "sub_fg_sub_events": [i(r["sub_event_count"]) for r in by["sub_fg"]],
+        "slash_unknown_result_is_error": [r["result_is_error"] for r in by["slash_unknown"]],
+        "status_event_with_permission_mode_trials": status_mode_events(),
+        "hook_input_keys": sorted({k for r in rows for k in r["hook_keys"].split("|") if k}),
+        "bg_stop_results": {c: [(r["trial_id"], r["r1_terminal_reason"], r["r2_terminal_reason"],
+                                  r["r1_stats_killed_system"], r["r2_stats_killed_system"]) for r in by[c]]
+                            for c in ("bg_none", "bg_interrupt", "bg_close_stdin", "bg_sigterm_leader")},
+    }
+    summary = {"trials": len(rows), "claude_turns": calls, "hypotheses": hypotheses, "exploratory": exploratory,
+               "event_census": census()}
     results = ROOT / "results"
     (results / "tables").mkdir(parents=True, exist_ok=True)
     (results / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n",

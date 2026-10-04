@@ -55,6 +55,11 @@ def equal(usage: dict, total: dict) -> bool:
     return all(int(usage.get(f) or 0) == total[f] for f in USAGE_FIELDS)
 
 
+def equal3(usage: dict, total: dict) -> bool:
+    """출력 토큰을 뺀 입력 3칸만 비교한다(탐색용). 메시지 줄의 출력 토큰은 스트리밍 도중 값이라 최종값과 다르다."""
+    return all(int(usage.get(f) or 0) == total[f] for f in USAGE_FIELDS[:3])
+
+
 def text_of(value) -> str:
     return json.dumps(value, ensure_ascii=False).lower()
 
@@ -103,6 +108,7 @@ def metrics(row: dict) -> dict:
     segs = segments(events)
     cum_main = {f: 0 for f in USAGE_FIELDS}
     cum_tree = {f: 0 for f in USAGE_FIELDS}
+    cum_usage = {f: 0 for f in USAGE_FIELDS}
     for k, seg in enumerate(segs[:2], start=1):
         result = seg[-1]
         main, sub = message_sums(seg)
@@ -118,6 +124,18 @@ def metrics(row: dict) -> dict:
         out[f"r{k}_eq_cum_tree"] = equal(usage, cum_tree)
         model_usage = result.get("modelUsage") or {}
         totals = {f: sum(int((m or {}).get(MODEL_FIELDS[f]) or 0) for m in model_usage.values()) for f in USAGE_FIELDS}
+        cum_usage = add(cum_usage, {f: int(usage.get(f) or 0) for f in USAGE_FIELDS})
+        out[f"r{k}_eq_main3"] = equal3(usage, main)
+        out[f"r{k}_eq_tree3"] = equal3(usage, add(main, sub))
+        out[f"r{k}_eq_cum_main3"] = equal3(usage, cum_main)
+        out[f"r{k}_mu_eq_cum_usage"] = bool(model_usage) and all(totals[f] == cum_usage[f] for f in USAGE_FIELDS)
+        out[f"r{k}_mu_gt_cum_usage3"] = bool(model_usage) and any(totals[f] > cum_usage[f] for f in USAGE_FIELDS[:3])
+        out[f"r{k}_origin"] = (result.get("origin") or {}).get("kind")
+        out[f"r{k}_terminal_reason"] = result.get("terminal_reason")
+        stats = result.get("subagent_stats") or {}
+        out[f"r{k}_stats_spawned"] = stats.get("spawned")
+        out[f"r{k}_stats_completed"] = stats.get("completed")
+        out[f"r{k}_stats_killed_system"] = (stats.get("killed") or {}).get("system")
         out[f"r{k}_models"] = len(model_usage)
         out[f"r{k}_modelusage_eq_usage"] = bool(model_usage) and equal(usage, totals)
         out[f"r{k}_cost"] = result.get("total_cost_usd")
