@@ -33,6 +33,20 @@ pub const TOKEN: &str = "Token";
 pub const JUDGING: &str = "판단 중";
 pub const TRAINING: &str = "학습";
 
+// 상태판 줄 하나 뒤에 붙는 나머지 개수. `{n}`은 개수다.
+pub const BOARD_MORE_RUNNING: &str = "실행 {n}개 더";
+pub const BOARD_RUNNING: &str = "실행 {n}";
+pub const BOARD_MORE_JUDGING: &str = "판단 {n}개 더";
+pub const BOARD_JUDGING: &str = "판단 {n}";
+pub const BOARD_MORE_TRAINING: &str = "학습 {n}개 더";
+pub const BOARD_TRAINING: &str = "학습 {n}";
+pub const BOARD_MORE_QUEUED: &str = "대기 {n}개 더";
+pub const BOARD_QUEUED: &str = "대기 {n}";
+pub const BOARD_MORE_HELD: &str = "보류 {n}개 더";
+pub const BOARD_HELD: &str = "보류 {n}";
+pub const BOARD_MORE_ALERTS: &str = "알림 {n}개 더";
+pub const BOARD_ALERTS: &str = "알림 {n}";
+
 // 상태판 대기 줄
 pub const QUEUED: &str = "대기";
 pub const AFTER_TASK_SUFFIX: &str = "다음";

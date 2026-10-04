@@ -240,6 +240,134 @@ pub(crate) fn build(state: &ChatState, now: Instant) -> Vec<StatusLine> {
     lines
 }
 
+/// 상태판 줄의 종류. 나머지 개수를 종류별로 센다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LineKind {
+    Running,
+    Judging,
+    Training,
+    Queued,
+    Held,
+    Alert,
+}
+
+impl LineKind {
+    /// 나머지 개수를 붙이는 순서다.
+    const ORDER: [Self; 6] = [
+        Self::Running,
+        Self::Judging,
+        Self::Training,
+        Self::Queued,
+        Self::Held,
+        Self::Alert,
+    ];
+
+    /// 보이는 줄과 같은 종류면 `개 더`를 붙인 문구다.
+    fn count_text(self, lang: Lang, count: usize, same_kind: bool) -> String {
+        let key = match (self, same_kind) {
+            (Self::Running, true) => i18n::BOARD_MORE_RUNNING,
+            (Self::Running, false) => i18n::BOARD_RUNNING,
+            (Self::Judging, true) => i18n::BOARD_MORE_JUDGING,
+            (Self::Judging, false) => i18n::BOARD_JUDGING,
+            (Self::Training, true) => i18n::BOARD_MORE_TRAINING,
+            (Self::Training, false) => i18n::BOARD_TRAINING,
+            (Self::Queued, true) => i18n::BOARD_MORE_QUEUED,
+            (Self::Queued, false) => i18n::BOARD_QUEUED,
+            (Self::Held, true) => i18n::BOARD_MORE_HELD,
+            (Self::Held, false) => i18n::BOARD_HELD,
+            (Self::Alert, true) => i18n::BOARD_MORE_ALERTS,
+            (Self::Alert, false) => i18n::BOARD_ALERTS,
+        };
+        lang.tr(key).replace("{n}", &count.to_string())
+    }
+}
+
+impl StatusLine {
+    fn kind(&self) -> LineKind {
+        match self {
+            Self::Running(_) => LineKind::Running,
+            Self::Judging { .. } => LineKind::Judging,
+            Self::Training(_) => LineKind::Training,
+            Self::Queued { .. } => LineKind::Queued,
+            Self::Stopped { .. }
+            | Self::HeldTask { .. }
+            | Self::HeldInput { .. }
+            | Self::CloseHeldConfirm { .. } => LineKind::Held,
+            Self::Alert(_)
+            | Self::StopUnconfirmed { .. }
+            | Self::RouterUnavailableSend
+            | Self::Settings { .. } => LineKind::Alert,
+        }
+    }
+}
+
+/// 상태판은 줄 하나만 둔다. 지금 보이는 줄과, 나머지를 종류별로 센 개수다. 전체는 작업 목록에서 본다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Board {
+    pub line: StatusLine,
+    /// 보이는 줄을 뺀 종류별 개수. 0인 종류는 싣지 않는다.
+    pub others: Vec<(LineKind, usize)>,
+}
+
+impl Board {
+    /// 줄 하나에 그 줄의 버튼이 세로 목록으로 붙는다.
+    pub(crate) fn height(&self) -> u16 {
+        1 + u16::try_from(self.line.buttons().len()).unwrap_or(u16::MAX - 1)
+    }
+
+    pub(crate) fn buttons(&self) -> Vec<Button> {
+        self.line.buttons()
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 줄 글자 수
+    // basis: estimate
+    /// 줄 글 뒤에 나머지 개수를 ` · 실행 2개 더 · 대기 3`처럼 붙인다.
+    pub(crate) fn text(&self, lang: Lang, labels_visible: bool, spinner: char) -> String {
+        let mut text = self.line.text(lang, labels_visible, spinner);
+        let shown = self.line.kind();
+        for (kind, count) in &self.others {
+            text.push_str(" · ");
+            text.push_str(&kind.count_text(lang, *count, *kind == shown));
+        }
+        text
+    }
+}
+
+// cost: time O(t log t + i log i + a), heap O(t + i + a), stack O(1)
+// vars: t = 작업 수, i = 입력 수, a = 알림 수
+// basis: estimate
+pub(crate) fn board(state: &ChatState, now: Instant) -> Option<Board> {
+    pick(build(state, now))
+}
+
+// cost: time O(l), heap O(l), stack O(1)
+// vars: l = 줄 수
+// basis: estimate
+/// 보류 닫기 확인이 있으면 그 줄이, 없으면 줄 순서의 맨 앞이 보인다. `멈춤` 줄은 보류 줄을 이미 이름으로 싣고 있어 보류 개수를 따로 세지 않는다.
+pub(crate) fn pick(lines: Vec<StatusLine>) -> Option<Board> {
+    let index = lines
+        .iter()
+        .position(|line| matches!(line, StatusLine::CloseHeldConfirm { .. }))
+        .unwrap_or(0);
+    let line = lines.get(index)?.clone();
+    let hides_held = matches!(line, StatusLine::Stopped { .. });
+    let others = LineKind::ORDER
+        .into_iter()
+        .filter_map(|kind| {
+            let count = lines
+                .iter()
+                .enumerate()
+                .filter(|(at, other)| *at != index && other.kind() == kind)
+                .filter(|(_, other)| !matches!(other, StatusLine::Stopped { .. }))
+                .count();
+            let hidden = hides_held && kind == LineKind::Held;
+            (count > 0 && !hidden).then_some((kind, count))
+        })
+        .collect();
+    Some(Board { line, others })
+}
+
 pub(crate) fn queue_reason_text(lang: Lang, reason: QueueReason) -> String {
     let key = match reason {
         QueueReason::AfterTask(label) => {
@@ -346,65 +474,61 @@ pub(crate) fn alert_text(lang: Lang, alert: &Alert) -> String {
     lang.tr(key).to_string()
 }
 
-// cost: time O(l), heap O(l), stack O(1)
-// vars: l = 그릴 줄 수
-// basis: estimate
-/// 그리기와 마우스 클릭 판정이 같은 계산을 쓴다.
-pub(crate) fn button_rects(lines: &[StatusLine], lang: Lang, area: Rect) -> Vec<(Rect, Button)> {
-    let mut rects = Vec::new();
-    for (row, line) in lines.iter().enumerate().take(usize::from(area.height)) {
-        let buttons = line.buttons();
-        let total = buttons_width(&buttons, lang);
-        let y = area.y + row as u16;
-        let mut x = area.right().saturating_sub(total).max(area.x);
-        for button in buttons {
-            let width = text_width(button.text(lang)) as u16;
-            rects.push((Rect::new(x, y, width, 1), button));
-            x += width + 1;
-        }
-    }
-    rects
+/// 버튼은 줄 아래에 한 단계 들여 세로 목록으로 둔다. 폭이 좁아도 같다. 그리기와 마우스 클릭 판정이 같은 계산을 쓴다.
+pub(crate) fn button_rects(board: Option<&Board>, lang: Lang, area: Rect) -> Vec<(Rect, Button)> {
+    let Some(board) = board else {
+        return Vec::new();
+    };
+    let indent = BUTTON_INDENT.min(area.width);
+    board
+        .buttons()
+        .into_iter()
+        .zip(1..)
+        .map(|(button, row)| (button, area.y.saturating_add(row)))
+        .filter(|(_, y)| *y < area.bottom())
+        .map(|(button, y)| {
+            let width = (text_width(button.text(lang)) as u16).min(area.width - indent);
+            (Rect::new(area.x + indent, y, width, 1), button)
+        })
+        .collect()
 }
+
+/// 버튼 목록을 줄보다 들여 쓰는 칸 수.
+const BUTTON_INDENT: u16 = 2;
 
 #[derive(Debug)]
 pub(crate) struct StatusBoardView<'a> {
-    pub lines: &'a [StatusLine],
+    pub board: Option<&'a Board>,
     pub lang: Lang,
     pub labels_visible: bool,
     pub spinner: char,
-    /// 상태판 버튼 고르기에서 고른 버튼. 반전해서 그린다.
+    /// 상태판 버튼 고르기에서 고른 버튼. `›`를 붙이고 반전해서 그린다.
     pub focus: Option<Button>,
 }
 
 impl StatusBoardView<'_> {
-    // cost: time O(l·w), heap O(l·w), stack O(1)
-    // vars: l = 그릴 줄 수, w = 칸 폭
+    // cost: time O(w), heap O(w), stack O(1)
+    // vars: w = 칸 폭
     // basis: estimate
     pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
-        let rects = button_rects(self.lines, self.lang, area);
+        let Some(board) = self.board else {
+            return;
+        };
         let width = usize::from(area.width);
-        let rows: Vec<Line> = self
-            .lines
-            .iter()
-            .take(usize::from(area.height))
-            .map(|line| {
-                let buttons = buttons_width(&line.buttons(), self.lang);
-                let room = if buttons == 0 {
-                    width
-                } else {
-                    width.saturating_sub(usize::from(buttons) + 2)
-                };
-                let text = line.text(self.lang, self.labels_visible, self.spinner);
-                Line::from(truncate(&text, room))
-            })
-            .collect();
-        frame.render_widget(Paragraph::new(rows), area);
-        for (rect, button) in rects {
-            let style = if self.focus == Some(button) {
+        let text = board.text(self.lang, self.labels_visible, self.spinner);
+        let head = Rect::new(area.x, area.y, area.width, area.height.min(1));
+        frame.render_widget(Paragraph::new(Line::from(truncate(&text, width))), head);
+        for (rect, button) in button_rects(Some(board), self.lang, area) {
+            let focused = self.focus == Some(button);
+            let style = if focused {
                 EMPHASIS.add_modifier(Modifier::REVERSED)
             } else {
                 EMPHASIS
             };
+            if focused && rect.x >= area.x + BUTTON_INDENT {
+                let marker = Rect::new(rect.x - BUTTON_INDENT, rect.y, 1, 1);
+                frame.render_widget(Span::raw("›"), marker);
+            }
             frame.render_widget(Span::styled(button.text(self.lang), style), rect);
         }
     }
@@ -482,13 +606,6 @@ fn with_text(head: String, text: Option<&str>) -> String {
         Some(first) => format!("{head} · {first}"),
         None => head,
     }
-}
-
-// cost: time O(1), heap O(1), stack O(1)
-// basis: estimate
-fn buttons_width(buttons: &[Button], lang: Lang) -> u16 {
-    let widths: usize = buttons.iter().map(|b| text_width(b.text(lang))).sum();
-    (widths + buttons.len().saturating_sub(1)) as u16
 }
 
 fn running_line(task: &TaskView, now: Instant) -> RunningLine {
@@ -1219,35 +1336,142 @@ mod tests {
         assert!(text.ends_with('…'));
     }
 
+    fn board_text(state: &ChatState, now: Instant, lang: Lang) -> Option<String> {
+        board(state, now).map(|board| board.text(lang, true, '⠙'))
+    }
+
+    fn three_running_three_queued() -> (ChatState, Instant) {
+        let now = Instant::now();
+        let mut state = ChatState::new();
+        for (id, label) in [(1, 'A'), (2, 'B'), (3, 'D')] {
+            task(&mut state, id, label, TaskState::Running, now);
+        }
+        for id in 1..=3 {
+            input(&mut state, id, 'C', InputState::Queued, "");
+        }
+        (state, now)
+    }
+
     #[test]
-    fn button_rects_sit_at_line_end() {
-        let lines = vec![StatusLine::Queued {
+    fn board_shows_the_first_running_task_and_counts_the_rest() {
+        let (state, now) = three_running_three_queued();
+
+        assert_eq!(
+            board_text(&state, now, Lang::Ko).as_deref(),
+            Some("⠙ [A] 작업 중 · 실행 2개 더 · 대기 3")
+        );
+        assert_eq!(
+            board_text(&state, now, Lang::En).as_deref(),
+            Some("⠙ [A] Working · 2 more running · Queued 3")
+        );
+    }
+
+    #[test]
+    fn board_counts_every_other_kind_in_a_fixed_order() {
+        let (mut state, now) = three_running_three_queued();
+        input_at(&mut state, 9, 'F', InputState::Judging, "", now);
+        task(&mut state, 5, 'E', TaskState::Held, now);
+        state.apply_alert(Alert::RouterPaused);
+        state.training = Some(TrainingProgress {
+            stage: "채점".to_owned(),
+            graded: 10,
+            elapsed: Duration::from_secs(5),
+            tokens: 0,
+        });
+
+        let text = board_text(&state, now + Duration::from_secs(1), Lang::Ko).unwrap();
+
+        assert_eq!(
+            text,
+            "⠙ [A] 작업 중 · 실행 2개 더 · 판단 1 · 학습 1 · 대기 3 · 보류 1 · 알림 1"
+        );
+    }
+
+    #[test]
+    fn board_uses_more_wording_for_the_kind_that_is_shown() {
+        let now = Instant::now();
+        let mut state = ChatState::new();
+        input(&mut state, 1, 'C', InputState::Queued, "첫째");
+        input(&mut state, 2, 'D', InputState::Queued, "둘째");
+        task(&mut state, 5, 'E', TaskState::Held, now);
+
+        assert_eq!(
+            board_text(&state, now, Lang::Ko).as_deref(),
+            Some("· [C] 대기 · A 다음 · 첫째 · 대기 1개 더 · 보류 1")
+        );
+    }
+
+    #[test]
+    fn board_without_lines_is_empty() {
+        assert_eq!(board(&ChatState::new(), Instant::now()), None);
+    }
+
+    #[test]
+    fn board_does_not_count_held_tasks_a_stop_line_already_names() {
+        let now = Instant::now();
+        let mut state = ChatState::new();
+        task(&mut state, 1, 'A', TaskState::Held, now);
+        task(&mut state, 2, 'C', TaskState::Held, now);
+        state.apply_stopped(vec![TaskLabel('A'), TaskLabel('C')]);
+
+        assert_eq!(
+            board_text(&state, now, Lang::Ko).as_deref(),
+            Some("‖ 멈춤 · [A] [C] 보류됨 · /continue 로 이어서")
+        );
+    }
+
+    #[test]
+    fn board_puts_the_close_held_question_first() {
+        let (mut state, now) = three_running_three_queued();
+        task(&mut state, 5, 'E', TaskState::Held, now);
+        state.close_held_confirm = Some(TaskId(5));
+
+        let text = board_text(&state, now, Lang::Ko).unwrap();
+
+        assert_eq!(text, "‖ [E] 보류를 닫을까요? · 실행 3 · 대기 3");
+    }
+
+    #[test]
+    fn board_height_is_one_line_plus_the_buttons_of_that_line() {
+        let (state, now) = three_running_three_queued();
+        let running = board(&state, now).unwrap();
+        let mut queued_only = ChatState::new();
+        input(&mut queued_only, 1, 'C', InputState::Queued, "x");
+        let queued = board(&queued_only, now).unwrap();
+
+        assert_eq!(running.height(), 1);
+        assert_eq!(queued.height(), 3);
+    }
+
+    #[test]
+    fn button_rects_stack_under_the_line() {
+        let board = pick(vec![StatusLine::Queued {
             input: InputId(1),
             label: None,
             reason: QueueReason::WriteTurn,
             text: None,
-        }];
+        }]);
 
-        let rects = button_rects(&lines, Lang::En, Rect::new(0, 5, 40, 1));
+        let rects = button_rects(board.as_ref(), Lang::En, Rect::new(0, 5, 40, 3));
 
-        assert_eq!(rects[0], (Rect::new(25, 5, 6, 1), Button::Send(InputId(1))));
+        assert_eq!(rects[0], (Rect::new(2, 6, 6, 1), Button::Send(InputId(1))));
         assert_eq!(
             rects[1],
-            (Rect::new(32, 5, 8, 1), Button::CancelInput(InputId(1)))
+            (Rect::new(2, 7, 8, 1), Button::CancelInput(InputId(1)))
         );
     }
 
     #[test]
     fn render_draws_text_and_buttons() {
-        let lines = vec![StatusLine::Queued {
+        let board = pick(vec![StatusLine::Queued {
             input: InputId(1),
             label: Some(TaskLabel('C')),
             reason: QueueReason::AfterTask(TaskLabel('A')),
             text: Some("test".to_string()),
-        }];
-        let mut terminal = Terminal::new(TestBackend::new(50, 1)).unwrap();
+        }]);
+        let mut terminal = Terminal::new(TestBackend::new(50, 3)).unwrap();
         let view = StatusBoardView {
-            lines: &lines,
+            board: board.as_ref(),
             lang: Lang::Ko,
             labels_visible: true,
             spinner: '⠙',
@@ -1258,8 +1482,9 @@ mod tests {
             .draw(|frame| view.render(frame, frame.area()))
             .unwrap();
 
-        let row = &buffer_lines(terminal.backend().buffer())[0];
-        assert!(row.starts_with("· [C] 대기 · A 다음 · test"));
-        assert!(row.ends_with("[보내기] [취소]"));
+        let rows = buffer_lines(terminal.backend().buffer());
+        assert_eq!(rows[0], "· [C] 대기 · A 다음 · test");
+        assert_eq!(rows[1], "  [보내기]");
+        assert_eq!(rows[2], "  [취소]");
     }
 }

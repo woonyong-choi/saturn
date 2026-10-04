@@ -7,7 +7,7 @@
 
 ## 요약
 
-TUI는 채팅 기록, 작업별 출력, 상태판, 입력창을 한 터미널에 그리는 전체 화면이다. TUI는 `engine`에 붙는 클라이언트이고 provider를 몰라도 Saturn 용어만으로 화면을 그린다. 여러 작업이 동시에 돌 때 작업마다 이름표를 붙이고, 입력마다 판단, 대기, 보류, 전달 상태를 상태판에 한 줄씩 그린다.
+TUI는 채팅 기록, 작업별 출력, 상태판, 입력창을 한 터미널에 그리는 전체 화면이다. TUI는 `engine`에 붙는 클라이언트이고 provider를 몰라도 Saturn 용어만으로 화면을 그린다. 여러 작업이 동시에 돌 때 작업마다 이름표를 붙이고, 상태판은 한 줄이고, 지금 보이는 줄 하나와 나머지의 개수를 보인다.
 
 ## 동기
 
@@ -20,9 +20,9 @@ Codex와 Claude Code를 함께 쓰는 개발자는 한 저장소에서 여러 �
 1. 사용자가 `로그인할 때 세션이 바로 끊기는 버그 고쳐`를 입력하자 작업 A가 시작된다.
 2. 작업이 하나뿐이라 대화 기록에는 이름표 없이 입력 에코가 찍힌다.
 3. A가 실행 중일 때 사용자가 `테스트도 같이 돌려줘`를 입력한다.
-4. 상태판에 `⠹ [C] 판단 중` 줄이 뜨고 router가 입력을 판단한다.
-5. router가 A 다음에 보내기로 정하면 줄이 `· [C] 대기 · A 다음`으로 바뀌고 `[보내기] [취소]` 버튼이 붙는다.
-6. 살아 있는 작업과 대기 줄이 생겼으므로 A의 줄과 기록에도 이름표 `[A]`가 붙는다.
+4. router가 입력을 판단한다. 판단이 0.3초를 넘기면 상태판 A 줄 끝에 `· 판단 1`이 붙는다.
+5. router가 A 다음에 보내기로 정하면 `· 판단 1`이 `· 대기 1`로 바뀐다. 대기 입력의 `[보내기] [취소]`는 작업 목록(`F5`)과 `/send`, `/cancel`로 쓴다.
+6. 살아 있는 작업과 대기 입력이 생겼으므로 A의 줄과 기록에도 이름표 `[A]`가 붙는다.
 
 ### 맥락 정리가 기록에 한 줄로 남는다
 
@@ -56,11 +56,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 └────────────────────────────────────────────────────────────────┘
 ┌────────────────────────────────────────────────────────────────┐
 │ 상태판                                                         │
-│ ⠙ [A] 작업 중                                                  │
-│ ⠹ [D] 판단 중 · 배포 스크립트 정리                             │
-│ · [C] 대기 · A 다음 · 테스트도 같이 돌려줘  [보내기] [취소]    │
-│ ‖ [E] 보류 · codex · /continue E            [이어서] [취소]    │
-│ 자동 판단 일시 중단                                            │
+│ ⠙ [A] 작업 중 · 실행 2개 더 · 판단 1 · 대기 3 · 보류 1        │
 └────────────────────────────────────────────────────────────────┘
 ┌────────────────────────────────────────────────────────────────┐
 │ 팝업                                                           │
@@ -82,7 +78,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 |---|---|---|
 | 대화 기록 | 입력 에코 `> [A] 원문`, 도구 셀, 결과 줄, 맥락 정리와 provider 전환 한 줄, 피드백 질문, 이번 요청 합계 | 판단 확정, 작업 종료, 다시 실행할 때 기록 저장소에서 최근 부분부터 로드(고정 모델 줄, provider 전환 줄, 실행 줄의 토큰 합계도 실시간과 같게 되살림), 위로 스크롤할 때 이전 부분 로드 |
 | 작업별 출력 칸 | 출력이 흐르는 작업마다 최근 줄, 높이 상한 8줄, 화면이 작으면 상한 축소 | 완성된 줄 단위 갱신, 출력 시작 때 한 번 이동, 작업 종료 때 전체 내용을 대화 기록으로 옮기고 삭제 |
-| 상태판 | 실행 줄, 판단 줄, 학습 줄, 대기 줄, 보류 줄, 알림 줄 | `engine` 상태 변경 |
+| 상태판 | 줄 하나(실행 줄, 판단 줄, 학습 줄, 대기 줄, 보류 줄, 알림 줄 중 맨 앞)와 나머지 개수, 대기 줄과 보류 줄이면 줄 아래에 세로 버튼 목록 | `engine` 상태 변경 |
 | 팝업 | `/` 명령 목록과 값 목록, `@` 파일 목록, `$` 스킬 목록, 명령 목록 최대 8행과 오른쪽 출처 표시 | 글자 입력마다 목록 필터 |
 | 입력창 | `›` 접두 초안, 붙여넣은 내용 요소 | 키 입력 |
 | 바닥줄 | 키 안내, 모델 선택 방식(`모델 오토`, `모델 매뉴얼`. engine이 알리기 전에는 없음), 맥락 크기 | 상태 변경, 턴마다 맥락 크기, `ModelSettings` 도착 |
@@ -136,7 +132,11 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 ### 상태판 줄 순서
 
-상태판은 실행 줄, 판단 줄, 학습 줄, 대기 줄, 보류 줄, 알림 줄 순서로 줄을 쌓고, 같은 종류 안에서는 접수 순서를 따른다. 줄이 생기거나 사라져도 다른 줄끼리의 상대 위치는 유지한다. 사용자가 보던 줄이 갑자기 다른 자리로 뛰는 일을 막기 위해서다. 보류 줄을 뺀 나머지 줄은 그 항목이 끝나면 지운다.
+상태판은 한 줄만 둔다. 줄 후보는 실행 줄, 판단 줄, 학습 줄, 대기 줄, 보류 줄, 알림 줄 순서로 쌓고 같은 종류 안에서는 접수 순서를 따르며, 그 맨 앞 하나만 그린다. 보류 닫기 확인은 사용자의 답을 기다리므로 늘 맨 앞이다. 줄이 생기거나 사라져도 남은 줄끼리의 순서는 유지해서 사용자가 보던 줄이 갑자기 다른 줄로 바뀌는 일을 줄인다. 보류 줄을 뺀 나머지 줄은 그 항목이 끝나면 지운다.
+
+보이는 줄 뒤에는 나머지를 종류별 개수로 붙인다(` · 실행 2개 더 · 대기 3`). 순서는 실행, 판단, 학습, 대기, 보류, 알림이고 0인 종류는 붙이지 않는다. 보이는 줄과 같은 종류는 `개 더`를 붙여 `대기 1개 더`처럼 쓰고 다른 종류는 `대기 3`처럼 개수만 쓴다. `멈춤` 줄은 보류 작업의 이름표를 이미 싣고 있어 보류 개수를 따로 붙이지 않는다. 가려진 줄의 전체 내용은 작업 목록(`F5`, `/tasks`)에서 본다. 최대 높이는 줄 하나에 그 줄의 버튼 수를 더한 값이라 따로 정하지 않는다.
+
+대기 줄과 보류 줄의 `[보내기]`, `[취소]`, `[이어서]` 버튼은 줄 끝이 아니라 줄 아래에 한 단계 들여 세로 목록으로 그린다. 폭이 좁아도 같은 모양이고, 보이는 줄의 버튼만 있다. 가려진 줄의 같은 일은 작업 목록의 `s`, `d`, `c`와 `/send`, `/cancel`, `/continue`로 한다.
 
 판단 줄은 판단 방식과 관계없이 같은 문구를 쓰고 근거와 확률은 보이지 않는다. 판단이 0.3초 안에 끝나면 판단 줄을 그리지 않고, 0.3초를 넘으면 그린다. 한 번 그린 줄은 판단이 먼저 끝나도 그린 시각부터 0.5초는 보인다. 짧은 판단의 깜빡임을 없애면서 오래 걸리는 판단은 진행 중임을 보이기 위해서다. 두 값은 `saturn-terminal/tui/src/state.rs`의 `JUDGING_SHOW_AFTER`와 `JUDGING_MIN_SHOWN` 상수 하나씩이고 설정 키는 없다. 입력이 대기, 끼워 넣기, 새 작업 중 어디로 가는지의 규칙은 [입력 처리](input-handling.md)에 있다.
 
@@ -188,7 +188,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 
 ### 상태판 버튼 고르기
 
-`F3`이나 `/agents`로 들어가 `↑`, `↓`로 줄, `←`, `→`로 버튼을 고르고 `Enter`로 실행하고 `Esc`로 입력창에 돌아간다. 버튼이 있는 줄(대기 줄, 보류 줄)이 없으면 들어가지 않는다. 고른 버튼은 반전해서 그린다. 버튼을 실행하거나 고른 버튼이 사라지면 고르기가 끝난다. 줄이 생기거나 사라져도 고른 버튼을 그대로 가리킨다. `보류 종료` 버튼은 확인 한 줄을 거치므로 실행 뒤 보류 닫기 확인이 이어진다. 마우스 클릭과 `/send`, `/cancel`, `/continue` 명령은 같은 일을 한다. 고르기 중에는 이 영역이 방향키, `Enter`, `Esc`를 가져가고(선택지 키 규칙과 같다) 키 받는 순서에서 보류 닫기 확인 바로 아래, 바로잡기 제안 위다.
+`F3`이나 `/agents`로 들어가 `↑`, `↓`로 세로 버튼 목록을 고르고(처음과 끝은 돌아간다) `Enter`로 실행하고 `Esc`로 입력창에 돌아간다. 보이는 줄에 버튼이 없으면(대기 줄, 보류 줄이 아니면) 들어가지 않는다. 고른 버튼은 앞에 `›`를 붙이고 반전해서 그린다. 버튼을 실행하거나 고른 버튼이 사라지면 고르기가 끝난다. 줄이 바뀌어도 고른 버튼이 아직 있으면 그대로 가리킨다. `보류 종료` 버튼은 확인 한 줄을 거치므로 실행 뒤 보류 닫기 확인이 이어진다. 마우스 클릭과 `/send`, `/cancel`, `/continue` 명령은 같은 일을 한다. 고르기 중에는 이 영역이 방향키, `Enter`, `Esc`를 가져가고(선택지 키 규칙과 같다) 키 받는 순서에서 보류 닫기 확인 바로 아래, 바로잡기 제안 위다.
 
 ### 키 해석 계층
 
@@ -362,6 +362,7 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `[A]` | 작업 이름표 |
 | `> [A] 원문` | 판단이 끝난 입력의 에코 |
 | `⠙ [A] 작업 중` | 출력이 아직 없는 실행 중 작업 |
+| `⠙ [A] 작업 중 · 실행 2개 더 · 대기 3` | 보이는 줄 뒤에 붙는 나머지 개수. 같은 종류는 `개 더`, 다른 종류는 개수만 |
 | `⠙ [A] claude · opus · 1분 · 하위 에이전트 2개 실행 중` | provider subagent가 도는 작업 |
 | `생각 중` | 실행 줄의 하는 일, provider가 생각하는 중 |
 | `파일 읽는 중` | 실행 줄의 하는 일, 파일 조회 |
@@ -383,9 +384,9 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `· [C] 대기 · 맥락 정리 뒤` | session 교체가 끝나기를 기다리는 입력 |
 | `· [C] 대기 · 모든 작업 뒤` | 모든 작업이 끝난 뒤 실행할 session 변경 명령 |
 | `· [C] 대기 · 멈출지 확인 중` | 끼워 넣기를 받지 않은 충돌 입력이 멈춤 확인 창의 답을 기다림. 영어는 `Confirming stop` |
-| `[보내기] [취소]` | 대기 줄 버튼, `/send`, `/cancel`과 같은 동작 |
+| `[보내기] [취소]` | 대기 줄 아래 세로 버튼 목록, `/send`, `/cancel`과 같은 동작 |
 | `‖ [A] 보류` | 멈춘 작업이나 보내지 않은 입력, `/continue`로 재개 |
-| `[이어서] [취소]` | 보류 줄 버튼, `/continue`, `/cancel`과 같은 동작 |
+| `[이어서] [취소]` | 보류 줄 아래 세로 버튼 목록, `/continue`, `/cancel`과 같은 동작 |
 | `‖ 멈춤 · [A] [C] 보류됨 · /continue 로 이어서` | 중지 결과, 멈춘 작업과 보내지 않은 입력의 보류 |
 | `{provider}가 크래시로 끊긴 하위 에이전트를 다시 시작해 작업을 멈췄습니다 · 이어 가려면 /continue` | 크래시로 끊긴 하위 에이전트의 이벤트가 provider에서 다시 와서 채팅의 작업을 멈춤. 영어는 `{provider} restarted a subagent cut off by the crash, so the task was stopped · /continue to resume` |
 | `멈춤 확인 안 됨 · N개 남음` | provider 프로세스 묶음 밖에 남은 프로세스 N개 |
@@ -473,12 +474,13 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | 작업이 하나이고 대기와 보류가 없으면 이름표를 숨긴다. | `saturn-terminal/tui/src/app/tests.rs`의 `render_single_task_hides_labels`, `render_stacks_transcript_status_composer_and_footer` |
 | 패킷이 넘쳐 맥락 정리를 미루면 안내 한 줄과 제약 목록을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_context_deferred_lists_the_constraints` |
 | 패킷이 맥락 한도로 거절돼 멈추면 안내 한 줄을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_packet_overflow_tells_the_user_how_to_retry` |
+| 상태판은 줄 하나와 나머지 개수만 그리고, 대기 줄과 보류 줄의 버튼은 줄 아래 세로 목록이며, 가려진 줄은 개수에 든다. | `saturn-terminal/tui/src/view/status_board.rs`의 `board_shows_the_first_running_task_and_counts_the_rest`, `board_counts_every_other_kind_in_a_fixed_order`, `board_uses_more_wording_for_the_kind_that_is_shown`, `board_without_lines_is_empty`, `board_does_not_count_held_tasks_a_stop_line_already_names`, `board_puts_the_close_held_question_first`, `board_height_is_one_line_plus_the_buttons_of_that_line`, `button_rects_stack_under_the_line`, `render_draws_text_and_buttons`, `saturn-terminal/tui/src/app/tests.rs`의 `render_keeps_the_status_board_to_one_line_for_many_tasks`, `render_lists_the_actions_of_a_queued_line_vertically` |
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
 | 판단이 0.3초 안에 끝나면 판단 줄을 그리지 않고, 0.3초를 넘으면 그리며, 한 번 그렸으면 그린 시각부터 0.5초는 판단이 끝나도 보인다. | `saturn-terminal/tui/src/view/status_board.rs`의 `judging_line_is_not_drawn_until_it_passes_the_show_delay`, `judging_that_ends_within_the_show_delay_never_draws_a_line`, `judging_drawn_once_stays_for_the_minimum_shown_time_after_it_ends`, `judging_that_ends_after_the_minimum_shown_time_stops_right_away`, `judging_tail_keeps_its_place_among_judging_lines`, `saturn-terminal/tui/src/app/tests.rs`의 `judging_line_appears_after_the_delay_and_stays_after_the_judgment_ends`, `judging_that_ends_inside_the_delay_never_reaches_the_screen` |
 | 피드백 질문과 바로잡기 제안은 입력창이 빌 때만 키를 가져가 `↑`, `↓`, `Enter`, `Esc`와 숫자로 고르고, `[실행]`은 `RunAsNewTask`를 보내며, `Esc` 뒤 방향키는 입력 기록으로 돌아간다. 초안이 있으면 숫자가 답으로 가지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `correction_enter_runs_the_first_choice_as_a_new_task`, `correction_down_then_enter_keeps_the_input_as_it_is`, `correction_digits_pick_a_choice_while_the_composer_is_empty`, `correction_takes_the_arrow_keys_until_escape_gives_them_back_to_history`, `correction_closed_with_escape_opens_again_with_the_feedback_command`, `correction_goes_away_when_the_input_is_no_longer_unsent`, `a_number_draft_is_not_taken_as_a_feedback_answer`, `digits_after_a_draft_start_do_not_answer_the_feedback_question`, `feedback_arrows_and_enter_pick_an_answer`, `feedback_escape_closes_without_a_request_and_arrows_return_to_history` |
 | 키를 동작으로 바꾸는 일은 해석기 한 곳이 맡고, 모든 프리셋은 표가 읽히며 한 영역 안에서 같은 키가 두 동작에 묶이지 않고 모든 줄에 키나 명령이 있다. 프리셋 전환 뒤 `Esc`, `Tab`, `Shift+Tab`, `Ctrl+C`, `Ctrl+T`의 뜻이 프리셋 표대로 바뀐다. | `saturn-terminal/tui/src/keymap/tests.rs`의 `preset_names_match_the_protocol_list_and_all_load`, `every_binding_in_every_preset_has_a_key_or_a_command`, `every_user_action_is_bound_in_every_preset`, `no_preset_binds_one_key_to_two_actions_in_a_scope`, `an_override_replaces_only_its_own_keys_and_inherits_the_rest`, `common_keys_mean_the_same_in_every_preset`, `choice_keys_mean_the_same_in_every_preset`, `switching_presets_changes_escape_tab_shift_tab_and_ctrl_c`, `double_escape_means_rewind_only_inside_the_window`, `only_the_keymap_module_reads_key_codes`, `the_design_doc_names_every_preset_and_slash_command` |
 | `Esc`는 창이 없을 때 작업을 멈추고, `Esc Esc`는 되돌리기 안내를 보이며, `Shift+Tab`과 `/mode`는 권한 모드를 돌리고, `Tab`은 제출하지 않고 명령 목록을 연다. `Ctrl+C`는 유휴이고 빈 입력창이면 두 번에 종료하고 `Ctrl+A`, `Ctrl+E`, `Ctrl+U`, `Ctrl+W`, `Ctrl+L`이 동작한다. 빈 입력창 `←`는 작업 목록을 열지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `escape_stops_running_work_and_does_nothing_when_idle`, `double_escape_says_rewind_is_not_implemented_and_the_command_does_too`, `shift_tab_cycles_the_permission_mode_from_the_default`, `mode_command_cycles_without_a_value_and_sets_with_one`, `tab_completes_the_command_list_and_no_longer_submits`, `ctrl_c_twice_on_an_idle_empty_composer_quits_and_another_key_in_between_resets`, `line_editing_keys_move_and_delete_inside_the_draft`, `ctrl_l_redraws_the_screen_and_keeps_the_draft`, `left_arrow_on_an_empty_composer_does_not_open_the_task_list` |
-| `F5`와 `/tasks`는 작업 목록을, `F3`과 `/agents`는 상태판 버튼 고르기를 열고, 고르기는 줄과 버튼을 옮기며 `Enter`로 실행하고 `Esc`로 돌아가고, 버튼이 없거나 사라지면 끝난다. | `saturn-terminal/tui/src/app/tests.rs`의 `f5_and_the_tasks_command_open_the_task_list`, `f3_and_the_agents_command_enter_the_status_board_and_enter_runs_the_button`, `status_board_focus_moves_between_buttons_and_lines`, `status_board_focus_takes_arrows_until_escape_returns_them_to_history`, `status_board_focus_does_not_start_without_buttons_and_ends_when_the_line_goes` |
+| `F5`와 `/tasks`는 작업 목록을, `F3`과 `/agents`는 상태판 버튼 고르기를 열고, 고르기는 세로 버튼 목록을 `↑`, `↓`로 옮기며 `Enter`로 실행하고 `Esc`로 돌아가고, 버튼이 없거나 사라지면 끝난다. | `saturn-terminal/tui/src/app/tests.rs`의 `f5_and_the_tasks_command_open_the_task_list`, `f3_and_the_agents_command_enter_the_status_board_and_enter_runs_the_button`, `status_board_focus_moves_down_the_vertical_action_list_and_wraps`, `status_board_focus_takes_arrows_until_escape_returns_them_to_history`, `status_board_focus_does_not_start_without_buttons_and_ends_when_the_line_goes` |
 | `/keymap`은 이 TUI의 프리셋을 바꾸고, 설정 `tui.keymap`은 바뀐 값일 때만 따르며, 설정 검사는 프리셋 이름만 받는다. | `saturn-terminal/tui/src/app/tests.rs`의 `keymap_command_switches_the_preset_and_changes_escape_tab_and_ctrl_c`, `keymap_command_without_a_name_lists_the_presets_and_a_bad_name_is_a_warning`, `opencode_preset_turns_tab_into_the_permission_mode_cycle`, `the_setting_picks_the_preset_and_a_repeated_value_keeps_the_keymap_command_choice`, `claude_preset_moves_the_full_transcript_to_ctrl_o`, `saturn-terminal/engine/src/settings/layers.rs`의 `documented_keys_match_the_schema` |
 | 닫으려 할 때 `engine`에 닫은 뒤의 처리를 먼저 묻고, 답이 오기 전에는 닫지 않으며 한 번 더 누르면 기다리지 않고 닫는다. | `saturn-terminal/tui/src/app/tests.rs`의 `quit_asks_the_engine_first_and_a_second_quit_closes_without_waiting`, `exit_plan_close_quits_without_a_line`, `exit_plan_nobody_asked_for_is_ignored` |
 | `Notice`와 종료 확인 창의 `계속 실행`은 닫은 뒤 터미널에 계속 실행 중인 작업 수와 다시 여는 방법을 한 줄로 남기고, 영어 문구가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_notice_quits_and_leaves_the_running_count_line`, `exit_plan_notice_line_is_translated`, `exit_confirm_continue_quits_and_leaves_the_running_count_line` |
@@ -509,7 +511,6 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 
 - 메인 에이전트가 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - 실행 줄의 칸 순서를 provider와 모델 먼저로 둘지, 하는 일 먼저로 둘지, 모델 이름을 보고된 그대로 쓸지 별칭으로 쓸지 ([#50](https://github.com/woonyong-choi/saturn/issues/50))
-- 상태판 최대 높이를 화면 높이 비율로 둘지, 고정 줄 수로 둘지, 상한을 두지 않을지 ([#51](https://github.com/woonyong-choi/saturn/issues/51))
 - `/stop`이 진행 중인 `/train`도 멈출지, 학습 전용 중지 명령을 둘지, 학습 줄에 중지 버튼을 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 허가 거절 뒤 다르게 하라는 입력을 접두 초안으로 받을지, 창 안 입력칸으로 받을지, 일반 입력처럼 router에 맡길지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
 - plain 출력을 켜는 조건과 우선순위, 설정 키 이름을 무엇으로 할지 ([#57](https://github.com/woonyong-choi/saturn/issues/57))

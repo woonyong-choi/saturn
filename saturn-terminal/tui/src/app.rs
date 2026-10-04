@@ -411,10 +411,11 @@ impl App {
             MouseEventKind::Down(MouseButton::Left)
                 if self.window.is_none() && self.exit_confirm.is_none() =>
             {
-                let lines = status_board::build(&self.chat, now);
-                let areas = self.areas(self.screen, lines.len());
+                let board = status_board::board(&self.chat, now);
+                let rows = board.as_ref().map_or(0, status_board::Board::height);
+                let areas = self.areas(self.screen, rows);
                 let point = Position::new(mouse.column, mouse.row);
-                let hit = status_board::button_rects(&lines, self.lang, areas.status)
+                let hit = status_board::button_rects(board.as_ref(), self.lang, areas.status)
                     .into_iter()
                     .find(|(rect, _)| rect.contains(point));
                 match hit {

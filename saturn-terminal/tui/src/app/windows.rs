@@ -51,58 +51,39 @@ impl App {
         vec![Effect::Send(request)]
     }
 
-    // cost: time O(l), heap O(l), stack O(1)
-    // vars: l = 상태판 줄 수
-    // basis: estimate
-    /// 버튼이 있는 줄마다 그 줄의 버튼들을 위에서 아래 순서로 모은다.
-    fn button_rows(&self, now: Instant) -> Vec<Vec<Button>> {
-        status_board::build(&self.chat, now)
-            .iter()
-            .map(status_board::StatusLine::buttons)
-            .filter(|buttons| !buttons.is_empty())
-            .collect()
+    /// 상태판에 보이는 줄의 버튼을 위에서 아래 순서로 모은다.
+    fn board_buttons(&self, now: Instant) -> Vec<Button> {
+        status_board::board(&self.chat, now).map_or_else(Vec::new, |board| board.buttons())
     }
 
     /// 버튼이 없으면 들어가지 않는다.
     pub(super) fn enter_board(&mut self, now: Instant) {
-        self.board_focus = self
-            .button_rows(now)
-            .first()
-            .and_then(|buttons| buttons.first().copied());
+        self.board_focus = self.board_buttons(now).first().copied();
     }
 
-    /// `↑`, `↓`는 줄, `←`, `→`는 버튼, `Enter`는 실행, `Esc`는 돌아가기다. 고른 버튼이 사라졌으면 고르기를 끝낸다.
+    /// `↑`, `↓`는 세로 목록의 버튼(처음과 끝은 돌아간다), `Enter`는 실행, `Esc`는 돌아가기다.
+    /// 고른 버튼이 사라졌으면 고르기를 끝낸다.
     pub(super) fn on_board_action(&mut self, action: Action, now: Instant) -> Vec<Effect> {
-        let rows = self.button_rows(now);
-        let position = self.board_focus.and_then(|focus| {
-            rows.iter().enumerate().find_map(|(row, buttons)| {
-                buttons
-                    .iter()
-                    .position(|button| *button == focus)
-                    .map(|col| (row, col))
-            })
-        });
-        let Some((row, col)) = position else {
+        let buttons = self.board_buttons(now);
+        let position = self
+            .board_focus
+            .and_then(|focus| buttons.iter().position(|button| *button == focus));
+        let Some(position) = position else {
             self.board_focus = None;
             return Vec::new();
         };
-        let target = match action {
-            Action::Up => Some((row.saturating_sub(1), col)),
-            Action::Down => Some(((row + 1).min(rows.len() - 1), col)),
-            Action::CursorLeft => Some((row, col.saturating_sub(1))),
-            Action::CursorRight => Some((row, col + 1)),
-            _ => None,
-        };
-        if let Some((row, col)) = target {
-            let buttons = &rows[row];
-            self.board_focus = buttons.get(col.min(buttons.len() - 1)).copied();
-            return Vec::new();
-        }
         match action {
+            Action::Up => {
+                self.board_focus = Some(buttons[(position + buttons.len() - 1) % buttons.len()]);
+                Vec::new()
+            }
+            Action::Down => {
+                self.board_focus = Some(buttons[(position + 1) % buttons.len()]);
+                Vec::new()
+            }
             Action::Confirm => {
                 self.board_focus = None;
-                let button = rows[row][col];
-                self.on_button(button)
+                self.on_button(buttons[position])
             }
             Action::Close => {
                 self.board_focus = None;
