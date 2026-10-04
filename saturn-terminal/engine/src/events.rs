@@ -151,6 +151,7 @@ impl Engine {
         if self.block_interrupted_subagent(chat, &live, &event).await {
             return Ok(());
         }
+        let event = self.mark_packet_reply(event);
         let run = self.run_for_event(chat, &live, &event).await?;
         let seq = self.record_event(run, chat, &live, &event).await?;
         if let Some(seq) = seq {
@@ -158,6 +159,20 @@ impl Engine {
         }
         let status = self.agents.on_event(&event);
         self.apply_event(chat, &live, event, status).await
+    }
+
+    /// 패킷 턴의 완료 신호 전에 온 메인 글은 패킷에 대한 답이다. 사용자 입력의 답과 섞이지 않도록 `PacketReply`로 바꿔 기록한다.
+    fn mark_packet_reply(&self, event: ProviderEvent) -> ProviderEvent {
+        match event {
+            ProviderEvent::Text {
+                agent,
+                subagent: None,
+                text,
+            } if self.flow.packet_turns.contains_key(&agent) => {
+                ProviderEvent::PacketReply { agent, text }
+            }
+            other => other,
+        }
     }
 
     /// 크래시로 끊긴 하위 에이전트의 이벤트가 provider에서 다시 왔으면 기록하지 않고 막는다. 그 에이전트를 멈추고 화면에 알린다.

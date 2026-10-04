@@ -68,6 +68,7 @@ impl AgentTracker {
         match event {
             // 부모 턴이 끝난 뒤 메인 출력이 오면 입력 없는 provider-wake도 새 턴으로 본다.
             ProviderEvent::Text { subagent: None, .. }
+            | ProviderEvent::PacketReply { .. }
             | ProviderEvent::ToolCall { subagent: None, .. } => tree.main_done = false,
             ProviderEvent::SubagentStarted {
                 subagent, parent, ..
@@ -138,6 +139,7 @@ impl AgentTracker {
 fn agent_of(event: &ProviderEvent) -> AgentId {
     match event {
         ProviderEvent::Text { agent, .. }
+        | ProviderEvent::PacketReply { agent, .. }
         | ProviderEvent::ToolCall { agent, .. }
         | ProviderEvent::ToolResult { agent, .. }
         | ProviderEvent::SubagentStarted { agent, .. }

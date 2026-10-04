@@ -1,5 +1,6 @@
 //! provider 전환 테스트: Codex → Claude → Codex 왕복에서 패킷, session별 전달 번호, 중복과 누락을 확인한다.
 
+use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{LedgerSeq, Provider, ProviderSessionId, SessionId};
 use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::{InputState, SessionState};
@@ -193,6 +194,62 @@ async fn packet_turn_completion_does_not_end_the_task_on_the_new_provider() {
     assert!(flow.engine.chat_is_running(flow.chat));
     flow.event(Provider::Claude, turn_completed(agent)).await;
     assert!(!flow.engine.chat_is_running(flow.chat));
+}
+
+/// 전환 뒤 패킷 턴에 provider가 "알겠습니다"로 답해도 사용자 입력의 답으로 보이지 않는다(#332).
+#[tokio::test]
+async fn packet_turn_reply_is_not_shown_as_the_input_reply() {
+    let (mut flow, _codex) = round_trip_flow().await;
+    flow.engine.switch_provider(flow.chat, Provider::Codex);
+    flow.submit("write the cache module").await;
+    run_turn(&mut flow, Provider::Codex, "codex wrote cache", "c1", false).await;
+    flow.engine.switch_provider(flow.chat, Provider::Claude);
+    flow.submit("review the cache module").await;
+    let mut client = flow.client().await;
+    let agent = flow.agent();
+
+    flow.event(Provider::Claude, text(agent, "알겠습니다"))
+        .await;
+    flow.event(Provider::Claude, turn_completed(agent)).await;
+    flow.event(Provider::Claude, text(agent, "리뷰했습니다"))
+        .await;
+    flow.event(Provider::Claude, turn_completed(agent)).await;
+
+    let live = client
+        .until(|notification| match notification {
+            Notification::TaskEvent {
+                event: ProviderEvent::Text { text, .. },
+                ..
+            } => Some(text.clone()),
+            _ => None,
+        })
+        .await;
+    assert_eq!(live, "리뷰했습니다");
+    let (_, greeting) = flow.attach().await;
+    let Some(Notification::HistoryChunk { entries, .. }) = greeting.get(1) else {
+        panic!("expected HistoryChunk, got {greeting:?}");
+    };
+    let shown: Vec<&str> = entries
+        .iter()
+        .filter_map(|entry| match entry {
+            Notification::TaskEvent {
+                event: ProviderEvent::Text { text, .. },
+                ..
+            } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(shown, vec!["codex wrote cache", "리뷰했습니다"]);
+    let recorded = flow
+        .engine
+        .store
+        .ledger_since(flow.chat, LedgerSeq(0))
+        .await
+        .unwrap();
+    assert!(recorded.iter().any(|row| matches!(
+        &row.event,
+        ProviderEvent::PacketReply { text, .. } if text == "알겠습니다"
+    )));
 }
 
 #[tokio::test]
