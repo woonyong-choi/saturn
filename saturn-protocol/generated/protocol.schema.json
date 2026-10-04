@@ -1030,6 +1030,45 @@
           "type": "object"
         },
         {
+          "description": "router 판단 없이 `task`에 바로 끼워 넣는 입력. 허가를 거절하고 이어 쓴 말처럼 대상이 분명할 때 쓴다.\n`task`가 이미 끝났거나 없으면 `SubmitInput`처럼 판단을 받는다. `client_ref`는 `SubmitInput`과 같다.",
+          "properties": {
+            "method": {
+              "const": "SubmitToTask",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "client_ref": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "task": {
+                  "$ref": "#/$defs/TaskId"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "chat",
+                "client_ref",
+                "task",
+                "text"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "description": "아직 보내지 않은 입력을 새 작업으로 보낸다.",
           "properties": {
             "method": {

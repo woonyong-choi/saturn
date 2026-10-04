@@ -238,6 +238,8 @@ pub const CONSTRAINT_UNCONFIRMED: &str = "확인 없이";
 pub const RESUME_TITLE: &str = "보류된 작업이 있습니다";
 pub const RESUME_CONFIRM: &str = "고른 작업 이어서";
 pub const PERMISSION_REASON: &str = "이유";
+/// 허가를 거절한 뒤 입력창에 채우는 접두. `{label}`은 작업 이름표 글자다.
+pub const DIRECTED_PREFIX: &str = "[{label}]에게: ";
 pub const PERMISSION_WAITING: &str = "허가를 기다리는 다른 작업";
 pub const INPUT_REQUESTED: &str = "입력 요청";
 pub const INPUT_LINK_NOTE: &str = "링크를 직접 열어 확인하세요 · Saturn은 열지 않습니다";

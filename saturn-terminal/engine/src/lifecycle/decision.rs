@@ -1,7 +1,7 @@
 //! 판단 적용 테스트: 적용 직전 채팅 revision을 비교하고, 어긋나면 한 번만 다시 판단한다.
 
 use saturn_core::routers::RouteDecision;
-use saturn_protocol::ids::{ChatRevision, InputId};
+use saturn_protocol::ids::{ChatRevision, InputId, TaskId};
 use saturn_protocol::rpc::ModelChoice;
 use saturn_protocol::state::{Disposition, InputState};
 
@@ -140,6 +140,44 @@ async fn skip_relation_input_waits_without_router_while_task_runs() {
 
     assert_eq!(flow.router_calls(), 1);
     assert_eq!(flow.state(waiting), InputState::Queued);
+}
+
+#[tokio::test]
+async fn submit_to_task_steers_the_named_task_without_the_router() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.fake.verify_steer();
+    flow.submit("first request").await;
+    let task = flow.engine.queue.main_tasks()[0].task;
+
+    flow.engine
+        .submit_to_task(CLIENT, flow.chat, 2, task, "use rustfmt instead".to_owned())
+        .await
+        .unwrap();
+    flow.settle().await;
+
+    assert_eq!(flow.router_calls(), 1);
+    assert!(matches!(
+        flow.fake.calls().last(),
+        Some(Call::Steer { text, .. }) if text == "use rustfmt instead"
+    ));
+}
+
+#[tokio::test]
+async fn submit_to_a_task_that_is_gone_gets_the_relation_judgment() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.9, "independent", "spawn"),
+    ])
+    .await;
+    flow.submit("first request").await;
+
+    flow.engine
+        .submit_to_task(CLIENT, flow.chat, 2, TaskId(999), "anything".to_owned())
+        .await
+        .unwrap();
+    flow.settle().await;
+
+    assert_eq!(flow.router_calls(), 2);
 }
 
 #[tokio::test]

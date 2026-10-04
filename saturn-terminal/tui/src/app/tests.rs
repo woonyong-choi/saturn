@@ -1110,6 +1110,114 @@ fn permission_window_ignores_keys_for_one_second() {
     );
 }
 
+/// 작업 A의 허가 요청이 떠 있고 보호 시간이 지난 상태. 시간은 `later`로 준다.
+fn asked_permission() -> (App, Instant) {
+    let mut app = attached();
+    notify(&mut app, task(1, 'A', TaskState::Running));
+    let now = Instant::now();
+    app.handle(
+        AppEvent::Engine(Notification::PermissionRequested {
+            task: TaskId(1),
+            label: TaskLabel('A'),
+            provider: Provider::from_static("codex"),
+            request_id: "r1".to_string(),
+            summary: "rm".to_string(),
+            reason: "clean".to_string(),
+            waiting: 0,
+        }),
+        now,
+    );
+    (app, now + Duration::from_secs(2))
+}
+
+#[test]
+fn denying_a_permission_opens_the_draft_addressed_to_that_task() {
+    let (mut app, later) = asked_permission();
+
+    press_at(&mut app, KeyCode::Char('d'), later);
+
+    assert_eq!(app.composer.text(), "[A]에게: ");
+}
+
+#[test]
+fn allowing_a_permission_leaves_the_draft_empty() {
+    let (mut app, later) = asked_permission();
+
+    press_at(&mut app, KeyCode::Char('y'), later);
+
+    assert_eq!(app.composer.text(), "");
+}
+
+#[test]
+fn denying_keeps_a_draft_the_user_was_already_writing() {
+    let (mut app, later) = asked_permission();
+    app.set_draft("later");
+
+    press_at(&mut app, KeyCode::Char('d'), later);
+
+    assert_eq!(app.composer.text(), "later");
+}
+
+#[test]
+fn words_after_the_prefix_go_to_that_task_without_the_router() {
+    let (mut app, later) = asked_permission();
+    press_at(&mut app, KeyCode::Char('d'), later);
+    type_text(&mut app, "use rustfmt instead");
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(
+        effects,
+        vec![
+            Effect::RecordHistory("use rustfmt instead".to_string()),
+            Effect::Send(Request::SubmitToTask {
+                chat: ChatId(7),
+                client_ref: 1,
+                task: TaskId(1),
+                text: "use rustfmt instead".to_string(),
+            }),
+        ]
+    );
+    assert!(app.composer.is_empty());
+}
+
+#[test]
+fn only_the_prefix_sends_nothing_and_keeps_the_draft() {
+    let (mut app, later) = asked_permission();
+    press_at(&mut app, KeyCode::Char('d'), later);
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert!(effects.is_empty());
+    assert_eq!(app.composer.text(), "[A]에게: ");
+}
+
+#[test]
+fn erasing_the_prefix_makes_it_an_ordinary_input_again() {
+    let (mut app, later) = asked_permission();
+    press_at(&mut app, KeyCode::Char('d'), later);
+    app.composer.set_text("다른 일 해줘", false);
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert!(matches!(
+        sent(&effects)[0],
+        Request::SubmitInput { text, .. } if text == "다른 일 해줘"
+    ));
+}
+
+#[test]
+fn clearing_the_prefix_draft_forgets_the_target() {
+    let (mut app, later) = asked_permission();
+    press_at(&mut app, KeyCode::Char('d'), later);
+    press(&mut app, KeyCode::Char('c'), KeyModifiers::CONTROL);
+    type_text(&mut app, "[A]에게: 직접 쓴 말");
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert!(matches!(sent(&effects)[0], Request::SubmitInput { .. }));
+}
+
 #[test]
 fn permission_resolved_elsewhere_closes_window() {
     let mut app = attached();

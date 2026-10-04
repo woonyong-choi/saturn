@@ -489,6 +489,7 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("보류된 작업이 있습니다", "There are held tasks"),
     ("고른 작업 이어서", "Continue selected"),
     ("이유", "Reason"),
+    ("[{label}]에게: ", "To [{label}]: "),
     (
         "허가를 기다리는 다른 작업",
         "Other tasks waiting for permission:",

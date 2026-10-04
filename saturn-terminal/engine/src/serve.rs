@@ -186,6 +186,35 @@ impl Engine {
         Deferred::Responded
     }
 
+    /// 입력 접수 요청 둘을 `submit_input`과 `submit_to_task`로 나눈다.
+    async fn route_submit(
+        &mut self,
+        client: ClientId,
+        request: Request,
+    ) -> Result<(), EngineError> {
+        match request {
+            Request::SubmitInput {
+                chat,
+                client_ref,
+                text,
+                skip_relation,
+            } => {
+                self.submit_input(client, chat, client_ref, text, skip_relation)
+                    .await
+            }
+            Request::SubmitToTask {
+                chat,
+                client_ref,
+                task,
+                text,
+            } => {
+                self.submit_to_task(client, chat, client_ref, task, text)
+                    .await
+            }
+            _ => Ok(()),
+        }
+    }
+
     #[expect(
         clippy::cognitive_complexity,
         reason = "요청 종류마다 한 줄씩 넘기는 분배라 나누면 대응표가 흩어지고, .await마다 점수가 오른다"
@@ -224,14 +253,8 @@ impl Engine {
                 self.upgrade_requested = true;
                 Ok(())
             }
-            Request::SubmitInput {
-                chat,
-                client_ref,
-                text,
-                skip_relation,
-            } => {
-                self.submit_input(client, chat, client_ref, text, skip_relation)
-                    .await
+            request @ (Request::SubmitInput { .. } | Request::SubmitToTask { .. }) => {
+                self.route_submit(client, request).await
             }
             Request::RunAsNewTask { input } => self.run_as_new_task(client, input).await,
             Request::SendNow { input } => self.send_now(client, input).await,
