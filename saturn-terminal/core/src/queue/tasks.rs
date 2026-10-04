@@ -4,7 +4,8 @@ use saturn_protocol::state::InputState;
 #[cfg(test)]
 use super::WriteGate;
 use super::{
-    Entry, HELD_IGNORE_LIMIT, Permission, Queue, QueueError, QueuedInput, TaskPhase, TaskSlot,
+    Entry, HELD_IGNORE_LIMIT, Permission, Queue, QueueError, QueuedInput, TaskInfo, TaskPhase,
+    TaskSlot,
 };
 
 impl Queue {
@@ -259,6 +260,23 @@ impl Queue {
             awaits_stop: false,
         });
         self.bump(chat);
+    }
+
+    // cost: time O(t), heap O(t), stack O(1), alloc 1
+    // vars: t = 작업 수
+    // basis: estimate
+    /// 닫히지 않은 메인 작업을 만든 순서로 돌려준다.
+    pub fn main_tasks(&self) -> Vec<TaskInfo> {
+        self.tasks
+            .iter()
+            .filter(|slot| slot.is_main && slot.phase != TaskPhase::Closed)
+            .map(|slot| TaskInfo {
+                task: slot.id,
+                chat: slot.chat,
+                agent: slot.agent,
+                phase: slot.phase,
+            })
+            .collect()
     }
 
     // cost: time O(t), heap O(1), stack O(1)

@@ -194,8 +194,7 @@ impl Engine {
             Request::ListModels { chat, provider } => {
                 self.send_models(client, chat, provider).await
             }
-            // TODO(#161): 작업 목록
-            Request::ListTasks => Err(unsupported("ListTasks")),
+            Request::ListTasks => self.send_task_list(client).await,
             // TODO(#91): 학습과 router 버전
             Request::Train { .. } => Err(unsupported("Train")),
             Request::ConfirmTrain { .. } => Err(unsupported("ConfirmTrain")),
