@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 use super::input::{self, InputKind};
 use super::permission::{call_of, file_change_paths};
-use super::threads::{close_child, register_child};
+use super::threads::{HeldEvents, close_child, register_child, register_spawned};
 use super::{
     APPROVAL_METHODS, ELICITATION_METHOD, PERMISSIONS_METHOD, PendingApproval, PendingInput,
     ThreadState, USER_INPUT_METHOD, value_text,
@@ -35,14 +35,41 @@ pub(super) fn model_info(entry: &Value) -> Option<ModelInfo> {
     })
 }
 
-/// 자식 thread 등록과 `active_turn` 갱신도 여기서 한다. 버릴 알림이면 빈 목록.
+/// 변환하는 알림 이름. 부모 관계를 모르는 thread의 알림 가운데 이 알림만 쥐어 둔다.
+const CONVERTED_METHODS: [&str; 7] = [
+    "turn/started",
+    "turn/completed",
+    "item/agentMessage/delta",
+    "item/started",
+    "item/completed",
+    "thread/tokenUsage/updated",
+    "thread/settings/updated",
+];
+
+/// 자식 thread 등록과 `active_turn` 갱신도 여기서 한다. 자식은 `thread/started`의 부모 thread나 부모의 `spawnAgent`
+/// 완료 항목으로 등록하고, 등록 전에 온 자식의 알림은 `held`에 쥐어 두었다가 등록 직후 받은 순서대로 처리한다.
+/// 버릴 알림이면 빈 목록.
 pub(super) fn convert_notification(
     threads: &mut HashMap<ProviderSessionId, ThreadState>,
+    held: &mut HeldEvents,
     method: &str,
     params: &serde_json::Value,
 ) -> Vec<ProviderEvent> {
     if method == "thread/started" {
-        return register_child(threads, &params["thread"]);
+        let started = register_child(threads, &params["thread"]);
+        let Some(id) = params["thread"]["id"]
+            .as_str()
+            .filter(|_| !started.is_empty())
+        else {
+            return started;
+        };
+        let mut events = started;
+        events.extend(replay_held(
+            threads,
+            held,
+            &ProviderSessionId(id.to_owned()),
+        ));
+        return events;
     }
     let Some(thread_id) = params["threadId"].as_str() else {
         return Vec::new();
@@ -51,11 +78,46 @@ pub(super) fn convert_notification(
     if method == "thread/closed" {
         return close_child(threads, &thread);
     }
-    let Some(state) = threads.get_mut(&thread) else {
+    if !threads.contains_key(&thread) {
+        if CONVERTED_METHODS.contains(&method) {
+            held.hold(&thread, method, params);
+        }
+        return Vec::new();
+    }
+    let mut events = convert_known(threads, method, params, &thread);
+    if method == "item/completed" {
+        for (child, started) in register_spawned(threads, &thread, &params["item"]) {
+            events.push(started);
+            events.extend(replay_held(threads, held, &child));
+        }
+    }
+    events
+}
+
+/// 등록한 자식이 부모 관계 확인 전에 낸 알림을 받은 순서대로 처리한다. 자식이 낸 `spawnAgent` 완료 항목도
+/// 같은 경로를 지나 손자를 등록한다.
+fn replay_held(
+    threads: &mut HashMap<ProviderSessionId, ThreadState>,
+    held: &mut HeldEvents,
+    child: &ProviderSessionId,
+) -> Vec<ProviderEvent> {
+    held.take(child)
+        .into_iter()
+        .flat_map(|(method, params)| convert_notification(threads, held, &method, &params))
+        .collect()
+}
+
+fn convert_known(
+    threads: &mut HashMap<ProviderSessionId, ThreadState>,
+    method: &str,
+    params: &serde_json::Value,
+    thread: &ProviderSessionId,
+) -> Vec<ProviderEvent> {
+    let Some(state) = threads.get_mut(thread) else {
         return Vec::new();
     };
     let agent = state.agent;
-    let subagent = state.parent.as_ref().map(|_| subagent_id(&thread));
+    let subagent = state.parent.as_ref().map(|_| subagent_id(thread));
     match method {
         "turn/started" => on_turn_started(state, params),
         "turn/completed" => on_turn_completed(state, params, agent, subagent),

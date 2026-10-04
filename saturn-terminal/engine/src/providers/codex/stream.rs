@@ -6,6 +6,7 @@ use tokio::process::{ChildStderr, ChildStdout};
 use tokio::sync::mpsc;
 
 use super::convert::{convert_notification, convert_server_request};
+use super::threads::HeldEvents;
 use super::{Approvals, Pending, Threads, lock};
 use crate::providers::mask_values;
 use crate::secrets::Masker;
@@ -20,13 +21,14 @@ pub(super) async fn read_loop(
     masker: Masker,
 ) {
     let mut lines = BufReader::new(stdout).lines();
+    let mut held = HeldEvents::default();
     while let Ok(Some(line)) = lines.next_line().await {
         let Ok(mut message) = serde_json::from_str::<Value>(&line) else {
             tracing::debug!("skipping non-json line from codex app-server");
             continue;
         };
         mask_values(&mut message, &masker);
-        for event in route_message(&message, &pending, &threads, &approvals) {
+        for event in route_message(&message, &pending, (&threads, &mut held), &approvals) {
             let _ = events.send(event).await; // 받는 쪽이 연결을 버렸다
         }
     }
@@ -51,7 +53,7 @@ pub(super) async fn read_loop(
 pub(super) fn route_message(
     message: &Value,
     pending: &Pending,
-    threads: &Threads,
+    (threads, held): (&Threads, &mut HeldEvents),
     approvals: &Approvals,
 ) -> Vec<ProviderEvent> {
     match (
@@ -66,7 +68,7 @@ pub(super) fn route_message(
             &message["params"],
         ),
         (Some(method), None) => {
-            convert_notification(&mut lock(threads), method, &message["params"])
+            convert_notification(&mut lock(threads), held, method, &message["params"])
         }
         (None, Some(id)) => {
             let reply = id.as_u64().and_then(|id| lock(pending).remove(&id));
