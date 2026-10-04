@@ -55,7 +55,7 @@ pub enum Request {
         chat: ChatId,
         path: String,
     },
-    /// `before`보다 앞 기록 `limit`개.
+    /// `before`(앞서 받은 `HistoryChunk`의 `oldest`)보다 앞 기록 `limit`단위. 없으면 가장 최근부터.
     LoadHistory {
         chat: ChatId,
         before: Option<LedgerSeq>,
@@ -269,9 +269,13 @@ pub enum Notification {
         failure: Option<String>,
     },
     /// `LoadHistory`의 답. 항목은 실시간 알림과 같은 형식.
+    /// `oldest`는 이 묶음에서 가장 오래된 기록 위치로, 더 앞을 받으려면 `LoadHistory`의 `before`에 그대로 보낸다.
+    /// 묶음이 비면 `None`. 더 앞 기록이 없으면 `has_more`가 거짓이니 더 요청하지 않는다.
     HistoryChunk {
         chat: ChatId,
         entries: Vec<Notification>,
+        #[serde(default)]
+        oldest: Option<LedgerSeq>,
         has_more: bool,
     },
     PermissionRequested {

@@ -6,7 +6,9 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::{ChatId, InputId, JudgmentId, SettingsRevision, TaskId, TaskLabel};
+use saturn_protocol::ids::{
+    ChatId, InputId, JudgmentId, LedgerSeq, SettingsRevision, TaskId, TaskLabel,
+};
 use saturn_protocol::rpc::{Alert, ChatNotice, ExitPlan, Notification, Request, SettingsWarning};
 use saturn_protocol::state::{Disposition, InputState, QueueReason};
 
@@ -85,8 +87,9 @@ impl App {
             Notification::HistoryChunk {
                 chat,
                 entries,
+                oldest,
                 has_more,
-            } => return self.on_history_chunk(chat, entries, has_more, now),
+            } => return self.on_history_chunk(chat, entries, oldest, has_more, now),
             Notification::PermissionRequested {
                 task,
                 label,
@@ -352,10 +355,12 @@ impl App {
         &mut self,
         chat: ChatId,
         entries: Vec<Notification>,
+        oldest: Option<LedgerSeq>,
         has_more: bool,
         now: Instant,
     ) -> Vec<Effect> {
         self.learn_chat(chat);
+        self.history_before = oldest;
         self.history_has_more = has_more;
         self.history_loading = false;
         if self.history_loaded {

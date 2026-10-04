@@ -270,7 +270,7 @@ fn request_id_of(line: &str) -> Option<RequestId> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ids::{ChatId, InputId, TaskId, TaskLabel};
+    use crate::ids::{ChatId, InputId, LedgerSeq, TaskId, TaskLabel};
     use crate::state::TaskState;
 
     #[test]
@@ -348,6 +348,7 @@ mod tests {
                 client_ref: 1,
                 input: InputId(9),
             }],
+            oldest: Some(LedgerSeq(7)),
             has_more: false,
         });
 

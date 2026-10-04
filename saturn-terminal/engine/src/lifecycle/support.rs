@@ -173,8 +173,14 @@ impl Flow {
             .await
             .unwrap();
         self.settle().await;
-        let (entries, _) = self.engine.store.recent_history(chat, 500).await.unwrap();
-        let input = entries
+        let page = self
+            .engine
+            .store
+            .history_page(chat, None, 500)
+            .await
+            .unwrap();
+        let input = page
+            .entries
             .into_iter()
             .filter_map(|entry| match entry {
                 crate::store::HistoryEntry::Input { input, .. } => Some(input),
@@ -365,13 +371,13 @@ impl Flow {
 
     /// 끝난 입력도 기록에 남아 있으므로 기록의 마지막 입력 번호를 본다.
     async fn latest_input(&self) -> Option<InputId> {
-        let (entries, _) = self
+        let page = self
             .engine
             .store
-            .recent_history(self.chat, 500)
+            .history_page(self.chat, None, 500)
             .await
             .unwrap();
-        entries
+        page.entries
             .into_iter()
             .filter_map(|entry| match entry {
                 crate::store::HistoryEntry::Input { input, .. } => Some(input),

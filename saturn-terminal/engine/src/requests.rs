@@ -39,16 +39,19 @@ impl Engine {
     pub(super) async fn history_chunk(
         &self,
         chat: ChatId,
+        before: Option<LedgerSeq>,
         limit: u32,
     ) -> Result<Notification, EngineError> {
-        let (entries, has_more) = self.store.recent_history(chat, limit).await?;
+        let page = self.store.history_page(chat, before, limit).await?;
         Ok(Notification::HistoryChunk {
             chat,
-            entries: entries
+            entries: page
+                .entries
                 .into_iter()
                 .flat_map(|entry| self.history_notifications(chat, entry))
                 .collect(),
-            has_more,
+            oldest: page.oldest,
+            has_more: page.has_more,
         })
     }
 
@@ -173,7 +176,7 @@ impl Engine {
         let _ = self.rpc.send_to(client, notification).await; // 끊긴 클라이언트는 건너뛴다
     }
 
-    /// TODO(#110): 이전 기록 요청의 기준 위치 `before`
+    /// `before`는 앞서 받은 묶음의 `oldest`다. engine은 TUI별 위치를 기억하지 않는다.
     pub(super) async fn load_history(
         &self,
         client: ClientId,
@@ -181,7 +184,9 @@ impl Engine {
         before: Option<LedgerSeq>,
         limit: u32,
     ) -> Result<(), EngineError> {
-        let history = self.history_chunk(chat, limit.min(MAX_HISTORY)).await?;
+        let history = self
+            .history_chunk(chat, before, limit.min(MAX_HISTORY))
+            .await?;
         self.send(client, history).await;
         Ok(())
     }

@@ -384,7 +384,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 끼워 넣기가 아닌 판단의 피드백 질문 머리 | `[B] 새 작업으로 보냄`, `[C] 대기열에 넣음` |
 | 셸 명령 셀 | 출력 앞 10줄, 전체 기록에서 전체 |
 | `@` 파일 목록 | 2,000개까지. `.git`과 작업 폴더 `.gitignore`의 글로브 없는 이름은 뺀다 |
-| 스크롤 | 휠 한 칸 3줄, 맨 위에 닿으면 이전 기록 50단위(입력 또는 실행 하나) 요청 |
+| 스크롤 | 휠 한 칸 3줄, 맨 위에 닿으면 이전 기록 50단위(입력 또는 실행 하나) 요청. 마지막으로 받은 `HistoryChunk`의 `oldest`를 `LoadHistory`의 `before`로 보내고, `has_more`가 거짓이거나 `oldest`가 없으면 더 요청하지 않는다. 기준 위치는 TUI가 들고 있어 같은 채팅에 붙은 다른 화면과 섞이지 않는다 |
 | router 키 입력 창 붙여넣기 | 제어 문자를 뺀 글을 가린 입력칸에 넣는다 |
 | `/record` | 명령 목록에 넣고 값 목록은 `on`, `off` |
 | `/add-dir` | 명령 목록에 넣고 값은 폴더 경로 하나. 명령 이름 뒤 나머지 줄 전체를 경로로 읽어 공백이 들어 있어도 된다. 상대 경로는 TUI의 현재 폴더 기준 절대 경로로, `~/`는 홈 폴더 아래로 바꿔 보낸다(초안). 더한 폴더는 채팅 기록에 저장하고 모든 provider session에 넘긴다. 폴더 설정은 읽지 않는다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)). 더한 뒤 안내 한 줄을 대화 기록에 남기고, 열린 session이 있으면 다음 session부터 적용한다고 덧붙인다 |
@@ -437,4 +437,3 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 - plain 출력을 켜는 조건과 우선순위, 설정 키 이름을 무엇으로 할지 ([#57](https://github.com/woonyong-choi/saturn/issues/57))
 - 좁은 가로 폭에서 폭 구간별로 버튼과 칸을 줄일지, 줄 끝부터 말줄임할지, 버튼 대신 명령 안내를 보일지 ([#58](https://github.com/woonyong-choi/saturn/issues/58))
 - 빈 입력창에서 `←`로 작업 목록 화면을 열지, `/tasks`로만 열지, 다른 전용 키를 둘지 ([#59](https://github.com/woonyong-choi/saturn/issues/59))
-- 위로 스크롤할 때 이전 기록 요청의 기준 위치를 `HistoryChunk`에 실을지, 항목마다 붙일지, engine이 기억할지 ([#110](https://github.com/woonyong-choi/saturn/issues/110))

@@ -37,12 +37,13 @@ async fn record_write_failure_sends_nothing_anywhere() {
     assert_eq!(flow.router_calls(), 0);
     assert_eq!(flow.engine.queue.next_to_route(flow.chat), None);
     flow.engine.store.allow_writes().await;
-    let (entries, _) = flow
+    let entries = flow
         .engine
         .store
-        .recent_history(flow.chat, 10)
+        .history_page(flow.chat, None, 10)
         .await
-        .unwrap();
+        .unwrap()
+        .entries;
     assert!(entries.is_empty());
 }
 
@@ -71,12 +72,13 @@ async fn accepted_input_reaches_first_provider_after_it_is_recorded() {
         ]
     );
     assert_eq!(flow.state(input), InputState::Applied);
-    let (entries, _) = flow
+    let entries = flow
         .engine
         .store
-        .recent_history(flow.chat, 10)
+        .history_page(flow.chat, None, 10)
         .await
-        .unwrap();
+        .unwrap()
+        .entries;
     assert!(matches!(
         entries.as_slice(),
         [
@@ -161,7 +163,13 @@ async fn first_input_without_any_provider_is_rejected_and_sent_nowhere() {
 
     assert_eq!(flow.state(input), InputState::Rejected);
     assert!(flow.fake.calls().is_empty());
-    let (entries, _) = flow.engine.store.recent_history(chat, 10).await.unwrap();
+    let entries = flow
+        .engine
+        .store
+        .history_page(chat, None, 10)
+        .await
+        .unwrap()
+        .entries;
     assert!(matches!(
         entries.as_slice(),
         [HistoryEntry::Input {

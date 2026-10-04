@@ -369,7 +369,7 @@ impl Engine {
             .apply_trusted(&self.store, Some(chat), chat_env.workdir())
             .await?;
         let start = self.start_info(chat_env.workdir(), &self.chat_dirs_of(chat));
-        let history = self.history_chunk(chat, ATTACH_HISTORY).await?;
+        let history = self.history_chunk(chat, None, ATTACH_HISTORY).await?;
         self.rpc.greet(client, chat, start, history).await?;
         self.chats.insert(chat, chat_env);
         self.attachments.insert(

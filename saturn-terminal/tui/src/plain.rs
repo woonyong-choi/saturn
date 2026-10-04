@@ -344,6 +344,7 @@ mod tests {
             Notification::HistoryChunk {
                 chat: ChatId(1),
                 entries: Vec::new(),
+                oldest: None,
                 has_more: false,
             },
             Notification::InputChanged {
