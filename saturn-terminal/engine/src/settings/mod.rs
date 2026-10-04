@@ -31,6 +31,13 @@ pub(crate) use trust::{FolderTrustPrompt, TrustStatus, TrustStore};
 pub(crate) const CONFIG_FILE: &str = "config.toml";
 
 /// 병합 검사 실패면 호출자가 이전 번호로 계속하고 경고한다.
+/// 맥락 정리를 누가 맡을지 정하는 `context.mode`. `Provider`면 `sessions`는 compaction을 판정하지 않는다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ContextMode {
+    Saturn,
+    Provider,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum SettingsError {
     #[error("failed to access settings file: {path}")]
@@ -191,6 +198,14 @@ impl Settings {
         }
     }
 
+    /// 정리 모드 `context.mode`. 모르는 값은 검사에서 걸러져 기본값(`saturn`)으로 본다.
+    pub(crate) fn context_mode(&self) -> ContextMode {
+        match self.text("context.mode") {
+            "provider" => ContextMode::Provider,
+            _ => ContextMode::Saturn,
+        }
+    }
+
     /// 안전 비율 `context.safety_percent`(초안)는 두 provider 공통이다.
     pub(crate) fn context_budget(&self, provider: Provider) -> ContextBudget {
         let section = match provider {
@@ -299,5 +314,30 @@ mod tests {
             a.settings.retention().max_age,
             Some(Duration::from_secs(3 * 24 * 60 * 60))
         );
+    }
+
+    #[test]
+    fn context_mode_defaults_to_saturn_and_reads_provider() {
+        let default = snapshot("", Vec::new());
+        let provider = snapshot("[context]\nmode = \"provider\"\n", Vec::new());
+
+        assert_eq!(default.settings.context_mode(), ContextMode::Saturn);
+        assert_eq!(provider.settings.context_mode(), ContextMode::Provider);
+    }
+
+    #[test]
+    fn context_mode_rejects_unknown_values() {
+        let sources = vec![
+            (
+                layers::source(Layer::Default, None, default_layer()),
+                default_layer().to_owned(),
+            ),
+            (
+                layers::source(Layer::Chat, None, "[context]\nmode = \"auto\"\n"),
+                "[context]\nmode = \"auto\"\n".to_owned(),
+            ),
+        ];
+
+        assert!(merge(sources).is_err());
     }
 }

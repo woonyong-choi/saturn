@@ -73,7 +73,7 @@ fn launch_spec(args: &Args) -> LaunchSpec {
             has_auto_compact: true,
         },
         defaults: SaturnDefaults {
-            auto_compact_tokens: 180_000,
+            auto_compact_tokens: Some(180_000),
         },
         env,
         hook_settings: None,

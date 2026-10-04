@@ -20,6 +20,7 @@ use crate::providers::{
     rules_of_home,
 };
 use crate::secrets::HookPolicy;
+use crate::settings::ContextMode;
 use crate::{Engine, EngineError};
 
 /// 연결을 시작할 때 쓴 값. 연결이 등록될 때 기억한다.
@@ -229,7 +230,8 @@ impl Engine {
             settings: revision,
             user_config: UserProviderConfig::default(),
             defaults: SaturnDefaults {
-                auto_compact_tokens: settings.context_budget(provider).hard_limit(None),
+                auto_compact_tokens: (settings.context_mode() == ContextMode::Saturn)
+                    .then(|| settings.context_budget(provider).hard_limit(None)),
             },
             env: provider_env,
             hook_settings: Some(hook),

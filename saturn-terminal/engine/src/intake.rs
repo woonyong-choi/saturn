@@ -7,7 +7,7 @@ use std::time::Instant;
 use saturn_core::queue::{QueueError, QueuedInput};
 use saturn_core::routers::{
     JudgmentOutcome, RouteDecision, RouterError, RouterRequest, RouterResponse, decide_route,
-    questions_for_input, validate,
+    question_ids, questions_for_input, validate,
 };
 use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision};
 use saturn_protocol::rpc::Notification;
@@ -79,7 +79,10 @@ impl Engine {
         } = done;
         self.flow.judging.remove(&job.chat);
         match self.apply_routed(job, &request, exchange).await {
-            Ok(()) => self.advance(job.chat).await,
+            Ok(()) => {
+                self.follow_resume_signals().await;
+                self.advance(job.chat).await;
+            }
             Err(error) => {
                 tracing::warn!(chat = job.chat.0, error = %masked_chain(&self.masker, &error), "judgment not applied");
             }
@@ -261,6 +264,16 @@ impl Engine {
             let current = self.queue.revision(record.chat);
             match self.queue.apply(input, &decision, current) {
                 Ok(disposition) => {
+                    if !record.skip_relation {
+                        // 판단이 없으면(장애, 응답 없음, 이 질문의 답 없음) 재개도 무시도 아니다
+                        let judged = !decision
+                            .fallbacks
+                            .iter()
+                            .any(|id| id == question_ids::RESUME_HELD);
+                        self.flow
+                            .resume_signals
+                            .push((record.chat, judged.then_some(decision.resume_held)));
+                    }
                     return self
                         .after_applied(input, disposition, record.pinned_model.clone())
                         .await;
@@ -306,6 +319,41 @@ impl Engine {
             .set_input_state(input, InputState::Queued, None)
             .await?;
         Ok(())
+    }
+
+    /// 적용한 판단의 `resume_held`를 접수 순서대로 보류 작업에 반영한다. 오류는 로그만 남긴다.
+    /// `apply_decision`은 확인 입력을 보내는 재개 경로에서도 불리므로 재개는 거기서 하지 않고 여기서 한다.
+    async fn follow_resume_signals(&mut self) {
+        for (chat, resume) in std::mem::take(&mut self.flow.resume_signals) {
+            let Some(resume) = resume else { continue };
+            let followed = self.follow_resume_signal(chat, resume).await;
+            self.warn_failure("failed to follow resume signal", followed);
+        }
+    }
+
+    /// 새 입력의 `resume_held` 판단을 보류 작업에 반영한다. 재개 뜻이면 채팅의 보류를 모두 재개하고, 아니면 무시 횟수를
+    /// 올려 재개 뜻이 없는 입력이 쌓인 때 보류를 닫는다. 보류 작업이 없으면 아무것도 하지 않는다.
+    ///
+    /// # Errors
+    /// `continue_held`, `close_held`와 같다.
+    async fn follow_resume_signal(
+        &mut self,
+        chat: ChatId,
+        resume: bool,
+    ) -> Result<(), EngineError> {
+        if !self.queue.has_held_task(chat) {
+            return Ok(());
+        }
+        match self.queue.note_resume_signal(chat, resume) {
+            Some(tasks) => {
+                for task in tasks {
+                    self.close_held(chat, task).await?;
+                }
+                Ok(())
+            }
+            None if resume => self.continue_held(chat, None).await,
+            None => Ok(()),
+        }
     }
 
     /// 두 번 어긋난 입력은 처리 방식 없이 대기열에 둔다.
@@ -404,14 +452,13 @@ impl Engine {
             "chat: {activity}\nprevious input handled as: {previous}\nuser input: {}",
             record.text
         );
-        // TODO(#90): 보류 작업이 있으면 `resume_held`를 묻고 `note_resume_signal`로 잇는다
         RouterRequest {
             model: self.routers.active().model().to_owned(),
             state: sanitize_state(&state, &self.masker),
             sets: questions_for_input(
                 running,
                 record.pinned_model.is_some(),
-                false,
+                self.queue.has_held_task(record.chat),
                 &self.model_candidates(record.chat),
             ),
         }

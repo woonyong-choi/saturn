@@ -5,12 +5,11 @@ use crate::providers::{LaunchSpec, UserProviderConfig};
 
 pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec<String> {
     let mut args = Vec::new();
-    if !user.has_auto_compact {
+    if !user.has_auto_compact
+        && let Some(tokens) = launch.defaults.auto_compact_tokens
+    {
         args.push("-c".to_owned());
-        args.push(format!(
-            "{AUTO_COMPACT_KEY}={}",
-            launch.defaults.auto_compact_tokens
-        ));
+        args.push(format!("{AUTO_COMPACT_KEY}={tokens}"));
     }
     args
 }

@@ -265,7 +265,8 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 
 - engine은 트리가 유휴가 된 턴 끝에서 마지막 턴 값을 기록하고, 작업을 끝내고, 이 판정을 한 뒤에 기다리던 입력을 보낸다. 판정이 새 session으로 바꾸는 일이 입력 전송 사이에 끼지 않게 하기 위해서다.
 - 판정은 `A`를 알고 `A ≥ T`일 때만 패킷을 만들어 `decide`를 부른다. `A < T`이면 기록을 읽지 않는다. 판정이 `Restart`면 같은 provider의 새 session을 패킷과 함께 열고, 옛 session은 `종료`로 두고 닫는다. 메인 에이전트 번호는 그대로이고 새 session의 전달 기록 번호는 패킷이 담은 마지막 번호다. 열지 못하면 옛 session을 그대로 쓴다. 패킷이 `P_hard`도 넘으면 옮기지 않고 `고정 제약이 길어 맥락 정리를 미룹니다`를 보인다.
-- 턴 끝에서는 마지막 턴 뒤 경과 시간을 0으로 본다. 유휴 복귀 조건은 다음 입력이 올 때 판정할 일이다. 정리 모드 설정(`context.mode`)은 설정에 아직 없어 `saturn` 모드로 판정한다.
+- 턴 끝에서는 마지막 턴 뒤 경과 시간을 0으로 본다. 유휴 복귀 조건은 다음 입력을 보낼 session을 정할 때 판정한다. 열린 메인이 트리 유휴이고 마지막 턴 뒤 경과 시간이 캐시 유지 시간을 넘었으면 그 입력에서 만들 패킷 `P`와 마지막 `A`를 비교해 `P < A`일 때 같은 provider와 모델의 새 session으로 패킷과 함께 이어 간다. 옛 session은 닫아 `종료`로 둔다. 마지막 턴 값을 모르거나 `P ≥ A`이면 열린 session을 그대로 쓴다. 판정하는 입력은 보내려는 입력 자신이라 합칠 대기 입력으로 세지 않고, 그 입력은 패킷에 넣지 않고 새 session의 첫 턴 뒤에 보낸다. 같은 판정을 엔진을 다시 켠 뒤 처음 보내는 입력에도 쓴다.
+- 정리 모드 `context.mode`가 `provider`이면 턴 끝의 판정과 유휴 복귀 판정을 모두 하지 않고, provider 실행 인자에 안전망 값(`T_hard`)도 넣지 않는다.
 - 경쟁 구역 순서는 지금 후보 순위(RRF)만 쓰고 `compact` 판단은 부르지 않는다.
 
 provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적은 쪽을 실측으로 고른다([#7](https://github.com/woonyong-choi/saturn/issues/7)). 어느 방식도 provider 기본 압축보다 품질을 낮추지 않아야 한다.
@@ -293,6 +294,8 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | `A`를 모르면 새 session을 열지 않는다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `unknown_context_size_leaves_compaction_to_the_provider` |
 | 고정 구역이 `P_hard`를 넘으면 맥락 정리를 미루고 사용자에게 알린다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `oversized_fixed_zone_defers_compaction_and_tells_the_user` |
 | 유휴 복귀 조건과 기준 도달 조건에서만 새 session으로 이어 간다. | `A`, `T`, `P`, `k*`, 경과 시간 조합마다 판정 결과가 규칙과 같은지 확인한다. |
+| 캐시 유지 시간을 넘겨 돌아오고 패킷이 마지막 `A`보다 작으면 다음 입력에서 새 session으로 이어 가고, 유지 시간 안이거나 패킷이 `A` 이상이면 열린 session을 그대로 쓴다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `returning_after_the_cache_window_opens_a_new_session_when_the_packet_is_smaller`, `returning_inside_the_cache_window_keeps_the_session`, `returning_after_the_cache_window_keeps_the_session_when_the_packet_is_not_smaller` |
+| `context.mode`가 `provider`이면 `sessions`는 compaction을 판정하지 않고 안전망 값을 넣지 않는다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `provider_mode_neither_restarts_on_return_nor_at_the_threshold`, `saturn-terminal/engine/src/lifecycle/intake.rs`의 `provider_mode_leaves_out_the_auto_compact_safety_net`, `saturn-terminal/engine/src/settings/mod.rs`의 `context_mode_defaults_to_saturn_and_reads_provider`, `context_mode_rejects_unknown_values` |
 | 고정 구역이 넘치지 않으면 패킷 크기는 `T`의 10분의 1을 넘지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_large_record_stays_within_packet_limit` |
 | 고정 구역은 정한 순서로 모두 들어가고 최근 턴에는 도구 결과가 없다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_zone_in_order_and_tool_results_only_in_competing` |
 | 경쟁 구역은 기준값 없이 router 남김 확률 순으로 예산이 찰 때까지 채운다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_orders_by_probability_and_keeps_low`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_judgments_put_low_probability_item_before_unanswered` |

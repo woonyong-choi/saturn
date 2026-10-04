@@ -1,13 +1,13 @@
 //! 입력을 보낼 session을 정하고 연다: provider 전환 패킷, 돌아온 session의 변경분, 맥락 정리로 바꾸는 새 session.
 //! 설계: docs/design/providers-and-sessions.md#provider-전환, docs/design/context-management.md
 
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 use saturn_core::providers::{ProviderError, SessionHandle, SessionSpec};
 use saturn_core::queue::QueuedInput;
-use saturn_core::sessions::context::ContextBudget;
+use saturn_core::sessions::context::{ContextBudget, ReturnDecision, decide_return};
 use saturn_core::sessions::packet::PacketSource;
-use saturn_core::sessions::{AgentRole, SendTarget, SessionError, SessionRecord};
+use saturn_core::sessions::{AgentRole, LastTurn, SendTarget, SessionError, SessionRecord};
 use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq, Provider, SessionId};
 use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::SessionState;
@@ -19,8 +19,12 @@ use crate::handoff::{
 };
 use crate::models::pinned_model_name;
 use crate::sessions::SendRequest;
+use crate::settings::ContextMode;
 use crate::store::IdKind;
 use crate::{Engine, EngineError};
+
+/// 캐시 유지 시간을 넘겨 쉰 열린 메인. session, 마지막 턴 값, 마지막 턴 뒤 쉰 시간이다.
+type StaleMain = (SessionId, LastTurn, Duration);
 
 /// 계획을 세우지 못한 이유.
 #[derive(Debug)]
@@ -153,6 +157,39 @@ impl OpenPrep {
     }
 }
 
+/// 보낼 패킷 글. 고정 구역이 넘치면 보내지 않는다.
+fn packet_text(chat: ChatId, outcome: HandoffOutcome) -> Result<Option<String>, PlanError> {
+    match outcome {
+        HandoffOutcome::Ready(handoff) => {
+            if handoff.is_over_limit {
+                tracing::warn!(
+                    chat = chat.0,
+                    tokens = handoff.tokens,
+                    "packet exceeds its limit"
+                );
+            }
+            Ok(Some(handoff.text))
+        }
+        HandoffOutcome::Empty => Ok(None),
+        HandoffOutcome::Deferred { constraints } => Err(PlanError::Deferred(constraints)),
+    }
+}
+
+/// 새 session을 열 때 떠나는 열린 메인. 쉬었다 돌아와 같은 provider와 모델로 새로 열 때도 옛 session을 닫는다.
+fn leaving_main(
+    main: Option<&SessionRecord>,
+    plan: &OpenPlan,
+    is_idle_return: bool,
+) -> Option<SessionId> {
+    main.filter(|main| {
+        main.state == SessionState::Open
+            && (is_idle_return
+                || main.provider != plan.provider
+                || !keeps_model(main, plan.model.as_deref()))
+    })
+    .map(|main| main.id)
+}
+
 /// 고른 모델이 없으면 어떤 session이든 이어 쓴다.
 fn keeps_model(session: &SessionRecord, model: Option<&str>) -> bool {
     model.is_none_or(|model| session.model.as_deref() == Some(model))
@@ -206,12 +243,41 @@ impl Engine {
                 && main.state == SessionState::Open
                 && keeps_model(main, model.as_deref())
         }) {
-            return Ok(OpenPlan {
-                target: SendTarget::Open(main.id),
-                ..plain
-            });
+            let stale = self
+                .idle_return_input(record, main)
+                .await
+                .map_err(|error| PlanError::Failed(self.failure_line(&error)))?;
+            if stale.is_none() {
+                return Ok(OpenPlan {
+                    target: SendTarget::Open(main.id),
+                    ..plain
+                });
+            }
+            return self.plan_handoff(record, plain, Some(main), stale).await;
         }
-        self.plan_handoff(record, plain, main.as_ref()).await
+        self.plan_handoff(record, plain, main.as_ref(), None).await
+    }
+
+    /// 열린 메인의 마지막 턴 뒤 쉰 시간이 캐시 유지 시간을 넘었으면 유휴 복귀 판정에 쓸 마지막 턴 값과 쉰 시간.
+    /// `provider` 모드는 `sessions`가 compaction을 판정하지 않고, 트리가 유휴가 아니거나 마지막 턴 값을 모르면 판정하지 않는다.
+    async fn idle_return_input(
+        &self,
+        record: &QueuedInput,
+        main: &SessionRecord,
+    ) -> Result<Option<StaleMain>, EngineError> {
+        let settings = self.settings.at(&self.store, record.settings).await?;
+        if settings.context_mode() == ContextMode::Provider || !self.agents.is_tree_idle(main.agent)
+        {
+            return Ok(None);
+        }
+        let Some(last) = self.sessions.last_turn(main.id) else {
+            return Ok(None);
+        };
+        let since = SystemTime::now()
+            .duration_since(last.ended_at)
+            .unwrap_or(Duration::ZERO);
+        let ttl = self.cache_ttl(main.provider).await?;
+        Ok((since > ttl).then_some((main.id, last, since)))
     }
 
     /// 고른 모델과 다른 모델의 session은 쓰거나 재개하지 않고 새 session을 연다. 모델이 바뀌면 새 메인 session이다.
@@ -236,6 +302,7 @@ impl Engine {
         record: &QueuedInput,
         plain: OpenPlan,
         main: Option<&SessionRecord>,
+        stale: Option<StaleMain>,
     ) -> Result<OpenPlan, PlanError> {
         let failed = |error: EngineError| PlanError::Failed(self.failure_line(&error));
         let (chat, provider) = (record.chat, plain.provider);
@@ -268,9 +335,12 @@ impl Engine {
             settings: record.settings,
         };
         let target = self
-            .send_target(request, SystemTime::now())
+            .handoff_target(request, stale, (&budget, packet))
             .await
             .map_err(failed)?;
+        if stale.is_some() && matches!(target, SendTarget::Open(_)) {
+            return Ok(OpenPlan { target, ..plain });
+        }
         let target = self.keep_pinned_model(target, plain.model.as_deref());
         let (source, outcome) = match &target {
             SendTarget::Resume(id) => {
@@ -292,28 +362,8 @@ impl Engine {
             }),
             _ => None,
         };
-        let handoff = match outcome {
-            HandoffOutcome::Ready(handoff) => {
-                if handoff.is_over_limit {
-                    tracing::warn!(
-                        chat = chat.0,
-                        tokens = handoff.tokens,
-                        "packet exceeds its limit"
-                    );
-                }
-                Some(handoff.text)
-            }
-            HandoffOutcome::Empty => None,
-            HandoffOutcome::Deferred { constraints } => {
-                return Err(PlanError::Deferred(constraints));
-            }
-        };
-        let leaving = main
-            .filter(|main| {
-                main.state == SessionState::Open
-                    && (main.provider != provider || !keeps_model(main, plain.model.as_deref()))
-            })
-            .map(|main| main.id);
+        let handoff = packet_text(chat, outcome)?;
+        let leaving = leaving_main(main, &plain, stale.is_some());
         Ok(OpenPlan {
             target,
             handoff,
@@ -321,6 +371,29 @@ impl Engine {
             synced,
             reduction,
             ..plain
+        })
+    }
+
+    /// 패킷을 보낼 session. 쉰 열린 메인이면 유휴 복귀 판정으로 그 메인을 그대로 쓰거나 새 session을 연다.
+    async fn handoff_target(
+        &self,
+        request: SendRequest,
+        stale: Option<StaleMain>,
+        (budget, packet): (&ContextBudget, u64),
+    ) -> Result<SendTarget, EngineError> {
+        let Some((open, last, since)) = stale else {
+            return self.send_target(request, SystemTime::now()).await;
+        };
+        let budget = ContextBudget {
+            cache_ttl: self.cache_ttl(request.provider).await?,
+            ..*budget
+        };
+        Ok(match decide_return(&budget, since, last.active, packet) {
+            ReturnDecision::Resume => SendTarget::Open(open),
+            ReturnDecision::NewSession => SendTarget::New {
+                provider: request.provider,
+                role: AgentRole::Main,
+            },
         })
     }
 
@@ -561,7 +634,13 @@ impl Engine {
         {
             tracing::warn!(%error, "failed to close the leaving session");
         }
-        self.archive_main(leaving).await?;
+        if main.provider == plan.provider && keeps_model(&main, plan.model.as_deref()) {
+            // 같은 provider와 모델의 새 session으로 바꾸는 유휴 복귀라 되돌아갈 보관 session이 없다
+            self.sessions.set_state(leaving, SessionState::Ended)?;
+            self.persist_sessions(leaving).await?;
+        } else {
+            self.archive_main(leaving).await?;
+        }
         if main.provider != plan.provider {
             self.notify_chat(
                 chat,

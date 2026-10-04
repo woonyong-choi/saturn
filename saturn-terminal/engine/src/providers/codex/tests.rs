@@ -207,7 +207,7 @@ pub(crate) fn launch(dir: &Path, env: Vec<(std::ffi::OsString, std::ffi::OsStrin
         settings: SettingsRevision(1),
         user_config: UserProviderConfig::default(),
         defaults: SaturnDefaults {
-            auto_compact_tokens: 180_000,
+            auto_compact_tokens: Some(180_000),
         },
         env,
         hook_settings: None,

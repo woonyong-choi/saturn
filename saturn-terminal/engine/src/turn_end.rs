@@ -11,6 +11,7 @@ use saturn_protocol::rpc::{ChatNotice, Notification};
 
 use crate::flow::LiveSession;
 use crate::handoff::{HandoffOutcome, handoff_of, handoff_source};
+use crate::settings::ContextMode;
 use crate::switch::Reduction;
 use crate::{Engine, EngineError};
 
@@ -56,8 +57,8 @@ impl Engine {
     }
 
     /// 트리 유휴이고 합칠 대기 입력이 없으며 `A`를 알 때만 `decide`를 부르고, `Restart`면 새 session으로 이어 간다.
-    /// 유휴 복귀 조건(경과 시간)은 다음 입력이 올 때 판정할 일이라 여기서는 경과 0으로 본다.
-    /// TODO(#90): 유휴 복귀 조건을 평가하는 시점. `context.mode`(`provider`)와 기대 잔여 턴은 설정이 생기기 전이라 `saturn` 모드와 기본값으로 둔다
+    /// 유휴 복귀 조건(경과 시간)은 다음 입력이 올 때 판정할 일(`plan_open`)이라 여기서는 경과 0으로 본다.
+    /// `context.mode`가 `provider`면 판정하지 않고 provider 자동 압축에 맡긴다. 기대 잔여 턴은 모르는 값(기본 3)으로 둔다.
     async fn compact_at_boundary(
         &mut self,
         chat: ChatId,
@@ -66,6 +67,9 @@ impl Engine {
         let Some(active) = self.flow.context_tokens.get(&live.agent).copied().flatten() else {
             return Ok(());
         };
+        if self.context_mode().await? == ContextMode::Provider {
+            return Ok(());
+        }
         let budget = self.context_budget(live.provider).await?;
         if active < budget.threshold() {
             return Ok(());

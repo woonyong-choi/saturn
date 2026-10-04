@@ -1,6 +1,9 @@
 //! 턴 끝 테스트: 마지막 턴 값 기록, 트리 유휴 확인, 턴 경계에서만 하는 맥락 정리, 대기 입력 전송.
 
-use saturn_protocol::ids::LedgerSeq;
+use std::time::{Duration, SystemTime};
+
+use saturn_core::sessions::LastTurn;
+use saturn_protocol::ids::{LedgerSeq, SessionId};
 use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::{InputState, SessionState, TaskState};
 
@@ -237,4 +240,97 @@ async fn packet_turn_completion_is_not_the_end_of_the_task() {
     flow.claude_event(turn_completed(agent)).await;
 
     assert!(!flow.engine.chat_is_running(flow.chat));
+}
+
+/// 캐시 유지 시간(5분)을 넘긴 한 시간 전에 마지막 턴이 끝난 것으로 고친다.
+fn backdate_last_turn(flow: &mut Flow, session: SessionId, active: u64) {
+    let ended_at = SystemTime::now() - Duration::from_secs(3_600);
+    flow.engine
+        .sessions
+        .record_last_turn(session, LastTurn { active, ended_at });
+}
+
+/// 첫 입력의 턴을 맥락 크기 `active`로 끝낸다. 돌려주는 값은 (에이전트, session).
+async fn finished_first_turn(
+    flow: &mut Flow,
+    active: u64,
+) -> (saturn_protocol::ids::AgentId, SessionId) {
+    flow.submit("fix the build").await;
+    let agent = flow.agent();
+    let session = flow.engine.flow.live[&agent].session;
+    flow.claude_event(text(agent, "the cache is fixed")).await;
+    flow.claude_event(context_size(agent, active)).await;
+    flow.claude_event(turn_completed(agent)).await;
+    (agent, session)
+}
+
+#[tokio::test]
+async fn returning_after_the_cache_window_opens_a_new_session_when_the_packet_is_smaller() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    let (agent, old) = finished_first_turn(&mut flow, 50_000).await;
+    backdate_last_turn(&mut flow, old, 50_000);
+
+    let second = flow.submit("now run the tests").await;
+
+    let calls = opens(&flow);
+    assert_eq!(calls.len(), 2);
+    let Call::Open { packet, resume, .. } = &calls[1] else {
+        panic!("second call should open a session");
+    };
+    assert_eq!(*resume, None);
+    let packet = packet.as_deref().expect("a packet should be handed over");
+    assert!(packet.contains("fix the build"));
+    assert!(packet.contains("the cache is fixed"));
+    let fresh = flow.engine.flow.live[&agent].clone();
+    assert_ne!(fresh.session, old);
+    assert_eq!(
+        flow.engine.sessions.get(old).unwrap().state,
+        SessionState::Ended
+    );
+    assert_eq!(
+        flow.engine.sessions.get(fresh.session).unwrap().agent,
+        agent
+    );
+    assert_eq!(flow.state(second), InputState::Applied);
+}
+
+#[tokio::test]
+async fn returning_inside_the_cache_window_keeps_the_session() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    let (agent, old) = finished_first_turn(&mut flow, 50_000).await;
+
+    flow.submit("now run the tests").await;
+
+    assert_eq!(opens(&flow).len(), 1);
+    assert_eq!(flow.engine.flow.live[&agent].session, old);
+    assert_eq!(turns(&flow), vec!["fix the build", "now run the tests"]);
+}
+
+#[tokio::test]
+async fn returning_after_the_cache_window_keeps_the_session_when_the_packet_is_not_smaller() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    let (agent, old) = finished_first_turn(&mut flow, 5).await;
+    backdate_last_turn(&mut flow, old, 5);
+
+    flow.submit("now run the tests").await;
+
+    assert_eq!(opens(&flow).len(), 1);
+    assert_eq!(flow.engine.flow.live[&agent].session, old);
+}
+
+#[tokio::test]
+async fn provider_mode_neither_restarts_on_return_nor_at_the_threshold() {
+    let mut flow = Flow::with_config(
+        "[context]\nmode = \"provider\"\n",
+        vec![idle_reply(0.95), idle_reply(0.95)],
+    )
+    .await;
+    let (agent, old) = finished_first_turn(&mut flow, HUGE).await;
+    assert_eq!(opens(&flow).len(), 1);
+    backdate_last_turn(&mut flow, old, HUGE);
+
+    flow.submit("now run the tests").await;
+
+    assert_eq!(opens(&flow).len(), 1);
+    assert_eq!(flow.engine.flow.live[&agent].session, old);
 }

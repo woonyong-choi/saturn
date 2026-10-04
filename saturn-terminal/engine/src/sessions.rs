@@ -10,7 +10,7 @@ use saturn_core::sessions::{
 use saturn_protocol::ids::{ChatId, LedgerSeq, Provider, SessionId, SettingsRevision};
 use saturn_protocol::state::SessionState;
 
-use crate::settings::SettingsError;
+use crate::settings::{ContextMode, SettingsError};
 use crate::store::Store;
 use crate::{Engine, EngineError};
 
@@ -146,9 +146,25 @@ impl Engine {
         })
     }
 
+    /// 지금 적용 중인 설정의 정리 모드 `context.mode`.
+    ///
+    /// # Errors
+    /// 설정 번호를 읽지 못하면 `Settings`.
+    pub(crate) async fn context_mode(&self) -> Result<ContextMode, EngineError> {
+        let revision = self
+            .settings
+            .current()
+            .ok_or(SettingsError::NoPreviousRevision)?;
+        Ok(self
+            .settings
+            .at(&self.store, revision)
+            .await?
+            .context_mode())
+    }
+
     /// provider가 마지막으로 알려 준 캐시 유지 시간. 연결이 닫혔거나 engine을 다시 시작해도 기록 저장소에서 읽는다.
     /// 알려 준 적이 없을 때만 `DEFAULT_CACHE_TTL`.
-    async fn cache_ttl(&self, provider: Provider) -> Result<Duration, EngineError> {
+    pub(crate) async fn cache_ttl(&self, provider: Provider) -> Result<Duration, EngineError> {
         Ok(self
             .store
             .cache_ttl_secs(provider)

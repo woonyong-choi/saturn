@@ -358,13 +358,6 @@ impl Engine {
         Ok(())
     }
 
-    /// 보류는 자동으로 이어 가지 않는다.
-    /// TODO(#235): 완료 알림 설정 키. TODO(#151): 알림 보내는 방법
-    #[expect(clippy::todo, reason = "#90 뼈대")]
-    fn enter_background(&mut self) {
-        todo!("#90")
-    }
-
     /// 모든 작업이 끝났는지 본다. 실행 중인 작업, 보내기 전에 판단하거나 기다리는 입력, 멈추는 중인 채팅, 응답을 기다리는
     /// 전달, 끝나지 않은 subagent가 없을 때만 참이다. 보류와 TUI 확인을 기다리는 요청은 세지 않는다.
     fn is_all_idle(&self) -> bool {

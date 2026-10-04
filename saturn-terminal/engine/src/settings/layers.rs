@@ -52,6 +52,7 @@ share_with_server = false
 
 [context]
 safety_percent = 70
+mode = "saturn"
 
 [context.codex]
 t_abs = 200000
@@ -112,6 +113,7 @@ const SCHEMA: &[(&str, Kind)] = &[
     ("consent.share_with_server", Kind::Flag),
     ("retention.max_age_days", Kind::Positive),
     ("context.safety_percent", Kind::Percent),
+    ("context.mode", Kind::OneOf(&["saturn", "provider"])),
     ("context.codex.t_abs", Kind::Positive),
     ("context.codex.window", Kind::Positive),
     ("context.codex.cache_read", Kind::NonNegative),
