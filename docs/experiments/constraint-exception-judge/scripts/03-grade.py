@@ -7,7 +7,7 @@ import hashlib
 import json
 import sys
 
-from exploration import unwrap
+from exploration import decimal_sensitivity, unwrap
 from protocol import SEMANTIC_GUIDE
 from runtime import PRIVATE, codex, read, schema_rows, setup, write
 
@@ -58,10 +58,20 @@ def main() -> None:
         )
         return
     items = {i["id"]: i for i in read(PRIVATE / "items.json")}
+    rounding = len(sys.argv) > 1 and sys.argv[1] == "rounding"
+    existing = (
+        {r["id"] for r in read(PRIVATE / "scope-prediction-grades.json")}
+        if rounding
+        else set()
+    )
     pairs = {}
     for path in sorted((PRIVATE / "workflows").glob("*.json")):
         row = read(path)
         item = items[row["item_id"]]
+        if rounding:
+            row = decimal_sensitivity(row, item)
+            if not row["exploratory_decimal"]:
+                continue
         if row["condition"] == "L1":
             row = unwrap(row, item)
         if (
@@ -74,13 +84,16 @@ def main() -> None:
         if scope is None:
             continue
         pid = pair_id(item["id"], scope)
+        if pid in existing:
+            continue
         pairs[pid] = dict(
             id=pid, text=item["text"], left=item["gold"]["scope_text"], right=scope
         )
-    write(PRIVATE / "scope-prediction-pairs.json", list(pairs.values()))
+    prefix = "scope-rounding" if rounding else "scope-prediction"
+    write(PRIVATE / (prefix + "-pairs.json"), list(pairs.values()))
     write(
-        PRIVATE / "scope-prediction-grades.json",
-        grade(list(pairs.values()), "scope-prediction"),
+        PRIVATE / (prefix + "-grades.json"),
+        grade(list(pairs.values()), prefix),
     )
 
 

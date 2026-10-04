@@ -22,7 +22,7 @@ from protocol import (
     state,
     validate,
 )
-from runtime import PRIVATE, STOP, cli, jev, now, read, setup, write
+from runtime import PRIVATE, STOP, cli, jev, now, read, rows, setup, write
 
 CLAUDE_SLOTS = threading.Semaphore(4)
 
@@ -265,6 +265,48 @@ def trial(task: tuple) -> dict:
     return row
 
 
+def preserve_interrupted(tasks: list[tuple]) -> None:
+    reserved = {
+        r["trial_id"]: r
+        for r in rows(PRIVATE / "calls.jsonl")
+        if r["kind"] in ("jev", "claude")
+    }
+    for item, condition, repeat in tasks:
+        tid = f"{item['id']}-{condition}-r{repeat}"
+        path = PRIVATE / "workflows" / (tid + ".json")
+        if path.exists():
+            continue
+        stages = [t for t in (tid, tid + "-A", tid + "-B", tid + "-C") if t in reserved]
+        missing = []
+        for stage in stages:
+            receipt = (
+                PRIVATE / "claude" / stage / "receipt.json"
+                if condition == "L1"
+                else PRIVATE / "jev" / (stage + ".json")
+            )
+            try:
+                read(receipt)
+            except (FileNotFoundError, json.JSONDecodeError):
+                missing.append(stage)
+        if missing:
+            write(
+                path,
+                dict(
+                    run_id=read(PRIVATE / "run.json")["run_id"],
+                    trial_id=tid,
+                    item_id=item["id"],
+                    task=item["task"],
+                    condition=condition,
+                    repeat=repeat,
+                    ts_utc=reserved[missing[0]]["ts_utc"],
+                    status="incomplete",
+                    prediction=None,
+                    stages=stages,
+                    interrupted_stages=missing,
+                ),
+            )
+
+
 # cost: io up to 1494 CLI and 2394 HTTPS calls; basis: estimate
 def main() -> None:
     setup()
@@ -283,6 +325,7 @@ def main() -> None:
         for r in (1, 2, 3)
     ]
     random.Random(SEED).shuffle(tasks)
+    preserve_interrupted(tasks)
     hashes = {
         i["id"]: hashlib.sha256(
             json.dumps(

@@ -43,6 +43,8 @@ def main() -> None:
         "",
         "## 요약",
         "",
+        f"Haiku의 저장 응답 {sum(s['claude_models'].values())}개는 모두 JSON을 코드 블록으로 감싸 반환했다. 사전 등록한 엄격 JSON 계약에서 형식 오류로 처리했으므로 L1 확인 결과는 의미 판단 능력의 추정이 아니다. 포장 추출과 Jev 수치 경계 보정은 아래 탐색 분석으로 분리했다.",
+        "",
         f"L1의 요청 재현율은 {metric(c['constraint/L1']['metrics']['request_recall'])}, J1은 {metric(c['constraint/J1']['metrics']['request_recall'])}였다. 사전 등록한 점추정 통과 후보는 {candidate}, 검정과 군집 구간까지 통과한 권장 조건은 {recommendation}이다. 제품 설계와 기본값은 변경하지 않았다.",
         "",
         "## 방법",
@@ -67,6 +69,12 @@ def main() -> None:
         "| 이어 가기 불완전 라벨 묶음 제외 처리 보완 | 독립 라벨 중, 평가 전 | 응답에서 입력 ID 누락 | 사전 제외 규칙 적용, 해당 묶음 전체 제외 |",
         "| 비정상 JSON 외피 처리 보완 | 평가 전 | 객체가 아닌 외피의 예외 처리 누락 | 형식 오류로 집계 |",
         "| 단일 JSON 코드 블록 추출 탐색 추가 | 초기 평가 응답 확인 뒤 | Haiku가 JSON을 Markdown 포장으로 반환 | 확인 분석·권장 판정에 사용 금지, 저장 답의 의미 판단만 별도 분석 |",
+        "| 중단 예약의 재개 처리·미상 지연 보완 | 평가 재개 시 | 예약만 있고 응답 없는 회차 확인 | 해당 회차 실패 보존·재호출 금지, 지연 미상 유지 |",
+        "| Jev 확률 합의 십진수 재검증 탐색 추가 | 분석 중 | 0.99 합을 이진 부동소수점 오차로 거절한 수집기 발견 | 원래 실패·확인 판정 보존, J1 저장 답만 별도 재계산 |",
+        "| Jev 비용의 원응답 usage 복원 | 분석 중 | 확률 검증 실패 시 usage 필드도 누락 | 원응답의 실제 토큰 수로 비용 계산, 원파일 변경 없음 |",
+        "| Claude 1시간 캐시 단가 반영 | 분석 중 | 사용량에 1시간 캐시 쓰기 관측 | 공식 단가로 환산해 CLI 총비용과 대조, 5분 단가 적용 제외 |",
+        "| 동률 해석이 응답 키 순서를 사용 | 수집 중 구현, 분석 후 감사 | 설계는 선택지 삽입 순서지만 max가 서버 키 순서를 사용 | 영향 회차 수 보고, 원래 확인 결과 유지 |",
+        "| 공개 생성문 가림·원자료 해시 봉인 보완 | 최종 검토 | 부분 원문과 분석 시 해시 재생성 문제 | 원천 목록 필수 검증, 원문 조각 가림, 불변 원자료 봉인 추가 |",
         "",
         "앞 실험의 비공개 worktree 자료가 남아 있지 않은 점은 봉인 전에 확인해 설계에 기록했다. 해제 합성문은 공개 문장과 남아 있는 원제약의 ID를 연결했다. 이어 가기 표본은 같은 추출기로 같은 시기 원천에서 다시 뽑았으므로 앞 표본과 정확히 같은 부분집합임을 입증하지 못했다. 앞 실험 수치와 이번 수치를 대응 비교하지 않았다.",
         "",
@@ -84,6 +92,8 @@ def main() -> None:
         f"| 범위 의미 불일치 제외 | {flow['scope_excluded']} |",
         f"| 최종 제약 표본 | {flow['constraint_selected']} |",
         f"| 최종 이어 가기 표본 | {flow['continuation_selected']} |",
+        f"| 중단 후 미완료 호출·워크플로우 | {s['interrupted']['calls']}·{s['interrupted']['workflows']} |",
+        f"| 첫 반복에 포함된 미완료 | {s['interrupted']['first_repeat']} |",
         "",
         "| 정답 종류 | 수 | 실제 분모 검정력 |",
         "|---|---|---|",
@@ -163,6 +173,38 @@ def main() -> None:
             )
             + " |"
         )
+    lines += [
+        "",
+        "| 조건·종류 | 종합 정확도 | 종류 정확도 | 대상 정확도 | 범위 의미 일치 |",
+        "|---|---|---|---|---|",
+    ]
+    for key, value in s["strata"].items():
+        if "/gold_kind/" not in key or key.endswith("/none"):
+            continue
+        m = value["metrics"]
+        lines.append(
+            "| "
+            + key
+            + " | "
+            + " | ".join(
+                metric(m[n])
+                for n in (
+                    "accuracy",
+                    "kind_accuracy",
+                    "target_accuracy",
+                    "scope_semantic",
+                )
+            )
+            + " |"
+        )
+    lines += [
+        "",
+        "| 실제 분모 | n | 사전 효과 가정에서의 검정력 |",
+        "|---|---|---|",
+    ]
+    for name in ("recall", "false_permanent", "continuation"):
+        p = s["observed_power"][name]
+        lines.append(f"| {name} | {p['n']} | {percent(p['power'])} |")
     lines += ["", "| 가설 | 원 p | Holm p | 판정 |", "|---|---|---|---|"]
     for h, v in s["hypotheses"].items():
         lines.append(f"| {h} | {v['p']:.3g} | {v['holm_p']:.3g} | {v['verdict']} |")
@@ -197,6 +239,8 @@ def main() -> None:
     lines += [
         "",
         "지연은 실제 HTTP·CLI 실행 시간을 단계별로 합했다. 작업 대기열 시간은 뺐고 CLI 시작 시간은 포함했다. API만의 응답 시간 비교가 아니다. 비용은 전체 반복의 usage를 [설계의 공식 단가](design.md#분석)로 환산한 API 상당액이며, Claude 구독의 실제 추가 청구액을 뜻하지 않는다. 비용 미상 조건은 최소 비용 순위로 권장하지 않는다.",
+        "미완료 호출은 비용·지연을 알 수 없어 해당 분포에서 제외했다. 실패는 정확도·재현율·세 반복 일치 분모에 남겼다. 위험률 0%라도 유효 출력 자체가 없으면 안전한 판단 모델이라는 근거가 아니다.",
+        f"Claude 사용량에는 1시간 캐시 쓰기 {s['claude_usage']['cache_1h_input_tokens']}토큰이 있었다. 해당 토큰은 [공식 요금표](https://platform.claude.com/docs/en/about-claude/pricing)의 100만 토큰당 USD 2로 계산했다. 나머지 입력·출력·캐시 읽기·5분 쓰기는 봉인 단가를 유지했다.",
         "",
         "| 조건 | 호출 수 | 알려진 비용 합(USD) | 비용 미상 호출 |",
         "|---|---|---|---|",
@@ -208,6 +252,8 @@ def main() -> None:
     lines += [
         "",
         "### 이어 가기",
+        "",
+        f"정답은 continue {s['continuation_gold'].get('continue', 0)}개, new {s['continuation_gold'].get('new', 0)}개였다. 목표 표본보다 적은 실제 분모로 검정력을 다시 계산했다.",
         "",
         "| 조건 | 정확도 | 재현율 | 새 작업 오접합 |",
         "|---|---|---|---|",
@@ -278,19 +324,54 @@ def main() -> None:
         "",
         "이 탐색 수치는 Haiku의 의미 판단과 형식 실패를 구분하는 데만 사용한다. 네이티브 JSON Schema 옵션이나 포장 제거기를 포함한 새 워크플로우가 사전 기준을 통과했다고 주장하지 않는다.",
     ]
+    for task, pair in s["exploratory_unwrapped_comparisons"].items():
+        lines += [
+            "",
+            f"{task}의 포장 추출 L1−Jev 정확도 차이는 {100 * pair['difference']:.1f}%p, 대응 구간 {interval(pair['ci'])}, 군집 구간 {interval(pair['cluster_ci'])}였다. L1만 정답 {pair['right_only']}개, Jev만 정답 {pair['left_only']}개, 보정 전 정확 McNemar p={pair['p']:.3g}였다. 사후 탐색이므로 확인 채택에 사용하지 않았다.",
+        ]
+    decimal = s["exploratory_jev_decimal"]
+    m = decimal["metrics"]
+    pair = s["exploratory_semantic_comparison"]
+    lines += [
+        "",
+        "### Jev 확률 합 경계 보정 후 탐색",
+        "",
+        "수집기는 확률 합과 1의 차이가 0.01보다 큰지 float로 검사했다. 합이 0.99인 경계에서도 표현 오차 때문에 거절하는 경우가 있었다. 원응답을 Decimal로 다시 읽고 같은 선택지·유한 확률·합 허용 오차·최종 출력 계약을 검사했다. 저장된 J1 답만 재해석했으며 수집기·원응답·확인 분석은 바꾸지 않았다. J2는 앞 단계 실패 뒤 호출하지 않은 다음 단계가 있어 이 보정의 비교 대상에서 뺐다.",
+        "",
+        "| 조건 | 종합 정확도 | 잘못된 영구 해제 | 요청 재현율 | 종류 정확도 | 범위 의미 일치 |",
+        "|---|---|---|---|---|---|",
+        "| J1 십진수 경계 | "
+        + " | ".join(
+            metric(m[n])
+            for n in (
+                "accuracy",
+                "false_permanent",
+                "request_recall",
+                "kind_accuracy",
+                "scope_semantic",
+            )
+        )
+        + " |",
+        "",
+        f"포장 추출 L1−경계 보정 J1의 정확도 차이는 {100 * pair['difference']:.1f}%p, 대응 구간 {interval(pair['ci'])}, 군집 구간 {interval(pair['cluster_ci'])}였다. L1만 정답 {pair['right_only']}개, J1만 정답 {pair['left_only']}개, 보정 전 정확 McNemar p={pair['p']:.3g}였다. 두 수리 모두 사후 탐색으로만 해석한다.",
+        "",
+        f"동률 감사에서는 J1·J2의 동률 질문 {s['tie_order_audit']['tied_questions']}개 중 {s['tie_order_audit']['different_choice_winners']}개의 최댓값 선택이 응답 키 순서와 설계 순서 사이에서 달랐다. 게이트·최종 계약까지 고려한 워크플로우 영향은 {s['tie_order_audit']['changed_workflows']}회, 첫 반복은 {s['tie_order_audit']['changed_first_repeat']}회였다. 이는 사전 등록 구현의 이탈이며 확인 응답을 사후 교체하지 않았다.",
+    ]
     lines += [
         "",
         "## 논의",
         "",
         "### 해석",
         "",
-        f"사전 등록한 전체 입력 기준 위험률·요청 재현율·종류 정확도의 점추정 후보는 {candidate}다. 검정·군집 구간까지 고려한 권장은 {recommendation}이다. 종류만 맞아도 범위가 틀리면 종합 판단은 실패하며, 이 기준은 별도 단계 정확도와 함께 읽어야 한다. 실제 범위 예외의 만료·복구·실행은 측정하지 않았다.",
+        f"사전 등록한 전체 입력 기준 위험률·요청 재현율·종류 정확도의 점추정 후보는 {candidate}이다. 검정·군집 구간까지 고려한 권장 조건도 {recommendation}이다. 종류만 맞아도 범위가 틀리면 종합 판단은 실패하며, 이 기준은 별도 단계 정확도와 함께 읽어야 한다. 실제 범위 예외의 만료·복구·실행은 측정하지 않았다.",
+        "",
+        "수치 경계 보정 뒤에도 Jev는 위험률과 종류 정확도 기준을 함께 통과하지 못했고, 코드 블록 추출 뒤 Haiku도 재현율과 종류 정확도 기준을 통과하지 못했다. 따라서 이 결과로 Haiku로 교체할 근거는 없다. 이어 가기는 B1의 정확도·지연·비용이 관측상 유리했지만, 포장 추출 Haiku와의 정확 McNemar 검정은 유의하지 않았다. 새 작업의 희귀 오접합을 입증할 분모도 부족하다.",
         "",
         "### 타당성 위협",
         "",
         "| 종류 | 위협 | 이 실험에서 |",
         "|---|---|---|",
-        "| 내적 | 두 모델 합의로 쉬운 표본이 남음 | 불일치·모호함·형식 오류 제외, 사람 검증 미수행 |",
+        "| 내적 | 두 모델 합의로 쉬운 표본에 치우칠 위험 | 불일치·모호함·형식 오류 제외, 사람 검증 미수행 |",
         "| 구성 | Jev 원문 후보 선택의 범위 제한 | 의미·문자열 일치와 종합 정확도 분리 |",
         "| 구성 | 지금은·잠깐의 만료 시점 부재 | 원문 보존만 평가, 자동 만료 지원 주장 제외 |",
         "| 외적 | 실제 제약 요청 양성 부재 | 실제 비해제와 합성 출처 분리 |",
@@ -312,7 +393,14 @@ def main() -> None:
         "./docs/experiments/constraint-exception-judge/run.sh analyze",
         "```",
         "",
-        "분석은 [summary.json](results/summary.json)·[conditions.csv](results/conditions.csv)를 다시 만든다. 입력·응답의 해시는 [SHA256SUMS](data/SHA256SUMS)에 있고 비공개 원자료가 있어야 다시 계산할 수 있다.",
+        "분석은 [summary.json](results/summary.json)·[conditions.csv](results/conditions.csv)를 다시 만든다. 수집·채점·검토가 끝난 뒤 [RAW_SHA256SUMS](data/RAW_SHA256SUMS)로 원자료를 봉인했다. 이후 분석은 먼저 이 불변 봉인을 검사하고, 파생 관측까지 포함한 [SHA256SUMS](data/SHA256SUMS)만 다시 만든다. 비공개 원자료가 있어야 재현할 수 있다.",
+        "",
+        f"공개 가림 원천 {s['publication']['source_files']}개는 앞 실험의 봉인 목록과 파일명·해시가 일치했다. 공개 생성문 {s['publication']['generated_rows']}개 중 {s['publication']['redacted_rows']}개에서 연속 {s['publication']['redaction_span_chars']}자 이상 원문 조각을 가렸다. 실제 사용자 입력은 공개하지 않았다.",
+        "",
+        "| 파일 | SHA-256 |",
+        "|---|---|",
+        f"| data/RAW_SHA256SUMS | `{s['publication']['raw_seal_sha256']}` |",
+        f"| data/SHA256SUMS | `{s['publication']['derived_manifest_sha256']}` |",
         "",
         "| 호출 종류 | 실제 예약 수 |",
         "|---|---|",

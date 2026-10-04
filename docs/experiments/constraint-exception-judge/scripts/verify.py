@@ -8,10 +8,13 @@ import json
 import subprocess
 from collections import Counter
 
+import exploration
+import publication
 import runtime
 from inference import binomial_tail, ratio
-from protocol import validate
-from runtime import LIMITS, MAIN, PRIVATE, PUBLIC, ROOT, read, rows
+from protocol import MODEL, scope_candidates, validate
+from publication import check_raw_seal, redact_fragments, source_fragments
+from runtime import LIMITS, PRIVATE, PUBLIC, ROOT, read, rows
 
 
 def require(condition: bool, message: str) -> None:
@@ -108,10 +111,122 @@ def check_contracts() -> None:
     )
 
 
+def check_interrupted() -> None:
+    collector = importlib.import_module("02-collect")
+    original = collector.PRIVATE
+    fixture = PRIVATE / "runtime/interrupted-fixture"
+    fixture.mkdir(parents=True, exist_ok=True)
+    for path in (fixture / "workflows").glob("*.json"):
+        path.unlink()
+    runtime.write(fixture / "run.json", {"run_id": "fixture"})
+    tid = "fixture-L1-r1"
+    (fixture / "calls.jsonl").write_text(
+        json.dumps({"kind": "claude", "trial_id": tid, "ts_utc": "fixture"}) + "\n"
+    )
+    try:
+        collector.PRIVATE = fixture
+        tasks = [({"id": "fixture", "task": "constraint"}, "L1", r) for r in (1, 2)]
+        collector.preserve_interrupted(tasks)
+        path = fixture / "workflows" / (tid + ".json")
+        value = read(path)
+        require(value["status"] == "incomplete", "interrupted call not preserved")
+        require(value["stages"] == [tid], "interrupted reservation missing")
+        require(
+            not (fixture / "workflows/fixture-L1-r2.json").exists(),
+            "uncalled trial marked interrupted",
+        )
+        before = path.read_bytes()
+        collector.preserve_interrupted(tasks)
+        require(before == path.read_bytes(), "recovery overwrote completed workflow")
+    finally:
+        collector.PRIVATE = original
+
+
+def check_decimal_boundary() -> None:
+    original = exploration.PRIVATE
+    fixture = PRIVATE / "runtime/decimal-fixture"
+    item = {"rules": ["오류 문구는 영어로 쓴다."], "text": "이 규칙은 없애."}
+    row = {"condition": "J1", "status": "invalid", "trial_id": "fixture"}
+    scope = dict.fromkeys(scope_candidates(item["text"]), 0)
+    scope["none"] = 1
+    reply = {
+        "model": MODEL,
+        "answers": {
+            "release_target": {"probabilities": {"c1": 0.99, "none": 0}},
+            "kind": {"probabilities": {"permanent": 1, "once": 0, "scoped": 0}},
+            "scope": {"probabilities": scope},
+        },
+    }
+    try:
+        exploration.PRIVATE = fixture
+        for total, status in ((0.99, "ok"), (0.98, "invalid")):
+            reply["answers"]["release_target"]["probabilities"]["c1"] = total
+            runtime.write(
+                fixture / "jev/fixture.json",
+                {"status": "invalid", "raw_response": json.dumps(reply)},
+            )
+            result = exploration.decimal_sensitivity(row, item)
+            require(result["status"] == status, "decimal tolerance boundary incorrect")
+    finally:
+        exploration.PRIVATE = original
+
+
+def check_publication() -> None:
+    fixture = PRIVATE / "runtime/publication-fixture"
+    fixture.mkdir(parents=True, exist_ok=True)
+    original = (
+        publication.MAIN,
+        publication.PRIVATE,
+        publication.PUBLIC,
+        publication.RAW_FILES,
+    )
+    try:
+        publication.MAIN = fixture / "missing-source"
+        try:
+            publication.source_fragments()
+        except ValueError as error:
+            require("sources are missing" in str(error), "unexpected source failure")
+        else:
+            raise ValueError("missing private source accepted")
+        text = "이것은 비공개원문조각이 포함된 생성문이다."
+        require(
+            "비공개원문조각이"
+            not in publication.redact_fragments(text, {"비공개원문조각이"}),
+            "partial private quote not redacted",
+        )
+        publication.PRIVATE = fixture / "private"
+        publication.PUBLIC = fixture / "public"
+        publication.RAW_FILES = {"sample.json"}
+        (publication.PUBLIC / "data").mkdir(parents=True, exist_ok=True)
+        seal = publication.PUBLIC / "data/RAW_SHA256SUMS"
+        if seal.exists():
+            seal.unlink()
+        runtime.write(publication.PRIVATE / "sample.json", {"original": True})
+        publication.check_raw_seal(create=True)
+        original_seal = seal.read_bytes()
+        runtime.write(publication.PRIVATE / "sample.json", {"original": False})
+        try:
+            publication.check_raw_seal(create=True)
+        except ValueError:
+            require(seal.read_bytes() == original_seal, "raw seal overwritten")
+        else:
+            raise ValueError("changed raw data accepted")
+    finally:
+        (
+            publication.MAIN,
+            publication.PRIVATE,
+            publication.PUBLIC,
+            publication.RAW_FILES,
+        ) = original
+
+
 # cost: io local receipt reads and 1 git read; basis: estimate
 def main() -> None:
     check_contracts()
     check_budget()
+    check_interrupted()
+    check_decimal_boundary()
+    check_publication()
     if not (PRIVATE / "items.json").exists():
         print("contract checks passed; no collection yet")
         return
@@ -133,6 +248,19 @@ def main() -> None:
         cwd=ROOT,
     )
     require(sealed == (PUBLIC / "design.md").read_bytes(), "design seal changed")
+    protocol = subprocess.check_output(
+        [
+            "git",
+            "show",
+            run["design_commit"]
+            + ":docs/experiments/constraint-exception-judge/scripts/protocol.py",
+        ],
+        cwd=ROOT,
+    )
+    require(
+        protocol == (PUBLIC / "scripts/protocol.py").read_bytes(),
+        "question and schema seal changed",
+    )
     for line in (PUBLIC / "data/SHA256SUMS").read_text().splitlines():
         expected, relative = line.split("  ", 1)
         require(
@@ -160,20 +288,12 @@ def main() -> None:
         ),
         "repeat coverage mismatch",
     )
-    originals = {
-        t["text"]
-        for p in (MAIN / ".local/experiments/constraint-deep/conversations").glob(
-            "*.json"
-        )
-        for t in read(p)["turns"]
-        if len(t["text"]) >= 8
-    }
+    check_raw_seal()
+    fragments = source_fragments()
     public = read(PUBLIC / "data/generated.json")
     require(
-        all(
-            not any(original in row["text"] for original in originals) for row in public
-        ),
-        "original text leaked into public generated inputs",
+        all(redact_fragments(row["text"], fragments) == row["text"] for row in public),
+        "source fragment leaked into public generated inputs",
     )
     require(all(r["source"] != "real" for r in public), "real input published")
     require(
@@ -185,7 +305,7 @@ def main() -> None:
     )
     for p in (PRIVATE / "workflows").glob("*.json"):
         row = read(p)
-        if row["condition"] == "L1" and row["status"] == "ok":
+        if row["condition"] == "L1" and row["status"] != "incomplete":
             require(row.get("num_turns") == 1, "claude used more than one turn")
             require(
                 set(row.get("model_usage", {}))

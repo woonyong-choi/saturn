@@ -10,7 +10,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from exploration import unwrap
+from exploration import decimal_sensitivity, tie_order_audit, unwrap
 from inference import (
     binomial_power,
     binomial_tail,
@@ -23,7 +23,8 @@ from inference import (
     power,
     ratio,
 )
-from runtime import MAIN, PRIVATE, PUBLIC, read, rows, setup, write
+from publication import check_raw_seal, public_rows, source_fragments
+from runtime import PRIVATE, PUBLIC, read, rows, setup, write
 
 grader = importlib.import_module("03-grade")
 collector = importlib.import_module("02-collect")
@@ -62,12 +63,17 @@ def workflow_cost(row: dict) -> dict:
                     usage["input_tokens"]
                     + 5 * usage["output_tokens"]
                     + 1.25 * usage.get("cache_creation_input_tokens", 0)
+                    + 0.75
+                    * usage.get("cache_creation", {}).get(
+                        "ephemeral_1h_input_tokens", 0
+                    )
                     + 0.1 * usage.get("cache_read_input_tokens", 0)
                 ) / 1_000_000
             else:
                 estimate = None
         else:
-            usage = receipt.get("usage") or {}
+            reply = json.loads(receipt.get("raw_response", "{}"))
+            usage = receipt.get("usage") or reply.get("usage") or {}
             tokens = usage.get("input_tokens")
             estimate = tokens * 0.042 / 1_000_000 if tokens is not None else None
             cost = estimate
@@ -85,7 +91,9 @@ def workflow_cost(row: dict) -> dict:
         call_count=len(calls),
         unknown_cost_calls=len(calls) - len(costs),
         cost_usd=sum(costs) if len(costs) == len(calls) and calls else None,
-        latency_ms=sum(c["latency_ms"] or 0 for c in calls) if calls else None,
+        latency_ms=sum(c["latency_ms"] for c in calls)
+        if calls and all(c["latency_ms"] is not None for c in calls)
+        else None,
         calls=calls,
     )
 
@@ -163,10 +171,15 @@ def normalized(item: dict, row: dict, grades: dict) -> dict:
 
 # cost: io O(n) local reads and 3 derived writes; vars: n = receipts; basis: estimate
 def process() -> None:
+    source_fragments()
+    check_raw_seal(create=True)
     items = read(PRIVATE / "items.json")
     grades = {
         r["id"]: r["equivalent"] for r in read(PRIVATE / "scope-prediction-grades.json")
     }
+    grades.update(
+        {r["id"]: r["equivalent"] for r in read(PRIVATE / "scope-rounding-grades.json")}
+    )
     j2 = set(read(PRIVATE / "j2-ids.json"))
     reserved = {
         r["trial_id"]
@@ -175,6 +188,7 @@ def process() -> None:
     }
     observations = []
     unwrapped = []
+    rounded = []
     for item in items:
         conditions = (
             ("B1", "L1")
@@ -209,38 +223,20 @@ def process() -> None:
                 observations.append(normalized(item, row, grades))
                 if condition == "L1":
                     unwrapped.append(normalized(item, unwrap(row, item), grades))
+                if condition == "J1":
+                    rounded.append(
+                        normalized(item, decimal_sensitivity(row, item), grades)
+                    )
     (PRIVATE / "processed.jsonl").write_text(
         "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in observations)
     )
     (PRIVATE / "exploratory-processed.jsonl").write_text(
         "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in unwrapped)
     )
-    originals = {
-        t["text"]
-        for p in (MAIN / ".local/experiments/constraint-deep/conversations").glob(
-            "*.json"
-        )
-        for t in read(p)["turns"]
-        if len(t["text"]) >= 8
-    }
-    public = []
-    for item in items:
-        if item["task"] != "constraint" or item["source"] == "real":
-            continue
-        text = item["text"]
-        for original in sorted(originals, key=len, reverse=True):
-            text = text.replace(original, "[원문 가림]")
-        public.append(
-            dict(
-                id=item["id"],
-                source=item["source"],
-                text=text,
-                text_redacted=text != item["text"],
-                rule_ids=item["rule_ids"],
-                kind=item["gold"]["kind"],
-                target=item["gold"]["target"],
-            )
-        )
+    (PRIVATE / "exploratory-rounding.jsonl").write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rounded)
+    )
+    public = public_rows(items)
     write(PUBLIC / "data/generated.json", public)
     files = sorted(
         p
@@ -502,6 +498,50 @@ def analyze() -> None:
             for model in (read(path).get("model_usage") or {})
         )
     )
+    summary["claude_usage"] = dict(
+        Counter(
+            {
+                field: sum(
+                    c["usage"].get(field, 0)
+                    for r in observations
+                    if r["condition"] == "L1"
+                    for c in r["calls"]
+                )
+                for field in (
+                    "input_tokens",
+                    "output_tokens",
+                    "cache_creation_input_tokens",
+                    "cache_read_input_tokens",
+                )
+            }
+        )
+    )
+    summary["claude_usage"]["cache_1h_input_tokens"] = sum(
+        c["usage"].get("cache_creation", {}).get("ephemeral_1h_input_tokens", 0)
+        for r in observations
+        if r["condition"] == "L1"
+        for c in r["calls"]
+    )
+    summary["interrupted"] = {
+        "workflows": sum(r["status"] == "incomplete" for r in observations),
+        "first_repeat": sum(
+            r["status"] == "incomplete" and r["repeat"] == 1 for r in observations
+        ),
+        "calls": sum(
+            r["call_count"] for r in observations if r["status"] == "incomplete"
+        ),
+        "resent": 0,
+    }
+    summary["jev_calls"] = dict(
+        Counter(read(path)["status"] for path in (PRIVATE / "jev").glob("*.json"))
+    )
+    summary["continuation_gold"] = dict(
+        Counter(
+            "continue" if item["gold"]["continue"] else "new"
+            for item in inputs.values()
+            if item["task"] == "continuation"
+        )
+    )
     summary["claude_record_folders"] = [
         p.name
         for p in (Path.home() / ".claude/projects").glob(
@@ -520,6 +560,30 @@ def analyze() -> None:
             [r for r in unwrapped if r["task"] == task and r["repeat"] == 1],
         )
         for task, baseline in (("constraint", "J1"), ("continuation", "B1"))
+    }
+    summary["exploratory_jev_decimal"] = summarize(
+        rows(PRIVATE / "exploratory-rounding.jsonl")
+    )
+    summary["exploratory_semantic_comparison"] = paired(
+        [r for r in rows(PRIVATE / "exploratory-rounding.jsonl") if r["repeat"] == 1],
+        [r for r in unwrapped if r["task"] == "constraint" and r["repeat"] == 1],
+    )
+    summary["tie_order_audit"] = tie_order_audit(
+        [read(path) for path in sorted((PRIVATE / "workflows").glob("*.json"))], inputs
+    )
+    summary["publication"] = {
+        "redaction_span_chars": 8,
+        "source_files": len(read(PRIVATE / "privacy-sources.json")),
+        "generated_rows": len(read(PUBLIC / "data/generated.json")),
+        "redacted_rows": sum(
+            r["text_redacted"] for r in read(PUBLIC / "data/generated.json")
+        ),
+        "raw_seal_sha256": hashlib.sha256(
+            (PUBLIC / "data/RAW_SHA256SUMS").read_bytes()
+        ).hexdigest(),
+        "derived_manifest_sha256": hashlib.sha256(
+            (PUBLIC / "data/SHA256SUMS").read_bytes()
+        ).hexdigest(),
     }
     write(PUBLIC / "results/summary.json", summary)
     with (PUBLIC / "results/conditions.csv").open("w", newline="") as stream:
