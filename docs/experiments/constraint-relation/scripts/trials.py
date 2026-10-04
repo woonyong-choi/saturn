@@ -30,6 +30,12 @@ def build_trials(cohort: str, *, full: bool = False) -> list[dict]:
         selected = {tuple(pair) for pair in read_json(PRIVATE / "plan.json")["sample"]}
         labels = {}
     else:
+        plan = read_json(PRIVATE / "plan.json")
+        if not all(
+            (PRIVATE / "extension" / f"adjudicated-{i}.json").exists()
+            for i in range(len(plan["label_batches"]))
+        ):
+            raise RuntimeError("extension labels are not complete")
         conversations, labels = load_extension()
         receipts = {}
         projects = read_json(SOURCE / "selection.json")["projects"]

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
+from functools import lru_cache
 
 from support import judge
 
@@ -40,6 +41,7 @@ REWRITES = {
 }
 
 
+@lru_cache(maxsize=2048)
 def target_keys(text: str) -> set[str]:
     normalized = unicodedata.normalize("NFKC", text).casefold()
     keys = set()
@@ -78,6 +80,7 @@ def encode_request(trial: dict) -> bytes:
 def make_trial(turn: dict, pool: list[dict], meta: dict) -> dict:
     chosen = select_candidates(turn, pool, meta["condition"])
     before = len(chosen)
+    before_ids = [c["turn_id"] for c in chosen]
     trial = {
         "model": judge.MODEL,
         "state": {"latest_user_input": turn["text"], "pairs": []},
@@ -102,13 +105,22 @@ def make_trial(turn: dict, pool: list[dict], meta: dict) -> dict:
                 f"For pair {index}: " + wording
             )
     original_bytes = len(encode_request(trial))
-    while chosen and len(encode_request(trial)) > MAX_BYTES:
+    size_bytes = original_bytes
+    while chosen and size_bytes > MAX_BYTES:
         chosen.pop()
-        trial["state"]["pairs"].pop()
+        pair = trial["state"]["pairs"].pop()
+        size_bytes -= len(json.dumps(pair, ensure_ascii=False).encode())
+        size_bytes -= 2 if chosen else 0
         for kind in ("replaces", "releases"):
-            del trial["questions"][f"{kind}_{len(chosen)}"]
+            name = f"{kind}_{len(chosen)}"
+            value = trial["questions"].pop(name)
+            entry = json.dumps(name) + ": " + json.dumps(value, ensure_ascii=False)
+            size_bytes -= len(entry.encode()) + (2 if trial["questions"] else 0)
+    if size_bytes != len(encode_request(trial)):
+        raise AssertionError("request byte accounting mismatch")
     trial["meta"].update(
         candidate_ids=[c["turn_id"] for c in chosen],
+        before_candidate_ids=before_ids,
         before_trim=before,
         trimmed=before - len(chosen),
         original_bytes=original_bytes,
@@ -121,7 +133,7 @@ def make_trial(turn: dict, pool: list[dict], meta: dict) -> dict:
         else (
             "oversize_input"
             if len(encode_request(trial)) > MAX_BYTES
-            else "no_candidates"
+            else ("trimmed_empty" if before else "no_candidates")
         )
     )
     trial["trial_id"] = "-".join(

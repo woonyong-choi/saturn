@@ -27,4 +27,4 @@
 | [crash-resume](crash-resume/report.md) | 강제 종료 뒤 provider session과 자식 작업 재개 | [엔진 수명과 복구](../design/engine-lifecycle.md), [provider 연결과 session](../design/providers-and-sessions.md) | H1 기각·H2 확인: Codex child 재실행 0/3. H3 확인·H4 확인(재수집): Claude 변수 있음 재실행 3/3, 없음 0/3 |
 | [constraint-deep](constraint-deep/report.md) | 전수 목록의 프로젝트 대화에서 제약 기준값과 라벨 합의 | [제약](../design/constraints.md), [router](../design/router.md) | H1 채택: 0.80 정밀도 95.2% [91.4, 97.4], H2 보류: 재현율 79.3% [73.8, 83.8](확인 405턴). 탐색 후보 0.70, 독립 검증 전 확정 보류 |
 | [continuation-judgment-korean](continuation-judgment-korean/report.md) | 한국어 이어 가기 판단과 직전 작업 정보의 효과 | [router](../design/router.md), [입력 처리](../design/input-handling.md) | H1 채택: 0.80 이진 정확도 차이 +51.4%p [41.2, 57.4], 탐색 후보 A·B 0.50, 새 작업 오접합 70.8%·52.8%로 운영 채택 보류 |
-| [constraint-relation](constraint-relation/design.md) | 후보를 줄인 대체·해제 판단 | [제약](../design/constraints.md) | 측정 전 |
+| [constraint-relation](constraint-relation/report.md) | 후보를 줄인 대체·해제 판단 | [제약](../design/constraints.md) | H1·H2 기각: 대체 정밀도 1.6%·0.0%, 사용자 선택 권고 |

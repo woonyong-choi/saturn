@@ -23,10 +23,13 @@ from support import (
     write_json,
 )
 from trials import build_trials
+from seal import seal_trials
 
 
 def collect(cohort: str) -> None:
     initialize()
+    if (PRIVATE / "stopped.json").exists():
+        raise RuntimeError("collection stopped; inspect persisted reason")
     if not os.environ.get("SATURN_JUDGE_KEY"):
         raise RuntimeError("judge key missing")
     if source_manifest() != read_json(PRIVATE / "plan.json")["source_manifest"]:
@@ -44,6 +47,7 @@ def collect(cohort: str) -> None:
             raise RuntimeError("design is not committed")
         write_json(PRIVATE / "run.json", {"run_id": now(), "design_commit": commit})
     trials = build_trials(cohort)
+    seal_trials(cohort, trials)
     random.Random(SEED).shuffle(trials)
     saved = {r["trial_id"] for r in read_rows(PRIVATE / "jev.jsonl")}
     reserved = {r["trial_id"] for r in read_rows(PRIVATE / "calls.jsonl")}
@@ -55,6 +59,7 @@ def collect(cohort: str) -> None:
         pending = [
             r for r in (1, 2, 3) if f"{trial['trial_id']}-r{r}" not in saved | reserved
         ]
+        stop = False
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             for row in executor.map(lambda r: judge.post_trial(trial, r), pending):
                 row.update(
@@ -62,8 +67,18 @@ def collect(cohort: str) -> None:
                     condition=trial["meta"]["condition"],
                 )
                 append_row(PRIVATE / "jev.jsonl", row)
-                if row.get("http_status") in (401, 403) or row.get("model_unavailable"):
-                    raise RuntimeError("authentication or model rejected")
+                stop |= row.get("http_status") in (401, 403) or row.get(
+                    "model_unavailable", False
+                )
+        if stop:
+            write_json(
+                PRIVATE / "stopped.json",
+                {
+                    "trial_id": trial["trial_id"],
+                    "reason": "authentication or model rejected",
+                },
+            )
+            raise RuntimeError("authentication or model rejected")
         if index % 50 == 0:
             print(
                 {"cohort": cohort, "trials_done": index + 1, "total": len(trials)},

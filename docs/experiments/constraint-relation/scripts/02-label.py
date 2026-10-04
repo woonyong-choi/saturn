@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 
 from support import (
     PRIVATE,
@@ -49,23 +50,36 @@ def run_batch(ids: list[str], lane: str, index: int) -> None:
     output = PRIVATE / "extension" / f"{lane}-{index}.json"
     if output.exists():
         return
+    if lane == "adjudicated":
+        inputs = [
+            PRIVATE / "extension" / f"{model}-{index}.json"
+            for model in ("gpt-6-astra", "gpt-5.6-luna")
+        ]
+        while not all(path.exists() for path in inputs):
+            time.sleep(2)
+        if any(read_json(path).get("invalid_batch") for path in inputs):
+            write_json(output, {"invalid_batch": True})
+            return
     prompt, schema = make_batch(ids, lane, index)
     model = "gpt-6-astra" if lane == "adjudicated" else lane
     for attempt in range(2):
         trial = f"extension-{lane}-{index}-{attempt}"
         receipt = PRIVATE / "codex" / trial / "receipt.json"
-        if receipt.exists():
-            record = read_json(receipt)
-            if record["returncode"] != 0:
-                raise RuntimeError("label model failed")
-            text = record["stdout"]
-            value = json.loads(text[text.find("{") : text.rfind("}") + 1])
-        else:
-            reserved = {r["trial_id"] for r in read_rows(PRIVATE / "calls.jsonl")}
-            if trial in reserved:
-                raise RuntimeError("reserved label call has no receipt; do not resend")
-            value = labeler.call_codex(model, prompt, trial, schema)
+        value = {}
         try:
+            if receipt.exists():
+                record = read_json(receipt)
+                if record["returncode"] != 0:
+                    raise RuntimeError("label model failed")
+                text = record["stdout"]
+                value = json.loads(text[text.find("{") : text.rfind("}") + 1])
+            else:
+                reserved = {r["trial_id"] for r in read_rows(PRIVATE / "calls.jsonl")}
+                if trial in reserved:
+                    raise RuntimeError(
+                        "reserved label call has no receipt; do not resend"
+                    )
+                value = labeler.call_codex(model, prompt, trial, schema)
             for cid in ids:
                 c = read_json(SOURCE / "conversations" / (cid + ".json"))
                 labeler.validate_labels(
@@ -74,7 +88,7 @@ def run_batch(ids: list[str], lane: str, index: int) -> None:
             write_json(output, value)
             print({"lane": lane, "batch": index, "status": "ok"}, flush=True)
             return
-        except (KeyError, ValueError) as error:
+        except (KeyError, ValueError, TypeError) as error:
             prompt += (
                 "\n형식 오류를 고쳐 전체 객체를 다시 답한다: "
                 + str(error)
