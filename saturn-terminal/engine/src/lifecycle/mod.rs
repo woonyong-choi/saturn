@@ -30,6 +30,7 @@ mod model_mode;
 mod outcomes;
 mod packet_overflow;
 mod permissions;
+mod plain_exit;
 mod provider_stall;
 mod prune;
 mod read_only_steer;

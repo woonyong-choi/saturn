@@ -154,6 +154,27 @@ pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result
 // cost: time O(e), heap O(w), stack O(1), io e
 // vars: e = 입력 줄 수 + 받은 알림 수, w = 보내기를 기다리는 줄 글자 수
 // basis: estimate
+/// `run_plain`과 같되 입력과 출력을 받는다. 실제 engine을 붙인 시험에서 쓴다.
+///
+/// # Errors
+/// `run_plain`과 같다.
+pub async fn run_plain_on<R, W>(
+    client: &mut EngineClient,
+    options: RunOptions,
+    input: R,
+    out: W,
+) -> Result<(), TuiError>
+where
+    R: AsyncBufRead + Unpin,
+    W: Write,
+{
+    let lang = options.lang.unwrap_or_else(Lang::detect);
+    plain_session(client, options, input.lines(), PlainOutput::new(out, lang)).await
+}
+
+// cost: time O(e), heap O(w), stack O(1), io e
+// vars: e = 입력 줄 수 + 받은 알림 수, w = 보내기를 기다리는 줄 글자 수
+// basis: estimate
 /// `run_plain`의 본체. 입력과 출력을 받아 가짜 engine으로 시험할 수 있게 한다.
 async fn plain_session<R, W>(
     client: &mut EngineClient,

@@ -5,9 +5,9 @@ use std::collections::BTreeMap;
 use std::io::Write;
 use std::time::{Duration, Instant};
 
-use saturn_protocol::ids::{ChatId, TaskId, TaskLabel};
+use saturn_protocol::ids::{ChatId, InputId, TaskId, TaskLabel};
 use saturn_protocol::rpc::{ChatNotice, Notification};
-use saturn_protocol::state::TaskState;
+use saturn_protocol::state::{Disposition, InputState, TaskState};
 
 use crate::i18n::{self, Lang};
 use crate::labels;
@@ -20,7 +20,6 @@ pub(crate) struct PlainOutput<W: Write> {
     out: W,
     lang: Lang,
     chat: ChatState,
-    finished: bool,
     /// 아직 줄바꿈이 오지 않은 모델 글 조각.
     partial: BTreeMap<TaskId, String>,
     alerts_written: usize,
@@ -30,10 +29,14 @@ pub(crate) struct PlainOutput<W: Write> {
     failed: bool,
     /// 입력이 필요한 줄 앞에 터미널 벨을 쓴다. 표준 출력이 터미널일 때만 켠다.
     bell: bool,
-    /// 마지막으로 끝난 때 이후 보냈고 거절되지 않은 입력 수.
-    open: u64,
+    /// 보냈지만 접수나 거절 응답을 아직 받지 못한 입력 수.
+    unanswered: u64,
     /// 입력을 보낸 적이 있다.
     sent: bool,
+    /// 이 접속이 접수시킨 입력 중 끝 상태가 아닌 것과 그 입력의 작업 이름표. 다른 접속의 입력은 넣지 않는다.
+    pending: BTreeMap<InputId, Option<TaskLabel>>,
+    /// 이 접속의 입력이 적용돼 끝나기를 기다리는 작업의 이름표.
+    owed: Vec<TaskLabel>,
 }
 
 impl<W: Write> PlainOutput<W> {
@@ -45,13 +48,14 @@ impl<W: Write> PlainOutput<W> {
             out,
             lang,
             chat: ChatState::new(),
-            finished: false,
             partial: BTreeMap::new(),
             alerts_written: 0,
             key_required: None,
             failed: false,
-            open: 0,
+            unanswered: 0,
             sent: false,
+            pending: BTreeMap::new(),
+            owed: Vec::new(),
         }
     }
 
@@ -74,20 +78,16 @@ impl<W: Write> PlainOutput<W> {
     /// 원문은 engine이 `InputChanged`로 돌려주므로 여기서 쓰지 않는다.
     pub(crate) fn submitted(&mut self, text: String) {
         let _ = text;
-        if self.finished {
-            self.open = 0;
-        }
-        self.open += 1;
+        self.unanswered += 1;
         self.sent = true;
-        self.finished = false;
     }
 
-    /// engine이 접수하지 않은 입력. 그 입력의 실행은 오지 않으므로 기다리는 수에서 뺀다.
+    /// engine이 접수하지 않은 입력. 그 입력의 실행은 오지 않으므로 기다리는 응답 수에서 뺀다.
     ///
     /// # Errors
     /// 쓰기 실패.
     pub(crate) fn input_rejected(&mut self, message: &str) -> std::io::Result<()> {
-        self.open = self.open.saturating_sub(1);
+        self.unanswered = self.unanswered.saturating_sub(1);
         let line = self
             .lang
             .tr(i18n::INPUT_NOT_ACCEPTED)
@@ -125,6 +125,10 @@ impl<W: Write> PlainOutput<W> {
             Notification::HistoryChunk { chat, .. } => {
                 self.chat.chat.get_or_insert(chat);
             }
+            Notification::InputAccepted { input, .. } => {
+                self.unanswered = self.unanswered.saturating_sub(1);
+                self.pending.insert(input, None);
+            }
             Notification::InputChanged {
                 input,
                 text,
@@ -141,10 +145,7 @@ impl<W: Write> PlainOutput<W> {
                     disposition,
                     reason,
                 };
-                let cell = echo_cell(&update);
-                if let Change::Echo { .. } = self.chat.apply_input(update, now) {
-                    self.cell(&cell)?;
-                }
+                self.input_changed(update, now)?;
             }
             Notification::TaskChanged {
                 task,
@@ -162,6 +163,7 @@ impl<W: Write> PlainOutput<W> {
                     elapsed: Duration::from_millis(elapsed_ms),
                     failure,
                 };
+                self.track_task(label, state);
                 self.task_changed(update, now)?;
             }
             Notification::TaskEvent { task, event } => {
@@ -221,9 +223,87 @@ impl<W: Write> PlainOutput<W> {
         Ok(())
     }
 
-    /// `ChatNotice::RequestSummary`를 쓴 뒤 참. 보낸 입력이 모두 거절돼 기다릴 실행이 없어도 참.
+    /// 보낸 입력이 모두 접수나 거절 응답을 받았고, 접수된 입력이 끝 상태가 됐으며, 그 입력이 시작하거나 끼워 넣어진
+    /// 작업도 끝났으면 참. 다른 접속의 입력과 작업은 보지 않는다. 입력을 보낸 적이 없으면 거짓.
     pub(crate) fn is_finished(&self) -> bool {
-        self.finished || (self.sent && self.open == 0)
+        self.sent && self.unanswered == 0 && self.pending.is_empty() && self.owed.is_empty()
+    }
+
+    // cost: time O(t + o + l), heap O(l), stack O(1), io l
+    // vars: t = 작업 수, o = 기다리는 작업 수, l = 쓸 줄 수
+    // basis: estimate
+    fn input_changed(&mut self, update: InputUpdate, now: Instant) -> std::io::Result<()> {
+        self.track_input(update.input, update.state, update.label, update.disposition);
+        let cell = echo_cell(&update);
+        if let Change::Echo { .. } = self.chat.apply_input(update, now) {
+            self.cell(&cell)?;
+        }
+        Ok(())
+    }
+
+    // cost: time O(t + o), heap O(1), stack O(1)
+    // vars: t = 작업 수, o = 기다리는 작업 수
+    // basis: estimate
+    /// 이 접속이 접수시킨 입력의 상태를 따라간다. 끝 상태가 된 입력은 더 기다리지 않고, 적용된 입력의 작업은 끝나기를 기다린다.
+    fn track_input(
+        &mut self,
+        input: InputId,
+        state: InputState,
+        label: Option<TaskLabel>,
+        disposition: Option<Disposition>,
+    ) {
+        let Some(known) = self.pending.get_mut(&input) else {
+            return;
+        };
+        if label.is_some() {
+            *known = label;
+        }
+        let label = *known;
+        match state {
+            InputState::Rejected => self.failed = true,
+            InputState::Applied => {
+                // 끼워 넣을 작업이 이미 끝났다면 기다릴 끝이 오지 않는다
+                let is_open = label.is_some_and(|label| {
+                    self.chat
+                        .tasks
+                        .values()
+                        .any(|view| view.label == label && is_active(view.state))
+                });
+                if let Some(label) = label
+                    && (disposition != Some(Disposition::Steer) || is_open)
+                {
+                    self.owed.push(label);
+                }
+            }
+            _ => {}
+        }
+        if matches!(
+            state,
+            InputState::Applied | InputState::Rejected | InputState::Cancelled
+        ) {
+            self.pending.remove(&input);
+        }
+    }
+
+    /// 이 접속의 입력이 기다리는 작업의 끝을 따라간다. 결과를 모르거나 멈춘 작업은 기다리지 않고 실패로 센다.
+    fn track_task(&mut self, label: TaskLabel, state: TaskState) {
+        let before = self.owed.len();
+        self.owed.retain(|owed| *owed != label);
+        let is_ours = self.owed.len() != before;
+        match state {
+            TaskState::Done => {}
+            TaskState::Failed => self.failed |= is_ours,
+            TaskState::NeedsCheck | TaskState::Held => {
+                let before = self.pending.len();
+                self.pending.retain(|_, pending| *pending != Some(label));
+                self.failed |= is_ours || self.pending.len() != before;
+            }
+            _ => {
+                if is_ours {
+                    self.owed.push(label);
+                }
+            }
+        }
     }
 
     // cost: time O(t + l), heap O(l), stack O(1), io l
@@ -231,7 +311,6 @@ impl<W: Write> PlainOutput<W> {
     // basis: estimate
     fn task_changed(&mut self, update: TaskUpdate, now: Instant) -> std::io::Result<()> {
         let task = update.task;
-        self.failed |= update.state == TaskState::Failed;
         let change = self.chat.apply_task(update, now);
         let speaker = self
             .chat
@@ -319,9 +398,7 @@ impl<W: Write> PlainOutput<W> {
                 Some(StatusLine::StopUnconfirmed { remaining })
             }
             notice => {
-                let summary = matches!(notice, ChatNotice::RequestSummary { .. });
                 self.cell(&TranscriptCell::Notice { label, notice })?;
-                self.finished |= summary;
                 None
             }
         };
@@ -382,6 +459,17 @@ impl<W: Write> PlainOutput<W> {
     }
 }
 
+/// 작업이 아직 끝나기를 기다릴 상태.
+fn is_active(state: TaskState) -> bool {
+    matches!(
+        state,
+        TaskState::Running
+            | TaskState::AnsweredTreeRunning
+            | TaskState::AwaitingPermission
+            | TaskState::AwaitingInput
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use saturn_protocol::event::{Activity, ProviderEvent, ToolDetail};
@@ -438,7 +526,7 @@ mod tests {
 
     #[test]
     fn apply_writes_echo_output_result_and_summary() {
-        let (text, finished) = output(vec![
+        let (text, _) = output(vec![
             Notification::HistoryChunk {
                 chat: ChatId(1),
                 entries: Vec::new(),
@@ -490,7 +578,6 @@ mod tests {
             "> [A] 버그 고쳐 · 전달 중\n[A] • 파일 읽는 중\n[A] 고쳤습니다\n[A] 끝\n[A] codex · 45초 · Token -\n\
              Saturn: 이번 요청 · codex Token 4,120 · 라우터 0회 Token 0 · 45초\n"
         );
-        assert!(finished);
     }
 
     #[test]
@@ -569,5 +656,78 @@ mod tests {
         ]);
 
         assert_eq!(text.trim_end(), cell.lines(Lang::Ko, true, false)[0]);
+    }
+
+    fn labeled_task(id: u64, label: char, state: TaskState) -> Notification {
+        Notification::TaskChanged {
+            task: TaskId(id),
+            label: TaskLabel(label),
+            state,
+            provider: Some(Provider::from_static("codex")),
+            elapsed_ms: 0,
+            failure: None,
+        }
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    fn accepted_and_applied(plain: &mut PlainOutput<Vec<u8>>, input: u64, label: char) {
+        let now = Instant::now();
+        plain.submitted("일".to_string());
+        plain
+            .apply(
+                Notification::InputAccepted {
+                    client_ref: input,
+                    input: InputId(input),
+                },
+                now,
+            )
+            .unwrap();
+        plain
+            .apply(
+                Notification::InputChanged {
+                    input: InputId(input),
+                    text: "일".to_string(),
+                    label: Some(TaskLabel(label)),
+                    state: InputState::Applied,
+                    disposition: Some(Disposition::NewTask),
+                    reason: None,
+                },
+                now,
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn another_connections_task_neither_holds_the_end_nor_fails_it() {
+        let now = Instant::now();
+        let mut plain = PlainOutput::new(Vec::new(), Lang::Ko);
+        accepted_and_applied(&mut plain, 1, 'A');
+        plain
+            .apply(labeled_task(1, 'A', TaskState::Running), now)
+            .unwrap();
+        plain
+            .apply(labeled_task(2, 'B', TaskState::Running), now)
+            .unwrap();
+        assert!(!plain.is_finished());
+
+        plain
+            .apply(labeled_task(1, 'A', TaskState::Done), now)
+            .unwrap();
+        plain
+            .apply(labeled_task(2, 'B', TaskState::Failed), now)
+            .unwrap();
+
+        assert!(plain.is_finished());
+        assert!(!plain.has_failed());
+    }
+
+    #[test]
+    fn an_input_applied_before_its_task_starts_is_not_finished_yet() {
+        let mut plain = PlainOutput::new(Vec::new(), Lang::Ko);
+
+        accepted_and_applied(&mut plain, 1, 'A');
+
+        assert!(!plain.is_finished());
     }
 }

@@ -13,11 +13,11 @@ use std::thread::JoinHandle;
 use saturn_protocol::envelope::{
     ErrorKind, NotificationMessage, Response, ServerMessage, decode_client_line, encode_line,
 };
-use saturn_protocol::ids::{ChatId, Provider, TaskId, TaskLabel};
+use saturn_protocol::ids::{ChatId, InputId, Provider, TaskId, TaskLabel};
 use saturn_protocol::rpc::{
-    ChatNotice, Notification, PROTOCOL_VERSION, QueryResult, Request, RouterVersionInfo,
+    Notification, PROTOCOL_VERSION, QueryResult, Request, RouterVersionInfo,
 };
-use saturn_protocol::state::TaskState;
+use saturn_protocol::state::{Disposition, InputState, TaskState};
 
 /// 요청 하나에 대한 가짜 engine의 행동.
 enum Act {
@@ -416,6 +416,34 @@ fn training_without_a_terminal_to_confirm_exits_two_and_cancels() {
     );
 }
 
+/// engine가 입력 하나를 접수해 작업 A로 실행하고 `end`로 끝내는 순서. `RequestSummary`는 보내지 않는다.
+fn accepted_and_ended(end: TaskState, failure: Option<&str>) -> Vec<Notification> {
+    let task = |state, failure: Option<&str>| Notification::TaskChanged {
+        task: TaskId(1),
+        label: TaskLabel('A'),
+        state,
+        provider: Some(Provider::from_static("codex")),
+        elapsed_ms: 5,
+        failure: failure.map(str::to_owned),
+    };
+    vec![
+        Notification::InputAccepted {
+            client_ref: 1,
+            input: InputId(1),
+        },
+        Notification::InputChanged {
+            input: InputId(1),
+            text: "go".to_owned(),
+            label: Some(TaskLabel('A')),
+            state: InputState::Applied,
+            disposition: Some(Disposition::NewTask),
+            reason: None,
+        },
+        task(TaskState::Running, None),
+        task(end, failure),
+    ]
+}
+
 #[test]
 fn plain_run_with_a_failed_task_exits_one() {
     let home = tempfile::tempdir().unwrap();
@@ -426,26 +454,10 @@ fn plain_run_with_a_failed_task_exits_one() {
             oldest: None,
             has_more: false,
         }]),
-        Request::SubmitInput { .. } => Act::Ok(vec![
-            Notification::TaskChanged {
-                task: TaskId(1),
-                label: TaskLabel('A'),
-                state: TaskState::Failed,
-                provider: Some(Provider::from_static("codex")),
-                elapsed_ms: 5,
-                failure: Some("provider failed".to_owned()),
-            },
-            Notification::ChatNotice {
-                chat: ChatId(1),
-                task: None,
-                notice: ChatNotice::RequestSummary {
-                    provider_tokens: Vec::new(),
-                    router_calls: 0,
-                    router_tokens: 0,
-                    elapsed_ms: 5,
-                },
-            },
-        ]),
+        Request::SubmitInput { .. } => Act::Ok(accepted_and_ended(
+            TaskState::Failed,
+            Some("provider failed"),
+        )),
         other => panic!("unexpected {other:?}"),
     });
 
@@ -465,16 +477,7 @@ fn plain_run_that_finishes_cleanly_exits_zero() {
             oldest: None,
             has_more: false,
         }]),
-        Request::SubmitInput { .. } => Act::Ok(vec![Notification::ChatNotice {
-            chat: ChatId(1),
-            task: None,
-            notice: ChatNotice::RequestSummary {
-                provider_tokens: Vec::new(),
-                router_calls: 0,
-                router_tokens: 0,
-                elapsed_ms: 5,
-            },
-        }]),
+        Request::SubmitInput { .. } => Act::Ok(accepted_and_ended(TaskState::Done, None)),
         other => panic!("unexpected {other:?}"),
     });
 
