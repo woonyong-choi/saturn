@@ -185,7 +185,7 @@ Codex와 Claude는 지금처럼 직접 연결(Codex app-server, Claude stream-js
 | 명령 목록 수집 | 명령 대응표와 `skills/list` | `system/init`의 `slash_commands` |
 | 명령과 스킬 전달 | 명령 이름과 app-server 메서드 대응표로 호출 | 프롬프트에 `/이름`을 그대로 넣어 전송 |
 
-provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대신하는 명령은 뺀다. 뒤에서 연결할 때 쓸 수 없거나 Saturn session 기록과 어긋나기 때문이다. 어댑터가 올린 목록은 연결 작업이 요청과 이벤트를 처리한 뒤 다시 읽어 마지막으로 알린 것과 다르면 `Commands` 알림으로 그 채팅에 붙은 TUI에 보내고, 나중에 붙는 TUI에는 붙을 때 마지막 목록을 보낸다. 연결이 끝나면 기억한 목록을 버린다. 목록이 처음부터 비어 있으면 알리지 않는다. 목록의 항목 종류와 노출 규칙은 [기능 목록과 확장](extensions.md#기능-목록)에 있다. 채팅 이어 열기와 폴더 추가는 [engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)에 있다. Claude 스트림에서 provider 명령의 결과와 허가 요청이 어떻게 오는지는 실측으로 확인한다([#26](https://github.com/woonyong-choi/saturn/issues/26)).
+provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대신하는 명령은 뺀다. 뒤에서 연결할 때 쓸 수 없거나 Saturn session 기록과 어긋나기 때문이다. 어댑터가 올린 목록은 연결 작업이 요청과 이벤트를 처리한 뒤 다시 읽어 마지막으로 알린 것과 다르면 `Commands` 알림으로 그 채팅에 붙은 TUI에 보내고, 나중에 붙는 TUI에는 붙을 때 마지막 목록을 보낸다. 연결이 끝나면 기억한 목록을 버린다. 목록이 처음부터 비어 있으면 알리지 않는다. 목록의 항목 종류와 노출 규칙은 [기능 목록과 확장](extensions.md#기능-목록)에 있다. 채팅 이어 열기와 폴더 추가는 [engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)에 있다. Claude 스트림에서 슬래시 명령은 사용자 입력 줄에 글 그대로 보내면 되고, 결과와 허가 요청은 명령 종류에 따라 다르게 온다. 프로젝트 명령은 모델 턴으로 확장되어 도구 호출이 `can_use_tool`로 오고 `result` 하나로 끝난다. `/context` 같은 로컬 명령은 허가 요청 없이 `assistant` 이벤트 하나(글이 `local_command_source`에 실린다)와 글이 있는 `result` 하나로 끝난다. `/compact`는 `status`, `compact_boundary`, 합성 `user` 이벤트를 거쳐 글이 빈 `result`로 끝난다. `init`의 목록에 없는 명령은 오류 없이 모델에 글로 전달되어 모델이 답하는 한 턴이 된다(Claude Code 2.1.288, 각 3/3, [실험](../experiments/claude-provider-behavior/report.md)).
 
 ### 이벤트 수신과 변환
 
@@ -301,7 +301,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 5. 에이전트와 모든 subagent가 끝나면 `agents`는 트리 유휴로 판정한다.
 6. 입력 없이 provider가 시작한 턴은 `origin = provider-wake`로 기록한다.
 
-작업 끝은 메인 에이전트와 모든 subagent가 끝난 때로 판정한다. 멈춤, 쓰기 잠금, compaction 경계는 subagent까지 끝났는지 알아야 정할 수 있기 때문이다. Codex 작업 끝은 부모 작업의 `turn/completed`로만 판정한다. 자식 작업의 끝을 작업 끝으로 잘못 보지 않기 위해서다. Claude subagent 이벤트와 Codex 자식 session 신호는 실측으로 확인한다([#17](https://github.com/woonyong-choi/saturn/issues/17), [#20](https://github.com/woonyong-choi/saturn/issues/20)).
+작업 끝은 메인 에이전트와 모든 subagent가 끝난 때로 판정한다. 멈춤, 쓰기 잠금, compaction 경계는 subagent까지 끝났는지 알아야 정할 수 있기 때문이다. Codex 작업 끝은 부모 작업의 `turn/completed`로만 판정한다. 자식 작업의 끝을 작업 끝으로 잘못 보지 않기 위해서다. Claude subagent는 `system` 이벤트로 추적할 수 있다. `task_started`와 `task_notification`은 `tool_use_id`로 `Agent` 도구 호출 id를 가리키고, `background_tasks_changed`는 실행 중인 작업 전체 목록을 싣는다. 백그라운드 subagent는 `Agent` 도구 결과가 시작 직후(`async_launched`)에 오므로 도구 결과를 끝으로 보면 안 된다. 같은 작업이 끝난 뒤 다시 시작되기도 해서(subagent가 띄운 셸이 끝나면 같은 `task_id`가 다시 `task_started`) `task_notification`의 `completed`도 트리 끝이 아니다. 작업 목록이 비었다가 약 10밀리초 안에 다시 차는 경우가 있으므로, 빈 목록 뒤 1초(초안) 동안 새 작업이 없을 때 트리가 끝났다고 본다. 메인의 `result`는 백그라운드 subagent가 끝나기 전에 오고, 끝난 뒤 사용자 입력 없이 `origin.kind`가 `task-notification`인 `result`가 다시 온다(Claude Code 2.1.288, [실험](../experiments/claude-provider-behavior/report.md)). 현재 구현은 `claude/convert.rs` 308행에서 도구 결과로 subagent 끝을 판정하고 `task_*` 이벤트를 읽지 않는다. Codex 자식 session 신호는 실측으로 확인한다([#20](https://github.com/woonyong-choi/saturn/issues/20)).
 
 부모 턴이 끝난 뒤 메인 에이전트의 글이나 도구 호출이 오면 새 턴이 시작된 것으로 본다. 입력 없이 provider가 시작한 턴도 트리 유휴로 잘못 보지 않기 위해서다. 흐름이 완료 신호 없이 끝나면 트리를 끝난 것으로 두고 관찰 끊김으로 기록한다. 더 받을 이벤트가 없는 트리를 실행 중으로 남겨 두지 않기 위해서다. 멈춤 신호 순서는 깊은 subagent부터이고, 깊이가 같으면 subagent id 순서, 마지막이 메인이다.
 
@@ -316,7 +316,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 
 누적 범위의 직전 누적은 같은 session에서 같은 에이전트와 subagent의 앞 누적 보고에서 칸마다 찾는다. 바로 앞 보고에 그 칸이 없었거나 두 보고 사이에 부모 턴이 둘 이상 끝났으면 차이가 여러 턴에 걸친다고 표시한다. 누적이 직전보다 작으면 그 칸의 턴 값은 NULL로 두고 여러 턴에 걸친다고 표시한다. 계산할 수 없는 턴 값을 지어내지 않기 위해서다. `tree-total`은 그 턴의 트리 합계이므로 턴 범위처럼 그대로 쓴다.
 
-사용량 보고는 원값과 범위를 그대로 넘기고 0으로 채우지 않는다. Codex session 누적을 그대로 더하면 중복 계산되기 때문이다. provider가 보고하지 않은 값은 NULL로 둔다. 지어낸 값을 막기 위해서다. 캐시 토큰은 Claude `cache_read_input_tokens`와 `cache_creation_input_tokens`, Codex `cachedInputTokens`와 `cacheWriteInputTokens`를 각각 캐시 읽기와 캐시 쓰기 열에 기록한다. Claude 사용량 보고의 범위는 실측으로 확인한다([#19](https://github.com/woonyong-choi/saturn/issues/19)).
+사용량 보고는 원값과 범위를 그대로 넘기고 0으로 채우지 않는다. Codex session 누적을 그대로 더하면 중복 계산되기 때문이다. provider가 보고하지 않은 값은 NULL로 둔다. 지어낸 값을 막기 위해서다. 캐시 토큰은 Claude `cache_read_input_tokens`와 `cache_creation_input_tokens`, Codex `cachedInputTokens`와 `cacheWriteInputTokens`를 각각 캐시 읽기와 캐시 쓰기 열에 기록한다. Claude `result.usage`는 그 턴의 메인 에이전트 사용량(`main-turn`)이다. 한 process의 두 번째 턴 값은 누적이 아니고 하위 에이전트 사용량도 들어 있지 않다. `result.modelUsage`와 `total_cost_usd`는 session 시작부터의 누적이면서 하위 에이전트를 포함한다. 메시지 줄의 `usage`는 입력 3칸이 `result.usage`와 맞지만 출력 토큰은 스트리밍 도중 값이라 맞지 않으므로 턴 값은 `result`에서만 읽는다(Claude Code 2.1.288, [실험](../experiments/claude-provider-behavior/report.md)). 현재 구현은 `claude/convert.rs` 75~98행에서 `result.usage`를 `main-turn`으로 기록하고 있어 범위가 맞다. 하위 에이전트 사용량은 `modelUsage` 누적의 차이로만 알 수 있고 아직 읽지 않는다.
 
 ### 트리 전체 중지
 
@@ -332,7 +332,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 - 완료는 세 조건을 모두 확인한 뒤에만 보고한다. 모든 에이전트가 멈춘 뒤의 완료 신호(`TurnCompleted` 또는 흐름 끊김)를 보냈거나 멈출 때 이미 답을 마쳤고, 트리가 유휴이고, 모든 프로세스 묶음의 중지 결과가 돌아왔다. 멈춤 직전에 보낸 턴의 낡은 유휴 표시를 완료로 읽지 않기 위해서다. 중지 결과가 하나라도 `남은 프로세스`이거나 확인하지 못하면 완료 대신 `멈춤 확인 안 됨 · N개 남음`을 보고한다.
 - 멈춤 요청은 응답한 뒤 별도 작업에서 묶음을 중지한다. 중지를 기다리는 동안에도 다른 요청과 provider 이벤트를 처리하기 위해서다.
 
-멈춤은 Saturn session의 모든 에이전트와 subagent에 닿는다. 에이전트 하나만 멈추는 기능은 취소와 모델 교체 같은 내부 처리에서만 쓰기 때문이다. 트리 전체 종료를 확인하기 전에는 완료라고 하지 않는다. subagent가 남은 채 멈췄다고 보이는 일을 막기 위해서다. Claude 백그라운드 subagent의 중지는 실측으로 확인한다([#18](https://github.com/woonyong-choi/saturn/issues/18)). 멈춘 작업의 보류와 재개는 [입력 처리](input-handling.md)에 있다.
+멈춤은 Saturn session의 모든 에이전트와 subagent에 닿는다. 에이전트 하나만 멈추는 기능은 취소와 모델 교체 같은 내부 처리에서만 쓰기 때문이다. 트리 전체 종료를 확인하기 전에는 완료라고 하지 않는다. subagent가 남은 채 멈췄다고 보이는 일을 막기 위해서다. Claude에서 `interrupt` 제어 요청은 실행 중인 백그라운드 subagent와 그 subagent가 띄운 셸 작업까지 멈추고(`task_notification`의 `stopped`, 3/3) process는 그대로 남는다. 입력을 닫으면 process가 8~10초 뒤 작업을 멈추고 종료 코드 0으로 끝난다. 리더에 SIGTERM을 보내면 1초 안에 종료 코드 143으로 끝나고 자손도 3초 안에 사라진다(3/3). 세 방법 모두 멈춘 뒤 40초 동안 작업이 끝났다는 marker가 생기지 않았다(Claude Code 2.1.288, [실험](../experiments/claude-provider-behavior/report.md)). `claude.rs` 508행이 `Subagent` 대상 멈춤을 보내지 않는 것은 `interrupt` 하나가 트리 전체에 닿으므로 맞다. 멈춘 작업의 보류와 재개는 [입력 처리](input-handling.md)에 있다.
 
 ### session 상태
 
@@ -458,10 +458,10 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 모델이 바뀌면 새 메인 session을 열고, 같은 모델이면 열린 session을 쓴다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `changing_the_model_opens_a_new_main_session_with_a_packet`, `same_model_keeps_using_the_open_session` |
 | router가 후보를 받아 고른 모델로 보내고 새 작업으로 판단되면 그 모델의 session을 연다(메인이면 새 메인 session). 고정 모델이면 묻지 않고, 목록을 받기 전이거나 후보 밖 값이면 현재 모델을 쓴다. | `saturn-terminal/engine/src/lifecycle/target_model.rs`의 `target_model_candidates_are_the_model_list_in_provider_order`, `target_model_chosen_by_the_router_is_applied`, `target_model_picks_the_provider_of_the_chosen_model`, `target_model_on_a_second_new_task_opens_a_session_with_that_model`, `target_model_is_not_asked_when_the_model_is_pinned`, `target_model_is_not_asked_before_the_model_list_arrives`, `target_model_is_ignored_when_the_input_continues_current_work`, `target_model_other_keeps_the_default_model`, `target_model_outside_the_candidates_is_ignored` |
 | 모델 목록은 설치된 provider 순서로 오고 provider로 거를 수 있다. Codex는 숨긴 모델을 빼고, Claude 기본은 `--model`을 넘기지 않는다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `model_list_comes_in_provider_order`, `model_list_can_be_limited_to_one_provider`, `saturn-terminal/engine/src/providers/codex/tests.rs`의 `model_list_entries_skip_hidden_models_and_fall_back_to_the_id`, `saturn-terminal/engine/src/providers/claude/tests.rs`의 `default_model_is_not_passed_to_claude` |
-| subagent의 시작과 끝을 이벤트로 추적한다. | [#17](https://github.com/woonyong-choi/saturn/issues/17), [#20](https://github.com/woonyong-choi/saturn/issues/20) |
-| Claude 백그라운드 subagent까지 멈춘다. | [#18](https://github.com/woonyong-choi/saturn/issues/18) |
-| Claude 사용량 보고의 범위를 올바르게 표시한다. | [#19](https://github.com/woonyong-choi/saturn/issues/19) |
-| Claude 스트림에서 provider 명령 결과와 허가 요청을 받는다. | [#26](https://github.com/woonyong-choi/saturn/issues/26) |
+| subagent의 시작과 끝을 이벤트로 추적한다. | Claude는 [실험](../experiments/claude-provider-behavior/report.md), Codex는 [#20](https://github.com/woonyong-choi/saturn/issues/20) |
+| Claude 백그라운드 subagent까지 멈춘다. | [실험](../experiments/claude-provider-behavior/report.md)에서 `interrupt`, 입력 닫기, SIGTERM 모두 3/3 확인 |
+| Claude 사용량 보고의 범위를 올바르게 표시한다. | [실험](../experiments/claude-provider-behavior/report.md)에서 `usage`는 `main-turn`, `modelUsage`는 하위 포함 누적임을 확인 |
+| Claude 스트림에서 provider 명령 결과와 허가 요청을 받는다. | [실험](../experiments/claude-provider-behavior/report.md)에서 프로젝트 명령의 `can_use_tool` 왕복과 로컬 명령의 `result`를 확인 |
 | 채팅에 더한 폴더가 session을 열 때 provider 실행 인자로 간다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `add_dir_follows_the_model_as_one_variadic_flag_before_the_permission_args`, `saturn-terminal/engine/src/providers/codex/tests.rs`의 `add_dir_goes_to_the_thread_config_when_a_session_opens` |
 | 허가 답이 없는 동안 턴이 멈춰 있고, 답한 뒤 이어진다. 답은 Codex에는 요청과 같은 JSON-RPC 번호로, Claude에는 `control_response`로 나간다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `command_approval_is_answered_with_the_same_numeric_request_id`, `file_change_approval_keeps_a_string_request_id`, `saturn-terminal/engine/src/providers/claude/tests.rs`의 `allow_once_answers_can_use_tool_with_the_request_input` |
 | 허가 요청을 TUI에 올리고 사용자 답을 provider에 넘기며, 받지 못했으면 다시 답할 수 있다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `permission_request_reaches_the_tui_and_the_answer_reaches_the_provider`, `answer_for_a_request_nobody_asked_is_refused`, `answer_the_provider_did_not_take_keeps_the_request_for_another_try`, `turn_end_withdraws_requests_nobody_answered` |
