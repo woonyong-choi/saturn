@@ -650,7 +650,10 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         }
         ChatNotice::ExtensionInstalled { .. }
         | ChatNotice::ExtensionRemoved { .. }
-        | ChatNotice::ExtensionFailed { .. } => extensions::notice_lines(lang, prefix, notice),
+        | ChatNotice::ExtensionFailed { .. }
+        | ChatNotice::ExtensionInjectFailed { .. } => {
+            extensions::notice_lines(lang, prefix, notice)
+        }
         ChatNotice::Stopped { .. } | ChatNotice::StopUnconfirmed { .. } => Vec::new(),
     }
 }

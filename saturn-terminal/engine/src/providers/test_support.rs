@@ -15,8 +15,8 @@ use tokio::sync::{Semaphore, mpsc};
 
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::providers::{
-    Adapter, AdapterConnection, BoxFuture, ContextDefaults, Descriptor, Feature, INTERFACE_VERSION,
-    LaunchSpec, ProviderConnection,
+    Adapter, AdapterConnection, BoxFuture, ContextDefaults, Descriptor, ExtensionLayout, Feature,
+    INTERFACE_VERSION, LaunchSpec, ProviderConnection,
 };
 
 /// 실제 어댑터 연결과 가짜 app-server를 쓰는 시험이 가져다 쓴다.
@@ -131,6 +131,7 @@ pub(crate) fn fake_descriptor(id: Provider) -> Descriptor {
             window: 50_000,
             cache_write: 2.0,
         },
+        extensions: ExtensionLayout::NONE,
     }
 }
 

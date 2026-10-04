@@ -11,6 +11,11 @@ use saturn_core::permission::{
 };
 use toml_edit::{Array, DocumentMut, Item, Table, value};
 
+use serde_json::Value;
+
+use crate::providers::{
+    Definition, ExtensionInput, ExtensionLayout, InjectionFailure, collect_definitions, place_files,
+};
 use crate::store::sha256_hex;
 
 /// 전용 폴더들이 들어가는 `~/.saturn` 아래 폴더 이름. 초안.
@@ -35,6 +40,9 @@ const HOME_NAME_LEN: usize = 16;
 /// 에이전트 질문(`item/tool/requestUserInput`)을 켜는 `[features]` 기능 이름. 실행 중 바꾸는 요청은 효과가 없어
 /// (docs/experiments/codex-live-reload) 질문 설정은 생성 설정에 쓰고 연결을 다시 시작해 적용한다.
 pub(super) const QUESTIONS_FEATURE: &str = "default_mode_request_user_input";
+
+/// 확장 지문을 폴더 이름에 붙이는 구분 글자. 초안.
+const EXTENSIONS_INFIX: &str = "-x";
 
 /// 질문을 끈 폴더 이름 끝에 붙인다. 같은 규칙에 질문 설정이 다른 채팅이 생성 설정을 덮어쓰지 않게 한다. 초안.
 const NO_QUESTIONS_SUFFIX: &str = "-no-questions";
@@ -114,22 +122,115 @@ pub(crate) struct HomeInput<'a> {
 /// # Errors
 /// 사용자 설정을 읽거나 해석하지 못하면 `ReadConfig`와 `ParseConfig`, 파일을 쓰지 못하면 `Write`.
 pub(crate) fn prepare(input: HomeInput<'_>) -> Result<PreparedHome, HomeError> {
+    prepare_with(input, &ExtensionLayout::NONE, ExtensionInput::default())
+        .map(|(prepared, _)| prepared)
+}
+
+// cost: time O(c + r·m + f), heap O(c + f), stack O(d), alloc c, io 6 + f
+// vars: c = 사용자 설정 크기, r = 규칙 수, m = MCP 서버 수, f = 주입할 파일 수, d = 폴더 깊이
+// basis: estimate
+/// `prepare`에 확장 부분을 더한다. 스킬과 명령은 공통 도우미가 `layout`의 위치에 복사하고 MCP 서버는 `config.toml`의
+/// `[mcp_servers]`에 넣어 사용자 서버와 같은 규칙 번역을 받게 한다. 사용자 설정에 같은 이름의 MCP 서버가 있으면 그
+/// 부분만 실패로 돌려준다. 확장이 있으면 폴더 이름 끝에 지문을 붙여 확장 묶음마다 폴더가 따로다.
+///
+/// # Errors
+/// `prepare`와 같다.
+pub(crate) fn prepare_with(
+    input: HomeInput<'_>,
+    layout: &ExtensionLayout,
+    extensions: ExtensionInput<'_>,
+) -> Result<(PreparedHome, Vec<InjectionFailure>), HomeError> {
     let mut doc = read_user_config(&input.user_codex_home.join(CONFIG_FILE))?;
     drop_permission_keys(&mut doc);
+    let definitions = collect_definitions(layout, extensions.parts);
+    let mut failures = definitions.failures;
+    failures.extend(add_mcp_servers(&mut doc, definitions.servers));
     let mcp_servers = translate_mcp(&mut doc, input.rules);
     doc[REVIEWER_KEY] = value("user");
     doc["mcp_optional_startup_grace_ms"] = value(MCP_STARTUP_GRACE_MS);
     set_questions_feature(&mut doc, input.questions);
     let policy = execpolicy(input.rules);
-    let path = input
-        .saturn_home
-        .join(HOMES_DIR)
-        .join(home_name(input.rules, input.questions));
+    let path = input.saturn_home.join(HOMES_DIR).join(home_name(
+        input.rules,
+        input.questions,
+        extensions.fingerprint,
+    ));
     create_private_dir(&path.join("rules")).map_err(write_error(&path))?;
     write_private(&path.join(CONFIG_FILE), doc.to_string().as_bytes())?;
     write_private(&path.join(RULES_FILE), policy.as_bytes())?;
     link_login(input.user_codex_home, &path)?;
-    Ok(PreparedHome { path, mcp_servers })
+    failures.extend(place_files(&path, layout, extensions.parts).failures);
+    Ok((PreparedHome { path, mcp_servers }, failures))
+}
+
+/// MCP 서버 정의에서 옮기는 문자열 키. 나머지 키는 옮기지 않는다.
+const SERVER_STRING_KEYS: [&str; 3] = ["command", "cwd", "url"];
+
+// cost: time O(m + k), heap O(k), stack O(1), alloc k
+// vars: m = 서버 수, k = 서버 정의의 키 수
+// basis: estimate
+/// 공통 도우미가 읽은 MCP 서버 정의를 Codex의 `[mcp_servers.<이름>]` 표로 바꿔 넣는다. 정의에 `command`와 `url`이 모두
+/// 없거나 사용자 설정에 같은 이름이 있으면 그 서버만 실패로 돌려준다.
+fn add_mcp_servers(doc: &mut DocumentMut, servers: Vec<Definition>) -> Vec<InjectionFailure> {
+    let mut failures = Vec::new();
+    for server in servers {
+        let failed = |reason: &str| InjectionFailure {
+            extension: server.extension.clone(),
+            part: server.name.clone(),
+            reason: reason.to_owned(),
+        };
+        let table = match mcp_server_table(&server.value) {
+            Ok(table) => table,
+            Err(reason) => {
+                failures.push(failed(reason));
+                continue;
+            }
+        };
+        let existing = doc
+            .as_table_mut()
+            .entry("mcp_servers")
+            .or_insert_with(|| Item::Table(Table::new()))
+            .as_table_like_mut();
+        match existing {
+            Some(existing) if existing.contains_key(&server.name) => failures.push(failed(
+                "the user's codex config already defines a server with this name",
+            )),
+            Some(existing) => {
+                existing.insert(&server.name, Item::Table(table));
+            }
+            None => failures.push(failed("mcp_servers in the codex config is not a table")),
+        }
+    }
+    failures
+}
+
+fn mcp_server_table(server: &Value) -> Result<Table, &'static str> {
+    let server = server
+        .as_object()
+        .ok_or("the server definition is not an object")?;
+    let mut table = Table::new();
+    for key in SERVER_STRING_KEYS {
+        if let Some(text) = server.get(key).and_then(Value::as_str) {
+            table.insert(key, value(text));
+        }
+    }
+    if let Some(args) = server.get("args").and_then(Value::as_array) {
+        let args: Array = args.iter().filter_map(Value::as_str).collect();
+        table.insert("args", value(args));
+    }
+    if let Some(env) = server.get("env").and_then(Value::as_object) {
+        let mut vars = Table::new();
+        for (name, setting) in env {
+            if let Some(setting) = setting.as_str() {
+                vars.insert(name, value(setting));
+            }
+        }
+        table.insert("env", Item::Table(vars));
+    }
+    if !table.contains_key("command") && !table.contains_key("url") {
+        return Err("the server has neither command nor url");
+    }
+    Ok(table)
 }
 
 // cost: time O(c), heap O(c), stack O(1), alloc 2, io 1
@@ -375,8 +476,12 @@ fn quote(token: &str) -> String {
 }
 
 /// 규칙 지문, 질문을 끄면 끝에 접미사를 붙인 폴더 이름.
-fn home_name(rules: &[Rule], questions: bool) -> String {
+fn home_name(rules: &[Rule], questions: bool, extensions: &str) -> String {
     let mut name = rules_fingerprint(rules);
+    if !extensions.is_empty() {
+        name.push_str(EXTENSIONS_INFIX);
+        name.push_str(extensions);
+    }
     if !questions {
         name.push_str(NO_QUESTIONS_SUFFIX);
     }

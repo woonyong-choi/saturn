@@ -12,8 +12,8 @@ use saturn_protocol::ids::{
 use crate::flow::LiveSession;
 use crate::models::pinned_choice;
 use crate::providers::{
-    LaunchSpec, PermissionInput, ProviderConnection, ProviderHandle, SaturnDefaults,
-    UserProviderConfig,
+    ExtensionInput, LaunchSpec, PermissionInput, ProviderConnection, ProviderHandle,
+    SaturnDefaults, UserProviderConfig,
 };
 use crate::secrets::HookPolicy;
 use crate::settings::ContextMode;
@@ -26,6 +26,8 @@ pub(crate) struct ConnectionSeed {
     questions: bool,
     /// 번역한 규칙의 지문. 규칙이 연결을 시작할 때 고정되는 어댑터만 있다.
     rules: Option<String>,
+    /// 연결이 담은 확장의 지문. 확장이 없으면 빈 글자다.
+    extensions: String,
 }
 
 impl ConnectionSeed {
@@ -33,6 +35,7 @@ impl ConnectionSeed {
         Self {
             questions: !launch.permission.questions_disabled,
             rules: launch.permission.rules_fingerprint.clone(),
+            extensions: launch.permission.extension_fingerprint.clone(),
         }
     }
 }
@@ -140,6 +143,9 @@ impl Engine {
         self.flow
             .questions_of_connection
             .insert((chat, provider), seed.questions);
+        self.flow
+            .extensions_of_connection
+            .insert((chat, provider), seed.extensions);
         self.flow.stale_connections.remove(&(chat, provider));
         if let Some(rules) = seed.rules {
             self.flow
@@ -181,12 +187,22 @@ impl Engine {
             .ok_or_else(|| ProviderError::NotSent {
                 reason: format!("unknown provider: {provider}"),
             })?;
-        let permission = adapter.translate_permission(PermissionInput {
+        let plan = self.extension_plan(provider).await?;
+        let mut permission = adapter.translate_permission(PermissionInput {
             saturn_home: &self.options.home,
             rules: &settings.permission().rules,
             env: &provider_env,
             questions,
+            extensions: ExtensionInput {
+                parts: &plan.parts,
+                fingerprint: &plan.fingerprint,
+            },
         })?;
+        permission
+            .extension_fingerprint
+            .clone_from(&plan.fingerprint);
+        self.tell_injection_failures(chat, provider, &plan, &permission)
+            .await;
         Ok(LaunchSpec {
             provider,
             program: PathBuf::from(adapter.descriptor().program),

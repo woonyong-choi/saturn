@@ -6,11 +6,12 @@ use std::sync::Arc;
 use saturn_core::providers::ProviderError;
 use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId};
 
-use super::ClaudeClient;
+use super::{ClaudeClient, extensions};
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::providers::{
     Adapter, AdapterConnection, AppliedReader, AppliedSettings, BoxFuture, ContextDefaults,
-    Descriptor, Feature, INTERFACE_VERSION, LaunchSpec, ProviderConnection,
+    Descriptor, ExtensionLayout, Feature, INTERFACE_VERSION, LaunchSpec, PermissionInput,
+    PermissionLaunch, ProviderConnection,
 };
 
 /// 설정 키 `provider.claude.*`와 모델 고정 글 `claude/<model>`의 앞부분이다.
@@ -28,6 +29,13 @@ static DESCRIPTOR: Descriptor = Descriptor {
         window: 1_000_000,
         cache_write: 1.25,
     },
+    // 훅은 Saturn 권한 판정에 끼어들 수 있는지 정해지기 전이라 주입하지 않는다
+    extensions: ExtensionLayout {
+        skills_dir: Some("skills"),
+        commands: Some(("commands", "md")),
+        mcp_servers: true,
+        hooks: false,
+    },
 };
 
 #[derive(Debug)]
@@ -40,6 +48,25 @@ pub(crate) fn adapter() -> Arc<dyn Adapter> {
 impl Adapter for ClaudeAdapter {
     fn descriptor(&self) -> &Descriptor {
         &DESCRIPTOR
+    }
+
+    /// 질문 기능은 실행 인자로 따로 넣고, 확장은 스킬과 명령을 플러그인 폴더로, MCP 서버를 설정 파일로 만들어 실행
+    /// 인자로 넘긴다. 사용자 Claude 설정은 읽지도 고치지도 않는다.
+    fn translate_permission(
+        &self,
+        input: PermissionInput<'_>,
+    ) -> Result<PermissionLaunch, ProviderError> {
+        let injected =
+            extensions::inject(input.saturn_home, &DESCRIPTOR.extensions, input.extensions)
+                .map_err(|error| ProviderError::NotSent {
+                    reason: format!("failed to prepare claude extensions: {error}"),
+                })?;
+        Ok(PermissionLaunch {
+            questions_disabled: !input.questions,
+            extra_args: injected.args,
+            injection_failures: injected.failures,
+            ..PermissionLaunch::default()
+        })
     }
 
     /// 프로세스는 session을 열 때 띄운다.

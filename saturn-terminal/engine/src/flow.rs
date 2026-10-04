@@ -152,6 +152,8 @@ pub(crate) struct FlowState {
     pub(crate) settings_of: HashMap<AgentId, SettingsRevision>,
     /// 채팅의 연결을 시작할 때 쓴 규칙 지문. 규칙이 연결을 시작할 때 고정되는 어댑터만 항목이 있다. 연결이 없으면 항목도 없다.
     pub(crate) rules_of_connection: HashMap<(ChatId, Provider), String>,
+    /// 채팅의 연결을 시작할 때 쓴 확장 지문. 확장이 없었으면 빈 글자다.
+    pub(crate) extensions_of_connection: HashMap<(ChatId, Provider), String>,
     /// 바뀐 설정을 적용하려고 다시 시작할 연결. 채팅에 작업이 있으면 턴 끝에 시작한다.
     pub(crate) stale_connections: HashSet<(ChatId, Provider)>,
     /// 연결을 시작할 때 쓴 에이전트 질문 기능 값(켬이 참).
@@ -242,6 +244,7 @@ impl Default for FlowState {
             next_request: 0,
             settings_of: HashMap::new(),
             rules_of_connection: HashMap::new(),
+            extensions_of_connection: HashMap::new(),
             stale_connections: HashSet::new(),
             questions_of_connection: HashMap::new(),
             watched_settings: HashMap::new(),

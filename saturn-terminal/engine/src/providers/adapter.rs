@@ -31,9 +31,6 @@ pub(crate) type AppliedReader = Arc<dyn Fn() -> Option<AppliedSettings> + Send +
 pub(crate) enum Feature {
     /// 진행 중인 턴에 입력을 끼워 넣는다. 없으면 입력은 대기로 처리한다.
     Steer,
-    /// 설치한 확장의 이 종류 부분을 session을 열 때 provider 형식으로 넣는다. 없으면 그 종류는 주입하지 못하는
-    /// provider다([기능 목록과 확장](../../../../docs/design/extensions.md#설치)).
-    Inject(ExtensionPartKind),
     /// 맥락 정리를 요청한다.
     Compact,
 }
@@ -62,6 +59,8 @@ pub(crate) struct Descriptor {
     pub(crate) instruction_doc: &'static str,
     pub(crate) interface_version: u32,
     pub(crate) context: ContextDefaults,
+    /// 확장 부분을 받는 provider 형식. 어느 종류를 받는지가 `주입 가능` 판정의 기본 답이다.
+    pub(crate) extensions: super::ExtensionLayout,
 }
 
 /// 권한 규칙을 provider 실행 설정으로 번역할 때 필요한 값.
@@ -73,6 +72,9 @@ pub(crate) struct PermissionInput<'a> {
     pub(crate) env: &'a [(std::ffi::OsString, std::ffi::OsString)],
     /// 에이전트 질문 기능을 켠다.
     pub(crate) questions: bool,
+    /// 이 provider가 주입 가능하다고 답한 확장 부분. 이름은 권한 번역에서 왔지만 같은 실행 설정을 만드는 입력이라
+    /// 확장도 여기에 담는다.
+    pub(crate) extensions: super::ExtensionInput<'a>,
 }
 
 /// provider 하나를 붙이는 어댑터. 레지스트리에 한 번 등록한다.
@@ -86,7 +88,8 @@ pub(crate) trait Adapter: Send + Sync + std::fmt::Debug {
         supervisor: Supervisor,
     ) -> BoxFuture<'_, Result<ProviderConnection, ProviderError>>;
 
-    /// Saturn 권한 규칙을 이 provider의 실행 설정으로 번역한다. 기본은 규칙을 번역하지 않고 질문 기능만 따른다.
+    /// Saturn 권한 규칙과 확장 부분을 이 provider의 실행 설정으로 번역한다. 기본은 규칙을 번역하지 않고 질문 기능만
+    /// 따르며 확장도 주입하지 않는다.
     ///
     /// # Errors
     /// 번역한 설정을 쓰지 못하면 `NotSent`.
@@ -100,10 +103,10 @@ pub(crate) trait Adapter: Send + Sync + std::fmt::Debug {
         })
     }
 
-    /// 이 provider에 `kind` 부분을 주입할 수 있는지. 기본은 설명자의 기능 목록을 따라 `Inject(kind)`가 있으면
-    /// `Injectable`, 없으면 `Unavailable`이다. 기능 목록만으로 답할 수 없는 어댑터는 `Unknown`을 돌려주도록 바꾼다.
+    /// 이 provider에 `kind` 부분을 주입할 수 있는지. 기본은 설명자의 주입 형식이 그 종류를 받으면 `Injectable`, 아니면
+    /// `Unavailable`이다. 형식만으로 답할 수 없는 어댑터는 `Unknown`을 돌려주도록 바꾼다.
     fn injectability(&self, kind: ExtensionPartKind) -> Injectability {
-        if self.descriptor().features.contains(&Feature::Inject(kind)) {
+        if self.descriptor().extensions.accepts(kind) {
             Injectability::Injectable
         } else {
             Injectability::Unavailable

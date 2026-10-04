@@ -13,7 +13,7 @@ use saturn_protocol::rpc::{
 use super::support::{CLIENT, Flow};
 use super::*;
 use crate::providers::test_support::{FakeAdapter, FakeProvider, fake_descriptor};
-use crate::providers::{Adapter, BoxFuture, Feature, LaunchSpec, ProviderConnection};
+use crate::providers::{Adapter, BoxFuture, ExtensionLayout, LaunchSpec, ProviderConnection};
 use crate::rpc::ClientId;
 
 /// 스킬과 MCP 서버만 주입하는 어댑터.
@@ -21,20 +21,22 @@ const NARROW: Provider = Provider::from_static("narrow-agent");
 /// 네 종류를 모두 주입하는 어댑터.
 const WIDE: Provider = Provider::from_static("wide-agent");
 
-const NARROW_FEATURES: &[Feature] = &[
-    Feature::Inject(ExtensionPartKind::Skill),
-    Feature::Inject(ExtensionPartKind::McpServer),
-];
-const WIDE_FEATURES: &[Feature] = &[
-    Feature::Inject(ExtensionPartKind::Skill),
-    Feature::Inject(ExtensionPartKind::McpServer),
-    Feature::Inject(ExtensionPartKind::Command),
-    Feature::Inject(ExtensionPartKind::Hook),
-];
+const NARROW_LAYOUT: ExtensionLayout = ExtensionLayout {
+    skills_dir: Some("skills"),
+    commands: None,
+    mcp_servers: true,
+    hooks: false,
+};
+const WIDE_LAYOUT: ExtensionLayout = ExtensionLayout {
+    skills_dir: Some("skills"),
+    commands: Some(("commands", "md")),
+    mcp_servers: true,
+    hooks: true,
+};
 
-fn register(flow: &mut Flow, id: Provider, features: &'static [Feature]) {
+fn register(flow: &mut Flow, id: Provider, layout: ExtensionLayout) {
     let mut descriptor = fake_descriptor(id);
-    descriptor.features = features;
+    descriptor.extensions = layout;
     flow.engine
         .registry
         .register(Arc::new(FakeAdapter {
@@ -46,8 +48,8 @@ fn register(flow: &mut Flow, id: Provider, features: &'static [Feature]) {
 
 async fn flow_with_two_adapters() -> Flow {
     let mut flow = Flow::new(Vec::new()).await;
-    register(&mut flow, NARROW, NARROW_FEATURES);
-    register(&mut flow, WIDE, WIDE_FEATURES);
+    register(&mut flow, NARROW, NARROW_LAYOUT);
+    register(&mut flow, WIDE, WIDE_LAYOUT);
     flow
 }
 

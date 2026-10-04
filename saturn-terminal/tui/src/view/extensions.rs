@@ -61,6 +61,15 @@ pub(crate) fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec
             "{prefix}{}",
             failed_line(lang, name.as_deref(), reason)
         )],
+        ChatNotice::ExtensionInjectFailed {
+            extension,
+            part,
+            provider,
+            reason,
+        } => vec![format!(
+            "{prefix}{}",
+            inject_failed_line(lang, extension, part.as_deref(), *provider, reason)
+        )],
         _ => Vec::new(),
     }
 }
@@ -112,6 +121,25 @@ pub(crate) fn installed_line(lang: Lang, info: &ExtensionInfo) -> String {
             .replace("{providers}", &titles(&fully))
     };
     line.replace("{name}", &info.name)
+}
+
+/// 주입하지 못한 줄. `part`가 없으면 확장 전체다.
+pub(crate) fn inject_failed_line(
+    lang: Lang,
+    extension: &str,
+    part: Option<&str>,
+    provider: Provider,
+    reason: &str,
+) -> String {
+    let target = match part {
+        Some(part) => format!("{extension}({part})"),
+        None => extension.to_owned(),
+    };
+    format!(
+        "{} · {} · {target} · {reason}",
+        lang.tr(i18n::EXT_INJECT_FAILED),
+        i18n::provider_title(provider)
+    )
 }
 
 pub(crate) fn removed_line(lang: Lang, name: &str) -> String {
@@ -224,6 +252,26 @@ mod tests {
             installed_line(Lang::Ko, &kit),
             "review-kit 설치 · 훅(PreToolUse)은 Alpha 전용이라 Beta에서 쓰지 못함 · \
              MCP 서버(lint)는 어느 provider에서도 쓰지 못함"
+        );
+    }
+
+    #[test]
+    fn inject_failure_line_names_the_provider_and_the_part() {
+        i18n::set_provider_names([(ALPHA, "alpha")]);
+
+        assert_eq!(
+            inject_failed_line(
+                Lang::Ko,
+                "review-kit",
+                Some("lint"),
+                ALPHA,
+                "bad definition"
+            ),
+            "확장 주입 실패 · Alpha · review-kit(lint) · bad definition"
+        );
+        assert_eq!(
+            inject_failed_line(Lang::Ko, "review-kit", None, ALPHA, "missing"),
+            "확장 주입 실패 · Alpha · review-kit · missing"
         );
     }
 

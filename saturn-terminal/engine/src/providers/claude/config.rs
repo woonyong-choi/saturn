@@ -25,6 +25,7 @@ pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec
         args.push(AUTO_COMPACT_FLAG.to_owned());
         args.push(tokens.to_string());
     }
+    args.extend(launch.permission.extra_args.iter().cloned());
     args
 }
 

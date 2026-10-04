@@ -120,7 +120,8 @@ pub(crate) fn copy_folder(from: &Path, to: &Path, store: &Path) -> Result<(), Ex
     copy_into(&from, to, &mut copied)
 }
 
-fn copy_into(from: &Path, to: &Path, copied: &mut u64) -> Result<(), ExtensionError> {
+/// `to`는 이미 있는 폴더다. 설치할 때 검사한 원본을 어댑터가 주입용으로 복사할 때도 쓴다.
+pub(crate) fn copy_into(from: &Path, to: &Path, copied: &mut u64) -> Result<(), ExtensionError> {
     let entries = std::fs::read_dir(from).map_err(|source| read(from, source))?;
     for entry in entries {
         let entry = entry.map_err(|source| read(from, source))?;

@@ -621,6 +621,14 @@ pub enum ChatNotice {
     ExtensionRemoved {
         name: String,
     },
+    /// 설치한 확장의 부분을 주입하지 못했다. 나머지 부분은 주입한 채 연결을 시작했다. `part`가 `None`이면 확장 전체의
+    /// 원본이 확장 저장소에서 사라진 것이다. `reason`은 engine이나 어댑터가 낸 원문이라 번역하지 않는다.
+    ExtensionInjectFailed {
+        extension: String,
+        part: Option<String>,
+        provider: crate::ids::Provider,
+        reason: String,
+    },
     /// 설치하거나 지우지 못했다. 기존 설치는 바뀌지 않았다. `reason`은 engine이 낸 원문이라 번역하지 않는다.
     ExtensionFailed {
         name: Option<String>,

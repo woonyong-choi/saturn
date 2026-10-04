@@ -13,8 +13,8 @@ use super::home::{self, HomeInput};
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::providers::{
     Adapter, AdapterConnection, AppliedReader, AppliedSettings, BoxFuture, ContextDefaults,
-    Descriptor, Feature, INTERFACE_VERSION, LaunchSpec, PermissionInput, PermissionLaunch,
-    ProviderConnection,
+    Descriptor, ExtensionLayout, Feature, INTERFACE_VERSION, LaunchSpec, PermissionInput,
+    PermissionLaunch, ProviderConnection,
 };
 
 /// 설정 키 `provider.codex.*`와 모델 고정 글 `codex/<model>`의 앞부분이다.
@@ -31,6 +31,13 @@ static DESCRIPTOR: Descriptor = Descriptor {
     context: ContextDefaults {
         window: 272_000,
         cache_write: 1.0,
+    },
+    // 훅은 Saturn 권한 판정에 끼어들 수 있는지 정해지기 전이라 주입하지 않는다
+    extensions: ExtensionLayout {
+        skills_dir: Some("skills"),
+        commands: Some(("prompts", "md")),
+        mcp_servers: true,
+        hooks: false,
     },
 };
 
@@ -73,20 +80,26 @@ impl Adapter for CodexAdapter {
         let user_codex_home = value("CODEX_HOME")
             .or_else(|| value("HOME").map(|home| home.join(".codex")))
             .unwrap_or_else(|| PathBuf::from("/.codex"));
-        let prepared = home::prepare(HomeInput {
-            saturn_home: input.saturn_home,
-            user_codex_home: &user_codex_home,
-            rules: input.rules,
-            questions: input.questions,
-        })
+        let (prepared, injection_failures) = home::prepare_with(
+            HomeInput {
+                saturn_home: input.saturn_home,
+                user_codex_home: &user_codex_home,
+                rules: input.rules,
+                questions: input.questions,
+            },
+            &DESCRIPTOR.extensions,
+            input.extensions,
+        )
         .map_err(|error| ProviderError::NotSent {
             reason: format!("failed to prepare codex home: {error}"),
         })?;
         Ok(PermissionLaunch {
+            injection_failures,
             rules_fingerprint: home::rules_of_home(&prepared.path),
             env: vec![("CODEX_HOME".into(), prepared.path.into_os_string())],
             mcp_servers: prepared.mcp_servers,
             questions_disabled: !input.questions,
+            ..PermissionLaunch::default()
         })
     }
 

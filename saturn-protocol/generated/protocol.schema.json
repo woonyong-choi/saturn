@@ -493,6 +493,41 @@
         },
         {
           "additionalProperties": false,
+          "description": "설치한 확장의 부분을 주입하지 못했다. 나머지 부분은 주입한 채 연결을 시작했다. `part`가 `None`이면 확장 전체의\n원본이 확장 저장소에서 사라진 것이다. `reason`은 engine이나 어댑터가 낸 원문이라 번역하지 않는다.",
+          "properties": {
+            "ExtensionInjectFailed": {
+              "properties": {
+                "extension": {
+                  "type": "string"
+                },
+                "part": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "provider": {
+                  "$ref": "#/$defs/Provider"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "extension",
+                "provider",
+                "reason"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ExtensionInjectFailed"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "description": "설치하거나 지우지 못했다. 기존 설치는 바뀌지 않았다. `reason`은 engine이 낸 원문이라 번역하지 않는다.",
           "properties": {
             "ExtensionFailed": {

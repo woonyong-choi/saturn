@@ -3,7 +3,8 @@
 //! 설계: docs/design/extensions.md#확장-저장소
 
 mod bundle;
-mod source;
+mod inject;
+pub(crate) mod source;
 
 use std::path::PathBuf;
 
@@ -72,11 +73,11 @@ pub(crate) struct InstallDone {
 
 /// 기록 저장소 `extensions.parts`에 JSON으로 담는 부분 하나. 판정과 함께 주입에 쓸 위치를 가진다.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct StoredPart {
-    kind: ExtensionPartKind,
-    name: String,
+pub(super) struct StoredPart {
+    pub(super) kind: ExtensionPartKind,
+    pub(super) name: String,
     /// 확장 폴더 안의 상대 경로.
-    path: String,
+    pub(super) path: String,
     verdicts: Vec<(Provider, Injectability)>,
 }
 
@@ -90,7 +91,7 @@ impl StoredPart {
     }
 }
 
-fn decode_parts(row: &ExtensionRow) -> Option<Vec<StoredPart>> {
+pub(super) fn decode_parts(row: &ExtensionRow) -> Option<Vec<StoredPart>> {
     match serde_json::from_str(&row.parts) {
         Ok(parts) => Some(parts),
         Err(error) => {
@@ -140,7 +141,10 @@ impl Engine {
     ) -> Result<(), EngineError> {
         self.require_attached(client, chat)?;
         let notice = match self.start_install(chat, source).await {
-            Ok(Started::Done(extension)) => ChatNotice::ExtensionInstalled { extension },
+            Ok(Started::Done(extension)) => {
+                self.refresh_extension_connections().await;
+                ChatNotice::ExtensionInstalled { extension }
+            }
             // 내려받기는 별도 작업이 하고, 끝나면 `on_install_done`이 결과를 알린다
             Ok(Started::Cloning) => return Ok(()),
             Err((name, error)) => ChatNotice::ExtensionFailed {
@@ -222,7 +226,10 @@ impl Engine {
         } = done;
         self.flow.installing.remove(&name);
         let notice = match self.finish_install(&name, &source, &dest, placed).await {
-            Ok(extension) => ChatNotice::ExtensionInstalled { extension },
+            Ok(extension) => {
+                self.refresh_extension_connections().await;
+                ChatNotice::ExtensionInstalled { extension }
+            }
             Err(error) => ChatNotice::ExtensionFailed {
                 reason: masked_chain(&self.masker, &error),
                 name: Some(name),
@@ -293,9 +300,12 @@ impl Engine {
     ) -> Result<(), EngineError> {
         self.require_attached(client, chat)?;
         let notice = match self.remove(name).await {
-            Ok(()) => ChatNotice::ExtensionRemoved {
-                name: name.to_owned(),
-            },
+            Ok(()) => {
+                self.refresh_extension_connections().await;
+                ChatNotice::ExtensionRemoved {
+                    name: name.to_owned(),
+                }
+            }
             Err(error) => ChatNotice::ExtensionFailed {
                 name: Some(name.to_owned()),
                 reason: masked_chain(&self.masker, &error),
