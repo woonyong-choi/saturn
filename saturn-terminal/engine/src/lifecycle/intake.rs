@@ -586,3 +586,132 @@ async fn applied_steer_is_preserved_in_handoff() {
         packet.text
     );
 }
+
+// #458
+fn current_id(
+    flow: &Flow,
+    provider: saturn_protocol::ids::Provider,
+) -> crate::providers::ConnectionId {
+    flow.engine.providers[&(flow.chat, provider)].id()
+}
+
+// #458
+#[tokio::test]
+async fn late_close_from_replaced_connection_does_not_remove_new_connection() {
+    let mut flow = Flow::new(Vec::new()).await;
+    let provider = crate::providers::test_support::CLAUDE;
+    let old = current_id(&flow, provider);
+    let replacement = FakeProvider::new(provider);
+    flow.engine
+        .add_connection(flow.chat, replacement.connection());
+
+    flow.engine
+        .on_provider_msg(crate::providers::ProviderMsg::Closed {
+            chat: flow.chat,
+            provider,
+            connection: old,
+        })
+        .await;
+
+    assert!(
+        flow.engine.providers.contains_key(&(flow.chat, provider)),
+        "old close must not remove replacement connection"
+    );
+    assert_ne!(current_id(&flow, provider), old);
+}
+
+// #458
+#[tokio::test]
+async fn close_of_the_current_connection_still_removes_it() {
+    let mut flow = Flow::new(Vec::new()).await;
+    let provider = crate::providers::test_support::CLAUDE;
+    let current = current_id(&flow, provider);
+
+    flow.engine
+        .on_provider_msg(crate::providers::ProviderMsg::Closed {
+            chat: flow.chat,
+            provider,
+            connection: current,
+        })
+        .await;
+
+    assert!(!flow.engine.providers.contains_key(&(flow.chat, provider)));
+}
+
+// #458
+#[tokio::test]
+async fn late_event_and_loss_from_a_replaced_connection_do_not_touch_the_new_run() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    let provider = crate::providers::test_support::CLAUDE;
+    let input = flow.submit("fix the build").await;
+    let agent = flow.agent();
+    let old = current_id(&flow, provider);
+    let replacement = FakeProvider::new(provider);
+    flow.engine
+        .add_connection(flow.chat, replacement.connection());
+
+    flow.engine
+        .on_provider_msg(crate::providers::ProviderMsg::Event {
+            chat: flow.chat,
+            provider,
+            connection: old,
+            event: turn_completed(agent),
+        })
+        .await;
+    flow.engine
+        .on_provider_msg(crate::providers::ProviderMsg::Lost {
+            chat: flow.chat,
+            provider,
+            connection: old,
+        })
+        .await;
+
+    assert!(flow.engine.runs.active.contains_key(&agent));
+    assert_eq!(flow.state(input), InputState::Applied);
+    assert!(flow.engine.providers.contains_key(&(flow.chat, provider)));
+    assert!(flow.engine.flow.live.contains_key(&agent));
+}
+
+// #458
+#[tokio::test]
+async fn reply_from_another_connection_does_not_advance_a_waiting_delivery() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    let provider = crate::providers::test_support::CLAUDE;
+    flow.fake.stall(crate::providers::test_support::Stall::Open);
+    flow.engine
+        .submit_input(CLIENT, flow.chat, 1, "work".to_owned(), false)
+        .await
+        .unwrap();
+    while !flow.is_delivering() {
+        let engine_flow = &mut flow.engine.flow;
+        tokio::select! {
+            Some(done) = engine_flow.router_rx.recv() => flow.engine.on_routed(done).await,
+            Some(message) = engine_flow.provider_rx.recv() => flow.engine.on_provider_msg(message).await,
+            () = tokio::time::sleep(std::time::Duration::from_secs(10)) => panic!("delivery should be waiting"),
+        }
+    }
+    let replacement = FakeProvider::new(provider);
+    flow.engine
+        .add_connection(flow.chat, replacement.connection());
+    let stranger = current_id(&flow, provider);
+
+    flow.engine
+        .on_provider_msg(crate::providers::ProviderMsg::Reply {
+            chat: flow.chat,
+            provider,
+            connection: Some(stranger),
+            reply: crate::providers::Reply::Opened(Err(
+                saturn_core::providers::ProviderError::ConnectionLost,
+            )),
+        })
+        .await;
+
+    assert!(
+        flow.is_delivering(),
+        "a stranger's reply must not settle it"
+    );
+    flow.fake
+        .release(crate::providers::test_support::Stall::Open);
+    flow.settle().await;
+    assert!(!flow.is_delivering());
+}

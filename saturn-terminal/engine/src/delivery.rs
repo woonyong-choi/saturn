@@ -12,7 +12,9 @@ use crate::dispatch::{Delivery, MAX_SEND_ATTEMPTS, into_provider_error};
 use crate::events::Arrival;
 use crate::flow::LiveSession;
 use crate::launch::ConnectionSeed;
-use crate::providers::{Connected, ProviderMsg, Reply, spawn_connect};
+use crate::providers::{
+    Connected, ConnectionId, ProviderHandle, ProviderMsg, Reply, spawn_connect,
+};
 use crate::store::RunEnd;
 use crate::switch::{OpenCall, OpenPlan, OpenPrep};
 use crate::{Engine, EngineError};
@@ -91,23 +93,74 @@ impl Stage {
 pub(crate) struct Parked {
     pub(crate) job: DeliveryJob,
     stage: Stage,
+    /// 요청을 맡긴 연결의 번호. 연결을 맺는 중이면 아직 없다. 이 연결의 응답과 끊김만 이 전달을 이어 간다.
+    connection: Option<ConnectionId>,
 }
 
 impl Engine {
     /// 요청을 맡기고 기다리지 않는 전달을 채팅에 걸어 둔다.
     pub(crate) fn park(&mut self, job: DeliveryJob, stage: Stage) {
-        self.flow
-            .deliveries
-            .insert(job.record.chat, Parked { job, stage });
+        let chat = job.record.chat;
+        let connection = match &stage {
+            Stage::Connecting { .. } => None,
+            _ => stage
+                .provider(&job)
+                .and_then(|provider| self.providers.get(&(chat, provider)))
+                .map(ProviderHandle::id),
+        };
+        self.flow.deliveries.insert(
+            chat,
+            Parked {
+                job,
+                stage,
+                connection,
+            },
+        );
+    }
+
+    /// 지금 이 채팅과 provider의 연결이 `connection`이면 참. 교체되거나 끝난 연결의 늦은 메시지를 가른다.
+    fn is_current(&self, chat: ChatId, provider: Provider, connection: ConnectionId) -> bool {
+        self.providers
+            .get(&(chat, provider))
+            .is_some_and(|handle| handle.id() == connection)
+    }
+
+    /// 이벤트, 명령 목록, 종료는 지금 연결이 보낸 것만 적용한다. 응답과 끊김은 맡긴 연결의 것인지 따로 가린다.
+    fn is_from_current(&self, message: &ProviderMsg) -> bool {
+        match message {
+            ProviderMsg::Event {
+                chat,
+                provider,
+                connection,
+                ..
+            }
+            | ProviderMsg::Commands {
+                chat,
+                provider,
+                connection,
+                ..
+            }
+            | ProviderMsg::Closed {
+                chat,
+                provider,
+                connection,
+            } => self.is_current(*chat, *provider, *connection),
+            ProviderMsg::Reply { .. } | ProviderMsg::Lost { .. } => true,
+        }
     }
 
     /// 연결 작업이 보낸 메시지를 처리한다.
     pub(crate) async fn on_provider_msg(&mut self, message: ProviderMsg) {
+        if !self.is_from_current(&message) {
+            tracing::debug!("message from a replaced connection dropped");
+            return;
+        }
         match message {
             ProviderMsg::Event {
                 chat,
                 provider,
                 event,
+                ..
             } => {
                 let arrival = Arrival {
                     chat,
@@ -120,8 +173,9 @@ impl Engine {
                 chat,
                 provider,
                 commands,
+                ..
             } => self.on_commands(chat, provider, commands).await,
-            ProviderMsg::Closed { chat, provider } => {
+            ProviderMsg::Closed { chat, provider, .. } => {
                 let arrival = Arrival {
                     chat,
                     provider,
@@ -132,38 +186,77 @@ impl Engine {
             ProviderMsg::Reply {
                 chat,
                 provider,
+                connection,
                 reply,
-            } => self.on_reply(chat, provider, reply).await,
-            ProviderMsg::Lost { chat, provider } => self.on_task_lost(chat, provider).await,
+            } => self.on_reply(chat, provider, connection, reply).await,
+            ProviderMsg::Lost {
+                chat,
+                provider,
+                connection,
+            } => self.on_task_lost(chat, provider, connection).await,
         }
     }
 
     /// 연결 작업이 끝나 맡긴 요청의 결과가 오지 않는다. 입력 전달이 아닌 요청은 연결 끊김으로 끝낸다. 기다리던 전달은 그 요청이 실패한 것으로 이어 가고(보내기 전
     /// 단계는 연결 끊김으로 거절, 보낸 뒤 단계는 결과를 모르는 것으로 `NeedsCheck`), 연결은 끊긴 것으로 처리한다.
-    async fn on_task_lost(&mut self, chat: ChatId, provider: Provider) {
-        let waiting = self
-            .flow
-            .deliveries
-            .get(&chat)
-            .is_some_and(|parked| parked.stage.provider(&parked.job) == Some(provider));
-        if waiting && let Some(Parked { job, stage }) = self.flow.deliveries.remove(&chat) {
+    /// 끝난 연결이 이미 교체됐으면 새 연결은 그대로 두고, 그 연결에 맡겼던 전달과 요청만 끝낸다.
+    async fn on_task_lost(&mut self, chat: ChatId, provider: Provider, connection: ConnectionId) {
+        let waiting = self.flow.deliveries.get(&chat).is_some_and(|parked| {
+            parked.connection == Some(connection)
+                && parked.stage.provider(&parked.job) == Some(provider)
+        });
+        if waiting && let Some(Parked { job, stage, .. }) = self.flow.deliveries.remove(&chat) {
             let reply = stage.lost_reply();
             let advanced = self
                 .advance_delivery(chat, provider, job, stage, reply)
                 .await;
             self.warn_failure("delivery step failed", advanced);
         }
-        self.on_connection_closed(chat, provider).await;
-        self.on_calls_lost(chat, provider).await;
+        if self.is_current(chat, provider, connection) {
+            self.on_connection_closed(chat, provider).await;
+        }
+        self.on_calls_lost(chat, provider, Some(connection)).await;
         self.resume_chat(chat).await;
     }
 
-    async fn on_reply(&mut self, chat: ChatId, provider: Provider, reply: Reply) {
+    /// 응답이 그 요청이나 전달을 맡긴 연결에서 온 것인지. 다른 연결의 응답은 대기 중인 전달과 요청을 건드리지 못한다.
+    /// `connection`이 없으면 연결을 맺는 요청의 결과다.
+    fn is_expected_reply(
+        &self,
+        chat: ChatId,
+        connection: Option<ConnectionId>,
+        reply: &Reply,
+    ) -> bool {
+        let expected = match reply {
+            Reply::Call { tag, .. } => self.flow.calls.get(tag).map(|call| call.connection),
+            _ => self
+                .flow
+                .deliveries
+                .get(&chat)
+                .map(|parked| parked.connection),
+        };
+        let is_expected = expected.is_none_or(|sent_to| sent_to == connection);
+        if !is_expected {
+            tracing::warn!(chat = chat.0, "reply from another connection dropped");
+        }
+        is_expected
+    }
+
+    async fn on_reply(
+        &mut self,
+        chat: ChatId,
+        provider: Provider,
+        connection: Option<ConnectionId>,
+        reply: Reply,
+    ) {
+        if !self.is_expected_reply(chat, connection, &reply) {
+            return;
+        }
         if let Reply::Call { tag, result } = reply {
             self.on_call_reply(tag, result).await;
             return;
         }
-        let Some(Parked { job, stage }) = self.flow.deliveries.remove(&chat) else {
+        let Some(Parked { job, stage, .. }) = self.flow.deliveries.remove(&chat) else {
             tracing::warn!(chat = chat.0, "provider reply without a waiting delivery");
             return;
         };

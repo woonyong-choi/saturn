@@ -324,6 +324,7 @@ impl Engine {
             PendingCall {
                 chat,
                 provider,
+                connection: None,
                 kind: CallKind::ModelConnect { query, seed },
             },
         );
