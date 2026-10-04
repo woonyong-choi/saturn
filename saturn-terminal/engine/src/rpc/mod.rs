@@ -384,7 +384,7 @@ mod tests {
     use std::time::Duration;
 
     use saturn_protocol::envelope::{ClientMessage, Outcome, ServerMessage, encode_line};
-    use saturn_protocol::ids::{Provider, TaskId, TaskLabel};
+    use saturn_protocol::ids::{TaskId, TaskLabel};
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
     use tokio::net::UnixStream;
     use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
@@ -459,7 +459,7 @@ mod tests {
         Notification::PermissionRequested {
             task: TaskId(1),
             label: TaskLabel('A'),
-            provider: Provider::Codex,
+            provider: crate::providers::CODEX,
             request_id: request_id.into(),
             summary: "rm".into(),
             reason: "cleanup".into(),

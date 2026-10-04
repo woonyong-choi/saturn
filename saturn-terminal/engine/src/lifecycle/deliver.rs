@@ -1,7 +1,6 @@
 //! 전송 테스트: `NotSent`만 다시 보내고 `Unknown`은 `NeedsCheck`로 두며, 끼워 넣기와 취소를 다룬다.
 
 use saturn_core::providers::ProviderError;
-use saturn_protocol::ids::Provider;
 use saturn_protocol::rpc::Notification;
 use saturn_protocol::state::{Disposition, InputState, TaskState};
 
@@ -293,7 +292,7 @@ async fn requests_are_answered_while_a_judgment_is_in_flight() {
         .create_chat(fixture.workdir.clone())
         .await
         .unwrap();
-    let fake = FakeProvider::new(Provider::Claude);
+    let fake = FakeProvider::new(crate::providers::CLAUDE);
     engine.add_connection(chat, ProviderConnection::Fake(fake.clone()));
     let mut client = Client::connect(&fixture.socket()).await;
     let workdir = fixture.workdir.display().to_string();
@@ -366,7 +365,7 @@ async fn socket_submit_reports_input_and_task_states_in_order() {
         .create_chat(fixture.workdir.clone())
         .await
         .unwrap();
-    let fake = FakeProvider::new(Provider::Claude);
+    let fake = FakeProvider::new(crate::providers::CLAUDE);
     engine.add_connection(chat, ProviderConnection::Fake(fake.clone()));
     let mut client = Client::connect(&fixture.socket()).await;
     let workdir = fixture.workdir.display().to_string();

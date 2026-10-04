@@ -160,7 +160,7 @@ paths: Array<string>, };
 
 export type PermissionTool = "Shell" | "Edit" | "Read" | "Mcp" | "Subagent";
 
-export type Provider = "Codex" | "Claude";
+export type Provider = string;
 
 export type ProviderEvent = { "Text": { agent: AgentId, subagent: SubagentId | null, text: string, } } | { "PacketReply": { agent: AgentId, text: string, } } | { "ToolCall": { agent: AgentId, subagent: SubagentId | null, call_id: string, activity: Activity, 
 /**

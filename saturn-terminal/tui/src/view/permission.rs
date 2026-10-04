@@ -184,7 +184,7 @@ mod tests {
             request_id: id.to_string(),
             task: TaskId(1),
             label: TaskLabel('A'),
-            provider: Some(Provider::Codex),
+            provider: Some(Provider::from_static("codex")),
             summary: "rm -rf build".to_string(),
             reason: "clean build".to_string(),
         }

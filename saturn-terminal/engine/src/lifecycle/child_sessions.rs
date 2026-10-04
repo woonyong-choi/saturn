@@ -2,7 +2,7 @@
 //! 정리를 넘기며, 끊긴 하위 에이전트가 다시 오면 막고 알린다. 다시 할지는 사용자에게 제안만 한다.
 
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::{LedgerSeq, Provider, SubagentId};
+use saturn_protocol::ids::{LedgerSeq, SubagentId};
 use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::EffectScope;
 
@@ -126,7 +126,10 @@ async fn interrupted_subagent_coming_back_stops_the_task_and_is_reported_once() 
     for _ in 0..2 {
         restarted
             .engine
-            .on_provider_event(Provider::Claude, subagent_started(agent, "sub-1", None))
+            .on_provider_event(
+                crate::providers::CLAUDE,
+                subagent_started(agent, "sub-1", None),
+            )
             .await
             .unwrap();
     }
@@ -155,7 +158,10 @@ async fn other_subagents_after_a_crash_are_handled_as_usual() {
 
     restarted
         .engine
-        .on_provider_event(Provider::Claude, subagent_started(agent, "sub-3", None))
+        .on_provider_event(
+            crate::providers::CLAUDE,
+            subagent_started(agent, "sub-3", None),
+        )
         .await
         .unwrap();
 
@@ -206,7 +212,10 @@ async fn cleaned_children_are_not_handed_over_again_but_still_blocked_after_a_re
 
     restarted
         .engine
-        .on_provider_event(Provider::Claude, subagent_started(agent, "sub-1", None))
+        .on_provider_event(
+            crate::providers::CLAUDE,
+            subagent_started(agent, "sub-1", None),
+        )
         .await
         .unwrap();
 
@@ -230,7 +239,10 @@ async fn interrupted_subagent_is_still_blocked_after_the_engine_restarts() {
 
     restarted
         .engine
-        .on_provider_event(Provider::Claude, subagent_started(agent, "sub-1", None))
+        .on_provider_event(
+            crate::providers::CLAUDE,
+            subagent_started(agent, "sub-1", None),
+        )
         .await
         .unwrap();
 

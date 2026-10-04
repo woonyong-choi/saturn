@@ -433,18 +433,17 @@ pub fn format_kilo(tokens: u64) -> String {
     }
 }
 
+/// provider id 글자. 어댑터 설명자의 표시명을 받기 전까지는 id를 그대로 보인다.
 pub fn provider_name(provider: Provider) -> &'static str {
-    match provider {
-        Provider::Codex => "codex",
-        Provider::Claude => "claude",
-    }
+    provider.as_str()
 }
 
 /// 문장 안에서 쓰는 이름.
 pub fn provider_title(provider: Provider) -> &'static str {
-    match provider {
-        Provider::Codex => "Codex",
-        Provider::Claude => "Claude",
+    match provider.as_str() {
+        "codex" => "Codex",
+        "claude" => "Claude",
+        other => other,
     }
 }
 

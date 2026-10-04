@@ -135,9 +135,9 @@ mod tests {
     fn picker_with_models(current: Option<ModelChoice>) -> ModelPicker {
         let mut picker = ModelPicker::new(None, current);
         picker.load(vec![
-            info(Provider::Claude, "opus"),
-            info(Provider::Claude, "sonnet"),
-            info(Provider::Codex, "gpt-x"),
+            info(Provider::from_static("claude"), "opus"),
+            info(Provider::from_static("claude"), "sonnet"),
+            info(Provider::from_static("codex"), "gpt-x"),
         ]);
         picker
     }
@@ -158,7 +158,7 @@ mod tests {
     #[test]
     fn list_starts_on_the_pinned_model() {
         let current = ModelChoice {
-            provider: Provider::Claude,
+            provider: Provider::from_static("claude"),
             model: "sonnet".to_owned(),
         };
 
@@ -170,7 +170,7 @@ mod tests {
     #[test]
     fn render_marks_the_pinned_model_and_shows_provider_names() {
         let current = ModelChoice {
-            provider: Provider::Codex,
+            provider: Provider::from_static("codex"),
             model: "gpt-x".to_owned(),
         };
         let picker = picker_with_models(Some(current));

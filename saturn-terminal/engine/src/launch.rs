@@ -214,18 +214,21 @@ impl Engine {
         let hook =
             HookPolicy::new(&self.options.home, &user_home).pre_tool_use_settings(&saturn_bin);
         let questions = self.agent_questions(chat, revision).await?;
+        let program = program_name(provider).ok_or_else(|| ProviderError::NotSent {
+            reason: format!("unknown provider: {provider}"),
+        })?;
         let permission = match provider {
-            Provider::Codex => {
+            crate::providers::CODEX => {
                 self.codex_permission(&settings.permission().rules, &provider_env, questions)?
             }
-            Provider::Claude => PermissionLaunch {
+            _ => PermissionLaunch {
                 questions_disabled: !questions,
                 ..PermissionLaunch::default()
             },
         };
         Ok(LaunchSpec {
             provider,
-            program: PathBuf::from(program_name(provider)),
+            program: PathBuf::from(program),
             workdir: env.workdir().to_path_buf(),
             settings: revision,
             user_config: UserProviderConfig::default(),

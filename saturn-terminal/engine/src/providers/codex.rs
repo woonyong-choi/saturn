@@ -31,6 +31,10 @@ mod threads;
 use convert::{approval_result, model_info};
 use threads::remove_thread_tree;
 
+/// provider id. 설정 키 `provider.codex.*`와 모델 고정 글 `codex/<model>`의 앞부분이다.
+pub(crate) const ID: saturn_protocol::ids::Provider =
+    saturn_protocol::ids::Provider::from_static("codex");
+
 /// `/usage` 행 이름 앞부분.
 pub(crate) const DISPLAY_NAME: &str = "codex";
 

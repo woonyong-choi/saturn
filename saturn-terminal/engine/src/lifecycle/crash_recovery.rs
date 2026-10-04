@@ -2,7 +2,7 @@
 //! 마지막 TUI가 떠난 뒤 할 일이 없으면 유예 뒤 engine이 스스로 끝난다.
 
 use saturn_core::sessions::memo::INTERRUPTED_RESULT;
-use saturn_protocol::ids::{ChatId, Provider, TaskId, TaskLabel};
+use saturn_protocol::ids::{ChatId, TaskId, TaskLabel};
 use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::{EffectScope, SessionState, TaskState};
 
@@ -64,11 +64,11 @@ impl Restarted {
         let transport = FakeTransport::new(script);
         let env = fixture.env(true, Arc::clone(&transport)).await;
         let mut engine = fixture.start(env).await.unwrap();
-        let fake = FakeProvider::new(Provider::Claude);
+        let fake = FakeProvider::new(crate::providers::CLAUDE);
         engine
             .flow
             .questions_of_connection
-            .insert((chat, Provider::Claude), true);
+            .insert((chat, crate::providers::CLAUDE), true);
         engine.add_connection(chat, ProviderConnection::Fake(fake.clone()));
         engine.recover_after_crash().await.unwrap();
         Self {
@@ -325,7 +325,7 @@ async fn resumed_or_closed_task_is_not_suggested_after_the_engine_restarts() {
     let agent = *resumed.engine.flow.live.keys().next().unwrap();
     resumed
         .engine
-        .on_provider_event(Provider::Claude, turn_completed(agent))
+        .on_provider_event(crate::providers::CLAUDE, turn_completed(agent))
         .await
         .unwrap();
     let mut resumed = resumed.restart().await;

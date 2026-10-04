@@ -603,7 +603,7 @@ impl Engine {
         let (provider, agent) = self
             .sessions
             .get(id)
-            .map_or((Provider::Claude, None), |session| {
+            .map_or((crate::providers::CLAUDE, None), |session| {
                 (session.provider, Some(session.agent))
             });
         OpenPlan {

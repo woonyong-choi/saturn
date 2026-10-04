@@ -84,7 +84,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 - engine은 사용자당 하나이고 잠금으로 지킨다. 두 engine이 같은 기록에 쓰는 것을 막기 위해서다.
 - 기록 저장소는 파일 하나이고 쓰는 쪽은 engine 하나다. 한 변경은 한 거래로 처리하고, provider가 보고하지 않은 값은 NULL로 둔다. 쓰기 충돌과 지어낸 값을 막기 위해서다.
 - `core`는 파일, 네트워크, 프로세스를 직접 다루지 않는다. 규칙을 외부 연결 없이 테스트하기 위해서다.
-- provider 고유 이름은 어댑터 폴더 `providers/<id>`(지금은 `providers/codex`, `providers/claude`) 안에서만 쓴다. 어댑터 밖 공통 코드는 provider id를 불투명한 글자로 다루고 id 값으로 동작을 가르지 않으며, 표시명과 기본값과 기능은 어댑터 설명자와 기능 목록으로 받는다. TUI가 provider를 몰라도 그릴 수 있게 하고 provider를 더할 때 공통 코드를 고치지 않기 위해서다. 닫힌 enum과 이름 분기가 남은 곳을 없애는 일은 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412), [provider 계층과 어댑터](design/providers-and-sessions.md#provider-계층과-어댑터)).
+- provider 고유 이름은 어댑터 폴더 `providers/<id>`(지금은 `providers/codex`, `providers/claude`) 안에서만 쓴다. 어댑터 밖 공통 코드는 provider id를 불투명한 글자로 다루고 id 값으로 동작을 가르지 않으며, 표시명과 기본값과 기능은 어댑터 설명자와 기능 목록으로 받는다. TUI가 provider를 몰라도 그릴 수 있게 하고 provider를 더할 때 공통 코드를 고치지 않기 위해서다. provider id는 열린 값으로 바꿨고, 이름 분기가 남은 곳을 없애는 일은 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412), [provider 계층과 어댑터](design/providers-and-sessions.md#provider-계층과-어댑터)).
 - 에이전트끼리 직접 통신하지 않는다. 맥락 전달을 기록 번호 하나로 맞추기 위해서다.
 - 권한은 Saturn 설정의 `permission` 규칙이 정본이고 provider 설정 파일은 고치지 않는다. 사용자 설정이 Saturn의 허가 판단을 우회하는 일을 막기 위해서다. 그 밖의 provider 설정과 subagent 사용은 막거나 바꾸지 않고 추적만 하고, 예외는 router 키 보호 하나다.
 - 채팅의 폴더 설정과 작업 폴더는 채팅을 만든 기본 폴더 하나만 따르고, provider 실행 환경은 그 채팅에 가장 최근에 붙은 TUI의 환경으로 정한다. 다른 폴더의 설정과 상주 engine의 환경이 섞이지 않게 하기 위해서다.

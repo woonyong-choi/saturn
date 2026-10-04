@@ -28,6 +28,10 @@ use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::secrets::Masker;
 
+/// 어댑터 설명자가 생기기 전까지 이름으로 가르는 자리가 쓰는 provider id.
+pub(crate) const CODEX: Provider = codex::ID;
+pub(crate) const CLAUDE: Provider = claude::ID;
+
 pub(crate) use claude::ClaudeClient;
 pub use claude::{HookInputError, run_pre_tool_use};
 pub(crate) use codex::CodexClient;
@@ -135,15 +139,16 @@ impl ProviderConnection {
         supervisor: Supervisor,
     ) -> Result<Self, ProviderError> {
         match launch.provider {
-            Provider::Codex => Ok(Self::Codex(CodexClient::start(launch, supervisor).await?)),
-            Provider::Claude => Ok(Self::Claude(ClaudeClient::new(launch, supervisor))),
+            CODEX => Ok(Self::Codex(CodexClient::start(launch, supervisor).await?)),
+            CLAUDE => Ok(Self::Claude(ClaudeClient::new(launch, supervisor))),
+            _ => Err(ProviderError::ConnectionLost),
         }
     }
 
     pub fn provider(&self) -> Provider {
         match self {
-            Self::Codex(_) => Provider::Codex,
-            Self::Claude(_) => Provider::Claude,
+            Self::Codex(_) => CODEX,
+            Self::Claude(_) => CLAUDE,
             #[cfg(test)]
             Self::Fake(client) => client.provider(),
         }
@@ -358,13 +363,15 @@ impl TurnOriginTracker {
 }
 
 /// 고정 모델도 현재 provider도 없는 첫 입력을 설치된 앞쪽 provider로 보낸다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정).
-pub(crate) const FIRST_INPUT_ORDER: [Provider; 2] = [Provider::Claude, Provider::Codex];
+pub(crate) const FIRST_INPUT_ORDER: [Provider; 2] = [CLAUDE, CODEX];
 
 /// 설정에 실행 파일 경로가 없을 때 `PATH`에서 찾는 이름.
-pub(crate) fn program_name(provider: Provider) -> &'static str {
+/// 모르는 provider면 `None`.
+pub(crate) fn program_name(provider: Provider) -> Option<&'static str> {
     match provider {
-        Provider::Codex => codex::PROGRAM,
-        Provider::Claude => claude::PROGRAM,
+        CODEX => Some(codex::PROGRAM),
+        CLAUDE => Some(claude::PROGRAM),
+        _ => None,
     }
 }
 
@@ -373,8 +380,11 @@ pub(crate) fn is_installed(provider: Provider, env: &[(OsString, OsString)]) -> 
     let Some((_, path)) = env.iter().find(|(name, _)| name == "PATH") else {
         return false;
     };
+    let Some(program) = program_name(provider) else {
+        return false;
+    };
     std::env::split_paths(path).any(|dir| {
-        std::fs::metadata(dir.join(program_name(provider)))
+        std::fs::metadata(dir.join(program))
             .is_ok_and(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
     })
 }
@@ -382,22 +392,21 @@ pub(crate) fn is_installed(provider: Provider, env: &[(OsString, OsString)]) -> 
 /// 사용량 화면처럼 사용자에게 provider를 이름으로 보일 때 쓴다.
 pub(crate) fn display_name(provider: Provider) -> &'static str {
     match provider {
-        Provider::Codex => codex::DISPLAY_NAME,
-        Provider::Claude => claude::DISPLAY_NAME,
+        CODEX => codex::DISPLAY_NAME,
+        CLAUDE => claude::DISPLAY_NAME,
+        other => other.as_str(),
     }
 }
 
 /// 입력 접수 기록에 남기는 고정 모델 글 `<provider>/<model>`. 같은 모델 이름이 두 provider에 있어도 구분된다.
 pub(crate) fn pinned_text(choice: &ModelChoice) -> String {
-    format!("{}/{}", display_name(choice.provider), choice.model)
+    format!("{}/{}", choice.provider, choice.model)
 }
 
 /// `pinned_text`가 만든 글을 되돌린다. provider 접두사가 없으면 `None`.
 pub(crate) fn parse_pinned(text: &str) -> Option<ModelChoice> {
     let (name, model) = text.split_once('/')?;
-    let provider = [Provider::Codex, Provider::Claude]
-        .into_iter()
-        .find(|provider| display_name(*provider) == name)?;
+    let provider = Provider::from_stored(name).ok()?;
     Some(ModelChoice {
         provider,
         model: model.to_owned(),
@@ -463,24 +472,47 @@ mod tests {
     #[test]
     fn installed_means_executable_file_on_the_given_path() {
         let dir = tempfile::tempdir().unwrap();
-        let program = dir.path().join(program_name(Provider::Claude));
+        let program = dir.path().join(program_name(CLAUDE).unwrap());
         std::fs::write(&program, "#!/bin/sh\n").unwrap();
         let path =
             |dir: &std::path::Path| vec![(OsString::from("PATH"), dir.as_os_str().to_owned())];
 
-        let plain_file = is_installed(Provider::Claude, &path(dir.path()));
+        let plain_file = is_installed(CLAUDE, &path(dir.path()));
         std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
-        let executable = is_installed(Provider::Claude, &path(dir.path()));
+        let executable = is_installed(CLAUDE, &path(dir.path()));
 
         assert!(!plain_file);
         assert!(executable);
-        assert!(!is_installed(Provider::Codex, &path(dir.path())));
-        assert!(!is_installed(Provider::Claude, &[]));
+        assert!(!is_installed(CODEX, &path(dir.path())));
+        assert!(!is_installed(CLAUDE, &[]));
+    }
+
+    #[test]
+    fn pinned_text_keeps_the_old_provider_prefix() {
+        let choice = parse_pinned("codex/gpt-x").unwrap();
+
+        assert_eq!(choice.provider, CODEX);
+        assert_eq!(choice.model, "gpt-x");
+        assert_eq!(pinned_text(&choice), "codex/gpt-x");
+        assert_eq!(parse_pinned("claude/a/b").unwrap().model, "a/b");
+        assert_eq!(parse_pinned("no-prefix"), None);
+    }
+
+    #[test]
+    fn unknown_provider_has_no_executable() {
+        let dir = tempfile::tempdir().unwrap();
+        let program = dir.path().join("gemini");
+        std::fs::write(&program, "#!/bin/sh\n").unwrap();
+        std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let path = vec![(OsString::from("PATH"), dir.path().as_os_str().to_owned())];
+
+        assert!(!is_installed(Provider::parse("gemini").unwrap(), &path));
+        assert_eq!(program_name(Provider::parse("gemini").unwrap()), None);
     }
 
     #[test]
     fn first_input_prefers_claude_over_codex() {
-        assert_eq!(FIRST_INPUT_ORDER, [Provider::Claude, Provider::Codex]);
+        assert_eq!(FIRST_INPUT_ORDER, [CLAUDE, CODEX]);
     }
 
     #[test]

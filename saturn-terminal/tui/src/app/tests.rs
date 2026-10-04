@@ -75,7 +75,7 @@ fn task(id: u64, label: char, state: TaskState) -> Notification {
         task: TaskId(id),
         label: TaskLabel(label),
         state,
-        provider: Some(Provider::Codex),
+        provider: Some(Provider::from_static("codex")),
         elapsed_ms: 45_000,
         failure: None,
     }
@@ -850,7 +850,7 @@ fn permission_window_ignores_keys_for_one_second() {
         AppEvent::Engine(Notification::PermissionRequested {
             task: TaskId(1),
             label: TaskLabel('A'),
-            provider: Provider::Codex,
+            provider: Provider::from_static("codex"),
             request_id: "r1".to_string(),
             summary: "rm".to_string(),
             reason: "clean".to_string(),
@@ -885,7 +885,7 @@ fn permission_resolved_elsewhere_closes_window() {
         Notification::PermissionRequested {
             task: TaskId(1),
             label: TaskLabel('A'),
-            provider: Provider::Codex,
+            provider: Provider::from_static("codex"),
             request_id: "r1".to_string(),
             summary: "rm".to_string(),
             reason: "clean".to_string(),
@@ -909,7 +909,7 @@ fn input_requested(request_id: &str) -> Notification {
     Notification::InputRequested {
         task: TaskId(1),
         label: TaskLabel('A'),
-        provider: Provider::Claude,
+        provider: Provider::from_static("claude"),
         request_id: request_id.to_string(),
         request: InputRequest {
             message: String::new(),
@@ -982,7 +982,7 @@ fn elicitation_permission_window_comes_before_the_input_window() {
         Notification::PermissionRequested {
             task: TaskId(1),
             label: TaskLabel('A'),
-            provider: Provider::Claude,
+            provider: Provider::from_static("claude"),
             request_id: "p1".to_string(),
             summary: "rm".to_string(),
             reason: "clean".to_string(),
@@ -1226,8 +1226,8 @@ fn reattached_chat_shows_the_provider_switch_line() {
                 chat: ChatId(7),
                 task: None,
                 notice: ChatNotice::ProviderSwitched {
-                    from: Provider::Codex,
-                    to: Provider::Claude,
+                    from: Provider::from_static("codex"),
+                    to: Provider::from_static("claude"),
                 },
             },
             task(1, 'A', TaskState::Running),
@@ -1238,12 +1238,9 @@ fn reattached_chat_shows_the_provider_switch_line() {
     assert!(app.transcript.cells().iter().any(|cell| matches!(
         cell,
         TranscriptCell::Notice {
-            notice: ChatNotice::ProviderSwitched {
-                from: Provider::Codex,
-                to: Provider::Claude,
-            },
+            notice: ChatNotice::ProviderSwitched { from, to },
             ..
-        }
+        } if from.as_str() == "codex" && to.as_str() == "claude"
     )));
 }
 
@@ -1258,7 +1255,7 @@ fn reattached_chat_shows_the_pinned_model_line() {
         Notification::ModelPinned {
             chat: ChatId(7),
             model: ModelChoice {
-                provider: Provider::Codex,
+                provider: Provider::from_static("codex"),
                 model: "gpt-x".to_owned(),
             },
         },
@@ -1557,8 +1554,8 @@ fn model_window() -> App {
         &mut app,
         Notification::Models {
             models: vec![
-                model_info(Provider::Claude, "opus"),
-                model_info(Provider::Codex, "gpt-x"),
+                model_info(Provider::from_static("claude"), "opus"),
+                model_info(Provider::from_static("codex"), "gpt-x"),
             ],
         },
     );
@@ -1595,7 +1592,7 @@ fn model_command_with_a_provider_asks_only_for_that_provider() {
         sent(&effects),
         vec![&Request::ListModels {
             chat: ChatId(7),
-            provider: Some(Provider::Codex),
+            provider: Some(Provider::from_static("codex")),
         }]
     );
 }
@@ -1613,7 +1610,7 @@ fn model_window_enter_asks_the_engine_to_pin_the_model() {
         vec![&Request::SetModel {
             chat: ChatId(7),
             model: ModelChoice {
-                provider: Provider::Codex,
+                provider: Provider::from_static("codex"),
                 model: "gpt-x".to_owned(),
             },
         }]
@@ -1635,7 +1632,7 @@ fn model_window_escape_sends_nothing() {
 fn pinned_model_notice_marks_the_model_in_the_next_window() {
     let mut app = attached();
     let model = ModelChoice {
-        provider: Provider::Claude,
+        provider: Provider::from_static("claude"),
         model: "opus".to_owned(),
     };
     notify(

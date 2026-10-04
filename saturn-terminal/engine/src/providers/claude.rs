@@ -10,7 +10,7 @@ use saturn_core::providers::{
     InterruptTarget, ProviderClient, ProviderCommand, ProviderError, SessionHandle, SessionSpec,
 };
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId, SubagentId};
+use saturn_protocol::ids::{AgentId, ProviderSessionId, SubagentId};
 use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use serde_json::{Value, json};
@@ -31,6 +31,10 @@ use config::{default_args, read_user_config, with_ask_tools};
 use convert::permission_response;
 pub use hook::{HookInputError, run_pre_tool_use};
 use stream::{log_stderr, read_loop};
+
+/// provider id. 설정 키 `provider.claude.*`와 모델 고정 글 `claude/<model>`의 앞부분이다.
+pub(crate) const ID: saturn_protocol::ids::Provider =
+    saturn_protocol::ids::Provider::from_static("claude");
 
 /// `/usage` 행 이름 앞부분.
 pub(crate) const DISPLAY_NAME: &str = "claude";
@@ -665,7 +669,7 @@ impl ProviderClient for ClaudeClient {
             .iter()
             .map(|alias| ModelInfo {
                 choice: ModelChoice {
-                    provider: Provider::Claude,
+                    provider: crate::providers::CLAUDE,
                     model: (*alias).to_owned(),
                 },
                 name: (*alias).to_owned(),
