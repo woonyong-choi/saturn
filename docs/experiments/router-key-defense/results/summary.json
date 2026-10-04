@@ -1,0 +1,304 @@
+{
+  "cleanup_all_absent": {
+    "claude-sandbox": true,
+    "codex-sandbox": true,
+    "keychain-acl": true
+  },
+  "h1": {
+    ":read-only/api-client": {
+      "accessed": 0,
+      "ci95": [
+        0.0,
+        70.8
+      ],
+      "denied": 3,
+      "dialog": 0,
+      "n": 3,
+      "percent": 0.0
+    },
+    ":read-only/direct": {
+      "accessed": 0,
+      "ci95": [
+        0.0,
+        70.8
+      ],
+      "denied": 3,
+      "dialog": 0,
+      "n": 3,
+      "percent": 0.0
+    },
+    ":read-only/sanity-runs": {
+      "accessed": 1,
+      "ci95": [
+        2.5,
+        100.0
+      ],
+      "denied": 0,
+      "dialog": 0,
+      "n": 1,
+      "percent": 100.0
+    },
+    ":read-only/shell-wrapped": {
+      "accessed": 0,
+      "ci95": [
+        0.0,
+        70.8
+      ],
+      "denied": 3,
+      "dialog": 0,
+      "n": 3,
+      "percent": 0.0
+    },
+    ":workspace/api-client": {
+      "accessed": 0,
+      "ci95": [
+        0.0,
+        70.8
+      ],
+      "denied": 3,
+      "dialog": 0,
+      "n": 3,
+      "percent": 0.0
+    },
+    ":workspace/direct": {
+      "accessed": 0,
+      "ci95": [
+        0.0,
+        70.8
+      ],
+      "denied": 3,
+      "dialog": 0,
+      "n": 3,
+      "percent": 0.0
+    },
+    ":workspace/sanity-runs": {
+      "accessed": 1,
+      "ci95": [
+        2.5,
+        100.0
+      ],
+      "denied": 0,
+      "dialog": 0,
+      "n": 1,
+      "percent": 100.0
+    },
+    ":workspace/shell-wrapped": {
+      "accessed": 0,
+      "ci95": [
+        0.0,
+        70.8
+      ],
+      "denied": 3,
+      "dialog": 0,
+      "n": 3,
+      "percent": 0.0
+    },
+    "unsandboxed/api-client": {
+      "accessed": 1,
+      "ci95": [
+        2.5,
+        100.0
+      ],
+      "denied": 0,
+      "dialog": 0,
+      "n": 1,
+      "percent": 100.0
+    },
+    "unsandboxed/direct": {
+      "accessed": 1,
+      "ci95": [
+        2.5,
+        100.0
+      ],
+      "denied": 0,
+      "dialog": 0,
+      "n": 1,
+      "percent": 100.0
+    },
+    "unsandboxed/shell-wrapped": {
+      "accessed": 1,
+      "ci95": [
+        2.5,
+        100.0
+      ],
+      "denied": 0,
+      "dialog": 0,
+      "n": 1,
+      "percent": 100.0
+    }
+  },
+  "h1_exit_codes": {
+    ":read-only/api-client": [
+      "1"
+    ],
+    ":read-only/direct": [
+      "44"
+    ],
+    ":read-only/sanity-runs": [
+      "0"
+    ],
+    ":read-only/shell-wrapped": [
+      "44"
+    ],
+    ":workspace/api-client": [
+      "1"
+    ],
+    ":workspace/direct": [
+      "44"
+    ],
+    ":workspace/sanity-runs": [
+      "0"
+    ],
+    ":workspace/shell-wrapped": [
+      "44"
+    ],
+    "unsandboxed/api-client": [
+      "0"
+    ],
+    "unsandboxed/direct": [
+      "0"
+    ],
+    "unsandboxed/shell-wrapped": [
+      "0"
+    ]
+  },
+  "h2": {
+    "sandbox-on-deny-keychain-dirs/direct": {
+      "accessed": 0,
+      "ci95": [
+        0.0,
+        70.8
+      ],
+      "denied": 3,
+      "dialog": 0,
+      "n": 3,
+      "percent": 0.0
+    },
+    "sandbox-on/direct": {
+      "accessed": 3,
+      "ci95": [
+        29.2,
+        100.0
+      ],
+      "denied": 0,
+      "dialog": 0,
+      "n": 3,
+      "percent": 100.0
+    },
+    "sandbox-on/shell-wrapped": {
+      "accessed": 3,
+      "ci95": [
+        29.2,
+        100.0
+      ],
+      "denied": 0,
+      "dialog": 0,
+      "n": 3,
+      "percent": 100.0
+    }
+  },
+  "h2_all_calls_succeeded": true,
+  "h2_calls_total": 10,
+  "h2_disable_sandbox_used": 0,
+  "h2_exit_values": {
+    "sandbox-on-deny-keychain-dirs/direct": [
+      "44"
+    ],
+    "sandbox-on/direct": [
+      "0"
+    ],
+    "sandbox-on/shell-wrapped": [
+      "0"
+    ]
+  },
+  "h2_invalid_calls": 1,
+  "h2_login": {
+    "login-after": true,
+    "login-before": true
+  },
+  "h3": {
+    "default-acl/api-client": {
+      "exit_code": "0",
+      "outcome": "accessed"
+    },
+    "default-acl/direct": {
+      "exit_code": "0",
+      "outcome": "accessed"
+    },
+    "empty-trust-list/direct": {
+      "exit_code": "0",
+      "outcome": "accessed"
+    },
+    "single-trusted-exe/api-client": {
+      "exit_code": "0",
+      "outcome": "accessed"
+    },
+    "single-trusted-exe/direct": {
+      "exit_code": "0",
+      "outcome": "accessed"
+    }
+  },
+  "h4": {
+    "child_env_is_scrubbed_and_marked": true,
+    "provider_env_drops_router_key_variable_and_keeps_the_rest": true
+  },
+  "h5_commits_ahead": 0,
+  "prompts": {
+    "claude-sandbox": {
+      "prompts_by_trial": {
+        "sandbox-on-deny-keychain-dirs/direct#claude-sandbox-010": 0,
+        "sandbox-on-deny-keychain-dirs/direct#claude-sandbox-011": 0,
+        "sandbox-on-deny-keychain-dirs/direct#claude-sandbox-012": 0,
+        "sandbox-on/direct#claude-sandbox-006": 0,
+        "sandbox-on/direct#claude-sandbox-008": 0,
+        "sandbox-on/direct#claude-sandbox-009": 0,
+        "sandbox-on/shell-wrapped#claude-sandbox-003": 0,
+        "sandbox-on/shell-wrapped#claude-sandbox-004": 0,
+        "sandbox-on/shell-wrapped#claude-sandbox-007": 0
+      },
+      "prompts_displayed": 0,
+      "trials_with_prompt": 0,
+      "user_approved_always_allow": 0
+    },
+    "codex-sandbox": {
+      "prompts_by_trial": {
+        ":read-only/api-client#codex-sandbox-012": 0,
+        ":read-only/api-client#codex-sandbox-013": 0,
+        ":read-only/api-client#codex-sandbox-014": 0,
+        ":read-only/direct#codex-sandbox-006": 0,
+        ":read-only/direct#codex-sandbox-007": 0,
+        ":read-only/direct#codex-sandbox-008": 0,
+        ":read-only/shell-wrapped#codex-sandbox-009": 0,
+        ":read-only/shell-wrapped#codex-sandbox-010": 0,
+        ":read-only/shell-wrapped#codex-sandbox-011": 0,
+        ":workspace/api-client#codex-sandbox-022": 0,
+        ":workspace/api-client#codex-sandbox-023": 0,
+        ":workspace/api-client#codex-sandbox-024": 0,
+        ":workspace/direct#codex-sandbox-016": 0,
+        ":workspace/direct#codex-sandbox-017": 0,
+        ":workspace/direct#codex-sandbox-018": 0,
+        ":workspace/shell-wrapped#codex-sandbox-019": 0,
+        ":workspace/shell-wrapped#codex-sandbox-020": 0,
+        ":workspace/shell-wrapped#codex-sandbox-021": 0,
+        "unsandboxed/api-client#codex-sandbox-004": 2,
+        "unsandboxed/direct#codex-sandbox-002": 0,
+        "unsandboxed/shell-wrapped#codex-sandbox-003": 0
+      },
+      "prompts_displayed": 2,
+      "trials_with_prompt": 1,
+      "user_approved_always_allow": 0
+    },
+    "keychain-acl": {
+      "prompts_by_trial": {
+        "default-acl/api-client#keychain-acl-005": 1,
+        "default-acl/direct#keychain-acl-004": 0,
+        "empty-trust-list/direct#keychain-acl-006": 1,
+        "single-trusted-exe/api-client#keychain-acl-008": 1,
+        "single-trusted-exe/direct#keychain-acl-007": 1
+      },
+      "prompts_displayed": 4,
+      "trials_with_prompt": 4,
+      "user_approved_always_allow": 4
+    }
+  }
+}

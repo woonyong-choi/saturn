@@ -54,6 +54,40 @@ def keychain_acl(rid: str) -> None:
         w.row("cleanup", remaining=cleanup_all())
 
 
+def prompt_log(source_layer: str, rid: str) -> None:
+    """keychain-acl 실행 시간대의 securityd 로그에서 확인 창 표시와 응답 사건만 시각 순서대로 적는다. 항목 값과 항목 이름은 로그에 없다."""
+    source = sorted(RAW.glob(f"{source_layer}-2*.jsonl"))[-1]
+    rows = [json.loads(line) for line in source.read_text(encoding="utf-8").splitlines()]
+    utc = lambda r: dt.datetime.strptime(r["ts_utc"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc)
+    start = utc(rows[0]) - dt.timedelta(seconds=3)
+    end = utc(rows[-1]) + dt.timedelta(seconds=3)
+    fmt = lambda t: t.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    predicate = ('process == "securityd" AND (eventMessage CONTAINS "displaying keychain prompt" '
+                 'OR eventMessage CONTAINS "user approved" OR eventMessage CONTAINS "user denied" OR eventMessage CONTAINS "user cancel")')
+    proc = subprocess.run(["/usr/bin/log", "show", "--style", "compact", "--start", fmt(start), "--end", fmt(end), "--predicate", predicate],
+                          capture_output=True, text=True, timeout=120)
+    w = Writer(f"{source_layer}-prompts", rid)
+    for line in proc.stdout.splitlines():
+        if "securityd" not in line or not line[:4].isdigit():
+            continue
+        local = dt.datetime.strptime(line[:23], "%Y-%m-%d %H:%M:%S.%f").astimezone()
+        message = line.split("] ", 1)[-1]
+        if "displaying keychain prompt" in message:
+            kind = "prompt_displayed"
+            client = message.split(" for ", 1)[1].split("(", 1)[0].rsplit("/", 1)[-1]
+        elif "always allow" in message:
+            kind, client = "user_approved_always_allow", message.rsplit("/", 1)[-1].split("(", 1)[0]
+        elif "approved 'allow'" in message:
+            kind, client = "user_approved_allow", message.rsplit("/", 1)[-1].split("(", 1)[0]
+        else:
+            kind, client = "user_denied_or_cancelled", ""
+        w.row("event", event=kind, client=client, event_utc=local.astimezone(dt.timezone.utc).strftime("%H:%M:%S.%f")[:-3])
+    for r in rows:
+        if r.get("outcome") and r.get("elapsed_s") is not None:
+            w.row("trial", trial_ref=r["trial_id"], trial_condition=r["condition"], script_outcome=r["outcome"],
+                  end_utc=r["ts_utc"][-9:-1], elapsed_s=r["elapsed_s"])
+
+
 def codex_sandbox(rid: str) -> None:
     w = Writer("codex-sandbox", rid)
     CODEX_HOME.mkdir(parents=True, exist_ok=True)
@@ -192,6 +226,6 @@ def hook(rid: str) -> None:
 
 if __name__ == "__main__":
     rid = run_id()
-    table = {"keychain-acl": keychain_acl, "codex-sandbox": codex_sandbox, "claude-sandbox": claude_sandbox, "env": env_check, "hook": hook}
+    table = {"keychain-acl": keychain_acl, "codex-sandbox": codex_sandbox, "claude-sandbox": claude_sandbox, "acl-prompt-log": lambda rid: prompt_log("keychain-acl", rid), "codex-prompt-log": lambda rid: prompt_log("codex-sandbox", rid), "claude-prompt-log": lambda rid: prompt_log("claude-sandbox", rid), "env": env_check, "hook": hook}
     for name in sys.argv[1:]:
         table[name](rid)
