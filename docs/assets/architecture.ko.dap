@@ -1,0 +1,49 @@
+flow right
+title "Saturn 코드 지도"
+subtitle "tui와 cli는 engine에만 붙고, engine이 core 규칙으로 provider와 router를 다룬다"
+
+person user "개발자"
+group system "Saturn" direction=down {
+  box cli "cli" "명령줄, tui 실행, engine 시작"
+  box tui "tui" "채팅 기록, 입력창"
+  box engine "engine" "provider 연결, router 호출, 기록 저장"
+  box core "core" "대기열, session, 판단 규칙"
+  store database "database" "기록 저장소, SQLite"
+  box protocol "protocol" "모든 구성 요소가 쓰는 메시지 타입"
+}
+external codex-cli "Codex CLI"
+external claude-code "Claude Code"
+external router-api "router API"
+
+user -> cli "명령"
+user -> tui "입력"
+cli -> engine "engine 시작"
+tui -> engine "`JSON-RPC`"
+engine -> database "기록"
+engine -> codex-cli "`app-server`"
+engine -> claude-code "`stream-json`"
+engine -> router-api "판단 질문"
+engine -> core "판단 규칙"
+tui -> protocol "타입 사용" quiet
+core -> protocol "타입 사용" quiet
+engine -> protocol "타입 사용" quiet
+
+step "saturn 실행" "engine이 없으면 cli가 saturn-engine을 띄우고, tui가 소켓으로 붙는다"
+  user -> cli
+  cli -> engine
+  tui -> engine
+step "입력 하나의 처리" "입력은 기록 저장소에 접수된 뒤에만 provider로 간다"
+  user -> tui
+  tui -> engine
+  engine -> database
+  engine -> router-api
+  engine -> codex-cli
+  engine -> database
+step "대상이 Claude Code일 때" "같은 흐름에서 engine이 Claude Code로 입력을 전달한다"
+  engine -> router-api
+  engine -> claude-code
+step "의존 방향" "core와 tui는 protocol에, engine은 protocol과 core에 의존한다"
+  engine -> core
+  tui -> protocol
+  core -> protocol
+  engine -> protocol

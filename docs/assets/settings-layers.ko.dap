@@ -1,0 +1,39 @@
+flow right
+title "설정 층과 병합"
+subtitle "기본값에서 실행 층까지 차례로 병합하고, 뒤 층의 값이 이긴다. 폴더 설정은 신뢰한 뒤에만 적용한다"
+
+external env "SATURN_HOME" "환경 변수, 없으면 ~/.saturn"
+box default "기본값" "Saturn 안의 값"
+box user "사용자" "<홈>/config.toml"
+box folder "폴더" "<작업 폴더>/.saturn/config.toml"
+box trust "폴더 설정 신뢰" "신뢰한 설정만 통과"
+box chat "채팅" "채팅마다 둔 값"
+box run "실행" "이번 실행의 -c 값"
+box settings "settings" "병합하고 검사한다"
+store snap "설정 번호" "병합 결과의 스냅샷"
+
+env -> user "홈 위치" quiet
+default -> settings no=1
+user -> settings no=2
+folder -> trust "처음 보거나 바뀜"
+trust -> settings "신뢰함" no=3
+chat -> settings no=4
+run -> settings no=5
+settings -> snap "검사 통과"
+
+step "홈 정하기" "SATURN_HOME이 있으면 그 폴더가 홈이다. 위치는 설정 키가 아니라 층을 읽기 전에 정해진다"
+  env -> user
+step "기본값과 사용자" "기본값 위에 사용자 설정을 얹는다"
+  default -> settings
+  user -> settings
+step "폴더 설정과 신뢰" "처음 보거나 내용이 바뀐 폴더 설정은 사용자가 확인한 뒤에만 적용한다"
+  folder -> trust
+  show trust "경로와 지문으로 신뢰를 기록" tag="신뢰"
+  show trust "router 주소 같은 사용자 전용 항목은 무시" tag="무시"
+  trust -> settings
+step "채팅과 실행" "채팅 층과 실행 -c 층이 마지막에 얹힌다"
+  chat -> settings
+  run -> settings
+step "검사와 설정 번호" "검사를 통과하면 번호가 붙은 스냅샷이 되고, 같은 내용은 같은 번호를 쓴다"
+  settings -> snap
+  show snap "입력은 접수 때 번호를 고정" tag="고정"

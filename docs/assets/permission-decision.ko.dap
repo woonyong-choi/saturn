@@ -1,0 +1,49 @@
+flow right
+title "허가 요청의 판정 흐름"
+subtitle "개별 규칙, 권한 모드, 저장된 항상 허용 순으로 값을 정하고, ask일 때만 사용자에게 묻는다"
+
+external provider "provider"
+box convert "providers" "도구 종류와 패턴으로 바꿈"
+group permission "permission" direction=down {
+  box rules "개별 규칙" "deny 우선, 아니면 마지막 일치"
+  box mode "권한 모드" "일치 없으면 기본값"
+}
+decision verdict "값은"
+decision always "항상 허용과 일치"
+box allow "providers" "허용 답을 바로 보냄"
+box deny "providers" "거부 답을 바로 보냄"
+box ask "engine" "TUI에 올리고 답까지 보관"
+store saved "기록 저장소" "항상 허용 규칙"
+
+provider -> convert "허가 요청"
+convert -> rules "종류, 패턴"
+rules -> mode "일치 없음"
+rules -> verdict "일치한 값"
+mode -> verdict "기본값"
+verdict -> allow "`allow`"
+verdict -> deny "`deny`"
+verdict -> always "`ask`"
+always -> allow "예"
+always -> ask "아니오"
+ask -> saved "`항상 허용` 저장"
+saved -> always "읽음"
+
+step "deny" "개별 규칙의 deny는 순서와 상관없이 이기고, 항상 허용도 이를 뒤집지 못한다"
+  provider -> convert
+  convert -> rules
+  rules -> verdict
+  verdict -> deny
+step "권한 모드" "맞는 규칙이 없으면 모드의 기본 규칙이 값을 정한다"
+  provider -> convert
+  convert -> rules
+  rules -> mode
+  mode -> verdict
+  verdict -> allow
+step "항상 허용" "값이 ask여도 저장된 항상 허용과 맞으면 묻지 않고 허용한다"
+  verdict -> always
+  saved -> always
+  always -> allow
+step "ask" "저장된 허용에도 없으면 답이 올 때까지 요청을 보관하고, 항상 허용을 고르면 저장한다"
+  verdict -> always
+  always -> ask
+  ask -> saved

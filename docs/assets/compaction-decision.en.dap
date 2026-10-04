@@ -1,0 +1,37 @@
+flow down
+title "Compaction decision"
+subtitle "Decided top to bottom at the end of every turn. A is the active context, T the trigger threshold, P the packet size, k* the break-even turns. Idle return means cache cold and P < A"
+
+decision idle "Tree idle"
+decision cold "Idle return"
+decision below "A < T"
+decision payback "k* <= left"
+box defer "Defer a turn" "Busy or mergeable input"
+box fresh-idle "New session"
+box stay-below "Continue"
+box fresh-payback "New session"
+box stay-payback "Continue"
+
+idle -> cold "Yes"
+cold -> below "No"
+below -> payback "No"
+idle -> defer "No"
+cold -> fresh-idle "Yes"
+below -> stay-below "Yes"
+payback -> fresh-payback "Yes"
+payback -> stay-payback "No"
+
+step "Defer" "If the tree is not idle or an input can still merge, the decision waits for the next turn boundary"
+  idle -> defer
+step "Back after a long pause" "Past the cache lifetime with a packet smaller than the active context, the work moves to a new session"
+  idle -> cold
+  cold -> fresh-idle
+step "Below the threshold" "If A is below T, the session continues as is"
+  idle -> cold
+  cold -> below
+  below -> stay-below
+step "Threshold reached" "It moves only when A is at least T and the break-even turns fit within the expected remaining turns"
+  idle -> cold
+  cold -> below
+  below -> payback
+  payback -> fresh-payback

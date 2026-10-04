@@ -1,0 +1,44 @@
+flow right
+title "Saturn context"
+subtitle "User input goes through Saturn to Codex and Claude Code, and meaning judgments go to the router"
+
+person user "Developer"
+box saturn "Saturn"
+external codex-cli "Codex CLI"
+external claude-code "Claude Code"
+external router-api "router API"
+external local-router "Local Saturn model"
+external macos-keychain "macOS Keychain"
+external saturn-key "`SATURN_KEY` environment variable"
+external key-command "Key command" "`router.key.command`"
+store config-files "Config files" "`config.toml`"
+store extension-store "Extension store" "`~/.saturn/extensions/`"
+
+user -> saturn "input, commands"
+saturn -> codex-cli "`app-server` requests"
+saturn -> claude-code "`stream-json` input"
+saturn -> router-api "judgment query"
+saturn -> local-router "judgment query"
+saturn -> macos-keychain "look up router key"
+saturn -> saturn-key "look up router key"
+saturn -> key-command "look up router key"
+saturn -> config-files "read settings"
+saturn -> extension-store "install, read extensions"
+
+step "Codex" "Input goes through the router's judgment to Codex, the target agent"
+  user -> saturn
+  saturn -> router-api
+  saturn -> codex-cli
+step "Claude Code" "In the same flow, the input goes to Claude Code"
+  user -> saturn
+  saturn -> router-api
+  saturn -> claude-code
+step "Local model" "When the method is `saturn`, the local Saturn model receives the judgment query"
+  saturn -> local-router
+step "Router key" "The router key is looked up in the Keychain first, then taken from the environment variable or key command if verification fails"
+  saturn -> macos-keychain
+  saturn -> saturn-key
+  saturn -> key-command
+step "Settings and extensions" "Saturn reads config files and reads installed extensions from the extension store to inject into provider connections"
+  saturn -> config-files
+  saturn -> extension-store

@@ -1,0 +1,33 @@
+flow right
+title "Child connection (Design)"
+subtitle "No new Saturn starts. A caller connects to the running engine and only asks. Only the engine holds the router key"
+
+group chat "Parent chat" direction=down {
+  box task "Agent task" "run by the provider"
+  box child "saturn" "does not start an engine"
+}
+external outside "Outside agent" "Claude Code, Codex"
+box engine "engine" "one per user, holds the router key"
+external router "router" "HTTPS"
+
+engine -> task "gives a pass" no=1
+task -> child "runs saturn" no=2
+child -> engine "asks over the socket" no=3
+outside -> engine "asks over the socket" no=4
+engine -> router "judgment request" no=5
+
+step "Issue a pass" "The engine gives the parent chat's agent task a pass"
+  engine -> task "pass"
+step "Child connects" "The saturn run by the task skips a new engine, connects over the socket, and only asks"
+  task -> child
+  child -> engine "pass and request"
+step "Pass scope" "The engine accepts requests only inside the pass scope"
+  light engine
+  show engine "only that chat's child tasks" tag="pass"
+  show engine "never above the parent's permissions" tag="pass"
+  show engine "depth limit" tag="pass"
+  show engine "ends when the parent stops" tag="pass"
+step "Outside connection" "An outside agent also asks over the socket and follows Saturn permission rules like a chat the user opened"
+  outside -> engine "request"
+step "Router call" "Only the engine holds the router key and it never reaches children or outside agents"
+  engine -> router

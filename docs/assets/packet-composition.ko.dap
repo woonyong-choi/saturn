@@ -1,0 +1,43 @@
+flow right
+width wide
+title "handoff packet 구성"
+subtitle "고정 구역을 먼저 넣고 경쟁 구역이 남은 예산을 채운다. 설계: 제약 칸"
+
+store record "기록 저장소" "packet의 원본"
+group packet "packet, P_max 이내" direction=right {
+  group fixed "고정 구역" direction=down {
+    box slot "제약 칸" "C_max 이내" badge="설계"
+    box goal "목표" "첫 입력과 마지막 입력"
+    box open "남은 일" "대기, 보류, 결과 미확인"
+    box recent "최근 턴" "3턴"
+  }
+  group ranked "경쟁 구역" direction=down {
+    box rank "후보 순위" "파일, 단어, 최근성"
+    box keep "남김 확률" "router, 기준값 없음"
+    box fill "채우기" "원문, 축약본, 경로"
+  }
+}
+external router "router" "compact 질문"
+external session "새 session"
+
+record -> slot "규칙 한 줄"
+record -> goal
+record -> rank "도구 호출과 결과"
+rank -> keep "후보 전체"
+router -> keep "확률"
+keep -> fill "높은 순"
+fixed -> session "먼저"
+ranked -> session "남은 예산"
+
+step "고정 구역" "제약, 목표, 남은 일, 최근 턴은 항상 넣고 P_max를 넘을 때만 줄인다"
+  record -> slot
+  record -> goal
+step "순위" "후보를 파일 겹침, 단어 겹침, 최근성으로 순위를 매긴다"
+  record -> rank
+step "판단" "router가 후보마다 남김 확률을 주고 기준값으로 자르지 않는다"
+  rank -> keep
+  router -> keep
+step "채우기" "예산이 찰 때까지 확률 순으로 원문, 축약본, 경로 중 들어가는 형태를 넣는다"
+  keep -> fill
+  fixed -> session
+  ranked -> session

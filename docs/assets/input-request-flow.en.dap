@@ -1,0 +1,20 @@
+sequence
+title "Input request flow"
+subtitle "engine holds the request until an answer arrives, and returns the answer to the original connection by request number"
+
+external provider "provider"
+box engine "engine"
+person user "User"
+box tui "tui"
+store database "database"
+
+step "Request" "engine records the event, issues a unique request number, and sends it up to tui"
+  provider -> engine "input request"
+  engine -> database "record event"
+  engine -> engine "issue request number"
+  engine -> tui "`InputRequested`, waiting for input"
+step "Answer" "The answer goes back in provider format to the connection found by request number"
+  user -> tui "type answer"
+  tui -> engine "`AnswerInput`"
+  engine -> provider "answer in provider format"
+  engine -> tui "clear other tui windows, back to running" dashed

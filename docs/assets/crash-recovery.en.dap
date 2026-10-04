@@ -1,0 +1,25 @@
+flow down
+title "Recovery after a crash"
+subtitle "Only runs with a proven effect scope resume on their own (Design), and the rest are held. Nothing proves a scope yet, so every run is held"
+
+box open "Look up effect_scope of unfinished runs" "store"
+decision scope "effect_scope is"
+box auto "Auto-resume candidate (Design)" "proven-by-config, proven-by-observation"
+box hold "Record as held, hold the session too" "network-possible, unobserved"
+box resume "Check file state, then send a new input built from it to the provider" "engine"
+box suggest "Send a /continue suggestion for each held item" "rpc"
+
+open -> scope
+scope -> auto "proven"
+scope -> hold "not proven"
+auto -> resume
+hold -> suggest
+
+step "Auto-resume (Design)" "A proven run continues without asking the user. The proof is not built yet"
+  open -> scope
+  scope -> auto
+  auto -> resume
+step "Held" "An unproven run stays stopped until the user continues it with /continue"
+  open -> scope
+  scope -> hold
+  hold -> suggest

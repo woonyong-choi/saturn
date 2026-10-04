@@ -1,0 +1,38 @@
+flow down
+title "Deciding when you return to a provider"
+subtitle "Cache warm means the time since the last turn is within the cache lifetime. P is the packet size, A the last active context"
+
+box switch "Switch input" "Decided on send"
+decision saved "Archive?"
+decision cache "Cache warm"
+decision smaller "P < A"
+box fresh-none "New session"
+box resume-cache "Resume"
+box fresh-small "New session"
+box resume-large "Resume"
+
+switch -> saved
+saved -> cache "Yes"
+cache -> smaller "No"
+saved -> fresh-none "No"
+cache -> resume-cache "Yes"
+smaller -> fresh-small "Yes"
+smaller -> resume-large "No"
+
+step "No archived session" "With no archived main session on the target provider, a new session opens and gets the packet"
+  switch -> saved
+  saved -> fresh-none
+step "Cache warm" "Within the cache lifetime, the archived session resumes"
+  switch -> saved
+  saved -> cache
+  cache -> resume-cache
+step "Cache cold, small packet" "Past the cache lifetime, a new session opens only when the packet is smaller than the last active context"
+  switch -> saved
+  saved -> cache
+  cache -> smaller
+  smaller -> fresh-small
+step "Cache cold, large packet" "When the packet is at least the last active context, the archived session resumes"
+  switch -> saved
+  saved -> cache
+  cache -> smaller
+  smaller -> resume-large

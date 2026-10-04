@@ -1,0 +1,49 @@
+flow right
+title "How a permission request is decided"
+subtitle "The value comes from individual rules, the permission mode, then saved always allows, and only ask reaches the user"
+
+external provider "provider"
+box convert "providers" "Tool kind and pattern"
+group permission "permission" direction=down {
+  box rules "Individual rules" "deny wins, else last match"
+  box mode "Permission mode" "Default if no match"
+}
+decision verdict "Value"
+decision always "Always allowed?"
+box allow "providers" "Send allow"
+box deny "providers" "Send deny"
+box ask "engine" "Raise to TUI, hold"
+store saved "Record store" "Always allow rules"
+
+provider -> convert "permission request"
+convert -> rules "kind, pattern"
+rules -> mode "no match"
+rules -> verdict "matched value"
+mode -> verdict "default"
+verdict -> allow "`allow`"
+verdict -> deny "`deny`"
+verdict -> always "`ask`"
+always -> allow "yes"
+always -> ask "no"
+ask -> saved "save `always allow`"
+saved -> always "read"
+
+step "deny" "A deny in the individual rules wins in any order, and an always allow cannot overturn it"
+  provider -> convert
+  convert -> rules
+  rules -> verdict
+  verdict -> deny
+step "Permission mode" "With no matching rule, the mode's default rule sets the value"
+  provider -> convert
+  convert -> rules
+  rules -> mode
+  mode -> verdict
+  verdict -> allow
+step "Always allow" "Even when the value is ask, a saved always allow that matches lets it through without asking"
+  verdict -> always
+  saved -> always
+  always -> allow
+step "ask" "With no saved allow either, the request is held until answered, and choosing always allow saves it"
+  verdict -> always
+  always -> ask
+  ask -> saved
