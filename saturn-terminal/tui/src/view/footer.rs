@@ -8,6 +8,8 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
 use crate::i18n::{self, Lang};
+use saturn_protocol::rpc::ModelMode;
+
 use crate::state::ContextSize;
 use crate::view::{MUTED, text_width, truncate};
 
@@ -26,16 +28,34 @@ pub(crate) fn context_text(lang: Lang, context: Option<ContextSize>) -> String {
     }
 }
 
+/// 오른쪽에 보이는 글. 모델 선택 방식을 알면 맥락 크기 앞에 붙인다.
+pub(crate) fn right_text(
+    lang: Lang,
+    mode: Option<ModelMode>,
+    context: Option<ContextSize>,
+) -> String {
+    let context = context_text(lang, context);
+    match mode {
+        Some(mode) => format!(
+            "{} · {context}",
+            lang.tr(i18n::FOOTER_MODEL_MODE)
+                .replace("{mode}", lang.tr(i18n::model_mode_name(mode)))
+        ),
+        None => context,
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct FooterView {
     pub lang: Lang,
     pub context: Option<ContextSize>,
+    pub model_mode: Option<ModelMode>,
 }
 
 impl FooterView {
     /// 폭이 모자라면 왼쪽을 먼저 자른다.
     pub(crate) fn render(&self, frame: &mut Frame, area: Rect) {
-        let right = context_text(self.lang, self.context);
+        let right = right_text(self.lang, self.model_mode, self.context);
         let right_width = text_width(&right);
         let available = usize::from(area.width);
         let left_width = available.saturating_sub(right_width + 1);
@@ -73,6 +93,24 @@ mod tests {
         assert_eq!(context_text(Lang::En, None), "Context unknown");
     }
 
+    #[test]
+    fn right_text_puts_the_selection_mode_before_the_context() {
+        let size = ContextSize {
+            tokens: Some(38_400),
+            threshold: 200_000,
+        };
+
+        assert_eq!(
+            right_text(Lang::Ko, Some(ModelMode::Manual), Some(size)),
+            "모델 매뉴얼 · 맥락 38K/200K"
+        );
+        assert_eq!(
+            right_text(Lang::En, Some(ModelMode::Auto), None),
+            "Model Auto · Context unknown"
+        );
+        assert_eq!(right_text(Lang::En, None, None), "Context unknown");
+    }
+
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     #[test]
@@ -84,6 +122,7 @@ mod tests {
                 tokens: Some(38_000),
                 threshold: 200_000,
             }),
+            model_mode: None,
         };
 
         terminal

@@ -106,6 +106,8 @@ pub(crate) struct FlowState {
     pub(crate) judging: HashMap<ChatId, InputId>,
     /// provider 연결에서 받아 둔 모델 목록. `target_model` 후보이고 `/model` 목록과 같다. 목록을 받기 전이면 항목이 없다.
     pub(crate) models: HashMap<(ChatId, Provider), Vec<ModelInfo>>,
+    /// 채팅의 TUI에 마지막으로 알린 기본 모델과 모델 선택 방식. 같은 값은 다시 알리지 않는다.
+    pub(crate) model_shown: HashMap<ChatId, crate::models::ModelPlan>,
     /// 연결이 마지막으로 알린 명령 목록. 나중에 붙는 TUI에 그대로 보낸다.
     pub(crate) commands: HashMap<(ChatId, Provider), Vec<CommandInfo>>,
     /// 시작 때 읽은 provider CLI 버전. 읽지 못한 provider는 항목이 없다.
@@ -228,6 +230,7 @@ impl Default for FlowState {
             routed: HashMap::new(),
             judging: HashMap::new(),
             models: HashMap::new(),
+            model_shown: HashMap::new(),
             commands: HashMap::new(),
             cli_versions: HashMap::new(),
             router_tx,

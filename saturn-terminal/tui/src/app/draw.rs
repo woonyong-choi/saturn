@@ -85,6 +85,7 @@ impl App {
         let footer = FooterView {
             lang,
             context: self.chat.context,
+            model_mode: self.chat.model_mode,
         };
         footer.render(frame, areas.footer);
         self.render_windows(frame, area, now);

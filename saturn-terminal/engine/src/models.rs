@@ -6,13 +6,13 @@ use std::collections::HashMap;
 use saturn_core::providers::ProviderError;
 use saturn_core::queue::QueuedInput;
 use saturn_protocol::ids::{ChatId, Provider, SettingsRevision};
-use saturn_protocol::rpc::{ModelChoice, ModelInfo, Notification};
+use saturn_protocol::rpc::{ModelChoice, ModelInfo, ModelMode, Notification};
 
 use crate::calls::{CallKind, PendingCall, Responder};
 use crate::launch::ConnectionSeed;
 use crate::providers::{Connected, Registry, spawn_connect};
 use crate::rpc::ClientId;
-use crate::settings::SettingsError;
+use crate::settings::{Settings, SettingsError};
 use crate::{Engine, EngineError, masked_chain};
 
 /// 입력에 고정한 모델. provider 접두사가 없거나 등록하지 않은 id인 글은 모델 이름으로만 읽어 provider를 정하지 않는다.
@@ -43,7 +43,130 @@ pub(crate) struct ModelsQuery {
     waiting: usize,
 }
 
+/// 입력이 접수 때 고정한 설정 번호의 모델 선택 값.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ModelPlan {
+    pub(crate) mode: ModelMode,
+    /// 기본 모델의 `<provider>/<model>` 글. 고르지 않았거나 등록하지 않은 provider면 `None`.
+    pub(crate) default: Option<String>,
+}
+
+impl ModelPlan {
+    pub(crate) fn from_settings(settings: &Settings, registry: &Registry) -> Self {
+        Self {
+            mode: settings.model_mode(),
+            default: settings
+                .model_default()
+                .filter(|text| registry.parse_pinned(text).is_some())
+                .map(str::to_owned),
+        }
+    }
+}
+
 impl Engine {
+    /// 설정 번호의 모델 선택 값.
+    ///
+    /// # Errors
+    /// 없는 번호면 `Settings`.
+    pub(crate) async fn model_plan(
+        &self,
+        revision: SettingsRevision,
+    ) -> Result<ModelPlan, EngineError> {
+        let settings = self.settings.at(&self.store, revision).await?;
+        Ok(ModelPlan::from_settings(&settings, &self.registry))
+    }
+
+    /// 기본 모델을 사용자 설정 파일에 저장하고 붙은 TUI에 알린다. 다음 입력부터 쓴다.
+    ///
+    /// # Errors
+    /// 붙지 않은 채팅이면 `ChatNotAttached`, 파일 저장이나 병합 실패면 `Settings`.
+    pub(crate) async fn set_default_model(
+        &mut self,
+        client: ClientId,
+        chat: ChatId,
+        model: &ModelChoice,
+    ) -> Result<(), EngineError> {
+        let workdir = self.attached_workdir(client, chat)?;
+        let value = toml_edit::Value::from(Registry::pinned_text(model)).to_string();
+        self.settings
+            .set_user_value("model.default", &value)
+            .await?;
+        self.apply_changed_settings(&[client], chat, &workdir)
+            .await?;
+        Ok(())
+    }
+
+    /// 모델 선택 방식을 사용자 설정 파일에 저장하고 붙은 TUI에 알린다. 다음 입력부터 쓴다.
+    ///
+    /// # Errors
+    /// `set_default_model`과 같다.
+    pub(crate) async fn set_model_mode(
+        &mut self,
+        client: ClientId,
+        chat: ChatId,
+        mode: ModelMode,
+    ) -> Result<(), EngineError> {
+        let workdir = self.attached_workdir(client, chat)?;
+        let value = match mode {
+            ModelMode::Auto => "\"auto\"",
+            ModelMode::Manual => "\"manual\"",
+        };
+        self.settings.set_user_value("model.mode", value).await?;
+        self.apply_changed_settings(&[client], chat, &workdir)
+            .await?;
+        Ok(())
+    }
+
+    /// 채팅에 쓰는 설정의 기본 모델과 방식을 붙은 TUI에 알린다. 마지막으로 알린 값과 같으면 보내지 않는다.
+    ///
+    /// # Errors
+    /// 없는 설정 번호면 `Settings`.
+    pub(crate) async fn announce_model_settings(
+        &mut self,
+        chat: ChatId,
+        revision: SettingsRevision,
+    ) -> Result<(), EngineError> {
+        let plan = self.model_plan(revision).await?;
+        if self.flow.model_shown.get(&chat) == Some(&plan) {
+            return Ok(());
+        }
+        self.flow.model_shown.insert(chat, plan.clone());
+        let notification = self.model_settings_notification(chat, &plan);
+        self.rpc.broadcast(Some(chat), notification).await;
+        Ok(())
+    }
+
+    /// 채팅에 붙을 때 지금 값을 그 TUI에 알린다.
+    ///
+    /// # Errors
+    /// 설정이 없으면 `Settings`.
+    pub(crate) async fn send_model_settings(
+        &mut self,
+        client: ClientId,
+        chat: ChatId,
+    ) -> Result<(), EngineError> {
+        let revision = self
+            .settings
+            .current()
+            .ok_or(SettingsError::NoPreviousRevision)?;
+        let plan = self.model_plan(revision).await?;
+        self.flow.model_shown.insert(chat, plan.clone());
+        let notification = self.model_settings_notification(chat, &plan);
+        self.send(client, notification).await;
+        Ok(())
+    }
+
+    fn model_settings_notification(&self, chat: ChatId, plan: &ModelPlan) -> Notification {
+        Notification::ModelSettings {
+            chat,
+            default: plan
+                .default
+                .as_deref()
+                .and_then(|text| self.registry.parse_pinned(text)),
+            mode: plan.mode,
+        }
+    }
+
     /// 채팅의 고정 모델을 저장하고 그 채팅에 붙은 모든 TUI에 알린다. 다음 입력부터 쓴다.
     ///
     /// # Errors
@@ -66,12 +189,12 @@ impl Engine {
         Ok(())
     }
 
-    /// 고정한 채팅에 붙을 때 그 모델을 알린다. 고정하지 않았으면 보내지 않는다.
+    /// 고정한 채팅에 붙을 때 그 모델을 알린다. 고정하지 않았으면 보내지 않는다. 이어서 기본 모델과 선택 방식을 알린다.
     ///
     /// # Errors
     /// 없는 채팅이면 `Store(NotFound)`.
     pub(crate) async fn send_chat_model(
-        &self,
+        &mut self,
         client: ClientId,
         chat: ChatId,
     ) -> Result<(), EngineError> {
@@ -83,7 +206,7 @@ impl Engine {
             self.send(client, Notification::ModelPinned { chat, model })
                 .await;
         }
-        Ok(())
+        self.send_model_settings(client, chat).await
     }
 
     // cost: time O(m), heap O(m), stack O(1), io p

@@ -32,24 +32,26 @@ use crate::view::transcript::{TranscriptCell, delivery_badge, echo_cell, result_
 use crate::view::usage::UsageTable;
 
 impl App {
+    fn on_start_info(&mut self, notification: &Notification) {
+        self.start = StartInfo::from_notification(notification);
+        if let Some(start) = &self.start {
+            i18n::set_provider_names(
+                start
+                    .providers
+                    .iter()
+                    .map(|info| (info.provider, info.display_name.as_str())),
+            );
+        }
+        self.chat_folder = self.start.as_ref().map(|start| start.folder.clone());
+    }
+
     pub(super) fn on_notification(
         &mut self,
         notification: Notification,
         now: Instant,
     ) -> Vec<Effect> {
         match notification {
-            Notification::StartInfo { .. } => {
-                self.start = StartInfo::from_notification(&notification);
-                if let Some(start) = &self.start {
-                    i18n::set_provider_names(
-                        start
-                            .providers
-                            .iter()
-                            .map(|info| (info.provider, info.display_name.as_str())),
-                    );
-                }
-                self.chat_folder = self.start.as_ref().map(|start| start.folder.clone());
-            }
+            Notification::StartInfo { .. } => self.on_start_info(&notification),
             Notification::InputAccepted { .. } => {}
             Notification::InputChanged {
                 input,
@@ -126,6 +128,15 @@ impl App {
                 self.inputs.resolve(&request_id, now);
             }
             Notification::ExitPlan { plan } => return self.on_exit_plan(plan),
+            Notification::ModelSettings {
+                chat,
+                default,
+                mode,
+            } => {
+                if self.chat.chat == Some(chat) {
+                    return self.on_model_settings(chat, default, mode);
+                }
+            }
             Notification::ChatLabeled { .. } => {
                 if matches!(self.window, Some(Window::TaskList(_))) {
                     return vec![Effect::Send(Request::ListTasks)];

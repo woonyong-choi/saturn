@@ -529,8 +529,33 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("모델 목록을 불러오는 중", "Loading models"),
     ("고를 수 있는 모델이 없습니다", "No models to choose from"),
     (
-        "↑↓ 이동 · Enter 고르기 · Esc 취소",
-        "↑↓ move · Enter choose · Esc cancel",
+        "↑↓ 이동 · Enter 이 채팅에 고정 · d 기본 모델로 · m 오토/매뉴얼 · Esc 닫기",
+        "↑↓ move · Enter pin to this chat · d set default · m auto/manual · Esc close",
+    ),
+    ("기본 모델을 고르세요", "Choose a default model"),
+    (
+        "연결할 수 있는 provider의 모델을 모두 보입니다. 고른 모델이 기본 모델로 저장되고, /model로 언제든 바꿀 수 있습니다",
+        "Models from every provider you can connect are listed. The one you choose is saved as the default, and /model changes it anytime",
+    ),
+    (
+        "↑↓ 이동 · Enter 기본 모델로 저장 · Esc 나중에",
+        "↑↓ move · Enter save as default · Esc later",
+    ),
+    (
+        "기본 모델 {model} · 선택 방식 {mode}",
+        "Default model {model} · selection {mode}",
+    ),
+    ("없음", "none"),
+    ("오토", "Auto"),
+    ("매뉴얼", "Manual"),
+    ("모델 {mode}", "Model {mode}"),
+    (
+        "기본 모델을 {provider} · {model}로 정했습니다",
+        "Default model set to {provider} · {model}",
+    ),
+    (
+        "모델 선택 방식을 {mode} 모드로 바꿨습니다",
+        "Model selection is now {mode} mode",
     ),
     (
         "다음 입력부터 {provider} · {model} 모델로 보냅니다",

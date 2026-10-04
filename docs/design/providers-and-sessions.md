@@ -250,7 +250,31 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 - `sessions` 기록은 session을 열 때 고른 모델(`model`)을 남긴다. 고르지 않았으면 provider 기본값이라 비어 있다. 입력의 모델이 열린 메인의 모델과 다르면 그 메인을 쓰지 않고 새 메인 session을 열어 패킷을 넘기고, 떠나는 메인은 보관한다([provider 전환](#provider-전환)). 다른 모델로 연 보관 session은 되돌아갈 때도 재개하지 않는다. 열린 session의 모델을 provider 안에서 바꾸는 방식은 쓰지 않는다. session 기록의 모델과 실제 모델이 어긋나지 않게 하기 위해서다. 같은 provider 안에서 모델만 바뀐 교체는 provider 전환 안내 줄을 남기지 않는다.
 - 맥락 정리로 여는 새 session은 이전 session의 모델을 이어 쓴다.
 - provider의 `/model` 명령은 provider 명령 목록에서 빼고 Saturn `/model`로만 처리한다. provider가 몰래 모델을 바꿔 기록과 어긋나는 일을 막기 위해서다. 모델을 고르지 않은 채 provider 설정이나 환경으로 정해진 모델은 막지 않고 추적만 한다(위 provider 실행 절).
-- router의 `target_model` 후보는 이 목록과 같다([router](router.md)). engine은 연결을 만들 때 받아 둔 목록을 후보로 넣고, router가 새 작업으로 판단한 입력에는 고른 모델을 그 입력의 모델로 적용하고, 이어 가기와 끼워 넣기는 현재 모델을 유지한다. 목록을 받기 전이거나 후보 밖 값이면 현재 모델로 보내고, 모델이 바뀌면 위 규칙대로 새 메인 session을 연다.
+- router의 `target_model` 후보는 이 목록과 같다([router](router.md)). 오토 모드에서만 묻고, 기본 모델과 선택 방식은 [기본 모델과 선택 방식](#기본-모델과-선택-방식)에 있다. engine은 연결을 만들 때 받아 둔 목록을 후보로 넣고, router가 새 작업으로 판단한 입력에는 고른 모델을 그 입력의 모델로 적용하고, 이어 가기와 끼워 넣기는 현재 모델을 유지한다. 목록을 받기 전이거나 후보 밖 값이면 현재 모델로 보내고, 모델이 바뀌면 위 규칙대로 새 메인 session을 연다.
+
+### 기본 모델과 선택 방식
+
+새 작업을 어느 모델로 보낼지는 기본 모델(`model.default`)과 선택 방식(`model.mode`) 둘이 정한다([설정](settings.md#설정-키), [#338](https://github.com/woonyong-choi/saturn/issues/338) 결정). 기본 모델은 `<provider>/<model>` 글이고, 선택 방식은 오토(`auto`, 기본)와 매뉴얼(`manual`)이다.
+
+새 작업으로 판단된 입력의 모델은 아래 순서에서 처음 나오는 값이다. 이어 가기와 끼워 넣기는 이 순서를 타지 않고 현재 모델을 유지한다.
+
+| 순서 | 값 | 오토 | 매뉴얼 |
+|---|---|---|---|
+| 1 | `/model`로 채팅에 고정한 모델 | 사용 | 사용 |
+| 2 | router `target_model`이 고른 모델(확신도 0.6 이상, 후보 안) | 사용 | 묻지 않음 |
+| 3 | 기본 모델 | 사용 | 사용 |
+| 4 | provider 기본값(`--model`을 넘기지 않음) | 기본 모델이 없을 때 | 기본 모델이 없을 때 |
+
+- 매뉴얼은 `target_model` 질문만 뺀다. `keep_current` 같은 관계 판단은 오토와 똑같이 묻는다. 매뉴얼에서도 `/model` 뒤 입력이 모두 대기해 병렬 작업이 막히는 일을 피하기 위해서다([router](router.md)).
+- 기본 모델과 선택 방식은 입력을 접수할 때 고정한 설정 번호의 값을 쓴다. 설정 파일을 직접 고치면 설정 파일 감시가 병합하고 붙은 TUI에 `ModelSettings`로 알린다. 같은 값은 다시 알리지 않는다.
+- engine은 채팅에 붙을 때 `ModelSettings`(`default`, `mode`)를 보낸다. `default`가 `None`이면 아직 고르지 않은 것이다.
+- 기본 모델을 고르지 않았으면 TUI가 `기본 모델을 고르세요` 창을 연다. 실행마다 한 번만 열고, `Esc`로 닫으면 저장하지 않고 다음 실행에 다시 묻는다. 이미 고른 적이 있으면 묻지 않는다. 창은 `ListModels`를 provider 없이 보내 목록을 받는다.
+- 이 목록은 설치돼 연결할 수 있는 provider 모두에서 받는다. engine은 연결이 아직 없는 provider도 연결을 만들어 목록을 받고, 어느 provider를 이미 연결했는지나 `/model` 창을 연 적이 있는지에 따라 목록이 달라지지 않는다. 목록을 못 받은 provider는 빼고 로그만 남긴다. 이 창이 모든 provider의 목록을 받아 두므로, 그 뒤 오토 모드의 `target_model` 후보도 같은 목록이다.
+- 고른 모델은 TUI가 `SetDefaultModel`로 알리면 engine이 사용자 설정 파일(`~/.saturn/config.toml`)의 `model.default`에 쓴다([설정 파일 편집](settings.md#설정-파일-편집)). 폴더 설정이나 실행 `-c`가 같은 키를 정했으면 그 값이 이기고, 알림은 병합 결과를 보인다.
+- `/model` 창에서 `m`은 선택 방식을 오토와 매뉴얼 사이에서 바꾸는 `SetModelMode`를 보내고 engine이 `model.mode`에 쓴다. `d`는 고른 줄을 기본 모델로 저장한다. `Enter`는 지금처럼 이 채팅에만 고정한다.
+- 지금 선택 방식은 바닥줄(`모델 오토`, `모델 매뉴얼`)과 `/model` 창 첫 줄(`기본 모델 claude · opus · 선택 방식 오토`)에 보인다.
+- 기본 모델은 사용자가 모델을 따로 고르지 않은 새 작업에 쓴다. 이미 열린 메인 session의 모델과 다르면 위 규칙대로 새 메인 session을 연다.
+- Jev가 `target_model`을 맞게 고르는지는 이 기능 밖의 별도 실험으로 확인한다.
 
 ### provider 전환
 
@@ -478,6 +502,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 고정한 모델이 session을 여는 모델과 provider를 정하고 session 기록에 남는다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `pinned_model_opens_the_session_with_that_model_and_records_it`, `pinned_model_decides_the_provider`, `saturn-terminal/engine/src/store/sessions.rs`의 `session_model_round_trips_through_live_mains` |
 | 모델이 바뀌면 새 메인 session을 열고, 같은 모델이면 열린 session을 쓴다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `changing_the_model_opens_a_new_main_session_with_a_packet`, `same_model_keeps_using_the_open_session` |
 | router가 후보를 받아 고른 모델로 보내고 새 작업으로 판단되면 그 모델의 session을 연다(메인이면 새 메인 session). 고정 모델이면 묻지 않고, 목록을 받기 전이거나 후보 밖 값이면 현재 모델을 쓴다. | `saturn-terminal/engine/src/lifecycle/target_model.rs`의 `target_model_candidates_are_the_model_list_in_provider_order`, `target_model_chosen_by_the_router_is_applied`, `target_model_picks_the_provider_of_the_chosen_model`, `target_model_on_a_second_new_task_opens_a_session_with_that_model`, `target_model_is_not_asked_when_the_model_is_pinned`, `target_model_is_not_asked_before_the_model_list_arrives`, `target_model_is_ignored_when_the_input_continues_current_work`, `target_model_other_keeps_the_default_model`, `target_model_outside_the_candidates_is_ignored` |
+| 새 작업의 모델은 채팅 고정, 오토의 router 선택, 기본 모델, provider 기본값 순으로 정하고 매뉴얼은 `target_model`을 묻지 않는다. 기본 모델과 방식은 TUI가 붙을 때 알려지고 바꾸면 사용자 설정 파일에 저장된다. | `saturn-terminal/engine/src/lifecycle/model_mode.rs`의 `default_model_receives_a_new_task_the_router_did_not_place`, `no_default_model_keeps_the_provider_default`, `auto_mode_router_choice_beats_the_default_model`, `auto_mode_falls_back_to_the_default_model_on_other`, `manual_mode_does_not_ask_target_model_and_uses_the_default_model`, `manual_mode_still_judges_the_relation_between_inputs`, `manual_mode_sends_to_the_pinned_model_instead_of_the_default`, `default_model_decides_the_provider`, `default_model_of_an_unregistered_provider_is_ignored`, `attaching_tells_the_tui_that_no_default_model_is_chosen_yet`, `attaching_tells_the_tui_the_configured_default_and_mode`, `choosing_the_default_model_writes_the_user_config_and_tells_the_tui`, `changing_the_mode_writes_the_user_config_and_applies_to_the_next_input`, `setting_the_default_from_a_client_that_is_not_attached_is_refused` |
 | 모델 목록은 설치된 provider 순서로 오고 provider로 거를 수 있다. Codex는 숨긴 모델을 빼고, Claude 기본은 `--model`을 넘기지 않는다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `model_list_comes_in_provider_order`, `model_list_can_be_limited_to_one_provider`, `saturn-terminal/engine/src/providers/codex/tests.rs`의 `model_list_entries_skip_hidden_models_and_fall_back_to_the_id`, `saturn-terminal/engine/src/providers/claude/tests.rs`의 `default_model_is_not_passed_to_claude` |
 | subagent의 시작과 끝을 이벤트로 추적한다. | Claude는 [실험](../experiments/claude-provider-behavior/report.md), Codex는 [실측](../experiments/codex-provider-behavior/report.md) |
 | Claude 백그라운드 subagent까지 멈춘다. | [실험](../experiments/claude-provider-behavior/report.md)에서 `interrupt`, 입력 닫기, SIGTERM 모두 3/3 확인 |

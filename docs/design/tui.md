@@ -28,7 +28,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 한 저장소에서 여러 �
 
 1. 작업 A의 맥락이 기준에 닿으면 실행 줄의 하는 일이 `맥락 정리 중`으로 바뀐다.
 2. 정리가 끝나면 대화 기록에 `[A] 맥락 정리 후 이어서 진행` 한 줄이 남는다.
-3. 바닥줄의 `맥락 38K/200K`는 턴마다 새 값으로 바뀐다.
+3. 바닥줄의 `맥락 38K/200K`는 턴마다 새 값으로 바뀐다. 그 앞의 `모델 오토`는 모델 선택 방식이다.
 
 ### 멈춘 작업을 다시 연다
 
@@ -72,7 +72,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 └────────────────────────────────────────────────────────────────┘
 ┌────────────────────────────────────────────────────────────────┐
 │ 바닥줄                                                         │
-│ /help 도움말 · Ctrl+C 멈춤                 맥락 38K/200K       │
+│ /help 도움말 · Ctrl+C 멈춤      모델 오토 · 맥락 38K/200K       │
 └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -85,7 +85,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | 상태판 | 실행 줄, 판단 줄, 학습 줄, 대기 줄, 보류 줄, 알림 줄 | `engine` 상태 변경 |
 | 팝업 | `/` 명령 목록과 값 목록, `@` 파일 목록, `$` 스킬 목록, 명령 목록 최대 8행과 오른쪽 출처 표시 | 글자 입력마다 목록 필터 |
 | 입력창 | `›` 접두 초안, 붙여넣은 내용 요소 | 키 입력 |
-| 바닥줄 | 키 안내, 맥락 크기 | 상태 변경, 턴마다 맥락 크기 |
+| 바닥줄 | 키 안내, 모델 선택 방식(`모델 오토`, `모델 매뉴얼`. engine이 알리기 전에는 없음), 맥락 크기 | 상태 변경, 턴마다 맥락 크기, `ModelSettings` 도착 |
 | 시작 화면 | 로고, Saturn 버전, provider 버전, router와 router 버전, 채팅 기본 폴더와 더한 폴더(다른 폴더의 채팅을 이어 열었으면 그 폴더를 보임) | 실행 때, 첫 결과가 오면 대화 기록 맨 위 머리 셀로 전환 |
 | router 키 입력 창 | router 확인 실패 원인, 가린 키 입력칸 | 시작 때 router 확인 실패 |
 | 폴더 설정 신뢰 창 | 폴더 설정 파일 경로, 지문, 적용되는 항목, 무시되는 항목, 바뀐 줄 | 처음 보거나 내용이 바뀐 폴더 설정을 만난 때, 실행 중이면 engine이 변경을 알아챈 때나 다음 입력 접수 전 |
@@ -100,7 +100,8 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | 전체 기록 | 도구 셀 전체와 줄인 셀을 펼친 대화 기록 | `Ctrl+T` 입력 |
 | 사용량 화면 | 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론, router 호출과 예상 비용, 맥락 정리, 채점, 여러 턴 합계 행 끝의 `n 토큰 · n 턴`. provider·모델마다 한 행, router 한 행 | `/usage` 실행, 키 `d`, `w`로 범위 변경 |
 | router 버전 화면 | router 버전 목록, 버전별 router와 보정값과 ECE, 질문별 목표 틀림 비율과 기준값과 최근 200건 틀림과 판단 수 | `/router use` 실행 |
-| 모델 선택 창 | 고정할 수 있는 모델 목록(`provider · 모델 이름` 줄), 지금 고정한 모델 표시, 키 안내. 목록이 오기 전에는 불러오는 중, 비었으면 안내 한 줄 | `/model` 실행(`/model codex`처럼 provider를 주면 그 provider 모델만), 목록 알림 도착 |
+| 모델 선택 창 | 첫 줄 `기본 모델 claude · opus · 선택 방식 오토`(기본 모델이 없으면 `없음`), 고정할 수 있는 모델 목록(`provider · 모델 이름` 줄), 지금 고정한 모델 표시, 키 안내. 목록이 오기 전에는 불러오는 중, 비었으면 안내 한 줄 | `/model` 실행(`/model codex`처럼 provider를 주면 그 provider 모델만), 목록 알림 도착, `ModelSettings` 도착 |
+| 기본 모델 처음 고르기 창 | 제목 `기본 모델을 고르세요`, 안내 `연결할 수 있는 provider의 모델을 모두 보입니다. 고른 모델이 기본 모델로 저장되고, /model로 언제든 바꿀 수 있습니다`, 연결할 수 있는 모든 provider의 모델 목록, 키 안내. 목록이 오기 전에는 불러오는 중 | 채팅에 붙을 때 engine이 기본 모델이 없다고 `ModelSettings`로 알리면 실행마다 한 번([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)) |
 | 채팅 선택 창 | 이어 열 채팅 목록(`번호. #채팅 id · 경과 · [폴더 ·] [이름 ·] 첫 입력` 줄), 고른 줄 강조, 키 안내. 목록이 화면보다 길면 고른 줄이 보이게 스크롤. 대화 화면을 열기 전에 `saturn --resume`이 연다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)) | `saturn --resume`, `saturn --resume all` 실행 |
 | 기록 정리 창 | 지울 채팅 목록(`#채팅 번호 · [이름 ·] 마지막 사용 날짜 · 크기` 줄), 지울 채팅 수와 기록 행 수, 남긴 채팅 수, 키 안내 `y` 지우기 `Esc` 취소. 지울 채팅이 없으면 안내 한 줄만 보이고 `y`는 받지 않는다. 기준 설정(`retention.max_age_days`)이 없으면 창 대신 설정 방법을 알리는 줄을 남긴다 | `/prune` 실행 |
 | 학습 확인 창 | 채점 후보 수, 채점 모델, 예상 토큰, 기준값 조정 대상, 모델 추가 학습 여부 | 실행 조건을 채운 `/train` 실행 |
@@ -278,7 +279,12 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `Enter` | 선택 | 학습 확인 창 |
 | `↑`, `↓` | 모델 이동 | 모델 선택 창 |
 | `Enter` | 고른 모델을 이 채팅의 고정 모델로 정하고 창 닫기 | 모델 선택 창 |
+| `d` | 고른 모델을 기본 모델로 저장(`SetDefaultModel`). 창은 열어 둔다 | 모델 선택 창 |
+| `m` | 선택 방식을 오토와 매뉴얼 사이에서 바꿈(`SetModelMode`). 창은 열어 둔다 | 모델 선택 창 |
 | `Esc` | 취소, 고정 모델은 그대로 | 모델 선택 창 |
+| `↑`, `↓` | 모델 이동 | 기본 모델 처음 고르기 창 |
+| `Enter` | 고른 모델을 기본 모델로 저장(`SetDefaultModel`)하고 창 닫기 | 기본 모델 처음 고르기 창 |
+| `Esc` | 저장하지 않고 닫기. 이번 실행에서는 다시 열지 않고 다음 실행에 다시 묻는다 | 기본 모델 처음 고르기 창 |
 | `Esc` | 취소 | 학습 확인 창 |
 | `↑`, `↓` | 선택지 이동 | 학습 확인 창 |
 
@@ -388,7 +394,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | router 키 입력 창 붙여넣기 | 제어 문자를 뺀 글을 가린 입력칸에 넣는다 |
 | `/record` | 명령 목록에 넣고 값 목록은 `on`, `off` |
 | `/add-dir` | 명령 목록에 넣고 값은 폴더 경로 하나. 명령 이름 뒤 나머지 줄 전체를 경로로 읽어 공백이 들어 있어도 된다. 상대 경로는 TUI의 현재 폴더 기준 절대 경로로, `~/`는 홈 폴더 아래로 바꿔 보낸다(초안). 더한 폴더는 채팅 기록에 저장하고 모든 provider session에 넘긴다. 폴더 설정은 읽지 않는다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)). 더한 뒤 안내 한 줄을 대화 기록에 남기고, 열린 session이 있으면 다음 session부터 적용한다고 덧붙인다 |
-| `/model` | 명령 목록에 넣고 값 목록은 engine이 붙을 때 알린 provider id(`StartInfo`의 `providers`). 값 없이 실행하면 모든 provider의 모델 창이 열리고, 값을 주면 그 provider 모델만 보인다. 방향키로 고르고 `Enter`로 정한다. 고른 모델은 `SetModel`로 engine에 저장하고, 그 채팅의 모든 입력이 쓴다. 채팅에 붙을 때 engine이 `ModelPinned`로 알려 주므로 TUI를 다시 열거나 채팅을 옮겨도 유지된다. 안내 한 줄(`다음 입력부터 {provider} · {model} 모델로 보냅니다`)은 `ModelPinned`를 받을 때 대화 기록에 남기므로, 정한 직후와 채팅을 다시 열 때 같은 줄이 나온다. provider 고유의 `/model`은 넘기지 않고 Saturn `/model`로 처리한다([모델 고르기](providers-and-sessions.md#모델-고르기)) |
+| `/model` | 명령 목록에 넣고 값 목록은 engine이 붙을 때 알린 provider id(`StartInfo`의 `providers`). 값 없이 실행하면 모든 provider의 모델 창이 열리고, 값을 주면 그 provider 모델만 보인다. 방향키로 고르고 `Enter`로 정한다. `Enter`로 고른 모델은 `SetModel`로 engine에 저장하고, 그 채팅의 모든 입력이 쓴다. 채팅에 붙을 때 engine이 `ModelPinned`로 알려 주므로 TUI를 다시 열거나 채팅을 옮겨도 유지된다. 안내 한 줄(`다음 입력부터 {provider} · {model} 모델로 보냅니다`)은 `ModelPinned`를 받을 때 대화 기록에 남기므로, 정한 직후와 채팅을 다시 열 때 같은 줄이 나온다. provider 고유의 `/model`은 넘기지 않고 Saturn `/model`로 처리한다([모델 고르기](providers-and-sessions.md#모델-고르기)) |
 | `/permissions` | 명령 목록에 넣고 값 목록은 `ask`, `edit`, `read-only`, `full`(초안). 값을 주면 채팅 층 모드를 바꾼다. 값 없이 실행하면 현재 모드를 보이는 동작은 아직 없다([#177](https://github.com/woonyong-choi/saturn/issues/177), [권한](permissions.md)) |
 | `/prune` | 명령 목록에 넣고 값은 없다. 기록 정리 창을 연다. 미리보기는 `Prune { yes: false }`, 확정은 `Prune { yes: true }`로 보낸다 |
 | `/constraints` | 명령 목록에 넣고 값은 없다. 제약 목록 화면을 연다. `d`는 `ReleaseConstraint`, `x`는 잘못 등록으로 `ReleaseConstraint`, `e`는 예외 종류 바꾸기로 `ChangeConstraintException`, `u`는 `UndoConstraintChange`를 보내고 확인 창의 답은 `AnswerConstraintAsk`로 보낸다. 요청은 화면이 본 제약 revision을 싣고 낡았으면 engine이 `Stale`로 거절해 목록을 새로 읽는다(초안, [제약](constraints.md#되돌리기)) |
@@ -421,6 +427,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | 한국어 문구에 해요체 어미와 끝 마침표가 없다. | `saturn-terminal/tui/src/i18n.rs`의 `korean_phrases_follow_claude_code_format` |
 | router 연결이 끊겨도 입력창은 입력을 계속 보낸다. | `saturn-terminal/tui/src/app/tests.rs`의 `submit_while_router_disconnected_still_sends_input` |
 | `/add-dir`는 폴더 경로를 절대 경로로 바꿔 engine에 보내고, 시작 화면과 안내 줄이 더한 폴더를 보인다. | `saturn-terminal/tui/src/app/tests.rs`의 `add_dir_command_sends_an_absolute_path_relative_to_the_tui_folder`, `add_dir_notice_adds_a_cell_and_updates_the_start_screen_folders`, `saturn-terminal/tui/src/view/start_screen.rs`의 `lines_show_the_chat_folder_and_the_added_folders`, `saturn-terminal/tui/src/view/transcript.rs`의 `lines_folder_added_mentions_the_next_session_only_when_one_is_open` |
+| 기본 모델이 없다고 알리면 처음 고르기 창이 한 번 열려 모든 provider의 목록을 요청하고, `Enter`는 기본 모델 저장을, `Esc`는 아무것도 보내지 않는다. 기본 모델이 있으면 열지 않는다. `/model` 창의 `d`는 기본 모델 저장을, `m`은 선택 방식 바꾸기를 보내고, 바뀐 값은 바닥줄과 창 첫 줄에 보이고 안내 한 줄이 남는다. | `saturn-terminal/tui/src/app/tests.rs`의 `missing_default_model_opens_the_first_choice_window_with_every_provider`, `chosen_default_model_does_not_open_the_first_choice_window`, `first_choice_window_enter_saves_the_default_model`, `first_choice_window_escape_saves_nothing_and_is_not_reopened_in_this_run`, `first_choice_window_ignores_the_mode_key`, `model_window_d_saves_the_highlighted_model_as_the_default`, `model_window_m_switches_between_auto_and_manual`, `model_settings_change_leaves_a_notice_and_updates_the_footer_state`, `saturn-terminal/tui/src/view/model_picker.rs`의 `first_choice_window_asks_for_a_default_model_and_lists_every_model`, `model_window_shows_the_default_model_and_the_selection_mode`, `model_window_without_a_default_shows_none`, `saturn-terminal/tui/src/view/footer.rs`의 `right_text_puts_the_selection_mode_before_the_context` |
 | `/model`은 목록 창을 열고, `Enter`는 고른 모델을 engine에 저장하라고 보내고, `Esc`는 아무것도 보내지 않는다. 고정은 채팅에 붙을 때 알려져 창에 표시된다. `/model <provider>`는 그 provider 모델만 요청하고, provider의 `/model`은 넘기지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `model_command_asks_for_the_list_and_opens_the_window`, `model_command_with_a_provider_asks_only_for_that_provider`, `model_window_enter_asks_the_engine_to_pin_the_model`, `model_window_escape_sends_nothing`, `pinned_model_notice_marks_the_model_in_the_next_window`, `model_command_is_not_passed_to_the_provider`, `saturn-terminal/tui/src/view/model_picker.rs`의 `selection_stays_inside_the_list`, `list_starts_on_the_pinned_model`, `saturn-terminal/tui/src/commands.rs`의 `parse_model_reads_an_optional_provider_and_keeps_the_provider_command_out` |
 | 작업 목록은 기본으로 현재 채팅 폴더의 채팅만 보이고 키 `a`로 모든 폴더를 본다. | `saturn-terminal/tui/src/view/task_list.rs`의 `task_list_defaults_to_the_current_folder_and_the_key_widens_it`, `task_list_does_not_hide_chats_whose_folder_is_unknown`, `saturn-terminal/tui/src/app/tests.rs`의 `task_list_opened_from_a_chat_starts_in_the_chat_folder_scope`, `task_list_key_a_widens_the_scope_to_all_folders` |
 | 화면이 없는 파이프와 CI에서도 같은 명령이 같은 결과를 낸다. | `saturn-terminal/tui/src/plain.rs`의 `plain_and_full_screen_cells_use_same_text`, `apply_writes_echo_output_result_and_summary` |

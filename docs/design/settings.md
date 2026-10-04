@@ -67,6 +67,8 @@
 | `agents.worktree` | 참·거짓 | 거짓. 구현 전([#335](https://github.com/woonyong-choi/saturn/issues/335)) |
 | `permission.mode` | `ask`, `edit`, `read-only`, `full` | `edit`(초안) |
 | `permission.shell`, `permission.edit`, `permission.read`, `permission.mcp`, `permission.subagent` | `allow`, `ask`, `deny` 또는 패턴 → 값 표 | 모드를 따름 |
+| `model.default` | `<provider>/<model>` 문자열 | 없음. 처음 고르기 창이 사용자 설정 파일에 쓴다([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)) |
+| `model.mode` | `auto`, `manual` | `auto` |
 | `router.method` | `jev`, `saturn`, `collect` | `jev` |
 | `router.endpoint` | 문자열 | `https://api.typesafe.ai` |
 | `router.model` | 문자열 | `jev-1.13.0` |
@@ -88,6 +90,7 @@
 | `context.select.rrf_k` | 0 이상 정수 | 60 |
 
 - `on_exit`는 TUI를 닫을 때 작업을 어떻게 할지 정한다. `background`는 계속하고, `stop`은 모든 채팅의 작업을 멈춤과 같게 보류하고, `ask`는 작업이 있으면 닫기 전에 묻는다. 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
+- `model.default`는 새 작업을 보낼 기본 모델이고, `model.mode`는 새 작업의 모델을 router가 고를지(`auto`) 사용자가 정한 모델로만 보낼지(`manual`) 정한다. 두 키 모두 사용자 층, 폴더 층, 실행 층에서 정할 수 있고, 입력은 접수 때 고정한 설정 번호의 값을 쓴다. `model.default`가 `<provider>/<model>` 모양이 아니거나 등록하지 않은 provider id면 고르지 않은 것으로 보고 처음 고르기 창을 다시 연다. 모델 창은 값을 사용자 설정 파일에 쓰므로, 폴더 설정이나 `-c`가 같은 키를 정했으면 그 값이 이기고 창은 병합 결과를 보인다. 규칙은 [기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)에 있다.
 - `agents.worktree`가 거짓이면 보조 에이전트는 같은 폴더에서 한 번에 하나씩 쓴다. 참이면 git 저장소일 때만 보조 에이전트의 쓰기를 별도 worktree에서 병렬로 하고, git 저장소가 아니면 거짓일 때와 같다. 쓰기 격리를 사용자가 켠 뒤에만 하기 위해서다. 규칙은 [입력 처리](input-handling.md)에 있다.
 - `permission.mode`는 기본 규칙 묶음이다. `edit`는 작업 폴더 안 편집을 허용하고 나머지는 묻는다. `ask`는 모두 묻고, `read-only`는 읽기만 허용하고, `full`은 `deny` 규칙을 뺀 모두를 허용한다. 모드의 뜻과 provider 대응은 [권한](permissions.md)에 있다. `full`이면 에이전트 질문 기능도 두 provider에서 끈다. 질문만 따로 정하는 키는 없다([입력 요청](input-requests.md#에이전트-질문-설정)). 층 병합에서 폴더 층의 `permission.mode`는 낮은 쪽부터 `read-only`, `ask`, `edit`, `full` 순서일 때 앞 층까지 합친 모드보다 낮은 값만 적용하고, 같거나 높은 값은 무시해 신뢰 창의 무시되는 항목(`permission.mode`)에 보이고, 병합 때 한 줄 경고에도 남는다. 채팅 층의 `/permissions`와 실행 층 `-c`에는 이 제한이 없다.
 - `permission.shell` 같은 개별 규칙은 셸 명령, 파일 편집, 파일 읽기(Claude만. Codex는 읽기 승인 요청이 오지 않아 해당 없음), MCP 도구, subagent 실행의 허용, 묻기, 거부 규칙이다. 문자열 하나면 그 도구 전체에 적용하고, 패턴 표를 주면 패턴마다 값을 준다. 모드 기본 규칙 뒤에 사용자 층 규칙, 폴더 층 규칙, 채팅 층 규칙, 실행 층 규칙을 잇고 마지막으로 일치한 규칙이 이긴다. 단 어느 층이든 `deny`가 하나라도 일치하면 거부한다(채팅 층과 실행 층까지 넣은 것은 초안). 같은 층 안의 순서는 파일에 적힌 순서다(초안). 병합 결과의 `permission`에는 합친 모드와 이은 규칙 목록이 들어가고, 입력은 접수 때 고정한 설정 번호의 목록을 쓴다. `permission` 아래 모르는 키, 모르는 모드, `allow`, `ask`, `deny`가 아닌 값은 검사에 실패한다. 패턴 문법과 판정 흐름, provider별 번역은 [권한](permissions.md)에 있다.
@@ -217,6 +220,7 @@ Saturn 설정은 provider 설정 파일을 바꾸지 않는다. 권한은 `permi
 | 입력은 접수 때 고정한 설정 번호로 끝까지 처리한다. | 처리 중 설정을 바꿔도 그 입력의 provider 실행 값이 접수 때 값인지 확인한다. |
 | 검사에 실패한 설정은 적용하지 않고 이전 설정 번호를 쓴다. | 잘못된 폴더 설정으로 바꾼 뒤 이전 설정 번호가 유지되는지 확인한다. |
 | 설정 파일을 바꾸면 입력 없이도 engine이 알아채 provider에 적용한다. 쓰는 도중의 파일은 적용하지 않고, 잘못된 파일은 이전 설정을 유지하며 경고한다. | `saturn-terminal/engine/src/lifecycle/settings_watch.rs`의 `settings_watch_restarts_an_idle_chat_without_any_input`, `settings_watch_waits_for_the_turn_end_when_the_chat_is_running`, `settings_watch_ignores_a_file_that_is_still_being_written`, `settings_watch_keeps_the_connection_and_warns_when_the_file_is_invalid`, `settings_watch_runs_in_the_serve_loop` |
+| `model.default`와 `model.mode`를 알려진 키로 읽고 값을 검사하며, 기본 모델이나 방식을 바꾸면 사용자 설정 파일에 쓰고 붙은 TUI에 알린다. | `saturn-terminal/engine/src/lifecycle/model_mode.rs`의 `choosing_the_default_model_writes_the_user_config_and_tells_the_tui`, `changing_the_mode_writes_the_user_config_and_applies_to_the_next_input` |
 | 명령으로 설정 파일을 고쳐도 주석이 남는다. | 주석이 있는 파일을 명령으로 고친 뒤 주석이 그대로인지 확인한다. |
 | 설정 파일은 읽은 버전을 확인한 뒤 쓴다. | 읽기와 쓰기 사이에 파일을 고쳐도 그 변경이 사라지지 않는지 확인한다. |
 | 옛 `context.<id>.*` 키를 새 `provider.<id>.context.*` 키의 별칭으로 읽고, 새 키를 알려진 이름으로만 허용한다. | `saturn-terminal/engine/src/settings/layers.rs`의 `provider_context_key_reads_from_the_new_name`, `old_context_key_is_an_alias_of_the_new_key`, `new_key_wins_over_the_old_alias_in_the_same_layer`, `higher_layer_old_key_beats_lower_layer_new_key`, `old_snapshot_keeps_its_old_key_name`, `provider_keys_accept_any_well_formed_id_and_reject_unknown_names`. 어댑터가 알린 키로만 허용하는 부분은 구현 전(#412) |

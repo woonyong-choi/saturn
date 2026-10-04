@@ -117,6 +117,10 @@ pub(crate) enum Action {
     // 기록 정리 창
     PruneConfirm,
 
+    // 모델 선택 창
+    SetDefaultModel,
+    ToggleModelMode,
+
     // router 버전 화면
     ResetThresholds,
     TrainFrom,
@@ -344,6 +348,8 @@ pub(crate) fn router_version(key: KeyEvent) -> Option<Action> {
 
 pub(crate) fn model_picker(key: KeyEvent) -> Option<Action> {
     match key.code {
+        KeyCode::Char('d') if is_char(key, 'd') => Some(Action::SetDefaultModel),
+        KeyCode::Char('m') if is_char(key, 'm') => Some(Action::ToggleModelMode),
         KeyCode::Enter => Some(Action::Confirm),
         KeyCode::Esc => Some(Action::Close),
         KeyCode::Up => Some(Action::Up),

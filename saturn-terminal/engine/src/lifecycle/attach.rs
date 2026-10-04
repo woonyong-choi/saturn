@@ -111,7 +111,7 @@ async fn attach_sends_start_info_then_history_then_permissions() {
     })
     .await;
 
-    assert_eq!(received.len(), 3);
+    assert_eq!(received.len(), 4);
     let Notification::StartInfo {
         router,
         router_version,
@@ -155,6 +155,7 @@ async fn attach_sends_start_info_then_history_then_permissions() {
         }
     );
     assert_eq!(received[2], permission());
+    assert!(matches!(received[3], Notification::ModelSettings { .. }));
     let attachment = &engine.attachments.values().next().unwrap();
     assert_eq!(attachment.chat, chat);
     assert_eq!(
@@ -602,11 +603,12 @@ async fn attach_while_waiting_for_key_asks_for_key_after_greeting() {
         Notification::StartInfo { router_version, .. } if router_version.is_empty()
     ));
     assert!(matches!(received[1], Notification::HistoryChunk { .. }));
+    assert!(matches!(received[2], Notification::ModelSettings { .. }));
     assert!(matches!(
-        &received[2],
+        &received[3],
         Notification::RouterKeyRequired { reason } if !reason.is_empty()
     ));
-    assert_eq!(received.len(), 3);
+    assert_eq!(received.len(), 4);
 }
 
 #[tokio::test]

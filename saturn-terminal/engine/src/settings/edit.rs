@@ -108,6 +108,16 @@ impl SettingsManager {
         })
     }
 
+    /// 사용자 설정 파일의 키 하나를 고친다. `value`는 TOML 값 글이다. 읽은 뒤 파일이 바뀌었으면 `Conflict`.
+    ///
+    /// # Errors
+    /// `set_value`와 같다.
+    pub(crate) async fn set_user_value(&self, key: &str, value: &str) -> Result<(), SettingsError> {
+        let path = self.user_config_path();
+        let (_, read) = self.read_for_edit(&path).await?;
+        self.set_value(&path, key, value, &read).await
+    }
+
     /// 키 원문은 받지 않는다.
     pub(crate) async fn record_key_info(&self, info: &KeyInfo) -> Result<(), SettingsError> {
         let path = self.user_config_path();
