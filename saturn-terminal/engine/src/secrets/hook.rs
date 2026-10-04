@@ -5,7 +5,10 @@ use std::path::{Path, PathBuf};
 
 use serde_json::json;
 
+use self::shell_words::{Segment, tokenize};
 use super::storage::KEY_FILE;
+
+mod shell_words;
 
 /// 초안 목록.
 const BLOCKED_SECURITY_SUBCOMMANDS: &[&str] = &[
@@ -16,7 +19,44 @@ const BLOCKED_SECURITY_SUBCOMMANDS: &[&str] = &[
 ];
 
 /// 건너뛰고 다음 낱말을 본다.
-const COMMAND_WRAPPERS: &[&str] = &["sudo", "env", "command", "exec", "nohup", "time", "xargs"];
+const COMMAND_WRAPPERS: &[&str] = &[
+    "sudo",
+    "doas",
+    "env",
+    "command",
+    "builtin",
+    "exec",
+    "nohup",
+    "time",
+    "xargs",
+    "timeout",
+    "nice",
+    "setsid",
+    "arch",
+    "caffeinate",
+    "{",
+    "!",
+    "if",
+    "then",
+    "elif",
+    "else",
+    "while",
+    "until",
+    "do",
+];
+
+/// `-c` 인자와 표준 입력을 같은 판정기로 다시 본다.
+const SHELLS: &[&str] = &[
+    "sh", "bash", "zsh", "dash", "ksh", "fish", "ash", "csh", "tcsh",
+];
+
+/// 이름이 이 낱말로 시작하는 실행 파일(`python3.12`, `nodejs`)도 포함한다.
+const INTERPRETER_PREFIXES: &[&str] = &["python", "perl", "ruby", "node", "php", "lua"];
+
+const INTERPRETERS: &[&str] = &["osascript", "deno", "bun", "swift", "awk", "gawk", "mawk"];
+
+/// 셸 인자 안의 셸 인자를 따라가는 깊이. 넘으면 막는다.
+const MAX_NESTING: usize = 4;
 
 const COMMAND_SEPARATORS: &[&str] = &["&&", "||", ";", "|", "$(", "`", "(", ")", "\n", "&"];
 
@@ -111,6 +151,11 @@ impl HookPolicy {
     }
 
     fn command_blocked(&self, command: &str) -> bool {
+        self.split_command_blocked(command) || self.command_blocked_at(command, 0)
+    }
+
+    /// 따옴표를 무시하고 연결 기호로 먼저 쪼개 보는 넓은 검사. 따옴표 안의 `$(`와 백틱도 잡는다.
+    fn split_command_blocked(&self, command: &str) -> bool {
         let mut parts = vec![command.to_owned()];
         for separator in COMMAND_SEPARATORS {
             parts = parts
@@ -149,6 +194,126 @@ impl HookPolicy {
         self.blocked_commands.contains(&line)
     }
 
+    /// 따옴표와 이스케이프를 풀어 낱말로 나눈 뒤 셸 `-c`, `eval`, 표준 입력 셸, 인터프리터 문자열까지 본다.
+    /// 해석할 수 없거나 깊이 상한을 넘으면 막는다.
+    fn command_blocked_at(&self, command: &str, depth: usize) -> bool {
+        if depth > MAX_NESTING {
+            return true;
+        }
+        let Some(segments) = tokenize(command) else {
+            return true;
+        };
+        segments.iter().enumerate().any(|(index, segment)| {
+            let previous = index.checked_sub(1).map(|prev| &segments[prev]);
+            self.segment_blocked(segment, previous, depth)
+        })
+    }
+
+    fn segment_blocked(&self, segment: &Segment, previous: Option<&Segment>, depth: usize) -> bool {
+        let words = &segment.words;
+        if words
+            .iter()
+            .any(|word| self.path_blocked(&self.expand_home(word)))
+        {
+            return true;
+        }
+        // 큰따옴표 안의 `$(...)`와 백틱은 낱말 안에 남으므로 다시 푼다.
+        if words.iter().any(|word| {
+            (word.contains("$(") || word.contains('`')) && self.command_blocked_at(word, depth + 1)
+        }) {
+            return true;
+        }
+        command_starts(words).into_iter().any(|start| {
+            let program = base_name(&words[start]);
+            let args = &words[start + 1..];
+            if program == "security" {
+                return self.security_blocked(args);
+            }
+            if program == "eval" {
+                return self.command_blocked_at(&args.join(" "), depth + 1);
+            }
+            if SHELLS.contains(&program.as_str()) {
+                return self.shell_blocked(segment, previous, args, depth);
+            }
+            if is_interpreter(&program) {
+                return args
+                    .iter()
+                    .chain(segment.heredoc.iter())
+                    .any(|text| self.text_reaches_key_store(text));
+            }
+            false
+        })
+    }
+
+    fn security_blocked(&self, args: &[String]) -> bool {
+        if args.iter().any(|arg| arg == "-i" || arg == "--interactive") {
+            return true;
+        }
+        args.iter()
+            .find(|arg| !arg.starts_with('-'))
+            .is_some_and(|sub| BLOCKED_SECURITY_SUBCOMMANDS.contains(&sub.as_str()))
+    }
+
+    fn shell_blocked(
+        &self,
+        segment: &Segment,
+        previous: Option<&Segment>,
+        args: &[String],
+        depth: usize,
+    ) -> bool {
+        let command_flag = args.iter().position(|arg| {
+            arg == "--command"
+                || (arg.starts_with('-') && !arg.starts_with("--") && arg[1..].contains('c'))
+        });
+        if let Some(flag) = command_flag {
+            return args[flag + 1..]
+                .iter()
+                .find(|arg| !arg.starts_with('-'))
+                .is_some_and(|script| self.command_blocked_at(script, depth + 1));
+        }
+        if let Some(here) = args.iter().position(|arg| arg == "<<<") {
+            return args
+                .get(here + 1)
+                .is_some_and(|script| self.command_blocked_at(script, depth + 1));
+        }
+        if let Some(body) = &segment.heredoc {
+            return self.command_blocked_at(body, depth + 1);
+        }
+        let reads_stdin = args.iter().all(|arg| arg.starts_with('-'));
+        if reads_stdin
+            && segment.piped
+            && let Some(previous) = previous
+        {
+            let mut fed = previous
+                .words
+                .iter()
+                .skip(1)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(" ");
+            if let Some(body) = &previous.heredoc {
+                fed.push('\n');
+                fed.push_str(body);
+            }
+            return self.command_blocked_at(&fed, depth + 1);
+        }
+        false
+    }
+
+    /// 인터프리터 문자열은 해석하지 않고 키 저장소를 가리키는 표현이 있는지만 본다.
+    fn text_reaches_key_store(&self, text: &str) -> bool {
+        (text.contains("security")
+            && BLOCKED_SECURITY_SUBCOMMANDS
+                .iter()
+                .any(|sub| text.contains(sub)))
+            || text.contains("Library/Keychains")
+            || text.contains(KEY_FILE)
+            || self
+                .blocked_paths
+                .iter()
+                .any(|path| text.contains(path.to_string_lossy().as_ref()))
+    }
+
     /// 있는 경로면 심볼릭 링크를 푼 뒤 본다.
     fn path_blocked(&self, path: &Path) -> bool {
         if !path.is_absolute() {
@@ -179,6 +344,40 @@ pub fn pre_tool_use_hook_settings(
     saturn_bin: &Path,
 ) -> serde_json::Value {
     HookPolicy::new(saturn_home, user_home).pre_tool_use_settings(saturn_bin)
+}
+
+/// 낱말 목록에서 명령이 시작할 수 있는 자리. 감싸는 명령 뒤에는 옵션 인자를 알 수 없어 뒤의 낱말을 모두 후보로 본다.
+fn command_starts(words: &[String]) -> Vec<usize> {
+    let mut starts = Vec::new();
+    let mut wrapped = false;
+    for (index, word) in words.iter().enumerate() {
+        if word.contains('=') || (wrapped && word.starts_with('-')) {
+            continue;
+        }
+        if COMMAND_WRAPPERS.contains(&base_name(word).as_str()) {
+            wrapped = true;
+            continue;
+        }
+        starts.push(index);
+        if !wrapped {
+            break;
+        }
+    }
+    starts
+}
+
+fn base_name(program: &str) -> String {
+    Path::new(program)
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+fn is_interpreter(program: &str) -> bool {
+    INTERPRETERS.contains(&program)
+        || INTERPRETER_PREFIXES
+            .iter()
+            .any(|prefix| program.starts_with(prefix))
 }
 
 fn shell_quote(word: &str) -> String {
@@ -286,6 +485,173 @@ mod tests {
             panic!("should deny");
         };
         assert!(!reason.contains('/'));
+    }
+
+    fn assert_all_denied(commands: &[&str]) {
+        let (_dir, policy) = policy();
+        for command in commands {
+            assert!(
+                denied(&policy, ToolCall::Command((*command).to_owned())),
+                "{command}"
+            );
+        }
+    }
+
+    fn assert_all_allowed(commands: &[&str]) {
+        let (_dir, policy) = policy();
+        for command in commands {
+            assert!(
+                !denied(&policy, ToolCall::Command((*command).to_owned())),
+                "{command}"
+            );
+        }
+    }
+
+    #[test]
+    fn shell_wrapped_lookups_are_denied() {
+        assert_all_denied(&[
+            r#"sh -c "/usr/bin/security find-generic-password -s x -w""#,
+            "bash -c 'security find-generic-password -s x -w'",
+            r#"zsh -c "security find-internet-password -s x""#,
+            r#"/bin/sh -c "security dump-keychain""#,
+            r#"dash -c "security export""#,
+            "ksh -c 'security find-generic-password -s x'",
+            "fish -c 'security find-generic-password -s x'",
+            r#"env sh -c "security find-generic-password -s x -w""#,
+            "env -i /bin/bash -lc 'security export'",
+            r#"sudo -u root sh -c "security find-generic-password -s x""#,
+            "xargs sh -c 'security find-generic-password -s x'",
+            "bash -o pipefail -c 'security find-generic-password -s x'",
+        ]);
+    }
+
+    #[test]
+    fn quoting_and_escapes_inside_shell_strings_do_not_hide_lookups() {
+        assert_all_denied(&[
+            r#"sh -c 'sec"ur"ity find-generic-password -s x -w'"#,
+            r#"sh -c "s\ecurity find-generic-password -s x""#,
+            r#"sh -c "'security' 'find-generic-password' -s x""#,
+            r#"sh -c "sec''urity find-generic-password -s x""#,
+            r#"sh -c "echo $(security find-generic-password -s x)""#,
+            r#"sh -c 'echo "$(sec""urity find-generic-password -s x)"'"#,
+            r#"sh -c 'cat "$HOME"/.saturn/router.key'"#,
+        ]);
+    }
+
+    #[test]
+    fn separators_inside_shell_strings_are_split() {
+        assert_all_denied(&[
+            r#"sh -c "true; security find-generic-password -s x""#,
+            r#"sh -c "true && security find-generic-password -s x""#,
+            "sh -c 'true || (security find-generic-password -s x)'",
+            "sh -c 'ls | security find-generic-password -s x'",
+            "sh -c 'ls\nsecurity find-generic-password -s x'",
+        ]);
+    }
+
+    #[test]
+    fn eval_strings_are_judged_again() {
+        assert_all_denied(&[
+            r#"eval "security find-generic-password -s x -w""#,
+            "eval security find-generic-password -s x -w",
+            "bash -c \"eval 'security find-generic-password -s x'\"",
+            "true && eval 'security export'",
+        ]);
+    }
+
+    #[test]
+    fn nested_shells_are_judged_down_to_the_limit() {
+        let mut command = "security find-generic-password -s x".to_owned();
+        for _ in 0..3 {
+            command = format!("sh -c '{}'", command.replace('\'', r"'\''"));
+        }
+        assert_all_denied(&[&command]);
+    }
+
+    #[test]
+    fn nesting_beyond_the_limit_is_denied() {
+        let mut command = "echo hello".to_owned();
+        for _ in 0..12 {
+            command = format!("sh -c '{}'", command.replace('\'', r"'\''"));
+        }
+        assert_all_denied(&[&command]);
+    }
+
+    #[test]
+    fn unparseable_commands_are_denied() {
+        assert_all_denied(&[
+            r#"sh -c "security find-generic-password"#,
+            "sh -c 'echo \"unterminated'",
+            "echo 'unterminated",
+            "cat <<",
+        ]);
+    }
+
+    #[test]
+    fn interpreter_one_liners_naming_key_stores_are_denied() {
+        assert_all_denied(&[
+            "python3 -c \"import subprocess; subprocess.run(['security','find-generic-password','-s','x','-w'])\"",
+            "python -c 'import os; os.system(\"security dump-keychain\")'",
+            r#"perl -e 'system("security find-generic-password -s x -w")'"#,
+            "ruby -e 'puts `security find-generic-password -s x -w`'",
+            "node -e \"require('child_process').execSync('security find-generic-password -s x')\"",
+            r#"osascript -e 'do shell script "security find-generic-password -s x -w"'"#,
+            "python3 -c \"print(open('/Users/someone/.saturn/router.key').read())\"",
+            "node -e \"require('fs').readFileSync(require('os').homedir() + '/Library/Keychains/login.keychain-db')\"",
+            "/usr/bin/env python3 -c 'import os; os.system(\"security export\")'",
+            "sh -c \"python3 -c 'import os; os.system(\\\"security export\\\")'\"",
+        ]);
+    }
+
+    #[test]
+    fn shells_fed_by_pipe_here_string_or_here_document_are_judged() {
+        assert_all_denied(&[
+            r#"echo "security find-generic-password -s x -w" | sh"#,
+            r#"printf 'security export' | bash"#,
+            r#"sh <<< "security find-generic-password -s x -w""#,
+            "sh <<EOF\nsecurity find-generic-password -s x -w\nEOF",
+            "cat <<'EOF' | bash\nsecurity find-generic-password -s x\nEOF",
+            "python3 <<EOF\nimport os\nos.system('security dump-keychain')\nEOF",
+        ]);
+    }
+
+    #[test]
+    fn interactive_security_is_denied() {
+        assert_all_denied(&[
+            "security -i",
+            r#"echo "find-generic-password -s x -w" | /usr/bin/security -i"#,
+        ]);
+    }
+
+    #[test]
+    fn wrapped_commands_outside_the_list_are_allowed() {
+        assert_all_allowed(&[
+            r#"sh -c "ls""#,
+            "bash -c 'echo hello && cargo test'",
+            r#"sh -c "security list-keychains""#,
+            "zsh -lc 'grep -rn security src'",
+            r#"eval "echo hi""#,
+            "env FOO=1 sh -c 'cargo test'",
+            "sh script.sh",
+            "bash -c 'echo \"security notes\"'",
+            "python3 -c \"print('security')\"",
+            r#"node -e "console.log(1)""#,
+            "perl -e 'print 1'",
+            "ruby -e 'puts 1'",
+            "osascript -e 'display dialog \"hi\"'",
+            "ls | sh -c 'wc -l'",
+            "echo hello | bash",
+        ]);
+    }
+
+    #[test]
+    fn quotes_comments_and_here_documents_in_ordinary_commands_are_allowed() {
+        assert_all_allowed(&[
+            r#"git commit -m "don't leak""#,
+            "cat <<'EOF'\ndon't stop\nEOF",
+            "echo done # don't worry",
+            "cat > notes.txt <<EOF\nit's fine\nEOF\nls",
+        ]);
     }
 
     #[test]
