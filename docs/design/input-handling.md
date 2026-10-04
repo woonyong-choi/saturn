@@ -201,8 +201,8 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 - 확인된 상태로 만든 새 입력은 멈춤 때 실행 중이던 작업에만 보낸다. 실행 전이던 작업은 보류 입력을 대기로 되돌리기만 한다. 끝난 턴을 다시 이어 붙이지 않기 위해서다.
 - 새 입력은 멈춘 턴을 연 입력의 원문 앞에 그 턴의 결과를 오류 결과(`Previous turn result (error): Interrupted before a result was recorded · It may have partially run`)로 두는 글이다. 중단돼 결과를 모른다는 사실은 별도 경고나 상태 확인 지시 문장 없이 Claude Code, Codex가 도구 결과를 보이는 방식과 같게 결과 자리의 오류 결과 하나로만 넣는다([#282](https://github.com/woonyong-choi/saturn/issues/282)). 접수할 때 관계 판단 없이 그 작업에 대기로 붙이고, 쓰기 규칙을 그대로 적용한다.
 - 같은 작업에 보류 입력이 있으면 접수 순서가 앞선 그 입력이 먼저 가고 새 입력은 그 턴이 끝난 뒤에 간다.
-- 입력 하나를 재개하는 요청은 그 입력이 붙은 작업을 재개한다. 입력 하나만 재개하는 규칙은 정해지기 전이다.
-- 보낸 뒤 결과를 모르는 작업은 `/continue`에 작업을 가리킬 때만 잇는다. 대상이 없는 재개가 결과를 모르는 작업을 건드리지 않는 것은 이미 반영됐을 수 있는 일을 사용자 뜻 없이 이어 가지 않기 위해서다. 잇는 방법은 멈춘 작업과 같은 확인 입력이고, 원래 입력은 `전달 중`으로 남기고 다시 보내지 않는다. 그 실행 기록은 닫는다.
+- 입력 하나를 재개하는 요청은 그 입력이 붙은 작업 전체를 재개한다. 같은 작업의 보류 입력은 접수 순서대로 모두 가고, 확인 입력은 그 뒤에 간다. 재개와 보류 종료를 작업 단위로 맞추고, 한 작업의 입력을 일부만 보내 순서가 어긋나거나 일부만 남지 않게 하기 위해서다.
+- 보낸 뒤 결과를 모르는 작업은 `/continue`에 작업을 가리킬 때만 잇는다. 대상이 없는 재개가 결과를 모르는 작업을 건드리지 않는 것은 이미 반영됐을 수 있는 일을 사용자 뜻 없이 이어 가지 않기 위해서다. 잇는 방법은 멈춘 작업과 같은 확인 입력이고, 원래 입력은 `전달 중`으로 남기고 다시 보내지 않는다. 그 실행 기록은 닫는다. 원래 입력을 다시 보내면 이미 반영됐을 수 있는 일을 두 번 하기 때문이다.
 - 보류 종료는 보내지 않은 입력을 취소하고, 그 작업의 에이전트 session을 provider에서 닫고 끝낸다. 기록과 수정된 파일은 그대로 둔다.
 
 ### 쓰기 규칙
@@ -268,6 +268,8 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 보낸 뒤 결과가 불명인 입력은 자동으로 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `unknown_is_never_sent_again_and_the_task_needs_check` |
 | 결과를 모르는 도구 실행은 `중단됨`으로 보이고 이어 가는 기록에 오류 결과로 들어간다. | `saturn-terminal/tui/src/view/transcript.rs`의 `interrupted_tool_shows_a_red_interrupted_line`, `saturn-terminal/tui/src/app/tests.rs`의 `interrupted_tool_is_marked_when_the_task_is_held_without_a_result`, `saturn-terminal/engine/src/handoff.rs`의 `interrupted_tool_call_is_an_error_result_not_a_warning`, `waiting_held_and_interrupted_inputs_are_open_items` |
 | 거절된 입력은 빨간색 `거절됨`으로 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `rejected_input_shows_a_red_rejected_badge`, `failed_cause_is_red` |
+| 보류 입력 하나를 재개하면 그 작업의 보류 입력을 접수 순서대로 모두 재개한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `continue_input_resumes_the_task_of_that_input`, `continue_sends_held_input_and_then_a_state_check_for_the_interrupted_task` |
+| 결과를 모르는 작업은 `/continue <작업>`으로만 확인 입력을 보내 잇고 원래 입력은 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `task_with_unknown_result_is_continued_only_when_named` |
 | 보내기 전에 확정된 실패만 다시 보낸다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `not_sent_is_sent_again_and_then_applied`, `not_sent_every_time_is_rejected_and_the_next_input_still_goes`, `open_failure_that_is_not_a_resend_case_rejects_without_sending` |
 | 같은 채팅의 입력은 접수 순서대로 하나씩 판단한다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `inputs_are_routed_one_at_a_time_in_accept_order` |
 | router 호출이 재시도 뒤에도 실패하면 입력을 대기로 보내지 않고 현재 에이전트와 현재 모델로 보낸다. | `saturn-terminal/core/src/routers/failure.rs`의 `route_after_failure_idle_sends_to_current_agent_and_model`, `route_after_failure_running_steers_instead_of_queueing` |
@@ -307,5 +309,4 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 - 허가 거절 뒤 다르게 하라는 입력을 판단 없이 끼워 넣을지, 허가 창에서 받을지, 일반 입력으로 판단할지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
 - 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
-- 보류 입력 하나만 재개할지, 같은 작업의 보류 입력을 함께 재개할지. 같은 작업에 보류 입력이 있을 때 확인 입력이 그 입력보다 앞서야 하는지 ([#90](https://github.com/woonyong-choi/saturn/issues/90))
 - 멈춘 작업의 트리 유휴 신호가 끝내 오지 않을 때 완료 보고를 기다리는 한도 ([#90](https://github.com/woonyong-choi/saturn/issues/90))
