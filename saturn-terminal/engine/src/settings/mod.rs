@@ -182,6 +182,10 @@ impl Settings {
         let days = self.get("retention.max_age_days").and_then(Value::as_u64);
         RetentionPolicy {
             max_age: days.map(|days| Duration::from_secs(days.saturating_mul(24 * 60 * 60))),
+            auto_prune: self
+                .get("retention.auto_prune")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
         }
     }
 

@@ -170,6 +170,15 @@ impl Store {
             .expect("pragma should apply");
     }
 
+    /// 삭제 흔적 표를 지워 이후 채팅 삭제가 실패하게 만든다. 정리 실패를 시험한다.
+    #[cfg(test)]
+    pub(crate) async fn break_tombstones(&self) {
+        sqlx::query("DROP TABLE tombstones")
+            .execute(&self.pool)
+            .await
+            .expect("tombstones should be dropped");
+    }
+
     /// 채팅과 그 입력의 시각을 `days`일 전으로 미룬다. 정리 대상이 되는 오래된 채팅을 만든다.
     #[cfg(test)]
     pub(crate) async fn age_chat(&self, chat: saturn_protocol::ids::ChatId, days: u64) {

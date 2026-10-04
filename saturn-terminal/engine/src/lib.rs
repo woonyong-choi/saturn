@@ -206,10 +206,18 @@ enum RouterGate {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AutoPruneNotice {
+    Deleted { chats: u32, rows: u64 },
+    Failed,
+}
+
 /// 첫 TUI에 한 번 보낸다.
 #[derive(Debug, Default)]
 struct StartNotices {
     migration: Option<MigrationNotice>,
+    /// 시작 때 자동 정리의 결과. 지운 채팅이 있거나 실패했을 때만 둔다.
+    auto_prune: Option<AutoPruneNotice>,
     /// 크래시 복구가 보류한 작업. 그 채팅에 처음 붙는 TUI에 `/continue`를 제안하고 지운다.
     resume_suggested: HashMap<ChatId, Vec<TaskId>>,
 }
@@ -297,10 +305,21 @@ pub struct Engine {
 impl Engine {
     pub async fn run(options: EngineOptions) -> Result<(), EngineError> {
         let mut engine = Self::start(options).await?;
-        engine.recover_after_crash().await?;
+        engine.finish_start().await?;
         let served = engine.serve().await;
         engine.shutdown().await?;
         served
+    }
+
+    /// 소켓을 연 뒤 요청을 처리하기 전에 한다. 크래시 복구가 열린 입력을 되살린 뒤에 자동 정리를 해
+    /// 되살아난 채팅을 지우지 않게 한다.
+    ///
+    /// # Errors
+    /// 크래시 복구가 기록 저장소를 읽지 못하면 `Store`. 자동 정리 실패는 오류로 끝내지 않는다.
+    async fn finish_start(&mut self) -> Result<(), EngineError> {
+        self.recover_after_crash().await?;
+        self.auto_prune_on_start().await;
+        Ok(())
     }
 
     /// 순서: `StartInfo` → `HistoryChunk` → 답을 기다리는 허가 요청 → 고정 모델(`ModelPinned`, 고정했을 때만) → 시작 안내와 키·신뢰 창.

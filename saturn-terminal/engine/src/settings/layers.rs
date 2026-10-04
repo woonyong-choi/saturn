@@ -112,6 +112,7 @@ const SCHEMA: &[(&str, Kind)] = &[
     ("grading.model", Kind::Text),
     ("consent.share_with_server", Kind::Flag),
     ("retention.max_age_days", Kind::Positive),
+    ("retention.auto_prune", Kind::Flag),
     ("context.safety_percent", Kind::Percent),
     ("context.mode", Kind::OneOf(&["saturn", "provider"])),
     ("context.codex.t_abs", Kind::Positive),

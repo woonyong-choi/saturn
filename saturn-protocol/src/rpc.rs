@@ -518,6 +518,10 @@ pub enum Alert {
     RouterDownSendingInOrder,
     /// 시작할 때 기록 저장소 스키마를 이관했다. 첫 TUI에만 보낸다.
     SchemaMigrated { from: u32, to: u32 },
+    /// 시작할 때 자동 정리가 오래된 채팅을 지웠다. 첫 TUI에만 보낸다.
+    AutoPruned { chats: u32, rows: u64 },
+    /// 시작할 때 자동 정리가 실패했다. 아무것도 지우지 않았다. 첫 TUI에만 보낸다.
+    AutoPruneFailed,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

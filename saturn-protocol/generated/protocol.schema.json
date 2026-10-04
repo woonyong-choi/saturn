@@ -106,6 +106,40 @@
             "SchemaMigrated"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "시작할 때 자동 정리가 오래된 채팅을 지웠다. 첫 TUI에만 보낸다.",
+          "properties": {
+            "AutoPruned": {
+              "properties": {
+                "chats": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "rows": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "chats",
+                "rows"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "AutoPruned"
+          ],
+          "type": "object"
+        },
+        {
+          "const": "AutoPruneFailed",
+          "description": "시작할 때 자동 정리가 실패했다. 아무것도 지우지 않았다. 첫 TUI에만 보낸다.",
+          "type": "string"
         }
       ]
     },

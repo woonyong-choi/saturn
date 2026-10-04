@@ -11,7 +11,7 @@ use crate::rpc::ClientId;
 use crate::secrets::{KeyInput, Masker};
 use crate::settings::{Applied, FolderTrustPrompt};
 use crate::store::{HistoryEntry, RunEnd};
-use crate::{Engine, EngineError, RouterGate, masked_chain};
+use crate::{AutoPruneNotice, Engine, EngineError, RouterGate, masked_chain};
 
 /// 초안. `LoadHistory` 한 번에 보내는 최대 기록 수.
 const MAX_HISTORY: u32 = 500;
@@ -132,6 +132,13 @@ impl Engine {
             let alert = Alert::SchemaMigrated {
                 from: notice.from,
                 to: notice.to,
+            };
+            self.send(client, Notification::Alert { alert }).await;
+        }
+        if let Some(notice) = self.notices.auto_prune.take() {
+            let alert = match notice {
+                AutoPruneNotice::Deleted { chats, rows } => Alert::AutoPruned { chats, rows },
+                AutoPruneNotice::Failed => Alert::AutoPruneFailed,
             };
             self.send(client, Notification::Alert { alert }).await;
         }
