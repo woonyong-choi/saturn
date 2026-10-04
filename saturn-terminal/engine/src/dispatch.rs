@@ -367,6 +367,18 @@ impl Engine {
         Ok(())
     }
 
+    /// 끼워 넣은 입력을 받은 것으로 기록하고 알린다. 들어간 실행 연결과 `Applied`를 함께 저장하므로
+    /// 저장에 실패해도 연결 없는 `Applied`가 남지 않고, 이미 보낸 입력은 다시 보내지 않는다.
+    pub(crate) async fn record_steered(&mut self, delivery: &Delivery) -> Result<(), EngineError> {
+        let (input, Some(run)) = (delivery.input, delivery.run) else {
+            return self.record_applied(delivery).await;
+        };
+        self.queue.set_state(input, InputState::Applied)?;
+        self.store.apply_steered(input, run).await?;
+        self.notify_input(input).await;
+        Ok(())
+    }
+
     /// 보낸 뒤 결과를 모른다. 다시 보내지 않고 입력은 `Delivering`으로 두며 실행 기록도 열어 둔다.
     /// 사용자는 `/continue <작업>`으로 확인 입력을 보내 이어 간다(`continue_held`).
     async fn needs_check(&mut self, delivery: &Delivery) {

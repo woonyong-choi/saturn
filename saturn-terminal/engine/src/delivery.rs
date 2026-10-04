@@ -362,16 +362,11 @@ impl Engine {
             Err(ProviderError::NotSent { reason }) => {
                 self.return_refused_steer(&job.delivery, &reason).await
             }
-            other => {
-                if other.is_ok()
-                    && let Some(run) = job.delivery.run
-                {
-                    // 끼워 넣어 적용한 입력은 들어간 실행에 묶어 둬야 인계 패킷이 사용자 입력으로 읽는다
-                    let marked = self.store.mark_steered(job.delivery.input, run).await;
-                    self.warn_failure("failed to record the steered input", marked);
-                }
-                self.settle(job.delivery, other).await
+            Ok(()) if job.delivery.run.is_some() => {
+                // 끼워 넣어 적용한 입력은 들어간 실행에 묶어 둬야 인계 패킷이 사용자 입력으로 읽는다
+                self.record_steered(&job.delivery).await
             }
+            other => self.settle(job.delivery, other).await,
         }
     }
 

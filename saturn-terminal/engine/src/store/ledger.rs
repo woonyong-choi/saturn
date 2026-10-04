@@ -6,7 +6,7 @@ use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId, TaskId}
 use saturn_protocol::state::InputState;
 use sqlx::Row;
 
-use super::records::parse_run_end;
+use super::records::{ensure_found, parse_run_end};
 use super::{RunEnd, Store, StoreError, enum_text, from_sql_int, to_sql_int};
 
 /// 이벤트 한 건과 그 이벤트를 낸 실행의 session, 실행을 연 입력 원문.
@@ -38,20 +38,35 @@ pub(crate) struct SteeredInput {
 }
 
 impl Store {
-    /// 끼워 넣기가 적용된 입력을 그 실행에 묶고 지금까지 쌓인 기록 번호를 남긴다. 같은 입력을 다시 부르면 덮어쓴다.
+    /// 끼워 넣기가 적용된 입력을 그 실행에 묶고 지금까지 쌓인 기록 번호를 남기며 `Applied`로 바꾼다.
+    /// 연결과 상태는 한 문장으로 쓰므로 둘 중 하나만 반영되지 않는다. 같은 입력을 다시 부르면 덮어쓴다.
     ///
     /// # Errors
-    /// 저장 실패면 `Database`.
-    pub(crate) async fn mark_steered(&self, input: InputId, run: RunId) -> Result<(), StoreError> {
-        sqlx::query(
+    /// 저장 실패면 `Database`, 없는 입력이면 `NotFound`.
+    pub(crate) async fn apply_steered(&self, input: InputId, run: RunId) -> Result<(), StoreError> {
+        let linked = sqlx::query(
             "UPDATE inputs SET steered_run = ?, steered_after = \
-             (SELECT COALESCE(MAX(seq), 0) FROM events WHERE chat_id = inputs.chat_id) WHERE id = ?",
+             (SELECT COALESCE(MAX(seq), 0) FROM events WHERE chat_id = inputs.chat_id), \
+             state = ?, reason = NULL WHERE id = ?",
         )
         .bind(to_sql_int(run.0))
+        .bind(enum_text(&InputState::Applied)?)
         .bind(to_sql_int(input.0))
         .execute(&self.pool)
         .await?;
-        Ok(())
+        ensure_found(linked.rows_affected(), || format!("input {}", input.0))
+    }
+
+    /// 끼워 넣기 연결 갱신만 실패하게 만든다. 상태 갱신은 그대로 성공한다.
+    #[cfg(test)]
+    pub(crate) async fn fail_steer_link_updates(&self) {
+        sqlx::raw_sql(
+            "CREATE TRIGGER fail_steer_link BEFORE UPDATE OF steered_run ON inputs \
+             BEGIN SELECT RAISE(ABORT, 'steer link refused'); END",
+        )
+        .execute(&self.pool)
+        .await
+        .unwrap();
     }
 
     /// 채팅에서 끼워 넣어 적용한 입력을 접수 순서로 돌려준다.
@@ -201,17 +216,9 @@ mod tests {
             ))
             .await
             .unwrap();
-        store.mark_steered(first, run).await.unwrap();
+        store.apply_steered(first, run).await.unwrap();
         store.append_event(run, chat, &text(1, "b")).await.unwrap();
-        store.mark_steered(second, run).await.unwrap();
-        store
-            .set_input_state(first, InputState::Applied, None)
-            .await
-            .unwrap();
-        store
-            .set_input_state(second, InputState::Applied, None)
-            .await
-            .unwrap();
+        store.apply_steered(second, run).await.unwrap();
 
         let steered = store.steered_inputs(chat).await.unwrap();
 
@@ -250,7 +257,7 @@ mod tests {
             .accept_input(&crate::store::records::tests::new_input(chat, "waits"))
             .await
             .unwrap();
-        store.mark_steered(returned, run).await.unwrap();
+        store.apply_steered(returned, run).await.unwrap();
         store
             .set_input_state(returned, InputState::Queued, None)
             .await

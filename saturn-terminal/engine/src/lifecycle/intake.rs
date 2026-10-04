@@ -588,6 +588,28 @@ async fn applied_steer_is_preserved_in_handoff() {
     );
 }
 
+// #494
+#[tokio::test]
+async fn steer_is_not_applied_without_its_run_link_when_the_link_write_fails() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "refines", "steer"),
+    ])
+    .await;
+    flow.fake.verify_steer();
+    flow.submit("implement authentication").await;
+    flow.engine.store.fail_steer_link_updates().await;
+    let steer = flow
+        .submit("use unlinked_unique_refinement_branch for this work")
+        .await;
+    let steers = flow.engine.store.steered_inputs(flow.chat).await.unwrap();
+    let (_, state) = flow.engine.store.stored_input(steer).await.unwrap();
+    assert!(
+        steers.iter().any(|row| row.input == steer) || state != InputState::Applied,
+        "steer is Applied without a run link and cannot reach the handoff"
+    );
+}
+
 // #458
 fn current_id(
     flow: &Flow,
