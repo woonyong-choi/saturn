@@ -1528,6 +1528,89 @@ async fn codex_home_ignores_user_rules() {
     ));
 }
 
+fn text_of(events: &[ProviderEvent]) -> String {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            ProviderEvent::Text { text, .. } => Some(text.as_str()),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn messages_of_one_turn_stay_apart_when_the_message_item_changes() {
+    let mut threads = HashMap::new();
+    threads.insert(
+        ProviderSessionId("main".to_owned()),
+        ThreadState::new(AgentId(1), None, AppliedSettings::default()),
+    );
+    let mut delta = |item: &str, text: &str| {
+        convert_notification(
+            &mut threads,
+            "item/agentMessage/delta",
+            &json!({ "threadId": "main", "itemId": item, "delta": text }),
+        )
+    };
+
+    let mut events = delta("m1", "읽어 보겠습니다.");
+    events.extend(delta("m1", " 잠시만요."));
+    events.extend(delta("m2", "마지막 줄입니다."));
+
+    assert_eq!(
+        text_of(&events),
+        "읽어 보겠습니다. 잠시만요.\n\n마지막 줄입니다."
+    );
+}
+
+#[test]
+fn a_new_turn_does_not_start_with_a_separator() {
+    let mut threads = HashMap::new();
+    threads.insert(
+        ProviderSessionId("main".to_owned()),
+        ThreadState::new(AgentId(1), None, AppliedSettings::default()),
+    );
+    let mut notify = |method: &str, params: serde_json::Value| {
+        convert_notification(&mut threads, method, &params)
+    };
+    notify(
+        "item/agentMessage/delta",
+        json!({ "threadId": "main", "itemId": "m1", "delta": "첫 턴" }),
+    );
+    notify(
+        "turn/completed",
+        json!({ "threadId": "main", "turn": { "id": "t1" } }),
+    );
+    notify(
+        "turn/started",
+        json!({ "threadId": "main", "turn": { "id": "t2" } }),
+    );
+
+    let events = notify(
+        "item/agentMessage/delta",
+        json!({ "threadId": "main", "itemId": "m2", "delta": "둘째 턴" }),
+    );
+
+    assert_eq!(text_of(&events), "둘째 턴");
+}
+
+#[test]
+fn a_delta_without_an_item_id_is_passed_through_unchanged() {
+    let mut threads = HashMap::new();
+    threads.insert(
+        ProviderSessionId("main".to_owned()),
+        ThreadState::new(AgentId(1), None, AppliedSettings::default()),
+    );
+
+    let events = convert_notification(
+        &mut threads,
+        "item/agentMessage/delta",
+        &json!({ "threadId": "main", "delta": "조각" }),
+    );
+
+    assert_eq!(text_of(&events), "조각");
+}
+
 #[test]
 fn file_change_paths_are_remembered_from_the_item_start() {
     let mut threads = HashMap::new();

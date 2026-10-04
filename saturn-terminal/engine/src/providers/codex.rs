@@ -138,6 +138,9 @@ struct ThreadState {
     context_tokens: Option<u64>,
     /// 키는 `fileChange` 항목 id. 편집 승인 요청에는 경로가 없어 항목이 시작될 때 받은 경로를 둔다.
     file_changes: HashMap<String, Vec<String>>,
+    /// 마지막으로 글 조각을 받은 응답 메시지 항목 id. 한 턴에 해설과 최종 답처럼 메시지가 여럿이라, 항목이 바뀌는
+    /// 자리를 찾는 데 쓴다. 턴이 시작되면 비운다.
+    message_item: Option<String>,
 }
 
 impl ThreadState {
@@ -153,6 +156,7 @@ impl ThreadState {
             turn_origin: None,
             context_tokens: None,
             file_changes: HashMap::new(),
+            message_item: None,
         }
     }
 }

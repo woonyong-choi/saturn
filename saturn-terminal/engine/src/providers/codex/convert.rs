@@ -16,6 +16,9 @@ use super::{
 };
 use crate::providers::tool_detail::{classify_command, unwrap_shell};
 
+/// 한 턴의 두 메시지 사이에 넣는 구분(빈 줄 하나).
+const MESSAGE_SEPARATOR: &str = "\n\n";
+
 /// 권한은 Saturn 규칙이 정하므로 권한 인자는 넣지 않는다. 승인 정책과 샌드박스는 `thread/start`가 정한다.
 /// 숨긴 모델이거나 모델 이름이 없으면 `None`.
 pub(super) fn model_info(entry: &Value) -> Option<ModelInfo> {
@@ -56,15 +59,7 @@ pub(super) fn convert_notification(
     match method {
         "turn/started" => on_turn_started(state, params),
         "turn/completed" => on_turn_completed(state, params, agent, subagent),
-        "item/agentMessage/delta" => params["delta"]
-            .as_str()
-            .map(|text| ProviderEvent::Text {
-                agent,
-                subagent,
-                text: text.to_owned(),
-            })
-            .into_iter()
-            .collect(),
+        "item/agentMessage/delta" => on_message_delta(state, params, agent, subagent),
         "item/started" => on_item_started(state, &params["item"], agent, subagent),
         "item/completed" => tool_output(&params["item"])
             .zip(params["item"]["id"].as_str())
@@ -85,8 +80,39 @@ pub(super) fn convert_notification(
     }
 }
 
+/// 메시지 항목(`itemId`)이 앞 조각과 달라지면 새 메시지이므로 빈 줄을 앞에 붙여 두 메시지가 이어 붙지 않게 한다.
+/// `itemId`가 없는 조각은 그대로 둔다.
+fn on_message_delta(
+    state: &mut ThreadState,
+    params: &Value,
+    agent: AgentId,
+    subagent: Option<SubagentId>,
+) -> Vec<ProviderEvent> {
+    let Some(delta) = params["delta"].as_str() else {
+        return Vec::new();
+    };
+    let mut text = String::new();
+    if let Some(item) = params["itemId"].as_str() {
+        if state
+            .message_item
+            .as_deref()
+            .is_some_and(|last| last != item)
+        {
+            text.push_str(MESSAGE_SEPARATOR);
+        }
+        state.message_item = Some(item.to_owned());
+    }
+    text.push_str(delta);
+    vec![ProviderEvent::Text {
+        agent,
+        subagent,
+        text,
+    }]
+}
+
 fn on_turn_started(state: &mut ThreadState, params: &Value) -> Vec<ProviderEvent> {
     state.active_turn = params["turn"]["id"].as_str().map(str::to_owned);
+    state.message_item = None;
     if state.parent.is_none() {
         state.turn_origin = Some(state.origin.on_turn_started());
     }
