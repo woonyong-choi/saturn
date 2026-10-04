@@ -361,6 +361,8 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("확인 필요", "Needs check"),
     ("실행 중", "Running"),
     ("끝남", "Done"),
+    ("채팅", "Chats"),
+    ("대기 {n}", "Queued {n}"),
     ("모델 미보고", "Model not reported"),
     ("Saturn", "Saturn"),
     ("새 작업으로 보냄", "Started as a new task"),

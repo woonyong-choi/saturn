@@ -138,7 +138,7 @@ fn summary(lang: Lang, chat: &ChatListItem, show_folder: bool, now_ms: u64) -> S
     parts.join(" · ")
 }
 
-fn age(lang: Lang, elapsed_ms: u64) -> String {
+pub(crate) fn age(lang: Lang, elapsed_ms: u64) -> String {
     let (phrase, count) = if elapsed_ms >= DAY_MS {
         (i18n::CLI_AGE_DAYS, elapsed_ms / DAY_MS)
     } else if elapsed_ms >= HOUR_MS {
@@ -165,7 +165,7 @@ fn preview(lang: Lang, text: Option<&str>) -> String {
     format!("{cut}…")
 }
 
-fn now_ms() -> u64 {
+pub(crate) fn now_ms() -> u64 {
     let elapsed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default();

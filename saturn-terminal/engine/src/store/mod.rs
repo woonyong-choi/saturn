@@ -15,6 +15,7 @@ mod retention;
 mod schema;
 mod sessions;
 mod snapshots;
+mod task_history;
 mod usage;
 
 use std::os::unix::fs::PermissionsExt;

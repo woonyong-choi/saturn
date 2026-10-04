@@ -5169,6 +5169,16 @@
           "minimum": 0,
           "type": "integer"
         },
+        "ended_at_ms": {
+          "default": null,
+          "description": "끝난 작업 행에서 마지막 실행이 끝난 시각(unix 밀리초).",
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
         "folder": {
           "default": null,
           "description": "채팅의 기본 폴더. TUI가 작업 목록의 폴더 범위를 가를 때 쓴다.",
@@ -5184,24 +5194,61 @@
           ]
         },
         "label": {
-          "$ref": "#/$defs/TaskLabel"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaskLabel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "작업 글자. 끝난 작업(글자를 돌려줬다)과 채팅 행은 `None`."
+        },
+        "model": {
+          "default": null,
+          "description": "그 작업 session이 지금 쓰는 모델. 모르면 `None`.",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "needs_permission": {
           "type": "boolean"
         },
+        "queued": {
+          "default": [],
+          "description": "이 행으로 갈 대기 입력을 접수 순서로. 갈 작업이 없는 새 대기 입력은 채팅 행에 붙는다.",
+          "items": {
+            "$ref": "#/$defs/InputId"
+          },
+          "type": "array"
+        },
         "state": {
-          "$ref": "#/$defs/TaskState"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaskState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "채팅 행은 `None`. `Done`과 `Failed`는 끝난 작업 행."
         },
         "task": {
-          "$ref": "#/$defs/TaskId"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TaskId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "작업 행과 끝난 작업 행에만 있다. `None`이면 작업 없는 채팅 행."
         }
       },
       "required": [
         "chat",
         "chat_name",
-        "task",
-        "label",
-        "state",
         "needs_permission",
         "busy_elsewhere",
         "children"

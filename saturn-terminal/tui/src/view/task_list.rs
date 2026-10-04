@@ -12,6 +12,7 @@ use saturn_protocol::ids::{ChatId, InputId, TaskId, TaskLabel};
 use saturn_protocol::rpc::TaskListItem;
 use saturn_protocol::state::TaskState;
 
+use crate::chat_picker;
 use crate::i18n::{self, Lang};
 use crate::keys::Action;
 use crate::labels;
@@ -28,16 +29,19 @@ pub(crate) enum TaskFilter {
     Queued,
     Held,
     Done,
+    /// 작업 없는 채팅 행.
+    Chats,
 }
 
 impl TaskFilter {
-    const ORDER: [Self; 6] = [
+    const ORDER: [Self; 7] = [
         Self::All,
         Self::NeedsCheck,
         Self::Running,
         Self::Queued,
         Self::Held,
         Self::Done,
+        Self::Chats,
     ];
 
     // cost: time O(1), heap O(1), stack O(1)
@@ -62,17 +66,20 @@ impl TaskFilter {
             Self::Queued => i18n::FILTER_QUEUED,
             Self::Held => i18n::FILTER_HELD,
             Self::Done => i18n::FILTER_DONE,
+            Self::Chats => i18n::FILTER_CHATS,
         })
     }
 
+    /// `전체`는 끝난 작업과 대기 입력 없는 채팅 행을 빼고 보인다. 그 둘은 `끝남`과 `채팅`에서 본다.
     fn matches(self, row: &TaskRow) -> bool {
         match self {
-            Self::All => true,
-            Self::NeedsCheck => row.needs_permission || row.state == TaskState::NeedsCheck,
-            Self::Running => labels::is_live(row.state),
-            Self::Queued => row.queued_input.is_some(),
-            Self::Held => row.state == TaskState::Held,
-            Self::Done => matches!(row.state, TaskState::Done | TaskState::Failed),
+            Self::All => !row.is_ended() && (!row.is_chat() || !row.queued.is_empty()),
+            Self::NeedsCheck => row.needs_permission || row.state == Some(TaskState::NeedsCheck),
+            Self::Running => row.state.is_some_and(labels::is_live),
+            Self::Queued => !row.queued.is_empty(),
+            Self::Held => row.state == Some(TaskState::Held),
+            Self::Done => row.is_ended(),
+            Self::Chats => row.is_chat(),
         }
     }
 }
@@ -105,14 +112,38 @@ impl FolderScope {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TaskRow {
-    pub task: TaskId,
-    pub label: TaskLabel,
-    pub state: TaskState,
+    /// 작업 없는 채팅 행이면 `None`.
+    pub task: Option<TaskId>,
+    /// 끝난 작업과 채팅 행은 `None`.
+    pub label: Option<TaskLabel>,
+    /// 채팅 행은 `None`. `Done`과 `Failed`는 끝난 작업.
+    pub state: Option<TaskState>,
     pub needs_permission: bool,
-    pub queued_input: Option<InputId>,
+    /// 이 행으로 갈 대기 입력, 접수 순서.
+    pub queued: Vec<InputId>,
     pub model: Option<String>,
     pub children: u32,
+    /// 끝난 작업이 끝난 시각(unix 밀리초).
+    pub ended_at_ms: Option<u64>,
 }
+
+impl TaskRow {
+    pub(crate) fn is_chat(&self) -> bool {
+        self.task.is_none()
+    }
+
+    pub(crate) fn is_ended(&self) -> bool {
+        matches!(self.state, Some(TaskState::Done | TaskState::Failed))
+    }
+
+    /// `d`와 `s`가 다루는 다음 차례 대기 입력.
+    pub(crate) fn queued_input(&self) -> Option<InputId> {
+        self.queued.first().copied()
+    }
+}
+
+/// 채팅 번호와 작업 번호. 채팅 행은 작업 번호가 없다.
+pub(crate) type RowKey = (ChatId, Option<TaskId>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ChatGroup {
@@ -129,7 +160,6 @@ impl ChatGroup {
     // cost: time O(n·c), heap O(n), stack O(1)
     // vars: n = items.len(), c = 채팅 수
     // basis: estimate
-    /// protocol `TaskListItem`에 대기 입력과 모델이 없어 그 칸은 비워 둔다.
     pub(crate) fn from_items(items: Vec<TaskListItem>) -> Vec<Self> {
         let mut groups: Vec<Self> = Vec::new();
         for item in items {
@@ -138,9 +168,10 @@ impl ChatGroup {
                 label: item.label,
                 state: item.state,
                 needs_permission: item.needs_permission,
-                queued_input: None,
-                model: None,
+                queued: item.queued,
+                model: item.model,
                 children: item.children,
+                ended_at_ms: item.ended_at_ms,
             };
             match groups.iter_mut().find(|g| g.chat == item.chat) {
                 Some(group) => group.tasks.push(row),
@@ -160,7 +191,7 @@ impl ChatGroup {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum TaskListCommand {
-    Open { chat: ChatId, task: TaskId },
+    Open { chat: ChatId, task: Option<TaskId> },
     Continue { chat: ChatId, task: TaskId },
     CancelInput(InputId),
     CloseHeld { chat: ChatId, task: TaskId },
@@ -186,7 +217,7 @@ pub(crate) struct TaskList {
     pub folder: Option<PathBuf>,
     pub query: Option<String>,
     /// 목록을 다시 받아도 유지한다.
-    pub selected: Option<(ChatId, TaskId)>,
+    pub selected: Option<RowKey>,
     pub pending: Option<TaskListCommand>,
     pub editing: Option<(TaskListInput, String)>,
     pub help: bool,
@@ -283,20 +314,19 @@ impl TaskList {
         if group.busy_elsewhere {
             return None;
         }
-        let (chat, task) = (group.chat, row.task);
+        let chat = group.chat;
+        let held = row.task.filter(|_| row.state == Some(TaskState::Held));
         match action {
-            Action::ContinueHeld if row.state == TaskState::Held => {
-                Some(TaskListCommand::Continue { chat, task })
-            }
-            Action::CancelOrCloseHeld => match row.queued_input {
-                Some(input) => Some(TaskListCommand::CancelInput(input)),
-                None if row.state == TaskState::Held => {
+            Action::ContinueHeld => held.map(|task| TaskListCommand::Continue { chat, task }),
+            Action::CancelOrCloseHeld => match (row.queued_input(), held) {
+                (Some(input), _) => Some(TaskListCommand::CancelInput(input)),
+                (None, Some(task)) => {
                     self.pending = Some(TaskListCommand::CloseHeld { chat, task });
                     None
                 }
-                None => None,
+                (None, None) => None,
             },
-            Action::SendQueued => row.queued_input.map(TaskListCommand::SendNow),
+            Action::SendQueued => row.queued_input().map(TaskListCommand::SendNow),
             Action::RenameChat => {
                 self.editing = Some((TaskListInput::Rename(chat), group.name.clone()));
                 None
@@ -389,7 +419,7 @@ impl TaskList {
     // cost: time O(r·q), heap O(r), stack O(1)
     // vars: r = 행 수, q = 검색어 길이
     // basis: estimate
-    fn visible_keys(&self) -> Vec<(ChatId, TaskId)> {
+    fn visible_keys(&self) -> Vec<RowKey> {
         self.visible_rows()
             .into_iter()
             .map(|(group, row)| (group.chat, row.task))
@@ -491,12 +521,7 @@ impl TaskListView<'_> {
             }
             let selected = self.list.selected == Some((group.chat, row.task));
             let style = if selected { SELECTED } else { Style::new() };
-            let text = format!(
-                "  {} {} {}",
-                TaskList::marker(row.state),
-                labels::format(row.label),
-                state_text(self.lang, row)
-            );
+            let text = row_text(self.lang, row, chat_picker::now_ms());
             lines.push(Line::from(Span::styled(truncate(&text, width), style)));
         }
         lines
@@ -520,7 +545,7 @@ impl TaskListView<'_> {
     fn footer_lines(&self, width: usize) -> Vec<Line<'static>> {
         let lang = self.lang;
         let mut lines = Vec::new();
-        if let Some((_, row)) = self.list.selected_row() {
+        if let Some((_, row)) = self.list.selected_row().filter(|(_, row)| !row.is_chat()) {
             let model = row
                 .model
                 .clone()
@@ -553,8 +578,39 @@ impl TaskListView<'_> {
     }
 }
 
-fn state_text(lang: Lang, row: &TaskRow) -> &'static str {
-    lang.tr(match row.state {
+/// 작업 행은 `표시 [글자] 상태`, 끝난 작업 행은 `#작업 번호 결과 · 경과`, 채팅 행은 `작업 없음`.
+/// 대기 입력이 있으면 끝에 ` · 대기 N`을 붙인다.
+fn row_text(lang: Lang, row: &TaskRow, now_ms: u64) -> String {
+    let mut text = match (row.task, row.label, row.state) {
+        (Some(task), None, Some(state)) => {
+            let age = row
+                .ended_at_ms
+                .map(|at| chat_picker::age(lang, now_ms.saturating_sub(at)));
+            let result = lang.tr(state_key(state));
+            match age {
+                Some(age) => format!("    #{} {result} · {age}", task.0),
+                None => format!("    #{} {result}", task.0),
+            }
+        }
+        (_, label, Some(state)) => format!(
+            "  {} {} {}",
+            TaskList::marker(state),
+            label.map(labels::format).unwrap_or_default(),
+            lang.tr(state_key(state))
+        ),
+        (_, _, None) => format!("    {}", lang.tr(i18n::TASKS_EMPTY)),
+    };
+    if !row.queued.is_empty() {
+        let count = lang
+            .tr(i18n::TASKS_QUEUED_COUNT)
+            .replace("{n}", &row.queued.len().to_string());
+        text.push_str(&format!(" · {count}"));
+    }
+    text
+}
+
+fn state_key(state: TaskState) -> &'static str {
+    match state {
         TaskState::Running | TaskState::AnsweredTreeRunning => i18n::FILTER_RUNNING,
         TaskState::AwaitingPermission => i18n::AWAITING_PERMISSION,
         TaskState::AwaitingInput => i18n::AWAITING_INPUT,
@@ -562,7 +618,7 @@ fn state_text(lang: Lang, row: &TaskRow) -> &'static str {
         TaskState::NeedsCheck => i18n::FILTER_NEEDS_CHECK,
         TaskState::Done => i18n::FILTER_DONE,
         TaskState::Failed => i18n::FAILED,
-    })
+    }
 }
 
 #[cfg(test)]
@@ -577,9 +633,9 @@ mod tests {
             chat: ChatId(chat),
             chat_name: format!("chat{chat}"),
             group: None,
-            task: TaskId(task),
-            label: TaskLabel(label),
-            state,
+            task: Some(TaskId(task)),
+            label: Some(TaskLabel(label)),
+            state: Some(state),
             needs_permission: matches!(
                 state,
                 TaskState::AwaitingPermission | TaskState::AwaitingInput
@@ -587,6 +643,29 @@ mod tests {
             busy_elsewhere: chat == 9,
             children: 0,
             folder: None,
+            queued: Vec::new(),
+            model: None,
+            ended_at_ms: None,
+        }
+    }
+
+    /// 작업 없는 채팅 행.
+    fn chat_item(chat: u64) -> TaskListItem {
+        TaskListItem {
+            task: None,
+            label: None,
+            state: None,
+            needs_permission: false,
+            ..item(chat, 0, 'A', TaskState::Running)
+        }
+    }
+
+    /// 끝난 작업 행.
+    fn ended_item(chat: u64, task: u64, state: TaskState) -> TaskListItem {
+        TaskListItem {
+            label: None,
+            ended_at_ms: Some(1),
+            ..item(chat, task, 'A', state)
         }
     }
 
@@ -632,11 +711,11 @@ mod tests {
     fn task_list_scope_keeps_the_selection_inside_the_visible_rows() {
         let mut list = two_folders();
         list.toggle_scope();
-        list.selected = Some((ChatId(2), TaskId(2)));
+        list.selected = Some((ChatId(2), Some(TaskId(2))));
 
         list.toggle_scope();
 
-        assert_eq!(list.selected, Some((ChatId(1), TaskId(1))));
+        assert_eq!(list.selected, Some((ChatId(1), Some(TaskId(1)))));
     }
 
     #[test]
@@ -714,8 +793,8 @@ mod tests {
     #[test]
     fn filter_cycles_both_ways() {
         assert_eq!(TaskFilter::All.next(), TaskFilter::NeedsCheck);
-        assert_eq!(TaskFilter::All.prev(), TaskFilter::Done);
-        assert_eq!(TaskFilter::Done.next(), TaskFilter::All);
+        assert_eq!(TaskFilter::All.prev(), TaskFilter::Chats);
+        assert_eq!(TaskFilter::Chats.next(), TaskFilter::All);
     }
 
     #[test]
@@ -725,7 +804,7 @@ mod tests {
         list.set_filter(TaskFilter::Held);
 
         assert_eq!(list.visible_rows().len(), 2);
-        assert_eq!(list.selected, Some((ChatId(1), TaskId(2))));
+        assert_eq!(list.selected, Some((ChatId(1), Some(TaskId(2)))));
     }
 
     #[test]
@@ -770,7 +849,7 @@ mod tests {
             list.command(&Action::Confirm),
             Some(TaskListCommand::Open {
                 chat: ChatId(9),
-                task: TaskId(4)
+                task: Some(TaskId(4))
             })
         );
     }
@@ -797,6 +876,131 @@ mod tests {
         assert_eq!(TaskList::marker(TaskState::AwaitingPermission), '!');
         assert_eq!(TaskList::marker(TaskState::NeedsCheck), '?');
         assert_eq!(TaskList::marker(TaskState::Done), ' ');
+    }
+
+    fn mixed() -> TaskList {
+        let mut waiting = item(1, 1, 'A', TaskState::Running);
+        waiting.queued = vec![InputId(11), InputId(12)];
+        waiting.model = Some("opus".to_owned());
+        let mut new_input = chat_item(3);
+        new_input.queued = vec![InputId(13)];
+        let mut list = TaskList::default();
+        list.replace(ChatGroup::from_items(vec![
+            waiting,
+            ended_item(1, 2, TaskState::Done),
+            ended_item(2, 3, TaskState::Failed),
+            new_input,
+            chat_item(4),
+        ]));
+        list
+    }
+
+    fn rows_in(list: &mut TaskList, filter: TaskFilter) -> Vec<(u64, Option<u64>)> {
+        list.set_filter(filter);
+        list.visible_rows()
+            .iter()
+            .map(|(group, row)| (group.chat.0, row.task.map(|task| task.0)))
+            .collect()
+    }
+
+    #[test]
+    fn filters_split_task_rows_ended_tasks_and_chat_rows() {
+        let mut list = mixed();
+
+        assert_eq!(
+            rows_in(&mut list, TaskFilter::All),
+            [(1, Some(1)), (3, None)]
+        );
+        assert_eq!(
+            rows_in(&mut list, TaskFilter::Done),
+            [(1, Some(2)), (2, Some(3))]
+        );
+        assert_eq!(
+            rows_in(&mut list, TaskFilter::Chats),
+            [(3, None), (4, None)]
+        );
+        assert_eq!(
+            rows_in(&mut list, TaskFilter::Queued),
+            [(1, Some(1)), (3, None)]
+        );
+        assert_eq!(rows_in(&mut list, TaskFilter::Running), [(1, Some(1))]);
+    }
+
+    #[test]
+    fn chat_row_renames_regroups_and_opens_but_ignores_task_keys() {
+        let mut list = mixed();
+        list.set_filter(TaskFilter::Chats);
+        list.down();
+
+        list.command(&Action::RenameChat);
+        list.edit_push('!');
+        let renamed = list.command(&Action::Confirm);
+        let open = list.command(&Action::Confirm);
+
+        assert_eq!(list.command(&Action::ContinueHeld), None);
+        assert_eq!(list.command(&Action::SendQueued), None);
+        assert_eq!(
+            renamed,
+            Some(TaskListCommand::Rename {
+                chat: ChatId(4),
+                name: "chat4!".to_owned()
+            })
+        );
+        assert_eq!(
+            open,
+            Some(TaskListCommand::Open {
+                chat: ChatId(4),
+                task: None
+            })
+        );
+    }
+
+    #[test]
+    fn cancel_and_send_act_on_the_next_waiting_input_of_the_row() {
+        let mut list = mixed();
+
+        let send = list.command(&Action::SendQueued);
+        let cancel = list.command(&Action::CancelOrCloseHeld);
+
+        assert_eq!(send, Some(TaskListCommand::SendNow(InputId(11))));
+        assert_eq!(cancel, Some(TaskListCommand::CancelInput(InputId(11))));
+    }
+
+    fn screen(list: &TaskList) -> String {
+        let mut terminal = Terminal::new(TestBackend::new(70, 16)).unwrap();
+        let view = TaskListView {
+            list,
+            lang: Lang::En,
+        };
+        terminal
+            .draw(|frame| view.render(frame, frame.area()))
+            .unwrap();
+        let buffer = terminal.backend().buffer().clone();
+        (0..buffer.area.height)
+            .map(|y| {
+                (0..buffer.area.width)
+                    .map(|x| buffer[(x, y)].symbol().to_owned())
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    #[test]
+    fn render_shows_queue_count_model_ended_result_and_chat_rows() {
+        let mut list = mixed();
+        let all = screen(&list);
+        list.set_filter(TaskFilter::Done);
+        let done = screen(&list);
+        list.set_filter(TaskFilter::Chats);
+        let chats = screen(&list);
+
+        assert!(all.contains("[A] Running · Queued 2"), "{all}");
+        assert!(all.contains("Model: opus"), "{all}");
+        assert!(all.contains("No tasks · Queued 1"), "{all}");
+        assert!(done.contains("#2 Done"), "{done}");
+        assert!(done.contains("#3 Failed"), "{done}");
+        assert!(chats.contains("chat4"), "{chats}");
     }
 
     // cost: time O(1), heap O(1), stack O(1)
