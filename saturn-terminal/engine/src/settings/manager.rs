@@ -26,6 +26,8 @@ pub(crate) struct Applied {
     pub warning: Option<SettingsWarning>,
     /// 병합한 `tui.keymap`. 이전 번호로 계속하면 `None`.
     pub keymap: Option<String>,
+    /// 병합한 `tui.screen`(`auto`, `full`, `plain`). 이전 번호로 계속하면 `None`.
+    pub screen: Option<String>,
 }
 
 /// engine에 하나. 실행 `-c`는 engine 시작 때 정하고, 작업 폴더는 채팅마다 호출 때 받는다.
@@ -225,10 +227,12 @@ impl SettingsManager {
             None
         };
         let keymap = Some(snapshot.settings.keymap().to_owned());
+        let screen = Some(snapshot.settings.screen().name().to_owned());
         Ok(Applied {
             revision,
             warning,
             keymap,
+            screen,
         })
     }
 
@@ -246,6 +250,7 @@ impl SettingsManager {
             revision: previous,
             warning: Some(SettingsWarning::Fallback { layer, fault }),
             keymap: None,
+            screen: None,
         })
     }
 
@@ -427,6 +432,26 @@ mod tests {
             fixture.store.latest_settings_revision().await.unwrap(),
             Some(first.revision)
         );
+    }
+
+    #[tokio::test]
+    async fn applied_carries_the_merged_screen_mode_and_none_when_it_falls_back() {
+        let fixture = Fixture::new().await;
+        fixture.write_user("[tui]\nscreen = \"plain\"\n");
+        let mut manager = fixture.manager(&[]).await;
+
+        let applied = manager
+            .apply(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
+        fixture.write_user("[tui]\nscreen = \"tiny\"\n");
+        let broken = manager
+            .apply(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
+
+        assert_eq!(applied.screen.as_deref(), Some("plain"));
+        assert_eq!(broken.screen, None);
     }
 
     #[tokio::test]

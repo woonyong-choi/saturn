@@ -5,6 +5,7 @@ use std::time::Instant;
 
 use ratatui::Frame;
 use ratatui::layout::Rect;
+use ratatui::style::Color;
 use ratatui::text::Line;
 
 use super::{App, Window};
@@ -38,6 +39,17 @@ impl App {
     // vars: c = 대화 기록 글자 수, w·h = 화면 칸 수
     // basis: estimate
     pub(crate) fn render(&self, frame: &mut Frame, now: Instant) {
+        view::set_plain(self.plain);
+        self.render_frame(frame, now);
+        if self.plain {
+            // 색 없이 글자 속성만 쓴다. `NO_COLOR`를 따른다
+            for cell in &mut frame.buffer_mut().content {
+                cell.set_fg(Color::Reset);
+            }
+        }
+    }
+
+    fn render_frame(&self, frame: &mut Frame, now: Instant) {
         let area = frame.area();
         let lang = self.lang;
         let labels_visible = self.chat.labels_visible();

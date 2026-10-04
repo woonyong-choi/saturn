@@ -180,9 +180,31 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 
 보내기, 취소, 허용, 거절 같은 행동은 폭과 관계없이 세로 목록이고 `↑`, `↓`로 고르고 `Enter`로 정한다. 대기 줄과 보류 줄의 버튼과 허가 요청 창의 선택지가 그렇다. 그릴 자리가 모자라면 앞부분만 그린다. 줄은 끝을 `…`로 줄이고 폭이 0인 칸은 아무것도 그리지 않으며, 접거나 세로로 늘어놓다가 깨지지 않는다. Gemini CLI와 OpenCode가 80칸을 기준으로 삼고 Codex와 Gemini CLI가 선택지를 세로로 둔다.
 
+### 단순 방식
+
+단순 방식은 화면 낭독기와 파이프, CI를 위한 그리기 방식이다. 박스와 애니메이션을 없애고, 줄마다 누가 말했는지 적고, 선택지를 번호 목록으로 바꾸고, 입력이 필요하면 터미널 벨을 울린다. Claude Code와 Gemini CLI의 화면 낭독기 모드를 참고했다.
+
+켜는 조건은 다음과 같고 시작할 때 정한다.
+
+| 조건 | 뜻 |
+|---|---|
+| 표준 입력이나 표준 출력이 터미널이 아님(파이프, CI) | 화면 없는 plain 출력. 늘 켜고 아래 값과 관계없다 |
+| `--plain` | 켠다. `--plain=false`는 환경 변수와 설정을 이기고 끈다 |
+| `NO_COLOR` 환경 변수가 비어 있지 않음 | 켠다 |
+| 설정 `tui.screen`([설정](settings.md)) | `plain`이면 켜고 `auto`와 `full`이면 전체 화면 |
+
+우선순위는 옵션, 환경 변수, 설정 순이다. 터미널이 아니면 출력을 그릴 화면이 없어 전체 화면을 쓸 수 없으므로 어느 값이든 plain 출력이다. 설정은 engine이 알려 주는 값(`SettingsApplied`의 `screen`)이고 값이 바뀐 경우에만 따른다. 옵션과 환경 변수가 정했으면 설정이 바뀌어도 따르지 않는다. 실행 중에는 `/plain`으로 켜고 끈다. TUI와 engine이 따로 떠 있어 그리는 방식만 바꾸면 되고, 설정 파일은 고치지 않는다. 같은 설정 값이 다시 오면 `/plain`으로 바꾼 상태를 그대로 둔다.
+
+켜진 동안 그리기는 이렇게 바뀐다.
+
+- 박스 없이 창은 제목 한 줄과 내용이다. 머리 글자(스피너)는 `*`로 고정하고 색은 쓰지 않는다(`NO_COLOR`)
+- 대화 기록은 줄마다 말한 쪽을 앞에 적는다. 작업의 말은 `[A] `(작업이 하나여도 늘), Saturn 자신의 안내와 경고는 `Saturn: `이고 입력 에코는 `>`로 시작한다. 화면 없는 plain 출력도 같다
+- 선택지는 `› 1. 이번만 허용 (y)`처럼 번호 목록이고 고른 줄에 `›`를 붙인다. 번호 키(`1`, `2`, `3`)로 바로 정한다. 피드백 질문과 바로잡기 제안은 질문 한 줄과 번호 줄이고 번호는 이미 쓰는 키(`1`, `2`, `0`)다
+- 허가 요청, 입력 요청, 폴더 설정 신뢰, router 키 요청, 제약 확인, 멈춤 확인이 도착하면 터미널 벨(`BEL`)을 울린다. 파이프로 받는 plain 출력에는 벨을 섞지 않고 표준 출력이 터미널일 때만 쓴다
+
 ### 화면 언어와 출력 방식
 
-화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. engine은 화면 문구를 만들지 않고 알림 종류와 값만 보내며, 문구는 TUI의 번역표가 고른다. `saturn` 명령의 출력, 오류, 도움말도 같은 언어 판정과 같은 번역표를 쓴다. 도움말은 실행할 때 언어에 맞는 문구를 넣는다. provider와 검사기가 낸 원문(모델 답, 오류 원문)과 로그는 번역하지 않고, clap이 만드는 `Usage:` 같은 고정 문구도 영어로 남는다. 대기 줄과 보류 줄의 버튼은 전체 화면 방식에서 클릭할 수 있다. 파이프와 CI처럼 화면이 없는 환경에서는 전체 화면 대신 plain 출력을 쓰고, 같은 명령은 두 방식에서 같은 결과를 낸다. plain을 켜는 조건은 정해지지 않았고, 지금 구현은 표준 입력이나 표준 출력이 터미널이 아니면 plain으로 시작한다(초안, [#57](https://github.com/woonyong-choi/saturn/issues/57)).
+화면 문구는 운영체제 언어에 따라 영어와 한국어 중 하나로 고른다. engine은 화면 문구를 만들지 않고 알림 종류와 값만 보내며, 문구는 TUI의 번역표가 고른다. `saturn` 명령의 출력, 오류, 도움말도 같은 언어 판정과 같은 번역표를 쓴다. 도움말은 실행할 때 언어에 맞는 문구를 넣는다. provider와 검사기가 낸 원문(모델 답, 오류 원문)과 로그는 번역하지 않고, clap이 만드는 `Usage:` 같은 고정 문구도 영어로 남는다. 대기 줄과 보류 줄의 버튼은 전체 화면 방식에서 클릭할 수 있다. 파이프와 CI처럼 화면이 없는 환경에서는 전체 화면 대신 plain 출력을 쓰고, 같은 명령은 두 방식에서 같은 결과를 낸다. plain을 켜는 조건과 우선순위는 [단순 방식](#단순-방식)에서 정한다.
 
 색은 오류와 중단 표시(`중단됨`, `거절됨`, 작업 실패의 원인)에만 빨간색을 쓰고 나머지는 색 없이 글자 속성만 쓴다. 문구 형식은 Claude Code에 맞춘다. 서술문의 해요체(`넣었어요`)와 끝 마침표는 쓰지 않고, 질문은 물음표로 끝낸다. 영어는 문장 첫 글자만 대문자로 쓰고 같은 뜻은 같은 낱말로 쓴다. 키 안내 줄(`Enter 확인 · Esc 닫기`)과 버튼(`[보내기]`)은 이 표의 대상이 아니다.
 
@@ -253,6 +275,7 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `/keymap [이름]` | 이 TUI의 키 묶음을 `saturn`, `claude`, `codex`, `gemini`, `opencode` 중 하나로 바꿈. 이름이 없으면 지금 묶음과 목록을 보임 | 없음 |
 | `/transcript` | 전체 기록 | `Ctrl+T` |
 | `/redraw` | 화면 다시 그리기 | `Ctrl+L` |
+| `/plain` | [단순 방식](#단순-방식) 켜고 끄기 | 없음 |
 | `/suspend` | 화면 일시 중지 | `Ctrl+Z` |
 | `/quit` | 종료(닫은 뒤 처리를 engine에 묻는다) | `Ctrl+D` |
 | `/send`, `/cancel`, `/continue` | 대기 입력 보내기, 보내기 전 입력 취소나 보류 종료, 보류 이어서 | 상태판 버튼 고르기의 버튼 |
@@ -536,10 +559,12 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | 기본 모델이 없다고 알리면 처음 고르기 창이 한 번 열려 모든 provider의 목록을 요청하고, `Enter`는 기본 모델 저장을, `Esc`는 아무것도 보내지 않는다. 기본 모델이 있으면 열지 않는다. `/model` 창의 `d`는 기본 모델 저장을, `m`은 선택 방식 바꾸기를 보내고, 바뀐 값은 바닥줄과 창 첫 줄에 보이고 안내 한 줄이 남는다. | `saturn-terminal/tui/src/app/tests.rs`의 `missing_default_model_opens_the_first_choice_window_with_every_provider`, `chosen_default_model_does_not_open_the_first_choice_window`, `first_choice_window_enter_saves_the_default_model`, `first_choice_window_escape_saves_nothing_and_is_not_reopened_in_this_run`, `first_choice_window_ignores_the_mode_key`, `model_window_d_saves_the_highlighted_model_as_the_default`, `model_window_m_switches_between_auto_and_manual`, `model_settings_change_leaves_a_notice_and_updates_the_footer_state`, `saturn-terminal/tui/src/view/model_picker.rs`의 `first_choice_window_asks_for_a_default_model_and_lists_every_model`, `model_window_shows_the_default_model_and_the_selection_mode`, `model_window_without_a_default_shows_none`, `saturn-terminal/tui/src/view/footer.rs`의 `right_text_puts_the_selection_mode_before_the_context` |
 | `/model`은 목록 창을 열고, `Enter`는 고른 모델을 engine에 저장하라고 보내고, `Esc`는 아무것도 보내지 않는다. 고정은 채팅에 붙을 때 알려져 창에 표시된다. `/model <provider>`는 그 provider 모델만 요청하고, provider의 `/model`은 넘기지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `model_command_asks_for_the_list_and_opens_the_window`, `model_command_with_a_provider_asks_only_for_that_provider`, `model_window_enter_asks_the_engine_to_pin_the_model`, `model_window_escape_sends_nothing`, `pinned_model_notice_marks_the_model_in_the_next_window`, `model_command_is_not_passed_to_the_provider`, `saturn-terminal/tui/src/view/model_picker.rs`의 `selection_stays_inside_the_list`, `list_starts_on_the_pinned_model`, `saturn-terminal/tui/src/commands.rs`의 `parse_model_reads_an_optional_provider_and_keeps_the_provider_command_out` |
 | 작업 목록은 기본으로 현재 채팅 폴더의 채팅만 보이고 키 `a`로 모든 폴더를 본다. | `saturn-terminal/tui/src/view/task_list.rs`의 `task_list_defaults_to_the_current_folder_and_the_key_widens_it`, `task_list_does_not_hide_chats_whose_folder_is_unknown`, `saturn-terminal/tui/src/app/tests.rs`의 `task_list_opened_from_a_chat_starts_in_the_chat_folder_scope`, `task_list_key_a_widens_the_scope_to_all_folders` |
+| 단순 방식은 옵션, 환경 변수(`NO_COLOR`), 설정 `tui.screen` 순으로 정하고, 터미널이 아니면 늘 plain 출력이다. 설정은 바뀔 때만 따르며 `/plain`이 켜고 끈다. | `saturn-terminal/cli/src/commands/chat.rs`의 `plain_option_beats_the_environment_and_the_environment_is_read_when_there_is_no_option`, `mode_for_needs_terminal_input_and_output_for_full_screen`, `saturn-terminal/cli/src/args.rs`의 `plain_flag_is_true_alone_false_with_a_value_and_absent_by_default`, `saturn-terminal/engine/src/settings/manager.rs`의 `applied_carries_the_merged_screen_mode_and_none_when_it_falls_back`, `saturn-terminal/tui/src/app/tests.rs`의 `the_plain_command_toggles_the_mode_and_leaves_a_line`, `the_screen_setting_picks_plain_and_a_repeat_keeps_the_slash_plain_choice`, `full_and_auto_settings_do_not_turn_plain_on`, `an_option_or_environment_choice_beats_the_setting` |
+| 단순 방식은 박스와 움직임과 색 없이 그리고 줄마다 말한 쪽을 적으며, 선택지는 번호 목록이고 번호 키로 정한다. | `saturn-terminal/tui/src/app/tests.rs`의 `plain_draws_no_box_a_still_spinner_and_a_speaker_on_every_line`, `the_same_screen_without_plain_has_the_boxes_and_the_moving_spinner`, `plain_permission_window_is_a_numbered_list_without_a_box`, `plain_number_keys_pick_a_choice_and_plain_off_ignores_them`, `plain_number_keys_pick_in_the_other_choice_windows_too`, `plain_removes_the_color_and_full_screen_keeps_it`, `saturn-terminal/tui/src/view/transcript.rs`의 `plain_lines_name_the_speaker_on_every_line_and_saturn_speaks_for_notices`, `plain_feedback_and_correction_questions_are_numbered_lists` |
+| 단순 방식에서 입력이 필요하면 벨을 울리고 그 밖의 알림에는 울리지 않으며, 파이프 출력에는 벨을 섞지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `plain_rings_the_bell_when_input_is_needed_and_full_screen_does_not`, `plain_does_not_ring_for_notifications_that_need_no_answer`, `saturn-terminal/tui/src/plain.rs`의 `bell_precedes_the_permission_line_only_when_enabled` |
 | 화면이 없는 파이프와 CI에서도 같은 명령이 같은 결과를 낸다. | `saturn-terminal/tui/src/plain.rs`의 `plain_and_full_screen_cells_use_same_text`, `apply_writes_echo_output_result_and_summary` |
 
 ## 미해결 질문
 
 - 메인 에이전트가 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - `/stop`이 진행 중인 `/train`도 멈출지, 학습 전용 중지 명령을 둘지, 학습 줄에 중지 버튼을 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
-- plain 출력을 켜는 조건과 우선순위, 설정 키 이름을 무엇으로 할지 ([#57](https://github.com/woonyong-choi/saturn/issues/57))

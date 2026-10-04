@@ -70,7 +70,10 @@ async fn run(lang: Lang, cli: Cli, mode: OpenMode) -> anyhow::Result<()> {
     let chat = commands::chat::resolve_chat(lang, &mut client, mode).await?;
 
     match cli.command {
-        None => commands::chat::run(lang, &mut client, chat, &cli.config, add_dirs).await,
+        None => {
+            let plain = commands::chat::plain_override(cli.plain, std::env::var("NO_COLOR").ok());
+            commands::chat::run(lang, &mut client, chat, &cli.config, add_dirs, plain).await
+        }
         Some(Command::Prune(args)) => commands::prune::run(lang, &mut client, &args).await,
         Some(Command::Export(args)) => commands::export::run(lang, &mut client, &args).await,
         Some(Command::Router {

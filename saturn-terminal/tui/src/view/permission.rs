@@ -14,7 +14,7 @@ use ratatui::text::{Line, Span};
 
 use crate::i18n::{self, Lang};
 use crate::labels;
-use crate::view::{MUTED, render_window};
+use crate::view::{MUTED, choice_text, is_plain, render_window};
 
 /// 모르고 누른 키로 허가하지 않게 막는 시간.
 pub(crate) const INPUT_GUARD: Duration = Duration::from_secs(1);
@@ -77,6 +77,13 @@ impl PermissionQueue {
         } else {
             (self.selected + count - 1) % count
         };
+    }
+
+    /// 번호로 고른다. 범위를 벗어나면 그대로 둔다.
+    pub(crate) fn select(&mut self, index: usize) {
+        if index < CHOICES.len() {
+            self.selected = index;
+        }
     }
 
     /// 고른 선택지의 답.
@@ -163,15 +170,14 @@ impl PermissionView<'_> {
             Line::from(""),
         ];
         lines.extend(CHOICES.into_iter().enumerate().map(|(at, (key, text))| {
-            let marker = if at == self.queue.selected {
-                "›"
+            let selected = at == self.queue.selected;
+            let marker = if selected { "›" } else { " " };
+            let text = if is_plain() {
+                choice_text(at, selected, format!("{} ({key})", lang.tr(text)))
             } else {
-                " "
+                format!("{marker} {key} {}", lang.tr(text))
             };
-            Line::from(Span::styled(
-                format!("{marker} {key} {}", lang.tr(text)),
-                choice_style,
-            ))
+            Line::from(Span::styled(text, choice_style))
         }));
         let others = self.queue.others_waiting();
         if others > 0 {

@@ -141,6 +141,7 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 |---|---|
 | `saturn --add-dir <폴더>` | 새 채팅을 열면서 폴더를 더한다. 여러 번 쓸 수 있다. |
 | TUI `/add-dir <폴더>` | 열린 채팅에 폴더를 더한다. |
+| `saturn --plain` | 대화 화면을 [단순 방식](tui.md#단순-방식)으로 그린다. |
 | `saturn --continue` | 현재 폴더에서 가장 최근에 쓴 채팅을 연다. |
 | `saturn --resume [채팅 id]` | 채팅 id가 있으면 그 채팅을, 없으면 현재 폴더의 채팅 목록에서 골라 연다. |
 | `saturn --resume all` | 모든 폴더의 채팅 목록에서 골라 연다. |

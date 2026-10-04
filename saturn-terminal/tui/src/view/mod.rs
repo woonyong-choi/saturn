@@ -111,7 +111,37 @@ pub fn centered(area: Rect, width: u16, height: u16) -> Rect {
 }
 
 pub fn spinner(tick: u64) -> char {
+    if is_plain() {
+        return PLAIN_SPINNER;
+    }
     SPINNER[(tick % SPINNER.len() as u64) as usize]
+}
+
+/// 단순 방식의 머리 글자. 움직이지 않는다.
+pub const PLAIN_SPINNER: char = '*';
+
+thread_local! {
+    static PLAIN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// 그리기가 단순 방식을 따른다. 그리는 스레드가 프레임마다 정한다.
+pub fn set_plain(plain: bool) {
+    PLAIN.with(|flag| flag.set(plain));
+}
+
+pub fn is_plain() -> bool {
+    PLAIN.with(std::cell::Cell::get)
+}
+
+/// 선택지 줄 글. 단순 방식에서는 번호 목록(`› 1. 글`, 고른 줄에 `›`)이고 전체 화면은 `text` 그대로다.
+pub fn choice_text(index: usize, selected: bool, text: impl Into<String>) -> String {
+    let text = text.into();
+    if is_plain() {
+        let marker = if selected { '›' } else { ' ' };
+        format!("{marker} {}. {text}", index + 1)
+    } else {
+        text
+    }
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -172,7 +202,11 @@ pub fn text_width(text: &str) -> usize {
     Span::raw(text).width()
 }
 
+/// 단순 방식은 박스 없이 제목 한 줄과 그 아래 내용이다.
 pub fn window_block(title: &str) -> Block<'static> {
+    if is_plain() {
+        return Block::new().title(Span::styled(title.to_owned(), EMPHASIS));
+    }
     Block::bordered().title(Span::styled(format!(" {title} "), EMPHASIS))
 }
 
@@ -181,6 +215,13 @@ pub fn window_block(title: &str) -> Block<'static> {
 // basis: estimate
 /// 폭은 가장 긴 줄에 맞추되 `WINDOW_MIN_WIDTH`와 화면 폭 사이로 둔다.
 pub fn render_window(frame: &mut Frame, area: Rect, title: &str, lines: Vec<Line<'static>>) {
+    if is_plain() {
+        let height = u16::try_from(lines.len() + 1).unwrap_or(u16::MAX);
+        let rect = Rect::new(area.x, area.y, area.width, height.min(area.height));
+        frame.render_widget(Clear, rect);
+        frame.render_widget(Paragraph::new(lines).block(window_block(title)), rect);
+        return;
+    }
     let widest = lines.iter().map(Line::width).max().unwrap_or(0);
     let widest = widest.max(text_width(title) + 2).max(WINDOW_MIN_WIDTH);
     let width = u16::try_from(widest + 2).unwrap_or(u16::MAX);

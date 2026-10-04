@@ -131,6 +131,8 @@ pub(crate) enum Cond {
     ComposerEmpty,
     /// 입력창이 비었거나 불러온 기록 그대로다.
     HistoryBrowsable,
+    /// 단순 방식으로 그리는 중이다.
+    Plain,
 }
 
 impl Cond {
@@ -140,6 +142,7 @@ impl Cond {
             Self::Running => ctx.running,
             Self::ComposerEmpty => ctx.composer_empty,
             Self::HistoryBrowsable => ctx.history_browsable,
+            Self::Plain => ctx.plain,
         }
     }
 }

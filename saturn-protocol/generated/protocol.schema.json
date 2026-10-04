@@ -3618,6 +3618,14 @@
                 "revision": {
                   "$ref": "#/$defs/SettingsRevision"
                 },
+                "screen": {
+                  "default": null,
+                  "description": "병합한 설정의 `tui.screen`(`auto`, `full`, `plain`). 검사 실패로 이전 번호를 쓰면 `None`이다.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "warning": {
                   "anyOf": [
                     {
@@ -4648,6 +4656,14 @@
                 },
                 "revision": {
                   "$ref": "#/$defs/SettingsRevision"
+                },
+                "screen": {
+                  "default": null,
+                  "description": "병합한 설정의 `tui.screen`(`auto`, `full`, `plain`). 검사 실패로 이전 번호를 쓰면 `None`이다.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "warning": {
                   "anyOf": [

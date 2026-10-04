@@ -174,7 +174,11 @@ rule: string, } } | { "method": "ConstraintAskResolved", "params": { ask: Constr
 /**
  * 병합한 설정의 `tui.keymap`. 검사 실패로 이전 번호를 쓰면 `None`이다.
  */
-keymap: string | null, } } | { "method": "Alert", "params": { alert: Alert, } };
+keymap: string | null, 
+/**
+ * 병합한 설정의 `tui.screen`(`auto`, `full`, `plain`). 검사 실패로 이전 번호를 쓰면 `None`이다.
+ */
+screen: string | null, } } | { "method": "Alert", "params": { alert: Alert, } };
 
 export type NotificationMessage = { jsonrpc: JsonRpcVersion, } & ({ "method": "EngineVersion", "params": { saturn_version: string, protocol_version: number, } } | { "method": "StartInfo", "params": { saturn_version: string, 
 /**
@@ -200,7 +204,11 @@ rule: string, } } | { "method": "ConstraintAskResolved", "params": { ask: Constr
 /**
  * 병합한 설정의 `tui.keymap`. 검사 실패로 이전 번호를 쓰면 `None`이다.
  */
-keymap: string | null, } } | { "method": "Alert", "params": { alert: Alert, } });
+keymap: string | null, 
+/**
+ * 병합한 설정의 `tui.screen`(`auto`, `full`, `plain`). 검사 실패로 이전 번호를 쓰면 `None`이다.
+ */
+screen: string | null, } } | { "method": "Alert", "params": { alert: Alert, } });
 
 export type PermissionAnswer = "AllowOnce" | "AllowAlways" | { "Deny": { note: string | null, } };
 

@@ -161,6 +161,12 @@ pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
         takes_provider: false,
     },
     CommandSpec {
+        path: "plain",
+        description: "단순 방식 켜고 끄기",
+        values: &[],
+        takes_provider: false,
+    },
+    CommandSpec {
         path: "suspend",
         description: "화면 일시 중지",
         values: &[],
@@ -236,6 +242,8 @@ pub(crate) enum SlashCommand {
     Transcript,
     /// `/redraw`
     Redraw,
+    /// `/plain`. 단순 방식을 켜고 끈다.
+    Plain,
     /// `/suspend`
     Suspend,
     /// `/quit`
@@ -300,6 +308,7 @@ pub(crate) fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         "keymap" => parse_keymap(&args)?,
         "transcript" => no_args("transcript", &args, SlashCommand::Transcript)?,
         "redraw" => no_args("redraw", &args, SlashCommand::Redraw)?,
+        "plain" => no_args("plain", &args, SlashCommand::Plain)?,
         "suspend" => no_args("suspend", &args, SlashCommand::Suspend)?,
         "quit" => no_args("quit", &args, SlashCommand::Quit)?,
         "usage" => no_args("usage", &args, SlashCommand::Usage)?,

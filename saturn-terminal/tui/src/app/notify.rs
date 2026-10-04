@@ -54,6 +54,9 @@ impl App {
         notification: Notification,
         now: Instant,
     ) -> Vec<Effect> {
+        if self.plain && needs_input(&notification) {
+            self.bell = true;
+        }
         match notification {
             Notification::StartInfo { .. } => self.on_start_info(&notification),
             Notification::InputAccepted { .. } => {}
@@ -325,9 +328,11 @@ impl App {
                 revision,
                 warning,
                 keymap,
+                screen,
             } => {
                 self.on_settings_applied(revision, warning);
                 self.on_settings_keymap(keymap);
+                self.on_settings_screen(screen);
             }
             Notification::Alert { alert } => self.on_alert(alert),
             _ => {}
@@ -566,6 +571,21 @@ impl App {
         });
     }
 
+    /// 설정의 `tui.screen`이 바뀌었을 때만 따른다. 옵션과 환경 변수가 정했으면 따르지 않고, 같은 값이 다시 오면
+    /// `/plain`으로 바꾼 상태를 그대로 둔다. `plain`만 단순 방식이고 `auto`와 `full`은 전체 화면이다.
+    fn on_settings_screen(&mut self, screen: Option<String>) {
+        let Some(name) = screen else {
+            return;
+        };
+        if self.settings_screen.as_deref() == Some(name.as_str()) {
+            return;
+        }
+        if !self.plain_fixed {
+            self.plain = name == "plain";
+        }
+        self.settings_screen = Some(name);
+    }
+
     /// 설정의 `tui.keymap`이 바뀌었을 때만 따른다. 같은 값이 다시 오면 `/keymap`으로 고른 묶음을 지키지 않고 바꾸지도 않는다.
     fn on_settings_keymap(&mut self, keymap: Option<String>) {
         let Some(name) = keymap else {
@@ -728,5 +748,20 @@ fn finished_cells(
         }
         Change::TaskNeedsCheck { .. } => vec![TranscriptCell::NeedsCheck { label }],
         _ => Vec::new(),
+    }
+}
+
+/// 사용자가 답해야 일이 진행되는 알림. 단순 방식은 이때 벨을 울린다.
+fn needs_input(notification: &Notification) -> bool {
+    match notification {
+        Notification::PermissionRequested { .. }
+        | Notification::InputRequested { .. }
+        | Notification::FolderTrustRequested { .. }
+        | Notification::RouterKeyRequired { .. }
+        | Notification::ConstraintAsked { .. } => true,
+        Notification::InputChanged { state, reason, .. } => {
+            *state == InputState::Queued && *reason == Some(QueueReason::ConfirmStop)
+        }
+        _ => false,
     }
 }

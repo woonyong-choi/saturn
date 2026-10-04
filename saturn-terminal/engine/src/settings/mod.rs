@@ -55,6 +55,17 @@ pub(crate) enum Screen {
     Plain,
 }
 
+impl Screen {
+    /// 설정 값 이름.
+    pub(crate) fn name(self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::Full => "full",
+            Self::Plain => "plain",
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum SettingsError {
     #[error("failed to access settings file: {path}")]

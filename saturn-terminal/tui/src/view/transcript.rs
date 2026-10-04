@@ -21,7 +21,7 @@ use crate::state::{InputUpdate, TaskView};
 use crate::view::extensions;
 use crate::view::start_screen::StartInfo;
 use crate::view::status_board::activity_text;
-use crate::view::{ERROR, MUTED, wrap};
+use crate::view::{ERROR, MUTED, is_plain, wrap};
 
 /// 초안 값.
 pub(crate) const SHELL_PREVIEW_LINES: usize = 10;
@@ -103,6 +103,51 @@ impl TranscriptCell {
     // basis: estimate
     /// 전체 화면과 plain 출력이 같은 결과를 내도록 문구는 모두 여기서 만든다.
     pub(crate) fn lines(&self, lang: Lang, labels_visible: bool, expanded: bool) -> Vec<String> {
+        if is_plain() {
+            return self.plain_lines(lang, expanded);
+        }
+        self.base_lines(lang, labels_visible, expanded)
+    }
+
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 셀 글자 수
+    // basis: estimate
+    /// 단순 방식의 줄. 이름표를 늘 보이고 줄마다 말한 쪽을 앞에 적는다. 작업의 말은 `[A] `, Saturn 자신의 안내와 경고는
+    /// `Saturn: `이다. 입력 에코(`>`)와 시작 머리는 그대로 둔다.
+    pub(crate) fn plain_lines(&self, lang: Lang, expanded: bool) -> Vec<String> {
+        let lines = self.base_lines(lang, true, expanded);
+        let speaker = match self {
+            Self::Header(_) | Self::InputEcho { .. } => return lines,
+            Self::AgentText { label, .. }
+            | Self::Tool { label, .. }
+            | Self::Result { label, .. }
+            | Self::Failed { label, .. }
+            | Self::Notice { label, .. } => match label {
+                Some(label) => format!("{} ", labels::format(*label)),
+                None => SATURN_SPEAKER.to_owned(),
+            },
+            Self::NeedsCheck { label }
+            | Self::Feedback { label, .. }
+            | Self::Correction { label, .. }
+            | Self::HeldClosed { label } => format!("{} ", labels::format(*label)),
+            Self::TrainShort { .. }
+            | Self::Shell(_)
+            | Self::Warning(_)
+            | Self::ExtensionList(_) => SATURN_SPEAKER.to_owned(),
+        };
+        lines
+            .into_iter()
+            .map(|line| {
+                if line.starts_with(&speaker) {
+                    line
+                } else {
+                    format!("{speaker}{line}")
+                }
+            })
+            .collect()
+    }
+
+    fn base_lines(&self, lang: Lang, labels_visible: bool, expanded: bool) -> Vec<String> {
         let prefix = |label: Option<TaskLabel>| labels::prefix(label, labels_visible);
         match self {
             Self::Header(info) => info.lines(lang),
@@ -166,7 +211,22 @@ impl TranscriptCell {
                 disposition,
                 selected,
             } => {
+                if is_plain() {
+                    return plain_feedback_lines(lang, *label, *disposition, *selected);
+                }
                 vec![feedback_line(lang, *label, *disposition, *selected)]
+            }
+            Self::Correction { label, selected } if is_plain() => {
+                let head = format!(
+                    "{} {}",
+                    labels::format(*label),
+                    lang.tr(i18n::CORRECTION_QUESTION)
+                );
+                vec![
+                    head,
+                    plain_choice(*selected == 0, '1', lang.tr(i18n::BUTTON_RUN)),
+                    plain_choice(*selected == 1, '2', lang.tr(i18n::BUTTON_KEEP)),
+                ]
             }
             Self::Correction { label, selected } => vec![format!(
                 "{} {} {}  {}",
@@ -716,6 +776,41 @@ fn summary_line(
     parts.join(" · ")
 }
 
+/// 단순 방식에서 말하는 쪽이 Saturn일 때의 줄 머리.
+const SATURN_SPEAKER: &str = "Saturn: ";
+
+/// 단순 방식의 선택지 한 줄. 번호는 누르는 키(`1`, `2`, `0`)이고 고른 줄에 `›`를 붙인다.
+fn plain_choice(selected: bool, digit: char, text: &str) -> String {
+    let marker = if selected { '›' } else { ' ' };
+    format!("{marker} {digit}. {text}")
+}
+
+/// 피드백 질문을 질문 한 줄과 번호 목록으로 쓴다.
+fn plain_feedback_lines(
+    lang: Lang,
+    label: TaskLabel,
+    disposition: Disposition,
+    selected: usize,
+) -> Vec<String> {
+    let full = feedback_line(lang, label, disposition, selected);
+    let question = lang.tr(i18n::FEEDBACK_QUESTION);
+    let head = full
+        .split_once(question)
+        .map_or(full.clone(), |(head, _)| format!("{head}{question}"));
+    let choices = [
+        ('1', i18n::FEEDBACK_RIGHT),
+        ('2', i18n::FEEDBACK_WRONG),
+        ('0', i18n::FEEDBACK_DISMISS),
+    ];
+    std::iter::once(head)
+        .chain(
+            choices.iter().enumerate().map(|(index, (digit, text))| {
+                plain_choice(selected == index, *digit, lang.tr(text))
+            }),
+        )
+        .collect()
+}
+
 /// 고른 선택지 앞에 `›`를 붙인다.
 fn choice_text(selected: usize, index: usize, digit: char, text: &str) -> String {
     let marker = if selected == index { "›" } else { "" };
@@ -806,6 +901,67 @@ mod tests {
     use ratatui::backend::TestBackend;
 
     use super::*;
+
+    #[test]
+    fn plain_lines_name_the_speaker_on_every_line_and_saturn_speaks_for_notices() {
+        let text = TranscriptCell::AgentText {
+            label: Some(TaskLabel('A')),
+            lines: vec!["첫 줄".to_string(), "둘째 줄".to_string()],
+        };
+        let failed = TranscriptCell::Failed {
+            label: Some(TaskLabel('B')),
+            provider: None,
+            elapsed: Duration::from_secs(3),
+            cause: "원인".to_string(),
+        };
+        let warning = TranscriptCell::Warning("경고".to_string());
+
+        assert_eq!(
+            text.plain_lines(Lang::Ko, false),
+            ["[A] 첫 줄", "[A] 둘째 줄"]
+        );
+        assert_eq!(
+            failed.plain_lines(Lang::Ko, false),
+            ["[B] 3초 · 실패", "[B] 원인"]
+        );
+        assert_eq!(warning.plain_lines(Lang::Ko, false), ["Saturn: 경고"]);
+    }
+
+    #[test]
+    fn plain_feedback_and_correction_questions_are_numbered_lists() {
+        let feedback = TranscriptCell::Feedback {
+            label: TaskLabel('B'),
+            disposition: Disposition::NewTask,
+            selected: 1,
+        };
+        let correction = TranscriptCell::Correction {
+            label: TaskLabel('B'),
+            selected: 0,
+        };
+
+        crate::view::set_plain(true);
+        let feedback_lines = feedback.lines(Lang::Ko, false, false);
+        let correction_lines = correction.lines(Lang::Ko, false, false);
+        crate::view::set_plain(false);
+
+        assert_eq!(
+            feedback_lines,
+            [
+                "[B] 새 작업으로 보냄 · 판단이 맞았나요? (선택)",
+                "[B]   1. 맞음",
+                "[B] › 2. 틀림",
+                "[B]   0. 닫기"
+            ]
+        );
+        assert_eq!(
+            correction_lines,
+            [
+                "[B] 바로 새 작업으로 실행할까요?",
+                "[B] › 1. [실행]",
+                "[B]   2. [그대로]"
+            ]
+        );
+    }
 
     fn echo(text: &str) -> TranscriptCell {
         TranscriptCell::InputEcho {

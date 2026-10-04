@@ -683,6 +683,19 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("되돌리기(구현 전)", "Rewind (not implemented)"),
     ("키 묶음 고르기", "Choose a keymap"),
     ("화면 다시 그리기", "Redraw the screen"),
+    (
+        "대화 화면을 단순 방식(박스와 움직임 없이 줄마다 말한 쪽을 적고 선택지를 번호 목록으로)으로 그린다. `--plain=false`는 `NO_COLOR`와 설정을 이긴다",
+        "Draw the chat screen in plain mode (no boxes or animation, each line names its speaker, choices are numbered lists). `--plain=false` wins over `NO_COLOR` and the setting",
+    ),
+    ("단순 방식 켜고 끄기", "Toggle plain mode"),
+    (
+        "단순 방식 켬 · 박스와 움직임 없이 그립니다",
+        "Plain mode on · Drawn without boxes or animation",
+    ),
+    (
+        "단순 방식 끔 · 전체 화면으로 그립니다",
+        "Plain mode off · Drawn as the full screen",
+    ),
     ("화면 일시 중지", "Suspend the screen"),
     (
         "다음 입력부터 쓸 모델 고르기",

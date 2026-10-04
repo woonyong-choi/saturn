@@ -97,7 +97,7 @@
 |---|---|---|
 | `tui.on_exit` | `background`, `stop`, `ask` | `background` |
 | `tui.keymap` | `saturn`, `claude`, `codex`, `gemini`, `opencode` | `saturn`. TUI 키 묶음이고 `/keymap`은 이 TUI만 바꾼다([TUI](tui.md#키-해석-계층)) |
-| `tui.screen` | `auto`, `full`, `plain` | `auto` |
+| `tui.screen` | `auto`, `full`, `plain` | `auto`. 단순 방식은 [TUI](tui.md#단순-방식) |
 | `notify.on_done` | 참·거짓 | 거짓. 키만 받는다. 알림을 보내는 동작은 [#151](https://github.com/woonyong-choi/saturn/issues/151) |
 | `agent.worktree` | 참·거짓 | 거짓. 구현 전([#335](https://github.com/woonyong-choi/saturn/issues/335)) |
 | `permission.mode` | `ask`, `edit`, `read-only`, `full` | `edit`(초안) |
@@ -129,7 +129,7 @@
 
 - `tui.on_exit`는 TUI를 닫을 때 작업을 어떻게 할지 정한다. `background`는 계속하고, `stop`은 모든 채팅의 작업을 멈춤과 같게 보류하고, `ask`는 작업이 있으면 닫기 전에 묻는다. 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
 - `model.default`는 새 작업을 보낼 기본 모델이고, `model.mode`는 새 작업의 모델을 router가 고를지(`auto`) 사용자가 정한 모델로만 보낼지(`manual`) 정한다. 두 키 모두 사용자 층, 폴더 층, 실행 층에서 정할 수 있고, 입력은 접수 때 고정한 설정 번호의 값을 쓴다. `model.default`가 `<provider>/<model>` 모양이 아니거나 등록하지 않은 provider id면 고르지 않은 것으로 보고 처음 고르기 창을 다시 연다. 모델 창은 값을 사용자 설정 파일에 쓰므로, 폴더 설정이나 `-c`가 같은 키를 정했으면 그 값이 이기고 창은 병합 결과를 보인다. 규칙은 [기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)에 있다.
-- `tui.screen`은 대화 화면을 그리는 방식이다. `auto`는 터미널이면 전체 화면, 파이프나 CI면 plain이고, `full`과 `plain`은 고정한다. 켜는 조건과 우선순위는 [TUI](tui.md)에서 정한다.
+- `tui.screen`은 대화 화면을 그리는 방식이다. `auto`는 터미널이면 전체 화면, 파이프나 CI면 plain이고, `full`과 `plain`은 고정한다. `plain`은 [단순 방식](tui.md#단순-방식)이다. 옵션 `--plain`과 환경 변수 `NO_COLOR`가 이 설정보다 앞서고, 터미널이 아니면 값과 관계없이 plain이다.
 - `notify.on_done`은 작업이 모두 끝났을 때 알림을 보낼지 정한다. 이 문서는 키 이름과 기본값(거짓)만 정하고, 알림 동작은 [#151](https://github.com/woonyong-choi/saturn/issues/151)이 정한다. 지금은 키를 받아 저장만 한다.
 - `agent.worktree`가 거짓이면 보조 에이전트는 같은 폴더에서 한 번에 하나씩 쓴다. 참이면 git 저장소일 때만 보조 에이전트의 쓰기를 별도 worktree에서 병렬로 하고, git 저장소가 아니면 거짓일 때와 같다. 쓰기 격리를 사용자가 켠 뒤에만 하기 위해서다. 규칙은 [입력 처리](input-handling.md)에 있다.
 - `permission.mode`는 기본 규칙 묶음이다. `edit`는 작업 폴더 안 편집을 허용하고 나머지는 묻는다. `ask`는 모두 묻고, `read-only`는 읽기만 허용하고, `full`은 `deny` 규칙을 뺀 모두를 허용한다. 모드의 뜻과 provider 대응은 [권한](permissions.md)에 있다. `full`이면 에이전트 질문 기능도 두 provider에서 끈다. 질문만 따로 정하는 키는 없다([입력 요청](input-requests.md#에이전트-질문-설정)). 층 병합에서 폴더 층의 `permission.mode`는 낮은 쪽부터 `read-only`, `ask`, `edit`, `full` 순서일 때 앞 층까지 합친 모드보다 낮은 값만 적용하고, 같거나 높은 값은 무시해 신뢰 창의 무시되는 항목(`permission.mode`)에 보이고, 병합 때 한 줄 경고에도 남는다. 채팅 층의 `/permissions`와 실행 층 `-c`에는 이 제한이 없다.

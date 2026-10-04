@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use super::{App, Effect, Window};
 use crate::i18n;
-use crate::keys::Action;
+use crate::keys::{Action, KeyArea};
 use crate::state::ChatState;
 use crate::view::WIDE_WIDTH;
 use crate::view::constraint_ask::ConstraintAskQueue;
@@ -18,7 +18,7 @@ use crate::view::input_request::InputQueue;
 use crate::view::live_area::LiveArea;
 use crate::view::model_picker::{ModelPicker, ModelPurpose};
 use crate::view::permission::PermissionQueue;
-use crate::view::resume_prompt::ResumeOutcome;
+use crate::view::resume_prompt::{ResumeChoice, ResumeOutcome};
 use crate::view::router_version::RouterVersionCommand;
 use crate::view::status_board::{self, Button};
 use crate::view::stop_confirm::StopChoice;
@@ -60,6 +60,87 @@ impl App {
     /// 버튼이 없으면 들어가지 않는다.
     pub(super) fn enter_board(&mut self, now: Instant) {
         self.board_focus = self.board_buttons(now).first().copied();
+    }
+
+    // cost: time O(1), heap O(1), stack O(1)
+    // basis: estimate
+    /// 단순 방식에서 선택지는 번호 목록이라 번호 키로 바로 정한다. 선택지 창이 아니거나 번호가 목록 밖이면 아무것도 하지 않는다.
+    pub(super) fn choose(&mut self, index: usize, now: Instant) -> Vec<Effect> {
+        self.choose_in_window(index, now).unwrap_or_default()
+    }
+
+    fn choose_in_window(&mut self, index: usize, now: Instant) -> Option<Vec<Effect>> {
+        match self.key_area() {
+            KeyArea::Permission if index < 3 => {
+                self.permissions.select(index);
+                let answer = self.permissions.selected_answer();
+                Some(self.answer_permission(answer, now))
+            }
+            KeyArea::ExitConfirm => {
+                let confirm = self.exit_confirm.as_mut()?;
+                match index {
+                    0 => confirm.up(),
+                    1 => confirm.down(),
+                    _ => return None,
+                }
+                Some(self.on_exit_confirm_action(Action::Confirm))
+            }
+            KeyArea::StopConfirm => {
+                let Some(Window::StopConfirm(confirm)) = &mut self.window else {
+                    return None;
+                };
+                match index {
+                    0 => confirm.up(),
+                    1 => confirm.down(),
+                    _ => return None,
+                }
+                Some(self.on_stop_confirm_action(Action::Confirm))
+            }
+            KeyArea::TrainConfirm => {
+                let Some(Window::TrainConfirm(confirm)) = &mut self.window else {
+                    return None;
+                };
+                match index {
+                    0 => confirm.up(),
+                    1 => confirm.down(),
+                    _ => return None,
+                }
+                Some(self.on_train_action(Action::Confirm))
+            }
+            KeyArea::ConstraintAsk => {
+                let Some(Window::ConstraintAsk(ask)) = &mut self.window else {
+                    return None;
+                };
+                match index {
+                    0 => ask.up(),
+                    1 => ask.down(),
+                    _ => return None,
+                }
+                Some(self.on_constraint_ask_action(Action::Confirm))
+            }
+            KeyArea::FolderTrust => {
+                let Some(Window::FolderTrust(trust)) = &mut self.window else {
+                    return None;
+                };
+                trust.selected = [TrustChoice::Apply, TrustChoice::Second, TrustChoice::Quit]
+                    .get(index)
+                    .copied()?;
+                Some(self.on_trust_action(Action::Confirm))
+            }
+            KeyArea::ResumePrompt => {
+                let Some(Window::Resume(prompt)) = &mut self.window else {
+                    return None;
+                };
+                if prompt.picking.is_some() {
+                    return None;
+                }
+                prompt.selected = [ResumeChoice::All, ResumeChoice::Pick, ResumeChoice::Leave]
+                    .get(index)
+                    .copied()?;
+                Some(self.on_resume_action(Action::Confirm))
+            }
+            _ => None,
+        }
     }
 
     /// `↑`, `↓`는 세로 목록의 버튼(처음과 끝은 돌아간다), `Enter`는 실행, `Esc`는 돌아가기다.

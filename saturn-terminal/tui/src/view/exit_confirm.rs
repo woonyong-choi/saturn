@@ -7,7 +7,7 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 
 use crate::i18n::{self, Lang};
-use crate::view::{MUTED, SELECTED, render_window};
+use crate::view::{MUTED, SELECTED, choice_text, render_window};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ExitChoice {
@@ -55,16 +55,19 @@ impl ExitConfirmView<'_> {
             .tr(i18n::EXIT_TITLE)
             .replace("{count}", &self.confirm.running.to_string());
         let mut lines = vec![Line::from(lang.tr(i18n::EXIT_QUESTION)), Line::from("")];
-        for (choice, text) in [
+        for (index, (choice, text)) in [
             (ExitChoice::Continue, i18n::EXIT_CONTINUE),
             (ExitChoice::Stop, i18n::EXIT_STOP),
-        ] {
-            let style = if choice == self.confirm.selected {
-                SELECTED
-            } else {
-                Style::new()
-            };
-            lines.push(Line::from(Span::styled(lang.tr(text), style)));
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let selected = choice == self.confirm.selected;
+            let style = if selected { SELECTED } else { Style::new() };
+            lines.push(Line::from(Span::styled(
+                choice_text(index, selected, lang.tr(text)),
+                style,
+            )));
         }
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(lang.tr(i18n::EXIT_HINT), MUTED)));

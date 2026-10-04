@@ -2472,6 +2472,248 @@ fn clicking_the_detail_row_opens_it() {
     assert!(open.iter().any(|row| row == "    s"), "{open:?}");
 }
 
+fn plain_app() -> App {
+    let mut app = attached();
+    app.set_plain_override(Some(true));
+    app
+}
+
+fn has_box_drawing(rows: &[String]) -> bool {
+    rows.iter()
+        .any(|row| row.chars().any(|c| ('\u{2500}'..='\u{257f}').contains(&c)))
+}
+
+#[test]
+fn the_plain_command_toggles_the_mode_and_leaves_a_line() {
+    let mut app = attached();
+
+    run_command_line(&mut app, "/plain");
+    let on = (app.plain, last_warning(&app));
+    run_command_line(&mut app, "/plain");
+
+    assert_eq!(
+        on,
+        (
+            true,
+            "단순 방식 켬 · 박스와 움직임 없이 그립니다".to_string()
+        )
+    );
+    assert!(!app.plain);
+    assert_eq!(last_warning(&app), "단순 방식 끔 · 전체 화면으로 그립니다");
+}
+
+#[test]
+fn plain_draws_no_box_a_still_spinner_and_a_speaker_on_every_line() {
+    let mut app = plain_app();
+    notify(&mut app, task(1, 'A', TaskState::Running));
+    notify(
+        &mut app,
+        Notification::TaskEvent {
+            task: TaskId(1),
+            event: ProviderEvent::Text {
+                agent: AgentId(1),
+                subagent: None,
+                text: "첫 줄\n둘째 줄\n".to_string(),
+            },
+        },
+    );
+    app.live = crate::view::live_area::LiveArea::new();
+    app.push_cell(TranscriptCell::AgentText {
+        label: Some(TaskLabel('A')),
+        lines: vec!["첫 줄".to_string(), "둘째 줄".to_string()],
+    });
+    app.push_cell(TranscriptCell::Warning("경고".to_string()));
+    let early = draw_rows(&app, 60);
+    app.tick = 3;
+    let later = draw_rows(&app, 60);
+
+    assert!(early.iter().any(|row| row == "[A] 첫 줄"), "{early:?}");
+    assert!(early.iter().any(|row| row == "[A] 둘째 줄"), "{early:?}");
+    assert!(early.iter().any(|row| row == "Saturn: 경고"), "{early:?}");
+    assert!(early.iter().any(|row| row.starts_with("* ")), "{early:?}");
+    assert_eq!(early, later);
+    assert!(!has_box_drawing(&early));
+}
+
+#[test]
+fn the_same_screen_without_plain_has_the_boxes_and_the_moving_spinner() {
+    let (mut app, _) = asked_permission();
+    app.tick = 1;
+    let rows = draw_rows(&app, 60);
+
+    assert!(has_box_drawing(&rows));
+    assert!(rows.iter().any(|row| row.starts_with('⠙')), "{rows:?}");
+}
+
+#[test]
+fn plain_permission_window_is_a_numbered_list_without_a_box() {
+    let (mut app, _) = asked_permission();
+    app.set_plain_override(Some(true));
+
+    let rows = draw_rows(&app, 60);
+
+    assert!(!has_box_drawing(&rows), "{rows:?}");
+    assert!(
+        rows.iter().any(|row| row == "› 1. 이번만 허용 (y)"),
+        "{rows:?}"
+    );
+    assert!(
+        rows.iter().any(|row| row == "  2. 항상 허용 (a)"),
+        "{rows:?}"
+    );
+    assert!(
+        rows.iter().any(|row| row == "  3. 거부 (d/Esc)"),
+        "{rows:?}"
+    );
+}
+
+#[test]
+fn plain_number_keys_pick_a_choice_and_plain_off_ignores_them() {
+    let (mut plain, later) = asked_permission();
+    plain.set_plain_override(Some(true));
+    let (mut full, _) = asked_permission();
+
+    let denied = press_at(&mut plain, KeyCode::Char('3'), later);
+    let ignored = press_at(&mut full, KeyCode::Char('3'), later);
+
+    assert!(matches!(
+        sent(&denied)[0],
+        Request::AnswerPermission {
+            answer: PermissionAnswer::Deny { .. },
+            ..
+        }
+    ));
+    assert!(ignored.is_empty());
+}
+
+#[test]
+fn plain_number_keys_pick_in_the_other_choice_windows_too() {
+    let mut app = plain_app();
+    notify(
+        &mut app,
+        asking_to_stop(5, InputState::Queued, "멈추고 실행"),
+    );
+
+    let effects = press(&mut app, KeyCode::Char('2'), KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::AnswerStopConfirm {
+            input: InputId(5),
+            stop: true
+        }]
+    );
+}
+
+#[test]
+fn plain_rings_the_bell_when_input_is_needed_and_full_screen_does_not() {
+    let request = Notification::PermissionRequested {
+        task: TaskId(1),
+        label: TaskLabel('A'),
+        provider: Provider::from_static("codex"),
+        request_id: "r1".to_string(),
+        summary: "rm".to_string(),
+        reason: "clean".to_string(),
+        waiting: 0,
+    };
+    let mut plain = plain_app();
+    let mut full = attached();
+
+    notify(&mut plain, request.clone());
+    notify(&mut full, request);
+    notify(&mut plain, task(1, 'A', TaskState::Running));
+
+    assert!(plain.take_bell());
+    assert!(!plain.take_bell());
+    assert!(!full.take_bell());
+}
+
+#[test]
+fn plain_does_not_ring_for_notifications_that_need_no_answer() {
+    let mut app = plain_app();
+
+    notify(&mut app, task(1, 'A', TaskState::Running));
+    notify(&mut app, input(1, InputState::Queued, "x"));
+
+    assert!(!app.take_bell());
+}
+
+#[test]
+fn plain_removes_the_color_and_full_screen_keeps_it() {
+    let failed = TranscriptCell::Failed {
+        label: None,
+        provider: None,
+        elapsed: Duration::from_secs(1),
+        cause: "원인".to_string(),
+    };
+    let mut plain = plain_app();
+    let mut full = attached();
+    plain.push_cell(failed.clone());
+    full.push_cell(failed);
+    let has_red = |app: &App| {
+        let mut terminal = Terminal::new(TestBackend::new(40, 8)).unwrap();
+        terminal
+            .draw(|frame| app.render(frame, Instant::now()))
+            .unwrap();
+        terminal
+            .backend()
+            .buffer()
+            .content()
+            .iter()
+            .any(|cell| cell.fg == ratatui::style::Color::Red)
+    };
+
+    assert!(has_red(&full));
+    assert!(!has_red(&plain));
+}
+
+#[test]
+fn the_screen_setting_picks_plain_and_a_repeat_keeps_the_slash_plain_choice() {
+    let mut app = attached();
+
+    notify(&mut app, screen_applied("plain"));
+    let from_setting = app.plain;
+    run_command_line(&mut app, "/plain");
+    notify(&mut app, screen_applied("plain"));
+    let kept = app.plain;
+    notify(&mut app, screen_applied("auto"));
+    let after_change = app.plain;
+
+    assert!(from_setting);
+    assert!(!kept);
+    assert!(!after_change);
+}
+
+#[test]
+fn full_and_auto_settings_do_not_turn_plain_on() {
+    let mut app = attached();
+
+    notify(&mut app, screen_applied("full"));
+    let full = app.plain;
+    notify(&mut app, screen_applied("auto"));
+
+    assert!(!full);
+    assert!(!app.plain);
+}
+
+#[test]
+fn an_option_or_environment_choice_beats_the_setting() {
+    let mut forced_on = attached();
+    forced_on.set_plain_override(Some(true));
+    let mut forced_off = attached();
+    forced_off.set_plain_override(Some(false));
+    let mut open = attached();
+    open.set_plain_override(None);
+
+    notify(&mut forced_on, screen_applied("full"));
+    notify(&mut forced_off, screen_applied("plain"));
+    notify(&mut open, screen_applied("plain"));
+
+    assert!(forced_on.plain);
+    assert!(!forced_off.plain);
+    assert!(open.plain);
+}
+
 #[test]
 fn resize_applies_at_once_to_the_next_frame_and_to_the_keys() {
     let mut app = editing_a_long_path();
@@ -2947,6 +3189,16 @@ fn settings_applied(keymap: Option<&str>) -> Notification {
         revision: saturn_protocol::ids::SettingsRevision(2),
         warning: None,
         keymap: keymap.map(str::to_owned),
+        screen: None,
+    }
+}
+
+fn screen_applied(screen: &str) -> Notification {
+    Notification::SettingsApplied {
+        revision: saturn_protocol::ids::SettingsRevision(2),
+        warning: None,
+        keymap: None,
+        screen: Some(screen.to_owned()),
     }
 }
 

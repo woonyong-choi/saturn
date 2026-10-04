@@ -75,6 +75,8 @@ pub struct RunOptions {
     pub history: PathBuf,
     /// 에이전트 작업 안에서 출입증으로 붙을 때만 둔다. 있으면 `Attach` 대신 `AttachChild`를 보낸다.
     pub child: Option<ChildAccess>,
+    /// 옵션(`--plain`)이나 환경 변수(`NO_COLOR`)가 정한 단순 방식. `None`이면 설정 `tui.screen`을 따른다.
+    pub plain: Option<bool>,
 }
 
 /// 하위 접속의 출입증과 요청 모드. 작업 폴더, 환경, 더한 폴더, 실행 층은 engine이 부모에게서 물려주므로 없다.
@@ -117,6 +119,7 @@ pub async fn run(client: &mut EngineClient, options: RunOptions) -> Result<(), T
     app.env = client::attach_env();
     app.overrides = options.overrides;
     app.add_dirs = path_texts(&options.add_dirs);
+    app.set_plain_override(options.plain);
     let mut screen = terminal::enter()?;
     let result = app::run_loop(&mut app, client, &mut screen).await;
     let restored = terminal::leave();
@@ -135,13 +138,14 @@ pub async fn run(client: &mut EngineClient, options: RunOptions) -> Result<(), T
 // vars: e = 표준 입력 줄 수 + 받은 알림 수, w = 보내기를 기다리는 줄 글자 수
 // basis: estimate
 /// stdout에는 대화 기록 줄만 쓰고 진단은 `tracing`(stderr)으로 보낸다.
-/// TODO(#57): plain을 켜는 조건과 우선순위, 설정 키 이름
 ///
 /// # Errors
 /// 표준 입출력 실패, engine 연결 끊김.
 pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result<(), TuiError> {
     let lang = options.lang.unwrap_or_else(Lang::detect);
-    let mut output = PlainOutput::new(std::io::stdout(), lang);
+    // 사람이 보는 터미널일 때만 벨을 울린다. 파이프로 받는 쪽에는 제어 글자를 섞지 않는다
+    let mut output = PlainOutput::new(std::io::stdout(), lang)
+        .with_bell(std::io::IsTerminal::is_terminal(&std::io::stdout()));
     if let Some(child) = options.child {
         // 상한이 차면 자리가 날 때까지 응답이 없다. 거절은 오류로 끝낸다
         let mut written = Ok(());

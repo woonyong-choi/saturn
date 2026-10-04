@@ -9,7 +9,7 @@ use saturn_protocol::ids::ConstraintAskId;
 use saturn_protocol::rpc::ConstraintAskAnswer;
 
 use crate::i18n::{self, Lang};
-use crate::view::{MUTED, SELECTED, render_window};
+use crate::view::{MUTED, SELECTED, choice_text, is_plain, render_window};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AskChoice {
@@ -118,20 +118,25 @@ impl ConstraintAskView<'_> {
             .map(|line| Line::from(line.to_string()))
             .collect();
         lines.push(Line::from(""));
-        for (choice, text) in [
+        for (index, (choice, text)) in [
             (AskChoice::Register, i18n::CONSTRAINT_ASK_REGISTER),
             (AskChoice::Decline, i18n::CONSTRAINT_ASK_DECLINE),
-        ] {
+        ]
+        .into_iter()
+        .enumerate()
+        {
             let is_selected = choice == self.ask.selected;
             let (marker, style) = if is_selected {
                 ("› ", SELECTED)
             } else {
                 ("  ", Style::new())
             };
-            lines.push(Line::from(Span::styled(
-                format!("{marker}{}", lang.tr(text)),
-                style,
-            )));
+            let text = if is_plain() {
+                choice_text(index, is_selected, lang.tr(text))
+            } else {
+                format!("{marker}{}", lang.tr(text))
+            };
+            lines.push(Line::from(Span::styled(text, style)));
         }
         lines.push(Line::from(""));
         if self.waiting > 0 {

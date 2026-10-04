@@ -475,6 +475,9 @@ pub enum Notification {
         /// 병합한 설정의 `tui.keymap`. 검사 실패로 이전 번호를 쓰면 `None`이다.
         #[serde(default)]
         keymap: Option<String>,
+        /// 병합한 설정의 `tui.screen`(`auto`, `full`, `plain`). 검사 실패로 이전 번호를 쓰면 `None`이다.
+        #[serde(default)]
+        screen: Option<String>,
     },
     Alert {
         alert: Alert,
