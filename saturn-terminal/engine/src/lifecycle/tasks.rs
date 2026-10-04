@@ -11,21 +11,10 @@ use super::*;
 
 async fn task_list(flow: &mut Flow, client: &mut Client, id: u64) -> Vec<TaskListItem> {
     drive(&mut flow.engine, async {
-        client.send(id, Request::ListTasks).await;
-        let mut items = None;
-        loop {
-            match client.recv().await {
-                ServerMessage::Notification(message) => {
-                    if let Notification::TaskList { items: found } = message.notification {
-                        items = Some(found);
-                    }
-                }
-                ServerMessage::Response(response) => {
-                    assert_eq!(response, Response::ok(RequestId(id)));
-                    return items.expect("TaskList should arrive before the response");
-                }
-            }
-        }
+        let QueryResult::Tasks { items } = client.query(id, Request::ListTasks).await else {
+            panic!("expected Tasks");
+        };
+        items
     })
     .await
 }

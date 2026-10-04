@@ -184,7 +184,7 @@ pub(crate) enum SlashCommand {
     /// `/record on|off`
     Record { on: bool },
     /// `/permissions ask|edit|read-only|full`
-    /// TODO(#177): 값 없이 실행하면 현재 모드를 보이는 동작은 조회 결과를 돌려주는 방식이 정해진 뒤에 넣는다
+    /// 값 없이 실행하면 현재 모드를 보이는 동작은 아직 없다. 조회 요청을 더해 응답 `result`로 받는다
     Permissions { mode: &'static str },
     /// `/model [provider]`. provider를 주면 그 provider 모델만 목록에 보인다. 고르는 것은 목록 창에서 한다.
     Model { provider: Option<Provider> },

@@ -3,7 +3,7 @@
 
 use saturn_protocol::ids::{ChatId, Provider};
 use saturn_protocol::input::InputAnswer;
-use saturn_protocol::rpc::{ChatNotice, ModelChoice, Notification, PermissionAnswer};
+use saturn_protocol::rpc::{ChatNotice, ModelChoice, Notification, PermissionAnswer, QueryResult};
 use saturn_protocol::state::{InputState, TaskState};
 
 use super::support::{
@@ -141,9 +141,8 @@ async fn a_silent_provider_request_does_not_stall_other_chats_or_stop() {
             before: None,
             limit: 10,
         };
-        let mut seen = first.attach(3, history).await;
-        seen.extend(first.attach(4, Request::Stop { chat }).await);
-        seen
+        first.query(3, history).await;
+        first.attach(4, Request::Stop { chat }).await
     })
     .await;
 
@@ -224,7 +223,7 @@ async fn a_slow_start_request_does_not_stall_other_chats_or_stop() {
             before: None,
             limit: 10,
         };
-        prompt("a history load of the same chat", first.attach(3, history)).await;
+        prompt("a history load of the same chat", first.query(3, history)).await;
         prompt(
             "a stop of the same chat",
             first.attach(4, Request::Stop { chat }),
@@ -477,11 +476,7 @@ async fn others_keep_working(
         before: None,
         limit: 10,
     };
-    prompt(
-        "a history load of the same chat",
-        stopper.attach(3, history),
-    )
-    .await;
+    prompt("a history load of the same chat", stopper.query(3, history)).await;
     prompt(
         "a stop of the same chat",
         stopper.attach(4, Request::Stop { chat }),
@@ -628,18 +623,15 @@ async fn a_slow_model_list_does_not_stall_other_chats_or_stop() {
         others_keep_working((other, &other_dir), (chat, &mut stopper), &mut second).await;
 
         fake.release(Stall::Models);
-        let models = asker
-            .until(|n| match n {
-                Notification::Models { models } => Some(models.clone()),
-                _ => None,
-            })
-            .await;
-        (models, response_to(&mut asker, 10).await)
+        let response = response_to(&mut asker, 10).await;
+        let Outcome::Ok(Some(QueryResult::Models { models })) = response.outcome else {
+            panic!("expected the model list as the result, got {response:?}");
+        };
+        models
     })
     .await;
 
-    assert_eq!(models.0.len(), 1);
-    assert_eq!(models.1, Response::ok(RequestId(10)));
+    assert_eq!(models.len(), 1);
 }
 
 #[tokio::test]
@@ -685,12 +677,11 @@ async fn a_slow_connection_for_the_model_list_does_not_stall_other_chats_or_stop
         others_keep_working((other, &other_dir), (chat, &mut stopper), &mut second).await;
 
         fake.release(Stall::Connect);
-        asker
-            .until(|n| match n {
-                Notification::Models { models } => Some(models.clone()),
-                _ => None,
-            })
-            .await
+        let response = response_to(&mut asker, 10).await;
+        let Outcome::Ok(Some(QueryResult::Models { models })) = response.outcome else {
+            panic!("expected the model list as the result, got {response:?}");
+        };
+        models
     })
     .await;
 

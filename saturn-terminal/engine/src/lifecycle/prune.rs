@@ -46,36 +46,26 @@ struct Report {
 
 async fn prune(engine: &mut Engine, client: &mut Client, id: u64, yes: bool) -> Report {
     drive(engine, async {
-        client.send(id, Request::Prune { yes }).await;
-        let mut report = None;
-        loop {
-            match client.recv().await {
-                ServerMessage::Notification(message) => match message.notification {
-                    Notification::PrunePreview {
-                        chats,
-                        skipped,
-                        rows,
-                    } => report = Some((chats, skipped, rows, true)),
-                    Notification::Pruned {
-                        chats,
-                        skipped,
-                        rows,
-                    } => report = Some((chats, skipped, rows, false)),
-                    _ => {}
-                },
-                ServerMessage::Response(response) => {
-                    assert_eq!(response, Response::ok(RequestId(id)));
-                    let (chats, skipped, rows, is_preview) =
-                        report.expect("a report should arrive before the response");
-                    return Report {
-                        chat_rows: chats.iter().map(|item| item.rows).collect(),
-                        chats: chats.into_iter().map(|item| item.chat).collect(),
-                        skipped,
-                        rows,
-                        is_preview,
-                    };
-                }
-            }
+        let (chats, skipped, rows, is_preview) =
+            match client.query(id, Request::Prune { yes }).await {
+                QueryResult::PrunePreview {
+                    chats,
+                    skipped,
+                    rows,
+                } => (chats, skipped, rows, true),
+                QueryResult::Pruned {
+                    chats,
+                    skipped,
+                    rows,
+                } => (chats, skipped, rows, false),
+                other => panic!("expected a prune report, got {other:?}"),
+            };
+        Report {
+            chat_rows: chats.iter().map(|item| item.rows).collect(),
+            chats: chats.into_iter().map(|item| item.chat).collect(),
+            skipped,
+            rows,
+            is_preview,
         }
     })
     .await

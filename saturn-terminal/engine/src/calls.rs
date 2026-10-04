@@ -5,6 +5,7 @@
 use saturn_core::providers::ProviderError;
 use saturn_protocol::envelope::{RequestId, Response};
 use saturn_protocol::ids::{ChatId, Provider};
+use saturn_protocol::rpc::QueryResult;
 
 use crate::events::{PermissionAnswering, RuleAnswering};
 use crate::inputs::InputAnswering;
@@ -170,6 +171,15 @@ impl Engine {
 
     /// 요청에 응답한다. 이미 끊긴 클라이언트에는 응답할 곳이 없다.
     pub(crate) async fn respond(&self, responder: Responder, result: Result<(), EngineError>) {
+        self.respond_with(responder, result.map(|()| None)).await;
+    }
+
+    /// 조회 요청이면 결과를 응답의 `result`에 담아 응답한다.
+    pub(crate) async fn respond_with(
+        &self,
+        responder: Responder,
+        result: Result<Option<QueryResult>, EngineError>,
+    ) {
         match responder {
             Responder::Rpc(client, id) => {
                 let response = self.response_of(client, id, result);
@@ -177,7 +187,7 @@ impl Engine {
             }
             #[cfg(test)]
             Responder::Local(reply) => {
-                let _ = reply.send(result); // 결과를 기다리지 않는 시험도 있다
+                let _ = reply.send(result.map(|_| ())); // 결과를 기다리지 않는 시험도 있다
             }
         }
     }
@@ -187,10 +197,11 @@ impl Engine {
         &self,
         client: ClientId,
         id: RequestId,
-        result: Result<(), EngineError>,
+        result: Result<Option<QueryResult>, EngineError>,
     ) -> Response {
         match result {
-            Ok(()) => Response::ok(id),
+            Ok(None) => Response::ok(id),
+            Ok(Some(result)) => Response::result(id, result),
             Err(error) => {
                 let message = masked_chain(&self.masker, &error);
                 tracing::warn!(client = client.0, error = %message, "request failed");

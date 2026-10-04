@@ -59,7 +59,7 @@ pub enum Request {
         chat: ChatId,
         path: String,
     },
-    /// `before`(앞서 받은 `HistoryChunk`의 `oldest`)보다 앞 기록 `limit`단위. 없으면 가장 최근부터.
+    /// `before`(앞서 받은 결과의 `oldest`)보다 앞 기록 `limit`단위를 `QueryResult::History`로 돌려준다. 없으면 가장 최근부터.
     LoadHistory {
         chat: ChatId,
         before: Option<LedgerSeq>,
@@ -82,7 +82,7 @@ pub enum Request {
     /// 연결을 끊는다. 마지막 TUI가 떨어지면 `OnExit`를 적용한다.
     /// 채팅을 옮길 때는 보내지 않고 같은 연결로 `Attach`를 다시 보낸다.
     Detach,
-    /// TUI를 닫기 전에 보낸다. 닫은 뒤의 처리를 `ExitPlan`으로 알린다.
+    /// TUI를 닫기 전에 보낸다. 닫은 뒤의 처리를 `QueryResult::ExitPlan`으로 돌려준다.
     PrepareExit {
         chat: ChatId,
     },
@@ -169,18 +169,19 @@ pub enum Request {
         chat: ChatId,
         mode: String,
     },
-    /// `Chat` 범위는 붙은 채팅이고, 붙은 채팅이 없으면 `folder`의 가장 최근 채팅이다.
+    /// 사용량을 `QueryResult::Usage`로 돌려준다. `Chat` 범위는 붙은 채팅이고, 붙은 채팅이 없으면 `folder`의 가장 최근 채팅이다.
     Usage {
         scope: UsageRange,
         folder: Option<String>,
     },
+    /// 작업 목록을 `QueryResult::Tasks`로 돌려준다.
     ListTasks,
-    /// `folder`에서 마지막 입력 접수가 가장 늦은 채팅(입력이 없으면 만든 시각)을 `LatestChat`으로 보낸다.
+    /// `folder`에서 마지막 입력 접수가 가장 늦은 채팅(입력이 없으면 만든 시각)을 `QueryResult::LatestChat`으로 돌려준다.
     /// 붙지 않은 연결에서도 쓴다.
     LatestChat {
         folder: String,
     },
-    /// `folder`의 채팅 목록을 `ChatList`로 보낸다. `folder`가 `None`이면 모든 폴더. 최근에 쓴 채팅이 앞이고
+    /// `folder`의 채팅 목록을 `QueryResult::Chats`로 돌려준다. `folder`가 `None`이면 모든 폴더. 최근에 쓴 채팅이 앞이고
     /// 순서는 `LatestChat`과 같다. 붙지 않은 연결에서도 쓴다.
     ListChats {
         folder: Option<String>,
@@ -200,7 +201,7 @@ pub enum Request {
         chat: ChatId,
         mode: ModelMode,
     },
-    /// 고를 수 있는 모델 목록을 `Models`로 보낸다. `provider`가 `None`이면 모든 provider.
+    /// 고를 수 있는 모델 목록을 `QueryResult::Models`로 돌려준다. `provider`가 `None`이면 모든 provider.
     /// `chat`은 Codex 목록을 받을 연결을 고른다.
     ListModels {
         chat: ChatId,
@@ -215,12 +216,13 @@ pub enum Request {
     ConfirmTrain {
         proceed: bool,
     },
+    /// `QueryResult::RouterVersions`로 돌려준다.
     ListRouterVersions,
     UseRouterVersion {
         version: String,
     },
     /// `retention.max_age_days`보다 오래 쓰지 않은 채팅을 정리한다. `yes`가 거짓이면 아무것도 지우지 않고
-    /// `PrunePreview`만 보내고, 참이면 지우고 `Pruned`를 보낸다. 설정이 없으면 거절한다.
+    /// `QueryResult::PrunePreview`로, 참이면 지우고 `QueryResult::Pruned`로 돌려준다. 설정이 없으면 거절한다.
     Prune {
         yes: bool,
     },
@@ -310,7 +312,7 @@ pub enum Notification {
         elapsed_ms: u64,
         failure: Option<String>,
     },
-    /// `LoadHistory`의 답. 항목은 실시간 알림과 같은 형식.
+    /// `Attach` 직후 보내는 최근 기록. 항목은 실시간 알림과 같은 형식. `LoadHistory`의 답은 `QueryResult::History`.
     /// `oldest`는 이 묶음에서 가장 오래된 기록 위치로, 더 앞을 받으려면 `LoadHistory`의 `before`에 그대로 보낸다.
     /// 묶음이 비면 `None`. 더 앞 기록이 없으면 `has_more`가 거짓이니 더 요청하지 않는다.
     HistoryChunk {
@@ -360,9 +362,6 @@ pub enum Notification {
         provider: Provider,
         commands: Vec<CommandInfo>,
     },
-    TaskList {
-        items: Vec<TaskListItem>,
-    },
     /// 채팅의 고정 모델. 고정한 채팅에 붙을 때와 고정을 바꿀 때 보낸다.
     ModelPinned {
         chat: ChatId,
@@ -374,45 +373,12 @@ pub enum Notification {
         default: Option<ModelChoice>,
         mode: ModelMode,
     },
-    /// `ListModels`의 답. provider 순서와 provider가 알려 준 순서를 지킨다.
-    Models {
-        models: Vec<ModelInfo>,
-    },
-    Usage {
-        range: UsageRange,
-        rows: Vec<UsageRow>,
-    },
-    /// `LatestChat`의 답. 폴더에 채팅이 없으면 `None`.
-    LatestChat {
-        chat: Option<ChatId>,
-    },
     /// 채팅 이름이나 묶음이 바뀌었다. 같은 engine에 붙은 모든 TUI에 보낸다. 값은 저장한 결과이고
     /// 비어 있으면 `None`이다.
     ChatLabeled {
         chat: ChatId,
         name: Option<String>,
         group: Option<String>,
-    },
-    /// `ListChats`의 답.
-    ChatList {
-        chats: Vec<ChatListItem>,
-    },
-    /// `Prune`의 `yes`가 거짓일 때의 답. 지울 채팅과 남길 채팅. 아무것도 지우지 않았다.
-    PrunePreview {
-        chats: Vec<ChatListItem>,
-        skipped: Vec<PruneSkipped>,
-        /// 지울 채팅의 입력, 실행, 이벤트, 사용량, session 행 수. 판단 기록과 설정 스냅샷은 세지 않는다.
-        rows: u64,
-    },
-    /// `Prune`의 `yes`가 참일 때의 답. 지운 채팅과 남긴 채팅.
-    Pruned {
-        chats: Vec<ChatListItem>,
-        skipped: Vec<PruneSkipped>,
-        rows: u64,
-    },
-    RouterVersions {
-        current: String,
-        versions: Vec<RouterVersionInfo>,
     },
     TrainPreview {
         candidates: u32,
@@ -471,9 +437,62 @@ pub enum Notification {
     Alert {
         alert: Alert,
     },
-    /// `PrepareExit`의 답.
+}
+
+/// 조회 요청의 답. 응답의 `result`에 실려 요청을 보낸 접속에만 간다. 명령 요청의 `result`는 `null`.
+/// 요청과 답: `LoadHistory`→`History`, `Usage`→`Usage`, `ListTasks`→`Tasks`, `LatestChat`→`LatestChat`,
+/// `ListChats`→`Chats`, `ListModels`→`Models`, `ListRouterVersions`→`RouterVersions`,
+/// `PrepareExit`→`ExitPlan`, `Prune`→`PrunePreview`(`yes`가 거짓)나 `Pruned`(`yes`가 참).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(tag = "kind", content = "data")]
+pub enum QueryResult {
+    /// 항목은 실시간 알림과 같은 형식. `oldest`는 이 묶음에서 가장 오래된 기록 위치로, 더 앞을 받으려면
+    /// `LoadHistory`의 `before`에 그대로 보낸다. 묶음이 비면 `None`.
+    History {
+        chat: ChatId,
+        entries: Vec<Notification>,
+        #[serde(default)]
+        oldest: Option<LedgerSeq>,
+        has_more: bool,
+    },
+    Usage {
+        range: UsageRange,
+        rows: Vec<UsageRow>,
+    },
+    Tasks {
+        items: Vec<TaskListItem>,
+    },
+    /// 폴더에 채팅이 없으면 `None`.
+    LatestChat {
+        chat: Option<ChatId>,
+    },
+    Chats {
+        chats: Vec<ChatListItem>,
+    },
+    /// provider 순서와 provider가 알려 준 순서를 지킨다.
+    Models {
+        models: Vec<ModelInfo>,
+    },
+    RouterVersions {
+        current: String,
+        versions: Vec<RouterVersionInfo>,
+    },
+    /// 닫은 뒤의 처리.
     ExitPlan {
         plan: ExitPlan,
+    },
+    /// `Prune`의 `yes`가 거짓일 때. 지울 채팅과 남길 채팅. 아무것도 지우지 않았다.
+    PrunePreview {
+        chats: Vec<ChatListItem>,
+        skipped: Vec<PruneSkipped>,
+        /// 지울 채팅의 입력, 실행, 이벤트, 사용량, session 행 수. 판단 기록과 설정 스냅샷은 세지 않는다.
+        rows: u64,
+    },
+    /// `Prune`의 `yes`가 참일 때. 지운 채팅과 남긴 채팅.
+    Pruned {
+        chats: Vec<ChatListItem>,
+        skipped: Vec<PruneSkipped>,
+        rows: u64,
     },
 }
 

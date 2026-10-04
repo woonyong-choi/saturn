@@ -5,7 +5,9 @@ use std::collections::{HashMap, HashSet};
 use std::time::SystemTime;
 
 use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::{Alert, ChatListItem, Notification, PruneSkipReason, PruneSkipped};
+use saturn_protocol::rpc::{
+    Alert, ChatListItem, Notification, PruneSkipReason, PruneSkipped, QueryResult,
+};
 
 use crate::rpc::ClientId;
 use crate::store::{
@@ -14,7 +16,7 @@ use crate::store::{
 use crate::{AutoPruneNotice, Engine, EngineError};
 
 impl Engine {
-    /// `yes`가 거짓이면 아무것도 지우지 않고 `PrunePreview`를, 참이면 지우고 `Pruned`를 보낸다.
+    /// `yes`가 거짓이면 아무것도 지우지 않고 `PrunePreview`를, 참이면 지우고 `Pruned`를 결과로 돌려준다.
     /// TUI가 붙어 있는 채팅은 열린 항목이 없어도 지우지 않고 `Attached`로 남긴다.
     ///
     /// # Errors
@@ -23,7 +25,7 @@ impl Engine {
         &mut self,
         client: ClientId,
         yes: bool,
-    ) -> Result<(), EngineError> {
+    ) -> Result<QueryResult, EngineError> {
         let before = self.prune_cutoff_or_tell(client).await?;
         let plan = self
             .store
@@ -41,20 +43,22 @@ impl Engine {
         skipped.sort_by_key(|item| item.chat);
         if !yes {
             let counted = self.count_rows(&candidates).await?;
-            let notification = Notification::PrunePreview {
+            return Ok(QueryResult::PrunePreview {
                 chats: with_rows(summaries, &counted.chat_rows),
                 skipped,
                 rows: counted.rows,
-            };
-            self.send(client, notification).await;
-            return Ok(());
+            });
         }
         let request = PruneRequest {
             scope: PruneScope::Chats(candidates),
             yes: true,
         };
         let PruneOutcome::Deleted { plan: done, .. } = self.store.prune(&request).await? else {
-            return Ok(());
+            return Ok(QueryResult::Pruned {
+                chats: Vec::new(),
+                skipped,
+                rows: 0,
+            });
         };
         for chat in &done.chats {
             self.chats.remove(chat);
@@ -64,7 +68,7 @@ impl Engine {
         skipped.sort_by_key(|item| item.chat);
         skipped.dedup_by_key(|item| item.chat);
         let deleted: HashSet<ChatId> = done.chats.iter().copied().collect();
-        let notification = Notification::Pruned {
+        Ok(QueryResult::Pruned {
             chats: with_rows(
                 summaries
                     .into_iter()
@@ -74,9 +78,7 @@ impl Engine {
             ),
             skipped,
             rows: done.rows,
-        };
-        self.send(client, notification).await;
-        Ok(())
+        })
     }
 
     /// 시작 때 한 번 `retention.auto_prune`이 참이면 오래 쓰지 않은 채팅을 지운다.

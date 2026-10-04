@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use saturn_protocol::envelope::{
     self, ClientMessage, CodecError, Outcome, RequestId, ServerMessage,
 };
-use saturn_protocol::rpc::{ATTACH_ENV_NAMES, Notification, Request};
+use saturn_protocol::rpc::{ATTACH_ENV_NAMES, Notification, QueryResult, Request};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, Lines};
 use tokio::net::UnixStream;
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
@@ -29,6 +29,14 @@ pub enum ClientError {
     Rejected { code: i32, message: String },
     #[error("failed to decode engine message")]
     Decode(#[from] CodecError),
+}
+
+/// engine가 보낸 것 하나. 알림이거나 조회 요청의 결과다.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Incoming {
+    Notification(Notification),
+    /// 조회 요청의 응답 `result`. 요청을 보낸 이 접속에만 온다.
+    Result(QueryResult),
 }
 
 #[derive(Debug)]
@@ -135,17 +143,21 @@ impl EngineClient {
             .map_err(|_| ClientError::Closed)
     }
 
-    /// `Response`는 여기서 소비한다. 연결이 끝나면 `None`.
+    /// 거절 응답은 여기서 소비하고, 조회 결과는 `Incoming::Result`로 돌려준다. 연결이 끝나면 `None`.
     /// cancel-safe: 줄 단위 읽기라 `select!` 안에서 취소돼도 메시지를 잃지 않는다.
-    pub async fn next(&mut self) -> Option<Notification> {
+    pub async fn next(&mut self) -> Option<Incoming> {
         loop {
             match self.next_message().await? {
-                ServerMessage::Notification(message) => return Some(message.notification),
-                ServerMessage::Response(response) => {
-                    if let Outcome::Err(error) = response.outcome {
+                ServerMessage::Notification(message) => {
+                    return Some(Incoming::Notification(message.notification));
+                }
+                ServerMessage::Response(response) => match response.outcome {
+                    Outcome::Ok(Some(result)) => return Some(Incoming::Result(result)),
+                    Outcome::Ok(None) => {}
+                    Outcome::Err(error) => {
                         tracing::warn!(code = error.code, message = %error.message, "engine rejected request");
                     }
-                }
+                },
             }
         }
     }
@@ -155,6 +167,7 @@ impl EngineClient {
     // basis: estimate
     /// 요청 하나를 보내고 그 응답이 올 때까지 받은 알림을 `on_notification`에 넘긴다.
     /// 요청이 하나만 진행 중일 때 쓴다(`cli` 하위 명령). 응답 번호는 비교하지 않는다.
+    /// 조회 요청이면 응답의 `result`를 돌려주고, 명령 요청이면 `None`이다.
     ///
     /// # Errors
     /// engine이 거절했으면 `Rejected`, 연결이 끊겼으면 `Closed`.
@@ -162,14 +175,14 @@ impl EngineClient {
         &mut self,
         request: Request,
         mut on_notification: impl FnMut(Notification),
-    ) -> Result<(), ClientError> {
+    ) -> Result<Option<QueryResult>, ClientError> {
         self.send(request).await?;
         loop {
             match self.next_message().await.ok_or(ClientError::Closed)? {
                 ServerMessage::Notification(message) => on_notification(message.notification),
                 ServerMessage::Response(response) => {
                     return match response.outcome {
-                        Outcome::Ok(()) => Ok(()),
+                        Outcome::Ok(result) => Ok(result),
                         Outcome::Err(error) => Err(ClientError::Rejected {
                             code: error.code,
                             message: error.message,

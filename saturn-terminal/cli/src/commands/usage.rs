@@ -4,7 +4,7 @@
 use std::io::Write;
 
 use anyhow::Context;
-use saturn_protocol::rpc::{Notification, Request, UsageRange, UsageRow};
+use saturn_protocol::rpc::{QueryResult, Request, UsageRange, UsageRow};
 use saturn_tui::client::EngineClient;
 use saturn_tui::i18n::{self, Lang};
 use saturn_tui::view::usage::{cost_text, range_name};
@@ -47,14 +47,10 @@ async fn fetch(
         scope: args.range(),
         folder: Some(folder),
     };
-    let mut table = None;
-    call(lang, client, request, |notification| {
-        if let Notification::Usage { range, rows } = notification {
-            table = Some((range, rows));
-        }
-    })
-    .await?;
-    table.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_USAGE_TABLE)))
+    match call(lang, client, request, drop).await? {
+        Some(QueryResult::Usage { range, rows }) => Ok((range, rows)),
+        _ => Err(anyhow::anyhow!(lang.tr(i18n::CLI_NO_USAGE_TABLE))),
+    }
 }
 
 // cost: time O(r), heap O(1), stack O(1), io r
@@ -137,10 +133,10 @@ mod tests {
     #[tokio::test]
     async fn fetch_sends_range_and_reads_usage_notification() {
         let rows = vec![row("router · jev", [None; 5], Some(1_500_000))];
-        let engine = FakeEngine::start(vec![Reply::with(vec![Notification::Usage {
+        let engine = FakeEngine::start(vec![Reply::result(QueryResult::Usage {
             range: UsageRange::Week,
             rows: rows.clone(),
-        }])]);
+        })]);
         let mut client = engine.client().await;
 
         let table = fetch(

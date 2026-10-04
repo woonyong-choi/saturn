@@ -14,11 +14,11 @@ use std::time::{Duration, Instant};
 use crossterm::event::{Event, KeyEvent, KeyEventKind, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Position, Rect};
 use saturn_protocol::ids::{ChatId, LedgerSeq, Provider};
-use saturn_protocol::rpc::{CommandInfo, Notification, Request};
+use saturn_protocol::rpc::{CommandInfo, Notification, QueryResult, Request};
 use tokio::sync::mpsc;
 
 use crate::TuiError;
-use crate::client::{ClientError, EngineClient};
+use crate::client::{ClientError, EngineClient, Incoming};
 use crate::history::InputHistory;
 use crate::i18n::{self, Lang};
 use crate::keymap::{Keymap, Resolved};
@@ -60,6 +60,8 @@ pub(crate) const HISTORY_PAGE: u32 = 50;
 pub(crate) enum AppEvent {
     Terminal(Event),
     Engine(Notification),
+    /// 조회 요청의 응답 `result`.
+    Result(QueryResult),
     EngineClosed,
     Tick,
     ShellDone(ShellOutput),
@@ -248,6 +250,7 @@ impl App {
             }
             AppEvent::Terminal(_) => Vec::new(),
             AppEvent::Engine(notification) => self.on_notification(notification, now),
+            AppEvent::Result(result) => self.on_result(result, now),
             AppEvent::EngineClosed => {
                 self.quit = true;
                 Vec::new()
@@ -627,8 +630,9 @@ pub(crate) async fn run_loop(
             .map_err(terminal::TerminalError::Draw)?;
         let event = tokio::select! {
             Some(event) = rx.recv() => event,
-            notification = client.next() => match notification {
-                Some(notification) => AppEvent::Engine(notification),
+            incoming = client.next() => match incoming {
+                Some(Incoming::Notification(notification)) => AppEvent::Engine(notification),
+                Some(Incoming::Result(result)) => AppEvent::Result(result),
                 None => AppEvent::EngineClosed,
             },
             _ = ticker.tick() => AppEvent::Tick,

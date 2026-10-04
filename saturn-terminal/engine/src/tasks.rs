@@ -7,10 +7,9 @@ use std::collections::{HashMap, HashSet};
 use saturn_core::agents::TreeStatus;
 use saturn_core::queue::{TaskInfo, TaskPhase};
 use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::{Notification, TaskListItem};
+use saturn_protocol::rpc::{QueryResult, TaskListItem};
 use saturn_protocol::state::TaskState;
 
-use crate::rpc::ClientId;
 use crate::store::RunEnd;
 use crate::{Engine, EngineError};
 
@@ -43,11 +42,11 @@ impl ChatLabels {
 }
 
 impl Engine {
-    /// 작업 행, 끝난 작업 행, 채팅 행을 채팅 번호, 작업 번호 순서로 보낸다. 채팅 행은 그 채팅의 작업 행 앞에 온다.
+    /// 작업 행, 끝난 작업 행, 채팅 행을 채팅 번호, 작업 번호 순서로 돌려준다. 채팅 행은 그 채팅의 작업 행 앞에 온다.
     ///
     /// # Errors
     /// 기록 저장소를 읽지 못하면 `Store`.
-    pub(super) async fn send_task_list(&self, client: ClientId) -> Result<(), EngineError> {
+    pub(super) async fn task_list_result(&self) -> Result<QueryResult, EngineError> {
         let mut tasks = self.queue.main_tasks();
         tasks.sort_by_key(|info| (info.chat, info.task));
         let mut chats: HashMap<ChatId, ChatLabels> = HashMap::new();
@@ -73,8 +72,7 @@ impl Engine {
         self.add_waiting_inputs(&mut items, &mut chats).await?;
         self.add_chat_rows(&mut items, &mut chats).await?;
         items.sort_by_key(|item| (item.chat, item.task));
-        self.send(client, Notification::TaskList { items }).await;
-        Ok(())
+        Ok(QueryResult::Tasks { items })
     }
 
     /// 마지막 실행이 완료나 실패로 끝난 작업. 도는 작업, 시작을 기다리는 작업, 보류는 끝난 작업이 아니라 뺀다.

@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use saturn_protocol::event::UsageScope;
 use saturn_protocol::ids::{AgentId, ChatId, RunId, SessionId, SubagentId};
-use saturn_protocol::rpc::{Notification, UsageRange, UsageRow};
+use saturn_protocol::rpc::{QueryResult, UsageRange, UsageRow};
 
 use crate::providers::Registry;
 use crate::rpc::ClientId;
@@ -39,12 +39,12 @@ impl Engine {
     ///
     /// # Errors
     /// `Chat`인데 붙은 채팅도 `folder`의 채팅도 없으면 `Store(NotFound)`.
-    pub(super) async fn send_usage(
+    pub(super) async fn usage_result(
         &self,
         client: ClientId,
         range: UsageRange,
         folder: Option<&str>,
-    ) -> Result<(), EngineError> {
+    ) -> Result<QueryResult, EngineError> {
         let mut chat = self
             .attachments
             .get(&client)
@@ -53,32 +53,27 @@ impl Engine {
             chat = self.store.latest_chat_in(folder).await?;
         }
         let rows = usage_rows(&self.store, &self.registry, range, chat).await?;
-        self.send(client, Notification::Usage { range, rows }).await;
-        Ok(())
+        Ok(QueryResult::Usage { range, rows })
     }
 }
 
 impl Engine {
-    /// 폴더에 채팅이 없으면 `chat`이 `None`인 알림을 보낸다.
-    pub(super) async fn send_latest_chat(
+    /// 폴더에 채팅이 없으면 `chat`이 `None`인 결과를 돌려준다.
+    pub(super) async fn latest_chat_result(
         &self,
-        client: ClientId,
         folder: &str,
-    ) -> Result<(), EngineError> {
+    ) -> Result<QueryResult, EngineError> {
         let chat = self.store.latest_chat_in(folder).await?;
-        self.send(client, Notification::LatestChat { chat }).await;
-        Ok(())
+        Ok(QueryResult::LatestChat { chat })
     }
 
     /// `folder`가 `None`이면 모든 폴더의 채팅.
-    pub(super) async fn send_chat_list(
+    pub(super) async fn chat_list_result(
         &self,
-        client: ClientId,
         folder: Option<&str>,
-    ) -> Result<(), EngineError> {
+    ) -> Result<QueryResult, EngineError> {
         let chats = self.store.list_chats(folder).await?;
-        self.send(client, Notification::ChatList { chats }).await;
-        Ok(())
+        Ok(QueryResult::Chats { chats })
     }
 }
 

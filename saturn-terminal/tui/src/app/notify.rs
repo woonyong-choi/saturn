@@ -9,7 +9,9 @@ use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{
     ChatId, ConstraintAskId, InputId, JudgmentId, LedgerSeq, SettingsRevision, TaskId, TaskLabel,
 };
-use saturn_protocol::rpc::{Alert, ChatNotice, ExitPlan, Notification, Request, SettingsWarning};
+use saturn_protocol::rpc::{
+    Alert, ChatNotice, ExitPlan, Notification, QueryResult, Request, SettingsWarning,
+};
 use saturn_protocol::state::{Disposition, InputState, QueueReason};
 
 use super::{App, Effect, Window};
@@ -129,7 +131,6 @@ impl App {
             Notification::InputResolved { request_id } => {
                 self.inputs.resolve(&request_id, now);
             }
-            Notification::ExitPlan { plan } => return self.on_exit_plan(plan),
             Notification::ModelSettings {
                 chat,
                 default,
@@ -145,6 +146,59 @@ impl App {
                 }
             }
             other => self.on_window_notification(other, now),
+        }
+        Vec::new()
+    }
+
+    // cost: time O(e), heap O(e), stack O(1)
+    // vars: e = 결과에 실린 행 수
+    // basis: estimate
+    /// 조회 요청의 결과를 그 결과를 기다리는 창에 반영한다. 창이 이미 닫혔으면 버린다.
+    pub(super) fn on_result(&mut self, result: QueryResult, now: Instant) -> Vec<Effect> {
+        match result {
+            QueryResult::History {
+                chat,
+                entries,
+                oldest,
+                has_more,
+            } => return self.on_history_chunk(chat, entries, oldest, has_more, now),
+            QueryResult::ExitPlan { plan } => return self.on_exit_plan(plan),
+            QueryResult::Tasks { items } => {
+                if let Some(Window::TaskList(list)) = &mut self.window {
+                    list.replace(ChatGroup::from_items(items));
+                }
+            }
+            QueryResult::Usage { range, rows } => {
+                if let Some(Window::Usage(screen)) = &mut self.window {
+                    screen.table = Some(UsageTable { range, rows });
+                }
+            }
+            QueryResult::PrunePreview {
+                chats,
+                skipped,
+                rows,
+            } => {
+                if let Some(Window::Prune(window)) = &mut self.window {
+                    window.load(chats, &skipped, rows);
+                }
+            }
+            QueryResult::Pruned { chats, rows, .. } => self.on_pruned(chats.len(), rows),
+            QueryResult::Models { models } => {
+                if let Some(Window::Model(picker)) = &mut self.window {
+                    picker.load(models);
+                }
+            }
+            QueryResult::RouterVersions { current, versions } => {
+                if let Some(Window::RouterVersion(screen)) = &mut self.window {
+                    screen.rows = versions
+                        .into_iter()
+                        .map(|info| RouterVersionRow::from_info(info, &current))
+                        .collect();
+                    screen.selected = screen.selected.min(screen.rows.len().saturating_sub(1));
+                }
+            }
+            // TUI는 채팅 목록과 폴더의 최근 채팅을 묻지 않는다. 그런 조회는 `cli`가 붙기 전에 쓴다
+            QueryResult::LatestChat { .. } | QueryResult::Chats { .. } => {}
         }
         Vec::new()
     }
@@ -198,44 +252,10 @@ impl App {
                 self.provider_commands
                     .extend(commands.into_iter().map(|info| (provider, info)));
             }
-            Notification::TaskList { items } => {
-                if let Some(Window::TaskList(list)) = &mut self.window {
-                    list.replace(ChatGroup::from_items(items));
-                }
-            }
-            Notification::Usage { range, rows } => {
-                if let Some(Window::Usage(screen)) = &mut self.window {
-                    screen.table = Some(UsageTable { range, rows });
-                }
-            }
             Notification::ModelPinned { chat, model } => {
                 if self.chat.chat == Some(chat) {
                     self.push_cell(TranscriptCell::Warning(self.model_pinned_notice(&model)));
                     self.chat.pinned_model = Some(model);
-                }
-            }
-            Notification::PrunePreview {
-                chats,
-                skipped,
-                rows,
-            } => {
-                if let Some(Window::Prune(window)) = &mut self.window {
-                    window.load(chats, &skipped, rows);
-                }
-            }
-            Notification::Pruned { chats, rows, .. } => self.on_pruned(chats.len(), rows),
-            Notification::Models { models } => {
-                if let Some(Window::Model(picker)) = &mut self.window {
-                    picker.load(models);
-                }
-            }
-            Notification::RouterVersions { current, versions } => {
-                if let Some(Window::RouterVersion(screen)) = &mut self.window {
-                    screen.rows = versions
-                        .into_iter()
-                        .map(|info| RouterVersionRow::from_info(info, &current))
-                        .collect();
-                    screen.selected = screen.selected.min(screen.rows.len().saturating_sub(1));
                 }
             }
             other => self.on_progress_notification(other, now),

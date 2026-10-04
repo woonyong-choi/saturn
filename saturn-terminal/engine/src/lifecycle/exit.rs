@@ -27,13 +27,11 @@ async fn plan_of(flow: &mut Flow, others: bool) -> ExitPlan {
     }
     let chat = flow.chat;
     drive(&mut flow.engine, async {
-        client.send(2, Request::PrepareExit { chat }).await;
-        client
-            .until(|notification| match notification {
-                Notification::ExitPlan { plan } => Some(*plan),
-                _ => None,
-            })
-            .await
+        let QueryResult::ExitPlan { plan } = client.query(2, Request::PrepareExit { chat }).await
+        else {
+            panic!("expected ExitPlan");
+        };
+        plan
     })
     .await
 }

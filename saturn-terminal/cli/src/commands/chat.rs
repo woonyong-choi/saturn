@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::{Notification, Request};
+use saturn_protocol::rpc::{QueryResult, Request};
 use saturn_tui::RunOptions;
 use saturn_tui::client::EngineClient;
 use saturn_tui::i18n::{self, Lang};
@@ -66,19 +66,11 @@ fn current_folder(lang: Lang) -> anyhow::Result<String> {
 
 async fn latest_chat(lang: Lang, client: &mut EngineClient) -> anyhow::Result<ChatId> {
     let folder = current_folder(lang)?;
-    let mut answer = None;
-    call(
-        lang,
-        client,
-        Request::LatestChat { folder },
-        |notification| {
-            if let Notification::LatestChat { chat } = notification {
-                answer = Some(chat);
-            }
-        },
-    )
-    .await?;
-    let chat = answer.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_LATEST_CHAT_ANSWER)))?;
+    let Some(QueryResult::LatestChat { chat }) =
+        call(lang, client, Request::LatestChat { folder }, drop).await?
+    else {
+        anyhow::bail!(lang.tr(i18n::CLI_NO_LATEST_CHAT_ANSWER));
+    };
     chat.ok_or_else(|| anyhow::anyhow!(lang.tr(i18n::CLI_NO_CHAT_TO_CONTINUE)))
 }
 
@@ -218,9 +210,9 @@ mod tests {
 
     #[tokio::test]
     async fn continue_opens_the_latest_chat_of_the_current_folder() {
-        let engine = FakeEngine::start(vec![Reply::with(vec![Notification::LatestChat {
+        let engine = FakeEngine::start(vec![Reply::result(QueryResult::LatestChat {
             chat: Some(ChatId(5)),
-        }])]);
+        })]);
         let mut client = engine.client().await;
 
         let chat = resolve_chat(Lang::En, &mut client, OpenMode::ContinueLast).await;
@@ -236,9 +228,7 @@ mod tests {
 
     #[tokio::test]
     async fn continue_without_a_chat_in_the_folder_ends_with_guidance_and_opens_nothing() {
-        let engine = FakeEngine::start(vec![Reply::with(vec![Notification::LatestChat {
-            chat: None,
-        }])]);
+        let engine = FakeEngine::start(vec![Reply::result(QueryResult::LatestChat { chat: None })]);
         let mut client = engine.client().await;
 
         let error = resolve_chat(Lang::En, &mut client, OpenMode::ContinueLast)
@@ -251,9 +241,9 @@ mod tests {
 
     #[tokio::test]
     async fn resume_in_the_folder_picks_from_the_chats_of_the_current_folder() {
-        let engine = FakeEngine::start(vec![Reply::with(vec![Notification::ChatList {
+        let engine = FakeEngine::start(vec![Reply::result(QueryResult::Chats {
             chats: Vec::new(),
-        }])]);
+        })]);
         let mut client = engine.client().await;
 
         let error = resolve_chat(Lang::En, &mut client, OpenMode::PickInFolder)
@@ -274,9 +264,9 @@ mod tests {
 
     #[tokio::test]
     async fn resume_all_picks_from_the_chats_of_every_folder() {
-        let engine = FakeEngine::start(vec![Reply::with(vec![Notification::ChatList {
+        let engine = FakeEngine::start(vec![Reply::result(QueryResult::Chats {
             chats: Vec::new(),
-        }])]);
+        })]);
         let mut client = engine.client().await;
 
         let error = resolve_chat(Lang::En, &mut client, OpenMode::PickInAll)

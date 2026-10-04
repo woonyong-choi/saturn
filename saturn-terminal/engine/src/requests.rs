@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{ChatId, LedgerSeq, TaskLabel};
-use saturn_protocol::rpc::{Alert, ChatNotice, Notification, PROTOCOL_VERSION};
+use saturn_protocol::rpc::{Alert, ChatNotice, Notification, PROTOCOL_VERSION, QueryResult};
 use saturn_protocol::state::TaskState;
 
 use crate::rpc::ClientId;
@@ -15,6 +15,13 @@ use crate::{AutoPruneNotice, Engine, EngineError, RouterGate, masked_chain};
 
 /// 초안. `LoadHistory` 한 번에 보내는 최대 기록 수.
 const MAX_HISTORY: u32 = 500;
+
+/// 알림 항목으로 바꾼 기록 한 묶음. `HistoryChunk`와 `QueryResult::History`가 같이 쓴다.
+struct NotifiedPage {
+    entries: Vec<Notification>,
+    oldest: Option<LedgerSeq>,
+    has_more: bool,
+}
 
 impl Engine {
     pub(super) fn start_info(&self, workdir: &Path, added_dirs: &[PathBuf]) -> Notification {
@@ -63,9 +70,24 @@ impl Engine {
         before: Option<LedgerSeq>,
         limit: u32,
     ) -> Result<Notification, EngineError> {
-        let page = self.store.history_page(chat, before, limit).await?;
+        let page = self.history_page(chat, before, limit).await?;
         Ok(Notification::HistoryChunk {
             chat,
+            entries: page.entries,
+            oldest: page.oldest,
+            has_more: page.has_more,
+        })
+    }
+
+    /// 기록 한 묶음을 실시간 알림과 같은 형식의 항목으로 바꾼다.
+    async fn history_page(
+        &self,
+        chat: ChatId,
+        before: Option<LedgerSeq>,
+        limit: u32,
+    ) -> Result<NotifiedPage, EngineError> {
+        let page = self.store.history_page(chat, before, limit).await?;
+        Ok(NotifiedPage {
             entries: page
                 .entries
                 .into_iter()
@@ -218,16 +240,19 @@ impl Engine {
     /// `before`는 앞서 받은 묶음의 `oldest`다. engine은 TUI별 위치를 기억하지 않는다.
     pub(super) async fn load_history(
         &self,
-        client: ClientId,
         chat: ChatId,
         before: Option<LedgerSeq>,
         limit: u32,
-    ) -> Result<(), EngineError> {
-        let history = self
-            .history_chunk(chat, before, limit.min(MAX_HISTORY))
+    ) -> Result<QueryResult, EngineError> {
+        let page = self
+            .history_page(chat, before, limit.min(MAX_HISTORY))
             .await?;
-        self.send(client, history).await;
-        Ok(())
+        Ok(QueryResult::History {
+            chat,
+            entries: page.entries,
+            oldest: page.oldest,
+            has_more: page.has_more,
+        })
     }
 
     /// 키 원문은 확인과 저장에만 쓰고 로그, 오류, 기록 저장소에 남기지 않는다.

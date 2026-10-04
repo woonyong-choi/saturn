@@ -209,7 +209,7 @@ pub(crate) struct ChatState {
     pub close_held_confirm: Option<TaskId>,
     pub feedback: Option<FeedbackPrompt>,
     pub correction: Option<CorrectionPrompt>,
-    /// 이 TUI가 마지막으로 정한 권한 모드. 현재 값을 묻는 요청이 없어(#177) 모르면 `None`이다.
+    /// 이 TUI가 마지막으로 정한 권한 모드. 현재 값을 묻는 요청이 아직 없어 모르면 `None`이다.
     pub permission_mode: Option<&'static str>,
     pub context: Option<ContextSize>,
     /// 채팅의 고정 모델. engine이 저장해 두고 채팅에 붙을 때와 바뀔 때 알려 준다. 창이 지금 고정을 표시하는 데 쓴다.

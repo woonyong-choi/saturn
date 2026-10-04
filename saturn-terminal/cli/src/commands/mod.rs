@@ -2,7 +2,7 @@
 
 use std::io::{BufRead, IsTerminal, Write};
 
-use saturn_protocol::rpc::{Notification, Request};
+use saturn_protocol::rpc::{Notification, QueryResult, Request};
 use saturn_tui::client::{ClientError, EngineClient};
 use saturn_tui::i18n::{self, Lang};
 
@@ -20,7 +20,7 @@ const ROUTER_KEY_REQUIRED: i32 = -32001;
 // cost: time O(m), heap O(1), stack O(1), io m
 // vars: m = 응답이 오기까지 받은 알림 수
 // basis: estimate
-/// 요청 하나를 보내고 응답까지 받은 알림을 `on_notification`에 넘긴다.
+/// 요청 하나를 보내고 응답까지 받은 알림을 `on_notification`에 넘기고, 조회 요청이면 응답의 결과를 돌려준다.
 /// 화면이 없어 키를 묻지 않으므로 router 키 대기 거절에는 설정 방법을 안내한다.
 ///
 /// # Errors
@@ -30,7 +30,7 @@ pub(crate) async fn call(
     client: &mut EngineClient,
     request: Request,
     on_notification: impl FnMut(Notification),
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Option<QueryResult>> {
     match client.call(request, on_notification).await {
         Err(ClientError::Rejected {
             code: ROUTER_KEY_REQUIRED,
