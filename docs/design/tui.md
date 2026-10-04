@@ -130,6 +130,12 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 작업 이름표 `[A]`는 살아 있는 작업이 둘 이상이거나 대기 줄이나 보류 줄이 있을 때만 보인다. 작업이 하나이고 대기와 보류가 없으면 이름표를 숨긴다. 이름표가 가리킬 대상이 하나뿐일 때 줄을 짧게 두기 위해서다. 끝난 작업의 글자는 비어 있는 글자 중 가장 앞 글자로 다시 쓴다. 끼워 넣은 입력의 에코에는 그 입력이 합쳐진 작업의 이름표를 붙인다. provider가 띄운 subagent는 이름표 없이 부모 작업 줄 아래에 흐리게 접어 보인다.
 
+### 실행 줄
+
+실행 줄은 `⠋ [A]  codex · gpt-5.6-luna  12초  파일 수정 중  Token 2,100`처럼 이름표, provider · 모델, 경과, 하는 일, 토큰 순서로 쓰고 칸 사이를 두 칸 띄운다. 모델 이름은 provider가 보고한 그대로 쓰고 별칭을 만들지 않는다. provider를 모르면 그 칸은 빠진다. 출력도 하는 일도 아직 없는 작업은 `작업 중`만 보인다. 토큰은 사용량 보고 전이면 `Token -`이다.
+
+파일 경로나 명령 같은 세부는 줄 안에 넣지 않고 아래에 한 단계 들여 `└ src/main.rs`처럼 보인다. 파일 작업은 경로마다, 명령은 줄마다 한 줄이다. 세부가 줄 폭보다 길거나 여러 줄이면 첫 줄만 보이고 끝을 `…`로 줄인다. 이 줄을 누르거나(마우스 클릭) 입력창이 비어 있을 때 `Enter`를 누르면 모든 줄이 펼쳐지고, 다시 누르면 접힌다. 펼친 세부는 폭에 맞게 접고 8줄을 넘으면 마지막 줄을 `…`로 닫는다. 이 `Enter`는 선택지 키 규칙과 같아서, 접고 펼칠 세부가 있고 입력창이 비어 있는 동안만 키를 가져가고 초안을 쓰기 시작하면 입력창이 받는다. 보이는 줄이 실행 줄일 때만 세부 줄이 있다.
+
 ### 상태판 줄 순서
 
 상태판은 한 줄만 둔다. 줄 후보는 실행 줄, 판단 줄, 학습 줄, 대기 줄, 보류 줄, 알림 줄 순서로 쌓고 같은 종류 안에서는 접수 순서를 따르며, 그 맨 앞 하나만 그린다. 보류 닫기 확인은 사용자의 답을 기다리므로 늘 맨 앞이다. 줄이 생기거나 사라져도 남은 줄끼리의 순서는 유지해서 사용자가 보던 줄이 갑자기 다른 줄로 바뀌는 일을 줄인다. 보류 줄을 뺀 나머지 줄은 그 항목이 끝나면 지운다.
@@ -181,7 +187,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 
 - 선택지에 키가 가 있다는 것은 선택지가 떠 있고 입력창이 비어 있다는 뜻이다. 입력창에 글자나 붙여넣은 요소가 있거나 입력 기록 검색 중이면 키는 입력창이 받는다. 숫자 초안(`12`)을 쓰는 중에 `1`이 답으로 가지 않고, 초안을 쓰기 시작한 뒤에는 `Enter`가 초안을 제출한다. 선택지는 그대로 남고 입력창을 비우면 다시 키를 가져간다.
 - 입력창이 빈 채로 선택지가 떠 있으면 첫 글자로 친 숫자도 답으로 간다. 그 숫자를 초안으로 쓰려면 선택지를 `Esc`로 닫는다.
-- 선택지가 여럿이면 키를 받는 순서는 종료 확인 창, router 키 창과 폴더 설정 신뢰 창, 허가 요청 창, 입력 요청 창, 그 밖의 창과 화면, 명령 목록 팝업, 보류 닫기 확인, 바로잡기 제안, 피드백 질문이다. 위에 있는 것이 떠 있는 동안 아래 것은 키를 받지 않고 그대로 남는다.
+- 선택지가 여럿이면 키를 받는 순서는 종료 확인 창, router 키 창과 폴더 설정 신뢰 창, 허가 요청 창, 입력 요청 창, 그 밖의 창과 화면, 명령 목록 팝업, 보류 닫기 확인, 바로잡기 제안, 피드백 질문, 실행 줄의 세부 줄이다. 위에 있는 것이 떠 있는 동안 아래 것은 키를 받지 않고 그대로 남는다.
 - 같은 규칙을 따르는 선택지: 피드백 질문(`1` 맞음, `2` 틀림, `0` 닫기), 바로잡기 제안(`1` 실행, `2` 그대로), 멈춤 확인 창, 종료 확인 창, 제약 확인 창, `/model` 창(`Enter`, `↑`, `↓`, `Esc`). 허가 요청 창은 `y`, `a`, `d`를 쓴다.
 - `Esc`로 닫은 바로잡기 제안은 입력이 아직 보내지지 않았으면 남아 있고, 인자 없이 `/feedback`을 실행하면 다시 열린다(첫 선택은 `[실행]`). 입력이 보내졌거나 취소되면 제안은 사라진다. 새 틀림 답이 나오면 새 제안이 앞 제안을 대신한다.
 - `[실행]`은 `RunAsNewTask`로 그 입력을 새 작업으로 보내고, `[그대로]`는 요청 없이 닫는다.
@@ -254,6 +260,7 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `2` | 피드백 질문에 틀림 답, `/feedback 2`와 동일 | 대화 기록(피드백 질문, 입력창이 빌 때) |
 | `↑`, `↓` | 선택지 이동 | 대화 기록(피드백 질문, 입력창이 빌 때) |
 | `Enter` | 고른 답 확정 | 대화 기록(피드백 질문, 입력창이 빌 때) |
+| `Enter` | 실행 줄 세부 접고 펼치기 | 상태판(접고 펼칠 세부가 있고 입력창이 빌 때) |
 | `Esc` | 피드백 질문 닫기 | 대화 기록(피드백 질문, 입력창이 빌 때) |
 | `1` | 바로잡기 제안 `[실행]` | 대화 기록(바로잡기 제안, 입력창이 빌 때) |
 | `2` | 바로잡기 제안 `[그대로]` | 대화 기록(바로잡기 제안, 입력창이 빌 때) |
@@ -363,18 +370,20 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `> [A] 원문` | 판단이 끝난 입력의 에코 |
 | `⠙ [A] 작업 중` | 출력이 아직 없는 실행 중 작업 |
 | `⠙ [A] 작업 중 · 실행 2개 더 · 대기 3` | 보이는 줄 뒤에 붙는 나머지 개수. 같은 종류는 `개 더`, 다른 종류는 개수만 |
-| `⠙ [A] claude · opus · 1분 · 하위 에이전트 2개 실행 중` | provider subagent가 도는 작업 |
+| `⠙ [A]  codex · gpt-5.6-luna  12초  파일 수정 중  Token 2,100` | 실행 줄 전체. 이름표, provider · 모델, 경과, 하는 일, 토큰 순서이고 칸 사이는 두 칸 |
+| `⠙ [A]  claude · opus  1분  하위 에이전트 2개 실행 중  Token -` | provider subagent가 도는 작업 |
+| `  └ src/main.rs` | 실행 줄 아래에 한 단계 들여 쓴 세부 줄. 파일 경로나 명령. 길면 끝을 `…`로 줄이고 누르면 펼침 |
 | `생각 중` | 실행 줄의 하는 일, provider가 생각하는 중 |
 | `파일 읽는 중` | 실행 줄의 하는 일, 파일 조회 |
 | `파일 수정 중` | 실행 줄의 하는 일, 파일 수정 |
-| `명령 실행 중` | 실행 줄의 하는 일, 명령 실행과 명령 앞 40칸 |
+| `명령 실행 중` | 실행 줄의 하는 일, 명령 실행. 명령은 줄 안에 넣지 않고 세부 줄에 보인다 |
 | `허가 기다림` | 실행 줄의 하는 일, 허가 응답 대기와 경과 시간 정지 |
 | `입력 기다림` | 실행 줄의 하는 일, provider 입력 요청 응답 대기와 경과 시간 정지 |
 | `도구 사용 허가 준비 중 · codex` | 실행 줄의 하는 일, 도구 호출 시작 뒤 3초 안에 허가 요청이나 진행 이벤트가 없을 때(문구 초안) |
 | `응답 없음 5분` | 실행 줄의 하는 일, 마지막 provider 이벤트 뒤 5분(초안) 이상 이벤트가 없을 때 분 단위로 갱신. 허가나 입력을 기다리는 동안은 보이지 않고 이벤트가 오면 지움. 자동으로 멈추지 않고 `Ctrl+C`로 멈춘다. 영어는 `No response 5m`([provider 연결과 session](providers-and-sessions.md#무응답-표시)) |
 | `맥락 정리 중` | 실행 줄의 하는 일, 맥락 정리 |
 | `공급자 전환 중` | 실행 줄의 하는 일, provider 전환 |
-| `Token -` | 사용량 보고 전 |
+| `Token -` | 실행 줄의 토큰 칸, 사용량 보고 전 |
 | `⠹ [D] 판단 중` | router가 입력을 판단하는 중. 0.3초가 넘어야 그린다 |
 | `⠼ [학습]` | `/train` 진행, 단계와 채점 건수와 경과와 토큰 |
 | `· [C] 대기 · A 다음` | 실행 중인 작업 A 뒤에 보낼 입력 |
@@ -475,6 +484,7 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | 작업이 하나이고 대기와 보류가 없으면 이름표를 숨긴다. | `saturn-terminal/tui/src/app/tests.rs`의 `render_single_task_hides_labels`, `render_stacks_transcript_status_composer_and_footer` |
 | 패킷이 넘쳐 맥락 정리를 미루면 안내 한 줄과 제약 목록을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_context_deferred_lists_the_constraints` |
 | 패킷이 맥락 한도로 거절돼 멈추면 안내 한 줄을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_packet_overflow_tells_the_user_how_to_retry` |
+| 실행 줄은 이름표, provider · 모델, 경과, 하는 일, 토큰 순서로 쓰고 명령과 파일 경로는 줄 아래 한 단계 들여 쓴 세부 줄에 두며, 길면 `…`로 줄이고 클릭과 `Enter`로 펼친다. 폭이 좁아도 깨지지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `running_line_columns_are_who_elapsed_doing_and_tokens`, `running_line_shows_a_dash_before_tokens_are_reported`, `running_line_keeps_the_command_out_of_the_line_and_under_it`, `detail_shows_file_paths_one_level_down_and_adds_a_row_to_the_board`, `a_long_detail_is_cut_to_one_row_ending_in_an_ellipsis`, `a_multi_line_command_is_collapsed_to_its_first_line_with_a_mark`, `an_open_detail_shows_every_line_wrapped_to_the_width`, `an_open_detail_stops_at_the_row_limit_with_a_mark`, `detail_rows_never_break_on_a_tiny_width`, `saturn-terminal/tui/src/app/tests.rs`의 `render_draws_the_detail_one_level_below_the_running_line`, `enter_on_an_empty_composer_opens_and_closes_a_long_detail`, `a_draft_takes_enter_back_from_the_detail`, `a_short_detail_does_not_take_enter`, `clicking_the_detail_row_opens_it` |
 | 상태판은 줄 하나와 나머지 개수만 그리고, 대기 줄과 보류 줄의 버튼은 줄 아래 세로 목록이며, 가려진 줄은 개수에 든다. | `saturn-terminal/tui/src/view/status_board.rs`의 `board_shows_the_first_running_task_and_counts_the_rest`, `board_counts_every_other_kind_in_a_fixed_order`, `board_uses_more_wording_for_the_kind_that_is_shown`, `board_without_lines_is_empty`, `board_does_not_count_held_tasks_a_stop_line_already_names`, `board_puts_the_close_held_question_first`, `board_height_is_one_line_plus_the_buttons_of_that_line`, `button_rects_stack_under_the_line`, `render_draws_text_and_buttons`, `saturn-terminal/tui/src/app/tests.rs`의 `render_keeps_the_status_board_to_one_line_for_many_tasks`, `render_lists_the_actions_of_a_queued_line_vertically` |
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
 | 판단이 0.3초 안에 끝나면 판단 줄을 그리지 않고, 0.3초를 넘으면 그리며, 한 번 그렸으면 그린 시각부터 0.5초는 판단이 끝나도 보인다. | `saturn-terminal/tui/src/view/status_board.rs`의 `judging_line_is_not_drawn_until_it_passes_the_show_delay`, `judging_that_ends_within_the_show_delay_never_draws_a_line`, `judging_drawn_once_stays_for_the_minimum_shown_time_after_it_ends`, `judging_that_ends_after_the_minimum_shown_time_stops_right_away`, `judging_tail_keeps_its_place_among_judging_lines`, `saturn-terminal/tui/src/app/tests.rs`의 `judging_line_appears_after_the_delay_and_stays_after_the_judgment_ends`, `judging_that_ends_inside_the_delay_never_reaches_the_screen` |
@@ -512,7 +522,6 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 ## 미해결 질문
 
 - 메인 에이전트가 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
-- 실행 줄의 칸 순서를 provider와 모델 먼저로 둘지, 하는 일 먼저로 둘지, 모델 이름을 보고된 그대로 쓸지 별칭으로 쓸지 ([#50](https://github.com/woonyong-choi/saturn/issues/50))
 - `/stop`이 진행 중인 `/train`도 멈출지, 학습 전용 중지 명령을 둘지, 학습 줄에 중지 버튼을 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - plain 출력을 켜는 조건과 우선순위, 설정 키 이름을 무엇으로 할지 ([#57](https://github.com/woonyong-choi/saturn/issues/57))
 - 좁은 가로 폭에서 폭 구간별로 버튼과 칸을 줄일지, 줄 끝부터 말줄임할지, 버튼 대신 명령 안내를 보일지 ([#58](https://github.com/woonyong-choi/saturn/issues/58))

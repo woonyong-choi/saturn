@@ -52,7 +52,10 @@ impl App {
             return;
         }
         let board = status_board::board(&self.chat, now);
-        let areas = self.areas(area, board.as_ref().map_or(0, status_board::Board::height));
+        let areas = self.areas(
+            area,
+            board.as_ref().map_or(0, |board| board.height(area.width)),
+        );
         match &self.start {
             Some(info) => StartScreenView { info, lang }.render(frame, areas.transcript),
             None => TranscriptView {

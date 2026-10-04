@@ -2110,7 +2110,7 @@ fn clicking_status_button_sends_request() {
         app.screen,
         board
             .as_ref()
-            .map_or(0, crate::view::status_board::Board::height),
+            .map_or(0, |board| board.height(app.screen.width)),
     );
     let rects = crate::view::status_board::button_rects(board.as_ref(), app.lang, areas.status);
     let (rect, _) = rects[0];
@@ -2242,6 +2242,125 @@ fn render_lists_the_actions_of_a_queued_line_vertically() {
     assert_eq!(rows[3], "· [C] 대기 · 쓰기 차례 · 테스트도");
     assert_eq!(rows[4], "  [보내기]");
     assert_eq!(rows[5], "› [취소]");
+}
+
+fn tool_call_on(task: u64, activity: Activity, paths: &[&str]) -> Notification {
+    Notification::TaskEvent {
+        task: TaskId(task),
+        event: ProviderEvent::ToolCall {
+            agent: AgentId(1),
+            subagent: None,
+            call_id: "c1".to_string(),
+            activity,
+            detail: ToolDetail {
+                paths: paths.iter().map(|path| (*path).to_string()).collect(),
+                ..ToolDetail::default()
+            },
+        },
+    }
+}
+
+/// 작업 A가 긴 경로의 파일을 고치는 중이다. 화면 폭은 30칸이라 세부가 접힌다.
+fn editing_a_long_path() -> App {
+    let mut app = attached();
+    app.screen = Rect::new(0, 0, 30, 10);
+    notify(&mut app, task(1, 'A', TaskState::Running));
+    notify(
+        &mut app,
+        tool_call_on(1, Activity::EditingFile, &["crates/long/path/to/main.rs"]),
+    );
+    app
+}
+
+fn draw_rows(app: &App, width: u16) -> Vec<String> {
+    let mut terminal = Terminal::new(TestBackend::new(width, 10)).unwrap();
+    terminal
+        .draw(|frame| app.render(frame, Instant::now()))
+        .unwrap();
+    buffer_lines(terminal.backend().buffer())
+}
+
+fn detail_row(rows: &[String]) -> Option<usize> {
+    rows.iter().position(|row| row.starts_with("  └"))
+}
+
+#[test]
+fn render_draws_the_detail_one_level_below_the_running_line() {
+    let mut app = attached();
+    app.screen = Rect::new(0, 0, 50, 10);
+    notify(&mut app, task(1, 'A', TaskState::Running));
+    notify(
+        &mut app,
+        tool_call_on(1, Activity::EditingFile, &["src/main.rs"]),
+    );
+
+    let rows = draw_rows(&app, 50);
+
+    let at = detail_row(&rows).unwrap();
+    assert_eq!(rows[at - 1], "⠋ codex  45초  파일 수정 중  Token -");
+    assert_eq!(rows[at], "  └ src/main.rs");
+}
+
+#[test]
+fn enter_on_an_empty_composer_opens_and_closes_a_long_detail() {
+    let mut app = editing_a_long_path();
+    let area = app.key_area();
+
+    let collapsed = draw_rows(&app, 30);
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    let open = draw_rows(&app, 30);
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    let closed = draw_rows(&app, 30);
+
+    assert_eq!(area, KeyArea::Detail);
+    assert!(collapsed[detail_row(&collapsed).unwrap()].ends_with('…'));
+    assert!(open.iter().any(|row| row == "    s"), "{open:?}");
+    assert_eq!(closed, collapsed);
+}
+
+#[test]
+fn a_draft_takes_enter_back_from_the_detail() {
+    let mut app = editing_a_long_path();
+    type_text(&mut app, "다음 입력");
+
+    let area = app.key_area();
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(area, KeyArea::Composer);
+    assert!(matches!(sent(&effects)[0], Request::SubmitInput { .. }));
+}
+
+#[test]
+fn a_short_detail_does_not_take_enter() {
+    let mut app = attached();
+    app.screen = Rect::new(0, 0, 50, 10);
+    notify(&mut app, task(1, 'A', TaskState::Running));
+    notify(
+        &mut app,
+        tool_call_on(1, Activity::EditingFile, &["src/main.rs"]),
+    );
+
+    assert_eq!(app.key_area(), KeyArea::Composer);
+}
+
+#[test]
+fn clicking_the_detail_row_opens_it() {
+    let mut app = editing_a_long_path();
+    let rows = draw_rows(&app, 30);
+    let row = detail_row(&rows).unwrap();
+
+    app.handle(
+        AppEvent::Terminal(Event::Mouse(MouseEvent {
+            kind: MouseEventKind::Down(crossterm::event::MouseButton::Left),
+            column: 3,
+            row: row as u16,
+            modifiers: KeyModifiers::NONE,
+        })),
+        Instant::now(),
+    );
+
+    let open = draw_rows(&app, 30);
+    assert!(open.iter().any(|row| row == "    s"), "{open:?}");
 }
 
 #[test]
