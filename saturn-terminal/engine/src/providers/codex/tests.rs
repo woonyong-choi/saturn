@@ -1137,6 +1137,336 @@ fn events_that_arrive_before_the_spawn_completion_are_applied_once_in_order() {
     assert!(again.is_empty());
 }
 
+fn ended_ids(events: &[ProviderEvent]) -> Vec<String> {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            ProviderEvent::SubagentEnded { subagent, .. } => Some(subagent.0.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+fn child_turn_started(child: &str) -> serde_json::Value {
+    json!({ "threadId": child, "turn": { "id": "turn_kid" } })
+}
+
+// #438: 자식의 `thread/closed`가 부모의 spawnAgent 완료 항목보다 먼저 온 순서. 실제 Codex에서 이 순서는 관측하지 못했고
+// 가짜 알림으로 만든 순서다.
+#[test]
+fn a_child_closed_before_its_registration_is_ended_and_forgotten_once_registered() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    let early = [
+        convert_notification(
+            &mut threads,
+            &mut held,
+            "turn/started",
+            &child_turn_started("kid"),
+        ),
+        convert_notification(
+            &mut threads,
+            &mut held,
+            "thread/closed",
+            &json!({ "threadId": "kid" }),
+        ),
+    ];
+
+    let events = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+
+    assert!(early.iter().all(Vec::is_empty));
+    assert_eq!(started_ids(&events).len(), 1);
+    assert_eq!(ended_ids(&events), ["kid"]);
+    assert!(!threads.contains_key(&ProviderSessionId("kid".to_owned())));
+}
+
+// #438
+#[test]
+fn a_duplicate_close_before_registration_ends_the_child_once() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    for method in ["turn/started", "thread/closed", "thread/closed"] {
+        let params = if method == "turn/started" {
+            child_turn_started("kid")
+        } else {
+            json!({ "threadId": "kid" })
+        };
+        convert_notification(&mut threads, &mut held, method, &params);
+    }
+
+    let events = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+
+    assert_eq!(ended_ids(&events), ["kid"]);
+    assert!(!threads.contains_key(&ProviderSessionId("kid".to_owned())));
+}
+
+// #438: 턴 시작 없이 닫힌 자식도 시작과 종료를 짝으로 알린다. 그렇지 않으면 시작만 전달돼 트리가 유휴가 되지 않는다.
+#[test]
+fn a_child_closed_without_any_turn_is_started_and_ended_once() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    convert_notification(
+        &mut threads,
+        &mut held,
+        "thread/closed",
+        &json!({ "threadId": "kid" }),
+    );
+
+    let events = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+
+    assert_eq!(started_ids(&events).len(), 1);
+    assert_eq!(ended_ids(&events), ["kid"]);
+    assert!(!threads.contains_key(&ProviderSessionId("kid".to_owned())));
+}
+
+// #438: 보관 한도로 `turn/started`가 밀려난 뒤 닫힌 자식.
+#[test]
+fn a_child_whose_turn_start_was_evicted_from_the_hold_is_still_ended() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    convert_notification(
+        &mut threads,
+        &mut held,
+        "turn/started",
+        &child_turn_started("kid"),
+    );
+    for _ in 0..HELD_PER_THREAD {
+        convert_notification(
+            &mut threads,
+            &mut held,
+            "item/agentMessage/delta",
+            &json!({ "threadId": "kid", "itemId": "m", "delta": "x" }),
+        );
+    }
+    convert_notification(
+        &mut threads,
+        &mut held,
+        "thread/closed",
+        &json!({ "threadId": "kid" }),
+    );
+
+    let events = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+
+    assert_eq!(started_ids(&events).len(), 1);
+    assert_eq!(ended_ids(&events), ["kid"]);
+}
+
+// #438: 턴이 끝나 종료를 알린 자식의 닫힘은 종료를 다시 알리지 않는다.
+#[test]
+fn closing_a_child_that_already_ended_does_not_end_it_again() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+    convert_notification(
+        &mut threads,
+        &mut held,
+        "turn/started",
+        &child_turn_started("kid"),
+    );
+    let completed = convert_notification(
+        &mut threads,
+        &mut held,
+        "turn/completed",
+        &json!({ "threadId": "kid", "turn": { "id": "turn_kid" } }),
+    );
+
+    let closed = convert_notification(
+        &mut threads,
+        &mut held,
+        "thread/closed",
+        &json!({ "threadId": "kid" }),
+    );
+
+    assert_eq!(ended_ids(&completed), ["kid"]);
+    assert!(ended_ids(&closed).is_empty());
+}
+
+// #438
+#[test]
+fn a_nested_child_closed_before_registration_is_ended_under_its_parent() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    let kid_spawns_grand = spawn_item("kid", &["grand"]);
+    for (method, params) in [
+        ("turn/started", child_turn_started("grand")),
+        ("thread/closed", json!({ "threadId": "grand" })),
+        ("turn/started", child_turn_started("kid")),
+        ("item/completed", kid_spawns_grand),
+    ] {
+        convert_notification(&mut threads, &mut held, method, &params);
+    }
+
+    let events = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+
+    assert_eq!(
+        started_ids(&events),
+        [
+            ("kid".to_owned(), None),
+            ("grand".to_owned(), Some("kid".to_owned()))
+        ]
+    );
+    assert_eq!(ended_ids(&events), ["grand"]);
+    assert!(threads.contains_key(&ProviderSessionId("kid".to_owned())));
+    assert!(!threads.contains_key(&ProviderSessionId("grand".to_owned())));
+}
+
+// #438
+#[test]
+fn closed_notifications_of_unregistered_threads_stay_inside_the_hold_limits() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    for index in 0..(HELD_THREADS + 4) {
+        let thread = format!("ghost{index}");
+        for _ in 0..(HELD_PER_THREAD + 4) {
+            convert_notification(
+                &mut threads,
+                &mut held,
+                "thread/closed",
+                &json!({ "threadId": thread }),
+            );
+        }
+    }
+
+    let oldest = held.take(&ProviderSessionId("ghost0".to_owned()));
+    let newest = held.take(&ProviderSessionId(format!("ghost{}", HELD_THREADS + 3)));
+
+    assert!(oldest.is_empty());
+    assert_eq!(newest.len(), HELD_PER_THREAD);
+    assert_eq!(threads.len(), 1);
+}
+
+// #438: 승인 요청이 자식 등록보다 먼저 온 순서. 실제 Codex 0.158.0 실측에서는 자식 승인 요청이 18/18회 등록 뒤(4~13초)에
+// 왔고, 이 순서는 가짜 요청으로 만든 것이다.
+fn approval_request(child: &str, id: u64) -> serde_json::Value {
+    json!({
+        "id": id,
+        "method": "item/commandExecution/requestApproval",
+        "params": { "threadId": child, "turnId": "turn_kid", "itemId": "call_1", "command": "touch x" },
+    })
+}
+
+fn spawn_completion(host: &str, children: &[&str]) -> serde_json::Value {
+    json!({ "method": "item/completed", "params": spawn_item(host, children) })
+}
+
+struct Wire {
+    pending: Pending,
+    threads: Threads,
+    approvals: Approvals,
+    held: HeldEvents,
+}
+
+impl Wire {
+    fn new() -> Self {
+        Self {
+            pending: Pending::default(),
+            threads: Arc::new(Mutex::new(main_only())),
+            approvals: Approvals::default(),
+            held: HeldEvents::default(),
+        }
+    }
+
+    fn route(&mut self, message: &serde_json::Value) -> super::stream::Routed {
+        super::stream::route_message(
+            message,
+            &self.pending,
+            (&self.threads, &mut self.held),
+            &self.approvals,
+        )
+    }
+}
+
+fn permission_ids(events: &[ProviderEvent]) -> Vec<String> {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            ProviderEvent::PermissionRequested { request_id, .. } => Some(request_id.clone()),
+            _ => None,
+        })
+        .collect()
+}
+
+#[test]
+fn an_approval_asked_before_the_child_is_registered_is_surfaced_once_after_registration() {
+    let mut wire = Wire::new();
+
+    let early = wire.route(&approval_request("kid", 77));
+    let registered = wire.route(&spawn_completion("main", &["kid"]));
+    let again = wire.route(&spawn_completion("main", &["kid"]));
+
+    assert!(early.events.is_empty());
+    assert!(early.replies.is_empty());
+    assert_eq!(permission_ids(&registered.events), ["77"]);
+    assert!(permission_ids(&again.events).is_empty());
+    assert!(registered.replies.is_empty());
+    assert!(lock(&wire.approvals).contains_key("77"));
+}
+
+// #438
+#[test]
+fn an_approval_pushed_out_of_the_hold_limit_is_declined_instead_of_left_unanswered() {
+    let mut wire = Wire::new();
+    let mut replies = Vec::new();
+    for index in 0..=HELD_THREADS {
+        let request = approval_request(&format!("ghost{index}"), 100 + index as u64);
+        replies.extend(wire.route(&request).replies);
+    }
+
+    assert_eq!(replies.len(), 1);
+    assert_eq!(replies[0]["id"], json!(100));
+    assert_eq!(replies[0]["result"], json!({ "decision": "decline" }));
+    assert!(lock(&wire.approvals).is_empty());
+}
+
+// #438
+#[test]
+fn an_input_request_pushed_out_of_the_hold_limit_gets_an_error_reply() {
+    let mut wire = Wire::new();
+    let mut replies = Vec::new();
+    for index in 0..=HELD_THREADS {
+        let request = json!({
+            "id": 200 + index,
+            "method": "item/tool/requestUserInput",
+            "params": { "threadId": format!("ghost{index}"), "itemId": "call_1", "questions": [] },
+        });
+        replies.extend(wire.route(&request).replies);
+    }
+
+    assert_eq!(replies.len(), 1);
+    assert_eq!(replies[0]["id"], json!(200));
+    assert!(replies[0]["error"].is_object());
+}
+
 // #438
 #[test]
 fn held_notifications_stay_inside_the_limits() {

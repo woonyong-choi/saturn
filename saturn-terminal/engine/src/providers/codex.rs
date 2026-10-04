@@ -91,6 +91,9 @@ const PERMISSIONS_METHOD: &str = "item/permissions/requestApproval";
 /// `ProviderSessionId`가 아니라 `request_id`로 찾는다.
 type Approvals = Arc<Mutex<HashMap<String, PendingApproval>>>;
 
+/// app-server의 입력. 쓰는 쪽(연결과 읽기 작업)이 나눠 쓰므로 한 번에 한 줄씩 쓴다.
+type Stdin = Arc<tokio::sync::Mutex<ChildStdin>>;
+
 /// `Ok`는 `result`, `Err`는 JSON-RPC `error` 객체.
 type RpcReply = oneshot::Sender<Result<serde_json::Value, serde_json::Value>>;
 
@@ -141,6 +144,9 @@ struct ThreadState {
     /// 마지막으로 글 조각을 받은 응답 메시지 항목 id. 한 턴에 해설과 최종 답처럼 메시지가 여럿이라, 항목이 바뀌는
     /// 자리를 찾는 데 쓴다. 턴이 시작되면 비운다.
     message_item: Option<String>,
+    /// 자식이 `SubagentStarted`를 알린 뒤 아직 `SubagentEnded`를 알리지 않았으면 참. 시작과 종료 통지의 짝을
+    /// 맞추는 값으로, 턴이 있었는지와 무관하다. 종료를 한 번 알리면 거짓이 되어 닫힘이 다시 알리지 않는다.
+    subagent_open: bool,
 }
 
 impl ThreadState {
@@ -157,6 +163,7 @@ impl ThreadState {
             context_tokens: None,
             file_changes: HashMap::new(),
             message_item: None,
+            subagent_open: false,
         }
     }
 }
@@ -165,7 +172,7 @@ impl ThreadState {
 pub(crate) struct CodexClient {
     supervisor: Supervisor,
     group: ProcessGroupId,
-    stdin: ChildStdin,
+    stdin: Stdin,
     next_request_id: u64,
     /// 읽기 작업이 `id`로 찾아 결과를 넘긴다.
     pending: Pending,
