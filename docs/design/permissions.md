@@ -144,6 +144,7 @@ MCP 도구는 규칙을 다음처럼 번역한다.
 - Codex는 subagent 실행 자체를 승인 요청으로 올리지 않아 `permission.subagent`를 적용하지 못한다. subagent가 실행하는 명령, 편집, MCP 도구는 부모와 같은 규칙으로 판정한다(초안). `permission.subagent`는 Claude의 `Task`, `Agent` 도구에만 적용한다.
 - Codex execpolicy와 MCP 설정은 app-server를 시작할 때 읽으므로, 채팅 도중 바뀐 개별 규칙은 engine이 답하는 요청에만 새 값이 쓰인다. 시작 때 정한 `forbidden`, `allow`, MCP `approve`는 새 설정 번호로 바뀌지 않는다. [Codex 실행 중 설정 다시 읽기 실측](../experiments/codex-live-reload/report.md)에서도 `rules/default.rules` 변경과 `config/batchWrite(reloadUserConfig=true)`는 같은 process에서 반영되지 않고 새 process에서만 반영됐다.
 - `prompt`로 설정한 MCP 도구는 모델이 시도한 모든 호출에서 승인 요청이 왔다(실험 9에서 31/31, 고친 드라이버의 실험 10에서 10/10. [실험](../experiments/provider-permission-gating/report.md)). 도구를 시도하지 않고 끝난 회차는 요청이 없는 것이 맞다.
+- Claude Code 2.1.288은 `Bash`, `Write`, subagent(`Agent`), MCP(`mcp__*`) 호출을 모두 `can_use_tool`로 올렸고, 폴더 설정과 `--settings`의 `deny` 규칙과 훅은 요청이 오기 전에 호출을 막았다. 모델이 `Read` 없이 낸 `Edit`은 요청 없이 도구 오류로 끝난다([실험](../experiments/provider-permission-real-claude/report.md)).
 - 호스트가 직접 부르는 `mcpServer/tool/call`은 `prompt` 설정을 우회해 실행되므로 쓰지 않는다. 모든 MCP 승인은 모델 경로의 요청으로만 받는다.
 
 ### Claude 구성
