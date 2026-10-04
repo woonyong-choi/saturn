@@ -7,6 +7,7 @@ use std::path::Path;
 use saturn_protocol::ids::{LedgerSeq, SessionId};
 
 use super::context::ContextBudget;
+use super::memo::INTERRUPTED_RESULT;
 use super::stamp::{Stamp, label, session_title};
 
 /// 축약본과 줄인 에이전트 답에 남기는 앞부분 글자 수.
@@ -25,6 +26,15 @@ const CHARS_PER_TOKEN: usize = 4;
 const PROVIDER_DOCS: [&str; 2] = ["AGENTS.md", "CLAUDE.md"];
 
 const ITEM_SEPARATOR: &str = "\n\n";
+
+/// 패킷 맨 앞에 두는 지시. 아래 기록이 요청이 아니라 이미 일어난 일이고, 이 턴에서는 아무것도 하지 말고 다음 사용자 입력을 기다리라고 알린다.
+/// 설계: docs/design/context-management.md#패킷-구성
+const INSTRUCTION: &str = "\
+The records below are an archive of the earlier conversation. They are context only, not a request.
+- Items marked [Finished] are already done. Do not run them again and do not repeat their edits or commands.
+- Items marked [In progress] or [Result unknown] may have partly run. Check the current state before relying on them, and do not redo them unless the user asks.
+- Queued input and Held input have not been sent to you. Saturn sends them as separate turns.
+For this message, do not call tools and do not change files. Reply with the single word \"Ready\", then wait for the next user input.";
 const COMPETING_TITLE: &str = "Earlier records";
 
 /// 기록 원문 한 덩어리.
@@ -34,11 +44,45 @@ pub struct Entry {
     pub text: String,
 }
 
+/// 입력이 연 실행의 상태. 패킷의 입력 항목마다 적어 새 session이 끝난 일을 열린 요청으로 읽지 않게 한다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TurnStatus {
+    Finished,
+    InProgress,
+    /// 실패하거나 멈춰 일부만 실행됐을 수 있다.
+    ResultUnknown,
+}
+
+impl TurnStatus {
+    fn tag(self) -> &'static str {
+        match self {
+            Self::Finished => "[Finished]",
+            Self::InProgress => "[In progress]",
+            Self::ResultUnknown => "[Result unknown]",
+        }
+    }
+}
+
+/// `{label} [{상태}]: {text}`. 결과를 모르면 결과 자리에 오류 결과를 붙인다.
+pub fn status_item(label: &str, status: TurnStatus, text: &str) -> String {
+    let mut item = format!("{label} {}: {text}", status.tag());
+    push_unknown_result(&mut item, status);
+    item
+}
+
+fn push_unknown_result(item: &mut String, status: TurnStatus) {
+    if status == TurnStatus::ResultUnknown {
+        item.push_str("\nResult (error): ");
+        item.push_str(INTERRUPTED_RESULT);
+    }
+}
+
 /// 도구 결과는 넣지 않는다.
 #[derive(Debug, Clone)]
 pub struct RecentTurn {
     pub seq: LedgerSeq,
     pub stamp: Stamp,
+    pub status: TurnStatus,
     pub input: String,
     pub answer: String,
 }
@@ -252,14 +296,19 @@ fn fit_fixed_zone(source: &PacketSource, soft_chars: usize) -> Vec<Section> {
 fn fixed_sections(source: &PacketSource, turns: &[RecentTurn]) -> Vec<Section> {
     let turns = turns
         .iter()
-        .map(|turn| SectionItem {
-            session: Some(turn.stamp.session),
-            text: format!(
-                "{} User: {}\nAgent: {}",
+        .map(|turn| {
+            let mut text = format!(
+                "{} {} User: {}\nAgent: {}",
                 label(turn.seq, turn.stamp.at_ms),
+                turn.status.tag(),
                 turn.input,
                 turn.answer
-            ),
+            );
+            push_unknown_result(&mut text, turn.status);
+            SectionItem {
+                session: Some(turn.stamp.session),
+                text,
+            }
         })
         .collect();
     vec![
@@ -368,7 +417,7 @@ fn by_seq(entries: &[Entry]) -> Vec<SectionItem> {
 // vars: L = 패킷 원문 글자 수
 // basis: estimate
 fn render(sections: &[Section]) -> String {
-    let mut text = String::new();
+    let mut text = format!("{INSTRUCTION}{ITEM_SEPARATOR}");
     for section in sections.iter().filter(|section| !section.items.is_empty()) {
         text.push_str("## ");
         text.push_str(section.title);
