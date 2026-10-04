@@ -175,6 +175,28 @@ def main() -> None:
             if "experiment-338-target-model" in str(path):
                 excluded["experiment_session"] += 1
                 continue
+            if source == "codex":
+                with path.open("rb") as stream:
+                    try:
+                        metadata = json.loads(stream.readline())
+                    except ValueError:
+                        excluded["invalid_session_metadata"] += 1
+                        continue
+                origin = metadata.get("payload", {}).get("source")
+                if origin not in ("cli", "vscode"):
+                    excluded["noninteractive_or_subagent_session"] += 1
+                    continue
+            elif any(
+                marker in path.parent.name
+                for marker in (
+                    "-runtime-",
+                    "-local-experiments-",
+                    "-private-tmp-",
+                    "-tmp-",
+                )
+            ):
+                excluded["automated_work_directory"] += 1
+                continue
             turns, meta = extract(path, source)
             census.append(meta)
             case = make_case(turns, meta, excluded)
