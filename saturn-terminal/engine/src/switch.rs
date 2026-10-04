@@ -682,6 +682,8 @@ impl Engine {
                 },
             )
             .await;
+            self.tell_parts_left_behind(chat, main.provider, plan.provider)
+                .await;
         }
         Ok(())
     }

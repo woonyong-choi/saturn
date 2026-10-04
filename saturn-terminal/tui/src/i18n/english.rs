@@ -460,6 +460,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("{name} 제거", "{name} removed"),
     ("확장 처리 실패", "Extension failed"),
     ("확장 주입 실패", "Extension injection failed"),
+    (
+        "{extension}의 {part}{topic} {provider}에 적용되지 않음",
+        "{part} of {extension} is not applied to {provider}",
+    ),
     ("설치한 확장", "Installed extensions"),
     ("설치한 확장 없음", "No extensions installed"),
     ("스킬", "skill"),

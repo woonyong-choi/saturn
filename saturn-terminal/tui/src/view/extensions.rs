@@ -57,10 +57,12 @@ pub(crate) fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec
         ChatNotice::ExtensionRemoved { name } => {
             vec![format!("{prefix}{}", removed_line(lang, name))]
         }
-        ChatNotice::ExtensionFailed { name, reason } => vec![format!(
-            "{prefix}{}",
-            failed_line(lang, name.as_deref(), reason)
-        )],
+        ChatNotice::ExtensionFailed { name, reason } => {
+            vec![format!(
+                "{prefix}{}",
+                failed_line(lang, name.as_deref(), reason)
+            )]
+        }
         ChatNotice::ExtensionInjectFailed {
             extension,
             part,
@@ -70,6 +72,12 @@ pub(crate) fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec
             "{prefix}{}",
             inject_failed_line(lang, extension, part.as_deref(), *provider, reason)
         )],
+        ChatNotice::ExtensionPartsNotApplied { provider, parts } => {
+            not_applied_lines(lang, *provider, parts)
+                .into_iter()
+                .map(|line| format!("{prefix}{line}"))
+                .collect()
+        }
         _ => Vec::new(),
     }
 }
@@ -121,6 +129,25 @@ pub(crate) fn installed_line(lang: Lang, info: &ExtensionInfo) -> String {
             .replace("{providers}", &titles(&fully))
     };
     line.replace("{name}", &info.name)
+}
+
+/// provider가 바뀌어 적용되지 않는 부분마다 한 줄.
+pub(crate) fn not_applied_lines(
+    lang: Lang,
+    provider: Provider,
+    parts: &[(String, ExtensionPartKind, String)],
+) -> Vec<String> {
+    parts
+        .iter()
+        .map(|(extension, kind, name)| {
+            let label = kind_label(lang, *kind);
+            lang.tr(i18n::EXT_NOT_APPLIED)
+                .replace("{extension}", extension)
+                .replace("{part}", &format!("{label}({name})"))
+                .replace("{topic}", topic_particle(label))
+                .replace("{provider}", &i18n::provider_title(provider))
+        })
+        .collect()
 }
 
 /// 주입하지 못한 줄. `part`가 없으면 확장 전체다.
@@ -252,6 +279,31 @@ mod tests {
             installed_line(Lang::Ko, &kit),
             "review-kit 설치 · 훅(PreToolUse)은 Alpha 전용이라 Beta에서 쓰지 못함 · \
              MCP 서버(lint)는 어느 provider에서도 쓰지 못함"
+        );
+    }
+
+    #[test]
+    fn switch_lines_name_each_part_the_new_provider_does_not_take() {
+        i18n::set_provider_names([(BETA, "beta")]);
+        let parts = vec![
+            (
+                "review-kit".to_owned(),
+                ExtensionPartKind::Hook,
+                "PreToolUse".to_owned(),
+            ),
+            (
+                "review-kit".to_owned(),
+                ExtensionPartKind::McpServer,
+                "lint".to_owned(),
+            ),
+        ];
+
+        assert_eq!(
+            not_applied_lines(Lang::Ko, BETA, &parts),
+            vec![
+                "review-kit의 훅(PreToolUse)은 Beta에 적용되지 않음",
+                "review-kit의 MCP 서버(lint)는 Beta에 적용되지 않음"
+            ]
         );
     }
 
