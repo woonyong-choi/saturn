@@ -41,6 +41,31 @@ pub enum Incoming {
     Notification(Notification),
     /// 조회 요청의 응답 `result`. 요청을 보낸 이 접속에만 온다.
     Result(QueryResult),
+    /// 요청 하나의 거절 응답. 연결은 그대로이고 다른 요청에는 영향이 없다.
+    Rejected(Rejection),
+}
+
+/// engine이 요청 하나를 거절한 응답.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Rejection {
+    /// 거절된 요청의 번호. 줄을 해석하지 못해 번호를 모르면 `None`.
+    pub id: Option<RequestId>,
+    pub code: i32,
+    /// 옛 engine은 보내지 않는다.
+    pub kind: Option<ErrorKind>,
+    /// 사용자 입력과 비밀값이 없다.
+    pub message: String,
+}
+
+impl Rejection {
+    /// 연결을 끝내야 하는 오류로 바꾼다. `cli`가 종료 코드를 정하는 데 쓴다.
+    pub fn into_error(self) -> ClientError {
+        ClientError::Rejected {
+            code: self.code,
+            kind: self.kind,
+            message: self.message,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -132,21 +157,22 @@ impl EngineClient {
         &self.socket
     }
 
-    /// 요청마다 연결별 번호를 붙인다.
+    /// 요청마다 연결별 번호를 붙이고 그 번호를 돌려준다. 거절 응답은 이 번호로 짝짓는다.
     ///
     /// # Errors
     /// 연결이 끊겼으면 `Closed`.
-    pub async fn send(&mut self, request: Request) -> Result<(), ClientError> {
+    pub async fn send(&mut self, request: Request) -> Result<RequestId, ClientError> {
         let id = RequestId(self.next_request);
         self.next_request += 1;
         let line = envelope::encode_line(&ClientMessage::new(id, request))?;
         self.writer
             .write_all(line.as_bytes())
             .await
-            .map_err(|_| ClientError::Closed)
+            .map_err(|_| ClientError::Closed)?;
+        Ok(id)
     }
 
-    /// 거절 응답은 여기서 소비하고, 조회 결과는 `Incoming::Result`로 돌려준다. 연결이 끝나면 `None`.
+    /// 거절 응답은 `Incoming::Rejected`, 조회 결과는 `Incoming::Result`로 돌려준다. 연결이 끝나면 `None`.
     /// cancel-safe: 줄 단위 읽기라 `select!` 안에서 취소돼도 메시지를 잃지 않는다.
     pub async fn next(&mut self) -> Option<Incoming> {
         loop {
@@ -158,7 +184,12 @@ impl EngineClient {
                     Outcome::Ok(Some(result)) => return Some(Incoming::Result(result)),
                     Outcome::Ok(None) => {}
                     Outcome::Err(error) => {
-                        tracing::warn!(code = error.code, message = %error.message, "engine rejected request");
+                        return Some(Incoming::Rejected(Rejection {
+                            id: response.id,
+                            code: error.code,
+                            kind: error.kind,
+                            message: error.message,
+                        }));
                     }
                 },
             }

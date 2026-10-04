@@ -462,6 +462,14 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "셸 명령을 실행하지 못했습니다",
         "Failed to run shell command",
     ),
+    (
+        "입력을 접수하지 못했습니다: {reason}",
+        "Failed to accept input: {reason}",
+    ),
+    (
+        "engine이 요청을 거절했습니다: {reason}",
+        "The engine rejected the request: {reason}",
+    ),
     ("개", ""),
     ("폴더", "Folder"),
     ("더한 폴더", "Added folders"),

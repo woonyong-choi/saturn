@@ -18,17 +18,18 @@ pub mod view;
 
 pub(crate) const ROUTER_KEY_ENV: &str = "SATURN_KEY";
 
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 
+use saturn_protocol::envelope::RequestId;
 use saturn_protocol::ids::ChatId;
 use saturn_protocol::rpc::Request;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt, BufReader, Lines};
 
 use crate::app::App;
-use crate::client::{ClientError, EngineClient, Incoming};
+use crate::client::{ClientError, EngineClient, Incoming, Rejection};
 use crate::history::InputHistory;
 use crate::i18n::Lang;
 use crate::plain::PlainOutput;
@@ -144,8 +145,92 @@ pub async fn run(client: &mut EngineClient, options: RunOptions) -> Result<(), T
 pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result<(), TuiError> {
     let lang = options.lang.unwrap_or_else(Lang::detect);
     // 사람이 보는 터미널일 때만 벨을 울린다. 파이프로 받는 쪽에는 제어 글자를 섞지 않는다
-    let mut output = PlainOutput::new(std::io::stdout(), lang)
+    let output = PlainOutput::new(std::io::stdout(), lang)
         .with_bell(std::io::IsTerminal::is_terminal(&std::io::stdout()));
+    let stdin = BufReader::new(tokio::io::stdin()).lines();
+    plain_session(client, options, stdin, output).await
+}
+
+// cost: time O(e), heap O(w), stack O(1), io e
+// vars: e = 입력 줄 수 + 받은 알림 수, w = 보내기를 기다리는 줄 글자 수
+// basis: estimate
+/// `run_plain`의 본체. 입력과 출력을 받아 가짜 engine으로 시험할 수 있게 한다.
+async fn plain_session<R, W>(
+    client: &mut EngineClient,
+    options: RunOptions,
+    mut stdin: Lines<R>,
+    mut output: PlainOutput<W>,
+) -> Result<(), TuiError>
+where
+    R: AsyncBufRead + Unpin,
+    W: Write,
+{
+    plain_attach(client, options, &mut output).await?;
+    let mut waiting: VecDeque<String> = VecDeque::new();
+    let mut stdin_open = true;
+    let mut submitted = 0_u64;
+    // 접수 결과를 기다리는 입력 요청. 거절 응답을 입력과 짝짓는다
+    let mut inputs: BTreeSet<RequestId> = BTreeSet::new();
+    let mut first_rejection: Option<Rejection> = None;
+    loop {
+        if let Some(chat) = output.chat() {
+            while let Some(text) = waiting.pop_front() {
+                submitted += 1;
+                output.submitted(text.clone());
+                let request = Request::SubmitInput {
+                    chat,
+                    client_ref: submitted,
+                    text,
+                    skip_relation: false,
+                };
+                inputs.insert(client.send(request).await?);
+            }
+        }
+        let idle = submitted == 0 || output.is_finished();
+        if !stdin_open && waiting.is_empty() && idle {
+            client.send(Request::Detach).await?;
+            return if output.has_failed() {
+                Err(TuiError::TaskFailed)
+            } else if let Some(rejection) = first_rejection {
+                Err(rejection.into_error().into())
+            } else {
+                Ok(())
+            };
+        }
+        tokio::select! {
+            line = stdin.next_line(), if stdin_open => match line.map_err(TuiError::Plain)? {
+                Some(line) if !line.trim().is_empty() => waiting.push_back(line),
+                Some(_) => {}
+                None => stdin_open = false,
+            },
+            incoming = client.next() => match incoming {
+                Some(Incoming::Notification(notification)) => output
+                    .apply(notification, Instant::now())
+                    .map_err(TuiError::Plain)?,
+                Some(Incoming::Result(_)) => {}
+                Some(Incoming::Rejected(rejection)) => {
+                    plain_rejected(&mut output, &mut inputs, rejection, &mut first_rejection)?;
+                }
+                None => return Err(ClientError::Closed.into()),
+            },
+        }
+        if let Some(reason) = output.key_required() {
+            return Err(TuiError::RouterKeyRequired {
+                reason: reason.to_owned(),
+            });
+        }
+    }
+}
+
+// cost: time O(n), heap O(n), stack O(1), io n
+// vars: n = 접속 중 받은 알림 수
+// basis: estimate
+/// 채팅에 붙는다. 출입증이 있으면 응답을 기다리며 받은 알림을 쓰고, 없으면 요청만 보낸다.
+async fn plain_attach<W: Write>(
+    client: &mut EngineClient,
+    options: RunOptions,
+    output: &mut PlainOutput<W>,
+) -> Result<(), TuiError> {
     if let Some(child) = options.child {
         // 상한이 차면 자리가 날 때까지 응답이 없다. 거절은 오류로 끝낸다
         let mut written = Ok(());
@@ -172,51 +257,32 @@ pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result
             })
             .await?;
     }
-    let mut stdin = BufReader::new(tokio::io::stdin()).lines();
-    let mut waiting: VecDeque<String> = VecDeque::new();
-    let mut stdin_open = true;
-    let mut submitted = 0_u64;
-    loop {
-        if let Some(chat) = output.chat() {
-            while let Some(text) = waiting.pop_front() {
-                submitted += 1;
-                output.submitted(text.clone());
-                let request = Request::SubmitInput {
-                    chat,
-                    client_ref: submitted,
-                    text,
-                    skip_relation: false,
-                };
-                client.send(request).await?;
-            }
-        }
-        let idle = submitted == 0 || output.is_finished();
-        if !stdin_open && waiting.is_empty() && idle {
-            client.send(Request::Detach).await?;
-            return if output.has_failed() {
-                Err(TuiError::TaskFailed)
-            } else {
-                Ok(())
-            };
-        }
-        tokio::select! {
-            line = stdin.next_line(), if stdin_open => match line.map_err(TuiError::Plain)? {
-                Some(line) if !line.trim().is_empty() => waiting.push_back(line),
-                Some(_) => {}
-                None => stdin_open = false,
-            },
-            incoming = client.next() => match incoming {
-                Some(Incoming::Notification(notification)) => output
-                    .apply(notification, Instant::now())
-                    .map_err(TuiError::Plain)?,
-                Some(Incoming::Result(_)) => {}
-                None => return Err(ClientError::Closed.into()),
-            },
-        }
-        if let Some(reason) = output.key_required() {
-            return Err(TuiError::RouterKeyRequired {
-                reason: reason.to_owned(),
-            });
-        }
-    }
+    Ok(())
 }
+
+// cost: time O(log i), heap O(1), stack O(1), io 1
+// vars: i = 접수 결과를 기다리는 입력 수
+// basis: estimate
+/// 거절 하나를 쓴다. 보낸 입력의 거절은 첫 거절로 기억하고 계속하며, 입력과 짝지을 수 없는 거절은 오류로 끝낸다.
+fn plain_rejected<W: Write>(
+    output: &mut PlainOutput<W>,
+    inputs: &mut BTreeSet<RequestId>,
+    rejection: Rejection,
+    first: &mut Option<Rejection>,
+) -> Result<(), TuiError> {
+    if rejection.id.is_some_and(|id| inputs.remove(&id)) {
+        output
+            .input_rejected(&rejection.message)
+            .map_err(TuiError::Plain)?;
+        first.get_or_insert(rejection);
+        return Ok(());
+    }
+    // 접속 요청처럼 기다릴 실행이 없는 거절은 이어 갈 수 없다
+    output
+        .request_rejected(&rejection.message)
+        .map_err(TuiError::Plain)?;
+    Err(rejection.into_error().into())
+}
+
+#[cfg(test)]
+mod tests;

@@ -8,17 +8,19 @@ mod notify;
 mod tests;
 mod windows;
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use crossterm::event::{Event, KeyEvent, KeyEventKind, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Position, Rect};
+use saturn_protocol::envelope::RequestId;
 use saturn_protocol::ids::{ChatId, LedgerSeq, Provider, TaskId};
 use saturn_protocol::rpc::{CommandInfo, Notification, PermissionAnswer, QueryResult, Request};
 use tokio::sync::mpsc;
 
 use crate::TuiError;
-use crate::client::{ClientError, EngineClient, Incoming};
+use crate::client::{ClientError, EngineClient, Incoming, Rejection};
 use crate::history::InputHistory;
 use crate::i18n::{self, Lang};
 use crate::keymap::{Keymap, Resolved};
@@ -62,6 +64,8 @@ pub(crate) enum AppEvent {
     Engine(Notification),
     /// 조회 요청의 응답 `result`.
     Result(QueryResult),
+    /// 요청 하나의 거절 응답.
+    Rejected(Rejection),
     EngineClosed,
     Tick,
     ShellDone(ShellOutput),
@@ -159,6 +163,8 @@ pub(crate) struct App {
     pub exit_notice: Option<u32>,
     /// engine이 업데이트로 끝난다고 알렸다. 연결이 끊겨도 오류로 끝내지 않고 다시 열라는 한 줄을 남긴다.
     pub restarting: bool,
+    /// 접수 결과를 기다리는 입력 요청의 원문. 거절되면 입력창으로 돌려준다.
+    sent_inputs: BTreeMap<RequestId, String>,
     /// router 키나 폴더 신뢰 창을 닫아 끝냈다.
     pub aborted: bool,
     /// 첫 대화 기록 셀이 생기면 머리 셀로 옮기고 `None`.
@@ -228,6 +234,7 @@ impl App {
             exit_requested: false,
             exit_notice: None,
             restarting: false,
+            sent_inputs: BTreeMap::new(),
             aborted: false,
             start: None,
             chat_folder: None,
@@ -288,6 +295,10 @@ impl App {
             AppEvent::Terminal(_) => Vec::new(),
             AppEvent::Engine(notification) => self.on_notification(notification, now),
             AppEvent::Result(result) => self.on_result(result, now),
+            AppEvent::Rejected(rejection) => {
+                self.on_rejected(rejection);
+                Vec::new()
+            }
             AppEvent::EngineClosed => {
                 self.quit = true;
                 Vec::new()
@@ -727,6 +738,7 @@ pub(crate) async fn run_loop(
             incoming = client.next() => match incoming {
                 Some(Incoming::Notification(notification)) => AppEvent::Engine(notification),
                 Some(Incoming::Result(result)) => AppEvent::Result(result),
+                Some(Incoming::Rejected(rejection)) => AppEvent::Rejected(rejection),
                 None => AppEvent::EngineClosed,
             },
             _ = ticker.tick() => AppEvent::Tick,
@@ -780,7 +792,10 @@ async fn apply_effect(
     events: &mpsc::UnboundedSender<AppEvent>,
 ) -> Result<(), TuiError> {
     match effect {
-        Effect::Send(request) => client.send(request).await?,
+        Effect::Send(request) => {
+            let id = client.send(request.clone()).await?;
+            app.note_sent(id, &request);
+        }
         Effect::Suspend => terminal::suspend(screen)?,
         Effect::Redraw => screen.clear().map_err(terminal::TerminalError::Draw)?,
         Effect::OpenEditor => {
