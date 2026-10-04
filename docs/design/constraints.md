@@ -187,6 +187,8 @@ C_max = P_max / 4
 
 `is_constraint` 0.7, `constraint_replace` 0.8, `constraint_conflict` 0.5의 근거는 [제약 식별과 대체 판정 정확도](../experiments/constraint-judge-accuracy/report.md)에 있다.
 
+실제 기록의 기준값 곡선·라벨 합의·해제와 대체 정확도는 [프로젝트 대화 전수 측정](../experiments/constraint-deep/report.md)에 있다. 0.70은 탐색 후보이며 프로젝트 단위 불확실성과 사람 확인 전 라벨 때문에 확정값으로 삼지 않는다. 이 측정은 턴 단위 등록과 최대 10개 후보를 사용하므로 문장 분할·합침·제약 칸 상한의 근거로 쓰지 않는다.
+
 ### 오류 처리
 
 | 상황 | 동작 |
@@ -238,4 +240,5 @@ C_max = P_max / 4
 
 ## 미해결 질문
 
+- 실제 대화의 사람 확인 정답과 독립 검증 표본에서 자동 등록 기준값과 묻는 구간을 확정할 수 있는지 ([#382](https://github.com/woonyong-choi/saturn/issues/382))
 - 간접 지시 입력에서 `is_constraint` 정확도를 올리되 일반 제약 입력의 재현율을 해치지 않는 질문 문장과 부분 충돌을 따로 묻는 질문이 있는지 ([#186](https://github.com/woonyong-choi/saturn/issues/186))
