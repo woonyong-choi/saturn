@@ -1956,9 +1956,14 @@ fn clicking_status_button_sends_request() {
     let mut app = attached();
     notify(&mut app, input(1, InputState::Queued, "x"));
     let now = Instant::now();
-    let lines = crate::view::status_board::build(&app.chat, now);
-    let areas = app.areas(app.screen, lines.len());
-    let rects = crate::view::status_board::button_rects(&lines, app.lang, areas.status);
+    let board = crate::view::status_board::board(&app.chat, now);
+    let areas = app.areas(
+        app.screen,
+        board
+            .as_ref()
+            .map_or(0, crate::view::status_board::Board::height),
+    );
+    let rects = crate::view::status_board::button_rects(board.as_ref(), app.lang, areas.status);
     let (rect, _) = rects[0];
 
     let effects = app.handle(
@@ -2042,12 +2047,52 @@ fn render_stacks_transcript_status_composer_and_footer() {
 
     let rows = buffer_lines(terminal.backend().buffer());
     assert!(rows[0].starts_with("> [C] 로그인 버그 고쳐 · 반영됨"));
-    assert!(rows[8].starts_with("⠋ [A] 작업 중"));
-    assert!(rows[9].starts_with("· [C] 대기 · 쓰기 차례 · 테스트도"));
-    assert!(rows[9].ends_with("[보내기] [취소]"));
+    assert_eq!(rows[9], "⠋ [A] 작업 중 · 대기 1");
     assert_eq!(rows[10], "›");
     assert!(rows[11].starts_with("/help 도움말 · Ctrl+C 멈춤"));
     assert!(rows[11].ends_with("맥락 미확인"));
+}
+
+#[test]
+fn render_keeps_the_status_board_to_one_line_for_many_tasks() {
+    let mut app = attached();
+    for (id, label) in [(1, 'A'), (2, 'B'), (3, 'D')] {
+        notify(&mut app, task(id, label, TaskState::Running));
+    }
+    for id in 1..=3 {
+        notify(&mut app, input(id, InputState::Queued, "x"));
+    }
+    let mut terminal = Terminal::new(TestBackend::new(70, 12)).unwrap();
+
+    terminal
+        .draw(|frame| app.render(frame, Instant::now()))
+        .unwrap();
+
+    let rows = buffer_lines(terminal.backend().buffer());
+    assert_eq!(rows[9], "⠋ [A] 작업 중 · 실행 2개 더 · 대기 3");
+    assert_eq!(rows[10], "›");
+    assert!(rows[8].is_empty());
+}
+
+#[test]
+fn render_lists_the_actions_of_a_queued_line_vertically() {
+    let mut app = attached();
+    notify(&mut app, input(1, InputState::Queued, "테스트도"));
+    let mut terminal = Terminal::new(TestBackend::new(40, 8)).unwrap();
+
+    terminal
+        .draw(|frame| app.render(frame, Instant::now()))
+        .unwrap();
+    press(&mut app, KeyCode::F(3), KeyModifiers::NONE);
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    terminal
+        .draw(|frame| app.render(frame, Instant::now()))
+        .unwrap();
+
+    let rows = buffer_lines(terminal.backend().buffer());
+    assert_eq!(rows[3], "· [C] 대기 · 쓰기 차례 · 테스트도");
+    assert_eq!(rows[4], "  [보내기]");
+    assert_eq!(rows[5], "› [취소]");
 }
 
 #[test]
@@ -2611,26 +2656,23 @@ fn f3_and_the_agents_command_enter_the_status_board_and_enter_runs_the_button() 
 }
 
 #[test]
-fn status_board_focus_moves_between_buttons_and_lines() {
+fn status_board_focus_moves_down_the_vertical_action_list_and_wraps() {
     let mut app = queued_and_held();
     press(&mut app, KeyCode::F(3), KeyModifiers::NONE);
 
-    press(&mut app, KeyCode::Right, KeyModifiers::NONE);
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
     let cancel = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
     press(&mut app, KeyCode::F(3), KeyModifiers::NONE);
-    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
-    let held = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    press(&mut app, KeyCode::Up, KeyModifiers::NONE);
+    let wrapped = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
 
     assert_eq!(
         sent(&cancel),
         vec![&Request::CancelInput { input: InputId(1) }]
     );
     assert_eq!(
-        sent(&held),
-        vec![&Request::Continue {
-            chat: ChatId(7),
-            task: Some(TaskId(5))
-        }]
+        sent(&wrapped),
+        vec![&Request::CancelInput { input: InputId(1) }]
     );
 }
 

@@ -51,8 +51,8 @@ impl App {
             view.render(frame, area);
             return;
         }
-        let lines = status_board::build(&self.chat, now);
-        let areas = self.areas(area, lines.len());
+        let board = status_board::board(&self.chat, now);
+        let areas = self.areas(area, board.as_ref().map_or(0, status_board::Board::height));
         match &self.start {
             Some(info) => StartScreenView { info, lang }.render(frame, areas.transcript),
             None => TranscriptView {
@@ -67,14 +67,14 @@ impl App {
             labels_visible,
         };
         live.render(frame, areas.live);
-        let board = StatusBoardView {
-            lines: &lines,
+        let status = StatusBoardView {
+            board: board.as_ref(),
             lang,
             labels_visible,
             spinner: view::spinner(self.tick),
             focus: self.board_focus,
         };
-        board.render(frame, areas.status);
+        status.render(frame, areas.status);
         if let Some(popup) = &self.popup {
             PopupView { popup }.render(frame, areas.popup);
         }
@@ -93,7 +93,7 @@ impl App {
         self.render_windows(frame, area, now);
     }
 
-    pub(super) fn areas(&self, area: Rect, status_lines: usize) -> Areas {
+    pub(super) fn areas(&self, area: Rect, status_rows: u16) -> Areas {
         let composer = if self.composer.search().is_some() {
             1
         } else {
@@ -103,7 +103,7 @@ impl App {
             area,
             Heights {
                 live: self.live.height(area.height),
-                status: u16::try_from(status_lines).unwrap_or(u16::MAX),
+                status: status_rows,
                 popup: self.popup.as_ref().map_or(0, |popup| popup.height()),
                 composer,
             },
