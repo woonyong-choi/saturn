@@ -1,6 +1,5 @@
 //! 허가 요청 창. 도착한 순서대로 한 번에 하나씩 뜬다.
 //! 설계: docs/design/tui.md
-//! TODO(#56): 거부와 함께 다르게 하라는 말을 받는 방식. 정해지기 전에는 말 없이 거부한다
 
 use std::collections::VecDeque;
 use std::time::{Duration, Instant};

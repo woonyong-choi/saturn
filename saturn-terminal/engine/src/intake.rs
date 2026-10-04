@@ -9,7 +9,7 @@ use saturn_core::routers::{
     ConstraintQuestion, JudgmentOutcome, RouteDecision, RouterError, RouterRequest, RouterResponse,
     decide_route, question_ids, questions_for_input, validate,
 };
-use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision};
+use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision, TaskId};
 use saturn_protocol::rpc::{ModelMode, Notification};
 use saturn_protocol::state::{Disposition, InputState};
 
@@ -46,7 +46,49 @@ impl Engine {
         text: String,
         skip_relation: bool,
     ) -> Result<(), EngineError> {
-        let input = self.accept_input(client, chat, text, skip_relation).await?;
+        self.submit(client, chat, client_ref, text, skip_relation, None)
+            .await
+    }
+
+    /// router를 부르지 않고 `task`에 바로 끼워 넣는다. 관계 판단 없이 그 작업으로 가므로 router가 다른 작업으로
+    /// 보낼 위험이 없다. 그 작업이 이미 끝났거나 없으면 `submit_input`처럼 판단을 받는다.
+    ///
+    /// # Errors
+    /// `submit_input`과 같다.
+    pub(crate) async fn submit_to_task(
+        &mut self,
+        client: ClientId,
+        chat: ChatId,
+        client_ref: u64,
+        task: TaskId,
+        text: String,
+    ) -> Result<(), EngineError> {
+        let is_open = self
+            .queue
+            .main_tasks()
+            .iter()
+            .any(|info| info.chat == chat && info.task == task);
+        if is_open {
+            self.submit(client, chat, client_ref, text, true, Some(task))
+                .await
+        } else {
+            self.submit(client, chat, client_ref, text, false, None)
+                .await
+        }
+    }
+
+    async fn submit(
+        &mut self,
+        client: ClientId,
+        chat: ChatId,
+        client_ref: u64,
+        text: String,
+        skip_relation: bool,
+        task: Option<TaskId>,
+    ) -> Result<(), EngineError> {
+        let input = self
+            .accept_input(client, chat, text, skip_relation, task)
+            .await?;
         self.send(client, Notification::InputAccepted { client_ref, input })
             .await;
         self.notify_input(input).await;
@@ -123,6 +165,7 @@ impl Engine {
         chat: ChatId,
         text: String,
         skip_relation: bool,
+        task: Option<TaskId>,
     ) -> Result<InputId, EngineError> {
         let workdir = self.attached_workdir(client, chat)?;
         let pinned_model = self.store.chat_model(chat).await?;
@@ -152,7 +195,7 @@ impl Engine {
             skip_relation,
             state: InputState::Judging,
             reason: None,
-            task: None,
+            task,
         });
         Ok(id)
     }
@@ -631,10 +674,16 @@ impl ReadVerdict {
 /// router 없이 정하는 판단. 처리 방식은 대기이고 모델은 고정 모델을 그대로 쓴다.
 /// TODO(#168): 모델을 고정한 입력이 실행 중 도착했을 때의 처리 방식이 정해지면 대기 대신 따른다
 pub(crate) fn direct_decision(record: &QueuedInput, revision: ChatRevision) -> RouteDecision {
+    // 대상 작업이 정해진 입력은 대기하지 않고 그 작업에 끼워 넣는다
+    let disposition = if record.task.is_some() {
+        Disposition::Steer
+    } else {
+        Disposition::Queue
+    };
     RouteDecision {
         revision,
         settings: record.settings,
-        disposition: Disposition::Queue,
+        disposition,
         is_conflict: false,
         keep_current: true,
         model: record.pinned_model.clone(),

@@ -184,7 +184,7 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 | `항상 허용` | provider에 허용을 보내고 항상 허용을 기록 저장소에 저장한다 |
 | `거부` | provider에 거부를 보낸다. 다르게 하라는 말을 함께 남길 수 있다 |
 
-거부와 함께 남기는 말의 입력 방식과 처리는 정해지지 않았다([#56](https://github.com/woonyong-choi/saturn/issues/56)). 정해지기 전에는 말 없이 거부만 보낸다.
+거부를 고르면 TUI가 입력창을 `[A]에게: ` 접두로 열고, 이어 쓴 말은 router를 거치지 않고 그 작업에 끼워 넣는다([TUI](tui.md#허가-요청-창), [입력 처리](input-handling.md#입력-접수)). 거부 응답 자체는 말 없이 보낸다.
 
 사용자 답은 provider에 아래 값으로 나간다(초안). 답이 없는 동안 provider는 그 호출에서 멈춰 있고, 답이 나가면 이어진다.
 
@@ -279,4 +279,3 @@ provider 설정은 추적만 하는 원칙([최소 provider 제어](../decisions
 - Codex 읽기 전용 샌드박스의 막힘 정도를 `cargo test`와 `python3 -m unittest` 두 명령보다 넓은 작업 표본으로 재는 일. 승인한 명령에 샌드박스가 적용되는 기준(같은 명령도 달랐음)이 무엇인지
 - 키체인 로그인(`cli_auth_credentials_store=keyring`) 사용자의 전용 `CODEX_HOME`이 로그인을 공유하는지. `auth.json` 심볼릭 링크는 로그인을 공유했고(3/3), 링크 없이 keyring으로 설정한 전용 폴더는 로그인되지 않았다(3/3). 실제 keyring 로그인은 새 로그인 없이는 만들 수 없어 측정하지 못했다([실측](../experiments/codex-provider-behavior/report.md))
 - 규칙으로 읽지 못한 요청의 `항상 허용`을 provider 값으로 보낼 방법: Claude 세션 규칙(`updatedPermissions`), Codex 권한 요청과 옛 이름 값의 실측 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
-- 허가 거절 뒤 다르게 하라는 입력을 어떻게 받을지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))

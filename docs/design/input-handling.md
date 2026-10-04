@@ -58,6 +58,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트가 일하는 중
 - 입력은 기록 저장소에 접수된 뒤에만 에이전트로 보낸다. 전달 여부를 모르는 입력이 생기는 일을 막기 위해서다.
 - 입력은 접수 때 고정한 설정 번호로 끝까지 처리한다. 처리 중 설정이 바뀌어도 한 입력을 한 설정으로 처리하기 위해서다.
 - router에 묻는 질문과 기준값의 세부는 [router](router.md)에 있다.
+- 대상 작업이 분명한 입력(허가를 거절하고 이어 쓴 말)은 `SubmitToTask`로 받아 관계 판단 없이 그 작업에 끼워 넣는다. router를 부르지 않으므로 다른 작업으로 갈 위험이 없다. 그 작업이 이미 끝났거나 없으면 보통 입력처럼 판단한다. 이 대상은 기록 저장소에 남지 않아 engine이 접수와 전송 사이에 죽으면 복원한 입력은 대상 없이 `skip_relation` 입력처럼 대기한다.
 - router 호출이 실패하면 [router 실패](router.md#router-실패)의 재시도를 거친 뒤 판단 없이 현재 에이전트와 현재 모델로 보낸다. router 장애가 입력을 대기에 묶지 않게 하기 위해서다.
 
 ### 판단 차례와 적용
@@ -281,6 +282,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 쓰기 권한 입력은 읽기 전용으로 접수한 실행에 끼워 넣지 않고 쓰기 차례로 기다린다. | `saturn-terminal/engine/src/lifecycle/read_only_steer.rs`의 `write_input_is_not_steered_into_a_read_only_run_and_waits_for_a_write_turn`, `waiting_write_input_takes_a_new_turn_after_the_read_only_run_ends`, `write_input_that_would_be_sent_as_a_new_turn_cannot_write_during_a_read_only_run` |
 | 바로 보내기는 router를 부르지 않고 끼워 넣기를 시도하며, 안 되면 대기열 맨 앞에 둔다. | `saturn-terminal/engine/src/lifecycle/send_now.rs`의 `send_now_steers_into_the_running_turn_without_calling_the_router`, `send_now_does_not_need_the_router_to_be_up`, `send_now_that_cannot_steer_goes_first_in_the_queue`, `send_now_without_verified_steer_goes_back_to_waiting`, `send_now_on_a_sent_input_is_refused`, `saturn-terminal/core/src/queue/tests.rs`의 `send_now_steers_a_running_task_ahead_of_earlier_waiting_inputs`, `send_now_that_cannot_steer_waits_first_in_line`, `send_now_refuses_inputs_that_are_not_waiting` |
 | 충돌로 판단한 입력은 대기시키지 않고 진행 중인 턴에 끼워 넣는다. | `saturn-terminal/core/src/routers/tests.rs`의 `decide_route_conflicts_steers_and_marks_the_conflict`, `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `conflict_input_is_steered_into_the_running_turn` |
+| `SubmitToTask`는 router를 부르지 않고 이름 붙은 작업에 끼워 넣고, 없는 작업이면 보통 입력처럼 판단한다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `submit_to_task_steers_the_named_task_without_the_router`, `submit_to_a_task_that_is_gone_gets_the_relation_judgment` |
 | 충돌 입력을 provider가 받지 않으면 멈추지 않고 사용자에게 멈출지 묻고, 충돌이 아닌 입력은 묻지 않는다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `refused_conflict_steer_asks_whether_to_stop_and_does_not_stop`, `conflict_steer_to_a_provider_without_steer_asks_whether_to_stop`, `saturn-terminal/core/src/queue/tests.rs`의 `refused_steer_asks_the_user_only_for_a_conflict_input`, `deferred_steer_asks_the_user_only_for_a_conflict_input`, `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `refused_steer_is_not_sent_again_and_is_not_rejected` |
 | `대기`를 고르면 입력은 맨 앞 대기로 다음 차례에 가고, `멈추고 실행`을 고르면 기존 멈춤 규칙 뒤에 입력을 실행한다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `answering_wait_keeps_the_input_in_front_for_the_next_turn`, `answering_stop_stops_the_chat_and_then_runs_the_input`, `saturn-terminal/core/src/queue/tests.rs`의 `keep_waiting_ends_the_question_and_the_input_takes_the_next_turn`, `stop_ends_the_question_and_a_second_answer_is_refused` |
 | 묻는 중이 아닌 입력의 멈춤 확인 답은 거절한다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `answering_without_a_question_is_refused` |
@@ -307,6 +309,5 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 - 직전 작업 입력·목표·진행 내용을 state에 추가할 범위와 새 작업 오접합을 줄일 대체 규칙 ([한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md), [#6](https://github.com/woonyong-choi/saturn/issues/6)). 실험은 Claude 기록의 상태 복원과 작업 발췌를 비교했으며 실제 Saturn 실행 중 작업 상태를 수집하는 구현은 검증하지 않았다.
 
-- 허가 거절 뒤 다르게 하라는 입력을 판단 없이 끼워 넣을지, 허가 창에서 받을지, 일반 입력으로 판단할지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
 - 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 멈춘 작업의 트리 유휴 신호가 끝내 오지 않을 때 완료 보고를 기다리는 한도 ([#90](https://github.com/woonyong-choi/saturn/issues/90))

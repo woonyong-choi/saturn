@@ -4,11 +4,11 @@
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use saturn_protocol::ids::{InputId, TaskLabel};
+use saturn_protocol::ids::{InputId, TaskId, TaskLabel};
 use saturn_protocol::rpc::{ModelMode, Request, UsageRange};
 use saturn_protocol::state::InputState;
 
-use super::{App, Effect, Window};
+use super::{App, Directed, Effect, Window};
 use crate::commands::{
     self, CommandError, DEFAULT_PERMISSION_MODE, ExtensionsAction, PERMISSION_CYCLE,
     SATURN_COMMANDS, SlashCommand,
@@ -254,6 +254,9 @@ impl App {
         if text.trim().is_empty() {
             return Vec::new();
         }
+        if let Some(effects) = self.submit_directed(&text) {
+            return effects;
+        }
         if let Some(command) = self.composer.shell_command() {
             self.clear_draft();
             return vec![Effect::RecordHistory(text), Effect::RunShell(command)];
@@ -283,11 +286,7 @@ impl App {
             return Vec::new();
         };
         self.clear_draft();
-        let mut body = text.clone();
-        for attachment in self.pending_attachments.drain(..) {
-            body.push_str("\n\n");
-            body.push_str(&attachment.to_attachment());
-        }
+        let body = self.with_attachments(&text);
         self.next_client_ref += 1;
         vec![
             Effect::RecordHistory(text),
@@ -300,7 +299,62 @@ impl App {
         ]
     }
 
+    /// 허가를 거절한 작업에 말을 이어 쓰도록 입력창에 `[A]에게: `를 채워 연다. 쓰던 초안이 있으면 건드리지 않는다.
+    pub(super) fn open_directed_draft(&mut self, task: TaskId, label: TaskLabel) {
+        if !self.composer.is_empty() {
+            return;
+        }
+        let prefix = self
+            .lang
+            .tr(i18n::DIRECTED_PREFIX)
+            .replace("{label}", &label.0.to_string());
+        self.set_draft(&prefix);
+        self.directed = Some(Directed { task, prefix });
+    }
+
+    // cost: time O(n + a), heap O(n + a), stack O(1)
+    // vars: n = 원문 길이, a = 첨부 길이 합
+    // basis: estimate
+    /// 접두가 그대로 있고 뒤에 말이 있으면 router를 거치지 않고 그 작업에 보낸다. 접두만 있으면 아무것도 보내지 않고 초안을
+    /// 남긴다. 접두를 고쳤거나 지웠으면 대상을 잊고 `None`을 돌려 보통 입력으로 처리한다.
+    fn submit_directed(&mut self, text: &str) -> Option<Vec<Effect>> {
+        let directed = self.directed.clone()?;
+        let Some(rest) = text.strip_prefix(directed.prefix.as_str()) else {
+            self.directed = None;
+            return None;
+        };
+        let rest = rest.trim();
+        let chat = self.chat.chat;
+        let (true, Some(chat)) = (!rest.is_empty(), chat) else {
+            return Some(Vec::new());
+        };
+        self.directed = None;
+        self.clear_draft();
+        let body = self.with_attachments(rest);
+        self.next_client_ref += 1;
+        Some(vec![
+            Effect::RecordHistory(rest.to_owned()),
+            Effect::Send(Request::SubmitToTask {
+                chat,
+                client_ref: self.next_client_ref,
+                task: directed.task,
+                text: body,
+            }),
+        ])
+    }
+
+    /// 메인 에이전트의 다음 입력에 붙일 셸 결과를 원문 뒤에 붙이고 비운다.
+    fn with_attachments(&mut self, text: &str) -> String {
+        let mut body = text.to_owned();
+        for attachment in self.pending_attachments.drain(..) {
+            body.push_str("\n\n");
+            body.push_str(&attachment.to_attachment());
+        }
+        body
+    }
+
     pub(super) fn clear_draft(&mut self) {
+        self.directed = None;
         self.composer.take();
         self.history.reset();
         self.popup = None;
@@ -491,6 +545,7 @@ impl App {
             return Vec::new();
         }
         if self.composer.clear() {
+            self.directed = None;
             self.history.reset();
             return Vec::new();
         }

@@ -13,8 +13,8 @@ use std::time::{Duration, Instant};
 
 use crossterm::event::{Event, KeyEvent, KeyEventKind, MouseButton, MouseEvent, MouseEventKind};
 use ratatui::layout::{Position, Rect};
-use saturn_protocol::ids::{ChatId, LedgerSeq, Provider};
-use saturn_protocol::rpc::{CommandInfo, Notification, QueryResult, Request};
+use saturn_protocol::ids::{ChatId, LedgerSeq, Provider, TaskId};
+use saturn_protocol::rpc::{CommandInfo, Notification, PermissionAnswer, QueryResult, Request};
 use tokio::sync::mpsc;
 
 use crate::TuiError;
@@ -104,6 +104,14 @@ impl Window {
     }
 }
 
+/// 허가를 거절한 작업에 이어 쓰는 말의 대상.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Directed {
+    pub task: TaskId,
+    /// 입력창에 채운 접두(`[A]에게: `). 제출할 때 이 접두가 그대로 앞에 있어야 대상이 된다.
+    pub prefix: String,
+}
+
 #[derive(Debug)]
 pub(crate) struct App {
     pub lang: Lang,
@@ -126,6 +134,8 @@ pub(crate) struct App {
     pub board_focus: Option<Button>,
     /// `Ctrl+C`를 한 번 눌러 종료를 기다린다. 다른 동작이 오면 풀린다.
     quit_armed: bool,
+    /// 허가를 거절한 뒤 입력창에 채운 `[A]에게: ` 접두의 대상. 접두가 그대로 남은 채 제출하면 router 없이 그 작업에 보낸다.
+    directed: Option<Directed>,
     pub popup: Option<Popup>,
     pub popup_suppress: PopupSuppress,
     pub permissions: PermissionQueue,
@@ -195,6 +205,7 @@ impl App {
             settings_keymap: None,
             board_focus: None,
             quit_armed: false,
+            directed: None,
             popup: None,
             popup_suppress: PopupSuppress::default(),
             permissions: PermissionQueue::new(),
@@ -496,8 +507,13 @@ impl App {
             Action::Interrupt => return self.interrupt(false),
             Action::InterruptQuit => return self.interrupt(true),
             Action::Permission(answer) => {
+                let denied = matches!(answer, PermissionAnswer::Deny { .. });
+                let target = self.permissions.current().map(|r| (r.task, r.label));
                 return match self.permissions.answer(answer, now) {
                     Some((request_id, answer)) => {
+                        if let Some((task, label)) = target.filter(|_| denied) {
+                            self.open_directed_draft(task, label);
+                        }
                         vec![Effect::Send(Request::AnswerPermission {
                             request_id,
                             answer,

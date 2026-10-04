@@ -233,6 +233,15 @@ impl Engine {
                 self.submit_input(client, chat, client_ref, text, skip_relation)
                     .await
             }
+            Request::SubmitToTask {
+                chat,
+                client_ref,
+                task,
+                text,
+            } => {
+                self.submit_to_task(client, chat, client_ref, task, text)
+                    .await
+            }
             Request::RunAsNewTask { input } => self.run_as_new_task(client, input).await,
             Request::SendNow { input } => self.send_now(client, input).await,
             Request::AnswerStopConfirm { input, stop } => {

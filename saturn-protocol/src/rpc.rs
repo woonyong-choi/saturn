@@ -107,6 +107,14 @@ pub enum Request {
         text: String,
         skip_relation: bool,
     },
+    /// router 판단 없이 `task`에 바로 끼워 넣는 입력. 허가를 거절하고 이어 쓴 말처럼 대상이 분명할 때 쓴다.
+    /// `task`가 이미 끝났거나 없으면 `SubmitInput`처럼 판단을 받는다. `client_ref`는 `SubmitInput`과 같다.
+    SubmitToTask {
+        chat: ChatId,
+        client_ref: u64,
+        task: TaskId,
+        text: String,
+    },
     /// 아직 보내지 않은 입력을 새 작업으로 보낸다.
     RunAsNewTask {
         input: InputId,
