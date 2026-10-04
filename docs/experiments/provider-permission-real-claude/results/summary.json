@@ -1,0 +1,342 @@
+{
+  "hypotheses": {
+    "H1": {
+      "paths": [
+        "deny_shell"
+      ],
+      "verdict": "채택",
+      "verdicts": [
+        "확인"
+      ]
+    },
+    "H2": {
+      "paths": [
+        "workdir_edit",
+        "write_tool",
+        "readonly_command"
+      ],
+      "verdict": "불채택",
+      "verdicts": [
+        "불안정",
+        "확인",
+        "확인"
+      ]
+    },
+    "H3": {
+      "paths": [
+        "outside_edit",
+        "add_dir_edit"
+      ],
+      "verdict": "불채택",
+      "verdicts": [
+        "기각",
+        "불안정"
+      ]
+    },
+    "H4": {
+      "paths": [
+        "git_edit"
+      ],
+      "verdict": "채택",
+      "verdicts": [
+        "확인"
+      ]
+    },
+    "H5": {
+      "paths": [
+        "mcp_prompt"
+      ],
+      "verdict": "채택",
+      "verdicts": [
+        "확인"
+      ]
+    },
+    "H6": {
+      "paths": [
+        "subagent_task"
+      ],
+      "verdict": "채택",
+      "verdicts": [
+        "확인"
+      ]
+    },
+    "H7": {
+      "paths": [
+        "folder_deny_rule",
+        "flag_deny_rule",
+        "hook_deny"
+      ],
+      "verdict": "채택",
+      "verdicts": [
+        "확인",
+        "확인",
+        "확인"
+      ]
+    },
+    "H8": {
+      "paths": [
+        "add_dir_read",
+        "outside_read"
+      ],
+      "verdict": "채택",
+      "verdicts": [
+        "확인",
+        "확인"
+      ]
+    }
+  },
+  "last_call_ordinal": 55,
+  "paths": {
+    "add_dir_edit": {
+      "ci95_percent": [
+        9.4,
+        99.2
+      ],
+      "classifications": {
+        "allowed": 2,
+        "unexpected": 1
+      },
+      "expected": "allowed",
+      "hit": 2,
+      "marker_effect_true": 2,
+      "n": 3,
+      "requests_arrived": 2,
+      "verdict": "불안정"
+    },
+    "add_dir_read": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "allowed_without_ask": 3
+      },
+      "expected": "allowed_without_ask",
+      "hit": 3,
+      "marker_effect_true": 0,
+      "n": 3,
+      "requests_arrived": 0,
+      "verdict": "확인"
+    },
+    "deny_shell": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "blocked": 3
+      },
+      "expected": "blocked",
+      "hit": 3,
+      "marker_effect_true": 0,
+      "n": 3,
+      "requests_arrived": 3,
+      "verdict": "확인"
+    },
+    "flag_deny_rule": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "blocked_before_host": 3
+      },
+      "expected": "blocked_before_host",
+      "hit": 3,
+      "marker_effect_true": 0,
+      "n": 3,
+      "requests_arrived": 0,
+      "verdict": "확인"
+    },
+    "folder_deny_rule": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "blocked_before_host": 3
+      },
+      "expected": "blocked_before_host",
+      "hit": 3,
+      "marker_effect_true": 0,
+      "n": 3,
+      "requests_arrived": 0,
+      "verdict": "확인"
+    },
+    "git_edit": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "asked": 3
+      },
+      "expected": "asked",
+      "hit": 3,
+      "marker_effect_true": 0,
+      "n": 3,
+      "requests_arrived": 3,
+      "verdict": "확인"
+    },
+    "hook_deny": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "blocked_before_host": 3
+      },
+      "expected": "blocked_before_host",
+      "hit": 3,
+      "marker_effect_true": 0,
+      "n": 3,
+      "requests_arrived": 0,
+      "verdict": "확인"
+    },
+    "mcp_prompt": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "asked": 3
+      },
+      "expected": "asked",
+      "hit": 3,
+      "marker_effect_true": 0,
+      "n": 3,
+      "requests_arrived": 3,
+      "verdict": "확인"
+    },
+    "outside_edit": {
+      "ci95_percent": [
+        0.0,
+        70.8
+      ],
+      "classifications": {
+        "unexpected": 3
+      },
+      "expected": "asked",
+      "hit": 0,
+      "marker_effect_true": 0,
+      "n": 3,
+      "requests_arrived": 1,
+      "verdict": "기각"
+    },
+    "outside_read": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "asked": 3
+      },
+      "expected": "asked",
+      "hit": 3,
+      "marker_effect_true": 0,
+      "n": 3,
+      "requests_arrived": 3,
+      "verdict": "확인"
+    },
+    "readonly_command": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "allowed": 3
+      },
+      "expected": "allowed",
+      "hit": 3,
+      "marker_effect_true": 0,
+      "n": 3,
+      "requests_arrived": 3,
+      "verdict": "확인"
+    },
+    "subagent_task": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "blocked": 3
+      },
+      "expected": "blocked",
+      "hit": 3,
+      "marker_effect_true": 0,
+      "n": 3,
+      "requests_arrived": 3,
+      "verdict": "확인"
+    },
+    "workdir_edit": {
+      "ci95_percent": [
+        9.4,
+        99.2
+      ],
+      "classifications": {
+        "allowed": 2,
+        "unexpected": 1
+      },
+      "expected": "allowed",
+      "hit": 2,
+      "marker_effect_true": 2,
+      "n": 3,
+      "requests_arrived": 2,
+      "verdict": "불안정"
+    },
+    "write_tool": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "allowed": 3
+      },
+      "expected": "allowed",
+      "hit": 3,
+      "marker_effect_true": 3,
+      "n": 3,
+      "requests_arrived": 3,
+      "verdict": "확인"
+    }
+  },
+  "read_first_exploratory": {
+    "add_dir_edit": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "allowed": 3
+      },
+      "expected": "allowed",
+      "hit": 3,
+      "n": 3
+    },
+    "outside_edit": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "asked": 3
+      },
+      "expected": "asked",
+      "hit": 3,
+      "n": 3
+    },
+    "workdir_edit": {
+      "ci95_percent": [
+        29.2,
+        100.0
+      ],
+      "classifications": {
+        "allowed": 3
+      },
+      "expected": "allowed",
+      "hit": 3,
+      "n": 3
+    }
+  },
+  "trials": 51
+}
