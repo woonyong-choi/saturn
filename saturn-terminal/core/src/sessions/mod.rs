@@ -1,6 +1,7 @@
 //! 메인·보조 에이전트의 session 수명, provider 전환, 기록 번호로 결과 전달.
 //! 설계: docs/design/providers-and-sessions.md
 
+pub mod changes;
 pub mod context;
 pub mod fragments;
 pub mod memo;

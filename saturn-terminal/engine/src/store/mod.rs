@@ -1,6 +1,7 @@
 //! 기록 저장소: SQLite 파일 하나에 입력, 실행, 판단 기록, 설정 스냅샷을 쓴다.
 //! 설계: docs/design/records.md
 
+mod changes;
 mod chat_dirs;
 mod chat_labels;
 mod constraints;
@@ -29,6 +30,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
+pub(crate) use changes::RunChanges;
 #[cfg(test)]
 pub(crate) use constraints::StoredConstraint;
 pub(crate) use constraints::{

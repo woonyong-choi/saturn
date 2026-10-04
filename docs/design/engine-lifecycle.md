@@ -235,6 +235,8 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 끊긴 하위 에이전트는 provider가 session을 다시 열 때 되살리지 못하게 막는다. 보류한 session을 `/continue`로 다시 열 때 `engine`이 끊긴 하위 에이전트 목록을 provider에 넘기고, provider별 정리는 [provider 연결과 session](providers-and-sessions.md#크래시-뒤-끊긴-하위-에이전트)에 있다. 다시 연 뒤 끊긴 하위 에이전트의 이벤트가 오면 provider가 업데이트로 동작을 바꿔 다시 실행한 것이다. `engine`은 그 이벤트를 기록하지 않고, 작업 중이면 채팅의 작업을 멈추고 아니면 그 하위 에이전트에 멈춤 신호를 보내며, TUI에 `InterruptedSubagentReturned`를 한 번 알린다. 끊긴 하위 에이전트 목록은 기록 저장소(표 `interrupted_subagents`)에 남기므로 `engine`을 다시 켜도 같은 정리와 막기가 이어진다. provider에 정리를 넘긴 뒤에는 `cleaned`로 표시해 다시 넘기지 않고 감시만 이어 가며, 에이전트의 session이 끝나거나 보류를 닫으면 지운다.
 
+확인 입력에 싣는 수정 파일 목록([수정 파일 목록](providers-and-sessions.md#수정-파일-목록))은 실행 시작 때 찍은 폴더 상태를 메모리에서 비교해 만든다. 크래시로 그 상태를 잃었으므로 복구의 확인 입력에는 목록이 없고, 멈춤으로 보류한 작업의 확인 입력에만 있다.
+
 자동으로 이어 갈 때 크래시 전에 보낸 패킷을 다시 보내지 않는다. 이미 반영된 입력을 두 번 실행하지 않기 위해서다. 보류한 실행은 사용자가 `/continue`로 이을 때까지 멈춰 있다. 입력 없이 provider가 시작한 턴은 확인 입력을 만들 원문이 없어 session을 보류하고 실행을 닫기만 한다. 한 실행의 복구가 실패하면 경고를 남기고 나머지를 복구하며, 실패한 실행은 끝나지 않은 채 남아 다음 시작 때 다시 시도한다. TUI가 보류 목록을 묻는 방식은 [TUI](tui.md)에 있다.
 
 보류한 작업은 기록 저장소에도 남겨(표 `held_tasks`, [기록 저장과 보존](records.md)) `engine`이 정상 종료했다 다시 떠도 이어 간다. 크래시 복구뿐 아니라 멈춤과 `on_exit = "stop"`으로 보류한 작업도 멈출 때 실행 중이던 것이면 같다. 시작할 때 복구 1번보다 먼저 이 기록을 읽어 작업을 보류로 되살리고, 되살린 작업마다 그 채팅에 처음 붙는 TUI에 `/continue`를 제안한다. 제안은 `engine` 프로세스마다 채팅의 첫 TUI에 한 번 보내고, 사용자가 재개하거나 닫기 전까지 `engine`이 다시 뜰 때마다 되풀이한다. 보류가 남아 있다는 사실을 잊지 않게 하기 위해서다. 재개하거나 닫은 작업은 그때 기록에서 지우므로 다시 제안하지 않는다. 보내기 전에 멈춰 입력만 보류된 작업은 기록하지 않는다. 그 입력은 아래 입력 복원이 되살린다.
@@ -305,6 +307,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 |---|---|
 | `engine`은 사용자당 하나만 실행된다. | 같은 사용자로 `engine`을 두 번 띄우면 두 번째가 잠금을 얻지 못하고 기존 `engine`에 붙는지 확인 |
 | `engine` 로그는 `~/.saturn/logs/engine-YYYY-MM-DD.log`에 로컬 날짜별로 하루 한 파일씩 쌓이고, 날짜가 바뀌면 새 파일을 연다. 30일 지난 `engine-YYYY-MM-DD.log`만 시작 때와 날짜가 바뀔 때 지우고, 옛 `engine.log`와 `engine.log.N`은 시작 때 지운다. | `saturn-terminal/engine/src/engine_log.rs`의 `engine_log_writes_to_a_file_named_after_the_day`, `engine_log_opens_a_new_file_when_the_day_changes`, `engine_log_start_removes_only_files_older_than_30_days`, `engine_log_removes_files_older_than_30_days_when_the_day_changes`, `engine_log_start_removes_the_old_engine_log_files`, `saturn-terminal/cli/src/launch.rs`의 `engine_log_tail_reads_the_latest_dated_file` |
+| 멈춘 작업을 이을 때 확인 입력에 멈출 때까지 바뀐 파일을 적고, 바뀐 파일이 없으면 적지 않는다. | `saturn-terminal/engine/src/lifecycle/changed_files.rs`의 `stop_confirmation_input_lists_the_files_changed_before_the_stop`, `confirmation_without_changes_has_no_file_line` |
 | TUI를 닫아도 `engine`은 접수된 입력을 계속 처리한다. | TUI 연결을 끊은 뒤 대기 입력이 순서대로 provider에 전달되는지 확인 |
 | `on_exit`가 `stop`이면 마지막 TUI가 떨어질 때 모든 채팅의 작업을 보류하고, 다른 TUI가 붙어 있는 동안에는 멈추지 않는다. 멈춘 작업은 자동으로 이어 가지 않는다. | `saturn-terminal/engine/src/lifecycle/exit.rs`의 `stop_holds_the_work_of_every_chat_only_when_the_last_tui_detaches`, `stop_on_exit_keeps_waiting_input_held_after_the_turn_ends` |
 | 붙은 TUI가 같은 연결로 다른 채팅에 `Attach`하면 연결이 유지되고 붙은 채팅만 바뀌며, `on_exit`가 `stop`이어도 떠난 채팅의 작업을 멈추지 않는다. 그 뒤 `Detach`는 마지막 TUI 이탈로 센다. | `saturn-terminal/engine/src/lifecycle/exit.rs`의 `attach_to_another_chat_on_the_same_connection_is_not_a_detach` |
@@ -365,4 +368,4 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 ## 미해결 질문
 
 - 에이전트가 실행한 자식 Saturn을 부모 `engine` 소켓에 자식으로 붙일지, 독립 `engine`으로 띄우고 결과 파일로 돌려받을지 ([#33](https://github.com/woonyong-choi/saturn/issues/33))
-- 크래시 뒤 파일 상태 확인에 쓰는 수정 파일 목록을 실행 경계의 파일 상태 차이로 계산할지, provider 이벤트로 계산할지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))
+- 크래시 뒤 확인 입력에도 수정 파일 목록을 싣도록 실행 시작 때 폴더 상태를 기록 저장소에 남길지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))

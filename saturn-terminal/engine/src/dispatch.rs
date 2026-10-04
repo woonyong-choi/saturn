@@ -291,6 +291,9 @@ impl Engine {
                 effect_scope: EffectScope::NetworkPossible,
             })
             .await?;
+        if let Some(workdir) = self.queue.input(input).map(|record| record.workdir.clone()) {
+            self.take_baseline(run, chat, &workdir).await;
+        }
         self.runs.active.insert(live.agent, run);
         self.runs.chat_of.insert(live.agent, chat);
         self.runs.task_of.insert(live.agent, task);
@@ -428,6 +431,7 @@ impl Engine {
         if let Some(live) = &delivery.live {
             self.runs.forget(live.agent);
         }
+        self.flow.baselines.remove(&run);
         let ended = self.store.finish_run(run, RunEnd::Failed).await;
         self.warn_failure("failed to end run", ended);
     }
@@ -471,6 +475,7 @@ impl Engine {
         let task = self.runs.task_of.remove(&agent);
         self.runs.chat_of.remove(&agent);
         if let Some(run) = self.runs.active.remove(&agent) {
+            self.settle_changes(run, chat, agent).await;
             self.store.finish_run(run, RunEnd::Completed).await?;
         }
         if let Some(task) = task {

@@ -16,7 +16,8 @@ use crate::calls::CallKind;
 use crate::dispatch::{MAX_SEND_ATTEMPTS, Start};
 use crate::flow::LiveSession;
 use crate::handoff::{
-    Handoff, HandoffOutcome, handoff_of, handoff_source, others_only, reduce_handoff,
+    Handoff, HandoffOutcome, changes_of_others, handoff_of, handoff_source, others_only,
+    reduce_handoff,
 };
 use crate::models::pinned_model_name;
 use crate::sessions::SendRequest;
@@ -333,10 +334,16 @@ impl Engine {
             .ledger_since(chat, LedgerSeq(0))
             .await
             .map_err(|error| failed(error.into()))?;
+        let changes = self
+            .store
+            .run_changes(chat)
+            .await
+            .map_err(|error| failed(error.into()))?;
         let synced = rows.last().map_or(LedgerSeq(0), |row| row.seq);
         let pending = self.pending_work(chat, Some(record.id));
         let full_source = handoff_source(
             &rows,
+            &changes,
             &pending,
             &self.registry.instruction_docs(),
             budget.rrf_k,
@@ -366,9 +373,10 @@ impl Engine {
         let (source, outcome) = match &target {
             SendTarget::Resume(id) => {
                 let after = self.sessions.attach_from(*id);
-                let changes = rows.into_iter().filter(|row| row.seq > after).collect();
+                let newer = rows.into_iter().filter(|row| row.seq > after).collect();
                 let source = handoff_source(
-                    &others_only(changes, *id),
+                    &others_only(newer, *id),
+                    &changes_of_others(changes, *id, after),
                     &pending,
                     &self.registry.instruction_docs(),
                     budget.rrf_k,

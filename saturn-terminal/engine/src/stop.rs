@@ -7,8 +7,9 @@ use std::collections::HashMap;
 use saturn_core::agents::TreeStatus;
 use saturn_core::providers::InterruptTarget;
 use saturn_core::queue::{QueueError, QueuedInput};
+use saturn_core::sessions::changes::{ChangeSet, describe};
 use saturn_core::sessions::memo::INTERRUPTED_RESULT;
-use saturn_protocol::ids::{AgentId, ChatId, InputId, TaskId};
+use saturn_protocol::ids::{AgentId, ChatId, InputId, RunId, TaskId};
 use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::{InputState, SessionState, TaskState};
 
@@ -331,9 +332,16 @@ impl Engine {
     }
 
     async fn end_stopped_run(&mut self, agent: AgentId) {
+        let (chat, task) = (
+            self.runs.chat_of.get(&agent).copied(),
+            self.runs.task_of.get(&agent).copied(),
+        );
         let Some(run) = self.runs.forget(agent) else {
             return;
         };
+        if let (Some(chat), Some(task)) = (chat, task) {
+            self.keep_stopped_changes(run, chat, task, agent).await;
+        }
         let ended = self.store.finish_run(run, RunEnd::Stopped).await;
         self.warn_failure("failed to end stopped run", ended);
     }
@@ -341,7 +349,7 @@ impl Engine {
     /// `task`가 없으면 채팅의 보류 전부를 접수 순서로 재개한다. 멈출 때 실행 중이던 작업에는 파일 상태부터
     /// 확인하게 하는 새 입력을 보내고, 같은 패킷은 다시 보내지 않는다. 결과를 모르는 작업(`NeedsCheck`)은
     /// `task`로 가리킬 때만 같은 확인 입력으로 잇는다.
-    /// TODO(#65): 수정 파일 목록을 파일 상태 차이로 셀지 provider 이벤트로 셀지 정해지기 전에는 에이전트가 직접 확인한다
+    /// 멈출 때 바뀐 파일 목록이 있으면 확인 입력에 함께 적는다.
     ///
     /// # Errors
     /// 기록 저장소 쓰기 실패는 `Store`, 이어 보내는 중의 오류는 `dispatch_next`와 같다.
@@ -449,6 +457,8 @@ impl Engine {
         };
         self.queue.finish_task(check.agent);
         if let Some(run) = self.runs.forget(check.agent) {
+            self.keep_stopped_changes(run, chat, task, check.agent)
+                .await;
             self.store.finish_run(run, RunEnd::Stopped).await?;
         }
         self.hold_task(
@@ -463,6 +473,24 @@ impl Engine {
         self.send_confirmation(chat, task).await
     }
 
+    /// 멈춘 실행이 시작 뒤 바꾼 파일 목록을 기록하고, 그 작업의 확인 입력에 쓰도록 둔다. 바뀐 파일이 없으면 두지 않는다.
+    async fn keep_stopped_changes(
+        &mut self,
+        run: RunId,
+        chat: ChatId,
+        task: TaskId,
+        agent: AgentId,
+    ) {
+        match self.settle_changes(run, chat, agent).await {
+            Some(changes) if !changes.files.is_empty() => {
+                self.flow.stopped_changes.insert(task, changes);
+            }
+            _ => {
+                self.flow.stopped_changes.remove(&task);
+            }
+        }
+    }
+
     /// 파일 상태를 확인한 뒤 이어 가게 하는 새 입력을 그 작업에 접수한다.
     async fn send_confirmation(&mut self, chat: ChatId, task: TaskId) -> Result<(), EngineError> {
         let Some(source) = self
@@ -475,9 +503,10 @@ impl Engine {
             return Ok(());
         };
         self.release_held(task).await;
+        let changes = self.flow.stopped_changes.remove(&task);
         let new = NewInput {
             chat,
-            text: confirmation_text(&source.text),
+            text: confirmation_text(&source.text, changes.as_ref()),
             settings: source.settings,
             permission: source.permission,
             workdir: source.workdir.clone(),
@@ -505,7 +534,12 @@ impl Engine {
     }
 }
 
-/// 멈춘 턴은 별도 경고 문장 없이 결과 자리의 오류 결과로만 알린다.
-fn confirmation_text(original: &str) -> String {
-    format!("Previous turn result (error): {INTERRUPTED_RESULT}\n\nRequest:\n{original}")
+/// 멈춘 턴은 별도 경고 문장 없이 결과 자리의 오류 결과로만 알린다. 멈추기 전까지 바뀐 파일이 있으면 결과 뒤에 적어
+/// 에이전트가 처음부터 다시 훑지 않고 그 파일의 상태부터 확인하게 한다.
+fn confirmation_text(original: &str, changes: Option<&ChangeSet>) -> String {
+    let files = changes
+        .and_then(describe)
+        .map(|files| format!("\n\nFiles changed during that turn: {files}"))
+        .unwrap_or_default();
+    format!("Previous turn result (error): {INTERRUPTED_RESULT}{files}\n\nRequest:\n{original}")
 }

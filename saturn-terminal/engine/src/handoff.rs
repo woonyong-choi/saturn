@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 
+use saturn_core::sessions::changes::describe;
 use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::memo::{INTERRUPTED_RESULT, ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
@@ -16,7 +17,7 @@ use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId};
 use saturn_protocol::state::InputState;
 
 use crate::Engine;
-use crate::store::{LedgerRow, RunEnd};
+use crate::store::{LedgerRow, RunChanges, RunEnd};
 
 /// 새 session의 첫 턴으로 보내는 글.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,6 +59,7 @@ struct Tool {
 /// 넘길 기록이 없으면 `None`.
 pub(crate) fn handoff_source(
     rows: &[LedgerRow],
+    changes: &[RunChanges],
     pending: &Pending,
     provider_docs: &[String],
     rrf_k: u32,
@@ -71,7 +73,10 @@ pub(crate) fn handoff_source(
         constraints: Vec::new(),
         goal_and_last_input: goal_inputs(rows),
         open_items: open,
-        competitors: ordered_competitors(&tools, &turns, rrf_k),
+        competitors: changed_files_items(changes)
+            .into_iter()
+            .chain(ordered_competitors(&tools, &turns, rrf_k))
+            .collect(),
         recent_turns: turns,
         provider_docs: provider_docs.to_vec(),
         up_to: last.seq,
@@ -80,11 +85,12 @@ pub(crate) fn handoff_source(
 
 pub(crate) fn build_handoff(
     rows: &[LedgerRow],
+    changes: &[RunChanges],
     pending: &Pending,
     provider_docs: &[String],
     budget: &ContextBudget,
 ) -> HandoffOutcome {
-    match handoff_source(rows, pending, provider_docs, budget.rrf_k) {
+    match handoff_source(rows, changes, pending, provider_docs, budget.rrf_k) {
         Some(source) => handoff_of(&source, budget),
         None => HandoffOutcome::Empty,
     }
@@ -405,6 +411,39 @@ fn ordered_competitors(tools: &[Tool], turns: &[RecentTurn], rrf_k: u32) -> Vec<
         .collect()
 }
 
+/// 실행마다 폴더 상태 차이로 센 수정 파일 목록을 경쟁 항목으로 만든다. 도구 호출 이벤트에 없는 수정(셸 명령, 자식 프로세스)도 담긴다.
+/// 도구 순위와 따로 맨 앞에 두어 예산이 모자라도 먼저 들어간다. 바뀐 파일이 없는 실행은 항목이 없다.
+fn changed_files_items(changes: &[RunChanges]) -> Vec<CompetingItem> {
+    changes
+        .iter()
+        .filter_map(|run| {
+            let text = describe(&run.set)?;
+            Some(CompetingItem {
+                seq: run.seq,
+                stamp: Stamp {
+                    session: run.session,
+                    at_ms: Some(run.at_ms),
+                },
+                text: format!("Files changed in this run: {text}"),
+                memo: format!("Files changed in this run: {} files", run.set.files.len()),
+                path: run.set.files.first().map(|change| change.path.clone()),
+            })
+        })
+        .collect()
+}
+
+/// 기록 번호 뒤의 변경분 중 그 session이 낸 실행의 수정 파일 목록은 이미 알고 있으므로 뺀다.
+pub(crate) fn changes_of_others(
+    changes: Vec<RunChanges>,
+    session: SessionId,
+    after: LedgerSeq,
+) -> Vec<RunChanges> {
+    changes
+        .into_iter()
+        .filter(|run| run.session != session && run.seq > after)
+        .collect()
+}
+
 fn item_text(tool: &Tool) -> String {
     format!(
         "{}\n{}",
@@ -431,6 +470,7 @@ pub(crate) fn others_only(rows: Vec<LedgerRow>, session: SessionId) -> Vec<Ledge
 mod tests {
     use std::time::Duration;
 
+    use saturn_core::sessions::changes::{ChangeKind, ChangeSet, FileChange};
     use saturn_core::sessions::context::{DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_DIVISOR};
     use saturn_core::sessions::ranking::DEFAULT_RRF_K;
     use saturn_protocol::event::LineRange;
@@ -485,7 +525,8 @@ mod tests {
     }
 
     fn handoff_text(rows: &[LedgerRow], pending: &Pending) -> String {
-        let HandoffOutcome::Ready(handoff) = build_handoff(rows, pending, &[], &budget()) else {
+        let HandoffOutcome::Ready(handoff) = build_handoff(rows, &[], pending, &[], &budget())
+        else {
             panic!("packet should be ready");
         };
         handoff.text
@@ -516,10 +557,70 @@ mod tests {
         }
     }
 
+    fn run_changes(session: u64, seq: u64, files: &[(&str, &[&str])]) -> RunChanges {
+        RunChanges {
+            run: RunId(session),
+            session: SessionId(session),
+            seq: LedgerSeq(seq),
+            at_ms: 0,
+            set: ChangeSet {
+                files: files
+                    .iter()
+                    .map(|(path, actors)| FileChange {
+                        path: (*path).to_owned(),
+                        kind: ChangeKind::Modified,
+                        actors: actors.iter().map(|actor| (*actor).to_owned()).collect(),
+                    })
+                    .collect(),
+                is_partial: false,
+            },
+        }
+    }
+
+    #[test]
+    fn packet_lists_files_changed_by_shell_even_without_tool_events() {
+        let rows = vec![row(
+            1,
+            1,
+            5,
+            Some("fix the cache"),
+            text_event(AgentId(1), "done"),
+        )];
+        let changes = vec![run_changes(
+            1,
+            1,
+            &[("src/cache.rs", &[]), ("src/lib.rs", &["main agent"])],
+        )];
+
+        let HandoffOutcome::Ready(handoff) =
+            build_handoff(&rows, &changes, &Pending::default(), &[], &budget())
+        else {
+            panic!("packet should be ready");
+        };
+
+        assert!(handoff.text.contains(
+            "Files changed in this run: src/cache.rs (modified, by shell or child process), src/lib.rs (modified, by main agent)"
+        ));
+    }
+
+    #[test]
+    fn changes_of_others_drops_the_sessions_own_and_already_delivered_runs() {
+        let changes = vec![
+            run_changes(1, 3, &[("own.rs", &[])]),
+            run_changes(2, 2, &[("delivered.rs", &[])]),
+            run_changes(2, 9, &[("new.rs", &[])]),
+        ];
+
+        let kept = changes_of_others(changes, SessionId(1), LedgerSeq(5));
+
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].set.files[0].path, "new.rs");
+    }
+
     #[test]
     fn empty_rows_have_nothing_to_hand_over() {
         assert_eq!(
-            build_handoff(&[], &Pending::default(), &[], &budget()),
+            build_handoff(&[], &[], &Pending::default(), &[], &budget()),
             HandoffOutcome::Empty
         );
     }
@@ -552,7 +653,7 @@ mod tests {
         ];
 
         let HandoffOutcome::Ready(handoff) =
-            build_handoff(&rows, &Pending::default(), &[], &budget())
+            build_handoff(&rows, &[], &Pending::default(), &[], &budget())
         else {
             panic!("packet should be ready");
         };
@@ -572,7 +673,7 @@ mod tests {
         ];
 
         let HandoffOutcome::Ready(handoff) =
-            build_handoff(&rows, &Pending::default(), &[], &budget())
+            build_handoff(&rows, &[], &Pending::default(), &[], &budget())
         else {
             panic!("packet should be ready");
         };

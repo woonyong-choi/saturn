@@ -276,6 +276,7 @@ impl Engine {
             && !matches!(error, ProviderError::Unknown)
         {
             self.runs.forget(live.agent);
+            self.flow.baselines.remove(&run);
             let ended = self.store.finish_run(run, RunEnd::Failed).await;
             self.warn_failure("failed to end fallback run", ended);
         }
@@ -481,6 +482,7 @@ impl Engine {
             }
             Err(error) => {
                 self.runs.forget(live.agent);
+                self.flow.baselines.remove(&run);
                 let ended = self.store.finish_run(run, RunEnd::Failed).await;
                 self.warn_failure("failed to end fallback run", ended);
                 self.settle(job.delivery, Err(error)).await

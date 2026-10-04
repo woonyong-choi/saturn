@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 10;
+pub(crate) const SCHEMA_VERSION: u32 = 11;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,7 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7, V8, V9, V10];
+pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -286,6 +286,21 @@ CREATE TABLE packet_constraints (
     tier TEXT NOT NULL,
     PRIMARY KEY (session_id, constraint_id)
 );
+"#;
+
+/// 실행별 수정 파일 목록. 이관 전 실행은 측정하지 않았으므로 `changes_state`가 비어 있다.
+const V11: &str = r#"
+ALTER TABLE runs ADD COLUMN changes_state TEXT;
+CREATE TABLE run_changes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id INTEGER NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    path TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    actors TEXT NOT NULL
+);
+CREATE INDEX run_changes_run ON run_changes(run_id);
+CREATE INDEX run_changes_chat ON run_changes(chat_id);
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -741,5 +756,28 @@ mod tests {
         }
         let inputs = store.history_page(chat, None, 10).await.unwrap().entries;
         assert_eq!(inputs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn v10_file_migrates_to_run_changes_keeping_runs() {
+        let (dir, store) = temp_store_at(10).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (10, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
+        let chat = saturn_protocol::ids::ChatId(1);
+        assert_eq!(
+            store.chat_workdir(chat).await.unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.run_changes(chat).await.unwrap().is_empty());
     }
 }
