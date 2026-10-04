@@ -73,9 +73,10 @@ impl Engine {
             .ok_or(EngineError::ChatNotAttached { chat })?
             .workdir()
             .to_path_buf();
+        let run = self.run_layer_of_chat(chat);
         let (applied, _) = self
             .settings
-            .apply_trusted(&self.store, Some(chat), &workdir)
+            .apply_trusted(&self.store, Some(chat), &workdir, &run)
             .await?;
         Ok(self
             .settings

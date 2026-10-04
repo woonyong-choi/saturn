@@ -30,16 +30,27 @@ pub(crate) struct Applied {
     pub screen: Option<String>,
 }
 
-/// engine에 하나. 실행 `-c`는 engine 시작 때 정하고, 작업 폴더는 채팅마다 호출 때 받는다.
+/// 병합 결과가 적용되는 범위. 채팅 층과 접속별 실행 층이 같으면 결과도 같다.
+type ScopeKey = (Option<ChatId>, Vec<String>);
+
+/// 마지막 `apply` 때 본 파일 지문을 기억하는 범위. 같은 폴더의 채팅이나 접속이 서로의 변경을 소비하지 않게 작업 폴더까지 넣는다.
+type SeenKey = (Option<ChatId>, PathBuf, Vec<String>);
+
+/// engine에 하나. engine 시작 `-c`는 모든 범위에 깔리고, 접속별 `-c`는 `apply`마다 받아 그 범위에만 적용한다.
+/// 검사 실패 때 돌아갈 번호도 범위마다 따로 기억한다.
 #[derive(Debug)]
 pub(crate) struct SettingsManager {
     home: PathBuf,
     run_overrides: Vec<String>,
     trust: TrustStore,
-    /// 검사 실패 때 돌아갈 번호.
-    current: Option<SettingsRevision>,
-    /// 작업 폴더마다 마지막 `apply` 때 본 설정 파일과 지문. 없던 파일은 `None`.
-    seen: HashMap<PathBuf, FileFingerprints>,
+    /// engine 시작 때 병합한 번호(사용자 층과 시작 `-c`). 범위에 이전 번호가 없을 때 돌아간다.
+    base: Option<SettingsRevision>,
+    /// 범위마다 마지막으로 성공한 번호.
+    scoped: HashMap<ScopeKey, SettingsRevision>,
+    /// 채팅마다 마지막으로 적용한 번호. 입력 없이 채팅 설정을 읽는 곳이 쓴다.
+    latest: HashMap<ChatId, SettingsRevision>,
+    /// 범위마다 마지막 `apply` 때 본 설정 파일과 지문. 없던 파일은 `None`.
+    seen: HashMap<SeenKey, FileFingerprints>,
 }
 
 impl SettingsManager {
@@ -51,12 +62,14 @@ impl SettingsManager {
         store: &Store,
     ) -> Result<Self, SettingsError> {
         let trust = TrustStore::load(&home).await?;
-        let current = store.latest_settings_revision().await?;
+        let base = store.latest_settings_revision().await?;
         Ok(Self {
             home,
             run_overrides,
             trust,
-            current,
+            base,
+            scoped: HashMap::new(),
+            latest: HashMap::new(),
             seen: HashMap::new(),
         })
     }
@@ -89,7 +102,8 @@ impl SettingsManager {
         self.trust.trust(path, fingerprint).await
     }
 
-    /// 검사가 실패하면 `current`의 번호와 경고를 돌려준다. 보조 에이전트도 부모의 `chat`을 넘긴다.
+    /// 검사가 실패하면 그 범위의 이전 번호(없으면 시작 번호)와 경고를 돌려준다. 보조 에이전트도 부모의 `chat`을 넘긴다.
+    /// `overrides`는 이 접속의 실행 `-c`(`키=값`)이고, engine 시작 `-c` 뒤에 붙는다.
     ///
     /// # Errors
     /// 폴더 설정 미신뢰면 `Untrusted`, 이전 번호 없이 검사 실패면 `NoPreviousRevision`, 저장 실패면 `Store`.
@@ -98,12 +112,16 @@ impl SettingsManager {
         store: &Store,
         chat: Option<ChatId>,
         workdir: &Path,
+        overrides: &[String],
     ) -> Result<Applied, SettingsError> {
-        let (layers, untrusted) = self.collect_layers(store, chat, Some(workdir)).await?;
+        let (layers, untrusted) = self
+            .collect_layers(store, chat, Some(workdir), overrides)
+            .await?;
         if let Some(prompt) = untrusted {
             return Err(SettingsError::Untrusted { path: prompt.path });
         }
-        self.merge_and_save(store, layers).await
+        self.merge_and_save(store, layers, (chat, overrides.to_vec()))
+            .await
     }
 
     /// 신뢰하지 않은 폴더 설정은 빼고 병합하고, 그 폴더 설정의 신뢰 창 내용을 함께 돌려준다.
@@ -115,9 +133,14 @@ impl SettingsManager {
         store: &Store,
         chat: Option<ChatId>,
         workdir: &Path,
+        overrides: &[String],
     ) -> Result<(Applied, Option<FolderTrustPrompt>), SettingsError> {
-        let (layers, untrusted) = self.collect_layers(store, chat, Some(workdir)).await?;
-        let applied = self.merge_and_save(store, layers).await?;
+        let (layers, untrusted) = self
+            .collect_layers(store, chat, Some(workdir), overrides)
+            .await?;
+        let applied = self
+            .merge_and_save(store, layers, (chat, overrides.to_vec()))
+            .await?;
         Ok((applied, untrusted))
     }
 
@@ -126,8 +149,12 @@ impl SettingsManager {
     /// # Errors
     /// 이전 번호 없이 검사 실패면 `NoPreviousRevision`, 저장 실패면 `Store`.
     pub(crate) async fn apply_user(&mut self, store: &Store) -> Result<Applied, SettingsError> {
-        let (layers, _) = self.collect_layers(store, None, None).await?;
-        self.merge_and_save(store, layers).await
+        let (layers, _) = self.collect_layers(store, None, None, &[]).await?;
+        let applied = self
+            .merge_and_save(store, layers, (None, Vec::new()))
+            .await?;
+        self.base = Some(applied.revision);
+        Ok(applied)
     }
 
     async fn collect_layers(
@@ -135,6 +162,7 @@ impl SettingsManager {
         store: &Store,
         chat: Option<ChatId>,
         workdir: Option<&Path>,
+        overrides: &[String],
     ) -> Result<(Vec<(LayerSource, String)>, Option<FolderTrustPrompt>), SettingsError> {
         let user_path = self.user_config_path();
         let mut layers = vec![(
@@ -168,7 +196,8 @@ impl SettingsManager {
             layers.push((source(Layer::Chat, None, &content), content));
         }
         if let Some(workdir) = workdir {
-            self.seen.insert(workdir.to_path_buf(), seen);
+            self.seen
+                .insert((chat, workdir.to_path_buf(), overrides.to_vec()), seen);
         }
         Ok((layers, untrusted))
     }
@@ -176,9 +205,25 @@ impl SettingsManager {
     async fn merge_and_save(
         &mut self,
         store: &Store,
-        mut layers: Vec<(LayerSource, String)>,
+        layers: Vec<(LayerSource, String)>,
+        key: ScopeKey,
     ) -> Result<Applied, SettingsError> {
-        let merged = match run_layer(&self.run_overrides) {
+        let run: Vec<String> = self.run_overrides.iter().chain(&key.1).cloned().collect();
+        let applied = self.merge_scope(store, layers, &key, &run).await?;
+        if let Some(chat) = key.0 {
+            self.latest.insert(chat, applied.revision);
+        }
+        Ok(applied)
+    }
+
+    async fn merge_scope(
+        &mut self,
+        store: &Store,
+        mut layers: Vec<(LayerSource, String)>,
+        key: &ScopeKey,
+        run: &[String],
+    ) -> Result<Applied, SettingsError> {
+        let merged = match run_layer(run) {
             Ok(content) => {
                 layers.push((source(Layer::Run, None, &content), content));
                 merge(layers)
@@ -194,16 +239,27 @@ impl SettingsManager {
             }) => {
                 let layer = layer_of_path(&path, &self.user_config_path());
                 let line = u32::try_from(line).unwrap_or(u32::MAX);
-                return self.fall_back(layer, SettingsFault::Parse { line, message });
+                return self.fall_back(key, layer, SettingsFault::Parse { line, message });
             }
-            Err(SettingsError::Invalid { key, reason, layer }) => {
-                return self.fall_back(layer.into(), SettingsFault::Invalid { key, reason });
+            Err(SettingsError::Invalid {
+                key: setting,
+                reason,
+                layer,
+            }) => {
+                return self.fall_back(
+                    key,
+                    layer.into(),
+                    SettingsFault::Invalid {
+                        key: setting,
+                        reason,
+                    },
+                );
             }
             Err(error) => return Err(error),
         };
         let revision = store.save_settings_snapshot(&snapshot).await?;
         store.mark_settings_applied(revision).await?;
-        self.current = Some(revision);
+        self.scoped.insert(key.clone(), revision);
         let ignored: Vec<&str> = snapshot
             .layers
             .iter()
@@ -242,10 +298,16 @@ impl SettingsManager {
     /// 이전 번호가 없으면 `NoPreviousRevision`.
     fn fall_back(
         &self,
+        scope: &ScopeKey,
         layer: SettingsLayer,
         fault: SettingsFault,
     ) -> Result<Applied, SettingsError> {
-        let previous = self.current.ok_or(SettingsError::NoPreviousRevision)?;
+        let previous = self
+            .scoped
+            .get(scope)
+            .copied()
+            .or(self.base)
+            .ok_or(SettingsError::NoPreviousRevision)?;
         Ok(Applied {
             revision: previous,
             warning: Some(SettingsWarning::Fallback { layer, fault }),
@@ -258,9 +320,27 @@ impl SettingsManager {
         self.home.join(CONFIG_FILE)
     }
 
-    /// 입력 접수 때 이 값을 `NewInput::settings`로 고정한다.
+    /// engine 시작 때 병합한 번호. 채팅이 없는 일(보관 정리, 시작 확인)과 범위에 이전 번호가 없을 때만 쓴다.
     pub(crate) fn current(&self) -> Option<SettingsRevision> {
-        self.current
+        self.base
+    }
+
+    /// 입력 접수 때 이 값을 `NewInput::settings`로 고정한다. 이 채팅과 이 접속 `-c`로 마지막에 성공한 번호이고,
+    /// 없으면 시작 번호다.
+    pub(crate) fn revision_in(
+        &self,
+        chat: ChatId,
+        overrides: &[String],
+    ) -> Option<SettingsRevision> {
+        self.scoped
+            .get(&(Some(chat), overrides.to_vec()))
+            .copied()
+            .or(self.base)
+    }
+
+    /// 접속을 모를 때 쓰는, 이 채팅에 마지막으로 적용한 번호. 없으면 시작 번호다.
+    pub(crate) fn latest_of(&self, chat: ChatId) -> Option<SettingsRevision> {
+        self.latest.get(&chat).copied().or(self.base)
     }
 
     /// 처리 중 설정이 바뀌어도 provider 실행과 router 호출은 입력의 번호로 같은 값을 쓴다.
@@ -279,8 +359,13 @@ impl SettingsManager {
     ///
     /// # Errors
     /// 파일 읽기 실패면 `Io`.
-    pub(crate) async fn changed(&self, workdir: &Path) -> Result<bool, SettingsError> {
-        Ok(self.observe(workdir).await?.is_some())
+    pub(crate) async fn changed(
+        &self,
+        chat: Option<ChatId>,
+        workdir: &Path,
+        overrides: &[String],
+    ) -> Result<bool, SettingsError> {
+        Ok(self.observe(chat, workdir, overrides).await?.is_some())
     }
 
     /// 마지막 `apply` 뒤 설정 파일이 바뀌었으면 지금 파일의 지문을 돌려준다. 이 작업 폴더로 한 번도 적용하지 않았으면
@@ -290,7 +375,9 @@ impl SettingsManager {
     /// 파일 읽기 실패면 `Io`.
     pub(crate) async fn observe(
         &self,
+        chat: Option<ChatId>,
         workdir: &Path,
+        overrides: &[String],
     ) -> Result<Option<FileFingerprints>, SettingsError> {
         let mut now = Vec::new();
         let user_path = self.user_config_path();
@@ -302,7 +389,8 @@ impl SettingsManager {
             let content = read_file(&path)?;
             now.push((path, content.as_deref().map(fingerprint)));
         }
-        let unchanged = self.seen.get(workdir).is_some_and(|seen| *seen == now);
+        let key = (chat, workdir.to_path_buf(), overrides.to_vec());
+        let unchanged = self.seen.get(&key).is_some_and(|seen| *seen == now);
         Ok((!unchanged).then_some(now))
     }
 }
@@ -411,16 +499,16 @@ mod tests {
         let mut manager = fixture.manager(&[]).await;
 
         let first = manager
-            .apply(&fixture.store, None, &fixture.workdir)
+            .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
         let second = manager
-            .apply(&fixture.store, None, &fixture.workdir)
+            .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
         let mut other = fixture.manager(&[]).await;
         let third = other
-            .apply(&fixture.store, None, &fixture.workdir)
+            .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
 
@@ -441,12 +529,12 @@ mod tests {
         let mut manager = fixture.manager(&[]).await;
 
         let applied = manager
-            .apply(&fixture.store, None, &fixture.workdir)
+            .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
         fixture.write_user("[tui]\nscreen = \"tiny\"\n");
         let broken = manager
-            .apply(&fixture.store, None, &fixture.workdir)
+            .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
 
@@ -460,7 +548,7 @@ mod tests {
         let mut manager = fixture.manager(&["on_exit=\"ask\""]).await;
 
         let applied = manager
-            .apply(&fixture.store, None, &fixture.workdir)
+            .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
 
@@ -483,7 +571,7 @@ mod tests {
         let mut manager = fixture.manager(&[]).await;
 
         let error = manager
-            .apply(&fixture.store, None, &fixture.workdir)
+            .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap_err();
         assert!(matches!(error, SettingsError::Untrusted { .. }));
@@ -499,7 +587,7 @@ mod tests {
             .await
             .unwrap();
         let applied = manager
-            .apply(&fixture.store, None, &fixture.workdir)
+            .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
 
@@ -519,7 +607,7 @@ mod tests {
         let mut manager = fixture.manager(&[]).await;
 
         let (applied, prompt) = manager
-            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .apply_trusted(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
 
@@ -527,13 +615,13 @@ mod tests {
         assert_ne!(settings.thresholds().injection, 0.9);
         let prompt = prompt.unwrap();
         assert_eq!(prompt.path, std::fs::canonicalize(&path).unwrap());
-        assert!(!manager.changed(&fixture.workdir).await.unwrap());
+        assert!(!manager.changed(None, &fixture.workdir, &[]).await.unwrap());
         manager
             .trust_folder(&path, &prompt.fingerprint)
             .await
             .unwrap();
         let (trusted, none) = manager
-            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .apply_trusted(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
         let settings = manager.at(&fixture.store, trusted.revision).await.unwrap();
@@ -549,7 +637,7 @@ mod tests {
         let mut manager = fixture.manager(&[]).await;
 
         let (_, prompt) = manager
-            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .apply_trusted(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
 
@@ -567,7 +655,7 @@ mod tests {
             .write_folder("permission.mode = \"ask\"\n[permission.shell]\n\"ls\" = \"ask\"\n");
         let mut manager = fixture.manager(&[]).await;
         let (_, prompt) = manager
-            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .apply_trusted(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
         let prompt = prompt.unwrap();
@@ -578,7 +666,7 @@ mod tests {
             .unwrap();
 
         let (applied, _) = manager
-            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .apply_trusted(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
 
@@ -606,7 +694,7 @@ mod tests {
         std::fs::create_dir_all(other.join(".git")).unwrap();
         let mut manager = fixture.manager(&[]).await;
         let (_, prompt) = manager
-            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .apply_trusted(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
         manager
@@ -615,11 +703,11 @@ mod tests {
             .unwrap();
 
         let (here, _) = manager
-            .apply_trusted(&fixture.store, None, &fixture.workdir)
+            .apply_trusted(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
         let (there, none) = manager
-            .apply_trusted(&fixture.store, None, &other)
+            .apply_trusted(&fixture.store, None, &other, &[])
             .await
             .unwrap();
         let user_only = manager.apply_user(&fixture.store).await.unwrap();
@@ -647,13 +735,13 @@ mod tests {
         let fixture = Fixture::new().await;
         let mut manager = fixture.manager(&[]).await;
         let first = manager
-            .apply(&fixture.store, None, &fixture.workdir)
+            .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
         fixture.write_user("\n\n\n\n\n\nbroken = = 1\n");
 
         let applied = manager
-            .apply(&fixture.store, None, &fixture.workdir)
+            .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap();
 
@@ -666,7 +754,6 @@ mod tests {
             panic!("parse failure should fall back");
         };
         assert_eq!((layer, line), (SettingsLayer::User, 7));
-        assert_eq!(manager.current(), Some(first.revision));
     }
 
     #[tokio::test]
@@ -677,7 +764,7 @@ mod tests {
             .await;
 
         let error = manager
-            .apply(&fixture.store, None, &fixture.workdir)
+            .apply(&fixture.store, None, &fixture.workdir, &[])
             .await
             .unwrap_err();
 
@@ -699,16 +786,26 @@ mod tests {
             .unwrap();
         let mut manager = fixture.manager(&["tui.on_exit=\"ask\""]).await;
         let fixed = manager
-            .apply(&fixture.store, Some(chat), &fixture.workdir)
+            .apply(&fixture.store, Some(chat), &fixture.workdir, &[])
             .await
             .unwrap()
             .revision;
-        assert!(!manager.changed(&fixture.workdir).await.unwrap());
+        assert!(
+            !manager
+                .changed(Some(chat), &fixture.workdir, &[])
+                .await
+                .unwrap()
+        );
 
         fixture.write_user("[router.thresholds]\ninjection = 0.95\nprogressing = 0.4\n");
-        assert!(manager.changed(&fixture.workdir).await.unwrap());
+        assert!(
+            manager
+                .changed(Some(chat), &fixture.workdir, &[])
+                .await
+                .unwrap()
+        );
         let newer = manager
-            .apply(&fixture.store, Some(chat), &fixture.workdir)
+            .apply(&fixture.store, Some(chat), &fixture.workdir, &[])
             .await
             .unwrap()
             .revision;
@@ -721,5 +818,120 @@ mod tests {
         assert_eq!(new.thresholds().injection, 0.75);
         assert_eq!(new.thresholds().progressing, 0.4);
         assert_eq!(new.on_exit(), saturn_protocol::state::OnExit::Ask);
+    }
+
+    fn run(items: &[&str]) -> Vec<String> {
+        items.iter().map(|item| (*item).to_owned()).collect()
+    }
+
+    #[tokio::test]
+    async fn connections_of_one_chat_keep_their_own_run_layers() {
+        let fixture = Fixture::new().await;
+        let chat = fixture
+            .store
+            .create_chat(fixture.workdir.clone())
+            .await
+            .unwrap();
+        let mut manager = fixture.manager(&[]).await;
+        let plain = run(&[]);
+        let strict = run(&["permission.mode=\"read-only\""]);
+
+        let first = manager
+            .apply(&fixture.store, Some(chat), &fixture.workdir, &plain)
+            .await
+            .unwrap()
+            .revision;
+        let second = manager
+            .apply(&fixture.store, Some(chat), &fixture.workdir, &strict)
+            .await
+            .unwrap()
+            .revision;
+
+        assert_ne!(first, second);
+        assert_eq!(manager.revision_in(chat, &plain), Some(first));
+        assert_eq!(manager.revision_in(chat, &strict), Some(second));
+        assert!(
+            !manager
+                .changed(Some(chat), &fixture.workdir, &plain)
+                .await
+                .unwrap()
+        );
+        assert!(
+            !manager
+                .changed(Some(chat), &fixture.workdir, &strict)
+                .await
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn bad_run_layer_falls_back_inside_its_own_scope() {
+        let fixture = Fixture::new().await;
+        let chat = fixture
+            .store
+            .create_chat(fixture.workdir.clone())
+            .await
+            .unwrap();
+        let mut manager = fixture.manager(&[]).await;
+        let base = manager.apply_user(&fixture.store).await.unwrap().revision;
+        let good = run(&["router.thresholds.injection=0.9"]);
+        let bad = run(&["router.thresholds.injection=7"]);
+        let kept = manager
+            .apply(&fixture.store, Some(chat), &fixture.workdir, &good)
+            .await
+            .unwrap()
+            .revision;
+
+        let fallback = manager
+            .apply(&fixture.store, Some(chat), &fixture.workdir, &bad)
+            .await
+            .unwrap();
+        assert_eq!(fallback.revision, base);
+        assert!(fallback.warning.is_some());
+        assert_eq!(manager.revision_in(chat, &good), Some(kept));
+    }
+
+    #[tokio::test]
+    async fn changes_seen_by_one_chat_are_not_consumed_for_another_in_the_same_folder() {
+        let fixture = Fixture::new().await;
+        let first = fixture
+            .store
+            .create_chat(fixture.workdir.clone())
+            .await
+            .unwrap();
+        let second = fixture
+            .store
+            .create_chat(fixture.workdir.clone())
+            .await
+            .unwrap();
+        fixture
+            .store
+            .set_chat_layer(second, "router.thresholds.injection = 0.75\n")
+            .await
+            .unwrap();
+        let mut manager = fixture.manager(&[]).await;
+        manager
+            .apply(&fixture.store, Some(first), &fixture.workdir, &[])
+            .await
+            .unwrap();
+        let before = manager
+            .apply(&fixture.store, Some(second), &fixture.workdir, &[])
+            .await
+            .unwrap()
+            .revision;
+
+        fixture.write_user("[router.thresholds]\nprogressing = 0.4\n");
+        manager
+            .apply(&fixture.store, Some(first), &fixture.workdir, &[])
+            .await
+            .unwrap();
+
+        assert!(
+            manager
+                .changed(Some(second), &fixture.workdir, &[])
+                .await
+                .unwrap()
+        );
+        assert_eq!(manager.revision_in(second, &[]), Some(before));
     }
 }

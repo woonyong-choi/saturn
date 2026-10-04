@@ -21,7 +21,7 @@ async fn record_write_failure_sends_nothing_anywhere() {
     let workdir = flow.fixture.workdir.clone();
     flow.engine
         .settings
-        .apply_trusted(&flow.engine.store, Some(flow.chat), &workdir)
+        .apply_trusted(&flow.engine.store, Some(flow.chat), &workdir, &[])
         .await
         .unwrap();
     flow.engine.store.deny_writes().await;
@@ -400,4 +400,142 @@ async fn inputs_without_a_resume_judgment_never_close_the_held_work() {
     assert!(router_bodies(&flow)[3].contains("resume_held"));
     assert_eq!(flow.state(waiting), InputState::Held);
     assert!(flow.engine.queue.has_held_task(flow.chat));
+}
+
+#[tokio::test]
+async fn attachment_read_only_override_is_applied_to_input() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.engine.attachments.get_mut(&CLIENT).unwrap().overrides =
+        vec![("permission.mode".into(), "read-only".into())];
+    let input = flow.submit("inspect only").await;
+    assert_eq!(
+        flow.record(input).permission,
+        saturn_core::queue::Permission::ReadOnly,
+        "attachment -c permission.mode=read-only must constrain the input"
+    );
+}
+
+#[tokio::test]
+async fn chat_settings_do_not_leak_between_chats() {
+    let mut flow = Flow::new(Vec::new()).await;
+    let first_dir = flow.fixture.workdir.clone();
+    let (first, _) = flow
+        .engine
+        .settings
+        .apply_trusted(&flow.engine.store, Some(flow.chat), &first_dir, &[])
+        .await
+        .unwrap();
+    let other_dir = first_dir.with_file_name("other-chat");
+    std::fs::create_dir_all(&other_dir).unwrap();
+    let other = flow
+        .engine
+        .store
+        .create_chat(other_dir.clone())
+        .await
+        .unwrap();
+    flow.engine
+        .store
+        .set_chat_layer(other, "[permission]\nmode = \"read-only\"\n")
+        .await
+        .unwrap();
+    let (second, _) = flow
+        .engine
+        .settings
+        .apply_trusted(&flow.engine.store, Some(other), &other_dir, &[])
+        .await
+        .unwrap();
+    assert_ne!(first.revision, second.revision);
+    assert!(
+        !flow
+            .engine
+            .settings
+            .changed(Some(flow.chat), &first_dir, &[])
+            .await
+            .unwrap()
+    );
+    flow.engine
+        .submit_input(CLIENT, flow.chat, 73, "first chat again".into(), true)
+        .await
+        .unwrap();
+    let queue = &flow.engine.queue;
+    let id = queue
+        .inputs_in_state(flow.chat, InputState::Delivering)
+        .first()
+        .copied()
+        .or_else(|| {
+            queue
+                .inputs_in_state(flow.chat, InputState::Queued)
+                .first()
+                .copied()
+        })
+        .unwrap();
+    assert_eq!(
+        queue.input(id).unwrap().settings,
+        first.revision,
+        "first chat must retain its own settings revision"
+    );
+}
+
+#[tokio::test]
+async fn read_only_and_full_chats_alternate_without_mixing_permissions() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95), idle_reply(0.95)]).await;
+    let strict_dir = flow.fixture.workdir.with_file_name("strict-work");
+    std::fs::create_dir_all(&strict_dir).unwrap();
+    let strict = flow
+        .engine
+        .store
+        .create_chat(strict_dir.clone())
+        .await
+        .unwrap();
+    flow.engine
+        .store
+        .set_chat_layer(strict, "[permission]\nmode = \"read-only\"\n")
+        .await
+        .unwrap();
+    flow.engine.chats.insert(
+        strict,
+        ChatEnv::new(
+            strict_dir,
+            vec![("PATH".to_owned(), "/nonexistent".to_owned())],
+        ),
+    );
+    flow.engine.attachments.insert(
+        crate::lifecycle::support::OTHER_CLIENT,
+        crate::Attachment {
+            chat: strict,
+            overrides: Vec::new(),
+            folder_trust: None,
+        },
+    );
+    let mut seen = Vec::new();
+    for (client, chat) in [
+        (CLIENT, flow.chat),
+        (crate::lifecycle::support::OTHER_CLIENT, strict),
+        (CLIENT, flow.chat),
+    ] {
+        flow.engine
+            .submit_input(client, chat, 1, "work".to_owned(), true)
+            .await
+            .unwrap();
+        let page = flow
+            .engine
+            .store
+            .history_page(chat, None, 500)
+            .await
+            .unwrap();
+        let id = page
+            .entries
+            .into_iter()
+            .filter_map(|entry| match entry {
+                crate::store::HistoryEntry::Input { input, .. } => Some(input),
+                _ => None,
+            })
+            .max()
+            .unwrap();
+        let queue = &flow.engine.queue;
+        seen.push(queue.input(id).unwrap().permission);
+        flow.settle().await;
+    }
+    use saturn_core::queue::Permission::{ReadOnly, Write};
+    assert_eq!(seen, vec![Write, ReadOnly, Write]);
 }

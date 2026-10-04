@@ -294,6 +294,16 @@ struct Attachment {
     folder_trust: Option<FolderTrustPrompt>,
 }
 
+impl Attachment {
+    /// 설정 병합에 넘기는 `키=값` 목록.
+    fn run_layer(&self) -> Vec<String> {
+        self.overrides
+            .iter()
+            .map(|(key, value)| format!("{key}={value}"))
+            .collect()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Presence {
     /// TUI가 하나 이상 붙어 있다.
@@ -419,9 +429,13 @@ impl Engine {
             self.register_dir(chat, dir).await?;
         }
         let chat_env = ChatEnv::new(workdir, env);
+        let run: Vec<String> = overrides
+            .iter()
+            .map(|(key, value)| format!("{key}={value}"))
+            .collect();
         let (applied, folder_trust) = self
             .settings
-            .apply_trusted(&self.store, Some(chat), chat_env.workdir())
+            .apply_trusted(&self.store, Some(chat), chat_env.workdir(), &run)
             .await?;
         let start = self.start_info(chat_env.workdir(), &self.chat_dirs_of(chat));
         let history = self.history_chunk(chat, None, ATTACH_HISTORY).await?;

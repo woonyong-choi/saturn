@@ -440,13 +440,28 @@ pub(crate) fn run_layer(overrides: &[String]) -> Result<String, SettingsError> {
             .split_once('=')
             .ok_or_else(|| parse_error(format!("expected key=value: {item}")))?;
         let keys = parse_key(key.trim()).map_err(parse_error)?;
-        let value: toml_edit::Value = value
-            .trim()
-            .parse()
-            .map_err(|error: toml_edit::TomlError| parse_error(error.message().to_owned()))?;
+        let value = run_value(value.trim()).map_err(parse_error)?;
         set_path(doc.as_table_mut(), &keys, value);
     }
     Ok(doc.to_string())
+}
+
+/// TOML 값으로 읽고, 읽을 수 없는 따옴표 없는 한 단어(`read-only`)는 문자열로 본다.
+fn run_value(text: &str) -> Result<toml_edit::Value, String> {
+    match text.parse::<toml_edit::Value>() {
+        Ok(value) => Ok(value),
+        Err(error) => {
+            let bare = !text.is_empty()
+                && text
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.' | ':' | '/'));
+            if bare {
+                Ok(toml_edit::Value::from(text))
+            } else {
+                Err(error.message().to_owned())
+            }
+        }
+    }
 }
 
 pub(crate) fn default_layer() -> &'static str {
@@ -967,6 +982,7 @@ mod tests {
             "router.thresholds.injection=0.9".to_owned(),
             "router.thresholds.injection = 0.95".to_owned(),
             "on_exit=\"ask\"".to_owned(),
+            "permission.mode=read-only".to_owned(),
         ])
         .unwrap();
         let values = parse_toml(&text, Path::new("-c")).unwrap();
@@ -976,6 +992,10 @@ mod tests {
             Some(&Value::from(0.95))
         );
         assert_eq!(get_path(&values, "on_exit"), Some(&Value::from("ask")));
+        assert_eq!(
+            get_path(&values, "permission.mode"),
+            Some(&Value::from("read-only"))
+        );
         for bad in ["no_equals", "key=not a value"] {
             let error = run_layer(&[bad.to_owned()]).unwrap_err();
             assert!(matches!(error, SettingsError::Parse { .. }), "{bad}");
