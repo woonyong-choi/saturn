@@ -16,7 +16,7 @@ use super::convert::{
     activity_of, convert_notification, detail_of, exit_code_of, model_info, tool_output,
 };
 use super::home::{HomeInput, prepare as prepare_codex_home};
-use super::threads::remove_thread_tree;
+use super::threads::{HELD_PER_THREAD, HELD_THREADS, HeldEvents, remove_thread_tree};
 use super::*;
 use crate::Masker;
 use crate::events::{next_arrival, start_queued_turn};
@@ -164,6 +164,26 @@ while (my $line = <STDIN>) {
       out({ id => $gate->[0], method => $gate->[1], params => { threadId => $tid, turnId => "turn_g", %{ $gate->[2] } } });
       next;
     }
+    if (($first->{text} // "") =~ /^spawn-child(-busy)?$/) {
+      my $busy = defined $1;
+      # codex-cli 0.158.0처럼 자식 thread의 `thread/started`를 보내지 않는다. 자식은 부모의 spawnAgent 완료 항목으로만 알 수 있고,
+      # 자식의 첫 이벤트는 그 완료 항목보다 먼저 온다
+      $active = "turn_s";
+      out({ id => $id, result => { turn => { id => "turn_s", status => "inProgress", items => [] } } });
+      note("turn/started", { threadId => $tid, turn => { id => "turn_s", status => "inProgress", items => [] } });
+      note("item/started", { threadId => $tid, turnId => "turn_s", startedAtMs => 1, item => { type => "collabAgentToolCall", id => "spawn_1", tool => "spawnAgent", status => "inProgress", senderThreadId => $tid, receiverThreadIds => [] } });
+      note("thread/status/changed", { threadId => "thr_kid", status => { type => "active" } });
+      note("turn/started", { threadId => "thr_kid", turn => { id => "turn_k", status => "inProgress", items => [] } });
+      note("item/agentMessage/delta", { threadId => "thr_kid", turnId => "turn_k", itemId => "k1", delta => "early" });
+      note("item/completed", { threadId => $tid, turnId => "turn_s", completedAtMs => 2, item => { type => "collabAgentToolCall", id => "spawn_1", tool => "spawnAgent", status => "completed", model => "gpt-kid", senderThreadId => $tid, receiverThreadIds => ["thr_kid"] } });
+      note("item/agentMessage/delta", { threadId => "thr_kid", turnId => "turn_k", itemId => "k1", delta => " late" });
+      note("item/completed", { threadId => $tid, turnId => "turn_s", completedAtMs => 3, item => { type => "collabAgentToolCall", id => "spawn_1", tool => "spawnAgent", status => "completed", senderThreadId => $tid, receiverThreadIds => ["thr_kid"] } });
+      next if $busy;
+      note("turn/completed", { threadId => "thr_kid", turn => { id => "turn_k", status => "completed", items => [] } });
+      note("turn/completed", { threadId => $tid, turn => { id => "turn_s", status => "completed", items => [] } });
+      $active = "";
+      next;
+    }
     $active = "turn_1";
     out({ id => $id, result => { turn => { id => "turn_1", status => "inProgress", items => [] } } });
     if ($first->{type} eq "skill") {
@@ -190,8 +210,8 @@ while (my $line = <STDIN>) {
   } elsif ($method eq "turn/interrupt") {
     next if ($ENV{FAKE_INTERRUPT_SILENT} // "") ne "";
     out({ id => $id, result => {} });
-    note("turn/completed", { threadId => $tid, turn => { id => $p->{turnId}, status => "interrupted", items => [] } });
-    $active = "";
+    note("turn/completed", { threadId => ($p->{threadId} // $tid), turn => { id => $p->{turnId}, status => "interrupted", items => [] } });
+    $active = "" if ($p->{threadId} // $tid) eq $tid;
   } elsif ($method eq "thread/compact/start" || $method eq "thread/unsubscribe" || $method eq "thread/archive" || $method eq "review/start") {
     out({ id => $id, result => {} });
   } else {
@@ -313,6 +333,95 @@ fn expected_turn_events(agent: AgentId) -> Vec<ProviderEvent> {
             subagent: SubagentId("thr_child".to_owned()),
         },
     ]
+}
+
+// #438
+#[tokio::test]
+async fn a_child_is_registered_from_the_spawn_completion_without_thread_started() {
+    let dir = tempfile::tempdir().unwrap();
+    let (mut client, handle) = start(dir.path()).await;
+    let main = handle.provider_session.clone();
+
+    client.send_turn(&main, "spawn-child").await.unwrap();
+    let events = take(&mut client, 6).await;
+
+    let agent = AgentId(7);
+    let kid = SubagentId("thr_kid".to_owned());
+    let text = |text: &str| ProviderEvent::Text {
+        agent,
+        subagent: Some(kid.clone()),
+        text: text.to_owned(),
+    };
+    assert_eq!(
+        events,
+        vec![
+            ProviderEvent::SubagentStarted {
+                agent,
+                subagent: kid.clone(),
+                parent: None,
+            },
+            text("early"),
+            text(" late"),
+            ProviderEvent::SubagentEnded {
+                agent,
+                subagent: kid.clone(),
+            },
+            ProviderEvent::ContextSize {
+                agent,
+                tokens: None,
+            },
+            ProviderEvent::TurnCompleted {
+                agent,
+                origin: TurnOrigin::User,
+            },
+        ]
+    );
+}
+
+// #438
+#[tokio::test]
+async fn interrupting_the_parent_does_not_end_a_child_and_the_child_is_interrupted_by_its_own_thread()
+ {
+    let dir = tempfile::tempdir().unwrap();
+    let (mut client, handle) = start(dir.path()).await;
+    let main = handle.provider_session.clone();
+    let agent = AgentId(7);
+    let kid = SubagentId("thr_kid".to_owned());
+    client.send_turn(&main, "spawn-child-busy").await.unwrap();
+    let opening = take(&mut client, 3).await;
+    assert!(matches!(
+        opening.first(),
+        Some(ProviderEvent::SubagentStarted { .. })
+    ));
+
+    client
+        .interrupt(&main, InterruptTarget::Main)
+        .await
+        .unwrap();
+    let parent_end = take(&mut client, 2).await;
+    client
+        .interrupt(&main, InterruptTarget::Subagent(kid.clone()))
+        .await
+        .unwrap();
+    let child_end = take(&mut client, 1).await;
+
+    assert!(
+        parent_end
+            .iter()
+            .all(|event| !matches!(event, ProviderEvent::SubagentEnded { .. })),
+        "{parent_end:?}"
+    );
+    assert!(matches!(
+        parent_end.last(),
+        Some(ProviderEvent::TurnCompleted { .. })
+    ));
+    assert_eq!(
+        child_end,
+        vec![ProviderEvent::SubagentEnded {
+            agent,
+            subagent: kid,
+        }]
+    );
 }
 
 #[tokio::test]
@@ -872,6 +981,182 @@ fn model_list_entries_skip_hidden_models_and_fall_back_to_the_id() {
     );
 }
 
+fn spawn_item(host: &str, children: &[&str]) -> serde_json::Value {
+    json!({
+        "threadId": host,
+        "item": {
+            "type": "collabAgentToolCall",
+            "id": "spawn",
+            "tool": "spawnAgent",
+            "status": "completed",
+            "senderThreadId": host,
+            "receiverThreadIds": children,
+        },
+    })
+}
+
+fn main_only() -> HashMap<ProviderSessionId, ThreadState> {
+    let mut threads = HashMap::new();
+    threads.insert(
+        ProviderSessionId("main".to_owned()),
+        ThreadState::new(AgentId(1), None, AppliedSettings::default()),
+    );
+    threads
+}
+
+fn started_ids(events: &[ProviderEvent]) -> Vec<(String, Option<String>)> {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            ProviderEvent::SubagentStarted {
+                subagent, parent, ..
+            } => Some((
+                subagent.0.clone(),
+                parent.as_ref().map(|parent| parent.0.clone()),
+            )),
+            _ => None,
+        })
+        .collect()
+}
+
+// #438
+#[test]
+fn a_nested_child_is_registered_under_the_child_that_spawned_it() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    let notify =
+        |threads: &mut HashMap<_, _>, held: &mut HeldEvents, params: &serde_json::Value| {
+            convert_notification(threads, held, "item/completed", params)
+        };
+
+    let child = notify(&mut threads, &mut held, &spawn_item("main", &["kid"]));
+    let grandchild = notify(&mut threads, &mut held, &spawn_item("kid", &["grand"]));
+
+    assert_eq!(started_ids(&child), [("kid".to_owned(), None)]);
+    assert_eq!(
+        started_ids(&grandchild),
+        [("grand".to_owned(), Some("kid".to_owned()))]
+    );
+}
+
+// #438
+#[test]
+fn a_duplicate_spawn_completion_registers_the_child_once() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+
+    let first = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+    let again = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+
+    assert_eq!(started_ids(&first).len(), 1);
+    assert!(started_ids(&again).is_empty());
+}
+
+// #438
+#[test]
+fn a_child_of_an_unknown_parent_is_not_attached_and_its_events_are_not_applied() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    let delta = json!({ "threadId": "stray", "itemId": "m", "delta": "hello" });
+
+    let early = convert_notification(&mut threads, &mut held, "item/agentMessage/delta", &delta);
+    let claimed = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("someone-else", &["stray"]),
+    );
+
+    assert!(early.is_empty());
+    assert!(claimed.is_empty());
+    assert!(!threads.contains_key(&ProviderSessionId("stray".to_owned())));
+}
+
+// #438
+#[test]
+fn a_spawn_item_sent_by_another_thread_does_not_register_a_child() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    let mut forged = spawn_item("main", &["kid"]);
+    forged["item"]["senderThreadId"] = json!("elsewhere");
+
+    let events = convert_notification(&mut threads, &mut held, "item/completed", &forged);
+
+    assert!(started_ids(&events).is_empty());
+    assert_eq!(threads.len(), 1);
+}
+
+// #438
+#[test]
+fn events_that_arrive_before_the_spawn_completion_are_applied_once_in_order() {
+    let mut threads = main_only();
+    let mut held = HeldEvents::default();
+    let delta = |text: &str| json!({ "threadId": "kid", "itemId": "m", "delta": text });
+    for text in ["a", "b"] {
+        let early = convert_notification(
+            &mut threads,
+            &mut held,
+            "item/agentMessage/delta",
+            &delta(text),
+        );
+        assert!(early.is_empty());
+    }
+
+    let events = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+    let after = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/agentMessage/delta",
+        &delta("c"),
+    );
+    let again = convert_notification(
+        &mut threads,
+        &mut held,
+        "item/completed",
+        &spawn_item("main", &["kid"]),
+    );
+
+    assert_eq!(started_ids(&events).len(), 1);
+    assert_eq!(text_of(&events), "ab");
+    assert_eq!(text_of(&after), "c");
+    assert!(again.is_empty());
+}
+
+// #438
+#[test]
+fn held_notifications_stay_inside_the_limits() {
+    let mut held = HeldEvents::default();
+    let params = json!({});
+    for index in 0..(HELD_THREADS + 3) {
+        let thread = ProviderSessionId(format!("t{index}"));
+        for _ in 0..(HELD_PER_THREAD + 5) {
+            held.hold(&thread, "turn/started", &params);
+        }
+    }
+
+    let oldest = held.take(&ProviderSessionId("t0".to_owned()));
+    let newest = held.take(&ProviderSessionId(format!("t{}", HELD_THREADS + 2)));
+
+    assert!(oldest.is_empty());
+    assert_eq!(newest.len(), HELD_PER_THREAD);
+    assert!(held.take(&ProviderSessionId("t3".to_owned())).len() <= HELD_PER_THREAD);
+}
+
 #[test]
 fn nested_child_threads_point_to_parent_subagent() {
     let mut threads = HashMap::new();
@@ -883,9 +1168,24 @@ fn nested_child_threads_point_to_parent_subagent() {
     let started =
         |id: &str, parent: &str| json!({ "thread": { "id": id, "parentThreadId": parent } });
 
-    let first = convert_notification(&mut threads, "thread/started", &started("a", "main"));
-    let second = convert_notification(&mut threads, "thread/started", &started("b", "a"));
-    let unknown = convert_notification(&mut threads, "thread/started", &started("c", "zzz"));
+    let first = convert_notification(
+        &mut threads,
+        &mut HeldEvents::default(),
+        "thread/started",
+        &started("a", "main"),
+    );
+    let second = convert_notification(
+        &mut threads,
+        &mut HeldEvents::default(),
+        "thread/started",
+        &started("b", "a"),
+    );
+    let unknown = convert_notification(
+        &mut threads,
+        &mut HeldEvents::default(),
+        "thread/started",
+        &started("c", "zzz"),
+    );
 
     assert_eq!(
         second,
@@ -1541,6 +1841,7 @@ fn messages_of_one_turn_stay_apart_when_the_message_item_changes() {
     let mut delta = |item: &str, text: &str| {
         convert_notification(
             &mut threads,
+            &mut HeldEvents::default(),
             "item/agentMessage/delta",
             &json!({ "threadId": "main", "itemId": item, "delta": text }),
         )
@@ -1564,7 +1865,7 @@ fn a_new_turn_does_not_start_with_a_separator() {
         ThreadState::new(AgentId(1), None, AppliedSettings::default()),
     );
     let mut notify = |method: &str, params: serde_json::Value| {
-        convert_notification(&mut threads, method, &params)
+        convert_notification(&mut threads, &mut HeldEvents::default(), method, &params)
     };
     notify(
         "item/agentMessage/delta",
@@ -1597,6 +1898,7 @@ fn a_delta_without_an_item_id_is_passed_through_unchanged() {
 
     let events = convert_notification(
         &mut threads,
+        &mut HeldEvents::default(),
         "item/agentMessage/delta",
         &json!({ "threadId": "main", "delta": "조각" }),
     );
@@ -1617,7 +1919,12 @@ fn file_change_paths_are_remembered_from_the_item_start() {
         "item": { "type": "fileChange", "id": "item_f", "changes": [{ "path": "a.rs", "diff": "" }] },
     });
 
-    convert_notification(&mut threads, "item/started", &started);
+    convert_notification(
+        &mut threads,
+        &mut HeldEvents::default(),
+        "item/started",
+        &started,
+    );
 
     let state = threads.values().next().unwrap();
     assert_eq!(state.file_changes["item_f"], vec!["a.rs"]);
