@@ -138,7 +138,7 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 상태판은 실행 줄, 판단 줄, 학습 줄, 대기 줄, 보류 줄, 알림 줄 순서로 줄을 쌓고, 같은 종류 안에서는 접수 순서를 따른다. 줄이 생기거나 사라져도 다른 줄끼리의 상대 위치는 유지한다. 사용자가 보던 줄이 갑자기 다른 자리로 뛰는 일을 막기 위해서다. 보류 줄을 뺀 나머지 줄은 그 항목이 끝나면 지운다.
 
-판단 줄은 판단 방식과 관계없이 같은 문구를 쓰고 근거와 확률은 보이지 않는다. 입력이 대기, 끼워 넣기, 새 작업 중 어디로 가는지의 규칙은 [입력 처리](input-handling.md)에 있다.
+판단 줄은 판단 방식과 관계없이 같은 문구를 쓰고 근거와 확률은 보이지 않는다. 판단이 0.3초 안에 끝나면 판단 줄을 그리지 않고, 0.3초를 넘으면 그린다. 한 번 그린 줄은 판단이 먼저 끝나도 그린 시각부터 0.5초는 보인다. 짧은 판단의 깜빡임을 없애면서 오래 걸리는 판단은 진행 중임을 보이기 위해서다. 두 값은 `saturn-terminal/tui/src/state.rs`의 `JUDGING_SHOW_AFTER`와 `JUDGING_MIN_SHOWN` 상수 하나씩이고 설정 키는 없다. 입력이 대기, 끼워 넣기, 새 작업 중 어디로 가는지의 규칙은 [입력 처리](input-handling.md)에 있다.
 
 ### 피드백 질문
 
@@ -374,7 +374,7 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `맥락 정리 중` | 실행 줄의 하는 일, 맥락 정리 |
 | `공급자 전환 중` | 실행 줄의 하는 일, provider 전환 |
 | `Token -` | 사용량 보고 전 |
-| `⠹ [D] 판단 중` | router가 입력을 판단하는 중 |
+| `⠹ [D] 판단 중` | router가 입력을 판단하는 중. 0.3초가 넘어야 그린다 |
 | `⠼ [학습]` | `/train` 진행, 단계와 채점 건수와 경과와 토큰 |
 | `· [C] 대기 · A 다음` | 실행 중인 작업 A 뒤에 보낼 입력 |
 | `· [C] 대기 · 판단 차례` | 같은 채팅의 앞 입력 판단을 기다리는 입력, `[보내기]` 없이 `[취소]`만 표시 |
@@ -474,6 +474,7 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | 패킷이 넘쳐 맥락 정리를 미루면 안내 한 줄과 제약 목록을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_context_deferred_lists_the_constraints` |
 | 패킷이 맥락 한도로 거절돼 멈추면 안내 한 줄을 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `lines_packet_overflow_tells_the_user_how_to_retry` |
 | 상태판 줄이 생기고 사라져도 다른 줄의 상대 위치는 바뀌지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `build_keeps_relative_order_when_line_removed` |
+| 판단이 0.3초 안에 끝나면 판단 줄을 그리지 않고, 0.3초를 넘으면 그리며, 한 번 그렸으면 그린 시각부터 0.5초는 판단이 끝나도 보인다. | `saturn-terminal/tui/src/view/status_board.rs`의 `judging_line_is_not_drawn_until_it_passes_the_show_delay`, `judging_that_ends_within_the_show_delay_never_draws_a_line`, `judging_drawn_once_stays_for_the_minimum_shown_time_after_it_ends`, `judging_that_ends_after_the_minimum_shown_time_stops_right_away`, `judging_tail_keeps_its_place_among_judging_lines`, `saturn-terminal/tui/src/app/tests.rs`의 `judging_line_appears_after_the_delay_and_stays_after_the_judgment_ends`, `judging_that_ends_inside_the_delay_never_reaches_the_screen` |
 | 피드백 질문과 바로잡기 제안은 입력창이 빌 때만 키를 가져가 `↑`, `↓`, `Enter`, `Esc`와 숫자로 고르고, `[실행]`은 `RunAsNewTask`를 보내며, `Esc` 뒤 방향키는 입력 기록으로 돌아간다. 초안이 있으면 숫자가 답으로 가지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `correction_enter_runs_the_first_choice_as_a_new_task`, `correction_down_then_enter_keeps_the_input_as_it_is`, `correction_digits_pick_a_choice_while_the_composer_is_empty`, `correction_takes_the_arrow_keys_until_escape_gives_them_back_to_history`, `correction_closed_with_escape_opens_again_with_the_feedback_command`, `correction_goes_away_when_the_input_is_no_longer_unsent`, `a_number_draft_is_not_taken_as_a_feedback_answer`, `digits_after_a_draft_start_do_not_answer_the_feedback_question`, `feedback_arrows_and_enter_pick_an_answer`, `feedback_escape_closes_without_a_request_and_arrows_return_to_history` |
 | 키를 동작으로 바꾸는 일은 해석기 한 곳이 맡고, 모든 프리셋은 표가 읽히며 한 영역 안에서 같은 키가 두 동작에 묶이지 않고 모든 줄에 키나 명령이 있다. 프리셋 전환 뒤 `Esc`, `Tab`, `Shift+Tab`, `Ctrl+C`, `Ctrl+T`의 뜻이 프리셋 표대로 바뀐다. | `saturn-terminal/tui/src/keymap/tests.rs`의 `preset_names_match_the_protocol_list_and_all_load`, `every_binding_in_every_preset_has_a_key_or_a_command`, `every_user_action_is_bound_in_every_preset`, `no_preset_binds_one_key_to_two_actions_in_a_scope`, `an_override_replaces_only_its_own_keys_and_inherits_the_rest`, `common_keys_mean_the_same_in_every_preset`, `choice_keys_mean_the_same_in_every_preset`, `switching_presets_changes_escape_tab_shift_tab_and_ctrl_c`, `double_escape_means_rewind_only_inside_the_window`, `only_the_keymap_module_reads_key_codes`, `the_design_doc_names_every_preset_and_slash_command` |
 | `Esc`는 창이 없을 때 작업을 멈추고, `Esc Esc`는 되돌리기 안내를 보이며, `Shift+Tab`과 `/mode`는 권한 모드를 돌리고, `Tab`은 제출하지 않고 명령 목록을 연다. `Ctrl+C`는 유휴이고 빈 입력창이면 두 번에 종료하고 `Ctrl+A`, `Ctrl+E`, `Ctrl+U`, `Ctrl+W`, `Ctrl+L`이 동작한다. 빈 입력창 `←`는 작업 목록을 열지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `escape_stops_running_work_and_does_nothing_when_idle`, `double_escape_says_rewind_is_not_implemented_and_the_command_does_too`, `shift_tab_cycles_the_permission_mode_from_the_default`, `mode_command_cycles_without_a_value_and_sets_with_one`, `tab_completes_the_command_list_and_no_longer_submits`, `ctrl_c_twice_on_an_idle_empty_composer_quits_and_another_key_in_between_resets`, `line_editing_keys_move_and_delete_inside_the_draft`, `ctrl_l_redraws_the_screen_and_keeps_the_draft`, `left_arrow_on_an_empty_composer_does_not_open_the_task_list` |
@@ -509,7 +510,6 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 - 메인 에이전트가 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - 실행 줄의 칸 순서를 provider와 모델 먼저로 둘지, 하는 일 먼저로 둘지, 모델 이름을 보고된 그대로 쓸지 별칭으로 쓸지 ([#50](https://github.com/woonyong-choi/saturn/issues/50))
 - 상태판 최대 높이를 화면 높이 비율로 둘지, 고정 줄 수로 둘지, 상한을 두지 않을지 ([#51](https://github.com/woonyong-choi/saturn/issues/51))
-- 짧게 끝나는 판단의 판단 줄을 생략할지, 항상 그릴지, 지연 표시와 최소 표시 시간을 둘지 ([#53](https://github.com/woonyong-choi/saturn/issues/53))
 - `/stop`이 진행 중인 `/train`도 멈출지, 학습 전용 중지 명령을 둘지, 학습 줄에 중지 버튼을 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 허가 거절 뒤 다르게 하라는 입력을 접두 초안으로 받을지, 창 안 입력칸으로 받을지, 일반 입력처럼 router에 맡길지 ([#56](https://github.com/woonyong-choi/saturn/issues/56))
 - plain 출력을 켜는 조건과 우선순위, 설정 키 이름을 무엇으로 할지 ([#57](https://github.com/woonyong-choi/saturn/issues/57))

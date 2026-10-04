@@ -2064,6 +2064,64 @@ fn render_single_task_hides_labels() {
     assert_eq!(rows[3], "⠋ 작업 중");
 }
 
+/// 상태판이 그려지는 줄을 모은다.
+fn board_rows(app: &App, now: Instant) -> Vec<String> {
+    let mut terminal = Terminal::new(TestBackend::new(60, 12)).unwrap();
+    terminal.draw(|frame| app.render(frame, now)).unwrap();
+    buffer_lines(terminal.backend().buffer())
+}
+
+#[test]
+fn judging_line_appears_after_the_delay_and_stays_after_the_judgment_ends() {
+    let start = Instant::now();
+    let at = |ms| start + Duration::from_millis(ms);
+    let mut app = attached();
+    app.handle(
+        AppEvent::Engine(input(1, InputState::Judging, "테스트도")),
+        start,
+    );
+    let has_line = |app: &App, ms| {
+        board_rows(app, at(ms))
+            .iter()
+            .any(|row| row.contains("판단 중"))
+    };
+
+    let early = has_line(&app, 200);
+    let late = has_line(&app, 400);
+    app.handle(
+        AppEvent::Engine(input(1, InputState::Applied, "테스트도")),
+        at(400),
+    );
+    let kept = has_line(&app, 700);
+    let gone = has_line(&app, 800);
+
+    assert!(!early);
+    assert!(late);
+    assert!(kept);
+    assert!(!gone);
+}
+
+#[test]
+fn judging_that_ends_inside_the_delay_never_reaches_the_screen() {
+    let start = Instant::now();
+    let mut app = attached();
+    app.handle(
+        AppEvent::Engine(input(1, InputState::Judging, "테스트도")),
+        start,
+    );
+    let during = board_rows(&app, start + Duration::from_millis(150));
+    app.handle(
+        AppEvent::Engine(input(1, InputState::Applied, "테스트도")),
+        start + Duration::from_millis(200),
+    );
+
+    assert!(during.iter().all(|row| !row.contains("판단 중")));
+    for ms in [200, 350, 600] {
+        let rows = board_rows(&app, start + Duration::from_millis(ms));
+        assert!(rows.iter().all(|row| !row.contains("판단 중")));
+    }
+}
+
 fn model_info(provider: Provider, model: &str) -> ModelInfo {
     ModelInfo {
         choice: ModelChoice {

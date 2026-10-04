@@ -89,7 +89,7 @@ impl<W: Write> PlainOutput<W> {
                     reason,
                 };
                 let cell = echo_cell(&update);
-                if let Change::Echo { .. } = self.chat.apply_input(update) {
+                if let Change::Echo { .. } = self.chat.apply_input(update, now) {
                     self.cell(&cell)?;
                 }
             }
