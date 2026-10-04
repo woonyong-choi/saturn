@@ -200,8 +200,7 @@ impl Engine {
             Request::ConfirmTrain { .. } => Err(unsupported("ConfirmTrain")),
             Request::ListRouterVersions => Err(unsupported("ListRouterVersions")),
             Request::UseRouterVersion { .. } => Err(unsupported("UseRouterVersion")),
-            // TODO(#161): 기록 정리 미리보기
-            Request::Prune { .. } => Err(unsupported("Prune")),
+            Request::Prune { yes } => self.prune_records(client, yes).await,
             Request::ExportJudgments { path } => self.export_judgments(&path).await,
         }
     }

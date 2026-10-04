@@ -37,6 +37,7 @@ mod launch;
 mod models;
 mod outcomes;
 mod permission;
+mod prune;
 mod recover;
 mod requests;
 mod serve;
@@ -109,6 +110,9 @@ pub enum EngineError {
     /// 채팅 이름이나 묶음에 줄바꿈 같은 제어 문자가 들어 있다.
     #[error("invalid chat {what}: contains a control character")]
     InvalidLabel { what: &'static str },
+    /// 정리 기준 `retention.max_age_days`가 없어 어떤 채팅이 오래됐는지 정할 수 없다.
+    #[error("no retention.max_age_days setting to decide which chats to prune")]
+    NoRetention,
     /// `ask`, `edit`, `read-only`, `full`이 아닌 권한 모드 이름이다.
     #[error("unknown permission mode: {mode}")]
     UnknownPermissionMode { mode: String },
@@ -152,6 +156,7 @@ impl EngineError {
             | Self::UnknownPermissionMode { .. }
             | Self::InvalidFolder { .. }
             | Self::InvalidLabel { .. }
+            | Self::NoRetention
             | Self::ChatNotAttached { .. }
             | Self::Store(StoreError::NotFound { .. })
             | Self::Queue(

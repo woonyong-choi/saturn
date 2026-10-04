@@ -125,6 +125,10 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 기록은 기본으로 기한 없이 보존하고, 자동 정리는 설정으로 켤 때만 engine 시작 때 한 번 실행한다. 기록을 재현과 Saturn 모델 학습에 쓰기 때문이다.
 
 - 정리 명령은 `--yes` 없이는 지우지 않고 미리보기만 한다.
+- `saturn prune`은 `retention.max_age_days`보다 오래 쓰지 않은 채팅(마지막 활동이 그 기한보다 이른 채팅)을 대상으로 한다. 이 설정이 없으면 대상을 정할 수 없어 아무것도 지우지 않고 거절한다(초안). 마지막 활동은 채팅 생성, 입력 접수, 실행 시작과 끝, 이벤트 중 가장 늦은 시각이다.
+- `engine`은 `Prune`에 `yes`가 거짓이면 `PrunePreview`, 참이면 `Pruned`로 답한다. 둘 다 지울(지운) 채팅(번호, 폴더, 이름, 마지막 활동, 첫 입력), 남긴 채팅과 이유, 지울(지운) 채팅의 행 수(입력, 실행, 이벤트, 사용량, session. 판단 기록과 설정 스냅샷은 세지 않는다)를 싣는다.
+- 남기는 이유는 열린 입력, 열린 실행, 멈춤 처리 중, 열린 session, 보관한 session과 `engine`의 `TUI에 붙어 있음`이다. TUI가 붙은 채팅은 열린 항목이 없어도 지우지 않는다. 붙은 TUI가 지워진 채팅에 입력을 보내는 일을 막기 위해서다(초안). 삭제는 `--yes`일 때만 하고, 미리보기에서 정한 채팅만 지우며 열린 항목은 삭제 거래 안에서 다시 확인한다.
+- `saturn prune`의 출력은 `지울 채팅 N개 · 기록 M행`과 채팅 줄, `남긴 채팅 N개`와 이유 줄, 미리보기이면 `아무것도 지우지 않았습니다 · 지우려면 --yes로 실행하세요`다. 전체 화면의 정리 미리보기 창은 아직 설계에 없다.
 - 실제 삭제에서는 제외 조건 확인과 삭제를 같은 거래에서 처리한다.
 - `~/.claude`, `~/.codex`의 provider 기록은 지우지 않는다. Saturn 소유가 아니기 때문이다.
 
@@ -189,7 +193,9 @@ engine이 시작하면 사용자당 잠금을 얻은 직후 스키마를 확인�
 | 이관 백업은 14일이 지나면 지운다. | 만든 지 14일이 지난 백업이 다음 시작 때 사라지는지 확인한다. |
 | 원시 기록의 해시와 크기는 압축 전 값이다. | 압축 뒤 기록한 해시가 원본의 해시와 같은지 확인한다. |
 | 열린 입력, 열린 실행, 활성 session은 어떤 명령으로도 지우지 않는다. | 열린 항목이 있는 채팅을 지워 그 항목이 남는지 확인한다. |
-| 정리 명령은 `--yes` 없이는 미리보기만 한다. | `--yes` 없이 실행한 뒤 기록 수가 그대로인지 확인한다. |
+| 정리 명령은 `--yes` 없이는 미리보기만 하고, 미리보기는 지울 채팅과 남길 채팅과 이유와 행 수를 보인다. | `saturn-terminal/engine/src/lifecycle/prune.rs`의 `prune_without_yes_previews_old_chats_and_deletes_nothing`, `saturn-terminal/cli/src/commands/prune.rs`의 `preview_lists_what_would_be_deleted_and_what_stays_and_says_nothing_was_deleted`, `run_without_yes_asks_for_preview_only_and_reads_the_preview` |
+| `--yes`일 때만 오래된 채팅 가운데 열린 항목이 없는 것만 지우고 결과를 알리며, 기준 설정이 없으면 거절한다. | `saturn-terminal/engine/src/lifecycle/prune.rs`의 `prune_with_yes_deletes_only_the_old_finished_chats_and_reports_them`, `prune_without_a_retention_setting_is_refused_and_deletes_nothing`, `saturn-terminal/cli/src/commands/prune.rs`의 `run_with_yes_deletes_and_reads_the_result`, `run_without_a_retention_setting_explains_how_to_set_it` |
+| TUI가 붙은 채팅은 정리하지 않는다. | `saturn-terminal/engine/src/lifecycle/prune.rs`의 `prune_keeps_a_chat_a_tui_is_attached_to` |
 | 지운 채팅은 삭제 흔적을 남긴다. | 채팅을 지운 뒤 ID, 해시, 삭제 시각이 남는지 확인한다. |
 | 일반 정리는 판단 기록을 지우지 않는다. | 일반 정리 뒤 판단 기록 수가 그대로인지 확인한다. |
 | 채점하지 않아도 판단 기록을 JSONL로 내보낼 수 있다. | 채점 없는 판단 기록을 내보내 줄마다 JSON 한 건인지 확인한다. |
