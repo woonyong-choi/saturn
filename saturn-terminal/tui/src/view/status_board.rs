@@ -434,6 +434,14 @@ pub(crate) fn settings_warning_text(
         SettingsWarning::IgnoredFolderKeys { keys } => lang
             .tr(i18n::SETTINGS_IGNORED)
             .replace("{keys}", &keys.join(", ")),
+        SettingsWarning::RenamedKeys { keys } => {
+            let pairs: Vec<String> = keys
+                .iter()
+                .map(|(old, new)| format!("{old} → {new}"))
+                .collect();
+            lang.tr(i18n::SETTINGS_RENAMED)
+                .replace("{keys}", &pairs.join(", "))
+        }
     }
 }
 
@@ -1286,6 +1294,22 @@ mod tests {
         assert_eq!(
             settings_warning_text(Lang::En, 3, &ignored),
             "Ignored folder settings items · router.endpoint, router.key"
+        );
+    }
+
+    #[test]
+    fn renamed_keys_warning_names_the_old_and_new_key() {
+        let renamed = SettingsWarning::RenamedKeys {
+            keys: vec![("on_exit".to_string(), "tui.on_exit".to_string())],
+        };
+
+        assert_eq!(
+            settings_warning_text(Lang::Ko, 3, &renamed),
+            "옛 설정 이름을 새 이름으로 읽음 · on_exit → tui.on_exit"
+        );
+        assert_eq!(
+            settings_warning_text(Lang::En, 3, &renamed),
+            "Old setting names read as the new names · on_exit → tui.on_exit"
         );
     }
 

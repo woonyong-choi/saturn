@@ -284,7 +284,7 @@ export type SettingsLayer = "Default" | "User" | "Folder" | "Chat" | "Run";
 
 export type SettingsRevision = number;
 
-export type SettingsWarning = { "Fallback": { layer: SettingsLayer, fault: SettingsFault, } } | { "IgnoredFolderKeys": { keys: Array<string>, } };
+export type SettingsWarning = { "Fallback": { layer: SettingsLayer, fault: SettingsFault, } } | { "IgnoredFolderKeys": { keys: Array<string>, } } | { "RenamedKeys": { keys: Array<[string, string]>, } };
 
 export type SubagentId = string;
 

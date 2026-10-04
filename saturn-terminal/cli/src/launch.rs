@@ -22,8 +22,8 @@ const ENGINE_BINARY: &str = "saturn-engine";
 /// engine이 에이전트 작업의 환경에 넣는 변수 이름과 같다.
 const NESTED_MARKER_ENV: &str = "SATURN_AGENT";
 
-/// engine이 날짜별 로그를 쌓는 폴더. 소켓이 있는 폴더 아래. TODO(#235): 경로 설정 키
-const ENGINE_LOG_DIR: &str = "logs";
+/// engine이 날짜별 로그를 쌓는 폴더. 소켓이 있는 홈 폴더 아래.
+const ENGINE_LOG_DIR: &str = saturn_protocol::home::LOG_DIR;
 
 /// engine 로그 파일 이름의 앞과 뒤. 사이에 `YYYY-MM-DD`가 온다.
 const ENGINE_LOG_PREFIX: &str = "engine-";

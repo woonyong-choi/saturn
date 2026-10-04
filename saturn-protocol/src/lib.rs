@@ -3,6 +3,7 @@
 pub mod codegen;
 pub mod envelope;
 pub mod event;
+pub mod home;
 pub mod ids;
 pub mod input;
 pub mod keymap;

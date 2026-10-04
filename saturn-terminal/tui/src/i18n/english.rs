@@ -110,6 +110,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "폴더 설정의 무시한 항목 · {keys}",
         "Ignored folder settings items · {keys}",
     ),
+    (
+        "옛 설정 이름을 새 이름으로 읽음 · {keys}",
+        "Old setting names read as the new names · {keys}",
+    ),
     ("줄 {line}: {message}", "Line {line}: {message}"),
     ("기본 설정", "Default settings"),
     ("사용자 설정", "User settings"),
@@ -276,6 +280,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     (
         "채팅 id(숫자)나 `all`이어야 합니다: `{text}`",
         "Expected a chat id (number) or `all`: `{text}`",
+    ),
+    (
+        "router 버전은 `v3`처럼 v와 1 이상 정수여야 합니다: `{text}`",
+        "A router version is `v` and an integer of 1 or more, such as `v3`: `{text}`",
     ),
     (
         "KEY=VALUE 형식이어야 합니다: `{text}`",

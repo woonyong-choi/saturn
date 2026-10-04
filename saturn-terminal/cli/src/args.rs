@@ -152,11 +152,28 @@ pub(crate) struct TrainArgs {
     #[arg(long)]
     pub(crate) reset_thresholds: bool,
     /// 이 router 버전에서 다시 학습한다(`Request::Train`의 `from`).
-    #[arg(long, value_name = "VERSION")]
+    #[arg(long, value_name = "VERSION", value_parser = parse_router_version)]
     pub(crate) from: Option<String>,
     /// 확인 없이 학습을 시작한다.
     #[arg(long)]
     pub(crate) yes: bool,
+}
+
+/// router 버전 표기는 `v` 뒤에 1 이상 정수다. 앞의 `v`는 생략할 수 있고 대소문자를 가리지 않으며,
+/// 돌려주는 값은 항상 `v3` 모양이다. 설정 키가 아니다.
+pub(crate) fn parse_router_version(text: &str) -> Result<String, String> {
+    let digits = text.strip_prefix(['v', 'V']).unwrap_or(text);
+    let valid = !digits.starts_with('0')
+        && !digits.is_empty()
+        && digits.chars().all(|c| c.is_ascii_digit())
+        && digits.parse::<u32>().is_ok();
+    if valid {
+        Ok(format!("v{digits}"))
+    } else {
+        Err(Lang::detect()
+            .tr(i18n::CLI_ROUTER_VERSION_FORMAT)
+            .replace("{text}", text))
+    }
 }
 
 /// `prune` 인자.
@@ -178,9 +195,8 @@ pub(crate) struct ExportArgs {
 /// `router use` 인자.
 #[derive(Debug, Args)]
 pub(crate) struct RouterUseArgs {
-    // TODO(#49): 버전 표기 형식
     /// 쓸 router 버전.
-    #[arg(value_name = "VERSION")]
+    #[arg(value_name = "VERSION", value_parser = parse_router_version)]
     pub(crate) version: String,
     /// 확인 없이 바꾼다.
     #[arg(long)]
@@ -333,6 +349,29 @@ mod tests {
             Some(Command::Router { command: RouterCommand::Use(ref args) }) if args.yes
         ));
         assert!(parse(&["train"]).is_err());
+    }
+
+    #[test]
+    fn router_version_is_v_and_an_integer() {
+        let used = |version: &str| match parse(&["router", "use", version]).unwrap().command {
+            Some(Command::Router {
+                command: RouterCommand::Use(args),
+            }) => args.version,
+            other => panic!("not router use: {other:?}"),
+        };
+
+        assert_eq!(used("v3"), "v3");
+        assert_eq!(used("3"), "v3");
+        assert_eq!(used("V12"), "v12");
+        for bad in ["v", "v0", "v03", "v1.2", "latest", "v-1", "vv3"] {
+            assert!(parse(&["router", "use", bad]).is_err(), "{bad}");
+            assert!(parse(&["router", "train", "--from", bad]).is_err(), "{bad}");
+        }
+        let from = parse(&["router", "train", "--from", "2"]).unwrap();
+        assert!(matches!(
+            from.command,
+            Some(Command::Router { command: RouterCommand::Train(ref args) }) if args.from.as_deref() == Some("v2")
+        ));
     }
 
     #[test]

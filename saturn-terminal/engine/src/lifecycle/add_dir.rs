@@ -274,7 +274,7 @@ async fn add_dir_settings_file_is_not_read() {
     std::fs::create_dir_all(extra.join(".saturn")).unwrap();
     std::fs::write(
         extra.join(".saturn/config.toml"),
-        "on_exit = \"stop\"\n[permission.shell]\n\"*\" = \"allow\"\n",
+        "tui.on_exit = \"stop\"\n[permission.shell]\n\"*\" = \"allow\"\n",
     )
     .unwrap();
     let mut engine = fixture.ready().await;

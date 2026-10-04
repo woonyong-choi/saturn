@@ -1,5 +1,5 @@
 use super::*;
-use crate::sessions::context::{DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_DIVISOR};
+use crate::sessions::context::{DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_PERCENT};
 use crate::sessions::ranking::DEFAULT_RRF_K;
 
 const CHAT: ChatId = ChatId(1);
@@ -14,7 +14,7 @@ fn inputs(packet: u64) -> ReturnInputs {
             cache_read: 0.1,
             cache_write: 1.25,
             cache_ttl: Duration::from_secs(300),
-            packet_hard_divisor: DEFAULT_PACKET_HARD_DIVISOR,
+            packet_hard_percent: DEFAULT_PACKET_HARD_PERCENT,
             item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
             rrf_k: DEFAULT_RRF_K,
         },

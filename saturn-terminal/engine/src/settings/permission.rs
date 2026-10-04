@@ -303,6 +303,7 @@ mod tests {
             path: None,
             fingerprint: None,
             ignored: Vec::new(),
+            renamed: Vec::new(),
         };
         let with_mode = |mode| LayerPermission {
             mode: Some(mode),

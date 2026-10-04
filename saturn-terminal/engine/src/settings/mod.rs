@@ -4,6 +4,8 @@
 mod edit;
 mod layers;
 mod manager;
+#[cfg(test)]
+mod names_tests;
 mod permission;
 mod trust;
 
@@ -43,6 +45,14 @@ pub(crate) const CONFIG_FILE: &str = "config.toml";
 pub(crate) enum ContextMode {
     Saturn,
     Provider,
+}
+
+/// 화면 방식 `tui.screen`. `auto`는 터미널이면 전체 화면, 아니면 plain이다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Screen {
+    Auto,
+    Full,
+    Plain,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -111,6 +121,9 @@ pub(crate) struct LayerSource {
     pub fingerprint: Option<String>,
     /// 폴더 층에서 `USER_ONLY`라 무시한 점 경로 키.
     pub ignored: Vec<String>,
+    /// 옛 이름으로 적혀 새 이름으로 읽은 `(옛 이름, 새 이름)`. 옛 스냅샷에는 없다.
+    #[serde(default)]
+    pub renamed: Vec<(String, String)>,
 }
 
 /// 값은 TOML을 JSON으로 옮긴 표 하나다.
@@ -120,9 +133,9 @@ pub(crate) struct Settings {
 }
 
 impl Settings {
-    /// 사용자 전용.
+    /// 사용자 전용. 옛 스냅샷의 `router.method`도 읽는다.
     pub(crate) fn method(&self) -> Method {
-        match self.text("router.method") {
+        match self.text_or_old("router.mode", "router.method") {
             "saturn" => Method::Saturn,
             "collect" => Method::Collect,
             _ => Method::Jev,
@@ -208,12 +221,30 @@ impl Settings {
         self.text("tui.keymap")
     }
 
+    /// 옛 스냅샷의 `on_exit`도 읽는다.
     pub(crate) fn on_exit(&self) -> OnExit {
-        match self.text("on_exit") {
+        match self.text_or_old("tui.on_exit", "on_exit") {
             "stop" => OnExit::Stop,
             "ask" => OnExit::Ask,
             _ => OnExit::Background,
         }
+    }
+
+    /// 화면 방식 `tui.screen`. 모르는 값은 검사에서 걸러져 `auto`로 본다.
+    pub(crate) fn screen(&self) -> Screen {
+        match self.text("tui.screen") {
+            "full" => Screen::Full,
+            "plain" => Screen::Plain,
+            _ => Screen::Auto,
+        }
+    }
+
+    /// 작업이 끝났을 때 알림 `notify.on_done`. 기본 거짓. 알림 동작은 #151이 정한다.
+    #[cfg_attr(not(test), expect(dead_code, reason = "알림 동작은 #151"))]
+    pub(crate) fn notify_on_done(&self) -> bool {
+        self.lookup("notify.on_done")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
     }
 
     /// 모델 선택 방식 `model.mode`. 옛 스냅샷에 없거나 모르는 값이면 오토다.
@@ -267,10 +298,23 @@ impl Settings {
             cache_read: number("cache_read", DEFAULT_CACHE_READ),
             cache_write: number("cache_write", defaults.cache_write),
             cache_ttl: DEFAULT_CACHE_TTL,
-            packet_hard_divisor: self.positive("context.packet_hard_divisor"),
+            packet_hard_percent: self.packet_hard_percent(),
             item_cap_percent: self.positive("context.item_cap_percent"),
             rrf_k: u32::try_from(self.whole("context.select.rrf_k")).unwrap_or(u32::MAX),
         }
+    }
+
+    /// 옛 스냅샷에 `context.packet_hard_divisor`만 있으면 `100 / 나눗수`로 읽는다.
+    fn packet_hard_percent(&self) -> u64 {
+        let old = self
+            .get("context.packet_hard_divisor")
+            .and_then(layers::divisor_to_percent)
+            .and_then(|value| value.as_u64());
+        self.get("context.packet_hard_percent")
+            .and_then(Value::as_u64)
+            .or(old)
+            .unwrap_or_else(|| self.whole("context.packet_hard_percent"))
+            .clamp(1, 100)
     }
 
     /// 새 키, 옛 스냅샷의 옛 키, 기본값 층 순서로 찾는다.
@@ -287,6 +331,14 @@ impl Settings {
     /// 옛 스냅샷에 없던 키도 기본값 층 값으로 읽는다.
     fn lookup(&self, key: &str) -> Option<&Value> {
         self.get(key).or_else(|| layers::get_path(defaults(), key))
+    }
+
+    /// 새 키, 옛 스냅샷의 옛 키, 기본값 층 순서로 찾는다.
+    fn text_or_old(&self, key: &str, old: &str) -> &str {
+        self.get(key)
+            .or_else(|| self.get(old))
+            .and_then(Value::as_str)
+            .unwrap_or_else(|| self.text(key))
     }
 
     /// 기본값 층에 반드시 있는 키만 받는다.
@@ -362,14 +414,14 @@ mod tests {
     #[test]
     fn digest_ignores_layer_list_and_key_order() {
         let a = snapshot(
-            "on_exit = \"ask\"\nretention.max_age_days = 3\n",
+            "tui.on_exit = \"ask\"\nretention.max_age_days = 3\n",
             Vec::new(),
         );
         let b = snapshot(
-            "retention.max_age_days = 3\non_exit = \"ask\"\n",
+            "retention.max_age_days = 3\ntui.on_exit = \"ask\"\n",
             vec![layers::source(Layer::User, Some(PathBuf::from("/u")), "x")],
         );
-        let c = snapshot("on_exit = \"stop\"\n", Vec::new());
+        let c = snapshot("tui.on_exit = \"stop\"\n", Vec::new());
 
         assert_eq!(a.digest(), b.digest());
         assert_ne!(a.digest(), c.digest());

@@ -10,8 +10,8 @@ use std::sync::{Mutex, PoisonError};
 use chrono::{Duration, Local, NaiveDate};
 use tracing_subscriber::fmt::MakeWriter;
 
-/// 로그 폴더. 소켓이 있는 폴더 아래. TODO(#235): 경로 설정 키
-const LOG_DIR: &str = "logs";
+/// 로그 폴더. 홈 폴더 아래.
+const LOG_DIR: &str = saturn_protocol::home::LOG_DIR;
 
 const FILE_PREFIX: &str = "engine-";
 const FILE_SUFFIX: &str = ".log";

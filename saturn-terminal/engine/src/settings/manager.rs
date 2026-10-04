@@ -22,7 +22,7 @@ pub(crate) type FileFingerprints = Vec<(PathBuf, Option<String>)>;
 pub(crate) struct Applied {
     /// 검사 실패면 이전 번호.
     pub revision: SettingsRevision,
-    /// 검사 실패나 무시한 사용자 전용 키가 있을 때의 경고.
+    /// 검사 실패, 무시한 사용자 전용 키, 옛 이름 키가 있을 때의 경고. 앞의 것이 우선이다.
     pub warning: Option<SettingsWarning>,
     /// 병합한 `tui.keymap`. 이전 번호로 계속하면 `None`.
     pub keymap: Option<String>,
@@ -207,9 +207,23 @@ impl SettingsManager {
             .iter()
             .flat_map(|layer| layer.ignored.iter().map(String::as_str))
             .collect();
-        let warning = (!ignored.is_empty()).then(|| SettingsWarning::IgnoredFolderKeys {
-            keys: ignored.iter().map(|key| (*key).to_owned()).collect(),
-        });
+        let renamed: Vec<(String, String)> = snapshot
+            .layers
+            .iter()
+            .flat_map(|layer| layer.renamed.iter().cloned())
+            .collect();
+        for (old, new) in &renamed {
+            tracing::warn!(%old, %new, "setting key renamed; the old name is still read");
+        }
+        let warning = if !ignored.is_empty() {
+            Some(SettingsWarning::IgnoredFolderKeys {
+                keys: ignored.iter().map(|key| (*key).to_owned()).collect(),
+            })
+        } else if !renamed.is_empty() {
+            Some(SettingsWarning::RenamedKeys { keys: renamed })
+        } else {
+            None
+        };
         let keymap = Some(snapshot.settings.keymap().to_owned());
         Ok(Applied {
             revision,
@@ -412,6 +426,26 @@ mod tests {
         assert_eq!(
             fixture.store.latest_settings_revision().await.unwrap(),
             Some(first.revision)
+        );
+    }
+
+    #[tokio::test]
+    async fn old_key_names_apply_and_warn_once_per_apply() {
+        let fixture = Fixture::new().await;
+        let mut manager = fixture.manager(&["on_exit=\"ask\""]).await;
+
+        let applied = manager
+            .apply(&fixture.store, None, &fixture.workdir)
+            .await
+            .unwrap();
+
+        let settings = manager.at(&fixture.store, applied.revision).await.unwrap();
+        assert_eq!(settings.on_exit(), saturn_protocol::state::OnExit::Ask);
+        assert_eq!(
+            applied.warning,
+            Some(SettingsWarning::RenamedKeys {
+                keys: vec![("on_exit".to_owned(), "tui.on_exit".to_owned())],
+            })
         );
     }
 
@@ -638,7 +672,7 @@ mod tests {
             .set_chat_layer(chat, "router.thresholds.injection = 0.75\n")
             .await
             .unwrap();
-        let mut manager = fixture.manager(&["on_exit=\"ask\""]).await;
+        let mut manager = fixture.manager(&["tui.on_exit=\"ask\""]).await;
         let fixed = manager
             .apply(&fixture.store, Some(chat), &fixture.workdir)
             .await

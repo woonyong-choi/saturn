@@ -5866,6 +5866,40 @@
             "IgnoredFolderKeys"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "옛 이름으로 적힌 키를 새 이름으로 읽었다. `(옛 이름, 새 이름)`.",
+          "properties": {
+            "RenamedKeys": {
+              "properties": {
+                "keys": {
+                  "items": {
+                    "maxItems": 2,
+                    "minItems": 2,
+                    "prefixItems": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "type": "array"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "keys"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "RenamedKeys"
+          ],
+          "type": "object"
         }
       ]
     },
