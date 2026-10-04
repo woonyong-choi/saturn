@@ -179,7 +179,7 @@ impl Flow {
             .into_iter()
             .filter_map(|entry| match entry {
                 crate::store::HistoryEntry::Input { input, .. } => Some(input),
-                crate::store::HistoryEntry::Event { .. } => None,
+                crate::store::HistoryEntry::Run { .. } => None,
             })
             .max()
             .expect("the other chat should have accepted the input");
@@ -332,7 +332,7 @@ impl Flow {
             .into_iter()
             .filter_map(|entry| match entry {
                 crate::store::HistoryEntry::Input { input, .. } => Some(input),
-                crate::store::HistoryEntry::Event { .. } => None,
+                crate::store::HistoryEntry::Run { .. } => None,
             })
             .max()
     }
