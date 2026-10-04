@@ -326,6 +326,23 @@ def codex_trial(condition: str, trial_number: int, cleaned: bool) -> dict:
     )
 
 
+def subagent_bash_events(events: list[dict]) -> int:
+    """하위 에이전트(parent_tool_use_id가 있는 메시지)가 낸 Bash 호출 수."""
+    count = 0
+    for event in events:
+        message = event.get("message", {})
+        if event.get("direction") != "in" or not message.get("parent_tool_use_id"):
+            continue
+        content = (message.get("message") or {}).get("content")
+        if isinstance(content, list):
+            count += sum(
+                1
+                for item in content
+                if item.get("type") == "tool_use" and item.get("name") == "Bash"
+            )
+    return count
+
+
 def claude_trial(
     condition: str,
     trial_number: int,
@@ -347,7 +364,12 @@ def claude_trial(
     first_stderr = ""
     try:
         task_text = (
-            "Use the Task tool to start exactly one subagent, and tell it to"
+            (
+                "Use the Agent tool (also called Task) to start exactly one"
+                " subagent, and tell it to"
+                if default_login
+                else "Use the Task tool to start exactly one subagent, and tell it to"
+            )
             if task
             else "Run Bash and"
         )
@@ -380,6 +402,7 @@ def claude_trial(
         session_id, config, resume=True, resume_env=resume_env, task=task, work=work
     )
     second_init = False
+    resume_alive = False
     second_stderr = ""
     try:
         deadline = time.monotonic() + POST_RESUME_WAIT_SECONDS
@@ -391,10 +414,17 @@ def claude_trial(
                     second.allow_control_request(message)
         final_counts = marker_counts(events_path, done_path)
         resumed = final_counts["start"] > initial_counts["start"]
+        resume_alive = second.proc.poll() is None
     finally:
         second_stderr = second.close()
 
     final_counts = marker_counts(events_path, done_path)
+    child_bash = subagent_bash_events(first.events)
+    # 기본 로그인 재수집: 재개 process가 init 없이 관찰 구간 내내 살아 있고 stderr가 비어 있으면
+    # 세션을 열고 아무것도 하지 않은 것으로 본다. Task 탐색은 하위 에이전트 Bash가 있어야 유효하다.
+    observed_ok = first_init and (second_init or (resume_alive and not second_stderr))
+    if default_login and task and child_bash == 0:
+        resumed = None
     CALLS["claude"] += model_call_count(first.events, "claude") + model_call_count(
         second.events, "claude"
     )
@@ -409,6 +439,8 @@ def claude_trial(
                 "resume_initialised": second_init,
                 "resume_env_present": resume_env,
                 "default_login": default_login,
+                "resume_alive_at_end": resume_alive,
+                "initial_subagent_bash": child_bash,
                 "initial_counts": initial_counts,
                 "final_counts": final_counts,
                 "event_summary_initial": event_summary(first.events),
@@ -421,7 +453,11 @@ def claude_trial(
         f"claude.{condition}",
         "claude",
         CLAUDE_MODEL,
-        request_result="observed" if first_init and second_init else "error_or_timeout",
+        request_result=(
+            "observed"
+            if (observed_ok if default_login else first_init and second_init)
+            else "error_or_timeout"
+        ),
         marker_start_count=final_counts["start"],
         marker_complete_count=final_counts["complete"],
         marker_touch_count=final_counts["touch"],
@@ -431,6 +467,9 @@ def claude_trial(
         resume_env_present=resume_env,
         task_subagent=task,
         default_login=default_login,
+        resume_process_alive=resume_alive,
+        resume_init_event=second_init,
+        initial_subagent_bash=child_bash,
         resume_parent_tool_events=parent_tool_events(second.events),
         resume_reason=next(
             (
@@ -458,6 +497,9 @@ def recollect_claude() -> None:
         ("resume-env-absent", False, False),
         ("task-subagent", False, True),
     ]
+    if "--only" in sys.argv:
+        keep = sys.argv[sys.argv.index("--only") + 1].split(",")
+        plan = [item for item in plan if item[0] in keep]
     for condition, enabled, task in plan:
         for trial in range(1, 4):
             value = claude_trial(
@@ -473,17 +515,22 @@ def recollect_claude() -> None:
                 )
     env_path = ROOT / "env.json"
     env = json.loads(env_path.read_text(encoding="utf-8"))
-    env["claude_recollect"] = {
+    runs = env.get("claude_recollect", [])
+    if isinstance(runs, dict):
+        runs = [runs]
+    runs.append({
         "run_id": RUN_ID,
         "ts_utc": utc_now(),
         "version": command_version("claude"),
         "model": CLAUDE_MODEL,
         "login": "공식 CLI 기본 로그인(CLAUDE_CONFIG_DIR 없음, credentials 링크 없음)",
         "cwd": ".runtime/claude-work/<trial>",
-        "claude_launches": int(COUNTER.read_text()),
+        "claude_launches_cumulative": int(COUNTER.read_text()),
         "launch_limit": RECOLLECT_CALL_LIMIT,
         "model_calls": CALLS["claude"],
-    }
+        "conditions": [item[0] for item in plan],
+    })
+    env["claude_recollect"] = runs
     env_path.write_text(
         json.dumps(env, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
