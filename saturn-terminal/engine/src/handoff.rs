@@ -55,7 +55,7 @@ struct Tool {
 // vars: L = 기록 글자 수, c = 도구 호출 수
 // basis: estimate
 /// 순서는 후보 순위(RRF)만 쓴다. 목표 칸은 지금 작업의 첫 입력과 마지막 입력, 남은 일 칸은 대기·보류 입력과 결과를 모르는 작업, 결과 없는 도구 호출이다(docs/experiments/packet-goal-fields/report.md).
-/// TODO(#90): 제약 식별(`constraints`)과 router `compact` 순서가 정해지기 전까지 제약은 빈 목록이다
+/// TODO(#380): 저장한 유효 제약을 패킷 고정 구역에 넣고 router `compact`를 연결하기 전까지 제약은 빈 목록이다
 /// 넘길 기록이 없으면 `None`.
 pub(crate) fn handoff_source(
     rows: &[LedgerRow],
