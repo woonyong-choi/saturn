@@ -1181,3 +1181,32 @@ fn waiting_inputs_name_the_task_they_wait_for_and_none_for_a_new_task() {
         [(CHAT, InputId(2), Some(task)), (CHAT, InputId(3), None),]
     );
 }
+
+// #455
+#[test]
+fn rescope_unsent_changes_only_inputs_that_are_not_sent() {
+    let mut queue = Queue::new();
+    accept_routed(&mut queue, 1, Permission::Write, Disposition::NewTask);
+    assert!(queue.next_to_send().is_some());
+    queue.accept(input(2, Permission::Write));
+
+    queue.rescope_unsent(CHAT, |_| scope(&["/work", "/shared"]));
+
+    let written = |id: u64| queue.input(InputId(id)).unwrap().write_scope.clone();
+    assert_eq!(written(1), scope(&["/work"]));
+    assert_eq!(written(2), scope(&["/work", "/shared"]));
+}
+
+// #455
+#[test]
+fn rescope_unsent_ignores_other_chats() {
+    let mut queue = Queue::new();
+    queue.accept(input(1, Permission::Write));
+
+    queue.rescope_unsent(ChatId(2), |_| scope(&["/shared"]));
+
+    assert_eq!(
+        queue.input(InputId(1)).unwrap().write_scope,
+        scope(&["/work"])
+    );
+}

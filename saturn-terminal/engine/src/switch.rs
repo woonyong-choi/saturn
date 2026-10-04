@@ -558,7 +558,8 @@ impl Engine {
                 }
                 live
             }
-            (OpenKind::Resume { stored, .. }, Some(handle)) => {
+            (OpenKind::Resume { stored, spec }, Some(handle)) => {
+                self.flow.session_dirs.insert(stored.agent, spec.add_dirs);
                 // provider가 끊긴 자식 정리를 시도한 뒤라 다시 넘기지 않는다
                 if self
                     .flow
@@ -582,12 +583,15 @@ impl Engine {
                     role,
                     agent,
                     id,
-                    ..
+                    spec,
                 },
                 Some(handle),
             ) => {
-                self.register_opened(record, &plan, (provider, role, agent, id), &handle)
-                    .await?
+                let live = self
+                    .register_opened(record, &plan, (provider, role, agent, id), &handle)
+                    .await?;
+                self.flow.session_dirs.insert(agent, spec.add_dirs);
+                live
             }
             (OpenKind::Resume { .. } | OpenKind::New { .. }, None) => {
                 return Err(ProviderError::ConnectionLost.into());
@@ -857,6 +861,9 @@ impl Engine {
             return Err(error);
         }
         self.close_replaced(chat, live, old);
+        self.flow
+            .session_dirs
+            .insert(old.agent, restart.spec.add_dirs.clone());
         self.remember(old.agent, restart.id, live.provider, handle);
         self.count_packet_turn(old.agent, true);
         Ok(())

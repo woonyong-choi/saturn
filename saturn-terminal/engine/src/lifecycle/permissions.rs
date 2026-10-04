@@ -205,6 +205,11 @@ async fn edit_inside_an_added_folder_is_allowed_like_the_workdir_in_edit_mode() 
         .entry(flow.chat)
         .or_default()
         .push(added.clone());
+    // 이 session이 더한 폴더를 받고 열렸다고 본다
+    flow.engine
+        .flow
+        .session_dirs
+        .insert(agent, vec![added.clone()]);
     let event = |id: &str, path: &str| permission_for(agent, id, PermissionTool::Edit, "", &[path]);
 
     flow.claude_event(event(

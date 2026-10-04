@@ -313,3 +313,35 @@ async fn add_dir_session_spec_gets_nothing_for_a_chat_without_added_folders() {
     });
     assert_eq!(opened, Some(Vec::new()));
 }
+
+// #455
+#[tokio::test]
+async fn folder_added_while_a_session_is_open_stays_out_of_its_permission_scope() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    let input = flow.submit("fix the build").await;
+    let scope_before = flow.record(input).write_scope;
+    let agent = flow
+        .engine
+        .flow
+        .live
+        .values()
+        .next()
+        .map(|live| live.agent)
+        .expect("a session should be open");
+    let extra = made_dir(flow.fixture.root.path(), "late-extra");
+    let extra = extra.canonicalize().unwrap();
+
+    flow.engine
+        .add_dir(CLIENT, flow.chat, &extra.display().to_string())
+        .await
+        .unwrap();
+
+    let policy = flow
+        .engine
+        .permission_policy(flow.chat, agent)
+        .await
+        .unwrap();
+    assert!(!policy.extra_dirs.contains(&extra));
+    assert_eq!(flow.record(input).write_scope, scope_before);
+    assert!(flow.engine.chat_dirs_of(flow.chat).contains(&extra));
+}

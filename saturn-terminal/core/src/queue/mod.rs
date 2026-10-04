@@ -60,6 +60,7 @@ pub struct QueuedInput {
     pub permission: Permission,
     pub workdir: PathBuf,
     /// 쓰기 잠금이 겹침을 보는 범위. 작업 폴더와 더한 폴더를 정규화한 경로이고 접수 때 고정한다.
+    /// 보내기 전에 폴더를 더하면 `rescope_unsent`가 다시 정한다.
     pub write_scope: Vec<PathBuf>,
     /// 사용자가 고정한 모델이나 router가 고른 모델. 있으면 그 모델로 보내고 router 호출에서 모델 질문을 뺀다.
     pub pinned_model: Option<String>,
@@ -186,6 +187,21 @@ impl Queue {
             awaits_stop: false,
         });
         self.refresh_router_order(chat);
+    }
+
+    // cost: time O(n·s), heap O(1) amortized, stack O(1)
+    // vars: n = 대기열 입력 수, s = 쓰기 범위 경로 수
+    // basis: estimate
+    /// 채팅에서 아직 보내지 않은 입력(`Judging`, `Queued`)의 쓰기 범위를 `scope`가 돌려주는 값으로 다시 정한다.
+    /// 보냈거나 실행 중인 입력은 이미 잠금을 쥐었거나 기다리는 자리가 정해져 그대로 둔다.
+    pub fn rescope_unsent(&mut self, chat: ChatId, scope: impl Fn(&QueuedInput) -> Vec<PathBuf>) {
+        for entry in &mut self.inputs {
+            let is_unsent = !entry.is_dispatched
+                && matches!(entry.input.state, InputState::Judging | InputState::Queued);
+            if entry.input.chat == chat && is_unsent {
+                entry.input.write_scope = scope(&entry.input);
+            }
+        }
     }
 
     // cost: time O(n), heap O(1), stack O(1)
