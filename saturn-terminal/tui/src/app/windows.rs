@@ -232,11 +232,16 @@ impl App {
             TaskListCommand::CancelInput(input) => Request::CancelInput { input },
             TaskListCommand::CloseHeld { chat, task } => Request::CloseHeld { chat, task },
             TaskListCommand::SendNow(input) => Request::SendNow { input },
-            TaskListCommand::Rename { chat, name } => Request::RenameChat { chat, name },
-            TaskListCommand::Regroup { chat, group } => Request::SetChatGroup {
-                chat,
-                group: (!group.is_empty()).then_some(group),
-            },
+            // `engine`가 `ChatLabeled`로 알리므로 목록은 그 알림을 받아 다시 읽는다
+            TaskListCommand::Rename { chat, name } => {
+                return vec![Effect::Send(Request::RenameChat { chat, name })];
+            }
+            TaskListCommand::Regroup { chat, group } => {
+                return vec![Effect::Send(Request::SetChatGroup {
+                    chat,
+                    group: (!group.is_empty()).then_some(group),
+                })];
+            }
         };
         vec![Effect::Send(request), Effect::Send(Request::ListTasks)]
     }

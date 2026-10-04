@@ -208,6 +208,17 @@ impl RpcServer {
         self.broadcast_except(chat, None, &notification);
     }
 
+    /// 채팅에 붙은 모든 클라이언트. 붙지 않은 접속(`saturn prune` 같은 명령)은 건너뛴다.
+    pub(crate) async fn broadcast_attached(&self, notification: Notification) {
+        let targets = self
+            .clients
+            .iter()
+            .filter(|(_, handle)| handle.chat.is_some());
+        for (id, _) in targets {
+            let _ = self.push(*id, notification.clone().into()); // 끊긴 클라이언트는 건너뛴다
+        }
+    }
+
     /// 붙은 클라이언트가 없어도 답이 올 때까지 두고 다음 `greet`에서 보낸다.
     pub(crate) async fn offer_permission(&mut self, chat: ChatId, request: Notification) {
         let Notification::PermissionRequested { request_id, .. } = &request else {

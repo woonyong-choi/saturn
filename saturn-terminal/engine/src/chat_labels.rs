@@ -2,6 +2,7 @@
 //! 설계: docs/design/tui.md
 
 use saturn_protocol::ids::ChatId;
+use saturn_protocol::rpc::Notification;
 
 use crate::{Engine, EngineError};
 
@@ -12,7 +13,8 @@ impl Engine {
     /// 제어 문자가 있으면 `InvalidLabel`, 없는 채팅이면 `Store(NotFound)`.
     pub(crate) async fn rename_chat(&self, chat: ChatId, name: &str) -> Result<(), EngineError> {
         let name = clean_label("name", name)?;
-        Ok(self.store.set_chat_name(chat, name).await?)
+        self.store.set_chat_name(chat, name).await?;
+        self.announce_labels(chat).await
     }
 
     /// `None`이거나 공백뿐이면 묶음에서 뺀다.
@@ -25,7 +27,17 @@ impl Engine {
         group: Option<&str>,
     ) -> Result<(), EngineError> {
         let group = clean_label("group", group.unwrap_or_default())?;
-        Ok(self.store.set_chat_group(chat, group).await?)
+        self.store.set_chat_group(chat, group).await?;
+        self.announce_labels(chat).await
+    }
+
+    /// 저장한 이름과 묶음을 붙은 모든 TUI에 알린다.
+    async fn announce_labels(&self, chat: ChatId) -> Result<(), EngineError> {
+        let (name, group) = self.store.chat_labels(chat).await?;
+        self.rpc
+            .broadcast_attached(Notification::ChatLabeled { chat, name, group })
+            .await;
+        Ok(())
     }
 }
 

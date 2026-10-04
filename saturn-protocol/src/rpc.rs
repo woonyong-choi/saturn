@@ -333,6 +333,13 @@ pub enum Notification {
     LatestChat {
         chat: Option<ChatId>,
     },
+    /// 채팅 이름이나 묶음이 바뀌었다. 같은 engine에 붙은 모든 TUI에 보낸다. 값은 저장한 결과이고
+    /// 비어 있으면 `None`이다.
+    ChatLabeled {
+        chat: ChatId,
+        name: Option<String>,
+        group: Option<String>,
+    },
     /// `ListChats`의 답.
     ChatList {
         chats: Vec<ChatListItem>,

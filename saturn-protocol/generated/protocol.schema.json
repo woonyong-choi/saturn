@@ -2559,6 +2559,43 @@
           "type": "object"
         },
         {
+          "description": "채팅 이름이나 묶음이 바뀌었다. 같은 engine에 붙은 모든 TUI에 보낸다. 값은 저장한 결과이고\n비어 있으면 `None`이다.",
+          "properties": {
+            "method": {
+              "const": "ChatLabeled",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "group": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "chat"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "description": "`ListChats`의 답.",
           "properties": {
             "method": {
@@ -3652,6 +3689,43 @@
                   ]
                 }
               },
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "채팅 이름이나 묶음이 바뀌었다. 같은 engine에 붙은 모든 TUI에 보낸다. 값은 저장한 결과이고\n비어 있으면 `None`이다.",
+          "properties": {
+            "method": {
+              "const": "ChatLabeled",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "group": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "chat"
+              ],
               "type": "object"
             }
           },
