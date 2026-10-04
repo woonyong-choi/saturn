@@ -23,7 +23,7 @@ from pathlib import Path
 EXPERIMENT = Path(__file__).resolve().parent.parent
 WORKTREE = EXPERIMENT.parents[2]
 RUNTIME = WORKTREE / ".runtime"
-MCP_FIXTURE = WORKTREE / "scripts" / "mcp_fixture.py"
+MCP_FIXTURE = EXPERIMENT.parent / "provider-permission-real" / "scripts" / "mcp_fixture.py"
 DENY_HOOK = EXPERIMENT / "scripts" / "deny_hook.py"
 COUNTER = RUNTIME / "claude-call-count"
 CALL_LIMIT = 60
