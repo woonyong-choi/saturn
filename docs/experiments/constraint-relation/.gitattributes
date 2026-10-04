@@ -1,1 +1,1 @@
-results/tables/*.csv -text
+results/tables/*.csv -text whitespace=cr-at-eol
