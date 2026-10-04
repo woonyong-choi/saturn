@@ -22,6 +22,7 @@ use super::{AppliedSettings, LaunchSpec, REPLY_TIMEOUT, TurnOriginTracker, UserP
 use crate::processes::{ProcessGroupId, ProcessSpec, StopScope, Supervisor};
 
 mod adapter;
+mod background;
 mod config;
 mod convert;
 mod extensions;
@@ -133,6 +134,10 @@ struct SessionState {
     origin: TurnOriginTracker,
     /// 키는 Task/Agent `tool_use` id, 값은 부모 subagent.
     running: HashMap<SubagentId, Option<SubagentId>>,
+    /// 백그라운드로 시작한 subagent의 수명. 키는 `running`의 부분집합이다.
+    background: HashMap<SubagentId, background::Background>,
+    /// subagent가 소유한 백그라운드 작업(셸)의 `task_id`. 남아 있으면 그 subagent들은 끝나지 않았다.
+    owned_tasks: HashSet<String>,
     /// 결과를 기다리는 `Bash` 호출 id. 종료 코드를 결과 글에서 읽는 대상이다.
     shell_calls: HashSet<String>,
     applied: AppliedSettings,
@@ -158,6 +163,8 @@ impl SessionState {
             stop_requested: false,
             origin: TurnOriginTracker::default(),
             running: HashMap::new(),
+            background: HashMap::new(),
+            owned_tasks: HashSet::new(),
             shell_calls: HashSet::new(),
             applied: AppliedSettings::default(),
             commands: Vec::new(),

@@ -104,6 +104,13 @@ while (my $line = <STDIN>) {
     assistant([ { type => "tool_use", id => "toolu_bg", name => "Agent", input => {} } ], undef);
     result();
     exit 0;
+  } elsif ($text eq "bgwake") {
+    assistant([ { type => "tool_use", id => "toolu_bg", name => "Agent", input => {} } ], undef);
+    out({ type => "system", subtype => "task_started", task_id => "t1", tool_use_id => "toolu_bg", task_type => "local_agent", is_backgrounded => JSON::PP::true });
+    out({ type => "user", session_id => $sid, parent_tool_use_id => undef, tool_use_result => { isAsync => JSON::PP::true, status => "async_launched" }, message => { role => "user", content => [ { type => "tool_result", tool_use_id => "toolu_bg", content => "launched" } ] } });
+    result();
+    select(undef, undef, undef, 0.3);
+    out({ type => "system", subtype => "task_notification", task_id => "t1", tool_use_id => "toolu_bg", status => "completed" });
   } elsif ($text eq "crash") {
     exit 1;
   }
@@ -863,6 +870,37 @@ async fn subagent_without_result_is_stream_loss() {
     let events = take(&mut client, 5).await;
 
     assert_eq!(events[4], ProviderEvent::StreamLost { agent: AgentId(3) });
+    client.close_session(&session).await.unwrap();
+}
+
+#[tokio::test]
+async fn a_background_subagent_ends_only_after_its_notice_and_the_settle_wait() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut client = ClaudeClient::new(launch(dir.path(), Vec::new()), Supervisor::new());
+    let session = client
+        .open_session(spec(dir.path(), None))
+        .await
+        .unwrap()
+        .provider_session;
+    let subagent = SubagentId("toolu_bg".to_owned());
+
+    client.send_turn(&session, "bgwake").await.unwrap();
+    let events = take(&mut client, 4).await;
+    let waited = std::time::Instant::now();
+    let ended = take(&mut client, 1).await;
+
+    // 시작 접수 결과와 부모의 `result`는 끝이 아니다
+    assert!(matches!(events[0], ProviderEvent::SubagentStarted { .. }));
+    assert!(matches!(events[3], ProviderEvent::TurnCompleted { .. }));
+    // 끝 알림(0.3초 뒤) 뒤에도 확정 시각(1초)이 되어서야 끝난다
+    assert_eq!(
+        ended,
+        vec![ProviderEvent::SubagentEnded {
+            agent: AgentId(3),
+            subagent
+        }]
+    );
+    assert!(waited.elapsed() >= Duration::from_millis(900));
     client.close_session(&session).await.unwrap();
 }
 

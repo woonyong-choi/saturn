@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use saturn_core::providers::ProviderCommand;
 use saturn_core::sessions::context::DEFAULT_CACHE_TTL;
@@ -10,6 +10,7 @@ use saturn_protocol::ids::SubagentId;
 use saturn_protocol::rpc::PermissionAnswer;
 use serde_json::{Value, json};
 
+use super::background;
 use super::input::{self, ASK_TOOL};
 use super::{
     DENY_MESSAGE, EDIT_TOOLS, READ_TOOLS, SHELL_TOOL, SUBAGENT_TOOLS, SUBSCRIPTION_CACHE_TTL,
@@ -26,6 +27,7 @@ pub(super) fn convert_line(
     let agent = state.agent;
     match line["type"].as_str() {
         Some("system") if line["subtype"] == "init" => apply_init(state, line),
+        Some("system") => background::on_system(state, line, Instant::now()),
         Some("assistant") => convert_assistant(state, line),
         Some("user") => convert_tool_results(state, line),
         Some("result") => convert_result(state, line),
@@ -104,7 +106,7 @@ fn convert_result(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> 
         terminal_reason = line["terminal_reason"].as_str().unwrap_or_default(),
         "claude turn ended with an error result"
     );
-    state.running.clear();
+    state.clear_subagents();
     events.push(ProviderEvent::StreamLost { agent });
     events
 }
@@ -292,7 +294,8 @@ pub(super) fn convert_assistant(state: &mut SessionState, line: &Value) -> Vec<P
     events
 }
 
-/// subagent 호출의 결과는 subagent 끝이다.
+/// 전경 subagent 호출의 결과는 subagent 끝이다. 백그라운드 시작 접수(`async_launched`)는 끝이 아니며 `system`의
+/// `task_*`로 끝을 확인한다.
 pub(super) fn convert_tool_results(state: &mut SessionState, line: &Value) -> Vec<ProviderEvent> {
     let agent = state.agent;
     let parent = parent_subagent(line);
@@ -305,8 +308,14 @@ pub(super) fn convert_tool_results(state: &mut SessionState, line: &Value) -> Ve
             continue;
         };
         let subagent = SubagentId(id.to_owned());
-        if state.running.remove(&subagent).is_some() {
-            events.push(ProviderEvent::SubagentEnded { agent, subagent });
+        if state.running.contains_key(&subagent) {
+            if background::is_async_launch(line) {
+                state.mark_background(&subagent);
+            }
+            if !state.background.contains_key(&subagent) {
+                state.running.remove(&subagent);
+                events.push(ProviderEvent::SubagentEnded { agent, subagent });
+            }
             continue;
         }
         let output = tool_result_text(&item["content"]);

@@ -138,7 +138,7 @@ Saturn 연결의 가정 가운데 도구 결과로 하위 에이전트 끝을 �
 | 위치 | 영향 | 처리 |
 |---|---|---|
 | `saturn-terminal/engine/src/providers/claude/convert.rs` 268~271행, 308~309행 | `Agent` 도구 호출에서 `SubagentStarted`를, 도구 결과에서 `SubagentEnded`를 낸다. 백그라운드 subagent는 도구 결과가 시작 직후에 오므로 끝을 일찍 선언한다. `task_*` 이벤트는 읽지 않는다. | 코드 수정 후보로 보고. 설계 문장은 고쳤다. |
-| 같은 파일 107행 | `result`에서 `running.clear()`를 한다. 백그라운드 subagent가 남아 있어도 트리가 빈 것으로 본다. | 수정 후보(`background_tasks_changed` 사용) |
+| 같은 파일 107행 | `result`에서 `running.clear()`를 한다. 백그라운드 subagent가 남아 있어도 트리가 빈 것으로 본다. | 수정함(#424, `task_*`와 `background_tasks_changed` 사용) |
 | 같은 파일 75~98행 | `result.usage`를 `main-turn`으로 기록한다. 범위가 맞다. 하위 에이전트 사용량(`modelUsage` 누적의 차이, `task_notification.usage`)은 읽지 않는다. | 설계 문장 수정, 코드 유지 |
 | 같은 파일 188~230행 | `init`의 `permissionMode` 변화를 `SettingsApplied`로 알린다. 턴마다 `init`이 오므로 동작한다. `system/status`의 모드 알림은 읽지 않는다. | 코드 유지 |
 | 같은 파일 203~210행 | `init`의 `slash_commands`로 명령 목록을 만든다. 없는 명령은 모델에 글로 가서 한 턴을 쓴다. | 설계 문장 수정 |
