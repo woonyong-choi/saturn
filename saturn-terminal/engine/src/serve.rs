@@ -58,7 +58,7 @@ impl Engine {
                     self.watch_settings().await;
                 }
                 _ = idle.tick() => {
-                    if self.check_idle(Instant::now()) {
+                    if self.check_idle(Instant::now()).await {
                         break;
                     }
                 }
@@ -72,8 +72,9 @@ impl Engine {
         Ok(())
     }
 
-    /// 유휴 시각을 갱신하고, 유예가 지나 engine이 끝나야 하면 참.
-    fn check_idle(&mut self, now: Instant) -> bool {
+    /// 유예가 지난 유휴 session을 닫고, 유휴 시각을 갱신하며, 유예가 지나 engine이 끝나야 하면 참.
+    pub(crate) async fn check_idle(&mut self, now: Instant) -> bool {
+        self.close_idle_sessions(now).await;
         self.refresh_idle(now);
         let is_expired = self.background_expired(now);
         if is_expired {

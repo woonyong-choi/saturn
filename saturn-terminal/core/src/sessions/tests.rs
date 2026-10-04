@@ -660,3 +660,52 @@ fn set_state_resume_beside_open_main_returns_error() {
 
     assert!(matches!(result, Err(SessionError::MainAlreadyOpen)));
 }
+
+#[test]
+fn idle_expired_counts_only_idle_open_mains_past_the_grace_with_an_idle_tree() {
+    let claude = Provider::from_static("claude");
+    let start = Instant::now();
+    let mut manager = manager_with(vec![
+        record(1, claude, SessionState::Open),
+        {
+            let mut other = record(2, claude, SessionState::Open);
+            other.chat = ChatId(CHAT.0 + 1);
+            other
+        },
+        {
+            let mut sub = record(3, claude, SessionState::Open);
+            sub.chat = ChatId(CHAT.0 + 2);
+            sub.role = AgentRole::Sub;
+            sub
+        },
+    ]);
+    for id in [1, 2, 3] {
+        manager.mark_idle(SessionId(id), start);
+    }
+    let all_idle = |_: AgentId| true;
+
+    let before = start + IDLE_GRACE - Duration::from_secs(1);
+    assert!(
+        manager
+            .idle_expired(before, IDLE_GRACE, all_idle)
+            .is_empty()
+    );
+    let at = start + IDLE_GRACE;
+    assert_eq!(
+        manager.idle_expired(at, IDLE_GRACE, all_idle),
+        vec![SessionId(1), SessionId(2)]
+    );
+    assert_eq!(
+        manager.idle_expired(at, IDLE_GRACE, |agent| agent != AgentId(1)),
+        vec![SessionId(2)]
+    );
+    manager.mark_busy(SessionId(1));
+    assert_eq!(
+        manager.idle_expired(at, IDLE_GRACE, all_idle),
+        vec![SessionId(2)]
+    );
+    manager
+        .set_state(SessionId(2), SessionState::ClosedResumable)
+        .unwrap();
+    assert!(manager.idle_expired(at, IDLE_GRACE, all_idle).is_empty());
+}

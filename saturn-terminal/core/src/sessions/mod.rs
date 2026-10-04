@@ -235,6 +235,31 @@ impl SessionManager {
         }
     }
 
+    // cost: time O(s), heap O(k), stack O(1)
+    // vars: s = session 수, k = 만료된 session 수
+    // basis: estimate
+    /// 열린 메인 중 유휴가 된 지 `grace` 이상 지난 session을 id 순서로 돌려준다. 새 턴이 시작되면 `idle_since`가 지워져 세지 않고,
+    /// `is_tree_idle`이 거짓인 에이전트(실행 중인 subagent가 있음)도 세지 않는다. 보조 에이전트는 끝나면 스스로 종료하므로 대상이 아니다.
+    pub fn idle_expired(
+        &self,
+        now: Instant,
+        grace: Duration,
+        is_tree_idle: impl Fn(AgentId) -> bool,
+    ) -> Vec<SessionId> {
+        self.sessions
+            .iter()
+            .filter(|session| {
+                session.role == AgentRole::Main
+                    && session.state == SessionState::Open
+                    && session
+                        .idle_since
+                        .is_some_and(|since| now.saturating_duration_since(since) >= grace)
+                    && is_tree_idle(session.agent)
+            })
+            .map(|session| session.id)
+            .collect()
+    }
+
     // cost: time O(s), heap O(1), stack O(1)
     // vars: s = session 수
     // basis: estimate
