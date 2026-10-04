@@ -48,7 +48,7 @@ def curves_section(s: dict, lines: list[str]) -> None:
         if r["threshold"] != 0.8:
             continue
         lines.append(
-            f"| {r['condition']} | {r['threshold']:.2f} | {r['n']} | {r['base_correct_only']} / {r['condition_correct_only']} | {100 * r['delta']['false_join_rate']:+.1f}%p / {span(r['cluster']['false_join_rate']['ci'])} | {100 * r['delta']['recall']:+.1f}%p / {span(r['cluster']['recall']['ci'])} |"
+            f"| {r['condition']} | {r['threshold']:.2f} | {r['n']} | {r['base_correct_only']} / {r['condition_correct_only']} | {100 * r['delta']['false_join_rate']:+.1f}%p / {span(r['cluster']['false_join_rate']['ci']).replace('%', '%p')} | {100 * r['delta']['recall']:+.1f}%p / {span(r['cluster']['recall']['ci']).replace('%', '%p')} |"
         )
 
 
