@@ -82,7 +82,7 @@ saturn
 
 ### 화면 없이 실행
 
-파이프나 CI처럼 화면이 없으면 Saturn은 키를 물을 수 없습니다. 키를 정하는 방법을 출력하고 종료 코드 1로 끝납니다.
+파이프나 CI처럼 화면이 없으면 Saturn은 키를 물을 수 없습니다. 키를 정하는 방법을 출력하고 종료 코드 77로 끝납니다.
 
 ```sh
 saturn usage
@@ -91,6 +91,21 @@ saturn usage
 ```text
 Error: Router key required (router key required: router rejected the key): set the SATURN_KEY environment variable or the router.key.command setting, then run again
 ```
+
+### 종료 코드
+
+| 코드 | 뜻 |
+|---|---|
+| 0 | 성공 |
+| 1 | 그 밖의 실패. 확인 질문에 아니라고 답한 경우와 plain 모드의 작업 실패 포함 |
+| 2 | 사용법 오류. 호출을 바꿔야 풀림. 예: 선택 창에 필요한 터미널 없음, 에이전트 안 중첩 실행 |
+| 66 | 대상 없음. 이어 열 채팅 없음, 없는 폴더, 없는 router 버전 |
+| 69 | engine을 쓸 수 없음. 시작 실패, 응답 없음, 교체 실패, 연결 끊김 |
+| 70 | engine 내부 오류 |
+| 75 | 지금은 안 되고 나중에 가능. 예: 학습 표본 부족 |
+| 77 | router 키 없음이나 확인 실패 |
+| 78 | 설정 오류 |
+| 130 | 창에서 `Esc`나 `Ctrl+C`로 중단 |
 
 ### 모델 바꾸기
 

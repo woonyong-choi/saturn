@@ -10,14 +10,15 @@ use saturn_tui::i18n::{self, Lang};
 
 use crate::args::TrainArgs;
 use crate::commands::{call, confirm_on_terminal};
+use crate::exit::{Exit, ExitCode};
 
 // cost: time O(p), heap O(1), stack O(1), io p
 // vars: p = 받은 진행 알림 수
 // basis: estimate
-/// TODO(#47): 거절과 승격 실패의 종료 코드. 학습이 끝났을 때 승격 여부를 알리는 알림도 아직 없다
+/// TODO(#47): 학습이 끝났을 때 승격 여부를 알리는 알림이 아직 없어 승격 실패는 종료 코드로 알리지 못한다
 ///
 /// # Errors
-/// engine이 거절했거나 연결이 끊기면 오류.
+/// engine이 거절했거나, 확인에 아니라고 답했거나, 연결이 끊기면 오류.
 pub(crate) async fn run(
     lang: Lang,
     client: &mut EngineClient,
@@ -111,12 +112,13 @@ async fn train(
         },
     )
     .await?;
-    let outcome = if proceed {
-        i18n::CLI_TRAIN_FINISHED
-    } else {
-        i18n::CLI_TRAIN_CANCELLED
-    };
-    writeln!(out, "{}", lang.tr(outcome))?;
+    if !proceed {
+        return Err(Exit::error(
+            ExitCode::Failure,
+            lang.tr(i18n::CLI_TRAIN_CANCELLED),
+        ));
+    }
+    writeln!(out, "{}", lang.tr(i18n::CLI_TRAIN_FINISHED))?;
     Ok(())
 }
 
@@ -199,7 +201,7 @@ mod tests {
         let mut client = engine.client().await;
         let mut out = Vec::new();
 
-        train(
+        let error = train(
             Lang::En,
             &mut client,
             &args(),
@@ -208,13 +210,10 @@ mod tests {
             &mut Vec::new(),
         )
         .await
-        .unwrap();
+        .unwrap_err();
 
-        assert!(
-            String::from_utf8(out)
-                .unwrap()
-                .ends_with("Training cancelled\n")
-        );
+        assert_eq!(error.to_string(), "Training cancelled");
+        assert_eq!(crate::exit::of(&error), ExitCode::Failure);
         let sent = engine.finish().await;
         assert_eq!(sent[1], Request::ConfirmTrain { proceed: false });
     }

@@ -153,7 +153,7 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 - 더한 폴더의 `.saturn/config.toml`은 읽지 않는다. 폴더 설정은 기본 폴더 것만 쓴다([설정](settings.md)).
 - 이어 열기는 provider의 재개 명령이 아니라 Saturn이 채팅 기록으로 직접 처리한다. 채팅은 여러 provider session을 잇는 단위이므로 provider 하나의 session으로 채팅을 정할 수 없기 때문이다. provider의 이어 열기와 새 대화 명령은 provider 명령 목록에서 뺀다([provider 연결과 session](providers-and-sessions.md)).
 - 다른 폴더의 채팅을 이어 열면 그 채팅의 기본 폴더에서 일한다. 현재 폴더로 바꾸지 않으며, 시작 화면이 그 폴더를 보인다([TUI](tui.md)).
-- 채팅 목록은 `LatestChat`과 같은 기준으로 마지막 입력을 접수한 시각이 가장 늦은 채팅부터 보인다(입력이 없는 채팅은 만든 시각). 한 줄은 `번호. #채팅 id · 경과 · [폴더 ·] [이름 ·] 첫 입력`이고(이름은 붙인 채팅만)(줄 번호는 보기용이고 번호를 입력해 고르지 않는다), 폴더 칸은 `--resume all`에서만 보이며, 첫 입력은 첫 줄을 60자(초안)까지 보이고 입력이 없으면 `(입력 없음)`(영어 `(no input)`)이다. `↑`, `↓`로 줄을 옮기고 `Enter`를 누르면 그 채팅을 열며, 첫 선택은 가장 최근 채팅이다. `Esc`와 `Ctrl+C`는 채팅을 열지 않고 `채팅을 고르지 않았습니다`(영어 `No chat was picked`)로 오류 종료한다. 목록이 화면보다 길면 고른 줄이 보이게 스크롤한다. 목록이 비면 새 채팅을 열지 않고 안내와 함께 오류로 끝낸다. 지금은 목록 길이에 상한을 두지 않는다(초안).
+- 채팅 목록은 `LatestChat`과 같은 기준으로 마지막 입력을 접수한 시각이 가장 늦은 채팅부터 보인다(입력이 없는 채팅은 만든 시각). 한 줄은 `번호. #채팅 id · 경과 · [폴더 ·] [이름 ·] 첫 입력`이고(이름은 붙인 채팅만)(줄 번호는 보기용이고 번호를 입력해 고르지 않는다), 폴더 칸은 `--resume all`에서만 보이며, 첫 입력은 첫 줄을 60자(초안)까지 보이고 입력이 없으면 `(입력 없음)`(영어 `(no input)`)이다. `↑`, `↓`로 줄을 옮기고 `Enter`를 누르면 그 채팅을 열며, 첫 선택은 가장 최근 채팅이다. `Esc`와 `Ctrl+C`는 채팅을 열지 않고 `채팅을 고르지 않았습니다`(영어 `No chat was picked`)로 종료 코드 130으로 끝난다. 목록이 화면보다 길면 고른 줄이 보이게 스크롤한다. 목록이 비면 새 채팅을 열지 않고 안내와 함께 오류로 끝낸다. 지금은 목록 길이에 상한을 두지 않는다(초안).
 - TUI의 작업 목록은 기본으로 현재 폴더의 채팅만 보인다. 모든 폴더의 채팅은 `--resume all`이나 작업 목록 필터로 본다.
 - 이어 열기 명령은 짧은 이름 없이 긴 이름만 쓴다. 설정의 실행 층 `-c KEY=VALUE`와 겹치지 않게 하고 이어 열기 명령끼리 일관되게 하기 위해서다. 채팅 id는 숫자라 `all`과 겹치지 않는다.
 
@@ -301,6 +301,28 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 에이전트가 실행한 중첩 `saturn` | 실행을 거절한다. |
 | 한 채팅의 provider 요청이 느리거나 응답하지 않음 | 요청은 연결 작업이 실행하고 요청 처리 루프는 결과 메시지만 받으므로, 다른 채팅의 요청과 같은 채팅의 멈춤 요청은 기다리지 않고 처리한다([provider 요청 작업](providers-and-sessions.md#provider-요청-작업)). 응답 대기에는 요청 종류별 제한(바로 돌아와야 하는 요청 10초, 시작·열기 요청 60초, 초안)을 두고 턴은 자동으로 끊지 않는다. 응답 없는 요청의 처리는 [provider 오류 처리](providers-and-sessions.md#오류-처리)를 따른다. |
 
+### 종료 코드
+
+`saturn`은 원인별로 종료 코드를 나눈다. 스크립트와 CI가 "다시 해 볼 일", "호출을 고칠 일", "설정을 고칠 일"을 문구를 읽지 않고 가르게 하기 위해서다. 숫자는 BSD sysexits와 셸 관례를 따르고, 원인별로 나누는 방식은 Gemini CLI와 같다(Claude Code, Codex, OpenCode는 0, 1, 2만 쓴다). 코드는 `cli`의 열거형 `ExitCode` 한 곳에서 정하고 모든 종료 경로가 그것을 거친다.
+
+| 코드 | 뜻 | 예 | 근거 |
+|---|---|---|---|
+| 0 | 성공 | 명령이 끝났다. `--help`. 전체 화면을 정상으로 닫았다. | 셸 관례 |
+| 1 | 그 밖의 실패 | 확인 질문에 아니라고 답했다. plain 모드에서 provider 작업이 실패로 끝났다. provider 설치 없음 등 예상한 실패. | 셸 관례 |
+| 2 | 사용법 오류 | 모르는 인자. 터미널 없이 `--resume`이나 확인 질문이 필요하다. 에이전트 안 중첩 실행. `--add-dir`가 폴더가 아니다. engine이 `INVALID_PARAMS`로 거절했다. | 호출을 바꿔야 풀린다. 셸 관례 |
+| 66 | 대상 없음 | 이어 열 채팅이 없다. `--add-dir` 폴더가 없다. 없는 router 버전. | `EX_NOINPUT` |
+| 69 | engine을 쓸 수 없음 | engine 실행 파일이 없거나 시작에 실패했다. 소켓이 제때 열리지 않았다. 옛 engine 교체에 실패했다. 연결이 끊겼다. | `EX_UNAVAILABLE` |
+| 70 | engine 내부 오류 | engine이 원인 종류 없이 거절했다. 답에 필요한 알림이 빠졌다. engine 메시지를 해석하지 못했다. | `EX_SOFTWARE` |
+| 75 | 지금은 안 되고 나중에 가능 | 학습 표본이 모자란다. | `EX_TEMPFAIL` |
+| 77 | router 키 없음이나 확인 실패 | 키가 없다. router가 키를 거절했다. 화면이 없어 키를 물을 수 없다. | `EX_NOPERM` |
+| 78 | 설정 오류 | 설정 파일이나 값이 틀렸다. `retention.max_age_days`가 없어 `prune`을 못 한다. router 주소가 허용되지 않는다. | `EX_CONFIG` |
+| 130 | 사용자 중단 | 채팅 선택 창, router 키 창, 폴더 신뢰 창에서 `Esc`나 `Ctrl+C`로 닫았다. | 셸 관례(128 + SIGINT) |
+
+- `saturn-engine hook pre-tool-use`는 Claude Code 훅 규약이라 입력 오류에 종료 코드 2를 유지한다. 위 표는 `saturn`에만 적용한다.
+- engine이 요청을 거절하면 응답 오류에 원인 종류(`ErrorKind`: `NotFound`, `RetryLater`, `RouterKey`, `Config`, `Failed`)를 싣는다. `cli`는 원인 종류가 있으면 그것으로, 없으면 `INVALID_PARAMS`는 2, 그 밖은 70으로 정한다. 같은 JSON-RPC 오류 번호 안의 원인을 가르기 위해서다. 옛 engine은 원인 종류를 보내지 않으므로 70이 된다.
+- plain 모드에서 provider 작업이 실패로 끝나면 실패 줄을 출력하고 입력을 모두 처리한 뒤 1로 끝낸다. engine은 멀쩡하고 실패한 것은 작업이라 69가 아니다. 전체 화면에서는 작업 실패가 화면에 보이므로 정상으로 닫으면 0이다.
+- `saturn router train`은 확인 질문에 아니라고 답하면 1이다. 학습이 끝난 뒤 승격 여부를 알리는 알림이 아직 없어 승격 실패는 종료 코드로 알리지 못한다(TODO #47).
+
 ### 요구사항
 
 | 요구사항 | 검증 계획 |
@@ -353,6 +375,8 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 끊긴 하위 에이전트 정리 목록과 감시는 `engine`을 다시 켜도 이어지고, 정리를 넘긴 뒤에는 다시 넘기지 않으며, 보류를 닫으면 지운다. | `saturn-terminal/engine/src/lifecycle/child_sessions.rs`의 `interrupted_children_are_handed_over_after_the_engine_restarts`, `cleaned_children_are_not_handed_over_again_but_still_blocked_after_a_restart`, `interrupted_subagent_is_still_blocked_after_the_engine_restarts`, `closing_a_held_task_forgets_its_interrupted_subagents` |
 | 다시 켠 `engine`은 기록 저장소에 남은 보내지 않은 입력을 접수 순서대로 대기열에 되살린다. 보낸 것으로 기록된 입력은 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/restore_inputs.rs`의 `waiting_inputs_are_sent_in_accept_order_after_a_clean_restart`, `judging_input_is_judged_again_and_sent_after_a_restart`, `restored_inputs_of_one_chat_are_judged_one_at_a_time_in_accept_order`, `unsent_inputs_are_held_with_the_crashed_task_and_resume_in_order`, `held_input_stays_held_after_restart_until_continue`, `delivering_input_is_never_resent_after_restart` |
 | 채팅을 다시 열면 기록에 남은 마지막 턴의 맥락 사용량을 `ContextSize`로 보내고, 값을 모르면 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/attach.rs`의 `attach_sends_the_context_size_of_the_last_turn`, `attach_without_a_last_turn_sends_no_context_size` |
+| `saturn`은 원인별 종료 코드(0, 1, 2, 66, 69, 70, 75, 77, 78, 130)로 끝난다. | `saturn-terminal/cli/tests/exit_codes.rs`의 `help_exits_zero_and_unknown_flag_exits_two`, `nested_run_inside_an_agent_exits_two`, `picking_a_chat_without_a_terminal_exits_two`, `missing_add_dir_exits_sixty_six`, `continue_without_a_chat_in_the_folder_exits_sixty_six`, `unknown_router_version_exits_sixty_six`, `engine_that_hangs_up_exits_sixty_nine`, `engine_internal_error_exits_seventy`, `training_without_enough_samples_exits_seventy_five`, `missing_router_key_exits_seventy_seven`, `setting_error_exits_seventy_eight`, `expected_failure_exits_one` |
+| plain 모드에서 실패한 작업이 있으면 1로 끝나고, 없으면 0이다. | `saturn-terminal/cli/tests/exit_codes.rs`의 `plain_run_with_a_failed_task_exits_one`, `plain_run_that_finishes_cleanly_exits_zero` |
 | 에이전트가 실행한 `saturn`은 거절한다. | [하위 에이전트 훅 적용 범위 측정](https://github.com/woonyong-choi/saturn/issues/23) |
 | 한 채팅의 provider 요청이 느리거나 응답하지 않아도 다른 채팅의 입력과 조회, 같은 채팅의 멈춤 요청을 바로 처리한다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_slow_start_request_does_not_stall_other_chats_or_stop`, `a_silent_provider_request_does_not_stall_other_chats_or_stop`, `a_provider_that_stops_reading_input_does_not_stall_other_chats_or_stop` |
 

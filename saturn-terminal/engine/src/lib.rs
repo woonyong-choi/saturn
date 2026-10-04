@@ -68,7 +68,7 @@ use saturn_core::agents::AgentTracker;
 use saturn_core::providers::ProviderError;
 use saturn_core::queue::{Queue, QueueError};
 use saturn_core::sessions::{SessionError, SessionManager};
-use saturn_protocol::envelope::{INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND};
+use saturn_protocol::envelope::{ErrorKind, INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND};
 use saturn_protocol::ids::{AgentId, ChatId, Provider, RunId, TaskId};
 
 use crate::chat_env::ChatEnv;
@@ -172,6 +172,34 @@ impl EngineError {
                 | QueueError::InvalidTransition { .. },
             ) => INVALID_PARAMS,
             _ => INTERNAL_ERROR,
+        }
+    }
+
+    /// `cli`가 종료 코드를 가르는 원인 종류. 없으면 engine 내부 오류로 본다.
+    fn kind(&self) -> Option<ErrorKind> {
+        match self {
+            Self::RouterKeyRequired { .. }
+            | Self::Secrets(_)
+            | Self::Routers(RoutersError::Check(_) | RoutersError::Secrets(_)) => {
+                Some(ErrorKind::RouterKey)
+            }
+            Self::NoRetention
+            | Self::Settings(_)
+            | Self::Routers(
+                RoutersError::DisallowedEndpoint { .. }
+                | RoutersError::NotConfigured { .. }
+                | RoutersError::Settings(_),
+            )
+            | Self::Training(TrainingError::NoGrader) => Some(ErrorKind::Config),
+            Self::Store(StoreError::NotFound { .. })
+            | Self::Training(TrainingError::UnknownVersion { .. }) => Some(ErrorKind::NotFound),
+            Self::Training(TrainingError::NotEnough { .. }) => Some(ErrorKind::RetryLater),
+            Self::NoProvider
+            | Self::Provider(_)
+            | Self::Training(TrainingError::Grader(_) | TrainingError::Trainer { .. }) => {
+                Some(ErrorKind::Failed)
+            }
+            _ => None,
         }
     }
 }
@@ -471,4 +499,38 @@ fn masked_chain(masker: &Masker, error: &dyn std::error::Error) -> String {
 
 fn unsupported(method: &'static str) -> EngineError {
     EngineError::Unsupported { method }
+}
+
+#[cfg(test)]
+mod error_kind_tests {
+    use super::*;
+
+    #[test]
+    fn engine_errors_carry_the_kind_the_cli_turns_into_an_exit_code() {
+        let cases = [
+            (
+                EngineError::RouterKeyRequired {
+                    reason: "no key".to_owned(),
+                },
+                Some(ErrorKind::RouterKey),
+            ),
+            (EngineError::NoRetention, Some(ErrorKind::Config)),
+            (
+                EngineError::Training(TrainingError::NotEnough { have: 1, need: 200 }),
+                Some(ErrorKind::RetryLater),
+            ),
+            (
+                EngineError::Training(TrainingError::UnknownVersion {
+                    version: "v9".to_owned(),
+                }),
+                Some(ErrorKind::NotFound),
+            ),
+            (EngineError::NoProvider, Some(ErrorKind::Failed)),
+            (EngineError::InvalidLabel { what: "name" }, None),
+        ];
+
+        for (error, kind) in cases {
+            assert_eq!(error.kind(), kind, "{error}");
+        }
+    }
 }

@@ -15,6 +15,8 @@ use saturn_protocol::rpc::{PROTOCOL_VERSION, Request};
 use saturn_tui::client::{ClientError, EngineClient, EngineVersion};
 use saturn_tui::i18n::{self, Lang};
 
+use crate::exit::{Exit, ExitCode};
+
 const ENGINE_BINARY: &str = "saturn-engine";
 
 /// engine이 에이전트 작업의 환경에 넣는 변수 이름과 같다.
@@ -68,11 +70,13 @@ pub(crate) fn ensure_not_nested(lang: Lang) -> anyhow::Result<()> {
 }
 
 fn check_nested(lang: Lang, marker: Option<&OsStr>) -> anyhow::Result<()> {
-    anyhow::ensure!(
-        marker.is_none(),
-        lang.tr(i18n::CLI_NESTED)
-            .replace("{marker}", NESTED_MARKER_ENV)
-    );
+    if marker.is_some() {
+        return Err(Exit::error(
+            ExitCode::Usage,
+            lang.tr(i18n::CLI_NESTED)
+                .replace("{marker}", NESTED_MARKER_ENV),
+        ));
+    }
     Ok(())
 }
 
@@ -310,7 +314,23 @@ async fn wait_until_gone(
 // basis: estimate
 /// 이미 도는 engine이 같거나 더 새 판이면 붙기만 한다. 옛 판이면 끝내고 새로 띄운다.
 /// 없으면 `locate`가 준 실행 파일을 띄우고 소켓이 열리기를 기다린다.
+/// 어느 단계에서 실패해도 engine을 쓸 수 없는 경우라 종료 코드는 `EngineUnavailable`이다.
 async fn connect_or_start_at(
+    lang: Lang,
+    socket: &Path,
+    locate: impl FnOnce() -> anyhow::Result<PathBuf>,
+    processes: &dyn Processes,
+    limits: UpgradeLimits,
+) -> anyhow::Result<EngineClient> {
+    attach_or_start(lang, socket, locate, processes, limits)
+        .await
+        .map_err(|error| Exit::wrap(ExitCode::EngineUnavailable, error))
+}
+
+// cost: time O(t), heap O(1), stack O(1), io t
+// vars: t = 소켓이 열릴 때까지의 접속 시도 수
+// basis: estimate
+async fn attach_or_start(
     lang: Lang,
     socket: &Path,
     locate: impl FnOnce() -> anyhow::Result<PathBuf>,

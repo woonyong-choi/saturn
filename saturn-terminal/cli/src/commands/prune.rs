@@ -3,13 +3,14 @@
 
 use std::io::Write;
 
-use saturn_protocol::envelope::INVALID_PARAMS;
+use saturn_protocol::envelope::ErrorKind;
 use saturn_protocol::rpc::{ChatListItem, PruneSkipReason, PruneSkipped, QueryResult, Request};
 use saturn_tui::client::{ClientError, EngineClient};
 use saturn_tui::i18n::{self, Lang};
 
 use crate::args::PruneArgs;
 use crate::commands::call;
+use crate::exit::{Exit, ExitCode};
 
 /// engine가 보낸 정리 결과나 미리보기.
 struct Report {
@@ -52,7 +53,12 @@ pub(crate) async fn run(
             skipped,
             rows,
         },
-        _ => anyhow::bail!(lang.tr(i18n::CLI_NO_PRUNE_ANSWER)),
+        _ => {
+            return Err(Exit::error(
+                ExitCode::EngineInternal,
+                lang.tr(i18n::CLI_NO_PRUNE_ANSWER),
+            ));
+        }
     };
     write!(
         std::io::stdout().lock(),
@@ -67,12 +73,12 @@ fn prune_error(lang: Lang, error: anyhow::Error) -> anyhow::Error {
     let no_retention = matches!(
         error.downcast_ref::<ClientError>(),
         Some(ClientError::Rejected {
-            code: INVALID_PARAMS,
+            kind: Some(ErrorKind::Config),
             ..
         })
     );
     if no_retention {
-        anyhow::anyhow!(lang.tr(i18n::CLI_PRUNE_NO_RETENTION))
+        Exit::error(ExitCode::Config, lang.tr(i18n::CLI_PRUNE_NO_RETENTION))
     } else {
         error
     }
@@ -145,6 +151,7 @@ fn reason_phrase(reason: PruneSkipReason) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    use saturn_protocol::envelope::INVALID_PARAMS;
     use saturn_protocol::ids::ChatId;
 
     use crate::testing::{FakeEngine, Reply};
@@ -254,7 +261,11 @@ mod tests {
 
     #[tokio::test]
     async fn run_without_a_retention_setting_explains_how_to_set_it() {
-        let engine = FakeEngine::start(vec![Reply::error(INVALID_PARAMS, "no retention")]);
+        let engine = FakeEngine::start(vec![Reply::error_of_kind(
+            INVALID_PARAMS,
+            ErrorKind::Config,
+            "no retention",
+        )]);
         let mut client = engine.client().await;
 
         let error = run(Lang::En, &mut client, &PruneArgs { yes: true })
@@ -262,6 +273,7 @@ mod tests {
             .unwrap_err();
 
         assert!(error.to_string().contains("retention.max_age_days"));
+        assert_eq!(crate::exit::of(&error), ExitCode::Config);
     }
 
     #[tokio::test]

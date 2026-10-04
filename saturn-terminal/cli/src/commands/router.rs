@@ -9,6 +9,7 @@ use saturn_tui::i18n::{self, Lang};
 
 use crate::args::RouterUseArgs;
 use crate::commands::{call, confirm_on_terminal};
+use crate::exit::{Exit, ExitCode};
 
 // cost: time O(v), heap O(v), stack O(1), io 2
 // vars: v = router 버전 수
@@ -70,19 +71,21 @@ async fn switch_version(
     out: &mut impl Write,
 ) -> anyhow::Result<()> {
     let (current, versions) = list_versions(lang, client).await?;
-    anyhow::ensure!(
-        versions.iter().any(|info| info.version == args.version),
-        lang.tr(i18n::CLI_ROUTER_VERSION_NOT_FOUND)
-            .replace("{version}", &args.version)
-            .replace(
-                "{available}",
-                &versions
-                    .iter()
-                    .map(|info| info.version.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )
-    );
+    if !versions.iter().any(|info| info.version == args.version) {
+        return Err(Exit::error(
+            ExitCode::NotFound,
+            lang.tr(i18n::CLI_ROUTER_VERSION_NOT_FOUND)
+                .replace("{version}", &args.version)
+                .replace(
+                    "{available}",
+                    &versions
+                        .iter()
+                        .map(|info| info.version.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                ),
+        ));
+    }
     if current == args.version {
         let line = lang
             .tr(i18n::CLI_ROUTER_VERSION_ALREADY)
@@ -95,10 +98,11 @@ async fn switch_version(
         .replace("{version}", &args.version)
         .replace("{current}", &current);
     if !confirm(&prompt)? {
-        anyhow::bail!(
+        return Err(Exit::error(
+            ExitCode::Failure,
             lang.tr(i18n::CLI_ROUTER_VERSION_NOT_CONFIRMED)
-                .replace("{current}", &current)
-        );
+                .replace("{current}", &current),
+        ));
     }
     let request = Request::UseRouterVersion {
         version: args.version.clone(),
@@ -120,7 +124,10 @@ async fn list_versions(
 ) -> anyhow::Result<(String, Vec<RouterVersionInfo>)> {
     match call(lang, client, Request::ListRouterVersions, drop).await? {
         Some(QueryResult::RouterVersions { current, versions }) => Ok((current, versions)),
-        _ => Err(anyhow::anyhow!(lang.tr(i18n::CLI_NO_ROUTER_VERSIONS))),
+        _ => Err(Exit::error(
+            ExitCode::EngineInternal,
+            lang.tr(i18n::CLI_NO_ROUTER_VERSIONS),
+        )),
     }
 }
 

@@ -11,6 +11,7 @@ use saturn_tui::view::usage::{cost_text, range_name};
 
 use crate::args::UsageArgs;
 use crate::commands::call;
+use crate::exit::{Exit, ExitCode};
 
 // cost: time O(r), heap O(r), stack O(1), io r
 // vars: r = 행 수
@@ -49,7 +50,10 @@ async fn fetch(
     };
     match call(lang, client, request, drop).await? {
         Some(QueryResult::Usage { range, rows }) => Ok((range, rows)),
-        _ => Err(anyhow::anyhow!(lang.tr(i18n::CLI_NO_USAGE_TABLE))),
+        _ => Err(Exit::error(
+            ExitCode::EngineInternal,
+            lang.tr(i18n::CLI_NO_USAGE_TABLE),
+        )),
     }
 }
 
@@ -98,6 +102,7 @@ fn write_table(
 #[cfg(test)]
 mod tests {
     use crate::testing::{FakeEngine, Reply};
+    use saturn_protocol::envelope::ErrorKind;
 
     use super::*;
 
@@ -182,7 +187,11 @@ mod tests {
 
     #[tokio::test]
     async fn fetch_when_router_key_is_required_explains_how_to_set_it() {
-        let engine = FakeEngine::start(vec![Reply::error(-32001, "no key")]);
+        let engine = FakeEngine::start(vec![Reply::error_of_kind(
+            -32001,
+            ErrorKind::RouterKey,
+            "no key",
+        )]);
         let mut client = engine.client().await;
 
         let error = fetch(
@@ -200,5 +209,6 @@ mod tests {
         let message = error.to_string();
         assert!(message.contains("SATURN_KEY"));
         assert!(message.contains("router.key.command"));
+        assert_eq!(crate::exit::of(&error), ExitCode::RouterKey);
     }
 }

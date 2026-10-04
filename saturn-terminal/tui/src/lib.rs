@@ -52,6 +52,12 @@ pub enum TuiError {
         "router key required ({reason}): set the SATURN_KEY environment variable or the router.key.command setting"
     )]
     RouterKeyRequired { reason: String },
+    /// 사용자가 router 키나 폴더 신뢰 창을 닫아 끝냈다.
+    #[error("quit from a prompt window")]
+    Aborted,
+    /// plain 모드에서 provider 작업이 실패로 끝났다. 실패 줄은 이미 출력했다.
+    #[error("a task failed")]
+    TaskFailed,
 }
 
 #[derive(Debug, Clone)]
@@ -98,6 +104,9 @@ pub async fn run(client: &mut EngineClient, options: RunOptions) -> Result<(), T
     let restored = terminal::leave();
     result?;
     restored?;
+    if app.aborted {
+        return Err(TuiError::Aborted);
+    }
     if let Some(line) = app.exit_line() {
         writeln!(std::io::stdout().lock(), "{line}").map_err(TuiError::ExitNotice)?;
     }
@@ -145,7 +154,11 @@ pub async fn run_plain(client: &mut EngineClient, options: RunOptions) -> Result
         let idle = submitted == 0 || output.is_finished();
         if !stdin_open && waiting.is_empty() && idle {
             client.send(Request::Detach).await?;
-            return Ok(());
+            return if output.has_failed() {
+                Err(TuiError::TaskFailed)
+            } else {
+                Ok(())
+            };
         }
         tokio::select! {
             line = stdin.next_line(), if stdin_open => match line.map_err(TuiError::Plain)? {
