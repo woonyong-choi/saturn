@@ -153,7 +153,8 @@ Codex와 Claude는 지금처럼 직접 연결(Codex app-server, Claude stream-js
 
 - 새 provider는 처음에 ACP 어댑터 하나로 붙여 기본 기능으로 쓴다. 주력으로 쓰게 되고 그 provider가 깊은 기능을 열어 주면 직접 어댑터로 바꾼다. 계층이 나뉘어 있으므로 이 교체는 어댑터만 바꾸는 일이다. ACP 어댑터는 지금 구현하지 않는다.
 - ACP는 Zed와 JetBrains가 함께 관리하는 공개 표준이고([관리 문서](https://agentclientprotocol.com/community/governance), 2026-10-04 확인), 저장소 라이선스는 Apache-2.0이다([저장소](https://github.com/agentclientprotocol/agent-client-protocol), 2026-10-04 확인). 확장 메서드는 `_` 접두사와 `_meta` 필드로 한다([확장 문서](https://agentclientprotocol.com/protocol/extensibility), 2026-10-04 확인).
-- 직접 연결의 업데이트는 engine이 시작할 때 provider CLI 버전을 읽어 마지막으로 확인한 버전과 다르면 알리는 것으로 대응한다. 버전이 바뀌면 실제 provider로 핵심 흐름(입력, 전환, 다시 열기)만 도는 빠른 확인 절차를 `scripts/e2e`에 둔다. 차이는 어댑터 안에서만 고친다. 이 항목은 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)).
+- 직접 연결의 업데이트는 engine이 시작할 때 provider CLI 버전을 읽어 마지막으로 확인한 버전과 다르면 알리는 것으로 대응한다. 버전이 바뀌면 실제 provider로 핵심 흐름(입력, 전환, 다시 열기)만 도는 빠른 확인 절차를 `scripts/e2e`에 둔다. 차이는 어댑터 안에서만 고친다. 버전 알림은 구현했고 빠른 확인 절차는 구현 전이다([#412](https://github.com/woonyong-choi/saturn/issues/412)).
+- 버전은 어댑터의 `read_version`이 읽는다. 기본은 설정이 아닌 `PATH`의 실행 파일에 `--version`을 주고(자식 환경은 `PATH`와 `HOME`만, 5초 제한) 출력 첫 줄에서 숫자로 시작하는 첫 낱말을 쓴다. 읽은 값은 [기록 저장소](records.md)의 `provider_versions` 표와 비교한다. 같으면 아무것도 하지 않고, 처음 확인하는 provider는 알림 없이 기록만 하며, 다르면 기록을 덮어쓰고 처음 붙는 TUI에 `Alert::ProviderUpdated`를 한 번 보낸다. 읽지 못한 provider는 기록을 그대로 둔다. 읽은 버전은 붙을 때 `StartInfo`의 provider 버전에도 실린다(초안).
 
 ### provider 실행과 기본값 인자
 
@@ -482,7 +483,8 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 어댑터 설명자의 표시명, 실행 파일, 기본 순서, 지시 문서 이름, 맥락 기본값, 기능을 화면과 첫 입력 기본 provider, 패킷, 예산, 끼워 넣기가 쓴다. | `saturn-terminal/engine/src/providers/registry.rs`의 `descriptors_come_back_in_the_default_order`, `installed_means_an_executable_file_of_the_descriptor_on_the_given_path`, `saturn-terminal/engine/src/lifecycle/fake_provider.rs`의 `descriptor_values_reach_the_common_code`, `an_adapter_without_the_steer_feature_never_gets_a_steer`, `an_adapter_with_the_steer_feature_gets_the_steer`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_skips_provider_docs`, `saturn-terminal/tui/src/i18n.rs`의 `provider_names_come_from_what_engine_announced`, `saturn-terminal/tui/src/app/tests.rs`의 `model_command_values_are_the_provider_ids_engine_announced` |
 | 기록 저장소의 옛 provider 값 `Codex`, `Claude`와 모델 고정 글 `codex/<model>`, `claude/<model>`이 옛 값 그대로 읽힌다. | `saturn-terminal/engine/src/store/records/tests.rs`의 `old_provider_values_read_as_open_ids`, `saturn-protocol/src/ids.rs`의 `old_stored_values_read_as_the_same_id`, `saturn-terminal/engine/src/providers/mod.rs`의 `pinned_text_keeps_the_old_provider_prefix` |
 | 인터페이스 판이 지원 범위 밖인 어댑터는 등록하지 않는다. | `saturn-terminal/engine/src/providers/registry.rs`의 `duplicate_ids_and_other_interface_versions_are_not_registered` |
-| engine 시작 때 provider CLI 버전이 마지막으로 확인한 버전과 다르면 알리고, 버전이 바뀌면 실제 provider로 입력, 전환, 다시 열기만 도는 빠른 확인 절차가 `scripts/e2e`에 있다. | 구현 전(#412). 마지막 확인 버전을 바꿔 시작 알림을 확인하고, 실제 Codex와 Claude로 빠른 확인 절차를 실행한다. |
+| engine 시작 때 provider CLI 버전이 마지막으로 확인한 버전과 다르면 알린다. | `saturn-terminal/engine/src/lifecycle/versions.rs`의 `the_first_check_records_the_version_without_a_notice`, `a_changed_version_is_told_once_to_the_first_tui_and_recorded`, `the_same_version_is_not_told`, `a_cli_that_cannot_be_read_keeps_the_last_checked_version`, `start_info_carries_the_detected_versions`, `saturn-terminal/engine/src/providers/adapter.rs`의 `version_is_the_first_word_that_starts_with_a_digit`, `saturn-terminal/tui/src/view/status_board.rs`의 `alert_text_provider_updated_shows_both_versions` |
+| 버전이 바뀌면 실제 provider로 입력, 전환, 다시 열기만 도는 빠른 확인 절차가 `scripts/e2e`에 있다. | 구현 전(#412). 실제 Codex와 Claude로 빠른 확인 절차를 실행한다. |
 
 ## 단점
 

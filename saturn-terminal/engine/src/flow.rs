@@ -106,6 +106,8 @@ pub(crate) struct FlowState {
     pub(crate) models: HashMap<(ChatId, Provider), Vec<ModelInfo>>,
     /// 연결이 마지막으로 알린 명령 목록. 나중에 붙는 TUI에 그대로 보낸다.
     pub(crate) commands: HashMap<(ChatId, Provider), Vec<CommandInfo>>,
+    /// 시작 때 읽은 provider CLI 버전. 읽지 못한 provider는 항목이 없다.
+    pub(crate) cli_versions: HashMap<Provider, String>,
     pub(crate) router_tx: mpsc::UnboundedSender<RouterDone>,
     pub(crate) router_rx: mpsc::UnboundedReceiver<RouterDone>,
     /// 채팅의 가장 나중 판단이 정한 처리 방식. 다음 판단의 state에 넣는다.
@@ -210,6 +212,7 @@ impl Default for FlowState {
             judging: HashMap::new(),
             models: HashMap::new(),
             commands: HashMap::new(),
+            cli_versions: HashMap::new(),
             router_tx,
             router_rx,
             last_disposition: HashMap::new(),

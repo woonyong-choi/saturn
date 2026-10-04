@@ -67,6 +67,7 @@ impl Engine {
                 migration,
                 auto_prune: None,
                 resume_suggested: HashMap::new(),
+                provider_updates: Vec::new(),
             },
             queue: Queue::new(),
             sessions,

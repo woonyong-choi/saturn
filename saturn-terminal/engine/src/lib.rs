@@ -50,6 +50,7 @@ mod switch;
 mod tasks;
 mod turn_end;
 mod usage;
+mod versions;
 
 #[cfg(test)]
 mod lifecycle;
@@ -221,6 +222,8 @@ struct StartNotices {
     auto_prune: Option<AutoPruneNotice>,
     /// 크래시 복구가 보류한 작업. 그 채팅에 처음 붙는 TUI에 `/continue`를 제안하고 지운다.
     resume_suggested: HashMap<ChatId, Vec<TaskId>>,
+    /// 시작 때 읽은 provider CLI 버전이 마지막으로 확인한 버전과 달랐던 것. 첫 TUI에 알리고 지운다.
+    provider_updates: Vec<versions::VersionChange>,
 }
 
 /// `Request::Attach`의 값.
@@ -309,6 +312,9 @@ impl Engine {
     pub async fn run(options: EngineOptions) -> Result<(), EngineError> {
         let mut engine = Self::start(options).await?;
         engine.finish_start().await?;
+        engine
+            .detect_provider_versions(&std::env::vars_os().collect::<Vec<_>>())
+            .await;
         let served = engine.serve().await;
         engine.shutdown().await?;
         served

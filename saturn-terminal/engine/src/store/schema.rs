@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 8;
+pub(crate) const SCHEMA_VERSION: u32 = 9;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,7 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7, V8];
+pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7, V8, V9];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -218,6 +218,15 @@ CREATE INDEX interrupted_subagents_chat ON interrupted_subagents(chat_id);
 const V8: &str = r#"
 ALTER TABLE chats ADD COLUMN name TEXT;
 ALTER TABLE chats ADD COLUMN group_name TEXT;
+"#;
+
+/// `provider_versions`는 provider마다 마지막으로 확인한 CLI 버전이다. 이관은 표만 비어 있게 더한다.
+const V9: &str = r#"
+CREATE TABLE provider_versions (
+    provider TEXT PRIMARY KEY,
+    version TEXT NOT NULL,
+    checked_at INTEGER NOT NULL
+);
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -584,6 +593,32 @@ mod tests {
         );
         assert!(store.held_tasks().await.unwrap().is_empty());
         assert!(store.interrupted_subagents().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v8_file_migrates_to_provider_versions_keeping_chats() {
+        let (dir, store) = temp_store_at(8).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (8, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        assert_eq!(std::fs::read_dir(store.backup_dir()).unwrap().count(), 1);
+        assert_eq!(
+            store
+                .chat_workdir(saturn_protocol::ids::ChatId(1))
+                .await
+                .unwrap(),
+            PathBuf::from("/work")
+        );
+        let provider = crate::providers::test_support::CODEX;
+        assert_eq!(store.provider_cli_version(provider).await.unwrap(), None);
     }
 
     #[tokio::test]

@@ -334,6 +334,13 @@ pub(crate) fn alert_text(lang: Lang, alert: &Alert) -> String {
                 .tr(i18n::SCHEMA_MIGRATED)
                 .replace("{to}", &to.to_string());
         }
+        Alert::ProviderUpdated { provider, from, to } => {
+            return lang
+                .tr(i18n::PROVIDER_UPDATED)
+                .replace("{provider}", i18n::provider_name(*provider))
+                .replace("{from}", from)
+                .replace("{to}", to);
+        }
         Alert::AutoPruned { chats, .. } => {
             return lang
                 .tr(i18n::AUTO_PRUNED)
@@ -642,6 +649,24 @@ mod tests {
 
         assert_eq!(alert_text(Lang::Ko, &alert), "기록 저장소 v2로 옮김");
         assert_eq!(alert_text(Lang::En, &alert), "Record store migrated to v2");
+    }
+
+    #[test]
+    fn alert_text_provider_updated_shows_both_versions() {
+        let alert = Alert::ProviderUpdated {
+            provider: Provider::from_static("codex"),
+            from: "0.158.0".to_owned(),
+            to: "0.159.0".to_owned(),
+        };
+
+        assert_eq!(
+            alert_text(Lang::Ko, &alert),
+            "codex CLI가 0.158.0에서 0.159.0로 바뀜"
+        );
+        assert_eq!(
+            alert_text(Lang::En, &alert),
+            "codex CLI changed from 0.158.0 to 0.159.0"
+        );
     }
 
     #[test]

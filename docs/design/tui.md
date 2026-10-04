@@ -338,6 +338,7 @@ provider의 입력 요청([입력 요청](input-requests.md))은 도착한 순�
 | `오래된 채팅 {N}개를 지웠습니다` | 시작 때 자동 정리가 채팅을 지움, 첫 TUI의 상태판 알림 줄. 영어는 `Deleted {N} old chats` |
 | `자동 정리에 실패했습니다 · 로그를 확인하세요` | 시작 때 자동 정리 실패, 첫 TUI의 상태판 알림 줄. 영어는 `Auto prune failed · Check the log` |
 | `기록 저장소 v2로 옮김` | 시작할 때 기록 저장소 스키마를 이관함, 첫 TUI의 상태판 알림 줄 |
+| `codex CLI가 0.158.0에서 0.159.0로 바뀜` | 시작할 때 읽은 provider CLI 버전이 마지막으로 확인한 버전과 다름, 첫 TUI의 상태판 알림 줄. `Alert::ProviderUpdated { provider, from, to }`이고 처음 확인하는 provider는 알리지 않는다 |
 | `모델 미보고` | 작업 상세에서 provider의 모델 보고 없음 |
 
 ### 초안 값
