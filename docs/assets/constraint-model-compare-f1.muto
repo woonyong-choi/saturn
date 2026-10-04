@@ -1,0 +1,7 @@
+chart line
+title "Jev 기준값별 F1"
+subtitle "n=90. 띠는 입력 재표집 95% 구간"
+x "등록 기준값(확률)"
+y "F1(%)"
+data "../experiments/constraint-model-compare/results/chart.json" at "/f1"
+series f1 "F1" role=main

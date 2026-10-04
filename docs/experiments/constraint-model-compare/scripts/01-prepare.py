@@ -186,13 +186,17 @@ def main() -> None:
         return
     extracted, census = [], []
     project_counts, excluded = Counter(), Counter()
+    project_uuids = defaultdict(set)
     for path in sorted((Path.home() / ".claude/projects").glob("*/*.jsonl")):
         if "experiment-382-model-compare" in path.parent.name:
             continue
         turns, meta = extract(path)
         extracted.append((turns, meta))
         census.append(meta)
-        project_counts[meta["project"]] += len(turns)
+        project_uuids[meta["project"]].update(t["uuid"] for t in turns)
+    project_counts.update(
+        {project: len(uuids) for project, uuids in project_uuids.items()}
+    )
     cases, seen = [], set()
     for turns, meta in extracted:
         for case in make_cases(turns, meta, project_counts[meta["project"]], excluded):

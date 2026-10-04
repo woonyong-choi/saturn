@@ -6,10 +6,13 @@ import concurrent.futures
 import hashlib
 import json
 import sys
+import threading
 from collections import Counter
 
 from protocol import gold_prompt, parse, query_prompt
-from runtime import MODELS, PRIVATE, call_cli, call_jev, read, setup, write
+from runtime import MODELS, PRIVATE, call_cli, call_jev, is_rejected, read, setup, write
+
+GOLD_STOP = threading.Event()
 
 
 def check_samples() -> list[dict]:
@@ -20,15 +23,20 @@ def check_samples() -> list[dict]:
 
 
 def gold_call(item: tuple[dict, int]) -> dict:
+    if GOLD_STOP.is_set():
+        raise RuntimeError("gold model rejected")
     case, repeat = item
     trial = f"gold-sol-{case['sample_id']}-r{repeat}"
     record = call_cli("codex", MODELS["sol"], gold_prompt(case), trial)
+    if is_rejected(record):
+        GOLD_STOP.set()
+        raise RuntimeError("gold authentication or model rejected")
     return dict(sample_id=case["sample_id"], repeat=repeat, **parse(record, "gold"))
 
 
 def collect_gold(cases: list[dict]) -> None:
     target = PRIVATE / "gold.json"
-    if target.exists():
+    if target.exists() and (PRIVATE / "gold-seal.json").exists():
         print(json.dumps(dict(phase="gold", status="already_frozen")), flush=True)
         return
     jobs = [(case, repeat) for repeat in (1, 2) for case in cases]
@@ -90,10 +98,14 @@ def collect_lane(name: str, cases: list[dict]) -> None:
         model = discovery["models"][0]
     for index, case in enumerate(cases):
         if name == "jev":
-            records = [
-                call_jev(case["state"], f"query-jev-{case['sample_id']}-r{repeat}")
-                for repeat in (1, 2, 3)
-            ]
+            records = []
+            for repeat in (1, 2, 3):
+                record = call_jev(
+                    case["state"], f"query-jev-{case['sample_id']}-r{repeat}"
+                )
+                records.append(record)
+                if is_rejected(record):
+                    raise RuntimeError("judge authentication or model rejected")
         else:
             kind = "codex" if name in MODELS else "claude"
             records = [
@@ -104,8 +116,8 @@ def collect_lane(name: str, cases: list[dict]) -> None:
                     f"query-{name}-{case['sample_id']}-r1",
                 )
             ]
-        if any(row.get("http_status") in (401, 403) for row in records):
-            raise RuntimeError("judge authentication rejected")
+        if any(is_rejected(row) for row in records):
+            raise RuntimeError("cli authentication or model rejected: " + name)
         if (index + 1) % 10 == 0:
             print(
                 json.dumps(dict(phase="query", model=name, completed=index + 1)),

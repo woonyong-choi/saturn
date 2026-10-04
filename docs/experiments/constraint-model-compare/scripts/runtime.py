@@ -43,7 +43,12 @@ def redact(text: str) -> str:
 
 def write(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(redact(json.dumps(value, ensure_ascii=False, indent=2)) + "\n")
+    pending = path.with_suffix(path.suffix + ".pending")
+    with pending.open("w") as stream:
+        stream.write(redact(json.dumps(value, ensure_ascii=False, indent=2)) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    pending.replace(path)
 
 
 def rows(path: Path) -> list[dict]:
@@ -68,6 +73,7 @@ def setup() -> None:
     os.umask(0o077)
     for path in (PRIVATE, PRIVATE / "runtime/cache", ROOT / ".runtime/claude-work"):
         path.mkdir(parents=True, exist_ok=True)
+    os.chmod(PRIVATE, 0o700)
 
 
 # cost: io 1 locked append with fsync; basis: estimate
@@ -254,11 +260,9 @@ def call_jev(state: dict, trial: str) -> dict:
 
 
 def response_text(record: dict) -> tuple[str, dict]:
-    if record.get("status") != "ok":
-        return "", {}
     if record["kind"] == "claude":
         envelope = json.loads(record["stdout"])
-        if envelope.get("is_error"):
+        if envelope.get("is_error") or record.get("status") != "ok":
             return "", envelope
         return envelope.get("result", ""), envelope
     events = [
@@ -281,8 +285,30 @@ def response_text(record: dict) -> tuple[str, dict]:
         event
         for event in events
         if event.get("type") == "item.completed"
-        and event.get("item", {}).get("type") not in ("agent_message", "reasoning")
+        and event.get("item", {}).get("type")
+        not in ("agent_message", "reasoning", "error")
     ]
-    return messages[-1] if messages else "", dict(
+    return messages[-1] if messages and record.get("status") == "ok" else "", dict(
         usage=usages[-1] if usages else {}, tool_events=len(tool_events)
     )
+
+
+def is_rejected(record: dict) -> bool:
+    if record.get("http_status") in (401, 403):
+        return True
+    text = (
+        record.get("stderr", "")
+        + record.get("stdout", "")
+        + record.get("response_text", "")
+    ).lower()
+    markers = (
+        "not logged in",
+        "authentication failed",
+        "invalid api key",
+        "model not found",
+        "model is not supported",
+        "model does not exist",
+        "model_not_found",
+        "unauthorized",
+    )
+    return any(marker in text for marker in markers)

@@ -1,0 +1,9 @@
+chart line
+title "Jev 기준값별 정밀도와 재현율"
+subtitle "n=90. 띠는 Wilson 95% 구간, 점선은 정밀도 목표"
+x "등록 기준값(확률)"
+y "비율(%)"
+data "../experiments/constraint-model-compare/results/chart.json" at "/precision_recall"
+series precision "정밀도" role=main
+series recall "재현율" role=compare
+rule 90 "목표"

@@ -36,6 +36,9 @@ def gold_prompt(case: dict) -> str:
 
 
 def parse(record: dict, phase: str) -> dict:
+    envelope = {}
+    wrapped = False
+    payload = ""
     try:
         text, envelope = response_text(record)
         stripped = text.strip()
@@ -66,31 +69,53 @@ def parse(record: dict, phase: str) -> dict:
             )
         if envelope.get("tool_events", 0):
             valid = False
+        if record.get("kind") == "claude" and set(envelope.get("modelUsage", {})) != {
+            record.get("model")
+        }:
+            valid = False
         return dict(
             valid=valid,
             wrapped=wrapped,
             multiline=len(payload.splitlines()) > 1,
             value=value if valid else None,
             envelope=envelope,
+            claimed_prediction=value.get("is_constraint")
+            if isinstance(value, dict) and type(value.get("is_constraint")) is bool
+            else None,
+            format_reason=None if valid else "contract_mismatch",
         )
-    except (ValueError, TypeError, KeyError):
+    except (ValueError, TypeError, KeyError, AttributeError):
         return dict(
-            valid=False, wrapped=False, multiline=False, value=None, envelope={}
+            valid=False,
+            wrapped=wrapped,
+            multiline=len(payload.splitlines()) > 1,
+            value=None,
+            envelope=envelope,
+            claimed_prediction=None,
+            format_reason="invalid_json_or_envelope",
         )
 
 
 def parse_jev(record: dict) -> dict:
     response = record.get("response", {})
+    if not isinstance(response, dict):
+        response = {}
     answers = response.get("answers", {})
-    probability = answers.get("is_constraint", {}).get("noul")
+    if not isinstance(answers, dict):
+        answers = {}
+    answer = answers.get("is_constraint", {})
+    probability = answer.get("noul") if isinstance(answer, dict) else None
     valid = (
         record.get("status") == "ok"
         and set(answers) == {"is_constraint"}
         and type(probability) in (int, float)
     )
     valid = valid and math.isfinite(probability) and 0 <= probability <= 1
+    valid = valid and response.get("model") == "jev-1.13.0"
     return dict(
         valid=valid,
+        claimed_prediction=probability >= 0.5 if valid else None,
+        format_reason=None if valid else "invalid_noul_or_model",
         wrapped=False,
         multiline=False,
         value=dict(confidence=probability, is_constraint=probability >= 0.5)
