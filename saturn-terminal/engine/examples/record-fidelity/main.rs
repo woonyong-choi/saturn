@@ -74,6 +74,7 @@ fn launch_spec(args: &Args) -> LaunchSpec {
         },
         env,
         hook_settings: None,
+        key_deny_read: Vec::new(),
         permission: PermissionLaunch::default(),
         masker: Masker::new(Vec::new()),
     }

@@ -223,6 +223,13 @@ async fn launch_spec_takes_workdir_and_env_from_the_chat() {
     );
     assert!(launch.env.iter().any(|(name, _)| name == "PATH"));
     assert!(launch.hook_settings.is_some());
+    let denied: Vec<String> = launch
+        .key_deny_read
+        .iter()
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect();
+    assert!(denied.contains(&"/Library/Keychains".to_owned()));
+    assert!(denied.iter().any(|path| path.ends_with("router.key")));
 }
 
 #[tokio::test]

@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
 
@@ -60,6 +60,23 @@ pub(crate) fn read_user_config(launch: &LaunchSpec) -> UserProviderConfig {
 /// `--settings`로 넘기는 값에 `permissions.ask`로 규칙 대상 도구를 나열한다. 훅 설정은 그대로 두고 합친다.
 pub(crate) fn with_ask_tools(mut settings: Value) -> Value {
     settings["permissions"]["ask"] = json!(ASK_TOOLS);
+    settings
+}
+
+/// `--settings`로 넘기는 값에 Bash 샌드박스를 켜고 키 저장소 경로의 읽기를 막는다. 권한 모드와 무관하게 늘 넣는다.
+/// 샌드박스 밖 실행과 샌드박스 없이 시작하는 일을 막고, 작업 폴더와 더한 폴더의 쓰기는 Claude 기본 허용에 맡긴다.
+/// 배열은 설정 층끼리 합쳐지므로 사용자 설정의 `denyRead`는 남는다. 사용자 설정 파일은 고치지 않는다.
+pub(crate) fn with_key_sandbox(mut settings: Value, deny_read: &[PathBuf]) -> Value {
+    let paths: Vec<String> = deny_read
+        .iter()
+        .map(|path| path.to_string_lossy().into_owned())
+        .collect();
+    settings["sandbox"] = json!({
+        "enabled": true,
+        "allowUnsandboxedCommands": false,
+        "failIfUnavailable": true,
+        "filesystem": { "denyRead": paths },
+    });
     settings
 }
 

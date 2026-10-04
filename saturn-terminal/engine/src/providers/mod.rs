@@ -58,6 +58,8 @@ pub struct LaunchSpec {
     pub env: Vec<(OsString, OsString)>,
     /// Saturn 소유 PreToolUse 훅 설정. 훅을 받는 어댑터만 쓰고 나머지는 무시한다.
     pub hook_settings: Option<serde_json::Value>,
+    /// provider 명령 샌드박스에서 읽지 못하게 막을 키 저장소 경로(키체인 폴더, Saturn 키 파일). 권한 모드와 무관하게 채운다.
+    pub key_deny_read: Vec<PathBuf>,
     /// Saturn 규칙을 번역한 provider 실행 설정.
     pub permission: PermissionLaunch,
     /// provider stderr와 오류 문구를 로그에 남기기 전에 가린다.

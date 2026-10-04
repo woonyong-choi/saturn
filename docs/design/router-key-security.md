@@ -7,7 +7,7 @@
 
 ## 요약
 
-router 키 보호는 외부 router API 키를 provider와 subagent가 어떤 경로로도 받거나 읽지 못하게 하는 기능이다. 키는 정해진 세 방법으로만 받고, macOS 키체인에 OS API로 직접 저장한다. `engine`은 자식 프로세스 환경에서 키 변수를 지운다. Saturn 소유 PreToolUse 훅은 저장된 키를 찾아가는 도구 호출을 막는다. 키는 HTTPS로 허용 호스트에만 보내고, 로그와 오류와 기록에서는 가린다.
+router 키 보호는 외부 router API 키를 provider와 subagent가 어떤 경로로도 받거나 읽지 못하게 하는 기능이다. 키는 정해진 세 방법으로만 받고, macOS 키체인에 OS API로 직접 저장한다. `engine`은 자식 프로세스 환경에서 키 변수를 지운다. Saturn 소유 PreToolUse 훅은 저장된 키를 찾아가는 도구 호출을 막고, provider 명령 샌드박스는 훅이 놓치는 형태까지 OS 수준에서 막는다. 키는 HTTPS로 허용 호스트에만 보내고, 로그와 오류와 기록에서는 가린다.
 
 ## 동기
 
@@ -112,9 +112,25 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 - 이 판정은 차단 목록 방식이라 막지 못하는 형태가 남는다. 문자열을 조립하거나 인코딩해 실행하는 명령(`base64 -d | sh`), 내려받은 스크립트나 사용자가 만든 스크립트 파일 실행, 인터프리터가 이름을 조립해 부르는 `security`, `find -exec`처럼 목록에 없는 실행기, 작업 폴더를 옮긴 뒤의 상대 경로가 그렇다. 키 항목 자체에 접근 제어를 거는 근본 대책은 [#2](https://github.com/woonyong-choi/saturn/issues/2)와 [#102](https://github.com/woonyong-choi/saturn/issues/102)에서 정한다. 훅은 그 앞의 한 겹이다.
 - Claude Code 2.1.288에서 Saturn 훅은 Bash로 쓴 `security find-generic-password` 조회를 요청이 호스트에 오기 전에 막았고, 전경과 백그라운드 subagent의 같은 조회도 막았다(각 3/3). 훅 입력에는 subagent 호출에 `agent_id`와 `agent_type`이 실린다. 중첩 subagent의 조회도 훅 기록에서 3/3 막혔지만 그 호출이 스트림에는 1/3만 보였다. 반면 `sh -c "/usr/bin/security find-generic-password ..."`는 3/3 막지 못했고 값이 도구 결과에 나왔다. 원인은 첫 낱말과 첫 비옵션 낱말만 보는 판정이었고, 셸·`eval`·인터프리터 인자를 해석하는 수정은 위 항목대로 단위 테스트로만 확인했다. 실제 provider로 다시 재지 않았다. Codex 훅은 재지 않았다([#3](https://github.com/woonyong-choi/saturn/issues/3), [#23](https://github.com/woonyong-choi/saturn/issues/23), [실험](../experiments/claude-provider-behavior/report.md)).
 
-### OS 수준 방어
+### 겹 구성
 
-[실측](../experiments/router-key-defense/report.md)에서 Codex의 `:read-only`와 `:workspace` 샌드박스는 감싼 조회를 포함한 세 호출 형태의 키체인 조회를 모두 막았다. Claude Code 샌드박스는 켜기만 해서는 막지 못했고 키체인 폴더를 `filesystem.denyRead`에 더했을 때 막았다. 키체인 접근 제어는 창을 띄우지만 클릭 한 번으로 열려 보조층이다. 구현은 아직 없다(초안): Claude 실행별 설정에 샌드박스와 키체인 폴더 읽기 금지를 합쳐 넘기는 안을 정한다.
+키 보호는 한 겹으로 막지 않는다. 훅은 차단 목록이라 막지 못하는 형태가 남으므로, OS가 강제하는 겹을 그 아래에 둔다. 모든 겹은 권한 모드와 무관하게 켜 둔다. 권한은 Saturn 규칙이 정본이지만 router 키 보호는 그 예외이므로 모드 `full`도 이 겹을 끄지 못하고, `/permissions`나 설정에도 끄는 값이 없다.
+
+| 겹 | 막는 것 | 근거 |
+|---|---|---|
+| 환경 격리 | 자식 환경의 키 변수 | `secrets` 모듈 단위 테스트, [실험](../experiments/router-key-defense/report.md)의 환경 항목 |
+| Saturn 소유 PreToolUse 훅 | 이름이 보이는 키 저장소 조회와 파일 도구의 키 저장소 경로 | [Claude provider 실측](../experiments/claude-provider-behavior/report.md), 위 단위 테스트 |
+| provider 명령 샌드박스 | 훅이 못 읽는 형태(인코딩, 스크립트 파일, 이름 조립)를 포함한 명령의 키체인 접근 | [OS 수준 방어 실측](../experiments/router-key-defense/report.md) |
+| 키체인 접근 제어 | 보조층. 확인 창은 클릭 한 번으로 열려 단독 방어로 쓰지 않는다 | 같은 실측, 구현은 [#102](https://github.com/woonyong-choi/saturn/issues/102) |
+
+### provider 명령 샌드박스
+
+- Claude: engine은 Claude를 띄울 때마다 실행별 `--settings`에 `sandbox`를 합쳐 넘긴다. 모든 session이 대상이고, 새 session과 재개 모두 같다. 값은 `enabled: true`, `allowUnsandboxedCommands: false`, `failIfUnavailable: true`, `filesystem.denyRead`이다([Claude Code 샌드박스 문서](https://code.claude.com/docs/en/sandboxing), 2026-10-04 확인). `allowUnsandboxedCommands: false`는 `dangerouslyDisableSandbox`로 샌드박스 밖에서 다시 실행하는 길을 막고, `failIfUnavailable: true`는 샌드박스를 쓸 수 없을 때 명령을 샌드박스 없이 돌리지 않고 실패하게 한다.
+- `denyRead` 경로는 훅이 막는 키 저장소 경로와 같은 목록이다. 사용자 `~/Library/Keychains`, `/Library/Keychains`, Saturn 홈의 `router.key`이고 링크를 푼 경로가 다르면 그것도 넣는다. 절대 경로로 적는다. 목록은 훅 정책 한 곳에서 만들어 훅과 샌드박스가 어긋나지 않게 한다.
+- 합치는 규칙: 사용자의 Claude 설정 파일은 읽지도 고치지도 않는다. 실행별 `--settings`는 훅, `permissions.ask`와 같은 값에 `sandbox`를 더하고, 설정 층끼리 배열은 합쳐지므로 사용자의 `denyRead`와 `allowWrite`는 그대로 남는다. 작업 폴더와 더한 폴더(`--add-dir`)의 쓰기는 Claude 샌드박스 기본 허용이라 Saturn 권한 규칙과 겹치는 `allowWrite`를 따로 넣지 않는다.
+- 이 겹이 막지 못하는 것: 사용자 설정의 `sandbox.excludedCommands`로 샌드박스 밖에서 도는 명령, Bash 샌드박스가 덮지 않는 Claude의 파일 도구와 MCP 서버(파일 도구는 훅이 본다). `denyRead`는 Read 도구를 막지 않는다. `excludedCommands`를 실행별 설정으로 비울 수는 없고(배열은 합쳐진다), 사용자가 직접 넣은 예외라 Saturn은 추적만 한다.
+- Codex: 모든 권한 모드가 같은 구성으로 `thread/start`와 `thread/resume`에 샌드박스 `read-only`를 주고, 응답이 다른 샌드박스를 적용했으면 첫 턴을 보내지 않는다([권한](permissions.md#codex-구성)). 사용자 Codex 설정의 `sandbox_mode`와 `sandbox_workspace_write`는 생성 설정으로 옮기지 않는다. 그래서 Saturn에서 고를 수 있는 모든 모드에서 명령은 Codex 샌드박스 안에서 돌고, 샌드박스를 끄는 `danger-full-access`는 Saturn이 고르지도 받아들이지도 않는다. 실측에서 이 샌드박스는 `:read-only`, `:workspace` 모두 키체인 조회를 막았다. 남은 경로는 샌드박스 밖 실행 승인이다. 모드 `full`은 승인 요청을 모두 허용하므로, Codex가 명령의 샌드박스 밖 실행을 승인 요청으로 올리면 `full`에서는 그 명령이 샌드박스 없이 돈다. 이 경우의 키 보호는 설계에 없어 구현하지 않았고 [#423](https://github.com/woonyong-choi/saturn/issues/423)에 남긴다(샌드박스 밖 실행 요청이 실제로 오는지, 훅을 대신할 방어가 필요한지 측정 필요).
+- 샌드박스 지원 여부: macOS에서는 기본 도구로 돈다. 샌드박스를 쓸 수 없는 환경(Linux의 필수 도구 부재 등)에서 Claude는 명령 대신 시작이 실패하고, Saturn은 그 오류를 session 시작 실패로 보인다.
 
 ### 전송
 
@@ -149,12 +165,16 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 | engine 실행 파일은 생성한 훅 명령(`hook pre-tool-use`)을 받아 허용과 거부를 훅 규격의 출력과 종료 코드로 돌려준다. | `saturn-terminal/engine/tests/key_hook.rs`의 `hook_command_denies_key_store_access`, `hook_command_allows_ordinary_calls_without_output`, `hook_command_blocks_unreadable_input_with_exit_code_2`, `hook_command_leaves_saturn_home_untouched` |
 | 훅은 셸·`eval`·인터프리터로 감싼 키 저장소 조회도 막고, 해석할 수 없는 명령은 막으며, 목록 밖 하위 명령은 막지 않는다. | `saturn-terminal/engine/src/secrets/hook.rs`의 `shell_wrapped_lookups_are_denied`, `quoting_and_escapes_inside_shell_strings_do_not_hide_lookups`, `separators_inside_shell_strings_are_split`, `eval_strings_are_judged_again`, `nested_shells_are_judged_down_to_the_limit`, `nesting_beyond_the_limit_is_denied`, `unparseable_commands_are_denied`, `interpreter_one_liners_naming_key_stores_are_denied`, `shells_fed_by_pipe_here_string_or_here_document_are_judged`, `interactive_security_is_denied`, `wrapped_commands_outside_the_list_are_allowed`, `quotes_comments_and_here_documents_in_ordinary_commands_are_allowed` |
 | Saturn 소유 PreToolUse 훅은 키 저장소 접근을 막는다. | Claude 직접 명령은 [실험](../experiments/claude-provider-behavior/report.md)에서 3/3 막혔고 `sh -c` 감싼 명령은 수정 전에 막지 못했다(수정 뒤 실제 provider 재측정은 아직). Codex는 [#3](https://github.com/woonyong-choi/saturn/issues/3)에서 확인한다. |
+| Claude를 띄울 때마다(모든 모드 포함 `full`) 실행별 `--settings`에 Bash 샌드박스(`enabled`, `allowUnsandboxedCommands: false`, `failIfUnavailable: true`)와 키 저장소 경로의 `filesystem.denyRead`가 들어간다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `launch_args_enable_the_bash_sandbox_and_deny_reading_key_stores`, `the_key_sandbox_stays_on_in_full_mode_and_keeps_the_other_settings`, `launch_args_add_defaults_and_hook_settings`, `saturn-terminal/engine/src/lifecycle/intake.rs`의 launch 명세 테스트 |
+| Claude 샌드박스에 키체인 폴더 읽기 금지를 더하면 키체인 조회가 막히고 로그인은 유지된다. | [실험](../experiments/router-key-defense/report.md)에서 직접 조회 0/3 접근(샌드박스만 켠 경우 3/3). Saturn이 띄운 실제 session에서 거부되는지는 #423을 닫기 전에 확인한다. |
+| Codex 명령은 모든 모드에서 읽기 전용 샌드박스 안에서 돌고, 다른 샌드박스가 적용되면 첫 턴을 보내지 않는다. | `saturn-terminal/engine/src/providers/codex/permission.rs`의 `applied_policy_must_be_untrusted_read_only`, [실험](../experiments/router-key-defense/report.md)에서 `:read-only`와 `:workspace` 모두 0/3 접근. 샌드박스 밖 실행 승인은 측정하지 않았다. |
 | 훅은 subagent의 도구 호출에도 적용된다. | Claude 전경, 백그라운드, 중첩 subagent의 조회가 [실험](../experiments/claude-provider-behavior/report.md)에서 훅에 막혔다. Codex는 [#23](https://github.com/woonyong-choi/saturn/issues/23)에서 확인한다. |
 
 ## 단점
 
 - 제외 목록과 훅 검사를 provider 변화에 맞춰 계속 유지한다.
-- 훅의 명령 판정은 차단 목록이라 위의 남은 한계를 근본적으로 없애지 못한다.
+- 훅의 명령 판정은 차단 목록이라 위의 남은 한계를 근본적으로 없애지 못한다. 그 한계는 provider 명령 샌드박스가 맡는다.
+- 샌드박스를 쓸 수 없는 환경에서는 Claude session이 시작되지 않는다.
 - 강화 방식에서는 session을 시작할 때마다 키체인 암호를 입력한다.
 
 ## 대안
