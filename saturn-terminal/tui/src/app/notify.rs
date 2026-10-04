@@ -62,14 +62,17 @@ impl App {
                 state,
                 disposition,
                 reason,
-            } => self.on_input_changed(InputUpdate {
-                input,
-                text,
-                label,
-                state,
-                disposition,
-                reason,
-            }),
+            } => self.on_input_changed(
+                InputUpdate {
+                    input,
+                    text,
+                    label,
+                    state,
+                    disposition,
+                    reason,
+                },
+                now,
+            ),
             Notification::TaskChanged {
                 task,
                 label,
@@ -308,11 +311,11 @@ impl App {
         }
     }
 
-    fn on_input_changed(&mut self, update: InputUpdate) {
+    fn on_input_changed(&mut self, update: InputUpdate, now: Instant) {
         let cell = echo_cell(&update);
         let (input, state) = (update.input, update.state);
         self.sync_stop_confirm(&update);
-        match self.chat.apply_input(update) {
+        match self.chat.apply_input(update, now) {
             Change::Echo { .. } => self.push_cell(cell),
             _ => {
                 if let Some(badge) = delivery_badge(state) {
@@ -634,7 +637,7 @@ fn history_cells(entries: Vec<Notification>) -> Vec<TranscriptCell> {
                     reason,
                 };
                 let cell = echo_cell(&update);
-                if let Change::Echo { .. } = chat.apply_input(update) {
+                if let Change::Echo { .. } = chat.apply_input(update, now) {
                     cells.push(cell);
                 }
             }

@@ -18,7 +18,8 @@ use saturn_protocol::state::{InputState, TaskState};
 use crate::i18n::{self, Lang};
 use crate::labels;
 use crate::state::{
-    APPROVAL_PENDING_AFTER, ChatState, InputView, NO_RESPONSE_AFTER, TaskView, TrainingProgress,
+    APPROVAL_PENDING_AFTER, ChatState, InputView, JUDGING_SHOW_AFTER, NO_RESPONSE_AFTER, TaskView,
+    TrainingProgress,
 };
 use crate::view::transcript::held_labels;
 use crate::view::{EMPHASIS, text_width, truncate};
@@ -51,7 +52,7 @@ pub(crate) struct RunningLine {
 pub(crate) enum StatusLine {
     /// 살아 있는 작업마다 한 줄.
     Running(RunningLine),
-    /// TODO(#53): 짧게 끝나는 판단의 판단 줄 표시 방식
+    /// 판단이 `JUDGING_SHOW_AFTER`를 넘기면 그리고, 한 번 그렸으면 `JUDGING_MIN_SHOWN`은 그린다.
     Judging {
         input: InputId,
         label: Option<TaskLabel>,
@@ -231,16 +232,7 @@ pub(crate) fn build(state: &ChatState, now: Instant) -> Vec<StatusLine> {
             .filter(|task| labels::is_live(task.state))
             .map(|task| StatusLine::Running(running_line(task, now))),
     );
-    lines.extend(
-        inputs
-            .iter()
-            .filter(|input| input.state == InputState::Judging)
-            .map(|input| StatusLine::Judging {
-                input: input.id,
-                label: input.label,
-                text: input.text.clone(),
-            }),
-    );
+    lines.extend(judging_lines(state, &inputs, now));
     lines.extend(state.training.clone().map(StatusLine::Training));
     lines.extend(inputs.iter().filter_map(|input| queued_line(input)));
     lines.extend(held_lines(state, &tasks, &inputs));
@@ -528,6 +520,46 @@ fn no_response_minutes(task: &TaskView, now: Instant) -> Option<u64> {
     (is_working && silent >= NO_RESPONSE_AFTER).then_some(silent.as_secs() / 60)
 }
 
+// cost: time O(i + j), heap O(j), stack O(1)
+// vars: i = 입력 수, j = 판단 줄 수
+// basis: estimate
+/// 판단이 `JUDGING_SHOW_AFTER`를 넘긴 입력과, 끝났지만 최소 표시 시간이 남은 입력의 판단 줄. 접수 순서다.
+fn judging_lines(state: &ChatState, inputs: &[&InputView], now: Instant) -> Vec<StatusLine> {
+    let mut lines: Vec<(u64, StatusLine)> = inputs
+        .iter()
+        .filter(|input| input.state == InputState::Judging)
+        .filter(|input| {
+            input
+                .judging_since
+                .is_some_and(|since| now.saturating_duration_since(since) > JUDGING_SHOW_AFTER)
+        })
+        .map(|input| {
+            let line = StatusLine::Judging {
+                input: input.id,
+                label: input.label,
+                text: input.text.clone(),
+            };
+            (input.seq, line)
+        })
+        .collect();
+    lines.extend(
+        state
+            .judging_tails
+            .iter()
+            .filter(|tail| tail.until > now)
+            .map(|tail| {
+                let line = StatusLine::Judging {
+                    input: tail.input,
+                    label: tail.label,
+                    text: tail.text.clone(),
+                };
+                (tail.seq, line)
+            }),
+    );
+    lines.sort_by_key(|(order, _)| *order);
+    lines.into_iter().map(|(_, line)| line).collect()
+}
+
 fn queued_line(input: &InputView) -> Option<StatusLine> {
     if input.state != InputState::Queued {
         return None;
@@ -631,15 +663,29 @@ mod tests {
     }
 
     fn input(state: &mut ChatState, id: u64, label: char, input_state: InputState, text: &str) {
-        state.apply_input(InputUpdate {
-            input: InputId(id),
-            text: text.to_string(),
-            label: Some(TaskLabel(label)),
-            state: input_state,
-            disposition: None,
-            reason: (input_state == InputState::Queued)
-                .then_some(QueueReason::AfterTask(TaskLabel('A'))),
-        });
+        input_at(state, id, label, input_state, text, Instant::now());
+    }
+
+    fn input_at(
+        state: &mut ChatState,
+        id: u64,
+        label: char,
+        input_state: InputState,
+        text: &str,
+        at: Instant,
+    ) {
+        state.apply_input(
+            InputUpdate {
+                input: InputId(id),
+                text: text.to_string(),
+                label: Some(TaskLabel(label)),
+                state: input_state,
+                disposition: None,
+                reason: (input_state == InputState::Queued)
+                    .then_some(QueueReason::AfterTask(TaskLabel('A'))),
+            },
+            at,
+        );
     }
 
     // cost: time O(1), heap O(1), stack O(1)
@@ -708,16 +754,17 @@ mod tests {
             "테스트도 같이 돌려줘",
         );
         task(&mut state, 1, 'E', TaskState::Held, now);
-        input(
+        input_at(
             &mut state,
             2,
             'D',
             InputState::Judging,
             "배포 스크립트 정리",
+            now,
         );
         task(&mut state, 2, 'A', TaskState::Running, now);
 
-        let lines = build(&state, now);
+        let lines = build(&state, now + Duration::from_secs(1));
 
         assert_eq!(
             texts(&lines),
@@ -728,6 +775,107 @@ mod tests {
                 "‖ [E] 보류 · codex · /continue E",
                 "자동 판단 일시 중단",
             ]
+        );
+    }
+
+    fn judging_texts(state: &ChatState, now: Instant) -> Vec<String> {
+        texts(&build(state, now))
+            .into_iter()
+            .filter(|line| line.contains("판단 중"))
+            .collect()
+    }
+
+    #[test]
+    fn judging_line_is_not_drawn_until_it_passes_the_show_delay() {
+        let start = Instant::now();
+        let mut state = ChatState::new();
+        input_at(&mut state, 1, 'C', InputState::Judging, "테스트", start);
+
+        let at = |ms| judging_texts(&state, start + Duration::from_millis(ms));
+
+        assert!(at(0).is_empty());
+        assert!(at(300).is_empty());
+        assert_eq!(at(301), vec!["⠙ [C] 판단 중 · 테스트"]);
+    }
+
+    #[test]
+    fn judging_that_ends_within_the_show_delay_never_draws_a_line() {
+        let start = Instant::now();
+        let mut state = ChatState::new();
+        input_at(&mut state, 1, 'C', InputState::Judging, "테스트", start);
+
+        input_at(
+            &mut state,
+            1,
+            'C',
+            InputState::Applied,
+            "테스트",
+            start + Duration::from_millis(250),
+        );
+
+        for ms in [250, 300, 400, 900] {
+            assert!(judging_texts(&state, start + Duration::from_millis(ms)).is_empty());
+        }
+    }
+
+    #[test]
+    fn judging_drawn_once_stays_for_the_minimum_shown_time_after_it_ends() {
+        let start = Instant::now();
+        let mut state = ChatState::new();
+        input_at(&mut state, 1, 'C', InputState::Judging, "테스트", start);
+
+        input_at(
+            &mut state,
+            1,
+            'C',
+            InputState::Applied,
+            "테스트",
+            start + Duration::from_millis(400),
+        );
+
+        let at = |ms| judging_texts(&state, start + Duration::from_millis(ms));
+        assert_eq!(at(400), vec!["⠙ [C] 판단 중 · 테스트"]);
+        assert_eq!(at(799), vec!["⠙ [C] 판단 중 · 테스트"]);
+        assert!(at(800).is_empty());
+    }
+
+    #[test]
+    fn judging_that_ends_after_the_minimum_shown_time_stops_right_away() {
+        let start = Instant::now();
+        let mut state = ChatState::new();
+        input_at(&mut state, 1, 'C', InputState::Judging, "테스트", start);
+
+        input_at(
+            &mut state,
+            1,
+            'C',
+            InputState::Applied,
+            "테스트",
+            start + Duration::from_millis(2_000),
+        );
+
+        assert!(judging_texts(&state, start + Duration::from_millis(2_000)).is_empty());
+    }
+
+    #[test]
+    fn judging_tail_keeps_its_place_among_judging_lines() {
+        let start = Instant::now();
+        let mut state = ChatState::new();
+        input_at(&mut state, 1, 'C', InputState::Judging, "첫째", start);
+        input_at(&mut state, 2, 'D', InputState::Judging, "둘째", start);
+
+        input_at(
+            &mut state,
+            1,
+            'C',
+            InputState::Applied,
+            "첫째",
+            start + Duration::from_millis(400),
+        );
+
+        assert_eq!(
+            judging_texts(&state, start + Duration::from_millis(500)),
+            vec!["⠙ [C] 판단 중 · 첫째", "⠙ [D] 판단 중 · 둘째"]
         );
     }
 

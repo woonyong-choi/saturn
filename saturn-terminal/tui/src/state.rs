@@ -20,6 +20,12 @@ pub(crate) const APPROVAL_PENDING_AFTER: Duration = Duration::from_secs(3);
 /// 기본값(Claude Code 5분 이상, Codex 5분)과 같다. 자동으로 멈추지 않는다.
 pub(crate) const NO_RESPONSE_AFTER: Duration = Duration::from_secs(5 * 60);
 
+/// 판단이 이만큼 걸려야 판단 줄을 그린다. 이 안에 끝나면 줄을 그리지 않아 짧은 판단의 깜빡임을 없앤다.
+pub(crate) const JUDGING_SHOW_AFTER: Duration = Duration::from_millis(300);
+
+/// 판단 줄을 한 번 그렸으면 이만큼은 보인다. 그린 시각(`JUDGING_SHOW_AFTER`)부터 센다.
+pub(crate) const JUDGING_MIN_SHOWN: Duration = Duration::from_millis(500);
+
 /// 허가를 기다리는 동안은 멈춘다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Stopwatch {
@@ -99,8 +105,22 @@ pub(crate) struct InputView {
     /// `Queued`일 때만 있다.
     pub reason: Option<QueueReason>,
     pub echoed: bool,
+    /// 처음 `Judging`으로 본 시각. 판단 줄을 그릴지 정한다.
+    pub judging_since: Option<Instant>,
     /// 같은 종류 줄 안의 접수 순서 정렬에 쓴다.
     pub seq: u64,
+}
+
+/// 판단이 끝났지만 최소 표시 시간이 남아 판단 줄을 더 그리는 입력.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct JudgingTail {
+    pub input: InputId,
+    pub label: Option<TaskLabel>,
+    pub text: Option<String>,
+    /// 접수 순서. 판단 줄 안의 자리를 지킨다.
+    pub seq: u64,
+    /// 이 시각까지 그린다.
+    pub until: Instant,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -201,6 +221,8 @@ pub(crate) struct ChatState {
     pub tasks: BTreeMap<TaskId, TaskView>,
     /// 끝 상태가 아닌 입력만 둔다.
     pub inputs: BTreeMap<InputId, InputView>,
+    /// 판단이 끝난 뒤에도 최소 표시 시간 동안 그리는 판단 줄. 시간이 지나면 `apply_input`이 지운다.
+    pub judging_tails: Vec<JudgingTail>,
     /// 같은 값은 한 번만.
     pub alerts: Vec<Alert>,
     pub training: Option<TrainingProgress>,
@@ -231,8 +253,9 @@ impl ChatState {
     // vars: i = 입력 수, h = 보류 줄 수, n = 원문 길이
     // basis: estimate
     /// TODO(#60): provider가 끼워 넣기를 거절한 입력(`Rejected`)을 대기로 옮길지, 다시 판단할지, 물을지
-    pub(crate) fn apply_input(&mut self, update: InputUpdate) -> Change {
+    pub(crate) fn apply_input(&mut self, update: InputUpdate, now: Instant) -> Change {
         let seq = self.next_seq();
+        self.judging_tails.retain(|tail| tail.until > now);
         let view = self.inputs.entry(update.input).or_insert(InputView {
             id: update.input,
             label: None,
@@ -241,8 +264,12 @@ impl ChatState {
             disposition: None,
             reason: None,
             echoed: false,
+            judging_since: None,
             seq,
         });
+        if update.state == InputState::Judging {
+            view.judging_since.get_or_insert(now);
+        }
         if !update.text.is_empty() {
             view.text = Some(update.text);
         }
@@ -256,6 +283,11 @@ impl ChatState {
         view.reason = update.reason.filter(|_| update.state == InputState::Queued);
         let echo = !view.echoed && is_routed(update.state);
         view.echoed |= echo;
+        if update.state != InputState::Judging
+            && let Some(tail) = judging_tail(view, now)
+        {
+            self.judging_tails.push(tail);
+        }
         if is_final(update.state) {
             self.inputs.remove(&update.input);
             self.clear_stop_if_no_holds();
@@ -586,6 +618,19 @@ impl ChatState {
     }
 }
 
+/// 판단이 `JUDGING_SHOW_AFTER`를 넘겨 끝났고 최소 표시 시간이 남았으면 더 그릴 줄을 돌려준다. 한 입력에 한 번만 만든다.
+fn judging_tail(view: &mut InputView, now: Instant) -> Option<JudgingTail> {
+    let shown_from = view.judging_since.take()? + JUDGING_SHOW_AFTER;
+    let until = shown_from + JUDGING_MIN_SHOWN;
+    (now > shown_from && until > now).then(|| JudgingTail {
+        input: view.id,
+        label: view.label,
+        text: view.text.clone(),
+        seq: view.seq,
+        until,
+    })
+}
+
 fn is_routed(state: InputState) -> bool {
     matches!(
         state,
@@ -690,9 +735,9 @@ mod tests {
     fn apply_input_judging_then_queued_echoes_once() {
         let mut state = ChatState::new();
 
-        let first = state.apply_input(input(1, InputState::Judging));
-        let second = state.apply_input(input(1, InputState::Queued));
-        let third = state.apply_input(input(1, InputState::Queued));
+        let first = state.apply_input(input(1, InputState::Judging), Instant::now());
+        let second = state.apply_input(input(1, InputState::Queued), Instant::now());
+        let third = state.apply_input(input(1, InputState::Queued), Instant::now());
 
         assert_eq!(first, Change::Redraw);
         assert_eq!(second, Change::Echo { input: InputId(1) });
@@ -703,9 +748,9 @@ mod tests {
     #[test]
     fn apply_input_final_state_removes_line() {
         let mut state = ChatState::new();
-        state.apply_input(input(1, InputState::Judging));
+        state.apply_input(input(1, InputState::Judging), Instant::now());
 
-        let change = state.apply_input(input(1, InputState::Cancelled));
+        let change = state.apply_input(input(1, InputState::Cancelled), Instant::now());
 
         assert_eq!(change, Change::Redraw);
         assert!(state.inputs.is_empty());
@@ -715,7 +760,7 @@ mod tests {
     fn apply_input_first_seen_applied_echoes_and_removes() {
         let mut state = ChatState::new();
 
-        let change = state.apply_input(input(1, InputState::Applied));
+        let change = state.apply_input(input(1, InputState::Applied), Instant::now());
 
         assert_eq!(change, Change::Echo { input: InputId(1) });
         assert!(state.inputs.is_empty());
@@ -724,12 +769,15 @@ mod tests {
     #[test]
     fn apply_input_reason_kept_only_while_queued() {
         let mut state = ChatState::new();
-        state.apply_input(input(1, InputState::Queued));
+        state.apply_input(input(1, InputState::Queued), Instant::now());
 
-        state.apply_input(InputUpdate {
-            reason: Some(QueueReason::WriteTurn),
-            ..input(1, InputState::Held)
-        });
+        state.apply_input(
+            InputUpdate {
+                reason: Some(QueueReason::WriteTurn),
+                ..input(1, InputState::Held)
+            },
+            Instant::now(),
+        );
 
         assert_eq!(state.inputs[&InputId(1)].reason, None);
     }
@@ -943,7 +991,7 @@ mod tests {
         state.apply_task(task(1, 'A', TaskState::Running), now);
         let alone = state.labels_visible();
 
-        state.apply_input(input(2, InputState::Queued));
+        state.apply_input(input(2, InputState::Queued), Instant::now());
 
         assert!(!alone);
         assert!(state.labels_visible());
@@ -954,9 +1002,9 @@ mod tests {
     #[test]
     fn latest_recallable_picks_most_recent_judging_or_queued() {
         let mut state = ChatState::new();
-        state.apply_input(input(1, InputState::Queued));
-        state.apply_input(input(2, InputState::Judging));
-        state.apply_input(input(3, InputState::Delivering));
+        state.apply_input(input(1, InputState::Queued), Instant::now());
+        state.apply_input(input(2, InputState::Judging), Instant::now());
+        state.apply_input(input(3, InputState::Delivering), Instant::now());
 
         assert_eq!(state.latest_recallable().map(|i| i.id), Some(InputId(2)));
     }
@@ -964,7 +1012,7 @@ mod tests {
     #[test]
     fn queued_by_label_filters_by_label() {
         let mut state = ChatState::new();
-        state.apply_input(input(1, InputState::Queued));
+        state.apply_input(input(1, InputState::Queued), Instant::now());
 
         assert!(state.queued_by_label(Some(TaskLabel('C'))).is_some());
         assert!(state.queued_by_label(Some(TaskLabel('D'))).is_none());
