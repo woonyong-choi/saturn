@@ -11,13 +11,14 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use saturn_protocol::event::Activity;
 use saturn_protocol::ids::{InputId, Provider, TaskLabel};
-use saturn_protocol::rpc::ChatNotice;
+use saturn_protocol::rpc::{ChatNotice, ExtensionInfo};
 use saturn_protocol::state::{Disposition, InputState, TaskState};
 
 use crate::i18n::{self, Lang};
 use crate::labels;
 use crate::shell::ShellOutput;
 use crate::state::{InputUpdate, TaskView};
+use crate::view::extensions;
 use crate::view::start_screen::StartInfo;
 use crate::view::status_board::activity_text;
 use crate::view::{ERROR, MUTED, wrap};
@@ -92,6 +93,8 @@ pub(crate) enum TranscriptCell {
     Shell(ShellOutput),
     /// 명령 해석 오류 같은 한 줄 경고, 원문 그대로.
     Warning(String),
+    /// `/extensions`의 설치한 확장 목록.
+    ExtensionList(Vec<ExtensionInfo>),
 }
 
 impl TranscriptCell {
@@ -180,6 +183,7 @@ impl TranscriptCell {
             Self::TrainShort { graded, need } => vec![train_short_line(lang, *graded, *need)],
             Self::Shell(output) => shell_lines(lang, output, expanded),
             Self::Warning(text) => vec![text.clone()],
+            Self::ExtensionList(list) => extensions::list_lines(lang, list),
         }
     }
 
@@ -644,6 +648,9 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
                 one_line(rule)
             )]
         }
+        ChatNotice::ExtensionInstalled { .. }
+        | ChatNotice::ExtensionRemoved { .. }
+        | ChatNotice::ExtensionFailed { .. } => extensions::notice_lines(lang, prefix, notice),
         ChatNotice::Stopped { .. } | ChatNotice::StopUnconfirmed { .. } => Vec::new(),
     }
 }

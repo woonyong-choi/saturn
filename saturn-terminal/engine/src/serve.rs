@@ -48,6 +48,9 @@ impl Engine {
                 Some(message) = self.flow.provider_rx.recv() => {
                     self.on_provider_msg(message).await;
                 }
+                Some(done) = self.flow.install_rx.recv() => {
+                    self.on_install_done(done).await;
+                }
                 Some(done) = self.flow.stop_rx.recv() => {
                     self.on_stop_done(done).await;
                 }
@@ -137,6 +140,7 @@ impl Engine {
             Request::ListTasks => self.task_list_result().await?,
             Request::ListRouterVersions => return Err(unsupported("ListRouterVersions")),
             Request::Prune { yes } => self.prune_records(client, yes).await?,
+            Request::ListExtensions => self.extension_list_result().await?,
             command => {
                 self.route(client, command).await?;
                 return Ok(None);
@@ -206,6 +210,9 @@ impl Engine {
                 self.attach(client, request).await
             }
             Request::AddDir { chat, path } => self.add_dir(client, chat, &path).await,
+            Request::InstallExtension { .. } | Request::RemoveExtension { .. } => {
+                self.route_extension(client, request).await
+            }
             Request::RenameChat { chat, name } => self.rename_chat(chat, &name).await,
             Request::SetChatGroup { chat, group } => {
                 self.set_chat_group(chat, group.as_deref()).await
@@ -279,6 +286,7 @@ impl Engine {
             | Request::LatestChat { .. }
             | Request::ListChats { .. }
             | Request::ListTasks
+            | Request::ListExtensions
             | Request::ListRouterVersions
             | Request::Prune { .. } => unreachable!("query requests are answered by dispatch"),
         }

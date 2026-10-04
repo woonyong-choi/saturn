@@ -451,6 +451,75 @@
         },
         {
           "additionalProperties": false,
+          "description": "확장을 설치했다. 부분마다 provider별 판정은 `extension`에 있다.",
+          "properties": {
+            "ExtensionInstalled": {
+              "properties": {
+                "extension": {
+                  "$ref": "#/$defs/ExtensionInfo"
+                }
+              },
+              "required": [
+                "extension"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ExtensionInstalled"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "확장을 지웠다. 열린 session은 그대로이고 다음 session부터 빠진다.",
+          "properties": {
+            "ExtensionRemoved": {
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ExtensionRemoved"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "설치하거나 지우지 못했다. 기존 설치는 바뀌지 않았다. `reason`은 engine이 낸 원문이라 번역하지 않는다.",
+          "properties": {
+            "ExtensionFailed": {
+              "properties": {
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reason"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ExtensionFailed"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "description": "패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못했다. 맥락 정리를 미루고 제약 목록을 보인다.",
           "properties": {
             "ContextDeferred": {
@@ -684,6 +753,77 @@
           "required": [
             "method",
             "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "확장을 Saturn 확장 저장소에 설치한다. `source`는 로컬 폴더 경로나 git 저장소 주소다.\n결과는 `chat`의 대화 기록에 한 줄로 남고, 설치와 제거는 다음 session부터 적용한다.",
+          "properties": {
+            "method": {
+              "const": "InstallExtension",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "source": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "chat",
+                "source"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "설치한 확장을 지운다. 없는 이름이면 이유를 `chat`의 대화 기록에 남긴다.",
+          "properties": {
+            "method": {
+              "const": "RemoveExtension",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "chat",
+                "name"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "설치한 확장 목록을 `ExtensionList` 알림으로 요청한 접속에 보낸다.",
+          "properties": {
+            "method": {
+              "const": "ListExtensions",
+              "type": "string"
+            }
+          },
+          "required": [
+            "method"
           ],
           "type": "object"
         },
@@ -1856,6 +1996,105 @@
           "type": "object"
         }
       ]
+    },
+    "ExtensionInfo": {
+      "description": "설치한 확장 하나. 부분마다 provider별 판정을 가진다.",
+      "properties": {
+        "installed_at_ms": {
+          "description": "설치 시각(unix 밀리초).",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/ExtensionPart"
+          },
+          "type": "array"
+        },
+        "source": {
+          "description": "설치할 때 사용자가 준 원천 글자.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "source",
+        "installed_at_ms",
+        "parts"
+      ],
+      "type": "object"
+    },
+    "ExtensionPart": {
+      "description": "확장을 나눈 부분 하나.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ExtensionPartKind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "verdicts": {
+          "description": "등록한 어댑터마다 하나. 어댑터 등록 순서대로.",
+          "items": {
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "$ref": "#/$defs/Provider"
+              },
+              {
+                "$ref": "#/$defs/Injectability"
+              }
+            ],
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "verdicts"
+      ],
+      "type": "object"
+    },
+    "ExtensionPartKind": {
+      "description": "확장 부분의 종류. 어댑터가 부분을 주입할 수 있는지 종류별로 답한다.",
+      "oneOf": [
+        {
+          "const": "Skill",
+          "description": "`SKILL.md`가 든 폴더.",
+          "type": "string"
+        },
+        {
+          "const": "McpServer",
+          "description": "MCP 서버 정의 하나.",
+          "type": "string"
+        },
+        {
+          "const": "Command",
+          "description": "프롬프트 파일 하나.",
+          "type": "string"
+        },
+        {
+          "const": "Hook",
+          "description": "훅 정의 하나.",
+          "type": "string"
+        }
+      ]
+    },
+    "Injectability": {
+      "description": "provider 하나에 부분을 주입할 수 있는지에 대한 어댑터의 답. `Unknown`은 `Unavailable`과 같게 알리되 어댑터가 바뀌면 다시 판정한다.",
+      "enum": [
+        "Injectable",
+        "Unavailable",
+        "Unknown"
+      ],
+      "type": "string"
     },
     "InputAnswer": {
       "oneOf": [
@@ -5233,6 +5472,34 @@
             },
             "kind": {
               "const": "Pruned",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`ListExtensions`의 답. 설치한 순서대로.",
+          "properties": {
+            "data": {
+              "properties": {
+                "extensions": {
+                  "items": {
+                    "$ref": "#/$defs/ExtensionInfo"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "extensions"
+              ],
+              "type": "object"
+            },
+            "kind": {
+              "const": "ExtensionList",
               "type": "string"
             }
           },

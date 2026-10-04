@@ -107,6 +107,12 @@ pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
         takes_provider: false,
     },
     CommandSpec {
+        path: "extensions",
+        description: "확장 목록, 설치, 제거",
+        values: &["install", "remove"],
+        takes_provider: false,
+    },
+    CommandSpec {
         path: "model",
         description: "다음 입력부터 쓸 모델 고르기",
         values: &[],
@@ -178,6 +184,18 @@ pub(crate) const PERMISSION_CYCLE: [&str; 3] = ["ask", "edit", "read-only"];
 pub(crate) const DEFAULT_PERMISSION_MODE: &str = "edit";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ExtensionsAction {
+    List,
+    /// 로컬 폴더 경로나 git 저장소 주소. 공백을 포함할 수 있어 `install` 뒤 나머지 전체다.
+    Install {
+        source: String,
+    },
+    Remove {
+        name: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SlashCommand {
     /// `/help`
     Help,
@@ -190,6 +208,8 @@ pub(crate) enum SlashCommand {
     Model { provider: Option<Provider> },
     /// `/add-dir <폴더>`. 경로는 공백을 포함할 수 있어 명령 이름 뒤 나머지 전체다.
     AddDir { path: String },
+    /// `/extensions`, `/extensions install <원천>`, `/extensions remove <이름>`
+    Extensions(ExtensionsAction),
     /// 이름표가 없으면 가장 최근 대기 입력.
     Send { target: Option<TaskLabel> },
     /// 이름표가 없으면 가장 최근 대기 입력.
@@ -270,6 +290,7 @@ pub(crate) fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         },
         "permissions" => parse_permissions(&args)?,
         "add-dir" => parse_add_dir(body)?,
+        "extensions" => parse_extensions(body)?,
         "model" => parse_model(&args)?,
         "tasks" => no_args("tasks", &args, SlashCommand::Tasks)?,
         "mode" => parse_mode(&args)?,
@@ -348,6 +369,32 @@ fn parse_add_dir(body: &str) -> Result<SlashCommand, CommandError> {
     Ok(SlashCommand::AddDir {
         path: path.to_owned(),
     })
+}
+
+// cost: time O(b), heap O(b), stack O(1)
+// vars: b = 명령 글자 수
+// basis: estimate
+/// `body`는 `/`를 뗀 줄. 원천은 이름 뒤 나머지를 앞뒤 공백만 떼어 쓴다.
+fn parse_extensions(body: &str) -> Result<SlashCommand, CommandError> {
+    let rest = body.strip_prefix("extensions").unwrap_or_default().trim();
+    if rest.is_empty() {
+        return Ok(SlashCommand::Extensions(ExtensionsAction::List));
+    }
+    let (verb, argument) = rest.split_once(char::is_whitespace).unwrap_or((rest, ""));
+    let argument = argument.trim();
+    match verb {
+        "install" if !argument.is_empty() => {
+            Ok(SlashCommand::Extensions(ExtensionsAction::Install {
+                source: argument.to_owned(),
+            }))
+        }
+        "remove" if !argument.is_empty() => {
+            Ok(SlashCommand::Extensions(ExtensionsAction::Remove {
+                name: argument.to_owned(),
+            }))
+        }
+        _ => Err(invalid("extensions", rest)),
+    }
 }
 
 // cost: time O(a), heap O(a), stack O(1)
@@ -493,6 +540,39 @@ mod tests {
                 ..
             })
         ));
+    }
+
+    #[test]
+    fn parse_extensions_reads_list_install_and_remove() {
+        assert_eq!(
+            parse("/extensions").unwrap(),
+            Some(SlashCommand::Extensions(ExtensionsAction::List))
+        );
+        assert_eq!(
+            parse("/extensions install  ~/my kits/review-kit ").unwrap(),
+            Some(SlashCommand::Extensions(ExtensionsAction::Install {
+                source: "~/my kits/review-kit".to_owned()
+            }))
+        );
+        assert_eq!(
+            parse("/extensions remove review-kit").unwrap(),
+            Some(SlashCommand::Extensions(ExtensionsAction::Remove {
+                name: "review-kit".to_owned()
+            }))
+        );
+        for bad in [
+            "/extensions install",
+            "/extensions remove",
+            "/extensions add x",
+        ] {
+            assert!(matches!(
+                parse(bad),
+                Err(CommandError::InvalidArgument {
+                    command: "extensions",
+                    ..
+                })
+            ));
+        }
     }
 
     #[test]

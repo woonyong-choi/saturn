@@ -10,7 +10,8 @@ use saturn_protocol::state::InputState;
 
 use super::{App, Effect, Window};
 use crate::commands::{
-    self, CommandError, DEFAULT_PERMISSION_MODE, PERMISSION_CYCLE, SATURN_COMMANDS, SlashCommand,
+    self, CommandError, DEFAULT_PERMISSION_MODE, ExtensionsAction, PERMISSION_CYCLE,
+    SATURN_COMMANDS, SlashCommand,
 };
 use crate::i18n::{self, Lang};
 use crate::keymap::Keymap;
@@ -328,6 +329,18 @@ impl App {
                 chat,
                 path: absolute_path(&self.workdir, &path),
             }),
+            SlashCommand::Extensions(action) => match action {
+                ExtensionsAction::List => Some(Request::ListExtensions),
+                ExtensionsAction::Install { source } => {
+                    chat.map(|chat| Request::InstallExtension {
+                        chat,
+                        source: extension_source(&self.workdir, &source),
+                    })
+                }
+                ExtensionsAction::Remove { name } => {
+                    chat.map(|chat| Request::RemoveExtension { chat, name })
+                }
+            },
             SlashCommand::Send { target } => self
                 .chat
                 .queued_by_label(target)
@@ -654,6 +667,15 @@ fn step(selected: usize, count: usize, action: Action) -> usize {
 /// 피드백 질문의 선택지 순서(`1` 맞음, `2` 틀림, `0` 닫기). `None`은 닫기다.
 const FEEDBACK_ANSWERS: [Option<bool>; 3] = [Some(true), Some(false), None];
 const CORRECTION_CHOICES: usize = 2;
+
+/// git 주소는 그대로, 폴더 경로는 `absolute_path`로 바꾼다. engine은 절대 경로와 git 주소만 받는다.
+fn extension_source(workdir: &Path, source: &str) -> String {
+    if source.contains("://") || source.starts_with("git@") {
+        source.to_owned()
+    } else {
+        absolute_path(workdir, source)
+    }
+}
 
 /// 상대 경로는 TUI의 현재 폴더 기준 절대 경로로 바꾸고, `~/`로 시작하면 홈 폴더 아래로 읽는다. engine은 절대 경로만 받는다.
 fn absolute_path(workdir: &Path, path: &str) -> String {
