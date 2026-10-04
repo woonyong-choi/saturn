@@ -76,7 +76,9 @@ const MODEL_ALIASES: [&str; 4] = [DEFAULT_MODEL, "opus", "sonnet", "haiku"];
 /// 모든 도구 승인을 호스트가 받게 하는 인자. 사용자 설정이 `bypassPermissions`여도 요청이 온다(`Bash`로 확인).
 const PERMISSION_PROMPT_ARGS: &[&str] = &["--permission-prompt-tool", "stdio"];
 
-/// 규칙 대상 도구. 이름을 나열해야 요청이 호스트로 온다. `Edit`, `Write`, MCP, subagent 도구는 실측 전이다.
+/// 규칙 대상 도구. 이름을 나열해야 요청이 호스트로 온다. `Edit`, `Write`, MCP, subagent 도구 모두 `can_use_tool`로 온다.
+/// 단 `Read` 없이 낸 `Edit`은 요청 전에 Claude Code가 도구 오류로 끝내 요청이 오지 않는다.
+/// 실측은 `docs/experiments/provider-permission-real-claude/report.md`.
 /// MCP는 서버를 알 수 없어 `mcp__*` 하나로 둔다. 초안.
 pub(crate) const ASK_TOOLS: &[&str] = &[
     "Bash",
