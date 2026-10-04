@@ -15,6 +15,12 @@ pub enum ProviderEvent {
         subagent: Option<SubagentId>,
         text: String,
     },
+    /// 전환 패킷 턴에 대한 provider의 답. 사용자 입력의 답이 아니므로 기록에는 남기되 화면의 답과
+    /// 다음 패킷의 답에 넣지 않는다. provider 연결이 아니라 engine이 패킷 턴의 `Text`를 바꿔 만든다.
+    PacketReply {
+        agent: AgentId,
+        text: String,
+    },
     ToolCall {
         agent: AgentId,
         subagent: Option<SubagentId>,
@@ -95,6 +101,7 @@ impl ProviderEvent {
     pub fn agent(&self) -> AgentId {
         match self {
             Self::Text { agent, .. }
+            | Self::PacketReply { agent, .. }
             | Self::ToolCall { agent, .. }
             | Self::ToolResult { agent, .. }
             | Self::SubagentStarted { agent, .. }

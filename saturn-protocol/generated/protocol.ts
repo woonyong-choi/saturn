@@ -158,7 +158,7 @@ export type PermissionTool = "Shell" | "Edit" | "Mcp" | "Subagent";
 
 export type Provider = "Codex" | "Claude";
 
-export type ProviderEvent = { "Text": { agent: AgentId, subagent: SubagentId | null, text: string, } } | { "ToolCall": { agent: AgentId, subagent: SubagentId | null, call_id: string, activity: Activity, 
+export type ProviderEvent = { "Text": { agent: AgentId, subagent: SubagentId | null, text: string, } } | { "PacketReply": { agent: AgentId, text: string, } } | { "ToolCall": { agent: AgentId, subagent: SubagentId | null, call_id: string, activity: Activity, 
 /**
  * 구조로 얻은 값만 담는다. 얻지 못한 값은 비운다.
  */
