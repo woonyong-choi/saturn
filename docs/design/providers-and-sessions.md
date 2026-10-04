@@ -325,10 +325,44 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 ### 기록 번호로 결과 전달
 
 1. `sessions`는 session마다 마지막으로 전달받은 기록 번호를 기록한다.
-2. 다음 입력 때 `sessions`는 그 기록 번호 뒤에 쌓인 다른 에이전트의 결과 요약과 수정 파일 경로를 붙인다.
+2. 다음 입력 때 `sessions`는 그 기록 번호 뒤에 쌓인 다른 에이전트의 결과 요약과 수정 파일 경로([수정 파일 목록](#수정-파일-목록))를 붙인다.
 3. router가 쌓인 항목 전체에서 관련 항목을 고르고, 순서는 [맥락 고르기](context-selection.md)를 따른다.
 
 에이전트끼리 직접 통신하지 않는다. 보조 에이전트 결과로 쉬는 메인 에이전트를 깨우지 않고, 메인 에이전트의 다음 입력 때 전달한다. 두 규칙 모두 맥락 전달을 Saturn 기록 번호 하나로 맞추기 위해서다.
+
+### 수정 파일 목록
+
+수정 파일 목록은 provider 이벤트가 아니라 실행 경계의 폴더 상태 차이로 센다. 이벤트만 보면 Codex exec의 자식과 Claude subagent가 셸 명령으로 고친 파일이 빠지기 때문이다. 이벤트는 누가 고쳤는지 알리는 보조 정보로만 쓴다.
+
+1. 시작: `engine`은 실행을 기록한 뒤 provider에 턴을 보내기 전에 폴더 상태(스냅샷)를 찍어 메모리에 둔다.
+2. 트리 유휴: 턴이 끝나 실행을 `Completed`로 닫을 때 지금 상태를 찍어 시작 상태와 비교한다.
+3. 멈춤 확인: 멈춘 실행을 `Stopped`로 닫을 때와, 결과를 모르는 작업을 확인 입력으로 이으려고 닫을 때 같은 비교를 한다. 보내기 전에 실패한 실행은 비교하지 않고 시작 상태만 버린다.
+4. `engine`은 비교 결과를 기록 저장소에 남기고(표 `run_changes`, [기록 저장과 보존](records.md#실행별-수정-파일)) 패킷과 확인 입력에 쓴다.
+
+스냅샷을 읽는 일은 `engine`의 `workspace`가 하고, 두 스냅샷을 비교하고 수정 주체를 붙이고 글로 쓰는 규칙은 `core`의 `sessions::changes`가 가진 순수 함수다. `core`는 파일과 프로세스를 직접 다루지 않는다.
+
+폴더 상태는 작업 폴더와 채팅에 더한 폴더([채팅 폴더와 이어 열기](engine-lifecycle.md#채팅-폴더와-이어-열기))를 링크를 푼 절대 경로로 읽는다. 더한 폴더가 다른 폴더 안에 있으면 바깥 폴더만 읽는다. 폴더마다 방식을 따로 고른다.
+
+| 폴더 | 읽는 방식 | 같은지 보는 기준 |
+|---|---|---|
+| git 저장소 | `git status --porcelain=v1 -z --untracked-files=all -- .`가 알린 파일을 읽고, 파일마다 SHA-256을 계산한다. 저장소의 `HEAD`도 적어 둔다. | 해시가 같으면 같은 상태다. 실행 전에 이미 고쳐져 있던 파일은 실행 중에 다시 고쳐 해시가 달라질 때만 목록에 든다. `git`이 지워졌다고 알린 파일은 지워짐으로 센다. |
+| git이 아닌 폴더 | 폴더를 이름순으로 훑는다. 링크는 따라가지 않는다. | 파일 크기와 수정 시각이 모두 같으면 같은 상태다. 한쪽에만 있는 파일은 새로 생김이나 지워짐이다. |
+
+- 실행 사이에 `HEAD`가 바뀌었으면(에이전트가 커밋했으면) `git diff --name-only`로 그 사이 커밋에 든 파일을 목록에 더한다. 커밋하면 `git status`가 깨끗해져 상태 차이로는 보이지 않기 때문이다.
+- 무시 목록은 git 저장소에서는 `.gitignore`다. `git`이 적용하므로 `engine`이 따로 읽지 않는다. git이 아닌 폴더는 `.git`, `target`, `node_modules`, `build`, `dist`, `out`, `.venv`, `__pycache__` 같은 빌드 산출물과 의존성 폴더 이름(`core`의 `IGNORED_NAMES`)을 건너뛴다. git이 아닌 폴더의 `.gitignore`는 읽지 않는다(초안).
+- 큰 폴더의 비용은 스냅샷 하나당 파일 20,000개, 3초, 해시 파일 크기 8MiB(모두 초안)로 막는다. 파일 수나 시간이 상한에 닿으면 거기서 멈추고 그 스냅샷을 부분으로 표시한다. 해시 상한보다 큰 파일은 해시하지 않고 크기와 수정 시각으로 비교한다. `git`이 시간 안에 답하지 않으면 그 자식만 종료하고 부분으로 표시한다.
+- 어느 쪽이든 부분이면 목록도 부분이다. git이 아닌 폴더에서 한쪽에만 있는 파일은 새로 생겼는지 훑지 못한 것인지 알 수 없어 목록에서 뺀다. 부분 목록은 기록에 부분 표시와 함께 남고, 글로 쓸 때 "폴더가 커서 다 훑지 못했으니 더 바뀌었을 수 있다"고 밝힌다. 상한에 닿아도 실행은 막지 않는다.
+- 목록은 파일 50개(초안)까지 풀어 쓰고 나머지는 개수만 적는다.
+- 바뀐 내용(diff)은 목록에 싣지 않는다. 스냅샷은 해시만 가져 이전 내용이 없고, 내용을 패킷에 실으면 예산을 크게 쓰기 때문이다. 받은 에이전트가 목록의 경로로 `git diff -- <경로>`를 실행하거나 파일을 읽어 필요할 때 확인한다. 목록을 넘길 때 이 확인을 안내하지는 않는다. 패킷 지시문이 이미 현재 상태를 확인하고 믿으라고 알린다.
+- 수정 주체는 provider 이벤트의 파일 수정 도구 호출(`FileEdit`)이 알린 경로로 붙인다. 이벤트에서 메인 에이전트이면 `main agent`, subagent이면 `subagent <번호>`다. 이벤트에 없는 수정은 `by shell or child process`로 쓴다. 이벤트가 알렸어도 폴더 상태가 같으면 목록에 없다. 이벤트는 목록을 늘리거나 줄이지 않는다.
+
+목록은 세 자리에 쓴다.
+
+- 기록: 실행마다 파일 경로, 종류(생김, 바뀜, 지워짐), 수정 주체, 부분 여부를 남긴다.
+- 패킷: 실행마다 항목 하나를 경쟁 구역 맨 앞에 둔다. 도구 호출 순위와 따로 먼저 넣고, 예산이 모자라면 축약본(파일 수), 경로 순으로 줄어든다. 다른 session이 낸 실행만 넣고, 보관 session을 재개할 때는 그 session이 받은 기록 번호 뒤의 실행만 넣는다.
+- 멈춤 보류 표시: 멈춘 작업을 `/continue`로 이을 때 확인 입력의 결과 줄 뒤에 `Files changed during that turn: ...`를 한 줄 더한다. 에이전트가 처음부터 다시 훑지 않고 그 파일부터 확인하게 하기 위해서다. 바뀐 파일이 없으면 줄을 더하지 않는다.
+
+시작 상태는 메모리에만 있다. `engine`이 죽으면 그 실행의 시작 상태를 잃으므로 크래시 복구의 확인 입력에는 목록이 없고 에이전트가 파일 상태를 직접 확인한다. 같은 폴더를 사용자나 다른 프로그램이 같은 시간에 고치면 구분하지 못하고 그 파일도 목록에 든다.
 
 ### subagent 트리 추적
 
@@ -517,6 +551,9 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | Codex 명령의 경로와 종료 코드, 파일 수정의 경로와 바뀐 줄 수와 수정 내용을 같은 칸에 싣는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `detail_of_read_command_keeps_action_paths`, `detail_of_test_command_is_test_run_without_paths`, `detail_of_file_change_counts_diff_lines`, `detail_of_file_change_added_file_counts_whole_text`, `tool_output_file_change_is_path_and_diff`, `exit_code_of_command_reads_code_and_ignores_other_items`, `turn_events_are_converted_in_order` |
 | Codex 한 턴의 여러 응답 메시지는 항목이 바뀌는 자리에 빈 줄이 들어가 구분되어 보이고, 턴 맨 앞과 `itemId` 없는 조각에는 들어가지 않는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `messages_of_one_turn_stay_apart_when_the_message_item_changes`, `a_new_turn_does_not_start_with_a_separator`, `a_delta_without_an_item_id_is_passed_through_unchanged`. 실제 Codex 화면에서 해설과 최종 답이 나뉘어 보이는지는 실제 provider로 확인한다 |
 | Codex 추론 항목은 `Reasoning` 종류로 남기고 도구 결과 후보에서 뺀다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `detail_of_reasoning_is_not_a_candidate`, `saturn-protocol/src/event.rs`의 `is_candidate_only_reasoning_is_excluded` |
+| 수정 파일 목록은 provider 이벤트 없이 셸이 바꾼 파일도 담고, git 저장소와 git이 아닌 폴더 모두 세며, 무시 목록의 파일은 담지 않는다. 이벤트는 수정 주체만 붙인다. | `saturn-terminal/engine/src/lifecycle/changed_files.rs`의 `shell_edits_without_provider_events_are_listed_at_tree_idle`, `git_repository_lists_shell_edits_and_skips_ignored_files`, `provider_events_only_name_who_edited`, `saturn-terminal/engine/src/workspace.rs`의 `plain_folder_sees_files_changed_without_any_event`, `git_folder_sees_shell_edits_by_content_and_respects_gitignore`, `git_folder_keeps_files_the_run_committed`, `added_folder_is_scanned_with_its_own_mode`, `saturn-terminal/core/src/sessions/changes.rs`의 시험 |
+| 큰 폴더는 파일 수와 시간 상한에서 멈추고 부분 목록으로 표시한다. | `saturn-terminal/engine/src/workspace.rs`의 `file_count_limit_stops_the_scan_and_marks_it_partial`, `expired_time_limit_marks_the_scan_partial`, `large_files_are_compared_without_a_hash`, `saturn-terminal/engine/src/lifecycle/changed_files.rs`의 `too_large_folder_is_cut_at_the_limit_and_marked_partial` |
+| 수정 파일 목록은 패킷에 들어가고, 이미 받은 session의 실행은 다시 넣지 않는다. | `saturn-terminal/engine/src/handoff.rs`의 `packet_lists_files_changed_by_shell_even_without_tool_events`, `changes_of_others_drops_the_sessions_own_and_already_delivered_runs` |
 | 셸이 감싼 명령은 안쪽 명령으로 기록한다. | `saturn-terminal/engine/src/providers/tool_detail.rs`의 `unwrap_shell_login_shell_wrapper_gives_inner_command`, `unwrap_shell_escaped_single_quote_stays_in_inner_command`, `unwrap_shell_plain_or_unbalanced_command_is_unchanged`, `saturn-terminal/engine/src/providers/codex/tests.rs`의 `activity_of_wrapped_command_is_inner_command` |
 | Codex와 Claude Code의 도구 결과를 같은 충실도로 기록으로 바꾼다. | [변환 수정 뒤 기록 전환 품질 측정](../experiments/record-fidelity-stage2/report.md): 같은 받는 쪽에서 Codex 기록 패킷과 Claude Code 기록 패킷의 정답률 차이 0.0%p [0.0, 0.0]로 채택. 경로 120/120 대 120/120, 메모 필드 192/192 대 191/192 |
 | 시작 요청이 느려도 다른 채팅의 입력과 조회, 같은 채팅의 멈춤을 바로 처리한다. 같은 연결의 요청 순서는 바뀌지 않는다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_slow_start_request_does_not_stall_other_chats_or_stop`, `a_provider_that_stops_reading_input_does_not_stall_other_chats_or_stop`, `a_silent_turn_start_asks_the_user_to_check_while_other_chats_keep_working`, `saturn-terminal/core/src/queue/tests.rs`의 `next_to_send_except_skips_busy_chats_but_not_others`, `saturn-terminal/engine/src/lifecycle/deliver.rs`와 `steer_rejected.rs`의 전달 순서 시험 |
@@ -538,6 +575,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 - provider별 연결 규약을 구현하고, 규약이 바뀌면 계속 따라가야 한다.
 - subagent 추적을 직접 구현해야 한다.
 - 설정으로 증명하지 못한 실행은 크래시 뒤 자동으로 이어 가지 못한다.
+- 실행마다 폴더 상태를 두 번 읽어 매우 큰 폴더에서는 턴 시작이 최대 3초 늦어진다. 상한을 넘으면 목록이 부분이 된다.
 - 계약에 판 번호를 붙여 유지하므로 provider가 늘어도 한 판의 뜻을 바꾸지 못한다.
 
 ## 대안
@@ -545,6 +583,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 - ACP를 Saturn 계약으로 삼고 Codex와 Claude도 ACP로 연결하는 방식은 끼워 넣기와 전달 실패 구분 같은 깊은 기능을 잃어 버렸다([결정 기록](../decisions/2026-10-04-direct-adapters-and-acp-for-new-providers.md)).
 - 자체 계약을 두고 ACP 어댑터를 지금 구현해 확장으로 보태는 방식은 세 겹을 따라가야 해 버렸다([결정 기록](../decisions/2026-10-04-direct-adapters-and-acp-for-new-providers.md)).
 - provider를 닫힌 enum으로 두는 방식은 provider를 더할 때마다 공통 코드를 고쳐야 해 버렸다([결정 기록](../decisions/2026-10-04-open-providers-and-saturn-extensions.md)).
+- 수정 파일을 provider 이벤트로만 세는 방식은 자식 프로세스와 셸 명령이 고친 파일이 빠져 버렸다([이슈 #65](https://github.com/woonyong-choi/saturn/issues/65)).
 - 한 번 실행 방식(`codex exec`, `claude -p`)은 끼워 넣기와 Codex 맥락 크기 관찰이 불가능해 버렸다([결정 기록](../decisions/2026-09-29-persistent-provider-connections.md)).
 - 실행 인자로 subagent와 네트워크를 고정하는 방식은 사용자 설정을 무시해 버렸다([결정 기록](../decisions/2026-09-29-minimal-provider-control.md)).
 
@@ -553,5 +592,4 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 - 채팅에 더한 폴더를 열린 session에 넣는 방법(Claude stream-json 제어 요청, Codex 턴 단위 쓰기 폴더). 지금은 다음 session부터 적용한다 ([#301](https://github.com/woonyong-choi/saturn/issues/301))
 - 메인이 아닌 provider의 명령을 고르면 그 provider session을 새로 열지, 메인 전환을 물을지, 거절할지 ([#41](https://github.com/woonyong-choi/saturn/issues/41))
 - router 상태에 subagent 목록을 넣을지, 개수만 넣을지, 넣지 않을지 ([#63](https://github.com/woonyong-choi/saturn/issues/63))
-- 수정 파일 목록을 실행 경계의 파일 상태 차이로 계산할지, provider 이벤트로 계산할지 ([#65](https://github.com/woonyong-choi/saturn/issues/65))
 - 패킷 고정 구역의 "현재 목표"와 "끝나지 않은 항목"을 무엇으로 뽑을지. 정해지기 전에는 목표는 마지막 입력이고 제약은 빈 목록이며 끝나지 않은 항목은 결과가 없는 도구 호출이다 ([#90](https://github.com/woonyong-choi/saturn/issues/90))

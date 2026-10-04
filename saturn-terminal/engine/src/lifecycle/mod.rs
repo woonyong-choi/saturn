@@ -3,6 +3,7 @@
 mod add_dir;
 mod agent_questions;
 mod attach;
+mod changed_files;
 mod chat_labels;
 mod chats;
 mod child_sessions;

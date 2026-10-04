@@ -158,7 +158,7 @@ impl Engine {
     }
 
     /// 파일 상태를 확인한 뒤 그 상태로 만든 새 입력을 접수해 보낸다. 보내지 못하면 보류로 남기고 제안한다.
-    /// TODO(#65): 수정 파일 목록을 실행 경계의 파일 상태 차이로 셀지, provider 이벤트로 셀지
+    /// 크래시로 시작 때 폴더 상태를 잃어 수정 파일 목록은 확인 입력에 싣지 못한다.
     async fn resume_proven(&mut self, run: RunRecord) -> Result<(), EngineError> {
         match self.continue_held(run.chat, Some(run.task)).await {
             Ok(()) => Ok(()),

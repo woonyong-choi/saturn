@@ -80,8 +80,10 @@ impl Engine {
             return Ok(false);
         }
         let rows = self.store.ledger_since(chat, LedgerSeq(0)).await?;
+        let changes = self.store.run_changes(chat).await?;
         let source = handoff_source(
             &rows,
+            &changes,
             &self.pending_work(chat, None),
             &self.registry.instruction_docs(),
             budget.rrf_k,

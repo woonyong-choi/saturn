@@ -43,6 +43,7 @@ mod permission;
 mod prune;
 mod recover;
 mod requests;
+mod run_changes;
 mod serve;
 mod sessions;
 mod settings_watch;
@@ -53,6 +54,7 @@ mod tasks;
 mod turn_end;
 mod usage;
 mod versions;
+mod workspace;
 
 #[cfg(test)]
 mod lifecycle;

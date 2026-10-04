@@ -159,6 +159,12 @@ pub(crate) struct FlowState {
     pub(crate) watched_settings: crate::settings_watch::WatchedSettings,
     /// 보낸 뒤 결과를 모르는 작업.
     pub(crate) needs_check: HashMap<TaskId, NeedsCheck>,
+    /// 실행 시작 때 찍은 폴더 상태. 실행이 끝나는 경계에서 지금 상태와 비교한다. engine이 죽으면 사라진다.
+    pub(crate) baselines: HashMap<saturn_protocol::ids::RunId, crate::run_changes::Baseline>,
+    /// 멈춘 작업이 멈출 때까지 바꾼 파일. 그 작업의 확인 입력을 만들 때 쓰고 지운다. engine이 죽으면 사라진다.
+    pub(crate) stopped_changes: HashMap<TaskId, saturn_core::sessions::changes::ChangeSet>,
+    /// 폴더 상태 한 번의 비용 상한. 시험이 줄여 쓸 수 있다.
+    pub(crate) change_limits: crate::workspace::Limits,
     /// 사용자가 정한 다음 provider. 그 provider의 session이 열리면 지운다.
     pub(crate) switch_to: HashMap<ChatId, Provider>,
     pub(crate) stopping: HashMap<ChatId, StopProgress>,
@@ -227,6 +233,9 @@ impl Default for FlowState {
             questions_of_connection: HashMap::new(),
             watched_settings: HashMap::new(),
             needs_check: HashMap::new(),
+            baselines: HashMap::new(),
+            stopped_changes: HashMap::new(),
+            change_limits: crate::workspace::Limits::default(),
             switch_to: HashMap::new(),
             stopping: HashMap::new(),
             run_after_stop: Vec::new(),
