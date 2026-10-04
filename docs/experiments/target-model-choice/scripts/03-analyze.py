@@ -50,13 +50,22 @@ def cost_of(record: dict, meta: dict) -> float | None:
     ) / 1e6
 
 
-def normalize_record(case: dict, label: dict, lane: str, repeat: int) -> dict:
+def normalize_record(
+    case: dict,
+    label: dict | None,
+    lane: str,
+    repeat: int,
+    reserved: set[str] | None = None,
+) -> dict:
     trial = lane + "-" + case["sample_id"] + "-" + str(repeat)
     path = PRIVATE / "raw" / (trial + ".json")
     record = (
         read(path)
         if path.exists()
-        else dict(kind="jev" if lane == "jev" else REFERENCE[lane][0], status="missing")
+        else dict(
+            kind="jev" if lane == "jev" else REFERENCE[lane][0],
+            status="incomplete" if trial in (reserved or set()) else "not_run",
+        )
     )
     if lane == "jev":
         envelope = record.get("response", {})
@@ -96,7 +105,7 @@ def normalize_record(case: dict, label: dict, lane: str, repeat: int) -> dict:
         switch_hit=None,
         signal=label["signal"] if label else None,
     )
-    if label and label["status"] == "judged":
+    if label and label["status"] == "judged" and record["status"] != "not_run":
         row.update(
             best_match=canonical(selected) == canonical(label["best"]),
             raw_hit=accepts(selected, label),
@@ -110,11 +119,14 @@ def normalize_record(case: dict, label: dict, lane: str, repeat: int) -> dict:
 def process() -> list[dict]:
     labels = {r["sample_id"]: r["final"] for r in read(PRIVATE / "labels.json")}
     data = []
+    reserved = {r["trial_id"] for r in rows(PRIVATE / "calls.jsonl")}
     for case in read(PRIVATE / "samples.json"):
         for lane in ["jev", *REFERENCE]:
             for repeat in range(1, 4 if lane == "jev" else 2):
                 data.append(
-                    normalize_record(case, labels[case["sample_id"]], lane, repeat)
+                    normalize_record(
+                        case, labels[case["sample_id"]], lane, repeat, reserved
+                    )
                 )
     path = PRIVATE / "processed/observations.jsonl"
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -123,6 +135,7 @@ def process() -> list[dict]:
 
 
 def summarize_condition(all_rows: list) -> dict:
+    attempted = [r for r in all_rows if r["status"] != "not_run"]
     judged = [r for r in all_rows if r["effective_hit"] is not None]
     valid = [r for r in judged if r["valid"]]
     costs = [r["cost_usd"] for r in all_rows if r["cost_usd"] is not None]
@@ -134,16 +147,18 @@ def summarize_condition(all_rows: list) -> dict:
         paired=paired(judged),
         switch=measured_rate(judged, "switch"),
         switch_hit=measured_rate(judged, "switch_hit"),
-        fallback=rate([r["fallback"] for r in all_rows]),
-        low_confidence=rate([r["low_confidence"] for r in all_rows]),
-        invalid=sum(not r["valid"] for r in all_rows),
+        fallback=rate([r["fallback"] for r in attempted]),
+        low_confidence=rate([r["low_confidence"] for r in attempted]),
+        invalid=sum(not r["valid"] for r in attempted),
+        not_run=len(all_rows) - len(attempted),
+        attempted=len(attempted),
         statuses=dict(Counter(r["status"] for r in all_rows)),
         success_conditional_raw=rate([r["raw_hit"] for r in valid]),
         latency=timing(
             [r["latency_s"] for r in all_rows if r["latency_s"] is not None]
         ),
         known_cost_usd=sum(costs),
-        unknown_cost_calls=len(all_rows) - len(costs),
+        unknown_cost_calls=len(attempted) - len(costs),
         mean_known_cost_usd=sum(costs) / len(costs) if costs else None,
         choices=dict(Counter(r["selected"] or "invalid" for r in all_rows)),
     )
@@ -304,6 +319,14 @@ def analyze(data: list) -> None:
         noninferiority_margin_pp=5,
         switch_target_percent=80,
         planned_n=100,
+        source_audit=read(PRIVATE / "source-audit.json"),
+        parser_correction=read(PRIVATE / "parser-correction.json"),
+        pre_audit_reserved_calls=read(PRIVATE / "pre-audit-calls.json")[
+            "reserved_gold"
+        ],
+        rejected_source_samples=len(
+            read(PRIVATE / "rejected-census/source-audit.json")["excluded_sample_ids"]
+        ),
     )
     primary = [r for r in data if r["condition"] == "jev" and r["repeat"] == 1]
     for field in ("category", "source", "signal"):

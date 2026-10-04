@@ -58,6 +58,7 @@ def opening(summary: dict) -> list[str]:
         "|---|---|---|---|",
         "| JSON 예시의 noul 키와 정답 통로 오류 중단 처리 정정 | 표본 추출 중, 정답·선택 호출 전 | 독립 검토에서 실제 engine 계약과 차이 발견 | 정답·선택 응답을 보기 전 정정, 가설·기준·표본 규칙 변경 없음 |",
         "| Codex subagent·exec와 자동 실행 작업 폴더 제외 | 최초 정답 일부 예약 뒤, 응답 내용 열람 전 | 출처 검증에서 자동 실행 표본 발견 | 최초 표본 폐기 후 같은 시드로 재추출, 이전 호출도 예산에 포함 |",
+        "| CLI 진단 error 이벤트의 도구 실행 오분류 수정 | 정답 수집 중, 선택 질의 전 | 정상 JSON 응답도 도구 사용으로 제외하던 판독 오류 발견 | 저장 응답을 수정된 판독기로 재처리, 추가 호출·미완료 예약 보존 |",
         "| 함수 타입과 Python 호환 주석 보완 | 정답·선택 호출 전 | 정적 검증 규칙 적용 | 의미 변경 없음 |",
         "",
         "## 결과",
@@ -66,7 +67,7 @@ def opening(summary: dict) -> list[str]:
         "",
         "| 단계 | 수 |",
         "|---|---|",
-        f"| 조사한 세션 파일 | {sampling['files']} |",
+        f"| 사용자 입력 추출을 수행한 세션 파일 | {sampling['files']} |",
         f"| 추출한 사용자 입력 | {sampling['extracted_users']} |",
         f"| 적격 첫 입력 | {sampling['eligible']} |",
         f"| 선정 | {sampling['selected']} |",
@@ -82,6 +83,8 @@ def opening(summary: dict) -> list[str]:
         f"| 유효하지 않은 라벨 응답 | {gold['invalid_ballots']} |",
         "",
         f"프로젝트는 {sampling['projects']}개였다. 기록별 선정 수는 `{sampling['by_source']}`, 작업 종류별 선정 수는 `{sampling['by_category']}`였다.",
+        "",
+        f"최초 표본에서 자동 실행 출처 {summary['rejected_source_samples']}개를 발견해 응답 내용을 보지 않고 재추출했다. 그전에 예약한 정답 호출 {summary['pre_audit_reserved_calls']}회도 전체 예산에 포함했다. 새 표본·프롬프트와 같은 기존 응답 {summary['source_audit']['reusable_gold_receipts']}건만 재사용했다.",
         "",
         "### 확인 분석",
         "",
@@ -112,14 +115,14 @@ def main() -> None:
         )
     lines += [
         "",
-        "최선 일치와 원래 선택 허용은 확신 대체 전 답을 채점했다. 대체 후 허용은 형식·호출 실패도 기본 sol로 진행한 결과다. 반복은 독립 표본으로 합산하지 않았다. 모든 비율 구간과 종류별 결과는 [집계](results/summary.json)에 있다.",
+        "최선 일치와 원래 선택 허용은 확신 대체 전 답을 채점했다. 대체 후 허용은 형식·호출 실패도 기본 sol로 진행한 결과다. 반복은 독립 표본으로 합산하지 않았다. 예산 상한 등으로 예약하지 못한 질의는 오답에 넣지 않고 해당 모델의 분석 분모에서 제외했으며, 예약 뒤 응답이 없는 호출은 실패로 남겼다. 모든 비율 구간과 종류별 결과는 [집계](results/summary.json)에 있다.",
         "",
-        "| 선택 모델 | 낮은 확신 | 전체 대체 | 형식·호출 실패 | 중앙 지연 | p90 지연 | 알려진 비용 합계 | 비용 미상 호출 |",
+        "| 선택 모델 | 낮은 확신 | 전체 대체 | 형식·호출 실패 / 미실행 | 중앙 지연 | p90 지연 | 알려진 비용 합계 | 비용 미상 호출 |",
         "|---|---|---|---|---|---|---|---|",
     ]
     for name, c in conditions.items():
         lines.append(
-            f"| {name} | {proportion(c['low_confidence'])} | {proportion(c['fallback'])} | {c['invalid']} | {number(c['latency']['median_s'])}초 | {number(c['latency']['p90_s'])}초 | USD {c['known_cost_usd']:.6f} | {c['unknown_cost_calls']} |"
+            f"| {name} | {proportion(c['low_confidence'])} | {proportion(c['fallback'])} | {c['invalid']} / {c['not_run']} | {number(c['latency']['median_s'])}초 | {number(c['latency']['p90_s'])}초 | USD {c['known_cost_usd']:.6f} | {c['unknown_cost_calls']} |"
         )
     lines += [
         "",

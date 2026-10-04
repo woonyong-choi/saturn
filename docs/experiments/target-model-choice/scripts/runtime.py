@@ -248,10 +248,12 @@ def response_text(record: dict) -> tuple[str, dict]:
         e
         for e in events
         if e.get("type") == "item.completed"
-        and e.get("item", {}).get("type") not in ("agent_message", "reasoning")
+        and e.get("item", {}).get("type") not in ("agent_message", "reasoning", "error")
     ]
     return messages[-1] if messages else "", dict(
-        usage=usage[-1] if usage else {}, tool_events=len(tools)
+        usage=usage[-1] if usage else {},
+        tool_events=len(tools),
+        diagnostic_events=sum(e.get("item", {}).get("type") == "error" for e in events),
     )
 
 

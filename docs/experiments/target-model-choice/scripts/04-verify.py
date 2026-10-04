@@ -6,7 +6,7 @@ import json
 import subprocess
 from collections import Counter
 
-from protocol import REFERENCE, make_body
+from protocol import REFERENCE, choice_prompt, make_body
 from runtime import LIMITS, PRIVATE, PUBLIC, ROOT, digest, read, rows
 
 
@@ -42,10 +42,8 @@ def main() -> None:
                     continue
                 if lane == "jev" and record["request"] != make_body(case):
                     raise RuntimeError("request drift")
-                if lane != "jev":
-                    prompt = record["prompt"]
-                    if any(text in prompt for text in case["future"] if len(text) > 40):
-                        raise RuntimeError("possible future text leakage")
+                if lane != "jev" and record["prompt"] != choice_prompt(case):
+                    raise RuntimeError("reference prompt drift or future leakage")
     gold_last = max(r["ts_utc"] for r in ledger if r["trial_id"].startswith("gold-"))
     query_first = min(
         r["ts_utc"]
@@ -75,6 +73,14 @@ def main() -> None:
             continue
         if any(value in path.read_text() for value in banned):
             raise RuntimeError("private field in public output: " + name)
+    manifest = PUBLIC / "data/SHA256SUMS"
+    if manifest.exists():
+        for line in manifest.read_text().splitlines():
+            checksum, name = line.split("  ", 1)
+            prefix, relative = name.split("/", 1)
+            root = PRIVATE if prefix == "private" else PUBLIC
+            if digest(root / relative) != checksum:
+                raise RuntimeError("manifest mismatch: " + name)
     print(
         json.dumps(
             dict(
