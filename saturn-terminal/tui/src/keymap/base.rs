@@ -96,6 +96,7 @@ pub(super) fn table() -> Vec<Binding> {
         b(Action::CorrectionRun, &[A::Correction], &["1"]),
         b(Action::CorrectionKeep, &[A::Correction], &["2"]),
         // 상태판
+        b(Action::ToggleDetail, &[A::Detail], &["enter"]),
         b(Action::ConfirmCloseHeld, &[A::StatusBoard], &["enter"]),
         b(Action::KeepHeld, &[A::StatusBoard], &["esc"]),
         // 팝업

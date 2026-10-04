@@ -16,6 +16,8 @@ pub(crate) enum KeyArea {
     Transcript,
     /// 바로잡기 제안이 입력창이 빈 동안 키를 가져간다.
     Correction,
+    /// 실행 줄 아래 세부 줄이 접고 펼칠 수 있고 입력창이 빈 동안 `Enter`를 가져간다.
+    Detail,
     StatusBoard,
     /// 사용자가 상태판 버튼 고르기에 들어간 동안 방향키, `Enter`, `Esc`를 가져간다.
     BoardFocus,
@@ -80,6 +82,9 @@ pub(crate) enum Action {
     // 대화 기록(바로잡기 제안)
     CorrectionRun,
     CorrectionKeep,
+
+    // 상태판(실행 줄의 세부)
+    ToggleDetail,
 
     // 상태판(보류 닫기 확인)
     ConfirmCloseHeld,

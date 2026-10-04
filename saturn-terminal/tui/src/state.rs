@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-use saturn_protocol::event::{Activity, ProviderEvent, UsageReport, UsageScope};
+use saturn_protocol::event::{Activity, ProviderEvent, ToolDetail, UsageReport, UsageScope};
 use saturn_protocol::ids::{
     AgentId, ChatId, InputId, JudgmentId, Provider, SettingsRevision, SubagentId, TaskId, TaskLabel,
 };
@@ -75,6 +75,10 @@ pub(crate) struct TaskView {
     pub provider: Option<Provider>,
     pub model: Option<String>,
     pub activity: Option<Activity>,
+    /// 마지막 도구 호출의 세부(명령의 줄, 파일 경로). 실행 줄 아래에 보인다.
+    pub detail: Vec<String>,
+    /// 세부를 펼쳐 보인다.
+    pub detail_open: bool,
     pub subagents: Vec<SubagentId>,
     pub has_output: bool,
     pub tokens: Option<u64>,
@@ -314,6 +318,8 @@ impl ChatState {
             provider: None,
             model: None,
             activity: None,
+            detail: Vec::new(),
+            detail_open: false,
             subagents: Vec::new(),
             has_output: false,
             tokens: None,
@@ -415,8 +421,10 @@ impl ChatState {
                 subagent: None,
                 call_id,
                 activity,
+                detail,
                 ..
             } => {
+                view.detail = detail_lines(&activity, &detail);
                 view.activity = Some(activity.clone());
                 view.open_calls.push(call_id.clone());
                 Change::Tool {
@@ -615,6 +623,14 @@ impl ChatState {
         if self.held_lines() == 0 {
             self.stop = None;
         }
+    }
+}
+
+/// 명령은 줄마다, 파일 작업은 경로마다 한 줄이다.
+fn detail_lines(activity: &Activity, detail: &ToolDetail) -> Vec<String> {
+    match activity {
+        Activity::RunningCommand { command } => command.lines().map(str::to_owned).collect(),
+        _ => detail.paths.clone(),
     }
 }
 

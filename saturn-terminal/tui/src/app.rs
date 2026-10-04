@@ -324,10 +324,32 @@ impl App {
             KeyArea::Correction
         } else if self.choice_has_keys() && self.chat.feedback.is_some() {
             KeyArea::Transcript
+        } else if self.choice_has_keys() && self.detail_can_toggle() {
+            KeyArea::Detail
         } else if self.composer.search().is_some() {
             KeyArea::Search
         } else {
             KeyArea::Composer
+        }
+    }
+
+    /// 실행 줄 아래 세부 줄을 접고 펼칠 수 있다. 접고 펼치는 키는 이때 입력창이 비어 있어야 한다.
+    fn detail_can_toggle(&self) -> bool {
+        status_board::board(&self.chat, Instant::now())
+            .is_some_and(|board| board.detail_expandable(self.screen.width))
+    }
+
+    /// 보이는 실행 줄의 세부를 접고 펼친다.
+    fn toggle_main_detail(&mut self) {
+        let task = status_board::board(&self.chat, Instant::now()).and_then(|b| b.detail_task());
+        if let Some(task) = task {
+            self.toggle_detail(task);
+        }
+    }
+
+    pub(super) fn toggle_detail(&mut self, task: TaskId) {
+        if let Some(view) = self.chat.tasks.get_mut(&task) {
+            view.detail_open = !view.detail_open;
         }
     }
 
@@ -366,9 +388,11 @@ impl App {
         }
         let ctx = self.key_context();
         let fallback = match area {
-            KeyArea::Popup | KeyArea::Transcript | KeyArea::Correction | KeyArea::Search => {
-                Some(KeyArea::Composer)
-            }
+            KeyArea::Popup
+            | KeyArea::Transcript
+            | KeyArea::Correction
+            | KeyArea::Detail
+            | KeyArea::Search => Some(KeyArea::Composer),
             KeyArea::TaskListEdit => Some(KeyArea::TaskList),
             _ => None,
         };
@@ -426,9 +450,17 @@ impl App {
                 if self.window.is_none() && self.exit_confirm.is_none() =>
             {
                 let board = status_board::board(&self.chat, now);
-                let rows = board.as_ref().map_or(0, status_board::Board::height);
+                let rows = board
+                    .as_ref()
+                    .map_or(0, |board| board.height(self.screen.width));
                 let areas = self.areas(self.screen, rows);
                 let point = Position::new(mouse.column, mouse.row);
+                if let Some((rect, task)) = status_board::detail_rect(board.as_ref(), areas.status)
+                    && rect.contains(point)
+                {
+                    self.toggle_detail(task);
+                    return Vec::new();
+                }
                 let hit = status_board::button_rects(board.as_ref(), self.lang, areas.status)
                     .into_iter()
                     .find(|(rect, _)| rect.contains(point));
@@ -526,6 +558,10 @@ impl App {
             Action::FeedbackDismiss => return self.answer_feedback(None),
             Action::CorrectionRun => return self.finish_correction(true),
             Action::CorrectionKeep => return self.finish_correction(false),
+            Action::ToggleDetail => {
+                self.toggle_main_detail();
+                return Vec::new();
+            }
             Action::ConfirmCloseHeld => return self.close_held(),
             Action::KeepHeld => {
                 self.chat.close_held_confirm = None;

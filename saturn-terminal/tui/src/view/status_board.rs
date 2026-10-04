@@ -21,12 +21,11 @@ use crate::state::{
     APPROVAL_PENDING_AFTER, ChatState, InputView, JUDGING_SHOW_AFTER, NO_RESPONSE_AFTER, TaskView,
     TrainingProgress,
 };
-use crate::view::transcript::held_labels;
-use crate::view::{EMPHASIS, text_width, truncate};
+use crate::view::transcript::{held_labels, tokens_text};
+use crate::view::{EMPHASIS, MUTED, text_width, truncate, wrap};
 
 pub(crate) const COMMAND_PREVIEW_COLS: usize = 40;
 
-/// TODO(#50): 칸 순서와 모델 이름 표기
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RunningLine {
     pub task: TaskId,
@@ -35,6 +34,11 @@ pub(crate) struct RunningLine {
     pub model: Option<String>,
     pub elapsed: Duration,
     pub activity: Option<Activity>,
+    /// 마지막 도구 호출의 세부. 줄 안에 넣지 않고 아래에 한 단계 들여 보인다.
+    pub detail: Vec<String>,
+    pub detail_open: bool,
+    /// 보고 전이면 `None`.
+    pub tokens: Option<u64>,
     /// `activity`보다 앞선다.
     pub awaiting_permission: bool,
     /// `awaiting_permission` 다음으로 앞선다.
@@ -46,6 +50,82 @@ pub(crate) struct RunningLine {
     /// 0이 아니면 하는 일 대신 보인다.
     pub subagents: usize,
     pub has_output: bool,
+}
+
+/// 세부 줄의 머리와 이어지는 줄의 들여쓰기.
+const DETAIL_HEAD: &str = "  └ ";
+const DETAIL_CONT: &str = "    ";
+/// 펼친 세부가 차지하는 최대 줄 수. 넘으면 마지막 줄을 `…`로 닫는다.
+pub(crate) const DETAIL_MAX_ROWS: usize = 8;
+
+impl RunningLine {
+    // cost: time O(n), heap O(n), stack O(1)
+    // vars: n = 세부 글자 수
+    // basis: estimate
+    /// 줄 아래에 그리는 세부. 접힌 세부는 첫 줄 하나이고 길면 끝을 `…`로 줄인다. 펼치면 모든 줄을 폭에 맞게 접는다.
+    /// 세부가 없거나 폭이 0이면 비어 있다.
+    pub(crate) fn detail_rows(&self, width: usize) -> Vec<String> {
+        let Some(first) = self.detail.first() else {
+            return Vec::new();
+        };
+        if width == 0 {
+            return Vec::new();
+        }
+        if !self.detail_open {
+            let more = if self.detail.len() > 1 { " …" } else { "" };
+            return vec![truncate(&format!("{DETAIL_HEAD}{first}{more}"), width)];
+        }
+        let room = width.saturating_sub(text_width(DETAIL_HEAD)).max(1);
+        let mut rows: Vec<String> = Vec::new();
+        for line in &self.detail {
+            for piece in wrap(line, room) {
+                let head = if rows.is_empty() {
+                    DETAIL_HEAD
+                } else {
+                    DETAIL_CONT
+                };
+                rows.push(truncate(&format!("{head}{piece}"), width));
+            }
+        }
+        if rows.len() > DETAIL_MAX_ROWS {
+            rows.truncate(DETAIL_MAX_ROWS);
+            rows[DETAIL_MAX_ROWS - 1] = truncate(&format!("{DETAIL_CONT}…"), width);
+        }
+        rows
+    }
+
+    /// 접힌 세부가 줄었거나 더 있어서 펼칠 것이 있다.
+    pub(crate) fn detail_expandable(&self, width: usize) -> bool {
+        let Some(first) = self.detail.first() else {
+            return false;
+        };
+        self.detail.len() > 1 || text_width(DETAIL_HEAD) + text_width(first) > width
+    }
+
+    /// 출력도 하는 일도 아직 없으면 `작업 중`만 보인다.
+    fn is_bare(&self) -> bool {
+        !self.has_output && self.doing(Lang::Ko).is_none()
+    }
+
+    /// 칸 `하는 일`. 허가, 입력, 무응답, 허가 준비, 하위 에이전트, 도구 순으로 앞선다.
+    fn doing(&self, lang: Lang) -> Option<String> {
+        if self.awaiting_permission {
+            Some(lang.tr(i18n::AWAITING_PERMISSION).to_string())
+        } else if self.awaiting_input {
+            Some(lang.tr(i18n::AWAITING_INPUT).to_string())
+        } else if let Some(minutes) = self.no_response_minutes {
+            Some(
+                lang.tr(i18n::NO_RESPONSE)
+                    .replace("{minutes}", &minutes.to_string()),
+            )
+        } else if self.approval_pending {
+            Some(approval_pending_text(lang, self.provider))
+        } else if self.subagents > 0 {
+            Some(subagents_text(lang, self.subagents))
+        } else {
+            self.activity.as_ref().map(|a| activity_label(lang, a))
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,11 +182,14 @@ impl StatusLine {
         let prefix = |label: Option<TaskLabel>| labels::prefix(label, labels_visible);
         match self {
             Self::Running(line) => {
-                format!(
-                    "{spinner} {}{}",
-                    prefix(Some(line.label)),
-                    running_text(lang, line)
-                )
+                // 이름표와 칸 사이는 두 칸이다. 칸이 하나뿐인 `작업 중`은 한 칸이다
+                let named = prefix(Some(line.label));
+                let gap = if line.is_bare() || named.is_empty() {
+                    ""
+                } else {
+                    " "
+                };
+                format!("{spinner} {named}{gap}{}", running_text(lang, line))
             }
             Self::Judging { label, text, .. } => with_text(
                 format!("{spinner} {}{}", prefix(*label), lang.tr(i18n::JUDGING)),
@@ -310,9 +393,37 @@ pub(crate) struct Board {
 }
 
 impl Board {
-    /// 줄 하나에 그 줄의 버튼이 세로 목록으로 붙는다.
-    pub(crate) fn height(&self) -> u16 {
-        1 + u16::try_from(self.line.buttons().len()).unwrap_or(u16::MAX - 1)
+    fn running(&self) -> Option<&RunningLine> {
+        match &self.line {
+            StatusLine::Running(line) => Some(line),
+            _ => None,
+        }
+    }
+
+    /// 실행 줄 아래에 그리는 세부 줄.
+    pub(crate) fn detail_rows(&self, width: u16) -> Vec<String> {
+        self.running()
+            .map_or_else(Vec::new, |line| line.detail_rows(usize::from(width)))
+    }
+
+    /// 세부가 있는 실행 줄의 작업. 세부 줄을 누르거나 `Enter`로 접고 펼친다.
+    pub(crate) fn detail_task(&self) -> Option<TaskId> {
+        self.running()
+            .filter(|line| !line.detail.is_empty())
+            .map(|line| line.task)
+    }
+
+    /// 이 폭에서 접고 펼칠 것이 있다.
+    pub(crate) fn detail_expandable(&self, width: u16) -> bool {
+        self.running()
+            .is_some_and(|line| line.detail_open || line.detail_expandable(usize::from(width)))
+    }
+
+    /// 줄 하나, 그 아래 세부 줄, 그 아래 그 줄의 버튼이 세로 목록으로 붙는다.
+    pub(crate) fn height(&self, width: u16) -> u16 {
+        let detail = self.detail_rows(width).len();
+        let rows = 1 + detail + self.line.buttons().len();
+        u16::try_from(rows).unwrap_or(u16::MAX)
     }
 
     pub(crate) fn buttons(&self) -> Vec<Button> {
@@ -382,6 +493,19 @@ pub(crate) fn queue_reason_text(lang: Lang, reason: QueueReason) -> String {
         QueueReason::AfterCompaction => i18n::AFTER_COMPACTION,
         QueueReason::AfterAllTasks => i18n::AFTER_ALL_TASKS,
         QueueReason::ConfirmStop => i18n::CONFIRM_STOP,
+    };
+    lang.tr(key).to_string()
+}
+
+/// 실행 줄의 하는 일. 명령 같은 세부는 줄 아래에 보이므로 넣지 않는다.
+pub(crate) fn activity_label(lang: Lang, activity: &Activity) -> String {
+    let key = match activity {
+        Activity::Thinking => i18n::THINKING,
+        Activity::ReadingFile => i18n::READING_FILE,
+        Activity::EditingFile => i18n::EDITING_FILE,
+        Activity::RunningCommand { .. } => i18n::RUNNING_COMMAND,
+        Activity::Compacting => i18n::COMPACTING,
+        Activity::SwitchingProvider => i18n::SWITCHING_PROVIDER,
     };
     lang.tr(key).to_string()
 }
@@ -488,10 +612,11 @@ pub(crate) fn button_rects(board: Option<&Board>, lang: Lang, area: Rect) -> Vec
         return Vec::new();
     };
     let indent = BUTTON_INDENT.min(area.width);
+    let first = 1 + u16::try_from(board.detail_rows(area.width).len()).unwrap_or(u16::MAX - 1);
     board
         .buttons()
         .into_iter()
-        .zip(1..)
+        .zip(first..)
         .map(|(button, row)| (button, area.y.saturating_add(row)))
         .filter(|(_, y)| *y < area.bottom())
         .map(|(button, y)| {
@@ -499,6 +624,18 @@ pub(crate) fn button_rects(board: Option<&Board>, lang: Lang, area: Rect) -> Vec
             (Rect::new(area.x + indent, y, width, 1), button)
         })
         .collect()
+}
+
+// cost: time O(1), heap O(w), stack O(1)
+// vars: w = 칸 폭
+// basis: estimate
+/// 세부 줄이 놓인 칸과 그 작업. 눌러서 접고 펼칠 때 클릭 판정이 쓴다.
+pub(crate) fn detail_rect(board: Option<&Board>, area: Rect) -> Option<(Rect, TaskId)> {
+    let board = board?;
+    let task = board.detail_task()?;
+    let rows = u16::try_from(board.detail_rows(area.width).len()).ok()?;
+    let rect = Rect::new(area.x, area.y.saturating_add(1), area.width, rows).intersection(area);
+    (rect.height > 0).then_some((rect, task))
 }
 
 /// 버튼 목록을 줄보다 들여 쓰는 칸 수.
@@ -526,6 +663,14 @@ impl StatusBoardView<'_> {
         let text = board.text(self.lang, self.labels_visible, self.spinner);
         let head = Rect::new(area.x, area.y, area.width, area.height.min(1));
         frame.render_widget(Paragraph::new(Line::from(truncate(&text, width))), head);
+        if let Some((rect, _)) = detail_rect(Some(board), area) {
+            let rows: Vec<Line> = board
+                .detail_rows(area.width)
+                .into_iter()
+                .map(|row| Line::from(Span::styled(row, MUTED)))
+                .collect();
+            frame.render_widget(Paragraph::new(rows), rect);
+        }
         for (rect, button) in button_rects(Some(board), self.lang, area) {
             let focused = self.focus == Some(button);
             let style = if focused {
@@ -546,31 +691,24 @@ impl StatusBoardView<'_> {
 // vars: n = 줄 글자 수
 // basis: estimate
 fn running_text(lang: Lang, line: &RunningLine) -> String {
-    let doing = if line.awaiting_permission {
-        Some(lang.tr(i18n::AWAITING_PERMISSION).to_string())
-    } else if line.awaiting_input {
-        Some(lang.tr(i18n::AWAITING_INPUT).to_string())
-    } else if let Some(minutes) = line.no_response_minutes {
-        Some(
-            lang.tr(i18n::NO_RESPONSE)
-                .replace("{minutes}", &minutes.to_string()),
-        )
-    } else if line.approval_pending {
-        Some(approval_pending_text(lang, line.provider))
-    } else if line.subagents > 0 {
-        Some(subagents_text(lang, line.subagents))
-    } else {
-        line.activity.as_ref().map(|a| activity_text(lang, a))
-    };
+    let doing = line.doing(lang);
     if !line.has_output && doing.is_none() {
         return lang.tr(i18n::WORKING).to_string();
     }
-    let mut parts: Vec<String> = Vec::new();
-    parts.extend(line.provider.map(|p| i18n::provider_name(p).to_string()));
-    parts.extend(line.model.clone());
-    parts.push(i18n::format_elapsed(lang, line.elapsed));
-    parts.extend(doing);
-    parts.join(" · ")
+    let who: Vec<String> = line
+        .provider
+        .map(|p| i18n::provider_name(p).to_string())
+        .into_iter()
+        .chain(line.model.clone())
+        .collect();
+    let mut columns: Vec<String> = Vec::new();
+    if !who.is_empty() {
+        columns.push(who.join(" · "));
+    }
+    columns.push(i18n::format_elapsed(lang, line.elapsed));
+    columns.push(doing.unwrap_or_else(|| lang.tr(i18n::WORKING).to_string()));
+    columns.push(tokens_text(lang, line.tokens));
+    columns.join("  ")
 }
 
 /// 문구 초안: `도구 사용 허가 준비 중 · codex`.
@@ -624,6 +762,9 @@ fn running_line(task: &TaskView, now: Instant) -> RunningLine {
         model: task.model.clone(),
         elapsed: task.stopwatch.elapsed(now),
         activity: task.activity.clone(),
+        detail: task.detail.clone(),
+        detail_open: task.detail_open,
+        tokens: task.tokens,
         awaiting_permission: task.state == TaskState::AwaitingPermission,
         awaiting_input: task.state == TaskState::AwaitingInput,
         no_response_minutes: no_response_minutes(task, now),
@@ -1050,6 +1191,9 @@ mod tests {
             model: Some("opus".to_string()),
             elapsed: Duration::from_secs(60),
             activity: Some(Activity::Thinking),
+            detail: Vec::new(),
+            detail_open: false,
+            tokens: None,
             awaiting_permission: false,
             awaiting_input: false,
             no_response_minutes: None,
@@ -1060,7 +1204,7 @@ mod tests {
 
         assert_eq!(
             line.text(Lang::Ko, true, '⠙'),
-            "⠙ [A] claude · opus · 1분 · 하위 에이전트 2개 실행 중"
+            "⠙ [A]  claude · opus  1분  하위 에이전트 2개 실행 중  Token -"
         );
     }
 
@@ -1091,7 +1235,7 @@ mod tests {
         let late = running_texts(&state, start + Duration::from_secs(3));
 
         assert!(!early[0].contains("도구 사용 허가 준비 중"));
-        assert!(late[0].ends_with("도구 사용 허가 준비 중 · codex"));
+        assert!(late[0].contains("  도구 사용 허가 준비 중 · codex  Token -"));
     }
 
     #[test]
@@ -1158,8 +1302,12 @@ mod tests {
         let later = running_texts(&state, start + Duration::from_secs(7 * 60 + 10));
 
         assert!(!early[0].contains("응답 없음"));
-        assert!(at[0].ends_with("응답 없음 5분"), "{}", at[0]);
-        assert!(later[0].ends_with("응답 없음 7분"), "{}", later[0]);
+        assert!(at[0].contains("  응답 없음 5분  Token -"), "{}", at[0]);
+        assert!(
+            later[0].contains("  응답 없음 7분  Token -"),
+            "{}",
+            later[0]
+        );
     }
 
     #[test]
@@ -1463,8 +1611,168 @@ mod tests {
         input(&mut queued_only, 1, 'C', InputState::Queued, "x");
         let queued = board(&queued_only, now).unwrap();
 
-        assert_eq!(running.height(), 1);
-        assert_eq!(queued.height(), 3);
+        assert_eq!(running.height(80), 1);
+        assert_eq!(queued.height(80), 3);
+    }
+
+    fn editing_task(
+        paths: &[&str],
+        activity: Activity,
+        tokens_report: Option<u64>,
+    ) -> (ChatState, Instant) {
+        let start = Instant::now();
+        let mut state = ChatState::new();
+        task(&mut state, 1, 'A', TaskState::Running, start);
+        state.tasks.get_mut(&TaskId(1)).unwrap().model = Some("gpt-5.6-luna".to_owned());
+        state.apply_event(
+            TaskId(1),
+            ProviderEvent::ToolCall {
+                agent: AgentId(1),
+                subagent: None,
+                call_id: "c1".to_owned(),
+                activity,
+                detail: ToolDetail {
+                    paths: paths.iter().map(|path| (*path).to_owned()).collect(),
+                    ..ToolDetail::default()
+                },
+            },
+            start,
+        );
+        let view = state.tasks.get_mut(&TaskId(1)).unwrap();
+        view.tokens = tokens_report;
+        view.tool_started_at = None;
+        (state, start + Duration::from_secs(12))
+    }
+
+    #[test]
+    fn running_line_columns_are_who_elapsed_doing_and_tokens() {
+        let (state, now) = editing_task(&["src/main.rs"], Activity::EditingFile, Some(2_100));
+
+        assert_eq!(
+            board_text(&state, now, Lang::Ko).as_deref(),
+            Some("⠙ [A]  codex · gpt-5.6-luna  12초  파일 수정 중  Token 2,100")
+        );
+        assert_eq!(
+            board_text(&state, now, Lang::En).as_deref(),
+            Some("⠙ [A]  codex · gpt-5.6-luna  12s  Editing files  Token 2,100")
+        );
+    }
+
+    #[test]
+    fn running_line_shows_a_dash_before_tokens_are_reported() {
+        let (state, now) = editing_task(&["a.rs"], Activity::ReadingFile, None);
+
+        let text = board_text(&state, now, Lang::Ko).unwrap();
+
+        assert!(text.ends_with("파일 읽는 중  Token -"), "{text}");
+    }
+
+    #[test]
+    fn running_line_keeps_the_command_out_of_the_line_and_under_it() {
+        let (state, now) = editing_task(
+            &[],
+            Activity::RunningCommand {
+                command: "cargo test --workspace".to_owned(),
+            },
+            None,
+        );
+
+        let board = board(&state, now).unwrap();
+
+        let text = board.text(Lang::Ko, true, '⠙');
+        assert!(text.contains("명령 실행 중  Token -"), "{text}");
+        assert!(!text.contains("cargo"));
+        assert_eq!(board.detail_rows(60), vec!["  └ cargo test --workspace"]);
+    }
+
+    #[test]
+    fn detail_shows_file_paths_one_level_down_and_adds_a_row_to_the_board() {
+        let (state, now) = editing_task(&["src/main.rs"], Activity::EditingFile, None);
+
+        let board = board(&state, now).unwrap();
+
+        assert_eq!(board.detail_rows(40), vec!["  └ src/main.rs"]);
+        assert_eq!(board.height(40), 2);
+    }
+
+    #[test]
+    fn a_long_detail_is_cut_to_one_row_ending_in_an_ellipsis() {
+        let (state, now) = editing_task(
+            &["crates/very/long/path/that/keeps/going/main.rs"],
+            Activity::EditingFile,
+            None,
+        );
+        let board = board(&state, now).unwrap();
+
+        let rows = board.detail_rows(20);
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(text_width(&rows[0]), 20);
+        assert!(rows[0].ends_with('…'));
+        assert!(board.detail_expandable(20));
+        assert!(!board.detail_expandable(60));
+    }
+
+    #[test]
+    fn a_multi_line_command_is_collapsed_to_its_first_line_with_a_mark() {
+        let (state, now) = editing_task(
+            &[],
+            Activity::RunningCommand {
+                command: "cd app\ncargo test".to_owned(),
+            },
+            None,
+        );
+        let board = board(&state, now).unwrap();
+
+        assert_eq!(board.detail_rows(40), vec!["  └ cd app …"]);
+        assert!(board.detail_expandable(40));
+    }
+
+    #[test]
+    fn an_open_detail_shows_every_line_wrapped_to_the_width() {
+        let (mut state, now) = editing_task(
+            &[],
+            Activity::RunningCommand {
+                command: "cd app\ncargo test --workspace".to_owned(),
+            },
+            None,
+        );
+        state.tasks.get_mut(&TaskId(1)).unwrap().detail_open = true;
+        let board = board(&state, now).unwrap();
+
+        let rows = board.detail_rows(16);
+
+        assert_eq!(
+            rows,
+            vec!["  └ cd app", "    cargo test -", "    -workspace"]
+        );
+        assert_eq!(board.height(16), 4);
+    }
+
+    #[test]
+    fn an_open_detail_stops_at_the_row_limit_with_a_mark() {
+        let paths: Vec<String> = (0..20).map(|n| format!("src/file{n}.rs")).collect();
+        let refs: Vec<&str> = paths.iter().map(String::as_str).collect();
+        let (mut state, now) = editing_task(&refs, Activity::EditingFile, None);
+        state.tasks.get_mut(&TaskId(1)).unwrap().detail_open = true;
+
+        let rows = board(&state, now).unwrap().detail_rows(40);
+
+        assert_eq!(rows.len(), DETAIL_MAX_ROWS);
+        assert_eq!(rows[DETAIL_MAX_ROWS - 1], "    …");
+    }
+
+    #[test]
+    fn detail_rows_never_break_on_a_tiny_width() {
+        let (state, now) = editing_task(&["src/main.rs"], Activity::EditingFile, None);
+        let board = board(&state, now).unwrap();
+
+        assert!(board.detail_rows(0).is_empty());
+        for width in 1..6 {
+            let rows = board.detail_rows(width);
+            assert_eq!(rows.len(), 1);
+            assert!(text_width(&rows[0]) <= usize::from(width));
+        }
     }
 
     #[test]
