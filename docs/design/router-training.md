@@ -160,6 +160,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 
 - `/train`은 지난 실행 뒤 채점 안 된 판단이 200건 이상일 때만 실행한다([#16](https://github.com/woonyong-choi/saturn/issues/16)). 적은 라벨로 한 조정은 잡음 수준이기 때문이다.
 - 7단계의 모델 학습은 누적 학습용 라벨이 1,000건 이상이고 평가용 라벨이 200건 이상일 때만 한다. 모자라면 채점과 기준값 조정까지만 하고 학습은 건너뛴다. 기준값 하나를 맞추는 것보다 모델 가중치를 학습하는 데 라벨이 더 많이 필요하기 때문이다([#16](https://github.com/woonyong-choi/saturn/issues/16)).
+- 구현 상태: 결과 신호, 빠른 조정, 느린 조정의 계산(`recenter`, `recenter_thresholds`)은 구현돼 있다. 채점 건수 미리보기, 채점 모델 호출, 학습기 실행, 승격 게이트, 기준값 되돌리기는 구현 전이다([#91](https://github.com/woonyong-choi/saturn/issues/91)).
 - Saturn 모델 학습은 Python과 MLX로 한다. Apple Silicon에서 로컬로 학습하기 위해서다.
 - 판단 기록은 로컬에 쌓고, 사용자가 동의한 레코드만 서버로 올린다([결정 기록](../decisions/2026-09-29-local-first-judgment-collection.md)).
 
@@ -203,9 +204,9 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 | 전체 묻는 빈도는 판단 20번에 1번을 넘지 않는다. | 많은 판단을 흘려 물은 비율이 상한 안인지 확인한다. |
 | 판단 기록마다 router 버전, 기준값, q를 남기고 결과 신호와 물은 답은 생긴 뒤 같은 기록에 채운다. | `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`, `saturn-terminal/engine/src/lifecycle/outcomes.rs`의 `answer_feedback_records_answer_in_judgment`, `answer_feedback_request_is_answered_through_socket` |
 | `/train`은 판단 기록으로 `Observation` 목록을 만들어 `recenter`에 넘긴다. | `saturn-terminal/engine/src/training/mod.rs`의 `recenter_thresholds_with_enough_recorded_results_moves_center`, `recenter_thresholds_below_min_results_keeps_center`, `recenter_thresholds_ignores_judgments_still_being_observed` |
-| `/train`은 채점 안 된 판단이 200건 미만이면 실행하지 않는다. | 199건에서 실행을 거절하고 200건에서 시작하는지 확인한다. |
-| 모델 학습은 학습용 라벨 1,000건 이상, 평가용 라벨 200건 이상일 때만 한다. | 학습용 999건에서 학습을 건너뛰고 채점과 기준값 조정만 하는지 확인한다. |
-| 품질 게이트를 통과하지 못한 라벨은 학습용과 평가용에 들어가지 않는다. | 순서를 바꾼 두 답이 다른 판단이 라벨에서 빠지는지 확인한다. |
+| `/train`은 채점 안 된 판단이 200건 미만이면 실행하지 않는다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 199건에서 실행을 거절하고 200건에서 시작하는지 확인한다. |
+| 모델 학습은 학습용 라벨 1,000건 이상, 평가용 라벨 200건 이상일 때만 한다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 학습용 999건에서 학습을 건너뛰고 채점과 기준값 조정만 하는지 확인한다. |
+| 품질 게이트를 통과하지 못한 라벨은 학습용과 평가용에 들어가지 않는다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 순서를 바꾼 두 답이 다른 판단이 라벨에서 빠지는지 확인한다. |
 | 새 모델은 같은 평가 세트에서 현재 모델보다 나쁘지 않을 때만 승격한다. | [#11](https://github.com/woonyong-choi/saturn/issues/11) 실험으로 후보별 정확도와 Brier를 확인한다. |
 | 채점 흐름은 채점 모델 사이 일치도를 확인한 뒤 쓴다. | [#12](https://github.com/woonyong-choi/saturn/issues/12) 실험으로 채점 모델 사이 일치도를 확인한다. |
 | 결과 신호는 사후 판정과 일치한다. | [#14](https://github.com/woonyong-choi/saturn/issues/14) 실험으로 신호별 일치 비율을 확인한다. |

@@ -13,7 +13,7 @@
 
 ## 동기
 
-Codex와 Claude Code는 스킬, MCP 서버, 명령, 플러그인을 각자의 방식으로 설치한다. 사용자가 Claude에 설치한 스킬은 같은 채팅에서 Codex로 전환하면 보이지 않는다. 지금 Saturn은 provider 명령 목록을 TUI에 보내지 않고, 플러그인이나 확장이라는 개념이 없으며, 권한 규칙의 대상은 닫힌 다섯 종류다. 이 기능이 없으면 사용자는 provider마다 같은 확장을 따로 설치하고, 전환 뒤에 쓰던 도구가 사라진 이유를 알 수 없다.
+Codex와 Claude Code는 스킬, MCP 서버, 명령, 플러그인을 각자의 방식으로 설치한다. 사용자가 Claude에 설치한 스킬은 같은 채팅에서 Codex로 전환하면 보이지 않는다. Saturn이 TUI에 보내는 목록은 명령과 스킬의 이름과 설명뿐이고, 플러그인, MCP 서버, 훅은 목록에 오르지 않으며, 권한 규칙의 대상은 닫힌 다섯 종류다. 이 기능이 없으면 사용자는 provider마다 같은 확장을 따로 설치하고, 전환 뒤에 쓰던 도구가 사라진 이유를 알 수 없다.
 
 ## 예시
 
@@ -76,7 +76,7 @@ Codex와 Claude Code는 스킬, MCP 서버, 명령, 플러그인을 각자의 �
 
 ### TUI와 권한 규칙에 노출
 
-engine은 어댑터가 올린 목록을 붙은 모든 TUI에 `Commands` 알림으로 보낸다. 지금은 TUI가 이 알림을 받는 코드는 있지만 engine이 보내는 코드가 없어 provider 명령이 팝업에 오르지 않는다(main 67a6dad 확인). 이 연결을 만드는 것이 구현 3단계다.
+engine은 어댑터가 올린 목록을 붙은 모든 TUI에 `Commands` 알림으로 보내고, 나중에 붙는 TUI에는 붙을 때 마지막 목록을 보낸다. 지금 알림의 항목은 이름, 설명, 스킬 여부만 가진다. 종류, 출처, 이동성 값은 구현 전이다.
 
 - `/` 팝업은 명령 종류 항목을 보이고 오른쪽에 알린 provider의 표시명을 출처로 붙인다. TUI 전용 명령과 Saturn session 명령이 대신하는 명령은 어댑터가 올리기 전에 뺀다([provider 명령과 스킬 전달](providers-and-sessions.md#provider-명령과-스킬-전달)).
 - `$` 팝업은 스킬 종류 항목을 보인다. 메인 에이전트 provider의 스킬이 먼저 오르고 다른 provider의 스킬은 `$<provider id> 이름`으로 부른다([TUI](tui.md)).
@@ -85,6 +85,11 @@ engine은 어댑터가 올린 목록을 붙은 모든 TUI에 `Commands` 알림�
 
 ### 확장 저장소
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/extension-store.ko.dark.svg">
+  <img src="../assets/extension-store.ko.light.svg" alt="설치한 확장은 Saturn 확장 저장소에 원본으로 남고 session을 열 때 provider별로 주입된다" width="100%">
+</picture>
+
 확장 원본은 `~/.saturn/extensions/<이름>/` 폴더에 둔다. 원본 파일은 이 폴더에만 있고 provider 형식 파일은 여기에 만들지 않는다. 설치한 확장의 이름, 출처, 설치 시각, 부분별 판정은 기록 저장소의 `extensions` 표에 둔다([기록 저장과 보존](records.md#기록-저장소)).
 
 - 쓰는 쪽은 engine 하나다. 기록 저장소와 같다.
@@ -92,7 +97,7 @@ engine은 어댑터가 올린 목록을 붙은 모든 TUI에 `Commands` 알림�
 - 설치 범위는 사용자 하나다. 폴더에 두는 확장은 [미해결 질문](#미해결-질문)에 있다.
 - 확장 이름은 폴더 이름 한 칸으로 쓰므로 영문, 숫자, `-`, `_`, `.`만 쓰고 `.`으로 시작하지 않으며 64자까지다. 이름은 원천에서 얻는다. 폴더는 폴더 이름, git 주소는 `.git`을 뗀 저장소 이름이다.
 - `extensions` 표의 부분별 판정은 JSON 글이고 부분마다 종류, 이름, 확장 폴더 안의 위치, provider별 판정을 가진다. 시작할 때 `모름`으로 남은 판정은 어댑터에 다시 묻고 바뀌었으면 저장한다.
-- 설치와 제거, 목록은 TUI의 `/extensions`(`/extensions install <원천>`, `/extensions remove <이름>`)로 요청하고 `InstallExtension`, `RemoveExtension`, `ListExtensions`로 engine에 간다. 설치와 제거 결과는 요청한 채팅의 대화 기록에 한 줄로 남고, 목록은 요청한 TUI에만 간다. 어느 채팅에도 붙지 않은 접속은 요청하지 못한다.
+- 설치와 제거, 목록은 TUI의 `/extensions`(`/extensions install <원천>`, `/extensions remove <이름>`)로 요청하고 `InstallExtension`, `RemoveExtension`, `ListExtensions`로 engine에 간다. 설치와 제거 결과는 요청한 채팅의 대화 기록에 한 줄로 남고, 목록은 `QueryResult::ExtensionList` 응답으로 요청한 TUI에만 간다. 어느 채팅에도 붙지 않은 접속은 요청하지 못한다.
 
 ### 설치
 

@@ -68,7 +68,10 @@ TUI와 `cli`는 `engine` crate에 의존하지 않고, 이 경계는 Cargo 의�
 
 ### engine 시작 순서
 
-![engine은 잠금, 스키마 이관, session 복원, 설정 병합, router 확인, 소켓 접속 순서로 시작한다](../assets/engine-start.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/engine-start.ko.dark.svg">
+  <img src="../assets/engine-start.ko.light.svg" alt="engine은 잠금, 스키마 이관, session 복원, 설정 병합, router 확인, 소켓 접속 순서로 시작한다" width="100%">
+</picture>
 
 `saturn`을 실행했을 때 `engine`이 없으면 `cli`가 `saturn-engine`을 띄운다. `engine`은 다음 순서로 시작한다.
 
@@ -225,7 +228,10 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 ### 크래시 뒤 복구
 
-![크래시 뒤에는 효과 범위가 증명된 실행만 자동으로 이어 가고, 나머지는 보류해 /continue를 제안한다](../assets/crash-recovery.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/crash-recovery.ko.dark.svg">
+  <img src="../assets/crash-recovery.ko.light.svg" alt="크래시 뒤에는 효과 범위가 증명된 실행만 자동으로 이어 가고, 나머지는 보류해 /continue를 제안한다" width="100%">
+</picture>
 
 `engine`이 비정상 종료된 뒤 사용자가 `saturn`을 실행하면 `cli`가 새 `engine`을 띄우고, `engine`은 시작 직후 다음 순서로 복구한다. 크래시 흔적은 기록 저장소에 끝나지 않은 실행이 남아 있는 것이다. 정상 종료와 멈춤은 실행을 끝내고 기록하므로 흔적을 남기지 않는다. 업데이트로 옛 `engine`을 끝낼 때만 의도로 같은 흔적을 남긴다([업데이트로 engine 교체](#업데이트로-engine-교체)).
 
@@ -281,7 +287,15 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 ### 에이전트 작업 안의 saturn
 
-에이전트가 작업 중에 실행한 `saturn`은 `engine`을 띄우지 않고 떠 있는 `engine`에 출입증으로 접속해 부탁만 한다. 출입증이 없으면 거절한다. `engine` 프로세스 자체도 에이전트 작업 안에서는 시작하지 않는다. `engine`을 사용자당 하나로 지키기 위해서다. 접속 방식은 [하위 접속](child-sessions.md)에 있다.
+`engine`이 띄운 provider 프로세스의 환경에는 표지 `SATURN_AGENT`와 그 채팅의 출입증 `SATURN_PASS`가 들어 있다. `saturn`은 이 둘로 접속 종류를 정한다.
+
+| 환경 | 동작 |
+|---|---|
+| 출입증이 있다 | `engine`을 띄우지 않고 떠 있는 `engine`에 접속해 부모 채팅의 하위 작업으로 일을 맡긴다. `engine`이 없으면 종료 코드 69로 끝난다. |
+| 표지만 있고 출입증이 없다 | 거절하고 종료 코드 2로 끝낸다. 출입증이 회수됐거나 만들지 못한 경우다. |
+| 둘 다 없다 | 사용자가 연 것과 같은 바깥 접속이다. Saturn 밖의 Claude나 Codex가 부를 때도 여기에 해당한다. |
+
+`engine` 프로세스 자체는 표지가 있으면 시작하지 않는다. `engine`을 사용자당 하나로 지키기 위해서다. 출입증의 범위, 상한, 권한 상속은 [하위 접속](child-sessions.md)에 있다.
 
 ### 오류 처리
 
@@ -301,10 +315,15 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 보류 작업이나 끊긴 하위 에이전트를 기록 저장소에 쓰지 못함 | 경고를 남기고 멈춤과 복구는 계속한다. 그 정보는 `engine`을 다시 켜면 사라진다. |
 | 시작 때 남은 입력 하나를 되살리지 못함 | 경고를 남기고 다른 입력은 되살린다. 그 입력은 기록에 남아 다음 시작 때 다시 시도한다. |
 | 크래시 뒤 한 실행의 복구 실패 | 경고를 남기고 다른 실행은 복구한다. 그 실행은 끝나지 않은 채 남아 다음 시작 때 다시 시도한다. |
-| 에이전트가 실행한 `saturn`에 출입증이 없음 | 실행을 거절한다. 출입증이 있으면 [하위 접속](child-sessions.md)으로 붙는다. |
+| 에이전트가 실행한 `saturn`에 표지만 있고 출입증이 없음 | 종료 코드 2로 거절한다. 출입증이 있으면 [하위 접속](child-sessions.md)으로 붙는다. |
 | 한 채팅의 provider 요청이 느리거나 응답하지 않음 | 요청은 연결 작업이 실행하고 요청 처리 루프는 결과 메시지만 받으므로, 다른 채팅의 요청과 같은 채팅의 멈춤 요청은 기다리지 않고 처리한다([provider 요청 작업](providers-and-sessions.md#provider-요청-작업)). 응답 대기에는 요청 종류별 제한(바로 돌아와야 하는 요청 10초, 시작·열기 요청 60초, 초안)을 두고 턴은 자동으로 끊지 않는다. 응답 없는 요청의 처리는 [provider 오류 처리](providers-and-sessions.md#오류-처리)를 따른다. |
 
 ### 종료 코드
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/exit-codes.ko.dark.svg">
+  <img src="../assets/exit-codes.ko.light.svg" alt="saturn은 실패 원인에 따라 0, 1, 2, 66, 69, 70, 75, 77, 78, 130 중 하나의 코드로 끝난다" width="100%">
+</picture>
 
 `saturn`은 원인별로 종료 코드를 나눈다. 스크립트와 CI가 "다시 해 볼 일", "호출을 고칠 일", "설정을 고칠 일"을 문구를 읽지 않고 가르게 하기 위해서다. 숫자는 BSD sysexits와 셸 관례를 따르고, 원인별로 나누는 방식은 Gemini CLI와 같다(Claude Code, Codex, OpenCode는 0, 1, 2만 쓴다). 코드는 `cli`의 열거형 `ExitCode` 한 곳에서 정하고 모든 종료 경로가 그것을 거친다.
 
@@ -312,9 +331,9 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 |---|---|---|---|
 | 0 | 성공 | 명령이 끝났다. `--help`. 전체 화면을 정상으로 닫았다. | 셸 관례 |
 | 1 | 그 밖의 실패 | 확인 질문에 아니라고 답했다. plain 모드에서 provider 작업이 실패로 끝났다. provider 설치 없음 등 예상한 실패. | 셸 관례 |
-| 2 | 사용법 오류 | 모르는 인자. 터미널 없이 `--resume`이나 확인 질문이 필요하다. 에이전트 안 중첩 실행. `--add-dir`가 폴더가 아니다. engine이 `INVALID_PARAMS`로 거절했다. | 호출을 바꿔야 풀린다. 셸 관례 |
+| 2 | 사용법 오류 | 모르는 인자. 터미널 없이 `--resume`이나 확인 질문이 필요하다. 에이전트 작업 안인데 출입증이 없다. 하위 접속에 쓸 수 없는 인자를 줬다. `--add-dir`가 폴더가 아니다. engine이 `INVALID_PARAMS`로 거절했다. | 호출을 바꿔야 풀린다. 셸 관례 |
 | 66 | 대상 없음 | 이어 열 채팅이 없다. `--add-dir` 폴더가 없다. 없는 router 버전. | `EX_NOINPUT` |
-| 69 | engine을 쓸 수 없음 | engine 실행 파일이 없거나 시작에 실패했다. 소켓이 제때 열리지 않았다. 옛 engine 교체에 실패했다. 연결이 끊겼다. | `EX_UNAVAILABLE` |
+| 69 | engine을 쓸 수 없음 | engine 실행 파일이 없거나 시작에 실패했다. 하위 접속인데 떠 있는 engine이 없다. 소켓이 제때 열리지 않았다. 옛 engine 교체에 실패했다. 연결이 끊겼다. | `EX_UNAVAILABLE` |
 | 70 | engine 내부 오류 | engine이 원인 종류 없이 거절했다. 답에 필요한 알림이 빠졌다. engine 메시지를 해석하지 못했다. | `EX_SOFTWARE` |
 | 75 | 지금은 안 되고 나중에 가능 | 학습 표본이 모자란다. | `EX_TEMPFAIL` |
 | 77 | router 키 없음이나 확인 실패 | 키가 없다. router가 키를 거절했다. 화면이 없어 키를 물을 수 없다. | `EX_NOPERM` |
@@ -380,7 +399,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 채팅을 다시 열면 기록에 남은 마지막 턴의 맥락 사용량을 `ContextSize`로 보내고, 값을 모르면 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/attach.rs`의 `attach_sends_the_context_size_of_the_last_turn`, `attach_without_a_last_turn_sends_no_context_size` |
 | `saturn`은 원인별 종료 코드(0, 1, 2, 66, 69, 70, 75, 77, 78, 130)로 끝난다. | `saturn-terminal/cli/tests/exit_codes.rs`의 `help_exits_zero_and_unknown_flag_exits_two`, `nested_run_inside_an_agent_exits_two`, `picking_a_chat_without_a_terminal_exits_two`, `missing_add_dir_exits_sixty_six`, `continue_without_a_chat_in_the_folder_exits_sixty_six`, `unknown_router_version_exits_sixty_six`, `engine_that_hangs_up_exits_sixty_nine`, `engine_internal_error_exits_seventy`, `training_without_enough_samples_exits_seventy_five`, `missing_router_key_exits_seventy_seven`, `setting_error_exits_seventy_eight`, `expected_failure_exits_one` |
 | plain 모드에서 실패한 작업이 있으면 1로 끝나고, 없으면 0이다. | `saturn-terminal/cli/tests/exit_codes.rs`의 `plain_run_with_a_failed_task_exits_one`, `plain_run_that_finishes_cleanly_exits_zero` |
-| 에이전트가 실행한 `saturn`은 거절한다. | [하위 에이전트 훅 적용 범위 측정](https://github.com/woonyong-choi/saturn/issues/23) |
+| 에이전트 작업 안에서 표지만 있고 출입증이 없는 `saturn`은 거절한다. 출입증이 있으면 하위 접속이다. | `saturn-terminal/cli/tests/exit_codes.rs`의 `nested_run_inside_an_agent_exits_two`, `saturn-terminal/cli/src/launch.rs`의 `origin_with_marker_and_no_pass_is_error`, `origin_with_a_pass_is_a_child_on_the_given_socket` |
 | 한 채팅의 provider 요청이 느리거나 응답하지 않아도 다른 채팅의 입력과 조회, 같은 채팅의 멈춤 요청을 바로 처리한다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_slow_start_request_does_not_stall_other_chats_or_stop`, `a_silent_provider_request_does_not_stall_other_chats_or_stop`, `a_provider_that_stops_reading_input_does_not_stall_other_chats_or_stop` |
 
 ## 대안

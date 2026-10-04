@@ -42,6 +42,11 @@
 
 ### 설정 층
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/settings-layers.ko.dark.svg">
+  <img src="../assets/settings-layers.ko.light.svg" alt="설정은 기본값, 사용자, 폴더, 채팅, 실행 층을 차례로 병합하고 뒤 층의 값이 앞 층을 이긴다" width="100%">
+</picture>
+
 뒤 층의 값이 앞 층의 값보다 우선한다.
 
 | 순서 | 층 | 위치 |

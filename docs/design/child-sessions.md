@@ -9,6 +9,11 @@
 
 Saturn 안의 에이전트가 `saturn`을 실행해 다른 일을 맡기는 것과, Saturn 밖의 Claude나 Codex가 `saturn`을 실행해 일을 맡기는 것을 모두 허용한다. 어느 쪽도 새 `engine`을 띄우지 않고 사용자당 하나인 `engine`에 접속해 부탁만 한다. `engine`이 router 키를 쥔 채 대신 일하는 프록시라서 키는 누구에게도 넘어가지 않는다. Saturn 안에서 온 접속(하위 접속)은 `engine`이 준 출입증으로 식별한다. 출입증은 그 채팅의 하위 작업만 만들 수 있고, 부모 권한을 넘지 못하고, 깊이와 동시 수 상한이 있고, 부모가 멈추면 함께 끝난다. 출입증이 없는 접속(바깥 접속)은 사용자가 연 채팅과 같은 권한 규칙을 따른다.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/child-connection.ko.dark.svg">
+  <img src="../assets/child-connection.ko.light.svg" alt="에이전트가 실행한 saturn은 새 engine 없이 출입증으로 떠 있는 engine에 접속해 부모 채팅의 하위 작업이 된다" width="100%">
+</picture>
+
 ## 동기
 
 `saturn`은 지금까지 에이전트 작업 안에서 실행하면 거절했다. 에이전트가 Saturn을 쓰고 싶어도 쓸 수 없고, 거절을 풀어 두면 에이전트가 `engine`을 또 띄우거나 키 저장소를 건드리거나 부모보다 큰 권한으로 일을 시킬 수 있다. `engine`은 사용자당 하나여야 기록 저장소의 쓰는 쪽이 하나로 유지되므로 접속마다 `engine`을 띄우는 방식은 쓸 수 없다. 접속이 늘면 provider 프로세스도 같이 늘어 사용자 컴퓨터가 느려지므로 상한이 필요하다.

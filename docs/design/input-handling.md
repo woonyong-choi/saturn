@@ -76,7 +76,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트가 일하는 중
 - 적용 직전 revision이 다르면 한 번 다시 판단하고, 또 다르면 대기로 보낸다. 바뀐 상태에 옛 판단을 적용하는 일을 막기 위해서다.
 - 같은 요청의 제약 질문(`is_constraint`, `constraint_change`)은 채팅 revision이 아니라 제약 revision과 입력 상태로 비교한다. 작업 상태가 바뀌었다는 이유로 사용자가 한 말의 제약 여부를 버리지 않기 위해서다([제약](constraints.md#적용-직전-비교)).
 - 판단 기록은 적용 결과를 안 뒤에 쓴다. revision이 어긋나 버린 판단은 `superseded`로 쓰고, 적용한 판단만 결과 신호 관찰을 시작한다.
-- 관계 판단 없이 대기하는 입력(`Tab`)은 router를 부르지 않고 대기로 둔다(초안). 모델을 고정한 입력도 다른 입력과 똑같이 router 관계 판단(끼워 넣기, 대기, 새 작업)을 받는다. 고정은 `target_model` 선택만 대신하고, 보낼 모델은 고정값이다. 고정이 관계 판단을 건너뛰면 `/model` 뒤 모든 입력이 대기해 병렬 작업이 막히기 때문이다(사용자 결정).
+- 관계 판단 없이 대기하는 입력(`Tab`)은 router를 부르지 않고 대기로 둔다. 모델을 고정한 입력도 다른 입력과 똑같이 router 관계 판단(끼워 넣기, 대기, 새 작업)을 받는다. 고정은 `target_model` 선택만 대신하고, 보낼 모델은 고정값이다. 고정이 관계 판단을 건너뛰면 `/model` 뒤 모든 입력이 대기해 병렬 작업이 막히기 때문이다(사용자 결정).
 - 입력은 접수 때 권한을 고정한다. 권한 모드가 읽기 전용(`read-only`)이면 읽기 전용, 그 밖의 모드는 쓰기다. 읽기 전용 모드여도 쓰기를 열 수 있는 규칙(`allow`, `ask`)이 하나라도 있으면 쓰기로 둔다. 읽기 전용 입력은 같은 폴더의 다른 읽기 작업과 병렬로 실행한다(사용자 결정, [#232](https://github.com/woonyong-choi/saturn/issues/232)). `allow`나 `ask` 규칙이 있을 때 쓰기로 두는 것은 쓰기를 막는 모드 기본 규칙을 규칙이 풀 수 있어서 둔 보수적 선택이다(초안). `ask`는 사용자가 승인한 쓰기가 쓰기 잠금 없이 나가는 일을 막으려고 같게 본다. `deny` 규칙만 있으면 읽기 전용이다.
 - 판단 state는 채팅이 실행 중인지, 앞 입력의 처리 방식, 사용자 원문으로 만들고 비밀값과 절대 경로를 뺀다(초안).
 
@@ -126,6 +126,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 - session 교체 중 들어온 입력은 새 session에 순서대로 보낸다. 입력 순서를 session 교체와 무관하게 지키기 위해서다.
 - 보내기 전에 확정된 실패만 다시 보낸다. 같은 작업이 두 번 실행되는 일을 막기 위해서다. 같은 입력은 처음 시도를 포함해 3번(초안)까지 보내고, 그래도 실패하면 `거절됨`으로 두고 시작하려던 작업은 닫는다. 끼워 넣기는 이 규칙을 따르지 않는다. provider가 끼워 넣기를 거절(`NotSent`)하면 다시 끼워 넣지 않고 입력을 대기열 맨 앞으로 옮겨 다음 차례에 새 턴으로 보낸다(사용자 결정, [#60](https://github.com/woonyong-choi/saturn/issues/60)). 사용자가 지금 반영되길 원한 입력이라 순서를 뒤로 미루지 않고, 거절은 보내지 않음이 확정된 실패라 다시 보내도 되기 때문이다. 입력은 `대기`로 돌아가고 `거절됨`이 되지 않는다. 충돌 입력만 이 자리에서 사용자에게 멈출지 묻는다([충돌 입력](#충돌-입력)).
 - 입력은 `전달 중`을 기록 저장소에 쓴 뒤에만 provider로 보내고, provider가 받으면 `반영됨`으로 바꾼다. 기록에 쓰지 못하면 보내지 않고 거절한다.
+- `전달 중`에서 보내지 않음이 확정되면 입력은 `대기`나 `보류`로 돌아간다. 끼워 넣기를 거절당하면 `대기`로 맨 앞에 두고, 멈춘 채팅의 전달이나 맥락 한도 초과로 패킷을 보내지 못하면 작업과 함께 `보류`로 둔다. 그 밖의 확정 실패는 3번까지 다시 보낸 뒤 `거절됨`이 된다.
 - 보낼 provider는 입력에 고정한 모델이나 router가 고른 모델의 provider, 없으면 채팅의 메인 session이 있으면 그 provider이고, 없으면 설치된 Claude, 없으면 설치된 Codex이며 둘 다 없으면 오류를 보이고 보내지 않는다([#168](https://github.com/woonyong-choi/saturn/issues/168) 결정). 고정한 모델은 session을 여는 모델로 넘기고 모델이 바뀌면 새 메인 session을 연다([모델 고르기](providers-and-sessions.md#모델-고르기)).
 - provider 연결은 채팅마다 둔다. 작업 폴더와 환경이 채팅마다 달라서다.
 - 새 session에 넘기는 패킷을 provider가 맥락 한도 초과로 거절하면 다른 `NotSent`와 달리 같은 패킷을 다시 보내지 않는다. 경쟁 구역을 줄여 한 번만 다시 보내고, 그래도 거절되거나 고정 구역만으로 넘치면 보내지 않고 멈춘다([#162](https://github.com/woonyong-choi/saturn/issues/162), [패킷 구성](context-management.md#패킷-구성)). 이 재전송은 같은 입력 3번 규칙의 횟수에 들지 않는다.
@@ -147,7 +148,10 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 ### 멈춤과 보류
 
-![멈춤 요청은 작업을 보류로 바꾸고 subagent부터 멈춤 신호를 보내며, 트리 전체가 끝난 것을 확인한 뒤에만 완료를 보고한다](../assets/stop-flow.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/stop-flow.ko.dark.svg">
+  <img src="../assets/stop-flow.ko.light.svg" alt="멈춤 요청은 작업을 보류로 바꾸고 subagent부터 멈춤 신호를 보내며, 트리 전체가 끝난 것을 확인한 뒤에만 완료를 보고한다" width="100%">
+</picture>
 
 1. 사용자가 멈춤을 요청한다.
 2. `queue`가 실행 중 작업과 보내지 않은 대기 입력을 보류로 바꾼다.
@@ -225,13 +229,16 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 ### 입력 전달 상태
 
-![입력은 판단 중으로 시작해 대기와 전달 중을 거쳐 반영됨이 되고, 멈추면 보류로 가며, 거절됨이나 취소됨으로 끝날 수도 있다](../assets/input-states.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/input-states.ko.dark.svg">
+  <img src="../assets/input-states.ko.light.svg" alt="입력은 판단 중으로 시작해 대기와 전달 중을 거쳐 반영됨이 되고, 멈추면 보류로 가며, 끼워 넣기를 거절당하면 대기로 돌아오고, 거절됨이나 취소됨으로 끝날 수도 있다" width="100%">
+</picture>
 
 | 상태 | 뜻 | 다음 상태 |
 |---|---|---|
 | `판단 중` | router 답을 기다리는 입력 | `대기`, `전달 중`, `보류`, `취소됨` |
 | `대기` | 보내기 전 대기열의 입력 | `전달 중`, `보류`, `취소됨` |
-| `전달 중` | 에이전트에 보낸 입력 | `반영됨`, `거절됨` |
+| `전달 중` | 에이전트에 보낸 입력 | `반영됨`, `거절됨`, `대기`(끼워 넣기 거절), `보류`(보내지 않음이 확정) |
 | `반영됨` | 에이전트가 받은 입력 | 없음 |
 | `거절됨` | 에이전트가 받지 않은 입력 | 없음 |
 | `보류` | 사용자가 멈춘 작업의 보내지 않은 입력 | `대기`, `취소됨` |
@@ -307,7 +314,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 ## 미해결 질문
 
-- 직전 작업 입력·목표·진행 내용을 state에 추가할 범위와 새 작업 오접합을 줄일 대체 규칙 ([한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md), [#6](https://github.com/woonyong-choi/saturn/issues/6)). 실험은 Claude 기록의 상태 복원과 작업 발췌를 비교했으며 실제 Saturn 실행 중 작업 상태를 수집하는 구현은 검증하지 않았다.
+- 직전 작업 입력·목표·진행 내용을 state에 추가할 범위와 새 작업 오접합을 줄일 대체 규칙. 측정은 끝났다([한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md), [오접합 실험](../experiments/continuation-misjoin/report.md), [새 작업 표본 확대](../experiments/continuation-newtask/report.md), [#6](https://github.com/woonyong-choi/saturn/issues/6)). 합친 새 작업 표본의 오접합은 2.0%이고 재현율은 71.3%다. 구현 방식(Jev 또는 저렴한 LLM)은 [#382](https://github.com/woonyong-choi/saturn/issues/382)의 비교 실험 뒤에 정한다. 실제 Saturn 실행 중 작업 상태를 수집하는 구현은 검증하지 않았다.
 
 - 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 멈춘 작업의 트리 유휴 신호가 끝내 오지 않을 때 완료 보고를 기다리는 한도 ([#90](https://github.com/woonyong-choi/saturn/issues/90))

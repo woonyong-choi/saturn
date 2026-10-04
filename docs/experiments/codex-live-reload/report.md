@@ -17,7 +17,7 @@ Codex CLI 0.158.0에서 질문 feature 토글은 RPC 성공 응답과 달리 실
 
 각 execpolicy trial은 `thread/start`에 `approvalPolicy="untrusted"`, `sandbox="read-only"`를 주고 config에 `approvals_reviewer="user"`를 두었다. `touch .runtime/markers/...`를 실행하게 한 뒤 `rules/default.rules`를 `forbidden`과 `allow` 사이에서 바꾸고, 무요청·`config/batchWrite(reloadUserConfig=true)`·새 process를 비교했다. marker 파일과 승인 요청 event를 함께 기록했다.
 
-app-server stdout은 기존 실험과 같은 비차단 byte read와 줄 큐를 사용했다. 큰 원문은 메인 저장소 [private log](../../../../saturn/.local/experiments/codex-live-reload/)에 두었고, 공개 raw에는 redaction한 요약만 남겼다.
+app-server stdout은 기존 실험과 같은 비차단 byte read와 줄 큐를 사용했다. 큰 원문은 메인 저장소의 비공개 로그에 두었고, 공개 raw에는 redaction한 요약만 남겼다.
 
 ## 설계와 다른 점
 

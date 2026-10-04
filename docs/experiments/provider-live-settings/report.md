@@ -26,7 +26,7 @@ Claude는 `claude -p --input-format stream-json --output-format stream-json --pe
 
 Codex는 매 trial 전용 `CODEX_HOME`을 worktree `.runtime/codex-homes/`에 만들고 `~/.codex/auth.json`은 심볼릭 링크로만 연결했다. app-server stdout은 비차단 바이트 읽기와 줄 큐로 처리했다. `turn/start` override, `config/batchWrite`, `experimentalFeature/enablement/set`, `config/mcpServer/reload`를 실제 요청으로 보냈고, marker 파일·thread event·`config/read`/feature list 응답을 함께 확인했다. `config.toml`과 `rules/default.rules`는 process 실행 뒤 직접 바꾸고 같은 thread의 다음 턴과 새 process의 첫 턴을 비교했다.
 
-큰 원문은 [메인 저장소 private 실험 로그](../../../../saturn/.local/experiments/provider-live-settings/)에 있고, 공개 raw에는 비밀값과 사용자 절대 경로를 redaction한 요약 행만 둔다. 분석 재현 명령은 `./run.sh process`, `./run.sh analyze`, `./run.sh verify`다.
+큰 원문은 메인 저장소의 비공개 실험 로그에 있고, 공개 raw에는 비밀값과 사용자 절대 경로를 redaction한 요약 행만 둔다. 분석 재현 명령은 `./run.sh process`, `./run.sh analyze`, `./run.sh verify`다.
 
 ## 반복 결과
 

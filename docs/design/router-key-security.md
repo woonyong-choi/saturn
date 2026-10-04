@@ -114,7 +114,7 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 - 이 판정은 차단 목록 방식이라 막지 못하는 형태가 남는다. 문자열을 조립하거나 인코딩해 실행하는 명령(`base64 -d | sh`), 내려받은 스크립트나 사용자가 만든 스크립트 파일 실행, 인터프리터가 이름을 조립해 부르는 `security`, `find -exec`처럼 목록에 없는 실행기, 작업 폴더를 옮긴 뒤의 상대 경로가 그렇다. 키 항목 자체에 접근 제어를 거는 근본 대책은 [#2](https://github.com/woonyong-choi/saturn/issues/2)와 [#102](https://github.com/woonyong-choi/saturn/issues/102)에서 정한다. 훅은 그 앞의 한 겹이다.
 - Claude Code 2.1.288에서 Saturn 훅은 Bash로 쓴 `security find-generic-password` 조회를 요청이 호스트에 오기 전에 막았고, 전경과 백그라운드 subagent의 같은 조회도 막았다(각 3/3). 훅 입력에는 subagent 호출에 `agent_id`와 `agent_type`이 실린다. 중첩 subagent의 조회도 훅 기록에서 3/3 막혔지만 그 호출이 스트림에는 1/3만 보였다. 반면 `sh -c "/usr/bin/security find-generic-password ..."`는 3/3 막지 못했고 값이 도구 결과에 나왔다. 원인은 첫 낱말과 첫 비옵션 낱말만 보는 판정이었고, 셸·`eval`·인터프리터 인자를 해석하는 수정은 위 항목대로 단위 테스트로만 확인했다. 실제 provider로 다시 재지 않았다. Codex 훅은 재지 않았다([#3](https://github.com/woonyong-choi/saturn/issues/3), [#23](https://github.com/woonyong-choi/saturn/issues/23), [실험](../experiments/claude-provider-behavior/report.md)).
 - Codex 0.158.0은 전용 `CODEX_HOME`의 `hooks.json`에 둔 `PreToolUse` 훅을 부른다([실측](../experiments/codex-provider-behavior/report.md)). 훅은 `hooks/list`의 `currentHash`를 `config.toml`의 `hooks.state`에 `trusted_hash`로 써야 불리고, 신뢰 값이 없으면(`trustStatus=untrusted`) 불리지 않았다(0/3). 입력은 Claude와 같은 키(`tool_name`, `tool_input.command`, `cwd`)였고 Saturn 훅 명령이 그대로 판정했다. 신뢰한 훅은 `security find-generic-password`와 가짜 키 파일의 `cat`을 승인 요청이 오기 전에 막았고(각 3/3, 명령 실행 없음, Codex가 `hook/completed`에 `blocked`와 이유를 알림), 샌드박스 없이 실행한 경우도 막았다(3/3). 훅이 없고 샌드박스도 없으면 가짜 값이 출력됐고(3/3), 읽기 전용 샌드박스는 훅 없이도 키체인 조회를 막았다(3/3, 항목을 찾지 못함).
-- Codex 파일 편집(`apply_patch`)에도 훅이 불리지만(`tool_input.command`에 `*** Add File: 경로`가 든 패치 글) Saturn 훅은 이 도구 이름을 몰라 허용한다(`saturn-terminal/engine/src/providers/claude/hook.rs:55`). 가짜 키 파일 편집이 3/3 적용됐다. 지금 engine은 Codex에 훅을 넘기지 않는다.
+- Codex 파일 편집(`apply_patch`)에도 훅이 불리지만(`tool_input.command`에 `*** Add File: 경로`가 든 패치 글) Saturn 훅은 이 도구 이름을 몰라 허용한다(`saturn-terminal/engine/src/providers/claude/hook.rs`의 `tool_call`이 알지 못하는 도구를 `ToolCall::Other`로 돌려준다). 가짜 키 파일 편집이 3/3 적용됐다. 지금 engine은 Codex에 훅을 넘기지 않는다.
 
 ### 겹 구성
 
@@ -146,6 +146,7 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 ### 출력 마스킹
 
 - router 키와 일치하는 문자열은 로그, 오류, 디버그 출력에서 가린다. 키가 provider 기록이나 TUI로 새는 일을 막기 위해서다.
+- 하위 접속의 출입증 토큰(`saturn-pass-`로 시작하는 16진수 글자)도 키와 같은 방식으로 가린다([하위 접속](child-sessions.md#출입증)).
 - Codex app-server stdout의 JSON 문자열 값은 오류와 이벤트로 바꾸기 전에 가린다.
 - 판단 기록을 저장하기 전에 `secrets`가 보낸 원문과 받은 원문의 비밀값을 가린다.
 - 가린 자리는 `[redacted]`로 바꾸고 끝 4자리도 남기지 않는다. `Authorization`, `Proxy-Authorization`, `X-Api-Key` 헤더 줄은 이름만 남기고 값을 가린다(초안).

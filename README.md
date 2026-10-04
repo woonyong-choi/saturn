@@ -21,11 +21,14 @@ Developers who use Codex and Claude Code together lose context each time they sw
 > [!NOTE]
 > In development. There are no releases; build from source.
 
-![Design: after you switch the chat from Claude Code to Codex, the new Codex session gets a packet from the Saturn record and both results stay in one chat](docs/assets/provider-switch.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/overview.en.dark.svg">
+  <img src="docs/assets/overview.en.light.svg" alt="Design: every input reaches the Saturn record first, and a new provider session gets only a packet built from that record" width="100%">
+</picture>
 
 ## How it works
 
-The following is the designed behavior.
+Steps 1, 2, 4, 5, and 6 run on `main`. In step 3, opening a new session with a packet works, but the router does not yet choose what goes into the packet, and Saturn does not yet ask the provider to compact. Constraints you state are recorded, while releasing them and carrying them in the packet are designed only (see Status).
 
 1. You run `saturn` in a repository and type a request. A background engine process stores the input in a local SQLite database before it sends anything to Codex or Claude Code.
 2. While the agent works, you type a follow-up. A router, a small model that answers yes-or-no, multiple-choice, and rating questions about your input, decides whether to add it to the running turn, start a separate task, or queue it.
@@ -33,6 +36,34 @@ The following is the designed behavior.
 4. You switch the chat from Claude Code to Codex. A chat is the conversation you see, and provider sessions open and close behind it. The new session receives only what changed since it last saw the chat.
 5. You close the terminal. The engine keeps processing the inputs you already sent, and you can attach again later.
 6. A provider asks to run a command or edit a file. Saturn applies its own permission rules instead of the provider settings, and shows an approval prompt only when a rule says to ask.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/provider-switch.en.dark.svg">
+  <img src="docs/assets/provider-switch.en.light.svg" alt="After you switch the chat from Claude Code to Codex, the new Codex session gets a packet from the Saturn record and both results stay in one chat" width="100%">
+</picture>
+
+Switching providers: the new session gets a packet from the record. [Provider connections and sessions](docs/design/providers-and-sessions.md)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/permission-decision.en.dark.svg">
+  <img src="docs/assets/permission-decision.en.light.svg" alt="A permission request is answered by Saturn rules as allow or deny, and only an ask result reaches the TUI" width="100%">
+</picture>
+
+Permissions: a rule answers, and only ask reaches you. [Permissions](docs/design/permissions.md)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/constraint-lifecycle.en.dark.svg">
+  <img src="docs/assets/constraint-lifecycle.en.light.svg" alt="Design: a constraint is registered automatically, after asking, or not at all" width="100%">
+</picture>
+
+Constraints: what you say to keep following. [Constraints](docs/design/constraints.md)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/extension-store.en.dark.svg">
+  <img src="docs/assets/extension-store.en.light.svg" alt="Design: an extension is copied into the Saturn store, judged per provider, and injected in each provider format" width="100%">
+</picture>
+
+Extensions: one store, injected per provider. [Capability list and extensions](docs/design/extensions.md)
 
 The full design is in the [design documents](docs/README.md), which are written in Korean.
 
@@ -98,7 +129,7 @@ Error: Router key required (router key required: router rejected the key): set t
 |---|---|
 | 0 | Success |
 | 1 | Other failure, including answering no to a confirmation and a failed task in plain mode |
-| 2 | Usage error: change the call, for example no terminal for a picker or a nested run inside an agent |
+| 2 | Usage error: change the call, for example no terminal for a picker or a nested run inside an agent without a pass |
 | 66 | Nothing to open: no chat to continue, missing folder, unknown router version |
 | 69 | Engine unavailable: failed to start, no answer, failed to replace, connection lost |
 | 70 | Engine internal error |
@@ -106,6 +137,19 @@ Error: Router key required (router key required: router rejected the key): set t
 | 77 | Router key missing or rejected |
 | 78 | Configuration error |
 | 130 | Quit from a window with `Esc` or `Ctrl+C` |
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/exit-codes.en.dark.svg">
+  <img src="docs/assets/exit-codes.en.light.svg" alt="Exit codes grouped by what to do: change the call, retry, fix the settings, other failures, and success or abort" width="100%">
+</picture>
+
+### Use the plain screen
+
+`saturn --plain` draws the chat as lines without boxes or motion and lists choices by number. Setting `NO_COLOR` or the `tui.screen` setting does the same, and `/plain` switches during a chat. `--plain=false` overrides both. Without a terminal, `saturn` uses the plain screen on its own.
+
+```sh
+saturn --plain
+```
 
 ### Switch the model
 
@@ -127,7 +171,7 @@ saturn --continue
 
 ## Status
 
-Saturn is in development. The message types, core rules, engine, TUI, and the `saturn` command are on `main`. The input flow from acceptance to provider send, stop and resume, Saturn permission rules, `/model`, and `/usage` work in tests with fake providers, and the procedure in `scripts/e2e/README.md` (steps a to k) passed against real Codex, Claude Code, and the router on 2026-10-04. Keeping an old user constraint in the handoff packet across a switch back is not confirmed against real providers yet ([#296](https://github.com/woonyong-choi/saturn/issues/296) condition 2). Continuing without a TUI and crash recovery are not built. The design documents, decision records, and experiment reports are public. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
+Saturn is in development. The message types, core rules, engine, TUI, and the `saturn` command are on `main`. These work in tests with fake providers: the input flow from acceptance to provider send, stop and resume, Saturn permission rules, `/model` and `/usage`, a plain screen mode for pipes and `NO_COLOR`, keeping work running after the TUI closes, recovery after an engine crash, installing extensions into the Saturn store and injecting them when a connection starts, and child connections that let an agent inside Saturn, or an outside Claude Code or Codex, ask the running engine for work. The procedure in `scripts/e2e/README.md` (steps a to k) passed against real Codex, Claude Code, and the router on 2026-10-04. The rest was not run against real providers. Keeping an old user constraint in the handoff packet across a switch back is not built: the packet carries no constraints yet ([#296](https://github.com/woonyong-choi/saturn/issues/296) condition 2). Designed but not built: ordering the packet by router answers, handoff compaction ([#380](https://github.com/woonyong-choi/saturn/issues/380)), releasing constraints and the `/constraints` screen ([#379](https://github.com/woonyong-choi/saturn/issues/379), [#381](https://github.com/woonyong-choi/saturn/issues/381)), scoring and training a local router model, and sharing data with a server. The design documents, decision records, and experiment reports are public. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
 
 ## Comparison
 
@@ -138,10 +182,11 @@ Saturn is in development. The message types, core rules, engine, TUI, and the `s
 
 The order after the first conversation is not fixed yet.
 
-1. First conversation: a full run against real Codex and Claude Code, user constraints in context packets. (in progress)
-2. Chat management and recovery: continue without a TUI, crash recovery, chat names and grouping, task-completion notifications. (next)
-3. Local router model: score recorded judgments, train a personal router model, and switch to it only when it is not worse than the current router on the same evaluation set. (later)
-4. Service: consent-based data collection, remote API, authentication, and infrastructure. (later)
+1. First conversation: a full run against real Codex and Claude Code, including a switch back after a user constraint. (in progress)
+2. Constraints and packets: release and exceptions for constraints, constraints in the handoff packet, packets ordered by router answers. (next)
+3. Chat management: chat names and grouping, task-completion notifications. (next)
+4. Local router model: score recorded judgments, train a personal router model, and switch to it only when it is not worse than the current router on the same evaluation set. (later)
+5. Service: consent-based data collection, remote API, authentication, and infrastructure. (later)
 
 ## Documentation
 

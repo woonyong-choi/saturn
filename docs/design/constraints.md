@@ -60,6 +60,11 @@
 - 적용 범위는 `전체`이거나 경로 목록이다. `sessions`가 규칙 글에서 경로 모양 글자를 뽑고 [순위 채널](context-selection.md#순위-채널)과 같은 정규화(NFC, 앞의 `./` 제거)를 거친다. 경로가 없으면 `전체`다(초안). `테스트에서는`처럼 경로 없는 범위 표현은 `전체`로 두고, 범위 제약 판단 품질은 긴 대화 실측으로 확인한다.
 - 새 제약이 앞 제약과 같은 뜻이거나 부딪쳐도 자동으로 합치거나 대체하지 않는다. 둘 다 유효로 남고, 정리는 사용자가 해제 요청이나 `/constraints`로 한다.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../assets/constraint-lifecycle.ko.dark.svg">
+  <img src="../assets/constraint-lifecycle.ko.light.svg" alt="제약은 확신에 따라 등록되거나 묻기를 거쳐 Active가 되고, 해제와 예외로 상태가 바뀐다" width="100%">
+</picture>
+
 | 상태 | 뜻 | 다음 상태 |
 |---|---|---|
 | `Candidate` | 등록할지 사용자에게 묻는 중이다. 패킷에는 유효 제약처럼 들어간다. | `Active`, `Released` |
@@ -180,10 +185,10 @@
 패킷의 고정 구역 첫 항목인 제약 칸은 상한 안에서 채운다. 제약이 쌓여도 패킷이 제약만으로 차지 않게 하기 위해서다.
 
 ```text
-C_max = P_max / 4
+C_max = P_max × context.constraint_slot_percent / 100
 ```
 
-`C_max`는 제약 칸 상한이고 `P_max`는 [패킷 크기 상한](context-management.md#패킷-구성)이다. 나누는 수 4는 초안이고 긴 대화 실측으로 정한다. 크기는 네 글자를 한 토큰으로 추정한다.
+`C_max`는 제약 칸 상한이고 `P_max`는 [패킷 크기 상한](context-management.md#패킷-구성)이다. `context.constraint_slot_percent`의 기본값 25는 초안이고 긴 대화 실측으로 정한다([설정](settings.md#설정-키)). 이 키는 구현 전이다([#380](https://github.com/woonyong-choi/saturn/issues/380)). 크기는 네 글자를 한 토큰으로 추정한다.
 
 1. 범위가 `전체`인 유효 제약을 최신 순으로 넣는다.
 2. 범위가 있고 지금 작업과 겹치는 제약을 겹치는 경로 수가 많은 순, 같으면 최신 순으로 넣는다. 지금 작업은 [순위 채널](context-selection.md#순위-채널)의 기준 파일(마지막 입력에 나온 경로와 메인 session이 최근 3턴에 건드린 파일)이다.
@@ -206,7 +211,7 @@ C_max = P_max / 4
 
 | 값 | 초안 | 정하는 방법 |
 |---|---|---|
-| `C_max`의 나누는 수 | 4 | 긴 대화 실측(`docs/experiments/constraint-long-context/`)에서 제약 11개 이상 표본의 보존 정확도 |
+| `context.constraint_slot_percent` | 25 | 긴 대화 실측(`docs/experiments/constraint-long-context/`)에서 제약 11개 이상 표본의 보존 정확도 |
 | 문장 나누기 기준 | 200자, 20문장 | 같은 실측의 혼합 입력 |
 | 판단에 싣는 제약 상한 | 10개 | 같은 실측의 10개 대 전체 제약 비교 |
 | 종류 질문의 확률 하한 | 0.8 | 해제 종류 구분 정확도(87.8%)를 올린 뒤 사용자 답 기록 |
@@ -252,7 +257,7 @@ C_max = P_max / 4
 
 ## 단점
 
-- 제약 판단은 router 정확도에 기댄다. 간접 지시 입력의 정확도는 74.5%여서 놓치거나 잘못 등록할 수 있다([#186](https://github.com/woonyong-choi/saturn/issues/186)).
+- 제약 판단은 router 정확도에 기댄다. 간접 지시 입력의 정확도는 74.5%여서 놓치거나 잘못 등록할 수 있다([간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)).
 - 해제 종류 구분 정확도가 87.8%이고 잘못된 영구 해제가 1.2% [0.5, 2.8]이다. 기준(90%, 1%)에 못 미쳐 예외 줄에서 사용자가 고치게 했다.
 - 실제 입력의 절반가량이 AI가 쓴 지시문을 붙여 넣은 것이다. 그런 입력은 맥락 없이 제약인지 가리기 어렵고, 작업 하나에만 해당하는 규칙이 많다. 사람 확인 24건에서 Jev 0.80은 재현율이 6/14였다. 이 입력을 어떻게 다룰지는 정하지 못했다.
 - 규칙 한 줄이 원문의 문장이라 "그것도 그렇게 해"처럼 앞 말에 기대는 문장은 혼자 뜻이 통하지 않는다.
@@ -278,5 +283,4 @@ C_max = P_max / 4
 
 - 입력의 절반가량인 AI가 쓴 지시문에서 작업 하나에만 해당하는 규칙을 어떻게 가려낼지(대응 미정)
 - 해제 종류 구분 정확도를 90% 이상으로 올릴 질문 문장과 예외 조건 문장을 글자 단위로 맞추는 방법
-- 간접 지시 입력에서 `is_constraint` 정확도를 올리되 일반 제약 입력의 재현율을 해치지 않는 질문 문장이 있는지 ([#186](https://github.com/woonyong-choi/saturn/issues/186))
 - 독립 프로젝트 표본과 사람 확인 정답으로 0.8과 0.7을 다시 확인할 수 있는지

@@ -1,10 +1,13 @@
 # 아키텍처
 
-Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 터미널 도구다. 구성 요소는 코드 다섯과 기록 저장소 하나이고, `tui`와 `cli`는 사용자당 하나인 `engine`에 Unix 소켓 위 JSON-RPC로 붙는다.
+Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 터미널 도구다. 구성 요소는 코드 다섯과 기록 저장소 하나이고, `tui`는 사용자당 하나인 `engine`에 Unix 소켓 위 JSON-RPC로 붙는다. `cli`는 `tui`를 품은 `saturn` 실행 파일로, `engine`이 없으면 `saturn-engine`을 띄운 뒤 같은 소켓으로 붙는다. 에이전트 작업 안에서 실행한 `saturn`은 `engine`을 띄우지 않고 출입증으로 떠 있는 `engine`에 붙어 하위 작업이 된다.
 
 ## 맥락
 
-![사용자 입력은 Saturn을 거쳐 Codex와 Claude Code로 가고, 뜻 판단은 router에 묻는다](assets/context.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/context.ko.dark.svg">
+  <img src="assets/context.ko.light.svg" alt="사용자 입력은 Saturn을 거쳐 Codex와 Claude Code로 가고, 뜻 판단은 router에 묻는다" width="100%">
+</picture>
 
 | 외부 요소 | 종류 | 주고받는 것 |
 |---|---|---|
@@ -14,11 +17,16 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 로컬 Saturn 모델 | 외부 프로그램 | 판단 질문과 선택지별 확률 |
 | macOS 키체인 | 운영체제 | router 키 |
 | `SATURN_KEY` 환경 변수 | 운영체제 | 키체인 확인에 실패할 때 받는 router 키 |
+| 비밀번호 관리자 명령(`router.key.command`) | 외부 프로그램 | 키체인과 환경 변수로 받지 못할 때 표준 출력 첫 줄로 주는 router 키 |
 | 설정 파일 | 파일 | 사용자 설정과 폴더 설정 |
+| 확장 저장소(`~/.saturn/extensions/`) | 파일 | 사용자가 설치한 확장 원본. 설치와 조회 |
 
 ## 코드 지도
 
-![TUI와 CLI는 engine에만 붙고, engine이 core 규칙으로 provider와 router를 다룬다](assets/architecture.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture.ko.dark.svg">
+  <img src="assets/architecture.ko.light.svg" alt="TUI와 CLI는 engine에만 붙고, engine이 core 규칙으로 provider와 router를 다룬다" width="100%">
+</picture>
 
 | 구성 요소 | 하는 일 | 기술 | 위치 |
 |---|---|---|---|
@@ -33,8 +41,8 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 
 | 구성 요소 | 모듈과 주요 타입 | 위치 |
 |---|---|---|
-| `core` | `providers`(`ProviderClient` trait), `routers`(`RouterClient` trait), `agents`(`AgentTracker`), `passes`(`PassTable`), `sessions`(`SessionManager`), `queue`(`Queue`) | `saturn-terminal/core/src/{모듈}/mod.rs` |
-| `engine` | `secrets`(`SecretStore`), `store`(`Store`), `settings`(`SettingsManager`), `processes`(`Supervisor`), `providers`(`CodexClient`, `ClaudeClient`), `routers`(`RemoteRouter`, `LocalRouter`), `rpc`(`RpcServer`) | `saturn-terminal/engine/src/{모듈}/` |
+| `core` | `providers`(`ProviderClient` trait), `routers`(`RouterClient` trait), `agents`(`AgentTracker`), `passes`(`PassTable`), `sessions`(`SessionManager`), `queue`(`Queue`), `permission`(`Policy`), `constraints` | `saturn-terminal/core/src/{모듈}/mod.rs` |
+| `engine` | `secrets`(`SecretStore`), `store`(`Store`), `settings`(`SettingsManager`), `processes`(`Supervisor`), `providers`(`CodexClient`, `ClaudeClient`), `routers`(`RemoteRouter`, `LocalRouter`), `rpc`(`RpcServer`), `extensions`(확장 저장소), `children`(하위 접속), `passes`(`PassGate`) | `saturn-terminal/engine/src/{모듈}/` |
 
 기능별 동작은 설계 문서에 있다.
 
@@ -61,13 +69,16 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 
 ### 입력 하나의 처리
 
-![입력은 기록 저장소에 접수된 뒤 router 판단을 거쳐 provider로 가고, 이벤트는 다시 기록되어 tui에 결과 줄로 돌아간다](assets/input-flow.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/input-flow.ko.dark.svg">
+  <img src="assets/input-flow.ko.light.svg" alt="입력은 기록 저장소에 접수된 뒤 router 판단을 거쳐 provider로 가고, 이벤트는 다시 기록되어 tui에 결과 줄로 돌아간다" width="100%">
+</picture>
 
 1. TUI가 입력을 engine에 보낸다.
 2. engine이 입력을 기록 저장소에 접수한다.
 3. `core`가 같은 채팅 입력의 판단 차례를 접수 순서로 정한다.
 4. engine이 router에 묻고, `core`가 판단 결과로 대상 에이전트와 처리 방식을 정한다.
-5. engine이 보내는 순간 대상 session을 골라 provider에 전달한다.
+5. engine이 보내는 순간 대상 session을 고르고, 입력을 `전달 중`으로 기록한 뒤 provider에 전달한다.
 6. engine이 provider 이벤트와 사용량 보고를 기록하고 TUI에 결과 줄을 보낸다.
 
 ### TUI를 닫은 뒤
@@ -101,6 +112,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 프로세스 | 시작 주체 | 수명 |
 |---|---|---|
 | `saturn` | 사용자 | 명령이 끝나거나 TUI를 닫을 때까지 |
+| `saturn`(하위 접속) | 에이전트 작업 | 작업 안의 명령이 끝날 때까지. `engine`을 띄우지 않는다 |
 | `saturn-engine` | `saturn` | 모든 TUI가 떨어지고 트리 유휴 뒤 5분 유예까지, 사용자당 하나 |
 | Codex app-server | `saturn-engine` | 채팅마다 연결 창구로 유지, session은 턴 끝 뒤 5분 유예에 정리 |
 | Claude Code | `saturn-engine` | 턴 진행 중과 턴 끝 뒤 5분 유예까지 |
@@ -114,6 +126,8 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | `~/.saturn/backup/` | 스키마를 옮기기 전 백업 | `engine` |
 | `~/.saturn/extensions/` | 사용자가 설치한 확장 원본. 설치와 제거와 주입 형식은 구현, 실제 provider 확인 전([기능 목록과 확장](design/extensions.md#확장-저장소)) | `engine` |
 | `~/.saturn/history` | 입력 기록 | `tui` |
+| `~/.saturn/engine.sock`, `~/.saturn/engine.lock` | engine 소켓과 사용자당 하나를 지키는 잠금 | `engine` |
+| `~/.saturn/logs/` | engine 날짜별 로그 | `engine` |
 
 ## 기술 선택
 
