@@ -539,3 +539,50 @@ async fn read_only_and_full_chats_alternate_without_mixing_permissions() {
     use saturn_core::queue::Permission::{ReadOnly, Write};
     assert_eq!(seen, vec![Write, ReadOnly, Write]);
 }
+
+// #456
+#[tokio::test]
+async fn applied_steer_is_preserved_in_handoff() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "refines", "steer"),
+    ])
+    .await;
+    flow.fake.verify_steer();
+    flow.submit("implement authentication").await;
+    let steer = flow
+        .submit("use steered_unique_refinement_branch for this work")
+        .await;
+    assert_eq!(flow.state(steer), InputState::Applied);
+    let agent = flow.agent();
+    flow.claude_event(super::support::text(agent, "done")).await;
+    flow.claude_event(turn_completed(agent)).await;
+    let rows = flow
+        .engine
+        .store
+        .ledger_since(flow.chat, saturn_protocol::ids::LedgerSeq(0))
+        .await
+        .unwrap();
+    let steers = flow.engine.store.steered_inputs(flow.chat).await.unwrap();
+    let budget = flow
+        .engine
+        .context_budget(crate::providers::test_support::CLAUDE)
+        .await
+        .unwrap();
+    let packet = crate::handoff::build_handoff(
+        &rows,
+        &steers,
+        &[],
+        &flow.engine.pending_work(flow.chat, None),
+        &[],
+        &budget,
+    );
+    let crate::handoff::HandoffOutcome::Ready(packet) = packet else {
+        panic!("packet should exist")
+    };
+    assert!(
+        packet.text.contains("steered_unique_refinement_branch"),
+        "applied steer disappeared from handoff: {}",
+        packet.text
+    );
+}

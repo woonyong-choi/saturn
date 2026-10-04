@@ -17,7 +17,7 @@ use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId};
 use saturn_protocol::state::InputState;
 
 use crate::Engine;
-use crate::store::{LedgerRow, RunChanges, RunEnd};
+use crate::store::{LedgerRow, RunChanges, RunEnd, SteeredInput};
 
 /// 새 session의 첫 턴으로 보내는 글.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,19 +59,25 @@ struct Tool {
 /// 넘길 기록이 없으면 `None`.
 pub(crate) fn handoff_source(
     rows: &[LedgerRow],
+    steers: &[SteeredInput],
     changes: &[RunChanges],
     pending: &Pending,
     provider_docs: &[String],
     rrf_k: u32,
 ) -> Option<PacketSource> {
     let last = rows.last()?;
-    let turns = recent_turns(rows);
+    // 실행의 이벤트가 이 재료에 없으면(다른 session이 낸 실행을 뺀 변경분 등) 그 실행에 끼운 입력도 뺀다
+    let steers: Vec<&SteeredInput> = steers
+        .iter()
+        .filter(|steer| rows.iter().any(|row| row.run == steer.run))
+        .collect();
+    let turns = recent_turns(rows, &steers);
     let tools = tools(rows);
     let mut open = pending.entries(last.seq);
     open.extend(open_items(&tools));
     Some(PacketSource {
         constraints: Vec::new(),
-        goal_and_last_input: goal_inputs(rows),
+        goal_and_last_input: goal_inputs(rows, &steers),
         open_items: open,
         competitors: changed_files_items(changes)
             .into_iter()
@@ -85,12 +91,13 @@ pub(crate) fn handoff_source(
 
 pub(crate) fn build_handoff(
     rows: &[LedgerRow],
+    steers: &[SteeredInput],
     changes: &[RunChanges],
     pending: &Pending,
     provider_docs: &[String],
     budget: &ContextBudget,
 ) -> HandoffOutcome {
-    match handoff_source(rows, changes, pending, provider_docs, budget.rrf_k) {
+    match handoff_source(rows, steers, changes, pending, provider_docs, budget.rrf_k) {
         Some(source) => handoff_of(&source, budget),
         None => HandoffOutcome::Empty,
     }
@@ -155,6 +162,21 @@ impl Pending {
 }
 
 impl Engine {
+    /// 패킷을 만들 재료 전체: 기록 행, 끼워 넣어 적용한 입력, 실행별 수정 파일.
+    ///
+    /// # Errors
+    /// 기록 저장소를 읽지 못하면 `Store`.
+    pub(crate) async fn packet_material(
+        &self,
+        chat: ChatId,
+    ) -> Result<(Vec<LedgerRow>, Vec<SteeredInput>, Vec<RunChanges>), crate::EngineError> {
+        Ok((
+            self.store.ledger_since(chat, LedgerSeq(0)).await?,
+            self.store.steered_inputs(chat).await?,
+            self.store.run_changes(chat).await?,
+        ))
+    }
+
     /// 채팅의 대기·보류 입력과 결과를 모르는 작업의 입력. `sending`은 지금 보내는 입력이라 뺀다.
     pub(crate) fn pending_work(&self, chat: ChatId, sending: Option<InputId>) -> Pending {
         let texts = |state| -> Vec<String> {
@@ -186,9 +208,10 @@ impl Engine {
     }
 }
 
-/// 지금 작업(마지막 입력이 있는 행의 작업)의 첫 입력과 마지막 입력. 같으면 하나다.
-/// 기록 번호는 그 입력을 낸 실행의 첫 이벤트 번호이고, 입력마다 그 실행의 상태를 적는다. 끝난 입력도 목표 칸에 남지만 끝났다고 적혀 요청으로 읽히지 않는다.
-fn goal_inputs(rows: &[LedgerRow]) -> Vec<Entry> {
+/// 지금 작업(마지막 입력이 있는 행의 작업)의 첫 입력과 마지막 입력. 같으면 하나다. 실행 중에 끼워 넣어 적용한 입력도
+/// 사용자의 입력이라 마지막 입력이 될 수 있다.
+/// 기록 번호는 그 입력을 낸 실행의 첫 이벤트 번호(끼워 넣은 입력은 적용 때 쌓여 있던 마지막 번호)이고, 입력마다 그 실행의 상태를 적는다. 끝난 입력도 목표 칸에 남지만 끝났다고 적혀 요청으로 읽히지 않는다.
+fn goal_inputs(rows: &[LedgerRow], steers: &[&SteeredInput]) -> Vec<Entry> {
     let Some(task) = rows
         .iter()
         .rev()
@@ -197,17 +220,24 @@ fn goal_inputs(rows: &[LedgerRow]) -> Vec<Entry> {
     else {
         return Vec::new();
     };
-    let mut runs: Vec<RunId> = Vec::new();
+    let mut runs: Vec<(RunId, LedgerSeq, TurnStatus)> = Vec::new();
     let mut inputs: Vec<(LedgerSeq, TurnStatus, String)> = Vec::new();
     for row in rows.iter().filter(|row| row.task == task) {
         let Some(input) = &row.input else {
             continue;
         };
-        if !runs.contains(&row.run) {
-            runs.push(row.run);
+        if !runs.iter().any(|(run, _, _)| *run == row.run) {
+            runs.push((row.run, row.seq, status_of(row.end)));
             inputs.push((row.seq, status_of(row.end), input.clone()));
         }
     }
+    for steer in steers {
+        if let Some((_, first, status)) = runs.iter().find(|(run, _, _)| *run == steer.run) {
+            inputs.push(((*first).max(steer.after), *status, steer.text.clone()));
+        }
+    }
+    // 같은 번호면 실행을 연 입력이 먼저 들어 있으므로 안정 정렬이 그 순서를 지킨다
+    inputs.sort_by_key(|(seq, _, _)| *seq);
     let last = inputs.pop();
     inputs.truncate(1);
     let is_single = inputs.is_empty();
@@ -238,7 +268,8 @@ fn status_of(end: Option<RunEnd>) -> TurnStatus {
 }
 
 /// 입력이 있는 실행마다 턴 하나. 기록 번호는 그 실행의 첫 이벤트 번호이고 답은 메인 에이전트 글을 이은 것이다.
-fn recent_turns(rows: &[LedgerRow]) -> Vec<RecentTurn> {
+/// 그 실행에 끼워 넣어 적용한 입력은 적용한 순서로 턴에 붙는다.
+fn recent_turns(rows: &[LedgerRow], steers: &[&SteeredInput]) -> Vec<RecentTurn> {
     let mut order: Vec<RunId> = Vec::new();
     let mut turns: HashMap<RunId, RecentTurn> = HashMap::new();
     for row in rows {
@@ -252,6 +283,11 @@ fn recent_turns(rows: &[LedgerRow]) -> Vec<RecentTurn> {
                 stamp: stamp_of(row),
                 status: status_of(row.end),
                 input: input.clone(),
+                steers: steers
+                    .iter()
+                    .filter(|steer| steer.run == row.run)
+                    .map(|steer| steer.text.clone())
+                    .collect(),
                 answer: String::new(),
             }
         });
@@ -525,7 +561,7 @@ mod tests {
     }
 
     fn handoff_text(rows: &[LedgerRow], pending: &Pending) -> String {
-        let HandoffOutcome::Ready(handoff) = build_handoff(rows, &[], pending, &[], &budget())
+        let HandoffOutcome::Ready(handoff) = build_handoff(rows, &[], &[], pending, &[], &budget())
         else {
             panic!("packet should be ready");
         };
@@ -593,7 +629,7 @@ mod tests {
         )];
 
         let HandoffOutcome::Ready(handoff) =
-            build_handoff(&rows, &changes, &Pending::default(), &[], &budget())
+            build_handoff(&rows, &[], &changes, &Pending::default(), &[], &budget())
         else {
             panic!("packet should be ready");
         };
@@ -620,7 +656,7 @@ mod tests {
     #[test]
     fn empty_rows_have_nothing_to_hand_over() {
         assert_eq!(
-            build_handoff(&[], &[], &Pending::default(), &[], &budget()),
+            build_handoff(&[], &[], &[], &Pending::default(), &[], &budget()),
             HandoffOutcome::Empty
         );
     }
@@ -653,7 +689,7 @@ mod tests {
         ];
 
         let HandoffOutcome::Ready(handoff) =
-            build_handoff(&rows, &[], &Pending::default(), &[], &budget())
+            build_handoff(&rows, &[], &[], &Pending::default(), &[], &budget())
         else {
             panic!("packet should be ready");
         };
@@ -673,7 +709,7 @@ mod tests {
         ];
 
         let HandoffOutcome::Ready(handoff) =
-            build_handoff(&rows, &[], &Pending::default(), &[], &budget())
+            build_handoff(&rows, &[], &[], &Pending::default(), &[], &budget())
         else {
             panic!("packet should be ready");
         };
@@ -811,5 +847,138 @@ mod tests {
 
         assert_eq!(kept.len(), 1);
         assert_eq!(kept[0].session, SessionId(2));
+    }
+
+    fn steer(input: u64, run: u64, after: u64, text: &str) -> SteeredInput {
+        SteeredInput {
+            input: InputId(input),
+            run: RunId(run),
+            after: LedgerSeq(after),
+            text: text.to_owned(),
+        }
+    }
+
+    fn ready(rows: &[LedgerRow], steers: &[SteeredInput]) -> String {
+        let HandoffOutcome::Ready(handoff) =
+            build_handoff(rows, steers, &[], &Pending::default(), &[], &budget())
+        else {
+            panic!("packet should be ready");
+        };
+        handoff.text
+    }
+
+    // #456
+    #[test]
+    fn steered_inputs_join_their_turn_in_the_order_they_were_applied() {
+        let rows = vec![
+            row(
+                1,
+                1,
+                5,
+                Some("write the parser"),
+                text_event(AgentId(1), "started"),
+            ),
+            row(
+                4,
+                1,
+                5,
+                Some("write the parser"),
+                text_event(AgentId(1), "done"),
+            ),
+        ];
+        let steers = [
+            steer(2, 1, 1, "use a hand written lexer"),
+            steer(3, 1, 2, "skip the docs"),
+        ];
+
+        let text = ready(&rows, &steers);
+
+        let first = text.find("User (sent while this turn was running): use a hand written lexer");
+        let second = text.find("User (sent while this turn was running): skip the docs");
+        let agent = text.find("Agent: starteddone");
+        assert!(
+            first.is_some() && second.is_some() && agent.is_some(),
+            "{text}"
+        );
+        assert!(first < second && second < agent, "{text}");
+    }
+
+    // #456
+    #[test]
+    fn the_last_steered_input_is_the_last_user_input_of_the_goal() {
+        let rows = vec![
+            row(
+                1,
+                1,
+                5,
+                Some("write the parser"),
+                text_event(AgentId(1), "started"),
+            ),
+            row(
+                4,
+                1,
+                5,
+                Some("write the parser"),
+                text_event(AgentId(1), "done"),
+            ),
+        ];
+        let steers = [steer(2, 1, 2, "stop and use the lexer branch")];
+
+        let text = ready(&rows, &steers);
+
+        assert!(
+            text.contains("First input [Finished]: write the parser"),
+            "{text}"
+        );
+        assert!(
+            text.contains("Last input [Finished]: stop and use the lexer branch"),
+            "{text}"
+        );
+    }
+
+    // #456
+    #[test]
+    fn a_steer_into_another_sessions_run_stays_out_of_a_catch_up_for_the_first() {
+        let rows = vec![
+            row(
+                1,
+                1,
+                5,
+                Some("write the parser"),
+                text_event(AgentId(1), "done"),
+            ),
+            row(
+                2,
+                2,
+                6,
+                Some("review it"),
+                text_event(AgentId(1), "looks fine"),
+            ),
+        ];
+        let steers = [
+            steer(3, 1, 1, "private to session five"),
+            steer(4, 2, 2, "only nits please"),
+        ];
+
+        let text = ready(&others_only(rows, SessionId(5)), &steers);
+
+        assert!(text.contains("only nits please"), "{text}");
+        assert!(!text.contains("private to session five"), "{text}");
+    }
+
+    // #456
+    #[test]
+    fn a_steer_whose_run_has_no_records_is_left_out() {
+        let rows = vec![row(
+            1,
+            1,
+            5,
+            Some("write the parser"),
+            text_event(AgentId(1), "done"),
+        )];
+
+        let text = ready(&rows, &[steer(9, 77, 1, "orphan steer")]);
+
+        assert!(!text.contains("orphan steer"), "{text}");
     }
 }

@@ -5,7 +5,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use saturn_core::sessions::LastTurn;
 use saturn_core::sessions::context::{CompactionDecision, ContextMeasure, decide};
-use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq};
+use saturn_protocol::ids::{AgentId, ChatId};
 use saturn_protocol::rpc::{ChatNotice, Notification};
 
 use crate::flow::LiveSession;
@@ -79,10 +79,10 @@ impl Engine {
         if active < budget.threshold() {
             return Ok(false);
         }
-        let rows = self.store.ledger_since(chat, LedgerSeq(0)).await?;
-        let changes = self.store.run_changes(chat).await?;
+        let (rows, steers, changes) = self.packet_material(chat).await?;
         let source = handoff_source(
             &rows,
+            &steers,
             &changes,
             &self.pending_work(chat, None),
             &self.registry.instruction_docs(),
