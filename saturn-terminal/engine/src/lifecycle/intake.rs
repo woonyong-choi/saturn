@@ -305,6 +305,7 @@ async fn resume_intent_below_threshold_keeps_the_work_held_and_counts_the_input(
 
     flow.submit("what changed so far").await;
 
+    assert!(router_bodies(&flow)[3].contains("resume_held"));
     assert_eq!(flow.state(waiting), InputState::Held);
     assert!(flow.engine.queue.has_held_task(flow.chat));
 }
