@@ -250,6 +250,7 @@ def sensitivity(data: list) -> dict:
     return results
 
 
+# cost: time O(b*p+n), io n receipts; vars: b = bootstrap draws, p = projects, n = calls; basis: estimate
 def analyze(data: list) -> None:
     conditions = {}
     for lane in ["jev", *REFERENCE]:

@@ -72,6 +72,7 @@ def label_case(case: dict) -> dict:
     )
 
 
+# cost: io up to 3n CLI calls; vars: n = samples; basis: estimate
 def collect_gold(samples: list) -> None:
     target = PRIVATE / "labels.json"
     if target.exists():
@@ -99,6 +100,7 @@ def collect_gold(samples: list) -> None:
     )
 
 
+# cost: io n CLI calls or 3n HTTPS calls; vars: n = samples; basis: estimate
 def collect_lane(lane: str, samples: list) -> None:
     for number, case in enumerate(samples, 1):
         for repeat in range(1, 4 if lane == "jev" else 2):

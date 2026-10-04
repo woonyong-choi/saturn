@@ -174,6 +174,7 @@ def call_cli(kind: str, model: str, prompt: str, trial: str) -> dict:
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
+    # cost: time O(1), heap O(1), io 0; basis: estimate
     def redirect_request(
         self, req: Any, fp: Any, code: int, msg: Any, headers: Any, newurl: Any
     ) -> None:
