@@ -1,33 +1,38 @@
 flow right
-title "하위 연결 (설계)"
-subtitle "새 Saturn을 띄우지 않고 떠 있는 engine에 접속해 부탁만 한다. router 키는 engine만 쥔다"
+title "하위 접속"
+subtitle "새 engine을 띄우지 않고 떠 있는 engine에 접속해 부탁만 한다. router 키는 engine만 쥔다"
 
-group chat "부모 채팅" direction=down {
+group parent "부모 채팅" direction=down {
   box task "에이전트 작업" "provider가 돌린다"
-  box child "saturn" "새 engine을 띄우지 않음"
+  box child "saturn" "SATURN_PASS를 읽는다"
 }
 external outside "밖의 에이전트" "Claude Code, Codex"
 box engine "engine" "사용자당 하나, router 키를 쥔다"
+box sub "하위 채팅" "부모 작업의 하위 에이전트"
 external router "router" "HTTPS"
 
-engine -> task "출입증을 준다" no=1
+engine -> task "SATURN_PASS 출입증" no=1
 task -> child "saturn 실행" no=2
 child -> engine "소켓으로 부탁" no=3
-outside -> engine "소켓으로 부탁" no=4
-engine -> router "판단 요청" no=5
+engine -> sub "하위 채팅 생성" no=4
+outside -> engine "출입증 없이 부탁" no=5
+engine -> router "판단 요청" no=6
 
-step "출입증 발급" "engine이 부모 채팅의 에이전트 작업에 출입증을 준다"
-  engine -> task "출입증"
+step "출입증 발급" "engine이 채팅마다 출입증을 만들어 provider 환경에 SATURN_PASS로 넣는다"
+  engine -> task "SATURN_PASS"
 step "하위 접속" "작업이 실행한 saturn은 새 engine 없이 소켓으로 engine에 접속해 부탁만 한다"
   task -> child
   child -> engine "출입증과 부탁"
+step "하위 채팅" "engine이 부모 작업 폴더를 물려받은 새 채팅을 만들고 부모 작업의 하위 에이전트로 올린다"
+  engine -> sub
+  light sub
 step "출입증 범위" "engine은 출입증 범위 안에서만 받아들인다"
   light engine
-  show engine "그 채팅의 하위 작업만" tag="출입증"
-  show engine "부모 권한을 넘지 않음" tag="출입증"
-  show engine "깊이 상한" tag="출입증"
+  show engine "그 채팅의 하위 채팅만" tag="출입증"
+  show engine "부모 모드를 넘지 않음" tag="출입증"
+  show engine "깊이 2, 채팅당 5, 전체 10 상한" tag="출입증"
   show engine "부모가 멈추면 함께 끝남" tag="출입증"
-step "밖에서 온 접속" "밖의 에이전트도 소켓으로 부탁한다. 사용자가 연 채팅처럼 Saturn 권한 규칙을 따른다"
+step "바깥 접속" "출입증이 없는 접속은 사용자가 연 채팅처럼 Saturn 권한 규칙을 따른다"
   outside -> engine "부탁"
 step "router 호출" "router 키는 engine만 갖고 하위와 밖에는 넘기지 않는다"
   engine -> router
