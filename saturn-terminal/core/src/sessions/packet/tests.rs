@@ -6,10 +6,15 @@ use crate::sessions::ranking::{Candidate, DEFAULT_RRF_K, order_after_router, ran
 // 2026-09-12T10:00Z
 const AT_MS: i64 = 1_789_207_200_000;
 
-// T = 4_000 → P_max = 400 토큰(1_600자), P_hard = 800 토큰(3_200자)
+// 지시문이 먹는 토큰. 지시문을 뺀 기록 예산이 T = 4_000일 때와 같도록 T에 더한다.
+fn instruction_tokens() -> u64 {
+    estimate_tokens(&format!("{INSTRUCTION}{ITEM_SEPARATOR}"))
+}
+
+// 기록 몫이 T = 4_000 → P_max = 400 토큰(1_600자), P_hard = 800 토큰(3_200자)일 때와 같다.
 fn budget() -> ContextBudget {
     ContextBudget {
-        t_abs: 4_000,
+        t_abs: 4_000 + 10 * instruction_tokens(),
         safety_percent: 100,
         window: 1_000_000,
         cache_read: 0.1,
@@ -36,6 +41,7 @@ fn turn(seq: u64, input: &str, answer: &str) -> RecentTurn {
     RecentTurn {
         seq: LedgerSeq(seq),
         stamp: stamp(1, AT_MS),
+        status: TurnStatus::Finished,
         input: input.into(),
         answer: answer.into(),
     }
@@ -52,6 +58,14 @@ fn item(seq: u64, text: &str, path: Option<&str>) -> CompetingItem {
         memo: format!("memo {seq}"),
         path: path.map(str::to_string),
     }
+}
+
+/// 맨 앞의 지시문을 뺀 기록 부분.
+fn records(packet: &Packet) -> &str {
+    packet
+        .text
+        .strip_prefix(&format!("{INSTRUCTION}{ITEM_SEPARATOR}"))
+        .expect("packet should start with the instruction")
 }
 
 fn ready(outcome: PacketOutcome) -> Packet {
@@ -211,7 +225,7 @@ fn build_packet_competing_groups_by_session_with_seq_and_time() {
     let packet = ready(build_packet(&source, &budget()));
 
     assert_eq!(
-        packet.text,
+        records(&packet),
         "## Earlier records\n\n### Session 1\n\n#10 2026-09-12T10:00Z ten\n\n\
          #11 2026-09-12T10:01Z eleven\n\n### Session 2\n\n#12 2026-09-12T10:02Z twelve\n\n"
     );
@@ -232,9 +246,9 @@ fn build_packet_recent_turns_carry_session_title_seq_and_time() {
     let packet = ready(build_packet(&source, &budget()));
 
     assert_eq!(
-        packet.text,
-        "## Recent turns\n\n### Session 1\n\n#3 2026-09-12T10:00Z User: run tests\nAgent: ran them\n\n\
-         ### Session 2\n\n#5 2026-09-12T11:00Z User: next\nAgent: ok\n\n"
+        records(&packet),
+        "## Recent turns\n\n### Session 1\n\n#3 2026-09-12T10:00Z [Finished] User: run tests\nAgent: ran them\n\n\
+         ### Session 2\n\n#5 2026-09-12T11:00Z [Finished] User: next\nAgent: ok\n\n"
     );
 }
 
@@ -387,7 +401,10 @@ fn build_packet_fixed_over_limit_allows_hard_limit_without_competing() {
 
 #[test]
 fn build_packet_fixed_over_hard_limit_defers_with_constraints() {
-    let long_rule = filler("rule", 3_500);
+    let long_rule = filler(
+        "rule",
+        3_500 + 8 * usize::try_from(instruction_tokens()).unwrap(),
+    );
     let source = PacketSource {
         constraints: vec![entry(2, &long_rule), entry(1, "first rule")],
         ..PacketSource::default()
@@ -414,13 +431,14 @@ fn reduce_packet_drops_the_lowest_items_and_keeps_the_fixed_zone() {
     };
     let full = ready(build_packet(&source, &budget()));
 
-    let reduced =
-        reduce_packet(&source, &budget(), full.tokens / 2).expect("room for the fixed zone");
+    let target = instruction_tokens() + (full.tokens - instruction_tokens()) / 2;
 
-    assert!(reduced.tokens <= full.tokens / 2);
+    let reduced = reduce_packet(&source, &budget(), target).expect("room for the fixed zone");
+
+    assert!(reduced.tokens <= target);
     assert!(reduced.text.contains("fix login message"));
-    assert!(reduced.text.contains("high"));
-    assert!(!reduced.text.contains("low"));
+    assert!(reduced.text.contains(&filler("high", 300)));
+    assert!(!reduced.text.contains(&filler("low", 300)));
     assert_eq!(reduced.included, vec![LedgerSeq(1)]);
 }
 
@@ -459,8 +477,8 @@ fn build_packet_skips_provider_docs() {
 fn build_packet_empty_source_is_empty() {
     let packet = ready(build_packet(&PacketSource::default(), &budget()));
 
-    assert_eq!(packet.text, "");
-    assert_eq!(packet.tokens, 0);
+    assert_eq!(records(&packet), "");
+    assert_eq!(packet.tokens, instruction_tokens());
 }
 
 // cost: time O(c log c + c·l), heap O(c·l), stack O(1)
@@ -557,4 +575,40 @@ fn build_packet_with_summary_over_competing_budget_falls_back_to_records() {
     assert!(!packet.is_summary_used);
     assert_eq!(packet.included, vec![LedgerSeq(20)]);
     assert!(!packet.text.contains("SSS"));
+}
+
+#[test]
+fn build_packet_starts_with_the_do_not_act_instruction() {
+    let source = PacketSource {
+        goal_and_last_input: vec![entry(1, "Input [Finished]: add two lines")],
+        recent_turns: vec![turn(1, "add two lines", "done")],
+        ..PacketSource::default()
+    };
+
+    let packet = ready(build_packet(&source, &budget()));
+
+    assert!(packet.text.starts_with(INSTRUCTION));
+    assert!(INSTRUCTION.contains("do not call tools and do not change files"));
+    assert!(INSTRUCTION.contains("wait for the next user input"));
+}
+
+#[test]
+fn build_packet_recent_turn_states_and_unknown_result_format() {
+    let mut stopped = turn(3, "run it", "started");
+    stopped.status = TurnStatus::ResultUnknown;
+    let mut running = turn(5, "keep going", "ok");
+    running.status = TurnStatus::InProgress;
+    let source = PacketSource {
+        recent_turns: vec![turn(1, "add two lines", "done"), stopped, running],
+        ..PacketSource::default()
+    };
+
+    let packet = ready(build_packet(&source, &budget()));
+
+    let text = records(&packet);
+    assert!(text.contains("[Finished] User: add two lines\nAgent: done"));
+    assert!(text.contains(&format!(
+        "[Result unknown] User: run it\nAgent: started\nResult (error): {INTERRUPTED_RESULT}"
+    )));
+    assert!(text.contains("[In progress] User: keep going"));
 }

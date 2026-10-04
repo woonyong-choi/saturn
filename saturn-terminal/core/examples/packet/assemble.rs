@@ -6,7 +6,9 @@ use std::time::Duration;
 
 use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::memo::{ToolKind, tool_memo};
-use saturn_core::sessions::packet::{CompetingItem, Entry, PacketSource, RECENT_TURNS, RecentTurn};
+use saturn_core::sessions::packet::{
+    CompetingItem, Entry, PacketSource, RECENT_TURNS, RecentTurn, TurnStatus,
+};
 use saturn_core::sessions::ranking::{Candidate, order_after_router, rank_candidates};
 use saturn_core::sessions::stamp::Stamp;
 use saturn_protocol::ids::{LedgerSeq, SessionId};
@@ -196,6 +198,7 @@ fn recent_turns(records: &[Record]) -> Vec<RecentTurn> {
             Body::User(text) => turns.push(RecentTurn {
                 seq: LedgerSeq(record.seq),
                 stamp: stamp_of(record),
+                status: TurnStatus::Finished,
                 input: text.clone(),
                 answer: String::new(),
             }),

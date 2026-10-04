@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::memo::{INTERRUPTED_RESULT, ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
-    CompetingItem, Entry, PacketOutcome, PacketSource, RECENT_TURNS, RecentTurn, build_packet,
-    reduce_packet,
+    CompetingItem, Entry, PacketOutcome, PacketSource, RECENT_TURNS, RecentTurn, TurnStatus,
+    build_packet, reduce_packet, status_item,
 };
 use saturn_core::sessions::ranking::{Candidate, DEFAULT_RRF_K, rank_candidates};
 use saturn_core::sessions::stamp::Stamp;
@@ -16,7 +16,7 @@ use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId};
 use saturn_protocol::state::InputState;
 
 use crate::Engine;
-use crate::store::LedgerRow;
+use crate::store::{LedgerRow, RunEnd};
 
 /// 새 session의 첫 턴으로 보내는 글.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -174,7 +174,7 @@ impl Engine {
 }
 
 /// 지금 작업(마지막 입력이 있는 행의 작업)의 첫 입력과 마지막 입력. 같으면 하나다.
-/// 기록 번호는 그 입력을 낸 실행의 첫 이벤트 번호다.
+/// 기록 번호는 그 입력을 낸 실행의 첫 이벤트 번호이고, 입력마다 그 실행의 상태를 적는다. 끝난 입력도 목표 칸에 남지만 끝났다고 적혀 요청으로 읽히지 않는다.
 fn goal_inputs(rows: &[LedgerRow]) -> Vec<Entry> {
     let Some(task) = rows
         .iter()
@@ -185,23 +185,43 @@ fn goal_inputs(rows: &[LedgerRow]) -> Vec<Entry> {
         return Vec::new();
     };
     let mut runs: Vec<RunId> = Vec::new();
-    let mut inputs: Vec<Entry> = Vec::new();
+    let mut inputs: Vec<(LedgerSeq, TurnStatus, String)> = Vec::new();
     for row in rows.iter().filter(|row| row.task == task) {
         let Some(input) = &row.input else {
             continue;
         };
         if !runs.contains(&row.run) {
             runs.push(row.run);
-            inputs.push(Entry {
-                seq: row.seq,
-                text: input.clone(),
-            });
+            inputs.push((row.seq, status_of(row.end), input.clone()));
         }
     }
     let last = inputs.pop();
     inputs.truncate(1);
-    inputs.extend(last);
-    inputs
+    let is_single = inputs.is_empty();
+    let first = inputs.pop();
+    let label = |is_first: bool| match (is_single, is_first) {
+        (true, _) => "Input",
+        (false, true) => "First input",
+        (false, false) => "Last input",
+    };
+    first
+        .map(|item| (true, item))
+        .into_iter()
+        .chain(last.map(|item| (false, item)))
+        .map(|(is_first, (seq, status, text))| Entry {
+            seq,
+            text: status_item(label(is_first), status, &text),
+        })
+        .collect()
+}
+
+/// 실행이 끝난 방식에서 입력의 상태를 정한다. 정상 완료만 끝난 일이고 실패나 멈춤은 일부만 실행됐을 수 있다.
+fn status_of(end: Option<RunEnd>) -> TurnStatus {
+    match end {
+        Some(RunEnd::Completed) => TurnStatus::Finished,
+        None => TurnStatus::InProgress,
+        Some(RunEnd::Failed | RunEnd::Stopped) => TurnStatus::ResultUnknown,
+    }
 }
 
 /// 입력이 있는 실행마다 턴 하나. 기록 번호는 그 실행의 첫 이벤트 번호이고 답은 메인 에이전트 글을 이은 것이다.
@@ -217,6 +237,7 @@ fn recent_turns(rows: &[LedgerRow]) -> Vec<RecentTurn> {
             RecentTurn {
                 seq: row.seq,
                 stamp: stamp_of(row),
+                status: status_of(row.end),
                 input: input.clone(),
                 answer: String::new(),
             }
@@ -440,6 +461,7 @@ mod tests {
             session: SessionId(session),
             task: TaskId(1),
             input: input.map(str::to_owned),
+            end: Some(RunEnd::Completed),
             at_ms: 1_700_000_000_000,
             event,
         }
@@ -543,6 +565,62 @@ mod tests {
 
         assert!(handoff.text.contains("Tool call: FileRead a.rs"));
         assert!(handoff.text.contains(INTERRUPTED_RESULT));
+    }
+
+    fn ended(end: Option<RunEnd>, mut row: LedgerRow) -> LedgerRow {
+        row.end = end;
+        row
+    }
+
+    #[test]
+    fn finished_input_is_marked_finished_and_never_an_open_item() {
+        let rows = vec![ended(
+            Some(RunEnd::Completed),
+            row(
+                1,
+                1,
+                5,
+                Some("add two more lines"),
+                text_event(AgentId(1), "added"),
+            ),
+        )];
+
+        let text = handoff_text(&rows, &Pending::default());
+
+        assert!(text.starts_with("The records below are an archive"));
+        assert!(text.contains("Do not run them again"));
+        assert!(text.contains("Input [Finished]: add two more lines"));
+        assert!(text.contains("[Finished] User: add two more lines"));
+        assert!(!text.contains("## Open items"));
+        assert!(!text.contains("Input [Result unknown]"));
+    }
+
+    #[test]
+    fn stopped_input_has_an_unknown_result_in_the_interrupted_format() {
+        let rows = vec![ended(
+            Some(RunEnd::Stopped),
+            row(1, 1, 5, Some("run it"), text_event(AgentId(1), "started")),
+        )];
+
+        let text = handoff_text(&rows, &Pending::default());
+
+        assert!(text.contains(&format!(
+            "Input [Result unknown]: run it\nResult (error): {INTERRUPTED_RESULT}"
+        )));
+        assert!(!text.contains("Input [Finished]"));
+    }
+
+    #[test]
+    fn running_input_is_marked_in_progress() {
+        let rows = vec![ended(
+            None,
+            row(1, 1, 5, Some("run it"), text_event(AgentId(1), "started")),
+        )];
+
+        let text = handoff_text(&rows, &Pending::default());
+
+        assert!(text.contains("Input [In progress]: run it"));
+        assert!(text.contains("[In progress] User: run it"));
     }
 
     #[test]

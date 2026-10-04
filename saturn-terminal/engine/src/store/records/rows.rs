@@ -149,7 +149,7 @@ pub(super) fn run_end_text(end: RunEnd) -> &'static str {
     }
 }
 
-pub(super) fn parse_run_end(text: &str) -> Result<RunEnd, StoreError> {
+pub(in crate::store) fn parse_run_end(text: &str) -> Result<RunEnd, StoreError> {
     match text {
         "Completed" => Ok(RunEnd::Completed),
         "Failed" => Ok(RunEnd::Failed),

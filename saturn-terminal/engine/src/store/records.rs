@@ -19,7 +19,7 @@ mod rows;
 mod runs;
 
 pub(crate) use rows::{ensure_found, not_found};
-pub(in crate::store) use rows::{session_from_row, unknown_value};
+pub(in crate::store) use rows::{parse_run_end, session_from_row, unknown_value};
 
 /// 이 밖의 입력은 열린 입력이다.
 pub(crate) const FINAL_INPUT_STATES: &str = "('Applied', 'Rejected', 'Cancelled')";

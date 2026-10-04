@@ -142,6 +142,8 @@ T_hard = T + H
 | 고정 구역 | 1. 사용자가 명시한 제약의 규칙 한 줄(제약 칸 상한 안) 2. 지금 작업의 첫 사용자 입력과 마지막 사용자 입력의 원문 3. 끝나지 않은 항목과 효과를 모르는 항목 4. 최근 3턴의 대화(사용자 입력 원문과 에이전트 답 글) | 이 순서로 모두 넣는다. 1은 제약 칸 상한까지 |
 | 경쟁 구역 | 이 채팅의 도구 호출과 결과(최근 3턴 포함), 다른 에이전트 결과 요약, 파일 경로 | 남은 예산 안에서 고른 순서대로 넣는다 |
 
+- 패킷은 맨 앞에 지시문을 두고(구역 예산에 든다) 그 뒤에 구역을 쓴다. 지시문은 아래가 이전 대화의 기록이지 요청이 아님, `[Finished]` 항목은 이미 끝난 일이라 다시 실행하지 않음, `[In progress]`·`[Result unknown]` 항목은 일부만 실행됐을 수 있어 현재 상태를 확인하기 전에는 믿지 않고 사용자가 요청하기 전에는 다시 하지 않음, `Queued input`·`Held input`은 보내진 적이 없어 Saturn이 따로 보냄을 알리고, 이 턴에서는 도구를 부르거나 파일을 바꾸지 말고 `Ready` 한 단어로 답한 뒤 다음 사용자 입력을 기다리라고 끝맺는다. 원문은 영어다. 지시문이 없으면 새 session이 목표 칸과 최근 턴의 사용자 입력을 지금 받은 요청으로 읽어, Claude에서 Codex로 전환할 때 끝난 입력의 작업을 다시 실행했다([#383](https://github.com/woonyong-choi/saturn/issues/383)).
+- 입력 항목(목표 칸의 첫·마지막 입력, 최근 턴)에는 그 입력이 연 실행의 상태를 적는다. 실행이 정상으로 끝났으면 `[Finished]`, 아직 끝나지 않았으면 `[In progress]`, 실패하거나 멈췄으면 `[Result unknown]`이다. 결과를 모르는 항목은 결과 자리에 오류 결과(`Result (error): Interrupted before a result was recorded · It may have partially run`)를 붙인다. 끝난 입력은 남은 일 칸에 넣지 않는다. 남은 일 칸은 대기·보류 입력, 결과를 모르는 작업, 결과 없는 도구 호출만 담는다.
 - 1단계의 제약은 유효 제약만 제약 칸 상한 `C_max` 안에서 넣고 못 넣은 수를 패킷과 대화 기록에 표시한다. 대체되거나 해제된 제약은 빼고 넣는다. 식별, 저장, 칸 채우기는 [제약](constraints.md)에 있다.
 - 목표는 작업의 첫 사용자 입력과 마지막 사용자 입력을 넣고, 끝나지 않은 항목은 대기·보류·결과 미확인 작업을 넣는다. 이 규칙은 [인계 패킷 목표와 남은 일 채우기 방식 실험](../experiments/packet-goal-fields/report.md)에서 마지막 입력보다 정답률이 33.8%p 높고 summary보다 토큰이 적어 채택했다.
 - 2단계의 지금 작업은 마지막 사용자 입력이 속한 작업이다. 첫 입력과 마지막 입력이 같으면 하나만 넣는다.
@@ -216,11 +218,13 @@ P_max = T / 10
 최근 턴과 경쟁 구역은 session별 제목 아래에 묶고, 항목마다 기록 번호와 기록 시각을 적는다. 패킷 96개에 날짜, session, 기록 번호 표시가 없어 날짜가 필요한 질문(384개 중 96개, 25.0%)은 근거가 모두 들어도 풀 수 없었고 `multi-session`과 `temporal` 질문은 세 조건 모두 정답률이 0%였기 때문이다([후속 분석](../experiments/handoff-packet-quality/report.md#후속-분석-원인)).
 
 ```text
+The records below are an archive of the earlier conversation. ...
+
 ## Recent turns
 
 ### Session 2
 
-#190 2026-09-13T09:00Z User: finish the cache module
+#190 2026-09-13T09:00Z [Finished] User: finish the cache module
 Agent: done
 
 ## Earlier records
@@ -240,7 +244,7 @@ test result: ok
 
 - 항목 앞에 `#<기록 번호> <기록 시각>`을 적는다. 시각은 UTC 분 단위 `YYYY-MM-DDTHH:MMZ`(17글자)다. 초와 시간대 이름을 빼 토큰을 아끼고, 기록 저장소의 unix 밀리초 값을 바꿔 쓰므로 provider별 변환을 거치지 않는다.
 - session 제목은 `### Session <번호>`이고 session마다 한 번 쓴다. 날짜와 session 경계를 항목마다 되풀이하지 않기 위해서다. 기록 번호 순으로 놓으면 같은 session의 항목이 이어진다.
-- 최근 턴은 사용자 입력의 기록 번호와 시각을 적는다. 제약, 목표와 마지막 입력, 끝나지 않은 항목은 표기를 붙이지 않는다.
+- 최근 턴은 사용자 입력의 기록 번호와 시각, 상태를 적는다(`#<기록 번호> <시각> [Finished] User: ...`). 제약, 목표와 마지막 입력, 끝나지 않은 항목은 표기를 붙이지 않는다.
 - 항목 앞 표기와 session의 첫 항목이 쓰는 제목은 경쟁 구역 예산에 든다. 표기까지 넣은 원문이 들어가지 않으면 축약본, 경로 순으로 시도한다.
 - provider 압축 요약은 기록 한 건이 아니므로 표기 없이 경쟁 구역의 첫 항목으로 제목 앞에 둔다.
 - 기록 저장소의 행은 모두 시각이 있다. 시각이 없는 입력(실험 예제의 표준 입력)은 `#<기록 번호>`만 적는다.
@@ -297,6 +301,8 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | 최근 턴과 경쟁 구역은 session별 제목 아래에 묶고 항목마다 기록 번호와 기록 시각을 적는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_competing_groups_by_session_with_seq_and_time`, `build_packet_recent_turns_carry_session_title_seq_and_time`, `saturn-terminal/core/src/sessions/stamp.rs`의 `label_formats_seq_and_utc_minute`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_scenario_session_and_time_appear_before_items` |
 | 시각이 없는 입력은 기록 번호만 적는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_without_time_writes_seq_only`, `saturn-terminal/core/src/sessions/stamp.rs`의 `label_without_time_is_seq_only` |
 | 표기와 session 제목의 글자도 경쟁 구역 예산에 들어 패킷은 `P_max`를 넘지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_many_sessions_stay_within_packet_limit` |
+| 패킷은 맨 앞 지시문으로 기록이 요청이 아니며 끝난 일을 다시 하지 말고 다음 사용자 입력을 기다리라고 알린다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_starts_with_the_do_not_act_instruction` |
+| 입력 항목에 끝남, 진행 중, 결과 모름 상태를 적고 결과 모름은 중단 결과 형식을 쓰며, 끝난 입력은 남은 일 칸에 넣지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_recent_turn_states_and_unknown_result_format`, `saturn-terminal/engine/src/handoff.rs`의 `finished_input_is_marked_finished_and_never_an_open_item`, `stopped_input_has_an_unknown_result_in_the_interrupted_format`, `running_input_is_marked_in_progress`, `saturn-terminal/engine/src/store/ledger.rs`의 `ledger_since_carries_how_the_run_ended` |
 | 패킷은 구역마다 기록 번호 순서로 쓴다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_writes_competing_in_seq_order` |
 | `compact` 질문은 패킷을 만들 때 후보 전체를 한 번 router에 보내고 턴이 끝날 때는 보내지 않는다. | 턴 종료에서 router 호출이 없는지, 패킷을 만들 때 후보 전체가 한 번 묻히는지 확인한다. |
 | 패킷 판단은 전환 키가 같을 때만 적용하고, 다르면 한 번 다시 묻고, 또 다르면 판단 없이 진행한다. 기록이 늘어도 판단을 버리지 않는다. | 판단 중 전환 대상이나 기록을 바꿔 적용, 재판단, 판단 없이 진행하는지 확인한다. |
