@@ -1022,12 +1022,214 @@ fn feedback_no_with_unsent_input_offers_correction() {
             correct: false,
         }]
     );
+    assert!(has_correction(&app));
+}
+
+fn has_correction(app: &App) -> bool {
+    app.transcript
+        .cells()
+        .iter()
+        .any(|cell| matches!(cell, TranscriptCell::Correction { .. }))
+}
+
+fn has_feedback_question(app: &App) -> bool {
+    app.transcript
+        .cells()
+        .iter()
+        .any(|cell| matches!(cell, TranscriptCell::Feedback { .. }))
+}
+
+/// 입력 1이 아직 보내지 않은 상태에서 틀림으로 답해 바로잡기 제안이 뜬 앱.
+fn with_correction() -> App {
+    let mut app = attached();
+    notify(&mut app, input(1, InputState::Queued, "x"));
+    feedback(&mut app, Instant::now());
+    press(&mut app, KeyCode::Char('2'), KeyModifiers::NONE);
+    assert!(has_correction(&app));
+    app
+}
+
+#[test]
+fn correction_enter_runs_the_first_choice_as_a_new_task() {
+    let mut app = with_correction();
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
     assert_eq!(
-        app.transcript.cells().last(),
-        Some(&TranscriptCell::Correction {
-            label: TaskLabel('A')
-        })
+        sent(&effects),
+        vec![&Request::RunAsNewTask { input: InputId(1) }]
     );
+    assert!(!has_correction(&app));
+}
+
+#[test]
+fn correction_down_then_enter_keeps_the_input_as_it_is() {
+    let mut app = with_correction();
+
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert!(sent(&effects).is_empty());
+    assert!(!has_correction(&app));
+}
+
+#[test]
+fn correction_up_and_down_move_between_the_two_choices() {
+    let mut app = with_correction();
+
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    press(&mut app, KeyCode::Up, KeyModifiers::NONE);
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::RunAsNewTask { input: InputId(1) }]
+    );
+}
+
+#[test]
+fn correction_digits_pick_a_choice_while_the_composer_is_empty() {
+    let mut run = with_correction();
+    let mut keep = with_correction();
+
+    let run_effects = press(&mut run, KeyCode::Char('1'), KeyModifiers::NONE);
+    let keep_effects = press(&mut keep, KeyCode::Char('2'), KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&run_effects),
+        vec![&Request::RunAsNewTask { input: InputId(1) }]
+    );
+    assert!(sent(&keep_effects).is_empty());
+    assert!(!has_correction(&keep));
+    assert!(run.composer.is_empty() && keep.composer.is_empty());
+}
+
+#[test]
+fn correction_takes_the_arrow_keys_until_escape_gives_them_back_to_history() {
+    let mut app = with_correction();
+    app.history = InputHistory::with_entries(&["one", "two"]);
+
+    press(&mut app, KeyCode::Up, KeyModifiers::NONE);
+    let while_open = app.composer.text();
+    let effects = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    press(&mut app, KeyCode::Up, KeyModifiers::NONE);
+
+    assert_eq!(while_open, "");
+    assert!(sent(&effects).is_empty());
+    assert!(!has_correction(&app));
+    assert_eq!(app.composer.text(), "two");
+}
+
+#[test]
+fn correction_closed_with_escape_opens_again_with_the_feedback_command() {
+    let mut app = with_correction();
+    press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    type_text(&mut app, "/feedback");
+    app.popup = None;
+
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    let reopened = has_correction(&app);
+    let run = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert!(sent(&effects).is_empty());
+    assert!(reopened);
+    assert_eq!(
+        sent(&run),
+        vec![&Request::RunAsNewTask { input: InputId(1) }]
+    );
+}
+
+#[test]
+fn correction_goes_away_when_the_input_is_no_longer_unsent() {
+    let mut app = with_correction();
+
+    notify(&mut app, input(1, InputState::Delivering, "x"));
+
+    assert!(!has_correction(&app));
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    assert!(sent(&effects).is_empty());
+}
+
+#[test]
+fn digits_after_a_draft_start_do_not_answer_the_correction() {
+    let mut app = with_correction();
+
+    type_text(&mut app, "v1");
+
+    assert_eq!(app.composer.text(), "v1");
+    assert!(has_correction(&app));
+}
+
+#[test]
+fn digits_after_a_draft_start_do_not_answer_the_feedback_question() {
+    let mut app = attached();
+    feedback(&mut app, Instant::now());
+
+    type_text(&mut app, "v2");
+    let area = app.key_area();
+
+    assert_eq!(app.composer.text(), "v2");
+    assert_eq!(area, KeyArea::Composer);
+    assert!(app.chat.feedback.is_some());
+    assert!(has_feedback_question(&app));
+}
+
+#[test]
+fn a_number_draft_is_not_taken_as_a_feedback_answer() {
+    let mut app = attached();
+    app.set_draft("12");
+    feedback(&mut app, Instant::now());
+
+    let effects = press(&mut app, KeyCode::Char('1'), KeyModifiers::NONE);
+
+    assert!(sent(&effects).is_empty());
+    assert_eq!(app.composer.text(), "121");
+    assert!(app.chat.feedback.is_some());
+}
+
+#[test]
+fn digits_go_to_the_composer_when_no_choice_is_shown() {
+    let mut app = attached();
+
+    press(&mut app, KeyCode::Char('1'), KeyModifiers::NONE);
+
+    assert_eq!(app.composer.text(), "1");
+}
+
+#[test]
+fn feedback_arrows_and_enter_pick_an_answer() {
+    let mut app = attached();
+    feedback(&mut app, Instant::now());
+
+    press(&mut app, KeyCode::Down, KeyModifiers::NONE);
+    let effects = press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    assert_eq!(
+        sent(&effects),
+        vec![&Request::AnswerFeedback {
+            judgment: JudgmentId(9),
+            correct: false,
+        }]
+    );
+    assert!(app.chat.feedback.is_none());
+}
+
+#[test]
+fn feedback_escape_closes_without_a_request_and_arrows_return_to_history() {
+    let mut app = attached();
+    app.history = InputHistory::with_entries(&["one", "two"]);
+    feedback(&mut app, Instant::now());
+
+    press(&mut app, KeyCode::Up, KeyModifiers::NONE);
+    let while_open = app.composer.text();
+    let effects = press(&mut app, KeyCode::Esc, KeyModifiers::NONE);
+    press(&mut app, KeyCode::Up, KeyModifiers::NONE);
+
+    assert_eq!(while_open, "");
+    assert!(sent(&effects).is_empty());
+    assert!(app.chat.feedback.is_none());
+    assert!(!has_feedback_question(&app));
+    assert_eq!(app.composer.text(), "two");
 }
 
 #[test]

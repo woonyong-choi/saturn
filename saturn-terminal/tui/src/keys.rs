@@ -8,7 +8,10 @@ use crate::view::popup::PopupKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum KeyArea {
+    /// 피드백 질문이 입력창이 빈 동안 키를 가져간다.
     Transcript,
+    /// 바로잡기 제안이 입력창이 빈 동안 키를 가져간다.
+    Correction,
     StatusBoard,
     Popup,
     Composer,
@@ -59,6 +62,10 @@ pub(crate) enum Action {
     // 대화 기록(피드백 질문)
     FeedbackDismiss,
     FeedbackAnswer(bool),
+
+    // 대화 기록(바로잡기 제안)
+    CorrectionRun,
+    CorrectionKeep,
 
     // 상태판(보류 닫기 확인)
     ConfirmCloseHeld,
@@ -122,7 +129,8 @@ pub(crate) fn map(area: KeyArea, key: KeyEvent, ctx: KeyContext) -> Option<Actio
         return Some(action);
     }
     match area {
-        KeyArea::Transcript => transcript(key, ctx),
+        KeyArea::Transcript => transcript(key),
+        KeyArea::Correction => correction(key),
         KeyArea::StatusBoard => status_board(key),
         KeyArea::Popup => popup(key),
         KeyArea::Composer => composer(key, ctx),
@@ -153,12 +161,35 @@ pub(crate) fn global(key: KeyEvent) -> Option<Action> {
     }
 }
 
-/// TODO(#54): 입력창이 비었을 때만 받을지, 항상 받을지, `/feedback`으로만 받을지
-pub(crate) fn transcript(key: KeyEvent, _ctx: KeyContext) -> Option<Action> {
+/// 피드백 질문은 `1` 맞음, `2` 틀림, `0` 닫기를 숫자로 고르고 `↑`, `↓`, `Enter`, `Esc`도 받는다.
+/// 그 밖의 키는 `None`으로 입력창에 넘긴다.
+pub(crate) fn transcript(key: KeyEvent) -> Option<Action> {
     match key.code {
         KeyCode::Char('0') if is_char(key, '0') => Some(Action::FeedbackDismiss),
         KeyCode::Char('1') if is_char(key, '1') => Some(Action::FeedbackAnswer(true)),
         KeyCode::Char('2') if is_char(key, '2') => Some(Action::FeedbackAnswer(false)),
+        _ => choice_navigation(key),
+    }
+}
+
+/// 바로잡기 제안은 `1` 실행, `2` 그대로를 숫자로 고르고 `↑`, `↓`, `Enter`, `Esc`도 받는다.
+pub(crate) fn correction(key: KeyEvent) -> Option<Action> {
+    match key.code {
+        KeyCode::Char('1') if is_char(key, '1') => Some(Action::CorrectionRun),
+        KeyCode::Char('2') if is_char(key, '2') => Some(Action::CorrectionKeep),
+        _ => choice_navigation(key),
+    }
+}
+
+fn choice_navigation(key: KeyEvent) -> Option<Action> {
+    if !key.modifiers.is_empty() {
+        return None;
+    }
+    match key.code {
+        KeyCode::Up => Some(Action::Up),
+        KeyCode::Down => Some(Action::Down),
+        KeyCode::Enter => Some(Action::Confirm),
+        KeyCode::Esc => Some(Action::Close),
         _ => None,
     }
 }
@@ -576,17 +607,41 @@ mod tests {
     }
 
     #[test]
-    fn transcript_accepts_only_feedback_digits() {
-        assert_eq!(transcript(plain('0'), ctx()), Some(Action::FeedbackDismiss));
+    fn transcript_takes_feedback_digits_and_choice_keys_only() {
+        assert_eq!(transcript(plain('0')), Some(Action::FeedbackDismiss));
+        assert_eq!(transcript(plain('1')), Some(Action::FeedbackAnswer(true)));
+        assert_eq!(transcript(plain('2')), Some(Action::FeedbackAnswer(false)));
+        assert_eq!(transcript(plain('3')), None);
+        assert_eq!(transcript(plain('a')), None);
         assert_eq!(
-            transcript(plain('1'), ctx()),
-            Some(Action::FeedbackAnswer(true))
+            transcript(key(KeyCode::Up, KeyModifiers::NONE)),
+            Some(Action::Up)
         );
         assert_eq!(
-            transcript(plain('2'), ctx()),
-            Some(Action::FeedbackAnswer(false))
+            transcript(key(KeyCode::Enter, KeyModifiers::NONE)),
+            Some(Action::Confirm)
         );
-        assert_eq!(transcript(plain('3'), ctx()), None);
+        assert_eq!(
+            transcript(key(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(Action::Close)
+        );
+        assert_eq!(transcript(key(KeyCode::Up, KeyModifiers::ALT)), None);
+    }
+
+    #[test]
+    fn correction_takes_one_and_two_and_choice_keys_only() {
+        assert_eq!(correction(plain('1')), Some(Action::CorrectionRun));
+        assert_eq!(correction(plain('2')), Some(Action::CorrectionKeep));
+        assert_eq!(correction(plain('0')), None);
+        assert_eq!(
+            correction(key(KeyCode::Down, KeyModifiers::NONE)),
+            Some(Action::Down)
+        );
+        assert_eq!(
+            correction(key(KeyCode::Esc, KeyModifiers::NONE)),
+            Some(Action::Close)
+        );
+        assert_eq!(correction(plain('x')), None);
     }
 
     #[test]

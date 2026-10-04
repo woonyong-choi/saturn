@@ -153,6 +153,19 @@ pub(crate) struct FeedbackPrompt {
     pub label: TaskLabel,
     pub disposition: Disposition,
     pub shown_at: Instant,
+    /// `FEEDBACK_ANSWERS`의 자리. `↑`, `↓`로 옮기고 `Enter`로 정한다.
+    pub selected: usize,
+}
+
+/// 틀림 답 뒤 아직 보내지 않은 입력을 바로 새 작업으로 보낼지 묻는 제안.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CorrectionPrompt {
+    pub input: InputId,
+    pub label: TaskLabel,
+    /// 0은 실행, 1은 그대로.
+    pub selected: usize,
+    /// `Esc`로 닫으면 거짓. 제안은 남고 `/feedback`으로 다시 연다.
+    pub open: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -195,6 +208,7 @@ pub(crate) struct ChatState {
     pub stop: Option<StopResult>,
     pub close_held_confirm: Option<TaskId>,
     pub feedback: Option<FeedbackPrompt>,
+    pub correction: Option<CorrectionPrompt>,
     pub context: Option<ContextSize>,
     /// 채팅의 고정 모델. engine이 저장해 두고 채팅에 붙을 때와 바뀔 때 알려 준다. 창이 지금 고정을 표시하는 데 쓴다.
     pub pinned_model: Option<ModelChoice>,

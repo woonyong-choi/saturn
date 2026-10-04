@@ -78,9 +78,11 @@ pub(crate) enum TranscriptCell {
     Feedback {
         label: TaskLabel,
         disposition: Disposition,
+        /// 고른 답의 자리(`FEEDBACK_ANSWERS`).
+        selected: usize,
     },
-    /// TODO(#109): `[실행]`과 `[그대로]`를 고르는 키나 클릭, 지금은 그리기만 한다
-    Correction { label: TaskLabel },
+    /// 고른 자리는 0이 `[실행]`, 1이 `[그대로]`.
+    Correction { label: TaskLabel, selected: usize },
     /// 보류 닫기가 끝났다.
     HeldClosed { label: TaskLabel },
     /// 채점 후보가 모자라 `/train`을 실행하지 못했다.
@@ -156,15 +158,19 @@ impl TranscriptCell {
                 label.0
             )],
             Self::Notice { label, notice } => notice_lines(lang, &prefix(*label), notice),
-            Self::Feedback { label, disposition } => {
-                vec![feedback_line(lang, *label, *disposition)]
+            Self::Feedback {
+                label,
+                disposition,
+                selected,
+            } => {
+                vec![feedback_line(lang, *label, *disposition, *selected)]
             }
-            Self::Correction { label } => vec![format!(
-                "{} {} {} {}",
+            Self::Correction { label, selected } => vec![format!(
+                "{} {} {}  {}",
                 labels::format(*label),
                 lang.tr(i18n::CORRECTION_QUESTION),
-                lang.tr(i18n::BUTTON_RUN),
-                lang.tr(i18n::BUTTON_KEEP)
+                choice_text(*selected, 0, '1', lang.tr(i18n::BUTTON_RUN)),
+                choice_text(*selected, 1, '2', lang.tr(i18n::BUTTON_KEEP))
             )],
             Self::HeldClosed { label } => vec![format!(
                 "{} {}",
@@ -246,6 +252,36 @@ impl Transcript {
         self.cells.retain(
             |cell| !matches!(cell, TranscriptCell::Feedback { label: shown, .. } if *shown == label),
         );
+    }
+
+    pub(crate) fn remove_correction(&mut self, label: TaskLabel) {
+        self.cells.retain(
+            |cell| !matches!(cell, TranscriptCell::Correction { label: shown, .. } if *shown == label),
+        );
+    }
+
+    // cost: time O(c), heap O(1), stack O(1)
+    // vars: c = 셀 수
+    // basis: estimate
+    /// 그 이름표의 피드백 질문이나 바로잡기 제안이 고른 자리를 옮긴다.
+    pub(crate) fn set_choice(&mut self, label: TaskLabel, index: usize) {
+        for cell in self.cells.iter_mut().rev() {
+            match cell {
+                TranscriptCell::Feedback {
+                    label: shown,
+                    selected,
+                    ..
+                }
+                | TranscriptCell::Correction {
+                    label: shown,
+                    selected,
+                } if *shown == label => {
+                    *selected = index;
+                    return;
+                }
+                _ => {}
+            }
+        }
     }
 
     // cost: time O(c), heap O(1), stack O(1)
@@ -635,7 +671,18 @@ fn summary_line(
     parts.join(" · ")
 }
 
-fn feedback_line(lang: Lang, label: TaskLabel, disposition: Disposition) -> String {
+/// 고른 선택지 앞에 `›`를 붙인다.
+fn choice_text(selected: usize, index: usize, digit: char, text: &str) -> String {
+    let marker = if selected == index { "›" } else { "" };
+    format!("{marker}{digit} {text}")
+}
+
+fn feedback_line(
+    lang: Lang,
+    label: TaskLabel,
+    disposition: Disposition,
+    selected: usize,
+) -> String {
     let label_text = labels::format(label);
     let head = match (disposition, lang) {
         (Disposition::Steer, Lang::Ko) => format!("{label_text}{}", i18n::FEEDBACK_STEERED),
@@ -645,10 +692,23 @@ fn feedback_line(lang: Lang, label: TaskLabel, disposition: Disposition) -> Stri
         (Disposition::NewTask, _) => format!("{label_text} {}", lang.tr(i18n::FEEDBACK_NEW_TASK)),
         (Disposition::Queue, _) => format!("{label_text} {}", lang.tr(i18n::FEEDBACK_QUEUED)),
     };
+    let choices = [
+        (1, i18n::FEEDBACK_RIGHT),
+        (2, i18n::FEEDBACK_WRONG),
+        (0, i18n::FEEDBACK_DISMISS),
+    ];
+    let choices: Vec<String> = choices
+        .iter()
+        .enumerate()
+        .map(|(index, (digit, text))| {
+            let digit = char::from_digit(*digit, 10).unwrap_or('0');
+            choice_text(selected, index, digit, lang.tr(text))
+        })
+        .collect();
     format!(
         "{head} · {}  {}",
         lang.tr(i18n::FEEDBACK_QUESTION),
-        lang.tr(i18n::FEEDBACK_CHOICES)
+        choices.join("  ")
     )
 }
 
@@ -925,6 +985,7 @@ mod tests {
         let feedback = TranscriptCell::Feedback {
             label: TaskLabel('A'),
             disposition: Disposition::Steer,
+            selected: 0,
         };
         let check = TranscriptCell::NeedsCheck {
             label: TaskLabel('A'),
@@ -932,7 +993,7 @@ mod tests {
 
         assert_eq!(
             feedback.lines(Lang::Ko, false, false),
-            vec!["[A]에 이어서 보냄 · 판단이 맞았나요? (선택)  1 맞음  2 틀림  0 닫기"]
+            vec!["[A]에 이어서 보냄 · 판단이 맞았나요? (선택)  ›1 맞음  2 틀림  0 닫기"]
         );
         assert_eq!(
             check.lines(Lang::Ko, false, false),
@@ -1049,6 +1110,7 @@ mod tests {
             transcript.push(TranscriptCell::Feedback {
                 label: TaskLabel(label),
                 disposition: Disposition::Steer,
+                selected: 0,
             });
         }
 
