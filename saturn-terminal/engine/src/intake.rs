@@ -7,7 +7,7 @@ use std::time::Instant;
 use saturn_core::queue::{QueueError, QueuedInput};
 use saturn_core::routers::{
     JudgmentOutcome, RouteDecision, RouterError, RouterRequest, RouterResponse, decide_route,
-    questions_for_input, validate,
+    question_ids, questions_for_input, validate,
 };
 use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision};
 use saturn_protocol::rpc::Notification;
@@ -265,9 +265,14 @@ impl Engine {
             match self.queue.apply(input, &decision, current) {
                 Ok(disposition) => {
                     if !record.skip_relation {
+                        // 판단이 없으면(장애, 응답 없음, 이 질문의 답 없음) 재개도 무시도 아니다
+                        let judged = !decision
+                            .fallbacks
+                            .iter()
+                            .any(|id| id == question_ids::RESUME_HELD);
                         self.flow
                             .resume_signals
-                            .push((record.chat, decision.resume_held));
+                            .push((record.chat, judged.then_some(decision.resume_held)));
                     }
                     return self
                         .after_applied(input, disposition, record.pinned_model.clone())
@@ -320,6 +325,7 @@ impl Engine {
     /// `apply_decision`은 확인 입력을 보내는 재개 경로에서도 불리므로 재개는 거기서 하지 않고 여기서 한다.
     async fn follow_resume_signals(&mut self) {
         for (chat, resume) in std::mem::take(&mut self.flow.resume_signals) {
+            let Some(resume) = resume else { continue };
             let followed = self.follow_resume_signal(chat, resume).await;
             self.warn_failure("failed to follow resume signal", followed);
         }

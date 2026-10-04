@@ -191,11 +191,11 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 3. `queue`는 재개한 작업을 쓰기 규칙에 따라 한 번에 하나씩 실행한다.
 4. `sessions`가 확인된 상태로 만든 새 입력을 보낸다.
 5. 새 입력의 `resume_held`가 0.85 이상이면 router 판단으로 보류 작업을 재개한다([#9](https://github.com/woonyong-choi/saturn/issues/9)).
-6. `resume_held`가 0.85 미만이면 무시 횟수를 1 올린다.
+6. `resume_held`가 0.85 미만이면 무시 횟수를 1 올린다. 판단이 없으면(router 장애, 응답 없음, 이 질문의 답 없음) 무시 횟수를 올리지 않는다. 보류 종료가 보내지 않은 입력을 취소하므로 장애 중에 사용자 모르게 닫히지 않게 하기 위해서다.
 7. 재개 뜻이 없는 새 입력이 3개 쌓이거나 Saturn session이 끝나면 보류를 종료한다.
 8. 보류 종료 때 `sessions`가 에이전트 session을 끝내고 보내지 않은 입력을 취소 처리한다.
 
-- `resume_held`는 채팅에 보류 작업이 있을 때만 묻는다. 0.85 이상이면 채팅의 보류를 모두 재개하고 무시 횟수를 0으로 되돌리며, 0.85 미만이거나 판단이 없으면 무시 횟수를 올려 3번째에 보류 작업을 모두 닫는다. 판단 없이 접수하는 입력(`skip_relation`)은 세지 않는다. 판단은 적용한 뒤에 반영하고, 반영하는 중에 확인 입력 접수가 다시 판단을 부르지 않게 하기 위해서다.
+- `resume_held`는 채팅에 보류 작업이 있을 때만 묻는다. 0.85 이상이면 채팅의 보류를 모두 재개하고 무시 횟수를 0으로 되돌리며, 0.85 미만이면 무시 횟수를 올려 3번째에 보류 작업을 모두 닫는다. 판단 없이 접수하는 입력(`skip_relation`)은 세지 않는다. 판단은 적용한 뒤에 반영하고, 반영하는 중에 확인 입력 접수가 다시 판단을 부르지 않게 하기 위해서다.
 - 재개할 때 같은 패킷을 다시 보내지 않는다. 이미 반영된 입력을 두 번 실행하는 일을 막기 위해서다.
 - 보류를 닫아도 기록은 지우지 않고 수정된 파일은 되돌리지 않는다. 사용자가 멈춘 작업의 결과를 사용자 뜻 없이 지우는 일을 막기 위해서다.
 - 확인된 상태로 만든 새 입력은 멈춤 때 실행 중이던 작업에만 보낸다. 실행 전이던 작업은 보류 입력을 대기로 되돌리기만 한다. 끝난 턴을 다시 이어 붙이지 않기 위해서다.
@@ -293,6 +293,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 멈춤 신호 10초 뒤 남은 프로세스 묶음에는 중지 신호를 보낸다. | `saturn-terminal/engine/src/processes/mod.rs`의 `stop_sends_term_after_grace` |
 | 트리 유휴와 프로세스 중지를 모두 확인한 뒤에만 멈춤 완료를 보고한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_is_not_complete_until_the_process_group_is_confirmed_stopped`, `stop_without_a_finished_turn_signal_is_not_complete`, `processes_left_outside_the_group_are_reported_instead_of_done` |
 | 끼워 넣기와 멈춤 신호는 provider별 경로로 전달된다. | [#5](https://github.com/woonyong-choi/saturn/issues/5)와 [#27](https://github.com/woonyong-choi/saturn/issues/27) 실험으로 경로와 불가 상태를 확인한다. |
+| 판단이 없는 입력은 무시 횟수를 올리지 않아 보류를 닫지 않는다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `inputs_without_a_resume_judgment_never_close_the_held_work` |
 | 보류 작업이 있는 채팅의 새 입력만 `resume_held`를 묻고, 0.85 이상이면 보류를 재개하고 0.85 미만이 3번 쌓이면 보류를 닫는다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `resume_held_is_asked_only_when_the_chat_has_held_work`, `resume_intent_at_threshold_resumes_every_held_task`, `resume_intent_below_threshold_keeps_the_work_held_and_counts_the_input`, `third_input_without_resume_intent_closes_the_held_work` |
 | `resume_held` 기준값 0.85는 보류 작업을 잘못 재개하지 않는다. | [#9](https://github.com/woonyong-choi/saturn/issues/9) 실험으로 오탐 비율을 확인한다. |
 

@@ -88,7 +88,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 | `route` | `target_model` | `choice` | 허용 후보 중에서만 선택 | 확신도 0.6 미만이면 사용자 고정 모델이나 현재 모델 |
 | `route` | `difficulty` | `score` | 3단계로 답 | 확신도 0.6 미만이면 미사용 |
 | `route` | `skills` | `choice` | 선택지에 `none` 포함 | 확신도 0.6 미만이면 힌트 생략 |
-| `route` | `resume_held` | `noul` | 0.85 이상에서만 보류 작업 재개 | 0.85 미만이면 무시 횟수 1 증가 |
+| `route` | `resume_held` | `noul` | 0.85 이상에서만 보류 작업 재개 | 0.85 미만이면 무시 횟수 1 증가. 판단이 없으면 무시 횟수를 올리지 않는다 |
 | `route` | `is_constraint` | `noul` | 0.7 이상이면 제약으로 등록, `constraint_ask` 이상 0.7 미만이면 사용자에게 묻기 | 판단이 없으면 미등록 |
 | `route` | `is_release` | `noul` | `is_constraint`가 0.7 미만이고 `constraint_ask` 이상이면 `releases_<n>`을 묻는다 | 판단이 없으면 해제 판단 생략 |
 | `constraint` | `replaces_<n>` | `noul` | 기존 제약 최대 10개와 함께 질문. 0.8 이상이면 대체, `constraint_conflict` 0.5 이상 0.8 미만이면 사용자에게 묻기 | 판단이 없으면 대체 생략 |

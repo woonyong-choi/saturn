@@ -357,3 +357,26 @@ async fn provider_mode_leaves_out_the_auto_compact_safety_net() {
     assert_eq!(provider.defaults.auto_compact_tokens, None);
     assert!(default.defaults.auto_compact_tokens.is_some());
 }
+
+#[tokio::test]
+async fn inputs_without_a_resume_judgment_never_close_the_held_work() {
+    // 두 번째 이후 답에 `resume_held`가 없으면 판단이 없는 것이다
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "continues", "queue"),
+        idle_reply(0.95),
+        running_reply(0.95, "continues", "queue"),
+        running_reply(0.95, "continues", "queue"),
+        running_reply(0.95, "continues", "queue"),
+    ])
+    .await;
+    let waiting = hold_work(&mut flow).await;
+
+    for text in ["one", "two", "three", "four"] {
+        flow.submit(text).await;
+    }
+
+    assert!(router_bodies(&flow)[3].contains("resume_held"));
+    assert_eq!(flow.state(waiting), InputState::Held);
+    assert!(flow.engine.queue.has_held_task(flow.chat));
+}
