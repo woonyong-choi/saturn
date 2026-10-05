@@ -30,7 +30,9 @@ mod hook;
 mod input;
 mod stream;
 
-use config::{default_args, read_user_config, with_ask_tools, with_key_sandbox};
+use config::{
+    default_args, read_user_config, sandbox_exclusions, with_ask_tools, with_key_sandbox,
+};
 use convert::permission_response;
 pub use hook::{HookInputError, run_pre_tool_use};
 use stream::{log_stderr, read_loop};
@@ -403,6 +405,15 @@ enum SessionArg {
 impl ProviderClient for ClaudeClient {
     /// 실행 실패는 `ConnectionLost`, 재개 실패(`--resume` 뒤 `RESUME_SETTLE` 안에 종료)는 `NotSent`.
     async fn open_session(&mut self, spec: SessionSpec) -> Result<SessionHandle, ProviderError> {
+        if let Some(file) = sandbox_exclusions(&self.launch).first() {
+            // 제외된 명령은 샌드박스 밖에서 돌아 router 키 저장소 읽기 금지가 닿지 않고, 실행별 설정으로 비울 수 없다
+            return Err(ProviderError::NotSent {
+                reason: format!(
+                    "claude settings {} set sandbox.excludedCommands, which runs commands outside the sandbox that protects the router key; remove it to use claude with saturn",
+                    file.display()
+                ),
+            });
+        }
         let session_arg = match &spec.resume {
             Some(id) => SessionArg::Resume(id.0.clone()),
             None => SessionArg::New(new_session_uuid().map_err(|error| {

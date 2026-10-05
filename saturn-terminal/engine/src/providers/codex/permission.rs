@@ -168,14 +168,16 @@ pub(super) fn call_of(
     file_changes: &HashMap<String, Vec<String>>,
 ) -> Option<PermissionCall> {
     match method {
-        "item/commandExecution/requestApproval" => shell(params["command"].as_str()?),
+        "item/commandExecution/requestApproval" => {
+            shell(params["command"].as_str()?, runs_outside_sandbox(params))
+        }
         "execCommandApproval" => {
             let words: Vec<&str> = params["command"]
                 .as_array()?
                 .iter()
                 .filter_map(Value::as_str)
                 .collect();
-            shell(&words.join(" "))
+            shell(&words.join(" "), runs_outside_sandbox(params))
         }
         "item/fileChange/requestApproval" => {
             let mut paths = file_changes
@@ -196,18 +198,34 @@ pub(super) fn call_of(
                 tool: PermissionTool::Mcp,
                 target: format!("mcp__{server}__{tool}"),
                 paths: Vec::new(),
+                outside_sandbox: false,
             })
         }
         _ => None,
     }
 }
 
-fn shell(command: &str) -> Option<PermissionCall> {
+fn shell(command: &str, outside_sandbox: bool) -> Option<PermissionCall> {
     Some(PermissionCall {
         tool: PermissionTool::Shell,
         target: unwrap_shell(command),
         paths: Vec::new(),
+        outside_sandbox,
     })
+}
+
+// cost: time O(1), heap O(1), stack O(1), alloc 0
+// vars: 없음
+// basis: estimate
+/// 명령 승인 요청이 샌드박스 밖 실행을 원하는지. 요청에는 실행 범위를 직접 알리는 값이 없고, 샌드박스 밖 실행을 요청하는
+/// 도구 호출(`sandbox_permissions=require_escalated`)만 이유(`reason`)를 붙여 온다. 이유, 추가 권한, 네트워크 승인
+/// 맥락 중 하나라도 있으면 샌드박스 밖 실행으로 본다. 범위를 확신할 수 없는 쪽을 밖으로 보므로 자동 허용하지 않는다.
+pub(super) fn runs_outside_sandbox(params: &Value) -> bool {
+    params["reason"]
+        .as_str()
+        .is_some_and(|reason| !reason.trim().is_empty())
+        || !params["additionalPermissions"].is_null()
+        || !params["networkApprovalContext"].is_null()
 }
 
 fn edit(paths: Vec<String>) -> PermissionCall {
@@ -215,6 +233,7 @@ fn edit(paths: Vec<String>) -> PermissionCall {
         tool: PermissionTool::Edit,
         target: String::new(),
         paths,
+        outside_sandbox: false,
     }
 }
 
@@ -384,8 +403,38 @@ mod tests {
                 tool: PermissionTool::Shell,
                 target: "git status && ls".to_owned(),
                 paths: Vec::new(),
+                outside_sandbox: false,
             })
         );
+    }
+
+    /// 실측: 샌드박스 밖 실행을 요청한 호출은 `reason`이 붙어 오고, 일반 승인 요청에는 `reason`이 없다.
+    #[test]
+    fn command_request_with_a_reason_or_extra_permissions_runs_outside_the_sandbox() {
+        let outside = |params: Value| {
+            call_of(
+                "item/commandExecution/requestApproval",
+                &params,
+                &HashMap::new(),
+            )
+            .unwrap()
+            .outside_sandbox
+        };
+
+        assert!(!outside(json!({ "command": "cargo build" })));
+        assert!(!outside(
+            json!({ "command": "cargo build", "reason": null })
+        ));
+        assert!(!outside(json!({ "command": "cargo build", "reason": " " })));
+        assert!(outside(
+            json!({ "command": "security find-generic-password -w", "reason": "needs the keychain" })
+        ));
+        assert!(outside(
+            json!({ "command": "ls", "additionalPermissions": { "fileSystem": {} } })
+        ));
+        assert!(outside(
+            json!({ "command": "curl x", "networkApprovalContext": { "host": "x" } })
+        ));
     }
 
     #[test]

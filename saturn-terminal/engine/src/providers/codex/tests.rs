@@ -309,12 +309,13 @@ fn expected_turn_events(agent: AgentId) -> Vec<ProviderEvent> {
         ProviderEvent::PermissionRequested {
             agent,
             request_id: "srv-1".to_owned(),
-            summary: "run command: rm -rf build".to_owned(),
+            summary: "run command outside sandbox: rm -rf build".to_owned(),
             reason: "needs write".to_owned(),
             call: Some(PermissionCall {
                 tool: PermissionTool::Shell,
                 target: "rm -rf build".to_owned(),
                 paths: Vec::new(),
+                outside_sandbox: true,
             }),
         },
         ProviderEvent::Usage(UsageReport {
@@ -521,12 +522,13 @@ async fn command_approval_is_answered_with_the_same_numeric_request_id() {
         ProviderEvent::PermissionRequested {
             agent: AgentId(7),
             request_id: "7".to_owned(),
-            summary: "run command: touch a.txt".to_owned(),
+            summary: "run command outside sandbox: touch a.txt".to_owned(),
             reason: "needs write".to_owned(),
             call: Some(PermissionCall {
                 tool: PermissionTool::Shell,
                 target: "touch a.txt".to_owned(),
                 paths: Vec::new(),
+                outside_sandbox: true,
             }),
         }
     );

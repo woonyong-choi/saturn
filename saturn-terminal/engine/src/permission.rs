@@ -9,6 +9,7 @@ use saturn_protocol::ids::{AgentId, ChatId, Provider, ProviderSessionId, Setting
 use saturn_protocol::rpc::ChatNotice;
 
 use crate::providers::ProviderHandle;
+use crate::secrets::{HookPolicy, HookVerdict, ToolCall};
 use crate::settings;
 use crate::{Engine, EngineError};
 
@@ -314,7 +315,11 @@ impl Engine {
             }
         };
         let call = resolved(&policy.workdir, call);
-        let verdict = policy.decide(&call);
+        // router 키 보호는 모드, 규칙, 항상 허용보다 먼저 보고 그 어느 것으로도 풀 수 없다
+        if self.key_store_blocked(chat, &call) {
+            return Verdict::Deny;
+        }
+        let verdict = ask_outside_sandbox(&call, policy.decide(&call));
         if verdict == Verdict::Deny
             || self.queue.running_permission(agent) != Some(Permission::ReadOnly)
         {
@@ -322,11 +327,36 @@ impl Engine {
         }
         policy.mode = Mode::ReadOnly;
         policy.always.clear();
-        let kept = policy.decide(&call);
+        let kept = ask_outside_sandbox(&call, policy.decide(&call));
         if kept != verdict {
             self.notify_chat(chat, ChatNotice::ReadOnlyRunKept).await;
         }
         kept
+    }
+
+    /// 호출이 router 키 저장소(키체인 폴더, Saturn 키 파일)를 건드리는지. Claude 훅과 같은 판정이고, 샌드박스 밖에서 도는
+    /// Codex 명령처럼 provider 샌드박스가 막아 주지 못하는 경우의 방어다. 명령을 해석하지 못하면 막는다.
+    fn key_store_blocked(&self, chat: ChatId, call: &PermissionCall) -> bool {
+        let user_home = self
+            .chat_env(chat)
+            .and_then(|env| {
+                env.provider_env()
+                    .into_iter()
+                    .find(|(name, _)| name == "HOME")
+                    .map(|(_, home)| PathBuf::from(home))
+            })
+            .unwrap_or_else(|| PathBuf::from("/"));
+        let policy = HookPolicy::new(&self.options.home, &user_home);
+        let blocked =
+            |tool_call: &ToolCall| matches!(policy.check(tool_call), HookVerdict::Deny { .. });
+        match call.tool {
+            PermissionTool::Shell => blocked(&ToolCall::Command(call.target.clone())),
+            PermissionTool::Edit | PermissionTool::Read => call
+                .paths
+                .iter()
+                .any(|path| blocked(&ToolCall::Path(PathBuf::from(path)))),
+            PermissionTool::Mcp | PermissionTool::Subagent => false,
+        }
     }
 
     /// `항상 허용` 답이 온 호출의 허용 규칙을 작업 폴더에 저장한다. 저장하지 못해도 이번 허용은 이미 나갔으므로
@@ -376,6 +406,16 @@ impl Engine {
             self.sync_provider_settings(chat, revision).await;
         }
         Ok(())
+    }
+}
+
+/// provider 샌드박스 밖 실행 요청은 허용으로 판정돼도 묻는다. 샌드박스가 키 저장소 접근을 막지 못해 `full`의 자동 허용,
+/// 모드 기본 규칙, 개별 `allow` 규칙, 항상 허용 어느 것도 이 요청을 대신 허용하지 못한다. 거부와 묻기는 그대로다.
+fn ask_outside_sandbox(call: &PermissionCall, verdict: Verdict) -> Verdict {
+    if call.outside_sandbox && verdict == Verdict::Allow {
+        Verdict::Ask
+    } else {
+        verdict
     }
 }
 

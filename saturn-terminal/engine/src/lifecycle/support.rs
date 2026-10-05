@@ -778,6 +778,7 @@ pub(super) fn permission_for(
             tool,
             target: target.to_owned(),
             paths: paths.iter().map(|path| (*path).to_owned()).collect(),
+            outside_sandbox: false,
         }),
     }
 }

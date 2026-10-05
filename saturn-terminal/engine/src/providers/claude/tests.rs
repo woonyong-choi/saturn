@@ -575,6 +575,7 @@ async fn permission_request_and_stream_loss() {
                 tool: PermissionTool::Shell,
                 target: "rm -rf build".to_owned(),
                 paths: Vec::new(),
+                outside_sandbox: false,
             }),
         }]
     );
@@ -1199,6 +1200,7 @@ fn permission_call_reads_rule_tools_and_leaves_the_rest_to_the_user() {
             tool: PermissionTool::Shell,
             target: "cargo test".to_owned(),
             paths: Vec::new(),
+            outside_sandbox: false,
         })
     );
     assert_eq!(
@@ -1219,6 +1221,7 @@ fn permission_call_reads_rule_tools_and_leaves_the_rest_to_the_user() {
             tool: PermissionTool::Subagent,
             target: "explorer".to_owned(),
             paths: Vec::new(),
+            outside_sandbox: false,
         }
     );
     assert_eq!(
@@ -1235,6 +1238,7 @@ fn permission_call_reads_file_reading_tools_as_read_calls() {
         tool: PermissionTool::Read,
         target: String::new(),
         paths: vec![path.to_owned()],
+        outside_sandbox: false,
     };
 
     assert_eq!(
@@ -1330,4 +1334,55 @@ async fn resume_interrupted_turn_variable_is_not_passed_to_claude() {
 
     assert!(matches!(&events[0], ProviderEvent::Text { text, .. } if text == "env:unset:yes"));
     client.close_session(&session).await.unwrap();
+}
+
+// #423
+#[tokio::test]
+async fn session_does_not_open_when_a_settings_layer_excludes_commands_from_the_sandbox() {
+    for layer in ["home", "project", "local"] {
+        let dir = tempfile::tempdir().unwrap();
+        let home = dir.path().join("home");
+        std::fs::create_dir_all(home.join(".claude")).unwrap();
+        std::fs::create_dir_all(dir.path().join(".claude")).unwrap();
+        let file = match layer {
+            "home" => home.join(".claude").join("settings.json"),
+            "project" => dir.path().join(".claude").join("settings.json"),
+            _ => dir.path().join(".claude").join("settings.local.json"),
+        };
+        std::fs::write(&file, r#"{"sandbox":{"excludedCommands":["sh"]}}"#).unwrap();
+        let launch = launch(dir.path(), vec![("HOME".into(), home.into_os_string())]);
+        let mut client = ClaudeClient::new(launch, Supervisor::new());
+
+        let error = client
+            .open_session(spec(dir.path(), None))
+            .await
+            .unwrap_err();
+
+        let ProviderError::NotSent { reason } = error else {
+            panic!("{layer}: expected NotSent");
+        };
+        assert!(reason.contains("sandbox.excludedCommands"), "{layer}");
+        assert!(reason.contains(&file.display().to_string()), "{layer}");
+        assert!(!reason.contains("\"sh\""), "{layer}");
+        assert!(client.sessions.is_empty(), "{layer}");
+    }
+}
+
+// #423
+#[tokio::test]
+async fn empty_or_missing_sandbox_exclusions_do_not_stop_the_session() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("home");
+    std::fs::create_dir_all(home.join(".claude")).unwrap();
+    std::fs::write(
+        home.join(".claude").join("settings.json"),
+        r#"{"sandbox":{"excludedCommands":[],"enabled":true}}"#,
+    )
+    .unwrap();
+    let launch = launch(dir.path(), vec![("HOME".into(), home.into_os_string())]);
+    let mut client = ClaudeClient::new(launch, Supervisor::new());
+
+    let handle = client.open_session(spec(dir.path(), None)).await;
+
+    assert!(handle.is_ok());
 }

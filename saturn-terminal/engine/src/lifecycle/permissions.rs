@@ -88,6 +88,110 @@ async fn rule_ask_goes_to_the_tui_and_waits_for_the_answer() {
     assert!(flow.permission_id("r1").is_some());
 }
 
+fn escalated(agent: AgentId, request_id: &str, command: &str) -> ProviderEvent {
+    let mut event = shell(agent, request_id, command);
+    if let ProviderEvent::PermissionRequested {
+        call: Some(call), ..
+    } = &mut event
+    {
+        call.outside_sandbox = true;
+    }
+    event
+}
+
+// #423
+#[tokio::test]
+async fn key_store_lookup_is_denied_before_the_mode_in_every_mode() {
+    for config in [
+        "permission.mode = \"full\"\n",
+        "permission.mode = \"edit\"\n",
+        "permission.mode = \"ask\"\n",
+        "[permission.shell]\n\"*\" = \"allow\"\n",
+    ] {
+        let (mut flow, agent) = started(config).await;
+        let mut client = flow.client().await;
+
+        flow.claude_event(shell(
+            agent,
+            "r1",
+            "/usr/bin/security find-generic-password -s saturn-key -w",
+        ))
+        .await;
+        flow.claude_event(shell(
+            agent,
+            "r2",
+            "sh -c '/usr/bin/security find-generic-password -s saturn-key -w'",
+        ))
+        .await;
+
+        assert_eq!(
+            answers(&flow),
+            vec![
+                ("r1".to_owned(), PermissionAnswer::Deny { note: None }),
+                ("r2".to_owned(), PermissionAnswer::Deny { note: None }),
+            ],
+            "{config}"
+        );
+        assert!(!is_asked(&client.window().await), "{config}");
+    }
+}
+
+// #423
+#[tokio::test]
+async fn key_file_access_is_denied_even_when_a_rule_allows_it() {
+    let (mut flow, agent) = started("permission.mode = \"full\"\n").await;
+    let key_file = flow.engine.options.home.join("router.key");
+    let key_file = key_file.display().to_string();
+
+    flow.claude_event(permission_for(
+        agent,
+        "r1",
+        PermissionTool::Read,
+        "",
+        &[&key_file],
+    ))
+    .await;
+    flow.claude_event(shell(agent, "r2", &format!("cat {key_file}")))
+        .await;
+
+    assert_eq!(
+        answers(&flow),
+        vec![
+            ("r1".to_owned(), PermissionAnswer::Deny { note: None }),
+            ("r2".to_owned(), PermissionAnswer::Deny { note: None }),
+        ]
+    );
+}
+
+// #423
+#[tokio::test]
+async fn outside_sandbox_command_is_asked_even_in_full_mode_and_with_an_allow_rule() {
+    for config in ["permission.mode = \"full\"\n", ALLOW_CARGO_TEST] {
+        let (mut flow, agent) = started(config).await;
+        let mut client = flow.client().await;
+
+        flow.claude_event(escalated(agent, "r1", "cargo test"))
+            .await;
+
+        assert!(answers(&flow).is_empty(), "{config}");
+        assert!(is_asked(&client.window().await), "{config}");
+        assert!(flow.permission_id("r1").is_some(), "{config}");
+    }
+}
+
+// #423
+#[tokio::test]
+async fn ordinary_command_is_still_allowed_in_full_mode() {
+    let (mut flow, agent) = started("permission.mode = \"full\"\n").await;
+
+    flow.claude_event(shell(agent, "r1", "touch a")).await;
+
+    assert_eq!(
+        answers(&flow),
+        vec![("r1".to_owned(), PermissionAnswer::AllowOnce)]
+    );
+}
+
 #[tokio::test]
 async fn request_without_a_readable_call_goes_to_the_tui_even_in_full_mode() {
     let (mut flow, agent) = started("permission.mode = \"full\"\n").await;

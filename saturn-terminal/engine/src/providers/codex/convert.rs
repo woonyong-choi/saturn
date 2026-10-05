@@ -8,7 +8,7 @@ use saturn_protocol::rpc::{ModelChoice, ModelInfo, PermissionAnswer};
 use serde_json::{Value, json};
 
 use super::input::{self, InputKind};
-use super::permission::{call_of, file_change_paths};
+use super::permission::{call_of, file_change_paths, runs_outside_sandbox};
 use super::threads::{Held, HeldEvents, close_child, register_child, register_spawned};
 use super::{
     APPROVAL_METHODS, ELICITATION_METHOD, PERMISSIONS_METHOD, PendingApproval, PendingInput,
@@ -331,9 +331,14 @@ pub(super) fn build_request(
     }
     let (_, summary) = APPROVAL_METHODS.iter().find(|(name, _)| *name == method)?;
     let state = thread_of_request(threads, params)?;
+    let outside = if params["command"].is_string() && runs_outside_sandbox(params) {
+        " outside sandbox"
+    } else {
+        ""
+    };
     let summary = params["command"]
         .as_str()
-        .map(|command| format!("{summary}: {command}"))
+        .map(|command| format!("{summary}{outside}: {command}"))
         .or_else(|| {
             (method == ELICITATION_METHOD)
                 .then(|| params["message"].as_str().map(str::to_owned))

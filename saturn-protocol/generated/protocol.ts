@@ -230,7 +230,12 @@ target: string,
 /**
  * 편집과 읽기가 건드리는 경로. provider가 낸 경로 그대로.
  */
-paths: Array<string>, };
+paths: Array<string>, 
+/**
+ * provider 샌드박스 밖에서 실행해 달라는 요청. 샌드박스가 키 저장소 접근을 막아 주지 못하므로
+ * 어떤 모드와 규칙도 자동으로 허용하지 않는다.
+ */
+outside_sandbox: boolean, };
 
 export type PermissionTool = "Shell" | "Edit" | "Read" | "Mcp" | "Subagent";
 

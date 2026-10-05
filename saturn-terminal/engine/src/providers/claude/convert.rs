@@ -131,6 +131,7 @@ pub(super) fn permission_call(tool: &str, input: &Value) -> Option<PermissionCal
             tool: PermissionTool::Edit,
             target: String::new(),
             paths: path.into_iter().collect(),
+            outside_sandbox: false,
         });
     }
     if READ_TOOLS.contains(&tool) {
@@ -139,6 +140,7 @@ pub(super) fn permission_call(tool: &str, input: &Value) -> Option<PermissionCal
             tool: PermissionTool::Read,
             target: String::new(),
             paths: path.into_iter().collect(),
+            outside_sandbox: false,
         });
     }
     if SUBAGENT_TOOLS.contains(&tool) {
@@ -146,12 +148,14 @@ pub(super) fn permission_call(tool: &str, input: &Value) -> Option<PermissionCal
             tool: PermissionTool::Subagent,
             target: text("subagent_type").unwrap_or_default(),
             paths: Vec::new(),
+            outside_sandbox: false,
         });
     }
     tool.starts_with("mcp__").then(|| PermissionCall {
         tool: PermissionTool::Mcp,
         target: tool.to_owned(),
         paths: Vec::new(),
+        outside_sandbox: false,
     })
 }
 
@@ -160,6 +164,7 @@ pub(super) fn shell_call(command: String) -> PermissionCall {
         tool: PermissionTool::Shell,
         target: command,
         paths: Vec::new(),
+        outside_sandbox: false,
     }
 }
 
