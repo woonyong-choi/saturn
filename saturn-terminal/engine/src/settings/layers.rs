@@ -140,6 +140,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("model.default", Kind::Text),
     ("model.mode", Kind::OneOf(&["auto", "manual"])),
     ("model.prefer", Kind::TextList),
+    ("model.candidates", Kind::TextList),
     ("grading.model", Kind::Text),
     ("consent.share_with_server", Kind::Flag),
     ("debug.provider_events", Kind::Flag),
