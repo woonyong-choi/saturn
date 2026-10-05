@@ -12,7 +12,9 @@ use ratatui::widgets::Paragraph;
 use saturn_protocol::event::Activity;
 use saturn_protocol::ids::{InputId, Provider, TaskLabel};
 use saturn_protocol::rpc::{ChatNotice, DirectInstallInfo, ExtensionInfo};
-use saturn_protocol::state::{Disposition, InputState, TaskState};
+use saturn_protocol::state::{
+    CompletionEvidence, Disposition, EvidenceState, InputState, TaskState, UnverifiedReason,
+};
 
 use crate::i18n::{self, Lang};
 use crate::labels;
@@ -697,6 +699,9 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         ChatNotice::PermissionsChanged => {
             vec![format!("{prefix}{}", lang.tr(i18n::PERMISSIONS_CHANGED))]
         }
+        ChatNotice::CompletionEvidence { evidence } => {
+            vec![format!("{prefix}{}", evidence_line(lang, evidence))]
+        }
         ChatNotice::ReadOnlyRunKept => {
             vec![format!("{prefix}{}", lang.tr(i18n::READ_ONLY_RUN_KEPT))]
         }
@@ -754,6 +759,31 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         | ChatNotice::ExtensionPartsNotApplied { .. }
         | ChatNotice::DirectInstallsFound { .. } => extensions::notice_lines(lang, prefix, notice),
         ChatNotice::Stopped { .. } | ChatNotice::StopUnconfirmed { .. } => Vec::new(),
+    }
+}
+
+/// 완료 검사 근거 한 줄. 작업이 끝난 상태와 따로 보이고, 통과가 아니면 까닭을 적는다.
+fn evidence_line(lang: Lang, evidence: &CompletionEvidence) -> String {
+    match evidence.state {
+        EvidenceState::NotApplicable => lang.tr(i18n::EVIDENCE_NOT_APPLICABLE).to_owned(),
+        EvidenceState::Verified => {
+            let events: Vec<String> = evidence.events.iter().map(u64::to_string).collect();
+            lang.tr(i18n::EVIDENCE_VERIFIED)
+                .replace("{events}", &events.join(", "))
+        }
+        EvidenceState::Unverified => {
+            let reason = match evidence.reason {
+                Some(UnverifiedReason::CheckFailed) => i18n::EVIDENCE_CHECK_FAILED,
+                Some(UnverifiedReason::EditedDuringCheck) => i18n::EVIDENCE_EDITED_DURING_CHECK,
+                Some(UnverifiedReason::PartialSnapshot) => i18n::EVIDENCE_PARTIAL_SNAPSHOT,
+                Some(UnverifiedReason::OrderUnknown) => i18n::EVIDENCE_ORDER_UNKNOWN,
+                Some(UnverifiedReason::TreeNotIdle) => i18n::EVIDENCE_TREE_NOT_IDLE,
+                Some(UnverifiedReason::Unmeasured) => i18n::EVIDENCE_UNMEASURED,
+                Some(UnverifiedReason::NotChecked) | None => i18n::EVIDENCE_NOT_CHECKED,
+            };
+            lang.tr(i18n::EVIDENCE_UNVERIFIED)
+                .replace("{reason}", lang.tr(reason))
+        }
     }
 }
 
@@ -1049,6 +1079,50 @@ mod tests {
         };
 
         assert_eq!(cell.lines(Lang::Ko, true, false), vec!["> a · 반영됨"]);
+    }
+
+    #[test]
+    fn lines_completion_evidence_names_the_state_events_and_reason_in_both_languages() {
+        let line = |lang, state, reason, events: &[u64]| {
+            let cell = TranscriptCell::Notice {
+                label: None,
+                notice: ChatNotice::CompletionEvidence {
+                    evidence: CompletionEvidence {
+                        state,
+                        reason,
+                        events: events.to_vec(),
+                    },
+                },
+            };
+            cell.lines(lang, true, false)
+        };
+
+        assert_eq!(
+            line(Lang::Ko, EvidenceState::Verified, None, &[4, 9]),
+            vec!["완료 검사 통과 · 근거 이벤트 4, 9"]
+        );
+        assert_eq!(
+            line(Lang::En, EvidenceState::NotApplicable, None, &[]),
+            vec!["Completion check not applicable · No files changed"]
+        );
+        assert_eq!(
+            line(
+                Lang::Ko,
+                EvidenceState::Unverified,
+                Some(UnverifiedReason::CheckFailed),
+                &[]
+            ),
+            vec!["완료 검사 미확인 · 마지막 수정 뒤 검사가 실패함"]
+        );
+        assert_eq!(
+            line(
+                Lang::En,
+                EvidenceState::Unverified,
+                Some(UnverifiedReason::TreeNotIdle),
+                &[]
+            ),
+            vec!["Completion check unverified · A subagent has not finished"]
+        );
     }
 
     #[test]

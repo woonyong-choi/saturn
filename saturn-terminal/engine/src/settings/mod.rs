@@ -199,6 +199,19 @@ impl Settings {
         }
     }
 
+    /// 완료 검사 근거로 인정할 검사 명령. 없으면 빈 목록이다.
+    pub(crate) fn completion_checks(&self) -> Vec<String> {
+        self.get("completion.checks")
+            .and_then(Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// 사용자 전용.
     pub(crate) fn grading_model(&self) -> Option<&str> {
         self.get("grading.model")?.as_str()

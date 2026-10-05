@@ -151,6 +151,7 @@ impl Engine {
                 events,
                 usage,
                 switched_from,
+                completion,
             } => {
                 let label = self.flow.tasks.label(task).unwrap_or(TaskLabel('?'));
                 let changed = |state, elapsed_ms| Notification::TaskChanged {
@@ -184,11 +185,17 @@ impl Engine {
                     task: None,
                     notice: ChatNotice::ProviderSwitched { from, to: provider },
                 });
+                let evidence = completion.map(|evidence| Notification::ChatNotice {
+                    chat,
+                    task: Some(task),
+                    notice: ChatNotice::CompletionEvidence { evidence },
+                });
                 switched
                     .into_iter()
                     .chain(std::iter::once(changed(TaskState::Running, 0)))
                     .chain(replayed)
                     .chain(finished)
+                    .chain(evidence)
                     .collect()
             }
         }

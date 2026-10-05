@@ -547,8 +547,10 @@ impl Engine {
         self.queue.finish_task(agent);
         let task = self.runs.task_of.remove(&agent);
         self.runs.chat_of.remove(&agent);
+        let mut evidence = None;
         if let Some(run) = self.runs.active.remove(&agent) {
-            self.settle_changes(run, chat, agent).await;
+            let changes = self.settle_changes(run, chat, agent).await;
+            evidence = self.settle_completion(run, chat, agent, changes).await;
             self.store.finish_run(run, RunEnd::Completed).await?;
         }
         if let Some(task) = task {
@@ -556,6 +558,10 @@ impl Engine {
             let provider = self.flow.live.get(&agent).map(|live| live.provider);
             self.notify_task(chat, task, TaskState::Done, provider, None)
                 .await;
+            if let Some(evidence) = evidence {
+                self.notify_chat_task(chat, task, ChatNotice::CompletionEvidence { evidence })
+                    .await;
+            }
             self.flow.tasks.release(task);
         }
         Ok(())

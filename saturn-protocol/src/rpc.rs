@@ -770,6 +770,11 @@ pub enum ChatNotice {
     ConstraintResumed {
         rule: String,
     },
+    /// 끝난 작업의 완료 검사 근거. 작업 상태 `Done`과 따로 보내며, `ChatNotice`의 `task`가 그 작업이다. 다시 접속해도
+    /// 같은 줄이 보이도록 기록에서 되살린다.
+    CompletionEvidence {
+        evidence: crate::state::CompletionEvidence,
+    },
     /// 모든 작업이 끝난 순간의 합계. 보고하지 않은 값은 0으로 채우지 않는다. `provider_tokens`에는 토큰을 보고한 provider만
     /// 들어가고, `router_tokens`는 router가 토큰을 하나도 보고하지 않았으면 비어 있다.
     RequestSummary {

@@ -151,7 +151,11 @@ async fn packet_overflow_after_the_reduced_resend_stops_and_tells_the_user() {
     assert_eq!(states, [PacketState::NotSent, PacketState::NotSent]);
     let notice = client
         .until(|notification| match notification {
-            Notification::ChatNotice { notice, .. } => Some(notice.clone()),
+            Notification::ChatNotice { notice, .. }
+                if !matches!(notice, ChatNotice::CompletionEvidence { .. }) =>
+            {
+                Some(notice.clone())
+            }
             _ => None,
         })
         .await;
@@ -172,7 +176,11 @@ async fn packet_overflow_with_only_the_fixed_zone_over_the_target_is_not_resent(
     assert_eq!(flow.state(second), InputState::Held);
     let notice = client
         .until(|notification| match notification {
-            Notification::ChatNotice { notice, .. } => Some(notice.clone()),
+            Notification::ChatNotice { notice, .. }
+                if !matches!(notice, ChatNotice::CompletionEvidence { .. }) =>
+            {
+                Some(notice.clone())
+            }
             _ => None,
         })
         .await;
@@ -205,7 +213,11 @@ async fn restart_with(
 async fn first_notice(client: &mut Client) -> ChatNotice {
     client
         .until(|notification| match notification {
-            Notification::ChatNotice { notice, .. } => Some(notice.clone()),
+            Notification::ChatNotice { notice, .. }
+                if !matches!(notice, ChatNotice::CompletionEvidence { .. }) =>
+            {
+                Some(notice.clone())
+            }
             _ => None,
         })
         .await

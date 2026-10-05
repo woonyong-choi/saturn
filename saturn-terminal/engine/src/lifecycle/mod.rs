@@ -10,6 +10,7 @@ mod child_load;
 mod child_passes;
 mod child_sessions;
 mod commands;
+mod completion_evidence;
 mod conflict_steer;
 mod constraint_change;
 mod constraint_handoff;

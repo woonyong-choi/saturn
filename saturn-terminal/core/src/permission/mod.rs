@@ -5,7 +5,7 @@ mod pattern;
 
 use std::path::{Path, PathBuf};
 
-pub use pattern::{escape, is_literal, literal_prefix, may_match_prefix};
+pub use pattern::{escape, is_literal, is_plain_shell, literal_prefix, may_match_prefix};
 pub use saturn_protocol::event::{PermissionCall, PermissionTool};
 
 /// 낮은 쪽부터 `ReadOnly`, `Ask`, `Edit`, `Full`. `Ask`는 묻기만 하고 거부하지 않아 `ReadOnly`보다 높다.
@@ -417,6 +417,12 @@ impl Unit {
             provider_read: None,
         }
     }
+}
+
+/// 읽기 전용 목록(`ls`, `cat`, `rg`, `grep`, `git status`, `git diff`, `git log`)의 단순 명령 하나인지. 파일을 바꾸지
+/// 않는 명령으로 보고 순서 판단에서 수정으로 세지 않는 데 쓴다.
+pub fn is_read_only_plain_shell(command: &str) -> bool {
+    pattern::is_plain_shell(command) && is_read_only_shell(command)
 }
 
 fn is_read_only_shell(command: &str) -> bool {

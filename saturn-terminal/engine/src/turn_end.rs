@@ -5,7 +5,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use saturn_core::sessions::LastTurn;
 use saturn_core::sessions::context::{CompactionDecision, ContextMeasure, decide};
-use saturn_protocol::ids::{AgentId, ChatId};
+use saturn_protocol::ids::{AgentId, ChatId, TaskId};
 use saturn_protocol::rpc::{ChatNotice, Notification};
 
 use crate::flow::LiveSession;
@@ -143,6 +143,16 @@ impl Engine {
         let notification = Notification::ChatNotice {
             chat,
             task: None,
+            notice,
+        };
+        self.rpc.broadcast(Some(chat), notification).await;
+    }
+
+    /// 끝난 작업에 붙는 알림. TUI가 그 작업 이름표 옆에 그린다.
+    pub(crate) async fn notify_chat_task(&self, chat: ChatId, task: TaskId, notice: ChatNotice) {
+        let notification = Notification::ChatNotice {
+            chat,
+            task: Some(task),
             notice,
         };
         self.rpc.broadcast(Some(chat), notification).await;

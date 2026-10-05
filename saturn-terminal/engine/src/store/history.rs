@@ -2,7 +2,7 @@
 //! 설계: docs/design/engine-lifecycle.md
 
 use saturn_protocol::event::{ProviderEvent, UsageReport};
-use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, Provider, TaskId};
+use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, Provider, RunId, TaskId};
 use saturn_protocol::state::{InputState, QueueReason};
 use sqlx::Row;
 use sqlx::sqlite::SqliteRow;
@@ -37,6 +37,8 @@ pub(crate) enum HistoryEntry {
         usage: Vec<UsageReport>,
         /// 같은 에이전트의 앞 실행이 다른 provider였으면 그 provider. 메인 전환을 이 차이로 되살린다.
         switched_from: Option<Provider>,
+        /// 끝난 실행의 완료 검사 근거. 가리지 않은 실행은 `None`.
+        completion: Option<saturn_protocol::state::CompletionEvidence>,
     },
     /// 제약 변경 줄. `constraint_events`에서 그리므로 채팅을 다시 열어도 같은 자리에 보인다.
     Constraint {
@@ -204,6 +206,7 @@ impl Store {
             events,
             usage,
             switched_from,
+            completion: self.run_completion(RunId(from_sql_int(id))).await?,
         })
     }
 }

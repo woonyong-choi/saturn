@@ -121,6 +121,18 @@ pub const MCP_UNAVAILABLE: &str =
     "{provider}의 MCP 서버를 쓸 수 없습니다 · 그 서버의 도구만 빠지고 입력은 그대로 보냅니다";
 /// `{provider}`는 끊긴 하위 에이전트를 다시 보낸 provider 이름.
 pub const INTERRUPTED_SUBAGENT_RETURNED: &str = "{provider}가 크래시로 끊긴 하위 에이전트를 다시 시작해 작업을 멈췄습니다 · 이어 가려면 /continue";
+/// `{events}`는 근거 이벤트 번호를 쉼표로 이은 글, `{reason}`는 아래 `EVIDENCE_*` 이유 글.
+pub const EVIDENCE_VERIFIED: &str = "완료 검사 통과 · 근거 이벤트 {events}";
+pub const EVIDENCE_NOT_APPLICABLE: &str = "완료 검사 해당 없음 · 수정한 파일 없음";
+pub const EVIDENCE_UNVERIFIED: &str = "완료 검사 미확인 · {reason}";
+pub const EVIDENCE_NOT_CHECKED: &str =
+    "마지막 수정 뒤 설정한 검사가 돌지 않았거나 종료 코드를 알 수 없음";
+pub const EVIDENCE_CHECK_FAILED: &str = "마지막 수정 뒤 검사가 실패함";
+pub const EVIDENCE_EDITED_DURING_CHECK: &str = "검사가 도는 중에 수정이 있었음";
+pub const EVIDENCE_PARTIAL_SNAPSHOT: &str = "폴더가 커서 일부만 확인함";
+pub const EVIDENCE_ORDER_UNKNOWN: &str = "수정과 검사의 순서를 알 수 없음";
+pub const EVIDENCE_TREE_NOT_IDLE: &str = "하위 에이전트가 끝나지 않음";
+pub const EVIDENCE_UNMEASURED: &str = "수정 목록을 만들지 못함";
 pub const CONTEXT_DEFERRED: &str = "고정 제약이 길어 맥락 정리를 미룹니다";
 pub const PACKET_OVERFLOW: &str = "맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요";
 pub const SWITCHED_SUFFIX: &str = "로 전환";

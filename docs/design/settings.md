@@ -125,6 +125,7 @@
 | `child.max_total` | 1 이상 정수 | 10. `engine` 전체의 동시 하위 접속 수 |
 | `router.shadow.model_selection` | 참·거짓 | 거짓. 참이면 입력 처리 요청에 후보별 충분성 질문을 묶어 모델 선택을 미리 재 보고 기록한다. 실제 모델 선택에는 쓰지 않는다. 실험 옵션이고 사용자 층에서만 정한다([모델 판단 그림자](router.md#모델-판단-그림자)) |
 | `constraint.auto_apply` | 참·거짓 | 거짓. 참이면 router의 `is_constraint` 판단이 지속 제약을 자동 등록하거나 묻고 `constraint_change` 판단이 제약을 해제하거나 예외를 건다. 거짓이면 판단은 기록만 하고 제약을 만들지도 바꾸지도 않는다. 사용자의 명시 해제는 이 키와 상관없다. 사용자 층에서만 정한다([제약](constraints.md#식별-순서)) |
+| `completion.checks` | 문자열 목록 | 빈 목록. 끝난 실행의 완료 검사 근거로 인정할 검사 명령이다. 단순한 셸 명령 하나의 앞부분이 같을 때만 인정하고, 비어 있으면 수정한 실행은 늘 미확인이다([완료 검사 근거](providers-and-sessions.md#완료-검사-근거)). 폴더 층에서도 정할 수 있다 |
 | `debug.provider_events` | 참·거짓 | 거짓. 켜면 provider 연결이 받은 원시 메시지의 모양(방법 이름, 순서, ID, 필드 이름)을 값 없이 `logs/provider-events-<날짜>.log`에 남긴다([provider 연결과 session](providers-and-sessions.md#원시-이벤트-관측-기록)) |
 | `retention.max_age_days` | 1 이상 정수 | 없음(무제한 보존). `saturn prune`과 `/prune`이 오래된 채팅을 정하는 기준이기도 하다([기록](records.md)) |
 | `retention.auto_prune` | 참·거짓 | 거짓. 참이고 `max_age_days`가 있을 때만 engine 시작 때 한 번 그 기한보다 오래 쓰지 않은 채팅을 지운다. 삭제라 `max_age_days`만으로 켜지지 않는다([기록](records.md#보존과-정리)) |
