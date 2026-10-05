@@ -395,6 +395,26 @@ fn validate_accepts_only_well_formed_answers() {
             false,
         ),
         (
+            "sum 0.99 rounded",
+            vec![keep(), actionable(), model(vec![0.6, 0.3, 0.09])],
+            true,
+        ),
+        (
+            "sum 1.01 rounded",
+            vec![keep(), actionable(), model(vec![0.6, 0.3, 0.11])],
+            true,
+        ),
+        (
+            "sum beyond tolerance",
+            vec![keep(), actionable(), model(vec![0.6, 0.3, 0.12])],
+            false,
+        ),
+        (
+            "sum below tolerance",
+            vec![keep(), actionable(), model(vec![0.6, 0.3, 0.08])],
+            false,
+        ),
+        (
             "kind mismatch",
             vec![
                 ("keep_current", Answer::Choice(vec![0.5, 0.5])),
