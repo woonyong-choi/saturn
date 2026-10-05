@@ -39,23 +39,49 @@ pub(crate) fn read_user_config(launch: &LaunchSpec) -> UserProviderConfig {
             .find(|(key, _)| key == name)
             .map(|(_, value)| value)
     };
-    let mut files = Vec::new();
-    if let Some(home) = env("HOME") {
-        files.push(Path::new(home).join(".claude").join("settings.json"));
-    }
-    let project = launch.workdir.join(".claude");
-    files.push(project.join("settings.json"));
-    files.push(project.join("settings.local.json"));
     let mut found = UserProviderConfig {
         has_auto_compact: AUTO_COMPACT_ENV.iter().any(|name| env(name).is_some()),
     };
-    for file in files {
+    for file in settings_files(launch) {
         let Some(settings) = read_json(&file) else {
             continue;
         };
         found.has_auto_compact |= !settings["autoCompactEnabled"].is_null();
     }
     found
+}
+
+/// 사용자 Claude 설정 층 파일: 사용자, 프로젝트, 프로젝트 로컬. `HOME`은 `launch.env`에서 읽는다.
+fn settings_files(launch: &LaunchSpec) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    let home = launch
+        .env
+        .iter()
+        .find(|(key, _)| key == "HOME")
+        .map(|(_, value)| value);
+    if let Some(home) = home {
+        files.push(Path::new(home).join(".claude").join("settings.json"));
+    }
+    let project = launch.workdir.join(".claude");
+    files.push(project.join("settings.json"));
+    files.push(project.join("settings.local.json"));
+    files
+}
+
+/// `sandbox.excludedCommands`가 비어 있지 않은 사용자 설정 파일. 제외된 명령은 샌드박스 밖에서 돌아 키 저장소 읽기 금지가
+/// 닿지 않는다. 배열은 설정 층끼리 합쳐져 실행별 설정으로 비울 수 없으므로 session을 열기 전에 찾아 거절하는 데 쓴다.
+/// 어느 층의 값이든 세고(프로젝트 층이 적용되지 않는 것으로 관측됐어도 보장하지 않는다), 목록의 값은 읽지 않고 파일만 돌려준다.
+pub(crate) fn sandbox_exclusions(launch: &LaunchSpec) -> Vec<PathBuf> {
+    settings_files(launch)
+        .into_iter()
+        .filter(|file| {
+            read_json(file).is_some_and(|settings| {
+                settings["sandbox"]["excludedCommands"]
+                    .as_array()
+                    .is_some_and(|commands| !commands.is_empty())
+            })
+        })
+        .collect()
 }
 
 /// `--settings`로 넘기는 값에 `permissions.ask`로 규칙 대상 도구를 나열한다. 훅 설정은 그대로 두고 합친다.

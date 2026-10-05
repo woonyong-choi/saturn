@@ -5,6 +5,7 @@ fn call(tool: PermissionTool, target: &str, paths: &[&str]) -> PermissionCall {
         tool,
         target: target.to_owned(),
         paths: paths.iter().map(|path| (*path).to_owned()).collect(),
+        outside_sandbox: false,
     }
 }
 

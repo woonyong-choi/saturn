@@ -7,6 +7,7 @@ fn edit(paths: &[&str]) -> PermissionCall {
         tool: PermissionTool::Edit,
         target: String::new(),
         paths: paths.iter().map(|path| (*path).to_owned()).collect(),
+        outside_sandbox: false,
     }
 }
 
@@ -45,6 +46,7 @@ fn resolved_leaves_other_tools_alone() {
         tool: PermissionTool::Shell,
         target: "ls".to_owned(),
         paths: Vec::new(),
+        outside_sandbox: false,
     };
 
     assert_eq!(resolved(Path::new("/work"), &call), call);

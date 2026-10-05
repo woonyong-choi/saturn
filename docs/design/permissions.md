@@ -110,12 +110,14 @@
 
 1. provider가 도구 호출 허가를 요청한다.
 2. `providers`가 요청을 도구 종류와 패턴으로 바꾼다.
-3. `permission`이 규칙과 저장된 항상 허용으로 값을 정한다.
+3. `permission`이 먼저 router 키 저장소 접근을 보고 걸리면 `deny`로 끝낸다. 아니면 규칙과 저장된 항상 허용으로 값을 정한다.
 4. `allow`면 `providers`가 허용 답을 바로 보낸다.
 5. `deny`면 `providers`가 거부 답을 바로 보낸다.
 6. `ask`면 engine이 TUI에 허가 요청을 올리고, 답이 올 때까지 요청을 보관한다.
 
 - 규칙으로 읽을 수 없는 요청(`call`이 없는 요청: Codex 권한 요청, 명령이 없는 요청, 규칙 대상이 아닌 Claude 도구)은 모드와 상관없이 `ask`다. 규칙이나 기록을 읽지 못해도 `ask`다.
+- 키 저장소 접근 판정은 모드, 규칙, 항상 허용보다 먼저이고 `full`도 풀지 못한다([router 키 보호](router-key-security.md)). 일반 작업 권한과 이 예외는 따로다.
+- provider 샌드박스 밖에서 실행해 달라는 요청(Codex `outside_sandbox`)은 `allow`로 판정돼도 `ask`로 올린다. `full`, 모드 기본 규칙, 개별 `allow`, 항상 허용 모두 대신 허용하지 못한다. 허가 요청 줄에는 `run command outside sandbox:`로 밝힌다.
 - 규칙이 `allow`나 `deny`로 답했는데 provider가 그 답을 받지 못했으면 사용자에게 묻는다.
 - 규칙은 에이전트가 가장 나중에 시작한 입력의 설정 번호 값을 쓰고, 모드는 채팅 층에 쓴 값이 있으면 그것을 먼저 쓴다.
 
