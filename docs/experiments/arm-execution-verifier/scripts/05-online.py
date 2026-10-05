@@ -76,7 +76,7 @@ def tool_blocks(events: list[dict]) -> dict[int, str]:
     """기록 번호 -> 블록 ID. 블록 파일을 읽은 도구 호출만 본다."""
     out = {}
     for e in events:
-        m = re.search(r"cat rec-(b\d+)\.txt", e["body"])
+        m = re.search(r"rec-(b\d+)\.txt", e["body"])
         if e["body"].startswith('{"ToolCall"') and m:
             out[e["seq"]] = m.group(1)
     return out
@@ -140,7 +140,8 @@ def build_trial(record: dict, c: dict, raw_sha: str, raw_name: str) -> dict:
                 if i["ref_id"] in blocks:
                     forms[blocks[i["ref_id"]]] = i["form"] or ("omitted:" + str(i["reason"]))
     support = c["support_ids"]
-    commands = [e["body"] for e in db["events"] if e["body"].startswith('{"ToolCall"') and EVIDENCE_CMD.search(e["body"])]
+    commands = [e["body"] for e in db["events"] if e["body"].startswith('{"ToolCall"') and EVIDENCE_CMD.search(e["body"]) and "--help" not in e["body"]]
+    help_commands = sum(1 for e in db["events"] if e["body"].startswith('{"ToolCall"') and EVIDENCE_CMD.search(e["body"]) and "--help" in e["body"])
     reads = [l for l in db["lookups"] if l["kind"] == "Read"]
     read_blocks = sorted({blocks[l["record_id"]] for l in reads if l["outcome"] == "Ok" and l["record_id"] in blocks})
     answer = final_answer(record["notes"])
@@ -172,7 +173,7 @@ def build_trial(record: dict, c: dict, raw_sha: str, raw_name: str) -> dict:
             overrides=record["overrides"], rep=record["rep"], source=record["source"],
             packet_hashes=[p["body_hash"] for p in packets], packet_states=[p["state"] for p in packets],
             packet_kinds=[p["kind"] for p in packets], packet_tokens=[p["estimated_tokens"] for p in packets],
-            lookup_commands=len(commands), lookup_rows=len(db["lookups"]),
+            lookup_commands=len(commands), help_commands=help_commands, lookup_rows=len(db["lookups"]),
             lookup_outcomes={o: sum(l["outcome"] == o for l in db["lookups"]) for o in sorted({l["outcome"] for l in db["lookups"]})},
             support_read=read_blocks, denied=[d["summary"] for d in record["decisions"] if not d["allowed"]],
             judgments=[dict(id=j["id"], method=j["method"], outcome=j["outcome"], fallbacks=j["fallbacks"]) for j in db["judgments"] if j["started_at"] >= int(record["t0"] * 1000)],
