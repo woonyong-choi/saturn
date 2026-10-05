@@ -79,13 +79,15 @@ def dump_db(home: Path) -> dict:
 
 
 def engine_pids(home: Path) -> list[int]:
-    """이 실행의 SATURN_HOME을 인자로 가진 saturn-engine만 찾는다."""
+    """이 실행의 SATURN_HOME을 `--home` 값으로 가진 saturn-engine만 찾는다."""
     out = subprocess.run(["ps", "-axo", "pid=,command="], capture_output=True, text=True).stdout
     pids = []
     for line in out.splitlines():
         pid, _, command = line.strip().partition(" ")
-        if "saturn-engine" in command and f"--home {home}" in command:
-            pids.append(int(pid))
+        tokens = command.split()
+        if tokens and tokens[0].endswith("saturn-engine") and "--home" in tokens:
+            if tokens[tokens.index("--home") + 1 : tokens.index("--home") + 2] == [str(home)]:
+                pids.append(int(pid))
     return pids
 
 
@@ -190,12 +192,16 @@ def run_trial(run_id: str, tid: int, task: dict, arm: str, shadow: bool, key: st
     if spec["mode"] == "manual":
         flags += ["-c", f"model.default={json.dumps(spec['model'])}"]
     session = f"t{tid:03d}"
-    shell = f"export PATH={SATURN_BIN}:$PATH; exec saturn " + " ".join(shlex.quote(f) for f in flags)
-    env = dict(os.environ, SATURN_HOME=str(home), SATURN_KEY=key)
+    # tmux 서버는 첫 세션의 환경을 쓰므로 세션마다 환경을 셸 안에서 정한다. 키는 인자에 넣지 않고 같은 셸 안에서 키체인에서 읽는다.
+    shell = (
+        f"export SATURN_HOME={shlex.quote(str(home))}; "
+        f"export SATURN_KEY=\"$(security find-generic-password -s {KEYCHAIN_SERVICE} -w)\"; "
+        f"export PATH={shlex.quote(str(SATURN_BIN))}:$PATH; exec saturn " + " ".join(shlex.quote(f) for f in flags)
+    )
     note = []
     status = "ok"
     submitted = None
-    subprocess.run([*TMUX, "new-session", "-d", "-s", session, "-x", "160", "-y", "50", "-c", str(practice), f"zsh -f -c {shlex.quote(shell)}"], env=env, check=True)
+    subprocess.run([*TMUX, "new-session", "-d", "-s", session, "-x", "160", "-y", "50", "-c", str(practice), f"zsh -f -c {shlex.quote(shell)}"], check=True)
     try:
         if spec["mode"] == "auto":
             if not wait_for(session, WINDOW_TITLE, 90):
@@ -226,6 +232,9 @@ def run_trial(run_id: str, tid: int, task: dict, arm: str, shadow: bool, key: st
         tmux("kill-session", "-t", session)
     stopped = stop_engine(home)
     tables = dump_db(home) if (home / "saturn.db").exists() else {}
+    inputs = tables.get("inputs")
+    if status == "ok" and (not isinstance(inputs, list) or len(inputs) != 1 or inputs[0]["text"] != task["prompt"]):
+        status, note = "failed", note + ["input record does not match the sent prompt"]
     diff = subprocess.run(["git", "diff", "HEAD", "--stat", "--patch"], cwd=practice, capture_output=True, text=True).stdout
     ref = RUNTIME / "r" / task["task_id"]
     if not ref.exists():

@@ -27,6 +27,8 @@ PHASES = {
     "confirm": dict(first_tid=100, shadow=False, seed=542200, provider_cap=300, router_cap=300),
 }
 STOP_AFTER_FAILURES = 6
+# 입력을 보내기 전에 확정된 화면 열기 실패만 한 번 다시 한다(보낸 입력은 다시 보내지 않는다).
+BEFORE_DELIVERY = {"screen did not open", "default window did not open", "default pick failed"}
 
 
 def schedule(phase: str) -> list[tuple[int, dict, str]]:
@@ -82,6 +84,13 @@ def main() -> None:
             state["router"] += 1
         try:
             result = engine_run.run_trial(args.phase, tid, task, arm, plan["shadow"], key)
+            if result["status"] == "failed" and set(result["notes"]) <= BEFORE_DELIVERY:
+                infra = DATA / "raw" / args.phase / "infra"
+                infra.mkdir(exist_ok=True)
+                (infra / raw_path(args.phase, tid, task, arm).name.replace(".json.gz", ".attempt1.json.gz")).write_bytes(
+                    gzip.compress(json.dumps(result, ensure_ascii=False, sort_keys=True).encode(), mtime=0))
+                result = engine_run.run_trial(args.phase, tid + 500, task, arm, plan["shadow"], key)
+                result["retried_after"] = "before delivery failure"
         except Exception as error:  # noqa: BLE001
             with lock:
                 state["failures"] += 1
@@ -101,8 +110,13 @@ def main() -> None:
                                         provider_requests=runs, router_calls=judgments, at=time.time()), ensure_ascii=False) + "\n")
             print(f"{tid:03d} {task['task_id']:12s} {arm:9s} {result['status']:9s} ok={result['check']['success']} totals p={state['provider']} r={state['router']}", flush=True)
 
-    with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        list(pool.map(one, pending))
+    # 마지막 세션이 끝나 tmux 서버가 내려가는 사이 다른 작업자가 세션을 만들지 못하게 전용 서버를 유지한다
+    engine_run.tmux("new-session", "-d", "-s", "keep", "sleep 86400")
+    try:
+        with ThreadPoolExecutor(max_workers=args.workers) as pool:
+            list(pool.map(one, pending))
+    finally:
+        engine_run.tmux("kill-session", "-t", "keep")
     print(f"done: provider={state['provider']} router={state['router']} stopped={state['stop']}", flush=True)
 
 
