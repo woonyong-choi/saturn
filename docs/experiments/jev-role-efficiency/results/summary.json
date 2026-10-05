@@ -1,0 +1,604 @@
+{
+  "scope": "synthetic exploratory instrumentation pilot; no adoption claim",
+  "hypotheses": {
+    "H1": "deferred",
+    "H2": "deferred",
+    "H3": "deferred"
+  },
+  "routing": {
+    "models": {
+      "opus": {
+        "success": {
+          "k": 8,
+          "n": 8,
+          "rate": 1.0,
+          "wilson95": [
+            0.6755924351161198,
+            1
+          ]
+        },
+        "latency_median_s": 3.9495905204999993,
+        "known_cost_usd": 0.039012,
+        "unknown_cost_count": 0,
+        "failure_statuses": {
+          "ok": 8
+        }
+      },
+      "sol": {
+        "success": {
+          "k": 7,
+          "n": 8,
+          "rate": 0.875,
+          "wilson95": [
+            0.5291118177871464,
+            0.9775825085499433
+          ]
+        },
+        "latency_median_s": 9.966980000000003,
+        "known_cost_usd": 0,
+        "unknown_cost_count": 8,
+        "failure_statuses": {
+          "ok": 8
+        }
+      },
+      "astra": {
+        "success": {
+          "k": 8,
+          "n": 8,
+          "rate": 1.0,
+          "wilson95": [
+            0.6755924351161198,
+            1
+          ]
+        },
+        "latency_median_s": 7.813061562500004,
+        "known_cost_usd": 0,
+        "unknown_cost_count": 8,
+        "failure_statuses": {
+          "ok": 8
+        }
+      },
+      "sonnet": {
+        "success": {
+          "k": 7,
+          "n": 8,
+          "rate": 0.875,
+          "wilson95": [
+            0.5291118177871464,
+            0.9775825085499433
+          ]
+        },
+        "latency_median_s": 3.395665458499998,
+        "known_cost_usd": 0.020535999999999995,
+        "unknown_cost_count": 0,
+        "failure_statuses": {
+          "ok": 8
+        }
+      },
+      "haiku": {
+        "success": {
+          "k": 3,
+          "n": 8,
+          "rate": 0.375,
+          "wilson95": [
+            0.13684428582359742,
+            0.6942576053973727
+          ]
+        },
+        "latency_median_s": 5.388837563000003,
+        "known_cost_usd": 0.05403,
+        "unknown_cost_count": 0,
+        "failure_statuses": {
+          "ok": 8
+        }
+      },
+      "luna": {
+        "success": {
+          "k": 8,
+          "n": 8,
+          "rate": 1.0,
+          "wilson95": [
+            0.6755924351161198,
+            1
+          ]
+        },
+        "latency_median_s": 5.078589791499999,
+        "known_cost_usd": 0,
+        "unknown_cost_count": 8,
+        "failure_statuses": {
+          "ok": 8
+        }
+      },
+      "terra": {
+        "success": {
+          "k": 7,
+          "n": 8,
+          "rate": 0.875,
+          "wilson95": [
+            0.5291118177871464,
+            0.9775825085499433
+          ]
+        },
+        "latency_median_s": 6.360438146,
+        "known_cost_usd": 0,
+        "unknown_cost_count": 8,
+        "failure_statuses": {
+          "ok": 8
+        }
+      }
+    },
+    "policies": {
+      "baseline": {
+        "success": {
+          "k": 7,
+          "n": 8,
+          "rate": 0.875,
+          "wilson95": [
+            0.5291118177871464,
+            0.9775825085499433
+          ]
+        },
+        "latency_median_s": 3.7118667500000013,
+        "known_cost_usd": 0.017550999999999997,
+        "unknown_cost_count": 2,
+        "failure_statuses": {
+          "ok": 8
+        },
+        "selected_models": [
+          "opus",
+          "opus",
+          "sol",
+          "sol",
+          "sonnet",
+          "sonnet",
+          "haiku",
+          "haiku"
+        ],
+        "composed_latency_median_s": 3.7118667500000013,
+        "paired_vs_baseline": {
+          "n": 8,
+          "delta": 0.0,
+          "treatment_only": 0,
+          "baseline_only": 0
+        },
+        "judge_overhead_s": 0,
+        "note": "execution row reuse; judge overhead listed separately, not an independently executed policy"
+      },
+      "direct": {
+        "success": {
+          "k": 7,
+          "n": 8,
+          "rate": 0.875,
+          "wilson95": [
+            0.5291118177871464,
+            0.9775825085499433
+          ]
+        },
+        "latency_median_s": 3.7118667500000013,
+        "known_cost_usd": 0.017550999999999997,
+        "unknown_cost_count": 2,
+        "failure_statuses": {
+          "ok": 8
+        },
+        "selected_models": [
+          "opus",
+          "opus",
+          "sol",
+          "sol",
+          "sonnet",
+          "sonnet",
+          "haiku",
+          "haiku"
+        ],
+        "composed_latency_median_s": 3.978972521,
+        "paired_vs_baseline": {
+          "n": 8,
+          "delta": 0.0,
+          "treatment_only": 0,
+          "baseline_only": 0
+        },
+        "judge_overhead_s": 1.9828510010000002,
+        "note": "execution row reuse; judge overhead listed separately, not an independently executed policy"
+      },
+      "decomposed": {
+        "success": {
+          "k": 7,
+          "n": 8,
+          "rate": 0.875,
+          "wilson95": [
+            0.5291118177871464,
+            0.9775825085499433
+          ]
+        },
+        "latency_median_s": 3.7118667500000013,
+        "known_cost_usd": 0.017550999999999997,
+        "unknown_cost_count": 2,
+        "failure_statuses": {
+          "ok": 8
+        },
+        "selected_models": [
+          "opus",
+          "opus",
+          "sol",
+          "sol",
+          "sonnet",
+          "sonnet",
+          "haiku",
+          "haiku"
+        ],
+        "composed_latency_median_s": 3.978972521,
+        "paired_vs_baseline": {
+          "n": 8,
+          "delta": 0.0,
+          "treatment_only": 0,
+          "baseline_only": 0
+        },
+        "judge_overhead_s": 1.9828510010000002,
+        "note": "execution row reuse; judge overhead listed separately, not an independently executed policy"
+      }
+    },
+    "decisions": [
+      {
+        "id": "r0",
+        "decision_id": "route-jev-r0",
+        "baseline": "opus",
+        "direct": "opus",
+        "decomposed": "opus",
+        "direct_fallback": true,
+        "decomposed_fallback": false
+      },
+      {
+        "id": "r1",
+        "decision_id": "route-jev-r1",
+        "baseline": "opus",
+        "direct": "opus",
+        "decomposed": "opus",
+        "direct_fallback": true,
+        "decomposed_fallback": false
+      },
+      {
+        "id": "r2",
+        "decision_id": "route-jev-r2",
+        "baseline": "sol",
+        "direct": "sol",
+        "decomposed": "sol",
+        "direct_fallback": false,
+        "decomposed_fallback": false
+      },
+      {
+        "id": "r3",
+        "decision_id": "route-jev-r3",
+        "baseline": "sol",
+        "direct": "sol",
+        "decomposed": "sol",
+        "direct_fallback": true,
+        "decomposed_fallback": false
+      },
+      {
+        "id": "r4",
+        "decision_id": "route-jev-r4",
+        "baseline": "sonnet",
+        "direct": "sonnet",
+        "decomposed": "sonnet",
+        "direct_fallback": false,
+        "decomposed_fallback": false
+      },
+      {
+        "id": "r5",
+        "decision_id": "route-jev-r5",
+        "baseline": "sonnet",
+        "direct": "sonnet",
+        "decomposed": "sonnet",
+        "direct_fallback": false,
+        "decomposed_fallback": false
+      },
+      {
+        "id": "r6",
+        "decision_id": "route-jev-r6",
+        "baseline": "haiku",
+        "direct": "haiku",
+        "decomposed": "haiku",
+        "direct_fallback": true,
+        "decomposed_fallback": false
+      },
+      {
+        "id": "r7",
+        "decision_id": "route-jev-r7",
+        "baseline": "haiku",
+        "direct": "haiku",
+        "decomposed": "haiku",
+        "direct_fallback": true,
+        "decomposed_fallback": false
+      }
+    ]
+  },
+  "constraints": {
+    "conditions": {
+      "code": {
+        "success": {
+          "k": 6,
+          "n": 6,
+          "rate": 1.0,
+          "wilson95": [
+            0.6096657120978346,
+            1
+          ]
+        },
+        "latency_median_s": 3.553776520999996,
+        "known_cost_usd": 0.017716,
+        "unknown_cost_count": 0,
+        "failure_statuses": {
+          "ok": 6
+        },
+        "wrong_selected_values": 2
+      },
+      "jev": {
+        "success": {
+          "k": 6,
+          "n": 6,
+          "rate": 1.0,
+          "wilson95": [
+            0.6096657120978346,
+            1
+          ]
+        },
+        "latency_median_s": 3.1170937084999935,
+        "known_cost_usd": 0.014581999999999998,
+        "unknown_cost_count": 0,
+        "failure_statuses": {
+          "ok": 6
+        },
+        "wrong_selected_values": 0
+      },
+      "llm": {
+        "success": {
+          "k": 6,
+          "n": 6,
+          "rate": 1.0,
+          "wilson95": [
+            0.6096657120978346,
+            1
+          ]
+        },
+        "latency_median_s": 3.4098319164999964,
+        "known_cost_usd": 0.01695,
+        "unknown_cost_count": 0,
+        "failure_statuses": {
+          "ok": 6
+        },
+        "wrong_selected_values": 1
+      }
+    },
+    "candidate_coverage": [
+      {
+        "case_id": "c0",
+        "expected_nondefault": 1,
+        "offered_expected": 1
+      },
+      {
+        "case_id": "c1",
+        "expected_nondefault": 0,
+        "offered_expected": 0
+      },
+      {
+        "case_id": "c2",
+        "expected_nondefault": 0,
+        "offered_expected": 0
+      },
+      {
+        "case_id": "c3",
+        "expected_nondefault": 1,
+        "offered_expected": 1
+      },
+      {
+        "case_id": "c4",
+        "expected_nondefault": 1,
+        "offered_expected": 1
+      },
+      {
+        "case_id": "c5",
+        "expected_nondefault": 1,
+        "offered_expected": 1
+      }
+    ],
+    "note": "value correctness is a pilot proxy; provenance and unsupported application require separate source audit"
+  },
+  "context": {
+    "conditions": {
+      "full": {
+        "success": {
+          "k": 8,
+          "n": 8,
+          "rate": 1.0,
+          "wilson95": [
+            0.6755924351161198,
+            1
+          ]
+        },
+        "latency_median_s": 3.143614833000015,
+        "known_cost_usd": 0.080656,
+        "unknown_cost_count": 0,
+        "failure_statuses": {
+          "ok": 8
+        },
+        "mean_support_recall": 1.0
+      },
+      "recency": {
+        "success": {
+          "k": 0,
+          "n": 8,
+          "rate": 0.0,
+          "wilson95": [
+            0,
+            0.32440756488388023
+          ]
+        },
+        "latency_median_s": 3.551268729499995,
+        "known_cost_usd": 0.036896,
+        "unknown_cost_count": 0,
+        "failure_statuses": {
+          "ok": 8
+        },
+        "mean_support_recall": 0.16666666666666666
+      },
+      "lexical": {
+        "success": {
+          "k": 8,
+          "n": 8,
+          "rate": 1.0,
+          "wilson95": [
+            0.6755924351161198,
+            1
+          ]
+        },
+        "latency_median_s": 3.173077229499995,
+        "known_cost_usd": 0.033732000000000005,
+        "unknown_cost_count": 0,
+        "failure_statuses": {
+          "ok": 8
+        },
+        "mean_support_recall": 0.9583333333333334
+      },
+      "jev": {
+        "success": {
+          "k": 8,
+          "n": 8,
+          "rate": 1.0,
+          "wilson95": [
+            0.6755924351161198,
+            1
+          ]
+        },
+        "latency_median_s": 3.1786351040000085,
+        "known_cost_usd": 0.033712000000000006,
+        "unknown_cost_count": 0,
+        "failure_statuses": {
+          "ok": 8
+        },
+        "mean_support_recall": 1.0
+      }
+    }
+  },
+  "collection": {
+    "raw_records": 142,
+    "outcome_rows": 106,
+    "missing_outcomes": 0
+  },
+  "diagnostics": {
+    "analysis": "post-hoc diagnostic; strict preregistered scores unchanged",
+    "format_failures": 6,
+    "calls": {
+      "claude": 81,
+      "jev": 22,
+      "codex": 39
+    },
+    "status": {
+      "ok": 142
+    },
+    "direct_fallback_count": 5,
+    "diagnostic_models": {
+      "opus": {
+        "k": 8,
+        "n": 8,
+        "rate": 1.0,
+        "wilson95": [
+          0.6755924351161198,
+          1
+        ]
+      },
+      "sol": {
+        "k": 7,
+        "n": 8,
+        "rate": 0.875,
+        "wilson95": [
+          0.5291118177871464,
+          0.9775825085499433
+        ]
+      },
+      "astra": {
+        "k": 8,
+        "n": 8,
+        "rate": 1.0,
+        "wilson95": [
+          0.6755924351161198,
+          1
+        ]
+      },
+      "sonnet": {
+        "k": 8,
+        "n": 8,
+        "rate": 1.0,
+        "wilson95": [
+          0.6755924351161198,
+          1
+        ]
+      },
+      "haiku": {
+        "k": 7,
+        "n": 8,
+        "rate": 0.875,
+        "wilson95": [
+          0.5291118177871464,
+          0.9775825085499433
+        ]
+      },
+      "luna": {
+        "k": 8,
+        "n": 8,
+        "rate": 1.0,
+        "wilson95": [
+          0.6755924351161198,
+          1
+        ]
+      },
+      "terra": {
+        "k": 7,
+        "n": 8,
+        "rate": 0.875,
+        "wilson95": [
+          0.5291118177871464,
+          0.9775825085499433
+        ]
+      }
+    },
+    "context_body_reduction": 0.75,
+    "protocol_commit": "054f9af92675b09b5e23f68d1bce4b1b3c3ca1a2",
+    "composed_policies": {
+      "constraints-code": {
+        "composed_latency_median_s": 8.81303512449999,
+        "known_cost_usd": 0.054088,
+        "unknown_cost_calls": 0
+      },
+      "constraints-jev": {
+        "composed_latency_median_s": 8.716655582499996,
+        "known_cost_usd": 0.050954,
+        "unknown_cost_calls": 6
+      },
+      "constraints-llm": {
+        "composed_latency_median_s": 16.889189915499998,
+        "known_cost_usd": 0.053321999999999994,
+        "unknown_cost_calls": 6
+      },
+      "context-full": {
+        "composed_latency_median_s": 3.143614833000015,
+        "known_cost_usd": 0.080656,
+        "unknown_cost_calls": 0
+      },
+      "context-recency": {
+        "composed_latency_median_s": 3.551268729499995,
+        "known_cost_usd": 0.036896,
+        "unknown_cost_calls": 0
+      },
+      "context-lexical": {
+        "composed_latency_median_s": 3.173077229499995,
+        "known_cost_usd": 0.033732000000000005,
+        "unknown_cost_calls": 0
+      },
+      "context-jev": {
+        "composed_latency_median_s": 3.4345728950000023,
+        "known_cost_usd": 0.033712000000000006,
+        "unknown_cost_calls": 8
+      }
+    }
+  }
+}

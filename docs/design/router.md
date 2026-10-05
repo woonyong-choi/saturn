@@ -315,6 +315,8 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 
 ## 미해결 질문
 
+- 단계 선호와 코드 필터를 기준선으로 두고 Jev를 선택적으로 호출할 때 후속 품질과 총비용이 개선되는지 ([역할별 효율 예비 실험](../experiments/jev-role-efficiency/report.md), [다섯 확장 도구 비교](../experiments/jev-role-efficiency/stack-comparison.md), [#534](https://github.com/woonyong-choi/saturn/issues/534))
+
 - 독립 프로젝트 표본과 사람 확인 정답으로 `is_constraint` 0.8, `constraint_ask` 0.7을 다시 확인할 수 있는지 ([등록 기준값의 사람 확인](../experiments/constraint-human-check/report.md))
 - 질문을 상위 범주에서 하위 판단으로 내려가는 계층 트리로 나눌지, 단계마다 호출할지, 지금처럼 한 번에 고를지 ([#68](https://github.com/woonyong-choi/saturn/issues/68))
 - 판단 방식 `collect`를 기준 router가 결정하고 Saturn 모델은 기록만 하는 방식으로 할지, 반대로 할지 ([#40](https://github.com/woonyong-choi/saturn/issues/40))

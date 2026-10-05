@@ -1,0 +1,157 @@
+[
+  {
+    "repo": "diegosouzapw/OmniRoute",
+    "commit": "23a11484862b3bb589a55e85b00e4ac53ffeb234",
+    "default_branch": "release/v3.8.52",
+    "date": "2026-10-06",
+    "files": [
+      {
+        "path": "docs/compression/COMPRESSION_ENGINES.md",
+        "sha256": "2ec77520a2d622acea9be604f49442b4d9c4e92f9b8bc53f96c7c6e0c0f255e5",
+        "bytes": 24305
+      },
+      {
+        "path": "docs/routing/AUTO-COMBO.md",
+        "sha256": "04125c0f794dcbf82dc751be2ba01799feaf3eafcfbc1145113226059176e27b",
+        "bytes": 57428
+      },
+      {
+        "path": "docs/routing/REASONING_ROUTING.md",
+        "sha256": "6ecb87e3fba360aa0ab8d663d61d45f4f87c2a43a9dd198ce4a13d80c0f82357",
+        "bytes": 3438
+      },
+      {
+        "path": "docs/routing/STRICT_ZERO_COST.md",
+        "sha256": "0dfc46b285a6839d1603fe85a3179b085cf0cf510d67d2af1921f12cd31bbaff",
+        "bytes": 12441
+      },
+      {
+        "path": "open-sse/services/autoCombo/scoring.ts",
+        "sha256": "5065d6d649ca15104707f21eaa2166f633d9359b406b752aeb6918fff72cd33e",
+        "bytes": 14897
+      }
+    ]
+  },
+  {
+    "repo": "thedotmack/claude-mem",
+    "commit": "1bb64393a6122c2cdf45cf219cd9b4d1cf78645b",
+    "default_branch": "main",
+    "date": "2026-10-06",
+    "files": [
+      {
+        "path": "docs/public/configuration.mdx",
+        "sha256": "e4670a03108cfd7713876710fbc344f1eb7f8c0a4aab2e3318f0ec52ff09539f",
+        "bytes": 52103
+      },
+      {
+        "path": "docs/public/context-engineering.mdx",
+        "sha256": "8a2ee5e682d4ffff83a748c5786232ac23c73b58cfceb78c65e8cfa9d270f0e9",
+        "bytes": 7121
+      },
+      {
+        "path": "plugin/skills/mem-search/SKILL.md",
+        "sha256": "348f365f126c429bcee5e5edb2d154f4d9a6b74648807a90ea0c2a6868471622",
+        "bytes": 5609
+      },
+      {
+        "path": "src/server/generation/providers/ClaudeObservationProvider.ts",
+        "sha256": "fbebbda89486c34c4eaa783895db8a92eec4ff38774f77b7936d98279e87df9a",
+        "bytes": 9428
+      },
+      {
+        "path": "src/services/context/ContextBuilder.ts",
+        "sha256": "1b5735c07bcce9935a04d8bb7ef1e433c4ebf4946cc232cb6ef3d0b61a8f8973",
+        "bytes": 24316
+      }
+    ]
+  },
+  {
+    "repo": "anthropics/claude-plugins-official",
+    "commit": "d182ca456ca09d31d139f7d3818d1d333b103cce",
+    "default_branch": "main",
+    "date": "2026-10-06",
+    "files": [
+      {
+        "path": "plugins/claude-code-setup/README.md",
+        "sha256": "03338a6d1b35349058d187b4d615bc7d1115c0ffb0dd8fbb54cdfd9519d88335",
+        "bytes": 1015
+      },
+      {
+        "path": "plugins/claude-code-setup/skills/claude-automation-recommender/SKILL.md",
+        "sha256": "441c57e26f0931b64dd085deaad9213c4e3efea27d916dd7443cd33c7e338227",
+        "bytes": 10995
+      }
+    ]
+  },
+  {
+    "repo": "headroomlabs-ai/headroom",
+    "commit": "2651489745937e1479af3e92151f0f811ccfafda",
+    "default_branch": "main",
+    "date": "2026-10-06",
+    "files": [
+      {
+        "path": "README.md",
+        "sha256": "0477d11c0762185d33eb1e0b9f2b63eab794e9c3c3c096a4ac4dcc9d49386f3c",
+        "bytes": 33394
+      },
+      {
+        "path": "crates/headroom-core/src/transforms/kompress.rs",
+        "sha256": "d5b0065cef4a835cd28184320a0334b8246e713d40c7a166ddf066be20ca7bd5",
+        "bytes": 27965
+      },
+      {
+        "path": "docs/content/docs/cache-optimization.mdx",
+        "sha256": "ba4963e1b1cdfa0b4c5a19a290bf44084966c865c47160f1886753bf0e0ad1b1",
+        "bytes": 5072
+      },
+      {
+        "path": "docs/content/docs/ccr.mdx",
+        "sha256": "dd42a7ea5d994f6f3e944c38e918910ad6d7e9b4d708355246c064819bb31e38",
+        "bytes": 8570
+      },
+      {
+        "path": "docs/content/docs/how-compression-works.mdx",
+        "sha256": "dd962c1631a29b1f697a25945e40222d174ae76465d0b52446bf4c628dfff203",
+        "bytes": 8219
+      },
+      {
+        "path": "headroom/transforms/content_router.py",
+        "sha256": "98bfc2697bb5b56a9289bb1abfef05f138dca15c43700631b57b1cdd6e6aca78",
+        "bytes": 378958
+      },
+      {
+        "path": "headroom/transforms/kompress_compressor.py",
+        "sha256": "9287deb92a8afb000996d3e1a1a05d69b6e51bcd155f50df9a7634c1ec6c74b8",
+        "bytes": 103792
+      }
+    ]
+  },
+  {
+    "repo": "rebelytics/one-skill-to-rule-them-all",
+    "commit": "da860265ae968bdc6bb13b96c2c75fcb61176b72",
+    "default_branch": "main",
+    "date": "2026-10-06",
+    "files": [
+      {
+        "path": "README.md",
+        "sha256": "21508c5178b05ab6f0ac5610e724c8cc6e3b24fa0dda48d42c172658ddde2725",
+        "bytes": 22710
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "0294c3ee7d9d7691f6ae190c7eb0718be67126ff454ab070bde868e91dbcfb68",
+        "bytes": 49099
+      },
+      {
+        "path": "references/environments.md",
+        "sha256": "6aa923ade187375bcfadb6838dbecb37a4d59be056c5c0379367ff099e34ab59",
+        "bytes": 82521
+      },
+      {
+        "path": "references/weekly-review.md",
+        "sha256": "4b43c8c60d07b3c1b7359efe5997ff4f242a365ef5f81dbf81489bd0d258b759",
+        "bytes": 116525
+      }
+    ]
+  }
+]
