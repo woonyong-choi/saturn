@@ -140,6 +140,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("debug.provider_events", Kind::Flag),
     ("constraint.auto_apply", Kind::Flag),
     ("router.shadow.model_selection", Kind::Flag),
+    ("completion.checks", Kind::TextList),
     ("child.max_depth", Kind::Whole),
     ("child.max_concurrent", Kind::Positive),
     ("child.max_total", Kind::Positive),

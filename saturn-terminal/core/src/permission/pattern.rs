@@ -184,6 +184,13 @@ pub(super) fn split_shell(command: &str) -> ShellParts {
     }
 }
 
+/// 따옴표 밖에 구분자, 리디렉션, 명령 치환이 없는 단순 명령 하나인지. 파이프, `&&`, `||`, `;`가 앞 명령의 실패를 숨기는지
+/// 판단하지 않고 모두 단순하지 않은 것으로 본다.
+pub fn is_plain_shell(command: &str) -> bool {
+    let split = split_shell(command);
+    split.is_plain && !split.is_opaque && split.parts.len() == 1
+}
+
 fn opens_substitution(c: char, next: Option<char>) -> bool {
     (c == '$' && next == Some('(')) || c == '`'
 }

@@ -2,6 +2,7 @@
 //! 설계: docs/design/providers-and-sessions.md
 
 pub mod changes;
+pub mod completion;
 pub mod constraint_slot;
 pub mod context;
 pub mod fragments;

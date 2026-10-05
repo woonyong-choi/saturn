@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 17;
+pub(crate) const SCHEMA_VERSION: u32 = 18;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -18,7 +18,7 @@ const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
 pub(crate) const MIGRATIONS: &[&str] = &[
-    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17,
+    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18,
 ];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
@@ -408,6 +408,13 @@ CREATE TABLE model_shadows (
 CREATE INDEX model_shadows_input ON model_shadows(input_id);
 "#;
 
+/// 실행마다 완료 검사 근거. 이관 전 실행과 근거를 가리지 않은 실행은 `evidence_state`가 비어 있다.
+const V18: &str = r#"
+ALTER TABLE runs ADD COLUMN evidence_state TEXT;
+ALTER TABLE runs ADD COLUMN evidence_reason TEXT;
+ALTER TABLE runs ADD COLUMN evidence_events TEXT;
+"#;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MigrationNotice {
     pub from: u32,
@@ -772,6 +779,39 @@ mod tests {
         );
         assert!(store.held_tasks().await.unwrap().is_empty());
         assert!(store.interrupted_subagents().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v17_file_migrates_to_completion_evidence_columns_keeping_runs() {
+        let (dir, store) = temp_store_at(17).await;
+        sqlx::raw_sql(
+            "INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0);
+             INSERT INTO runs (id, chat_id, task_id, agent_id, session_id, provider, effect_scope, started_at)
+             VALUES (7, 1, 3, 4, 5, 'claude', 'unobserved', 100)",
+        )
+        .execute(&store.pool)
+        .await
+        .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (17, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        // 이관 전 실행은 근거를 가리지 않았으므로 비어 있다
+        assert_eq!(
+            store
+                .run_completion(saturn_protocol::ids::RunId(7))
+                .await
+                .unwrap(),
+            None
+        );
+        let kept: (i64, i64) = sqlx::query_as("SELECT chat_id, started_at FROM runs WHERE id = 7")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(kept, (1, 100));
     }
 
     #[tokio::test]

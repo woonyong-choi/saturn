@@ -173,7 +173,11 @@ async fn context_over_the_threshold_replaces_the_session_only_at_the_turn_bounda
     assert_eq!(record.delivered, LedgerSeq(3));
     let notice = client
         .until(|notification| match notification {
-            Notification::ChatNotice { notice, .. } => Some(notice.clone()),
+            Notification::ChatNotice { notice, .. }
+                if !matches!(notice, ChatNotice::CompletionEvidence { .. }) =>
+            {
+                Some(notice.clone())
+            }
             _ => None,
         })
         .await;
@@ -227,7 +231,11 @@ async fn oversized_fixed_zone_defers_compaction_and_tells_the_user() {
     assert_eq!(opens(&flow).len(), 1);
     let notice = client
         .until(|notification| match notification {
-            Notification::ChatNotice { notice, .. } => Some(notice.clone()),
+            Notification::ChatNotice { notice, .. }
+                if !matches!(notice, ChatNotice::CompletionEvidence { .. }) =>
+            {
+                Some(notice.clone())
+            }
             _ => None,
         })
         .await;

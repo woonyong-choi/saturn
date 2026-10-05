@@ -406,6 +406,30 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 
 시작 상태는 메모리에만 있다. `engine`이 죽으면 그 실행의 시작 상태를 잃으므로 크래시 복구의 확인 입력에는 목록이 없고 에이전트가 파일 상태를 직접 확인한다. 같은 폴더를 사용자나 다른 프로그램이 같은 시간에 고치면 구분하지 못하고 그 파일도 목록에 든다.
 
+### 완료 검사 근거
+
+작업이 끝났다는 상태(`Done`)와 마지막 수정 뒤 검사가 통과했는지는 따로 보인다. `Done`은 트리가 유휴가 됐다는 뜻일 뿐 결과가 맞다는 뜻이 아니기 때문이다. 실행을 `Completed`로 닫을 때 수정 파일 목록([수정 파일 목록](#수정-파일-목록))과 그 실행의 기록된 이벤트로 근거를 가려 `ChatNotice::CompletionEvidence`로 알리고 `runs`에 남긴다. 검사를 새로 실행하거나, 검사가 통과하지 않았다고 `Stop`을 거부하거나, 입력을 다시 보내지 않는다. 멈춘 실행과 보내기 전에 실패한 실행에는 붙이지 않는다.
+
+판정은 `core`의 `sessions::completion`이 가진 순수 함수이고 위에서부터 먼저 걸리는 것이 답이다.
+
+| 순서 | 조건 | 판정 |
+|---|---|---|
+| 1 | 실행 시작 때 폴더 상태가 없어 목록을 만들지 못했다 | 미확인, `Unmeasured` |
+| 2 | 바뀐 파일이 없고 훑기가 부분이 아니다 | 해당 없음 |
+| 3 | 훑기가 부분이다 | 미확인, `PartialSnapshot` |
+| 4 | 끝나지 않았거나 끊긴 하위 에이전트가 이벤트에 남아 있다 | 미확인, `TreeNotIdle` |
+| 5 | 인정되는 검사 명령이 설정에 없다 | 미확인, `NotChecked` |
+| 6 | 이벤트에 없는 수정이 있는데 파일을 바꿀 수 있는 셸 명령 이벤트가 하나도 없어 수정과 검사의 순서를 알 수 없다 | 미확인, `OrderUnknown` |
+| 7 | 설정한 검사마다 마지막 실행을 본다. 결과나 종료 코드가 없으면 `NotChecked`, 그 실행과 겹치는 수정 호출이 있으면 `EditedDuringCheck`, 그 뒤에 수정 호출이 있으면 `NotChecked`, 종료 코드가 0이 아니면 `CheckFailed` | 하나라도 걸리면 미확인(`CheckFailed`, `EditedDuringCheck`, `NotChecked` 순으로 앞선 까닭), 모두 통과하면 확인됨 |
+
+- 검사 명령은 설정 `completion.checks`(문자열 목록)에 적는다. 도구 호출이 단순한 셸 명령 하나이고, 낱말 단위로 정리한 앞부분이 설정한 명령과 같을 때만 그 검사로 본다. 인자는 판정하지 않는다(`cargo test --workspace`는 `cargo test`로 본다). 파이프, `&&`, `||`, `;`, `&`, 리디렉션, 명령 치환, 괄호가 있으면 앞 명령의 실패를 숨길 수 있으므로 인정하지 않는다. 설정한 명령 자체가 이런 문법이거나 첫 낱말이 `echo`, `printf`, `true`, `false`, `:`, `exit`, `test`, `[`이면 설정이 없는 것으로 본다.
+- 수정 호출은 파일 수정 도구(`FileEdit`)와, 인정한 검사와 읽기 전용 목록(`ls`, `cat`, `rg`, `grep`, `git status`, `git diff`, `git log`)이 아닌 모든 셸 명령이다. 호출의 시작과 끝은 기록 번호로 비교한다. 결과 이벤트가 없는 셸 명령은 끝나지 않은 것으로, 결과 이벤트가 없는 파일 수정 도구는 시작과 같은 때에 끝난 것으로 본다. 시각이 아니라 기록 번호만 순서의 근거로 쓰므로 시각을 몰라도 같은 답이 난다.
+- 종료 코드는 정규화된 `ToolResult.exit_code`가 코드로 끝난 셸 명령에만 있다. 신호로 끝났거나 코드를 알 수 없으면 근거가 아니다. Claude와 Codex는 같은 `ToolCall`, `ToolResult` 값을 내므로 같은 규칙으로 판정한다.
+- 확인됨이면 근거로 쓴 검사 결과 이벤트의 기록 번호(채팅 안의 `events.seq`)를 함께 알린다.
+- 근거는 `runs`의 `evidence_state`, `evidence_reason`, `evidence_events`에 남고([기록 저장과 보존](records.md#실행별-완료-검사-근거)), TUI를 다시 붙이면 기록 조회가 같은 줄을 작업 끝 알림 뒤에 되살린다.
+- 자식 에이전트 결과는 부모의 근거로 세지 않는다. 하위 에이전트가 남아 있으면 확인됨이 아니다.
+- 알려진 한계: 검사 명령의 인자(`--help`, `--no-run` 같은 것)는 판정하지 않는다. 같은 폴더를 사용자나 다른 프로그램이 같은 시간에 고친 파일은 수정 목록에 들지만 순서를 가릴 수 없다.
+
 ### subagent 트리 추적
 
 1. `agents`는 이벤트에서 subagent의 시작, 진행, 끝을 기록한다.
@@ -619,6 +643,8 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | Codex는 끊긴 자식 thread를 부모를 다시 열기 전에 보관하고 구독을 끊으며 부모는 건드리지 않는다. 끊긴 자식이 없으면 정리하지 않는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `interrupted_children_are_cleaned_before_the_parent_is_resumed`, `resume_without_interrupted_children_cleans_nothing` |
 | Claude 실행 환경에서 `CLAUDE_CODE_RESUME_INTERRUPTED_TURN`만 빠진다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `resume_interrupted_turn_variable_is_not_passed_to_claude` |
 | provider는 열린 id로 식별하고 어댑터 밖 공통 코드는 provider 이름으로 분기하지 않는다. | `providers/codex*`, `providers/claude*`, 시험 코드, 어댑터 등록 파일 `providers/builtin.rs`를 뺀 `saturn-terminal`과 `saturn-protocol`의 비테스트 코드에서 `rg -i "codex\|claude"`로 이름을 찾고, 남은 것이 설명 주석, 제품 소개 글, 개발용 예제(`core/examples/packet`)뿐인지 확인한다 |
+| 끝난 실행은 마지막 수정 뒤 설정한 검사가 종료 코드 0으로 끝났을 때만 확인됨이고, 수정 없음, 설정 없음, 누락, 실패, 검사 중 수정, 부분 스냅샷, 순서 불명, 하위 에이전트 잔류를 구분하며 echo와 실패를 숨기는 복합 셸은 근거가 아니다. | `saturn-terminal/core/src/sessions/completion/tests.rs`의 `evidence_is_decided_only_by_a_real_check_after_the_last_edit`, `commands_that_hide_a_failure_or_do_not_run_the_check_are_not_evidence`, `a_subagent_left_running_or_interrupted_is_never_verified` |
+| 완료 검사 근거는 `Done`과 따로 알리고 다시 붙어도 같은 줄이 보이며, 입력을 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/completion_evidence.rs`의 `a_check_after_the_last_edit_is_shown_with_its_event_and_survives_reattaching`, `an_edit_without_a_configured_check_is_unverified_and_a_clean_run_is_not_applicable`, `saturn-terminal/tui/src/view/transcript.rs`의 `lines_completion_evidence_names_the_state_events_and_reason_in_both_languages` |
 | 어댑터 파일만 더해 가짜 provider를 붙일 수 있다. | `saturn-terminal/engine/src/lifecycle/fake_provider.rs`의 `a_registered_adapter_runs_an_input_from_open_to_turn_end` |
 | 어댑터 설명자의 표시명, 실행 파일, 기본 순서, 지시 문서 이름, 맥락 기본값, 기능을 화면과 첫 입력 기본 provider, 패킷, 예산, 끼워 넣기가 쓴다. | `saturn-terminal/engine/src/providers/registry.rs`의 `descriptors_come_back_in_the_default_order`, `installed_means_an_executable_file_of_the_descriptor_on_the_given_path`, `saturn-terminal/engine/src/lifecycle/fake_provider.rs`의 `descriptor_values_reach_the_common_code`, `an_adapter_without_the_steer_feature_never_gets_a_steer`, `an_adapter_with_the_steer_feature_gets_the_steer`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_skips_provider_docs`, `saturn-terminal/tui/src/i18n.rs`의 `provider_names_come_from_what_engine_announced`, `saturn-terminal/tui/src/app/tests.rs`의 `model_command_values_are_the_provider_ids_engine_announced` |
 | 기록 저장소의 옛 provider 값 `Codex`, `Claude`와 모델 고정 글 `codex/<model>`, `claude/<model>`이 옛 값 그대로 읽힌다. | `saturn-terminal/engine/src/store/records/tests.rs`의 `old_provider_values_read_as_open_ids`, `saturn-protocol/src/ids.rs`의 `old_stored_values_read_as_the_same_id`, `saturn-terminal/engine/src/providers/mod.rs`의 `pinned_text_keeps_the_old_provider_prefix` |

@@ -92,3 +92,43 @@ pub enum OnExit {
     /// TUI를 닫으려 할 때 계속할지 멈출지 묻는다.
     Ask,
 }
+
+/// 작업이 끝났을 때 마지막 수정 뒤 검사가 통과했는지. `TaskState::Done`과 따로 두며 끝난 작업의 상태를 바꾸지 않는다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum EvidenceState {
+    /// 설정한 검사 명령이 마지막 수정 뒤 실제로 종료 코드 0으로 끝났다.
+    Verified,
+    Unverified,
+    /// 실행이 파일을 하나도 바꾸지 않았다.
+    NotApplicable,
+}
+
+/// `Unverified`인 까닭.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum UnverifiedReason {
+    /// 검사 명령을 설정하지 않았거나, 마지막 수정 뒤에 돌지 않았거나, 종료 코드를 알 수 없다.
+    NotChecked,
+    /// 마지막 수정 뒤에 돈 검사가 0이 아닌 코드로 끝났다.
+    CheckFailed,
+    /// 검사가 도는 사이에 수정이 있었다.
+    EditedDuringCheck,
+    /// 폴더가 커서 일부만 훑어 수정 목록이 모자랄 수 있다.
+    PartialSnapshot,
+    /// 이벤트에 없는 수정이 있고 셸 명령도 없어 수정과 검사의 순서를 알 수 없다.
+    OrderUnknown,
+    /// 하위 에이전트가 끝나지 않았거나 끊겼다.
+    TreeNotIdle,
+    /// 실행 시작 때 폴더 상태가 없어 수정 목록을 만들지 못했다.
+    Unmeasured,
+}
+
+/// 끝난 실행의 완료 검사 근거. `events`는 근거가 된 검사 결과 이벤트의 기록 번호(채팅 안의 `events.seq`)다.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct CompletionEvidence {
+    pub state: EvidenceState,
+    /// `Unverified`일 때만 있다.
+    pub reason: Option<UnverifiedReason>,
+    /// `Verified`일 때만 있다.
+    #[serde(default)]
+    pub events: Vec<u64>,
+}

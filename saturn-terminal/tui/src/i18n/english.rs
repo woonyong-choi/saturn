@@ -402,6 +402,43 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Permission settings changed · Applies from your next request",
     ),
     (
+        "완료 검사 통과 · 근거 이벤트 {events}",
+        "Completion check passed · Evidence events {events}",
+    ),
+    (
+        "완료 검사 해당 없음 · 수정한 파일 없음",
+        "Completion check not applicable · No files changed",
+    ),
+    (
+        "완료 검사 미확인 · {reason}",
+        "Completion check unverified · {reason}",
+    ),
+    (
+        "마지막 수정 뒤 설정한 검사가 돌지 않았거나 종료 코드를 알 수 없음",
+        "No configured check ran after the last change, or its exit code is unknown",
+    ),
+    (
+        "마지막 수정 뒤 검사가 실패함",
+        "The check failed after the last change",
+    ),
+    (
+        "검사가 도는 중에 수정이 있었음",
+        "A change happened while the check was running",
+    ),
+    (
+        "폴더가 커서 일부만 확인함",
+        "The folder was too large to scan completely",
+    ),
+    (
+        "수정과 검사의 순서를 알 수 없음",
+        "The order of the change and the check is unknown",
+    ),
+    ("하위 에이전트가 끝나지 않음", "A subagent has not finished"),
+    (
+        "수정 목록을 만들지 못함",
+        "The list of changed files could not be made",
+    ),
+    (
         "읽기 전용으로 접수한 작업의 쓰기를 거부함 · 쓰려면 새 입력으로 보내세요",
         "Denied a write from a task accepted as read-only · Send a new input to write",
     ),
