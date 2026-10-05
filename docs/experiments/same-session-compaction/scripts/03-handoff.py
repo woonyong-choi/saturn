@@ -30,9 +30,7 @@ def collect_one(row: dict[str, Any], collector: Any) -> dict[str, Any]:
     folder.mkdir(parents=True, exist_ok=True)
     packet = json.loads((source / "packet.json").read_text())
     sid = str(uuid.uuid4())
-    ready, ready_info = collector.cli(
-        source, packet["packet"], session_id=sid, stream=True
-    )
+    ready, ready_info = collector.cli(source, packet["packet"], session_id=sid)
     (folder / "packet_ready.jsonl").write_text(ready_info["raw"])
     if ready.get("is_error"):
         raise RuntimeError("packet handoff returned an error")
@@ -40,7 +38,7 @@ def collect_one(row: dict[str, Any], collector: Any) -> dict[str, Any]:
         f"앞에서 읽은 주문 {row['index']:03}-{row['target']:02}의 검증 코드 12자리를 "
         "그대로 한 개만 답하세요. 파일을 다시 읽지 마세요. 모르면 모른다고 답하세요."
     )
-    result, info = collector.cli(source, question, resume=sid, stream=True)
+    result, info = collector.cli(source, question, resume=sid)
     (folder / "packet_answer.jsonl").write_text(info["raw"])
     if result.get("is_error"):
         raise RuntimeError("packet follow-up returned an error")

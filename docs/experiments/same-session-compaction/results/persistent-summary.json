@@ -1,0 +1,121 @@
+{
+  "answer_tool_calls": 0,
+  "claude_incremental_cost": {
+    "fast": {
+      "max": 0.04357900000000001,
+      "mean": 0.041332,
+      "min": 0.03942699999999999,
+      "sum": 1.983932
+    },
+    "native": {
+      "max": 0.12502400000000002,
+      "mean": 0.09804,
+      "min": 0.08874440000000003,
+      "sum": 4.705941
+    }
+  },
+  "conditions": {
+    "fast": {
+      "hits": 12,
+      "n": 48,
+      "rate": 0.25,
+      "wilson95": [
+        0.1492063367379791,
+        0.3878437280950796
+      ]
+    },
+    "native": {
+      "hits": 48,
+      "n": 48,
+      "rate": 1.0,
+      "wilson95": [
+        0.9258998703338824,
+        0.9999999999999999
+      ]
+    }
+  },
+  "cost_baseline": "last source cumulative full_answer; verified by zero-cost fast compaction",
+  "errors": 0,
+  "fast_dropped_calls": 288,
+  "hook_applied": 48,
+  "hook_fallbacks": 0,
+  "input_tokens": {
+    "fast": {
+      "max": 12140,
+      "mean": 11933.104167,
+      "min": 11827,
+      "sum": 572789
+    },
+    "native": {
+      "max": 16970,
+      "mean": 16738.9375,
+      "min": 16256,
+      "sum": 803469
+    }
+  },
+  "manifest_sha256": "78f4b79801ee06f77a6609d7ac4dc3bc01650ed62fbb74e177e6a4e5e5d8e5bf",
+  "n": 48,
+  "paired": {
+    "a_only": 0,
+    "b_only": 36,
+    "ci95": [
+      -0.875,
+      -0.625
+    ],
+    "difference": -0.75,
+    "n": 48
+  },
+  "paired_hook_only": {
+    "a_only": 0,
+    "b_only": 36,
+    "ci95": [
+      -0.875,
+      -0.625
+    ],
+    "difference": -0.75,
+    "n": 48
+  },
+  "position": {
+    "1": {
+      "fast": 0,
+      "n": 6,
+      "native": 6
+    },
+    "2": {
+      "fast": 0,
+      "n": 6,
+      "native": 6
+    },
+    "3": {
+      "fast": 0,
+      "n": 6,
+      "native": 6
+    },
+    "4": {
+      "fast": 0,
+      "n": 6,
+      "native": 6
+    },
+    "5": {
+      "fast": 0,
+      "n": 6,
+      "native": 6
+    },
+    "6": {
+      "fast": 0,
+      "n": 6,
+      "native": 6
+    },
+    "7": {
+      "fast": 6,
+      "n": 6,
+      "native": 6
+    },
+    "8": {
+      "fast": 6,
+      "n": 6,
+      "native": 6
+    }
+  },
+  "raw_file_count": 385
+}

@@ -140,7 +140,7 @@ def collect_arm(row: dict[str, Any], arm: str, root: Path) -> dict[str, Any]:
         "pid": process.pid,
         "text": result.get("result", ""),
         "exact": row["answer"] in result.get("result", ""),
-        "cost_usd": result["total_cost_usd"] - row["costs"]["base_4"],
+        "cost_usd": result["total_cost_usd"] - row["costs"]["full_answer"],
         "duration_ms": compact["duration_ms"] + result["duration_ms"],
     }
 

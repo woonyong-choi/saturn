@@ -137,6 +137,8 @@ T_hard = T + H
 - 정리 모드와 발동 기준(`context.mode`, `provider.<id>.context.*`)은 engine 시작 설정이 아니라 판정 대상 에이전트가 가장 나중에 시작한 입력의 설정 번호로 읽는다. 시작한 입력이 없으면 그 채팅에서 마지막에 적용한 번호다. 맥락 정리로 새 session을 열 때도 같은 번호를 넘겨 정리 전후 설정이 유지되고, 설정이 다른 채팅끼리는 서로의 판정에 영향을 주지 않는다([설정](settings.md#병합과-설정-번호)).
 - Claude 압축 요약은 로컬 기록으로 읽고, Codex 원격 압축 요약은 암호화되어 읽지 않는다. Claude 압축 요약을 읽는 경로와, 그 요약과 Saturn 패킷의 전환 품질은 실측으로 확인한다([#122](https://github.com/woonyong-choi/saturn/issues/122)).
 
+[같은 세션 축약 실험](../experiments/same-session-compaction/report.md)의 프로세스 유지 조건에서 기본 축약은 48/48, fast-jev 기본 삭제는 12/48의 코드를 회수했다. 실제 인수 순서의 새 session 패킷도 48/48이었다. 이 결과는 첫 줄에 코드가 있는 합성 Read 기록과 도구 재열람 없는 질문에 한정한다. 같은 session의 기본 축약 경로와 새 session의 원본 패킷 경로를 유지하고, fast-jev 기본 삭제를 제품 경로에 추가하지 않는다. Saturn 선별을 같은 session 내부에 적용한 우열이나 engine 종단간 품질의 근거로는 쓰지 않는다.
+
 ### 패킷 구성
 
 패킷은 새 session에 넘기는 맥락 묶음이다. `sessions`는 패킷을 고정 구역과 경쟁 구역으로 나눠 채운다.

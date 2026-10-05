@@ -1,0 +1,70 @@
+{
+  "answer_tool_calls": 0,
+  "claude_incremental_cost": {
+    "max": 0.12249,
+    "mean": 0.122205,
+    "min": 0.121838,
+    "sum": 5.865816
+  },
+  "elapsed_ms": {
+    "max": 4508,
+    "mean": 2942.354167,
+    "min": 2226,
+    "sum": 141233
+  },
+  "errors": 0,
+  "hits": 48,
+  "manifest_sha256": "d042aee9d62d9b30b56d4372d2e1bba7c3eeb6193ed05df2318792dd348d277b",
+  "n": 48,
+  "paired_vs_full": {
+    "a_only": 0,
+    "b_only": 0,
+    "ci95": [
+      0.0,
+      0.0
+    ],
+    "difference": 0.0,
+    "n": 48
+  },
+  "position": {
+    "1": {
+      "hits": 6,
+      "n": 6
+    },
+    "2": {
+      "hits": 6,
+      "n": 6
+    },
+    "3": {
+      "hits": 6,
+      "n": 6
+    },
+    "4": {
+      "hits": 6,
+      "n": 6
+    },
+    "5": {
+      "hits": 6,
+      "n": 6
+    },
+    "6": {
+      "hits": 6,
+      "n": 6
+    },
+    "7": {
+      "hits": 6,
+      "n": 6
+    },
+    "8": {
+      "hits": 6,
+      "n": 6
+    }
+  },
+  "rate": 1.0,
+  "raw_file_count": 145,
+  "ready": 48,
+  "wilson95": [
+    0.9258998703338824,
+    0.9999999999999999
+  ]
+}
