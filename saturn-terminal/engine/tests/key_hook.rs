@@ -146,3 +146,178 @@ fn hook_command_leaves_saturn_home_untouched() {
     let entries = std::fs::read_dir(fixture.home().join(".saturn")).unwrap();
     assert_eq!(entries.count(), 0);
 }
+
+/// 작업 폴더와 더한 폴더를 훅 명령 인자로 넘겨 실행한다. 폴더는 고정 시험 폴더 밑에 만든다.
+struct ScopedFixture {
+    fixture: Fixture,
+    work: std::path::PathBuf,
+    added: std::path::PathBuf,
+    outside: std::path::PathBuf,
+}
+
+impl ScopedFixture {
+    fn new() -> Self {
+        let fixture = Fixture::new();
+        let root = fixture.home().canonicalize().expect("fixture should work");
+        let (work, added, outside) = (root.join("work"), root.join("added"), root.join("outside"));
+        for dir in [&work, &added, &outside] {
+            std::fs::create_dir_all(dir).expect("fixture should work");
+        }
+        Self {
+            fixture,
+            work,
+            added,
+            outside,
+        }
+    }
+
+    fn decision(&self, tool: &str, tool_input: Value) -> Option<String> {
+        let settings = saturn_engine::with_read_scope(
+            saturn_engine::pre_tool_use_hook_settings(
+                &self.fixture.home().join(".saturn"),
+                self.fixture.home(),
+                Path::new(env!("CARGO_BIN_EXE_saturn-engine")),
+            ),
+            &self.work,
+            std::slice::from_ref(&self.added),
+        );
+        let command = settings["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+            .as_str()
+            .expect("fixture should work")
+            .to_owned();
+        let input = json!({
+            "hook_event_name": "PreToolUse",
+            "cwd": self.work,
+            "tool_name": tool,
+            "tool_input": tool_input,
+        });
+        let mut child = Command::new("sh")
+            .arg("-c")
+            .arg(command)
+            .env_clear()
+            .env("HOME", self.fixture.home())
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("fixture should work");
+        child
+            .stdin
+            .take()
+            .expect("fixture should work")
+            .write_all(input.to_string().as_bytes())
+            .expect("fixture should work");
+        let output = child.wait_with_output().expect("fixture should work");
+        assert_eq!(output.status.code(), Some(0));
+        if output.stdout.is_empty() {
+            return None;
+        }
+        let value: Value = serde_json::from_slice(&output.stdout).expect("hook output is JSON");
+        Some(
+            value["hookSpecificOutput"]["permissionDecision"]
+                .as_str()
+                .expect("decision should exist")
+                .to_owned(),
+        )
+    }
+}
+
+// #348
+#[test]
+fn hook_command_asks_for_a_read_outside_the_working_folders() {
+    let fixture = ScopedFixture::new();
+    let outside_file = fixture.outside.join("secret.txt");
+    let cases = [
+        ("Read", json!({ "file_path": outside_file })),
+        ("Read", json!({ "file_path": "../outside/secret.txt" })),
+        ("NotebookRead", json!({ "notebook_path": outside_file })),
+        ("LS", json!({ "path": fixture.outside })),
+        ("Grep", json!({ "pattern": "x", "path": fixture.outside })),
+        (
+            "Glob",
+            json!({ "pattern": "*.txt", "path": fixture.outside }),
+        ),
+        (
+            "Glob",
+            json!({ "pattern": format!("{}/*.txt", fixture.outside.display()) }),
+        ),
+    ];
+
+    for (tool, tool_input) in cases {
+        assert_eq!(
+            fixture.decision(tool, tool_input.clone()).as_deref(),
+            Some("ask"),
+            "{tool} {tool_input}"
+        );
+    }
+}
+
+// #348
+#[test]
+fn hook_command_leaves_reads_inside_the_working_folders_to_the_provider() {
+    let fixture = ScopedFixture::new();
+    let cases = [
+        ("Read", json!({ "file_path": fixture.work.join("a.txt") })),
+        ("Read", json!({ "file_path": "src/a.txt" })),
+        (
+            "Read",
+            json!({ "file_path": fixture.added.join("sub/a.txt") }),
+        ),
+        ("Grep", json!({ "pattern": "x" })),
+        ("Glob", json!({ "pattern": "**/*.rs" })),
+        ("LS", json!({ "path": fixture.added })),
+        (
+            "Glob",
+            json!({ "pattern": format!("{}/**/*.rs", fixture.added.display()) }),
+        ),
+        ("Bash", json!({ "command": "cat ../outside/secret.txt" })),
+        (
+            "Write",
+            json!({ "file_path": fixture.outside.join("a.txt") }),
+        ),
+    ];
+
+    for (tool, tool_input) in cases {
+        assert_eq!(
+            fixture.decision(tool, tool_input.clone()),
+            None,
+            "{tool} {tool_input}"
+        );
+    }
+}
+
+// #348
+#[test]
+fn hook_command_resolves_links_and_dots_before_judging_a_read() {
+    let fixture = ScopedFixture::new();
+    std::os::unix::fs::symlink(&fixture.outside, fixture.work.join("link"))
+        .expect("fixture should work");
+
+    let through_link = fixture.decision(
+        "Read",
+        json!({ "file_path": fixture.work.join("link/secret.txt") }),
+    );
+    let dotted = fixture.decision(
+        "Read",
+        json!({ "file_path": fixture.work.join("a/../../outside/secret.txt") }),
+    );
+    let inside_dotted = fixture.decision(
+        "Read",
+        json!({ "file_path": fixture.work.join("a/../b.txt") }),
+    );
+
+    assert_eq!(through_link.as_deref(), Some("ask"));
+    assert_eq!(dotted.as_deref(), Some("ask"));
+    assert_eq!(inside_dotted, None);
+}
+
+// #348
+#[test]
+fn key_protection_deny_wins_over_the_outside_read_ask() {
+    let fixture = ScopedFixture::new();
+    let key_file = fixture.fixture.home().join(".saturn/router.key");
+
+    let decision = fixture.decision("Read", json!({ "file_path": key_file }));
+
+    assert_eq!(decision.as_deref(), Some("deny"));
+}

@@ -1390,3 +1390,30 @@ async fn empty_or_missing_sandbox_exclusions_do_not_stop_the_session() {
 
     assert!(handle.is_ok());
 }
+
+// #348
+#[test]
+fn launch_args_pass_the_read_scope_to_the_hook_command() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut spec_launch = launch(dir.path(), Vec::new());
+    spec_launch.hook_settings = Some(json!({
+        "hooks": { "PreToolUse": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "'/bin/saturn' hook pre-tool-use --home '/h'" }] }] }
+    }));
+    let client = ClaudeClient::new(spec_launch, Supervisor::new());
+    let mut with_dirs = spec(dir.path(), None);
+    with_dirs.add_dirs = vec![PathBuf::from("/shared/it's")];
+
+    let args = client.launch_args(&with_dirs, &SessionArg::New("id-1".to_owned()));
+
+    let settings: Value = serde_json::from_str(args.last().unwrap()).unwrap();
+    let command = settings["hooks"]["PreToolUse"][0]["hooks"][0]["command"]
+        .as_str()
+        .unwrap();
+    assert_eq!(
+        command,
+        format!(
+            "'/bin/saturn' hook pre-tool-use --home '/h' --workdir '{}' --add-dir '/shared/it'\\''s'",
+            dir.path().display()
+        )
+    );
+}

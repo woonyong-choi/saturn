@@ -28,7 +28,7 @@ pub(crate) use adapter::{
     Adapter, AdapterConnection, AppliedReader, BoxFuture, ContextDefaults, Descriptor, Feature,
     INTERFACE_VERSION, PermissionInput,
 };
-pub use builtin::{HookInputError, run_pre_tool_use};
+pub use builtin::{HookInputError, ReadScope, run_pre_tool_use};
 pub(crate) use extension::{
     Definition, ExtensionInput, ExtensionLayout, collect_definitions, place_files,
 };

@@ -642,3 +642,89 @@ fn deny_rule_beats_a_provider_classified_read_in_read_only_mode() {
         Verdict::Deny
     );
 }
+
+// #348
+#[test]
+fn read_rules_deny_and_ask_reach_a_provider_classified_read_command() {
+    let deny = policy(
+        Mode::Edit,
+        vec![rule(PermissionTool::Read, "/secret/*", Verdict::Deny)],
+    );
+    let ask = policy(
+        Mode::Edit,
+        vec![rule(PermissionTool::Read, "/secret/*", Verdict::Ask)],
+    );
+    let cmd = provider_read("cat /secret/a.txt", &["/secret/a.txt"]);
+
+    assert_eq!(deny.decide(&cmd), Verdict::Deny);
+    assert_eq!(ask.decide(&cmd), Verdict::Ask);
+    let both = provider_read("cat /work/a /secret/a.txt", &["/work/a", "/secret/a.txt"]);
+    assert_eq!(
+        deny.decide(&both),
+        Verdict::Deny,
+        "one denied path denies the command"
+    );
+}
+
+// #348
+#[test]
+fn read_rules_leave_other_paths_and_unclassified_commands_to_the_shell_rules() {
+    let policy = policy(
+        Mode::Edit,
+        vec![rule(PermissionTool::Read, "/secret/*", Verdict::Deny)],
+    );
+
+    assert_eq!(
+        policy.decide(&provider_read("cat /work/a", &["/work/a"])),
+        Verdict::Allow
+    );
+    assert_eq!(
+        policy.decide(&provider_read("ls", &[])),
+        Verdict::Allow,
+        "a listing without a path is not judged by a read rule"
+    );
+    assert_eq!(
+        policy.decide(&shell("cat /secret/a.txt")),
+        Verdict::Allow,
+        "a command the provider did not classify as a read keeps the shell verdict"
+    );
+}
+
+// #348
+#[test]
+fn a_read_allow_rule_does_not_loosen_a_shell_verdict_but_overrides_an_earlier_read_ask() {
+    let loose = policy(
+        Mode::ReadOnly,
+        vec![rule(PermissionTool::Read, "/etc/*", Verdict::Allow)],
+    );
+    let cmd = provider_read("cat /etc/hosts", &["/etc/hosts"]);
+    assert_eq!(
+        loose.decide(&cmd),
+        Verdict::Ask,
+        "mode decides the shell side"
+    );
+
+    let narrowed = policy(
+        Mode::Edit,
+        vec![
+            rule(PermissionTool::Read, "/etc/*", Verdict::Ask),
+            rule(PermissionTool::Read, "/etc/hosts", Verdict::Allow),
+        ],
+    );
+    assert_eq!(narrowed.decide(&cmd), Verdict::Allow);
+}
+
+// #348
+#[test]
+fn always_allow_for_a_read_command_that_a_read_rule_asks_about_sticks() {
+    let mut policy = policy(
+        Mode::Edit,
+        vec![rule(PermissionTool::Read, "/secret/*", Verdict::Ask)],
+    );
+    let cmd = provider_read("cat /secret/a.txt", &["/secret/a.txt"]);
+    assert_eq!(policy.decide(&cmd), Verdict::Ask);
+
+    policy.always = policy.always_rules(&cmd);
+
+    assert_eq!(policy.decide(&cmd), Verdict::Allow);
+}

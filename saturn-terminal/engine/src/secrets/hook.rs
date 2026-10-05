@@ -350,6 +350,36 @@ impl HookPolicy {
     }
 }
 
+/// 훅 명령에 읽기 범위(작업 폴더와 더한 폴더)를 인자로 붙인다. 훅이 범위 밖 읽기를 `ask`로 올릴 때 쓴다.
+/// 훅 명령이 없는 설정은 그대로 둔다.
+pub fn with_read_scope(
+    mut settings: serde_json::Value,
+    workdir: &Path,
+    add_dirs: &[PathBuf],
+) -> serde_json::Value {
+    let mut suffix = format!(" --workdir {}", shell_quote(&workdir.to_string_lossy()));
+    for dir in add_dirs {
+        suffix.push_str(&format!(
+            " --add-dir {}",
+            shell_quote(&dir.to_string_lossy())
+        ));
+    }
+    let Some(groups) = settings["hooks"]["PreToolUse"].as_array_mut() else {
+        return settings;
+    };
+    for group in groups {
+        let Some(hooks) = group["hooks"].as_array_mut() else {
+            continue;
+        };
+        for hook in hooks {
+            if let Some(command) = hook["command"].as_str() {
+                hook["command"] = json!(format!("{command}{suffix}"));
+            }
+        }
+    }
+    settings
+}
+
 /// 실행 파일이 `hook pre-tool-use`로 받는 훅 명령을 넣은 Claude 실행별 설정.
 pub fn pre_tool_use_hook_settings(
     saturn_home: &Path,

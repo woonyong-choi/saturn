@@ -201,6 +201,46 @@ impl Policy {
     /// 셸 명령은 나눈 조각마다, 편집은 경로마다 판정해 가장 엄한 값을 쓴다.
     /// 명령 치환이 든 셸 명령은 거부가 아니면 `Ask`이고, 명령 전체가 항상 허용과 일치할 때만 `Allow`다.
     pub fn decide(&self, call: &PermissionCall) -> Verdict {
+        let provider_read = self.provider_read_rules(call).unwrap_or(Verdict::Allow);
+        self.decide_call(call).max(provider_read)
+    }
+
+    // cost: time O(n·r·p·t), heap O(n), stack O(1)
+    // vars: n = 경로 수, r = 개별 규칙 수, p = 패턴 글자 수, t = 경로 글자 수
+    // basis: estimate
+    /// provider가 읽기만 하는 명령으로 분류한 셸 명령의 경로를 읽기 규칙으로 본 값이다. 해당하지 않으면 `None`.
+    /// 읽기 도구가 없는 provider(Codex)의 읽기가 `permission.read`의 `deny`와 `ask`를 받게 한다.
+    /// 규칙이 없는 경로는 셸 판정에 맡기고, `allow`는 셸 판정을 풀지 않는다. 사용자가 고른 항상 허용은 `ask`를 푼다.
+    fn provider_read_rules(&self, call: &PermissionCall) -> Option<Verdict> {
+        if call.tool != PermissionTool::Shell || !call.reads_only {
+            return None;
+        }
+        call.paths
+            .iter()
+            .filter_map(|path| {
+                let unit = self.path_unit(Path::new(path));
+                match self.read_rule_verdict(&unit)? {
+                    Verdict::Ask if self.always_matches(PermissionTool::Read, &unit) => None,
+                    verdict => Some(verdict),
+                }
+            })
+            .max()
+    }
+
+    /// 읽기 규칙만으로 본 값이다. 일치하는 규칙이 없으면 `None`.
+    fn read_rule_verdict(&self, unit: &Unit) -> Option<Verdict> {
+        let matching: Vec<&Rule> = self
+            .rules
+            .iter()
+            .filter(|rule| rule.matches(PermissionTool::Read, unit))
+            .collect();
+        if matching.iter().any(|rule| rule.verdict == Verdict::Deny) {
+            return Some(Verdict::Deny);
+        }
+        matching.last().map(|rule| rule.verdict)
+    }
+
+    fn decide_call(&self, call: &PermissionCall) -> Verdict {
         let (units, is_opaque) = self.units(call);
         let strictest = self.strictest(call.tool, &units, !is_opaque);
         if !is_opaque || strictest == Verdict::Deny {
@@ -217,6 +257,21 @@ impl Policy {
     // basis: estimate
     /// 사용자가 `항상 허용`을 골랐을 때 저장할 허용 규칙. 규칙이 `Ask`로 판정한 조각이나 경로만 담는다.
     pub fn always_rules(&self, call: &PermissionCall) -> Vec<Rule> {
+        let mut rules = self.shell_always_rules(call);
+        if call.tool == PermissionTool::Shell && call.reads_only {
+            rules.extend(call.paths.iter().filter_map(|path| {
+                let unit = self.path_unit(Path::new(path));
+                (self.read_rule_verdict(&unit) == Some(Verdict::Ask)).then_some(Rule {
+                    tool: PermissionTool::Read,
+                    pattern: unit.store,
+                    verdict: Verdict::Allow,
+                })
+            }));
+        }
+        rules
+    }
+
+    fn shell_always_rules(&self, call: &PermissionCall) -> Vec<Rule> {
         let (units, is_opaque) = self.units(call);
         let allow = |pattern: String| Rule {
             tool: call.tool,

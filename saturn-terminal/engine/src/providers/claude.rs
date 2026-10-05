@@ -30,11 +30,12 @@ mod hook;
 mod input;
 mod stream;
 
+use crate::secrets::with_read_scope;
 use config::{
     default_args, read_user_config, sandbox_exclusions, with_ask_tools, with_key_sandbox,
 };
 use convert::permission_response;
-pub use hook::{HookInputError, run_pre_tool_use};
+pub use hook::{HookInputError, ReadScope, run_pre_tool_use};
 use stream::{log_stderr, read_loop};
 
 pub(crate) use adapter::adapter;
@@ -388,7 +389,11 @@ impl ClaudeClient {
             has_auto_compact: self.launch.user_config.has_auto_compact || found.has_auto_compact,
         };
         args.extend(default_args(user, &self.launch));
-        let hooks = self.launch.hook_settings.clone().unwrap_or(Value::Null);
+        let hooks = with_read_scope(
+            self.launch.hook_settings.clone().unwrap_or(Value::Null),
+            &spec.workdir,
+            &spec.add_dirs,
+        );
         let settings = with_key_sandbox(with_ask_tools(hooks), &self.launch.key_deny_read);
         args.extend(["--settings".to_owned(), settings.to_string()]);
         args

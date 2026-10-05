@@ -101,6 +101,7 @@ router 키 보호는 외부 router API 키를 provider와 subagent가 어떤 경
 engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설정으로 넘긴다.
 
 - 훅은 키 저장소 조회 명령, 대체 파일 읽기, Saturn 비밀 파일 접근을 막는다. subagent가 저장된 키를 찾아가 읽는 일을 막기 위해서다.
+- Claude 훅은 키 보호와 별개로 작업 폴더와 더한 폴더 밖을 읽는 읽기 도구 호출을 `ask`로 올린다. 막지 않고 Saturn 읽기 규칙이 판정하게 하는 것이고, 키 저장소 접근의 `deny`가 먼저다([권한](permissions.md#claude-구성)).
 - 사용자의 기존 훅은 감싸거나 지우지 않는다. provider 설정 파일을 고치지 않기 위해서다.
 - 훅은 권한 규칙과 따로 동작한다. 규칙이 `allow`여도 키 저장소 접근은 훅이 막는다(초안). 실행별 설정은 권한의 `--settings` 값에 합쳐 넘긴다([권한](permissions.md)).
 - 훅 명령은 engine 실행 파일의 `hook pre-tool-use --home <Saturn 홈>`이고 모든 도구에 건다(초안). 이 명령은 engine 잠금과 소켓을 열지 않고 판정만 하고 끝난다. 훅은 provider 자식 프로세스에서 짧게 실행되기 때문이다. 막는 명령은 `security`의 `find-generic-password`, `find-internet-password`, `dump-keychain`, `export`이고, 막는 경로는 `~/.saturn/router.key`, `~/Library/Keychains/`, `/Library/Keychains/` 아래다(초안). 셸 연결 기호로 나뉜 부분마다 보고, 경로는 심볼릭 링크를 푼 뒤 비교한다.
