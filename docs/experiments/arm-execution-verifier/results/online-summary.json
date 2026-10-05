@@ -49,6 +49,55 @@
       },
       "usage_unreported_calls": 3
     },
+    "claude/code+hint": {
+      "latency_median_s": 27.157289,
+      "latency_sum_s": 85.942549,
+      "lookup_commands": [
+        3,
+        3,
+        4
+      ],
+      "lookup_rows": [
+        3,
+        2,
+        3
+      ],
+      "restart_packets": 0,
+      "selector_values": [
+        "rank"
+      ],
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 3
+      },
+      "success": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "wilson95": [
+          5.551115123125783e-17,
+          0.5614970317550454
+        ]
+      },
+      "support_blocks_read": [
+        0,
+        0,
+        0
+      ],
+      "support_forms": {
+        "Digest": 12
+      },
+      "trials": 3,
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 62409,
+        "cache_read_input_tokens": 524191,
+        "input_tokens": 1487,
+        "output_tokens": 3571
+      },
+      "usage_unreported_calls": 3
+    },
     "claude/full": {
       "latency_median_s": 10.771137,
       "latency_sum_s": 34.521107,
@@ -297,5 +346,5 @@
   },
   "evidence": "online engine path; one task, measurement check only, not a selector effect claim",
   "task": "x000a",
-  "trials": 18
+  "trials": 21
 }

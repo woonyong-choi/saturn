@@ -71,7 +71,7 @@
 |---|---|
 | 수집 | 2026-10-06, main `b3dae25`의 `saturn-engine` 릴리스 빌드, Claude 2.1.288(haiku)과 Codex 0.158.0(gpt-5.6-luna), TypeSafe Jev 1.13.0 |
 | 표본 | 과제 `x000a` 하나, 받는 쪽 2 x 조건 3(`full`, `code`=RRF, `jev`) x 3회 = 18 trial, 방향마다 스냅샷 1개 |
-| 호출 | provider 입력과 패킷 전달: Claude 19, Codex 20(상한 40). router 판단 27(상한 60). 재시도 0, 제외 0 |
+| 호출 | provider 입력과 패킷 전달: Claude 19, Codex 20(상한 40). router 판단 27(상한 60). 보강 수집 3 trial을 더해 Claude 25, router 30. 재시도 0, 제외 0 |
 | 미측정 | `llm` 조건은 engine에 작업 LLM 호출 연결이 없어 이 경로에 없다(미지원) |
 
 ### 계측 가설 판정
@@ -80,7 +80,7 @@
 |---|---|---|
 | O1 trial이 온라인 계약을 통과 | 18건 모두 `input_id`, `run_id`, `session_id`, 모델 실제 이름, 패킷 해시가 있고 `validate_trial(online=True)`를 통과했다. 원응답 변조와 정답 누출 시험도 거절했다. | 채택 |
 | O2 기록 저장소 행으로 재구성, 분석 바이트 일치 | 원자료만으로 trial 18건이 같게 다시 만들어지고 집계가 두 번 같았다. Claude는 `usage` 합이 요청 합계 알림과 9건 모두 같았다. Codex는 알림이 `usage`의 입력+출력보다 9건 중 8건에서 정확히 추론 토큰만큼 컸다(1건은 알림이 없었다). 사용량 목록은 Codex 출력에 추론이 이미 들어 있다고 보고 그대로 합쳤다. 알림 쪽 이중 계산 의심은 [#576](https://github.com/woonyong-choi/saturn/issues/576) | 채택(Codex 사용량 합계 규칙은 #576 확인 전까지 잠정) |
-| O3 명령 수와 `evidence_lookups` 행 수가 같다 | 같지 않다. Codex 조회 명령 114개(`--help` 제외) 중 14개가 행을 남기지 않았다. 6개는 `| tail`이 붙은 명령이고 단독 재현에서 `Could not reach a running engine`으로 실패했다([#574](https://github.com/woonyong-choi/saturn/issues/574)). 나머지 8개(`search --limit 50 ...`)는 원인을 모른다. Claude는 조회 명령이 0이었다. | 기각 |
+| O3 명령 수와 `evidence_lookups` 행 수가 같다 | 같지 않다. Codex 조회 명령 114개(`--help` 제외) 중 14개가 행을 남기지 않았다. 6개는 `\| tail`이 붙은 명령이고 단독 재현에서 `Could not reach a running engine`으로 실패했다([#574](https://github.com/woonyong-choi/saturn/issues/574)). 나머지 8개는 따옴표 없는 여러 단어 검색어를 CLI가 인자 오류로 거절한 것이다([#577](https://github.com/woonyong-choi/saturn/issues/577), 요청이 engine에 가지 않아 행이 없는 것이 맞다). Claude 보강 수집의 2개도 같은 여러 단어 거절이다. 두 원인을 빼면 명령과 행이 모두 맞았다. | 기각(원인 두 건을 이슈로 분리) |
 | O4 조건은 패킷 구성만 바꾼다 | `full`은 후보 12개가 모두 전문, `code`와 `jev`는 모두 `Digest`(원문 전문 0개)였다. `jev`의 패킷 항목 선택 표시는 `compact`, `code`는 `rank`로 달랐다. 한도를 약 5,000토큰으로 잡았는데 근거가 블록 끝에만 있고 발췌가 앞 300글자라 전문이 한도 안에 하나도 들지 못했다. | 채택(한도가 너무 작아 조건 차이가 작았다) |
 
 ### 조건별 관측
@@ -96,12 +96,24 @@
 
 표본이 한 과제 3회라 성공률과 시간은 선택 방법의 효과로 읽지 않는다. 계측 점검에서 확인한 것은 다음과 같다.
 
-- Claude haiku는 `saturn evidence`를 한 번도 쓰지 않았다. 패킷에 안내 한 줄이 있었지만 요약만 보고 값이 없다고 답하거나 질문을 되물었다(성공 0/6, 값 없음 답변 포함). 도구를 쓰지 않은 실행의 사용량과 시간도 같은 trial 행으로 기록됐다.
+- Claude haiku는 기본 18 trial에서 `saturn evidence`를 한 번도 쓰지 않았다. 패킷에 안내 한 줄이 있었지만 요약만 보고 값이 없다고 답하거나 질문을 되물었다(성공 0/6, 값 없음 답변 포함). 도구를 쓰지 않은 실행의 사용량과 시간도 같은 trial 행으로 기록됐다.
 - Codex는 검색을 여러 번 한 뒤 읽기를 반복했고 `code`의 두 trial은 12개 블록을 모두 읽었다. 그런데도 둘 다 갱신된 포트 대신 이전 포트를 답했다(기대 6715, 답 6705). 읽은 범위를 끝 500~700글자로 줄이는 방식에서 갱신 문장이 아닌 이전 문장을 골랐다. 근거를 읽은 것과 맞게 답한 것은 따로 세야 한다.
 - 사용량 호출 항목은 trial마다 부모 호출(Claude는 턴마다 `MainTurn`, Codex는 session마다 누적 마지막 값), 판단 호출(입력 판단과 `jev`의 `compact` 판단)이 호출 ID별 한 항목씩 들어갔다. router 판단은 캐시 필드가 없어 미보고(null)로 남고 trial 18건 모두 `unreported_calls`가 1 이상이다. Claude 사용량 합 입력+캐시 생성+출력은 `jev`가 `full`보다 컸다(router 판단 입력 약 9,400토큰이 더해진다).
 - `jev`의 router 호출은 Claude 쪽 trial에서 입력 판단 1회와 `compact` 판단 1회, Codex 쪽 `Restart`가 있었던 trial은 한 번 더였다. router 판단 토큰이 trial마다 `usage`에 들어갔다.
 - Codex `jev` r0에서 맥락이 한도를 넘어 `Restart` 패킷이 한 번 있었다. 이때 새 session의 사용량도 같은 trial에 포함했다.
 - `jev` Codex r1은 요청 합계 알림이 원응답에 없었다(수집이 마지막 알림 전에 끝난 것으로 보인다). 이 trial의 사용량은 기록 저장소 행으로만 재구성했고 알림 대조는 하지 못했다.
+
+### 보강 수집: Claude 도구 조회 계측
+
+Claude의 조회 계측을 확인하려고 [설계 보강](design.md#보강-수집탐색)으로 입력에 조회 방법 한 줄을 더해 Claude 받는 쪽, 조건 `code`를 3회 추가 수집했다(탐색, 앞의 18 trial과 비교하지 않는다).
+
+| trial | 조회 명령 | 조회 행 | 읽은 근거 블록 | 시간 | 사용량 합(입력 + 캐시 생성 + 출력) | 성공 |
+|---|---|---|---|---|---|---|
+| hint r0 | 3(검색) | 3 | 0 | 35초 | 22,144(요청 합계 알림과 같음) | 아니오(null 답) |
+| hint r1 | 3(검색) | 2 | 0 | 23초 | 21,018(같음) | 아니오 |
+| hint r2 | 4(검색) | 3 | 0 | 27초 | 22,784(같음) | 아니오 |
+
+Claude는 안내를 받으면 `saturn evidence search`를 쓴다. 명령과 행의 차이 2개는 따옴표 없는 여러 단어 검색어를 CLI가 거절한 것이다(#577). 검색 결과만 보고 `read`로 원문을 읽지는 않아 답은 모두 null이었다. 조회 호출, 사용량(`MainTurn`), 시간, 검사 결과가 trial 행으로 맞게 기록된다는 점은 확인했고 사용량 합은 요청 합계 알림과 3건 모두 같았다. 읽기까지 가는 Claude 조회와 근거 블록을 읽은 뒤의 정답은 이 계측으로 확인하지 못했다.
 
 ### 가공 코드 수정
 
