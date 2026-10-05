@@ -89,9 +89,9 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 | `route` | `difficulty` | `score` | 3단계로 답 | 확신도 0.6 미만이면 미사용 |
 | `route` | `skills` | `choice` | 선택지에 `none` 포함 | 확신도 0.6 미만이면 힌트 생략 |
 | `route` | `resume_held` | `noul` | 0.85 이상에서만 보류 작업 재개 | 0.85 미만이면 무시 횟수 1 증가. 판단이 없으면 무시 횟수를 올리지 않는다 |
-| `route` | `is_constraint` | `noul` | `is_constraint` 0.8 이상이면 제약으로 자동 등록, `constraint_ask` 0.7 이상 0.8 미만이면 사용자에게 묻기 | 판단이 없으면 미등록 |
+| `route` | `is_constraint` | `noul` | `constraint.auto_apply`가 켜져 있을 때만 `is_constraint` 0.8 이상이면 제약으로 자동 등록, `constraint_ask` 0.7 이상 0.8 미만이면 사용자에게 묻기 | 판단이 없으면 미등록 |
 | `constraint` | `constraint_change` | `choice` | 유효 제약 최대 10개와 함께 질문. 선택지는 `none`과 제약마다 `release`, `once`, `scoped`. `1 − P(none)`이 `constraint_release` 0.8 이상이면 해제나 예외 적용, 종류의 확률이 0.8 미만이면 종류를 사용자에게 묻기 | 판단이 없으면 해제도 예외도 하지 않는다 |
-| `constraint` | `line_<k>_is_constraint` | `noul` | 200자를 넘는 입력의 문장마다 질문. 0.7 이상인 문장을 제약으로 등록 | 판단이 없으면 입력 전체 원문을 한 건으로 등록 |
+| `constraint` | `line_<k>_is_constraint` | `noul` | 자동 적용이 켜져 있고 200자를 넘는 입력의 문장마다 질문. 0.7 이상인 문장을 제약으로 등록 | 판단이 없으면 입력 전체 원문을 한 건으로 등록 |
 | `relation` | `relation_to_running` | `choice` | `refines`, `continues`, `independent`, `conflicts` 중 선택 | 확신도 0.6 미만이면 대기 |
 | `send-opt` | `steer_or_spawn` | `choice` | `target_model`과 함께 질문 | 확신도 0.6 미만이면 현재 에이전트에 대기 뒤 전송 |
 | `file-rank` | `file_<n>_relevant` | `noul` | 후보 파일 전체와 `answer_present`를 함께 질문. 0.7 이상은 존재, 0.35 미만은 없음 | 판단이 없으면 후보 순위 그대로 |

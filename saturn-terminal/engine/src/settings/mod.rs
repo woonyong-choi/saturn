@@ -210,6 +210,13 @@ impl Settings {
             .unwrap_or(false)
     }
 
+    /// 사용자 전용. router 판단으로 지속 제약을 자동 등록하는지. 기본 거짓.
+    pub(crate) fn constraint_auto_apply(&self) -> bool {
+        self.lookup("constraint.auto_apply")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    }
+
     /// 기본 무제한 보존.
     pub(crate) fn retention(&self) -> RetentionPolicy {
         let days = self.get("retention.max_age_days").and_then(Value::as_u64);
