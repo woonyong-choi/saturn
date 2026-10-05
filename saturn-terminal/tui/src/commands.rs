@@ -26,7 +26,6 @@ pub(crate) struct CommandSpec {
     pub takes_provider: bool,
 }
 
-/// TODO(#41): 메인이 아닌 provider의 명령을 골랐을 때 처리
 pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
     CommandSpec {
         path: "help",
@@ -264,7 +263,7 @@ pub(crate) enum SlashCommand {
     },
     /// `/router use`
     RouterVersion,
-    /// 목록에 없는 provider 명령. 원문 그대로 메인 에이전트 provider에 넘긴다. TODO(#41): 비메인 provider 명령 처리
+    /// 목록에 없는 provider 명령. 원문 그대로 메인 에이전트 provider에 넘긴다. 고른 항목이 어느 provider의 것이든 같고, 다른 provider session을 열거나 전환을 묻지 않는다(설계: providers-and-sessions.md).
     Provider { line: String },
 }
 

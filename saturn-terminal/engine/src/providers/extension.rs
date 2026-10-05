@@ -229,8 +229,9 @@ fn read_definition(part: &InjectedPart, section: &str) -> Result<Value, String> 
 // cost: time O(f), heap O(1), stack O(d), io f
 // vars: f = 복사할 파일 수, d = 폴더 깊이
 // basis: estimate
-/// 스킬은 `<root>/<skills_dir>/<이름>/`, 명령은 `<root>/<폴더>/<이름>.<확장자>`로 복사한다. 이름이 겹치면 먼저 놓은
-/// 것을 남기고 나중 것을 실패로 돌려준다. 파일을 놓은 부분이 있었는지는 `placed`로 알린다. 정의 부분은 건드리지 않는다.
+/// 스킬은 `<root>/<skills_dir>/<이름>/`, 명령은 `<root>/<폴더>/<이름>.<확장자>`로 복사한다. 이름이 겹치면 내용이 같을
+/// 때는 이미 주입된 것으로 보고 성공으로 두고(같은 지문의 두 연결과 재접속), 내용이 다르면 먼저 놓은 것을 남기고 나중
+/// 것을 실패로 돌려준다. 파일을 놓은 부분이 있었는지는 `placed`로 알린다. 정의 부분은 건드리지 않는다.
 pub(crate) fn place_files(root: &Path, layout: &ExtensionLayout, parts: &[InjectedPart]) -> Placed {
     let mut placed = Placed::default();
     for part in parts {
@@ -263,16 +264,60 @@ pub(crate) struct Placed {
 fn place_skill(dir: &Path, part: &InjectedPart) -> Result<(), String> {
     let dest = dir.join(&part.name);
     if dest.exists() {
-        return Err("a skill with this name is already injected".to_owned());
+        return if same_tree(&part.source, &dest) {
+            Ok(())
+        } else {
+            Err("a skill with this name is already injected with different content".to_owned())
+        };
     }
     std::fs::create_dir_all(&dest).map_err(|error| error.to_string())?;
     copy_into(&part.source, &dest, &mut 0).map_err(|error| error.to_string())
 }
 
+/// `copy_into`가 복사하는 것(`.git`을 뺀 폴더와 일반 파일)이 두 폴더에서 같은지. 읽지 못하면 다른 것으로 본다.
+fn same_tree(from: &Path, to: &Path) -> bool {
+    /// 복사되는 항목의 (이름, 폴더인지). 이름순이다.
+    fn copied(dir: &Path) -> Option<Vec<(std::ffi::OsString, bool)>> {
+        let mut found = Vec::new();
+        for entry in std::fs::read_dir(dir).ok()? {
+            let entry = entry.ok()?;
+            let kind = entry.file_type().ok()?;
+            let name = entry.file_name();
+            if (kind.is_dir() && name != ".git") || kind.is_file() {
+                found.push((name, kind.is_dir()));
+            }
+        }
+        found.sort();
+        Some(found)
+    }
+    let (Some(left), Some(right)) = (copied(from), copied(to)) else {
+        return false;
+    };
+    left == right
+        && left.iter().all(|(name, is_dir)| {
+            if *is_dir {
+                same_tree(&from.join(name), &to.join(name))
+            } else {
+                same_file(&from.join(name), &to.join(name))
+            }
+        })
+}
+
+fn same_file(from: &Path, to: &Path) -> bool {
+    matches!(
+        (std::fs::read(from), std::fs::read(to)),
+        (Ok(left), Ok(right)) if left == right
+    )
+}
+
 fn place_command(dir: &Path, extension: &str, part: &InjectedPart) -> Result<(), String> {
     let dest = dir.join(format!("{}.{extension}", part.name));
     if dest.exists() {
-        return Err("a command with this name is already injected".to_owned());
+        return if same_file(&part.source, &dest) {
+            Ok(())
+        } else {
+            Err("a command with this name is already injected with different content".to_owned())
+        };
     }
     std::fs::create_dir_all(dir).map_err(|error| error.to_string())?;
     std::fs::copy(&part.source, &dest)

@@ -474,6 +474,74 @@ mod extension_parts {
     }
 
     #[test]
+    fn connecting_again_with_the_same_extensions_reuses_the_folder_without_failures() {
+        let fixture = Fixture::new(USER_CONFIG);
+        let parts = kit_parts(&fixture._root.path().join("store"));
+        let (first, first_failures) = prepare_with_kit(&fixture, &parts, &[]);
+
+        let (second, second_failures) = prepare_with_kit(&fixture, &parts, &[]);
+
+        let names = |failures: &[InjectionFailure]| -> Vec<String> {
+            failures
+                .iter()
+                .map(|failure| failure.part.clone())
+                .collect()
+        };
+        assert_eq!(second.path, first.path);
+        assert_eq!(names(&second_failures), names(&first_failures));
+        assert_eq!(names(&second_failures), vec!["web", "empty"]);
+        assert_eq!(
+            std::fs::read_to_string(second.path.join("skills/commit-helper/SKILL.md")).unwrap(),
+            "# commit helper"
+        );
+        assert_eq!(
+            std::fs::read_to_string(second.path.join("prompts/review.md")).unwrap(),
+            "review the diff"
+        );
+    }
+
+    #[test]
+    fn a_skill_name_with_different_content_fails_while_the_same_content_does_not() {
+        let fixture = Fixture::new(USER_CONFIG);
+        let store = fixture._root.path().join("store");
+        let mut parts = kit_parts(&store);
+        write(
+            &store,
+            "same/skills/commit-helper/SKILL.md",
+            "# commit helper",
+        );
+        write(&store, "other/skills/commit-helper/SKILL.md", "# other");
+        let skill = |extension: &str| InjectedPart {
+            extension: extension.to_owned(),
+            ..part(
+                ExtensionPartKind::Skill,
+                "commit-helper",
+                store.join(extension).join("skills/commit-helper"),
+            )
+        };
+        parts.extend([skill("same"), skill("other")]);
+
+        let (home, failures) = prepare_with_kit(&fixture, &parts, &[]);
+
+        let conflicts: Vec<(&str, &str)> = failures
+            .iter()
+            .filter(|failure| failure.part == "commit-helper")
+            .map(|failure| (failure.extension.as_str(), failure.reason.as_str()))
+            .collect();
+        assert_eq!(
+            conflicts,
+            vec![(
+                "other",
+                "a skill with this name is already injected with different content"
+            )]
+        );
+        assert_eq!(
+            std::fs::read_to_string(home.path.join("skills/commit-helper/SKILL.md")).unwrap(),
+            "# commit helper"
+        );
+    }
+
+    #[test]
     fn the_folder_name_carries_the_extension_fingerprint_after_the_rules_fingerprint() {
         let fixture = Fixture::new(USER_CONFIG);
         let parts = kit_parts(&fixture._root.path().join("store"));

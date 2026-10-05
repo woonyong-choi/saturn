@@ -190,7 +190,7 @@ pub(crate) fn steer_route(handle: &SessionHandle) -> SteerRoute {
 }
 
 /// provider 설정을 바꾸는 명령(모델, 권한 등)은 빼지 않는다.
-/// TODO(#41): 메인이 아닌 provider의 명령을 골랐을 때 처리 미정. 지금은 연결마다 제 목록만 돌려준다
+/// 연결마다 제 목록만 돌려준다. 다른 provider의 명령을 골라도 메인 provider에 그대로 보낸다(설계: providers-and-sessions.md).
 pub(crate) fn filter_commands(
     all: Vec<ProviderCommand>,
     excluded: &[&str],
