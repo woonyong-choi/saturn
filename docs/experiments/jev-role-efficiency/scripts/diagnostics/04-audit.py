@@ -102,6 +102,35 @@ def main() -> None:
                 "unknown_cost_calls": sum(c["unknown_cost_calls"] for c in cells),
             }
     raw = [read(p) for p in sorted((PRIVATE / "raw").glob("*.json"))]
+    context_tokens = {}
+    for policy in ("full", "recency", "lexical", "jev"):
+        total = Counter()
+        for record in raw:
+            if record["trial_id"].startswith("context-run-") and record[
+                "trial_id"
+            ].endswith("-" + policy):
+                _, metadata = response_text(record)
+                total.update(
+                    {
+                        k: v
+                        for k, v in metadata.get("usage", {}).items()
+                        if isinstance(v, (int, float))
+                    }
+                )
+        context_tokens[policy] = dict(total)
+        context_tokens[policy]["all_input_tokens"] = sum(
+            total[k]
+            for k in (
+                "input_tokens",
+                "cache_read_input_tokens",
+                "cache_creation_input_tokens",
+            )
+        )
+    judge_usage = Counter()
+    for record in raw:
+        if record["trial_id"].startswith("context-jev-"):
+            judge_usage.update(record.get("response", {}).get("usage", {}))
+    context_tokens["jev_selector"] = dict(judge_usage)
     output = {
         "analysis": "post-hoc diagnostic; strict preregistered scores unchanged",
         "format_failures": sum(not r["strict_json"] for r in diagnostics),
@@ -122,6 +151,7 @@ def main() -> None:
         "protocol_commit": read(PRIVATE / "collection-seal.json")["commit"],
     }
     write(PUBLIC / "results/diagnostics.json", output)
+    strict["context"]["tokens_by_boundary"] = context_tokens
     strict["diagnostics"] = {
         k: output[k]
         for k in (

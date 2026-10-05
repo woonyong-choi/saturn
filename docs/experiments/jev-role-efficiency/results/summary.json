@@ -477,6 +477,40 @@
         },
         "mean_support_recall": 1.0
       }
+    },
+    "tokens_by_boundary": {
+      "full": {
+        "input_tokens": 16,
+        "cache_creation_input_tokens": 19586,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 228,
+        "all_input_tokens": 19602
+      },
+      "recency": {
+        "input_tokens": 16,
+        "cache_creation_input_tokens": 7896,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 528,
+        "all_input_tokens": 7912
+      },
+      "lexical": {
+        "input_tokens": 16,
+        "cache_creation_input_tokens": 7855,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 228,
+        "all_input_tokens": 7871
+      },
+      "jev": {
+        "input_tokens": 16,
+        "cache_creation_input_tokens": 7850,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 228,
+        "all_input_tokens": 7866
+      },
+      "jev_selector": {
+        "input_tokens": 15927,
+        "output_tokens": 1680
+      }
     }
   },
   "collection": {
