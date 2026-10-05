@@ -2,16 +2,26 @@
 //! 순위 순서로 대체하는지, 전환 기록이 보낸 패킷과 맞는지 확인한다.
 //! 설계: docs/design/context-management.md#패킷-판단의-적용
 
+use std::sync::Arc;
 use std::time::Duration;
 
+use tokio::sync::Notify;
+
+use saturn_core::routers::split::MAX_STATE_AND_QUESTION_BYTES;
+use saturn_core::routers::{COMPACT_INPUT_CHARS, COMPACT_RESULT_CHARS};
+use saturn_protocol::envelope::ServerMessage;
 use saturn_protocol::ids::{LedgerSeq, SessionId};
+use saturn_protocol::rpc::{ModelChoice, Request};
+use saturn_protocol::state::SessionState;
 use serde_json::json;
 
 use super::constraint_handoff::packet_of;
+use super::model_shadow::{exported, know_models, opened_models};
+use super::support::{CLIENT, model_reply};
 use super::support::{
     Flow, context_size, idle_reply, text, tool_read, tool_result, turn_completed,
 };
-use super::{FakeReply, ok, status};
+use super::{Client, FakeReply, drive, ok, status};
 use crate::providers::test_support::{CLAUDE, CODEX};
 use crate::store::{PacketKind, PacketState, sha256_hex};
 
@@ -32,9 +42,16 @@ async fn flow_with(config: &str) -> Flow {
 
 /// Codex에서 여섯 턴을 한다. 턴마다 다른 파일을 읽고 결과 글에 `MARK<번호>`가 든다.
 async fn long_chat(flow: &mut Flow) {
+    long_chat_with(flow, "", ("", &"x".repeat(900))).await;
+}
+
+/// `long_chat`이되 세 번째 입력부터 `filler`를 붙이고 읽은 파일 이름을 `name`으로, 결과 글을 `body`로 채운다.
+async fn long_chat_with(flow: &mut Flow, filler: &str, (name, body): (&str, &str)) {
     flow.engine.switch_provider(flow.chat, CODEX);
     for number in 1..=TURNS {
-        flow.submit(&format!("task {number} continue the cache"))
+        // 첫 입력은 짧게 둬야 입력 판단이 목표를 온전히 담는다
+        let filler = if number >= 3 { filler } else { "" };
+        flow.submit(&format!("task {number} continue the cache {filler}"))
             .await;
         let agent = flow.agent();
         let call = format!("c{number}");
@@ -42,12 +59,12 @@ async fn long_chat(flow: &mut Flow) {
             .await;
         flow.event(
             CODEX,
-            tool_read(agent, &call, &format!("src/file{number}.rs")),
+            tool_read(agent, &call, &format!("src/file{number}{name}.rs")),
         )
         .await;
         flow.event(
             CODEX,
-            tool_result(agent, &call, &format!("MARK{number} {}", "x".repeat(900))),
+            tool_result(agent, &call, &format!("MARK{number} {body}")),
         )
         .await;
         flow.event(CODEX, turn_completed(agent)).await;
@@ -99,6 +116,48 @@ async fn switch_and_send(flow: &mut Flow) -> String {
     packet_of(&claude)
 }
 
+/// Claude로 바꿔 입력을 접수하고, 입력 판단은 끝낸 뒤 `compact` 호출을 돌려받은 `Notify`를 열어 줄 때까지 붙잡아 둔다.
+/// 호출이 나가 채팅이 판단을 기다리는 상태가 되면 돌아온다.
+async fn submit_holding_compact(flow: &mut Flow) -> Arc<Notify> {
+    flow.engine.switch_provider(flow.chat, CLAUDE);
+    let calls = flow.router_calls();
+    flow.engine
+        .submit_input(
+            CLIENT,
+            flow.chat,
+            1,
+            "task 7 review the cache".to_owned(),
+            false,
+        )
+        .await
+        .unwrap();
+    while flow.router_calls() == calls {
+        tokio::task::yield_now().await;
+    }
+    let release = flow.transport.hold_next_call();
+    wait_for_compact(flow).await;
+    // 호출이 나가 붙잡힌 뒤에 돌려준다. 그 전에 다음 호출을 붙잡으면 같은 호출이 둘을 다 가져간다
+    while flow.router_calls() == calls + 1 {
+        tokio::task::yield_now().await;
+    }
+    release
+}
+
+/// 입력 판단 같은 router 결과를 받아 적용하며 채팅이 `compact` 판단을 기다리게 될 때까지 engine 루프 역할을 한다.
+async fn wait_for_compact(flow: &mut Flow) {
+    while !flow.is_compacting() {
+        let done = flow.engine.flow.router_rx.recv().await.unwrap();
+        flow.engine.on_routed(done).await;
+    }
+}
+
+/// 붙잡힌 호출을 열어 주고 그 답이 돌아와 적용되게 한다. 답이 다시 묻게 하면 새 호출이 나간다.
+async fn release_and_apply(flow: &mut Flow, release: &Notify) {
+    release.notify_one();
+    let done = flow.engine.flow.router_rx.recv().await.unwrap();
+    flow.engine.on_routed(done).await;
+}
+
 fn marks(packet: &str) -> Vec<u64> {
     (1..=TURNS)
         .filter(|number| packet.contains(&format!("MARK{number} ")))
@@ -140,7 +199,19 @@ async fn jev_order_fills_the_budget_with_the_blocks_the_router_wants() {
     jev.transport
         .push_reply(compact_reply(&[(wanted, 0.95), (also, 0.6)]));
     let calls_before = jev.router_calls();
-    let jev_packet = switch_and_send(&mut jev).await;
+    let claude = jev.fake.clone();
+    let release = submit_holding_compact(&mut jev).await;
+    // 판단을 기다리는 동안에도 engine은 다른 요청에 바로 답한다
+    let mut other = Client::connect(&jev.fixture.socket()).await;
+    drive(&mut jev.engine, async {
+        other.send(1, Request::Version).await;
+        while !matches!(other.recv().await, ServerMessage::Response(_)) {}
+    })
+    .await;
+    assert!(jev.is_compacting());
+    release.notify_one();
+    jev.settle().await;
+    let jev_packet = packet_of(&claude);
 
     // RRF만으로는 오래된 블록 2가 예산에서 빠진다
     assert!(
@@ -166,6 +237,68 @@ async fn jev_order_fills_the_budget_with_the_blocks_the_router_wants() {
             .iter()
             .all(|(selector, _)| selector == "rank")
     );
+}
+
+#[tokio::test]
+async fn a_judgment_whose_transition_key_changed_is_discarded_and_rank_order_is_used() {
+    let tight = format!("{TIGHT}[provider.codex.context]\nt_abs = 6000\n{JEV}");
+    let replies = (0..TURNS + 1).map(|_| idle_reply(0.95)).collect();
+    let mut flow = Flow::with_config(&tight, replies).await;
+    let codex = flow.add_provider(CODEX);
+    long_chat(&mut flow).await;
+    let wanted = seq_of(&flow, 2).await;
+    for _ in 0..2 {
+        flow.transport.push_reply(compact_reply(&[(wanted, 0.99)]));
+    }
+    let calls_before = flow.router_calls();
+    let first = submit_holding_compact(&mut flow).await;
+
+    // 판단 중에 보내는 쪽 메인 session이 끝난다: 전환 키가 달라져 답을 버리고 한 번 다시 묻는다
+    let main = flow.engine.sessions.live_main(flow.chat).unwrap().id;
+    flow.engine
+        .sessions
+        .set_state(main, SessionState::Ended)
+        .unwrap();
+    let second = flow.transport.hold_next_call();
+    release_and_apply(&mut flow, &first).await;
+    assert!(flow.is_compacting());
+    while flow.router_calls() == calls_before + 2 {
+        tokio::task::yield_now().await;
+    }
+    // 다시 묻는 동안 받는 provider가 또 바뀐다: 두 번 다르면 판단 없이 진행한다
+    flow.engine.switch_provider(flow.chat, CODEX);
+    release_and_apply(&mut flow, &second).await;
+    flow.settle().await;
+
+    let packet = packet_of(&codex);
+    assert!(packet.contains("MARK6 "));
+    let recorded = flow.engine.store.packets_of_chat(flow.chat).await.unwrap();
+    let stored = recorded.last().expect("the packet should be recorded");
+    assert_eq!(stored.body_hash, sha256_hex(packet.as_bytes()));
+    let selectors: Vec<String> = flow
+        .engine
+        .store
+        .packet_competing(stored.id)
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|(_, selector, _)| selector)
+        .collect();
+    assert!(!selectors.is_empty());
+    assert!(
+        selectors.iter().all(|selector| selector == "rank"),
+        "{selectors:?}"
+    );
+    // 판단은 두 번만 물었고 둘 다 쓰지 않고 `Superseded`로 남았다
+    assert_eq!(flow.router_calls() - calls_before, 3);
+    let path = flow.fixture.root.path().join("judgments.jsonl");
+    flow.engine.store.export_judgments(&path).await.unwrap();
+    let lines = std::fs::read_to_string(path).unwrap();
+    let superseded = lines
+        .lines()
+        .filter(|line| line.contains("Superseded") && line.contains("compact"))
+        .count();
+    assert_eq!(superseded, 2, "{lines}");
 }
 
 #[tokio::test]
@@ -212,6 +345,87 @@ async fn without_a_judgment_the_packet_is_filled_by_rank_order() {
             selectors.iter().all(|(selector, _)| selector == "rank"),
             "{name}"
         );
+    }
+
+    // state(최근 입력 4개)와 질문 하나가 크기 한도를 넘으면 요청을 만들지 않아 router를 부르지 않는다. 한글은 글자당 3바이트, 이모지는 4바이트다
+    let filler = "가".repeat(1000);
+    let (name, body) = (
+        "😀".repeat(COMPACT_INPUT_CHARS - 20),
+        "😀".repeat(COMPACT_RESULT_CHARS),
+    );
+    let question = name.len() + body.len();
+    assert!(
+        4 * filler.len() + question > MAX_STATE_AND_QUESTION_BYTES,
+        "the case should be over the limit"
+    );
+    let mut rank = flow_with("").await;
+    long_chat_with(&mut rank, &filler, (&name, &body)).await;
+    let expected = marks(&switch_and_send(&mut rank).await);
+    let mut flow = flow_with(JEV).await;
+    long_chat_with(&mut flow, &filler, (&name, &body)).await;
+    let calls_before = flow.router_calls();
+
+    let packet = switch_and_send(&mut flow).await;
+
+    assert_eq!(flow.router_calls() - calls_before, 1);
+    assert_eq!(marks(&packet), expected);
+    let selectors = recorded_selectors(&flow, &packet).await;
+    assert!(selectors.iter().all(|(selector, _)| selector == "rank"));
+}
+
+const AUTO: &str = "[model]\ndefault = \"claude/opus\"\nmode = \"auto\"\n";
+const MODELS: [&str; 3] = ["claude/opus", "claude/haiku", "other"];
+
+#[tokio::test]
+async fn a_failed_judgment_skips_only_the_switch_the_router_started() {
+    // (이름, 사용자가 채팅 모델을 고정했는가, 열린 session의 모델)
+    let cases = [
+        ("router chose another model", false, vec!["opus"]),
+        ("user pinned another model", true, vec!["opus", "haiku"]),
+    ];
+    for (name, is_pinned, opened) in cases {
+        let replies = vec![model_reply(0.95, &MODELS, "claude/opus"), idle_reply(0.95)];
+        let mut flow = Flow::with_config(&format!("{TIGHT}{JEV}{AUTO}"), replies).await;
+        know_models(&mut flow, CLAUDE, &["opus", "haiku"]);
+        flow.submit("task 1 read the cache").await;
+        let agent = flow.agent();
+        flow.claude_event(text(agent, "done c1")).await;
+        flow.claude_event(tool_read(agent, "c1", "src/file1.rs"))
+            .await;
+        flow.claude_event(tool_result(agent, "c1", "MARK1 cache"))
+            .await;
+        flow.claude_event(turn_completed(agent)).await;
+        flow.transport.push_reply(status(401, "{}", Vec::new()));
+        if is_pinned {
+            flow.pin(&ModelChoice {
+                provider: CLAUDE,
+                model: "haiku".to_owned(),
+            })
+            .await;
+        }
+        // router가 모델을 바꾸는 선택은 새 작업에만 쓰인다. 그 작업이 열린 메인 위에 새 메인으로 서는 경로를 입력에 모델을 달아 만든다
+        let input = flow.accept_only("task 2 extend the cache").await;
+        flow.engine
+            .queue
+            .pin_model_if_unset(input, "haiku")
+            .unwrap();
+        let decision = flow.router_now(input, false).await;
+        flow.engine
+            .apply_decision(input, decision, false)
+            .await
+            .unwrap();
+        flow.engine.advance(flow.chat).await;
+        flow.settle().await;
+
+        // 판단이 실패하면 router가 시작한 전환만 건너뛰어 열린 session에 보낸다. 사용자가 고른 전환은 순위 순서로 연다
+        let models: Vec<String> = opened_models(&flow.fake).into_iter().flatten().collect();
+        assert_eq!(models, opened, "{name}");
+        let lines = exported(&flow).await;
+        let judged = lines.iter().any(|line| {
+            let line = line.to_string();
+            line.contains("router-failed") && line.contains("compact")
+        });
+        assert!(judged, "{name}");
     }
 }
 

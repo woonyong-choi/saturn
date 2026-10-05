@@ -64,6 +64,7 @@ impl Engine {
             && !self.chat_is_running(chat)
             && !self.flow.stopping.contains_key(&chat)
             && !self.flow.restarting.contains(&chat)
+            && !self.flow.compact_waiting.contains_key(&chat)
     }
 
     /// 쉬게 된 채팅의 열린 요청을 닫고 합계를 한 번 알린다. 하위 채팅(에이전트 작업)은 알리지 않는다.

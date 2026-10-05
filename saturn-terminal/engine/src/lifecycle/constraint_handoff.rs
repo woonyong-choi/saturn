@@ -2,6 +2,7 @@
 //! 설계: docs/design/constraints.md#패킷의-제약-칸
 
 use saturn_protocol::ids::{ConstraintId, InputId, Provider, SessionId, TaskId};
+use saturn_protocol::rpc::{ChatNotice, Notification};
 
 use super::support::{Flow, idle_reply, text, tool_read, tool_result, turn_completed};
 use crate::providers::test_support::{CLAUDE, CODEX, Call, FakeProvider};
@@ -94,14 +95,31 @@ async fn long_chat_then_switch(flow: &mut Flow, rules: &[(&str, &[&str])]) -> St
 
 type PacketRows = Vec<(ConstraintId, String)>;
 
+/// 새 session의 기록에 칸이 차서 빠진 제약이 있으면 대화 기록에 그 수를 알렸는지 본다. 빠진 제약이 없으면 알리지 않는 것이므로 보지 않는다.
+async fn assert_omitted_notice(client: &mut super::Client, rows: &PacketRows) {
+    let count = rows.iter().filter(|(_, tier)| tier == "Omitted").count();
+    let Some(count) = u32::try_from(count).ok().filter(|count| *count > 0) else {
+        return;
+    };
+    let notified = client
+        .until(|notification| match notification {
+            Notification::ChatNotice {
+                notice: ChatNotice::ConstraintsOmitted { count },
+                ..
+            } => Some(*count),
+            _ => None,
+        })
+        .await;
+    assert_eq!(notified, count);
+}
+
 #[tokio::test]
 async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
     struct Case {
         name: &'static str,
         config: &'static str,
         rules: Vec<(String, Vec<&'static str>)>,
-        // 패킷, Claude session 기록, Codex session 기록
-        check: fn(&str, &str, &PacketRows, &PacketRows),
+        check: fn(&str, &str, &PacketRows, &PacketRows), // 패킷, Claude session 기록, Codex session 기록
     }
     let cases = [
         Case {
@@ -179,9 +197,8 @@ async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
             .iter()
             .map(|(rule, scope)| (rule.as_str(), scope.as_slice()))
             .collect();
-
+        let mut client = flow.client().await;
         let packet = long_chat_then_switch(&mut flow, &rules).await;
-
         let claude_rows = flow
             .engine
             .store
@@ -194,6 +211,7 @@ async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
             .packet_constraints_of(CODEX_FIRST)
             .await
             .unwrap();
+        assert_omitted_notice(&mut client, &claude_rows).await;
         (case.check)(case.name, &packet, &claude_rows, &codex_rows);
         assert_packet_record(&flow, &packet, &claude_rows).await;
     }

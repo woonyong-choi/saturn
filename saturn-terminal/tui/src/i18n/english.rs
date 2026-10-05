@@ -501,6 +501,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Pinned constraints are long, deferring context compaction",
     ),
     (
+        "제약 {count}개 생략 · /constraints에서 확인하세요",
+        "{count} constraints omitted · See /constraints",
+    ),
+    (
         "맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요",
         "Stopped over the context limit · Retry with /continue",
     ),

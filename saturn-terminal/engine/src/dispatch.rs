@@ -9,9 +9,10 @@ use saturn_protocol::state::{EffectScope, InputState, TaskState};
 
 use crate::delivery::{DeliveryJob, Stage};
 use crate::flow::{LiveSession, NeedsCheck};
+use crate::packet_select::{CompactResume, Trigger};
 use crate::providers::{Feature, ProviderHandle};
 use crate::store::{NewRun, RunEnd};
-use crate::switch::PlanError;
+use crate::switch::{PlanError, PlanStop};
 use crate::{Engine, EngineError};
 
 /// 초안. 같은 입력을 보내기 전에 확정된 실패(`NotSent`)로 시도하는 최대 횟수. 처음 시도를 포함한다.
@@ -58,12 +59,13 @@ impl Engine {
     pub(crate) async fn dispatch_next(&mut self, chat: ChatId) -> Result<(), EngineError> {
         loop {
             // 앞선 전달이 provider 응답을 기다리는 채팅은 끝날 때까지 건너뛴다. 같은 채팅의 순서를 지키기 위해서다.
-            // 새 session 열기를 기다리는 맥락 정리도 같다
+            // 새 session 열기를 기다리는 맥락 정리와 `compact` 판단을 기다리는 채팅도 같다
             let busy: Vec<ChatId> = self
                 .flow
                 .deliveries
                 .keys()
                 .chain(&self.flow.restarting)
+                .chain(self.flow.compact_waiting.keys())
                 .copied()
                 .collect();
             let Some(action) = self.queue.next_to_send_except(&busy) else {
@@ -186,8 +188,24 @@ impl Engine {
         start: Start,
     ) -> Result<(), EngineError> {
         let record = self.queued(input)?;
+        let planned = match self.plan_open(&record, start).await {
+            Ok(plan) => Ok(plan),
+            Err(PlanStop::Error(error)) => Err(error),
+            Err(PlanStop::Ask(call)) => {
+                // 판단은 별도 작업에서 돈다. 답이 오면 같은 전달을 다시 시도하므로 입력과 작업 상태는 그대로 둔다
+                let action = match start {
+                    Start::Steer(agent) => SendAction::Steer { input, agent },
+                    Start::Turn(agent) => SendAction::NewTurn { input, agent },
+                    Start::Task(task) => SendAction::NewTask { input, task },
+                };
+                self.spawn_compact(*call, CompactResume::Send(action));
+                return Ok(());
+            }
+        };
+        self.discard_compact_reply(chat, Trigger::Input(input))
+            .await;
         let delivery = self.delivery(&record, start)?;
-        let plan = match self.plan_open(&record, start).await {
+        let plan = match planned {
             Err(PlanError::Deferred(constraints)) => {
                 let notice = ChatNotice::ContextDeferred { constraints };
                 return self.hold_for_context(&delivery, notice).await;

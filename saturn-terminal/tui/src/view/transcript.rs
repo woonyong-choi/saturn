@@ -683,6 +683,11 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
             );
             lines
         }
+        ChatNotice::ConstraintsOmitted { count } => vec![format!(
+            "{prefix}{}",
+            lang.tr(i18n::CONSTRAINTS_OMITTED)
+                .replace("{count}", &count.to_string())
+        )],
         ChatNotice::PacketOverflow => vec![format!("{prefix}{}", lang.tr(i18n::PACKET_OVERFLOW))],
         ChatNotice::ProviderSwitched { from, to } => {
             let (from, to) = (i18n::provider_name(*from), i18n::provider_name(*to));
@@ -1286,6 +1291,18 @@ mod tests {
                 "고정 제약이 길어 맥락 정리를 미룹니다",
                 "- never touch the vendor folder"
             ]
+        );
+        let omitted = TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::ConstraintsOmitted { count: 7 },
+        };
+        assert_eq!(
+            omitted.lines(Lang::Ko, false, false),
+            vec!["제약 7개 생략 · /constraints에서 확인하세요"]
+        );
+        assert_eq!(
+            omitted.lines(Lang::En, false, false),
+            vec!["7 constraints omitted · See /constraints"]
         );
     }
 
