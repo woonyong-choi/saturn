@@ -20,15 +20,18 @@ def recall(case: dict, ids: list[str]) -> float | None:
 
 
 def main() -> None:
-    dev = [c for c in fixtures.build() if c["split"] == "dev"]
+    dev, invalid = [], []
+    for c in fixtures.build():
+        if c["split"] != "dev":
+            continue
+        recs = [read(PRIVATE / "raw" / f"jev-{c['task_id']}-p{n}.json") for n in range(len(selection.jev_pieces(c)))]
+        (dev if selection.probabilities(recs, c) is not None else invalid).append(c)  # 응답이 틀린 개발 과제는 재시도하지 않고 tau 선택에서만 뺀다
     table = {}
     for tau in CANDIDATES:
         recalls, undecided, sizes, none_selected = [], 0, [], 0
         for c in dev:
             recs = [read(PRIVATE / "raw" / f"jev-{c['task_id']}-p{n}.json") for n in range(len(selection.jev_pieces(c)))]
             probs = selection.probabilities(recs, c)
-            if probs is None:
-                raise RuntimeError("dev jev response invalid: " + c["task_id"])
             sel = selection.select("jev", c, fixtures.BUDGET_BYTES, tau, recs)
             undecided += sel["applied"] != "jev"
             r = recall(c, sel["ids"])
@@ -45,7 +48,7 @@ def main() -> None:
     tau = max(CANDIDATES, key=lambda t: (round(table[str(t)]["support_recall"], 6), t))
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     write(LOCK, dict(tau=tau, budget_bytes=fixtures.BUDGET_BYTES, selected_from="dev jev responses, support recall",
-                     table=table, dev_tasks=len(dev), commit_when_locked=commit))
+                     table=table, dev_tasks=len(dev), dev_invalid_responses=[c["task_id"] for c in invalid], commit_when_locked=commit))
     print("tau", tau, json.dumps(table))
 
 
