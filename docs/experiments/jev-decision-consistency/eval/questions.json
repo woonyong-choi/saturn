@@ -1,0 +1,17 @@
+{
+  "is_constraint": {
+    "set": "route@1.1",
+    "type": "noul",
+    "instructions": "The user's latest input sets a rule that applies beyond this single request and limits how the work is done (language, tool, format, or prohibition) rather than what to do."
+  },
+  "replaces_1": {
+    "set": "constraint@1.0",
+    "type": "noul",
+    "instructions": "Following the later constraint makes it impossible to keep the earlier constraint."
+  },
+  "relation_choice": {
+    "set": "relation-choice@0-exploratory",
+    "type": "choice",
+    "instructions": "How does following the later constraint affect the earlier constraint? Select replaced if the earlier constraint can no longer be kept anywhere, partly_limited if it can no longer be kept only in a part of its scope, or compatible if both can be kept together."
+  }
+}

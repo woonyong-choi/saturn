@@ -5,6 +5,7 @@
 | [constraint-long-context](constraint-long-context/report.md) | 실제 긴 Claude Code 대화에서 Jev의 제약 등록·전이·보존 판단 | [맥락 고르기](../design/context-selection.md) | H1 기각: 등록 정밀도 18.8% [8.9, 35.3], H2 보류: 재현율 100.0% [61.0, 100.0], 전이·최종 집합은 합의 표본 부족으로 판정 보류 |
 | [rrf-k-top-n](rrf-k-top-n/report.md) | 후보 순위의 k와 judge 상위 N | [맥락 고르기](../design/context-selection.md) | H1 기각: recall 12.0% [9.2, 15.6] |
 | [precompute-breakeven](precompute-breakeven/report.md) | 도구 결과 미리 판단의 손익분기 | [맥락 정리](../design/context-management.md) | H2 기각: 남는 질문 감소 29.4% [26.4, 32.3], H3 기각: 토큰 4.967배 [4.337, 5.614] |
+| [jev-decision-consistency](jev-decision-consistency/design.md) | Jev 반복 호출의 행동 구간·확률 일관성과 변형 반응(오프라인) | [router](../design/router.md), [맥락 정리](../design/context-management.md) | 측정 전 |
 | [claude-summary-handoff](claude-summary-handoff/design.md) | Claude 압축 요약 전환 품질 | [맥락 정리](../design/context-management.md), [provider 연결과 session](../design/providers-and-sessions.md) | 측정 전 |
 | [fast-adjust-convergence](fast-adjust-convergence/report.md) | 빠른 조정의 수렴과 진동 | [router 학습](../design/router-training.md) | H3 기각: 100건 안 기준값 폭 0.051 [0.050, 0.052], H1 채택: 틀림 비율 5.6% [5.5, 5.7] |
 | [ranked-handoff-quality](ranked-handoff-quality/design.md) | 후보 순위와 judge 결합의 전환 품질 | [맥락 고르기](../design/context-selection.md) | #117로 대체(#198) |
