@@ -111,6 +111,7 @@ fn default_thresholds_match_design_table() {
     assert_eq!(thresholds.feedback_cause, 0.7);
     assert_eq!(thresholds.is_constraint, 0.8);
     assert_eq!(thresholds.constraint_ask, 0.7);
+    assert_eq!(thresholds.constraint_release, 0.8);
 }
 
 #[test]
@@ -596,4 +597,122 @@ fn a_missing_line_answer_fails_the_whole_line_question() {
         constraint::read_lines(&answers, 2, &Thresholds::default()),
         None
     );
+}
+
+fn change_verdict(
+    count: usize,
+    probabilities: Vec<f64>,
+    method: Method,
+) -> constraint::ChangeVerdict {
+    let (set, questions) = constraint::change_question(count);
+    let request = RouterRequest {
+        model: "router".into(),
+        state: "state".into(),
+        sets: vec![(set, questions)],
+    };
+    let answers = response(vec![("constraint_change", Answer::Choice(probabilities))]);
+    assert!(validate(&request, &answers).is_ok());
+    constraint::read_change(&request, &answers, count, &Thresholds::default(), method)
+}
+
+#[test]
+fn change_answer_reads_target_and_kind_from_the_top_option() {
+    use constraint::ChangeKind::{Once, Release, Scoped};
+    use constraint::ChangeVerdict::{Apply, None, UnsureKind};
+
+    // 선택지 순서: none, release_1, once_1, scoped_1, release_2, once_2, scoped_2
+    let table = [
+        (
+            vec![0.05, 0.9, 0.02, 0.01, 0.01, 0.01, 0.0],
+            Apply {
+                target: 0,
+                kind: Release,
+            },
+        ),
+        (
+            vec![0.02, 0.0, 0.0, 0.0, 0.02, 0.94, 0.02],
+            Apply {
+                target: 1,
+                kind: Once,
+            },
+        ),
+        (
+            vec![0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.98],
+            Apply {
+                target: 1,
+                kind: Scoped,
+            },
+        ),
+        // 요청 확률은 0.85지만 종류 몫이 0.5/0.85 미만이라 종류를 확신하지 못한다
+        (
+            vec![0.15, 0.42, 0.38, 0.05, 0.0, 0.0, 0.0],
+            UnsureKind {
+                target: 0,
+                kind: Release,
+            },
+        ),
+        // 요청 확률 0.7은 기준 미만
+        (vec![0.3, 0.7, 0.0, 0.0, 0.0, 0.0, 0.0], None),
+        (vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], None),
+    ];
+
+    for (probabilities, expected) in table {
+        assert_eq!(
+            change_verdict(2, probabilities.clone(), Method::Jev),
+            expected,
+            "{probabilities:?}"
+        );
+    }
+}
+
+#[test]
+fn change_answer_with_a_wrong_shape_or_low_confidence_changes_nothing() {
+    use constraint::ChangeVerdict::None;
+
+    let (set, questions) = constraint::change_question(1);
+    let request = RouterRequest {
+        model: "router".into(),
+        state: "state".into(),
+        sets: vec![(set, questions)],
+    };
+    let thresholds = Thresholds::default();
+    let short = response(vec![("constraint_change", Answer::Choice(vec![0.1, 0.9]))]);
+    let noul = response(vec![("constraint_change", Answer::Noul(0.9))]);
+    let missing = response(Vec::new());
+    for answers in [&short, &noul, &missing] {
+        assert_eq!(
+            constraint::read_change(&request, answers, 1, &thresholds, Method::Jev),
+            None
+        );
+    }
+    let unasked = constraint::read_change(
+        &constraint_request(),
+        &response(vec![(
+            "constraint_change",
+            Answer::Choice(vec![0.0, 1.0, 0.0, 0.0]),
+        )]),
+        1,
+        &thresholds,
+        Method::Jev,
+    );
+    assert_eq!(unasked, None);
+    // 분포가 퍼져 확신도가 낮은 saturn 답은 요청 확률이 높아도 적용하지 않는다
+    assert_eq!(
+        change_verdict(1, vec![0.0, 0.34, 0.33, 0.33], Method::Saturn),
+        None
+    );
+}
+
+#[test]
+fn scoped_condition_is_a_contiguous_span_of_the_input() {
+    let input = "  tests 폴더에서만 영어 강제를 풀어줘  ";
+    let condition = constraint::scoped_condition(input).unwrap();
+    assert!(input.contains(&condition));
+    assert_eq!(condition, "tests 폴더에서만 영어 강제를 풀어줘");
+
+    let long = "가".repeat(500);
+    let cut = constraint::scoped_condition(&long).unwrap();
+    assert_eq!(cut.chars().count(), 200);
+    assert!(long.starts_with(&cut));
+    assert_eq!(constraint::scoped_condition("   "), None);
 }

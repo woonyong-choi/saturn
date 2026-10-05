@@ -16,6 +16,7 @@ use tokio::sync::mpsc;
 
 use crate::Engine;
 use crate::calls::PendingCall;
+use crate::constraint_change::PendingChange;
 use crate::constraints::{ConstraintPlan, PendingLines};
 use crate::delivery::Parked;
 use crate::events::PendingPermission;
@@ -49,6 +50,8 @@ pub(crate) struct Unrecorded {
     pub(crate) exchange: RouterExchange,
     /// 이 판단이 정한 제약 등록. 판단 기록을 쓴 뒤 적용한다.
     pub(crate) constraint: Option<ConstraintPlan>,
+    /// 등록 대상이 아닌 입력이라 판단을 기록한 뒤 해제·예외 판단을 시작한다.
+    pub(crate) change: bool,
 }
 
 /// 작업 글자. `A`부터 쓰고 끝난 작업의 글자는 비어 있는 가장 앞 글자로 다시 쓴다.
@@ -90,14 +93,25 @@ impl TaskBook {
 
 /// 돌고 있는 router 호출 하나(접수한 입력의 처리 방식 판단). 요청을 만들 때의 채팅 revision을 들고 있어 결과를
 /// 적용할 때 비교한다. `retried`는 revision이 어긋나 다시 묻는 호출이면 참이다.
-/// `lines`가 참이면 긴 입력의 문장 나누기 질문이라 입력 처리 판단이 아니다.
+/// `kind`가 `Route`가 아니면 입력 처리 판단이 아니다.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct RouterJob {
     pub(crate) chat: ChatId,
     pub(crate) input: InputId,
     pub(crate) revision: ChatRevision,
     pub(crate) retried: bool,
-    pub(crate) lines: bool,
+    pub(crate) kind: JobKind,
+}
+
+/// router 호출의 목적.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum JobKind {
+    /// 접수한 입력의 처리 방식 판단.
+    Route,
+    /// 긴 입력의 문장 나누기 질문.
+    Lines,
+    /// 제약 해제·예외 판단.
+    Change,
 }
 
 /// 별도 작업이 engine 루프로 돌려주는 호출 결과.
@@ -128,6 +142,8 @@ pub(crate) struct FlowState {
     pub(crate) unrecorded: HashMap<InputId, Unrecorded>,
     /// 문장 나누기 답을 기다리는 제약 등록.
     pub(crate) pending_lines: HashMap<InputId, PendingLines>,
+    /// 해제·예외 판단의 답을 기다리는 입력.
+    pub(crate) pending_change: HashMap<InputId, PendingChange>,
     /// 등록 확인을 만든 판단에서 router가 등록 쪽을 더 높게 봤는지. 답이 router와 다른지 가리는 데 쓴다.
     pub(crate) ask_leaned_yes: HashMap<ConstraintAskId, bool>,
     /// 판단을 적용한 뒤 아직 보내기 판정을 거치지 않은 입력. 대기 사유가 정해진 뒤 한 번 알린다.
@@ -284,6 +300,7 @@ impl Default for FlowState {
             last_disposition: HashMap::new(),
             unrecorded: HashMap::new(),
             pending_lines: HashMap::new(),
+            pending_change: HashMap::new(),
             ask_leaned_yes: HashMap::new(),
             applied: Vec::new(),
             resume_signals: Vec::new(),

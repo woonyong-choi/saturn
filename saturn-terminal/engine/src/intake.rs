@@ -15,7 +15,7 @@ use saturn_protocol::state::{Disposition, InputState};
 
 use crate::Attachment;
 use crate::constraints::ConstraintPlan;
-use crate::flow::{Routed, RouterDone, RouterJob, Unrecorded};
+use crate::flow::{JobKind, Routed, RouterDone, RouterJob, Unrecorded};
 use crate::models::ModelPlan;
 use crate::requests::{settings_notification, trust_notification};
 use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
@@ -119,9 +119,16 @@ impl Engine {
     /// 별도 작업이 끝낸 router 호출의 결과를 받는다. 적용 직전에 채팅 revision을 비교하므로 호출이 도는 사이
     /// 멈춤이나 취소가 있었으면 결과는 버려진다. 적용하지 못한 오류는 입력을 지우지 않고 로그만 남긴다.
     pub(crate) async fn on_routed(&mut self, done: RouterDone) {
-        if done.job.lines {
-            self.on_lines_done(done).await;
-            return;
+        match done.job.kind {
+            JobKind::Route => {}
+            JobKind::Lines => {
+                self.on_lines_done(done).await;
+                return;
+            }
+            JobKind::Change => {
+                self.on_change_done(done).await;
+                return;
+            }
         }
         let RouterDone {
             job,
@@ -497,7 +504,7 @@ impl Engine {
             input: record.id,
             revision,
             retried,
-            lines: false,
+            kind: JobKind::Route,
         };
         self.flow.judging.insert(record.chat, record.id);
         self.spawn_router_job(job, request);
@@ -563,12 +570,18 @@ impl Engine {
                 .filter(ConstraintPlan::asks_user)
                 .map(|_| ASKED_CONSTRAINT_Q),
         };
+        // 등록 대상이 아닌 입력만 해제·예외 판단을 받는다. router가 답하지 못했으면 제약 판단을 모두 건너뛴다
+        let change = constraint.is_none()
+            && settings.constraint_auto_apply()
+            && exchange.result.is_ok()
+            && !job.retried;
         self.flow.unrecorded.insert(
             record.id,
             Unrecorded {
                 context,
                 exchange,
                 constraint,
+                change,
             },
         );
         Ok(Verdict {
@@ -684,10 +697,28 @@ impl Engine {
                 None
             }
         };
-        if let Some(plan) = unrecorded.constraint {
+        self.follow_constraint_judgment(
+            input,
+            (unrecorded.constraint, unrecorded.change),
+            judgment,
+        )
+        .await;
+        judgment
+    }
+
+    /// 판단 기록을 쓴 뒤 그 입력의 제약 등록을 적용하고, 등록 대상이 아니면 해제·예외 판단을 시작한다.
+    async fn follow_constraint_judgment(
+        &mut self,
+        input: InputId,
+        (plan, change): (Option<ConstraintPlan>, bool),
+        judgment: Option<JudgmentId>,
+    ) {
+        if let Some(plan) = plan {
             self.apply_constraint_plan(input, plan, judgment).await;
         }
-        judgment
+        if change {
+            self.start_change(input, false).await;
+        }
     }
 
     /// 실행 중인 에이전트가 있는 채팅이면 참.
@@ -762,6 +793,10 @@ fn threshold_list(settings: &Settings) -> Vec<(String, f64)> {
         ("resume_held".to_owned(), thresholds.resume_held),
         ("is_constraint".to_owned(), thresholds.is_constraint),
         ("constraint_ask".to_owned(), thresholds.constraint_ask),
+        (
+            "constraint_release".to_owned(),
+            thresholds.constraint_release,
+        ),
     ]
 }
 

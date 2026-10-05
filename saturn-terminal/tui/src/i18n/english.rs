@@ -58,6 +58,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("제약 등록됨", "Constraint added"),
     ("제약 해제됨", "Constraint released"),
     ("확인 없이", "Without confirmation"),
+    ("제약 잠시 해제됨", "Constraint paused"),
+    ("이번 작업 동안", "For this task"),
+    ("제약 예외", "Constraint exception"),
+    ("제약 다시 유효", "Constraint active again"),
     (
         "↑↓ 이동 · Enter 선택 · Esc 대기",
         "↑↓ move · Enter select · Esc queue",

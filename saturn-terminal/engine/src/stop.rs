@@ -442,6 +442,7 @@ impl Engine {
             self.end_held_session(chat, held).await;
         }
         self.flow.tasks.release(task);
+        self.end_task_exceptions(task).await;
         Ok(())
     }
 

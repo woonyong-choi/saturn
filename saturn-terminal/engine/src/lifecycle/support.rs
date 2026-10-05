@@ -442,7 +442,7 @@ impl Flow {
             input,
             revision,
             retried: false,
-            lines: false,
+            kind: crate::flow::JobKind::Route,
         };
         self.engine
             .finish_router(&job, &request, exchange)
@@ -453,7 +453,11 @@ impl Flow {
 
     /// 별도 작업에서 도는 router 호출과 provider 요청이 모두 돌아와 적용될 때까지 engine 루프 역할을 한다.
     pub(super) async fn settle(&mut self) {
-        while self.is_judging() || self.is_delivering() || self.is_calling() || self.is_splitting()
+        while self.is_judging()
+            || self.is_delivering()
+            || self.is_calling()
+            || self.is_splitting()
+            || self.is_changing()
         {
             let flow = &mut self.engine.flow;
             tokio::select! {
@@ -477,6 +481,11 @@ impl Flow {
     /// 긴 입력의 문장 나누기 답을 기다리는 등록이 있다.
     pub(super) fn is_splitting(&self) -> bool {
         !self.engine.flow.pending_lines.is_empty()
+    }
+
+    /// 제약 해제·예외 판단의 답을 기다리는 입력이 있다.
+    pub(super) fn is_changing(&self) -> bool {
+        !self.engine.flow.pending_change.is_empty()
     }
 
     pub(super) fn is_judging(&self) -> bool {
@@ -546,6 +555,50 @@ pub(super) fn running_constraint_reply(
         None,
         Some(constraint),
     ))
+}
+
+/// 해제·예외 질문(`constraint_change`)에 대한 router 답. 선택지 `none`, `release_1`, `once_1`, `scoped_1`, `release_2`, ... 중
+/// `picked`에 확률 1을 준다.
+pub(super) fn change_reply(constraints: usize, picked: &str) -> FakeReply {
+    let options: Vec<String> = std::iter::once("none".to_owned())
+        .chain((1..=constraints).flat_map(|k| {
+            ["release", "once", "scoped"]
+                .into_iter()
+                .map(move |kind| format!("{kind}_{k}"))
+        }))
+        .collect();
+    let options: Vec<&str> = options.iter().map(String::as_str).collect();
+    ok(&json!({
+        "model": "jev-1.13.0",
+        "answers": { "constraint_change": choice(&options, picked) },
+        "usage": { "input_tokens": 10, "output_tokens": 2 },
+    })
+    .to_string())
+}
+
+/// `change_reply`와 같은 질문에 선택지별 확률을 직접 준다. `probabilities`는 `none`, `release_1`, `once_1`, `scoped_1`, ... 순서다.
+pub(super) fn change_distribution_reply(probabilities: &[f64]) -> FakeReply {
+    let count = (probabilities.len() - 1) / 3;
+    let options: Vec<String> = std::iter::once("none".to_owned())
+        .chain((1..=count).flat_map(|k| {
+            ["release", "once", "scoped"]
+                .into_iter()
+                .map(move |kind| format!("{kind}_{k}"))
+        }))
+        .collect();
+    let map: serde_json::Map<String, Value> = options
+        .iter()
+        .zip(probabilities)
+        .map(|(option, p)| (option.clone(), json!(p)))
+        .collect();
+    ok(&json!({
+        "model": "jev-1.13.0",
+        "answers": { "constraint_change": {
+            "type": "choice", "choice": "none", "probabilities": map, "confidence": 1.0,
+        } },
+        "usage": { "input_tokens": 10, "output_tokens": 2 },
+    })
+    .to_string())
 }
 
 /// 긴 입력의 문장 나누기 질문에 대한 router 답. 문장 번호 순서로 확률을 준다.

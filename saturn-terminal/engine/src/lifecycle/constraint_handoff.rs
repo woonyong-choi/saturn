@@ -1,11 +1,11 @@
 //! 제약 인계 테스트: 저장한 유효 제약이 긴 대화 뒤 전환에서도 새 session의 패킷 제약 구역에 들어가고, 넣은 제약이 `packet_constraints`에 남는지 확인한다.
 //! 설계: docs/design/constraints.md#패킷의-제약-칸
 
-use saturn_protocol::ids::{ConstraintId, InputId, Provider, SessionId};
+use saturn_protocol::ids::{ConstraintId, InputId, Provider, SessionId, TaskId};
 
 use super::support::{Flow, idle_reply, text, tool_read, tool_result, turn_completed};
 use crate::providers::test_support::{CLAUDE, CODEX, Call, FakeProvider};
-use crate::store::{Actor, ConstraintState, NewRegistration, NewRule};
+use crate::store::{Actor, ConstraintChange, ConstraintState, NewChange, NewRegistration, NewRule};
 
 /// 제약 원문. 어느 입력이나 답, 파일 내용에도 나오지 않아 최근 턴으로는 맞출 수 없다.
 const RULE: &str = "Release builds must never print the internal build token";
@@ -220,5 +220,58 @@ async fn released_constraint_is_not_handed_over() {
             .await
             .unwrap()
             .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn constraint_with_an_exception_is_handed_over_with_its_exception_note() {
+    let (mut flow, _codex) = flow_with("").await;
+    flow.engine.switch_provider(flow.chat, CODEX);
+    let first = turn(&mut flow, CODEX, "task 1 write the cache", "c1").await;
+    let paused = "Keep every cache key lowercase";
+    let ids = register(&flow, first, &[(RULE, &[]), (paused, &[])]).await;
+    for (id, change) in [
+        (ids[0], ConstraintChange::Once { task: TaskId(999) }),
+        (
+            ids[1],
+            ConstraintChange::Scoped {
+                condition: "only inside tests/".to_owned(),
+            },
+        ),
+    ] {
+        let revision = flow
+            .engine
+            .store
+            .constraint_revision(flow.chat)
+            .await
+            .unwrap();
+        flow.engine
+            .store
+            .change_constraint(&NewChange {
+                chat: flow.chat,
+                constraint: id,
+                change,
+                actor: Actor::Router,
+                reason: None,
+                input: None,
+                judgment: None,
+                revision,
+            })
+            .await
+            .unwrap();
+    }
+    let claude = flow.fake.clone();
+    flow.engine.switch_provider(flow.chat, CLAUDE);
+
+    flow.submit("task 2 review the cache").await;
+
+    let packet = packet_of(&claude);
+    assert!(
+        packet.contains(&format!("{RULE} [paused for the current task]")),
+        "{packet}"
+    );
+    assert!(
+        packet.contains(&format!("{paused} [exception: only inside tests/]")),
+        "{packet}"
     );
 }

@@ -123,7 +123,7 @@
 | `child.max_depth` | 0 이상 정수 | 2. 하위 접속의 깊이 상한이고 0이면 하위 접속을 받지 않는다([하위 접속](child-sessions.md#상한과-대기열)) |
 | `child.max_concurrent` | 1 이상 정수 | 5. 한 채팅이 동시에 거느리는 하위 접속 수 |
 | `child.max_total` | 1 이상 정수 | 10. `engine` 전체의 동시 하위 접속 수 |
-| `constraint.auto_apply` | 참·거짓 | 거짓. 참이면 router의 `is_constraint` 판단이 지속 제약을 자동 등록하거나 묻는다. 거짓이면 판단은 기록만 하고 제약을 만들지 않는다. 사용자 층에서만 정한다([제약](constraints.md#식별-순서)) |
+| `constraint.auto_apply` | 참·거짓 | 거짓. 참이면 router의 `is_constraint` 판단이 지속 제약을 자동 등록하거나 묻고 `constraint_change` 판단이 제약을 해제하거나 예외를 건다. 거짓이면 판단은 기록만 하고 제약을 만들지도 바꾸지도 않는다. 사용자의 명시 해제는 이 키와 상관없다. 사용자 층에서만 정한다([제약](constraints.md#식별-순서)) |
 | `debug.provider_events` | 참·거짓 | 거짓. 켜면 provider 연결이 받은 원시 메시지의 모양(방법 이름, 순서, ID, 필드 이름)을 값 없이 `logs/provider-events-<날짜>.log`에 남긴다([provider 연결과 session](providers-and-sessions.md#원시-이벤트-관측-기록)) |
 | `retention.max_age_days` | 1 이상 정수 | 없음(무제한 보존). `saturn prune`과 `/prune`이 오래된 채팅을 정하는 기준이기도 하다([기록](records.md)) |
 | `retention.auto_prune` | 참·거짓 | 거짓. 참이고 `max_age_days`가 있을 때만 engine 시작 때 한 번 그 기한보다 오래 쓰지 않은 채팅을 지운다. 삭제라 `max_age_days`만으로 켜지지 않는다([기록](records.md#보존과-정리)) |
@@ -143,9 +143,9 @@
 - `permission.shell` 같은 개별 규칙은 셸 명령, 파일 편집, 파일 읽기(Claude는 폴더 밖 읽기 도구, Codex는 읽기로 분류된 명령의 경로에 닿는다. 폴더 안의 읽기와 분류되지 않은 명령에는 닿지 않는다), MCP 도구, subagent 실행의 허용, 묻기, 거부 규칙이다. 문자열 하나면 그 도구 전체에 적용하고, 패턴 표를 주면 패턴마다 값을 준다. 모드 기본 규칙 뒤에 사용자 층 규칙, 폴더 층 규칙, 채팅 층 규칙, 실행 층 규칙을 잇고 마지막으로 일치한 규칙이 이긴다. 단 어느 층이든 `deny`가 하나라도 일치하면 거부한다(채팅 층과 실행 층까지 넣은 것은 초안). 같은 층 안의 순서는 파일에 적힌 순서다(초안). 병합 결과의 `permission`에는 합친 모드와 이은 규칙 목록이 들어가고, 입력은 접수 때 고정한 설정 번호의 목록을 쓴다. `permission` 아래 모르는 키, 모르는 모드, `allow`, `ask`, `deny`가 아닌 값은 검사에 실패한다. 패턴 문법과 판정 흐름, provider별 번역은 [권한](permissions.md)에 있다.
 - `context.mode`가 `provider`이면 `sessions`는 compaction과 유휴 복귀를 판정하지 않고 provider 실행 인자에 자동 압축 안전망 값을 넣지 않는다. 규칙은 [맥락 정리](context-management.md#정리-모드)에 있다. 기본은 `saturn`이다.
 - `context.select.rrf_k`는 router가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
-- 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_ask`다.
+- 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_ask`, `constraint_release`다.
 - `is_constraint`는 자동 등록 기준값(기본 0.8), `constraint_ask`는 등록 질문의 묻는 하한(기본 0.7)이다. `constraint.auto_apply`가 거짓(기본)이면 두 값 모두 적용하지 않는다. 켠 상태에서 권한 모드가 `full`이면 제약 질문을 묻지 않는다([제약](constraints.md#묻지-않고-진행하는-권한-모드)).
-- 구현 전 기준값은 `constraint_release`다([#379](https://github.com/woonyong-choi/saturn/issues/379)). 해제·예외 판단을 적용하는 기준값(기본 0.8)이다.
+- `constraint_release`는 해제·예외 판단을 적용하는 기준값(기본 0.8)이고 종류 확률의 하한으로도 쓴다. `constraint.auto_apply`가 거짓(기본)이면 해제·예외 질문도 하지 않는다.
 - 제약 칸 상한은 `P_max`의 `context.constraint_slot_percent`%다. 규칙은 [제약](constraints.md#패킷의-제약-칸)에 있다.
 - 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
 - 실행 층 `-c key=value`의 값은 TOML 값 문법으로 읽고, 같은 키가 여러 번 오면 뒤 값이 이긴다. TOML 값으로 읽을 수 없는 따옴표 없는 한 단어(`permission.mode=read-only`)는 문자열로 읽는다. 공백이나 따옴표가 든 값은 TOML 문법을 지켜야 한다.

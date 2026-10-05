@@ -28,6 +28,7 @@ mod chat_env;
 mod chat_labels;
 mod children;
 mod commands;
+mod constraint_change;
 mod constraints;
 mod control;
 mod delivery;
@@ -125,6 +126,9 @@ pub enum EngineError {
     /// 묻지 않은 창의 답이라 적용하지 않는다.
     #[error("no pending {what} for this answer")]
     UnexpectedAnswer { what: &'static str },
+    /// 화면이 본 제약 revision이 지금과 다르거나 대상이 유효 제약이 아니다. 목록을 새로 읽어야 한다.
+    #[error("stale constraint request: read the constraints again")]
+    StaleConstraint,
     /// 채팅에 더하려는 경로가 이미 있는 폴더의 절대 경로가 아니다.
     #[error("invalid folder {path}: {reason}")]
     InvalidFolder { path: String, reason: &'static str },
@@ -183,6 +187,7 @@ impl EngineError {
             Self::ChildRejected { .. } => saturn_protocol::rpc::CHILD_REJECTED,
             Self::Unsupported { .. } => METHOD_NOT_FOUND,
             Self::UnexpectedAnswer { .. }
+            | Self::StaleConstraint
             | Self::UnknownPermissionMode { .. }
             | Self::InvalidFolder { .. }
             | Self::InvalidLabel { .. }

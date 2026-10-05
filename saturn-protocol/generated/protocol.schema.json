@@ -705,6 +705,77 @@
         },
         {
           "additionalProperties": false,
+          "description": "이번 작업 동안 제약을 멈췄다. 제약은 지우지 않았고 작업이 끝나면 다시 유효해진다(`ConstraintResumed`).\n`unconfirmed`는 권한 모드 `full`이라 종류를 묻지 않고 정했다는 뜻이다.",
+          "properties": {
+            "ConstraintPaused": {
+              "properties": {
+                "rule": {
+                  "type": "string"
+                },
+                "unconfirmed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "rule",
+                "unconfirmed"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ConstraintPaused"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "사용자가 말한 조건이나 범위에서만 제약을 멈췄다. `condition`은 입력 원문의 연속된 글이다.",
+          "properties": {
+            "ConstraintExcepted": {
+              "properties": {
+                "condition": {
+                  "type": "string"
+                },
+                "rule": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rule",
+                "condition"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ConstraintExcepted"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "이번 작업 예외가 작업 끝으로 닫혀 제약이 다시 유효해졌다.",
+          "properties": {
+            "ConstraintResumed": {
+              "properties": {
+                "rule": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rule"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ConstraintResumed"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "description": "모든 작업이 끝난 순간의 합계.",
           "properties": {
             "RequestSummary": {
@@ -1586,6 +1657,37 @@
           "type": "object"
         },
         {
+          "description": "사용자가 제약 하나를 직접 영구 해제한다. `revision`은 화면이 본 채팅의 제약 revision이고 지금과 다르면 거절한다.",
+          "properties": {
+            "method": {
+              "const": "ReleaseConstraint",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "constraint": {
+                  "$ref": "#/$defs/ConstraintId"
+                },
+                "revision": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "constraint",
+                "revision"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "description": "기록하지 않는다(router 키).",
           "properties": {
             "method": {
@@ -2123,6 +2225,12 @@
     },
     "ConstraintAskId": {
       "description": "사용자에게 묻는 제약 확인 한 건.",
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "ConstraintId": {
+      "description": "제약 한 건. 다시 쓰지 않는 번호다.",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"

@@ -56,6 +56,7 @@ progressing = 0.2
 feedback_cause = 0.7
 is_constraint = 0.8
 constraint_ask = 0.7
+constraint_release = 0.8
 
 [model]
 mode = "auto"
@@ -127,6 +128,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("router.thresholds.feedback_cause", Kind::Unit),
     ("router.thresholds.is_constraint", Kind::Unit),
     ("router.thresholds.constraint_ask", Kind::Unit),
+    ("router.thresholds.constraint_release", Kind::Unit),
     ("router.model", Kind::Text),
     ("router.local.endpoint", Kind::Text),
     ("router.local.version", Kind::Text),
@@ -1026,8 +1028,12 @@ mod tests {
         assert_eq!(thresholds.resume_held, 0.85);
         assert_eq!(thresholds.file_relevant, (0.7, 0.35));
         assert_eq!(
-            (thresholds.is_constraint, thresholds.constraint_ask),
-            (0.8, 0.7)
+            (
+                thresholds.is_constraint,
+                thresholds.constraint_ask,
+                thresholds.constraint_release
+            ),
+            (0.8, 0.7, 0.8)
         );
         assert_eq!(snapshot.settings.retention().max_age, None);
         let budget = snapshot
@@ -1379,12 +1385,6 @@ mod tests {
             assert!(
                 schema_has_threshold(name),
                 "{name} is documented but rejected"
-            );
-        }
-        for name in documented_thresholds("- 구현 전 기준값은 ") {
-            assert!(
-                !schema_has_threshold(&name),
-                "{name} is marked as not implemented but the schema accepts it"
             );
         }
     }

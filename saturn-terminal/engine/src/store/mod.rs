@@ -34,8 +34,9 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePo
 
 pub(crate) use changes::RunChanges;
 pub(crate) use constraints::{
-    Actor, AnswerOutcome, ConstraintState, EventKind, EventReason, NewRegistration, NewRule,
-    StoredAsk, StoredConstraint,
+    Actor, AnswerOutcome, ChangeOutcome, ConstraintChange, ConstraintState, EventKind, EventReason,
+    ExceptionKind, NewChange, NewRegistration, NewRule, StoredAsk, StoredConstraint,
+    StoredException,
 };
 pub(crate) use extensions::ExtensionRow;
 pub(crate) use history::HistoryEntry;

@@ -473,6 +473,7 @@ impl Engine {
         self.warn_failure("failed to record rejected input", written);
         self.end_failed_run(&delivery).await;
         self.release_task(&delivery);
+        self.end_new_task_exceptions(&delivery).await;
         self.notify_input(delivery.input).await;
         let provider = delivery.live.as_ref().map(|live| live.provider);
         self.notify_task(
@@ -487,6 +488,13 @@ impl Engine {
             self.flow.tasks.release(delivery.task);
         }
         Ok(())
+    }
+
+    /// 시작하지 못한 새 작업의 예외를 닫는다. 알림을 받은 쪽이 끝난 작업의 상태를 곧바로 읽으므로 알림보다 먼저 끝낸다.
+    async fn end_new_task_exceptions(&mut self, delivery: &Delivery) {
+        if matches!(delivery.start, Start::Task(_)) {
+            self.end_task_exceptions(delivery.task).await;
+        }
     }
 
     async fn end_failed_run(&mut self, delivery: &Delivery) {
@@ -544,6 +552,7 @@ impl Engine {
             self.store.finish_run(run, RunEnd::Completed).await?;
         }
         if let Some(task) = task {
+            self.end_task_exceptions(task).await;
             let provider = self.flow.live.get(&agent).map(|live| live.provider);
             self.notify_task(chat, task, TaskState::Done, provider, None)
                 .await;

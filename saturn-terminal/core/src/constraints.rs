@@ -1,13 +1,19 @@
 //! 제약의 규칙 한 줄 자르기와 적용 범위 뽑기. 입력 원문에서 코드가 자르고 요약하거나 생성하지 않는다.
 //! 설계: docs/design/constraints.md#제약의-모양
 
+use saturn_protocol::ids::{ConstraintId, LedgerSeq};
 use unicode_normalization::UnicodeNormalization;
+
+use crate::sessions::ranking::{Candidate, DEFAULT_RRF_K, rank_candidates};
 
 /// 이 글자 수를 넘고 여러 문장이면 문장으로 나눈다(초안).
 pub const SPLIT_OVER_CHARS: usize = 200;
 
 /// 문장이 이 수를 넘으면 나누지 않고 입력 전체를 한 건으로 쓴다(초안).
 pub const MAX_SENTENCES: usize = 20;
+
+/// 해제·예외 판단에 싣는 제약 수 상한. 전체를 실으면 요청이 크기 상한에 걸린다.
+pub const CHANGE_CANDIDATES_MAX: usize = 10;
 
 /// 경로 끝 이름의 확장자 최대 길이.
 const MAX_EXTENSION_CHARS: usize = 8;
@@ -120,3 +126,35 @@ fn is_path_like(token: &str) -> bool {
 
 #[cfg(test)]
 mod tests;
+
+// cost: time O(L + c log c), heap O(L + c), stack O(1)
+// vars: L = 규칙과 입력의 글자 수 합, c = 제약 수
+// basis: estimate
+/// 해제·예외 판단에 실을 유효 제약을 등록 순서로 돌려준다. 10개 이하면 전부, 넘으면 입력과의 파일 겹침, 단어 겹침, 최근성
+/// 순위를 RRF로 합쳐 상위 10개다. 같은 점수면 나중에 등록한 쪽이 위다. `constraints`는 `(번호, 규칙, 범위)`다.
+pub fn pick_change_candidates(
+    constraints: &[(ConstraintId, String, Vec<String>)],
+    input: &str,
+) -> Vec<ConstraintId> {
+    if constraints.len() <= CHANGE_CANDIDATES_MAX {
+        let mut all: Vec<ConstraintId> = constraints.iter().map(|(id, _, _)| *id).collect();
+        all.sort();
+        return all;
+    }
+    let candidates: Vec<Candidate> = constraints
+        .iter()
+        .map(|(id, rule, scope)| Candidate {
+            seq: LedgerSeq(id.0),
+            text: rule.clone(),
+            files: scope.clone(),
+        })
+        .collect();
+    let mut picked: Vec<ConstraintId> =
+        rank_candidates(&candidates, &scope_of(input), input, DEFAULT_RRF_K)
+            .into_iter()
+            .take(CHANGE_CANDIDATES_MAX)
+            .map(|seq| ConstraintId(seq.0))
+            .collect();
+    picked.sort();
+    picked
+}

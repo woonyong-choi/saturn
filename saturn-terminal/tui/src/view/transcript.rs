@@ -617,6 +617,58 @@ pub(crate) fn tokens_text(lang: Lang, tokens: Option<u64>) -> String {
     }
 }
 
+/// 제약 변경 줄. 규칙과 조건은 사용자 원문 그대로이고 한 줄에 맞게 줄인다.
+fn constraint_notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
+    match notice {
+        ChatNotice::ConstraintAdded { rule, unconfirmed } => {
+            let mut line = format!(
+                "{prefix}{} · {}",
+                lang.tr(i18n::CONSTRAINT_ADDED),
+                one_line(rule)
+            );
+            if *unconfirmed {
+                line.push_str(&format!(" · {}", lang.tr(i18n::CONSTRAINT_UNCONFIRMED)));
+            }
+            vec![line]
+        }
+        ChatNotice::ConstraintReleased { rule } => {
+            vec![format!(
+                "{prefix}{} · {}",
+                lang.tr(i18n::CONSTRAINT_RELEASED),
+                one_line(rule)
+            )]
+        }
+        ChatNotice::ConstraintPaused { rule, unconfirmed } => {
+            let mut line = format!(
+                "{prefix}{} · {} · {}",
+                lang.tr(i18n::CONSTRAINT_PAUSED),
+                one_line(rule),
+                lang.tr(i18n::CONSTRAINT_PAUSED_FOR_TASK)
+            );
+            if *unconfirmed {
+                line.push_str(&format!(" · {}", lang.tr(i18n::CONSTRAINT_UNCONFIRMED)));
+            }
+            vec![line]
+        }
+        ChatNotice::ConstraintExcepted { rule, condition } => {
+            vec![format!(
+                "{prefix}{} · {} · {}",
+                lang.tr(i18n::CONSTRAINT_EXCEPTED),
+                one_line(rule),
+                one_line(condition)
+            )]
+        }
+        ChatNotice::ConstraintResumed { rule } => {
+            vec![format!(
+                "{prefix}{} · {}",
+                lang.tr(i18n::CONSTRAINT_RESUMED),
+                one_line(rule)
+            )]
+        }
+        _ => Vec::new(),
+    }
+}
+
 fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
     match notice {
         ChatNotice::Compacted => vec![format!("{prefix}{}", lang.tr(i18n::COMPACTED))],
@@ -690,24 +742,11 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
             }
             vec![line]
         }
-        ChatNotice::ConstraintAdded { rule, unconfirmed } => {
-            let mut line = format!(
-                "{prefix}{} · {}",
-                lang.tr(i18n::CONSTRAINT_ADDED),
-                one_line(rule)
-            );
-            if *unconfirmed {
-                line.push_str(&format!(" · {}", lang.tr(i18n::CONSTRAINT_UNCONFIRMED)));
-            }
-            vec![line]
-        }
-        ChatNotice::ConstraintReleased { rule } => {
-            vec![format!(
-                "{prefix}{} · {}",
-                lang.tr(i18n::CONSTRAINT_RELEASED),
-                one_line(rule)
-            )]
-        }
+        ChatNotice::ConstraintAdded { .. }
+        | ChatNotice::ConstraintReleased { .. }
+        | ChatNotice::ConstraintPaused { .. }
+        | ChatNotice::ConstraintExcepted { .. }
+        | ChatNotice::ConstraintResumed { .. } => constraint_notice_lines(lang, prefix, notice),
         ChatNotice::ExtensionInstalled { .. }
         | ChatNotice::ExtensionRemoved { .. }
         | ChatNotice::ExtensionFailed { .. }
@@ -1194,6 +1233,44 @@ mod tests {
         assert_eq!(
             released.lines(Lang::Ko, false, false),
             vec!["제약 해제됨 · 에러 메시지는 영어로 통일해"]
+        );
+    }
+
+    #[test]
+    fn lines_constraint_exception_notices_show_kind_and_condition() {
+        let rule = "에러 메시지는 영어로 통일해".to_owned();
+        let notice = |notice| TranscriptCell::Notice {
+            label: None,
+            notice,
+        };
+        let paused = |unconfirmed| {
+            notice(ChatNotice::ConstraintPaused {
+                rule: rule.clone(),
+                unconfirmed,
+            })
+        };
+
+        assert_eq!(
+            paused(false).lines(Lang::Ko, false, false),
+            vec!["제약 잠시 해제됨 · 에러 메시지는 영어로 통일해 · 이번 작업 동안"]
+        );
+        assert_eq!(
+            paused(true).lines(Lang::En, false, false),
+            vec![
+                "Constraint paused · 에러 메시지는 영어로 통일해 · For this task · Without confirmation"
+            ]
+        );
+        assert_eq!(
+            notice(ChatNotice::ConstraintExcepted {
+                rule: rule.clone(),
+                condition: "tests 폴더에서는".to_owned(),
+            })
+            .lines(Lang::Ko, false, false),
+            vec!["제약 예외 · 에러 메시지는 영어로 통일해 · tests 폴더에서는"]
+        );
+        assert_eq!(
+            notice(ChatNotice::ConstraintResumed { rule }).lines(Lang::Ko, false, false),
+            vec!["제약 다시 유효 · 에러 메시지는 영어로 통일해"]
         );
     }
 
