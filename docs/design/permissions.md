@@ -170,7 +170,7 @@ engine은 Claude Code를 실행할 때 `--permission-prompt-tool stdio`와 `--se
 - 사용자 설정이 `bypassPermissions`이고 폴더 허용 목록이 있어도 `Bash` 호출은 모두 `can_use_tool`로 왔다.
 - 요청은 `control_request`의 `can_use_tool`로 오고, 답은 `control_response`로 보낸다. 허용은 `{"behavior":"allow","updatedInput":<요청 input>}`, 거부는 `{"behavior":"deny","message":"..."}`다.
 - `--permission-prompt-tool` 없이 `ask`만 주면 요청이 호스트로 오지 않고 자동 거부된다.
-- router 키 보호의 Bash 샌드박스(`sandbox`)와 키 저장소 `filesystem.denyRead`도 같은 `--settings` 값에 합쳐 넘긴다. 권한 모드와 무관하게 늘 넣고, 모드 `full`도 끄지 못한다(router 키 보호는 Saturn 규칙의 예외, [router 키 보호](router-key-security.md#provider-명령-샌드박스)).
+- router 키 보호의 Bash 샌드박스(`sandbox`)와 키 저장소 `filesystem.denyRead`도 같은 `--settings` 값에 합쳐 넘긴다. 샌드박스를 켜면 Claude Code는 기본으로 Bash를 허가 요청 없이 자동 허용해 `can_use_tool`이 오지 않고 `read-only`에서도 셸이 도므로, `sandbox.autoAllowBashIfSandboxed: false`를 함께 넣어 모든 Bash 호출이 Saturn 규칙의 판정을 받게 한다([#508](https://github.com/woonyong-choi/saturn/issues/508)). 권한 모드와 무관하게 늘 넣고, 모드 `full`도 끄지 못한다(router 키 보호는 Saturn 규칙의 예외, [router 키 보호](router-key-security.md#provider-명령-샌드박스)).
 - router 키 보호 훅의 실행별 설정은 같은 `--settings` 값에 합쳐 넘긴다(초안). 훅이 막는 호출은 규칙이 `allow`여도 막는 것이 설계다(초안, [router 키 보호](router-key-security.md)).
 
 Claude 읽기는 작업 폴더 밖 `Read`가 사유 `Path is outside allowed working directories`로 요청되고, `--add-dir` 폴더 안 `Read`는 요청 없이 실행됐다(각 3/3, [실험](../experiments/provider-permission-real-claude/report.md)). `Glob`, `Grep`, `LS`가 같은 방식으로 오는지는 실측하지 않았고, 요청이 오면 같은 읽기 규칙으로 판정한다. Claude Code 2.1.288 실측에서 `Bash`, `Write`, MCP 도구, subagent 도구(`Agent`)는 `can_use_tool`로 왔다. `Edit`는 `Read` 없이 부르면 요청 전에 provider가 막아 Saturn에 요청이 오지 않았다. 사용자 설정 위치의 `deny` 규칙과 훅은 측정하지 못했다([#348](https://github.com/woonyong-choi/saturn/issues/348)).
