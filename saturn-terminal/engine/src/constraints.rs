@@ -7,7 +7,7 @@ use saturn_core::routers::calibration::AskedAnswer;
 use saturn_core::routers::constraint::{
     RegistrationAction, RegistrationVerdict, line_questions, read_lines, read_registration,
 };
-use saturn_core::routers::{JudgmentOutcome, RouterRequest, validate};
+use saturn_core::routers::{JudgmentOutcome, RouterRequest, RouterResponse, validate};
 use saturn_protocol::ids::{ChatId, ConstraintAskId, InputId, JudgmentId, SettingsRevision};
 use saturn_protocol::rpc::{ChatNotice, ConstraintAskAnswer, Notification};
 use saturn_protocol::state::InputState;
@@ -56,16 +56,14 @@ impl Engine {
     pub(crate) async fn constraint_plan(
         &self,
         request: &RouterRequest,
-        exchange: &RouterExchange,
+        response: Option<&RouterResponse>,
         record: &QueuedInput,
         settings: &Settings,
     ) -> Option<ConstraintPlan> {
         if !settings.constraint_auto_apply() {
             return None;
         }
-        let Ok(response) = &exchange.result else {
-            return None;
-        };
+        let response = response?;
         if validate(request, response).is_err() {
             return None;
         }

@@ -31,6 +31,7 @@ mod judge_context;
 mod live_settings;
 mod model;
 mod model_mode;
+mod model_shadow;
 mod outcomes;
 mod packet_overflow;
 mod permissions;

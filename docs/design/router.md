@@ -210,6 +210,17 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 - 채점하지 않은 판단 기록도 JSONL로 내보낼 수 있다.
 - 판단 기록은 로컬에 쌓고, `consent.share_with_server = true`인 레코드만 서버로 올린다. 동의한 레코드만 보내고 오프라인에서도 판단하기 위해서다.
 
+### 모델 판단 그림자
+
+모델 선택을 실제로 쓰기 전에 router가 어떻게 답하는지 재 보는 실험 옵션이다. 설정 `router.shadow.model_selection`(기본 꺼짐, 사용자 층 전용)을 켜면 입력 처리 요청에 후보별 질문을 묶는다. 켜도 실제 모델 선택은 바뀌지 않는다.
+
+- 질문 세트는 `model-shadow@1.0`이고 후보마다 `sufficient:<provider>/<model>` 질문 하나다. 각 질문은 그 모델 하나만 보고 이 입력을 충분히 처리하는지 확률로 묻고, 다른 질문의 답을 전제하지 않는다. 모델과 추론 깊이를 한 질문에 섞지 않아 서로 모순되는 조합이 답으로 나오지 않는다. 추론 깊이 조합은 provider가 알려 주는 실제 지원 조합이 생기면 별도 질문으로 다룬다.
+- 후보는 `target_model` 후보와 같은 모델 목록이다. 모델을 고정한 입력과 후보가 없는 입력은 묻지 않는다. 요청이 크기 한도로 나뉠 만큼 크면 묻지 않는다. 한 조각의 실패가 실제 판단을 막지 않게 하기 위해서다.
+- 같은 요청에 묶으므로 입력 원문은 한 번만 간다. 요청과 답은 실제 판단이 읽기 전에 그림자 질문을 떼어 내고, 실제 판단은 그림자를 끈 요청과 같은 질문과 답만 읽는다. 그림자 답이 빠지거나 범위 밖이어도 실제 판단은 무효가 되지 않고 그림자 상태만 `invalid`다. 호출이 실패하면 실제 판단과 같은 대체 규칙을 따르고 그림자 상태는 `no-answer`다.
+- 판단 기록과 함께 `model_shadows` 행을 남긴다([기록 저장과 보존](records.md#판단-기록)). 입력, 설정 번호, 채팅 revision, 정책 지문, 질문 세트 버전, 후보 지문, 후보별 확률과 [모델 평가 근거 목록](model-evidence.md) 기준 품질 확정 여부, 실제로 적용한 모델을 연결한다. 성과(실행, 사용량, 결과 신호)는 같은 입력 번호와 판단 번호로 잇는다. 사용량은 판단 기록의 토큰과 그림자 질문이 더한 바이트로 비교한다.
+- 판단이 어긋나(`Superseded`) 적용하지 않았으면 상태는 `superseded`이고 적용한 모델은 비운다. 늦게 도착한 답이나 revision 변경은 실제 선택을 바꾸지 않는다.
+- 그림자 선택이 실제 선택과 일치하는지만으로 효과를 판정하지 않는다. 효과는 모델 선택 순효과 실험([#542](https://github.com/woonyong-choi/saturn/issues/542))이 실제 성과로 판정한다.
+
 ### router 실패
 
 router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하면 판단 없이 현재 모델로 진행한다.
@@ -271,6 +282,10 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | 구현 전인 `train`, `router use`, 판단 방식 `collect`는 정책을 바꾸지 않고 미지원 오류나 설정 오류를 돌려준다. | `saturn-terminal/engine/src/lifecycle/requests.rs`의 `requests_each_get_one_response_in_order`, `saturn-terminal/engine/src/routers/mod.rs`의 `select_follows_method_and_endpoint_rules` |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
 | 후보를 순위로 자르지 않고 전체를 묻는다. | `saturn-terminal/core/src/routers/tests.rs`의 `compact_questions_150_candidates_ask_all` |
+| 모델 판단 그림자를 켜고 꺼도 실제 모델과 실제 질문이 같고 원문은 한 번만 가며, 켜면 후보·정책·확률·적용 모델을 내보낸다. | `saturn-terminal/engine/src/lifecycle/model_shadow.rs`의 `shadow_on_and_off_apply_the_same_model_and_the_same_real_questions` |
+| 그림자 답이 빠지거나 틀리거나 router가 실패해도 실제 선택은 그대로다. | `missing_wrong_or_failed_shadow_answers_leave_the_real_choice_alone` |
+| 어긋난 판단의 그림자는 미적용으로 남는다. | `a_superseded_judgment_leaves_its_shadow_unapplied` |
+| 그림자 질문이 실제 요청·답과 갈라지고 크기를 넘으면 묻지 않는다. | `saturn-terminal/core/src/routers/shadow.rs`의 `shadow_answers_split_off_and_never_disturb_the_real_judgment` |
 | 고정하지 않은 입력에 모델 목록을 `target_model` 후보로 묻고 고른 모델로 보낸다. 고정 모델이거나 매뉴얼 모드이거나 목록이 없으면 묻지 않고, 후보 밖이면 기본 모델이나 현재 모델이다. | [모델 고르기](providers-and-sessions.md#모델-고르기)의 `target_model` 테스트 |
 | `is_constraint` 기준값과 `constraint_change`가 한국어 입력에서 기준 정확도를 넘는다. | [등록 기준값의 사람 확인](../experiments/constraint-human-check/report.md)에서 0.80 정밀도 91.3% [87.6, 94.0], 0.70 정밀도 84.8%·재현율 77.2%. [Jev와 Haiku 비교](../experiments/constraint-exception-judge/report.md)에서 해제·예외 종합 정확도 91.2%(사후 계산), 종류 정확도 87.8%로 기준 90%에는 못 미친다. 간접 지시 입력은 정확도 74.5% [68.0, 80.0]이고 앞 입력의 제약 등록 여부를 state에 넣어도 오르지 않았다([간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)). |
 

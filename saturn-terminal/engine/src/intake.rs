@@ -5,6 +5,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use saturn_core::queue::{QueueError, QueuedInput};
+use saturn_core::routers::shadow::split_shadow;
 use saturn_core::routers::{
     ConstraintQuestion, JudgmentOutcome, RouteDecision, RouterError, RouterRequest, RouterResponse,
     decide_route, question_ids, questions_for_input, validate,
@@ -536,21 +537,28 @@ impl Engine {
     ) -> Result<Verdict, EngineError> {
         let record = self.queued(job.input)?;
         let settings = self.settings.at(&self.store, record.settings).await?;
+        let full_sets: Vec<_> = request.sets.iter().map(|(id, _)| id.clone()).collect();
         let active = self.routers.active();
-        tracing::debug!(
-            policy = %crate::policy::policy_digest(
-                &settings,
-                active.router_id(),
-                active.model(),
-                &self.catalog.version,
-            ),
-            "judgment policy"
+        let policy = crate::policy::policy_digest(
+            &settings,
+            active.router_id(),
+            active.model(),
+            &self.catalog.version,
         );
+        tracing::debug!(%policy, "judgment policy");
         if let Some(alert) = self.routers.observe(&exchange) {
             self.notify_alert(record.chat, alert).await;
         }
-        let mut read =
-            self.read_verdict(request, &exchange, &settings, job.revision, record.settings);
+        // 그림자 질문은 실제 판단이 읽는 요청과 답에서 떼어 낸다
+        let split = split_shadow(request, exchange.result.as_ref().ok());
+        let mut shadow = self.shadow_plan(request, &split, (job.revision, policy));
+        let request = &split.request;
+        let mut read = self.read_verdict(
+            (request, split.response.as_ref()),
+            &exchange,
+            &settings,
+            (job.revision, record.settings),
+        );
         // 고정 모델은 `target_model` 선택만 대신하고 관계 판단은 그대로 받는다.
         // 고정하지 않았으면 오토 모드에서 후보 글인 router 선택을, 아니면 기본 모델을 쓴다. 둘 다 없으면 현재 모델이다
         let plan = ModelPlan::from_settings(&settings, &self.registry);
@@ -565,14 +573,17 @@ impl Engine {
                 .filter(|_| plan.mode == ModelMode::Auto);
             routed.or(plan.default)
         };
+        if let Some(shadow) = &mut shadow {
+            shadow.decided = read.decision.model.clone();
+        }
         let fallbacks = read.fallback_reasons();
         let constraint = self
-            .constraint_plan(request, &exchange, &record, &settings)
+            .constraint_plan(request, split.response.as_ref(), &record, &settings)
             .await;
         let context = RecordContext {
             chat: record.chat,
             input: Some(record.id),
-            question_sets: request.sets.iter().map(|(id, _)| id.clone()).collect(),
+            question_sets: full_sets,
             settings: record.settings,
             fallbacks,
             outcome: read.outcome,
@@ -593,6 +604,7 @@ impl Engine {
                 exchange,
                 constraint,
                 change,
+                shadow,
             },
         );
         Ok(Verdict {
@@ -624,7 +636,7 @@ impl Engine {
             "chat: {activity}\nprevious input handled as: {previous}\n{context}\nuser input: {}",
             record.text
         );
-        RouterRequest {
+        let mut request = RouterRequest {
             model: self.routers.active().model().to_owned(),
             state: sanitize_state(&state, &self.masker),
             sets: questions_for_input(
@@ -638,16 +650,18 @@ impl Engine {
                     ConstraintQuestion::Without
                 },
             ),
-        }
+        };
+        self.add_shadow(record, plan.shadow, &mut request);
+        request
     }
 
+    /// `real`은 그림자 질문을 뗀 요청과 그 답이다.
     fn read_verdict(
         &self,
-        request: &RouterRequest,
+        (request, real): (&RouterRequest, Option<&RouterResponse>),
         exchange: &RouterExchange,
         settings: &Settings,
-        revision: ChatRevision,
-        settings_revision: SettingsRevision,
+        (revision, settings_revision): (ChatRevision, SettingsRevision),
     ) -> ReadVerdict {
         let route = |response: &RouterResponse| {
             decide_route(
@@ -671,11 +685,13 @@ impl Engine {
             }
         };
         match &exchange.result {
-            Ok(response) if validate(request, response).is_ok() => ReadVerdict {
-                decision: route(response),
-                outcome: JudgmentOutcome::Ok,
-                failed: false,
-            },
+            Ok(_) if real.is_some_and(|response| validate(request, response).is_ok()) => {
+                ReadVerdict {
+                    decision: route(real.unwrap_or(&empty_response(request))),
+                    outcome: JudgmentOutcome::Ok,
+                    failed: false,
+                }
+            }
             Ok(_) | Err(RouterError::Invalid { .. }) => invalid(),
             Err(_) => ReadVerdict {
                 decision: self
@@ -697,6 +713,7 @@ impl Engine {
         if superseded {
             unrecorded.context.outcome = JudgmentOutcome::Superseded;
         }
+        let (chat, settings) = (unrecorded.context.chat, unrecorded.context.settings);
         let recorded = self
             .routers
             .record(&self.store, unrecorded.context, &unrecorded.exchange)
@@ -708,6 +725,10 @@ impl Engine {
                 None
             }
         };
+        if let (Some(judgment), Some(shadow)) = (judgment, unrecorded.shadow) {
+            self.record_shadow((judgment, input, chat, settings), shadow, superseded)
+                .await;
+        }
         self.follow_constraint_judgment(
             input,
             (unrecorded.constraint, unrecorded.change),
@@ -770,6 +791,14 @@ impl ReadVerdict {
             .iter()
             .map(|question| (question.clone(), reason.to_owned()))
             .collect()
+    }
+}
+
+fn empty_response(request: &RouterRequest) -> RouterResponse {
+    RouterResponse {
+        model: request.model.clone(),
+        answers: Vec::new(),
+        tokens: (0, 0),
     }
 }
 

@@ -123,6 +123,7 @@
 | `child.max_depth` | 0 이상 정수 | 2. 하위 접속의 깊이 상한이고 0이면 하위 접속을 받지 않는다([하위 접속](child-sessions.md#상한과-대기열)) |
 | `child.max_concurrent` | 1 이상 정수 | 5. 한 채팅이 동시에 거느리는 하위 접속 수 |
 | `child.max_total` | 1 이상 정수 | 10. `engine` 전체의 동시 하위 접속 수 |
+| `router.shadow.model_selection` | 참·거짓 | 거짓. 참이면 입력 처리 요청에 후보별 충분성 질문을 묶어 모델 선택을 미리 재 보고 기록한다. 실제 모델 선택에는 쓰지 않는다. 실험 옵션이고 사용자 층에서만 정한다([모델 판단 그림자](router.md#모델-판단-그림자)) |
 | `constraint.auto_apply` | 참·거짓 | 거짓. 참이면 router의 `is_constraint` 판단이 지속 제약을 자동 등록하거나 묻고 `constraint_change` 판단이 제약을 해제하거나 예외를 건다. 거짓이면 판단은 기록만 하고 제약을 만들지도 바꾸지도 않는다. 사용자의 명시 해제는 이 키와 상관없다. 사용자 층에서만 정한다([제약](constraints.md#식별-순서)) |
 | `debug.provider_events` | 참·거짓 | 거짓. 켜면 provider 연결이 받은 원시 메시지의 모양(방법 이름, 순서, ID, 필드 이름)을 값 없이 `logs/provider-events-<날짜>.log`에 남긴다([provider 연결과 session](providers-and-sessions.md#원시-이벤트-관측-기록)) |
 | `retention.max_age_days` | 1 이상 정수 | 없음(무제한 보존). `saturn prune`과 `/prune`이 오래된 채팅을 정하는 기준이기도 하다([기록](records.md)) |
@@ -194,7 +195,7 @@ provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. `
 | 하위 접속 상한 | [하위 접속](child-sessions.md#상한과-대기열) |
 | provider 원시 메시지 관측 기록 | [provider 연결과 session](providers-and-sessions.md#원시-이벤트-관측-기록) |
 
-사용자 전용 키는 `router.endpoint`, `router.key`, `grading.model`, `consent`, `router.mode`, `retention`, `child`, `debug`, `constraint.auto_apply`와 같거나 그 아래 키다(초안). 옛 이름 `router.method`도 새 이름으로 옮긴 뒤 같은 규칙을 받는다. `retention`은 보존 기간과 자동 삭제라 비용과 삭제가 걸려 있어 사용자만 정한다. `child`는 하위 접속 상한이라 저장소가 provider 프로세스 수를 늘리지 못하게 사용자만 정한다. `debug`는 홈 폴더에 파일을 쌓는 기록이라 저장소가 남의 홈에 기록을 늘리지 못하게 사용자만 정한다. `constraint.auto_apply`는 검증하지 않은 판단이 지속 제약을 만드는 정책이라 저장소가 켜지 못하게 사용자만 정한다. router 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([router 키 보호](router-key-security.md)).
+사용자 전용 키는 `router.endpoint`, `router.key`, `grading.model`, `consent`, `router.mode`, `retention`, `child`, `debug`, `constraint.auto_apply`, `router.shadow.model_selection`과 같거나 그 아래 키다(초안). 옛 이름 `router.method`도 새 이름으로 옮긴 뒤 같은 규칙을 받는다. `retention`은 보존 기간과 자동 삭제라 비용과 삭제가 걸려 있어 사용자만 정한다. `child`는 하위 접속 상한이라 저장소가 provider 프로세스 수를 늘리지 못하게 사용자만 정한다. `debug`는 홈 폴더에 파일을 쌓는 기록이라 저장소가 남의 홈에 기록을 늘리지 못하게 사용자만 정한다. `constraint.auto_apply`는 검증하지 않은 판단이 지속 제약을 만드는 정책이라 저장소가 켜지 못하게 사용자만 정한다. `router.shadow.model_selection`은 판단 요청을 늘려 비용이 걸려 저장소가 켜지 못하게 사용자만 정한다. router 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([router 키 보호](router-key-security.md)).
 
 ### 병합과 설정 번호
 

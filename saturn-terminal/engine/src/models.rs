@@ -49,6 +49,8 @@ pub(crate) struct ModelPlan {
     pub(crate) mode: ModelMode,
     /// 기본 모델의 `<provider>/<model>` 글. 고르지 않았거나 등록하지 않은 provider면 `None`.
     pub(crate) default: Option<String>,
+    /// 모델 선택 그림자 판단을 켰는지. 실험 옵션이다.
+    pub(crate) shadow: bool,
 }
 
 impl ModelPlan {
@@ -59,6 +61,7 @@ impl ModelPlan {
                 .model_default()
                 .filter(|text| registry.parse_pinned(text).is_some())
                 .map(str::to_owned),
+            shadow: settings.shadow_model_selection(),
         }
     }
 }

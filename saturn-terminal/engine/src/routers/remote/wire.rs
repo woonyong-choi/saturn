@@ -1,3 +1,4 @@
+use saturn_core::routers::shadow::SET_MODEL_SHADOW;
 use saturn_core::routers::{
     Answer, AnswerKind, Question, RouterError, RouterRequest, RouterResponse,
 };
@@ -193,11 +194,18 @@ pub(crate) fn parse_router_reply(
     };
     let parsed: Value = serde_json::from_str(body).map_err(|_| invalid("response is not json"))?;
     let mut answers = Vec::new();
-    for question in request.sets.iter().flat_map(|(_, questions)| questions) {
-        let Some(answer) = parsed["answers"].get(&question.id) else {
-            continue;
-        };
-        answers.push((question.id.clone(), parse_answer(question, answer)?));
+    for (set, questions) in &request.sets {
+        for question in questions {
+            let Some(answer) = parsed["answers"].get(&question.id) else {
+                continue;
+            };
+            match parse_answer(question, answer) {
+                Ok(parsed_answer) => answers.push((question.id.clone(), parsed_answer)),
+                // 그림자 질문의 틀린 답은 건너뛴다. 실제 판단을 무효로 만들지 않는다
+                Err(_) if set.name == SET_MODEL_SHADOW => {}
+                Err(error) => return Err(error),
+            }
+        }
     }
     Ok(RouterResponse {
         model: parsed["model"]
