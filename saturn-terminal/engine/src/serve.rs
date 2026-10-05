@@ -71,6 +71,7 @@ impl Engine {
                     self.retry_unrecorded_steers().await;
                 }
             }
+            self.finish_quiet_requests().await;
         }
         Ok(())
     }

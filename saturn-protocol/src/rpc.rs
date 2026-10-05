@@ -770,11 +770,12 @@ pub enum ChatNotice {
     ConstraintResumed {
         rule: String,
     },
-    /// 모든 작업이 끝난 순간의 합계.
+    /// 모든 작업이 끝난 순간의 합계. 보고하지 않은 값은 0으로 채우지 않는다. `provider_tokens`에는 토큰을 보고한 provider만
+    /// 들어가고, `router_tokens`는 router가 토큰을 하나도 보고하지 않았으면 비어 있다.
     RequestSummary {
         provider_tokens: Vec<(crate::ids::Provider, u64)>,
         router_calls: u32,
-        router_tokens: u64,
+        router_tokens: Option<u64>,
         elapsed_ms: u64,
     },
 }

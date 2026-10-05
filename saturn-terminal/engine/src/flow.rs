@@ -181,6 +181,8 @@ pub(crate) struct FlowState {
     pub(crate) stale_connections: HashSet<(ChatId, Provider)>,
     /// 연결을 시작할 때 쓴 에이전트 질문 기능 값(켬이 참).
     pub(crate) questions_of_connection: HashMap<(ChatId, Provider), bool>,
+    /// 채팅마다 열려 있는 요청. 채팅이 쉬면 합계를 알리고 닫는다.
+    pub(crate) requests: HashMap<ChatId, crate::request_summary::OpenRequest>,
     /// 정리 미리보기가 남긴 확인 번호와 그때 지울 채팅.
     pub(crate) prune_plans: crate::prune::PrunePlans,
     /// 설정 파일 감시가 채팅마다 마지막으로 본 바뀐 지문.
@@ -273,6 +275,7 @@ impl Default for FlowState {
             extensions_of_connection: HashMap::new(),
             stale_connections: HashSet::new(),
             questions_of_connection: HashMap::new(),
+            requests: HashMap::new(),
             prune_plans: crate::prune::PrunePlans::default(),
             watched_settings: HashMap::new(),
             needs_check: HashMap::new(),

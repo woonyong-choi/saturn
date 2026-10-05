@@ -181,6 +181,12 @@ impl Store {
         self.home.join(BACKUP_DIR)
     }
 
+    /// 시험이 시각 같은 값을 직접 정해 쓸 때 쓴다.
+    #[cfg(test)]
+    pub(crate) fn pool(&self) -> &SqlitePool {
+        &self.pool
+    }
+
     /// 이 뒤의 쓰기가 모두 실패한다. 접수 기록 실패 시험이 쓴다.
     #[cfg(test)]
     pub(crate) async fn deny_writes(&self) {
@@ -260,7 +266,7 @@ fn schema_target(migrations: &[&str]) -> u32 {
 }
 
 /// 기록 저장소의 모든 시각 칸은 unix 밀리초다.
-fn to_millis(at: SystemTime) -> i64 {
+pub(crate) fn to_millis(at: SystemTime) -> i64 {
     let millis = at
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()
