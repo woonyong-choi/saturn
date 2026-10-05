@@ -7,8 +7,8 @@ use ts_rs::TS;
 
 use crate::event::ProviderEvent;
 use crate::ids::{
-    ChatId, ConstraintAskId, InputId, JudgmentId, LedgerSeq, Provider, SettingsRevision, TaskId,
-    TaskLabel,
+    ChatId, ConstraintAskId, ConstraintId, InputId, JudgmentId, LedgerSeq, Provider,
+    SettingsRevision, TaskId, TaskLabel,
 };
 use crate::input::{InputAnswer, InputRequest};
 use crate::state::{Disposition, InputState, QueueReason, TaskState};
@@ -194,6 +194,11 @@ pub enum Request {
     AnswerConstraintAsk {
         ask: ConstraintAskId,
         answer: ConstraintAskAnswer,
+    },
+    /// 사용자가 제약 하나를 직접 영구 해제한다. `revision`은 화면이 본 채팅의 제약 revision이고 지금과 다르면 거절한다.
+    ReleaseConstraint {
+        constraint: ConstraintId,
+        revision: u64,
     },
     /// 기록하지 않는다(router 키).
     SubmitRouterKey {
@@ -748,6 +753,21 @@ pub enum ChatNotice {
     },
     /// 제약을 해제했다. 입력을 취소해 그 입력의 제약을 함께 해제한 경우도 같다.
     ConstraintReleased {
+        rule: String,
+    },
+    /// 이번 작업 동안 제약을 멈췄다. 제약은 지우지 않았고 작업이 끝나면 다시 유효해진다(`ConstraintResumed`).
+    /// `unconfirmed`는 권한 모드 `full`이라 종류를 묻지 않고 정했다는 뜻이다.
+    ConstraintPaused {
+        rule: String,
+        unconfirmed: bool,
+    },
+    /// 사용자가 말한 조건이나 범위에서만 제약을 멈췄다. `condition`은 입력 원문의 연속된 글이다.
+    ConstraintExcepted {
+        rule: String,
+        condition: String,
+    },
+    /// 이번 작업 예외가 작업 끝으로 닫혀 제약이 다시 유효해졌다.
+    ConstraintResumed {
         rule: String,
     },
     /// 모든 작업이 끝난 순간의 합계.

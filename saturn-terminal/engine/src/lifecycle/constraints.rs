@@ -60,7 +60,9 @@ async fn history_lines(flow: &Flow) -> Vec<(EventKind, Option<EventReason>, Stri
     page.entries
         .into_iter()
         .filter_map(|entry| match entry {
-            HistoryEntry::Constraint { kind, reason, rule } => Some((kind, reason, rule)),
+            HistoryEntry::Constraint {
+                kind, reason, rule, ..
+            } => Some((kind, reason, rule)),
             _ => None,
         })
         .collect()

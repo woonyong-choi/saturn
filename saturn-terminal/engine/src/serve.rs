@@ -296,6 +296,10 @@ impl Engine {
             Request::AnswerConstraintAsk { ask, answer } => {
                 self.answer_constraint_ask(client, ask, answer).await
             }
+            Request::ReleaseConstraint {
+                constraint,
+                revision,
+            } => self.release_constraint(constraint, revision).await,
             Request::SubmitRouterKey { key } => self.submit_router_key(client, key).await,
             Request::AnswerFolderTrust {
                 path,

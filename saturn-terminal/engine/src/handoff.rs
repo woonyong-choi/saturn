@@ -21,8 +21,10 @@ use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId};
 use saturn_protocol::state::InputState;
 
 use crate::Engine;
-use crate::store::ConstraintState;
-use crate::store::{LedgerRow, RunChanges, RunEnd, SteeredInput, StoredConstraint};
+use crate::store::{
+    ConstraintState, ExceptionKind, LedgerRow, RunChanges, RunEnd, SteeredInput, StoredConstraint,
+    StoredException,
+};
 
 /// 새 session의 첫 턴으로 보내는 글.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,6 +47,26 @@ pub(crate) enum HandoffOutcome {
     },
 }
 
+/// 예외가 걸린 제약은 규칙 뒤에 예외 표기를 붙여 새 session이 규칙을 그대로 지키거나 제약이 없는 줄 아는 일을 막는다.
+/// 표기는 제약의 크기에 세므로 표기까지 들어가지 않으면 그 제약은 칸에서 건너뛴다.
+fn with_exception_note(constraint: &StoredConstraint) -> String {
+    match &constraint.exception {
+        None => constraint.rule.clone(),
+        Some(StoredException {
+            kind: ExceptionKind::Once,
+            ..
+        }) => format!("{} [paused for the current task]", constraint.rule),
+        Some(StoredException {
+            kind: ExceptionKind::Scoped,
+            condition,
+        }) => format!(
+            "{} [exception: {}]",
+            constraint.rule,
+            condition.as_deref().unwrap_or_default()
+        ),
+    }
+}
+
 // cost: time O(c log c + c·(s·r + w)), heap O(c), stack O(1)
 // vars: c = 제약 수, s = 범위 경로 수, r = 기준 경로 수, w = 규칙 단어 수
 // basis: estimate
@@ -60,7 +82,7 @@ fn constraint_slot(
         .filter(|constraint| constraint.state != ConstraintState::Released)
         .map(|constraint| SlotConstraint {
             id: constraint.id,
-            rule: constraint.rule.clone(),
+            rule: with_exception_note(constraint),
             scope: constraint.scope.clone(),
         })
         .collect();
@@ -106,7 +128,7 @@ struct Tool {
 // vars: L = 기록 글자 수, c = 도구 호출 수
 // basis: estimate
 /// 순서는 후보 순위(RRF)만 쓴다. 목표 칸은 지금 작업의 첫 입력과 마지막 입력, 남은 일 칸은 대기·보류 입력과 결과를 모르는 작업, 결과 없는 도구 호출이다(docs/experiments/packet-goal-fields/report.md).
-/// 제약 칸에는 해제되지 않은 저장 제약을 상한(`C_max`) 안에서 넣는다(docs/design/constraints.md#패킷의-제약-칸). 해제와 이번 작업 예외의 뜻은 #379가 정한다.
+/// 제약 칸에는 해제되지 않은 저장 제약을 상한(`C_max`) 안에서 넣는다(docs/design/constraints.md#패킷의-제약-칸). 예외가 걸린 제약은 규칙 뒤에 예외 표기를 붙여 넣는다.
 /// TODO(#380): router `compact`로 경쟁 구역을 남김 확률 순으로 채우는 연결은 아직 없다.
 /// 넘길 기록이 없으면 `None`.
 pub(crate) fn handoff_source(

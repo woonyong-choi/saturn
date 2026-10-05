@@ -12,7 +12,7 @@ use saturn_protocol::ids::{ChatId, ConstraintAskId, InputId, JudgmentId, Setting
 use saturn_protocol::rpc::{ChatNotice, ConstraintAskAnswer, Notification};
 use saturn_protocol::state::InputState;
 
-use crate::flow::{RouterDone, RouterJob};
+use crate::flow::{JobKind, RouterDone, RouterJob};
 use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
 use crate::rpc::ClientId;
 use crate::settings::Settings;
@@ -129,7 +129,7 @@ impl Engine {
             input: record.id,
             revision: self.queue.revision(record.chat),
             retried: false,
-            lines: true,
+            kind: JobKind::Lines,
         };
         self.flow.pending_lines.insert(
             record.id,

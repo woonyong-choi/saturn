@@ -32,6 +32,7 @@ pub mod question_ids {
     pub const TARGET_MODEL: &str = "target_model";
     pub const RESUME_HELD: &str = "resume_held";
     pub const IS_CONSTRAINT: &str = "is_constraint";
+    pub const CONSTRAINT_CHANGE: &str = "constraint_change";
     pub const RELATION_TO_RUNNING: &str = "relation_to_running";
     pub const STEER_OR_SPAWN: &str = "steer_or_spawn";
 }
@@ -229,6 +230,8 @@ pub struct Thresholds {
     pub is_constraint: f64,
     /// 이 값 이상 `is_constraint` 미만이면 등록할지 사용자에게 묻고, 문장 나누기에서는 이 값 이상인 문장을 규칙으로 쓴다.
     pub constraint_ask: f64,
+    /// `constraint_change`의 해제·예외 요청 확률이 이 값 이상이면 해제나 예외를 적용하고, 종류 확률의 하한으로도 쓴다.
+    pub constraint_release: f64,
 }
 
 impl Default for Thresholds {
@@ -245,6 +248,7 @@ impl Default for Thresholds {
             feedback_cause: 0.7,
             is_constraint: 0.8,
             constraint_ask: 0.7,
+            constraint_release: 0.8,
         }
     }
 }

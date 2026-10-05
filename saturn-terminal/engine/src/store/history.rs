@@ -9,7 +9,8 @@ use sqlx::sqlite::SqliteRow;
 
 use super::records::parse_run_end;
 use super::{
-    EventKind, EventReason, RunEnd, Store, StoreError, from_sql_int, parse_enum, to_sql_int,
+    EventKind, EventReason, RunEnd, Store, StoreError, StoredException, from_sql_int, parse_enum,
+    to_sql_int,
 };
 
 const INPUT_KIND: i64 = 0;
@@ -42,6 +43,8 @@ pub(crate) enum HistoryEntry {
         kind: EventKind,
         reason: Option<EventReason>,
         rule: String,
+        /// `Excepted` 이벤트가 건 예외.
+        exception: Option<StoredException>,
     },
 }
 
@@ -130,8 +133,15 @@ impl Store {
     async fn history_entry(&self, row: &SqliteRow) -> Result<HistoryEntry, StoreError> {
         let id: i64 = row.try_get("id")?;
         if row.try_get::<i64, _>("kind")? == CONSTRAINT_KIND {
+            let kind: EventKind = parse_enum(&row.try_get::<String, _>("state")?)?;
+            let exception = if kind == EventKind::Excepted {
+                self.exception_of_event(id).await?
+            } else {
+                None
+            };
             return Ok(HistoryEntry::Constraint {
-                kind: parse_enum(&row.try_get::<String, _>("state")?)?,
+                kind,
+                exception,
                 reason: row
                     .try_get::<Option<String>, _>("reason")?
                     .map(|text| parse_enum(&text))

@@ -10,7 +10,7 @@ use saturn_protocol::state::TaskState;
 use crate::rpc::ClientId;
 use crate::secrets::{KeyInput, Masker};
 use crate::settings::{Applied, FolderTrustPrompt};
-use crate::store::{EventKind, EventReason, HistoryEntry, RunEnd};
+use crate::store::{EventKind, EventReason, ExceptionKind, HistoryEntry, RunEnd, StoredException};
 use crate::{AutoPruneNotice, Engine, EngineError, RouterGate, masked_chain};
 
 /// 초안. `LoadHistory` 한 번에 보내는 최대 기록 수.
@@ -117,13 +117,25 @@ impl Engine {
                 disposition: None,
                 reason,
             }],
-            HistoryEntry::Constraint { kind, reason, rule } => {
-                let notice = match kind {
-                    EventKind::Added => ChatNotice::ConstraintAdded {
-                        rule,
-                        unconfirmed: reason == Some(EventReason::Unconfirmed),
-                    },
-                    EventKind::Released => ChatNotice::ConstraintReleased { rule },
+            HistoryEntry::Constraint {
+                kind,
+                reason,
+                rule,
+                exception,
+            } => {
+                let unconfirmed = reason == Some(EventReason::Unconfirmed);
+                let notice = match (kind, exception) {
+                    (EventKind::Added, _) => ChatNotice::ConstraintAdded { rule, unconfirmed },
+                    (EventKind::Released, _) => ChatNotice::ConstraintReleased { rule },
+                    (EventKind::Resumed, _) => ChatNotice::ConstraintResumed { rule },
+                    (
+                        EventKind::Excepted,
+                        Some(StoredException {
+                            kind: ExceptionKind::Scoped,
+                            condition: Some(condition),
+                        }),
+                    ) => ChatNotice::ConstraintExcepted { rule, condition },
+                    (EventKind::Excepted, _) => ChatNotice::ConstraintPaused { rule, unconfirmed },
                 };
                 vec![Notification::ChatNotice {
                     chat,
