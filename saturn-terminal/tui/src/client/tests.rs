@@ -17,6 +17,7 @@ fn attach_env_takes_only_listed_names_and_never_the_router_key() {
     let process = [
         ("PATH", "/opt/bin:/usr/bin"),
         ("CLAUDE_CONFIG_DIR", "/Users/me/.config/claude-test"),
+        ("CODEX_HOME", "/Users/me/.config/codex-test"),
         ("SATURN_KEY", "sk-secret"),
         ("AWS_SECRET_ACCESS_KEY", "other"),
     ];
@@ -35,6 +36,10 @@ fn attach_env_takes_only_listed_names_and_never_the_router_key() {
             (
                 "CLAUDE_CONFIG_DIR".to_owned(),
                 "/Users/me/.config/claude-test".to_owned()
+            ),
+            (
+                "CODEX_HOME".to_owned(),
+                "/Users/me/.config/codex-test".to_owned()
             ),
         ]
     );

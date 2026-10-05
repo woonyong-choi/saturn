@@ -29,8 +29,9 @@ impl CodexClient {
         launch: LaunchSpec,
         supervisor: Supervisor,
     ) -> Result<Self, ProviderError> {
-        let launch = with_env_overrides(launch);
+        // 사용자 설정은 덮어쓰기 전의 사용자 폴더에서 읽는다. 덮어쓴 뒤에는 `CODEX_HOME`이 전용 폴더다
         let found = read_user_config(&launch);
+        let launch = with_env_overrides(launch);
         let user = UserProviderConfig {
             has_auto_compact: launch.user_config.has_auto_compact || found.has_auto_compact,
         };

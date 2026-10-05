@@ -87,6 +87,7 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 - 채팅에 더한 폴더는 `--add-dir <폴더>...` 하나로 넘긴다(Claude Code 2.1.285 `--help`의 여러 값 인자). 열린 session에는 넣지 않는다.
 - 권한은 `--permission-prompt-tool stdio`와 `--settings`의 `ask` 목록으로 Saturn 규칙에 넘기고([권한](permissions.md)), 안전망 `--autocompact` 값은 허용 범위 100000~1000000으로 맞춘다.
 - 사용자 폴더는 `CLAUDE_CONFIG_DIR`(비어 있지 않은 절대 경로)이 있으면 그 폴더, 없으면 `~/.claude`다. 설정 읽기, 직접 설치 탐색, 제외 명령 검사가 같은 함수로 이 폴더를 정하고, provider 프로세스는 같은 환경을 받아 같은 폴더를 읽는다. 상대 경로는 폴더를 정할 수 없어 session을 열지 않고 `NotSent`로 알린다. 폴더가 없거나 읽을 수 없으면 그 층의 파일이 없는 것으로 본다. 심볼릭 링크는 따라 읽는다.
+- Codex의 사용자 폴더(읽기용)는 `CODEX_HOME`(비어 있지 않은 절대 경로)이 있으면 그 폴더, 없으면 `HOME/.codex`다. 설정 읽기, 직접 설치 탐색, 전용 폴더 준비가 같은 함수로 이 폴더를 정한다. TUI가 `CODEX_HOME`을 `Attach`로 넘긴다. provider 프로세스가 받는 `CODEX_HOME`은 그 사용자 폴더가 아니라 engine이 만든 Saturn 전용 폴더(주입용)이고, 사용자 폴더는 읽기만 한다. 상대 경로는 폴더를 정할 수 없어 session을 열지 않고 `NotSent`로 알린다.
 - 사용자 설정은 사용자 폴더의 `settings.json`, `<작업 폴더>/.claude/settings.json`, `settings.local.json`의 `autoCompactEnabled`와 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있는지만 본다(초안).
 - 명령 목록에서 `clear`, `resume`, `exit`, `quit`를 뺀다(초안). 허가 요청은 `control_request`의 `can_use_tool`로 받고 `control_response`로 답한다. 요청의 `input`은 허용 응답의 `updatedInput`으로 되돌려 주려고 요청 번호와 함께 기억한다(`Bash`만 실측, [권한](permissions.md)).
 - 맥락 크기는 마지막 메인 `assistant` 메시지 `usage`의 입력, 캐시 읽기, 캐시 쓰기 합이다(초안).
