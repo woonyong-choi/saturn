@@ -11,6 +11,7 @@ mod child_passes;
 mod child_sessions;
 mod commands;
 mod conflict_steer;
+mod constraint_handoff;
 mod constraints;
 mod crash_recovery;
 mod decision;

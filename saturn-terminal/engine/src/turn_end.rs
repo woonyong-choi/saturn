@@ -80,13 +80,14 @@ impl Engine {
             return Ok(false);
         }
         let (rows, steers, changes) = self.packet_material(chat).await?;
+        let constraints = self.store.constraints_of_chat(chat).await?;
         let source = handoff_source(
             &rows,
             &steers,
             &changes,
             &self.pending_work(chat, None),
-            &self.registry.instruction_docs(),
-            budget.rrf_k,
+            (&constraints, &self.registry.instruction_docs()),
+            &budget,
         );
         let outcome = source
             .as_ref()
@@ -116,12 +117,15 @@ impl Engine {
                     );
                 }
                 let up_to = rows.last().map_or_else(Default::default, |row| row.seq);
+                let tiers = source
+                    .as_ref()
+                    .map_or_else(Vec::new, |source| source.constraint_tiers.clone());
                 let reduction = source.map(|source| Reduction {
                     source,
                     budget,
                     sent_tokens: handoff.tokens,
                 });
-                self.restart_session(chat, live, handoff.text, reduction, up_to)
+                self.restart_session(chat, live, handoff.text, reduction, (up_to, tiers))
                     .await?;
                 return Ok(true);
             }

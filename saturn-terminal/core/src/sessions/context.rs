@@ -15,6 +15,9 @@ pub const DEFAULT_PACKET_HARD_PERCENT: u64 = 20;
 /// 항목 하나가 경쟁 구역 예산에서 원문으로 들어갈 수 있는 비율(%)(초안).
 pub const DEFAULT_ITEM_CAP_PERCENT: u64 = 30;
 
+/// 제약 칸이 `P_max`에서 차지하는 몫의 기본값(초안).
+pub const DEFAULT_CONSTRAINT_SLOT_PERCENT: u64 = 25;
+
 #[derive(Debug, Clone, Copy)]
 pub struct ContextBudget {
     /// 절대 기준(토큰).
@@ -33,6 +36,8 @@ pub struct ContextBudget {
     pub packet_hard_percent: u64,
     /// 설정 `context.item_cap_percent`. 1~100.
     pub item_cap_percent: u64,
+    /// 설정 `context.constraint_slot_percent`. 1~100.
+    pub constraint_slot_percent: u64,
     /// 설정 `context.select.rrf_k`.
     pub rrf_k: u32,
 }
@@ -54,6 +59,11 @@ impl ContextBudget {
 
     pub fn packet_limit(&self) -> u64 {
         self.threshold() / 10
+    }
+
+    /// 제약 칸 상한 `C_max`(토큰). `P_max`의 `constraint_slot_percent`%다.
+    pub fn constraint_limit(&self) -> u64 {
+        self.packet_limit() * self.constraint_slot_percent.clamp(1, 100) / 100
     }
 
     /// 고정 구역이 `packet_limit`을 넘는 패킷에만 쓴다(초안).
@@ -157,6 +167,7 @@ mod tests {
             cache_ttl: Duration::from_secs(300),
             packet_hard_percent: DEFAULT_PACKET_HARD_PERCENT,
             item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
+            constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
             rrf_k: DEFAULT_RRF_K,
         }
     }

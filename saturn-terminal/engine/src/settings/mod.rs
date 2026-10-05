@@ -327,6 +327,7 @@ impl Settings {
             cache_ttl: DEFAULT_CACHE_TTL,
             packet_hard_percent: self.packet_hard_percent(),
             item_cap_percent: self.positive("context.item_cap_percent"),
+            constraint_slot_percent: self.positive("context.constraint_slot_percent"),
             rrf_k: u32::try_from(self.whole("context.select.rrf_k")).unwrap_or(u32::MAX),
         }
     }

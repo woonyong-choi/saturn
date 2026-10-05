@@ -4,8 +4,9 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use saturn_protocol::ids::{LedgerSeq, SessionId};
+use saturn_protocol::ids::{ConstraintId, LedgerSeq, SessionId};
 
+use super::constraint_slot::ConstraintTier;
 use super::context::ContextBudget;
 use super::memo::INTERRUPTED_RESULT;
 use super::stamp::{Stamp, label, session_title};
@@ -18,6 +19,9 @@ pub const RECENT_TURNS: usize = 3;
 
 // 초안
 const CHARS_PER_TOKEN: usize = 4;
+
+/// 제약 칸 상한을 셀 때 항목마다 더하는 구분 글자 수.
+pub const CONSTRAINT_SEPARATOR_CHARS: usize = ITEM_SEPARATOR.len();
 
 const ITEM_SEPARATOR: &str = "\n\n";
 
@@ -99,8 +103,12 @@ pub struct CompetingItem {
 /// provider 요약은 정본이 아니므로 모두 Saturn 기록 원문에서 고른다.
 #[derive(Debug, Clone, Default)]
 pub struct PacketSource {
-    /// 대체된 제약은 뺀다.
-    pub constraints: Vec<Entry>,
+    /// 제약 칸에 들어간 규칙. 제약 번호 순이고 상한 안이다.
+    pub constraints: Vec<String>,
+    /// 칸이 차서 못 넣은 제약의 규칙. 있으면 칸 끝에 개수를 적고, 맥락 정리를 미룰 때는 `constraints`와 함께 보인다.
+    pub constraints_omitted: Vec<String>,
+    /// 전환 기록 `packet_constraints`에 남길 제약별 단계. 패킷 글에는 쓰지 않는다.
+    pub constraint_tiers: Vec<(ConstraintId, ConstraintTier)>,
     pub goal_and_last_input: Vec<Entry>,
     /// 끝나지 않은 항목과 효과를 모르는 항목.
     pub open_items: Vec<Entry>,
@@ -213,9 +221,11 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
     let fixed_chars = render(&sections).chars().count();
     if fixed_chars > hard_chars {
         return PacketOutcome::Deferred {
-            constraints: by_seq(&source.constraints)
-                .into_iter()
-                .map(|item| item.text)
+            constraints: source
+                .constraints
+                .iter()
+                .chain(&source.constraints_omitted)
+                .cloned()
                 .collect(),
         };
     }
@@ -334,7 +344,7 @@ fn fixed_sections(source: &PacketSource, turns: &[RecentTurn]) -> Vec<Section> {
     vec![
         Section {
             title: "Constraints and decisions",
-            items: by_seq(&source.constraints),
+            items: constraint_items(source),
         },
         Section {
             title: "Goal and last input",
@@ -425,6 +435,30 @@ fn head(text: &str) -> String {
 // basis: estimate
 fn item_chars(form: &str) -> usize {
     form.chars().count() + ITEM_SEPARATOR.len()
+}
+
+/// 제약 칸 상한 `C_max`를 글자 수로 센 값.
+pub fn constraint_cap_chars(budget: &ContextBudget) -> usize {
+    to_chars(budget.constraint_limit())
+}
+
+// cost: time O(c), heap O(L), stack O(1)
+// vars: c = 제약 수, L = 제약 글자 수
+// basis: estimate
+/// 칸에 든 제약 뒤에 못 넣은 제약 수 한 줄을 붙인다. 이 줄은 상한에 세지 않는다.
+fn constraint_items(source: &PacketSource) -> Vec<SectionItem> {
+    let omitted = (!source.constraints_omitted.is_empty())
+        .then(|| format!("Constraints omitted: {}", source.constraints_omitted.len()));
+    source
+        .constraints
+        .iter()
+        .cloned()
+        .chain(omitted)
+        .map(|text| SectionItem {
+            session: None,
+            text,
+        })
+        .collect()
 }
 
 // cost: time O(e log e + L), heap O(L), stack O(1)

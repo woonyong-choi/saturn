@@ -6,10 +6,11 @@ use std::time::{Duration, SystemTime};
 
 use saturn_core::providers::{ProviderError, SessionHandle, SessionSpec};
 use saturn_core::queue::QueuedInput;
+use saturn_core::sessions::constraint_slot::ConstraintTier;
 use saturn_core::sessions::context::{ContextBudget, ReturnDecision, decide_return};
 use saturn_core::sessions::packet::PacketSource;
 use saturn_core::sessions::{AgentRole, LastTurn, SendTarget, SessionError, SessionRecord};
-use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq, Provider, SessionId};
+use saturn_protocol::ids::{AgentId, ChatId, ConstraintId, LedgerSeq, Provider, SessionId};
 use saturn_protocol::rpc::ChatNotice;
 use saturn_protocol::state::SessionState;
 
@@ -55,7 +56,12 @@ pub(crate) struct OpenPlan {
     synced: LedgerSeq,
     /// 패킷이 맥락 한도로 거절되면 줄여 다시 보낼 재료. 이미 줄였거나 보낼 패킷이 없으면 `None`.
     reduction: Option<Reduction>,
+    /// 새 session을 열면 `packet_constraints`에 남길 제약별 단계.
+    constraint_tiers: PacketTiers,
 }
+
+/// 전환에서 새 session의 패킷에 든 제약별 단계.
+pub(crate) type PacketTiers = Vec<(ConstraintId, ConstraintTier)>;
 
 /// 새 session 열기를 기다리는 맥락 정리. 열리면 옛 session을 바꾼다.
 #[derive(Debug)]
@@ -68,6 +74,8 @@ pub(crate) struct Restart {
     /// 패킷이 맥락 한도로 거절되면 줄일 재료.
     reduction: Option<Reduction>,
     up_to: LedgerSeq,
+    /// 새 session을 열면 `packet_constraints`에 남길 제약별 단계.
+    constraint_tiers: PacketTiers,
     /// 줄인 패킷으로 다시 열었다. 한 번만 줄인다.
     is_reduced: bool,
 }
@@ -254,6 +262,7 @@ impl Engine {
             agent,
             synced: LedgerSeq(0),
             reduction: None,
+            constraint_tiers: Vec::new(),
         };
         if role == AgentRole::Sub {
             return Ok(plain);
@@ -346,19 +355,10 @@ impl Engine {
             .await
             .map_err(|error| failed(error.into()))?;
         let budget = settings.context_budget(provider, self.registry.context_defaults(provider));
-        let rows = self
+        let (rows, steers, changes) = self.packet_material(chat).await.map_err(failed)?;
+        let constraints = self
             .store
-            .ledger_since(chat, LedgerSeq(0))
-            .await
-            .map_err(|error| failed(error.into()))?;
-        let steers = self
-            .store
-            .steered_inputs(chat)
-            .await
-            .map_err(|error| failed(error.into()))?;
-        let changes = self
-            .store
-            .run_changes(chat)
+            .constraints_of_chat(chat)
             .await
             .map_err(|error| failed(error.into()))?;
         let synced = rows.last().map_or(LedgerSeq(0), |row| row.seq);
@@ -368,8 +368,8 @@ impl Engine {
             &steers,
             &changes,
             &pending,
-            &self.registry.instruction_docs(),
-            budget.rrf_k,
+            (&constraints, &self.registry.instruction_docs()),
+            &budget,
         );
         let full = full_source
             .as_ref()
@@ -402,8 +402,8 @@ impl Engine {
                     &steers,
                     &changes_of_others(changes, *id, after),
                     &pending,
-                    &self.registry.instruction_docs(),
-                    budget.rrf_k,
+                    (&[], &self.registry.instruction_docs()),
+                    &budget,
                 );
                 let outcome = source
                     .as_ref()
@@ -420,6 +420,12 @@ impl Engine {
             }),
             _ => None,
         };
+        let constraint_tiers = match (&target, &outcome, &reduction) {
+            (SendTarget::New { .. }, HandoffOutcome::Ready(_), Some(reduction)) => {
+                reduction.source.constraint_tiers.clone()
+            }
+            _ => Vec::new(),
+        };
         let handoff = packet_text(chat, outcome)?;
         let leaving = leaving_main(main, &plain, stale.is_some());
         Ok(OpenPlan {
@@ -428,6 +434,7 @@ impl Engine {
             leaving,
             synced,
             reduction,
+            constraint_tiers,
             ..plain
         })
     }
@@ -660,8 +667,21 @@ impl Engine {
             self.close_unregistered(record.chat, provider, handle);
             return Err(error);
         }
+        self.record_packet_constraints(id, &plan.constraint_tiers)
+            .await;
         self.count_packet_turn(agent, plan.handoff.is_some());
         Ok(self.remember(agent, id, provider, handle))
+    }
+
+    /// 새 session의 패킷에 든 제약별 단계를 남긴다. 기록하지 못해도 session은 그대로 쓰고 로그만 남긴다.
+    async fn record_packet_constraints(&self, session: SessionId, tiers: &PacketTiers) {
+        if tiers.is_empty() {
+            return;
+        }
+        let rows: Vec<(ConstraintId, &str)> =
+            tiers.iter().map(|(id, tier)| (*id, tier.name())).collect();
+        let recorded = self.store.record_packet_constraints(session, &rows).await;
+        self.warn_failure("failed to record packet constraints", recorded);
     }
 
     /// 보관한 provider session id로 다시 연다.
@@ -679,6 +699,7 @@ impl Engine {
             agent: Some(session.agent),
             synced: LedgerSeq(0),
             reduction: None,
+            constraint_tiers: Vec::new(),
         })
     }
 
@@ -748,7 +769,7 @@ impl Engine {
         live: &LiveSession,
         packet: String,
         reduction: Option<Reduction>,
-        up_to: LedgerSeq,
+        (up_to, constraint_tiers): (LedgerSeq, PacketTiers),
     ) -> Result<(), EngineError> {
         let old = self
             .sessions
@@ -782,6 +803,7 @@ impl Engine {
             spec,
             reduction,
             up_to,
+            constraint_tiers,
             is_reduced: false,
         };
         self.flow.restarting.insert(chat);
@@ -888,6 +910,8 @@ impl Engine {
             self.close_unregistered(chat, live.provider, handle);
             return Err(error);
         }
+        self.record_packet_constraints(restart.id, &restart.constraint_tiers)
+            .await;
         self.close_replaced(chat, live, old);
         self.flow
             .session_dirs

@@ -89,7 +89,7 @@
 | `on_exit` | `tui.on_exit` | 없음 | 구현 |
 | `router.method` | `router.mode` | 없음 | 구현 |
 | `context.packet_hard_divisor` | `context.packet_hard_percent` | 나눗수 `d`를 `100 / d`로(5는 20). 나누어떨어지지 않으면 버림 | 구현 |
-| `context.constraint_slot_divisor` | `context.constraint_slot_percent` | 나눗수 `d`를 `100 / d`로(4는 25) | 구현 전([#380](https://github.com/woonyong-choi/saturn/issues/380)). 키와 함께 별칭도 구현 |
+| `context.constraint_slot_divisor` | `context.constraint_slot_percent` | 나눗수 `d`를 `100 / d`로(4는 25) | 구현 전([#380](https://github.com/woonyong-choi/saturn/issues/380)). 키는 구현했고 이 옛 이름을 읽는 별칭은 아직 없다. 이 이름으로 저장한 스냅샷은 없다 |
 | `agents.worktree` | `agent.worktree` | 없음 | 구현 전([#335](https://github.com/woonyong-choi/saturn/issues/335)). 키와 함께 별칭도 구현 |
 | `router.key.info.source`의 `Stored`, `Env`, `Command` | `stored`, `env`, `command` | 소문자로 | 구현. 경고 없이 읽음 |
 | `context.<id>.<키>` | `provider.<id>.context.<키>` | 없음 | 구현(아래 [provider 설정 키](#provider-설정-키)) |
@@ -127,9 +127,9 @@
 | `retention.auto_prune` | 참·거짓 | 거짓. 참이고 `max_age_days`가 있을 때만 engine 시작 때 한 번 그 기한보다 오래 쓰지 않은 채팅을 지운다. 삭제라 `max_age_days`만으로 켜지지 않는다([기록](records.md#보존과-정리)) |
 | `context.safety_percent` | 0~100 정수 | 70 |
 | `context.mode` | `saturn`, `provider` | `saturn` |
-| `context.packet_hard_percent` | 1~100 정수 | 20. 키는 검사하지만 engine이 아직 읽지 않아 적용되지 않는다. 패킷은 기본 상수를 쓴다([#380](https://github.com/woonyong-choi/saturn/issues/380)) |
-| `context.item_cap_percent` | 1~100 정수 | 30. 키는 검사하지만 engine이 아직 읽지 않아 적용되지 않는다. 패킷은 기본 상수를 쓴다([#380](https://github.com/woonyong-choi/saturn/issues/380)) |
-| `context.constraint_slot_percent` | 1~100 정수 | 25(초안). 구현 전([#380](https://github.com/woonyong-choi/saturn/issues/380)) |
+| `context.packet_hard_percent` | 1~100 정수 | 20. engine이 읽어 패킷 크기 상한에 적용한다 |
+| `context.item_cap_percent` | 1~100 정수 | 30. engine이 읽어 경쟁 항목 길이 상한에 적용한다 |
+| `context.constraint_slot_percent` | 1~100 정수 | 25(초안). engine이 읽어 패킷 제약 칸 상한에 적용한다 |
 | `context.select.rrf_k` | 0 이상 정수 | 60 |
 
 - `tui.on_exit`는 TUI를 닫을 때 작업을 어떻게 할지 정한다. `background`는 계속하고, `stop`은 모든 채팅의 작업을 멈춤과 같게 보류하고, `ask`는 작업이 있으면 닫기 전에 묻는다. 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
@@ -144,7 +144,7 @@
 - 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_ask`다.
 - `is_constraint`는 자동 등록 기준값(기본 0.8), `constraint_ask`는 등록 질문의 묻는 하한(기본 0.7)이다. 권한 모드가 `full`이면 제약 질문을 묻지 않는다([제약](constraints.md#묻지-않고-진행하는-권한-모드)).
 - 구현 전 기준값은 `constraint_release`다([#379](https://github.com/woonyong-choi/saturn/issues/379)). 해제·예외 판단을 적용하는 기준값(기본 0.8)이다.
-- 제약 칸 상한은 `P_max`의 `context.constraint_slot_percent`%다. 이 키는 구현 전이다([#380](https://github.com/woonyong-choi/saturn/issues/380), [제약](constraints.md)).
+- 제약 칸 상한은 `P_max`의 `context.constraint_slot_percent`%다. 규칙은 [제약](constraints.md#패킷의-제약-칸)에 있다.
 - 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
 - 실행 층 `-c key=value`의 값은 TOML 값 문법으로 읽고, 같은 키가 여러 번 오면 뒤 값이 이긴다. TOML 값으로 읽을 수 없는 따옴표 없는 한 단어(`permission.mode=read-only`)는 문자열로 읽는다. 공백이나 따옴표가 든 값은 TOML 문법을 지켜야 한다.
 

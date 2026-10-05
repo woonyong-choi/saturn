@@ -32,11 +32,9 @@ use serde::de::DeserializeOwned;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
 
 pub(crate) use changes::RunChanges;
-#[cfg(test)]
-pub(crate) use constraints::StoredConstraint;
 pub(crate) use constraints::{
     Actor, AnswerOutcome, ConstraintState, EventKind, EventReason, NewRegistration, NewRule,
-    StoredAsk,
+    StoredAsk, StoredConstraint,
 };
 pub(crate) use extensions::ExtensionRow;
 pub(crate) use history::HistoryEntry;

@@ -28,7 +28,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 provider마다 session과 압
 
 ## 작동 방식
 
-1, 2, 4, 5, 6단계는 `main`에서 동작합니다. 3단계에서 패킷으로 새 session을 여는 것까지는 되지만, 패킷에 무엇을 담을지를 router가 고르지 않고 provider에 압축을 요청하지도 않습니다. 사용자가 정한 제약은 기록하지만 제약 해제와 패킷에 제약을 싣는 것은 설계만 되어 있습니다(상태 참고).
+1, 2, 4, 5, 6단계는 `main`에서 동작합니다. 3단계에서 패킷으로 새 session을 여는 것까지는 되지만, 패킷에 무엇을 담을지를 router가 고르지 않고 provider에 압축을 요청하지도 않습니다. 사용자가 정한 제약은 기록하고 크기 상한 안에서 패킷에 싣지만, 제약 해제는 설계만 되어 있습니다(상태 참고).
 
 1. 저장소에서 `saturn`을 실행하고 요청을 입력합니다. 뒤에서 도는 engine 프로세스가 Codex나 Claude Code에 보내기 전에 입력을 로컬 SQLite 데이터베이스에 저장합니다.
 2. 에이전트가 일하는 동안 이어지는 요청을 입력합니다. 입력에 대한 예·아니요, 선택형, 등급형 질문에 답하는 작은 모델인 router가 진행 중인 턴에 더할지, 별도 작업으로 시작할지, 대기열에 둘지 정합니다.
@@ -171,7 +171,7 @@ saturn --continue
 
 ## 상태
 
-Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `saturn` 명령은 `main`에 있습니다. 가짜 provider를 쓴 테스트에서 동작하는 것은 입력 접수부터 provider 전송까지의 입력 흐름, 멈춤과 재개, Saturn 권한 규칙, `/model`, `/usage`, 파이프와 `NO_COLOR`를 위한 단순 화면 방식, TUI를 닫아도 작업 계속 실행, engine 크래시 뒤 복구, 확장을 Saturn 저장소에 설치하고 연결을 시작할 때 주입하는 것, 그리고 Saturn 안의 에이전트나 바깥의 Claude Code, Codex가 떠 있는 engine에 일을 부탁하는 하위 접속입니다. `scripts/e2e/README.md`의 확인 절차(단계 a~k)는 2026-10-04에 실제 Codex, Claude Code, router로 통과했고, 나머지는 실제 provider로 실행하지 않았습니다. 전환해 돌아올 때 오래된 사용자 제약을 인계 패킷에 담는 것은 만들지 않았습니다. 지금 패킷에는 제약이 실리지 않습니다([#296](https://github.com/woonyong-choi/saturn/issues/296) 완료 조건 2). 설계만 된 것은 router 답으로 패킷 순서 정하기, 인계 compact([#380](https://github.com/woonyong-choi/saturn/issues/380)), 제약 해제와 `/constraints` 화면([#379](https://github.com/woonyong-choi/saturn/issues/379), [#381](https://github.com/woonyong-choi/saturn/issues/381)), 로컬 router 모델의 채점과 학습, 서버와 데이터 공유입니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
+Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `saturn` 명령은 `main`에 있습니다. 가짜 provider를 쓴 테스트에서 동작하는 것은 입력 접수부터 provider 전송까지의 입력 흐름, 멈춤과 재개, Saturn 권한 규칙, `/model`, `/usage`, 파이프와 `NO_COLOR`를 위한 단순 화면 방식, TUI를 닫아도 작업 계속 실행, engine 크래시 뒤 복구, 확장을 Saturn 저장소에 설치하고 연결을 시작할 때 주입하는 것, 그리고 Saturn 안의 에이전트나 바깥의 Claude Code, Codex가 떠 있는 engine에 일을 부탁하는 하위 접속입니다. `scripts/e2e/README.md`의 확인 절차(단계 a~k)는 2026-10-04에 실제 Codex, Claude Code, router로 통과했고, 나머지는 실제 provider로 실행하지 않았습니다. 패킷에는 해제되지 않은 저장 제약이 크기 상한 안에서 실립니다. 가짜 provider 테스트로만 확인했고 실제 provider로는 아직 확인하지 않았습니다([#296](https://github.com/woonyong-choi/saturn/issues/296) 완료 조건 2). 설계만 된 것은 router 답으로 패킷 순서 정하기, 인계 compact([#380](https://github.com/woonyong-choi/saturn/issues/380)), 제약 해제와 `/constraints` 화면([#379](https://github.com/woonyong-choi/saturn/issues/379), [#381](https://github.com/woonyong-choi/saturn/issues/381)), 로컬 router 모델의 채점과 학습, 서버와 데이터 공유입니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
 
 ## 비교
 
@@ -183,7 +183,7 @@ Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `satu
 첫 대화 이후의 순서는 아직 정하지 않았습니다.
 
 1. 첫 대화: 실제 Codex와 Claude Code로 처음부터 끝까지 실행, 사용자 제약을 둔 뒤 다시 전환. (진행 중)
-2. 제약과 패킷: 제약 해제와 예외, 인계 패킷의 제약, router 답으로 정하는 패킷 순서. (다음)
+2. 제약과 패킷: 제약 해제와 예외, router 답으로 정하는 패킷 순서. (다음)
 3. 채팅 관리: 채팅 이름과 묶음, 작업 완료 알림. (다음)
 4. 로컬 router 모델: 판단 기록 채점, 개인 router 모델 학습, 같은 평가 세트에서 현재 router보다 나쁘지 않을 때만 교체. (나중)
 5. 서비스: 동의 기반 데이터 수집, 원격 API, 인증, 인프라. (나중)

@@ -188,12 +188,13 @@
 C_max = P_max × context.constraint_slot_percent / 100
 ```
 
-`C_max`는 제약 칸 상한이고 `P_max`는 [패킷 크기 상한](context-management.md#패킷-구성)이다. `context.constraint_slot_percent`의 기본값 25는 초안이고 긴 대화 실측으로 정한다([설정](settings.md#설정-키)). 이 키는 구현 전이다([#380](https://github.com/woonyong-choi/saturn/issues/380)). 크기는 네 글자를 한 토큰으로 추정한다.
+`C_max`는 제약 칸 상한이고 `P_max`는 [패킷 크기 상한](context-management.md#패킷-구성)이다. `context.constraint_slot_percent`의 기본값 25는 초안이고 긴 대화 실측으로 정한다([설정](settings.md#설정-키)). 크기는 네 글자를 한 토큰으로 추정한다.
 
 1. 범위가 `전체`인 유효 제약을 최신 순으로 넣는다.
 2. 범위가 있고 지금 작업과 겹치는 제약을 겹치는 경로 수가 많은 순, 같으면 최신 순으로 넣는다. 지금 작업은 [순위 채널](context-selection.md#순위-채널)의 기준 파일(마지막 입력에 나온 경로와 메인 session이 최근 3턴에 건드린 파일)이다.
 3. 나머지를 마지막 입력과의 단어 겹침 순위가 높은 순, 같으면 최신 순으로 넣는다.
 
+- 칸에 넣는 유효 제약은 해제되지 않은 제약(`Active`와 등록 답을 기다리는 `Candidate`)이다. 해제와 이번 작업 예외의 뜻은 #379가 정하므로 그 전에는 예외를 보지 않는다. 보관 session을 다시 열어 변경분만 붙일 때는 그 session이 이미 받은 제약이라 제약 칸을 다시 넣지 않는다.
 - 칸에 들어가지 않는 제약은 건너뛰고 더 작은 제약은 계속 넣는다. 항목 하나가 큰 제약 때문에 뒤의 작은 제약이 막히지 않게 하기 위해서다.
 - 예외가 걸린 제약은 규칙 한 줄 뒤에 예외 표기(`이번 작업 동안 멈춤` 또는 조건 문장)를 붙여 넣는다. 새 session이 예외를 모르고 규칙을 지키거나 제약이 없는 줄 아는 일을 막기 위해서다. 표기는 제약의 크기에 세고, 표기까지 들어가지 않으면 그 제약을 건너뛴다(초안). 해제된 제약은 표기 없이 뺀다.
 - 들어가지 못한 제약이 N개면 칸 끝에 `Constraints omitted: N` 한 줄을 넣는다. 이 줄은 상한에 세지 않는다. 같은 때 대화 기록에 `제약 N개 생략 · /constraints에서 확인하세요`를 남긴다.
@@ -238,7 +239,7 @@ C_max = P_max × context.constraint_slot_percent / 100
 | 제약은 입력 원문에서 자른 규칙 한 줄과 범위로 저장하고 원문은 바뀌지 않는다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_scope_comes_from_paths_in_the_rule`, `constraint_long_input_registers_only_the_sentences_the_router_calls_constraints`, `constraint_long_input_registers_the_whole_text_when_the_split_question_fails`, `saturn-terminal/core/src/constraints/tests.rs`의 `rules_are_cut_from_the_original_text`, `scope_takes_path_like_words_normalized_and_unique` |
 | 등록, 해제, 예외, 다시 유효, 되돌림마다 이벤트와 대화 기록 한 줄이 남는다. | 등록과 입력 취소로 인한 해제는 `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_at_or_above_the_auto_threshold_is_registered_with_a_chat_line`, `constraint_of_an_input_canceled_after_registration_is_released_with_a_line`. 해제, 예외, 다시 유효, 되돌림은 구현 전(#379, #381) |
 | `is_constraint` 0.8 이상은 자동 등록하고, 0.7 이상 0.8 미만은 묻고, 0.7 미만은 등록하지 않는다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_at_or_above_the_auto_threshold_is_registered_with_a_chat_line`(0.85), `constraint_at_the_exact_auto_threshold_is_registered`(0.8), `constraint_in_the_ask_band_is_stored_as_candidate_and_asked`(0.75), `constraint_ask_answered_yes_registers_and_leaves_a_line`, `constraint_ask_answered_no_releases_it_without_a_chat_line`, `constraint_below_the_ask_threshold_is_not_registered`(0.65), `saturn-terminal/core/src/routers/tests.rs`의 `registration_follows_the_three_bands` |
-| 답이 오기 전의 제약은 지키는 쪽으로 패킷에 들어간다. | 구현 전(#379). 등록과 종류를 묻는 중인 경우 패킷의 제약 칸을 확인한다. |
+| 답이 오기 전의 제약은 지키는 쪽으로 패킷에 들어간다. | 등록을 묻는 중(`Candidate`)인 제약은 해제된 것이 아니라서 들어간다. 종류를 묻는 중인 경우는 구현 전(#379) |
 | 해제 요청은 선택형 질문 하나로 대상과 종류를 정하고, 영구 해제는 `Released`로, 이번 작업 예외는 제약을 지우지 않고 그 작업 동안만 멈춘다. | 구현 전(#379). 세 종류 입력으로 상태, 예외 기록, 대화 기록 줄을 확인한다. |
 | 이번 작업 예외는 작업이 끝나면 사라지고 `제약 다시 유효` 줄이 한 줄 남는다. | 구현 전(#379). 작업을 끝내고 예외 행과 줄을 확인한다. |
 | 조건·범위 예외는 조건 문장을 기록하고 패킷에 예외 표기로 들어간다. | 구현 전(#379, #380). 예외 뒤 패킷의 제약 칸을 확인한다. |
@@ -248,8 +249,9 @@ C_max = P_max × context.constraint_slot_percent / 100
 | router가 없거나 실패하거나 답이 없으면 등록하지 않고 입력은 평소대로 처리한다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_is_not_registered_when_the_router_fails`, `constraint_is_not_registered_when_the_answer_is_missing`, `constraint_input_without_the_router_is_never_judged` |
 | 기준값은 설정에서 읽는다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_thresholds_are_read_from_settings` |
 | 판단에 싣을 제약 고르기는 같은 입력에서 같은 결과를 내고 10개를 넘지 않는다. | 구현 전(#379). `core`의 순수 함수에 제약 목록을 주어 개수와 순서를 확인한다. |
-| 제약 칸은 `C_max` 안에서 전체, 범위 겹침, 관련도·최신 순으로 채우고 넘친 수를 표시한다. | 구현 전(#380). 제약 60개 표본으로 단계 순서와 `Constraints omitted: N`을 확인한다. |
-| 전환마다 들어간 제약과 빠진 제약을 기록한다. | 구현 전(#380). 전환 뒤 `packet_constraints` 행을 확인한다. |
+| 제약 칸은 `C_max` 안에서 전체, 범위 겹침, 관련도·최신 순으로 채우고 넘친 수를 표시한다. | `saturn-terminal/core/src/sessions/constraint_slot/tests.rs`의 `tiers_go_all_then_scope_then_relevance_and_newer_first`, `a_constraint_too_big_for_the_slot_does_not_block_smaller_ones`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `omitted_constraints_add_a_count_line_that_is_not_counted_in_the_slot`, `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `constraints_over_the_slot_are_omitted_and_marked`. 대화 기록의 `제약 N개 생략` 줄은 구현 전 |
+| 전환마다 들어간 제약과 빠진 제약을 기록한다. | `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `packet_constraints_records_what_the_new_session_got`, `constraints_over_the_slot_are_omitted_and_marked` |
+| 제약이 최근 입력과 목표 발췌에서 밀려난 긴 대화에서도 새 session의 패킷 제약 구역에 남는다. 해제된 제약은 넣지 않는다. | `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `constraint_stays_in_the_packet_when_it_left_the_recent_turns`(제약 원문은 어느 입력, 답, 파일 내용에도 없음), `released_constraint_is_not_handed_over` |
 | `/constraints`는 유효 제약과 변경 내역을 보이고 해제, 예외 종류 바꾸기, 되돌리기를 `Stale` 검사와 함께 한다. | 구현 전(#381). 화면을 연 사이 제약을 바꿔 거절과 새로 읽기를 확인한다. |
 | 등록 기준값은 사람 확인과 Astra 정답에서 근거가 있다. | [등록 기준값의 사람 확인](../experiments/constraint-human-check/report.md): 0.80 정밀도 91.3%, 0.70 정밀도 84.8%·재현율 77.2% |
 | 해제·예외 판단은 Jev 선택형으로 기준을 넘거나 가깝다. | [해제 요청 실험](../experiments/constraint-cancel-request/report.md), [Jev와 Haiku 비교](../experiments/constraint-exception-judge/report.md): 요청 재현율 96.8%, 종류 87.8%, 잘못된 영구 해제 1.2% |

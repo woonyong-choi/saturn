@@ -3,12 +3,16 @@
 
 use std::collections::HashMap;
 
+use saturn_core::constraints::scope_of;
 use saturn_core::sessions::changes::describe;
+use saturn_core::sessions::constraint_slot::{
+    ConstraintSlot, SlotConstraint, SlotContext, fill_constraint_slot,
+};
 use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::memo::{INTERRUPTED_RESULT, ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
-    CompetingItem, Entry, PacketOutcome, PacketSource, RECENT_TURNS, RecentTurn, TurnStatus,
-    build_packet, reduce_packet, status_item,
+    CONSTRAINT_SEPARATOR_CHARS, CompetingItem, Entry, PacketOutcome, PacketSource, RECENT_TURNS,
+    RecentTurn, TurnStatus, build_packet, constraint_cap_chars, reduce_packet, status_item,
 };
 use saturn_core::sessions::ranking::{Candidate, rank_candidates};
 use saturn_core::sessions::stamp::Stamp;
@@ -17,7 +21,8 @@ use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId};
 use saturn_protocol::state::InputState;
 
 use crate::Engine;
-use crate::store::{LedgerRow, RunChanges, RunEnd, SteeredInput};
+use crate::store::ConstraintState;
+use crate::store::{LedgerRow, RunChanges, RunEnd, SteeredInput, StoredConstraint};
 
 /// 새 session의 첫 턴으로 보내는 글.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,6 +45,52 @@ pub(crate) enum HandoffOutcome {
     },
 }
 
+// cost: time O(c log c + c·(s·r + w)), heap O(c), stack O(1)
+// vars: c = 제약 수, s = 범위 경로 수, r = 기준 경로 수, w = 규칙 단어 수
+// basis: estimate
+/// 유효 제약으로 제약 칸을 채운다. 지금 작업의 기준 파일은 마지막 입력에 나온 경로와 최근 3턴이 건드린 파일이다.
+fn constraint_slot(
+    constraints: &[StoredConstraint],
+    turns: &[RecentTurn],
+    changes: &[RunChanges],
+    budget: &ContextBudget,
+) -> ConstraintSlot {
+    let mut valid: Vec<SlotConstraint> = constraints
+        .iter()
+        .filter(|constraint| constraint.state != ConstraintState::Released)
+        .map(|constraint| SlotConstraint {
+            id: constraint.id,
+            rule: constraint.rule.clone(),
+            scope: constraint.scope.clone(),
+        })
+        .collect();
+    valid.sort_by_key(|constraint| constraint.id);
+    let last_input = turns
+        .iter()
+        .max_by_key(|turn| turn.seq)
+        .map_or("", |turn| turn.input.as_str());
+    let mut recent: Vec<&RunChanges> = changes.iter().collect();
+    recent.sort_by_key(|run| run.seq);
+    let start = recent.len().saturating_sub(RECENT_TURNS);
+    let reference: Vec<String> = scope_of(last_input)
+        .into_iter()
+        .chain(
+            recent[start..]
+                .iter()
+                .flat_map(|run| run.set.files.iter().map(|file| file.path.clone())),
+        )
+        .collect();
+    fill_constraint_slot(
+        &valid,
+        SlotContext {
+            reference_paths: &reference,
+            last_input,
+        },
+        constraint_cap_chars(budget),
+        CONSTRAINT_SEPARATOR_CHARS,
+    )
+}
+
 /// 한 도구 호출과 그 결과. 결과가 없으면 중단돼 결과를 모르는 호출이다.
 struct Tool {
     seq: LedgerSeq,
@@ -55,15 +106,16 @@ struct Tool {
 // vars: L = 기록 글자 수, c = 도구 호출 수
 // basis: estimate
 /// 순서는 후보 순위(RRF)만 쓴다. 목표 칸은 지금 작업의 첫 입력과 마지막 입력, 남은 일 칸은 대기·보류 입력과 결과를 모르는 작업, 결과 없는 도구 호출이다(docs/experiments/packet-goal-fields/report.md).
-/// TODO(#380): 저장한 유효 제약을 패킷 고정 구역에 넣고 router `compact`를 연결하기 전까지 제약은 빈 목록이다
+/// 제약 칸에는 해제되지 않은 저장 제약을 상한(`C_max`) 안에서 넣는다(docs/design/constraints.md#패킷의-제약-칸). 해제와 이번 작업 예외의 뜻은 #379가 정한다.
+/// TODO(#380): router `compact`로 경쟁 구역을 남김 확률 순으로 채우는 연결은 아직 없다.
 /// 넘길 기록이 없으면 `None`.
 pub(crate) fn handoff_source(
     rows: &[LedgerRow],
     steers: &[SteeredInput],
     changes: &[RunChanges],
     pending: &Pending,
-    provider_docs: &[String],
-    rrf_k: u32,
+    (constraints, provider_docs): (&[StoredConstraint], &[String]),
+    budget: &ContextBudget,
 ) -> Option<PacketSource> {
     let last = rows.last()?;
     // 실행의 이벤트가 이 재료에 없으면(다른 session이 낸 실행을 뺀 변경분 등) 그 실행에 끼운 입력도 뺀다
@@ -75,13 +127,16 @@ pub(crate) fn handoff_source(
     let tools = tools(rows);
     let mut open = pending.entries(last.seq);
     open.extend(open_items(&tools));
+    let slot = constraint_slot(constraints, &turns, changes, budget);
     Some(PacketSource {
-        constraints: Vec::new(),
+        constraints: slot.included.into_iter().map(|(_, rule)| rule).collect(),
+        constraints_omitted: slot.omitted.into_iter().map(|(_, rule)| rule).collect(),
+        constraint_tiers: slot.tiers,
         goal_and_last_input: goal_inputs(rows, &steers),
         open_items: open,
         competitors: changed_files_items(changes)
             .into_iter()
-            .chain(ordered_competitors(&tools, &turns, rrf_k))
+            .chain(ordered_competitors(&tools, &turns, budget.rrf_k))
             .collect(),
         recent_turns: turns,
         provider_docs: provider_docs.to_vec(),
@@ -94,10 +149,17 @@ pub(crate) fn build_handoff(
     steers: &[SteeredInput],
     changes: &[RunChanges],
     pending: &Pending,
-    provider_docs: &[String],
+    (constraints, provider_docs): (&[StoredConstraint], &[String]),
     budget: &ContextBudget,
 ) -> HandoffOutcome {
-    match handoff_source(rows, steers, changes, pending, provider_docs, budget.rrf_k) {
+    match handoff_source(
+        rows,
+        steers,
+        changes,
+        pending,
+        (constraints, provider_docs),
+        budget,
+    ) {
         Some(source) => handoff_of(&source, budget),
         None => HandoffOutcome::Empty,
     }
@@ -507,7 +569,9 @@ mod tests {
     use std::time::Duration;
 
     use saturn_core::sessions::changes::{ChangeKind, ChangeSet, FileChange};
-    use saturn_core::sessions::context::{DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_PERCENT};
+    use saturn_core::sessions::context::{
+        DEFAULT_CONSTRAINT_SLOT_PERCENT, DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_PERCENT,
+    };
     use saturn_core::sessions::ranking::DEFAULT_RRF_K;
     use saturn_protocol::event::LineRange;
     use saturn_protocol::ids::{AgentId, TaskId};
@@ -532,6 +596,7 @@ mod tests {
             cache_ttl: Duration::from_secs(300),
             packet_hard_percent: DEFAULT_PACKET_HARD_PERCENT,
             item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
+            constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
             rrf_k: DEFAULT_RRF_K,
         }
     }
@@ -561,7 +626,8 @@ mod tests {
     }
 
     fn handoff_text(rows: &[LedgerRow], pending: &Pending) -> String {
-        let HandoffOutcome::Ready(handoff) = build_handoff(rows, &[], &[], pending, &[], &budget())
+        let HandoffOutcome::Ready(handoff) =
+            build_handoff(rows, &[], &[], pending, (&[], &[]), &budget())
         else {
             panic!("packet should be ready");
         };
@@ -628,9 +694,14 @@ mod tests {
             &[("src/cache.rs", &[]), ("src/lib.rs", &["main agent"])],
         )];
 
-        let HandoffOutcome::Ready(handoff) =
-            build_handoff(&rows, &[], &changes, &Pending::default(), &[], &budget())
-        else {
+        let HandoffOutcome::Ready(handoff) = build_handoff(
+            &rows,
+            &[],
+            &changes,
+            &Pending::default(),
+            (&[], &[]),
+            &budget(),
+        ) else {
             panic!("packet should be ready");
         };
 
@@ -656,7 +727,7 @@ mod tests {
     #[test]
     fn empty_rows_have_nothing_to_hand_over() {
         assert_eq!(
-            build_handoff(&[], &[], &[], &Pending::default(), &[], &budget()),
+            build_handoff(&[], &[], &[], &Pending::default(), (&[], &[]), &budget()),
             HandoffOutcome::Empty
         );
     }
@@ -689,7 +760,7 @@ mod tests {
         ];
 
         let HandoffOutcome::Ready(handoff) =
-            build_handoff(&rows, &[], &[], &Pending::default(), &[], &budget())
+            build_handoff(&rows, &[], &[], &Pending::default(), (&[], &[]), &budget())
         else {
             panic!("packet should be ready");
         };
@@ -709,7 +780,7 @@ mod tests {
         ];
 
         let HandoffOutcome::Ready(handoff) =
-            build_handoff(&rows, &[], &[], &Pending::default(), &[], &budget())
+            build_handoff(&rows, &[], &[], &Pending::default(), (&[], &[]), &budget())
         else {
             panic!("packet should be ready");
         };
@@ -859,9 +930,14 @@ mod tests {
     }
 
     fn ready(rows: &[LedgerRow], steers: &[SteeredInput]) -> String {
-        let HandoffOutcome::Ready(handoff) =
-            build_handoff(rows, steers, &[], &Pending::default(), &[], &budget())
-        else {
+        let HandoffOutcome::Ready(handoff) = build_handoff(
+            rows,
+            steers,
+            &[],
+            &Pending::default(),
+            (&[], &[]),
+            &budget(),
+        ) else {
             panic!("packet should be ready");
         };
         handoff.text

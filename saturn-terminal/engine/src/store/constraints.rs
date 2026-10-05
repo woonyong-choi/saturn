@@ -3,7 +3,7 @@
 
 use std::time::SystemTime;
 
-use saturn_protocol::ids::{ChatId, ConstraintAskId, ConstraintId, InputId, JudgmentId};
+use saturn_protocol::ids::{ChatId, ConstraintAskId, ConstraintId, InputId, JudgmentId, SessionId};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use sqlx::sqlite::SqliteRow;
@@ -195,6 +195,60 @@ impl Store {
             constraints: ids,
             ask,
         })
+    }
+
+    // cost: time O(c), heap O(1), stack O(1), io c
+    // vars: c = 기록할 제약 수
+    // basis: estimate
+    /// 전환에서 새 session의 패킷에 든 제약별 단계를 한 거래로 쓴다. 같은 session의 같은 제약은 한 행이다.
+    ///
+    /// # Errors
+    /// 쓰기 실패면 `Database`.
+    pub(crate) async fn record_packet_constraints(
+        &self,
+        session: SessionId,
+        tiers: &[(ConstraintId, &str)],
+    ) -> Result<(), StoreError> {
+        let mut transaction = self.pool.begin().await?;
+        for (constraint, tier) in tiers {
+            sqlx::query(
+                "INSERT OR REPLACE INTO packet_constraints (session_id, constraint_id, tier) \
+                 VALUES (?, ?, ?)",
+            )
+            .bind(to_sql_int(session.0))
+            .bind(to_sql_int(constraint.0))
+            .bind(*tier)
+            .execute(&mut *transaction)
+            .await?;
+        }
+        transaction.commit().await?;
+        Ok(())
+    }
+
+    /// 새 session의 패킷 제약 기록. 제약 번호 순서다.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Database`.
+    #[cfg(test)]
+    pub(crate) async fn packet_constraints_of(
+        &self,
+        session: SessionId,
+    ) -> Result<Vec<(ConstraintId, String)>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT constraint_id, tier FROM packet_constraints WHERE session_id = ? \
+             ORDER BY constraint_id",
+        )
+        .bind(to_sql_int(session.0))
+        .fetch_all(&self.pool)
+        .await?;
+        rows.iter()
+            .map(|row| {
+                Ok((
+                    ConstraintId(from_sql_int(row.try_get("constraint_id")?)),
+                    row.try_get("tier")?,
+                ))
+            })
+            .collect()
     }
 
     /// 채팅의 제약 revision. 마지막 `constraint_events` 번호이고 이벤트가 없으면 0이다.

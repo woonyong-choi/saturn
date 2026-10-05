@@ -1,7 +1,9 @@
 use std::time::Duration;
 
 use super::*;
-use crate::sessions::context::{DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_PERCENT};
+use crate::sessions::context::{
+    DEFAULT_CONSTRAINT_SLOT_PERCENT, DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_PERCENT,
+};
 use crate::sessions::ranking::{Candidate, DEFAULT_RRF_K, order_after_router, rank_candidates};
 
 // 2026-09-12T10:00Z
@@ -23,6 +25,7 @@ fn budget() -> ContextBudget {
         cache_ttl: Duration::from_secs(300),
         packet_hard_percent: DEFAULT_PACKET_HARD_PERCENT,
         item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
+        constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
         rrf_k: DEFAULT_RRF_K,
     }
 }
@@ -95,7 +98,9 @@ fn filler(prefix: &str, chars: usize) -> String {
 #[test]
 fn build_packet_fixed_zone_in_order_and_tool_results_only_in_competing() {
     let source = PacketSource {
-        constraints: vec![entry(3, "keep api stable")],
+        constraints: vec!["keep api stable".to_string()],
+        constraints_omitted: Vec::new(),
+        constraint_tiers: Vec::new(),
         goal_and_last_input: vec![entry(40, "fix login message")],
         open_items: vec![entry(38, "tests pending")],
         recent_turns: vec![turn(39, "run tests", "ran them")],
@@ -327,7 +332,7 @@ fn build_packet_writes_competing_in_seq_order() {
 #[test]
 fn build_packet_large_record_stays_within_packet_limit() {
     let source = PacketSource {
-        constraints: vec![entry(1, "rule")],
+        constraints: vec!["rule".to_string()],
         recent_turns: vec![turn(2, "go", "done")],
         competitors: (10..200)
             .map(|seq| item(seq, &filler("x", 2_000), Some("src/x.rs")))
@@ -392,7 +397,7 @@ fn build_packet_fixed_overflow_drops_oldest_turns() {
 #[test]
 fn build_packet_fixed_over_limit_allows_hard_limit_without_competing() {
     let source = PacketSource {
-        constraints: vec![entry(1, &filler("rule", 2_000))],
+        constraints: vec![filler("rule", 2_000)],
         competitors: vec![item(5, "tool output", None)],
         ..PacketSource::default()
     };
@@ -412,7 +417,7 @@ fn build_packet_fixed_over_hard_limit_defers_with_constraints() {
         3_500 + 8 * usize::try_from(instruction_tokens()).unwrap(),
     );
     let source = PacketSource {
-        constraints: vec![entry(2, &long_rule), entry(1, "first rule")],
+        constraints: vec!["first rule".to_string(), long_rule.clone()],
         ..PacketSource::default()
     };
 
@@ -629,4 +634,49 @@ fn build_packet_recent_turn_states_and_unknown_result_format() {
         "[Result unknown] User: run it\nAgent: started\nResult (error): {INTERRUPTED_RESULT}"
     )));
     assert!(text.contains("[In progress] User: keep going"));
+}
+
+#[test]
+fn omitted_constraints_add_a_count_line_that_is_not_counted_in_the_slot() {
+    let source = PacketSource {
+        constraints: vec!["kept rule".to_string()],
+        constraints_omitted: vec!["dropped one".to_string(), "dropped two".to_string()],
+        ..PacketSource::default()
+    };
+
+    let packet = ready(build_packet(&source, &budget()));
+
+    assert!(packet.text.contains("kept rule\n\nConstraints omitted: 2"));
+    assert!(!packet.text.contains("dropped one"));
+}
+
+#[test]
+fn no_omitted_line_when_every_constraint_fits() {
+    let source = PacketSource {
+        constraints: vec!["kept rule".to_string()],
+        ..PacketSource::default()
+    };
+
+    let packet = ready(build_packet(&source, &budget()));
+
+    assert!(!packet.text.contains("Constraints omitted"));
+}
+
+#[test]
+fn deferred_lists_every_valid_constraint_including_omitted_ones() {
+    let long_rule = filler(
+        "rule",
+        3_500 + 8 * usize::try_from(instruction_tokens()).unwrap(),
+    );
+    let source = PacketSource {
+        constraints: vec![long_rule.clone()],
+        constraints_omitted: vec!["dropped".to_string()],
+        ..PacketSource::default()
+    };
+
+    let PacketOutcome::Deferred { constraints } = build_packet(&source, &budget()) else {
+        panic!("packet should be deferred");
+    };
+
+    assert_eq!(constraints, vec![long_rule, "dropped".to_string()]);
 }
