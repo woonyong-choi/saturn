@@ -1,0 +1,242 @@
+[
+ {
+  "id": "in-209",
+  "paraphrase": "아까 정한 로그 레벨을 debug 단계로 올려줘",
+  "flip": "로그 파일에서 debug 줄만 찾아서 보여줘",
+  "flip_label": false
+ },
+ {
+  "id": "in-225",
+  "paraphrase": "아니야, 소문자를 쓰는 걸로 바꿔줘",
+  "flip": "현재 설정된 환경 변수 목록을 보여줘",
+  "flip_label": false
+ },
+ {
+  "id": "in-228",
+  "paraphrase": "아니, 안정 버전에 맞춰서 고정하는 걸로 해",
+  "flip": "현재 쓰는 의존성 버전 목록을 보여줘",
+  "flip_label": false
+ },
+ {
+  "id": "in-235",
+  "paraphrase": "아니야, 오전/오후 표기로 바꿔줘",
+  "flip": "이 로그에서 오전에 찍힌 줄만 찾아줘",
+  "flip_label": false
+ },
+ {
+  "id": "in-238",
+  "paraphrase": "그건 전체 파일 형태로 보여줘",
+  "flip": "마지막 패치를 diff로 다시 열어줘",
+  "flip_label": false
+ },
+ {
+  "id": "in-247",
+  "paraphrase": "아니야, 바이트 단위는 MiB를 써줘",
+  "flip": "이 파일 크기가 몇 MiB인지 알려줘",
+  "flip_label": false
+ },
+ {
+  "id": "in-253",
+  "paraphrase": "그건 이제 붙이지 않아도 괜찮아",
+  "flip": "방금 변경 요약해줘",
+  "flip_label": false
+ },
+ {
+  "id": "in-262",
+  "paraphrase": "그건 거꾸로, 표를 쓰는 걸로 해",
+  "flip": "이 데이터를 표로 한 번 만들어줘",
+  "flip_label": false
+ },
+ {
+  "id": "in-263",
+  "paraphrase": "그 제약은 해제하자, 외부 라이브러리를 써도 돼",
+  "flip": "이 라이브러리 라이선스가 뭔지 알려줘",
+  "flip_label": false
+ },
+ {
+  "id": "in-268",
+  "paraphrase": "그건 bash로 작성하는 걸로 바꿔줘",
+  "flip": "이 스크립트가 어떤 셸로 도는지 알려줘",
+  "flip_label": false
+ },
+ {
+  "id": "in-277",
+  "paraphrase": "아니야, 한국어로 고쳐줘",
+  "flip": "앞으로 주석은 항상 한국어로 써",
+  "flip_label": true
+ },
+ {
+  "id": "in-280",
+  "paraphrase": "아니, 한글로 써줘",
+  "flip": "커밋 메시지는 앞으로 항상 한글로 써",
+  "flip_label": true
+ },
+ {
+  "id": "in-287",
+  "paraphrase": "아니야, 원래 상태로 되돌려줘",
+  "flip": "앞으로 변수명은 바꾸지 마",
+  "flip_label": true
+ },
+ {
+  "id": "in-312",
+  "paraphrase": "아니, 바로 옆 파일까지 같이",
+  "flip": "앞으로 포맷은 항상 모든 파일에 맞춰",
+  "flip_label": true
+ },
+ {
+  "id": "in-320",
+  "paraphrase": "그건 취소해줘",
+  "flip": "캐시는 앞으로 절대 지우지 마",
+  "flip_label": true
+ },
+ {
+  "id": "in-331",
+  "paraphrase": "아니야, 주석만 붙여줘",
+  "flip": "앞으로 로직은 건드리지 말고 주석만 달아",
+  "flip_label": true
+ },
+ {
+  "id": "in-335",
+  "paraphrase": "아니야, 화면 전체로 찍어줘",
+  "flip": "스크린샷은 항상 전체 화면으로 찍어",
+  "flip_label": true
+ },
+ {
+  "id": "in-343",
+  "paraphrase": "아니, 그보다 한 줄 위",
+  "flip": "삭제는 항상 확인받고 해",
+  "flip_label": true
+ },
+ {
+  "id": "in-344",
+  "paraphrase": "아니야, 정규 표현식으로 해줘",
+  "flip": "검색은 앞으로 항상 정규식으로 해",
+  "flip_label": true
+ },
+ {
+  "id": "in-348",
+  "paraphrase": "아니, 한 단계 위 폴더에 있는 걸로",
+  "flip": "파일은 항상 상위 폴더 기준으로 읽어",
+  "flip_label": true
+ },
+ {
+  "id": "pr-162",
+  "paraphrase": "변수 이름은 한국어로 지어줘",
+  "flip": "변수 이름은 20자를 넘기지 마",
+  "flip_label": "compatible"
+ },
+ {
+  "id": "pr-167",
+  "paraphrase": "문자열에는 큰따옴표를 써",
+  "flip": "긴 문자열은 여러 줄로 나눠 써",
+  "flip_label": "compatible"
+ },
+ {
+  "id": "pr-174",
+  "paraphrase": "설정 파일 형식은 TOML로 해",
+  "flip": "설정 파일에는 주석을 달아",
+  "flip_label": "compatible"
+ },
+ {
+  "id": "pr-178",
+  "paraphrase": "이미지 저장 형식은 png로 해",
+  "flip": "이미지 파일 이름은 소문자로 지어",
+  "flip_label": "compatible"
+ },
+ {
+  "id": "pr-194",
+  "paraphrase": "앞에서 말한 기준을 70%로 내려",
+  "flip": "커버리지 보고서는 html로 만들어",
+  "flip_label": "compatible"
+ },
+ {
+  "id": "pr-198",
+  "paraphrase": "그건 큰따옴표로 맞추자",
+  "flip": "문자열 연결은 f-string으로 해",
+  "flip_label": "compatible"
+ },
+ {
+  "id": "pr-211",
+  "paraphrase": "그건 쉼표 없이 그대로 적어",
+  "flip": "소수는 소수점 둘째 자리까지 써",
+  "flip_label": "compatible"
+ },
+ {
+  "id": "pr-213",
+  "paraphrase": "그건 다시 png로 돌려놔",
+  "flip": "이미지에는 대체 글을 붙여",
+  "flip_label": "compatible"
+ },
+ {
+  "id": "pr-217",
+  "paraphrase": "그건 소스 파일 옆에 두는 쪽으로 바꿔",
+  "flip": "테스트 파일 이름은 test_로 시작해",
+  "flip_label": "compatible"
+ },
+ {
+  "id": "pr-220",
+  "paraphrase": "그건 최신순으로 변경해",
+  "flip": "정렬 결과는 최대 열 개만 보여줘",
+  "flip_label": "compatible"
+ },
+ {
+  "id": "pr-256",
+  "paraphrase": "로그에는 개인 정보를 기록하지 마",
+  "flip": "로그는 한국어로 남겨",
+  "flip_label": "replaces"
+ },
+ {
+  "id": "pr-257",
+  "paraphrase": "응답의 첫 줄은 결론으로 시작해",
+  "flip": "응답은 표 말고 목록으로 정리해",
+  "flip_label": "replaces"
+ },
+ {
+  "id": "pr-260",
+  "paraphrase": "커밋하기 전에는 테스트를 실행해",
+  "flip": "force push는 해도 돼",
+  "flip_label": "replaces"
+ },
+ {
+  "id": "pr-278",
+  "paraphrase": "페이지마다 스무 개씩 표시해",
+  "flip": "정렬은 오래된 순으로 해",
+  "flip_label": "replaces"
+ },
+ {
+  "id": "pr-288",
+  "paraphrase": "커밋 메시지 길이는 50자 안으로 해",
+  "flip": "변경은 한 번에 큰 커밋 하나로 묶어",
+  "flip_label": "replaces"
+ },
+ {
+  "id": "pr-291",
+  "paraphrase": "머지할 때는 스쿼시만 써",
+  "flip": "새 브랜치는 main에서 따",
+  "flip_label": "replaces"
+ },
+ {
+  "id": "pr-293",
+  "paraphrase": "고유명사는 번역하지 말고 원어로 둬",
+  "flip": "번역은 직역보다 의역으로 해",
+  "flip_label": "replaces"
+ },
+ {
+  "id": "pr-294",
+  "paraphrase": "API 응답에는 버전 필드를 포함해",
+  "flip": "API 필드는 snake_case로 해",
+  "flip_label": "replaces"
+ },
+ {
+  "id": "pr-309",
+  "paraphrase": "그림은 svg 형식으로 저장해",
+  "flip": "문서의 그림에는 대체 글을 쓰지 마",
+  "flip_label": "replaces"
+ },
+ {
+  "id": "pr-316",
+  "paraphrase": "그 표 맨 윗줄에는 요약을 넣어",
+  "flip": "그 표는 쓰지 말고 목록으로 바꿔",
+  "flip_label": "replaces"
+ }
+]
