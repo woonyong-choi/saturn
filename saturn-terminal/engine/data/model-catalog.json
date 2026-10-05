@@ -1,0 +1,179 @@
+{
+  "version": "2026-10-06.1",
+  "collected": "2026-10-06",
+  "expires": "2026-12-31",
+  "entries": [
+    {
+      "provider": "claude",
+      "model_id": "claude-fable-5-1",
+      "revision": "claude-fable-5-1",
+      "features": [
+        "context_1m"
+      ],
+      "price": {
+        "unit": "usd_per_million_tokens",
+        "input": 10,
+        "output": 50
+      },
+      "evidence": [
+        {
+          "kind": "official_spec",
+          "name": "Claude models overview",
+          "source_url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "collected": "2026-10-06"
+        }
+      ]
+    },
+    {
+      "provider": "claude",
+      "model_id": "claude-opus-5-5",
+      "alias": "opus",
+      "revision": "claude-opus-5-5",
+      "features": [
+        "context_1m"
+      ],
+      "price": {
+        "unit": "usd_per_million_tokens",
+        "input": 4,
+        "output": 20
+      },
+      "evidence": [
+        {
+          "kind": "official_spec",
+          "name": "Claude models overview",
+          "source_url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "collected": "2026-10-06"
+        }
+      ]
+    },
+    {
+      "provider": "claude",
+      "model_id": "claude-sonnet-5-5",
+      "alias": "sonnet",
+      "revision": "claude-sonnet-5-5",
+      "features": [
+        "context_1m"
+      ],
+      "price": {
+        "unit": "usd_per_million_tokens",
+        "input": 2,
+        "output": 10
+      },
+      "evidence": [
+        {
+          "kind": "official_spec",
+          "name": "Claude models overview",
+          "source_url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "collected": "2026-10-06"
+        }
+      ]
+    },
+    {
+      "provider": "claude",
+      "model_id": "claude-haiku-4-5",
+      "alias": "haiku",
+      "revision": "claude-haiku-4-5-20251001",
+      "features": [
+        "context_200k"
+      ],
+      "price": {
+        "unit": "usd_per_million_tokens",
+        "input": 1,
+        "output": 5
+      },
+      "evidence": [
+        {
+          "kind": "official_spec",
+          "name": "Claude models overview",
+          "source_url": "https://platform.claude.com/docs/en/about-claude/models/overview",
+          "collected": "2026-10-06"
+        }
+      ]
+    },
+    {
+      "provider": "codex",
+      "model_id": "gpt-6-astra",
+      "efforts": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "features": [
+        "context_1.05m"
+      ],
+      "price": {
+        "unit": "usd_per_million_tokens",
+        "input": 10,
+        "output": 50
+      },
+      "uncertainty": "공식 문서가 고정 revision을 밝히지 않아 지금 쓰는 모델이 같은지 확인할 수 없다.",
+      "evidence": [
+        {
+          "kind": "official_spec",
+          "name": "OpenAI models",
+          "source_url": "https://developers.openai.com/api/docs/models",
+          "collected": "2026-10-06"
+        }
+      ]
+    },
+    {
+      "provider": "codex",
+      "model_id": "gpt-6.1-sol",
+      "efforts": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "features": [
+        "context_1.05m"
+      ],
+      "price": {
+        "unit": "usd_per_million_tokens",
+        "input": 2,
+        "output": 10
+      },
+      "uncertainty": "공식 문서가 고정 revision을 밝히지 않아 지금 쓰는 모델이 같은지 확인할 수 없다.",
+      "evidence": [
+        {
+          "kind": "official_spec",
+          "name": "OpenAI models",
+          "source_url": "https://developers.openai.com/api/docs/models",
+          "collected": "2026-10-06"
+        }
+      ]
+    },
+    {
+      "provider": "codex",
+      "model_id": "gpt-6-luna",
+      "efforts": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ],
+      "features": [
+        "context_1.05m"
+      ],
+      "price": {
+        "unit": "usd_per_million_tokens",
+        "input": 0.1,
+        "output": 0.5
+      },
+      "uncertainty": "공식 문서가 고정 revision을 밝히지 않아 지금 쓰는 모델이 같은지 확인할 수 없다.",
+      "evidence": [
+        {
+          "kind": "official_spec",
+          "name": "OpenAI models",
+          "source_url": "https://developers.openai.com/api/docs/models",
+          "collected": "2026-10-06"
+        }
+      ]
+    }
+  ]
+}

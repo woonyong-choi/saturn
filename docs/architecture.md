@@ -59,6 +59,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 제약 식별, 저장, 해제와 예외, 패킷 제약 칸 | [제약](design/constraints.md) |
 | 판단 질문, 기준값, 대체 규칙 | [router](design/router.md) |
 | router 키 입력, 저장, 차단 | [router 키 보호](design/router-key-security.md) |
+| 모델 근거 출처, 품질 확정, 후보 집합 | [모델 평가 근거 목록](design/model-evidence.md) |
 | 채점, 기준값 조정, 로컬 모델 승격 | [router 학습](design/router-training.md) |
 | 설정 층과 설정 번호 | [설정](design/settings.md) |
 | 스키마 이관, 보존, 삭제 | [기록 저장과 보존](design/records.md) |

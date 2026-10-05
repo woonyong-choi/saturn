@@ -537,7 +537,12 @@ impl Engine {
         let settings = self.settings.at(&self.store, record.settings).await?;
         let active = self.routers.active();
         tracing::debug!(
-            policy = %crate::policy::policy_digest(&settings, active.router_id(), active.model()),
+            policy = %crate::policy::policy_digest(
+                &settings,
+                active.router_id(),
+                active.model(),
+                &self.catalog.version,
+            ),
             "judgment policy"
         );
         if let Some(alert) = self.routers.observe(&exchange) {
