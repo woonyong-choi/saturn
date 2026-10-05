@@ -20,6 +20,9 @@ pub const KEEP_CURRENT_FLOOR: f64 = 0.3;
 /// 확률 합이 1에서 벗어나도 되는 폭(초안).
 pub const PROBABILITY_TOLERANCE: f64 = 0.01;
 
+/// 부동소수점 뺄셈 오차만 흡수한다. 허용 폭 0.01을 넓히지 않는다.
+const FLOAT_SLACK: f64 = 1e-9;
+
 pub const SET_ROUTE: &str = "route";
 pub const SET_RELATION: &str = "relation";
 pub const SET_SEND_OPT: &str = "send-opt";
@@ -744,7 +747,7 @@ fn check_answer(question: &Question, answer: &Answer) -> Result<(), RouterError>
     }
     let is_distribution = !matches!(answer, Answer::Noul(_));
     let sum: f64 = probabilities.iter().sum();
-    if is_distribution && (sum - 1.0).abs() > PROBABILITY_TOLERANCE {
+    if is_distribution && (sum - 1.0).abs() > PROBABILITY_TOLERANCE + FLOAT_SLACK {
         return Err(invalid(format!("probabilities do not sum to 1: {id}")));
     }
     Ok(())
