@@ -16,6 +16,7 @@ fn notice() -> Notification {
 fn attach_env_takes_only_listed_names_and_never_the_router_key() {
     let process = [
         ("PATH", "/opt/bin:/usr/bin"),
+        ("CLAUDE_CONFIG_DIR", "/Users/me/.config/claude-test"),
         ("SATURN_KEY", "sk-secret"),
         ("AWS_SECRET_ACCESS_KEY", "other"),
     ];
@@ -29,7 +30,13 @@ fn attach_env_takes_only_listed_names_and_never_the_router_key() {
 
     assert_eq!(
         env,
-        vec![("PATH".to_owned(), "/opt/bin:/usr/bin".to_owned())]
+        vec![
+            ("PATH".to_owned(), "/opt/bin:/usr/bin".to_owned()),
+            (
+                "CLAUDE_CONFIG_DIR".to_owned(),
+                "/Users/me/.config/claude-test".to_owned()
+            ),
+        ]
     );
 }
 
