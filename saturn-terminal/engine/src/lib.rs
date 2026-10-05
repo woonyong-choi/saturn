@@ -46,6 +46,7 @@ mod models;
 mod outcomes;
 mod passes;
 mod permission;
+mod policy;
 mod prune;
 mod recover;
 mod requests;

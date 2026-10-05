@@ -109,7 +109,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 - 질문 세트는 `route@1.0`, `relation@1.0`, `send-opt@1.0`에서 시작한다. `route@1.1`은 `is_constraint`를 더한다. `constraint@1.0`은 `constraint_change`와 `line_<k>_is_constraint`로 시작한다. 기존 질문의 뜻은 바뀌지 않기 때문이다. `constraint_change`와 기준값 `constraint_release`는 구현 전이고 지금 코드의 `constraint@1.0`은 `line_<k>_is_constraint`만 묻는다([#379](https://github.com/woonyong-choi/saturn/issues/379)).
 - 행동 조건을 채운 선택지가 없으면(확신도 미만, `invalid`, 판단 없음, 허용 후보 없음) 질문마다 위 표의 대체 규칙으로 가고, 입력 처리 판단(`route`, `relation`, `send-opt`)은 사용자에게 따로 묻지 않는다. router 장애와 낮은 확신이 입력을 멈추지 않게 하기 위해서다. 제약 판단(`is_constraint`, `constraint_change`)은 낮은 확신일 때 대체 규칙으로 가지 않고 입력 처리를 멈추지 않는 확인 창으로 사용자에게 묻는다. 단 권한 모드가 `full`이면 묻지 않고 기록 줄로 대신한다([제약](constraints.md#사용자에게-묻기))([#103](https://github.com/woonyong-choi/saturn/issues/103), [#39](https://github.com/woonyong-choi/saturn/issues/39)).
 - 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다.
-- 기준값을 판단 기록으로 자동 조정하는 규칙은 [router 학습](router-training.md)에 있다.
+- 기준값은 판단 기록, 피드백, 취소, 실패로 자동 조정하지 않는다. 바뀌는 길은 설정 변경과 명시적으로 적용하는 새 정책뿐이다([정책 고정](#정책-고정)). 기록으로 기준값을 계산하는 규칙은 [router 학습](router-training.md)에 있고 실행 경로에는 연결하지 않았다.
 
 ### 판단 방식
 
@@ -128,6 +128,17 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 - 판단과 라벨마다 출처와 사용 제한을 기록한다. 외부 출력이 섞인 학습 데이터를 골라 뺄 수 있게 하기 위해서다.
 - router 모델은 버전을 고정하고, 별칭을 쓰면 응답의 `model`을 기록한다. 판단을 재현하기 위해서다.
 - Saturn 모델의 학습과 승격은 [router 학습](router-training.md)에 있다.
+
+### 정책 고정
+
+판단 정책은 질문 세트 버전, 질문별 기준값, router 종류와 모델이다. 입력 하나는 접수 때 정해진 정책으로만 판단한다.
+
+- 기준값은 입력의 설정 번호가 가리키는 스냅샷에서 읽는다. 설정 파일이 바뀌어도 이미 접수한 입력은 접수 때 번호의 기준값을 쓰고, 이후 접수하는 입력부터 새 번호를 쓴다. 한 입력의 판단에 옛 값과 새 값이 섞이지 않게 하기 위해서다.
+- router 종류와 모델은 engine이 시작할 때 설정에서 골라 끝까지 쓴다. 판단 기록의 `router_version`과 설정 번호로 그 판단의 정책을 다시 찾을 수 있다. 설정 파일의 `router.mode`, `router.model`을 중간에 바꿔도 다음 engine 시작 전에는 적용하지 않는다.
+- 새 정책은 설정을 고치거나 engine을 다시 시작해 들어온다. 설정은 검사에 실패하면 이전 번호를 유지하고, 같은 내용으로 되돌리면 같은 번호를 다시 쓰므로 옛 정책으로 돌아가는 일(rollback)은 옛 설정으로 되돌리는 일이다. 재시작해도 접수한 입력의 설정 번호는 기록 저장소에 남아 있어 그대로다.
+- 사용자 피드백, 취소, 뒤집기, router 실패는 판단 기록과 결과 신호로만 남는다. 기준값, 모델, 질문, 사례집, 스킬을 실행 중 바꾸지 않고 판단 모델도 실행 중 학습하거나 승격하지 않는다. 자동으로 정책을 바꾸는 계획([#337](https://github.com/woonyong-choi/saturn/issues/337))은 폐기했다.
+- 정책 지문은 기준값 표와 router 종류·모델의 SHA-256이고 judgment 디버그 로그에 남는다. 두 정책이 같은지 확인하는 용도다.
+- 이 고정은 Saturn 쪽 정책 고정이다. 외부 판단 서비스가 같은 모델 이름 뒤의 가중치를 바꾸는지는 Saturn이 알 수 없다. 서비스가 버전 고정을 지원하지 않거나 버전을 공개하지 않으면 동일 모델 재현을 보장한다고 표시하지 않는다. 응답의 `model`이 요청과 다르면 기록하고, 분포 변화는 [#544](https://github.com/woonyong-choi/saturn/issues/544)의 재검증 사유일 뿐 정책을 자동으로 고칠 이유가 아니다.
 
 ### router 시작 확인
 
@@ -255,6 +266,9 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | 맥락의 비밀값과 절대 경로는 가리고, 인젝션 문구는 따옴표 안에 머문다. | `saturn-terminal/engine/src/judge_context.rs`의 `secrets_are_masked_before_cutting_so_no_partial_secret_is_left`, `injected_lines_stay_inside_the_quoted_text`, `saturn-terminal/engine/src/lifecycle/judge_context.rs`의 `context_text_hides_secrets_and_absolute_paths`, `injected_instructions_stay_inside_quoted_text` |
 | 판단 중 상태가 바뀌어 다시 판단하면 새 상태의 맥락으로 요청을 만든다. | `saturn-terminal/engine/src/lifecycle/judge_context.rs`의 `rerouted_request_after_a_revision_conflict_is_rebuilt_from_the_new_state` |
 | `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md): 0.80에서 현재 state의 재현율 10.1%, 작업 정보를 더한 state 69.7%. 작업 정보를 state에 싣는 구현은 [판단 요청 맥락](#판단-요청-맥락)에 있고 실제 router 정확도는 이 구현으로 다시 재지 않았다. |
+| 피드백, 취소, 반응 신호, router 실패를 100건 넣어도 활성 정책 지문, 기준값, router 모델, 설정 번호가 바뀌지 않는다. | `saturn-terminal/engine/src/lifecycle/policy.rs`의 `feedback_cancel_and_failures_leave_the_active_policy_unchanged` |
+| 정책 교체 중 접수한 입력은 접수 때 설정 번호의 기준값으로만 판단하고, 옛 설정으로 되돌리면 옛 번호를 다시 쓰며, 재시작해도 입력의 번호가 같다. | `saturn-terminal/engine/src/lifecycle/policy.rs`의 `inputs_keep_the_policy_they_were_accepted_under_across_swap_rollback_and_restart` |
+| 구현 전인 `train`, `router use`, 판단 방식 `collect`는 정책을 바꾸지 않고 미지원 오류나 설정 오류를 돌려준다. | `saturn-terminal/engine/src/lifecycle/requests.rs`의 `requests_each_get_one_response_in_order`, `saturn-terminal/engine/src/routers/mod.rs`의 `select_follows_method_and_endpoint_rules` |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
 | 후보를 순위로 자르지 않고 전체를 묻는다. | `saturn-terminal/core/src/routers/tests.rs`의 `compact_questions_150_candidates_ask_all` |
 | 고정하지 않은 입력에 모델 목록을 `target_model` 후보로 묻고 고른 모델로 보낸다. 고정 모델이거나 매뉴얼 모드이거나 목록이 없으면 묻지 않고, 후보 밖이면 기본 모델이나 현재 모델이다. | [모델 고르기](providers-and-sessions.md#모델-고르기)의 `target_model` 테스트 |

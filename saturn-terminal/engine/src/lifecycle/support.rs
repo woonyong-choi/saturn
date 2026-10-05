@@ -5,7 +5,7 @@ use saturn_core::routers::{RELATION_OPTIONS, RouteDecision, SEND_OPTIONS};
 use saturn_protocol::event::{
     Activity, PermissionCall, PermissionTool, ProviderEvent, ToolCategory, ToolDetail, TurnOrigin,
 };
-use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, SubagentId};
+use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, SettingsRevision, SubagentId};
 use saturn_protocol::input::{InputAnswer, InputField, InputFieldKind, InputRequest};
 use saturn_protocol::rpc::{ModelChoice, PermissionAnswer};
 use saturn_protocol::state::InputState;
@@ -398,14 +398,20 @@ impl Flow {
 
     /// 판단과 전송 없이 접수만 한다. 판단 적용 시험이 판단 차례를 직접 다루는 데 쓴다.
     pub(super) async fn accept_only(&mut self, text: &str) -> InputId {
+        let settings = self
+            .engine
+            .settings
+            .current()
+            .expect("settings should be applied at start");
+        self.accept_at(text, settings).await
+    }
+
+    /// `accept_only`와 같되 입력의 설정 번호를 정한다.
+    pub(super) async fn accept_at(&mut self, text: &str, settings: SettingsRevision) -> InputId {
         let new = NewInput {
             chat: self.chat,
             text: text.to_owned(),
-            settings: self
-                .engine
-                .settings
-                .current()
-                .expect("settings should be applied at start"),
+            settings,
             permission: Permission::Write,
             workdir: self.fixture.workdir.clone(),
             pinned_model: None,

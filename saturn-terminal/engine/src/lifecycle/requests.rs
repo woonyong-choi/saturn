@@ -223,8 +223,20 @@ async fn requests_each_get_one_response_in_order() {
                 },
             )
             .await;
+        client
+            .send(
+                6,
+                Request::Train {
+                    reset_thresholds: false,
+                    from: None,
+                },
+            )
+            .await;
+        client
+            .send(7, Request::ConfirmTrain { proceed: true })
+            .await;
         let mut responses = Vec::new();
-        for _ in 0..5 {
+        for _ in 0..7 {
             responses.push(client.response().await);
         }
         responses
@@ -234,7 +246,7 @@ async fn requests_each_get_one_response_in_order() {
     let ids: Vec<Option<RequestId>> = responses.iter().map(|response| response.id).collect();
     assert_eq!(
         ids,
-        (1..=5).map(|id| Some(RequestId(id))).collect::<Vec<_>>()
+        (1..=7).map(|id| Some(RequestId(id))).collect::<Vec<_>>()
     );
     assert_eq!(responses[0], Response::ok(RequestId(1)));
     assert_eq!(error_code(&responses[1]), INVALID_PARAMS);
@@ -242,6 +254,9 @@ async fn requests_each_get_one_response_in_order() {
     assert_eq!(responses[3], Response::ok(RequestId(4)));
     assert!(export.exists());
     assert_eq!(error_code(&responses[4]), INVALID_PARAMS);
+    // 학습은 구현 전이라 정책을 바꾸는 경로가 없고 미지원 오류를 돌려준다
+    assert_eq!(error_code(&responses[5]), METHOD_NOT_FOUND);
+    assert_eq!(error_code(&responses[6]), METHOD_NOT_FOUND);
 }
 
 #[tokio::test]

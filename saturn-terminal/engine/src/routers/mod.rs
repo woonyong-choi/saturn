@@ -849,6 +849,19 @@ mod tests {
             Routers::select(&saturn, Arc::clone(&secrets), Masker::default()),
             Err(RoutersError::NotConfigured { .. })
         ));
+        let collect = load(
+            &mut manager,
+            &store,
+            &home,
+            "[router]\nmode = \"collect\"\n",
+        )
+        .await;
+        assert!(matches!(
+            Routers::select(&collect, Arc::clone(&secrets), Masker::default()),
+            Err(RoutersError::NotConfigured {
+                method: Method::Collect
+            })
+        ));
         let local = load(
             &mut manager,
             &store,

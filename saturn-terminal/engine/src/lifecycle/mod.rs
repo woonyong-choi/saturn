@@ -34,6 +34,7 @@ mod outcomes;
 mod packet_overflow;
 mod permissions;
 mod plain_exit;
+mod policy;
 mod provider_events;
 mod provider_stall;
 mod prune;
