@@ -3,6 +3,8 @@
 
 mod env;
 mod hook;
+#[cfg(target_os = "macos")]
+mod keychain;
 mod keys;
 mod mask;
 mod storage;
@@ -44,6 +46,9 @@ pub enum SecretsError {
     /// 강화 방식에서 session 시작 때 키체인 암호를 다시 받아야 한다.
     #[error("router key is locked")]
     Locked,
+    /// 강화 방식을 지원하지 않거나 만든 항목이 기준에 못 미친다. 표준 저장으로 낮추지 않는다.
+    #[error("hardened key storage is unavailable")]
+    HardenedUnsupported,
     /// 읽지 않고 멈춘다.
     #[error("key file permission must be 0600: {path}")]
     FilePermission {
