@@ -5,7 +5,10 @@ use saturn_protocol::ids::{ConstraintId, InputId, Provider, SessionId, TaskId};
 
 use super::support::{Flow, idle_reply, text, tool_read, tool_result, turn_completed};
 use crate::providers::test_support::{CLAUDE, CODEX, Call, FakeProvider};
-use crate::store::{Actor, ConstraintChange, ConstraintState, NewChange, NewRegistration, NewRule};
+use crate::store::{
+    Actor, ConstraintChange, ConstraintState, NewChange, NewRegistration, NewRule, PacketKind,
+    PacketState, sha256_hex,
+};
 
 /// 제약 원문. 어느 입력이나 답, 파일 내용에도 나오지 않아 최근 턴으로는 맞출 수 없다.
 const RULE: &str = "Release builds must never print the internal build token";
@@ -192,7 +195,36 @@ async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
             .await
             .unwrap();
         (case.check)(case.name, &packet, &claude_rows, &codex_rows);
+        assert_packet_record(&flow, &packet, &claude_rows).await;
     }
+}
+
+/// Claude가 받은 패킷의 전달 기록이 받은 글의 해시와 일치하고, 제약 칸 항목이 `packet_constraints`와 같다.
+async fn assert_packet_record(flow: &Flow, packet: &str, claude_rows: &PacketRows) {
+    let recorded = flow.engine.store.packets_of_chat(flow.chat).await.unwrap();
+    let stored = recorded
+        .iter()
+        .find(|stored| stored.session == CLAUDE_FIRST)
+        .expect("the switch packet should be recorded");
+    assert_eq!(stored.body_hash, sha256_hex(packet.as_bytes()));
+    assert_eq!(stored.body_bytes, packet.len() as u64);
+    assert_eq!((stored.kind, stored.attempt), (PacketKind::Switch, 1));
+    assert_eq!(stored.state, PacketState::Sent);
+    assert!(stored.provider_session.is_some() && stored.run.is_some());
+    let items = flow.engine.store.packet_items(stored.id).await.unwrap();
+    let in_slot: Vec<(u64, &str, Option<&str>)> = items
+        .iter()
+        .filter(|item| item.0 == "Constraints")
+        .map(|item| (item.1, item.2.as_deref().unwrap_or("-"), item.3.as_deref()))
+        .collect();
+    let expected: Vec<(u64, &str, Option<&str>)> = claude_rows
+        .iter()
+        .map(|(id, tier)| match tier.as_str() {
+            "Omitted" => (id.0, "-", Some("slot_full")),
+            tier => (id.0, tier, None),
+        })
+        .collect();
+    assert_eq!(in_slot, expected);
 }
 
 #[tokio::test]

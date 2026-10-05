@@ -11,6 +11,7 @@ mod history;
 mod judgments;
 mod ledger;
 mod outcomes;
+mod packets;
 mod permissions;
 mod raw;
 mod records;
@@ -42,6 +43,7 @@ pub(crate) use extensions::ExtensionRow;
 pub(crate) use history::HistoryEntry;
 pub(crate) use judgments::{JudgmentOutcome, NewJudgment};
 pub(crate) use ledger::{LedgerRow, SteeredInput};
+pub(crate) use packets::{NewPacket, PacketId, PacketItemRow, PacketKind, PacketState};
 pub(crate) use raw::UnattributedRaw;
 pub(crate) use records::{NewInput, NewRun, RunEnd, RunRecord, UsageRow};
 pub(crate) use recovery::StoredHold;
@@ -53,6 +55,8 @@ pub(crate) use sessions::IdKind;
 
 #[cfg(test)]
 pub(crate) use judgments::tests::judgment as test_judgment;
+#[cfg(test)]
+pub(crate) use packets::StoredPacket;
 
 pub(crate) const DB_FILE: &str = "saturn.db";
 

@@ -447,8 +447,11 @@ impl Engine {
         }
     }
 
-    async fn run_open(&mut self, job: DeliveryJob, prep: OpenPrep) -> Result<(), EngineError> {
+    async fn run_open(&mut self, job: DeliveryJob, mut prep: OpenPrep) -> Result<(), EngineError> {
         let chat = job.record.chat;
+        if let Some((target, body, evidence)) = prep.packet_to_send(&job.record) {
+            prep.packet = self.record_packet_attempt(target, body, evidence).await;
+        }
         match prep.call() {
             OpenCall::None => self.complete_open(job, prep, None).await,
             OpenCall::Handoff(live, text) => match self.provider_mut(chat, live.provider) {
@@ -477,6 +480,11 @@ impl Engine {
         prep: OpenPrep,
         result: Result<Option<SessionHandle>, ProviderError>,
     ) -> Result<(), EngineError> {
+        let session = result
+            .as_ref()
+            .ok()
+            .and_then(|opened| prep.provider_session_of(opened));
+        self.settle_packet(prep.packet, &result, session).await;
         if job.is_stopped {
             return self.opened_after_stop(job, prep, result).await;
         }
@@ -551,7 +559,11 @@ impl Engine {
             .begin_run(chat, job.record.id, job.delivery.task, &live)
             .await;
         match run {
-            Ok(run) => job.delivery.run = Some(run),
+            Ok(run) => {
+                job.delivery.run = Some(run);
+                let linked = self.store.link_packet_run(job.record.id, run).await;
+                self.warn_failure("failed to link a handoff packet to its run", linked);
+            }
             Err(error) => {
                 let reason = self.failure_line(&error);
                 return self.reject(job.delivery, reason).await;

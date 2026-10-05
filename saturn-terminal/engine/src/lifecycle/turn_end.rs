@@ -141,7 +141,7 @@ async fn context_over_the_threshold_replaces_the_session_only_at_the_turn_bounda
             &live,
             "p".to_owned(),
             None,
-            (LedgerSeq(1), Vec::new()),
+            crate::handoff::PacketEvidence::empty(LedgerSeq(1)),
         )
         .await;
     assert!(matches!(

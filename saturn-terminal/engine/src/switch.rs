@@ -18,13 +18,14 @@ use crate::calls::CallKind;
 use crate::dispatch::{MAX_SEND_ATTEMPTS, Start};
 use crate::flow::LiveSession;
 use crate::handoff::{
-    Handoff, HandoffOutcome, changes_of_others, handoff_of, handoff_source, others_only,
-    reduce_handoff,
+    Handoff, HandoffOutcome, PacketEvidence, changes_of_others, handoff_of, handoff_source,
+    others_only, reduce_handoff,
 };
 use crate::models::pinned_model_name;
+use crate::packets::PacketTarget;
 use crate::sessions::SendRequest;
 use crate::settings::ContextMode;
-use crate::store::IdKind;
+use crate::store::{IdKind, PacketId, PacketKind};
 use crate::{Engine, EngineError};
 
 /// 캐시 유지 시간을 넘겨 쉰 열린 메인. session, 마지막 턴 값, 마지막 턴 뒤 쉰 시간이다.
@@ -58,6 +59,8 @@ pub(crate) struct OpenPlan {
     reduction: Option<Reduction>,
     /// 새 session을 열면 `packet_constraints`에 남길 제약별 단계.
     constraint_tiers: PacketTiers,
+    /// 보낼 패킷의 근거. 보낼 패킷이 없으면 `None`.
+    evidence: Option<PacketEvidence>,
 }
 
 /// 전환에서 새 session의 패킷에 든 제약별 단계.
@@ -78,6 +81,9 @@ pub(crate) struct Restart {
     constraint_tiers: PacketTiers,
     /// 줄인 패킷으로 다시 열었다. 한 번만 줄인다.
     is_reduced: bool,
+    /// 지금 보낸 패킷 시도의 근거와 기록 번호. 기록하지 못했으면 번호가 없다.
+    evidence: PacketEvidence,
+    packet: Option<PacketId>,
 }
 
 /// 거절된 패킷을 줄여 만들 재료.
@@ -110,11 +116,18 @@ impl OpenPlan {
     }
 
     /// 거절된 계획의 패킷을 한 번만 줄인다. 줄일 재료가 없거나 이미 줄였거나 고정 구역만으로 넘치면 `None`.
-    fn reduced(self, limit_tokens: Option<u64>) -> Option<Self> {
-        let handoff = self.reduction.as_ref()?.reduce(limit_tokens)?;
+    fn reduced(self, limit_tokens: Option<u64>, previous: Option<PacketId>) -> Option<Self> {
+        let reduction = self.reduction.as_ref()?;
+        let handoff = reduction.reduce(limit_tokens)?;
+        let attempt = self
+            .evidence
+            .as_ref()
+            .map_or(1, |evidence| evidence.attempt);
+        let evidence = PacketEvidence::reduced(&handoff, &reduction.source, (attempt, previous));
         Some(Self {
             handoff: Some(handoff.text),
             reduction: None,
+            evidence: Some(evidence),
             ..self
         })
     }
@@ -125,6 +138,8 @@ impl OpenPlan {
 pub(crate) struct OpenPrep {
     plan: OpenPlan,
     kind: OpenKind,
+    /// 이 열기가 보낸 패킷 시도의 기록 번호. 패킷을 보내지 않거나 기록하지 못했으면 없다.
+    pub(crate) packet: Option<PacketId>,
 }
 
 #[derive(Debug)]
@@ -179,7 +194,47 @@ impl OpenPrep {
 
     /// 패킷이 맥락 한도로 거절됐을 때 줄인 패킷으로 다시 열 계획. 줄일 수 없으면 `None`.
     pub(crate) fn reduced_plan(self, limit_tokens: Option<u64>) -> Option<OpenPlan> {
-        self.plan.reduced(limit_tokens)
+        self.plan.reduced(limit_tokens, self.packet)
+    }
+
+    /// 이 준비가 provider에 보낼 패킷의 받는 쪽, 본문, 근거. 보낼 패킷이 없으면 `None`.
+    pub(crate) fn packet_to_send(
+        &self,
+        input: &QueuedInput,
+    ) -> Option<(PacketTarget, &str, &PacketEvidence)> {
+        let (kind, session, body) = match &self.kind {
+            OpenKind::Handoff {
+                live,
+                text: Some(text),
+                ..
+            } => (PacketKind::Return, live.session, text.as_str()),
+            OpenKind::Resume { stored, spec } => {
+                (PacketKind::Return, stored.id, spec.packet.as_deref()?)
+            }
+            OpenKind::New { id, spec, .. } => (PacketKind::Switch, *id, spec.packet.as_deref()?),
+            OpenKind::Live(_) | OpenKind::Handoff { text: None, .. } => return None,
+        };
+        let target = PacketTarget {
+            chat: input.chat,
+            kind,
+            session,
+            input: Some(input.id),
+            provider: self.plan.provider,
+            settings: input.settings,
+        };
+        Some((target, body, self.plan.evidence.as_ref()?))
+    }
+
+    /// 열기 결과가 가리키는 provider session 번호. 변경분을 이미 열린 session에 보냈으면 그 session의 것이다.
+    pub(crate) fn provider_session_of<'a>(
+        &'a self,
+        opened: &'a Option<SessionHandle>,
+    ) -> Option<&'a str> {
+        match (&self.kind, opened) {
+            (_, Some(handle)) => Some(handle.provider_session.0.as_str()),
+            (OpenKind::Handoff { live, .. }, None) => Some(live.provider_session.0.as_str()),
+            _ => None,
+        }
     }
 }
 
@@ -263,6 +318,7 @@ impl Engine {
             synced: LedgerSeq(0),
             reduction: None,
             constraint_tiers: Vec::new(),
+            evidence: None,
         };
         if role == AgentRole::Sub {
             return Ok(plain);
@@ -412,6 +468,12 @@ impl Engine {
             }
             SendTarget::New { .. } | SendTarget::Open(_) => (full_source, full),
         };
+        let evidence = match (&outcome, &source) {
+            (HandoffOutcome::Ready(handoff), Some(source)) => {
+                Some(PacketEvidence::first(handoff, source))
+            }
+            _ => None,
+        };
         let reduction = match (&outcome, source) {
             (HandoffOutcome::Ready(handoff), Some(source)) => Some(Reduction {
                 source,
@@ -435,6 +497,7 @@ impl Engine {
             synced,
             reduction,
             constraint_tiers,
+            evidence,
             ..plain
         })
     }
@@ -481,6 +544,7 @@ impl Engine {
                     return Ok(OpenPrep {
                         plan,
                         kind: OpenKind::Live(live),
+                        packet: None,
                     });
                 }
                 let reopened = self.reopen_plan(id)?;
@@ -510,6 +574,7 @@ impl Engine {
                         id,
                         spec,
                     },
+                    packet: None,
                 })
             }
         }
@@ -540,6 +605,7 @@ impl Engine {
             return Ok(OpenPrep {
                 plan,
                 kind: OpenKind::Handoff { live, stored, text },
+                packet: None,
             });
         }
         let resume = stored
@@ -565,6 +631,7 @@ impl Engine {
         Ok(OpenPrep {
             plan,
             kind: OpenKind::Resume { stored, spec },
+            packet: None,
         })
     }
 
@@ -579,7 +646,7 @@ impl Engine {
         prep: OpenPrep,
         opened: Option<SessionHandle>,
     ) -> Result<LiveSession, EngineError> {
-        let OpenPrep { plan, kind } = prep;
+        let OpenPrep { plan, kind, .. } = prep;
         let chat = record.chat;
         let live = match (kind, opened) {
             (OpenKind::Live(live), _) => live,
@@ -700,6 +767,7 @@ impl Engine {
             synced: LedgerSeq(0),
             reduction: None,
             constraint_tiers: Vec::new(),
+            evidence: None,
         })
     }
 
@@ -769,7 +837,7 @@ impl Engine {
         live: &LiveSession,
         packet: String,
         reduction: Option<Reduction>,
-        (up_to, constraint_tiers): (LedgerSeq, PacketTiers),
+        evidence: PacketEvidence,
     ) -> Result<(), EngineError> {
         let old = self
             .sessions
@@ -796,15 +864,29 @@ impl Engine {
             interrupted_children: Vec::new(),
         };
         self.provider_mut(chat, live.provider)?;
+        let target = PacketTarget {
+            chat,
+            kind: PacketKind::Restart,
+            session: id,
+            input: None,
+            provider: live.provider,
+            settings: spec.settings,
+        };
+        let packet = match &spec.packet {
+            Some(body) => self.record_packet_attempt(target, body, &evidence).await,
+            None => None,
+        };
         let restart = Restart {
             live: live.clone(),
             old,
             id,
             spec,
             reduction,
-            up_to,
-            constraint_tiers,
+            up_to: evidence.up_to,
+            constraint_tiers: evidence.tiers(),
             is_reduced: false,
+            evidence,
+            packet,
         };
         self.flow.restarting.insert(chat);
         self.submit_restart(chat, restart);
@@ -829,10 +911,18 @@ impl Engine {
         restart: Restart,
         opened: Result<SessionHandle, ProviderError>,
     ) {
+        let session = opened
+            .as_ref()
+            .ok()
+            .map(|handle| handle.provider_session.0.as_str());
+        self.settle_packet(restart.packet, &opened, session).await;
         let restarted = match opened {
             Ok(handle) => self.replace_with_new(chat, &restart, &handle).await,
             Err(ProviderError::ContextExceeded { limit_tokens }) if !restart.is_reduced => {
-                match self.reopen_restart_reduced(chat, restart, limit_tokens) {
+                match self
+                    .reopen_restart_reduced(chat, restart, limit_tokens)
+                    .await
+                {
                     Ok(()) => return,
                     Err(error) => Err(error),
                 }
@@ -846,24 +936,42 @@ impl Engine {
     ///
     /// # Errors
     /// 줄일 재료가 없거나 고정 구역만으로 목표를 넘으면 `Provider(ContextExceeded)`, 연결이 없으면 `Provider(NotSent)`.
-    fn reopen_restart_reduced(
+    async fn reopen_restart_reduced(
         &mut self,
         chat: ChatId,
         mut restart: Restart,
         limit_tokens: Option<u64>,
     ) -> Result<(), EngineError> {
-        let reduced = restart
+        let reduction = restart
             .reduction
             .take()
-            .and_then(|reduction| reduction.reduce(limit_tokens))
+            .ok_or(ProviderError::ContextExceeded { limit_tokens })?;
+        let reduced = reduction
+            .reduce(limit_tokens)
             .ok_or(ProviderError::ContextExceeded { limit_tokens })?;
         tracing::warn!(
             chat = chat.0,
             "packet was over the context limit, sending a reduced one"
         );
+        self.provider_mut(chat, restart.live.provider)?;
+        restart.evidence = PacketEvidence::reduced(
+            &reduced,
+            &reduction.source,
+            (restart.evidence.attempt, restart.packet),
+        );
+        let target = PacketTarget {
+            chat,
+            kind: PacketKind::Restart,
+            session: restart.id,
+            input: None,
+            provider: restart.live.provider,
+            settings: restart.spec.settings,
+        };
+        restart.packet = self
+            .record_packet_attempt(target, &reduced.text, &restart.evidence)
+            .await;
         restart.spec.packet = Some(reduced.text);
         restart.is_reduced = true;
-        self.provider_mut(chat, restart.live.provider)?;
         self.submit_restart(chat, restart);
         Ok(())
     }
