@@ -999,6 +999,26 @@ fn user_config_reads_root_and_selected_profile() {
         read_user_config(&launch(dir.path(), Vec::new())),
         UserProviderConfig::default()
     );
+    // 빈 값은 없는 것으로 보고 HOME 아래 .codex를 읽으며, 상대 경로는 폴더를 정하지 못해 읽지 않고 거절 대상이다
+    let user = [("HOME".into(), dir.path().as_os_str().to_owned())];
+    let with = |value: &str| {
+        let mut env = user.to_vec();
+        env.push(("CODEX_HOME".into(), value.into()));
+        env
+    };
+    std::fs::create_dir_all(dir.path().join(".codex")).unwrap();
+    std::fs::write(
+        dir.path().join(".codex/config.toml"),
+        "model_auto_compact_token_limit = 1\n",
+    )
+    .unwrap();
+    assert!(read_user_config(&launch(dir.path(), with(""))).has_auto_compact);
+    assert_eq!(
+        read_user_config(&launch(dir.path(), with("codex-home"))),
+        UserProviderConfig::default()
+    );
+    assert!(super::config::relative_home(&with("codex-home")).is_some());
+    assert!(super::config::relative_home(&with("")).is_none());
 }
 
 #[test]

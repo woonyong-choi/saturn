@@ -42,6 +42,8 @@ pub const ATTACH_ENV_NAMES: &[&str] = &[
     "XDG_DATA_HOME",
     // Claude의 사용자 설정 폴더. 어댑터가 읽는 폴더와 Claude가 읽는 폴더가 같아지려면 provider 실행 환경에 있어야 한다
     "CLAUDE_CONFIG_DIR",
+    // Codex의 사용자 설정 폴더(읽기용). Saturn 전용 `CODEX_HOME`은 engine이 따로 만들어 provider 환경에 덮어쓴다
+    "CODEX_HOME",
     "HTTP_PROXY",
     "HTTPS_PROXY",
     "NO_PROXY",
