@@ -15,6 +15,7 @@ use tokio::sync::{Notify, mpsc};
 
 use super::{ClientId, RpcEvent};
 use crate::passes::{Entry, PassGate, Waited};
+use crate::processes::Supervisor;
 
 /// 초안. 넘치면 그 클라이언트를 끊는다. 다시 붙으면 기록으로 화면을 되살린다.
 pub(crate) const OUTBOX_CAPACITY: usize = 1024;
@@ -38,7 +39,13 @@ impl Connection {
     }
 
     /// 읽기가 끝나면 `RpcEvent::Disconnected`를 inbox로 보낸다.
-    pub(crate) fn spawn(self, inbox: mpsc::Sender<RpcEvent>, gate: PassGate) -> Outbox {
+    pub(crate) fn spawn(
+        self,
+        inbox: mpsc::Sender<RpcEvent>,
+        gate: PassGate,
+        supervisor: Supervisor,
+    ) -> Outbox {
+        let peer = self.stream.peer_cred().ok().and_then(|cred| cred.pid());
         let (sender, receiver) = mpsc::channel(OUTBOX_CAPACITY);
         let kill = Arc::new(Notify::new());
         let closed = Arc::new(Notify::new());
@@ -55,8 +62,30 @@ impl Connection {
             inbox,
             sender.clone(),
             (gate, closed),
+            Peer {
+                pid: peer,
+                supervisor,
+            },
         ));
         Outbox { sender, kill }
+    }
+}
+
+/// 소켓 상대 프로세스. 번호를 모르면(`None`) provider 쪽으로 본다.
+struct Peer {
+    pid: Option<i32>,
+    supervisor: Supervisor,
+}
+
+impl Peer {
+    /// Saturn이 띄운 provider 묶음의 자손이면 참. 환경 변수 표지는 자손이 지울 수 있어 보지 않는다.
+    async fn is_provider_side(&self, client: ClientId) -> bool {
+        let provider_side = match self.pid.and_then(|pid| u32::try_from(pid).ok()) {
+            Some(pid) => self.supervisor.is_provider_side(pid).await,
+            None => true,
+        };
+        tracing::debug!(client = client.0, provider_side, "client peer checked");
+        provider_side
     }
 }
 
@@ -66,7 +95,9 @@ async fn read_loop(
     inbox: mpsc::Sender<RpcEvent>,
     replies: mpsc::Sender<ServerMessage>,
     (gate, closed): (PassGate, Arc<Notify>),
+    peer: Peer,
 ) {
+    let restricted = peer.is_provider_side(id).await;
     let mut lines = BufReader::new(read_half).lines();
     let mut line_in = Line {
         id,
@@ -74,6 +105,7 @@ async fn read_loop(
         replies: &replies,
         gate: &gate,
         queued: Vec::new(),
+        restricted,
     };
     // 쓰기 쪽이 끝나면(종료 신호, 쓰기 실패) 읽기도 멈춰 이 연결을 정리한다
     while let Some(line) = next_line(&mut lines, id, &closed).await {
@@ -116,12 +148,35 @@ struct Line<'a> {
     gate: &'a PassGate,
     /// 이 연결이 대기열에 세워 둔 하위 접속 요청.
     queued: Vec<Waiter>,
+    /// provider 자손의 접속. 출입증이 있는 요청만 받고, `AttachChild`가 통과한 뒤에는 하위 접속으로 다룬다.
+    restricted: bool,
+}
+
+/// 출입증을 담은 요청. 출입증의 유효 여부는 각 요청의 처리에서 확인한다.
+fn carries_pass(request: &Request) -> bool {
+    matches!(
+        request,
+        Request::AttachChild { .. } | Request::EvidenceSearch { .. } | Request::EvidenceRead { .. }
+    )
 }
 
 impl Line<'_> {
     /// 서버가 이미 닫혀 요청을 넘기지 못하면 거짓.
     async fn forward(&mut self, line: &str) -> bool {
         match envelope::decode_client_line(line) {
+            Ok(message) if self.restricted && !carries_pass(&message.request) => {
+                let reason = "connections from provider processes need a pass";
+                let _ = self.replies.try_send(
+                    Response::error_of_kind(
+                        Some(message.id),
+                        CHILD_REJECTED,
+                        Some(ErrorKind::Failed),
+                        reason,
+                    )
+                    .into(),
+                ); // 넘치면 쓰기 쪽이 곧 끊긴다
+                true
+            }
             Ok(message) => match message.request {
                 Request::AttachChild { pass, mode } => {
                     self.admit_child(message.id, &pass, mode.as_deref()).await
@@ -170,6 +225,7 @@ impl Line<'_> {
                 true
             }
             Entry::Admitted(grant) => {
+                self.restricted = false;
                 let event = RpcEvent::Child(self.id, request, grant);
                 self.inbox.send(event).await.is_ok()
             }
@@ -178,6 +234,7 @@ impl Line<'_> {
                 waiter,
                 wait,
             } => {
+                self.restricted = false;
                 let queued = Notification::ChildQueued { position };
                 let _ = self.replies.try_send(queued.into()); // 넘치면 쓰기 쪽이 곧 끊긴다
                 self.queued.push(waiter);

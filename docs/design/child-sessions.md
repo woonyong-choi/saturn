@@ -64,6 +64,8 @@ Saturn 안의 에이전트가 `saturn`을 실행해 다른 일을 맡기는 것�
 | 바깥 접속 | 없음 | 새 채팅 | 사용자가 연 채팅과 같다. |
 
 - `saturn`은 `SATURN_PASS`가 있으면 하위 접속, 없고 `SATURN_AGENT`도 없으면 바깥 접속이다. `SATURN_AGENT`만 있고 출입증이 없으면(회수됐거나 만들지 못했을 때) 거절한다.
+- 환경 변수 표지는 `saturn`이 정하는 것이라 provider 안에서 도는 명령이 지우고 소켓에 직접 붙을 수 있다. 그래서 `engine`은 표지를 믿지 않고 접속을 받을 때 소켓 상대 프로세스 번호(피어 자격 정보)를 운영체제에서 받아, 그 프로세스가 `engine`이 띄운 provider 프로세스 묶음의 리더이거나 자손(묶음 구성원, 부모 줄을 따라간 자손, 묶음 밖으로 빠져나간 것으로 본 자손)인지 확인한다. 자손이면 출입증을 담은 요청(`AttachChild`, `EvidenceSearch`, `EvidenceRead`)만 받고 나머지는 `CHILD_REJECTED`로 거절한다. `AttachChild`가 출입증과 상한을 통과하면 그 접속은 하위 접속이 되어 이후 요청을 받는다. 출입증이 없거나 틀린 자손은 바깥 접속으로 올라가지 못한다. 사용자 터미널의 `saturn`과 Saturn 밖에서 돈 Claude·Codex의 접속은 묶음의 자손이 아니므로 그대로 바깥 접속이다.
+- 상대 프로세스 번호를 받지 못했거나 확인할 때 이미 프로세스 표에 없으면(접속하고 바로 끝난 프로세스) 자손으로 본다. 확인할 수 없는 쪽을 열어 두지 않기 위해서다. 묶음 밖으로 빠져나가 부모가 `init`으로 바뀐 프로세스는 마지막 감시 때 자손으로 본 것만 알아본다. 감시 간격(1초) 안에 빠져나가 접속한 프로세스는 구별하지 못한다.
 - 하위 접속은 항상 plain 방식이다. 표준 입력의 줄이 입력이 되고 결과 줄이 표준 출력으로 나온다. `--continue`, `--resume`, `--add-dir`, `-c`, 하위 명령은 쓸 수 없다. 작업 폴더, 더한 폴더, 환경, 실행 층은 `engine`이 부모에게서 물려주기 때문이다.
 - 하위 접속은 `engine`이 떠 있지 않으면 새로 띄우지 않고 오류로 끝난다. `engine`도 에이전트 작업 안에서는 시작을 거절한다.
 - `engine`의 소켓 경로는 환경 변수 `SATURN_ENGINE_SOCKET`으로 알려 준다. 없으면 기본 경로다.
@@ -174,6 +176,7 @@ Saturn 안의 에이전트가 `saturn`을 실행해 다른 일을 맡기는 것�
 | 하위 채팅의 쓰기 입력은 부모의 쓰기 잠금을 기다리지 않는다. | 같은 파일의 `child_write_input_does_not_wait_for_the_parent_write_lock` |
 | 부모에 실행 중인 작업이 없으면 거절한다. | 같은 파일의 `child_is_rejected_when_the_parent_has_no_running_task` |
 | 출입증 확인은 요청 처리 루프 없이 하고, 대기 요청과 다른 요청이 서로 기다리지 않는다. | 같은 파일의 `unknown_pass_is_rejected_by_the_connection_without_the_engine_loop`, `queued_children_do_not_hold_back_other_requests`, `queued_request_does_not_block_the_next_request_on_the_same_connection` |
+| provider 묶음의 자손이 표지를 지우고 붙으면 출입증을 담은 요청 말고는 거절하고, 바깥 프로세스는 그대로 받는다. | `saturn-terminal/engine/src/rpc/mod.rs`의 `provider_descendant_without_a_pass_is_rejected`, 같은 파일의 `requests_arrive_with_client_and_request_id` |
 | 출입증이 있으면 하위 접속, 없고 표지만 있으면 거절, 둘 다 없으면 바깥 접속이다. | `saturn-terminal/cli/src/launch.rs`의 `origin_follows_the_marker_pass_and_socket`, `origin_with_marker_and_no_pass_names_the_pass_variable` |
 | 동시 하위 작업 10, 50, 100개에서 응답 시간과 메모리를 잰다. | `saturn-terminal/engine/src/lifecycle/child_load.rs`의 `load_10_children`, `load_50_children`, `load_100_children`(`#[ignore]`) |
 
@@ -188,6 +191,7 @@ Saturn 안의 에이전트가 `saturn`을 실행해 다른 일을 맡기는 것�
 
 - 하위 접속마다 새 `engine`을 띄우고 결과 파일로 돌려받는 방식은 사용자당 `engine` 하나와 기록 저장소의 쓰기 하나를 깨서 버렸다([결정 기록](../decisions/2026-10-04-child-sessions-via-engine-pass.md)).
 - 계속 거절하는 방식은 에이전트가 Saturn을 쓸 수 없어 버렸다.
+- 환경 표지로만 접속 종류를 정하는 방식은 provider 자손이 표지를 지우면 바깥 접속이 되어 버렸다. 소켓 상대 프로세스 확인을 더했다.
 - 출입증 없이 환경 표지만으로 하위를 알아보는 방식은 표지를 복사하면 누구나 하위처럼 행세하고 범위와 만료가 없어 버렸다.
 - 요청마다 요청 처리 루프에서 출입증을 확인하는 방식은 대기하는 요청이 루프를 잡거나 별도 대기 장치를 루프 안에 둬야 해 버렸다.
 
