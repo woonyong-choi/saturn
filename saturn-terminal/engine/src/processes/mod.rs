@@ -230,12 +230,29 @@ impl Supervisor {
         self.stop_tree_with(group, scope, grace).await
     }
 
-    /// engine 종료 때 부른다.
+    /// engine 종료 때 부른다. 멈춤 신호를 먼저 보내지 않은 종료이므로 `STOP_GRACE`를 기다리지 않고 바로 `SIGTERM`을
+    /// 보낸다. 묶음마다 차례로 기다리면 종료가 `cli`의 대기(15초)를 넘겨 `SIGKILL`로 끝나 자식이 남기 때문에 묶음을 함께 멈춘다.
     pub async fn stop_all(&self) -> Vec<(ProcessGroupId, Result<StopOutcome, ProcessError>)> {
+        let grace = Grace {
+            stop: Duration::ZERO,
+            kill: KILL_GRACE,
+        };
         let groups: Vec<ProcessGroupId> = self.lock().keys().copied().collect();
-        let mut results = Vec::with_capacity(groups.len());
+        let mut stops = tokio::task::JoinSet::new();
         for group in groups {
-            results.push((group, self.stop_tree(group, StopScope::Whole).await));
+            let supervisor = self.clone();
+            stops.spawn(async move {
+                (
+                    group,
+                    supervisor
+                        .stop_tree_with(group, StopScope::Whole, grace)
+                        .await,
+                )
+            });
+        }
+        let mut results = Vec::with_capacity(stops.len());
+        while let Some(joined) = stops.join_next().await {
+            results.push(joined.expect("stop task should not panic or be cancelled"));
         }
         results
     }

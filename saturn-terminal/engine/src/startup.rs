@@ -87,6 +87,7 @@ impl Engine {
             idle_grace: saturn_core::sessions::IDLE_GRACE,
             pending_train: None,
             upgrade_requested: false,
+            terminate: Arc::default(),
         })
     }
 

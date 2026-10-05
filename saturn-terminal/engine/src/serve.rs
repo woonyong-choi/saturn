@@ -42,6 +42,9 @@ impl Engine {
                         break;
                     }
                 }
+                () = self.terminate.notified() => {
+                    break;
+                }
                 Some(done) = self.flow.router_rx.recv() => {
                     self.on_routed(done).await;
                 }

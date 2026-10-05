@@ -285,6 +285,8 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 
 `Shutdown`을 받은 `engine`은 실행 중인 작업을 끝내지 않는다. 실행을 `Stopped`로 닫지도 session을 보류로 바꾸지도 않고 기록 저장소에 끝나지 않은 실행으로 그대로 둔다. 이 상태는 크래시가 남기는 흔적과 같아서 새 `engine`이 시작 때 [크래시 뒤 복구](#크래시-뒤-복구)를 그대로 돌린다. 실행마다 보류로 되살리고, `effect_scope`가 증명된 실행은 파일 상태를 확인하게 하는 새 입력으로 이어 가고, 나머지는 보류한 채 `/continue`를 제안한다. 보내지 않은 입력과 `전달 중` 입력도 같은 복원 규칙을 따른다. 별도 경로를 두면 두 경로의 규칙이 어긋나므로 같은 길을 쓴다. 스키마 이관은 새 `engine`이 시작할 때 평소대로 한다([스키마 이관](#스키마-이관)).
 
+`engine`은 `SIGTERM`도 `Shutdown`과 같게 처리한다. 시작하자마자(provider를 띄우기 전에) 신호를 등록하고, 받으면 요청 처리 루프를 끝낸 뒤 접속을 닫고 provider 프로세스 묶음을 정리하고 잠금을 푼다. 실행을 끝내지 않는 점도 같아서 새 `engine`이 크래시 복구 길로 이어 간다. 이 정리는 멈춤 신호를 먼저 보내지 않은 종료이므로 `STOP_GRACE`(10초)를 기다리지 않고 묶음마다 바로 `SIGTERM`을 보내며, 묶음은 차례가 아니라 함께 멈춘다. `SIGTERM` 뒤 5초(`KILL_GRACE`) 안에 끝나지 않는 묶음에는 `SIGKILL`을 보낸다. 신호를 처리하지 않던 옛 판은 `SIGTERM`에 바로 끝나 provider 프로세스를 남겼다.
+
 옛 `engine`에 붙어 있던 다른 TUI는 `Alert::EngineRestarting`을 받으면 오류 없이 끝나고 터미널에 `업데이트를 적용하느라 engine을 다시 시작합니다 · saturn으로 다시 여세요` 한 줄을 남긴다. 그 TUI의 화면에는 새 `engine`이 붙지 않으므로 사용자가 `saturn`을 다시 연다.
 
 교체 중에 다른 `saturn`이 시작하면 소켓이 없어 새 `engine`을 띄우려다 잠금을 얻지 못해 끝나고, 소켓이 열리기를 2초(초안) 기다리는 규칙을 따른다. 교체가 그보다 오래 걸리면 `saturn`이 오류로 끝나므로 다시 실행한다.
@@ -388,6 +390,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | `cli`는 `engine`의 판이 자기보다 낮을 때만 교체하고, 같거나 더 높으면 그대로 붙는다. | `saturn-terminal/cli/src/launch.rs`의 `judge_replaces_only_an_engine_older_than_this_client`, `connect_or_start_with_running_engine_only_attaches`, `connect_or_start_keeps_an_engine_of_a_newer_version` |
 | 옛 판 `engine`에는 `Shutdown`을 보내 끝낸 뒤 `--after-upgrade`로 새 `engine`을 띄운다. | `saturn-terminal/cli/src/launch.rs`의 `connect_or_start_replaces_an_older_engine_by_asking_it_to_shut_down` |
 | `Version`을 모르는 더 옛 `engine`은 소켓 반대편 프로세스에 `SIGTERM`을 보내 끝낸다. | `saturn-terminal/cli/src/launch.rs`의 `connect_or_start_ends_an_engine_without_version_support_with_a_signal` |
+| `SIGTERM`을 받은 `engine`은 요청 처리를 끝내고 provider 프로세스 묶음의 자식까지 끝낸다. | `saturn-terminal/engine/src/lifecycle/start.rs`의 `terminate_signal_ends_serve_and_leaves_no_provider_child` |
 | 종료 상한을 넘기면 `SIGKILL`로 끝내고, 그래도 남으면 새 `engine`을 띄우지 않고 오류로 끝낸다. | `saturn-terminal/cli/src/launch.rs`의 `connect_or_start_kills_an_engine_that_ignores_the_shutdown_request`, `connect_or_start_fails_without_starting_when_the_old_engine_survives_the_kill` |
 | `Shutdown`을 받은 `engine`은 응답한 뒤 붙은 TUI에 `EngineRestarting`을 알리고 끝난다. | `saturn-terminal/engine/src/lifecycle/upgrade.rs`의 `shutdown_ends_the_engine_and_tells_the_attached_tui_before_closing` |
 | 실행 중이던 작업은 끝나지 않은 채 남아 새 `engine`이 크래시 복구로 보류하고 제안하거나, 증명된 작업은 스스로 잇는다. | `saturn-terminal/engine/src/lifecycle/upgrade.rs`의 `unproven_work_is_held_by_the_new_engine_and_suggested`, `proven_work_continues_by_itself_in_the_new_engine` |

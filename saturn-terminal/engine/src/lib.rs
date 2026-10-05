@@ -68,6 +68,7 @@ mod lifecycle;
 use std::collections::HashMap;
 use std::ffi::OsString;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use saturn_core::agents::AgentTracker;
@@ -169,6 +170,8 @@ pub enum EngineError {
     Session(#[from] SessionError),
     #[error("process supervision failed")]
     Process(#[from] ProcessError),
+    #[error("failed to listen for SIGTERM")]
+    Signal(#[source] std::io::Error),
     #[error("training failed")]
     Training(#[from] TrainingError),
 }
@@ -385,11 +388,17 @@ pub struct Engine {
     pending_train: Option<TrainPlan>,
     /// `Shutdown`을 받았다. 요청 처리 루프는 붙은 TUI에 알린 뒤 끝난다.
     upgrade_requested: bool,
+    /// 종료 신호(`SIGTERM`)를 받았다. `serve`가 끝나고 `shutdown`이 provider 프로세스 묶음을 정리한다.
+    terminate: Arc<tokio::sync::Notify>,
 }
 
 impl Engine {
     pub async fn run(options: EngineOptions) -> Result<(), EngineError> {
+        // 시작과 복구 중에 온 신호도 놓치지 않게 provider를 띄우기 전에 등록한다
+        let terminate = Arc::new(tokio::sync::Notify::new());
+        watch_terminate(&terminate)?;
         let mut engine = Self::start(options).await?;
+        engine.terminate = terminate;
         engine.finish_start().await?;
         engine
             .detect_provider_versions(&std::env::vars_os().collect::<Vec<_>>())
@@ -527,6 +536,19 @@ impl Engine {
             }
         }
     }
+}
+
+/// `SIGTERM`이 오면 `terminate`를 깨운다. 등록은 이 함수가 돌아오기 전에 끝난다.
+fn watch_terminate(terminate: &Arc<tokio::sync::Notify>) -> Result<(), EngineError> {
+    let mut term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        .map_err(EngineError::Signal)?;
+    let terminate = Arc::clone(terminate);
+    tokio::spawn(async move {
+        term.recv().await;
+        tracing::info!("received SIGTERM, engine is ending");
+        terminate.notify_one();
+    });
+    Ok(())
 }
 
 /// 원인까지 `: `로 이은 한 줄. router 키와 같은 문자열은 가린다.
