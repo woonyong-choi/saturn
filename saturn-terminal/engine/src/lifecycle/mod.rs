@@ -19,6 +19,7 @@ mod crash_recovery;
 mod decision;
 mod deliver;
 mod events;
+mod evidence;
 mod exit;
 mod extension_inject;
 mod extension_switch;

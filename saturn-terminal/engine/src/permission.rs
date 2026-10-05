@@ -462,7 +462,7 @@ fn resolved(workdir: &Path, call: &PermissionCall) -> PermissionCall {
 // vars: d = 경로 깊이
 // basis: estimate
 /// 있는 앞부분은 실제 경로로 풀고 아직 없는 뒷부분은 그대로 붙인다.
-fn resolve_links(path: &Path) -> PathBuf {
+pub(crate) fn resolve_links(path: &Path) -> PathBuf {
     let mut missing = Vec::new();
     let mut current = path;
     loop {

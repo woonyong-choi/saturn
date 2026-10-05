@@ -149,6 +149,19 @@ impl Engine {
             Request::Usage { scope, folder } => {
                 self.usage_result(client, scope, folder.as_deref()).await?
             }
+            Request::EvidenceSearch { pass, query, limit } => {
+                self.evidence_search(&pass, &query, limit).await?
+            }
+            Request::EvidenceRead {
+                pass,
+                id,
+                hash,
+                offset,
+                limit,
+            } => {
+                self.evidence_read(&pass, (id, hash.as_deref()), (offset, limit))
+                    .await?
+            }
             Request::LatestChat { folder } => self.latest_chat_result(&folder).await?,
             Request::ListChats { folder } => self.chat_list_result(folder.as_deref()).await?,
             Request::ListTasks => self.task_list_result().await?,
@@ -327,6 +340,8 @@ impl Engine {
             Request::LoadHistory { .. }
             | Request::PrepareExit { .. }
             | Request::Usage { .. }
+            | Request::EvidenceSearch { .. }
+            | Request::EvidenceRead { .. }
             | Request::LatestChat { .. }
             | Request::ListChats { .. }
             | Request::ListTasks

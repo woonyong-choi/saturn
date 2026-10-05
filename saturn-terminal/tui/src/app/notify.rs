@@ -199,8 +199,12 @@ impl App {
                     screen.selected = screen.selected.min(screen.rows.len().saturating_sub(1));
                 }
             }
-            // TUI는 채팅 목록과 폴더의 최근 채팅을 묻지 않는다. 그런 조회는 `cli`가 붙기 전에 쓴다
-            QueryResult::LatestChat { .. } | QueryResult::Chats { .. } => {}
+            // TUI는 채팅 목록과 폴더의 최근 채팅을 묻지 않는다. 그런 조회는 `cli`가 붙기 전에 쓴다.
+            // 근거 조회는 에이전트 작업 안의 `saturn evidence`만 묻는다
+            QueryResult::LatestChat { .. }
+            | QueryResult::Chats { .. }
+            | QueryResult::EvidenceCandidates { .. }
+            | QueryResult::EvidenceRecord { .. } => {}
         }
         Vec::new()
     }

@@ -277,6 +277,7 @@ pub(crate) fn handoff_source_ordered(
             .collect(),
         recent_turns: turns,
         provider_docs: provider_docs.to_vec(),
+        evidence_lookup: budget.evidence_lookup,
         up_to: last.seq,
     })
 }
@@ -711,6 +712,31 @@ pub(crate) fn changes_of_others(
         .collect()
 }
 
+/// 패킷의 경쟁 구역 후보와 같은 도구 호출 하나. `text`는 패킷이 넣는 원문과 같다.
+#[derive(Debug, Clone)]
+pub(crate) struct ToolRecord {
+    pub(crate) seq: LedgerSeq,
+    pub(crate) at_ms: i64,
+    pub(crate) text: String,
+    pub(crate) files: Vec<String>,
+}
+
+// cost: time O(L), heap O(L), stack O(1)
+// vars: L = 기록 글자 수
+// basis: estimate
+/// 근거 검색과 원문 조회가 패킷과 같은 후보와 같은 원문을 쓰게 한다.
+pub(crate) fn tool_records(rows: &[LedgerRow]) -> Vec<ToolRecord> {
+    tools(rows)
+        .into_iter()
+        .map(|tool| ToolRecord {
+            seq: tool.seq,
+            at_ms: tool.stamp.at_ms.unwrap_or_default(),
+            text: item_text(&tool),
+            files: tool.files,
+        })
+        .collect()
+}
+
 fn item_text(tool: &Tool) -> String {
     format!(
         "{}\n{}",
@@ -767,6 +793,7 @@ mod tests {
             item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
             constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
             rrf_k: DEFAULT_RRF_K,
+            evidence_lookup: false,
         }
     }
 

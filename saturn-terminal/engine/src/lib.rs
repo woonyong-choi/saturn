@@ -34,6 +34,7 @@ mod control;
 mod delivery;
 mod dispatch;
 mod events;
+mod evidence;
 mod exit;
 mod extensions;
 mod flow;
@@ -103,6 +104,19 @@ pub const ROUTER_KEY_REQUIRED: i32 = -32001;
 /// 초안. 붙을 때 보내는 기록 수. TUI `HISTORY_PAGE`와 같다.
 const ATTACH_HISTORY: u32 = 50;
 
+/// 근거 조회를 거절한 이유.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum EvidenceRefusal {
+    #[error("pass is unknown or revoked")]
+    Pass,
+    #[error("no such record in this chat")]
+    NotFound,
+    #[error("the record changed since it was listed")]
+    Stale,
+    #[error("the record touches files outside the readable scope")]
+    Scope,
+}
+
 /// 시작 단계 오류면 원인 한 줄을 stderr에 보이고 소켓을 열지 않고 끝난다.
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
@@ -163,6 +177,9 @@ pub enum EngineError {
     /// 고정 모델도 현재 provider도 없는 첫 입력인데 설치된 provider가 없다.
     #[error("no provider is installed")]
     NoProvider,
+    /// 근거 검색이나 원문 조회를 거절했다. 원문은 돌려주지 않았다.
+    #[error("evidence lookup refused: {refusal}")]
+    Evidence { refusal: EvidenceRefusal },
     #[error("rpc failed")]
     Rpc(#[from] RpcError),
     #[error("record store failed")]
@@ -201,6 +218,7 @@ impl EngineError {
             | Self::NoRetention
             | Self::PrunePlanUnknown
             | Self::PruneNeedsPlan
+            | Self::Evidence { .. }
             | Self::ChatNotAttached { .. }
             | Self::Store(StoreError::NotFound { .. })
             | Self::Queue(
@@ -231,9 +249,13 @@ impl EngineError {
             | Self::Training(TrainingError::NoGrader) => Some(ErrorKind::Config),
             Self::Store(StoreError::NotFound { .. })
             | Self::PrunePlanUnknown
+            | Self::Evidence {
+                refusal: EvidenceRefusal::NotFound,
+            }
             | Self::Training(TrainingError::UnknownVersion { .. }) => Some(ErrorKind::NotFound),
             Self::Training(TrainingError::NotEnough { .. }) => Some(ErrorKind::RetryLater),
             Self::NoProvider
+            | Self::Evidence { .. }
             | Self::ChildRejected { .. }
             | Self::Provider(_)
             | Self::Training(TrainingError::Grader(_) | TrainingError::Trainer { .. }) => {

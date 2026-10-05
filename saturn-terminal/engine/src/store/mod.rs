@@ -7,6 +7,7 @@ mod chat_labels;
 mod constraints;
 mod direct;
 mod evidence;
+mod evidence_lookups;
 mod extensions;
 mod history;
 mod judgments;
@@ -42,6 +43,7 @@ pub(crate) use constraints::{
     ExceptionKind, NewChange, NewRegistration, NewRule, StoredAsk, StoredConstraint,
     StoredException,
 };
+pub(crate) use evidence_lookups::{LookupKind, LookupOutcome};
 pub(crate) use extensions::ExtensionRow;
 pub(crate) use history::HistoryEntry;
 pub(crate) use judgments::{JudgmentOutcome, NewJudgment};

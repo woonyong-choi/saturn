@@ -5,6 +5,7 @@ pub mod changes;
 pub mod completion;
 pub mod constraint_slot;
 pub mod context;
+pub mod evidence;
 pub mod fragments;
 pub mod memo;
 pub mod packet;

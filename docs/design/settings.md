@@ -137,6 +137,7 @@
 | `context.constraint_slot_percent` | 1~100 정수 | 25(초안). engine이 읽어 패킷 제약 칸 상한에 적용한다 |
 | `context.select.rrf_k` | 0 이상 정수 | 60 |
 | `context.select.packet` | `rrf`, `jev` | `rrf`. 실험 옵션이다. `jev`면 새 session 패킷을 만들 때 router `compact` 판단을 불러 경쟁 구역을 남김 확률 순으로 채운다 |
+| `context.evidence.lookup` | 참·거짓 | 거짓. 참이면 경쟁 구역에서 원문 아닌 모양으로 들어가거나 빠진 기록이 있는 패킷 끝에 `saturn evidence read` 안내 한 줄을 붙인다. 실험 옵션이다([맥락 고르기](context-selection.md#근거-검색과-원문-조회)) |
 
 - `tui.on_exit`는 TUI를 닫을 때 작업을 어떻게 할지 정한다. `background`는 계속하고, `stop`은 모든 채팅의 작업을 멈춤과 같게 보류하고, `ask`는 작업이 있으면 닫기 전에 묻는다. 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
 - `model.default`는 새 작업을 보낼 기본 모델이고, `model.mode`는 새 작업의 모델을 router가 고를지(`auto`) 사용자가 정한 모델로만 보낼지(`manual`) 정한다. 두 키 모두 사용자 층, 폴더 층, 실행 층에서 정할 수 있고, 입력은 접수 때 고정한 설정 번호의 값을 쓴다. `model.default`가 `<provider>/<model>` 모양이 아니거나 등록하지 않은 provider id면 고르지 않은 것으로 보고 처음 고르기 창을 다시 연다. 모델 창은 값을 사용자 설정 파일에 쓰므로, 폴더 설정이나 `-c`가 같은 키를 정했으면 그 값이 이기고 창은 병합 결과를 보인다. 규칙은 [기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)에 있다.

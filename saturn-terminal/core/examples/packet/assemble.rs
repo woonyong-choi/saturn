@@ -136,6 +136,7 @@ pub(crate) fn assemble(
         open_items,
         recent_turns: turns,
         competitors,
+        evidence_lookup: false,
         provider_docs: PROVIDER_DOCS
             .iter()
             .map(|name| (*name).to_owned())
@@ -170,6 +171,7 @@ pub(crate) fn budget_for(budget_tokens: u64) -> ContextBudget {
         item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
         constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
         rrf_k: DEFAULT_RRF_K,
+        evidence_lookup: false,
     }
 }
 

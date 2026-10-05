@@ -1060,11 +1060,19 @@ fn launch_args_enable_the_bash_sandbox_and_deny_reading_key_stores() {
     let dir = tempfile::tempdir().unwrap();
     let mut launch = launch(dir.path(), Vec::new());
     launch.key_deny_read = key_paths();
+    launch.env.push((
+        saturn_protocol::rpc::SOCKET_ENV.into(),
+        "/Users/u/.saturn/engine.sock".into(),
+    ));
     let client = ClaudeClient::new(launch, Supervisor::new());
 
     let args = client.launch_args(&spec(dir.path(), None), &SessionArg::New("id-1".to_owned()));
 
     let sandbox = &settings_arg(&args)["sandbox"];
+    assert_eq!(
+        sandbox["network"]["allowUnixSockets"],
+        json!(["/Users/u/.saturn/engine.sock"])
+    );
     assert_eq!(sandbox["enabled"], json!(true));
     assert_eq!(sandbox["allowUnsandboxedCommands"], json!(false));
     assert_eq!(sandbox["failIfUnavailable"], json!(true));

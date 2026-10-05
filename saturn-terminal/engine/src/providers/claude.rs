@@ -396,7 +396,17 @@ impl ClaudeClient {
             &spec.workdir,
             &spec.add_dirs,
         );
-        let settings = with_key_sandbox(with_ask_tools(hooks), &self.launch.key_deny_read);
+        let engine_socket = self
+            .launch
+            .env
+            .iter()
+            .find(|(name, _)| name == saturn_protocol::rpc::SOCKET_ENV)
+            .map(|(_, path)| std::path::PathBuf::from(path));
+        let settings = with_key_sandbox(
+            with_ask_tools(hooks),
+            &self.launch.key_deny_read,
+            engine_socket.as_deref(),
+        );
         args.extend(["--settings".to_owned(), settings.to_string()]);
         args
     }

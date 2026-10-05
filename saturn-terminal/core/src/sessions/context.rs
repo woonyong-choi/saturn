@@ -40,6 +40,8 @@ pub struct ContextBudget {
     pub constraint_slot_percent: u64,
     /// 설정 `context.select.rrf_k`.
     pub rrf_k: u32,
+    /// 설정 `context.evidence.lookup`. 참이면 패킷이 생략한 기록을 `saturn evidence`로 다시 읽는 방법을 알린다.
+    pub evidence_lookup: bool,
 }
 
 impl ContextBudget {
@@ -169,6 +171,7 @@ mod tests {
             item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
             constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
             rrf_k: DEFAULT_RRF_K,
+            evidence_lookup: false,
         }
     }
 

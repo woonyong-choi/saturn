@@ -228,6 +228,23 @@ pub enum Request {
         scope: UsageRange,
         folder: Option<String>,
     },
+    /// 에이전트 작업 안의 `saturn`이 출입증(`pass`)을 준 채팅의 기록을 검색한다. 도구 호출과 결과 후보를 단어·파일·최근성
+    /// 순위(RRF)로 매겨 위에서 `limit`개를 `QueryResult::EvidenceCandidates`로 돌려준다. 출입증이 없거나 회수됐으면 거절한다.
+    EvidenceSearch {
+        pass: String,
+        query: String,
+        limit: u32,
+    },
+    /// 출입증을 준 채팅의 기록 한 건의 원문을 `QueryResult::EvidenceRecord`로 돌려준다. 원문은 `offset`글자부터 `limit`글자까지다.
+    /// `hash`가 있으면 후보를 본 때의 원문과 같을 때만 돌려준다. 없는 번호, 다른 채팅이나 폴더의 번호, 읽기 범위 밖 파일의
+    /// 기록, 바뀐 해시는 거절한다.
+    EvidenceRead {
+        pass: String,
+        id: LedgerSeq,
+        hash: Option<String>,
+        offset: u64,
+        limit: u64,
+    },
     /// 작업 목록을 `QueryResult::Tasks`로 돌려준다.
     ListTasks,
     /// `folder`에서 마지막 입력 접수가 가장 늦은 채팅(입력이 없으면 만든 시각)을 `QueryResult::LatestChat`으로 돌려준다.
@@ -568,6 +585,21 @@ pub enum QueryResult {
         chats: Vec<ChatListItem>,
         skipped: Vec<PruneSkipped>,
         rows: u64,
+    },
+    /// `EvidenceSearch`의 답. `set_hash`는 후보 집합 전체의 해시이고 `total`은 읽기 범위 안 후보 수다.
+    EvidenceCandidates {
+        set_hash: String,
+        total: u32,
+        items: Vec<EvidenceItem>,
+    },
+    /// `EvidenceRead`의 답. `next_offset`이 있으면 원문이 더 남았다.
+    EvidenceRecord {
+        id: LedgerSeq,
+        hash: String,
+        chars: u64,
+        offset: u64,
+        next_offset: Option<u64>,
+        text: String,
     },
     /// `ListExtensions`의 답. 설치한 순서대로.
     ExtensionList {
@@ -966,6 +998,18 @@ pub struct ChatListItem {
     /// 지울(지운) 채팅의 기록 행 수. 정리 응답에서만 채우고 `ListChats`에서는 `None`.
     #[serde(default)]
     pub rows: Option<u64>,
+}
+
+/// 근거 후보 하나. `id`가 패킷 항목 앞의 기록 번호(`#41`)와 같다.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct EvidenceItem {
+    pub id: LedgerSeq,
+    /// 기록 시각. unix 밀리초.
+    pub at_ms: i64,
+    /// 원문 글자 수. 원문 범위는 `0..chars`.
+    pub chars: u64,
+    pub excerpt: String,
+    pub hash: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

@@ -27,6 +27,7 @@ fn budget() -> ContextBudget {
         item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
         constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
         rrf_k: DEFAULT_RRF_K,
+        evidence_lookup: false,
     }
 }
 
@@ -115,6 +116,7 @@ fn build_packet_fixed_zone_in_order_and_tool_results_only_in_competing() {
         open_items: vec![entry(38, "tests pending")],
         recent_turns: vec![turn(39, "run tests", "ran them")],
         competitors: vec![item(37, "cargo test output", None)],
+        evidence_lookup: false,
         provider_docs: Vec::new(),
         up_to: LedgerSeq(42),
     };
@@ -174,6 +176,49 @@ fn build_packet_fills_competing_in_chosen_order_raw_then_digest() {
         fate(&packet, PacketZone::Competing, 13),
         (Some(ItemForm::Digest), None)
     );
+}
+
+// cost: time O(n), heap O(n), stack O(1)
+// vars: n = 테스트 데이터 크기
+// basis: estimate
+#[test]
+fn build_packet_lookup_hint_only_when_the_option_is_on_and_an_original_was_cut() {
+    let cut = vec![
+        item(10, &filler("A", 380), None),
+        item(11, &filler("B", 380), None),
+        item(12, &filler("C", 380), None),
+        item(13, &filler("D", 380), None),
+    ];
+    let whole = vec![item(10, "short output", None)];
+    let build = |competitors: &[CompetingItem], evidence_lookup| {
+        let source = PacketSource {
+            competitors: competitors.to_vec(),
+            evidence_lookup,
+            ..PacketSource::default()
+        };
+        ready(build_packet(&source, &budget())).text
+    };
+    let rows = [
+        (&cut, false, false),
+        (&cut, true, true),
+        (&whole, true, false),
+        (&whole, false, false),
+    ];
+
+    for (competitors, option, expected) in rows {
+        let text = build(competitors, option);
+
+        assert_eq!(
+            text.contains("saturn evidence read <number>"),
+            expected,
+            "option {option} with {} records",
+            competitors.len()
+        );
+    }
+    let with = build(&cut, true);
+    let without = build(&cut, false);
+    assert!(with.trim_end().ends_with("lists matching records."));
+    assert!(with.chars().count() <= without.chars().count() + 400);
 }
 
 // cost: time O(n), heap O(n), stack O(1)
