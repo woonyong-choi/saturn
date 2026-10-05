@@ -806,6 +806,59 @@ fn resume_writers_run_one_at_a_time() {
     );
 }
 
+// #519
+#[test]
+fn resumed_task_input_is_sent_while_a_new_task_waits_for_its_write_lock() {
+    let mut queue = Queue::new();
+    let main = start_running(&mut queue, 1, Permission::Write, 7);
+    accept_routed(&mut queue, 2, Permission::Write, Disposition::NewTask);
+    queue.stop(CHAT);
+    queue.resume(CHAT, None);
+    let mut confirmation = input(3, Permission::Write);
+    confirmation.task = Some(main);
+    queue.accept(confirmation);
+    queue.set_state(InputId(3), InputState::Queued).unwrap();
+
+    let first = queue.next_to_send();
+    let second = queue.next_to_send();
+
+    assert_eq!(
+        first,
+        Some(SendAction::NewTurn {
+            input: InputId(3),
+            agent: AgentId(7)
+        })
+    );
+    assert_eq!(second, None);
+    assert_eq!(
+        queue.input(InputId(2)).unwrap().reason,
+        Some(QueueReason::WriteTurn)
+    );
+}
+
+// #519
+#[test]
+fn new_task_still_waits_for_the_lock_when_another_task_is_the_holder() {
+    let mut queue = Queue::new();
+    start_running(&mut queue, 1, Permission::Write, 7);
+    accept_routed(&mut queue, 2, Permission::Write, Disposition::NewTask);
+    accept_routed(&mut queue, 3, Permission::ReadOnly, Disposition::Queue);
+
+    let sent = queue.next_to_send();
+
+    assert_ne!(
+        sent,
+        Some(SendAction::NewTask {
+            input: InputId(2),
+            task: TaskId(2)
+        })
+    );
+    assert_eq!(
+        queue.input(InputId(2)).unwrap().reason,
+        Some(QueueReason::WriteTurn)
+    );
+}
+
 #[test]
 fn stop_input_bound_to_closed_task_holds_in_new_task() {
     let mut queue = Queue::new();

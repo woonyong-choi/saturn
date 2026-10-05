@@ -22,6 +22,8 @@ impl Queue {
     /// 끼워 넣기도 기다린다. 다른 채팅의 입력은 막지 않는다.
     pub fn next_to_send_except(&mut self, busy: &[ChatId]) -> Option<SendAction> {
         let mut blocked_chats: Vec<ChatId> = Vec::new();
+        // 쓰기 차례를 기다리는 입력이 기다리는 에이전트. 그 에이전트가 이어 받을 입력은 기다리는 입력 뒤에서도 보낸다
+        let mut awaited: Vec<(ChatId, AgentId)> = Vec::new();
         for index in 0..self.inputs.len() {
             let entry = &self.inputs[index];
             if entry.input.state != InputState::Queued {
@@ -40,12 +42,25 @@ impl Queue {
                 Route::Steer { .. } => return self.commit(index, route),
                 Route::Wait(reason) => {
                     let is_asking = entry.awaits_stop;
+                    if reason == Some(QueueReason::WriteTurn) {
+                        let scope = &entry.input.write_scope;
+                        awaited.extend(
+                            self.gate
+                                .holders_overlapping(scope)
+                                .into_iter()
+                                .map(|agent| (chat, agent)),
+                        );
+                    }
                     self.inputs[index].input.reason = if is_asking {
                         Some(QueueReason::ConfirmStop)
                     } else {
                         reason
                     };
                     blocked_chats.push(chat);
+                }
+                // 앞 입력이 이 에이전트의 쓰기 잠금을 기다린다. 이 입력이 에이전트를 이어 가야 잠금이 풀리므로 앞 입력을 기다리면 서로 기다린다
+                Route::NewTurn { agent, .. } if awaited.contains(&(chat, agent)) => {
+                    return self.commit(index, route);
                 }
                 _ if blocked_chats.contains(&chat) => {}
                 Route::NewTurn { .. } | Route::NewTask { .. } => {

@@ -337,3 +337,72 @@ async fn folder_added_while_connecting_does_not_widen_the_session_beyond_the_wri
         "the lock scope was fixed before the folder was added"
     );
 }
+
+/// 실행 중인 쓰기 작업 하나와, 그 작업과 무관하다고 판단돼 새 작업으로 기다리는 쓰기 입력 하나를 둔 채 멈춘다.
+async fn stopped_with_a_new_task_waiting_for_the_write_lock() -> (Flow, AgentId, InputId) {
+    use super::support::{idle_reply, running_reply, turn_completed};
+
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "independent", "spawn"),
+    ])
+    .await;
+    flow.submit("fix the build").await;
+    let agent = flow.agent();
+    let waiting = flow.submit("also write elsewhere").await;
+    flow.engine.stop_chat(flow.chat).await.unwrap();
+    flow.claude_event(turn_completed(agent)).await;
+    assert_eq!(flow.state(waiting), InputState::Held);
+    (flow, agent, waiting)
+}
+
+fn state_check_turns(flow: &Flow) -> usize {
+    flow.fake
+        .calls()
+        .iter()
+        .filter(|call| {
+            matches!(call, Call::SendTurn { text, .. } if text.starts_with("Previous turn result"))
+        })
+        .count()
+}
+
+// #519
+#[tokio::test]
+async fn continue_sends_the_state_check_even_when_a_new_task_waits_for_the_stopped_write_lock() {
+    let (mut flow, agent, waiting) = stopped_with_a_new_task_waiting_for_the_write_lock().await;
+
+    flow.engine.continue_held(flow.chat, None).await.unwrap();
+    flow.settle().await;
+
+    assert_eq!(state_check_turns(&flow), 1, "calls={:?}", flow.fake.calls());
+    assert!(is_waiting_for_write_turn(&flow, waiting));
+    flow.claude_event(super::support::turn_completed(agent))
+        .await;
+    flow.settle().await;
+    assert_ne!(
+        flow.state(waiting),
+        InputState::Queued,
+        "the new task should start once the resumed task ends"
+    );
+}
+
+// #519
+#[tokio::test]
+async fn continue_after_adding_a_folder_sends_the_state_check_while_a_new_task_waits() {
+    let (mut flow, _, waiting) = stopped_with_a_new_task_waiting_for_the_write_lock().await;
+    let extra = made_beside_workdir(&flow, "continue-extra");
+
+    flow.engine
+        .add_dir(
+            super::support::CLIENT,
+            flow.chat,
+            extra.canonicalize().unwrap().to_str().unwrap(),
+        )
+        .await
+        .unwrap();
+    flow.engine.continue_held(flow.chat, None).await.unwrap();
+    flow.settle().await;
+
+    assert_eq!(state_check_turns(&flow), 1, "calls={:?}", flow.fake.calls());
+    assert!(is_waiting_for_write_turn(&flow, waiting));
+}

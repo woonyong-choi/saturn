@@ -44,6 +44,18 @@ impl WriteGate {
             .iter()
             .any(|(held, holder)| Some(*holder) != agent && overlaps(held, scope))
     }
+
+    // cost: time O(h * s^2), heap O(h), stack O(1), alloc 1
+    // vars: h = 잠금을 쥔 에이전트 수, s = 쓰기 범위의 경로 수
+    // basis: estimate
+    /// `scope`와 겹치는 범위를 쥔 에이전트. 쓰기 차례를 기다리는 입력이 누구를 기다리는지 가린다.
+    pub(super) fn holders_overlapping(&self, scope: &[PathBuf]) -> Vec<AgentId> {
+        self.holders
+            .iter()
+            .filter(|(held, _)| overlaps(held, scope))
+            .map(|(_, holder)| *holder)
+            .collect()
+    }
 }
 
 // cost: time O(a * b * d), heap O(1), stack O(1)
