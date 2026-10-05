@@ -27,3 +27,4 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [같은 세션 축약 비교](experiments/same-session-compaction/report.md) | 같은 프로세스의 기본·fast-jev 축약과 새 패킷 인수 결과 |
 | [패킷 인수 순서 검증](experiments/same-session-compaction/handoff-design.md) | 패킷 인수와 후속 질문을 나눈 추가 실험 설계 |
 | [프로세스 유지 축약 검증](experiments/same-session-compaction/persistent-design.md) | 축약과 후속 질문 사이에 CLI 연결을 유지한 추가 실험 설계 |
+| [Jev 역할별 효율](experiments/jev-role-efficiency/design.md) | 모델 선택·제약 후보·맥락 선별의 실제 성과 비교 |
