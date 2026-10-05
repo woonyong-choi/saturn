@@ -1,5 +1,5 @@
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::AgentId;
+use saturn_protocol::ids::{AgentId, ProviderSessionId};
 use serde_json::Value;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{ChildStderr, ChildStdout};
@@ -8,7 +8,7 @@ use tokio::sync::mpsc;
 use super::convert::{convert_notification, convert_server_request, rejection};
 use super::threads::HeldEvents;
 use super::{Approvals, Pending, Stdin, Threads, lock};
-use crate::providers::{Frame, ProviderTrace, mask_values};
+use crate::providers::{Frame, ProviderTrace, RawTap};
 use crate::secrets::Masker;
 
 /// 한 줄을 처리한 결과. `replies`는 app-server로 바로 돌려줄 응답이다.
@@ -26,16 +26,17 @@ pub(super) async fn read_loop(
     threads: Threads,
     approvals: Approvals,
     events: mpsc::Sender<ProviderEvent>,
-    (masker, trace): (Masker, ProviderTrace),
+    (masker, trace, raw): (Masker, ProviderTrace, RawTap),
 ) {
     let mut lines = BufReader::new(stdout).lines();
     let mut held = HeldEvents::default();
     while let Ok(Some(line)) = lines.next_line().await {
-        let Ok(mut message) = serde_json::from_str::<Value>(&line) else {
+        let Some(message) = RawTap::parse_masked(&line, &masker) else {
+            raw.send(&line, None, (None, None));
             tracing::debug!("skipping non-json line from codex app-server");
             continue;
         };
-        mask_values(&mut message, &masker);
+        raw.send(&line, Some(&message), owner_of(&message, &threads));
         trace_message(&trace, &message);
         let routed = route_message(&message, &pending, (&threads, &mut held), &approvals);
         deliver(routed, &stdin, &events).await;
@@ -56,6 +57,25 @@ pub(super) async fn read_loop(
     for agent in lost {
         let _ = events.send(ProviderEvent::StreamLost { agent }).await; // 받는 쪽이 연결을 버렸다
     }
+}
+
+/// 메시지가 속한 thread의 식별자와 그 thread의 에이전트. 알림과 요청은 `params.threadId`, thread를 여는 알림은
+/// `params.thread.id`, 우리 요청의 응답은 `result.thread.id`에 적힌다. 등록되지 않은 thread나 thread가 없는 메시지의 에이전트는 비운다.
+fn owner_of(message: &Value, threads: &Threads) -> (Option<AgentId>, Option<String>) {
+    let thread = [
+        &message["params"]["threadId"],
+        &message["params"]["thread"]["id"],
+        &message["result"]["thread"]["id"],
+    ]
+    .into_iter()
+    .find_map(Value::as_str);
+    let Some(thread) = thread else {
+        return (None, None);
+    };
+    let agent = lock(threads)
+        .get(&ProviderSessionId(thread.to_owned()))
+        .map(|state| state.agent);
+    (agent, Some(thread.to_owned()))
 }
 
 /// 받은 메시지의 모양을 관측 기록에 남긴다. 방법 이름이 있으면 요청이나 알림이고, 없으면 우리 요청의 응답이다.

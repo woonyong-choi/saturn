@@ -14,7 +14,7 @@ use crate::flow::LiveSession;
 use crate::models::pinned_choice;
 use crate::providers::{
     ExtensionInput, LaunchSpec, PermissionInput, ProviderConnection, ProviderHandle, ProviderTrace,
-    SaturnDefaults, UserProviderConfig,
+    RawTap, SaturnDefaults, UserProviderConfig,
 };
 use crate::secrets::HookPolicy;
 use crate::settings::ContextMode;
@@ -229,6 +229,7 @@ impl Engine {
             permission,
             masker: self.masker.clone(),
             events: self.provider_events(chat, provider, &settings),
+            raw: RawTap::new(chat, provider, self.flow.provider_tx.clone(), &self.masker),
         })
     }
 

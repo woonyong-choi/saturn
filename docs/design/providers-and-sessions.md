@@ -242,7 +242,7 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 
 ### 원시 이벤트 관측 기록
 
-provider가 어떤 순서로 무엇을 보내는지 실제 실행에서 보려는 디버그 전용 기록이다. 변환한 이벤트는 기록 저장소에 남지만, 변환하지 않고 버린 메시지나 변환 전의 순서는 남지 않는다. 예를 들어 Codex가 자식 등록 전에 `thread/closed`나 승인 요청을 보내는지([#438](https://github.com/woonyong-choi/saturn/issues/438))는 이 기록 없이 알 수 없다. provider 응답 원문을 run별로 모으는 기능(원시 기록, [#461](https://github.com/woonyong-choi/saturn/issues/461))은 무엇을 원시 기록으로 볼지와 귀속 정책이 정해지지 않아 이 기록의 범위가 아니다. 이 기록은 값을 남기지 않아 그 기능을 대신하지 않는다.
+provider가 어떤 순서로 무엇을 보내는지 실제 실행에서 보려는 디버그 전용 기록이다. 변환한 이벤트는 기록 저장소에 남지만, 변환하지 않고 버린 메시지나 변환 전의 순서는 남지 않는다. 예를 들어 Codex가 자식 등록 전에 `thread/closed`나 승인 요청을 보내는지([#438](https://github.com/woonyong-choi/saturn/issues/438))는 이 기록 없이 알 수 없다. provider 응답 원문을 run별로 모으는 일은 [원시 응답 수집](records.md#provider-원시-응답-수집)이 맡고, 이 기록은 값을 남기지 않아 그 일을 대신하지 않는다. 두 기록은 같은 줄을 읽는 자리에서 나오지만 따로 켜고 끈다. 원시 응답 수집은 항상 켜져 있다.
 
 1. 사용자가 사용자 설정에 `debug.provider_events = true`를 둔다. 기본은 꺼짐이고 폴더 층에서는 바꿀 수 없다([설정](settings.md)).
 2. provider 연결이 메시지 하나를 받을 때마다 어댑터가 그 메시지의 방법 이름과 자리(요청, 알림, 응답, 줄)를 정해 공통 기록기에 넘긴다.

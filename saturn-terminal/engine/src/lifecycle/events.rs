@@ -11,6 +11,7 @@ use super::support::{
 };
 use super::*;
 use crate::providers::test_support::Call;
+use crate::providers::{ProviderMsg, RawLine};
 
 #[tokio::test]
 async fn event_is_recorded_before_it_reaches_the_screen_and_the_state() {
@@ -344,4 +345,92 @@ async fn turn_end_withdraws_requests_nobody_answered() {
         .await;
     assert_eq!(Some(resolved), engine_request);
     assert!(flow.engine.flow.permissions.is_empty());
+}
+
+fn raw_line(flow: &Flow, agent: Option<AgentId>, text: &str, is_json: bool) -> ProviderMsg {
+    ProviderMsg::Raw {
+        chat: flow.chat,
+        provider: crate::providers::test_support::CLAUDE,
+        raw: RawLine {
+            agent,
+            provider_session: Some("provider-session".to_owned()),
+            is_json,
+            bytes: text.as_bytes().to_vec(),
+        },
+    }
+}
+
+// #461
+#[tokio::test]
+async fn raw_lines_go_to_the_run_of_their_agent_in_order_and_late_ones_are_kept_apart() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    flow.submit("first").await;
+    let agent = flow.agent();
+    let first = flow.engine.store.unfinished_runs().await.unwrap()[0].id;
+
+    for text in [r#"{"n":"unique-1"}"#, r#"{"n":"unique-2"}"#] {
+        let line = raw_line(&flow, Some(agent), text, true);
+        flow.engine.on_provider_msg(line).await;
+    }
+    flow.claude_event(text(agent, "working")).await;
+    let line = raw_line(&flow, Some(agent), r#"{"n":"unique-3"}"#, true);
+    flow.engine.on_provider_msg(line).await;
+    flow.claude_event(turn_completed(agent)).await;
+    let late = raw_line(&flow, Some(agent), r#"{"n":"late"}"#, true);
+    flow.engine.on_provider_msg(late).await;
+    flow.submit("second").await;
+    let second = flow.engine.store.unfinished_runs().await.unwrap()[0].id;
+    let line = raw_line(&flow, Some(agent), r#"{"n":"second-run"}"#, true);
+    flow.engine.on_provider_msg(line).await;
+
+    let stored = flow.engine.store.read_raw(first).await.unwrap();
+    assert_eq!(
+        String::from_utf8(stored).unwrap(),
+        "{\"n\":\"unique-1\"}\n{\"n\":\"unique-2\"}\n{\"n\":\"unique-3\"}\n"
+    );
+    assert_ne!(first, second);
+    assert_eq!(
+        flow.engine.store.read_raw(second).await.unwrap(),
+        b"{\"n\":\"second-run\"}\n"
+    );
+    let apart = flow.engine.store.unattributed_raw(flow.chat).await.unwrap();
+    assert_eq!(apart.len(), 1);
+    assert_eq!(apart[0].bytes, br#"{"n":"late"}"#);
+    assert_eq!(apart[0].agent, Some(agent));
+}
+
+// #461
+#[tokio::test]
+async fn raw_lines_without_a_known_agent_are_kept_apart_and_never_attached_to_the_open_run() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.submit("first").await;
+    let run = flow.engine.store.unfinished_runs().await.unwrap()[0].id;
+
+    for (agent, text, is_json) in [
+        (None, r#"{"n":"no-agent"}"#, true),
+        (Some(AgentId(999)), r#"{"n":"stray"}"#, true),
+        (None, "not json at all", false),
+    ] {
+        let line = raw_line(&flow, agent, text, is_json);
+        flow.engine.on_provider_msg(line).await;
+    }
+
+    assert!(flow.engine.store.read_raw(run).await.unwrap().is_empty());
+    let apart = flow.engine.store.unattributed_raw(flow.chat).await.unwrap();
+    let kept: Vec<(Option<AgentId>, &[u8], bool)> = apart
+        .iter()
+        .map(|line| (line.agent, line.bytes.as_slice(), line.is_json))
+        .collect();
+    assert_eq!(
+        kept,
+        [
+            (None, br#"{"n":"no-agent"}"#.as_slice(), true),
+            (Some(AgentId(999)), br#"{"n":"stray"}"#.as_slice(), true),
+            (None, b"not json at all".as_slice(), false),
+        ]
+    );
+    assert!(apart.iter().all(|line| {
+        line.provider_session.as_deref() == Some("provider-session")
+            && line.provider == crate::providers::test_support::CLAUDE
+    }));
 }

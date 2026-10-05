@@ -41,6 +41,7 @@ pub(crate) use extensions::ExtensionRow;
 pub(crate) use history::HistoryEntry;
 pub(crate) use judgments::{JudgmentOutcome, NewJudgment};
 pub(crate) use ledger::{LedgerRow, SteeredInput};
+pub(crate) use raw::UnattributedRaw;
 pub(crate) use records::{NewInput, NewRun, RunEnd, RunRecord, UsageRow};
 pub(crate) use recovery::StoredHold;
 pub(crate) use retention::{

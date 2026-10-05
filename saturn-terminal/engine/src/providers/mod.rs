@@ -6,6 +6,7 @@ mod builtin;
 mod claude;
 mod codex;
 mod extension;
+mod raw;
 mod registry;
 #[cfg(test)]
 pub(crate) mod test_support;
@@ -35,6 +36,8 @@ pub(crate) use extension::{
     collect_definitions, part_kind_of, place_files, scan_command_files, scan_skill_folders,
 };
 pub use extension::{InjectedPart, InjectionFailure};
+pub(crate) use raw::RawLine;
+pub use raw::RawTap;
 pub use registry::Registry;
 pub(crate) use trace::TraceHub;
 pub use trace::{Frame, ProviderTrace};
@@ -77,6 +80,8 @@ pub struct LaunchSpec {
     pub masker: Masker,
     /// 연결이 받은 원시 메시지의 모양을 남기는 손잡이. 꺼져 있으면 아무것도 하지 않는다(`debug.provider_events`).
     pub events: ProviderTrace,
+    /// 연결이 받은 줄을 변환 전 모습으로 engine에 보내 기록하는 손잡이.
+    pub raw: RawTap,
 }
 
 /// Saturn 권한 규칙과 확장을 provider 실행 설정으로 번역한 결과. 어댑터가 번역해 채운다.
