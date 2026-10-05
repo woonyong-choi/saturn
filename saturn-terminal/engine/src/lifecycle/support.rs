@@ -412,6 +412,7 @@ impl Flow {
             skip_relation: false,
         };
         let id = self.engine.store.accept_input(&new).await.unwrap();
+        self.engine.note_judge_input(new.chat, id, &new.text);
         self.engine.queue.accept(QueuedInput {
             id,
             chat: new.chat,

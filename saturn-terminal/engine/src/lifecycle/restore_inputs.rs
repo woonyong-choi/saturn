@@ -134,7 +134,7 @@ async fn restored_inputs_of_one_chat_are_judged_one_at_a_time_in_accept_order() 
         let body = call.2.unwrap_or_default();
         let text = ["judging two", "judging three"]
             .into_iter()
-            .find(|text| body.contains(text))
+            .find(|text| body.contains(&format!("user input: {text}")))
             .expect("every judgment should be for a restored input");
         if judged.last() != Some(&text) {
             judged.push(text);

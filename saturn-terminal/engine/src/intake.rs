@@ -187,6 +187,7 @@ impl Engine {
         };
         let id = self.store.accept_input(&new).await?;
         let write_scope = self.write_scope_of(chat, &new.workdir);
+        self.note_judge_input(chat, id, &new.text);
         self.queue.accept(QueuedInput {
             id,
             chat,
@@ -483,6 +484,10 @@ impl Engine {
         revision: ChatRevision,
         retried: bool,
     ) -> Result<(), EngineError> {
+        // 최초 목표나 최신 수정을 온전히 담지 못한 맥락으로는 판단하지 않고, 사용자가 확인하도록 대기에 둔다
+        if self.judge_context(record).is_incomplete {
+            return self.wait_in_queue(record.id).await;
+        }
         let running = self.chat_is_running(record.chat);
         let plan = self.model_plan(record.settings).await?;
         // 입력 처리를 다시 판단하는 요청에는 제약 질문을 넣지 않아 같은 입력을 두 번 등록하지 않는다
@@ -590,8 +595,9 @@ impl Engine {
             .last_disposition
             .get(&record.chat)
             .map_or("none", |disposition| disposition_name(*disposition));
+        let context = self.judge_context(record).text;
         let state = format!(
-            "chat: {activity}\nprevious input handled as: {previous}\nuser input: {}",
+            "chat: {activity}\nprevious input handled as: {previous}\n{context}\nuser input: {}",
             record.text
         );
         RouterRequest {

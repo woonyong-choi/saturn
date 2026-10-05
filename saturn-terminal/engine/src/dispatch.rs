@@ -233,6 +233,19 @@ impl Engine {
                 .ok_or(saturn_core::queue::QueueError::NotFound(record.id))?,
         };
         self.flow.tasks.assign(task);
+        match start {
+            Start::Task(_) => {
+                self.flow
+                    .trail
+                    .note_start(record.chat, task, record.id, &record.text)
+            }
+            Start::Steer(_) | Start::Turn(_) => {
+                self.flow
+                    .trail
+                    .note_follow_up(record.chat, task, record.id, &record.text)
+            }
+        }
+        self.prune_judge_goals();
         Ok(Delivery {
             chat: record.chat,
             input: record.id,

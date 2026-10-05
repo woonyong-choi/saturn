@@ -66,7 +66,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트가 일하는 중
 1. `queue`가 같은 채팅 입력에 ACK 순서대로 판단 차례를 준다.
 2. `queue`가 판단 시점의 채팅 revision을 고정한다.
 3. 채팅 revision은 작업 상태, 대기열 맨 앞, 마지막 판단으로 이루어진다.
-4. router는 앞 입력의 판단 결과를 state에 넣은 요청 한 건으로 필요한 질문을 한 번에 판단한다.
+4. router는 앞 입력의 판단 결과와 같은 채팅의 작업 맥락을 state에 넣은 요청 한 건으로 필요한 질문을 한 번에 판단한다.
 5. `queue`가 적용 직전에 채팅 revision을 비교(CAS)한다.
 
 - router 호출은 요청 처리와 별도 작업으로 돌고 결과는 engine 루프로 돌아와 적용한다. 호출이 도는 동안 멈춤, 취소 같은 다른 요청은 기다리지 않는다. 호출이 도는 사이 멈춤이나 취소로 입력이 더는 `판단 중`이 아니면 늦게 온 결과는 `superseded`로 기록하고 버린다.
@@ -78,7 +78,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트가 일하는 중
 - 판단 기록은 적용 결과를 안 뒤에 쓴다. revision이 어긋나 버린 판단은 `superseded`로 쓰고, 적용한 판단만 결과 신호 관찰을 시작한다.
 - 관계 판단 없이 대기하는 입력(`Tab`)은 router를 부르지 않고 대기로 둔다. 모델을 고정한 입력도 다른 입력과 똑같이 router 관계 판단(끼워 넣기, 대기, 새 작업)을 받는다. 고정은 `target_model` 선택만 대신하고, 보낼 모델은 고정값이다. 고정이 관계 판단을 건너뛰면 `/model` 뒤 모든 입력이 대기해 병렬 작업이 막히기 때문이다(사용자 결정).
 - 입력은 접수 때 권한을 고정한다. 권한 모드가 읽기 전용(`read-only`)이면 읽기 전용, 그 밖의 모드는 쓰기다. 읽기 전용 모드여도 쓰기를 열 수 있는 규칙(`allow`, `ask`)이 하나라도 있으면 쓰기로 둔다. 읽기 전용 입력은 같은 폴더의 다른 읽기 작업과 병렬로 실행한다(사용자 결정, [#232](https://github.com/woonyong-choi/saturn/issues/232)). `allow`나 `ask` 규칙이 있을 때 쓰기로 두는 것은 쓰기를 막는 모드 기본 규칙을 규칙이 풀 수 있어서 둔 보수적 선택이다(초안). `ask`는 사용자가 승인한 쓰기가 쓰기 잠금 없이 나가는 일을 막으려고 같게 본다. `deny` 규칙만 있으면 읽기 전용이다.
-- 판단 state는 채팅이 실행 중인지, 앞 입력의 처리 방식, 사용자 원문으로 만들고 비밀값과 절대 경로를 뺀다(초안).
+- 판단 state는 채팅이 실행 중인지, 앞 입력의 처리 방식, 같은 채팅의 직전 입력, 메인 작업의 최초 목표와 최신 수정, 보류 작업의 번호와 목표, 사용자 원문으로 만들고 비밀값과 절대 경로를 뺀다. 칸과 크기 한도는 [판단 요청 맥락](router.md#판단-요청-맥락)이 정한다. 맥락은 요청을 만드는 순간의 채팅 상태에서 만들고, 적용 직전 revision이 다르면 새 상태로 다시 만든 요청으로 한 번 다시 판단한다. 최초 목표나 최신 수정을 온전히 담지 못하면 router를 부르지 않고 입력을 대기에 둔다.
 
 ### 실행 중 새 입력
 
@@ -282,6 +282,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 보류 입력 하나를 재개하면 그 작업의 보류 입력을 접수 순서대로 모두 재개한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `continue_input_resumes_the_task_of_that_input`, `continue_sends_held_input_and_then_a_state_check_for_the_interrupted_task` |
 | 결과를 모르는 작업은 `/continue <작업>`으로만 확인 입력을 보내 잇고 원래 입력은 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `task_with_unknown_result_is_continued_only_when_named` |
 | 보내기 전에 확정된 실패만 다시 보낸다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `not_sent_is_sent_again_and_then_applied`, `not_sent_every_time_is_rejected_and_the_next_input_still_goes`, `open_failure_that_is_not_a_resend_case_rejects_without_sending` |
+| 판단 요청에 직전 입력, 최초 목표, 최신 수정, 보류 작업의 번호와 목표를 싣고, 맥락이 불완전하면 판단 없이 대기한다. | `saturn-terminal/engine/src/lifecycle/judge_context.rs`의 `same_follow_up_carries_the_goal_of_each_conversation`, `held_tasks_are_listed_with_their_ids_and_goals`, `context_over_the_limit_is_not_judged_and_waits_for_the_user` |
 | 같은 채팅의 입력은 접수 순서대로 하나씩 판단한다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `inputs_are_routed_one_at_a_time_in_accept_order` |
 | router 호출이 재시도 뒤에도 실패하면 입력을 대기로 보내지 않고 현재 에이전트와 현재 모델로 보내며, 현재 모델이 없는 첫 입력은 기본 모델로 보낸다. | `saturn-terminal/core/src/routers/failure.rs`의 `route_after_failure_keeps_the_current_agent_and_model`, `saturn-terminal/engine/src/lifecycle/model_mode.rs`의 `default_model_is_used_when_every_router_judgment_fails`, `manual_mode_uses_the_default_model_when_every_router_judgment_fails`, `failed_judgment_keeps_the_current_model_of_an_open_main_instead_of_the_default` |
 | 판단 뒤 채팅 상태가 바뀌었으면 한 번 다시 판단하고, 또 바뀌면 대기로 둔다. | `saturn-terminal/engine/src/lifecycle/decision.rs`의 `revision_conflict_supersedes_old_judgment_and_reroutes_once`, `second_conflict_puts_input_in_queue_without_another_router_call` |
@@ -317,7 +318,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 ## 미해결 질문
 
-- 직전 작업 입력·목표·진행 내용을 state에 추가할 범위와 새 작업 오접합을 줄일 대체 규칙. 측정은 끝났다([한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md), [오접합 실험](../experiments/continuation-misjoin/report.md), [새 작업 표본 확대](../experiments/continuation-newtask/report.md), [#6](https://github.com/woonyong-choi/saturn/issues/6)). 합친 새 작업 표본의 오접합은 2.0%이고 재현율은 71.3%다. 구현 방식(Jev 또는 저렴한 LLM)은 [#382](https://github.com/woonyong-choi/saturn/issues/382)의 비교 실험 뒤에 정한다. 실제 Saturn 실행 중 작업 상태를 수집하는 구현은 검증하지 않았다.
+- 판단 요청 맥락을 실제 router로 쓴 오접합과 이어 가기 누락의 정확도. 맥락 구성은 정했고 구현했다([판단 요청 맥락](router.md#판단-요청-맥락), [#459](https://github.com/woonyong-choi/saturn/issues/459)). 기존 측정은 실험용 상태 형식으로 쟀고 구현한 형식과 같지 않다([한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md), [오접합 실험](../experiments/continuation-misjoin/report.md), [새 작업 표본 확대](../experiments/continuation-newtask/report.md), [#6](https://github.com/woonyong-choi/saturn/issues/6)) 합친 새 작업 표본의 오접합은 2.0%이고 재현율은 71.3%였다. 구현한 상태 형식으로 두 값을 따로 다시 재는 일과 구현 방식(Jev 또는 저렴한 LLM)은 [#382](https://github.com/woonyong-choi/saturn/issues/382)의 비교 실험 뒤에 정한다.
 
 - 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 멈춘 작업의 트리 유휴 신호가 끝내 오지 않을 때 완료 보고를 기다리는 한도 ([#464](https://github.com/woonyong-choi/saturn/issues/464))

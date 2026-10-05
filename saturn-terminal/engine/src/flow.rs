@@ -135,6 +135,8 @@ pub(crate) struct FlowState {
     /// 적용한 판단의 채팅과 `resume_held`. 판단이 없으면 `None`. `on_routed`가 접수 순서대로 보류 작업에 반영한다.
     pub(crate) resume_signals: Vec<(ChatId, Option<bool>)>,
     pub(crate) tasks: TaskBook,
+    /// 판단 요청에 넣을 같은 채팅의 직전 입력과 작업 목표.
+    pub(crate) trail: crate::judge_context::JudgeTrail,
     /// 키는 에이전트. provider를 연 뒤에만 들어간다.
     pub(crate) live: HashMap<AgentId, LiveSession>,
     /// 에이전트의 가장 나중 실행. 턴이 끝난 뒤 늦게 오는 사용량 같은 이벤트를 붙인다.
@@ -286,6 +288,7 @@ impl Default for FlowState {
             applied: Vec::new(),
             resume_signals: Vec::new(),
             tasks: TaskBook::default(),
+            trail: crate::judge_context::JudgeTrail::default(),
             live: HashMap::new(),
         }
     }
