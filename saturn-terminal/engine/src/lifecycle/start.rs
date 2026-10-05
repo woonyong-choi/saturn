@@ -136,6 +136,55 @@ async fn shutdown_removes_socket_and_releases_lock() {
     assert!(acquired.is_ok());
 }
 
+// #525: 종료 신호를 받으면 요청 처리를 끝내고, 정리 단계가 멈춤 유예 없이 provider 묶음의 자식까지 끝낸다
+#[tokio::test]
+async fn terminate_signal_ends_serve_and_leaves_no_provider_child() {
+    use crate::processes::{ProcessGroupId, ProcessSpec};
+    use tokio::io::{AsyncBufReadExt, BufReader};
+
+    let fixture = Fixture::new();
+    let mut engine = fixture.ready().await;
+    let mut spawned = engine
+        .supervisor
+        .spawn(ProcessSpec {
+            program: "/bin/sh".into(),
+            args: vec![
+                "-c".to_owned(),
+                "sleep 60 & echo $!; trap '' TERM; wait".to_owned(),
+            ],
+            workdir: fixture.workdir.clone(),
+            env: vec![("PATH".into(), "/usr/bin:/bin".into())],
+        })
+        .unwrap();
+    let mut line = String::new();
+    BufReader::new(&mut spawned.io.stdout)
+        .read_line(&mut line)
+        .await
+        .unwrap();
+    let grandchild: i32 = line.trim().parse().unwrap();
+    let group: ProcessGroupId = spawned.group;
+
+    engine.terminate.notify_one();
+    let served = timeout(WAIT, engine.serve()).await;
+    assert!(matches!(served, Ok(Ok(()))));
+    let started = std::time::Instant::now();
+    engine.shutdown().await.unwrap();
+
+    assert!(started.elapsed() < Duration::from_secs(8));
+    assert!(
+        !is_alive(i32::try_from(group.0).unwrap()),
+        "the leader should be gone"
+    );
+    assert!(!is_alive(grandchild), "the child should be gone");
+}
+
+/// 신호 0으로 프로세스가 남았는지 본다.
+#[expect(unsafe_code, reason = "libc kill 호출")]
+fn is_alive(pid: i32) -> bool {
+    // SAFETY: 신호 0은 존재 확인만 하는 `kill` 호출이고 인자는 정수다
+    unsafe { libc::kill(pid, 0) == 0 }
+}
+
 // #491
 #[tokio::test]
 async fn restart_with_broken_user_settings_does_not_adopt_a_connection_layer() {
