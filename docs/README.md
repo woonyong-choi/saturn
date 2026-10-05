@@ -25,3 +25,4 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [용어](glossary.md) | 이 프로젝트에서만 쓰는 말 |
 | [결정 기록](decisions/README.md) | 설계를 정한 이유와 버린 선택지 |
 | [실험](experiments/README.md) | 설계 값을 확인하는 실험과 결론 |
+| [모델 선택 순효과](experiments/model-selection-effect/design.md) | 오토 모델 선택과 고정 모델의 품질·비용·시간 비교 설계 |
