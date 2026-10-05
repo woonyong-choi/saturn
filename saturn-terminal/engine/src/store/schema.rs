@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 13;
+pub(crate) const SCHEMA_VERSION: u32 = 14;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,7 +17,8 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] = &[V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13];
+pub(crate) const MIGRATIONS: &[&str] =
+    &[V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -318,6 +319,19 @@ CREATE TABLE extensions (
 const V13: &str = r#"
 ALTER TABLE inputs ADD COLUMN steered_run INTEGER;
 ALTER TABLE inputs ADD COLUMN steered_after INTEGER;
+"#;
+
+/// `direct_installs`는 provider에 직접 설치된 항목 중 옮길지 물은 것이다. `state`는 `asked`나 `moved`다. 이관은 표만
+/// 비어 있게 더한다.
+const V14: &str = r#"
+CREATE TABLE direct_installs (
+    provider TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    name TEXT NOT NULL,
+    state TEXT NOT NULL,
+    seen_at INTEGER NOT NULL,
+    PRIMARY KEY (provider, kind, name)
+);
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -684,6 +698,30 @@ mod tests {
         );
         assert!(store.held_tasks().await.unwrap().is_empty());
         assert!(store.interrupted_subagents().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v13_file_migrates_to_direct_installs_keeping_chats() {
+        let (dir, store) = temp_store_at(13).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (13, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        assert_eq!(
+            store
+                .chat_workdir(saturn_protocol::ids::ChatId(1))
+                .await
+                .unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.direct_rows().await.unwrap().is_empty());
     }
 
     #[tokio::test]

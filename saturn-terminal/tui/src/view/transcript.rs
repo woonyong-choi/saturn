@@ -11,7 +11,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use saturn_protocol::event::Activity;
 use saturn_protocol::ids::{InputId, Provider, TaskLabel};
-use saturn_protocol::rpc::{ChatNotice, ExtensionInfo};
+use saturn_protocol::rpc::{ChatNotice, DirectInstallInfo, ExtensionInfo};
 use saturn_protocol::state::{Disposition, InputState, TaskState};
 
 use crate::i18n::{self, Lang};
@@ -94,7 +94,7 @@ pub(crate) enum TranscriptCell {
     /// 명령 해석 오류 같은 한 줄 경고, 원문 그대로.
     Warning(String),
     /// `/extensions`의 설치한 확장 목록.
-    ExtensionList(Vec<ExtensionInfo>),
+    ExtensionList(Vec<ExtensionInfo>, Vec<DirectInstallInfo>),
 }
 
 impl TranscriptCell {
@@ -133,7 +133,7 @@ impl TranscriptCell {
             Self::TrainShort { .. }
             | Self::Shell(_)
             | Self::Warning(_)
-            | Self::ExtensionList(_) => SATURN_SPEAKER.to_owned(),
+            | Self::ExtensionList(..) => SATURN_SPEAKER.to_owned(),
         };
         lines
             .into_iter()
@@ -243,7 +243,7 @@ impl TranscriptCell {
             Self::TrainShort { graded, need } => vec![train_short_line(lang, *graded, *need)],
             Self::Shell(output) => shell_lines(lang, output, expanded),
             Self::Warning(text) => vec![text.clone()],
-            Self::ExtensionList(list) => extensions::list_lines(lang, list),
+            Self::ExtensionList(list, direct) => extensions::list_lines(lang, list, direct),
         }
     }
 
@@ -712,9 +712,8 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         | ChatNotice::ExtensionRemoved { .. }
         | ChatNotice::ExtensionFailed { .. }
         | ChatNotice::ExtensionInjectFailed { .. }
-        | ChatNotice::ExtensionPartsNotApplied { .. } => {
-            extensions::notice_lines(lang, prefix, notice)
-        }
+        | ChatNotice::ExtensionPartsNotApplied { .. }
+        | ChatNotice::DirectInstallsFound { .. } => extensions::notice_lines(lang, prefix, notice),
         ChatNotice::Stopped { .. } | ChatNotice::StopUnconfirmed { .. } => Vec::new(),
     }
 }

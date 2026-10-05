@@ -199,6 +199,11 @@ pub(crate) enum ExtensionsAction {
     Remove {
         name: String,
     },
+    /// provider에 직접 설치된 항목을 Saturn 확장 저장소로 옮긴다.
+    Move {
+        provider: Provider,
+        name: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -214,7 +219,7 @@ pub(crate) enum SlashCommand {
     Model { provider: Option<Provider> },
     /// `/add-dir <폴더>`. 경로는 공백을 포함할 수 있어 명령 이름 뒤 나머지 전체다.
     AddDir { path: String },
-    /// `/extensions`, `/extensions install <원천>`, `/extensions remove <이름>`
+    /// `/extensions`, `/extensions install <원천>`, `/extensions remove <이름>`, `/extensions move <provider> <이름>`
     Extensions(ExtensionsAction),
     /// 이름표가 없으면 가장 최근 대기 입력.
     Send { target: Option<TaskLabel> },
@@ -402,6 +407,17 @@ fn parse_extensions(body: &str) -> Result<SlashCommand, CommandError> {
                 name: argument.to_owned(),
             }))
         }
+        "move" => match argument.split_once(char::is_whitespace) {
+            Some((provider, name)) if !name.trim().is_empty() => {
+                let provider =
+                    Provider::parse(provider).map_err(|_| invalid("extensions", rest))?;
+                Ok(SlashCommand::Extensions(ExtensionsAction::Move {
+                    provider,
+                    name: name.trim().to_owned(),
+                }))
+            }
+            _ => Err(invalid("extensions", rest)),
+        },
         _ => Err(invalid("extensions", rest)),
     }
 }
@@ -569,9 +585,17 @@ mod tests {
                 name: "review-kit".to_owned()
             }))
         );
+        assert_eq!(
+            parse("/extensions move claude commit-helper").unwrap(),
+            Some(SlashCommand::Extensions(ExtensionsAction::Move {
+                provider: Provider::from_static("claude"),
+                name: "commit-helper".to_owned()
+            }))
+        );
         for bad in [
             "/extensions install",
             "/extensions remove",
+            "/extensions move claude",
             "/extensions add x",
         ] {
             assert!(matches!(

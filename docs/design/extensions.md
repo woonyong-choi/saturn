@@ -5,7 +5,7 @@
 | 상태 | 결정 |
 | 관련 결정 | [provider는 열린 id의 어댑터로 붙이고 확장은 Saturn 저장소에 설치해 session을 열 때 주입한다](../decisions/2026-10-04-open-providers-and-saturn-extensions.md) |
 
-이 문서의 동작 중 기능 목록을 TUI에 보내는 것과 확장 저장소(설치, 제거, 목록, 부분 판정, 설치 알림)는 구현했고, 스킬과 명령과 MCP 서버 주입의 형식과 연결 구성(실제 provider에서의 동작은 실측 전)도 구현했다. provider 전환 알림도 구현했다. 훅 주입과 권한 규칙과 직접 설치 추적은 구현 전이다. 구현 범위는 [#412](https://github.com/woonyong-choi/saturn/issues/412)이고, 요구사항 표의 행은 같은 표시를 쓴다. provider 계층과 어댑터는 [provider 연결과 session](providers-and-sessions.md#provider-계층과-어댑터)에 있다.
+이 문서의 동작 중 기능 목록을 TUI에 보내는 것과 확장 저장소(설치, 제거, 목록, 부분 판정, 설치 알림)는 구현했고, 스킬과 명령과 MCP 서버 주입의 형식과 연결 구성(실제 provider에서의 동작은 실측 전)도 구현했다. provider 전환 알림도 구현했다. 훅 주입(Claude만)과 직접 설치 추적(읽기, 한 번만 묻기, 옮기기)도 구현했고 실제 provider에서의 동작은 실측 전이다. 권한 규칙의 새 종류는 구현 전이다. 구현 범위는 [#412](https://github.com/woonyong-choi/saturn/issues/412)이고, 요구사항 표의 행은 같은 표시를 쓴다. provider 계층과 어댑터는 [provider 연결과 session](providers-and-sessions.md#provider-계층과-어댑터)에 있다.
 
 ## 요약
 
@@ -134,11 +134,12 @@ session을 열 때 engine이 그 provider의 어댑터에 설치된 확장 중 �
 
 | provider | 스킬 | 명령 | MCP 서버 | 훅 |
 |---|---|---|---|---|
-| Claude | Saturn이 만든 `~/.saturn/claude-extensions/<지문>/`을 플러그인 폴더(`.claude-plugin/plugin.json`, `skills/`)로 두고 `--plugin-dir`로 넘긴다 | 같은 플러그인 폴더의 `commands/` | 같은 폴더의 `mcp.json`을 `--mcp-config`로 넘긴다 | 주입하지 않는다 |
-| Codex | 전용 `CODEX_HOME`의 `skills/<이름>/` | 전용 `CODEX_HOME`의 `prompts/<이름>.md` | 전용 `CODEX_HOME`의 `config.toml` `[mcp_servers.<이름>]`. 정의의 `command`, `args`, `env`, `cwd`, `url`만 옮기고, 사용자 서버와 같은 규칙 번역을 받는다 | 주입하지 않는다 |
+| Claude | Saturn이 만든 `~/.saturn/claude-extensions/<지문>/`을 플러그인 폴더(`.claude-plugin/plugin.json`, `skills/`)로 두고 `--plugin-dir`로 넘긴다 | 같은 플러그인 폴더의 `commands/` | 같은 폴더의 `mcp.json`을 `--mcp-config`로 넘긴다 | 같은 플러그인 폴더의 `hooks/hooks.json`. 이벤트마다 확장들의 정의를 이어 쓰고, 명령의 `${CLAUDE_PLUGIN_ROOT}`는 확장 원본 폴더로 바꾼다 |
+| Codex | 전용 `CODEX_HOME`의 `skills/<이름>/` | 전용 `CODEX_HOME`의 `prompts/<이름>.md` | 전용 `CODEX_HOME`의 `config.toml` `[mcp_servers.<이름>]`. 정의의 `command`, `args`, `env`, `cwd`, `url`만 옮기고, 사용자 서버와 같은 규칙 번역을 받는다 | 주입하지 않는다. 훅은 `hooks/list`의 `currentHash`를 `config.toml`에 신뢰값으로 써야 불리는데 Saturn 훅도 아직 Codex에 넘기지 않아 판정 순서를 보장할 수 없다 |
 
 - Codex 폴더 이름은 규칙 지문 뒤에 `-x<확장 지문>`을 붙인다. 확장 묶음마다 폴더가 따로이고, 규칙 지문 읽기에는 영향이 없다.
-- 훅은 어느 어댑터도 주입하지 않는다. 훅이 Saturn의 권한 판정에 끼어들 수 있는지가 정해지지 않았기 때문이다([미해결 질문](#미해결-질문)). 그래서 훅 부분의 판정은 모든 provider에서 `불가`다.
+- 훅은 Claude만 주입하고 Codex는 주입하지 않으므로 훅 부분의 판정은 Claude `주입 가능`, Codex `불가`다. Codex로 전환하면 기존 전환 알림이 훅이 적용되지 않음을 알린다.
+- Claude 훅은 Saturn 소유 PreToolUse 훅이 든 실행별 `--settings`에 섞지 않고 플러그인 폴더로 따로 넘긴다. Saturn 훅의 설정은 어떤 확장이 있어도 바뀌지 않고, Claude는 같은 이벤트의 훅을 모두 부르며 한 훅이라도 막으면 막으므로 확장 훅이 키 저장소 접근 거부를 풀지 못한다([router 키 보호](router-key-security.md#saturn-소유-pretooluse-훅)). 훅 정의가 이벤트별 목록이 아니면 그 부분만 주입하지 않고 한 줄 남긴다. 확장끼리 같은 이벤트 이름은 겹침으로 보지 않고 모두 이어 쓴다.
 - 이름이 겹치는 부분은 먼저 놓은 것을 남기고 나중 것을 주입하지 않는다. 사용자 Codex 설정에 같은 이름의 MCP 서버가 있어도 같다. 주입하지 못한 부분과 provider와 이유를 대화 기록에 한 줄로 남긴다. 나머지 부분은 주입한 채 연결을 시작한다.
 - 주입한 MCP 서버와 훅 스크립트도 provider 자식 프로세스이므로 router 키를 제외한 환경으로 실행한다([router 키 보호](router-key-security.md)).
 - 주입한 MCP 도구 호출은 Saturn `permission.mcp` 규칙으로 판정한다. 확장이 권한 판정을 우회하지 않게 하기 위해서다.
@@ -179,7 +180,12 @@ session을 열 때 engine이 그 provider의 어댑터에 설치된 확장 중 �
 
 ### provider에 직접 설치한 것
 
-사용자가 provider에 직접 설치한 항목은 어댑터가 기능 목록에 `provider에 직접 설치`로 올린다. Saturn은 항목을 지우거나 바꾸지 않고 추적만 한다([결정 기록](../decisions/2026-09-29-minimal-provider-control.md)). 항목을 다른 provider로 옮길 수 있다고 어댑터가 판정하면 항목마다 한 번만 묻는다. 사용자가 수락하면 provider의 원본을 읽어 확장 저장소에 복사하고 [설치](#설치)와 같은 판정을 한다. 거절은 기록 저장소에 남겨 다시 묻지 않는다.
+사용자가 provider에 직접 설치한 항목은 어댑터가 사용자 폴더를 읽기만 해서 올린다. Saturn은 항목을 지우거나 바꾸지 않고 추적만 한다([결정 기록](../decisions/2026-09-29-minimal-provider-control.md)). 운영 `~/.claude`, `~/.codex`는 읽기만 하고, 설정 파일의 내용과 토큰은 로그, 화면, 알림에 내지 않는다.
+
+- 읽는 곳(초안). Claude는 `~/.claude/skills/<이름>/SKILL.md`, `~/.claude/commands/<이름>.md`, `~/.claude.json`의 `mcpServers` 키, `~/.claude/plugins/installed_plugins.json`의 플러그인 이름이다. Codex는 `CODEX_HOME`(없으면 `~/.codex`)의 `skills/<이름>/SKILL.md`(`.`으로 시작하는 내장 폴더 제외), `prompts/<이름>.md`, `config.toml`의 `[mcp_servers.<이름>]`이다. 홈은 채팅에 붙은 TUI가 넘긴 환경에서 찾는다. 한 provider에서 읽는 항목은 500개까지다.
+- 연결을 시작할 때 새로 찾은 항목을 기록 저장소 `direct_installs`에 `asked`로 남기고, 그 채팅의 대화 기록에 `{provider}에 직접 설치된 항목 N개 추적 · ...`을 한 줄로 알린다. 다른 provider가 같은 종류를 주입할 수 있는 항목이 있으면 `/extensions move <provider> <이름>`으로 옮길 수 있다고 한 줄 더 알린다. 한 번 물은 항목은 다시 묻지 않고, 답하지 않으면 거절로 본다. 플러그인은 부분이 아니라 추적만 하고 옮기지 않는다.
+- `/extensions` 목록은 설치한 확장 아래에 `provider에 직접 설치됨` 항목을 provider, 종류, 이름, `옮길 수 있음`, `옮김`, `추적만`과 함께 보인다. 목록은 요청한 접속이 붙은 채팅의 환경으로 읽는다.
+- 옮기면 engine이 항목을 `~/.saturn/extensions/<이름>/`에 확장 하나로 복사한다(스킬은 폴더 그대로, 명령은 `commands/<이름>.md`, MCP 서버는 정의를 `.mcp.json`에 쓰고 소유자만 읽게 한다). 그다음 [설치](#설치)와 같은 부분 나누기와 판정과 알림을 하고 `moved`로 기록한다. 이름이 이미 설치돼 있거나 항목이 사라졌으면 옮기지 않고 이유를 남긴다. provider의 원본은 그대로 둔다.
 
 ### 오류 처리
 
@@ -205,8 +211,9 @@ session을 열 때 engine이 그 provider의 어댑터에 설치된 확장 중 �
 | 이름이 겹치거나 정의가 깨진 부분은 그 부분만 주입하지 않고, 원본이 사라진 확장은 주입하지 않으며, 둘 다 대화 기록에 한 줄 남긴다. | `saturn-terminal/engine/src/lifecycle/extension_inject.rs`의 `a_missing_original_is_told_and_the_other_extensions_are_still_injected`, `a_part_the_adapter_could_not_inject_is_told_with_its_provider`, `saturn-terminal/engine/src/providers/claude/extensions.rs`의 `a_name_used_twice_keeps_the_first_and_fails_the_second_and_hooks_are_refused`, `a_server_missing_from_its_definition_file_fails_alone`, `a_server_name_used_by_two_extensions_keeps_the_first`, `saturn-terminal/tui/src/view/extensions.rs`의 `inject_failure_line_names_the_provider_and_the_part` |
 | 설치와 제거는 주입 부분이 바뀐 연결만 다시 시작한다. | `saturn-terminal/engine/src/lifecycle/extension_inject.rs`의 `an_install_restarts_only_the_connections_whose_parts_changed`, `a_remove_restarts_the_connection_that_had_the_parts`, `an_extension_with_nothing_for_a_provider_leaves_its_connection_alone` |
 | Codex 전용 폴더에 확장 부분이 들어가고 폴더 이름이 확장 지문을 담는다. | `saturn-terminal/engine/src/providers/codex/home/tests.rs`의 `extension_parts::the_folder_name_carries_the_extension_fingerprint_after_the_rules_fingerprint` |
+| Claude는 확장의 훅을 Saturn 훅이 든 `--settings`와 따로 플러그인 폴더로 주입하고, Codex는 훅을 받지 않는다. | `saturn-terminal/engine/src/providers/claude/extensions.rs`의 `hooks_of_every_extension_go_to_the_plugin_hook_file_and_not_to_the_saturn_settings`, `a_hook_that_is_not_a_list_fails_alone`, `saturn-terminal/engine/src/lifecycle/extension_inject.rs`의 `an_extension_with_nothing_for_a_provider_leaves_its_connection_alone`. 실제 Claude에서 확장 훅이 불리고 Saturn 훅이 먼저 거부하는지는 실측 전이다 |
 | 옮길 수 없는 부분을 설치 때와 provider 전환 때 대화 기록에 한 줄씩 알린다. | 설치 줄은 위 설치 행의 시험이다. 전환 줄은 `saturn-terminal/engine/src/lifecycle/extension_switch.rs`의 `a_switch_tells_only_the_parts_the_new_provider_loses`, `saturn-terminal/tui/src/view/extensions.rs`의 `switch_lines_name_each_part_the_new_provider_does_not_take` |
-| provider에 직접 설치한 항목은 추적하고 옮길 수 있으면 항목마다 한 번만 묻는다. | 구현 전(#412). 거절한 항목이 다음 session에서 다시 묻지 않는지 확인한다. |
+| provider에 직접 설치한 항목은 읽기만 해 추적하고 옮길 수 있으면 항목마다 한 번만 묻는다. 옮기면 확장 저장소에 복사하고 provider 폴더는 그대로다. | `saturn-terminal/engine/src/lifecycle/extensions.rs`의 `items_installed_directly_in_a_provider_are_listed_and_asked_about_once`, `moving_a_direct_item_copies_it_to_the_store_and_leaves_the_provider_folder_alone`, `saturn-terminal/engine/src/providers/claude/direct.rs`의 `skills_commands_servers_and_plugins_are_read_from_a_fake_home`, `nothing_is_found_without_a_home_or_when_the_files_are_broken`, `saturn-terminal/engine/src/providers/codex/direct.rs`의 `skills_prompts_and_servers_are_read_and_builtin_skills_are_skipped`, `the_codex_home_variable_wins_over_the_home_folder`, `saturn-terminal/tui/src/view/extensions.rs`의 `direct_items_are_listed_with_their_state_and_asked_about_with_the_move_command`. 시험은 테스트가 만든 가짜 홈으로만 한다. 실제 `~/.claude`와 `~/.codex`를 읽는 확인은 실측 전이다 |
 | 전용 기능이 필요한 작업은 router가 그 provider를 고르거나 전환 전에 사용자에게 묻는다. | 구현 전(#412). 고정 모델과 고정 없음 두 경우로 확인한다. |
 
 ## 단점
@@ -226,5 +233,5 @@ session을 열 때 engine이 그 provider의 어댑터에 설치된 확장 중 �
 - 위 표의 통로(Claude의 `--plugin-dir`과 `--mcp-config`, Codex의 전용 `CODEX_HOME`의 `skills/`, `prompts/`, `[mcp_servers]`)로 실제 session에서 스킬, 명령, MCP 서버가 쓰이는지, 주입한 MCP 도구 이름이 `permission.mcp` 규칙 패턴(`mcp__서버__도구`)과 맞는지 실측하는 일 ([#412](https://github.com/woonyong-choi/saturn/issues/412))
 - 입력이 전용 기능을 필요로 한다는 것을 router가 판단할지, 입력에 쓰인 이름(`$이름`, `/이름`)에서 읽을지 ([#412](https://github.com/woonyong-choi/saturn/issues/412))
 - 자연어 입력에서 설치 요청을 알아보는 방식. 입력을 router가 판단할지 정하지 못했다. 전용 명령 `/extensions install`은 구현했다 ([#412](https://github.com/woonyong-choi/saturn/issues/412))
-- 주입한 훅이 Saturn의 권한 판정에 끼어들 수 있는지와 막는 방법 ([#412](https://github.com/woonyong-choi/saturn/issues/412))
+- 주입한 확장 훅이 실제 Claude에서 불리는지, 같은 이벤트의 Saturn 훅 거부가 확장 훅의 `allow`보다 우선하는지, Codex에 훅을 신뢰값과 함께 넣을 방법 ([#412](https://github.com/woonyong-choi/saturn/issues/412))
 - 새 권한 종류의 모드별 기본 규칙. 지금 초안은 `full`이면 `allow`, 그 밖에는 규칙이 없으면 `ask`다 ([#412](https://github.com/woonyong-choi/saturn/issues/412))

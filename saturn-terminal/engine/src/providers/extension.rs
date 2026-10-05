@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use saturn_protocol::rpc::ExtensionPartKind;
+use saturn_protocol::rpc::{DirectKind, ExtensionPartKind};
 use serde_json::Value;
 
 use crate::extensions::source::copy_into;
@@ -74,6 +74,91 @@ impl InjectionFailure {
     }
 }
 
+/// provider에 직접 설치된 항목 하나. 어댑터가 provider의 사용자 폴더를 읽기만 해서 만든다.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct DirectInstall {
+    pub(crate) kind: DirectKind,
+    pub(crate) name: String,
+    pub(crate) origin: DirectOrigin,
+}
+
+/// 직접 설치 항목의 원본 위치. 옮길 때만 읽는다.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum DirectOrigin {
+    /// 스킬 폴더.
+    Folder(PathBuf),
+    /// 명령 프롬프트 파일.
+    File(PathBuf),
+    /// MCP 서버 정의. 확장의 `.mcp.json` 형식(`command`, `args`, `env`, `cwd`, `url`)이다. 값에 비밀이 들 수 있어
+    /// 출력하지 않는다.
+    Server(Value),
+    /// 옮기지 않고 추적만 한다.
+    TrackedOnly,
+}
+
+/// 옮겼을 때 확장 부분이 되는 종류. 플러그인은 부분이 아니라 `None`.
+pub(crate) fn part_kind_of(kind: DirectKind) -> Option<ExtensionPartKind> {
+    match kind {
+        DirectKind::Skill => Some(ExtensionPartKind::Skill),
+        DirectKind::Command => Some(ExtensionPartKind::Command),
+        DirectKind::McpServer => Some(ExtensionPartKind::McpServer),
+        DirectKind::Plugin => None,
+    }
+}
+
+/// 한 provider에서 읽는 직접 설치 항목 수의 한도(초안). 폴더가 비정상적으로 커도 시작이 느려지지 않게 한다.
+pub(crate) const DIRECT_INSTALL_LIMIT: usize = 500;
+
+// cost: time O(n), heap O(n), stack O(1), io n
+// vars: n = 폴더 항목 수
+/// `dir/<이름>/SKILL.md`가 있는 폴더마다 스킬 하나. 이름이 `.`으로 시작하는 폴더(provider 내장)와 링크는 건너뛴다.
+pub(crate) fn scan_skill_folders(dir: &Path) -> Vec<DirectInstall> {
+    scan_entries(dir, |path, name| {
+        (path.is_dir() && path.join("SKILL.md").is_file()).then(|| DirectInstall {
+            kind: DirectKind::Skill,
+            name: name.to_owned(),
+            origin: DirectOrigin::Folder(path.to_path_buf()),
+        })
+    })
+}
+
+// cost: time O(n), heap O(n), stack O(1), io n
+// vars: n = 폴더 항목 수
+/// `dir/<이름>.<extension>` 파일마다 명령 하나. 이름이 `.`으로 시작하는 파일과 링크는 건너뛴다.
+pub(crate) fn scan_command_files(dir: &Path, extension: &str) -> Vec<DirectInstall> {
+    scan_entries(dir, |path, file| {
+        let name = file.strip_suffix(&format!(".{extension}"))?;
+        path.is_file().then(|| DirectInstall {
+            kind: DirectKind::Command,
+            name: name.to_owned(),
+            origin: DirectOrigin::File(path.to_path_buf()),
+        })
+    })
+}
+
+fn scan_entries(
+    dir: &Path,
+    pick: impl Fn(&Path, &str) -> Option<DirectInstall>,
+) -> Vec<DirectInstall> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    let mut found: Vec<DirectInstall> = entries
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_ok_and(|kind| !kind.is_symlink()))
+        .filter_map(|entry| {
+            let name = entry.file_name().into_string().ok()?;
+            if name.starts_with('.') {
+                return None;
+            }
+            pick(&entry.path(), &name)
+        })
+        .collect();
+    found.sort_by(|a, b| a.name.cmp(&b.name));
+    found.truncate(DIRECT_INSTALL_LIMIT);
+    found
+}
+
 /// 어댑터가 주입할 확장 부분과, 같은 부분이면 같은 값인 지문. 지문이 같은 연결은 같은 주입 결과를 쓴다.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct ExtensionInput<'a> {
@@ -100,8 +185,9 @@ pub(crate) struct Definitions {
 // cost: time O(p + f), heap O(f), stack O(1), io p
 // vars: p = 정의 부분 수, f = 정의 파일 크기
 // basis: estimate
-/// MCP 서버와 훅 부분의 정의를 파일에서 읽는다. 정의를 읽지 못하거나 같은 이름이 이미 있으면 그 부분만 실패로 돌려주고
-/// 먼저 읽은 것을 남긴다. 종류가 `layout`이 받는 것이 아니어도 실패로 돌려준다.
+/// MCP 서버와 훅 부분의 정의를 파일에서 읽는다. 정의를 읽지 못하거나 같은 MCP 서버 이름이 이미 있으면 그 부분만 실패로
+/// 돌려주고 먼저 읽은 것을 남긴다. 훅의 이름은 이벤트 이름이라 확장끼리 겹쳐도 모두
+/// 남긴다. 종류가 `layout`이 받는 것이 아니어도 실패로 돌려준다.
 pub(crate) fn collect_definitions(layout: &ExtensionLayout, parts: &[InjectedPart]) -> Definitions {
     let mut found = Definitions::default();
     for part in parts {
@@ -112,7 +198,9 @@ pub(crate) fn collect_definitions(layout: &ExtensionLayout, parts: &[InjectedPar
         };
         let read = if !layout.accepts(part.kind) {
             Err("this provider does not take this kind of part".to_owned())
-        } else if taken.iter().any(|known| known.name == part.name) {
+        } else if part.kind == ExtensionPartKind::McpServer
+            && taken.iter().any(|known| known.name == part.name)
+        {
             Err("a part with this name is already injected".to_owned())
         } else {
             read_definition(part, section)

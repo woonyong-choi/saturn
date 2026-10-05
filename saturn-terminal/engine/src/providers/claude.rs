@@ -25,6 +25,7 @@ mod adapter;
 mod background;
 mod config;
 mod convert;
+mod direct;
 mod extensions;
 mod hook;
 mod input;

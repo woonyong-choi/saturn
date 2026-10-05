@@ -3,6 +3,7 @@
 //! 설계: docs/design/extensions.md#확장-저장소
 
 mod bundle;
+mod direct;
 mod inject;
 pub(crate) mod source;
 
@@ -334,17 +335,27 @@ impl Engine {
         }
     }
 
-    /// `ListExtensions` 요청의 답. 설치한 순서대로 요청한 접속에만 간다.
+    /// `ListExtensions` 요청의 답. 설치한 순서대로 요청한 접속에만 간다. 직접 설치 항목은 접속이 붙은 채팅의 환경으로 읽는다.
     ///
     /// # Errors
     /// 읽기 실패면 `Store`.
-    pub(crate) async fn extension_list_result(&self) -> Result<QueryResult, EngineError> {
+    pub(crate) async fn extension_list_result(
+        &self,
+        client: ClientId,
+    ) -> Result<QueryResult, EngineError> {
+        let env = self
+            .attachments
+            .get(&client)
+            .and_then(|attachment| self.chat_env(attachment.chat))
+            .map(crate::chat_env::ChatEnv::provider_env)
+            .unwrap_or_default();
+        let direct = self.direct_install_infos(&env).await?;
         let rows = self.store.extension_rows().await?;
         let extensions = rows
             .iter()
             .filter_map(|row| Some(info_of(row, &decode_parts(row)?)))
             .collect();
-        Ok(QueryResult::ExtensionList { extensions })
+        Ok(QueryResult::ExtensionList { extensions, direct })
     }
 
     /// 확장 요청을 처리기로 나눈다. 확장 요청이 아니면 아무것도 하지 않는다.
@@ -359,6 +370,14 @@ impl Engine {
             }
             Request::RemoveExtension { chat, name } => {
                 self.remove_extension(client, chat, &name).await
+            }
+            Request::MoveDirectExtension {
+                chat,
+                provider,
+                name,
+            } => {
+                self.move_direct_extension(client, chat, provider, &name)
+                    .await
             }
             _ => Ok(()),
         }

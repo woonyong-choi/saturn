@@ -575,6 +575,34 @@
         },
         {
           "additionalProperties": false,
+          "description": "provider에 직접 설치된 항목을 새로 찾았다. 옮길 수 있는 항목은 `/extensions move`로 옮길지 이 줄에서 한 번만\n묻고, 답하지 않으면 다시 묻지 않는다.",
+          "properties": {
+            "DirectInstallsFound": {
+              "properties": {
+                "items": {
+                  "items": {
+                    "$ref": "#/$defs/DirectInstallItem"
+                  },
+                  "type": "array"
+                },
+                "provider": {
+                  "$ref": "#/$defs/Provider"
+                }
+              },
+              "required": [
+                "provider",
+                "items"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "DirectInstallsFound"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "description": "설치하거나 지우지 못했다. 기존 설치는 바뀌지 않았다. `reason`은 engine이 낸 원문이라 번역하지 않는다.",
           "properties": {
             "ExtensionFailed": {
@@ -937,6 +965,39 @@
           },
           "required": [
             "method"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "provider에 직접 설치된 항목을 Saturn 확장 저장소로 옮긴다. 이름이 같은 항목이 여럿이면 옮길 수 있는 첫 항목이다.\n결과는 `chat`의 대화 기록에 한 줄로 남는다.",
+          "properties": {
+            "method": {
+              "const": "MoveDirectExtension",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "provider": {
+                  "$ref": "#/$defs/Provider"
+                }
+              },
+              "required": [
+                "chat",
+                "provider",
+                "name"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
           ],
           "type": "object"
         },
@@ -2065,6 +2126,95 @@
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
+    },
+    "DirectInstallInfo": {
+      "description": "provider에 직접 설치된 항목 하나.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/DirectKind"
+        },
+        "movable": {
+          "description": "확장 저장소로 옮길 수 있다.",
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/Provider"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DirectState"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "아직 묻지 않은 항목이면 `None`."
+        }
+      },
+      "required": [
+        "provider",
+        "kind",
+        "name",
+        "movable"
+      ],
+      "type": "object"
+    },
+    "DirectInstallItem": {
+      "description": "새로 찾은 직접 설치 항목 하나.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/DirectKind"
+        },
+        "movable": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "movable"
+      ],
+      "type": "object"
+    },
+    "DirectKind": {
+      "description": "provider에 직접 설치된 항목의 종류. 확장 부분과 달리 플러그인도 추적한다.",
+      "oneOf": [
+        {
+          "enum": [
+            "Skill",
+            "Command",
+            "McpServer"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "Plugin",
+          "description": "여러 부분을 묶은 provider 배포 단위. 추적만 하고 옮기지 않는다.",
+          "type": "string"
+        }
+      ]
+    },
+    "DirectState": {
+      "description": "물어본 항목에 대한 기록.",
+      "oneOf": [
+        {
+          "const": "Asked",
+          "description": "옮길지 한 번 물었다. 같은 항목을 다시 묻지 않는다.",
+          "type": "string"
+        },
+        {
+          "const": "Moved",
+          "description": "Saturn 확장 저장소로 옮겼다.",
+          "type": "string"
+        }
+      ]
     },
     "Disposition": {
       "enum": [
@@ -5763,6 +5913,13 @@
           "properties": {
             "data": {
               "properties": {
+                "direct": {
+                  "description": "provider에 직접 설치돼 있는 항목. 어댑터 등록 순서대로.",
+                  "items": {
+                    "$ref": "#/$defs/DirectInstallInfo"
+                  },
+                  "type": "array"
+                },
                 "extensions": {
                   "items": {
                     "$ref": "#/$defs/ExtensionInfo"
@@ -5771,7 +5928,8 @@
                 }
               },
               "required": [
-                "extensions"
+                "extensions",
+                "direct"
               ],
               "type": "object"
             },
