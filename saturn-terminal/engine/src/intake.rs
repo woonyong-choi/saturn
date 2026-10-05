@@ -633,7 +633,7 @@ impl Engine {
     ) -> RouterRequest {
         // 매뉴얼 모드는 후보를 주지 않아 `target_model`을 묻지 않는다
         let candidates = match plan.mode {
-            ModelMode::Auto => self.model_candidates(record.chat),
+            ModelMode::Auto => self.model_candidates(record.chat, plan),
             ModelMode::Manual => Vec::new(),
         };
         let activity = if running { "running" } else { "idle" };
@@ -662,7 +662,7 @@ impl Engine {
                 },
             ),
         };
-        self.add_shadow(record, plan.shadow, &mut request);
+        self.add_shadow(record, plan, &mut request);
         request
     }
 
