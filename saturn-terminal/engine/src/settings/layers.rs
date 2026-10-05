@@ -59,7 +59,7 @@ constraint_ask = 0.7
 constraint_release = 0.8
 
 [model]
-mode = "auto"
+mode = "manual"
 
 [consent]
 share_with_server = false
@@ -135,6 +135,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("router.skip_check", Kind::Flag),
     ("model.default", Kind::Text),
     ("model.mode", Kind::OneOf(&["auto", "manual"])),
+    ("model.prefer", Kind::TextList),
     ("grading.model", Kind::Text),
     ("consent.share_with_server", Kind::Flag),
     ("debug.provider_events", Kind::Flag),

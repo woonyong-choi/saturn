@@ -38,7 +38,7 @@ impl ModelPicker {
         Self {
             purpose: ModelPurpose::Pin,
             default: None,
-            mode: ModelMode::Auto,
+            mode: ModelMode::Manual,
             provider,
             models: None,
             selected: 0,
@@ -296,6 +296,6 @@ mod tests {
     fn model_window_without_a_default_shows_none() {
         let picker = picker_with_models(None);
 
-        assert!(render_text(&picker).contains("Default model none · selection Auto"));
+        assert!(render_text(&picker).contains("Default model none · selection Manual"));
     }
 }

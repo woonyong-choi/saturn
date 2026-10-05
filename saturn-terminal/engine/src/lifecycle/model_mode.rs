@@ -10,6 +10,7 @@ use crate::providers::test_support::{CLAUDE, CODEX, Call, FakeProvider};
 use crate::rpc::ClientId;
 
 const DEFAULT_OPUS: &str = "[model]\ndefault = \"claude/opus\"\n";
+const AUTO_OPUS: &str = "[model]\ndefault = \"claude/opus\"\nmode = \"auto\"\n";
 const MANUAL_OPUS: &str = "[model]\ndefault = \"claude/opus\"\nmode = \"manual\"\n";
 
 fn know_models(flow: &mut Flow, provider: Provider, models: &[&str]) {
@@ -72,11 +73,8 @@ async fn no_default_model_keeps_the_provider_default() {
 #[tokio::test]
 async fn auto_mode_router_choice_beats_the_default_model() {
     let options = ["claude/opus", "claude/haiku", "other"];
-    let mut flow = Flow::with_config(
-        DEFAULT_OPUS,
-        vec![model_reply(0.1, &options, "claude/haiku")],
-    )
-    .await;
+    let mut flow =
+        Flow::with_config(AUTO_OPUS, vec![model_reply(0.1, &options, "claude/haiku")]).await;
     know_models(&mut flow, CLAUDE, &["opus", "haiku"]);
 
     flow.submit("hello").await;
@@ -88,7 +86,7 @@ async fn auto_mode_router_choice_beats_the_default_model() {
 #[tokio::test]
 async fn auto_mode_falls_back_to_the_default_model_on_other() {
     let options = ["claude/opus", "claude/haiku", "other"];
-    let mut flow = Flow::with_config(DEFAULT_OPUS, vec![model_reply(0.1, &options, "other")]).await;
+    let mut flow = Flow::with_config(AUTO_OPUS, vec![model_reply(0.1, &options, "other")]).await;
     know_models(&mut flow, CLAUDE, &["opus", "haiku"]);
 
     flow.submit("hello").await;
@@ -164,7 +162,7 @@ async fn attaching_tells_the_tui_that_no_default_model_is_chosen_yet() {
     assert!(greeting.contains(&Notification::ModelSettings {
         chat,
         default: None,
-        mode: ModelMode::Auto,
+        mode: ModelMode::Manual,
     }));
 }
 
@@ -208,7 +206,7 @@ async fn choosing_the_default_model_writes_the_user_config_and_tells_the_tui() {
     })
     .await;
 
-    assert_eq!(told, (Some(model), ModelMode::Auto));
+    assert_eq!(told, (Some(model), ModelMode::Manual));
     let config = std::fs::read_to_string(flow.fixture.options.home.join("config.toml")).unwrap();
     assert!(config.contains("default = \"claude/sonnet\""));
     flow.submit("hello").await;
@@ -217,7 +215,7 @@ async fn choosing_the_default_model_writes_the_user_config_and_tells_the_tui() {
 
 #[tokio::test]
 async fn changing_the_mode_writes_the_user_config_and_applies_to_the_next_input() {
-    let mut flow = Flow::with_config(DEFAULT_OPUS, vec![idle_reply(0.1)]).await;
+    let mut flow = Flow::with_config(AUTO_OPUS, vec![idle_reply(0.1)]).await;
     know_models(&mut flow, CLAUDE, &["opus", "haiku"]);
     let (mut client, _) = flow.attach().await;
     let chat = flow.chat;
@@ -303,7 +301,7 @@ async fn connection_layer_model_mode_reaches_the_tui_of_that_connection() {
 // #490
 #[tokio::test]
 async fn model_settings_notice_follows_the_settings_of_each_connection_of_the_chat() {
-    let mut flow = Flow::new(Vec::new()).await;
+    let mut flow = Flow::with_config("[model]\nmode = \"auto\"\n", Vec::new()).await;
     let (mut auto_client, _) = flow.attach().await;
     let (mut manual_client, _) = flow.attach().await;
     let chat = flow.chat;
@@ -356,7 +354,10 @@ async fn model_settings_notice_follows_the_settings_of_each_connection_of_the_ch
 #[tokio::test]
 async fn default_model_is_used_when_every_router_judgment_fails() {
     let cases = [
-        ("auto mode", "[model]\ndefault = \"codex/gpt-x\"\n"),
+        (
+            "auto mode",
+            "[model]\ndefault = \"codex/gpt-x\"\nmode = \"auto\"\n",
+        ),
         (
             "manual mode",
             "[model]\ndefault = \"codex/gpt-x\"\nmode = \"manual\"\n",
@@ -384,7 +385,7 @@ async fn failed_judgment_keeps_the_current_model_of_an_open_main_instead_of_the_
     let options = ["claude/opus", "claude/haiku", "other"];
     let mut replies = vec![model_reply(0.1, &options, "claude/haiku")];
     replies.extend(super::support::router_down());
-    let mut flow = Flow::with_config(DEFAULT_OPUS, replies).await;
+    let mut flow = Flow::with_config(AUTO_OPUS, replies).await;
     know_models(&mut flow, CLAUDE, &["opus", "haiku"]);
     flow.submit("hello").await;
     let agent = flow.agent();

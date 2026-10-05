@@ -51,6 +51,8 @@ pub(crate) struct ModelPlan {
     pub(crate) default: Option<String>,
     /// 모델 선택 그림자 판단을 켰는지. 실험 옵션이다.
     pub(crate) shadow: bool,
+    /// 선호 모델의 `<provider>/<model>` 글. 등록하지 않은 provider는 뺀다.
+    pub(crate) prefer: Vec<String>,
 }
 
 impl ModelPlan {
@@ -62,6 +64,11 @@ impl ModelPlan {
                 .filter(|text| registry.parse_pinned(text).is_some())
                 .map(str::to_owned),
             shadow: settings.shadow_model_selection(),
+            prefer: settings
+                .model_prefer()
+                .into_iter()
+                .filter(|text| registry.parse_pinned(text).is_some())
+                .collect(),
         }
     }
 }

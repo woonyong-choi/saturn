@@ -55,6 +55,7 @@ mod recover;
 mod request_summary;
 mod requests;
 mod run_changes;
+mod selection;
 mod serve;
 mod sessions;
 mod settings_watch;

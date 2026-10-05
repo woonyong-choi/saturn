@@ -21,7 +21,10 @@ use crate::models::ModelPlan;
 use crate::requests::{settings_notification, trust_notification};
 use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
 use crate::rpc::ClientId;
+use crate::selection::{RouterOutcome, SelectionPlan};
 use crate::settings::{Settings, SettingsError};
+use crate::shadow::ShadowPlan;
+use crate::store::SelectionIds;
 use crate::{Engine, EngineError, masked_chain};
 
 /// 사용자에게 묻는 제약 등록의 확률 q. 구간에서는 항상 묻는다.
@@ -551,7 +554,8 @@ impl Engine {
         }
         // 그림자 질문은 실제 판단이 읽는 요청과 답에서 떼어 낸다
         let split = split_shadow(request, exchange.result.as_ref().ok());
-        let mut shadow = self.shadow_plan(request, &split, (job.revision, policy));
+        let mut shadow = self.shadow_plan(request, &split, (job.revision, policy.clone()));
+        let policy_text = policy;
         let request = &split.request;
         let mut read = self.read_verdict(
             (request, split.response.as_ref()),
@@ -562,17 +566,19 @@ impl Engine {
         // 고정 모델은 `target_model` 선택만 대신하고 관계 판단은 그대로 받는다.
         // 고정하지 않았으면 오토 모드에서 후보 글인 router 선택을, 아니면 기본 모델을 쓴다. 둘 다 없으면 현재 모델이다
         let plan = ModelPlan::from_settings(&settings, &self.registry);
-        read.decision.model = if record.pinned_model.is_some() {
-            record.pinned_model.clone()
-        } else {
-            let routed = read
-                .decision
-                .model
-                .take()
-                .filter(|model| self.registry.parse_pinned(model).is_some())
-                .filter(|_| plan.mode == ModelMode::Auto);
-            routed.or(plan.default)
-        };
+        let routed = read.decision.model.take();
+        let selection = self.select_model(
+            (&record, &plan),
+            routed,
+            (
+                RouterOutcome {
+                    failed: read.failed,
+                    invalid: read.outcome == JudgmentOutcome::Invalid,
+                },
+                policy_text,
+            ),
+        );
+        read.decision.model = selection.model.clone();
         if let Some(shadow) = &mut shadow {
             shadow.decided = read.decision.model.clone();
         }
@@ -605,6 +611,7 @@ impl Engine {
                 constraint,
                 change,
                 shadow,
+                selection,
             },
         );
         Ok(Verdict {
@@ -725,9 +732,18 @@ impl Engine {
                 None
             }
         };
-        if let (Some(judgment), Some(shadow)) = (judgment, unrecorded.shadow) {
-            self.record_shadow((judgment, input, chat, settings), shadow, superseded)
-                .await;
+        if let Some(judgment) = judgment {
+            let ids = SelectionIds {
+                judgment,
+                input,
+                chat,
+            };
+            self.record_decision_details(
+                (ids, settings),
+                (unrecorded.selection, unrecorded.shadow),
+                superseded,
+            )
+            .await;
         }
         self.follow_constraint_judgment(
             input,
@@ -736,6 +752,25 @@ impl Engine {
         )
         .await;
         judgment
+    }
+
+    /// 판단 기록에 붙는 모델 정하기 기록과 모델 판단 그림자 기록을 쓴다. 어긋난 판단은 적용하지 않은 것으로 쓴다.
+    async fn record_decision_details(
+        &self,
+        (ids, settings): (SelectionIds, SettingsRevision),
+        (selection, shadow): (SelectionPlan, Option<ShadowPlan>),
+        superseded: bool,
+    ) {
+        self.record_selection(ids, selection, !superseded).await;
+        if let Some(shadow) = shadow {
+            let SelectionIds {
+                judgment,
+                input,
+                chat,
+            } = ids;
+            self.record_shadow((judgment, input, chat, settings), shadow, superseded)
+                .await;
+        }
     }
 
     /// 판단 기록을 쓴 뒤 그 입력의 제약 등록을 적용하고, 등록 대상이 아니면 해제·예외 판단을 시작한다.
