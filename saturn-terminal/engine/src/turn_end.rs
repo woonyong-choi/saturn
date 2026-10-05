@@ -9,7 +9,7 @@ use saturn_protocol::ids::{AgentId, ChatId};
 use saturn_protocol::rpc::{ChatNotice, Notification};
 
 use crate::flow::LiveSession;
-use crate::handoff::{HandoffOutcome, handoff_of, handoff_source};
+use crate::handoff::{HandoffOutcome, PacketEvidence, handoff_of, handoff_source};
 use crate::settings::ContextMode;
 use crate::switch::Reduction;
 use crate::{Engine, EngineError};
@@ -116,16 +116,17 @@ impl Engine {
                         "packet exceeds its limit"
                     );
                 }
-                let up_to = rows.last().map_or_else(Default::default, |row| row.seq);
-                let tiers = source
-                    .as_ref()
-                    .map_or_else(Vec::new, |source| source.constraint_tiers.clone());
-                let reduction = source.map(|source| Reduction {
+                // 패킷은 재료가 있어야 만들어지므로 `Ready`면 재료가 있다
+                let Some(source) = source else {
+                    return Ok(false);
+                };
+                let evidence = PacketEvidence::first(&handoff, &source);
+                let reduction = Reduction {
                     source,
                     budget,
                     sent_tokens: handoff.tokens,
-                });
-                self.restart_session(chat, live, handoff.text, reduction, (up_to, tiers))
+                };
+                self.restart_session(chat, live, handoff.text, Some(reduction), evidence)
                     .await?;
                 return Ok(true);
             }

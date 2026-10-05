@@ -76,6 +76,16 @@ fn records(packet: &Packet) -> &str {
         .expect("packet should start with the instruction")
 }
 
+/// 재료 항목이 패킷에 들어간 모양과 빠진 이유.
+fn fate(packet: &Packet, zone: PacketZone, seq: u64) -> (Option<ItemForm>, Option<&'static str>) {
+    let item = packet
+        .items
+        .iter()
+        .find(|item| item.zone == zone && item.seq == LedgerSeq(seq))
+        .expect("source item should be listed");
+    (item.form, item.reason)
+}
+
 fn ready(outcome: PacketOutcome) -> Packet {
     match outcome {
         PacketOutcome::Ready(packet) => packet,
@@ -123,6 +133,11 @@ fn build_packet_fixed_zone_in_order_and_tool_results_only_in_competing() {
     assert!(order.windows(2).all(|pair| pair[0] < pair[1]));
     assert_eq!(packet.up_to, LedgerSeq(42));
     assert!(!packet.is_over_limit);
+    let full = (Some(ItemForm::Full), None);
+    assert_eq!(fate(&packet, PacketZone::Goal, 40), full);
+    assert_eq!(fate(&packet, PacketZone::Open, 38), full);
+    assert_eq!(fate(&packet, PacketZone::Recent, 39), full);
+    assert_eq!(fate(&packet, PacketZone::Competing, 37), full);
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -151,6 +166,14 @@ fn build_packet_fills_competing_in_chosen_order_raw_then_digest() {
             .contains(&format!("memo 13\n{}", filler("D", 300)))
     );
     assert!(!packet.text.contains(&filler("D", 301)));
+    assert_eq!(
+        fate(&packet, PacketZone::Competing, 10),
+        (Some(ItemForm::Full), None)
+    );
+    assert_eq!(
+        fate(&packet, PacketZone::Competing, 13),
+        (Some(ItemForm::Digest), None)
+    );
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -368,6 +391,14 @@ fn build_packet_fixed_overflow_trims_oldest_answer_first() {
     assert!(packet.text.contains(&filler("b", 560)));
     assert!(packet.text.contains(&filler("c", 560)));
     assert!(!packet.is_over_limit);
+    assert_eq!(
+        fate(&packet, PacketZone::Recent, 1),
+        (Some(ItemForm::Trimmed), None)
+    );
+    assert_eq!(
+        fate(&packet, PacketZone::Recent, 2),
+        (Some(ItemForm::Full), None)
+    );
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -389,6 +420,10 @@ fn build_packet_fixed_overflow_drops_oldest_turns() {
     assert!(!packet.text.contains("x."));
     assert!(packet.text.contains(&filler("y", 700)));
     assert!(packet.text.contains(&filler("z", 700)));
+    assert_eq!(
+        fate(&packet, PacketZone::Recent, 1),
+        (None, Some("packet_limit"))
+    );
 }
 
 // cost: time O(n), heap O(n), stack O(1)
@@ -408,6 +443,10 @@ fn build_packet_fixed_over_limit_allows_hard_limit_without_competing() {
     assert!(packet.tokens <= budget().packet_hard_limit());
     assert!(packet.text.contains(&filler("rule", 2_000)));
     assert!(!packet.text.contains("tool output"));
+    assert_eq!(
+        fate(&packet, PacketZone::Competing, 5),
+        (None, Some("budget"))
+    );
 }
 
 #[test]

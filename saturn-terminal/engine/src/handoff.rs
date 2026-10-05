@@ -5,25 +5,27 @@ use std::collections::HashMap;
 
 use saturn_core::constraints::scope_of;
 use saturn_core::sessions::changes::describe;
+use saturn_core::sessions::constraint_slot::ConstraintTier;
 use saturn_core::sessions::constraint_slot::{
     ConstraintSlot, SlotConstraint, SlotContext, fill_constraint_slot,
 };
 use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::memo::{INTERRUPTED_RESULT, ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
-    CONSTRAINT_SEPARATOR_CHARS, CompetingItem, Entry, PacketOutcome, PacketSource, RECENT_TURNS,
-    RecentTurn, TurnStatus, build_packet, constraint_cap_chars, reduce_packet, status_item,
+    CONSTRAINT_SEPARATOR_CHARS, CompetingItem, Entry, PacketItem, PacketOutcome, PacketSource,
+    PacketZone, RECENT_TURNS, RecentTurn, TurnStatus, build_packet, constraint_cap_chars,
+    reduce_packet, status_item,
 };
 use saturn_core::sessions::ranking::{Candidate, rank_candidates};
 use saturn_core::sessions::stamp::Stamp;
 use saturn_protocol::event::{Activity, ProviderEvent, ToolCategory, ToolDetail};
-use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId};
+use saturn_protocol::ids::{ChatId, ConstraintId, InputId, LedgerSeq, RunId, SessionId};
 use saturn_protocol::state::InputState;
 
 use crate::Engine;
 use crate::store::{
-    ConstraintState, ExceptionKind, LedgerRow, RunChanges, RunEnd, SteeredInput, StoredConstraint,
-    StoredException,
+    ConstraintState, ExceptionKind, LedgerRow, PacketId, PacketItemRow, RunChanges, RunEnd,
+    SteeredInput, StoredConstraint, StoredException,
 };
 
 /// 새 session의 첫 턴으로 보내는 글.
@@ -34,6 +36,94 @@ pub(crate) struct Handoff {
     pub(crate) tokens: u64,
     /// 고정 구역이 `P_max`를 넘어 `P_hard`까지 허용했다.
     pub(crate) is_over_limit: bool,
+    /// 기록 번호가 있는 재료 항목마다 들어갔는지.
+    pub(crate) items: Vec<PacketItem>,
+}
+
+/// 보내는 패킷 한 시도의 근거 재료. 전달 패킷 기록(`handoff_packets`)이 이 값으로 항목을 남긴다.
+#[derive(Debug, Clone)]
+pub(crate) struct PacketEvidence {
+    items: Vec<PacketItem>,
+    /// 제약 칸 후보마다의 단계. 칸이 차서 빠진 제약은 `Omitted`다.
+    constraints: Vec<(ConstraintId, ConstraintTier)>,
+    /// 패킷이 담은 기록의 마지막 번호.
+    pub(crate) up_to: LedgerSeq,
+    pub(crate) tokens: u64,
+    /// 첫 시도가 1이고 맥락 한도로 거절돼 줄여 다시 보낼 때마다 1 늘어난다.
+    pub(crate) attempt: u32,
+    pub(crate) reduced_from: Option<PacketId>,
+}
+
+impl PacketEvidence {
+    /// 재료에서 처음 만든 패킷의 근거.
+    pub(crate) fn first(handoff: &Handoff, source: &PacketSource) -> Self {
+        Self {
+            items: handoff.items.clone(),
+            constraints: source.constraint_tiers.clone(),
+            up_to: source.up_to,
+            tokens: handoff.tokens,
+            attempt: 1,
+            reduced_from: None,
+        }
+    }
+
+    /// 거절된 시도 `previous`를 줄여 다시 만든 패킷의 근거. 같은 재료에서 항목만 다시 골랐다.
+    pub(crate) fn reduced(
+        handoff: &Handoff,
+        source: &PacketSource,
+        (attempt, previous): (u32, Option<PacketId>),
+    ) -> Self {
+        Self {
+            attempt: attempt + 1,
+            reduced_from: previous,
+            ..Self::first(handoff, source)
+        }
+    }
+
+    /// 재료 없이 만든 근거. 시험이 보낼 수 없는 호출의 자리를 채운다.
+    #[cfg(test)]
+    pub(crate) fn empty(up_to: LedgerSeq) -> Self {
+        Self {
+            items: Vec::new(),
+            constraints: Vec::new(),
+            up_to,
+            tokens: 0,
+            attempt: 1,
+            reduced_from: None,
+        }
+    }
+
+    /// 제약 칸 후보마다의 단계. `Omitted` 포함, 제약 번호 순이다.
+    pub(crate) fn tiers(&self) -> Vec<(ConstraintId, ConstraintTier)> {
+        self.constraints.clone()
+    }
+
+    /// 항목 행. 제약 칸, 목표, 열린 항목, 최근 턴, 경쟁 구역 순이다.
+    pub(crate) fn rows(&self) -> Vec<PacketItemRow> {
+        let constraints = self.constraints.iter().map(|(id, tier)| {
+            let is_omitted = *tier == ConstraintTier::Omitted;
+            PacketItemRow {
+                zone: "Constraints".to_owned(),
+                ref_id: id.0,
+                selector: tier.name(),
+                form: (!is_omitted).then(|| tier.name().to_owned()),
+                reason: is_omitted.then_some("slot_full"),
+            }
+        });
+        let items = self.items.iter().map(|item| PacketItemRow {
+            zone: item.zone.name().to_owned(),
+            ref_id: item.seq.0,
+            selector: match item.zone {
+                PacketZone::Goal => "latest",
+                PacketZone::Open => "pending",
+                PacketZone::Recent => "recent_turns",
+                PacketZone::Competing => "rank",
+            },
+            form: item.form.map(|form| form.name().to_owned()),
+            reason: item.reason,
+        });
+        constraints.chain(items).collect()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -196,6 +286,7 @@ pub(crate) fn handoff_of(source: &PacketSource, budget: &ContextBudget) -> Hando
             text: packet.text,
             tokens: packet.tokens,
             is_over_limit: packet.is_over_limit,
+            items: packet.items,
         }),
         PacketOutcome::Deferred { constraints } => HandoffOutcome::Deferred { constraints },
     }
@@ -212,6 +303,7 @@ pub(crate) fn reduce_handoff(
         text: packet.text,
         tokens: packet.tokens,
         is_over_limit: packet.is_over_limit,
+        items: packet.items,
     })
 }
 

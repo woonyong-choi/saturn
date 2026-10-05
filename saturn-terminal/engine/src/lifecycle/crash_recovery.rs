@@ -181,6 +181,45 @@ async fn raw_lines_received_before_a_crash_survive_and_recovery_seals_them() {
     ));
 }
 
+// #538: 결과를 받지 못한 패킷은 크래시 뒤 보냈는지 모르는 것으로 확정하고 다시 보내지 않는다
+#[tokio::test]
+async fn a_packet_without_a_result_before_the_crash_becomes_unknown_and_is_not_sent_again() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.submit("fix the build").await;
+    let settled = flow
+        .engine
+        .store
+        .record_packet(&crate::store::NewPacket {
+            chat: flow.chat,
+            kind: crate::store::PacketKind::Switch,
+            attempt: 1,
+            reduced_from: None,
+            session: saturn_protocol::ids::SessionId(9),
+            input: None,
+            provider: crate::providers::test_support::CLAUDE,
+            settings: 1,
+            chat_revision: 0,
+            constraint_revision: 0,
+            policy: "p".to_owned(),
+            body: "packet body".to_owned(),
+            estimated_tokens: 3,
+            items: Vec::new(),
+        })
+        .await
+        .unwrap();
+    let chat = flow.chat;
+
+    let restarted = Restarted::after_crash(flow, EffectScope::NetworkPossible).await;
+
+    let packets = restarted.engine.store.packets_of_chat(chat).await.unwrap();
+    assert_eq!(packets.len(), 1);
+    assert_eq!(
+        (packets[0].id, packets[0].state),
+        (settled, crate::store::PacketState::Unknown)
+    );
+    assert!(restarted.fake.calls().is_empty());
+}
+
 // #150: 증명되지 않은 실행은 다시 보내지 않고 보류하며, 붙은 TUI에 `/continue`를 제안한다
 #[tokio::test]
 async fn unproven_run_is_held_not_resent_and_suggested_when_a_tui_attaches() {

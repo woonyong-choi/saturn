@@ -53,6 +53,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 | 설정 스냅샷 | 설정 번호별 병합 결과와 층 목록 |
 | 제약 | 규칙 한 줄과 적용 범위, 변경 이벤트, 묻는 중인 확인, 전환마다 패킷에 넣은 제약 |
 | provider CLI 버전 | provider마다 마지막으로 확인한 CLI 버전과 확인 시각 |
+| 전달 패킷 | provider에 보낸 인계 패킷의 시도마다의 본문 해시와 크기, 받은 session, 입력·실행, 설정과 제약 revision, 정책 지문, 들어가거나 빠진 항목 |
 | 확장 | 설치한 확장의 이름, 출처, 부분별 provider 사용 가능 판정, 옮기자는 질문의 거절(거절은 구현 전, [#412](https://github.com/woonyong-choi/saturn/issues/412)) |
 
 - 기록 저장소에 쓰는 쪽은 engine 하나다. 쓰기 충돌을 막기 위해서다.
@@ -74,6 +75,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - `run_changes` 표는 실행이 시작 뒤 바꾼 파일을 실행 `run_id`, 채팅 `chat_id`, 경로 `path`(절대 경로), 종류 `kind`(`added`, `modified`, `deleted`), 수정 주체 `actors`(줄바꿈으로 이은 글, 비면 이벤트에 없는 수정)로 둔다. `runs` 표의 `changes_state`는 측정했으면 `complete`, 폴더가 커서 일부만 훑었으면 `partial`이고, 측정하지 못한 실행(크래시, 보내기 전 실패, 이관 전 행)은 NULL이다. 실행이나 채팅을 지우면 함께 지운다. 스키마 V11에서 더했고 이관은 열과 표만 비어 있게 더한다([provider 연결과 session](providers-and-sessions.md#수정-파일-목록)).
 - `direct_installs` 표는 provider에 직접 설치된 항목 중 옮길지 물은 것을 provider id `provider`, 종류 `kind`(`skill`, `command`, `mcp_server`, `plugin`), 이름 `name`, 상태 `state`(`asked`, `moved`), 처음 본 시각 `seen_at`(unix 밀리초)으로 둔다. 기본 키는 앞의 세 열이다. 한 번 물은 항목은 행이 남아 다시 묻지 않고, 사용자가 옮기면 `moved`가 된다. 스키마 V14에서 더했고 이관은 표만 비어 있게 더하며, 정리 대상이 아니다([기능 목록과 확장](extensions.md#provider에-직접-설치한-것)).
 - `raw_unattributed` 표는 어느 실행의 것인지 정하지 못한 provider 원시 줄을 채팅 `chat_id`, provider id `provider`, 에이전트 `agent_id`(모르면 NULL), 줄에 적힌 provider session 식별자 `provider_session`(없으면 NULL), JSON 여부 `is_json`, 줄 `bytes`, 받은 시각 `received_at`(unix 밀리초)으로 둔다. 스키마 V15에서 더했고 이관은 표만 비어 있게 더하며, 채팅을 지우면 함께 지워진다([provider 원시 응답 수집](#provider-원시-응답-수집)).
+- `handoff_packets` 표는 provider에 보낸 인계 패킷의 시도마다 한 행이다. 종류 `kind`(`Switch`, `Return`, `Restart`), 시도 번호 `attempt`와 줄이기 전 시도 `reduced_from`, 받는 session `session_id`, 보낸 입력 `input_id`(맥락 정리는 NULL), 입력이 연 실행 `run_id`, provider와 받은 provider session `provider_session`, 설정 번호 `settings_revision`, 패킷이 담은 기록의 마지막 번호 `chat_revision`, `constraint_revision`, 정책 지문 `policy`, 보낸 글의 SHA-256 `body_hash`와 바이트 수 `body_bytes`, 추정 토큰 `estimated_tokens`, 상태 `state`(`Prepared`, `Sent`, `NotSent`, `Unknown`)를 둔다. `handoff_packet_items` 표는 시도마다 구역 `zone`(`Constraints`, `Goal`, `Open`, `Recent`, `Competing`), 번호 `ref_id`(제약 칸은 제약 번호, 나머지는 기록 번호), 고른 방식 `selector`, 들어간 모양 `form`, 빠진 이유 `reason`을 둔다. 스키마 V16에서 더했고 이관은 표만 비어 있게 더하며, 채팅을 지우면 함께 지워진다([전달 패킷 근거](#전달-패킷-근거)).
 - `provider_versions` 표는 provider id `provider`마다 마지막으로 확인한 CLI 버전 `version`과 확인 시각 `checked_at`(unix 밀리초)을 한 행으로 둔다. engine이 시작할 때 설치된 CLI의 버전을 읽어 다르면 덮어쓴다([provider 연결과 session](providers-and-sessions.md#직접-연결과-acp-어댑터)). 스키마 V9에서 더했고 이관은 표만 비어 있게 더한다. 채팅 정리의 대상이 아니다.
 - `interrupted_subagents` 표는 크래시로 끊긴 하위 에이전트를 채팅 `chat_id`, 메인 에이전트 `agent_id`, provider의 하위 에이전트 번호 `subagent`, provider에 정리를 넘겼는지 `cleaned`로 둔다. 같은 에이전트의 같은 하위 에이전트는 한 행이다. 에이전트의 session이 끝나거나 보류를 닫으면, 채팅을 지우면 함께 지운다. 스키마 V7에서 더했다.
 - `permission_allows` 표는 항상 허용을 작업 폴더 `workdir`, 도구 `tool`, 패턴 `pattern`, 저장 시각 `created_at`(unix 밀리초)으로 둔다. 같은 `workdir`, `tool`, `pattern`은 한 행이다. 스키마 V4에서 더했고 채팅과 상관없이 작업 폴더 단위로 쓴다([권한](permissions.md#항상-허용-저장)).
@@ -151,6 +153,23 @@ provider가 연결로 보낸 줄은 변환하기 전 모습 그대로 원시 기
 - 원시 기록은 실행 단위다. 이벤트와의 연결은 실행 번호로 한다.
 - 저장하지 못해도 이벤트 처리는 막지 않고 로그만 남긴다.
 - 끝난 실행에 늦게 도착한 줄은 실행에 붙이지 않고 `raw_unattributed`로 간다.
+
+### 전달 패킷 근거
+
+provider에 실제로 보낸 인계 패킷은 시도마다 근거를 남긴다. [provider 원시 응답](#provider-원시-응답-수집)은 받은 쪽이고 이 기록은 보낸 쪽이다. 둘은 같은 저장소를 쓰지만 서로를 대신하지 않는다.
+
+1. engine이 패킷을 보내는 요청(새 session 열기, 보관 session 다시 열기, 이미 열린 session에 변경분 턴 보내기, 맥락 정리의 새 session 열기)을 provider에 맡기기 직전에 `Prepared`로 시도를 쓴다.
+2. 결과를 받으면 상태를 확정한다. 성공은 `Sent`와 받은 provider session이다. 거절과 맥락 한도 초과는 보내지 않았음이 확정이라 `NotSent`다. 그 밖의 실패(연결 끊김, 결과 불명)는 보냈는지 모르므로 `Unknown`이고 다시 보내지 않는다.
+3. 입력이 실행을 시작하면 그 입력을 위해 보낸 `Sent` 패킷에 실행 번호를 붙인다. 패킷 턴의 답은 그 실행의 기록에 남는다.
+4. 맥락 한도로 거절돼 줄여 다시 보내면 새 시도 행을 만든다. `attempt`가 늘고 `reduced_from`이 거절된 시도를 가리키며 받는 session도 새 번호다. 항목은 시도마다 따로 쌓여 어느 항목이 어느 전송에 들어갔는지 섞이지 않는다.
+5. engine이 크래시 뒤 시작하면 `Prepared`로 남은 시도를 `Unknown`으로 확정한다.
+
+- `body_hash`는 provider에 넘긴 글 전체의 SHA-256이다. 같은 글이 provider가 받은 바이트와 맞는지 대조하는 값이다.
+- 본문과 원문 항목은 복제하지 않는다. 항목은 `ref_id`로 기록(`events`)이나 제약을 가리킨다. 그래서 기록 원문을 가린 값이 이 기록에 다시 나타날 수 없다.
+- 제약 칸 항목은 제약 번호와 단계(`All`, `Scope`, `Relevance`)이고, 칸이 차서 빠진 제약은 이유 `slot_full`이다. 새 session의 제약 단계는 기존 `packet_constraints`에도 남는다. 목표, 열린 항목, 최근 턴, 경쟁 구역 항목은 기록 번호만 가지므로, 제약은 제약 칸 한 곳에서만 전달된다는 것을 이 표의 `Constraints` 행과 다른 구역 행으로 조회한다.
+- 최근 턴이 줄었으면 `form`이 `Trimmed`이거나 이유가 `recent_limit`, `packet_limit`이다. 경쟁 구역은 `Full`, `Digest`, `Path`, `Summary`로 모양을, `budget`, `provider_doc`으로 빠진 이유를 남긴다.
+- 정책 지문은 설정 번호의 기준값과 router 모델의 지문이다([판단 정책 고정](router.md#정책-고정)).
+- 기록하지 못해도 전송은 막지 않고 로그만 남긴다. 이 기록은 전송의 전제가 아니라 전송의 근거다.
 
 ### 보존과 정리
 
@@ -235,6 +254,11 @@ provider가 연결로 보낸 줄은 변환하기 전 모습 그대로 원시 기
 | 원시 기록의 해시와 크기는 압축 전 값이다. | 압축 뒤 기록한 해시가 원본의 해시와 같은지 확인한다. |
 | provider가 보낸 줄은 그 에이전트의 열린 실행에 받은 순서대로 쌓이고, 끝난 실행에 늦게 온 줄과 에이전트를 모르는 줄과 JSON이 아닌 줄은 실행에 붙지 않고 미귀속으로 남는다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `raw_lines_go_to_the_run_of_their_agent_in_order_and_late_ones_are_kept_apart`, `raw_lines_without_a_known_agent_are_kept_apart_and_never_attached_to_the_open_run`, `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `raw_lines_received_before_a_crash_survive_and_recovery_seals_them` |
 | 어댑터는 줄을 변환 전에 router 키를 가려 보내고, 줄의 에이전트를 provider 식별자로 정한다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `stdout_hides_router_key_before_emitting_events`, `saturn-terminal/engine/src/providers/codex/tests.rs`의 `a_child_is_registered_from_the_spawn_completion_without_thread_started` |
+| 패킷 시도는 보낸 글의 해시와 일치하고, 제약 칸 항목이 `packet_constraints`와 같으며, 입력의 실행과 받은 provider session이 붙는다. | `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `long_chat_constraints_reach_the_new_sessions_packet_and_record` |
+| 맥락 한도로 줄여 다시 보내면 시도마다 행이 따로 쌓이고, 거절된 시도는 `NotSent`, 다시 보낸 시도는 `Sent`로 줄이기 전 시도를 가리키며, 줄인 항목은 원문에서 요약본(`Digest`)으로 바뀐다. 맥락 정리도 같다. | `saturn-terminal/engine/src/lifecycle/packet_overflow.rs`의 `packet_overflow_rejection_resends_once_without_the_lowest_items`, `packet_overflow_after_the_reduced_resend_stops_and_tells_the_user`, `compaction_overflow_rejection_resends_once_without_the_lowest_items` |
+| 보내지 않음이 확정인 오류만 `NotSent`이고 연결 끊김과 결과 불명은 `Unknown`이다. 크래시로 결과를 받지 못한 시도는 `Unknown`이 되고 다시 보내지 않는다. | `saturn-terminal/engine/src/packets.rs`의 `only_a_confirmed_refusal_is_not_sent_and_every_other_failure_is_unknown`, `saturn-terminal/engine/src/lifecycle/crash_recovery.rs`의 `a_packet_without_a_result_before_the_crash_becomes_unknown_and_is_not_sent_again` |
+| 패킷의 항목은 구역별로 들어간 모양과 빠진 이유를 남긴다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_zone_in_order_and_tool_results_only_in_competing`, `build_packet_fixed_overflow_trims_oldest_answer_first`, `build_packet_fixed_overflow_drops_oldest_turns`, `build_packet_fixed_over_limit_allows_hard_limit_without_competing` |
+| 스키마 V16 이관은 채팅 행을 보존하고 전달 패킷 표 두 개를 비어 있게 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v15_file_migrates_to_handoff_packets_keeping_chats` |
 | 스키마 V15 이관은 채팅 행을 보존하고 미귀속 원시 줄 표를 비어 있게 더한다. | `saturn-terminal/engine/src/store/schema.rs`의 `v14_file_migrates_to_raw_unattributed_keeping_chats` |
 | 열린 입력, 열린 실행, 활성 session은 어떤 명령으로도 지우지 않는다. | 열린 항목이 있는 채팅을 지워 그 항목이 남는지 확인한다. |
 | 자동 정리는 `retention.auto_prune`이 참일 때만 시작 때 한 번 오래된 채팅을 지우고, 기본(거짓)이거나 `max_age_days`가 없으면 아무것도 지우지 않는다. | `saturn-terminal/engine/src/lifecycle/prune.rs`의 `auto_prune_on_start_does_nothing_unless_the_switch_is_on_with_a_max_age`, `auto_prune_on_start_deletes_old_finished_chats_and_tells_the_first_tui_only` |

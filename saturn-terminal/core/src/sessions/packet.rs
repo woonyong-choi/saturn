@@ -121,6 +121,64 @@ pub struct PacketSource {
     pub up_to: LedgerSeq,
 }
 
+/// 패킷 항목이 들어가는 구역. 제약 칸은 항목이 기록 번호가 아니라 제약 번호라 `PacketSource::constraint_tiers`가 따로 말한다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PacketZone {
+    Goal,
+    Open,
+    Recent,
+    Competing,
+}
+
+impl PacketZone {
+    /// 전달 패킷 기록에 쓰는 이름.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Goal => "Goal",
+            Self::Open => "Open",
+            Self::Recent => "Recent",
+            Self::Competing => "Competing",
+        }
+    }
+}
+
+/// 항목이 패킷에 들어간 모양.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ItemForm {
+    Full,
+    /// 에이전트 답을 앞부분만 남겼다.
+    Trimmed,
+    Digest,
+    Path,
+    /// provider 압축 요약.
+    Summary,
+}
+
+impl ItemForm {
+    /// 전달 패킷 기록에 쓰는 이름.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Full => "Full",
+            Self::Trimmed => "Trimmed",
+            Self::Digest => "Digest",
+            Self::Path => "Path",
+            Self::Summary => "Summary",
+        }
+    }
+}
+
+/// 패킷 재료 항목 하나가 이 패킷에 들어갔는지. 들어가지 못했으면 이유가 있다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PacketItem {
+    pub zone: PacketZone,
+    pub seq: LedgerSeq,
+    /// 들어간 모양. 들어가지 못했으면 `None`.
+    pub form: Option<ItemForm>,
+    /// 들어가지 못한 이유. `recent_limit`(최근 턴 수 상한), `packet_limit`(고정 구역이 넘쳐 뺌), `budget`(경쟁 구역
+    /// 예산), `provider_doc`(provider가 스스로 읽는 문서). 들어갔으면 `None`.
+    pub reason: Option<&'static str>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Packet {
     pub text: String,
@@ -134,6 +192,8 @@ pub struct Packet {
     pub included: Vec<LedgerSeq>,
     /// 요약이 경쟁 구역 예산에 들어가 첫 항목이 됐다. 요약을 주지 않았거나 예산을 넘어 원문으로 채웠으면 거짓.
     pub is_summary_used: bool,
+    /// 기록 번호가 있는 재료 항목마다 들어갔는지. 구역 순서이고 구역 안에서는 재료 순서다.
+    pub items: Vec<PacketItem>,
 }
 
 #[derive(Debug, Clone)]
@@ -163,6 +223,14 @@ struct Chosen {
     seq: LedgerSeq,
     session: Option<SessionId>,
     text: String,
+    form: ItemForm,
+}
+
+/// 고정 구역을 맞춘 결과. `turns`는 남은 최근 턴이고, `trimmed`는 답을 앞부분만 남긴 턴의 기록 번호다.
+struct Fitted {
+    sections: Vec<Section>,
+    turns: Vec<RecentTurn>,
+    trimmed: Vec<LedgerSeq>,
 }
 
 // cost: time O(t·L + m log m), heap O(L), stack O(1)
@@ -197,14 +265,14 @@ pub fn reduce_packet(
 ) -> Option<Packet> {
     let soft_chars = to_chars(budget.packet_limit());
     let target_chars = to_chars(target_tokens).min(soft_chars);
-    let sections = fit_fixed_zone(source, soft_chars);
-    let fixed_chars = render(&sections).chars().count();
+    let fitted = fit_fixed_zone(source, soft_chars);
+    let fixed_chars = render(&fitted.sections).chars().count();
     if fixed_chars > target_chars {
         return None;
     }
     Some(assemble(
         source,
-        sections,
+        fitted,
         (fixed_chars, target_chars),
         budget.item_cap_percent,
         None,
@@ -217,8 +285,8 @@ pub fn reduce_packet(
 fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>) -> PacketOutcome {
     let soft_chars = to_chars(budget.packet_limit());
     let hard_chars = to_chars(budget.packet_hard_limit());
-    let sections = fit_fixed_zone(source, soft_chars);
-    let fixed_chars = render(&sections).chars().count();
+    let fitted = fit_fixed_zone(source, soft_chars);
+    let fixed_chars = render(&fitted.sections).chars().count();
     if fixed_chars > hard_chars {
         return PacketOutcome::Deferred {
             constraints: source
@@ -231,7 +299,7 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
     }
     PacketOutcome::Ready(assemble(
         source,
-        sections,
+        fitted,
         (fixed_chars, soft_chars),
         budget.item_cap_percent,
         summary,
@@ -244,11 +312,16 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
 /// 고정 구역 뒤에 경쟁 구역을 `limit_chars`까지 채운다. 고정 구역이 `limit_chars`를 넘으면 경쟁 구역은 빈다.
 fn assemble(
     source: &PacketSource,
-    mut sections: Vec<Section>,
+    fitted: Fitted,
     (fixed_chars, limit_chars): (usize, usize),
     item_cap_percent: u64,
     summary: Option<&Entry>,
 ) -> Packet {
+    let Fitted {
+        mut sections,
+        turns,
+        trimmed,
+    } = fitted;
     let header_chars = format!("## {COMPETING_TITLE}{ITEM_SEPARATOR}")
         .chars()
         .count();
@@ -262,6 +335,7 @@ fn assemble(
             seq: entry.seq,
             session: None,
             text: entry.text.clone(),
+            form: ItemForm::Summary,
         });
     }
     chosen.extend(fill_competing_zone(
@@ -282,6 +356,7 @@ fn assemble(
     });
     let text = render(&sections);
     let tokens = estimate_tokens(&text);
+    let items = packet_items(source, (&turns, &trimmed), &chosen);
     Packet {
         text,
         tokens,
@@ -289,30 +364,122 @@ fn assemble(
         is_over_limit: fixed_chars > limit_chars,
         included: chosen.iter().map(|item| item.seq).collect(),
         is_summary_used: summary.is_some(),
+        items,
     }
+}
+
+// cost: time O(m + t), heap O(m + t), stack O(1)
+// vars: m = 재료 항목 수, t = 최근 턴 수
+// basis: estimate
+/// 재료 항목마다 이 패킷에 들어갔는지 정리한다. 고정 구역의 목표와 열린 항목은 항상 들어간다.
+fn packet_items(
+    source: &PacketSource,
+    (turns, trimmed): (&[RecentTurn], &[LedgerSeq]),
+    chosen: &[Chosen],
+) -> Vec<PacketItem> {
+    let entry = |zone, seq| PacketItem {
+        zone,
+        seq,
+        form: Some(ItemForm::Full),
+        reason: None,
+    };
+    let mut items: Vec<PacketItem> = source
+        .goal_and_last_input
+        .iter()
+        .map(|item| entry(PacketZone::Goal, item.seq))
+        .chain(
+            source
+                .open_items
+                .iter()
+                .map(|item| entry(PacketZone::Open, item.seq)),
+        )
+        .collect();
+    let newest: HashSet<LedgerSeq> = {
+        let mut seqs: Vec<LedgerSeq> = source.recent_turns.iter().map(|turn| turn.seq).collect();
+        seqs.sort_unstable();
+        seqs.split_off(seqs.len().saturating_sub(RECENT_TURNS))
+            .into_iter()
+            .collect()
+    };
+    for turn in &source.recent_turns {
+        let kept = turns.iter().any(|kept| kept.seq == turn.seq);
+        let (form, reason) = match (kept, newest.contains(&turn.seq)) {
+            (true, _) if trimmed.contains(&turn.seq) => (Some(ItemForm::Trimmed), None),
+            (true, _) => (Some(ItemForm::Full), None),
+            (false, true) => (None, Some("packet_limit")),
+            (false, false) => (None, Some("recent_limit")),
+        };
+        items.push(PacketItem {
+            zone: PacketZone::Recent,
+            seq: turn.seq,
+            form,
+            reason,
+        });
+    }
+    items.extend(
+        chosen
+            .iter()
+            .filter(|item| item.form == ItemForm::Summary)
+            .map(|item| PacketItem {
+                zone: PacketZone::Competing,
+                seq: item.seq,
+                form: Some(ItemForm::Summary),
+                reason: None,
+            }),
+    );
+    for item in &source.competitors {
+        let picked = chosen
+            .iter()
+            .find(|picked| picked.seq == item.seq && picked.form != ItemForm::Summary);
+        let reason = match picked {
+            Some(_) => None,
+            None if is_provider_doc(item, &source.provider_docs) => Some("provider_doc"),
+            None => Some("budget"),
+        };
+        items.push(PacketItem {
+            zone: PacketZone::Competing,
+            seq: item.seq,
+            form: picked.map(|picked| picked.form),
+            reason,
+        });
+    }
+    items
 }
 
 // cost: time O(t·L), heap O(L), stack O(1)
 // vars: t = 최근 턴 수(3 이하), L = 고정 구역 글자 수
 // basis: estimate
 /// 오래된 턴부터 에이전트 답을 앞부분만 남기고, 그래도 넘치면 최근 턴 수를 3, 2, 1로 줄인다.
-fn fit_fixed_zone(source: &PacketSource, soft_chars: usize) -> Vec<Section> {
+fn fit_fixed_zone(source: &PacketSource, soft_chars: usize) -> Fitted {
     let mut turns = source.recent_turns.clone();
     turns.sort_by_key(|turn| turn.seq);
     let excess = turns.len().saturating_sub(RECENT_TURNS);
     turns.drain(..excess);
     let fits =
         |turns: &[RecentTurn]| render(&fixed_sections(source, turns)).chars().count() <= soft_chars;
+    let mut trimmed = Vec::new();
     for index in 0..turns.len() {
         if fits(&turns) {
-            return fixed_sections(source, &turns);
+            return Fitted {
+                sections: fixed_sections(source, &turns),
+                turns,
+                trimmed,
+            };
         }
-        turns[index].answer = head(&turns[index].answer);
+        let shortened = head(&turns[index].answer);
+        if shortened != turns[index].answer {
+            trimmed.push(turns[index].seq);
+        }
+        turns[index].answer = shortened;
     }
     while turns.len() > 1 && !fits(&turns) {
         turns.remove(0);
     }
-    fixed_sections(source, &turns)
+    Fitted {
+        sections: fixed_sections(source, &turns),
+        turns,
+        trimmed,
+    }
 }
 
 // cost: time O(L), heap O(L), stack O(1)
@@ -390,12 +557,15 @@ fn fill_competing_zone(
         let prefix = label(item.seq, item.stamp.at_ms);
         let raw_chars = item.text.chars().count();
         let raw = (raw_chars <= item_cap).then(|| item.text.clone());
-        let forms = [raw, Some(digest(item)), item.path.clone()];
-        let Some(text) = forms
+        let forms = [
+            (ItemForm::Full, raw),
+            (ItemForm::Digest, Some(digest(item))),
+            (ItemForm::Path, item.path.clone()),
+        ];
+        let Some((form, text)) = forms
             .into_iter()
-            .flatten()
-            .map(|form| format!("{prefix} {form}"))
-            .find(|text| item_chars(text) + title_chars <= remaining)
+            .filter_map(|(form, text)| Some((form, format!("{prefix} {}", text?))))
+            .find(|(_, text)| item_chars(text) + title_chars <= remaining)
         else {
             continue;
         };
@@ -405,6 +575,7 @@ fn fill_competing_zone(
             seq: item.seq,
             session: Some(session),
             text,
+            form,
         });
     }
     chosen.sort_by_key(|item| item.seq);

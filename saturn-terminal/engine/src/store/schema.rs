@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 15;
+pub(crate) const SCHEMA_VERSION: u32 = 16;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -18,7 +18,7 @@ const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
 pub(crate) const MIGRATIONS: &[&str] = &[
-    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15,
+    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16,
 ];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
@@ -348,6 +348,43 @@ CREATE TABLE raw_unattributed (
     received_at INTEGER NOT NULL
 );
 CREATE INDEX raw_unattributed_chat ON raw_unattributed(chat_id);
+"#;
+
+/// `handoff_packets`는 provider에 보낸 인계 패킷의 시도마다 한 행이다. 본문은 해시와 크기만 두고, `handoff_packet_items`가
+/// 패킷에 들어갔거나 빠진 재료를 기록 번호나 제약 번호로 가리킨다. 이관은 표만 비어 있게 더한다.
+const V16: &str = r#"
+CREATE TABLE handoff_packets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    attempt INTEGER NOT NULL,
+    reduced_from INTEGER,
+    session_id INTEGER NOT NULL,
+    input_id INTEGER,
+    run_id INTEGER,
+    provider TEXT NOT NULL,
+    provider_session TEXT,
+    settings_revision INTEGER NOT NULL,
+    chat_revision INTEGER NOT NULL,
+    constraint_revision INTEGER NOT NULL,
+    policy TEXT NOT NULL,
+    body_hash TEXT NOT NULL,
+    body_bytes INTEGER NOT NULL,
+    estimated_tokens INTEGER NOT NULL,
+    state TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX handoff_packets_chat ON handoff_packets(chat_id);
+CREATE INDEX handoff_packets_input ON handoff_packets(input_id);
+CREATE TABLE handoff_packet_items (
+    packet_id INTEGER NOT NULL REFERENCES handoff_packets(id) ON DELETE CASCADE,
+    zone TEXT NOT NULL,
+    ref_id INTEGER NOT NULL,
+    selector TEXT NOT NULL,
+    form TEXT,
+    reason TEXT
+);
+CREATE INDEX handoff_packet_items_packet ON handoff_packet_items(packet_id);
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -714,6 +751,28 @@ mod tests {
         );
         assert!(store.held_tasks().await.unwrap().is_empty());
         assert!(store.interrupted_subagents().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v15_file_migrates_to_handoff_packets_keeping_chats() {
+        let (dir, store) = temp_store_at(15).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (15, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        let chat = saturn_protocol::ids::ChatId(1);
+        assert_eq!(
+            store.chat_workdir(chat).await.unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.packets_of_chat(chat).await.unwrap().is_empty());
     }
 
     #[tokio::test]
