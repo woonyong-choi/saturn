@@ -33,7 +33,8 @@ mod stream;
 
 use crate::secrets::with_read_scope;
 use config::{
-    default_args, read_user_config, sandbox_exclusions, with_ask_tools, with_key_sandbox,
+    default_args, read_user_config, relative_config_dir, sandbox_exclusions, with_ask_tools,
+    with_key_sandbox,
 };
 use convert::permission_response;
 pub use hook::{HookInputError, ReadScope, run_pre_tool_use};
@@ -411,6 +412,13 @@ enum SessionArg {
 impl ProviderClient for ClaudeClient {
     /// 실행 실패는 `ConnectionLost`, 재개 실패(`--resume` 뒤 `RESUME_SETTLE` 안에 종료)는 `NotSent`.
     async fn open_session(&mut self, spec: SessionSpec) -> Result<SessionHandle, ProviderError> {
+        if relative_config_dir(&self.launch.env).is_some() {
+            // 상대 경로는 어느 폴더를 가리키는지 정할 수 없어 사용자 설정 층의 제외 명령을 검사할 수 없다
+            return Err(ProviderError::NotSent {
+                reason: "CLAUDE_CONFIG_DIR is a relative path; set an absolute path to use claude with saturn"
+                    .to_owned(),
+            });
+        }
         if let Some(file) = sandbox_exclusions(&self.launch).first() {
             // 제외된 명령은 샌드박스 밖에서 돌아 router 키 저장소 읽기 금지가 닿지 않고, 실행별 설정으로 비울 수 없다
             return Err(ProviderError::NotSent {

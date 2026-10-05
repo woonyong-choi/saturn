@@ -30,7 +30,7 @@ pub(crate) fn default_args(user: UserProviderConfig, launch: &LaunchSpec) -> Vec
 }
 
 /// 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있어도 자동 압축 값이 있는 것으로 본다.
-/// `HOME`과 환경 변수는 부모 환경이 아니라 `launch.env`에서 읽고, 파일을 못 읽으면 값 없음. 초안 목록.
+/// 사용자 폴더와 환경 변수는 부모 환경이 아니라 `launch.env`에서 읽고, 파일을 못 읽으면 값 없음. 초안 목록.
 pub(crate) fn read_user_config(launch: &LaunchSpec) -> UserProviderConfig {
     let env = |name: &str| {
         launch
@@ -51,16 +51,59 @@ pub(crate) fn read_user_config(launch: &LaunchSpec) -> UserProviderConfig {
     found
 }
 
-/// 사용자 Claude 설정 층 파일: 사용자, 프로젝트, 프로젝트 로컬. `HOME`은 `launch.env`에서 읽는다.
+/// Claude가 사용자 설정을 읽는 폴더와 MCP 서버가 든 상태 파일. 설정 탐색, 확장 탐색, 제외 명령 검사가 모두 이 값을 쓴다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct UserFolder {
+    /// `settings.json`, `skills/`, `commands/`, `plugins/`가 든 폴더.
+    pub(super) dir: PathBuf,
+    /// 사용자 범위 MCP 서버가 든 파일. `CLAUDE_CONFIG_DIR`이 있으면 그 폴더 안, 없으면 홈 바로 아래다.
+    pub(super) state_file: PathBuf,
+}
+
+/// 환경 `CLAUDE_CONFIG_DIR`이 비어 있지 않으면 그 폴더, 아니면 `HOME` 아래 `.claude`. 환경은 부모 환경이 아니라 provider가
+/// 받는 값(`launch.env`)이다. 빈 값은 없는 것으로 본다. 심볼릭 링크는 Claude처럼 따라 읽고, 폴더가 없거나 읽을 수 없으면
+/// 그 층의 파일이 없는 것으로 본다. 상대 경로는 정하지 못하므로(채팅마다 provider 작업 폴더가 다르다) `None`이고,
+/// session을 열기 전에 `relative_config_dir`로 거절한다. 변수와 `HOME`이 모두 없어도 `None`.
+pub(super) fn user_folder(env: &[(std::ffi::OsString, std::ffi::OsString)]) -> Option<UserFolder> {
+    if let Some(custom) = env_value(env, "CLAUDE_CONFIG_DIR") {
+        let dir = PathBuf::from(custom);
+        if !dir.is_absolute() {
+            return None;
+        }
+        let state_file = dir.join(".claude.json");
+        return Some(UserFolder { dir, state_file });
+    }
+    let home = Path::new(env_value(env, "HOME")?);
+    Some(UserFolder {
+        dir: home.join(".claude"),
+        state_file: home.join(".claude.json"),
+    })
+}
+
+/// `CLAUDE_CONFIG_DIR`이 상대 경로이면 그 값. 이 경우 `user_folder`가 폴더를 정하지 못한다.
+pub(crate) fn relative_config_dir(
+    env: &[(std::ffi::OsString, std::ffi::OsString)],
+) -> Option<PathBuf> {
+    env_value(env, "CLAUDE_CONFIG_DIR")
+        .map(PathBuf::from)
+        .filter(|dir| !dir.is_absolute())
+}
+
+fn env_value<'a>(
+    env: &'a [(std::ffi::OsString, std::ffi::OsString)],
+    name: &str,
+) -> Option<&'a std::ffi::OsString> {
+    env.iter()
+        .find(|(key, _)| key == name)
+        .map(|(_, value)| value)
+        .filter(|value| !value.is_empty())
+}
+
+/// 사용자 Claude 설정 층 파일: 사용자, 프로젝트, 프로젝트 로컬.
 fn settings_files(launch: &LaunchSpec) -> Vec<PathBuf> {
     let mut files = Vec::new();
-    let home = launch
-        .env
-        .iter()
-        .find(|(key, _)| key == "HOME")
-        .map(|(_, value)| value);
-    if let Some(home) = home {
-        files.push(Path::new(home).join(".claude").join("settings.json"));
+    if let Some(user) = user_folder(&launch.env) {
+        files.push(user.dir.join("settings.json"));
     }
     let project = launch.workdir.join(".claude");
     files.push(project.join("settings.json"));

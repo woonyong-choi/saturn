@@ -182,7 +182,7 @@ session을 열 때 engine이 그 provider의 어댑터에 설치된 확장 중 �
 
 사용자가 provider에 직접 설치한 항목은 어댑터가 사용자 폴더를 읽기만 해서 올린다. Saturn은 항목을 지우거나 바꾸지 않고 추적만 한다([결정 기록](../decisions/2026-09-29-minimal-provider-control.md)). 운영 `~/.claude`, `~/.codex`는 읽기만 하고, 설정 파일의 내용과 토큰은 로그, 화면, 알림에 내지 않는다.
 
-- 읽는 곳(초안). Claude는 `~/.claude/skills/<이름>/SKILL.md`, `~/.claude/commands/<이름>.md`, `~/.claude.json`의 `mcpServers` 키, `~/.claude/plugins/installed_plugins.json`의 플러그인 이름이다. Codex는 `CODEX_HOME`(없으면 `~/.codex`)의 `skills/<이름>/SKILL.md`(`.`으로 시작하는 내장 폴더 제외), `prompts/<이름>.md`, `config.toml`의 `[mcp_servers.<이름>]`이다. 홈은 채팅에 붙은 TUI가 넘긴 환경에서 찾는다. 한 provider에서 읽는 항목은 500개까지다.
+- 읽는 곳(초안). Claude는 사용자 폴더의 `skills/<이름>/SKILL.md`, `commands/<이름>.md`, `plugins/installed_plugins.json`의 플러그인 이름과 상태 파일 `.claude.json`의 `mcpServers` 키다. 사용자 폴더는 환경 `CLAUDE_CONFIG_DIR`(비어 있지 않은 절대 경로)이 있으면 그 폴더와 그 안의 `.claude.json`, 없으면 `~/.claude`와 `~/.claude.json`이다. Codex는 `CODEX_HOME`(없으면 `~/.codex`)의 `skills/<이름>/SKILL.md`(`.`으로 시작하는 내장 폴더 제외), `prompts/<이름>.md`, `config.toml`의 `[mcp_servers.<이름>]`이다. 홈은 채팅에 붙은 TUI가 넘긴 환경에서 찾는다. 한 provider에서 읽는 항목은 500개까지다.
 - 연결을 시작할 때 새로 찾은 항목을 기록 저장소 `direct_installs`에 `asked`로 남기고, 그 채팅의 대화 기록에 `{provider}에 직접 설치된 항목 N개 추적 · ...`을 한 줄로 알린다. 다른 provider가 같은 종류를 주입할 수 있는 항목이 있으면 `/extensions move <provider> <이름>`으로 옮길 수 있다고 한 줄 더 알린다. 한 번 물은 항목은 다시 묻지 않고, 답하지 않으면 거절로 본다. 플러그인은 부분이 아니라 추적만 하고 옮기지 않는다.
 - `/extensions` 목록은 설치한 확장 아래에 `provider에 직접 설치됨` 항목을 provider, 종류, 이름, `옮길 수 있음`, `옮김`, `추적만`과 함께 보인다. 목록은 요청한 접속이 붙은 채팅의 환경으로 읽는다.
 - 옮기면 engine이 항목을 `~/.saturn/extensions/<이름>/`에 확장 하나로 복사한다(스킬은 폴더 그대로, 명령은 `commands/<이름>.md`, MCP 서버는 정의를 `.mcp.json`에 쓰고 소유자만 읽게 한다). 그다음 [설치](#설치)와 같은 부분 나누기와 판정과 알림을 하고 `moved`로 기록한다. 이름이 이미 설치돼 있거나 항목이 사라졌으면 옮기지 않고 이유를 남긴다. provider의 원본은 그대로 둔다.

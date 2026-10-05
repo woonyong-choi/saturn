@@ -1365,6 +1365,24 @@ async fn sandbox_exclusions_in_a_settings_layer_stop_the_session_only_when_not_e
             true,
         ),
         (
+            "custom config folder excludes a command",
+            "custom",
+            r#"{"sandbox":{"excludedCommands":["sh"]}}"#,
+            true,
+        ),
+        (
+            "default folder is not read when a custom folder is set",
+            "custom-ignores-home",
+            r#"{"sandbox":{"excludedCommands":["sh"]}}"#,
+            false,
+        ),
+        (
+            "relative config folder cannot be checked",
+            "relative",
+            "{}",
+            true,
+        ),
+        (
             "empty exclusions",
             "home",
             r#"{"sandbox":{"excludedCommands":[],"enabled":true}}"#,
@@ -1383,13 +1401,28 @@ async fn sandbox_exclusions_in_a_settings_layer_stop_the_session_only_when_not_e
         let home = dir.path().join("home");
         std::fs::create_dir_all(home.join(".claude")).unwrap();
         std::fs::create_dir_all(dir.path().join(".claude")).unwrap();
+        let custom = dir.path().join("custom-config");
+        std::fs::create_dir_all(&custom).unwrap();
+        let mut env = vec![("HOME".into(), home.clone().into_os_string())];
         let file = match layer {
+            "custom" => {
+                env.push(("CLAUDE_CONFIG_DIR".into(), custom.clone().into_os_string()));
+                custom.join("settings.json")
+            }
+            "custom-ignores-home" => {
+                env.push(("CLAUDE_CONFIG_DIR".into(), custom.clone().into_os_string()));
+                home.join(".claude").join("settings.json")
+            }
+            "relative" => {
+                env.push(("CLAUDE_CONFIG_DIR".into(), "custom-config".into()));
+                custom.join("settings.json")
+            }
             "home" => home.join(".claude").join("settings.json"),
             "project" => dir.path().join(".claude").join("settings.json"),
             _ => dir.path().join(".claude").join("settings.local.json"),
         };
         std::fs::write(&file, content).unwrap();
-        let launch = launch(dir.path(), vec![("HOME".into(), home.into_os_string())]);
+        let launch = launch(dir.path(), env);
         let mut client = ClaudeClient::new(launch, Supervisor::new());
 
         let opened = client.open_session(spec(dir.path(), None)).await;
@@ -1398,9 +1431,13 @@ async fn sandbox_exclusions_in_a_settings_layer_stop_the_session_only_when_not_e
             let ProviderError::NotSent { reason } = opened.unwrap_err() else {
                 panic!("{name}: expected NotSent");
             };
-            assert!(reason.contains("sandbox.excludedCommands"), "{name}");
-            assert!(reason.contains(&file.display().to_string()), "{name}");
-            assert!(!reason.contains("\"sh\""), "{name}");
+            if layer == "relative" {
+                assert!(reason.contains("CLAUDE_CONFIG_DIR"), "{name}");
+            } else {
+                assert!(reason.contains("sandbox.excludedCommands"), "{name}");
+                assert!(reason.contains(&file.display().to_string()), "{name}");
+                assert!(!reason.contains("\"sh\""), "{name}");
+            }
             assert!(client.sessions.is_empty(), "{name}");
         } else {
             assert!(opened.is_ok(), "{name}");
