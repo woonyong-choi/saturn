@@ -24,3 +24,4 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [용어](glossary.md) | 이 프로젝트에서만 쓰는 말 |
 | [결정 기록](decisions/README.md) | 설계를 정한 이유와 버린 선택지 |
 | [실험](experiments/README.md) | 설계 값을 확인하는 실험과 결론 |
+| [같은 세션 축약 비교](experiments/same-session-compaction/design.md) | Claude 세션 내부 축약과 새 패킷의 대응 실험 설계 |
