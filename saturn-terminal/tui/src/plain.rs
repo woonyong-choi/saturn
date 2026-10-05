@@ -555,7 +555,7 @@ mod tests {
                 notice: ChatNotice::RequestSummary {
                     provider_tokens: vec![(Provider::from_static("codex"), 4_120)],
                     router_calls: 0,
-                    router_tokens: 0,
+                    router_tokens: Some(0),
                     elapsed_ms: 45_000,
                 },
             },

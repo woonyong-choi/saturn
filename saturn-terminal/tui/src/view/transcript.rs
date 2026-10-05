@@ -790,7 +790,7 @@ fn summary_line(
     lang: Lang,
     provider_tokens: &[(Provider, u64)],
     router_calls: u32,
-    router_tokens: u64,
+    router_tokens: Option<u64>,
     elapsed: Duration,
 ) -> String {
     let mut parts = vec![lang.tr(i18n::REQUEST_SUMMARY).to_string()];
@@ -808,7 +808,7 @@ fn summary_line(
     parts.push(format!(
         "{} {calls} {}",
         lang.tr(i18n::ROUTER_CALLS),
-        tokens_text(lang, Some(router_tokens))
+        tokens_text(lang, router_tokens)
     ));
     parts.push(i18n::format_elapsed(lang, elapsed));
     parts.join(" · ")
@@ -1149,7 +1149,7 @@ mod tests {
             notice: ChatNotice::RequestSummary {
                 provider_tokens: vec![(Provider::from_static("codex"), 4_120)],
                 router_calls: 3,
-                router_tokens: 9_870,
+                router_tokens: Some(9_870),
                 elapsed_ms: 151_000,
             },
         };
@@ -1161,6 +1161,19 @@ mod tests {
         assert_eq!(
             summary.lines(Lang::Ko, true, false),
             vec!["이번 요청 · codex Token 4,120 · 라우터 3회 Token 9,870 · 2분 31초"]
+        );
+        let unreported = TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::RequestSummary {
+                provider_tokens: Vec::new(),
+                router_calls: 1,
+                router_tokens: None,
+                elapsed_ms: 3_000,
+            },
+        };
+        assert_eq!(
+            unreported.lines(Lang::Ko, true, false),
+            vec!["이번 요청 · 라우터 1회 Token - · 3초"]
         );
     }
 

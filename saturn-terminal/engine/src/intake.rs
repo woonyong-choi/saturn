@@ -176,6 +176,7 @@ impl Engine {
         task: Option<TaskId>,
     ) -> Result<InputId, EngineError> {
         let workdir = self.attached_workdir(client, chat)?;
+        self.open_request(chat);
         let pinned_model = self.store.chat_model(chat).await?;
         let settings = self.fix_settings(client, chat, &workdir).await?;
         if let Ok(mode) = self.chat_mode(chat, settings).await {

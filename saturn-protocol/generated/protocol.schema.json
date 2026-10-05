@@ -776,7 +776,7 @@
         },
         {
           "additionalProperties": false,
-          "description": "모든 작업이 끝난 순간의 합계.",
+          "description": "모든 작업이 끝난 순간의 합계. 보고하지 않은 값은 0으로 채우지 않는다. `provider_tokens`에는 토큰을 보고한 provider만\n들어가고, `router_tokens`는 router가 토큰을 하나도 보고하지 않았으면 비어 있다.",
           "properties": {
             "RequestSummary": {
               "properties": {
@@ -811,13 +811,15 @@
                 "router_tokens": {
                   "format": "uint64",
                   "minimum": 0,
-                  "type": "integer"
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
                 }
               },
               "required": [
                 "provider_tokens",
                 "router_calls",
-                "router_tokens",
                 "elapsed_ms"
               ],
               "type": "object"

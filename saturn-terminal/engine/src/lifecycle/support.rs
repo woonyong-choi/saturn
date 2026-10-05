@@ -203,6 +203,7 @@ impl Flow {
             .on_provider_event(provider, event)
             .await
             .expect("event should be handled");
+        self.engine.finish_quiet_requests().await;
         self.settle().await;
     }
 
@@ -472,6 +473,7 @@ impl Flow {
                 () = tokio::time::sleep(WAIT) => panic!("router and provider results should arrive in time"),
             }
         }
+        self.engine.finish_quiet_requests().await;
     }
 
     /// provider 응답을 기다리는 전달이 있다.

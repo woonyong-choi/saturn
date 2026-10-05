@@ -136,6 +136,17 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 파일 경로나 명령 같은 세부는 줄 안에 넣지 않고 아래에 한 단계 들여 `└ src/main.rs`처럼 보인다. 파일 작업은 경로마다, 명령은 줄마다 한 줄이다. 세부가 줄 폭보다 길거나 여러 줄이면 첫 줄만 보이고 끝을 `…`로 줄인다. 이 줄을 누르거나(마우스 클릭) 입력창이 비어 있을 때 `Enter`를 누르면 모든 줄이 펼쳐지고, 다시 누르면 접힌다. 펼친 세부는 폭에 맞게 접고 8줄을 넘으면 마지막 줄을 `…`로 닫는다. 이 `Enter`는 선택지 키 규칙과 같아서, 접고 펼칠 세부가 있고 입력창이 비어 있는 동안만 키를 가져가고 초안을 쓰기 시작하면 입력창이 받는다. 보이는 줄이 실행 줄일 때만 세부 줄이 있다.
 
+### 요청 합계
+
+요청 합계는 채팅의 모든 일이 끝난 순간 engine이 한 번 보내는 알림(`RequestSummary`)이다. 대화 기록에 `이번 요청 · codex Token 4,120 · 라우터 3회 Token 9,870 · 2분 31초` 한 줄로 남는다.
+
+- 요청은 채팅이 쉬는 동안 접수한 첫 입력에서 시작한다. 판단 중이거나 기다리거나 전달 중인 입력, 실행 중인 작업, 멈추는 중이거나 맥락 정리 중인 일이 모두 없어지면 끝난다. 끝나기 전에 접수한 입력은 같은 요청에 들어가고, 끝난 뒤 접수한 입력은 새 요청이다. 보류와 결과 모름은 사용자 확인을 기다리는 일이라 끝난 것으로 본다.
+- 합계는 화면이 세던 값이 아니라 기록 저장소의 사용량 보고에서 만든다. 요청이 시작한 뒤 그 채팅에서 시작한 실행의 보고와, 그 뒤 그 채팅의 router 호출만 센다. 그래서 다른 채팅의 사용량이 섞이지 않고, 중간에 붙은 TUI도 같은 값을 받는다. 입력이 연 실행뿐 아니라 provider가 이어 시작한 실행도 이 기간 안이면 센다.
+- 턴 값은 `/usage`와 같은 계산이다. 누적 보고는 직전 누적을 뺀 값만 더하고 subagent는 계열이 달라 한 번씩만 센다. 토큰은 실행 줄의 `Token`과 같게 새 입력, 캐시 쓰기, 출력, 추론의 합이고 캐시 읽기는 뺀다.
+- 보고하지 않은 값은 0으로 채우지 않는다. 토큰을 보고한 provider만 줄에 나오고, router가 토큰을 하나도 보고하지 않았으면(판단 실패 포함) `Token -`이다. 토큰도 호출도 없는 요청은 알리지 않는다.
+- 경과는 요청이 시작한 뒤 흐른 시간이다. 허가를 기다린 시간도 포함한다.
+- 하위 채팅(에이전트 작업)은 알리지 않는다. 단순 방식이 끝나는 때는 이 알림과 상관없다([단순 방식](#단순-방식)).
+
 ### 상태판 줄 순서
 
 상태판은 한 줄만 둔다. 줄 후보는 실행 줄, 판단 줄, 학습 줄, 대기 줄, 보류 줄, 알림 줄 순서로 쌓고 같은 종류 안에서는 접수 순서를 따르며, 그 맨 앞 하나만 그린다. 보류 닫기 확인은 사용자의 답을 기다리므로 늘 맨 앞이다. 줄이 생기거나 사라져도 남은 줄끼리의 순서는 유지해서 사용자가 보던 줄이 갑자기 다른 줄로 바뀌는 일을 줄인다. 보류 줄을 뺀 나머지 줄은 그 항목이 끝나면 지운다.
@@ -576,6 +587,8 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | 요청 거절 응답은 연결을 닫지 않고 요청 번호와 함께 클라이언트에 전달된다. | `saturn-terminal/tui/src/client/tests.rs`의 `next_returns_a_rejection_with_its_request_id_and_keeps_the_connection` |
 | 전체 화면은 거절 원인을 대화 기록에 남기고, 접수하지 못한 입력만 비어 있는 입력창에 되돌리며 다른 요청을 건드리지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `a_rejected_input_shows_the_cause_and_comes_back_to_the_composer`, `a_rejection_changes_only_the_request_it_answers`, `a_rejection_of_another_request_is_shown_without_touching_the_composer` |
 | 단순 방식은 접수 거절만 온 채 입력이 끝나면 완료 알림 없이 거절 원인의 종료 코드로 끝나고, 접수된 입력이 남아 있으면 계속 기다린다. | `saturn-terminal/tui/src/tests.rs`의 `plain_ends_with_the_rejection_when_the_only_input_is_refused`, `plain_refused_attach_ends_instead_of_waiting_for_a_chat`, `plain_keeps_waiting_for_an_accepted_input_when_another_is_refused` |
+| 요청이 끝나면 합계를 한 번 알리고, 다음 요청과 다른 채팅의 사용량을 섞지 않으며, 늦게 붙은 TUI도 기록과 같은 값을 받는다. 보고하지 않은 값은 비운다. | `saturn-terminal/engine/src/lifecycle/request_summary.rs`의 `a_request_ends_with_one_summary_that_a_late_tui_sees_the_same_as_the_stored_totals`, `the_next_request_and_another_chat_do_not_add_into_a_summary`, `nothing_reported_is_left_out_instead_of_counted_as_zero` |
+| 요청 합계는 요청 기간의 실행과 router 호출만 세고 누적 보고는 직전 누적을 뺀 값만 더하며 다른 채팅을 세지 않고 보고하지 않은 칸을 채우지 않는다. | `saturn-terminal/engine/src/usage.rs`의 `request_totals_take_only_their_window_and_chat_and_never_fill_missing_values`, `request_totals_count_a_subagent_series_once_next_to_its_parent` |
 | 단순 방식은 실제 engine에 붙어도 입력과 그 작업이 끝나면 합계 알림 없이 끝나고, 작업 실패와 결과 모름은 종료 코드 1이며, 대기 입력, 끼워 넣은 입력, 다른 접속의 작업은 끝나는 때를 어긋나게 하지 않는다. | `saturn-terminal/engine/src/lifecycle/plain_exit.rs`의 `plain_ends_with_success_when_the_only_task_is_done`, `plain_ends_with_a_failure_when_the_provider_refuses_the_turn`, `plain_ends_with_a_failure_when_the_turn_result_is_unknown`, `plain_waits_for_a_queued_input_and_ends_after_its_task`, `plain_ends_after_the_task_that_took_a_steered_input`, `saturn-terminal/tui/src/plain.rs`의 `another_connections_task_neither_holds_the_end_nor_fails_it`, `an_input_applied_before_its_task_starts_is_not_finished_yet`, `a_task_sharing_the_label_finishing_first_does_not_end_or_fail_this_connections_wait`, `a_steer_waits_for_the_task_it_joined_not_for_one_sharing_its_label`, `a_steer_onto_a_finished_task_does_not_wait_for_another_task_sharing_its_label`, `saturn-terminal/engine/src/lifecycle/intake.rs`의 `input_notice_carries_the_task_a_steered_input_joined` |
 
 ## 미해결 질문

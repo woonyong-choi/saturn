@@ -1,6 +1,8 @@
 //! `/usage` 조회: 범위 안의 사용량 보고 원값, router 호출 합계, session의 실행 목록.
 //! 설계: docs/design/records.md
 
+use std::collections::HashSet;
+
 use saturn_protocol::ids::{ChatId, RunId, SessionId};
 use saturn_protocol::rpc::{ChatListItem, UsageRange};
 use sqlx::Row;
@@ -119,6 +121,51 @@ impl Store {
                 })
             })
             .collect()
+    }
+
+    /// 채팅에서 `since`(unix 밀리초) 이후에 시작한 실행. 한 요청에 속한 실행을 고른다.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Database`.
+    pub(crate) async fn runs_started_since(
+        &self,
+        chat: ChatId,
+        since: i64,
+    ) -> Result<HashSet<RunId>, StoreError> {
+        let ids: Vec<i64> =
+            sqlx::query_scalar("SELECT id FROM runs WHERE chat_id = ? AND started_at >= ?")
+                .bind(to_sql_int(chat.0))
+                .bind(since)
+                .fetch_all(&self.pool)
+                .await?;
+        Ok(ids.into_iter().map(|id| RunId(from_sql_int(id))).collect())
+    }
+
+    /// 채팅에서 `since`(unix 밀리초) 이후에 시작한 router 호출 수와 보고한 토큰 합. 토큰을 하나도 보고하지 않았으면 `None`.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Database`.
+    pub(crate) async fn router_usage_since(
+        &self,
+        chat: ChatId,
+        since: i64,
+    ) -> Result<(u32, Option<u64>), StoreError> {
+        let row = sqlx::query(
+            "SELECT COUNT(*) AS calls, SUM(input_tokens) AS input, SUM(output_tokens) AS output \
+             FROM judgments WHERE chat_id = ? AND started_at >= ?",
+        )
+        .bind(to_sql_int(chat.0))
+        .bind(since)
+        .fetch_one(&self.pool)
+        .await?;
+        let calls: i64 = row.try_get("calls")?;
+        let input = row.try_get::<Option<i64>, _>("input")?.map(from_sql_int);
+        let output = row.try_get::<Option<i64>, _>("output")?.map(from_sql_int);
+        let tokens = match (input, output) {
+            (None, None) => None,
+            (input, output) => Some(input.unwrap_or(0) + output.unwrap_or(0)),
+        };
+        Ok((u32::try_from(calls).unwrap_or(u32::MAX), tokens))
     }
 
     /// 누적 보고가 몇 턴에 걸쳤는지 세는 데 쓴다. 실행 순서.

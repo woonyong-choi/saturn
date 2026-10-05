@@ -40,6 +40,7 @@ mod provider_events;
 mod provider_stall;
 mod prune;
 mod read_only_steer;
+mod request_summary;
 mod requests;
 mod restore_inputs;
 mod send_now;
