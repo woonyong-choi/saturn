@@ -528,6 +528,11 @@ impl Engine {
     ) -> Result<Verdict, EngineError> {
         let record = self.queued(job.input)?;
         let settings = self.settings.at(&self.store, record.settings).await?;
+        let active = self.routers.active();
+        tracing::debug!(
+            policy = %crate::policy::policy_digest(&settings, active.router_id(), active.model()),
+            "judgment policy"
+        );
         if let Some(alert) = self.routers.observe(&exchange) {
             self.notify_alert(record.chat, alert).await;
         }

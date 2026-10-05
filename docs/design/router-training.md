@@ -7,7 +7,9 @@
 
 ## 요약
 
-router 학습은 판단 기록과 사용자 반응으로 router를 사용자에게 맞추는 기능이다. 판단마다 기준값을 조금씩 옮기는 빠른 조정과 `/train` 때 중심값을 다시 계산하는 느린 조정이 있다. `/train`은 판단 기록을 채점하고 Saturn 모델을 학습한다. 새 모델은 승격 게이트를 통과할 때만 현재 router 버전이 된다.
+router 학습은 판단 기록과 사용자 반응으로 router를 사용자에게 맞추는 기능의 설계다. 판단마다 기준값을 조금씩 옮기는 빠른 조정과 `/train` 때 중심값을 다시 계산하는 느린 조정의 계산이 있다. `/train`은 판단 기록을 채점하고 Saturn 모델을 학습한다. 새 모델은 승격 게이트를 통과할 때만 현재 router 버전이 된다.
+
+지원 상태는 다음과 같다. 결과 신호와 피드백 답은 판단 기록에 남지만 기준값과 모델을 바꾸는 경로는 실행에 연결하지 않았다. 빠른 조정과 느린 조정은 `core`의 계산 규칙과 시험으로만 있고 engine은 호출하지 않는다([#337](https://github.com/woonyong-choi/saturn/issues/337) 폐기). 실행 중 정책은 [정책 고정](router.md#정책-고정)대로 입력 접수 때의 설정 번호와 engine 시작 때의 router로 고정된다. `train`, `router use`, `router versions`는 미지원 오류를 돌려주고 판단 방식 `collect`는 시작 때 설정 오류가 된다. 새 정책은 검증을 마친 뒤 사용자가 설정이나 router 버전으로 명시해 적용하며 이미 접수한 입력에 소급하지 않는다.
 
 ## 동기
 
@@ -15,12 +17,12 @@ router가 같은 기준값으로 모든 사용자를 대하면 사람마다 다�
 
 ## 예시
 
-### 틀린 판단이 기준값을 올릴 때
+### 틀린 판단 뒤에도 기준값이 그대로일 때
 
 1. router가 새 입력을 하던 작업에 이어 가는 입력으로 판단하고 engine이 끼워 넣는다.
 2. 사용자가 곧바로 그 처리를 뒤집는다.
-3. 다음 입력 3개가 지나거나 10분이 지나면 `routers`가 틀림 신호를 확정한다.
-4. 빠른 조정이 그 질문의 기준값을 중심값 ±0.05 안에서 `0.002 × (1 − α)`만큼 올린다. α는 목표 틀림 비율이다.
+3. 다음 입력 3개가 지나거나 10분이 지나면 `routers`가 틀림 신호를 확정해 판단 기록에 쓴다.
+4. 기준값은 그대로다. 신호는 나중에 채점과 학습 평가의 자료로만 쓰이고, 기준값을 바꾸려면 사용자가 설정을 고친다.
 
 ### 채점할 판단이 모자랄 때
 
@@ -84,6 +86,8 @@ router 버전은 모델, 보정값, 질문별 목표 틀림 비율을 묶은 것
 TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `1`로 맞음, `2`로 틀림, `0`으로 닫기를 고른다. 8초 안에 답이 없으면 질문을 지운다. 틀림 답의 입력이 아직 보내지지 않았으면 TUI가 바로잡기를 제안한다. TUI가 붙어 있지 않은 동안에는 피드백 질문을 생략한다.
 
 ### 빠른 조정
+
+연결하지 않은 설계다. 아래 계산은 `core`에 구현과 시험이 있지만 engine 실행 경로는 호출하지 않으며, 켜려면 모의 판단이 아니라 실제 판단 기록에서 검증하고 명시적으로 적용하는 새 결정이 필요하다.
 
 1. `routers`가 판단마다 확정된 신호 하나로 기준값을 옮긴다.
 2. 옮기는 범위는 질문별 중심값 ±0.05 안이다.
@@ -160,7 +164,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 
 - `/train`은 지난 실행 뒤 채점 안 된 판단이 200건 이상일 때만 실행한다([#16](https://github.com/woonyong-choi/saturn/issues/16)). 적은 라벨로 한 조정은 잡음 수준이기 때문이다.
 - 7단계의 모델 학습은 누적 학습용 라벨이 1,000건 이상이고 평가용 라벨이 200건 이상일 때만 한다. 모자라면 채점과 기준값 조정까지만 하고 학습은 건너뛴다. 기준값 하나를 맞추는 것보다 모델 가중치를 학습하는 데 라벨이 더 많이 필요하기 때문이다([#16](https://github.com/woonyong-choi/saturn/issues/16)).
-- 구현 상태: 결과 신호, 빠른 조정, 느린 조정의 계산(`recenter`, `recenter_thresholds`)은 구현돼 있다. 채점 건수 미리보기, 채점 모델 호출, 학습기 실행, 승격 게이트, 기준값 되돌리기는 구현 전이다([#91](https://github.com/woonyong-choi/saturn/issues/91)).
+- 구현 상태: 결과 신호 기록은 실행 경로에 있다. 빠른 조정, 느린 조정의 계산(`recenter`, `recenter_thresholds`)은 구현돼 있지만 실행 경로에 연결하지 않았고 6단계의 결과도 설정에 자동으로 쓰지 않는다. 채점 건수 미리보기, 채점 모델 호출, 학습기 실행, 승격 게이트, 기준값 되돌리기는 구현 전이다([#91](https://github.com/woonyong-choi/saturn/issues/91)).
 - Saturn 모델 학습은 Python과 MLX로 한다. Apple Silicon에서 로컬로 학습하기 위해서다.
 - 판단 기록은 로컬에 쌓고, 사용자가 동의한 레코드만 서버로 올린다([결정 기록](../decisions/2026-09-29-local-first-judgment-collection.md)).
 
@@ -202,6 +206,7 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 | 느린 조정은 같은 판단 기록에서 모의 판단의 위험 곡선 계산과 같은 중심값을 낸다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_matches_simulation_s1q_on_same_records`, `recenter_matches_simulation_t1_on_same_records` |
 | 느린 조정은 되돌릴 수 없는 행동의 최저값 아래로 중심값을 내리지 않는다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_keeps_center_within_irreversible_floor` |
 | 전체 묻는 빈도는 판단 20번에 1번을 넘지 않는다. | 많은 판단을 흘려 물은 비율이 상한 안인지 확인한다. |
+| 피드백, 취소, 실패 100건을 넣어도 활성 정책 지문, 기준값, 모델 버전이 바뀌지 않고 정책 교체 중 접수한 입력의 번호가 섞이지 않는다. | `saturn-terminal/engine/src/lifecycle/policy.rs`의 `feedback_cancel_and_failures_leave_the_active_policy_unchanged`, `inputs_keep_the_policy_they_were_accepted_under_across_swap_rollback_and_restart` |
 | 판단 기록마다 router 버전, 기준값, q를 남기고 결과 신호와 물은 답은 생긴 뒤 같은 기록에 채운다. | `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`, `saturn-terminal/engine/src/lifecycle/outcomes.rs`의 `answer_feedback_records_answer_in_judgment`, `answer_feedback_request_is_answered_through_socket` |
 | `/train`은 판단 기록으로 `Observation` 목록을 만들어 `recenter`에 넘긴다. | `saturn-terminal/engine/src/training/mod.rs`의 `recenter_thresholds_with_enough_recorded_results_moves_center`, `recenter_thresholds_below_min_results_keeps_center`, `recenter_thresholds_ignores_judgments_still_being_observed` |
 | `/train`은 채점 안 된 판단이 200건 미만이면 실행하지 않는다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 199건에서 실행을 거절하고 200건에서 시작하는지 확인한다. |
