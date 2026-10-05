@@ -576,6 +576,7 @@ async fn permission_request_and_stream_loss() {
                 target: "rm -rf build".to_owned(),
                 paths: Vec::new(),
                 outside_sandbox: false,
+                reads_only: false,
             }),
         }]
     );
@@ -1201,6 +1202,7 @@ fn permission_call_reads_rule_tools_and_leaves_the_rest_to_the_user() {
             target: "cargo test".to_owned(),
             paths: Vec::new(),
             outside_sandbox: false,
+            reads_only: false,
         })
     );
     assert_eq!(
@@ -1222,6 +1224,7 @@ fn permission_call_reads_rule_tools_and_leaves_the_rest_to_the_user() {
             target: "explorer".to_owned(),
             paths: Vec::new(),
             outside_sandbox: false,
+            reads_only: false,
         }
     );
     assert_eq!(
@@ -1239,6 +1242,7 @@ fn permission_call_reads_file_reading_tools_as_read_calls() {
         target: String::new(),
         paths: vec![path.to_owned()],
         outside_sandbox: false,
+        reads_only: false,
     };
 
     assert_eq!(

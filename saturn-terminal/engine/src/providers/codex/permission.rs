@@ -11,8 +11,9 @@ use crate::providers::tool_detail::unwrap_shell;
 /// 모든 요청을 Saturn에 올리려고 `thread/start`에 주는 승인 정책. 설정 키로는 쓸 수 없다.
 pub(super) const APPROVAL_POLICY: &str = "untrusted";
 
-/// 파일 편집도 승인 요청으로 받으려고 주는 샌드박스.
-pub(super) const SANDBOX: &str = "read-only";
+/// 허가한 명령이 작업 폴더(와 더한 폴더)에 쓸 수 있게 주는 샌드박스. 읽기 전용이면 허가한 `cargo build`도 `Cargo.lock`을 쓰지 못한다.
+/// 파일 편집은 승인 정책 `untrusted` 때문에 이 샌드박스에서도 승인 요청으로 오고, 실행 전에 Saturn 규칙이 판정한다.
+pub(super) const SANDBOX: &str = "workspace-write";
 
 const ELICITATION_METHOD: &str = "mcpServer/elicitation/request";
 
@@ -36,6 +37,9 @@ pub(super) fn check_applied(result: &Value) -> Result<(), String> {
         return Err(format!(
             "codex applied sandbox {applied:?}, expected {SANDBOX}"
         ));
+    }
+    if sandbox["networkAccess"].as_bool() == Some(true) {
+        return Err("codex applied a sandbox with network access".to_owned());
     }
     let reviewer = result["approvalsReviewer"].as_str();
     if reviewer.is_some_and(|reviewer| reviewer != "user") {
@@ -168,16 +172,18 @@ pub(super) fn call_of(
     file_changes: &HashMap<String, Vec<String>>,
 ) -> Option<PermissionCall> {
     match method {
-        "item/commandExecution/requestApproval" => {
-            shell(params["command"].as_str()?, runs_outside_sandbox(params))
-        }
+        "item/commandExecution/requestApproval" => shell(
+            params["command"].as_str()?,
+            runs_outside_sandbox(params),
+            only_reads(params),
+        ),
         "execCommandApproval" => {
             let words: Vec<&str> = params["command"]
                 .as_array()?
                 .iter()
                 .filter_map(Value::as_str)
                 .collect();
-            shell(&words.join(" "), runs_outside_sandbox(params))
+            shell(&words.join(" "), runs_outside_sandbox(params), None)
         }
         "item/fileChange/requestApproval" => {
             let mut paths = file_changes
@@ -199,17 +205,24 @@ pub(super) fn call_of(
                 target: format!("mcp__{server}__{tool}"),
                 paths: Vec::new(),
                 outside_sandbox: false,
+                reads_only: false,
             })
         }
         _ => None,
     }
 }
 
-fn shell(command: &str, outside_sandbox: bool) -> Option<PermissionCall> {
+/// `reads`는 provider가 읽기만 한다고 분류한 명령이 읽는 경로이고 분류가 없으면 `None`.
+fn shell(
+    command: &str,
+    outside_sandbox: bool,
+    reads: Option<Vec<String>>,
+) -> Option<PermissionCall> {
     Some(PermissionCall {
         tool: PermissionTool::Shell,
         target: unwrap_shell(command),
-        paths: Vec::new(),
+        reads_only: reads.is_some(),
+        paths: reads.unwrap_or_default(),
         outside_sandbox,
     })
 }
@@ -228,12 +241,34 @@ pub(super) fn runs_outside_sandbox(params: &Value) -> bool {
         || !params["networkApprovalContext"].is_null()
 }
 
+/// Codex가 명령을 분석해 파일 읽기, 목록, 검색(`commandActions`의 `read`, `listFiles`, `search`)만 하는 것으로 분류했으면
+/// 읽는 경로(동작의 `path`)를 돌려준다. 한 동작이라도 그 밖의 종류(`unknown` 포함)이거나 분류가 없으면 `None`이다.
+fn only_reads(params: &Value) -> Option<Vec<String>> {
+    let actions = params["commandActions"].as_array()?;
+    let is_read = |action: &Value| {
+        matches!(
+            action["type"].as_str(),
+            Some("read" | "listFiles" | "search")
+        )
+    };
+    if actions.is_empty() || !actions.iter().all(is_read) {
+        return None;
+    }
+    Some(
+        actions
+            .iter()
+            .filter_map(|action| action["path"].as_str().map(str::to_owned))
+            .collect(),
+    )
+}
+
 fn edit(paths: Vec<String>) -> PermissionCall {
     PermissionCall {
         tool: PermissionTool::Edit,
         target: String::new(),
         paths,
         outside_sandbox: false,
+        reads_only: false,
     }
 }
 
@@ -256,20 +291,35 @@ mod tests {
     use super::*;
 
     #[test]
-    fn applied_policy_must_be_untrusted_read_only() {
+    fn applied_policy_must_be_untrusted_workspace_write_without_network() {
         let applied = |policy: Value, sandbox: Value| {
             check_applied(&json!({ "approvalPolicy": policy, "sandbox": sandbox }))
         };
 
-        assert!(applied(json!("untrusted"), json!({ "type": "readOnly" })).is_ok());
-        assert!(applied(json!("untrusted"), json!("read-only")).is_ok());
-        assert!(applied(json!("on-request"), json!({ "type": "readOnly" })).is_err());
-        assert!(applied(json!("untrusted"), json!({ "type": "workspaceWrite" })).is_err());
+        assert!(applied(json!("untrusted"), json!({ "type": "workspaceWrite" })).is_ok());
+        assert!(applied(json!("untrusted"), json!("workspace-write")).is_ok());
+        assert!(
+            applied(
+                json!("untrusted"),
+                json!({ "type": "workspaceWrite", "networkAccess": false })
+            )
+            .is_ok()
+        );
+        assert!(
+            applied(
+                json!("untrusted"),
+                json!({ "type": "workspaceWrite", "networkAccess": true })
+            )
+            .is_err()
+        );
+        assert!(applied(json!("on-request"), json!({ "type": "workspaceWrite" })).is_err());
+        assert!(applied(json!("untrusted"), json!({ "type": "readOnly" })).is_err());
+        assert!(applied(json!("untrusted"), json!({ "type": "dangerFullAccess" })).is_err());
         assert!(check_applied(&json!({ "approvalPolicy": "untrusted" })).is_err());
         assert!(
             check_applied(&json!({
                 "approvalPolicy": "untrusted",
-                "sandbox": "read-only",
+                "sandbox": "workspace-write",
                 "approvalsReviewer": "guardian_subagent"
             }))
             .is_err()
@@ -404,6 +454,7 @@ mod tests {
                 target: "git status && ls".to_owned(),
                 paths: Vec::new(),
                 outside_sandbox: false,
+                reads_only: false,
             })
         );
     }
@@ -435,6 +486,33 @@ mod tests {
         assert!(outside(
             json!({ "command": "curl x", "networkApprovalContext": { "host": "x" } })
         ));
+    }
+
+    /// 실측: `sed -n 1,240p 파일`은 `read`, `sleep 6; echo done`은 `unknown`으로 분류돼 온다.
+    #[test]
+    fn command_actions_that_only_read_mark_the_request_as_reads_only() {
+        let reads_only = |actions: Value| {
+            call_of(
+                "item/commandExecution/requestApproval",
+                &json!({ "command": "x", "commandActions": actions }),
+                &HashMap::new(),
+            )
+            .unwrap()
+            .reads_only
+        };
+
+        assert!(reads_only(
+            json!([{ "type": "read", "path": "src/main.rs" }])
+        ));
+        assert!(reads_only(
+            json!([{ "type": "listFiles" }, { "type": "search" }])
+        ));
+        assert!(!reads_only(json!([{ "type": "unknown" }])));
+        assert!(!reads_only(
+            json!([{ "type": "read" }, { "type": "unknown" }])
+        ));
+        assert!(!reads_only(json!([])));
+        assert!(!reads_only(Value::Null));
     }
 
     #[test]

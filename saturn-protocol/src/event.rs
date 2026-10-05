@@ -147,6 +147,9 @@ pub struct PermissionCall {
     /// 어떤 모드와 규칙도 자동으로 허용하지 않는다.
     #[serde(default)]
     pub outside_sandbox: bool,
+    /// provider가 파일 읽기, 목록, 검색만 하는 명령으로 분류한 셸 요청. `read-only` 모드가 읽기 전용 목록 명령처럼 허용한다.
+    #[serde(default)]
+    pub reads_only: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
