@@ -460,59 +460,100 @@ mod tests {
     }
 
     /// 실측: 샌드박스 밖 실행을 요청한 호출은 `reason`이 붙어 오고, 일반 승인 요청에는 `reason`이 없다.
+    /// 실측: `sed -n 1,240p 파일`은 `read`, `sleep 6; echo done`은 `unknown`으로 분류돼 온다.
     #[test]
-    fn command_request_with_a_reason_or_extra_permissions_runs_outside_the_sandbox() {
-        let outside = |params: Value| {
-            call_of(
+    fn command_request_is_classified_as_outside_the_sandbox_or_reads_only() {
+        // (사례, 요청 인자, 기대 outside_sandbox, 기대 reads_only). None이면 그 값은 확인하지 않는다.
+        let cases: Vec<(&str, Value, Option<bool>, Option<bool>)> = vec![
+            (
+                "plain command",
+                json!({ "command": "cargo build" }),
+                Some(false),
+                None,
+            ),
+            (
+                "null reason",
+                json!({ "command": "cargo build", "reason": null }),
+                Some(false),
+                None,
+            ),
+            (
+                "blank reason",
+                json!({ "command": "cargo build", "reason": " " }),
+                Some(false),
+                None,
+            ),
+            (
+                "reason given",
+                json!({ "command": "security find-generic-password -w", "reason": "needs the keychain" }),
+                Some(true),
+                None,
+            ),
+            (
+                "extra permissions",
+                json!({ "command": "ls", "additionalPermissions": { "fileSystem": {} } }),
+                Some(true),
+                None,
+            ),
+            (
+                "network approval context",
+                json!({ "command": "curl x", "networkApprovalContext": { "host": "x" } }),
+                Some(true),
+                None,
+            ),
+            (
+                "a read action",
+                json!({ "command": "x", "commandActions": [{ "type": "read", "path": "src/main.rs" }] }),
+                None,
+                Some(true),
+            ),
+            (
+                "list and search actions",
+                json!({ "command": "x", "commandActions": [{ "type": "listFiles" }, { "type": "search" }] }),
+                None,
+                Some(true),
+            ),
+            (
+                "an unknown action",
+                json!({ "command": "x", "commandActions": [{ "type": "unknown" }] }),
+                None,
+                Some(false),
+            ),
+            (
+                "a read mixed with an unknown action",
+                json!({ "command": "x", "commandActions": [{ "type": "read" }, { "type": "unknown" }] }),
+                None,
+                Some(false),
+            ),
+            (
+                "no actions",
+                json!({ "command": "x", "commandActions": [] }),
+                None,
+                Some(false),
+            ),
+            (
+                "null actions",
+                json!({ "command": "x", "commandActions": Value::Null }),
+                None,
+                Some(false),
+            ),
+        ];
+
+        for (name, params, outside, reads_only) in cases {
+            let call = call_of(
                 "item/commandExecution/requestApproval",
                 &params,
                 &HashMap::new(),
             )
-            .unwrap()
-            .outside_sandbox
-        };
+            .unwrap();
 
-        assert!(!outside(json!({ "command": "cargo build" })));
-        assert!(!outside(
-            json!({ "command": "cargo build", "reason": null })
-        ));
-        assert!(!outside(json!({ "command": "cargo build", "reason": " " })));
-        assert!(outside(
-            json!({ "command": "security find-generic-password -w", "reason": "needs the keychain" })
-        ));
-        assert!(outside(
-            json!({ "command": "ls", "additionalPermissions": { "fileSystem": {} } })
-        ));
-        assert!(outside(
-            json!({ "command": "curl x", "networkApprovalContext": { "host": "x" } })
-        ));
-    }
-
-    /// 실측: `sed -n 1,240p 파일`은 `read`, `sleep 6; echo done`은 `unknown`으로 분류돼 온다.
-    #[test]
-    fn command_actions_that_only_read_mark_the_request_as_reads_only() {
-        let reads_only = |actions: Value| {
-            call_of(
-                "item/commandExecution/requestApproval",
-                &json!({ "command": "x", "commandActions": actions }),
-                &HashMap::new(),
-            )
-            .unwrap()
-            .reads_only
-        };
-
-        assert!(reads_only(
-            json!([{ "type": "read", "path": "src/main.rs" }])
-        ));
-        assert!(reads_only(
-            json!([{ "type": "listFiles" }, { "type": "search" }])
-        ));
-        assert!(!reads_only(json!([{ "type": "unknown" }])));
-        assert!(!reads_only(
-            json!([{ "type": "read" }, { "type": "unknown" }])
-        ));
-        assert!(!reads_only(json!([])));
-        assert!(!reads_only(Value::Null));
+            if let Some(outside) = outside {
+                assert_eq!(call.outside_sandbox, outside, "{name}");
+            }
+            if let Some(reads_only) = reads_only {
+                assert_eq!(call.reads_only, reads_only, "{name}");
+            }
+        }
     }
 
     #[test]

@@ -637,29 +637,36 @@ fn build_packet_recent_turn_states_and_unknown_result_format() {
 }
 
 #[test]
-fn omitted_constraints_add_a_count_line_that_is_not_counted_in_the_slot() {
-    let source = PacketSource {
-        constraints: vec!["kept rule".to_string()],
-        constraints_omitted: vec!["dropped one".to_string(), "dropped two".to_string()],
-        ..PacketSource::default()
-    };
+fn the_omitted_constraints_line_shows_only_their_count() {
+    let cases = [
+        (
+            "two omitted constraints add a count line and stay out of the text",
+            vec!["dropped one".to_string(), "dropped two".to_string()],
+        ),
+        ("no omitted constraints add no line", Vec::new()),
+    ];
 
-    let packet = ready(build_packet(&source, &budget()));
+    for (name, omitted) in cases {
+        let source = PacketSource {
+            constraints: vec!["kept rule".to_string()],
+            constraints_omitted: omitted.clone(),
+            ..PacketSource::default()
+        };
 
-    assert!(packet.text.contains("kept rule\n\nConstraints omitted: 2"));
-    assert!(!packet.text.contains("dropped one"));
-}
+        let packet = ready(build_packet(&source, &budget()));
 
-#[test]
-fn no_omitted_line_when_every_constraint_fits() {
-    let source = PacketSource {
-        constraints: vec!["kept rule".to_string()],
-        ..PacketSource::default()
-    };
-
-    let packet = ready(build_packet(&source, &budget()));
-
-    assert!(!packet.text.contains("Constraints omitted"));
+        if omitted.is_empty() {
+            assert!(!packet.text.contains("Constraints omitted"), "{name}");
+        } else {
+            assert!(
+                packet.text.contains("kept rule\n\nConstraints omitted: 2"),
+                "{name}"
+            );
+        }
+        for rule in &omitted {
+            assert!(!packet.text.contains(rule.as_str()), "{name}: {rule}");
+        }
+    }
 }
 
 #[test]

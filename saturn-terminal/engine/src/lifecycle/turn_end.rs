@@ -351,51 +351,80 @@ fn small_context_override() -> Vec<(String, String)> {
 
 // #490
 #[tokio::test]
-async fn connection_layer_context_mode_provider_skips_compaction_at_the_turn_end() {
-    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    flow.engine.attachments.get_mut(&CLIENT).unwrap().overrides =
-        vec![("context.mode".into(), "provider".into())];
-    flow.submit("fix the build").await;
-    let agent = flow.agent();
+async fn connection_layer_context_settings_decide_compaction_at_the_turn_end() {
+    #[derive(Clone, Copy)]
+    enum Layer {
+        ModeProvider,
+        SmallBudget,
+    }
+    let cases = [
+        ("mode provider skips compaction", Layer::ModeProvider),
+        (
+            "budget decides compaction and survives it",
+            Layer::SmallBudget,
+        ),
+    ];
 
-    flow.claude_event(context_size(agent, HUGE)).await;
-    flow.claude_event(turn_completed(agent)).await;
+    for (name, layer) in cases {
+        let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+        flow.engine.attachments.get_mut(&CLIENT).unwrap().overrides = match layer {
+            Layer::ModeProvider => vec![("context.mode".into(), "provider".into())],
+            Layer::SmallBudget => small_context_override(),
+        };
+        let input = flow.submit("fix the build").await;
+        let (agent, chat) = (flow.agent(), flow.chat);
+        let start = flow.engine.settings.current().unwrap();
+        let pinned = flow.record(input).settings;
+        match layer {
+            Layer::ModeProvider => {}
+            Layer::SmallBudget => {
+                assert_ne!(pinned, start, "{name}");
+                let budget = flow
+                    .engine
+                    .context_budget(chat, agent, crate::providers::test_support::CLAUDE)
+                    .await
+                    .unwrap();
+                assert_eq!(budget.t_abs, 100_000, "{name}");
+            }
+        }
 
-    assert_eq!(opens(&flow).len(), 1);
-    assert_eq!(
-        flow.engine.context_mode(flow.chat, agent).await.unwrap(),
-        crate::settings::ContextMode::Provider
-    );
-}
+        match layer {
+            Layer::ModeProvider => flow.claude_event(context_size(agent, HUGE)).await,
+            Layer::SmallBudget => {
+                flow.claude_event(text(agent, "the cache is fixed")).await;
+                flow.claude_event(context_size(agent, 150_000)).await;
+            }
+        }
+        flow.claude_event(turn_completed(agent)).await;
 
-// #490
-#[tokio::test]
-async fn connection_layer_context_budget_decides_compaction_and_survives_it() {
-    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    flow.engine.attachments.get_mut(&CLIENT).unwrap().overrides = small_context_override();
-    let input = flow.submit("fix the build").await;
-    let (agent, chat) = (flow.agent(), flow.chat);
-    let start = flow.engine.settings.current().unwrap();
-    let pinned = flow.record(input).settings;
-    assert_ne!(pinned, start);
-    let budget = flow
-        .engine
-        .context_budget(chat, agent, crate::providers::test_support::CLAUDE)
-        .await
-        .unwrap();
-    assert_eq!(budget.t_abs, 100_000);
-
-    flow.claude_event(text(agent, "the cache is fixed")).await;
-    flow.claude_event(context_size(agent, 150_000)).await;
-    flow.claude_event(turn_completed(agent)).await;
-
-    let calls = opens(&flow);
-    assert_eq!(calls.len(), 2, "the chat's own threshold should compact");
-    let Call::Open { settings, .. } = &calls[1] else {
-        panic!("second call should open a session");
-    };
-    assert_eq!(*settings, pinned);
-    assert_eq!(flow.engine.revision_of_agent(chat, agent).unwrap(), pinned);
+        let calls = opens(&flow);
+        match layer {
+            Layer::ModeProvider => {
+                assert_eq!(calls.len(), 1, "{name}");
+                assert_eq!(
+                    flow.engine.context_mode(chat, agent).await.unwrap(),
+                    crate::settings::ContextMode::Provider,
+                    "{name}"
+                );
+            }
+            Layer::SmallBudget => {
+                assert_eq!(
+                    calls.len(),
+                    2,
+                    "{name}: the chat's own threshold should compact"
+                );
+                let Call::Open { settings, .. } = &calls[1] else {
+                    panic!("{name}: second call should open a session");
+                };
+                assert_eq!(*settings, pinned, "{name}");
+                assert_eq!(
+                    flow.engine.revision_of_agent(chat, agent).unwrap(),
+                    pinned,
+                    "{name}"
+                );
+            }
+        }
+    }
 }
 
 // #490

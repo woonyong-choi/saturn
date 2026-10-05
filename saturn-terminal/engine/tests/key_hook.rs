@@ -222,102 +222,170 @@ impl ScopedFixture {
     }
 }
 
+struct Case {
+    name: &'static str,
+    tool: &'static str,
+    input: fn(&ScopedFixture) -> Value,
+    // None이면 훅이 판정하지 않고 provider에 맡긴다.
+    expected: Option<&'static str>,
+}
+
+fn outside_cases() -> Vec<Case> {
+    vec![
+        Case {
+            name: "outside: Read by absolute path",
+            tool: "Read",
+            input: |f| json!({ "file_path": f.outside.join("secret.txt") }),
+            expected: Some("ask"),
+        },
+        Case {
+            name: "outside: Read by relative path",
+            tool: "Read",
+            input: |_| json!({ "file_path": "../outside/secret.txt" }),
+            expected: Some("ask"),
+        },
+        Case {
+            name: "outside: NotebookRead",
+            tool: "NotebookRead",
+            input: |f| json!({ "notebook_path": f.outside.join("secret.txt") }),
+            expected: Some("ask"),
+        },
+        Case {
+            name: "outside: LS",
+            tool: "LS",
+            input: |f| json!({ "path": f.outside }),
+            expected: Some("ask"),
+        },
+        Case {
+            name: "outside: Grep",
+            tool: "Grep",
+            input: |f| json!({ "pattern": "x", "path": f.outside }),
+            expected: Some("ask"),
+        },
+        Case {
+            name: "outside: Glob with a path",
+            tool: "Glob",
+            input: |f| json!({ "pattern": "*.txt", "path": f.outside }),
+            expected: Some("ask"),
+        },
+        Case {
+            name: "outside: Glob with an absolute pattern",
+            tool: "Glob",
+            input: |f| json!({ "pattern": format!("{}/*.txt", f.outside.display()) }),
+            expected: Some("ask"),
+        },
+    ]
+}
+
+fn inside_cases() -> Vec<Case> {
+    vec![
+        Case {
+            name: "inside: Read in the work folder",
+            tool: "Read",
+            input: |f| json!({ "file_path": f.work.join("a.txt") }),
+            expected: None,
+        },
+        Case {
+            name: "inside: Read by relative path",
+            tool: "Read",
+            input: |_| json!({ "file_path": "src/a.txt" }),
+            expected: None,
+        },
+        Case {
+            name: "inside: Read in the added folder",
+            tool: "Read",
+            input: |f| json!({ "file_path": f.added.join("sub/a.txt") }),
+            expected: None,
+        },
+        Case {
+            name: "inside: Grep without a path",
+            tool: "Grep",
+            input: |_| json!({ "pattern": "x" }),
+            expected: None,
+        },
+        Case {
+            name: "inside: Glob without a path",
+            tool: "Glob",
+            input: |_| json!({ "pattern": "**/*.rs" }),
+            expected: None,
+        },
+        Case {
+            name: "inside: LS of the added folder",
+            tool: "LS",
+            input: |f| json!({ "path": f.added }),
+            expected: None,
+        },
+        Case {
+            name: "inside: Glob in the added folder",
+            tool: "Glob",
+            input: |f| json!({ "pattern": format!("{}/**/*.rs", f.added.display()) }),
+            expected: None,
+        },
+        Case {
+            name: "not a read: Bash",
+            tool: "Bash",
+            input: |_| json!({ "command": "cat ../outside/secret.txt" }),
+            expected: None,
+        },
+        Case {
+            name: "not a read: Write outside",
+            tool: "Write",
+            input: |f| json!({ "file_path": f.outside.join("a.txt") }),
+            expected: None,
+        },
+    ]
+}
+
+fn link_and_key_cases() -> Vec<Case> {
+    vec![
+        // 링크와 점은 풀어서 판정한다
+        Case {
+            name: "links: through a symlink to the outside",
+            tool: "Read",
+            input: |f| json!({ "file_path": f.work.join("link/secret.txt") }),
+            expected: Some("ask"),
+        },
+        Case {
+            name: "links: dots that climb out of the work folder",
+            tool: "Read",
+            input: |f| json!({ "file_path": f.work.join("a/../../outside/secret.txt") }),
+            expected: Some("ask"),
+        },
+        Case {
+            name: "links: dots that stay inside",
+            tool: "Read",
+            input: |f| json!({ "file_path": f.work.join("a/../b.txt") }),
+            expected: None,
+        },
+        // 키 보호의 거부가 밖 읽기의 묻기보다 먼저다
+        Case {
+            name: "key protection: deny wins over the outside read ask",
+            tool: "Read",
+            input: |f| json!({ "file_path": f.fixture.home().join(".saturn/router.key") }),
+            expected: Some("deny"),
+        },
+    ]
+}
+
 // #348
 #[test]
-fn hook_command_asks_for_a_read_outside_the_working_folders() {
-    let fixture = ScopedFixture::new();
-    let outside_file = fixture.outside.join("secret.txt");
-    let cases = [
-        ("Read", json!({ "file_path": outside_file })),
-        ("Read", json!({ "file_path": "../outside/secret.txt" })),
-        ("NotebookRead", json!({ "notebook_path": outside_file })),
-        ("LS", json!({ "path": fixture.outside })),
-        ("Grep", json!({ "pattern": "x", "path": fixture.outside })),
-        (
-            "Glob",
-            json!({ "pattern": "*.txt", "path": fixture.outside }),
-        ),
-        (
-            "Glob",
-            json!({ "pattern": format!("{}/*.txt", fixture.outside.display()) }),
-        ),
-    ];
+fn hook_command_judges_reads_against_the_working_folders() {
+    let cases = [outside_cases(), inside_cases(), link_and_key_cases()]
+        .into_iter()
+        .flatten();
 
-    for (tool, tool_input) in cases {
+    for case in cases {
+        let fixture = ScopedFixture::new();
+        std::os::unix::fs::symlink(&fixture.outside, fixture.work.join("link"))
+            .expect("fixture should work");
+        let tool_input = (case.input)(&fixture);
+
         assert_eq!(
-            fixture.decision(tool, tool_input.clone()).as_deref(),
-            Some("ask"),
-            "{tool} {tool_input}"
+            fixture.decision(case.tool, tool_input.clone()).as_deref(),
+            case.expected,
+            "{}: {} {tool_input}",
+            case.name,
+            case.tool
         );
     }
-}
-
-// #348
-#[test]
-fn hook_command_leaves_reads_inside_the_working_folders_to_the_provider() {
-    let fixture = ScopedFixture::new();
-    let cases = [
-        ("Read", json!({ "file_path": fixture.work.join("a.txt") })),
-        ("Read", json!({ "file_path": "src/a.txt" })),
-        (
-            "Read",
-            json!({ "file_path": fixture.added.join("sub/a.txt") }),
-        ),
-        ("Grep", json!({ "pattern": "x" })),
-        ("Glob", json!({ "pattern": "**/*.rs" })),
-        ("LS", json!({ "path": fixture.added })),
-        (
-            "Glob",
-            json!({ "pattern": format!("{}/**/*.rs", fixture.added.display()) }),
-        ),
-        ("Bash", json!({ "command": "cat ../outside/secret.txt" })),
-        (
-            "Write",
-            json!({ "file_path": fixture.outside.join("a.txt") }),
-        ),
-    ];
-
-    for (tool, tool_input) in cases {
-        assert_eq!(
-            fixture.decision(tool, tool_input.clone()),
-            None,
-            "{tool} {tool_input}"
-        );
-    }
-}
-
-// #348
-#[test]
-fn hook_command_resolves_links_and_dots_before_judging_a_read() {
-    let fixture = ScopedFixture::new();
-    std::os::unix::fs::symlink(&fixture.outside, fixture.work.join("link"))
-        .expect("fixture should work");
-
-    let through_link = fixture.decision(
-        "Read",
-        json!({ "file_path": fixture.work.join("link/secret.txt") }),
-    );
-    let dotted = fixture.decision(
-        "Read",
-        json!({ "file_path": fixture.work.join("a/../../outside/secret.txt") }),
-    );
-    let inside_dotted = fixture.decision(
-        "Read",
-        json!({ "file_path": fixture.work.join("a/../b.txt") }),
-    );
-
-    assert_eq!(through_link.as_deref(), Some("ask"));
-    assert_eq!(dotted.as_deref(), Some("ask"));
-    assert_eq!(inside_dotted, None);
-}
-
-// #348
-#[test]
-fn key_protection_deny_wins_over_the_outside_read_ask() {
-    let fixture = ScopedFixture::new();
-    let key_file = fixture.fixture.home().join(".saturn/router.key");
-
-    let decision = fixture.decision("Read", json!({ "file_path": key_file }));
-
-    assert_eq!(decision.as_deref(), Some("deny"));
 }

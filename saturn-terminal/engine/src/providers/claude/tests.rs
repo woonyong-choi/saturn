@@ -1343,8 +1343,42 @@ async fn resume_interrupted_turn_variable_is_not_passed_to_claude() {
 
 // #423
 #[tokio::test]
-async fn session_does_not_open_when_a_settings_layer_excludes_commands_from_the_sandbox() {
-    for layer in ["home", "project", "local"] {
+async fn sandbox_exclusions_in_a_settings_layer_stop_the_session_only_when_not_empty() {
+    // (사례, 설정 층, 설정 내용, 열기가 거절되어야 하는가)
+    let cases = [
+        (
+            "home layer excludes a command",
+            "home",
+            r#"{"sandbox":{"excludedCommands":["sh"]}}"#,
+            true,
+        ),
+        (
+            "project layer excludes a command",
+            "project",
+            r#"{"sandbox":{"excludedCommands":["sh"]}}"#,
+            true,
+        ),
+        (
+            "local layer excludes a command",
+            "local",
+            r#"{"sandbox":{"excludedCommands":["sh"]}}"#,
+            true,
+        ),
+        (
+            "empty exclusions",
+            "home",
+            r#"{"sandbox":{"excludedCommands":[],"enabled":true}}"#,
+            false,
+        ),
+        (
+            "missing exclusions",
+            "home",
+            r#"{"sandbox":{"enabled":true}}"#,
+            false,
+        ),
+    ];
+
+    for (name, layer, content, rejected) in cases {
         let dir = tempfile::tempdir().unwrap();
         let home = dir.path().join("home");
         std::fs::create_dir_all(home.join(".claude")).unwrap();
@@ -1354,42 +1388,24 @@ async fn session_does_not_open_when_a_settings_layer_excludes_commands_from_the_
             "project" => dir.path().join(".claude").join("settings.json"),
             _ => dir.path().join(".claude").join("settings.local.json"),
         };
-        std::fs::write(&file, r#"{"sandbox":{"excludedCommands":["sh"]}}"#).unwrap();
+        std::fs::write(&file, content).unwrap();
         let launch = launch(dir.path(), vec![("HOME".into(), home.into_os_string())]);
         let mut client = ClaudeClient::new(launch, Supervisor::new());
 
-        let error = client
-            .open_session(spec(dir.path(), None))
-            .await
-            .unwrap_err();
+        let opened = client.open_session(spec(dir.path(), None)).await;
 
-        let ProviderError::NotSent { reason } = error else {
-            panic!("{layer}: expected NotSent");
-        };
-        assert!(reason.contains("sandbox.excludedCommands"), "{layer}");
-        assert!(reason.contains(&file.display().to_string()), "{layer}");
-        assert!(!reason.contains("\"sh\""), "{layer}");
-        assert!(client.sessions.is_empty(), "{layer}");
+        if rejected {
+            let ProviderError::NotSent { reason } = opened.unwrap_err() else {
+                panic!("{name}: expected NotSent");
+            };
+            assert!(reason.contains("sandbox.excludedCommands"), "{name}");
+            assert!(reason.contains(&file.display().to_string()), "{name}");
+            assert!(!reason.contains("\"sh\""), "{name}");
+            assert!(client.sessions.is_empty(), "{name}");
+        } else {
+            assert!(opened.is_ok(), "{name}");
+        }
     }
-}
-
-// #423
-#[tokio::test]
-async fn empty_or_missing_sandbox_exclusions_do_not_stop_the_session() {
-    let dir = tempfile::tempdir().unwrap();
-    let home = dir.path().join("home");
-    std::fs::create_dir_all(home.join(".claude")).unwrap();
-    std::fs::write(
-        home.join(".claude").join("settings.json"),
-        r#"{"sandbox":{"excludedCommands":[],"enabled":true}}"#,
-    )
-    .unwrap();
-    let launch = launch(dir.path(), vec![("HOME".into(), home.into_os_string())]);
-    let mut client = ClaudeClient::new(launch, Supervisor::new());
-
-    let handle = client.open_session(spec(dir.path(), None)).await;
-
-    assert!(handle.is_ok());
 }
 
 // #348

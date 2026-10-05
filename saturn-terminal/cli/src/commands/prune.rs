@@ -252,94 +252,77 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn run_without_yes_asks_for_preview_only_and_reads_the_preview() {
-        let engine = FakeEngine::start(vec![Reply::result(QueryResult::PrunePreview {
-            chats: vec![chat(4)],
-            skipped: Vec::new(),
-            rows: 3,
-            plan: "abc123".to_owned(),
-        })]);
-        let mut client = engine.client().await;
-
-        run(
-            Lang::En,
-            &mut client,
-            &PruneArgs {
-                yes: false,
-                plan: None,
+    async fn run_sends_the_prune_request_for_each_flag_combination() {
+        struct Case {
+            name: &'static str,
+            args: PruneArgs,
+            reply: Reply,
+            expected: Request,
+        }
+        let pruned = || {
+            Reply::result(QueryResult::Pruned {
+                chats: vec![chat(4)],
+                skipped: Vec::new(),
+                rows: 3,
+            })
+        };
+        let cases = vec![
+            Case {
+                name: "without yes it asks for the preview only and reads the preview",
+                args: PruneArgs {
+                    yes: false,
+                    plan: None,
+                },
+                reply: Reply::result(QueryResult::PrunePreview {
+                    chats: vec![chat(4)],
+                    skipped: Vec::new(),
+                    rows: 3,
+                    plan: "abc123".to_owned(),
+                }),
+                expected: Request::Prune {
+                    yes: false,
+                    plan: None,
+                    all: false,
+                },
             },
-        )
-        .await
-        .unwrap();
-
-        assert_eq!(
-            engine.finish().await,
-            vec![Request::Prune {
-                yes: false,
-                plan: None,
-                all: false,
-            }]
-        );
-    }
-
-    #[tokio::test]
-    async fn run_with_yes_deletes_and_reads_the_result() {
-        let engine = FakeEngine::start(vec![Reply::result(QueryResult::Pruned {
-            chats: vec![chat(4)],
-            skipped: Vec::new(),
-            rows: 3,
-        })]);
-        let mut client = engine.client().await;
-
-        run(
-            Lang::En,
-            &mut client,
-            &PruneArgs {
-                yes: true,
-                plan: None,
+            Case {
+                name: "with yes it deletes and reads the result",
+                args: PruneArgs {
+                    yes: true,
+                    plan: None,
+                },
+                reply: pruned(),
+                expected: Request::Prune {
+                    yes: true,
+                    plan: None,
+                    all: true,
+                },
             },
-        )
-        .await
-        .unwrap();
-
-        assert_eq!(
-            engine.finish().await,
-            vec![Request::Prune {
-                yes: true,
-                plan: None,
-                all: true,
-            }]
-        );
-    }
-
-    #[tokio::test]
-    async fn run_with_a_plan_sends_the_previewed_id_back() {
-        let engine = FakeEngine::start(vec![Reply::result(QueryResult::Pruned {
-            chats: vec![chat(4)],
-            skipped: Vec::new(),
-            rows: 3,
-        })]);
-        let mut client = engine.client().await;
-
-        run(
-            Lang::En,
-            &mut client,
-            &PruneArgs {
-                yes: true,
-                plan: Some("abc123".to_owned()),
+            Case {
+                name: "with a plan it sends the previewed id back",
+                args: PruneArgs {
+                    yes: true,
+                    plan: Some("abc123".to_owned()),
+                },
+                reply: pruned(),
+                expected: Request::Prune {
+                    yes: true,
+                    plan: Some("abc123".to_owned()),
+                    all: false,
+                },
             },
-        )
-        .await
-        .unwrap();
+        ];
 
-        assert_eq!(
-            engine.finish().await,
-            vec![Request::Prune {
-                yes: true,
-                plan: Some("abc123".to_owned()),
-                all: false,
-            }]
-        );
+        for case in cases {
+            let engine = FakeEngine::start(vec![case.reply]);
+            let mut client = engine.client().await;
+
+            run(Lang::En, &mut client, &case.args)
+                .await
+                .unwrap_or_else(|error| panic!("{}: {error:?}", case.name));
+
+            assert_eq!(engine.finish().await, vec![case.expected], "{}", case.name);
+        }
     }
 
     #[tokio::test]

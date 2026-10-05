@@ -1235,49 +1235,63 @@ fn waiting_inputs_name_the_task_they_wait_for_and_none_for_a_new_task() {
     );
 }
 
-// #455
+// #455, #488
 #[test]
-fn rescope_unsent_changes_only_inputs_that_are_not_sent() {
-    let mut queue = Queue::new();
-    accept_routed(&mut queue, 1, Permission::Write, Disposition::NewTask);
-    assert!(queue.next_to_send().is_some());
-    queue.accept(input(2, Permission::Write));
+fn rescope_unsent_changes_only_inputs_of_the_chat_that_are_not_sent() {
+    struct Case {
+        name: &'static str,
+        prepare: fn(&mut Queue, &str),
+        rescoped_chat: ChatId,
+        rescoped: &'static [&'static str],
+        expected: Vec<(u64, Vec<&'static str>)>,
+    }
+    let cases = [
+        Case {
+            name: "sent inputs keep their scope and unsent ones change",
+            prepare: |queue, name| {
+                accept_routed(queue, 1, Permission::Write, Disposition::NewTask);
+                assert!(queue.next_to_send().is_some(), "{name}");
+                queue.accept(input(2, Permission::Write));
+            },
+            rescoped_chat: CHAT,
+            rescoped: &["/work", "/shared"],
+            expected: vec![(1, vec!["/work"]), (2, vec!["/work", "/shared"])],
+        },
+        Case {
+            name: "other chats are ignored",
+            prepare: |queue, _| queue.accept(input(1, Permission::Write)),
+            rescoped_chat: ChatId(2),
+            rescoped: &["/shared"],
+            expected: vec![(1, vec!["/work"])],
+        },
+        Case {
+            name: "held inputs change too",
+            prepare: |queue, name| {
+                queue.accept(input(1, Permission::Write));
+                queue.stop(CHAT);
+                assert_eq!(state_of(queue, 1), InputState::Held, "{name}");
+            },
+            rescoped_chat: CHAT,
+            rescoped: &["/work", "/shared"],
+            expected: vec![(1, vec!["/work", "/shared"])],
+        },
+    ];
 
-    queue.rescope_unsent(CHAT, |_| scope(&["/work", "/shared"]));
+    for case in cases {
+        let mut queue = Queue::new();
+        (case.prepare)(&mut queue, case.name);
 
-    let written = |id: u64| queue.input(InputId(id)).unwrap().write_scope.clone();
-    assert_eq!(written(1), scope(&["/work"]));
-    assert_eq!(written(2), scope(&["/work", "/shared"]));
-}
+        queue.rescope_unsent(case.rescoped_chat, |_| scope(case.rescoped));
 
-// #455
-#[test]
-fn rescope_unsent_ignores_other_chats() {
-    let mut queue = Queue::new();
-    queue.accept(input(1, Permission::Write));
-
-    queue.rescope_unsent(ChatId(2), |_| scope(&["/shared"]));
-
-    assert_eq!(
-        queue.input(InputId(1)).unwrap().write_scope,
-        scope(&["/work"])
-    );
-}
-
-// #488
-#[test]
-fn rescope_unsent_also_changes_held_inputs() {
-    let mut queue = Queue::new();
-    queue.accept(input(1, Permission::Write));
-    queue.stop(CHAT);
-    assert_eq!(state_of(&queue, 1), InputState::Held);
-
-    queue.rescope_unsent(CHAT, |_| scope(&["/work", "/shared"]));
-
-    assert_eq!(
-        queue.input(InputId(1)).unwrap().write_scope,
-        scope(&["/work", "/shared"])
-    );
+        for (id, expected) in &case.expected {
+            assert_eq!(
+                queue.input(InputId(*id)).unwrap().write_scope,
+                scope(expected),
+                "{}: input {id}",
+                case.name
+            );
+        }
+    }
 }
 
 // #506

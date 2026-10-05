@@ -89,85 +89,110 @@ async fn long_chat_then_switch(flow: &mut Flow, rules: &[(&str, &[&str])]) -> St
     packet_of(&claude)
 }
 
-#[tokio::test]
-async fn constraint_stays_in_the_packet_when_it_left_the_recent_turns() {
-    let (mut flow, _codex) = flow_with("").await;
-
-    let packet = long_chat_then_switch(&mut flow, &[(RULE, &[])]).await;
-
-    let (fixed, rest) = packet
-        .split_once("## Goal and last input")
-        .expect("goal section should exist");
-    assert!(fixed.contains("## Constraints and decisions"), "{packet}");
-    assert!(fixed.contains(RULE), "{packet}");
-    assert!(
-        !rest.contains(RULE),
-        "rule leaked into other zones: {packet}"
-    );
-    assert!(!packet.contains("task 1 write the cache\nAgent"));
-}
+type PacketRows = Vec<(ConstraintId, String)>;
 
 #[tokio::test]
-async fn packet_constraints_records_what_the_new_session_got() {
-    let (mut flow, _codex) = flow_with("").await;
+async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
+    struct Case {
+        name: &'static str,
+        config: &'static str,
+        rules: Vec<(String, Vec<&'static str>)>,
+        // 패킷, Claude session 기록, Codex session 기록
+        check: fn(&str, &str, &PacketRows, &PacketRows),
+    }
+    let cases = [
+        Case {
+            name: "a constraint stays in the packet when it left the recent turns",
+            config: "",
+            rules: vec![(RULE.to_owned(), Vec::new())],
+            check: |name, packet, _, _| {
+                let (fixed, rest) = packet
+                    .split_once("## Goal and last input")
+                    .expect("goal section should exist");
+                assert!(
+                    fixed.contains("## Constraints and decisions"),
+                    "{name}: {packet}"
+                );
+                assert!(fixed.contains(RULE), "{name}: {packet}");
+                assert!(
+                    !rest.contains(RULE),
+                    "{name}: rule leaked into other zones: {packet}"
+                );
+                assert!(
+                    !packet.contains("task 1 write the cache\nAgent"),
+                    "{name}: {packet}"
+                );
+            },
+        },
+        Case {
+            name: "packet constraints record what the new session got",
+            config: "",
+            rules: vec![
+                (RULE.to_owned(), Vec::new()),
+                ("Keep api.rs stable".to_owned(), vec!["src/api.rs"]),
+            ],
+            check: |name, packet, claude_rows, codex_rows| {
+                assert_eq!(
+                    *claude_rows,
+                    vec![
+                        (ConstraintId(1), "All".to_owned()),
+                        (ConstraintId(2), "Relevance".to_owned()),
+                    ],
+                    "{name}"
+                );
+                assert!(codex_rows.is_empty(), "{name}");
+                assert!(packet.contains(RULE), "{name}: {packet}");
+                assert!(packet.contains("Keep api.rs stable"), "{name}: {packet}");
+                assert!(!packet.contains("Constraints omitted"), "{name}: {packet}");
+            },
+        },
+        Case {
+            // 새 session의 provider 기준 P_max는 20_000토큰이고 그 1%라 제약 칸은 200토큰(800자)이다
+            name: "constraints over the slot are omitted and marked",
+            config: "[context]\nconstraint_slot_percent = 1\n",
+            rules: (1..=4)
+                .map(|number| (format!("rule{number} {}", "x".repeat(300)), Vec::new()))
+                .collect(),
+            check: |name, packet, claude_rows, _| {
+                // 한 줄 306글자 + 구분 2글자라 800자 칸에는 최신 둘만 들어간다
+                assert!(packet.contains("rule4 "), "{name}: {packet}");
+                assert!(packet.contains("rule3 "), "{name}: {packet}");
+                assert!(!packet.contains("rule2 "), "{name}: {packet}");
+                assert!(!packet.contains("rule1 "), "{name}: {packet}");
+                assert!(
+                    packet.contains("Constraints omitted: 2"),
+                    "{name}: {packet}"
+                );
+                let tiers: Vec<&str> = claude_rows.iter().map(|(_, tier)| tier.as_str()).collect();
+                assert_eq!(tiers, ["Omitted", "Omitted", "All", "All"], "{name}");
+            },
+        },
+    ];
 
-    long_chat_then_switch(
-        &mut flow,
-        &[(RULE, &[]), ("Keep api.rs stable", &["src/api.rs"])],
-    )
-    .await;
+    for case in cases {
+        let (mut flow, _codex) = flow_with(case.config).await;
+        let rules: Vec<(&str, &[&str])> = case
+            .rules
+            .iter()
+            .map(|(rule, scope)| (rule.as_str(), scope.as_slice()))
+            .collect();
 
-    let rows = flow
-        .engine
-        .store
-        .packet_constraints_of(CLAUDE_FIRST)
-        .await
-        .unwrap();
-    assert_eq!(
-        rows,
-        vec![
-            (ConstraintId(1), "All".to_owned()),
-            (ConstraintId(2), "Relevance".to_owned()),
-        ]
-    );
-    assert!(
-        flow.engine
+        let packet = long_chat_then_switch(&mut flow, &rules).await;
+
+        let claude_rows = flow
+            .engine
+            .store
+            .packet_constraints_of(CLAUDE_FIRST)
+            .await
+            .unwrap();
+        let codex_rows = flow
+            .engine
             .store
             .packet_constraints_of(CODEX_FIRST)
             .await
-            .unwrap()
-            .is_empty()
-    );
-}
-
-#[tokio::test]
-async fn constraints_over_the_slot_are_omitted_and_marked() {
-    // 새 session의 provider 기준 P_max는 20_000토큰이고 그 1%라 제약 칸은 200토큰(800자)이다
-    let (mut flow, _codex) = flow_with("[context]\nconstraint_slot_percent = 1\n").await;
-    let rules: Vec<(String, Vec<&str>)> = (1..=4)
-        .map(|number| (format!("rule{number} {}", "x".repeat(300)), Vec::new()))
-        .collect();
-    let borrowed: Vec<(&str, &[&str])> = rules
-        .iter()
-        .map(|(rule, scope)| (rule.as_str(), scope.as_slice()))
-        .collect();
-
-    let packet = long_chat_then_switch(&mut flow, &borrowed).await;
-
-    // 한 줄 306글자 + 구분 2글자라 800자 칸에는 최신 둘만 들어간다
-    assert!(packet.contains("rule4 "), "{packet}");
-    assert!(packet.contains("rule3 "), "{packet}");
-    assert!(!packet.contains("rule2 "), "{packet}");
-    assert!(!packet.contains("rule1 "), "{packet}");
-    assert!(packet.contains("Constraints omitted: 2"), "{packet}");
-    let rows = flow
-        .engine
-        .store
-        .packet_constraints_of(CLAUDE_FIRST)
-        .await
-        .unwrap();
-    let tiers: Vec<&str> = rows.iter().map(|(_, tier)| tier.as_str()).collect();
-    assert_eq!(tiers, ["Omitted", "Omitted", "All", "All"]);
+            .unwrap();
+        (case.check)(case.name, &packet, &claude_rows, &codex_rows);
+    }
 }
 
 #[tokio::test]

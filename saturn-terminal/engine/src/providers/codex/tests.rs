@@ -1029,122 +1029,104 @@ fn started_ids(events: &[ProviderEvent]) -> Vec<(String, Option<String>)> {
         .collect()
 }
 
-// #438
-#[test]
-fn a_nested_child_is_registered_under_the_child_that_spawned_it() {
+type ThreadMap = HashMap<ProviderSessionId, ThreadState>;
+
+/// 알림 하나를 `main_only` 상태와 빈 보관함에 차례로 넣고 알림마다 나온 이벤트와 마지막 thread 표를 돌려준다.
+fn run_notifications(steps: &[(&str, serde_json::Value)]) -> (Vec<Vec<ProviderEvent>>, ThreadMap) {
     let mut threads = main_only();
     let mut held = HeldEvents::default();
-    let notify =
-        |threads: &mut HashMap<_, _>, held: &mut HeldEvents, params: &serde_json::Value| {
-            convert_notification(threads, held, "item/completed", params)
-        };
+    let events = steps
+        .iter()
+        .map(|(method, params)| convert_notification(&mut threads, &mut held, method, params))
+        .collect();
+    (events, threads)
+}
 
-    let child = notify(&mut threads, &mut held, &spawn_item("main", &["kid"]));
-    let grandchild = notify(&mut threads, &mut held, &spawn_item("kid", &["grand"]));
+struct Case {
+    name: &'static str,
+    steps: Vec<(&'static str, serde_json::Value)>,
+    check: fn(&str, &[Vec<ProviderEvent>], &ThreadMap),
+}
 
-    assert_eq!(started_ids(&child), [("kid".to_owned(), None)]);
-    assert_eq!(
-        started_ids(&grandchild),
-        [("grand".to_owned(), Some("kid".to_owned()))]
-    );
+fn kid_delta(text: &str) -> serde_json::Value {
+    json!({ "threadId": "kid", "itemId": "m", "delta": text })
 }
 
 // #438
 #[test]
-fn a_duplicate_spawn_completion_registers_the_child_once() {
-    let mut threads = main_only();
-    let mut held = HeldEvents::default();
-
-    let first = convert_notification(
-        &mut threads,
-        &mut held,
-        "item/completed",
-        &spawn_item("main", &["kid"]),
-    );
-    let again = convert_notification(
-        &mut threads,
-        &mut held,
-        "item/completed",
-        &spawn_item("main", &["kid"]),
-    );
-
-    assert_eq!(started_ids(&first).len(), 1);
-    assert!(started_ids(&again).is_empty());
-}
-
-// #438
-#[test]
-fn a_child_of_an_unknown_parent_is_not_attached_and_its_events_are_not_applied() {
-    let mut threads = main_only();
-    let mut held = HeldEvents::default();
-    let delta = json!({ "threadId": "stray", "itemId": "m", "delta": "hello" });
-
-    let early = convert_notification(&mut threads, &mut held, "item/agentMessage/delta", &delta);
-    let claimed = convert_notification(
-        &mut threads,
-        &mut held,
-        "item/completed",
-        &spawn_item("someone-else", &["stray"]),
-    );
-
-    assert!(early.is_empty());
-    assert!(claimed.is_empty());
-    assert!(!threads.contains_key(&ProviderSessionId("stray".to_owned())));
-}
-
-// #438
-#[test]
-fn a_spawn_item_sent_by_another_thread_does_not_register_a_child() {
-    let mut threads = main_only();
-    let mut held = HeldEvents::default();
+fn spawn_completions_register_only_children_of_known_parents_and_apply_early_events_once() {
     let mut forged = spawn_item("main", &["kid"]);
     forged["item"]["senderThreadId"] = json!("elsewhere");
+    let cases = [
+        Case {
+            name: "a nested child is registered under the child that spawned it",
+            steps: vec![
+                ("item/completed", spawn_item("main", &["kid"])),
+                ("item/completed", spawn_item("kid", &["grand"])),
+            ],
+            check: |name, events, _| {
+                assert_eq!(
+                    started_ids(&events[0]),
+                    [("kid".to_owned(), None)],
+                    "{name}"
+                );
+                assert_eq!(
+                    started_ids(&events[1]),
+                    [("grand".to_owned(), Some("kid".to_owned()))],
+                    "{name}"
+                );
+            },
+        },
+        Case {
+            name: "a child of an unknown parent is not attached and its events are not applied",
+            steps: vec![
+                (
+                    "item/agentMessage/delta",
+                    json!({ "threadId": "stray", "itemId": "m", "delta": "hello" }),
+                ),
+                ("item/completed", spawn_item("someone-else", &["stray"])),
+            ],
+            check: |name, events, threads| {
+                assert!(events[0].is_empty(), "{name}");
+                assert!(events[1].is_empty(), "{name}");
+                assert!(
+                    !threads.contains_key(&ProviderSessionId("stray".to_owned())),
+                    "{name}"
+                );
+            },
+        },
+        Case {
+            name: "a spawn item sent by another thread does not register a child",
+            steps: vec![("item/completed", forged)],
+            check: |name, events, threads| {
+                assert!(started_ids(&events[0]).is_empty(), "{name}");
+                assert_eq!(threads.len(), 1, "{name}");
+            },
+        },
+        Case {
+            name: "events that arrive before the spawn completion are applied once in order",
+            steps: vec![
+                ("item/agentMessage/delta", kid_delta("a")),
+                ("item/agentMessage/delta", kid_delta("b")),
+                ("item/completed", spawn_item("main", &["kid"])),
+                ("item/agentMessage/delta", kid_delta("c")),
+                ("item/completed", spawn_item("main", &["kid"])),
+            ],
+            check: |name, events, _| {
+                assert!(events[0].is_empty(), "{name}");
+                assert!(events[1].is_empty(), "{name}");
+                assert_eq!(started_ids(&events[2]).len(), 1, "{name}");
+                assert_eq!(text_of(&events[2]), "ab", "{name}");
+                assert_eq!(text_of(&events[3]), "c", "{name}");
+                assert!(events[4].is_empty(), "{name}");
+            },
+        },
+    ];
 
-    let events = convert_notification(&mut threads, &mut held, "item/completed", &forged);
-
-    assert!(started_ids(&events).is_empty());
-    assert_eq!(threads.len(), 1);
-}
-
-// #438
-#[test]
-fn events_that_arrive_before_the_spawn_completion_are_applied_once_in_order() {
-    let mut threads = main_only();
-    let mut held = HeldEvents::default();
-    let delta = |text: &str| json!({ "threadId": "kid", "itemId": "m", "delta": text });
-    for text in ["a", "b"] {
-        let early = convert_notification(
-            &mut threads,
-            &mut held,
-            "item/agentMessage/delta",
-            &delta(text),
-        );
-        assert!(early.is_empty());
+    for case in cases {
+        let (events, threads) = run_notifications(&case.steps);
+        (case.check)(case.name, &events, &threads);
     }
-
-    let events = convert_notification(
-        &mut threads,
-        &mut held,
-        "item/completed",
-        &spawn_item("main", &["kid"]),
-    );
-    let after = convert_notification(
-        &mut threads,
-        &mut held,
-        "item/agentMessage/delta",
-        &delta("c"),
-    );
-    let again = convert_notification(
-        &mut threads,
-        &mut held,
-        "item/completed",
-        &spawn_item("main", &["kid"]),
-    );
-
-    assert_eq!(started_ids(&events).len(), 1);
-    assert_eq!(text_of(&events), "ab");
-    assert_eq!(text_of(&after), "c");
-    assert!(again.is_empty());
 }
 
 fn ended_ids(events: &[ProviderEvent]) -> Vec<String> {
@@ -1161,193 +1143,147 @@ fn child_turn_started(child: &str) -> serde_json::Value {
     json!({ "threadId": child, "turn": { "id": "turn_kid" } })
 }
 
-// #438: 자식의 `thread/closed`가 부모의 spawnAgent 완료 항목보다 먼저 온 순서. 실제 Codex에서 이 순서는 관측하지 못했고
-// 가짜 알림으로 만든 순서다.
-#[test]
-fn a_child_closed_before_its_registration_is_ended_and_forgotten_once_registered() {
-    let mut threads = main_only();
-    let mut held = HeldEvents::default();
-    let early = [
-        convert_notification(
-            &mut threads,
-            &mut held,
-            "turn/started",
-            &child_turn_started("kid"),
-        ),
-        convert_notification(
-            &mut threads,
-            &mut held,
-            "thread/closed",
-            &json!({ "threadId": "kid" }),
-        ),
-    ];
-
-    let events = convert_notification(
-        &mut threads,
-        &mut held,
-        "item/completed",
-        &spawn_item("main", &["kid"]),
-    );
-
-    assert!(early.iter().all(Vec::is_empty));
-    assert_eq!(started_ids(&events).len(), 1);
-    assert_eq!(ended_ids(&events), ["kid"]);
-    assert!(!threads.contains_key(&ProviderSessionId("kid".to_owned())));
+fn kid_closed() -> serde_json::Value {
+    json!({ "threadId": "kid" })
 }
 
-// #438
+// #438: 자식의 `thread/closed`가 부모의 spawnAgent 완료 항목보다 먼저 오는 순서 등 닫힘의 순서별 결과. 실제 Codex에서
+// 등록 전 닫힘은 관측하지 못했고 가짜 알림으로 만든 순서다.
+fn closed_before_registration_cases() -> Vec<Case> {
+    vec![
+        Case {
+            name: "a child closed before its registration is ended and forgotten once registered",
+            steps: vec![
+                ("turn/started", child_turn_started("kid")),
+                ("thread/closed", kid_closed()),
+                ("item/completed", spawn_item("main", &["kid"])),
+            ],
+            check: |name, events, threads| {
+                assert!(events[..2].iter().all(Vec::is_empty), "{name}");
+                assert_eq!(started_ids(&events[2]).len(), 1, "{name}");
+                assert_eq!(ended_ids(&events[2]), ["kid"], "{name}");
+                assert!(
+                    !threads.contains_key(&ProviderSessionId("kid".to_owned())),
+                    "{name}"
+                );
+            },
+        },
+        Case {
+            name: "a duplicate close before registration ends the child once",
+            steps: vec![
+                ("turn/started", child_turn_started("kid")),
+                ("thread/closed", kid_closed()),
+                ("thread/closed", kid_closed()),
+                ("item/completed", spawn_item("main", &["kid"])),
+            ],
+            check: |name, events, threads| {
+                assert_eq!(ended_ids(&events[3]), ["kid"], "{name}");
+                assert!(
+                    !threads.contains_key(&ProviderSessionId("kid".to_owned())),
+                    "{name}"
+                );
+            },
+        },
+        // 턴 시작 없이 닫힌 자식도 시작과 종료를 짝으로 알린다. 그렇지 않으면 시작만 전달돼 트리가 유휴가 되지 않는다.
+        Case {
+            name: "a child closed without any turn is started and ended once",
+            steps: vec![
+                ("thread/closed", kid_closed()),
+                ("item/completed", spawn_item("main", &["kid"])),
+            ],
+            check: |name, events, threads| {
+                assert_eq!(started_ids(&events[1]).len(), 1, "{name}");
+                assert_eq!(ended_ids(&events[1]), ["kid"], "{name}");
+                assert!(
+                    !threads.contains_key(&ProviderSessionId("kid".to_owned())),
+                    "{name}"
+                );
+            },
+        },
+    ]
+}
+
+fn closed_after_start_or_end_cases() -> Vec<Case> {
+    vec![
+        // 보관 한도로 `turn/started`가 밀려난 뒤 닫힌 자식.
+        Case {
+            name: "a child whose turn start was evicted from the hold is still ended",
+            steps: std::iter::once(("turn/started", child_turn_started("kid")))
+                .chain((0..HELD_PER_THREAD).map(|_| ("item/agentMessage/delta", kid_delta("x"))))
+                .chain([
+                    ("thread/closed", kid_closed()),
+                    ("item/completed", spawn_item("main", &["kid"])),
+                ])
+                .collect(),
+            check: |name, events, _| {
+                let last = events.last().unwrap();
+                assert_eq!(started_ids(last).len(), 1, "{name}");
+                assert_eq!(ended_ids(last), ["kid"], "{name}");
+            },
+        },
+        // 턴이 끝나 종료를 알린 자식의 닫힘은 종료를 다시 알리지 않는다.
+        Case {
+            name: "closing a child that already ended does not end it again",
+            steps: vec![
+                ("item/completed", spawn_item("main", &["kid"])),
+                ("turn/started", child_turn_started("kid")),
+                (
+                    "turn/completed",
+                    json!({ "threadId": "kid", "turn": { "id": "turn_kid" } }),
+                ),
+                ("thread/closed", kid_closed()),
+            ],
+            check: |name, events, _| {
+                assert_eq!(ended_ids(&events[2]), ["kid"], "{name}");
+                assert!(ended_ids(&events[3]).is_empty(), "{name}");
+            },
+        },
+        Case {
+            name: "a nested child closed before registration is ended under its parent",
+            steps: vec![
+                ("turn/started", child_turn_started("grand")),
+                ("thread/closed", json!({ "threadId": "grand" })),
+                ("turn/started", child_turn_started("kid")),
+                ("item/completed", spawn_item("kid", &["grand"])),
+                ("item/completed", spawn_item("main", &["kid"])),
+            ],
+            check: |name, events, threads| {
+                let last = events.last().unwrap();
+                assert_eq!(
+                    started_ids(last),
+                    [
+                        ("kid".to_owned(), None),
+                        ("grand".to_owned(), Some("kid".to_owned()))
+                    ],
+                    "{name}"
+                );
+                assert_eq!(ended_ids(last), ["grand"], "{name}");
+                assert!(
+                    threads.contains_key(&ProviderSessionId("kid".to_owned())),
+                    "{name}"
+                );
+                assert!(
+                    !threads.contains_key(&ProviderSessionId("grand".to_owned())),
+                    "{name}"
+                );
+            },
+        },
+    ]
+}
+
 #[test]
-fn a_duplicate_close_before_registration_ends_the_child_once() {
-    let mut threads = main_only();
-    let mut held = HeldEvents::default();
-    for method in ["turn/started", "thread/closed", "thread/closed"] {
-        let params = if method == "turn/started" {
-            child_turn_started("kid")
-        } else {
-            json!({ "threadId": "kid" })
-        };
-        convert_notification(&mut threads, &mut held, method, &params);
+fn a_closed_child_is_ended_once_whatever_order_the_notifications_arrive_in() {
+    let cases = [
+        closed_before_registration_cases(),
+        closed_after_start_or_end_cases(),
+    ]
+    .into_iter()
+    .flatten();
+
+    for case in cases {
+        let (events, threads) = run_notifications(&case.steps);
+        (case.check)(case.name, &events, &threads);
     }
-
-    let events = convert_notification(
-        &mut threads,
-        &mut held,
-        "item/completed",
-        &spawn_item("main", &["kid"]),
-    );
-
-    assert_eq!(ended_ids(&events), ["kid"]);
-    assert!(!threads.contains_key(&ProviderSessionId("kid".to_owned())));
-}
-
-// #438: 턴 시작 없이 닫힌 자식도 시작과 종료를 짝으로 알린다. 그렇지 않으면 시작만 전달돼 트리가 유휴가 되지 않는다.
-#[test]
-fn a_child_closed_without_any_turn_is_started_and_ended_once() {
-    let mut threads = main_only();
-    let mut held = HeldEvents::default();
-    convert_notification(
-        &mut threads,
-        &mut held,
-        "thread/closed",
-        &json!({ "threadId": "kid" }),
-    );
-
-    let events = convert_notification(
-        &mut threads,
-        &mut held,
-        "item/completed",
-        &spawn_item("main", &["kid"]),
-    );
-
-    assert_eq!(started_ids(&events).len(), 1);
-    assert_eq!(ended_ids(&events), ["kid"]);
-    assert!(!threads.contains_key(&ProviderSessionId("kid".to_owned())));
-}
-
-// #438: 보관 한도로 `turn/started`가 밀려난 뒤 닫힌 자식.
-#[test]
-fn a_child_whose_turn_start_was_evicted_from_the_hold_is_still_ended() {
-    let mut threads = main_only();
-    let mut held = HeldEvents::default();
-    convert_notification(
-        &mut threads,
-        &mut held,
-        "turn/started",
-        &child_turn_started("kid"),
-    );
-    for _ in 0..HELD_PER_THREAD {
-        convert_notification(
-            &mut threads,
-            &mut held,
-            "item/agentMessage/delta",
-            &json!({ "threadId": "kid", "itemId": "m", "delta": "x" }),
-        );
-    }
-    convert_notification(
-        &mut threads,
-        &mut held,
-        "thread/closed",
-        &json!({ "threadId": "kid" }),
-    );
-
-    let events = convert_notification(
-        &mut threads,
-        &mut held,
-        "item/completed",
-        &spawn_item("main", &["kid"]),
-    );
-
-    assert_eq!(started_ids(&events).len(), 1);
-    assert_eq!(ended_ids(&events), ["kid"]);
-}
-
-// #438: 턴이 끝나 종료를 알린 자식의 닫힘은 종료를 다시 알리지 않는다.
-#[test]
-fn closing_a_child_that_already_ended_does_not_end_it_again() {
-    let mut threads = main_only();
-    let mut held = HeldEvents::default();
-    convert_notification(
-        &mut threads,
-        &mut held,
-        "item/completed",
-        &spawn_item("main", &["kid"]),
-    );
-    convert_notification(
-        &mut threads,
-        &mut held,
-        "turn/started",
-        &child_turn_started("kid"),
-    );
-    let completed = convert_notification(
-        &mut threads,
-        &mut held,
-        "turn/completed",
-        &json!({ "threadId": "kid", "turn": { "id": "turn_kid" } }),
-    );
-
-    let closed = convert_notification(
-        &mut threads,
-        &mut held,
-        "thread/closed",
-        &json!({ "threadId": "kid" }),
-    );
-
-    assert_eq!(ended_ids(&completed), ["kid"]);
-    assert!(ended_ids(&closed).is_empty());
-}
-
-// #438
-#[test]
-fn a_nested_child_closed_before_registration_is_ended_under_its_parent() {
-    let mut threads = main_only();
-    let mut held = HeldEvents::default();
-    let kid_spawns_grand = spawn_item("kid", &["grand"]);
-    for (method, params) in [
-        ("turn/started", child_turn_started("grand")),
-        ("thread/closed", json!({ "threadId": "grand" })),
-        ("turn/started", child_turn_started("kid")),
-        ("item/completed", kid_spawns_grand),
-    ] {
-        convert_notification(&mut threads, &mut held, method, &params);
-    }
-
-    let events = convert_notification(
-        &mut threads,
-        &mut held,
-        "item/completed",
-        &spawn_item("main", &["kid"]),
-    );
-
-    assert_eq!(
-        started_ids(&events),
-        [
-            ("kid".to_owned(), None),
-            ("grand".to_owned(), Some("kid".to_owned()))
-        ]
-    );
-    assert_eq!(ended_ids(&events), ["grand"]);
-    assert!(threads.contains_key(&ProviderSessionId("kid".to_owned())));
-    assert!(!threads.contains_key(&ProviderSessionId("grand".to_owned())));
 }
 
 // #438
@@ -1444,57 +1380,49 @@ fn an_approval_asked_before_the_child_is_registered_is_surfaced_once_after_regis
 
 // #438
 #[test]
-fn an_approval_pushed_out_of_the_hold_limit_is_declined_instead_of_left_unanswered() {
-    let mut wire = Wire::new();
-    let mut replies = Vec::new();
-    for index in 0..=HELD_THREADS {
-        let request = approval_request(&format!("ghost{index}"), 100 + index as u64);
-        replies.extend(wire.route(&request).replies);
+fn a_request_pushed_out_of_the_hold_limit_is_answered_instead_of_left_unanswered() {
+    struct Case {
+        name: &'static str,
+        first_id: u64,
+        request: fn(usize, u64) -> serde_json::Value,
+        check: fn(&str, &Wire, &serde_json::Value),
     }
+    let cases = [
+        Case {
+            name: "an approval is declined",
+            first_id: 100,
+            request: |index, id| approval_request(&format!("ghost{index}"), id),
+            check: |name, wire, reply| {
+                assert_eq!(reply["result"], json!({ "decision": "decline" }), "{name}");
+                assert!(lock(&wire.approvals).is_empty(), "{name}");
+            },
+        },
+        Case {
+            name: "an input request gets an error reply",
+            first_id: 200,
+            request: |index, id| {
+                json!({
+                    "id": id,
+                    "method": "item/tool/requestUserInput",
+                    "params": { "threadId": format!("ghost{index}"), "itemId": "call_1", "questions": [] },
+                })
+            },
+            check: |name, _, reply| assert!(reply["error"].is_object(), "{name}"),
+        },
+    ];
 
-    assert_eq!(replies.len(), 1);
-    assert_eq!(replies[0]["id"], json!(100));
-    assert_eq!(replies[0]["result"], json!({ "decision": "decline" }));
-    assert!(lock(&wire.approvals).is_empty());
-}
-
-// #438
-#[test]
-fn an_input_request_pushed_out_of_the_hold_limit_gets_an_error_reply() {
-    let mut wire = Wire::new();
-    let mut replies = Vec::new();
-    for index in 0..=HELD_THREADS {
-        let request = json!({
-            "id": 200 + index,
-            "method": "item/tool/requestUserInput",
-            "params": { "threadId": format!("ghost{index}"), "itemId": "call_1", "questions": [] },
-        });
-        replies.extend(wire.route(&request).replies);
-    }
-
-    assert_eq!(replies.len(), 1);
-    assert_eq!(replies[0]["id"], json!(200));
-    assert!(replies[0]["error"].is_object());
-}
-
-// #438
-#[test]
-fn held_notifications_stay_inside_the_limits() {
-    let mut held = HeldEvents::default();
-    let params = json!({});
-    for index in 0..(HELD_THREADS + 3) {
-        let thread = ProviderSessionId(format!("t{index}"));
-        for _ in 0..(HELD_PER_THREAD + 5) {
-            held.hold(&thread, "turn/started", &params);
+    for case in cases {
+        let mut wire = Wire::new();
+        let mut replies = Vec::new();
+        for index in 0..=HELD_THREADS {
+            let request = (case.request)(index, case.first_id + index as u64);
+            replies.extend(wire.route(&request).replies);
         }
+
+        assert_eq!(replies.len(), 1, "{}", case.name);
+        assert_eq!(replies[0]["id"], json!(case.first_id), "{}", case.name);
+        (case.check)(case.name, &wire, &replies[0]);
     }
-
-    let oldest = held.take(&ProviderSessionId("t0".to_owned()));
-    let newest = held.take(&ProviderSessionId(format!("t{}", HELD_THREADS + 2)));
-
-    assert!(oldest.is_empty());
-    assert_eq!(newest.len(), HELD_PER_THREAD);
-    assert!(held.take(&ProviderSessionId("t3".to_owned())).len() <= HELD_PER_THREAD);
 }
 
 #[test]
@@ -2412,7 +2340,7 @@ async fn resume_without_interrupted_children_cleans_nothing() {
 
 // #507
 #[tokio::test]
-async fn threads_start_and_resume_with_a_workspace_write_sandbox_so_approved_builds_can_write() {
+async fn thread_start_and_resume_request_workspace_write() {
     let dir = tempfile::tempdir().unwrap();
     let env = vec![("FAKE_REQUIRE_SANDBOX".into(), "workspace-write".into())];
     let mut resumed = spec(dir.path());

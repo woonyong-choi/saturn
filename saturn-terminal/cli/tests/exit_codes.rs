@@ -446,46 +446,40 @@ fn accepted_and_ended(end: TaskState, failure: Option<&str>) -> Vec<Notification
 }
 
 #[test]
-fn plain_run_with_a_failed_task_exits_one() {
-    let home = tempfile::tempdir().unwrap();
-    let engine = serve(home.path(), |request| match request {
-        Request::Attach { .. } => Act::Ok(vec![Notification::HistoryChunk {
-            chat: ChatId(1),
-            entries: Vec::new(),
-            oldest: None,
-            has_more: false,
-        }]),
-        Request::SubmitInput { .. } => Act::Ok(accepted_and_ended(
+fn plain_run_exit_code_follows_the_final_task_state() {
+    let cases = [
+        (
+            "a failed task exits one",
             TaskState::Failed,
             Some("provider failed"),
-        )),
-        other => panic!("unexpected {other:?}"),
-    });
+            1,
+        ),
+        (
+            "a task that finishes cleanly exits zero",
+            TaskState::Done,
+            None,
+            0,
+        ),
+    ];
 
-    let run = saturn(home.path(), &[], &[], "go\n");
+    for (name, end, failure, code) in cases {
+        let home = tempfile::tempdir().unwrap();
+        let engine = serve(home.path(), move |request| match request {
+            Request::Attach { .. } => Act::Ok(vec![Notification::HistoryChunk {
+                chat: ChatId(1),
+                entries: Vec::new(),
+                oldest: None,
+                has_more: false,
+            }]),
+            Request::SubmitInput { .. } => Act::Ok(accepted_and_ended(end, failure)),
+            other => panic!("{name}: unexpected {other:?}"),
+        });
 
-    engine.join().unwrap();
-    assert_eq!(run.code, Some(1), "{}", run.stderr);
-}
+        let run = saturn(home.path(), &[], &[], "go\n");
 
-#[test]
-fn plain_run_that_finishes_cleanly_exits_zero() {
-    let home = tempfile::tempdir().unwrap();
-    let engine = serve(home.path(), |request| match request {
-        Request::Attach { .. } => Act::Ok(vec![Notification::HistoryChunk {
-            chat: ChatId(1),
-            entries: Vec::new(),
-            oldest: None,
-            has_more: false,
-        }]),
-        Request::SubmitInput { .. } => Act::Ok(accepted_and_ended(TaskState::Done, None)),
-        other => panic!("unexpected {other:?}"),
-    });
-
-    let run = saturn(home.path(), &[], &[], "go\n");
-
-    engine.join().unwrap();
-    assert_eq!(run.code, Some(0), "{}", run.stderr);
+        engine.join().unwrap();
+        assert_eq!(run.code, Some(code), "{name}: {}", run.stderr);
+    }
 }
 
 // #457: 확인 번호를 모르는 옛 engine의 미리보기 응답은 읽지 못해도 기다리지 않고 실패로 끝낸다.

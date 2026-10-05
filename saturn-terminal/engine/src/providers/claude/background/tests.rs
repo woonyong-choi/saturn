@@ -67,16 +67,35 @@ fn until_first_result(lines: &[Value]) -> usize {
 }
 
 #[test]
-fn the_launch_result_does_not_end_the_background_subagent() {
+fn neither_the_launch_result_nor_a_first_notice_ends_the_subagent_while_its_shell_runs() {
     let lines = lines();
-    let mut state = SessionState::new(AGENT);
+    let first_notice = lines
+        .iter()
+        .position(|line| {
+            is_subtype(line, "task_notification") && line["task_id"] == "aceaa446a8a12da05"
+        })
+        .unwrap();
+    // (사례, 읽는 줄 수, 시작 이벤트가 정확히 하나이고 끝은 없는가, 확정 대기 시각이 없는가)
+    let cases = [
+        ("the launch result", until_first_result(&lines), true, false),
+        ("the first completed notice", first_notice + 1, false, true),
+    ];
 
-    let events = feed(&mut state, &lines[..until_first_result(&lines)]);
+    for (name, read, checks_events, no_settle) in cases {
+        let mut state = SessionState::new(AGENT);
 
-    assert_eq!(started(&events), 1);
-    assert_eq!(ended(&events), 0);
-    assert!(state.running.contains_key(&subagent()));
-    assert_eq!(ended(&settled(&mut state)), 0);
+        let events = feed(&mut state, &lines[..read]);
+
+        if checks_events {
+            assert_eq!(started(&events), 1, "{name}");
+            assert_eq!(ended(&events), 0, "{name}");
+        }
+        assert!(state.running.contains_key(&subagent()), "{name}");
+        if no_settle {
+            assert_eq!(state.next_settle(), None, "{name}");
+        }
+        assert_eq!(ended(&settled(&mut state)), 0, "{name}");
+    }
 }
 
 #[test]
@@ -121,71 +140,44 @@ fn the_subagent_stays_running_after_the_parent_result_and_ends_once_at_the_real_
 }
 
 #[test]
-fn the_first_completed_notice_is_not_the_end_while_its_shell_runs() {
-    let lines = lines();
-    let first_notice = lines
-        .iter()
-        .position(|line| {
-            is_subtype(line, "task_notification") && line["task_id"] == "aceaa446a8a12da05"
-        })
-        .unwrap();
-    let mut state = SessionState::new(AGENT);
-
-    feed(&mut state, &lines[..=first_notice]);
-
-    assert!(state.running.contains_key(&subagent()));
-    assert_eq!(state.next_settle(), None);
-    assert_eq!(ended(&settled(&mut state)), 0);
-}
-
-#[test]
-fn a_restart_inside_the_settle_window_cancels_the_end() {
+fn a_restart_cancels_the_end_inside_the_settle_window_and_starts_again_after_it() {
     let lines = lines();
     let shell_notice = lines
         .iter()
         .position(|line| is_subtype(line, "task_notification") && line["task_id"] == "b9geaatop")
         .unwrap();
-    let mut state = SessionState::new(AGENT);
-
-    feed(&mut state, &lines[..=shell_notice]);
-    // 셸이 끝나 소유 작업이 없고 subagent는 이미 끝났다고 알렸으니 끝 확정을 기다리는 중이다
-    assert!(state.next_settle().is_some());
     let restart = lines[shell_notice + 1..]
         .iter()
         .position(|line| is_subtype(line, "task_started"))
         .unwrap();
-    let events = feed(
-        &mut state,
-        &lines[shell_notice + 1..=shell_notice + 1 + restart],
-    );
 
-    assert_eq!(started(&events), 0);
-    assert_eq!(state.next_settle(), None);
-    assert_eq!(ended(&settled(&mut state)), 0);
-}
+    for (name, settles_before_restart) in [
+        ("restart inside the settle window", false),
+        ("restart after the end", true),
+    ] {
+        let mut state = SessionState::new(AGENT);
+        feed(&mut state, &lines[..=shell_notice]);
+        if settles_before_restart {
+            assert_eq!(ended(&settled(&mut state)), 1, "{name}");
+        } else {
+            // 셸이 끝나 소유 작업이 없고 subagent는 이미 끝났다고 알렸으니 끝 확정을 기다리는 중이다
+            assert!(state.next_settle().is_some(), "{name}");
+        }
 
-#[test]
-fn a_restart_after_the_end_starts_the_subagent_again() {
-    let lines = lines();
-    let shell_notice = lines
-        .iter()
-        .position(|line| is_subtype(line, "task_notification") && line["task_id"] == "b9geaatop")
-        .unwrap();
-    let mut state = SessionState::new(AGENT);
-    feed(&mut state, &lines[..=shell_notice]);
-    assert_eq!(ended(&settled(&mut state)), 1);
+        let events = feed(
+            &mut state,
+            &lines[shell_notice + 1..=shell_notice + 1 + restart],
+        );
 
-    let restart = lines[shell_notice + 1..]
-        .iter()
-        .position(|line| is_subtype(line, "task_started"))
-        .unwrap();
-    let events = feed(
-        &mut state,
-        &lines[shell_notice + 1..=shell_notice + 1 + restart],
-    );
-
-    assert_eq!(started(&events), 1);
-    assert!(state.running.contains_key(&subagent()));
+        if settles_before_restart {
+            assert_eq!(started(&events), 1, "{name}");
+            assert!(state.running.contains_key(&subagent()), "{name}");
+        } else {
+            assert_eq!(started(&events), 0, "{name}");
+            assert_eq!(state.next_settle(), None, "{name}");
+            assert_eq!(ended(&settled(&mut state)), 0, "{name}");
+        }
+    }
 }
 
 #[test]
@@ -221,38 +213,34 @@ fn duplicate_and_early_notices_end_the_subagent_once() {
 }
 
 #[test]
-fn a_stopped_notice_ends_the_subagent_like_a_completed_one() {
-    let lines = lines();
-    let mut state = SessionState::new(AGENT);
-    feed(&mut state, &lines[..until_first_result(&lines)]);
+fn only_a_known_final_status_ends_the_subagent() {
+    // (사례, 알림 status, 끝으로 보는가)
+    let cases = [
+        ("stopped", "stopped", true),
+        ("unknown status", "running", false),
+    ];
 
-    feed(
-        &mut state,
-        &[json!({
+    for (name, status, ends) in cases {
+        let lines = lines();
+        let mut state = SessionState::new(AGENT);
+        feed(&mut state, &lines[..until_first_result(&lines)]);
+
+        let mut notice = json!({
             "type": "system", "subtype": "task_notification", "task_id": "aceaa446a8a12da05",
-            "tool_use_id": LAUNCH, "status": "stopped", "summary": "stopped",
-        })],
-    );
+            "tool_use_id": LAUNCH, "status": status,
+        });
+        if ends {
+            notice["summary"] = json!(status);
+        }
+        feed(&mut state, &[notice]);
 
-    assert_eq!(ended(&settled(&mut state)), 1);
-}
-
-#[test]
-fn an_unknown_status_is_not_an_end() {
-    let lines = lines();
-    let mut state = SessionState::new(AGENT);
-    feed(&mut state, &lines[..until_first_result(&lines)]);
-
-    feed(
-        &mut state,
-        &[json!({
-            "type": "system", "subtype": "task_notification", "task_id": "aceaa446a8a12da05",
-            "tool_use_id": LAUNCH, "status": "running",
-        })],
-    );
-
-    assert_eq!(state.next_settle(), None);
-    assert_eq!(ended(&settled(&mut state)), 0);
+        if ends {
+            assert_eq!(ended(&settled(&mut state)), 1, "{name}");
+        } else {
+            assert_eq!(state.next_settle(), None, "{name}");
+            assert_eq!(ended(&settled(&mut state)), 0, "{name}");
+        }
+    }
 }
 
 #[test]
