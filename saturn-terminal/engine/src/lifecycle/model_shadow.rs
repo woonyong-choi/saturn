@@ -13,10 +13,11 @@ use crate::routers::test_support::{HttpReply, KEY, TransportError, ok};
 
 type FakeReply = Result<HttpReply, TransportError>;
 
-const ON: &str = "[router.shadow]\nmodel_selection = true\n";
+const AUTO: &str = "[model]\nmode = \"auto\"\n";
+const ON: &str = "[model]\nmode = \"auto\"\n[router.shadow]\nmodel_selection = true\n";
 const OPTIONS: [&str; 3] = ["claude/opus", "claude/haiku", "other"];
 
-fn know_models(flow: &mut Flow, provider: Provider, models: &[&str]) {
+pub(super) fn know_models(flow: &mut Flow, provider: Provider, models: &[&str]) {
     let infos = models
         .iter()
         .map(|model| ModelInfo {
@@ -30,7 +31,7 @@ fn know_models(flow: &mut Flow, provider: Provider, models: &[&str]) {
     flow.engine.flow.models.insert((flow.chat, provider), infos);
 }
 
-fn opened_models(fake: &FakeProvider) -> Vec<Option<String>> {
+pub(super) fn opened_models(fake: &FakeProvider) -> Vec<Option<String>> {
     fake.calls()
         .into_iter()
         .filter_map(|call| match call {
@@ -91,7 +92,7 @@ fn last_request(flow: &Flow) -> (Vec<String>, String) {
 }
 
 /// 판단 기록의 내보낸 줄.
-async fn exported(flow: &Flow) -> Vec<Value> {
+pub(super) async fn exported(flow: &Flow) -> Vec<Value> {
     let path = flow.fixture.root.path().join("judgments.jsonl");
     flow.engine.store.export_judgments(&path).await.unwrap();
     std::fs::read_to_string(path)
@@ -121,7 +122,7 @@ async fn run(config: &str, replies: Vec<FakeReply>) -> (Flow, Option<String>) {
 async fn shadow_on_and_off_apply_the_same_model_and_the_same_real_questions() {
     // 그림자는 opus가 낫다고 하지만 실제 선택은 haiku다
     let shadow = [("claude/opus", Some(0.9)), ("claude/haiku", Some(0.2))];
-    let (off, off_model) = run("", vec![reply("claude/haiku", &[], true)]).await;
+    let (off, off_model) = run(AUTO, vec![reply("claude/haiku", &[], true)]).await;
     let (on, on_model) = run(ON, vec![reply("claude/haiku", &shadow, true)]).await;
 
     assert_eq!(off_model.as_deref(), Some("haiku"));
@@ -183,7 +184,7 @@ async fn missing_wrong_or_failed_shadow_answers_leave_the_real_choice_alone() {
         assert!(lines[0]["model_shadow"]["candidates"][0]["probability"].is_null());
     }
 
-    let (off, off_model) = run("", router_down()).await;
+    let (off, off_model) = run(AUTO, router_down()).await;
     let (on, on_model) = run(ON, router_down()).await;
     assert_eq!(on_model, off_model);
     assert_eq!(opened_models(&on.fake), opened_models(&off.fake));

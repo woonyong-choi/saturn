@@ -302,12 +302,26 @@ impl Settings {
             .unwrap_or(false)
     }
 
-    /// 모델 선택 방식 `model.mode`. 옛 스냅샷에 없거나 모르는 값이면 오토다.
+    /// 모델 선택 방식 `model.mode`. 오토(router가 새 작업의 모델을 고름)는 실험 옵션이라 명시해야 켜지고, 없거나 모르는
+    /// 값이면 매뉴얼이다.
     pub(crate) fn model_mode(&self) -> ModelMode {
         match self.get("model.mode").and_then(Value::as_str) {
-            Some("manual") => ModelMode::Manual,
-            _ => ModelMode::Auto,
+            Some("auto") => ModelMode::Auto,
+            _ => ModelMode::Manual,
         }
+    }
+
+    /// 선호 모델 `model.prefer`(`<provider>/<model>` 글, 앞선 것이 우선). 강제 고정이 아니다.
+    pub(crate) fn model_prefer(&self) -> Vec<String> {
+        self.get("model.prefer")
+            .and_then(Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// 기본 모델 `model.default`의 원문(`<provider>/<model>`). 고르지 않았으면 `None`.

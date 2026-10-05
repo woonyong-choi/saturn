@@ -458,7 +458,7 @@ impl App {
             SlashCommand::Model { provider } => {
                 let mut picker = ModelPicker::new(provider, self.chat.pinned_model.clone());
                 picker.default.clone_from(&self.chat.model_default);
-                picker.mode = self.chat.model_mode.unwrap_or(ModelMode::Auto);
+                picker.mode = self.chat.model_mode.unwrap_or(ModelMode::Manual);
                 self.open_window(Window::Model(picker));
                 chat.map(|chat| Request::ListModels { chat, provider })
             }
