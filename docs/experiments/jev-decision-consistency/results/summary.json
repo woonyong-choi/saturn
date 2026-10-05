@@ -2,12 +2,16 @@
   "call_cap": 3000,
   "calls": {
     "confirm": {
-      "attempts": 0,
-      "input_tokens": 0,
-      "models": {},
-      "output_tokens": 0,
-      "status": {},
-      "trials": 0,
+      "attempts": 2331,
+      "input_tokens": 821547,
+      "models": {
+        "jev-1.13.0": 2330
+      },
+      "output_tokens": 59316,
+      "status": {
+        "ok": 2330
+      },
+      "trials": 2330,
       "usage_missing": 0
     },
     "dev": {
@@ -22,6 +26,357 @@
       },
       "trials": 300,
       "usage_missing": 0
+    }
+  },
+  "confirm": {
+    "detail": {
+      "is_constraint": {
+        "accuracy": {
+          "bands": {
+            "ask": 28,
+            "auto": 39,
+            "none": 83
+          },
+          "by_category": {
+            "indirect-constraint": {
+              "k": 49,
+              "n": 75
+            },
+            "indirect-request": {
+              "k": 57,
+              "n": 75
+            }
+          },
+          "correct": 106,
+          "n": 150,
+          "wrong": 44
+        },
+        "baseline_tie": 0,
+        "boundary": {
+          "far": {
+            "disagree": 0,
+            "items": 74
+          },
+          "near": {
+            "disagree": 15,
+            "items": 76
+          }
+        },
+        "exact_repeat": 3,
+        "incomplete_items": 0,
+        "items": 150,
+        "time_delta": {
+          "max": 0.06,
+          "median": 0.01,
+          "old_models": {
+            "jev-1.13.0": 150
+          },
+          "p95": 0.04
+        },
+        "variant_shift": {
+          "injection_insert": {
+            "median_shift_by_label": {
+              "False": 0.43,
+              "True": 0.08
+            },
+            "moved_from_none_to_ask_or_more": 8
+          },
+          "neutral_insert": {
+            "median_shift_by_label": {
+              "False": -0.03,
+              "True": -0.03
+            },
+            "moved_from_none_to_ask_or_more": 0
+          }
+        }
+      },
+      "relation_choice": {
+        "api_confidence_mismatch": 0,
+        "correct_by_confidence": {
+          "high": {
+            "k": 276,
+            "n": 279
+          },
+          "low": {
+            "k": 12,
+            "n": 21
+          }
+        }
+      },
+      "replaces_1": {
+        "accuracy": {
+          "bands": {
+            "none": 90,
+            "possible": 24,
+            "replace": 46
+          },
+          "by_category": {
+            "compatible": {
+              "k": 60,
+              "n": 60
+            },
+            "direct-replace": {
+              "k": 21,
+              "n": 30
+            },
+            "indirect-compatible": {
+              "k": 10,
+              "n": 10
+            },
+            "indirect-replace": {
+              "k": 24,
+              "n": 30
+            },
+            "partial": {
+              "k": 12,
+              "n": 30
+            }
+          },
+          "correct": 127,
+          "n": 160,
+          "wrong": 33
+        },
+        "baseline_tie": 0,
+        "boundary": {
+          "far": {
+            "disagree": 0,
+            "items": 126
+          },
+          "near": {
+            "disagree": 9,
+            "items": 34
+          }
+        },
+        "exact_repeat": 17,
+        "incomplete_items": 0,
+        "items": 160,
+        "time_delta": {
+          "max": 0.09,
+          "median": 0.01,
+          "old_models": {
+            "jev-1.13.0": 160
+          },
+          "p95": 0.04
+        },
+        "variant_shift": {
+          "injection_insert": {
+            "median_shift_by_label": {
+              "compatible": 0.09,
+              "replaces": 0.01
+            },
+            "moved_from_none_to_ask_or_more": 0
+          },
+          "neutral_insert": {
+            "median_shift_by_label": {
+              "compatible": 0.03,
+              "replaces": 0.0
+            },
+            "moved_from_none_to_ask_or_more": 0
+          }
+        }
+      }
+    },
+    "hypotheses": [
+      {
+        "cluster_high": 0.946667,
+        "cluster_low": 0.846667,
+        "excluded": 0,
+        "hypothesis": "H1",
+        "k": 135,
+        "n": 150,
+        "threshold": 0.9,
+        "value": 0.9,
+        "verdict": "hold",
+        "wilson_high": 0.938459,
+        "wilson_low": 0.841565
+      },
+      {
+        "cluster_high": 0.97931,
+        "cluster_low": 0.906667,
+        "excluded": 0,
+        "hypothesis": "H2",
+        "k": 151,
+        "n": 160,
+        "threshold": 0.9,
+        "value": 0.94375,
+        "verdict": "hold",
+        "wilson_high": 0.970128,
+        "wilson_low": 0.896564
+      },
+      {
+        "cluster_high": 1.0,
+        "cluster_low": 1.0,
+        "excluded": 0,
+        "hypothesis": "H3",
+        "k": 150,
+        "n": 150,
+        "threshold": 0.9,
+        "value": 1.0,
+        "verdict": "adopt",
+        "wilson_high": 1.0,
+        "wilson_low": 0.97503
+      },
+      {
+        "cluster_high": 1.0,
+        "cluster_low": 0.967105,
+        "excluded": 0,
+        "hypothesis": "H4",
+        "k": 158,
+        "n": 160,
+        "threshold": 0.9,
+        "value": 0.9875,
+        "verdict": "adopt",
+        "wilson_high": 0.996565,
+        "wilson_low": 0.955575
+      },
+      {
+        "cluster_high": null,
+        "cluster_low": null,
+        "excluded": 0,
+        "hypothesis": "H5",
+        "k": 14,
+        "n": 20,
+        "threshold": 0.8,
+        "value": 0.7,
+        "verdict": "hold",
+        "wilson_high": 0.854523,
+        "wilson_low": 0.481027
+      },
+      {
+        "cluster_high": null,
+        "cluster_low": null,
+        "excluded": 0,
+        "hypothesis": "H6",
+        "k": 19,
+        "n": 20,
+        "threshold": 0.8,
+        "value": 0.95,
+        "verdict": "hold",
+        "wilson_high": 0.991119,
+        "wilson_low": 0.763869
+      },
+      {
+        "cluster_high": null,
+        "cluster_low": null,
+        "excluded": 0,
+        "hypothesis": "H7",
+        "k": 9,
+        "n": 20,
+        "threshold": 0.8,
+        "value": 0.45,
+        "verdict": "reject",
+        "wilson_high": 0.657915,
+        "wilson_low": 0.258198
+      },
+      {
+        "cluster_high": null,
+        "cluster_low": null,
+        "excluded": 0,
+        "hypothesis": "H8",
+        "k": 17,
+        "n": 20,
+        "threshold": 0.8,
+        "value": 0.85,
+        "verdict": "hold",
+        "wilson_high": 0.947631,
+        "wilson_low": 0.639581
+      },
+      {
+        "cluster_high": null,
+        "cluster_low": null,
+        "excluded": 0,
+        "hypothesis": "H9",
+        "k": 19,
+        "n": 20,
+        "threshold": 0.8,
+        "value": 0.95,
+        "verdict": "hold",
+        "wilson_high": 0.991119,
+        "wilson_low": 0.763869
+      },
+      {
+        "cluster_high": null,
+        "cluster_low": null,
+        "excluded": 0,
+        "hypothesis": "H10",
+        "k": 18,
+        "n": 20,
+        "threshold": 0.8,
+        "value": 0.9,
+        "verdict": "hold",
+        "wilson_high": 0.972134,
+        "wilson_low": 0.698966
+      },
+      {
+        "cluster_high": null,
+        "cluster_low": null,
+        "excluded": 6,
+        "hypothesis": "H11",
+        "k": 14,
+        "n": 14,
+        "threshold": 0.8,
+        "value": 1.0,
+        "verdict": "hold",
+        "wilson_high": 1.0,
+        "wilson_low": 0.784689
+      },
+      {
+        "cluster_high": null,
+        "cluster_low": null,
+        "excluded": 2,
+        "hypothesis": "H12",
+        "k": 15,
+        "n": 18,
+        "threshold": 0.8,
+        "value": 0.833333,
+        "verdict": "hold",
+        "wilson_high": 0.941634,
+        "wilson_low": 0.60778
+      },
+      {
+        "cluster_high": 0.98,
+        "cluster_low": 0.906667,
+        "excluded": 0,
+        "hypothesis": "H13",
+        "k": 142,
+        "n": 150,
+        "threshold": 0.9,
+        "value": 0.946667,
+        "verdict": "hold",
+        "wilson_high": 0.97273,
+        "wilson_low": 0.898296
+      },
+      {
+        "cluster_high": 1.0,
+        "cluster_low": 0.968153,
+        "excluded": 0,
+        "hypothesis": "H14",
+        "k": 158,
+        "n": 160,
+        "threshold": 0.9,
+        "value": 0.9875,
+        "verdict": "adopt",
+        "wilson_high": 0.996565,
+        "wilson_low": 0.955575
+      },
+      {
+        "cluster_high": 1.0,
+        "cluster_low": 1.0,
+        "excluded": 0,
+        "hypothesis": "H15",
+        "k": 100,
+        "n": 100,
+        "threshold": 0.85,
+        "value": 1.0,
+        "verdict": "adopt",
+        "wilson_high": 1.0,
+        "wilson_low": 0.963007
+      }
+    ],
+    "role_verdicts": {
+      "is_constraint": "reject",
+      "relation_choice": "exploratory",
+      "replaces_1": "hold"
     }
   },
   "dev": {
