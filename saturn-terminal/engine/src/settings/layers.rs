@@ -76,6 +76,7 @@ constraint_slot_percent = 25
 
 [context.select]
 rrf_k = 60
+packet = "rrf"
 "#;
 
 #[derive(Debug, Clone, Copy)]
@@ -153,6 +154,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("context.item_cap_percent", Kind::PercentFrom1),
     ("context.constraint_slot_percent", Kind::PercentFrom1),
     ("context.select.rrf_k", Kind::Whole),
+    ("context.select.packet", Kind::OneOf(&["rrf", "jev"])),
 ];
 
 /// provider마다 같은 모양으로 있는 키. `provider.<id>.` 뒤의 경로와 종류다.

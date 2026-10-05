@@ -90,14 +90,20 @@ fn piece(model: &str, state: &str, sets: Vec<(QuestionSetId, Vec<Question>)>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::routers::{SET_COMPACT, compact_questions};
+    use crate::routers::{CompactCandidate, SET_COMPACT, compact_questions};
     use saturn_protocol::ids::LedgerSeq;
 
     // cost: time O(q), heap O(q), stack O(1)
     // vars: q = 질문 수
     // basis: estimate
     fn compact_request(state_bytes: usize, candidates: u64) -> RouterRequest {
-        let seqs: Vec<LedgerSeq> = (0..candidates).map(LedgerSeq).collect();
+        let seqs: Vec<CompactCandidate> = (0..candidates)
+            .map(|seq| CompactCandidate {
+                seq: LedgerSeq(seq),
+                call: String::new(),
+                result: String::new(),
+            })
+            .collect();
         RouterRequest {
             model: "jev-test".into(),
             state: "s".repeat(state_bytes),

@@ -49,7 +49,7 @@ async fn register(flow: &Flow, input: InputId, rules: &[(&str, &[&str])]) -> Vec
         .constraints
 }
 
-async fn turn(flow: &mut Flow, provider: Provider, input: &str, call: &str) -> InputId {
+pub(super) async fn turn(flow: &mut Flow, provider: Provider, input: &str, call: &str) -> InputId {
     let id = flow.submit(input).await;
     let agent = flow.agent();
     flow.event(provider, text(agent, &format!("done {call}")))
@@ -62,7 +62,7 @@ async fn turn(flow: &mut Flow, provider: Provider, input: &str, call: &str) -> I
     id
 }
 
-fn packet_of(fake: &FakeProvider) -> String {
+pub(super) fn packet_of(fake: &FakeProvider) -> String {
     fake.calls()
         .into_iter()
         .find_map(|call| match call {

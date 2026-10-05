@@ -136,6 +136,7 @@
 | `context.item_cap_percent` | 1~100 정수 | 30. engine이 읽어 경쟁 항목 길이 상한에 적용한다 |
 | `context.constraint_slot_percent` | 1~100 정수 | 25(초안). engine이 읽어 패킷 제약 칸 상한에 적용한다 |
 | `context.select.rrf_k` | 0 이상 정수 | 60 |
+| `context.select.packet` | `rrf`, `jev` | `rrf`. 실험 옵션이다. `jev`면 새 session 패킷을 만들 때 router `compact` 판단을 불러 경쟁 구역을 남김 확률 순으로 채운다 |
 
 - `tui.on_exit`는 TUI를 닫을 때 작업을 어떻게 할지 정한다. `background`는 계속하고, `stop`은 모든 채팅의 작업을 멈춤과 같게 보류하고, `ask`는 작업이 있으면 닫기 전에 묻는다. 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
 - `model.default`는 새 작업을 보낼 기본 모델이고, `model.mode`는 새 작업의 모델을 router가 고를지(`auto`) 사용자가 정한 모델로만 보낼지(`manual`) 정한다. 두 키 모두 사용자 층, 폴더 층, 실행 층에서 정할 수 있고, 입력은 접수 때 고정한 설정 번호의 값을 쓴다. `model.default`가 `<provider>/<model>` 모양이 아니거나 등록하지 않은 provider id면 고르지 않은 것으로 보고 처음 고르기 창을 다시 연다. 모델 창은 값을 사용자 설정 파일에 쓰므로, 폴더 설정이나 `-c`가 같은 키를 정했으면 그 값이 이기고 창은 병합 결과를 보인다. 규칙은 [기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)에 있다.
@@ -146,6 +147,7 @@
 - `permission.shell` 같은 개별 규칙은 셸 명령, 파일 편집, 파일 읽기(Claude는 폴더 밖 읽기 도구, Codex는 읽기로 분류된 명령의 경로에 닿는다. 폴더 안의 읽기와 분류되지 않은 명령에는 닿지 않는다), MCP 도구, subagent 실행의 허용, 묻기, 거부 규칙이다. 문자열 하나면 그 도구 전체에 적용하고, 패턴 표를 주면 패턴마다 값을 준다. 모드 기본 규칙 뒤에 사용자 층 규칙, 폴더 층 규칙, 채팅 층 규칙, 실행 층 규칙을 잇고 마지막으로 일치한 규칙이 이긴다. 단 어느 층이든 `deny`가 하나라도 일치하면 거부한다(채팅 층과 실행 층까지 넣은 것은 초안). 같은 층 안의 순서는 파일에 적힌 순서다(초안). 병합 결과의 `permission`에는 합친 모드와 이은 규칙 목록이 들어가고, 입력은 접수 때 고정한 설정 번호의 목록을 쓴다. `permission` 아래 모르는 키, 모르는 모드, `allow`, `ask`, `deny`가 아닌 값은 검사에 실패한다. 패턴 문법과 판정 흐름, provider별 번역은 [권한](permissions.md)에 있다.
 - `context.mode`가 `provider`이면 `sessions`는 compaction과 유휴 복귀를 판정하지 않고 provider 실행 인자에 자동 압축 안전망 값을 넣지 않는다. 규칙은 [맥락 정리](context-management.md#정리-모드)에 있다. 기본은 `saturn`이다.
 - `context.select.rrf_k`는 router가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
+- `context.select.packet`은 실험 옵션이라 기본이 `rrf`이고, 일반 기본값은 [#7](https://github.com/woonyong-choi/saturn/issues/7)의 품질 비교를 통과하기 전에 바꾸지 않는다. `jev`는 패킷을 만들 때마다 router를 한 번 부르므로 호출 수와 비용이 늘고, 입력을 접수한 설정 번호의 값을 쓴다. 규칙은 [패킷 판단의 적용](context-management.md#패킷-판단의-적용)에 있다.
 - 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_ask`, `constraint_release`다.
 - `is_constraint`는 자동 등록 기준값(기본 0.8), `constraint_ask`는 등록 질문의 묻는 하한(기본 0.7)이다. `constraint.auto_apply`가 거짓(기본)이면 두 값 모두 적용하지 않는다. 켠 상태에서 권한 모드가 `full`이면 제약 질문을 묻지 않는다([제약](constraints.md#묻지-않고-진행하는-권한-모드)).
 - `constraint_release`는 해제·예외 판단을 적용하는 기준값(기본 0.8)이고 종류 확률의 하한으로도 쓴다. `constraint.auto_apply`가 거짓(기본)이면 해제·예외 질문도 하지 않는다.

@@ -6,26 +6,31 @@ use std::time::{Duration, SystemTime};
 
 use saturn_core::providers::{ProviderError, SessionHandle, SessionSpec};
 use saturn_core::queue::QueuedInput;
+use saturn_core::routers::failure::{CompactFailure, TransitionStarter};
 use saturn_core::sessions::constraint_slot::ConstraintTier;
 use saturn_core::sessions::context::{ContextBudget, ReturnDecision, decide_return};
 use saturn_core::sessions::packet::PacketSource;
 use saturn_core::sessions::{AgentRole, LastTurn, SendTarget, SessionError, SessionRecord};
 use saturn_protocol::ids::{AgentId, ChatId, ConstraintId, LedgerSeq, Provider, SessionId};
-use saturn_protocol::rpc::ChatNotice;
+use saturn_protocol::rpc::{ChatNotice, ModelMode};
 use saturn_protocol::state::SessionState;
 
 use crate::calls::CallKind;
 use crate::dispatch::{MAX_SEND_ATTEMPTS, Start};
 use crate::flow::LiveSession;
 use crate::handoff::{
-    Handoff, HandoffOutcome, PacketEvidence, changes_of_others, handoff_of, handoff_source,
-    others_only, reduce_handoff,
+    COMPACT_SELECTOR, Handoff, HandoffOutcome, PacketEvidence, Pending, RANK_SELECTOR,
+    changes_of_others, handoff_of, handoff_source, handoff_source_ordered, others_only,
+    reduce_handoff,
 };
 use crate::models::pinned_model_name;
+use crate::packet_select::{CompactAsk, CompactOrder, TransitionKey, Trigger};
 use crate::packets::PacketTarget;
 use crate::sessions::SendRequest;
-use crate::settings::ContextMode;
-use crate::store::{IdKind, PacketId, PacketKind};
+use crate::settings::{ContextMode, PacketSelect, Settings};
+use crate::store::{
+    IdKind, LedgerRow, PacketId, PacketKind, RunChanges, SteeredInput, StoredConstraint,
+};
 use crate::{Engine, EngineError};
 
 /// 캐시 유지 시간을 넘겨 쉰 열린 메인. session, 마지막 턴 값, 마지막 턴 뒤 쉰 시간이다.
@@ -38,6 +43,23 @@ pub(crate) enum PlanError {
     Failed(String),
     /// 패킷의 고정 구역이 `P_hard`도 넘어 보내지 않는다.
     Deferred(Vec<String>),
+}
+
+/// 계획을 세우는 중간 결과. `Skip`은 router가 시작한 전환의 `compact` 판단이 실패해 전환을 건너뛰는 것으로, 현재 session의
+/// provider와 모델로 계획을 다시 세운다. `plan_open`이 처리하므로 밖으로 나가지 않는다.
+#[derive(Debug)]
+enum Planning {
+    Err(PlanError),
+    Skip {
+        provider: Provider,
+        model: Option<String>,
+    },
+}
+
+impl From<PlanError> for Planning {
+    fn from(error: PlanError) -> Self {
+        Self::Err(error)
+    }
 }
 
 /// provider를 호출하기 전에 정한 것. 계획이 서면 입력 상태는 아직 바뀌지 않았다.
@@ -91,6 +113,8 @@ pub(crate) struct Restart {
 pub(crate) struct Reduction {
     pub(crate) source: PacketSource,
     pub(crate) budget: ContextBudget,
+    /// 경쟁 구역을 고른 방식. 줄여 다시 만든 패킷의 근거에도 같게 남긴다.
+    pub(crate) selector: &'static str,
     /// 거절된 패킷의 추정 토큰 수.
     pub(crate) sent_tokens: u64,
 }
@@ -123,7 +147,7 @@ impl OpenPlan {
             .evidence
             .as_ref()
             .map_or(1, |evidence| evidence.attempt);
-        let evidence = PacketEvidence::reduced(&handoff, &reduction.source, (attempt, previous));
+        let evidence = PacketEvidence::reduced(&handoff, reduction, (attempt, previous));
         Some(Self {
             handoff: Some(handoff.text),
             reduction: None,
@@ -256,6 +280,118 @@ fn packet_text(chat: ChatId, outcome: HandoffOutcome) -> Result<Option<String>, 
     }
 }
 
+/// 새 session 패킷을 만드는 재료. `compact` 판단을 더해 다시 만들 때 쓴다.
+struct PacketMaterial<'a> {
+    rows: &'a [LedgerRow],
+    steers: &'a [SteeredInput],
+    changes: &'a [RunChanges],
+    pending: &'a Pending,
+    constraints: &'a [StoredConstraint],
+    budget: &'a ContextBudget,
+    settings: &'a Settings,
+}
+
+impl Engine {
+    /// 실험 옵션 `jev`: 후보 전체를 `compact`로 묻고 그 순서로 다시 만든 패킷 재료와 결과. 판단을 받지 못했으면 `None`이라
+    /// 호출자가 순위 순서 패킷을 그대로 쓰고, router가 시작한 전환이면 전환을 건너뛴다(`Planning::Skip`).
+    async fn judged_source(
+        &self,
+        record: &QueuedInput,
+        (plain, main, is_stale): (&OpenPlan, Option<&SessionRecord>, bool),
+        material: &PacketMaterial<'_>,
+    ) -> Result<Option<(Option<PacketSource>, HandoffOutcome)>, Planning> {
+        let key = || TransitionKey {
+            chat: record.chat,
+            from: main.map(|main| main.id),
+            provider: plain.provider,
+            model: plain.model.clone(),
+            trigger: Trigger::Input(record.id),
+        };
+        let starter = self
+            .transition_starter((record, material.settings), main, plain, is_stale)
+            .await;
+        let ask = CompactAsk {
+            chat: record.chat,
+            input: Some(record.id),
+            settings: record.settings,
+            key: key(),
+        };
+        match self.compact_order(ask, key).await {
+            CompactOrder::Judged(verdicts) => {
+                let source = handoff_source_ordered(
+                    material.rows,
+                    material.steers,
+                    material.changes,
+                    material.pending,
+                    (material.constraints, &self.registry.instruction_docs()),
+                    material.budget,
+                    Some(&verdicts),
+                );
+                let outcome = source.as_ref().map_or(HandoffOutcome::Empty, |source| {
+                    handoff_of(source, material.budget)
+                });
+                Ok(Some((source, outcome)))
+            }
+            CompactOrder::Unavailable
+                if self.routers.compact_after_failure(starter)
+                    == CompactFailure::SkipTransition =>
+            {
+                Err(Planning::Skip {
+                    provider: main.map_or(plain.provider, |main| main.provider),
+                    model: main.and_then(|main| main.model.clone()),
+                })
+            }
+            CompactOrder::Unavailable | CompactOrder::NoCandidates => Ok(None),
+        }
+    }
+}
+
+impl Engine {
+    /// 보관 session으로 돌아갈 때 그 session이 받지 못한 다른 session의 변경분만 담은 패킷 재료.
+    fn change_source(
+        &self,
+        id: SessionId,
+        (rows, changes): (Vec<LedgerRow>, Vec<RunChanges>),
+        (steers, pending): (&[SteeredInput], &Pending),
+        budget: &ContextBudget,
+    ) -> Option<PacketSource> {
+        let after = self.sessions.attach_from(id);
+        let newer = rows.into_iter().filter(|row| row.seq > after).collect();
+        handoff_source(
+            &others_only(newer, id),
+            steers,
+            &changes_of_others(changes, id, after),
+            pending,
+            (&[], &self.registry.instruction_docs()),
+            budget,
+        )
+    }
+}
+
+/// 보낼 패킷의 근거, 줄여 다시 보낼 재료, 새 session을 열 때 남길 제약 단계. 보낼 패킷이 없으면 앞의 둘은 `None`이다.
+fn packet_parts(
+    target: &SendTarget,
+    outcome: &HandoffOutcome,
+    source: Option<PacketSource>,
+    (budget, selector): (ContextBudget, &'static str),
+) -> (Option<PacketEvidence>, Option<Reduction>, PacketTiers) {
+    let (HandoffOutcome::Ready(handoff), Some(source)) = (outcome, source) else {
+        return (None, None, Vec::new());
+    };
+    let evidence = PacketEvidence::first(handoff, &source, selector);
+    let tiers = match target {
+        SendTarget::New { .. } => source.constraint_tiers.clone(),
+        _ => Vec::new(),
+    };
+    let reduction = Reduction {
+        source,
+        budget,
+        selector,
+        sent_tokens: handoff.tokens,
+    };
+    (Some(evidence), Some(reduction), tiers)
+}
+
 /// 새 session을 열 때 떠나는 열린 메인. 쉬었다 돌아와 같은 provider와 모델로 새로 열 때도 옛 session을 닫는다.
 fn leaving_main(
     main: Option<&SessionRecord>,
@@ -294,14 +430,40 @@ impl Engine {
         record: &QueuedInput,
         start: Start,
     ) -> Result<OpenPlan, PlanError> {
+        match self.plan_open_as(record, start, None).await {
+            Ok(plan) => Ok(plan),
+            Err(Planning::Err(error)) => Err(error),
+            Err(Planning::Skip { provider, model }) => self
+                .plan_open_as(record, start, Some((provider, model)))
+                .await
+                .map_err(|planning| match planning {
+                    Planning::Err(error) => error,
+                    Planning::Skip { .. } => {
+                        PlanError::Failed("transition skip did not settle".to_owned())
+                    }
+                }),
+        }
+    }
+
+    /// `keep`이 있으면 입력이 고른 provider와 모델 대신 그것으로 계획한다.
+    async fn plan_open_as(
+        &self,
+        record: &QueuedInput,
+        start: Start,
+        keep: Option<(Provider, Option<String>)>,
+    ) -> Result<OpenPlan, Planning> {
         let role = match start {
             Start::Task(task) if !self.queue.is_main_task(task) => AgentRole::Sub,
             _ => AgentRole::Main,
         };
-        let provider = self
-            .pick_provider(record)
-            .map_err(|error| PlanError::Failed(self.failure_line(&error)))?;
-        let model = pinned_model_name(&self.registry, record);
+        let (provider, model) = match keep {
+            Some(kept) => kept,
+            None => (
+                self.pick_provider(record)
+                    .map_err(|error| PlanError::Failed(self.failure_line(&error)))?,
+                pinned_model_name(&self.registry, record),
+            ),
+        };
         let main = self.sessions.live_main(record.chat).cloned();
         let agent = match (start, role, &main) {
             (Start::Turn(agent), _, _) => Some(agent),
@@ -402,7 +564,7 @@ impl Engine {
         plain: OpenPlan,
         main: Option<&SessionRecord>,
         stale: Option<StaleMain>,
-    ) -> Result<OpenPlan, PlanError> {
+    ) -> Result<OpenPlan, Planning> {
         let failed = |error: EngineError| PlanError::Failed(self.failure_line(&error));
         let (chat, provider) = (record.chat, plain.provider);
         let settings = self
@@ -449,45 +611,42 @@ impl Engine {
             return Ok(OpenPlan { target, ..plain });
         }
         let target = self.keep_pinned_model(target, plain.model.as_deref());
+        let mut selector = RANK_SELECTOR;
         let (source, outcome) = match &target {
             SendTarget::Resume(id) => {
-                let after = self.sessions.attach_from(*id);
-                let newer = rows.into_iter().filter(|row| row.seq > after).collect();
-                let source = handoff_source(
-                    &others_only(newer, *id),
-                    &steers,
-                    &changes_of_others(changes, *id, after),
-                    &pending,
-                    (&[], &self.registry.instruction_docs()),
-                    &budget,
-                );
+                let source = self.change_source(*id, (rows, changes), (&steers, &pending), &budget);
                 let outcome = source
                     .as_ref()
                     .map_or(HandoffOutcome::Empty, |source| handoff_of(source, &budget));
                 (source, outcome)
             }
+            SendTarget::New { .. }
+                if settings.packet_select() == PacketSelect::Jev && full_source.is_some() =>
+            {
+                let material = PacketMaterial {
+                    rows: &rows,
+                    steers: &steers,
+                    changes: &changes,
+                    pending: &pending,
+                    constraints: &constraints,
+                    budget: &budget,
+                    settings: &settings,
+                };
+                match self
+                    .judged_source(record, (&plain, main, stale.is_some()), &material)
+                    .await?
+                {
+                    Some(judged) => {
+                        selector = COMPACT_SELECTOR;
+                        judged
+                    }
+                    None => (full_source, full),
+                }
+            }
             SendTarget::New { .. } | SendTarget::Open(_) => (full_source, full),
         };
-        let evidence = match (&outcome, &source) {
-            (HandoffOutcome::Ready(handoff), Some(source)) => {
-                Some(PacketEvidence::first(handoff, source))
-            }
-            _ => None,
-        };
-        let reduction = match (&outcome, source) {
-            (HandoffOutcome::Ready(handoff), Some(source)) => Some(Reduction {
-                source,
-                budget,
-                sent_tokens: handoff.tokens,
-            }),
-            _ => None,
-        };
-        let constraint_tiers = match (&target, &outcome, &reduction) {
-            (SendTarget::New { .. }, HandoffOutcome::Ready(_), Some(reduction)) => {
-                reduction.source.constraint_tiers.clone()
-            }
-            _ => Vec::new(),
-        };
+        let (evidence, reduction, constraint_tiers) =
+            packet_parts(&target, &outcome, source, (budget, selector));
         let handoff = packet_text(chat, outcome)?;
         let leaving = leaving_main(main, &plain, stale.is_some());
         Ok(OpenPlan {
@@ -500,6 +659,32 @@ impl Engine {
             evidence,
             ..plain
         })
+    }
+
+    /// 이 전환을 누가 시작했는지. 사용자가 모델을 고정했거나(`/model` 포함) 유휴 복귀와 맥락 크기 규칙이 연 전환은 `Forced`이고,
+    /// 고정하지 않은 오토 모드에서 router가 고른 모델이 열린 메인과 달라 시작한 전환만 `Router`다.
+    async fn transition_starter(
+        &self,
+        (record, settings): (&QueuedInput, &Settings),
+        main: Option<&SessionRecord>,
+        plain: &OpenPlan,
+        is_stale: bool,
+    ) -> TransitionStarter {
+        let differs = main.is_some_and(|main| {
+            main.provider != plain.provider || !keeps_model(main, plain.model.as_deref())
+        });
+        let is_auto = settings.model_mode() == ModelMode::Auto;
+        let is_pinned = self.flow.switch_to.contains_key(&record.chat)
+            || self
+                .store
+                .chat_model(record.chat)
+                .await
+                .map_or(true, |model| model.is_some());
+        if is_stale || is_pinned || !is_auto || !differs {
+            TransitionStarter::Forced
+        } else {
+            TransitionStarter::Router
+        }
     }
 
     /// 패킷을 보낼 session. 쉰 열린 메인이면 유휴 복귀 판정으로 그 메인을 그대로 쓰거나 새 session을 연다.
@@ -956,7 +1141,7 @@ impl Engine {
         self.provider_mut(chat, restart.live.provider)?;
         restart.evidence = PacketEvidence::reduced(
             &reduced,
-            &reduction.source,
+            &reduction,
             (restart.evidence.attempt, restart.packet),
         );
         let target = PacketTarget {

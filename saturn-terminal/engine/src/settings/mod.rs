@@ -47,6 +47,13 @@ pub(crate) enum ContextMode {
     Provider,
 }
 
+/// 경쟁 구역을 채우는 순서를 정하는 실험 옵션 `context.select.packet`. 기본은 `Rrf`다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PacketSelect {
+    Rrf,
+    Jev,
+}
+
 /// 화면 방식 `tui.screen`. `auto`는 터미널이면 전체 화면, 아니면 plain이다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Screen {
@@ -334,6 +341,15 @@ impl Settings {
         match self.text("context.mode") {
             "provider" => ContextMode::Provider,
             _ => ContextMode::Saturn,
+        }
+    }
+
+    /// 실험 옵션 `context.select.packet`. 기본 `rrf`는 경쟁 구역을 후보 순위로만 채우고, `jev`는 패킷을 만들 때 router
+    /// `compact` 판단을 불러 남김 확률 순으로 채운다. 모르는 값은 검사에서 걸러져 기본값으로 본다.
+    pub(crate) fn packet_select(&self) -> PacketSelect {
+        match self.text("context.select.packet") {
+            "jev" => PacketSelect::Jev,
+            _ => PacketSelect::Rrf,
         }
     }
 

@@ -262,4 +262,27 @@ impl Store {
             })
             .collect()
     }
+
+    /// 시도의 경쟁 구역 항목마다 `(기록 번호, 고른 방식, 들어간 모양)`. 시험이 선별 방식을 본다.
+    #[cfg(test)]
+    pub(crate) async fn packet_competing(
+        &self,
+        id: PacketId,
+    ) -> Result<Vec<(u64, String, Option<String>)>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT ref_id, selector, form FROM handoff_packet_items WHERE packet_id = ? AND zone = 'Competing' ORDER BY rowid",
+        )
+        .bind(to_sql_int(id.0))
+        .fetch_all(&self.pool)
+        .await?;
+        rows.iter()
+            .map(|row| {
+                Ok((
+                    from_sql_int(row.try_get("ref_id")?),
+                    row.try_get("selector")?,
+                    row.try_get("form")?,
+                ))
+            })
+            .collect()
+    }
 }

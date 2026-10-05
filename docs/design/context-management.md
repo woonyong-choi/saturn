@@ -160,7 +160,7 @@ T_hard = T + H
 - 실행 중에 끼워 넣어 적용한 입력도 사용자 입력이다. 그 입력은 들어간 실행의 턴에 `User (sent while this turn was running): ...` 줄로 적용한 순서대로 붙고, 마지막 사용자 입력이면 목표 칸의 마지막 입력이 된다. 끼워 넣은 입력이 답에 반복되지 않아도 다음 session이 최신 지시를 알게 하기 위해서다. 거절되어 대기로 돌아온 입력은 실행에 들어가지 않았으므로 `Queued input`으로만 나오고, 최초 입력과 끼워 넣은 입력으로 두 번 싣지 않는다. 이번 작업에만 해당하는 지시를 지속 제약으로 올리지 않는다([제약](constraints.md)). 기록은 `inputs.steered_run`과 `steered_after`로 [기록 저장과 보존](records.md#기록-저장소)이 정한다. 다른 session이 낸 실행만 읽는 변경분은 그 실행에 끼운 입력만 포함한다.
 - 3단계에는 대기·보류 상태의 입력, 보낸 뒤 결과를 모르는 작업(`NeedsCheck`)의 입력, 결과가 없는 도구 호출을 넣는다. 결과가 없는 도구 호출은 별도 경고 문장 없이 도구 결과 자리에 오류 결과(`Interrupted before a result was recorded · It may have partially run`)를 둔다. 결과를 모르는 작업의 입력도 같은 오류 결과를 붙인다. 항목은 기록의 실제 상태로 고르고 모델을 따로 부르지 않는다. 마지막 입력만 넣을 때보다 정답률이 33.8%p [30.8, 36.7] 높았고, 모델이 작성한 목표·남은 일과는 차이가 0.8%p [−2.5, 4.0]였다. 모델 작성은 호출 토큰이 평균 77,425 늘어 총 토큰이 5.77배(93,655 대 16,230)였다. 단가와 캐시는 반영하지 않은 토큰 합계 비율이다([실험 보고서](../experiments/packet-goal-fields/report.md)).
 - 4단계에는 도구 결과를 넣지 않는다. 최근 턴의 큰 도구 결과가 예산을 혼자 차지하지 않게 하기 위해서다.
-- 경쟁 구역의 순서는 `compact` 판단으로 정한다. engine이 패킷을 만들 때 이 판단을 부르는 연결은 구현 전이고(#380), 지금은 후보 순위(RRF) 순서로만 채운다. 후보 전체를 묻고, 항목마다 호출과 결과 중 큰 남김 확률을 쓴다. 확률이 높은 순으로, 같은 확률이면 [맥락 고르기](context-selection.md)의 후보 순위 순으로 둔다. router가 답하지 못한 항목은 후보 순위 순으로 뒤에 둔다.
+- 경쟁 구역의 순서는 `compact` 판단으로 정한다. engine은 실험 옵션 `context.select.packet`이 `jev`일 때만 이 판단을 부르고(#380), 기본(`rrf`)은 후보 순위(RRF) 순서로만 채운다. 후보 전체를 묻고, 항목마다 호출과 결과 중 큰 남김 확률을 쓴다. 확률이 높은 순으로, 같은 확률이면 [맥락 고르기](context-selection.md)의 후보 순위 순으로 둔다. router가 답하지 못한 항목은 후보 순위 순으로 뒤에 둔다.
 - `compact` 판단이 재시도 뒤에도 실패하면 router가 시작한 전환은 건너뛰고, 사용자가 고정했거나 맥락 크기 규칙이 시작한 전환은 후보 순위 순으로 경쟁 구역을 채운다. 규칙과 이유는 [router 실패](router.md#router-실패)에 있다.
 - 확률에 기준값을 두지 않고 예산이 찰 때까지 채운다. 근거 항목의 확률은 평균 0.372, 최댓값 0.65로 낮아서 기준값 0.5가 근거 항목 624개 중 549개(88.0%)를 버렸기 때문이다([결정 기록](../decisions/2026-10-02-fill-packet-by-probability.md)). 확률은 근거와 비근거를 가르는 순서에만 쓴다.
 
@@ -211,7 +211,7 @@ P_max = T / 10
 
 ### 패킷 판단의 적용
 
-패킷을 만들 때의 `compact` 판단은 router 호출이 끝난 뒤 적용한다. 이 절의 흐름은 구현 전이다(#380). 패킷 만들기는 세 단계다.
+패킷을 만들 때의 `compact` 판단은 router 호출이 끝난 뒤 적용한다. 이 흐름은 실험 옵션 `context.select.packet = jev`일 때만 돈다(#380). 패킷 만들기는 세 단계다.
 
 1. `sessions`가 기록과 제약에서 재료(후보, 고정 구역 항목)를 모은다.
 2. engine이 후보 전체를 `compact` 요청으로 묻는다. 요청 처리와 별도 작업으로 돌고 그동안 다른 요청을 기다리지 않는다.
@@ -223,6 +223,29 @@ P_max = T / 10
 - 키가 다르면 판단을 `superseded`로 기록하고 버린 뒤 재료를 다시 모아 한 번 다시 묻는다. 또 다르면 판단 없이 진행한다. router가 시작한 전환은 건너뛰고 사용자가 고정했거나 맥락 크기 규칙이 시작한 전환은 후보 순위 순서로 채운다([router 실패](router.md#router-실패)).
 - 채팅 revision 전체를 비교하지 않는다. 판단이 도는 사이 작업 상태와 대기열은 자주 바뀌지만 후보를 남길 확률은 틀리지 않는다. 전환 대상이 바뀌면 그 판단은 다른 상대를 향한 것이므로 버린다.
 - 맥락 정리로 여는 새 session은 키 비교에 더해 트리 유휴이고 합칠 대기 입력이 없는지 다시 확인한다. 아니면 정리를 다음 턴 경계로 미룬다.
+
+현재 구현은 판단을 요청 처리와 별도 작업으로 돌리지 않고 패킷 계획 안에서 기다린다. 기다림은 호출 하나의 재시도 마감(10초)을 넘지 않고, 넘어서 온 답(늦은 답)은 쓰지 않고 버린다. 기다리는 동안 engine은 다른 요청을 처리하지 못한다. 그래서 지금은 판단 중에 키가 달라질 길이 없지만, 비교와 한 번 다시 묻기는 판단을 별도 작업으로 옮길 때 그대로 쓰도록 구현해 두었다(`packet_select.rs`의 `settle`).
+
+적용 규칙은 다음과 같다.
+
+| 상황 | 동작 |
+|---|---|
+| 옵션이 꺼져 있다(기본) | router를 부르지 않고 RRF 순서로 채운다. |
+| 새 session을 여는 전환과 맥락 정리 | 후보 전체를 한 번 묻고 남김 확률 순으로 채운다. 같은 예산(`P_max`)과 같은 고정 구역을 쓰고 달라지는 것은 경쟁 구역의 순서뿐이다. |
+| 보관 session으로 돌아가며 변경분만 붙이는 경우, 열린 session을 그대로 쓰는 경우 | 묻지 않는다. 패킷이 아니라 변경분이다. |
+| 일부 후보만 답했다 | 답한 항목을 확률 순으로 앞에 두고 나머지는 RRF 순으로 뒤에 둔다. 판단 기록에 `partial`을 남긴다. |
+| 답이 전부 없다, router 실패, 응답 형식 오류, 크기 한도, 늦은 답 | 판단 없이 진행한다. 맥락 정리와 사용자가 고정한 전환은 RRF 순서로 채우고 로그를 남긴다. router가 고른 모델이 열린 메인과 달라 시작한 전환은 전환을 건너뛰고 현재 모델로 진행한다([router 실패](router.md#router-실패)). |
+| 판단 중 전환 키가 달라졌다 | 판단을 `superseded`로 기록하고 한 번 다시 묻는다. 또 다르면 판단 없이 진행한다. |
+
+- 전환을 누가 시작했는지는 사용자가 모델을 고정했거나(`/model` 포함) 유휴 복귀나 맥락 크기 규칙이 연 전환이 아니고, 모델 선택이 오토 모드이며, 고른 provider나 모델이 열린 메인과 다를 때만 router가 시작한 것으로 센다. 그 밖은 모두 강제한 전환이다.
+- 판단은 성공이든 실패든 판단 기록에 남아 요청 합계에 센다. 늦은 답으로 끊은 호출은 응답을 받지 못해 기록하지 않고 로그만 남긴다. 연속 실패 집계(`RouterPaused`, `RouterDisconnected` 알림)에는 이 호출을 세지 않는다.
+- 전달 패킷 기록의 경쟁 구역 항목은 `selector`가 `compact`(판단 순서)나 `rank`(순위 순서)다. 판단을 받지 못해 대체했으면 `rank`로 남아 기록이 실제 보낸 패킷과 맞는다.
+
+#### 낮은 확신 대체 규칙을 쓰지 않는 이유
+
+[#540](https://github.com/woonyong-choi/saturn/issues/540)의 오프라인 실험에서 봉인한 낮은 확신 규칙(예산 안 셋째 블록의 확률이 0.5 미만이면 전체를 코드 검색으로 대체)이 필요한 블록이 하나인 과제 24건을 모두 대체시켰다. 모델은 정답 블록에 0.95를 줬는데도 나머지 후보가 낮다는 이유로 판단이 버려졌다. 필요한 블록이 하나면 나머지 확률은 원래 낮으므로 이 규칙은 단일 블록 과제에서 늘 발동한다.
+
+이 구현은 그 규칙을 쓰지 않는다. 판단 전체를 버리는 기준은 답의 유무뿐이고, 확률이 낮다는 이유로 대체하지 않는다. 확률 기준 이상의 블록만 남기는 방식도 검토했으나 채택하지 않았다. 남김 확률 0.5 기준은 근거 항목의 88.0%를 버렸고([결정 기록](../decisions/2026-10-02-fill-packet-by-probability.md)), 예산이 남는데 기준 미만 블록을 빼는 것은 담을 수 있는 근거를 버리는 일이다. 대신 확률 순으로 예산이 찰 때까지 채우므로 확률이 가장 높은 블록이 항상 먼저 들어가고, 필요한 블록이 하나여도 그 블록은 빠지지 않는다. 기준 이상 블록을 먼저 채우고 남은 예산을 기준 미만 블록으로 채우는 것은 이 순서와 같은 결과다. 이 성질은 `lifecycle/packet_select.rs`의 `single_needed_block_with_low_scores_elsewhere_is_kept_not_replaced`가 확인한다. 이 규칙이 실제 과제 성과를 높이는지는 #7과 #540의 온라인 단계에서 가른다.
 
 ### 패킷 표기
 
@@ -278,7 +301,7 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 - 판정은 `A`를 알고 `A ≥ T`일 때만 패킷을 만들어 `decide`를 부른다. `A < T`이면 기록을 읽지 않는다. 판정이 `Restart`면 같은 provider의 새 session을 패킷과 함께 열고, 옛 session은 `종료`로 두고 닫는다. 메인 에이전트 번호는 그대로이고 새 session의 전달 기록 번호는 패킷이 담은 마지막 번호다. 열지 못하면 옛 session을 그대로 쓴다. 패킷이 `P_hard`도 넘으면 옮기지 않고 `고정 제약이 길어 맥락 정리를 미룹니다`를 보인다.
 - 턴 끝에서는 마지막 턴 뒤 경과 시간을 0으로 본다. 유휴 복귀 조건은 다음 입력을 보낼 session을 정할 때 판정한다. 열린 메인이 트리 유휴이고 마지막 턴 뒤 경과 시간이 캐시 유지 시간을 넘었으면 그 입력에서 만들 패킷 `P`와 마지막 `A`를 비교해 `P < A`일 때 같은 provider와 모델의 새 session으로 패킷과 함께 이어 간다. 옛 session은 닫아 `종료`로 둔다. 마지막 턴 값을 모르거나 `P ≥ A`이면 열린 session을 그대로 쓴다. 판정하는 입력은 보내려는 입력 자신이라 합칠 대기 입력으로 세지 않고, 그 입력은 패킷에 넣지 않고 새 session의 첫 턴 뒤에 보낸다. 같은 판정을 엔진을 다시 켠 뒤 처음 보내는 입력에도 쓴다.
 - 정리 모드 `context.mode`가 `provider`이면 턴 끝의 판정과 유휴 복귀 판정을 모두 하지 않고, provider 실행 인자에 안전망 값(`T_hard`)도 넣지 않는다.
-- 경쟁 구역 순서는 지금 후보 순위(RRF)만 쓰고 `compact` 판단은 부르지 않는다.
+- 경쟁 구역 순서는 기본이 후보 순위(RRF)이고, 실험 옵션 `context.select.packet = jev`일 때만 `compact` 판단을 부른다.
 
 provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적은 쪽을 실측으로 고른다([#7](https://github.com/woonyong-choi/saturn/issues/7)). 어느 방식도 provider 기본 압축보다 품질을 낮추지 않아야 한다.
 
@@ -319,8 +342,10 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | 패킷은 맨 앞 지시문으로 기록이 요청이 아니며 끝난 일을 다시 하지 말고 다음 사용자 입력을 기다리라고 알린다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_starts_with_the_do_not_act_instruction` |
 | 입력 항목에 끝남, 진행 중, 결과 모름 상태를 적고 결과 모름은 중단 결과 형식을 쓰며, 끝난 입력은 남은 일 칸에 넣지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_recent_turn_states_and_unknown_result_format`, `saturn-terminal/engine/src/handoff.rs`의 `finished_input_is_marked_finished_and_never_an_open_item`, `stopped_input_has_an_unknown_result_in_the_interrupted_format`, `running_input_is_marked_in_progress`, `saturn-terminal/engine/src/store/ledger.rs`의 `ledger_since_carries_how_the_run_ended` |
 | 패킷은 구역마다 기록 번호 순서로 쓴다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_writes_competing_in_seq_order` |
-| `compact` 질문은 패킷을 만들 때 후보 전체를 한 번 router에 보내고 턴이 끝날 때는 보내지 않는다. | 구현 전(#380). 턴 종료에서 router 호출이 없는지, 패킷을 만들 때 후보 전체가 한 번 묻히는지 확인한다. |
-| 패킷 판단은 전환 키가 같을 때만 적용하고, 다르면 한 번 다시 묻고, 또 다르면 판단 없이 진행한다. 기록이 늘어도 판단을 버리지 않는다. | 구현 전(#380). 판단 중 전환 대상이나 기록을 바꿔 적용, 재판단, 판단 없이 진행하는지 확인한다. |
+| `compact` 질문은 패킷을 만들 때 후보 전체를 한 번 router에 보내고 턴이 끝날 때는 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `jev_order_fills_the_budget_with_the_blocks_the_router_wants`(새 session을 여는 입력에서 후보 전체를 한 번 묻는다), `option_is_off_by_default_and_asks_nothing`. 턴 종료에서 묻지 않는 것은 `compact_at_boundary`가 `Restart` 판정 뒤에만 부르는 구조로 보장하며 별도 시험은 없다. |
+| 판단을 받지 못하면(실패, 전부 무응답, 형식 오류, 늦은 답) 순위 순서로 채우고 전달 기록의 `selector`가 `rank`로 남는다. 일부만 답했으면 답한 항목이 앞에 온다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `without_a_judgment_the_packet_is_filled_by_rank_order`, `an_answer_that_arrives_too_late_is_not_used`, `jev_order_fills_the_budget_with_the_blocks_the_router_wants` |
+| 필요한 블록 하나만 높고 나머지가 낮아도 판단을 버리지 않고 그 블록을 먼저 넣는다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `single_needed_block_with_low_scores_elsewhere_is_kept_not_replaced` |
+| 패킷 판단은 전환 키가 같을 때만 적용하고, 다르면 한 번 다시 묻고, 또 다르면 판단 없이 진행한다. 기록이 늘어도 판단을 버리지 않는다. | `saturn-terminal/engine/src/packet_select.rs`의 `settle_applies_equal_keys_and_asks_again_once_when_they_differ`. 판단을 기다리는 사이 engine이 상태를 바꿀 수 없어 engine 수준에서 키를 바꾸는 시험은 만들 수 없다. |
 | 제약 칸은 `C_max` 안에서 채우고 못 넣은 수를 표시한다. | [제약](constraints.md#요구사항)의 제약 칸 행 |
 | 고정 구역이 `P_max`를 넘으면 오래된 턴의 답부터 줄이고, 최근 턴 수를 줄인 뒤 `P_hard`까지 허용한다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_overflow_trims_oldest_answer_first`, `build_packet_fixed_overflow_drops_oldest_turns`, `build_packet_fixed_over_limit_allows_hard_limit_without_competing` |
 | 실험 수집기가 `saturn-core`의 `packet` 예제(`cargo run -p saturn-core --example packet`)로 두 실험 설계의 입력에서 패킷을 만들고, router 판단이 없으면 RRF 순서로 채운다. | `saturn-terminal/core/examples/packet/tests.rs`의 `packet_stream_input_prints_packet_text`, `packet_scenarios_input_prints_json_with_packet_and_rrf_order`, `packet_without_judgments_fills_in_rrf_order`, `packet_judgments_put_low_probability_item_before_unanswered` |
