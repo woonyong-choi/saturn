@@ -450,7 +450,7 @@ impl ProviderClient for ClaudeClient {
             Arc::clone(&state),
             self.events_tx.clone(),
             Arc::clone(&self.latest_commands),
-            self.launch.masker.clone(),
+            (self.launch.masker.clone(), self.launch.events.clone()),
         ));
         tokio::spawn(log_stderr(spawned.io.stderr, self.launch.masker.clone()));
         if matches!(session_arg, SessionArg::Resume(_))

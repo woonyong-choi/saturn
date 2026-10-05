@@ -151,6 +151,7 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 - Codex app-server stdout의 JSON 문자열 값은 오류와 이벤트로 바꾸기 전에 가린다.
 - 판단 기록을 저장하기 전에 `secrets`가 보낸 원문과 받은 원문의 비밀값을 가린다.
 - 가린 자리는 `[redacted]`로 바꾸고 끝 4자리도 남기지 않는다. `Authorization`, `Proxy-Authorization`, `X-Api-Key` 헤더 줄은 이름만 남기고 값을 가린다(초안).
+- provider 원시 메시지 관측 기록(`debug.provider_events`, [provider 연결과 session](providers-and-sessions.md#원시-이벤트-관측-기록))은 값을 남기지 않지만, 방법 이름, ID, 필드 이름에도 키 가림을 다시 적용한다. 키가 메시지 이름 자리에 들어오는 경우까지 막기 위해서다.
 - 출력 가림 버퍼는 줄바꿈 전의 조각을 `flush`나 `Debug`로 내보내지 않는다.
 
 ### 오류 처리
@@ -167,6 +168,7 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 |---|---|
 | provider 자식 프로세스 환경에는 router 키 변수가 없다. | `secrets` 모듈 테스트로 자식 환경에 제외 목록의 이름이 없는지 확인한다. |
 | router 키는 기록 저장소, 로그, 오류 출력에 남지 않는다. | 키를 넣은 호출과 오류를 만든 뒤 저장소와 출력에 키 문자열이 없는지 확인한다. `saturn-terminal/engine/src/lifecycle/requests.rs`의 `requests_wait_for_router_key_and_key_is_not_recorded`는 홈 폴더 전체(`logs/` 포함)를, `engine_log_file_never_holds_the_router_key`는 실제 `EngineLog` 파일을 본다. |
+| provider 원시 메시지 관측 기록에 router 키 문자열이 남지 않는다. | `saturn-terminal/engine/src/providers/trace.rs`의 `router_key_does_not_appear_even_in_names_and_ids` |
 | router 호출은 TLS 인증서 검증을 끄지 않는다. | `saturn-terminal/engine/src/routers/remote/tests.rs`의 `real_client_rejects_an_untrusted_certificate_and_sends_nothing`이 실제 reqwest 클라이언트로 자체 서명 인증서 서버를 거부하는지 확인한다. |
 | 키체인에 직접 저장한 키는 확인 창 없이 읽히지 않는다. | [#2](https://github.com/woonyong-choi/saturn/issues/2) 실험으로 확인 창 없이 읽는 경로를 확인한다. |
 | engine 실행 파일은 생성한 훅 명령(`hook pre-tool-use`)을 받아 허용과 거부를 훅 규격의 출력과 종료 코드로 돌려준다. | `saturn-terminal/engine/tests/key_hook.rs`의 `hook_command_denies_key_store_access`, `hook_command_allows_ordinary_calls_without_output`, `hook_command_blocks_unreadable_input_with_exit_code_2`, `hook_command_leaves_saturn_home_untouched` |

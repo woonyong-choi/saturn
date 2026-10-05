@@ -11,7 +11,7 @@ use tokio::sync::mpsc;
 use super::background;
 use super::convert::convert_line;
 use super::{SessionState, lock};
-use crate::providers::mask_values;
+use crate::providers::{Frame, ProviderTrace, mask_values};
 use crate::secrets::Masker;
 use saturn_protocol::ids::AgentId;
 
@@ -21,7 +21,7 @@ pub(super) async fn read_loop(
     state: Arc<Mutex<SessionState>>,
     events: mpsc::Sender<ProviderEvent>,
     latest_commands: Arc<Mutex<Vec<ProviderCommand>>>,
-    masker: Masker,
+    (masker, trace): (Masker, ProviderTrace),
 ) {
     let mut lines = BufReader::new(stdout).lines();
     loop {
@@ -34,6 +34,7 @@ pub(super) async fn read_loop(
             continue;
         };
         mask_values(&mut message, &masker);
+        trace_line(&trace, &message);
         let converted = convert_message(&state, &latest_commands, &message);
         for event in converted {
             let _ = events.send(event).await; // 받는 쪽이 연결을 버렸다
@@ -69,6 +70,22 @@ async fn next_line_or_settle(
             }
         }
     }
+}
+
+/// 받은 줄의 모양을 관측 기록에 남긴다. 방법 이름은 `type`이고, 하위 종류(`subtype`, 제어 요청은 `request.subtype`)가 있으면 `/`로 잇는다.
+fn trace_line(trace: &ProviderTrace, message: &Value) {
+    if !trace.is_enabled() {
+        return;
+    }
+    let mut kind = message["type"].as_str().unwrap_or("unknown").to_owned();
+    let subtype = message["subtype"]
+        .as_str()
+        .or_else(|| message["request"]["subtype"].as_str());
+    if let Some(subtype) = subtype {
+        kind.push('/');
+        kind.push_str(subtype);
+    }
+    trace.record(Frame::Line, &kind, message);
 }
 
 fn convert_message(
@@ -109,5 +126,56 @@ pub(super) async fn log_stderr(stderr: ChildStderr, masker: Masker) {
     let mut lines = BufReader::new(stderr).lines();
     while let Ok(Some(line)) = lines.next_line().await {
         tracing::debug!(line = %masker.mask(&line).as_str(), "claude stderr");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+    use crate::providers::TraceHub;
+    use crate::providers::test_support::CLAUDE;
+    use saturn_protocol::ids::ChatId;
+
+    #[test]
+    fn kind_joins_type_with_its_subtype_or_the_control_request_subtype() {
+        let home = tempfile::tempdir().unwrap();
+        let hub = TraceHub::new(home.path());
+        hub.set_enabled(ChatId(1), true);
+        let trace = hub.link(ChatId(1), CLAUDE, &Masker::default());
+
+        for message in [
+            json!({ "type": "system", "subtype": "init", "session_id": "s-1" }),
+            json!({ "type": "control_request", "request_id": "r-9", "request": { "subtype": "can_use_tool", "tool_name": "Bash" } }),
+            json!({ "type": "assistant", "session_id": "s-1", "message": { "content": [{ "type": "text", "text": "private words" }] } }),
+        ] {
+            trace_line(&trace, &message);
+        }
+
+        let logs = home.path().join("logs");
+        let text = std::fs::read_to_string(
+            std::fs::read_dir(logs)
+                .unwrap()
+                .next()
+                .unwrap()
+                .unwrap()
+                .path(),
+        )
+        .unwrap();
+        let lines: Vec<Value> = text
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+        let kinds: Vec<&str> = lines.iter().map(|l| l["kind"].as_str().unwrap()).collect();
+        assert_eq!(
+            kinds,
+            ["system/init", "control_request/can_use_tool", "assistant"]
+        );
+        assert_eq!(lines[1]["ids"]["request_id"], json!(["r-9"]));
+        assert_eq!(lines[0]["frame"], "line");
+        for value in ["private words", "Bash"] {
+            assert!(!text.contains(value), "{value} leaked into the trace");
+        }
     }
 }

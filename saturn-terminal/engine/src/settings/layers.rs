@@ -132,6 +132,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("model.mode", Kind::OneOf(&["auto", "manual"])),
     ("grading.model", Kind::Text),
     ("consent.share_with_server", Kind::Flag),
+    ("debug.provider_events", Kind::Flag),
     ("child.max_depth", Kind::Whole),
     ("child.max_concurrent", Kind::Positive),
     ("child.max_total", Kind::Positive),
@@ -250,6 +251,8 @@ pub(crate) enum UserOnly {
     Retention,
     /// 하위 접속 상한. 저장소가 상한을 올려 provider 프로세스를 늘리지 못하게 한다.
     ChildLimits,
+    /// provider 원시 메시지의 모양을 파일로 남기는 디버그 기록. 저장소가 켜서 기록을 늘리지 못하게 한다.
+    Debug,
 }
 
 impl UserOnly {
@@ -263,6 +266,7 @@ impl UserOnly {
             Self::RouterMode => "router.mode",
             Self::Retention => "retention",
             Self::ChildLimits => "child",
+            Self::Debug => "debug",
         }
     }
 
@@ -283,6 +287,7 @@ pub(crate) const USER_ONLY: &[UserOnly] = &[
     UserOnly::RouterMode,
     UserOnly::Retention,
     UserOnly::ChildLimits,
+    UserOnly::Debug,
 ];
 
 /// 옛 이름과 새 이름. 옛 이름은 층마다 병합 전에 새 이름으로 옮기고 경고 한 줄을 남긴다.

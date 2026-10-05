@@ -15,7 +15,7 @@ use super::config::{default_args, read_user_config, with_ask_tools};
 use super::convert::{cache_ttl, detail_of, permission_call, shell_exit_code};
 use super::*;
 use crate::events::{next_arrival, start_queued_turn};
-use crate::providers::{PermissionLaunch, ProviderConnection, SaturnDefaults};
+use crate::providers::{PermissionLaunch, ProviderConnection, ProviderTrace, SaturnDefaults};
 use crate::secrets::Masker;
 
 /// 파이프 버퍼(64KiB)보다 커서 쓰는 도중 막히는 턴 크기. fake가 `big:<길이>`로 답한다.
@@ -141,6 +141,7 @@ fn launch(dir: &Path, env: Vec<(OsString, OsString)>) -> LaunchSpec {
         key_deny_read: Vec::new(),
         permission: PermissionLaunch::default(),
         masker: Masker::new(Vec::new()),
+        events: ProviderTrace::off(),
     }
 }
 
