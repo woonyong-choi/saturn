@@ -1008,7 +1008,7 @@ fn launch_args_add_defaults_and_hook_settings() {
             "--autocompact",
             "100000",
             "--settings",
-            "{\"hooks\":{\"PreToolUse\":[]},\"permissions\":{\"ask\":[\"Bash\",\"Edit\",\"MultiEdit\",\"Write\",\"NotebookEdit\",\"Task\",\"Agent\",\"mcp__*\"]},\"sandbox\":{\"allowUnsandboxedCommands\":false,\"enabled\":true,\"failIfUnavailable\":true,\"filesystem\":{\"denyRead\":[]}}}",
+            "{\"hooks\":{\"PreToolUse\":[]},\"permissions\":{\"ask\":[\"Bash\",\"Edit\",\"MultiEdit\",\"Write\",\"NotebookEdit\",\"Task\",\"Agent\",\"mcp__*\"]},\"sandbox\":{\"allowUnsandboxedCommands\":false,\"autoAllowBashIfSandboxed\":false,\"enabled\":true,\"failIfUnavailable\":true,\"filesystem\":{\"denyRead\":[]}}}",
         ]
     );
 }
@@ -1047,6 +1047,33 @@ fn launch_args_enable_the_bash_sandbox_and_deny_reading_key_stores() {
             "/Library/Keychains"
         ])
     );
+}
+
+/// 샌드박스를 켜면 Claude Code는 기본으로 Bash를 허가 요청 없이 자동 허용한다(`autoAllowBashIfSandboxed`).
+/// 그러면 `can_use_tool` 요청이 오지 않아 Saturn 규칙이 판정하지 못하므로 모든 모드에서 꺼야 한다.
+#[test]
+fn the_bash_sandbox_does_not_auto_allow_shell_commands() {
+    for questions_disabled in [false, true] {
+        let dir = tempfile::tempdir().unwrap();
+        let mut launch = launch(dir.path(), Vec::new());
+        launch.key_deny_read = key_paths();
+        launch.permission.questions_disabled = questions_disabled;
+        let client = ClaudeClient::new(launch, Supervisor::new());
+
+        let args = client.launch_args(&spec(dir.path(), None), &SessionArg::New("id-1".to_owned()));
+
+        let settings = settings_arg(&args);
+        assert_eq!(
+            settings["sandbox"]["autoAllowBashIfSandboxed"],
+            json!(false)
+        );
+        assert!(
+            settings["permissions"]["ask"]
+                .as_array()
+                .unwrap()
+                .contains(&json!("Bash"))
+        );
+    }
 }
 
 #[test]
