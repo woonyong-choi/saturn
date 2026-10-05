@@ -63,6 +63,7 @@ impl Engine {
             providers: HashMap::new(),
             registry: crate::Registry::builtin(),
             routers: verified.routers,
+            catalog: crate::model_catalog::builtin(),
             router_gate: verified.gate,
             rpc,
             passes,

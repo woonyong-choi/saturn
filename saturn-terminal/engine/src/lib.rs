@@ -43,6 +43,7 @@ mod inputs;
 mod intake;
 mod judge_context;
 mod launch;
+mod model_catalog;
 mod models;
 mod outcomes;
 mod passes;
@@ -367,6 +368,8 @@ pub struct Engine {
     /// 붙은 어댑터. 설명자와 연결 만들기는 모두 여기서 찾는다.
     registry: Registry,
     routers: Routers,
+    /// 배포에 묶인 모델 평가 근거 목록. 시작 때 정하고 끝까지 쓴다.
+    catalog: saturn_core::models::ModelCatalog,
     router_gate: RouterGate,
     rpc: RpcServer,
     /// 하위 접속 출입증과 상한. 연결 작업이 요청 처리 루프를 거치지 않고 함께 쓴다.

@@ -14,6 +14,7 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [맥락 고르기](design/context-selection.md) | 후보 순위, 단어 조각, 도구 결과 메모, compact 요청 |
 | [제약](design/constraints.md) | 제약 식별, 저장, 해제와 예외, 묻기와 되돌리기, 패킷 제약 칸 |
 | [router](design/router.md) | 판단 질문, 답 형식, 기준값과 대체 규칙, 판단 기록 |
+| [모델 평가 근거 목록](design/model-evidence.md) | 모델 근거 출처 구분, 품질 확정 조건, 후보 집합, 목록 배포와 정책 버전 |
 | [router 키 보호](design/router-key-security.md) | router 키 입력, 저장, 자식 프로세스 차단 |
 | [router 학습](design/router-training.md) | 기준값 조정, 채점, 로컬 모델 승격 |
 | [설정](design/settings.md) | 설정 층, 폴더 설정 신뢰, 설정 번호 |

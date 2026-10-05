@@ -115,6 +115,13 @@ async fn inputs_keep_the_policy_they_were_accepted_under_across_swap_rollback_an
     let digest_new = flow.engine.policy_digest_at(new).await.unwrap();
     assert_ne!(digest_old, digest_new);
 
+    // 모델 목록을 새 버전으로 배포하면 지문이 달라지고, 옛 버전으로 되돌리면 옛 지문이다
+    let shipped = flow.engine.catalog.version.clone();
+    flow.engine.catalog.version = "next".to_owned();
+    assert_ne!(flow.engine.policy_digest_at(old).await.unwrap(), digest_old);
+    flow.engine.catalog.version = shipped;
+    assert_eq!(flow.engine.policy_digest_at(old).await.unwrap(), digest_old);
+
     let rolled_back = change_settings(&mut flow, STRICT).await;
     assert_eq!(rolled_back, old);
 
