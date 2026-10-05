@@ -1526,6 +1526,7 @@ dependencies = [
  "saturn-protocol",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror",
  "tracing",

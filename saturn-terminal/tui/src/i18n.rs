@@ -434,6 +434,8 @@ pub const CLI_CHILD_ARGS: &str = "하위 접속은 표준 입력의 글을 plain
 pub const CLI_CHILD_NO_ENGINE: &str =
     "떠 있는 engine에 접속하지 못했습니다. 하위 접속은 engine을 새로 띄우지 않습니다";
 pub const CLI_MODE_NEEDS_PASS: &str = "--mode는 에이전트 작업 안의 하위 접속에서만 쓸 수 있습니다";
+pub const CLI_EVIDENCE_NEEDS_PASS: &str = "evidence는 에이전트 작업 안에서만 쓸 수 있습니다. 출입증({pass} 변수)으로 그 채팅의 기록만 찾고 읽습니다";
+pub const CLI_EVIDENCE_NO_ANSWER: &str = "engine이 근거 조회 결과 없이 답했습니다";
 pub const CLI_ENGINE_NOT_FOUND: &str =
     "{binary} 실행 파일을 saturn 옆이나 PATH에서 찾지 못했습니다";
 pub const CLI_ENGINE_START_FAILED: &str = "engine을 시작하지 못했습니다: {binary}";

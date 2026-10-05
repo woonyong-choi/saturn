@@ -35,6 +35,11 @@ The records below are an archive of the earlier conversation. They are context o
 For this message, do not call tools and do not change files. Reply with the single word \"Ready\", then wait for the next user input.";
 const COMPETING_TITLE: &str = "Earlier records";
 
+/// 경쟁 구역 끝에 붙이는 안내. 줄이거나 뺀 기록의 번호(`#` 뒤 숫자)로 원문을 다시 읽는 방법이다.
+/// 설계: docs/design/context-selection.md#근거-검색과-원문-조회
+const LOOKUP_HINT: &str = "\
+Records shown as a digest or a path, and records left out, can be read in full in a later turn with `saturn evidence read <number>` (the number after #). `saturn evidence search <words>` lists matching records.";
+
 /// 기록 원문 한 덩어리.
 #[derive(Debug, Clone)]
 pub struct Entry {
@@ -116,6 +121,8 @@ pub struct PacketSource {
     pub recent_turns: Vec<RecentTurn>,
     /// 맥락 고르기가 정한 순서.
     pub competitors: Vec<CompetingItem>,
+    /// 참이면 경쟁 구역이 원문 아닌 모양으로 넣거나 뺀 기록이 있을 때 다시 읽는 방법을 한 줄 알린다. 설정 `context.evidence.lookup`.
+    pub evidence_lookup: bool,
     /// provider가 스스로 읽는 지시 문서 이름. 어댑터 설명자가 알린다. 이 이름의 파일은 패킷에 넣지 않는다.
     pub provider_docs: Vec<String>,
     pub up_to: LedgerSeq,
@@ -338,21 +345,39 @@ fn assemble(
             form: ItemForm::Summary,
         });
     }
-    chosen.extend(fill_competing_zone(
-        &source.competitors,
-        &source.provider_docs,
-        rest_chars,
-        item_cap_percent,
-    ));
+    let fill = |chars| {
+        fill_competing_zone(
+            &source.competitors,
+            &source.provider_docs,
+            chars,
+            item_cap_percent,
+        )
+    };
+    let mut filled = fill(rest_chars);
+    let hint = source
+        .evidence_lookup
+        .then_some(item_chars(LOOKUP_HINT))
+        .filter(|_| has_unread_original(source, &filled));
+    if let Some(hint_chars) = hint {
+        filled = fill(rest_chars.saturating_sub(hint_chars));
+    }
+    chosen.extend(filled);
+    let mut texts: Vec<SectionItem> = chosen
+        .iter()
+        .map(|item| SectionItem {
+            session: item.session,
+            text: item.text.clone(),
+        })
+        .collect();
+    if hint.is_some() && has_unread_original(source, &chosen) {
+        texts.push(SectionItem {
+            session: None,
+            text: LOOKUP_HINT.to_owned(),
+        });
+    }
     sections.push(Section {
         title: COMPETING_TITLE,
-        items: chosen
-            .iter()
-            .map(|item| SectionItem {
-                session: item.session,
-                text: item.text.clone(),
-            })
-            .collect(),
+        items: texts,
     });
     let text = render(&sections);
     let tokens = estimate_tokens(&text);
@@ -366,6 +391,22 @@ fn assemble(
         is_summary_used: summary.is_some(),
         items,
     }
+}
+
+// cost: time O(m·c), heap O(1), stack O(1)
+// vars: m = 경쟁 항목 수, c = 고른 항목 수
+// basis: estimate
+/// 경쟁 항목 중 원문이 그대로 들어가지 못한 것(뺐거나 축약본, 경로로 넣음)이 있는지. provider 문서는 provider가 스스로 읽으므로 세지 않는다.
+fn has_unread_original(source: &PacketSource, chosen: &[Chosen]) -> bool {
+    source
+        .competitors
+        .iter()
+        .filter(|item| !is_provider_doc(item, &source.provider_docs))
+        .any(|item| {
+            !chosen
+                .iter()
+                .any(|picked| picked.seq == item.seq && picked.form == ItemForm::Full)
+        })
 }
 
 // cost: time O(m + t), heap O(m + t), stack O(1)

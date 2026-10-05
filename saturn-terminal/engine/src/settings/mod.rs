@@ -386,8 +386,21 @@ impl Settings {
             packet_hard_percent: self.packet_hard_percent(),
             item_cap_percent: self.positive("context.item_cap_percent"),
             constraint_slot_percent: self.positive("context.constraint_slot_percent"),
-            rrf_k: u32::try_from(self.whole("context.select.rrf_k")).unwrap_or(u32::MAX),
+            rrf_k: self.rrf_k(),
+            evidence_lookup: self.evidence_lookup(),
         }
+    }
+
+    /// 패킷이 생략한 기록을 다시 읽는 방법을 알릴지 `context.evidence.lookup`. 실험 옵션이라 기본 거짓.
+    pub(crate) fn evidence_lookup(&self) -> bool {
+        self.lookup("context.evidence.lookup")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    }
+
+    /// 합치기 상수 `context.select.rrf_k`.
+    pub(crate) fn rrf_k(&self) -> u32 {
+        u32::try_from(self.whole("context.select.rrf_k")).unwrap_or(u32::MAX)
     }
 
     /// 옛 스냅샷에 `context.packet_hard_divisor`만 있으면 `100 / 나눗수`로 읽는다.

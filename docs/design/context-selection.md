@@ -146,6 +146,50 @@
 
 engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바꾸고, 경로, 읽은 줄 범위, 바뀐 줄 수, 종료 코드를 이벤트에 싣는다. provider 고유 이름을 `providers/codex`, `providers/claude` 안에만 두기 위해서다. 이벤트 필드는 [provider 연결과 session](providers-and-sessions.md#이벤트-수신과-변환)에 있다.
 
+### 근거 검색과 원문 조회
+
+패킷이 줄이거나 뺀 기록을 에이전트가 번호로 다시 읽는 길이다. 순위, Jev, 작업 LLM이 같은 후보에서 고르고 다시 읽는 비교 실험([#540](https://github.com/woonyong-choi/saturn/issues/540))도 이 길을 쓴다. 새 저장소와 새 색인은 없다. 후보와 원문은 기록 저장소의 도구 호출과 결과이고 순위는 위의 어휘·파일·최근성 RRF를 그대로 쓴다.
+
+후보는 패킷의 경쟁 구역과 같은 도구 호출 한 건이다. `core`의 `sessions::evidence`가 후보 집합 `CandidateSet`을 만든다.
+
+| 후보 값 | 뜻 |
+|---|---|
+| `id` | 채팅 안의 기록 번호. 패킷 항목 앞의 `#41`과 같다. |
+| `project` | 기록을 만든 채팅의 작업 폴더 |
+| `at_ms` | 기록 시각 |
+| `chars` | 원문 글자 수. 원문 범위는 `0..chars`다. |
+| `excerpt` | 원문 앞 300글자 |
+| `hash` | 원문의 SHA-256 |
+
+- 집합은 번호 순으로 보관한다. 입력 순서가 바뀌어도 같은 집합이고 같은 집합 해시다. 같은 번호가 둘이면 만들지 않는다.
+- 원문을 읽을 때는 번호가 집합에 있는지, 같은 폴더의 기록인지, 후보를 볼 때의 해시와 같은지 차례로 본다. 없는 번호, 다른 폴더, 바뀐 원문은 각각 다른 오류다.
+- 도구 호출에 결과가 아직 없다가 나중에 오면 원문이 바뀌므로 해시가 달라진다. 그때는 후보를 다시 본다.
+
+선택 방법은 `select`가 바꿔 끼운다. 같은 집합, 같은 순위, 같은 전문 예산(원문 글자 수)에서 제안만 다르다.
+
+| 방법 | 제안 | 고르는 규칙 |
+|---|---|---|
+| 순위 | 없음 | RRF 순위 그대로 예산이 찰 때까지 채운다. 예산에 안 드는 후보는 건너뛰고 작은 후보를 계속 본다. |
+| Jev | 후보마다 남김 확률 | 확률이 0.5 이상인 후보만 확률이 높은 순으로, 같은 확률이면 순위 순으로 채운다. 0.5는 첫 실험을 위한 가정이다. |
+| 작업 LLM | 고른 번호 | 고른 순서로 채운다. |
+
+- Jev와 작업 LLM이 판정하지 못하면(호출 오류, 확률이 0.5 이상인 후보가 없음, 없는 번호, 겹친 번호, 0과 1을 벗어난 확률, 빈 선택) 순위 선택으로 돌아가고 사유를 `undecided`로 남긴다. 추가 요약 LLM은 부르지 않는다. 실제 적용한 방법(`applied`)과 요청한 방법(`requested`)이 따로 남아 대체를 적용으로 세지 않는다.
+- engine이 Jev와 작업 LLM을 부르는 연결은 이 구현에 없다. 호출 결과를 `Proposal`로 넘기는 계약만 있고, 패킷에서 Jev를 부르는 연결은 [#380](https://github.com/woonyong-choi/saturn/issues/380), 조건 비교 수집은 [#540](https://github.com/woonyong-choi/saturn/issues/540)이 맡는다.
+
+에이전트는 작업 안에서 `saturn evidence`로 기록을 찾고 읽는다. 지원하는 provider는 둘 다 셸 명령을 실행하므로 공통 길은 하나다.
+
+| 명령 | 하는 일 |
+|---|---|
+| `saturn evidence search <검색어> [--limit N]` | 후보를 순위 순으로 보인다. 첫 줄은 집합 해시와 후보 수, 이어서 한 줄에 번호, 시각, 글자 수, 해시, 발췌다. 상한은 50개다. |
+| `saturn evidence read <번호> [--hash H] [--offset N] [--limit N]` | 원문을 읽는다. 한 번에 최대 20000글자이고 더 있으면 첫 줄에 `next_offset`이 있다. |
+
+- 출입증(`SATURN_PASS`)으로 접속하고 출입증을 준 채팅의 기록만 본다. 출입증이 없거나 회수됐으면 거절한다. 에이전트 작업 밖에서는 쓸 수 없다.
+- 기록 번호는 채팅마다 센다. 다른 채팅의 번호를 넣어도 그 채팅의 기록이 아니라 이 채팅의 같은 번호를 본다.
+- 읽기 범위는 작업 폴더와 더한 폴더다. 도구 호출이 건드린 경로가 범위 밖이거나 `permission.read`의 `deny`와 일치하면 그 기록은 후보에서 빠지고 번호로 읽으려 해도 거절한다. 권한이 나중에 좁아져도 지난 기록으로 우회하지 못하게 하기 위해서다.
+- 조회는 기록 저장소를 읽을 뿐 파일을 읽지 않는다. 조회마다 종류, 번호, 결과(`Ok`, `NotFound`, `Stale`, `Scope`), 돌려준 양을 `evidence_lookups`에 남긴다([기록](records.md#근거-조회-기록)). 조회한 기록이 없는데 0회로 보이는 일이 없게 하기 위해서다.
+- 에이전트가 이 명령을 쓰게 알리는 것은 설정 `context.evidence.lookup`(기본 거짓)이다. 켜면 경쟁 구역에서 원문 아닌 모양으로 들어가거나 빠진 기록이 있는 패킷의 끝에 `saturn evidence read <number>` 안내 한 줄이 붙는다. 안내는 경쟁 구역 예산에 든다. 꺼 두면 패킷은 지금과 같다.
+- 셸 명령이라 권한은 Saturn 규칙을 그대로 받는다. 새 스킬이나 MCP 서버를 설치하지 않는다. Claude는 Bash 샌드박스가 Unix 소켓 접속을 막으므로 실행별 `--settings`의 `sandbox.network.allowUnixSockets`에 engine 소켓 경로 하나만 넣는다(`providers/claude`). Codex는 같은 명령이 허가 요청을 거쳐 소켓에 닿는다.
+
 ### 오류 처리
 
 | 상황 | 동작 |
@@ -154,6 +198,10 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 요청 조각 일부 실패 | 실패한 조각의 항목은 남기고, 답이 있는 남긴 항목 뒤에 RRF 순으로 둔다. |
 | 크기 한도를 넘는 `state` | 질문 하나도 담을 수 없으므로 요청을 만들지 않고 RRF 순서로 채운다. |
 | 도구 호출 인자에 경로 없음 | 파일 겹침 채널에서 그 후보를 뺀다. |
+| 근거 조회의 출입증이 없거나 회수됨 | 거절한다(`pass is unknown or revoked`). |
+| 없는 기록 번호 | `NotFound`로 거절한다. |
+| 후보를 본 뒤 원문이 바뀜(해시 불일치) | `Stale`로 거절한다. |
+| 읽기 범위 밖 파일이거나 읽기 규칙이 거부하는 경로의 기록 | `Scope`로 거절하고 후보에서도 뺀다. |
 
 ### 요구사항
 
@@ -170,6 +218,14 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 영문 식별자는 식별자 경계에서 나눈다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_split_text_into_search_fragments` |
 | 자모로 풀린 한글도 음절 한글과 같은 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_nfd_hangul_matches_nfc` |
 | 같은 결과에서 늘 같은 메모를 만든다. | `saturn-terminal/core/src/sessions/memo.rs`의 `tool_memo_same_result_gives_same_memo` |
+| 순위, Jev, 작업 LLM이 같은 후보 집합과 같은 예산을 받고 선택 번호만 다르다. | `saturn-terminal/core/src/sessions/evidence/tests.rs`의 `the_three_methods_get_the_same_set_and_budget_and_differ_only_in_ids` |
+| 후보 집합은 입력 순서에 따르지 않고, 없는 번호, 다른 폴더, 바뀐 해시를 가른다. 같은 번호는 만들지 않는다. | 같은 파일의 `set_hash_ignores_input_order_and_follows_any_candidate_change`, `set_rejects_a_duplicate_id`, `resolve_checks_the_id_the_folder_and_the_hash` |
+| Jev와 작업 LLM이 판정하지 못하면 순위 선택으로 돌아가고 같은 확률은 순위 순이다. | 같은 파일의 `a_selection_that_cannot_be_decided_falls_back_to_the_rank_selection`, `jev_ties_follow_rank_order_and_candidate_input_order_changes_nothing` |
+| 예산에 안 드는 후보는 건너뛰고, 순위에 없는 후보는 번호가 큰 순으로 뒤에 붙는다. | 같은 파일의 `a_candidate_over_the_remaining_budget_is_skipped_and_smaller_ones_still_fit`, `rank_order_drops_unknown_ids_and_appends_unranked_candidates_newest_first` |
+| 검색은 검색어 순위로 돌려주고 읽기는 기록 원문을 쪽 단위로 돌려준다. | `saturn-terminal/engine/src/lifecycle/evidence.rs`의 `search_ranks_by_the_query_and_read_returns_the_recorded_text_in_pages` |
+| 없는 번호, 바뀐 해시, 읽기 범위 밖과 읽기 규칙이 거부하는 경로의 기록은 거절하고 후보에서 빼며, 다른 채팅의 기록은 나오지 않는다. | 같은 파일의 `read_refuses_unknown_other_chat_stale_and_out_of_scope_records` |
+| 출입증이 없으면 거절하고 조회마다 기록한다. | 같은 파일의 `an_unknown_pass_is_refused_and_every_lookup_is_counted` |
+| 안내 한 줄은 옵션을 켜고 원문이 잘렸을 때만 붙는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_lookup_hint_only_when_the_option_is_on_and_an_original_was_cut` |
 | 순위가 router 전체 판단과 얼마나 겹치는지 잰다. | [RRF k와 router 상위 N 실험 결과](../experiments/rrf-k-top-n/report.md): 상위 10개 12.0%, 상위 40개 44.5% |
 | 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [단어 조각 단위별 오타 재현율 실험 결과](../experiments/wordpiece-typo-recall/report.md) |
 | router 없이 순위로 채운 패킷은 router 전체 판단 패킷보다 정답률이 10%p를 넘게 낮지 않다. | [새 패킷 규칙의 전환 품질 재측정](../experiments/handoff-packet-quality-v2/report.md): 정답률 차이 +50.7%p [44.7, 56.7]로 기각. 판단 없는 패킷의 규칙은 [router 실패](router.md#router-실패)에 있다. |

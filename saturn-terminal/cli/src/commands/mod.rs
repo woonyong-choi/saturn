@@ -11,6 +11,7 @@ use crate::exit::{Exit, ExitCode};
 
 pub(crate) mod chat;
 pub(crate) mod child;
+pub(crate) mod evidence;
 pub(crate) mod export;
 pub(crate) mod prune;
 pub(crate) mod resume;

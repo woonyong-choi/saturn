@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 19;
+pub(crate) const SCHEMA_VERSION: u32 = 20;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -18,7 +18,7 @@ const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
 pub(crate) const MIGRATIONS: &[&str] = &[
-    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19,
+    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20,
 ];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
@@ -434,6 +434,21 @@ CREATE TABLE model_selections (
 CREATE INDEX model_selections_input ON model_selections(input_id);
 "#;
 
+/// `evidence_lookups`는 에이전트 작업이 `saturn evidence`로 기록을 찾거나 원문을 읽은 시도마다 한 행이다. 조회한 횟수와
+/// 돌려준 양을 세는 재료이고 원문과 검색어는 두지 않는다. 이관은 표만 비어 있게 더한다.
+const V20: &str = r#"
+CREATE TABLE evidence_lookups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    record_id INTEGER,
+    outcome TEXT NOT NULL,
+    units INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX evidence_lookups_chat ON evidence_lookups(chat_id);
+"#;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MigrationNotice {
     pub from: u32,
@@ -798,6 +813,28 @@ mod tests {
         );
         assert!(store.held_tasks().await.unwrap().is_empty());
         assert!(store.interrupted_subagents().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v19_file_migrates_to_evidence_lookups_keeping_chats() {
+        let (dir, store) = temp_store_at(19).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (19, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        let chat = saturn_protocol::ids::ChatId(1);
+        assert_eq!(
+            store.chat_workdir(chat).await.unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.evidence_lookups(chat).await.unwrap().is_empty());
     }
 
     #[tokio::test]

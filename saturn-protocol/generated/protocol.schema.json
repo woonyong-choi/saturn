@@ -1858,6 +1858,88 @@
           "type": "object"
         },
         {
+          "description": "에이전트 작업 안의 `saturn`이 출입증(`pass`)을 준 채팅의 기록을 검색한다. 도구 호출과 결과 후보를 단어·파일·최근성\n순위(RRF)로 매겨 위에서 `limit`개를 `QueryResult::EvidenceCandidates`로 돌려준다. 출입증이 없거나 회수됐으면 거절한다.",
+          "properties": {
+            "method": {
+              "const": "EvidenceSearch",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "limit": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "pass": {
+                  "type": "string"
+                },
+                "query": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "pass",
+                "query",
+                "limit"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "출입증을 준 채팅의 기록 한 건의 원문을 `QueryResult::EvidenceRecord`로 돌려준다. 원문은 `offset`글자부터 `limit`글자까지다.\n`hash`가 있으면 후보를 본 때의 원문과 같을 때만 돌려준다. 없는 번호, 다른 채팅이나 폴더의 번호, 읽기 범위 밖 파일의\n기록, 바뀐 해시는 거절한다.",
+          "properties": {
+            "method": {
+              "const": "EvidenceRead",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "hash": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "$ref": "#/$defs/LedgerSeq"
+                },
+                "limit": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "offset": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "pass": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "pass",
+                "id",
+                "offset",
+                "limit"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
           "description": "작업 목록을 `QueryResult::Tasks`로 돌려준다.",
           "properties": {
             "method": {
@@ -2417,6 +2499,39 @@
           "type": "string"
         }
       ]
+    },
+    "EvidenceItem": {
+      "description": "근거 후보 하나. `id`가 패킷 항목 앞의 기록 번호(`#41`)와 같다.",
+      "properties": {
+        "at_ms": {
+          "description": "기록 시각. unix 밀리초.",
+          "format": "int64",
+          "type": "integer"
+        },
+        "chars": {
+          "description": "원문 글자 수. 원문 범위는 `0..chars`.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "hash": {
+          "type": "string"
+        },
+        "id": {
+          "$ref": "#/$defs/LedgerSeq"
+        }
+      },
+      "required": [
+        "id",
+        "at_ms",
+        "chars",
+        "excerpt",
+        "hash"
+      ],
+      "type": "object"
     },
     "EvidenceState": {
       "description": "작업이 끝났을 때 마지막 수정 뒤 검사가 통과했는지. `TaskState::Done`과 따로 두며 끝난 작업의 상태를 바꾸지 않는다.",
@@ -6084,6 +6199,97 @@
             },
             "kind": {
               "const": "Pruned",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`EvidenceSearch`의 답. `set_hash`는 후보 집합 전체의 해시이고 `total`은 읽기 범위 안 후보 수다.",
+          "properties": {
+            "data": {
+              "properties": {
+                "items": {
+                  "items": {
+                    "$ref": "#/$defs/EvidenceItem"
+                  },
+                  "type": "array"
+                },
+                "set_hash": {
+                  "type": "string"
+                },
+                "total": {
+                  "format": "uint32",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "set_hash",
+                "total",
+                "items"
+              ],
+              "type": "object"
+            },
+            "kind": {
+              "const": "EvidenceCandidates",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`EvidenceRead`의 답. `next_offset`이 있으면 원문이 더 남았다.",
+          "properties": {
+            "data": {
+              "properties": {
+                "chars": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "hash": {
+                  "type": "string"
+                },
+                "id": {
+                  "$ref": "#/$defs/LedgerSeq"
+                },
+                "next_offset": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "offset": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "hash",
+                "chars",
+                "offset",
+                "text"
+              ],
+              "type": "object"
+            },
+            "kind": {
+              "const": "EvidenceRecord",
               "type": "string"
             }
           },

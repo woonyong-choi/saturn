@@ -138,6 +138,49 @@ pub(crate) enum Command {
     },
     /// 사용량 조회.
     Usage(UsageArgs),
+    /// 에이전트 작업 안에서 이 채팅의 기록을 찾고 패킷에서 생략된 기록의 원문을 다시 읽는다.
+    Evidence {
+        /// evidence 하위 명령.
+        #[command(subcommand)]
+        command: EvidenceCommand,
+    },
+}
+
+/// `evidence` 하위 명령.
+#[derive(Debug, Subcommand)]
+pub(crate) enum EvidenceCommand {
+    /// 검색어와 가까운 기록을 번호, 글자 수, 해시, 발췌와 함께 순위 순으로 보인다.
+    Search(EvidenceSearchArgs),
+    /// 기록 번호(`#41`의 41)의 원문을 읽는다.
+    Read(EvidenceReadArgs),
+}
+
+/// `evidence search` 인자.
+#[derive(Debug, Args)]
+pub(crate) struct EvidenceSearchArgs {
+    /// 찾을 말. 파일 이름, 명령, 오류 문구처럼 기록에 있는 글이 잘 맞는다.
+    #[arg(value_name = "QUERY")]
+    pub(crate) query: String,
+    /// 보일 후보 수. 50을 넘으면 50이다.
+    #[arg(long, value_name = "N", default_value_t = 10)]
+    pub(crate) limit: u32,
+}
+
+/// `evidence read` 인자.
+#[derive(Debug, Args)]
+pub(crate) struct EvidenceReadArgs {
+    /// 기록 번호.
+    #[arg(value_name = "ID")]
+    pub(crate) id: u64,
+    /// 검색 결과에서 본 해시. 그 뒤 원문이 바뀌었으면 거절한다.
+    #[arg(long, value_name = "HASH")]
+    pub(crate) hash: Option<String>,
+    /// 읽기 시작할 글자 위치.
+    #[arg(long, value_name = "N", default_value_t = 0)]
+    pub(crate) offset: u64,
+    /// 읽을 글자 수. 20000을 넘으면 20000이고, 더 있으면 다음 위치를 알린다.
+    #[arg(long, value_name = "N", default_value_t = 20_000)]
+    pub(crate) limit: u64,
 }
 
 /// `router` 하위 명령.

@@ -202,6 +202,14 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Engine answered without router versions",
     ),
     (
+        "evidence는 에이전트 작업 안에서만 쓸 수 있습니다. 출입증({pass} 변수)으로 그 채팅의 기록만 찾고 읽습니다",
+        "evidence only works inside an agent task. It uses the pass ({pass} variable) to search and read only that chat's records",
+    ),
+    (
+        "engine이 근거 조회 결과 없이 답했습니다",
+        "Engine answered without an evidence result",
+    ),
+    (
         "engine이 사용량 표 없이 답했습니다",
         "Engine answered without a usage table",
     ),
@@ -385,6 +393,39 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("확인 없이 바꾼다", "Switch without confirmation"),
     ("router 버전 목록을 보인다", "List router versions"),
     ("사용량 조회", "Show usage"),
+    (
+        "에이전트 작업 안에서 이 채팅의 기록을 찾고 패킷에서 생략된 기록의 원문을 다시 읽는다",
+        "Inside an agent task, search this chat's records and read back the full text of records the packet left out",
+    ),
+    (
+        "검색어와 가까운 기록을 번호, 글자 수, 해시, 발췌와 함께 순위 순으로 보인다",
+        "List records close to the query in rank order with number, length, hash, and excerpt",
+    ),
+    (
+        "찾을 말. 파일 이름, 명령, 오류 문구처럼 기록에 있는 글이 잘 맞는다",
+        "Words to look for. Text that appears in records, such as file names, commands, and error messages, matches best",
+    ),
+    (
+        "보일 후보 수. 50을 넘으면 50이다",
+        "Number of candidates to show. Above 50 means 50",
+    ),
+    (
+        "기록 번호(`#41`의 41)의 원문을 읽는다",
+        "Read the full text of a record by its number (the 41 in `#41`)",
+    ),
+    ("기록 번호", "Record number"),
+    (
+        "검색 결과에서 본 해시. 그 뒤 원문이 바뀌었으면 거절한다",
+        "Hash seen in the search result. Refuse if the text changed since",
+    ),
+    (
+        "읽기 시작할 글자 위치",
+        "Character position to start reading",
+    ),
+    (
+        "읽을 글자 수. 20000을 넘으면 20000이고, 더 있으면 다음 위치를 알린다",
+        "Number of characters to read. Above 20000 means 20000, and the next position is shown when more remains",
+    ),
     (
         "모든 채팅의 최근 24시간 사용량을 본다",
         "Show usage of all chats for the last 24 hours",
