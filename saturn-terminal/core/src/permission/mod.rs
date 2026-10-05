@@ -48,6 +48,15 @@ impl Mode {
     fn default_verdict(self, tool: PermissionTool, unit: &Unit) -> Verdict {
         match self {
             Self::ReadOnly if tool == PermissionTool::Read => Verdict::Ask,
+            // provider가 파일 읽기, 목록, 검색만 한다고 분류한 명령(Codex의 `sed -n`, `cat`)은 읽기이므로 막지 않는다.
+            // 작업 폴더 밖이거나 `.git` 아래를 읽으면 읽기 도구처럼 묻는다
+            Self::ReadOnly if tool == PermissionTool::Shell && unit.provider_read.is_some() => {
+                if unit.provider_read == Some(true) {
+                    Verdict::Allow
+                } else {
+                    Verdict::Ask
+                }
+            }
             Self::ReadOnly => Verdict::Deny,
             Self::Ask => Verdict::Ask,
             Self::Edit if tool == PermissionTool::Edit && unit.is_inside => Verdict::Allow,
@@ -272,11 +281,17 @@ impl Policy {
             PermissionTool::Shell => {
                 let split = pattern::split_shell(&call.target);
                 let is_single = split.is_plain && split.parts.len() == 1;
+                let provider_read = call.reads_only.then(|| {
+                    call.paths
+                        .iter()
+                        .all(|path| self.path_unit(Path::new(path)).is_inside)
+                });
                 let units = split
                     .parts
                     .iter()
                     .map(|part| Unit {
                         is_read_only: is_single && is_read_only_shell(part),
+                        provider_read,
                         ..Unit::text(part)
                     })
                     .collect();
@@ -316,6 +331,7 @@ impl Policy {
             store: escape(&candidates[0]),
             is_inside: inside_part.is_some() && !is_git_internal,
             is_read_only: false,
+            provider_read: None,
             candidates,
         }
     }
@@ -332,6 +348,8 @@ struct Unit {
     is_inside: bool,
     /// 셸 문법 없는 단일 명령이 읽기 전용 목록에 드는지. 셸 명령이 아니면 거짓.
     is_read_only: bool,
+    /// provider가 읽기만 하는 명령으로 분류했으면 `Some`이고 값은 읽는 경로가 모두 작업 폴더나 더한 폴더 안인지.
+    provider_read: Option<bool>,
 }
 
 impl Unit {
@@ -341,6 +359,7 @@ impl Unit {
             store: escape(text),
             is_inside: false,
             is_read_only: false,
+            provider_read: None,
         }
     }
 }

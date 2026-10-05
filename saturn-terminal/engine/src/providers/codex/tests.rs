@@ -93,6 +93,10 @@ while (my $line = <STDIN>) {
       out({ id => $id, error => { code => -32000, message => "mcp tools are not ready" } });
       next;
     }
+    if (($ENV{FAKE_REQUIRE_SANDBOX} // "") ne "" && ($p->{sandbox} // "") ne $ENV{FAKE_REQUIRE_SANDBOX}) {
+      out({ id => $id, error => { code => -32000, message => "sandbox is not " . $ENV{FAKE_REQUIRE_SANDBOX} } });
+      next;
+    }
     my $policy = $model eq "wrong-policy" ? "on-request" : ($p->{approvalPolicy} // "on-request");
     my $asked = $p->{sandbox} // "";
     my $sandbox = $model eq "wrong-sandbox" ? { type => "dangerFullAccess" } : ($asked eq "read-only" ? { type => "readOnly" } : { type => "workspaceWrite" });
@@ -316,6 +320,7 @@ fn expected_turn_events(agent: AgentId) -> Vec<ProviderEvent> {
                 target: "rm -rf build".to_owned(),
                 paths: Vec::new(),
                 outside_sandbox: true,
+                reads_only: false,
             }),
         },
         ProviderEvent::Usage(UsageReport {
@@ -529,6 +534,7 @@ async fn command_approval_is_answered_with_the_same_numeric_request_id() {
                 target: "touch a.txt".to_owned(),
                 paths: Vec::new(),
                 outside_sandbox: true,
+                reads_only: false,
             }),
         }
     );
@@ -2400,4 +2406,22 @@ async fn resume_without_interrupted_children_cleans_nothing() {
     client.open_session(reopened).await.unwrap();
 
     assert_eq!(thread_calls(&log), vec!["thread/resume thr_main"]);
+}
+
+// #507
+#[tokio::test]
+async fn threads_start_and_resume_with_a_workspace_write_sandbox_so_approved_builds_can_write() {
+    let dir = tempfile::tempdir().unwrap();
+    let env = vec![("FAKE_REQUIRE_SANDBOX".into(), "workspace-write".into())];
+    let mut resumed = spec(dir.path());
+    resumed.resume = Some(ProviderSessionId("thr_main".to_owned()));
+    let mut client = CodexClient::start(launch(dir.path(), env), Supervisor::new())
+        .await
+        .unwrap();
+
+    let opened = client.open_session(spec(dir.path())).await;
+    let reopened = client.open_session(resumed).await;
+
+    assert!(opened.is_ok(), "{opened:?}");
+    assert!(reopened.is_ok(), "{reopened:?}");
 }

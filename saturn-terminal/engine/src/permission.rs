@@ -422,9 +422,12 @@ fn ask_outside_sandbox(call: &PermissionCall, verdict: Verdict) -> Verdict {
 // cost: time O(p·d), heap O(p·d), stack O(1), alloc p, io p·d
 // vars: p = 경로 수, d = 경로 깊이
 // basis: estimate
-/// 편집과 읽기 경로를 작업 폴더 기준 절대 경로로 바꾸고 링크를 풀어, 폴더 밖을 가리키는 링크가 안으로 보이지 않게 한다.
+/// 편집, 읽기, 읽기만 하는 셸 명령의 경로를 작업 폴더 기준 절대 경로로 바꾸고 링크를 풀어, 폴더 밖을 가리키는 링크가 안으로 보이지 않게 한다.
 fn resolved(workdir: &Path, call: &PermissionCall) -> PermissionCall {
-    if !matches!(call.tool, PermissionTool::Edit | PermissionTool::Read) {
+    if !matches!(
+        call.tool,
+        PermissionTool::Edit | PermissionTool::Read | PermissionTool::Shell
+    ) {
         return call.clone();
     }
     PermissionCall {

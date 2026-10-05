@@ -6,6 +6,7 @@ fn call(tool: PermissionTool, target: &str, paths: &[&str]) -> PermissionCall {
         target: target.to_owned(),
         paths: paths.iter().map(|path| (*path).to_owned()).collect(),
         outside_sandbox: false,
+        reads_only: false,
     }
 }
 
@@ -557,5 +558,87 @@ fn always_allow_for_a_read_stores_the_path() {
     assert_eq!(
         stored,
         vec![rule(PermissionTool::Read, "/etc/hosts", Verdict::Allow)]
+    );
+}
+
+fn provider_read(command: &str, paths: &[&str]) -> PermissionCall {
+    PermissionCall {
+        reads_only: true,
+        ..call(PermissionTool::Shell, command, paths)
+    }
+}
+
+// #507
+#[test]
+fn read_only_mode_allows_a_provider_classified_read_inside_the_workdir() {
+    let policy = policy(Mode::ReadOnly, Vec::new());
+
+    assert_eq!(
+        policy.decide(&provider_read(
+            "sed -n 1,240p src/main.rs",
+            &["src/main.rs"]
+        )),
+        Verdict::Allow
+    );
+    assert_eq!(
+        policy.decide(&provider_read("ls", &[])),
+        Verdict::Allow,
+        "a listing without a path reads the workdir"
+    );
+    assert_eq!(
+        policy.decide(&provider_read("cat /work/src/a.rs", &["/work/src/a.rs"])),
+        Verdict::Allow
+    );
+}
+
+// #507
+#[test]
+fn read_only_mode_asks_for_a_provider_classified_read_outside_the_workdir_or_inside_git() {
+    let policy = policy(Mode::ReadOnly, Vec::new());
+
+    for paths in [
+        &["/etc/hosts"][..],
+        &["../x"],
+        &[".git/config"],
+        &["a", "/etc/hosts"],
+    ] {
+        assert_eq!(
+            policy.decide(&provider_read("cat x", paths)),
+            Verdict::Ask,
+            "{paths:?}"
+        );
+    }
+}
+
+// #507
+#[test]
+fn provider_read_classification_does_not_open_other_commands_or_modes() {
+    let read_only = policy(Mode::ReadOnly, Vec::new());
+    assert_eq!(
+        read_only.decide(&shell("sed -n 1p src/main.rs")),
+        Verdict::Deny
+    );
+    assert_eq!(read_only.decide(&shell("cargo build")), Verdict::Deny);
+    let mut unmarked = provider_read("sed -n 1p a", &["a"]);
+    unmarked.reads_only = false;
+    assert_eq!(read_only.decide(&unmarked), Verdict::Deny);
+
+    let cmd = provider_read("sed -n 1p src/main.rs", &["src/main.rs"]);
+    assert_eq!(policy(Mode::Ask, Vec::new()).decide(&cmd), Verdict::Ask);
+    assert_eq!(policy(Mode::Edit, Vec::new()).decide(&cmd), Verdict::Ask);
+    assert_eq!(policy(Mode::Full, Vec::new()).decide(&cmd), Verdict::Allow);
+}
+
+// #507
+#[test]
+fn deny_rule_beats_a_provider_classified_read_in_read_only_mode() {
+    let policy = policy(
+        Mode::ReadOnly,
+        vec![rule(PermissionTool::Shell, "sed *", Verdict::Deny)],
+    );
+
+    assert_eq!(
+        policy.decide(&provider_read("sed -n 1p a", &["a"])),
+        Verdict::Deny
     );
 }

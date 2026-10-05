@@ -99,6 +99,47 @@ fn escalated(agent: AgentId, request_id: &str, command: &str) -> ProviderEvent {
     event
 }
 
+fn provider_read(agent: AgentId, request_id: &str, command: &str, path: &str) -> ProviderEvent {
+    let mut event = shell(agent, request_id, command);
+    if let ProviderEvent::PermissionRequested {
+        call: Some(call), ..
+    } = &mut event
+    {
+        call.reads_only = true;
+        call.paths = vec![path.to_owned()];
+    }
+    event
+}
+
+// #507
+#[tokio::test]
+async fn read_only_mode_answers_a_provider_classified_read_in_the_workdir_and_still_denies_writes()
+{
+    let (mut flow, agent) = started("permission.mode = \"read-only\"\n").await;
+    let mut client = flow.client().await;
+
+    flow.claude_event(provider_read(
+        agent,
+        "r1",
+        "sed -n 1,240p src/main.rs",
+        "src/main.rs",
+    ))
+    .await;
+    flow.claude_event(provider_read(agent, "r2", "cat /etc/hosts", "/etc/hosts"))
+        .await;
+    flow.claude_event(shell(agent, "r3", "cargo build")).await;
+
+    assert_eq!(
+        answers(&flow),
+        vec![
+            ("r1".to_owned(), PermissionAnswer::AllowOnce),
+            ("r3".to_owned(), PermissionAnswer::Deny { note: None }),
+        ]
+    );
+    assert!(flow.permission_id("r2").is_some(), "outside read is asked");
+    assert!(is_asked(&client.window().await));
+}
+
 // #423
 #[tokio::test]
 async fn key_store_lookup_is_denied_before_the_mode_in_every_mode() {

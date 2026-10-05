@@ -235,7 +235,11 @@ paths: Array<string>,
  * provider 샌드박스 밖에서 실행해 달라는 요청. 샌드박스가 키 저장소 접근을 막아 주지 못하므로
  * 어떤 모드와 규칙도 자동으로 허용하지 않는다.
  */
-outside_sandbox: boolean, };
+outside_sandbox: boolean, 
+/**
+ * provider가 파일 읽기, 목록, 검색만 하는 명령으로 분류한 셸 요청. `read-only` 모드가 읽기 전용 목록 명령처럼 허용한다.
+ */
+reads_only: boolean, };
 
 export type PermissionTool = "Shell" | "Edit" | "Read" | "Mcp" | "Subagent";
 

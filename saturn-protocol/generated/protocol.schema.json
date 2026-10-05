@@ -4813,6 +4813,11 @@
           },
           "type": "array"
         },
+        "reads_only": {
+          "default": false,
+          "description": "provider가 파일 읽기, 목록, 검색만 하는 명령으로 분류한 셸 요청. `read-only` 모드가 읽기 전용 목록 명령처럼 허용한다.",
+          "type": "boolean"
+        },
         "target": {
           "description": "셸은 명령, MCP는 `mcp__<서버>__<도구>`, subagent는 종류 이름, 편집과 읽기는 비어 있다.",
           "type": "string"

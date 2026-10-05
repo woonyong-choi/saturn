@@ -779,6 +779,7 @@ pub(super) fn permission_for(
             target: target.to_owned(),
             paths: paths.iter().map(|path| (*path).to_owned()).collect(),
             outside_sandbox: false,
+            reads_only: false,
         }),
     }
 }
