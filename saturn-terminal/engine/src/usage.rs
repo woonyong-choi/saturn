@@ -667,4 +667,42 @@ mod tests {
         assert_eq!(empty.provider_tokens, Vec::new());
         assert_eq!((empty.router_calls, empty.router_tokens), (0, None));
     }
+
+    #[tokio::test]
+    async fn request_totals_count_a_subagent_series_once_next_to_its_parent() {
+        let fixture = Fixture::new().await;
+        let codex = crate::providers::test_support::CODEX;
+        let session = fixture.session(1, codex).await;
+        let run = fixture.run(session, codex).await;
+        let report = |subagent: Option<&str>, input: u64| UsageReport {
+            agent: AgentId(1),
+            subagent: subagent.map(|id| SubagentId(id.to_owned())),
+            model: Some("g".to_owned()),
+            scope: UsageScope::ThreadCumulative,
+            input: Some(input),
+            cache_read: None,
+            cache_write: None,
+            output: None,
+            reasoning: None,
+        };
+        // 부모와 자식 thread가 번갈아 누적을 보고한다. 계열이 달라 서로의 값을 빼지도 더하지도 않는다
+        for (subagent, input) in [
+            (None, 100),
+            (Some("kid"), 30),
+            (None, 160),
+            (Some("kid"), 50),
+        ] {
+            fixture
+                .store
+                .record_usage(run, session, &report(subagent, input))
+                .await
+                .unwrap();
+        }
+
+        let totals = request_totals(&fixture.store, fixture.chat, 0)
+            .await
+            .unwrap();
+
+        assert_eq!(totals.provider_tokens, vec![(codex, 160 + 50)]);
+    }
 }
