@@ -68,7 +68,7 @@
 
 ## 아직 연결하지 않은 것
 
-후보 집합 함수와 품질 확정은 `saturn-core`의 규칙과 시험까지다. router 요청의 `target_model` 후보, 선호 설정 키, 한도 조회는 아직 이 규칙에 연결하지 않았다. 그림자 판단은 [#527](https://github.com/woonyong-choi/saturn/issues/527), 적용은 [#531](https://github.com/woonyong-choi/saturn/issues/531)에서 연결한다.
+후보 집합 함수와 품질 확정은 `saturn-core`의 규칙과 시험까지다. router 요청의 `target_model` 후보, 선호 설정 키, 한도 조회는 아직 이 규칙에 연결하지 않았다. 그림자 판단은 [모델 판단 그림자](router.md#모델-판단-그림자)가 같은 후보를 쓰고 품질 확정 여부를 기록에 남긴다. 적용은 [#531](https://github.com/woonyong-choi/saturn/issues/531)에서 연결한다.
 
 ## 요구사항
 

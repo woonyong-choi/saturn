@@ -152,6 +152,13 @@ impl Store {
                     .await?;
             return Ok(from_sql_int(count));
         }
+        sqlx::query(&format!(
+            "DELETE FROM model_shadows WHERE judgment_id IN (SELECT id FROM judgments {FILTER})"
+        ))
+        .bind(before)
+        .bind(chat)
+        .execute(&self.pool)
+        .await?;
         let done = sqlx::query(&format!("DELETE FROM judgments {FILTER}"))
             .bind(before)
             .bind(chat)
@@ -171,6 +178,7 @@ impl Store {
         let rows = sqlx::query("SELECT * FROM judgments ORDER BY id")
             .fetch_all(&self.pool)
             .await?;
+        let shadows = self.model_shadows_by_judgment().await?;
         let export_error = |source| StoreError::Export {
             path: path.to_path_buf(),
             source,
@@ -183,7 +191,10 @@ impl Store {
             .map_err(export_error)?;
         let mut out = std::io::BufWriter::new(file);
         for row in &rows {
-            let line = serde_json::to_string(&export_line(row)?)?;
+            let mut line = export_line(row)?;
+            let id: i64 = row.try_get("id")?;
+            line["model_shadow"] = shadows.get(&id).cloned().unwrap_or(Value::Null);
+            let line = serde_json::to_string(&line)?;
             writeln!(out, "{line}").map_err(export_error)?;
         }
         out.flush().map_err(export_error)?;

@@ -52,6 +52,8 @@ pub(crate) struct Unrecorded {
     pub(crate) constraint: Option<ConstraintPlan>,
     /// 등록 대상이 아닌 입력이라 판단을 기록한 뒤 해제·예외 판단을 시작한다.
     pub(crate) change: bool,
+    /// 모델 판단 그림자. 판단 기록을 쓴 뒤 함께 쓴다.
+    pub(crate) shadow: Option<crate::shadow::ShadowPlan>,
 }
 
 /// 작업 글자. `A`부터 쓰고 끝난 작업의 글자는 비어 있는 가장 앞 글자로 다시 쓴다.

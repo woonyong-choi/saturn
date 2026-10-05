@@ -54,7 +54,7 @@ pub fn split_request(request: RouterRequest) -> Result<Vec<RouterRequest>, Split
 // cost: time O(o), heap O(1), stack O(1)
 // vars: o = 선택지 수
 // basis: estimate
-fn question_bytes(question: &Question) -> usize {
+pub(super) fn question_bytes(question: &Question) -> usize {
     let options_bytes = match &question.kind {
         AnswerKind::Choice { options } => options.iter().map(String::len).sum(),
         AnswerKind::Noul | AnswerKind::Score { .. } => 0,

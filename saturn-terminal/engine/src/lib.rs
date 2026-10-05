@@ -57,6 +57,7 @@ mod run_changes;
 mod serve;
 mod sessions;
 mod settings_watch;
+mod shadow;
 mod startup;
 mod stop;
 mod switch;

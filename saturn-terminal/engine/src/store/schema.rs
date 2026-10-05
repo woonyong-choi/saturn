@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 16;
+pub(crate) const SCHEMA_VERSION: u32 = 17;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -18,7 +18,7 @@ const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
 pub(crate) const MIGRATIONS: &[&str] = &[
-    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16,
+    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17,
 ];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
@@ -387,6 +387,27 @@ CREATE TABLE handoff_packet_items (
 CREATE INDEX handoff_packet_items_packet ON handoff_packet_items(packet_id);
 "#;
 
+/// 모델 판단 그림자. 판단 기록 한 건에 한 행이고, 후보와 확률은 JSON으로 둔다.
+const V17: &str = r#"
+CREATE TABLE model_shadows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    judgment_id INTEGER NOT NULL UNIQUE,
+    input_id INTEGER NOT NULL,
+    chat_id INTEGER NOT NULL,
+    settings_revision INTEGER NOT NULL,
+    chat_revision INTEGER NOT NULL,
+    policy_digest TEXT NOT NULL,
+    catalog_version TEXT NOT NULL,
+    question_set TEXT NOT NULL,
+    candidates_hash TEXT NOT NULL,
+    candidates TEXT NOT NULL,
+    status TEXT NOT NULL,
+    applied_model TEXT,
+    request_bytes INTEGER NOT NULL
+);
+CREATE INDEX model_shadows_input ON model_shadows(input_id);
+"#;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MigrationNotice {
     pub from: u32,
@@ -751,6 +772,29 @@ mod tests {
         );
         assert!(store.held_tasks().await.unwrap().is_empty());
         assert!(store.interrupted_subagents().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v16_file_migrates_to_model_shadows_keeping_chats() {
+        let (dir, store) = temp_store_at(16).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (16, SCHEMA_VERSION));
+        assert_eq!(
+            store
+                .chat_workdir(saturn_protocol::ids::ChatId(1))
+                .await
+                .unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.model_shadows_by_judgment().await.unwrap().is_empty());
     }
 
     #[tokio::test]

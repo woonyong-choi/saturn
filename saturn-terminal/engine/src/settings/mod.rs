@@ -218,6 +218,13 @@ impl Settings {
             .unwrap_or(false)
     }
 
+    /// 사용자 전용. 모델 선택 그림자 판단을 켰는지. 실험 옵션이라 기본 거짓이고, 켜도 실제 선택은 바뀌지 않는다.
+    pub(crate) fn shadow_model_selection(&self) -> bool {
+        self.lookup("router.shadow.model_selection")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    }
+
     /// 기본 무제한 보존.
     pub(crate) fn retention(&self) -> RetentionPolicy {
         let days = self.get("retention.max_age_days").and_then(Value::as_u64);

@@ -4,6 +4,7 @@
 pub mod calibration;
 pub mod constraint;
 pub mod failure;
+pub mod shadow;
 pub mod split;
 
 use std::future::Future;

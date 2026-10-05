@@ -139,6 +139,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("consent.share_with_server", Kind::Flag),
     ("debug.provider_events", Kind::Flag),
     ("constraint.auto_apply", Kind::Flag),
+    ("router.shadow.model_selection", Kind::Flag),
     ("child.max_depth", Kind::Whole),
     ("child.max_concurrent", Kind::Positive),
     ("child.max_total", Kind::Positive),
@@ -261,6 +262,8 @@ pub(crate) enum UserOnly {
     Debug,
     /// router 판단으로 지속 제약을 자동 등록하는 정책. 저장소가 켜서 검증하지 않은 판단을 적용하지 못하게 한다.
     ConstraintApply,
+    /// 모델 선택 그림자 판단. 판단 요청이 길어지는 비용이 걸려 저장소가 켜지 못하게 사용자만 정한다.
+    ShadowModel,
 }
 
 impl UserOnly {
@@ -276,6 +279,7 @@ impl UserOnly {
             Self::ChildLimits => "child",
             Self::Debug => "debug",
             Self::ConstraintApply => "constraint.auto_apply",
+            Self::ShadowModel => "router.shadow.model_selection",
         }
     }
 
@@ -298,6 +302,7 @@ pub(crate) const USER_ONLY: &[UserOnly] = &[
     UserOnly::ChildLimits,
     UserOnly::Debug,
     UserOnly::ConstraintApply,
+    UserOnly::ShadowModel,
 ];
 
 /// 옛 이름과 새 이름. 옛 이름은 층마다 병합 전에 새 이름으로 옮기고 경고 한 줄을 남긴다.
