@@ -35,6 +35,7 @@ mod model_mode;
 mod model_shadow;
 mod outcomes;
 mod packet_overflow;
+mod packet_select;
 mod permissions;
 mod plain_exit;
 mod policy;

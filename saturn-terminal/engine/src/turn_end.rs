@@ -3,16 +3,31 @@
 
 use std::time::{Duration, Instant, SystemTime};
 
+use saturn_core::routers::failure::TransitionStarter;
 use saturn_core::sessions::LastTurn;
 use saturn_core::sessions::context::{CompactionDecision, ContextMeasure, decide};
-use saturn_protocol::ids::{AgentId, ChatId, TaskId};
+use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq, TaskId};
 use saturn_protocol::rpc::{ChatNotice, Notification};
 
 use crate::flow::LiveSession;
-use crate::handoff::{HandoffOutcome, PacketEvidence, handoff_of, handoff_source};
-use crate::settings::ContextMode;
+use crate::handoff::{
+    COMPACT_SELECTOR, HandoffOutcome, PacketEvidence, RANK_SELECTOR, handoff_of, handoff_source,
+    handoff_source_ordered,
+};
+use crate::packet_select::{CompactAsk, CompactOrder, TransitionKey, Trigger};
+use crate::settings::{ContextMode, PacketSelect};
 use crate::switch::Reduction;
 use crate::{Engine, EngineError};
+
+/// 맥락 정리 패킷의 경쟁 구역 순서.
+enum BoundaryOrder {
+    /// router `compact` 판단의 남김 확률 순서.
+    Ordered(Vec<(LedgerSeq, f64)>),
+    /// 후보 순위(RRF) 순서. 옵션이 꺼졌거나 판단을 받지 못했다.
+    Rank,
+    /// 판단을 기다리는 사이 트리가 유휴가 아니거나 합칠 대기 입력이 생겼다.
+    Postponed,
+}
 
 impl Engine {
     /// 트리가 유휴가 된 턴 끝에서 다음 순서로 처리한다. 마지막 턴 값을 기록하고, 작업을 끝내고,
@@ -107,6 +122,28 @@ impl Engine {
         if decide(&budget, &measure) != CompactionDecision::Restart {
             return Ok(false);
         }
+        let mut selector = RANK_SELECTOR;
+        let (source, outcome) = match self.compact_by_judgment(chat, live).await {
+            BoundaryOrder::Ordered(verdicts) => {
+                selector = COMPACT_SELECTOR;
+                let source = handoff_source_ordered(
+                    &rows,
+                    &steers,
+                    &changes,
+                    &self.pending_work(chat, None),
+                    (&constraints, &self.registry.instruction_docs()),
+                    &budget,
+                    Some(&verdicts),
+                );
+                let outcome = source
+                    .as_ref()
+                    .map_or(HandoffOutcome::Empty, |source| handoff_of(source, &budget));
+                (source, outcome)
+            }
+            BoundaryOrder::Rank => (source, outcome),
+            // 정리를 미룬다. 다음 턴 경계에서 다시 판정한다
+            BoundaryOrder::Postponed => return Ok(false),
+        };
         match outcome {
             HandoffOutcome::Ready(handoff) => {
                 if handoff.is_over_limit {
@@ -120,10 +157,11 @@ impl Engine {
                 let Some(source) = source else {
                     return Ok(false);
                 };
-                let evidence = PacketEvidence::first(&handoff, &source);
+                let evidence = PacketEvidence::first(&handoff, &source, selector);
                 let reduction = Reduction {
                     source,
                     budget,
+                    selector,
                     sent_tokens: handoff.tokens,
                 };
                 self.restart_session(chat, live, handoff.text, Some(reduction), evidence)
@@ -156,5 +194,55 @@ impl Engine {
             notice,
         };
         self.rpc.broadcast(Some(chat), notification).await;
+    }
+}
+
+impl Engine {
+    /// 실험 옵션 `context.select.packet`이 `jev`면 후보 전체를 `compact`로 묻는다. 맥락 정리는 맥락 크기 규칙이 연 전환이라
+    /// 판단이 실패해도 정리하고 경쟁 구역을 순위 순서로 채운다. 판단을 기다린 뒤 트리 유휴와 합칠 대기 입력을 다시 확인해
+    /// 아니면 정리를 다음 턴 경계로 미룬다.
+    async fn compact_by_judgment(&self, chat: ChatId, live: &LiveSession) -> BoundaryOrder {
+        let Some(revision) = self.flow.settings_of.get(&live.agent).copied() else {
+            return BoundaryOrder::Rank;
+        };
+        let Ok(settings) = self.settings.at(&self.store, revision).await else {
+            return BoundaryOrder::Rank;
+        };
+        if settings.packet_select() != PacketSelect::Jev {
+            return BoundaryOrder::Rank;
+        }
+        let key = || TransitionKey {
+            chat,
+            from: Some(live.session),
+            provider: live.provider,
+            model: self
+                .sessions
+                .get(live.session)
+                .and_then(|session| session.model.clone()),
+            trigger: Trigger::Compaction,
+        };
+        let order = self
+            .compact_order(
+                CompactAsk {
+                    chat,
+                    input: None,
+                    settings: revision,
+                    key: key(),
+                },
+                key,
+            )
+            .await;
+        if !self.agents.is_tree_idle(live.agent) || self.queue.has_waiting(chat) {
+            return BoundaryOrder::Postponed;
+        }
+        match order {
+            CompactOrder::Judged(verdicts) => BoundaryOrder::Ordered(verdicts),
+            CompactOrder::Unavailable => {
+                self.routers
+                    .compact_after_failure(TransitionStarter::Forced);
+                BoundaryOrder::Rank
+            }
+            CompactOrder::NoCandidates => BoundaryOrder::Rank,
+        }
     }
 }

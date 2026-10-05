@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 
 use saturn_core::constraints::scope_of;
+use saturn_core::routers::CompactCandidate;
 use saturn_core::sessions::changes::describe;
 use saturn_core::sessions::constraint_slot::ConstraintTier;
 use saturn_core::sessions::constraint_slot::{
@@ -16,7 +17,7 @@ use saturn_core::sessions::packet::{
     PacketZone, RECENT_TURNS, RecentTurn, TurnStatus, build_packet, constraint_cap_chars,
     reduce_packet, status_item,
 };
-use saturn_core::sessions::ranking::{Candidate, rank_candidates};
+use saturn_core::sessions::ranking::{Candidate, order_after_router, rank_candidates};
 use saturn_core::sessions::stamp::Stamp;
 use saturn_protocol::event::{Activity, ProviderEvent, ToolCategory, ToolDetail};
 use saturn_protocol::ids::{ChatId, ConstraintId, InputId, LedgerSeq, RunId, SessionId};
@@ -27,6 +28,7 @@ use crate::store::{
     ConstraintState, ExceptionKind, LedgerRow, PacketId, PacketItemRow, RunChanges, RunEnd,
     SteeredInput, StoredConstraint, StoredException,
 };
+use crate::switch::Reduction;
 
 /// 새 session의 첫 턴으로 보내는 글.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,12 +54,21 @@ pub(crate) struct PacketEvidence {
     /// 첫 시도가 1이고 맥락 한도로 거절돼 줄여 다시 보낼 때마다 1 늘어난다.
     pub(crate) attempt: u32,
     pub(crate) reduced_from: Option<PacketId>,
+    /// 경쟁 구역을 고른 방식. `RANK_SELECTOR`나 `COMPACT_SELECTOR`다.
+    selector: &'static str,
 }
 
+/// 경쟁 구역을 후보 순위(RRF) 순서로 채웠다.
+pub(crate) const RANK_SELECTOR: &str = "rank";
+
+/// 경쟁 구역을 router `compact` 판단의 남김 확률 순서로 채웠다. 전달 패킷 기록의 `selector` 값이다.
+pub(crate) const COMPACT_SELECTOR: &str = "compact";
+
 impl PacketEvidence {
-    /// 재료에서 처음 만든 패킷의 근거.
-    pub(crate) fn first(handoff: &Handoff, source: &PacketSource) -> Self {
+    /// 재료에서 처음 만든 패킷의 근거. `selector`는 경쟁 구역을 고른 방식이다.
+    pub(crate) fn first(handoff: &Handoff, source: &PacketSource, selector: &'static str) -> Self {
         Self {
+            selector,
             items: handoff.items.clone(),
             constraints: source.constraint_tiers.clone(),
             up_to: source.up_to,
@@ -70,13 +81,13 @@ impl PacketEvidence {
     /// 거절된 시도 `previous`를 줄여 다시 만든 패킷의 근거. 같은 재료에서 항목만 다시 골랐다.
     pub(crate) fn reduced(
         handoff: &Handoff,
-        source: &PacketSource,
+        reduction: &Reduction,
         (attempt, previous): (u32, Option<PacketId>),
     ) -> Self {
         Self {
             attempt: attempt + 1,
             reduced_from: previous,
-            ..Self::first(handoff, source)
+            ..Self::first(handoff, &reduction.source, reduction.selector)
         }
     }
 
@@ -90,6 +101,7 @@ impl PacketEvidence {
             tokens: 0,
             attempt: 1,
             reduced_from: None,
+            selector: RANK_SELECTOR,
         }
     }
 
@@ -117,7 +129,7 @@ impl PacketEvidence {
                 PacketZone::Goal => "latest",
                 PacketZone::Open => "pending",
                 PacketZone::Recent => "recent_turns",
-                PacketZone::Competing => "rank",
+                PacketZone::Competing => self.selector,
             },
             form: item.form.map(|form| form.name().to_owned()),
             reason: item.reason,
@@ -219,15 +231,28 @@ struct Tool {
 // basis: estimate
 /// 순서는 후보 순위(RRF)만 쓴다. 목표 칸은 지금 작업의 첫 입력과 마지막 입력, 남은 일 칸은 대기·보류 입력과 결과를 모르는 작업, 결과 없는 도구 호출이다(docs/experiments/packet-goal-fields/report.md).
 /// 제약 칸에는 해제되지 않은 저장 제약을 상한(`C_max`) 안에서 넣는다(docs/design/constraints.md#패킷의-제약-칸). 예외가 걸린 제약은 규칙 뒤에 예외 표기를 붙여 넣는다.
-/// TODO(#380): router `compact`로 경쟁 구역을 남김 확률 순으로 채우는 연결은 아직 없다.
 /// 넘길 기록이 없으면 `None`.
 pub(crate) fn handoff_source(
     rows: &[LedgerRow],
     steers: &[SteeredInput],
     changes: &[RunChanges],
     pending: &Pending,
+    materials: (&[StoredConstraint], &[String]),
+    budget: &ContextBudget,
+) -> Option<PacketSource> {
+    handoff_source_ordered(rows, steers, changes, pending, materials, budget, None)
+}
+
+/// `handoff_source`에 router `compact` 판단을 더한 것. `verdicts`가 있으면 경쟁 구역의 도구 항목을 남김 확률 순으로
+/// 두고(같은 확률이면 RRF 순, 답이 없는 항목은 뒤에 RRF 순), 없으면 RRF 순이다. 수정 파일 항목은 어느 쪽이든 맨 앞이다.
+pub(crate) fn handoff_source_ordered(
+    rows: &[LedgerRow],
+    steers: &[SteeredInput],
+    changes: &[RunChanges],
+    pending: &Pending,
     (constraints, provider_docs): (&[StoredConstraint], &[String]),
     budget: &ContextBudget,
+    verdicts: Option<&[(LedgerSeq, f64)]>,
 ) -> Option<PacketSource> {
     let last = rows.last()?;
     // 실행의 이벤트가 이 재료에 없으면(다른 session이 낸 실행을 뺀 변경분 등) 그 실행에 끼운 입력도 뺀다
@@ -248,7 +273,7 @@ pub(crate) fn handoff_source(
         open_items: open,
         competitors: changed_files_items(changes)
             .into_iter()
-            .chain(ordered_competitors(&tools, &turns, budget.rrf_k))
+            .chain(ordered_competitors(&tools, &turns, budget.rrf_k, verdicts))
             .collect(),
         recent_turns: turns,
         provider_docs: provider_docs.to_vec(),
@@ -305,6 +330,26 @@ pub(crate) fn reduce_handoff(
         is_over_limit: packet.is_over_limit,
         items: packet.items,
     })
+}
+
+/// router `compact`로 묻는 후보 전체와 `state`에 쓸 사용자 입력(오래된 순). 후보는 경쟁 구역에 들어갈 수 있는 도구 호출 전체다.
+pub(crate) fn compact_material(rows: &[LedgerRow]) -> (Vec<CompactCandidate>, Vec<String>) {
+    let candidates = tools(rows)
+        .iter()
+        .map(|tool| CompactCandidate {
+            seq: tool.seq,
+            call: tool.title.clone(),
+            result: tool
+                .output
+                .clone()
+                .unwrap_or_else(|| INTERRUPTED_RESULT.to_owned()),
+        })
+        .collect();
+    let inputs = recent_turns(rows, &[])
+        .into_iter()
+        .map(|turn| turn.input)
+        .collect();
+    (candidates, inputs)
 }
 
 /// 아직 기록에 실행이 없는 입력과 결과를 모르는 작업의 입력 원문. 남은 일 칸 재료다.
@@ -588,7 +633,12 @@ fn interrupted_text(label: &str, subject: &str) -> String {
     format!("{label}: {subject}\nResult (error): {INTERRUPTED_RESULT}")
 }
 
-fn ordered_competitors(tools: &[Tool], turns: &[RecentTurn], rrf_k: u32) -> Vec<CompetingItem> {
+fn ordered_competitors(
+    tools: &[Tool],
+    turns: &[RecentTurn],
+    rrf_k: u32,
+    verdicts: Option<&[(LedgerSeq, f64)]>,
+) -> Vec<CompetingItem> {
     let last_input = turns.last().map_or("", |turn| turn.input.as_str());
     let first_recent = turns
         .len()
@@ -607,7 +657,12 @@ fn ordered_competitors(tools: &[Tool], turns: &[RecentTurn], rrf_k: u32) -> Vec<
             files: tool.files.clone(),
         })
         .collect();
-    rank_candidates(&candidates, &base_files, last_input, rrf_k)
+    let ranked = rank_candidates(&candidates, &base_files, last_input, rrf_k);
+    let ordered = match verdicts {
+        Some(verdicts) => order_after_router(&ranked, verdicts),
+        None => ranked,
+    };
+    ordered
         .into_iter()
         .filter_map(|seq| tools.iter().find(|tool| tool.seq == seq))
         .map(|tool| CompetingItem {

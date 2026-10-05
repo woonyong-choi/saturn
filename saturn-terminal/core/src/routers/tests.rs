@@ -424,7 +424,7 @@ fn validate_accepts_only_well_formed_answers() {
 // basis: estimate
 #[test]
 fn compact_questions_150_candidates_ask_all() {
-    let candidates: Vec<LedgerSeq> = (0..150).map(LedgerSeq).collect();
+    let candidates: Vec<CompactCandidate> = (0..150).map(candidate).collect();
 
     let (set, questions) = compact_questions(&candidates);
 
@@ -445,9 +445,49 @@ fn compact_questions_150_candidates_ask_all() {
 // cost: time O(c), heap O(c), stack O(1)
 // vars: c = 후보 수
 // basis: estimate
+fn candidate(seq: u64) -> CompactCandidate {
+    CompactCandidate {
+        seq: LedgerSeq(seq),
+        call: format!("Read src/file_{seq}.rs"),
+        result: "x".repeat(10),
+    }
+}
+
+// cost: time O(1), heap O(1), stack O(1)
+// vars: 없음
+// basis: estimate
+#[test]
+fn compact_questions_carry_candidate_content_and_clip_long_results() {
+    let long = CompactCandidate {
+        seq: LedgerSeq(4),
+        call: "Bash cargo test".into(),
+        result: "Z".repeat(COMPACT_RESULT_CHARS + 500),
+    };
+
+    let (_, questions) = compact_questions(&[long]);
+
+    let call = &questions[0].text;
+    let result = &questions[1].text;
+    assert!(call.ends_with("Bash cargo test"));
+    assert!(result.contains("Bash cargo test\n\nResult:\n"));
+    assert_eq!(result.matches('Z').count(), COMPACT_RESULT_CHARS);
+}
+
+#[test]
+fn compact_state_keeps_latest_and_three_earlier_inputs() {
+    let inputs: Vec<String> = (1..=6).map(|n| format!("input {n}")).collect();
+
+    let state = compact_state(&inputs);
+
+    assert!(state.starts_with("Latest user request:\ninput 6"));
+    assert!(state.contains("- input 3\n- input 4\n- input 5"));
+    assert!(!state.contains("input 2"));
+    assert_eq!(compact_state(&[]), "");
+}
+
 #[test]
 fn compact_requests_large_state_splits_and_every_piece_carries_state() {
-    let candidates: Vec<LedgerSeq> = (0..1_000).map(LedgerSeq).collect();
+    let candidates: Vec<CompactCandidate> = (0..1_000).map(candidate).collect();
     let state = "s".repeat(20_000);
 
     let requests = compact_requests("jev-test", &state, &candidates).unwrap();

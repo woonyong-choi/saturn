@@ -348,24 +348,69 @@ pub fn questions_for_input(
     sets
 }
 
-// cost: time O(n), heap O(n), stack O(1)
-// vars: n = 후보 수
+/// 후보 입력 하나를 질문에 싣는 앞 글자 수(초안).
+pub const COMPACT_INPUT_CHARS: usize = 2_000;
+
+/// 결과를 질문에 싣는 앞 글자 수(초안).
+pub const COMPACT_RESULT_CHARS: usize = 4_000;
+
+/// `state`에 싣는 사용자 입력 수. 마지막 입력과 그 앞 3개다.
+pub const COMPACT_STATE_INPUTS: usize = 4;
+
+/// `compact` 질문이 싣는 후보 한 건. 호출은 `<도구 이름> <인자>`, 결과는 호출의 결과 글이다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompactCandidate {
+    pub seq: LedgerSeq,
+    pub call: String,
+    pub result: String,
+}
+
+fn clip(text: &str, limit: usize) -> String {
+    text.chars().take(limit).collect()
+}
+
+// cost: time O(n·L), heap O(n·L), stack O(1)
+// vars: n = 입력 수(최대 4), L = 입력 글자 수
 // basis: estimate
-/// 후보마다 `call_<id>_keep`과 `result_<id>_keep`을 묻는다. 후보를 줄이지 않고 전체를 넘긴다.
-pub fn compact_questions(candidates: &[LedgerSeq]) -> (QuestionSetId, Vec<Question>) {
+/// 지금 하려는 일을 알리는 `state`. `inputs`는 오래된 순서의 사용자 입력이고 마지막 입력과 그 앞 3개만 쓴다.
+pub fn compact_state(inputs: &[String]) -> String {
+    let start = inputs.len().saturating_sub(COMPACT_STATE_INPUTS);
+    let recent = &inputs[start..];
+    let Some((latest, earlier)) = recent.split_last() else {
+        return String::new();
+    };
+    let mut state = format!(
+        "Latest user request:\n{}\n\nEarlier user requests (oldest first):",
+        clip(latest, COMPACT_INPUT_CHARS)
+    );
+    for input in earlier {
+        state.push_str("\n- ");
+        state.push_str(&clip(input, COMPACT_INPUT_CHARS));
+    }
+    state
+}
+
+// cost: time O(n·L), heap O(n·L), stack O(1)
+// vars: n = 후보 수, L = 후보 글자 수
+// basis: estimate
+/// 후보마다 `call_<id>_keep`과 `result_<id>_keep`을 묻는다. 후보를 줄이지 않고 전체를 넘기고, 질문에 후보의 내용을 싣는다.
+pub fn compact_questions(candidates: &[CompactCandidate]) -> (QuestionSetId, Vec<Question>) {
+    const HEAD: &str =
+        "The user moves this chat to a fresh coding-agent session for the latest request. ";
     let questions = candidates
         .iter()
-        .flat_map(|seq| {
+        .flat_map(|candidate| {
+            let call = clip(&candidate.call, COMPACT_INPUT_CHARS);
+            let result = clip(&candidate.result, COMPACT_RESULT_CHARS);
             [
                 noul(
-                    &compact_call_id(*seq),
-                    &format!("Should tool call {} stay in the handoff context?", seq.0),
+                    &compact_call_id(candidate.seq),
+                    &format!("{HEAD}Should the new session see this tool call?\n\n{call}"),
                 ),
                 noul(
-                    &compact_result_id(*seq),
+                    &compact_result_id(candidate.seq),
                     &format!(
-                        "Should the result of tool call {} stay in the handoff context?",
-                        seq.0
+                        "{HEAD}Should the new session see this tool result?\n\n{call}\n\nResult:\n{result}"
                     ),
                 ),
             ]
@@ -384,7 +429,7 @@ pub fn compact_questions(candidates: &[LedgerSeq]) -> (QuestionSetId, Vec<Questi
 pub fn compact_requests(
     model: &str,
     state: &str,
-    candidates: &[LedgerSeq],
+    candidates: &[CompactCandidate],
 ) -> Result<Vec<RouterRequest>, SplitError> {
     split_request(RouterRequest {
         model: model.to_string(),

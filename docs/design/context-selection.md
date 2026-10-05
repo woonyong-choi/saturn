@@ -103,7 +103,7 @@
 
 ### router에 넘기기
 
-`core`의 요청 만들기와 답 합치기는 구현했고, engine이 패킷을 만들 때 이 요청을 보내는 연결은 구현 전이다([#380](https://github.com/woonyong-choi/saturn/issues/380)). 지금 engine은 RRF 순서로만 채운다.
+`core`의 요청 만들기와 답 합치기를 engine이 패킷을 만들 때 부르는 연결은 실험 옵션 `context.select.packet = jev`일 때만 켜진다([#380](https://github.com/woonyong-choi/saturn/issues/380)). 기본(`rrf`)은 RRF 순서로만 채운다.
 
 1. 후보 전체를 router에 묻는다. 후보 수로 줄이지 않는다.
 2. 요청이 크기 한도를 넘으면 질문 단위로 나눠 여러 요청으로 병렬 전송하고, 조각마다 같은 state를 싣는다. 동시 수와 한도는 [router 호출](router.md#router-호출)에 있다.
