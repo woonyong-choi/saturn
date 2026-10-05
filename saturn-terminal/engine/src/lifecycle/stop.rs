@@ -122,6 +122,39 @@ async fn stop_signals_the_deepest_subagent_first_and_finishes_only_when_the_tree
     );
 }
 
+// #505
+#[tokio::test]
+async fn stop_after_the_parent_answered_finishes_when_the_background_subagent_ends() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.submit("start a background subagent").await;
+    let agent = flow.agent();
+    flow.claude_event(subagent_started(agent, "sub-1", None))
+        .await;
+    // 부모는 이미 답을 끝냈고 subagent만 백그라운드로 남았다
+    flow.claude_event(turn_completed(agent)).await;
+    let mut client = flow.client().await;
+
+    flow.engine.stop_chat(flow.chat).await.unwrap();
+    assert!(!notices(&client.window().await).iter().any(is_stopped));
+    flow.claude_event(subagent_ended(agent, "sub-1")).await;
+
+    assert_eq!(
+        notices(&client.window().await),
+        vec![ChatNotice::Stopped {
+            held: vec![TaskLabel('A')]
+        }]
+    );
+    assert!(!flow.engine.flow.stopping.contains_key(&flow.chat));
+    assert!(
+        flow.engine
+            .store
+            .unfinished_runs()
+            .await
+            .unwrap()
+            .is_empty()
+    );
+}
+
 #[tokio::test]
 async fn stop_without_a_finished_turn_signal_is_not_complete() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;

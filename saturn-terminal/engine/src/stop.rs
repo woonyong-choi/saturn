@@ -22,7 +22,7 @@ use crate::{Engine, EngineError};
 /// 멈추는 중인 채팅이 기다리는 것.
 #[derive(Debug)]
 pub(crate) struct StopProgress {
-    /// 멈추는 에이전트. 값은 멈춘 뒤의 완료 신호(`TurnCompleted`나 `StreamLost`)를 받았는지다.
+    /// 멈추는 에이전트. 값은 멈춘 뒤의 완료 신호(`TurnCompleted`나 `StreamLost`)를 받았는지이고, 멈출 때 부모가 이미 답을 끝낸 에이전트는 처음부터 참이다.
     agents: HashMap<AgentId, bool>,
     /// 결과를 기다리는 프로세스 묶음 수.
     pending_groups: usize,
@@ -91,7 +91,15 @@ impl Engine {
             self.warn_failure("failed to record held input", written);
             self.notify_input(input).await;
         }
-        let agents = running.iter().map(|agent| (*agent, false)).collect();
+        // 부모가 이미 답을 끝내고 subagent만 남은 에이전트는 멈춘 뒤에 올 완료 신호가 없다. 멈추는 사이 subagent가 끝나면
+        // 상태가 `AnsweredTreeRunning`에서 `TreeIdle`로 바뀌어 그때부터 답한 것으로 보이지 않으므로, 멈출 때 미리 확인으로 둔다
+        let agents = running
+            .iter()
+            .map(|agent| {
+                let answered = self.agents.status(*agent) == Some(TreeStatus::AnsweredTreeRunning);
+                (*agent, answered)
+            })
+            .collect();
         self.flow.stopping.insert(
             chat,
             StopProgress {
