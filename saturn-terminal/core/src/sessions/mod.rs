@@ -312,6 +312,20 @@ impl SessionManager {
     // cost: time O(s), heap O(1), stack O(1)
     // vars: s = session 수
     // basis: estimate
+    /// 재개가 다른 provider session을 열었을 때 다음 재개에 쓸 번호를 바꾼다. 없는 session이면 무시한다.
+    pub fn set_provider_session(
+        &mut self,
+        session: SessionId,
+        provider_session: ProviderSessionId,
+    ) {
+        if let Some(record) = self.find_mut(session) {
+            record.provider_session = Some(provider_session);
+        }
+    }
+
+    // cost: time O(s), heap O(1), stack O(1)
+    // vars: s = session 수
+    // basis: estimate
     /// 같은 상태면 아무것도 하지 않고, `Open`이 아니게 되면 유예 시계를 지운다. 메인이 `ClosedResumable`이 되면 같은 채팅·provider의 더 오래된 보관 session은 `Ended`로 둔다.
     ///
     /// # Errors
