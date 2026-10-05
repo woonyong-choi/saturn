@@ -168,6 +168,14 @@
 
 사전 점검(설계 확정 전, 판정에서 제외): 구현 확인용으로 방향별 1회씩 4건을 돌려 근거 문장 위치, 패킷 한도 보정, `saturn` 실행 파일 경로, 허가 규칙을 고쳤다. 이 4건은 표본에 넣지 않았고 수집 때 새 홈에서 다시 시작한다.
 
+### 보강 수집(탐색)
+
+기본 18 trial에서 Claude haiku는 안내 한 줄이 패킷에 있어도 조회를 쓰지 않아 Claude의 도구 조회 계측이 확인되지 않았다. 완료 조건은 두 provider 모두 조회를 포함한 실제 과제의 계측 확인이므로, 같은 스냅샷에서 입력 문장 끝에 `Omitted records can be listed with saturn evidence search <query> and read with saturn evidence read <number>.` 한 줄을 더해 Claude 받는 쪽, 조건 `code`, 3회를 추가로 수집한다. 이 수집은 사전 등록한 18 trial과 별개인 탐색이다. 입력이 달라졌으므로 앞의 18 trial과 성공률이나 사용량을 비교하지 않고 계측이 맞는지(조회 명령과 행, 사용량, 시간)만 본다. Claude 입력 상한에 3회(입력 3 + 패킷 3)를 더한다.
+
+| 명령 | 하는 일 |
+|---|---|
+| `ARM_ENGINE_BIN=<경로> python3 scripts/05-online.py collect-hint` | 설계와 실행기가 커밋된 상태에서만 시작. 위 3 trial을 수집한다. |
+
 ### 기록
 
 시험마다 알림 전체와 기록 저장소의 `handoff_packets`, `handoff_packet_items`, `evidence_lookups`, `usage`, `judgments`, `runs`, `sessions`, `events`를 원응답으로 보존하고 trial은 그 원자료에서만 만든다. 사용량은 Claude의 `MainTurn` 행을 호출마다 한 항목으로, Codex의 `ThreadCumulative` 행은 session마다 마지막 행 한 항목으로 합치고(누적값을 행마다 더하지 않는다), router 판단은 판단마다 한 항목으로 둔다. router 사용량은 캐시 필드가 없어 null(미보고)이다. 패킷 안내와 조회 때문에 맥락이 한도를 넘어 새 session으로 다시 시작하면(`Restart` 패킷) 그 패킷과 session 사용량도 같은 trial에 포함하고 횟수를 보고한다.

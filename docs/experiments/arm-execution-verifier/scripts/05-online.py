@@ -68,6 +68,18 @@ def collect() -> None:
     write(online.RUN / "usage-count.json", used)
 
 
+def collect_hint() -> None:
+    """보강 수집(탐색): 입력에 조회 방법을 한 줄 알려 Claude의 도구 조회 계측을 확인한다. Claude가 받는 쪽, 조건 code, 3회."""
+    committed = subprocess.run(["git", "diff", "--exit-code", "HEAD", "--", str(online.PUBLIC / "design.md"), str(online.PUBLIC / "scripts")], cwd=online.ROOT).returncode == 0
+    if not committed:
+        raise SystemExit("design and scripts must be committed")
+    c = online.case()
+    for rep in range(online.REPS):
+        record = online.run_trial(SOURCE["claude"], "claude", "code", rep, c, 1, hint=True)
+        write(RAW / f"{record['name']}.json", record)
+        print("collected", record["name"], record["status"], flush=True)
+
+
 def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -170,7 +182,7 @@ def build_trial(record: dict, c: dict, raw_sha: str, raw_name: str) -> dict:
         answer=answer, check=dict(grader="exact-v1", success=bool(status == "ok" and arms.grade(c, answer))),
         status=status, usage=usage,
         online=dict(
-            overrides=record["overrides"], rep=record["rep"], source=record["source"],
+            overrides=record["overrides"], rep=record["rep"], hint=record.get("hint", False), source=record["source"],
             packet_hashes=[p["body_hash"] for p in packets], packet_states=[p["state"] for p in packets],
             packet_kinds=[p["kind"] for p in packets], packet_tokens=[p["estimated_tokens"] for p in packets],
             lookup_commands=len(commands), help_commands=help_commands, lookup_rows=len(db["lookups"]),
@@ -202,26 +214,27 @@ def summarize(rows: list[dict]) -> None:
                  "task": online.FAMILY_TASK, "trials": len(rows), "cells": {}}
     for provider in ("claude", "codex"):
         for arm in online.ARMS:
-            items = [r for r in rows if r["provider"] == provider and r["arm"] == arm]
-            if not items:
-                continue
-            merged = [contract.merge_usage(r["usage"]) for r in items]
-            lat = [r["latency_s"] for r in items]
-            out["cells"][f"{provider}/{arm}"] = {
-                "trials": len(items),
-                "success": analysis.rate([r["check"]["success"] for r in items]),
-                "statuses": {s: sum(r["status"] == s for r in items) for s in contract.STATUSES},
-                "support_forms": {f: sum(sum(v == f for v in r["selection"]["support_forms"].values()) for r in items)
-                                  for f in sorted({str(v) for r in items for v in r["selection"]["support_forms"].values()})},
-                "selector_values": sorted({s for r in items for s in r["selection"]["selector"]}),
-                "lookup_commands": [r["online"]["lookup_commands"] for r in items],
-                "lookup_rows": [r["online"]["lookup_rows"] for r in items],
-                "support_blocks_read": [len(r["online"]["support_read"]) for r in items],
-                "restart_packets": sum(k == "Restart" for r in items for k in r["online"]["packet_kinds"]),
-                "usage_known_sum": {k: sum(m["known"][k] for m in merged) for k in contract.USAGE_FIELDS},
-                "usage_unreported_calls": sum(m["unreported_calls"] for m in merged),
-                "latency_median_s": median(lat), "latency_sum_s": round(sum(lat), 6),
-            }
+          for hint in (False, True):
+              items = [r for r in rows if r["provider"] == provider and r["arm"] == arm and r["online"]["hint"] == hint]
+              if not items:
+                  continue
+              merged = [contract.merge_usage(r["usage"]) for r in items]
+              lat = [r["latency_s"] for r in items]
+              out["cells"][f"{provider}/{arm}" + ("+hint" if hint else "")] = {
+                  "trials": len(items),
+                  "success": analysis.rate([r["check"]["success"] for r in items]),
+                  "statuses": {s: sum(r["status"] == s for r in items) for s in contract.STATUSES},
+                  "support_forms": {f: sum(sum(v == f for v in r["selection"]["support_forms"].values()) for r in items)
+                                    for f in sorted({str(v) for r in items for v in r["selection"]["support_forms"].values()})},
+                  "selector_values": sorted({s for r in items for s in r["selection"]["selector"]}),
+                  "lookup_commands": [r["online"]["lookup_commands"] for r in items],
+                  "lookup_rows": [r["online"]["lookup_rows"] for r in items],
+                  "support_blocks_read": [len(r["online"]["support_read"]) for r in items],
+                  "restart_packets": sum(k == "Restart" for r in items for k in r["online"]["packet_kinds"]),
+                  "usage_known_sum": {k: sum(m["known"][k] for m in merged) for k in contract.USAGE_FIELDS},
+                  "usage_unreported_calls": sum(m["unreported_calls"] for m in merged),
+                  "latency_median_s": median(lat), "latency_sum_s": round(sum(lat), 6),
+              }
     SUMMARY.parent.mkdir(exist_ok=True)
     SUMMARY.write_text(json.dumps(out, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
@@ -230,8 +243,10 @@ def verify() -> None:
     c = online.case()
     rows = [json.loads(s) for s in TRIALS.read_text().splitlines()]
     raws = dict(load())
-    expected = {(t, a, r) for t in ("claude", "codex") for a in online.ARMS for r in range(online.REPS)}
-    got = {(r["provider"], r["arm"], r["online"]["rep"]) for r in rows}
+    expected = {(t, a, r, False) for t in ("claude", "codex") for a in online.ARMS for r in range(online.REPS)}
+    got = {(r["provider"], r["arm"], r["online"]["rep"], r["online"]["hint"]) for r in rows}
+    if any(h for *_, h in got):
+        expected |= {("claude", "code", r, True) for r in range(online.REPS)}
     if got - expected or len(rows) != len(got):
         raise contract.ContractError("unexpected or duplicate trials")
     for r in rows:
@@ -256,4 +271,4 @@ def verify() -> None:
 
 
 if __name__ == "__main__":
-    {"collect": collect, "process": process, "verify": verify}[sys.argv[1]]()
+    {"collect": collect, "collect-hint": collect_hint, "process": process, "verify": verify}[sys.argv[1]]()

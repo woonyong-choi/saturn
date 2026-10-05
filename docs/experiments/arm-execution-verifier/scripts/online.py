@@ -95,9 +95,12 @@ def build_snapshot(source: str, c: dict) -> dict:
     return {"chat": chat}
 
 
-def run_trial(source: str, target: str, arm: str, rep: int, c: dict, chat: int) -> dict:
+HINT = " Omitted records can be listed with `saturn evidence search <query>` and read with `saturn evidence read <number>`."
+
+
+def run_trial(source: str, target: str, arm: str, rep: int, c: dict, chat: int, hint: bool = False) -> dict:
     """스냅샷을 복원해 target provider로 과제를 보낸다. 원응답과 기록 저장소 행을 모두 남긴다."""
-    name = f"{c['task_id']}-{arm}-{target}-r{rep}"
+    name = f"{c['task_id']}-{arm}-{target}{'-hint' if hint else ''}-r{rep}"
     home = RUN / "trial-home"
     shutil.rmtree(home, ignore_errors=True)
     shutil.copytree(RUN / f"snap-{source}", home, symlinks=True)
@@ -107,7 +110,7 @@ def run_trial(source: str, target: str, arm: str, rep: int, c: dict, chat: int) 
     if arm == "jev":
         overrides.append(["context.select.packet", "jev"])
     engine = Engine(BINARY, home, RUN / "trial.engine.log")
-    record: dict = {"name": name, "source": source, "target": target, "arm": arm, "rep": rep, "overrides": overrides}
+    record: dict = {"name": name, "source": source, "target": target, "arm": arm, "rep": rep, "hint": hint, "overrides": overrides}
     try:
         client = Client(engine.sock_path)
         # 실제 사용자 환경처럼 saturn 실행 파일이 PATH에 있어야 에이전트가 근거 조회를 쓸 수 있다
@@ -117,7 +120,7 @@ def run_trial(source: str, target: str, arm: str, rep: int, c: dict, chat: int) 
         client.set_model(chat, target, PROVIDERS[target])
         record["started_at"] = now()
         t0 = record["t0"] = time.time()
-        out = client.run_input(chat, c["task"], allow_evidence)
+        out = client.run_input(chat, c["task"] + (HINT if hint else ""), allow_evidence)
         record["latency_s"] = round(time.time() - t0, 6)
         record["ended_at"] = now()
         record["status"] = out["status"]
