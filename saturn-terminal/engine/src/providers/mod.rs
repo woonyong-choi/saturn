@@ -31,7 +31,8 @@ pub(crate) use adapter::{
 };
 pub use builtin::{HookInputError, ReadScope, run_pre_tool_use};
 pub(crate) use extension::{
-    Definition, ExtensionInput, ExtensionLayout, collect_definitions, place_files,
+    DIRECT_INSTALL_LIMIT, Definition, DirectInstall, DirectOrigin, ExtensionInput, ExtensionLayout,
+    collect_definitions, part_kind_of, place_files, scan_command_files, scan_skill_folders,
 };
 pub use extension::{InjectedPart, InjectionFailure};
 pub use registry::Registry;

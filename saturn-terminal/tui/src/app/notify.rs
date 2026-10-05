@@ -161,8 +161,8 @@ impl App {
                 has_more,
             } => return self.on_history_chunk(chat, entries, oldest, has_more, now),
             QueryResult::ExitPlan { plan } => return self.on_exit_plan(plan),
-            QueryResult::ExtensionList { extensions } => {
-                self.push_cell(TranscriptCell::ExtensionList(extensions));
+            QueryResult::ExtensionList { extensions, direct } => {
+                self.push_cell(TranscriptCell::ExtensionList(extensions, direct));
             }
             QueryResult::Tasks { items } => {
                 if let Some(Window::TaskList(list)) = &mut self.window {

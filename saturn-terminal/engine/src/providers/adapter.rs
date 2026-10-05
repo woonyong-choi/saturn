@@ -113,6 +113,15 @@ pub(crate) trait Adapter: Send + Sync + std::fmt::Debug {
         }
     }
 
+    /// 사용자가 이 provider에 직접 설치한 스킬, 명령, MCP 서버, 플러그인을 읽는다. 기본은 없음. `env`의 `HOME`과 같은
+    /// 값에서 provider의 사용자 폴더를 찾고, 읽기만 하며 고치지 않는다. 읽지 못한 항목은 건너뛴다.
+    fn direct_installs(
+        &self,
+        _env: &[(std::ffi::OsString, std::ffi::OsString)],
+    ) -> Vec<super::DirectInstall> {
+        Vec::new()
+    }
+
     /// 설치된 provider CLI의 버전을 읽는다. 설치되지 않았거나 읽지 못하면 `None`. 기본은 실행 파일에 `--version`을
     /// 주어 첫 줄에서 버전을 꺼낸다. 다른 방식으로 읽어야 하는 어댑터가 바꾼다.
     fn read_version(

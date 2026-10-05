@@ -207,6 +207,15 @@ pub const EXT_KIND_SKILL: &str = "스킬";
 pub const EXT_KIND_MCP: &str = "MCP 서버";
 pub const EXT_KIND_COMMAND: &str = "명령";
 pub const EXT_KIND_HOOK: &str = "훅";
+pub const EXT_KIND_PLUGIN: &str = "플러그인";
+pub const EXT_DIRECT_FOUND: &str = "{provider}에 직접 설치된 항목 {count}개 추적 · {names}";
+pub const EXT_DIRECT_ASK: &str =
+    "Saturn에 옮겨 다른 provider에서도 쓰려면 /extensions move {provider} <이름>";
+pub const EXT_DIRECT_HEAD: &str = "provider에 직접 설치됨";
+pub const EXT_DIRECT_MOVABLE: &str = "옮길 수 있음";
+pub const EXT_DIRECT_MOVED: &str = "옮김";
+pub const EXT_DIRECT_ONLY: &str = "추적만";
+pub const EXT_DIRECT_MORE: &str = "외 {count}개";
 pub const EXT_USABLE: &str = "가능";
 pub const EXT_UNUSABLE: &str = "불가";
 pub const EXT_UNKNOWN: &str = "모름";

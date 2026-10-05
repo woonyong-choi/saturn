@@ -3,7 +3,8 @@
 
 use saturn_protocol::ids::Provider;
 use saturn_protocol::rpc::{
-    ChatNotice, ExtensionInfo, ExtensionPart, ExtensionPartKind, Injectability,
+    ChatNotice, DirectInstallInfo, DirectInstallItem, DirectKind, DirectState, ExtensionInfo,
+    ExtensionPart, ExtensionPartKind, Injectability,
 };
 
 use crate::i18n::{self, Lang};
@@ -16,6 +17,18 @@ fn kind_label(lang: Lang, kind: ExtensionPartKind) -> &'static str {
         ExtensionPartKind::Hook => i18n::EXT_KIND_HOOK,
     })
 }
+
+fn direct_kind_label(lang: Lang, kind: DirectKind) -> &'static str {
+    lang.tr(match kind {
+        DirectKind::Skill => i18n::EXT_KIND_SKILL,
+        DirectKind::McpServer => i18n::EXT_KIND_MCP,
+        DirectKind::Command => i18n::EXT_KIND_COMMAND,
+        DirectKind::Plugin => i18n::EXT_KIND_PLUGIN,
+    })
+}
+
+/// 줄에 이름을 적는 항목의 최대 수(초안). 넘으면 `외 N개`로 줄인다.
+const DIRECT_NAMES_SHOWN: usize = 5;
 
 /// 한국어 주제 조사. 마지막 글자가 받침으로 끝나면 `은`, 아니면 `는`. 한글이 아니면 `는`.
 fn topic_particle(word: &str) -> &'static str {
@@ -72,6 +85,12 @@ pub(crate) fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec
             "{prefix}{}",
             inject_failed_line(lang, extension, part.as_deref(), *provider, reason)
         )],
+        ChatNotice::DirectInstallsFound { provider, items } => {
+            direct_found_lines(lang, *provider, items)
+                .into_iter()
+                .map(|line| format!("{prefix}{line}"))
+                .collect()
+        }
         ChatNotice::ExtensionPartsNotApplied { provider, parts } => {
             not_applied_lines(lang, *provider, parts)
                 .into_iter()
@@ -80,6 +99,42 @@ pub(crate) fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec
         }
         _ => Vec::new(),
     }
+}
+
+/// provider에 직접 설치된 항목을 새로 찾았다는 줄. 옮길 수 있는 항목이 있으면 옮기는 방법을 한 줄 더한다.
+pub(crate) fn direct_found_lines(
+    lang: Lang,
+    provider: Provider,
+    items: &[DirectInstallItem],
+) -> Vec<String> {
+    let shown = items
+        .iter()
+        .take(DIRECT_NAMES_SHOWN)
+        .map(|item| format!("{}({})", direct_kind_label(lang, item.kind), item.name))
+        .collect::<Vec<_>>();
+    let mut names = shown.join(", ");
+    if items.len() > DIRECT_NAMES_SHOWN {
+        names.push_str(", ");
+        names.push_str(
+            &lang
+                .tr(i18n::EXT_DIRECT_MORE)
+                .replace("{count}", &(items.len() - DIRECT_NAMES_SHOWN).to_string()),
+        );
+    }
+    let title = i18n::provider_title(provider);
+    let mut lines = vec![
+        lang.tr(i18n::EXT_DIRECT_FOUND)
+            .replace("{provider}", &title)
+            .replace("{count}", &items.len().to_string())
+            .replace("{names}", &names),
+    ];
+    if items.iter().any(|item| item.movable) {
+        lines.push(
+            lang.tr(i18n::EXT_DIRECT_ASK)
+                .replace("{provider}", provider.as_str()),
+        );
+    }
+    lines
 }
 
 /// 설치 줄. 어떤 부분도 빠지지 않으면 모든 부분을 쓸 수 있는 provider를 적고, 빠지는 부분이 있으면 그 부분만 적는다.
@@ -189,7 +244,33 @@ fn verdict_label(lang: Lang, verdict: Injectability) -> &'static str {
 }
 
 /// `/extensions` 목록. 확장마다 한 줄과 부분마다 들여 쓴 한 줄.
-pub(crate) fn list_lines(lang: Lang, extensions: &[ExtensionInfo]) -> Vec<String> {
+pub(crate) fn list_lines(
+    lang: Lang,
+    extensions: &[ExtensionInfo],
+    direct: &[DirectInstallInfo],
+) -> Vec<String> {
+    let mut lines = installed_list_lines(lang, extensions);
+    if !direct.is_empty() {
+        lines.push(lang.tr(i18n::EXT_DIRECT_HEAD).to_owned());
+        for info in direct {
+            let note = match (info.state, info.movable) {
+                (Some(DirectState::Moved), _) => i18n::EXT_DIRECT_MOVED,
+                (_, true) => i18n::EXT_DIRECT_MOVABLE,
+                (_, false) => i18n::EXT_DIRECT_ONLY,
+            };
+            lines.push(format!(
+                "  {} · {}({}) · {}",
+                i18n::provider_title(info.provider),
+                direct_kind_label(lang, info.kind),
+                info.name,
+                lang.tr(note)
+            ));
+        }
+    }
+    lines
+}
+
+fn installed_list_lines(lang: Lang, extensions: &[ExtensionInfo]) -> Vec<String> {
     if extensions.is_empty() {
         return vec![lang.tr(i18n::EXT_LIST_EMPTY).to_owned()];
     }
@@ -338,13 +419,78 @@ mod tests {
         )]);
 
         assert_eq!(
-            list_lines(Lang::Ko, &[kit]),
+            list_lines(Lang::Ko, &[kit], &[]),
             vec![
                 "설치한 확장",
                 "review-kit · /src/review-kit",
                 "  명령(review) · Alpha 가능, Beta 불가"
             ]
         );
-        assert_eq!(list_lines(Lang::Ko, &[]), vec!["설치한 확장 없음"]);
+        assert_eq!(list_lines(Lang::Ko, &[], &[]), vec!["설치한 확장 없음"]);
+    }
+
+    #[test]
+    fn direct_items_are_listed_with_their_state_and_asked_about_with_the_move_command() {
+        i18n::set_provider_names([(ALPHA, "alpha"), (BETA, "beta")]);
+        let direct = |kind, name: &str, movable, state| DirectInstallInfo {
+            provider: ALPHA,
+            kind,
+            name: name.to_owned(),
+            movable,
+            state,
+        };
+        let listed = list_lines(
+            Lang::Ko,
+            &[],
+            &[
+                direct(
+                    DirectKind::Skill,
+                    "commit-helper",
+                    true,
+                    Some(DirectState::Asked),
+                ),
+                direct(
+                    DirectKind::McpServer,
+                    "lint",
+                    true,
+                    Some(DirectState::Moved),
+                ),
+                direct(DirectKind::Plugin, "kit@market", false, None),
+            ],
+        );
+        assert_eq!(
+            listed,
+            vec![
+                "설치한 확장 없음",
+                "provider에 직접 설치됨",
+                "  Alpha · 스킬(commit-helper) · 옮길 수 있음",
+                "  Alpha · MCP 서버(lint) · 옮김",
+                "  Alpha · 플러그인(kit@market) · 추적만",
+            ]
+        );
+
+        let item = |kind, name: &str, movable| DirectInstallItem {
+            kind,
+            name: name.to_owned(),
+            movable,
+        };
+        assert_eq!(
+            direct_found_lines(
+                Lang::Ko,
+                ALPHA,
+                &[
+                    item(DirectKind::Skill, "a", true),
+                    item(DirectKind::Plugin, "b", false)
+                ]
+            ),
+            vec![
+                "Alpha에 직접 설치된 항목 2개 추적 · 스킬(a), 플러그인(b)",
+                "Saturn에 옮겨 다른 provider에서도 쓰려면 /extensions move ext-alpha <이름>",
+            ]
+        );
+        assert_eq!(
+            direct_found_lines(Lang::Ko, ALPHA, &[item(DirectKind::Plugin, "b", false)]).len(),
+            1
+        );
     }
 }

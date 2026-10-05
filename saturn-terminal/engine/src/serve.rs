@@ -152,7 +152,7 @@ impl Engine {
             Request::Prune { yes, plan, all } => {
                 self.prune_records(client, (yes, plan, all)).await?
             }
-            Request::ListExtensions => self.extension_list_result().await?,
+            Request::ListExtensions => self.extension_list_result(client).await?,
             command => {
                 self.route(client, command).await?;
                 return Ok(None);
@@ -251,9 +251,9 @@ impl Engine {
                 self.attach(client, request).await
             }
             Request::AddDir { chat, path } => self.add_dir(client, chat, &path).await,
-            Request::InstallExtension { .. } | Request::RemoveExtension { .. } => {
-                self.route_extension(client, request).await
-            }
+            Request::InstallExtension { .. }
+            | Request::RemoveExtension { .. }
+            | Request::MoveDirectExtension { .. } => self.route_extension(client, request).await,
             Request::RenameChat { chat, name } => self.rename_chat(chat, &name).await,
             Request::SetChatGroup { chat, group } => {
                 self.set_chat_group(chat, group.as_deref()).await

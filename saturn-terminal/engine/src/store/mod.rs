@@ -5,6 +5,7 @@ mod changes;
 mod chat_dirs;
 mod chat_labels;
 mod constraints;
+mod direct;
 mod extensions;
 mod history;
 mod judgments;

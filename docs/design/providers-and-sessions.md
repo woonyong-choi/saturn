@@ -164,7 +164,7 @@ engine은 시작할 때 레지스트리에 어댑터를 등록한다. 레지스�
 |---|---|---|
 | 설명자 | id, 표시명, 실행 파일, 기본 순서, 지시 문서 이름, 인터페이스 판, 맥락 기본값 | 기능 목록(끼워 넣기, 맥락 정리 요청), 확장 주입 형식(`extensions`, 기본은 주입하지 않음) |
 | 연결 | `connect`와 `AdapterConnection`(session 열기, 턴, 이벤트 변환) | 끼워 넣기, 맥락 정리, 줄 세운 입력 보내기 |
-| 실행 설정 | 없음 | `translate_permission`(기본은 규칙을 번역하지 않고 질문 기능만 따름), `rules_fingerprint`, `read_version`(기본은 `--version`), `injectability`(기본은 설명자의 주입 형식) |
+| 실행 설정 | 없음 | `translate_permission`(기본은 규칙을 번역하지 않고 질문 기능만 따름), `rules_fingerprint`, `read_version`(기본은 `--version`), `injectability`(기본은 설명자의 주입 형식), `direct_installs`(기본은 없음, 사용자가 provider에 직접 설치한 항목을 읽기만 해서 올림) |
 | 설정 키 | 없음 | `provider.<id>.*` 키와 기본값은 설명자가 알린다([설정](settings.md#설정-키)) |
 | 확장 주입 | 설명자의 주입 형식과, provider 형식으로 바꾸는 코드(설정 파일 쓰기, 실행 인자) | 파일 배치, 정의 읽기, 이름 겹침 처리는 공용 도우미([기능 목록과 확장](extensions.md#새-provider에-확장-주입을-붙일-때)) |
 

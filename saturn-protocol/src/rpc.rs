@@ -89,6 +89,13 @@ pub enum Request {
     },
     /// 설치한 확장 목록을 `ExtensionList` 알림으로 요청한 접속에 보낸다.
     ListExtensions,
+    /// provider에 직접 설치된 항목을 Saturn 확장 저장소로 옮긴다. 이름이 같은 항목이 여럿이면 옮길 수 있는 첫 항목이다.
+    /// 결과는 `chat`의 대화 기록에 한 줄로 남는다.
+    MoveDirectExtension {
+        chat: ChatId,
+        provider: crate::ids::Provider,
+        name: String,
+    },
     /// `before`(앞서 받은 결과의 `oldest`)보다 앞 기록 `limit`단위를 `QueryResult::History`로 돌려준다. 없으면 가장 최근부터.
     LoadHistory {
         chat: ChatId,
@@ -556,7 +563,48 @@ pub enum QueryResult {
     /// `ListExtensions`의 답. 설치한 순서대로.
     ExtensionList {
         extensions: Vec<ExtensionInfo>,
+        /// provider에 직접 설치돼 있는 항목. 어댑터 등록 순서대로.
+        direct: Vec<DirectInstallInfo>,
     },
+}
+
+/// provider에 직접 설치된 항목의 종류. 확장 부분과 달리 플러그인도 추적한다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum DirectKind {
+    Skill,
+    Command,
+    McpServer,
+    /// 여러 부분을 묶은 provider 배포 단위. 추적만 하고 옮기지 않는다.
+    Plugin,
+}
+
+/// 물어본 항목에 대한 기록.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum DirectState {
+    /// 옮길지 한 번 물었다. 같은 항목을 다시 묻지 않는다.
+    Asked,
+    /// Saturn 확장 저장소로 옮겼다.
+    Moved,
+}
+
+/// provider에 직접 설치된 항목 하나.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct DirectInstallInfo {
+    pub provider: crate::ids::Provider,
+    pub kind: DirectKind,
+    pub name: String,
+    /// 확장 저장소로 옮길 수 있다.
+    pub movable: bool,
+    /// 아직 묻지 않은 항목이면 `None`.
+    pub state: Option<DirectState>,
+}
+
+/// 새로 찾은 직접 설치 항목 하나.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct DirectInstallItem {
+    pub kind: DirectKind,
+    pub name: String,
+    pub movable: bool,
 }
 
 /// 설치한 확장 하나. 부분마다 provider별 판정을 가진다.
@@ -673,6 +721,12 @@ pub enum ChatNotice {
         part: Option<String>,
         provider: crate::ids::Provider,
         reason: String,
+    },
+    /// provider에 직접 설치된 항목을 새로 찾았다. 옮길 수 있는 항목은 `/extensions move`로 옮길지 이 줄에서 한 번만
+    /// 묻고, 답하지 않으면 다시 묻지 않는다.
+    DirectInstallsFound {
+        provider: crate::ids::Provider,
+        items: Vec<DirectInstallItem>,
     },
     /// 설치하거나 지우지 못했다. 기존 설치는 바뀌지 않았다. `reason`은 engine이 낸 원문이라 번역하지 않는다.
     ExtensionFailed {

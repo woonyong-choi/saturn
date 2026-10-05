@@ -1,6 +1,7 @@
 //! 확장 저장소 테스트: 설치는 원본을 확장 저장소에 두고 부분별 판정을 기록에 남기며 결과를 대화 기록에 한 줄로 알린다.
 //! 설계: docs/design/extensions.md#설치
 
+use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
@@ -125,7 +126,7 @@ fn verdicts(
 /// `ListExtensions` 요청을 소켓으로 보내고 답으로 온 목록을 돌려준다.
 async fn list(flow: &mut Flow, client: &mut Client) -> Vec<ExtensionInfo> {
     drive(&mut flow.engine, async {
-        let QueryResult::ExtensionList { extensions } =
+        let QueryResult::ExtensionList { extensions, .. } =
             client.query(9, Request::ListExtensions).await
         else {
             panic!("expected the extension list");
@@ -606,7 +607,7 @@ async fn a_slow_clone_does_not_hold_up_other_requests_and_is_finished_when_it_en
             .send(5, Request::InstallExtension { chat, source: url })
             .await;
         assert_eq!(client.response().await.id, Some(RequestId(5)));
-        let QueryResult::ExtensionList { extensions } =
+        let QueryResult::ExtensionList { extensions, .. } =
             client.query(6, Request::ListExtensions).await
         else {
             panic!("expected the extension list");
@@ -651,4 +652,198 @@ async fn the_same_name_cannot_be_installed_again_while_it_is_being_downloaded() 
         &notices[0],
         ChatNotice::ExtensionFailed { reason, .. } if reason.contains("already installed")
     ));
+}
+
+/// 사용자가 직접 설치한 항목을 정해 둔 값으로 알려 주는 어댑터. 폴더는 읽기만 하는지 보려고 실제 파일을 가리킨다.
+#[derive(Debug)]
+struct Direct {
+    inner: FakeAdapter,
+    items: Vec<crate::providers::DirectInstall>,
+}
+
+impl Adapter for Direct {
+    fn descriptor(&self) -> &crate::providers::Descriptor {
+        self.inner.descriptor()
+    }
+
+    fn connect(
+        &self,
+        launch: LaunchSpec,
+        supervisor: crate::Supervisor,
+    ) -> BoxFuture<'_, Result<ProviderConnection, saturn_core::providers::ProviderError>> {
+        self.inner.connect(launch, supervisor)
+    }
+
+    fn direct_installs(
+        &self,
+        _env: &[(std::ffi::OsString, std::ffi::OsString)],
+    ) -> Vec<crate::providers::DirectInstall> {
+        self.items.clone()
+    }
+}
+
+/// 직접 설치 항목 세 개(스킬, MCP 서버, 플러그인)를 가진 `NARROW` 어댑터와 이를 옮겨 받을 `WIDE` 어댑터.
+async fn flow_with_direct_items() -> Flow {
+    use crate::providers::{DirectInstall, DirectOrigin};
+    use saturn_protocol::rpc::DirectKind;
+
+    let mut flow = Flow::new(Vec::new()).await;
+    let user = flow.fixture.root.path().join("user-claude");
+    write(&user, "skills/commit-helper/SKILL.md", "# commit helper");
+    write(&user, "skills/commit-helper/notes.txt", "note");
+    let items = vec![
+        DirectInstall {
+            kind: DirectKind::Skill,
+            name: "commit-helper".to_owned(),
+            origin: DirectOrigin::Folder(user.join("skills/commit-helper")),
+        },
+        DirectInstall {
+            kind: DirectKind::McpServer,
+            name: "lint".to_owned(),
+            origin: DirectOrigin::Server(
+                serde_json::json!({"command": "lint", "env": {"KEY": "secret-value"}}),
+            ),
+        },
+        DirectInstall {
+            kind: DirectKind::Plugin,
+            name: "kit@market".to_owned(),
+            origin: DirectOrigin::TrackedOnly,
+        },
+    ];
+    let mut descriptor = fake_descriptor(NARROW);
+    descriptor.extensions = NARROW_LAYOUT;
+    flow.engine
+        .registry
+        .register(Arc::new(Direct {
+            inner: FakeAdapter {
+                descriptor,
+                provider: FakeProvider::new(NARROW),
+            },
+            items,
+        }))
+        .unwrap();
+    register(&mut flow, WIDE, WIDE_LAYOUT);
+    flow
+}
+
+fn direct_notices(notifications: &[Notification]) -> Vec<ChatNotice> {
+    notifications
+        .iter()
+        .filter_map(|notification| match notification {
+            Notification::ChatNotice { notice, .. }
+                if matches!(notice, ChatNotice::DirectInstallsFound { .. }) =>
+            {
+                Some(notice.clone())
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+#[tokio::test]
+async fn items_installed_directly_in_a_provider_are_listed_and_asked_about_once() {
+    use saturn_protocol::rpc::{DirectKind, DirectState};
+
+    let mut flow = flow_with_direct_items().await;
+    let mut client = flow.client().await;
+    let revision = flow.engine.settings.current().unwrap();
+
+    flow.engine
+        .launch_spec(NARROW, flow.chat, revision)
+        .await
+        .unwrap();
+    flow.engine
+        .launch_spec(NARROW, flow.chat, revision)
+        .await
+        .unwrap();
+
+    let asked = direct_notices(&client.window().await);
+    assert_eq!(asked.len(), 1, "the same items are not asked about again");
+    let ChatNotice::DirectInstallsFound { provider, items } = &asked[0] else {
+        unreachable!()
+    };
+    assert_eq!(*provider, NARROW);
+    let seen: Vec<(DirectKind, &str, bool)> = items
+        .iter()
+        .map(|item| (item.kind, item.name.as_str(), item.movable))
+        .collect();
+    assert_eq!(
+        seen,
+        vec![
+            (DirectKind::Skill, "commit-helper", true),
+            (DirectKind::McpServer, "lint", true),
+            (DirectKind::Plugin, "kit@market", false),
+        ]
+    );
+    let QueryResult::ExtensionList { direct, .. } = drive(&mut flow.engine, async {
+        client.query(9, Request::ListExtensions).await
+    })
+    .await
+    else {
+        panic!("expected the extension list");
+    };
+    assert_eq!(direct.len(), 3);
+    assert!(
+        direct
+            .iter()
+            .all(|info| info.state == Some(DirectState::Asked))
+    );
+    assert!(flow.engine.store.extension_rows().await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn moving_a_direct_item_copies_it_to_the_store_and_leaves_the_provider_folder_alone() {
+    use saturn_protocol::rpc::DirectState;
+
+    let mut flow = flow_with_direct_items().await;
+    let mut client = flow.client().await;
+    let user = flow.fixture.root.path().join("user-claude");
+
+    for name in ["commit-helper", "lint", "kit@market", "never-installed"] {
+        flow.engine
+            .move_direct_extension(CLIENT, flow.chat, NARROW, name)
+            .await
+            .unwrap();
+    }
+
+    let notices = extension_notices(&client.window().await);
+    assert_eq!(installed(&notices[0]).name, "commit-helper");
+    assert_eq!(installed(&notices[1]).name, "lint");
+    assert!(matches!(&notices[2], ChatNotice::ExtensionFailed { .. }));
+    assert!(matches!(&notices[3], ChatNotice::ExtensionFailed { .. }));
+    let store = store_dir(&flow);
+    assert_eq!(
+        std::fs::read_to_string(store.join("commit-helper/notes.txt")).unwrap(),
+        "note"
+    );
+    let server = std::fs::read_to_string(store.join("lint/.mcp.json")).unwrap();
+    assert!(server.contains("\"command\":\"lint\""));
+    assert_eq!(
+        std::fs::metadata(store.join("lint/.mcp.json"))
+            .unwrap()
+            .permissions()
+            .mode()
+            & 0o777,
+        0o600
+    );
+    assert!(user.join("skills/commit-helper/SKILL.md").is_file());
+    assert!(
+        !notices
+            .iter()
+            .any(|notice| format!("{notice:?}").contains("secret-value"))
+    );
+    assert_eq!(flow.engine.store.extension_rows().await.unwrap().len(), 2);
+    let QueryResult::ExtensionList { direct, .. } = drive(&mut flow.engine, async {
+        client.query(9, Request::ListExtensions).await
+    })
+    .await
+    else {
+        panic!("expected the extension list");
+    };
+    let moved: Vec<&str> = direct
+        .iter()
+        .filter(|info| info.state == Some(DirectState::Moved))
+        .map(|info| info.name.as_str())
+        .collect();
+    assert_eq!(moved, ["commit-helper", "lint"]);
 }

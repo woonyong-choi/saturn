@@ -352,6 +352,6 @@ async fn an_extension_with_nothing_for_a_provider_leaves_its_connection_alone() 
         .await
         .unwrap();
 
-    assert!(restarted(&client.window().await).is_empty());
+    assert!(!restarted(&client.window().await).contains(&NARROW));
     assert!(flow.engine.providers.contains_key(&(flow.chat, NARROW)));
 }

@@ -208,6 +208,8 @@ impl Engine {
             .clone_from(&plan.fingerprint);
         self.tell_injection_failures(chat, provider, &plan, &permission)
             .await;
+        self.tell_direct_installs(chat, provider, &provider_env)
+            .await;
         Ok(LaunchSpec {
             provider,
             program: PathBuf::from(adapter.descriptor().program),

@@ -25,6 +25,7 @@ mod adapter;
 mod config;
 mod connection;
 mod convert;
+mod direct;
 pub(crate) mod home;
 mod input;
 mod permission;

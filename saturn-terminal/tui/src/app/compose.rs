@@ -394,18 +394,7 @@ impl App {
                 chat,
                 path: absolute_path(&self.workdir, &path),
             }),
-            SlashCommand::Extensions(action) => match action {
-                ExtensionsAction::List => Some(Request::ListExtensions),
-                ExtensionsAction::Install { source } => {
-                    chat.map(|chat| Request::InstallExtension {
-                        chat,
-                        source: extension_source(&self.workdir, &source),
-                    })
-                }
-                ExtensionsAction::Remove { name } => {
-                    chat.map(|chat| Request::RemoveExtension { chat, name })
-                }
-            },
+            SlashCommand::Extensions(action) => extensions_request(&self.workdir, chat, action),
             SlashCommand::Send { target } => self
                 .chat
                 .queued_by_label(target)
@@ -737,6 +726,31 @@ fn step(selected: usize, count: usize, action: Action) -> usize {
 /// 피드백 질문의 선택지 순서(`1` 맞음, `2` 틀림, `0` 닫기). `None`은 닫기다.
 const FEEDBACK_ANSWERS: [Option<bool>; 3] = [Some(true), Some(false), None];
 const CORRECTION_CHOICES: usize = 2;
+
+/// `/extensions`의 요청. 목록 말고는 채팅에 붙어 있어야 한다.
+fn extensions_request(
+    workdir: &Path,
+    chat: Option<saturn_protocol::ids::ChatId>,
+    action: ExtensionsAction,
+) -> Option<Request> {
+    match action {
+        ExtensionsAction::List => Some(Request::ListExtensions),
+        ExtensionsAction::Install { source } => chat.map(|chat| Request::InstallExtension {
+            chat,
+            source: extension_source(workdir, &source),
+        }),
+        ExtensionsAction::Remove { name } => {
+            chat.map(|chat| Request::RemoveExtension { chat, name })
+        }
+        ExtensionsAction::Move { provider, name } => {
+            chat.map(|chat| Request::MoveDirectExtension {
+                chat,
+                provider,
+                name,
+            })
+        }
+    }
+}
 
 /// git 주소는 그대로, 폴더 경로는 `absolute_path`로 바꾼다. engine은 절대 경로와 git 주소만 받는다.
 fn extension_source(workdir: &Path, source: &str) -> String {
