@@ -36,6 +36,10 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation-sys.workspace = true
+security-framework-sys.workspace = true
+
 [dev-dependencies]
 saturn-tui.workspace = true
 tempfile.workspace = true

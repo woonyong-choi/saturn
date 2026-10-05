@@ -1539,6 +1539,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "core-foundation-sys",
  "flate2",
  "keyring",
  "libc",
@@ -1546,6 +1547,7 @@ dependencies = [
  "saturn-core",
  "saturn-protocol",
  "saturn-tui",
+ "security-framework-sys",
  "serde",
  "serde_json",
  "sha2",

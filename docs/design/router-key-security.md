@@ -62,10 +62,11 @@ router 키 보호는 외부 router API 키를 provider와 subagent가 어떤 경
 |---|---|
 | 기본 | macOS 키체인에 OS API로 직접 저장 |
 | OS 저장소가 없음 | 권한 0600 파일에 저장 |
-| 강화 방식 | 신뢰 앱 없는 키체인 항목으로 저장 |
+| 강화 방식(macOS) | 신뢰 앱 목록이 빈 배열인 키체인 항목으로 저장 |
+| 강화 방식(그 밖) | 지원하지 않음. 표준 저장으로 낮추지 않고 `HardenedUnsupported`로 끝낸다 |
 
 - 키체인은 `keyring`으로 OS API를 직접 쓴다.
-- 강화 방식이면 session 시작 때 키체인 암호를 한 번 요청한다.
+- 강화 방식이면 session 시작 때 키체인에서 engine으로 키를 가져오는 순간 OS 확인 창이 한 번 뜬다. 이미 풀린 engine의 router 호출마다 창을 띄우지는 않는다.
 - 강화 방식이면 비활성 10분이나 최대 12시간 뒤 키를 잠금 상태로 바꾼다.
 - 설정에는 키의 출처와 끝 4자리만 적는다.
 - 키체인 항목의 서비스 이름은 `saturn`, 계정 이름은 `saturn-key`다.
@@ -73,7 +74,11 @@ router 키 보호는 외부 router API 키를 provider와 subagent가 어떤 경
 - 대체 파일은 같은 폴더에 새 임시 파일을 0600으로 만든 뒤 교체한다.
 - 임시 파일은 고유 이름으로 만들고 기존 `.partial` 경로의 심볼릭 링크를 따라가지 않는다.
 - engine은 강화 방식의 잠금 조건을 1분마다 확인한다(초안).
-- `keyring`은 항목의 신뢰 앱 목록을 정하지 못한다. 강화 방식 항목을 어떤 API로 만들지는 [#102](https://github.com/woonyong-choi/saturn/issues/102)에서 정하고, 그 전에는 표준 방식 항목에 잠금 시계만 더한다.
+- `keyring`은 신뢰 앱 목록을 정하지 못해 표준 항목에만 쓴다. 강화 항목은 `secrets/keychain.rs`가 `security-framework-sys`로 `SecAccessCreate`에 null이 아닌 빈 배열을 주고 `SecKeychainItemCreateFromContent`로 만든다. 폐기 예정 API 의존은 이 파일에 한정한다. null을 주면 만든 앱이 신뢰 앱이 되어 확인 창이 없다.
+- 강화 항목의 계정 이름은 `saturn-key-hardened`다. 표준 항목과 함께 있을 수 있어야 이관 중 기존 항목을 보존한다.
+- 만든 항목은 생성 성공만으로 믿지 않는다. 읽기 권한 ACL의 신뢰 앱 목록이 빈 배열인지 읽어 확인하고, 확인 창을 막은 읽기가 값을 돌려주지 않고 끝나는지 확인한다. 둘 중 하나라도 어긋나면 항목을 지우고 `HardenedUnsupported`로 끝낸다.
+- 표준 항목이 있고 강화 항목이 없으면 새 항목을 만들고 위 확인을 통과한 뒤에만 표준 항목을 지운다. 거부, 취소, 중간 실패에서는 표준 항목이 그대로 남는다.
+- 강화 항목을 읽을 때 사용자가 거부하거나 취소하거나 창을 띄울 수 없으면 `Locked`로 끝나고 session은 키 입력을 요청한다. 표준 항목으로 읽지 않는다.
 - router 주소와 키 참조는 폴더 층에서 바꿀 수 없다. 사용자 전용 항목이기 때문이다.
 
 ### `security` 명령을 쓰지 않는 이유
@@ -127,7 +132,7 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 | 환경 격리 | 자식 환경의 키 변수 | `secrets` 모듈 단위 테스트, [실험](../experiments/router-key-defense/report.md)의 환경 항목 |
 | Saturn 소유 PreToolUse 훅 | 이름이 보이는 키 저장소 조회와 파일 도구의 키 저장소 경로 | [Claude provider 실측](../experiments/claude-provider-behavior/report.md), 위 단위 테스트 |
 | provider 명령 샌드박스 | 훅이 못 읽는 형태(인코딩, 스크립트 파일, 이름 조립)를 포함한 명령의 키체인 접근 | [OS 수준 방어 실측](../experiments/router-key-defense/report.md) |
-| 키체인 접근 제어 | 보조층. 확인 창은 클릭 한 번으로 열려 단독 방어로 쓰지 않는다 | 같은 실측, 구현은 [#102](https://github.com/woonyong-choi/saturn/issues/102) |
+| 키체인 접근 제어 | 보조층. 확인 창은 클릭 한 번으로 열려 단독 방어로 쓰지 않는다 | 같은 실측, 강화 항목 구현과 실측은 [#102](https://github.com/woonyong-choi/saturn/issues/102) |
 
 ### provider 명령 샌드박스
 
@@ -172,6 +177,8 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 | provider 원시 메시지 관측 기록에 router 키 문자열이 남지 않는다. | `saturn-terminal/engine/src/providers/trace.rs`의 `router_key_does_not_appear_even_in_names_and_ids` |
 | router 호출은 TLS 인증서 검증을 끄지 않는다. | `saturn-terminal/engine/src/routers/remote/tests.rs`의 `real_client_rejects_an_untrusted_certificate_and_sends_nothing`이 실제 reqwest 클라이언트로 자체 서명 인증서 서버를 거부하는지 확인한다. |
 | 키체인에 직접 저장한 키는 확인 창 없이 읽히지 않는다. | [#2](https://github.com/woonyong-choi/saturn/issues/2) 실험으로 확인 창 없이 읽는 경로를 확인한다. |
+| 강화 항목은 빈 신뢰 앱 목록이라 만든 프로세스를 포함해 확인 없이 읽히지 않고, null 목록 항목은 만든 프로세스가 읽는다. | `saturn-terminal/engine/src/secrets/keychain.rs`의 `empty_list_blocks_silent_read_but_null_list_does_not`(실제 로그인 키체인에 가짜 항목을 만드는 실측, `--ignored`로 실행). 확인 창을 막은 읽기로 사람 클릭 없이 판정한다. |
+| 강화 항목의 허용·거부·취소·잠금 뒤 재접근·미지원·이관 실패는 표준 저장으로 낮아지지 않는다. | `saturn-terminal/engine/src/secrets/storage.rs`의 `hardened_mode_locks_after_idle_and_max_unlock`, `hardened_unlock_outcomes_never_fall_back_to_standard`, `hardened_migration_keeps_standard_item_until_new_item_is_verified`(가짜 항목 구현으로 결과를 정함), `keychain.rs`의 `status_codes_map_to_item_errors`. 실제 확인 창의 허용 클릭과 거부·취소 클릭은 사람 입력이 필요해 실측하지 않았다. |
 | engine 실행 파일은 생성한 훅 명령(`hook pre-tool-use`)을 받아 허용과 거부를 훅 규격의 출력과 종료 코드로 돌려준다. | `saturn-terminal/engine/tests/key_hook.rs`의 `hook_command_denies_key_store_access`, `hook_command_allows_ordinary_calls_without_output`, `hook_command_blocks_unreadable_input_with_exit_code_2`, `hook_command_leaves_saturn_home_untouched` |
 | 훅은 셸·`eval`·인터프리터로 감싼 키 저장소 조회도 막고, 해석할 수 없는 명령은 막으며, 목록 밖 하위 명령은 막지 않는다. | `saturn-terminal/engine/src/secrets/hook.rs`의 `shell_wrapped_lookups_are_denied`, `quoting_and_escapes_inside_shell_strings_do_not_hide_lookups`, `separators_inside_shell_strings_are_split`, `eval_strings_are_judged_again`, `nested_shells_are_judged_down_to_the_limit`, `nesting_beyond_the_limit_is_denied`, `unparseable_commands_are_denied`, `interpreter_one_liners_naming_key_stores_are_denied`, `shells_fed_by_pipe_here_string_or_here_document_are_judged`, `interactive_security_is_denied`, `wrapped_commands_outside_the_list_are_allowed`, `quotes_comments_and_here_documents_in_ordinary_commands_are_allowed` |
 | Saturn 소유 PreToolUse 훅은 키 저장소 접근을 막는다. | Claude 직접 명령은 [실험](../experiments/claude-provider-behavior/report.md)에서 3/3 막혔고 `sh -c` 감싼 명령은 수정 전에 막지 못했다(수정 뒤 실제 provider 재측정은 아직). Codex는 [실측](../experiments/codex-provider-behavior/report.md)에서 명령 차단 3/3을 확인했고 파일 편집 도구(`apply_patch`)는 막지 못했다. |
@@ -187,7 +194,7 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 - 제외 목록과 훅 검사를 provider 변화에 맞춰 계속 유지한다.
 - 훅의 명령 판정은 차단 목록이라 위의 남은 한계를 근본적으로 없애지 못한다. 그 한계는 provider 명령 샌드박스가 맡는다.
 - 샌드박스를 쓸 수 없는 환경에서는 Claude session이 시작되지 않는다.
-- 강화 방식에서는 session을 시작할 때마다 키체인 암호를 입력한다.
+- 강화 방식에서는 session을 시작할 때마다 OS 확인 창에서 허용해야 한다.
 
 ## 대안
 
