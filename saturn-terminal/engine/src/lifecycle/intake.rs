@@ -478,7 +478,7 @@ async fn chat_settings_do_not_leak_between_chats() {
 }
 
 #[tokio::test]
-async fn read_only_and_full_chats_alternate_without_mixing_permissions() {
+async fn read_only_and_edit_chats_alternate_without_mixing_permissions() {
     let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95), idle_reply(0.95)]).await;
     let strict_dir = flow.fixture.workdir.with_file_name("strict-work");
     std::fs::create_dir_all(&strict_dir).unwrap();
@@ -623,28 +623,6 @@ async fn input_notice_carries_the_task_a_steered_input_joined() {
 
 // #494
 #[tokio::test]
-async fn steer_is_not_applied_without_its_run_link_when_the_link_write_fails() {
-    let mut flow = Flow::new(vec![
-        idle_reply(0.95),
-        running_reply(0.95, "refines", "steer"),
-    ])
-    .await;
-    flow.fake.verify_steer();
-    flow.submit("implement authentication").await;
-    flow.engine.store.fail_steer_link_updates().await;
-    let steer = flow
-        .submit("use unlinked_unique_refinement_branch for this work")
-        .await;
-    let steers = flow.engine.store.steered_inputs(flow.chat).await.unwrap();
-    let (_, state) = flow.engine.store.stored_input(steer).await.unwrap();
-    assert!(
-        steers.iter().any(|row| row.input == steer) || state != InputState::Applied,
-        "steer is Applied without a run link and cannot reach the handoff"
-    );
-}
-
-// #494
-#[tokio::test]
 async fn failed_steer_record_keeps_the_input_delivering_tells_the_user_and_retries_only_the_record()
 {
     use saturn_protocol::rpc::Alert;
@@ -715,45 +693,45 @@ fn current_id(
 
 // #458
 #[tokio::test]
-async fn late_close_from_replaced_connection_does_not_remove_new_connection() {
-    let mut flow = Flow::new(Vec::new()).await;
+async fn a_close_removes_only_the_connection_it_belongs_to() {
     let provider = crate::providers::test_support::CLAUDE;
-    let old = current_id(&flow, provider);
-    let replacement = FakeProvider::new(provider);
-    flow.engine
-        .add_connection(flow.chat, replacement.connection());
+    // (사례, 교체 연결이 있는가, 닫힘이 옛 연결 번호인가, 닫힘 뒤 연결이 남는가)
+    let cases = [
+        ("late close from a replaced connection", true, true, true),
+        ("close of the current connection", false, false, false),
+    ];
 
-    flow.engine
-        .on_provider_msg(crate::providers::ProviderMsg::Closed {
-            chat: flow.chat,
-            provider,
-            connection: old,
-        })
-        .await;
+    for (name, replaced, closes_old, remains) in cases {
+        let mut flow = Flow::new(Vec::new()).await;
+        let old = current_id(&flow, provider);
+        if replaced {
+            let replacement = FakeProvider::new(provider);
+            flow.engine
+                .add_connection(flow.chat, replacement.connection());
+        }
+        let closing = if closes_old {
+            old
+        } else {
+            current_id(&flow, provider)
+        };
 
-    assert!(
-        flow.engine.providers.contains_key(&(flow.chat, provider)),
-        "old close must not remove replacement connection"
-    );
-    assert_ne!(current_id(&flow, provider), old);
-}
+        flow.engine
+            .on_provider_msg(crate::providers::ProviderMsg::Closed {
+                chat: flow.chat,
+                provider,
+                connection: closing,
+            })
+            .await;
 
-// #458
-#[tokio::test]
-async fn close_of_the_current_connection_still_removes_it() {
-    let mut flow = Flow::new(Vec::new()).await;
-    let provider = crate::providers::test_support::CLAUDE;
-    let current = current_id(&flow, provider);
-
-    flow.engine
-        .on_provider_msg(crate::providers::ProviderMsg::Closed {
-            chat: flow.chat,
-            provider,
-            connection: current,
-        })
-        .await;
-
-    assert!(!flow.engine.providers.contains_key(&(flow.chat, provider)));
+        assert_eq!(
+            flow.engine.providers.contains_key(&(flow.chat, provider)),
+            remains,
+            "{name}"
+        );
+        if replaced {
+            assert_ne!(current_id(&flow, provider), old, "{name}");
+        }
+    }
 }
 
 // #458

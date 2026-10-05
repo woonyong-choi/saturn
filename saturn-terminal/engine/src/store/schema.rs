@@ -719,6 +719,12 @@ mod tests {
                 .unwrap(),
             PathBuf::from("/work")
         );
+        let (input, state) = store
+            .stored_input(saturn_protocol::ids::InputId(1))
+            .await
+            .unwrap();
+        assert_eq!(input.text, "old input");
+        assert_eq!(state, saturn_protocol::state::InputState::Applied);
     }
 
     #[tokio::test]

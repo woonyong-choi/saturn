@@ -111,126 +111,140 @@ fn provider_read(agent: AgentId, request_id: &str, command: &str, path: &str) ->
     event
 }
 
-// #507
-#[tokio::test]
-async fn read_only_mode_answers_a_provider_classified_read_in_the_workdir_and_still_denies_writes()
-{
-    let (mut flow, agent) = started("permission.mode = \"read-only\"\n").await;
-    let mut client = flow.client().await;
+const KEY_LOOKUP: &str = "/usr/bin/security find-generic-password -s saturn-key -w";
 
-    flow.claude_event(provider_read(
-        agent,
-        "r1",
-        "sed -n 1,240p src/main.rs",
-        "src/main.rs",
-    ))
-    .await;
-    flow.claude_event(provider_read(agent, "r2", "cat /etc/hosts", "/etc/hosts"))
-        .await;
-    flow.claude_event(shell(agent, "r3", "cargo build")).await;
-
-    assert_eq!(
-        answers(&flow),
-        vec![
-            ("r1".to_owned(), PermissionAnswer::AllowOnce),
-            ("r3".to_owned(), PermissionAnswer::Deny { note: None }),
-        ]
-    );
-    assert!(flow.permission_id("r2").is_some(), "outside read is asked");
-    assert!(is_asked(&client.window().await));
+fn deny() -> PermissionAnswer {
+    PermissionAnswer::Deny { note: None }
 }
 
-// #423
-#[tokio::test]
-async fn key_store_lookup_is_denied_before_the_mode_in_every_mode() {
-    for config in [
-        "permission.mode = \"full\"\n",
-        "permission.mode = \"edit\"\n",
-        "permission.mode = \"ask\"\n",
-        "[permission.shell]\n\"*\" = \"allow\"\n",
-    ] {
-        let (mut flow, agent) = started(config).await;
-        let mut client = flow.client().await;
+struct PermissionCase {
+    name: String,
+    config: &'static str,
+    events: fn(&Flow, AgentId) -> Vec<ProviderEvent>,
+    answered: Vec<(String, PermissionAnswer)>,
+    // 사용자에게 올렸는지. None이면 확인하지 않는다.
+    asked: Option<bool>,
+    waiting: &'static [&'static str],
+}
 
-        flow.claude_event(shell(
-            agent,
-            "r1",
-            "/usr/bin/security find-generic-password -s saturn-key -w",
-        ))
-        .await;
-        flow.claude_event(shell(
-            agent,
-            "r2",
-            "sh -c '/usr/bin/security find-generic-password -s saturn-key -w'",
-        ))
-        .await;
+/// 키 저장소 조회는 어떤 모드와 규칙에서도 모드보다 먼저 거부한다.
+fn key_lookup_cases() -> Vec<PermissionCase> {
+    let configs = [
+        ("full mode", "permission.mode = \"full\"\n"),
+        ("edit mode", "permission.mode = \"edit\"\n"),
+        ("ask mode", "permission.mode = \"ask\"\n"),
+        ("read-only mode", "permission.mode = \"read-only\"\n"),
+        (
+            "a rule allowing every command",
+            "[permission.shell]\n\"*\" = \"allow\"\n",
+        ),
+    ];
+    configs
+        .into_iter()
+        .map(|(name, config)| PermissionCase {
+            name: format!("key store lookup is denied in {name}"),
+            config,
+            events: |_, agent| {
+                vec![
+                    shell(agent, "r1", KEY_LOOKUP),
+                    shell(agent, "r2", &format!("sh -c '{KEY_LOOKUP}'")),
+                ]
+            },
+            answered: vec![("r1".to_owned(), deny()), ("r2".to_owned(), deny())],
+            asked: Some(false),
+            waiting: &[],
+        })
+        .collect()
+}
 
-        assert_eq!(
-            answers(&flow),
-            vec![
-                ("r1".to_owned(), PermissionAnswer::Deny { note: None }),
-                ("r2".to_owned(), PermissionAnswer::Deny { note: None }),
+fn mode_and_sandbox_cases() -> Vec<PermissionCase> {
+    vec![
+        PermissionCase {
+            name: "read-only mode answers a provider-classified read in the workdir and still denies writes".to_owned(),
+            config: "permission.mode = \"read-only\"\n",
+            events: |_, agent| {
+                vec![
+                    provider_read(agent, "r1", "sed -n 1,240p src/main.rs", "src/main.rs"),
+                    provider_read(agent, "r2", "cat /etc/hosts", "/etc/hosts"),
+                    shell(agent, "r3", "cargo build"),
+                ]
+            },
+            answered: vec![
+                ("r1".to_owned(), PermissionAnswer::AllowOnce),
+                ("r3".to_owned(), deny()),
             ],
-            "{config}"
-        );
-        assert!(!is_asked(&client.window().await), "{config}");
-    }
+            asked: Some(true),
+            waiting: &["r2"],
+        },
+        PermissionCase {
+            name: "key file access is denied in full mode".to_owned(),
+            config: "permission.mode = \"full\"\n",
+            events: |flow, agent| {
+                let key_file = flow.engine.options.home.join("router.key");
+                let key_file = key_file.display().to_string();
+                vec![
+                    permission_for(agent, "r1", PermissionTool::Read, "", &[&key_file]),
+                    shell(agent, "r2", &format!("cat {key_file}")),
+                ]
+            },
+            answered: vec![("r1".to_owned(), deny()), ("r2".to_owned(), deny())],
+            asked: None,
+            waiting: &[],
+        },
+        PermissionCase {
+            name: "outside sandbox command is asked in full mode".to_owned(),
+            config: "permission.mode = \"full\"\n",
+            events: |_, agent| vec![escalated(agent, "r1", "cargo test")],
+            answered: Vec::new(),
+            asked: Some(true),
+            waiting: &["r1"],
+        },
+        PermissionCase {
+            name: "outside sandbox command is asked with an allow rule".to_owned(),
+            config: ALLOW_CARGO_TEST,
+            events: |_, agent| vec![escalated(agent, "r1", "cargo test")],
+            answered: Vec::new(),
+            asked: Some(true),
+            waiting: &["r1"],
+        },
+        PermissionCase {
+            name: "ordinary command is still allowed in full mode".to_owned(),
+            config: "permission.mode = \"full\"\n",
+            events: |_, agent| vec![shell(agent, "r1", "touch a")],
+            answered: vec![("r1".to_owned(), PermissionAnswer::AllowOnce)],
+            asked: None,
+            waiting: &[],
+        },
+    ]
 }
 
-// #423
+// #507, #423
 #[tokio::test]
-async fn key_file_access_is_denied_even_when_a_rule_allows_it() {
-    let (mut flow, agent) = started("permission.mode = \"full\"\n").await;
-    let key_file = flow.engine.options.home.join("router.key");
-    let key_file = key_file.display().to_string();
+async fn permission_requests_are_answered_by_mode_rules_and_key_protection() {
+    let cases = [key_lookup_cases(), mode_and_sandbox_cases()]
+        .into_iter()
+        .flatten();
 
-    flow.claude_event(permission_for(
-        agent,
-        "r1",
-        PermissionTool::Read,
-        "",
-        &[&key_file],
-    ))
-    .await;
-    flow.claude_event(shell(agent, "r2", &format!("cat {key_file}")))
-        .await;
-
-    assert_eq!(
-        answers(&flow),
-        vec![
-            ("r1".to_owned(), PermissionAnswer::Deny { note: None }),
-            ("r2".to_owned(), PermissionAnswer::Deny { note: None }),
-        ]
-    );
-}
-
-// #423
-#[tokio::test]
-async fn outside_sandbox_command_is_asked_even_in_full_mode_and_with_an_allow_rule() {
-    for config in ["permission.mode = \"full\"\n", ALLOW_CARGO_TEST] {
-        let (mut flow, agent) = started(config).await;
+    for case in cases {
+        let (mut flow, agent) = started(case.config).await;
         let mut client = flow.client().await;
 
-        flow.claude_event(escalated(agent, "r1", "cargo test"))
-            .await;
+        for event in (case.events)(&flow, agent) {
+            flow.claude_event(event).await;
+        }
 
-        assert!(answers(&flow).is_empty(), "{config}");
-        assert!(is_asked(&client.window().await), "{config}");
-        assert!(flow.permission_id("r1").is_some(), "{config}");
+        assert_eq!(answers(&flow), case.answered, "{}", case.name);
+        if let Some(asked) = case.asked {
+            assert_eq!(is_asked(&client.window().await), asked, "{}", case.name);
+        }
+        for id in case.waiting {
+            assert!(
+                flow.permission_id(id).is_some(),
+                "{}: {id} should wait for the user",
+                case.name
+            );
+        }
     }
-}
-
-// #423
-#[tokio::test]
-async fn ordinary_command_is_still_allowed_in_full_mode() {
-    let (mut flow, agent) = started("permission.mode = \"full\"\n").await;
-
-    flow.claude_event(shell(agent, "r1", "touch a")).await;
-
-    assert_eq!(
-        answers(&flow),
-        vec![("r1".to_owned(), PermissionAnswer::AllowOnce)]
-    );
 }
 
 #[tokio::test]

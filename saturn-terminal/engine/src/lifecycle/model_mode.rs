@@ -355,32 +355,27 @@ async fn model_settings_notice_follows_the_settings_of_each_connection_of_the_ch
 // #506
 #[tokio::test]
 async fn default_model_is_used_when_every_router_judgment_fails() {
-    let mut flow = Flow::with_config(
-        "[model]\ndefault = \"codex/gpt-x\"\n",
-        super::support::router_down(),
-    )
-    .await;
-    let codex = flow.add_provider(CODEX);
+    let cases = [
+        ("auto mode", "[model]\ndefault = \"codex/gpt-x\"\n"),
+        (
+            "manual mode",
+            "[model]\ndefault = \"codex/gpt-x\"\nmode = \"manual\"\n",
+        ),
+    ];
 
-    flow.submit("hello").await;
+    for (name, config) in cases {
+        let mut flow = Flow::with_config(config, super::support::router_down()).await;
+        let codex = flow.add_provider(CODEX);
 
-    assert_eq!(opened_models(&codex), vec![Some("gpt-x".to_owned())]);
-    assert!(opened_models(&flow.fake).is_empty());
-}
+        flow.submit("hello").await;
 
-// #506
-#[tokio::test]
-async fn manual_mode_uses_the_default_model_when_every_router_judgment_fails() {
-    let mut flow = Flow::with_config(
-        "[model]\ndefault = \"codex/gpt-x\"\nmode = \"manual\"\n",
-        super::support::router_down(),
-    )
-    .await;
-    let codex = flow.add_provider(CODEX);
-
-    flow.submit("hello").await;
-
-    assert_eq!(opened_models(&codex), vec![Some("gpt-x".to_owned())]);
+        assert_eq!(
+            opened_models(&codex),
+            vec![Some("gpt-x".to_owned())],
+            "{name}"
+        );
+        assert!(opened_models(&flow.fake).is_empty(), "{name}");
+    }
 }
 
 // #506

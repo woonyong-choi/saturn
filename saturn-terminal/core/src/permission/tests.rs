@@ -568,150 +568,192 @@ fn provider_read(command: &str, paths: &[&str]) -> PermissionCall {
     }
 }
 
-// #507
+// #507, #348
 #[test]
-fn read_only_mode_allows_a_provider_classified_read_inside_the_workdir() {
-    let policy = policy(Mode::ReadOnly, Vec::new());
-
-    assert_eq!(
-        policy.decide(&provider_read(
-            "sed -n 1,240p src/main.rs",
-            &["src/main.rs"]
-        )),
-        Verdict::Allow
-    );
-    assert_eq!(
-        policy.decide(&provider_read("ls", &[])),
-        Verdict::Allow,
-        "a listing without a path reads the workdir"
-    );
-    assert_eq!(
-        policy.decide(&provider_read("cat /work/src/a.rs", &["/work/src/a.rs"])),
-        Verdict::Allow
-    );
-}
-
-// #507
-#[test]
-fn read_only_mode_asks_for_a_provider_classified_read_outside_the_workdir_or_inside_git() {
-    let policy = policy(Mode::ReadOnly, Vec::new());
-
-    for paths in [
-        &["/etc/hosts"][..],
-        &["../x"],
-        &[".git/config"],
-        &["a", "/etc/hosts"],
-    ] {
-        assert_eq!(
-            policy.decide(&provider_read("cat x", paths)),
-            Verdict::Ask,
-            "{paths:?}"
-        );
+fn provider_classified_reads_follow_mode_and_read_rules() {
+    struct Case {
+        name: &'static str,
+        mode: Mode,
+        rules: Vec<Rule>,
+        call: PermissionCall,
+        expected: Verdict,
     }
-}
-
-// #507
-#[test]
-fn provider_read_classification_does_not_open_other_commands_or_modes() {
-    let read_only = policy(Mode::ReadOnly, Vec::new());
-    assert_eq!(
-        read_only.decide(&shell("sed -n 1p src/main.rs")),
-        Verdict::Deny
-    );
-    assert_eq!(read_only.decide(&shell("cargo build")), Verdict::Deny);
+    let case = |name, mode, rules, call, expected| Case {
+        name,
+        mode,
+        rules,
+        call,
+        expected,
+    };
+    let secret = |verdict| vec![rule(PermissionTool::Read, "/secret/*", verdict)];
+    let sed_main = || provider_read("sed -n 1p src/main.rs", &["src/main.rs"]);
     let mut unmarked = provider_read("sed -n 1p a", &["a"]);
     unmarked.reads_only = false;
-    assert_eq!(read_only.decide(&unmarked), Verdict::Deny);
 
-    let cmd = provider_read("sed -n 1p src/main.rs", &["src/main.rs"]);
-    assert_eq!(policy(Mode::Ask, Vec::new()).decide(&cmd), Verdict::Ask);
-    assert_eq!(policy(Mode::Edit, Vec::new()).decide(&cmd), Verdict::Ask);
-    assert_eq!(policy(Mode::Full, Vec::new()).decide(&cmd), Verdict::Allow);
-}
+    let cases = vec![
+        case(
+            "read-only mode allows a classified read inside the workdir",
+            Mode::ReadOnly,
+            Vec::new(),
+            provider_read("sed -n 1,240p src/main.rs", &["src/main.rs"]),
+            Verdict::Allow,
+        ),
+        case(
+            "a listing without a path reads the workdir",
+            Mode::ReadOnly,
+            Vec::new(),
+            provider_read("ls", &[]),
+            Verdict::Allow,
+        ),
+        case(
+            "an absolute path inside the workdir is allowed",
+            Mode::ReadOnly,
+            Vec::new(),
+            provider_read("cat /work/src/a.rs", &["/work/src/a.rs"]),
+            Verdict::Allow,
+        ),
+        case(
+            "a read outside the workdir asks",
+            Mode::ReadOnly,
+            Vec::new(),
+            provider_read("cat x", &["/etc/hosts"]),
+            Verdict::Ask,
+        ),
+        case(
+            "a read of a parent path asks",
+            Mode::ReadOnly,
+            Vec::new(),
+            provider_read("cat x", &["../x"]),
+            Verdict::Ask,
+        ),
+        case(
+            "a read inside git asks",
+            Mode::ReadOnly,
+            Vec::new(),
+            provider_read("cat x", &[".git/config"]),
+            Verdict::Ask,
+        ),
+        case(
+            "one outside path among several asks",
+            Mode::ReadOnly,
+            Vec::new(),
+            provider_read("cat x", &["a", "/etc/hosts"]),
+            Verdict::Ask,
+        ),
+        case(
+            "a shell sed is not opened by read-only mode",
+            Mode::ReadOnly,
+            Vec::new(),
+            shell("sed -n 1p src/main.rs"),
+            Verdict::Deny,
+        ),
+        case(
+            "a shell build is not opened by read-only mode",
+            Mode::ReadOnly,
+            Vec::new(),
+            shell("cargo build"),
+            Verdict::Deny,
+        ),
+        case(
+            "a read the provider did not classify stays denied",
+            Mode::ReadOnly,
+            Vec::new(),
+            unmarked,
+            Verdict::Deny,
+        ),
+        case(
+            "ask mode keeps asking for a classified read",
+            Mode::Ask,
+            Vec::new(),
+            sed_main(),
+            Verdict::Ask,
+        ),
+        case(
+            "edit mode keeps asking for a classified read",
+            Mode::Edit,
+            Vec::new(),
+            sed_main(),
+            Verdict::Ask,
+        ),
+        case(
+            "full mode allows a classified read",
+            Mode::Full,
+            Vec::new(),
+            sed_main(),
+            Verdict::Allow,
+        ),
+        case(
+            "a shell deny rule beats a classified read in read-only mode",
+            Mode::ReadOnly,
+            vec![rule(PermissionTool::Shell, "sed *", Verdict::Deny)],
+            provider_read("sed -n 1p a", &["a"]),
+            Verdict::Deny,
+        ),
+        case(
+            "a read deny rule reaches a classified read",
+            Mode::Edit,
+            secret(Verdict::Deny),
+            provider_read("cat /secret/a.txt", &["/secret/a.txt"]),
+            Verdict::Deny,
+        ),
+        case(
+            "a read ask rule reaches a classified read",
+            Mode::Edit,
+            secret(Verdict::Ask),
+            provider_read("cat /secret/a.txt", &["/secret/a.txt"]),
+            Verdict::Ask,
+        ),
+        case(
+            "one denied path denies the command",
+            Mode::Edit,
+            secret(Verdict::Deny),
+            provider_read("cat /work/a /secret/a.txt", &["/work/a", "/secret/a.txt"]),
+            Verdict::Deny,
+        ),
+        case(
+            "a read rule leaves other paths to the shell rules",
+            Mode::Edit,
+            secret(Verdict::Deny),
+            provider_read("cat /work/a", &["/work/a"]),
+            Verdict::Allow,
+        ),
+        case(
+            "a listing without a path is not judged by a read rule",
+            Mode::Edit,
+            secret(Verdict::Deny),
+            provider_read("ls", &[]),
+            Verdict::Allow,
+        ),
+        case(
+            "a command the provider did not classify keeps the shell verdict",
+            Mode::Edit,
+            secret(Verdict::Deny),
+            shell("cat /secret/a.txt"),
+            Verdict::Allow,
+        ),
+        case(
+            "a read allow rule does not loosen the shell side of the mode",
+            Mode::ReadOnly,
+            vec![rule(PermissionTool::Read, "/etc/*", Verdict::Allow)],
+            provider_read("cat /etc/hosts", &["/etc/hosts"]),
+            Verdict::Ask,
+        ),
+        case(
+            "a later read allow overrides an earlier read ask",
+            Mode::Edit,
+            vec![
+                rule(PermissionTool::Read, "/etc/*", Verdict::Ask),
+                rule(PermissionTool::Read, "/etc/hosts", Verdict::Allow),
+            ],
+            provider_read("cat /etc/hosts", &["/etc/hosts"]),
+            Verdict::Allow,
+        ),
+    ];
 
-// #507
-#[test]
-fn deny_rule_beats_a_provider_classified_read_in_read_only_mode() {
-    let policy = policy(
-        Mode::ReadOnly,
-        vec![rule(PermissionTool::Shell, "sed *", Verdict::Deny)],
-    );
-
-    assert_eq!(
-        policy.decide(&provider_read("sed -n 1p a", &["a"])),
-        Verdict::Deny
-    );
-}
-
-// #348
-#[test]
-fn read_rules_deny_and_ask_reach_a_provider_classified_read_command() {
-    let deny = policy(
-        Mode::Edit,
-        vec![rule(PermissionTool::Read, "/secret/*", Verdict::Deny)],
-    );
-    let ask = policy(
-        Mode::Edit,
-        vec![rule(PermissionTool::Read, "/secret/*", Verdict::Ask)],
-    );
-    let cmd = provider_read("cat /secret/a.txt", &["/secret/a.txt"]);
-
-    assert_eq!(deny.decide(&cmd), Verdict::Deny);
-    assert_eq!(ask.decide(&cmd), Verdict::Ask);
-    let both = provider_read("cat /work/a /secret/a.txt", &["/work/a", "/secret/a.txt"]);
-    assert_eq!(
-        deny.decide(&both),
-        Verdict::Deny,
-        "one denied path denies the command"
-    );
-}
-
-// #348
-#[test]
-fn read_rules_leave_other_paths_and_unclassified_commands_to_the_shell_rules() {
-    let policy = policy(
-        Mode::Edit,
-        vec![rule(PermissionTool::Read, "/secret/*", Verdict::Deny)],
-    );
-
-    assert_eq!(
-        policy.decide(&provider_read("cat /work/a", &["/work/a"])),
-        Verdict::Allow
-    );
-    assert_eq!(
-        policy.decide(&provider_read("ls", &[])),
-        Verdict::Allow,
-        "a listing without a path is not judged by a read rule"
-    );
-    assert_eq!(
-        policy.decide(&shell("cat /secret/a.txt")),
-        Verdict::Allow,
-        "a command the provider did not classify as a read keeps the shell verdict"
-    );
-}
-
-// #348
-#[test]
-fn a_read_allow_rule_does_not_loosen_a_shell_verdict_but_overrides_an_earlier_read_ask() {
-    let loose = policy(
-        Mode::ReadOnly,
-        vec![rule(PermissionTool::Read, "/etc/*", Verdict::Allow)],
-    );
-    let cmd = provider_read("cat /etc/hosts", &["/etc/hosts"]);
-    assert_eq!(
-        loose.decide(&cmd),
-        Verdict::Ask,
-        "mode decides the shell side"
-    );
-
-    let narrowed = policy(
-        Mode::Edit,
-        vec![
-            rule(PermissionTool::Read, "/etc/*", Verdict::Ask),
-            rule(PermissionTool::Read, "/etc/hosts", Verdict::Allow),
-        ],
-    );
-    assert_eq!(narrowed.decide(&cmd), Verdict::Allow);
+    for case in cases {
+        let policy = policy(case.mode, case.rules);
+        assert_eq!(policy.decide(&case.call), case.expected, "{}", case.name);
+    }
 }
 
 // #348

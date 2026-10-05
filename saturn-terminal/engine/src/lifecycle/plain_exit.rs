@@ -102,94 +102,92 @@ async fn run_plain(
 }
 
 #[tokio::test]
-async fn plain_ends_with_success_when_the_only_task_is_done() {
-    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+async fn plain_ends_by_the_result_of_its_only_task() {
+    type Answers = Vec<Result<(), ProviderError>>;
+    // (사례, provider가 턴을 받은 결과 목록, 성공으로 끝나야 하는가)
+    let cases: [(&str, Answers, bool); 3] = [
+        ("the only task is done", Vec::new(), true),
+        (
+            "the provider refuses the turn",
+            (0..8)
+                .map(|_| {
+                    Err(ProviderError::NotSent {
+                        reason: "provider refused".to_owned(),
+                    })
+                })
+                .collect(),
+            false,
+        ),
+        (
+            "the turn result is unknown",
+            vec![Err(ProviderError::Unknown)],
+            false,
+        ),
+    ];
 
-    let (result, text) = run_plain(&mut flow, "hello\n", None).await;
+    for (name, answers, succeeds) in cases {
+        let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+        if !answers.is_empty() {
+            flow.fake.answer_send(answers);
+        }
 
-    assert!(
-        matches!(result, Some(Ok(()))),
-        "plain should end with success, got {result:?}\n{text}"
-    );
-    assert!(text.contains("done"));
+        let (result, text) = run_plain(&mut flow, "hello\n", None).await;
+
+        if succeeds {
+            assert!(
+                matches!(result, Some(Ok(()))),
+                "{name}: plain should end with success, got {result:?}\n{text}"
+            );
+            assert!(text.contains("done"), "{name}: {text}");
+        } else {
+            assert!(
+                matches!(result, Some(Err(TuiError::TaskFailed))),
+                "{name}: plain should end with a task failure, got {result:?}\n{text}"
+            );
+        }
+    }
 }
 
 #[tokio::test]
-async fn plain_ends_with_a_failure_when_the_provider_refuses_the_turn() {
-    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    let refused = || {
-        Err(ProviderError::NotSent {
-            reason: "provider refused".to_owned(),
-        })
-    };
-    flow.fake.answer_send((0..8).map(|_| refused()));
+async fn plain_ends_after_the_task_that_took_the_second_input() {
+    // (사례, router 판단, 기대 SendTurn 수, 기대 Steer 수)
+    let cases = [
+        ("queued input", "continues", "queue", Some(2), None),
+        ("steered input", "refines", "steer", None, Some(1)),
+    ];
 
-    let (result, text) = run_plain(&mut flow, "hello\n", None).await;
+    for (name, relation, action, turns, steers) in cases {
+        let mut flow = Flow::new(vec![
+            idle_reply(0.95),
+            running_reply(0.95, relation, action),
+            running_reply(0.95, relation, action),
+        ])
+        .await;
+        if action == "steer" {
+            flow.fake.verify_steer();
+        }
 
-    assert!(
-        matches!(result, Some(Err(TuiError::TaskFailed))),
-        "plain should end with a task failure, got {result:?}\n{text}"
-    );
-}
+        let (result, text) = run_plain(&mut flow, "one\ntwo\n", Some("two")).await;
 
-#[tokio::test]
-async fn plain_ends_with_a_failure_when_the_turn_result_is_unknown() {
-    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
-    flow.fake.answer_send([Err(ProviderError::Unknown)]);
-
-    let (result, text) = run_plain(&mut flow, "hello\n", None).await;
-
-    assert!(
-        matches!(result, Some(Err(TuiError::TaskFailed))),
-        "plain should not wait for a task that needs a check, got {result:?}\n{text}"
-    );
-}
-
-#[tokio::test]
-async fn plain_waits_for_a_queued_input_and_ends_after_its_task() {
-    let mut flow = Flow::new(vec![
-        idle_reply(0.95),
-        running_reply(0.95, "continues", "queue"),
-        running_reply(0.95, "continues", "queue"),
-    ])
-    .await;
-
-    let (result, text) = run_plain(&mut flow, "one\ntwo\n", Some("two")).await;
-
-    assert!(
-        matches!(result, Some(Ok(()))),
-        "plain should end after both tasks, got {result:?}\n{text}"
-    );
-    let turns = flow
-        .fake
-        .calls()
-        .iter()
-        .filter(|call| matches!(call, Call::SendTurn { .. }))
-        .count();
-    assert_eq!(turns, 2);
-}
-
-#[tokio::test]
-async fn plain_ends_after_the_task_that_took_a_steered_input() {
-    let mut flow = Flow::new(vec![
-        idle_reply(0.95),
-        running_reply(0.95, "refines", "steer"),
-        running_reply(0.95, "refines", "steer"),
-    ])
-    .await;
-    flow.fake.verify_steer();
-
-    let (result, text) = run_plain(&mut flow, "one\ntwo\n", Some("two")).await;
-
-    assert!(
-        matches!(result, Some(Ok(()))),
-        "plain should end after the steered task, got {result:?}\n{text}"
-    );
-    let steers = flow
-        .fake
-        .calls()
-        .iter()
-        .filter(|call| matches!(call, Call::Steer { .. }))
-        .count();
-    assert_eq!(steers, 1);
+        assert!(
+            matches!(result, Some(Ok(()))),
+            "{name}: plain should end after its tasks, got {result:?}\n{text}"
+        );
+        let calls = flow.fake.calls();
+        let count = |wanted: fn(&Call) -> bool| calls.iter().filter(|call| wanted(call)).count();
+        if let Some(turns) = turns {
+            assert_eq!(
+                count(|call| matches!(call, Call::SendTurn { .. })),
+                turns,
+                "{name}"
+            );
+        }
+        if let Some(steers) = steers {
+            assert_eq!(
+                count(|call| matches!(call, Call::Steer { .. })),
+                steers,
+                "{name}"
+            );
+        }
+    }
 }

@@ -410,137 +410,144 @@ async fn auto_prune_failure_keeps_every_chat_and_still_tells_the_first_tui() {
 
 // #457
 #[tokio::test]
-async fn prune_confirmation_does_not_delete_a_chat_that_was_not_previewed() {
-    let fixture = Fixture::new();
-    let mut engine = ready_with_retention(&fixture).await;
-    let old = old_chat(&engine, "/work/previewed", "previewed work").await;
-    let later = chat_with_input(&engine, "/work/later", "later work").await;
-    finish_inputs(&engine, later).await;
-    let mut client = Client::connect(&fixture.socket()).await;
-    let preview = prune(&mut engine, &mut client, 1, false).await;
-    assert_eq!(preview.chats, [old]);
-    engine.store.age_chat(later, 3).await;
+async fn prune_confirmation_keeps_a_previewed_chat_that_changed_since() {
+    #[derive(Clone, Copy)]
+    enum Change {
+        UsedAgain,
+        OpenInput,
+        TuiAttached,
+    }
+    let cases = [
+        ("used again", Change::UsedAgain),
+        ("got an open input", Change::OpenInput),
+        ("a tui attached afterwards", Change::TuiAttached),
+    ];
 
-    let deleted = confirm(&mut engine, &mut client, 2, &preview).await;
+    for (name, change) in cases {
+        let fixture = Fixture::new();
+        let mut engine = ready_with_retention(&fixture).await;
+        let stays = old_chat(&engine, "/work/stays", "changed work").await;
+        let goes = match change {
+            Change::UsedAgain => Some(old_chat(&engine, "/work/goes", "left alone").await),
+            _ => None,
+        };
+        let mut viewer = Client::connect(&fixture.socket()).await;
+        let mut client = Client::connect(&fixture.socket()).await;
+        let preview = prune(&mut engine, &mut client, 1, false).await;
+        let mut previewed = vec![stays];
+        previewed.extend(goes);
+        assert_eq!(preview.chats, previewed, "{name}");
+        match change {
+            Change::UsedAgain | Change::OpenInput => {
+                engine
+                    .store
+                    .accept_input(&NewInput {
+                        chat: stays,
+                        text: "back again".to_owned(),
+                        settings: SettingsRevision(1),
+                        permission: saturn_core::queue::Permission::Write,
+                        workdir: PathBuf::from("/work/stays"),
+                        pinned_model: None,
+                        skip_relation: false,
+                    })
+                    .await
+                    .unwrap();
+            }
+            Change::TuiAttached => {
+                drive(&mut engine, async {
+                    viewer
+                        .attach(
+                            1,
+                            Request::Attach {
+                                chat: Some(stays),
+                                workdir: fixture.workdir.display().to_string(),
+                                env: Vec::new(),
+                                overrides: Vec::new(),
+                                add_dirs: Vec::new(),
+                            },
+                        )
+                        .await;
+                })
+                .await;
+            }
+        }
+        match change {
+            Change::UsedAgain => finish_inputs(&engine, stays).await,
+            Change::OpenInput | Change::TuiAttached => engine.store.age_chat(stays, 3).await,
+        }
 
-    assert_eq!(
-        deleted.chats, preview.chats,
-        "confirmation must not expand the previewed deletion set"
-    );
-    assert!(engine.store.chat_workdir(later).await.is_ok());
+        let deleted = confirm(&mut engine, &mut client, 2, &preview).await;
+
+        let reason = match change {
+            Change::UsedAgain => PruneSkipReason::UsedSincePreview,
+            Change::OpenInput => PruneSkipReason::OpenInput,
+            Change::TuiAttached => PruneSkipReason::Attached,
+        };
+        assert_eq!(
+            deleted.chats,
+            goes.into_iter().collect::<Vec<_>>(),
+            "{name}"
+        );
+        assert_eq!(
+            deleted.skipped,
+            [PruneSkipped {
+                chat: stays,
+                reasons: vec![reason]
+            }],
+            "{name}"
+        );
+        assert!(engine.store.chat_workdir(stays).await.is_ok(), "{name}");
+    }
 }
 
 // #457
 #[tokio::test]
-async fn prune_confirmation_keeps_a_previewed_chat_that_was_used_again() {
-    let fixture = Fixture::new();
-    let mut engine = ready_with_retention(&fixture).await;
-    let stays = old_chat(&engine, "/work/stays", "used again").await;
-    let goes = old_chat(&engine, "/work/goes", "left alone").await;
-    let mut client = Client::connect(&fixture.socket()).await;
-    let preview = prune(&mut engine, &mut client, 1, false).await;
-    assert_eq!(preview.chats, [stays, goes]);
-    engine
-        .store
-        .accept_input(&NewInput {
-            chat: stays,
-            text: "back again".to_owned(),
-            settings: SettingsRevision(1),
-            permission: saturn_core::queue::Permission::Write,
-            workdir: PathBuf::from("/work/stays"),
-            pinned_model: None,
-            skip_relation: false,
-        })
-        .await
-        .unwrap();
-    finish_inputs(&engine, stays).await;
+async fn prune_confirmation_deletes_only_the_previewed_chats() {
+    // (사례, 미리보기 전에 만들어 두고 뒤에 오래된 채팅으로 만드는가, 다른 접속이 확인하는가)
+    let cases = [
+        ("a chat that aged after the preview", true, false),
+        (
+            "a chat created after the preview, confirmed elsewhere",
+            false,
+            true,
+        ),
+    ];
 
-    let deleted = confirm(&mut engine, &mut client, 2, &preview).await;
+    for (name, aged_after_preview, other_connection) in cases {
+        let fixture = Fixture::new();
+        let mut engine = ready_with_retention(&fixture).await;
+        let old = old_chat(&engine, "/work/previewed", "previewed work").await;
+        let early = if aged_after_preview {
+            let chat = chat_with_input(&engine, "/work/later", "later work").await;
+            finish_inputs(&engine, chat).await;
+            Some(chat)
+        } else {
+            None
+        };
+        let mut previewer = Client::connect(&fixture.socket()).await;
+        let mut deleter = Client::connect(&fixture.socket()).await;
+        let preview = prune(&mut engine, &mut previewer, 1, false).await;
+        assert_eq!(preview.chats, [old], "{name}");
+        let later = match early {
+            Some(chat) => {
+                engine.store.age_chat(chat, 3).await;
+                chat
+            }
+            None => old_chat(&engine, "/work/later", "later work").await,
+        };
 
-    assert_eq!(deleted.chats, [goes]);
-    assert_eq!(
-        deleted.skipped,
-        [PruneSkipped {
-            chat: stays,
-            reasons: vec![PruneSkipReason::UsedSincePreview]
-        }]
-    );
-    assert!(engine.store.chat_workdir(stays).await.is_ok());
-}
+        let deleted = if other_connection {
+            confirm(&mut engine, &mut deleter, 1, &preview).await
+        } else {
+            confirm(&mut engine, &mut previewer, 2, &preview).await
+        };
 
-// #457
-#[tokio::test]
-async fn prune_confirmation_keeps_a_previewed_chat_that_got_an_open_input() {
-    let fixture = Fixture::new();
-    let mut engine = ready_with_retention(&fixture).await;
-    let old = old_chat(&engine, "/work/old", "old work").await;
-    let mut client = Client::connect(&fixture.socket()).await;
-    let preview = prune(&mut engine, &mut client, 1, false).await;
-    engine
-        .store
-        .accept_input(&NewInput {
-            chat: old,
-            text: "one more".to_owned(),
-            settings: SettingsRevision(1),
-            permission: saturn_core::queue::Permission::Write,
-            workdir: PathBuf::from("/work/old"),
-            pinned_model: None,
-            skip_relation: false,
-        })
-        .await
-        .unwrap();
-    engine.store.age_chat(old, 3).await;
-
-    let deleted = confirm(&mut engine, &mut client, 2, &preview).await;
-
-    assert!(deleted.chats.is_empty());
-    assert_eq!(
-        deleted.skipped,
-        [PruneSkipped {
-            chat: old,
-            reasons: vec![PruneSkipReason::OpenInput]
-        }]
-    );
-    assert!(engine.store.chat_workdir(old).await.is_ok());
-}
-
-// #457
-#[tokio::test]
-async fn prune_confirmation_keeps_a_previewed_chat_a_tui_attached_to_afterwards() {
-    let fixture = Fixture::new();
-    let mut engine = ready_with_retention(&fixture).await;
-    let old = old_chat(&engine, "/work/old", "old work").await;
-    let mut viewer = Client::connect(&fixture.socket()).await;
-    let mut client = Client::connect(&fixture.socket()).await;
-    let preview = prune(&mut engine, &mut client, 1, false).await;
-    drive(&mut engine, async {
-        viewer
-            .attach(
-                1,
-                Request::Attach {
-                    chat: Some(old),
-                    workdir: fixture.workdir.display().to_string(),
-                    env: Vec::new(),
-                    overrides: Vec::new(),
-                    add_dirs: Vec::new(),
-                },
-            )
-            .await;
-    })
-    .await;
-    engine.store.age_chat(old, 3).await;
-
-    let deleted = confirm(&mut engine, &mut client, 2, &preview).await;
-
-    assert!(deleted.chats.is_empty());
-    assert_eq!(
-        deleted.skipped,
-        [PruneSkipped {
-            chat: old,
-            reasons: vec![PruneSkipReason::Attached]
-        }]
-    );
-    assert!(engine.store.chat_workdir(old).await.is_ok());
+        assert_eq!(
+            deleted.chats, preview.chats,
+            "{name}: confirmation must not expand the previewed deletion set"
+        );
+        assert!(engine.store.chat_workdir(later).await.is_ok(), "{name}");
+    }
 }
 
 // #457
@@ -559,23 +566,6 @@ async fn a_prune_plan_works_once_and_a_made_up_one_deletes_nothing() {
     assert_eq!(deleted.chats, [old]);
 
     assert!(refused_with_plan(&mut engine, &mut client, 4, &id).await);
-}
-
-// #457
-#[tokio::test]
-async fn a_prune_plan_from_another_connection_deletes_only_the_previewed_chats() {
-    let fixture = Fixture::new();
-    let mut engine = ready_with_retention(&fixture).await;
-    let old = old_chat(&engine, "/work/old", "old work").await;
-    let mut previewer = Client::connect(&fixture.socket()).await;
-    let preview = prune(&mut engine, &mut previewer, 1, false).await;
-    let later = old_chat(&engine, "/work/later", "later work").await;
-    let mut deleter = Client::connect(&fixture.socket()).await;
-
-    let deleted = confirm(&mut engine, &mut deleter, 1, &preview).await;
-
-    assert_eq!(deleted.chats, [old]);
-    assert!(engine.store.chat_workdir(later).await.is_ok());
 }
 
 // #457

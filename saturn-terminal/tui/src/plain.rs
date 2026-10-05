@@ -687,55 +687,6 @@ mod tests {
             .unwrap();
     }
 
-    #[test]
-    fn another_connections_task_neither_holds_the_end_nor_fails_it() {
-        let now = Instant::now();
-        let mut plain = PlainOutput::new(Vec::new(), Lang::Ko);
-        accepted_and_applied(&mut plain, 1, 'A');
-        plain
-            .apply(labeled_task(1, 'A', TaskState::Running), now)
-            .unwrap();
-        plain
-            .apply(labeled_task(2, 'B', TaskState::Running), now)
-            .unwrap();
-        assert!(!plain.is_finished());
-
-        plain
-            .apply(labeled_task(1, 'A', TaskState::Done), now)
-            .unwrap();
-        plain
-            .apply(labeled_task(2, 'B', TaskState::Failed), now)
-            .unwrap();
-
-        assert!(plain.is_finished());
-        assert!(!plain.has_failed());
-    }
-
-    #[test]
-    fn a_task_sharing_the_label_finishing_first_does_not_end_or_fail_this_connections_wait() {
-        let now = Instant::now();
-        let mut plain = PlainOutput::new(Vec::new(), Lang::Ko);
-        accepted_and_applied(&mut plain, 1, 'Z');
-        plain
-            .apply(labeled_task(1, 'Z', TaskState::Running), now)
-            .unwrap();
-        plain
-            .apply(labeled_task(2, 'Z', TaskState::Running), now)
-            .unwrap();
-
-        plain
-            .apply(labeled_task(2, 'Z', TaskState::Failed), now)
-            .unwrap();
-
-        assert!(!plain.is_finished());
-        assert!(!plain.has_failed());
-        plain
-            .apply(labeled_task(1, 'Z', TaskState::Done), now)
-            .unwrap();
-        assert!(plain.is_finished());
-        assert!(!plain.has_failed());
-    }
-
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
     fn steered_onto(plain: &mut PlainOutput<Vec<u8>>, input: u64, task: u64, label: char) {
@@ -766,43 +717,111 @@ mod tests {
             .unwrap();
     }
 
-    #[test]
-    fn a_steer_waits_for_the_task_it_joined_not_for_one_sharing_its_label() {
+    enum Event {
+        Task(u64, char, TaskState),
+        Applied(u64, char),
+        Steered(u64, u64, char),
+    }
+
+    struct Step {
+        event: Event,
+        finished: Option<bool>,
+        failed: Option<bool>,
+    }
+
+    fn step(event: Event, finished: Option<bool>, failed: Option<bool>) -> Step {
+        Step {
+            event,
+            finished,
+            failed,
+        }
+    }
+
+    // cost: time O(n), heap O(1), stack O(1)
+    // vars: n = 단계 수
+    // basis: estimate
+    fn run_steps(name: &str, steps: Vec<Step>) {
         let now = Instant::now();
         let mut plain = PlainOutput::new(Vec::new(), Lang::Ko);
-        plain
-            .apply(labeled_task(1, 'Z', TaskState::Running), now)
-            .unwrap();
-        plain
-            .apply(labeled_task(3, 'Z', TaskState::Running), now)
-            .unwrap();
-        steered_onto(&mut plain, 7, 1, 'Z');
-
-        plain
-            .apply(labeled_task(3, 'Z', TaskState::Done), now)
-            .unwrap();
-        assert!(!plain.is_finished());
-        plain
-            .apply(labeled_task(1, 'Z', TaskState::Done), now)
-            .unwrap();
-
-        assert!(plain.is_finished());
+        for (index, step) in steps.into_iter().enumerate() {
+            match step.event {
+                Event::Task(task, label, state) => {
+                    plain.apply(labeled_task(task, label, state), now).unwrap();
+                }
+                Event::Applied(input, label) => accepted_and_applied(&mut plain, input, label),
+                Event::Steered(input, task, label) => steered_onto(&mut plain, input, task, label),
+            }
+            if let Some(finished) = step.finished {
+                assert_eq!(
+                    plain.is_finished(),
+                    finished,
+                    "{name}: finished at step {index}"
+                );
+            }
+            if let Some(failed) = step.failed {
+                assert_eq!(plain.has_failed(), failed, "{name}: failed at step {index}");
+            }
+        }
     }
 
     #[test]
-    fn a_steer_onto_a_finished_task_does_not_wait_for_another_task_sharing_its_label() {
-        let now = Instant::now();
-        let mut plain = PlainOutput::new(Vec::new(), Lang::Ko);
-        plain
-            .apply(labeled_task(1, 'Z', TaskState::Done), now)
-            .unwrap();
-        plain
-            .apply(labeled_task(3, 'Z', TaskState::Running), now)
-            .unwrap();
+    fn another_task_neither_holds_the_end_nor_fails_this_connections_wait() {
+        use Event::{Applied, Task};
+        let cases = vec![
+            (
+                "another connection's task",
+                vec![
+                    step(Applied(1, 'A'), None, None),
+                    step(Task(1, 'A', TaskState::Running), None, None),
+                    step(Task(2, 'B', TaskState::Running), Some(false), None),
+                    step(Task(1, 'A', TaskState::Done), None, None),
+                    step(Task(2, 'B', TaskState::Failed), Some(true), Some(false)),
+                ],
+            ),
+            (
+                "a task sharing the label finishing first",
+                vec![
+                    step(Applied(1, 'Z'), None, None),
+                    step(Task(1, 'Z', TaskState::Running), None, None),
+                    step(Task(2, 'Z', TaskState::Running), None, None),
+                    step(Task(2, 'Z', TaskState::Failed), Some(false), Some(false)),
+                    step(Task(1, 'Z', TaskState::Done), Some(true), Some(false)),
+                ],
+            ),
+        ];
 
-        steered_onto(&mut plain, 7, 1, 'Z');
+        for (name, steps) in cases {
+            run_steps(name, steps);
+        }
+    }
 
-        assert!(plain.is_finished());
+    #[test]
+    fn a_steer_waits_for_the_task_it_joined_not_for_one_sharing_its_label() {
+        use Event::{Steered, Task};
+        let cases = vec![
+            (
+                "the joined task is still running",
+                vec![
+                    step(Task(1, 'Z', TaskState::Running), None, None),
+                    step(Task(3, 'Z', TaskState::Running), None, None),
+                    step(Steered(7, 1, 'Z'), None, None),
+                    step(Task(3, 'Z', TaskState::Done), Some(false), None),
+                    step(Task(1, 'Z', TaskState::Done), Some(true), None),
+                ],
+            ),
+            (
+                "the joined task already finished",
+                vec![
+                    step(Task(1, 'Z', TaskState::Done), None, None),
+                    step(Task(3, 'Z', TaskState::Running), None, None),
+                    step(Steered(7, 1, 'Z'), Some(true), None),
+                ],
+            ),
+        ];
+
+        for (name, steps) in cases {
+            run_steps(name, steps);
+        }
     }
 
     #[test]

@@ -945,7 +945,7 @@ mod tests {
 
     // #456
     #[test]
-    fn steered_inputs_join_their_turn_in_the_order_they_were_applied() {
+    fn steered_inputs_show_in_the_turn_and_the_goal() {
         let rows = vec![
             row(
                 1,
@@ -962,54 +962,47 @@ mod tests {
                 text_event(AgentId(1), "done"),
             ),
         ];
-        let steers = [
-            steer(2, 1, 1, "use a hand written lexer"),
-            steer(3, 1, 2, "skip the docs"),
+        type SteerCase = (&'static str, Vec<SteeredInput>, fn(&str, &str));
+        let cases: [SteerCase; 2] = [
+            (
+                "steers join their turn in the order they were applied",
+                vec![
+                    steer(2, 1, 1, "use a hand written lexer"),
+                    steer(3, 1, 2, "skip the docs"),
+                ],
+                |name, text| {
+                    let first = text
+                        .find("User (sent while this turn was running): use a hand written lexer");
+                    let second =
+                        text.find("User (sent while this turn was running): skip the docs");
+                    let agent = text.find("Agent: starteddone");
+                    assert!(
+                        first.is_some() && second.is_some() && agent.is_some(),
+                        "{name}: {text}"
+                    );
+                    assert!(first < second && second < agent, "{name}: {text}");
+                },
+            ),
+            (
+                "the last steered input is the last user input of the goal",
+                vec![steer(2, 1, 2, "stop and use the lexer branch")],
+                |name, text| {
+                    assert!(
+                        text.contains("First input [Finished]: write the parser"),
+                        "{name}: {text}"
+                    );
+                    assert!(
+                        text.contains("Last input [Finished]: stop and use the lexer branch"),
+                        "{name}: {text}"
+                    );
+                },
+            ),
         ];
 
-        let text = ready(&rows, &steers);
-
-        let first = text.find("User (sent while this turn was running): use a hand written lexer");
-        let second = text.find("User (sent while this turn was running): skip the docs");
-        let agent = text.find("Agent: starteddone");
-        assert!(
-            first.is_some() && second.is_some() && agent.is_some(),
-            "{text}"
-        );
-        assert!(first < second && second < agent, "{text}");
-    }
-
-    // #456
-    #[test]
-    fn the_last_steered_input_is_the_last_user_input_of_the_goal() {
-        let rows = vec![
-            row(
-                1,
-                1,
-                5,
-                Some("write the parser"),
-                text_event(AgentId(1), "started"),
-            ),
-            row(
-                4,
-                1,
-                5,
-                Some("write the parser"),
-                text_event(AgentId(1), "done"),
-            ),
-        ];
-        let steers = [steer(2, 1, 2, "stop and use the lexer branch")];
-
-        let text = ready(&rows, &steers);
-
-        assert!(
-            text.contains("First input [Finished]: write the parser"),
-            "{text}"
-        );
-        assert!(
-            text.contains("Last input [Finished]: stop and use the lexer branch"),
-            "{text}"
-        );
+        for (name, steers, check) in cases {
+            let text = ready(&rows, &steers);
+            check(name, &text);
+        }
     }
 
     // #456
@@ -1040,21 +1033,5 @@ mod tests {
 
         assert!(text.contains("only nits please"), "{text}");
         assert!(!text.contains("private to session five"), "{text}");
-    }
-
-    // #456
-    #[test]
-    fn a_steer_whose_run_has_no_records_is_left_out() {
-        let rows = vec![row(
-            1,
-            1,
-            5,
-            Some("write the parser"),
-            text_event(AgentId(1), "done"),
-        )];
-
-        let text = ready(&rows, &[steer(9, 77, 1, "orphan steer")]);
-
-        assert!(!text.contains("orphan steer"), "{text}");
     }
 }

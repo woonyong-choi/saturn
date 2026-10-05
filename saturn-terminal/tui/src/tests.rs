@@ -112,29 +112,93 @@ async fn run_with_input(
 }
 
 #[tokio::test]
-async fn plain_ends_with_the_rejection_when_the_only_input_is_refused() {
-    let home = tempfile::tempdir().unwrap();
-    let (socket, server) = fake_engine(&home, |request, id| match request {
-        Request::SubmitInput { .. } => Some(Response::error_of_kind(
-            Some(id),
-            -32602,
-            Some(ErrorKind::Failed),
-            "chat is closed",
-        )),
-        _ => Some(Response::ok(id)),
-    });
+async fn plain_follows_a_refused_input_by_whether_an_unresolved_submission_remains() {
+    use saturn_protocol::envelope::RequestId;
 
-    let (result, text) = run_with_input(&socket, &home, "hello\n").await;
+    struct Case {
+        name: &'static str,
+        input: &'static str,
+        reply: fn(&Request, RequestId) -> Option<Response>,
+        ends_with_rejection: bool,
+        printed: &'static str,
+    }
+    let cases = [
+        Case {
+            name: "the only input is refused",
+            input: "hello\n",
+            reply: |request, id| match request {
+                Request::SubmitInput { .. } => Some(Response::error_of_kind(
+                    Some(id),
+                    -32602,
+                    Some(ErrorKind::Failed),
+                    "chat is closed",
+                )),
+                _ => Some(Response::ok(id)),
+            },
+            ends_with_rejection: true,
+            printed: "입력을 접수하지 못했습니다: chat is closed",
+        },
+        // 첫 제출에는 InputAccepted 없이 ok만 오므로 접수된 작업이 아니라 해결되지 않은 제출을 기다린다
+        Case {
+            name: "another submission is still unresolved when the second is refused",
+            input: "one\ntwo\n",
+            reply: |request, id| match request {
+                Request::SubmitInput { client_ref: 2, .. } => {
+                    Some(Response::error(Some(id), -32602, "second refused"))
+                }
+                _ => Some(Response::ok(id)),
+            },
+            ends_with_rejection: false,
+            printed: "second refused",
+        },
+    ];
 
-    assert!(matches!(
-        result,
-        Err(TuiError::Client(ClientError::Rejected {
-            kind: Some(ErrorKind::Failed),
-            ..
-        }))
-    ));
-    assert!(text.contains("입력을 접수하지 못했습니다: chat is closed"));
-    server.await.unwrap();
+    for case in cases {
+        let home = tempfile::tempdir().unwrap();
+        let (socket, server) = fake_engine(&home, case.reply);
+        let mut client = EngineClient::connect(&socket).await.unwrap();
+        let out = Captured::default();
+        let output = PlainOutput::new(out.clone(), Lang::Ko);
+        let stdin = BufReader::new(case.input.as_bytes()).lines();
+        let wait = if case.ends_with_rejection {
+            Duration::from_secs(5)
+        } else {
+            Duration::from_millis(500)
+        };
+
+        let outcome = tokio::time::timeout(
+            wait,
+            plain_session(&mut client, options(&home), stdin, output),
+        )
+        .await;
+
+        if case.ends_with_rejection {
+            let result = outcome.unwrap_or_else(|_| {
+                panic!("{}: plain mode kept waiting after the rejection", case.name)
+            });
+            assert!(
+                matches!(
+                    result,
+                    Err(TuiError::Client(ClientError::Rejected {
+                        kind: Some(ErrorKind::Failed),
+                        ..
+                    }))
+                ),
+                "{}: {result:?}",
+                case.name
+            );
+            server.await.unwrap();
+        } else {
+            // 해결되지 않은 제출이 남아 있으므로 끝나지 않고 기다려야 한다
+            assert!(outcome.is_err(), "{}: ended instead of waiting", case.name);
+        }
+        assert!(
+            out.text().contains(case.printed),
+            "{}: {}",
+            case.name,
+            out.text()
+        );
+    }
 }
 
 #[tokio::test]
@@ -165,29 +229,4 @@ async fn plain_refused_attach_ends_instead_of_waiting_for_a_chat() {
     ));
     assert!(text.contains("engine이 요청을 거절했습니다: bad folder"));
     drop(server);
-}
-
-#[tokio::test]
-async fn plain_keeps_waiting_for_an_accepted_input_when_another_is_refused() {
-    let home = tempfile::tempdir().unwrap();
-    let (socket, _server) = fake_engine(&home, |request, id| match request {
-        Request::SubmitInput { client_ref: 2, .. } => {
-            Some(Response::error(Some(id), -32602, "second refused"))
-        }
-        _ => Some(Response::ok(id)),
-    });
-    let mut client = EngineClient::connect(&socket).await.unwrap();
-    let out = Captured::default();
-    let output = PlainOutput::new(out.clone(), Lang::Ko);
-    let stdin = BufReader::new("one\ntwo\n".as_bytes()).lines();
-
-    let outcome = tokio::time::timeout(
-        Duration::from_millis(500),
-        plain_session(&mut client, options(&home), stdin, output),
-    )
-    .await;
-
-    // 첫 입력의 실행 결과는 오지 않았으므로 끝나지 않고 기다려야 한다
-    assert!(outcome.is_err());
-    assert!(out.text().contains("second refused"));
 }

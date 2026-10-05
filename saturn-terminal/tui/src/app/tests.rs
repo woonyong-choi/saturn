@@ -3600,50 +3600,101 @@ fn submit(app: &mut App, id: u64, text: &str) {
 }
 
 #[test]
-fn a_rejected_input_shows_the_cause_and_comes_back_to_the_composer() {
-    let mut app = attached();
-    submit(&mut app, 1, "고쳐 줘");
-    assert!(app.composer.is_empty());
+fn a_rejection_is_shown_and_restores_the_composer_only_for_the_request_it_answers() {
+    struct Step {
+        request: u64,
+        message: &'static str,
+        composer: &'static str,
+        warning: &'static [&'static str],
+    }
+    struct Case {
+        name: &'static str,
+        submitted: &'static [(u64, &'static str)],
+        draft: Option<&'static str>,
+        steps: Vec<Step>,
+    }
+    let cases = [
+        Case {
+            name: "a rejected input shows the cause and comes back to the composer",
+            submitted: &[(1, "고쳐 줘")],
+            draft: None,
+            steps: vec![Step {
+                request: 1,
+                message: "chat is closed",
+                composer: "고쳐 줘",
+                warning: &["입력을 접수하지 못했습니다", "chat is closed"],
+            }],
+        },
+        Case {
+            name: "a rejection changes only the request it answers",
+            submitted: &[(1, "첫째"), (2, "둘째")],
+            draft: None,
+            steps: vec![
+                Step {
+                    request: 2,
+                    message: "busy",
+                    composer: "둘째",
+                    warning: &[],
+                },
+                // 입력창에 초안이 있으면 늦게 거절된 입력은 줄로만 알린다
+                Step {
+                    request: 1,
+                    message: "late",
+                    composer: "둘째",
+                    warning: &["late"],
+                },
+            ],
+        },
+        Case {
+            name: "a rejection of another request leaves the composer alone",
+            submitted: &[],
+            draft: Some("쓰던 글"),
+            steps: vec![Step {
+                request: 9,
+                message: "not found",
+                composer: "쓰던 글",
+                warning: &["engine이 요청을 거절했습니다", "not found"],
+            }],
+        },
+    ];
 
-    app.handle(AppEvent::Rejected(rejection(1, "chat is closed")), base());
+    for case in cases {
+        let mut app = attached();
+        for (id, text) in case.submitted {
+            submit(&mut app, *id, text);
+        }
+        if !case.submitted.is_empty() {
+            assert!(app.composer.is_empty(), "{}: after submit", case.name);
+        }
+        if let Some(draft) = case.draft {
+            type_text(&mut app, draft);
+        }
 
-    assert_eq!(app.composer.text(), "고쳐 줘");
-    assert!(matches!(
-        app.transcript.cells().last(),
-        Some(TranscriptCell::Warning(text))
-            if text.contains("입력을 접수하지 못했습니다") && text.contains("chat is closed")
-    ));
-}
+        for step in case.steps {
+            app.handle(
+                AppEvent::Rejected(rejection(step.request, step.message)),
+                base(),
+            );
 
-#[test]
-fn a_rejection_changes_only_the_request_it_answers() {
-    let mut app = attached();
-    submit(&mut app, 1, "첫째");
-    submit(&mut app, 2, "둘째");
-
-    app.handle(AppEvent::Rejected(rejection(2, "busy")), base());
-
-    assert_eq!(app.composer.text(), "둘째");
-    // 입력창에 초안이 있으면 늦게 거절된 입력은 줄로만 알린다
-    app.handle(AppEvent::Rejected(rejection(1, "late")), base());
-    assert_eq!(app.composer.text(), "둘째");
-    assert!(matches!(
-        app.transcript.cells().last(),
-        Some(TranscriptCell::Warning(text)) if text.contains("late")
-    ));
-}
-
-#[test]
-fn a_rejection_of_another_request_is_shown_without_touching_the_composer() {
-    let mut app = attached();
-    type_text(&mut app, "쓰던 글");
-
-    app.handle(AppEvent::Rejected(rejection(9, "not found")), base());
-
-    assert_eq!(app.composer.text(), "쓰던 글");
-    assert!(matches!(
-        app.transcript.cells().last(),
-        Some(TranscriptCell::Warning(text))
-            if text.contains("engine이 요청을 거절했습니다") && text.contains("not found")
-    ));
+            assert_eq!(
+                app.composer.text(),
+                step.composer,
+                "{}: composer after rejecting {}",
+                case.name,
+                step.request
+            );
+            if !step.warning.is_empty() {
+                assert!(
+                    matches!(
+                        app.transcript.cells().last(),
+                        Some(TranscriptCell::Warning(text))
+                            if step.warning.iter().all(|part| text.contains(part))
+                    ),
+                    "{}: warning after rejecting {}",
+                    case.name,
+                    step.request
+                );
+            }
+        }
+    }
 }
