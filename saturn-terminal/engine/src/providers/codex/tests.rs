@@ -83,6 +83,13 @@ while (my $line = <STDIN>) {
     # 시험이 문서 파일을 만들 때까지 응답하지 않는다
     select(undef, undef, undef, 0.02) until (($ENV{FAKE_OPEN_GATE_FILE} // "") eq "" || -e $ENV{FAKE_OPEN_GATE_FILE});
     my $model = $p->{model} // "";
+    if (($ENV{FAKE_NO_ROLLOUT} // "") ne "") {
+      if ($method eq "thread/resume") {
+        out({ id => $id, error => { code => -32600, message => "no rollout found for thread id $tid" } });
+        next;
+      }
+      $tid = "thr_new";
+    }
     if (($ENV{FAKE_REQUIRE_ADD_DIR} // "") ne "") {
       my $roots = $p->{config}{sandbox_workspace_write}{writable_roots} // [];
       if (($roots->[0] // "") ne $ENV{FAKE_REQUIRE_ADD_DIR}) {
@@ -2405,4 +2412,30 @@ async fn thread_start_and_resume_request_workspace_write() {
 
     assert!(opened.is_ok(), "{opened:?}");
     assert!(reopened.is_ok(), "{reopened:?}");
+}
+
+// #569: 기록이 없는 thread를 재개하면 새 thread로 열고, 앞 입력은 다시 보내지 않는다
+#[tokio::test]
+async fn resume_without_rollout_opens_a_new_thread_and_resends_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let log = dir.path().join("calls.log");
+    let env = vec![
+        ("FAKE_CALL_LOG".into(), log.clone().into_os_string()),
+        ("FAKE_NO_ROLLOUT".into(), "1".into()),
+    ];
+    let mut client = CodexClient::start(launch(dir.path(), env), Supervisor::new())
+        .await
+        .unwrap();
+    let mut reopened = spec(dir.path());
+    reopened.resume = Some(ProviderSessionId("thr_main".to_owned()));
+
+    let handle = client.open_session(reopened).await.unwrap();
+
+    assert_eq!(handle.provider_session.0, "thr_new");
+    let calls = std::fs::read_to_string(&log).unwrap();
+    assert!(!calls.contains("turn/start"), "{calls}");
+    assert_eq!(
+        thread_calls(&log),
+        vec!["thread/resume thr_main", "thread/start thr_main"]
+    );
 }

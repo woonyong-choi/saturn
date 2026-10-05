@@ -858,6 +858,12 @@ impl Engine {
                     self.warn_failure("failed to record cleaned interrupted subagents", marked);
                 }
                 self.leave_main(chat, &plan).await?;
+                if stored.provider_session.as_ref() != Some(&handle.provider_session) {
+                    // provider가 옛 번호를 재개하지 못해 새로 열었다. 다음 재개는 새 번호로 한다
+                    self.sessions
+                        .set_provider_session(stored.id, handle.provider_session.clone());
+                    self.persist_sessions(stored.id).await?;
+                }
                 if stored.state != SessionState::Open {
                     self.resume_main(stored.id).await?;
                 }

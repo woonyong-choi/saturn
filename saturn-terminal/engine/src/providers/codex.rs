@@ -342,6 +342,27 @@ impl CodexClient {
         }
     }
 
+    /// 열기 요청을 보낸다. 재개가 기록 없는 thread라서 거절되면 같은 값으로 새 thread를 연다. 첫 턴이 끝나기 전에 끊긴
+    /// thread라 받아 둔 입력이 없으므로 다시 보낼 것도 없다.
+    async fn open_thread(
+        &mut self,
+        method: &str,
+        mut params: Value,
+    ) -> Result<Result<Value, Value>, ProviderError> {
+        let reply = self.request(method, params.clone()).await;
+        if let Ok(Err(error)) = &reply
+            && method == "thread/resume"
+            && is_no_rollout(error)
+        {
+            tracing::warn!(thread = %params["threadId"], "codex thread has no rollout, opening a new thread");
+            if let Some(fields) = params.as_object_mut() {
+                fields.remove("threadId");
+            }
+            return self.request("thread/start", params).await;
+        }
+        reply
+    }
+
     fn ensure_thread(&self, session: &ProviderSessionId) -> Result<(), ProviderError> {
         if lock(&self.threads).contains_key(session) {
             return Ok(());
@@ -410,7 +431,8 @@ impl ProviderClient for CodexClient {
                 .collect();
             params["config"] = json!({ "sandbox_workspace_write": { "writable_roots": dirs } });
         }
-        let result = match self.request(method, params).await {
+        let reply = self.open_thread(method, params).await;
+        let result = match reply {
             Ok(Ok(result)) => result,
             Ok(Err(error)) => {
                 return Err(ProviderError::NotSent {
@@ -731,6 +753,11 @@ fn is_no_active_turn(error: &Value) -> bool {
     ]
     .iter()
     .any(|pattern| message.contains(pattern))
+}
+
+/// `thread/resume`이 기록 없는 thread라서 거절했는가.
+fn is_no_rollout(error: &Value) -> bool {
+    error_message(error).contains("no rollout found")
 }
 
 fn error_message(error: &Value) -> String {
