@@ -165,6 +165,8 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 - 설정 `tui.on_exit`의 `stop`과 종료 확인 창의 `멈추기`도 이 규칙을 그대로 쓴다. 작업이 있는 모든 채팅에 적용한다([engine 수명](engine-lifecycle.md#tui-종료-뒤-동작)).
 - 멈춤은 Saturn session의 모든 에이전트와 subagent에 닿는다. 에이전트 하나만 멈추는 기능은 취소와 모델 교체 같은 내부 처리에서만 쓰기 때문이다.
 - 멈춤은 트리 전체의 종료를 확인하기 전에는 완료라고 하지 않는다. subagent가 남은 채 멈췄다고 보이는 일을 막기 위해서다.
+- 멈출 때 부모가 이미 답을 끝내고 subagent만 남은(백그라운드) 에이전트는 멈춘 뒤의 완료 신호를 기다리지 않는다. 그런 신호가 오지 않으므로 subagent 종료와 프로세스 묶음 중지만 확인한다. 그 사이 subagent가 끝나 트리가 유휴가 되면 멈춤은 그때 끝난다([#505](https://github.com/woonyong-choi/saturn/issues/505)).
+- Codex 자식이 `turn/interrupt` 뒤에도 명령을 계속 돌리면 위 5단계의 10초 유예 뒤에 프로세스 묶음 중지로 끝난다. 실제 관측에서 `/stop` 10초 뒤에 남았다가 이어 사라진 것은 이 경로이고 설계대로다. 중지는 Codex의 공유 app-server 묶음에 자손 범위로 보낸다.
 - 멈춘 작업은 자동으로 이어 가지 않고 보류하며, TUI가 없는 동안에도 보류를 그대로 둔다. 사용자가 멈춘 작업을 자동으로 이어 가지 않기 위해서다.
 - 크래시 뒤 효과 범위가 증명되지 않은 실행도 보류가 된다. 그 판정은 [engine 수명](engine-lifecycle.md)에 있다.
 - 보내지 않은 입력은 붙은 작업과 함께 보류한다. 붙은 작업이 없으면 새 작업 입력은 그 입력의 작업으로, 나머지는 메인 작업으로 묶는다. 대상이 있는 재개와 보류 종료를 작업 단위로 하기 위해서다.
@@ -303,7 +305,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 결과를 모르는 작업은 가리킬 때만 확인 입력으로 잇는다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `task_with_unknown_result_is_continued_only_when_named` |
 | 멈춤 신호는 추적된 subagent까지 보낸다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_signals_the_deepest_subagent_first_and_finishes_only_when_the_tree_is_idle` |
 | 멈춤 신호 10초 뒤 남은 프로세스 묶음에는 중지 신호를 보낸다. | `saturn-terminal/engine/src/processes/mod.rs`의 `stop_sends_term_after_grace` |
-| 트리 유휴와 프로세스 중지를 모두 확인한 뒤에만 멈춤 완료를 보고한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_is_not_complete_until_the_process_group_is_confirmed_stopped`, `stop_without_a_finished_turn_signal_is_not_complete`, `processes_left_outside_the_group_are_reported_instead_of_done` |
+| 트리 유휴와 프로세스 중지를 모두 확인한 뒤에만 멈춤 완료를 보고한다. 부모가 먼저 답한 백그라운드 subagent도 끝나면 완료한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stop_after_the_parent_answered_finishes_when_the_background_subagent_ends`, `stop_is_not_complete_until_the_process_group_is_confirmed_stopped`, `stop_without_a_finished_turn_signal_is_not_complete`, `processes_left_outside_the_group_are_reported_instead_of_done` |
 | 끼워 넣기와 멈춤 신호는 provider별 경로로 전달된다. | Codex는 [실측](../experiments/codex-provider-behavior/report.md)으로 경로와 불가 상태를 확인했다. Claude는 [#5](https://github.com/woonyong-choi/saturn/issues/5) 실험으로 확인한다. |
 | 판단이 없는 입력은 무시 횟수를 올리지 않아 보류를 닫지 않는다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `inputs_without_a_resume_judgment_never_close_the_held_work` |
 | 보류 작업이 있는 채팅의 새 입력만 `resume_held`를 묻고, 0.85 이상이면 보류를 재개하고 0.85 미만이 3번 쌓이면 보류를 닫는다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `resume_held_is_asked_only_when_the_chat_has_held_work`, `resume_intent_at_threshold_resumes_every_held_task`, `resume_intent_below_threshold_keeps_the_work_held_and_counts_the_input`, `third_input_without_resume_intent_closes_the_held_work` |
