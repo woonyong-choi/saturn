@@ -93,6 +93,7 @@ impl Engine {
         chat: ChatId,
         revision: SettingsRevision,
     ) {
+        self.sync_provider_events(chat, revision).await;
         let (rules, questions) = match self.connection_settings(chat, revision).await {
             Ok(current) => current,
             Err(error) => {
@@ -108,6 +109,19 @@ impl Engine {
             }
         } else {
             self.restart_stale_connections(chat).await;
+        }
+    }
+
+    /// `debug.provider_events` 값을 채팅의 켜짐 값에 맞춘다. 연결을 다시 시작하지 않고 이미 열린 연결도 바로 따른다.
+    /// 설정을 읽지 못하면 지금 값을 그대로 둔다.
+    async fn sync_provider_events(&self, chat: ChatId, revision: SettingsRevision) {
+        match self.settings.at(&self.store, revision).await {
+            Ok(settings) => self
+                .trace
+                .set_enabled(chat, crate::launch::provider_events_on(&settings)),
+            Err(error) => {
+                tracing::warn!(error = %self.failure_line(&error), "settings not read, keeping the provider event trace as it is");
+            }
         }
     }
 

@@ -13,7 +13,7 @@ use saturn_protocol::rpc::{PASS_ENV, SOCKET_ENV};
 use crate::flow::LiveSession;
 use crate::models::pinned_choice;
 use crate::providers::{
-    ExtensionInput, LaunchSpec, PermissionInput, ProviderConnection, ProviderHandle,
+    ExtensionInput, LaunchSpec, PermissionInput, ProviderConnection, ProviderHandle, ProviderTrace,
     SaturnDefaults, UserProviderConfig,
 };
 use crate::secrets::HookPolicy;
@@ -226,6 +226,26 @@ impl Engine {
             key_deny_read: key_policy.key_store_paths(),
             permission,
             masker: self.masker.clone(),
+            events: self.provider_events(chat, provider, &settings),
         })
     }
+
+    /// `debug.provider_events` 값을 채팅의 켜짐 값에 맞추고, 새 연결이 쓸 관측 손잡이를 돌려준다.
+    fn provider_events(
+        &self,
+        chat: ChatId,
+        provider: Provider,
+        settings: &crate::settings::Settings,
+    ) -> ProviderTrace {
+        self.trace.set_enabled(chat, provider_events_on(settings));
+        self.trace.link(chat, provider, &self.masker)
+    }
+}
+
+/// 사용자 설정의 `debug.provider_events`. 없으면 꺼짐.
+pub(crate) fn provider_events_on(settings: &crate::settings::Settings) -> bool {
+    settings
+        .get("debug.provider_events")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false)
 }

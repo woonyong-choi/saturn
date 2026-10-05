@@ -173,6 +173,7 @@ fn security_and_cost_keys_are_user_only() {
         "consent.share_with_server",
         "retention.max_age_days",
         "retention.auto_prune",
+        "debug.provider_events",
     ] {
         assert!(is_user_only(key), "{key}");
     }

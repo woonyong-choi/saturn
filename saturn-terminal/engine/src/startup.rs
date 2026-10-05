@@ -53,6 +53,7 @@ impl Engine {
         let rpc = Self::listen(&options, lock, passes.clone()).await?;
         let restarted = options.after_upgrade;
         Ok(Self {
+            trace: crate::providers::TraceHub::new(&options.home),
             options,
             store,
             settings,

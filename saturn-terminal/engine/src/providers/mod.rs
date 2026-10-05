@@ -10,6 +10,7 @@ mod registry;
 #[cfg(test)]
 pub(crate) mod test_support;
 mod tool_detail;
+mod trace;
 mod worker;
 
 use std::ffi::OsString;
@@ -34,6 +35,8 @@ pub(crate) use extension::{
 };
 pub use extension::{InjectedPart, InjectionFailure};
 pub use registry::Registry;
+pub(crate) use trace::TraceHub;
+pub use trace::{Frame, ProviderTrace};
 pub(crate) use worker::{
     CallResult, Connected, ConnectionId, ProviderHandle, ProviderMsg, Reply, spawn_connect,
 };
@@ -71,6 +74,8 @@ pub struct LaunchSpec {
     pub permission: PermissionLaunch,
     /// provider stderr와 오류 문구를 로그에 남기기 전에 가린다.
     pub masker: Masker,
+    /// 연결이 받은 원시 메시지의 모양을 남기는 손잡이. 꺼져 있으면 아무것도 하지 않는다(`debug.provider_events`).
+    pub events: ProviderTrace,
 }
 
 /// Saturn 권한 규칙과 확장을 provider 실행 설정으로 번역한 결과. 어댑터가 번역해 채운다.

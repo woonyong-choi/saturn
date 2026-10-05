@@ -239,6 +239,24 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 - Claude의 `result`는 `is_error`가 참이거나 `subtype`이 `success`가 아니면 오류 결과라 `TurnCompleted`로 올리지 않는다. 사용량과 맥락 크기를 올린 뒤 완료 신호 없이 끊긴 흐름과 같게 `StreamLost`로 올려 작업을 `결과 확인 필요`로 두고 자동으로 다시 보내지 않는다. 턴이 이미 돌았을 수 있어 보내지 않음이 확정이 아니기 때문이다. 맥락 초과(`terminal_reason`이 `prompt_too_long`)도 같고, 공통 오류 `ContextExceeded`는 보내지 않음이 확정일 때만 쓰므로 여기에 쓰지 않는다. 멈춤 요청 뒤에 온 결과는 오류 모양이어도 요청한 완료로 본다. 오류 결과 뒤 같은 session을 다시 열 때 아직 남은 이전 프로세스는 먼저 닫는다. 오류 결과의 모양은 Claude Code 2.1.288 설치본에서 읽었고 실제 호출로 재지 않았다([#328](https://github.com/woonyong-choi/saturn/issues/328)).
 - 허가 요청은 TUI에 올리고 답을 기다리는 동안 작업을 `허가 기다림`으로 보인다. 답이 오기 전에 턴이 끝나거나 흐름이 끊기면 그 창을 모든 TUI에서 지운다. 더는 답할 수 없는 요청을 남기지 않기 위해서다.
 
+### 원시 이벤트 관측 기록
+
+provider가 어떤 순서로 무엇을 보내는지 실제 실행에서 보려는 디버그 전용 기록이다. 변환한 이벤트는 기록 저장소에 남지만, 변환하지 않고 버린 메시지나 변환 전의 순서는 남지 않는다. 예를 들어 Codex가 자식 등록 전에 `thread/closed`나 승인 요청을 보내는지([#438](https://github.com/woonyong-choi/saturn/issues/438))는 이 기록 없이 알 수 없다. provider 응답 원문을 run별로 모으는 기능(원시 기록, [#461](https://github.com/woonyong-choi/saturn/issues/461))은 무엇을 원시 기록으로 볼지와 귀속 정책이 정해지지 않아 이 기록의 범위가 아니다. 이 기록은 값을 남기지 않아 그 기능을 대신하지 않는다.
+
+1. 사용자가 사용자 설정에 `debug.provider_events = true`를 둔다. 기본은 꺼짐이고 폴더 층에서는 바꿀 수 없다([설정](settings.md)).
+2. provider 연결이 메시지 하나를 받을 때마다 어댑터가 그 메시지의 방법 이름과 자리(요청, 알림, 응답, 줄)를 정해 공통 기록기에 넘긴다.
+3. 공통 기록기는 메시지에서 ID와 필드 이름만 뽑아 `<Saturn 홈>/logs/provider-events-<날짜>.log`에 한 줄을 더한다.
+
+- 한 줄은 JSON이고 값은 `seq`(기록 순서, 파일 하나에서 연결 전체에 걸쳐 1부터 이어짐), `at`(받은 시각, UTC 밀리초), `provider`, `connection`(연결 번호, 같은 engine에서 연결마다 다름), `frame`(`request`, `notification`, `response`, `line`), `kind`(방법 이름), `ids`, `fields`다. 필드가 상한을 넘어 잘렸으면 `truncated`가 참이다.
+- `ids`는 필드 경로를 키로, 그 값의 배열을 값으로 갖는다. 이름이 `id`이거나 `Id`, `Ids`, `_id`, `_ids`로 끝나는 필드의 글자와 숫자만 담고(thread, turn, 항목, 요청 ID, 자식 thread 목록), 128자를 넘는 값은 ID로 보지 않는다.
+- `fields`는 메시지에 있는 필드 이름의 경로 목록이다(`params.item.receiverThreadIds`처럼 점으로 잇고 배열 칸은 `[]`). 깊이는 8, 개수는 300까지다. 이름으로 쓸 수 있는 것은 영문자나 밑줄로 시작하고 영문자, 숫자, 밑줄뿐이며 숫자가 6개 이상 이어지지 않는 이름이다. 경로나 ID를 키로 쓴 표처럼 값이 이름 자리에 들어온 경우는 `*`로 적는다.
+- 방법 이름도 영문자, 숫자, `/`, `.`, `:`, `_`, `-`뿐인 80자 이하일 때만 그대로 적고, 아니면 `?`로 적는다.
+- 메시지의 글, 명령, 경로, 파일 내용, 인자 값은 남기지 않는다. router 키와 일치하는 문자열은 메시지를 읽을 때와 줄을 쓰기 전에 두 번 가리며, 이름과 ID에도 적용한다([router 키 보호](router-key-security.md#출력-마스킹)).
+- 꺼져 있으면 아무것도 쓰지 않고 파일과 폴더도 만들지 않는다. 켜고 끄는 값은 채팅마다 하나이고 이미 열린 연결도 설정이 바뀌면 바로 따른다(입력을 접수하거나 설정 파일이 바뀌어 새 설정 번호가 생길 때 맞춘다).
+- 파일은 소유자만 읽고 쓰며(`0600`) 날짜마다 하나다. 30일이 지난 `provider-events-*.log`는 날짜가 바뀔 때 지운다. engine 로그와 같은 보관 기간이다.
+- provider 고유 이름(Codex의 `method`, Claude의 `type`과 `subtype`)은 `providers/codex`, `providers/claude`가 읽어 방법 이름으로 바꾸고, 공통 기록기는 provider 이름을 모른다. 새 provider 어댑터는 받은 메시지마다 같은 기록기를 한 번 부르면 같은 형식으로 남는다.
+- 쓰기에 실패해도 연결과 이벤트 처리는 막지 않는다.
+
 ### 메인 에이전트와 보조 에이전트
 
 1. `sessions`는 채팅마다 메인 에이전트 하나를 유지한다.
@@ -532,6 +550,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 
 | 요구사항 | 검증 계획 |
 |---|---|
+| `debug.provider_events`가 꺼져 있으면 관측 기록을 쓰지 않고, 켜면 방법 이름, 순서, ID, 필드 이름만 남고 값과 router 키 문자열은 없다. | `saturn-terminal/engine/src/providers/trace.rs`의 `off_writes_nothing_and_creates_no_file`, `on_records_order_ids_and_field_names_without_values`, `router_key_does_not_appear_even_in_names_and_ids`, `data_used_as_a_key_is_not_written_as_a_field_name`, `switching_the_flag_applies_to_open_connections_at_once`, 어댑터의 `trace_message`와 `trace_line`은 `providers/codex/tests.rs`와 `providers/claude/tests.rs`의 관측 시험 |
 | 채팅마다 열린 메인 session은 하나이고, 보관 session은 provider마다 하나까지다. | `saturn-terminal/core/src/sessions/tests.rs`의 `provider_switches_keep_one_open_and_one_archive_per_provider`, `register_second_archive_ends_older_one_and_drops_its_last_turn` |
 | 캐시 유지 시간 안인 보관 session으로 돌아가면 `A`와 무관하게 재개하고 변경분만 붙인다. 지났으면 `P < A`일 때만 새 session을 연다. | `saturn-terminal/core/src/sessions/context.rs`의 `decide_return_matches_rule_table`, `saturn-terminal/core/src/sessions/tests.rs`의 `target_for_send_decides_returning_to_the_archive_by_cache_and_packet_size` |
 | Claude 캐시 유지 시간은 `apiKeySource`가 `none`이면 1시간, 아니면 5분이고, 저장한 값이 없으면 5분이다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `cache_window_without_api_key_is_one_hour`, `cache_window_with_api_key_is_five_minutes_and_missing_source_is_unknown`, `saturn-terminal/engine/src/lifecycle/sessions.rs`의 `cache_window_without_provider_report_is_five_minutes`, `cache_window_reported_by_provider_survives_closed_connection_and_restart` |

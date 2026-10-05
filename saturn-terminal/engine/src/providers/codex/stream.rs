@@ -8,7 +8,7 @@ use tokio::sync::mpsc;
 use super::convert::{convert_notification, convert_server_request, rejection};
 use super::threads::HeldEvents;
 use super::{Approvals, Pending, Stdin, Threads, lock};
-use crate::providers::mask_values;
+use crate::providers::{Frame, ProviderTrace, mask_values};
 use crate::secrets::Masker;
 
 /// 한 줄을 처리한 결과. `replies`는 app-server로 바로 돌려줄 응답이다.
@@ -26,7 +26,7 @@ pub(super) async fn read_loop(
     threads: Threads,
     approvals: Approvals,
     events: mpsc::Sender<ProviderEvent>,
-    masker: Masker,
+    (masker, trace): (Masker, ProviderTrace),
 ) {
     let mut lines = BufReader::new(stdout).lines();
     let mut held = HeldEvents::default();
@@ -36,6 +36,7 @@ pub(super) async fn read_loop(
             continue;
         };
         mask_values(&mut message, &masker);
+        trace_message(&trace, &message);
         let routed = route_message(&message, &pending, (&threads, &mut held), &approvals);
         deliver(routed, &stdin, &events).await;
     }
@@ -55,6 +56,23 @@ pub(super) async fn read_loop(
     for agent in lost {
         let _ = events.send(ProviderEvent::StreamLost { agent }).await; // 받는 쪽이 연결을 버렸다
     }
+}
+
+/// 받은 메시지의 모양을 관측 기록에 남긴다. 방법 이름이 있으면 요청이나 알림이고, 없으면 우리 요청의 응답이다.
+fn trace_message(trace: &ProviderTrace, message: &Value) {
+    if !trace.is_enabled() {
+        return;
+    }
+    let (frame, kind) = match (
+        message.get("method").and_then(Value::as_str),
+        message.get("id"),
+    ) {
+        (Some(method), Some(_)) => (Frame::Request, method),
+        (Some(method), None) => (Frame::Notification, method),
+        (None, _) if message.get("error").is_some() => (Frame::Response, "error"),
+        (None, _) => (Frame::Response, "result"),
+    };
+    trace.record(frame, kind, message);
 }
 
 /// 응답은 app-server로 돌려주고 이벤트는 연결로 넘긴다.
@@ -141,5 +159,79 @@ pub(super) async fn log_stderr(stderr: ChildStderr, masker: Masker) {
     let mut lines = BufReader::new(stderr).lines();
     while let Ok(Some(line)) = lines.next_line().await {
         tracing::debug!(line = %masker.mask(&line).as_str(), "codex app-server stderr");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+    use crate::providers::TraceHub;
+    use crate::providers::test_support::CODEX;
+    use saturn_protocol::ids::ChatId;
+
+    fn lines(home: &std::path::Path) -> Vec<Value> {
+        let logs = home.join("logs");
+        std::fs::read_dir(logs)
+            .unwrap()
+            .flat_map(|entry| {
+                std::fs::read_to_string(entry.unwrap().path())
+                    .unwrap()
+                    .lines()
+                    .map(|line| serde_json::from_str::<Value>(line).unwrap())
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn requests_notifications_and_responses_are_told_apart_by_method_and_id() {
+        let home = tempfile::tempdir().unwrap();
+        let hub = TraceHub::new(home.path());
+        hub.set_enabled(ChatId(1), true);
+        let trace = hub.link(ChatId(1), CODEX, &Masker::default());
+
+        for message in [
+            json!({ "method": "thread/closed", "params": { "threadId": "t-2" } }),
+            json!({ "id": 5, "method": "item/commandExecution/requestApproval", "params": { "threadId": "t-2", "command": "ls" } }),
+            json!({ "id": 3, "result": { "thread": { "id": "t-2" } } }),
+            json!({ "id": 4, "error": { "code": -32600, "message": "no" } }),
+        ] {
+            trace_message(&trace, &message);
+        }
+
+        let seen: Vec<(String, String)> = lines(home.path())
+            .iter()
+            .map(|line| {
+                (
+                    line["frame"].as_str().unwrap().to_owned(),
+                    line["kind"].as_str().unwrap().to_owned(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            seen,
+            [
+                ("notification".to_owned(), "thread/closed".to_owned()),
+                (
+                    "request".to_owned(),
+                    "item/commandExecution/requestApproval".to_owned()
+                ),
+                ("response".to_owned(), "result".to_owned()),
+                ("response".to_owned(), "error".to_owned()),
+            ]
+        );
+        let text = std::fs::read_to_string(
+            std::fs::read_dir(home.path().join("logs"))
+                .unwrap()
+                .next()
+                .unwrap()
+                .unwrap()
+                .path(),
+        )
+        .unwrap();
+        assert!(!text.contains("\"ls\""));
+        assert!(!text.contains("no\""));
     }
 }

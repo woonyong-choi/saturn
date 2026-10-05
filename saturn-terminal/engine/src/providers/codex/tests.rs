@@ -22,7 +22,8 @@ use crate::Masker;
 use crate::events::{next_arrival, start_queued_turn};
 use crate::providers::mask_values;
 use crate::providers::{
-    LaunchSpec, PermissionLaunch, ProviderConnection, SaturnDefaults, UserProviderConfig,
+    LaunchSpec, PermissionLaunch, ProviderConnection, ProviderTrace, SaturnDefaults,
+    UserProviderConfig,
 };
 
 /// 받은 요청에 schema 모양 그대로 응답한다.
@@ -242,6 +243,7 @@ pub(crate) fn launch(dir: &Path, env: Vec<(std::ffi::OsString, std::ffi::OsStrin
         key_deny_read: Vec::new(),
         permission: PermissionLaunch::default(),
         masker: Masker::new(Vec::new()),
+        events: ProviderTrace::off(),
     }
 }
 
