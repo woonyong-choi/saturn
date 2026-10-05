@@ -256,6 +256,23 @@ impl Queue {
         Ok(decision.disposition)
     }
 
+    // cost: time O(n), heap O(m), stack O(1), alloc 1
+    // vars: n = 대기열 입력 수, m = 모델 글자 수
+    // basis: estimate
+    /// 고정한 모델이 없는 입력에 모델을 고정한다. 이어 가기와 끼워 넣기로 판정된 입력도 이어 갈 현재 모델이 없으면 기본 모델로
+    /// 열어야 해서 쓴다. 이미 고정한 모델은 바꾸지 않는다.
+    ///
+    /// # Errors
+    /// 없는 입력이면 `NotFound`.
+    pub fn pin_model_if_unset(&mut self, input: InputId, model: &str) -> Result<(), QueueError> {
+        let index = self.index_of(input)?;
+        let pinned = &mut self.inputs[index].input.pinned_model;
+        if pinned.is_none() {
+            *pinned = Some(model.to_owned());
+        }
+        Ok(())
+    }
+
     // cost: time O(n), heap O(1), stack O(1)
     // vars: n = 대기열 입력 수
     // basis: estimate

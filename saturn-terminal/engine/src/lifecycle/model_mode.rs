@@ -351,3 +351,52 @@ async fn model_settings_notice_follows_the_settings_of_each_connection_of_the_ch
         vec![(Some(model), ModelMode::Manual)]
     );
 }
+
+// #506
+#[tokio::test]
+async fn default_model_is_used_when_every_router_judgment_fails() {
+    let mut flow = Flow::with_config(
+        "[model]\ndefault = \"codex/gpt-x\"\n",
+        super::support::router_down(),
+    )
+    .await;
+    let codex = flow.add_provider(CODEX);
+
+    flow.submit("hello").await;
+
+    assert_eq!(opened_models(&codex), vec![Some("gpt-x".to_owned())]);
+    assert!(opened_models(&flow.fake).is_empty());
+}
+
+// #506
+#[tokio::test]
+async fn manual_mode_uses_the_default_model_when_every_router_judgment_fails() {
+    let mut flow = Flow::with_config(
+        "[model]\ndefault = \"codex/gpt-x\"\nmode = \"manual\"\n",
+        super::support::router_down(),
+    )
+    .await;
+    let codex = flow.add_provider(CODEX);
+
+    flow.submit("hello").await;
+
+    assert_eq!(opened_models(&codex), vec![Some("gpt-x".to_owned())]);
+}
+
+// #506
+#[tokio::test]
+async fn failed_judgment_keeps_the_current_model_of_an_open_main_instead_of_the_default() {
+    let options = ["claude/opus", "claude/haiku", "other"];
+    let mut replies = vec![model_reply(0.1, &options, "claude/haiku")];
+    replies.extend(super::support::router_down());
+    let mut flow = Flow::with_config(DEFAULT_OPUS, replies).await;
+    know_models(&mut flow, CLAUDE, &["opus", "haiku"]);
+    flow.submit("hello").await;
+    let agent = flow.agent();
+    flow.claude_event(super::support::turn_completed(agent))
+        .await;
+
+    flow.submit("and more").await;
+
+    assert_eq!(opened_models(&flow.fake), vec![Some("haiku".to_owned())]);
+}

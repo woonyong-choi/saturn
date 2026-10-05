@@ -1226,3 +1226,30 @@ fn rescope_unsent_also_changes_held_inputs() {
         scope(&["/work", "/shared"])
     );
 }
+
+// #506
+#[test]
+fn pin_model_if_unset_fills_an_empty_pin_and_keeps_an_existing_one() {
+    let mut queue = Queue::new();
+    queue.accept(input(1, Permission::Write));
+    let mut pinned = input(2, Permission::Write);
+    pinned.pinned_model = Some("claude/haiku".to_owned());
+    queue.accept(pinned);
+
+    queue
+        .pin_model_if_unset(InputId(1), "codex/gpt-x")
+        .expect("input should exist");
+    queue
+        .pin_model_if_unset(InputId(2), "codex/gpt-x")
+        .expect("input should exist");
+
+    assert_eq!(
+        queue.input(InputId(1)).unwrap().pinned_model.as_deref(),
+        Some("codex/gpt-x")
+    );
+    assert_eq!(
+        queue.input(InputId(2)).unwrap().pinned_model.as_deref(),
+        Some("claude/haiku")
+    );
+    assert!(queue.pin_model_if_unset(InputId(9), "x").is_err());
+}
