@@ -1,7 +1,7 @@
 //! 기본으로 등록하는 어댑터. 어댑터를 더할 때 이 파일에 등록 한 줄을 더한다.
 //! 설계: docs/design/providers-and-sessions.md#어댑터-등록
 
-pub use super::claude::{HookInputError, run_pre_tool_use};
+pub use super::claude::{HookInputError, ReadScope, run_pre_tool_use};
 use super::{Registry, claude, codex};
 
 impl Registry {

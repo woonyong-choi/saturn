@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use saturn_engine::engine_log::EngineLog;
-use saturn_engine::{Engine, EngineOptions, HookInputError, run_pre_tool_use};
+use saturn_engine::{Engine, EngineOptions, HookInputError, ReadScope, run_pre_tool_use};
 
 /// provider 훅이 실행 파일에 거는 하위 명령. 잠금과 소켓을 열지 않고 바로 끝난다.
 const HOOK_COMMAND: &str = "hook";
@@ -43,10 +43,21 @@ fn run_hook(mut args: impl Iterator<Item = String>) -> anyhow::Result<()> {
     let name = args.next().context("hook needs a name")?;
     anyhow::ensure!(name == PRE_TOOL_USE, "unknown hook: {name}");
     let mut saturn_home = None;
+    let mut scope = ReadScope::default();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--home" => {
                 saturn_home = Some(PathBuf::from(args.next().context("--home needs a path")?));
+            }
+            "--workdir" => {
+                scope.workdir = Some(PathBuf::from(
+                    args.next().context("--workdir needs a path")?,
+                ));
+            }
+            "--add-dir" => {
+                scope.add_dirs.push(PathBuf::from(
+                    args.next().context("--add-dir needs a path")?,
+                ));
             }
             other => anyhow::bail!("unknown argument: {other}"),
         }
@@ -60,7 +71,7 @@ fn run_hook(mut args: impl Iterator<Item = String>) -> anyhow::Result<()> {
     std::io::stdin()
         .read_to_string(&mut input)
         .context("failed to read hook input")?;
-    match run_pre_tool_use(&saturn_home, &user_home, &input) {
+    match run_pre_tool_use(&saturn_home, &user_home, &scope, &input) {
         Ok(Some(output)) => {
             writeln!(std::io::stdout(), "{output}").context("failed to write hook output")?;
         }
