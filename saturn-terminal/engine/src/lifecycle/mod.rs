@@ -26,6 +26,7 @@ mod history_paging;
 mod idle_close;
 mod inputs;
 mod intake;
+mod judge_context;
 mod live_settings;
 mod model;
 mod model_mode;

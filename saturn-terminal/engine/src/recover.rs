@@ -73,6 +73,7 @@ impl Engine {
             state
         };
         let write_scope = self.write_scope_of(chat, &stored.workdir);
+        self.note_judge_input(chat, id, &stored.text);
         self.queue.restore_unsent(
             QueuedInput {
                 id,
@@ -109,6 +110,9 @@ impl Engine {
             return;
         };
         self.flow.tasks.assign(task);
+        if let Err(error) = self.note_restored_goal(input) {
+            tracing::warn!(error = %crate::masked_chain(&self.masker, &error), "restored goal not noted");
+        }
         self.flow.held.entry(task).or_insert(HeldTask {
             agent: None,
             input: None,

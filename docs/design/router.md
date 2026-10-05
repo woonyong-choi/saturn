@@ -46,7 +46,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 - 사용자가 모델을 고정한 입력도 router를 부른다. 고정은 `target_model` 질문만 뺀다. `/model` 뒤 모든 입력이 대기해 병렬 작업이 막히지 않게 하기 위해서다.
 - 후보를 고르는 질문(`compact`, `file-rank`)은 후보 전체를 묻는다. 순위로 미리 자르면 router가 남길 항목을 놓치기 때문이다. 요청이 크기 한도를 넘으면 질문 단위로 나눠 보낸다. 순위는 router가 답하지 못한 항목의 순서와 같은 확률일 때의 순서에만 쓰며, 규칙은 [맥락 고르기](context-selection.md)에 있다.
 - 뜻 판단이 새로 필요하면 입력마다 보내는 요청에 질문을 더하는 방식을 먼저 쓴다. router는 state를 한 번 읽고 모든 질문에 답하므로 호출 수가 늘지 않기 때문이다. 개수 세기, 날짜 비교, 앞 말을 가리키는 간접 지시처럼 router가 약한 판단은 코드로 하거나 두 원문을 나란히 놓는 질문으로 바꾼다.
-- router는 앞 입력의 판단 결과를 state에 넣은 요청으로 판단한다. 판단 차례와 적용 직전 revision 비교는 [입력 처리](input-handling.md)에 있다.
+- router는 앞 입력의 판단 결과와 같은 채팅의 작업 맥락을 state에 넣은 요청으로 판단한다. 맥락의 구성과 크기 처리는 [판단 요청 맥락](#판단-요청-맥락)에, 판단 차례와 적용 직전 revision 비교는 [입력 처리](input-handling.md)에 있다.
 - `keep_current`를 `is_actionable`보다 먼저 읽는다. 이어 가는 입력이 파일 탐색으로 빠지는 일을 막기 위해서다.
 - `keep_current`가 이어 가는 입력으로 답하면 하던 에이전트로 보낸다. 새 작업이면 `is_actionable`, 모델 선택 순서로 판정한다.
 - router가 무관한 작업으로 판단하면 같은 채팅 안에 보조 에이전트를 시작한다.
@@ -152,7 +152,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 5. 답에 후보 밖 선택, NaN, 확률 누락이 있으면 그 판단을 `invalid`로 처리한다. 요청하지 않은 질문의 답, 형식이 다른 답, 0~1 밖의 확률, 합이 1에서 0.01 넘게 벗어난 분포도 `invalid`다.
 6. 판단 사이에 채팅 revision이 바뀌었으면 그 판단을 `superseded`로 처리한다.
 
-- 입력 처리 판단의 `state`는 채팅이 실행 중인지, 앞 입력의 처리 방식, 사용자 원문으로 만든다(초안). 관계 판단 없이 대기하는 입력은 router를 부르지 않는다. 바로 보내기는 router를 부르지 않는다([입력 처리](input-handling.md#대기와-취소)).
+- 입력 처리 판단의 `state`는 채팅이 실행 중인지, 앞 입력의 처리 방식, 같은 채팅의 작업 맥락, 사용자 원문으로 만든다([판단 요청 맥락](#판단-요청-맥락)). 관계 판단 없이 대기하는 입력은 router를 부르지 않는다. 바로 보내기는 router를 부르지 않는다([입력 처리](input-handling.md#대기와-취소)).
 - 판단 기록은 `queue`가 판단을 적용한 뒤에 쓴다. 적용 직전 revision이 달라 버린 판단은 `superseded`로 쓴다.
 - router 전송의 HTTPS, 허용 호스트, 인증 헤더 규칙은 [router 키 보호](router-key-security.md)에 있다.
 - 기준 router는 `POST https://api.typesafe.ai/v1/systemone`에 `{"model","state","questions"}`를 보낸다. `choice` 기준은 선택지별 `null`, `score` 기준은 질문에 단계 설명이 없어 `level 1`..`level N`이다(초안). 답은 `noul`이나 `probabilities`를 읽고, 0~1 밖이거나 없으면 `invalid`다.
@@ -165,6 +165,28 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 - 응답 대기는 시도마다 5초(초안, 첫 시도 포함)이고, 재시도 간격과 횟수, 전체 마감은 [router 실패](#router-실패)에 있다. 리다이렉트는 허용 주소로 한 번만 인증 헤더를 뺀 채 따른다.
 - 연속 실패는 응답이 없는 실패(무응답, 보낸 뒤 시간 초과, 속도 제한 포기, 키 거절)만 센다. `invalid`와 `superseded`는 router가 답한 것이라 세지 않는다.
 - state의 비밀값은 가리고, 절대 경로는 끝 이름만 남겨 `[abs]/이름`으로 바꾼다(초안). 다른 대화 원문은 state를 만드는 `core`가 넣지 않는다.
+
+### 판단 요청 맥락
+
+이어 가기, 관계, 보류 재개 판단은 새 입력만으로는 비교 대상이 없다. 같은 후속 문장이 어느 목표에 붙는지는 비교할 작업의 목표를 봐야 가를 수 있어서, 요청을 만들 때 같은 채팅의 맥락을 `state`에 넣는다([#459](https://github.com/woonyong-choi/saturn/issues/459)).
+
+| 칸 | 내용 |
+|---|---|
+| `chat`, `previous input handled as` | 채팅이 실행 중인지와 앞 입력의 처리 방식 |
+| `current tasks` | 보류가 아닌 메인 작업마다 작업 번호, 진행 상태(`starting`, `running`, `idle`), 최초 목표, 최신 수정 |
+| `previous user input` | 이 입력보다 먼저 접수한 같은 채팅의 가장 가까운 사용자 입력 |
+| `held tasks` | 보류 작업마다 작업 번호와 최초 목표 |
+| `user input` | 판단할 새 입력의 원문 |
+
+- 최초 목표는 메인 작업을 시작한 입력이다. 최신 수정은 그 작업에 끼워 넣었거나 이어서 보낸 가장 나중의 사용자 입력이다. 재개 확인 입력처럼 사용자가 보내지 않은 입력은 목표나 수정이 되지 않는다.
+- 맥락은 요청을 만드는 순간의 채팅 상태에서 만들고 다른 채팅의 입력과 작업은 넣지 않는다. 요청을 만든 revision은 기존대로 기록하고, 적용 직전 revision이 다르면 새 상태로 맥락을 다시 만들어 한 번 다시 판단한다.
+- 사용자가 쓴 글(목표, 수정, 직전 입력, 보류 목표)은 `(user text)` 표시를 붙여 JSON 문자열로 감싼다. 글 안의 줄바꿈과 따옴표가 `held tasks:` 같은 다른 칸을 흉내 내지 못하게 하고, 사용자가 쓴 글이 router 지시가 아니라 자료임을 드러내기 위해서다. 새 입력은 맨 끝에 원문 그대로 둔다.
+- 비밀값과 절대 경로는 자르기 전에 가린다. 자른 뒤에 가리면 잘린 비밀값 일부가 남을 수 있기 때문이다.
+- 맥락 전체는 12KB(초안)를 넘지 않는다. 최초 목표와 최신 수정은 칸마다 3KB(초안), 직전 입력은 1KB, 보류 작업의 목표는 512바이트까지 담고, 넘으면 끝에 `...[truncated N bytes]`를 적는다. 사용자 입력과 질문은 이 한도에 들지 않고 줄이지 않는다. `state`와 가장 긴 질문의 합 32KB 한도에서 입력과 질문 몫을 남기기 위한 값이다.
+- 한도가 모자라면 직전 입력의 끝을 자르고, 그래도 모자라면 오래된 보류 작업부터 빼고 `held tasks omitted: N`을 적는다. 오래된 진행 내역부터 줄이고 줄였음을 드러내 잘린 항목을 완전한 기록처럼 보이지 않게 하기 위해서다.
+- 활성 작업의 최초 목표나 최신 수정이 잘렸거나 알 수 없거나 필수 칸만으로 한도를 넘으면 `context: incomplete`로 본다. 불완전한 맥락으로는 router를 부르지 않고 입력을 대기에 둬 사용자가 확인하게 한다. 일부만 보고 이어 붙이거나 새 작업으로 가르는 일을 막기 위해서다. 보류 작업의 목표는 알 수 없거나 잘려도 불완전로 보지 않는다. 보류가 여러 개이고 구분되지 않으면 기존 확인 흐름으로 대상을 고른다.
+- 명시적인 새 작업, 취소, 대상 지정이 이전 주제와의 유사성보다 우선한다는 규칙은 질문 문장이 아니라 처리 흐름이 지킨다. 대상이 정해진 입력은 router를 부르지 않는다. 질문 문장은 이번 변경에서 바꾸지 않았다.
+- 접수한 입력과 작업 목표는 engine 메모리에만 있다. engine을 다시 켜면 되살린 입력부터 기억하므로 재시작 직후 직전 입력은 앞서 끝난 입력을 모르고, 보류에서 복구한 작업은 보류 입력을 목표로 쓴다.
 
 ### 판단 기록
 
@@ -204,7 +226,8 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | 호출 실패(보내기 전 실패, 응답 없음, 보낸 뒤 시간 초과, 속도 제한) | 5초 간격으로 두 번 다시 보낸다. 시도마다 응답을 5초까지 기다린다. |
 | 첫 실패부터 10초 뒤에도 실패 | 로그를 남기고 현재 에이전트와 현재 모델로 진행하며 건너뛴 판단을 사유와 함께 기록한다. 입력을 대기로 보내지 않는다. |
 | 답의 후보 밖 선택, NaN, 확률 누락 | 판단을 `invalid`로 기록하고 질문별 대체 규칙을 적용한다. |
-| 판단 중 revision 변경 | 판단을 `superseded`로 기록한다. |
+| 판단 중 revision 변경 | 판단을 `superseded`로 기록하고, 새 상태로 맥락을 다시 만들어 한 번 다시 판단한다. |
+| 판단 맥락이 불완전 | router를 부르지 않고 입력을 대기에 둔다. |
 | 연속 3회 호출 실패 | 입력 접수를 계속하고 상태판에 `판단 모델 연결 끊김`을 보인다. |
 | 요청 전송 뒤 시간 초과 | 다시 보내고 그 호출의 비용을 `cost-unknown`으로 기록한다. |
 | 속도 제한 | 5초 뒤 다시 보내고 남은 요청의 동시 수를 줄인다. |
@@ -227,7 +250,11 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | 요청이 크기 한도를 넘으면 질문 단위로 나눠 같은 state로 보낸다. | `saturn-terminal/core/src/routers/split.rs`의 `split_request_over_limit_splits_by_question_with_same_state` |
 | 나눈 요청은 동시 최대 8개까지 병렬로 보내고 조각마다 실패를 따로 처리한다. | 조각 수가 8을 넘는 요청에서 동시 전송이 8개를 넘지 않는지, 한 조각만 실패시켜 그 항목만 순위 대체인지, 429에서 동시 수가 줄어드는지 확인한다. |
 | 255개 초과 선택지는 나뉘어 전송된다. | 255개 초과 선택지가 나뉘어 전송되는지 확인한다. |
-| `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md): 0.80에서 현재 state의 재현율 10.1%, 작업 정보를 더한 state 69.7%. 작업 정보를 state에 싣는 일은 구현 전이다. |
+| 판단 요청에 같은 채팅의 직전 입력, 최초 목표, 최신 수정, 진행 상태, 보류 작업의 번호와 목표를 싣고, 같은 후속 문장도 목표마다 다른 요청이 된다. | `saturn-terminal/engine/src/lifecycle/judge_context.rs`의 `same_follow_up_carries_the_goal_of_each_conversation`, `latest_amendment_is_the_last_input_steered_into_the_task`, `held_tasks_are_listed_with_their_ids_and_goals` |
+| 맥락이 한도를 넘으면 오래된 보류부터 빼고 생략을 표시하며, 최초 목표나 최신 수정이 잘리면 판단하지 않고 대기에 둔다. | `saturn-terminal/engine/src/judge_context.rs`의 `long_held_list_drops_the_oldest_and_says_so`, `goal_over_its_limit_is_marked_cut_and_incomplete`, `unknown_goal_of_an_active_task_is_incomplete`, `long_previous_input_is_cut_but_the_context_stays_complete`, `saturn-terminal/engine/src/lifecycle/judge_context.rs`의 `context_over_the_limit_is_not_judged_and_waits_for_the_user` |
+| 맥락의 비밀값과 절대 경로는 가리고, 인젝션 문구는 따옴표 안에 머문다. | `saturn-terminal/engine/src/judge_context.rs`의 `secrets_are_masked_before_cutting_so_no_partial_secret_is_left`, `injected_lines_stay_inside_the_quoted_text`, `saturn-terminal/engine/src/lifecycle/judge_context.rs`의 `context_text_hides_secrets_and_absolute_paths`, `injected_instructions_stay_inside_quoted_text` |
+| 판단 중 상태가 바뀌어 다시 판단하면 새 상태의 맥락으로 요청을 만든다. | `saturn-terminal/engine/src/lifecycle/judge_context.rs`의 `rerouted_request_after_a_revision_conflict_is_rebuilt_from_the_new_state` |
+| `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md): 0.80에서 현재 state의 재현율 10.1%, 작업 정보를 더한 state 69.7%. 작업 정보를 state에 싣는 구현은 [판단 요청 맥락](#판단-요청-맥락)에 있고 실제 router 정확도는 이 구현으로 다시 재지 않았다. |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
 | 후보를 순위로 자르지 않고 전체를 묻는다. | `saturn-terminal/core/src/routers/tests.rs`의 `compact_questions_150_candidates_ask_all` |
 | 고정하지 않은 입력에 모델 목록을 `target_model` 후보로 묻고 고른 모델로 보낸다. 고정 모델이거나 매뉴얼 모드이거나 목록이 없으면 묻지 않고, 후보 밖이면 기본 모델이나 현재 모델이다. | [모델 고르기](providers-and-sessions.md#모델-고르기)의 `target_model` 테스트 |
@@ -240,6 +267,8 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 - router 규격과 `router_id` 매핑을 Saturn이 직접 정의하고 유지한다.
 - 큰 변경마다 옛 선택지에서 새 선택지로 가는 대응표를 코드에 함께 관리한다.
 - state에 앞 입력의 제약 등록 여부를 넣어도 router는 그 값을 거의 쓰지 않아 간접 지시 입력 정확도가 오르지 않았다([간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)). 질문 문장에 규칙을 더하면 올랐지만 일반 제약 입력의 재현율이 떨어졌다.
+
+- 판단 요청 맥락은 이어 가기 재현율을 올리려고 넣었지만 새 작업 오접합을 함께 늘릴 수 있다. 두 값은 따로 재야 하고, 이 구현에서는 실제 router로 다시 재지 않았다. 기존 실험의 오접합 우려는 그대로 남는다.
 
 ## 대안
 
