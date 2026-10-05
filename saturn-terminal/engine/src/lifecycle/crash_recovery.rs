@@ -150,6 +150,37 @@ pub(super) fn resume_suggested(seen: &[Notification]) -> Option<Vec<TaskLabel>> 
     })
 }
 
+// #461: 크래시 전에 받은 원시 줄은 남고, 복구가 실행을 닫으며 압축한다
+#[tokio::test]
+async fn raw_lines_received_before_a_crash_survive_and_recovery_seals_them() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.submit("fix the build").await;
+    let run = flow.engine.store.unfinished_runs().await.unwrap()[0].id;
+    let line = crate::providers::ProviderMsg::Raw {
+        chat: flow.chat,
+        provider: crate::providers::test_support::CLAUDE,
+        raw: crate::providers::RawLine {
+            agent: Some(flow.agent()),
+            provider_session: None,
+            is_json: true,
+            bytes: b"{\"n\":\"before-crash\"}".to_vec(),
+        },
+    };
+    flow.engine.on_provider_msg(line).await;
+
+    let restarted = Restarted::after_crash(flow, EffectScope::NetworkPossible).await;
+
+    let store = &restarted.engine.store;
+    assert_eq!(
+        store.read_raw(run).await.unwrap(),
+        b"{\"n\":\"before-crash\"}\n"
+    );
+    assert!(matches!(
+        store.append_raw(run, b"late").await,
+        Err(crate::store::StoreError::RawSealed { .. })
+    ));
+}
+
 // #150: 증명되지 않은 실행은 다시 보내지 않고 보류하며, 붙은 TUI에 `/continue`를 제안한다
 #[tokio::test]
 async fn unproven_run_is_held_not_resent_and_suggested_when_a_tui_attaches() {

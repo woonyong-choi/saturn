@@ -22,8 +22,8 @@ use crate::Masker;
 use crate::events::{next_arrival, start_queued_turn};
 use crate::providers::mask_values;
 use crate::providers::{
-    LaunchSpec, PermissionLaunch, ProviderConnection, ProviderTrace, SaturnDefaults,
-    UserProviderConfig,
+    LaunchSpec, PermissionLaunch, ProviderConnection, ProviderMsg, ProviderTrace, RawTap,
+    SaturnDefaults, UserProviderConfig,
 };
 
 /// 받은 요청에 schema 모양 그대로 응답한다.
@@ -244,6 +244,7 @@ pub(crate) fn launch(dir: &Path, env: Vec<(std::ffi::OsString, std::ffi::OsStrin
         permission: PermissionLaunch::default(),
         masker: Masker::new(Vec::new()),
         events: ProviderTrace::off(),
+        raw: RawTap::off(),
     }
 }
 
@@ -347,7 +348,16 @@ fn expected_turn_events(agent: AgentId) -> Vec<ProviderEvent> {
 #[tokio::test]
 async fn a_child_is_registered_from_the_spawn_completion_without_thread_started() {
     let dir = tempfile::tempdir().unwrap();
-    let (mut client, handle) = start(dir.path()).await;
+    let mut config = launch(dir.path(), Vec::new());
+    let (tx, mut raw_lines) = tokio::sync::mpsc::unbounded_channel();
+    config.raw = RawTap::new(
+        saturn_protocol::ids::ChatId(1),
+        config.provider,
+        tx,
+        &config.masker,
+    );
+    let mut client = CodexClient::start(config, Supervisor::new()).await.unwrap();
+    let handle = client.open_session(spec(dir.path())).await.unwrap();
     let main = handle.provider_session.clone();
 
     client.send_turn(&main, "spawn-child").await.unwrap();
@@ -384,6 +394,27 @@ async fn a_child_is_registered_from_the_spawn_completion_without_thread_started(
             },
         ]
     );
+    let mut lines = Vec::new();
+    while let Ok(ProviderMsg::Raw { raw, .. }) = raw_lines.try_recv() {
+        lines.push(raw);
+    }
+    let owner = |thread: &str| {
+        lines
+            .iter()
+            .filter(|raw| raw.provider_session.as_deref() == Some(thread))
+            .map(|raw| raw.agent)
+            .collect::<Vec<_>>()
+    };
+    assert!(owner("thr_kid").contains(&Some(agent)), "{lines:?}");
+    // 세션을 열기 전 응답은 thread가 등록되기 전이라 에이전트를 모른다
+    assert!(owner(&main.0).contains(&Some(agent)));
+    assert!(
+        owner(&main.0)
+            .iter()
+            .all(|owner| owner.is_none_or(|a| a == agent))
+    );
+    assert!(lines.iter().all(|raw| raw.is_json));
+    assert!(lines.iter().any(|raw| raw.agent.is_none()));
 }
 
 // #438

@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 14;
+pub(crate) const SCHEMA_VERSION: u32 = 15;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,8 +17,9 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] =
-    &[V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14];
+pub(crate) const MIGRATIONS: &[&str] = &[
+    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15,
+];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -332,6 +333,21 @@ CREATE TABLE direct_installs (
     seen_at INTEGER NOT NULL,
     PRIMARY KEY (provider, kind, name)
 );
+"#;
+
+/// `raw_unattributed`는 어느 실행의 것인지 알 수 없는 provider 원시 줄이다. 이관은 표만 비어 있게 더한다.
+const V15: &str = r#"
+CREATE TABLE raw_unattributed (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL,
+    agent_id INTEGER,
+    provider_session TEXT,
+    is_json INTEGER NOT NULL,
+    bytes BLOB NOT NULL,
+    received_at INTEGER NOT NULL
+);
+CREATE INDEX raw_unattributed_chat ON raw_unattributed(chat_id);
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -698,6 +714,28 @@ mod tests {
         );
         assert!(store.held_tasks().await.unwrap().is_empty());
         assert!(store.interrupted_subagents().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v14_file_migrates_to_raw_unattributed_keeping_chats() {
+        let (dir, store) = temp_store_at(14).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (14, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        let chat = saturn_protocol::ids::ChatId(1);
+        assert_eq!(
+            store.chat_workdir(chat).await.unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.unattributed_raw(chat).await.unwrap().is_empty());
     }
 
     #[tokio::test]

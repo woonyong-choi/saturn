@@ -27,8 +27,9 @@ use crate::calls::{CallKind, Responder};
 use crate::flow::{LiveSession, NeedsCheck};
 #[cfg(test)]
 use crate::providers::ProviderConnection;
+use crate::providers::RawLine;
 use crate::rpc::ClientId;
-use crate::store::NewRun;
+use crate::store::{NewRun, UnattributedRaw};
 use crate::{Engine, EngineError};
 
 /// 답을 기다리는 허가 요청이 속한 곳.
@@ -141,6 +142,41 @@ impl Engine {
         {
             // 쓰기가 막힐 수 있어 루프가 기다리지 않고 연결 작업이 끝까지 쓴다
             connection.start_queued_turn_detached(agent);
+        }
+    }
+
+    /// provider가 보낸 줄을 원시 기록에 쌓는다. 줄의 에이전트에 열린 실행이 있으면 그 실행에, 에이전트를 모르거나 열린 실행이
+    /// 없으면 어느 실행에도 붙이지 않고 미귀속 기록에 쌓는다. 지금 열린 실행이라는 이유로 추정해 붙이지 않는다. 기록하지 못해도
+    /// 이벤트 처리를 막지 않고 로그만 남긴다.
+    pub(crate) async fn on_provider_raw(&mut self, chat: ChatId, provider: Provider, raw: RawLine) {
+        let run = raw
+            .agent
+            .filter(|agent| {
+                self.flow
+                    .live
+                    .get(agent)
+                    .is_some_and(|live| live.provider == provider)
+            })
+            .and_then(|agent| self.runs.active.get(&agent).copied());
+        let stored = match run {
+            Some(run) => {
+                let mut line = raw.bytes;
+                line.push(b'\n');
+                self.store.append_raw(run, &line).await
+            }
+            None => {
+                let line = UnattributedRaw {
+                    provider,
+                    agent: raw.agent,
+                    provider_session: raw.provider_session,
+                    is_json: raw.is_json,
+                    bytes: raw.bytes,
+                };
+                self.store.append_unattributed_raw(chat, &line).await
+            }
+        };
+        if let Err(error) = stored {
+            tracing::warn!(error = %self.failure_line(&EngineError::Store(error)), "provider raw line not stored");
         }
     }
 

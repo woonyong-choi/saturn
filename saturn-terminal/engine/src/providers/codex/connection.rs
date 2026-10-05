@@ -59,7 +59,11 @@ impl CodexClient {
             Arc::clone(&threads),
             Arc::clone(&approvals),
             tx,
-            (launch.masker.clone(), launch.events.clone()),
+            (
+                launch.masker.clone(),
+                launch.events.clone(),
+                launch.raw.clone(),
+            ),
         ));
         tokio::spawn(log_stderr(spawned.io.stderr, launch.masker.clone()));
         let mut client = Self {

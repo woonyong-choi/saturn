@@ -152,12 +152,24 @@ impl Engine {
                 provider,
                 connection,
             } => self.is_current(*chat, *provider, *connection),
-            ProviderMsg::Reply { .. } | ProviderMsg::Lost { .. } => true,
+            ProviderMsg::Reply { .. } | ProviderMsg::Lost { .. } | ProviderMsg::Raw { .. } => true,
         }
     }
 
     /// 연결 작업이 보낸 메시지를 처리한다.
     pub(crate) async fn on_provider_msg(&mut self, message: ProviderMsg) {
+        match message {
+            ProviderMsg::Raw {
+                chat,
+                provider,
+                raw,
+            } => self.on_provider_raw(chat, provider, raw).await,
+            other => self.on_connection_msg(other).await,
+        }
+    }
+
+    /// 연결의 이벤트, 명령 목록, 종료, 응답, 끊김.
+    async fn on_connection_msg(&mut self, message: ProviderMsg) {
         if !self.is_from_current(&message) {
             tracing::debug!("message from a replaced connection dropped");
             return;
@@ -176,6 +188,7 @@ impl Engine {
                 };
                 self.on_arrival(arrival).await;
             }
+            ProviderMsg::Raw { .. } => {}
             ProviderMsg::Commands {
                 chat,
                 provider,

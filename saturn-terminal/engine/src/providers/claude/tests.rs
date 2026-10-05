@@ -15,7 +15,9 @@ use super::config::{default_args, read_user_config, with_ask_tools};
 use super::convert::{cache_ttl, detail_of, permission_call, shell_exit_code};
 use super::*;
 use crate::events::{next_arrival, start_queued_turn};
-use crate::providers::{PermissionLaunch, ProviderConnection, ProviderTrace, SaturnDefaults};
+use crate::providers::{
+    PermissionLaunch, ProviderConnection, ProviderMsg, ProviderTrace, RawTap, SaturnDefaults,
+};
 use crate::secrets::Masker;
 
 /// 파이프 버퍼(64KiB)보다 커서 쓰는 도중 막히는 턴 크기. fake가 `big:<길이>`로 답한다.
@@ -142,6 +144,7 @@ fn launch(dir: &Path, env: Vec<(OsString, OsString)>) -> LaunchSpec {
         permission: PermissionLaunch::default(),
         masker: Masker::new(Vec::new()),
         events: ProviderTrace::off(),
+        raw: RawTap::off(),
     }
 }
 
@@ -272,6 +275,13 @@ async fn stdout_hides_router_key_before_emitting_events() {
     let dir = tempfile::tempdir().unwrap();
     let mut config = launch(dir.path(), Vec::new());
     config.masker = Masker::new(vec!["sk-secret-1234".to_owned()]);
+    let (tx, mut raw_lines) = tokio::sync::mpsc::unbounded_channel();
+    config.raw = RawTap::new(
+        saturn_protocol::ids::ChatId(1),
+        config.provider,
+        tx,
+        &config.masker,
+    );
     let mut client = ClaudeClient::new(config, Supervisor::new());
     let session = client
         .open_session(spec(dir.path(), None))
@@ -284,6 +294,22 @@ async fn stdout_hides_router_key_before_emitting_events() {
 
     assert!(matches!(&events[0], ProviderEvent::Text { text, .. } if text == "[redacted]"));
     assert!(!format!("{events:?}").contains("sk-secret-1234"));
+    let mut lines = Vec::new();
+    while let Ok(ProviderMsg::Raw { raw, .. }) = raw_lines.try_recv() {
+        lines.push(raw);
+    }
+    assert!(lines.len() >= 3, "{lines:?}");
+    assert!(
+        lines
+            .iter()
+            .all(|raw| raw.agent == Some(AgentId(3)) && raw.is_json)
+    );
+    let text: String = lines
+        .iter()
+        .map(|raw| String::from_utf8_lossy(&raw.bytes).into_owned())
+        .collect();
+    assert!(!text.contains("sk-secret-1234"));
+    assert!(text.contains("[redacted]"));
     client.close_session(&session).await.unwrap();
 }
 

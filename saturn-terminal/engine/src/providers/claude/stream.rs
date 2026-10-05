@@ -11,7 +11,7 @@ use tokio::sync::mpsc;
 use super::background;
 use super::convert::convert_line;
 use super::{SessionState, lock};
-use crate::providers::{Frame, ProviderTrace, mask_values};
+use crate::providers::{Frame, ProviderTrace, RawTap};
 use crate::secrets::Masker;
 use saturn_protocol::ids::AgentId;
 
@@ -21,7 +21,7 @@ pub(super) async fn read_loop(
     state: Arc<Mutex<SessionState>>,
     events: mpsc::Sender<ProviderEvent>,
     latest_commands: Arc<Mutex<Vec<ProviderCommand>>>,
-    (masker, trace): (Masker, ProviderTrace),
+    (masker, trace, raw): (Masker, ProviderTrace, RawTap),
 ) {
     let mut lines = BufReader::new(stdout).lines();
     loop {
@@ -29,11 +29,14 @@ pub(super) async fn read_loop(
         let Ok(Some(line)) = line else {
             break;
         };
-        let Ok(mut message) = serde_json::from_str::<Value>(&line) else {
+        let agent = Some(lock(&state).agent);
+        let Some(message) = RawTap::parse_masked(&line, &masker) else {
+            raw.send(&line, None, (agent, None));
             tracing::debug!("skipping non-json line from claude");
             continue;
         };
-        mask_values(&mut message, &masker);
+        let session = message["session_id"].as_str().map(str::to_owned);
+        raw.send(&line, Some(&message), (agent, session));
         trace_line(&trace, &message);
         let converted = convert_message(&state, &latest_commands, &message);
         for event in converted {
