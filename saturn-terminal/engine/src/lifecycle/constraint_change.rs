@@ -3,6 +3,7 @@
 
 use saturn_protocol::ids::{ConstraintId, TaskId};
 use saturn_protocol::rpc::{ChatNotice, Notification};
+use saturn_protocol::state::InputState;
 
 use super::FakeReply;
 use super::crash_recovery::Restarted;
@@ -228,8 +229,17 @@ async fn router_change_is_not_asked_or_applied_unless_auto_apply_is_on_even_in_f
         )
         .await;
         let before = flow.router_calls();
+        let settings = flow.engine.settings.current().unwrap();
+        let full_before = flow.engine.is_full_mode(flow.chat, settings).await;
 
-        flow.submit(ASK).await;
+        let second = flow.submit(ASK).await;
+
+        // 작업은 그대로 진행되고 권한 경계(모드)는 바뀌지 않는다
+        assert_eq!(flow.state(second), InputState::Applied, "{config:?}");
+        assert_eq!(
+            flow.engine.is_full_mode(flow.chat, settings).await,
+            full_before
+        );
 
         assert_eq!(
             flow.router_calls() - before,
@@ -291,10 +301,7 @@ async fn failed_or_invalid_change_answers_change_nothing() {
 
         assert_eq!(constraints(&flow).await[0].state, ConstraintState::Active);
         assert_eq!(events(&flow).await.len(), 1);
-        assert_ne!(
-            flow.state(second),
-            saturn_protocol::state::InputState::Cancelled
-        );
+        assert_eq!(flow.state(second), InputState::Applied);
     }
 }
 
