@@ -6,6 +6,7 @@
 | [rrf-k-top-n](rrf-k-top-n/report.md) | 후보 순위의 k와 judge 상위 N | [맥락 고르기](../design/context-selection.md) | H1 기각: recall 12.0% [9.2, 15.6] |
 | [precompute-breakeven](precompute-breakeven/report.md) | 도구 결과 미리 판단의 손익분기 | [맥락 정리](../design/context-management.md) | H2 기각: 남는 질문 감소 29.4% [26.4, 32.3], H3 기각: 토큰 4.967배 [4.337, 5.614] |
 | [jev-decision-consistency](jev-decision-consistency/report.md) | Jev 반복 호출의 행동 구간·확률 일관성과 변형 반응(오프라인) | [router](../design/router.md), [맥락 정리](../design/context-management.md) | `is_constraint` 기각: 지시 문장 덧붙임에서 구간 유지 9/20, H1 보류: 5회 구간 일치 90.0% [84.2, 93.8]. `replaces_1` 보류: 5회 구간 일치 94.4% [89.7, 97.0]. 자동 적용 근거 없음 |
+| [context-net-effect](context-net-effect/design.md) | 맥락 정리 없음·provider 압축·Saturn RRF 패킷·Saturn Jev 패킷의 후속 작업 품질과 캐시 손실 포함 전체 비용(실제 engine, Claude·Codex) | [맥락 정리](../design/context-management.md), [맥락 고르기](../design/context-selection.md) | 측정 전 |
 | [claude-summary-handoff](claude-summary-handoff/design.md) | Claude 압축 요약 전환 품질 | [맥락 정리](../design/context-management.md), [provider 연결과 session](../design/providers-and-sessions.md) | 측정 전 |
 | [fast-adjust-convergence](fast-adjust-convergence/report.md) | 빠른 조정의 수렴과 진동 | [router 학습](../design/router-training.md) | H3 기각: 100건 안 기준값 폭 0.051 [0.050, 0.052], H1 채택: 틀림 비율 5.6% [5.5, 5.7] |
 | [ranked-handoff-quality](ranked-handoff-quality/design.md) | 후보 순위와 judge 결합의 전환 품질 | [맥락 고르기](../design/context-selection.md) | #117로 대체(#198) |
