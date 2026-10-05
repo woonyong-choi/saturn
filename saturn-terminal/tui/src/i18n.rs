@@ -134,6 +134,8 @@ pub const EVIDENCE_ORDER_UNKNOWN: &str = "수정과 검사의 순서를 알 수 
 pub const EVIDENCE_TREE_NOT_IDLE: &str = "하위 에이전트가 끝나지 않음";
 pub const EVIDENCE_UNMEASURED: &str = "수정 목록을 만들지 못함";
 pub const CONTEXT_DEFERRED: &str = "고정 제약이 길어 맥락 정리를 미룹니다";
+/// `{count}`는 패킷 제약 칸에 넣지 못한 제약 수.
+pub const CONSTRAINTS_OMITTED: &str = "제약 {count}개 생략 · /constraints에서 확인하세요";
 pub const PACKET_OVERFLOW: &str = "맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요";
 pub const SWITCHED_SUFFIX: &str = "로 전환";
 pub const REQUEST_SUMMARY: &str = "이번 요청";

@@ -24,7 +24,9 @@ use crate::handoff::{
     reduce_handoff,
 };
 use crate::models::pinned_model_name;
-use crate::packet_select::{CompactAsk, CompactOrder, TransitionKey, Trigger};
+use crate::packet_select::{
+    CompactAsk, CompactCall, CompactGate, CompactOrder, TransitionKey, Trigger,
+};
 use crate::packets::PacketTarget;
 use crate::sessions::SendRequest;
 use crate::settings::{ContextMode, PacketSelect, Settings};
@@ -45,6 +47,14 @@ pub(crate) enum PlanError {
     Deferred(Vec<String>),
 }
 
+/// 계획을 세우지 못하고 멈춘 이유.
+#[derive(Debug)]
+pub(crate) enum PlanStop {
+    Error(PlanError),
+    /// 경쟁 구역을 채울 `compact` 판단이 남았다. 호출자가 별도 작업에 맡기고 답이 오면 계획을 다시 세운다.
+    Ask(Box<CompactCall>),
+}
+
 /// 계획을 세우는 중간 결과. `Skip`은 router가 시작한 전환의 `compact` 판단이 실패해 전환을 건너뛰는 것으로, 현재 session의
 /// provider와 모델로 계획을 다시 세운다. `plan_open`이 처리하므로 밖으로 나가지 않는다.
 #[derive(Debug)]
@@ -54,6 +64,7 @@ enum Planning {
         provider: Provider,
         model: Option<String>,
     },
+    Ask(Box<CompactCall>),
 }
 
 impl From<PlanError> for Planning {
@@ -292,7 +303,8 @@ struct PacketMaterial<'a> {
 }
 
 impl Engine {
-    /// 실험 옵션 `jev`: 후보 전체를 `compact`로 묻고 그 순서로 다시 만든 패킷 재료와 결과. 판단을 받지 못했으면 `None`이라
+    /// 실험 옵션 `jev`: 돌아온 `compact` 판단의 순서로 다시 만든 패킷 재료와 결과. 판단이 아직 없으면 `Planning::Ask`로 물을 호출을 돌려주고
+    /// 호출자가 별도 작업에 맡긴다. 판단을 받지 못했으면 `None`이라
     /// 호출자가 순위 순서 패킷을 그대로 쓰고, router가 시작한 전환이면 전환을 건너뛴다(`Planning::Skip`).
     async fn judged_source(
         &self,
@@ -316,7 +328,11 @@ impl Engine {
             settings: record.settings,
             key: key(),
         };
-        match self.compact_order(ask, key).await {
+        let order = match self.compact_gate(ask, key()).await {
+            CompactGate::Ready(order) => order,
+            CompactGate::Ask(call) => return Err(Planning::Ask(Box::new(call))),
+        };
+        match order {
             CompactOrder::Judged(verdicts) => {
                 let source = handoff_source_ordered(
                     material.rows,
@@ -424,23 +440,25 @@ impl Engine {
     /// 보관 session으로 돌아가면 그 session이 받지 못한 변경분만 만든다.
     ///
     /// # Errors
-    /// 원인 한 줄은 `Failed`, 패킷의 고정 구역이 넘치면 `Deferred`.
+    /// 원인 한 줄은 `Failed`, 패킷의 고정 구역이 넘치면 `Deferred`, 판단이 남았으면 `Ask`.
     pub(crate) async fn plan_open(
         &self,
         record: &QueuedInput,
         start: Start,
-    ) -> Result<OpenPlan, PlanError> {
+    ) -> Result<OpenPlan, PlanStop> {
         match self.plan_open_as(record, start, None).await {
             Ok(plan) => Ok(plan),
-            Err(Planning::Err(error)) => Err(error),
+            Err(Planning::Err(error)) => Err(PlanStop::Error(error)),
+            Err(Planning::Ask(call)) => Err(PlanStop::Ask(call)),
             Err(Planning::Skip { provider, model }) => self
                 .plan_open_as(record, start, Some((provider, model)))
                 .await
                 .map_err(|planning| match planning {
-                    Planning::Err(error) => error,
-                    Planning::Skip { .. } => {
-                        PlanError::Failed("transition skip did not settle".to_owned())
-                    }
+                    Planning::Err(error) => PlanStop::Error(error),
+                    Planning::Ask(call) => PlanStop::Ask(call),
+                    Planning::Skip { .. } => PlanStop::Error(PlanError::Failed(
+                        "transition skip did not settle".to_owned(),
+                    )),
                 }),
         }
     }
@@ -919,16 +937,31 @@ impl Engine {
             self.close_unregistered(record.chat, provider, handle);
             return Err(error);
         }
-        self.record_packet_constraints(id, &plan.constraint_tiers)
+        self.record_packet_constraints(record.chat, id, &plan.constraint_tiers)
             .await;
         self.count_packet_turn(agent, plan.handoff.is_some());
         Ok(self.remember(agent, id, provider, handle))
     }
 
-    /// 새 session의 패킷에 든 제약별 단계를 남긴다. 기록하지 못해도 session은 그대로 쓰고 로그만 남긴다.
-    async fn record_packet_constraints(&self, session: SessionId, tiers: &PacketTiers) {
+    /// 새 session의 패킷에 든 제약별 단계를 남기고, 칸이 차서 빠진 제약이 있으면 대화 기록에 그 수를 알린다.
+    /// 기록하지 못해도 session은 그대로 쓰고 로그만 남긴다.
+    async fn record_packet_constraints(
+        &self,
+        chat: ChatId,
+        session: SessionId,
+        tiers: &PacketTiers,
+    ) {
         if tiers.is_empty() {
             return;
+        }
+        let omitted = tiers
+            .iter()
+            .filter(|(_, tier)| *tier == ConstraintTier::Omitted)
+            .count();
+        if omitted > 0 {
+            let count = u32::try_from(omitted).unwrap_or(u32::MAX);
+            self.notify_chat(chat, ChatNotice::ConstraintsOmitted { count })
+                .await;
         }
         let rows: Vec<(ConstraintId, &str)> =
             tiers.iter().map(|(id, tier)| (*id, tier.name())).collect();
@@ -1203,7 +1236,7 @@ impl Engine {
             self.close_unregistered(chat, live.provider, handle);
             return Err(error);
         }
-        self.record_packet_constraints(restart.id, &restart.constraint_tiers)
+        self.record_packet_constraints(chat, restart.id, &restart.constraint_tiers)
             .await;
         self.close_replaced(chat, live, old);
         self.flow

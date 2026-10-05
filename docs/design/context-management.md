@@ -224,7 +224,7 @@ P_max = T / 10
 - 채팅 revision 전체를 비교하지 않는다. 판단이 도는 사이 작업 상태와 대기열은 자주 바뀌지만 후보를 남길 확률은 틀리지 않는다. 전환 대상이 바뀌면 그 판단은 다른 상대를 향한 것이므로 버린다.
 - 맥락 정리로 여는 새 session은 키 비교에 더해 트리 유휴이고 합칠 대기 입력이 없는지 다시 확인한다. 아니면 정리를 다음 턴 경계로 미룬다.
 
-현재 구현은 판단을 요청 처리와 별도 작업으로 돌리지 않고 패킷 계획 안에서 기다린다. 기다림은 호출 하나의 재시도 마감(10초)을 넘지 않고, 넘어서 온 답(늦은 답)은 쓰지 않고 버린다. 기다리는 동안 engine은 다른 요청을 처리하지 못한다. 그래서 지금은 판단 중에 키가 달라질 길이 없지만, 비교와 한 번 다시 묻기는 판단을 별도 작업으로 옮길 때 그대로 쓰도록 구현해 두었다(`packet_select.rs`의 `settle`).
+판단은 요청 처리와 별도 작업으로 돈다(입력 판단과 같은 router 비동기 경로). 입력을 보내려던 채팅은 답이 올 때까지 다음 입력을 보내지 않지만, engine은 그동안 다른 요청과 다른 채팅의 입력을 그대로 처리한다. 답은 engine 루프로 돌아와 보관하고, 적용 직전에 계획을 다시 세우면서 그 시점의 전환 키와 비교한다. 기다림은 호출 하나의 재시도 마감(10초)을 넘지 않고, 넘어서 온 답(늦은 답)은 쓰지 않고 버린다. 답을 기다리는 사이 입력이 사라졌거나 계획이 판단을 쓰지 않게 바뀌었으면(전환 자체가 사라짐) 답은 쓰지 않고 `superseded`로 기록한다. 맥락 정리는 같은 방식으로 판단을 맡긴 채 턴 경계 처리를 멈추고, 답이 오면 경계 처리를 이어 간다(`packet_select.rs`의 `compact_gate`, `spawn_compact`, `on_compact_done`).
 
 적용 규칙은 다음과 같다.
 
@@ -345,7 +345,10 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | `compact` 질문은 패킷을 만들 때 후보 전체를 한 번 router에 보내고 턴이 끝날 때는 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `jev_order_fills_the_budget_with_the_blocks_the_router_wants`(새 session을 여는 입력에서 후보 전체를 한 번 묻는다), `option_is_off_by_default_and_asks_nothing`. 턴 종료에서 묻지 않는 것은 `compact_at_boundary`가 `Restart` 판정 뒤에만 부르는 구조로 보장하며 별도 시험은 없다. |
 | 판단을 받지 못하면(실패, 전부 무응답, 형식 오류, 늦은 답) 순위 순서로 채우고 전달 기록의 `selector`가 `rank`로 남는다. 일부만 답했으면 답한 항목이 앞에 온다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `without_a_judgment_the_packet_is_filled_by_rank_order`, `an_answer_that_arrives_too_late_is_not_used`, `jev_order_fills_the_budget_with_the_blocks_the_router_wants` |
 | 필요한 블록 하나만 높고 나머지가 낮아도 판단을 버리지 않고 그 블록을 먼저 넣는다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `single_needed_block_with_low_scores_elsewhere_is_kept_not_replaced` |
-| 패킷 판단은 전환 키가 같을 때만 적용하고, 다르면 한 번 다시 묻고, 또 다르면 판단 없이 진행한다. 기록이 늘어도 판단을 버리지 않는다. | `saturn-terminal/engine/src/packet_select.rs`의 `settle_applies_equal_keys_and_asks_again_once_when_they_differ`. 판단을 기다리는 사이 engine이 상태를 바꿀 수 없어 engine 수준에서 키를 바꾸는 시험은 만들 수 없다. |
+| 패킷 판단은 전환 키가 같을 때만 적용하고, 다르면 한 번 다시 묻고, 또 다르면 판단 없이 진행한다. 기록이 늘어도 판단을 버리지 않는다. | `saturn-terminal/engine/src/packet_select.rs`의 `settle_applies_equal_keys_and_asks_again_once_when_they_differ`, `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `a_judgment_whose_transition_key_changed_is_discarded_and_rank_order_is_used`(판단 중 보내는 session이 끝나고 받는 provider가 바뀌어 두 판단이 `superseded`로 남고 순위 순서로 채운다) |
+| 판단을 기다리는 동안 engine은 다른 요청에 지연 없이 응답한다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `jev_order_fills_the_budget_with_the_blocks_the_router_wants`(판단 호출을 붙잡은 채 다른 접속의 `Version` 요청이 응답한다) |
+| router가 시작한 전환은 판단이 실패하면 건너뛰고, 사용자가 고정한 전환은 순위 순서로 연다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `a_failed_judgment_skips_only_the_switch_the_router_started` |
+| 크기 한도를 넘는 state와 질문은 요청을 만들지 않고 순위 순서로 채운다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `without_a_judgment_the_packet_is_filled_by_rank_order`(크기 한도 사례) |
 | 제약 칸은 `C_max` 안에서 채우고 못 넣은 수를 표시한다. | [제약](constraints.md#요구사항)의 제약 칸 행 |
 | 고정 구역이 `P_max`를 넘으면 오래된 턴의 답부터 줄이고, 최근 턴 수를 줄인 뒤 `P_hard`까지 허용한다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_overflow_trims_oldest_answer_first`, `build_packet_fixed_overflow_drops_oldest_turns`, `build_packet_fixed_over_limit_allows_hard_limit_without_competing` |
 | 실험 수집기가 `saturn-core`의 `packet` 예제(`cargo run -p saturn-core --example packet`)로 두 실험 설계의 입력에서 패킷을 만들고, router 판단이 없으면 RRF 순서로 채운다. | `saturn-terminal/core/examples/packet/tests.rs`의 `packet_stream_input_prints_packet_text`, `packet_scenarios_input_prints_json_with_packet_and_rrf_order`, `packet_without_judgments_fills_in_rrf_order`, `packet_judgments_put_low_probability_item_before_unanswered` |

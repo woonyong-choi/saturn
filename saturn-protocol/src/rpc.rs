@@ -746,6 +746,10 @@ pub enum ChatNotice {
     ContextDeferred {
         constraints: Vec<String>,
     },
+    /// 새 session의 패킷 제약 칸이 차서 `count`개 제약을 넣지 못했다. 전체 목록은 `/constraints`에서 본다.
+    ConstraintsOmitted {
+        count: u32,
+    },
     /// 새 session의 패킷이 맥락 한도로 거절됐고, 경쟁 구역을 줄여 다시 보내도 들어가지 않거나 고정 구역만으로 넘쳐 보내지 않고 멈췄다.
     PacketOverflow,
     /// 제약을 등록했다. 규칙은 사용자 원문 그대로다. `unconfirmed`는 권한 모드 `full`이라 묻지 않고 등록했다는 뜻이다.

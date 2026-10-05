@@ -14,7 +14,9 @@ use crate::handoff::{
     COMPACT_SELECTOR, HandoffOutcome, PacketEvidence, RANK_SELECTOR, handoff_of, handoff_source,
     handoff_source_ordered,
 };
-use crate::packet_select::{CompactAsk, CompactOrder, TransitionKey, Trigger};
+use crate::packet_select::{
+    CompactAsk, CompactGate, CompactOrder, CompactResume, TransitionKey, Trigger,
+};
 use crate::settings::{ContextMode, PacketSelect};
 use crate::switch::Reduction;
 use crate::{Engine, EngineError};
@@ -27,6 +29,8 @@ enum BoundaryOrder {
     Rank,
     /// 판단을 기다리는 사이 트리가 유휴가 아니거나 합칠 대기 입력이 생겼다.
     Postponed,
+    /// 판단을 별도 작업에 맡겼다. 답이 오면 `after_turn_value`가 이어 간다.
+    Asking,
 }
 
 impl Engine {
@@ -49,7 +53,16 @@ impl Engine {
         self.clear_permissions(agent).await;
         self.record_turn_value(&live).await?;
         self.end_task(chat, agent).await?;
-        match self.compact_at_boundary(chat, &live).await {
+        self.after_turn_value(chat, &live).await
+    }
+
+    /// 맥락 정리를 판정하고, 새 session 열기나 판단을 기다리지 않으면 기다리던 입력을 보낸다. `compact` 판단이 돌아오면 여기서 이어 간다.
+    pub(crate) async fn after_turn_value(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+    ) -> Result<(), EngineError> {
+        match self.compact_at_boundary(chat, live).await {
             // 새 session 열기를 기다린다. 끝나면 거기서 이어 간다
             Ok(true) => return Ok(()),
             Ok(false) => {}
@@ -143,6 +156,8 @@ impl Engine {
             BoundaryOrder::Rank => (source, outcome),
             // 정리를 미룬다. 다음 턴 경계에서 다시 판정한다
             BoundaryOrder::Postponed => return Ok(false),
+            // 판단이 돌아올 때까지 다음 입력은 보내지 않는다
+            BoundaryOrder::Asking => return Ok(true),
         };
         match outcome {
             HandoffOutcome::Ready(handoff) => {
@@ -201,7 +216,7 @@ impl Engine {
     /// 실험 옵션 `context.select.packet`이 `jev`면 후보 전체를 `compact`로 묻는다. 맥락 정리는 맥락 크기 규칙이 연 전환이라
     /// 판단이 실패해도 정리하고 경쟁 구역을 순위 순서로 채운다. 판단을 기다린 뒤 트리 유휴와 합칠 대기 입력을 다시 확인해
     /// 아니면 정리를 다음 턴 경계로 미룬다.
-    async fn compact_by_judgment(&self, chat: ChatId, live: &LiveSession) -> BoundaryOrder {
+    async fn compact_by_judgment(&mut self, chat: ChatId, live: &LiveSession) -> BoundaryOrder {
         let Some(revision) = self.flow.settings_of.get(&live.agent).copied() else {
             return BoundaryOrder::Rank;
         };
@@ -221,17 +236,24 @@ impl Engine {
                 .and_then(|session| session.model.clone()),
             trigger: Trigger::Compaction,
         };
-        let order = self
-            .compact_order(
-                CompactAsk {
-                    chat,
-                    input: None,
-                    settings: revision,
-                    key: key(),
-                },
-                key,
-            )
-            .await;
+        let ask = CompactAsk {
+            chat,
+            input: None,
+            settings: revision,
+            key: key(),
+        };
+        let order = match self.compact_gate(ask, key()).await {
+            CompactGate::Ready(order) => order,
+            CompactGate::Ask(call) => {
+                // 같은 채팅의 입력 판단이 이미 기다리는 중이면 이번 정리는 다음 턴 경계로 미룬다
+                if self.flow.compact_waiting.contains_key(&chat) {
+                    return BoundaryOrder::Postponed;
+                }
+                self.spawn_compact(call, CompactResume::Boundary(live.agent));
+                return BoundaryOrder::Asking;
+            }
+        };
+        self.discard_compact_reply(chat, Trigger::Compaction).await;
         if !self.agents.is_tree_idle(live.agent) || self.queue.has_waiting(chat) {
             return BoundaryOrder::Postponed;
         }
