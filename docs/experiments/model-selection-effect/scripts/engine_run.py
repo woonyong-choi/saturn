@@ -198,6 +198,8 @@ def run_trial(run_id: str, tid: int, task: dict, arm: str, shadow: bool, key: st
         f"export SATURN_KEY=\"$(security find-generic-password -s {KEYCHAIN_SERVICE} -w)\"; "
         f"export PATH={shlex.quote(str(SATURN_BIN))}:$PATH; exec saturn " + " ".join(shlex.quote(f) for f in flags)
     )
+    # 개발 구간에서 haiku가 작업 폴더가 아닌 바깥 저장소 경로를 읽으려다 허가 창에 멈춘 시도가 많아(12중 10) 폴더 경로를 한 문장으로 알린다
+    sent = f"작업 폴더는 {practice} 이다. " + task["prompt"]
     note = []
     status = "ok"
     submitted = None
@@ -212,7 +214,7 @@ def run_trial(run_id: str, tid: int, task: dict, arm: str, shadow: bool, key: st
             status, note = "failed", ["screen did not open"]
         if status == "ok":
             time.sleep(1)
-            tmux("send-keys", "-t", session, "-l", task["prompt"])
+            tmux("send-keys", "-t", session, "-l", sent)
             tmux("send-keys", "-t", session, "Enter")
             submitted = time.time()
             deadline = submitted + TRIAL_TIMEOUT_S
@@ -233,7 +235,7 @@ def run_trial(run_id: str, tid: int, task: dict, arm: str, shadow: bool, key: st
     stopped = stop_engine(home)
     tables = dump_db(home) if (home / "saturn.db").exists() else {}
     inputs = tables.get("inputs")
-    if status == "ok" and (not isinstance(inputs, list) or len(inputs) != 1 or inputs[0]["text"] != task["prompt"]):
+    if status == "ok" and (not isinstance(inputs, list) or len(inputs) != 1 or inputs[0]["text"] != sent):
         status, note = "failed", note + ["input record does not match the sent prompt"]
     diff = subprocess.run(["git", "diff", "HEAD", "--stat", "--patch"], cwd=practice, capture_output=True, text=True).stdout
     ref = RUNTIME / "r" / task["task_id"]
@@ -242,7 +244,7 @@ def run_trial(run_id: str, tid: int, task: dict, arm: str, shadow: bool, key: st
     check = tasks.grade(task, practice, ref)
     return dict(
         run_id=run_id, tid=tid, task_id=task["task_id"], arm=arm, arm_spec=spec, shadow=shadow, binary_commit=binary_commit(),
-        flags=flags, submitted_at=submitted, status=status, notes=note, engines_stopped=stopped,
+        flags=flags, sent_prompt=sent, submitted_at=submitted, status=status, notes=note, engines_stopped=stopped,
         screen=screen.replace(key, "[key]"), tables=tables, diff=diff, check=check,
     )
 

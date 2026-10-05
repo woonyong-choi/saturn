@@ -1,0 +1,7442 @@
+[
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 0.90677,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "d79c978068504726667d822c1e14b7d7a9a0f4041842838eeb0a0f92f38b4a33",
+  "lang": "ko",
+  "latency_s": 79.743,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 563,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-0",
+  "tid": 0,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 65536,
+     "cache_write_tokens": 0,
+     "input_tokens": 19436,
+     "output_tokens": 1141
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 65536,
+    "cache_write_tokens": 0,
+    "input_tokens": 19436,
+    "output_tokens": 1141
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": 0.100707,
+  "ctx": "long",
+  "default_model": "claude/haiku",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-haiku-4-5-20251001"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "0b5ce46f809ddfb903229993debda57434f81864ccd23060af42898a544b9aa6",
+  "lang": "ko",
+  "latency_s": 24.441,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 556,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-1",
+  "tid": 1,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-haiku-4-5-20251001": {
+     "cache_read_tokens": 74409,
+     "cache_write_tokens": 16952,
+     "input_tokens": 26,
+     "output_tokens": 1864
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 74409,
+    "cache_write_tokens": 16952,
+    "input_tokens": 26,
+    "output_tokens": 1864
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 1.01367,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "ddf72269b07145e6913188d42fc4e8d930836b37541f7eada7a669eec2c13422",
+  "lang": "ko",
+  "latency_s": 97.561,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 769,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.6,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.63,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.1,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.41000000000000003,
+    "codex/gpt-6-luna": 0.3,
+    "other": 0.29
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-0",
+  "tid": 2,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 67840,
+     "cache_write_tokens": 0,
+     "input_tokens": 22297,
+     "output_tokens": 2246
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 67840,
+    "cache_write_tokens": 0,
+    "input_tokens": 22297,
+    "output_tokens": 2246
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.223594,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "05a32bf0611ab08d6435d56e346b44a9ff07e0565bc28b114120b802bd1441f8",
+  "lang": "mixed",
+  "latency_s": 11.896,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 589,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-3",
+  "tid": 3,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 83347,
+     "cache_write_tokens": 23304,
+     "input_tokens": 6,
+     "output_tokens": 1028
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 83347,
+    "cache_write_tokens": 23304,
+    "input_tokens": 6,
+    "output_tokens": 1028
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.779348,
+  "ctx": "long",
+  "default_model": "claude/opus",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "6f2cfc2106a0374e195ac227ef4616c048abac0d10d8a7253a58f06f5f08d3fe",
+  "lang": "mixed",
+  "latency_s": 26.017,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 586,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-1",
+  "tid": 4,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 159274,
+     "cache_write_tokens": 24858,
+     "input_tokens": 10,
+     "output_tokens": 2139
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 159274,
+    "cache_write_tokens": 24858,
+    "input_tokens": 10,
+    "output_tokens": 2139
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.225318,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "6f2cfc2106a0374e195ac227ef4616c048abac0d10d8a7253a58f06f5f08d3fe",
+  "lang": "mixed",
+  "latency_s": 19.039,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 860,
+   "output": 275
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.65,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.64,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.48,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.55,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.57,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.17,
+   "probabilities": {
+    "claude/haiku": 0.03,
+    "claude/opus": 0.05,
+    "claude/sonnet": 0.13,
+    "codex/gpt-6-astra": 0.31,
+    "codex/gpt-6-luna": 0.22,
+    "other": 0.26
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-1",
+  "tid": 5,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 83407,
+     "cache_write_tokens": 23451,
+     "input_tokens": 6,
+     "output_tokens": 1159
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 83407,
+    "cache_write_tokens": 23451,
+    "input_tokens": 6,
+    "output_tokens": 1159
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 0.88063,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "d79c978068504726667d822c1e14b7d7a9a0f4041842838eeb0a0f92f38b4a33",
+  "lang": "ko",
+  "latency_s": 45.914,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 695,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.68,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.68,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.17,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.44,
+    "codex/gpt-6-luna": 0.27,
+    "other": 0.29
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-0",
+  "tid": 6,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 63616,
+     "cache_write_tokens": 0,
+     "input_tokens": 19177,
+     "output_tokens": 1054
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 63616,
+    "cache_write_tokens": 0,
+    "input_tokens": 19177,
+    "output_tokens": 1054
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.612464,
+  "ctx": "short",
+  "default_model": "claude/opus",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "4fa36a108a6e2b53ec47e4fbf0069e5d96d99add8c4bb27114cc62c39bf2c5a2",
+  "lang": "ko",
+  "latency_s": 22.58,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 633,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-2",
+  "tid": 7,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 119087,
+     "cache_write_tokens": 25941,
+     "input_tokens": 8,
+     "output_tokens": 1616
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 119087,
+    "cache_write_tokens": 25941,
+    "input_tokens": 8,
+    "output_tokens": 1616
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.214694,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "0b5ce46f809ddfb903229993debda57434f81864ccd23060af42898a544b9aa6",
+  "lang": "ko",
+  "latency_s": 12.629,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 722,
+   "output": 188
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.76,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.76,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.7,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "claude/sonnet",
+   "confidence": 0.18,
+   "probabilities": {
+    "claude/haiku": 0.27,
+    "claude/opus": 0.05,
+    "claude/sonnet": 0.39,
+    "other": 0.29
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-1",
+  "tid": 8,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 79310,
+     "cache_write_tokens": 24831,
+     "input_tokens": 6,
+     "output_tokens": 640
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 79310,
+    "cache_write_tokens": 24831,
+    "input_tokens": 6,
+    "output_tokens": 640
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.226366,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "6f2cfc2106a0374e195ac227ef4616c048abac0d10d8a7253a58f06f5f08d3fe",
+  "lang": "mixed",
+  "latency_s": 14.669,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 752,
+   "output": 188
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.64,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.62,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.48,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "claude/sonnet",
+   "confidence": 0.23,
+   "probabilities": {
+    "claude/haiku": 0.08,
+    "claude/opus": 0.13,
+    "claude/sonnet": 0.43,
+    "other": 0.36
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-1",
+  "tid": 9,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81529,
+     "cache_write_tokens": 25288,
+     "input_tokens": 6,
+     "output_tokens": 1272
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81529,
+    "cache_write_tokens": 25288,
+    "input_tokens": 6,
+    "output_tokens": 1272
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.006841,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "6f2cfc2106a0374e195ac227ef4616c048abac0d10d8a7253a58f06f5f08d3fe",
+  "lang": "mixed",
+  "latency_s": 46.004,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 586,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-1",
+  "tid": 10,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 43264,
+     "cache_write_tokens": 0,
+     "input_tokens": 19166,
+     "output_tokens": 1196
+    }
+   },
+   "missing_rows": 0,
+   "rows": 4,
+   "total": {
+    "cache_read_tokens": 43264,
+    "cache_write_tokens": 0,
+    "input_tokens": 19166,
+    "output_tokens": 1196
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 0.93708,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "a383ae01292c7aee3746fd20a72760c3cfd78018b50ca781c44fa2e6944a7573",
+  "lang": "mixed",
+  "latency_s": 53.078,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 659,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.68,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.71,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.13,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.42,
+    "codex/gpt-6-luna": 0.33,
+    "other": 0.25
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-2",
+  "tid": 11,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 79232,
+     "cache_write_tokens": 0,
+     "input_tokens": 8541,
+     "output_tokens": 1187
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 79232,
+    "cache_write_tokens": 0,
+    "input_tokens": 8541,
+    "output_tokens": 1187
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.21748,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "a383ae01292c7aee3746fd20a72760c3cfd78018b50ca781c44fa2e6944a7573",
+  "lang": "mixed",
+  "latency_s": 11.942,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 693,
+   "output": 188
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.75,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.76,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.68,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "claude/sonnet",
+   "confidence": 0.2,
+   "probabilities": {
+    "claude/haiku": 0.23,
+    "claude/opus": 0.05,
+    "claude/sonnet": 0.41000000000000003,
+    "other": 0.31
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-2",
+  "tid": 12,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81183,
+     "cache_write_tokens": 24526,
+     "input_tokens": 6,
+     "output_tokens": 605
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81183,
+    "cache_write_tokens": 24526,
+    "input_tokens": 6,
+    "output_tokens": 605
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.006997,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "4fa36a108a6e2b53ec47e4fbf0069e5d96d99add8c4bb27114cc62c39bf2c5a2",
+  "lang": "ko",
+  "latency_s": 45.431,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 633,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-2",
+  "tid": 13,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 43264,
+     "cache_write_tokens": 0,
+     "input_tokens": 19889,
+     "output_tokens": 1363
+    }
+   },
+   "missing_rows": 0,
+   "rows": 4,
+   "total": {
+    "cache_read_tokens": 43264,
+    "cache_write_tokens": 0,
+    "input_tokens": 19889,
+    "output_tokens": 1363
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 1.30423,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "b655cbb1a484b1ba66bbdb1ad7054df2a7524fadbb04f6e7530797085478c1b9",
+  "lang": "mixed",
+  "latency_s": 94.02,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 646,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.68,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.68,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.2,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.47,
+    "codex/gpt-6-luna": 0.29,
+    "other": 0.24
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-3",
+  "tid": 14,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 102144,
+     "cache_write_tokens": 0,
+     "input_tokens": 21939,
+     "output_tokens": 1268
+    }
+   },
+   "missing_rows": 0,
+   "rows": 7,
+   "total": {
+    "cache_read_tokens": 102144,
+    "cache_write_tokens": 0,
+    "input_tokens": 21939,
+    "output_tokens": 1268
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 0.71637,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "49333712f312704ff1dd6614e5912ee09058259a36815663c887f6a6c75d6f49",
+  "lang": "mixed",
+  "latency_s": 49.213,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 646,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.65,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.66,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.22,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.49,
+    "codex/gpt-6-luna": 0.26,
+    "other": 0.25
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-1",
+  "tid": 15,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 47616,
+     "cache_write_tokens": 0,
+     "input_tokens": 19026,
+     "output_tokens": 999
+    }
+   },
+   "missing_rows": 0,
+   "rows": 4,
+   "total": {
+    "cache_read_tokens": 47616,
+    "cache_write_tokens": 0,
+    "input_tokens": 19026,
+    "output_tokens": 999
+   }
+  }
+ },
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 0.67551,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "0b5ce46f809ddfb903229993debda57434f81864ccd23060af42898a544b9aa6",
+  "lang": "ko",
+  "latency_s": 47.017,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 556,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-1",
+  "tid": 16,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 30336,
+     "cache_write_tokens": 0,
+     "input_tokens": 32900,
+     "output_tokens": 863
+    }
+   },
+   "missing_rows": 0,
+   "rows": 4,
+   "total": {
+    "cache_read_tokens": 30336,
+    "cache_write_tokens": 0,
+    "input_tokens": 32900,
+    "output_tokens": 863
+   }
+  }
+ },
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 1.10413,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "67e0859b9928576af0e6176fa116c99b511468fcf7d55231ea836e95d6b3aaa4",
+  "lang": "ko",
+  "latency_s": 71.686,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 563,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-2",
+  "tid": 17,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 83328,
+     "cache_write_tokens": 0,
+     "input_tokens": 21065,
+     "output_tokens": 1204
+    }
+   },
+   "missing_rows": 0,
+   "rows": 6,
+   "total": {
+    "cache_read_tokens": 83328,
+    "cache_write_tokens": 0,
+    "input_tokens": 21065,
+    "output_tokens": 1204
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.28884,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "102e980860402db1e44165965fb1bd0268d5f0219595209c49b65eecb84cce18",
+  "lang": "mixed",
+  "latency_s": 17.072,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 693,
+   "output": 188
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.76,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.76,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.69,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "claude/sonnet",
+   "confidence": 0.18,
+   "probabilities": {
+    "claude/haiku": 0.25,
+    "claude/opus": 0.06,
+    "claude/sonnet": 0.38,
+    "other": 0.31
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-0",
+  "tid": 18,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 115583,
+     "cache_write_tokens": 25109,
+     "input_tokens": 8,
+     "output_tokens": 744
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 115583,
+    "cache_write_tokens": 25109,
+    "input_tokens": 8,
+    "output_tokens": 744
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.004718,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "102e980860402db1e44165965fb1bd0268d5f0219595209c49b65eecb84cce18",
+  "lang": "mixed",
+  "latency_s": 63.053,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 527,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-0",
+  "tid": 19,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 28160,
+     "cache_write_tokens": 0,
+     "input_tokens": 16418,
+     "output_tokens": 520
+    }
+   },
+   "missing_rows": 0,
+   "rows": 3,
+   "total": {
+    "cache_read_tokens": 28160,
+    "cache_write_tokens": 0,
+    "input_tokens": 16418,
+    "output_tokens": 520
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.225238,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "4fa36a108a6e2b53ec47e4fbf0069e5d96d99add8c4bb27114cc62c39bf2c5a2",
+  "lang": "ko",
+  "latency_s": 20.791,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 799,
+   "output": 188
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.66,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.66,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.49,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "claude/sonnet",
+   "confidence": 0.21,
+   "probabilities": {
+    "claude/haiku": 0.08,
+    "claude/opus": 0.14,
+    "claude/sonnet": 0.41,
+    "other": 0.37
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-2",
+  "tid": 20,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81603,
+     "cache_write_tokens": 25295,
+     "input_tokens": 6,
+     "output_tokens": 1143
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81603,
+    "cache_write_tokens": 25295,
+    "input_tokens": 6,
+    "output_tokens": 1143
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.222586,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "ddf72269b07145e6913188d42fc4e8d930836b37541f7eada7a669eec2c13422",
+  "lang": "ko",
+  "latency_s": 15.114,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 803,
+   "output": 188
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.68,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.69,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.52,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "claude/sonnet",
+   "confidence": 0.25,
+   "probabilities": {
+    "claude/haiku": 0.08,
+    "claude/opus": 0.1,
+    "claude/sonnet": 0.43,
+    "other": 0.39
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-0",
+  "tid": 21,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 79517,
+     "cache_write_tokens": 25810,
+     "input_tokens": 6,
+     "output_tokens": 1192
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 79517,
+    "cache_write_tokens": 25810,
+    "input_tokens": 6,
+    "output_tokens": 1192
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.215648,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "9e24e2007b59d2a2534b347d1341de46587ec1caa4e3b24ecbd016ea05bc287e",
+  "lang": "ko",
+  "latency_s": 17.931,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 720,
+   "output": 188
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.76,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.76,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.71,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "claude/sonnet",
+   "confidence": 0.17,
+   "probabilities": {
+    "claude/haiku": 0.27,
+    "claude/opus": 0.05,
+    "claude/sonnet": 0.38,
+    "other": 0.3
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-3",
+  "tid": 22,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 79644,
+     "cache_write_tokens": 24999,
+     "input_tokens": 6,
+     "output_tokens": 635
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 79644,
+    "cache_write_tokens": 24999,
+    "input_tokens": 6,
+    "output_tokens": 635
+   }
+  }
+ },
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 1.21816,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "6f2cfc2106a0374e195ac227ef4616c048abac0d10d8a7253a58f06f5f08d3fe",
+  "lang": "mixed",
+  "latency_s": 114.299,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 586,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-1",
+  "tid": 23,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 64512,
+     "cache_write_tokens": 0,
+     "input_tokens": 42844,
+     "output_tokens": 2892
+    }
+   },
+   "missing_rows": 0,
+   "rows": 6,
+   "total": {
+    "cache_read_tokens": 64512,
+    "cache_write_tokens": 0,
+    "input_tokens": 42844,
+    "output_tokens": 2892
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.00627,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "9e24e2007b59d2a2534b347d1341de46587ec1caa4e3b24ecbd016ea05bc287e",
+  "lang": "ko",
+  "latency_s": 46.01,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 554,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-3",
+  "tid": 24,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 42240,
+     "cache_write_tokens": 0,
+     "input_tokens": 17470,
+     "output_tokens": 598
+    }
+   },
+   "missing_rows": 0,
+   "rows": 4,
+   "total": {
+    "cache_read_tokens": 42240,
+    "cache_write_tokens": 0,
+    "input_tokens": 17470,
+    "output_tokens": 598
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": null,
+  "ctx": "long",
+  "default_model": "claude/haiku",
+  "difficulty": "medium",
+  "executed_models": [],
+  "failed_cases": [
+   "retry-0",
+   "retry-2",
+   "retry-3",
+   "retry-4",
+   "retry-5",
+   "retry-6",
+   "retry-7",
+   "retry-8",
+   "retry-9",
+   "retry-negative"
+  ],
+  "family_id": "fam542-retry",
+  "fixture_hash": "b655cbb1a484b1ba66bbdb1ad7054df2a7524fadbb04f6e7530797085478c1b9",
+  "lang": "mixed",
+  "latency_s": null,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [
+   "permission prompt blocked the run"
+  ],
+  "packets": 0,
+  "passed": 2,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 514,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "failed",
+  "success": false,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-3",
+  "tid": 25,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {},
+   "missing_rows": 0,
+   "rows": 0,
+   "total": {
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 0.96271,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "05a32bf0611ab08d6435d56e346b44a9ff07e0565bc28b114120b802bd1441f8",
+  "lang": "mixed",
+  "latency_s": 76.216,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 721,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.59,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.59,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.11,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.41000000000000003,
+    "codex/gpt-6-luna": 0.27,
+    "other": 0.32
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-3",
+  "tid": 26,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 64000,
+     "cache_write_tokens": 0,
+     "input_tokens": 20921,
+     "output_tokens": 2270
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 64000,
+    "cache_write_tokens": 0,
+    "input_tokens": 20921,
+    "output_tokens": 2270
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.216432,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "0b5ce46f809ddfb903229993debda57434f81864ccd23060af42898a544b9aa6",
+  "lang": "ko",
+  "latency_s": 11.579,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 830,
+   "output": 275
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.76,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.77,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.69,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.68,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.7,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.22,
+   "probabilities": {
+    "claude/haiku": 0.04,
+    "claude/opus": 0.02,
+    "claude/sonnet": 0.11,
+    "codex/gpt-6-astra": 0.36,
+    "codex/gpt-6-luna": 0.25,
+    "other": 0.22
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-1",
+  "tid": 27,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 79648,
+     "cache_write_tokens": 25022,
+     "input_tokens": 6,
+     "output_tokens": 708
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 79648,
+    "cache_write_tokens": 25022,
+    "input_tokens": 6,
+    "output_tokens": 708
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 0.91652,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "9e24e2007b59d2a2534b347d1341de46587ec1caa4e3b24ecbd016ea05bc287e",
+  "lang": "ko",
+  "latency_s": 59.16,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 686,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.69,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.7,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.21,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.47,
+    "codex/gpt-6-luna": 0.27,
+    "other": 0.26
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-3",
+  "tid": 28,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 66048,
+     "cache_write_tokens": 0,
+     "input_tokens": 19469,
+     "output_tokens": 1227
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 66048,
+    "cache_write_tokens": 0,
+    "input_tokens": 19469,
+    "output_tokens": 1227
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.217402,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "67e0859b9928576af0e6176fa116c99b511468fcf7d55231ea836e95d6b3aaa4",
+  "lang": "ko",
+  "latency_s": 13.103,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 729,
+   "output": 184
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.66,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "other",
+   "confidence": 0.19,
+   "probabilities": {
+    "claude/haiku": 0.19,
+    "claude/opus": 0.08,
+    "claude/sonnet": 0.33,
+    "other": 0.4
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-2",
+  "tid": 29,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81250,
+     "cache_write_tokens": 24490,
+     "input_tokens": 6,
+     "output_tokens": 591
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81250,
+    "cache_write_tokens": 24490,
+    "input_tokens": 6,
+    "output_tokens": 591
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.227018,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "ddf72269b07145e6913188d42fc4e8d930836b37541f7eada7a669eec2c13422",
+  "lang": "ko",
+  "latency_s": 15.653,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 911,
+   "output": 268
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.7,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.69,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.51,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.61,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.61,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "other",
+   "confidence": 0.14,
+   "probabilities": {
+    "claude/haiku": 0.03,
+    "claude/opus": 0.05,
+    "claude/sonnet": 0.11,
+    "codex/gpt-6-astra": 0.24,
+    "codex/gpt-6-luna": 0.28,
+    "other": 0.29
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-0",
+  "tid": 30,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81824,
+     "cache_write_tokens": 25524,
+     "input_tokens": 6,
+     "output_tokens": 1231
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81824,
+    "cache_write_tokens": 25524,
+    "input_tokens": 6,
+    "output_tokens": 1231
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.441092,
+  "ctx": "short",
+  "default_model": "claude/opus",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "102e980860402db1e44165965fb1bd0268d5f0219595209c49b65eecb84cce18",
+  "lang": "mixed",
+  "latency_s": 15.861,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 527,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-0",
+  "tid": 31,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 81147,
+     "cache_write_tokens": 25100,
+     "input_tokens": 6,
+     "output_tokens": 804
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81147,
+    "cache_write_tokens": 25100,
+    "input_tokens": 6,
+    "output_tokens": 804
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.217506,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "a383ae01292c7aee3746fd20a72760c3cfd78018b50ca781c44fa2e6944a7573",
+  "lang": "mixed",
+  "latency_s": 13.501,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 801,
+   "output": 275
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.75,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.77,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.7,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.67,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.71,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.18,
+   "probabilities": {
+    "claude/haiku": 0.04,
+    "claude/opus": 0.02,
+    "claude/sonnet": 0.12,
+    "codex/gpt-6-astra": 0.32,
+    "codex/gpt-6-luna": 0.29,
+    "other": 0.21
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-2",
+  "tid": 32,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 79642,
+     "cache_write_tokens": 25290,
+     "input_tokens": 6,
+     "output_tokens": 763
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 79642,
+    "cache_write_tokens": 25290,
+    "input_tokens": 6,
+    "output_tokens": 763
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.004727,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "67e0859b9928576af0e6176fa116c99b511468fcf7d55231ea836e95d6b3aaa4",
+  "lang": "ko",
+  "latency_s": 41.245,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 563,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-2",
+  "tid": 33,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 39168,
+     "cache_write_tokens": 0,
+     "input_tokens": 5466,
+     "output_tokens": 527
+    }
+   },
+   "missing_rows": 0,
+   "rows": 3,
+   "total": {
+    "cache_read_tokens": 39168,
+    "cache_write_tokens": 0,
+    "input_tokens": 5466,
+    "output_tokens": 527
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": null,
+  "ctx": "short",
+  "default_model": "claude/haiku",
+  "difficulty": "hard",
+  "executed_models": [],
+  "failed_cases": [
+   "ttl-0",
+   "ttl-1",
+   "ttl-2",
+   "ttl-3",
+   "ttl-4",
+   "ttl-5",
+   "ttl-6",
+   "ttl-7",
+   "ttl-8",
+   "ttl-9"
+  ],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "05a32bf0611ab08d6435d56e346b44a9ff07e0565bc28b114120b802bd1441f8",
+  "lang": "mixed",
+  "latency_s": null,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [
+   "permission prompt blocked the run"
+  ],
+  "packets": 0,
+  "passed": 0,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 589,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "failed",
+  "success": false,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-3",
+  "tid": 34,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {},
+   "missing_rows": 0,
+   "rows": 0,
+   "total": {
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.010169,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "ddf72269b07145e6913188d42fc4e8d930836b37541f7eada7a669eec2c13422",
+  "lang": "ko",
+  "latency_s": 56.243,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 637,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-0",
+  "tid": 35,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 74496,
+     "cache_write_tokens": 0,
+     "input_tokens": 20289,
+     "output_tokens": 1380
+    }
+   },
+   "missing_rows": 0,
+   "rows": 6,
+   "total": {
+    "cache_read_tokens": 74496,
+    "cache_write_tokens": 0,
+    "input_tokens": 20289,
+    "output_tokens": 1380
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": null,
+  "ctx": "short",
+  "default_model": "claude/haiku",
+  "difficulty": "medium",
+  "executed_models": [],
+  "failed_cases": [
+   "page-0",
+   "page-1",
+   "page-10",
+   "page-11",
+   "page-12",
+   "page-13",
+   "page-14",
+   "page-15",
+   "page-2",
+   "page-3"
+  ],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "9e24e2007b59d2a2534b347d1341de46587ec1caa4e3b24ecbd016ea05bc287e",
+  "lang": "ko",
+  "latency_s": null,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [
+   "permission prompt blocked the run"
+  ],
+  "packets": 0,
+  "passed": 0,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 554,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "failed",
+  "success": false,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-3",
+  "tid": 36,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {},
+   "missing_rows": 0,
+   "rows": 0,
+   "total": {
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.207268,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "b655cbb1a484b1ba66bbdb1ad7054df2a7524fadbb04f6e7530797085478c1b9",
+  "lang": "mixed",
+  "latency_s": 11.483,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 680,
+   "output": 184
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.73,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.64,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "other",
+   "confidence": 0.15,
+   "probabilities": {
+    "claude/haiku": 0.2,
+    "claude/opus": 0.09,
+    "claude/sonnet": 0.34,
+    "other": 0.37
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-3",
+  "tid": 37,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 78313,
+     "cache_write_tokens": 22285,
+     "input_tokens": 6,
+     "output_tokens": 606
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 78313,
+    "cache_write_tokens": 22285,
+    "input_tokens": 6,
+    "output_tokens": 606
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.216692,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "a383ae01292c7aee3746fd20a72760c3cfd78018b50ca781c44fa2e6944a7573",
+  "lang": "mixed",
+  "latency_s": 17.253,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 527,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-2",
+  "tid": 38,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 80876,
+     "cache_write_tokens": 24384,
+     "input_tokens": 6,
+     "output_tokens": 616
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 80876,
+    "cache_write_tokens": 24384,
+    "input_tokens": 6,
+    "output_tokens": 616
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.213586,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "49333712f312704ff1dd6614e5912ee09058259a36815663c887f6a6c75d6f49",
+  "lang": "mixed",
+  "latency_s": 11.739,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 680,
+   "output": 184
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.72,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.73,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.63,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "other",
+   "confidence": 0.14,
+   "probabilities": {
+    "claude/haiku": 0.19,
+    "claude/opus": 0.11,
+    "claude/sonnet": 0.35,
+    "other": 0.35
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-1",
+  "tid": 39,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 79268,
+     "cache_write_tokens": 24714,
+     "input_tokens": 6,
+     "output_tokens": 561
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 79268,
+    "cache_write_tokens": 24714,
+    "input_tokens": 6,
+    "output_tokens": 561
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.215658,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "0b5ce46f809ddfb903229993debda57434f81864ccd23060af42898a544b9aa6",
+  "lang": "ko",
+  "latency_s": 12.1,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 556,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-1",
+  "tid": 40,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 79634,
+     "cache_write_tokens": 24989,
+     "input_tokens": 6,
+     "output_tokens": 640
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 79634,
+    "cache_write_tokens": 24989,
+    "input_tokens": 6,
+    "output_tokens": 640
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.008442,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "05a32bf0611ab08d6435d56e346b44a9ff07e0565bc28b114120b802bd1441f8",
+  "lang": "mixed",
+  "latency_s": 45.951,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 589,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-3",
+  "tid": 41,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 58368,
+     "cache_write_tokens": 0,
+     "input_tokens": 19600,
+     "output_tokens": 1291
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 58368,
+    "cache_write_tokens": 0,
+    "input_tokens": 19600,
+    "output_tokens": 1291
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.441636,
+  "ctx": "short",
+  "default_model": "claude/opus",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "9e24e2007b59d2a2534b347d1341de46587ec1caa4e3b24ecbd016ea05bc287e",
+  "lang": "ko",
+  "latency_s": 14.781,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 554,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-3",
+  "tid": 42,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 81218,
+     "cache_write_tokens": 25015,
+     "input_tokens": 6,
+     "output_tokens": 834
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81218,
+    "cache_write_tokens": 25015,
+    "input_tokens": 6,
+    "output_tokens": 834
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": null,
+  "ctx": "long",
+  "default_model": "claude/haiku",
+  "difficulty": "hard",
+  "executed_models": [],
+  "failed_cases": [
+   "ttl-0",
+   "ttl-1",
+   "ttl-2",
+   "ttl-3",
+   "ttl-4",
+   "ttl-5",
+   "ttl-6",
+   "ttl-7",
+   "ttl-8",
+   "ttl-9"
+  ],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "ddf72269b07145e6913188d42fc4e8d930836b37541f7eada7a669eec2c13422",
+  "lang": "ko",
+  "latency_s": null,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [
+   "permission prompt blocked the run"
+  ],
+  "packets": 0,
+  "passed": 0,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 637,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "failed",
+  "success": false,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-0",
+  "tid": 43,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {},
+   "missing_rows": 0,
+   "rows": 0,
+   "total": {
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.218542,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "102e980860402db1e44165965fb1bd0268d5f0219595209c49b65eecb84cce18",
+  "lang": "mixed",
+  "latency_s": 10.917,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 801,
+   "output": 275
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.77,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.76,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.71,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.69,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.7,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.21,
+   "probabilities": {
+    "claude/haiku": 0.03,
+    "claude/opus": 0.02,
+    "claude/sonnet": 0.11,
+    "codex/gpt-6-astra": 0.33,
+    "codex/gpt-6-luna": 0.33,
+    "other": 0.18
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-0",
+  "tid": 44,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81202,
+     "cache_write_tokens": 24623,
+     "input_tokens": 6,
+     "output_tokens": 688
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81202,
+    "cache_write_tokens": 24623,
+    "input_tokens": 6,
+    "output_tokens": 688
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.445176,
+  "ctx": "short",
+  "default_model": "claude/opus",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "d79c978068504726667d822c1e14b7d7a9a0f4041842838eeb0a0f92f38b4a33",
+  "lang": "ko",
+  "latency_s": 18.083,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 563,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-0",
+  "tid": 45,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 81236,
+     "cache_write_tokens": 24947,
+     "input_tokens": 6,
+     "output_tokens": 1021
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81236,
+    "cache_write_tokens": 24947,
+    "input_tokens": 6,
+    "output_tokens": 1021
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": null,
+  "ctx": "long",
+  "default_model": "claude/haiku",
+  "difficulty": "medium",
+  "executed_models": [],
+  "failed_cases": [
+   "page-0",
+   "page-1",
+   "page-10",
+   "page-11",
+   "page-12",
+   "page-13",
+   "page-14",
+   "page-15",
+   "page-2",
+   "page-3"
+  ],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "a383ae01292c7aee3746fd20a72760c3cfd78018b50ca781c44fa2e6944a7573",
+  "lang": "mixed",
+  "latency_s": null,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [
+   "permission prompt blocked the run"
+  ],
+  "packets": 0,
+  "passed": 0,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 527,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "failed",
+  "success": false,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-2",
+  "tid": 46,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {},
+   "missing_rows": 0,
+   "rows": 0,
+   "total": {
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 0.67627,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "67e0859b9928576af0e6176fa116c99b511468fcf7d55231ea836e95d6b3aaa4",
+  "lang": "ko",
+  "latency_s": 54.449,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 695,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.68,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.68,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.18,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.45,
+    "codex/gpt-6-luna": 0.25,
+    "other": 0.3
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-2",
+  "tid": 47,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 45952,
+     "cache_write_tokens": 0,
+     "input_tokens": 17130,
+     "output_tokens": 909
+    }
+   },
+   "missing_rows": 0,
+   "rows": 4,
+   "total": {
+    "cache_read_tokens": 45952,
+    "cache_write_tokens": 0,
+    "input_tokens": 17130,
+    "output_tokens": 909
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": null,
+  "ctx": "short",
+  "default_model": "claude/haiku",
+  "difficulty": "medium",
+  "executed_models": [],
+  "failed_cases": [
+   "page-0",
+   "page-1",
+   "page-10",
+   "page-11",
+   "page-12",
+   "page-13",
+   "page-14",
+   "page-15",
+   "page-2",
+   "page-3"
+  ],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "102e980860402db1e44165965fb1bd0268d5f0219595209c49b65eecb84cce18",
+  "lang": "mixed",
+  "latency_s": null,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [
+   "permission prompt blocked the run"
+  ],
+  "packets": 0,
+  "passed": 0,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 527,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "failed",
+  "success": false,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-0",
+  "tid": 48,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {},
+   "missing_rows": 0,
+   "rows": 0,
+   "total": {
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 0.96893,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "4fa36a108a6e2b53ec47e4fbf0069e5d96d99add8c4bb27114cc62c39bf2c5a2",
+  "lang": "ko",
+  "latency_s": 85.867,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 765,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.56,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.58,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.12,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.41,
+    "codex/gpt-6-luna": 0.25,
+    "other": 0.34
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-2",
+  "tid": 49,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 64256,
+     "cache_write_tokens": 0,
+     "input_tokens": 21032,
+     "output_tokens": 2321
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 64256,
+    "cache_write_tokens": 0,
+    "input_tokens": 21032,
+    "output_tokens": 2321
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.60912,
+  "ctx": "short",
+  "default_model": "claude/opus",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "05a32bf0611ab08d6435d56e346b44a9ff07e0565bc28b114120b802bd1441f8",
+  "lang": "mixed",
+  "latency_s": 25.737,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 589,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-3",
+  "tid": 50,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 118906,
+     "cache_write_tokens": 25836,
+     "input_tokens": 8,
+     "output_tokens": 1506
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 118906,
+    "cache_write_tokens": 25836,
+    "input_tokens": 8,
+    "output_tokens": 1506
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 1.07706,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "0b5ce46f809ddfb903229993debda57434f81864ccd23060af42898a544b9aa6",
+  "lang": "ko",
+  "latency_s": 58.324,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 688,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.67,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.69,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.23,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.48,
+    "codex/gpt-6-luna": 0.24,
+    "other": 0.28
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-1",
+  "tid": 51,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 81152,
+     "cache_write_tokens": 0,
+     "input_tokens": 19939,
+     "output_tokens": 1323
+    }
+   },
+   "missing_rows": 0,
+   "rows": 6,
+   "total": {
+    "cache_read_tokens": 81152,
+    "cache_write_tokens": 0,
+    "input_tokens": 19939,
+    "output_tokens": 1323
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.74128,
+  "ctx": "long",
+  "default_model": "claude/opus",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "67e0859b9928576af0e6176fa116c99b511468fcf7d55231ea836e95d6b3aaa4",
+  "lang": "ko",
+  "latency_s": 26.848,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 563,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-2",
+  "tid": 52,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 154500,
+     "cache_write_tokens": 25235,
+     "input_tokens": 10,
+     "output_tokens": 1115
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 154500,
+    "cache_write_tokens": 25235,
+    "input_tokens": 10,
+    "output_tokens": 1115
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.2165,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "49333712f312704ff1dd6614e5912ee09058259a36815663c887f6a6c75d6f49",
+  "lang": "mixed",
+  "latency_s": 8.074,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 788,
+   "output": 275
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.65,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.67,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.66,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.22,
+   "probabilities": {
+    "claude/haiku": 0.03,
+    "claude/opus": 0.03,
+    "claude/sonnet": 0.1,
+    "codex/gpt-6-astra": 0.35,
+    "codex/gpt-6-luna": 0.26,
+    "other": 0.23
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-1",
+  "tid": 53,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81198,
+     "cache_write_tokens": 24456,
+     "input_tokens": 6,
+     "output_tokens": 518
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81198,
+    "cache_write_tokens": 24456,
+    "input_tokens": 6,
+    "output_tokens": 518
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.006341,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "b655cbb1a484b1ba66bbdb1ad7054df2a7524fadbb04f6e7530797085478c1b9",
+  "lang": "mixed",
+  "latency_s": 47.295,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 514,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-3",
+  "tid": 54,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 39168,
+     "cache_write_tokens": 0,
+     "input_tokens": 21030,
+     "output_tokens": 642
+    }
+   },
+   "missing_rows": 0,
+   "rows": 4,
+   "total": {
+    "cache_read_tokens": 39168,
+    "cache_write_tokens": 0,
+    "input_tokens": 21030,
+    "output_tokens": 642
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 1.21787,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "6f2cfc2106a0374e195ac227ef4616c048abac0d10d8a7253a58f06f5f08d3fe",
+  "lang": "mixed",
+  "latency_s": 86.434,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 718,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.57,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.58,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.15,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.43,
+    "codex/gpt-6-luna": 0.27,
+    "other": 0.3
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-1",
+  "tid": 55,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 67456,
+     "cache_write_tokens": 0,
+     "input_tokens": 42726,
+     "output_tokens": 2321
+    }
+   },
+   "missing_rows": 0,
+   "rows": 6,
+   "total": {
+    "cache_read_tokens": 67456,
+    "cache_write_tokens": 0,
+    "input_tokens": 42726,
+    "output_tokens": 2321
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.611508,
+  "ctx": "long",
+  "default_model": "claude/opus",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "ddf72269b07145e6913188d42fc4e8d930836b37541f7eada7a669eec2c13422",
+  "lang": "ko",
+  "latency_s": 21.6,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 637,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-0",
+  "tid": 56,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 119248,
+     "cache_write_tokens": 25981,
+     "input_tokens": 8,
+     "output_tokens": 1528
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 119248,
+    "cache_write_tokens": 25981,
+    "input_tokens": 8,
+    "output_tokens": 1528
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.22708,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "05a32bf0611ab08d6435d56e346b44a9ff07e0565bc28b114120b802bd1441f8",
+  "lang": "mixed",
+  "latency_s": 13.887,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 863,
+   "output": 268
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.67,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.68,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.5,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.58,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.58,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "other",
+   "confidence": 0.15,
+   "probabilities": {
+    "claude/haiku": 0.02,
+    "claude/opus": 0.04,
+    "claude/sonnet": 0.11,
+    "codex/gpt-6-astra": 0.26,
+    "codex/gpt-6-luna": 0.27,
+    "other": 0.3
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-3",
+  "tid": 57,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81738,
+     "cache_write_tokens": 25441,
+     "input_tokens": 6,
+     "output_tokens": 1271
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81738,
+    "cache_write_tokens": 25441,
+    "input_tokens": 6,
+    "output_tokens": 1271
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": null,
+  "ctx": "long",
+  "default_model": "claude/haiku",
+  "difficulty": "medium",
+  "executed_models": [],
+  "failed_cases": [
+   "retry-0",
+   "retry-2",
+   "retry-3",
+   "retry-4",
+   "retry-5",
+   "retry-6",
+   "retry-7",
+   "retry-8",
+   "retry-9",
+   "retry-negative"
+  ],
+  "family_id": "fam542-retry",
+  "fixture_hash": "67e0859b9928576af0e6176fa116c99b511468fcf7d55231ea836e95d6b3aaa4",
+  "lang": "ko",
+  "latency_s": null,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [
+   "permission prompt blocked the run"
+  ],
+  "packets": 0,
+  "passed": 2,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 563,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "failed",
+  "success": false,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-2",
+  "tid": 58,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {},
+   "missing_rows": 0,
+   "rows": 0,
+   "total": {
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.225758,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "ddf72269b07145e6913188d42fc4e8d930836b37541f7eada7a669eec2c13422",
+  "lang": "ko",
+  "latency_s": 14.007,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 637,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-0",
+  "tid": 59,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81589,
+     "cache_write_tokens": 25234,
+     "input_tokens": 6,
+     "output_tokens": 1210
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81589,
+    "cache_write_tokens": 25234,
+    "input_tokens": 6,
+    "output_tokens": 1210
+   }
+  }
+ },
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 1.06097,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "102e980860402db1e44165965fb1bd0268d5f0219595209c49b65eecb84cce18",
+  "lang": "mixed",
+  "latency_s": 51.135,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 527,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-0",
+  "tid": 60,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 75776,
+     "cache_write_tokens": 0,
+     "input_tokens": 25531,
+     "output_tokens": 958
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 75776,
+    "cache_write_tokens": 0,
+    "input_tokens": 25531,
+    "output_tokens": 958
+   }
+  }
+ },
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 1.16329,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "ddf72269b07145e6913188d42fc4e8d930836b37541f7eada7a669eec2c13422",
+  "lang": "ko",
+  "latency_s": 98.224,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 637,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-0",
+  "tid": 61,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 84608,
+     "cache_write_tokens": 0,
+     "input_tokens": 22186,
+     "output_tokens": 1907
+    }
+   },
+   "missing_rows": 0,
+   "rows": 6,
+   "total": {
+    "cache_read_tokens": 84608,
+    "cache_write_tokens": 0,
+    "input_tokens": 22186,
+    "output_tokens": 1907
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.59092,
+  "ctx": "long",
+  "default_model": "claude/opus",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "0b5ce46f809ddfb903229993debda57434f81864ccd23060af42898a544b9aa6",
+  "lang": "ko",
+  "latency_s": 20.68,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 556,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-1",
+  "tid": 62,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 117145,
+     "cache_write_tokens": 25347,
+     "input_tokens": 8,
+     "output_tokens": 1046
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 117145,
+    "cache_write_tokens": 25347,
+    "input_tokens": 8,
+    "output_tokens": 1046
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": null,
+  "ctx": "long",
+  "default_model": "claude/haiku",
+  "difficulty": "hard",
+  "executed_models": [],
+  "failed_cases": [
+   "ttl-0",
+   "ttl-1",
+   "ttl-2",
+   "ttl-3",
+   "ttl-4",
+   "ttl-5",
+   "ttl-6",
+   "ttl-7",
+   "ttl-8",
+   "ttl-9"
+  ],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "6f2cfc2106a0374e195ac227ef4616c048abac0d10d8a7253a58f06f5f08d3fe",
+  "lang": "mixed",
+  "latency_s": null,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [
+   "permission prompt blocked the run"
+  ],
+  "packets": 0,
+  "passed": 0,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 586,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "failed",
+  "success": false,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-1",
+  "tid": 63,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {},
+   "missing_rows": 0,
+   "rows": 0,
+   "total": {
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.74456,
+  "ctx": "short",
+  "default_model": "claude/opus",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "49333712f312704ff1dd6614e5912ee09058259a36815663c887f6a6c75d6f49",
+  "lang": "mixed",
+  "latency_s": 155.963,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 514,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-1",
+  "tid": 64,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 154378,
+     "cache_write_tokens": 26112,
+     "input_tokens": 10,
+     "output_tokens": 1128
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 154378,
+    "cache_write_tokens": 26112,
+    "input_tokens": 10,
+    "output_tokens": 1128
+   }
+  }
+ },
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 0.67189,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "9e24e2007b59d2a2534b347d1341de46587ec1caa4e3b24ecbd016ea05bc287e",
+  "lang": "ko",
+  "latency_s": 134.792,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 554,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-3",
+  "tid": 65,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 45952,
+     "cache_write_tokens": 0,
+     "input_tokens": 16977,
+     "output_tokens": 852
+    }
+   },
+   "missing_rows": 0,
+   "rows": 4,
+   "total": {
+    "cache_read_tokens": 45952,
+    "cache_write_tokens": 0,
+    "input_tokens": 16977,
+    "output_tokens": 852
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.20577,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "d79c978068504726667d822c1e14b7d7a9a0f4041842838eeb0a0f92f38b4a33",
+  "lang": "ko",
+  "latency_s": 25.224,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 729,
+   "output": 184
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.75,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.65,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "other",
+   "confidence": 0.24,
+   "probabilities": {
+    "claude/haiku": 0.15,
+    "claude/opus": 0.09,
+    "claude/sonnet": 0.33,
+    "other": 0.43
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-0",
+  "tid": 66,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 78041,
+     "cache_write_tokens": 21838,
+     "input_tokens": 6,
+     "output_tokens": 600
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 78041,
+    "cache_write_tokens": 21838,
+    "input_tokens": 6,
+    "output_tokens": 600
+   }
+  }
+ },
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 1.10145,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "b655cbb1a484b1ba66bbdb1ad7054df2a7524fadbb04f6e7530797085478c1b9",
+  "lang": "mixed",
+  "latency_s": 117.252,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 514,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-3",
+  "tid": 67,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 63232,
+     "cache_write_tokens": 0,
+     "input_tokens": 40618,
+     "output_tokens": 1259
+    }
+   },
+   "missing_rows": 0,
+   "rows": 6,
+   "total": {
+    "cache_read_tokens": 63232,
+    "cache_write_tokens": 0,
+    "input_tokens": 40618,
+    "output_tokens": 1259
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.00472,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "49333712f312704ff1dd6614e5912ee09058259a36815663c887f6a6c75d6f49",
+  "lang": "mixed",
+  "latency_s": 42.643,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 514,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-1",
+  "tid": 68,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 14080,
+     "cache_write_tokens": 0,
+     "input_tokens": 30402,
+     "output_tokens": 544
+    }
+   },
+   "missing_rows": 0,
+   "rows": 3,
+   "total": {
+    "cache_read_tokens": 14080,
+    "cache_write_tokens": 0,
+    "input_tokens": 30402,
+    "output_tokens": 544
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.215638,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "9e24e2007b59d2a2534b347d1341de46587ec1caa4e3b24ecbd016ea05bc287e",
+  "lang": "ko",
+  "latency_s": 16.738,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 554,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-3",
+  "tid": 69,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 79634,
+     "cache_write_tokens": 24984,
+     "input_tokens": 6,
+     "output_tokens": 639
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 79634,
+    "cache_write_tokens": 24984,
+    "input_tokens": 6,
+    "output_tokens": 639
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": 0.107933,
+  "ctx": "short",
+  "default_model": "claude/haiku",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-haiku-4-5-20251001"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "4fa36a108a6e2b53ec47e4fbf0069e5d96d99add8c4bb27114cc62c39bf2c5a2",
+  "lang": "ko",
+  "latency_s": 33.877,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 633,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-2",
+  "tid": 70,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-haiku-4-5-20251001": {
+     "cache_read_tokens": 74922,
+     "cache_write_tokens": 18255,
+     "input_tokens": 26,
+     "output_tokens": 2946
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 74922,
+    "cache_write_tokens": 18255,
+    "input_tokens": 26,
+    "output_tokens": 2946
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.225576,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "6f2cfc2106a0374e195ac227ef4616c048abac0d10d8a7253a58f06f5f08d3fe",
+  "lang": "mixed",
+  "latency_s": 14.146,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 586,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-1",
+  "tid": 71,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81533,
+     "cache_write_tokens": 25244,
+     "input_tokens": 6,
+     "output_tokens": 1201
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81533,
+    "cache_write_tokens": 25244,
+    "input_tokens": 6,
+    "output_tokens": 1201
+   }
+  }
+ },
+ {
+  "arm": "x-auto",
+  "cost_usd_upper": 0.90331,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "102e980860402db1e44165965fb1bd0268d5f0219595209c49b65eecb84cce18",
+  "lang": "mixed",
+  "latency_s": 65.228,
+  "layer": "codex",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 659,
+   "output": 169
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.69,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.69,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.21,
+   "probabilities": {
+    "codex/gpt-6-astra": 0.48,
+    "codex/gpt-6-luna": 0.33,
+    "other": 0.19
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-0",
+  "tid": 72,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 65664,
+     "cache_write_tokens": 0,
+     "input_tokens": 19292,
+     "output_tokens": 1075
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 65664,
+    "cache_write_tokens": 0,
+    "input_tokens": 19292,
+    "output_tokens": 1075
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.217808,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "67e0859b9928576af0e6176fa116c99b511468fcf7d55231ea836e95d6b3aaa4",
+  "lang": "ko",
+  "latency_s": 12.788,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 563,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-2",
+  "tid": 73,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 80754,
+     "cache_write_tokens": 24949,
+     "input_tokens": 6,
+     "output_tokens": 639
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 80754,
+    "cache_write_tokens": 24949,
+    "input_tokens": 6,
+    "output_tokens": 639
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.74564,
+  "ctx": "long",
+  "default_model": "claude/opus",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "a383ae01292c7aee3746fd20a72760c3cfd78018b50ca781c44fa2e6944a7573",
+  "lang": "mixed",
+  "latency_s": 40.385,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 527,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-2",
+  "tid": 74,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 154639,
+     "cache_write_tokens": 26211,
+     "input_tokens": 10,
+     "output_tokens": 1110
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 154639,
+    "cache_write_tokens": 26211,
+    "input_tokens": 10,
+    "output_tokens": 1110
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.224798,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "4fa36a108a6e2b53ec47e4fbf0069e5d96d99add8c4bb27114cc62c39bf2c5a2",
+  "lang": "ko",
+  "latency_s": 19.753,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 633,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-2",
+  "tid": 75,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 79818,
+     "cache_write_tokens": 25985,
+     "input_tokens": 6,
+     "output_tokens": 1318
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 79818,
+    "cache_write_tokens": 25985,
+    "input_tokens": 6,
+    "output_tokens": 1318
+   }
+  }
+ },
+ {
+  "arm": "c-opus",
+  "cost_usd_upper": 0.441544,
+  "ctx": "long",
+  "default_model": "claude/opus",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-opus-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "b655cbb1a484b1ba66bbdb1ad7054df2a7524fadbb04f6e7530797085478c1b9",
+  "lang": "mixed",
+  "latency_s": 16.945,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 514,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/opus",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "opus",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-3",
+  "tid": 76,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-opus-5-5": {
+     "cache_read_tokens": 81186,
+     "cache_write_tokens": 24804,
+     "input_tokens": 6,
+     "output_tokens": 878
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81186,
+    "cache_write_tokens": 24804,
+    "input_tokens": 6,
+    "output_tokens": 878
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.004726,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "a383ae01292c7aee3746fd20a72760c3cfd78018b50ca781c44fa2e6944a7573",
+  "lang": "mixed",
+  "latency_s": 32.359,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 527,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-2",
+  "tid": 77,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 14080,
+     "cache_write_tokens": 0,
+     "input_tokens": 30487,
+     "output_tokens": 539
+    }
+   },
+   "missing_rows": 0,
+   "rows": 3,
+   "total": {
+    "cache_read_tokens": 14080,
+    "cache_write_tokens": 0,
+    "input_tokens": 30487,
+    "output_tokens": 539
+   }
+  }
+ },
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 1.15227,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "05a32bf0611ab08d6435d56e346b44a9ff07e0565bc28b114120b802bd1441f8",
+  "lang": "mixed",
+  "latency_s": 86.017,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 589,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-3",
+  "tid": 78,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 94848,
+     "cache_write_tokens": 0,
+     "input_tokens": 8934,
+     "output_tokens": 2289
+    }
+   },
+   "missing_rows": 0,
+   "rows": 6,
+   "total": {
+    "cache_read_tokens": 94848,
+    "cache_write_tokens": 0,
+    "input_tokens": 8934,
+    "output_tokens": 2289
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.20972,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "b655cbb1a484b1ba66bbdb1ad7054df2a7524fadbb04f6e7530797085478c1b9",
+  "lang": "mixed",
+  "latency_s": 11.38,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 788,
+   "output": 275
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.66,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.67,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.68,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.24,
+   "probabilities": {
+    "claude/haiku": 0.03,
+    "claude/opus": 0.03,
+    "claude/sonnet": 0.09,
+    "codex/gpt-6-astra": 0.37,
+    "codex/gpt-6-luna": 0.28,
+    "other": 0.2
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-3",
+  "tid": 79,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 78955,
+     "cache_write_tokens": 23329,
+     "input_tokens": 6,
+     "output_tokens": 514
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 78955,
+    "cache_write_tokens": 23329,
+    "input_tokens": 6,
+    "output_tokens": 514
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.213576,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "d79c978068504726667d822c1e14b7d7a9a0f4041842838eeb0a0f92f38b4a33",
+  "lang": "ko",
+  "latency_s": 9.892,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 837,
+   "output": 275
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.64,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.67,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.67,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-luna",
+   "confidence": 0.18,
+   "probabilities": {
+    "claude/haiku": 0.03,
+    "claude/opus": 0.03,
+    "claude/sonnet": 0.08,
+    "codex/gpt-6-astra": 0.3,
+    "codex/gpt-6-luna": 0.31,
+    "other": 0.25
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-0",
+  "tid": 80,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 79069,
+     "cache_write_tokens": 24958,
+     "input_tokens": 6,
+     "output_tokens": 551
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 79069,
+    "cache_write_tokens": 24958,
+    "input_tokens": 6,
+    "output_tokens": 551
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": null,
+  "ctx": "short",
+  "default_model": "claude/haiku",
+  "difficulty": "medium",
+  "executed_models": [],
+  "failed_cases": [
+   "retry-0",
+   "retry-2",
+   "retry-3",
+   "retry-4",
+   "retry-5",
+   "retry-6",
+   "retry-8",
+   "retry-negative"
+  ],
+  "family_id": "fam542-retry",
+  "fixture_hash": "49333712f312704ff1dd6614e5912ee09058259a36815663c887f6a6c75d6f49",
+  "lang": "mixed",
+  "latency_s": null,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [
+   "permission prompt blocked the run"
+  ],
+  "packets": 0,
+  "passed": 4,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 514,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "failed",
+  "success": false,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-1",
+  "tid": 81,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {},
+   "missing_rows": 0,
+   "rows": 0,
+   "total": {
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.004733,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "d79c978068504726667d822c1e14b7d7a9a0f4041842838eeb0a0f92f38b4a33",
+  "lang": "ko",
+  "latency_s": 45.073,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 563,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-0",
+  "tid": 82,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 28160,
+     "cache_write_tokens": 0,
+     "input_tokens": 16402,
+     "output_tokens": 553
+    }
+   },
+   "missing_rows": 0,
+   "rows": 3,
+   "total": {
+    "cache_read_tokens": 28160,
+    "cache_write_tokens": 0,
+    "input_tokens": 16402,
+    "output_tokens": 553
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.216762,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "b655cbb1a484b1ba66bbdb1ad7054df2a7524fadbb04f6e7530797085478c1b9",
+  "lang": "mixed",
+  "latency_s": 10.905,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 514,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-3",
+  "tid": 83,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81136,
+     "cache_write_tokens": 24404,
+     "input_tokens": 6,
+     "output_tokens": 567
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81136,
+    "cache_write_tokens": 24404,
+    "input_tokens": 6,
+    "output_tokens": 567
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.225886,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "4fa36a108a6e2b53ec47e4fbf0069e5d96d99add8c4bb27114cc62c39bf2c5a2",
+  "lang": "ko",
+  "latency_s": 14.21,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 907,
+   "output": 275
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.66,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.66,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.5,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.58,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.59,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.16,
+   "probabilities": {
+    "claude/haiku": 0.02,
+    "claude/opus": 0.05,
+    "claude/sonnet": 0.11,
+    "codex/gpt-6-astra": 0.3,
+    "codex/gpt-6-luna": 0.25,
+    "other": 0.27
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-2",
+  "tid": 84,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81597,
+     "cache_write_tokens": 25455,
+     "input_tokens": 6,
+     "output_tokens": 1177
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81597,
+    "cache_write_tokens": 25455,
+    "input_tokens": 6,
+    "output_tokens": 1177
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.215434,
+  "ctx": "long",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "67e0859b9928576af0e6176fa116c99b511468fcf7d55231ea836e95d6b3aaa4",
+  "lang": "ko",
+  "latency_s": 10.113,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 837,
+   "output": 275
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.74,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.66,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.67,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.68,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-luna",
+   "confidence": 0.17,
+   "probabilities": {
+    "claude/haiku": 0.03,
+    "claude/opus": 0.03,
+    "claude/sonnet": 0.09,
+    "codex/gpt-6-astra": 0.28,
+    "codex/gpt-6-luna": 0.31,
+    "other": 0.26
+   }
+  },
+  "target_applied": false,
+  "task_id": "retry-2",
+  "tid": 85,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 79688,
+     "cache_write_tokens": 24933,
+     "input_tokens": 6,
+     "output_tokens": 618
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 79688,
+    "cache_write_tokens": 24933,
+    "input_tokens": 6,
+    "output_tokens": 618
+   }
+  }
+ },
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 1.14186,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "hard",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "4fa36a108a6e2b53ec47e4fbf0069e5d96d99add8c4bb27114cc62c39bf2c5a2",
+  "lang": "ko",
+  "latency_s": 80.755,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 633,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "ttl-2",
+  "tid": 86,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 89984,
+     "cache_write_tokens": 0,
+     "input_tokens": 13497,
+     "output_tokens": 2141
+    }
+   },
+   "missing_rows": 0,
+   "rows": 6,
+   "total": {
+    "cache_read_tokens": 89984,
+    "cache_write_tokens": 0,
+    "input_tokens": 13497,
+    "output_tokens": 2141
+   }
+  }
+ },
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 0.9076,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "a383ae01292c7aee3746fd20a72760c3cfd78018b50ca781c44fa2e6944a7573",
+  "lang": "mixed",
+  "latency_s": 55.705,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 527,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-2",
+  "tid": 87,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 65920,
+     "cache_write_tokens": 0,
+     "input_tokens": 19535,
+     "output_tokens": 1061
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 65920,
+    "cache_write_tokens": 0,
+    "input_tokens": 19535,
+    "output_tokens": 1061
+   }
+  }
+ },
+ {
+  "arm": "c-auto",
+  "cost_usd_upper": 0.226958,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "hard",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-ttl",
+  "fixture_hash": "05a32bf0611ab08d6435d56e346b44a9ff07e0565bc28b114120b802bd1441f8",
+  "lang": "mixed",
+  "latency_s": 16.783,
+  "layer": "claude",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 11,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 755,
+   "output": 188
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.68,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.68,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.52,
+    "quality": "unverified:no-dated-evidence"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "claude/sonnet",
+   "confidence": 0.27,
+   "probabilities": {
+    "claude/haiku": 0.08,
+    "claude/opus": 0.13,
+    "claude/sonnet": 0.45,
+    "other": 0.34
+   }
+  },
+  "target_applied": false,
+  "task_id": "ttl-3",
+  "tid": 88,
+  "total_cases": 11,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81545,
+     "cache_write_tokens": 25568,
+     "input_tokens": 6,
+     "output_tokens": 1272
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81545,
+    "cache_write_tokens": 25568,
+    "input_tokens": 6,
+    "output_tokens": 1272
+   }
+  }
+ },
+ {
+  "arm": "c-haiku",
+  "cost_usd_upper": null,
+  "ctx": "short",
+  "default_model": "claude/haiku",
+  "difficulty": "medium",
+  "executed_models": [],
+  "failed_cases": [
+   "retry-0",
+   "retry-2",
+   "retry-3",
+   "retry-4",
+   "retry-5",
+   "retry-6",
+   "retry-7",
+   "retry-negative"
+  ],
+  "family_id": "fam542-retry",
+  "fixture_hash": "d79c978068504726667d822c1e14b7d7a9a0f4041842838eeb0a0f92f38b4a33",
+  "lang": "ko",
+  "latency_s": null,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [
+   "permission prompt blocked the run"
+  ],
+  "packets": 0,
+  "passed": 4,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 563,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/haiku",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "haiku",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "failed",
+  "success": false,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-0",
+  "tid": 89,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {},
+   "missing_rows": 0,
+   "rows": 0,
+   "total": {
+    "cache_read_tokens": 0,
+    "cache_write_tokens": 0,
+    "input_tokens": 0,
+    "output_tokens": 0
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.216736,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "d79c978068504726667d822c1e14b7d7a9a0f4041842838eeb0a0f92f38b4a33",
+  "lang": "ko",
+  "latency_s": 7.776,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 563,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-0",
+  "tid": 90,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81252,
+     "cache_write_tokens": 24485,
+     "input_tokens": 6,
+     "output_tokens": 525
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81252,
+    "cache_write_tokens": 24485,
+    "input_tokens": 6,
+    "output_tokens": 525
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.216504,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "49333712f312704ff1dd6614e5912ee09058259a36815663c887f6a6c75d6f49",
+  "lang": "mixed",
+  "latency_s": 7.856,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 514,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-1",
+  "tid": 91,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 81142,
+     "cache_write_tokens": 24409,
+     "input_tokens": 6,
+     "output_tokens": 539
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 81142,
+    "cache_write_tokens": 24409,
+    "input_tokens": 6,
+    "output_tokens": 539
+   }
+  }
+ },
+ {
+  "arm": "x-luna",
+  "cost_usd_upper": 0.004744,
+  "ctx": "long",
+  "default_model": "codex/gpt-6-luna",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-luna"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "0b5ce46f809ddfb903229993debda57434f81864ccd23060af42898a544b9aa6",
+  "lang": "ko",
+  "latency_s": 28.341,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 556,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-luna",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-luna",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-1",
+  "tid": 92,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "gpt-6-luna": {
+     "cache_read_tokens": 39168,
+     "cache_write_tokens": 0,
+     "input_tokens": 5449,
+     "output_tokens": 564
+    }
+   },
+   "missing_rows": 0,
+   "rows": 3,
+   "total": {
+    "cache_read_tokens": 39168,
+    "cache_write_tokens": 0,
+    "input_tokens": 5449,
+    "output_tokens": 564
+   }
+  }
+ },
+ {
+  "arm": "c-sonnet",
+  "cost_usd_upper": 0.216298,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "102e980860402db1e44165965fb1bd0268d5f0219595209c49b65eecb84cce18",
+  "lang": "mixed",
+  "latency_s": 8.692,
+  "layer": "claude",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 527,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "paginate-0",
+  "tid": 93,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 80863,
+     "cache_write_tokens": 24380,
+     "input_tokens": 6,
+     "output_tokens": 580
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 80863,
+    "cache_write_tokens": 24380,
+    "input_tokens": 6,
+    "output_tokens": 580
+   }
+  }
+ },
+ {
+  "arm": "b-auto",
+  "cost_usd_upper": 0.293514,
+  "ctx": "short",
+  "default_model": "claude/sonnet",
+  "difficulty": "medium",
+  "executed_models": [
+   "claude-sonnet-5-5"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-paginate",
+  "fixture_hash": "9e24e2007b59d2a2534b347d1341de46587ec1caa4e3b24ecbd016ea05bc287e",
+  "lang": "ko",
+  "latency_s": 14.739,
+  "layer": "both",
+  "mode": "auto",
+  "notes": [],
+  "packets": 0,
+  "passed": 16,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 828,
+   "output": 275
+  },
+  "selection": {
+   "applied": true,
+   "model": "claude/sonnet",
+   "reason": "fallback",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "sonnet",
+    "provider": "claude"
+   }
+  ],
+  "shadow": [
+   {
+    "model": "claude/opus",
+    "probability": 0.78,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/sonnet",
+    "probability": 0.77,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "claude/haiku",
+    "probability": 0.72,
+    "quality": "unverified:no-dated-evidence"
+   },
+   {
+    "model": "codex/gpt-6-astra",
+    "probability": 0.7,
+    "quality": "unverified:revision-unknown"
+   },
+   {
+    "model": "codex/gpt-6-luna",
+    "probability": 0.71,
+    "quality": "unverified:revision-unknown"
+   }
+  ],
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": {
+   "choice": "codex/gpt-6-astra",
+   "confidence": 0.21,
+   "probabilities": {
+    "claude/haiku": 0.04,
+    "claude/opus": 0.02,
+    "claude/sonnet": 0.11,
+    "codex/gpt-6-astra": 0.33,
+    "codex/gpt-6-luna": 0.27,
+    "other": 0.23
+   }
+  },
+  "target_applied": false,
+  "task_id": "paginate-3",
+  "tid": 94,
+  "total_cases": 16,
+  "usage": {
+   "by_model": {
+    "claude-sonnet-5-5": {
+     "cache_read_tokens": 117728,
+     "cache_write_tokens": 24931,
+     "input_tokens": 8,
+     "output_tokens": 818
+    }
+   },
+   "missing_rows": 0,
+   "rows": 1,
+   "total": {
+    "cache_read_tokens": 117728,
+    "cache_write_tokens": 24931,
+    "input_tokens": 8,
+    "output_tokens": 818
+   }
+  }
+ },
+ {
+  "arm": "x-astra",
+  "cost_usd_upper": 0.906,
+  "ctx": "short",
+  "default_model": "codex/gpt-6-astra",
+  "difficulty": "medium",
+  "executed_models": [
+   "gpt-6-astra"
+  ],
+  "failed_cases": [],
+  "family_id": "fam542-retry",
+  "fixture_hash": "49333712f312704ff1dd6614e5912ee09058259a36815663c887f6a6c75d6f49",
+  "lang": "mixed",
+  "latency_s": 47.424,
+  "layer": "codex",
+  "mode": "manual",
+  "notes": [],
+  "packets": 0,
+  "passed": 12,
+  "phase": "dev",
+  "provider_requests": 1,
+  "retried": null,
+  "router_calls": 1,
+  "router_tokens": {
+   "input": 514,
+   "output": 57
+  },
+  "selection": {
+   "applied": true,
+   "model": "codex/gpt-6-astra",
+   "reason": "manual",
+   "source": "default"
+  },
+  "sessions": [
+   {
+    "model": "gpt-6-astra",
+    "provider": "codex"
+   }
+  ],
+  "shadow": null,
+  "split": "dev",
+  "status": "ok",
+  "success": true,
+  "target": null,
+  "target_applied": false,
+  "task_id": "retry-1",
+  "tid": 95,
+  "total_cases": 12,
+  "usage": {
+   "by_model": {
+    "gpt-6-astra": {
+     "cache_read_tokens": 65664,
+     "cache_write_tokens": 0,
+     "input_tokens": 19301,
+     "output_tokens": 1127
+    }
+   },
+   "missing_rows": 0,
+   "rows": 5,
+   "total": {
+    "cache_read_tokens": 65664,
+    "cache_write_tokens": 0,
+    "input_tokens": 19301,
+    "output_tokens": 1127
+   }
+  }
+ }
+]

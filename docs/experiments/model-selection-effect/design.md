@@ -3,9 +3,9 @@
 | 항목 | 값 |
 |---|---|
 | 이슈 | [#542](https://github.com/woonyong-choi/saturn/issues/542), 적용 경로 [#531](https://github.com/woonyong-choi/saturn/issues/531) |
-| 관련 설계 | [모델 평가 근거 목록](../../design/model-evidence.md), [기본 모델과 선택 방식](../../design/providers-and-sessions.md#기본-모델과-선택-방식), [모델 판단 그림자](../../design/router.md#모델-판단-그림자), [설정](../../design/settings.md) |
-| 사전 데이터 | [jev-role-efficiency](../jev-role-efficiency/design.md)의 예비 8건과 [target-model-choice](../target-model-choice/report.md)를 열람했다. 이번 표본의 정답이나 기준값으로 쓰지 않는다. 8건은 확인 평가에 재사용하지 않는다. |
-| 실행기 | `scripts/`. 사용량 합산과 호출 중복 검사는 [arm-execution-verifier의 contract.py](../arm-execution-verifier/scripts/contract.py)를 재사용한다(#540, PR #557). |
+| 관련 설계 | [모델 평가 근거 목록](https://github.com/woonyong-choi/saturn/blob/6816a1b90c00a1c7be87b538153f439bb4c33b50/docs/design/model-evidence.md), [기본 모델과 선택 방식](https://github.com/woonyong-choi/saturn/blob/6816a1b90c00a1c7be87b538153f439bb4c33b50/docs/design/providers-and-sessions.md#기본-모델과-선택-방식), [모델 판단 그림자](https://github.com/woonyong-choi/saturn/blob/6816a1b90c00a1c7be87b538153f439bb4c33b50/docs/design/router.md#모델-판단-그림자), [설정](https://github.com/woonyong-choi/saturn/blob/6816a1b90c00a1c7be87b538153f439bb4c33b50/docs/design/settings.md) |
+| 사전 데이터 | jev-role-efficiency(#535)의 예비 8건과 [target-model-choice](../target-model-choice/report.md)를 열람했다. 이번 표본의 정답이나 기준값으로 쓰지 않는다. 8건은 확인 평가에 재사용하지 않는다. |
+| 실행기 | `scripts/`. 기존 실행기(#540 대응 실행 검증기, jev-role-efficiency)는 stub 또는 CLI 호출기라 실제 saturn 전체 화면과 기록 저장소를 구동하지 못한다. 그래서 engine 구동기를 새로 두고 사용량 계약(빈 값은 null, 호출 중복 거절)의 취지만 따랐다. 아직 main에 없는 실행기에 기대지 않아 이 PR은 main 위에서 머지할 수 있다. |
 
 ## 질문
 
@@ -26,7 +26,7 @@
 
 ### 후보와 팔
 
-후보는 [모델 평가 근거 목록](../../design/model-evidence.md) 버전 `2026-10-06.1`에 있고 provider가 지금 알린 모델의 교집합이다. 실험 옵션 `model.candidates`([#573](https://github.com/woonyong-choi/saturn/pull/573))로 router에 물을 후보를 이 집합으로 고정한다.
+후보는 [모델 평가 근거 목록](https://github.com/woonyong-choi/saturn/blob/6816a1b90c00a1c7be87b538153f439bb4c33b50/docs/design/model-evidence.md) 버전 `2026-10-06.1`에 있고 provider가 지금 알린 모델의 교집합이다. 실험 옵션 `model.candidates`([#573](https://github.com/woonyong-choi/saturn/pull/573))로 router에 물을 후보를 이 집합으로 고정한다.
 
 | 층 | 후보 | 사용할 수 있는 provider |
 |---|---|---|
@@ -133,3 +133,15 @@
 | `run.sh process` | 원자료에서 trial 표를 다시 만든다. |
 | `run.sh analyze` | 집계 JSON을 쓴다. |
 | `run.sh verify` | 원자료 해시, 계약, 분석 두 번 실행의 바이트 일치, 키 문자열 수를 확인한다. |
+
+## 확정 절(개발 수집 뒤, 확인 수집 전)
+
+개발 12과제 96시도를 수집했다. 기준값을 확정하고 설계에 반영한 변경은 아래뿐이다. H1~H4, 판정 규칙, 표본, 상한은 그대로다.
+
+| 항목 | 값 |
+|---|---|
+| δ | 10%. 개발에서 오토 팔이 더 쓴 router 토큰은 입력당 약 490개로 provider 토큰(입력당 약 10만)의 1% 미만이라 5% 조건에 걸리지 않는다. |
+| 지시문 | 개발에서 `c-haiku` 12시도 중 10시도가 작업 폴더가 아닌 바깥 저장소 경로를 읽으려다 허가 창에서 멈췄다. 폴더는 `.runtime/p/NNN`이고 바깥에 저장소와 CLAUDE.md가 있다. 확인 구간은 모든 시도에서 지시문 앞에 "작업 폴더는 <절대 경로> 이다. "를 붙여 보낸다. 개발 구간은 붙이지 않았고 그 결과는 이 영향을 받은 값이다. |
+| 판별력 | 개발에서 `c-haiku`를 뺀 모든 고정 팔이 12/12라 과제가 이 모델들을 가르지 못했다. 확인 과제는 바꾸지 않는다(미열람 구간이라 난이도를 맞추려 열어 보지 않는다). 판별력 규칙대로 같은 결과가 나오면 H1은 보류다. |
+| 오토 적용 | 개발의 오토 입력 36개 모두 `target_model` 확신도가 0.6 미만(최대 0.27)이라 router 선택이 적용된 입력은 0이다. 확인에서도 같으면 오토 팔은 기본 대조군과 같은 모델로 실행되고 H2, H3은 router 질문 오버헤드와 실행 변동만 잰다. |
+| 그림자 | 개발의 매뉴얼 팔에는 그림자 기록이 남지 않았다(후보 질문은 오토 입력에만 묶였다). 그림자 보조 분석은 오토 팔의 충분성 확률과 같은 과제의 그 모델 고정 팔 성공을 짝지은 값으로 바꿨다. |
