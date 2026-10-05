@@ -7,6 +7,9 @@ case "${1:-}" in
   process) python3 scripts/02-process.py ;;
   analyze) python3 scripts/03-analyze.py ;;
   verify) python3 scripts/04-verify.py ;;
+  online-collect) python3 scripts/05-online.py collect ;;
+  online-process) python3 scripts/05-online.py process ;;
+  online-verify) python3 scripts/05-online.py verify ;;
   all) python3 scripts/01-collect.py; python3 scripts/02-process.py; python3 scripts/03-analyze.py; python3 scripts/04-verify.py ;;
-  *) echo 'usage: run.sh collect|process|analyze|verify|all' >&2; exit 2 ;;
+  *) echo 'usage: run.sh collect|process|analyze|verify|all|online-collect|online-process|online-verify' >&2; exit 2 ;;
 esac
