@@ -63,6 +63,9 @@ mode = "auto"
 [consent]
 share_with_server = false
 
+[constraint]
+auto_apply = false
+
 [context]
 safety_percent = 70
 mode = "saturn"
@@ -133,6 +136,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("grading.model", Kind::Text),
     ("consent.share_with_server", Kind::Flag),
     ("debug.provider_events", Kind::Flag),
+    ("constraint.auto_apply", Kind::Flag),
     ("child.max_depth", Kind::Whole),
     ("child.max_concurrent", Kind::Positive),
     ("child.max_total", Kind::Positive),
@@ -253,6 +257,8 @@ pub(crate) enum UserOnly {
     ChildLimits,
     /// provider 원시 메시지의 모양을 파일로 남기는 디버그 기록. 저장소가 켜서 기록을 늘리지 못하게 한다.
     Debug,
+    /// router 판단으로 지속 제약을 자동 등록하는 정책. 저장소가 켜서 검증하지 않은 판단을 적용하지 못하게 한다.
+    ConstraintApply,
 }
 
 impl UserOnly {
@@ -267,6 +273,7 @@ impl UserOnly {
             Self::Retention => "retention",
             Self::ChildLimits => "child",
             Self::Debug => "debug",
+            Self::ConstraintApply => "constraint.auto_apply",
         }
     }
 
@@ -288,6 +295,7 @@ pub(crate) const USER_ONLY: &[UserOnly] = &[
     UserOnly::Retention,
     UserOnly::ChildLimits,
     UserOnly::Debug,
+    UserOnly::ConstraintApply,
 ];
 
 /// 옛 이름과 새 이름. 옛 이름은 층마다 병합 전에 새 이름으로 옮기고 경고 한 줄을 남긴다.

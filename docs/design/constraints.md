@@ -87,11 +87,14 @@
 1. engine이 입력을 기록 저장소에 접수한다.
 2. 판단 차례에 engine이 `route@1.1` 요청으로 `is_constraint`를 입력 처리 질문과 함께 묻는다. 유효 제약이 있으면 같은 때 `constraint@1.0` 요청으로 `constraint_change`를 따로 묻는다. 두 요청은 병렬로 보낸다.
 3. 입력 처리 질문은 채팅 revision으로, 제약 질문은 제약 revision과 입력 상태로 따로 적용 직전에 비교한다([적용 직전 비교](#적용-직전-비교)).
-4. `is_constraint`가 `is_constraint` 기준값 0.8 이상이면 자동으로 등록한다. `constraint_ask` 0.7 이상 0.8 미만이면 `Candidate`로 저장하고 사용자에게 묻는다. 0.7 미만이면 등록하지 않는다.
+4. 자동 적용(`constraint.auto_apply`)이 꺼져 있으면(기본) 이 단계에서 끝난다. `is_constraint` 답은 판단 기록에만 남고 제약 표, 사용자 질문, 문장 나누기 호출로 이어지지 않는다. 켜져 있으면 다음을 따른다. `is_constraint`가 `is_constraint` 기준값 0.8 이상이면 자동으로 등록한다. `constraint_ask` 0.7 이상 0.8 미만이면 `Candidate`로 저장하고 사용자에게 묻는다. 0.7 미만이면 등록하지 않는다.
 5. 등록 후보가 긴 입력이면 문장 나누기 질문으로 규칙 한 줄을 정한다.
 6. 입력이 등록 대상이 아니면(`is_constraint`가 `constraint_ask` 미만) `constraint_change`의 답을 쓴다. 요청 확률이 `constraint_release` 0.8 이상이면 해제나 예외를 적용하고, 그 미만이면 아무것도 하지 않는다.
 7. `store`가 판단 결과를 한 거래로 적용하고 이벤트마다 대화 기록 한 줄을 남긴다.
 
+- 자동 적용은 사용자 설정 `constraint.auto_apply`(기본 거짓, 폴더 층에서 바꿀 수 없음)로 정한다. 끄면 router 답이 지속 제약을 만들지 못하지만 입력 원문은 작업 LLM에 그대로 가고 대화 기록과 패킷의 최근 입력, 목표 발췌로 현재 작업과 인계 맥락에 남는다. 작업 하나에만 해당하는 지시와 질문형, 인용, 붙여 넣은 지시문도 같다. 미확정을 사용자에게 묻지 않는 것은 입력마다 정답을 요구하지 않기 위해서다. 권한 모드 `full`은 이 정책을 바꾸지 않는다. `full`은 켠 상태에서 묻는 구간을 묻지 않고 등록하는 규칙일 뿐 판단 검증을 대신하지 않는다.
+- 자동 적용을 기본으로 끈 것은 Jev만으로 자동 등록하는 근거가 부족해서다. 사람이 아닌 모델 합의 라벨(#382의 1,000건)로 잰 정밀도는 정답 정의에 따라 91.3%에서 55.6%, 작업 범위를 명시한 400건 재측정에서 30.2~66.7%로 갈렸고 독립 정답으로 평가한 값이 없다. 독립 평가를 통과하기 전에는 `is_constraint`, `constraint_ask` 값을 제품 기본 적용의 근거로 쓰지 않는다.
+- 끄거나 켜는 것은 이미 저장한 제약을 바꾸지 않는다. 켜져 있을 때 등록된 `Active`와 `Candidate`, 답을 기다리는 확인은 끈 뒤에도 그대로 남아 패킷에 들어가고 사용자가 답하거나 해제할 수 있다. 입력은 접수 때 고정한 설정 번호의 값을 쓴다.
 - `is_constraint`는 세 조건을 모두 채우는 입력이다. 사용자가 한 말이고, 이번 요청 하나가 아니라 앞으로도 적용되고, 무엇을 할지가 아니라 언어, 도구, 형식, 금지처럼 어떻게 할지를 제한한다.
 - 등록 기준은 Jev `is_constraint`를 Astra 판정 868턴에 대해 잰 곡선으로 정했다. 0.8 이상은 정밀도 91.3% [87.6, 94.0]이다. 0.7 이상 0.8 미만은 입력의 12.6%이고 그중 67.0%가 진짜 제약이며, 자동과 묻기를 합친 재현율은 77.2%다. 0.7 미만은 정밀도가 84.8% 아래로 내려간다([등록 기준값의 사람 확인](../experiments/constraint-human-check/report.md)). 정답 라벨에 gpt-5.6-luna를 쓴 앞 수치는 사람 판정과 맞은 것이 Luna 5/24, Astra 21/24여서 근거로 약하다([프로젝트 대화 전수 측정](../experiments/constraint-deep/report.md)).
 - 합성 입력에서는 0.7이 정밀도 91.6% [84.8, 95.5], 재현율 93.3% [86.9, 96.7]였다([제약 식별 정확도](../experiments/constraint-judge-accuracy/report.md)). 앞 말을 가리키는 간접 지시 입력은 정확도 74.5% [68.0, 80.0]이고 앞 입력의 등록 여부를 state에 넣어도 오르지 않았다([간접 지시 정확도](../experiments/indirect-constraint-accuracy/report.md)).
@@ -223,6 +226,7 @@ C_max = P_max × context.constraint_slot_percent / 100
 
 | 상황 | 동작 |
 |---|---|
+| 자동 적용 꺼짐 | 어떤 `is_constraint` 값이든 등록하지 않고 묻지 않는다. 판단 기록은 남는다. |
 | `is_constraint` 판단 없음 | 등록하지 않는다. |
 | 문장 나누기 질문 실패, 문장 20개 초과 | 입력 전체 원문을 한 건으로 등록한다. |
 | `constraint_change` 판단 없음 | 해제도 예외도 하지 않는다. |
@@ -238,7 +242,8 @@ C_max = P_max × context.constraint_slot_percent / 100
 |---|---|
 | 제약은 입력 원문에서 자른 규칙 한 줄과 범위로 저장하고 원문은 바뀌지 않는다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_scope_comes_from_paths_in_the_rule`, `constraint_long_input_registers_only_the_sentences_the_router_calls_constraints`, `constraint_long_input_registers_the_whole_text_when_the_split_question_fails`, `saturn-terminal/core/src/constraints/tests.rs`의 `rules_are_cut_from_the_original_text`, `scope_takes_path_like_words_normalized_and_unique` |
 | 등록, 해제, 예외, 다시 유효, 되돌림마다 이벤트와 대화 기록 한 줄이 남는다. | 등록과 입력 취소로 인한 해제는 `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_at_or_above_the_auto_threshold_is_registered_with_a_chat_line`, `constraint_of_an_input_canceled_after_registration_is_released_with_a_line`. 해제, 예외, 다시 유효, 되돌림은 구현 전(#379, #381) |
-| `is_constraint` 0.8 이상은 자동 등록하고, 0.7 이상 0.8 미만은 묻고, 0.7 미만은 등록하지 않는다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_at_or_above_the_auto_threshold_is_registered_with_a_chat_line`(0.85), `constraint_at_the_exact_auto_threshold_is_registered`(0.8), `constraint_in_the_ask_band_is_stored_as_candidate_and_asked`(0.75), `constraint_ask_answered_yes_registers_and_leaves_a_line`, `constraint_ask_answered_no_releases_it_without_a_chat_line`, `constraint_below_the_ask_threshold_is_not_registered`(0.65), `saturn-terminal/core/src/routers/tests.rs`의 `registration_follows_the_three_bands` |
+| 자동 적용이 꺼져 있으면(기본, `full` 포함) 입력은 평소대로 진행하고 어떤 `is_constraint` 값도 제약 표, 질문, 줄을 만들지 않는다. 이미 저장한 제약은 그대로다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_is_not_applied_by_default_and_the_input_still_runs_with_its_judgment_kept`(설정 없음·거짓, 0.95·0.75, `full` 여부), `saturn-terminal/engine/src/settings/names_tests.rs`의 `security_and_cost_keys_are_user_only` |
+| 자동 적용을 켜면 `is_constraint` 0.8 이상은 자동 등록하고, 0.7 이상 0.8 미만은 묻고, 0.7 미만은 등록하지 않는다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_at_or_above_the_auto_threshold_is_registered_with_a_chat_line`(0.85), `constraint_at_the_exact_auto_threshold_is_registered`(0.8), `constraint_in_the_ask_band_is_stored_as_candidate_and_asked`(0.75), `constraint_ask_answered_yes_registers_and_leaves_a_line`, `constraint_ask_answered_no_releases_it_without_a_chat_line`, `constraint_below_the_ask_threshold_is_not_registered`(0.65), `saturn-terminal/core/src/routers/tests.rs`의 `registration_follows_the_three_bands` |
 | 답이 오기 전의 제약은 지키는 쪽으로 패킷에 들어간다. | 등록을 묻는 중(`Candidate`)인 제약은 해제된 것이 아니라서 들어간다. 종류를 묻는 중인 경우는 구현 전(#379) |
 | 해제 요청은 선택형 질문 하나로 대상과 종류를 정하고, 영구 해제는 `Released`로, 이번 작업 예외는 제약을 지우지 않고 그 작업 동안만 멈춘다. | 구현 전(#379). 세 종류 입력으로 상태, 예외 기록, 대화 기록 줄을 확인한다. |
 | 이번 작업 예외는 작업이 끝나면 사라지고 `제약 다시 유효` 줄이 한 줄 남는다. | 구현 전(#379). 작업을 끝내고 예외 행과 줄을 확인한다. |

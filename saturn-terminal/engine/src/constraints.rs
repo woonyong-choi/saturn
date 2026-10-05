@@ -51,6 +51,8 @@ impl Engine {
     // vars: q = 요청 질문 수, a = 답 수
     // basis: estimate
     /// 유효한 router 답의 `is_constraint`를 읽어 등록 계획을 만든다. 답이 없거나 형식이 틀렸거나 기준값 미만이면 `None`이다.
+    /// 자동 적용(`constraint.auto_apply`)이 꺼져 있으면 `full` 모드여도 계획을 만들지 않는다. 판단은 판단 기록에만 남고
+    /// 제약 표와 사용자 질문과 문장 나누기 호출로 이어지지 않으며, 입력 원문은 평소대로 작업과 인계 맥락에 남는다.
     pub(crate) async fn constraint_plan(
         &self,
         request: &RouterRequest,
@@ -58,6 +60,9 @@ impl Engine {
         record: &QueuedInput,
         settings: &Settings,
     ) -> Option<ConstraintPlan> {
+        if !settings.constraint_auto_apply() {
+            return None;
+        }
         let Ok(response) = &exchange.result else {
             return None;
         };

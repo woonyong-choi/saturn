@@ -123,6 +123,7 @@
 | `child.max_depth` | 0 이상 정수 | 2. 하위 접속의 깊이 상한이고 0이면 하위 접속을 받지 않는다([하위 접속](child-sessions.md#상한과-대기열)) |
 | `child.max_concurrent` | 1 이상 정수 | 5. 한 채팅이 동시에 거느리는 하위 접속 수 |
 | `child.max_total` | 1 이상 정수 | 10. `engine` 전체의 동시 하위 접속 수 |
+| `constraint.auto_apply` | 참·거짓 | 거짓. 참이면 router의 `is_constraint` 판단이 지속 제약을 자동 등록하거나 묻는다. 거짓이면 판단은 기록만 하고 제약을 만들지 않는다. 사용자 층에서만 정한다([제약](constraints.md#식별-순서)) |
 | `debug.provider_events` | 참·거짓 | 거짓. 켜면 provider 연결이 받은 원시 메시지의 모양(방법 이름, 순서, ID, 필드 이름)을 값 없이 `logs/provider-events-<날짜>.log`에 남긴다([provider 연결과 session](providers-and-sessions.md#원시-이벤트-관측-기록)) |
 | `retention.max_age_days` | 1 이상 정수 | 없음(무제한 보존). `saturn prune`과 `/prune`이 오래된 채팅을 정하는 기준이기도 하다([기록](records.md)) |
 | `retention.auto_prune` | 참·거짓 | 거짓. 참이고 `max_age_days`가 있을 때만 engine 시작 때 한 번 그 기한보다 오래 쓰지 않은 채팅을 지운다. 삭제라 `max_age_days`만으로 켜지지 않는다([기록](records.md#보존과-정리)) |
@@ -143,7 +144,7 @@
 - `context.mode`가 `provider`이면 `sessions`는 compaction과 유휴 복귀를 판정하지 않고 provider 실행 인자에 자동 압축 안전망 값을 넣지 않는다. 규칙은 [맥락 정리](context-management.md#정리-모드)에 있다. 기본은 `saturn`이다.
 - `context.select.rrf_k`는 router가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
 - 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_ask`다.
-- `is_constraint`는 자동 등록 기준값(기본 0.8), `constraint_ask`는 등록 질문의 묻는 하한(기본 0.7)이다. 권한 모드가 `full`이면 제약 질문을 묻지 않는다([제약](constraints.md#묻지-않고-진행하는-권한-모드)).
+- `is_constraint`는 자동 등록 기준값(기본 0.8), `constraint_ask`는 등록 질문의 묻는 하한(기본 0.7)이다. `constraint.auto_apply`가 거짓(기본)이면 두 값 모두 적용하지 않는다. 켠 상태에서 권한 모드가 `full`이면 제약 질문을 묻지 않는다([제약](constraints.md#묻지-않고-진행하는-권한-모드)).
 - 구현 전 기준값은 `constraint_release`다([#379](https://github.com/woonyong-choi/saturn/issues/379)). 해제·예외 판단을 적용하는 기준값(기본 0.8)이다.
 - 제약 칸 상한은 `P_max`의 `context.constraint_slot_percent`%다. 규칙은 [제약](constraints.md#패킷의-제약-칸)에 있다.
 - 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
@@ -193,7 +194,7 @@ provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. `
 | 하위 접속 상한 | [하위 접속](child-sessions.md#상한과-대기열) |
 | provider 원시 메시지 관측 기록 | [provider 연결과 session](providers-and-sessions.md#원시-이벤트-관측-기록) |
 
-사용자 전용 키는 `router.endpoint`, `router.key`, `grading.model`, `consent`, `router.mode`, `retention`, `child`, `debug`와 같거나 그 아래 키다(초안). 옛 이름 `router.method`도 새 이름으로 옮긴 뒤 같은 규칙을 받는다. `retention`은 보존 기간과 자동 삭제라 비용과 삭제가 걸려 있어 사용자만 정한다. `child`는 하위 접속 상한이라 저장소가 provider 프로세스 수를 늘리지 못하게 사용자만 정한다. `debug`는 홈 폴더에 파일을 쌓는 기록이라 저장소가 남의 홈에 기록을 늘리지 못하게 사용자만 정한다. router 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([router 키 보호](router-key-security.md)).
+사용자 전용 키는 `router.endpoint`, `router.key`, `grading.model`, `consent`, `router.mode`, `retention`, `child`, `debug`, `constraint.auto_apply`와 같거나 그 아래 키다(초안). 옛 이름 `router.method`도 새 이름으로 옮긴 뒤 같은 규칙을 받는다. `retention`은 보존 기간과 자동 삭제라 비용과 삭제가 걸려 있어 사용자만 정한다. `child`는 하위 접속 상한이라 저장소가 provider 프로세스 수를 늘리지 못하게 사용자만 정한다. `debug`는 홈 폴더에 파일을 쌓는 기록이라 저장소가 남의 홈에 기록을 늘리지 못하게 사용자만 정한다. `constraint.auto_apply`는 검증하지 않은 판단이 지속 제약을 만드는 정책이라 저장소가 켜지 못하게 사용자만 정한다. router 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([router 키 보호](router-key-security.md)).
 
 ### 병합과 설정 번호
 
