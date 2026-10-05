@@ -343,6 +343,8 @@ impl Engine {
             let current = self.queue.revision(record.chat);
             match self.queue.apply(input, &decision, current) {
                 Ok(disposition) => {
+                    self.pin_default_model_without_current(&record, disposition)
+                        .await;
                     if !record.skip_relation {
                         // 판단이 없으면(장애, 응답 없음, 이 질문의 답 없음) 재개도 무시도 아니다
                         let judged = !decision
@@ -372,6 +374,31 @@ impl Engine {
                 Err(error) => return Err(error.into()),
             }
         }
+    }
+
+    /// 이어 가기와 끼워 넣기는 현재 모델을 유지하지만 채팅에 이어 갈 메인 session이 없으면 유지할 모델이 없다. router 판단이 실패한
+    /// 첫 입력이 그렇다. 그때는 기본 모델로 연다(router의 `target_model` 선택은 이어 가기에 쓰지 않는다). 기본 모델이 없거나
+    /// 이미 고정한 모델이 있으면 아무것도 하지 않는다.
+    async fn pin_default_model_without_current(
+        &mut self,
+        record: &QueuedInput,
+        disposition: Disposition,
+    ) {
+        if disposition == Disposition::NewTask || self.sessions.live_main(record.chat).is_some() {
+            return;
+        }
+        let default = match self.model_plan(record.settings).await {
+            Ok(plan) => plan.default,
+            Err(error) => {
+                tracing::warn!(error = %self.failure_line(&error), "model plan not read, keeping the provider default");
+                return;
+            }
+        };
+        let Some(model) = default else {
+            return;
+        };
+        let pinned = self.queue.pin_model_if_unset(record.id, &model);
+        self.warn_failure("failed to pin the default model", pinned);
     }
 
     async fn after_applied(

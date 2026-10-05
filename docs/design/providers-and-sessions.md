@@ -266,7 +266,7 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 
 새 작업을 어느 모델로 보낼지는 기본 모델(`model.default`)과 선택 방식(`model.mode`) 둘이 정한다([설정](settings.md#설정-키), [#338](https://github.com/woonyong-choi/saturn/issues/338) 결정). 기본 모델은 `<provider>/<model>` 글이고, 선택 방식은 오토(`auto`, 기본)와 매뉴얼(`manual`)이다.
 
-새 작업으로 판단된 입력의 모델은 아래 순서에서 처음 나오는 값이다. 이어 가기와 끼워 넣기는 이 순서를 타지 않고 현재 모델을 유지한다.
+새 작업으로 판단된 입력의 모델은 아래 순서에서 처음 나오는 값이다. 이어 가기와 끼워 넣기는 이 순서를 타지 않고 현재 모델을 유지한다. 단 채팅에 이어 갈 메인 session이 없으면(router 판단이 실패한 첫 입력이 그렇다) 유지할 현재 모델이 없으므로 이어 가기와 끼워 넣기도 `/model` 고정, 없으면 기본 모델로 연다(router의 `target_model` 선택은 이어 가기에 쓰지 않는다). 이미 열린 메인이 있으면 판단이 실패해도 그 모델을 유지하고 기본 모델로 바꾸지 않는다([#506](https://github.com/woonyong-choi/saturn/issues/506)).
 
 | 순서 | 값 | 오토 | 매뉴얼 |
 |---|---|---|---|
