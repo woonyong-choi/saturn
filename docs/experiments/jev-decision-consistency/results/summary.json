@@ -1,0 +1,117 @@
+{
+  "call_cap": 3000,
+  "calls": {
+    "confirm": {
+      "attempts": 0,
+      "input_tokens": 0,
+      "models": {},
+      "output_tokens": 0,
+      "status": {},
+      "trials": 0,
+      "usage_missing": 0
+    },
+    "dev": {
+      "attempts": 300,
+      "input_tokens": 109425,
+      "models": {
+        "jev-1.13.0": 300
+      },
+      "output_tokens": 9039,
+      "status": {
+        "ok": 300
+      },
+      "trials": 300,
+      "usage_missing": 0
+    }
+  },
+  "dev": {
+    "is_constraint": {
+      "accuracy": {
+        "bands": {
+          "ask": 2,
+          "auto": 7,
+          "none": 11
+        },
+        "by_category": {
+          "constraint": {
+            "k": 5,
+            "n": 5
+          },
+          "indirect-constraint": {
+            "k": 1,
+            "n": 3
+          },
+          "indirect-request": {
+            "k": 2,
+            "n": 2
+          },
+          "mixed": {
+            "k": 3,
+            "n": 3
+          },
+          "request": {
+            "k": 7,
+            "n": 7
+          }
+        },
+        "correct": 18,
+        "n": 20,
+        "wrong": 2
+      },
+      "agree3": 19,
+      "agree3_equals_agree5": true,
+      "agree5": 19,
+      "exact_repeat": 2,
+      "incomplete_items": 0,
+      "items": 20,
+      "range_ok": 20
+    },
+    "relation_choice": {
+      "complete_items": 20,
+      "items": 20,
+      "top_same3": 19,
+      "top_same5": 19
+    },
+    "replaces_1": {
+      "accuracy": {
+        "bands": {
+          "none": 10,
+          "possible": 5,
+          "replace": 5
+        },
+        "by_category": {
+          "compatible": {
+            "k": 7,
+            "n": 7
+          },
+          "direct-replace": {
+            "k": 0,
+            "n": 4
+          },
+          "indirect-compatible": {
+            "k": 1,
+            "n": 1
+          },
+          "indirect-replace": {
+            "k": 4,
+            "n": 4
+          },
+          "partial": {
+            "k": 1,
+            "n": 4
+          }
+        },
+        "correct": 13,
+        "n": 20,
+        "wrong": 7
+      },
+      "agree3": 20,
+      "agree3_equals_agree5": false,
+      "agree5": 19,
+      "exact_repeat": 2,
+      "incomplete_items": 0,
+      "items": 20,
+      "range_ok": 20
+    }
+  }
+}
