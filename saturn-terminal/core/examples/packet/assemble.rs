@@ -5,7 +5,8 @@ use std::collections::HashSet;
 use std::time::Duration;
 
 use saturn_core::sessions::context::{
-    ContextBudget, DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_PERCENT,
+    ContextBudget, DEFAULT_CONSTRAINT_SLOT_PERCENT, DEFAULT_ITEM_CAP_PERCENT,
+    DEFAULT_PACKET_HARD_PERCENT,
 };
 use saturn_core::sessions::memo::{ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
@@ -129,6 +130,8 @@ pub(crate) fn assemble(
     );
     let source = PacketSource {
         constraints: constraints(records, &judgments.constraints),
+        constraints_omitted: Vec::new(),
+        constraint_tiers: Vec::new(),
         goal_and_last_input,
         open_items,
         recent_turns: turns,
@@ -165,6 +168,7 @@ pub(crate) fn budget_for(budget_tokens: u64) -> ContextBudget {
         cache_ttl: Duration::from_secs(300),
         packet_hard_percent: DEFAULT_PACKET_HARD_PERCENT,
         item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
+        constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
         rrf_k: DEFAULT_RRF_K,
     }
 }
@@ -314,15 +318,12 @@ fn kind_of(tool: &Tool, path: Option<&String>) -> ToolKind {
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = 입력 항목 수
 // basis: estimate
-fn constraints(records: &[Record], seqs: &[u64]) -> Vec<Entry> {
+fn constraints(records: &[Record], seqs: &[u64]) -> Vec<String> {
     records
         .iter()
         .filter(|record| seqs.contains(&record.seq))
         .filter_map(|record| match &record.body {
-            Body::User(text) => Some(Entry {
-                seq: LedgerSeq(record.seq),
-                text: text.clone(),
-            }),
+            Body::User(text) => Some(text.clone()),
             _ => None,
         })
         .collect()

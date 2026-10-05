@@ -68,6 +68,7 @@ safety_percent = 70
 mode = "saturn"
 packet_hard_percent = 20
 item_cap_percent = 30
+constraint_slot_percent = 25
 
 [context.select]
 rrf_k = 60
@@ -140,6 +141,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("context.mode", Kind::OneOf(&["saturn", "provider"])),
     ("context.packet_hard_percent", Kind::PercentFrom1),
     ("context.item_cap_percent", Kind::PercentFrom1),
+    ("context.constraint_slot_percent", Kind::PercentFrom1),
     ("context.select.rrf_k", Kind::Whole),
 ];
 

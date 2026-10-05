@@ -575,7 +575,7 @@ async fn applied_steer_is_preserved_in_handoff() {
         &steers,
         &[],
         &flow.engine.pending_work(flow.chat, None),
-        &[],
+        (&[], &[]),
         &budget,
     );
     let crate::handoff::HandoffOutcome::Ready(packet) = packet else {

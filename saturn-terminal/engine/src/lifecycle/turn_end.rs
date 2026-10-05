@@ -136,7 +136,13 @@ async fn context_over_the_threshold_replaces_the_session_only_at_the_turn_bounda
     let live = flow.engine.flow.live[&agent].clone();
     let mid_turn = flow
         .engine
-        .restart_session(flow.chat, &live, "p".to_owned(), None, LedgerSeq(1))
+        .restart_session(
+            flow.chat,
+            &live,
+            "p".to_owned(),
+            None,
+            (LedgerSeq(1), Vec::new()),
+        )
         .await;
     assert!(matches!(
         mid_turn,
