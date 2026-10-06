@@ -2,7 +2,8 @@
 
 | 실험 | 확인할 것 | 관련 설계 | 결론 |
 |---|---|---|---|
-| [보존 우선 비교](context-preservation/design.md) | 대화 본문 보존과 도구 선별의 추가 효과 | [맥락 정리](../design/context-management.md) | 측정 전 |
+| [보존 우선 비교](context-preservation/design.md) | 대화 본문 보존과 도구 선별의 추가 효과 | [맥락 정리](../design/context-management.md) | 측정 전. 실행기는 아래 대응 실행 검증기에 연결했고 현재 engine에서 실행할 수 있는 칸은 96칸 중 0칸이다 |
+| [대응 실행 검증기](arm-execution-verifier/report.md) | 같은 후보에서 선택 방법만 바꾼 실행과 보존 우선 비교 96칸의 집계가 틀린 성공·누락된 비용·실제 미적용을 거절하는지 | [맥락 정리](../design/context-management.md), [맥락 고르기](../design/context-selection.md) | 선택 비교 오프라인 장치 채택(16종 주입 결함 거절, 분석 바이트 일치), Jev 선택 효과 보류, 도구 조회 계측 18 trial은 보존 이전 자료. 보존 우선 장치는 가짜 기록으로 38종 주입 결함 거절만 확인했고 실제 provider 실행은 없다 |
 | [steer-reject-paths](steer-reject-paths/report.md) | 끼워 넣기를 확정 거절하는 Codex 상태(검토, 압축, 턴 끝 경합)에서 같은 입력의 유실·중복 없는 대기 전환 | [입력 처리](../design/input-handling.md), [provider 연결과 session](../design/providers-and-sessions.md) | H1~H6 채택: 끼워 넣기 거절 뒤 같은 입력 ID가 유실·중복 없이 대기 전환 36/36(검토 3/3, 압축 18/18), 압축 시작 직후 예비 실행 1건 유실은 결함으로 분리, 결과 모름과 턴 끝 경합의 실제 경로는 미측정 |
 | [constraint-long-context](constraint-long-context/report.md) | 실제 긴 Claude Code 대화에서 Jev의 제약 등록·전이·보존 판단 | [맥락 고르기](../design/context-selection.md) | H1 기각: 등록 정밀도 18.8% [8.9, 35.3], H2 보류: 재현율 100.0% [61.0, 100.0], 전이·최종 집합은 합의 표본 부족으로 판정 보류 |
 | [rrf-k-top-n](rrf-k-top-n/report.md) | 후보 순위의 k와 judge 상위 N | [맥락 고르기](../design/context-selection.md) | H1 기각: recall 12.0% [9.2, 15.6] |

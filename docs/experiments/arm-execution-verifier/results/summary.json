@@ -1,0 +1,368 @@
+{
+  "caller": "live",
+  "evidence": "live calls through official CLI and TypeSafe HTTPS",
+  "retries": 0,
+  "sample": {
+    "excluded_fixtures": 0,
+    "families": 24,
+    "tasks": 48
+  },
+  "splits": {
+    "dev": {
+      "arms": {
+        "code": {
+          "fallback_reasons": {},
+          "latency_median_s": 2.9727745,
+          "latency_sum_s": 39.277145,
+          "selector_applied": null,
+          "statuses": {
+            "delivery_unknown": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "ok": 12
+          },
+          "success": {
+            "k": 6,
+            "n": 12,
+            "rate": 0.5,
+            "wilson95": [
+              0.2537815976337061,
+              0.7462184023662939
+            ]
+          },
+          "trials": 12,
+          "usage_calls": 12,
+          "usage_known_sum": {
+            "cache_creation_input_tokens": 15024,
+            "cache_read_input_tokens": 0,
+            "input_tokens": 24,
+            "output_tokens": 284
+          },
+          "usage_unreported_calls": 0
+        },
+        "full": {
+          "fallback_reasons": {},
+          "latency_median_s": 3.0534555,
+          "latency_sum_s": 40.659105,
+          "selector_applied": null,
+          "statuses": {
+            "delivery_unknown": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "ok": 12
+          },
+          "success": {
+            "k": 12,
+            "n": 12,
+            "rate": 1.0,
+            "wilson95": [
+              0.7575059933447592,
+              1
+            ]
+          },
+          "trials": 12,
+          "usage_calls": 12,
+          "usage_known_sum": {
+            "cache_creation_input_tokens": 33298,
+            "cache_read_input_tokens": 0,
+            "input_tokens": 24,
+            "output_tokens": 230
+          },
+          "usage_unreported_calls": 0
+        },
+        "jev": {
+          "fallback_reasons": {
+            "low_confidence": 6
+          },
+          "latency_median_s": 3.2473305000000003,
+          "latency_sum_s": 44.995346,
+          "selector_applied": {
+            "k": 6,
+            "n": 12,
+            "rate": 0.5,
+            "wilson95": [
+              0.2537815976337061,
+              0.7462184023662939
+            ]
+          },
+          "statuses": {
+            "delivery_unknown": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "ok": 12
+          },
+          "success": {
+            "k": 12,
+            "n": 12,
+            "rate": 1.0,
+            "wilson95": [
+              0.7575059933447592,
+              1
+            ]
+          },
+          "trials": 12,
+          "usage_calls": 24,
+          "usage_known_sum": {
+            "cache_creation_input_tokens": 14995,
+            "cache_read_input_tokens": 0,
+            "input_tokens": 25420,
+            "output_tokens": 2750
+          },
+          "usage_unreported_calls": 12
+        },
+        "llm": {
+          "fallback_reasons": {
+            "failed_or_invalid": 1
+          },
+          "latency_median_s": 6.304543,
+          "latency_sum_s": 81.88316,
+          "selector_applied": {
+            "k": 11,
+            "n": 12,
+            "rate": 0.9166666666666666,
+            "wilson95": [
+              0.646120088858883,
+              0.9851349055950829
+            ]
+          },
+          "statuses": {
+            "delivery_unknown": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "ok": 12
+          },
+          "success": {
+            "k": 12,
+            "n": 12,
+            "rate": 1.0,
+            "wilson95": [
+              0.7575059933447592,
+              1
+            ]
+          },
+          "trials": 12,
+          "usage_calls": 24,
+          "usage_known_sum": {
+            "cache_creation_input_tokens": 49022,
+            "cache_read_input_tokens": 0,
+            "input_tokens": 48,
+            "output_tokens": 827
+          },
+          "usage_unreported_calls": 0
+        }
+      },
+      "paired_vs_code": {
+        "jev": {
+          "baseline_only": 0,
+          "delta": 0.5,
+          "n": 12,
+          "treatment_only": 6
+        },
+        "llm": {
+          "baseline_only": 0,
+          "delta": 0.5,
+          "n": 12,
+          "treatment_only": 6
+        }
+      },
+      "paired_vs_full": {
+        "code": {
+          "baseline_only": 6,
+          "delta": -0.5,
+          "n": 12,
+          "treatment_only": 0
+        },
+        "jev": {
+          "baseline_only": 0,
+          "delta": 0.0,
+          "n": 12,
+          "treatment_only": 0
+        },
+        "llm": {
+          "baseline_only": 0,
+          "delta": 0.0,
+          "n": 12,
+          "treatment_only": 0
+        }
+      }
+    },
+    "sealed": {
+      "arms": {
+        "code": {
+          "fallback_reasons": {},
+          "latency_median_s": 3.1626965,
+          "latency_sum_s": 126.14949,
+          "selector_applied": null,
+          "statuses": {
+            "delivery_unknown": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "ok": 36
+          },
+          "success": {
+            "k": 21,
+            "n": 36,
+            "rate": 0.5833333333333334,
+            "wilson95": [
+              0.4220025157487166,
+              0.7285943794855394
+            ]
+          },
+          "trials": 36,
+          "usage_calls": 36,
+          "usage_known_sum": {
+            "cache_creation_input_tokens": 45026,
+            "cache_read_input_tokens": 0,
+            "input_tokens": 72,
+            "output_tokens": 813
+          },
+          "usage_unreported_calls": 0
+        },
+        "full": {
+          "fallback_reasons": {},
+          "latency_median_s": 3.2084785,
+          "latency_sum_s": 116.999753,
+          "selector_applied": null,
+          "statuses": {
+            "delivery_unknown": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "ok": 36
+          },
+          "success": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "wilson95": [
+              0.9035813714055363,
+              1
+            ]
+          },
+          "trials": 36,
+          "usage_calls": 36,
+          "usage_known_sum": {
+            "cache_creation_input_tokens": 99860,
+            "cache_read_input_tokens": 0,
+            "input_tokens": 72,
+            "output_tokens": 651
+          },
+          "usage_unreported_calls": 0
+        },
+        "jev": {
+          "fallback_reasons": {
+            "low_confidence": 18
+          },
+          "latency_median_s": 3.3433425,
+          "latency_sum_s": 124.945938,
+          "selector_applied": {
+            "k": 18,
+            "n": 36,
+            "rate": 0.5,
+            "wilson95": [
+              0.34474325409626827,
+              0.6552567459037317
+            ]
+          },
+          "statuses": {
+            "delivery_unknown": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "ok": 36
+          },
+          "success": {
+            "k": 36,
+            "n": 36,
+            "rate": 1.0,
+            "wilson95": [
+              0.9035813714055363,
+              1
+            ]
+          },
+          "trials": 36,
+          "usage_calls": 72,
+          "usage_known_sum": {
+            "cache_creation_input_tokens": 44944,
+            "cache_read_input_tokens": 0,
+            "input_tokens": 76224,
+            "output_tokens": 8211
+          },
+          "usage_unreported_calls": 36
+        },
+        "llm": {
+          "fallback_reasons": {
+            "failed_or_invalid": 9
+          },
+          "latency_median_s": 6.344672,
+          "latency_sum_s": 233.627794,
+          "selector_applied": {
+            "k": 27,
+            "n": 36,
+            "rate": 0.75,
+            "wilson95": [
+              0.5892954623327166,
+              0.8624952233700517
+            ]
+          },
+          "statuses": {
+            "delivery_unknown": 0,
+            "failed": 0,
+            "incomplete": 0,
+            "ok": 36
+          },
+          "success": {
+            "k": 35,
+            "n": 36,
+            "rate": 0.9722222222222222,
+            "wilson95": [
+              0.8583028134672614,
+              0.9950795928601897
+            ]
+          },
+          "trials": 36,
+          "usage_calls": 72,
+          "usage_known_sum": {
+            "cache_creation_input_tokens": 147008,
+            "cache_read_input_tokens": 0,
+            "input_tokens": 144,
+            "output_tokens": 1532
+          },
+          "usage_unreported_calls": 0
+        }
+      },
+      "paired_vs_code": {
+        "jev": {
+          "baseline_only": 0,
+          "delta": 0.4166666666666667,
+          "n": 36,
+          "treatment_only": 15
+        },
+        "llm": {
+          "baseline_only": 0,
+          "delta": 0.3888888888888889,
+          "n": 36,
+          "treatment_only": 14
+        }
+      },
+      "paired_vs_full": {
+        "code": {
+          "baseline_only": 15,
+          "delta": -0.4166666666666667,
+          "n": 36,
+          "treatment_only": 0
+        },
+        "jev": {
+          "baseline_only": 0,
+          "delta": 0.0,
+          "n": 36,
+          "treatment_only": 0
+        },
+        "llm": {
+          "baseline_only": 1,
+          "delta": -0.027777777777777776,
+          "n": 36,
+          "treatment_only": 0
+        }
+      }
+    }
+  }
+}

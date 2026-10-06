@@ -1,0 +1,350 @@
+{
+  "cells": {
+    "claude/code": {
+      "latency_median_s": 13.663791,
+      "latency_sum_s": 47.898175,
+      "lookup_commands": [
+        0,
+        0,
+        0
+      ],
+      "lookup_rows": [
+        0,
+        0,
+        0
+      ],
+      "restart_packets": 0,
+      "selector_values": [
+        "rank"
+      ],
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 3
+      },
+      "success": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "wilson95": [
+          5.551115123125783e-17,
+          0.5614970317550454
+        ]
+      },
+      "support_blocks_read": [
+        0,
+        0,
+        0
+      ],
+      "support_forms": {
+        "Digest": 12
+      },
+      "trials": 3,
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 48911,
+        "cache_read_input_tokens": 192228,
+        "input_tokens": 1334,
+        "output_tokens": 3670
+      },
+      "usage_unreported_calls": 3
+    },
+    "claude/code+hint": {
+      "latency_median_s": 27.157289,
+      "latency_sum_s": 85.942549,
+      "lookup_commands": [
+        3,
+        3,
+        4
+      ],
+      "lookup_rows": [
+        3,
+        2,
+        3
+      ],
+      "restart_packets": 0,
+      "selector_values": [
+        "rank"
+      ],
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 3
+      },
+      "success": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "wilson95": [
+          5.551115123125783e-17,
+          0.5614970317550454
+        ]
+      },
+      "support_blocks_read": [
+        0,
+        0,
+        0
+      ],
+      "support_forms": {
+        "Digest": 12
+      },
+      "trials": 3,
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 62409,
+        "cache_read_input_tokens": 524191,
+        "input_tokens": 1487,
+        "output_tokens": 3571
+      },
+      "usage_unreported_calls": 3
+    },
+    "claude/full": {
+      "latency_median_s": 10.771137,
+      "latency_sum_s": 34.521107,
+      "lookup_commands": [
+        0,
+        0,
+        0
+      ],
+      "lookup_rows": [
+        0,
+        0,
+        0
+      ],
+      "restart_packets": 0,
+      "selector_values": [
+        "rank"
+      ],
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 3
+      },
+      "success": {
+        "k": 2,
+        "n": 3,
+        "rate": 0.6666666666666666,
+        "wilson95": [
+          0.2076596008020477,
+          0.9385080552796037
+        ]
+      },
+      "support_blocks_read": [
+        0,
+        0,
+        0
+      ],
+      "support_forms": {
+        "Full": 12
+      },
+      "trials": 3,
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 89472,
+        "cache_read_input_tokens": 198855,
+        "input_tokens": 1326,
+        "output_tokens": 2059
+      },
+      "usage_unreported_calls": 3
+    },
+    "claude/jev": {
+      "latency_median_s": 25.244104,
+      "latency_sum_s": 60.145051,
+      "lookup_commands": [
+        0,
+        0,
+        0
+      ],
+      "lookup_rows": [
+        0,
+        0,
+        0
+      ],
+      "restart_packets": 0,
+      "selector_values": [
+        "compact"
+      ],
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 3
+      },
+      "success": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "wilson95": [
+          5.551115123125783e-17,
+          0.5614970317550454
+        ]
+      },
+      "support_blocks_read": [
+        0,
+        0,
+        0
+      ],
+      "support_forms": {
+        "Digest": 12
+      },
+      "trials": 3,
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 48736,
+        "cache_read_input_tokens": 261438,
+        "input_tokens": 29637,
+        "output_tokens": 4244
+      },
+      "usage_unreported_calls": 6
+    },
+    "codex/code": {
+      "latency_median_s": 95.062955,
+      "latency_sum_s": 244.051711,
+      "lookup_commands": [
+        0,
+        35,
+        33
+      ],
+      "lookup_rows": [
+        0,
+        35,
+        27
+      ],
+      "restart_packets": 0,
+      "selector_values": [
+        "rank"
+      ],
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 3
+      },
+      "success": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "wilson95": [
+          5.551115123125783e-17,
+          0.5614970317550454
+        ]
+      },
+      "support_blocks_read": [
+        0,
+        12,
+        12
+      ],
+      "support_forms": {
+        "Digest": 12
+      },
+      "trials": 3,
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 648192,
+        "input_tokens": 96347,
+        "output_tokens": 6409
+      },
+      "usage_unreported_calls": 3
+    },
+    "codex/full": {
+      "latency_median_s": 42.190562,
+      "latency_sum_s": 136.315023,
+      "lookup_commands": [
+        0,
+        0,
+        0
+      ],
+      "lookup_rows": [
+        0,
+        0,
+        0
+      ],
+      "restart_packets": 0,
+      "selector_values": [
+        "rank"
+      ],
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 3
+      },
+      "success": {
+        "k": 3,
+        "n": 3,
+        "rate": 1.0,
+        "wilson95": [
+          0.4385029682449546,
+          1
+        ]
+      },
+      "support_blocks_read": [
+        0,
+        0,
+        0
+      ],
+      "support_forms": {
+        "Full": 12
+      },
+      "trials": 3,
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 82944,
+        "input_tokens": 71458,
+        "output_tokens": 738
+      },
+      "usage_unreported_calls": 3
+    },
+    "codex/jev": {
+      "latency_median_s": 72.905648,
+      "latency_sum_s": 272.680972,
+      "lookup_commands": [
+        20,
+        20,
+        6
+      ],
+      "lookup_rows": [
+        16,
+        16,
+        6
+      ],
+      "restart_packets": 1,
+      "selector_values": [
+        "compact"
+      ],
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 3
+      },
+      "success": {
+        "k": 0,
+        "n": 3,
+        "rate": 0.0,
+        "wilson95": [
+          5.551115123125783e-17,
+          0.5614970317550454
+        ]
+      },
+      "support_blocks_read": [
+        0,
+        0,
+        0
+      ],
+      "support_forms": {
+        "Digest": 12
+      },
+      "trials": 3,
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 642304,
+        "input_tokens": 202623,
+        "output_tokens": 9310
+      },
+      "usage_unreported_calls": 7
+    }
+  },
+  "evidence": "online engine path; one task, measurement check only, not a selector effect claim",
+  "task": "x000a",
+  "trials": 21
+}

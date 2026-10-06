@@ -11,3 +11,5 @@ out/
 .DS_Store
 /target/
 .runtime/
+__pycache__/
+*.pyc
