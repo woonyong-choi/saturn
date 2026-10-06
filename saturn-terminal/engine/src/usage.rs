@@ -4,7 +4,7 @@
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use saturn_protocol::event::UsageScope;
+use saturn_protocol::event::{UsageScope, counted_tokens};
 use saturn_protocol::ids::{AgentId, ChatId, Provider, RunId, SessionId, SubagentId};
 use saturn_protocol::rpc::{QueryResult, UsageRange, UsageRow};
 
@@ -157,9 +157,6 @@ pub(crate) struct RequestTotals {
     pub(crate) router_tokens: Option<u64>,
 }
 
-/// 실행 줄의 `Token`과 같은 칸: 새 입력, 캐시 쓰기, 출력, 추론. 캐시 읽기는 뺀다.
-const SUMMARY_SLOTS: [usize; 4] = [0, 2, 3, 4];
-
 /// 채팅에서 `since`(unix 밀리초) 이후에 시작한 실행의 사용량과 그 뒤의 router 호출을 합친다. 턴 값은 `/usage`와 같은 계산이라
 /// 누적 보고는 직전 누적을 뺀 값만 더하고 subagent의 보고는 계열이 달라 한 번씩만 센다.
 pub(crate) async fn request_totals(
@@ -177,11 +174,7 @@ pub(crate) async fn request_totals(
         else {
             continue;
         };
-        let reported = SUMMARY_SLOTS
-            .iter()
-            .filter_map(|slot| value.tokens[*slot])
-            .reduce(|a, b| a + b);
-        let Some(reported) = reported else {
+        let Some(reported) = counted_tokens(value.tokens) else {
             continue;
         };
         let sum = per_provider.entry(row.provider).or_default();
@@ -372,7 +365,8 @@ mod tests {
                 cache_read: None,
                 cache_write: None,
                 output,
-                reasoning: None,
+                // 추론은 출력의 일부라 요청 합계에 더해지지 않아야 한다
+                reasoning: output.map(|output| output / 2),
             };
             self.store
                 .record_usage(run, session, &report)
@@ -478,9 +472,9 @@ mod tests {
             who,
             vec!["claude · opus", "codex · gpt-5.6-terra", "router · jev"]
         );
-        assert_eq!(rows[0].tokens, [Some(40), None, None, Some(4), None]);
+        assert_eq!(rows[0].tokens, [Some(40), None, None, Some(4), Some(2)]);
         assert_eq!(rows[0].turns, None);
-        assert_eq!(rows[1].tokens, [Some(250), None, None, Some(10), None]);
+        assert_eq!(rows[1].tokens, [Some(250), None, None, Some(10), Some(5)]);
         assert_eq!(rows[1].turns, Some(3));
         assert_eq!(rows[1].compactions, None);
         assert_eq!(rows[1].estimated_cost_micros, None);
