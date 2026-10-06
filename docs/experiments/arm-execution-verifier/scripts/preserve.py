@@ -249,9 +249,8 @@ def body_report(fix: dict, record: dict) -> dict | None:
     problems = sorted(f"{z}:{k}" for z, k in bad)
     if len(got_users) > len(users) or len(got_assistants) > len(assistants):
         problems.append("extra_item")
-    refs = [i["ref_id"] for i in items]
-    if any(a >= b for a, b in zip(refs, refs[1:])):
-        problems.append("order")
+    # User ref_id와 Assistant ref_id는 서로 다른 번호 공간이다. 같은 번호가 이어져도
+    # 행 순서가 바뀐 것은 아니다. 아래의 원문 순차 검색과 역할별 ID 검사가 순서를 검증한다.
     if sha(sent) != final["body_hash"]:
         problems.append("sent_hash")
     if record.get("captures") is not None:
