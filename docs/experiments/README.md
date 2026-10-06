@@ -2,6 +2,7 @@
 
 | 실험 | 확인할 것 | 관련 설계 | 결론 |
 |---|---|---|---|
+| [steer-reject-paths](steer-reject-paths/report.md) | 끼워 넣기를 확정 거절하는 Codex 상태(검토, 압축, 턴 끝 경합)에서 같은 입력의 유실·중복 없는 대기 전환 | [입력 처리](../design/input-handling.md), [provider 연결과 session](../design/providers-and-sessions.md) | H1~H6 채택: 끼워 넣기 거절 뒤 같은 입력 ID가 유실·중복 없이 대기 전환 36/36(검토 3/3, 압축 18/18), 압축 시작 직후 예비 실행 1건 유실은 결함으로 분리, 결과 모름과 턴 끝 경합의 실제 경로는 미측정 |
 | [constraint-long-context](constraint-long-context/report.md) | 실제 긴 Claude Code 대화에서 Jev의 제약 등록·전이·보존 판단 | [맥락 고르기](../design/context-selection.md) | H1 기각: 등록 정밀도 18.8% [8.9, 35.3], H2 보류: 재현율 100.0% [61.0, 100.0], 전이·최종 집합은 합의 표본 부족으로 판정 보류 |
 | [rrf-k-top-n](rrf-k-top-n/report.md) | 후보 순위의 k와 judge 상위 N | [맥락 고르기](../design/context-selection.md) | H1 기각: recall 12.0% [9.2, 15.6] |
 | [precompute-breakeven](precompute-breakeven/report.md) | 도구 결과 미리 판단의 손익분기 | [맥락 정리](../design/context-management.md) | H2 기각: 남는 질문 감소 29.4% [26.4, 32.3], H3 기각: 토큰 4.967배 [4.337, 5.614] |

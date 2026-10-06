@@ -380,7 +380,7 @@ impl Flow {
     }
 
     /// 끝난 입력도 기록에 남아 있으므로 기록의 마지막 입력 번호를 본다.
-    async fn latest_input(&self) -> Option<InputId> {
+    pub(super) async fn latest_input(&self) -> Option<InputId> {
         let page = self
             .engine
             .store
