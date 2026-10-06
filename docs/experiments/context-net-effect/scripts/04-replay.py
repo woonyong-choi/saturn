@@ -33,24 +33,25 @@ WILSON_LOWER_REQUIRED = 0.90  # jev-decision-consistency H1, H2와 같은 일관
 TIMEOUT_SECONDS = 30
 RATE_WAIT_SECONDS = 2.0
 RATE_RETRIES = 3
-CALL_CAP = 150
+CALL_CAP = 160
 Z = 1.959963984540054
 
 
 def requests_from_raw() -> list[dict]:
+    """trial마다 처음 낸 `compact` 판단 하나. 그 판단 뒤 처음 만든 패킷의 `compact` 항목 수가 k다."""
     out = []
     for path in sorted(RAW.glob("formal-*-jev.json.gz")):
         with gzip.open(path, "rt", encoding="utf-8") as f:
             res = json.load(f)
         store = res["store"]
-        packets = [p for p in store["handoff_packets"] if p["kind"] in ("Restart", "Switch")]
-        if not packets:
+        judged = sorted((j for j in store["judgments"] if "compact" in j["question_sets"] and j["outcome"] == "Ok" and j["sent"]), key=lambda j: j["id"])
+        packets = sorted((p for p in store["handoff_packets"] if p["kind"] in ("Restart", "Switch")), key=lambda p: p["id"])
+        if not judged or not packets:
             continue
-        packet = packets[-1]
+        packet = packets[0]
         k = sum(1 for i in store["handoff_packet_items"] if i["packet_id"] == packet["id"] and i["selector"] == "compact" and i["form"])
-        for j in store["judgments"]:
-            if j["input_id"] is None and j["outcome"] == "Ok" and j["sent"]:
-                out.append({"trial": res["trial"], "judgment_id": j["id"], "sent": j["sent"], "recorded": j["received"], "k": k})
+        j = judged[0]
+        out.append({"trial": res["trial"], "judgment_id": j["id"], "sent": j["sent"], "recorded": j["received"], "k": k})
     return out
 
 

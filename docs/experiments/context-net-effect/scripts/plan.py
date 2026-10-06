@@ -15,7 +15,14 @@ PROVIDERS = {
     "claude": {"model": "claude/haiku", "t_abs": 20000},
     "codex": {"model": "codex/gpt-5.6-luna", "t_abs": 20000},
     CROSS: {"model": "claude/haiku", "t_abs": 20000},
+    # 2단계: 1단계에서 Codex 경계 맥락이 20000 아래인 시도가 많아 새 session이 열리지 않았다. 기준만 16000으로 낮춰 새 프로젝트로 다시 잰다.
+    "codex-t16": {"model": "codex/gpt-5.6-luna", "t_abs": 16000, "id": "codex"},
 }
+STAGE2 = "codex-t16"
+STAGE2_SEEDS = tuple(range(21, 33))
+
+def engine_id(provider: str) -> str:
+    return PROVIDERS[provider].get("id", provider)
 FORMAL_SEEDS = tuple(range(1, 13))
 PILOT_SEEDS = (9001, 9002)
 ORDER_SEED = 7007
@@ -42,7 +49,7 @@ FOLLOW_UPS = [
     ("f3", "dump-metrics 결과에서 p99가 가장 큰 엔드포인트를 `app/report.py`의 SLOW_ENDPOINT 값으로 넣어줘. 끝나면 `python3 -m unittest -q`를 돌려줘."),
 ]
 
-CALL_CAPS = {"claude": 700, "codex": 700, CROSS: 400, "router": 1800}
+CALL_CAPS = {"claude": 700, "codex": 700, CROSS: 400, STAGE2: 700, "router": 1800}
 
 
 def trial_list(provider: str, seeds: tuple[int, ...]) -> list[tuple[int, str]]:
@@ -57,7 +64,7 @@ def boundary_overrides(provider: str, arm: str) -> list[str]:
     if arm == "provider":
         return ["context.mode=provider"]
     if arm in ("rrf", "jev"):
-        return [f"provider.{provider}.context.t_abs={PROVIDERS[provider]['t_abs']}", f"context.select.packet={arm}"]
+        return [f"provider.{engine_id(provider)}.context.t_abs={PROVIDERS[provider]['t_abs']}", f"context.select.packet={arm}"]
     return []
 
 

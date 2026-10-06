@@ -10,6 +10,7 @@ import argparse
 import concurrent.futures
 import gzip
 import json
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -26,14 +27,18 @@ EXP = HERE.parent
 REPO = EXP.parents[2]
 BIN = REPO / "target" / "release"
 # 소켓 경로 한도(SUN_LEN) 때문에 짧은 이름을 쓴다: <run 첫 글자>/<provider 태그 a|x><시드><조건 첫 글자>
-TAG = {"claude": "a", "codex": "x", plan.CROSS: "k"}
+TAG = {"claude": "a", "codex": "x", plan.CROSS: "k", plan.STAGE2: "y"}
 RUNTIME = REPO / ".runtime" / "cne"
 DATA = EXP / "data" / "raw"
 
 TABLES = ["chats", "inputs", "sessions", "runs_meta", "usage", "judgments", "handoff_packets", "handoff_packet_items", "evidence_lookups", "events"]
 
+class StartupUnsent(RuntimeError):
+    pass
+
+
 lock = threading.Lock()
-used = {"claude": 0, "codex": 0, plan.CROSS: 0}
+used = {"claude": 0, "codex": 0, plan.CROSS: 0, plan.STAGE2: 0}
 
 
 def extract(db: Path) -> dict:
@@ -52,7 +57,36 @@ def extract(db: Path) -> dict:
     return out
 
 
+STARTUP_RETRIES = 4
+
+
+def startup_unsent(base: Path, rec: dict) -> bool:
+    """첫 입력이 접수되기 전에 router 점검에서 멈췄고 기록 저장소에도 입력이 없으면, 보내지 않았음이 확정된 실패다."""
+    if rec["status"] != "failed" or "router key required" not in rec["stdout"] or "> [A]" in rec["stdout"]:
+        return False
+    db = base / "h" / "saturn.db"
+    if not db.exists():
+        return True
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+    try:
+        return con.execute("SELECT count(*) FROM inputs").fetchone()[0] == 0
+    finally:
+        con.close()
+
+
 def run_trial(run: str, provider: str, seed: int, arm: str, key: str) -> dict:
+    """보내지 않았음이 확정된 시작 실패만 새 저장소로 다시 시작한다(최대 STARTUP_RETRIES회). 실패 기록은 결과에 남긴다."""
+    failures: list[str] = []
+    for attempt in range(STARTUP_RETRIES + 1):
+        result = run_trial_once(run, provider, seed, arm, key, failures)
+        if result is not None:
+            result["startup_failures"] = failures
+            return result
+        time.sleep(30 * (attempt + 1))
+    raise RuntimeError("startup failed repeatedly before any input was accepted")
+
+
+def run_trial_once(run: str, provider: str, seed: int, arm: str, key: str, failures: list[str]) -> dict | None:
     trial = f"{provider}-{seed}-{arm}"
     base = RUNTIME / run[0] / f"{TAG[provider]}{seed}{arm[0]}"
     result_file = base / "trial.json"
@@ -72,10 +106,25 @@ def run_trial(run: str, provider: str, seed: int, arm: str, key: str) -> dict:
             used[provider] += 1
         rec = chat.send(text, overrides)
         rec["label"] = label
+        if label == "s1" and startup_unsent(base, rec):
+            raise StartupUnsent(rec["stdout"][:200])
         turns.append(rec)
         return rec["status"] == "ok"
 
     cross = provider == plan.CROSS
+    try:
+        return _run_body(run, provider, seed, arm, base, facts, chat, turns, say, cross, result_file)
+    except StartupUnsent as err:
+        chat.stop_engine()
+        failures.append(str(err))
+        shutil.rmtree(base)
+        with lock:
+            used[provider] -= 1  # 보내지 않았으므로 요청 수에 넣지 않는다
+        return None
+
+
+def _run_body(run, provider, seed, arm, base, facts, chat, turns, say, cross, result_file):
+    trial = f"{provider}-{seed}-{arm}"
     base_ov = plan.base_overrides(provider, arm)
     if cross:
         (base / "h" / "config.toml").write_text('[model]\nmode = "manual"\ndefault = "claude/haiku"\n')  # 첫 고르기 창을 건너뛴다
@@ -177,7 +226,7 @@ def main() -> int:
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--only", help="seed:arm 하나만")
     args = ap.parse_args()
-    seeds = (plan.CROSS_SEEDS if args.provider == plan.CROSS else plan.FORMAL_SEEDS) if args.mode == "formal" else plan.PILOT_SEEDS
+    seeds = (plan.CROSS_SEEDS if args.provider == plan.CROSS else plan.STAGE2_SEEDS if args.provider == plan.STAGE2 else plan.FORMAL_SEEDS) if args.mode == "formal" else plan.PILOT_SEEDS
     run = args.mode
     pairs = plan.trial_list(args.provider, seeds)
     if args.only:
