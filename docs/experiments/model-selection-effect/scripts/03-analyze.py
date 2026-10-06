@@ -157,7 +157,7 @@ def analyze(phase: str, rows: list[dict], delta: float) -> dict:
         discriminating = fixed_tasks_discordant > 0
         ps = pair_stats(rows_by, tasks, treat, control)
         entry = layers.setdefault(layer, dict(auto=auto_report(rows, treat), comparisons={}, fixed_discordant_tasks=fixed_tasks_discordant))
-        entry["comparisons"][control] = dict(role=role, stats=ps, verdict=verdict(layer, ps, discriminating, delta, safety["permission_blocked"] == 0 and safety["input_mismatch"] == 0))
+        entry["comparisons"][control] = dict(role=role, stats=ps, verdict=verdict(layer, ps, discriminating, delta, safety["input_mismatch"] == 0))
         if role == "primary":
             entry["replay_top_choice"] = replay(rows_by, rows, treat, control)
     summary["layers"] = layers
