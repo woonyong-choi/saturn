@@ -34,4 +34,5 @@ Developers who use Codex and Claude Code together lose context each time they sw
 - [프로세스 유지 축약 검증](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/same-session-compaction/persistent-design.md): 축약과 후속 질문 사이에 CLI 연결을 유지한 추가 실험 설계
 - [Jev 역할별 효율](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/jev-role-efficiency/report.md): 모델 선택·제약 후보·맥락 선별의 실제 성과 비교
 - [대응 실행 검증기](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/arm-execution-verifier/report.md): 같은 후보에서 선택 방법별 실행 검증기와 선택기 비교
+- [검색 선별 추가 이득](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/search-selection-gain/report.md): 같은 후보와 예산에서 코드 검색, 작업 LLM, Jev 확률 기준 선별의 품질과 비용 비교
 - [Claude 확장 도구와 Jev](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/jev-role-efficiency/stack-comparison.md): 영상의 다섯 도구와 Saturn의 적용 경계
