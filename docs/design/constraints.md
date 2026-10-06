@@ -205,6 +205,18 @@ C_max = P_max × context.constraint_slot_percent / 100
 - 전환마다 `packet_constraints`에 새 session의 제약별 단계(`All`, `Scope`, `Relevance`, `Omitted`)를 남긴다. 무엇이 어느 전환에 들어갔는지 사용자가 `/constraints`에서 확인하게 하기 위해서다.
 - 패킷에 제약이 요약보다 우선한다고 적는 규칙과 provider 요약의 취급은 그대로다.
 
+### 새 작업 session의 제약
+
+router가 새 작업으로 판단해 같은 채팅 안에 보조 session을 열 때(provider가 같아도 다르다)는 앞 맥락을 넘기지 않는다. 새 작업은 앞 맥락 없이 시작하는 것이 설계이기 때문이다. 하지만 제약은 대화 전체에서 지킬 규칙이라 작업이 바뀌어도 풀리지 않는다. 그래서 새 작업 session은 해제되지 않은 제약만 담은 패킷을 먼저 받는다.
+
+- 패킷은 [패킷의 제약 칸](#패킷의-제약-칸)과 같은 규칙으로 채운 제약 칸 하나뿐이다. 목표, 최근 턴, 경쟁 구역은 없다. 이 session에는 지금 작업 파일과 겹칠 기록이 없어 범위가 있는 제약은 `전체` 제약 뒤에 최신 순으로 들어간다.
+- 유효 제약이 없으면 패킷을 보내지 않고 새 작업 입력만 보낸다.
+- 보낸 패킷은 전환 패킷처럼 `handoff_packets`에 남고, 제약별 단계는 `packet_constraints`에 남는다. `/constraints`의 마지막 전환 표시도 같다.
+- 패킷은 사용자 입력과 별도 턴으로 가고 답은 `Ready` 한 단어다. 제약이 입력 원문과 섞여 입력 원문이 바뀌지 않게 하기 위해서다.
+- 제약을 나중에 등록하거나 해제해도 이미 열린 새 작업 session에는 다시 보내지 않는다. 열 때 한 번이다.
+
+[#593](https://github.com/woonyong-choi/saturn/issues/593)에서 `keep_current`가 낮게 나온 한 단어 입력(`정산`)이 이 패킷 없이 열려 규칙을 따르지 못했다. 같은 설정 8회 중 2회였다.
+
 ### 실측으로 정하는 값
 
 | 값 | 기본값 | 근거 |
@@ -258,6 +270,7 @@ C_max = P_max × context.constraint_slot_percent / 100
 | 판단에 싣을 제약 고르기는 같은 입력에서 같은 결과를 내고 10개를 넘지 않는다. | `saturn-terminal/core/src/constraints/tests.rs`의 `change_candidates_are_all_constraints_up_to_the_cap`, `change_candidates_over_the_cap_keep_the_word_match_and_the_newest` |
 | 제약 칸은 `C_max` 안에서 전체, 범위 겹침, 관련도·최신 순으로 채우고 넘친 수를 표시한다. | `saturn-terminal/core/src/sessions/constraint_slot/tests.rs`의 `tiers_go_all_then_scope_then_relevance_and_newer_first`, `a_constraint_too_big_for_the_slot_does_not_block_smaller_ones`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `omitted_constraints_add_a_count_line_that_is_not_counted_in_the_slot`, `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `long_chat_constraints_reach_the_new_sessions_packet_and_record`(칸을 넘긴 사례에서 패킷의 `Constraints omitted` 줄과 `ChatNotice::ConstraintsOmitted` 알림), `saturn-terminal/tui/src/view/transcript.rs`의 `lines_context_deferred_lists_the_constraints`(`제약 N개 생략` 줄) |
 | 전환마다 들어간 제약과 빠진 제약을 기록한다. | `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `packet_constraints_records_what_the_new_session_got`, `constraints_over_the_slot_are_omitted_and_marked` |
+| 새 작업으로 열린 session도 해제되지 않은 제약만 담은 패킷을 먼저 받고, 앞 맥락은 받지 않으며, `packet_constraints`에 남는다. | `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `new_task_session_gets_only_the_active_constraints` |
 | 제약이 최근 입력과 목표 발췌에서 밀려난 긴 대화에서도 새 session의 패킷 제약 구역에 남는다. 해제된 제약은 넣지 않는다. | `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `constraint_stays_in_the_packet_when_it_left_the_recent_turns`(제약 원문은 어느 입력, 답, 파일 내용에도 없음), `released_constraint_is_not_handed_over` |
 | `/constraints`는 유효 제약과 변경 내역을 보이고 해제, 예외 종류 바꾸기, 되돌리기를 `Stale` 검사와 함께 한다. | 구현 전(#381). 화면을 연 사이 제약을 바꿔 거절과 새로 읽기를 확인한다. |
 | 등록 기준값은 사람 확인과 Astra 정답에서 근거가 있다. | [등록 기준값의 사람 확인](../experiments/constraint-human-check/report.md): 0.80 정밀도 91.3%, 0.70 정밀도 84.8%·재현율 77.2% |

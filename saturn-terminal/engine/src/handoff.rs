@@ -283,6 +283,25 @@ pub(crate) fn handoff_source_ordered(
     })
 }
 
+/// 새 작업으로 열 session의 패킷 재료. 앞 맥락 없이 시작하는 것이 설계라 기록은 넣지 않고 제약 칸만 채운다
+/// (docs/design/constraints.md#새-작업-session의-제약). 넣을 제약이 없으면 `None`.
+pub(crate) fn constraint_only_source(
+    constraints: &[StoredConstraint],
+    budget: &ContextBudget,
+) -> Option<PacketSource> {
+    let slot = constraint_slot(constraints, &[], &[], budget);
+    if slot.included.is_empty() && slot.omitted.is_empty() {
+        return None;
+    }
+    Some(PacketSource {
+        constraints: slot.included.into_iter().map(|(_, rule)| rule).collect(),
+        constraints_omitted: slot.omitted.into_iter().map(|(_, rule)| rule).collect(),
+        constraint_tiers: slot.tiers,
+        evidence_lookup: false,
+        ..PacketSource::default()
+    })
+}
+
 pub(crate) fn build_handoff(
     rows: &[LedgerRow],
     steers: &[SteeredInput],
