@@ -79,7 +79,7 @@ fn write_capture(
         "chat": target.chat.0,
         "session": target.session.0,
         "input": target.input.map(|input| input.0),
-        "provider": format!("{:?}", target.provider),
+        "provider": target.provider.as_str(),
         "kind": format!("{:?}", target.kind),
         "attempt": attempt,
         "captured_at_unix_us": captured_at_us.to_string(),

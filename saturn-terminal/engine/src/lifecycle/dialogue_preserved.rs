@@ -357,6 +357,7 @@ async fn packet_capture_matches_the_send_argument_and_is_absent_when_disabled() 
         assert_eq!(captured["body_hash"], stored.body_hash);
         assert_eq!(captured["packet_id"], stored.id.0);
         assert_eq!(captured["session"], CLAUDE_FIRST.0);
+        assert_eq!(captured["provider"], "claude");
         assert_eq!(captured["attempt"], 1);
         assert!(
             captured["captured_at_unix_us"]
