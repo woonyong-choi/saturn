@@ -26,6 +26,8 @@
 | 눈가림 | 정답 숫자와 근거 위치는 runner의 채점에만 두며 target 질문과 Jev 요청에 넣지 않는다. source 도구 결과에는 답이 들어간다. |
 | 환경 | macOS, 현재 브랜치의 `engine_client.py`, #600 엔진 바이너리, Codex gpt-5.6-luna source, Claude Sonnet target, 실제 router. 바이너리 해시와 버전은 수집 파일에 남긴다. |
 
+engine의 Unix socket 경로 길이 제한 때문에 짧은 임시 경로를 저장소의 Git 제외 실험 폴더로 연결한다. 원자료는 그 실험 폴더에 남긴다.
+
 계열은 `exact`, `stale`, `synonym`, `middle` 네 종류에 씨앗 세 개씩 둔다. source는 Codex가 각 파일을 별도 명령으로 읽게 하며 도구 결과 전문이 기록됐는지 검사한다. `stale`은 오래된 값과 정정을 함께 두고, `middle`은 필요한 문장을 긴 결과의 중앙에 둔다. target은 정수 하나를 답하도록 하고, 빠진 근거는 같은 `saturn evidence` 조회 권한으로 복구할 수 있다. target 세션은 조건마다 새로 만든다.
 
 ## 변수

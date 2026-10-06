@@ -18,7 +18,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 BASE = HERE.parent
 ROOT = BASE.parents[2]
-RUNTIME = ROOT / ".runtime" / "related-selection-diagnostic"
+STORAGE = ROOT / ".runtime" / "related-selection-diagnostic"
+RUNTIME = Path("/tmp/srd541")
 ENGINE_CLIENT = ROOT / "docs" / "experiments" / "arm-execution-verifier" / "scripts"
 sys.path.insert(0, str(ENGINE_CLIENT))
 from engine_client import Client, Engine  # noqa: E402
@@ -165,6 +166,14 @@ def main() -> None:
     if not binary.is_file() or not template.is_file() or not secret:
         raise RuntimeError("missing experiment input")
     os.umask(0o077)
+    STORAGE.mkdir(parents=True, exist_ok=True)
+    if RUNTIME.is_symlink():
+        if RUNTIME.resolve() != STORAGE.resolve():
+            raise RuntimeError("runtime symlink points elsewhere")
+    elif RUNTIME.exists():
+        raise RuntimeError("runtime path already occupied")
+    else:
+        RUNTIME.symlink_to(STORAGE, target_is_directory=True)
     commit = subprocess.check_output(["git", "rev-parse", "--short=7", "HEAD"], cwd=ROOT, text=True).strip()
     run_id = os.environ.get("SATURN_RUN_ID") or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + commit
     run = RUNTIME / run_id
