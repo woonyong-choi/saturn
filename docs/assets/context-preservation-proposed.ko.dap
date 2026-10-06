@@ -1,0 +1,16 @@
+flow down
+title "제안 Saturn"
+subtitle "설계·모형. 본문 보존과 도구 선별을 기존 경로에서 분리한다."
+
+store source "같은 기록 저장소" "원문 ID·권한·출처"
+box text "대화 본문 보호" "권한이 허용한 본문 전체" badge="모형"
+box tools "도구 결과만 선별" "RRF·Jev 동일 후보"
+decision limit "실제 한도 이내"
+external next "새 session" "revision·전달 해시 확인"
+box stop "적용 중단" "원문·현재 session 유지"
+source -> text
+source -> tools
+text -> limit
+tools -> limit
+limit -> next "예"
+limit -> stop "아니오"

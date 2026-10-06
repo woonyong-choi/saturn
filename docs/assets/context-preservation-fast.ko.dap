@@ -1,0 +1,14 @@
+flow down
+title "fast-jev-compaction"
+subtitle "문서·코드 비교. Saturn과 동일 조건의 실행 결과가 아니다."
+
+store source "기존 메시지" "대화와 도구 기록"
+box text "대화 본문 유지" "사용자·assistant"
+box tools "Jev 도구 선별" "결과 전문은 판단 입력 제외"
+box merge "보호·선별 결과 합침" "도구 짝·고정 항목 유지"
+external next "현재 세션 기록" "축약 기록 적용"
+source -> text
+source -> tools
+text -> merge
+tools -> merge
+merge -> next

@@ -1,0 +1,11 @@
+flow down
+title "Letta"
+subtitle "핵심 기억과 외부 기억의 접근 방식이 다르다."
+
+store core "핵심 기억 블록" "항상 맥락에 포함"
+store archive "외부 기억" "대화 밖 자료"
+box search "검색 도구" "에이전트가 필요 시 호출"
+external agent "작업 에이전트" "기억을 읽고 답변"
+core -> agent
+archive -> search
+search -> agent

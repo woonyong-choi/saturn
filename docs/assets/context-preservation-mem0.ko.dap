@@ -1,0 +1,13 @@
+flow down
+title "Mem0"
+subtitle "추출과 검색을 구분한다. 관리형과 OSS의 세부 구현은 다르다."
+
+box input "대화" "기억 후보 원자료"
+box extract "기억 추출" "LLM 비용 발생"
+store memory "기억 저장" "추출 결과와 관련 정보"
+box query "질문으로 검색" "답변 전에 관련 기억 조회"
+external answer "작업 LLM" "검색 결과를 포함해 답변"
+input -> extract
+extract -> memory
+memory -> query
+query -> answer

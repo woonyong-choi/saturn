@@ -71,7 +71,7 @@ Saturn은 provider가 바뀌어도 채팅을 이어 가려고 모든 입력과 �
 - `chat_dirs` 표는 채팅에 더한 폴더를 채팅 `chat_id`, 링크를 푼 절대 경로 `path`, 더한 시각 `added_at`(unix 밀리초)으로 둔다. 같은 채팅의 같은 경로는 한 행이고 행 번호 순서가 더한 순서다. 채팅을 지우면 함께 지운다. 스키마 V5에서 더했다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)).
 - `chats` 표의 `name`은 사용자가 붙인 채팅 이름, `group_name`은 작업 목록의 묶음 이름이다. 붙이지 않았으면 NULL이고 이관 전 채팅도 NULL이다. 앞뒤 공백을 지우고 비면 NULL로 저장하며, 줄바꿈 같은 제어 문자가 들어 있으면 저장하지 않고 요청을 거절한다(초안). 채팅을 지우면 함께 지운다. 스키마 V8에서 더했다.
 - `sessions`와 `runs` 표의 `provider`는 열린 provider id를 담는다. 지금 값 `Codex`, `Claude`는 대소문자를 가리지 않고 id `codex`, `claude`로 읽고 옛 행은 고치지 않는다. `chats.pinned_model`과 `inputs.pinned_model`의 `<provider>/<model>`은 provider 자리가 이미 id와 같아 그대로 읽힌다([provider 연결과 session](providers-and-sessions.md#provider-id와-설명자)). 새 행은 id 글자로 쓴다. `meta`의 캐시 유지 시간 키는 `cache_ttl_secs_<id>`라 옛 키가 그대로 읽힌다.
-- `extensions` 표는 설치한 확장을 이름, 출처, 설치 시각, 부분별 판정으로 둔다. 확장 원본 파일은 `~/.saturn/extensions/`에 두고 이 표에 넣지 않는다. 열은 `name`(기본 키), `source`, `installed_at`(unix 밀리초), `parts`(부분별 판정 JSON)다. 스키마 V12에서 더했고 이관은 표만 비어 있게 더하며, 정리 대상이 아니다([기능 목록과 확장](extensions.md#확장-저장소)). 
+- `extensions` 표는 설치한 확장을 이름, 출처, 설치 시각, 부분별 판정으로 둔다. 확장 원본 파일은 `~/.saturn/extensions/`에 두고 이 표에 넣지 않는다. 열은 `name`(기본 키), `source`, `installed_at`(unix 밀리초), `parts`(부분별 판정 JSON)다. 스키마 V12에서 더했고 이관은 표만 비어 있게 더하며, 정리 대상이 아니다([기능 목록과 확장](extensions.md#확장-저장소)).
 - `held_tasks` 표는 멈출 때 실행 중이던 보류 작업을 작업 번호 `task_id`(첫 입력 번호라 engine을 다시 켜도 같다), 채팅 `chat_id`, 에이전트 `agent_id`, 멈출 때 진행 중이던 실행을 연 입력 `input_id`로 둔다. 멈춤이나 크래시 복구가 보류할 때 쓰고, 재개하거나 닫으면 지운다. 채팅이나 입력을 지우면 함께 지운다. 입력과 에이전트가 없는 보류(보내기 전에 멈춘 입력)는 이 표에 남기지 않고 입력 행의 상태 `Held`로만 남긴다. 멈춤이 보류한 입력은 그때 `inputs.state`에 `Held`로 쓰고, 다시 켠 `engine`은 끝 상태가 아닌 입력을 접수 순서로 읽어 대기열에 되살린다([입력 처리](input-handling.md#재시작-뒤-입력-복원)). 스키마 V7에서 더했다([engine 수명과 복구](engine-lifecycle.md#크래시-뒤-복구)).
 - `run_changes` 표는 실행이 시작 뒤 바꾼 파일을 실행 `run_id`, 채팅 `chat_id`, 경로 `path`(절대 경로), 종류 `kind`(`added`, `modified`, `deleted`), 수정 주체 `actors`(줄바꿈으로 이은 글, 비면 이벤트에 없는 수정)로 둔다. `runs` 표의 `changes_state`는 측정했으면 `complete`, 폴더가 커서 일부만 훑었으면 `partial`이고, 측정하지 못한 실행(크래시, 보내기 전 실패, 이관 전 행)은 NULL이다. 실행이나 채팅을 지우면 함께 지운다. 스키마 V11에서 더했고 이관은 열과 표만 비어 있게 더한다([provider 연결과 session](providers-and-sessions.md#수정-파일-목록)).
 - `direct_installs` 표는 provider에 직접 설치된 항목 중 옮길지 물은 것을 provider id `provider`, 종류 `kind`(`skill`, `command`, `mcp_server`, `plugin`), 이름 `name`, 상태 `state`(`asked`, `moved`), 처음 본 시각 `seen_at`(unix 밀리초)으로 둔다. 기본 키는 앞의 세 열이다. 한 번 물은 항목은 행이 남아 다시 묻지 않고, 사용자가 옮기면 `moved`가 된다. 스키마 V14에서 더했고 이관은 표만 비어 있게 더하며, 정리 대상이 아니다([기능 목록과 확장](extensions.md#provider에-직접-설치한-것)).
@@ -181,6 +181,8 @@ provider에 실제로 보낸 인계 패킷은 시도마다 근거를 남긴다. 
 - 기록하지 못해도 전송은 막지 않고 로그만 남긴다. 이 기록은 전송의 전제가 아니라 전송의 근거다.
 
 ### 근거 조회 기록
+
+보존 우선 경로의 확장은 기존 패킷·조회 기록에 원문 종류와 ID, 보호 본문 해시, 요청한 선별과 적용한 선별, 실제 적용 경로, 예산 초과, 검색과 선주입을 연결한다. 새 로그 DB를 만들지 않는다. 원시 이벤트·파생 선택·실제 전달을 구분하고 결과 불명과 사용량 결측을 성공이나 0으로 바꾸지 않는다. 추가 필드와 이관은 구현 PR에서 확정하며 현재 스키마에 있다고 표시하지 않는다. 상세 계약은 [보존 우선 경로](context-management.md#보존-우선-경로)에 있다.
 
 에이전트가 패킷에서 생략된 기록을 번호로 다시 읽은 일은 기록 저장소에 남는다. provider가 낸 도구 호출 이벤트와 별개로, Saturn 경로(`saturn evidence`)로 실제 조회가 일어났는지와 얼마나 돌려줬는지를 세기 위해서다.
 

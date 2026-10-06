@@ -2,13 +2,14 @@
 
 | 실험 | 확인할 것 | 관련 설계 | 결론 |
 |---|---|---|---|
+| [보존 우선 비교](context-preservation/design.md) | 대화 본문 보존과 도구 선별의 추가 효과 | [맥락 정리](../design/context-management.md) | 측정 전 |
 | [steer-reject-paths](steer-reject-paths/report.md) | 끼워 넣기를 확정 거절하는 Codex 상태(검토, 압축, 턴 끝 경합)에서 같은 입력의 유실·중복 없는 대기 전환 | [입력 처리](../design/input-handling.md), [provider 연결과 session](../design/providers-and-sessions.md) | H1~H6 채택: 끼워 넣기 거절 뒤 같은 입력 ID가 유실·중복 없이 대기 전환 36/36(검토 3/3, 압축 18/18), 압축 시작 직후 예비 실행 1건 유실은 결함으로 분리, 결과 모름과 턴 끝 경합의 실제 경로는 미측정 |
 | [constraint-long-context](constraint-long-context/report.md) | 실제 긴 Claude Code 대화에서 Jev의 제약 등록·전이·보존 판단 | [맥락 고르기](../design/context-selection.md) | H1 기각: 등록 정밀도 18.8% [8.9, 35.3], H2 보류: 재현율 100.0% [61.0, 100.0], 전이·최종 집합은 합의 표본 부족으로 판정 보류 |
 | [rrf-k-top-n](rrf-k-top-n/report.md) | 후보 순위의 k와 judge 상위 N | [맥락 고르기](../design/context-selection.md) | H1 기각: recall 12.0% [9.2, 15.6] |
 | [precompute-breakeven](precompute-breakeven/report.md) | 도구 결과 미리 판단의 손익분기 | [맥락 정리](../design/context-management.md) | H2 기각: 남는 질문 감소 29.4% [26.4, 32.3], H3 기각: 토큰 4.967배 [4.337, 5.614] |
 | [jev-decision-consistency](jev-decision-consistency/report.md) | Jev 반복 호출의 행동 구간·확률 일관성과 변형 반응(오프라인) | [router](../design/router.md), [맥락 정리](../design/context-management.md) | `is_constraint` 기각: 지시 문장 덧붙임에서 구간 유지 9/20, H1 보류: 5회 구간 일치 90.0% [84.2, 93.8]. `replaces_1` 보류: 5회 구간 일치 94.4% [89.7, 97.0]. 자동 적용 근거 없음 |
 | [context-net-effect](context-net-effect/design.md) | 맥락 정리 없음·provider 압축·Saturn RRF 패킷·Saturn Jev 패킷의 후속 작업 품질과 캐시 손실 포함 전체 비용(실제 engine, Claude·Codex) | [맥락 정리](../design/context-management.md), [맥락 고르기](../design/context-selection.md) | 채택 없음: Claude `rrf` 기각(provider 대비 비용 +28,326 [10,536, 48,011]), `jev` 기각(비용 +48,316 [32,675, 65,796], `compact` 반복 일관성 31.4% [18.6, 48.0]), Codex `rrf` 보류, 같은 session 개입 미지원, 긴 세션 미측정 |
-| [claude-summary-handoff](claude-summary-handoff/design.md) | Claude 압축 요약 전환 품질 | [맥락 정리](../design/context-management.md), [provider 연결과 session](../design/providers-and-sessions.md) | 세 층 모두 보류: 확인 오토 입력 108개 중 router 선택 적용 0(확신도 최대 0.32)이라 오토가 기본 대조와 같은 모델로 실행됨, 같은 모델 쌍에서도 성공이 3/36 어긋나 품질 허용폭 0은 실행 변동에 막힘, 자동 적용 켜지 않음 |
+| [claude-summary-handoff](claude-summary-handoff/design.md) | Claude 압축 요약 전환 품질 | [맥락 정리](../design/context-management.md), [provider 연결과 session](../design/providers-and-sessions.md) | 설계만 보존. 결과 보고서 없음 |
 | [fast-adjust-convergence](fast-adjust-convergence/report.md) | 빠른 조정의 수렴과 진동 | [router 학습](../design/router-training.md) | H3 기각: 100건 안 기준값 폭 0.051 [0.050, 0.052], H1 채택: 틀림 비율 5.6% [5.5, 5.7] |
 | [ranked-handoff-quality](ranked-handoff-quality/design.md) | 후보 순위와 judge 결합의 전환 품질 | [맥락 고르기](../design/context-selection.md) | #117로 대체(#198) |
 | [wordpiece-typo-recall](wordpiece-typo-recall/report.md) | 단어 조각 단위별 오타 재현율 | [맥락 고르기](../design/context-selection.md) | H1 기각: 재현율 차이 0.9%p [−0.8, 2.6], H2 기각: 정밀도 차이 −10.0%p [−12.5, −7.5], H3 채택: 재현율 차이 11.6%p [8.8, 14.5], H4 기각: 정밀도 차이 −5.2%p [−7.8, −2.7] |

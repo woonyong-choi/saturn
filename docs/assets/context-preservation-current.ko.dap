@@ -1,0 +1,14 @@
+flow down
+title "현재 Saturn"
+subtitle "기준 코드 58c039b. 일부 대화도 예산에서 탈락한다."
+
+store source "원문 저장" "입력·출력·도구 기록"
+box history "대화 일부" "최근 턴·판정된 수정"
+box tools "도구 후보" "RRF 또는 Jev"
+box budget "예산 맞추기" "수정·최근 턴도 탈락"
+external next "새 session" "선별한 패킷 전달"
+source -> history
+source -> tools
+history -> budget
+tools -> budget
+budget -> next

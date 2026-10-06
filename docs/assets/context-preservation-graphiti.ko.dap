@@ -1,0 +1,13 @@
+flow down
+title "Graphiti"
+subtitle "관계와 유효 시간을 저장한다. 그래프 DB 전체 도입은 제외한다."
+
+box raw "원자료 episode" "출처와 시각"
+box extract "관계 추출" "LLM이 사실 후보 생성"
+store graph "시간 관계 그래프" "유효·무효 시점과 이력"
+box query "관련 사실 검색" "질문·시점·관계"
+external answer "작업 LLM" "검색한 근거 사용"
+raw -> extract
+extract -> graph
+graph -> query
+query -> answer

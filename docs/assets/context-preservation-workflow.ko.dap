@@ -1,0 +1,17 @@
+flow down
+title "최소 검증 순서"
+subtitle "설계·모형. 진단 통과는 제품 효과 입증과 다르다."
+
+box preserve "본문 보존 수정" "#592" badge="모형"
+box select "도구 선별 범위 변경" "#380"
+box verify "실제 전달 검증" "#540 기존 실행기"
+decision gate "기능 진단 통과"
+box fix "원인 단계 수정" "추가 계층으로 숨기지 않음"
+box compare "대응 비교·일관성" "#7·#544, 계획 96회"
+box holdout "독립 확인 평가" "별도 사전 설계 후 채택 판단"
+preserve -> select
+select -> verify
+verify -> gate
+gate -> fix "아니오"
+gate -> compare "예"
+compare -> holdout
