@@ -1,0 +1,30 @@
+{
+  "kind": "local-router-diagnostic",
+  "run": "20261006T113829Z-17752",
+  "raw_location": ".local/e2e/540-smoke/20261006T113829Z-17752",
+  "results": [
+    {
+      "route": "codex-to-claude",
+      "source_turns_ok": 6,
+      "target_status": "ok",
+      "target_text": "X-Route-Key",
+      "packets_sent": 1,
+      "protected_rows": 26,
+      "captures": 1,
+      "capture_hashes_match": true,
+      "raw_sha256": "c5077eb1b0783636edeeef6e111d60b1054892cc1681a9333e6a4010c0fea581"
+    },
+    {
+      "route": "claude-to-codex",
+      "source_turns_ok": 6,
+      "target_status": "ok",
+      "target_text": "X-Route-Key",
+      "packets_sent": 1,
+      "protected_rows": 12,
+      "captures": 1,
+      "capture_hashes_match": true,
+      "raw_sha256": "ff7a1728da9ab88c13c8ec1261ed7d97251e9de3c01b91fdb9aa136a4790f625"
+    }
+  ],
+  "effect_trials": 0
+}
