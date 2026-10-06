@@ -304,7 +304,7 @@ session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provid
 - 정리 모드 `context.mode`가 `provider`이면 턴 끝의 판정과 유휴 복귀 판정을 모두 하지 않고, provider 실행 인자에 안전망 값(`T_hard`)도 넣지 않는다.
 - 경쟁 구역 순서는 기본이 후보 순위(RRF)이고, 실험 옵션 `context.select.packet = jev`일 때만 `compact` 판단을 부른다.
 
-provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적은 쪽을 실측으로 고른다([#7](https://github.com/woonyong-choi/saturn/issues/7)). 어느 방식도 provider 기본 압축보다 품질을 낮추지 않아야 한다.
+provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적은 쪽을 실측으로 고른다([#7](https://github.com/woonyong-choi/saturn/issues/7)). 축소 세션에서 잰 첫 결과는 [맥락 선별 순효과](../experiments/context-net-effect/report.md)에 있고, 이 측정에서는 Saturn 패킷이 provider 압축보다 비용을 줄이면서 품질을 유지한다는 근거가 없어 기본 방식은 바꾸지 않는다. 어느 방식도 provider 기본 압축보다 품질을 낮추지 않아야 한다.
 
 ### 오류 처리
 

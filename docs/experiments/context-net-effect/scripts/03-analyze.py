@@ -127,6 +127,33 @@ def analyze(rows: list[dict]) -> dict:
             block["pairs"][f"{x_arm}-vs-{y_arm}"] = pair
         out["providers"][provider] = block
     out["verdicts"] = verdicts(out)
+    out["flow"] = flow(rows)
+    return out
+
+
+def flow(rows: list[dict]) -> dict:
+    """흐름 표 수치. 입력별 상태, 조작 확인(새 session 발생률), 시작 실패와 무효 보존 건수, 요청 수."""
+    import gzip
+
+    raw = EXP / "data" / "raw"
+    out: dict = {"startup_failed_preserved": len(list((raw / "startup-failed").glob("*.gz"))), "invalid_engine_lost_preserved": len(list((raw / "invalid-engine-lost").glob("*.gz")))}
+    out["tracks"] = {}
+    for provider in sorted({r["provider"] for r in rows}):
+        prows = [r for r in rows if r["provider"] == provider]
+        statuses: dict = {}
+        for r in prows:
+            for item in r["turn_statuses"].split(","):
+                label, _, status = item.partition(":")
+                if status != "ok":
+                    statuses[f"{r['arm']}:{item}"] = statuses.get(f"{r['arm']}:{item}", 0) + 1
+        treated = {arm: {"restarted": sum(1 for r in prows if r["arm"] == arm and r.get("restarts", 0) >= 1), "n": sum(1 for r in prows if r["arm"] == arm)} for arm in ("rrf", "jev")}
+        requests = router = 0
+        for path in raw.glob(f"formal-{provider}-[0-9]*.json.gz"):
+            with gzip.open(path, "rt", encoding="utf-8") as f:
+                res = json.load(f)
+            requests += len(res["turns"])
+            router += len(res["store"]["judgments"])
+        out["tracks"][provider] = {"trials": len(prows), "unusable": sum(1 for r in prows if not r["usable"]), "non_ok_inputs": statuses, "boundary_restart": treated, "provider_requests_kept": requests, "router_judgments_kept": router}
     return out
 
 
