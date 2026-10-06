@@ -7,6 +7,7 @@ import gzip
 import hashlib
 import importlib.util
 import json
+import math
 import random
 import sys
 from pathlib import Path
@@ -92,6 +93,38 @@ def bootstrap(differences: list[float]) -> dict:
     return {"n": n, "mean": sum(differences) / n, "ci95": [samples[249], samples[9749]]}
 
 
+def binomial_interval(k: int, n: int, tail: float = 0.0125) -> tuple[float, float]:
+    """두 불일치 비율의 네 꼬리에 Bonferroni를 적용할 정확 구간이다."""
+
+    def cdf(p: float, stop: int) -> float:
+        return sum(math.comb(n, i) * p**i * (1 - p) ** (n - i) for i in range(stop + 1))
+
+    def solve(stop: int, target: float) -> float:
+        lo, hi = 0.0, 1.0
+        for _ in range(70):
+            mid = (lo + hi) / 2
+            if cdf(mid, stop) > target:
+                lo = mid
+            else:
+                hi = mid
+        return (lo + hi) / 2
+
+    return (
+        0.0 if k == 0 else solve(k - 1, 1 - tail),
+        1.0 if k == n else solve(k, tail),
+    )
+
+
+def paired_interval(counts: list[int]) -> tuple[float, float, float]:
+    n = sum(counts)
+    if n == 0:
+        return 0.0, -1.0, 1.0
+    b, c = counts[1:3]
+    bl, bu = binomial_interval(b, n)
+    cl, cu = binomial_interval(c, n)
+    return (b - c) / n, bl - cu, bu - cl
+
+
 def comparison(rows: list[dict], x: str, y: str) -> dict:
     by = {(r["seed"], r["arm"]): r for r in rows}
     counts = [0, 0, 0, 0]
@@ -111,7 +144,7 @@ def comparison(rows: list[dict], x: str, y: str) -> dict:
                 and right.get(key) is not None
             ):
                 values.append(left[key] - right[key])
-    quality = STATS.newcombe_paired(*counts)
+    quality = paired_interval(counts)
     out = {
         "x": x,
         "y": y,
