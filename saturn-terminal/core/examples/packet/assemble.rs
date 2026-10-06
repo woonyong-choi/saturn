@@ -133,6 +133,7 @@ pub(crate) fn assemble(
         constraints_omitted: Vec::new(),
         constraint_tiers: Vec::new(),
         goal_and_last_input,
+        amendments: Vec::new(),
         open_items,
         recent_turns: turns,
         competitors,

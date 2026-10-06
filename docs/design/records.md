@@ -176,7 +176,7 @@ provider에 실제로 보낸 인계 패킷은 시도마다 근거를 남긴다. 
 - `body_hash`는 provider에 넘긴 글 전체의 SHA-256이다. 같은 글이 provider가 받은 바이트와 맞는지 대조하는 값이다.
 - 본문과 원문 항목은 복제하지 않는다. 항목은 `ref_id`로 기록(`events`)이나 제약을 가리킨다. 그래서 기록 원문을 가린 값이 이 기록에 다시 나타날 수 없다.
 - 제약 칸 항목은 제약 번호와 단계(`All`, `Scope`, `Relevance`)이고, 칸이 차서 빠진 제약은 이유 `slot_full`이다. 새 session의 제약 단계는 기존 `packet_constraints`에도 남는다. 목표, 열린 항목, 최근 턴, 경쟁 구역 항목은 기록 번호만 가지므로, 제약은 제약 칸 한 곳에서만 전달된다는 것을 이 표의 `Constraints` 행과 다른 구역 행으로 조회한다.
-- 최근 턴이 줄었으면 `form`이 `Trimmed`이거나 이유가 `recent_limit`, `packet_limit`이다. 경쟁 구역은 `Full`, `Digest`, `Path`, `Summary`로 모양을, `budget`, `provider_doc`으로 빠진 이유를 남긴다.
+- 최근 턴이 줄었으면 `form`이 `Trimmed`이거나 이유가 `recent_limit`, `packet_limit`이다. 경쟁 구역은 `Full`, `Digest`, `Path`, `Summary`로 모양을, `budget`, `provider_doc`으로 빠진 이유를 남긴다. 목표 칸의 최신 수정은 `Full`로 들어가거나 이유가 `duplicate`(같은 원문이 이미 있음), `packet_limit`(고정 구역이 넘쳐 뺌)이다.
 - 정책 지문은 설정 번호의 기준값과 router 모델의 지문이다([판단 정책 고정](router.md#정책-고정)).
 - 기록하지 못해도 전송은 막지 않고 로그만 남긴다. 이 기록은 전송의 전제가 아니라 전송의 근거다.
 

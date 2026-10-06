@@ -1,10 +1,12 @@
 //! 제약 인계 테스트: 저장한 유효 제약이 긴 대화 뒤 전환에서도 새 session의 패킷 제약 구역에 들어가고, 넣은 제약이 `packet_constraints`에 남는지 확인한다.
 //! 설계: docs/design/constraints.md#패킷의-제약-칸
 
-use saturn_protocol::ids::{ConstraintId, InputId, Provider, SessionId, TaskId};
+use saturn_protocol::ids::{AgentId, ConstraintId, InputId, Provider, SessionId, TaskId};
 use saturn_protocol::rpc::{ChatNotice, Notification};
 
-use super::support::{Flow, idle_reply, text, tool_read, tool_result, turn_completed};
+use super::support::{
+    Flow, constraint_reply, idle_reply, text, tool_read, tool_result, turn_completed,
+};
 use crate::providers::test_support::{CLAUDE, CODEX, Call, FakeProvider};
 use crate::store::{
     Actor, ConstraintChange, ConstraintState, NewChange, NewRegistration, NewRule, PacketKind,
@@ -345,4 +347,62 @@ async fn provider_command_turn_does_not_push_a_correction_out_of_the_recent_turn
 
     let packet = packet_of(&claude);
     assert!(packet.contains(correction), "{packet}");
+}
+
+// #584: 수정으로 판단된 입력은 `constraint.auto_apply`가 꺼져 등록되지 않아도, 뒤에 입력이 세 턴 넘게 쌓여도, engine을 다시 켠 뒤에도 인계 패킷에 원문으로 남는다
+#[tokio::test]
+async fn judged_correction_stays_in_the_packet_after_more_turns_and_a_restart() {
+    let mut replies = vec![idle_reply(0.95), constraint_reply(0.95, 0.85)];
+    replies.extend((0..6).map(|_| idle_reply(0.95)));
+    let mut flow = Flow::with_config("", replies).await;
+    let _codex = flow.add_provider(CODEX);
+    flow.engine.switch_provider(flow.chat, CODEX);
+    turn(&mut flow, CODEX, "task 1 use the header X-Req-Id", "c1").await;
+    let correction = "task 2 correction: the header is X-Call-Token, drop X-Req-Id";
+    turn(&mut flow, CODEX, correction, "c2").await;
+    for number in 3..=6 {
+        turn(
+            &mut flow,
+            CODEX,
+            &format!("task {number} read the part {number}"),
+            &format!("c{number}"),
+        )
+        .await;
+    }
+    let restarted = super::crash_recovery::Restarted::after_shutdown(flow).await;
+
+    let (rows, steers, changes) = restarted
+        .engine
+        .packet_material(restarted.chat)
+        .await
+        .unwrap();
+    let budget = restarted
+        .engine
+        .context_budget(restarted.chat, AgentId(1), CLAUDE)
+        .await
+        .unwrap();
+    let crate::handoff::HandoffOutcome::Ready(packet) = crate::handoff::build_handoff(
+        &rows,
+        &steers,
+        &changes,
+        &restarted.engine.pending_work(restarted.chat, None),
+        (&[], &[]),
+        &budget,
+    ) else {
+        panic!("packet should exist");
+    };
+
+    let goal = packet.text.split("## Goal and last input").nth(1).unwrap();
+    let goal = goal.split("## Open items").next().unwrap();
+    assert!(
+        goal.contains(&format!("Amendment (task 1) [Finished]: {correction}")),
+        "{}",
+        packet.text
+    );
+    assert_eq!(
+        packet.text.matches(correction).count(),
+        1,
+        "{}",
+        packet.text
+    );
 }
