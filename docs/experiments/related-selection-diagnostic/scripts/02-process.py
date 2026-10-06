@@ -38,7 +38,7 @@ def rows(run_id: str) -> tuple[list[dict], list[tuple[str, str]]]:
             packets = db["packets"]
             first = packets[0] if packets else {}
             judgments = db["judgments"]
-            related = any("related@2.0" in item.get("question_sets", "") for item in judgments)
+            related = any(item.get("selector") == "related_jev" for item in db["items"])
             provider_tokens = sum(sum(item.get(key, 0) or 0 for key in ("input_tokens", "cache_write_tokens", "cache_read_tokens", "output_tokens")) for item in db["usage"])
             router_tokens = sum((item.get("input_tokens") or 0) + (item.get("output_tokens") or 0) for item in judgments)
             result.append(dict(case=case, arm=arm, status=raw["status"], answer=raw["answer"], expected=raw["expected"], correct=int(raw["status"] == "ok" and raw["answer"] == str(raw["expected"])), first_packet_hash=first.get("body_hash", ""), first_packet_bytes=first.get("body_bytes", ""), related_applied=int(related), lookups=len(db["lookups"]), provider_tokens=provider_tokens, router_tokens=router_tokens, latency_s=round(raw["latency_s"], 3)))
