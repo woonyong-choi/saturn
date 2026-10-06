@@ -325,3 +325,24 @@ async fn constraint_with_an_exception_is_handed_over_with_its_exception_note() {
         "{packet}"
     );
 }
+
+#[tokio::test]
+async fn provider_command_turn_does_not_push_a_correction_out_of_the_recent_turns() {
+    let (mut flow, _codex) = flow_with("").await;
+    flow.engine.switch_provider(flow.chat, CODEX);
+    turn(&mut flow, CODEX, "task 1 use the header X-Req-Id", "c1").await;
+    let correction = "task 2 correction: the header is X-Call-Token, drop X-Req-Id";
+    turn(&mut flow, CODEX, correction, "c2").await;
+    turn(&mut flow, CODEX, "task 3 read the docs", "c3").await;
+    turn(&mut flow, CODEX, "task 4 read the layout", "c4").await;
+    flow.submit("/compact").await;
+    let agent = flow.agent();
+    flow.event(CODEX, turn_completed(agent)).await;
+    let claude = flow.fake.clone();
+    flow.engine.switch_provider(flow.chat, CLAUDE);
+
+    flow.submit("task 4 review the cache").await;
+
+    let packet = packet_of(&claude);
+    assert!(packet.contains(correction), "{packet}");
+}

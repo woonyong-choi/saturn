@@ -1,7 +1,7 @@
 //! 기록 목록에서 새 session에 넘기는 패킷과, 돌아온 session에 붙이는 변경분을 만든다.
 //! 설계: docs/design/context-management.md#패킷-구성, docs/design/providers-and-sessions.md
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use saturn_core::constraints::scope_of;
 use saturn_core::routers::CompactCandidate;
@@ -434,17 +434,21 @@ impl Engine {
 /// 사용자의 입력이라 마지막 입력이 될 수 있다.
 /// 기록 번호는 그 입력을 낸 실행의 첫 이벤트 번호(끼워 넣은 입력은 적용 때 쌓여 있던 마지막 번호)이고, 입력마다 그 실행의 상태를 적는다. 끝난 입력도 목표 칸에 남지만 끝났다고 적혀 요청으로 읽히지 않는다.
 fn goal_inputs(rows: &[LedgerRow], steers: &[&SteeredInput]) -> Vec<Entry> {
+    let silent = silent_runs(rows, steers);
     let Some(task) = rows
         .iter()
         .rev()
-        .find(|row| row.input.is_some())
+        .find(|row| row.input.is_some() && !silent.contains(&row.run))
         .map(|row| row.task)
     else {
         return Vec::new();
     };
     let mut runs: Vec<(RunId, LedgerSeq, TurnStatus)> = Vec::new();
     let mut inputs: Vec<(LedgerSeq, TurnStatus, String)> = Vec::new();
-    for row in rows.iter().filter(|row| row.task == task) {
+    for row in rows
+        .iter()
+        .filter(|row| row.task == task && !silent.contains(&row.run))
+    {
         let Some(input) = &row.input else {
             continue;
         };
@@ -489,15 +493,44 @@ fn status_of(end: Option<RunEnd>) -> TurnStatus {
     }
 }
 
+/// 글도 도구 호출도 내지 않고 끝난 실행. provider 명령(`/compact` 등)의 턴이 이에 해당한다. 최근 턴 세 칸과 목표 칸의 마지막 입력을 이런 턴이 차지하면
+/// 그 앞의 실제 대화(정정한 말 포함)가 밀려나므로 두 곳에서 뺀다. 입력 원문은 기록에 그대로 남는다. 끼워 넣은 입력이 붙은 실행은 뺄 수 없다.
+fn silent_runs(rows: &[LedgerRow], steers: &[&SteeredInput]) -> HashSet<RunId> {
+    let mut silent: HashSet<RunId> = HashSet::new();
+    let mut loud: HashSet<RunId> = steers.iter().map(|steer| steer.run).collect();
+    for row in rows {
+        let is_quiet = matches!(
+            row.event,
+            ProviderEvent::ContextSize { .. }
+                | ProviderEvent::TurnCompleted { .. }
+                | ProviderEvent::Usage(_)
+                | ProviderEvent::CacheWindow { .. }
+                | ProviderEvent::SettingsApplied { .. }
+        );
+        if !is_quiet || row.end != Some(RunEnd::Completed) {
+            loud.insert(row.run);
+        }
+        if row.input.is_some() {
+            silent.insert(row.run);
+        }
+    }
+    silent.retain(|run| !loud.contains(run));
+    silent
+}
+
 /// 입력이 있는 실행마다 턴 하나. 기록 번호는 그 실행의 첫 이벤트 번호이고 답은 메인 에이전트 글을 이은 것이다.
 /// 그 실행에 끼워 넣어 적용한 입력은 적용한 순서로 턴에 붙는다.
 fn recent_turns(rows: &[LedgerRow], steers: &[&SteeredInput]) -> Vec<RecentTurn> {
+    let silent = silent_runs(rows, steers);
     let mut order: Vec<RunId> = Vec::new();
     let mut turns: HashMap<RunId, RecentTurn> = HashMap::new();
     for row in rows {
         let Some(input) = &row.input else {
             continue;
         };
+        if silent.contains(&row.run) {
+            continue;
+        }
         let turn = turns.entry(row.run).or_insert_with(|| {
             order.push(row.run);
             RecentTurn {
