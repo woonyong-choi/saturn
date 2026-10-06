@@ -1,0 +1,44 @@
+{
+  "confirmation": null,
+  "dev_source_lock_sha256": "30b30afca6988f4ee1d01fae01d35158979159afe1ebd1ae07963cc598746628",
+  "http_status": {
+    "200": 60
+  },
+  "latency_ms": {
+    "max": 413,
+    "median": 265.5,
+    "min": 219,
+    "n": 60,
+    "p95_nearest_rank": 337,
+    "sum": 16248
+  },
+  "meets_required_lower": false,
+  "phase": "development_smoke",
+  "raw_sha256": "f2be3a4a9b12ef899f8ad542b44e090c64cacbf34bbac6887930bf317aadf545",
+  "replays": {
+    "finished": 60,
+    "parse_ok": {
+      "k": 60,
+      "n": 60
+    },
+    "planned": 60,
+    "started": 60
+  },
+  "required_wilson_lower": 0.9,
+  "response_model": {
+    "jev-1.13.0": 60
+  },
+  "same_selection": {
+    "k": 12,
+    "n": 12,
+    "wilson95": [
+      0.757506,
+      1.0
+    ]
+  },
+  "source_fixtures": 12,
+  "usage_missing": {
+    "k": 0,
+    "n": 60
+  }
+}
