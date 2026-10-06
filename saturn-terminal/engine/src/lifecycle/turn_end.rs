@@ -9,7 +9,7 @@ use saturn_protocol::state::{InputState, SessionState, TaskState};
 
 use super::support::{
     CLIENT, Flow, context_size, idle_reply, running_reply, subagent_ended, subagent_started, text,
-    turn_completed,
+    tool_read, turn_completed,
 };
 use super::*;
 use crate::providers::test_support::Call;
@@ -182,6 +182,14 @@ async fn context_over_the_threshold_replaces_the_session_only_at_the_turn_bounda
         })
         .await;
     assert_eq!(notice, ChatNotice::Compacted);
+
+    // 새 session이 패킷 턴에 도구 호출로 시작해 답하고 끝나면 그 턴이 연 실행도 끝나야 한다
+    flow.claude_event(tool_read(agent, "packet-think", "src/cache.rs"))
+        .await;
+    flow.claude_event(text(agent, "Ready")).await;
+    flow.claude_event(turn_completed(agent)).await;
+    let open_runs = flow.engine.store.unfinished_runs().await.unwrap();
+    assert!(open_runs.is_empty(), "{open_runs:?}");
 }
 
 #[tokio::test]
