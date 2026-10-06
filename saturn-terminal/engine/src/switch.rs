@@ -20,8 +20,8 @@ use crate::dispatch::{MAX_SEND_ATTEMPTS, Start};
 use crate::flow::LiveSession;
 use crate::handoff::{
     COMPACT_SELECTOR, Handoff, HandoffOutcome, PacketEvidence, Pending, RANK_SELECTOR,
-    changes_of_others, handoff_of, handoff_source, handoff_source_ordered, others_only,
-    reduce_handoff,
+    changes_of_others, constraint_only_source, handoff_of, handoff_source, handoff_source_ordered,
+    others_only, reduce_handoff,
 };
 use crate::models::pinned_model_name;
 use crate::packet_select::{
@@ -501,7 +501,7 @@ impl Engine {
             evidence: None,
         };
         if role == AgentRole::Sub {
-            return Ok(plain);
+            return self.plan_new_task(record, plain).await;
         }
         if let Some(main) = main.as_ref().filter(|main| {
             main.provider == provider
@@ -574,6 +574,47 @@ impl Engine {
             provider: stored.provider,
             role: stored.role,
         }
+    }
+
+    /// 새 작업 session은 앞 맥락 없이 시작하고, 해제되지 않은 제약만 패킷으로 먼저 받는다.
+    async fn plan_new_task(
+        &self,
+        record: &QueuedInput,
+        plain: OpenPlan,
+    ) -> Result<OpenPlan, Planning> {
+        let failed = |error: EngineError| PlanError::Failed(self.failure_line(&error));
+        let settings = self
+            .settings
+            .at(&self.store, record.settings)
+            .await
+            .map_err(|error| failed(error.into()))?;
+        let budget = settings.context_budget(
+            plain.provider,
+            self.registry.context_defaults(plain.provider),
+        );
+        let constraints = self
+            .store
+            .constraints_of_chat(record.chat)
+            .await
+            .map_err(|error| failed(error.into()))?;
+        let Some(source) = constraint_only_source(&constraints, &budget) else {
+            return Ok(plain);
+        };
+        let outcome = handoff_of(&source, &budget);
+        let (evidence, reduction, constraint_tiers) = packet_parts(
+            &plain.target,
+            &outcome,
+            Some(source),
+            (budget, RANK_SELECTOR),
+        );
+        let handoff = packet_text(record.chat, outcome)?;
+        Ok(OpenPlan {
+            handoff,
+            reduction,
+            constraint_tiers,
+            evidence,
+            ..plain
+        })
     }
 
     async fn plan_handoff(

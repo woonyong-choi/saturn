@@ -406,3 +406,28 @@ async fn judged_correction_stays_in_the_packet_after_more_turns_and_a_restart() 
         packet.text
     );
 }
+
+#[tokio::test]
+async fn new_task_session_gets_only_the_active_constraints() {
+    let mut flow = Flow::with_config("", vec![idle_reply(0.95), idle_reply(0.1)]).await;
+    let _codex = flow.add_provider(CODEX);
+    let claude = flow.fake.clone();
+    flow.engine.switch_provider(flow.chat, CODEX);
+    let first = turn(&mut flow, CODEX, "task 1 write the cache", "c1").await;
+    register(&flow, first, &[(RULE, &[])]).await;
+    flow.engine.switch_provider(flow.chat, CLAUDE);
+
+    flow.submit("an unrelated question about the invoice").await;
+
+    let packet = packet_of(&claude);
+    assert!(packet.contains(RULE), "{packet}");
+    assert!(!packet.contains("task 1 write the cache"), "{packet}");
+    assert_eq!(
+        flow.engine
+            .store
+            .packet_constraints_of(CLAUDE_FIRST)
+            .await
+            .unwrap(),
+        vec![(ConstraintId(1), "All".to_owned())]
+    );
+}
