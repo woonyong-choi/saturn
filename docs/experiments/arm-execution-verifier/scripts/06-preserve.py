@@ -14,7 +14,9 @@ import os
 import platform
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import contract
 import family
@@ -50,7 +52,8 @@ def seal() -> None:
     if MANIFEST.exists():
         raise SystemExit("already sealed: " + str(MANIFEST))
     prices = json.loads((RUN / "prices.json").read_text())  # USD per million tokens, 사용자가 공급한다. 기본값을 만들지 않는다
-    version = lambda cmd: subprocess.check_output([cmd, "--version"], text=True).strip()
+    def version(cmd: str) -> str:
+        return subprocess.check_output([cmd, "--version"], text=True).strip()
     manifest = preserve.build_manifest(
         product=dict(commit=git("rev-parse", "HEAD", cwd=binary.parents[2]), binary_sha256=preserve.sha(binary.read_bytes())),
         experiment=dict(commit=git("rev-parse", "HEAD"), files=experiment_files()),
@@ -326,7 +329,11 @@ ALL_CAPS = {k: dict(supported=True, evidence="simulation only") for k in preserv
 def injections() -> None:
     cells, trials, raws, fixs = simulated(ALL_CAPS)
     prices = SIM_PRICES
-    check = lambda t=None, r=None, c=None: lambda: preserve.check_dataset(c or cells, t if t is not None else trials, r or raws, fixs, prices, require_capture=True)
+    def check(t=None, r=None, c=None):
+        def validate():
+            preserve.check_dataset(c or cells, t if t is not None else trials, r or raws, fixs, prices, require_capture=True)
+
+        return validate
     check()()
     # 복원한 source DB의 과거 패킷은 이번 trial 캡처 대상이 아니다.
     sample = next(c for c in cells if c["arm"] == "R" and c["source"] != c["target"])
@@ -338,8 +345,11 @@ def injections() -> None:
     assert preserve.capture_report(sample_record) == [], "source packet or run start was mistaken for an outbound capture"
     assert len(cells) == 96 and all(c["status"] == "planned" for c in cells)
     assert any(t["status"] == "delivery_unknown" for t in trials) and any(t["preserve"]["cost_usd"] is None for t in trials)
-    some = lambda arm: next(c["cell_id"] for c in cells if c["arm"] == arm and c["source"] != c["target"])
-    name = lambda cid: f"raw/{cid}.json"
+    def some(arm: str) -> str:
+        return next(c["cell_id"] for c in cells if c["arm"] == arm and c["source"] != c["target"])
+
+    def name(cid: str) -> str:
+        return f"raw/{cid}.json"
 
     def semantic(label: str, cell_id: str, edit) -> None:
         """기록 자체가 잘못된 경우: 해시와 trial을 일관되게 다시 만들어도 거절해야 한다."""
@@ -420,8 +430,11 @@ def injections() -> None:
         apply(t, copy.deepcopy(raws))
         must_fail(label, check(t))
 
-    null_cost = lambda t: t["preserve"]["cost_usd"] is None
-    not_applied = lambda t: not t["preserve"]["selector"]["applied"]
+    def null_cost(t: dict) -> bool:
+        return t["preserve"]["cost_usd"] is None
+
+    def not_applied(t: dict) -> bool:
+        return not t["preserve"]["selector"]["applied"]
     tamper("usage field missing", lambda t, _: first(t, "R")["usage"][0].pop("output_tokens"))
     tamper("usage entries missing", lambda t, _: first(t, "R", lambda x: x["status"] == "ok").update(usage=[]))
     tamper("child usage counted inside parent", lambda t, _: _child(first(t, "R")))
@@ -478,6 +491,51 @@ def injections() -> None:
 
 class Crash(BaseException):
     """프로세스가 죽은 상황을 흉내 낸다. Exception이 아니므로 수집기의 오류 처리가 끝 기록을 남기지 못한다."""
+
+
+def trial_state_checks() -> None:
+    """미완료 작업 뒤에는 입력을 더 보내지 않고 시험 홈을 남긴다."""
+    class FakeEngine:
+        def __init__(self, binary, home, log, env=None):
+            self.sock_path = home / "engine.sock"
+
+        def stop(self):
+            pass
+
+    for state, status, sent, retained in (
+        ("NeedsCheck", "delivery_unknown", 1, True),
+        ("Failed", "incomplete", 1, True),
+        ("Done", "ok", 3, False),
+    ):
+        class FakeClient:
+            calls: list[str] = []
+
+            def __init__(self, sock_path):
+                self.decisions = []
+
+            def call(self, method, params):
+                return {}
+
+            def set_model(self, chat, provider, model):
+                pass
+
+            def run_input(self, chat, text, allow, timeout):
+                self.calls.append(text)
+                return dict(status="ok", tasks={1: state}, notes=[])
+
+        with tempfile.TemporaryDirectory(prefix="arm-trial-state-") as place:
+            run = Path(place)
+            (run / "sa").mkdir()
+            (run / "wa").mkdir()
+            cell = dict(cell_id="test", source="claude", target="codex", arm="R")
+            fix = dict(visible=dict(followups=["one", "two", "three"]))
+            snap = dict(label="a", chat=1, source_packet_max_id=0)
+            db = dict(runs=[], packets=[], judgments=[])
+            with patch.object(family, "Engine", FakeEngine), patch.object(family, "Client", FakeClient), patch.object(family.online, "dump_db", return_value=db):
+                record = family.run_trial(cell, fix, snap, [], run)
+            assert record["status"] == status and len(FakeClient.calls) == sent, state
+            assert (run / "t").exists() == retained, state
+    print("trial state checks passed (fake engine and client, no provider)")
 
 
 def resume_checks() -> None:
@@ -649,6 +707,7 @@ def _child(trial: dict) -> None:
 
 def verify() -> None:
     injections()
+    trial_state_checks()
     resume_checks()
     cells = preserve.plan(preserve.default_capabilities())
     reasons = {r: [c["reason"] for c in cells].count(r) for r in sorted({c["reason"] for c in cells if c["reason"]})}

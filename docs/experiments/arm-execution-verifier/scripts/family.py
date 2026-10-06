@@ -142,8 +142,13 @@ def run_trial(cell: dict, fix: dict, snap: dict, overrides: list, run: Path, tag
             notes += out.get("notes", [])
             tasks.update(out.get("tasks") or {})
             answers.append(reply_text(out.get("notes", [])))
-            if out["status"] != "ok" or any(v == "Failed" for v in (out.get("tasks") or {}).values()):
-                status = out["status"] if out["status"] != "ok" else "failed"
+            if out["status"] != "ok" or not out.get("tasks") or any(v != "Done" for v in out["tasks"].values()):
+                if out["status"] != "ok":
+                    status = out["status"]
+                elif "NeedsCheck" in out["tasks"].values():
+                    status = "delivery_unknown"
+                else:
+                    status = "incomplete"
                 break
         record.update(latency_s=round(time.time() - t0, 6), ended_at=online.now(), status=status, tasks=tasks, notes=notes, decisions=client.decisions)
     finally:
@@ -154,5 +159,6 @@ def run_trial(cell: dict, fix: dict, snap: dict, overrides: list, run: Path, tag
     record["sent_body"] = record["captures"][-1]["body"] if record["captures"] else None
     record["db"] = online.dump_db(home / "saturn.db", snap["chat"])
     record["calls"] = call_counts(record["db"], int(t0 * 1000))
-    shutil.rmtree(home, ignore_errors=True)  # 끝까지 마친 시험 홈만 지운다. 중단된 시도의 홈은 남는다
+    if record["status"] == "ok":
+        shutil.rmtree(home, ignore_errors=True)
     return record

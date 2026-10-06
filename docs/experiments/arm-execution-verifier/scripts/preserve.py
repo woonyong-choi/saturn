@@ -113,7 +113,8 @@ def default_capabilities() -> dict:
 
 
 def support(arm: str, path: tuple, caps: dict, kind: str | None = None) -> tuple[str, str | None]:
-    has = lambda name: caps[name]["supported"] is True
+    def has(name: str) -> bool:
+        return caps[name]["supported"] is True
     if arm == "F" and not has("full_packet_control"):
         return "unsupported", "no_full_packet_control"
     if arm == "N" and not has("native_same_session_observable"):
@@ -310,7 +311,7 @@ def build_trial(cell: dict, fix: dict, record: dict, raw_name: str, raw_sha: str
     actual_path = "restart" if "Restart" in kinds else "switch" if "Switch" in kinds else "same_session"
     expected_path = "switch" if cell["source"] != cell["target"] else "restart"
     selector = selection_report(cell["arm"], packets)
-    status = {"ok": "ok", "timeout": "incomplete"}.get(record["status"], "failed")
+    status = {"ok": "ok", "timeout": "incomplete", "incomplete": "incomplete", "delivery_unknown": "delivery_unknown"}.get(record["status"], "failed")
     if status == "ok" and any(v == "Failed" for v in (record.get("tasks") or {}).values()):
         status = "failed"
     if state in ("Unknown", "Prepared"):
