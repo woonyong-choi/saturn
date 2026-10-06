@@ -1,0 +1,202 @@
+[
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-101-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-101-provider"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-101-rescue"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-101-rrf"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-101-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-102-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-102-rrf"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-102-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-103-provider"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-103-rescue"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-103-rrf"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-103-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-104-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-104-provider"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-104-rrf"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "claude-104-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-101-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-101-provider"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-101-rescue"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-101-rrf"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-101-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-102-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-102-provider"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-102-rescue"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-102-rrf"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-102-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-103-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-103-provider"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-103-rrf"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-103-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-104-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-104-provider"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-104-rrf"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "codex-104-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-claude-101-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-claude-101-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-claude-102-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-claude-102-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-claude-103-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-claude-103-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-claude-104-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-claude-104-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-codex-101-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-codex-101-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-codex-102-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-codex-102-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-codex-103-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-codex-103-rrf_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-codex-104-jev_lookup"
+  },
+  {
+    "runtime_matches_saved_grade": true,
+    "trial": "followup-codex-104-rrf_lookup"
+  }
+]

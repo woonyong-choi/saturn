@@ -17,6 +17,10 @@
 
 | 파일 | 내용 | 만드는 스크립트 |
 |---|---|---|
+| followup/*.json.gz | 수정 버전의 별도 실행 원자료다. | collect.py --followup |
+| packets/*.txt.gz | 실제 전달 패킷 중 engine 해시가 일치한 원문이다. 로컬에만 보존한다. | packet_audit.py --capture |
+| prior-compaction-metering.json | 이전 실험의 압축 호출별 보고 토큰과 원자료 해시다. | metering_audit.py |
+| native-compaction-observations.json | Claude 기록에서 채취한 실제 압축 경계와 원본 파일 해시다. | 원본 기록의 compact_boundary 추출 |
 | raw/*.json.gz | 수정하지 않는 실행 원문과 시험 종료 뒤 기록 저장소 스냅샷이다. | collect.py |
 | SHA256SUMS | 원문 압축 파일별 해시다. | analyze.py |
 | ../results/trials.json | 실행별 채점·토큰·조회·개입·모델 식별자다. | analyze.py |
@@ -36,3 +40,5 @@
 | grades | object | 없음 | 실제 실행 뒤 | F1·F3 코드와 공개 테스트의 결과다. | header_ok |
 
 로컬 원자료가 있을 때 run.sh verify로 해시와 재집계 바이트를 검사한다. 없으면 검증은 실패하며 새 수집을 기존 실행의 재현 성공으로 표시하지 않는다.
+
+추가 실행은 같은 과제를 이미 열람한 뒤 수정 버전에서 다시 실행한 탐색 분석이다. 파일 이름은 조건 식별자이며 실행 시각과 수집기 커밋은 원자료 필드로 보존한다. 실제 입력 개수는 전송 함수 호출 횟수와 별도로 집계한다.

@@ -1,0 +1,138 @@
+[
+  {
+    "metadata": {
+      "cumulativeDroppedTokens": 81673,
+      "durationMs": 32603,
+      "postTokens": 5397,
+      "preTokens": 87070,
+      "preservedMessages": {
+        "allUuids": [
+          "e1c6dd72-bd86-4a47-9280-cca927de9774",
+          "c1519cc2-a3bc-4ea8-8a6d-594a1e583830",
+          "e88aaa56-2f6b-43f7-820a-96c0c0a681ef",
+          "b2d51666-89ba-4399-a9c6-f833110aa04a",
+          "94571a3d-a996-4393-9131-ee481078579a"
+        ],
+        "anchorUuid": "e485b4b5-05e0-4bd1-94fa-0ac0d7e6852e",
+        "uuids": [
+          "e1c6dd72-bd86-4a47-9280-cca927de9774",
+          "c1519cc2-a3bc-4ea8-8a6d-594a1e583830",
+          "e88aaa56-2f6b-43f7-820a-96c0c0a681ef",
+          "b2d51666-89ba-4399-a9c6-f833110aa04a",
+          "94571a3d-a996-4393-9131-ee481078579a"
+        ]
+      },
+      "preservedSegment": {
+        "anchorUuid": "e485b4b5-05e0-4bd1-94fa-0ac0d7e6852e",
+        "headUuid": "e1c6dd72-bd86-4a47-9280-cca927de9774",
+        "tailUuid": "94571a3d-a996-4393-9131-ee481078579a"
+      },
+      "trigger": "manual"
+    },
+    "source_sha256": "1a547fbcc1cb1f5bdc7deec85fb00f17ea44551c3e1924d8a926dfaec59eee82",
+    "timestamp": "2026-10-06T03:58:01.227Z",
+    "trial": "claude-101-provider"
+  },
+  {
+    "metadata": {
+      "cumulativeDroppedTokens": 81634,
+      "durationMs": 35042,
+      "postTokens": 5572,
+      "preTokens": 87206,
+      "preservedMessages": {
+        "allUuids": [
+          "b7c38c85-dffa-4a97-b6c9-62869f5542f1",
+          "4160c7b9-a8d7-4ea0-a0df-6310f2e4ec60",
+          "0f252401-80dc-4278-a01c-2de43704cf37",
+          "072dc9e9-b529-489a-92b7-bc999ea4d3c2",
+          "8e90ed60-b819-40c3-b6e7-204794ee854f"
+        ],
+        "anchorUuid": "ac1a8df8-2217-4932-b21e-14d9cf874adc",
+        "uuids": [
+          "b7c38c85-dffa-4a97-b6c9-62869f5542f1",
+          "4160c7b9-a8d7-4ea0-a0df-6310f2e4ec60",
+          "0f252401-80dc-4278-a01c-2de43704cf37",
+          "072dc9e9-b529-489a-92b7-bc999ea4d3c2",
+          "8e90ed60-b819-40c3-b6e7-204794ee854f"
+        ]
+      },
+      "preservedSegment": {
+        "anchorUuid": "ac1a8df8-2217-4932-b21e-14d9cf874adc",
+        "headUuid": "b7c38c85-dffa-4a97-b6c9-62869f5542f1",
+        "tailUuid": "8e90ed60-b819-40c3-b6e7-204794ee854f"
+      },
+      "trigger": "manual"
+    },
+    "source_sha256": "921131f8394d42c9f0a1035264167ab8616ab841fbb7a35593e8a0cba31480e2",
+    "timestamp": "2026-10-06T03:16:16.580Z",
+    "trial": "claude-102-provider"
+  },
+  {
+    "metadata": {
+      "cumulativeDroppedTokens": 89381,
+      "durationMs": 59341,
+      "postTokens": 5950,
+      "preTokens": 95331,
+      "preservedMessages": {
+        "allUuids": [
+          "86f8c612-fa44-479e-afdf-5c239d188fb0",
+          "bfab3810-bc49-4d7f-9b29-d46045ad4f53",
+          "c9887e06-7a2e-41de-a5be-a95f762adbd6",
+          "7868d031-cbff-4230-8194-75ae0f2f2db5",
+          "05babf58-dfa9-4a55-b090-9065f3fb378a"
+        ],
+        "anchorUuid": "5197ac89-5b37-4f56-aebc-4729006d6609",
+        "uuids": [
+          "86f8c612-fa44-479e-afdf-5c239d188fb0",
+          "bfab3810-bc49-4d7f-9b29-d46045ad4f53",
+          "c9887e06-7a2e-41de-a5be-a95f762adbd6",
+          "7868d031-cbff-4230-8194-75ae0f2f2db5",
+          "05babf58-dfa9-4a55-b090-9065f3fb378a"
+        ]
+      },
+      "preservedSegment": {
+        "anchorUuid": "5197ac89-5b37-4f56-aebc-4729006d6609",
+        "headUuid": "86f8c612-fa44-479e-afdf-5c239d188fb0",
+        "tailUuid": "05babf58-dfa9-4a55-b090-9065f3fb378a"
+      },
+      "trigger": "manual"
+    },
+    "source_sha256": "162b0c1caaf52546e1cb234afb1f95ca6db208c155337bf3fcaab1c8abccc9bc",
+    "timestamp": "2026-10-06T03:47:19.216Z",
+    "trial": "claude-103-provider"
+  },
+  {
+    "metadata": {
+      "cumulativeDroppedTokens": 81195,
+      "durationMs": 49733,
+      "postTokens": 5489,
+      "preTokens": 86684,
+      "preservedMessages": {
+        "allUuids": [
+          "e8f34622-57c0-4986-9be2-33e0d3431ecc",
+          "85a1e029-cde7-4c4b-b07d-9e5a4cfb51ed",
+          "12d169da-ed4f-4c37-bbb7-f07fdb030fbf",
+          "a5dcb03d-5997-4944-9c29-3d16be96b1cc",
+          "0d9decc8-27ed-429b-bbbf-ce23f944a9e1"
+        ],
+        "anchorUuid": "e84c2b58-ee9c-495f-a5d9-d106dd4950eb",
+        "uuids": [
+          "e8f34622-57c0-4986-9be2-33e0d3431ecc",
+          "85a1e029-cde7-4c4b-b07d-9e5a4cfb51ed",
+          "12d169da-ed4f-4c37-bbb7-f07fdb030fbf",
+          "a5dcb03d-5997-4944-9c29-3d16be96b1cc",
+          "0d9decc8-27ed-429b-bbbf-ce23f944a9e1"
+        ]
+      },
+      "preservedSegment": {
+        "anchorUuid": "e84c2b58-ee9c-495f-a5d9-d106dd4950eb",
+        "headUuid": "e8f34622-57c0-4986-9be2-33e0d3431ecc",
+        "tailUuid": "0d9decc8-27ed-429b-bbbf-ce23f944a9e1"
+      },
+      "trigger": "manual"
+    },
+    "source_sha256": "0f370e6a1767b7a76b2980c07c7d842ac343db7a88a5f56178e391cd2e12808c",
+    "timestamp": "2026-10-06T04:02:49.170Z",
+    "trial": "claude-104-provider"
+  }
+]

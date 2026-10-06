@@ -13,6 +13,7 @@ from types import ModuleType
 import sys
 
 import collect
+import packet_audit
 
 EXP = collect.EXP
 BASE = collect.BASE
@@ -200,6 +201,25 @@ def comparison(rows: list[dict], x: str, y: str) -> dict:
         collect.SEEDS
     ):
         out["decision"] = "보류"
+    out["quality_pass"] = quality[1] >= 0
+    out["cost_pass"] = cost["n"] == len(collect.SEEDS) and cost["ci95"][1] < 0
+    timing = out["metrics"]["window_seconds"]
+    out["time_pass"] = timing["n"] == len(collect.SEEDS) and timing["ci95"][1] < 0
+    out["limitations"] = []
+    for arm in (x, y):
+        group = [r for r in rows if r["arm"] == arm]
+        if any(not r.get("intervention_observed", False) for r in group):
+            out["limitations"].append(arm + ": 패킷 개입 확인 안 됨")
+        if any(r.get("missing_usage", True) for r in group):
+            out["limitations"].append(arm + ": 전체 사용량 결측")
+        if (
+            arm.endswith("lookup")
+            and group
+            and sum(r.get("lookup_count", 0) for r in group) == 0
+        ):
+            out["limitations"].append(arm + ": 실제 조회 없음")
+    if out["limitations"]:
+        out["decision"] = "보류"
     if x == "rescue":
         out["decision"] = "실행 규약 위반: 진단 비교 불가"
     return out
@@ -272,30 +292,11 @@ def summarize(rows: list[dict], followup: bool = False) -> dict:
     return out
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--verify", action="store_true")
-    parser.add_argument("--followup", action="store_true")
-    args = parser.parse_args()
-    folder = "followup" if args.followup else "raw"
-    prefix = "followup-" if args.followup else ""
-    files = sorted((EXP / "data" / folder).glob("*.json.gz"))
-    records = [json.load(gzip.open(f, "rt")) for f in files]
-    formal = [r for r in records if r["seed"] in collect.SEEDS]
-    identities = [r["trial"] for r in formal]
-    if len(identities) != len(set(identities)):
-        raise ValueError("duplicate trials")
-    if args.verify:
-        expected = {
-            f"{prefix}{p}-{seed}-{arm}"
-            for p in collect.PROVIDERS
-            for seed in collect.SEEDS
-            for arm in (("rrf_lookup", "jev_lookup") if args.followup else collect.ARMS)
-        }
-        if set(identities) != expected:
-            raise ValueError("formal collection incomplete or unexpected trial present")
+def collection_summary(
+    formal: list[dict], followup: bool = False
+) -> tuple[list[dict], dict]:
     rows = [trial_row(r) for r in formal]
-    summary = summarize(rows, args.followup)
+    summary = summarize(rows, followup)
     statuses = {}
     for raw in formal:
         for turn in raw["turns"]:
@@ -312,7 +313,7 @@ def main() -> int:
         "ended_unix": max((r["ended_unix"] for r in formal), default=None),
         "submitted_turns": sum(len(r["turns"]) for r in formal),
         "stored_inputs": sum(len(r.get("store", {}).get("inputs", [])) for r in formal),
-        "planned_input_limit": 240 if args.followup else 640,
+        "planned_input_limit": 240 if followup else 640,
         "turn_status_counts": statuses,
         "protocol_invalid": [
             r["trial"] for r in rows if not r.get("protocol_valid", False)
@@ -338,11 +339,92 @@ def main() -> int:
         ],
         "engines_remaining": [r["trial"] for r in formal if r.get("engines_remaining")],
     }
+    summary["audit"]["boundary_context_range"] = {}
+    for provider in collect.PROVIDERS:
+        contexts = [
+            c["tokens"]
+            for r in rows
+            if r["provider"] == provider
+            for c in r.get("boundary_context", [])
+        ]
+        summary["audit"]["boundary_context_range"][provider] = {
+            "min": min(contexts) if contexts else None,
+            "max": max(contexts) if contexts else None,
+        }
+    packets = [
+        p
+        for p in packet_audit.inspect_packets()
+        if (p["phase"] == "followup") == followup
+    ]
+    summary["audit"]["packets"] = {
+        "count": len(packets),
+        "matched": sum(p["matched"] for p in packets),
+        "without_corrected_header": sum(
+            p["corrected_header_present"] is False for p in packets
+        ),
+        "with_lookup_hint": sum(p["lookup_hint_present"] is True for p in packets),
+    }
+    if not followup:
+        prior = EXP / "data/prior-compaction-metering.json"
+        if prior.exists():
+            records = json.loads(prior.read_text())
+            summary["audit"]["prior_compaction_calls"] = len(records)
+            summary["audit"]["prior_compaction_zero_delta"] = sum(
+                r["reported_compaction_tokens"] == 0 for r in records
+            )
+    return rows, summary
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--verify", action="store_true")
+    parser.add_argument("--followup", action="store_true")
+    args = parser.parse_args()
+    folder = "followup" if args.followup else "raw"
+    prefix = "followup-" if args.followup else ""
+    files = sorted((EXP / "data" / folder).glob("*.json.gz"))
+    records = [json.load(gzip.open(f, "rt")) for f in files]
+    formal = [r for r in records if r["seed"] in collect.SEEDS]
+    identities = [r["trial"] for r in formal]
+    if len(identities) != len(set(identities)):
+        raise ValueError("duplicate trials")
+    if args.verify:
+        expected = {
+            f"{prefix}{p}-{seed}-{arm}"
+            for p in collect.PROVIDERS
+            for seed in collect.SEEDS
+            for arm in (("rrf_lookup", "jev_lookup") if args.followup else collect.ARMS)
+        }
+        if set(identities) != expected:
+            raise ValueError("formal collection incomplete or unexpected trial present")
+    rows, summary = collection_summary(formal, args.followup)
+    if not args.followup:
+        followups = [
+            json.load(gzip.open(f, "rt"))
+            for f in sorted((EXP / "data/followup").glob("*.json.gz"))
+        ]
+        if followups:
+            _, summary["followup"] = collection_summary(followups, True)
     results = {prefix + "trials.json": rows, prefix + "summary.json": summary}
     hashes = "".join(
         hashlib.sha256(f.read_bytes()).hexdigest() + "  " + folder + "/" + f.name + "\n"
         for f in files
     )
+    packet_files = [
+        f
+        for f in sorted((EXP / "data/packets").glob("*.gz"))
+        if f.name.startswith("followup-") == args.followup
+    ]
+    extra_files = packet_files
+    if not args.followup:
+        extra_files += [f for f in (EXP / "data").glob("*.json")]
+    for f in sorted(extra_files):
+        hashes += (
+            hashlib.sha256(f.read_bytes()).hexdigest()
+            + "  "
+            + str(f.relative_to(EXP / "data"))
+            + "\n"
+        )
     targets = {
         EXP / "results" / name: json.dumps(
             body, ensure_ascii=False, sort_keys=True, indent=2
@@ -360,7 +442,7 @@ def main() -> int:
     print(
         "verified" if args.verify else "analyzed",
         len(rows),
-        "formal trials; pilot",
+        "followup trials; pilot" if args.followup else "formal trials; pilot",
         len(records) - len(formal),
     )
     return 0

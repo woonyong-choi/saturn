@@ -1,0 +1,354 @@
+[
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-1-provider.json.gz",
+    "source_sha256": "8e9e38dcc0690aa436628ee37118fc8e89600f0a703a543d110e28e9c0f95178",
+    "track": "claude",
+    "trial": "claude-1-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-10-provider.json.gz",
+    "source_sha256": "725914471f299314837691ddee3bc7865466a6e8c02e357932df2a551225b68b",
+    "track": "claude",
+    "trial": "claude-10-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-11-provider.json.gz",
+    "source_sha256": "09b349828b5ebb781fd010375041cb59c5b9d8a75e137aa5c40e494c492041fa",
+    "track": "claude",
+    "trial": "claude-11-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-12-provider.json.gz",
+    "source_sha256": "5e1a393dc3922fe5d55650970f9dd8d3c26d87895c7d4c7547b1e1fda8495089",
+    "track": "claude",
+    "trial": "claude-12-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-2-provider.json.gz",
+    "source_sha256": "d4f4286a45b725e14a84dc0facae5463625a49f706801ce9f8bd591f8a25d86b",
+    "track": "claude",
+    "trial": "claude-2-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-3-provider.json.gz",
+    "source_sha256": "d7e67c5a2860cb44e000ba75f69d0bcd5019725374d5fab9507ff5a47900ce6d",
+    "track": "claude",
+    "trial": "claude-3-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-4-provider.json.gz",
+    "source_sha256": "06cad138a3aeb7e15813bce4a85afee84d7ad6ed9219caf721794b189d191863",
+    "track": "claude",
+    "trial": "claude-4-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-5-provider.json.gz",
+    "source_sha256": "5a5d54ef8aefeceaa48561571f10f2438b93d6968e3f235db1b178c8650991eb",
+    "track": "claude",
+    "trial": "claude-5-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-6-provider.json.gz",
+    "source_sha256": "66bb9634f8c87dd4754642411b5fdccc3d667c3f4b85565c78e5419a94a4da2d",
+    "track": "claude",
+    "trial": "claude-6-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-7-provider.json.gz",
+    "source_sha256": "92883ba586e7e16d42a5effa650bf00f6afa17f013221a7615d6a935c7385746",
+    "track": "claude",
+    "trial": "claude-7-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-8-provider.json.gz",
+    "source_sha256": "b0f6f54e370fe6d478751886e253a054134dc277e698d8d888a35fc9009edcdf",
+    "track": "claude",
+    "trial": "claude-8-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-9-provider.json.gz",
+    "source_sha256": "e083bf0f7e59e8cfc8379d1a1e38de377ca8a19e11dd715d2b7dbec9863adcca",
+    "track": "claude",
+    "trial": "claude-9-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-codex-1-provider.json.gz",
+    "source_sha256": "00773edd7a9c8e93262a9a21f5defc18cc424bc86aee33b5b136bd5a1efe0ee1",
+    "track": "claude-codex",
+    "trial": "claude-codex-1-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-codex-2-provider.json.gz",
+    "source_sha256": "403751c397f1de2a7083e653374ac549fff0ad8bbd32a86c92b487d877c962d7",
+    "track": "claude-codex",
+    "trial": "claude-codex-2-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-codex-3-provider.json.gz",
+    "source_sha256": "a3bd0ec2a1be338a9d9981ad7cca4281cf8f14d7fe9fe7bfc5205e9ec6385781",
+    "track": "claude-codex",
+    "trial": "claude-codex-3-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-codex-4-provider.json.gz",
+    "source_sha256": "71bc6142f88e141b00d081f695a3f7c5a2845b44328976df2f158b3b0305d0df",
+    "track": "claude-codex",
+    "trial": "claude-codex-4-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-codex-5-provider.json.gz",
+    "source_sha256": "9ed191fefe3afd15ff0d82dba8ca7d960d6b5ec7662034c7385e8bbdb91ff299",
+    "track": "claude-codex",
+    "trial": "claude-codex-5-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-codex-6-provider.json.gz",
+    "source_sha256": "cb37c8b91ab79ac97eca8b0498c24a2b76e3306ffde0b9c1197fe4cb5ee45cb3",
+    "track": "claude-codex",
+    "trial": "claude-codex-6-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-codex-7-provider.json.gz",
+    "source_sha256": "5574f45cbb95e31a3a0b66e9549153a00068f9e3c6f50e00d0918dfb5bf67185",
+    "track": "claude-codex",
+    "trial": "claude-codex-7-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-claude-codex-8-provider.json.gz",
+    "source_sha256": "f9a7cdc66f0b932311f4297cbf87ac8d994e8f586a1121f3fa94b54be386bf12",
+    "track": "claude-codex",
+    "trial": "claude-codex-8-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-1-provider.json.gz",
+    "source_sha256": "f3565466ae77cf4deaa62a6ee0ea46d462f19e3eceddb5974770da473016d4e7",
+    "track": "codex",
+    "trial": "codex-1-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-10-provider.json.gz",
+    "source_sha256": "6290a45516a714eada85aed8f312f3d827cf730bd46bb6205aa4246415121311",
+    "track": "codex",
+    "trial": "codex-10-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-11-provider.json.gz",
+    "source_sha256": "91405a89df9a2fdea2c0fa49a9b06ea4d6da0516c8da0f4441650acfc5db18cb",
+    "track": "codex",
+    "trial": "codex-11-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-12-provider.json.gz",
+    "source_sha256": "ab92f2b6e1dcdca5a0cdc77f33a8ab467bd3611a0dcb69960d30a833890c9ebc",
+    "track": "codex",
+    "trial": "codex-12-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-2-provider.json.gz",
+    "source_sha256": "ab459fb1c112b37ba06451d59ef1c927587b7e12d189e01bf55eb1f73fd34398",
+    "track": "codex",
+    "trial": "codex-2-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-3-provider.json.gz",
+    "source_sha256": "b5654be2c3662d7c79583c8c58914119a1b657fa42a1ce7545a4ce2be80c62e9",
+    "track": "codex",
+    "trial": "codex-3-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-4-provider.json.gz",
+    "source_sha256": "5de9e4b3b500c755e26de581b5c7f8a3cd1f0b9131963d59328a413f10a208e1",
+    "track": "codex",
+    "trial": "codex-4-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-5-provider.json.gz",
+    "source_sha256": "9fd7c80a4c7127765a4f456d65acc8f48f1c9e7278dcdce06d7d4e5d135bf083",
+    "track": "codex",
+    "trial": "codex-5-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-6-provider.json.gz",
+    "source_sha256": "85fbff28c578e148b565011c2996eae673a265c1822f073e05a290a533470b59",
+    "track": "codex",
+    "trial": "codex-6-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-7-provider.json.gz",
+    "source_sha256": "490e5c94c5bbe10a9129e1a290ea39780631afe9343a46a776a7178018321ebd",
+    "track": "codex",
+    "trial": "codex-7-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-8-provider.json.gz",
+    "source_sha256": "207693304489da647141482c2f579b84405ce2b6fb0d66620f3104bf35f9af65",
+    "track": "codex",
+    "trial": "codex-8-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-9-provider.json.gz",
+    "source_sha256": "bdbdf6c99dbee07a6c71e7cf323b55a5d836896ee9e881ddc08b63c1fc6ed970",
+    "track": "codex",
+    "trial": "codex-9-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-21-provider.json.gz",
+    "source_sha256": "9b74ef65a90dd63a3f290e2166eb1fcb6ac6f2623b8f584fba5823f9c0c2a94c",
+    "track": "codex-t16",
+    "trial": "codex-t16-21-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-22-provider.json.gz",
+    "source_sha256": "bc285d37da6648163b83eda5b0abfa2717e10e371afef53b5c05636553c263de",
+    "track": "codex-t16",
+    "trial": "codex-t16-22-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-23-provider.json.gz",
+    "source_sha256": "62fe7db6e1de75e58dccc3c9fe0d7b1920628051217f06ed8e7e3cb8ab57eac6",
+    "track": "codex-t16",
+    "trial": "codex-t16-23-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-24-provider.json.gz",
+    "source_sha256": "60c7a41dac54b92634e03e6227b453c3d2d01f1978b859c77d19ab16956955a3",
+    "track": "codex-t16",
+    "trial": "codex-t16-24-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-25-provider.json.gz",
+    "source_sha256": "43a0955672ba2ecb6635c490722549fd10d5d2e68e4c157d0688cc01761ca96d",
+    "track": "codex-t16",
+    "trial": "codex-t16-25-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-26-provider.json.gz",
+    "source_sha256": "36065e50a58d4ca4af05935f7a9bb1660a68c590c8deedbe5e9ab459b5d97bf3",
+    "track": "codex-t16",
+    "trial": "codex-t16-26-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-27-provider.json.gz",
+    "source_sha256": "b08f72e484f18f10685536ff6b3a8fd9291454099690d1aca8ee66e4d5656a79",
+    "track": "codex-t16",
+    "trial": "codex-t16-27-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-28-provider.json.gz",
+    "source_sha256": "164114273462b38e65fce1a8e20ba4f71af49fe777fc5f097f18a9639c16de3f",
+    "track": "codex-t16",
+    "trial": "codex-t16-28-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-29-provider.json.gz",
+    "source_sha256": "f2b894448f18741ef3c65602d464bd556e4eddf7da66496c886a065e0e864949",
+    "track": "codex-t16",
+    "trial": "codex-t16-29-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-30-provider.json.gz",
+    "source_sha256": "349f3551bec6ea7a35f71204a62133365b8560e115ee6b49bcffc6d5c5412235",
+    "track": "codex-t16",
+    "trial": "codex-t16-30-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-31-provider.json.gz",
+    "source_sha256": "ad65686794f764bf4504a7297b3eab68a69cf8c4876eb1db94051ac9967e11cc",
+    "track": "codex-t16",
+    "trial": "codex-t16-31-provider"
+  },
+  {
+    "compact_runs": 1,
+    "reported_compaction_tokens": 0,
+    "source_file": "formal-codex-t16-32-provider.json.gz",
+    "source_sha256": "3b9919b7070581792309d08587403d5d21dbf9a27741026a6073e3eb7ee5f589",
+    "track": "codex-t16",
+    "trial": "codex-t16-32-provider"
+  }
+]

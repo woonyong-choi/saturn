@@ -1,12 +1,30 @@
 {
   "audit": {
+    "boundary_context_range": {
+      "claude": {
+        "max": 95133,
+        "min": 85781
+      },
+      "codex": {
+        "max": 77115,
+        "min": 71409
+      }
+    },
     "compact_requests": 8,
     "compact_requests_without_corrected_header": 8,
     "ended_unix": 1791259405.916383,
     "engines_remaining": [],
     "f3_retries_disagreement": [],
     "nonliteral_grade_values": [],
+    "packets": {
+      "count": 32,
+      "matched": 32,
+      "with_lookup_hint": 16,
+      "without_corrected_header": 32
+    },
     "planned_input_limit": 640,
+    "prior_compaction_calls": 44,
+    "prior_compaction_zero_delta": 44,
     "protocol_invalid": [
       "claude-101-rescue",
       "claude-102-rescue",
@@ -29,6 +47,450 @@
     }
   },
   "collected": 40,
+  "followup": {
+    "audit": {
+      "boundary_context_range": {
+        "claude": {
+          "max": 97572,
+          "min": 86220
+        },
+        "codex": {
+          "max": 74949,
+          "min": 71107
+        }
+      },
+      "compact_requests": 8,
+      "compact_requests_without_corrected_header": 8,
+      "ended_unix": 1791260793.228595,
+      "engines_remaining": [],
+      "f3_retries_disagreement": [],
+      "nonliteral_grade_values": [],
+      "packets": {
+        "count": 16,
+        "matched": 16,
+        "with_lookup_hint": 16,
+        "without_corrected_header": 16
+      },
+      "planned_input_limit": 240,
+      "protocol_invalid": [],
+      "source_commits": [
+        "1902bc8bf50ca20b000008fb8d13e1c17be9a1cf"
+      ],
+      "started_unix": 1791259526.5346508,
+      "stored_inputs": 240,
+      "submitted_turns": 240,
+      "turn_status_counts": {
+        "ok": 240
+      }
+    },
+    "collected": 16,
+    "planned": 16,
+    "product_adoption": false,
+    "providers": {
+      "claude": {
+        "arms": {
+          "jev_lookup": {
+            "cache_read_tokens": {
+              "mean": 322314.25,
+              "n": 4,
+              "sum": 1289257
+            },
+            "cache_write_tokens": {
+              "mean": 21382.75,
+              "n": 4,
+              "sum": 85531
+            },
+            "collected": 4,
+            "f1_success": 0,
+            "f2_success": 4,
+            "f3_success": 0,
+            "header_success": 0,
+            "incomplete": 0,
+            "input_tokens": {
+              "mean": 87.0,
+              "n": 4,
+              "sum": 348
+            },
+            "lookup_count": {
+              "mean": 0.0,
+              "n": 4,
+              "sum": 0
+            },
+            "missing_usage": 0,
+            "native_compaction_usage_unresolved": 0,
+            "no_intervention": 0,
+            "output_tokens": {
+              "mean": 3402.75,
+              "n": 4,
+              "sum": 13611
+            },
+            "planned": 4,
+            "protocol_invalid": 0,
+            "raw_token_total": {
+              "mean": 366773.25,
+              "n": 4,
+              "sum": 1467093
+            },
+            "reported_raw_token_total": {
+              "mean": 366773.25,
+              "n": 4,
+              "sum": 1467093
+            },
+            "reported_weighted_cost": {
+              "mean": 95647.1125,
+              "n": 4,
+              "sum": 382588.45
+            },
+            "router_tokens": {
+              "mean": 19586.5,
+              "n": 4,
+              "sum": 78346
+            },
+            "success": 0,
+            "total_cost": {
+              "mean": 95647.1125,
+              "n": 4,
+              "sum": 382588.45
+            },
+            "wilson95": [
+              0.0,
+              0.4898908364545973
+            ],
+            "window_seconds": {
+              "mean": 45.28725,
+              "n": 4,
+              "sum": 181.149
+            }
+          },
+          "rrf_lookup": {
+            "cache_read_tokens": {
+              "mean": 330652.5,
+              "n": 4,
+              "sum": 1322610
+            },
+            "cache_write_tokens": {
+              "mean": 22983.0,
+              "n": 4,
+              "sum": 91932
+            },
+            "collected": 4,
+            "f1_success": 0,
+            "f2_success": 4,
+            "f3_success": 0,
+            "header_success": 0,
+            "incomplete": 0,
+            "input_tokens": {
+              "mean": 87.0,
+              "n": 4,
+              "sum": 348
+            },
+            "lookup_count": {
+              "mean": 0.0,
+              "n": 4,
+              "sum": 0
+            },
+            "missing_usage": 0,
+            "native_compaction_usage_unresolved": 0,
+            "no_intervention": 0,
+            "output_tokens": {
+              "mean": 5429.5,
+              "n": 4,
+              "sum": 21718
+            },
+            "planned": 4,
+            "protocol_invalid": 0,
+            "raw_token_total": {
+              "mean": 361019.0,
+              "n": 4,
+              "sum": 1444076
+            },
+            "reported_raw_token_total": {
+              "mean": 361019.0,
+              "n": 4,
+              "sum": 1444076
+            },
+            "reported_weighted_cost": {
+              "mean": 90895.5,
+              "n": 4,
+              "sum": 363582.0
+            },
+            "router_tokens": {
+              "mean": 1867.0,
+              "n": 4,
+              "sum": 7468
+            },
+            "success": 0,
+            "total_cost": {
+              "mean": 90895.5,
+              "n": 4,
+              "sum": 363582.0
+            },
+            "wilson95": [
+              0.0,
+              0.4898908364545973
+            ],
+            "window_seconds": {
+              "mean": 57.641000000000005,
+              "n": 4,
+              "sum": 230.56400000000002
+            }
+          }
+        },
+        "comparisons": [
+          {
+            "cost_pass": false,
+            "decision": "보류",
+            "limitations": [
+              "jev_lookup: 실제 조회 없음",
+              "rrf_lookup: 실제 조회 없음"
+            ],
+            "metrics": {
+              "raw_token_total": {
+                "ci95": [
+                  -18910.5,
+                  29561.5
+                ],
+                "mean": 5754.25,
+                "n": 4
+              },
+              "total_cost": {
+                "ci95": [
+                  -7851.0999999999985,
+                  17354.32500000001
+                ],
+                "mean": 4751.612500000007,
+                "n": 4
+              },
+              "window_seconds": {
+                "ci95": [
+                  -32.1755,
+                  2.5692500000000003
+                ],
+                "mean": -12.35375,
+                "n": 4
+              }
+            },
+            "quality_ci95": [
+              -0.665629847511789,
+              0.665629847511789
+            ],
+            "quality_counts": [
+              0,
+              0,
+              0,
+              4
+            ],
+            "quality_diff": 0.0,
+            "quality_pass": false,
+            "time_pass": false,
+            "x": "jev_lookup",
+            "y": "rrf_lookup"
+          }
+        ]
+      },
+      "codex": {
+        "arms": {
+          "jev_lookup": {
+            "cache_read_tokens": {
+              "mean": 408192.0,
+              "n": 4,
+              "sum": 1632768
+            },
+            "cache_write_tokens": {
+              "mean": 0.0,
+              "n": 4,
+              "sum": 0
+            },
+            "collected": 4,
+            "f1_success": 0,
+            "f2_success": 4,
+            "f3_success": 0,
+            "header_success": 0,
+            "incomplete": 0,
+            "input_tokens": {
+              "mean": 48189.5,
+              "n": 4,
+              "sum": 192758
+            },
+            "lookup_count": {
+              "mean": 0.0,
+              "n": 4,
+              "sum": 0
+            },
+            "missing_usage": 0,
+            "native_compaction_usage_unresolved": 0,
+            "no_intervention": 0,
+            "output_tokens": {
+              "mean": 2673.5,
+              "n": 4,
+              "sum": 10694
+            },
+            "planned": 4,
+            "protocol_invalid": 0,
+            "raw_token_total": {
+              "mean": 476985.5,
+              "n": 4,
+              "sum": 1907942
+            },
+            "reported_raw_token_total": {
+              "mean": 476985.5,
+              "n": 4,
+              "sum": 1907942
+            },
+            "reported_weighted_cost": {
+              "mean": 120306.70000000001,
+              "n": 4,
+              "sum": 481226.80000000005
+            },
+            "router_tokens": {
+              "mean": 17930.5,
+              "n": 4,
+              "sum": 71722
+            },
+            "success": 0,
+            "total_cost": {
+              "mean": 120306.70000000001,
+              "n": 4,
+              "sum": 481226.80000000005
+            },
+            "wilson95": [
+              0.0,
+              0.4898908364545973
+            ],
+            "window_seconds": {
+              "mean": 72.88675,
+              "n": 4,
+              "sum": 291.547
+            }
+          },
+          "rrf_lookup": {
+            "cache_read_tokens": {
+              "mean": 274496.0,
+              "n": 4,
+              "sum": 1097984
+            },
+            "cache_write_tokens": {
+              "mean": 0.0,
+              "n": 4,
+              "sum": 0
+            },
+            "collected": 4,
+            "f1_success": 0,
+            "f2_success": 4,
+            "f3_success": 0,
+            "header_success": 0,
+            "incomplete": 0,
+            "input_tokens": {
+              "mean": 28473.25,
+              "n": 4,
+              "sum": 113893
+            },
+            "lookup_count": {
+              "mean": 0.0,
+              "n": 4,
+              "sum": 0
+            },
+            "missing_usage": 0,
+            "native_compaction_usage_unresolved": 0,
+            "no_intervention": 0,
+            "output_tokens": {
+              "mean": 2517.0,
+              "n": 4,
+              "sum": 10068
+            },
+            "planned": 4,
+            "protocol_invalid": 0,
+            "raw_token_total": {
+              "mean": 307353.25,
+              "n": 4,
+              "sum": 1229413
+            },
+            "reported_raw_token_total": {
+              "mean": 307353.25,
+              "n": 4,
+              "sum": 1229413
+            },
+            "reported_weighted_cost": {
+              "mean": 70374.85,
+              "n": 4,
+              "sum": 281499.4
+            },
+            "router_tokens": {
+              "mean": 1867.0,
+              "n": 4,
+              "sum": 7468
+            },
+            "success": 0,
+            "total_cost": {
+              "mean": 70374.85,
+              "n": 4,
+              "sum": 281499.4
+            },
+            "wilson95": [
+              0.0,
+              0.4898908364545973
+            ],
+            "window_seconds": {
+              "mean": 64.62075,
+              "n": 4,
+              "sum": 258.483
+            }
+          }
+        },
+        "comparisons": [
+          {
+            "cost_pass": false,
+            "decision": "보류",
+            "limitations": [
+              "jev_lookup: 실제 조회 없음",
+              "rrf_lookup: 실제 조회 없음"
+            ],
+            "metrics": {
+              "raw_token_total": {
+                "ci95": [
+                  4282.0,
+                  347128.25
+                ],
+                "mean": 169632.25,
+                "n": 4
+              },
+              "total_cost": {
+                "ci95": [
+                  10481.599999999999,
+                  89382.1
+                ],
+                "mean": 49931.850000000006,
+                "n": 4
+              },
+              "window_seconds": {
+                "ci95": [
+                  -28.748500000000007,
+                  48.71724999999999
+                ],
+                "mean": 8.265999999999995,
+                "n": 4
+              }
+            },
+            "quality_ci95": [
+              -0.665629847511789,
+              0.665629847511789
+            ],
+            "quality_counts": [
+              0,
+              0,
+              0,
+              4
+            ],
+            "quality_diff": 0.0,
+            "quality_pass": false,
+            "time_pass": false,
+            "x": "jev_lookup",
+            "y": "rrf_lookup"
+          }
+        ]
+      }
+    }
+  },
   "planned": 40,
   "product_adoption": false,
   "providers": {
@@ -402,7 +864,12 @@
       },
       "comparisons": [
         {
+          "cost_pass": false,
           "decision": "보류",
+          "limitations": [
+            "rrf_lookup: 실제 조회 없음",
+            "provider: 전체 사용량 결측"
+          ],
           "metrics": {
             "raw_token_total": {
               "ci95": [
@@ -440,11 +907,18 @@
             1
           ],
           "quality_diff": -0.75,
+          "quality_pass": false,
+          "time_pass": true,
           "x": "rrf_lookup",
           "y": "provider"
         },
         {
+          "cost_pass": false,
           "decision": "보류",
+          "limitations": [
+            "jev_lookup: 실제 조회 없음",
+            "provider: 전체 사용량 결측"
+          ],
           "metrics": {
             "raw_token_total": {
               "ci95": [
@@ -482,11 +956,17 @@
             1
           ],
           "quality_diff": -0.75,
+          "quality_pass": false,
+          "time_pass": true,
           "x": "jev_lookup",
           "y": "provider"
         },
         {
+          "cost_pass": false,
           "decision": "보류",
+          "limitations": [
+            "rrf_lookup: 실제 조회 없음"
+          ],
           "metrics": {
             "raw_token_total": {
               "ci95": [
@@ -524,11 +1004,18 @@
             4
           ],
           "quality_diff": 0.0,
+          "quality_pass": false,
+          "time_pass": false,
           "x": "rrf_lookup",
           "y": "rrf"
         },
         {
+          "cost_pass": false,
           "decision": "보류",
+          "limitations": [
+            "jev_lookup: 실제 조회 없음",
+            "rrf_lookup: 실제 조회 없음"
+          ],
           "metrics": {
             "raw_token_total": {
               "ci95": [
@@ -566,11 +1053,17 @@
             4
           ],
           "quality_diff": 0.0,
+          "quality_pass": false,
+          "time_pass": false,
           "x": "jev_lookup",
           "y": "rrf_lookup"
         },
         {
+          "cost_pass": false,
           "decision": "실행 규약 위반: 진단 비교 불가",
+          "limitations": [
+            "rescue: 전체 사용량 결측"
+          ],
           "metrics": {
             "raw_token_total": {
               "ci95": [
@@ -608,6 +1101,8 @@
             3
           ],
           "quality_diff": 0.25,
+          "quality_pass": false,
+          "time_pass": false,
           "x": "rescue",
           "y": "rrf"
         }
@@ -983,7 +1478,12 @@
       },
       "comparisons": [
         {
+          "cost_pass": false,
           "decision": "보류",
+          "limitations": [
+            "rrf_lookup: 실제 조회 없음",
+            "provider: 전체 사용량 결측"
+          ],
           "metrics": {
             "raw_token_total": {
               "ci95": [
@@ -1021,11 +1521,18 @@
             0
           ],
           "quality_diff": -1.0,
+          "quality_pass": false,
+          "time_pass": false,
           "x": "rrf_lookup",
           "y": "provider"
         },
         {
+          "cost_pass": false,
           "decision": "보류",
+          "limitations": [
+            "jev_lookup: 실제 조회 없음",
+            "provider: 전체 사용량 결측"
+          ],
           "metrics": {
             "raw_token_total": {
               "ci95": [
@@ -1063,11 +1570,17 @@
             0
           ],
           "quality_diff": -1.0,
+          "quality_pass": false,
+          "time_pass": false,
           "x": "jev_lookup",
           "y": "provider"
         },
         {
+          "cost_pass": false,
           "decision": "보류",
+          "limitations": [
+            "rrf_lookup: 실제 조회 없음"
+          ],
           "metrics": {
             "raw_token_total": {
               "ci95": [
@@ -1105,11 +1618,18 @@
             4
           ],
           "quality_diff": 0.0,
+          "quality_pass": false,
+          "time_pass": false,
           "x": "rrf_lookup",
           "y": "rrf"
         },
         {
+          "cost_pass": false,
           "decision": "보류",
+          "limitations": [
+            "jev_lookup: 실제 조회 없음",
+            "rrf_lookup: 실제 조회 없음"
+          ],
           "metrics": {
             "raw_token_total": {
               "ci95": [
@@ -1147,11 +1667,15 @@
             4
           ],
           "quality_diff": 0.0,
+          "quality_pass": false,
+          "time_pass": false,
           "x": "jev_lookup",
           "y": "rrf_lookup"
         },
         {
+          "cost_pass": false,
           "decision": "실행 규약 위반: 진단 비교 불가",
+          "limitations": [],
           "metrics": {
             "raw_token_total": {
               "ci95": [
@@ -1189,6 +1713,8 @@
             2
           ],
           "quality_diff": 0.5,
+          "quality_pass": false,
+          "time_pass": false,
           "x": "rescue",
           "y": "rrf"
         }

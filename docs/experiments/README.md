@@ -43,5 +43,4 @@
 | [constraint-scope](constraint-scope/report.md) | 작업 한정 지시 제외와 0.9 자동 등록 검증 | [제약](../design/constraints.md), [router](../design/router.md) | H1 보류; H2 보류; H3 보류; H4 채택: 권장 조합 없음 |
 | [mvp-real-check](mvp-real-check/report.md) | 실제 Codex·Claude로 전환, 권한, 하위 에이전트, 확장 주입 확인(router 없는 경로) | [권한](../design/permissions.md), [router 키 보호](../design/router-key-security.md), [provider 연결과 session](../design/providers-and-sessions.md) | 결함 4건(#505~#508), Codex 샌드박스 밖 실행에서 키 보호 실패, router 판단은 미검증 |
 | [model-selection-effect](model-selection-effect/report.md) | 오토 모델 선택의 고정 모델 대비 품질·전체 비용·완료 시간 순효과 | [모델 평가 근거 목록](../design/model-evidence.md), [기본 모델과 선택 방식](../design/providers-and-sessions.md#기본-모델과-선택-방식) | 세 층 모두 보류: 확인 오토 입력 108개 중 router 선택 적용 0(확신도 최대 0.32)이라 오토가 기본 대조와 같은 모델로 실행됨, 같은 모델 쌍에서도 성공이 3/36 어긋나 품질 허용폭 0은 실행 변동에 막힘, 자동 적용 켜지 않음 |
-
-| [context-recovery-effect](context-recovery-effect/design.md) | 원문 조회의 품질·전체 비용 효과 | [맥락 정리](../design/context-management.md) | 측정 전 |
+| [context-recovery-effect](context-recovery-effect/report.md) | 원문 조회의 품질·전체 비용 효과 | [맥락 정리](../design/context-management.md) | H1·H2 보류: 기본 압축 7/8, RRF 조회·Jev 조회 각 0/8. 수정 버전도 각 0/8. 실제 조회 0, 압축 비용 계측 결측. 보강 진단 8회는 입력 분할로 무효 |

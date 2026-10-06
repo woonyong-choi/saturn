@@ -9,5 +9,5 @@ case "${1:-}" in
  process|analyze) python3 scripts/analyze.py ;;
  verify) python3 scripts/analyze.py --verify ;;
  all) python3 scripts/collect.py; python3 scripts/analyze.py; python3 scripts/analyze.py --verify ;;
- *) echo 'usage: run.sh collect|process|analyze|verify|all' >&2; exit 2 ;;
+ *) echo 'usage: run.sh collect|process|analyze|verify|all|collect-followup|analyze-followup|verify-followup' >&2; exit 2 ;;
 esac

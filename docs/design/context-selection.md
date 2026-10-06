@@ -180,7 +180,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 | 명령 | 하는 일 |
 |---|---|
-| `saturn evidence search <검색어>... [--limit N]` | 검색어는 따옴표 없이 여러 단어로 써도 공백 하나로 이어 한 검색어로 본다. 후보를 순위 순으로 보인다. 첫 줄은 집합 해시와 후보 수, 이어서 한 줄에 번호, 시각, 글자 수, 해시, 발췌다. 상한은 50개다. |
+| `saturn evidence search <검색어>... [--limit N]` | 검색어는 따옴표 없이 여러 단어로 써도 공백 하나로 이어 한 검색어로 본다. 후보를 순위 순으로 출력한다. 첫 줄은 집합 해시와 후보 수, 이어서 한 줄에 번호, 시각, 글자 수, 해시, 발췌다. 상한은 50개다. |
 | `saturn evidence read <번호> [--hash H] [--offset N] [--limit N]` | 원문을 읽는다. 한 번에 최대 20000글자이고 더 있으면 첫 줄에 `next_offset`이 있다. |
 
 - 출입증(`SATURN_PASS`)으로 접속하고 출입증을 준 채팅의 기록만 본다. 출입증이 없거나 회수됐으면 거절한다. 에이전트 작업 밖에서는 쓸 수 없다.
@@ -199,7 +199,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 크기 한도를 넘는 `state` | 질문 하나도 담을 수 없으므로 요청을 만들지 않고 RRF 순서로 채운다. |
 | 도구 호출 인자에 경로 없음 | 파일 겹침 채널에서 그 후보를 뺀다. |
 | 근거 조회의 출입증이 없거나 회수됨 | 거절한다(`pass is unknown or revoked`). |
-| 명령이 샌드박스 때문에 engine에 닿지 못함 | `Unreachable`로 센다. 오류에 표지와 한 명령으로 실행하라는 안내를 싣는다. |
+| 샌드박스의 engine 접속 차단 | `Unreachable`로 센다. 오류에 표지와 한 명령으로 실행하라는 안내를 싣는다. |
 | 없는 기록 번호 | `NotFound`로 거절한다. |
 | 후보를 본 뒤 원문이 바뀜(해시 불일치) | `Stale`로 거절한다. |
 | 읽기 범위 밖 파일이거나 읽기 규칙이 거부하는 경로의 기록 | `Scope`로 거절하고 후보에서도 뺀다. |
@@ -233,6 +233,8 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | router가 시작한 전환은 `compact` 판단이 실패하면 건너뛰고, 강제한 전환은 순위 순서로 채운다. | `saturn-terminal/core/src/routers/failure.rs`의 `compact_failure_skips_router_transition_and_fills_forced_one`, `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_no_verdicts_keeps_rrf_order` |
 
 ## 단점
+
+- [맥락 복구 실측](../experiments/context-recovery-effect/report.md)은 실제 조회 안내를 켠 패킷의 품질 유지와 추가 이득을 입증하지 못했다. 조회 대상은 도구 기록이므로 패킷에서 빠진 사용자 정정 원문을 이 경로로 되찾을 수 없다. 정정 보존의 반례는 [#592](https://github.com/woonyong-choi/saturn/issues/592)에 있다.
 
 - router가 실패해 순위 순서로 채운 패킷은 정답률이 20.6%로 패킷 없음(20.0%)과 같은 수준이다([재측정 결과](../experiments/handoff-packet-quality-v2/report.md)). 그래서 router가 시작한 전환은 건너뛰고, 강제한 전환만 이 패킷으로 채운다.
 - 순위 채널은 같은 뜻의 다른 말을 모르므로 router가 모두 실패하면 대체 순서에서 같은 뜻의 후보를 놓칠 수 있다.

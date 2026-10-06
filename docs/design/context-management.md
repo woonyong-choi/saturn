@@ -366,8 +366,8 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | `provider` 모드에서는 compaction을 판정하지 않고 안전망 값을 넣지 않는다. | `provider` 모드의 실행 인자와 판정 기록을 확인한다. |
 | 떠나는 provider의 압축 요약을 읽을 수 있으면 요약과 요약 뒤 기록으로 패킷을 만든다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_with_summary_puts_summary_first_in_competing_zone`, `build_packet_with_summary_over_competing_budget_falls_back_to_records`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_provider_mode_puts_summary_first_and_uses_records_after_it`, 전환 품질은 [#122](https://github.com/woonyong-choi/saturn/issues/122) |
 | 사용자가 자동 압축 값을 정했으면 안전망 값을 넣지 않는다. | 사용자 설정에 자동 압축 값이 있을 때 안전망 인자가 빠지는지 확인한다. |
-| compaction 방식은 provider 기본 압축보다 품질을 낮추지 않는다. | [#7](https://github.com/woonyong-choi/saturn/issues/7) |
-| provider별 `T`와 방식이 품질을 지키며 토큰을 줄인다. | [#7](https://github.com/woonyong-choi/saturn/issues/7) |
+| compaction 방식은 provider 기본 압축보다 품질을 낮추지 않는다. | [맥락 복구 실측](../experiments/context-recovery-effect/report.md): 품질 유지 근거 없음. 정정 입력 보존의 반례는 [#592](https://github.com/woonyong-choi/saturn/issues/592)다. |
+| provider별 `T`와 방식이 품질을 지키며 토큰을 줄인다. | [맥락 복구 실측](../experiments/context-recovery-effect/report.md): 실제 조회 기여가 확인되지 않았고 기본 압축 호출의 사용량은 계측되지 않아 전체 비용 비교를 보류한다. 후속 계측은 [#7](https://github.com/woonyong-choi/saturn/issues/7)이다. |
 | `H`가 subagent의 맥락 증가를 덮는다. | [#25](https://github.com/woonyong-choi/saturn/issues/25) |
 | 판단 전체 패킷이 새 session의 이전 작업 질문 정답률을 패킷 없음보다 10%p 이상 높인다. | [새 패킷 규칙의 전환 품질 재측정](../experiments/handoff-packet-quality-v2/report.md): 정답률 차이 +51.4%p [45.2, 57.3]로 채택. 기준값 0.5 규칙은 [+8.4%p로 보류](../experiments/handoff-packet-quality/report.md)였다. |
 
