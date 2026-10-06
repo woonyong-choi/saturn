@@ -1,0 +1,16 @@
+{
+  "observation": "preflight_only",
+  "local_date": "2026-10-07",
+  "base_commit": "623ccb8366025a481fcee6391255f258eb6e8b8b",
+  "manifest_present": false,
+  "existing_synthetic_or_diagnostic_db_files": 94,
+  "real_source_snapshots": 0,
+  "runnable_pairs": 0,
+  "planned_confirmatory_pairs": 80,
+  "provider_calls": 0,
+  "jev_calls": 0,
+  "raw_collector_executed": false,
+  "collect_preflight_exit_code": 1,
+  "effect_hypotheses_evaluated": 0,
+  "effect_status": "not_measured"
+}
