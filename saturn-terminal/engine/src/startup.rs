@@ -53,8 +53,15 @@ impl Engine {
         let supervisor = Supervisor::new();
         let rpc = Self::listen(&options, lock, passes.clone(), supervisor.clone()).await?;
         let restarted = options.after_upgrade;
+        let packet_capture = crate::packets::capture_dir(
+            &options.home,
+            std::env::var_os(crate::packets::CAPTURE_ENV),
+            std::env::var_os(saturn_protocol::home::HOME_ENV),
+            std::env::var_os("HOME"),
+        );
         Ok(Self {
             trace: crate::providers::TraceHub::new(&options.home),
+            packet_capture,
             options,
             store,
             settings,

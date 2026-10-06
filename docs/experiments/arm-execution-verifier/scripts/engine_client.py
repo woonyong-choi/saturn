@@ -16,7 +16,7 @@ ATTACH_ENV = ["PATH", "HOME", "USER", "LOGNAME", "SHELL", "LANG", "LC_ALL", "LC_
 
 
 class Engine:
-    def __init__(self, binary: Path, home: Path, log: Path):
+    def __init__(self, binary: Path, home: Path, log: Path, env: dict | None = None):
         self.home = home
         home.mkdir(parents=True, exist_ok=True)
         self.log = open(log, "wb")
@@ -27,6 +27,7 @@ class Engine:
             stdout=self.log,
             stderr=self.log,
             start_new_session=True,
+            env=env,
         )
         self.sock_path = home / "engine.sock"
         deadline = time.time() + 30

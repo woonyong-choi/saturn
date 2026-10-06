@@ -309,3 +309,72 @@ async fn permission_reduced_before_the_switch_still_sends_the_whole_dialogue_onc
     assert_eq!(stored.body_hash, sha256_hex(packet.as_bytes()));
     assert_eq!(dialogue_of(&flow, stored).await, expected_rows(&pairs));
 }
+
+/// 캡처 폴더의 파일 하나를 JSON으로 읽는다. 파일이 없으면 빈 목록.
+fn captures_in(dir: &std::path::Path) -> Vec<serde_json::Value> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    let mut files: Vec<_> = entries.map(|entry| entry.unwrap().path()).collect();
+    files.sort();
+    files
+        .iter()
+        .map(|path| serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap())
+        .collect()
+}
+
+// #540: 켠 실험에서 캡처한 본문의 해시가 provider에 넘긴 인자와 같고 기록 행과 맞는다. 켜지 않으면 파일이 없다
+#[tokio::test]
+async fn packet_capture_matches_the_send_argument_and_is_absent_when_disabled() {
+    for is_enabled in [true, false] {
+        let mut flow = flow_with("").await;
+        let dir = tempfile::tempdir().unwrap();
+        let capture = dir.path().join("packet-capture");
+        if is_enabled {
+            flow.engine.packet_capture = Some(capture.clone());
+        }
+        let claude = flow.fake.clone();
+        turn(&mut flow, CODEX, "use the header X-Req-Id", "c0").await;
+        flow.engine.switch_provider(flow.chat, CLAUDE);
+        flow.submit("now apply the header").await;
+
+        let sent = packet_of(&claude);
+        let stored = stored_of(&flow, CLAUDE_FIRST).await;
+        let [stored] = &stored[..] else {
+            panic!("one packet attempt should be recorded: {stored:?}");
+        };
+        let captured = captures_in(&capture);
+        if !is_enabled {
+            assert!(captured.is_empty(), "{captured:?}");
+            assert!(!capture.exists());
+            continue;
+        }
+        let [captured] = &captured[..] else {
+            panic!("one capture per attempt: {captured:?}");
+        };
+        assert_eq!(captured["body"], sent);
+        assert_eq!(captured["body_hash"], sha256_hex(sent.as_bytes()));
+        assert_eq!(captured["body_hash"], stored.body_hash);
+        assert_eq!(captured["packet_id"], stored.id.0);
+        assert_eq!(captured["session"], CLAUDE_FIRST.0);
+        assert_eq!(captured["attempt"], 1);
+        assert!(
+            captured["captured_at_unix_us"]
+                .as_str()
+                .unwrap()
+                .parse::<u128>()
+                .unwrap()
+                > 0
+        );
+        use std::os::unix::fs::PermissionsExt;
+        let file = capture.join(format!("{}.json", stored.id.0));
+        assert_eq!(
+            std::fs::metadata(&file).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(
+            std::fs::metadata(&capture).unwrap().permissions().mode() & 0o777,
+            0o700
+        );
+    }
+}

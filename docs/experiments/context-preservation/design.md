@@ -75,9 +75,10 @@ N의 같은 provider 조건은 같은 길이의 준비 입력 뒤 실제 기본 
 | F의 전문 경로 | 없음 | `context.select.packet`은 `rrf`와 `jev`만 받고, `P_send`는 `context.safety_percent`로 정해진다. 같은 `P_send`에서 모든 후보를 `Full`로 싣는 설정이 없다. 안전 비율을 100으로 올리면 `T`와 `P_max`도 함께 바뀌므로 그 결과를 F라고 부르지 않는다. | F 24칸 |
 | N의 적용 경로 관측 | 없음 | 패킷 기록에 `provider_native`나 `same_session` 값이 없다. `context.mode=provider`가 실제로 적용됐는지 실행 기록으로 확인할 수 없다. | N 24칸 |
 | 같은 provider 새 session 유도 | 증명 없음 | `Restart` 패킷은 맥락 정리 판정이 만든다. 이 실험이 고정한 설정으로 매번 일어난다는 사전 확인이 없다. | R·J 중 Claude→Claude, Codex→Codex 24칸 |
-| provider가 받은 본문 확보 | 없음 | 수집기는 알림과 기록 저장소 행만 남긴다. 기록의 `body_hash`는 engine이 넘긴 글의 해시이고 provider가 받은 바이트의 증거가 아니다. | 다른 provider로 가는 R·J 24칸. 나머지 칸도 이 능력이 필요하지만 사유는 앞의 것 하나만 적는다 |
+| 보낼 본문 확보 | 있음(engine 바깥 증거는 아님) | engine이 격리 홈에서 `SATURN_PACKET_CAPTURE=1`일 때 provider를 부르기 직전의 본문과 시각을 남기고, 수집기가 저장소 행과 번호·해시·순서를 대조한다. engine이 내보낸 값이며 provider가 받은 바이트의 증거가 아니다. | 없음. 사유 `sent_body_capture_missing`은 능력을 거짓으로 둔 봉인에만 남는다 |
+| 계열 대화 재생 | interrupted-unknown 계열만 없음 | 두 provider에서 같은 지점에 실행을 끊는 방법이 없다. | 해당 계열의 R·J 중 다른 provider 칸 4칸(`interrupted_replay_unproven`) |
 
-위 표에서 지원하지 못하는 칸은 다른 조건으로 바꿔 채우지 않는다. 96칸을 모두 예정 분모에 두고 칸마다 사유를 남긴다. 사유는 `no_full_packet_control`, `no_native_same_session_observable`, `forced_restart_trigger_unproven`, `sent_body_capture_missing`이고 한 칸에 하나만 적는다(앞에서부터 처음 맞는 사유). 현재 지원 범위로는 실행할 수 있는 칸이 0이다. 능력은 사전 확인 기록과 근거를 봉인 입력에 적을 때만 참으로 바뀌며, 근거 없이 참으로 둔 봉인은 거절한다. 같은 provider 칸의 사전 확인과 본문 확보를 갖추면 R·J 48칸이 먼저 실행 대상이 된다. F·N 48칸은 engine에 해당 능력이 생길 때까지 계속 분모에 남는다.
+위 표에서 지원하지 못하는 칸은 다른 조건으로 바꿔 채우지 않는다. 96칸을 모두 예정 분모에 두고 칸마다 사유를 남긴다. 사유는 `no_full_packet_control`, `no_native_same_session_observable`, `forced_restart_trigger_unproven`, `sent_body_capture_missing`, `interrupted_replay_unproven`이고 한 칸에 하나만 적는다(앞에서부터 처음 맞는 사유). 현재 지원 범위로 실행할 수 있는 칸은 다른 provider로 가는 R·J 20칸이다. 능력은 사전 확인 기록과 근거를 봉인 입력에 적을 때만 참으로 바뀌며, 근거 없이 참으로 둔 봉인은 거절한다. 같은 provider 칸의 사전 확인을 갖추면 R·J 24칸이 더 실행 대상이 된다. F·N 48칸은 engine에 해당 능력이 생길 때까지 계속 분모에 남는다.
 
 | 항목 | 규칙 |
 |---|---|

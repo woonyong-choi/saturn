@@ -394,6 +394,8 @@ pub struct Engine {
     masker: Masker,
     /// provider 원시 메시지 관측 기록(`debug.provider_events`)을 연결마다 나눠 주는 곳.
     trace: providers::TraceHub,
+    /// 실험용 보낼 패킷 본문 캡처 폴더. 켜지 않으면 `None`. 설계: docs/design/records.md#전달-패킷-근거
+    packet_capture: Option<PathBuf>,
     supervisor: Supervisor,
     /// 연결은 채팅마다 둔다. 작업 폴더와 환경이 채팅마다 달라서다.
     providers: HashMap<(ChatId, Provider), providers::ProviderHandle>,

@@ -138,7 +138,7 @@ def engine_record(cell: dict, fix: dict, index: int) -> dict:
     packet = dict(
         id=1, chat_id=1, kind="Switch" if cell["source"] != target else "Restart", attempt=1, reduced_from=None, session_id=2, input_id=5, run_id=3,
         provider=target, provider_session=f"ps-{cell['cell_id']}", settings_revision=1, chat_revision=revision, constraint_revision=0, policy="sim",
-        body_hash=preserve.sha(body), body_bytes=len(body.encode()), estimated_tokens=len(body) // 4, state="Unknown" if unknown else "Sent",
+        body_hash=preserve.sha(body), body_bytes=len(body.encode()), estimated_tokens=len(body) // 4, state="Unknown" if unknown else "Sent", created_at=int(t0 * 1000) + 2,
         requested_selector=requested, actual_selector="rank" if router_down else requested,
         selection_fallback="router-failed" if router_down else None,
         candidate_omitted_bytes=0 if cell["arm"] == "J" else None, state_overflow_bytes=0 if cell["arm"] == "J" else None,
@@ -147,13 +147,15 @@ def engine_record(cell: dict, fix: dict, index: int) -> dict:
                   input_tokens=1000 + index, cache_write_tokens=None if index % 17 == 5 else 0, cache_read_tokens=0, output_tokens=50)]
     judgments = [dict(id=1, input_id=5, started_at=int(t0 * 1000) + 5, method="compact", router="r", model="jev-1.13.0", reported_model=None,
                       answers="{}", fallbacks=None, input_tokens=400, output_tokens=20, elapsed_ms=100, outcome="ok")] if judged else []
+    capture = dict(packet_id=1, body_hash=packet["body_hash"], body_bytes=packet["body_bytes"], chat=1, session=2, input=5, provider=target.capitalize(),
+                   kind=packet["kind"], attempt=1, captured_at_unix_us=str((int(t0 * 1000) + 3) * 1000), body=body)
     overrides = [["context.evidence.lookup", "true"], [preserve.SAFETY_KEY, {"claude": "5", "codex": "18"}[target]]]
     if cell["arm"] == "J":
         overrides.append(list(preserve.PACKET_OVERRIDE))
     return dict(
         name=cell["cell_id"], source=cell["source"], target=target, arm=cell["arm"], rep=0, hint=False, overrides=overrides,
         started_at=_BASE.isoformat(), ended_at=(_BASE + timedelta(seconds=2)).isoformat(), t0=t0, latency_s=2.0,
-        status="timeout" if unknown else "ok", tasks={"1": "Done"}, notes=[], decisions=[], answers=answers, sent_body=body, workdir_files=["fixture.json"],
-        db=dict(packets=[packet], items=items, lookups=[], usage=usage, runs=[], judgments=judgments, sessions=[], events=events,
+        status="timeout" if unknown else "ok", tasks={"1": "Done"}, notes=[], decisions=[], answers=answers, sent_body=body, workdir_files=["fixture.json"], captures=[capture],
+        db=dict(packets=[packet], items=items, lookups=[], usage=usage, runs=[dict(id=3, input_id=5, task_id=1, session_id=2, provider=target, started_at=int(t0 * 1000) + 20, ended_at=int(t0 * 1000) + 90, end_kind="Done")], judgments=judgments, sessions=[], events=events,
                 inputs=[dict(id=k + 1, text=t, state="Applied") for k, t in enumerate(v["users"] + v["followups"])]),
     )

@@ -207,6 +207,7 @@
 |---|---|
 | `scripts/preserve.py` | 계열 fixture와 숨긴 채점 기준, 96칸 예정표와 지원 판정, 봉인 manifest 검사, engine 기록 행에서 trial 재구성, 데이터 검사, 분석 |
 | `scripts/06-preserve.py` | `plan`, `seal`, `collect`, `process`, `verify` 명령. `verify`는 가짜 기록으로 결함 주입을 돌리고 실제 원자료가 있으면 같은 검사를 한다 |
+| `scripts/family.py` | 계열 대화 재생. `online.py`의 `Engine`, `Client`, `dump_db`로 스냅샷을 만들고 시험을 돌리며 격리 홈의 패킷 캡처를 원자료에 담는다 |
 | `scripts/stub.py`의 `engine_record` | `online.run_trial`이 남기는 모양의 가짜 기록. 검증기 확인용이며 실행 결과가 아니다 |
 | `scripts/contract.py` | 조건 이름 `PRESERVE_ARMS`를 더하고 `validate_trial`이 조건 집합을 받도록 했다. 사용량 합산과 중복 검사는 그대로 쓴다 |
 | `scripts/online.py` | `dump_db`가 `inputs` 행도 남긴다. 이전 18 trial의 원자료에는 이 키가 없고 가공은 이 키를 쓰지 않는다 |
@@ -221,9 +222,20 @@ trial은 기존 `TRIAL_FIELDS`를 모두 채우고 보존 우선 값은 `preserv
 | `run.sh preserve-collect` | 사전 점검. 봉인, 지원 범위, 키와 engine 경로를 확인하고 하나라도 맞지 않으면 막힘을 적고 끝낸다 |
 | `run.sh preserve-process` | 원자료에서 trial과 집계를 다시 만든다 |
 
-`preserve-collect`는 현재 계열 대화를 engine에 재생하는 수집기가 없어 사전 점검이 모두 맞아도 시작하지 않는다. 원자료와 봉인 파일은 git이 무시하는 `.runtime/preserve`에만 둔다.
+`preserve-collect`는 사전 점검이 모두 맞으면 봉인된 예정표의 실행 가능 칸(다른 provider로 가는 R·J, 현재 20칸)만 실제 engine과 공식 Claude·Codex CLI로 돌린다. `scripts/family.py`가 `online.py`의 `Engine`, `Client`, `dump_db`를 재사용한다.
 
-### 주입 결함 38종
+- 사전 점검: 봉인과 파일 해시, `ARM_ENGINE_BIN`의 해시가 봉인값과 같음, 환경 변수 `SATURN_KEY`, `claude auth status`와 `codex login status`, 소켓 경로 길이. 하나라도 틀리면 provider를 부르지 않고 막힘과 사유별 미지원 칸 수를 적고 끝낸다. 키나 설정이 없을 때 외부 호출은 없다.
+- 재생: 계열·source provider마다 스냅샷을 한 번 만든다. source가 fixture의 사용자 입력을 글자 그대로 차례로 받고, 작업 폴더의 `build.log`를 에이전트가 직접 읽는다. 입력이 모두 `Applied`가 아니거나 로그 내용이 도구 결과로 기록되지 않았으면 그 계열·방향의 칸을 건너뛰고 사유를 적는다(stub으로 대체하지 않는다). 스냅샷 뒤 로그 파일은 지워 받는 쪽이 읽지 못하게 한다. 시험마다 스냅샷 홈을 복원하고 받는 provider로 바꾼 뒤 후속 요청 세 개를 차례로 보낸다. 앞 요청이 끝나지 않으면 나머지를 보내지 않고, 결과 불명은 재시도하지 않는다. 원자료가 이미 있는 칸은 다시 돌리지 않는다.
+- 고정 입력의 로그 읽기 요청: 에이전트가 `build.log`를 읽어야 도구 결과가 남으므로 모든 계열의 입력이 읽기를 요청한다. 요청이 없던 same-string-inputs(다섯째 입력 `빌드 로그를 읽어줘.` 추가)와 distractor-doc(첫 입력에 `build.log` 명시)를 봉인 전에 고쳤고, 두 조건 R·J가 같은 입력을 받는다. 합성 도구 결과로 메우지 않으며, 요청이 없는 계열은 수집 전 사전 점검에서 막는다. 봉인 전이라 데이터 변경이 아니다.
+- 시도 장부: `.runtime/preserve/ledger/ledger.jsonl`(폴더 0700, 파일 0600, 추가만, 줄마다 fsync, 수집기 하나만 잠금). source 스냅샷과 시험은 provider를 부르기 전에 `start` 줄(예약 호출 수, source 스냅샷 시도, 홈 이름)을 쓰고, 결과를 알면 `end` 줄(상태, 실제 호출 수)을 쓴다. `start`만 있는 시도는 중단된 시도(`attempted_unfinished`)다. 원자료가 없어도, 전송 여부를 몰라도 자동으로 다시 보내지 않고, 그 source 스냅샷에 속한 아직 시작하지 않은 칸도 스냅샷을 다시 만들지 않고 `source_attempted_unfinished`로 분모에 남긴다. 끝난 스냅샷은 호출 없이 재사용한다. 시도 홈은 칸마다 고유한 짧은 이름(`t<번호>`, `s<계열><a|b>`)이며 중단된 홈은 지우지 않는다. 원자료는 임시 파일에 쓰고 fsync한 뒤 이름을 바꿔 쓰다 멈춘 파일이 완료로 보이지 않게 한다.
+- 호출 상한: 봉인한 provider 입력 1,920회와 Jev 256회를 시작 전에 확인한다. 예약치는 source 스냅샷이 입력 수와 첫 패킷 최대 두 시도만큼의 provider 호출 및 입력 수만큼의 관계 판단, 시험이 후속 요청 수와 패킷 시도 2회만큼의 provider 호출, 후속 요청 수만큼의 관계 판단(J 조건은 패킷 시도마다 선별 호출 추가)이다. 남은 허용량이 스냅샷(아직 없으면)과 시험의 예약치를 합해 덮지 못하면 시작하지 않는다. 실제 provider 전송 수는 누적 usage 행 개수가 아니라 실행의 고유 입력과 패킷 시도 행에서 센다. 끝난 시도에서 실제 수가 예약치를 넘으면 초과를 장부에 남기고 다음 칸을 시작하지 않는다. 중단됐거나 세지 못한 시도(null)는 예약 수로 세어 재시작이 상한을 되돌리지 못한다. 예약치는 provider 내부 호출의 절대 상한이라는 증거가 없으므로 외부 과금 상한을 보장한다고 주장하지 않는다. 보고에는 예약과 실제(알려진 합, 알 수 없는 시도 수)를 나란히 쓴다.
+- 캡처: 시험 engine만 `SATURN_HOME`을 자기 홈으로 두고 `SATURN_PACKET_CAPTURE=1`로 띄운다. 원자료에 캡처 파일 전체(본문 포함)와 `sent_body`를 남기고, `preserve.capture_report`가 이번 시험에서 생긴 저장소 시도 행과 번호, 해시, 바이트 수, 채팅·session·시도·종류, 저장소 행 이후의 캡처 시각과 순서를 대조한다. source 스냅샷의 과거 패킷은 이번 캡처 대상이 아니다. 어긋나면 그 칸을 남기고 수집을 멈춘다. 본문 충실도(역할·순서·원문 해시)는 기존 `body_report`가 fixture에서 다시 계산해 대조한다. 캡처는 engine이 내보낸 값이며 provider가 받았다는 증거가 아니다.
+- 지원하지 않는 칸: F와 N, 같은 provider 재시작은 지원하지 않는다. interrupted-unknown 계열은 두 provider에서 같은 지점에 실행을 끊는 방법이 없어 `interrupted_replay_unproven`으로 분모에 남는다. 예정은 96칸 그대로이고 실행 가능은 20칸이다. 분모 보고(`denominator`)는 96칸을 `collected`, `attempted_unfinished`, `source_attempted_unfinished`, `not_started`, `unsupported:<사유>`로 나눠 센다.
+- 한계: 안전 비율은 온라인 18 trial에서 보정한 값을 그대로 쓰므로 여섯 계열의 짧은 대화는 R과 J의 패킷이 같을 수 있다. 그 경우 선별 효과가 아니라 경로 적용만 본다.
+
+원자료와 봉인 파일은 git이 무시하는 `.runtime/preserve`에만 둔다. 이 변경은 가짜 기록과 사전 점검까지만 시험했고 실제 provider 실행은 하지 않았다.
+
+### 주입 결함 48종
 
 `preserve-verify`가 하나씩 넣어 모두 거절하는지 확인한다. 기록 자체를 바꾼 경우는 해시와 trial을 일관되게 다시 만든 뒤에도 거절해야 하고, trial만 바꾼 경우는 원자료 재계산이 잡아야 한다.
 
@@ -235,6 +247,7 @@ trial은 기존 `TRIAL_FIELDS`를 모두 채우고 보존 우선 값은 `preserv
 | 선별 | Jev 요청이 적용되지 않음, 사유 없이 방식이 바뀜, 적용 표시 뒤집기, Jev 조건인데 설정 없음, 조건끼리 안전 비율 다름 |
 | 경로 | 같은 session을 `restart`로 바꿔 씀, 지원하지 않는 칸(F·N)에 다른 조건 실행을 넣음, 안전 비율을 100으로 올린 F |
 | 전송 | 결과 불명 뒤 재전송, 결과 불명을 성공으로 표시 |
+| 캡처 대조 | 캡처 없음·필드 없음, 캡처 본문·해시·바이트 수 변조, 다른 session의 캡처, 저장소 행보다 이른 시각, 캡처 순서 뒤바뀜, 저장소 행 없는 캡처, 보낸 글이 캡처와 다름 |
 | 사용량·비용 | 필드 키 누락, 호출 목록 비움, child 사용량이 부모에 이미 포함, child 호출 ID 중복, 다른 trial과 호출 공유, null 비용을 0으로 표시 |
 | 원자료 | 바이트 변경 |
 | 봉인 | seed·가격표·Jev 가격·CLI 버전·상한·제품 커밋 누락, 근거 없는 능력 선언, 예정표 변조, 봉인 뒤 실험 파일 변경 |

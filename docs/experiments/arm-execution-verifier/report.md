@@ -134,13 +134,13 @@ Claude는 안내를 받으면 `saturn evidence search`를 쓴다. 명령과 행�
 | 항목 | 상태 | 값 |
 |---|---|---|
 | 선택 비교 오프라인 검증(`all`) | 측정 | 192 trial 재가공, 16종 주입 결함 거절, 분석 두 번 바이트 일치. 이 변경 뒤에도 같다 |
-| 보존 우선 장치 시험(`preserve-verify`) | 측정(가짜 기록) | 96칸 가짜 기록에서 38종 주입 결함 모두 거절, 분석 두 번 바이트 일치. 성공률과 비용은 의미 없는 값이다 |
-| 현재 지원 범위의 실행 가능 칸 | 측정(코드와 문서 확인) | 0/96. 사유는 `no_full_packet_control` 24, `no_native_same_session_observable` 24, `forced_restart_trigger_unproven` 24, `sent_body_capture_missing` 24 |
+| 보존 우선 장치 시험(`preserve-verify`) | 측정(가짜 기록) | 96칸 가짜 기록에서 48종 주입 결함 모두 거절, 분석 두 번 바이트 일치. 성공률과 비용은 의미 없는 값이다 |
+| 현재 지원 범위의 실행 가능 칸 | 측정(코드와 문서 확인) | 20/96(다른 provider로 가는 R·J 중 interrupted-unknown 계열을 뺀 칸). 사유는 `no_full_packet_control` 24, `no_native_same_session_observable` 24, `forced_restart_trigger_unproven` 24, `interrupted_replay_unproven` 4. 20칸도 아직 실행하지 않았다 |
 | 96칸 provider 실행, H1~H3 판정, 성공률·비용·시간 | 예정 | 값 없음. F·N 48칸은 engine에 능력이 생길 때까지 분모에만 남는다 |
 | 독립 확인 평가 | 예정 | 진단과 분리해 사전 등록한다 |
 | Claude·Codex 각각의 전달·검색·read·응답·사용량 대조 한 과제 | 부분 | 도구 조회 계측 18 trial과 보강 3 trial에서 확인했다. 보존 우선 경로에서는 아직 실행하지 않았다 |
 
-남은 막힘은 네 가지다. 같은 `P_send`에서 전문을 싣는 F 경로, N의 적용 경로 관측, 같은 provider 새 session을 매번 일으키는 설정의 사전 확인, provider가 받은 본문의 확보다. 여섯 계열 대화를 engine에 재생하는 수집기도 아직 없다. 이 중 앞의 세 가지는 engine 쪽 변경이나 별도 확인이 필요하고, 본문 확보와 수집기는 이 실행기의 후속 작업이다.
+남은 막힘은 다음과 같다. 같은 `P_send`에서 전문을 싣는 F 경로, N의 적용 경로 관측, 같은 provider 새 session을 매번 일으키는 설정의 사전 확인, 고정된 지점에서 실행을 끊는 interrupted-unknown 계열의 재생이다. 보낼 패킷 본문은 engine이 격리 홈에서 남기는 캡처로 확보한다([전달 패킷 근거](../../design/records.md#전달-패킷-근거)). 이는 engine이 내보낸 값이며 provider가 받았다는 증거가 아니다. 다른 provider로 가는 R·J 20칸의 수집기는 구현했지만 router 키와 두 CLI 로그인이 있는 환경에서 실제 engine으로 돌린 적이 없다. 수집기 시험은 가짜 기록, 가짜 호출 계수기, 사전 점검까지다. 시도 장부(중단 후 재시작에서 provider를 다시 부르지 않음, 재시작을 넘는 예약·계수, 세지 못한 값을 0으로 세지 않음)와 로그 읽기 사전 조건도 가짜 계수기로만 시험했고 20칸은 코드 경로일 뿐 실행하지 않았다. 실제 호출이 예약치를 넘으면 후속 칸을 중단하지만 예약치는 외부 과금의 절대 상한이 아니다. 패킷 캡처 폴더는 기존 폴더의 권한을 0700으로 바로잡고 심볼릭 링크를 따라가지 않는다.
 
 ## 다음 실험
 
