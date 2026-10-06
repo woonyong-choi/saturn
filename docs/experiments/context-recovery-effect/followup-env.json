@@ -1,0 +1,28 @@
+{
+  "platform": "macOS-26.5.2-arm64-arm-64bit",
+  "versions": {
+    "claude": "2.1.288 (Claude Code)",
+    "codex": "codex-cli 0.158.0",
+    "python3": "Python 3.9.6"
+  },
+  "product_commit": "7d099e65158a0e788853730a496ad06769e3fa74",
+  "order_seed": 58702,
+  "planned_seeds": [
+    101,
+    102,
+    103,
+    104
+  ],
+  "binary_sha256": {
+    "saturn-engine": "9ad15b9f9ca6ae74156698a7083be3e435e5aa47c620dc8b951650a26d25b373",
+    "saturn": "43e76940561d3c9073c59a793dfe668d8158ade5f25d04cc6425f7ff5e96b37d"
+  },
+  "cpu": "Apple M4",
+  "memory_bytes": 25769803776,
+  "design_commit": "4d74550",
+  "collector_code_commit": "583f906245a9ba4f91912c5fb6f363b48dbd553a",
+  "planned_arms": [
+    "rrf_lookup",
+    "jev_lookup"
+  ]
+}
