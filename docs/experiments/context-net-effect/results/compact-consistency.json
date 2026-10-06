@@ -1,0 +1,365 @@
+{
+ "complete": 32,
+ "meets_design_threshold": false,
+ "per_request": [
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 9,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-1-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 9,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-10-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-11-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-12-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 10,
+   "max_spread": 0.08,
+   "responses": 6,
+   "same_selection": true,
+   "spread_ok": true,
+   "trial": "claude-2-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 9,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": true,
+   "spread_ok": true,
+   "trial": "claude-3-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-4-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 10,
+   "max_spread": 0.07,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-5-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-6-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 10,
+   "max_spread": 0.05,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-7-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 13,
+   "max_spread": 0.11,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": false,
+   "trial": "claude-8-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 9,
+   "max_spread": 0.05,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-9-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 9,
+   "max_spread": 0.07,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-codex-1-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 10,
+   "max_spread": 0.08,
+   "responses": 6,
+   "same_selection": true,
+   "spread_ok": true,
+   "trial": "claude-codex-2-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 10,
+   "max_spread": 0.07,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-codex-3-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.11,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": false,
+   "trial": "claude-codex-4-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.07,
+   "responses": 6,
+   "same_selection": true,
+   "spread_ok": true,
+   "trial": "claude-codex-5-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 10,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-codex-6-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 10,
+   "max_spread": 0.05,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "claude-codex-7-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 9,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": true,
+   "spread_ok": true,
+   "trial": "claude-codex-8-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.08,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "codex-12-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.07,
+   "responses": 6,
+   "same_selection": true,
+   "spread_ok": true,
+   "trial": "codex-4-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.05,
+   "responses": 6,
+   "same_selection": true,
+   "spread_ok": true,
+   "trial": "codex-5-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.05,
+   "responses": 6,
+   "same_selection": true,
+   "spread_ok": true,
+   "trial": "codex-t16-21-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.07,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "codex-t16-22-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 7,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "codex-t16-23-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": true,
+   "spread_ok": true,
+   "trial": "codex-t16-24-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 10,
+   "max_spread": 0.06,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "codex-t16-25-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 7,
+   "max_spread": 0.07,
+   "responses": 6,
+   "same_selection": true,
+   "spread_ok": true,
+   "trial": "codex-t16-26-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.07,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": true,
+   "trial": "codex-t16-27-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 6,
+   "max_spread": 0.11,
+   "responses": 6,
+   "same_selection": false,
+   "spread_ok": false,
+   "trial": "codex-t16-28-jev"
+  },
+  {
+   "complete": true,
+   "failed": 0,
+   "k": 8,
+   "max_spread": 0.08,
+   "responses": 6,
+   "same_selection": true,
+   "spread_ok": true,
+   "trial": "codex-t16-29-jev"
+  },
+  {
+   "complete": false,
+   "failed": 0,
+   "k": 8,
+   "responses": 1,
+   "trial": "codex-t16-30-jev"
+  },
+  {
+   "complete": false,
+   "failed": 0,
+   "k": 8,
+   "responses": 1,
+   "trial": "codex-t16-31-jev"
+  },
+  {
+   "complete": false,
+   "failed": 0,
+   "k": 8,
+   "responses": 1,
+   "trial": "codex-t16-32-jev"
+  }
+ ],
+ "requests": 35,
+ "required_wilson_lower": 0.9,
+ "same_selection": {
+  "k": 11,
+  "n": 35,
+  "wilson95": [
+   0.1855,
+   0.4798
+  ]
+ },
+ "spread_within_limit": {
+  "k": 29,
+  "n": 35,
+  "wilson95": [
+   0.6732,
+   0.919
+  ]
+ }
+}
