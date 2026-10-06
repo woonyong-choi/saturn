@@ -35,7 +35,7 @@ pub(crate) async fn run(
     let request = match command {
         EvidenceCommand::Search(args) => Request::EvidenceSearch {
             pass: pass.to_owned(),
-            query: args.query.clone(),
+            query: args.query(),
             limit: args.limit,
         },
         EvidenceCommand::Read(args) => Request::EvidenceRead {
