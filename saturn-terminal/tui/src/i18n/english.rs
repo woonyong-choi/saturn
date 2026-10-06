@@ -281,6 +281,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Could not reach a running engine. A child session never starts a new engine",
     ),
     (
+        "{marker} ({what}): engine에 닿지 못했습니다. 샌드박스가 파이프, `;`로 이어 붙인 명령 안의 접속을 막았을 수 있으니 `saturn evidence`를 다른 명령과 묶지 말고 한 명령으로 실행하세요. 결과를 줄이려면 --limit과 --offset을 쓰세요",
+        "{marker} ({what}): could not reach the engine. The sandbox may block connections made inside a piped or `;`-chained command, so run `saturn evidence` alone as one command. To shorten the result use --limit and --offset",
+    ),
+    (
         "--mode는 에이전트 작업 안의 하위 접속에서만 쓸 수 있습니다",
         "--mode can only be used by a child session inside an agent task",
     ),

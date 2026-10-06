@@ -223,6 +223,7 @@ impl Engine {
         let event = self.mark_packet_reply(event);
         let run = self.run_for_event(chat, &live, &event).await?;
         let seq = self.record_event(run, chat, &live, &event).await?;
+        self.note_unreachable_lookup(chat, &event).await;
         if let Some(seq) = seq {
             self.sessions.mark_delivered(live.session, seq);
         }

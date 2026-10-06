@@ -7,8 +7,9 @@ use std::path::{Path, PathBuf};
 use saturn_core::permission::{PermissionTool, Verdict, rules_verdict};
 use saturn_core::sessions::evidence::{CandidateSet, EvidenceCandidate, RefError, slice_chars};
 use saturn_core::sessions::ranking::{Candidate, rank_candidates};
+use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{ChatId, LedgerSeq};
-use saturn_protocol::rpc::{EvidenceItem, QueryResult};
+use saturn_protocol::rpc::{EVIDENCE_UNREACHABLE_MARKER, EvidenceItem, QueryResult};
 
 use crate::handoff::{ToolRecord, tool_records};
 use crate::permission::resolve_links;
@@ -153,6 +154,19 @@ impl Engine {
         })
     }
 
+    /// 명령이 engine에 닿지 못했다고 알리는 도구 결과면 그 시도를 `Unreachable`로 센다. 요청이 engine에 오지 않은 시도는
+    /// 이 표지로만 알 수 있다. 표지가 결과의 첫머리에 있을 때만 읽어, 기록이나 문서 안의 같은 글이 시도로 세어지지 않는다.
+    pub(crate) async fn note_unreachable_lookup(&self, chat: ChatId, event: &ProviderEvent) {
+        let ProviderEvent::ToolResult { output, .. } = event else {
+            return;
+        };
+        let Some(which) = unreachable_attempt(output) else {
+            return;
+        };
+        self.note_lookup(chat, which, (LookupOutcome::Unreachable, 0))
+            .await;
+    }
+
     async fn note_lookup(
         &self,
         chat: ChatId,
@@ -194,6 +208,21 @@ impl Engine {
             unreadable: unreadable.into_iter().map(|record| record.seq).collect(),
             rrf_k: settings.rrf_k(),
         })
+    }
+}
+
+/// 도구 결과의 첫머리가 `Error: <표지> (read 13)`이나 `(search)`이면 그 조회의 종류와 번호.
+fn unreachable_attempt(output: &str) -> Option<(LookupKind, Option<LedgerSeq>)> {
+    let rest = output
+        .trim_start()
+        .strip_prefix("Error: ")?
+        .strip_prefix(EVIDENCE_UNREACHABLE_MARKER)?
+        .strip_prefix(" (")?;
+    let what = rest.split_once(')')?.0;
+    match what.split_once(' ') {
+        None if what == "search" => Some((LookupKind::Search, None)),
+        Some(("read", id)) => Some((LookupKind::Read, Some(LedgerSeq(id.parse().ok()?)))),
+        _ => None,
     }
 }
 

@@ -437,6 +437,8 @@ pub const CLI_CHILD_NO_ENGINE: &str =
     "떠 있는 engine에 접속하지 못했습니다. 하위 접속은 engine을 새로 띄우지 않습니다";
 pub const CLI_MODE_NEEDS_PASS: &str = "--mode는 에이전트 작업 안의 하위 접속에서만 쓸 수 있습니다";
 pub const CLI_EVIDENCE_NEEDS_PASS: &str = "evidence는 에이전트 작업 안에서만 쓸 수 있습니다. 출입증({pass} 변수)으로 그 채팅의 기록만 찾고 읽습니다";
+/// `{marker}`는 protocol의 `EVIDENCE_UNREACHABLE_MARKER`, `{what}`은 `read 13`이나 `search`. 앞 두 값은 engine이 읽으므로 번역하지 않는다.
+pub const CLI_EVIDENCE_UNREACHABLE: &str = "{marker} ({what}): engine에 닿지 못했습니다. 샌드박스가 파이프, `;`로 이어 붙인 명령 안의 접속을 막았을 수 있으니 `saturn evidence`를 다른 명령과 묶지 말고 한 명령으로 실행하세요. 결과를 줄이려면 --limit과 --offset을 쓰세요";
 pub const CLI_EVIDENCE_NO_ANSWER: &str = "engine이 근거 조회 결과 없이 답했습니다";
 pub const CLI_ENGINE_NOT_FOUND: &str =
     "{binary} 실행 파일을 saturn 옆이나 PATH에서 찾지 못했습니다";
