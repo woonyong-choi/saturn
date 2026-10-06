@@ -1,14 +1,14 @@
 //! 새 session의 첫 작업 입력 앞에 같은 채팅의 관련 원문을 미리 넣는 실험 옵션 `context.select.related`(`rank`, `jev`).
 //! 후보 집합, 권한 범위, 순위는 근거 검색(`evidence.rs`)과 같고, 고른 원문은 기존 패킷의 고정 구역에 실린다.
-//! `jev`는 같은 후보를 router가 후보별로 판단해 고르며, 판단을 못 쓰면 `rank`로 고정한다.
+//! `jev`는 같은 후보를 router가 후보별로 판단해 확신 있는 긍정만 앞으로 올리고(제외 없음), 판단을 못 쓰거나 바뀐 것이 없으면 `rank`로 고정한다.
 //! 설계: docs/design/context-management.md#단계별-기억-확장, docs/design/context-selection.md#관련-원문-jev-실험-계약
 
 use std::collections::HashSet;
 
 use saturn_core::queue::QueuedInput;
 use saturn_core::routers::{
-    Answer, RelatedCandidate, RouterRequest, SET_RELATED, related_questions, related_requests,
-    related_state, related_verdicts,
+    Answer, RELATED_HEAD_CHARS, RELATED_TAIL_CHARS, RelatedCandidate, RouterRequest, SET_RELATED,
+    related_questions, related_requests, related_state, related_verdicts,
 };
 use saturn_core::sessions::SendTarget;
 use saturn_core::sessions::context::ContextBudget;
@@ -50,7 +50,7 @@ pub(crate) struct RelatedSnapshot {
 /// 판단을 적용 직전에 거른 결과.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum RelatedOrder {
-    /// 남길 후보의 `candidates` 위치. 남김 확률 내림차순, 같으면 기존 순위 순이다.
+    /// 모든 후보의 `candidates` 위치. 확신 있는 긍정을 확률 내림차순(같으면 기존 순위 순)으로 앞에 두고 나머지는 기존 순위 순이다.
     Judged(Vec<usize>),
     /// 판단을 쓰지 않고 `rank`로 고정한다. 값은 판단 근거에 남는 이유다.
     Rank(&'static str),
@@ -101,33 +101,39 @@ fn fill_room(
     (picked, omitted)
 }
 
-/// 판단 확률로 남길 후보를 고른다. 모든 확률이 유효하고 `min_confidence` 이상일 때만 판단을 쓴다.
-/// `P(keep) >= 0.5`만 확률 내림차순, 같으면 기존 순위 순으로 놓는다.
+/// 판단 확률로 확신 있는 긍정(`P(yes) > 0.5`이고 확신이 `min_confidence` 이상)만 앞으로 올린다.
+/// 긍정은 확률 내림차순, 같으면 기존 순위 순이고 나머지는 기존 순위 순으로 모두 뒤에 붙인다. 아무도 빼지 않는다.
+/// 확률이 하나라도 틀렸으면 `jev_invalid`, 긍정이 없거나 순서가 그대로면 `jev_no_promotion`으로 `rank`를 쓴다.
 fn order_by_verdicts(verdicts: &[Option<f64>], min_confidence: f64) -> RelatedOrder {
     let mut probabilities = Vec::with_capacity(verdicts.len());
     for verdict in verdicts {
         match verdict {
-            Some(keep) if keep.is_finite() && (0.0..=1.0).contains(keep) => {
-                probabilities.push(*keep);
+            Some(yes) if yes.is_finite() && (0.0..=1.0).contains(yes) => {
+                probabilities.push(*yes);
             }
             _ => return RelatedOrder::Rank("jev_invalid"),
         }
     }
-    if probabilities
-        .iter()
-        .any(|keep| Answer::Noul(*keep).confidence() < min_confidence)
-    {
-        return RelatedOrder::Rank("jev_low_confidence");
-    }
-    let mut kept: Vec<usize> = (0..probabilities.len())
-        .filter(|index| probabilities[*index] >= 0.5)
+    let mut promoted: Vec<usize> = (0..probabilities.len())
+        .filter(|index| {
+            probabilities[*index] > 0.5
+                && Answer::Noul(probabilities[*index]).confidence() >= min_confidence
+        })
         .collect();
-    kept.sort_by(|a, b| {
+    promoted.sort_by(|a, b| {
         probabilities[*b]
             .total_cmp(&probabilities[*a])
             .then(a.cmp(b))
     });
-    RelatedOrder::Judged(kept)
+    let order: Vec<usize> = promoted
+        .iter()
+        .copied()
+        .chain((0..probabilities.len()).filter(|index| !promoted.contains(index)))
+        .collect();
+    if promoted.is_empty() || order.iter().copied().eq(0..order.len()) {
+        return RelatedOrder::Rank("jev_no_promotion");
+    }
+    RelatedOrder::Judged(order)
 }
 
 impl Engine {
@@ -204,16 +210,12 @@ impl Engine {
         let (applied, ordered, mut omitted) = if requested == RelatedSelect::Jev {
             let snapshot = RelatedSnapshot::of(record, settings, tail, target, &candidates);
             match self.related_gate(snapshot, &candidates).await? {
-                RelatedOrder::Judged(kept) => {
-                    let excluded: Vec<_> = (0..candidates.len())
-                        .filter(|index| !kept.contains(index))
-                        .map(|index| (Some(ref_of(&candidates[index])), "jev_excluded"))
-                        .collect();
-                    let ordered = kept
+                RelatedOrder::Judged(order) => {
+                    let ordered = order
                         .iter()
                         .map(|index| candidates[*index].clone())
                         .collect();
-                    (RELATED_JEV_SELECTOR, ordered, excluded)
+                    (RELATED_JEV_SELECTOR, ordered, Vec::new())
                 }
                 RelatedOrder::Rank(reason) => (RELATED_SELECTOR, candidates, vec![(None, reason)]),
             }
@@ -278,7 +280,7 @@ impl Engine {
                             (order, JudgmentOutcome::Invalid, &["invalid"])
                         }
                         order @ RelatedOrder::Rank(_) => {
-                            (order, JudgmentOutcome::Ok, &["low-confidence"])
+                            (order, JudgmentOutcome::Ok, &["no-promotion"])
                         }
                         order @ RelatedOrder::Judged(_) => (order, JudgmentOutcome::Ok, &[]),
                     }
@@ -292,7 +294,7 @@ impl Engine {
             )
         };
         if !reply.is_recorded.load(std::sync::atomic::Ordering::Relaxed) {
-            let clipped = candidates.iter().any(|found| is_clipped(&found.text));
+            let clipped = candidates.iter().any(is_clipped);
             let mut reasons = fallbacks.to_vec();
             if clipped {
                 reasons.push("clipped");
@@ -416,8 +418,8 @@ fn ref_of(found: &RelatedFound) -> RelatedRef {
     (found.kind, found.id, found.hash.clone())
 }
 
-fn is_clipped(text: &str) -> bool {
-    text.chars().count() > saturn_core::routers::RELATED_TEXT_CHARS
+fn is_clipped(found: &RelatedFound) -> bool {
+    found.text.chars().count() > RELATED_HEAD_CHARS + RELATED_TAIL_CHARS
 }
 
 /// 원격은 조각별 전송을 지원한다. 로컬 서버는 원본 한 요청만 보내므로 여러 조각이면 보내지 않는다.
@@ -440,7 +442,7 @@ mod tests {
     use crate::routers::{LocalRouter, LocalSource};
 
     #[test]
-    fn verdicts_are_used_only_when_all_are_valid_and_confident() {
+    fn only_confident_positives_are_promoted_and_nothing_is_excluded() {
         let cases = [
             (
                 vec![Some(0.9), Some(f64::NAN)],
@@ -450,13 +452,39 @@ mod tests {
                 vec![Some(0.9), Some(-0.1)],
                 RelatedOrder::Rank("jev_invalid"),
             ),
-            (vec![Some(0.9), None], RelatedOrder::Rank("jev_invalid")),
             (
-                vec![Some(0.9), Some(0.55)],
-                RelatedOrder::Rank("jev_low_confidence"),
+                vec![Some(0.9), Some(1.1)],
+                RelatedOrder::Rank("jev_invalid"),
             ),
-            (vec![Some(0.9), Some(0.9)], RelatedOrder::Judged(vec![0, 1])),
-            (vec![Some(0.2), Some(0.1)], RelatedOrder::Judged(vec![])),
+            (vec![Some(0.9), None], RelatedOrder::Rank("jev_invalid")),
+            // 확신 있는 긍정 하나가 불확실한 후보들 사이에서 앞으로 간다
+            (
+                vec![Some(0.4), Some(0.55), Some(0.95), Some(0.3)],
+                RelatedOrder::Judged(vec![2, 0, 1, 3]),
+            ),
+            // 긍정이 없거나 확신이 모자라면 승격하지 않는다
+            (
+                vec![Some(0.1), Some(0.05)],
+                RelatedOrder::Rank("jev_no_promotion"),
+            ),
+            (
+                vec![Some(0.55), Some(0.75)],
+                RelatedOrder::Rank("jev_no_promotion"),
+            ),
+            // 이미 맨 앞이면 순서가 같다
+            (
+                vec![Some(0.9), Some(0.2), Some(0.5)],
+                RelatedOrder::Rank("jev_no_promotion"),
+            ),
+            // 동률은 기존 순위 순
+            (
+                vec![Some(0.1), Some(0.9), Some(0.9)],
+                RelatedOrder::Judged(vec![1, 2, 0]),
+            ),
+            (
+                vec![Some(0.85), Some(0.95), Some(0.85)],
+                RelatedOrder::Judged(vec![1, 0, 2]),
+            ),
         ];
         for (verdicts, expected) in cases {
             assert_eq!(order_by_verdicts(&verdicts, 0.6), expected, "{verdicts:?}");
@@ -464,25 +492,14 @@ mod tests {
     }
 
     #[test]
-    fn oversized_local_related_request_falls_back_before_transport() {
-        let candidates: Vec<_> = (1..=20)
-            .map(|ordinal| RelatedCandidate {
-                ordinal,
-                kind: EvidenceKind::Tool,
-                chat: ChatId(1),
-                id: u64::from(ordinal),
-                hash: "h".repeat(64),
-                text: "a".repeat(saturn_core::routers::RELATED_TEXT_CHARS),
-            })
-            .collect();
-        let pieces = related_requests("local", "task", &candidates).unwrap();
-        assert!(pieces.len() > 1);
+    fn local_router_sends_a_related_request_only_as_one_piece() {
         let local = ActiveRouter::Local(LocalRouter::new(
             LocalSource::Model {
                 path: std::path::PathBuf::new(),
             },
             "local".to_owned(),
         ));
-        assert!(!can_send_related(&local, pieces.len()));
+        assert!(can_send_related(&local, 1));
+        assert!(!can_send_related(&local, 2));
     }
 }

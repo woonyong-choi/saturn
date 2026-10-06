@@ -799,22 +799,22 @@ fn related_questions_use_request_ordinals_and_typed_references() {
 
     assert_eq!(
         (set.name.as_str(), set.major, set.minor),
-        (SET_RELATED, 1, 0)
+        (SET_RELATED, 2, 0)
     );
     let ids: Vec<_> = questions
         .iter()
         .map(|question| question.id.as_str())
         .collect();
-    assert_eq!(ids, ["candidate_1_keep", "candidate_2_keep"]);
+    assert_eq!(ids, ["candidate_1_direct", "candidate_2_direct"]);
     assert!(
         questions[0]
             .text
-            .contains("[tool:3:7:hash-tool-7] showing 9 of 9 characters")
+            .contains("[tool:3:7:hash-tool-7] full record, 9 characters")
     );
     assert!(
         questions[1]
             .text
-            .contains("[text:3:7:hash-text-7] showing 9 of 9 characters")
+            .contains("[text:3:7:hash-text-7] full record, 9 characters")
     );
     assert!(
         ids.iter()
@@ -823,22 +823,40 @@ fn related_questions_use_request_ordinals_and_typed_references() {
 }
 
 #[test]
-fn related_questions_state_the_observed_range_of_a_clipped_original() {
-    let long = related(
-        1,
-        EvidenceKind::Tool,
-        2,
-        &"Q".repeat(RELATED_TEXT_CHARS + 10),
+fn related_questions_clip_to_a_head_and_tail_excerpt_on_char_boundaries() {
+    let text = format!(
+        "{}{}{}",
+        "가".repeat(RELATED_HEAD_CHARS),
+        "😀".repeat(50),
+        "나".repeat(RELATED_TAIL_CHARS)
     );
+    let total = text.chars().count();
+    let long = related(1, EvidenceKind::Tool, 2, &text);
 
     let (_, questions) = related_questions(std::slice::from_ref(&long));
 
+    let question = &questions[0].text;
     assert!(long.is_clipped());
-    assert!(questions[0].text.contains(&format!(
-        "showing {RELATED_TEXT_CHARS} of {} characters",
-        RELATED_TEXT_CHARS + 10
+    assert!(question.contains("[tool:3:2:hash-tool-2] excerpt (clipped)"));
+    assert!(question.contains(&format!(
+        "first {RELATED_HEAD_CHARS} and last {RELATED_TAIL_CHARS} of {total} characters, 50 omitted"
     )));
-    assert_eq!(questions[0].text.matches('Q').count(), RELATED_TEXT_CHARS);
+    assert!(question.contains("An excerpt is not the whole record"));
+    assert_eq!(question.matches('가').count(), RELATED_HEAD_CHARS);
+    assert_eq!(question.matches('나').count(), RELATED_TAIL_CHARS);
+    assert_eq!(question.matches('😀').count(), 0);
+}
+
+#[test]
+fn related_questions_do_not_duplicate_a_short_original() {
+    let text = "Q".repeat(RELATED_HEAD_CHARS + RELATED_TAIL_CHARS);
+    let short = related(1, EvidenceKind::Tool, 2, &text);
+
+    let (_, questions) = related_questions(std::slice::from_ref(&short));
+
+    assert!(!short.is_clipped());
+    assert_eq!(questions[0].text.matches('Q').count(), text.len());
+    assert!(!questions[0].text.contains("[omitted]"));
 }
 
 #[test]
@@ -846,9 +864,9 @@ fn related_verdicts_read_only_the_requested_ordinals_as_noul() {
     let response = RouterResponse {
         model: "jev".into(),
         answers: vec![
-            ("candidate_1_keep".into(), Answer::Noul(0.9)),
-            ("candidate_2_keep".into(), Answer::Score(vec![0.5, 0.5])),
-            ("candidate_9_keep".into(), Answer::Noul(0.1)),
+            ("candidate_1_direct".into(), Answer::Noul(0.9)),
+            ("candidate_2_direct".into(), Answer::Score(vec![0.5, 0.5])),
+            ("candidate_9_direct".into(), Answer::Noul(0.1)),
             ("call_3_keep".into(), Answer::Noul(0.8)),
         ],
         tokens: (1, 1),

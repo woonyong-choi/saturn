@@ -97,7 +97,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 | `file-rank` | `file_<n>_relevant` | `noul` | 후보 파일 전체와 `answer_present`를 함께 질문. 0.7 이상은 존재, 0.35 미만은 없음 | 판단이 없으면 후보 순위 그대로 |
 | `context-select` | `pick` | `choice` | 게이트 `noul` 3개 평균이 0.3 미만이면 없음. 2차로 `fits_<n>` 질문 | 판단이 없으면 힌트 생략 |
 | `compact` | `call_<id>_keep` | `noul` | 후보 호출 전체에 `result_<id>_keep`과 함께 질문. 기준값 없음. 항목의 확률은 두 답 중 큰 값이고, 확률이 높은 순, 같은 확률이면 후보 순위 순으로 예산까지 채움 | 답이 없는 항목은 후보 순위 순으로 답이 있는 항목 뒤에 두고, 판단이 전부 없으면 후보 순위 순서로 예산까지 채움 |
-| `related` | `candidate_<ordinal>_keep` | `noul` | 관련 원문 후보 전체를 한 요청 안의 임시 번호로 질문. 질문에 종류 있는 참조와 가린 원문의 관측 범위를 싣는다. 모든 확률이 유효하고 확신이 `router.thresholds.min_confidence` 이상일 때만 쓰며, `P(keep) >= 0.5`를 확률 내림차순, 같으면 후보 순위 순으로 예산까지 채움 | 답 없음, 늦음, 낮은 확신, 잘못된 확률, 접수 입력·설정·기록 끝·후보·대상 불일치면 `rank`. 실험 옵션 `context.select.related = jev`일 때만 부름 |
+| `related` | `candidate_<ordinal>_direct` | `noul` | 관련 원문 후보 전체를 한 요청 안의 임시 번호로 질문. 질문에 종류 있는 참조와 앞 120자·뒤 220자 발췌의 관측·생략 길이를 싣는다. 모든 확률이 유효할 때만 쓰며, `router.thresholds.min_confidence`는 확신 있는 긍정(`P(yes) > 0.5`)을 가리는 데만 쓰고 그 후보를 확률 내림차순, 같으면 후보 순위 순으로 앞에 올린 뒤 나머지를 순위 순으로 모두 붙여 예산까지 채움. 후보를 빼지 않음 | 답 없음, 늦음, 잘못된 확률, 확신 있는 긍정 없음, 순서 변화 없음, 접수 입력·설정·기록 끝·후보·대상 불일치면 `rank`. 실험 옵션 `context.select.related = jev`일 때만 부름 |
 | `doc-filter` | `injection` | `noul` | 조각마다 `relevant`, `evidence`, `contradiction`과 함께 질문. 0.7 이상이면 제외 | 판단이 없으면 문서 조각 생략 |
 | `loop` | `is_progressing` | `noul` | 0.2 미만이면 루프 | 판단이 없으면 멈춤과 사용자 알림 |
 | `feedback` | `wrong_doc` | `noul` | `misunderstood_intent`, `code_error`와 함께 질문. 0.7 이상인 원인만 사용 | 판단이 없으면 원문 그대로 전달 |

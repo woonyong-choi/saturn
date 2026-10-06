@@ -1,5 +1,5 @@
 //! 관련 원문 Jev 실험(`context.select.related = jev`) 테스트: 종류 있는 후보 스냅샷과 요청 안 임시 번호로만 답을 해석하고,
-//! 접수 입력·설정·기록 끝·후보·대상 중 하나라도 달라진 답, 늦은 답, 실패한 답, 낮은 확신은 `rank`로 고정하며,
+//! 접수 입력·설정·기록 끝·후보·대상 중 하나라도 달라진 답, 늦은 답, 실패한 답, 승격할 후보가 없는 답은 `rank`로 고정하며,
 //! 같은 전문 예산과 기록 규칙을 쓰는지 확인한다.
 //! 설계: docs/design/context-selection.md#관련-원문-jev-실험-계약
 
@@ -43,12 +43,12 @@ async fn flow_with(config: &str, inputs: usize) -> Flow {
     flow
 }
 
-/// `candidate_<번호>_keep`에 P(keep)을 주는 router 답.
+/// `candidate_<번호>_direct`에 P(yes)를 주는 router 답.
 fn related_reply(probabilities: &[(u32, f64)]) -> FakeReply {
     let mut answers = serde_json::Map::new();
     for (ordinal, probability) in probabilities {
         answers.insert(
-            format!("candidate_{ordinal}_keep"),
+            format!("candidate_{ordinal}_direct"),
             json!({ "type": "noul", "noul": probability }),
         );
     }
@@ -117,13 +117,16 @@ async fn selector_rows(
     .collect()
 }
 
+// cost: time O(j), heap O(j), stack O(1), io 2
+// vars: j = 판단 기록 파일 바이트 수
+// basis: estimate
 async fn judgments(flow: &Flow) -> String {
     let path = flow.fixture.root.path().join("judgments.jsonl");
     flow.engine.store.export_judgments(&path).await.unwrap();
     std::fs::read_to_string(path).unwrap()
 }
 
-// #600: 판단한 후보만 종류 있는 참조와 함께 실리고, 제외한 후보는 이유와 함께 남는다. 요청은 임시 번호와 종류 있는 참조만 쓰고
+// #600: 확신 있는 긍정이 앞으로 올라 종류 있는 참조와 함께 먼저 실리고, 나머지는 기존 순위 순으로 뒤에 실린다. 요청은 임시 번호와 종류 있는 참조만 쓰고
 // 도구 번호 전용 `compact` 질문 번호를 쓰지 않는다
 #[tokio::test]
 async fn judged_candidates_are_applied_by_typed_reference_with_the_requested_and_applied_selector()
@@ -141,8 +144,8 @@ async fn judged_candidates_are_applied_by_typed_reference_with_the_requested_and
 
     assert_eq!(flow.router_calls() - calls, 2);
     let request = flow.transport.calls().last().unwrap().2.clone().unwrap();
-    assert!(request.contains("candidate_1_keep"), "{request}");
-    assert!(request.contains("candidate_2_keep"), "{request}");
+    assert!(request.contains("candidate_1_direct"), "{request}");
+    assert!(request.contains("candidate_2_direct"), "{request}");
     assert!(!request.contains("call_"), "{request}");
     assert!(!request.contains("result_"), "{request}");
     // 요청 안의 순서가 후보 순서이고 후보는 종류, 채팅, 번호, 해시로 구분된다
@@ -166,9 +169,17 @@ async fn judged_candidates_are_applied_by_typed_reference_with_the_requested_and
         1,
         "{packet}"
     );
-    // 제외한 후보는 선주입 구역에 없다(일반 경쟁 구역의 기록 요약은 별개다)
+    // 아무 후보도 빠지지 않고 긍정이 먼저 놓인다
+    assert_eq!(
+        packet
+            .matches(&reference(flow.chat, dropped.id, &dropped.text))
+            .count(),
+        1,
+        "{packet}"
+    );
     assert!(
-        !packet.contains(&format!("[tool:{}:{}:", flow.chat.0, dropped.id)),
+        packet.find(&reference(flow.chat, kept.id, &kept.text))
+            < packet.find(&reference(flow.chat, dropped.id, &dropped.text)),
         "{packet}"
     );
     let stored = stored_claude(&flow).await;
@@ -186,17 +197,17 @@ async fn judged_candidates_are_applied_by_typed_reference_with_the_requested_and
                 "Related-tool".to_owned(),
                 dropped.id,
                 "related_jev".to_owned(),
-                Some("jev_excluded".to_owned())
+                None
             ),
         ]
     );
     let lines = judgments(&flow).await;
-    assert_eq!(lines.matches("related@1.0").count(), 1, "{lines}");
+    assert_eq!(lines.matches("related@2.0").count(), 1, "{lines}");
 }
 
-// #600: 모든 후보를 확신 있게 제외하면 선주입하지 않고 후보마다 이유를 남긴다. `rank`로 되돌리지 않는다
+// #600: 확신 있는 긍정이 없으면 승격하지 않고 `rank`로 고정하며 `jev_no_promotion`을 남긴다. 아무 후보도 제외하지 않는다
 #[tokio::test]
-async fn excluding_every_candidate_with_confidence_injects_nothing() {
+async fn without_a_confident_positive_nothing_is_promoted_and_rank_is_applied() {
     let mut flow = two_tools(JEV).await;
     let claude = flow.fake.clone();
     flow.transport
@@ -205,19 +216,23 @@ async fn excluding_every_candidate_with_confidence_injects_nothing() {
     flow.submit("inspect the cache again").await;
 
     let packet = packet_of(&claude);
-    assert!(!packet.contains("Related original records"), "{packet}");
+    assert!(packet.contains("Related original records"), "{packet}");
     let stored = stored_claude(&flow).await;
     let rows = selector_rows(&flow, &stored).await;
-    assert_eq!(rows.len(), 2);
+    assert_eq!(rows.iter().filter(|row| row.0 == "Related-tool").count(), 2);
     assert!(
         rows.iter()
-            .all(|(zone, _, selector, reason)| zone == "Related-tool"
-                && selector == "related_jev"
-                && reason.as_deref() == Some("jev_excluded"))
+            .filter(|row| row.0 == "Related-tool")
+            .all(|row| row.2 == "related_rank" && row.3.is_none()),
+        "{rows:?}"
     );
+    let note: Vec<_> = rows.iter().filter(|row| row.0 == "Related").collect();
+    assert_eq!(note.len(), 1, "{rows:?}");
+    assert_eq!(note[0].2, "related_jev");
+    assert_eq!(note[0].3.as_deref(), Some("jev_no_promotion"));
 }
 
-// #600: 늦은 답, router 실패, 낮은 확신, 형식이 틀린 확률은 `rank`로 고정되고 같은 원문을 싣는다. 요청 방식과 실제 방식과 이유가 남는다
+// #600: 늦은 답, router 실패, 승격할 후보가 없는 답, 형식이 틀린 확률은 `rank`로 고정되고 같은 원문을 싣는다. 요청 방식과 실제 방식과 이유가 남는다
 #[tokio::test]
 async fn unusable_answers_fall_back_to_rank_and_log_requested_and_applied() {
     let mut rank = two_tools(RANK).await;
@@ -234,9 +249,14 @@ async fn unusable_answers_fall_back_to_rank_and_log_requested_and_applied() {
             "jev_failed",
         ),
         (
-            "low confidence",
-            related_reply(&[(1, 0.45), (2, 0.9)]),
-            "jev_low_confidence",
+            "no confident positive",
+            related_reply(&[(1, 0.45), (2, 0.75)]),
+            "jev_no_promotion",
+        ),
+        (
+            "order already matches rank",
+            related_reply(&[(1, 0.95), (2, 0.1)]),
+            "jev_no_promotion",
         ),
         ("missing answer", related_reply(&[(2, 0.9)]), "jev_invalid"),
         (
@@ -288,7 +308,7 @@ async fn unusable_answers_fall_back_to_rank_and_log_requested_and_applied() {
         assert_eq!(note[0].2, "related_jev", "{name}");
         assert_eq!(note[0].3.as_deref(), Some(reason), "{name}");
         let lines = judgments(&flow).await;
-        assert_eq!(lines.matches("related@1.0").count(), 1, "{name}: {lines}");
+        assert_eq!(lines.matches("related@2.0").count(), 1, "{name}: {lines}");
         if name == "late" {
             assert!(lines.contains("late"), "{lines}");
         }
@@ -321,9 +341,16 @@ async fn a_clipped_candidate_states_the_observed_range_and_is_recorded() {
     flow.submit("inspect the cache again").await;
 
     let request = flow.transport.calls().last().unwrap().2.clone().unwrap();
-    assert!(request.contains("showing 4000 of 9"), "{request}");
-    // 앞 글자 4,000자까지만 실리고 질문 머리글자는 그 안에 든다
-    assert!((3_900..=4_000).contains(&request.matches('z').count()));
+    assert!(
+        request.contains("of 9022 characters, 8682 omitted"),
+        "{request}"
+    );
+    // 앞 120자와 뒤 220자만 실린다
+    // 도구 이름 줄이 앞 120자 안에 든다
+    assert!(
+        (300..=340).contains(&request.matches('z').count()),
+        "{request}"
+    );
     let lines = judgments(&flow).await;
     assert!(lines.contains("clipped"), "{lines}");
 }
@@ -369,7 +396,9 @@ async fn three_tools(config: &str) -> (String, Vec<RelatedRow>) {
 async fn jev_and_rank_share_the_same_budget_and_omission_reasons() {
     for (rank_config, jev_config) in [(RANK_TIGHT, JEV_TIGHT), (RANK, JEV)] {
         let (rank_packet, rank_rows) = three_tools(rank_config).await;
-        let (jev_packet, jev_rows) = three_tools(jev_config).await;
+        let (jev_packet, mut jev_rows) = three_tools(jev_config).await;
+        // 순서가 그대로라 `rank`로 고정되고, 요청 방식과 이유를 적은 구역 `Related` 행만 더 있다
+        jev_rows.retain(|row| row.0 != "Related");
 
         assert_eq!(jev_rows, rank_rows, "{jev_config}");
         assert_eq!(rank_rows.len(), 3);
@@ -397,7 +426,7 @@ async fn compact_and_related_judgments_do_not_share_a_reply_slot() {
     })
     .to_string()));
     flow.transport
-        .push_reply(related_reply(&[(1, 0.9), (2, 0.1)]));
+        .push_reply(related_reply(&[(1, 0.1), (2, 0.9)]));
     let calls = flow.router_calls();
 
     flow.submit("inspect the cache again").await;
@@ -408,14 +437,9 @@ async fn compact_and_related_judgments_do_not_share_a_reply_slot() {
     let rows = selector_rows(&flow, &stored).await;
     assert_eq!(rows.len(), 2, "{rows:?}");
     assert!(rows.iter().all(|row| row.2 == "related_jev"), "{rows:?}");
-    assert_eq!(
-        rows.iter()
-            .filter(|row| row.3.as_deref() == Some("jev_excluded"))
-            .count(),
-        1
-    );
+    assert!(rows.iter().all(|row| row.3.is_none()), "{rows:?}");
     let lines = judgments(&flow).await;
-    assert_eq!(lines.matches("related@1.0").count(), 1, "{lines}");
+    assert_eq!(lines.matches("related@2.0").count(), 1, "{lines}");
     assert_eq!(lines.matches("compact@1.0").count(), 1, "{lines}");
 }
 
@@ -507,7 +531,7 @@ fn response(probabilities: &[f64]) -> Result<RouterResponse, RouterError> {
             .zip(1u32..)
             .map(|(probability, ordinal)| {
                 (
-                    format!("candidate_{ordinal}_keep"),
+                    format!("candidate_{ordinal}_direct"),
                     Answer::Noul(*probability),
                 )
             })
@@ -574,10 +598,10 @@ async fn an_answer_is_used_only_when_every_part_of_the_snapshot_still_matches() 
 
         assert_eq!(order, RelatedOrder::Rank("jev_stale"), "{name}");
     }
-    fixture.reply(&asked, Some(response(&[0.9, 0.1])));
+    fixture.reply(&asked, Some(response(&[0.1, 0.9])));
     assert_eq!(
         fixture.gate(asked.clone(), &candidates).await,
-        RelatedOrder::Judged(vec![0]),
+        RelatedOrder::Judged(vec![1, 0]),
         "an unchanged snapshot applies"
     );
     let lines = judgments(&fixture.flow).await;
@@ -628,7 +652,7 @@ async fn the_same_number_of_different_kinds_stays_two_candidates() {
             .iter()
             .map(|question| question.id.as_str())
             .collect::<Vec<_>>(),
-        ["candidate_1_keep", "candidate_2_keep"]
+        ["candidate_1_direct", "candidate_2_direct"]
     );
     assert!(questions[0].text.contains(&format!(
         "[tool:{}:7:{}]",
@@ -643,20 +667,20 @@ async fn the_same_number_of_different_kinds_stays_two_candidates() {
 
     let order = fixture.gate(snapshot, &candidates).await;
 
-    // 둘째 후보(종류가 `text`인 7번)만 남는다
-    assert_eq!(order, RelatedOrder::Judged(vec![1]));
+    // 둘째 후보(종류가 `text`인 7번)가 앞으로 오고 첫째도 남는다
+    assert_eq!(order, RelatedOrder::Judged(vec![1, 0]));
 }
 
-// #600: 남김 확률 내림차순, 같으면 기존 순위 순이고 `0.5` 미만은 뺀다. 초과 번호의 답은 무시한다
+// #600: 확신 있는 긍정을 확률 내림차순, 같으면 기존 순위 순으로 올리고 나머지는 순위 순으로 붙인다. 초과 번호의 답은 무시한다
 #[tokio::test]
 async fn kept_candidates_are_ordered_by_probability_then_rank() {
     let mut fixture = asked().await;
     let asked = fixture.now.clone();
     let cases: [([f64; 2], RelatedOrder); 4] = [
         ([0.8, 0.95], RelatedOrder::Judged(vec![1, 0])),
-        ([0.9, 0.9], RelatedOrder::Judged(vec![0, 1])),
-        ([0.1, 0.9], RelatedOrder::Judged(vec![1])),
-        ([0.1, 0.05], RelatedOrder::Judged(vec![])),
+        ([0.9, 0.9], RelatedOrder::Rank("jev_no_promotion")),
+        ([0.1, 0.9], RelatedOrder::Judged(vec![1, 0])),
+        ([0.1, 0.05], RelatedOrder::Rank("jev_no_promotion")),
     ];
     let candidates = fixture.candidates.clone();
     for (probabilities, expected) in cases {
@@ -671,11 +695,11 @@ async fn kept_candidates_are_ordered_by_probability_then_rank() {
     let mut extra = response(&[0.9, 0.1]).unwrap();
     extra
         .answers
-        .push(("candidate_3_keep".to_owned(), Answer::Noul(0.99)));
+        .push(("candidate_3_direct".to_owned(), Answer::Noul(0.99)));
     fixture.reply(&asked, Some(Ok(extra)));
     assert_eq!(
         fixture.gate(asked.clone(), &candidates).await,
-        RelatedOrder::Judged(vec![0])
+        RelatedOrder::Rank("jev_no_promotion")
     );
     // 기다림 안에 오지 않은 답은 쓰지 않는다
     fixture.reply(&asked, None);

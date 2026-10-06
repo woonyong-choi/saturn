@@ -476,8 +476,10 @@ pub fn compact_verdicts(
         .collect()
 }
 
-/// 관련 원문 한 건을 질문에 싣는 앞 글자 수(초안). 넘는 원문은 앞부분만 보이고 질문이 관측 범위를 적는다.
-pub const RELATED_TEXT_CHARS: usize = 4_000;
+/// 관련 원문 한 건을 질문에 싣는 앞 글자 수와 뒤 글자 수(초안). 합보다 긴 원문은 앞뒤 발췌만 보이고 질문이 관측·생략 길이를 적는다.
+pub const RELATED_HEAD_CHARS: usize = 120;
+pub const RELATED_TAIL_CHARS: usize = 220;
+const RELATED_EXCERPT_CHARS: usize = RELATED_HEAD_CHARS + RELATED_TAIL_CHARS;
 
 /// `related` 질문이 싣는 후보 한 건. `ordinal`은 한 요청 안에서만 쓰는 1부터의 임시 번호이고 저장 참조가 아니다.
 /// 후보의 정체는 `(kind, chat, id, hash)`다.
@@ -492,9 +494,9 @@ pub struct RelatedCandidate {
 }
 
 impl RelatedCandidate {
-    /// 요청 한도 때문에 원문 일부만 질문에 실린다.
+    /// 요청 한도 때문에 앞뒤 발췌만 질문에 실린다.
     pub fn is_clipped(&self) -> bool {
-        self.text.chars().count() > RELATED_TEXT_CHARS
+        self.text.chars().count() > RELATED_EXCERPT_CHARS
     }
 }
 
@@ -512,29 +514,40 @@ pub fn related_state(input: &str, scope: &str) -> String {
 // cost: time O(n·L), heap O(n·L), stack O(1)
 // vars: n = 후보 수, L = 후보 글자 수
 // basis: estimate
-/// 후보마다 `candidate_<ordinal>_keep`을 묻는다. 질문에 종류 있는 참조와 원문의 관측 범위를 싣는다.
+/// 후보마다 `candidate_<ordinal>_direct`을 묻는다. 질문에 종류 있는 참조와 원문 발췌의 관측·생략 길이를 싣는다.
+/// 짧은 원문은 전문 하나만 싣고, 긴 원문은 앞 `RELATED_HEAD_CHARS`자와 뒤 `RELATED_TAIL_CHARS`자를 유니코드 글자 경계로 자른다.
 pub fn related_questions(candidates: &[RelatedCandidate]) -> (QuestionSetId, Vec<Question>) {
-    const HEAD: &str = "The user moves this chat to a fresh coding-agent session for the accepted request. \
-                        Should the new session see this original record up front?";
+    const HEAD: &str = "Does this observed excerpt directly contain information needed to answer the accepted user request? \
+                        An excerpt is not the whole record: judge only the text shown.";
     let questions = candidates
         .iter()
         .map(|candidate| {
-            let total = candidate.text.chars().count();
-            let seen = total.min(RELATED_TEXT_CHARS);
+            let chars: Vec<char> = candidate.text.chars().collect();
+            let total = chars.len();
+            let label = format!(
+                "[{}:{}:{}:{}]",
+                candidate.kind.name(),
+                candidate.chat.0,
+                candidate.id,
+                candidate.hash
+            );
+            let body = if total <= RELATED_EXCERPT_CHARS {
+                format!("{label} full record, {total} characters\n{}", candidate.text)
+            } else {
+                let head: String = chars[..RELATED_HEAD_CHARS].iter().collect();
+                let tail: String = chars[total - RELATED_TAIL_CHARS..].iter().collect();
+                format!(
+                    "{label} excerpt (clipped): first {RELATED_HEAD_CHARS} and last {RELATED_TAIL_CHARS} of {total} characters, {} omitted\n[head]\n{head}\n[omitted]\n[tail]\n{tail}",
+                    total - RELATED_EXCERPT_CHARS
+                )
+            };
             noul(
                 &related_question_id(candidate.ordinal),
-                &format!(
-                    "{HEAD}\n\n[{}:{}:{}:{}] showing {seen} of {total} characters\n{}",
-                    candidate.kind.name(),
-                    candidate.chat.0,
-                    candidate.id,
-                    candidate.hash,
-                    clip(&candidate.text, RELATED_TEXT_CHARS)
-                ),
+                &format!("{HEAD}\n\n{body}"),
             )
         })
         .collect();
-    (set_id_at(SET_RELATED, 1, 0), questions)
+    (set_id_at(SET_RELATED, 2, 0), questions)
 }
 
 // cost: time O(n + q), heap O(n + q·s), stack O(1), alloc 1
@@ -559,7 +572,7 @@ pub fn related_requests(
 // cost: time O(n·a), heap O(n), stack O(1)
 // vars: n = 후보 수, a = 응답의 답 수
 // basis: estimate
-/// 후보 순서대로 `candidate_<ordinal>_keep`의 P(yes)를 모은다. 답이 없거나 `noul`이 아닌 후보는 `None`이다.
+/// 후보 순서대로 `candidate_<ordinal>_direct`의 P(yes)를 모은다. 답이 없거나 `noul`이 아닌 후보는 `None`이다.
 /// `ordinals`는 요청에 쓴 임시 번호이고 이 요청 밖의 번호는 보지 않는다.
 pub fn related_verdicts(ordinals: &[u32], responses: &[RouterResponse]) -> Vec<Option<f64>> {
     ordinals
@@ -835,7 +848,7 @@ fn compact_call_id(seq: LedgerSeq) -> String {
 }
 
 fn related_question_id(ordinal: u32) -> String {
-    format!("candidate_{ordinal}_keep")
+    format!("candidate_{ordinal}_direct")
 }
 
 fn compact_result_id(seq: LedgerSeq) -> String {
