@@ -30,5 +30,5 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [Jev 역할별 효율](experiments/jev-role-efficiency/report.md) | 모델 선택·제약 후보·맥락 선별의 실제 성과 비교 |
 | [대응 실행 검증기](experiments/arm-execution-verifier/report.md) | 같은 후보에서 선택 방법별 실행 검증기와 선택기 비교 |
 | [검색 선별 추가 이득](experiments/search-selection-gain/report.md) | 같은 후보와 예산에서 코드 검색, 작업 LLM, Jev 확률 기준 선별의 품질과 비용 비교 |
-| [실제 선주입 선별 개발 진단](experiments/related-selection-diagnostic/design.md) | 같은 기록의 Jev와 코드 순위 패킷 차이 및 후속 답 측정 |
+| [실제 선주입 선별 개발 진단](experiments/related-selection-diagnostic/report.md) | 같은 기록의 Jev와 코드 순위 패킷 차이 및 후속 답 측정 |
 | [Claude 확장 도구와 Jev](experiments/jev-role-efficiency/stack-comparison.md) | 영상의 다섯 도구와 Saturn의 적용 경계 |

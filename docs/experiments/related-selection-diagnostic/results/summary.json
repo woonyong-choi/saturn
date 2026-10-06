@@ -1,0 +1,50 @@
+{
+  "arms": {
+    "jev": {
+      "correct": 10,
+      "lookups": 0,
+      "mean_latency_s": 6.646,
+      "median_latency_s": 6.231,
+      "missing": 2,
+      "provider_tokens": 872445,
+      "related_applied": 10,
+      "router_tokens": 40300,
+      "trials": 12
+    },
+    "off": {
+      "correct": 10,
+      "lookups": 5,
+      "mean_latency_s": 6.976,
+      "median_latency_s": 6.03,
+      "missing": 2,
+      "provider_tokens": 1003077,
+      "related_applied": 0,
+      "router_tokens": 4859,
+      "trials": 12
+    },
+    "rank": {
+      "correct": 10,
+      "lookups": 0,
+      "mean_latency_s": 6.104,
+      "median_latency_s": 5.982,
+      "missing": 2,
+      "provider_tokens": 873563,
+      "related_applied": 0,
+      "router_tokens": 4859,
+      "trials": 12
+    }
+  },
+  "cases": 12,
+  "h1": "충족",
+  "h2": "신호 없음",
+  "jev_only": 0,
+  "packet_different": 7,
+  "packet_different_by_kind": {
+    "exact": 2,
+    "middle": 1,
+    "stale": 2,
+    "synonym": 2
+  },
+  "rank_only": 0,
+  "trials": 36
+}
