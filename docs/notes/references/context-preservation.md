@@ -97,9 +97,9 @@ Saturn의 최소 변경은 사용자·assistant 대화 본문을 보호하고 �
 |---|---|---|---|---|
 | 최소 보존 | 정정이 로그 읽기에 밀리지 않고 두 provider의 새 session에 전달됨 | ledger, handoff, packet, packet_select, 전달 해시 | 대화 본문 보호·명시적 예산 초과·동일 도구 후보 비교 | #592, #380 |
 | 최소 검증 | 보존 효과와 Jev 추가 효과를 분리해 판정 | #540 실행기, 기존 원자료·채점기 | 보호 본문 해시·실제 개입·비용 결측 검증 | #7, #544 |
-| 기억 복구 | 사용자 입력을 포함한 과거 근거를 현재 요청 전에 전달 | evidence, RRF, 출입증·권한·조회 기록 | 종류가 있는 원문 참조와 선주입 | 최소 보존 검증 |
-| 유효 지시 | 현재 지시와 이전 지시를 원문으로 추적 | constraints와 변경 이벤트 | 범위·대체 근거·충돌 상태, 선택적 작업 LLM 제안 | 기억 복구 검증, #382 |
-| 같은 session 축약 | 지원 provider에서 session을 유지하며 도구 기록 축약 | 공통 선별 결과·원문 저장 | 능력 확인과 provider별 적용 어댑터 | 최소 보존 검증, 실제 지원 확인 |
+| 기억 복구 | 사용자 입력을 포함한 과거 근거를 현재 요청 전에 전달 | evidence, RRF, 출입증·권한·조회 기록 | 종류가 있는 원문 참조와 선주입 | [#599](https://github.com/woonyong-choi/saturn/issues/599), [#600](https://github.com/woonyong-choi/saturn/issues/600) |
+| 유효 지시 | 현재 지시와 이전 지시를 원문으로 추적 | constraints와 변경 이벤트 | 범위·대체 근거·충돌 상태, 선택적 작업 LLM 제안 | [#601](https://github.com/woonyong-choi/saturn/issues/601), #382 |
+| 같은 session 축약 | 지원 provider에서 session을 유지하며 도구 기록 축약 | 공통 선별 결과·원문 저장 | 능력 확인과 provider별 적용 어댑터 | [#602](https://github.com/woonyong-choi/saturn/issues/602), 실제 지원 확인 |
 
 장기기억 전체를 구현해야 첫 검증을 할 수 있는 구조를 만들지 않는다. 모델·추론 선택 #531/#542, 입력 관계 #9, 사례집 #543, 보조 판단 #546은 맥락 보존과 별도 효과 실험으로 유지한다. Kompress, 새 그래프 DB, 별도 기억 서버, 로컬 압축 모델, 실행 중 정책·스킬 자동 변경은 이 범위에 넣지 않는다.
 
