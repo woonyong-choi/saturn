@@ -1086,6 +1086,32 @@ fn launch_args_enable_the_bash_sandbox_and_deny_reading_key_stores() {
     );
 }
 
+#[cfg(unix)]
+#[test]
+fn launch_args_allow_the_canonical_engine_socket_behind_a_home_alias() {
+    let dir = tempfile::tempdir().unwrap();
+    let actual = dir.path().join("actual");
+    let alias = dir.path().join("alias");
+    std::fs::create_dir(&actual).unwrap();
+    std::os::unix::fs::symlink(&actual, &alias).unwrap();
+    let socket = actual.join("engine.sock");
+    let _listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
+    let alias_socket = alias.join("engine.sock");
+    let mut launch = launch(dir.path(), Vec::new());
+    launch.env.push((
+        saturn_protocol::rpc::SOCKET_ENV.into(),
+        alias_socket.clone().into_os_string(),
+    ));
+    let client = ClaudeClient::new(launch, Supervisor::new());
+
+    let args = client.launch_args(&spec(dir.path(), None), &SessionArg::New("id-1".to_owned()));
+
+    assert_eq!(
+        settings_arg(&args)["sandbox"]["network"]["allowUnixSockets"],
+        json!([alias_socket, socket.canonicalize().unwrap()])
+    );
+}
+
 // #520
 #[test]
 fn read_deny_globs_become_read_deny_rules_and_sandbox_deny_read() {
