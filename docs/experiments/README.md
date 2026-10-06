@@ -48,3 +48,4 @@
 | [permission-scope-matrix](permission-scope-matrix/report.md) | 폴더 안·밖, 셸, MCP, 하위 에이전트, 권한 모드 변경, 추가 폴더의 권한 행렬과 회귀 확인 | [권한](../design/permissions.md), [router 키 보호](../design/router-key-security.md), [하위 접속](../design/child-sessions.md) |
 | [model-selection-effect](model-selection-effect/report.md) | 오토 모델 선택의 고정 모델 대비 품질·전체 비용·완료 시간 순효과 | [모델 평가 근거 목록](../design/model-evidence.md), [기본 모델과 선택 방식](../design/providers-and-sessions.md#기본-모델과-선택-방식) | 세 층 모두 보류: 확인 오토 입력 108개 중 router 선택 적용 0(확신도 최대 0.32)이라 오토가 기본 대조와 같은 모델로 실행됨, 같은 모델 쌍에서도 성공이 3/36 어긋나 품질 허용폭 0은 실행 변동에 막힘, 자동 적용 켜지 않음 |
 | [패킷 선별 차이](packet-selector-contrast/report.md) | 실제 engine에서 RRF와 Jev가 다른 근거를 보내는 조건의 후속 답·비용·시간 | [맥락 고르기](../design/context-selection.md) | H1 기각: 예정 12쌍 중 전송 본문·경쟁 항목 공동 차이 3쌍, source 실패 5쌍. H2·H3 보류 |
+| [오래된 현재 근거 선별](packet-selector-oldest/design.md) | 현재 근거가 세 도구 결과 중 가장 오래된 경우의 Jev 패킷 효과 재현 | [맥락 고르기](../design/context-selection.md) | 측정 전 |
