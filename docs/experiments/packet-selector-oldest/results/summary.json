@@ -1,0 +1,1705 @@
+{
+  "competing_contrast": 12,
+  "competing_set_contrast": 12,
+  "complete_pairs": 12,
+  "cost_diff_ci95_usd": [
+    -0.0005737099999999993,
+    0.0005274358333333326
+  ],
+  "cost_diff_mean_usd": 2.1752499999999907e-05,
+  "duration_diff_ci95_s": [
+    -1.2879617189999923,
+    0.8943279999999897
+  ],
+  "duration_diff_mean_s": -0.11795066324999937,
+  "h1": true,
+  "h2": true,
+  "h3": false,
+  "jev_only_correct": 12,
+  "joint_contrast": 12,
+  "joint_set_contrast": 12,
+  "mcnemar_p_two_sided": 0.00048828125,
+  "packet_contrast": 12,
+  "pairs": [
+    {
+      "arms": {
+        "J": {
+          "answer": "33",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              19,
+              "Path",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.0248263,
+          "current_name": "build.log",
+          "duration_s": 8.222981374999996,
+          "judgments": 3,
+          "packet_bytes": 1818,
+          "packet_hash": "f1dd4c04aa65c1d1007be7d59df28f72e2119686a456ab67aeadc60a12f6ac89",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "54",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              19,
+              "Digest",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02368336,
+          "current_name": "build.log",
+          "duration_s": 6.402126625000001,
+          "judgments": 1,
+          "packet_bytes": 1818,
+          "packet_hash": "377ac5a28aa42221fa31be9c0ff8b811eaf6cf5fa6c04bef40c79c7598062313",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 0,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    },
+    {
+      "arms": {
+        "J": {
+          "answer": "35",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              19,
+              "Path",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02473735,
+          "current_name": "build.log",
+          "duration_s": 11.390975874999995,
+          "judgments": 3,
+          "packet_bytes": 1818,
+          "packet_hash": "47952a8543ff0ab7daf4df023f44dd238f415e93cc1da0c3155fcb22ae758bc5",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "47",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              19,
+              "Digest",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02628691,
+          "current_name": "build.log",
+          "duration_s": 10.641179791999988,
+          "judgments": 1,
+          "packet_bytes": 1818,
+          "packet_hash": "bcf2547f7b504b4aa9280014b263d4de4272cd206f66a982b677b8ee3b9f97a2",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 1,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    },
+    {
+      "arms": {
+        "J": {
+          "answer": "50",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              19,
+              "Path",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02475535,
+          "current_name": "build.log",
+          "duration_s": 8.050502125000008,
+          "judgments": 3,
+          "packet_bytes": 1818,
+          "packet_hash": "92ff0ea0bdc4622a1e69ab35d5865f3c3b5c44ba792a7390f764e6f71878374e",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "37",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              19,
+              "Digest",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02456846,
+          "current_name": "build.log",
+          "duration_s": 7.827755499999995,
+          "judgments": 1,
+          "packet_bytes": 1818,
+          "packet_hash": "73a3faafb634a0ccfdd457e379c80a9aa5c05a9c1675de26a040689ffb920e7f",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 2,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    },
+    {
+      "arms": {
+        "J": {
+          "answer": "77",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              19,
+              "Path",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02564965,
+          "current_name": "build.log",
+          "duration_s": 8.705168542000024,
+          "judgments": 3,
+          "packet_bytes": 1818,
+          "packet_hash": "a7ff3f767b253766e898a1626dac37ccf73cceef18803286722532acbb820f22",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "주어진 기록에서는 \"old\" release의 timeout만 나와 있습니다 (29초). Current release의 timeout 정보는 제공되지 않았습니다.",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              19,
+              "Digest",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02529981,
+          "current_name": "build.log",
+          "duration_s": 9.092956000000015,
+          "judgments": 1,
+          "packet_bytes": 1818,
+          "packet_hash": "17f9d9d281db365d24dabc3bf46a5c3c20264fe3c2381026c13dd47da3ab12e6",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 3,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    },
+    {
+      "arms": {
+        "J": {
+          "answer": "22",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              19,
+              "Path",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.024651,
+          "current_name": "build.log",
+          "duration_s": 8.098559749999993,
+          "judgments": 3,
+          "packet_bytes": 1818,
+          "packet_hash": "d0996b6df281ea942dbbee96c44c422d6a847cd8a543f90d5de1e4ac88b8f1ec",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "45",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              19,
+              "Digest",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02476961,
+          "current_name": "build.log",
+          "duration_s": 7.836658,
+          "judgments": 1,
+          "packet_bytes": 1818,
+          "packet_hash": "c6a0bb53a289d0ecd375966387c44a71c41c51ea80793b28d7708ef826d876f8",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 4,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    },
+    {
+      "arms": {
+        "J": {
+          "answer": "52",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              23,
+              "Path",
+              null
+            ],
+            [
+              13,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.0245216,
+          "current_name": "build.log",
+          "duration_s": 8.039656541999989,
+          "judgments": 3,
+          "packet_bytes": 1819,
+          "packet_hash": "252b127a43cbe699c45548d3c4031398f0c9bae8e37a4db6d7a1983611b15ac2",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              8,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              11,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              18,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              21,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              28,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "77",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              23,
+              "Digest",
+              null
+            ],
+            [
+              13,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02452971,
+          "current_name": "build.log",
+          "duration_s": 8.348925333000011,
+          "judgments": 1,
+          "packet_bytes": 1819,
+          "packet_hash": "c3c4fa8645813e84b8d88ae9e3d1ab4564aa0f670e16f1cdb1259ba47e6337ba",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              8,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              11,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              18,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              21,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              28,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 5,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    },
+    {
+      "arms": {
+        "J": {
+          "answer": "24",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              21,
+              "Path",
+              null
+            ],
+            [
+              13,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.0255336,
+          "current_name": "build.log",
+          "duration_s": 8.721493791,
+          "judgments": 3,
+          "packet_bytes": 1819,
+          "packet_hash": "d53c9fa116552c3ace69bb510e7929f344ebdbf0e3d6015b0457111dcd317745",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              8,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              11,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              16,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              19,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              24,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "69",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              21,
+              "Digest",
+              null
+            ],
+            [
+              13,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02568576,
+          "current_name": "build.log",
+          "duration_s": 10.981078582999999,
+          "judgments": 1,
+          "packet_bytes": 1819,
+          "packet_hash": "4cfc2aaa189e97311c69473d648654746f5be2ef5709174dca6c080972d98df3",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              8,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              11,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              16,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              19,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              24,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 6,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    },
+    {
+      "arms": {
+        "J": {
+          "answer": "58",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              19,
+              "Path",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.0243618,
+          "current_name": "build.log",
+          "duration_s": 7.551300249999997,
+          "judgments": 3,
+          "packet_bytes": 1818,
+          "packet_hash": "d11ecca9ca2d7ab45bfda2eea2cd78c9d849b35d760a4299f5fdc91f33d31f9f",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "62",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              19,
+              "Digest",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02412001,
+          "current_name": "build.log",
+          "duration_s": 7.164104457999997,
+          "judgments": 1,
+          "packet_bytes": 1818,
+          "packet_hash": "06be4379b33ae58ce92fa14abcbbf1eabd843078baf0e5f264cff0380ecbf190",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 7,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    },
+    {
+      "arms": {
+        "J": {
+          "answer": "49",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              21,
+              "Path",
+              null
+            ],
+            [
+              13,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.0248486,
+          "current_name": "build.log",
+          "duration_s": 8.421576125000001,
+          "judgments": 3,
+          "packet_bytes": 1819,
+          "packet_hash": "6959625cc6f94da78cef925b656b06fae9a0d8e1b5d7e68eee86149fe2b49384",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              8,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              11,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              16,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              19,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              24,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "72",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              21,
+              "Digest",
+              null
+            ],
+            [
+              13,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02384116,
+          "current_name": "build.log",
+          "duration_s": 6.6240480839999805,
+          "judgments": 1,
+          "packet_bytes": 1819,
+          "packet_hash": "4f3200f282e8a6ca7ea90d15868bd0bbc9fadb21b1a8d9b798ac304ad2b98bc6",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              8,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              11,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              16,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              19,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              24,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 8,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    },
+    {
+      "arms": {
+        "J": {
+          "answer": "70",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              19,
+              "Path",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.0255889,
+          "current_name": "build.log",
+          "duration_s": 9.742822958000033,
+          "judgments": 3,
+          "packet_bytes": 1818,
+          "packet_hash": "0ecc4bdc2cc6722cb528c0e7a6cdd2d518278a110e9bdc3c3dd70fe817c3ebf6",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "60",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              19,
+              "Digest",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02519826,
+          "current_name": "build.log",
+          "duration_s": 10.499984459000075,
+          "judgments": 1,
+          "packet_bytes": 1818,
+          "packet_hash": "5d95a3e06167dc53e6074528ad116925aa427a98d6460ed788633d0dfb7e2f74",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 9,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    },
+    {
+      "arms": {
+        "J": {
+          "answer": "41",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              19,
+              "Path",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.0239736,
+          "current_name": "build.log",
+          "duration_s": 8.102520792000064,
+          "judgments": 3,
+          "packet_bytes": 1818,
+          "packet_hash": "b6eb975c99af4d7ff1573c97a33dd55a3e55f275405daa47077e172b990fe08e",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "28",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              19,
+              "Digest",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02628941,
+          "current_name": "build.log",
+          "duration_s": 13.394246167000006,
+          "judgments": 1,
+          "packet_bytes": 1818,
+          "packet_hash": "3259ed49139064ff9fe990f8fdb37a3ae1c1575c27f080793a56a2b0a870fdb4",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 10,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    },
+    {
+      "arms": {
+        "J": {
+          "answer": "55",
+          "arm": "J",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              3,
+              "Digest",
+              null
+            ],
+            [
+              19,
+              "Path",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02597045,
+          "current_name": "build.log",
+          "duration_s": 10.760681916999943,
+          "judgments": 3,
+          "packet_bytes": 1818,
+          "packet_hash": "2cb6de60cb78a4b23834181f3fa0101a7602a73ade3952cb3dd777ee35a2edb8",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": true,
+          "usage_rows": 2
+        },
+        "R": {
+          "answer": "Based on the earlier records, the only timeout visible is 37 seconds, but it's marked as RELEASE=old, not current. I don't have information about the current release timeout from what was already read.",
+          "arm": "R",
+          "capture_ok": true,
+          "collected": true,
+          "competing": [
+            [
+              19,
+              "Digest",
+              null
+            ],
+            [
+              11,
+              "Path",
+              null
+            ],
+            [
+              3,
+              "Path",
+              null
+            ]
+          ],
+          "cost_usd": 0.02488471,
+          "current_name": "build.log",
+          "duration_s": 8.41058499999997,
+          "judgments": 1,
+          "packet_bytes": 1818,
+          "packet_hash": "d3278e8e41f0e3806be232d1f0b63a16d90e59c8717399633ae4550884051c47",
+          "packet_id": 1,
+          "protected": [
+            [
+              "User",
+              1,
+              "9a0461895e382c53b02b7381c8ea528d1ee0ee7acb72d97cd0ef8f8d076ba739"
+            ],
+            [
+              "Assistant",
+              6,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              9,
+              "7a7e49800a5aca41ff71bcd121dcde4632c64c606c49fc9b73591817e661b37b"
+            ],
+            [
+              "Assistant",
+              14,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ],
+            [
+              "User",
+              17,
+              "9270737c97ea6431cd406fc0fa2a4f8dbfb9db981e5cddf96c7433978d96e831"
+            ],
+            [
+              "Assistant",
+              22,
+              "c2e3ac47f4a325469c1a2d5f117e463ec943c721986d5d9f09ac4540b7d80526"
+            ]
+          ],
+          "selector_applied": true,
+          "success": false,
+          "usage_rows": 2
+        }
+      },
+      "competing_contrast": true,
+      "id": 11,
+      "packet_contrast": true,
+      "protected_match": true,
+      "source_valid": true
+    }
+  ],
+  "planned_pairs": 12,
+  "protected_mismatch": 0,
+  "rrf_only_correct": 0,
+  "selector_applied": {
+    "J": 12,
+    "R": 12
+  },
+  "source_valid": 12,
+  "success": {
+    "J": 12,
+    "R": 0
+  }
+}
