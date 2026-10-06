@@ -112,6 +112,27 @@ def source_candidate_basis(db_path: Path) -> dict:
     return {"count": len(candidates), "sha256": first.sha((json.dumps(candidates, separators=(",", ":")) + "\n").encode())}
 
 
+def source_prefix_gate(target_db_path: Path) -> dict:
+    source_db = sqlite3.connect(f"file:{SOURCE / 'home/saturn.db'}?mode=ro", uri=True)
+    target_db = sqlite3.connect(f"file:{target_db_path}?mode=ro", uri=True)
+    source_events = list(source_db.execute("SELECT seq,body FROM events WHERE chat_id=1 ORDER BY seq"))
+    if not source_events:
+        raise RuntimeError("sealed source has no events")
+    boundary = source_events[-1][0]
+    target_events = list(target_db.execute("SELECT seq,body FROM events WHERE chat_id=1 AND seq<=? ORDER BY seq", (boundary,)))
+    source_db.close()
+    target_db.close()
+    if source_events != target_events:
+        raise RuntimeError("target source event prefix differs from sealed source")
+    candidates = [(seq, first.sha(body.encode())) for seq, body in target_events if body.startswith('{"ToolResult"')]
+    basis = {"count": len(candidates), "sha256": first.sha((json.dumps(candidates, separators=(",", ":")) + "\n").encode())}
+    seal = json.loads((SOURCE / "seal.json").read_text())
+    if basis != seal["candidate_basis"]:
+        raise RuntimeError("target source ToolResult prefix differs from sealed source")
+    return {"source_event_boundary_seq": boundary, "source_event_rows": len(source_events), "candidate_basis": basis,
+            "source_prefix_exact": True}
+
+
 def db_path_gate(db_path: Path) -> dict:
     db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     chat_paths = [row[0] for row in db.execute("SELECT workdir FROM chats ORDER BY id")]
@@ -243,6 +264,7 @@ def target_preflight(arm: str) -> None:
         first_root = RUN / "t2J"
         if not (first_root / "target.raw.json").is_file() or not (first_root / "work").is_dir():
             raise RuntimeError("J attempt not fully preserved")
+        source_prefix_gate(first_root / "home/saturn.db")
     print(json.dumps({"status": "target_ready", "arm": arm, "provider_calls": 0}))
 
 
@@ -255,7 +277,7 @@ def run_target(arm: str, binary: Path, secret: str) -> None:
     shutil.copytree(SOURCE / "work", WORK, symlinks=True)
     if first.tree_sha(home) != seal["source_home_tree_sha256"] or first.tree_sha(WORK) != seal["source_work_tree_sha256"]:
         raise RuntimeError("target home or active work clone mismatch")
-    if first.file_sha(home / "saturn.db") != seal["source_db_sha256"] or source_candidate_basis(home / "saturn.db") != seal["candidate_basis"]:
+    if first.file_sha(home / "saturn.db") != seal["source_db_sha256"] or source_prefix_gate(home / "saturn.db")["candidate_basis"] != seal["candidate_basis"]:
         raise RuntimeError("target source DB or candidate body differs")
     db_path_gate(home / "saturn.db")
     overrides = [*first.OVERRIDES_COMMON, ["context.select.packet", "rrf" if arm == "R" else "jev"]]
@@ -315,7 +337,7 @@ def run_target(arm: str, binary: Path, secret: str) -> None:
         old_path_in_capture = any(forbidden in capture.get("body", "") for capture in captures for forbidden in FORBIDDEN_WORKS)
         raw = {"arm": arm, "source": "s2", "chat": 1, "overrides": overrides, "outputs": outputs, "checks": checks,
                "duration_s": time.monotonic() - started, "db": db, "captures": captures, "secret_matches": flags,
-               "source_candidate_basis": source_candidate_basis(home / "saturn.db"), "old_path_in_capture": old_path_in_capture,
+               "source_candidate_basis": source_prefix_gate(home / "saturn.db")["candidate_basis"], "old_path_in_capture": old_path_in_capture,
                "active_work_tree_sha256": first.tree_sha(WORK), "source_work_tree_sha256": seal["source_work_tree_sha256"],
                "db_sha256": first.file_sha(home / "saturn.db") if (home / "saturn.db").is_file() else None,
                "receipt": "unobserved"}
@@ -337,6 +359,18 @@ def run_target(arm: str, binary: Path, secret: str) -> None:
     print(json.dumps({"status": "target_preserved", "arm": arm, "inputs": len(outputs), "raw_sha256": first.file_sha(root / "target.raw.json")}))
 
 
+def recheck_j() -> None:
+    read_seal()
+    root = RUN / "t2J"
+    raw_path = root / "target.raw.json"
+    if not raw_path.is_file() or not (root / "work").is_dir():
+        raise RuntimeError("J raw or preserved work missing")
+    prefix = source_prefix_gate(root / "home/saturn.db")
+    first.save(RUN / "s2-j-prefix-reanalysis.json", {"raw_sha256": first.file_sha(raw_path), "source_prefix": prefix,
+                                                      "raw_unchanged": True, "target_r_inputs": 0})
+    print(json.dumps({"status": "j_prefix_verified", "raw_unchanged": True, "source_prefix_exact": True}))
+
+
 def verify() -> None:
     seal = read_seal()
     rows = {}
@@ -353,7 +387,8 @@ def verify() -> None:
             raise RuntimeError("target source plan differs from sealed snapshot")
         if preserved["source_home_sha256"] != seal["source_home_tree_sha256"] or preserved["source_work_sha256"] != seal["source_work_tree_sha256"]:
             raise RuntimeError("preserved target source fingerprint differs")
-        if raw["source_candidate_basis"] != seal["candidate_basis"] or raw["old_path_in_capture"] or any(raw["secret_matches"].values()):
+        prefix = source_prefix_gate(root / "home/saturn.db")
+        if raw["old_path_in_capture"] or any(raw["secret_matches"].values()):
             raise RuntimeError("candidate, old path, or security mismatch")
         packet = next((p for p in raw["db"]["packets"] if p["kind"] == "Switch" and p["state"] == "Sent"), None)
         if packet is None:
@@ -366,7 +401,7 @@ def verify() -> None:
                      "selected_competing": [(i["ref_id"], i["body_hash"], i["form"]) for i in items if i["zone"] == "Competing"],
                      "requested_selector": packet["requested_selector"], "actual_selector": packet["actual_selector"],
                      "selection_fallback": packet["selection_fallback"], "raw_sha256": first.file_sha(raw_path),
-                     "work_sha256": first.tree_sha(root / "work")}
+                     "work_sha256": first.tree_sha(root / "work"), "source_prefix": prefix}
     same_protected = rows["J"]["protected"] == rows["R"]["protected"]
     same_budget_settings = all(
         ["context.safety_percent", "35"] in plans[arm]["overrides"]
@@ -374,7 +409,7 @@ def verify() -> None:
         and ["context.evidence.lookup", "true"] in plans[arm]["overrides"]
         for arm in ("J", "R")
     )
-    first.save(RUN / "s2-paired-verification.json", {"arms": rows, "same_protected": same_protected,
+    first.save(RUN / "s2-paired-reanalysis.json", {"arms": rows, "same_protected": same_protected,
               "same_candidate_body": True, "same_source_home_and_work": True, "same_budget_settings": same_budget_settings,
               "calculated_packet_budget_equal": None, "provider_receipt": "unobserved", "confirmatory_effect": "not_evaluated"})
     print(json.dumps({"status": "verified", "same_protected": same_protected, "same_candidate_body": True,
@@ -383,8 +418,8 @@ def verify() -> None:
 
 def main() -> None:
     os.umask(0o077)
-    if len(sys.argv) != 2 or sys.argv[1] not in ("source-preflight", "source", "target-j-preflight", "target-j", "target-r-preflight", "target-r", "verify"):
-        raise SystemExit("usage: 04-physical-workdir.py source-preflight|source|target-j-preflight|target-j|target-r-preflight|target-r|verify")
+    if len(sys.argv) != 2 or sys.argv[1] not in ("source-preflight", "source", "target-j-preflight", "target-j", "recheck-j", "target-r-preflight", "target-r", "verify"):
+        raise SystemExit("usage: 04-physical-workdir.py source-preflight|source|target-j-preflight|target-j|recheck-j|target-r-preflight|target-r|verify")
     command = sys.argv[1]
     handle = lock()
     try:
@@ -401,6 +436,8 @@ def main() -> None:
             target_preflight(arm)
             binary, secret = paths_and_key()
             run_target(arm, binary, secret)
+        elif command == "recheck-j":
+            recheck_j()
         else:
             verify()
     finally:
