@@ -1086,6 +1086,30 @@ fn launch_args_enable_the_bash_sandbox_and_deny_reading_key_stores() {
     );
 }
 
+// #520
+#[test]
+fn read_deny_globs_become_read_deny_rules_and_sandbox_deny_read() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut launch = launch(dir.path(), Vec::new());
+    launch.key_deny_read = key_paths();
+    launch.permission.read_deny = vec!["/work/secret/**".to_owned(), "/**/*.env".to_owned()];
+    let client = ClaudeClient::new(launch, Supervisor::new());
+
+    let args = client.launch_args(&spec(dir.path(), None), &SessionArg::New("id-1".to_owned()));
+
+    let settings = settings_arg(&args);
+    assert_eq!(
+        settings["permissions"]["deny"],
+        json!(["Read(//work/secret/**)", "Read(//**/*.env)"])
+    );
+    let deny_read = settings["sandbox"]["filesystem"]["denyRead"]
+        .as_array()
+        .unwrap();
+    assert_eq!(deny_read.len(), 5);
+    assert!(deny_read.contains(&json!("/work/secret/**")));
+    assert!(deny_read.contains(&json!("/Library/Keychains")));
+}
+
 /// 샌드박스를 켜면 Claude Code는 기본으로 Bash를 허가 요청 없이 자동 허용한다(`autoAllowBashIfSandboxed`).
 /// 그러면 `can_use_tool` 요청이 오지 않아 Saturn 규칙이 판정하지 못하므로 모든 모드에서 꺼야 한다.
 #[test]

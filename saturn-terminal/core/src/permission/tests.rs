@@ -770,3 +770,35 @@ fn always_allow_for_a_read_command_that_a_read_rule_asks_about_sticks() {
 
     assert_eq!(policy.decide(&cmd), Verdict::Allow);
 }
+
+// #520
+#[test]
+fn read_deny_rules_become_absolute_globs_and_unsupported_patterns_are_listed() {
+    let rules = vec![
+        rule(PermissionTool::Read, "/secret/*", Verdict::Deny),
+        rule(PermissionTool::Read, "keys/id_rsa", Verdict::Deny),
+        rule(PermissionTool::Read, "*.env", Verdict::Deny),
+        rule(PermissionTool::Read, "*/token", Verdict::Deny),
+        rule(PermissionTool::Read, "/a/*b*c", Verdict::Deny),
+        rule(PermissionTool::Read, "/etc/hosts", Verdict::Ask),
+        rule(PermissionTool::Shell, "/etc/passwd", Verdict::Deny),
+        rule(PermissionTool::Read, "~/.ssh/*", Verdict::Deny),
+        rule(PermissionTool::Read, "/x/[ab]", Verdict::Deny),
+        rule(PermissionTool::Read, "/x/a\\*", Verdict::Deny),
+        rule(PermissionTool::Read, "/secret/*", Verdict::Deny),
+    ];
+
+    let plan = read_deny(&rules, Path::new("/work/./app/"));
+
+    assert_eq!(
+        plan.globs,
+        [
+            "/secret/**",
+            "/work/app/keys/id_rsa",
+            "/**/*.env",
+            "/**/token",
+            "/a/**b**c",
+        ]
+    );
+    assert_eq!(plan.unsupported, ["~/.ssh/*", "/x/[ab]", "/x/a\\*"]);
+}

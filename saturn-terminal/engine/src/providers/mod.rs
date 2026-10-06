@@ -102,6 +102,9 @@ pub struct PermissionLaunch {
     pub mcp_servers: Vec<String>,
     /// 권한 모드 `full`이라 에이전트 질문 기능을 뺀다. 기본(거짓)은 묻는다. 적용 방식은 어댑터가 정한다.
     pub questions_disabled: bool,
+    /// `permission.read`의 `deny` 규칙을 번역한 절대 경로 glob. 어댑터가 provider의 읽기 제한으로 넘긴다. 번역할 수 없는
+    /// 규칙이 있으면 session을 열기 전에 `NotSent`로 끝나므로 여기에는 번역된 것만 있다.
+    pub read_deny: Vec<String>,
 }
 
 /// 값 자체는 읽지 않고 있는지만 본다.
@@ -198,6 +201,23 @@ pub(crate) fn filter_commands(
     all.into_iter()
         .filter(|command| !excluded.contains(&command.name.trim_start_matches('/')))
         .collect()
+}
+
+/// 읽기 `deny` 규칙 패턴의 지문. provider 실행 설정에 번역되는 값이 연결을 시작할 때 고정되므로, 지문이 바뀌면 연결을
+/// 다시 시작한다.
+pub(crate) fn read_deny_fingerprint(rules: &[saturn_core::permission::Rule]) -> String {
+    use saturn_core::permission::{PermissionTool, Verdict};
+    let mut text = String::new();
+    for rule in rules
+        .iter()
+        .filter(|rule| rule.tool == PermissionTool::Read && rule.verdict == Verdict::Deny)
+    {
+        text.push_str(&rule.pattern);
+        text.push('\n');
+    }
+    let mut digest = crate::store::sha256_hex(text.as_bytes());
+    digest.truncate(16);
+    digest
 }
 
 #[cfg(test)]

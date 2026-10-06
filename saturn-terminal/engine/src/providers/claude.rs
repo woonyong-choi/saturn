@@ -34,7 +34,7 @@ mod stream;
 use crate::secrets::with_read_scope;
 use config::{
     default_args, read_user_config, relative_config_dir, sandbox_exclusions, with_ask_tools,
-    with_key_sandbox,
+    with_key_sandbox, with_read_deny,
 };
 use convert::permission_response;
 pub use hook::{HookInputError, ReadScope, run_pre_tool_use};
@@ -402,9 +402,13 @@ impl ClaudeClient {
             .iter()
             .find(|(name, _)| name == saturn_protocol::rpc::SOCKET_ENV)
             .map(|(_, path)| std::path::PathBuf::from(path));
+        // 읽기 `deny` glob은 키 저장소 경로와 같은 샌드박스 `denyRead` 배열에 합친다
+        let read_deny = &self.launch.permission.read_deny;
+        let mut deny_read = self.launch.key_deny_read.clone();
+        deny_read.extend(read_deny.iter().map(std::path::PathBuf::from));
         let settings = with_key_sandbox(
-            with_ask_tools(hooks),
-            &self.launch.key_deny_read,
+            with_read_deny(with_ask_tools(hooks), read_deny),
+            &deny_read,
             engine_socket.as_deref(),
         );
         args.extend(["--settings".to_owned(), settings.to_string()]);

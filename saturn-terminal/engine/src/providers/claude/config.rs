@@ -133,6 +133,19 @@ pub(crate) fn with_ask_tools(mut settings: Value) -> Value {
     settings
 }
 
+/// `--settings`로 넘기는 값에 읽기 `deny` 규칙을 번역해 넣는다. `permissions.deny`의 `Read(...)` 규칙은 읽기 도구(Read, Glob,
+/// Grep, LS)의 호출을 요청 전에 막고, 같은 glob을 Bash 샌드박스의 `filesystem.denyRead`에 더해 `cat`, 파이프, 스크립트가
+/// 만드는 하위 프로세스의 읽기도 막는다. 폴더 안과 밖, 링크 모두 같은 규칙을 받는다. 배열은 설정 층끼리 합쳐지므로
+/// 사용자 설정의 `deny`는 남고, 사용자 설정 파일은 고치지 않는다. 번역할 규칙이 없으면 아무것도 바꾸지 않는다.
+pub(crate) fn with_read_deny(mut settings: Value, globs: &[String]) -> Value {
+    if globs.is_empty() {
+        return settings;
+    }
+    let rules: Vec<String> = globs.iter().map(|glob| format!("Read(/{glob})")).collect();
+    settings["permissions"]["deny"] = json!(rules);
+    settings
+}
+
 /// `--settings`로 넘기는 값에 Bash 샌드박스를 켜고 키 저장소 경로의 읽기를 막는다. 권한 모드와 무관하게 늘 넣는다.
 /// 샌드박스를 켜면 Claude Code가 Bash를 허가 요청 없이 자동 허용하므로(`autoAllowBashIfSandboxed` 기본값) 끄고,
 /// 모든 Bash 호출이 `permissions.ask`로 호스트에 와 Saturn 규칙이 판정하게 한다.

@@ -2,10 +2,12 @@
 //! 설계: docs/design/permissions.md
 
 mod pattern;
+mod read_deny;
 
 use std::path::{Path, PathBuf};
 
 pub use pattern::{escape, is_literal, is_plain_shell, literal_prefix, may_match_prefix};
+pub use read_deny::{ReadDeny, read_deny};
 pub use saturn_protocol::event::{PermissionCall, PermissionTool};
 
 /// 낮은 쪽부터 `ReadOnly`, `Ask`, `Edit`, `Full`. `Ask`는 묻기만 하고 거부하지 않아 `ReadOnly`보다 높다.

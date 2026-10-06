@@ -1,8 +1,9 @@
 //! provider 연결을 만들고 session을 여는 공통 도구. 채팅의 작업 폴더와 환경은 `chat_env`를 쓴다.
 //! 설계: docs/design/providers-and-sessions.md
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use saturn_core::permission::{Rule, read_deny};
 use saturn_core::providers::{ProviderError, SessionHandle, SessionSpec};
 use saturn_core::queue::QueuedInput;
 use saturn_protocol::ids::{
@@ -206,6 +207,7 @@ impl Engine {
         permission
             .extension_fingerprint
             .clone_from(&plan.fingerprint);
+        permission.read_deny = read_deny_globs(&settings.permission().rules, env.workdir())?;
         self.tell_injection_failures(chat, provider, &plan, &permission)
             .await;
         self.tell_direct_installs(chat, provider, &provider_env)
@@ -243,6 +245,49 @@ impl Engine {
         self.trace.set_enabled(chat, provider_events_on(settings));
         self.trace.link(chat, provider, &self.masker)
     }
+}
+
+/// 읽기 `deny` 규칙을 provider의 읽기 제한이 받는 glob으로 바꾼다. 링크로 이어진 작업 폴더나 앞부분 폴더는 provider가
+/// 실제 경로로 비교하므로 실제 경로 형태도 함께 넣는다. 같은 뜻으로 옮길 수 없는 규칙이 하나라도 있으면 그 규칙을
+/// provider가 막지 못해 허용처럼 동작하는 일을 막으려고 session을 열지 않는다.
+///
+/// # Errors
+/// 옮길 수 없는 패턴이 있으면 `NotSent`다. 이유에 패턴을 적는다.
+fn read_deny_globs(rules: &[Rule], workdir: &Path) -> Result<Vec<String>, ProviderError> {
+    let plan = read_deny(rules, workdir);
+    if !plan.unsupported.is_empty() {
+        return Err(ProviderError::NotSent {
+            reason: format!(
+                "permission.read deny patterns cannot be enforced by the provider ({}); use absolute or workdir-relative paths with * only",
+                plan.unsupported.join(", ")
+            ),
+        });
+    }
+    let mut globs = plan.globs;
+    let real = real_forms(&globs);
+    globs.extend(real);
+    Ok(globs)
+}
+
+/// glob의 고정 앞부분 폴더가 링크를 거치면 실제 경로로 바꾼 glob. 이미 같거나 폴더가 없으면 없다.
+fn real_forms(globs: &[String]) -> Vec<String> {
+    let mut forms = Vec::new();
+    for glob in globs {
+        let end = glob.find('*').unwrap_or(glob.len());
+        let Some(slash) = glob[..end].rfind('/') else {
+            continue;
+        };
+        let (dir, rest) = glob.split_at(slash);
+        let Ok(real) = std::fs::canonicalize(if dir.is_empty() { "/" } else { dir }) else {
+            continue;
+        };
+        let real = real.to_string_lossy();
+        let form = format!("{}{rest}", real.trim_end_matches('/'));
+        if form != *glob && !globs.contains(&form) && !forms.contains(&form) {
+            forms.push(form);
+        }
+    }
+    forms
 }
 
 /// 사용자 설정의 `debug.provider_events`. 없으면 꺼짐.
