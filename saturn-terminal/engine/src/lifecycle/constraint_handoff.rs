@@ -395,9 +395,7 @@ async fn judged_correction_stays_in_the_packet_after_more_turns_and_a_restart() 
     let goal = packet.text.split("## Goal and last input").nth(1).unwrap();
     let goal = goal.split("## Open items").next().unwrap();
     assert!(
-        goal.contains(&format!(
-            "Latest amendment (task 1) [Finished]: {correction}"
-        )),
+        goal.contains(&format!("Amendment (task 1) [Finished]: {correction}")),
         "{}",
         packet.text
     );

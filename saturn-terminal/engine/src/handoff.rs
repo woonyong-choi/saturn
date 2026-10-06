@@ -13,9 +13,9 @@ use saturn_core::sessions::constraint_slot::{
 use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::memo::{INTERRUPTED_RESULT, ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
-    AMENDED_TASKS, Amendment, CONSTRAINT_SEPARATOR_CHARS, CompetingItem, Entry, PacketItem,
-    PacketOutcome, PacketSource, PacketZone, RECENT_TURNS, RecentTurn, TurnStatus, build_packet,
-    constraint_cap_chars, reduce_packet, status_item,
+    AMENDED_TASKS, AMENDMENTS_PER_TASK, Amendment, CONSTRAINT_SEPARATOR_CHARS, CompetingItem,
+    Entry, PacketItem, PacketOutcome, PacketSource, PacketZone, RECENT_TURNS, RecentTurn,
+    TurnStatus, build_packet, constraint_cap_chars, reduce_packet, status_item,
 };
 use saturn_core::sessions::ranking::{Candidate, order_after_router, rank_candidates};
 use saturn_core::sessions::stamp::Stamp;
@@ -502,8 +502,8 @@ fn task_inputs(
 // cost: time O(r + s), heap O(r), stack O(1)
 // vars: r = 기록 행 수, s = 끼워 넣은 입력 수
 // basis: estimate
-/// 작업마다 수정으로 판단된(제약 후보 기준값 이상) 가장 나중의 사용자 입력. 그 작업에 이어 보냈거나 끼워 넣은 입력이고, 작업의 첫 입력도 수정일 수 있다.
-/// 수정이 있는 작업 중 가장 나중 `AMENDED_TASKS`개만 쓴다. 기록 저장소의 행과 판단 기록에서만 읽으므로 engine을 다시 켜도 같다.
+/// 작업마다 수정으로 판단된(제약 후보 기준값 이상) 가장 나중의 사용자 입력 `AMENDMENTS_PER_TASK`개. 그 작업에 이어 보냈거나 끼워 넣은 입력이고, 작업의 첫 입력도 수정일 수 있다.
+/// 판단이 흔들려 정정 뒤에 수정으로 판단된 입력이 더 있을 수 있어 하나가 아니라 몇 개를 남긴다. 수정이 있는 작업 중 가장 나중 `AMENDED_TASKS`개만 쓴다. 기록 저장소의 행과 판단 기록에서만 읽으므로 engine을 다시 켜도 같다.
 fn explicit_amendments(
     rows: &[LedgerRow],
     steers: &[&SteeredInput],
@@ -542,12 +542,17 @@ fn explicit_amendments(
     }
     found.sort_by_key(|(_, amendment)| amendment.seq);
     let mut latest: Vec<Amendment> = Vec::new();
+    let mut tasks: Vec<TaskId> = Vec::new();
     for (task, amendment) in found.into_iter().rev() {
-        if latest.iter().all(|kept| kept.task != task) {
-            latest.push(amendment);
+        let of_task = latest.iter().filter(|kept| kept.task == task).count();
+        if of_task >= AMENDMENTS_PER_TASK || (of_task == 0 && tasks.len() >= AMENDED_TASKS) {
+            continue;
         }
+        if of_task == 0 {
+            tasks.push(task);
+        }
+        latest.push(amendment);
     }
-    latest.truncate(AMENDED_TASKS);
     latest.reverse();
     latest
 }
@@ -1179,52 +1184,42 @@ mod tests {
         row
     }
 
-    // #584: 수정으로 판단된 입력은 최근 턴 세 칸에서 밀려나도 원문 그대로 고정 구역에 남고, 작업마다 가장 나중 것 하나만 남으며, 최근 턴에 있으면 되풀이하지 않는다
+    // #584: 수정으로 판단된 입력은 최근 턴 세 칸에서 밀려나도 원문 그대로 고정 구역에 남고, 작업마다 나중 세 개만 남으며, 최근 턴에 있으면 되풀이하지 않는다
     #[test]
-    fn latest_amendment_survives_the_recent_turns_once_per_task() {
+    fn amendments_survive_the_recent_turns_up_to_three_per_task() {
         let correction = "actually the header is X-Call-Token";
-        let rows = vec![
-            row(
-                1,
-                1,
-                5,
-                Some("use the header X-Req-Id"),
-                text_event(AgentId(1), "a"),
-            ),
-            amending(row(
-                2,
-                2,
-                5,
-                Some("use X-Old-Token"),
-                text_event(AgentId(1), "b"),
-            )),
-            amending(row(3, 3, 5, Some(correction), text_event(AgentId(1), "c"))),
-            row(4, 4, 5, Some("read the docs"), text_event(AgentId(1), "d")),
-            row(
-                5,
-                5,
-                5,
-                Some("read the layout"),
-                text_event(AgentId(1), "e"),
-            ),
-            row(6, 6, 5, Some("read the tests"), text_event(AgentId(1), "f")),
-            row(7, 7, 5, Some("run the build"), text_event(AgentId(1), "g")),
-        ];
+        let rows: Vec<LedgerRow> = [
+            (false, "use the header X-Req-Id"),
+            (true, "use X-Oldest-Token"),
+            (true, "use X-Old-Token"),
+            (true, "use X-Older-Token"),
+            (true, correction),
+            (false, "read the docs"),
+            (false, "read the layout"),
+            (false, "read the tests"),
+            (false, "run the build"),
+        ]
+        .into_iter()
+        .zip(1..)
+        .map(|((is_amendment, text), n)| {
+            let mut run = row(n, n, 5, Some(text), text_event(AgentId(1), "x"));
+            run.is_amendment = is_amendment;
+            run
+        })
+        .collect();
 
         let text = handoff_text(&rows, &Pending::default());
 
         let goal = text.split("## Goal and last input").nth(1).unwrap();
         let goal = goal.split("## Open items").next().unwrap();
-        assert!(goal.contains(&format!(
-            "Latest amendment (task 1) [Finished]: {correction}"
-        )));
-        assert!(!text.contains("X-Old-Token"));
+        assert!(goal.contains(&format!("Amendment (task 1) [Finished]: {correction}")));
+        assert!(goal.contains("X-Older-Token") && goal.contains("X-Old-Token"));
+        assert!(!text.contains("X-Oldest-Token"));
         assert_eq!(text.matches(correction).count(), 1);
 
         // 최근 턴에 이미 있으면 되풀이하지 않는다
-        let text = handoff_text(&rows[..4], &Pending::default());
-        assert_eq!(text.matches(correction).count(), 1);
-        assert!(!text.contains("Latest amendment"));
+        let text = handoff_text(&rows[..5], &Pending::default());
+        assert!(!text.contains("Amendment (task 1) [Finished]: actually"));
     }
 
     #[test]

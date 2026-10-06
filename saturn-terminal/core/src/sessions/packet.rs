@@ -20,6 +20,9 @@ pub const RECENT_TURNS: usize = 3;
 /// 최신 수정을 고정 구역에 넣는 작업 수의 최대(초안). 오래된 대화의 수정이 쌓여 고정 구역을 채우지 않게 한다.
 pub const AMENDED_TASKS: usize = 5;
 
+/// 작업마다 고정 구역에 넣는 수정 수의 최대(초안). 수정 판단이 흔들려 정정 뒤에도 수정으로 판단된 입력이 더 있을 수 있다.
+pub const AMENDMENTS_PER_TASK: usize = 3;
+
 // 초안
 const CHARS_PER_TOKEN: usize = 4;
 
@@ -95,7 +98,7 @@ pub struct RecentTurn {
     pub answer: String,
 }
 
-/// 작업의 최신 수정. 그 작업에서 수정으로 판단된 가장 나중의 사용자 입력 원문이다.
+/// 작업의 수정. 그 작업에서 수정으로 판단된 나중 입력 원문이다.
 /// 최근 턴 세 칸에서 밀려나도 고정 구역에 남기려고 따로 둔다.
 #[derive(Debug, Clone)]
 pub struct Amendment {
@@ -130,7 +133,7 @@ pub struct PacketSource {
     /// 전환 기록 `packet_constraints`에 남길 제약별 단계. 패킷 글에는 쓰지 않는다.
     pub constraint_tiers: Vec<(ConstraintId, ConstraintTier)>,
     pub goal_and_last_input: Vec<Entry>,
-    /// 작업마다의 최신 수정. 같은 원문이 최근 턴이나 목표 칸에 이미 있으면 넣지 않고, 고정 구역이 넘치면 오래된 것부터 빼고 생략을 표시한다.
+    /// 작업마다의 수정. 같은 원문이 최근 턴이나 목표 칸에 이미 있으면 넣지 않고, 고정 구역이 넘치면 오래된 것부터 빼고 생략을 표시한다.
     pub amendments: Vec<Amendment>,
     /// 끝나지 않은 항목과 효과를 모르는 항목.
     pub open_items: Vec<Entry>,
@@ -678,7 +681,7 @@ fn goal_items(
     items.extend(amendments.iter().map(|amendment| SectionItem {
         session: None,
         text: status_item(
-            &format!("Latest amendment (task {})", amendment.task.0),
+            &format!("Amendment (task {})", amendment.task.0),
             amendment.status,
             &amendment.text,
         ),
