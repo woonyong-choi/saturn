@@ -1,0 +1,25 @@
+issue,created_at,title,pilot_status,reason,url
+505,2026-10-05T00:06:03Z,백그라운드 멈춤 뒤 실행 잔류 수정,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/505
+506,2026-10-05T00:06:06Z,기본 모델 무시 수정,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/506
+507,2026-10-05T00:06:10Z,Codex 승인 빌드 차단 수정,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/507
+508,2026-10-05T00:06:14Z,Claude 셸 권한 판정 누락 수정,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/508
+519,2026-10-05T10:22:48Z,보류 작업 재개 실패 수정,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/519
+520,2026-10-05T10:23:06Z,읽기 규칙 우회 차단 구현,not_selected,기능 구현 범위가 넓어 단일 완료 검사로 첫 진단 불가,https://github.com/woonyong-choi/saturn/issues/520
+525,2026-10-05T12:39:30Z,engine 종료 시 자식 잔류 수정,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/525
+527,2026-10-05T13:12:32Z,모델 판단 그림자 구현,not_selected,기능 구현 범위가 넓어 단일 완료 검사로 첫 진단 불가,https://github.com/woonyong-choi/saturn/issues/527
+528,2026-10-05T13:18:16Z,설정 폴더 변수 지원 구현,not_selected,기능 구현 범위가 넓어 단일 완료 검사로 첫 진단 불가,https://github.com/woonyong-choi/saturn/issues/528
+530,2026-10-05T13:22:01Z,완료 검사 근거 표시 구현,not_selected,기능 구현 범위가 넓어 단일 완료 검사로 첫 진단 불가,https://github.com/woonyong-choi/saturn/issues/530
+537,2026-10-05T16:48:02Z,판단 정책 버전 고정 구현,not_selected,기능 구현 범위가 넓어 단일 완료 검사로 첫 진단 불가,https://github.com/woonyong-choi/saturn/issues/537
+538,2026-10-05T16:48:05Z,전달 패킷 근거 기록 구현,not_selected,기능 구현 범위가 넓어 단일 완료 검사로 첫 진단 불가,https://github.com/woonyong-choi/saturn/issues/538
+539,2026-10-05T16:48:07Z,근거 검색과 원문 조회 구현,not_selected,기능 구현 범위가 넓어 단일 완료 검사로 첫 진단 불가,https://github.com/woonyong-choi/saturn/issues/539
+545,2026-10-05T16:48:22Z,모델 평가 근거 목록 구현,not_selected,기능 구현 범위가 넓어 단일 완료 검사로 첫 진단 불가,https://github.com/woonyong-choi/saturn/issues/545
+547,2026-10-05T16:48:26Z,제약 자동 적용 경계 구현,not_selected,기능 구현 범위가 넓어 단일 완료 검사로 첫 진단 불가,https://github.com/woonyong-choi/saturn/issues/547
+562,2026-10-05T19:40:14Z,Codex 설정 폴더 미전달 수정,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/562
+563,2026-10-05T19:42:29Z,router 확률 합 경계 무효 수정,not_selected,단위 경계 결함; 패킷 선별 source보다 직접 단위 시험이 적합,https://github.com/woonyong-choi/saturn/issues/563
+572,2026-10-05T21:12:14Z,provider 자손 바깥 접속 차단,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/572
+574,2026-10-05T21:52:32Z,Codex에서 파이프가 붙은 saturn evidence 명령이 engine에 닿지 못한다,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/574
+576,2026-10-05T21:54:10Z,Codex 요청 합계가 추론 토큰을 출력에 포함된 값 위에 한 번 더 센다,not_selected,사용량 계측 결함; 첫 패킷 선별 source 진단에서 제외,https://github.com/woonyong-choi/saturn/issues/576
+577,2026-10-05T21:59:11Z,saturn evidence search가 따옴표 없는 여러 단어 검색어를 거절한다,selected,"선정: 공개 재현 명령과 수정 전 커밋, 관찰 검사가 모두 있음",https://github.com/woonyong-choi/saturn/issues/577
+583,2026-10-06T02:19:16Z,전환 뒤 정리 실행 미종료 수정,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/583
+584,2026-10-06T02:19:19Z,요약 전환 제약 옛 값 수정,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/584
+593,2026-10-06T04:52:28Z,새 작업 판단으로 열린 session에 지속 제약 미전달,not_selected,복수 provider 상태나 권한·경합 재현 필요; 첫 source 진단 범위 밖,https://github.com/woonyong-choi/saturn/issues/593

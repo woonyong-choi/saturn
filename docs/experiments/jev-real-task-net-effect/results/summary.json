@@ -6,6 +6,8 @@
   "existing_synthetic_or_diagnostic_db_files": 94,
   "real_source_snapshots": 0,
   "runnable_pairs": 0,
+  "unsealed_source_attempts": 1,
+  "router_key_rejections_before_provider": 1,
   "planned_confirmatory_pairs": 80,
   "provider_calls": 0,
   "jev_calls": 0,

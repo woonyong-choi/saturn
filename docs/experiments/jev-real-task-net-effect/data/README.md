@@ -18,9 +18,12 @@
 | 파일 | 내용 | 만드는 스크립트 |
 |---|---|---|
 | `results/summary.json` | 가용성 검사 결과와 실측 미실행 상태 | `run.sh inventory`, 수동으로 출력 대조 |
+| `data/eligibility-audit.csv` | 2026-10-05~2026-10-06에 생성·종결된 공개 이슈 24건의 첫 진단 선정과 미선정 이유 | 공개 이슈 목록을 수집 전 전수 대조 |
 | `data/SHA256SUMS` | 원자료가 없어 빈 해시 목록 | 원자료 수집 뒤 생성 |
 | `.runtime/jev-real-task-effect/manifest.json` | 향후 source와 과제의 비공개 등록 파일 | 수집 전 작성 |
-| `.runtime/jev-real-task-effect/raw/{과제}-{조건}.json` | 향후 실제 engine 알림과 기록 행 원본 | `scripts/01-collect.py` |
+| `.runtime/jev-real-task-effect/raw/{과제}-{조건}.json` | 향후 실제 engine 알림과 기록 행 원본 | 수집기 미구현 |
+
+봉인 전 예비 source 시도 1건은 `.runtime/jr`의 무시 대상에 남겼다. `RouterKey` 거절로 provider 작업과 파일 변경은 없었다. 이 자료는 기능 진단이나 확인 평가의 원자료가 아니다.
 
 ## 필드
 
