@@ -7046,6 +7046,7 @@
           ]
         },
         "reasoning": {
+          "description": "출력의 일부다(Codex `reasoningOutputTokens`). 합계에 더하지 않는다.",
           "format": "uint64",
           "minimum": 0,
           "type": [
