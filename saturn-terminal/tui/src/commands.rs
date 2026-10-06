@@ -3,6 +3,7 @@
 
 use saturn_protocol::ids::{Provider, TaskLabel};
 
+use crate::constraints::ConstraintsAction;
 use crate::labels::LABEL_RANGE;
 
 #[derive(Debug, thiserror::Error)]
@@ -112,6 +113,12 @@ pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
         takes_provider: false,
     },
     CommandSpec {
+        path: "constraints",
+        description: "제약 목록, 등록, 해제, 되돌리기",
+        values: &["add", "release", "mistaken", "undo", "history"],
+        takes_provider: false,
+    },
+    CommandSpec {
         path: "model",
         description: "다음 입력부터 쓸 모델 고르기",
         values: &[],
@@ -207,6 +214,8 @@ pub(crate) enum ExtensionsAction {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SlashCommand {
+    /// `/constraints`, `/constraints add <규칙>`, `release <번호>`, `mistaken <번호>`, `undo <변경 번호>`, `history`
+    Constraints(ConstraintsAction),
     /// `/help`
     Help,
     /// `/record on|off`
@@ -303,6 +312,7 @@ pub(crate) fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         "permissions" => parse_permissions(&args)?,
         "add-dir" => parse_add_dir(body)?,
         "extensions" => parse_extensions(body)?,
+        "constraints" => parse_constraints(body)?,
         "model" => parse_model(&args)?,
         "tasks" => no_args("tasks", &args, SlashCommand::Tasks)?,
         "mode" => parse_mode(&args)?,
@@ -419,6 +429,35 @@ fn parse_extensions(body: &str) -> Result<SlashCommand, CommandError> {
         },
         _ => Err(invalid("extensions", rest)),
     }
+}
+
+// cost: time O(b), heap O(b), stack O(1)
+// vars: b = 명령 글자 수
+// basis: estimate
+/// `body`는 `/`를 뗀 줄. `add`의 규칙은 이름 뒤 나머지를 앞뒤 공백만 떼어 원문 그대로 쓴다.
+fn parse_constraints(body: &str) -> Result<SlashCommand, CommandError> {
+    let rest = body.strip_prefix("constraints").unwrap_or_default().trim();
+    let (verb, argument) = rest.split_once(char::is_whitespace).unwrap_or((rest, ""));
+    let argument = argument.trim();
+    let number = || {
+        argument
+            .strip_prefix('#')
+            .unwrap_or(argument)
+            .parse::<u64>()
+            .map_err(|_| invalid("constraints", rest))
+    };
+    let action = match verb {
+        "" => ConstraintsAction::List,
+        "history" if argument.is_empty() => ConstraintsAction::History,
+        "add" if !argument.is_empty() => ConstraintsAction::Add {
+            text: argument.to_owned(),
+        },
+        "release" => ConstraintsAction::Release { id: number()? },
+        "mistaken" => ConstraintsAction::Mistaken { id: number()? },
+        "undo" => ConstraintsAction::Undo { event: number()? },
+        _ => return Err(invalid("constraints", rest)),
+    };
+    Ok(SlashCommand::Constraints(action))
 }
 
 // cost: time O(a), heap O(a), stack O(1)
@@ -604,6 +643,56 @@ mod tests {
                     ..
                 })
             ));
+        }
+    }
+
+    #[test]
+    fn parse_constraints_reads_the_list_the_rule_as_typed_and_numbers() {
+        let parsed = |line: &str| parse(line).unwrap().unwrap();
+        assert_eq!(
+            parsed("/constraints"),
+            SlashCommand::Constraints(ConstraintsAction::List)
+        );
+        assert_eq!(
+            parsed("/constraints history"),
+            SlashCommand::Constraints(ConstraintsAction::History)
+        );
+        assert_eq!(
+            parsed("/constraints add  에러 메시지는   영어로 통일해 "),
+            SlashCommand::Constraints(ConstraintsAction::Add {
+                text: "에러 메시지는   영어로 통일해".to_owned()
+            })
+        );
+        assert_eq!(
+            parsed("/constraints release 3"),
+            SlashCommand::Constraints(ConstraintsAction::Release { id: 3 })
+        );
+        assert_eq!(
+            parsed("/constraints mistaken #4"),
+            SlashCommand::Constraints(ConstraintsAction::Mistaken { id: 4 })
+        );
+        assert_eq!(
+            parsed("/constraints undo 12"),
+            SlashCommand::Constraints(ConstraintsAction::Undo { event: 12 })
+        );
+        for bad in [
+            "/constraints add",
+            "/constraints release",
+            "/constraints release x",
+            "/constraints undo -1",
+            "/constraints history now",
+            "/constraints drop 1",
+        ] {
+            assert!(
+                matches!(
+                    parse(bad),
+                    Err(CommandError::InvalidArgument {
+                        command: "constraints",
+                        ..
+                    })
+                ),
+                "{bad}"
+            );
         }
     }
 

@@ -325,7 +325,7 @@ impl Engine {
         Ok(())
     }
 
-    /// 사용자가 제약 하나를 직접 영구 해제한다. router 제안과 달리 `constraint.auto_apply`와 권한 모드를 보지 않는다.
+    /// 사용자가 제약 하나를 직접 영구 해제한다. `mistaken`이면 제약이 아니었다는 잘못 등록이고 등록한 판단의 결과 신호를 `Wrong`으로 남긴다. router 제안과 달리 `constraint.auto_apply`와 권한 모드를 보지 않는다.
     /// `revision`은 화면이 본 제약 revision이다.
     ///
     /// # Errors
@@ -334,6 +334,7 @@ impl Engine {
         &mut self,
         constraint: ConstraintId,
         revision: u64,
+        mistaken: bool,
     ) -> Result<(), EngineError> {
         let chat = self
             .store
@@ -343,10 +344,14 @@ impl Engine {
         let proposal = Proposal {
             constraint,
             change: ConstraintChange::Release,
-            reason: None,
+            reason: mistaken.then_some(EventReason::Mistaken),
         };
         self.apply_change(chat, proposal, (Actor::User, None, None), revision)
-            .await
+            .await?;
+        if mistaken {
+            self.note_wrong_registration(constraint).await;
+        }
+        Ok(())
     }
 
     /// 작업이 끝나면 그 작업의 이번 작업 예외를 닫고 다시 유효해진 제약마다 줄을 남긴다. 오류는 로그만 남긴다.

@@ -5,6 +5,7 @@ pub(crate) mod app;
 mod chat_picker;
 pub mod client;
 pub(crate) mod commands;
+pub(crate) mod constraints;
 pub(crate) mod history;
 pub mod i18n;
 pub(crate) mod keymap;
@@ -193,21 +194,19 @@ where
     // 접수 결과를 기다리는 입력 요청. 거절 응답을 입력과 짝짓는다
     let mut inputs: BTreeSet<RequestId> = BTreeSet::new();
     let mut first_rejection: Option<Rejection> = None;
+    let mut constraints = PlainConstraints::default();
     loop {
         if let Some(chat) = output.chat() {
-            while let Some(text) = waiting.pop_front() {
-                submitted += 1;
-                output.submitted(text.clone());
-                let request = Request::SubmitInput {
-                    chat,
-                    client_ref: submitted,
-                    text,
-                    skip_relation: false,
-                };
-                inputs.insert(client.send(request).await?);
-            }
+            submitted = send_waiting(
+                client,
+                &mut output,
+                (chat, submitted),
+                &mut waiting,
+                (&mut inputs, &mut constraints),
+            )
+            .await?;
         }
-        let idle = submitted == 0 || output.is_finished();
+        let idle = (submitted == 0 || output.is_finished()) && !constraints.is_waiting();
         if !stdin_open && waiting.is_empty() && idle {
             client.send(Request::Detach).await?;
             return if output.has_failed() {
@@ -228,9 +227,17 @@ where
                 Some(Incoming::Notification(notification)) => output
                     .apply(notification, Instant::now())
                     .map_err(TuiError::Plain)?,
-                Some(Incoming::Result(_)) => {}
+                Some(Incoming::Result(result)) => {
+                    constraints.on_result(result, &mut output).map_err(TuiError::Plain)?;
+                }
                 Some(Incoming::Rejected(rejection)) => {
-                    plain_rejected(&mut output, &mut inputs, rejection, &mut first_rejection)?;
+                    if constraints.owns(&rejection) {
+                        constraints
+                            .rejected(rejection, &mut output, &mut first_rejection)
+                            .map_err(TuiError::Plain)?;
+                    } else {
+                        plain_rejected(&mut output, &mut inputs, rejection, &mut first_rejection)?;
+                    }
                 }
                 None => return Err(ClientError::Closed.into()),
             },
@@ -279,6 +286,132 @@ async fn plain_attach<W: Write>(
             .await?;
     }
     Ok(())
+}
+
+// cost: time O(w), heap O(1), stack O(1), io w
+// vars: w = 보내기를 기다리는 줄 수
+// basis: estimate
+/// 기다리던 줄을 순서대로 보낸다. `/constraints` 명령은 앞 명령의 목록이 와야 보내므로 그 자리에서 멈춘다. 보낸 입력 수를 돌려준다.
+async fn send_waiting<W: Write>(
+    client: &mut EngineClient,
+    output: &mut PlainOutput<W>,
+    (chat, mut submitted): (ChatId, u64),
+    waiting: &mut VecDeque<String>,
+    (inputs, constraints): (&mut BTreeSet<RequestId>, &mut PlainConstraints),
+) -> Result<u64, TuiError> {
+    while let Some(text) = waiting.pop_front() {
+        if let Some(parsed) = constraints_command(&text) {
+            if constraints.is_waiting() {
+                waiting.push_front(text);
+                break;
+            }
+            constraints.send(client, output, chat, parsed).await?;
+            continue;
+        }
+        submitted += 1;
+        output.submitted(text.clone());
+        let request = Request::SubmitInput {
+            chat,
+            client_ref: submitted,
+            text,
+            skip_relation: false,
+        };
+        inputs.insert(client.send(request).await?);
+    }
+    Ok(submitted)
+}
+
+/// 입력 줄이 `/constraints` 명령이면 그 동작. 명령 해석이 틀리면 입력으로 보내지 않고 오류 줄을 쓰도록 `Err`이다.
+fn constraints_command(
+    line: &str,
+) -> Option<Result<crate::constraints::ConstraintsAction, commands::CommandError>> {
+    match commands::parse(line) {
+        Ok(Some(commands::SlashCommand::Constraints(action))) => Some(Ok(action)),
+        Err(error) if line.trim_start().starts_with("/constraints") => Some(Err(error)),
+        _ => None,
+    }
+}
+
+/// plain 출력에서 `/constraints`가 보낸 요청과 마지막으로 읽은 목록. 표준 입력이 끝나도 답이 올 때까지 기다린다.
+#[derive(Debug, Default)]
+struct PlainConstraints {
+    desk: crate::constraints::Desk,
+    /// 답(`Constraints` 결과)을 기다리는 목록 조회.
+    lists: BTreeSet<RequestId>,
+    /// 거절 응답으로만 결과를 알 수 있는 변경 요청.
+    changes: BTreeSet<RequestId>,
+}
+
+impl PlainConstraints {
+    fn is_waiting(&self) -> bool {
+        !self.lists.is_empty()
+    }
+
+    fn owns(&self, rejection: &Rejection) -> bool {
+        rejection
+            .id
+            .is_some_and(|id| self.lists.contains(&id) || self.changes.contains(&id))
+    }
+
+    async fn send<W: Write>(
+        &mut self,
+        client: &mut EngineClient,
+        output: &mut PlainOutput<W>,
+        chat: ChatId,
+        parsed: Result<crate::constraints::ConstraintsAction, commands::CommandError>,
+    ) -> Result<(), TuiError> {
+        let requests = match parsed {
+            Ok(action) => self.desk.requests(chat, action),
+            Err(error) => {
+                output
+                    .request_rejected(&error.to_string())
+                    .map_err(TuiError::Plain)?;
+                return Ok(());
+            }
+        };
+        match requests {
+            Ok(requests) => {
+                for request in requests {
+                    let is_list = matches!(request, Request::ListConstraints { .. });
+                    let id = client.send(request).await?;
+                    if is_list {
+                        self.lists.insert(id);
+                    } else {
+                        self.changes.insert(id);
+                    }
+                }
+            }
+            Err(error) => output.constraints_error(error).map_err(TuiError::Plain)?,
+        }
+        Ok(())
+    }
+
+    fn on_result<W: Write>(
+        &mut self,
+        result: saturn_protocol::rpc::QueryResult,
+        output: &mut PlainOutput<W>,
+    ) -> std::io::Result<()> {
+        if let Some((view, listing)) = self.desk.on_result(result) {
+            self.lists.pop_first();
+            output.constraint_list(view, listing)?;
+        }
+        Ok(())
+    }
+
+    fn rejected<W: Write>(
+        &mut self,
+        rejection: Rejection,
+        output: &mut PlainOutput<W>,
+        first: &mut Option<Rejection>,
+    ) -> std::io::Result<()> {
+        if let Some(id) = rejection.id {
+            self.lists.remove(&id);
+            self.changes.remove(&id);
+        }
+        output.request_rejected(&rejection.message)?;
+        first.get_or_insert(rejection);
+        Ok(())
+    }
 }
 
 // cost: time O(log i), heap O(1), stack O(1), io 1

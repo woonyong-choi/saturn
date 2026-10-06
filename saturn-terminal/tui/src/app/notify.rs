@@ -164,6 +164,11 @@ impl App {
             QueryResult::ExtensionList { extensions, direct } => {
                 self.push_cell(TranscriptCell::ExtensionList(extensions, direct));
             }
+            result @ QueryResult::Constraints { .. } => {
+                if let Some((view, listing)) = self.constraints.on_result(result) {
+                    self.push_cell(TranscriptCell::ConstraintList(view, Box::new(listing)));
+                }
+            }
             QueryResult::Tasks { items } => {
                 if let Some(Window::TaskList(list)) = &mut self.window {
                     list.replace(ChatGroup::from_items(items));

@@ -1117,6 +1117,206 @@ fn constraint_notices_become_transcript_lines() {
     );
 }
 
+fn constraint_listing() -> QueryResult {
+    use saturn_protocol::ids::ConstraintId;
+    use saturn_protocol::rpc::{
+        ConstraintActor, ConstraintChangeInfo, ConstraintChangeKind, ConstraintInfo,
+        ConstraintStatus,
+    };
+    let constraint = |id, rule: &str, status| ConstraintInfo {
+        id: ConstraintId(id),
+        rule: rule.to_owned(),
+        scope: Vec::new(),
+        status,
+        exception: None,
+    };
+    QueryResult::Constraints {
+        chat: ChatId(7),
+        revision: 4,
+        constraints: vec![
+            constraint(1, "에러 메시지는 영어로 통일해", ConstraintStatus::Active),
+            constraint(
+                2,
+                "테스트 메시지는 한국어로 둬",
+                ConstraintStatus::Candidate,
+            ),
+            constraint(3, "예전 규칙", ConstraintStatus::Released),
+        ],
+        changes: vec![ConstraintChangeInfo {
+            event: 4,
+            constraint: ConstraintId(1),
+            rule: "에러 메시지는 영어로 통일해".to_owned(),
+            kind: ConstraintChangeKind::Added,
+            actor: ConstraintActor::User,
+            undoable: true,
+            at_ms: 0,
+        }],
+    }
+}
+
+/// 한 줄을 입력해 보내고 나간 요청을 돌려준다.
+fn run(app: &mut App, line: &str) -> Vec<Request> {
+    type_text(app, line);
+    app.popup = None;
+    sent(&press(app, KeyCode::Enter, KeyModifiers::NONE))
+        .into_iter()
+        .cloned()
+        .collect()
+}
+
+fn transcript_text(app: &App, lang: Lang) -> String {
+    app.transcript
+        .cells()
+        .iter()
+        .flat_map(|cell| cell.lines(lang, false, false))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+#[test]
+fn constraints_commands_list_then_change_with_the_revision_the_screen_showed() {
+    use saturn_protocol::ids::ConstraintId;
+    let mut app = attached();
+    let list = Request::ListConstraints { chat: ChatId(7) };
+
+    // 목록을 보기 전에는 revision을 몰라 변경을 보내지 않는다
+    assert!(run(&mut app, "/constraints release 1").is_empty());
+    assert!(transcript_text(&app, Lang::Ko).contains("먼저 /constraints로 목록을 확인하세요"));
+    assert_eq!(run(&mut app, "/constraints"), vec![list.clone()]);
+    answered(&mut app, constraint_listing());
+
+    let screen = transcript_text(&app, Lang::Ko);
+    assert!(
+        screen.contains("유효 1개 · 후보 1개 · 해제 1개 · 기준 4"),
+        "{screen}"
+    );
+    assert!(
+        screen.contains("[유효] #1 · 범위 전체 · 에러 메시지는 영어로 통일해"),
+        "{screen}"
+    );
+    assert!(
+        screen.contains("[후보] #2 · 범위 전체 · 테스트 메시지는 한국어로 둬"),
+        "{screen}"
+    );
+    assert!(!screen.contains("예전 규칙"), "{screen}");
+
+    // 변경 뒤에는 결과를 보이고 revision을 새로 읽도록 목록 조회가 따라간다
+    assert_eq!(
+        run(&mut app, "/constraints release 1"),
+        vec![
+            Request::ReleaseConstraint {
+                constraint: ConstraintId(1),
+                revision: 4,
+                mistaken: false,
+            },
+            list.clone(),
+        ]
+    );
+    assert_eq!(
+        run(&mut app, "/constraints mistaken #1"),
+        vec![
+            Request::ReleaseConstraint {
+                constraint: ConstraintId(1),
+                revision: 4,
+                mistaken: true,
+            },
+            list.clone(),
+        ]
+    );
+    assert_eq!(
+        run(&mut app, "/constraints undo 4"),
+        vec![
+            Request::UndoConstraintChange {
+                constraint: ConstraintId(1),
+                event: 4,
+                revision: 4,
+            },
+            list.clone(),
+        ]
+    );
+    assert_eq!(
+        run(&mut app, "/constraints add 로그에 토큰을  남기지 마"),
+        vec![
+            Request::AddConstraint {
+                chat: ChatId(7),
+                text: "로그에 토큰을  남기지 마".to_owned(),
+            },
+            list,
+        ]
+    );
+}
+
+#[test]
+fn constraints_commands_refuse_a_candidate_and_numbers_the_list_does_not_have() {
+    let mut app = attached();
+    run(&mut app, "/constraints");
+    answered(&mut app, constraint_listing());
+
+    for line in [
+        "/constraints release 2",
+        "/constraints release 9",
+        "/constraints undo 5",
+    ] {
+        assert!(run(&mut app, line).is_empty(), "{line}");
+    }
+    let warnings = transcript_text(&app, Lang::Ko);
+    assert!(
+        warnings.contains("유효 제약이 아니라 해제할 수 없습니다: 2"),
+        "{warnings}"
+    );
+    assert!(warnings.contains("목록에 없는 번호입니다: 9"), "{warnings}");
+    assert!(warnings.contains("목록에 없는 번호입니다: 5"), "{warnings}");
+}
+
+#[test]
+fn constraints_history_lists_changes_with_the_undoable_mark() {
+    let mut app = attached();
+    type_text(&mut app, "/constraints history");
+    app.popup = None;
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+
+    answered(&mut app, constraint_listing());
+
+    let screen = transcript_text(&app, Lang::Ko);
+    assert!(
+        screen.contains("#4 · #1 · 등록됨 · 사용자 · 에러 메시지는 영어로 통일해 · 되돌릴 수 있음"),
+        "{screen}"
+    );
+    assert!(!screen.contains("[유효]"), "{screen}");
+}
+
+#[test]
+fn constraint_list_tells_candidate_from_active_in_both_languages_and_in_plain() {
+    let mut app = attached();
+    type_text(&mut app, "/constraints");
+    app.popup = None;
+    press(&mut app, KeyCode::Enter, KeyModifiers::NONE);
+    answered(&mut app, constraint_listing());
+
+    let korean = transcript_text(&app, Lang::Ko);
+    let english = transcript_text(&app, Lang::En);
+    assert!(korean.contains("[후보] #2"), "{korean}");
+    assert!(
+        english.contains("[candidate] #2 · scope All · 테스트 메시지는 한국어로 둬"),
+        "{english}"
+    );
+    assert!(english.contains("[active] #1"), "{english}");
+    assert!(
+        english.contains("enters the handoff packet like an active constraint"),
+        "{english}"
+    );
+    let plain: Vec<String> = app
+        .transcript
+        .cells()
+        .iter()
+        .flat_map(|cell| cell.plain_lines(Lang::Ko, false))
+        .collect();
+    assert!(
+        plain.contains(&"Saturn: [후보] #2 · 범위 전체 · 테스트 메시지는 한국어로 둬".to_owned()),
+        "{plain:?}"
+    );
+}
+
 #[test]
 fn esc_closes_task_list() {
     let mut app = attached();

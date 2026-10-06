@@ -438,7 +438,10 @@ async fn explicit_release_is_the_user_and_ignores_auto_apply_and_full_mode() {
         .await
         .unwrap();
 
-    flow.engine.release_constraint(id, revision).await.unwrap();
+    flow.engine
+        .release_constraint(id, revision, false)
+        .await
+        .unwrap();
 
     assert_eq!(constraints(&flow).await[0].state, ConstraintState::Released);
     let recorded = events(&flow).await;
@@ -453,7 +456,10 @@ async fn explicit_release_is_the_user_and_ignores_auto_apply_and_full_mode() {
         }]
     );
     // 이미 해제된 제약과 낡은 revision은 거절하고 아무것도 바꾸지 않는다
-    let again = flow.engine.release_constraint(id, revision + 1).await;
+    let again = flow
+        .engine
+        .release_constraint(id, revision + 1, false)
+        .await;
     assert!(matches!(again, Err(EngineError::StaleConstraint)));
     assert_eq!(events(&flow).await.len(), 2);
 }
@@ -462,7 +468,7 @@ async fn explicit_release_is_the_user_and_ignores_auto_apply_and_full_mode() {
 async fn explicit_release_with_a_stale_revision_changes_nothing() {
     let (mut flow, id) = with_constraint("", Vec::new()).await;
 
-    let result = flow.engine.release_constraint(id, 0).await;
+    let result = flow.engine.release_constraint(id, 0, false).await;
 
     assert!(matches!(result, Err(EngineError::StaleConstraint)));
     assert_eq!(constraints(&flow).await[0].state, ConstraintState::Active);

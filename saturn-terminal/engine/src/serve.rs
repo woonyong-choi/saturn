@@ -170,6 +170,7 @@ impl Engine {
                 self.prune_records(client, (yes, plan, all)).await?
             }
             Request::ListExtensions => self.extension_list_result(client).await?,
+            Request::ListConstraints { chat } => self.constraint_list_result(chat).await?,
             command => {
                 self.route(client, command).await?;
                 return Ok(None);
@@ -310,10 +311,9 @@ impl Engine {
             Request::AnswerConstraintAsk { ask, answer } => {
                 self.answer_constraint_ask(client, ask, answer).await
             }
-            Request::ReleaseConstraint {
-                constraint,
-                revision,
-            } => self.release_constraint(constraint, revision).await,
+            request @ (Request::ReleaseConstraint { .. }
+            | Request::AddConstraint { .. }
+            | Request::UndoConstraintChange { .. }) => self.route_constraint(request).await,
             Request::SubmitRouterKey { key } => self.submit_router_key(client, key).await,
             Request::AnswerFolderTrust {
                 path,
@@ -346,6 +346,7 @@ impl Engine {
             | Request::ListChats { .. }
             | Request::ListTasks
             | Request::ListExtensions
+            | Request::ListConstraints { .. }
             | Request::ListRouterVersions
             | Request::Prune { .. } => unreachable!("query requests are answered by dispatch"),
         }
