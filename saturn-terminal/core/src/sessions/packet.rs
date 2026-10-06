@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use saturn_protocol::ids::{ConstraintId, LedgerSeq, SessionId};
+use saturn_protocol::ids::{ConstraintId, LedgerSeq, SessionId, TaskId};
 
 use super::constraint_slot::ConstraintTier;
 use super::context::ContextBudget;
@@ -16,6 +16,9 @@ pub const DIGEST_HEAD_CHARS: usize = 300;
 
 /// 고정 구역에 넣는 최근 턴 수의 최대.
 pub const RECENT_TURNS: usize = 3;
+
+/// 최신 수정을 고정 구역에 넣는 작업 수의 최대(초안). 오래된 대화의 수정이 쌓여 고정 구역을 채우지 않게 한다.
+pub const AMENDED_TASKS: usize = 5;
 
 // 초안
 const CHARS_PER_TOKEN: usize = 4;
@@ -92,6 +95,18 @@ pub struct RecentTurn {
     pub answer: String,
 }
 
+/// 작업의 최신 수정. 그 작업에서 수정으로 판단된 가장 나중의 사용자 입력 원문이다.
+/// 최근 턴 세 칸에서 밀려나도 고정 구역에 남기려고 따로 둔다.
+#[derive(Debug, Clone)]
+pub struct Amendment {
+    /// 수정을 낸 실행의 첫 이벤트 번호. 끼워 넣은 입력은 적용 때 쌓여 있던 마지막 번호다.
+    pub seq: LedgerSeq,
+    pub task: TaskId,
+    pub status: TurnStatus,
+    /// 사용자 입력 원문.
+    pub text: String,
+}
+
 /// 도구 호출과 결과, 다른 에이전트 결과 요약, 파일 경로.
 #[derive(Debug, Clone)]
 pub struct CompetingItem {
@@ -115,6 +130,8 @@ pub struct PacketSource {
     /// 전환 기록 `packet_constraints`에 남길 제약별 단계. 패킷 글에는 쓰지 않는다.
     pub constraint_tiers: Vec<(ConstraintId, ConstraintTier)>,
     pub goal_and_last_input: Vec<Entry>,
+    /// 작업마다의 최신 수정. 같은 원문이 최근 턴이나 목표 칸에 이미 있으면 넣지 않고, 고정 구역이 넘치면 오래된 것부터 빼고 생략을 표시한다.
+    pub amendments: Vec<Amendment>,
     /// 끝나지 않은 항목과 효과를 모르는 항목.
     pub open_items: Vec<Entry>,
     /// `RECENT_TURNS`개보다 많으면 기록 번호가 큰 쪽만 쓴다.
@@ -233,11 +250,16 @@ struct Chosen {
     form: ItemForm,
 }
 
+/// 최신 수정의 기록 번호와 빠진 이유. 들어갔으면 이유가 없다.
+type AmendmentFate = (LedgerSeq, Option<&'static str>);
+
 /// 고정 구역을 맞춘 결과. `turns`는 남은 최근 턴이고, `trimmed`는 답을 앞부분만 남긴 턴의 기록 번호다.
 struct Fitted {
     sections: Vec<Section>,
     turns: Vec<RecentTurn>,
     trimmed: Vec<LedgerSeq>,
+    /// 최신 수정마다 들어갔는지. 들어가지 못했으면 이유(`duplicate`, `packet_limit`).
+    amendments: Vec<AmendmentFate>,
 }
 
 // cost: time O(t·L + m log m), heap O(L), stack O(1)
@@ -328,6 +350,7 @@ fn assemble(
         mut sections,
         turns,
         trimmed,
+        amendments,
     } = fitted;
     let header_chars = format!("## {COMPETING_TITLE}{ITEM_SEPARATOR}")
         .chars()
@@ -381,7 +404,7 @@ fn assemble(
     });
     let text = render(&sections);
     let tokens = estimate_tokens(&text);
-    let items = packet_items(source, (&turns, &trimmed), &chosen);
+    let items = packet_items(source, (&turns, &trimmed, &amendments), &chosen);
     Packet {
         text,
         tokens,
@@ -415,7 +438,7 @@ fn has_unread_original(source: &PacketSource, chosen: &[Chosen]) -> bool {
 /// 재료 항목마다 이 패킷에 들어갔는지 정리한다. 고정 구역의 목표와 열린 항목은 항상 들어간다.
 fn packet_items(
     source: &PacketSource,
-    (turns, trimmed): (&[RecentTurn], &[LedgerSeq]),
+    (turns, trimmed, amendments): (&[RecentTurn], &[LedgerSeq], &[AmendmentFate]),
     chosen: &[Chosen],
 ) -> Vec<PacketItem> {
     let entry = |zone, seq| PacketItem {
@@ -428,6 +451,12 @@ fn packet_items(
         .goal_and_last_input
         .iter()
         .map(|item| entry(PacketZone::Goal, item.seq))
+        .chain(amendments.iter().map(|(seq, reason)| PacketItem {
+            zone: PacketZone::Goal,
+            seq: *seq,
+            form: reason.is_none().then_some(ItemForm::Full),
+            reason: *reason,
+        }))
         .chain(
             source
                 .open_items
@@ -490,22 +519,30 @@ fn packet_items(
 // cost: time O(t·L), heap O(L), stack O(1)
 // vars: t = 최근 턴 수(3 이하), L = 고정 구역 글자 수
 // basis: estimate
-/// 오래된 턴부터 에이전트 답을 앞부분만 남기고, 그래도 넘치면 최근 턴 수를 3, 2, 1로 줄인다.
+/// 오래된 턴부터 에이전트 답을 앞부분만 남기고, 그래도 넘치면 최근 턴 수를 3, 2, 1로 줄이고, 그래도 넘치면 다른 작업의 최신 수정을 오래된 것부터 뺀다.
+/// 최신 수정이 최근 턴보다 나중에 줄어드는 것은 밀려난 정정 원문을 최근 턴보다 먼저 지키기 위해서다.
 fn fit_fixed_zone(source: &PacketSource, soft_chars: usize) -> Fitted {
     let mut turns = source.recent_turns.clone();
     turns.sort_by_key(|turn| turn.seq);
     let excess = turns.len().saturating_sub(RECENT_TURNS);
     turns.drain(..excess);
-    let fits =
-        |turns: &[RecentTurn]| render(&fixed_sections(source, turns)).chars().count() <= soft_chars;
+    let mut pool: Vec<&Amendment> = source.amendments.iter().collect();
+    pool.sort_by_key(|amendment| amendment.seq);
+    // 오래된 쪽부터 빠진 개수
+    let mut dropped = 0;
+    let fits = |turns: &[RecentTurn], dropped: usize| {
+        let (kept, omitted) = kept_amendments(source, &pool, turns, dropped);
+        render(&fixed_sections(source, turns, &kept, omitted))
+            .chars()
+            .count()
+            <= soft_chars
+    };
     let mut trimmed = Vec::new();
+    let mut settled = false;
     for index in 0..turns.len() {
-        if fits(&turns) {
-            return Fitted {
-                sections: fixed_sections(source, &turns),
-                turns,
-                trimmed,
-            };
+        if fits(&turns, dropped) {
+            settled = true;
+            break;
         }
         let shortened = head(&turns[index].answer);
         if shortened != turns[index].answer {
@@ -513,20 +550,79 @@ fn fit_fixed_zone(source: &PacketSource, soft_chars: usize) -> Fitted {
         }
         turns[index].answer = shortened;
     }
-    while turns.len() > 1 && !fits(&turns) {
-        turns.remove(0);
+    if !settled {
+        while turns.len() > 1 && !fits(&turns, dropped) {
+            turns.remove(0);
+        }
+        while dropped < pool.len() && !fits(&turns, dropped) {
+            dropped += 1;
+        }
     }
+    let (kept, omitted) = kept_amendments(source, &pool, &turns, dropped);
+    let outcome = pool
+        .iter()
+        .enumerate()
+        .map(|(index, amendment)| {
+            let reason = if index < dropped {
+                Some("packet_limit")
+            } else if kept.iter().all(|k| k.seq != amendment.seq) {
+                Some("duplicate")
+            } else {
+                None
+            };
+            (amendment.seq, reason)
+        })
+        .collect();
     Fitted {
-        sections: fixed_sections(source, &turns),
+        sections: fixed_sections(source, &turns, &kept, omitted),
         turns,
         trimmed,
+        amendments: outcome,
     }
+}
+
+// cost: time O(a·(t + g)), heap O(a), stack O(1)
+// vars: a = 최신 수정 수, t = 최근 턴 수, g = 목표 칸 항목 수
+// basis: estimate
+/// 앞에서 `dropped`개를 뺀 최신 수정 중 같은 원문이 최근 턴이나 목표 칸에 없는 것과, 빼서 보이지 않게 된 수정의 수.
+fn kept_amendments<'a>(
+    source: &PacketSource,
+    pool: &[&'a Amendment],
+    turns: &[RecentTurn],
+    dropped: usize,
+) -> (Vec<&'a Amendment>, usize) {
+    let is_shown = |text: &str| {
+        turns
+            .iter()
+            .any(|turn| turn.input == text || turn.steers.iter().any(|steer| steer == text))
+            || source
+                .goal_and_last_input
+                .iter()
+                .any(|entry| entry.text.contains(text))
+    };
+    let omitted = pool
+        .iter()
+        .take(dropped)
+        .filter(|amendment| !is_shown(&amendment.text))
+        .count();
+    let kept = pool
+        .iter()
+        .skip(dropped)
+        .filter(|amendment| !is_shown(&amendment.text))
+        .copied()
+        .collect();
+    (kept, omitted)
 }
 
 // cost: time O(L), heap O(L), stack O(1)
 // vars: L = 고정 구역 글자 수
 // basis: estimate
-fn fixed_sections(source: &PacketSource, turns: &[RecentTurn]) -> Vec<Section> {
+fn fixed_sections(
+    source: &PacketSource,
+    turns: &[RecentTurn],
+    amendments: &[&Amendment],
+    omitted: usize,
+) -> Vec<Section> {
     let turns = turns
         .iter()
         .map(|turn| {
@@ -556,7 +652,7 @@ fn fixed_sections(source: &PacketSource, turns: &[RecentTurn]) -> Vec<Section> {
         },
         Section {
             title: "Goal and last input",
-            items: by_seq(&source.goal_and_last_input),
+            items: goal_items(source, amendments, omitted),
         },
         Section {
             title: "Open items",
@@ -567,6 +663,33 @@ fn fixed_sections(source: &PacketSource, turns: &[RecentTurn]) -> Vec<Section> {
             items: turns,
         },
     ]
+}
+
+// cost: time O(a log a + L), heap O(L), stack O(1)
+// vars: a = 항목 수, L = 목표 칸 글자 수
+// basis: estimate
+/// 지금 작업의 첫·마지막 입력 뒤에 작업별 최신 수정을 기록 번호 순으로 붙이고, 뺀 것이 있으면 개수를 적는다.
+fn goal_items(
+    source: &PacketSource,
+    amendments: &[&Amendment],
+    omitted: usize,
+) -> Vec<SectionItem> {
+    let mut items = by_seq(&source.goal_and_last_input);
+    items.extend(amendments.iter().map(|amendment| SectionItem {
+        session: None,
+        text: status_item(
+            &format!("Latest amendment (task {})", amendment.task.0),
+            amendment.status,
+            &amendment.text,
+        ),
+    }));
+    if omitted > 0 {
+        items.push(SectionItem {
+            session: None,
+            text: format!("({omitted} earlier amendments left out to fit this packet)"),
+        });
+    }
+    items
 }
 
 // cost: time O(L + m log m), heap O(L), stack O(1)

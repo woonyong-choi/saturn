@@ -13,14 +13,14 @@ use saturn_core::sessions::constraint_slot::{
 use saturn_core::sessions::context::ContextBudget;
 use saturn_core::sessions::memo::{INTERRUPTED_RESULT, ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
-    CONSTRAINT_SEPARATOR_CHARS, CompetingItem, Entry, PacketItem, PacketOutcome, PacketSource,
-    PacketZone, RECENT_TURNS, RecentTurn, TurnStatus, build_packet, constraint_cap_chars,
-    reduce_packet, status_item,
+    AMENDED_TASKS, Amendment, CONSTRAINT_SEPARATOR_CHARS, CompetingItem, Entry, PacketItem,
+    PacketOutcome, PacketSource, PacketZone, RECENT_TURNS, RecentTurn, TurnStatus, build_packet,
+    constraint_cap_chars, reduce_packet, status_item,
 };
 use saturn_core::sessions::ranking::{Candidate, order_after_router, rank_candidates};
 use saturn_core::sessions::stamp::Stamp;
 use saturn_protocol::event::{Activity, ProviderEvent, ToolCategory, ToolDetail};
-use saturn_protocol::ids::{ChatId, ConstraintId, InputId, LedgerSeq, RunId, SessionId};
+use saturn_protocol::ids::{ChatId, ConstraintId, InputId, LedgerSeq, RunId, SessionId, TaskId};
 use saturn_protocol::state::InputState;
 
 use crate::Engine;
@@ -270,6 +270,7 @@ pub(crate) fn handoff_source_ordered(
         constraints_omitted: slot.omitted.into_iter().map(|(_, rule)| rule).collect(),
         constraint_tiers: slot.tiers,
         goal_and_last_input: goal_inputs(rows, &steers),
+        amendments: explicit_amendments(rows, &steers, &silent_runs(rows, &steers)),
         open_items: open,
         competitors: changed_files_items(changes)
             .into_iter()
@@ -435,14 +436,45 @@ impl Engine {
 /// 기록 번호는 그 입력을 낸 실행의 첫 이벤트 번호(끼워 넣은 입력은 적용 때 쌓여 있던 마지막 번호)이고, 입력마다 그 실행의 상태를 적는다. 끝난 입력도 목표 칸에 남지만 끝났다고 적혀 요청으로 읽히지 않는다.
 fn goal_inputs(rows: &[LedgerRow], steers: &[&SteeredInput]) -> Vec<Entry> {
     let silent = silent_runs(rows, steers);
-    let Some(task) = rows
-        .iter()
+    let Some(task) = current_task(rows, &silent) else {
+        return Vec::new();
+    };
+    let mut inputs = task_inputs(rows, steers, &silent, task);
+    let last = inputs.pop();
+    inputs.truncate(1);
+    let is_single = inputs.is_empty();
+    let first = inputs.pop();
+    let label = |is_first: bool| match (is_single, is_first) {
+        (true, _) => "Input",
+        (false, true) => "First input",
+        (false, false) => "Last input",
+    };
+    first
+        .map(|item| (true, item))
+        .into_iter()
+        .chain(last.map(|item| (false, item)))
+        .map(|(is_first, (seq, status, text))| Entry {
+            seq,
+            text: status_item(label(is_first), status, &text),
+        })
+        .collect()
+}
+
+/// 마지막 입력이 있는 행의 작업. 지금 작업이다.
+fn current_task(rows: &[LedgerRow], silent: &HashSet<RunId>) -> Option<TaskId> {
+    rows.iter()
         .rev()
         .find(|row| row.input.is_some() && !silent.contains(&row.run))
         .map(|row| row.task)
-    else {
-        return Vec::new();
-    };
+}
+
+/// 작업의 사용자 입력을 기록 번호 순으로. 실행을 연 입력과 그 실행에 끼워 넣어 적용한 입력이며, 입력마다 그 실행의 상태가 붙는다.
+fn task_inputs(
+    rows: &[LedgerRow],
+    steers: &[&SteeredInput],
+    silent: &HashSet<RunId>,
+    task: TaskId,
+) -> Vec<(LedgerSeq, TurnStatus, String)> {
     let mut runs: Vec<(RunId, LedgerSeq, TurnStatus)> = Vec::new();
     let mut inputs: Vec<(LedgerSeq, TurnStatus, String)> = Vec::new();
     for row in rows
@@ -464,24 +496,60 @@ fn goal_inputs(rows: &[LedgerRow], steers: &[&SteeredInput]) -> Vec<Entry> {
     }
     // 같은 번호면 실행을 연 입력이 먼저 들어 있으므로 안정 정렬이 그 순서를 지킨다
     inputs.sort_by_key(|(seq, _, _)| *seq);
-    let last = inputs.pop();
-    inputs.truncate(1);
-    let is_single = inputs.is_empty();
-    let first = inputs.pop();
-    let label = |is_first: bool| match (is_single, is_first) {
-        (true, _) => "Input",
-        (false, true) => "First input",
-        (false, false) => "Last input",
-    };
-    first
-        .map(|item| (true, item))
-        .into_iter()
-        .chain(last.map(|item| (false, item)))
-        .map(|(is_first, (seq, status, text))| Entry {
-            seq,
-            text: status_item(label(is_first), status, &text),
-        })
-        .collect()
+    inputs
+}
+
+// cost: time O(r + s), heap O(r), stack O(1)
+// vars: r = 기록 행 수, s = 끼워 넣은 입력 수
+// basis: estimate
+/// 작업마다 수정으로 판단된(제약 후보 기준값 이상) 가장 나중의 사용자 입력. 그 작업에 이어 보냈거나 끼워 넣은 입력이고, 작업의 첫 입력도 수정일 수 있다.
+/// 수정이 있는 작업 중 가장 나중 `AMENDED_TASKS`개만 쓴다. 기록 저장소의 행과 판단 기록에서만 읽으므로 engine을 다시 켜도 같다.
+fn explicit_amendments(
+    rows: &[LedgerRow],
+    steers: &[&SteeredInput],
+    silent: &HashSet<RunId>,
+) -> Vec<Amendment> {
+    let mut opened: HashSet<RunId> = HashSet::new();
+    let mut found: Vec<(TaskId, Amendment)> = Vec::new();
+    for row in rows.iter().filter(|row| !silent.contains(&row.run)) {
+        if row.input.is_none() || !opened.insert(row.run) || !row.is_amendment {
+            continue;
+        }
+        let text = row.input.clone().unwrap_or_default();
+        found.push((
+            row.task,
+            Amendment {
+                seq: row.seq,
+                task: row.task,
+                status: status_of(row.end),
+                text,
+            },
+        ));
+    }
+    for steer in steers.iter().filter(|steer| steer.is_amendment) {
+        let Some(first) = rows.iter().find(|row| row.run == steer.run) else {
+            continue;
+        };
+        found.push((
+            first.task,
+            Amendment {
+                seq: first.seq.max(steer.after),
+                task: first.task,
+                status: status_of(first.end),
+                text: steer.text.clone(),
+            },
+        ));
+    }
+    found.sort_by_key(|(_, amendment)| amendment.seq);
+    let mut latest: Vec<Amendment> = Vec::new();
+    for (task, amendment) in found.into_iter().rev() {
+        if latest.iter().all(|kept| kept.task != task) {
+            latest.push(amendment);
+        }
+    }
+    latest.truncate(AMENDED_TASKS);
+    latest.reverse();
+    latest
 }
 
 /// 실행이 끝난 방식에서 입력의 상태를 정한다. 정상 완료만 끝난 일이고 실패나 멈춤은 일부만 실행됐을 수 있다.
@@ -843,6 +911,7 @@ mod tests {
             session: SessionId(session),
             task: TaskId(1),
             input: input.map(str::to_owned),
+            is_amendment: false,
             end: Some(RunEnd::Completed),
             at_ms: 1_700_000_000_000,
             event,
@@ -1105,6 +1174,59 @@ mod tests {
         assert!(!goal.contains("old task"));
     }
 
+    fn amending(mut row: LedgerRow) -> LedgerRow {
+        row.is_amendment = true;
+        row
+    }
+
+    // #584: 수정으로 판단된 입력은 최근 턴 세 칸에서 밀려나도 원문 그대로 고정 구역에 남고, 작업마다 가장 나중 것 하나만 남으며, 최근 턴에 있으면 되풀이하지 않는다
+    #[test]
+    fn latest_amendment_survives_the_recent_turns_once_per_task() {
+        let correction = "actually the header is X-Call-Token";
+        let rows = vec![
+            row(
+                1,
+                1,
+                5,
+                Some("use the header X-Req-Id"),
+                text_event(AgentId(1), "a"),
+            ),
+            amending(row(
+                2,
+                2,
+                5,
+                Some("use X-Old-Token"),
+                text_event(AgentId(1), "b"),
+            )),
+            amending(row(3, 3, 5, Some(correction), text_event(AgentId(1), "c"))),
+            row(4, 4, 5, Some("read the docs"), text_event(AgentId(1), "d")),
+            row(
+                5,
+                5,
+                5,
+                Some("read the layout"),
+                text_event(AgentId(1), "e"),
+            ),
+            row(6, 6, 5, Some("read the tests"), text_event(AgentId(1), "f")),
+            row(7, 7, 5, Some("run the build"), text_event(AgentId(1), "g")),
+        ];
+
+        let text = handoff_text(&rows, &Pending::default());
+
+        let goal = text.split("## Goal and last input").nth(1).unwrap();
+        let goal = goal.split("## Open items").next().unwrap();
+        assert!(goal.contains(&format!(
+            "Latest amendment (task 1) [Finished]: {correction}"
+        )));
+        assert!(!text.contains("X-Old-Token"));
+        assert_eq!(text.matches(correction).count(), 1);
+
+        // 최근 턴에 이미 있으면 되풀이하지 않는다
+        let text = handoff_text(&rows[..4], &Pending::default());
+        assert_eq!(text.matches(correction).count(), 1);
+        assert!(!text.contains("Latest amendment"));
+    }
+
     #[test]
     fn goal_is_one_entry_when_the_task_has_a_single_input() {
         let rows = vec![row(1, 1, 5, Some("only goal"), text_event(AgentId(1), "a"))];
@@ -1155,6 +1277,7 @@ mod tests {
             run: RunId(run),
             after: LedgerSeq(after),
             text: text.to_owned(),
+            is_amendment: false,
         }
     }
 

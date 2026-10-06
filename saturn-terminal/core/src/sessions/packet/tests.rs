@@ -113,6 +113,7 @@ fn build_packet_fixed_zone_in_order_and_tool_results_only_in_competing() {
         constraints_omitted: Vec::new(),
         constraint_tiers: Vec::new(),
         goal_and_last_input: vec![entry(40, "fix login message")],
+        amendments: Vec::new(),
         open_items: vec![entry(38, "tests pending")],
         recent_turns: vec![turn(39, "run tests", "ran them")],
         competitors: vec![item(37, "cargo test output", None)],
@@ -474,6 +475,44 @@ fn build_packet_fixed_overflow_drops_oldest_turns() {
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = 테스트 데이터 크기
 // basis: estimate
+// #584: 최신 수정은 최근 턴보다 먼저 지키고, 넘치면 오래된 수정부터 빼며 생략을 표시한다
+#[test]
+fn build_packet_amendments_outlast_recent_turns_and_omit_oldest_first() {
+    let amendment = |seq, task, text: &str| Amendment {
+        seq: LedgerSeq(seq),
+        task: TaskId(task),
+        status: TurnStatus::Finished,
+        text: text.into(),
+    };
+    let source = PacketSource {
+        amendments: vec![
+            amendment(1, 1, &filler("a", 900)),
+            amendment(2, 2, &filler("b", 900)),
+            amendment(3, 3, "dup"),
+        ],
+        recent_turns: vec![turn(9, &filler("x", 400), "ok"), turn(10, "dup", "ok")],
+        ..PacketSource::default()
+    };
+
+    let packet = ready(build_packet(&source, &budget()));
+
+    assert!(packet.text.contains(&filler("b", 900)));
+    assert!(!packet.text.contains(&filler("a", 900)));
+    assert!(packet.text.contains("(1 earlier amendments left out"));
+    assert_eq!(packet.text.matches("dup").count(), 1);
+    assert_eq!(
+        fate(&packet, PacketZone::Goal, 1),
+        (None, Some("packet_limit"))
+    );
+    assert_eq!(
+        fate(&packet, PacketZone::Goal, 3),
+        (None, Some("duplicate"))
+    );
+}
+
+// cost: time O(n), heap O(n), stack O(1)
+// vars: n = 테스트 데이터 크기
+// basis: estimate
 #[test]
 fn build_packet_fixed_over_limit_allows_hard_limit_without_competing() {
     let source = PacketSource {
@@ -517,6 +556,7 @@ fn build_packet_fixed_over_hard_limit_defers_with_constraints() {
 fn reduce_packet_drops_the_lowest_items_and_keeps_the_fixed_zone() {
     let source = PacketSource {
         goal_and_last_input: vec![entry(40, "fix login message")],
+        amendments: Vec::new(),
         competitors: vec![
             item(1, &filler("high", 300), None),
             item(2, &filler("mid", 300), None),
