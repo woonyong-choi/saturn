@@ -26,4 +26,4 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [결정 기록](decisions/README.md) | 설계를 정한 이유와 버린 선택지 |
 | [실험](experiments/README.md) | 설계 값을 확인하는 실험과 결론 |
 | [모델 선택 순효과](experiments/model-selection-effect/report.md) | 오토 모델 선택과 고정 모델의 품질·비용·시간 비교 결과 |
-| [입력 관계 이진 판단](experiments/continuation-atomic-judgment/design.md) | 작은 Jev 질문의 오접합·재현율과 판단 비용 개발 평가 |
+| [입력 관계 이진 판단](experiments/continuation-atomic-judgment/report.md) | 작은 Jev 질문의 오접합·재현율과 판단 비용 개발 평가 |
