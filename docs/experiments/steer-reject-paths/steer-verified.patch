@@ -1,0 +1,13 @@
+diff --git a/saturn-terminal/engine/src/providers/codex.rs b/saturn-terminal/engine/src/providers/codex.rs
+index 19d12ad..196fea6 100644
+--- a/saturn-terminal/engine/src/providers/codex.rs
++++ b/saturn-terminal/engine/src/providers/codex.rs
+@@ -40,7 +40,7 @@ use threads::remove_thread_tree;
+ pub(crate) use adapter::adapter;
+ 
+ /// 끼워 넣기 실측(#5, #27) 통과 전이라 거짓이고, 거짓이면 끼워 넣기를 대기로 바꾼다.
+-pub(crate) const STEER_VERIFIED: bool = false;
++pub(crate) const STEER_VERIFIED: bool = true;
+ 
+ /// 화면 전용 명령과 Saturn session 명령이 대신하는 명령은 넣지 않는다. 초안 목록.
+ pub(crate) const COMMAND_METHODS: &[(&str, &str)] = &[
