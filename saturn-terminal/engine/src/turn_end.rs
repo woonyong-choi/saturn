@@ -75,7 +75,10 @@ impl Engine {
     }
 
     /// 마지막 활성 맥락과 끝 시각을 기록하고 session을 유휴로 둔다. `A`를 모르면 값을 기록하지 않는다.
-    async fn record_turn_value(&mut self, live: &LiveSession) -> Result<(), EngineError> {
+    pub(crate) async fn record_turn_value(
+        &mut self,
+        live: &LiveSession,
+    ) -> Result<(), EngineError> {
         let active = self.flow.context_tokens.get(&live.agent).copied().flatten();
         if let Some(active) = active {
             let last_turn = LastTurn {

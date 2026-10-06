@@ -29,7 +29,7 @@ use crate::flow::{LiveSession, NeedsCheck};
 use crate::providers::ProviderConnection;
 use crate::providers::RawLine;
 use crate::rpc::ClientId;
-use crate::store::{NewRun, UnattributedRaw};
+use crate::store::{NewRun, RunEnd, UnattributedRaw};
 use crate::{Engine, EngineError};
 
 /// 답을 기다리는 허가 요청이 속한 곳.
@@ -432,7 +432,7 @@ impl Engine {
             return self.check_stop_done(chat).await;
         }
         if is_turn_completed && self.take_packet_turn(live.agent) {
-            return Ok(());
+            return self.end_packet_wake_run(live).await;
         }
         match status {
             TreeStatus::Running => Ok(()),
@@ -446,6 +446,21 @@ impl Engine {
             }
             TreeStatus::TreeIdle => Ok(()),
         }
+    }
+
+    /// 입력 없이 보낸 패킷(맥락 정리의 `Restart`)의 턴은 첫 이벤트가 `begin_wake_run`으로 실행을 연다. 그 턴이 끝나면 이 실행도 끝내고
+    /// session을 유휴로 돌린다. 입력이 연 실행(전환 패킷)은 그 입력의 턴이 끝날 때 끝나므로 건드리지 않는다.
+    /// 작업은 이미 끝난 앞 작업이라 다시 끝내거나 알리지 않는다.
+    async fn end_packet_wake_run(&mut self, live: &LiveSession) -> Result<(), EngineError> {
+        let Some(run) = self.runs.active.get(&live.agent).copied() else {
+            return Ok(());
+        };
+        if self.run_input(live.agent).await.is_some() {
+            return Ok(());
+        }
+        self.runs.forget(live.agent);
+        self.store.finish_run(run, RunEnd::Completed).await?;
+        self.record_turn_value(live).await
     }
 
     /// 새 session의 첫 턴으로 보낸 패킷의 완료 신호면 참이고, 작업 끝으로 보지 않는다.
