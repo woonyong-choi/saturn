@@ -54,6 +54,24 @@ pub fn literal_prefix(pattern: &str) -> String {
         .collect()
 }
 
+// cost: time O(p), heap O(p), stack O(1), alloc 2
+// vars: p = pattern 글자 수
+// basis: estimate
+/// 경로 glob으로 옮긴 패턴. `*`는 `/`도 포함하므로 `**`가 된다. glob 문자(`*?[]{}`)나 `\`가 글자로 든 패턴은 같은 뜻으로
+/// 옮길 수 없어 `None`이다.
+pub(super) fn glob_form(pattern: &str) -> Option<String> {
+    let mut glob = String::with_capacity(pattern.len());
+    for token in tokens(pattern) {
+        match token {
+            Token::Wildcard if glob.ends_with("**") => {}
+            Token::Wildcard => glob.push_str("**"),
+            Token::Literal('*' | '?' | '[' | ']' | '{' | '}' | '\\') => return None,
+            Token::Literal(c) => glob.push(c),
+        }
+    }
+    Some(glob)
+}
+
 // cost: time O(p), heap O(p), stack O(1), alloc 1
 // vars: p = pattern 글자 수
 // basis: estimate

@@ -12,7 +12,7 @@ use crate::processes::{ProcessGroupId, Supervisor};
 use crate::providers::{
     Adapter, AdapterConnection, AppliedReader, AppliedSettings, BoxFuture, ContextDefaults,
     Descriptor, DirectInstall, ExtensionLayout, Feature, INTERFACE_VERSION, LaunchSpec,
-    PermissionInput, PermissionLaunch, ProviderConnection,
+    PermissionInput, PermissionLaunch, ProviderConnection, read_deny_fingerprint,
 };
 
 /// 설정 키 `provider.claude.*`와 모델 고정 글 `claude/<model>`의 앞부분이다.
@@ -71,8 +71,14 @@ impl Adapter for ClaudeAdapter {
             questions_disabled: !input.questions,
             extra_args: injected.args,
             injection_failures: injected.failures,
+            rules_fingerprint: Some(read_deny_fingerprint(input.rules)),
             ..PermissionLaunch::default()
         })
+    }
+
+    /// 읽기 `deny` 규칙은 session을 열 때 실행 설정으로 고정되므로 바뀌면 연결을 다시 시작한다.
+    fn rules_fingerprint(&self, rules: &[saturn_core::permission::Rule]) -> Option<String> {
+        Some(read_deny_fingerprint(rules))
     }
 
     /// 프로세스는 session을 열 때 띄운다.

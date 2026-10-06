@@ -80,6 +80,7 @@ impl CodexClient {
             commands: Vec::new(),
             skill_paths: HashMap::new(),
             mcp_servers: launch.permission.mcp_servers.clone(),
+            read_deny: launch.permission.read_deny.clone(),
             is_mcp_ready: false,
             mcp_unavailable: Vec::new(),
             mcp_ready_timeout: MCP_READY_TIMEOUT,
