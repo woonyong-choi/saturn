@@ -122,3 +122,76 @@ async fn refused_steer_through_send_now_also_goes_to_the_front() {
     flow.settle().await;
     assert_eq!(turns(&flow), vec!["fix the build", "also run the tests"]);
 }
+
+/// 접수한 입력의 끼워 넣기를 시작하되, provider의 응답은 읽지 않고 멈춘다. 그 사이에 시험이 턴 끝 같은 일을 먼저 처리한다.
+async fn steer_in_flight(flow: &mut Flow, text: &str) -> saturn_protocol::ids::InputId {
+    flow.engine
+        .submit_input(CLIENT, flow.chat, 1, text.to_owned(), false)
+        .await
+        .unwrap();
+    let routed = flow.engine.flow.router_rx.recv().await.unwrap();
+    flow.engine.on_routed(routed).await;
+    flow.latest_input().await.unwrap()
+}
+
+#[tokio::test]
+async fn steer_with_an_unknown_result_is_not_sent_again_or_requeued() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "refines", "steer"),
+    ])
+    .await;
+    flow.fake.verify_steer();
+    flow.submit("fix the build").await;
+    let agent = flow.agent();
+    flow.fake.answer_steer([Err(ProviderError::Unknown)]);
+
+    let second = flow.submit("also run the tests").await;
+    flow.engine.finish_task(flow.chat, agent).await.unwrap();
+    flow.settle().await;
+
+    assert_eq!(steers(&flow), vec!["also run the tests"]);
+    assert_eq!(turns(&flow), vec!["fix the build"]);
+    assert_eq!(flow.state(second), InputState::Delivering);
+}
+
+#[tokio::test]
+async fn refused_steer_answered_after_the_turn_ended_still_takes_one_turn() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "refines", "steer"),
+    ])
+    .await;
+    flow.fake.verify_steer();
+    flow.submit("fix the build").await;
+    let agent = flow.agent();
+    flow.fake.answer_steer([not_sent()]);
+
+    let second = steer_in_flight(&mut flow, "also run the tests").await;
+    flow.engine.finish_task(flow.chat, agent).await.unwrap();
+    flow.settle().await;
+
+    assert_eq!(steers(&flow), vec!["also run the tests"]);
+    assert_eq!(turns(&flow), vec!["fix the build", "also run the tests"]);
+    assert_eq!(flow.state(second), InputState::Applied);
+}
+
+#[tokio::test]
+async fn accepted_steer_answered_after_the_turn_ended_is_not_sent_again() {
+    let mut flow = Flow::new(vec![
+        idle_reply(0.95),
+        running_reply(0.95, "refines", "steer"),
+    ])
+    .await;
+    flow.fake.verify_steer();
+    flow.submit("fix the build").await;
+    let agent = flow.agent();
+
+    let second = steer_in_flight(&mut flow, "also run the tests").await;
+    flow.engine.finish_task(flow.chat, agent).await.unwrap();
+    flow.settle().await;
+
+    assert_eq!(steers(&flow), vec!["also run the tests"]);
+    assert_eq!(turns(&flow), vec!["fix the build"]);
+    assert_eq!(flow.state(second), InputState::Applied);
+}
