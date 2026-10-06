@@ -597,12 +597,21 @@ async fn dialogue_with_a_router_key_is_neither_listed_nor_readable() {
         .flow
         .claude_event(text(agent, "the key is sk-leak-123"))
         .await;
+    family
+        .flow
+        .claude_event(tool_read(agent, "secret-read", "src/key.rs"))
+        .await;
+    family
+        .flow
+        .claude_event(tool_result(agent, "secret-read", "the key is sk-leak-123"))
+        .await;
     family.flow.claude_event(text(agent, "a safe answer")).await;
 
     let (_, items) = everything(&family).await;
     let answers = of_kind(&items, EvidenceKind::Text);
 
     assert_eq!(answers.len(), 1);
+    assert!(of_kind(&items, EvidenceKind::Tool).is_empty());
     assert!(items.iter().all(|item| !item.excerpt.contains("sk-leak")));
     // 비밀이 든 글의 번호와 해시를 알아도 읽지 못하고, 있다는 사실도 알리지 않는다
     let leaked = "the key is sk-leak-123";

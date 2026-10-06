@@ -125,6 +125,7 @@ pub(crate) fn assemble(
             .iter()
             .map(|name| (*name).to_owned())
             .collect(),
+        related: Vec::new(),
         up_to: LedgerSeq(records.iter().map(|record| record.seq).max().unwrap_or(0)),
     };
     Assembled {

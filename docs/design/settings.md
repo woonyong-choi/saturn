@@ -138,6 +138,7 @@
 | `context.constraint_slot_percent` | 1~100 정수 | 25(초안). engine이 읽어 패킷 제약 칸 상한에 적용한다 |
 | `context.select.rrf_k` | 0 이상 정수 | 60 |
 | `context.select.packet` | `rrf`, `jev` | `rrf`. 실험 옵션이다. `jev`면 새 session 패킷을 만들 때 router `compact` 판단을 불러 경쟁 구역을 남김 확률 순으로 채운다 |
+| `context.select.related` | `off`, `rank` | `off`. 실험 옵션이다. `rank`면 새 session의 첫 작업 입력 앞에 같은 채팅의 관련 원문을 근거 검색과 같은 후보 집합과 RRF 순위로 골라 패킷에 넣는다. Jev 선택은 연결하지 않았다 |
 | `context.evidence.lookup` | 참·거짓 | 거짓. 참이면 경쟁 구역에서 원문 아닌 모양으로 들어가거나 빠진 기록이 있는 패킷 끝에 `saturn evidence read` 안내 한 줄을 붙인다. 실험 옵션이다([맥락 고르기](context-selection.md#근거-검색과-원문-조회)) |
 
 - `tui.on_exit`는 TUI를 닫을 때 작업을 어떻게 할지 정한다. `background`는 계속하고, `stop`은 모든 채팅의 작업을 멈춤과 같게 보류하고, `ask`는 작업이 있으면 닫기 전에 묻는다. 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
@@ -150,6 +151,7 @@
 - `context.mode`가 `provider`이면 `sessions`는 compaction과 유휴 복귀를 판정하지 않고 provider 실행 인자에 자동 압축 안전망 값을 넣지 않는다. 규칙은 [맥락 정리](context-management.md#정리-모드)에 있다. 기본은 `saturn`이다.
 - `context.select.rrf_k`는 router가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
 - `context.select.packet`은 실험 옵션이라 기본이 `rrf`이고, 일반 기본값은 [#7](https://github.com/woonyong-choi/saturn/issues/7)의 품질 비교를 통과하기 전에 바꾸지 않는다. `jev`는 패킷을 만들 때마다 router를 한 번 부르므로 호출 수와 비용이 늘고, 입력을 접수한 설정 번호의 값을 쓴다. 규칙은 [패킷 판단의 적용](context-management.md#패킷-판단의-적용)에 있다.
+- `context.select.related`는 실험 옵션이라 기본이 `off`이고, 꺼져 있으면 패킷도 기록도 달라지지 않는다. 입력을 접수한 설정 번호의 값을 쓰고 router를 부르지 않는다. 품질과 비용 비교는 [#541](https://github.com/woonyong-choi/saturn/issues/541)의 몫이라 이 값을 기본으로 바꾸는 근거가 없다. 규칙은 [보존 우선 선별 계약](context-selection.md#보존-우선-선별-계약)에 있다.
 - 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_ask`, `constraint_release`다.
 - `is_constraint`는 자동 등록 기준값(기본 0.8), `constraint_ask`는 등록 질문의 묻는 하한(기본 0.7)이다. `constraint.auto_apply`가 거짓(기본)이면 두 값 모두 적용하지 않는다. 켠 상태에서 권한 모드가 `full`이면 제약 질문을 묻지 않는다([제약](constraints.md#묻지-않고-진행하는-권한-모드)).
 - `constraint_release`는 해제·예외 판단을 적용하는 기준값(기본 0.8)이고 종류 확률의 하한으로도 쓴다. `constraint.auto_apply`가 거짓(기본)이면 해제·예외 질문도 하지 않는다.

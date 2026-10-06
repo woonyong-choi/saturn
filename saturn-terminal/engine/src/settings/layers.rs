@@ -77,6 +77,7 @@ constraint_slot_percent = 25
 [context.select]
 rrf_k = 60
 packet = "rrf"
+related = "off"
 
 [context.evidence]
 lookup = false
@@ -159,6 +160,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("context.constraint_slot_percent", Kind::PercentFrom1),
     ("context.select.rrf_k", Kind::Whole),
     ("context.select.packet", Kind::OneOf(&["rrf", "jev"])),
+    ("context.select.related", Kind::OneOf(&["off", "rank"])),
     ("context.evidence.lookup", Kind::Flag),
 ];
 

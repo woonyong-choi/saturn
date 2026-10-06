@@ -21,6 +21,7 @@ use saturn_core::sessions::ranking::{Candidate, order_after_router, rank_candida
 use saturn_core::sessions::stamp::Stamp;
 use saturn_protocol::event::{Activity, ProviderEvent, ToolCategory, ToolDetail};
 use saturn_protocol::ids::{ChatId, ConstraintId, InputId, LedgerSeq, RunId, SessionId};
+use saturn_protocol::rpc::EvidenceKind;
 use saturn_protocol::state::InputState;
 
 use crate::Engine;
@@ -65,6 +66,87 @@ pub(crate) struct PacketEvidence {
     pub(crate) reduced_from: Option<PacketId>,
     /// 경쟁 구역을 고른 방식. `RANK_SELECTOR`나 `COMPACT_SELECTOR`다.
     selector: &'static str,
+    /// 관련 원문 선주입(`context.select.related`)을 시도했으면 그 근거. 꺼져 있으면 `None`이다.
+    related: Option<RelatedLog>,
+}
+
+/// 관련 원문 선주입이 항목을 고른 방식. 근거 검색과 같은 후보 집합의 RRF 순위다.
+pub(crate) const RELATED_SELECTOR: &str = "related_rank";
+
+/// 관련 원문 한 건의 종류, 번호, 원문 해시. `종류:채팅:번호:해시` 참조의 재료다.
+pub(crate) type RelatedRef = (EvidenceKind, u64, String);
+
+/// 관련 원문 선주입의 근거: 후보를 읽은 때의 채팅 revision, 패킷에 든 기록, 못 든 기록과 이유.
+/// 한 건에 속하지 않는 이유(`no_candidates`, `retrieval_failed`)는 기록을 가리키지 않는다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RelatedLog {
+    pub(crate) tail: LedgerSeq,
+    pub(crate) picked: Vec<RelatedRef>,
+    pub(crate) omitted: Vec<(Option<RelatedRef>, &'static str)>,
+}
+
+impl RelatedLog {
+    /// 고른 기록 없이 `reason`으로 모두 못 넣었다.
+    pub(crate) fn none(tail: LedgerSeq, reason: &'static str) -> Self {
+        Self {
+            tail,
+            picked: Vec::new(),
+            omitted: vec![(None, reason)],
+        }
+    }
+
+    /// 고른 기록 전부를 `reason`으로 뺀 근거. 이미 못 든 기록은 그대로 둔다.
+    pub(crate) fn all_dropped(&self, reason: &'static str) -> Self {
+        let verdicts = vec![Some(reason); self.picked.len()];
+        self.after_recheck(&verdicts)
+    }
+
+    /// 적용 직전 재검사 결과로 고친 근거. `verdicts`는 `picked`와 같은 순서이고 `Some`이면 그 이유로 뺀다.
+    pub(crate) fn after_recheck(&self, verdicts: &[Option<&'static str>]) -> Self {
+        let mut kept = Vec::new();
+        let mut omitted = self.omitted.clone();
+        for (found, verdict) in self.picked.iter().zip(verdicts) {
+            match verdict {
+                None => kept.push(found.clone()),
+                Some(reason) => omitted.push((Some(found.clone()), *reason)),
+            }
+        }
+        Self {
+            tail: self.tail,
+            picked: kept,
+            omitted,
+        }
+    }
+
+    fn rows(&self) -> Vec<PacketItemRow> {
+        let row = |found: &Option<RelatedRef>, reason: Option<&'static str>| match found {
+            Some((kind, id, hash)) => PacketItemRow {
+                zone: format!("Related-{}", kind.name()),
+                ref_id: *id,
+                selector: RELATED_SELECTOR,
+                form: reason.is_none().then(|| "Full".to_owned()),
+                reason,
+                hash: Some(hash.clone()),
+            },
+            None => PacketItemRow {
+                zone: "Related".to_owned(),
+                ref_id: self.tail.0,
+                selector: RELATED_SELECTOR,
+                form: None,
+                reason,
+                hash: None,
+            },
+        };
+        self.picked
+            .iter()
+            .map(|found| row(&Some(found.clone()), None))
+            .chain(
+                self.omitted
+                    .iter()
+                    .map(|(found, reason)| row(found, Some(*reason))),
+            )
+            .collect()
+    }
 }
 
 /// 경쟁 구역을 후보 순위(RRF) 순서로 채웠다.
@@ -87,19 +169,36 @@ impl PacketEvidence {
             tokens: handoff.tokens,
             attempt: 1,
             reduced_from: None,
+            related: None,
         }
     }
 
+    /// 관련 원문 선주입의 근거를 붙인다.
+    pub(crate) fn with_related(self, related: Option<RelatedLog>) -> Self {
+        Self { related, ..self }
+    }
+
+    pub(crate) fn related(&self) -> Option<&RelatedLog> {
+        self.related.as_ref()
+    }
+
     /// 거절된 시도 `previous`를 줄여 다시 만든 패킷의 근거. 같은 재료에서 항목만 다시 골랐다.
+    /// 관련 원문은 줄이지 않고 통째로 빼므로 `reduction.source`가 아니라 관련 원문을 뺀 재료와 맞춘다.
     pub(crate) fn reduced(
         handoff: &Handoff,
         reduction: &Reduction,
         (attempt, previous): (u32, Option<PacketId>),
+        related: Option<&RelatedLog>,
     ) -> Self {
         Self {
             attempt: attempt + 1,
             reduced_from: previous,
-            ..Self::first(handoff, &reduction.source, reduction.selector)
+            related: related.map(|log| log.all_dropped("reduced")),
+            ..Self::first(
+                handoff,
+                &reduction.source_without_related(),
+                reduction.selector,
+            )
         }
     }
 
@@ -117,6 +216,7 @@ impl PacketEvidence {
             attempt: 1,
             reduced_from: None,
             selector: RANK_SELECTOR,
+            related: None,
         }
     }
 
@@ -162,7 +262,12 @@ impl PacketEvidence {
             reason: item.reason,
             hash: None,
         });
-        constraints.chain(dialogue).chain(items).collect()
+        let related = self.related.iter().flat_map(RelatedLog::rows);
+        constraints
+            .chain(dialogue)
+            .chain(related)
+            .chain(items)
+            .collect()
     }
 }
 
@@ -305,6 +410,7 @@ pub(crate) fn handoff_source_ordered(
             .chain(ordered_competitors(&tools, &turns, budget.rrf_k, verdicts))
             .collect(),
         turns,
+        related: Vec::new(),
         provider_docs: provider_docs.to_vec(),
         evidence_lookup: budget.evidence_lookup,
         up_to: last.seq,

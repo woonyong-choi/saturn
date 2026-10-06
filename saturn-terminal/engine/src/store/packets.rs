@@ -43,7 +43,7 @@ pub(crate) enum PacketState {
 pub(crate) struct PacketItemRow {
     pub(crate) zone: String,
     pub(crate) ref_id: u64,
-    /// 보호한 대화 본문 원문의 SHA-256. 본문 항목만 갖는다.
+    /// 보호한 대화 본문이나 선주입한 관련 원문의 SHA-256. 그 항목만 갖는다.
     pub(crate) hash: Option<String>,
     pub(crate) selector: &'static str,
     /// 들어간 모양. 빠졌으면 `None`.
@@ -278,7 +278,7 @@ impl Store {
     ) -> Result<Vec<(String, u64, String)>, StoreError> {
         let rows = sqlx::query(
             "SELECT zone, ref_id, body_hash FROM handoff_packet_items \
-             WHERE packet_id = ? AND body_hash IS NOT NULL ORDER BY rowid",
+             WHERE packet_id = ? AND body_hash IS NOT NULL AND zone NOT LIKE 'Related%' ORDER BY rowid",
         )
         .bind(to_sql_int(id.0))
         .fetch_all(&self.pool)
@@ -288,6 +288,34 @@ impl Store {
                 Ok((
                     row.try_get("zone")?,
                     from_sql_int(row.try_get("ref_id")?),
+                    row.try_get("body_hash")?,
+                ))
+            })
+            .collect()
+    }
+
+    /// 시도의 관련 원문 항목마다 `(구역, 번호, 들어간 모양, 빠진 이유, 원문 해시)`. 기록한 순서이고 시험이 선주입 근거를 본다.
+    #[cfg(test)]
+    #[allow(clippy::type_complexity)]
+    pub(crate) async fn packet_related(
+        &self,
+        id: PacketId,
+    ) -> Result<Vec<(String, u64, Option<String>, Option<String>, Option<String>)>, StoreError>
+    {
+        let rows = sqlx::query(
+            "SELECT zone, ref_id, form, reason, body_hash FROM handoff_packet_items \
+             WHERE packet_id = ? AND zone LIKE 'Related%' ORDER BY rowid",
+        )
+        .bind(to_sql_int(id.0))
+        .fetch_all(&self.pool)
+        .await?;
+        rows.iter()
+            .map(|row| {
+                Ok((
+                    row.try_get("zone")?,
+                    from_sql_int(row.try_get("ref_id")?),
+                    row.try_get("form")?,
+                    row.try_get("reason")?,
                     row.try_get("body_hash")?,
                 ))
             })

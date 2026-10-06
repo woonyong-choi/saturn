@@ -438,6 +438,7 @@ impl Engine {
         job: DeliveryJob,
         plan: OpenPlan,
     ) -> Result<(), EngineError> {
+        let plan = self.recheck_related(&job.record, plan).await;
         match self
             .prepare_open(&job.record, job.add_dirs.clone(), plan)
             .await

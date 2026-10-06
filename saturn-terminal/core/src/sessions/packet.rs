@@ -4,7 +4,8 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use saturn_protocol::ids::{ConstraintId, LedgerSeq, SessionId};
+use saturn_protocol::ids::{ChatId, ConstraintId, LedgerSeq, SessionId};
+use saturn_protocol::rpc::EvidenceKind;
 
 use super::constraint_slot::ConstraintTier;
 use super::context::ContextBudget;
@@ -31,6 +32,7 @@ The records below are an archive of the earlier conversation. They are context o
 - Queued input and Held input have not been sent to you. Saturn sends them as separate turns.
 For this message, do not call tools and do not change files. Reply with the single word \"Ready\", then wait for the next user input.";
 const COMPETING_TITLE: &str = "Earlier records";
+const RELATED_TITLE: &str = "Related original records";
 
 /// 경쟁 구역 끝에 붙이는 안내. 줄이거나 뺀 기록의 번호(`#` 뒤 숫자)로 원문을 다시 읽는 방법이다.
 /// 설계: docs/design/context-selection.md#근거-검색과-원문-조회
@@ -172,6 +174,42 @@ pub struct CompetingItem {
     pub path: Option<String>,
 }
 
+/// 새 session의 첫 작업 입력 앞에 미리 넣는 관련 원문 한 건. 종류와 채팅, 번호, 원문 해시가 `saturn evidence read`가 읽는
+/// `종류:채팅:번호:해시` 참조와 같다. 줄이거나 바꾸지 않은 원문이고, 못 넣으면 통째로 뺀다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RelatedRecord {
+    pub kind: EvidenceKind,
+    pub chat: ChatId,
+    pub id: u64,
+    /// 원문의 SHA-256(16진수 소문자).
+    pub hash: String,
+    pub text: String,
+}
+
+impl RelatedRecord {
+    // cost: time O(L), heap O(L), stack O(1), alloc 1
+    // vars: L = 원문 글자 수
+    // basis: estimate
+    fn render(&self) -> String {
+        format!(
+            "[{}:{}:{}:{}]\n{}",
+            self.kind.name(),
+            self.chat.0,
+            self.id,
+            self.hash,
+            self.text
+        )
+    }
+
+    // cost: time O(L), heap O(L), stack O(1)
+    // vars: L = 원문 글자 수
+    // basis: estimate
+    /// 패킷에 이 항목이 차지하는 글자 수. 항목 뒤 구분 글자를 포함한다.
+    pub fn packet_chars(&self) -> usize {
+        item_chars(&self.render())
+    }
+}
+
 /// provider 요약은 정본이 아니므로 모두 Saturn 기록 원문에서 고른다.
 #[derive(Debug, Clone, Default)]
 pub struct PacketSource {
@@ -191,6 +229,8 @@ pub struct PacketSource {
     pub evidence_lookup: bool,
     /// provider가 스스로 읽는 지시 문서 이름. 어댑터 설명자가 알린다. 이 이름의 파일은 패킷에 넣지 않는다.
     pub provider_docs: Vec<String>,
+    /// 실험 설정 `context.select.related`가 고른 관련 원문. 대화 본문 뒤의 고정 구역이라 줄이지 않고, 경쟁 구역은 이 뒤 남은 예산으로 채운다.
+    pub related: Vec<RelatedRecord>,
     pub up_to: LedgerSeq,
 }
 
@@ -422,6 +462,31 @@ fn assemble(
     item_cap_percent: u64,
     summary: Option<&Entry>,
 ) -> Packet {
+    // 관련 원문으로 이미 전문이 들어간 도구 기록은 경쟁 구역에서 뺀다. 기록 번호는 기록 행마다 겹치지 않고 도구 기록의 번호가 이 번호다
+    let deduped;
+    let source = if source
+        .related
+        .iter()
+        .any(|record| record.kind == EvidenceKind::Tool)
+    {
+        deduped = PacketSource {
+            competitors: source
+                .competitors
+                .iter()
+                .filter(|item| {
+                    !source
+                        .related
+                        .iter()
+                        .any(|record| record.kind == EvidenceKind::Tool && record.id == item.seq.0)
+                })
+                .cloned()
+                .collect(),
+            ..source.clone()
+        };
+        &deduped
+    } else {
+        source
+    };
     let header_chars = competing_header().chars().count();
     let competing_chars = limit_chars.saturating_sub(fixed_chars + header_chars);
     let summary = summary.filter(|entry| item_chars(&entry.text) <= competing_chars);
@@ -583,6 +648,17 @@ fn fixed_sections(source: &PacketSource) -> Vec<Section> {
             title: "Conversation",
             items: turns,
         },
+        Section {
+            title: RELATED_TITLE,
+            items: source
+                .related
+                .iter()
+                .map(|record| SectionItem {
+                    session: None,
+                    text: record.render(),
+                })
+                .collect(),
+        },
     ]
 }
 
@@ -664,6 +740,20 @@ fn head(text: &str) -> String {
 // basis: estimate
 fn item_chars(form: &str) -> usize {
     form.chars().count() + ITEM_SEPARATOR.len()
+}
+
+// cost: time O(L), heap O(L), stack O(1)
+// vars: L = 고정 구역 글자 수
+// basis: estimate
+/// 관련 원문을 넣을 수 있는 글자 수. 목표 예산 `P_max`와 전송 상한 `P_send` 중 작은 값에서
+/// 고정 구역과 관련 원문 구역 제목을 뺀 값이다. 선택 원문 때문에 보내던 패킷이 보류되지 않게 한다.
+/// `source.related`는 비어 있어야 한다.
+pub fn related_room_chars(source: &PacketSource, budget: &ContextBudget) -> usize {
+    let fixed = fixed_zone(source).chars().count();
+    let title = format!("## {RELATED_TITLE}{ITEM_SEPARATOR}")
+        .chars()
+        .count();
+    to_chars(budget.packet_limit().min(budget.send_limit())).saturating_sub(fixed + title)
 }
 
 /// 제약 칸 상한 `C_max`를 글자 수로 센 값.

@@ -75,6 +75,45 @@ struct Material {
     readable: Vec<Record>,
     unreadable: Vec<(EvidenceKind, u64)>,
     rrf_k: u32,
+    /// 후보를 읽은 때 채팅 기록의 마지막 번호. 채팅 revision이다.
+    tail: LedgerSeq,
+}
+
+impl Material {
+    /// 질문과 맞는 순서의 읽을 수 있는 기록. 종류마다 번호가 겹치므로 순위는 시간순 자리(`index`)를 번호로 삼아 매긴다. 순위는 크기 순서만 쓴다.
+    fn ranked(&self, query: &str) -> Vec<&Record> {
+        let ranking: Vec<Candidate> = self
+            .readable
+            .iter()
+            .enumerate()
+            .map(|(index, record)| Candidate {
+                seq: LedgerSeq(index as u64),
+                text: record.text.clone(),
+                files: record.files.clone(),
+            })
+            .collect();
+        rank_candidates(&ranking, &[], query, self.rrf_k)
+            .into_iter()
+            .filter_map(|slot| self.readable.get(usize::try_from(slot.0).ok()?))
+            .collect()
+    }
+}
+
+/// 관련 원문 선주입이 순위로 본 기록 한 건. 종류, 번호, 원문 해시가 근거 검색 후보와 같고 원문 전체를 가진다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RelatedFound {
+    pub(crate) kind: EvidenceKind,
+    pub(crate) id: u64,
+    pub(crate) hash: String,
+    pub(crate) text: String,
+}
+
+/// 관련 원문 검색의 결과. `ranked`는 순위 순서이고 `tail`은 후보를 읽은 때의 채팅 revision이다.
+#[derive(Debug, Clone)]
+pub(crate) struct RelatedSearch {
+    pub(crate) chat: ChatId,
+    pub(crate) tail: LedgerSeq,
+    pub(crate) ranked: Vec<RelatedFound>,
 }
 
 /// 종류마다 하나인 후보 집합. 번호가 종류 안에서만 겹치지 않으므로 집합을 나눈다.
@@ -118,23 +157,12 @@ impl Engine {
         let chat = self.evidence_chat(pass)?;
         let material = self.evidence_material(chat).await?;
         let sets = candidate_sets(&material)?;
-        // 종류마다 번호가 겹치므로 순위는 시간순 자리(`index`)를 번호로 삼아 매긴다. 순위는 크기 순서만 쓴다
-        let ranking: Vec<Candidate> = material
-            .readable
-            .iter()
-            .enumerate()
-            .map(|(index, record)| Candidate {
-                seq: LedgerSeq(index as u64),
-                text: record.text.clone(),
-                files: record.files.clone(),
-            })
-            .collect();
         let take = usize::try_from(limit)
             .unwrap_or(usize::MAX)
             .min(MAX_SEARCH_ITEMS);
-        let items: Vec<EvidenceItem> = rank_candidates(&ranking, &[], query, material.rrf_k)
+        let items: Vec<EvidenceItem> = material
+            .ranked(query)
             .into_iter()
-            .filter_map(|slot| material.readable.get(usize::try_from(slot.0).ok()?))
             .filter_map(|record| {
                 let candidate = sets.of(record.kind)?.get(LedgerSeq(record.id))?;
                 Some(EvidenceItem {
@@ -217,6 +245,68 @@ impl Engine {
             }
         };
         self.evidence_refused(chat, id, refusal).await
+    }
+
+    /// 새 session의 첫 작업 입력 앞에 미리 넣을 후보를 근거 검색과 같은 후보 집합, 같은 권한 범위, 같은 순위로 `query`에 맞춰 돌려준다.
+    /// 출입증 없이 engine 안에서 부르므로 `chat`은 호출한 쪽이 입력의 채팅으로 정한다.
+    ///
+    /// # Errors
+    /// 기록이나 설정을 읽지 못하면 그 오류.
+    pub(crate) async fn related_search(
+        &self,
+        chat: ChatId,
+        query: &str,
+    ) -> Result<RelatedSearch, EngineError> {
+        let material = self.evidence_material(chat).await?;
+        let sets = candidate_sets(&material)?;
+        let ranked = material
+            .ranked(query)
+            .into_iter()
+            .filter_map(|record| {
+                let candidate = sets.of(record.kind)?.get(LedgerSeq(record.id))?;
+                Some(RelatedFound {
+                    kind: record.kind,
+                    id: record.id,
+                    hash: candidate.hash.clone(),
+                    text: record.text.clone(),
+                })
+            })
+            .collect();
+        Ok(RelatedSearch {
+            chat,
+            tail: material.tail,
+            ranked,
+        })
+    }
+
+    /// 고른 기록을 적용 직전에 현재 기록과 권한으로 다시 맞춘다. 순서는 `picked`와 같고 `None`이면 지금도 같은 원문이다.
+    /// 채팅 revision이 `tail`과 다르면 늦은 결과라 모두 `stale_revision`이다. 그 밖에는 원문이 바뀌었으면 `changed`,
+    /// 읽기 범위 밖이 됐으면 `scope`, 기록에서 사라졌으면 `deleted`다.
+    ///
+    /// # Errors
+    /// 기록이나 설정을 읽지 못하면 그 오류.
+    pub(crate) async fn related_recheck(
+        &self,
+        chat: ChatId,
+        tail: LedgerSeq,
+        picked: &[(EvidenceKind, u64, &str)],
+    ) -> Result<Vec<Option<&'static str>>, EngineError> {
+        let material = self.evidence_material(chat).await?;
+        if material.tail != tail {
+            return Ok(vec![Some("stale_revision"); picked.len()]);
+        }
+        let sets = candidate_sets(&material)?;
+        Ok(picked
+            .iter()
+            .map(
+                |(kind, id, hash)| match sets.of(*kind).and_then(|set| set.get(LedgerSeq(*id))) {
+                    Some(candidate) if candidate.hash == *hash => None,
+                    Some(_) => Some("changed"),
+                    None if material.unreadable.contains(&(*kind, *id)) => Some("scope"),
+                    None => Some("deleted"),
+                },
+            )
+            .collect())
     }
 
     async fn evidence_refused(
@@ -315,8 +405,11 @@ impl Engine {
                         != Some(Verdict::Deny)
             })
         };
-        let (readable_tools, unreadable_tools): (Vec<_>, Vec<_>) =
-            records.iter().cloned().partition(is_readable);
+        // 비밀이 든 도구 기록도 대화 본문과 같이 후보에서 완전히 뺀다.
+        let (readable_tools, unreadable_tools): (Vec<_>, Vec<_>) = records
+            .into_iter()
+            .filter(|record| self.masker.mask(&record.text).as_str() == record.text)
+            .partition(is_readable);
         let mut unreadable: Vec<(EvidenceKind, u64)> = unreadable_tools
             .into_iter()
             .map(|record| (EvidenceKind::Tool, record.seq.0))
@@ -345,6 +438,7 @@ impl Engine {
             readable,
             unreadable,
             rrf_k: settings.rrf_k(),
+            tail: rows.last().map_or(LedgerSeq(0), |row| row.seq),
         })
     }
 }

@@ -12,14 +12,14 @@ use saturn_core::sessions::context::{ContextBudget, ReturnDecision, decide_retur
 use saturn_core::sessions::packet::PacketSource;
 use saturn_core::sessions::{AgentRole, LastTurn, SendTarget, SessionError, SessionRecord};
 use saturn_protocol::ids::{AgentId, ChatId, ConstraintId, LedgerSeq, Provider, SessionId};
-use saturn_protocol::rpc::{ChatNotice, ModelMode};
+use saturn_protocol::rpc::{ChatNotice, EvidenceKind, ModelMode};
 use saturn_protocol::state::SessionState;
 
 use crate::calls::CallKind;
 use crate::dispatch::{MAX_SEND_ATTEMPTS, Start};
 use crate::flow::LiveSession;
 use crate::handoff::{
-    COMPACT_SELECTOR, Handoff, HandoffOutcome, PacketEvidence, Pending, RANK_SELECTOR,
+    COMPACT_SELECTOR, Handoff, HandoffOutcome, PacketEvidence, Pending, RANK_SELECTOR, RelatedLog,
     changes_of_others, constraint_only_source, handoff_of, handoff_source, handoff_source_ordered,
     others_only, reduce_handoff,
 };
@@ -135,13 +135,21 @@ const REDUCED_TARGET_PERCENT: u64 = 50;
 
 impl Reduction {
     /// 목표는 거절 응답이 알려 준 한도, 없으면 상대 provider `P_max`의 일부다. 어느 쪽이든 거절된 패킷보다 작아지게 반으로 줄인 값을 넘지 않는다.
-    /// 고정 구역만으로 목표를 넘으면 `None`.
+    /// 관련 원문은 줄이지 않고 통째로 빼며, 고정 구역만으로 목표를 넘으면 `None`.
     pub(crate) fn reduce(&self, limit_tokens: Option<u64>) -> Option<Handoff> {
         let by_budget = self.budget.packet_limit() * REDUCED_TARGET_PERCENT / 100;
         let target = limit_tokens
             .unwrap_or(by_budget)
             .min(self.sent_tokens * REDUCED_TARGET_PERCENT / 100);
-        reduce_handoff(&self.source, &self.budget, target)
+        reduce_handoff(&self.source_without_related(), &self.budget, target)
+    }
+
+    /// 선주입한 관련 원문을 뺀 재료.
+    pub(crate) fn source_without_related(&self) -> PacketSource {
+        PacketSource {
+            related: Vec::new(),
+            ..self.source.clone()
+        }
     }
 }
 
@@ -158,13 +166,100 @@ impl OpenPlan {
             .evidence
             .as_ref()
             .map_or(1, |evidence| evidence.attempt);
-        let evidence = PacketEvidence::reduced(&handoff, reduction, (attempt, previous));
+        let related = self.evidence.as_ref().and_then(PacketEvidence::related);
+        let evidence = PacketEvidence::reduced(&handoff, reduction, (attempt, previous), related);
         Some(Self {
             handoff: Some(handoff.text),
             reduction: None,
             evidence: Some(evidence),
             ..self
         })
+    }
+
+    /// 보낼 패킷 글. 시험이 보내기 직전 계획을 본다.
+    #[cfg(test)]
+    pub(crate) fn packet_text(&self) -> Option<&str> {
+        self.handoff.as_deref()
+    }
+
+    /// 보낼 패킷의 근거 행과, 보낼 글이 근거의 대화 본문을 모두 담았는지. 시험이 보내기 직전 계획을 본다.
+    #[cfg(test)]
+    pub(crate) fn packet_rows(&self) -> (Vec<crate::store::PacketItemRow>, bool) {
+        let rows = self
+            .evidence
+            .as_ref()
+            .map(PacketEvidence::rows)
+            .unwrap_or_default();
+        let carries = self
+            .evidence
+            .as_ref()
+            .zip(self.handoff.as_deref())
+            .is_some_and(|(evidence, body)| evidence.carries_dialogue(body));
+        (rows, carries)
+    }
+
+    /// 보내기 직전에 다시 맞출 관련 원문. 고른 것이 없으면 `None`.
+    fn related_to_recheck(&self) -> Option<&RelatedLog> {
+        self.evidence
+            .as_ref()
+            .and_then(PacketEvidence::related)
+            .filter(|log| !log.picked.is_empty())
+    }
+
+    /// 재검사에서 어긋난 관련 원문만 빼고 패킷을 다시 만든다. 뺀 이유는 근거에 남기고 오래된 내용으로 대신하지 않는다.
+    /// 패킷에 실을 것이 남지 않으면 패킷 없이 보낸다.
+    fn without_stale_related(self, verdicts: &[Option<&'static str>]) -> Self {
+        let (Some(reduction), Some(log)) = (self.reduction.as_ref(), self.related_to_recheck())
+        else {
+            return self;
+        };
+        let stale_tools: std::collections::HashSet<LedgerSeq> = log
+            .picked
+            .iter()
+            .zip(verdicts)
+            .filter_map(|((kind, id, _), verdict)| {
+                (verdict.is_some() && *kind == EvidenceKind::Tool).then_some(LedgerSeq(*id))
+            })
+            .collect();
+        let log = log.after_recheck(verdicts);
+        let kept: Vec<_> = reduction
+            .source
+            .related
+            .iter()
+            .filter(|record| {
+                log.picked
+                    .iter()
+                    .any(|(kind, id, _)| *kind == record.kind && *id == record.id)
+            })
+            .cloned()
+            .collect();
+        let source = PacketSource {
+            related: kept,
+            competitors: reduction
+                .source
+                .competitors
+                .iter()
+                .filter(|item| !stale_tools.contains(&item.seq))
+                .cloned()
+                .collect(),
+            ..reduction.source.clone()
+        };
+        let budget = reduction.budget;
+        let selector = reduction.selector;
+        let outcome = handoff_of(&source, &budget);
+        let (evidence, reduction, constraint_tiers) =
+            packet_parts(&self.target, &outcome, Some(source), (budget, selector));
+        let handoff = match outcome {
+            HandoffOutcome::Ready(handoff) => Some(handoff.text),
+            HandoffOutcome::Empty | HandoffOutcome::Deferred { .. } => None,
+        };
+        Self {
+            handoff,
+            reduction,
+            constraint_tiers,
+            evidence: evidence.map(|evidence| evidence.with_related(Some(log))),
+            ..self
+        }
     }
 }
 
@@ -431,6 +526,40 @@ fn keeps_model(session: &SessionRecord, model: Option<&str>) -> bool {
 }
 
 impl Engine {
+    /// 패킷을 보내기 직전에 선주입한 관련 원문을 현재 기록과 권한으로 다시 맞춘다. 채팅 revision이나 입력이 달라졌으면 늦은 결과라 모두 빼고,
+    /// 원문이 바뀌었거나 읽기 권한을 잃었거나 사라진 기록은 그 기록만 뺀다. 뺀 이유는 패킷 근거에 남고 오래된 내용으로 대신하지 않는다.
+    pub(crate) async fn recheck_related(&self, record: &QueuedInput, plan: OpenPlan) -> OpenPlan {
+        let Some(log) = plan.related_to_recheck() else {
+            return plan;
+        };
+        let count = log.picked.len();
+        let is_input_current = self.queued(record.id).is_ok_and(|current| {
+            current.chat == record.chat
+                && current.settings == record.settings
+                && current.text == record.text
+        });
+        let verdicts = if is_input_current {
+            let picked: Vec<(EvidenceKind, u64, &str)> = log
+                .picked
+                .iter()
+                .map(|(kind, id, hash)| (*kind, *id, hash.as_str()))
+                .collect();
+            match self.related_recheck(record.chat, log.tail, &picked).await {
+                Ok(verdicts) => verdicts,
+                Err(error) => {
+                    tracing::warn!(chat = record.chat.0, error = %self.failure_line(&error), "related record recheck failed");
+                    vec![Some("retrieval_failed"); count]
+                }
+            }
+        } else {
+            vec![Some("stale_revision"); count]
+        };
+        if verdicts.iter().all(Option::is_none) {
+            return plan;
+        }
+        plan.without_stale_related(&verdicts)
+    }
+
     /// 다음 입력부터 `provider`로 보낸다. 그 provider의 session이 열리면 지운다. 입력에 고정한 모델이 있으면 그 모델의 provider가 먼저다.
     pub(crate) fn switch_provider(&mut self, chat: ChatId, provider: Provider) {
         self.flow.switch_to.insert(chat, provider);
@@ -597,7 +726,13 @@ impl Engine {
             .constraints_of_chat(record.chat)
             .await
             .map_err(|error| failed(error.into()))?;
-        let Some(source) = constraint_only_source(&constraints, &budget) else {
+        let (source, related) = self
+            .attach_related(
+                (record, &settings, &budget),
+                constraint_only_source(&constraints, &budget),
+            )
+            .await;
+        let Some(source) = source else {
             return Ok(plain);
         };
         let outcome = handoff_of(&source, &budget);
@@ -612,7 +747,7 @@ impl Engine {
             handoff,
             reduction,
             constraint_tiers,
-            evidence,
+            evidence: evidence.map(|evidence| evidence.with_related(related)),
             ..plain
         })
     }
@@ -704,6 +839,9 @@ impl Engine {
             }
             SendTarget::New { .. } | SendTarget::Open(_) => (full_source, full),
         };
+        let (source, outcome, related) = self
+            .related_handoff((record, &settings, &budget), &target, source, outcome)
+            .await;
         let (evidence, reduction, constraint_tiers) =
             packet_parts(&target, &outcome, source, (budget, selector));
         let handoff = packet_text(chat, outcome)?;
@@ -715,7 +853,7 @@ impl Engine {
             synced,
             reduction,
             constraint_tiers,
-            evidence,
+            evidence: evidence.map(|evidence| evidence.with_related(related)),
             ..plain
         })
     }
@@ -1229,6 +1367,7 @@ impl Engine {
             &reduced,
             &reduction,
             (restart.evidence.attempt, restart.packet),
+            None,
         );
         let target = PacketTarget {
             chat,

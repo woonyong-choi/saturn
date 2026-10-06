@@ -134,6 +134,7 @@ fn build_packet_fixed_zone_in_order_and_tool_results_only_in_competing() {
         competitors: vec![item(37, "cargo test output", None)],
         evidence_lookup: false,
         provider_docs: Vec::new(),
+        related: Vec::new(),
         up_to: LedgerSeq(42),
     };
 
@@ -1033,4 +1034,91 @@ fn deferred_lists_every_valid_constraint_including_omitted_ones() {
     };
 
     assert_eq!(constraints, vec![long_rule, "dropped".to_string()]);
+}
+
+fn related(kind: EvidenceKind, id: u64, text: &str) -> RelatedRecord {
+    RelatedRecord {
+        kind,
+        chat: ChatId(7),
+        id,
+        hash: crate::sessions::evidence::text_hash(text),
+        text: text.into(),
+    }
+}
+
+#[test]
+fn related_records_sit_in_the_fixed_zone_with_their_typed_reference() {
+    let base = PacketSource {
+        turns: vec![turn(39, "run tests", "ran them")],
+        competitors: vec![item(37, "cargo test output", None)],
+        up_to: LedgerSeq(42),
+        ..PacketSource::default()
+    };
+    let with = PacketSource {
+        related: vec![related(EvidenceKind::Tool, 11, "earlier read of the cache")],
+        ..base.clone()
+    };
+
+    let plain = ready(build_packet(&base, &budget()));
+    let packet = ready(build_packet(&with, &budget()));
+
+    assert!(!plain.text.contains("Related original records"));
+    let reference = format!(
+        "[tool:7:11:{}]\nearlier read of the cache",
+        crate::sessions::evidence::text_hash("earlier read of the cache")
+    );
+    let at = packet
+        .text
+        .find(&reference)
+        .expect("related original should be in the packet");
+    assert!(at > packet.text.find("User: run tests").unwrap());
+    assert!(at < packet.text.find("cargo test output").unwrap());
+    assert!(leads_with_fixed_zone(&fixed_zone(&with), &packet.text));
+    assert!(!leads_with_fixed_zone(&fixed_zone(&base), &packet.text));
+}
+
+#[test]
+fn a_tool_record_carried_as_related_original_leaves_the_competing_zone_by_its_typed_id() {
+    let source = PacketSource {
+        competitors: vec![item(11, "cache read", None), item(12, "parser read", None)],
+        related: vec![
+            related(EvidenceKind::Tool, 11, "cache read"),
+            // 번호가 같아도 종류가 다르면 도구 기록이 아니라서 경쟁 구역에서 빼지 않는다
+            related(EvidenceKind::Text, 12, "an answer"),
+        ],
+        up_to: LedgerSeq(42),
+        ..PacketSource::default()
+    };
+
+    let packet = ready(build_packet(&source, &budget()));
+
+    assert_eq!(
+        packet.text.matches("cache read").count(),
+        1,
+        "{}",
+        packet.text
+    );
+    assert_eq!(
+        packet.text.matches("parser read").count(),
+        1,
+        "{}",
+        packet.text
+    );
+    assert!(packet.items.iter().all(|item| item.seq != LedgerSeq(11)));
+    assert!(packet.items.iter().any(|item| item.seq == LedgerSeq(12)));
+}
+
+#[test]
+fn related_room_is_the_target_budget_left_after_the_fixed_zone() {
+    let heavy = PacketSource {
+        turns: vec![turn(39, "run tests", &filler("a", 1_700))],
+        ..PacketSource::default()
+    };
+
+    let room = related_room_chars(&PacketSource::default(), &budget());
+    let send_limited = related_room_chars(&PacketSource::default(), &budget_sending(200));
+
+    assert!(room > 0 && room < 1_600);
+    assert!(send_limited < room);
+    assert_eq!(related_room_chars(&heavy, &budget()), 0);
 }
