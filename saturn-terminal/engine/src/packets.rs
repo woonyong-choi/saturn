@@ -62,6 +62,7 @@ impl Engine {
                     body: body.to_owned(),
                     estimated_tokens: evidence.tokens,
                     items: evidence.rows(),
+                    selection: Some(evidence.selection()),
                 })
                 .await
         }

@@ -25,8 +25,8 @@ use saturn_protocol::state::InputState;
 
 use crate::Engine;
 use crate::store::{
-    ConstraintState, ExceptionKind, LedgerRow, PacketId, PacketItemRow, RunChanges, RunEnd,
-    SteeredInput, StoredConstraint, StoredException, sha256_hex,
+    ConstraintState, ExceptionKind, LedgerRow, PacketId, PacketItemRow, PacketSelection,
+    RunChanges, RunEnd, SteeredInput, StoredConstraint, StoredException, sha256_hex,
 };
 use crate::switch::Reduction;
 
@@ -63,8 +63,8 @@ pub(crate) struct PacketEvidence {
     /// 첫 시도가 1이고 맥락 한도로 거절돼 줄여 다시 보낼 때마다 1 늘어난다.
     pub(crate) attempt: u32,
     pub(crate) reduced_from: Option<PacketId>,
-    /// 경쟁 구역을 고른 방식. `RANK_SELECTOR`나 `COMPACT_SELECTOR`다.
-    selector: &'static str,
+    /// 경쟁 구역(도구 기록)을 고른 방식과 대체 근거.
+    selection: Selection,
 }
 
 /// 경쟁 구역을 후보 순위(RRF) 순서로 채웠다.
@@ -73,11 +73,84 @@ pub(crate) const RANK_SELECTOR: &str = "rank";
 /// 경쟁 구역을 router `compact` 판단의 남김 확률 순서로 채웠다. 전달 패킷 기록의 `selector` 값이다.
 pub(crate) const COMPACT_SELECTOR: &str = "compact";
 
-impl PacketEvidence {
-    /// 재료에서 처음 만든 패킷의 근거. `selector`는 경쟁 구역을 고른 방식이다.
-    pub(crate) fn first(handoff: &Handoff, source: &PacketSource, selector: &'static str) -> Self {
+/// 경쟁 구역의 선별 하나. 요청한 방식과 실제 적용한 방식을 나누고, 대체 사유와 판단 입력에서 줄인 바이트를 남긴다.
+/// 대화 본문은 어느 쪽이든 줄지 않는다. 확률(confidence)은 여기에 두지 않는다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Selection {
+    /// 설정이 요청한 방식. `RANK_SELECTOR`나 `COMPACT_SELECTOR`다.
+    pub(crate) requested: &'static str,
+    /// 실제로 적용한 방식. 판단을 받지 못했으면 `requested`가 `compact`여도 `rank`다.
+    pub(crate) actual: &'static str,
+    /// 대체했거나 일부만 답했을 때의 고정 사유. `partial`, `late`, `superseded`, `invalid`, `router-failed`,
+    /// `unanswered`, `input-limit`, `no-candidates`, `store-failed` 중 하나다.
+    pub(crate) fallback: Option<&'static str>,
+    /// 질문에 실제로 보낸 후보 글에서 잘린 바이트. 가린 뒤의 글 기준이고, 질문을 보내지 않았으면 0이다.
+    pub(crate) omitted_bytes: u64,
+    /// `input-limit`으로 질문을 만들지 못했을 때 한도를 넘은 `state`와 질문의 바이트. 그 밖에는 0이다.
+    pub(crate) overflow_bytes: u64,
+}
+
+impl Selection {
+    /// 판단을 요청하지 않은 순위 선별.
+    pub(crate) const RANK: Self = Self {
+        requested: RANK_SELECTOR,
+        actual: RANK_SELECTOR,
+        fallback: None,
+        omitted_bytes: 0,
+        overflow_bytes: 0,
+    };
+
+    /// 판단 순서를 적용했다. `fallback`은 일부만 답했을 때의 `partial`이다.
+    pub(crate) const fn judged(fallback: Option<&'static str>, omitted_bytes: u64) -> Self {
         Self {
-            selector,
+            requested: COMPACT_SELECTOR,
+            actual: COMPACT_SELECTOR,
+            fallback,
+            omitted_bytes,
+            overflow_bytes: 0,
+        }
+    }
+
+    /// 판단을 요청했지만 받지 못해 순위로 대체했다.
+    pub(crate) const fn fell_back(reason: &'static str, omitted_bytes: u64) -> Self {
+        Self {
+            requested: COMPACT_SELECTOR,
+            actual: RANK_SELECTOR,
+            fallback: Some(reason),
+            omitted_bytes,
+            overflow_bytes: 0,
+        }
+    }
+
+    /// 필수 `state`가 크기 한도에 들어가지 않아 질문을 보내지 않고 순위로 대체했다. 보낸 후보 글이 없어 생략 바이트는 0이다.
+    pub(crate) const fn over_limit(overflow_bytes: u64) -> Self {
+        Self {
+            requested: COMPACT_SELECTOR,
+            actual: RANK_SELECTOR,
+            fallback: Some("input-limit"),
+            omitted_bytes: 0,
+            overflow_bytes,
+        }
+    }
+
+    /// 패킷 행에 남기는 선별 근거. 판단을 요청하지 않았으면 바이트 두 값은 NULL이다.
+    fn record(self) -> PacketSelection {
+        let is_requested = self.requested == COMPACT_SELECTOR;
+        PacketSelection {
+            requested: self.requested.to_owned(),
+            actual: self.actual.to_owned(),
+            fallback: self.fallback.map(str::to_owned),
+            omitted_bytes: is_requested.then_some(self.omitted_bytes),
+            overflow_bytes: is_requested.then_some(self.overflow_bytes),
+        }
+    }
+}
+
+impl PacketEvidence {
+    /// 재료에서 처음 만든 패킷의 근거. `selection`은 경쟁 구역을 고른 방식이다.
+    pub(crate) fn first(handoff: &Handoff, source: &PacketSource, selection: Selection) -> Self {
+        Self {
+            selection,
             items: handoff.items.clone(),
             constraints: source.constraint_tiers.clone(),
             protected: source.protected(),
@@ -99,7 +172,7 @@ impl PacketEvidence {
         Self {
             attempt: attempt + 1,
             reduced_from: previous,
-            ..Self::first(handoff, &reduction.source, reduction.selector)
+            ..Self::first(handoff, &reduction.source, reduction.selection)
         }
     }
 
@@ -116,7 +189,7 @@ impl PacketEvidence {
             tokens: 0,
             attempt: 1,
             reduced_from: None,
-            selector: RANK_SELECTOR,
+            selection: Selection::RANK,
         }
     }
 
@@ -156,13 +229,18 @@ impl PacketEvidence {
             ref_id: item.seq.0,
             selector: match item.zone {
                 PacketZone::Open => "pending",
-                PacketZone::Competing => self.selector,
+                PacketZone::Competing => self.selection.actual,
             },
             form: item.form.map(|form| form.name().to_owned()),
             reason: item.reason,
             hash: None,
         });
         constraints.chain(dialogue).chain(items).collect()
+    }
+
+    /// 패킷 행에 남기는 선별 근거. 항목 행이 아니라 시도 행의 열로 쓴다.
+    pub(crate) fn selection(&self) -> PacketSelection {
+        self.selection.record()
     }
 }
 
@@ -285,12 +363,7 @@ pub(crate) fn handoff_source_ordered(
     verdicts: Option<&[(LedgerSeq, f64)]>,
 ) -> Option<PacketSource> {
     let last = rows.last()?;
-    // 실행의 이벤트가 이 재료에 없으면(다른 session이 낸 실행을 뺀 변경분 등) 그 실행에 끼운 입력도 뺀다
-    let steers: Vec<&SteeredInput> = steers
-        .iter()
-        .filter(|steer| rows.iter().any(|row| row.run == steer.run))
-        .collect();
-    let turns = turns(rows, &steers);
+    let turns = turns(rows, &steers_in(rows, steers));
     let tools = tools(rows);
     let mut open = pending.entries(last.seq);
     open.extend(open_items(&tools));
@@ -381,8 +454,22 @@ pub(crate) fn reduce_handoff(
     })
 }
 
+/// 실행의 이벤트가 이 재료에 없으면(다른 session이 낸 실행을 뺀 변경분 등) 그 실행에 끼운 입력도 뺀다.
+fn steers_in<'a>(rows: &[LedgerRow], steers: &'a [SteeredInput]) -> Vec<&'a SteeredInput> {
+    steers
+        .iter()
+        .filter(|steer| rows.iter().any(|row| row.run == steer.run))
+        .collect()
+}
+
 /// router `compact`로 묻는 후보 전체와 `state`에 쓸 사용자 입력(오래된 순). 후보는 경쟁 구역에 들어갈 수 있는 도구 호출 전체다.
-pub(crate) fn compact_material(rows: &[LedgerRow]) -> (Vec<CompactCandidate>, Vec<String>) {
+/// 입력은 패킷의 보호 본문과 같은 기록된 사용자 입력과 끼워 넣어 적용한 입력이고, `current`(지금 보내려는 입력)가 마지막이다.
+/// 지금 입력은 아직 기록에 없으므로 따로 받는다. 보호 본문에 들어가지 않는 에이전트 글은 싣지 않는다.
+pub(crate) fn compact_material(
+    rows: &[LedgerRow],
+    steers: &[SteeredInput],
+    current: Option<&str>,
+) -> (Vec<CompactCandidate>, Vec<String>) {
     let candidates = tools(rows)
         .iter()
         .map(|tool| CompactCandidate {
@@ -394,9 +481,12 @@ pub(crate) fn compact_material(rows: &[LedgerRow]) -> (Vec<CompactCandidate>, Ve
                 .unwrap_or_else(|| INTERRUPTED_RESULT.to_owned()),
         })
         .collect();
-    let inputs = turns(rows, &[])
+    let inputs = turns(rows, &steers_in(rows, steers))
         .iter()
-        .map(|turn| opening_input(turn).to_owned())
+        .flat_map(|turn| &turn.messages)
+        .filter(|message| message.role != Role::Assistant)
+        .map(|message| message.text.clone())
+        .chain(current.map(str::to_owned))
         .collect();
     (candidates, inputs)
 }
@@ -1233,7 +1323,7 @@ mod tests {
         let HandoffOutcome::Ready(handoff) = handoff_of(&source, &budget()) else {
             panic!("packet should be ready");
         };
-        let evidence = PacketEvidence::first(&handoff, &source, RANK_SELECTOR);
+        let evidence = PacketEvidence::first(&handoff, &source, Selection::RANK);
 
         assert!(evidence.carries_dialogue(&handoff.text));
         assert!(!evidence.carries_dialogue(&handoff.text.replace("second input", "second")));
@@ -1269,7 +1359,7 @@ mod tests {
         let HandoffOutcome::Ready(handoff) = handoff_of(&source, &budget()) else {
             panic!("packet should be ready");
         };
-        let evidence = PacketEvidence::first(&handoff, &source, RANK_SELECTOR);
+        let evidence = PacketEvidence::first(&handoff, &source, Selection::RANK);
 
         assert!(handoff.text.contains("User: greet\nAgent: Hello there\n"));
         let recorded: Vec<(String, u64, Option<String>)> = evidence
@@ -1306,7 +1396,7 @@ mod tests {
         let HandoffOutcome::Ready(handoff) = handoff_of(&source, &budget()) else {
             panic!("packet should be ready");
         };
-        let evidence = PacketEvidence::first(&handoff, &source, RANK_SELECTOR);
+        let evidence = PacketEvidence::first(&handoff, &source, Selection::RANK);
         let moved = handoff
             .text
             .replace("User: only input\nAgent: ok", "")
@@ -1315,6 +1405,93 @@ mod tests {
 
         assert!(!evidence.carries_dialogue(&format!("{}\n", handoff.text)));
         assert!(!evidence.carries_dialogue(&moved));
+    }
+
+    // #380: 판단 state의 입력은 보호 본문의 사용자 입력과 끼워 넣은 정정을 같은 순서로 담고 지금 입력이 마지막이다
+    #[test]
+    fn compact_inputs_follow_the_protected_dialogue_and_end_with_the_current_input() {
+        let rows = vec![
+            row(
+                1,
+                1,
+                5,
+                Some("write the parser"),
+                text_event(AgentId(1), "started"),
+            ),
+            row(
+                4,
+                1,
+                5,
+                Some("write the parser"),
+                text_event(AgentId(1), "done"),
+            ),
+            row(5, 2, 5, Some("add tests"), text_event(AgentId(1), "ok")),
+        ];
+        let steers = vec![
+            steer(12, 1, 2, "use a hand written lexer"),
+            // 이 재료에 이벤트가 없는 실행에 끼운 입력은 보호 본문처럼 뺀다
+            steer(13, 9, 2, "other session correction"),
+        ];
+
+        let (_, inputs) = compact_material(&rows, &steers, Some("review the parser"));
+
+        assert_eq!(
+            inputs,
+            [
+                "write the parser",
+                "use a hand written lexer",
+                "add tests",
+                "review the parser"
+            ]
+        );
+        let (_, without_current) = compact_material(&rows, &steers, None);
+        assert_eq!(without_current.last().unwrap(), "add tests");
+    }
+
+    // #380: 요청한 방식과 실제 방식, 대체 사유, 생략과 넘친 바이트는 시도 행의 열로 남고 항목 행은 늘지 않는다.
+    // 판단을 요청하지 않았으면 두 바이트 값은 NULL(`None`)이다
+    #[test]
+    fn selection_is_recorded_as_packet_columns_not_item_rows() {
+        let rows = vec![row(1, 1, 5, Some("input"), text_event(AgentId(1), "ok"))];
+        let source =
+            handoff_source(&rows, &[], &[], &Pending::default(), (&[], &[]), &budget()).unwrap();
+        let HandoffOutcome::Ready(handoff) = handoff_of(&source, &budget()) else {
+            panic!("packet should be ready");
+        };
+        let evidence = |selection| PacketEvidence::first(&handoff, &source, selection);
+        let record = |requested: &str,
+                      actual: &str,
+                      fallback: Option<&str>,
+                      bytes: Option<(u64, u64)>| PacketSelection {
+            requested: requested.to_owned(),
+            actual: actual.to_owned(),
+            fallback: fallback.map(str::to_owned),
+            omitted_bytes: bytes.map(|(omitted, _)| omitted),
+            overflow_bytes: bytes.map(|(_, overflow)| overflow),
+        };
+
+        assert_eq!(
+            evidence(Selection::RANK).selection(),
+            record("rank", "rank", None, None)
+        );
+        assert_eq!(
+            evidence(Selection::over_limit(120)).selection(),
+            record("compact", "rank", Some("input-limit"), Some((0, 120)))
+        );
+        assert_eq!(
+            evidence(Selection::fell_back("late", 7)).selection(),
+            record("compact", "rank", Some("late"), Some((7, 0)))
+        );
+        assert_eq!(
+            evidence(Selection::judged(None, 0)).selection(),
+            record("compact", "compact", None, Some((0, 0)))
+        );
+        assert!(
+            evidence(Selection::over_limit(1))
+                .rows()
+                .iter()
+                .all(|item| item.zone != "Selection")
+        );
     }
 
     // #456, #592: 끼워 넣은 입력은 적용한 기록 번호 자리에 적용한 순서로 들어가고, 입력 번호와 역할이 기록된다

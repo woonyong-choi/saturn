@@ -204,6 +204,7 @@ async fn a_packet_without_a_result_before_the_crash_becomes_unknown_and_is_not_s
             body: "packet body".to_owned(),
             estimated_tokens: 3,
             items: Vec::new(),
+            selection: None,
         })
         .await
         .unwrap();

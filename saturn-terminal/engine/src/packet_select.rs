@@ -6,8 +6,8 @@ use std::time::{Duration, SystemTime};
 use saturn_core::queue::SendAction;
 use saturn_core::routers::failure::RETRY_DEADLINE;
 use saturn_core::routers::{
-    CompactCandidate, RouterError, RouterRequest, SET_COMPACT, compact_questions, compact_requests,
-    compact_state, compact_verdicts,
+    CompactCandidate, RouterError, RouterRequest, SET_COMPACT, compact_omitted_bytes,
+    compact_overflow_bytes, compact_questions, compact_state, compact_verdicts,
 };
 use saturn_protocol::ids::{
     AgentId, ChatId, InputId, LedgerSeq, Provider, SessionId, SettingsRevision,
@@ -16,9 +16,9 @@ use saturn_protocol::state::InputState;
 
 use crate::flow::{JobKind, RouterDone, RouterJob};
 
-use crate::handoff::compact_material;
+use crate::handoff::{Selection, compact_material};
 use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
-use crate::store::JudgmentOutcome;
+use crate::store::{JudgmentOutcome, LedgerRow, SteeredInput, StoreError};
 use crate::{Engine, EngineError, masked_chain};
 
 /// router 답을 기다리는 시간. 넘어서 온 답은 늦은 답이라 쓰지 않는다. 호출 하나의 재시도 마감과 같다.
@@ -69,12 +69,13 @@ pub(crate) fn settle(asked: &TransitionKey, now: &TransitionKey, is_retry: bool)
 /// `compact` 판단의 결과.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum CompactOrder {
-    /// 답을 받았다. 항목마다 호출과 결과 중 큰 남김 확률이고 답이 없는 항목은 빠져 있다.
-    Judged(Vec<(LedgerSeq, f64)>),
+    /// 답을 받았다. 항목마다 호출과 결과 중 큰 남김 확률이고 답이 없는 항목은 빠져 있다. 선별 근거를 함께 싣는다.
+    Judged(Vec<(LedgerSeq, f64)>, Selection),
     /// 물을 후보가 없다. router를 부르지 않았고 실패도 아니다.
     NoCandidates,
-    /// 판단을 받지 못했다: router 실패, 답 전부 없음, 크기 한도, 늦은 답, 키가 두 번 달라짐.
-    Unavailable,
+    /// 판단을 받지 못했다: router 실패, 답 전부 없음, 필수 state가 한도에 안 들어감, 늦은 답, 키가 두 번 달라짐.
+    /// 순위로 대체하는 근거를 싣는다.
+    Unavailable(Selection),
 }
 
 /// 판단 한 번을 요청하는 쪽이 정하는 값.
@@ -93,6 +94,8 @@ pub(crate) struct CompactCall {
     ask: CompactAsk,
     request: RouterRequest,
     seqs: Vec<LedgerSeq>,
+    /// 질문에 싣지 못해 잘린 후보 글의 바이트.
+    omitted_bytes: u64,
     /// 키가 달라 다시 묻는 호출이다.
     is_retry: bool,
 }
@@ -142,10 +145,13 @@ impl Engine {
         let Some(reply) = self.flow.compact_replies.get(&slot) else {
             return self.compact_call(ask, false).await;
         };
-        let Some(exchange) = &reply.exchange else {
-            return CompactGate::Ready(CompactOrder::Unavailable);
-        };
         let call = &reply.call;
+        let Some(exchange) = &reply.exchange else {
+            return CompactGate::Ready(CompactOrder::Unavailable(Selection::fell_back(
+                "late",
+                call.omitted_bytes,
+            )));
+        };
         let verdicts: Vec<(LedgerSeq, f64)> = match &exchange.result {
             Ok(response) => compact_verdicts(&call.seqs, std::slice::from_ref(response))
                 .into_iter()
@@ -168,10 +174,21 @@ impl Engine {
         reply
             .is_recorded
             .store(true, std::sync::atomic::Ordering::Relaxed);
+        let omitted = call.omitted_bytes;
         match settled {
-            Settle::Apply if verdicts.is_empty() => CompactGate::Ready(CompactOrder::Unavailable),
-            Settle::Apply => CompactGate::Ready(CompactOrder::Judged(verdicts)),
-            Settle::Fallback => CompactGate::Ready(CompactOrder::Unavailable),
+            Settle::Apply if verdicts.is_empty() => CompactGate::Ready(CompactOrder::Unavailable(
+                Selection::fell_back(unusable_reason(outcome), omitted),
+            )),
+            Settle::Apply => {
+                let partial = (verdicts.len() < call.seqs.len()).then_some("partial");
+                CompactGate::Ready(CompactOrder::Judged(
+                    verdicts,
+                    Selection::judged(partial, omitted),
+                ))
+            }
+            Settle::Fallback => CompactGate::Ready(CompactOrder::Unavailable(
+                Selection::fell_back("superseded", omitted),
+            )),
             Settle::Retry => {
                 let again = CompactAsk {
                     key: key_now,
@@ -182,24 +199,48 @@ impl Engine {
         }
     }
 
+    /// 판단 재료로 읽는 기록 행과 끼워 넣어 적용한 입력. 보호 본문을 만드는 읽기와 같다.
+    async fn compact_records(
+        &self,
+        chat: ChatId,
+    ) -> Result<(Vec<LedgerRow>, Vec<SteeredInput>), StoreError> {
+        Ok((
+            self.store.ledger_since(chat, LedgerSeq(0)).await?,
+            self.store.steered_inputs(chat).await?,
+        ))
+    }
+
     /// 지금 기록으로 후보와 요청을 만든다. 물을 후보가 없거나 요청을 만들 수 없으면 호출 없이 끝낸다.
     async fn compact_call(&self, ask: CompactAsk, is_retry: bool) -> CompactGate {
-        let rows = match self.store.ledger_since(ask.chat, LedgerSeq(0)).await {
-            Ok(rows) => rows,
+        let (rows, steers) = match self.compact_records(ask.chat).await {
+            Ok(records) => records,
             Err(error) => {
                 tracing::warn!(error = %self.failure_line(&EngineError::Store(error)), "failed to read the records for the compact judgment");
-                return CompactGate::Ready(CompactOrder::Unavailable);
+                return CompactGate::Ready(CompactOrder::Unavailable(Selection::fell_back(
+                    "store-failed",
+                    0,
+                )));
             }
         };
-        let (candidates, inputs) = compact_material(&rows);
+        let current = ask
+            .input
+            .and_then(|input| self.queue.input(input))
+            .map(|input| input.text.as_str());
+        let (candidates, inputs) = compact_material(&rows, &steers, current);
         if candidates.is_empty() {
             return CompactGate::Ready(CompactOrder::NoCandidates);
         }
-        let Some(request) = self.compact_request(&candidates, &inputs) else {
-            return CompactGate::Ready(CompactOrder::Unavailable);
+        let (request, omitted_bytes) = match self.compact_request(&candidates, &inputs) {
+            Ok(built) => built,
+            Err(overflow) => {
+                return CompactGate::Ready(CompactOrder::Unavailable(Selection::over_limit(
+                    overflow as u64,
+                )));
+            }
         };
         CompactGate::Ask(CompactCall {
             seqs: candidates.iter().map(|candidate| candidate.seq).collect(),
+            omitted_bytes,
             ask,
             request,
             is_retry,
@@ -343,15 +384,16 @@ impl Engine {
         self.advance(chat).await;
     }
 
-    /// 마지막 사용자 입력과 앞 입력 3개를 `state`에, 후보 내용을 질문에 싣는다. 비밀값은 가리고 절대 경로는 끝 이름만 남긴다.
-    /// `state`와 질문 하나가 크기 한도를 넘으면 요청을 만들지 않는다.
+    /// 현재 요청과 기록된 사용자 입력 전체를 `state`에, 후보 내용을 질문에 싣는다. 비밀값은 가리고 절대 경로는 끝 이름만 남긴다.
+    /// 목표와 정정은 줄이지 않으므로 `state`와 질문 하나가 크기 한도를 넘으면 요청을 만들지 않고 한도를 넘은 바이트를 돌려준다.
+    /// 요청과 함께 돌려주는 값은 가린 뒤 실제 질문을 만드는 글 기준으로 센, 질문에 싣지 못한 후보 글의 바이트다.
     fn compact_request(
         &self,
         candidates: &[CompactCandidate],
         inputs: &[String],
-    ) -> Option<RouterRequest> {
+    ) -> Result<(RouterRequest, u64), usize> {
         let model = self.routers.active().model().to_owned();
-        let state = sanitize_state(&compact_state(inputs), &self.masker);
+        let state = sanitize_state(&compact_state(inputs, candidates.len()), &self.masker);
         let clean: Vec<CompactCandidate> = candidates
             .iter()
             .map(|candidate| CompactCandidate {
@@ -360,15 +402,21 @@ impl Engine {
                 result: sanitize_state(&candidate.result, &self.masker),
             })
             .collect();
-        if let Err(error) = compact_requests(&model, &state, &clean) {
-            tracing::warn!(%error, "compact request is over the size limit");
-            return None;
+        let overflow = compact_overflow_bytes(&model, &state, &clean);
+        if overflow > 0 {
+            tracing::warn!(
+                overflow,
+                "compact state and question are over the size limit"
+            );
+            return Err(overflow);
         }
-        Some(RouterRequest {
+        let omitted = compact_omitted_bytes(&clean) as u64;
+        let request = RouterRequest {
             model,
             state,
             sets: vec![compact_questions(&clean)],
-        })
+        };
+        Ok((request, omitted))
     }
 
     async fn record_compact(
@@ -400,6 +448,15 @@ impl Engine {
         if let Err(error) = self.routers.record(&self.store, context, exchange).await {
             tracing::warn!(error = %self.failure_line(&error), "failed to record a compact judgment");
         }
+    }
+}
+
+/// 판단은 있었지만 쓸 답이 없을 때 패킷 근거에 남기는 고정 사유.
+fn unusable_reason(outcome: JudgmentOutcome) -> &'static str {
+    match outcome {
+        JudgmentOutcome::Ok => "unanswered",
+        JudgmentOutcome::Invalid => "invalid",
+        _ => "router-failed",
     }
 }
 

@@ -50,7 +50,9 @@ pub(crate) use judgments::{JudgmentOutcome, NewJudgment};
 pub(crate) use ledger::{LedgerRow, SteeredInput};
 pub(crate) use model_selections::{NewModelSelection, SelectionIds, SelectionSource};
 pub(crate) use model_shadows::{NewModelShadow, ShadowCandidate, ShadowStatus};
-pub(crate) use packets::{NewPacket, PacketId, PacketItemRow, PacketKind, PacketState};
+pub(crate) use packets::{
+    NewPacket, PacketId, PacketItemRow, PacketKind, PacketSelection, PacketState,
+};
 pub(crate) use raw::UnattributedRaw;
 pub(crate) use records::{NewInput, NewRun, RunEnd, RunRecord, UsageRow};
 pub(crate) use recovery::StoredHold;

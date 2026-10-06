@@ -494,15 +494,66 @@ fn compact_questions_carry_candidate_content_and_clip_long_results() {
 }
 
 #[test]
-fn compact_state_keeps_latest_and_three_earlier_inputs() {
-    let inputs: Vec<String> = (1..=6).map(|n| format!("input {n}")).collect();
+fn compact_state_keeps_every_input_whole_and_states_the_candidate_scope() {
+    // 첫 입력이 정정이고 한 입력이 2,000자를 넘어도 목표와 정정은 줄이지 않는다
+    let long = format!("correction {}", "z".repeat(COMPACT_INPUT_CHARS * 2));
+    let mut inputs = vec![long.clone()];
+    inputs.extend((2..=6).map(|n| format!("input {n}")));
 
-    let state = compact_state(&inputs);
+    let state = compact_state(&inputs, 7);
 
     assert!(state.starts_with("Latest user request:\ninput 6"));
-    assert!(state.contains("- input 3\n- input 4\n- input 5"));
-    assert!(!state.contains("input 2"));
-    assert_eq!(compact_state(&[]), "");
+    assert!(state.contains(&format!(
+        "- {long}\n- input 2\n- input 3\n- input 4\n- input 5"
+    )));
+    assert!(state.contains("All 7 tool call records"));
+    assert!(state.contains("up to 2000 characters and a result up to 4000 characters"));
+    assert!(state.contains("Only tool records are selected"));
+    assert_eq!(compact_state(&[], 7), "");
+}
+
+#[test]
+fn compact_questions_mark_a_cut_and_the_omitted_bytes_are_counted() {
+    let long = CompactCandidate {
+        seq: LedgerSeq(4),
+        call: "Bash cargo test".into(),
+        // 한글은 글자당 3바이트다. 근거가 앞 4,000자 밖 중간에 있다
+        result: format!(
+            "{}중간근거{}",
+            "가".repeat(COMPACT_RESULT_CHARS),
+            "나".repeat(10)
+        ),
+    };
+    let short = candidate(5);
+
+    let (_, questions) = compact_questions(&[long.clone(), short.clone()]);
+
+    let result = &questions[1].text;
+    assert!(!result.contains("중간근거"));
+    assert!(result.ends_with("\n[14 more characters not shown]"));
+    assert!(!questions[3].text.contains("not shown"));
+    assert_eq!(compact_omitted_bytes(&[long, short]), 14 * 3);
+}
+
+#[test]
+fn compact_overflow_counts_the_bytes_over_the_request_limit() {
+    let candidates = [candidate(1)];
+    let question = compact_questions(&candidates)
+        .1
+        .iter()
+        .map(split::question_bytes)
+        .max()
+        .unwrap();
+    let room = split::MAX_STATE_AND_QUESTION_BYTES - "m".len() - question;
+
+    assert_eq!(
+        compact_overflow_bytes("m", &"s".repeat(room), &candidates),
+        0
+    );
+    assert_eq!(
+        compact_overflow_bytes("m", &"s".repeat(room + 9), &candidates),
+        9
+    );
 }
 
 #[test]

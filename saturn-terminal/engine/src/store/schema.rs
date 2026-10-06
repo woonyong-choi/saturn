@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 21;
+pub(crate) const SCHEMA_VERSION: u32 = 22;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -19,6 +19,7 @@ const BACKUP_SUFFIX: &str = ".db";
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
 pub(crate) const MIGRATIONS: &[&str] = &[
     V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21,
+    V22,
 ];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
@@ -454,6 +455,16 @@ const V21: &str = r#"
 ALTER TABLE handoff_packet_items ADD COLUMN body_hash TEXT;
 "#;
 
+/// 전달 패킷 시도에 경쟁 구역(도구 기록) 선별 근거를 더한다. 요청한 방식, 실제 방식, 대체 사유, 질문에 보낸 후보 글에서 잘린
+/// 바이트, 질문을 만들지 못했을 때 한도를 넘은 바이트다. 전부 비어 있을 수 있고 이관 전 행은 비어 있다.
+const V22: &str = r#"
+ALTER TABLE handoff_packets ADD COLUMN requested_selector TEXT;
+ALTER TABLE handoff_packets ADD COLUMN actual_selector TEXT;
+ALTER TABLE handoff_packets ADD COLUMN selection_fallback TEXT;
+ALTER TABLE handoff_packets ADD COLUMN candidate_omitted_bytes INTEGER;
+ALTER TABLE handoff_packets ADD COLUMN state_overflow_bytes INTEGER;
+"#;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct MigrationNotice {
     pub from: u32,
@@ -818,6 +829,33 @@ mod tests {
         );
         assert!(store.held_tasks().await.unwrap().is_empty());
         assert!(store.interrupted_subagents().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v21_file_migrates_to_packet_selection_columns_keeping_packets() {
+        let (dir, store) = temp_store_at(21).await;
+        sqlx::raw_sql(
+            "INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0); \
+             INSERT INTO handoff_packets (id, chat_id, kind, attempt, session_id, provider, \
+             settings_revision, chat_revision, constraint_revision, policy, body_hash, body_bytes, \
+             estimated_tokens, state, created_at) \
+             VALUES (1, 1, 'Switch', 1, 1, 'claude', 1, 0, 0, 'p', 'h', 1, 1, 'Sent', 0)",
+        )
+        .execute(&store.pool)
+        .await
+        .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (21, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        let chat = saturn_protocol::ids::ChatId(1);
+        // 이관 전 행은 선별 근거가 비어 있다
+        let packets = store.packets_of_chat(chat).await.unwrap();
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].selection, None);
     }
 
     #[tokio::test]

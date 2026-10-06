@@ -357,9 +357,6 @@ pub const COMPACT_INPUT_CHARS: usize = 2_000;
 /// 결과를 질문에 싣는 앞 글자 수(초안).
 pub const COMPACT_RESULT_CHARS: usize = 4_000;
 
-/// `state`에 싣는 사용자 입력 수. 마지막 입력과 그 앞 3개다.
-pub const COMPACT_STATE_INPUTS: usize = 4;
-
 /// `compact` 질문이 싣는 후보 한 건. 호출은 `<도구 이름> <인자>`, 결과는 호출의 결과 글이다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompactCandidate {
@@ -368,29 +365,76 @@ pub struct CompactCandidate {
     pub result: String,
 }
 
-fn clip(text: &str, limit: usize) -> String {
-    text.chars().take(limit).collect()
+/// 앞 `limit`자까지 보이는 글의 바이트 길이.
+fn shown_len(text: &str, limit: usize) -> usize {
+    text.char_indices()
+        .nth(limit)
+        .map_or(text.len(), |(at, _)| at)
+}
+
+/// 앞 `limit`자만 싣고, 잘렸으면 그 사실과 남은 글자 수를 글 끝에 표시한다. 질문이 원문 전체를 본 것처럼 읽히지 않게 한다.
+fn clipped(text: &str, limit: usize) -> String {
+    let shown = shown_len(text, limit);
+    let hidden = text[shown..].chars().count();
+    if hidden == 0 {
+        return text.to_owned();
+    }
+    format!("{}\n[{hidden} more characters not shown]", &text[..shown])
+}
+
+// cost: time O(n·L), heap O(1), stack O(1)
+// vars: n = 후보 수, L = 후보 글자 수
+// basis: estimate
+/// 질문에 싣지 못해 잘린 후보 글의 바이트 합. 호출은 앞 `COMPACT_INPUT_CHARS`자, 결과는 앞 `COMPACT_RESULT_CHARS`자까지만 싣는다.
+pub fn compact_omitted_bytes(candidates: &[CompactCandidate]) -> usize {
+    candidates
+        .iter()
+        .map(|candidate| {
+            candidate.call.len() - shown_len(&candidate.call, COMPACT_INPUT_CHARS)
+                + candidate.result.len()
+                - shown_len(&candidate.result, COMPACT_RESULT_CHARS)
+        })
+        .sum()
 }
 
 // cost: time O(n·L), heap O(n·L), stack O(1)
-// vars: n = 입력 수(최대 4), L = 입력 글자 수
+// vars: n = 입력 수, L = 입력 글자 수
 // basis: estimate
-/// 지금 하려는 일을 알리는 `state`. `inputs`는 오래된 순서의 사용자 입력이고 마지막 입력과 그 앞 3개만 쓴다.
-pub fn compact_state(inputs: &[String]) -> String {
-    let start = inputs.len().saturating_sub(COMPACT_STATE_INPUTS);
-    let recent = &inputs[start..];
-    let Some((latest, earlier)) = recent.split_last() else {
+/// 지금 하려는 일을 알리는 `state`. `inputs`는 오래된 순서의 사용자 입력(끼워 넣은 정정 포함)이고 마지막이 지금 요청이다.
+/// 목표와 정정은 필수 재료라 줄이지 않고 전부 싣는다. 크기 한도에 들어가지 않으면 호출자가 `compact_overflow_bytes`로 알고
+/// 판단을 쓰지 않는다. `candidates`는 질문으로 묻는 후보 수이고, 질문에 후보 글이 어디까지 실리는지를 함께 알린다.
+pub fn compact_state(inputs: &[String], candidates: usize) -> String {
+    let Some((latest, earlier)) = inputs.split_last() else {
         return String::new();
     };
-    let mut state = format!(
-        "Latest user request:\n{}\n\nEarlier user requests (oldest first):",
-        clip(latest, COMPACT_INPUT_CHARS)
-    );
+    let mut state =
+        format!("Latest user request:\n{latest}\n\nEarlier user requests (oldest first):");
     for input in earlier {
         state.push_str("\n- ");
-        state.push_str(&clip(input, COMPACT_INPUT_CHARS));
+        state.push_str(input);
     }
+    state.push_str(&format!(
+        "\n\nJudgment scope:\n\
+         - All {candidates} tool call records of this chat are asked, one pair of questions each.\n\
+         - A call is shown up to {COMPACT_INPUT_CHARS} characters and a result up to {COMPACT_RESULT_CHARS} characters. \
+         A cut is marked with the number of characters not shown.\n\
+         - The recorded dialogue is kept in full outside this judgment. Only tool records are selected."
+    ));
     state
+}
+
+// cost: time O(n·L), heap O(n), stack O(1)
+// vars: n = 후보 수, L = 후보 글자 수
+// basis: estimate
+/// `state`와 가장 긴 질문 하나가 요청 한도를 넘는 바이트. 0이면 `state`를 줄이지 않고 요청을 만들 수 있다.
+pub fn compact_overflow_bytes(model: &str, state: &str, candidates: &[CompactCandidate]) -> usize {
+    let (_, questions) = compact_questions(candidates);
+    let largest = questions
+        .iter()
+        .map(split::question_bytes)
+        .max()
+        .unwrap_or(0);
+    (model.len() + state.len() + largest).saturating_sub(split::MAX_STATE_AND_QUESTION_BYTES)
 }
 
 // cost: time O(n·L), heap O(n·L), stack O(1)
@@ -403,8 +447,8 @@ pub fn compact_questions(candidates: &[CompactCandidate]) -> (QuestionSetId, Vec
     let questions = candidates
         .iter()
         .flat_map(|candidate| {
-            let call = clip(&candidate.call, COMPACT_INPUT_CHARS);
-            let result = clip(&candidate.result, COMPACT_RESULT_CHARS);
+            let call = clipped(&candidate.call, COMPACT_INPUT_CHARS);
+            let result = clipped(&candidate.result, COMPACT_RESULT_CHARS);
             [
                 noul(
                     &compact_call_id(candidate.seq),

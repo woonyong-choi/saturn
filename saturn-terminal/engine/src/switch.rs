@@ -19,9 +19,9 @@ use crate::calls::CallKind;
 use crate::dispatch::{MAX_SEND_ATTEMPTS, Start};
 use crate::flow::LiveSession;
 use crate::handoff::{
-    COMPACT_SELECTOR, Handoff, HandoffOutcome, PacketEvidence, Pending, RANK_SELECTOR,
-    changes_of_others, constraint_only_source, handoff_of, handoff_source, handoff_source_ordered,
-    others_only, reduce_handoff,
+    Handoff, HandoffOutcome, PacketEvidence, Pending, Selection, changes_of_others,
+    constraint_only_source, handoff_of, handoff_source, handoff_source_ordered, others_only,
+    reduce_handoff,
 };
 use crate::models::pinned_model_name;
 use crate::packet_select::{
@@ -124,8 +124,8 @@ pub(crate) struct Restart {
 pub(crate) struct Reduction {
     pub(crate) source: PacketSource,
     pub(crate) budget: ContextBudget,
-    /// 경쟁 구역을 고른 방식. 줄여 다시 만든 패킷의 근거에도 같게 남긴다.
-    pub(crate) selector: &'static str,
+    /// 경쟁 구역을 고른 방식과 대체 근거. 줄여 다시 만든 패킷의 근거에도 같게 남긴다.
+    pub(crate) selection: Selection,
     /// 거절된 패킷의 추정 토큰 수.
     pub(crate) sent_tokens: u64,
 }
@@ -303,15 +303,15 @@ struct PacketMaterial<'a> {
 }
 
 impl Engine {
-    /// 실험 옵션 `jev`: 돌아온 `compact` 판단의 순서로 다시 만든 패킷 재료와 결과. 판단이 아직 없으면 `Planning::Ask`로 물을 호출을 돌려주고
-    /// 호출자가 별도 작업에 맡긴다. 판단을 받지 못했으면 `None`이라
+    /// 실험 옵션 `jev`: 돌아온 `compact` 판단의 순서로 다시 만든 패킷 재료와 결과, 요청과 실제 선별 근거. 판단이 아직 없으면
+    /// `Planning::Ask`로 물을 호출을 돌려주고 호출자가 별도 작업에 맡긴다. 판단을 받지 못했으면 재료는 `None`이라
     /// 호출자가 순위 순서 패킷을 그대로 쓰고, router가 시작한 전환이면 전환을 건너뛴다(`Planning::Skip`).
     async fn judged_source(
         &self,
         record: &QueuedInput,
         (plain, main, is_stale): (&OpenPlan, Option<&SessionRecord>, bool),
         material: &PacketMaterial<'_>,
-    ) -> Result<Option<(Option<PacketSource>, HandoffOutcome)>, Planning> {
+    ) -> Result<(Option<(Option<PacketSource>, HandoffOutcome)>, Selection), Planning> {
         let key = || TransitionKey {
             chat: record.chat,
             from: main.map(|main| main.id),
@@ -333,7 +333,7 @@ impl Engine {
             CompactGate::Ask(call) => return Err(Planning::Ask(Box::new(call))),
         };
         match order {
-            CompactOrder::Judged(verdicts) => {
+            CompactOrder::Judged(verdicts, selection) => {
                 let source = handoff_source_ordered(
                     material.rows,
                     material.steers,
@@ -346,9 +346,9 @@ impl Engine {
                 let outcome = source.as_ref().map_or(HandoffOutcome::Empty, |source| {
                     handoff_of(source, material.budget)
                 });
-                Ok(Some((source, outcome)))
+                Ok((Some((source, outcome)), selection))
             }
-            CompactOrder::Unavailable
+            CompactOrder::Unavailable(_)
                 if self.routers.compact_after_failure(starter)
                     == CompactFailure::SkipTransition =>
             {
@@ -357,7 +357,8 @@ impl Engine {
                     model: main.and_then(|main| main.model.clone()),
                 })
             }
-            CompactOrder::Unavailable | CompactOrder::NoCandidates => Ok(None),
+            CompactOrder::Unavailable(selection) => Ok((None, selection)),
+            CompactOrder::NoCandidates => Ok((None, Selection::fell_back("no-candidates", 0))),
         }
     }
 }
@@ -389,12 +390,12 @@ fn packet_parts(
     target: &SendTarget,
     outcome: &HandoffOutcome,
     source: Option<PacketSource>,
-    (budget, selector): (ContextBudget, &'static str),
+    (budget, selection): (ContextBudget, Selection),
 ) -> (Option<PacketEvidence>, Option<Reduction>, PacketTiers) {
     let (HandoffOutcome::Ready(handoff), Some(source)) = (outcome, source) else {
         return (None, None, Vec::new());
     };
-    let evidence = PacketEvidence::first(handoff, &source, selector);
+    let evidence = PacketEvidence::first(handoff, &source, selection);
     let tiers = match target {
         SendTarget::New { .. } => source.constraint_tiers.clone(),
         _ => Vec::new(),
@@ -402,7 +403,7 @@ fn packet_parts(
     let reduction = Reduction {
         source,
         budget,
-        selector,
+        selection,
         sent_tokens: handoff.tokens,
     };
     (Some(evidence), Some(reduction), tiers)
@@ -605,7 +606,7 @@ impl Engine {
             &plain.target,
             &outcome,
             Some(source),
-            (budget, RANK_SELECTOR),
+            (budget, Selection::RANK),
         );
         let handoff = packet_text(record.chat, outcome)?;
         Ok(OpenPlan {
@@ -670,7 +671,7 @@ impl Engine {
             return Ok(OpenPlan { target, ..plain });
         }
         let target = self.keep_pinned_model(target, plain.model.as_deref());
-        let mut selector = RANK_SELECTOR;
+        let mut selection = Selection::RANK;
         let (source, outcome) = match &target {
             SendTarget::Resume(id) => {
                 let source = self.change_source(*id, (rows, changes), (&steers, &pending), &budget);
@@ -691,21 +692,19 @@ impl Engine {
                     budget: &budget,
                     settings: &settings,
                 };
-                match self
+                let (judged, chosen) = self
                     .judged_source(record, (&plain, main, stale.is_some()), &material)
-                    .await?
-                {
-                    Some(judged) => {
-                        selector = COMPACT_SELECTOR;
-                        judged
-                    }
+                    .await?;
+                selection = chosen;
+                match judged {
+                    Some(judged) => judged,
                     None => (full_source, full),
                 }
             }
             SendTarget::New { .. } | SendTarget::Open(_) => (full_source, full),
         };
         let (evidence, reduction, constraint_tiers) =
-            packet_parts(&target, &outcome, source, (budget, selector));
+            packet_parts(&target, &outcome, source, (budget, selection));
         let handoff = packet_text(chat, outcome)?;
         let leaving = leaving_main(main, &plain, stale.is_some());
         Ok(OpenPlan {

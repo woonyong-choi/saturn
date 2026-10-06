@@ -136,14 +136,37 @@
 
 `compact` 요청은 후보의 내용을 질문에, 지금 하려는 일을 `state`에 싣는다.
 
-1. `state`는 마지막 사용자 입력 원문과 그 앞 사용자 입력 3개 원문이다. 입력 하나는 앞 2,000자까지 싣는다(초안).
-2. `call_<기록 번호>_keep` 질문에는 `<도구 이름> <인자 JSON>`을, `result_<기록 번호>_keep` 질문에는 같은 호출과 결과 앞 4,000자를 싣는다.
+1. `state`는 지금 보내려는 사용자 입력 원문(`Latest user request`)과, 패킷의 보호 본문과 같은 기록된 사용자 입력·끼워 넣어 적용한 입력 전부를 오래된 순으로 싣는다. 목표와 정정은 필수 재료라 개수나 글자 수로 줄이지 않는다. 뒤에 후보의 실제 제공 범위(후보 도구 기록 수, 호출 2,000자·결과 4,000자까지 실린다는 것, 대화는 보호 본문으로 따로 전부 간다는 것)를 한 단락으로 붙인다.
+2. `call_<기록 번호>_keep` 질문에는 `<도구 이름> <인자 JSON>`을, `result_<기록 번호>_keep` 질문에는 같은 호출과 결과 앞 4,000자를 싣는다(초안). 호출은 앞 2,000자까지 싣는다. 잘린 글에는 끝에 `[N more characters not shown]`을 붙여 판단이 원문 전체를 본 것처럼 읽히지 않게 한다.
 3. 기록 번호로 결과를 전달할 때 후보인 다른 에이전트의 결과 요약은 결과 자리에 요약문을 싣는다(초안).
 4. `state`와 질문 모두 [router 호출](router.md#router-호출)의 규칙대로 비밀값을 가리고 절대 경로를 `[abs]/이름`으로 바꾼다.
 
 - 후보의 내용을 `state`가 아니라 질문에 싣는 것은 요청을 질문 단위로 나눌 때 조각마다 같은 `state`를 되풀이해도 그 크기가 후보 수에 따라 늘지 않게 하기 위해서다.
 - 제약 목록은 `state`에 넣지 않는다. 제약은 패킷의 고정 구역에 전부 들어가므로 후보를 남길지 판단하는 데 쓰지 않는다.
-- 이 형식(결과 앞 4,000자, 마지막 입력과 앞 입력 3개)으로 후보 전체를 판단한 패킷은 판단 없는 순위 패킷보다 정답률이 50.7%p [44.7, 56.7] 높았다([새 패킷 규칙의 전환 품질 재측정](../experiments/handoff-packet-quality-v2/report.md)).
+- 필수 `state`와 질문 하나를 합친 크기가 요청 한도(32KiB, 초안)를 넘으면 `state`를 줄이지 않고 판단을 쓰지 않는다. 순위로 대체하고 사유 `input-limit`과 한도를 넘은 바이트를 전달 패킷 기록에 남긴다([선별 근거 기록](#선별-근거-기록)).
+- 앞 4,000자 밖 도구 결과의 근거는 이 요청이 보지 못한다. 잘려 안 보인 바이트는 기록에 세어 두며, 중간 근거까지 판정한다는 뜻이 아니다. 앞·뒤 발췌나 중간 근거 검색은 이 변경의 범위가 아니다.
+- 아래 정답률(+50.7%p)은 이전 형식(마지막 입력과 앞 입력 3개, 입력당 2,000자)으로 잰 값이다. 지금 입력과 모든 앞 입력을 싣는 형식은 같은 방식으로 재측정하지 않았고, 이 문서는 Jev 효과를 입증하지 않는다. 효과는 [#7](https://github.com/woonyong-choi/saturn/issues/7), [#544](https://github.com/woonyong-choi/saturn/issues/544)에서 확인한다.
+- 이전 형식으로 후보 전체를 판단한 패킷은 판단 없는 순위 패킷보다 정답률이 50.7%p [44.7, 56.7] 높았다([새 패킷 규칙의 전환 품질 재측정](../experiments/handoff-packet-quality-v2/report.md)).
+
+### 선별 근거 기록
+
+전달 패킷 시도 행(`handoff_packets`)에 선별 근거를 다섯 열로 남긴다. 스키마 V22에서 더한 널 허용 열이고, 항목 행(`handoff_packet_items`)의 `ref_id`는 기록·제약·입력 번호만 가리키며 선별 값을 싣지 않는다. 새 표나 DB, 일반 선별 계층은 만들지 않는다. 경쟁 구역 행의 `selector`는 실제 적용한 방식 그대로다.
+
+| 열 | 값 |
+|---|---|
+| `requested_selector` | 설정이 요청한 방식. `rank`나 `compact`다. |
+| `actual_selector` | 실제 적용한 방식. 판단을 썼으면 `compact`, 요청하지 않았거나 못 받아 대체했으면 `rank`다. |
+| `selection_fallback` | 일부만 답하면 `partial`, 대체하면 `late`(늦은 답), `superseded`(전환 키가 두 번 달라짐), `invalid`(응답 형식 오류), `router-failed`, `unanswered`(쓸 수 있는 답이 하나도 없음, 후보에 없는 번호만 온 경우 포함), `input-limit`, `no-candidates`(판단을 요청했지만 물을 도구 기록이 없음), `store-failed` 중 하나다. 문제가 없으면 NULL이다. |
+| `candidate_omitted_bytes` | 질문에 실제로 보낸 후보 글에서 잘린 바이트. 비밀값을 가리고 절대 경로를 줄인 뒤의 글 기준이다. 판단을 요청했지만 질문을 보내지 않았으면 0이고, 판단을 요청하지 않았으면 NULL이다. |
+| `state_overflow_bytes` | `input-limit`으로 질문을 만들지 못했을 때 한도를 넘은 바이트. 그 밖에 판단을 요청했으면 0이고, 요청하지 않았으면 NULL이다. |
+
+- 판단을 요청하지 않은 기본 경로(RRF)는 요청과 실제가 모두 `rank`이고 바이트 열 둘은 NULL이다. 이관 전 시도는 다섯 열이 모두 NULL이다.
+- 판단을 요청했는데 도구 호출이 없으면 router를 부르지 않고 `compact` 요청, `rank` 적용, `no-candidates`로 남는다. 이 기록을 만들려고 판단을 부르지 않는다. 패킷을 보내지 않으면 기록도 없다.
+- 판단을 요청하지 않은 경우는 `jev`를 설정했어도 판단 대상이 아닌 전환(열린 session으로 돌아가 변경분만 보내는 경우 등)을 포함한다.
+
+- 두 방식은 같은 보호 본문, 같은 후보 번호와 원문 해시, 같은 예산을 쓰고 경쟁 구역에서 실제로 고른 번호와 순서만 다르다. 호출과 결과는 후보 하나로 함께 묻고, 결과를 모르는 호출은 결과 자리에 오류 결과를 둔 채 남은 일 칸에도 그대로 들어간다.
+- 판단이 돌려준 확률은 순서에만 쓴다. 기록에도 확률이나 confidence를 성공 확률로 남기지 않는다.
+- 기존 `judgments`의 `fallbacks`(`partial`, `superseded`, `invalid`, `router-failed`)는 호출 단위 기록이고, 위 행은 패킷 단위 기록이다. 요청 사용량은 판단 기록에서 그대로 센다.
 
 ### 도구 결과 메모
 
@@ -210,7 +233,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 |---|---|
 | `compact`, `file-rank` router 호출이 재시도 뒤에도 실패 | router가 시작한 전환은 건너뛰고 현재 모델로 진행한다. 그 밖에는 RRF 순서로 경쟁 구역의 예산까지 채운다. |
 | 요청 조각 일부 실패 | 실패한 조각의 항목은 남기고, 답이 있는 남긴 항목 뒤에 RRF 순으로 둔다. |
-| 크기 한도를 넘는 `state` | 질문 하나도 담을 수 없으므로 요청을 만들지 않고 RRF 순서로 채운다. |
+| 크기 한도를 넘는 `state` | 필수 목표와 정정을 줄이지 않고 요청을 만들지 않는다. RRF 순서로 채우고 사유 `input-limit`과 넘은 바이트를 남긴다. |
 | 도구 호출 인자에 경로 없음 | 파일 겹침 채널에서 그 후보를 뺀다. |
 | 근거 조회의 출입증이 없거나 회수됨 | 거절한다(`pass is unknown or revoked`). |
 | 명령이 샌드박스 때문에 engine에 닿지 못함 | `Unreachable`로 센다. 오류에 표지와 한 명령으로 실행하라는 안내를 싣는다. |
@@ -227,6 +250,13 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 요청이 크기 한도를 넘으면 질문 단위로 나누고 조각마다 같은 state를 싣는다. | `saturn-terminal/core/src/routers/split.rs`의 `split_request_over_limit_splits_by_question_with_same_state`, `saturn-terminal/core/src/routers/tests.rs`의 `compact_requests_large_state_splits_and_every_piece_carries_state` |
 | 최종 순서는 답이 있는 항목의 남김 확률 순이고 같은 확률이면 RRF 순이며 확률이 낮은 항목도 빼지 않는다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_orders_by_probability_and_keeps_low`, `order_after_router_same_probability_follows_rrf_order` |
 | 항목의 남김 확률은 호출과 결과 중 큰 값이다. | `saturn-terminal/core/src/routers/tests.rs`의 `compact_verdicts_takes_larger_of_call_and_result` |
+| 판단 state는 목표와 정정을 줄이지 않고 후보의 제공 범위를 싣는다. 크기 한도를 넘으면 한도를 넘은 바이트를 센다. | `saturn-terminal/core/src/routers/tests.rs`의 `compact_state_keeps_every_input_whole_and_states_the_candidate_scope`, `compact_overflow_counts_the_bytes_over_the_request_limit` |
+| 질문에서 잘린 후보 글은 표시하고 바이트를 센다. | 같은 파일의 `compact_questions_mark_a_cut_and_the_omitted_bytes_are_counted`, `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `evidence_in_the_middle_of_a_long_result_is_marked_not_shown_and_counted` |
+| state의 입력은 보호 본문의 사용자 입력·끼워 넣은 입력과 같고 지금 입력이 마지막이다. | `saturn-terminal/engine/src/handoff.rs`의 `compact_inputs_follow_the_protected_dialogue_and_end_with_the_current_input` |
+| RRF와 Jev는 보호 본문 행·해시, 후보 번호와 원문 해시, 예산에 든 후보 수가 같고 실제로 고른 번호만 다르다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `rank_and_jev_keep_the_same_basis_and_differ_only_in_the_selected_tool_ids`, `equal_probabilities_keep_the_rank_order` |
+| 요청한 방식과 실제 방식, 대체 사유, 생략 바이트, 넘친 바이트를 시도 행 열로 구분해 남기고 항목 행에는 섞지 않는다. 부분 답, 전체 실패, 한도 초과, 늦은 답, 전환 키 변경, 후보에 없는 번호와 범위 밖 확률을 가른다. | 같은 파일의 `without_a_judgment_the_packet_is_filled_by_rank_order`(`router-failed`, `unanswered`, `invalid`, `input-limit`), `single_needed_block_with_low_scores_elsewhere_is_kept_not_replaced`(`partial`), `an_answer_that_arrives_too_late_is_not_used`(`late`), `a_judgment_whose_transition_key_changed_is_discarded_and_rank_order_is_used`(`superseded`), `invalid_ids_in_the_answer_are_ignored_and_never_stop_the_valid_ones`, `without_candidates_the_packet_records_compact_requested_and_rank_applied`(`no-candidates`), `saturn-terminal/engine/src/handoff.rs`의 `selection_is_recorded_as_packet_columns_not_item_rows` |
+| 질문에 싣지 못한 바이트는 가린 뒤 질문을 만든 글로 센다. `input-limit`은 넘은 바이트를 따로 남기고 생략 바이트는 0이다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `omitted_bytes_are_counted_on_the_masked_text_the_question_was_built_from`, `without_a_judgment_the_packet_is_filled_by_rank_order` |
+| 결과를 모르는 호출은 오류 결과로 남고 결과 있는 호출은 호출과 결과를 함께 묻는다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `an_unknown_result_stays_unknown_and_is_never_judged_as_a_result` |
 | 답이 없는 항목(실패한 조각 포함)은 RRF 순으로 뒤에 둔다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_unanswered_follow_answered_in_rrf_order`, `saturn-terminal/core/src/routers/tests.rs`의 `compact_verdicts_merges_pieces_and_skips_failed_piece` |
 | router가 전부 답하지 못하면 RRF 순서로 예산까지 채운다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_no_verdicts_keeps_rrf_order`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_router_no_response_fills_in_rrf_order` |
 | 띄어쓰기와 조사가 달라도 같은 한글 조각을 만든다. | `saturn-terminal/core/src/sessions/fragments.rs`의 `fragments_spacing_and_particle_share_hangul_bigrams` |
@@ -253,7 +283,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 - RRF 상위 40개는 router 전체 판단이 남긴 항목의 절반 이상을 놓친다([실험 결과](../experiments/rrf-k-top-n/report.md)).
 - 영문 단어 사이 공백이 빠지면 소문자 단어가 하나로 붙어 단어 겹침을 놓친다. 이 오타의 상위 10개 재현율은 56.4%였다([실험 결과](../experiments/wordpiece-typo-recall/report.md)).
 - 후보가 150개면 질문이 300개라 router 입력 토큰이 후보 수에 비례한다. 큰 요청은 여러 건으로 나뉘고, 병렬로 보내면 지연은 조각 수와 거의 무관하게 약 0.3초다([#179](https://github.com/woonyong-choi/saturn/issues/179) 실측).
-- 나뉜 요청은 조각마다 같은 state를 보내 입력 토큰이 조각 수만큼 늘고, 조각이 실패하면 그 항목은 순위로만 정해진다.
+- 나뉜 요청은 조각마다 같은 state를 보내 입력 토큰이 조각 수만큼 늘고, 조각이 실패하면 그 항목은 순위로만 정해진다. 목표와 정정을 줄이지 않으므로 사용자 입력이 쌓인 긴 채팅일수록 state가 커져 한도(`input-limit`)에 닿으면 판단을 쓰지 못한다. 이 한도에 닿는 비율은 아직 재지 않았다.
 - 동시 요청이 8개를 넘을 때의 속도 제한은 재지 않았다.
 - 기준 파일 범위를 실측으로 맞춰야 한다.
 

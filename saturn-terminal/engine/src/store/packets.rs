@@ -39,6 +39,7 @@ pub(crate) enum PacketState {
 
 /// 패킷에 들어갔거나 빠진 재료 항목 하나. `zone`이 `Constraints`면 `ref_id`는 제약 번호이고, 대화 본문의 구역(`User`, `Steer`, `Assistant`)이면
 /// `Steer`는 입력 번호, 나머지는 기록 번호이며, 그 밖은 기록 번호다.
+/// 경쟁 구역 행의 `selector`는 실제 적용한 방식이다. 요청한 방식과 대체 사유는 시도 행의 `PacketSelection`에 둔다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PacketItemRow {
     pub(crate) zone: String,
@@ -50,6 +51,21 @@ pub(crate) struct PacketItemRow {
     pub(crate) form: Option<String>,
     /// 빠진 이유. 들어갔으면 `None`.
     pub(crate) reason: Option<&'static str>,
+}
+
+/// 시도의 경쟁 구역(도구 기록) 선별 근거. 이관 전 행과 선별을 기록하지 않는 시도는 전부 NULL이다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PacketSelection {
+    /// 설정이 요청한 방식(`rank`, `compact`).
+    pub(crate) requested: String,
+    /// 실제로 적용한 방식.
+    pub(crate) actual: String,
+    /// 대체했거나 일부만 답했을 때의 고정 사유.
+    pub(crate) fallback: Option<String>,
+    /// 질문에 보낸 후보 글에서 잘린 바이트. 판단을 요청하지 않았으면 NULL이다.
+    pub(crate) omitted_bytes: Option<u64>,
+    /// 질문을 만들지 못했을 때 한도를 넘은 바이트. 판단을 요청하지 않았으면 NULL이다.
+    pub(crate) overflow_bytes: Option<u64>,
 }
 
 /// 보내기 직전의 패킷 한 시도.
@@ -74,6 +90,8 @@ pub(crate) struct NewPacket {
     pub(crate) body: String,
     pub(crate) estimated_tokens: u64,
     pub(crate) items: Vec<PacketItemRow>,
+    /// 선별 근거. 기록하지 않으면 `None`이다.
+    pub(crate) selection: Option<PacketSelection>,
 }
 
 /// 저장한 시도 하나. 항목은 따로 읽는다.
@@ -91,6 +109,27 @@ pub(crate) struct StoredPacket {
     pub(crate) body_hash: String,
     pub(crate) body_bytes: u64,
     pub(crate) state: PacketState,
+    pub(crate) selection: Option<PacketSelection>,
+}
+
+/// 시도 행의 선별 열. 요청한 방식과 실제 방식이 NULL이면 선별을 기록하지 않은 행(이관 전)이라 `None`이다.
+fn selection_of(row: &sqlx::sqlite::SqliteRow) -> Result<Option<PacketSelection>, StoreError> {
+    let requested: Option<String> = row.try_get("requested_selector")?;
+    let actual: Option<String> = row.try_get("actual_selector")?;
+    let (Some(requested), Some(actual)) = (requested, actual) else {
+        return Ok(None);
+    };
+    Ok(Some(PacketSelection {
+        requested,
+        actual,
+        fallback: row.try_get("selection_fallback")?,
+        omitted_bytes: row
+            .try_get::<Option<i64>, _>("candidate_omitted_bytes")?
+            .map(from_sql_int),
+        overflow_bytes: row
+            .try_get::<Option<i64>, _>("state_overflow_bytes")?
+            .map(from_sql_int),
+    }))
 }
 
 impl Store {
@@ -106,8 +145,9 @@ impl Store {
         let id: i64 = sqlx::query_scalar(
             "INSERT INTO handoff_packets (chat_id, kind, attempt, reduced_from, session_id, input_id, \
              provider, settings_revision, chat_revision, constraint_revision, policy, body_hash, \
-             body_bytes, estimated_tokens, state, created_at) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Prepared', ?) RETURNING id",
+             body_bytes, estimated_tokens, state, created_at, requested_selector, actual_selector, \
+             selection_fallback, candidate_omitted_bytes, state_overflow_bytes) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Prepared', ?, ?, ?, ?, ?, ?) RETURNING id",
         )
         .bind(to_sql_int(packet.chat.0))
         .bind(enum_text(&packet.kind)?)
@@ -124,6 +164,28 @@ impl Store {
         .bind(to_sql_int(packet.body.len() as u64))
         .bind(to_sql_int(packet.estimated_tokens))
         .bind(to_millis(SystemTime::now()))
+        .bind(packet.selection.as_ref().map(|s| s.requested.as_str()))
+        .bind(packet.selection.as_ref().map(|s| s.actual.as_str()))
+        .bind(
+            packet
+                .selection
+                .as_ref()
+                .and_then(|s| s.fallback.as_deref()),
+        )
+        .bind(
+            packet
+                .selection
+                .as_ref()
+                .and_then(|s| s.omitted_bytes)
+                .map(to_sql_int),
+        )
+        .bind(
+            packet
+                .selection
+                .as_ref()
+                .and_then(|s| s.overflow_bytes)
+                .map(to_sql_int),
+        )
         .fetch_one(&mut *tx)
         .await?;
         for item in &packet.items {
@@ -209,7 +271,8 @@ impl Store {
     ) -> Result<Vec<StoredPacket>, StoreError> {
         let rows = sqlx::query(
             "SELECT id, kind, attempt, reduced_from, session_id, input_id, run_id, provider, \
-             provider_session, body_hash, body_bytes, state FROM handoff_packets \
+             provider_session, body_hash, body_bytes, state, requested_selector, actual_selector, \
+             selection_fallback, candidate_omitted_bytes, state_overflow_bytes FROM handoff_packets \
              WHERE chat_id = ? ORDER BY id",
         )
         .bind(to_sql_int(chat.0))
@@ -236,6 +299,7 @@ impl Store {
                     body_hash: row.try_get("body_hash")?,
                     body_bytes: from_sql_int(row.try_get("body_bytes")?),
                     state: parse_enum(&row.try_get::<String, _>("state")?)?,
+                    selection: selection_of(row)?,
                 })
             })
             .collect()

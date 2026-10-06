@@ -11,8 +11,7 @@ use saturn_protocol::rpc::{ChatNotice, Notification};
 
 use crate::flow::LiveSession;
 use crate::handoff::{
-    COMPACT_SELECTOR, HandoffOutcome, PacketEvidence, RANK_SELECTOR, handoff_of, handoff_source,
-    handoff_source_ordered,
+    HandoffOutcome, PacketEvidence, Selection, handoff_of, handoff_source, handoff_source_ordered,
 };
 use crate::packet_select::{
     CompactAsk, CompactGate, CompactOrder, CompactResume, TransitionKey, Trigger,
@@ -24,9 +23,9 @@ use crate::{Engine, EngineError};
 /// 맥락 정리 패킷의 경쟁 구역 순서.
 enum BoundaryOrder {
     /// router `compact` 판단의 남김 확률 순서.
-    Ordered(Vec<(LedgerSeq, f64)>),
-    /// 후보 순위(RRF) 순서. 옵션이 꺼졌거나 판단을 받지 못했다.
-    Rank,
+    Ordered(Vec<(LedgerSeq, f64)>, Selection),
+    /// 후보 순위(RRF) 순서. 옵션이 꺼졌거나(`Selection::RANK`) 판단을 받지 못했다(대체 근거).
+    Rank(Selection),
     /// 판단을 기다리는 사이 트리가 유휴가 아니거나 합칠 대기 입력이 생겼다.
     Postponed,
     /// 판단을 별도 작업에 맡겼다. 답이 오면 `after_turn_value`가 이어 간다.
@@ -138,10 +137,10 @@ impl Engine {
         if decide(&budget, &measure) != CompactionDecision::Restart {
             return Ok(false);
         }
-        let mut selector = RANK_SELECTOR;
+        let selection;
         let (source, outcome) = match self.compact_by_judgment(chat, live).await {
-            BoundaryOrder::Ordered(verdicts) => {
-                selector = COMPACT_SELECTOR;
+            BoundaryOrder::Ordered(verdicts, chosen) => {
+                selection = chosen;
                 let source = handoff_source_ordered(
                     &rows,
                     &steers,
@@ -156,7 +155,10 @@ impl Engine {
                     .map_or(HandoffOutcome::Empty, |source| handoff_of(source, &budget));
                 (source, outcome)
             }
-            BoundaryOrder::Rank => (source, outcome),
+            BoundaryOrder::Rank(chosen) => {
+                selection = chosen;
+                (source, outcome)
+            }
             // 정리를 미룬다. 다음 턴 경계에서 다시 판정한다
             BoundaryOrder::Postponed => return Ok(false),
             // 판단이 돌아올 때까지 다음 입력은 보내지 않는다
@@ -175,11 +177,11 @@ impl Engine {
                 let Some(source) = source else {
                     return Ok(false);
                 };
-                let evidence = PacketEvidence::first(&handoff, &source, selector);
+                let evidence = PacketEvidence::first(&handoff, &source, selection);
                 let reduction = Reduction {
                     source,
                     budget,
-                    selector,
+                    selection,
                     sent_tokens: handoff.tokens,
                 };
                 self.restart_session(chat, live, handoff.text, Some(reduction), evidence)
@@ -221,13 +223,13 @@ impl Engine {
     /// 아니면 정리를 다음 턴 경계로 미룬다.
     async fn compact_by_judgment(&mut self, chat: ChatId, live: &LiveSession) -> BoundaryOrder {
         let Some(revision) = self.flow.settings_of.get(&live.agent).copied() else {
-            return BoundaryOrder::Rank;
+            return BoundaryOrder::Rank(Selection::RANK);
         };
         let Ok(settings) = self.settings.at(&self.store, revision).await else {
-            return BoundaryOrder::Rank;
+            return BoundaryOrder::Rank(Selection::RANK);
         };
         if settings.packet_select() != PacketSelect::Jev {
-            return BoundaryOrder::Rank;
+            return BoundaryOrder::Rank(Selection::RANK);
         }
         let key = || TransitionKey {
             chat,
@@ -261,13 +263,17 @@ impl Engine {
             return BoundaryOrder::Postponed;
         }
         match order {
-            CompactOrder::Judged(verdicts) => BoundaryOrder::Ordered(verdicts),
-            CompactOrder::Unavailable => {
+            CompactOrder::Judged(verdicts, selection) => {
+                BoundaryOrder::Ordered(verdicts, selection)
+            }
+            CompactOrder::Unavailable(selection) => {
                 self.routers
                     .compact_after_failure(TransitionStarter::Forced);
-                BoundaryOrder::Rank
+                BoundaryOrder::Rank(selection)
             }
-            CompactOrder::NoCandidates => BoundaryOrder::Rank,
+            CompactOrder::NoCandidates => {
+                BoundaryOrder::Rank(Selection::fell_back("no-candidates", 0))
+            }
         }
     }
 }

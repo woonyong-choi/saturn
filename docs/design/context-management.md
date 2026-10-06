@@ -280,12 +280,14 @@ P_max = T / 10
 | 새 session을 여는 전환과 맥락 정리 | 후보 전체를 한 번 묻고 남김 확률 순으로 채운다. 같은 예산(`P_max`)과 같은 고정 구역을 쓰고 달라지는 것은 경쟁 구역의 순서뿐이다. |
 | 보관 session으로 돌아가며 변경분만 붙이는 경우, 열린 session을 그대로 쓰는 경우 | 묻지 않는다. 패킷이 아니라 변경분이다. |
 | 일부 후보만 답했다 | 답한 항목을 확률 순으로 앞에 두고 나머지는 RRF 순으로 뒤에 둔다. 판단 기록에 `partial`을 남긴다. |
-| 답이 전부 없다, router 실패, 응답 형식 오류, 크기 한도, 늦은 답 | 판단 없이 진행한다. 맥락 정리와 사용자가 고정한 전환은 RRF 순서로 채우고 로그를 남긴다. router가 고른 모델이 열린 메인과 달라 시작한 전환은 전환을 건너뛰고 현재 모델로 진행한다([router 실패](router.md#router-실패)). |
+| 답이 전부 없다, router 실패, 응답 형식 오류, 필수 state가 크기 한도에 들어가지 않음(`input-limit`), 늦은 답 | 판단 없이 진행한다. 맥락 정리와 사용자가 고정한 전환은 RRF 순서로 채우고 로그를 남긴다. router가 고른 모델이 열린 메인과 달라 시작한 전환은 전환을 건너뛰고 현재 모델로 진행한다([router 실패](router.md#router-실패)). |
 | 판단 중 전환 키가 달라졌다 | 판단을 `superseded`로 기록하고 한 번 다시 묻는다. 또 다르면 판단 없이 진행한다. |
 
 - 전환을 누가 시작했는지는 사용자가 모델을 고정했거나(`/model` 포함) 유휴 복귀나 맥락 크기 규칙이 연 전환이 아니고, 모델 선택이 오토 모드이며, 고른 provider나 모델이 열린 메인과 다를 때만 router가 시작한 것으로 센다. 그 밖은 모두 강제한 전환이다.
 - 판단은 성공이든 실패든 판단 기록에 남아 요청 합계에 센다. 늦은 답으로 끊은 호출은 응답을 받지 못해 기록하지 않고 로그만 남긴다. 연속 실패 집계(`RouterPaused`, `RouterDisconnected` 알림)에는 이 호출을 세지 않는다.
 - 전달 패킷 기록의 경쟁 구역 항목은 `selector`가 `compact`(판단 순서)나 `rank`(순위 순서)다. 판단을 받지 못해 대체했으면 `rank`로 남아 기록이 실제 보낸 패킷과 맞는다.
+- 판단을 요청한 패킷은 전달 패킷 시도 행에 요청한 방식(`compact`)과 실제 방식, 대체 사유, 질문에서 잘린 후보 글의 바이트, 한도를 넘은 바이트를 따로 남긴다([선별 근거 기록](context-selection.md#선별-근거-기록)). 대화 본문은 어느 쪽이든 줄지 않고, 판단이 고르는 것은 도구 호출·결과 기록뿐이다.
+- 판단 state에는 지금 보내려는 입력과 기록된 사용자 입력 전부를 줄이지 않고 싣는다. 이 변경은 Jev 효과를 입증하지 않으며, 기본값은 `rrf`로 둔다. 효과 확인 전에는 기본값을 바꾸지 않는다([#7](https://github.com/woonyong-choi/saturn/issues/7), [#544](https://github.com/woonyong-choi/saturn/issues/544)).
 
 #### 낮은 확신 대체 규칙을 쓰지 않는 이유
 
@@ -395,6 +397,7 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | `compact` 질문은 패킷을 만들 때 후보 전체를 한 번 router에 보내고 턴이 끝날 때는 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `jev_order_fills_the_budget_with_the_blocks_the_router_wants`(새 session을 여는 입력에서 후보 전체를 한 번 묻는다), `option_is_off_by_default_and_asks_nothing`. 턴 종료에서 묻지 않는 것은 `compact_at_boundary`가 `Restart` 판정 뒤에만 부르는 구조로 보장하며 별도 시험은 없다. |
 | 판단을 받지 못하면(실패, 전부 무응답, 형식 오류, 늦은 답) 순위 순서로 채우고 전달 기록의 `selector`가 `rank`로 남는다. 일부만 답했으면 답한 항목이 앞에 온다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `without_a_judgment_the_packet_is_filled_by_rank_order`, `an_answer_that_arrives_too_late_is_not_used`, `jev_order_fills_the_budget_with_the_blocks_the_router_wants` |
 | 필요한 블록 하나만 높고 나머지가 낮아도 판단을 버리지 않고 그 블록을 먼저 넣는다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `single_needed_block_with_low_scores_elsewhere_is_kept_not_replaced` |
+| RRF와 Jev 비교는 같은 보호 본문·후보·예산에서 도구 기록의 선택만 다르고, 요청한 방식과 실제 방식, 대체 사유, 생략 바이트, 넘친 바이트를 구분해 남긴다. | [맥락 고르기의 요구사항](context-selection.md#요구사항) 표의 `rank_and_jev_keep_the_same_basis_and_differ_only_in_the_selected_tool_ids` 등 |
 | 패킷 판단은 전환 키가 같을 때만 적용하고, 다르면 한 번 다시 묻고, 또 다르면 판단 없이 진행한다. 기록이 늘어도 판단을 버리지 않는다. | `saturn-terminal/engine/src/packet_select.rs`의 `settle_applies_equal_keys_and_asks_again_once_when_they_differ`, `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `a_judgment_whose_transition_key_changed_is_discarded_and_rank_order_is_used`(판단 중 보내는 session이 끝나고 받는 provider가 바뀌어 두 판단이 `superseded`로 남고 순위 순서로 채운다) |
 | 판단을 기다리는 동안 engine은 다른 요청에 지연 없이 응답한다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `jev_order_fills_the_budget_with_the_blocks_the_router_wants`(판단 호출을 붙잡은 채 다른 접속의 `Version` 요청이 응답한다) |
 | router가 시작한 전환은 판단이 실패하면 건너뛰고, 사용자가 고정한 전환은 순위 순서로 연다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `a_failed_judgment_skips_only_the_switch_the_router_started` |
