@@ -180,15 +180,15 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 | 명령 | 하는 일 |
 |---|---|
-| `saturn evidence search <검색어> [--limit N]` | 후보를 순위 순으로 보인다. 첫 줄은 집합 해시와 후보 수, 이어서 한 줄에 번호, 시각, 글자 수, 해시, 발췌다. 상한은 50개다. |
+| `saturn evidence search <검색어>... [--limit N]` | 검색어는 따옴표 없이 여러 단어로 써도 공백 하나로 이어 한 검색어로 본다. 후보를 순위 순으로 보인다. 첫 줄은 집합 해시와 후보 수, 이어서 한 줄에 번호, 시각, 글자 수, 해시, 발췌다. 상한은 50개다. |
 | `saturn evidence read <번호> [--hash H] [--offset N] [--limit N]` | 원문을 읽는다. 한 번에 최대 20000글자이고 더 있으면 첫 줄에 `next_offset`이 있다. |
 
 - 출입증(`SATURN_PASS`)으로 접속하고 출입증을 준 채팅의 기록만 본다. 출입증이 없거나 회수됐으면 거절한다. 에이전트 작업 밖에서는 쓸 수 없다.
 - 기록 번호는 채팅마다 센다. 다른 채팅의 번호를 넣어도 그 채팅의 기록이 아니라 이 채팅의 같은 번호를 본다.
 - 읽기 범위는 작업 폴더와 더한 폴더다. 도구 호출이 건드린 경로가 범위 밖이거나 `permission.read`의 `deny`와 일치하면 그 기록은 후보에서 빠지고 번호로 읽으려 해도 거절한다. 권한이 나중에 좁아져도 지난 기록으로 우회하지 못하게 하기 위해서다.
-- 조회는 기록 저장소를 읽을 뿐 파일을 읽지 않는다. 조회마다 종류, 번호, 결과(`Ok`, `NotFound`, `Stale`, `Scope`), 돌려준 양을 `evidence_lookups`에 남긴다([기록](records.md#근거-조회-기록)). 조회한 기록이 없는데 0회로 보이는 일이 없게 하기 위해서다.
+- 조회는 기록 저장소를 읽을 뿐 파일을 읽지 않는다. 조회마다 종류, 번호, 결과(`Ok`, `NotFound`, `Stale`, `Scope`, `Unreachable`), 돌려준 양을 `evidence_lookups`에 남긴다([기록](records.md#근거-조회-기록)). 조회한 기록이 없는데 0회로 보이는 일이 없게 하기 위해서다.
 - 에이전트가 이 명령을 쓰게 알리는 것은 설정 `context.evidence.lookup`(기본 거짓)이다. 켜면 경쟁 구역에서 원문 아닌 모양으로 들어가거나 빠진 기록이 있는 패킷의 끝에 `saturn evidence read <number>` 안내 한 줄이 붙는다. 안내는 경쟁 구역 예산에 든다. 꺼 두면 패킷은 지금과 같다.
-- 셸 명령이라 권한은 Saturn 규칙을 그대로 받는다. 새 스킬이나 MCP 서버를 설치하지 않는다. Claude는 Bash 샌드박스가 Unix 소켓 접속을 막으므로 실행별 `--settings`의 `sandbox.network.allowUnixSockets`에 engine 소켓 경로 하나만 넣는다(`providers/claude`). Codex는 같은 명령이 허가 요청을 거쳐 소켓에 닿는다.
+- 셸 명령이라 권한은 Saturn 규칙을 그대로 받는다. 새 스킬이나 MCP 서버를 설치하지 않는다. Claude는 Bash 샌드박스가 Unix 소켓 접속을 막으므로 실행별 `--settings`의 `sandbox.network.allowUnixSockets`에 engine 소켓 경로 하나만 넣는다(`providers/claude`). Codex는 허가한 명령을 작업 폴더 쓰기 샌드박스 안에서 돌리고, 그 샌드박스는 셸이 직접 실행하는 마지막 명령에만 소켓 접속을 허용한다. 그래서 `saturn evidence read 13`이나 `true && saturn evidence read 13`은 닿고, 파이프나 `;`로 이어 붙여 하위 프로세스로 도는 `saturn evidence read 13 | tail -n 3`은 `Operation not permitted`로 닿지 못한다(Codex 0.158.0, 실제 Codex로 확인). 소켓 허용을 Codex 설정으로 넓히지 않는다. 닿지 못하면 `saturn evidence`가 첫머리에 `Error: saturn evidence unreachable (read 13)`와 함께 한 명령으로 실행하고 `--limit`과 `--offset`을 쓰라는 안내를 낸다. 요청이 engine에 오지 않으므로 engine이 도구 결과의 이 첫머리를 읽어 그 시도를 `Unreachable`로 센다. 결과 첫머리가 아니거나 번호가 틀린 같은 글은 세지 않는다. 오류를 `2>&1 | tail`로 잘라 첫머리가 없어지면 그 시도는 세지 못한다.
 
 ### 오류 처리
 
@@ -199,6 +199,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 크기 한도를 넘는 `state` | 질문 하나도 담을 수 없으므로 요청을 만들지 않고 RRF 순서로 채운다. |
 | 도구 호출 인자에 경로 없음 | 파일 겹침 채널에서 그 후보를 뺀다. |
 | 근거 조회의 출입증이 없거나 회수됨 | 거절한다(`pass is unknown or revoked`). |
+| 명령이 샌드박스 때문에 engine에 닿지 못함 | `Unreachable`로 센다. 오류에 표지와 한 명령으로 실행하라는 안내를 싣는다. |
 | 없는 기록 번호 | `NotFound`로 거절한다. |
 | 후보를 본 뒤 원문이 바뀜(해시 불일치) | `Stale`로 거절한다. |
 | 읽기 범위 밖 파일이거나 읽기 규칙이 거부하는 경로의 기록 | `Scope`로 거절하고 후보에서도 뺀다. |
@@ -224,7 +225,7 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 예산에 안 드는 후보는 건너뛰고, 순위에 없는 후보는 번호가 큰 순으로 뒤에 붙는다. | 같은 파일의 `a_candidate_over_the_remaining_budget_is_skipped_and_smaller_ones_still_fit`, `rank_order_drops_unknown_ids_and_appends_unranked_candidates_newest_first` |
 | 검색은 검색어 순위로 돌려주고 읽기는 기록 원문을 쪽 단위로 돌려준다. | `saturn-terminal/engine/src/lifecycle/evidence.rs`의 `search_ranks_by_the_query_and_read_returns_the_recorded_text_in_pages` |
 | 없는 번호, 바뀐 해시, 읽기 범위 밖과 읽기 규칙이 거부하는 경로의 기록은 거절하고 후보에서 빼며, 다른 채팅의 기록은 나오지 않는다. | 같은 파일의 `read_refuses_unknown_other_chat_stale_and_out_of_scope_records` |
-| 출입증이 없으면 거절하고 조회마다 기록한다. | 같은 파일의 `an_unknown_pass_is_refused_and_every_lookup_is_counted` |
+| 출입증이 없으면 거절하고 조회마다 기록한다. 닿지 못한 시도는 도구 결과의 오류 첫머리 표지로 `Unreachable`이 되고, 첫머리가 아닌 표지는 세지 않는다. | 같은 파일의 `an_unknown_pass_is_refused_and_every_lookup_is_counted` |
 | 안내 한 줄은 옵션을 켜고 원문이 잘렸을 때만 붙는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_lookup_hint_only_when_the_option_is_on_and_an_original_was_cut` |
 | 순위가 router 전체 판단과 얼마나 겹치는지 잰다. | [RRF k와 router 상위 N 실험 결과](../experiments/rrf-k-top-n/report.md): 상위 10개 12.0%, 상위 40개 44.5% |
 | 단어 조각 단위가 오타 입력에서 관련 후보를 놓치지 않는다. | [단어 조각 단위별 오타 재현율 실험 결과](../experiments/wordpiece-typo-recall/report.md) |

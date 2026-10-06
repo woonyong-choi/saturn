@@ -71,6 +71,24 @@ async fn target_model_candidates_are_the_model_list_in_provider_order() {
         .map(|option| text.find(option).expect("option should be listed"))
         .collect();
     assert!(positions.windows(2).all(|pair| pair[0] < pair[1]));
+
+    // `model.candidates`를 정하면 그 안의 모델만 후보에 남는다
+    let config = format!("{AUTO}candidates = [\"claude/haiku\", \"codex/gpt-x\"]\n");
+    let mut flow = Flow::with_config(&config, vec![idle_reply(0.1)]).await;
+    flow.add_provider(crate::providers::test_support::CODEX);
+    know_models(&mut flow, crate::providers::test_support::CODEX, &["gpt-x"]);
+    know_models(
+        &mut flow,
+        crate::providers::test_support::CLAUDE,
+        &["opus", "haiku"],
+    );
+    let input = flow.accept_only("hello").await;
+    let record = flow.record(input);
+    let plan = flow.engine.model_plan(record.settings).await.unwrap();
+    assert_eq!(
+        flow.engine.model_candidates(record.chat, &plan),
+        ["claude/haiku", "codex/gpt-x"]
+    );
 }
 
 #[tokio::test]

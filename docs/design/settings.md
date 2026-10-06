@@ -110,6 +110,7 @@
 | `model.default` | `<provider>/<model>` 문자열 | 없음. 처음 고르기 창이 사용자 설정 파일에 쓴다([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)) |
 | `model.mode` | `auto`, `manual` | `manual`. `auto`는 router가 새 작업의 모델을 고르는 실험 옵션이라 모델 선택 순효과 실험([#542](https://github.com/woonyong-choi/saturn/issues/542))을 통과하기 전에는 기본으로 켜지 않는다 |
 | `model.prefer` | `<provider>/<model>` 문자열 목록 | 없음. 선호하는 모델의 순서이고 `auto`일 때 품질을 확정한 후보 안에서만 우선한다. 강제 고정이 아니다([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)) |
+| `model.candidates` | `<provider>/<model>` 문자열 목록 | 없음. 있으면 router에 물을 `target_model` 후보와 그림자 후보를 이 목록 안의 모델로 제한하고 이 밖의 선택은 지원하지 않는 선택으로 본다. 모델 선택 순효과 실험([#542](https://github.com/woonyong-choi/saturn/issues/542))이 후보를 [모델 평가 근거 목록](model-evidence.md) 안으로 고정하는 실험 옵션이다 |
 | `router.mode` | `jev`, `saturn`, `collect` | `jev` |
 | `router.endpoint` | 문자열 | `https://api.typesafe.ai` |
 | `router.model` | 문자열 | `jev-1.13.0` |

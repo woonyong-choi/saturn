@@ -10,6 +10,7 @@ use saturn_core::routers::{QuestionSetId, RouterRequest};
 use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision};
 
 use crate::Engine;
+use crate::models::ModelPlan;
 use crate::store::{NewModelShadow, ShadowCandidate, ShadowStatus, sha256_hex};
 
 /// 판단 요청에 그림자 질문을 묻고 돌려받은 값. 판단 기록을 쓸 때 함께 쓴다.
@@ -31,13 +32,13 @@ impl Engine {
     pub(crate) fn add_shadow(
         &self,
         record: &QueuedInput,
-        enabled: bool,
+        plan: &ModelPlan,
         request: &mut RouterRequest,
     ) {
-        if !enabled || record.pinned_model.is_some() {
+        if !plan.shadow || record.pinned_model.is_some() {
             return;
         }
-        let candidates = self.model_candidates(record.chat);
+        let candidates = self.model_candidates(record.chat, plan);
         if candidates.is_empty() {
             return;
         }

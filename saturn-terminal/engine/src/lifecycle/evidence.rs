@@ -1,7 +1,7 @@
 //! 근거 검색과 원문 조회 테스트(#539): 에이전트 작업이 출입증으로 자기 채팅의 기록만 찾고 원문을 다시 읽는다.
 
 use saturn_core::sessions::evidence::text_hash;
-use saturn_protocol::ids::{ChatId, LedgerSeq};
+use saturn_protocol::ids::{AgentId, ChatId, LedgerSeq};
 use saturn_protocol::rpc::{EvidenceItem, QueryResult};
 
 use super::child_passes::{Family, family};
@@ -224,6 +224,19 @@ async fn an_unknown_pass_is_refused_and_every_lookup_is_counted() {
         .evidence_read(&family.pass, (LedgerSeq(9_999), None), (0, 5))
         .await
         .unwrap_err();
+    // 명령이 engine에 닿지 못한 시도는 도구 결과의 오류 표지로 센다. 첫머리가 아닌 표지와 다른 오류는 세지 않는다
+    for output in [
+        "Error: saturn evidence unreachable (read 7): blocked\n\nCaused by:\n    0: Operation not permitted",
+        "Error: saturn evidence unreachable (search): blocked",
+        "file text\nError: saturn evidence unreachable (read 3): blocked",
+        "Error: saturn evidence unreachable (read x): blocked",
+        "Error: something else",
+    ] {
+        let result = tool_result(AgentId(1), "c", output);
+        engine
+            .note_unreachable_lookup(family.flow.chat, &result)
+            .await;
+    }
 
     assert_eq!(refusal_of(search.unwrap_err()), EvidenceRefusal::Pass);
     assert_eq!(refusal_of(read.unwrap_err()), EvidenceRefusal::Pass);
@@ -238,8 +251,15 @@ async fn an_unknown_pass_is_refused_and_every_lookup_is_counted() {
         .collect();
     assert_eq!(
         summary,
-        [("Search", "Ok"), ("Read", "Ok"), ("Read", "NotFound")]
+        [
+            ("Search", "Ok"),
+            ("Read", "Ok"),
+            ("Read", "NotFound"),
+            ("Read", "Unreachable"),
+            ("Search", "Unreachable"),
+        ]
     );
+    assert_eq!(lookups[3].record, Some(LedgerSeq(7)));
     assert_eq!(lookups[1].record, Some(login));
     assert_eq!(lookups[1].units, 5);
 }

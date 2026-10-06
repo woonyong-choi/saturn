@@ -5,6 +5,7 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Clear, Paragraph};
+use saturn_protocol::event::counted_tokens;
 use saturn_protocol::rpc::{Request, UsageRange, UsageRow};
 
 use crate::i18n::{self, Lang};
@@ -190,10 +191,10 @@ fn table_row(who: &str, cells: &[String; 5], who_width: usize) -> String {
 
 // cost: time O(1), heap O(1), stack O(1)
 // basis: estimate
-/// 여러 턴의 합계인 행만 `n 토큰 · n 턴`. 토큰은 보고된 칸만 더한다.
+/// 여러 턴의 합계인 행만 `n 토큰 · n 턴`. 토큰은 `counted_tokens` 규칙으로 센다.
 fn turns_text(lang: Lang, row: &UsageRow) -> Option<String> {
     let turns = row.turns.filter(|turns| *turns > 1)?;
-    let tokens: u64 = row.tokens.iter().flatten().sum();
+    let tokens = counted_tokens(row.tokens).unwrap_or(0);
     Some(format!(
         "{} {} · {turns} {}",
         i18n::format_count(tokens),

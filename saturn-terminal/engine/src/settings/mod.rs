@@ -331,6 +331,19 @@ impl Settings {
             .unwrap_or_default()
     }
 
+    /// 후보 제한 `model.candidates`(`<provider>/<model>` 글). 비어 있으면 provider가 알린 모델 모두가 후보다. 실험 옵션이다.
+    pub(crate) fn model_candidates(&self) -> Vec<String> {
+        self.get("model.candidates")
+            .and_then(Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// 기본 모델 `model.default`의 원문(`<provider>/<model>`). 고르지 않았으면 `None`.
     pub(crate) fn model_default(&self) -> Option<&str> {
         self.get("model.default")?.as_str()

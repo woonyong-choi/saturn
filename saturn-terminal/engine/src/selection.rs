@@ -42,7 +42,7 @@ impl Engine {
         routed: Option<String>,
         (outcome, policy): (RouterOutcome, String),
     ) -> SelectionPlan {
-        let candidates = self.model_candidates(record.chat);
+        let candidates = self.model_candidates(record.chat, plan);
         let base = |source, model, reason, skipped| SelectionPlan {
             source,
             model,
@@ -63,7 +63,7 @@ impl Engine {
         }
         let mut reason = None;
         if let Some(text) = routed.filter(|_| plan.mode == ModelMode::Auto) {
-            if self.is_supported(record, &text) {
+            if self.is_supported(record, plan, &text) {
                 return base(SelectionSource::Router, Some(text), None, Vec::new());
             }
             reason = Some("unsupported");
@@ -95,7 +95,10 @@ impl Engine {
     }
 
     /// provider가 지금 알려 준 모델 목록에 있는 모델인지. 목록에 없으면 어댑터가 지원한다고 알 수 없다.
-    fn is_supported(&self, record: &QueuedInput, text: &str) -> bool {
+    fn is_supported(&self, record: &QueuedInput, plan: &ModelPlan, text: &str) -> bool {
+        if !plan.candidates.is_empty() && !plan.candidates.iter().any(|item| item == text) {
+            return false;
+        }
         let Some(choice) = self.registry.parse_pinned(text) else {
             return false;
         };

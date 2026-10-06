@@ -281,6 +281,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Could not reach a running engine. A child session never starts a new engine",
     ),
     (
+        "{marker} ({what}): engine에 닿지 못했습니다. 샌드박스가 파이프, `;`로 이어 붙인 명령 안의 접속을 막았을 수 있으니 `saturn evidence`를 다른 명령과 묶지 말고 한 명령으로 실행하세요. 결과를 줄이려면 --limit과 --offset을 쓰세요",
+        "{marker} ({what}): could not reach the engine. The sandbox may block connections made inside a piped or `;`-chained command, so run `saturn evidence` alone as one command. To shorten the result use --limit and --offset",
+    ),
+    (
         "--mode는 에이전트 작업 안의 하위 접속에서만 쓸 수 있습니다",
         "--mode can only be used by a child session inside an agent task",
     ),
@@ -402,8 +406,8 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "List records close to the query in rank order with number, length, hash, and excerpt",
     ),
     (
-        "찾을 말. 파일 이름, 명령, 오류 문구처럼 기록에 있는 글이 잘 맞는다",
-        "Words to look for. Text that appears in records, such as file names, commands, and error messages, matches best",
+        "찾을 말. 파일 이름, 명령, 오류 문구처럼 기록에 있는 글이 잘 맞는다. 따옴표 없이 여러 단어를 쓰면 공백 하나로 이어 한 검색어로 본다",
+        "Words to look for. Text that appears in records, such as file names, commands, and error messages, matches best. Several unquoted words are joined with one space into a single query",
     ),
     (
         "보일 후보 수. 50을 넘으면 50이다",

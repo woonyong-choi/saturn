@@ -16,6 +16,10 @@ use crate::state::{Disposition, InputState, QueueReason, TaskState};
 /// engine과 클라이언트가 주고받는 메시지 판. 요청이나 알림의 모양을 호환되지 않게 바꿀 때 올린다.
 pub const PROTOCOL_VERSION: u32 = 3;
 
+/// `saturn evidence`가 engine에 닿지 못했을 때 오류 첫머리에 붙는 표지. 괄호 안은 `read <번호>`나 `search`이다.
+/// engine이 도구 결과의 첫머리에서 읽어 닿지 못한 조회 시도를 센다. 번역하지 않는다.
+pub const EVIDENCE_UNREACHABLE_MARKER: &str = "saturn evidence unreachable";
+
 /// engine이 에이전트 작업의 환경에 넣는 출입증 변수 이름. `saturn`이 이 값으로 `AttachChild`를 보낸다.
 pub const PASS_ENV: &str = "SATURN_PASS";
 

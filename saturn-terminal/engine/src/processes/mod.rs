@@ -257,6 +257,28 @@ impl Supervisor {
         results
     }
 
+    // cost: time O(r), heap O(r), stack O(1), io 1
+    // vars: r = 시스템 프로세스 수
+    // basis: estimate
+    /// `pid`가 이 engine이 띄운 provider 묶음의 리더나 자손이면 참. 소켓 피어가 provider 쪽인지 가리는 데 쓴다.
+    /// 프로세스 표를 읽지 못하거나 표에 이미 없으면(접속하고 바로 끝난 프로세스) 확인할 수 없으므로 참으로 본다.
+    pub(crate) async fn is_provider_side(&self, pid: u32) -> bool {
+        let Ok(rows) = process_table().await else {
+            return true;
+        };
+        if !rows.iter().any(|row| row.pid == pid) {
+            return true;
+        }
+        let groups: Vec<(ProcessGroupId, Vec<u32>)> = self
+            .lock()
+            .iter()
+            .map(|(group, watched)| (*group, watched.seen_descendants.clone()))
+            .collect();
+        groups.iter().any(|(group, seen)| {
+            group.0 == pid || seen.contains(&pid) || descendants(*group, &rows).contains(&pid)
+        })
+    }
+
     /// 리더가 끝났고 마지막 감시 때 본 자손이 없을 때만 뺀다.
     pub fn release(&self, group: ProcessGroupId) -> bool {
         if !matches!(self.reap(group), Ok(Some(_))) {

@@ -433,7 +433,11 @@ export type UnverifiedReason = "NotChecked" | "CheckFailed" | "EditedDuringCheck
 
 export type UsageRange = "Chat" | "Day" | "Week";
 
-export type UsageReport = { agent: AgentId, subagent: SubagentId | null, model: string | null, scope: UsageScope, input: number | null, cache_read: number | null, cache_write: number | null, output: number | null, reasoning: number | null, };
+export type UsageReport = { agent: AgentId, subagent: SubagentId | null, model: string | null, scope: UsageScope, input: number | null, cache_read: number | null, cache_write: number | null, output: number | null, 
+/**
+ * 출력의 일부다(Codex `reasoningOutputTokens`). 합계에 더하지 않는다.
+ */
+reasoning: number | null, };
 
 export type UsageRow = { 
 /**

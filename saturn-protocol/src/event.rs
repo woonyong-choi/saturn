@@ -224,7 +224,17 @@ pub struct UsageReport {
     pub cache_read: Option<u64>,
     pub cache_write: Option<u64>,
     pub output: Option<u64>,
+    /// 출력의 일부다(Codex `reasoningOutputTokens`). 합계에 더하지 않는다.
     pub reasoning: Option<u64>,
+}
+
+/// 사용량 합계에 세는 토큰. 새 입력, 캐시 쓰기, 출력의 합이고 캐시 읽기는 뺀다. 추론은 출력에 이미 들어 있어 더하지 않는다.
+/// 순서는 `UsageRow::tokens`와 같고 보고된 칸이 없으면 `None`.
+pub fn counted_tokens(tokens: [Option<u64>; 5]) -> Option<u64> {
+    [tokens[0], tokens[2], tokens[3]]
+        .into_iter()
+        .flatten()
+        .reduce(|a, b| a + b)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
