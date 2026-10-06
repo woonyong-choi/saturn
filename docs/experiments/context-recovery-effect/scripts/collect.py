@@ -7,9 +7,8 @@ import ast
 import concurrent.futures
 import gzip
 import hashlib
-import importlib.util
+import importlib
 import json
-import os
 import random
 import sqlite3
 import subprocess
@@ -22,9 +21,9 @@ EXP = Path(__file__).resolve().parents[1]
 REPO = EXP.parents[2]
 BASE = EXP.parent / "context-net-effect" / "scripts"
 sys.path.insert(0, str(BASE))
-import engine_driver
-import fixtures
-import plan as original_plan
+engine_driver = importlib.import_module("engine_driver")
+fixtures = importlib.import_module("fixtures")
+original_plan = importlib.import_module("plan")
 
 ARMS = ("provider", "rrf", "rrf_lookup", "jev_lookup", "rescue")
 PROVIDERS = ("claude", "codex")
@@ -130,19 +129,22 @@ def record(result: dict, key: str) -> None:
     if key.encode() in raw:
         HALT.set()
         raise RuntimeError("credential appeared in captured output; collection stopped")
-    dest = EXP / "data/raw" / (result["trial"] + ".json.gz")
+    folder = "followup" if result.get("phase") == "followup" else "raw"
+    dest = EXP / "data" / folder / (result["trial"] + ".json.gz")
+    dest.parent.mkdir(parents=True, exist_ok=True)
     with dest.open("xb") as stream:
         with gzip.GzipFile(fileobj=stream, mode="wb", mtime=0) as zipped:
             zipped.write(raw)
 
 
-def trial(provider: str, seed: int, arm: str, key: str) -> dict:
+def trial(provider: str, seed: int, arm: str, key: str, phase: str = "formal") -> dict:
     if HALT.is_set():
         raise RuntimeError("collection stopped before dispatch")
-    ident = f"{provider}-{seed}-{arm}"
+    prefix = "followup-" if phase == "followup" else ""
+    ident = f"{prefix}{provider}-{seed}-{arm}"
     base = (
         REPO
-        / ".runtime/r587"
+        / (".runtime/r587f" if phase == "followup" else ".runtime/r587")
         / f"{'a' if provider == 'claude' else 'x'}{seed}{ARMS.index(arm)}"
     )
     facts, incident, tests = build(base, seed)
@@ -161,6 +163,7 @@ def trial(provider: str, seed: int, arm: str, key: str) -> dict:
     grades = {}
     result = {
         "trial": ident,
+        "phase": phase,
         "provider": provider,
         "seed": seed,
         "arm": arm,
@@ -175,6 +178,8 @@ def trial(provider: str, seed: int, arm: str, key: str) -> dict:
     }
 
     def say(label: str, text: str, extra: list[str] | None = None) -> bool:
+        if phase == "followup" and len(text.splitlines()) != 1:
+            raise ValueError("followup must send exactly one input line")
         rec = chat.send(text, options + (extra or []), timeout=300)
         if rec["status"] != "ok" and any(
             marker in rec["stdout"].lower()
@@ -246,26 +251,45 @@ def trial(provider: str, seed: int, arm: str, key: str) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--pilot", action="store_true")
+    parser.add_argument("--followup", action="store_true")
     parser.add_argument("--workers", type=int, default=2)
     args = parser.parse_args()
     if not 1 <= args.workers <= 2:
         raise ValueError("workers must be one or two")
+    if args.pilot and args.followup:
+        raise ValueError("pilot and followup are separate collections")
     key = engine_driver.router_key()
     pairs = [(p, s, a) for p in PROVIDERS for s in SEEDS for a in ARMS]
-    random.Random(ORDER_SEED).shuffle(pairs)
+    phase = "followup" if args.followup else "formal"
+    if args.followup:
+        pairs = [
+            (p, s, a)
+            for p in PROVIDERS
+            for s in SEEDS
+            for a in ("rrf_lookup", "jev_lookup")
+        ]
+    random.Random(58702 if args.followup else ORDER_SEED).shuffle(pairs)
     if args.pilot:
         pairs = [("claude", 9901, "rrf_lookup"), ("codex", 9901, "rrf_lookup")]
-    manifest = EXP / ("pilot-order.json" if args.pilot else "order.json")
+    manifest = EXP / (
+        "followup-order.json"
+        if args.followup
+        else "pilot-order.json"
+        if args.pilot
+        else "order.json"
+    )
     manifest.write_text(json.dumps(pairs, indent=2) + "\n")
     failed = False
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
         futures = []
         for index, (p, s, a) in enumerate(pairs):
-            if (EXP / "data/raw" / f"{p}-{s}-{a}.json.gz").exists():
+            folder = "followup" if args.followup else "raw"
+            prefix = "followup-" if args.followup else ""
+            if (EXP / "data" / folder / f"{prefix}{p}-{s}-{a}.json.gz").exists():
                 continue
             if index == 1:
                 time.sleep(15)
-            futures.append(pool.submit(trial, p, s, a, key))
+            futures.append(pool.submit(trial, p, s, a, key, phase))
         for f in concurrent.futures.as_completed(futures):
             try:
                 f.result()

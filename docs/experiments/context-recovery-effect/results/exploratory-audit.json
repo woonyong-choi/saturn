@@ -1,0 +1,611 @@
+{
+  "scope": "exploratory; not an adoption criterion",
+  "trials": [
+    {
+      "compact_requests": [
+        {
+          "header_anywhere_in_request": false,
+          "header_in_state": false,
+          "judgment_id": 13
+        }
+      ],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-101-jev_lookup"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": true,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-101-provider"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": true,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6,
+        20
+      ],
+      "trial": "claude-101-rescue"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-101-rrf"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-101-rrf_lookup"
+    },
+    {
+      "compact_requests": [
+        {
+          "header_anywhere_in_request": false,
+          "header_in_state": false,
+          "judgment_id": 13
+        }
+      ],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-102-jev_lookup"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [
+        {
+          "label": "f1",
+          "status": "permission_wait"
+        }
+      ],
+      "last_grade_header_ok": null,
+      "last_grade_retries_ok": null,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-102-provider"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [
+        {
+          "label": "f1",
+          "status": "permission_wait"
+        }
+      ],
+      "last_grade_header_ok": null,
+      "last_grade_retries_ok": null,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6,
+        20
+      ],
+      "trial": "claude-102-rescue"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-102-rrf"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-102-rrf_lookup"
+    },
+    {
+      "compact_requests": [
+        {
+          "header_anywhere_in_request": false,
+          "header_in_state": false,
+          "judgment_id": 13
+        }
+      ],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [
+        {
+          "label": "f1",
+          "status": "permission_wait"
+        }
+      ],
+      "last_grade_header_ok": null,
+      "last_grade_retries_ok": null,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-103-jev_lookup"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": true,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-103-provider"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": true,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6,
+        20
+      ],
+      "trial": "claude-103-rescue"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-103-rrf"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-103-rrf_lookup"
+    },
+    {
+      "compact_requests": [
+        {
+          "header_anywhere_in_request": false,
+          "header_in_state": false,
+          "judgment_id": 13
+        }
+      ],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-104-jev_lookup"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": true,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-104-provider"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [
+        {
+          "label": "f1",
+          "status": "permission_wait"
+        }
+      ],
+      "last_grade_header_ok": null,
+      "last_grade_retries_ok": null,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6,
+        20
+      ],
+      "trial": "claude-104-rescue"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-104-rrf"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "claude-104-rrf_lookup"
+    },
+    {
+      "compact_requests": [
+        {
+          "header_anywhere_in_request": false,
+          "header_in_state": false,
+          "judgment_id": 13
+        }
+      ],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-101-jev_lookup"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": true,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-101-provider"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": true,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6,
+        20
+      ],
+      "trial": "codex-101-rescue"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-101-rrf"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-101-rrf_lookup"
+    },
+    {
+      "compact_requests": [
+        {
+          "header_anywhere_in_request": false,
+          "header_in_state": false,
+          "judgment_id": 13
+        }
+      ],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-102-jev_lookup"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": true,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-102-provider"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": true,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6,
+        20
+      ],
+      "trial": "codex-102-rescue"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-102-rrf"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-102-rrf_lookup"
+    },
+    {
+      "compact_requests": [
+        {
+          "header_anywhere_in_request": false,
+          "header_in_state": false,
+          "judgment_id": 13
+        }
+      ],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-103-jev_lookup"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": true,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-103-provider"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [
+        {
+          "label": "f1",
+          "status": "permission_wait"
+        }
+      ],
+      "last_grade_header_ok": null,
+      "last_grade_retries_ok": null,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6,
+        20
+      ],
+      "trial": "codex-103-rescue"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-103-rrf"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-103-rrf_lookup"
+    },
+    {
+      "compact_requests": [
+        {
+          "header_anywhere_in_request": false,
+          "header_in_state": false,
+          "judgment_id": 13
+        }
+      ],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-104-jev_lookup"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": true,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-104-provider"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [
+        {
+          "label": "f1",
+          "status": "permission_wait"
+        }
+      ],
+      "last_grade_header_ok": null,
+      "last_grade_retries_ok": null,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6,
+        20
+      ],
+      "trial": "codex-104-rescue"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-104-rrf"
+    },
+    {
+      "compact_requests": [],
+      "constraint_packet_items": 0,
+      "f3_retries_disagreement": false,
+      "input_failures": [],
+      "last_grade_header_ok": false,
+      "last_grade_retries_ok": true,
+      "nonliteral_grade_values": [],
+      "source_input_ids": [
+        6
+      ],
+      "trial": "codex-104-rrf_lookup"
+    }
+  ]
+}

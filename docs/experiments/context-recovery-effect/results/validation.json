@@ -1,0 +1,10 @@
+{
+  "correct_fixture": true,
+  "wrong_timeout_rejected": true,
+  "test_removal_rejected": true,
+  "unknown_usage_not_zero": true,
+  "small_sample_quality_not_proven": true,
+  "split_input_detected_and_ticket_regraded": true,
+  "absent_ticket_rejected": true,
+  "unmetered_native_compaction_not_free": true
+}
