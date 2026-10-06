@@ -96,7 +96,9 @@ def build_trial(case: dict, provider: str, arm: str, rep: int, raw: Raw, tau: fl
         selection=dict(chosen, bytes=sum(size[i] for i in chosen["ids"]),
                        support_recall=(sum(s in chosen["ids"] for s in support) / len(support)) if support else None,
                        candidate_hash=sha(json.dumps([b["id"] for b in case["blocks"]]).encode())),
-        answer=answer, check=dict(grader="exact-v1", success=bool(status == "ok" and grader(case, answer))),
+        answer=answer, answer_lenient=selection.lenient_json(response_text(run)[0]) if run else None,
+        check=dict(grader="exact-v1", success=bool(status == "ok" and grader(case, answer)),
+                   success_lenient=bool(status == "ok" and grader(case, selection.lenient_json(response_text(run)[0]) if run else None))),
         status=status, usage=usage,
     )
 

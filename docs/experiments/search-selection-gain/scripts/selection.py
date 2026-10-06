@@ -129,6 +129,19 @@ def select(arm: str, case: dict, budget: int, tau: float, jev_records: list[dict
     return dict(ids=chosen, requested="jev", applied="jev", reason=None)
 
 
+def lenient_json(text: str) -> Any:
+    """민감도 분석용. 코드 펜스나 뒤따르는 설명 글이 있어도 글 속 첫 JSON 객체를 꺼낸다. 판정에는 쓰지 않는다."""
+    decoder = json.JSONDecoder()
+    for m in re.finditer(r"\{", text or ""):
+        try:
+            value, _ = decoder.raw_decode(text[m.start():])
+        except ValueError:
+            continue
+        if isinstance(value, dict):
+            return value
+    return None
+
+
 def grade(case: dict, value: Any) -> bool:
     if not isinstance(value, dict) or set(value) != {"value"}:
         return False

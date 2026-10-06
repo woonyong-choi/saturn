@@ -116,6 +116,15 @@ def verdict(c: dict) -> dict:
     return dict(result=result, **parts)
 
 
+def sensitivity(items: dict[str, list[dict]], provider: str) -> dict:
+    """수집 뒤에 더한 민감도 분석(판정에 쓰지 않는다). 답 앞뒤의 설명 글과 코드 펜스를 허용하는 추출로 성공을 다시 센다."""
+    ok = lambda t: float(t["check"]["success_lenient"])
+    out = {"success": {a: wilson([t["check"]["success_lenient"] for t in ts]) for a, ts in items.items()}, "paired": {}}
+    for a, b in (("jev", "code"), ("jev", "full"), ("jev", "llm"), ("llm", "full")):
+        out["paired"][f"{a}_minus_{b}"] = boot_diff(per_task(items[a], ok), per_task(items[b], ok), f"{provider}-{a}-{b}-lenient")
+    return out
+
+
 def slice_table(items: list[dict], key: str) -> dict:
     out = {}
     for v in sorted({t[key] for t in items}):
@@ -137,6 +146,7 @@ def main() -> None:
             "arms": {a: arm_summary(ts) for a, ts in by_arm.items()},
             "paired": cmp,
             "verdict": verdict(cmp),
+            "sensitivity_lenient_extraction": sensitivity(by_arm, provider),
             "by_stratum": slice_table(part, "stratum"), "by_lang": slice_table(part, "lang"), "by_length": slice_table(part, "length"),
         }
     out["jev_calls_made"] = len({e["call_id"].split("@")[0] for t in rows for e in t["usage"] if e["role"] == "jev"})
