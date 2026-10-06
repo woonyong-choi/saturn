@@ -119,6 +119,8 @@
 
 `core`의 요청 만들기와 답 합치기를 engine이 패킷을 만들 때 부르는 연결은 실험 옵션 `context.select.packet = jev`일 때만 켜진다([#380](https://github.com/woonyong-choi/saturn/issues/380)). 기본(`rrf`)은 RRF 순서로만 채운다.
 
+실제 engine의 Codex→Claude 대응 실행에서는 인위적으로 낮춘 패킷 예산에서도 Jev와 RRF가 서로 다른 본문과 경쟁 항목을 보낸 사례가 3/12쌍에 그쳤다. 유효한 7쌍의 Jev 정답 7개와 RRF 정답 5개는 출발 기록 실패 5쌍과 작은 표본 때문에 자동 적용 근거가 아니다([패킷 선별 차이 실험](../experiments/packet-selector-contrast/report.md)).
+
 1. 후보 전체를 router에 묻는다. 후보 수로 줄이지 않는다.
 2. 요청이 크기 한도를 넘으면 질문 단위로 나눠 여러 요청으로 병렬 전송하고, 조각마다 같은 state를 싣는다. 동시 수와 한도는 [router 호출](router.md#router-호출)에 있다.
 3. 항목의 남김 확률은 `call_<id>_keep`과 `result_<id>_keep` 중 큰 값이다. 하나만 답했으면 그 값이다.

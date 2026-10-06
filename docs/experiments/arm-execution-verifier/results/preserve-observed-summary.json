@@ -1,0 +1,364 @@
+{
+  "by_arm": {
+    "F": {
+      "applied": {
+        "k": 0,
+        "n": 0
+      },
+      "body_fidelity": {
+        "matched": 0,
+        "targets": 0,
+        "unverified": 0
+      },
+      "collected": 0,
+      "cost_null_trials": 0,
+      "cost_usd": null,
+      "executable": 0,
+      "not_collected": 0,
+      "omitted_bytes_known": 0,
+      "omitted_bytes_null": 0,
+      "path_kinds": {},
+      "planned": 24,
+      "selector_fallbacks": {},
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 0
+      },
+      "success": {
+        "k": 0,
+        "n": 0
+      },
+      "unsupported": {
+        "no_full_packet_control": 24
+      },
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "usage_unreported_calls": 0
+    },
+    "J": {
+      "applied": {
+        "k": 6,
+        "n": 10
+      },
+      "body_fidelity": {
+        "matched": 1158,
+        "targets": 1158,
+        "unverified": 0
+      },
+      "collected": 6,
+      "cost_null_trials": 0,
+      "cost_usd": 0.20159309,
+      "executable": 10,
+      "not_collected": 4,
+      "omitted_bytes_known": 3168,
+      "omitted_bytes_null": 0,
+      "path_kinds": {
+        "switch": 6
+      },
+      "planned": 24,
+      "selector_fallbacks": {
+        "None": 6
+      },
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 6
+      },
+      "success": {
+        "k": 2,
+        "n": 10
+      },
+      "unsupported": {
+        "forced_restart_trigger_unproven": 12,
+        "interrupted_replay_unproven": 2
+      },
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 65620,
+        "cache_read_input_tokens": 808064,
+        "input_tokens": 67470,
+        "output_tokens": 14350
+      },
+      "usage_unreported_calls": 24
+    },
+    "N": {
+      "applied": {
+        "k": 0,
+        "n": 0
+      },
+      "body_fidelity": {
+        "matched": 0,
+        "targets": 0,
+        "unverified": 0
+      },
+      "collected": 0,
+      "cost_null_trials": 0,
+      "cost_usd": null,
+      "executable": 0,
+      "not_collected": 0,
+      "omitted_bytes_known": 0,
+      "omitted_bytes_null": 0,
+      "path_kinds": {},
+      "planned": 24,
+      "selector_fallbacks": {},
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 0
+      },
+      "success": {
+        "k": 0,
+        "n": 0
+      },
+      "unsupported": {
+        "no_native_same_session_observable": 24
+      },
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "usage_unreported_calls": 0
+    },
+    "R": {
+      "applied": {
+        "k": 6,
+        "n": 10
+      },
+      "body_fidelity": {
+        "matched": 1158,
+        "targets": 1158,
+        "unverified": 0
+      },
+      "collected": 6,
+      "cost_null_trials": 0,
+      "cost_usd": 0.19560554,
+      "executable": 10,
+      "not_collected": 4,
+      "omitted_bytes_known": 0,
+      "omitted_bytes_null": 6,
+      "path_kinds": {
+        "switch": 6
+      },
+      "planned": 24,
+      "selector_fallbacks": {
+        "None": 6
+      },
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 6
+      },
+      "success": {
+        "k": 1,
+        "n": 10
+      },
+      "unsupported": {
+        "forced_restart_trigger_unproven": 12,
+        "interrupted_replay_unproven": 2
+      },
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 66278,
+        "cache_read_input_tokens": 830049,
+        "input_tokens": 42498,
+        "output_tokens": 9239
+      },
+      "usage_unreported_calls": 18
+    }
+  },
+  "by_path": {
+    "claude2claude": {
+      "applied": {
+        "k": 0,
+        "n": 0
+      },
+      "body_fidelity": {
+        "matched": 0,
+        "targets": 0,
+        "unverified": 0
+      },
+      "collected": 0,
+      "cost_null_trials": 0,
+      "cost_usd": null,
+      "executable": 0,
+      "not_collected": 0,
+      "omitted_bytes_known": 0,
+      "omitted_bytes_null": 0,
+      "path_kinds": {},
+      "planned": 24,
+      "selector_fallbacks": {},
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 0
+      },
+      "success": {
+        "k": 0,
+        "n": 0
+      },
+      "unsupported": {
+        "forced_restart_trigger_unproven": 12,
+        "no_full_packet_control": 6,
+        "no_native_same_session_observable": 6
+      },
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "usage_unreported_calls": 0
+    },
+    "claude2codex": {
+      "applied": {
+        "k": 4,
+        "n": 10
+      },
+      "body_fidelity": {
+        "matched": 20,
+        "targets": 20,
+        "unverified": 0
+      },
+      "collected": 4,
+      "cost_null_trials": 0,
+      "cost_usd": 0.02740822,
+      "executable": 10,
+      "not_collected": 6,
+      "omitted_bytes_known": 0,
+      "omitted_bytes_null": 2,
+      "path_kinds": {
+        "switch": 4
+      },
+      "planned": 24,
+      "selector_fallbacks": {
+        "None": 4
+      },
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 4
+      },
+      "success": {
+        "k": 3,
+        "n": 10
+      },
+      "unsupported": {
+        "interrupted_replay_unproven": 2,
+        "no_full_packet_control": 6,
+        "no_native_same_session_observable": 6
+      },
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 352256,
+        "input_tokens": 88198,
+        "output_tokens": 4093
+      },
+      "usage_unreported_calls": 14
+    },
+    "codex2claude": {
+      "applied": {
+        "k": 8,
+        "n": 10
+      },
+      "body_fidelity": {
+        "matched": 2296,
+        "targets": 2296,
+        "unverified": 0
+      },
+      "collected": 8,
+      "cost_null_trials": 0,
+      "cost_usd": 0.36979041,
+      "executable": 10,
+      "not_collected": 2,
+      "omitted_bytes_known": 3168,
+      "omitted_bytes_null": 4,
+      "path_kinds": {
+        "switch": 8
+      },
+      "planned": 24,
+      "selector_fallbacks": {
+        "None": 8
+      },
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 8
+      },
+      "success": {
+        "k": 0,
+        "n": 10
+      },
+      "unsupported": {
+        "interrupted_replay_unproven": 2,
+        "no_full_packet_control": 6,
+        "no_native_same_session_observable": 6
+      },
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 131898,
+        "cache_read_input_tokens": 1285857,
+        "input_tokens": 21770,
+        "output_tokens": 19496
+      },
+      "usage_unreported_calls": 28
+    },
+    "codex2codex": {
+      "applied": {
+        "k": 0,
+        "n": 0
+      },
+      "body_fidelity": {
+        "matched": 0,
+        "targets": 0,
+        "unverified": 0
+      },
+      "collected": 0,
+      "cost_null_trials": 0,
+      "cost_usd": null,
+      "executable": 0,
+      "not_collected": 0,
+      "omitted_bytes_known": 0,
+      "omitted_bytes_null": 0,
+      "path_kinds": {},
+      "planned": 24,
+      "selector_fallbacks": {},
+      "statuses": {
+        "delivery_unknown": 0,
+        "failed": 0,
+        "incomplete": 0,
+        "ok": 0
+      },
+      "success": {
+        "k": 0,
+        "n": 0
+      },
+      "unsupported": {
+        "forced_restart_trigger_unproven": 12,
+        "no_full_packet_control": 6,
+        "no_native_same_session_observable": 6
+      },
+      "usage_known_sum": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "usage_unreported_calls": 0
+    }
+  },
+  "collected": 12,
+  "evidence": "diagnostic plan and measurements only; 96 cells are a defect diagnosis budget, not an effect estimate",
+  "executable": 20,
+  "planned": 96
+}

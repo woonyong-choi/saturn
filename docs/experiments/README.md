@@ -2,9 +2,8 @@
 
 | 실험 | 확인할 것 | 관련 설계 | 결론 |
 |---|---|---|---|
-| [패킷 선별 차이](packet-selector-contrast/design.md) | 실제 engine에서 RRF와 Jev가 다른 근거를 보내는 조건의 후속 답·비용·시간 | [맥락 고르기](../design/context-selection.md) | 측정 전 |
 | [보존 우선 비교](context-preservation/design.md) | 대화 본문 보존과 도구 선별의 추가 효과 | [맥락 정리](../design/context-management.md) | 측정 전. 다른 provider로 전환하는 R·J 수집 코드 경로는 20/96칸이고 실제 수집은 0건이다 |
-| [대응 실행 검증기](arm-execution-verifier/report.md) | 같은 후보에서 선택 방법만 바꾼 실행과 보존 우선 비교 96칸의 집계가 틀린 성공·누락된 비용·실제 미적용을 거절하는지 | [맥락 정리](../design/context-management.md), [맥락 고르기](../design/context-selection.md) | 선택 비교 오프라인 장치 채택(16종 주입 결함 거절, 분석 바이트 일치), Jev 선택 효과 보류, 도구 조회 계측 18 trial은 보존 이전 자료. 보존 우선 장치는 가짜 기록으로 48종 주입 결함 거절만 확인했고 실제 provider 실행은 없다 |
+| [대응 실행 검증기](arm-execution-verifier/report.md) | 같은 후보에서 선택 방법만 바꾼 실행과 보존 우선 비교 96칸의 집계가 틀린 성공·누락된 비용·실제 미적용을 거절하는지 | [맥락 정리](../design/context-management.md), [맥락 고르기](../design/context-selection.md) | 선택 비교 오프라인 장치 채택. 보존 우선 실제 R·J 12/20칸 수집, 8칸 source 재생 실패, 첫 패킷 대응 6쌍 모두 동일. 사후 보정 검증만 통과해 Jev 효과 보류 |
 | [steer-reject-paths](steer-reject-paths/report.md) | 끼워 넣기를 확정 거절하는 Codex 상태(검토, 압축, 턴 끝 경합)에서 같은 입력의 유실·중복 없는 대기 전환 | [입력 처리](../design/input-handling.md), [provider 연결과 session](../design/providers-and-sessions.md) | H1~H6 채택: 끼워 넣기 거절 뒤 같은 입력 ID가 유실·중복 없이 대기 전환 36/36(검토 3/3, 압축 18/18), 압축 시작 직후 예비 실행 1건 유실은 결함으로 분리, 결과 모름과 턴 끝 경합의 실제 경로는 미측정 |
 | [constraint-long-context](constraint-long-context/report.md) | 실제 긴 Claude Code 대화에서 Jev의 제약 등록·전이·보존 판단 | [맥락 고르기](../design/context-selection.md) | H1 기각: 등록 정밀도 18.8% [8.9, 35.3], H2 보류: 재현율 100.0% [61.0, 100.0], 전이·최종 집합은 합의 표본 부족으로 판정 보류 |
 | [rrf-k-top-n](rrf-k-top-n/report.md) | 후보 순위의 k와 judge 상위 N | [맥락 고르기](../design/context-selection.md) | H1 기각: recall 12.0% [9.2, 15.6] |
@@ -48,3 +47,4 @@
 | [mvp-real-check](mvp-real-check/report.md) | 실제 Codex·Claude로 전환, 권한, 하위 에이전트, 확장 주입 확인(router 없는 경로) | [권한](../design/permissions.md), [router 키 보호](../design/router-key-security.md), [provider 연결과 session](../design/providers-and-sessions.md) | 결함 4건(#505~#508), Codex 샌드박스 밖 실행에서 키 보호 실패, router 판단은 미검증 |
 | [permission-scope-matrix](permission-scope-matrix/report.md) | 폴더 안·밖, 셸, MCP, 하위 에이전트, 권한 모드 변경, 추가 폴더의 권한 행렬과 회귀 확인 | [권한](../design/permissions.md), [router 키 보호](../design/router-key-security.md), [하위 접속](../design/child-sessions.md) |
 | [model-selection-effect](model-selection-effect/report.md) | 오토 모델 선택의 고정 모델 대비 품질·전체 비용·완료 시간 순효과 | [모델 평가 근거 목록](../design/model-evidence.md), [기본 모델과 선택 방식](../design/providers-and-sessions.md#기본-모델과-선택-방식) | 세 층 모두 보류: 확인 오토 입력 108개 중 router 선택 적용 0(확신도 최대 0.32)이라 오토가 기본 대조와 같은 모델로 실행됨, 같은 모델 쌍에서도 성공이 3/36 어긋나 품질 허용폭 0은 실행 변동에 막힘, 자동 적용 켜지 않음 |
+| [패킷 선별 차이](packet-selector-contrast/report.md) | 실제 engine에서 RRF와 Jev가 다른 근거를 보내는 조건의 후속 답·비용·시간 | [맥락 고르기](../design/context-selection.md) | H1 기각: 예정 12쌍 중 전송 본문·경쟁 항목 공동 차이 3쌍, source 실패 5쌍. H2·H3 보류 |

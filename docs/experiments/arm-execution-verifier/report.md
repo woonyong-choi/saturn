@@ -129,19 +129,20 @@ Claude는 안내를 받으면 `saturn evidence search`를 쓴다. 명령과 행�
 
 ## 보존 우선 비교 연결: 측정과 예정
 
-위 결과는 모두 보존 이전의 선택 비교와 도구 조회 계측이다. [보존 우선 비교](../context-preservation/design.md)의 96칸에는 이 실행기를 [연결](design.md#보존-우선-비교-연결)했지만 provider를 호출해 얻은 값은 아직 없다. 아래는 측정한 것과 예정인 것을 나눈 표다.
+위 선택 비교와 도구 조회 계측은 보존 이전 자료다. 그 뒤 [보존 우선 비교](../context-preservation/design.md)의 96칸 중 다른 provider로 가는 R·J를 실제 CLI와 Jev로 수집했다. 아래는 실제 수집과 미지원 범위를 나눈 표다.
 
 | 항목 | 상태 | 값 |
 |---|---|---|
 | 선택 비교 오프라인 검증(`all`) | 측정 | 192 trial 재가공, 16종 주입 결함 거절, 분석 두 번 바이트 일치. 이 변경 뒤에도 같다 |
 | 보존 우선 장치 시험(`preserve-verify`) | 측정(가짜 기록) | 96칸 가짜 기록에서 48종 주입 결함 모두 거절, 분석 두 번 바이트 일치. 성공률과 비용은 의미 없는 값이다 |
-| 현재 지원 범위의 실행 가능 칸 | 측정(코드와 문서 확인) | 20/96(다른 provider로 가는 R·J 중 interrupted-unknown 계열을 뺀 칸). 사유는 `no_full_packet_control` 24, `no_native_same_session_observable` 24, `forced_restart_trigger_unproven` 24, `interrupted_replay_unproven` 4. 20칸도 아직 실행하지 않았다 |
+| 현재 지원 범위의 실행 가능 칸 | 측정(코드와 문서 확인) | 20/96(다른 provider로 가는 R·J 중 interrupted-unknown 계열을 뺀 칸). 사유는 `no_full_packet_control` 24, `no_native_same_session_observable` 24, `forced_restart_trigger_unproven` 24, `interrupted_replay_unproven` 4. 실행 가능 20칸 중 12칸을 실제 수집했다 |
 | 교차 provider 전달 스모크 | 진단(로컬 결정형 router) | [별도 진단 집계](results/packet-capture-diagnostic.json): Codex→Claude와 Claude→Codex에서 원래 입력 각 6회와 전환 뒤 입력 각 1회가 완료됐다. 각 경로의 전달 패킷 1개는 `Sent`였고, 캡처 본문 해시와 저장 해시가 일치했다. 두 응답 모두 수정된 헤더를 돌려줬다. 효과 trial은 0건이다 |
-| 96칸 provider 실행, H1~H3 판정, 성공률·비용·시간 | 예정 | 값 없음. F·N 48칸은 engine에 능력이 생길 때까지 분모에만 남는다 |
-| 독립 확인 평가 | 예정 | 진단과 분리해 사전 등록한다 |
+| 보존 우선 96칸 진단의 실제 CLI·Jev 실행 | 부분 측정 | [사후 보정 집계](results/preserve-observed-summary.json): 실행 가능 R·J 20칸 중 실제 12칸(각 6) 수집, 8칸 source 재생 실패. F·N·같은 provider 재시작·중단 계열은 미지원 분모에 남는다. 보낸 첫 패킷 본문은 대응 6쌍 모두 같았다 |
+| 보존 우선 후속 정답·API 단가 환산 비용 | 탐색 관측 | 예정 10칸씩에서 Jev 정답 2, RRF 정답 1. 실제 수집 6칸씩의 환산 비용 합은 Jev $0.20159309, RRF $0.19560554. 서로 같은 패킷을 보냈으므로 선별 효과로 해석하지 않는다 |
+| 독립 선별 차이 평가 | 측정 | [패킷 선별 차이 실험](../packet-selector-contrast/report.md): 별도 사전 봉인 12쌍 중 source 7쌍 유효, 전송 본문·경쟁 항목 공동 차이 3쌍, Jev만 정답 2쌍, 효과 채택 실패 |
 | Claude·Codex 각각의 전달·검색·read·응답·사용량 대조 한 과제 | 부분 | 도구 조회 계측 18 trial과 보강 3 trial에서 확인했다. 보존 우선 경로는 전달·응답·캡처를 양방향 스모크로 확인했지만 검색·read·사용량의 대응 대조와 Jev 선택은 아직 하지 않았다 |
 
-남은 막힘은 다음과 같다. 같은 `P_send`에서 전문을 싣는 F 경로, N의 적용 경로 관측, 같은 provider 새 session을 매번 일으키는 설정의 사전 확인, 고정된 지점에서 실행을 끊는 interrupted-unknown 계열의 재생이다. 보낼 패킷 본문은 engine이 격리 홈에서 남기는 캡처로 확보한다([전달 패킷 근거](../../design/records.md#전달-패킷-근거)). 이는 engine이 내보낸 값이며 provider가 받았다는 증거가 아니다. 별도 진단은 [`07-packet-capture-smoke.py`](scripts/07-packet-capture-smoke.py)로 실행했다. 원자료는 집계에 적힌 `.local` 경로에 두고 SHA-256을 함께 기록했다. 로컬 결정형 router를 사용했으므로 Jev 품질·비용 근거로 쓰지 않는다. 다른 provider로 가는 R·J 20칸의 수집기는 구현했지만 봉인된 가격표와 router 키를 갖춘 실험 환경에서 돌린 적이 없다. 수집기 시험은 가짜 기록, 가짜 호출 계수기, 사전 점검까지다. 시도 장부(중단 후 재시작에서 provider를 다시 부르지 않음, 재시작을 넘는 예약·계수, 세지 못한 값을 0으로 세지 않음)와 로그 읽기 사전 조건도 가짜 계수기로만 시험했고 20칸은 코드 경로일 뿐 실행하지 않았다. 실제 호출이 예약치를 넘으면 후속 칸을 중단하지만 예약치는 외부 과금의 절대 상한이 아니다. 패킷 캡처 폴더는 기존 폴더의 권한을 0700으로 바로잡고 심볼릭 링크를 따라가지 않는다.
+남은 막힘은 다음과 같다. 같은 `P_send`에서 전문을 싣는 F 경로, N의 적용 경로 관측, 같은 provider 새 session을 매번 일으키는 설정의 사전 확인, 고정된 지점에서 실행을 끊는 interrupted-unknown 계열의 재생이다. 보낼 패킷 본문은 engine이 격리 홈에서 남기는 캡처로 확보한다([전달 패킷 근거](../../design/records.md#전달-패킷-근거)). 이는 engine이 내보낸 값이며 provider가 받았다는 증거가 아니다. 별도 결정형 router 진단은 [`07-packet-capture-smoke.py`](scripts/07-packet-capture-smoke.py)로 실행했고 Jev 품질·비용 근거로 쓰지 않는다. 실제 12칸은 별도 봉인 뒤 수집했으나 최초 검증기가 사용자·assistant 참조 번호를 하나의 증가 수열로 잘못 검사했다. 원자료를 바꾸지 않고 역할별 순서를 검사하도록 보정한 사후 집계만 위에 실었다. 원래 봉인된 `preserve-verify`가 통과한 것처럼 쓰지 않는다. 시도 장부는 미완료 칸을 자동 재전송하지 않았다. 예약 상한은 외부 과금의 절대 상한이 아니다.
 
 ## 다음 실험
 
