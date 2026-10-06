@@ -776,3 +776,85 @@ fn scoped_condition_is_a_contiguous_span_of_the_input() {
     assert!(long.starts_with(&cut));
     assert_eq!(constraint::scoped_condition("   "), None);
 }
+
+fn related(ordinal: u32, kind: EvidenceKind, id: u64, text: &str) -> RelatedCandidate {
+    RelatedCandidate {
+        ordinal,
+        kind,
+        chat: ChatId(3),
+        id,
+        hash: format!("hash-{}-{id}", kind.name()),
+        text: text.to_owned(),
+    }
+}
+
+#[test]
+fn related_questions_use_request_ordinals_and_typed_references() {
+    let candidates = [
+        related(1, EvidenceKind::Tool, 7, "tool body"),
+        related(2, EvidenceKind::Text, 7, "text body"),
+    ];
+
+    let (set, questions) = related_questions(&candidates);
+
+    assert_eq!(
+        (set.name.as_str(), set.major, set.minor),
+        (SET_RELATED, 1, 0)
+    );
+    let ids: Vec<_> = questions
+        .iter()
+        .map(|question| question.id.as_str())
+        .collect();
+    assert_eq!(ids, ["candidate_1_keep", "candidate_2_keep"]);
+    assert!(
+        questions[0]
+            .text
+            .contains("[tool:3:7:hash-tool-7] showing 9 of 9 characters")
+    );
+    assert!(
+        questions[1]
+            .text
+            .contains("[text:3:7:hash-text-7] showing 9 of 9 characters")
+    );
+    assert!(
+        ids.iter()
+            .all(|id| !id.starts_with("call_") && !id.starts_with("result_"))
+    );
+}
+
+#[test]
+fn related_questions_state_the_observed_range_of_a_clipped_original() {
+    let long = related(
+        1,
+        EvidenceKind::Tool,
+        2,
+        &"Q".repeat(RELATED_TEXT_CHARS + 10),
+    );
+
+    let (_, questions) = related_questions(std::slice::from_ref(&long));
+
+    assert!(long.is_clipped());
+    assert!(questions[0].text.contains(&format!(
+        "showing {RELATED_TEXT_CHARS} of {} characters",
+        RELATED_TEXT_CHARS + 10
+    )));
+    assert_eq!(questions[0].text.matches('Q').count(), RELATED_TEXT_CHARS);
+}
+
+#[test]
+fn related_verdicts_read_only_the_requested_ordinals_as_noul() {
+    let response = RouterResponse {
+        model: "jev".into(),
+        answers: vec![
+            ("candidate_1_keep".into(), Answer::Noul(0.9)),
+            ("candidate_2_keep".into(), Answer::Score(vec![0.5, 0.5])),
+            ("candidate_9_keep".into(), Answer::Noul(0.1)),
+            ("call_3_keep".into(), Answer::Noul(0.8)),
+        ],
+        tokens: (1, 1),
+    };
+
+    let verdicts = related_verdicts(&[1, 2, 3], &[response]);
+
+    assert_eq!(verdicts, vec![Some(0.9), None, None]);
+}

@@ -4,6 +4,7 @@
 
 use saturn_core::queue::QueuedInput;
 use saturn_core::sessions::evidence::text_hash;
+use saturn_core::sessions::{AgentRole, SendTarget};
 use saturn_protocol::ids::{ChatId, LedgerSeq, SessionId};
 use saturn_protocol::rpc::EvidenceKind;
 use saturn_protocol::state::InputState;
@@ -16,7 +17,7 @@ use crate::providers::test_support::{CLAUDE, CODEX};
 use crate::store::{PacketItemRow, PacketState, StoredPacket, sha256_hex};
 use crate::switch::OpenPlan;
 
-const CLAUDE_FIRST: SessionId = SessionId(2);
+pub(super) const CLAUDE_FIRST: SessionId = SessionId(2);
 
 const RANK: &str = "[context.select]\nrelated = \"rank\"\n";
 
@@ -27,8 +28,9 @@ const RANK_TIGHT: &str =
 /// `RANK`에 더해 `vault` 아래 파일 읽기를 거부한다.
 const RANK_NO_VAULT: &str =
     "[context.select]\nrelated = \"rank\"\n[permission.read]\n\"*/vault/*\" = \"deny\"\n";
+const RANK_TIGHT_NO_VAULT: &str = "[context.select]\nrelated = \"rank\"\n[provider.claude.context]\nt_abs = 4000\n[permission.read]\n\"*/vault/*\" = \"deny\"\n";
 
-async fn flow_with(config: &str) -> Flow {
+pub(super) async fn flow_with(config: &str) -> Flow {
     let replies = (0..12).map(|_| idle_reply(0.95)).collect();
     let mut flow = Flow::with_config(config, replies).await;
     flow.add_provider(CODEX);
@@ -37,7 +39,11 @@ async fn flow_with(config: &str) -> Flow {
 }
 
 /// Codex가 입력 하나에 `answer`로 답하고 `path`를 읽은 결과가 `body`인 턴을 끝낸다.
-async fn turn_with(flow: &mut Flow, input: &str, (call, path, body): (&str, &str, &str)) {
+pub(super) async fn turn_with(
+    flow: &mut Flow,
+    input: &str,
+    (call, path, body): (&str, &str, &str),
+) {
     flow.submit(input).await;
     let agent = flow.agent();
     flow.event(CODEX, text(agent, &format!("done {call}")))
@@ -56,7 +62,7 @@ async fn talk(flow: &mut Flow, input: &str, answer: &str) {
 }
 
 /// 채팅의 도구 기록 `(기록 번호, 패킷이 넣는 원문)`. 패킷이 쓰는 후보와 같은 재료다.
-async fn tool_texts(flow: &Flow) -> Vec<(u64, String)> {
+pub(super) async fn tool_texts(flow: &Flow) -> Vec<(u64, String)> {
     let rows = flow
         .engine
         .store
@@ -69,7 +75,7 @@ async fn tool_texts(flow: &Flow) -> Vec<(u64, String)> {
         .collect()
 }
 
-async fn tail_of(flow: &Flow) -> u64 {
+pub(super) async fn tail_of(flow: &Flow) -> u64 {
     flow.engine
         .store
         .ledger_since(flow.chat, LedgerSeq(0))
@@ -80,7 +86,7 @@ async fn tail_of(flow: &Flow) -> u64 {
         .expect("the chat should have records")
 }
 
-async fn stored_claude(flow: &Flow) -> StoredPacket {
+pub(super) async fn stored_claude(flow: &Flow) -> StoredPacket {
     let stored: Vec<StoredPacket> = flow
         .engine
         .store
@@ -96,9 +102,9 @@ async fn stored_claude(flow: &Flow) -> StoredPacket {
     stored.clone()
 }
 
-type RelatedRow = (String, u64, Option<String>, Option<String>, Option<String>);
+pub(super) type RelatedRow = (String, u64, Option<String>, Option<String>, Option<String>);
 
-async fn related_rows(flow: &Flow, stored: &StoredPacket) -> Vec<RelatedRow> {
+pub(super) async fn related_rows(flow: &Flow, stored: &StoredPacket) -> Vec<RelatedRow> {
     flow.engine.store.packet_related(stored.id).await.unwrap()
 }
 
@@ -130,7 +136,7 @@ fn related_of(rows: &[PacketItemRow]) -> Vec<(&str, u64, Option<&str>, Option<&'
         .collect()
 }
 
-fn reference(chat: ChatId, id: u64, body: &str) -> String {
+pub(super) fn reference(chat: ChatId, id: u64, body: &str) -> String {
     format!("[tool:{}:{}:{}]\n{body}", chat.0, id, text_hash(body))
 }
 
@@ -336,6 +342,48 @@ async fn related_records_over_the_budget_are_left_out_whole_with_a_reason() {
     assert_eq!(rows, expected);
 }
 
+// #600: 선택한 원문이 0건이어도 생략 행의 현재 권한을 다시 확인한다. 읽기 범위 밖 기록의 번호·해시·존재는 남기지 않는다
+#[tokio::test]
+async fn omitted_candidates_are_rechecked_even_when_nothing_was_selected() {
+    let mut flow = flow_with(RANK_TIGHT).await;
+    for number in 0..3 {
+        flow.submit(&format!("step {number}")).await;
+        let agent = flow.agent();
+        flow.event(CODEX, text(agent, &"a".repeat(600))).await;
+        let path = if number == 0 {
+            "vault/keys.txt"
+        } else {
+            "src/cache.rs"
+        };
+        let call = format!("c{number}");
+        flow.event(CODEX, tool_read(agent, &call, path)).await;
+        flow.event(CODEX, tool_result(agent, &call, &"b".repeat(200)))
+            .await;
+        flow.event(CODEX, turn_completed(agent)).await;
+    }
+    let (record, plan) = planned(&mut flow, "continue").await;
+    let (before_rows, _) = plan.packet_rows();
+    let before = related_of(&before_rows);
+    assert_eq!(before.len(), 3);
+    assert!(before.iter().all(|(_, _, form, _)| form.is_none()));
+    let denied_id = tool_texts(&flow).await[0].0;
+    assert!(before.iter().any(|(_, id, _, _)| *id == denied_id));
+
+    flow.fixture.write_user_config(RANK_TIGHT_NO_VAULT);
+    flow.engine.watch_settings().await;
+    flow.engine.watch_settings().await;
+    let plan = flow.engine.recheck_related(&record, plan).await;
+    let (after_rows, _) = plan.packet_rows();
+    let after = related_of(&after_rows);
+    assert_eq!(after.len(), 2);
+    assert!(
+        after
+            .iter()
+            .all(|(_, id, _, reason)| *id != denied_id && *reason == Some("budget")),
+        "{after:?}"
+    );
+}
+
 // #600: 검색이 실패하면 아무것도 넣지 않고 입력은 막지 않으며 `retrieval_failed`로 남긴다
 #[tokio::test]
 async fn a_failed_retrieval_adds_nothing_and_is_recorded() {
@@ -353,10 +401,16 @@ async fn a_failed_retrieval_adds_nothing_and_is_recorded() {
         .unwrap();
     let budget = settings.context_budget(CLAUDE, flow.engine.registry.context_defaults(CLAUDE));
 
+    let target = SendTarget::New {
+        provider: CLAUDE,
+        role: AgentRole::Main,
+    };
+
     let (source, log) = flow
         .engine
-        .attach_related((&record, &settings, &budget), None)
-        .await;
+        .attach_related((&record, &settings, &budget), (&target, None), None)
+        .await
+        .expect("a failed search should not ask the router");
 
     assert!(source.is_none());
     assert_eq!(
@@ -440,7 +494,7 @@ async fn a_moved_chat_revision_discards_the_selection_before_it_is_applied() {
     assert!(packet.contains("User: inspect the vault"), "{packet}");
 }
 
-// #600: 읽기 권한을 잃은 기록만 `scope`로 빼고 나머지는 그대로 싣는다. 오래된 원문으로 대신하지 않는다
+// #600: 읽기 권한을 잃은 기록은 참조까지 없애고 나머지는 그대로 싣는다. 오래된 원문으로 대신하지 않는다
 #[tokio::test]
 async fn a_revoked_read_permission_drops_only_that_record_with_a_reason() {
     let mut flow = flow_with(RANK).await;
@@ -459,10 +513,7 @@ async fn a_revoked_read_permission_drops_only_that_record_with_a_reason() {
         .map(|(_, id, form, reason)| (id, form.is_some(), reason))
         .collect();
     got.sort();
-    assert_eq!(
-        got,
-        vec![(vault.0, false, Some("scope")), (parser.0, true, None)]
-    );
+    assert_eq!(got, vec![(parser.0, true, None)]);
     let packet = plan.packet_text().expect("the packet should still be sent");
     assert!(!packet.contains(vault.1.as_str()), "{packet}");
     assert!(
@@ -503,7 +554,7 @@ async fn a_changed_source_is_dropped_with_a_reason_and_never_substituted() {
     assert!(!packet.contains("vault key rewrite"), "{packet}");
 }
 
-// #600: 기록에서 사라진 기록은 `deleted`로 뺀다
+// #600: 기록에서 사라진 기록은 참조까지 없앤다
 #[tokio::test]
 async fn a_deleted_source_is_dropped_with_a_reason() {
     let mut flow = flow_with(RANK).await;
@@ -524,13 +575,7 @@ async fn a_deleted_source_is_dropped_with_a_reason() {
         .map(|(_, id, form, reason)| (id, form.is_some(), reason))
         .collect();
     got.sort();
-    assert_eq!(
-        got,
-        vec![
-            (tools[0].0, false, Some("deleted")),
-            (tools[1].0, true, None)
-        ]
-    );
+    assert_eq!(got, vec![(tools[1].0, true, None)]);
     let packet = plan.packet_text().expect("the packet should still be sent");
     assert!(!packet.contains("vault key listing"), "{packet}");
 }

@@ -198,17 +198,23 @@ impl OpenPlan {
         (rows, carries)
     }
 
-    /// 보내기 직전에 다시 맞출 관련 원문. 고른 것이 없으면 `None`.
+    /// 보내기 직전에 다시 맞출 관련 원문과 생략 후보. 참조가 하나도 없으면 `None`.
     fn related_to_recheck(&self) -> Option<&RelatedLog> {
         self.evidence
             .as_ref()
             .and_then(PacketEvidence::related)
-            .filter(|log| !log.picked.is_empty())
+            .filter(|log| {
+                !log.picked.is_empty() || log.omitted.iter().any(|(found, _)| found.is_some())
+            })
     }
 
     /// 재검사에서 어긋난 관련 원문만 빼고 패킷을 다시 만든다. 뺀 이유는 근거에 남기고 오래된 내용으로 대신하지 않는다.
     /// 패킷에 실을 것이 남지 않으면 패킷 없이 보낸다.
-    fn without_stale_related(self, verdicts: &[Option<&'static str>]) -> Self {
+    fn without_stale_related(
+        self,
+        picked_verdicts: &[Option<&'static str>],
+        omitted_verdicts: &[Option<&'static str>],
+    ) -> Self {
         let (Some(reduction), Some(log)) = (self.reduction.as_ref(), self.related_to_recheck())
         else {
             return self;
@@ -216,12 +222,12 @@ impl OpenPlan {
         let stale_tools: std::collections::HashSet<LedgerSeq> = log
             .picked
             .iter()
-            .zip(verdicts)
+            .zip(picked_verdicts)
             .filter_map(|((kind, id, _), verdict)| {
                 (verdict.is_some() && *kind == EvidenceKind::Tool).then_some(LedgerSeq(*id))
             })
             .collect();
-        let log = log.after_recheck(verdicts);
+        let log = log.after_recheck_all(picked_verdicts, omitted_verdicts);
         let kept: Vec<_> = reduction
             .source
             .related
@@ -532,19 +538,30 @@ impl Engine {
         let Some(log) = plan.related_to_recheck() else {
             return plan;
         };
-        let count = log.picked.len();
+        let picked_count = log.picked.len();
+        let omitted_refs: Vec<_> = log
+            .omitted
+            .iter()
+            .filter_map(|(found, _)| found.as_ref())
+            .collect();
+        let count = picked_count + omitted_refs.len();
         let is_input_current = self.queued(record.id).is_ok_and(|current| {
             current.chat == record.chat
                 && current.settings == record.settings
                 && current.text == record.text
         });
         let verdicts = if is_input_current {
-            let picked: Vec<(EvidenceKind, u64, &str)> = log
+            let refs: Vec<(EvidenceKind, u64, &str)> = log
                 .picked
                 .iter()
                 .map(|(kind, id, hash)| (*kind, *id, hash.as_str()))
+                .chain(
+                    omitted_refs
+                        .iter()
+                        .map(|(kind, id, hash)| (*kind, *id, hash.as_str())),
+                )
                 .collect();
-            match self.related_recheck(record.chat, log.tail, &picked).await {
+            match self.related_recheck(record.chat, log.tail, &refs).await {
                 Ok(verdicts) => verdicts,
                 Err(error) => {
                     tracing::warn!(chat = record.chat.0, error = %self.failure_line(&error), "related record recheck failed");
@@ -557,7 +574,8 @@ impl Engine {
         if verdicts.iter().all(Option::is_none) {
             return plan;
         }
-        plan.without_stale_related(&verdicts)
+        let (picked_verdicts, omitted_verdicts) = verdicts.split_at(picked_count);
+        plan.without_stale_related(picked_verdicts, omitted_verdicts)
     }
 
     /// 다음 입력부터 `provider`로 보낸다. 그 provider의 session이 열리면 지운다. 입력에 고정한 모델이 있으면 그 모델의 provider가 먼저다.
@@ -729,9 +747,11 @@ impl Engine {
         let (source, related) = self
             .attach_related(
                 (record, &settings, &budget),
+                (&plain.target, plain.model.as_deref()),
                 constraint_only_source(&constraints, &budget),
             )
-            .await;
+            .await
+            .map_err(Planning::Ask)?;
         let Some(source) = source else {
             return Ok(plain);
         };
@@ -839,17 +859,18 @@ impl Engine {
             }
             SendTarget::New { .. } | SendTarget::Open(_) => (full_source, full),
         };
+        let opened = (&target, plain.model.as_deref());
         let (source, outcome, related) = self
-            .related_handoff((record, &settings, &budget), &target, source, outcome)
-            .await;
+            .related_handoff((record, &settings, &budget), opened, source, outcome)
+            .await
+            .map_err(Planning::Ask)?;
         let (evidence, reduction, constraint_tiers) =
             packet_parts(&target, &outcome, source, (budget, selector));
         let handoff = packet_text(chat, outcome)?;
-        let leaving = leaving_main(main, &plain, stale.is_some());
         Ok(OpenPlan {
+            leaving: leaving_main(main, &plain, stale.is_some()),
             target,
             handoff,
-            leaving,
             synced,
             reduction,
             constraint_tiers,

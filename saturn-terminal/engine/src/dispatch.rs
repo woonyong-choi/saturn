@@ -204,6 +204,8 @@ impl Engine {
         };
         self.discard_compact_reply(chat, Trigger::Input(input))
             .await;
+        self.discard_compact_reply(chat, Trigger::Related(input))
+            .await;
         let delivery = self.delivery(&record, start)?;
         let plan = match planned {
             Err(PlanError::Deferred(constraints)) => {

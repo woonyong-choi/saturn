@@ -73,6 +73,9 @@ pub(crate) struct PacketEvidence {
 /// 관련 원문 선주입이 항목을 고른 방식. 근거 검색과 같은 후보 집합의 RRF 순위다.
 pub(crate) const RELATED_SELECTOR: &str = "related_rank";
 
+/// 관련 원문 선주입이 항목을 고른 방식. router `related` 판단의 남김 확률이다.
+pub(crate) const RELATED_JEV_SELECTOR: &str = "related_jev";
+
 /// 관련 원문 한 건의 종류, 번호, 원문 해시. `종류:채팅:번호:해시` 참조의 재료다.
 pub(crate) type RelatedRef = (EvidenceKind, u64, String);
 
@@ -80,6 +83,10 @@ pub(crate) type RelatedRef = (EvidenceKind, u64, String);
 /// 한 건에 속하지 않는 이유(`no_candidates`, `retrieval_failed`)는 기록을 가리키지 않는다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RelatedLog {
+    /// 요청한 방식. 기록 하나에 속하지 않는 행은 이 방식으로 남는다.
+    pub(crate) requested: &'static str,
+    /// 실제로 고른 방식. 기록 하나에 속하는 행은 이 방식으로 남는다. 판단을 못 써 순위로 대신하면 요청과 다르다.
+    pub(crate) applied: &'static str,
     pub(crate) tail: LedgerSeq,
     pub(crate) picked: Vec<RelatedRef>,
     pub(crate) omitted: Vec<(Option<RelatedRef>, &'static str)>,
@@ -89,10 +96,17 @@ impl RelatedLog {
     /// 고른 기록 없이 `reason`으로 모두 못 넣었다.
     pub(crate) fn none(tail: LedgerSeq, reason: &'static str) -> Self {
         Self {
+            requested: RELATED_SELECTOR,
+            applied: RELATED_SELECTOR,
             tail,
             picked: Vec::new(),
             omitted: vec![(None, reason)],
         }
+    }
+
+    /// 요청한 방식을 `requested`로 고친다.
+    pub(crate) fn requested(self, requested: &'static str) -> Self {
+        Self { requested, ..self }
     }
 
     /// 고른 기록 전부를 `reason`으로 뺀 근거. 이미 못 든 기록은 그대로 둔다.
@@ -103,11 +117,40 @@ impl RelatedLog {
 
     /// 적용 직전 재검사 결과로 고친 근거. `verdicts`는 `picked`와 같은 순서이고 `Some`이면 그 이유로 뺀다.
     pub(crate) fn after_recheck(&self, verdicts: &[Option<&'static str>]) -> Self {
+        let unchanged = vec![
+            None;
+            self.omitted
+                .iter()
+                .filter(|(found, _)| found.is_some())
+                .count()
+        ];
+        self.after_recheck_all(verdicts, &unchanged)
+    }
+
+    /// 고른 원문과 생략한 후보를 현재 권한에 맞춰 고친다. 생략 후보가 더는 읽히지 않거나 바뀌었으면
+    /// 참조 자체를 남기지 않는다. 고른 원문이 권한 밖이면 번호·해시 없이 제거한다.
+    pub(crate) fn after_recheck_all(
+        &self,
+        picked_verdicts: &[Option<&'static str>],
+        omitted_verdicts: &[Option<&'static str>],
+    ) -> Self {
         let mut kept = Vec::new();
-        let mut omitted = self.omitted.clone();
-        for (found, verdict) in self.picked.iter().zip(verdicts) {
+        let mut typed_verdicts = omitted_verdicts.iter();
+        let mut omitted: Vec<_> = self
+            .omitted
+            .iter()
+            .filter_map(|row| {
+                if row.0.is_none() || typed_verdicts.next().is_some_and(Option::is_none) {
+                    Some(row.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for (found, verdict) in self.picked.iter().zip(picked_verdicts) {
             match verdict {
                 None => kept.push(found.clone()),
+                Some("scope" | "deleted") => {}
                 Some(reason) => omitted.push((Some(found.clone()), *reason)),
             }
         }
@@ -115,6 +158,7 @@ impl RelatedLog {
             tail: self.tail,
             picked: kept,
             omitted,
+            ..self.clone()
         }
     }
 
@@ -123,7 +167,7 @@ impl RelatedLog {
             Some((kind, id, hash)) => PacketItemRow {
                 zone: format!("Related-{}", kind.name()),
                 ref_id: *id,
-                selector: RELATED_SELECTOR,
+                selector: self.applied,
                 form: reason.is_none().then(|| "Full".to_owned()),
                 reason,
                 hash: Some(hash.clone()),
@@ -131,7 +175,7 @@ impl RelatedLog {
             None => PacketItemRow {
                 zone: "Related".to_owned(),
                 ref_id: self.tail.0,
-                selector: RELATED_SELECTOR,
+                selector: self.requested,
                 form: None,
                 reason,
                 hash: None,

@@ -47,6 +47,7 @@ mod provider_events;
 mod provider_stall;
 mod prune;
 mod read_only_steer;
+mod related_jev;
 mod related_memory;
 mod request_summary;
 mod requests;

@@ -9,7 +9,8 @@ pub mod split;
 
 use std::future::Future;
 
-use saturn_protocol::ids::{ChatRevision, LedgerSeq, SettingsRevision};
+use saturn_protocol::ids::{ChatId, ChatRevision, LedgerSeq, SettingsRevision};
+use saturn_protocol::rpc::EvidenceKind;
 use saturn_protocol::state::Disposition;
 
 use self::split::{SplitError, split_request};
@@ -28,6 +29,7 @@ pub const SET_RELATION: &str = "relation";
 pub const SET_SEND_OPT: &str = "send-opt";
 pub const SET_COMPACT: &str = "compact";
 pub const SET_CONSTRAINT: &str = "constraint";
+pub const SET_RELATED: &str = "related";
 
 /// 판단 기록과 대체 규칙 기록에 그대로 남는다.
 pub mod question_ids {
@@ -474,6 +476,107 @@ pub fn compact_verdicts(
         .collect()
 }
 
+/// 관련 원문 한 건을 질문에 싣는 앞 글자 수(초안). 넘는 원문은 앞부분만 보이고 질문이 관측 범위를 적는다.
+pub const RELATED_TEXT_CHARS: usize = 4_000;
+
+/// `related` 질문이 싣는 후보 한 건. `ordinal`은 한 요청 안에서만 쓰는 1부터의 임시 번호이고 저장 참조가 아니다.
+/// 후보의 정체는 `(kind, chat, id, hash)`다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RelatedCandidate {
+    pub ordinal: u32,
+    pub kind: EvidenceKind,
+    pub chat: ChatId,
+    pub id: u64,
+    pub hash: String,
+    pub text: String,
+}
+
+impl RelatedCandidate {
+    /// 요청 한도 때문에 원문 일부만 질문에 실린다.
+    pub fn is_clipped(&self) -> bool {
+        self.text.chars().count() > RELATED_TEXT_CHARS
+    }
+}
+
+// cost: time O(L), heap O(L), stack O(1)
+// vars: L = 입력 글자 수
+// basis: estimate
+/// 접수한 입력과 현재 작업 범위를 알리는 `state`.
+pub fn related_state(input: &str, scope: &str) -> String {
+    format!(
+        "Accepted user request:\n{}\n\nWorking scope: {scope}",
+        clip(input, COMPACT_INPUT_CHARS)
+    )
+}
+
+// cost: time O(n·L), heap O(n·L), stack O(1)
+// vars: n = 후보 수, L = 후보 글자 수
+// basis: estimate
+/// 후보마다 `candidate_<ordinal>_keep`을 묻는다. 질문에 종류 있는 참조와 원문의 관측 범위를 싣는다.
+pub fn related_questions(candidates: &[RelatedCandidate]) -> (QuestionSetId, Vec<Question>) {
+    const HEAD: &str = "The user moves this chat to a fresh coding-agent session for the accepted request. \
+                        Should the new session see this original record up front?";
+    let questions = candidates
+        .iter()
+        .map(|candidate| {
+            let total = candidate.text.chars().count();
+            let seen = total.min(RELATED_TEXT_CHARS);
+            noul(
+                &related_question_id(candidate.ordinal),
+                &format!(
+                    "{HEAD}\n\n[{}:{}:{}:{}] showing {seen} of {total} characters\n{}",
+                    candidate.kind.name(),
+                    candidate.chat.0,
+                    candidate.id,
+                    candidate.hash,
+                    clip(&candidate.text, RELATED_TEXT_CHARS)
+                ),
+            )
+        })
+        .collect();
+    (set_id_at(SET_RELATED, 1, 0), questions)
+}
+
+// cost: time O(n + q), heap O(n + q·s), stack O(1), alloc 1
+// vars: n = 후보 수, q = 질문 수, s = state 글자 수
+// basis: estimate
+/// 후보 전체를 묻는 요청을 크기 한도에 맞게 나눈 목록이다. 조각마다 같은 `state`를 싣는다.
+///
+/// # Errors
+/// `state`나 질문 하나가 한도를 넘으면 `SplitError::QuestionTooLarge`.
+pub fn related_requests(
+    model: &str,
+    state: &str,
+    candidates: &[RelatedCandidate],
+) -> Result<Vec<RouterRequest>, SplitError> {
+    split_request(RouterRequest {
+        model: model.to_string(),
+        state: state.to_string(),
+        sets: vec![related_questions(candidates)],
+    })
+}
+
+// cost: time O(n·a), heap O(n), stack O(1)
+// vars: n = 후보 수, a = 응답의 답 수
+// basis: estimate
+/// 후보 순서대로 `candidate_<ordinal>_keep`의 P(yes)를 모은다. 답이 없거나 `noul`이 아닌 후보는 `None`이다.
+/// `ordinals`는 요청에 쓴 임시 번호이고 이 요청 밖의 번호는 보지 않는다.
+pub fn related_verdicts(ordinals: &[u32], responses: &[RouterResponse]) -> Vec<Option<f64>> {
+    ordinals
+        .iter()
+        .map(|ordinal| {
+            let id = related_question_id(*ordinal);
+            responses
+                .iter()
+                .flat_map(|response| &response.answers)
+                .find_map(|(answer_id, answer)| match answer {
+                    Answer::Noul(yes) if *answer_id == id => Some(*yes),
+                    _ => None,
+                })
+        })
+        .collect()
+}
+
 /// `keep_current`를 `is_actionable`보다 먼저 읽어 이어 가는 입력이 파일 탐색으로 빠지지 않게 한다.
 pub fn decide_route(
     routed: (&RouterRequest, &RouterResponse),
@@ -729,6 +832,10 @@ impl AnswerReader<'_> {
 /// 초안: 모든 세트를 1.0에서 시작한다.
 fn compact_call_id(seq: LedgerSeq) -> String {
     format!("call_{}_keep", seq.0)
+}
+
+fn related_question_id(ordinal: u32) -> String {
+    format!("candidate_{ordinal}_keep")
 }
 
 fn compact_result_id(seq: LedgerSeq) -> String {

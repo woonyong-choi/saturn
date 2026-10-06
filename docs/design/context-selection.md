@@ -46,15 +46,15 @@
 
 #### 관련 원문 선주입
 
-실험 설정 `context.select.related = rank`일 때만 새 session을 여는 입력의 패킷에 적용한다([설정](settings.md)). 기본 `off`는 아무 것도 바꾸지 않는다. 보관 session으로 돌아가는 변경분과 맥락 정리의 새 session에는 적용하지 않는다. 구현은 `engine/src/related.rs`와 `evidence.rs`의 `related_search`, `related_recheck`, 패킷 조립은 core `PacketSource::related`다.
+실험 설정 `context.select.related`가 `rank`나 `jev`일 때만 새 session을 여는 입력의 패킷에 적용한다([설정](settings.md)). 기본 `off`는 아무 것도 바꾸지 않는다. 보관 session으로 돌아가는 변경분과 맥락 정리의 새 session에는 적용하지 않는다. 구현은 `engine/src/related.rs`와 `evidence.rs`의 `related_search`, `related_recheck`, 패킷 조립은 core `PacketSource::related`다.
 
 1. 후보 집합, 읽기 범위, 비밀 가림, 순위는 근거 검색과 같다. 검색어는 접수한 입력 본문이다. 사용자 입력, 끼워 넣은 입력, 에이전트 글, 도구 기록이 모두 후보다.
 2. 패킷이 이미 싣는 대화 본문은 종류 있는 번호(`input`·`text`·`steer`와 번호)로 걸러낸다. 글자가 같다는 이유로 걸러내지 않으므로 반복한 입력은 둘 다 남는다. 같은 도구 기록이 관련 원문으로 전문이 들어가면 경쟁 구역에서는 같은 기록 번호를 뺀다.
 3. 순위 위 20건까지 차례로 `P_max`와 전송 상한 `P_send` 중 작은 값에서 고정 구역을 뺀 남은 글자 수에 맞는지 본다. 맞으면 원문 전체를 넣고, 맞지 않으면 줄여 넣지 않고 그 기록을 `budget`으로 뺀다. 경쟁 구역은 관련 원문을 넣은 뒤 남은 예산으로 채운다.
 4. 넣은 원문은 패킷 고정 구역의 `Related original records` 구역에 `[종류:채팅:번호:해시]` 한 줄 뒤 원문으로 실린다. 이 참조는 `saturn evidence read`가 읽는 참조와 같고 고정 구역이라 기존 전송 직전 검사(해시 일치, 앞에서부터 글자 그대로)를 그대로 받는다.
-5. 보내기 직전(`open_with_plan`)에 채팅 revision(기록의 마지막 번호)과 입력 본문, 고른 기록마다 해시와 현재 읽기 권한을 다시 맞춘다. revision이나 입력이 달라졌으면 늦은 결과라 모두 버리고(`stale_revision`), 원문이 바뀌었으면 `changed`, 읽기 범위 밖이 됐으면 `scope`, 기록에서 사라졌으면 `deleted`로 그 기록만 뺀 패킷을 다시 만든다. 뺀 자리에 오래된 내용이나 다른 내용을 넣지 않는다.
+5. 보내기 직전(`open_with_plan`)에 채팅 revision(기록의 마지막 번호)과 입력 본문, 고른 기록과 생략 후보마다 해시와 현재 읽기 권한을 다시 맞춘다. revision이나 입력이 달라졌으면 늦은 결과라 모두 버리고(`stale_revision`), 원문이 바뀌었으면 `changed`로 그 기록만 뺀 패킷을 다시 만든다. 읽기 범위 밖이 됐거나 기록에서 사라진 참조는 근거 행에서도 제거한다. 뺀 자리에 오래된 내용이나 다른 내용을 넣지 않는다.
 6. 후보가 하나도 없으면 `no_candidates`, 검색이나 재검사를 하지 못하면 `retrieval_failed`로 분류하고 입력은 그대로 보낸다. 패킷 자체가 없는 첫 입력에는 항목 행을 만들 수 없어 이 분류를 저장하지 않으며 검색 실패만 진단 로그에 남는다. 맥락 한도로 거절돼 패킷을 줄일 때는 관련 원문을 줄이지 않고 모두 `reduced`로 뺀다.
-7. 근거는 기존 전달 패킷 기록의 항목 행이다. 구역 `Related-<종류>`, 번호, 원문 해시(`body_hash`), 선택 방식 `related_rank`, 들어간 모양(`Full`)이나 빠진 이유를 남기고, 기록 하나에 속하지 않는 이유는 구역 `Related`에 후보를 읽은 revision을 번호로 둔 한 행이다. 패킷 행의 입력 번호와 `chat_revision`이 검색한 입력과 기록 revision이다. 별도 저장소나 검색 서비스는 없다. 읽기 권한이 없는 기록은 후보가 아니라 있다는 사실도 남기지 않는다.
+7. 근거는 기존 전달 패킷 기록의 항목 행이다. 구역 `Related-<종류>`, 번호, 원문 해시(`body_hash`), 선택 방식 `related_rank`나 `related_jev`, 들어간 모양(`Full`)이나 빠진 이유를 남기고, 기록 하나에 속하지 않는 이유는 구역 `Related`에 후보를 읽은 revision을 번호로 둔 한 행이다. 패킷 행의 입력 번호와 `chat_revision`이 검색한 입력과 기록 revision이다. 별도 저장소나 검색 서비스는 없다. 읽기 권한이 없는 기록은 후보가 아니라 있다는 사실도 남기지 않는다.
 
 #### 관련 원문 Jev 실험 계약
 
@@ -65,7 +65,11 @@
 3. 요청은 별도 작업으로 보내 engine을 막지 않는다. 답을 적용하기 직전에 채팅 번호, 접수 입력 번호와 본문, 접수 설정 번호와 현재 `related` 값, 검색한 기록 마지막 번호, 후보별 종류 있는 참조와 해시, 새 session 대상이 모두 같아야 한다. 하나라도 다르면 늦은 판단으로 버리고 현재 자료로 `rank`를 다시 만든다. 기한 뒤 답, router 실패, 답 없음, 잘못된 확률, 낮은 확신, 요청 한도 초과도 `rank`로 고정한다. rank 검색 자체가 실패하거나 후보가 없으면 선주입하지 않는다. 적용 직전 원문별 현재 권한·해시 재검사는 선택 방식과 관계없이 그대로 한다.
 4. 요청한 방식과 실제 적용 방식, 판단 실패·늦음·대체 이유를 기존 판단 기록과 전달 패킷 항목 행에 남긴다. Jev 결과와 rank 결과 모두 같은 전문 예산과 같은 생략 사유를 쓴다. 품질·비용은 [#541](https://github.com/woonyong-choi/saturn/issues/541)의 B2에서 별도로 측정한다.
 
-현재 구현은 `rank`까지만 연결되어 있다. Jev 실험 옵션은 위 계약을 검증한 뒤 연결한다.
+구현은 `related` 질문 집합(`saturn-terminal/core/src/routers`), 후보 스냅샷과 적용 직전 비교(`saturn-terminal/engine/src/related.rs`), 기존 `compact` 대기·재개 경로(`packet_select.rs`)의 답 자리 일반화(`Trigger::Related`)로 이 계약을 따른다. 달라진 점은 다음과 같다.
+
+- 기록에 남는 이유는 `jev_late`, `jev_failed`, `jev_low_confidence`, `jev_invalid`, `jev_stale`, `jev_too_large`, 제외한 후보의 `jev_excluded`다. `rank`로 고정하면 기록 행의 선택 방식은 `related_rank`이고 요청한 `related_jev`는 구역 `Related`의 이유 행에 남는다.
+- 후보 원문은 질문에 앞 4,000자까지만 싣고 질문이 `showing N of M characters`로 관측 범위를 밝힌다. 일부만 본 판단은 판단 기록에 `clipped`를 더한다. `state`와 질문 하나가 한도를 넘는 경우는 호출 없이 `rank`로 간다. 로컬 router는 분할 전송을 지원하지 않아 전체 질문이 한 조각을 넘으면 `jev_too_large`로 대체한다.
+- 판단 기록은 질문 집합 `related@1.0`이고, 기록 번호용 `compact` 질문과 답 자리를 나눠 쓴다. 패킷 `compact`와 함께 켜면 각자 한 번씩 묻고 한 번씩 기록한다.
 
 보존 우선 선별은 구현 전 계약이고, 관련 원문 선주입은 위 실험 설정 뒤에서만 구현했다. 아래의 도구 전용 원문 조회와 기존 패킷 호출은 이미 있는 경로다. 전체 범위와 독립 검증 순서는 [비교 보고서](../notes/references/context-preservation.md#전체-범위와-최소-범위)를 따른다.
 

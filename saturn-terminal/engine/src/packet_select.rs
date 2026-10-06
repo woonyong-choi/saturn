@@ -17,6 +17,7 @@ use saturn_protocol::state::InputState;
 use crate::flow::{JobKind, RouterDone, RouterJob};
 
 use crate::handoff::compact_material;
+use crate::related::RelatedSnapshot;
 use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
 use crate::store::JudgmentOutcome;
 use crate::{Engine, EngineError, masked_chain};
@@ -32,6 +33,8 @@ const COMPACT_WAIT: Duration = if cfg!(test) {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Trigger {
     Input(InputId),
+    /// 입력 하나의 관련 원문 선택(`context.select.related = jev`). 같은 입력의 패킷 `compact` 판단과 답 자리가 겹치지 않는다.
+    Related(InputId),
     /// 맥락 정리.
     Compaction,
 }
@@ -90,11 +93,30 @@ pub(crate) struct CompactAsk {
 /// 물을 준비를 마친 호출 하나. 후보와 요청 글은 이 시점의 기록으로 만들었다.
 #[derive(Debug, Clone)]
 pub(crate) struct CompactCall {
-    ask: CompactAsk,
-    request: RouterRequest,
+    pub(crate) ask: CompactAsk,
+    pub(crate) request: RouterRequest,
     seqs: Vec<LedgerSeq>,
     /// 키가 달라 다시 묻는 호출이다.
     is_retry: bool,
+    /// 관련 원문 선택의 호출이면 요청 때의 후보 스냅샷. `compact` 호출은 `None`이다.
+    pub(crate) related: Option<Box<RelatedSnapshot>>,
+}
+
+impl CompactCall {
+    /// 관련 원문 선택 호출. 답은 후보 스냅샷으로만 해석하고 `compact`의 기록 번호 질문은 쓰지 않는다.
+    pub(crate) fn related(
+        ask: CompactAsk,
+        request: RouterRequest,
+        snapshot: RelatedSnapshot,
+    ) -> Self {
+        Self {
+            ask,
+            request,
+            seqs: Vec::new(),
+            is_retry: false,
+            related: Some(Box::new(snapshot)),
+        }
+    }
 }
 
 /// 호출이 돌아온 뒤 이어 갈 일.
@@ -116,10 +138,10 @@ pub(crate) struct CompactWait {
 /// 돌아온 답. 적용 직전에 키를 비교해 쓰거나 버린다. 기다림 안에 오지 않았으면 `exchange`가 없다.
 #[derive(Debug)]
 pub(crate) struct CompactReply {
-    call: CompactCall,
-    exchange: Option<RouterExchange>,
+    pub(crate) call: CompactCall,
+    pub(crate) exchange: Option<RouterExchange>,
     /// 판단 기록을 썼다.
-    is_recorded: std::sync::atomic::AtomicBool,
+    pub(crate) is_recorded: std::sync::atomic::AtomicBool,
 }
 
 /// 적용 직전 자리의 결과.
@@ -158,16 +180,18 @@ impl Engine {
             Settle::Apply => outcome_of(&exchange.result),
             Settle::Retry | Settle::Fallback => JudgmentOutcome::Superseded,
         };
-        self.record_compact(
-            &call.ask,
-            &call.request,
-            exchange,
-            (outcome, verdicts.len(), call.seqs.len()),
-        )
-        .await;
-        reply
-            .is_recorded
-            .store(true, std::sync::atomic::Ordering::Relaxed);
+        if !reply.is_recorded.load(std::sync::atomic::Ordering::Relaxed) {
+            self.record_compact(
+                &call.ask,
+                &call.request,
+                exchange,
+                (outcome, verdicts.len(), call.seqs.len()),
+            )
+            .await;
+            reply
+                .is_recorded
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+        }
         match settled {
             Settle::Apply if verdicts.is_empty() => CompactGate::Ready(CompactOrder::Unavailable),
             Settle::Apply => CompactGate::Ready(CompactOrder::Judged(verdicts)),
@@ -203,6 +227,7 @@ impl Engine {
             ask,
             request,
             is_retry,
+            related: None,
         })
     }
 
@@ -273,6 +298,16 @@ impl Engine {
             return;
         };
         let call = reply.call;
+        if call.related.is_some() {
+            self.record_related(
+                &call,
+                &exchange,
+                JudgmentOutcome::Superseded,
+                &["superseded"],
+            )
+            .await;
+            return;
+        }
         self.record_compact(
             &call.ask,
             &call.request,
@@ -291,13 +326,23 @@ impl Engine {
         let Some(wait) = self.flow.compact_waiting.remove(&chat) else {
             return;
         };
+        let recorded_late = is_late && wait.call.related.is_some();
+        if recorded_late {
+            self.record_related(
+                &wait.call,
+                &done.exchange,
+                JudgmentOutcome::NoResponse,
+                &["late"],
+            )
+            .await;
+        }
         let exchange = (!is_late).then_some(done.exchange);
         self.flow.compact_replies.insert(
             (chat, trigger),
             CompactReply {
                 call: wait.call,
                 exchange,
-                is_recorded: std::sync::atomic::AtomicBool::new(false),
+                is_recorded: std::sync::atomic::AtomicBool::new(recorded_late),
             },
         );
         self.resume_after_compact(chat, trigger, wait.resume).await;

@@ -60,6 +60,8 @@ pub(crate) enum RelatedSelect {
     Off,
     /// 근거 검색과 같은 후보와 RRF 순위로 고른다.
     Rank,
+    /// `Rank`와 같은 후보를 router가 후보별로 판단해 고른다. 판단을 못 쓰면 `Rank`로 고정한다.
+    Jev,
 }
 
 /// 화면 방식 `tui.screen`. `auto`는 터미널이면 전체 화면, 아니면 plain이다.
@@ -375,10 +377,11 @@ impl Settings {
     }
 
     /// 실험 옵션 `context.select.related`. 기본 `off`는 아무것도 미리 넣지 않는다. `rank`는 새 session의 첫 작업 입력 앞에
-    /// 같은 채팅의 관련 원문을 근거 검색의 후보 집합과 RRF 순위로 골라 패킷에 넣는다. 모르는 값은 검사에서 걸러져 기본값으로 본다.
+    /// 같은 채팅의 관련 원문을 근거 검색의 후보 집합과 RRF 순위로 골라 패킷에 넣고, `jev`는 같은 후보를 router가 판단해 고른다. 모르는 값은 검사에서 걸러져 기본값으로 본다.
     pub(crate) fn related_select(&self) -> RelatedSelect {
         match self.text("context.select.related") {
             "rank" => RelatedSelect::Rank,
+            "jev" => RelatedSelect::Jev,
             _ => RelatedSelect::Off,
         }
     }

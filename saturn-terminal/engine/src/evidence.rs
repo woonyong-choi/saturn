@@ -280,8 +280,8 @@ impl Engine {
     }
 
     /// 고른 기록을 적용 직전에 현재 기록과 권한으로 다시 맞춘다. 순서는 `picked`와 같고 `None`이면 지금도 같은 원문이다.
-    /// 채팅 revision이 `tail`과 다르면 늦은 결과라 모두 `stale_revision`이다. 그 밖에는 원문이 바뀌었으면 `changed`,
-    /// 읽기 범위 밖이 됐으면 `scope`, 기록에서 사라졌으면 `deleted`다.
+    /// 읽기 범위 밖이면 `scope`, 기록에서 사라졌으면 `deleted`다. 읽을 수 있는 기록의 채팅 revision이
+    /// `tail`과 다르면 `stale_revision`, 원문이 바뀌었으면 `changed`다.
     ///
     /// # Errors
     /// 기록이나 설정을 읽지 못하면 그 오류.
@@ -292,20 +292,20 @@ impl Engine {
         picked: &[(EvidenceKind, u64, &str)],
     ) -> Result<Vec<Option<&'static str>>, EngineError> {
         let material = self.evidence_material(chat).await?;
-        if material.tail != tail {
-            return Ok(vec![Some("stale_revision"); picked.len()]);
-        }
         let sets = candidate_sets(&material)?;
         Ok(picked
             .iter()
-            .map(
-                |(kind, id, hash)| match sets.of(*kind).and_then(|set| set.get(LedgerSeq(*id))) {
+            .map(|(kind, id, hash)| {
+                if material.unreadable.contains(&(*kind, *id)) {
+                    return Some("scope");
+                }
+                match sets.of(*kind).and_then(|set| set.get(LedgerSeq(*id))) {
+                    Some(_) if material.tail != tail => Some("stale_revision"),
                     Some(candidate) if candidate.hash == *hash => None,
                     Some(_) => Some("changed"),
-                    None if material.unreadable.contains(&(*kind, *id)) => Some("scope"),
                     None => Some("deleted"),
-                },
-            )
+                }
+            })
             .collect())
     }
 
