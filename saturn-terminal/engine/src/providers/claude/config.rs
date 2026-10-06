@@ -151,7 +151,7 @@ pub(crate) fn with_read_deny(mut settings: Value, globs: &[String]) -> Value {
 /// 모든 Bash 호출이 `permissions.ask`로 호스트에 와 Saturn 규칙이 판정하게 한다.
 /// 샌드박스 밖 실행과 샌드박스 없이 시작하는 일을 막고, 작업 폴더와 더한 폴더의 쓰기는 Claude 기본 허용에 맡긴다.
 /// 배열은 설정 층끼리 합쳐지므로 사용자 설정의 `denyRead`는 남는다. 사용자 설정 파일은 고치지 않는다.
-/// 샌드박스는 Unix 소켓 접속도 막으므로 `engine_socket`이 있으면 그 경로 하나만 허용한다. 에이전트 작업 안의 `saturn`이
+/// 샌드박스는 Unix 소켓 접속도 막으므로 `engine_socket`이 있으면 그 소켓의 표기 경로와 실제 경로만 허용한다. 에이전트 작업 안의 `saturn`이
 /// 출입증으로 engine에 붙는 길(`saturn evidence`, 하위 접속)이고, 다른 소켓은 계속 막는다.
 pub(crate) fn with_key_sandbox(
     mut settings: Value,
@@ -170,7 +170,14 @@ pub(crate) fn with_key_sandbox(
         "filesystem": { "denyRead": paths },
     });
     if let Some(socket) = engine_socket {
-        settings["sandbox"]["network"] = json!({ "allowUnixSockets": [socket.to_string_lossy()] });
+        let mut sockets = vec![socket.to_string_lossy().into_owned()];
+        if let Ok(canonical) = socket.canonicalize() {
+            let canonical = canonical.to_string_lossy().into_owned();
+            if canonical != sockets[0] {
+                sockets.push(canonical);
+            }
+        }
+        settings["sandbox"]["network"] = json!({ "allowUnixSockets": sockets });
     }
     settings
 }
