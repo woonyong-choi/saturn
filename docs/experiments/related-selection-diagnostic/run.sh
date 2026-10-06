@@ -25,9 +25,9 @@ case "${1:-}" in
   all)
     SATURN_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short=7 HEAD)"
     export SATURN_RUN_ID
-    "$0" collect
-    "$0" analyze "$SATURN_RUN_ID"
-    "$0" verify "$SATURN_RUN_ID"
+    "$PWD/run.sh" collect
+    "$PWD/run.sh" analyze "$SATURN_RUN_ID"
+    "$PWD/run.sh" verify "$SATURN_RUN_ID"
     ;;
   *)
     echo "사용: ./run.sh collect|process|analyze|verify|all [실행 id]" >&2
