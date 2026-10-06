@@ -406,8 +406,8 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "List records close to the query in rank order with number, length, hash, and excerpt",
     ),
     (
-        "찾을 말. 파일 이름, 명령, 오류 문구처럼 기록에 있는 글이 잘 맞는다",
-        "Words to look for. Text that appears in records, such as file names, commands, and error messages, matches best",
+        "찾을 말. 파일 이름, 명령, 오류 문구처럼 기록에 있는 글이 잘 맞는다. 따옴표 없이 여러 단어를 쓰면 공백 하나로 이어 한 검색어로 본다",
+        "Words to look for. Text that appears in records, such as file names, commands, and error messages, matches best. Several unquoted words are joined with one space into a single query",
     ),
     (
         "보일 후보 수. 50을 넘으면 50이다",
