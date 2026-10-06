@@ -31,6 +31,8 @@ pub(crate) enum LookupOutcome {
     Stale,
     /// 읽기 범위 밖 파일의 기록.
     Scope,
+    /// 명령이 engine에 닿지 못했다. 요청이 engine에 오지 않아 도구 결과의 오류 표지로만 알 수 있다.
+    Unreachable,
 }
 
 impl LookupOutcome {
@@ -40,6 +42,7 @@ impl LookupOutcome {
             Self::NotFound => "NotFound",
             Self::Stale => "Stale",
             Self::Scope => "Scope",
+            Self::Unreachable => "Unreachable",
         }
     }
 }

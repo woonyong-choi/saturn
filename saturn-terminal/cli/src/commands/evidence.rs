@@ -7,7 +7,7 @@ use std::path::Path;
 
 use anyhow::Context;
 use saturn_protocol::ids::LedgerSeq;
-use saturn_protocol::rpc::{EvidenceItem, QueryResult, Request};
+use saturn_protocol::rpc::{EVIDENCE_UNREACHABLE_MARKER, EvidenceItem, QueryResult, Request};
 use saturn_tui::client::EngineClient;
 use saturn_tui::i18n::{self, Lang};
 
@@ -30,7 +30,7 @@ pub(crate) async fn run(
 ) -> anyhow::Result<()> {
     let mut client = EngineClient::connect(socket)
         .await
-        .context(lang.tr(i18n::CLI_CHILD_NO_ENGINE))
+        .context(unreachable_message(lang, command))
         .map_err(|error| Exit::wrap(ExitCode::EngineUnavailable, error))?;
     let request = match command {
         EvidenceCommand::Search(args) => Request::EvidenceSearch {
@@ -70,6 +70,17 @@ pub(crate) async fn run(
         }
     }
     Ok(())
+}
+
+/// 오류 첫머리가 `EVIDENCE_UNREACHABLE_MARKER (read 13)` 꼴이어야 engine이 닿지 못한 시도를 센다.
+fn unreachable_message(lang: Lang, command: &EvidenceCommand) -> String {
+    let what = match command {
+        EvidenceCommand::Search(_) => "search".to_owned(),
+        EvidenceCommand::Read(args) => format!("read {}", args.id),
+    };
+    lang.tr(i18n::CLI_EVIDENCE_UNREACHABLE)
+        .replace("{marker}", EVIDENCE_UNREACHABLE_MARKER)
+        .replace("{what}", &what)
 }
 
 // cost: time O(n), heap O(1), stack O(1), io n
