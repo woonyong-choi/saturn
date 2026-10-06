@@ -11,9 +11,10 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 EXP = HERE.parent
-RAW = EXP / "data" / "raw" / "formal"
+RAW = EXP / "data" / "raw"
+RUNS = ["formal", "formal2"]
 OUT = EXP / "results"
-ORDER = ["steer_ok", "steer_review", "steer_compact", "steer_compact_late", "steer_race"]
+ORDER = ["steer_ok", "steer_review", "steer_compact", "steer_compact_late", "steer_race", "steer_compact_burst"]
 
 
 def classify(trial: dict) -> dict:
@@ -69,9 +70,10 @@ def classify(trial: dict) -> dict:
 
 def main() -> None:
     rows = []
-    for path in sorted(RAW.glob("*.json.gz")):
-        with gzip.open(path, "rt") as handle:
-            rows.append(classify(json.load(handle)))
+    for run in RUNS:
+        for path in sorted((RAW / run).glob("*.json.gz")):
+            with gzip.open(path, "rt") as handle:
+                rows.append({"run": run, **classify(json.load(handle))})
     rows.sort(key=lambda r: (ORDER.index(r["cond"]), r["rep"]))
     summary = {}
     for cond in ORDER:
