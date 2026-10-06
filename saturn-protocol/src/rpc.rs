@@ -252,22 +252,29 @@ pub enum Request {
         scope: UsageRange,
         folder: Option<String>,
     },
-    /// 에이전트 작업 안의 `saturn`이 출입증(`pass`)을 준 채팅의 기록을 검색한다. 도구 호출과 결과 후보를 단어·파일·최근성
-    /// 순위(RRF)로 매겨 위에서 `limit`개를 `QueryResult::EvidenceCandidates`로 돌려준다. 출입증이 없거나 회수됐으면 거절한다.
+    /// 에이전트 작업 안의 `saturn`이 출입증(`pass`)을 준 채팅의 기록을 검색한다. 도구 호출과 결과, 사용자 입력, 메인 에이전트 글 후보를
+    /// 단어·파일·최근성 순위(RRF)로 매겨 위에서 `limit`개를 `QueryResult::EvidenceCandidates`로 돌려준다. 출입증이 없거나 회수됐으면 거절한다.
     EvidenceSearch {
         pass: String,
         query: String,
         limit: u32,
     },
     /// 출입증을 준 채팅의 기록 한 건의 원문을 `QueryResult::EvidenceRecord`로 돌려준다. 원문은 `offset`글자부터 `limit`글자까지다.
-    /// `hash`가 있으면 후보를 본 때의 원문과 같을 때만 돌려준다. 없는 번호, 다른 채팅이나 폴더의 번호, 읽기 범위 밖 파일의
+    /// `hash`가 있으면 후보를 본 때의 원문과 같을 때만 돌려준다. 없는 번호, 다른 폴더의 번호, 읽기 범위 밖 파일의
     /// 기록, 바뀐 해시는 거절한다.
+    /// `kind`가 없으면 옛 형식이다. `id`는 도구 호출 기록 번호이고 `chat`은 보지 않는다. `kind`가 있으면 종류별 `id`를 읽고
+    /// `chat`(출입증을 준 채팅과 같아야 한다)과 `hash`가 모두 있어야 한다. 출입증, 채팅 범위, 현재 읽기 권한, 해시를
+    /// 읽는 때마다 다시 본다.
     EvidenceRead {
         pass: String,
         id: LedgerSeq,
         hash: Option<String>,
         offset: u64,
         limit: u64,
+        #[serde(default)]
+        kind: Option<EvidenceKind>,
+        #[serde(default)]
+        chat: Option<ChatId>,
     },
     /// 작업 목록을 `QueryResult::Tasks`로 돌려준다.
     ListTasks,
@@ -624,6 +631,12 @@ pub enum QueryResult {
         offset: u64,
         next_offset: Option<u64>,
         text: String,
+        /// 옛 engine의 답에는 없고 그때는 `Tool`이다.
+        #[serde(default)]
+        kind: EvidenceKind,
+        /// 기록이 속한 채팅. 옛 engine의 답에는 없다.
+        #[serde(default)]
+        chat: Option<ChatId>,
     },
     /// `ListConstraints`의 답. `revision`은 목록을 읽은 때의 채팅 제약 revision으로 변경 요청에 그대로 싣는다.
     Constraints {
@@ -1103,14 +1116,74 @@ pub struct ChatListItem {
     pub rows: Option<u64>,
 }
 
-/// 근거 후보 하나. `id`가 패킷 항목 앞의 기록 번호(`#41`)와 같다.
+/// 근거 원문의 종류. 번호는 종류마다 따로 세므로 종류가 다르면 같은 번호가 다른 원문이다.
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    JsonSchema,
+    TS,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum EvidenceKind {
+    /// 도구 호출과 결과. 번호는 채팅의 기록 번호(패킷 항목 앞의 `#41`)다.
+    #[default]
+    Tool,
+    /// 실행을 연 사용자 입력. 번호는 그 실행의 첫 기록 번호다.
+    Input,
+    /// 실행 중에 끼워 넣어 적용한 사용자 입력. 번호는 입력 번호다.
+    Steer,
+    /// 메인 에이전트가 보인 글. 번호는 그 글의 기록 번호다.
+    Text,
+}
+
+impl EvidenceKind {
+    /// 읽는 순서이고 후보 집합 해시를 이을 때의 순서다.
+    pub const ALL: [Self; 4] = [Self::Tool, Self::Input, Self::Steer, Self::Text];
+
+    /// 명령줄과 출력에 쓰는 이름.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Tool => "tool",
+            Self::Input => "input",
+            Self::Steer => "steer",
+            Self::Text => "text",
+        }
+    }
+
+    /// `name`의 역. 모르는 이름은 `None`.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|kind| kind.name() == name)
+    }
+}
+
+/// 근거 후보 하나. 도구 호출이면 `id`가 패킷 항목 앞의 기록 번호(`#41`)와 같다.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 pub struct EvidenceItem {
     pub id: LedgerSeq,
+    /// 옛 engine의 답에는 없고 그때는 `Tool`이다.
+    #[serde(default)]
+    pub kind: EvidenceKind,
+    /// 기록이 속한 채팅. 옛 engine의 답에는 없다.
+    #[serde(default)]
+    pub chat: Option<ChatId>,
     /// 기록 시각. unix 밀리초.
     pub at_ms: i64,
     /// 원문 글자 수. 원문 범위는 `0..chars`.
     pub chars: u64,
+    /// 발췌가 원문의 어느 글자 구간인지. 현재는 항상 `0..excerpt_end`다.
+    #[serde(default)]
+    pub excerpt_start: u64,
+    #[serde(default)]
+    pub excerpt_end: u64,
     pub excerpt: String,
     pub hash: String,
 }

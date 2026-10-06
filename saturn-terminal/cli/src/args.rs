@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use clap::{Args, CommandFactory, Parser, Subcommand};
 use saturn_protocol::ids::ChatId;
-use saturn_protocol::rpc::UsageRange;
+use saturn_protocol::rpc::{EvidenceKind, UsageRange};
 use saturn_tui::i18n::{self, Lang};
 
 /// `saturn` 명령줄.
@@ -177,8 +177,8 @@ impl EvidenceSearchArgs {
 #[derive(Debug, Args)]
 pub(crate) struct EvidenceReadArgs {
     /// 기록 번호.
-    #[arg(value_name = "ID")]
-    pub(crate) id: u64,
+    #[arg(value_name = "ID|REF")]
+    pub(crate) id: EvidenceTarget,
     /// 검색 결과에서 본 해시. 그 뒤 원문이 바뀌었으면 거절한다.
     #[arg(long, value_name = "HASH")]
     pub(crate) hash: Option<String>,
@@ -188,6 +188,74 @@ pub(crate) struct EvidenceReadArgs {
     /// 읽을 글자 수. 20000을 넘으면 20000이고, 더 있으면 다음 위치를 알린다.
     #[arg(long, value_name = "N", default_value_t = 20_000)]
     pub(crate) limit: u64,
+}
+
+/// `evidence read`가 읽을 기록. 숫자만이면 옛 형식(도구 호출 기록 번호)이고, `종류:채팅:번호:해시`면 종류별 참조다.
+/// 참조의 해시는 SHA-256 16진수 소문자 64자이며 검색 결과의 첫 열이 이 모양이다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum EvidenceTarget {
+    Tool(u64),
+    Typed {
+        kind: EvidenceKind,
+        chat: ChatId,
+        id: u64,
+        hash: String,
+    },
+}
+
+impl EvidenceTarget {
+    /// 기록 번호. 종류는 보지 않는다.
+    pub(crate) fn id(&self) -> u64 {
+        match self {
+            Self::Tool(id) | Self::Typed { id, .. } => *id,
+        }
+    }
+}
+
+impl FromStr for EvidenceTarget {
+    type Err = String;
+
+    // cost: time O(n), heap O(n), stack O(1), alloc 1
+    // vars: n = text.len()
+    // basis: estimate
+    /// 숫자도 참조도 아니거나, 종류를 모르거나, 해시가 SHA-256 모양이 아니면 오류.
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        if let Ok(id) = text.parse::<u64>() {
+            return Ok(Self::Tool(id));
+        }
+        let bad = || {
+            format!(
+                "invalid evidence reference '{text}': expected <number> or <kind>:<chat>:<id>:<sha256>, kind is one of tool, input, steer, text"
+            )
+        };
+        let mut parts = text.split(':');
+        let (Some(kind), Some(chat), Some(id), Some(hash), None) = (
+            parts.next(),
+            parts.next(),
+            parts.next(),
+            parts.next(),
+            parts.next(),
+        ) else {
+            return Err(bad());
+        };
+        let is_hash = hash.len() == 64
+            && hash
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte));
+        match (
+            EvidenceKind::from_name(kind),
+            chat.parse::<u64>(),
+            id.parse::<u64>(),
+        ) {
+            (Some(kind), Ok(chat), Ok(id)) if is_hash => Ok(Self::Typed {
+                kind,
+                chat: ChatId(chat),
+                id,
+                hash: hash.to_owned(),
+            }),
+            _ => Err(bad()),
+        }
+    }
 }
 
 /// `router` 하위 명령.
@@ -405,6 +473,42 @@ mod tests {
             ("a b c".to_owned(), 50)
         );
         assert!(parse(&["evidence", "search"]).is_err());
+    }
+
+    #[test]
+    fn evidence_read_takes_a_legacy_number_or_a_typed_reference() {
+        let hash = "ab".repeat(32);
+        let target = |text: &str| match parse(&["evidence", "read", text]).unwrap().command {
+            Some(Command::Evidence {
+                command: EvidenceCommand::Read(args),
+            }) => args.id,
+            other => panic!("not evidence read: {other:?}"),
+        };
+
+        assert_eq!(target("41"), EvidenceTarget::Tool(41));
+        assert_eq!(
+            target(&format!("input:3:41:{hash}")),
+            EvidenceTarget::Typed {
+                kind: EvidenceKind::Input,
+                chat: ChatId(3),
+                id: 41,
+                hash: hash.clone(),
+            }
+        );
+        for bad in [
+            format!("note:3:41:{hash}"),
+            format!("input:x:41:{hash}"),
+            format!("input:3:41:{}", hash.to_uppercase()),
+            "input:3:41:abc".to_owned(),
+            format!("input:3:41:{hash}:extra"),
+            "input:3:41".to_owned(),
+            "#41".to_owned(),
+        ] {
+            assert!(
+                parse(&["evidence", "read", &bad]).is_err(),
+                "should refuse {bad}"
+            );
+        }
     }
 
     #[test]

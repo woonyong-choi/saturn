@@ -162,17 +162,28 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 ### 근거 검색과 원문 조회
 
-패킷이 줄이거나 뺀 기록을 에이전트가 번호로 다시 읽는 길이다. 순위, Jev, 작업 LLM이 같은 후보에서 고르고 다시 읽는 비교 실험([#540](https://github.com/woonyong-choi/saturn/issues/540))도 이 길을 쓴다. 새 저장소와 새 색인은 없다. 후보와 원문은 기록 저장소의 도구 호출과 결과이고 순위는 위의 어휘·파일·최근성 RRF를 그대로 쓴다.
+패킷이 줄이거나 뺀 기록을 에이전트가 번호로 다시 읽는 길이다. 순위, Jev, 작업 LLM이 같은 후보에서 고르고 다시 읽는 비교 실험([#540](https://github.com/woonyong-choi/saturn/issues/540))도 이 길을 쓴다. 새 저장소와 새 색인은 없다. 후보와 원문은 기록 저장소의 도구 호출과 결과, 저장된 사용자 입력, 메인 에이전트가 보인 글이고 순위는 위의 어휘·파일·최근성 RRF를 그대로 쓴다.
 
-후보는 패킷의 경쟁 구역과 같은 도구 호출 한 건이다. `core`의 `sessions::evidence`가 후보 집합 `CandidateSet`을 만든다.
+후보는 종류(`kind`)가 있는 원문 한 건이다. 번호는 종류마다 따로 세므로 같은 숫자가 종류가 다르면 다른 원문이다. 실행을 연 입력의 번호는 그 실행의 첫 기록 번호라 첫 기록이 도구 호출이나 글이면 그 번호와 겹친다.
+
+| 종류 | 원문 | 번호 |
+|---|---|---|
+| `tool` | 도구 호출과 결과. 패킷의 경쟁 구역과 같은 원문 | 채팅의 기록 번호. 패킷 항목 앞의 `#41` |
+| `input` | 실행을 연 사용자 입력 | 그 실행의 첫 기록 번호 |
+| `steer` | 실행 중에 끼워 넣어 적용한 사용자 입력 | 입력 번호 |
+| `text` | 메인 에이전트가 보인 글 | 그 글의 기록 번호 |
+
+- 후보가 아닌 것: `PacketReply`, 하위 에이전트 글, 숨겨진 추론, 빈 글, router 키나 출입증 모양이 든 글(출력 마스킹 규칙으로 가려지는 글). 마지막은 있다는 사실도 알리지 않으므로 읽으려 하면 `NotFound`다.
+- `core`의 `sessions::evidence`가 후보 집합 `CandidateSet`을 만든다. 집합은 종류마다 하나이고, 검색 응답의 집합 해시는 후보가 있는 종류의 집합 해시를 종류 이름과 함께 이은 값의 SHA-256이다. 순위는 종류를 섞은 한 목록에 매기며 시간순 자리를 번호로 삼는다(점수가 같으면 나중 것이 위).
 
 | 후보 값 | 뜻 |
 |---|---|
-| `id` | 채팅 안의 기록 번호. 패킷 항목 앞의 `#41`과 같다. |
+| `kind`, `chat`, `id` | 원문 종류, 채팅, 종류별 번호. 도구는 패킷 항목 앞의 `#41`과 같다. |
 | `project` | 기록을 만든 채팅의 작업 폴더 |
 | `at_ms` | 기록 시각 |
 | `chars` | 원문 글자 수. 원문 범위는 `0..chars`다. |
 | `excerpt` | 원문 앞 300글자 |
+| `excerpt_start`, `excerpt_end` | 발췌의 원문 글자 범위. 현재는 `0..excerpt_end` |
 | `hash` | 원문의 SHA-256 |
 
 - 집합은 번호 순으로 보관한다. 입력 순서가 바뀌어도 같은 집합이고 같은 집합 해시다. 같은 번호가 둘이면 만들지 않는다.
@@ -194,13 +205,19 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 
 | 명령 | 하는 일 |
 |---|---|
-| `saturn evidence search <검색어>... [--limit N]` | 검색어는 따옴표 없이 여러 단어로 써도 공백 하나로 이어 한 검색어로 본다. 후보를 순위 순으로 보인다. 첫 줄은 집합 해시와 후보 수, 이어서 한 줄에 번호, 시각, 글자 수, 해시, 발췌다. 상한은 50개다. |
-| `saturn evidence read <번호> [--hash H] [--offset N] [--limit N]` | 원문을 읽는다. 한 번에 최대 20000글자이고 더 있으면 첫 줄에 `next_offset`이 있다. |
+| `saturn evidence search <검색어>... [--limit N]` | 검색어는 따옴표 없이 여러 단어로 써도 공백 하나로 이어 한 검색어로 본다. 후보를 순위 순으로 보인다. 첫 줄은 집합 해시와 후보 수, 이어서 한 줄에 한 후보다. 상한은 50개다. |
+| `saturn evidence read <번호> [--hash H] [--offset N] [--limit N]` | 옛 형식. 도구 호출 기록 번호로 읽는다. 한 번에 최대 20000글자이고 더 있으면 첫 줄에 `next_offset`이 있다. |
+| `saturn evidence read <종류>:<채팅>:<번호>:<해시> [--offset N] [--limit N]` | 종류별 참조로 읽는다. 해시는 SHA-256 16진수 소문자 64자이고 `--hash`를 함께 주면 참조 안의 해시와 같아야 한다. |
+
+- 검색 결과 한 줄은 도구 호출이면 숫자 첫 열을 유지한다: `#번호`, `at_ms`, `chars`, `hash`, `excerpt 0..끝`, 발췌를 탭으로 잇는다. 입력과 글은 첫 열이 읽을 때 그대로 넣는 참조 `<종류>:<채팅>:<번호>:<해시>`이고 이어서 `at_ms`, `chars`, 발췌 범위와 발췌다.
+- 참조로 읽은 원문의 첫 줄은 `<종류>:<채팅>:<번호>:<해시> chars N offset N`이고 더 있으면 `next_offset N`이 붙는다. 옛 번호로 읽으면 옛 첫 줄(`#번호 hash H chars N offset N`)이다.
+- 프로토콜은 `EvidenceRead`에 `kind`와 `chat`(둘 다 없어도 되는 값)을 더했고 후보와 읽은 원문의 응답에 `kind`와 `chat`을 더했다. `kind`가 없는 요청은 옛 형식이라 도구 호출 번호로 읽고 `chat`은 보지 않는다. 새 CLI가 옛 engine에 종류별 참조를 보내면 옛 engine이 종류를 무시할 수 있으므로, CLI는 응답의 종류·채팅·번호·해시가 요청과 다르면 본문을 출력하지 않고 거절한다. 판 번호는 올리지 않는다.
 
 - 출입증(`SATURN_PASS`)으로 접속하고 출입증을 준 채팅의 기록만 본다. 출입증이 없거나 회수됐으면 거절한다. 에이전트 작업 밖에서는 쓸 수 없다.
-- 기록 번호는 채팅마다 센다. 다른 채팅의 번호를 넣어도 그 채팅의 기록이 아니라 이 채팅의 같은 번호를 본다.
-- 읽기 범위는 작업 폴더와 더한 폴더다. 도구 호출이 건드린 경로가 범위 밖이거나 `permission.read`의 `deny`와 일치하면 그 기록은 후보에서 빠지고 번호로 읽으려 해도 거절한다. 권한이 나중에 좁아져도 지난 기록으로 우회하지 못하게 하기 위해서다.
-- 조회는 기록 저장소를 읽을 뿐 파일을 읽지 않는다. 조회마다 종류, 번호, 결과(`Ok`, `NotFound`, `Stale`, `Scope`, `Unreachable`), 돌려준 양을 `evidence_lookups`에 남긴다([기록](records.md#근거-조회-기록)). 조회한 기록이 없는데 0회로 보이는 일이 없게 하기 위해서다.
+- 옛 형식의 기록 번호는 채팅마다 센다. 다른 채팅의 번호를 넣어도 그 채팅의 기록이 아니라 이 채팅의 같은 도구 호출 번호를 본다. 종류별 참조는 채팅을 함께 적고, 출입증을 준 채팅과 다르거나 채팅이 없으면 `NotFound`로 거절한다.
+- 종류별 참조는 해시가 필수이고 읽을 때마다 출입증, 채팅 범위, 현재 읽기 권한, 해시를 다시 본다. 검색 때의 결과를 믿고 읽지 않는다.
+- 읽기 범위는 작업 폴더와 더한 폴더다. 도구 호출이 건드린 경로가 범위 밖이거나 `permission.read`의 `deny`와 일치하면 그 기록은 후보에서 빠지고 번호로 읽으려 해도 거절한다. 권한이 나중에 좁아져도 지난 기록으로 우회하지 못하게 하기 위해서다. 읽을 때마다 채팅의 가장 최근 설정으로 다시 나눈다. 입력과 글은 파일을 가리키지 않으므로 이 파일 규칙의 대상이 아니고, 출입증과 채팅 범위, 비밀 가리기만 받는다.
+- 조회는 기록 저장소를 읽을 뿐 파일을 읽지 않는다. 입력은 기록 저장소에 접수되고 실행에 쓰인 뒤의 것만 후보이므로, 조회가 입력을 provider로 보내는 순서나 인계 패킷의 기록 번호(revision)를 바꾸지 않는다. 조회마다 종류, 번호, 결과(`Ok`, `NotFound`, `Stale`, `Scope`, `Unreachable`), 돌려준 양을 `evidence_lookups`에 남긴다([기록](records.md#근거-조회-기록)). 조회한 기록이 없는데 0회로 보이는 일이 없게 하기 위해서다. 이 표의 종류는 검색과 읽기이고 원문 종류(`kind`)는 남기지 않는다.
 - 에이전트가 이 명령을 쓰게 알리는 것은 설정 `context.evidence.lookup`(기본 거짓)이다. 켜면 경쟁 구역에서 원문 아닌 모양으로 들어가거나 빠진 기록이 있는 패킷의 끝에 `saturn evidence read <number>` 안내 한 줄이 붙는다. 안내는 경쟁 구역 예산에 든다. 꺼 두면 패킷은 지금과 같다.
 - 셸 명령이라 권한은 Saturn 규칙을 그대로 받는다. 새 스킬이나 MCP 서버를 설치하지 않는다. Claude는 Bash 샌드박스가 Unix 소켓 접속을 막으므로 실행별 `--settings`의 `sandbox.network.allowUnixSockets`에 engine 소켓 경로 하나만 넣는다(`providers/claude`). Codex는 허가한 명령을 작업 폴더 쓰기 샌드박스 안에서 돌리고, 그 샌드박스는 셸이 직접 실행하는 마지막 명령에만 소켓 접속을 허용한다. 그래서 `saturn evidence read 13`이나 `true && saturn evidence read 13`은 닿고, 파이프나 `;`로 이어 붙여 하위 프로세스로 도는 `saturn evidence read 13 | tail -n 3`은 `Operation not permitted`로 닿지 못한다(Codex 0.158.0, 실제 Codex로 확인). 소켓 허용을 Codex 설정으로 넓히지 않는다. 닿지 못하면 `saturn evidence`가 첫머리에 `Error: saturn evidence unreachable (read 13)`와 함께 한 명령으로 실행하고 `--limit`과 `--offset`을 쓰라는 안내를 낸다. 요청이 engine에 오지 않으므로 engine이 도구 결과의 이 첫머리를 읽어 그 시도를 `Unreachable`로 센다. 결과 첫머리가 아니거나 번호가 틀린 같은 글은 세지 않는다. 오류를 `2>&1 | tail`로 잘라 첫머리가 없어지면 그 시도는 세지 못한다.
 
@@ -214,9 +231,9 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | 도구 호출 인자에 경로 없음 | 파일 겹침 채널에서 그 후보를 뺀다. |
 | 근거 조회의 출입증이 없거나 회수됨 | 거절한다(`pass is unknown or revoked`). |
 | 명령이 샌드박스 때문에 engine에 닿지 못함 | `Unreachable`로 센다. 오류에 표지와 한 명령으로 실행하라는 안내를 싣는다. |
-| 없는 기록 번호 | `NotFound`로 거절한다. |
-| 후보를 본 뒤 원문이 바뀜(해시 불일치) | `Stale`로 거절한다. |
-| 읽기 범위 밖 파일이거나 읽기 규칙이 거부하는 경로의 기록 | `Scope`로 거절하고 후보에서도 뺀다. |
+| 없는 기록 번호, 다른 채팅의 참조, 채팅이 없는 참조, 비밀이 든 글 | `NotFound`로 거절한다. |
+| 후보를 본 뒤 원문이 바뀜(해시 불일치), 종류별 참조에 해시가 없음 | `Stale`로 거절한다. |
+| 읽기 범위 밖 파일이거나 읽기 규칙이 거부하는 경로의 도구 호출 기록 | `Scope`로 거절하고 후보에서도 뺀다. |
 
 ### 요구사항
 
@@ -238,6 +255,10 @@ engine의 `providers`가 provider 도구 이름을 Saturn 도구 종류로 바�
 | Jev와 작업 LLM이 판정하지 못하면 순위 선택으로 돌아가고 같은 확률은 순위 순이다. | 같은 파일의 `a_selection_that_cannot_be_decided_falls_back_to_the_rank_selection`, `jev_ties_follow_rank_order_and_candidate_input_order_changes_nothing` |
 | 예산에 안 드는 후보는 건너뛰고, 순위에 없는 후보는 번호가 큰 순으로 뒤에 붙는다. | 같은 파일의 `a_candidate_over_the_remaining_budget_is_skipped_and_smaller_ones_still_fit`, `rank_order_drops_unknown_ids_and_appends_unranked_candidates_newest_first` |
 | 검색은 검색어 순위로 돌려주고 읽기는 기록 원문을 쪽 단위로 돌려준다. | `saturn-terminal/engine/src/lifecycle/evidence.rs`의 `search_ranks_by_the_query_and_read_returns_the_recorded_text_in_pages` |
+| 같은 번호의 입력, 글, 도구 호출은 종류별 참조로 각자의 원문을 읽고, 옛 번호는 도구 호출만 가리킨다. 하위 에이전트 글은 후보가 아니다. | `saturn-terminal/engine/src/lifecycle/evidence.rs`의 `an_input_and_an_answer_with_the_same_number_are_read_by_their_own_kind`, `an_input_and_a_tool_record_with_the_same_number_stay_apart_and_legacy_reads_the_tool` |
+| 바뀐 원문이나 없는 해시는 `Stale`, 다른 채팅의 참조는 `NotFound`다. | `saturn-terminal/engine/src/lifecycle/evidence.rs`의 `a_changed_text_or_a_missing_hash_is_refused_as_stale`, `a_reference_to_another_chat_is_refused_and_other_chat_dialogue_is_not_listed` |
+| 읽기 권한이 좁아지면 전에 나온 도구 호출 참조는 `Scope`이고, 회수된 출입증은 검색도 읽기도 거절하며, 비밀이 든 글은 후보도 읽기도 아니다. | `saturn-terminal/engine/src/lifecycle/evidence.rs`의 `a_narrowed_read_permission_refuses_a_reference_it_listed_before`, `a_revoked_pass_refuses_search_and_typed_reads_alike`, `dialogue_with_a_router_key_is_neither_listed_nor_readable` |
+| 명령줄은 옛 번호와 종류별 참조를 둘 다 읽고, 입력과 글 후보는 읽을 수 있는 참조로 출력한다. | `saturn-terminal/cli/src/args.rs`의 `evidence_read_takes_a_legacy_number_or_a_typed_reference`, `saturn-terminal/cli/src/commands/evidence.rs`의 `dialogue_candidates_and_typed_reads_carry_the_full_reference`, `a_legacy_number_sends_no_kind_and_a_reference_sends_kind_chat_and_hash` |
 | 없는 번호, 바뀐 해시, 읽기 범위 밖과 읽기 규칙이 거부하는 경로의 기록은 거절하고 후보에서 빼며, 다른 채팅의 기록은 나오지 않는다. | 같은 파일의 `read_refuses_unknown_other_chat_stale_and_out_of_scope_records` |
 | 출입증이 없으면 거절하고 조회마다 기록한다. 닿지 못한 시도는 도구 결과의 오류 첫머리 표지로 `Unreachable`이 되고, 첫머리가 아닌 표지는 세지 않는다. | 같은 파일의 `an_unknown_pass_is_refused_and_every_lookup_is_counted` |
 | 안내 한 줄은 옵션을 켜고 원문이 잘렸을 때만 붙는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_lookup_hint_only_when_the_option_is_on_and_an_original_was_cut` |

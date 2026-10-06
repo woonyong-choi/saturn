@@ -158,9 +158,16 @@ impl Engine {
                 hash,
                 offset,
                 limit,
+                kind,
+                chat,
             } => {
-                self.evidence_read(&pass, (id, hash.as_deref()), (offset, limit))
-                    .await?
+                let target = crate::evidence::EvidenceTarget {
+                    kind,
+                    chat,
+                    id,
+                    hash: hash.as_deref(),
+                };
+                self.evidence_read(&pass, target, (offset, limit)).await?
             }
             Request::LatestChat { folder } => self.latest_chat_result(&folder).await?,
             Request::ListChats { folder } => self.chat_list_result(folder.as_deref()).await?,
