@@ -31,9 +31,9 @@ MARK_TEXT = "Append the single line {mark} to notes.txt with one shell command, 
 
 # 조건: 이름 -> (반복 수, 경합 오프셋 초 목록)
 RACE_OFFSETS = [round(1.0 + 0.5 * i, 1) for i in range(12)]
-TASKS = {"steer_ok": 3, "steer_review": 3, "steer_compact": 3, "steer_compact_late": 3, "steer_race": len(RACE_OFFSETS)}
-TAG = {"steer_ok": "ok", "steer_review": "rv", "steer_compact": "cf", "steer_compact_late": "cl", "steer_race": "rc"}
-COMPACT_DELAY = {"steer_compact": 0.0, "steer_compact_late": 1.0}
+TASKS = {"steer_ok": 3, "steer_review": 3, "steer_compact": 3, "steer_compact_late": 3, "steer_race": len(RACE_OFFSETS), "steer_compact_burst": 12}
+TAG = {"steer_ok": "ok", "steer_review": "rv", "steer_compact": "cf", "steer_compact_late": "cl", "steer_race": "rc", "steer_compact_burst": "cb"}
+COMPACT_DELAY = {"steer_compact": 0.0, "steer_compact_late": 1.0, "steer_compact_burst": 0.0}
 CALL_CAP = 60
 TERMINAL_INPUT = {"Applied", "Rejected", "Cancelled", "Held"}
 
