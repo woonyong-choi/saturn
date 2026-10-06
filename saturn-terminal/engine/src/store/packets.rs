@@ -37,11 +37,14 @@ pub(crate) enum PacketState {
     Unknown,
 }
 
-/// 패킷에 들어갔거나 빠진 재료 항목 하나. `zone`이 `Constraints`면 `ref_id`는 제약 번호이고 아니면 기록 번호다.
+/// 패킷에 들어갔거나 빠진 재료 항목 하나. `zone`이 `Constraints`면 `ref_id`는 제약 번호이고, 대화 본문의 구역(`User`, `Steer`, `Assistant`)이면
+/// `Steer`는 입력 번호, 나머지는 기록 번호이며, 그 밖은 기록 번호다.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PacketItemRow {
     pub(crate) zone: String,
     pub(crate) ref_id: u64,
+    /// 보호한 대화 본문 원문의 SHA-256. 본문 항목만 갖는다.
+    pub(crate) hash: Option<String>,
     pub(crate) selector: &'static str,
     /// 들어간 모양. 빠졌으면 `None`.
     pub(crate) form: Option<String>,
@@ -125,8 +128,8 @@ impl Store {
         .await?;
         for item in &packet.items {
             sqlx::query(
-                "INSERT INTO handoff_packet_items (packet_id, zone, ref_id, selector, form, reason) \
-                 VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO handoff_packet_items (packet_id, zone, ref_id, selector, form, reason, body_hash) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?)",
             )
             .bind(id)
             .bind(&item.zone)
@@ -134,6 +137,7 @@ impl Store {
             .bind(item.selector)
             .bind(&item.form)
             .bind(item.reason)
+            .bind(&item.hash)
             .execute(&mut *tx)
             .await?;
         }
@@ -258,6 +262,33 @@ impl Store {
                     from_sql_int(row.try_get("ref_id")?),
                     row.try_get("form")?,
                     row.try_get("reason")?,
+                ))
+            })
+            .collect()
+    }
+
+    /// 시도의 대화 본문 항목마다 `(구역, 번호, 원문 해시)`. 기록한 순서가 실제 순서다.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Database`.
+    #[cfg(test)]
+    pub(crate) async fn packet_dialogue(
+        &self,
+        id: PacketId,
+    ) -> Result<Vec<(String, u64, String)>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT zone, ref_id, body_hash FROM handoff_packet_items \
+             WHERE packet_id = ? AND body_hash IS NOT NULL ORDER BY rowid",
+        )
+        .bind(to_sql_int(id.0))
+        .fetch_all(&self.pool)
+        .await?;
+        rows.iter()
+            .map(|row| {
+                Ok((
+                    row.try_get("zone")?,
+                    from_sql_int(row.try_get("ref_id")?),
+                    row.try_get("body_hash")?,
                 ))
             })
             .collect()

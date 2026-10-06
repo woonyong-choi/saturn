@@ -4,24 +4,15 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use saturn_protocol::ids::{ConstraintId, LedgerSeq, SessionId, TaskId};
+use saturn_protocol::ids::{ConstraintId, LedgerSeq, SessionId};
 
 use super::constraint_slot::ConstraintTier;
 use super::context::ContextBudget;
 use super::memo::INTERRUPTED_RESULT;
 use super::stamp::{Stamp, label, session_title};
 
-/// 축약본과 줄인 에이전트 답에 남기는 앞부분 글자 수.
+/// 축약본에 남기는 앞부분 글자 수.
 pub const DIGEST_HEAD_CHARS: usize = 300;
-
-/// 고정 구역에 넣는 최근 턴 수의 최대.
-pub const RECENT_TURNS: usize = 3;
-
-/// 최신 수정을 고정 구역에 넣는 작업 수의 최대(초안). 오래된 대화의 수정이 쌓여 고정 구역을 채우지 않게 한다.
-pub const AMENDED_TASKS: usize = 5;
-
-/// 작업마다 고정 구역에 넣는 수정 수의 최대(초안). 수정 판단이 흔들려 정정 뒤에도 수정으로 판단된 입력이 더 있을 수 있다.
-pub const AMENDMENTS_PER_TASK: usize = 3;
 
 // 초안
 const CHARS_PER_TOKEN: usize = 4;
@@ -72,13 +63,6 @@ impl TurnStatus {
     }
 }
 
-/// `{label} [{상태}]: {text}`. 결과를 모르면 결과 자리에 오류 결과를 붙인다.
-pub fn status_item(label: &str, status: TurnStatus, text: &str) -> String {
-    let mut item = format!("{label} {}: {text}", status.tag());
-    push_unknown_result(&mut item, status);
-    item
-}
-
 fn push_unknown_result(item: &mut String, status: TurnStatus) {
     if status == TurnStatus::ResultUnknown {
         item.push_str("\nResult (error): ");
@@ -86,28 +70,93 @@ fn push_unknown_result(item: &mut String, status: TurnStatus) {
     }
 }
 
-/// 도구 결과는 넣지 않는다.
+/// 보호 본문의 역할. 전달 패킷 기록의 항목 구역 이름으로도 쓴다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Role {
+    /// 실행을 연 사용자 입력.
+    User,
+    /// 실행 중에 끼워 넣어 적용한 사용자 입력.
+    Steer,
+    /// 메인 에이전트가 낸 글.
+    Assistant,
+}
+
+impl Role {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::User => "User",
+            Self::Steer => "Steer",
+            Self::Assistant => "Assistant",
+        }
+    }
+}
+
+/// 턴 안의 본문 하나. 글을 줄이거나 합치지 않고 실제 순서대로 둔다.
 #[derive(Debug, Clone)]
-pub struct RecentTurn {
+pub struct Message {
+    pub role: Role,
+    /// `User`는 실행의 첫 이벤트 번호, `Steer`는 입력 번호, `Assistant`는 그 글을 기록한 이벤트 번호다. 한 답이 여러 이벤트로 나뉘면 이벤트마다 `Assistant` 하나다.
+    pub id: u64,
+    pub text: String,
+}
+
+/// 입력이 연 실행 하나. 도구 결과는 넣지 않는다.
+#[derive(Debug, Clone)]
+pub struct Turn {
     pub seq: LedgerSeq,
     pub stamp: Stamp,
     pub status: TurnStatus,
-    pub input: String,
-    /// 이 턴이 도는 중에 끼워 넣어 적용한 사용자 입력. 적용한 순서다.
-    pub steers: Vec<String>,
-    pub answer: String,
+    /// 실제 순서의 본문. 첫 항목은 실행을 연 `User`다.
+    pub messages: Vec<Message>,
 }
 
-/// 작업의 수정. 그 작업에서 수정으로 판단된 나중 입력 원문이다.
-/// 최근 턴 세 칸에서 밀려나도 고정 구역에 남기려고 따로 둔다.
-#[derive(Debug, Clone)]
-pub struct Amendment {
-    /// 수정을 낸 실행의 첫 이벤트 번호. 끼워 넣은 입력은 적용 때 쌓여 있던 마지막 번호다.
-    pub seq: LedgerSeq,
-    pub task: TaskId,
-    pub status: TurnStatus,
-    /// 사용자 입력 원문.
+/// 기록된 본문 하나의 역할, 번호, 원문. 패킷 기록이 항목마다 해시를 남기는 재료다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Protected {
+    pub role: Role,
+    pub id: u64,
+    /// 기록된 원문.
     pub text: String,
+}
+
+impl Turn {
+    // cost: time O(L), heap O(L), stack O(1)
+    // vars: L = 턴 본문 글자 수
+    // basis: estimate
+    /// 본문마다 앞 표지를 붙여 줄로 잇는다. 기록이 조각으로 나뉜 한 답은 앞 조각에 바로 이어 붙여 읽기 편하게 하고 표지는 첫 조각에만 쓴다.
+    fn render(&self) -> String {
+        let mut text = String::new();
+        let mut previous: Option<Role> = None;
+        for message in &self.messages {
+            match (previous, message.role) {
+                (Some(Role::Assistant), Role::Assistant) => text.push_str(&message.text),
+                (previous, role) => {
+                    if previous.is_some() {
+                        text.push('\n');
+                    }
+                    match role {
+                        Role::User => text.push_str(&format!(
+                            "{} {} User: {}",
+                            label(self.seq, self.stamp.at_ms),
+                            self.status.tag(),
+                            message.text
+                        )),
+                        Role::Steer => {
+                            text.push_str("User (sent while this turn was running): ");
+                            text.push_str(&message.text);
+                        }
+                        Role::Assistant => {
+                            text.push_str("Agent: ");
+                            text.push_str(&message.text);
+                        }
+                    }
+                }
+            }
+            previous = Some(message.role);
+        }
+        push_unknown_result(&mut text, self.status);
+        text
+    }
 }
 
 /// 도구 호출과 결과, 다른 에이전트 결과 요약, 파일 경로.
@@ -132,13 +181,10 @@ pub struct PacketSource {
     pub constraints_omitted: Vec<String>,
     /// 전환 기록 `packet_constraints`에 남길 제약별 단계. 패킷 글에는 쓰지 않는다.
     pub constraint_tiers: Vec<(ConstraintId, ConstraintTier)>,
-    pub goal_and_last_input: Vec<Entry>,
-    /// 작업마다의 수정. 같은 원문이 최근 턴이나 목표 칸에 이미 있으면 넣지 않고, 고정 구역이 넘치면 오래된 것부터 빼고 생략을 표시한다.
-    pub amendments: Vec<Amendment>,
     /// 끝나지 않은 항목과 효과를 모르는 항목.
     pub open_items: Vec<Entry>,
-    /// `RECENT_TURNS`개보다 많으면 기록 번호가 큰 쪽만 쓴다.
-    pub recent_turns: Vec<RecentTurn>,
+    /// 이 채팅에서 기록된 사용자 입력과 에이전트 글. 개수와 길이에 상한이 없고 줄이거나 빼지 않는다.
+    pub turns: Vec<Turn>,
     /// 맥락 고르기가 정한 순서.
     pub competitors: Vec<CompetingItem>,
     /// 참이면 경쟁 구역이 원문 아닌 모양으로 넣거나 뺀 기록이 있을 때 다시 읽는 방법을 한 줄 알린다. 설정 `context.evidence.lookup`.
@@ -148,12 +194,45 @@ pub struct PacketSource {
     pub up_to: LedgerSeq,
 }
 
-/// 패킷 항목이 들어가는 구역. 제약 칸은 항목이 기록 번호가 아니라 제약 번호라 `PacketSource::constraint_tiers`가 따로 말한다.
+impl PacketSource {
+    // cost: time O(L), heap O(L), stack O(1)
+    // vars: L = 보호 본문 글자 수
+    // basis: estimate
+    /// 패킷이 줄이지 않고 실어야 하는 본문. 기록 번호 순으로 정렬한 턴 안의 실제 순서다.
+    pub fn protected(&self) -> Vec<Protected> {
+        sorted_turns(&self.turns)
+            .into_iter()
+            .flat_map(|turn| &turn.messages)
+            .map(|message| Protected {
+                role: message.role,
+                id: message.id,
+                text: message.text.clone(),
+            })
+            .collect()
+    }
+}
+
+// cost: time O(L), heap O(L), stack O(1)
+// vars: L = 고정 구역 글자 수
+// basis: estimate
+/// 패킷 앞쪽의 고정 구역(제약 칸, 남은 일, 대화 본문)을 직렬화한 글. 패킷 글은 항상 이 글로 시작하고,
+/// 그 뒤에는 경쟁 구역만 올 수 있다. 전송 직전 검사의 기준 snapshot이다.
+pub fn fixed_zone(source: &PacketSource) -> String {
+    render(&fixed_sections(source))
+}
+
+/// `text`가 `fixed_zone` 글로 시작하고 그 뒤가 비었거나 경쟁 구역 제목으로 이어지는지. 본문이 빠지거나 바뀌거나 순서가 달라지면 거짓이라 보내면 안 된다.
+/// 구역을 제목 글자로 찾지 않고 고정 구역 전체를 앞에서부터 글자 그대로 맞추므로, 본문 안의 제목 모양 글이나 다른 구역에 같은 글이 있어도 속지 않는다.
+pub fn leads_with_fixed_zone(fixed: &str, text: &str) -> bool {
+    text.strip_prefix(fixed)
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with(&competing_header()))
+}
+
+/// 패킷 항목이 들어가는 구역. 제약 칸은 항목이 기록 번호가 아니라 제약 번호라 `PacketSource::constraint_tiers`가 따로 말하고,
+/// 대화 본문은 줄이거나 빼지 않으므로 `PacketSource::protected`가 따로 말한다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PacketZone {
-    Goal,
     Open,
-    Recent,
     Competing,
 }
 
@@ -161,9 +240,7 @@ impl PacketZone {
     /// 전달 패킷 기록에 쓰는 이름.
     pub fn name(self) -> &'static str {
         match self {
-            Self::Goal => "Goal",
             Self::Open => "Open",
-            Self::Recent => "Recent",
             Self::Competing => "Competing",
         }
     }
@@ -173,8 +250,6 @@ impl PacketZone {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ItemForm {
     Full,
-    /// 에이전트 답을 앞부분만 남겼다.
-    Trimmed,
     Digest,
     Path,
     /// provider 압축 요약.
@@ -186,7 +261,6 @@ impl ItemForm {
     pub fn name(self) -> &'static str {
         match self {
             Self::Full => "Full",
-            Self::Trimmed => "Trimmed",
             Self::Digest => "Digest",
             Self::Path => "Path",
             Self::Summary => "Summary",
@@ -201,8 +275,7 @@ pub struct PacketItem {
     pub seq: LedgerSeq,
     /// 들어간 모양. 들어가지 못했으면 `None`.
     pub form: Option<ItemForm>,
-    /// 들어가지 못한 이유. `recent_limit`(최근 턴 수 상한), `packet_limit`(고정 구역이 넘쳐 뺌), `budget`(경쟁 구역
-    /// 예산), `provider_doc`(provider가 스스로 읽는 문서). 들어갔으면 `None`.
+    /// 들어가지 못한 이유. `budget`(경쟁 구역 예산), `provider_doc`(provider가 스스로 읽는 문서). 들어갔으면 `None`.
     pub reason: Option<&'static str>,
 }
 
@@ -213,8 +286,10 @@ pub struct Packet {
     pub tokens: u64,
     /// 새 session의 `delivered`가 된다.
     pub up_to: LedgerSeq,
-    /// 고정 구역이 `P_max`를 넘어 `P_hard`까지 허용했다. engine이 초과를 기록한다.
+    /// 보호 본문을 담은 고정 구역이 `P_max`를 넘어 `P_send`까지 허용했다. engine이 초과를 기록한다.
     pub is_over_limit: bool,
+    /// 전송 가능 여부를 가린 보수적 추정(토큰). 글자 수가 아니라 ASCII가 아닌 글자를 글자당 1토큰으로 센다. 실제 provider 계수가 아니라 추정이다.
+    pub send_tokens: u64,
     /// 경쟁 구역에 든 기록 번호. 기록 번호 순이고 provider 요약은 `up_to`가 아니라 요약 항목의 번호로 들어간다.
     pub included: Vec<LedgerSeq>,
     /// 요약이 경쟁 구역 예산에 들어가 첫 항목이 됐다. 요약을 주지 않았거나 예산을 넘어 원문으로 채웠으면 거짓.
@@ -226,7 +301,7 @@ pub struct Packet {
 #[derive(Debug, Clone)]
 pub enum PacketOutcome {
     Ready(Packet),
-    /// 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 않는다. TUI가 제약 목록을 보인다.
+    /// 고정 구역의 보수적 추정이 전송 가능 상한 `P_send`도 넘거나 상한을 알 수 없어 새 session으로 옮기지 않는다. 본문은 자르지 않는다. TUI가 제약 목록을 보인다.
     Deferred {
         constraints: Vec<String>,
     },
@@ -253,28 +328,16 @@ struct Chosen {
     form: ItemForm,
 }
 
-/// 최신 수정의 기록 번호와 빠진 이유. 들어갔으면 이유가 없다.
-type AmendmentFate = (LedgerSeq, Option<&'static str>);
-
-/// 고정 구역을 맞춘 결과. `turns`는 남은 최근 턴이고, `trimmed`는 답을 앞부분만 남긴 턴의 기록 번호다.
-struct Fitted {
-    sections: Vec<Section>,
-    turns: Vec<RecentTurn>,
-    trimmed: Vec<LedgerSeq>,
-    /// 최신 수정마다 들어갔는지. 들어가지 못했으면 이유(`duplicate`, `packet_limit`).
-    amendments: Vec<AmendmentFate>,
-}
-
-// cost: time O(t·L + m log m), heap O(L), stack O(1)
-// vars: t = 최근 턴 수(3 이하), L = 패킷 재료 글자 수, m = 경쟁 항목 수
+// cost: time O(L + m log m), heap O(L), stack O(1)
+// vars: L = 패킷 재료 글자 수, m = 경쟁 항목 수
 // basis: estimate
-/// 고정 구역이 `P_max`를 넘으면 최근 턴을 줄이고, 그래도 넘으면 `P_hard`까지 허용하며 경쟁 구역은 비운다.
+/// 보호 본문은 `P_max`를 넘어도 줄이지 않고 전송 가능 상한 `P_send`(`ContextBudget::send_limit`)까지 허용하며 이때 경쟁 구역은 비운다. `P_send`도 넘거나 `P_send`를 알 수 없으면 `Deferred`다.
 pub fn build_packet(source: &PacketSource, budget: &ContextBudget) -> PacketOutcome {
     build(source, budget, None)
 }
 
-// cost: time O(t·L + m log m), heap O(L), stack O(1)
-// vars: t = 최근 턴 수(3 이하), L = 패킷 재료 글자 수, m = 경쟁 항목 수
+// cost: time O(L + m log m), heap O(L), stack O(1)
+// vars: L = 패킷 재료 글자 수, m = 경쟁 항목 수
 // basis: estimate
 /// provider 압축 요약을 경쟁 구역 첫 항목으로 넣고 나머지는 `source.competitors`로 채운다. 호출하는 쪽이 요약 시점 뒤의 항목만 `competitors`에 둔다. 요약이 경쟁 구역 예산에 들어가지 않으면 요약 없이 `build_packet`과 같다.
 pub fn build_packet_with_summary(
@@ -285,11 +348,11 @@ pub fn build_packet_with_summary(
     build(source, budget, Some(summary))
 }
 
-// cost: time O(t·L + m log m), heap O(L), stack O(1)
-// vars: t = 최근 턴 수(3 이하), L = 패킷 재료 글자 수, m = 경쟁 항목 수
+// cost: time O(L + m log m), heap O(L), stack O(1)
+// vars: L = 패킷 재료 글자 수, m = 경쟁 항목 수
 // basis: estimate
-/// 거절된 패킷을 줄여 다시 만든다. 고정 구역은 `build_packet`과 같게 두고 경쟁 구역만 `target_tokens`에 맞춰 남길 확률이 낮은 항목부터 뺀다.
-/// 고정 구역만으로 `target_tokens`를 넘으면 줄일 수 없어 `None`이다.
+/// 거절된 패킷을 줄여 다시 만든다. 보호 본문과 제약, 남은 일은 `build_packet`과 같게 두고 경쟁 구역만 `target_tokens`에 맞춰 남길 확률이 낮은 항목부터 뺀다.
+/// 보호 본문만으로 `target_tokens`를 넘으면 본문을 자르지 않고 줄일 수 없어 `None`이다.
 pub fn reduce_packet(
     source: &PacketSource,
     budget: &ContextBudget,
@@ -297,29 +360,29 @@ pub fn reduce_packet(
 ) -> Option<Packet> {
     let soft_chars = to_chars(budget.packet_limit());
     let target_chars = to_chars(target_tokens).min(soft_chars);
-    let fitted = fit_fixed_zone(source, soft_chars);
-    let fixed_chars = render(&fitted.sections).chars().count();
+    let sections = fixed_sections(source);
+    let fixed_chars = render(&sections).chars().count();
     if fixed_chars > target_chars {
         return None;
     }
     Some(assemble(
         source,
-        fitted,
+        sections,
         (fixed_chars, target_chars),
         budget.item_cap_percent,
         None,
     ))
 }
 
-// cost: time O(t·L + m log m), heap O(L), stack O(1)
-// vars: t = 최근 턴 수(3 이하), L = 패킷 재료 글자 수, m = 경쟁 항목 수
+// cost: time O(L + m log m), heap O(L), stack O(1)
+// vars: L = 패킷 재료 글자 수, m = 경쟁 항목 수
 // basis: estimate
 fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>) -> PacketOutcome {
     let soft_chars = to_chars(budget.packet_limit());
-    let hard_chars = to_chars(budget.packet_hard_limit());
-    let fitted = fit_fixed_zone(source, soft_chars);
-    let fixed_chars = render(&fitted.sections).chars().count();
-    if fixed_chars > hard_chars {
+    let send_limit = budget.send_limit();
+    let sections = fixed_sections(source);
+    let fixed_text = render(&sections);
+    if estimate_send_tokens(&fixed_text) > send_limit {
         return PacketOutcome::Deferred {
             constraints: source
                 .constraints
@@ -329,13 +392,23 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
                 .collect(),
         };
     }
-    PacketOutcome::Ready(assemble(
-        source,
-        fitted,
-        (fixed_chars, soft_chars),
-        budget.item_cap_percent,
-        summary,
-    ))
+    let fixed_chars = fixed_text.chars().count();
+    let assemble_with = |limit_chars| {
+        assemble(
+            source,
+            sections.clone(),
+            (fixed_chars, limit_chars),
+            budget.item_cap_percent,
+            summary,
+        )
+    };
+    let mut packet = assemble_with(soft_chars);
+    // 경쟁 구역까지 더한 글이 전송 가능 상한을 넘으면(글자 수 예산과 보수적 추정의 차이) 경쟁 구역을 비운다
+    if estimate_send_tokens(&packet.text) > send_limit {
+        packet = assemble_with(0);
+    }
+    packet.is_over_limit = fixed_chars > soft_chars;
+    PacketOutcome::Ready(packet)
 }
 
 // cost: time O(m log m + L), heap O(L), stack O(1)
@@ -344,20 +417,12 @@ fn build(source: &PacketSource, budget: &ContextBudget, summary: Option<&Entry>)
 /// 고정 구역 뒤에 경쟁 구역을 `limit_chars`까지 채운다. 고정 구역이 `limit_chars`를 넘으면 경쟁 구역은 빈다.
 fn assemble(
     source: &PacketSource,
-    fitted: Fitted,
+    mut sections: Vec<Section>,
     (fixed_chars, limit_chars): (usize, usize),
     item_cap_percent: u64,
     summary: Option<&Entry>,
 ) -> Packet {
-    let Fitted {
-        mut sections,
-        turns,
-        trimmed,
-        amendments,
-    } = fitted;
-    let header_chars = format!("## {COMPETING_TITLE}{ITEM_SEPARATOR}")
-        .chars()
-        .count();
+    let header_chars = competing_header().chars().count();
     let competing_chars = limit_chars.saturating_sub(fixed_chars + header_chars);
     let summary = summary.filter(|entry| item_chars(&entry.text) <= competing_chars);
     let mut chosen: Vec<Chosen> = Vec::new();
@@ -383,6 +448,7 @@ fn assemble(
     let hint = source
         .evidence_lookup
         .then_some(item_chars(LOOKUP_HINT))
+        .filter(|hint_chars| *hint_chars <= rest_chars)
         .filter(|_| has_unread_original(source, &filled));
     if let Some(hint_chars) = hint {
         filled = fill(rest_chars.saturating_sub(hint_chars));
@@ -407,10 +473,12 @@ fn assemble(
     });
     let text = render(&sections);
     let tokens = estimate_tokens(&text);
-    let items = packet_items(source, (&turns, &trimmed, &amendments), &chosen);
+    let send_tokens = estimate_send_tokens(&text);
+    let items = packet_items(source, &chosen);
     Packet {
         text,
         tokens,
+        send_tokens,
         up_to: source.up_to,
         is_over_limit: fixed_chars > limit_chars,
         included: chosen.iter().map(|item| item.seq).collect(),
@@ -435,60 +503,21 @@ fn has_unread_original(source: &PacketSource, chosen: &[Chosen]) -> bool {
         })
 }
 
-// cost: time O(m + t), heap O(m + t), stack O(1)
-// vars: m = 재료 항목 수, t = 최근 턴 수
+// cost: time O(m + o), heap O(m + o), stack O(1)
+// vars: m = 경쟁 항목 수, o = 남은 일 항목 수
 // basis: estimate
-/// 재료 항목마다 이 패킷에 들어갔는지 정리한다. 고정 구역의 목표와 열린 항목은 항상 들어간다.
-fn packet_items(
-    source: &PacketSource,
-    (turns, trimmed, amendments): (&[RecentTurn], &[LedgerSeq], &[AmendmentFate]),
-    chosen: &[Chosen],
-) -> Vec<PacketItem> {
-    let entry = |zone, seq| PacketItem {
-        zone,
-        seq,
-        form: Some(ItemForm::Full),
-        reason: None,
-    };
+/// 재료 항목마다 이 패킷에 들어갔는지 정리한다. 남은 일 항목은 항상 들어간다. 대화 본문은 줄이거나 빼지 않으므로 여기에 없다.
+fn packet_items(source: &PacketSource, chosen: &[Chosen]) -> Vec<PacketItem> {
     let mut items: Vec<PacketItem> = source
-        .goal_and_last_input
+        .open_items
         .iter()
-        .map(|item| entry(PacketZone::Goal, item.seq))
-        .chain(amendments.iter().map(|(seq, reason)| PacketItem {
-            zone: PacketZone::Goal,
-            seq: *seq,
-            form: reason.is_none().then_some(ItemForm::Full),
-            reason: *reason,
-        }))
-        .chain(
-            source
-                .open_items
-                .iter()
-                .map(|item| entry(PacketZone::Open, item.seq)),
-        )
+        .map(|item| PacketItem {
+            zone: PacketZone::Open,
+            seq: item.seq,
+            form: Some(ItemForm::Full),
+            reason: None,
+        })
         .collect();
-    let newest: HashSet<LedgerSeq> = {
-        let mut seqs: Vec<LedgerSeq> = source.recent_turns.iter().map(|turn| turn.seq).collect();
-        seqs.sort_unstable();
-        seqs.split_off(seqs.len().saturating_sub(RECENT_TURNS))
-            .into_iter()
-            .collect()
-    };
-    for turn in &source.recent_turns {
-        let kept = turns.iter().any(|kept| kept.seq == turn.seq);
-        let (form, reason) = match (kept, newest.contains(&turn.seq)) {
-            (true, _) if trimmed.contains(&turn.seq) => (Some(ItemForm::Trimmed), None),
-            (true, _) => (Some(ItemForm::Full), None),
-            (false, true) => (None, Some("packet_limit")),
-            (false, false) => (None, Some("recent_limit")),
-        };
-        items.push(PacketItem {
-            zone: PacketZone::Recent,
-            seq: turn.seq,
-            form,
-            reason,
-        });
-    }
     items.extend(
         chosen
             .iter()
@@ -519,133 +548,26 @@ fn packet_items(
     items
 }
 
-// cost: time O(t·L), heap O(L), stack O(1)
-// vars: t = 최근 턴 수(3 이하), L = 고정 구역 글자 수
+// cost: time O(t log t), heap O(t), stack O(1)
+// vars: t = 턴 수
 // basis: estimate
-/// 오래된 턴부터 에이전트 답을 앞부분만 남기고, 그래도 넘치면 최근 턴 수를 3, 2, 1로 줄이고, 그래도 넘치면 다른 작업의 최신 수정을 오래된 것부터 뺀다.
-/// 최신 수정이 최근 턴보다 나중에 줄어드는 것은 밀려난 정정 원문을 최근 턴보다 먼저 지키기 위해서다.
-fn fit_fixed_zone(source: &PacketSource, soft_chars: usize) -> Fitted {
-    let mut turns = source.recent_turns.clone();
-    turns.sort_by_key(|turn| turn.seq);
-    let excess = turns.len().saturating_sub(RECENT_TURNS);
-    turns.drain(..excess);
-    let mut pool: Vec<&Amendment> = source.amendments.iter().collect();
-    pool.sort_by_key(|amendment| amendment.seq);
-    // 오래된 쪽부터 빠진 개수
-    let mut dropped = 0;
-    let fits = |turns: &[RecentTurn], dropped: usize| {
-        let (kept, omitted) = kept_amendments(source, &pool, turns, dropped);
-        render(&fixed_sections(source, turns, &kept, omitted))
-            .chars()
-            .count()
-            <= soft_chars
-    };
-    let mut trimmed = Vec::new();
-    let mut settled = false;
-    for index in 0..turns.len() {
-        if fits(&turns, dropped) {
-            settled = true;
-            break;
-        }
-        let shortened = head(&turns[index].answer);
-        if shortened != turns[index].answer {
-            trimmed.push(turns[index].seq);
-        }
-        turns[index].answer = shortened;
-    }
-    if !settled {
-        while turns.len() > 1 && !fits(&turns, dropped) {
-            turns.remove(0);
-        }
-        while dropped < pool.len() && !fits(&turns, dropped) {
-            dropped += 1;
-        }
-    }
-    let (kept, omitted) = kept_amendments(source, &pool, &turns, dropped);
-    let outcome = pool
-        .iter()
-        .enumerate()
-        .map(|(index, amendment)| {
-            let reason = if index < dropped {
-                Some("packet_limit")
-            } else if kept.iter().all(|k| k.seq != amendment.seq) {
-                Some("duplicate")
-            } else {
-                None
-            };
-            (amendment.seq, reason)
-        })
-        .collect();
-    Fitted {
-        sections: fixed_sections(source, &turns, &kept, omitted),
-        turns,
-        trimmed,
-        amendments: outcome,
-    }
-}
-
-// cost: time O(a·(t + g)), heap O(a), stack O(1)
-// vars: a = 최신 수정 수, t = 최근 턴 수, g = 목표 칸 항목 수
-// basis: estimate
-/// 앞에서 `dropped`개를 뺀 최신 수정 중 같은 원문이 최근 턴이나 목표 칸에 없는 것과, 빼서 보이지 않게 된 수정의 수.
-fn kept_amendments<'a>(
-    source: &PacketSource,
-    pool: &[&'a Amendment],
-    turns: &[RecentTurn],
-    dropped: usize,
-) -> (Vec<&'a Amendment>, usize) {
-    let is_shown = |text: &str| {
-        turns
-            .iter()
-            .any(|turn| turn.input == text || turn.steers.iter().any(|steer| steer == text))
-            || source
-                .goal_and_last_input
-                .iter()
-                .any(|entry| entry.text.contains(text))
-    };
-    let omitted = pool
-        .iter()
-        .take(dropped)
-        .filter(|amendment| !is_shown(&amendment.text))
-        .count();
-    let kept = pool
-        .iter()
-        .skip(dropped)
-        .filter(|amendment| !is_shown(&amendment.text))
-        .copied()
-        .collect();
-    (kept, omitted)
+/// 기록 번호 순의 턴. 같은 번호면 들어온 순서를 지킨다.
+fn sorted_turns(turns: &[Turn]) -> Vec<&Turn> {
+    let mut sorted: Vec<&Turn> = turns.iter().collect();
+    sorted.sort_by_key(|turn| turn.seq);
+    sorted
 }
 
 // cost: time O(L), heap O(L), stack O(1)
 // vars: L = 고정 구역 글자 수
 // basis: estimate
-fn fixed_sections(
-    source: &PacketSource,
-    turns: &[RecentTurn],
-    amendments: &[&Amendment],
-    omitted: usize,
-) -> Vec<Section> {
-    let turns = turns
-        .iter()
-        .map(|turn| {
-            let mut text = format!(
-                "{} {} User: {}",
-                label(turn.seq, turn.stamp.at_ms),
-                turn.status.tag(),
-                turn.input,
-            );
-            for steer in &turn.steers {
-                text.push_str("\nUser (sent while this turn was running): ");
-                text.push_str(steer);
-            }
-            text.push_str("\nAgent: ");
-            text.push_str(&turn.answer);
-            push_unknown_result(&mut text, turn.status);
-            SectionItem {
-                session: Some(turn.stamp.session),
-                text,
-            }
+/// 제약 칸, 남은 일, 대화 본문. 대화는 줄이거나 뺀 것 없이 모두 넣는다.
+fn fixed_sections(source: &PacketSource) -> Vec<Section> {
+    let turns = sorted_turns(&source.turns)
+        .into_iter()
+        .map(|turn| SectionItem {
+            session: Some(turn.stamp.session),
+            text: turn.render(),
         })
         .collect();
     vec![
@@ -654,45 +576,14 @@ fn fixed_sections(
             items: constraint_items(source),
         },
         Section {
-            title: "Goal and last input",
-            items: goal_items(source, amendments, omitted),
-        },
-        Section {
             title: "Open items",
             items: by_seq(&source.open_items),
         },
         Section {
-            title: "Recent turns",
+            title: "Conversation",
             items: turns,
         },
     ]
-}
-
-// cost: time O(a log a + L), heap O(L), stack O(1)
-// vars: a = 항목 수, L = 목표 칸 글자 수
-// basis: estimate
-/// 지금 작업의 첫·마지막 입력 뒤에 작업별 최신 수정을 기록 번호 순으로 붙이고, 뺀 것이 있으면 개수를 적는다.
-fn goal_items(
-    source: &PacketSource,
-    amendments: &[&Amendment],
-    omitted: usize,
-) -> Vec<SectionItem> {
-    let mut items = by_seq(&source.goal_and_last_input);
-    items.extend(amendments.iter().map(|amendment| SectionItem {
-        session: None,
-        text: status_item(
-            &format!("Amendment (task {})", amendment.task.0),
-            amendment.status,
-            &amendment.text,
-        ),
-    }));
-    if omitted > 0 {
-        items.push(SectionItem {
-            session: None,
-            text: format!("({omitted} earlier amendments left out to fit this packet)"),
-        });
-    }
-    items
 }
 
 // cost: time O(L + m log m), heap O(L), stack O(1)
@@ -843,6 +734,22 @@ fn to_chars(tokens: u64) -> usize {
     usize::try_from(tokens)
         .unwrap_or(usize::MAX)
         .saturating_mul(CHARS_PER_TOKEN)
+}
+
+fn competing_header() -> String {
+    format!("## {COMPETING_TITLE}{ITEM_SEPARATOR}")
+}
+
+// cost: time O(L), heap O(1), stack O(1)
+// vars: L = 글자 수
+// basis: estimate
+/// 전송 가능 여부를 가리는 보수적 추정. ASCII는 `estimate_tokens`처럼 4자에 1토큰, 그 밖의 글자(한글 등)는 글자마다 1토큰으로 센다.
+/// provider 계수가 아니므로 이 값이 한도 안이어도 provider가 거절할 수 있다.
+fn estimate_send_tokens(text: &str) -> u64 {
+    let ascii = text.chars().filter(char::is_ascii).count();
+    let other = text.chars().count() - ascii;
+    let tokens = ascii.div_ceil(CHARS_PER_TOKEN) + other;
+    u64::try_from(tokens).expect("token count should fit in u64")
 }
 
 // cost: time O(L), heap O(1), stack O(1)

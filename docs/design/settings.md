@@ -133,7 +133,7 @@
 | `retention.auto_prune` | 참·거짓 | 거짓. 참이고 `max_age_days`가 있을 때만 engine 시작 때 한 번 그 기한보다 오래 쓰지 않은 채팅을 지운다. 삭제라 `max_age_days`만으로 켜지지 않는다([기록](records.md#보존과-정리)) |
 | `context.safety_percent` | 0~100 정수 | 70 |
 | `context.mode` | `saturn`, `provider` | `saturn` |
-| `context.packet_hard_percent` | 1~100 정수 | 20. engine이 읽어 패킷 크기 상한에 적용한다 |
+| `context.packet_hard_percent` | 1~100 정수 | 20. 값 검사만 하고 적용하지 않는다. 패킷의 전송 가능 상한 `P_send`는 `T`의 비율이 아니라 provider 창에서 정하므로(`context.<provider>.window`, `context.safety_percent`) 이 설정이 쓰이지 않는다. 이 키가 든 기존 설정 파일이 거부되지 않게 남겨 둔다 |
 | `context.item_cap_percent` | 1~100 정수 | 30. engine이 읽어 경쟁 항목 길이 상한에 적용한다 |
 | `context.constraint_slot_percent` | 1~100 정수 | 25(초안). engine이 읽어 패킷 제약 칸 상한에 적용한다 |
 | `context.select.rrf_k` | 0 이상 정수 | 60 |

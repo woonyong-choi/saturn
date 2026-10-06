@@ -49,12 +49,12 @@ session이 길어지면 맥락이 쌓여 토큰이 늘고 답의 품질이 떨�
 
 ### 보존 우선 경로
 
-보존 우선 경로는 같은 채팅의 기록된 사용자·assistant 대화 본문을 순서대로 보호하고, 도구 기록만 RRF 또는 Jev로 선별한다. 이 절은 [#592](https://github.com/woonyong-choi/saturn/issues/592)와 [#380](https://github.com/woonyong-choi/saturn/issues/380)의 새 구현 계약이다. 아래 기존 패킷 구성과 예산 절은 기존 경로의 호환 동작이다. 새 경로는 최근 턴·수정 개수 제한과 본문 축약을 적용하지 않는다. 검증 전 기본 자동 적용으로 승격하지 않는다. 외부 방식 비교와 도입 상한은 [맥락 보존 방식 비교](../notes/references/context-preservation.md)에 있다.
+보존 우선 경로는 같은 채팅의 기록된 사용자·assistant 대화 본문을 순서대로 보호하고, 도구 기록만 RRF 또는 Jev로 선별한다. 이 절의 대화 본문 보호는 [#592](https://github.com/woonyong-choi/saturn/issues/592)로 [패킷 구성](#패킷-구성)에 구현했고, 도구 선별을 Jev로 바꾸는 부분은 [#380](https://github.com/woonyong-choi/saturn/issues/380)의 계약이다. 최근 턴·수정 개수 제한과 본문 축약은 없다. 같은 책임의 이전 조립 경로는 남기지 않는다. 일반 제품 채택은 [검증](../experiments/context-preservation/design.md) 전에 판정하지 않는다. 외부 방식 비교와 도입 상한은 [맥락 보존 방식 비교](../notes/references/context-preservation.md)에 있다.
 
 1. engine이 사용자 입력을 저장하고 적용된 입력·답·도구 기록을 같은 채팅의 순서로 읽는다. 미전송 대기 입력은 실행된 대화와 분리한다.
-2. core가 대화 본문과 필수 실행 상태를 보호 집합으로 분리한다. 제약 판단 기록이 없거나 `constraint.auto_apply`가 꺼져 있어도 사용자 본문을 보존한다.
+2. core가 대화 본문과 필수 실행 상태를 보호 집합으로 분리한다. 제약 판단 기록이 없거나 `constraint.auto_apply`가 꺼져 있어도 사용자 본문을 보존한다. provider가 한 답을 여러 `Text` 이벤트로 나눠 내면 이벤트마다 번호·역할·순서·원문 해시를 따로 남기고 합치지 않는다. 패킷 글에서는 앞 조각에 바로 이어 붙여 `Agent:` 표지를 첫 조각에만 쓰므로 읽기 모양은 한 답이다.
 3. 기존 RRF 또는 Jev가 도구 호출·결과 후보만 선별한다. 도구 호출과 결과의 짝을 유지하고 결과 없는 호출은 실행 결과 불명으로 보존한다.
-4. engine이 실제 전송 형식으로 직렬화한 뒤 보호 집합의 원문 해시·순서·포함 범위를 검사한다. 실패한 패킷은 보내지 않는다.
+4. core가 패킷을 만들 때 고정 구역(제약 칸, 남은 일, 대화 본문)을 한 번 직렬화해 두고, engine은 보내기 직전 보낼 글이 만든 패킷과 같은 글(해시 일치)이고 그 고정 구역으로 글자 그대로 시작하는지 검사한다. 구역 제목을 글에서 찾지 않고 앞에서부터 맞추므로 본문 안의 제목 모양 글이나 다른 구역에 있는 같은 글에 속지 않고, 본문이 빠지거나 바뀌거나 순서가 달라지거나 경쟁 구역으로 옮겨져도 걸러진다. 실패한 패킷은 보내지 않는다.
 5. 적용 직전 입력 revision, 설정 번호, 정책 버전, 보내는 session과 받는 provider를 다시 대조한다. 이미 구현된 비동기 판단과 늦은 응답 폐기 경로를 재사용한다.
 6. provider 어댑터가 패킷을 보내고 실제 적용 방식·포함과 생략·원문 참조·전송 상태를 기존 기록에 남긴다. 결과 불명 전송은 재시도하지 않는다.
 
@@ -66,7 +66,7 @@ session이 길어지면 맥락이 쌓여 토큰이 늘고 답의 품질이 떨�
 
 #### 예산 초과
 
-본문을 보호한다는 이유로 provider 입력 한도를 무시하지 않는다. 전송 가능 상한에서 시스템·도구 정의·현재 입력·출력 예약량을 먼저 뺀다. 기존 패킷 목표 예산은 줄일 도구 기록의 양을 정하는 값으로 사용한다. 보호 본문만으로 목표 예산을 넘으면 한도 안에서 확장한 사실과 실제 크기를 기록한다. provider의 전송 가능 상한도 넘으면 `보존 예산 초과`로 적용하지 않는다. 크기 추정과 실제 provider 거절은 별도로 기록한다.
+본문을 보호한다는 이유로 provider 입력 한도를 무시하지 않는다. 전송 가능 상한 `P_send`는 provider 창에서 시스템·도구 정의·현재 입력·출력 예약량을 먼저 빼고 안전 비율을 곱해 정한다([패킷 구성](#패킷-구성)). 기존 패킷 목표 예산 `P_max`는 줄일 도구 기록의 양을 정하는 값으로만 쓴다. 보호 본문이 `P_max`를 넘으면 도구 기록을 모두 빼고 `P_send`까지 본문을 그대로 보내며 `P_max`를 넘겼다는 사실을 기록한다. 본문이 `P_send`도 넘거나 창을 알 수 없어 `P_send`를 구할 수 없으면 `보존 예산 초과`로 적용하지 않는다. `P_send`는 추정이라 통과해도 provider가 거절할 수 있다. 추정 크기는 패킷 기록의 크기 필드로, 실제 거절은 전송 상태로 따로 남는다.
 
 자동 정리에서는 보낼 수 있는 현재 session을 유지한다. provider 전환을 완료할 수 없으면 기존 session과 입력을 보존하고 전환 미완료를 알린다. 본문을 몰래 자르거나 기본 압축으로 바꾼 결과를 Saturn 성공으로 집계하지 않는다. provider가 자체 압축한 실행은 별도 조건으로 센다. 한도 밖 장기 대화는 후속 기억 설계의 과제이며 최소 보존 실험의 성공으로 대신하지 않는다.
 
@@ -99,7 +99,7 @@ session이 길어지면 맥락이 쌓여 토큰이 늘고 답의 품질이 떨�
 | `N` | 창 크기에 곱하는 안전 비율(%) |
 | `P` | 패킷 크기 |
 | `P_max` | 패킷 크기 상한 |
-| `P_hard` | 고정 구역이 넘칠 때만 쓰는 패킷 크기 하드 상한 |
+| `P_send` | 패킷을 새 session에 보낼 수 있는 추정 상한. `P_max`와 달리 `T`의 비율이 아니라 provider 창에서 정한다 |
 | `r` | 캐시 읽기 배수 |
 | `w` | 캐시 쓰기 배수 |
 | `k*` | 본전 턴 수 |
@@ -179,7 +179,7 @@ T_hard = T + H
 
 ### 패킷 구성
 
-이 절은 기존 경로의 호환 계약이다. 새 보존 우선 경로에서는 대화 본문을 선별하거나 줄이지 않는다.
+이 절은 [보존 우선 경로](#보존-우선-경로)의 대화 본문 보호를 반영한 현재 패킷 계약이다. 대화 본문은 선별하거나 줄이지 않는다.
 
 패킷은 새 session에 넘기는 맥락 묶음이다. `sessions`는 패킷을 고정 구역과 경쟁 구역으로 나눠 채운다.
 
@@ -190,21 +190,20 @@ T_hard = T + H
 
 | 구역 | 항목 | 넣는 규칙 |
 |---|---|---|
-| 고정 구역 | 1. 사용자가 명시한 제약의 규칙 한 줄(제약 칸 상한 안) 2. 지금 작업의 첫 사용자 입력과 마지막 사용자 입력의 원문, 작업마다 수정의 원문 3. 끝나지 않은 항목과 효과를 모르는 항목 4. 최근 3턴의 대화(사용자 입력 원문과 에이전트 답 글) | 이 순서로 모두 넣는다. 1은 제약 칸 상한까지 |
-| 경쟁 구역 | 이 채팅의 도구 호출과 결과(최근 3턴 포함), 다른 에이전트 결과 요약, 실행별 수정 파일 목록([수정 파일 목록](providers-and-sessions.md#수정-파일-목록)), 파일 경로 | 남은 예산 안에서 고른 순서대로 넣는다 |
+| 고정 구역 | 1. 사용자가 명시한 제약의 규칙 한 줄(제약 칸 상한 안) 2. 끝나지 않은 항목과 효과를 모르는 항목 3. 이 채팅에서 기록된 대화 전체(사용자 입력 원문, 끼워 넣어 적용한 입력, 에이전트 글) | 이 순서로 모두 넣는다. 1은 제약 칸 상한까지, 3은 줄이지 않는다 |
+| 경쟁 구역 | 이 채팅의 도구 호출과 결과, 다른 에이전트 결과 요약, 실행별 수정 파일 목록([수정 파일 목록](providers-and-sessions.md#수정-파일-목록)), 파일 경로 | 남은 예산 안에서 고른 순서대로 넣는다 |
 
-- 패킷은 맨 앞에 지시문을 두고(구역 예산에 든다) 그 뒤에 구역을 쓴다. 지시문은 아래가 이전 대화의 기록이지 요청이 아님, `[Finished]` 항목은 이미 끝난 일이라 다시 실행하지 않음, `[In progress]`·`[Result unknown]` 항목은 일부만 실행됐을 수 있어 현재 상태를 확인하기 전에는 믿지 않고 사용자가 요청하기 전에는 다시 하지 않음, `Queued input`·`Held input`은 보내진 적이 없어 Saturn이 따로 보냄을 알리고, 이 턴에서는 도구를 부르거나 파일을 바꾸지 말고 `Ready` 한 단어로 답한 뒤 다음 사용자 입력을 기다리라고 끝맺는다. 원문은 영어다. 지시문이 없으면 새 session이 목표 칸과 최근 턴의 사용자 입력을 지금 받은 요청으로 읽어, Claude에서 Codex로 전환할 때 끝난 입력의 작업을 다시 실행했다([#383](https://github.com/woonyong-choi/saturn/issues/383)).
+- 패킷은 맨 앞에 지시문을 두고(구역 예산에 든다) 그 뒤에 구역을 쓴다. 지시문은 아래가 이전 대화의 기록이지 요청이 아님, `[Finished]` 항목은 이미 끝난 일이라 다시 실행하지 않음, `[In progress]`·`[Result unknown]` 항목은 일부만 실행됐을 수 있어 현재 상태를 확인하기 전에는 믿지 않고 사용자가 요청하기 전에는 다시 하지 않음, `Queued input`·`Held input`은 보내진 적이 없어 Saturn이 따로 보냄을 알리고, 이 턴에서는 도구를 부르거나 파일을 바꾸지 말고 `Ready` 한 단어로 답한 뒤 다음 사용자 입력을 기다리라고 끝맺는다. 원문은 영어다. 지시문이 없으면 새 session이 대화의 사용자 입력을 지금 받은 요청으로 읽어, Claude에서 Codex로 전환할 때 끝난 입력의 작업을 다시 실행했다([#383](https://github.com/woonyong-choi/saturn/issues/383)).
 - provider에 보낸 패킷은 시도마다 보낸 글의 해시와 들어가거나 빠진 항목, 이유를 기록 저장소에 남긴다. 줄여 다시 보낸 패킷은 시도마다 따로 남아 어느 항목이 어느 전송에 들어갔는지 섞이지 않는다([전달 패킷 근거](records.md#전달-패킷-근거)).
-- 입력 항목(목표 칸의 첫·마지막 입력, 최근 턴)에는 그 입력이 연 실행의 상태를 적는다. 실행이 정상으로 끝났으면 `[Finished]`, 아직 끝나지 않았으면 `[In progress]`, 실패하거나 멈췄으면 `[Result unknown]`이다. 결과를 모르는 항목은 결과 자리에 오류 결과(`Result (error): Interrupted before a result was recorded · It may have partially run`)를 붙인다. 끝난 입력은 남은 일 칸에 넣지 않는다. 남은 일 칸은 대기·보류 입력, 결과를 모르는 작업, 결과 없는 도구 호출만 담는다.
+- 대화의 입력 항목에는 그 입력이 연 실행의 상태를 적는다. 실행이 정상으로 끝났으면 `[Finished]`, 아직 끝나지 않았으면 `[In progress]`, 실패하거나 멈췄으면 `[Result unknown]`이다. 결과를 모르는 항목은 결과 자리에 오류 결과(`Result (error): Interrupted before a result was recorded · It may have partially run`)를 붙인다. 끝난 입력은 남은 일 칸에 넣지 않는다. 남은 일 칸은 대기·보류 입력, 결과를 모르는 작업, 결과 없는 도구 호출만 담는다.
 - 1단계의 제약은 유효 제약만 제약 칸 상한 `C_max` 안에서 넣고 못 넣은 수를 패킷과 대화 기록에 표시한다. 해제된 제약은 빼고 넣고 예외가 걸린 제약은 예외 표기와 함께 넣는다. 식별, 저장, 칸 채우기는 [제약](constraints.md)에 있다.
 - router가 새 작업으로 판단해 여는 보조 session은 앞 맥락 없이 시작하므로 이 구성을 쓰지 않고, 제약 칸만 든 패킷을 먼저 받는다. 규칙은 [새 작업 session의 제약](constraints.md#새-작업-session의-제약)에 있다.
-- 목표는 작업의 첫 사용자 입력과 마지막 사용자 입력을 넣고, 끝나지 않은 항목은 대기·보류·결과 미확인 작업을 넣는다. 이 규칙은 [인계 패킷 목표와 남은 일 채우기 방식 실험](../experiments/packet-goal-fields/report.md)에서 마지막 입력보다 정답률이 33.8%p 높고 summary보다 토큰이 적어 채택했다.
-- 2단계의 지금 작업은 마지막 사용자 입력이 속한 작업이다. 첫 입력과 마지막 입력이 같으면 하나만 넣는다.
-- 실행 중에 끼워 넣어 적용한 입력도 사용자 입력이다. 그 입력은 들어간 실행의 턴에 `User (sent while this turn was running): ...` 줄로 적용한 순서대로 붙고, 마지막 사용자 입력이면 목표 칸의 마지막 입력이 된다. 끼워 넣은 입력이 답에 반복되지 않아도 다음 session이 최신 지시를 알게 하기 위해서다. 거절되어 대기로 돌아온 입력은 실행에 들어가지 않았으므로 `Queued input`으로만 나오고, 최초 입력과 끼워 넣은 입력으로 두 번 싣지 않는다. 이번 작업에만 해당하는 지시를 지속 제약으로 올리지 않는다([제약](constraints.md)). 기록은 `inputs.steered_run`과 `steered_after`로 [기록 저장과 보존](records.md#기록-저장소)이 정한다. 다른 session이 낸 실행만 읽는 변경분은 그 실행에 끼운 입력만 포함한다.
-- provider 명령(`/compact` 등)처럼 글도 도구 호출도 내지 않고 정상으로 끝난 실행은 최근 턴 세 칸과 목표 칸의 마지막 입력에서 뺀다. 이런 턴이 칸을 차지하면 그 앞의 실제 대화가 밀려나, 지속 제약으로 저장되지 않은 정정 입력(`constraint.auto_apply`가 꺼진 기본 상태)이 패킷에서 사라지기 때문이다([#584](https://github.com/woonyong-choi/saturn/issues/584), `provider` 모드에서 정정한 헤더 이름이 8건 중 0건 남았다). 입력 원문은 기록에 그대로 남고 끼워 넣은 입력이 붙은 실행, 실패하거나 멈춘 실행은 빼지 않는다.
-- 수정은 판단 기록에서 수정으로 판단된 사용자 입력의 원문이다. 작업마다 가장 나중 3개(초안)를, 수정이 있는 작업 중 가장 나중 5개(초안)까지 `Amendment (task N)` 줄로 목표 칸 끝에 넣는다. 정정이 최근 3턴에서 밀려나도 원문 보존 원칙에 따라 패킷에서 사라지지 않게 하기 위해서다([#584](https://github.com/woonyong-choi/saturn/issues/584)). 입력에 대한 판단 기록에서 `is_constraint` 확률이 그 판단의 `constraint_ask` 기준값 이상이면 수정으로 읽는다. `constraint.auto_apply`가 꺼져 제약으로 저장되지 않은 입력도 판단 기록에 남아 있어 같게 읽고, 끼워 넣어 적용한 입력도 같은 기준이다. 하나가 아니라 몇 개를 남기는 것은 실제 router가 정정 뒤의 단순 읽기 입력에도 0.79 같은 확률을 내서 가장 나중 하나가 정정이 아닌 경우가 있었기 때문이다. 정본은 기록 저장소의 입력, 실행, 판단 기록이라 engine을 다시 켜도 같고 요약하지 않는다. 같은 원문이 목표 칸이나 남은 최근 턴에 이미 있으면 되풀이하지 않는다. 고정 구역이 `P_max`를 넘으면 에이전트 답 줄이기와 최근 턴 줄이기 뒤에 오래된 수정부터 빼고 `(N earlier amendments left out to fit this packet)`로 생략을 표시한다. 최근 턴보다 수정을 늦게 줄이는 것은 밀려난 정정을 먼저 지키기 위해서다. 판단 맥락의 최신 수정(이어 보낸 가장 나중 입력, [router](router.md#판단-요청-맥락))은 같은 작업의 모든 후속 입력이 후속이라 정정이 뒤 입력에 묻히므로 인계에는 그대로 쓰지 않는다. `/record off`로 판단 기록을 쓰지 않은 입력은 수정으로 읽지 않는다. `constraint.auto_apply`를 켠 상태에서 옛 제약과 새 제약이 함께 들어갈 때는 자동으로 지우지 않고 제약 번호 순으로 넣어 나중 것이 뒤에 온다. 대체 판단이 보류라서다([#544](https://github.com/woonyong-choi/saturn/issues/544)).
-- 3단계에는 대기·보류 상태의 입력, 보낸 뒤 결과를 모르는 작업(`NeedsCheck`)의 입력, 결과가 없는 도구 호출을 넣는다. 결과가 없는 도구 호출은 별도 경고 문장 없이 도구 결과 자리에 오류 결과(`Interrupted before a result was recorded · It may have partially run`)를 둔다. 결과를 모르는 작업의 입력도 같은 오류 결과를 붙인다. 항목은 기록의 실제 상태로 고르고 모델을 따로 부르지 않는다. 마지막 입력만 넣을 때보다 정답률이 33.8%p [30.8, 36.7] 높았고, 모델이 작성한 목표·남은 일과는 차이가 0.8%p [−2.5, 4.0]였다. 모델 작성은 호출 토큰이 평균 77,425 늘어 총 토큰이 5.77배(93,655 대 16,230)였다. 단가와 캐시는 반영하지 않은 토큰 합계 비율이다([실험 보고서](../experiments/packet-goal-fields/report.md)).
-- 4단계에는 도구 결과를 넣지 않는다. 최근 턴의 큰 도구 결과가 예산을 혼자 차지하지 않게 하기 위해서다.
+- 2단계에는 대기·보류 상태의 입력, 보낸 뒤 결과를 모르는 작업(`NeedsCheck`)의 입력, 결과가 없는 도구 호출을 넣는다. 결과가 없는 도구 호출은 별도 경고 문장 없이 도구 결과 자리에 오류 결과(`Interrupted before a result was recorded · It may have partially run`)를 둔다. 결과를 모르는 작업의 입력도 같은 오류 결과를 붙인다. 항목은 기록의 실제 상태로 고르고 모델을 따로 부르지 않는다. 대기·보류 입력은 보낸 적이 없으므로 이미 실행된 대화와 섞지 않는다. 남은 일을 모델이 쓰지 않고 기록으로 채우는 근거는 [실험 보고서](../experiments/packet-goal-fields/report.md)에 있다.
+- 3단계는 이 채팅에서 기록된 사용자 입력, 실행 중에 끼워 넣어 적용한 입력, 메인 에이전트 글 전부다. 최근 몇 턴이나 수정 개수로 자르지 않고, 입력과 글을 줄이거나 합치지 않으며, 같은 글자의 서로 다른 입력도 문자열로 지우지 않는다. 판단 기록(`/record off` 포함), `constraint.auto_apply`, 제약 분류와 무관하게 실린다([#592](https://github.com/woonyong-choi/saturn/issues/592)). 입력이 연 실행마다 턴 하나이고 기록 번호 순서이며, 턴 안에서는 실행을 연 입력, 에이전트 글, 끼워 넣은 입력이 실제 순서다. 도구 결과는 넣지 않는다.
+- 끼워 넣어 적용한 입력은 들어간 실행의 턴에 `User (sent while this turn was running): ...` 줄로 적용한 기록 번호 자리에 적용한 순서대로 붙는다. 에이전트 글은 끼워 넣은 입력에서 끊겨 앞뒤로 나뉜다. 거절되어 대기로 돌아온 입력은 실행에 들어가지 않았으므로 `Queued input`으로만 나오고, 실행된 입력으로 두 번 싣지 않는다. 이번 작업에만 해당하는 지시를 지속 제약으로 올리지 않는다([제약](constraints.md)). 기록은 `inputs.steered_run`과 `steered_after`로 [기록 저장과 보존](records.md#기록-저장소)이 정한다. 다른 session이 낸 실행만 읽는 변경분은 그 실행에 끼운 입력만 포함한다.
+- provider 명령(`/compact` 등)처럼 글도 도구 호출도 내지 않고 끝난 실행의 입력도 기록된 사용자 입력이므로 같은 대화에 순서대로 들어가고 `[Finished]` 등 상태가 붙는다. 대화를 자르지 않으므로 이런 턴이 정정을 밀어낼 수 없다([#584](https://github.com/woonyong-choi/saturn/issues/584), `provider` 모드에서 정정한 헤더 이름이 8건 중 0건 남았다).
+- 대화 본문의 원문 해시, 역할, 번호와 순서는 [전달 패킷 근거](records.md#전달-패킷-근거)에 남고, engine은 보내기 직전에 보낼 글이 이 본문을 같은 내용과 순서로 모두 담았는지 검사해 하나라도 빠지면 보내지 않는다.
+- 판단 맥락의 최신 수정(이어 보낸 가장 나중 입력, [router](router.md#판단-요청-맥락))은 인계에 쓰지 않는다. 인계는 대화 전체를 싣기 때문이다.
 - 경쟁 구역의 순서는 `compact` 판단으로 정한다. engine은 실험 옵션 `context.select.packet`이 `jev`일 때만 이 판단을 부르고(#380), 기본(`rrf`)은 후보 순위(RRF) 순서로만 채운다. 후보 전체를 묻고, 항목마다 호출과 결과 중 큰 남김 확률을 쓴다. 확률이 높은 순으로, 같은 확률이면 [맥락 고르기](context-selection.md)의 후보 순위 순으로 둔다. router가 답하지 못한 항목은 후보 순위 순으로 뒤에 둔다.
 - `compact` 판단이 재시도 뒤에도 실패하면 router가 시작한 전환은 건너뛰고, 사용자가 고정했거나 맥락 크기 규칙이 시작한 전환은 후보 순위 순으로 경쟁 구역을 채운다. 규칙과 이유는 [router 실패](router.md#router-실패)에 있다.
 - 확률에 기준값을 두지 않고 예산이 찰 때까지 채운다. 근거 항목의 확률은 평균 0.372, 최댓값 0.65로 낮아서 기준값 0.5가 근거 항목 624개 중 549개(88.0%)를 버렸기 때문이다([결정 기록](../decisions/2026-10-02-fill-packet-by-probability.md)). 확률은 근거와 비근거를 가르는 순서에만 쓴다.
@@ -227,24 +226,26 @@ P_max = T / 10
 - 한 항목 상한은 큰 로그 하나가 경쟁 구역을 혼자 차지하지 않게 하기 위해서다.
 - 도구 출력은 패킷을 만들 때만 줄이고, 실행 중인 provider의 도구 출력에는 훅을 걸지 않는다. provider 설정은 사용자 설정을 따르고 훅은 router 키 보호에만 쓰기 때문이다([결정 기록](../decisions/2026-09-29-minimal-provider-control.md), [#37](https://github.com/woonyong-choi/saturn/issues/37)). 실행 중 커지는 맥락은 위의 맥락 정리 판정이 다룬다.
 - 패킷에 쓸 때는 구역마다 기록 번호 순서로 다시 정렬한다. 순위는 무엇을 넣을지만 정하고, 새 session은 일이 일어난 순서를 알아야 하기 때문이다.
-- 최근 턴과 경쟁 구역은 session별 제목 아래에 묶고 항목마다 기록 번호와 시각을 적는다. 형식은 [패킷 표기](#패킷-표기)에 있다.
+- 대화와 경쟁 구역은 session별 제목 아래에 묶고 항목마다 기록 번호와 시각을 적는다. 형식은 [패킷 표기](#패킷-표기)에 있다.
 
-고정 구역만으로 `P_max`를 넘으면 `sessions`는 다음 순서로 줄인다.
+고정 구역(대화 본문 포함)만으로 `P_max`를 넘어도 대화는 턴 수나 답 길이로 줄이지 않는다. `sessions`는 다음 순서로 처리한다.
 
-1. 최근 3턴 중 오래된 턴부터 에이전트 답을 앞부분 300자만 남긴다.
-2. 최근 턴 수를 3, 2, 1로 줄인다.
-3. 이 패킷에 한해 `P_hard = T / 5`(초안)까지 허용하고 초과를 기록한다. 경쟁 구역은 비운다. 허용한 초과분을 고정 구역에만 쓰기 위해서다.
-4. `P_hard`도 넘으면 새 session으로 옮기지 않고 그대로 이어 가며, TUI에 `고정 제약이 길어 맥락 정리를 미룹니다`와 제약 목록을 보인다.
+1. 이 패킷에 한해 `P_send`까지 허용하고 `P_max` 초과를 기록한다. 경쟁 구역은 비운다. 허용한 초과분을 고정 구역에만 쓰기 위해서다.
+2. `P_send`도 넘거나 `P_send`를 알 수 없으면 대화를 자르지 않고 새 session으로 옮기지 않으며 그대로 이어 간다. TUI에 `고정 제약이 길어 맥락 정리를 미룹니다`와 제약 목록을 보인다. 한도 밖 장기 대화는 후속 기억 설계의 과제다.
+
+`P_send`는 `P_max`나 `T`에 비율을 곱해 정하지 않는다. `T`는 맥락 정리를 시작하는 기준이지 provider가 받는 한도가 아니기 때문이다. 받는 provider의 창 크기(`context.<provider>.window`, 어댑터 설명자가 기본값을 준다)에서 시스템 지시와 도구 정의(20,000토큰), 패킷 뒤에 보낼 현재 입력(10,000토큰), 한 턴의 출력(32,000토큰)을 예약으로 먼저 빼고 남은 양에 안전 비율 `N`을 곱한 값이다(초안, 새 설정은 없다). 현재 입력의 실제 크기는 패킷을 만들 때 모르므로 고정 예약으로 둔다. 창이 0이거나 예약보다 작으면 `P_send`는 0이라 어떤 패킷도 보내지 않는다. 한도를 모르는 채 보낸 패킷을 성공으로 세지 않기 위해서다.
+
+패킷 크기는 `P_send`와 견줄 때 보수적으로 센다. 일반 추정은 4자에 1토큰이지만 한글처럼 ASCII가 아닌 글자는 글자마다 1토큰으로 센다. 이 값은 provider의 실제 토큰 계수가 아니라 추정이다. 추정이 한도 안이어도 provider가 거절할 수 있고, 그때는 아래 거절 처리를 따르며 추정 통과와 실제 거절은 서로 다른 기록으로 남는다. 경쟁 구역까지 더한 글이 `P_send`를 넘으면 경쟁 구역을 비운다.
 
 패킷을 보냈는데 provider가 맥락 한도 초과로 거절하면 `engine`은 경쟁 구역을 줄여 한 번만 다시 보낸다. provider 전환과 맥락 정리로 여는 새 session이 같은 규칙을 쓴다. 거절은 보내지 않음이 확정된 실패라 다시 보내도 같은 작업이 두 번 실행되지 않는다([#162](https://github.com/woonyong-choi/saturn/issues/162) 결정).
 
 1. 줄이는 목표는 거절 응답이 한도를 알려 주면 그 값, 알려 주지 않으면 받는 provider의 `P_max`의 절반(초안)이다. 어느 쪽이든 거절된 패킷 크기의 절반을 넘지 않는다. 한도를 알려 줘도 패킷이 그 안에 이미 들어 있으면 줄이지 못해 같은 패킷을 되풀이하게 되기 때문이다.
-2. `sessions`는 고정 구역을 그대로 두고 경쟁 구역만 목표에 맞춰 같은 순서로 다시 채운다. 순서가 뒤인 남길 확률이 낮은 항목부터 빠진다. 고정 구역은 줄이지 않는다.
+2. `sessions`는 고정 구역과 대화 본문을 그대로 두고 경쟁 구역만 목표에 맞춰 같은 순서로 다시 채운다. 순서가 뒤인 남길 확률이 낮은 항목부터 빠진다. 고정 구역은 줄이지 않는다.
 3. 고정 구역만으로 목표를 넘거나 줄인 패킷도 거절되면 보내지 않고 입력을 작업과 함께 보류하며 TUI에 `맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요`를 보인다.
 
 맥락 정리는 기다리는 입력이 없을 때만 하므로 보류할 입력이 없다. 그래서 줄인 패킷도 거절되거나 고정 구역만으로 넘치면 새 session을 열지 않고 옛 session을 그대로 두며 같은 알림만 보인다. 맥락은 다음 턴 경계에서 다시 판정하고 그 사이에는 provider 자동 압축 안전망이 받는다.
 
-`Deferred`(고정 구역이 `P_hard`도 넘음)는 경쟁 구역이 이미 비어 있어 줄일 항목이 없다. 그래서 다시 보내지 않고 위 3과 같이 멈추되 제약 목록을 보인다. provider가 맥락 초과로 거절했는지는 provider 고유 코드(`providers/codex`)가 판정해 공통 오류 `ContextExceeded`로 올린다. Codex는 `turn/start` 거절 응답의 문구로 판정하고, 실제 거절 응답의 모양은 실측하지 못했다. Claude는 쓰기 전 거절 경로가 없어 이 판정이 없다. 진행 중인 턴이 맥락 초과로 끝나는 오류 결과(`terminal_reason`이 `prompt_too_long`)는 보내지 않음이 확정이 아니라 줄여 다시 보내지 않고, 결과 확인 필요로 둔다([providers-and-sessions](providers-and-sessions.md)).
+`Deferred`(고정 구역이 `P_send`도 넘음)는 경쟁 구역이 이미 비어 있어 줄일 항목이 없다. 그래서 다시 보내지 않고 위 3과 같이 멈추되 제약 목록을 보인다. provider가 맥락 초과로 거절했는지는 provider 고유 코드(`providers/codex`)가 판정해 공통 오류 `ContextExceeded`로 올린다. Codex는 `turn/start` 거절 응답의 문구로 판정하고, 실제 거절 응답의 모양은 실측하지 못했다. Claude는 쓰기 전 거절 경로가 없어 이 판정이 없다. 진행 중인 턴이 맥락 초과로 끝나는 오류 결과(`terminal_reason`이 `prompt_too_long`)는 보내지 않음이 확정이 아니라 줄여 다시 보내지 않고, 결과 확인 필요로 둔다([providers-and-sessions](providers-and-sessions.md)).
 
 고정 구역이 넘칠 때 provider 압축으로 대신하지 않는다. provider가 들고 있는 맥락과 Saturn 기록이 달라지고, Codex 원격 압축 요약은 무엇이 남았는지 볼 수 없기 때문이다. 4단계 뒤 맥락이 `T_hard`를 넘으면 provider 자동 압축 안전망이 받는다.
 
@@ -294,12 +295,12 @@ P_max = T / 10
 
 ### 패킷 표기
 
-최근 턴과 경쟁 구역은 session별 제목 아래에 묶고, 항목마다 기록 번호와 기록 시각을 적는다. 패킷 96개에 날짜, session, 기록 번호 표시가 없어 날짜가 필요한 질문(384개 중 96개, 25.0%)은 근거가 모두 들어도 풀 수 없었고 `multi-session`과 `temporal` 질문은 세 조건 모두 정답률이 0%였기 때문이다([후속 분석](../experiments/handoff-packet-quality/report.md#후속-분석-원인)).
+대화와 경쟁 구역은 session별 제목 아래에 묶고, 항목마다 기록 번호와 기록 시각을 적는다. 패킷 96개에 날짜, session, 기록 번호 표시가 없어 날짜가 필요한 질문(384개 중 96개, 25.0%)은 근거가 모두 들어도 풀 수 없었고 `multi-session`과 `temporal` 질문은 세 조건 모두 정답률이 0%였기 때문이다([후속 분석](../experiments/handoff-packet-quality/report.md#후속-분석-원인)).
 
 ```text
 The records below are an archive of the earlier conversation. ...
 
-## Recent turns
+## Conversation
 
 ### Session 2
 
@@ -323,7 +324,7 @@ test result: ok
 
 - 항목 앞에 `#<기록 번호> <기록 시각>`을 적는다. 시각은 UTC 분 단위 `YYYY-MM-DDTHH:MMZ`(17글자)다. 초와 시간대 이름을 빼 토큰을 아끼고, 기록 저장소의 unix 밀리초 값을 바꿔 쓰므로 provider별 변환을 거치지 않는다.
 - session 제목은 `### Session <번호>`이고 session마다 한 번 쓴다. 날짜와 session 경계를 항목마다 되풀이하지 않기 위해서다. 기록 번호 순으로 놓으면 같은 session의 항목이 이어진다.
-- 최근 턴은 사용자 입력의 기록 번호와 시각, 상태를 적는다(`#<기록 번호> <시각> [Finished] User: ...`). 제약, 목표와 마지막 입력, 끝나지 않은 항목은 표기를 붙이지 않는다.
+- 대화의 사용자 입력은 기록 번호와 시각, 상태를 적는다(`#<기록 번호> <시각> [Finished] User: ...`). 에이전트 글(`Agent: ...`)과 끼워 넣은 입력은 같은 턴 안에서 줄만 바꿔 잇는다. 제약, 끝나지 않은 항목은 표기를 붙이지 않는다.
 - 설정 `context.evidence.lookup`이 참이고 경쟁 구역에서 원문 아닌 모양으로 들어가거나 빠진 기록이 있으면, 경쟁 구역 끝에 `saturn evidence read <number>`로 원문을 다시 읽는 안내 한 줄을 붙인다. 안내도 경쟁 구역 예산에 든다. 기본은 거짓이다([근거 검색과 원문 조회](context-selection.md#근거-검색과-원문-조회)).
 - 항목 앞 표기와 session의 첫 항목이 쓰는 제목은 경쟁 구역 예산에 든다. 표기까지 넣은 원문이 들어가지 않으면 축약본, 경로 순으로 시도한다.
 - provider 압축 요약은 기록 한 건이 아니므로 표기 없이 경쟁 구역의 첫 항목으로 제목 앞에 둔다.
@@ -344,7 +345,7 @@ test result: ok
 session 교체는 턴이 끝난 경계에서만 한다. 교체 규칙은 [provider 연결과 session](providers-and-sessions.md)에 있다.
 
 - engine은 트리가 유휴가 된 턴 끝에서 마지막 턴 값을 기록하고, 작업을 끝내고, 이 판정을 한 뒤에 기다리던 입력을 보낸다. 판정이 새 session으로 바꾸는 일이 입력 전송 사이에 끼지 않게 하기 위해서다.
-- 판정은 `A`를 알고 `A ≥ T`일 때만 패킷을 만들어 `decide`를 부른다. `A < T`이면 기록을 읽지 않는다. 판정이 `Restart`면 같은 provider의 새 session을 패킷과 함께 열고, 옛 session은 `종료`로 두고 닫는다. 메인 에이전트 번호는 그대로이고 새 session의 전달 기록 번호는 패킷이 담은 마지막 번호다. 열지 못하면 옛 session을 그대로 쓴다. 패킷이 `P_hard`도 넘으면 옮기지 않고 `고정 제약이 길어 맥락 정리를 미룹니다`를 보인다.
+- 판정은 `A`를 알고 `A ≥ T`일 때만 패킷을 만들어 `decide`를 부른다. `A < T`이면 기록을 읽지 않는다. 판정이 `Restart`면 같은 provider의 새 session을 패킷과 함께 열고, 옛 session은 `종료`로 두고 닫는다. 메인 에이전트 번호는 그대로이고 새 session의 전달 기록 번호는 패킷이 담은 마지막 번호다. 열지 못하면 옛 session을 그대로 쓴다. 패킷이 `P_send`도 넘으면 옮기지 않고 `고정 제약이 길어 맥락 정리를 미룹니다`를 보인다.
 - 턴 끝에서는 마지막 턴 뒤 경과 시간을 0으로 본다. 유휴 복귀 조건은 다음 입력을 보낼 session을 정할 때 판정한다. 열린 메인이 트리 유휴이고 마지막 턴 뒤 경과 시간이 캐시 유지 시간을 넘었으면 그 입력에서 만들 패킷 `P`와 마지막 `A`를 비교해 `P < A`일 때 같은 provider와 모델의 새 session으로 패킷과 함께 이어 간다. 옛 session은 닫아 `종료`로 둔다. 마지막 턴 값을 모르거나 `P ≥ A`이면 열린 session을 그대로 쓴다. 판정하는 입력은 보내려는 입력 자신이라 합칠 대기 입력으로 세지 않고, 그 입력은 패킷에 넣지 않고 새 session의 첫 턴 뒤에 보낸다. 같은 판정을 엔진을 다시 켠 뒤 처음 보내는 입력에도 쓴다.
 - 정리 모드 `context.mode`가 `provider`이면 턴 끝의 판정과 유휴 복귀 판정을 모두 하지 않고, provider 실행 인자에 안전망 값(`T_hard`)도 넣지 않는다.
 - 경쟁 구역 순서는 기본이 후보 순위(RRF)이고, 실험 옵션 `context.select.packet = jev`일 때만 `compact` 판단을 부른다.
@@ -360,8 +361,8 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | `A`에 합칠 대기 입력 존재 | 판정을 다음 턴 경계까지 미룬다. |
 | 한 턴의 급증으로 `T` 초과 | `T_hard`에서 provider 자동 압축이 처리한다. |
 | 경쟁 구역 예산 부족 | 고른 순서대로 원문, 축약본, 경로 중 들어가는 형태를 넣고 나머지는 건너뛴다. |
-| 고정 구역의 `P_max` 초과 | 최근 턴을 줄이고, 그래도 넘치면 `P_hard`까지 허용한다. |
-| 고정 구역의 `P_hard` 초과 | 새 session으로 옮기지 않고 사용자에게 제약 목록을 보인다. |
+| 고정 구역의 `P_max` 초과 | 대화 본문은 줄이지 않고 경쟁 구역을 비운 채 `P_send`까지 허용한다. |
+| 고정 구역의 `P_send` 초과 | 대화를 자르지 않고 새 session으로 옮기지 않으며 사용자에게 제약 목록을 보인다. |
 | provider가 패킷을 맥락 한도 초과로 거절 | 경쟁 구역을 줄여 한 번만 다시 보낸다. 줄인 패킷도 거절되거나 고정 구역만으로 목표를 넘으면 보내지 않고 입력을 보류하며 사용자에게 알린다. |
 | 떠나는 provider의 압축 요약을 읽을 수 없음 | Saturn 기록 원문으로 패킷을 만든다. |
 
@@ -372,20 +373,20 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | compaction은 트리 유휴이고 합칠 대기 입력이 없을 때만 한다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `compaction_is_postponed_while_an_input_is_waiting_to_merge`, `answer_with_a_running_subagent_ends_the_turn_only_when_the_tree_is_idle` |
 | session 교체는 턴 경계에서만 하고, 교체한 새 session에 패킷을 넘긴다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `context_over_the_threshold_replaces_the_session_only_at_the_turn_boundary` |
 | `A`를 모르면 새 session을 열지 않는다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `unknown_context_size_leaves_compaction_to_the_provider` |
-| 고정 구역이 `P_hard`를 넘으면 맥락 정리를 미루고 사용자에게 알린다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `oversized_fixed_zone_defers_compaction_and_tells_the_user` |
+| 고정 구역이 `P_send`를 넘으면 맥락 정리를 미루고 사용자에게 알린다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `oversized_fixed_zone_defers_compaction_and_tells_the_user` |
 | 유휴 복귀 조건과 기준 도달 조건에서만 새 session으로 이어 간다. | `A`, `T`, `P`, `k*`, 경과 시간 조합마다 판정 결과가 규칙과 같은지 확인한다. |
 | 캐시 유지 시간을 넘겨 돌아오고 패킷이 마지막 `A`보다 작으면 다음 입력에서 새 session으로 이어 가고, 유지 시간 안이거나 패킷이 `A` 이상이면 열린 session을 그대로 쓴다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `returning_after_the_cache_window_opens_a_new_session_when_the_packet_is_smaller`, `returning_inside_the_cache_window_keeps_the_session`, `returning_after_the_cache_window_keeps_the_session_when_the_packet_is_not_smaller` |
 | `context.mode`가 `provider`이면 `sessions`는 compaction을 판정하지 않고 안전망 값을 넣지 않는다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `provider_mode_neither_restarts_on_return_nor_at_the_threshold`, `saturn-terminal/engine/src/lifecycle/intake.rs`의 `provider_mode_leaves_out_the_auto_compact_safety_net`, `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `connection_layer_context_mode_provider_skips_compaction_at_the_turn_end`, `connection_layer_context_budget_decides_compaction_and_survives_it`, `context_settings_of_two_chats_do_not_affect_each_other`, `saturn-terminal/engine/src/settings/mod.rs`의 `context_mode_defaults_to_saturn_and_reads_provider`, `context_mode_rejects_unknown_values` |
-| 실행 중에 끼워 넣어 적용한 입력은 그 턴의 사용자 입력과 마지막 입력으로 패킷에 들어가고, 거절된 입력은 들어가지 않는다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `applied_steer_is_preserved_in_handoff`, `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `applied_steer_is_kept_with_its_run_and_a_refused_one_is_not`, `saturn-terminal/engine/src/handoff.rs`의 `steered_inputs_join_their_turn_in_the_order_they_were_applied`, `the_last_steered_input_is_the_last_user_input_of_the_goal`, `a_steer_into_another_sessions_run_stays_out_of_a_catch_up_for_the_first`, `a_steer_whose_run_has_no_records_is_left_out` |
-| 글도 도구 호출도 없이 끝난 provider 명령 턴은 최근 턴과 목표의 마지막 입력을 차지하지 않는다. | `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `provider_command_turn_does_not_push_a_correction_out_of_the_recent_turns` |
-| 수정으로 판단된 입력은 정정 뒤 입력이 세 턴 넘게 쌓여도, `constraint.auto_apply`가 꺼져 있어도, engine을 다시 켠 뒤에도 패킷에 원문으로 남고 작업마다 나중 세 개이며 최근 턴에 있으면 되풀이하지 않는다. | `saturn-terminal/engine/src/handoff.rs`의 `amendments_survive_the_recent_turns_up_to_three_per_task`, `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `judged_correction_stays_in_the_packet_after_more_turns_and_a_restart`, `saturn-terminal/engine/src/store/ledger.rs`의 `steered_inputs_keep_acceptance_order_and_the_sequence_they_arrived_after` |
-| 고정 구역이 넘치면 최근 턴보다 수정을 늦게 줄이고 오래된 수정부터 빼며 생략을 표시한다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_amendments_outlast_recent_turns_and_omit_oldest_first` |
+| 실행 중에 끼워 넣어 적용한 입력은 그 턴 안의 적용한 기록 번호 자리에 적용한 순서로 들어가고 입력 번호가 기록되며, 거절된 입력은 들어가지 않는다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `applied_steer_is_preserved_in_handoff`, `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `applied_steer_is_kept_with_its_run_and_a_refused_one_is_not`, `saturn-terminal/engine/src/handoff.rs`의 `steered_inputs_keep_their_applied_position_and_order`, `a_steer_into_another_sessions_run_stays_out_of_a_catch_up_for_the_first`, `a_steer_whose_run_has_no_records_is_left_out`, `saturn-terminal/engine/src/store/ledger.rs`의 `steered_inputs_keep_acceptance_order_and_the_sequence_they_arrived_after` |
+| 글도 도구 호출도 없이 끝난 provider 명령 턴도 기록된 입력이라 대화에 들어가며 정정을 밀어내지 않는다. | `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `provider_command_turn_does_not_push_a_correction_out_of_the_recent_turns` |
+| 정정 뒤 읽기 턴이 네 개 이어져도, 판단 기록과 제약 등록이 없어도(`/record off` 포함), engine을 다시 켠 뒤에도 정정 원문은 한 번 제자리에 남고 같은 글자의 서로 다른 입력은 합치지 않는다. | `saturn-terminal/engine/src/lifecycle/dialogue_preserved.rs`의 `four_reads_after_a_correction_do_not_push_it_out_of_the_switch_packet`, `four_reads_after_a_correction_survive_with_recording_off`, `saturn-terminal/engine/src/handoff.rs`의 `a_correction_survives_four_following_reads_without_any_judgment`, `identical_inputs_of_different_runs_are_both_kept`, `every_input_of_every_task_is_kept_in_order`, `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `judged_correction_stays_in_the_packet_after_more_turns_and_a_restart`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_keeps_identical_inputs_and_steer_order` |
+| 대화 본문의 번호·역할·원문 해시·순서를 전달 패킷 기록에 남기고, 보낼 글이 본문을 같은 내용과 순서로 담지 않으면 보내지 않는다. | `saturn-terminal/engine/src/handoff.rs`의 `evidence_refuses_a_body_that_lost_or_swapped_recorded_dialogue`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `contains_protected_rejects_missing_changed_and_misordered_dialogue`, `saturn-terminal/engine/src/lifecycle/dialogue_preserved.rs`의 `four_reads_after_a_correction_do_not_push_it_out_of_the_switch_packet` |
 | 고정 구역이 넘치지 않으면 패킷 크기는 `T`의 10분의 1을 넘지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_large_record_stays_within_packet_limit` |
-| 고정 구역은 정한 순서로 모두 들어가고 최근 턴에는 도구 결과가 없다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_zone_in_order_and_tool_results_only_in_competing` |
+| 고정 구역은 정한 순서로 모두 들어가고 대화에는 도구 결과가 없다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_zone_in_order_and_tool_results_only_in_competing` |
 | 경쟁 구역은 기준값 없이 router 남김 확률 순으로 예산이 찰 때까지 채운다. | `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_orders_by_probability_and_keeps_low`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_judgments_put_low_probability_item_before_unanswered` |
 | 경쟁 구역은 고른 순서대로 원문, 축약본, 경로 중 들어가는 형태로 채운다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_small_top_item_goes_raw_before_large_lower_item`, `build_packet_fills_competing_in_chosen_order_raw_then_digest`, `build_packet_falls_back_to_path_then_skips` |
 | 한 항목은 경쟁 구역 예산의 30%를 넘는 원문으로 들어가지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_item_over_cap_goes_as_digest` |
-| 최근 턴과 경쟁 구역은 session별 제목 아래에 묶고 항목마다 기록 번호와 기록 시각을 적는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_competing_groups_by_session_with_seq_and_time`, `build_packet_recent_turns_carry_session_title_seq_and_time`, `saturn-terminal/core/src/sessions/stamp.rs`의 `label_formats_seq_and_utc_minute`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_scenario_session_and_time_appear_before_items` |
+| 대화와 경쟁 구역은 session별 제목 아래에 묶고 항목마다 기록 번호와 기록 시각을 적는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_competing_groups_by_session_with_seq_and_time`, `build_packet_conversation_carries_session_title_seq_and_time`, `saturn-terminal/core/src/sessions/stamp.rs`의 `label_formats_seq_and_utc_minute`, `saturn-terminal/core/examples/packet/tests.rs`의 `packet_scenario_session_and_time_appear_before_items` |
 | 시각이 없는 입력은 기록 번호만 적는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_without_time_writes_seq_only`, `saturn-terminal/core/src/sessions/stamp.rs`의 `label_formats_seq_and_utc_minute` |
 | 표기와 session 제목의 글자도 경쟁 구역 예산에 들어 패킷은 `P_max`를 넘지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_many_sessions_stay_within_packet_limit` |
 | 패킷은 맨 앞 지시문으로 기록이 요청이 아니며 끝난 일을 다시 하지 말고 다음 사용자 입력을 기다리라고 알린다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_starts_with_the_do_not_act_instruction` |
@@ -399,10 +400,10 @@ provider마다 어느 방식을 쓸지는 품질을 지키면서 토큰이 적�
 | router가 시작한 전환은 판단이 실패하면 건너뛰고, 사용자가 고정한 전환은 순위 순서로 연다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `a_failed_judgment_skips_only_the_switch_the_router_started` |
 | 크기 한도를 넘는 state와 질문은 요청을 만들지 않고 순위 순서로 채운다. | `saturn-terminal/engine/src/lifecycle/packet_select.rs`의 `without_a_judgment_the_packet_is_filled_by_rank_order`(크기 한도 사례) |
 | 제약 칸은 `C_max` 안에서 채우고 못 넣은 수를 표시한다. | [제약](constraints.md#요구사항)의 제약 칸 행 |
-| 고정 구역이 `P_max`를 넘으면 오래된 턴의 답부터 줄이고, 최근 턴 수를 줄인 뒤 `P_hard`까지 허용한다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_overflow_trims_oldest_answer_first`, `build_packet_fixed_overflow_drops_oldest_turns`, `build_packet_fixed_over_limit_allows_hard_limit_without_competing` |
+| 고정 구역이 `P_max`를 넘어도 대화 본문은 줄이거나 빼지 않고 경쟁 구역을 비운 채 `P_send`까지 허용하며, `P_send`도 넘으면 자르지 않고 보내지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_over_soft_limit_keeps_every_turn_whole_and_empties_competing`, `build_packet_dialogue_over_hard_limit_defers_instead_of_cutting`, `build_packet_fixed_over_limit_allows_hard_limit_without_competing`, `saturn-terminal/engine/src/lifecycle/dialogue_preserved.rs`의 `dialogue_over_the_target_budget_is_sent_whole_and_only_the_tools_are_dropped`, `dialogue_over_the_send_limit_is_not_applied_and_nothing_is_cut` |
 | 실험 수집기가 `saturn-core`의 `packet` 예제(`cargo run -p saturn-core --example packet`)로 두 실험 설계의 입력에서 패킷을 만들고, router 판단이 없으면 RRF 순서로 채운다. | `saturn-terminal/core/examples/packet/tests.rs`의 `packet_stream_input_prints_packet_text`, `packet_scenarios_input_prints_json_with_packet_and_rrf_order`, `packet_without_judgments_fills_in_rrf_order`, `packet_judgments_put_low_probability_item_before_unanswered` |
 | 고정 구역이 넘쳐도 provider 압축으로 대신하지 않는다. | `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_fixed_over_hard_limit_defers_with_constraints` |
-| provider가 맥락 한도로 거절하면 낮은 순 항목을 빼 한 번만 다시 보내고, 고정 구역은 줄지 않는다. | `saturn-terminal/engine/src/lifecycle/packet_overflow.rs`의 `packet_overflow_rejection_resends_once_without_the_lowest_items`, `packet_overflow_reduction_keeps_the_fixed_zone`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `reduce_packet_drops_the_lowest_items_and_keeps_the_fixed_zone` |
+| provider가 맥락 한도로 거절하면 낮은 순 항목을 빼 한 번만 다시 보내고, 고정 구역과 대화 본문은 줄지 않는다. | `saturn-terminal/engine/src/lifecycle/packet_overflow.rs`의 `packet_overflow_rejection_resends_once_without_the_lowest_items`, `packet_overflow_reduction_keeps_the_fixed_zone`, `saturn-terminal/engine/src/lifecycle/dialogue_preserved.rs`의 `reduced_resend_keeps_the_same_dialogue_and_only_drops_tools`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `reduce_packet_drops_the_lowest_items_and_keeps_the_fixed_zone` |
 | 맥락 정리로 여는 새 session도 거절되면 낮은 순 항목을 빼 한 번만 다시 열고, 줄인 패킷도 거절되면 옛 session을 그대로 두고 알린다. | `saturn-terminal/engine/src/lifecycle/packet_overflow.rs`의 `compaction_overflow_rejection_resends_once_without_the_lowest_items`, `compaction_overflow_after_the_reduced_resend_keeps_the_session_and_tells_the_user` |
 | 줄인 패킷도 거절되거나 고정 구역만으로 목표를 넘으면 보내지 않고 멈춘 뒤 알린다. | `saturn-terminal/engine/src/lifecycle/packet_overflow.rs`의 `packet_overflow_after_the_reduced_resend_stops_and_tells_the_user`, `packet_overflow_with_only_the_fixed_zone_over_the_target_is_not_resent`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `reduce_packet_is_none_when_the_fixed_zone_alone_is_over_the_target` |
 | Codex의 맥락 초과 거절을 다른 거절과 구별해 한도를 읽는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `rejected_turn_tells_context_overflow_from_other_rejections` |

@@ -347,7 +347,7 @@ async fn switch_tells_the_user_which_provider_took_over() {
     );
 }
 
-/// 설정은 사용자 파일이 시작 전에 읽는다. Codex의 `T`를 400토큰으로 줄여 패킷의 `P_hard`를 80토큰으로 만든다.
+/// 설정은 사용자 파일이 시작 전에 읽는다. Codex의 `T`를 400토큰으로 줄여 패킷의 `P_send`를 80토큰으로 만든다.
 const SMALL_CODEX: &str = "[context.codex]\nt_abs = 400\nwindow = 400\n";
 
 #[tokio::test]

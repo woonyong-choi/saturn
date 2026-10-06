@@ -43,7 +43,7 @@ type StaleMain = (SessionId, LastTurn, Duration);
 pub(crate) enum PlanError {
     /// 사용자에게 보일 원인 한 줄.
     Failed(String),
-    /// 패킷의 고정 구역이 `P_hard`도 넘어 보내지 않는다.
+    /// 패킷의 고정 구역이 `P_send`도 넘어 보내지 않는다.
     Deferred(Vec<String>),
 }
 
@@ -1111,6 +1111,12 @@ impl Engine {
             .ok_or(SessionError::NotFound(live.session))?;
         if old.state == SessionState::Open && old.idle_since.is_none() {
             return Err(SessionError::NotAtTurnBoundary.into());
+        }
+        if !evidence.carries_dialogue(&packet) {
+            return Err(ProviderError::NotSent {
+                reason: "packet does not carry the recorded dialogue".to_owned(),
+            }
+            .into());
         }
         let workdir = self
             .chat_env(chat)

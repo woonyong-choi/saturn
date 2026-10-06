@@ -396,7 +396,6 @@ impl Settings {
             cache_read: number("cache_read", DEFAULT_CACHE_READ),
             cache_write: number("cache_write", defaults.cache_write),
             cache_ttl: DEFAULT_CACHE_TTL,
-            packet_hard_percent: self.packet_hard_percent(),
             item_cap_percent: self.positive("context.item_cap_percent"),
             constraint_slot_percent: self.positive("context.constraint_slot_percent"),
             rrf_k: self.rrf_k(),
@@ -414,19 +413,6 @@ impl Settings {
     /// 합치기 상수 `context.select.rrf_k`.
     pub(crate) fn rrf_k(&self) -> u32 {
         u32::try_from(self.whole("context.select.rrf_k")).unwrap_or(u32::MAX)
-    }
-
-    /// 옛 스냅샷에 `context.packet_hard_divisor`만 있으면 `100 / 나눗수`로 읽는다.
-    fn packet_hard_percent(&self) -> u64 {
-        let old = self
-            .get("context.packet_hard_divisor")
-            .and_then(layers::divisor_to_percent)
-            .and_then(|value| value.as_u64());
-        self.get("context.packet_hard_percent")
-            .and_then(Value::as_u64)
-            .or(old)
-            .unwrap_or_else(|| self.whole("context.packet_hard_percent"))
-            .clamp(1, 100)
     }
 
     /// 새 키, 옛 스냅샷의 옛 키, 기본값 층 순서로 찾는다.

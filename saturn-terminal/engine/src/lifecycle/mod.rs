@@ -19,6 +19,7 @@ mod constraints;
 mod crash_recovery;
 mod decision;
 mod deliver;
+mod dialogue_preserved;
 mod events;
 mod evidence;
 mod exit;

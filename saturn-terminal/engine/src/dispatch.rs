@@ -225,7 +225,7 @@ impl Engine {
         }
     }
 
-    /// 패킷의 고정 구역이 `P_hard`도 넘거나 줄인 패킷도 맥락 한도로 거절되면 보내지 않는다. 입력은 작업과 함께 보류하고
+    /// 패킷의 고정 구역이 `P_send`도 넘거나 줄인 패킷도 맥락 한도로 거절되면 보내지 않는다. 입력은 작업과 함께 보류하고
     /// `notice`를 보인다. 사용자가 `/continue`로 다시 시도한다.
     pub(crate) async fn hold_for_context(
         &mut self,

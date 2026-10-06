@@ -187,8 +187,8 @@ async fn explicit_constraint_reaches_the_switch_packet_with_auto_apply_off() {
 
     let packet = packet_of(&claude);
     let (fixed, rest) = packet
-        .split_once("## Goal and last input")
-        .expect("goal section should exist");
+        .split_once("## Conversation")
+        .expect("conversation section should exist");
     assert!(fixed.contains("## Constraints and decisions"), "{packet}");
     assert!(fixed.contains(RULE), "{packet}");
     assert!(!rest.contains(RULE), "{packet}");

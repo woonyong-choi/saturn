@@ -272,6 +272,17 @@ async fn a_judgment_whose_transition_key_changed_is_discarded_and_rank_order_is_
 
     let packet = packet_of(&codex);
     assert!(packet.contains("MARK6 "));
+    // #592: 판단을 버리고 순위로 채워도 대화 본문은 빠짐없이 들어간다
+    for number in 1..=TURNS {
+        assert!(
+            packet.contains(&format!("User: task {number} continue the cache")),
+            "{packet}"
+        );
+        assert!(
+            packet.contains(&format!("Agent: done c{number}")),
+            "{packet}"
+        );
+    }
     let recorded = flow.engine.store.packets_of_chat(flow.chat).await.unwrap();
     let stored = recorded.last().expect("the packet should be recorded");
     assert_eq!(stored.body_hash, sha256_hex(packet.as_bytes()));

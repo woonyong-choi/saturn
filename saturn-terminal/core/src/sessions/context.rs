@@ -9,8 +9,14 @@ pub const DEFAULT_EXPECTED_TURNS: u32 = 3;
 /// provider가 더 긴 유지 시간을 알려 주지 않을 때 쓰는 캐시 유지 시간.
 pub const DEFAULT_CACHE_TTL: Duration = Duration::from_secs(300);
 
-/// 고정 구역의 하한 `packet_hard_limit`이 `threshold`에서 차지하는 비율(%)(초안).
-pub const DEFAULT_PACKET_HARD_PERCENT: u64 = 20;
+/// provider가 패킷과 같은 창에 싣는 시스템 지시와 도구 정의의 예약 토큰(초안).
+pub const SYSTEM_RESERVE_TOKENS: u64 = 20_000;
+
+/// 패킷 뒤에 곧 보낼 현재 입력의 예약 토큰(초안). 패킷을 만들 때는 입력의 실제 크기를 모른다.
+pub const INPUT_RESERVE_TOKENS: u64 = 10_000;
+
+/// 한 턴의 출력 예약 토큰(초안).
+pub const OUTPUT_RESERVE_TOKENS: u64 = 32_000;
 
 /// 항목 하나가 경쟁 구역 예산에서 원문으로 들어갈 수 있는 비율(%)(초안).
 pub const DEFAULT_ITEM_CAP_PERCENT: u64 = 30;
@@ -32,8 +38,6 @@ pub struct ContextBudget {
     pub cache_write: f64,
     /// 마지막 턴 뒤 이만큼 지나면 캐시가 끝났다고 본다. provider가 알려 준 값이고 모르면 `DEFAULT_CACHE_TTL`.
     pub cache_ttl: Duration,
-    /// 설정 `context.packet_hard_percent`. 1~100.
-    pub packet_hard_percent: u64,
     /// 설정 `context.item_cap_percent`. 1~100.
     pub item_cap_percent: u64,
     /// 설정 `context.constraint_slot_percent`. 1~100.
@@ -68,9 +72,14 @@ impl ContextBudget {
         self.packet_limit() * self.constraint_slot_percent.clamp(1, 100) / 100
     }
 
-    /// 고정 구역이 `packet_limit`을 넘는 패킷에만 쓴다(초안).
-    pub fn packet_hard_limit(&self) -> u64 {
-        self.threshold() * self.packet_hard_percent.clamp(1, 100) / 100
+    /// 패킷을 새 session에 보낼 수 있는 추정 상한 `P_send`(토큰). 기록된 대화 본문이 `packet_limit`을 넘어도 여기까지는 보낸다.
+    /// `window`에서 시스템 지시·도구 정의, 현재 입력, 출력 예약을 먼저 빼고 `safety_percent`만큼만 쓴다.
+    /// `window`를 모르면(0) 0이라 어떤 패킷도 보내지 않는다. 추정 한도이므로 provider의 실제 거절은 따로 다룬다.
+    pub fn send_limit(&self) -> u64 {
+        let reserve = SYSTEM_RESERVE_TOKENS + INPUT_RESERVE_TOKENS + OUTPUT_RESERVE_TOKENS;
+        let usable = u128::from(self.window.saturating_sub(reserve));
+        let percent = u128::from(self.safety_percent.min(100));
+        u64::try_from(usable * percent / 100).expect("send limit should fit in u64")
     }
 }
 
@@ -167,7 +176,6 @@ mod tests {
             cache_read: 0.1,
             cache_write: 1.25,
             cache_ttl: Duration::from_secs(300),
-            packet_hard_percent: DEFAULT_PACKET_HARD_PERCENT,
             item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
             constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
             rrf_k: DEFAULT_RRF_K,
@@ -348,17 +356,32 @@ mod tests {
     }
 
     #[test]
-    fn packet_hard_limit_is_a_fifth_of_threshold() {
-        assert_eq!(budget().packet_hard_limit(), 20_000);
+    fn send_limit_reserves_system_input_and_output_before_the_safety_share() {
+        // (200_000 - 20_000 - 10_000 - 32_000) * 60%
+        assert_eq!(budget().send_limit(), 82_800);
     }
 
     #[test]
-    fn packet_hard_limit_follows_the_percent() {
-        let quarter = ContextBudget {
-            packet_hard_percent: 25,
+    fn send_limit_does_not_follow_the_compaction_threshold() {
+        let low_trigger = ContextBudget {
+            t_abs: 1_000,
             ..budget()
         };
-        assert_eq!(quarter.packet_hard_limit(), 25_000);
+        assert_eq!(low_trigger.send_limit(), 82_800);
+    }
+
+    #[test]
+    fn send_limit_is_zero_when_the_window_is_unknown_or_too_small() {
+        let unknown = ContextBudget {
+            window: 0,
+            ..budget()
+        };
+        let tiny = ContextBudget {
+            window: 62_000,
+            ..budget()
+        };
+        assert_eq!(unknown.send_limit(), 0);
+        assert_eq!(tiny.send_limit(), 0);
     }
 
     // cost: time O(n), heap O(n), stack O(1)

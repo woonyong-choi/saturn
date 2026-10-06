@@ -125,13 +125,13 @@ async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
     }
     let cases = [
         Case {
-            name: "a constraint stays in the packet when it left the recent turns",
+            name: "a constraint stays in the packet next to the whole conversation",
             config: "",
             rules: vec![(RULE.to_owned(), Vec::new())],
             check: |name, packet, _, _| {
                 let (fixed, rest) = packet
-                    .split_once("## Goal and last input")
-                    .expect("goal section should exist");
+                    .split_once("## Conversation")
+                    .expect("conversation section should exist");
                 assert!(
                     fixed.contains("## Constraints and decisions"),
                     "{name}: {packet}"
@@ -142,7 +142,7 @@ async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
                     "{name}: rule leaked into other zones: {packet}"
                 );
                 assert!(
-                    !packet.contains("task 1 write the cache\nAgent"),
+                    packet.contains("User: task 1 write the cache\nAgent: done c1"),
                     "{name}: {packet}"
                 );
             },
@@ -392,10 +392,9 @@ async fn judged_correction_stays_in_the_packet_after_more_turns_and_a_restart() 
         panic!("packet should exist");
     };
 
-    let goal = packet.text.split("## Goal and last input").nth(1).unwrap();
-    let goal = goal.split("## Open items").next().unwrap();
+    let conversation = packet.text.split("## Conversation").nth(1).unwrap();
     assert!(
-        goal.contains(&format!("Amendment (task 1) [Finished]: {correction}")),
+        conversation.contains(&format!("[Finished] User: {correction}\nAgent: done c2")),
         "{}",
         packet.text
     );

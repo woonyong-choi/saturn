@@ -1438,14 +1438,7 @@ mod tests {
         let budget = snapshot
             .settings
             .context_budget(crate::providers::test_support::CODEX, DEFAULTS);
-        assert_eq!(
-            (
-                budget.packet_hard_percent,
-                budget.item_cap_percent,
-                budget.rrf_k
-            ),
-            (20, 30, 60)
-        );
+        assert_eq!((budget.item_cap_percent, budget.rrf_k), (30, 60));
         let tuned = merge(vec![
             layer(Layer::Default, default_layer()),
             layer(
@@ -1457,14 +1450,7 @@ mod tests {
         let budget = tuned
             .settings
             .context_budget(crate::providers::test_support::CODEX, DEFAULTS);
-        assert_eq!(
-            (
-                budget.packet_hard_percent,
-                budget.item_cap_percent,
-                budget.rrf_k
-            ),
-            (25, 50, 10)
-        );
+        assert_eq!((budget.item_cap_percent, budget.rrf_k), (50, 10));
         for bad in [
             "context.packet_hard_percent = 0\n",
             "context.item_cap_percent = 0\n",

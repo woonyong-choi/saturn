@@ -450,6 +450,12 @@ impl Engine {
     async fn run_open(&mut self, job: DeliveryJob, mut prep: OpenPrep) -> Result<(), EngineError> {
         let chat = job.record.chat;
         if let Some((target, body, evidence)) = prep.packet_to_send(&job.record) {
+            if !evidence.carries_dialogue(body) {
+                let error = ProviderError::NotSent {
+                    reason: "packet does not carry the recorded dialogue".to_owned(),
+                };
+                return self.fail_open(job, error.into()).await;
+            }
             prep.packet = self.record_packet_attempt(target, body, evidence).await;
         }
         match prep.call() {
