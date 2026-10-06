@@ -128,6 +128,7 @@ impl Engine {
                     (EventKind::Added, _) => ChatNotice::ConstraintAdded { rule, unconfirmed },
                     (EventKind::Released, _) => ChatNotice::ConstraintReleased { rule },
                     (EventKind::Resumed, _) => ChatNotice::ConstraintResumed { rule },
+                    (EventKind::Restored, _) => ChatNotice::ConstraintRestored { rule },
                     (
                         EventKind::Excepted,
                         Some(StoredException {

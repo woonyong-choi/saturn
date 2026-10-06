@@ -799,6 +799,27 @@
         },
         {
           "additionalProperties": false,
+          "description": "사용자가 변경 한 건을 되돌렸다.",
+          "properties": {
+            "ConstraintRestored": {
+              "properties": {
+                "rule": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "rule"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "ConstraintRestored"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "description": "끝난 작업의 완료 검사 근거. 작업 상태 `Done`과 따로 보내며, `ChatNotice`의 `task`가 그 작업이다. 다시 접속해도\n같은 줄이 보이도록 기록에서 되살린다.",
           "properties": {
             "CompletionEvidence": {
@@ -1703,7 +1724,7 @@
           "type": "object"
         },
         {
-          "description": "사용자가 제약 하나를 직접 영구 해제한다. `revision`은 화면이 본 채팅의 제약 revision이고 지금과 다르면 거절한다.",
+          "description": "사용자가 제약 하나를 직접 영구 해제한다. `revision`은 화면이 본 채팅의 제약 revision이고 지금과 다르면 거절한다.\n`mistaken`이 참이면 제약이 아니었다는 뜻의 잘못 등록으로 기록한다.",
           "properties": {
             "method": {
               "const": "ReleaseConstraint",
@@ -1714,6 +1735,10 @@
                 "constraint": {
                   "$ref": "#/$defs/ConstraintId"
                 },
+                "mistaken": {
+                  "default": false,
+                  "type": "boolean"
+                },
                 "revision": {
                   "format": "uint64",
                   "minimum": 0,
@@ -1723,6 +1748,97 @@
               "required": [
                 "constraint",
                 "revision"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "사용자가 제약을 직접 등록한다. `text`는 앞뒤 공백만 떼어 원문 그대로 저장하고 의미를 판단하지 않는다.\n`constraint.auto_apply`와 권한 모드를 보지 않고 바로 유효 제약이 된다. 빈 글이면 거절한다.",
+          "properties": {
+            "method": {
+              "const": "AddConstraint",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "chat",
+                "text"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "제약 변경 한 건을 되돌린다. `event`는 `ListConstraints`가 알린 변경 번호이고 그 제약의 가장 최근 변경이어야 한다.\n`revision`이 지금과 다르면 거절한다.",
+          "properties": {
+            "method": {
+              "const": "UndoConstraintChange",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "constraint": {
+                  "$ref": "#/$defs/ConstraintId"
+                },
+                "event": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "revision": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "constraint",
+                "event",
+                "revision"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "method",
+            "params"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "채팅의 제약과 변경 내역을 `QueryResult::Constraints`로 돌려준다.",
+          "properties": {
+            "method": {
+              "const": "ListConstraints",
+              "type": "string"
+            },
+            "params": {
+              "properties": {
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                }
+              },
+              "required": [
+                "chat"
               ],
               "type": "object"
             }
@@ -2369,6 +2485,15 @@
       ],
       "type": "object"
     },
+    "ConstraintActor": {
+      "description": "변경을 한 쪽.",
+      "enum": [
+        "Router",
+        "User",
+        "Engine"
+      ],
+      "type": "string"
+    },
     "ConstraintAskAnswer": {
       "description": "등록을 묻는 확인의 답.",
       "oneOf": [
@@ -2390,11 +2515,137 @@
       "minimum": 0,
       "type": "integer"
     },
+    "ConstraintChangeInfo": {
+      "description": "변경 내역 한 줄.",
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/ConstraintActor"
+        },
+        "at_ms": {
+          "description": "변경 시각(unix 밀리초).",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "constraint": {
+          "$ref": "#/$defs/ConstraintId"
+        },
+        "event": {
+          "description": "변경 번호. `UndoConstraintChange`에 싣는다.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/ConstraintChangeKind"
+        },
+        "rule": {
+          "type": "string"
+        },
+        "undoable": {
+          "description": "지금 되돌릴 수 있다. 그 제약의 가장 최근 변경이고 되돌림이나 작업 끝으로 생긴 변경이 아니다.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "event",
+        "constraint",
+        "rule",
+        "kind",
+        "actor",
+        "undoable",
+        "at_ms"
+      ],
+      "type": "object"
+    },
+    "ConstraintChangeKind": {
+      "description": "제약 변경 한 건의 종류.",
+      "enum": [
+        "Added",
+        "Released",
+        "Excepted",
+        "Resumed",
+        "Restored"
+      ],
+      "type": "string"
+    },
+    "ConstraintExceptionKind": {
+      "description": "제약에 걸린 예외의 종류.",
+      "oneOf": [
+        {
+          "const": "Once",
+          "description": "그 작업 하나 동안.",
+          "type": "string"
+        },
+        {
+          "const": "Scoped",
+          "description": "사용자가 말한 조건이나 범위에서만.",
+          "type": "string"
+        }
+      ]
+    },
     "ConstraintId": {
       "description": "제약 한 건. 다시 쓰지 않는 번호다.",
       "format": "uint64",
       "minimum": 0,
       "type": "integer"
+    },
+    "ConstraintInfo": {
+      "description": "제약 하나. `rule`은 사용자 원문에서 자른 글이다.",
+      "properties": {
+        "exception": {
+          "description": "열린 예외. 종류와 `Scoped`의 조건 문장.",
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/ConstraintExceptionKind"
+            },
+            {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          ],
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/ConstraintId"
+        },
+        "rule": {
+          "type": "string"
+        },
+        "scope": {
+          "description": "비어 있으면 적용 범위가 전체다.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/ConstraintStatus"
+        }
+      },
+      "required": [
+        "id",
+        "rule",
+        "scope",
+        "status"
+      ],
+      "type": "object"
+    },
+    "ConstraintStatus": {
+      "description": "제약의 상태. 후보는 등록할지 묻는 중이며 패킷에는 유효 제약처럼 들어간다.",
+      "enum": [
+        "Candidate",
+        "Active",
+        "Released"
+      ],
+      "type": "string"
     },
     "DirectInstallInfo": {
       "description": "provider에 직접 설치된 항목 하나.",
@@ -5896,7 +6147,7 @@
       "type": "object"
     },
     "QueryResult": {
-      "description": "조회 요청의 답. 응답의 `result`에 실려 요청을 보낸 접속에만 간다. 명령 요청의 `result`는 `null`.\n요청과 답: `LoadHistory`→`History`, `Usage`→`Usage`, `ListTasks`→`Tasks`, `LatestChat`→`LatestChat`,\n`ListChats`→`Chats`, `ListModels`→`Models`, `ListRouterVersions`→`RouterVersions`,\n`PrepareExit`→`ExitPlan`, `Prune`→`PrunePreview`(`yes`가 거짓)나 `Pruned`(`yes`가 참).",
+      "description": "조회 요청의 답. 응답의 `result`에 실려 요청을 보낸 접속에만 간다. 명령 요청의 `result`는 `null`.\n요청과 답: `LoadHistory`→`History`, `Usage`→`Usage`, `ListTasks`→`Tasks`, `LatestChat`→`LatestChat`,\n`ListChats`→`Chats`, `ListConstraints`→`Constraints`, `ListModels`→`Models`, `ListRouterVersions`→`RouterVersions`,\n`PrepareExit`→`ExitPlan`, `Prune`→`PrunePreview`(`yes`가 거짓)나 `Pruned`(`yes`가 참).",
       "oneOf": [
         {
           "description": "항목은 실시간 알림과 같은 형식. `oldest`는 이 묶음에서 가장 오래된 기록 위치로, 더 앞을 받으려면\n`LoadHistory`의 `before`에 그대로 보낸다. 묶음이 비면 `None`.",
@@ -6313,6 +6564,53 @@
             },
             "kind": {
               "const": "EvidenceRecord",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "`ListConstraints`의 답. `revision`은 목록을 읽은 때의 채팅 제약 revision으로 변경 요청에 그대로 싣는다.",
+          "properties": {
+            "data": {
+              "properties": {
+                "changes": {
+                  "description": "시각순 변경 내역. 등록 확인을 거절한 `Declined`는 담지 않는다.",
+                  "items": {
+                    "$ref": "#/$defs/ConstraintChangeInfo"
+                  },
+                  "type": "array"
+                },
+                "chat": {
+                  "$ref": "#/$defs/ChatId"
+                },
+                "constraints": {
+                  "description": "만든 순서. 해제된 제약도 담는다.",
+                  "items": {
+                    "$ref": "#/$defs/ConstraintInfo"
+                  },
+                  "type": "array"
+                },
+                "revision": {
+                  "format": "uint64",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "chat",
+                "revision",
+                "constraints",
+                "changes"
+              ],
+              "type": "object"
+            },
+            "kind": {
+              "const": "Constraints",
               "type": "string"
             }
           },

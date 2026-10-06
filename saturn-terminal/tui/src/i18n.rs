@@ -269,6 +269,38 @@ pub const CONSTRAINT_PAUSED: &str = "제약 잠시 해제됨";
 pub const CONSTRAINT_PAUSED_FOR_TASK: &str = "이번 작업 동안";
 pub const CONSTRAINT_EXCEPTED: &str = "제약 예외";
 pub const CONSTRAINT_RESUMED: &str = "제약 다시 유효";
+pub const CONSTRAINT_RESTORED: &str = "제약 되돌림";
+/// `{active}`, `{candidate}`, `{released}`는 상태별 제약 수, `{revision}`은 읽은 때의 제약 revision.
+pub const CONSTRAINTS_HEADER: &str =
+    "제약 유효 {active}개 · 후보 {candidate}개 · 해제 {released}개 · 기준 {revision}";
+pub const CONSTRAINTS_EMPTY: &str = "유효하거나 후보인 제약이 없습니다";
+pub const CONSTRAINTS_HINT: &str =
+    "/constraints add <규칙> · release <번호> · mistaken <번호> · history · undo <변경 번호>";
+pub const CONSTRAINT_TAG_ACTIVE: &str = "유효";
+pub const CONSTRAINT_TAG_CANDIDATE: &str = "후보";
+pub const CONSTRAINT_TAG_RELEASED: &str = "해제";
+pub const CONSTRAINT_SCOPE: &str = "범위";
+pub const CONSTRAINT_SCOPE_ALL: &str = "전체";
+pub const CONSTRAINT_EXCEPTION: &str = "예외";
+pub const CONSTRAINT_CANDIDATE_NOTE: &str =
+    "후보는 등록 확인을 기다리는 말이고 전환 패킷에는 유효 제약처럼 들어갑니다";
+pub const CONSTRAINT_CHANGE_ADDED: &str = "등록됨";
+pub const CONSTRAINT_CHANGE_RELEASED: &str = "해제됨";
+pub const CONSTRAINT_CHANGE_EXCEPTED: &str = "예외 걸림";
+pub const CONSTRAINT_CHANGE_RESUMED: &str = "다시 유효";
+pub const CONSTRAINT_CHANGE_RESTORED: &str = "되돌림";
+pub const CONSTRAINT_ACTOR_ROUTER: &str = "router";
+pub const CONSTRAINT_ACTOR_USER: &str = "사용자";
+pub const CONSTRAINT_ACTOR_ENGINE: &str = "Saturn";
+pub const CONSTRAINT_UNDOABLE: &str = "되돌릴 수 있음";
+pub const CONSTRAINT_HISTORY_EMPTY: &str = "제약 변경 내역이 없습니다";
+pub const CONSTRAINT_HISTORY_HINT: &str =
+    "/constraints undo <변경 번호>로 되돌릴 수 있는 변경 한 건을 되돌립니다";
+pub const CONSTRAINTS_LIST_FIRST: &str = "먼저 /constraints로 목록을 확인하세요";
+/// `{id}`는 사용자가 쓴 번호.
+pub const CONSTRAINTS_UNKNOWN: &str = "목록에 없는 번호입니다: {id}";
+pub const CONSTRAINTS_NOT_ACTIVE: &str = "유효 제약이 아니라 해제할 수 없습니다: {id}";
+pub const CONSTRAINTS_NOT_UNDOABLE: &str = "되돌릴 수 없는 변경입니다: {id}";
 pub const RESUME_TITLE: &str = "보류된 작업이 있습니다";
 pub const RESUME_CONFIRM: &str = "고른 작업 이어서";
 pub const PERMISSION_REASON: &str = "이유";

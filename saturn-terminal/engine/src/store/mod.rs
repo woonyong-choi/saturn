@@ -40,8 +40,8 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePo
 pub(crate) use changes::RunChanges;
 pub(crate) use constraints::{
     Actor, AnswerOutcome, ChangeOutcome, ConstraintChange, ConstraintState, EventKind, EventReason,
-    ExceptionKind, NewChange, NewRegistration, NewRule, StoredAsk, StoredConstraint,
-    StoredException,
+    ExceptionKind, NO_INPUT, NewChange, NewRegistration, NewRule, StoredAsk, StoredConstraint,
+    StoredException, UndoOutcome,
 };
 pub(crate) use evidence_lookups::{LookupKind, LookupOutcome};
 pub(crate) use extensions::ExtensionRow;

@@ -14,6 +14,7 @@ mod completion_evidence;
 mod conflict_steer;
 mod constraint_change;
 mod constraint_handoff;
+mod constraint_manage;
 mod constraints;
 mod crash_recovery;
 mod decision;

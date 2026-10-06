@@ -7,7 +7,7 @@
 
 ## 요약
 
-제약은 사용자가 앞으로도 지키라고 한 말이다. engine은 입력마다 router(Jev)로 제약인지 판단해 채팅의 제약 표에 규칙 한 줄과 적용 범위로 저장한다. 확신이 높으면 자동으로 등록하고, 중간이면 그 자리에서 사용자에게 묻고, 낮으면 등록하지 않는다. 등록은 대화 기록에 `제약 등록됨` 줄로 남는다. 사용자가 그 줄을 보고 `이번만 풀어`, `이 규칙은 없애`처럼 말하면 router가 해제인지 예외인지, 어느 제약인지 판단해 해제하거나 예외를 건다. 새 session에 넘기는 패킷의 제약 칸은 상한 안에서 채운다. 모든 변경은 대화 기록에 한 줄로 남고 `/constraints`에서 되돌릴 수 있다.
+제약은 사용자가 앞으로도 지키라고 한 말이다. engine은 입력마다 router(Jev)로 제약인지 판단해 채팅의 제약 표에 규칙 한 줄과 적용 범위로 저장한다. 확신이 높으면 자동으로 등록하고, 중간이면 그 자리에서 사용자에게 묻고, 낮으면 등록하지 않는다. 등록은 대화 기록에 `제약 등록됨` 줄로 남는다. 사용자가 그 줄을 보고 `이번만 풀어`, `이 규칙은 없애`처럼 말하면 router가 해제인지 예외인지, 어느 제약인지 판단해 해제하거나 예외를 건다. 새 session에 넘기는 패킷의 제약 칸은 상한 안에서 채운다. 사용자는 `/constraints add <규칙>`으로 router 판단 없이 원문 그대로 직접 등록할 수도 있다. 모든 변경은 대화 기록에 한 줄로 남고 `/constraints`에서 되돌릴 수 있다.
 
 ## 동기
 
@@ -22,8 +22,8 @@
 3. router가 `is_constraint`에 0.9를 답한다. 자동 등록 기준 0.8 이상이다. 입력은 평소대로 에이전트로 간다.
 4. `store`가 규칙 한 줄 `에러 메시지는 영어로 통일해`와 범위 `전체`를 유효 제약으로 저장한다.
 5. 대화 기록에 `제약 등록됨 · 에러 메시지는 영어로 통일해`가 한 줄 남는다.
-6. 사용자가 나중에 `/constraints`를 열어 그 제약에서 `d`를 눌러 해제한다. 대화 기록에 `제약 해제됨 · 에러 메시지는 영어로 통일해`가 남는다.
-7. 사용자가 변경 내역에서 해제 줄을 골라 `u`를 누르면 제약이 유효로 돌아오고 `제약 되돌림 · 에러 메시지는 영어로 통일해`가 남는다.
+6. 사용자가 나중에 `/constraints`를 열어 그 제약의 번호로 `/constraints release 3`을 입력해 해제한다. 대화 기록에 `제약 해제됨 · 에러 메시지는 영어로 통일해`가 남는다.
+7. 사용자가 `/constraints history`에서 해제 줄의 변경 번호로 `/constraints undo 7`을 입력하면 제약이 유효로 돌아오고 `제약 되돌림 · 에러 메시지는 영어로 통일해`가 남는다.
 
 ### 확신이 중간이라 그 자리에서 묻기
 
@@ -38,7 +38,7 @@
 2. router가 선택형 질문 하나로 요청 여부, 대상, 종류를 답한다. 해제 요청 확률이 0.9, 대상은 그 제약, 종류는 `이번 작업 동안`이다.
 3. 제약은 지워지지 않고 그 작업 동안만 멈춘다. 대화 기록에 `제약 잠시 해제됨 · 에러 메시지는 영어로 통일해 · 이번 작업 동안`이 남는다.
 4. 작업이 끝나면 예외가 사라지고 `제약 다시 유효 · 에러 메시지는 영어로 통일해`가 남는다.
-5. router가 종류를 잘못 읽었다면(사용자는 영구 해제를 뜻했다) 사용자가 `/constraints`에서 예외 줄을 골라 `e`로 종류를 `영구 해제`로 바꾼다. 제약이 `Released`가 되고 `제약 해제됨 · 에러 메시지는 영어로 통일해`가 남는다.
+5. router가 종류를 잘못 읽었다면(사용자는 영구 해제를 뜻했다) 사용자가 `/constraints history`에서 예외 줄의 변경 번호로 `/constraints undo`를 입력해 예외를 닫고 `/constraints release`로 영구 해제한다. 제약이 `Released`가 되고 `제약 해제됨 · 에러 메시지는 영어로 통일해`가 남는다.
 
 ### 제약이 많아 제약 칸이 넘칠 때
 
@@ -117,7 +117,7 @@
 - `constraint_change`는 `choice` 질문이다. 선택지는 `none`과 제약마다 `release`(영구 해제), `once`(이번 작업 동안 예외), `scoped`(조건·범위 예외)이다. 요청 여부는 `1 − P(none)`, 대상 제약과 종류는 가장 높은 확률의 선택지에서 읽는다. `scoped`의 조건 문장은 router가 쓰지 않고 입력 원문에서 앞뒤 공백을 뺀 연속된 글을 그대로 쓴다. 200자(초안)를 넘으면 앞 200자까지다. 요약하거나 새로 만든 글은 저장하지 않는다.
 - state에는 `Active` 제약(최대 10개, [고르는 규칙](#판단에-싣을-제약-고르기))의 번호와 `제약 등록됨 · <규칙>` 기록 줄, 앞 맥락, 사용자 입력 원문을 넣는다. 질문 문장은 영어다.
 - 영구 해제는 제약을 `Released`로 바꾸고 `제약 해제됨 · <규칙>`을 남긴다. 이번 작업 예외(`Once`)는 제약을 지우지 않고 그 작업 동안만 멈추며 `제약 잠시 해제됨 · <규칙> · 이번 작업 동안`을 남기고, 작업이 끝나 다시 유효해질 때 `제약 다시 유효 · <규칙>`을 한 줄 남긴다. 조건·범위 예외(`Scoped`)는 조건 문장을 기록하고 그 범위에서만 멈추며 `제약 예외 · <규칙> · <조건>` 줄을 남긴다.
-- 종류 구분 정확도가 87.8%여서 예외 줄에서 사용자가 종류를 바꾸거나 되돌릴 수 있어야 한다. `/constraints`의 변경 내역에서 `e`로 종류를 바꾸고 `u`로 되돌린다([되돌리기](#되돌리기)).
+- 종류 구분 정확도가 87.8%여서 예외 줄에서 사용자가 종류를 바꾸거나 되돌릴 수 있어야 한다. `/constraints`에서 예외를 되돌리고(`undo`) 영구 해제할 수 있어야 한다([되돌리기](#되돌리기)). 한 번에 종류를 바꾸는 `e`는 아직 없다.
 - 기준값 0.8은 선택형 한 질문의 실험 권장값이다. 선택형은 쌍별 질문보다 요청·대상 결합 정확도가 +5.7%p [3.0, 8.4] 높았고 해제 아닌 말을 해제로 본 비율은 0/144였다([해제 요청 실험](../experiments/constraint-cancel-request/report.md)). 같은 흐름에서 Jev는 해제·예외 종합 정확도 91.2%(사후 계산), 요청 재현율 96.8%, 종류 87.8%, 잘못된 영구 해제 1.2%였고 응답이 0.28초, 비용이 Haiku의 약 100분의 1이었다([Jev와 Haiku 비교](../experiments/constraint-exception-judge/report.md)).
 - 부분 해제("이번 작업에서만 풀어")와 조건부 요청을 영구 해제 하나로만 받으면 부분 24/30, 조건부 28/30이 잘못 처리된다. 그래서 종류를 질문 안에 넣고 예외를 기록 줄로 보인다.
 - 해제나 예외로 기록해도 원문은 지우지 않는다. 기록 원문을 정본으로 두기 위해서다.
@@ -169,16 +169,15 @@
 
 - `is_constraint`가 `constraint_ask` 이상 0.8 미만이면 `Candidate`를 거치지 않고 지키는 쪽으로 바로 `Active`로 등록하고 `제약 등록됨 · <규칙> · 확인 없이`를 남긴다.
 - 요청은 확실한데 종류의 확률이 0.8 미만이면(자동 적용을 켠 때만) 종류를 묻지 않고 제약을 지우지 않는 `이번 작업 동안` 예외로 적용하고 `제약 잠시 해제됨 · <규칙> · 이번 작업 동안 · 확인 없이`를 남긴다.
-- 이 줄의 이벤트는 사유 `Unconfirmed`로 기록한다. 사용자는 줄을 보고 해제 요청을 입력하거나 `/constraints`에서 `d`, `x`, `e`, `u`로 고친다.
+- 이 줄의 이벤트는 사유 `Unconfirmed`로 기록한다. 사용자는 줄을 보고 해제 요청을 입력하거나 `/constraints`에서 `release`, `mistaken`, `undo`로 고친다.
 - 모드는 engine이 판단을 적용할 때 채팅 층 값을 먼저 읽어 정한다(권한 판정과 같은 읽기). 이미 열린 확인은 모드를 바꿔도 남아 사용자가 답한다. 확인 없이 등록한 제약은 사용자가 지우면 그 판단의 결과 신호를 `Wrong`으로 남긴다.
 
 ### 되돌리기
 
-- `/constraints`는 제약 목록 화면을 연다. 유효 제약 줄은 `번호 · 범위 · 규칙 한 줄`이고, 예외가 걸린 제약은 예외 종류와 조건을 함께 보이며, 확인 필요 줄과 마지막 전환에 들어갔는지 표시를 함께 보인다. `Tab`으로 변경 내역(등록, 해제, 예외, 다시 유효, 되돌림을 시각순)을 바꿔 본다.
-- 유효 제약에서 `d`는 해제(`User`), `x`는 잘못 등록이다. `x`는 제약이 아니었다는 뜻이라 해제(`Mistaken`)로 기록하고 그 판단의 결과 신호를 `Wrong`으로 남긴다.
-- 변경 내역의 예외 줄에서 `e`는 종류를 바꾼다. `이번 작업 동안`, `조건·범위`(조건 문장은 입력 원문에서 다시 고름), `영구 해제` 중 하나를 고르면 앞 예외를 닫고 새 종류로 한 거래에 쓴다. router가 종류를 잘못 읽은 판단은 그 결과 신호를 `Wrong`으로 남긴다.
-- 변경 내역에서 `u`는 그 변경 한 건을 되돌린다. 해제와 예외의 되돌리기는 제약을 `Active`로 돌리고 예외를 닫는다. 등록의 되돌리기는 해제와 같다.
-- 되돌리기는 그 제약의 가장 최근 변경에만 쓸 수 있다. 뒤에 같은 제약을 바꾼 이벤트가 있으면 거절한다. 예외가 끝나서 생긴 `Resumed`는 되돌리지 않는다.
+- `/constraints`는 제약 목록을 대화 기록에 쓴다. 줄은 `[유효] #번호 · 범위 · 규칙 한 줄`이고, 등록을 묻는 중인 제약은 `[후보]`로 적어 유효 제약과 글자로 구별하며 전환 패킷에는 유효 제약처럼 들어간다는 안내가 따른다. 예외가 걸린 제약은 예외 종류와 조건을 함께 보인다. 해제된 제약은 목록에서 빼고 개수만 센다. `/constraints history`는 변경 내역(등록, 해제, 예외, 다시 유효, 되돌림을 시각순)을 변경 번호와 함께 쓴다. 목록 헤더에 읽은 때의 제약 revision이 든다. 확인 필요 줄과 마지막 전환에 들어갔는지 표시는 아직 없다.
+- 사용자가 직접 등록하는 길은 `/constraints add <규칙>`이다. 입력의 앞뒤 공백만 떼고 원문 그대로 유효 제약(`Active`)으로 저장하며 router도 의미 판단도 거치지 않는다. 한 건의 규칙이 되고(문장을 나누지 않는다), 범위는 규칙 글의 경로 모양 글자에서 자동 등록과 같은 방식으로 뽑는다. 주체는 `User`이고 입력에서 나온 제약이 아니라서 입력 번호가 없다(`input_id` 0). `constraint.auto_apply`와 권한 모드를 보지 않으므로 기본 설정에서도 유효하며 인계 패킷의 제약 칸 후보가 된다. 대화 기록에 `제약 등록됨` 줄이 남는다. 빈 글은 거절한다.
+- `/constraints release <번호>`는 `Active` 제약을 영구 해제(`User`)하고, `/constraints mistaken <번호>`는 제약이 아니었다는 뜻이라 해제(`Mistaken`)로 기록하고 등록한 판단의 결과 신호를 `Wrong`으로 남긴다. 번호는 목록의 `#` 번호이고 후보와 해제된 제약은 거절한다. 사용자가 직접 등록한 제약은 판단 기록이 없어 신호를 남기지 않는다.
+- 되돌리기는 그 제약의 가장 최근 변경에만 쓸 수 있다. 뒤에 같은 제약을 바꾼 이벤트가 있으면 거절한다. 예외가 끝나서 생긴 `Resumed`, 되돌림 `Restored`, 등록 확인을 거절한 `Declined`는 되돌리지 않는다. 낡은 revision도 거절한다. 되돌리기는 변경을 한 거래로 쓰므로 화면이 본 revision이 지금과 다르면 아무것도 쓰지 않는다.
 - 되돌리기도 이벤트(`Restored`)로 남고 대화 기록에 한 줄이 남는다. 변경 내역을 지우지 않고 이어 쓰기 위해서다.
 - router가 자동으로 한 등록, 해제, 예외를 사용자가 되돌리거나 `x`로 취소하면 그 판단의 결과 신호를 `Wrong`으로 기록한다. 대기 입력 취소와 같은 규칙이다([입력 처리](input-handling.md#대기와-취소)).
 - 대화 기록의 제약 줄은 `constraint_events`에서 그리므로 채팅을 다시 열어도 같은 자리에 보인다. 문구 형식은 [TUI](tui.md)에 있다.
@@ -241,7 +240,7 @@ C_max = P_max × context.constraint_slot_percent / 100
 | 요구사항 | 검증 계획 |
 |---|---|
 | 제약은 입력 원문에서 자른 규칙 한 줄과 범위로 저장하고 원문은 바뀌지 않는다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_scope_comes_from_paths_in_the_rule`, `constraint_long_input_registers_only_the_sentences_the_router_calls_constraints`, `constraint_long_input_registers_the_whole_text_when_the_split_question_fails`, `saturn-terminal/core/src/constraints/tests.rs`의 `rules_are_cut_from_the_original_text`, `scope_takes_path_like_words_normalized_and_unique` |
-| 등록, 해제, 예외, 다시 유효, 되돌림마다 이벤트와 대화 기록 한 줄이 남는다. | 등록과 입력 취소로 인한 해제는 `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_at_or_above_the_auto_threshold_is_registered_with_a_chat_line`, `constraint_of_an_input_canceled_after_registration_is_released_with_a_line`. 해제, 예외, 다시 유효는 `saturn-terminal/engine/src/lifecycle/constraint_change.rs`의 `router_change_is_applied_by_kind_and_marked_as_the_router`, `task_exception_ends_with_its_task_and_scoped_exception_stays`(이벤트와 다시 그린 기록 줄). 되돌림은 구현 전(#381) |
+| 등록, 해제, 예외, 다시 유효, 되돌림마다 이벤트와 대화 기록 한 줄이 남는다. | 등록과 입력 취소로 인한 해제는 `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_at_or_above_the_auto_threshold_is_registered_with_a_chat_line`, `constraint_of_an_input_canceled_after_registration_is_released_with_a_line`. 해제, 예외, 다시 유효는 `saturn-terminal/engine/src/lifecycle/constraint_change.rs`의 `router_change_is_applied_by_kind_and_marked_as_the_router`, `task_exception_ends_with_its_task_and_scoped_exception_stays`(이벤트와 다시 그린 기록 줄). 되돌림은 `constraint_manage.rs`의 `release_and_mistaken_release_are_user_changes_that_undo_restores` |
 | 자동 적용이 꺼져 있으면(기본, `full` 포함) 입력은 평소대로 진행하고 어떤 `is_constraint` 값도 제약 표, 질문, 줄을 만들지 않는다. 이미 저장한 제약은 그대로다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_is_not_applied_by_default_and_the_input_still_runs_with_its_judgment_kept`(설정 없음·거짓, 0.95·0.75, `full` 여부), `saturn-terminal/engine/src/settings/names_tests.rs`의 `security_and_cost_keys_are_user_only` |
 | 자동 적용을 켜면 `is_constraint` 0.8 이상은 자동 등록하고, 0.7 이상 0.8 미만은 묻고, 0.7 미만은 등록하지 않는다. | `saturn-terminal/engine/src/lifecycle/constraints.rs`의 `constraint_at_or_above_the_auto_threshold_is_registered_with_a_chat_line`(0.85), `constraint_at_the_exact_auto_threshold_is_registered`(0.8), `constraint_in_the_ask_band_is_stored_as_candidate_and_asked`(0.75), `constraint_ask_answered_yes_registers_and_leaves_a_line`, `constraint_ask_answered_no_releases_it_without_a_chat_line`, `constraint_below_the_ask_threshold_is_not_registered`(0.65), `saturn-terminal/core/src/routers/tests.rs`의 `registration_follows_the_three_bands` |
 | 답이 오기 전의 제약은 지키는 쪽으로 패킷에 들어간다. | 등록을 묻는 중(`Candidate`)인 제약은 해제된 것이 아니라서 들어간다. 종류를 묻는 창은 아직 없어 종류가 불확실하면 `full`이 아닐 때 아무것도 바꾸지 않는다(`unsure_kind_pauses_only_in_full_mode_and_otherwise_changes_nothing`). 창은 #381 |
@@ -259,7 +258,7 @@ C_max = P_max × context.constraint_slot_percent / 100
 | 제약 칸은 `C_max` 안에서 전체, 범위 겹침, 관련도·최신 순으로 채우고 넘친 수를 표시한다. | `saturn-terminal/core/src/sessions/constraint_slot/tests.rs`의 `tiers_go_all_then_scope_then_relevance_and_newer_first`, `a_constraint_too_big_for_the_slot_does_not_block_smaller_ones`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `omitted_constraints_add_a_count_line_that_is_not_counted_in_the_slot`, `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `long_chat_constraints_reach_the_new_sessions_packet_and_record`(칸을 넘긴 사례에서 패킷의 `Constraints omitted` 줄과 `ChatNotice::ConstraintsOmitted` 알림), `saturn-terminal/tui/src/view/transcript.rs`의 `lines_context_deferred_lists_the_constraints`(`제약 N개 생략` 줄) |
 | 전환마다 들어간 제약과 빠진 제약을 기록한다. | `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `packet_constraints_records_what_the_new_session_got`, `constraints_over_the_slot_are_omitted_and_marked` |
 | 제약이 최근 입력과 목표 발췌에서 밀려난 긴 대화에서도 새 session의 패킷 제약 구역에 남는다. 해제된 제약은 넣지 않는다. | `saturn-terminal/engine/src/lifecycle/constraint_handoff.rs`의 `constraint_stays_in_the_packet_when_it_left_the_recent_turns`(제약 원문은 어느 입력, 답, 파일 내용에도 없음), `released_constraint_is_not_handed_over` |
-| `/constraints`는 유효 제약과 변경 내역을 보이고 해제, 예외 종류 바꾸기, 되돌리기를 `Stale` 검사와 함께 한다. | 구현 전(#381). 화면을 연 사이 제약을 바꿔 거절과 새로 읽기를 확인한다. |
+| `/constraints`는 후보와 유효 제약, 변경 내역을 보이고 명시 등록, 해제, 잘못 등록, 되돌리기를 `Stale` 검사와 함께 한다. 명시 등록은 원문 그대로 저장하고 `auto_apply`와 무관하게 유효하며 인계 패킷 제약 칸에 들어간다. | `saturn-terminal/engine/src/lifecycle/constraint_manage.rs`의 `explicit_add_stores_the_text_as_typed_without_the_router_or_auto_apply`, `explicit_add_rejects_blank_text_and_stores_nothing`, `explicit_constraint_reaches_the_switch_packet_with_auto_apply_off`, `release_and_mistaken_release_are_user_changes_that_undo_restores`, `undoing_an_added_constraint_releases_it`, `undoing_an_exception_closes_it_and_keeps_the_constraint_active`, `stale_or_superseded_requests_change_nothing_across_windows_and_restart`(낡은 revision, 다른 창, 재시작), `list_marks_a_candidate_apart_from_an_active_constraint`. 화면은 [TUI](tui.md) 표. 실제 Claude→Codex 전환 확인은 #381 댓글 |
 | 등록 기준값은 사람 확인과 Astra 정답에서 근거가 있다. | [등록 기준값의 사람 확인](../experiments/constraint-human-check/report.md): 0.80 정밀도 91.3%, 0.70 정밀도 84.8%·재현율 77.2% |
 | 해제·예외 판단은 Jev 선택형으로 기준을 넘거나 가깝다. | [해제 요청 실험](../experiments/constraint-cancel-request/report.md), [Jev와 Haiku 비교](../experiments/constraint-exception-judge/report.md): 요청 재현율 96.8%, 종류 87.8%, 잘못된 영구 해제 1.2% |
 | 제약 칸 상한과 묻는 구간이 긴 대화에서 제약을 지킨다. | 긴 대화 실측(`docs/experiments/constraint-long-context/`)으로 확인한다. |

@@ -12,6 +12,9 @@ use sqlx::sqlite::SqliteRow;
 
 use super::{Store, StoreError, enum_text, from_sql_int, parse_enum, to_millis, to_sql_int};
 
+/// 입력에서 나오지 않은 제약(사용자가 `AddConstraint`로 직접 등록)의 입력 번호. 입력 번호는 1부터라 어느 입력과도 겹치지 않는다.
+pub(crate) const NO_INPUT: InputId = InputId(0);
+
 /// 상태를 바꾸는 이벤트가 이 표의 상태와 늘 같이 쓰인다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum ConstraintState {
@@ -30,6 +33,8 @@ pub(crate) enum EventKind {
     Excepted,
     /// 이번 작업 예외가 작업이 끝나 닫혀 제약이 다시 유효해졌다.
     Resumed,
+    /// 사용자가 앞 변경 한 건을 되돌렸다. 되돌린 변경은 `constraint_events.undoes`가 가리킨다.
+    Restored,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -48,6 +53,8 @@ pub(crate) enum EventReason {
     InputCanceled,
     /// 권한 모드 `full`이라 묻지 않고 정한 변경이다.
     Unconfirmed,
+    /// 사용자가 제약이 아니었다고 해제했다.
+    Mistaken,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -180,6 +187,32 @@ pub(crate) enum ChangeOutcome {
     NotActive,
 }
 
+/// 변경 되돌리기의 결과.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum UndoOutcome {
+    Applied {
+        rule: String,
+        /// 되돌린 변경을 일으킨 쪽과 그 판단 기록.
+        undone: (Actor, Option<JudgmentId>),
+    },
+    /// 제약 revision이 달라졌다.
+    Stale,
+    /// 없는 변경이거나, 그 제약의 가장 최근 변경이 아니거나, 되돌릴 수 없는 종류다.
+    NotUndoable,
+}
+
+/// 변경 내역 한 줄. 되돌릴 수 있는지는 저장소가 정한다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct StoredChange {
+    pub(crate) event: i64,
+    pub(crate) constraint: ConstraintId,
+    pub(crate) rule: String,
+    pub(crate) kind: EventKind,
+    pub(crate) actor: Actor,
+    pub(crate) undoable: bool,
+    pub(crate) at: i64,
+}
+
 /// 작업 끝으로 다시 유효해진 제약.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ResumedConstraint {
@@ -234,7 +267,7 @@ impl Store {
                     kind: EventKind::Added,
                     actor: new.actor,
                     reason: new.reason,
-                    input: Some(new.input),
+                    input: (new.input != NO_INPUT).then_some(new.input),
                     judgment: new.judgment,
                     at: now,
                 };
@@ -772,6 +805,194 @@ impl Store {
             .into_iter()
             .map(|id| TaskId(from_sql_int(id)))
             .collect())
+    }
+
+    // cost: time O(e), heap O(e), stack O(1), io e
+    // vars: e = 채팅의 변경 이벤트 수
+    // basis: estimate
+    /// 채팅의 변경 내역을 시각순으로. 등록 확인을 거절한 `Declined`는 뺀다. 되돌릴 수 있는 줄은 그 제약의 가장 최근
+    /// 변경이면서 등록, 해제, 예외인 것이다. 작업 끝으로 생긴 `Resumed`와 되돌림 `Restored`는 되돌리지 않는다.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Database`, 저장된 값이 깨졌으면 `Json`.
+    pub(crate) async fn constraint_changes_of_chat(
+        &self,
+        chat: ChatId,
+    ) -> Result<Vec<StoredChange>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT events.event_id, events.constraint_id, events.kind, events.actor, events.reason,              events.created_at, constraints.rule              FROM constraint_events AS events              JOIN constraints ON constraints.constraint_id = events.constraint_id              WHERE events.chat_id = ? ORDER BY events.event_id",
+        )
+        .bind(to_sql_int(chat.0))
+        .fetch_all(&self.pool)
+        .await?;
+        let mut latest = std::collections::HashMap::new();
+        for row in &rows {
+            latest.insert(
+                row.try_get::<i64, _>("constraint_id")?,
+                row.try_get::<i64, _>("event_id")?,
+            );
+        }
+        let mut changes = Vec::with_capacity(rows.len());
+        for row in &rows {
+            let event: i64 = row.try_get("event_id")?;
+            let constraint: i64 = row.try_get("constraint_id")?;
+            let kind: EventKind = parse_enum(&row.try_get::<String, _>("kind")?)?;
+            let reason: Option<EventReason> = row
+                .try_get::<Option<String>, _>("reason")?
+                .map(|text| parse_enum(&text))
+                .transpose()?;
+            if reason == Some(EventReason::Declined) {
+                continue;
+            }
+            changes.push(StoredChange {
+                event,
+                constraint: ConstraintId(from_sql_int(constraint)),
+                rule: row.try_get("rule")?,
+                kind,
+                actor: parse_enum(&row.try_get::<String, _>("actor")?)?,
+                undoable: latest.get(&constraint) == Some(&event)
+                    && matches!(
+                        kind,
+                        EventKind::Added | EventKind::Released | EventKind::Excepted
+                    ),
+                at: row.try_get("created_at")?,
+            });
+        }
+        Ok(changes)
+    }
+
+    // cost: time O(1), heap O(1), stack O(1), io 6
+    // vars: -
+    // basis: estimate
+    /// 사용자가 변경 한 건을 한 거래로 되돌린다. 제약 revision이 `revision`과 다르면 `Stale`이다. 그 제약의 가장 최근
+    /// 변경이 아니거나 등록 확인 거절, 작업 끝, 되돌림 변경이면 `NotUndoable`이다. 등록의 되돌리기는 해제와 같고,
+    /// 해제의 되돌리기는 제약을 `Active`로 돌리고, 예외의 되돌리기는 예외를 닫는다. `Restored` 이벤트가 이어 쓰인다.
+    ///
+    /// # Errors
+    /// 쓰기 실패면 `Database`이고 아무것도 쓰지 않는다.
+    pub(crate) async fn undo_constraint_change(
+        &self,
+        constraint: ConstraintId,
+        event: i64,
+        revision: u64,
+    ) -> Result<UndoOutcome, StoreError> {
+        let now = to_millis(SystemTime::now());
+        let mut tx = self.pool.begin().await?;
+        let Some(chat) =
+            sqlx::query_scalar::<_, i64>("SELECT chat_id FROM constraints WHERE constraint_id = ?")
+                .bind(to_sql_int(constraint.0))
+                .fetch_optional(&mut *tx)
+                .await?
+                .map(|chat| ChatId(from_sql_int(chat)))
+        else {
+            return Ok(UndoOutcome::NotUndoable);
+        };
+        let current: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(MAX(event_id), 0) FROM constraint_events WHERE chat_id = ?",
+        )
+        .bind(to_sql_int(chat.0))
+        .fetch_one(&mut *tx)
+        .await?;
+        if from_sql_int(current) != revision {
+            return Ok(UndoOutcome::Stale);
+        }
+        let target = sqlx::query(
+            "SELECT kind, actor, reason, judgment_id FROM constraint_events              WHERE event_id = ? AND constraint_id = ?",
+        )
+        .bind(event)
+        .bind(to_sql_int(constraint.0))
+        .fetch_optional(&mut *tx)
+        .await?;
+        let latest: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(MAX(event_id), 0) FROM constraint_events WHERE constraint_id = ?",
+        )
+        .bind(to_sql_int(constraint.0))
+        .fetch_one(&mut *tx)
+        .await?;
+        let Some(target) = target.filter(|_| latest == event) else {
+            return Ok(UndoOutcome::NotUndoable);
+        };
+        let kind: EventKind = parse_enum(&target.try_get::<String, _>("kind")?)?;
+        let reason: Option<EventReason> = target
+            .try_get::<Option<String>, _>("reason")?
+            .map(|text| parse_enum(&text))
+            .transpose()?;
+        let row = sqlx::query(
+            "SELECT constraint_id, chat_id, input_id, line, rule, scope, state FROM constraints              WHERE constraint_id = ?",
+        )
+        .bind(to_sql_int(constraint.0))
+        .fetch_one(&mut *tx)
+        .await?;
+        let stored = constraint_from_row(&row)?;
+        let restored_state = match (kind, stored.state) {
+            _ if reason == Some(EventReason::Declined) => None,
+            (EventKind::Added, ConstraintState::Active) => Some(ConstraintState::Released),
+            (EventKind::Released, ConstraintState::Released)
+            | (EventKind::Excepted, ConstraintState::Active) => Some(ConstraintState::Active),
+            _ => None,
+        };
+        let Some(restored_state) = restored_state else {
+            return Ok(UndoOutcome::NotUndoable);
+        };
+        let restored = NewEvent {
+            chat,
+            constraint,
+            kind: EventKind::Restored,
+            actor: Actor::User,
+            reason: None,
+            input: None,
+            judgment: None,
+            at: now,
+        };
+        let restored_event = insert_event(&mut tx, &restored).await?;
+        sqlx::query("UPDATE constraint_events SET undoes = ? WHERE event_id = ?")
+            .bind(event)
+            .bind(restored_event)
+            .execute(&mut *tx)
+            .await?;
+        if kind == EventKind::Excepted {
+            sqlx::query(
+                "UPDATE constraint_exceptions SET ended_event_id = ? \
+                 WHERE constraint_id = ? AND ended_event_id IS NULL",
+            )
+            .bind(restored_event)
+            .bind(to_sql_int(constraint.0))
+            .execute(&mut *tx)
+            .await?;
+        }
+        sqlx::query("UPDATE constraints SET state = ? WHERE constraint_id = ?")
+            .bind(enum_text(&restored_state)?)
+            .bind(to_sql_int(constraint.0))
+            .execute(&mut *tx)
+            .await?;
+        let actor = parse_enum(&target.try_get::<String, _>("actor")?)?;
+        let judgment = target
+            .try_get::<Option<i64>, _>("judgment_id")?
+            .map(|id| JudgmentId(from_sql_int(id)));
+        tx.commit().await?;
+        Ok(UndoOutcome::Applied {
+            rule: stored.rule,
+            undone: (actor, judgment),
+        })
+    }
+
+    /// 제약을 등록한 판단 기록. 사용자가 직접 등록했거나 없는 제약이면 `None`이다.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Database`.
+    pub(crate) async fn registration_judgment(
+        &self,
+        constraint: ConstraintId,
+    ) -> Result<Option<JudgmentId>, StoreError> {
+        let judgment: Option<Option<i64>> = sqlx::query_scalar(
+            "SELECT judgment_id FROM constraint_events WHERE constraint_id = ? AND kind = ? \
+             ORDER BY event_id LIMIT 1",
+        )
+        .bind(to_sql_int(constraint.0))
+        .bind(enum_text(&EventKind::Added)?)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(judgment.flatten().map(|id| JudgmentId(from_sql_int(id))))
     }
 
     /// 제약이 속한 채팅. 없는 제약이면 `None`이다.

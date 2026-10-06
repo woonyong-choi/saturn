@@ -426,6 +426,30 @@ impl<W: Write> PlainOutput<W> {
             .try_for_each(|line| self.line(line))
     }
 
+    /// `/constraints`의 목록이나 변경 내역을 쓴다. 후보와 유효 제약은 줄 앞 `[후보]`, `[유효]` 글자로 구별한다.
+    ///
+    /// # Errors
+    /// 쓰기 실패.
+    pub(crate) fn constraint_list(
+        &mut self,
+        view: crate::constraints::ListView,
+        listing: crate::constraints::Listing,
+    ) -> std::io::Result<()> {
+        self.cell(&TranscriptCell::ConstraintList(view, Box::new(listing)))
+    }
+
+    /// `/constraints` 요청을 만들지 못한 까닭 한 줄을 쓴다.
+    ///
+    /// # Errors
+    /// 쓰기 실패.
+    pub(crate) fn constraints_error(
+        &mut self,
+        error: crate::constraints::DeskError,
+    ) -> std::io::Result<()> {
+        let line = crate::view::constraints::error_line(self.lang, error);
+        self.saturn_line(&line)
+    }
+
     /// 말하는 쪽이 Saturn인 줄이다.
     fn saturn_line(&mut self, text: &str) -> std::io::Result<()> {
         self.line(&format!("Saturn: {text}"))

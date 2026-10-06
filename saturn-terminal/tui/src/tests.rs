@@ -230,3 +230,87 @@ async fn plain_refused_attach_ends_instead_of_waiting_for_a_chat() {
     assert!(text.contains("engine이 요청을 거절했습니다: bad folder"));
     drop(server);
 }
+
+#[tokio::test]
+async fn plain_runs_constraints_commands_in_order_and_waits_for_each_list() {
+    use saturn_protocol::ids::ConstraintId;
+    use saturn_protocol::rpc::{ConstraintInfo, ConstraintStatus, QueryResult};
+
+    let home = tempfile::tempdir().unwrap();
+    let (socket, server) = fake_engine(&home, |request, id| match request {
+        Request::ListConstraints { chat } => Some(Response::result(
+            id,
+            QueryResult::Constraints {
+                chat: *chat,
+                revision: 6,
+                constraints: vec![
+                    ConstraintInfo {
+                        id: ConstraintId(1),
+                        rule: "로그에 토큰을 남기지 마".to_owned(),
+                        scope: Vec::new(),
+                        status: ConstraintStatus::Active,
+                        exception: None,
+                    },
+                    ConstraintInfo {
+                        id: ConstraintId(2),
+                        rule: "테스트 메시지는 한국어로 둬".to_owned(),
+                        scope: Vec::new(),
+                        status: ConstraintStatus::Candidate,
+                        exception: None,
+                    },
+                ],
+                changes: Vec::new(),
+            },
+        )),
+        _ => Some(Response::ok(id)),
+    });
+
+    // 목록을 본 뒤에야 변경 요청이 revision을 싣고 나가고, 표준 입력이 끝나도 마지막 목록까지 기다린다
+    let (result, text) = run_with_input(
+        &socket,
+        &home,
+        "/constraints\n/constraints release 1\n/constraints release 2\n",
+    )
+    .await;
+
+    result.unwrap();
+    let requests = server.await.unwrap();
+    let constraint_requests: Vec<&Request> = requests
+        .iter()
+        .filter(|request| {
+            matches!(
+                request,
+                Request::ListConstraints { .. } | Request::ReleaseConstraint { .. }
+            )
+        })
+        .collect();
+    assert_eq!(
+        constraint_requests,
+        [
+            &Request::ListConstraints { chat: ChatId(7) },
+            &Request::ReleaseConstraint {
+                constraint: ConstraintId(1),
+                revision: 6,
+                mistaken: false,
+            },
+            &Request::ListConstraints { chat: ChatId(7) },
+        ]
+    );
+    assert!(
+        !requests
+            .iter()
+            .any(|request| matches!(request, Request::SubmitInput { .. }))
+    );
+    assert!(
+        text.contains("Saturn: [유효] #1 · 범위 전체 · 로그에 토큰을 남기지 마"),
+        "{text}"
+    );
+    assert!(
+        text.contains("Saturn: [후보] #2 · 범위 전체 · 테스트 메시지는 한국어로 둬"),
+        "{text}"
+    );
+    assert!(
+        text.contains("Saturn: 유효 제약이 아니라 해제할 수 없습니다: 2"),
+        "{text}"
+    );
+}

@@ -16,14 +16,15 @@ use saturn_protocol::state::{
     CompletionEvidence, Disposition, EvidenceState, InputState, TaskState, UnverifiedReason,
 };
 
+use crate::constraints::{ListView, Listing};
 use crate::i18n::{self, Lang};
 use crate::labels;
 use crate::shell::ShellOutput;
 use crate::state::{InputUpdate, TaskView};
-use crate::view::extensions;
 use crate::view::start_screen::StartInfo;
 use crate::view::status_board::activity_text;
 use crate::view::{ERROR, MUTED, is_plain, wrap};
+use crate::view::{constraints, extensions};
 
 /// 초안 값.
 pub(crate) const SHELL_PREVIEW_LINES: usize = 10;
@@ -97,6 +98,8 @@ pub(crate) enum TranscriptCell {
     Warning(String),
     /// `/extensions`의 설치한 확장 목록.
     ExtensionList(Vec<ExtensionInfo>, Vec<DirectInstallInfo>),
+    /// `/constraints`의 제약 목록이나 변경 내역.
+    ConstraintList(ListView, Box<Listing>),
 }
 
 impl TranscriptCell {
@@ -135,7 +138,8 @@ impl TranscriptCell {
             Self::TrainShort { .. }
             | Self::Shell(_)
             | Self::Warning(_)
-            | Self::ExtensionList(..) => SATURN_SPEAKER.to_owned(),
+            | Self::ExtensionList(..)
+            | Self::ConstraintList(..) => SATURN_SPEAKER.to_owned(),
         };
         lines
             .into_iter()
@@ -246,6 +250,7 @@ impl TranscriptCell {
             Self::Shell(output) => shell_lines(lang, output, expanded),
             Self::Warning(text) => vec![text.clone()],
             Self::ExtensionList(list, direct) => extensions::list_lines(lang, list, direct),
+            Self::ConstraintList(view, listing) => constraints::list_lines(lang, *view, listing),
         }
     }
 
@@ -667,6 +672,13 @@ fn constraint_notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec
                 one_line(rule)
             )]
         }
+        ChatNotice::ConstraintRestored { rule } => {
+            vec![format!(
+                "{prefix}{} · {}",
+                lang.tr(i18n::CONSTRAINT_RESTORED),
+                one_line(rule)
+            )]
+        }
         _ => Vec::new(),
     }
 }
@@ -756,7 +768,8 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         | ChatNotice::ConstraintReleased { .. }
         | ChatNotice::ConstraintPaused { .. }
         | ChatNotice::ConstraintExcepted { .. }
-        | ChatNotice::ConstraintResumed { .. } => constraint_notice_lines(lang, prefix, notice),
+        | ChatNotice::ConstraintResumed { .. }
+        | ChatNotice::ConstraintRestored { .. } => constraint_notice_lines(lang, prefix, notice),
         ChatNotice::ExtensionInstalled { .. }
         | ChatNotice::ExtensionRemoved { .. }
         | ChatNotice::ExtensionFailed { .. }

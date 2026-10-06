@@ -202,9 +202,29 @@ pub enum Request {
         answer: ConstraintAskAnswer,
     },
     /// 사용자가 제약 하나를 직접 영구 해제한다. `revision`은 화면이 본 채팅의 제약 revision이고 지금과 다르면 거절한다.
+    /// `mistaken`이 참이면 제약이 아니었다는 뜻의 잘못 등록으로 기록한다.
     ReleaseConstraint {
         constraint: ConstraintId,
         revision: u64,
+        #[serde(default)]
+        mistaken: bool,
+    },
+    /// 사용자가 제약을 직접 등록한다. `text`는 앞뒤 공백만 떼어 원문 그대로 저장하고 의미를 판단하지 않는다.
+    /// `constraint.auto_apply`와 권한 모드를 보지 않고 바로 유효 제약이 된다. 빈 글이면 거절한다.
+    AddConstraint {
+        chat: ChatId,
+        text: String,
+    },
+    /// 제약 변경 한 건을 되돌린다. `event`는 `ListConstraints`가 알린 변경 번호이고 그 제약의 가장 최근 변경이어야 한다.
+    /// `revision`이 지금과 다르면 거절한다.
+    UndoConstraintChange {
+        constraint: ConstraintId,
+        event: u64,
+        revision: u64,
+    },
+    /// 채팅의 제약과 변경 내역을 `QueryResult::Constraints`로 돌려준다.
+    ListConstraints {
+        chat: ChatId,
     },
     /// 기록하지 않는다(router 키).
     SubmitRouterKey {
@@ -535,7 +555,7 @@ pub enum Notification {
 
 /// 조회 요청의 답. 응답의 `result`에 실려 요청을 보낸 접속에만 간다. 명령 요청의 `result`는 `null`.
 /// 요청과 답: `LoadHistory`→`History`, `Usage`→`Usage`, `ListTasks`→`Tasks`, `LatestChat`→`LatestChat`,
-/// `ListChats`→`Chats`, `ListModels`→`Models`, `ListRouterVersions`→`RouterVersions`,
+/// `ListChats`→`Chats`, `ListConstraints`→`Constraints`, `ListModels`→`Models`, `ListRouterVersions`→`RouterVersions`,
 /// `PrepareExit`→`ExitPlan`, `Prune`→`PrunePreview`(`yes`가 거짓)나 `Pruned`(`yes`가 참).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", content = "data")]
@@ -605,12 +625,83 @@ pub enum QueryResult {
         next_offset: Option<u64>,
         text: String,
     },
+    /// `ListConstraints`의 답. `revision`은 목록을 읽은 때의 채팅 제약 revision으로 변경 요청에 그대로 싣는다.
+    Constraints {
+        chat: ChatId,
+        revision: u64,
+        /// 만든 순서. 해제된 제약도 담는다.
+        constraints: Vec<ConstraintInfo>,
+        /// 시각순 변경 내역. 등록 확인을 거절한 `Declined`는 담지 않는다.
+        changes: Vec<ConstraintChangeInfo>,
+    },
     /// `ListExtensions`의 답. 설치한 순서대로.
     ExtensionList {
         extensions: Vec<ExtensionInfo>,
         /// provider에 직접 설치돼 있는 항목. 어댑터 등록 순서대로.
         direct: Vec<DirectInstallInfo>,
     },
+}
+
+/// 제약의 상태. 후보는 등록할지 묻는 중이며 패킷에는 유효 제약처럼 들어간다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ConstraintStatus {
+    Candidate,
+    Active,
+    Released,
+}
+
+/// 제약에 걸린 예외의 종류.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ConstraintExceptionKind {
+    /// 그 작업 하나 동안.
+    Once,
+    /// 사용자가 말한 조건이나 범위에서만.
+    Scoped,
+}
+
+/// 제약 하나. `rule`은 사용자 원문에서 자른 글이다.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct ConstraintInfo {
+    pub id: ConstraintId,
+    pub rule: String,
+    /// 비어 있으면 적용 범위가 전체다.
+    pub scope: Vec<String>,
+    pub status: ConstraintStatus,
+    /// 열린 예외. 종류와 `Scoped`의 조건 문장.
+    pub exception: Option<(ConstraintExceptionKind, Option<String>)>,
+}
+
+/// 제약 변경 한 건의 종류.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ConstraintChangeKind {
+    Added,
+    Released,
+    Excepted,
+    Resumed,
+    Restored,
+}
+
+/// 변경을 한 쪽.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ConstraintActor {
+    Router,
+    User,
+    Engine,
+}
+
+/// 변경 내역 한 줄.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct ConstraintChangeInfo {
+    /// 변경 번호. `UndoConstraintChange`에 싣는다.
+    pub event: u64,
+    pub constraint: ConstraintId,
+    pub rule: String,
+    pub kind: ConstraintChangeKind,
+    pub actor: ConstraintActor,
+    /// 지금 되돌릴 수 있다. 그 제약의 가장 최근 변경이고 되돌림이나 작업 끝으로 생긴 변경이 아니다.
+    pub undoable: bool,
+    /// 변경 시각(unix 밀리초).
+    pub at_ms: u64,
 }
 
 /// provider에 직접 설치된 항목의 종류. 확장 부분과 달리 플러그인도 추적한다.
@@ -810,6 +901,10 @@ pub enum ChatNotice {
     },
     /// 이번 작업 예외가 작업 끝으로 닫혀 제약이 다시 유효해졌다.
     ConstraintResumed {
+        rule: String,
+    },
+    /// 사용자가 변경 한 건을 되돌렸다.
+    ConstraintRestored {
         rule: String,
     },
     /// 끝난 작업의 완료 검사 근거. 작업 상태 `Done`과 따로 보내며, `ChatNotice`의 `task`가 그 작업이다. 다시 접속해도
