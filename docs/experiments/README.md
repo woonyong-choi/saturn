@@ -44,4 +44,4 @@
 | [jev-role-efficiency](jev-role-efficiency/report.md) | 모델 선택과 후보 선별의 실제 효율 | [router](../design/router.md) | H1~H3 보류: 예비 모델 선택 7/8 동일, 제약 6/6 동일, 어휘·Jev 맥락 8/8 동일 |
 | [transmission-quotes](transmission-quotes/report.md) | 동일 전송 원문의 참조 표현 | [맥락 정리](../design/context-management.md) | H1 충족, H2·H3 보류: 재생 입력 80개 변화 0, 모델 호출 없이 후보 미채택 |
 | [joint-context-delivery](joint-context-delivery/report.md) | 인계 자료와 첫 질문의 동시 전달 | [맥락 정리](../design/context-management.md) | 입력 20.77%·6.35% 감소, 대응 손실과 근거 누락으로 H3 기각·미채택 |
-| [recall-structure](recall-structure/design.md) | 복원 단위와 인계 자료 동시 전달 | [맥락 정리](../design/context-management.md) | 측정 전 |
+| [recall-structure](recall-structure/report.md) | 복원 단위와 인계 자료 동시 전달 | [맥락 정리](../design/context-management.md) | 입력 17.07%·5.26% 감소, 후보 358/360·360/360 정답. 대응 손실로 H2·H3 기각 |

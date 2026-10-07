@@ -1,0 +1,4773 @@
+{
+  "checks": [
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 512,
+      "chars": 201,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 1000,
+      "chars": 857,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 2000,
+      "chars": 1874,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 4000,
+      "chars": 3362,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 8000,
+      "chars": 4514,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-12",
+      "budget": 16000,
+      "chars": 4514,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 512,
+      "chars": 383,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 1000,
+      "chars": 857,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 2000,
+      "chars": 1914,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 4000,
+      "chars": 3712,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 8000,
+      "chars": 5718,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-30",
+      "budget": 16000,
+      "chars": 5718,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 512,
+      "chars": 201,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 1000,
+      "chars": 857,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 2000,
+      "chars": 1573,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 4000,
+      "chars": 3701,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 8000,
+      "chars": 7088,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "learning-59",
+      "budget": 16000,
+      "chars": 9302,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 512,
+      "chars": 201,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 1000,
+      "chars": 619,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 2000,
+      "chars": 1218,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 4000,
+      "chars": 2101,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 8000,
+      "chars": 6874,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-8",
+      "budget": 16000,
+      "chars": 9026,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 512,
+      "chars": 267,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 1000,
+      "chars": 719,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 2000,
+      "chars": 1475,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 4000,
+      "chars": 2608,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 8000,
+      "chars": 7084,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-16",
+      "budget": 16000,
+      "chars": 10703,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 512,
+      "chars": 274,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 1000,
+      "chars": 884,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 2000,
+      "chars": 1512,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 4000,
+      "chars": 3015,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 8000,
+      "chars": 7115,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "audit-26",
+      "budget": 16000,
+      "chars": 11416,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 512,
+      "chars": 381,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 1000,
+      "chars": 467,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 2000,
+      "chars": 467,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 4000,
+      "chars": 467,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 8000,
+      "chars": 467,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "notes",
+      "budget": 16000,
+      "chars": 467,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 256,
+      "chars": 188,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 512,
+      "chars": 470,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 1000,
+      "chars": 767,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 2000,
+      "chars": 1167,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 4000,
+      "chars": 1325,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 8000,
+      "chars": 1325,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "relay",
+      "budget": 16000,
+      "chars": 1325,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 512,
+      "chars": 191,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 1000,
+      "chars": 814,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 2000,
+      "chars": 1940,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 4000,
+      "chars": 3870,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 8000,
+      "chars": 5557,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "interruption",
+      "budget": 16000,
+      "chars": 6185,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 512,
+      "chars": 302,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 1000,
+      "chars": 655,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 2000,
+      "chars": 1502,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 4000,
+      "chars": 3667,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 8000,
+      "chars": 6613,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "design-chain",
+      "budget": 16000,
+      "chars": 7819,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 512,
+      "chars": 201,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 1000,
+      "chars": 597,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 2000,
+      "chars": 1120,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 4000,
+      "chars": 2073,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 8000,
+      "chars": 3655,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-batch",
+      "budget": 16000,
+      "chars": 4673,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 512,
+      "chars": 367,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 1000,
+      "chars": 597,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 2000,
+      "chars": 1126,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 4000,
+      "chars": 2068,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 8000,
+      "chars": 4109,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-permissions-single",
+      "budget": 16000,
+      "chars": 8070,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 512,
+      "chars": 209,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 1000,
+      "chars": 209,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 2000,
+      "chars": 817,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 4000,
+      "chars": 1916,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 8000,
+      "chars": 3654,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-batch",
+      "budget": 16000,
+      "chars": 3654,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 512,
+      "chars": 209,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 1000,
+      "chars": 595,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 2000,
+      "chars": 817,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 4000,
+      "chars": 2021,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 8000,
+      "chars": 4135,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-router-key-security-single",
+      "budget": 16000,
+      "chars": 7816,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 512,
+      "chars": 198,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 1000,
+      "chars": 198,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 2000,
+      "chars": 827,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 4000,
+      "chars": 1901,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 8000,
+      "chars": 3148,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-batch",
+      "budget": 16000,
+      "chars": 3148,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 512,
+      "chars": 198,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 1000,
+      "chars": 581,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 2000,
+      "chars": 1128,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 4000,
+      "chars": 2001,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 8000,
+      "chars": 3831,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-settings-single",
+      "budget": 16000,
+      "chars": 8021,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 512,
+      "chars": 197,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 1000,
+      "chars": 517,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 2000,
+      "chars": 1100,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 4000,
+      "chars": 2051,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 8000,
+      "chars": 4085,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-batch",
+      "budget": 16000,
+      "chars": 5171,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 512,
+      "chars": 197,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 1000,
+      "chars": 489,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 2000,
+      "chars": 1107,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 4000,
+      "chars": 1866,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 8000,
+      "chars": 4035,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "document-records-single",
+      "budget": 16000,
+      "chars": 7944,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 512,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 1000,
+      "chars": 440,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 2000,
+      "chars": 1001,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 4000,
+      "chars": 1768,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 8000,
+      "chars": 3730,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-input-handling",
+      "budget": 16000,
+      "chars": 4314,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 512,
+      "chars": 206,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 1000,
+      "chars": 637,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 2000,
+      "chars": 806,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 4000,
+      "chars": 2002,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 8000,
+      "chars": 4033,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "regression-engine-lifecycle",
+      "budget": 16000,
+      "chars": 5375,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 512,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 1000,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 2000,
+      "chars": 694,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 4000,
+      "chars": 1927,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 8000,
+      "chars": 2533,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-extensions",
+      "budget": 16000,
+      "chars": 2533,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 512,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 1000,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 2000,
+      "chars": 678,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 4000,
+      "chars": 1620,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 8000,
+      "chars": 3469,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "baseline",
+      "case": "heldout-input-requests",
+      "budget": 16000,
+      "chars": 3469,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 512,
+      "chars": 201,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 1000,
+      "chars": 857,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 2000,
+      "chars": 1874,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 4000,
+      "chars": 3950,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 8000,
+      "chars": 4514,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-12",
+      "budget": 16000,
+      "chars": 4514,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 512,
+      "chars": 472,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 1000,
+      "chars": 857,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 2000,
+      "chars": 1914,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 4000,
+      "chars": 3998,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 8000,
+      "chars": 5718,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-30",
+      "budget": 16000,
+      "chars": 5718,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 512,
+      "chars": 472,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 1000,
+      "chars": 857,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 2000,
+      "chars": 1573,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 4000,
+      "chars": 3701,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 8000,
+      "chars": 7762,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "learning-59",
+      "budget": 16000,
+      "chars": 9302,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 512,
+      "chars": 396,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 1000,
+      "chars": 896,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 2000,
+      "chars": 1824,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 4000,
+      "chars": 3873,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 8000,
+      "chars": 7480,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-8",
+      "budget": 16000,
+      "chars": 9026,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 512,
+      "chars": 462,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 1000,
+      "chars": 996,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 2000,
+      "chars": 1826,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 4000,
+      "chars": 3958,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 8000,
+      "chars": 7914,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-16",
+      "budget": 16000,
+      "chars": 11157,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 512,
+      "chars": 274,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 1000,
+      "chars": 884,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 2000,
+      "chars": 1881,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 4000,
+      "chars": 3990,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 8000,
+      "chars": 7665,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "audit-26",
+      "budget": 16000,
+      "chars": 12001,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 256,
+      "chars": 206,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 512,
+      "chars": 381,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 1000,
+      "chars": 467,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 2000,
+      "chars": 467,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 4000,
+      "chars": 467,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 8000,
+      "chars": 467,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "notes",
+      "budget": 16000,
+      "chars": 467,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 256,
+      "chars": 235,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 512,
+      "chars": 485,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 1000,
+      "chars": 767,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 2000,
+      "chars": 1167,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 4000,
+      "chars": 1325,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 8000,
+      "chars": 1325,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "relay",
+      "budget": 16000,
+      "chars": 1325,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 256,
+      "chars": 191,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 512,
+      "chars": 321,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 1000,
+      "chars": 944,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 2000,
+      "chars": 1940,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 4000,
+      "chars": 3689,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 8000,
+      "chars": 6315,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "interruption",
+      "budget": 16000,
+      "chars": 6315,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 512,
+      "chars": 302,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 1000,
+      "chars": 931,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 2000,
+      "chars": 1855,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 4000,
+      "chars": 3667,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 8000,
+      "chars": 6613,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "design-chain",
+      "budget": 16000,
+      "chars": 7819,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 512,
+      "chars": 201,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 1000,
+      "chars": 653,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 2000,
+      "chars": 1677,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 4000,
+      "chars": 3556,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 8000,
+      "chars": 4049,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-batch",
+      "budget": 16000,
+      "chars": 4049,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 512,
+      "chars": 504,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 1000,
+      "chars": 991,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 2000,
+      "chars": 1887,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 4000,
+      "chars": 3945,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 8000,
+      "chars": 7995,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-permissions-single",
+      "budget": 16000,
+      "chars": 15936,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 512,
+      "chars": 209,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 1000,
+      "chars": 817,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 2000,
+      "chars": 1916,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 4000,
+      "chars": 3329,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 8000,
+      "chars": 3329,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-batch",
+      "budget": 16000,
+      "chars": 3329,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 512,
+      "chars": 209,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 1000,
+      "chars": 817,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 2000,
+      "chars": 1920,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 4000,
+      "chars": 3673,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 8000,
+      "chars": 7674,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-router-key-security-single",
+      "budget": 16000,
+      "chars": 14547,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 512,
+      "chars": 198,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 1000,
+      "chars": 827,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 2000,
+      "chars": 1901,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 4000,
+      "chars": 3148,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 8000,
+      "chars": 3148,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-batch",
+      "budget": 16000,
+      "chars": 3148,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 512,
+      "chars": 198,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 1000,
+      "chars": 758,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 2000,
+      "chars": 1989,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 4000,
+      "chars": 3831,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 8000,
+      "chars": 7719,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-settings-single",
+      "budget": 16000,
+      "chars": 15793,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 512,
+      "chars": 197,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 1000,
+      "chars": 913,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 2000,
+      "chars": 1974,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 4000,
+      "chars": 3733,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 8000,
+      "chars": 5336,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-batch",
+      "budget": 16000,
+      "chars": 5336,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 512,
+      "chars": 489,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 1000,
+      "chars": 982,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 2000,
+      "chars": 1867,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 4000,
+      "chars": 3979,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 8000,
+      "chars": 7759,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "document-records-single",
+      "budget": 16000,
+      "chars": 15902,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 512,
+      "chars": 440,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 1000,
+      "chars": 687,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 2000,
+      "chars": 1738,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 4000,
+      "chars": 3691,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 8000,
+      "chars": 4271,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-input-handling",
+      "budget": 16000,
+      "chars": 4271,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 512,
+      "chars": 206,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 1000,
+      "chars": 993,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 2000,
+      "chars": 1758,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 4000,
+      "chars": 3789,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 8000,
+      "chars": 5131,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "regression-engine-lifecycle",
+      "budget": 16000,
+      "chars": 5131,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 512,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 1000,
+      "chars": 752,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 2000,
+      "chars": 1456,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 4000,
+      "chars": 2685,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 8000,
+      "chars": 2685,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-extensions",
+      "budget": 16000,
+      "chars": 2685,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 0,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 1,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 126,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 127,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 128,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 256,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 512,
+      "chars": 0,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 1000,
+      "chars": 678,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 2000,
+      "chars": 1620,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 4000,
+      "chars": 3523,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 8000,
+      "chars": 3523,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    },
+    {
+      "arm": "repaired",
+      "case": "heldout-input-requests",
+      "budget": 16000,
+      "chars": 3523,
+      "bounded": true,
+      "has_source": true,
+      "valid_sources": true
+    }
+  ],
+  "exports": 528,
+  "budgets": [
+    0,
+    1,
+    126,
+    127,
+    128,
+    256,
+    512,
+    1000,
+    2000,
+    4000,
+    8000,
+    16000
+  ],
+  "passed": true,
+  "scope": "character bounds and record/session provenance, not answer quality"
+}

@@ -206,7 +206,11 @@ def audit_results():
     ]:
         path = PUBLIC / "results" / f"{name}.json"
         if path.exists():
-            audits[name] = load(path)
+            audits[name] = {
+                key: value
+                for key, value in load(path).items()
+                if key not in ["runs", "checks", "pairs"]
+            }
     audits["protocol"] = load(RUN.parent / "smoke/verification.json")
     return audits
 

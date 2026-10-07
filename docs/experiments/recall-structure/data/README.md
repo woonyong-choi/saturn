@@ -11,7 +11,7 @@
 | 라벨 | 기존 정답표를 그대로 복사. 새 문서 두 건은 원문 구절·줄·해시로 수집 전 고정 |
 | 알려진 문제 | 출처와 질문 반복이 겹침. Codex 시작 경고의 초기 오집계는 원자료를 보존한 채 별도 기록 |
 | 개인정보 | 비공개 대화·경로가 포함되어 원문과 개별 응답은 비공개 로컬 보관소에 저장. 공개 집계는 원응답 값 제외 |
-| 라이선스 | 저장소 문서는 해당 저장소 라이선스. 비공개 대화 재배포하지 않음 |
+| 라이선스 | 저장소 문서는 해당 저장소 라이선스를 따른다. 비공개 대화는 재배포하지 않는다. |
 
 ## 파일
 
@@ -19,13 +19,14 @@
 |---|---|---|
 | 비공개 고정 입력 | 조건·질문·정답·근거·실행 계획·봉인 해시 | `01-run.py prepare` |
 | 비공개 실행 폴더 | 실제 두 입력·시각·명령·원시 JSONL·표준 오류·응답·사용량 | `01-run.py collect` |
-| 비공개 세션 사용량 | 해당 실험 세션의 token_count만 추출. 전체 개인 세션은 복사하지 않음 | `03-verify-usage.py` |
+| 비공개 세션 사용량 | 해당 실험 세션의 token_count만 추출한다. 전체 개인 세션은 복사하지 않는다. | `03-verify-usage.py` |
 | 비공개 `processed/records.jsonl` | 문항별 판정과 응답값을 가진 정규화 관측 | `02-analyze.py` |
 | `results/summary.json` | 원응답 값을 뺀 공개 집계와 판정 | `02-analyze.py` |
 | `results/verification.json` | 고정 입력·전송 입력·응답 대조 | `01-run.py verify` |
 | `results/usage-verification.json` | 원시 턴 사용량과 모델별 누적 사용량 대조 | `03-verify-usage.py` |
 | `results/context-verification.json` | 정식 Codex 세션의 자동 첨부 맥락 해시와 프로토콜 대조 | `05-verify-context.py` |
 | `results/boundary-verification.json` | 같은 실제 자료의 예산별 글자 상한·출처 경계 | `07-check-bounds.py` |
+| `results/identical-input.json` | 같은 전송 문자열의 응답 변동. 주 분석 제외 없음 | `08-analyze-identical.py` |
 | `SHA256SUMS`, `archive.json` | 압축 안 파일별·압축 전체 해시와 보관 경로 | `06-archive.py` |
 
 ## 필드
