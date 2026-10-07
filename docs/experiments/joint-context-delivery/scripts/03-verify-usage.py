@@ -32,6 +32,15 @@ def verify():
             continue
         if result["provider"] == "codex":
             thread = result["session_id"]
+            first_command = load(folder / "ready-command.json")
+            second_command = load(folder / "answer-command.json")
+            assert first_command[:2] == ["codex", "exec"]
+            assert second_command[:3] == ["codex", "exec", "resume"]
+            assert second_command[-2:] == [thread, "-"]
+            assert "--ephemeral" not in first_command
+            for command in [first_command, second_command]:
+                assert command[command.index("-m") + 1] == "gpt-6-sol"
+                assert 'sandbox_mode="read-only"' in command
             assert re.fullmatch(r"[0-9a-f-]{36}", thread)
             snapshots = folder / "token-events.json"
             if snapshots.exists():

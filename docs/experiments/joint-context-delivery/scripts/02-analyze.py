@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 from pathlib import Path
 import statistics
 from typing import Any
@@ -174,7 +175,87 @@ def analyze() -> None:
         ],
         records=records,
     )
+    variation = load(RUN.parent / "codex-context-variation.json")
+    result["codex_context_variation"] = dict(
+        runs=len(variation),
+        layouts=[
+            dict(
+                message_chars=list(layout),
+                runs=sum(
+                    tuple(m["chars"] for m in row["developer_messages"]) == layout
+                    for row in variation
+                ),
+            )
+            for layout in sorted(
+                set(
+                    tuple(m["chars"] for m in row["developer_messages"])
+                    for row in variation
+                )
+            )
+        ],
+    )
+    stable = {
+        row["run"]
+        for row in variation
+        if tuple(m["chars"] for m in row["developer_messages"]) == (12408, 2501, 307)
+    }
+    stable_pairs = []
+    for row in records:
+        if (
+            row["provider"] != "codex"
+            or row["arm"] != "candidate"
+            or row["run_id"] not in stable
+        ):
+            continue
+        other = next(
+            r
+            for r in records
+            if r["provider"] == "codex"
+            and r["trial"] == row["trial"]
+            and r["arm"] == "baseline"
+        )
+        if other["run_id"] in stable:
+            stable_pairs.append((other, row))
+    before = sum(a["input_tokens"] for a, b in stable_pairs)
+    after = sum(b["input_tokens"] for a, b in stable_pairs)
+    result["stable_context_exploratory"] = dict(
+        pairs=len(stable_pairs),
+        baseline_input=before,
+        candidate_input=after,
+        input_reduction=1 - after / before if before else None,
+        confirmation=False,
+    )
+    test_logs = ROOT / ".local/verification/joint-context-delivery"
+    counts = {}
+    for name in ["existing-recall-tests", "retention-regression-before"]:
+        log = (test_logs / f"{name}.log").read_text()
+        matches = re.findall(
+            r"test result: (?:ok|FAILED)\. (\d+) passed; (\d+) failed; (\d+) ignored",
+            log,
+        )
+        counts[name] = dict(
+            passed=sum(int(a) for a, b, c in matches),
+            failed=sum(int(b) for a, b, c in matches),
+            ignored=sum(int(c) for a, b, c in matches),
+        )
+    result["test_evidence"] = dict(logs=counts, production_delivery_changed=False)
     result["protocol"] = load(RUN.parent / "protocol-summary.json")
+    result["sample"] = dict(
+        conditions=len(questions),
+        questions=sum(len(q) for q in questions.values()),
+        repeats=3,
+    )
+    result["flow"] = dict(
+        formal_sessions=result["actual_calls"],
+        formal_turns=sum(
+            len(load(RUN / "raw" / r["run_id"] / "result.json").get("usages", []))
+            for r in records
+            if r["status"] != "missing"
+        ),
+        protocol_sessions=len(result["protocol"]),
+        protocol_passed=sum(r["protocol_passed"] for r in result["protocol"]),
+        protocol_failed=sum(not r["protocol_passed"] for r in result["protocol"]),
+    )
     result["evidence_coverage"] = load(RUN.parent / "evidence-coverage.json")
     result["turn_usage"] = []
     for provider in ["claude", "codex"]:

@@ -30,4 +30,4 @@ Saturn의 설계 문서다. 문서는 한국어로 쓴다. 처음이면 아키�
 | [Jev 역할별 효율](experiments/jev-role-efficiency/report.md) | 모델 선택·제약 후보·맥락 선별의 실제 성과 비교 |
 | [Claude 확장 도구와 Jev](experiments/jev-role-efficiency/stack-comparison.md) | 영상의 다섯 도구와 Saturn의 적용 경계 |
 | [전송 원문 중복](experiments/transmission-quotes/report.md) | 동일 전송 원문의 참조 표현과 품질·전체 토큰 비교 |
-| [인계 자료 동시 전달](experiments/joint-context-delivery/design.md) | 인계 시점 변경의 품질과 두 턴 전체 토큰 비교 |
+| [인계 자료 동시 전달](experiments/joint-context-delivery/report.md) | 인계 시점 변경의 품질과 두 턴 전체 토큰 비교 |
