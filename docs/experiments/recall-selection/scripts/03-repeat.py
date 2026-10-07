@@ -24,7 +24,7 @@ def load(path: Path) -> Any:
 
 def main() -> None:
     os.umask(0o077)
-    source = PRIVATE / os.environ.get("SATURN_SELECTION_SOURCE", "format")
+    source = PRIVATE / os.environ.get("SATURN_SELECTION_SOURCE", "explicit")
     reuse_path = source / "reuse.json"
     reuse = load(reuse_path) if reuse_path.exists() else {}
     expected = [
@@ -67,7 +67,7 @@ def main() -> None:
     (target / "env.json").write_text(json.dumps(environment, indent=2) + "\n")
     shutil.copytree(source / "code", target / "code")
     shutil.copy2(Path(__file__), target / "code/03-repeat.py")
-    shutil.copy2(PUBLIC / "format-design.md", target / "code/format-design.md")
+    shutil.copy2(PUBLIC / "explicit-design.md", target / "code/explicit-design.md")
     (target / "raw").mkdir()
     (target / "work").mkdir()
     jobs = [

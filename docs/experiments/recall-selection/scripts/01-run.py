@@ -81,10 +81,11 @@ def helper(filename: str) -> Any:
 
 
 def query(questions: list[dict[str, Any]]) -> str:
-    return (
-        "앞 기록의 근거만으로 답하세요. 도구를 사용하지 마세요. 답이 없으면 unknown입니다. 키별 값이 문자열인 JSON 객체 하나만 답하세요.\n"
-        + "\n".join(f"{q['id']}: {q['question']}" for q in questions)
-    )
+    contract = "앞 기록의 근거만으로 답하세요. 도구를 사용하지 마세요. 답이 없으면 unknown입니다. 키별 값이 문자열인 JSON 객체 하나만 답하세요.\n"
+    if RUN.name == "explicit":
+        keys = ", ".join(q["id"] for q in questions)
+        contract += f"각 문항 ID를 JSON 키로 사용하세요. 키를 바꾸거나 추가하지 마세요. 반드시 사용할 키: {keys}.\n"
+    return contract + "\n".join(f"{q['id']}: {q['question']}" for q in questions)
 
 
 def export(command: list[str], output: str) -> None:
@@ -405,10 +406,17 @@ def archive() -> None:
         for base in [PRIVATE, PUBLIC, ROOT / ".local/verification/recall-selection"]
         for p in base.rglob("*")
         if p.is_file()
-        and p.name != "engine-tests"
         and "__pycache__" not in p.parts
         and p.name not in {"archive.json", "SHA256SUMS"}
     )
+    dependencies = [
+        PUBLIC.parent / "real-context-replay/scripts" / name
+        for name in ["02-collect.py", "03-analyze.py", "04-verify.py"]
+    ] + [
+        PUBLIC.parent / "same-session-compaction/scripts/05-persistent.py",
+        PUBLIC.parent / "context-recall/scripts/05-archive.py",
+    ]
+    paths = sorted(set(paths + dependencies))
     manifest = {
         str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
         for p in paths
@@ -433,8 +441,9 @@ def archive() -> None:
         path=str(target.relative_to(ROOT)),
         sha256=hashlib.sha256(target.read_bytes()).hexdigest(),
         files=len(manifest),
+        manifest_sha256=hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
         verified=True,
-        excluded="baseline engine-tests binary; source and input/output preserved",
+        baseline_binary="baseline/engine-tests included for macOS arm64 replay",
     )
     save(PUBLIC / "data/archive.json", receipt)
     print(json.dumps(receipt))
