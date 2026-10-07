@@ -146,7 +146,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 
 1. `routers`가 판단 방식이 쓰는 router를 고른다.
 2. 외부 router면 `GET /v1/models`와 실제 판단 1건으로 확인한다.
-3. 로컬 Saturn 모델이면 모델 로드나 API 서버 응답으로 확인한다. 로컬 서버는 루프백 `http` 주소(설정 `router.local.endpoint`)만 받고 기준 router와 같은 본문을 쓴다(초안). 모델 파일 실행 방식은 [#43](https://github.com/woonyong-choi/saturn/issues/43)에서 정하고, 그 전에는 확인이 실패한다.
+3. 로컬 Saturn 모델이면 모델 로드나 API 서버 응답으로 확인한다. 로컬 서버는 루프백 `http` 주소(설정 `router.local.endpoint`)만 받고 기준 router와 같은 본문을 쓴다(초안). 모델 파일 실행은 아직 없고 방식은 [#43](https://github.com/woonyong-choi/saturn/issues/43)에서 정한다.
 4. 확인에 실패하면 `SATURN_KEY` 환경 변수, 비밀번호 관리자 명령(`router.key.command`) 순서로 키를 받아 다시 확인하고, 그래도 실패하면 화면이 있을 때 TUI가 숨김 입력으로 받아 보낸 키로 다시 확인한다. 화면이 없으면 묻지 않고 키 입력 방법을 안내하고 끝낸다.
 5. 확인에 성공하면 `secrets`가 키를 저장하고 실행을 계속한다.
 

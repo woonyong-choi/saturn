@@ -1,9 +1,6 @@
 //! Saturn engine: `saturn-core` 규칙을 실제 연결과 조립해 화면 없이 돌리는 상주 프로세스.
 //! 설계: docs/architecture.md
 
-// TODO(#74): 실행에 연결되지 않은 선택 기능의 미사용 항목을 정리한 뒤 이 허용을 지운다.
-#![allow(dead_code)]
-
 pub mod engine_log;
 pub(crate) mod processes;
 pub(crate) mod providers;

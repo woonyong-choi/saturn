@@ -1,6 +1,7 @@
 //! 출력 마스킹: router 키와 일치하는 문자열을 로그, 오류, 디버그 출력, 판단 기록 저장 전에 가린다.
 //! 설계: docs/design/router-key-security.md
 
+#[cfg(test)]
 use std::io::Write;
 
 use crate::passes::TOKEN_PREFIX;
@@ -90,12 +91,14 @@ impl std::fmt::Debug for Masker {
 }
 
 /// 키가 두 번의 쓰기로 나뉘어도 가리도록 줄바꿈까지 모았다가 쓴다.
+#[cfg(test)]
 pub(crate) struct MaskingWriter<W: Write> {
     inner: W,
     masker: Masker,
     line: Vec<u8>,
 }
 
+#[cfg(test)]
 impl<W: Write> MaskingWriter<W> {
     pub(crate) fn new(inner: W, masker: Masker) -> Self {
         Self {
@@ -106,6 +109,7 @@ impl<W: Write> MaskingWriter<W> {
     }
 }
 
+#[cfg(test)]
 impl<W: Write> Write for MaskingWriter<W> {
     /// 남은 조각은 버퍼에 둔다.
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
@@ -123,6 +127,7 @@ impl<W: Write> Write for MaskingWriter<W> {
     }
 }
 
+#[cfg(test)]
 impl<W: Write> std::fmt::Debug for MaskingWriter<W> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("MaskingWriter")
@@ -131,6 +136,7 @@ impl<W: Write> std::fmt::Debug for MaskingWriter<W> {
     }
 }
 
+#[cfg(test)]
 impl<W: Write> MaskingWriter<W> {
     /// 키는 ASCII라 깨진 UTF-8 바이트를 바꾼 뒤 가려도 맞는다.
     fn write_masked(&mut self, line: &[u8]) -> std::io::Result<()> {

@@ -43,20 +43,6 @@ impl FakeTransport {
         gate
     }
 
-    /// 남은 답의 맨 뒤에 하나를 더한다.
-    pub(crate) fn push_reply(&self, reply: Result<HttpReply, TransportError>) {
-        self.push_reply_after(reply, Duration::ZERO);
-    }
-
-    /// 남은 답의 맨 뒤에 하나를 더하고, 그 답은 `delay`가 지난 뒤에 돌려준다.
-    pub(crate) fn push_reply_after(
-        &self,
-        reply: Result<HttpReply, TransportError>,
-        delay: Duration,
-    ) {
-        self.replies.lock().unwrap().push_back((reply, delay));
-    }
-
     pub(crate) fn calls(&self) -> Vec<Call> {
         self.calls.lock().unwrap().clone()
     }

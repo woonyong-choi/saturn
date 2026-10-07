@@ -4,6 +4,7 @@
 use std::time::{Duration, SystemTime};
 
 use saturn_protocol::ids::ChatId;
+#[cfg(test)]
 use sqlx::Row;
 
 use super::records::FINAL_INPUT_STATES;
@@ -155,6 +156,7 @@ impl Store {
         Ok(Some(self.prune(&request).await?))
     }
 
+    #[cfg(test)]
     pub(crate) async fn tombstone(&self, chat: ChatId) -> Result<Option<Tombstone>, StoreError> {
         let row = sqlx::query("SELECT hash, deleted_at FROM tombstones WHERE chat_id = ?")
             .bind(to_sql_int(chat.0))

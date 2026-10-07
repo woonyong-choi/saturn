@@ -4,7 +4,7 @@
 use std::fs::{File, OpenOptions};
 use std::os::fd::AsRawFd;
 use std::os::unix::fs::OpenOptionsExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::RpcError;
 
@@ -14,7 +14,6 @@ pub(crate) const LOCK_FILE: &str = "engine.lock";
 /// `flock` 잠금이라 버리거나 프로세스가 죽으면 풀린다.
 #[derive(Debug)]
 pub(crate) struct EngineLock {
-    path: PathBuf,
     // 잠금은 열린 파일에 묶여 있어 살아 있는 동안 들고 있어야 한다.
     #[allow(dead_code)]
     file: File,
@@ -50,11 +49,7 @@ impl EngineLock {
             }
             return Err(lock_error(error));
         }
-        Ok(Self { path, file })
-    }
-
-    pub(crate) fn path(&self) -> &Path {
-        &self.path
+        Ok(Self { file })
     }
 }
 
@@ -87,8 +82,8 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let home = root.path().join("saturn");
 
-        let lock = EngineLock::acquire(&home).unwrap();
+        let _lock = EngineLock::acquire(&home).unwrap();
 
-        assert_eq!(lock.path(), home.join(LOCK_FILE));
+        assert!(home.join(LOCK_FILE).is_file());
     }
 }
