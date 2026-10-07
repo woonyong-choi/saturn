@@ -189,7 +189,7 @@ impl Engine {
             return;
         };
         let closed = self.open_sessions(chat, provider);
-        self.close_connection(&connection, provider, &closed).await;
+        self.close_connection(&connection, &closed).await;
         drop(connection);
         for (agent, _) in closed {
             self.flow.live.remove(&agent);
@@ -216,7 +216,6 @@ impl Engine {
     async fn close_connection(
         &self,
         connection: &ProviderHandle,
-        provider: Provider,
         sessions: &[(AgentId, ProviderSessionId)],
     ) {
         if connection.shared_group().is_some() {

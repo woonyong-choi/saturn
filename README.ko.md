@@ -133,7 +133,7 @@ Error: Router key required (router key required: router rejected the key): set t
 | 66 | 대상 없음. 이어 열 채팅 없음, 없는 폴더, 없는 router 버전 |
 | 69 | engine을 쓸 수 없음. 시작 실패, 응답 없음, 교체 실패, 연결 끊김 |
 | 70 | engine 내부 오류 |
-| 75 | 지금은 안 되고 나중에 가능. 예: 학습 표본 부족 |
+| 75 | 지금은 안 되고 나중에 가능 |
 | 77 | router 키 없음이나 확인 실패 |
 | 78 | 설정 오류 |
 | 130 | 창에서 `Esc`나 `Ctrl+C`로 중단 |

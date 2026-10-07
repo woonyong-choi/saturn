@@ -29,7 +29,6 @@ use crate::view::start_screen::StartScreenView;
 use crate::view::status_board::{self, StatusBoardView};
 use crate::view::stop_confirm::StopConfirmView;
 use crate::view::task_list::TaskListView;
-use crate::view::train_confirm::TrainConfirmView;
 use crate::view::transcript::TranscriptView;
 use crate::view::usage::UsageView;
 use crate::view::{self, Areas, Heights, render_window};
@@ -133,9 +132,6 @@ impl App {
             Some(Window::Usage(screen)) => UsageView { screen, lang }.render(frame, area),
             Some(Window::RouterVersion(screen)) => {
                 RouterVersionView { screen, lang }.render(frame, area);
-            }
-            Some(Window::TrainConfirm(confirm)) => {
-                TrainConfirmView { confirm, lang }.render(frame, area);
             }
             Some(Window::StopConfirm(confirm)) => {
                 StopConfirmView { confirm, lang }.render(frame, area);

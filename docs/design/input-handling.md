@@ -321,5 +321,4 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 - 판단 요청 맥락을 실제 router로 쓴 오접합과 이어 가기 누락의 정확도. 맥락 구성은 정했고 구현했다([판단 요청 맥락](router.md#판단-요청-맥락), [#459](https://github.com/woonyong-choi/saturn/issues/459)). 기존 측정은 실험용 상태 형식으로 쟀고 구현한 형식과 같지 않다([한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md), [오접합 실험](../experiments/continuation-misjoin/report.md), [새 작업 표본 확대](../experiments/continuation-newtask/report.md), [#6](https://github.com/woonyong-choi/saturn/issues/6)) 합친 새 작업 표본의 오접합은 2.0%이고 재현율은 71.3%였다. 구현한 상태 형식으로 두 값을 따로 다시 재는 일과 구현 방식(Jev 또는 저렴한 LLM)은 [#382](https://github.com/woonyong-choi/saturn/issues/382)의 비교 실험 뒤에 정한다.
 
-- 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 멈춘 작업의 트리 유휴 신호가 끝내 오지 않을 때 완료 보고를 기다리는 한도 ([#464](https://github.com/woonyong-choi/saturn/issues/464))

@@ -29,7 +29,6 @@ const STOP_POLL: Duration = Duration::from_millis(100);
 const KILL_SETTLE: Duration = Duration::from_secs(1);
 
 /// 에이전트가 작업 중 실행한 `saturn`은 이 변수가 있으면 거절한다(판정은 `cli`).
-/// TODO(#33): 표지 이름과 방식 미정. 자식 Saturn을 부모에 붙이는 방식이 정해지면 바꾼다
 pub(crate) const NESTED_MARKER_ENV: &str = "SATURN_AGENT";
 
 #[derive(Debug, thiserror::Error)]

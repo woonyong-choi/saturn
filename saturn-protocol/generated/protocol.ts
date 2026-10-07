@@ -8,47 +8,47 @@ export type Alert = "RouterPaused" | "RouterDisconnected" | "InputNotRecorded" |
 
 export type ChatId = number;
 
-export type ChatListItem = { chat: ChatId, 
+export type ChatListItem = { chat: ChatId,
 /**
  * 채팅의 기본 폴더.
  */
-folder: string, 
+folder: string,
 /**
  * `RenameChat`으로 붙인 이름. 붙이지 않았으면 `None`.
  */
-name: string | null, 
+name: string | null,
 /**
  * 마지막 입력을 접수한 시각(unix 밀리초). 입력이 없으면 채팅을 만든 시각.
  */
-last_active_ms: number, 
+last_active_ms: number,
 /**
  * 채팅의 첫 입력 원문. 입력이 없으면 `None`.
  */
-preview: string | null, 
+preview: string | null,
 /**
  * 지울(지운) 채팅의 기록 행 수. 정리 응답에서만 채우고 `ListChats`에서는 `None`.
  */
 rows: number | null, };
 
-export type ChatNotice = "Compacted" | { "ProviderSwitched": { from: Provider, to: Provider, } } | { "Stopped": { held: Array<TaskLabel>, } } | { "ProviderRestarted": { provider: Provider, } } | "PermissionsChanged" | "ReadOnlyRunKept" | { "ResumeSuggested": { held: Array<TaskLabel>, } } | { "McpUnavailable": { provider: Provider, reasons: Array<string>, } } | { "InterruptedSubagentReturned": { provider: Provider, } } | { "StopUnconfirmed": { remaining: number, } } | { "FolderAdded": { path: string, applies_from_next_session: boolean, } } | { "ExtensionInstalled": { extension: ExtensionInfo, } } | { "ExtensionRemoved": { name: string, } } | { "ExtensionPartsNotApplied": { provider: Provider, 
+export type ChatNotice = "Compacted" | { "ProviderSwitched": { from: Provider, to: Provider, } } | { "Stopped": { held: Array<TaskLabel>, } } | { "ProviderRestarted": { provider: Provider, } } | "PermissionsChanged" | "ReadOnlyRunKept" | { "ResumeSuggested": { held: Array<TaskLabel>, } } | { "McpUnavailable": { provider: Provider, reasons: Array<string>, } } | { "InterruptedSubagentReturned": { provider: Provider, } } | { "StopUnconfirmed": { remaining: number, } } | { "FolderAdded": { path: string, applies_from_next_session: boolean, } } | { "ExtensionInstalled": { extension: ExtensionInfo, } } | { "ExtensionRemoved": { name: string, } } | { "ExtensionPartsNotApplied": { provider: Provider,
 /**
  * 확장 이름, 부분 종류, 부분 이름.
  */
 parts: Array<[string, ExtensionPartKind, string]>, } } | { "ExtensionInjectFailed": { extension: string, part: string | null, provider: Provider, reason: string, } } | { "DirectInstallsFound": { provider: Provider, items: Array<DirectInstallItem>, } } | { "ExtensionFailed": { name: string | null, reason: string, } } | { "ContextDeferred": { constraints: Array<string>, } } | { "ConstraintsOmitted": { count: number, } } | "PacketOverflow" | { "ConstraintAdded": { rule: string, unconfirmed: boolean, } } | { "ConstraintReleased": { rule: string, } } | { "ConstraintPaused": { rule: string, unconfirmed: boolean, } } | { "ConstraintExcepted": { rule: string, condition: string, } } | { "ConstraintResumed": { rule: string, } } | { "ConstraintRestored": { rule: string, } } | { "CompletionEvidence": { evidence: CompletionEvidence, } } | { "RequestSummary": { provider_tokens: Array<[Provider, number]>, router_calls: number, router_tokens: number | null, elapsed_ms: number, } };
 
-export type ClientMessage = { jsonrpc: JsonRpcVersion, id: RequestId, } & ({ "method": "Attach", "params": { chat: ChatId | null, workdir: string, env: Array<[string, string]>, overrides: Array<[string, string]>, add_dirs: Array<string>, } } | { "method": "AttachChild", "params": { pass: string, mode: string | null, } } | { "method": "AddDir", "params": { chat: ChatId, path: string, } } | { "method": "InstallExtension", "params": { chat: ChatId, source: string, } } | { "method": "RemoveExtension", "params": { chat: ChatId, name: string, } } | { "method": "ListExtensions" } | { "method": "MoveDirectExtension", "params": { chat: ChatId, provider: Provider, name: string, } } | { "method": "LoadHistory", "params": { chat: ChatId, before: LedgerSeq | null, limit: number, } } | { "method": "RenameChat", "params": { chat: ChatId, name: string, } } | { "method": "SetChatGroup", "params": { chat: ChatId, group: string | null, } } | { "method": "Version" } | { "method": "Shutdown" } | { "method": "Detach" } | { "method": "PrepareExit", "params": { chat: ChatId, } } | { "method": "SubmitInput", "params": { chat: ChatId, client_ref: number, text: string, skip_relation: boolean, } } | { "method": "SubmitToTask", "params": { chat: ChatId, client_ref: number, task: TaskId, text: string, } } | { "method": "RunAsNewTask", "params": { input: InputId, } } | { "method": "SendNow", "params": { input: InputId, } } | { "method": "AnswerStopConfirm", "params": { input: InputId, stop: boolean, } } | { "method": "CancelInput", "params": { input: InputId, } } | { "method": "Stop", "params": { chat: ChatId, } } | { "method": "StopAll" } | { "method": "Continue", "params": { chat: ChatId, task: TaskId | null, } } | { "method": "ContinueInput", "params": { input: InputId, } } | { "method": "CloseHeld", "params": { chat: ChatId, task: TaskId, } } | { "method": "AnswerPermission", "params": { request_id: string, answer: PermissionAnswer, } } | { "method": "AnswerInput", "params": { request_id: string, answer: InputAnswer, } } | { "method": "AnswerFeedback", "params": { judgment: JudgmentId, correct: boolean, } } | { "method": "AnswerConstraintAsk", "params": { ask: ConstraintAskId, answer: ConstraintAskAnswer, } } | { "method": "ReleaseConstraint", "params": { constraint: ConstraintId, revision: number, mistaken: boolean, } } | { "method": "AddConstraint", "params": { chat: ChatId, text: string, } } | { "method": "UndoConstraintChange", "params": { constraint: ConstraintId, event: number, revision: number, } } | { "method": "ListConstraints", "params": { chat: ChatId, } } | { "method": "SubmitRouterKey", "params": { key: string, } } | { "method": "AnswerFolderTrust", "params": { path: string, fingerprint: string, apply: boolean, } } | { "method": "SetRecording", "params": { chat: ChatId, on: boolean, } } | { "method": "SetPermissionMode", "params": { chat: ChatId, mode: string, } } | { "method": "Usage", "params": { scope: UsageRange, folder: string | null, } } | { "method": "EvidenceSearch", "params": { pass: string, query: string, limit: number, } } | { "method": "EvidenceRead", "params": { pass: string, id: LedgerSeq, hash: string | null, offset: number, limit: number, } } | { "method": "ListTasks" } | { "method": "LatestChat", "params": { folder: string, } } | { "method": "ListChats", "params": { folder: string | null, } } | { "method": "SetModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetDefaultModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetModelMode", "params": { chat: ChatId, mode: ModelMode, } } | { "method": "ListModels", "params": { chat: ChatId, provider: Provider | null, } } | { "method": "Train", "params": { reset_thresholds: boolean, from: string | null, } } | { "method": "ConfirmTrain", "params": { proceed: boolean, } } | { "method": "ListRouterVersions" } | { "method": "UseRouterVersion", "params": { version: string, } } | { "method": "Prune", "params": { yes: boolean, plan: string | null, all: boolean, } } | { "method": "ExportJudgments", "params": { path: string, } });
+export type ClientMessage = { jsonrpc: JsonRpcVersion, id: RequestId, } & ({ "method": "Attach", "params": { chat: ChatId | null, workdir: string, env: Array<[string, string]>, overrides: Array<[string, string]>, add_dirs: Array<string>, } } | { "method": "AttachChild", "params": { pass: string, mode: string | null, } } | { "method": "AddDir", "params": { chat: ChatId, path: string, } } | { "method": "InstallExtension", "params": { chat: ChatId, source: string, } } | { "method": "RemoveExtension", "params": { chat: ChatId, name: string, } } | { "method": "ListExtensions" } | { "method": "MoveDirectExtension", "params": { chat: ChatId, provider: Provider, name: string, } } | { "method": "LoadHistory", "params": { chat: ChatId, before: LedgerSeq | null, limit: number, } } | { "method": "RenameChat", "params": { chat: ChatId, name: string, } } | { "method": "SetChatGroup", "params": { chat: ChatId, group: string | null, } } | { "method": "Version" } | { "method": "Shutdown" } | { "method": "Detach" } | { "method": "PrepareExit", "params": { chat: ChatId, } } | { "method": "SubmitInput", "params": { chat: ChatId, client_ref: number, text: string, skip_relation: boolean, } } | { "method": "SubmitToTask", "params": { chat: ChatId, client_ref: number, task: TaskId, text: string, } } | { "method": "RunAsNewTask", "params": { input: InputId, } } | { "method": "SendNow", "params": { input: InputId, } } | { "method": "AnswerStopConfirm", "params": { input: InputId, stop: boolean, } } | { "method": "CancelInput", "params": { input: InputId, } } | { "method": "Stop", "params": { chat: ChatId, } } | { "method": "StopAll" } | { "method": "Continue", "params": { chat: ChatId, task: TaskId | null, } } | { "method": "ContinueInput", "params": { input: InputId, } } | { "method": "CloseHeld", "params": { chat: ChatId, task: TaskId, } } | { "method": "AnswerPermission", "params": { request_id: string, answer: PermissionAnswer, } } | { "method": "AnswerInput", "params": { request_id: string, answer: InputAnswer, } } | { "method": "AnswerFeedback", "params": { judgment: JudgmentId, correct: boolean, } } | { "method": "AnswerConstraintAsk", "params": { ask: ConstraintAskId, answer: ConstraintAskAnswer, } } | { "method": "ReleaseConstraint", "params": { constraint: ConstraintId, revision: number, mistaken: boolean, } } | { "method": "AddConstraint", "params": { chat: ChatId, text: string, } } | { "method": "UndoConstraintChange", "params": { constraint: ConstraintId, event: number, revision: number, } } | { "method": "ListConstraints", "params": { chat: ChatId, } } | { "method": "SubmitRouterKey", "params": { key: string, } } | { "method": "AnswerFolderTrust", "params": { path: string, fingerprint: string, apply: boolean, } } | { "method": "SetRecording", "params": { chat: ChatId, on: boolean, } } | { "method": "SetPermissionMode", "params": { chat: ChatId, mode: string, } } | { "method": "Usage", "params": { scope: UsageRange, folder: string | null, } } | { "method": "EvidenceSearch", "params": { pass: string, query: string, limit: number, } } | { "method": "EvidenceRead", "params": { pass: string, id: LedgerSeq, hash: string | null, offset: number, limit: number, } } | { "method": "ListTasks" } | { "method": "LatestChat", "params": { folder: string, } } | { "method": "ListChats", "params": { folder: string | null, } } | { "method": "SetModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetDefaultModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetModelMode", "params": { chat: ChatId, mode: ModelMode, } } | { "method": "ListModels", "params": { chat: ChatId, provider: Provider | null, } } | { "method": "ListRouterVersions" } | { "method": "UseRouterVersion", "params": { version: string, } } | { "method": "Prune", "params": { yes: boolean, plan: string | null, all: boolean, } } | { "method": "ExportJudgments", "params": { path: string, } });
 
-export type CommandInfo = { 
+export type CommandInfo = {
 /**
  * `/` 없이.
  */
 name: string, description: string, is_skill: boolean, };
 
-export type CompletionEvidence = { state: EvidenceState, 
+export type CompletionEvidence = { state: EvidenceState,
 /**
  * `Unverified`일 때만 있다.
  */
-reason: UnverifiedReason | null, 
+reason: UnverifiedReason | null,
 /**
  * `Verified`일 때만 있다.
  */
@@ -60,15 +60,15 @@ export type ConstraintAskAnswer = "Yes" | "No";
 
 export type ConstraintAskId = number;
 
-export type ConstraintChangeInfo = { 
+export type ConstraintChangeInfo = {
 /**
  * 변경 번호. `UndoConstraintChange`에 싣는다.
  */
-event: number, constraint: ConstraintId, rule: string, kind: ConstraintChangeKind, actor: ConstraintActor, 
+event: number, constraint: ConstraintId, rule: string, kind: ConstraintChangeKind, actor: ConstraintActor,
 /**
  * 지금 되돌릴 수 있다. 그 제약의 가장 최근 변경이고 되돌림이나 작업 끝으로 생긴 변경이 아니다.
  */
-undoable: boolean, 
+undoable: boolean,
 /**
  * 변경 시각(unix 밀리초).
  */
@@ -80,11 +80,11 @@ export type ConstraintExceptionKind = "Once" | "Scoped";
 
 export type ConstraintId = number;
 
-export type ConstraintInfo = { id: ConstraintId, rule: string, 
+export type ConstraintInfo = { id: ConstraintId, rule: string,
 /**
  * 비어 있으면 적용 범위가 전체다.
  */
-scope: Array<string>, status: ConstraintStatus, 
+scope: Array<string>, status: ConstraintStatus,
 /**
  * 열린 예외. 종류와 `Scoped`의 조건 문장.
  */
@@ -92,11 +92,11 @@ exception: [ConstraintExceptionKind, string | null] | null, };
 
 export type ConstraintStatus = "Candidate" | "Active" | "Released";
 
-export type DirectInstallInfo = { provider: Provider, kind: DirectKind, name: string, 
+export type DirectInstallInfo = { provider: Provider, kind: DirectKind, name: string,
 /**
  * 확장 저장소로 옮길 수 있다.
  */
-movable: boolean, 
+movable: boolean,
 /**
  * 아직 묻지 않은 항목이면 `None`.
  */
@@ -112,11 +112,11 @@ export type Disposition = "Steer" | "NewTask" | "Queue";
 
 export type ErrorKind = "NotFound" | "RetryLater" | "RouterKey" | "Config" | "Failed";
 
-export type EvidenceItem = { id: LedgerSeq, 
+export type EvidenceItem = { id: LedgerSeq,
 /**
  * 기록 시각. unix 밀리초.
  */
-at_ms: number, 
+at_ms: number,
 /**
  * 원문 글자 수. 원문 범위는 `0..chars`.
  */
@@ -126,17 +126,17 @@ export type EvidenceState = "Verified" | "Unverified" | "NotApplicable";
 
 export type ExitPlan = "Close" | { "Ask": { running: number, } } | { "Notice": { running: number, } };
 
-export type ExtensionInfo = { name: string, 
+export type ExtensionInfo = { name: string,
 /**
  * 설치할 때 사용자가 준 원천 글자.
  */
-source: string, 
+source: string,
 /**
  * 설치 시각(unix 밀리초).
  */
 installed_at_ms: number, parts: Array<ExtensionPart>, };
 
-export type ExtensionPart = { kind: ExtensionPartKind, name: string, 
+export type ExtensionPart = { kind: ExtensionPartKind, name: string,
 /**
  * 등록한 어댑터마다 하나. 어댑터 등록 순서대로.
  */
@@ -148,23 +148,23 @@ export type Injectability = "Injectable" | "Unavailable" | "Unknown";
 
 export type InputAnswer = { "Submit": { values: Array<[string, InputValue]>, } } | "Decline" | "Cancel";
 
-export type InputField = { 
+export type InputField = {
 /**
  * 답에서 이 칸을 가리키는 값. provider가 정한다.
  */
-id: string, 
+id: string,
 /**
  * 칸 이름이나 질문 글.
  */
-title: string, 
+title: string,
 /**
  * 보충 설명. 없으면 비어 있다.
  */
-description: string, kind: InputFieldKind, 
+description: string, kind: InputFieldKind,
 /**
  * 참이면 비운 채 보낼 수 없다.
  */
-is_required: boolean, 
+is_required: boolean,
 /**
  * 참이면 화면에 입력 글자를 가린다.
  */
@@ -174,25 +174,25 @@ export type InputFieldKind = "Text" | "Integer" | "Number" | "Boolean" | { "Choi
 
 export type InputId = number;
 
-export type InputOption = { 
+export type InputOption = {
 /**
  * 답에 실리는 값.
  */
-value: string, 
+value: string,
 /**
  * 화면에 보이는 이름.
  */
-label: string, 
+label: string,
 /**
  * 보충 설명. 없으면 비어 있다.
  */
 description: string, };
 
-export type InputRequest = { 
+export type InputRequest = {
 /**
  * 요청 전체를 설명하는 글. 없으면 비어 있다.
  */
-message: string, fields: Array<InputField>, 
+message: string, fields: Array<InputField>,
 /**
  * 링크만 보이고 Saturn은 열지 않는다. 사용자가 직접 연다.
  */
@@ -214,7 +214,7 @@ export type LineRange = { first: number, last: number, };
 
 export type ModelChoice = { provider: Provider, model: string, };
 
-export type ModelInfo = { choice: ModelChoice, 
+export type ModelInfo = { choice: ModelChoice,
 /**
  * 화면에 보일 이름. provider가 알려 주지 않으면 모델 이름과 같다.
  */
@@ -222,71 +222,71 @@ name: string, };
 
 export type ModelMode = "auto" | "manual";
 
-export type Notification = { "method": "EngineVersion", "params": { saturn_version: string, protocol_version: number, } } | { "method": "StartInfo", "params": { saturn_version: string, 
+export type Notification = { "method": "EngineVersion", "params": { saturn_version: string, protocol_version: number, } } | { "method": "StartInfo", "params": { saturn_version: string,
 /**
  * 옛 engine이 보낸 값에는 없어 0으로 읽는다.
  */
-protocol_version: number, 
+protocol_version: number,
 /**
  * 어댑터 레지스트리의 기본 순서대로.
  */
-providers: Array<ProviderInfo>, router: string, router_version: string, 
+providers: Array<ProviderInfo>, router: string, router_version: string,
 /**
  * 채팅의 기본 폴더.
  */
-folder: string, 
+folder: string,
 /**
  * 더한 폴더. 기본 폴더는 들어 있지 않다.
  */
-added_dirs: Array<string>, } } | { "method": "ChildQueued", "params": { position: number, } } | { "method": "InputAccepted", "params": { client_ref: number, input: InputId, } } | { "method": "InputChanged", "params": { input: InputId, text: string, label: TaskLabel | null, 
+added_dirs: Array<string>, } } | { "method": "ChildQueued", "params": { position: number, } } | { "method": "InputAccepted", "params": { client_ref: number, input: InputId, } } | { "method": "InputChanged", "params": { input: InputId, text: string, label: TaskLabel | null,
 /**
  * 입력이 시작했거나 끼워 넣어진 작업. `label`은 표시용이라 작업 27개째부터 겹치므로 작업을 가리킬 때는 이 값을 쓴다.
  * 아직 작업에 연결되지 않았으면 `None`이다.
  */
-task: TaskId | null, state: InputState, disposition: Disposition | null, reason: QueueReason | null, } } | { "method": "TaskChanged", "params": { task: TaskId, label: TaskLabel, state: TaskState, provider: Provider | null, elapsed_ms: number, failure: string | null, } } | { "method": "HistoryChunk", "params": { chat: ChatId, entries: Array<Notification>, oldest: LedgerSeq | null, has_more: boolean, } } | { "method": "PermissionRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, summary: string, reason: string, waiting: number, } } | { "method": "PermissionResolved", "params": { request_id: string, } } | { "method": "InputRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, request: InputRequest, waiting: number, } } | { "method": "InputResolved", "params": { request_id: string, } } | { "method": "FolderTrustRequested", "params": { path: string, fingerprint: string, applied: Array<string>, ignored: Array<string>, changed_lines: Array<string>, } } | { "method": "RouterKeyRequired", "params": { reason: string, } } | { "method": "Commands", "params": { provider: Provider, commands: Array<CommandInfo>, } } | { "method": "ModelPinned", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "ModelSettings", "params": { chat: ChatId, default: ModelChoice | null, mode: ModelMode, } } | { "method": "ChatLabeled", "params": { chat: ChatId, name: string | null, group: string | null, } } | { "method": "TrainPreview", "params": { candidates: number, grader: string, estimated_tokens: number, threshold_targets: Array<string>, retrain_model: boolean, } } | { "method": "TrainProgress", "params": { stage: string, labeled: number, elapsed_ms: number, tokens: number, } } | { "method": "TaskEvent", "params": { task: TaskId, event: ProviderEvent, } } | { "method": "ChatNotice", "params": { chat: ChatId, task: TaskId | null, notice: ChatNotice, } } | { "method": "ConstraintAsked", "params": { ask: ConstraintAskId, chat: ChatId, 
+task: TaskId | null, state: InputState, disposition: Disposition | null, reason: QueueReason | null, } } | { "method": "TaskChanged", "params": { task: TaskId, label: TaskLabel, state: TaskState, provider: Provider | null, elapsed_ms: number, failure: string | null, } } | { "method": "HistoryChunk", "params": { chat: ChatId, entries: Array<Notification>, oldest: LedgerSeq | null, has_more: boolean, } } | { "method": "PermissionRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, summary: string, reason: string, waiting: number, } } | { "method": "PermissionResolved", "params": { request_id: string, } } | { "method": "InputRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, request: InputRequest, waiting: number, } } | { "method": "InputResolved", "params": { request_id: string, } } | { "method": "FolderTrustRequested", "params": { path: string, fingerprint: string, applied: Array<string>, ignored: Array<string>, changed_lines: Array<string>, } } | { "method": "RouterKeyRequired", "params": { reason: string, } } | { "method": "Commands", "params": { provider: Provider, commands: Array<CommandInfo>, } } | { "method": "ModelPinned", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "ModelSettings", "params": { chat: ChatId, default: ModelChoice | null, mode: ModelMode, } } | { "method": "ChatLabeled", "params": { chat: ChatId, name: string | null, group: string | null, } } | { "method": "TaskEvent", "params": { task: TaskId, event: ProviderEvent, } } | { "method": "ChatNotice", "params": { chat: ChatId, task: TaskId | null, notice: ChatNotice, } } | { "method": "ConstraintAsked", "params": { ask: ConstraintAskId, chat: ChatId,
 /**
  * 등록할 규칙. 사용자 원문에서 자른 글이고 한 입력에서 여러 건이면 줄바꿈으로 잇는다.
  */
-rule: string, } } | { "method": "ConstraintAskResolved", "params": { ask: ConstraintAskId, } } | { "method": "FeedbackQuestion", "params": { judgment: JudgmentId, input: InputId, label: TaskLabel, disposition: Disposition, } } | { "method": "ContextSize", "params": { chat: ChatId, tokens: number | null, threshold: number, } } | { "method": "SettingsApplied", "params": { revision: SettingsRevision, warning: SettingsWarning | null, 
+rule: string, } } | { "method": "ConstraintAskResolved", "params": { ask: ConstraintAskId, } } | { "method": "FeedbackQuestion", "params": { judgment: JudgmentId, input: InputId, label: TaskLabel, disposition: Disposition, } } | { "method": "ContextSize", "params": { chat: ChatId, tokens: number | null, threshold: number, } } | { "method": "SettingsApplied", "params": { revision: SettingsRevision, warning: SettingsWarning | null,
 /**
  * 병합한 설정의 `tui.keymap`. 검사 실패로 이전 번호를 쓰면 `None`이다.
  */
-keymap: string | null, 
+keymap: string | null,
 /**
  * 병합한 설정의 `tui.screen`(`auto`, `full`, `plain`). 검사 실패로 이전 번호를 쓰면 `None`이다.
  */
 screen: string | null, } } | { "method": "Alert", "params": { alert: Alert, } };
 
-export type NotificationMessage = { jsonrpc: JsonRpcVersion, } & ({ "method": "EngineVersion", "params": { saturn_version: string, protocol_version: number, } } | { "method": "StartInfo", "params": { saturn_version: string, 
+export type NotificationMessage = { jsonrpc: JsonRpcVersion, } & ({ "method": "EngineVersion", "params": { saturn_version: string, protocol_version: number, } } | { "method": "StartInfo", "params": { saturn_version: string,
 /**
  * 옛 engine이 보낸 값에는 없어 0으로 읽는다.
  */
-protocol_version: number, 
+protocol_version: number,
 /**
  * 어댑터 레지스트리의 기본 순서대로.
  */
-providers: Array<ProviderInfo>, router: string, router_version: string, 
+providers: Array<ProviderInfo>, router: string, router_version: string,
 /**
  * 채팅의 기본 폴더.
  */
-folder: string, 
+folder: string,
 /**
  * 더한 폴더. 기본 폴더는 들어 있지 않다.
  */
-added_dirs: Array<string>, } } | { "method": "ChildQueued", "params": { position: number, } } | { "method": "InputAccepted", "params": { client_ref: number, input: InputId, } } | { "method": "InputChanged", "params": { input: InputId, text: string, label: TaskLabel | null, 
+added_dirs: Array<string>, } } | { "method": "ChildQueued", "params": { position: number, } } | { "method": "InputAccepted", "params": { client_ref: number, input: InputId, } } | { "method": "InputChanged", "params": { input: InputId, text: string, label: TaskLabel | null,
 /**
  * 입력이 시작했거나 끼워 넣어진 작업. `label`은 표시용이라 작업 27개째부터 겹치므로 작업을 가리킬 때는 이 값을 쓴다.
  * 아직 작업에 연결되지 않았으면 `None`이다.
  */
-task: TaskId | null, state: InputState, disposition: Disposition | null, reason: QueueReason | null, } } | { "method": "TaskChanged", "params": { task: TaskId, label: TaskLabel, state: TaskState, provider: Provider | null, elapsed_ms: number, failure: string | null, } } | { "method": "HistoryChunk", "params": { chat: ChatId, entries: Array<Notification>, oldest: LedgerSeq | null, has_more: boolean, } } | { "method": "PermissionRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, summary: string, reason: string, waiting: number, } } | { "method": "PermissionResolved", "params": { request_id: string, } } | { "method": "InputRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, request: InputRequest, waiting: number, } } | { "method": "InputResolved", "params": { request_id: string, } } | { "method": "FolderTrustRequested", "params": { path: string, fingerprint: string, applied: Array<string>, ignored: Array<string>, changed_lines: Array<string>, } } | { "method": "RouterKeyRequired", "params": { reason: string, } } | { "method": "Commands", "params": { provider: Provider, commands: Array<CommandInfo>, } } | { "method": "ModelPinned", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "ModelSettings", "params": { chat: ChatId, default: ModelChoice | null, mode: ModelMode, } } | { "method": "ChatLabeled", "params": { chat: ChatId, name: string | null, group: string | null, } } | { "method": "TrainPreview", "params": { candidates: number, grader: string, estimated_tokens: number, threshold_targets: Array<string>, retrain_model: boolean, } } | { "method": "TrainProgress", "params": { stage: string, labeled: number, elapsed_ms: number, tokens: number, } } | { "method": "TaskEvent", "params": { task: TaskId, event: ProviderEvent, } } | { "method": "ChatNotice", "params": { chat: ChatId, task: TaskId | null, notice: ChatNotice, } } | { "method": "ConstraintAsked", "params": { ask: ConstraintAskId, chat: ChatId, 
+task: TaskId | null, state: InputState, disposition: Disposition | null, reason: QueueReason | null, } } | { "method": "TaskChanged", "params": { task: TaskId, label: TaskLabel, state: TaskState, provider: Provider | null, elapsed_ms: number, failure: string | null, } } | { "method": "HistoryChunk", "params": { chat: ChatId, entries: Array<Notification>, oldest: LedgerSeq | null, has_more: boolean, } } | { "method": "PermissionRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, summary: string, reason: string, waiting: number, } } | { "method": "PermissionResolved", "params": { request_id: string, } } | { "method": "InputRequested", "params": { task: TaskId, label: TaskLabel, provider: Provider, request_id: string, request: InputRequest, waiting: number, } } | { "method": "InputResolved", "params": { request_id: string, } } | { "method": "FolderTrustRequested", "params": { path: string, fingerprint: string, applied: Array<string>, ignored: Array<string>, changed_lines: Array<string>, } } | { "method": "RouterKeyRequired", "params": { reason: string, } } | { "method": "Commands", "params": { provider: Provider, commands: Array<CommandInfo>, } } | { "method": "ModelPinned", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "ModelSettings", "params": { chat: ChatId, default: ModelChoice | null, mode: ModelMode, } } | { "method": "ChatLabeled", "params": { chat: ChatId, name: string | null, group: string | null, } } | { "method": "TaskEvent", "params": { task: TaskId, event: ProviderEvent, } } | { "method": "ChatNotice", "params": { chat: ChatId, task: TaskId | null, notice: ChatNotice, } } | { "method": "ConstraintAsked", "params": { ask: ConstraintAskId, chat: ChatId,
 /**
  * 등록할 규칙. 사용자 원문에서 자른 글이고 한 입력에서 여러 건이면 줄바꿈으로 잇는다.
  */
-rule: string, } } | { "method": "ConstraintAskResolved", "params": { ask: ConstraintAskId, } } | { "method": "FeedbackQuestion", "params": { judgment: JudgmentId, input: InputId, label: TaskLabel, disposition: Disposition, } } | { "method": "ContextSize", "params": { chat: ChatId, tokens: number | null, threshold: number, } } | { "method": "SettingsApplied", "params": { revision: SettingsRevision, warning: SettingsWarning | null, 
+rule: string, } } | { "method": "ConstraintAskResolved", "params": { ask: ConstraintAskId, } } | { "method": "FeedbackQuestion", "params": { judgment: JudgmentId, input: InputId, label: TaskLabel, disposition: Disposition, } } | { "method": "ContextSize", "params": { chat: ChatId, tokens: number | null, threshold: number, } } | { "method": "SettingsApplied", "params": { revision: SettingsRevision, warning: SettingsWarning | null,
 /**
  * 병합한 설정의 `tui.keymap`. 검사 실패로 이전 번호를 쓰면 `None`이다.
  */
-keymap: string | null, 
+keymap: string | null,
 /**
  * 병합한 설정의 `tui.screen`(`auto`, `full`, `plain`). 검사 실패로 이전 번호를 쓰면 `None`이다.
  */
@@ -294,20 +294,20 @@ screen: string | null, } } | { "method": "Alert", "params": { alert: Alert, } })
 
 export type PermissionAnswer = "AllowOnce" | "AllowAlways" | { "Deny": { note: string | null, } };
 
-export type PermissionCall = { tool: PermissionTool, 
+export type PermissionCall = { tool: PermissionTool,
 /**
  * 셸은 명령, MCP는 `mcp__<서버>__<도구>`, subagent는 종류 이름, 편집과 읽기는 비어 있다.
  */
-target: string, 
+target: string,
 /**
  * 편집과 읽기가 건드리는 경로. provider가 낸 경로 그대로.
  */
-paths: Array<string>, 
+paths: Array<string>,
 /**
  * provider 샌드박스 밖에서 실행해 달라는 요청. 샌드박스가 키 저장소 접근을 막아 주지 못하므로
  * 어떤 모드와 규칙도 자동으로 허용하지 않는다.
  */
-outside_sandbox: boolean, 
+outside_sandbox: boolean,
 /**
  * provider가 파일 읽기, 목록, 검색만 하는 명령으로 분류한 셸 요청. `read-only` 모드가 읽기 전용 목록 명령처럼 허용한다.
  */
@@ -317,25 +317,25 @@ export type PermissionTool = "Shell" | "Edit" | "Read" | "Mcp" | "Subagent";
 
 export type Provider = string;
 
-export type ProviderEvent = { "Text": { agent: AgentId, subagent: SubagentId | null, text: string, } } | { "PacketReply": { agent: AgentId, text: string, } } | { "ToolCall": { agent: AgentId, subagent: SubagentId | null, call_id: string, activity: Activity, 
+export type ProviderEvent = { "Text": { agent: AgentId, subagent: SubagentId | null, text: string, } } | { "PacketReply": { agent: AgentId, text: string, } } | { "ToolCall": { agent: AgentId, subagent: SubagentId | null, call_id: string, activity: Activity,
 /**
  * 구조로 얻은 값만 담는다. 얻지 못한 값은 비운다.
  */
-detail: ToolDetail, } } | { "ToolResult": { agent: AgentId, subagent: SubagentId | null, call_id: string, output: string, 
+detail: ToolDetail, } } | { "ToolResult": { agent: AgentId, subagent: SubagentId | null, call_id: string, output: string,
 /**
  * 셸 명령이 코드로 끝났을 때만 값이 있다. 신호로 끝났거나 셸 명령이 아니면 `None`.
  */
-exit_code: number | null, } } | { "SubagentStarted": { agent: AgentId, subagent: SubagentId, parent: SubagentId | null, } } | { "SubagentEnded": { agent: AgentId, subagent: SubagentId, } } | { "SubagentInterrupted": { agent: AgentId, subagent: SubagentId, } } | { "PermissionRequested": { agent: AgentId, request_id: string, summary: string, reason: string, 
+exit_code: number | null, } } | { "SubagentStarted": { agent: AgentId, subagent: SubagentId, parent: SubagentId | null, } } | { "SubagentEnded": { agent: AgentId, subagent: SubagentId, } } | { "SubagentInterrupted": { agent: AgentId, subagent: SubagentId, } } | { "PermissionRequested": { agent: AgentId, request_id: string, summary: string, reason: string,
 /**
  * 규칙으로 판정할 수 있는 호출만 담는다. 없으면 사용자에게 묻는다.
  */
 call: PermissionCall | null, } } | { "InputRequested": { agent: AgentId, request_id: string, request: InputRequest, } } | { "TurnCompleted": { agent: AgentId, origin: TurnOrigin, } } | { "Usage": UsageReport } | { "ContextSize": { agent: AgentId, tokens: number | null, } } | { "StreamLost": { agent: AgentId, } } | { "CacheWindow": { agent: AgentId, ttl_secs: number, } } | { "SettingsApplied": { agent: AgentId, values: Array<[string, string]>, } } | { "McpUnavailable": { agent: AgentId, reasons: Array<string>, } };
 
-export type ProviderInfo = { provider: Provider, 
+export type ProviderInfo = { provider: Provider,
 /**
  * 화면과 사용량에 보이는 이름.
  */
-display_name: string, 
+display_name: string,
 /**
  * 확인하지 못했으면 빈 글자.
  */
@@ -343,29 +343,29 @@ version: string, };
 
 export type PruneSkipReason = "OpenInput" | "OpenRun" | "PendingStop" | "ActiveSession" | "WaitingSession" | "Attached" | "UsedSincePreview";
 
-export type PruneSkipped = { chat: ChatId, 
+export type PruneSkipped = { chat: ChatId,
 /**
  * 이유가 여럿이면 모두.
  */
 reasons: Array<PruneSkipReason>, };
 
-export type QueryResult = { "kind": "History", "data": { chat: ChatId, entries: Array<Notification>, oldest: LedgerSeq | null, has_more: boolean, } } | { "kind": "Usage", "data": { range: UsageRange, rows: Array<UsageRow>, } } | { "kind": "Tasks", "data": { items: Array<TaskListItem>, } } | { "kind": "LatestChat", "data": { chat: ChatId | null, } } | { "kind": "Chats", "data": { chats: Array<ChatListItem>, } } | { "kind": "Models", "data": { models: Array<ModelInfo>, } } | { "kind": "RouterVersions", "data": { current: string, versions: Array<RouterVersionInfo>, } } | { "kind": "ExitPlan", "data": { plan: ExitPlan, } } | { "kind": "PrunePreview", "data": { chats: Array<ChatListItem>, skipped: Array<PruneSkipped>, 
+export type QueryResult = { "kind": "History", "data": { chat: ChatId, entries: Array<Notification>, oldest: LedgerSeq | null, has_more: boolean, } } | { "kind": "Usage", "data": { range: UsageRange, rows: Array<UsageRow>, } } | { "kind": "Tasks", "data": { items: Array<TaskListItem>, } } | { "kind": "LatestChat", "data": { chat: ChatId | null, } } | { "kind": "Chats", "data": { chats: Array<ChatListItem>, } } | { "kind": "Models", "data": { models: Array<ModelInfo>, } } | { "kind": "RouterVersions", "data": { current: string, versions: Array<RouterVersionInfo>, } } | { "kind": "ExitPlan", "data": { plan: ExitPlan, } } | { "kind": "PrunePreview", "data": { chats: Array<ChatListItem>, skipped: Array<PruneSkipped>,
 /**
  * 지울 채팅의 입력, 실행, 이벤트, 사용량, session 행 수. 판단 기록과 설정 스냅샷은 세지 않는다.
  */
-rows: number, 
+rows: number,
 /**
  * 이 미리보기의 번호. `Prune { yes: true, plan }`에 실어 보내면 이 목록의 채팅만 지운다. 한 번만 쓸 수 있다.
  */
-plan: string, } } | { "kind": "Pruned", "data": { chats: Array<ChatListItem>, skipped: Array<PruneSkipped>, rows: number, } } | { "kind": "EvidenceCandidates", "data": { set_hash: string, total: number, items: Array<EvidenceItem>, } } | { "kind": "EvidenceRecord", "data": { id: LedgerSeq, hash: string, chars: number, offset: number, next_offset: number | null, text: string, } } | { "kind": "Constraints", "data": { chat: ChatId, revision: number, 
+plan: string, } } | { "kind": "Pruned", "data": { chats: Array<ChatListItem>, skipped: Array<PruneSkipped>, rows: number, } } | { "kind": "EvidenceCandidates", "data": { set_hash: string, total: number, items: Array<EvidenceItem>, } } | { "kind": "EvidenceRecord", "data": { id: LedgerSeq, hash: string, chars: number, offset: number, next_offset: number | null, text: string, } } | { "kind": "Constraints", "data": { chat: ChatId, revision: number,
 /**
  * 만든 순서. 해제된 제약도 담는다.
  */
-constraints: Array<ConstraintInfo>, 
+constraints: Array<ConstraintInfo>,
 /**
  * 시각순 변경 내역. 등록 확인을 거절한 `Declined`는 담지 않는다.
  */
-changes: Array<ConstraintChangeInfo>, } } | { "kind": "ExtensionList", "data": { extensions: Array<ExtensionInfo>, 
+changes: Array<ConstraintChangeInfo>, } } | { "kind": "ExtensionList", "data": { extensions: Array<ExtensionInfo>,
 /**
  * provider에 직접 설치돼 있는 항목. 어댑터 등록 순서대로.
  */
@@ -373,23 +373,23 @@ direct: Array<DirectInstallInfo>, } };
 
 export type QueueReason = { "AfterTask": TaskLabel } | "RouterOrder" | "RouterConnection" | "WriteTurn" | "AfterCompaction" | "AfterAllTasks" | "ConfirmStop";
 
-export type Request = { "method": "Attach", "params": { chat: ChatId | null, workdir: string, env: Array<[string, string]>, overrides: Array<[string, string]>, add_dirs: Array<string>, } } | { "method": "AttachChild", "params": { pass: string, mode: string | null, } } | { "method": "AddDir", "params": { chat: ChatId, path: string, } } | { "method": "InstallExtension", "params": { chat: ChatId, source: string, } } | { "method": "RemoveExtension", "params": { chat: ChatId, name: string, } } | { "method": "ListExtensions" } | { "method": "MoveDirectExtension", "params": { chat: ChatId, provider: Provider, name: string, } } | { "method": "LoadHistory", "params": { chat: ChatId, before: LedgerSeq | null, limit: number, } } | { "method": "RenameChat", "params": { chat: ChatId, name: string, } } | { "method": "SetChatGroup", "params": { chat: ChatId, group: string | null, } } | { "method": "Version" } | { "method": "Shutdown" } | { "method": "Detach" } | { "method": "PrepareExit", "params": { chat: ChatId, } } | { "method": "SubmitInput", "params": { chat: ChatId, client_ref: number, text: string, skip_relation: boolean, } } | { "method": "SubmitToTask", "params": { chat: ChatId, client_ref: number, task: TaskId, text: string, } } | { "method": "RunAsNewTask", "params": { input: InputId, } } | { "method": "SendNow", "params": { input: InputId, } } | { "method": "AnswerStopConfirm", "params": { input: InputId, stop: boolean, } } | { "method": "CancelInput", "params": { input: InputId, } } | { "method": "Stop", "params": { chat: ChatId, } } | { "method": "StopAll" } | { "method": "Continue", "params": { chat: ChatId, task: TaskId | null, } } | { "method": "ContinueInput", "params": { input: InputId, } } | { "method": "CloseHeld", "params": { chat: ChatId, task: TaskId, } } | { "method": "AnswerPermission", "params": { request_id: string, answer: PermissionAnswer, } } | { "method": "AnswerInput", "params": { request_id: string, answer: InputAnswer, } } | { "method": "AnswerFeedback", "params": { judgment: JudgmentId, correct: boolean, } } | { "method": "AnswerConstraintAsk", "params": { ask: ConstraintAskId, answer: ConstraintAskAnswer, } } | { "method": "ReleaseConstraint", "params": { constraint: ConstraintId, revision: number, mistaken: boolean, } } | { "method": "AddConstraint", "params": { chat: ChatId, text: string, } } | { "method": "UndoConstraintChange", "params": { constraint: ConstraintId, event: number, revision: number, } } | { "method": "ListConstraints", "params": { chat: ChatId, } } | { "method": "SubmitRouterKey", "params": { key: string, } } | { "method": "AnswerFolderTrust", "params": { path: string, fingerprint: string, apply: boolean, } } | { "method": "SetRecording", "params": { chat: ChatId, on: boolean, } } | { "method": "SetPermissionMode", "params": { chat: ChatId, mode: string, } } | { "method": "Usage", "params": { scope: UsageRange, folder: string | null, } } | { "method": "EvidenceSearch", "params": { pass: string, query: string, limit: number, } } | { "method": "EvidenceRead", "params": { pass: string, id: LedgerSeq, hash: string | null, offset: number, limit: number, } } | { "method": "ListTasks" } | { "method": "LatestChat", "params": { folder: string, } } | { "method": "ListChats", "params": { folder: string | null, } } | { "method": "SetModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetDefaultModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetModelMode", "params": { chat: ChatId, mode: ModelMode, } } | { "method": "ListModels", "params": { chat: ChatId, provider: Provider | null, } } | { "method": "Train", "params": { reset_thresholds: boolean, from: string | null, } } | { "method": "ConfirmTrain", "params": { proceed: boolean, } } | { "method": "ListRouterVersions" } | { "method": "UseRouterVersion", "params": { version: string, } } | { "method": "Prune", "params": { yes: boolean, plan: string | null, all: boolean, } } | { "method": "ExportJudgments", "params": { path: string, } };
+export type Request = { "method": "Attach", "params": { chat: ChatId | null, workdir: string, env: Array<[string, string]>, overrides: Array<[string, string]>, add_dirs: Array<string>, } } | { "method": "AttachChild", "params": { pass: string, mode: string | null, } } | { "method": "AddDir", "params": { chat: ChatId, path: string, } } | { "method": "InstallExtension", "params": { chat: ChatId, source: string, } } | { "method": "RemoveExtension", "params": { chat: ChatId, name: string, } } | { "method": "ListExtensions" } | { "method": "MoveDirectExtension", "params": { chat: ChatId, provider: Provider, name: string, } } | { "method": "LoadHistory", "params": { chat: ChatId, before: LedgerSeq | null, limit: number, } } | { "method": "RenameChat", "params": { chat: ChatId, name: string, } } | { "method": "SetChatGroup", "params": { chat: ChatId, group: string | null, } } | { "method": "Version" } | { "method": "Shutdown" } | { "method": "Detach" } | { "method": "PrepareExit", "params": { chat: ChatId, } } | { "method": "SubmitInput", "params": { chat: ChatId, client_ref: number, text: string, skip_relation: boolean, } } | { "method": "SubmitToTask", "params": { chat: ChatId, client_ref: number, task: TaskId, text: string, } } | { "method": "RunAsNewTask", "params": { input: InputId, } } | { "method": "SendNow", "params": { input: InputId, } } | { "method": "AnswerStopConfirm", "params": { input: InputId, stop: boolean, } } | { "method": "CancelInput", "params": { input: InputId, } } | { "method": "Stop", "params": { chat: ChatId, } } | { "method": "StopAll" } | { "method": "Continue", "params": { chat: ChatId, task: TaskId | null, } } | { "method": "ContinueInput", "params": { input: InputId, } } | { "method": "CloseHeld", "params": { chat: ChatId, task: TaskId, } } | { "method": "AnswerPermission", "params": { request_id: string, answer: PermissionAnswer, } } | { "method": "AnswerInput", "params": { request_id: string, answer: InputAnswer, } } | { "method": "AnswerFeedback", "params": { judgment: JudgmentId, correct: boolean, } } | { "method": "AnswerConstraintAsk", "params": { ask: ConstraintAskId, answer: ConstraintAskAnswer, } } | { "method": "ReleaseConstraint", "params": { constraint: ConstraintId, revision: number, mistaken: boolean, } } | { "method": "AddConstraint", "params": { chat: ChatId, text: string, } } | { "method": "UndoConstraintChange", "params": { constraint: ConstraintId, event: number, revision: number, } } | { "method": "ListConstraints", "params": { chat: ChatId, } } | { "method": "SubmitRouterKey", "params": { key: string, } } | { "method": "AnswerFolderTrust", "params": { path: string, fingerprint: string, apply: boolean, } } | { "method": "SetRecording", "params": { chat: ChatId, on: boolean, } } | { "method": "SetPermissionMode", "params": { chat: ChatId, mode: string, } } | { "method": "Usage", "params": { scope: UsageRange, folder: string | null, } } | { "method": "EvidenceSearch", "params": { pass: string, query: string, limit: number, } } | { "method": "EvidenceRead", "params": { pass: string, id: LedgerSeq, hash: string | null, offset: number, limit: number, } } | { "method": "ListTasks" } | { "method": "LatestChat", "params": { folder: string, } } | { "method": "ListChats", "params": { folder: string | null, } } | { "method": "SetModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetDefaultModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetModelMode", "params": { chat: ChatId, mode: ModelMode, } } | { "method": "ListModels", "params": { chat: ChatId, provider: Provider | null, } } | { "method": "ListRouterVersions" } | { "method": "UseRouterVersion", "params": { version: string, } } | { "method": "Prune", "params": { yes: boolean, plan: string | null, all: boolean, } } | { "method": "ExportJudgments", "params": { path: string, } };
 
 export type RequestId = number;
 
-export type Response = { jsonrpc: JsonRpcVersion, 
+export type Response = { jsonrpc: JsonRpcVersion,
 /**
  * 줄을 해석하지 못해 번호를 모르면 `null`.
  */
 id: RequestId | null, } & ({ "result": QueryResult | null } | { "error": RpcError });
 
-export type RouterVersionInfo = { version: string, router: string, ece: number | null, 
+export type RouterVersionInfo = { version: string, router: string, ece: number | null,
 /**
  * (질문, 목표 틀림 비율, 기준값, 최근 200건 틀림, 판단 수).
  */
 questions: Array<[string, number, number, number, number]>, };
 
-export type RpcError = { code: number, 
+export type RpcError = { code: number,
 /**
  * 같은 `code` 안의 원인 종류. 옛 engine은 보내지 않는다.
  */
@@ -411,39 +411,39 @@ export type TaskId = number;
 
 export type TaskLabel = string;
 
-export type TaskListItem = { chat: ChatId, chat_name: string, group: string | null, 
+export type TaskListItem = { chat: ChatId, chat_name: string, group: string | null,
 /**
  * 작업 행과 끝난 작업 행에만 있다. `None`이면 작업 없는 채팅 행.
  */
-task: TaskId | null, 
+task: TaskId | null,
 /**
  * 작업 글자. 끝난 작업(글자를 돌려줬다)과 채팅 행은 `None`.
  */
-label: TaskLabel | null, 
+label: TaskLabel | null,
 /**
  * 채팅 행은 `None`. `Done`과 `Failed`는 끝난 작업 행.
  */
-state: TaskState | null, needs_permission: boolean, 
+state: TaskState | null, needs_permission: boolean,
 /**
  * 다른 Saturn이 실행 중이면 읽기 전용.
  */
-busy_elsewhere: boolean, 
+busy_elsewhere: boolean,
 /**
  * subagent와 자식 채팅 수.
  */
-children: number, 
+children: number,
 /**
  * 채팅의 기본 폴더. TUI가 작업 목록의 폴더 범위를 가를 때 쓴다.
  */
-folder: string | null, 
+folder: string | null,
 /**
  * 이 행으로 갈 대기 입력을 접수 순서로. 갈 작업이 없는 새 대기 입력은 채팅 행에 붙는다.
  */
-queued: Array<InputId>, 
+queued: Array<InputId>,
 /**
  * 그 작업 session이 지금 쓰는 모델. 모르면 `None`.
  */
-model: string | null, 
+model: string | null,
 /**
  * 끝난 작업 행에서 마지막 실행이 끝난 시각(unix 밀리초).
  */
@@ -453,15 +453,15 @@ export type TaskState = "Running" | "AnsweredTreeRunning" | "AwaitingPermission"
 
 export type ToolCategory = "Shell" | "TestRun" | "FileRead" | "FileEdit" | "Reasoning" | "Other";
 
-export type ToolDetail = { category: ToolCategory, 
+export type ToolDetail = { category: ToolCategory,
 /**
  * provider가 낸 경로 그대로. 없으면 빈 목록.
  */
-paths: Array<string>, 
+paths: Array<string>,
 /**
  * 읽은 범위를 알 때만.
  */
-read_lines: LineRange | null, 
+read_lines: LineRange | null,
 /**
  * 파일 수정에서 줄 수를 알 때만.
  */
@@ -473,33 +473,33 @@ export type UnverifiedReason = "NotChecked" | "CheckFailed" | "EditedDuringCheck
 
 export type UsageRange = "Chat" | "Day" | "Week";
 
-export type UsageReport = { agent: AgentId, subagent: SubagentId | null, model: string | null, scope: UsageScope, input: number | null, cache_read: number | null, cache_write: number | null, output: number | null, 
+export type UsageReport = { agent: AgentId, subagent: SubagentId | null, model: string | null, scope: UsageScope, input: number | null, cache_read: number | null, cache_write: number | null, output: number | null,
 /**
  * 출력의 일부다(Codex `reasoningOutputTokens`). 합계에 더하지 않는다.
  */
 reasoning: number | null, };
 
-export type UsageRow = { 
+export type UsageRow = {
 /**
  * provider·모델이나 router. 예: `codex · gpt-5.6-terra`, `router · jev`.
  */
-who: string, 
+who: string,
 /**
  * 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론 순. 보고되지 않았으면 `None`.
  */
-tokens: [number | null, number | null, number | null, number | null, number | null], router_calls: number, 
+tokens: [number | null, number | null, number | null, number | null, number | null], router_calls: number,
 /**
  * 단위: 마이크로 달러.
  */
-estimated_cost_micros: number | null, 
+estimated_cost_micros: number | null,
 /**
  * 기록에 없으면 `None`.
  */
-compactions: number | null, 
+compactions: number | null,
 /**
  * 기록에 없으면 `None`.
  */
-labels: number | null, 
+labels: number | null,
 /**
  * 여러 턴의 합계인 행만 턴 수를 채운다. 한 턴이면 `None`.
  */

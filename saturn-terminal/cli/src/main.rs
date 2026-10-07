@@ -90,9 +90,6 @@ async fn run(lang: Lang, cli: Cli, mode: OpenMode) -> anyhow::Result<()> {
         Some(Command::Prune(args)) => commands::prune::run(lang, &mut client, &args).await,
         Some(Command::Export(args)) => commands::export::run(lang, &mut client, &args).await,
         Some(Command::Router {
-            command: RouterCommand::Train(args),
-        }) => commands::train::run(lang, &mut client, &args).await,
-        Some(Command::Router {
             command: RouterCommand::Use(args),
         }) => commands::router::use_version(lang, &mut client, &args).await,
         Some(Command::Router {

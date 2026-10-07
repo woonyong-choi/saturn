@@ -6,7 +6,6 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixListener;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
@@ -339,10 +338,8 @@ fn engine_internal_error_exits_seventy() {
 }
 
 #[test]
-fn training_without_enough_samples_exits_seventy_five() {
-    let run = run_with_engine(&["router", "train", "--yes"], |_| {
-        fail(INTERNAL, ErrorKind::RetryLater)
-    });
+fn retry_later_failure_exits_seventy_five() {
+    let run = run_with_engine(&["usage"], |_| fail(INTERNAL, ErrorKind::RetryLater));
 
     assert_eq!(run.code, Some(75), "{}", run.stderr);
 }
@@ -391,29 +388,13 @@ fn expected_failure_exits_one() {
 }
 
 #[test]
-fn training_without_a_terminal_to_confirm_exits_two_and_cancels() {
-    let cancelled = Arc::new(AtomicBool::new(false));
-    let seen = Arc::clone(&cancelled);
-    let run = run_with_engine(&["router", "train"], move |request| match request {
-        Request::Train { .. } => Act::Ok(vec![Notification::TrainPreview {
-            candidates: 250,
-            grader: "grader-a".to_owned(),
-            estimated_tokens: 1,
-            threshold_targets: Vec::new(),
-            retrain_model: false,
-        }]),
-        Request::ConfirmTrain { proceed: false } => {
-            seen.store(true, Ordering::SeqCst);
-            Act::Ok(Vec::new())
-        }
-        other => panic!("unexpected {other:?}"),
-    });
+fn router_train_is_rejected_before_reaching_an_engine() {
+    let home = tempfile::tempdir().unwrap();
+
+    let run = saturn(home.path(), &["router", "train", "--yes"], &[], "");
 
     assert_eq!(run.code, Some(2), "{}", run.stderr);
-    assert!(
-        cancelled.load(Ordering::SeqCst),
-        "no cancel request arrived"
-    );
+    assert!(run.stderr.contains("train"), "{}", run.stderr);
 }
 
 /// engine가 입력 하나를 접수해 작업 A로 실행하고 `end`로 끝내는 순서. `RequestSummary`는 보내지 않는다.

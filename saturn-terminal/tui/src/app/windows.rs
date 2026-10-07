@@ -23,7 +23,6 @@ use crate::view::router_version::RouterVersionCommand;
 use crate::view::status_board::{self, Button};
 use crate::view::stop_confirm::StopChoice;
 use crate::view::task_list::TaskListCommand;
-use crate::view::train_confirm::TrainChoice;
 use crate::view::transcript::{Transcript, TranscriptCell};
 use crate::view::usage::usage_request;
 
@@ -95,17 +94,6 @@ impl App {
                     _ => return None,
                 }
                 Some(self.on_stop_confirm_action(Action::Confirm))
-            }
-            KeyArea::TrainConfirm => {
-                let Some(Window::TrainConfirm(confirm)) = &mut self.window else {
-                    return None;
-                };
-                match index {
-                    0 => confirm.up(),
-                    1 => confirm.down(),
-                    _ => return None,
-                }
-                Some(self.on_train_action(Action::Confirm))
             }
             KeyArea::ConstraintAsk => {
                 let Some(Window::ConstraintAsk(ask)) = &mut self.window else {
@@ -457,27 +445,6 @@ impl App {
         }
         Vec::new()
     }
-
-    pub(super) fn on_train_action(&mut self, action: Action) -> Vec<Effect> {
-        let Some(Window::TrainConfirm(confirm)) = &mut self.window else {
-            return Vec::new();
-        };
-        let proceed = match action {
-            Action::Up => {
-                confirm.up();
-                return Vec::new();
-            }
-            Action::Down => {
-                confirm.down();
-                return Vec::new();
-            }
-            Action::Confirm => confirm.selected == TrainChoice::Run,
-            Action::Close => false,
-            _ => return Vec::new(),
-        };
-        self.window = None;
-        vec![Effect::Send(Request::ConfirmTrain { proceed })]
-    }
 }
 
 impl App {
@@ -659,14 +626,6 @@ impl App {
 
 fn router_version_request(command: RouterVersionCommand) -> Request {
     match command {
-        RouterVersionCommand::ResetThresholds => Request::Train {
-            reset_thresholds: true,
-            from: None,
-        },
-        RouterVersionCommand::TrainFrom(version) => Request::Train {
-            reset_thresholds: false,
-            from: Some(version),
-        },
         RouterVersionCommand::Use(version) => Request::UseRouterVersion { version },
     }
 }

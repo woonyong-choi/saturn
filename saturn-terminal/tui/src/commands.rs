@@ -77,12 +77,6 @@ pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
         takes_provider: false,
     },
     CommandSpec {
-        path: "train",
-        description: "판단 모델 학습",
-        values: &[],
-        takes_provider: false,
-    },
-    CommandSpec {
         path: "router use",
         description: "판단 모델 버전",
         values: &[],
@@ -265,11 +259,6 @@ pub(crate) enum SlashCommand {
     Usage,
     /// `/prune`. 지울 채팅을 미리 보이는 창을 연다.
     Prune,
-    /// 채점 후보가 200건 미만이면 engine이 거절한다.
-    Train {
-        reset_thresholds: bool,
-        from: Option<String>,
-    },
     /// `/router use`
     RouterVersion,
     /// 목록에 없는 provider 명령. 원문 그대로 메인 에이전트 provider에 넘긴다. 고른 항목이 어느 provider의 것이든 같고, 다른 provider session을 열거나 전환을 묻지 않는다(설계: providers-and-sessions.md).
@@ -327,7 +316,11 @@ pub(crate) fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         "quit" => no_args("quit", &args, SlashCommand::Quit)?,
         "usage" => no_args("usage", &args, SlashCommand::Usage)?,
         "prune" => no_args("prune", &args, SlashCommand::Prune)?,
-        "train" => parse_train(&args)?,
+        "train" => {
+            return Err(CommandError::Unknown {
+                name: "train".to_owned(),
+            });
+        }
         "router" => parse_router(&args)?,
         "" => {
             return Err(CommandError::Unknown {
@@ -525,29 +518,6 @@ fn parse_feedback(args: &[&str]) -> Result<bool, CommandError> {
         ["2"] => Ok(false),
         _ => Err(invalid("feedback", &args.join(" "))),
     }
-}
-
-// cost: time O(a), heap O(a), stack O(1)
-// vars: a = 인자 글자 수
-// basis: estimate
-fn parse_train(args: &[&str]) -> Result<SlashCommand, CommandError> {
-    let mut reset_thresholds = false;
-    let mut from = None;
-    let mut rest = args.iter();
-    while let Some(argument) = rest.next() {
-        match *argument {
-            "--reset-thresholds" => reset_thresholds = true,
-            "--from" => match rest.next() {
-                Some(version) => from = Some((*version).to_string()),
-                None => return Err(invalid("train", argument)),
-            },
-            _ => return Err(invalid("train", argument)),
-        }
-    }
-    Ok(SlashCommand::Train {
-        reset_thresholds,
-        from,
-    })
 }
 
 // cost: time O(a), heap O(a), stack O(1)
@@ -749,16 +719,12 @@ mod tests {
     }
 
     #[test]
-    fn parse_train_flags_are_read() {
-        let parsed = parse("/train --reset-thresholds --from v2").unwrap();
-
-        assert_eq!(
-            parsed,
-            Some(SlashCommand::Train {
-                reset_thresholds: true,
-                from: Some("v2".to_string())
-            })
-        );
+    fn train_is_not_a_saturn_command() {
+        assert!(!SATURN_COMMANDS.iter().any(|spec| spec.path == "train"));
+        assert!(matches!(
+            parse("/train --reset-thresholds"),
+            Err(CommandError::Unknown { name }) if name == "train"
+        ));
     }
 
     #[test]

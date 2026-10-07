@@ -23,7 +23,6 @@ pub(crate) mod start_screen;
 pub(crate) mod status_board;
 pub(crate) mod stop_confirm;
 pub(crate) mod task_list;
-pub(crate) mod train_confirm;
 pub(crate) mod transcript;
 pub mod usage;
 
