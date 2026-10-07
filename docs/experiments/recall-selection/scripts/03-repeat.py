@@ -24,47 +24,26 @@ def load(path: Path) -> Any:
 
 def main() -> None:
     os.umask(0o077)
-    source = PRIVATE / "conservative"
-    previous = {
-        phase: {
-            f"{j['id']}-{j['arm']}": j
-            for j in load(PRIVATE / phase / "calls-plan.json")
-        }
-        for phase in ["focused", "coverage"]
-    }
-    reuse = {}
-    for job in load(source / "calls-plan.json"):
-        key = f"{job['id']}-{job['arm']}"
-        for phase, entries in previous.items():
-            old = entries[key]
-            if all(job[field] == old[field] for field in ["context", "question"]):
-                old_reuse_path = PRIVATE / phase / "reuse.json"
-                old_reuse = load(old_reuse_path) if old_reuse_path.exists() else {}
-                reuse[key] = old_reuse.get(key, phase)
-                break
-        if key not in reuse:
-            raise RuntimeError(f"new input requires collection: {key}")
-    (source / "reuse.json").write_text(json.dumps(reuse, indent=2) + "\n")
-    (source / "reuse-seal.json").write_text(
-        json.dumps(
-            {
-                "reuse.json": hashlib.sha256(
-                    (source / "reuse.json").read_bytes()
-                ).hexdigest()
-            },
-            indent=2,
+    source = PRIVATE / os.environ.get("SATURN_SELECTION_SOURCE", "format")
+    reuse_path = source / "reuse.json"
+    reuse = load(reuse_path) if reuse_path.exists() else {}
+    expected = [
+        (
+            reuse.get(f"{job['id']}-{job['arm']}", source.name),
+            f"{job['id']}-{job['arm']}",
         )
-    )
+        for job in load(source / "calls-plan.json")
+    ]
     deadline = time.monotonic() + 7200
     while not all(
         (PRIVATE / phase / "raw" / f"{provider}-{key}" / "result.json").exists()
-        for key, phase in reuse.items()
+        for phase, key in expected
         for provider in ["claude", "codex"]
     ):
         if time.monotonic() > deadline:
             raise TimeoutError("source collection did not finish")
         time.sleep(3)
-    os.environ["SATURN_SELECTION_PHASE"] = "conservative"
+    os.environ["SATURN_SELECTION_PHASE"] = source.name
     spec = importlib.util.spec_from_file_location("study", PUBLIC / "scripts/01-run.py")
     study = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(study)
@@ -83,11 +62,12 @@ def main() -> None:
     target.mkdir(exist_ok=False)
     for name in ["cases.json", "queries.json", "questions.json", "env.json"]:
         shutil.copy2(source / name, target / name)
+    environment = load(target / "env.json")
+    environment.update(seed=7111, source_env=f"{source.name}/env.json", repeats=[2, 3])
+    (target / "env.json").write_text(json.dumps(environment, indent=2) + "\n")
     shutil.copytree(source / "code", target / "code")
     shutil.copy2(Path(__file__), target / "code/03-repeat.py")
-    shutil.copy2(
-        PUBLIC / "conservative-design.md", target / "code/conservative-design.md"
-    )
+    shutil.copy2(PUBLIC / "format-design.md", target / "code/format-design.md")
     (target / "raw").mkdir()
     (target / "work").mkdir()
     jobs = [

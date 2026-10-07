@@ -246,9 +246,16 @@ def result_folder(job: dict[str, Any], provider: str) -> Path:
 def collect() -> None:
     module = helper("02-collect.py")
     module.PRIVATE = RUN
+    reuse_path = RUN / "reuse.json"
+    reuse = load(reuse_path) if reuse_path.exists() else {}
+    jobs = [
+        job
+        for job in load(RUN / "calls-plan.json")
+        if f"{job['id']}-{job['arm']}" not in reuse
+    ]
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         futures = [
-            pool.submit(module.run_provider, provider, load(RUN / "calls-plan.json"))
+            pool.submit(module.run_provider, provider, jobs)
             for provider in ["claude", "codex"]
         ]
         for future in futures:
