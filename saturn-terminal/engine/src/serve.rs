@@ -165,7 +165,6 @@ impl Engine {
             Request::LatestChat { folder } => self.latest_chat_result(&folder).await?,
             Request::ListChats { folder } => self.chat_list_result(folder.as_deref()).await?,
             Request::ListTasks => self.task_list_result().await?,
-            Request::ListRouterVersions => return Err(unsupported("ListRouterVersions")),
             Request::Prune { yes, plan, all } => {
                 self.prune_records(client, (yes, plan, all)).await?
             }
@@ -332,8 +331,6 @@ impl Engine {
                 self.set_default_model(client, chat, &model).await
             }
             Request::SetModelMode { chat, mode } => self.set_model_mode(client, chat, mode).await,
-            // TODO(#91): router 버전
-            Request::UseRouterVersion { .. } => Err(unsupported("UseRouterVersion")),
             Request::ExportJudgments { path } => self.export_judgments(&path).await,
             Request::LoadHistory { .. }
             | Request::PrepareExit { .. }
@@ -345,7 +342,6 @@ impl Engine {
             | Request::ListTasks
             | Request::ListExtensions
             | Request::ListConstraints { .. }
-            | Request::ListRouterVersions
             | Request::Prune { .. } => unreachable!("query requests are answered by dispatch"),
         }
     }

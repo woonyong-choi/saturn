@@ -41,7 +41,6 @@ use crate::view::popup::{Popup, PopupItem, PopupSuppress};
 use crate::view::prune_window::PruneWindow;
 use crate::view::resume_prompt::ResumePrompt;
 use crate::view::router_key_prompt::RouterKeyPrompt;
-use crate::view::router_version::RouterVersionScreen;
 use crate::view::start_screen::StartInfo;
 use crate::view::status_board::{self, Button};
 use crate::view::stop_confirm::StopConfirm;
@@ -91,7 +90,6 @@ pub(crate) enum Window {
     TaskList(TaskList),
     FullTranscript(FullTranscript),
     Usage(UsageScreen),
-    RouterVersion(RouterVersionScreen),
     StopConfirm(StopConfirm),
     ConstraintAsk(ConstraintAsk),
     Model(ModelPicker),
@@ -338,7 +336,6 @@ impl App {
             }
             Some(Window::FullTranscript(_)) => return KeyArea::FullTranscript,
             Some(Window::Usage(_)) => return KeyArea::Usage,
-            Some(Window::RouterVersion(_)) => return KeyArea::RouterVersion,
             Some(Window::StopConfirm(_)) => return KeyArea::StopConfirm,
             Some(Window::ConstraintAsk(_)) => return KeyArea::ConstraintAsk,
             Some(Window::Model(_)) => return KeyArea::ModelPicker,
@@ -606,9 +603,7 @@ impl App {
             KeyArea::BoardFocus => self.on_board_action(action, now),
             KeyArea::Input => self.on_input_action(&action, now),
             KeyArea::Search => self.on_search_action(action, now),
-            KeyArea::FullTranscript | KeyArea::Usage | KeyArea::RouterVersion => {
-                self.on_screen_action(action)
-            }
+            KeyArea::FullTranscript | KeyArea::Usage => self.on_screen_action(action),
             KeyArea::StopConfirm => self.on_stop_confirm_action(action),
             KeyArea::ConstraintAsk => self.on_constraint_ask_action(action),
             KeyArea::ModelPicker => self.on_model_action(action),

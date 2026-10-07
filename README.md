@@ -130,7 +130,7 @@ Error: Router key required (router key required: router rejected the key): set t
 | 0 | Success |
 | 1 | Other failure, including answering no to a confirmation and a failed task in plain mode |
 | 2 | Usage error: change the call, for example no terminal for a picker or a nested run inside an agent without a pass |
-| 66 | Nothing to open: no chat to continue, missing folder, unknown router version |
+| 66 | Nothing to open: no chat to continue, missing folder |
 | 69 | Engine unavailable: failed to start, no answer, failed to replace, connection lost |
 | 70 | Engine internal error |
 | 75 | Not now, try later |

@@ -24,7 +24,6 @@ use crate::view::popup::PopupView;
 use crate::view::prune_window::PruneWindowView;
 use crate::view::resume_prompt::ResumePromptView;
 use crate::view::router_key_prompt::RouterKeyPromptView;
-use crate::view::router_version::RouterVersionView;
 use crate::view::start_screen::StartScreenView;
 use crate::view::status_board::{self, StatusBoardView};
 use crate::view::stop_confirm::StopConfirmView;
@@ -130,9 +129,6 @@ impl App {
             Some(Window::Resume(prompt)) => ResumePromptView { prompt, lang }.render(frame, area),
             Some(Window::TaskList(list)) => TaskListView { list, lang }.render(frame, area),
             Some(Window::Usage(screen)) => UsageView { screen, lang }.render(frame, area),
-            Some(Window::RouterVersion(screen)) => {
-                RouterVersionView { screen, lang }.render(frame, area);
-            }
             Some(Window::StopConfirm(confirm)) => {
                 StopConfirmView { confirm, lang }.render(frame, area);
             }
