@@ -281,7 +281,8 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | `keep_current` 기준값 0.8은 한국어 입력에서도 이어 가기를 가른다. | [한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md): 0.80에서 현재 state의 재현율 10.1%, 작업 정보를 더한 state 69.7%. 작업 정보를 state에 싣는 구현은 [판단 요청 맥락](#판단-요청-맥락)에 있고 실제 router 정확도는 이 구현으로 다시 재지 않았다. |
 | 피드백, 취소, 반응 신호, router 실패를 100건 넣어도 활성 정책 지문, 기준값, router 모델, 설정 번호가 바뀌지 않는다. | `saturn-terminal/engine/src/lifecycle/policy.rs`의 `feedback_cancel_and_failures_leave_the_active_policy_unchanged` |
 | 정책 교체 중 접수한 입력은 접수 때 설정 번호의 기준값으로만 판단하고, 옛 설정으로 되돌리면 옛 번호를 다시 쓰며, 재시작해도 입력의 번호가 같다. | `saturn-terminal/engine/src/lifecycle/policy.rs`의 `inputs_keep_the_policy_they_were_accepted_under_across_swap_rollback_and_restart` |
-| 구현 전인 `router use`, 판단 방식 `collect`는 정책을 바꾸지 않고 미지원 오류나 설정 오류를 돌려준다. | `saturn-terminal/engine/src/lifecycle/requests.rs`의 `requests_each_get_one_response_in_order`, `saturn-terminal/engine/src/routers/mod.rs`의 `select_follows_method_and_endpoint_rules` |
+| 구현 전인 판단 방식 `collect`는 정책을 바꾸지 않고 설정 오류를 돌려준다. | `saturn-terminal/engine/src/routers/mod.rs`의 `select_follows_method_and_endpoint_rules` |
+| router 버전을 고르는 명령(`saturn router use`, `saturn router list`, TUI `/router use`)은 없다. | `saturn-terminal/cli/src/args.rs`의 `router_is_not_a_command`, `saturn-terminal/tui/src/commands.rs`의 `router_is_unknown_and_feedback_parses` |
 | `saturn router train`과 TUI `/train`은 명령으로 없다. | `saturn-terminal/cli/src/args.rs`의 `router_train_is_not_a_command`, `saturn-terminal/cli/tests/exit_codes.rs`의 `router_train_is_rejected_before_reaching_an_engine`, `saturn-terminal/tui/src/commands.rs`의 `train_is_not_a_saturn_command` |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
 | 모델 판단 그림자를 켜고 꺼도 실제 모델과 실제 질문이 같고 원문은 한 번만 가며, 켜면 후보·정책·확률·적용 모델을 내보낸다. | `saturn-terminal/engine/src/lifecycle/model_shadow.rs`의 `shadow_on_and_off_apply_the_same_model_and_the_same_real_questions` |

@@ -27,7 +27,6 @@ use crate::view::live_area::LiveArea;
 use crate::view::permission::PermissionRequest;
 use crate::view::resume_prompt::ResumePrompt;
 use crate::view::router_key_prompt::RouterKeyPrompt;
-use crate::view::router_version::RouterVersionRow;
 use crate::view::start_screen::StartInfo;
 use crate::view::stop_confirm::StopConfirm;
 use crate::view::task_list::ChatGroup;
@@ -190,15 +189,6 @@ impl App {
             QueryResult::Models { models } => {
                 if let Some(Window::Model(picker)) = &mut self.window {
                     picker.load(models);
-                }
-            }
-            QueryResult::RouterVersions { current, versions } => {
-                if let Some(Window::RouterVersion(screen)) = &mut self.window {
-                    screen.rows = versions
-                        .into_iter()
-                        .map(|info| RouterVersionRow::from_info(info, &current))
-                        .collect();
-                    screen.selected = screen.selected.min(screen.rows.len().saturating_sub(1));
                 }
             }
             // TUI는 채팅 목록과 폴더의 최근 채팅을 묻지 않는다. 그런 조회는 `cli`가 붙기 전에 쓴다.

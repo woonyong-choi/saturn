@@ -77,12 +77,6 @@ pub(crate) const SATURN_COMMANDS: &[CommandSpec] = &[
         takes_provider: false,
     },
     CommandSpec {
-        path: "router use",
-        description: "판단 모델 버전",
-        values: &[],
-        takes_provider: false,
-    },
-    CommandSpec {
         path: "record",
         description: "판단 기록 켜기와 끄기",
         values: &["on", "off"],
@@ -259,8 +253,6 @@ pub(crate) enum SlashCommand {
     Usage,
     /// `/prune`. 지울 채팅을 미리 보이는 창을 연다.
     Prune,
-    /// `/router use`
-    RouterVersion,
     /// 목록에 없는 provider 명령. 원문 그대로 메인 에이전트 provider에 넘긴다. 고른 항목이 어느 provider의 것이든 같고, 다른 provider session을 열거나 전환을 묻지 않는다(설계: providers-and-sessions.md).
     Provider { line: String },
 }
@@ -279,6 +271,11 @@ pub(crate) fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
     };
     let mut words = body.split_whitespace();
     let name = words.next().unwrap_or_default();
+    if matches!(name, "train" | "router" | "") {
+        return Err(CommandError::Unknown {
+            name: name.to_owned(),
+        });
+    }
     let args: Vec<&str> = words.collect();
     let command = match name {
         "help" => no_args("help", &args, SlashCommand::Help)?,
@@ -316,17 +313,6 @@ pub(crate) fn parse(line: &str) -> Result<Option<SlashCommand>, CommandError> {
         "quit" => no_args("quit", &args, SlashCommand::Quit)?,
         "usage" => no_args("usage", &args, SlashCommand::Usage)?,
         "prune" => no_args("prune", &args, SlashCommand::Prune)?,
-        "train" => {
-            return Err(CommandError::Unknown {
-                name: "train".to_owned(),
-            });
-        }
-        "router" => parse_router(&args)?,
-        "" => {
-            return Err(CommandError::Unknown {
-                name: String::new(),
-            });
-        }
         _ => SlashCommand::Provider {
             line: line.to_string(),
         },
@@ -517,16 +503,6 @@ fn parse_feedback(args: &[&str]) -> Result<bool, CommandError> {
         ["1"] => Ok(true),
         ["2"] => Ok(false),
         _ => Err(invalid("feedback", &args.join(" "))),
-    }
-}
-
-// cost: time O(a), heap O(a), stack O(1)
-// vars: a = 인자 글자 수(오류 문구를 만들 때만)
-// basis: estimate
-fn parse_router(args: &[&str]) -> Result<SlashCommand, CommandError> {
-    match args {
-        ["use"] => Ok(SlashCommand::RouterVersion),
-        _ => Err(invalid("router", &args.join(" "))),
     }
 }
 
@@ -768,11 +744,15 @@ mod tests {
     }
 
     #[test]
-    fn parse_router_use_and_feedback() {
-        assert_eq!(
-            parse("/router use").unwrap(),
-            Some(SlashCommand::RouterVersion)
-        );
+    fn router_is_unknown_and_feedback_parses() {
+        assert!(matches!(
+            parse("/router use"),
+            Err(CommandError::Unknown { .. })
+        ));
+        assert!(matches!(
+            parse("/router"),
+            Err(CommandError::Unknown { .. })
+        ));
         assert_eq!(
             parse("/feedback 2").unwrap(),
             Some(SlashCommand::Feedback { correct: false })

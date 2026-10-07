@@ -13,9 +13,7 @@ use saturn_protocol::envelope::{
     ErrorKind, NotificationMessage, Response, ServerMessage, decode_client_line, encode_line,
 };
 use saturn_protocol::ids::{ChatId, InputId, Provider, TaskId, TaskLabel};
-use saturn_protocol::rpc::{
-    Notification, PROTOCOL_VERSION, QueryResult, Request, RouterVersionInfo,
-};
+use saturn_protocol::rpc::{Notification, PROTOCOL_VERSION, QueryResult, Request};
 use saturn_protocol::state::{Disposition, InputState, TaskState};
 
 /// 요청 하나에 대한 가짜 engine의 행동.
@@ -303,24 +301,6 @@ fn continue_without_a_chat_in_the_folder_exits_sixty_six() {
 }
 
 #[test]
-fn unknown_router_version_exits_sixty_six() {
-    let run = run_with_engine(&["router", "use", "v9", "--yes"], |request| match request {
-        Request::ListRouterVersions => Act::Query(QueryResult::RouterVersions {
-            current: "v1".to_owned(),
-            versions: vec![RouterVersionInfo {
-                version: "v1".to_owned(),
-                router: "jev".to_owned(),
-                ece: None,
-                questions: Vec::new(),
-            }],
-        }),
-        other => panic!("unexpected {other:?}"),
-    });
-
-    assert_eq!(run.code, Some(66), "{}", run.stderr);
-}
-
-#[test]
 fn engine_that_hangs_up_exits_sixty_nine() {
     let run = run_with_engine(&["usage"], |_| Act::Hangup);
 
@@ -388,13 +368,13 @@ fn expected_failure_exits_one() {
 }
 
 #[test]
-fn router_train_is_rejected_before_reaching_an_engine() {
+fn router_command_is_rejected_before_reaching_an_engine() {
     let home = tempfile::tempdir().unwrap();
 
     let run = saturn(home.path(), &["router", "train", "--yes"], &[], "");
 
     assert_eq!(run.code, Some(2), "{}", run.stderr);
-    assert!(run.stderr.contains("train"), "{}", run.stderr);
+    assert!(run.stderr.contains("router"), "{}", run.stderr);
 }
 
 /// engine가 입력 하나를 접수해 작업 A로 실행하고 `end`로 끝내는 순서. `RequestSummary`는 보내지 않는다.

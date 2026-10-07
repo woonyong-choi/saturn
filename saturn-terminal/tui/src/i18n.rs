@@ -343,15 +343,6 @@ pub const USAGE_RANGE_CHAT: &str = "현재 채팅";
 pub const USAGE_RANGE_DAY: &str = "최근 24시간";
 pub const USAGE_RANGE_WEEK: &str = "최근 7일";
 pub const USAGE_HELP: &str = "d 최근 24시간 · w 최근 7일 · Enter 자세히 · Esc 닫기";
-pub const ROUTER_VERSION_TITLE: &str = "라우터 버전";
-pub const ROUTER_VERSION_ACTIVE: &str = "사용 중";
-pub const ROUTER_VERSION_QUESTION: &str = "질문";
-pub const ROUTER_VERSION_TARGET: &str = "목표 틀림 비율";
-pub const ROUTER_VERSION_THRESHOLD: &str = "기준값";
-pub const ROUTER_VERSION_RECENT: &str = "최근 200건 틀림";
-pub const ROUTER_VERSION_JUDGMENTS: &str = "판단 수";
-pub const ROUTER_VERSION_CONFIRM: &str = "이 버전을 쓸까요? u 또는 Enter 확인 · Esc 취소";
-pub const ROUTER_VERSION_HINT: &str = "Enter 상세 · u 사용 · Esc 닫기";
 pub const MODEL_TITLE: &str = "모델 고르기";
 pub const MODEL_LOADING: &str = "모델 목록을 불러오는 중";
 pub const MODEL_EMPTY: &str = "고를 수 있는 모델이 없습니다";
@@ -392,7 +383,6 @@ pub const CANCEL: &str = "취소";
 // CLI 출력. `{이름}` 자리는 호출하는 쪽이 채운다.
 /// `{message}`는 engine이 준 원인.
 pub const CLI_ROUTER_KEY_REQUIRED: &str = "router 키가 필요합니다({message}): SATURN_KEY 환경 변수나 router.key.command 설정을 정한 뒤 다시 실행하세요";
-pub const CLI_CONFIRM_NEEDS_TERMINAL: &str = "확인을 받을 터미널이 없어 아무것도 바꾸지 않았습니다";
 pub const CLI_EXPORTED: &str = "판단 기록을 내보냈습니다: {path}";
 pub const CLI_PATH_UNRESOLVED: &str = "경로를 확인하지 못했습니다: {path}";
 pub const CLI_PRUNE_PLAN: &str = "지울 채팅 {chats}개 · 기록 {rows}행";
@@ -413,15 +403,6 @@ pub const CLI_SKIP_ACTIVE_SESSION: &str = "열린 session";
 pub const CLI_SKIP_WAITING_SESSION: &str = "보관한 session";
 pub const CLI_SKIP_ATTACHED: &str = "TUI에 붙어 있음";
 pub const CLI_SKIP_USED_SINCE_PREVIEW: &str = "미리본 뒤 다시 쓰임";
-pub const CLI_ROUTER_VERSION_NOT_FOUND: &str =
-    "router 버전을 찾지 못했습니다: {version} (사용 가능: {available})";
-pub const CLI_ROUTER_VERSION_ALREADY: &str = "이미 쓰는 router 버전입니다: {version}";
-pub const CLI_ROUTER_VERSION_PROMPT: &str =
-    "다음 router 버전을 쓸까요? {version} (현재: {current})";
-pub const CLI_ROUTER_VERSION_NOT_CONFIRMED: &str =
-    "확인하지 않았습니다 · router 버전은 {current} 그대로입니다";
-pub const CLI_ROUTER_VERSION_NOW: &str = "router 버전을 바꿨습니다: {version}";
-pub const CLI_NO_ROUTER_VERSIONS: &str = "engine이 router 버전 목록 없이 답했습니다";
 pub const CLI_NO_USAGE_TABLE: &str = "engine이 사용량 표 없이 답했습니다";
 pub const CLI_NO_CHAT_TO_CONTINUE: &str =
     "이 폴더에 이어 열 채팅이 없습니다 · saturn으로 새 채팅을 시작하세요";
@@ -467,8 +448,6 @@ pub const CLI_ENGINE_UPGRADE_FAILED: &str =
 pub const CLI_LOG_PATH: &str = "(로그: {path})";
 pub const CLI_ARGS_CONFLICT: &str =
     "--continue, --resume, --add-dir은 대화 화면을 여는 인자라 하위 명령과 함께 쓸 수 없습니다";
-pub const CLI_ROUTER_VERSION_FORMAT: &str =
-    "router 버전은 `v3`처럼 v와 1 이상 정수여야 합니다: `{text}`";
 pub const CLI_RESUME_VALUE: &str = "채팅 id(숫자)나 `all`이어야 합니다: `{text}`";
 pub const CLI_CONFIG_FORMAT: &str = "KEY=VALUE 형식이어야 합니다: `{text}`";
 pub const CLI_CONFIG_EMPTY_KEY: &str = "키가 비어 있습니다: `{text}`";

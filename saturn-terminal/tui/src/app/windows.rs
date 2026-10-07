@@ -19,7 +19,6 @@ use crate::view::live_area::LiveArea;
 use crate::view::model_picker::{ModelPicker, ModelPurpose};
 use crate::view::permission::PermissionQueue;
 use crate::view::resume_prompt::{ResumeChoice, ResumeOutcome};
-use crate::view::router_version::RouterVersionCommand;
 use crate::view::status_board::{self, Button};
 use crate::view::stop_confirm::StopChoice;
 use crate::view::task_list::TaskListCommand;
@@ -403,20 +402,6 @@ impl App {
                 let range = usage.select(range);
                 return vec![Effect::Send(usage_request(range))];
             }
-            (Some(Window::RouterVersion(screen)), Action::Up) => screen.up(),
-            (Some(Window::RouterVersion(screen)), Action::Down) => screen.down(),
-            (Some(Window::RouterVersion(screen)), Action::Close) => {
-                let cancelled = screen.cancel();
-                if !cancelled {
-                    self.window = None;
-                }
-            }
-            (Some(Window::RouterVersion(screen)), other) => {
-                return match screen.command(&other) {
-                    Some(command) => vec![Effect::Send(router_version_request(command))],
-                    None => Vec::new(),
-                };
-            }
             (_, Action::Close) => self.window = None,
             _ => {}
         }
@@ -621,11 +606,5 @@ impl App {
             .tr(i18n::MODEL_PINNED)
             .replace("{provider}", i18n::provider_name(model.provider))
             .replace("{model}", &model.model)
-    }
-}
-
-fn router_version_request(command: RouterVersionCommand) -> Request {
-    match command {
-        RouterVersionCommand::Use(version) => Request::UseRouterVersion { version },
     }
 }

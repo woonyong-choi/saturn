@@ -127,7 +127,6 @@ TUI가 `Attach`로 채팅에 붙으면 `engine`은 `StartInfo`, `HistoryChunk`, 
 | `LatestChat` | `LatestChat` | `chat`(채팅이 없으면 `null`) |
 | `ListChats` | `Chats` | `chats` |
 | `ListModels` | `Models` | `models` |
-| `ListRouterVersions` | `RouterVersions` | `current`, `versions`(아직 지원하지 않아 오류 응답) |
 | `PrepareExit` | `ExitPlan` | `plan` |
 | `Prune`(`yes`가 거짓) | `PrunePreview` | `chats`, `skipped`, `rows`, `plan`(확인 번호) |
 | `Prune`(`yes`가 참, `plan` 있음 또는 `all`이 참) | `Pruned` | `chats`, `skipped`, `rows` |
@@ -338,7 +337,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 0 | 성공 | 명령이 끝났다. `--help`. 전체 화면을 정상으로 닫았다. | 셸 관례 |
 | 1 | 그 밖의 실패 | 확인 질문에 아니라고 답했다. plain 모드에서 provider 작업이 실패로 끝났다. provider 설치 없음 등 예상한 실패. | 셸 관례 |
 | 2 | 사용법 오류 | 모르는 인자. 터미널 없이 `--resume`이나 확인 질문이 필요하다. 에이전트 작업 안인데 출입증이 없다. 하위 접속에 쓸 수 없는 인자를 줬다. `--add-dir`가 폴더가 아니다. engine이 `INVALID_PARAMS`로 거절했다. | 호출을 바꿔야 풀린다. 셸 관례 |
-| 66 | 대상 없음 | 이어 열 채팅이 없다. `--add-dir` 폴더가 없다. 없는 router 버전. 모르거나 만료됐거나 이미 쓴 정리 미리보기 번호. | `EX_NOINPUT` |
+| 66 | 대상 없음 | 이어 열 채팅이 없다. `--add-dir` 폴더가 없다. 모르거나 만료됐거나 이미 쓴 정리 미리보기 번호. | `EX_NOINPUT` |
 | 69 | engine을 쓸 수 없음 | engine 실행 파일이 없거나 시작에 실패했다. 하위 접속인데 떠 있는 engine이 없다. 소켓이 제때 열리지 않았다. 옛 engine 교체에 실패했다. 연결이 끊겼다. | `EX_UNAVAILABLE` |
 | 70 | engine 내부 오류 | engine이 원인 종류 없이 거절했다. 답에 필요한 알림이 빠졌다. engine 메시지를 해석하지 못했다. | `EX_SOFTWARE` |
 | 75 | 지금은 안 되고 나중에 가능 | engine이 나중에 다시 하면 된다는 종류(`RetryLater`)로 거절했다. 지금 이 종류로 거절하는 요청은 없다. | `EX_TEMPFAIL` |
@@ -406,7 +405,7 @@ TUI가 없는 동안 보류를 그대로 두는 것은 사용자가 멈춘 작�
 | 끊긴 하위 에이전트 정리 목록과 감시는 `engine`을 다시 켜도 이어지고, 정리를 넘긴 뒤에는 다시 넘기지 않으며, 보류를 닫으면 지운다. | `saturn-terminal/engine/src/lifecycle/child_sessions.rs`의 `interrupted_children_are_handed_over_after_the_engine_restarts`, `cleaned_children_are_not_handed_over_again_but_still_blocked_after_a_restart`, `interrupted_subagent_is_still_blocked_after_the_engine_restarts`, `closing_a_held_task_forgets_its_interrupted_subagents` |
 | 다시 켠 `engine`은 기록 저장소에 남은 보내지 않은 입력을 접수 순서대로 대기열에 되살린다. 보낸 것으로 기록된 입력은 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/restore_inputs.rs`의 `waiting_inputs_are_sent_in_accept_order_after_a_clean_restart`, `judging_input_is_judged_again_and_sent_after_a_restart`, `restored_inputs_of_one_chat_are_judged_one_at_a_time_in_accept_order`, `unsent_inputs_are_held_with_the_crashed_task_and_resume_in_order`, `held_input_stays_held_after_restart_until_continue`, `delivering_input_is_never_resent_after_restart` |
 | 채팅을 다시 열면 기록에 남은 마지막 턴의 맥락 사용량을 `ContextSize`로 보내고, 값을 모르면 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/attach.rs`의 `attach_sends_the_context_size_of_the_last_turn`, `attach_without_a_last_turn_sends_no_context_size` |
-| `saturn`은 원인별 종료 코드(0, 1, 2, 66, 69, 70, 75, 77, 78, 130)로 끝난다. | `saturn-terminal/cli/tests/exit_codes.rs`의 `help_exits_zero_and_unknown_flag_exits_two`, `nested_run_inside_an_agent_exits_two`, `picking_a_chat_without_a_terminal_exits_two`, `missing_add_dir_exits_sixty_six`, `continue_without_a_chat_in_the_folder_exits_sixty_six`, `unknown_router_version_exits_sixty_six`, `engine_that_hangs_up_exits_sixty_nine`, `engine_internal_error_exits_seventy`, `training_without_enough_samples_exits_seventy_five`, `missing_router_key_exits_seventy_seven`, `setting_error_exits_seventy_eight`, `expected_failure_exits_one` |
+| `saturn`은 원인별 종료 코드(0, 1, 2, 66, 69, 70, 75, 77, 78, 130)로 끝난다. | `saturn-terminal/cli/tests/exit_codes.rs`의 `help_exits_zero_and_unknown_flag_exits_two`, `nested_run_inside_an_agent_exits_two`, `picking_a_chat_without_a_terminal_exits_two`, `missing_add_dir_exits_sixty_six`, `continue_without_a_chat_in_the_folder_exits_sixty_six`, `engine_that_hangs_up_exits_sixty_nine`, `engine_internal_error_exits_seventy`, `training_without_enough_samples_exits_seventy_five`, `missing_router_key_exits_seventy_seven`, `setting_error_exits_seventy_eight`, `expected_failure_exits_one` |
 | plain 모드에서 실패한 작업이 있으면 1로 끝나고, 없으면 0이다. | `saturn-terminal/cli/tests/exit_codes.rs`의 `plain_run_with_a_failed_task_exits_one`, `plain_run_that_finishes_cleanly_exits_zero` |
 | 에이전트 작업 안에서 표지만 있고 출입증이 없는 `saturn`은 거절한다. 출입증이 있으면 하위 접속이다. | `saturn-terminal/cli/tests/exit_codes.rs`의 `nested_run_inside_an_agent_exits_two`, `saturn-terminal/cli/src/launch.rs`의 `origin_with_marker_and_no_pass_is_error`, `origin_with_a_pass_is_a_child_on_the_given_socket` |
 | 한 채팅의 provider 요청이 느리거나 응답하지 않아도 다른 채팅의 입력과 조회, 같은 채팅의 멈춤 요청을 바로 처리한다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_slow_start_request_does_not_stall_other_chats_or_stop`, `a_silent_provider_request_does_not_stall_other_chats_or_stop`, `a_provider_that_stops_reading_input_does_not_stall_other_chats_or_stop` |

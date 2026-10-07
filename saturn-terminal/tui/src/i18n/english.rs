@@ -179,10 +179,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Router key required ({message}): set the SATURN_KEY environment variable or the router.key.command setting, then run again",
     ),
     (
-        "확인을 받을 터미널이 없어 아무것도 바꾸지 않았습니다",
-        "No terminal available for confirmation · Nothing was changed",
-    ),
-    (
         "판단 기록을 내보냈습니다: {path}",
         "Exported judgments: {path}",
     ),
@@ -223,30 +219,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("열린 session", "open session"),
     ("보관한 session", "kept session"),
     ("TUI에 붙어 있음", "attached to a TUI"),
-    (
-        "router 버전을 찾지 못했습니다: {version} (사용 가능: {available})",
-        "Router version not found: {version} (available: {available})",
-    ),
-    (
-        "이미 쓰는 router 버전입니다: {version}",
-        "Already using router version: {version}",
-    ),
-    (
-        "다음 router 버전을 쓸까요? {version} (현재: {current})",
-        "Use router version {version} (current: {current})?",
-    ),
-    (
-        "확인하지 않았습니다 · router 버전은 {current} 그대로입니다",
-        "Not confirmed · Router version stays {current}",
-    ),
-    (
-        "router 버전을 바꿨습니다: {version}",
-        "Router version changed: {version}",
-    ),
-    (
-        "engine이 router 버전 목록 없이 답했습니다",
-        "Engine answered without router versions",
-    ),
     (
         "evidence는 에이전트 작업 안에서만 쓸 수 있습니다. 출입증({pass} 변수)으로 그 채팅의 기록만 찾고 읽습니다",
         "evidence only works inside an agent task. It uses the pass ({pass} variable) to search and read only that chat's records",
@@ -361,10 +333,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Expected a chat id (number) or `all`: `{text}`",
     ),
     (
-        "router 버전은 `v3`처럼 v와 1 이상 정수여야 합니다: `{text}`",
-        "A router version is `v` and an integer of 1 or more, such as `v3`: `{text}`",
-    ),
-    (
         "KEY=VALUE 형식이어야 합니다: `{text}`",
         "Expected KEY=VALUE: `{text}`",
     ),
@@ -410,14 +378,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "쓸 JSONL 파일 경로. engine이 이 경로에 쓴다",
         "JSONL file path to write; the engine writes to this path",
     ),
-    ("router 관리", "Manage the router"),
-    (
-        "고른 router 버전을 확인 한 줄 뒤 현재 버전으로 쓴다",
-        "Use the chosen router version as the current one after a confirmation line",
-    ),
-    ("쓸 router 버전", "Router version to use"),
-    ("확인 없이 바꾼다", "Switch without confirmation"),
-    ("router 버전 목록을 보인다", "List router versions"),
     ("사용량 조회", "Show usage"),
     (
         "에이전트 작업 안에서 이 채팅의 기록을 찾고 패킷에서 생략된 기록의 원문을 다시 읽는다",
@@ -724,21 +684,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("맥락 정리", "Compactions"),
     ("토큰", "tokens"),
     ("턴", "turns"),
-    ("라우터 버전", "Router versions"),
-    ("사용 중", "In use"),
-    ("질문", "Question"),
-    ("목표 틀림 비율", "Target error"),
-    ("기준값", "Threshold"),
-    ("최근 200건 틀림", "Errors in last 200"),
-    ("판단 수", "Judgments"),
-    (
-        "이 버전을 쓸까요? u 또는 Enter 확인 · Esc 취소",
-        "Use this version? u or Enter confirm · Esc cancel",
-    ),
-    (
-        "Enter 상세 · u 사용 · Esc 닫기",
-        "Enter details · u use · Esc close",
-    ),
     ("모델 고르기", "Choose model"),
     ("기록 정리", "Prune records"),
     (
@@ -808,7 +753,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("보내기 전 입력 취소", "Cancel an input before sending"),
     ("보류 이어서", "Continue a hold"),
     ("판단 피드백", "Judgment feedback"),
-    ("판단 모델 버전", "Router versions"),
     ("판단 기록 켜기와 끄기", "Turn judgment records on or off"),
     ("권한 모드 바꾸기", "Change the permission mode"),
     ("폴더 더하기", "Add a folder to the chat"),
