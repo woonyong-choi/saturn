@@ -201,7 +201,7 @@ def collect_codex(folder, context, question):
 
 def collect(smoke=False):
     helper = module(PUBLIC.parent / "real-context-replay/scripts/02-collect.py")
-    destination = PRIVATE / "smoke-v2" if smoke else RUN
+    destination = PRIVATE / "smoke-v3" if smoke else RUN
     (destination / "raw").mkdir(parents=True, exist_ok=True)
     helper.COMMANDS["claude"].append("--safe-mode")
     helper.PRIVATE = destination
@@ -231,8 +231,8 @@ def collect(smoke=False):
                 id="protocol",
                 case="protocol",
                 arm="control",
-                context="Historical fact: the access word is cobalt. Do not use tools. Reply exactly Ready and wait.",
-                question='What was the access word? Do not use tools. Answer exactly {"word":"cobalt"}.',
+                context="We are testing recall of a software release note. The project release version is 3.7.2. Please acknowledge with exactly Ready; I will ask a question in the next message. Do not use tools.",
+                question="What project release version did I mention? Do not use tools. Return a JSON object with key version and the version string as its value.",
             )
         ]
         save(destination / "calls-plan.json", jobs)
