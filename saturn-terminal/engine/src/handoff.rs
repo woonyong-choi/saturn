@@ -61,18 +61,15 @@ pub(crate) struct PacketEvidence {
     /// 첫 시도가 1이고 맥락 한도로 거절돼 줄여 다시 보낼 때마다 1 늘어난다.
     pub(crate) attempt: u32,
     pub(crate) reduced_from: Option<PacketId>,
-    /// 경쟁 구역의 도구 기록은 최신순으로 둔다.
-    selector: &'static str,
 }
 
 /// 도구 기록을 최신순으로 채웠다.
 pub(crate) const RECENT_SELECTOR: &str = "recent";
 
 impl PacketEvidence {
-    /// 재료에서 처음 만든 패킷의 근거. `selector`는 경쟁 구역을 고른 방식이다.
-    pub(crate) fn first(handoff: &Handoff, source: &PacketSource, selector: &'static str) -> Self {
+    /// 재료에서 처음 만든 패킷의 근거. 경쟁 구역은 최근 도구 기록 순이다.
+    pub(crate) fn first(handoff: &Handoff, source: &PacketSource) -> Self {
         Self {
-            selector,
             items: handoff.items.clone(),
             constraints: source.constraint_tiers.clone(),
             protected: source.protected(),
@@ -94,7 +91,7 @@ impl PacketEvidence {
         Self {
             attempt: attempt + 1,
             reduced_from: previous,
-            ..Self::first(handoff, &reduction.source, reduction.selector)
+            ..Self::first(handoff, &reduction.source)
         }
     }
 
@@ -111,7 +108,6 @@ impl PacketEvidence {
             tokens: 0,
             attempt: 1,
             reduced_from: None,
-            selector: RECENT_SELECTOR,
         }
     }
 
@@ -151,7 +147,7 @@ impl PacketEvidence {
             ref_id: item.seq.0,
             selector: match item.zone {
                 PacketZone::Open => "pending",
-                PacketZone::Competing => self.selector,
+                PacketZone::Competing => RECENT_SELECTOR,
             },
             form: item.form.map(|form| form.name().to_owned()),
             reason: item.reason,
@@ -739,7 +735,6 @@ mod tests {
     use saturn_core::sessions::context::{
         DEFAULT_CONSTRAINT_SLOT_PERCENT, DEFAULT_ITEM_CAP_PERCENT,
     };
-    use saturn_core::sessions::ranking::DEFAULT_RRF_K;
     use saturn_protocol::event::LineRange;
     use saturn_protocol::ids::{AgentId, TaskId};
 
@@ -763,7 +758,6 @@ mod tests {
             cache_ttl: Duration::from_secs(300),
             item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
             constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
-            rrf_k: DEFAULT_RRF_K,
             evidence_lookup: false,
         }
     }
@@ -962,7 +956,7 @@ mod tests {
         let HandoffOutcome::Ready(handoff) = handoff_of(&source, &budget()) else {
             panic!("packet should be ready");
         };
-        let evidence = PacketEvidence::first(&handoff, &source, RECENT_SELECTOR);
+        let evidence = PacketEvidence::first(&handoff, &source);
         let selectors: Vec<&str> = evidence
             .rows()
             .iter()
@@ -1199,7 +1193,7 @@ mod tests {
         let HandoffOutcome::Ready(handoff) = handoff_of(&source, &budget()) else {
             panic!("packet should be ready");
         };
-        let evidence = PacketEvidence::first(&handoff, &source, RECENT_SELECTOR);
+        let evidence = PacketEvidence::first(&handoff, &source);
 
         assert!(evidence.carries_dialogue(&handoff.text));
         assert!(!evidence.carries_dialogue(&handoff.text.replace("second input", "second")));
@@ -1235,7 +1229,7 @@ mod tests {
         let HandoffOutcome::Ready(handoff) = handoff_of(&source, &budget()) else {
             panic!("packet should be ready");
         };
-        let evidence = PacketEvidence::first(&handoff, &source, RECENT_SELECTOR);
+        let evidence = PacketEvidence::first(&handoff, &source);
 
         assert!(handoff.text.contains("User: greet\nAgent: Hello there\n"));
         let recorded: Vec<(String, u64, Option<String>)> = evidence
@@ -1272,7 +1266,7 @@ mod tests {
         let HandoffOutcome::Ready(handoff) = handoff_of(&source, &budget()) else {
             panic!("packet should be ready");
         };
-        let evidence = PacketEvidence::first(&handoff, &source, RECENT_SELECTOR);
+        let evidence = PacketEvidence::first(&handoff, &source);
         let moved = handoff
             .text
             .replace("User: only input\nAgent: ok", "")

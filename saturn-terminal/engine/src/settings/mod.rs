@@ -383,7 +383,6 @@ impl Settings {
             cache_ttl: DEFAULT_CACHE_TTL,
             item_cap_percent: self.positive("context.item_cap_percent"),
             constraint_slot_percent: self.positive("context.constraint_slot_percent"),
-            rrf_k: self.rrf_k(),
             evidence_lookup: self.evidence_lookup(),
         }
     }

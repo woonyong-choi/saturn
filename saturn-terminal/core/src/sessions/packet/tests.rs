@@ -26,7 +26,6 @@ fn budget() -> ContextBudget {
         cache_ttl: Duration::from_secs(300),
         item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
         constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
-        rrf_k: DEFAULT_RRF_K,
         evidence_lookup: false,
     }
 }

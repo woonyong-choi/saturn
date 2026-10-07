@@ -28,11 +28,11 @@ Developers who use Codex and Claude Code together lose context each time they sw
 
 ## How it works
 
-Steps 1, 2, 4, 5, and 6 run on `main`. In step 3, opening a new session with a packet works, but the router does not yet choose what goes into the packet, and Saturn does not yet ask the provider to compact. Constraints you state are recorded and carried in the packet up to a size limit, while releasing them is designed only (see Status).
+The defaults are manual input handling and provider compaction. Provider switches use a packet made from Saturn records. Automatic judgments and Saturn-managed restarts require explicit settings; their quality and cost benefits are not established for the default path.
 
 1. You run `saturn` in a repository and type a request. A background engine process stores the input in a local SQLite database before it sends anything to Codex or Claude Code.
-2. While the agent works, you type a follow-up. A router, a small model that answers yes-or-no, multiple-choice, and rating questions about your input, decides whether to add it to the running turn, start a separate task, or queue it.
-3. When the context of a session passes a set token limit and no work is running, Saturn either lets the provider compact the session or, when that costs less, starts a new session. The new session gets a packet with the whole recorded conversation, open items, and selected tool records taken from Saturn's own record.
+2. While the agent works, you type a follow-up. The default manual path queues inputs in order without calling a router. An explicitly selected automatic mode can ask the router to judge how inputs relate.
+3. The provider handles compaction within its own session by default. When you switch providers, the new session gets a packet with the whole recorded conversation, open items, and recent tool records that fit the budget.
 4. You switch the chat from Claude Code to Codex. A chat is the conversation you see, and provider sessions open and close behind it. The new session receives only what changed since it last saw the chat.
 5. You close the terminal. The engine keeps processing the inputs you already sent, and you can attach again later.
 6. A provider asks to run a command or edit a file. Saturn applies its own permission rules instead of the provider settings, and shows an approval prompt only when a rule says to ask.
@@ -94,11 +94,11 @@ Run `saturn` in a repository. It starts the engine in the background and opens t
 saturn
 ```
 
-If Saturn has no router key, a Router key window asks for it with hidden input. `Enter` confirms and `Esc` quits `saturn`. The engine keeps running after `saturn` exits.
+If you explicitly select an automatic router mode and Saturn has no router key, a Router key window asks for it with hidden input. `Enter` confirms and `Esc` quits `saturn`. The engine keeps running after `saturn` exits.
 
 ### Provide the router key
 
-The router needs an API key. Saturn gets it by trying these in order when the engine starts, and stops at the first one that works.
+The default manual path needs no router key. If you select an automatic router mode, Saturn tries these sources in order when the engine starts and stops at the first one that works.
 
 1. The `SATURN_KEY` environment variable of the shell that starts the engine. When it is set, Saturn reads it before the saved key.
 2. The saved key. On macOS this is the keychain entry with the account `saturn-key`, which Saturn creates when you enter a key in the Router key window. On other systems it is the file `router.key` in the Saturn home with mode 0600.

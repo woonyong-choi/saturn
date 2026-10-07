@@ -9,7 +9,7 @@ use saturn_protocol::ids::{AgentId, ChatId, TaskId};
 use saturn_protocol::rpc::{ChatNotice, Notification};
 
 use crate::flow::LiveSession;
-use crate::handoff::{HandoffOutcome, PacketEvidence, RECENT_SELECTOR, handoff_of, handoff_source};
+use crate::handoff::{HandoffOutcome, PacketEvidence, handoff_of, handoff_source};
 use crate::settings::ContextMode;
 use crate::switch::Reduction;
 use crate::{Engine, EngineError};
@@ -132,11 +132,10 @@ impl Engine {
                 let Some(source) = source else {
                     return Ok(false);
                 };
-                let evidence = PacketEvidence::first(&handoff, &source, RECENT_SELECTOR);
+                let evidence = PacketEvidence::first(&handoff, &source);
                 let reduction = Reduction {
                     source,
                     budget,
-                    selector: RECENT_SELECTOR,
                     sent_tokens: handoff.tokens,
                 };
                 self.restart_session(chat, live, handoff.text, Some(reduction), evidence)
