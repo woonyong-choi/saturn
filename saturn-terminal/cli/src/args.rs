@@ -193,26 +193,10 @@ pub(crate) struct EvidenceReadArgs {
 /// `router` 하위 명령.
 #[derive(Debug, Subcommand)]
 pub(crate) enum RouterCommand {
-    /// router 학습. 채점 안 된 판단이 200건 미만이면 engine이 거절한다.
-    Train(TrainArgs),
     /// 고른 router 버전을 확인 한 줄 뒤 현재 버전으로 쓴다.
     Use(RouterUseArgs),
     /// router 버전 목록을 보인다.
     List,
-}
-
-/// `train` 인자.
-#[derive(Debug, Args)]
-pub(crate) struct TrainArgs {
-    /// 기준값을 1차 영점으로 되돌린다.
-    #[arg(long)]
-    pub(crate) reset_thresholds: bool,
-    /// 이 router 버전에서 다시 학습한다(`Request::Train`의 `from`).
-    #[arg(long, value_name = "VERSION", value_parser = parse_router_version)]
-    pub(crate) from: Option<String>,
-    /// 확인 없이 학습을 시작한다.
-    #[arg(long)]
-    pub(crate) yes: bool,
 }
 
 /// router 버전 표기는 `v` 뒤에 1 이상 정수다. 앞의 `v`는 생략할 수 있고 대소문자를 가리지 않으며,
@@ -409,11 +393,6 @@ mod tests {
 
     #[test]
     fn router_subcommands_parse() {
-        let train = parse(&["router", "train", "--from", "v1"]).unwrap();
-        assert!(matches!(
-            train.command,
-            Some(Command::Router { command: RouterCommand::Train(ref args) }) if args.from.as_deref() == Some("v1")
-        ));
         let used = parse(&["router", "use", "v2"]).unwrap();
         assert!(matches!(
             used.command,
@@ -435,6 +414,13 @@ mod tests {
     }
 
     #[test]
+    fn router_train_is_not_a_command() {
+        assert!(parse(&["router", "train"]).is_err());
+        assert!(parse(&["router", "train", "--yes"]).is_err());
+        assert!(parse(&["router", "train", "--from", "v1"]).is_err());
+    }
+
+    #[test]
     fn router_version_is_v_and_an_integer() {
         let used = |version: &str| match parse(&["router", "use", version]).unwrap().command {
             Some(Command::Router {
@@ -448,13 +434,7 @@ mod tests {
         assert_eq!(used("V12"), "v12");
         for bad in ["v", "v0", "v03", "v1.2", "latest", "v-1", "vv3"] {
             assert!(parse(&["router", "use", bad]).is_err(), "{bad}");
-            assert!(parse(&["router", "train", "--from", bad]).is_err(), "{bad}");
         }
-        let from = parse(&["router", "train", "--from", "2"]).unwrap();
-        assert!(matches!(
-            from.command,
-            Some(Command::Router { command: RouterCommand::Train(ref args) }) if args.from.as_deref() == Some("v2")
-        ));
     }
 
     #[test]

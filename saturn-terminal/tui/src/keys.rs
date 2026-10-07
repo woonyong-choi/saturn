@@ -41,7 +41,6 @@ pub(crate) enum KeyArea {
     FullTranscript,
     Usage,
     RouterVersion,
-    TrainConfirm,
     ModelPicker,
     PruneWindow,
     /// 시작할 채팅 고르기 화면.
@@ -167,7 +166,5 @@ pub(crate) enum Action {
     ToggleModelMode,
 
     // router 버전 화면
-    ResetThresholds,
-    TrainFrom,
     UseVersion,
 }

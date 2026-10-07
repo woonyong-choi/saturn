@@ -150,4 +150,4 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 기록 저장소 | SQLite, `sqlx` | 단일 파일과 원자 거래로 입력을 먼저 기록한다. |
 | 설정 편집 | `toml_edit` | 명령으로 설정 파일을 고칠 때 주석을 보존한다. |
 | router 키 저장 | `keyring` | macOS 키체인을 OS API로 직접 쓴다([결정 기록](decisions/2026-09-29-engine-as-router-proxy.md)). |
-| router 학습 | Python, MLX | Apple Silicon에서 로컬 학습을 실행한다. |
+| router 학습 | Python, MLX | Apple Silicon에서 로컬 학습을 실행하는 설계다. 학습을 실행하는 경로는 아직 없다. |

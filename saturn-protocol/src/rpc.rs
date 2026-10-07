@@ -302,15 +302,6 @@ pub enum Request {
         chat: ChatId,
         provider: Option<Provider>,
     },
-    /// 채점 후보가 200건 미만이면 거절한다. `from`은 다시 학습할 router 버전.
-    Train {
-        reset_thresholds: bool,
-        from: Option<String>,
-    },
-    /// 거짓이면 취소.
-    ConfirmTrain {
-        proceed: bool,
-    },
     /// `QueryResult::RouterVersions`로 돌려준다.
     ListRouterVersions,
     UseRouterVersion {
@@ -490,19 +481,6 @@ pub enum Notification {
         chat: ChatId,
         name: Option<String>,
         group: Option<String>,
-    },
-    TrainPreview {
-        candidates: u32,
-        grader: String,
-        estimated_tokens: u64,
-        threshold_targets: Vec<String>,
-        retrain_model: bool,
-    },
-    TrainProgress {
-        stage: String,
-        labeled: u32,
-        elapsed_ms: u64,
-        tokens: u64,
     },
     TaskEvent {
         task: TaskId,

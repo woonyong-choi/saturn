@@ -332,9 +332,7 @@ impl Engine {
                 self.set_default_model(client, chat, &model).await
             }
             Request::SetModelMode { chat, mode } => self.set_model_mode(client, chat, mode).await,
-            // TODO(#91): 학습과 router 버전
-            Request::Train { .. } => Err(unsupported("Train")),
-            Request::ConfirmTrain { .. } => Err(unsupported("ConfirmTrain")),
+            // TODO(#91): router 버전
             Request::UseRouterVersion { .. } => Err(unsupported("UseRouterVersion")),
             Request::ExportJudgments { path } => self.export_judgments(&path).await,
             Request::LoadHistory { .. }

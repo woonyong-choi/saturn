@@ -169,7 +169,7 @@
 | 설정 파일 확인 주기 | 0.5초 | [설정 변경 감지](#설정-변경-감지) |
 | engine 로그 보관 | 30일 | [engine 수명과 복구](engine-lifecycle.md) |
 
-router 버전 표기는 설정 키가 아니다. `saturn router use`와 `saturn router train --from`은 `v3`처럼 `v`와 1 이상 정수를 받고, `v`를 빼고 `3`만 써도 `v3`으로 읽는다. 다른 모양은 오류다([router 학습](router-training.md#router-버전)).
+router 버전 표기는 설정 키가 아니다. `saturn router use`는 `v3`처럼 `v`와 1 이상 정수를 받고, `v`를 빼고 `3`만 써도 `v3`으로 읽는다. 다른 모양은 오류다([router 학습](router-training.md#router-버전)).
 
 ### provider 설정 키
 

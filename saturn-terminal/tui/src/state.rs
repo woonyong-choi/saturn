@@ -178,14 +178,6 @@ pub(crate) struct TaskUpdate {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TrainingProgress {
-    pub stage: String,
-    pub graded: u32,
-    pub elapsed: Duration,
-    pub tokens: u64,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StopResult {
     pub held: Vec<TaskLabel>,
     /// 멈춤 뒤 provider 프로세스 묶음 밖에 남은 프로세스 수.
@@ -258,7 +250,6 @@ pub(crate) struct ChatState {
     pub judging_tails: Vec<JudgingTail>,
     /// 같은 값은 한 번만.
     pub alerts: Vec<Alert>,
-    pub training: Option<TrainingProgress>,
     /// 보류 줄이 모두 사라지면 지운다.
     pub stop: Option<StopResult>,
     pub close_held_confirm: Option<TaskId>,

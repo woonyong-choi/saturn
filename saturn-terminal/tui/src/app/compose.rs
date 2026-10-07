@@ -443,16 +443,6 @@ impl App {
                 self.open_window(Window::Prune(PruneWindow::default()));
                 Some(prune_preview())
             }
-            SlashCommand::Train {
-                reset_thresholds,
-                from,
-            } => {
-                self.train_reset = reset_thresholds;
-                Some(Request::Train {
-                    reset_thresholds,
-                    from,
-                })
-            }
             SlashCommand::RouterVersion => {
                 self.open_window(Window::RouterVersion(RouterVersionScreen::default()));
                 Some(Request::ListRouterVersions)

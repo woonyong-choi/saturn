@@ -839,7 +839,6 @@ fn empty_response(request: &RouterRequest) -> RouterResponse {
 }
 
 /// router 없이 정하는 판단. 처리 방식은 대기이고 모델은 고정 모델을 그대로 쓴다.
-/// TODO(#168): 모델을 고정한 입력이 실행 중 도착했을 때의 처리 방식이 정해지면 대기 대신 따른다
 pub(crate) fn direct_decision(record: &QueuedInput, revision: ChatRevision) -> RouteDecision {
     // 대상 작업이 정해진 입력은 대기하지 않고 그 작업에 끼워 넣는다
     let disposition = if record.task.is_some() {

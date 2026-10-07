@@ -87,7 +87,6 @@ impl Engine {
             flow: flow::FlowState::default(),
             presence: Presence::Background { idle_since: None },
             idle_grace: saturn_core::sessions::IDLE_GRACE,
-            pending_train: None,
             upgrade_requested: false,
             terminate: Arc::default(),
         })

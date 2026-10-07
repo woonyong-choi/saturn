@@ -133,7 +133,7 @@ Error: Router key required (router key required: router rejected the key): set t
 | 66 | Nothing to open: no chat to continue, missing folder, unknown router version |
 | 69 | Engine unavailable: failed to start, no answer, failed to replace, connection lost |
 | 70 | Engine internal error |
-| 75 | Not now, try later: for example too few judgments to train |
+| 75 | Not now, try later |
 | 77 | Router key missing or rejected |
 | 78 | Configuration error |
 | 130 | Quit from a window with `Esc` or `Ctrl+C` |

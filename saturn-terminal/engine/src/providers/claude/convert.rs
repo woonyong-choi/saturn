@@ -176,7 +176,7 @@ pub(super) fn shell_call(command: String) -> PermissionCall {
 /// 허용은 요청 `input`을 그대로 돌려주고, 거부는 모델에 전달되는 고정 문구를 붙인다.
 /// `AllowAlways`는 `AllowOnce`와 같게 보낸다. 규칙으로 읽은 호출의 항상 허용은 engine이 저장해 판정하고, 읽지 못한
 /// 요청은 Claude 세션 규칙으로 보내는 값(`updatedPermissions`)을 실측하지 않아 되풀이해 묻는다.
-/// TODO(#56): 거부와 함께 남기는 말은 정해지기 전에는 보내지 않는다
+/// 거부와 함께 남기는 별도 말은 provider에 보내지 않는다.
 pub(super) fn permission_response(answer: &PermissionAnswer, input: &Value) -> Value {
     match answer {
         PermissionAnswer::AllowOnce | PermissionAnswer::AllowAlways => {

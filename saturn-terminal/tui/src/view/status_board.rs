@@ -19,7 +19,6 @@ use crate::i18n::{self, Lang};
 use crate::labels;
 use crate::state::{
     APPROVAL_PENDING_AFTER, ChatState, InputView, JUDGING_SHOW_AFTER, NO_RESPONSE_AFTER, TaskView,
-    TrainingProgress,
 };
 use crate::view::transcript::{held_labels, tokens_text};
 use crate::view::{EMPHASIS, MUTED, NARROW_WIDTH, text_width, truncate, wrap};
@@ -138,8 +137,6 @@ pub(crate) enum StatusLine {
         label: Option<TaskLabel>,
         text: Option<String>,
     },
-    /// TODO(#55): `/stop`과 진행 중인 `/train`의 관계
-    Training(TrainingProgress),
     Queued {
         input: InputId,
         label: Option<TaskLabel>,
@@ -177,7 +174,7 @@ impl StatusLine {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 줄 글자 수
     // basis: estimate
-    /// `spinner`는 실행·판단·학습 줄의 머리 글자.
+    /// `spinner`는 실행·판단 줄의 머리 글자.
     pub(crate) fn text(&self, lang: Lang, labels_visible: bool, spinner: char) -> String {
         self.text_at(lang, labels_visible, spinner, u16::MAX)
     }
@@ -213,7 +210,6 @@ impl StatusLine {
                 format!("{spinner} {}{}", prefix(*label), lang.tr(i18n::JUDGING)),
                 text.as_deref(),
             ),
-            Self::Training(progress) => training_text(lang, spinner, progress),
             Self::Queued {
                 label,
                 reason,
@@ -334,7 +330,6 @@ pub(crate) fn build(state: &ChatState, now: Instant) -> Vec<StatusLine> {
             .map(|task| StatusLine::Running(running_line(task, now))),
     );
     lines.extend(judging_lines(state, &inputs, now));
-    lines.extend(state.training.clone().map(StatusLine::Training));
     lines.extend(inputs.iter().filter_map(|input| queued_line(input)));
     lines.extend(held_lines(state, &tasks, &inputs));
     lines.extend(alert_lines(state));
@@ -346,7 +341,6 @@ pub(crate) fn build(state: &ChatState, now: Instant) -> Vec<StatusLine> {
 pub(crate) enum LineKind {
     Running,
     Judging,
-    Training,
     Queued,
     Held,
     Alert,
@@ -354,10 +348,9 @@ pub(crate) enum LineKind {
 
 impl LineKind {
     /// 나머지 개수를 붙이는 순서다.
-    const ORDER: [Self; 6] = [
+    const ORDER: [Self; 5] = [
         Self::Running,
         Self::Judging,
-        Self::Training,
         Self::Queued,
         Self::Held,
         Self::Alert,
@@ -370,8 +363,6 @@ impl LineKind {
             (Self::Running, false) => i18n::BOARD_RUNNING,
             (Self::Judging, true) => i18n::BOARD_MORE_JUDGING,
             (Self::Judging, false) => i18n::BOARD_JUDGING,
-            (Self::Training, true) => i18n::BOARD_MORE_TRAINING,
-            (Self::Training, false) => i18n::BOARD_TRAINING,
             (Self::Queued, true) => i18n::BOARD_MORE_QUEUED,
             (Self::Queued, false) => i18n::BOARD_QUEUED,
             (Self::Held, true) => i18n::BOARD_MORE_HELD,
@@ -388,7 +379,6 @@ impl StatusLine {
         match self {
             Self::Running(_) => LineKind::Running,
             Self::Judging { .. } => LineKind::Judging,
-            Self::Training(_) => LineKind::Training,
             Self::Queued { .. } => LineKind::Queued,
             Self::Stopped { .. }
             | Self::HeldTask { .. }
@@ -756,22 +746,6 @@ fn subagents_text(lang: Lang, count: usize) -> String {
             lang.tr(i18n::RUNNING_COUNT_SUFFIX)
         ),
     }
-}
-
-fn training_text(lang: Lang, spinner: char, progress: &TrainingProgress) -> String {
-    let graded = i18n::format_count(u64::from(progress.graded));
-    let graded = match lang {
-        Lang::Ko => format!("{} {graded}{}", i18n::USAGE_LABELS, i18n::COUNT_SUFFIX),
-        Lang::En => format!("{} {graded}", lang.tr(i18n::USAGE_LABELS)),
-    };
-    format!(
-        "{spinner} [{}] {} · {graded} · {} · {} {}",
-        lang.tr(i18n::TRAINING),
-        progress.stage,
-        i18n::format_elapsed(lang, progress.elapsed),
-        lang.tr(i18n::TOKEN),
-        i18n::format_count(progress.tokens)
-    )
 }
 
 fn with_text(head: String, text: Option<&str>) -> String {
@@ -1567,18 +1541,12 @@ mod tests {
         input_at(&mut state, 9, 'F', InputState::Judging, "", now);
         task(&mut state, 5, 'E', TaskState::Held, now);
         state.apply_alert(Alert::RouterPaused);
-        state.training = Some(TrainingProgress {
-            stage: "채점".to_owned(),
-            graded: 10,
-            elapsed: Duration::from_secs(5),
-            tokens: 0,
-        });
 
         let text = board_text(&state, now + Duration::from_secs(1), Lang::Ko).unwrap();
 
         assert_eq!(
             text,
-            "⠙ [A] 작업 중 · 실행 2개 더 · 판단 1 · 학습 1 · 대기 3 · 보류 1 · 알림 1"
+            "⠙ [A] 작업 중 · 실행 2개 더 · 판단 1 · 대기 3 · 보류 1 · 알림 1"
         );
     }
 

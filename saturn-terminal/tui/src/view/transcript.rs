@@ -89,9 +89,6 @@ pub(crate) enum TranscriptCell {
     Correction { label: TaskLabel, selected: usize },
     /// 보류 닫기가 끝났다.
     HeldClosed { label: TaskLabel },
-    /// 채점 후보가 모자라 `/train`을 실행하지 못했다.
-    #[cfg_attr(not(test), expect(dead_code, reason = "#91 학습 실행 구현 전"))]
-    TrainShort { graded: u32, need: u32 },
     /// `!` 셸 명령 결과.
     Shell(ShellOutput),
     /// 명령 해석 오류 같은 한 줄 경고, 원문 그대로.
@@ -135,8 +132,7 @@ impl TranscriptCell {
             | Self::Feedback { label, .. }
             | Self::Correction { label, .. }
             | Self::HeldClosed { label } => format!("{} ", labels::format(*label)),
-            Self::TrainShort { .. }
-            | Self::Shell(_)
+            Self::Shell(_)
             | Self::Warning(_)
             | Self::ExtensionList(..)
             | Self::ConstraintList(..) => SATURN_SPEAKER.to_owned(),
@@ -246,7 +242,6 @@ impl TranscriptCell {
                 labels::format(*label),
                 lang.tr(i18n::HELD_CLOSED)
             )],
-            Self::TrainShort { graded, need } => vec![train_short_line(lang, *graded, *need)],
             Self::Shell(output) => shell_lines(lang, output, expanded),
             Self::Warning(text) => vec![text.clone()],
             Self::ExtensionList(list, direct) => extensions::list_lines(lang, list, direct),
@@ -938,26 +933,6 @@ fn feedback_line(
     )
 }
 
-fn train_short_line(lang: Lang, graded: u32, need: u32) -> String {
-    let unit = lang.tr(i18n::COUNT_SUFFIX);
-    let (graded, need) = (
-        i18n::format_count(u64::from(graded)),
-        i18n::format_count(u64::from(need)),
-    );
-    match lang {
-        Lang::Ko => format!(
-            "{} {graded} / {need}{unit} · {need}{unit}이 {}",
-            i18n::TRAIN_SHORT,
-            i18n::TRAIN_SHORT_SUFFIX
-        ),
-        Lang::En => format!(
-            "{} {graded} / {need} · {need} {}",
-            lang.tr(i18n::TRAIN_SHORT),
-            lang.tr(i18n::TRAIN_SHORT_SUFFIX)
-        ),
-    }
-}
-
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = output.output.len()
 // basis: estimate
@@ -1444,19 +1419,6 @@ mod tests {
         assert_eq!(
             check.lines(Lang::Ko, false, false),
             vec!["[A] 결과 확인 필요 · /continue A"]
-        );
-    }
-
-    #[test]
-    fn lines_train_short_matches_design_text() {
-        let cell = TranscriptCell::TrainShort {
-            graded: 83,
-            need: 200,
-        };
-
-        assert_eq!(
-            cell.lines(Lang::Ko, true, false),
-            vec!["채점할 판단 83 / 200건 · 200건이 쌓이면 실행할 수 있습니다"]
         );
     }
 

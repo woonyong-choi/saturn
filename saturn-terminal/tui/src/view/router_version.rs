@@ -64,8 +64,6 @@ impl RouterVersionRow {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum RouterVersionCommand {
-    ResetThresholds,
-    TrainFrom(String),
     Use(String),
 }
 
@@ -97,8 +95,6 @@ impl RouterVersionScreen {
     pub(crate) fn command(&mut self, action: &Action) -> Option<RouterVersionCommand> {
         let version = self.rows.get(self.selected).map(|row| row.version.clone());
         match action {
-            Action::ResetThresholds => Some(RouterVersionCommand::ResetThresholds),
-            Action::TrainFrom => version.map(RouterVersionCommand::TrainFrom),
             Action::UseVersion | Action::Confirm if self.confirm_use => {
                 self.confirm_use = false;
                 version.map(RouterVersionCommand::Use)
@@ -207,10 +203,13 @@ fn question_lines(lang: Lang, row: &RouterVersionRow) -> Vec<Line<'static>> {
 
 #[cfg(test)]
 mod tests {
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
 
     use super::*;
+    use crate::keymap::resolve_in_tests;
+    use crate::keys::KeyArea;
 
     // cost: time O(1), heap O(1), stack O(1)
     // basis: estimate
@@ -259,18 +258,17 @@ mod tests {
     }
 
     #[test]
-    fn train_from_uses_selected_version() {
-        let mut screen = screen();
-        screen.down();
+    fn router_version_screen_has_no_training_keys() {
+        let key = |letter: char| {
+            resolve_in_tests(
+                KeyArea::RouterVersion,
+                KeyEvent::new(KeyCode::Char(letter), KeyModifiers::NONE),
+            )
+        };
 
-        assert_eq!(
-            screen.command(&Action::TrainFrom),
-            Some(RouterVersionCommand::TrainFrom("v2".to_string()))
-        );
-        assert_eq!(
-            screen.command(&Action::ResetThresholds),
-            Some(RouterVersionCommand::ResetThresholds)
-        );
+        assert_eq!(key('r'), None);
+        assert_eq!(key('t'), None);
+        assert_eq!(key('u'), Some(Action::UseVersion));
     }
 
     // cost: time O(1), heap O(1), stack O(1)

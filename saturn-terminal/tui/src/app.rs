@@ -46,7 +46,6 @@ use crate::view::start_screen::StartInfo;
 use crate::view::status_board::{self, Button};
 use crate::view::stop_confirm::StopConfirm;
 use crate::view::task_list::TaskList;
-use crate::view::train_confirm::TrainConfirm;
 use crate::view::transcript::{Transcript, TranscriptCell};
 use crate::view::usage::UsageScreen;
 
@@ -93,7 +92,6 @@ pub(crate) enum Window {
     FullTranscript(FullTranscript),
     Usage(UsageScreen),
     RouterVersion(RouterVersionScreen),
-    TrainConfirm(TrainConfirm),
     StopConfirm(StopConfirm),
     ConstraintAsk(ConstraintAsk),
     Model(ModelPicker),
@@ -192,8 +190,6 @@ pub(crate) struct App {
     /// 받은 가장 오래된 기록 위치. 더 앞 기록을 요청할 때 `before`로 보낸다.
     history_before: Option<LedgerSeq>,
     history_has_more: bool,
-    /// 마지막 `/train`이 `--reset-thresholds`였다.
-    train_reset: bool,
     /// 파일 팝업을 처음 열 때 한 번 모은다.
     file_cache: Option<Vec<PopupItem>>,
 }
@@ -255,7 +251,6 @@ impl App {
             history_loading: false,
             history_before: None,
             history_has_more: true,
-            train_reset: false,
             file_cache: None,
         }
     }
@@ -344,7 +339,6 @@ impl App {
             Some(Window::FullTranscript(_)) => return KeyArea::FullTranscript,
             Some(Window::Usage(_)) => return KeyArea::Usage,
             Some(Window::RouterVersion(_)) => return KeyArea::RouterVersion,
-            Some(Window::TrainConfirm(_)) => return KeyArea::TrainConfirm,
             Some(Window::StopConfirm(_)) => return KeyArea::StopConfirm,
             Some(Window::ConstraintAsk(_)) => return KeyArea::ConstraintAsk,
             Some(Window::Model(_)) => return KeyArea::ModelPicker,
@@ -615,7 +609,6 @@ impl App {
             KeyArea::FullTranscript | KeyArea::Usage | KeyArea::RouterVersion => {
                 self.on_screen_action(action)
             }
-            KeyArea::TrainConfirm => self.on_train_action(action),
             KeyArea::StopConfirm => self.on_stop_confirm_action(action),
             KeyArea::ConstraintAsk => self.on_constraint_ask_action(action),
             KeyArea::ModelPicker => self.on_model_action(action),

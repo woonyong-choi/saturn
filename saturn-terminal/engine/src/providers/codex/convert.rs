@@ -464,7 +464,7 @@ pub(super) fn request_method(kind: InputKind) -> &'static str {
 /// `decline`은 `availableDecisions`에 없어도 받아들여지는 것을 실측했다.
 /// engine은 규칙으로 읽은 호출의 `항상 허용`을 직접 저장하고 `AllowOnce`로 보내므로, 이 값은 읽을 수 없는
 /// 요청(권한 요청 등)에만 쓰인다.
-/// TODO(#56): 거부와 함께 남기는 말은 정해지기 전에는 보내지 않는다
+/// 거부와 함께 남기는 별도 말은 provider에 보내지 않는다.
 pub(super) fn approval_result(pending: &PendingApproval, answer: &PermissionAnswer) -> Value {
     match pending.method.as_str() {
         ELICITATION_METHOD => elicitation_result(answer),
