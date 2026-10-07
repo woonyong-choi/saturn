@@ -239,6 +239,7 @@ def analyze() -> None:
             ignored=sum(int(c) for a, b, c in matches),
         )
     result["test_evidence"] = dict(logs=counts, production_delivery_changed=False)
+    result["collection_exit"] = load(RUN.parent / "collection-exit.json")
     result["protocol"] = load(RUN.parent / "protocol-summary.json")
     result["sample"] = dict(
         conditions=len(questions),

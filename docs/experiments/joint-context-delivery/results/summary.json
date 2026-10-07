@@ -7556,6 +7556,15 @@
     },
     "production_delivery_changed": false
   },
+  "collection_exit": {
+    "initial_shell_exit_code": 2,
+    "initial_error": "run.sh line 10: syntax error near unexpected token ;;",
+    "provider_results_complete": 240,
+    "reentry_exit_code": 0,
+    "raw_files_unchanged": 2280,
+    "new_provider_calls": 0,
+    "cause_assessment": "run.sh was edited while its shell was waiting for the collector; inferred shell read-position error after all jobs completed"
+  },
   "protocol": [
     {
       "phase": "smoke",
