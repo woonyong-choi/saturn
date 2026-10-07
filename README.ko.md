@@ -32,7 +32,7 @@ Codex와 Claude Code를 함께 쓰는 개발자는 provider마다 session과 압
 
 1. 저장소에서 `saturn`을 실행하고 요청을 입력합니다. 뒤에서 도는 engine 프로세스가 Codex나 Claude Code에 보내기 전에 입력을 로컬 SQLite 데이터베이스에 저장합니다.
 2. 에이전트가 일하는 동안 이어지는 요청을 입력합니다. 입력에 대한 예·아니요, 선택형, 등급형 질문에 답하는 작은 모델인 router가 진행 중인 턴에 더할지, 별도 작업으로 시작할지, 대기열에 둘지 정합니다.
-3. session의 맥락이 정해 둔 토큰 기준을 넘고 실행 중인 작업이 없으면, Saturn은 provider에 압축을 맡기거나 비용이 더 적을 때 새 session을 엽니다. 새 session은 Saturn 기록에서 고른 목표, 최근 턴, 끝나지 않은 항목을 패킷으로 받습니다.
+3. session의 맥락이 정해 둔 토큰 기준을 넘고 실행 중인 작업이 없으면, Saturn은 provider에 압축을 맡기거나 비용이 더 적을 때 새 session을 엽니다. 새 session은 Saturn 기록의 대화 전체와 끝나지 않은 항목, 고른 도구 기록을 패킷으로 받습니다.
 4. 채팅을 Claude Code에서 Codex로 바꿉니다. 채팅은 사용자가 보는 대화이고, provider session은 그 뒤에서 열리고 닫힙니다. 새 session은 그 채팅을 마지막으로 본 뒤 바뀐 내용만 받습니다.
 5. 터미널을 닫습니다. engine은 이미 보낸 입력을 계속 처리하고, 나중에 다시 붙을 수 있습니다.
 6. provider가 명령 실행이나 파일 수정을 요청합니다. Saturn은 provider 설정 대신 자체 권한 규칙을 적용하고, 규칙이 묻기로 정한 경우에만 허가 창을 보입니다.
@@ -171,7 +171,7 @@ saturn --continue
 
 ## 상태
 
-Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `saturn` 명령은 `main`에 있습니다. 가짜 provider를 쓴 테스트에서 동작하는 것은 입력 접수부터 provider 전송까지의 입력 흐름, 멈춤과 재개, Saturn 권한 규칙, `/model`, `/usage`, 파이프와 `NO_COLOR`를 위한 단순 화면 방식, TUI를 닫아도 작업 계속 실행, engine 크래시 뒤 복구, 확장을 Saturn 저장소에 설치하고 연결을 시작할 때 주입하는 것, 그리고 Saturn 안의 에이전트나 바깥의 Claude Code, Codex가 떠 있는 engine에 일을 부탁하는 하위 접속입니다. `scripts/e2e/README.md`의 확인 절차(단계 a~k)는 2026-10-04에 실제 Codex, Claude Code, router로 통과했고, 나머지는 실제 provider로 실행하지 않았습니다. 패킷에는 해제되지 않은 저장 제약이 크기 상한 안에서 실립니다. 가짜 provider 테스트로만 확인했고 실제 provider로는 아직 확인하지 않았습니다([#296](https://github.com/woonyong-choi/saturn/issues/296) 완료 조건 2). 패킷의 경쟁 구역을 router `compact` 답의 순서로 채우는 것은 실험 설정 `context.select.packet = "jev"`로만 켜지고 기본은 꺼져 있습니다. 가짜 provider 테스트와 실제 Claude·Codex의 양방향 전환 한 번으로 확인했고, 답 품질에 미치는 효과는 재지 않았습니다([#380](https://github.com/woonyong-choi/saturn/issues/380)). 설계만 된 것은 제약 해제와 `/constraints` 화면([#379](https://github.com/woonyong-choi/saturn/issues/379), [#381](https://github.com/woonyong-choi/saturn/issues/381)), 로컬 router 모델의 채점과 학습, 서버와 데이터 공유입니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
+Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `saturn` 명령은 `main`에 있습니다. 가짜 provider를 쓴 테스트에서 동작하는 것은 입력 접수부터 provider 전송까지의 입력 흐름, 멈춤과 재개, Saturn 권한 규칙, `/model`, `/usage`, 파이프와 `NO_COLOR`를 위한 단순 화면 방식, TUI를 닫아도 작업 계속 실행, engine 크래시 뒤 복구, 확장을 Saturn 저장소에 설치하고 연결을 시작할 때 주입하는 것, 그리고 Saturn 안의 에이전트나 바깥의 Claude Code, Codex가 떠 있는 engine에 일을 부탁하는 하위 접속입니다. `scripts/e2e/README.md`의 확인 절차(단계 a~k)는 2026-10-04에 실제 Codex, Claude Code, router로 통과했고, 나머지는 실제 provider로 실행하지 않았습니다. 패킷에는 해제되지 않은 저장 제약이 크기 상한 안에서 실립니다. 가짜 provider 테스트로만 확인했고 실제 provider로는 아직 확인하지 않았습니다([#296](https://github.com/woonyong-choi/saturn/issues/296) 완료 조건 2). provider를 바꿀 때 패킷은 기록된 대화를 순서대로 보존하고 남은 공간에 최근 도구 기록을 넣습니다. 보내기 전에 만든 패킷과 실제 발신 글을 대조합니다. 가짜 provider 테스트는 통과했으며 실제 양방향 전환의 품질은 아직 확인하지 않았습니다([#613](https://github.com/woonyong-choi/saturn/issues/613)). 설계만 된 것은 로컬 router 모델의 채점과 학습, 서버와 데이터 공유입니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
 
 ## 비교
 

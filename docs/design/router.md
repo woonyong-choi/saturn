@@ -44,7 +44,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 - 기계적으로 판단할 수 있는 것은 코드가, 뜻을 이해해야 하는 것은 router가 정한다. router를 뜻 판단에만 쓰기 위해서다.
 - 제어 명령이 아닌 입력마다 router를 한 번 부르고 필요한 질문을 요청 한 건에 묶는다. 입력당 호출 수를 한 번으로 줄이기 위해서다.
 - 사용자가 모델을 고정한 입력도 router를 부른다. 고정은 `target_model` 질문만 뺀다. `/model` 뒤 모든 입력이 대기해 병렬 작업이 막히지 않게 하기 위해서다.
-- 후보를 고르는 질문(`compact`, `file-rank`)은 후보 전체를 묻는다. 순위로 미리 자르면 router가 남길 항목을 놓치기 때문이다. 요청이 크기 한도를 넘으면 질문 단위로 나눠 보낸다. 순위는 router가 답하지 못한 항목의 순서와 같은 확률일 때의 순서에만 쓰며, 규칙은 [맥락 고르기](context-selection.md)에 있다.
+- 후보를 고르는 질문(`file-rank`)은 후보 전체를 묻는다. 순위로 미리 자르면 router가 남길 항목을 놓치기 때문이다. 요청이 크기 한도를 넘으면 질문 단위로 나눠 보낸다. 순위는 router가 답하지 못한 항목의 순서와 같은 확률일 때의 순서에만 쓰며, 규칙은 [맥락 고르기](context-selection.md)에 있다.
 - 뜻 판단이 새로 필요하면 입력마다 보내는 요청에 질문을 더하는 방식을 먼저 쓴다. router는 state를 한 번 읽고 모든 질문에 답하므로 호출 수가 늘지 않기 때문이다. 개수 세기, 날짜 비교, 앞 말을 가리키는 간접 지시처럼 router가 약한 판단은 코드로 하거나 두 원문을 나란히 놓는 질문으로 바꾼다.
 - router는 앞 입력의 판단 결과와 같은 채팅의 작업 맥락을 state에 넣은 요청으로 판단한다. 맥락의 구성과 크기 처리는 [판단 요청 맥락](#판단-요청-맥락)에, 판단 차례와 적용 직전 revision 비교는 [입력 처리](input-handling.md)에 있다.
 - `keep_current`를 `is_actionable`보다 먼저 읽는다. 이어 가는 입력이 파일 탐색으로 빠지는 일을 막기 위해서다.
@@ -96,7 +96,6 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 | `send-opt` | `steer_or_spawn` | `choice` | `target_model`과 함께 질문 | 확신도 0.6 미만이면 현재 에이전트에 대기 뒤 전송 |
 | `file-rank` | `file_<n>_relevant` | `noul` | 후보 파일 전체와 `answer_present`를 함께 질문. 0.7 이상은 존재, 0.35 미만은 없음 | 판단이 없으면 후보 순위 그대로 |
 | `context-select` | `pick` | `choice` | 게이트 `noul` 3개 평균이 0.3 미만이면 없음. 2차로 `fits_<n>` 질문 | 판단이 없으면 힌트 생략 |
-| `compact` | `call_<id>_keep` | `noul` | 후보 호출 전체에 `result_<id>_keep`과 함께 질문. 기준값 없음. 항목의 확률은 두 답 중 큰 값이고, 확률이 높은 순, 같은 확률이면 후보 순위 순으로 예산까지 채움 | 답이 없는 항목은 후보 순위 순으로 답이 있는 항목 뒤에 두고, 판단이 전부 없으면 후보 순위 순서로 예산까지 채움 |
 | `doc-filter` | `injection` | `noul` | 조각마다 `relevant`, `evidence`, `contradiction`과 함께 질문. 0.7 이상이면 제외 | 판단이 없으면 문서 조각 생략 |
 | `loop` | `is_progressing` | `noul` | 0.2 미만이면 루프 | 판단이 없으면 멈춤과 사용자 알림 |
 | `feedback` | `wrong_doc` | `noul` | `misunderstood_intent`, `code_error`와 함께 질문. 0.7 이상인 원인만 사용 | 판단이 없으면 원문 그대로 전달 |
@@ -233,9 +232,7 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 - 보낸 뒤 시간 초과는 이미 처리됐을 수 있다. router 판단은 부작용이 없는 조회라 다시 보내고, 처리됐을 수 있는 호출의 비용은 `cost-unknown`으로 기록한다. provider 입력의 재전송 규칙([입력 처리](input-handling.md))과 다른 이유다.
 - 간격은 응답의 `retry-after`와 무관하게 5초다. 속도 제한 규칙을 다른 실패와 하나로 맞추기 위해서다. 시도마다 응답을 5초까지 기다리되 첫 실패 시각부터 10초가 전체 마감이다. 마감까지 남은 시간이 5초보다 짧으면 그만큼만 기다리고, 마감에 걸린 시도는 끊는다. 응답 대기를 끊은 호출은 `cost-unknown`으로 센다. 응답이 아예 없으면 첫 시도 5초, 재시도 5초 대기 뒤 마지막 시도가 마감까지 5초를 기다려 첫 시도부터 최대 15초 뒤에 포기한다.
 - 입력 처리 판단(`route`, `relation`, `send-opt`)이 실패하면 모델 선택과 끼워 넣기·대기·새 작업 판단을 건너뛰고 현재 에이전트와 현재 모델로 보낸다. 실행 중이면 현재 에이전트의 턴에 끼워 넣고, 아니면 바로 보낸다. 입력을 대기로 보내지 않는다. router 장애가 입력을 멈추지 않게 하기 위해서다. 채팅에 현재 모델이 없는 첫 입력은 현재 모델 대신 기본 모델(`model.default`)로 보내고, 기본 모델이 없으면 provider 기본값이다([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)).
-- `compact` 판단은 실험 옵션 `context.select.packet = jev`일 때만 부른다([설정](settings.md)). 이 옵션이 꺼져 있으면 아래 규칙이 닿지 않는다.
-- 패킷의 `compact` 판단이 실패했을 때 router가 시작한 전환(router가 고른 모델이 현재와 달라 시작한 전환)은 건너뛰고 현재 모델로 진행한다. 순위 순서로 채운 패킷은 패킷 없음과 정답률이 같아(20.6%와 20.0%) 그 전환의 이득이 없기 때문이다([재측정 결과](../experiments/handoff-packet-quality-v2/report.md)).
-- 사용자가 모델을 고정했거나 맥락 크기 규칙이 시작한 전환은 `compact` 판단이 실패해도 전환한다. 경쟁 구역은 순위 순서로 채우고 로그에 `판단 모델 실패로 기록 선택을 건너뜁니다`를 남긴다.
+- 전환 패킷의 도구 기록은 router 판단 없이 최근순으로 채운다([맥락 정리](context-management.md#패킷-판단의-적용)). 입력 처리 판단이 실패해도 사용자가 지정한 provider 전환은 패킷 원본 기록으로 진행한다.
 - 응답이 없는 실패가 연속 3회면 상태판에 `판단 모델 연결 끊김`을 보이고, 새 입력 접수는 계속하며 현재 모델로 처리한다. 성공 한 번이면 지운다. router 연결이 끊겨도 사용자가 작업을 이어 갈 수 있게 하기 위해서다.
 - 로컬 Saturn 모델 호출은 다시 보내지 않고 같은 대체 규칙으로 간다.
 - 로그에는 고정 문구만 쓰고 router 키와 요청 원문은 쓰지 않는다.
@@ -254,7 +251,7 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | 연속 3회 호출 실패 | 입력 접수를 계속하고 상태판에 `판단 모델 연결 끊김`을 보인다. |
 | 요청 전송 뒤 시간 초과 | 다시 보내고 그 호출의 비용을 `cost-unknown`으로 기록한다. |
 | 속도 제한 | 5초 뒤 다시 보내고 남은 요청의 동시 수를 줄인다. |
-| 나눈 요청 일부 실패 | 실패한 조각의 항목만 순위 대체 규칙을 적용하고 다른 조각의 답은 쓴다. |
+| 나눈 요청 일부 실패 | 응답하지 않은 질문은 대체 규칙으로 처리하고 다른 조각의 답은 쓴다. |
 
 ### 요구사항
 
@@ -265,12 +262,11 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | 호출이 실패하면 5초 뒤 한 번, 다시 5초 뒤 한 번 더 보내고 첫 실패부터 10초 뒤에도 실패하면 진행 중인 시도도 끊고 포기한다. 시도마다 응답 대기는 5초이고 응답이 없으면 15초 안에 포기한다. | `saturn-terminal/core/src/routers/failure.rs`의 `retry_delay_waits_five_seconds_twice_then_gives_up`, `retry_delay_gives_up_when_waiting_would_pass_the_deadline`, `saturn-terminal/engine/src/routers/remote/tests.rs`의 `failures_retry_twice_five_seconds_apart_then_give_up`, `first_retry_waits_five_seconds_before_sending`, `router_retry_gives_up_at_the_deadline_for_every_response_pattern` |
 | 보낸 뒤 시간 초과와 속도 제한도 같은 간격으로 다시 보내고, 키 거절과 `invalid`는 다시 보내지 않는다. | `saturn-terminal/engine/src/routers/remote/tests.rs`의 `timeout_after_send_is_retried_and_counted_as_unknown_cost`, `rate_limit_retries_on_the_same_interval_ignoring_retry_after`, `auth_failure_and_invalid_status_are_not_retried` |
 | 입력 처리 판단이 실패하면 현재 에이전트와 현재 모델로 보내고 입력을 대기로 보내지 않는다. | `saturn-terminal/core/src/routers/failure.rs`의 `route_after_failure_keeps_the_current_agent_and_model` |
-| `compact` 판단이 실패하면 router가 시작한 전환은 건너뛰고 강제한 전환은 순위 순서로 채운다. | `saturn-terminal/core/src/routers/failure.rs`의 `compact_failure_skips_router_transition_and_fills_forced_one`, `saturn-terminal/core/src/sessions/ranking.rs`의 `order_after_router_no_verdicts_keeps_rrf_order` |
-| 판단을 건너뛸 때 정한 문구를 로그에 남기고 비밀값은 남기지 않는다. | `saturn-terminal/engine/src/routers/mod.rs`의 `route_after_failure_logs_skip_message_and_keeps_current_model`, `compact_after_failure_logs_by_who_started_the_transition` |
+| 판단을 건너뛸 때 정한 문구를 로그에 남기고 비밀값은 남기지 않는다. | `saturn-terminal/engine/src/routers/mod.rs`의 `route_after_failure_logs_skip_message_and_keeps_current_model` |
 | 연속 3회 실패해도 입력 접수를 멈추지 않고 연결 끊김만 표시한다. | `saturn-terminal/engine/src/routers/mod.rs`의 `three_failures_show_disconnected_and_success_resets`, `call_counts_only_unanswered_failures_and_keeps_accepting`, `saturn-terminal/tui/src/app/tests.rs`의 `submit_while_router_disconnected_still_sends_input` |
 | 판단 호출의 보낸 원문, 받은 원문, 질문별 답을 모두 기록한다. | 기록을 켠 채팅에서 호출마다 원문과 답이 저장되고 `/record off` 채팅에서는 생략되는지 확인한다. |
 | `choice` 확신도는 `(N·pmax − 1)/(N − 1)`로 계산한다. | 균등 분포에서 0, 한 선택지 확률 1에서 1이 나오는지 확인한다. |
-| 요청이 크기 한도를 넘으면 질문 단위로 나눠 같은 state로 보낸다. | `saturn-terminal/core/src/routers/split.rs`의 `split_request_over_limit_splits_by_question_with_same_state` |
+| 요청이 크기 한도를 넘으면 질문 단위로 나눠 같은 state로 보낸다. | `saturn-terminal/engine/src/routers/remote/tests.rs`의 `large_requests_are_split_by_question` |
 | 나눈 요청은 동시 최대 8개까지 병렬로 보내고 조각마다 실패를 따로 처리한다. | 조각 수가 8을 넘는 요청에서 동시 전송이 8개를 넘지 않는지, 한 조각만 실패시켜 그 항목만 순위 대체인지, 429에서 동시 수가 줄어드는지 확인한다. |
 | 255개 초과 선택지는 나뉘어 전송된다. | 255개 초과 선택지가 나뉘어 전송되는지 확인한다. |
 | 판단 요청에 같은 채팅의 직전 입력, 최초 목표, 최신 수정, 진행 상태, 보류 작업의 번호와 목표를 싣고, 같은 후속 문장도 목표마다 다른 요청이 된다. | `saturn-terminal/engine/src/lifecycle/judge_context.rs`의 `same_follow_up_carries_the_goal_of_each_conversation`, `latest_amendment_is_the_last_input_steered_into_the_task`, `held_tasks_are_listed_with_their_ids_and_goals` |
@@ -282,7 +278,6 @@ router 호출이 실패하면 `engine`이 다시 보내고, 그래도 실패하�
 | 정책 교체 중 접수한 입력은 접수 때 설정 번호의 기준값으로만 판단하고, 옛 설정으로 되돌리면 옛 번호를 다시 쓰며, 재시작해도 입력의 번호가 같다. | `saturn-terminal/engine/src/lifecycle/policy.rs`의 `inputs_keep_the_policy_they_were_accepted_under_across_swap_rollback_and_restart` |
 | 구현 전인 `train`, `router use`, 판단 방식 `collect`는 정책을 바꾸지 않고 미지원 오류나 설정 오류를 돌려준다. | `saturn-terminal/engine/src/lifecycle/requests.rs`의 `requests_each_get_one_response_in_order`, `saturn-terminal/engine/src/routers/mod.rs`의 `select_follows_method_and_endpoint_rules` |
 | 영어 질문은 한국어와 인젝션 구간에서 판단 성능을 떨어뜨리지 않는다. | [#15](https://github.com/woonyong-choi/saturn/issues/15) 실험으로 구간별 성능 회귀를 확인한다. |
-| 후보를 순위로 자르지 않고 전체를 묻는다. | `saturn-terminal/core/src/routers/tests.rs`의 `compact_questions_150_candidates_ask_all` |
 | 모델 판단 그림자를 켜고 꺼도 실제 모델과 실제 질문이 같고 원문은 한 번만 가며, 켜면 후보·정책·확률·적용 모델을 내보낸다. | `saturn-terminal/engine/src/lifecycle/model_shadow.rs`의 `shadow_on_and_off_apply_the_same_model_and_the_same_real_questions` |
 | 그림자 답이 빠지거나 틀리거나 router가 실패해도 실제 선택은 그대로다. | `missing_wrong_or_failed_shadow_answers_leave_the_real_choice_alone` |
 | 어긋난 판단의 그림자는 미적용으로 남는다. | `a_superseded_judgment_leaves_its_shadow_unapplied` |

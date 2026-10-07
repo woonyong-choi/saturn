@@ -5,14 +5,11 @@ pub mod calibration;
 pub mod constraint;
 pub mod failure;
 pub mod shadow;
-pub mod split;
 
 use std::future::Future;
 
-use saturn_protocol::ids::{ChatRevision, LedgerSeq, SettingsRevision};
+use saturn_protocol::ids::{ChatRevision, SettingsRevision};
 use saturn_protocol::state::Disposition;
-
-use self::split::{SplitError, split_request};
 
 /// 이 값 미만이면 새 작업, 이 값부터 유지 기준 미만까지는 현재 에이전트 유지.
 pub const KEEP_CURRENT_FLOOR: f64 = 0.3;
@@ -26,7 +23,6 @@ const FLOAT_SLACK: f64 = 1e-9;
 pub const SET_ROUTE: &str = "route";
 pub const SET_RELATION: &str = "relation";
 pub const SET_SEND_OPT: &str = "send-opt";
-pub const SET_COMPACT: &str = "compact";
 pub const SET_CONSTRAINT: &str = "constraint";
 
 /// 판단 기록과 대체 규칙 기록에 그대로 남는다.
@@ -191,7 +187,7 @@ pub trait RouterClient: Send + Sync {
     /// 실패하면 호출자는 키를 다시 받거나 Saturn을 실행하지 않는다.
     fn check(&self) -> impl Future<Output = Result<(), RouterError>> + Send;
 
-    /// 64K를 넘거나 `state`와 가장 긴 질문 합이 32K를 넘으면 구현이 `split::split_request`로 나눠 보낸다.
+    /// 64K를 넘거나 `state`와 가장 긴 질문 합이 32K를 넘으면 구현이 provider 어댑터에서 나눠 보낸다.
     ///
     /// # Errors
     /// 호출자는 `RouterError` 종류별로 대기, 대체 규칙, 재전송을 고른다.
@@ -349,129 +345,6 @@ pub fn questions_for_input(
         ));
     }
     sets
-}
-
-/// 후보 입력 하나를 질문에 싣는 앞 글자 수(초안).
-pub const COMPACT_INPUT_CHARS: usize = 2_000;
-
-/// 결과를 질문에 싣는 앞 글자 수(초안).
-pub const COMPACT_RESULT_CHARS: usize = 4_000;
-
-/// `state`에 싣는 사용자 입력 수. 마지막 입력과 그 앞 3개다.
-pub const COMPACT_STATE_INPUTS: usize = 4;
-
-/// `compact` 질문이 싣는 후보 한 건. 호출은 `<도구 이름> <인자>`, 결과는 호출의 결과 글이다.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CompactCandidate {
-    pub seq: LedgerSeq,
-    pub call: String,
-    pub result: String,
-}
-
-fn clip(text: &str, limit: usize) -> String {
-    text.chars().take(limit).collect()
-}
-
-// cost: time O(n·L), heap O(n·L), stack O(1)
-// vars: n = 입력 수(최대 4), L = 입력 글자 수
-// basis: estimate
-/// 지금 하려는 일을 알리는 `state`. `inputs`는 오래된 순서의 사용자 입력이고 마지막 입력과 그 앞 3개만 쓴다.
-pub fn compact_state(inputs: &[String]) -> String {
-    let start = inputs.len().saturating_sub(COMPACT_STATE_INPUTS);
-    let recent = &inputs[start..];
-    let Some((latest, earlier)) = recent.split_last() else {
-        return String::new();
-    };
-    let mut state = format!(
-        "Latest user request:\n{}\n\nEarlier user requests (oldest first):",
-        clip(latest, COMPACT_INPUT_CHARS)
-    );
-    for input in earlier {
-        state.push_str("\n- ");
-        state.push_str(&clip(input, COMPACT_INPUT_CHARS));
-    }
-    state
-}
-
-// cost: time O(n·L), heap O(n·L), stack O(1)
-// vars: n = 후보 수, L = 후보 글자 수
-// basis: estimate
-/// 후보마다 `call_<id>_keep`과 `result_<id>_keep`을 묻는다. 후보를 줄이지 않고 전체를 넘기고, 질문에 후보의 내용을 싣는다.
-pub fn compact_questions(candidates: &[CompactCandidate]) -> (QuestionSetId, Vec<Question>) {
-    const HEAD: &str =
-        "The user moves this chat to a fresh coding-agent session for the latest request. ";
-    let questions = candidates
-        .iter()
-        .flat_map(|candidate| {
-            let call = clip(&candidate.call, COMPACT_INPUT_CHARS);
-            let result = clip(&candidate.result, COMPACT_RESULT_CHARS);
-            [
-                noul(
-                    &compact_call_id(candidate.seq),
-                    &format!("{HEAD}Should the new session see this tool call?\n\n{call}"),
-                ),
-                noul(
-                    &compact_result_id(candidate.seq),
-                    &format!(
-                        "{HEAD}Should the new session see this tool result?\n\n{call}\n\nResult:\n{result}"
-                    ),
-                ),
-            ]
-        })
-        .collect();
-    (set_id(SET_COMPACT), questions)
-}
-
-// cost: time O(n + q), heap O(n + q·s), stack O(1), alloc 1
-// vars: n = 후보 수, q = 질문 수, s = state 글자 수
-// basis: estimate
-/// 후보 전체를 묻는 요청을 크기 한도에 맞게 나눈 목록이다. 조각마다 같은 `state`를 싣는다.
-///
-/// # Errors
-/// `state`가 너무 커서 질문 하나도 담을 수 없으면 `SplitError::QuestionTooLarge`.
-pub fn compact_requests(
-    model: &str,
-    state: &str,
-    candidates: &[CompactCandidate],
-) -> Result<Vec<RouterRequest>, SplitError> {
-    split_request(RouterRequest {
-        model: model.to_string(),
-        state: state.to_string(),
-        sets: vec![compact_questions(candidates)],
-    })
-}
-
-// cost: time O(n·r·a), heap O(n), stack O(1)
-// vars: n = 후보 수, r = 응답 수, a = 응답당 답 수
-// basis: estimate
-/// 조각마다 받은 응답에서 `call_<id>_keep`과 `result_<id>_keep` 답 중 큰 값을 `(기록 번호, P(yes))`로 모은다.
-/// 실패한 조각의 응답은 넘기지 않으며, 두 답이 모두 없거나 `noul`이 아닌 후보는 뺀다.
-pub fn compact_verdicts(
-    candidates: &[LedgerSeq],
-    responses: &[RouterResponse],
-) -> Vec<(LedgerSeq, f64)> {
-    let answers: Vec<&(String, Answer)> = responses
-        .iter()
-        .flat_map(|response| &response.answers)
-        .collect();
-    let yes_of = |id: &str| {
-        answers.iter().find_map(|(answer_id, answer)| match answer {
-            Answer::Noul(yes) if answer_id == id => Some(*yes),
-            _ => None,
-        })
-    };
-    candidates
-        .iter()
-        .filter_map(|seq| {
-            let call = yes_of(&compact_call_id(*seq));
-            let result = yes_of(&compact_result_id(*seq));
-            match (call, result) {
-                (Some(call), Some(result)) => Some((*seq, call.max(result))),
-                (Some(yes), None) | (None, Some(yes)) => Some((*seq, yes)),
-                (None, None) => None,
-            }
-        })
-        .collect()
 }
 
 /// `keep_current`를 `is_actionable`보다 먼저 읽어 이어 가는 입력이 파일 탐색으로 빠지지 않게 한다.
@@ -724,15 +597,6 @@ impl AnswerReader<'_> {
             }
         }
     }
-}
-
-/// 초안: 모든 세트를 1.0에서 시작한다.
-fn compact_call_id(seq: LedgerSeq) -> String {
-    format!("call_{}_keep", seq.0)
-}
-
-fn compact_result_id(seq: LedgerSeq) -> String {
-    format!("result_{}_keep", seq.0)
 }
 
 fn set_id(name: &str) -> QuestionSetId {

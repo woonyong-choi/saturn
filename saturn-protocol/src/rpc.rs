@@ -869,7 +869,7 @@ pub enum ChatNotice {
         name: Option<String>,
         reason: String,
     },
-    /// 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못했다. 맥락 정리를 미루고 제약 목록을 보인다.
+    /// 패킷의 고정 구역이 `P_send`도 넘어 새 session으로 옮기지 못했다. 맥락 정리를 미루고 제약 목록을 보인다.
     ContextDeferred {
         constraints: Vec<String>,
     },

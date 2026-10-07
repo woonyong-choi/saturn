@@ -16,8 +16,9 @@ use crate::providers::test_support::Call;
 
 const HUGE: u64 = 10_000_000;
 
-/// 사용자 설정으로 줄인 발동 기준. `T`는 400토큰이라 `P_max`는 40토큰, `P_hard`는 80토큰이다.
-const SMALL_CONTEXT: &str = "[context.claude]\nt_abs = 400\nwindow = 400\n";
+/// 사용자 설정으로 줄인 발동 기준. `T`는 400토큰이라 `P_max`는 40토큰, `P_send`는 80토큰이다.
+const SMALL_CONTEXT: &str =
+    "[context]\nmode = \"saturn\"\n[context.claude]\nt_abs = 400\nwindow = 400\n";
 
 fn opens(flow: &Flow) -> Vec<Call> {
     flow.fake
@@ -123,7 +124,8 @@ async fn waiting_input_is_sent_after_the_turn_ends() {
 
 #[tokio::test]
 async fn context_over_the_threshold_replaces_the_session_only_at_the_turn_boundary() {
-    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    let mut flow =
+        Flow::with_config("[context]\nmode = \"saturn\"\n", vec![idle_reply(0.95)]).await;
     flow.submit("fix the build").await;
     let agent = flow.agent();
     let old = flow.engine.flow.live[&agent].session;
@@ -190,6 +192,35 @@ async fn context_over_the_threshold_replaces_the_session_only_at_the_turn_bounda
     flow.claude_event(turn_completed(agent)).await;
     let open_runs = flow.engine.store.unfinished_runs().await.unwrap();
     assert!(open_runs.is_empty(), "{open_runs:?}");
+}
+
+#[tokio::test]
+async fn restart_does_not_send_a_packet_without_its_recorded_dialogue() {
+    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    flow.submit("fix the build").await;
+    let agent = flow.agent();
+    flow.claude_event(text(agent, "done")).await;
+    flow.claude_event(turn_completed(agent)).await;
+    let live = flow.engine.flow.live[&agent].clone();
+
+    let result = flow
+        .engine
+        .restart_session(
+            flow.chat,
+            &live,
+            "changed packet".to_owned(),
+            None,
+            crate::handoff::PacketEvidence::empty(LedgerSeq(1)),
+        )
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(EngineError::Provider(
+            saturn_core::providers::ProviderError::NotSent { .. }
+        ))
+    ));
+    assert_eq!(opens(&flow).len(), 1);
 }
 
 #[tokio::test]
@@ -288,7 +319,11 @@ async fn finished_first_turn(
 
 #[tokio::test]
 async fn returning_after_the_cache_window_opens_a_new_session_when_the_packet_is_smaller() {
-    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    let mut flow = Flow::with_config(
+        "[context]\nmode = \"saturn\"\n",
+        vec![idle_reply(0.95), idle_reply(0.95)],
+    )
+    .await;
     let (agent, old) = finished_first_turn(&mut flow, 50_000).await;
     backdate_last_turn(&mut flow, old, 50_000);
 
@@ -360,6 +395,7 @@ async fn provider_mode_neither_restarts_on_return_nor_at_the_threshold() {
 /// 접속 실행 설정으로 줄인 발동 기준. engine 시작 설정은 기본값이다.
 fn small_context_override() -> Vec<(String, String)> {
     vec![
+        ("context.mode".into(), "saturn".into()),
         ("provider.claude.context.t_abs".into(), "100000".into()),
         ("provider.claude.context.window".into(), "100000".into()),
     ]

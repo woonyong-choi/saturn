@@ -192,7 +192,8 @@ async fn packet_overflow_with_only_the_fixed_zone_over_the_target_is_not_resent(
 async fn restart_with(
     answers: impl IntoIterator<Item = Result<(), ProviderError>>,
 ) -> (Flow, Client, SessionId) {
-    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    let mut flow =
+        Flow::with_config("[context]\nmode = \"saturn\"\n", vec![idle_reply(0.95)]).await;
     flow.submit(FIRST_INPUT).await;
     let agent = flow.agent();
     let old = flow.engine.flow.live[&agent].session;

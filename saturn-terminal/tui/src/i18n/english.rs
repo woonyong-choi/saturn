@@ -550,8 +550,8 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("결과 확인 필요", "Result needs check"),
     ("맥락 정리 후 이어서 진행", "Context compacted · Continuing"),
     (
-        "고정 제약이 길어 맥락 정리를 미룹니다",
-        "Pinned constraints are long, deferring context compaction",
+        "인계 기록이 길어 전환을 미룹니다",
+        "Handoff records are too long, deferring the switch",
     ),
     (
         "제약 {count}개 생략 · /constraints에서 확인하세요",

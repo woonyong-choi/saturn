@@ -89,12 +89,12 @@ async fn descriptor_values_reach_the_common_code() {
         .context_budget(flow.chat, saturn_protocol::ids::AgentId(1), FAKE)
         .await
         .unwrap();
-    assert_eq!(budget.window, 50_000);
+    assert_eq!(budget.window, 200_000);
     assert_eq!(budget.cache_write, 2.0);
     assert_eq!(
         flow.engine.registry.context_defaults(FAKE),
         ContextDefaults {
-            window: 50_000,
+            window: 200_000,
             cache_write: 2.0
         }
     );

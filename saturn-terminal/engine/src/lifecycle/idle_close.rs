@@ -273,7 +273,11 @@ async fn closed_session_keeps_the_id_and_the_delivered_number_across_an_engine_r
 
 #[tokio::test]
 async fn returning_to_a_closed_session_after_the_cache_window_still_judges_the_idle_return() {
-    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    let mut flow = Flow::with_config(
+        "[context]\nmode = \"saturn\"\n",
+        vec![idle_reply(0.95), idle_reply(0.95)],
+    )
+    .await;
     let (agent, old, since) = finished_turn(&mut flow).await;
     let ended_at = std::time::SystemTime::now() - Duration::from_secs(3_600);
     flow.engine.sessions.record_last_turn(

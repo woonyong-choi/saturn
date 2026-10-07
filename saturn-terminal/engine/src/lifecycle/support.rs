@@ -465,7 +465,6 @@ impl Flow {
             || self.is_calling()
             || self.is_splitting()
             || self.is_changing()
-            || self.is_compacting()
         {
             let flow = &mut self.engine.flow;
             tokio::select! {
@@ -495,11 +494,6 @@ impl Flow {
     /// 제약 해제·예외 판단의 답을 기다리는 입력이 있다.
     pub(super) fn is_changing(&self) -> bool {
         !self.engine.flow.pending_change.is_empty()
-    }
-
-    /// 패킷 경쟁 구역의 `compact` 판단을 기다리는 채팅이 있다.
-    pub(super) fn is_compacting(&self) -> bool {
-        !self.engine.flow.compact_waiting.is_empty()
     }
 
     pub(super) fn is_judging(&self) -> bool {

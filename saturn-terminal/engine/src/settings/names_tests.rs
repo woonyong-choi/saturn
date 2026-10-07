@@ -330,10 +330,10 @@ fn old_names_are_read_as_the_new_names_with_a_warning_line() {
         snapshot.settings.method(),
         saturn_core::routers::Method::Saturn
     );
-    let budget = snapshot
-        .settings
-        .context_budget(crate::providers::test_support::CODEX, DEFAULTS);
-    assert_eq!(budget.packet_hard_percent, 25);
+    assert_eq!(
+        get_path(&snapshot.settings.values, "context.packet_hard_percent"),
+        Some(&Value::from(25))
+    );
     assert_eq!(get_path(&snapshot.settings.values, "on_exit"), None);
     assert_eq!(get_path(&snapshot.settings.values, "router.method"), None);
     let user = &snapshot.layers[1];
@@ -394,10 +394,8 @@ fn divisor_converts_to_percent_and_bad_values_fail_on_the_new_key() {
     let percent = |content: &str| {
         merged(&[(Layer::User, content)])
             .map(|snapshot| {
-                snapshot
-                    .settings
-                    .context_budget(crate::providers::test_support::CODEX, DEFAULTS)
-                    .packet_hard_percent
+                get_path(&snapshot.settings.values, "context.packet_hard_percent")
+                    .and_then(Value::as_u64)
             })
             .map_err(|error| match error {
                 SettingsError::Invalid { key, .. } => key,
@@ -405,8 +403,8 @@ fn divisor_converts_to_percent_and_bad_values_fail_on_the_new_key() {
             })
     };
 
-    assert_eq!(percent("context.packet_hard_divisor = 5\n"), Ok(20));
-    assert_eq!(percent("context.packet_hard_divisor = 3\n"), Ok(33));
+    assert_eq!(percent("context.packet_hard_divisor = 5\n"), Ok(Some(20)));
+    assert_eq!(percent("context.packet_hard_divisor = 3\n"), Ok(Some(33)));
     assert_eq!(
         percent("context.packet_hard_divisor = 0\n"),
         Err("context.packet_hard_percent".to_owned())
@@ -426,19 +424,11 @@ fn old_snapshot_keys_are_still_read() {
     values.remove("notify");
     values["tui"].as_object_mut().unwrap().remove("on_exit");
     values["router"].as_object_mut().unwrap().remove("mode");
-    values["context"]
-        .as_object_mut()
-        .unwrap()
-        .remove("packet_hard_percent");
     values.insert("on_exit".to_owned(), Value::from("ask"));
     values["router"]
         .as_object_mut()
         .unwrap()
         .insert("method".to_owned(), Value::from("collect"));
-    values["context"]
-        .as_object_mut()
-        .unwrap()
-        .insert("packet_hard_divisor".to_owned(), Value::from(4));
 
     assert_eq!(
         snapshot.settings.on_exit(),
@@ -449,13 +439,6 @@ fn old_snapshot_keys_are_still_read() {
         saturn_core::routers::Method::Collect
     );
     assert!(!snapshot.settings.notify_on_done());
-    assert_eq!(
-        snapshot
-            .settings
-            .context_budget(crate::providers::test_support::CODEX, DEFAULTS)
-            .packet_hard_percent,
-        25
-    );
 }
 
 #[test]

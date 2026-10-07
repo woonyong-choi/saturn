@@ -1,7 +1,6 @@
 //! 모델 판단 그림자: 기존 입력 처리 요청에 후보별 독립 질문을 묶어 모델 선택을 미리 재 보되 실제 선택에는 쓰지 않는다.
 //! 설계: docs/design/router.md#모델-판단-그림자
 
-use super::split::{MAX_REQUEST_BYTES, MAX_STATE_AND_QUESTION_BYTES, question_bytes};
 use super::{
     Answer, Question, QuestionSetId, RouterRequest, RouterResponse, noul, set_id_at, validate,
 };
@@ -10,6 +9,17 @@ use super::{
 pub const SET_MODEL_SHADOW: &str = "model-shadow";
 
 const QUESTION_PREFIX: &str = "sufficient:";
+
+const MAX_REQUEST_BYTES: usize = 64 * 1024;
+const MAX_STATE_AND_QUESTION_BYTES: usize = 32 * 1024;
+
+fn question_bytes(question: &Question) -> usize {
+    let options_bytes = match &question.kind {
+        super::AnswerKind::Choice { options } => options.iter().map(String::len).sum(),
+        super::AnswerKind::Noul | super::AnswerKind::Score { .. } => 0,
+    };
+    question.id.len() + question.text.len() + options_bytes
+}
 
 /// 후보마다 독립 질문 하나. 질문끼리 서로의 답을 참조하지 않고, 모델과 추론 깊이를 한 질문에 섞지 않아 서로 모순되는 답이 나올
 /// 자리가 없다. 질문 id는 `sufficient:<후보 글>`이고 같은 후보는 한 번만 묻는다.

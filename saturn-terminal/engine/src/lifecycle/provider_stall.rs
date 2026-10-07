@@ -694,7 +694,11 @@ async fn a_slow_connection_for_the_model_list_does_not_stall_other_chats_or_stop
 
 #[tokio::test]
 async fn a_slow_context_restart_does_not_stall_other_chats_and_holds_the_next_input() {
-    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95), idle_reply(0.95)]).await;
+    let mut flow = Flow::with_config(
+        "[context]\nmode = \"saturn\"\n",
+        vec![idle_reply(0.95), idle_reply(0.95), idle_reply(0.95)],
+    )
+    .await;
     let (other, other_dir, _) = add_other_chat(&mut flow).await;
     flow.submit("fix the build").await;
     let (agent, chat, fake) = (flow.agent(), flow.chat, flow.fake.clone());
