@@ -137,36 +137,18 @@
 +}
 --- a/saturn-terminal/core/src/sessions/packet.rs
 +++ b/saturn-terminal/core/src/sessions/packet.rs
-@@ -284,7 +284,7 @@
-             })
-             .collect(),
-     });
+@@ -287 +287 @@
 -    let text = render(&sections);
 +    let text = super::quotes::compact(&render(&sections));
-     let tokens = estimate_tokens(&text);
-     Packet {
-         text,
 --- a/saturn-terminal/core/src/sessions/mod.rs
 +++ b/saturn-terminal/core/src/sessions/mod.rs
-@@ -7,6 +7,7 @@
- pub mod fragments;
- pub mod memo;
- pub mod packet;
+@@ -9,0 +10 @@
 +pub mod quotes;
- pub mod ranking;
- pub mod stamp;
- 
 --- a/saturn-terminal/engine/src/handoff_recall.rs
 +++ b/saturn-terminal/engine/src/handoff_recall.rs
-@@ -86,7 +86,10 @@
-         return None;
-     }
-     selected.sort_by_key(|candidate| candidate.seq);
+@@ -89 +89,4 @@
 -    Some(format!("{HEADER}{}", compact_duplicates(&selected)))
 +    Some(saturn_core::sessions::quotes::compact(&format!(
 +        "{HEADER}{}",
 +        compact_duplicates(&selected)
 +    )))
- }
- 
- fn adaptive_candidates(candidates: &[Candidate], query: &str) -> Vec<LedgerSeq> {
