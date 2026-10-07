@@ -195,6 +195,22 @@ def implementation_contract():
     )
 
 
+def audit_results():
+    audits = {}
+    for name in [
+        "verification",
+        "usage-verification",
+        "context-verification",
+        "boundary-verification",
+        "identical-input",
+    ]:
+        path = PUBLIC / "results" / f"{name}.json"
+        if path.exists():
+            audits[name] = load(path)
+    audits["protocol"] = load(RUN.parent / "smoke/verification.json")
+    return audits
+
+
 def analyze():
     scoring = module(PUBLIC.parent / "real-context-replay/scripts/03-analyze.py")
     records = []
@@ -226,6 +242,8 @@ def analyze():
         planned_calls=len(records),
         actual_calls=sum(r["status"] != "missing" for r in records),
         successful_calls=sum(r["status"] == "ok" for r in records),
+        valid_calls=sum(r["valid"] for r in records),
+        audits=audit_results(),
         implementation=implementation,
         h1=implementation["passed"],
         h2=all(c["quality"] for c in comparisons if c["after"] == "repaired"),
