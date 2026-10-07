@@ -69,14 +69,13 @@ auto_apply = false
 
 [context]
 safety_percent = 70
-mode = "saturn"
+mode = "provider"
 packet_hard_percent = 20
 item_cap_percent = 30
 constraint_slot_percent = 25
 
 [context.select]
 rrf_k = 60
-packet = "rrf"
 
 [context.evidence]
 lookup = false
@@ -158,7 +157,6 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("context.item_cap_percent", Kind::PercentFrom1),
     ("context.constraint_slot_percent", Kind::PercentFrom1),
     ("context.select.rrf_k", Kind::Whole),
-    ("context.select.packet", Kind::OneOf(&["rrf", "jev"])),
     ("context.evidence.lookup", Kind::Flag),
 ];
 
@@ -1438,14 +1436,7 @@ mod tests {
         let budget = snapshot
             .settings
             .context_budget(crate::providers::test_support::CODEX, DEFAULTS);
-        assert_eq!(
-            (
-                budget.packet_hard_percent,
-                budget.item_cap_percent,
-                budget.rrf_k
-            ),
-            (20, 30, 60)
-        );
+        assert_eq!((budget.item_cap_percent, budget.rrf_k), (30, 60));
         let tuned = merge(vec![
             layer(Layer::Default, default_layer()),
             layer(
@@ -1457,14 +1448,7 @@ mod tests {
         let budget = tuned
             .settings
             .context_budget(crate::providers::test_support::CODEX, DEFAULTS);
-        assert_eq!(
-            (
-                budget.packet_hard_percent,
-                budget.item_cap_percent,
-                budget.rrf_k
-            ),
-            (25, 50, 10)
-        );
+        assert_eq!((budget.item_cap_percent, budget.rrf_k), (50, 10));
         for bad in [
             "context.packet_hard_percent = 0\n",
             "context.item_cap_percent = 0\n",

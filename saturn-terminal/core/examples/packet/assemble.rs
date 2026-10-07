@@ -5,12 +5,12 @@ use std::collections::HashSet;
 use std::time::Duration;
 
 use saturn_core::sessions::context::{
-    ContextBudget, DEFAULT_CONSTRAINT_SLOT_PERCENT, DEFAULT_ITEM_CAP_PERCENT,
-    DEFAULT_PACKET_HARD_PERCENT,
+    ContextBudget, DEFAULT_CONSTRAINT_SLOT_PERCENT, DEFAULT_ITEM_CAP_PERCENT, INPUT_RESERVE_TOKENS,
+    OUTPUT_RESERVE_TOKENS, SYSTEM_RESERVE_TOKENS,
 };
 use saturn_core::sessions::memo::{ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
-    CompetingItem, Entry, PacketSource, RECENT_TURNS, RecentTurn, TurnStatus,
+    CompetingItem, Entry, Message, PacketSource, Role, Turn, TurnStatus,
 };
 use saturn_core::sessions::ranking::{
     Candidate, DEFAULT_RRF_K, order_after_router, rank_candidates,
@@ -24,6 +24,9 @@ use crate::args::PacketCondition;
 /// 개발용 예제라 어댑터 설명자 없이 두 provider의 지시 문서 이름을 직접 적는다.
 const PROVIDER_DOCS: [&str; 2] = ["AGENTS.md", "CLAUDE.md"];
 use crate::records::{Body, Record};
+
+/// 후보 순위의 기준 파일을 보는 최근 턴 수. 대화 본문을 싣는 범위가 아니다.
+const REFERENCE_TURNS: usize = 3;
 
 /// `T`는 `P_max`의 10배다(`P_max = T / 10`).
 const BUDGET_TO_THRESHOLD: u64 = 10;
@@ -56,7 +59,6 @@ pub(crate) struct Verdict {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct FixedFields {
-    pub(crate) goal: Vec<FixedEntry>,
     pub(crate) open_items: Vec<FixedEntry>,
 }
 
@@ -95,7 +97,7 @@ pub(crate) fn assemble(
     fixed: Option<&FixedFields>,
 ) -> Assembled {
     let last_input = last_user(records).map_or("", |(_, text)| text);
-    let turns = recent_turns(records);
+    let turns = turns_of(records);
     let tools: Vec<Tool> = tools(records, after);
     let candidates: Vec<Candidate> = tools.iter().map(candidate).collect();
     let base_files = base_files(records, &turns, last_input);
@@ -107,35 +109,16 @@ pub(crate) fn assemble(
         .filter_map(|seq| tools.iter().find(|tool| tool.seq == seq.0))
         .map(competing_item)
         .collect();
-    let (goal_and_last_input, open_items) = fixed.map_or_else(
-        || {
-            (
-                last_user(records)
-                    .map(|(seq, text)| {
-                        vec![Entry {
-                            seq: LedgerSeq(seq),
-                            text: text.to_owned(),
-                        }]
-                    })
-                    .unwrap_or_default(),
-                open_items(&tools),
-            )
-        },
-        |fields| {
-            (
-                fields.goal.iter().map(entry).collect(),
-                fields.open_items.iter().map(entry).collect(),
-            )
-        },
+    let open_items = fixed.map_or_else(
+        || open_items(&tools),
+        |fields| fields.open_items.iter().map(entry).collect(),
     );
     let source = PacketSource {
         constraints: constraints(records, &judgments.constraints),
         constraints_omitted: Vec::new(),
         constraint_tiers: Vec::new(),
-        goal_and_last_input,
-        amendments: Vec::new(),
         open_items,
-        recent_turns: turns,
+        turns,
         competitors,
         evidence_lookup: false,
         provider_docs: PROVIDER_DOCS
@@ -158,17 +141,20 @@ fn entry(value: &FixedEntry) -> Entry {
     }
 }
 
-/// `P_max = budget_tokens`가 되는 예산. 안전 비율은 100%, 창 크기는 `T`와 같게 둬 `T`가 그대로 기준이 된다.
+/// `P_max = budget_tokens`가 되는 예산. 안전 비율은 100%, 창 크기는 `T`에 시스템·입력·출력 예약을 더해 `T`가 그대로 기준이고
+/// 전송 가능 상한 `P_send`가 `T`와 같게 한다.
 pub(crate) fn budget_for(budget_tokens: u64) -> ContextBudget {
     let threshold = budget_tokens.saturating_mul(BUDGET_TO_THRESHOLD);
     ContextBudget {
         t_abs: threshold,
         safety_percent: 100,
-        window: threshold,
+        window: threshold
+            .saturating_add(SYSTEM_RESERVE_TOKENS)
+            .saturating_add(INPUT_RESERVE_TOKENS)
+            .saturating_add(OUTPUT_RESERVE_TOKENS),
         cache_read: 0.1,
         cache_write: 1.25,
         cache_ttl: Duration::from_secs(300),
-        packet_hard_percent: DEFAULT_PACKET_HARD_PERCENT,
         item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
         constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
         rrf_k: DEFAULT_RRF_K,
@@ -211,22 +197,32 @@ fn last_user(records: &[Record]) -> Option<(u64, &str)> {
 // cost: time O(n), heap O(n), stack O(1)
 // vars: n = 입력 항목 수
 // basis: estimate
-/// 사용자 입력마다 턴 하나이고, 다음 입력 전까지의 에이전트 글을 답으로 모은다.
-fn recent_turns(records: &[Record]) -> Vec<RecentTurn> {
-    let mut turns: Vec<RecentTurn> = Vec::new();
+/// 사용자 입력마다 턴 하나이고, 다음 입력 전까지의 에이전트 글을 이어 답으로 모은다.
+fn turns_of(records: &[Record]) -> Vec<Turn> {
+    let mut turns: Vec<Turn> = Vec::new();
     for record in records {
         match &record.body {
-            Body::User(text) => turns.push(RecentTurn {
+            Body::User(text) => turns.push(Turn {
                 seq: LedgerSeq(record.seq),
                 stamp: stamp_of(record),
                 status: TurnStatus::Finished,
-                input: text.clone(),
-                steers: Vec::new(),
-                answer: String::new(),
+                messages: vec![Message {
+                    role: Role::User,
+                    id: record.seq,
+                    text: text.clone(),
+                }],
             }),
             Body::Agent(text) => {
-                if let Some(turn) = turns.last_mut() {
-                    turn.answer.push_str(text);
+                let Some(turn) = turns.last_mut() else {
+                    continue;
+                };
+                match turn.messages.last_mut() {
+                    Some(last) if last.role == Role::Assistant => last.text.push_str(text),
+                    _ => turn.messages.push(Message {
+                        role: Role::Assistant,
+                        id: record.seq,
+                        text: text.clone(),
+                    }),
                 }
             }
             Body::Tool { .. } => {}
@@ -350,10 +346,10 @@ fn open_items(tools: &[Tool]) -> Vec<Entry> {
 // vars: n = 입력 항목 수
 // basis: estimate
 /// 마지막 입력에 나온 경로와 최근 3턴의 도구 호출이 건드린 파일.
-fn base_files(records: &[Record], turns: &[RecentTurn], last_input: &str) -> Vec<String> {
+fn base_files(records: &[Record], turns: &[Turn], last_input: &str) -> Vec<String> {
     let first_recent = turns
         .len()
-        .checked_sub(RECENT_TURNS)
+        .checked_sub(REFERENCE_TURNS)
         .map_or(0, |skip| turns[skip].seq.0);
     let mut files = paths_in(last_input);
     files.extend(

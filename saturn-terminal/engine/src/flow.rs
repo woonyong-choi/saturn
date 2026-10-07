@@ -22,7 +22,6 @@ use crate::delivery::Parked;
 use crate::events::PendingPermission;
 use crate::inputs::PendingInput;
 use crate::models::ModelsQuery;
-use crate::packet_select::{CompactReply, CompactWait, Trigger};
 use crate::providers::ProviderMsg;
 use crate::routers::{RecordContext, RouterExchange};
 use crate::rpc::ClientId;
@@ -117,9 +116,6 @@ pub(crate) enum JobKind {
     Lines,
     /// 제약 해제·예외 판단.
     Change,
-    /// 패킷 경쟁 구역의 `compact` 판단. `is_late`는 기다림 안에 답이 오지 않아 답을 버렸다는 뜻이다.
-    /// 맥락 정리의 호출은 입력이 없어 `RouterJob.input`이 쓸모 없다.
-    Compact { trigger: Trigger, is_late: bool },
 }
 
 /// 별도 작업이 engine 루프로 돌려주는 호출 결과.
@@ -229,10 +225,6 @@ pub(crate) struct FlowState {
     pub(crate) answering: HashSet<String>,
     /// 새 session 열기를 기다리는 맥락 정리가 있는 채팅. 있는 동안 그 채팅의 다음 입력은 보내지 않는다.
     pub(crate) restarting: HashSet<ChatId>,
-    /// `compact` 판단의 답을 기다리는 채팅. 판단은 별도 작업에서 돌아 engine 루프를 막지 않고, 있는 동안 그 채팅의 다음 입력은 보내지 않는다.
-    pub(crate) compact_waiting: HashMap<ChatId, CompactWait>,
-    /// 돌아와 적용 직전 키 비교를 기다리는 `compact` 답. 적용하거나 버리면 지운다.
-    pub(crate) compact_replies: HashMap<(ChatId, Trigger), CompactReply>,
     /// 모델 목록을 모으는 중인 `/model` 요청.
     pub(crate) model_queries: HashMap<u64, ModelsQuery>,
     /// 연결 작업이 보내는 provider 이벤트와 요청 결과.
@@ -271,8 +263,6 @@ impl Default for FlowState {
             next_call: 0,
             answering: HashSet::new(),
             restarting: HashSet::new(),
-            compact_waiting: HashMap::new(),
-            compact_replies: HashMap::new(),
             model_queries: HashMap::new(),
             provider_tx,
             provider_rx,

@@ -357,7 +357,7 @@ async fn third_input_without_resume_intent_closes_the_held_work() {
 #[tokio::test]
 async fn provider_mode_leaves_out_the_auto_compact_safety_net() {
     let flow = Flow::with_config("[context]\nmode = \"provider\"\n", Vec::new()).await;
-    let saturn = Flow::new(Vec::new()).await;
+    let saturn = Flow::with_config("[context]\nmode = \"saturn\"\n", Vec::new()).await;
 
     let revision = flow.engine.settings.current().unwrap();
     let provider = flow

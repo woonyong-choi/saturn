@@ -48,7 +48,6 @@ mod launch;
 mod model_catalog;
 mod models;
 mod outcomes;
-mod packet_select;
 mod packets;
 mod passes;
 mod permission;

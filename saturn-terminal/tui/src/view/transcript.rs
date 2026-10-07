@@ -1301,7 +1301,7 @@ mod tests {
         assert_eq!(
             deferred.lines(Lang::Ko, false, false),
             vec![
-                "고정 제약이 길어 맥락 정리를 미룹니다",
+                "인계 기록이 길어 전환을 미룹니다",
                 "- never touch the vendor folder"
             ]
         );

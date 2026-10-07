@@ -131,7 +131,7 @@ pub(crate) fn fake_descriptor(id: Provider) -> Descriptor {
         instruction_doc: "FAKE.md",
         interface_version: INTERFACE_VERSION,
         context: ContextDefaults {
-            window: 50_000,
+            window: 200_000,
             cache_write: 2.0,
         },
         extensions: ExtensionLayout::NONE,

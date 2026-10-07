@@ -20,27 +20,6 @@ pub const RETRY_DEADLINE: Duration = Duration::from_secs(10);
 /// 입력 처리 판단을 포기하고 현재 모델로 진행할 때 남기는 로그.
 pub const SKIP_MODEL_MESSAGE: &str = "판단 모델 실패로 모델 선택을 건너뜁니다";
 
-/// 패킷의 `compact` 판단을 포기하고 순위 순서로 채울 때 남기는 로그.
-pub const SKIP_RECORD_MESSAGE: &str = "판단 모델 실패로 기록 선택을 건너뜁니다";
-
-/// 누가 session 전환을 시작했는지.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TransitionStarter {
-    /// router가 고른 모델이 달라 시작한 전환.
-    Router,
-    /// 사용자가 모델을 고정했거나 맥락 크기 규칙이 시작한 전환.
-    Forced,
-}
-
-/// `compact` 판단이 실패했을 때 패킷에 대한 행동.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CompactFailure {
-    /// 전환하지 않고 현재 session과 모델로 진행한다.
-    SkipTransition,
-    /// 전환하고 경쟁 구역을 순위 순서로 채운다.
-    FillByRank,
-}
-
 /// 첫 실패 뒤 아직 쓸 수 있는 시간. 마감이 지났으면 0.
 pub fn remaining_until_deadline(since_first_failure: Duration) -> Duration {
     RETRY_DEADLINE.saturating_sub(since_first_failure)
@@ -52,14 +31,6 @@ pub fn retry_delay(failed_attempts: u32, since_first_failure: Duration) -> Optio
     let within_count = failed_attempts <= MAX_RETRIES;
     let within_deadline = since_first_failure + RETRY_INTERVAL <= RETRY_DEADLINE;
     (within_count && within_deadline).then_some(RETRY_INTERVAL)
-}
-
-/// 판단 없이 전환하면 패킷 없음과 같은 정답률이라 router가 시작한 전환만 건너뛴다.
-pub fn compact_failure(starter: TransitionStarter) -> CompactFailure {
-    match starter {
-        TransitionStarter::Router => CompactFailure::SkipTransition,
-        TransitionStarter::Forced => CompactFailure::FillByRank,
-    }
 }
 
 // cost: time O(q), heap O(q), stack O(1)
@@ -197,26 +168,10 @@ mod tests {
     }
 
     #[test]
-    fn compact_failure_skips_router_transition_and_fills_forced_one() {
-        assert_eq!(
-            compact_failure(TransitionStarter::Router),
-            CompactFailure::SkipTransition
-        );
-        assert_eq!(
-            compact_failure(TransitionStarter::Forced),
-            CompactFailure::FillByRank
-        );
-    }
-
-    #[test]
     fn skip_messages_match_the_decided_wording() {
         assert_eq!(
             SKIP_MODEL_MESSAGE,
             "판단 모델 실패로 모델 선택을 건너뜁니다"
-        );
-        assert_eq!(
-            SKIP_RECORD_MESSAGE,
-            "판단 모델 실패로 기록 선택을 건너뜁니다"
         );
     }
 }

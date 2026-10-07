@@ -47,13 +47,6 @@ pub(crate) enum ContextMode {
     Provider,
 }
 
-/// 경쟁 구역을 채우는 순서를 정하는 실험 옵션 `context.select.packet`. 기본은 `Rrf`다.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PacketSelect {
-    Rrf,
-    Jev,
-}
-
 /// 화면 방식 `tui.screen`. `auto`는 터미널이면 전체 화면, 아니면 plain이다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Screen {
@@ -349,20 +342,11 @@ impl Settings {
         self.get("model.default")?.as_str()
     }
 
-    /// 정리 모드 `context.mode`. 모르는 값은 검사에서 걸러져 기본값(`saturn`)으로 본다.
+    /// 정리 모드 `context.mode`. 모르는 값은 검사에서 걸러져 기본값(`provider`)으로 본다.
     pub(crate) fn context_mode(&self) -> ContextMode {
         match self.text("context.mode") {
-            "provider" => ContextMode::Provider,
-            _ => ContextMode::Saturn,
-        }
-    }
-
-    /// 실험 옵션 `context.select.packet`. 기본 `rrf`는 경쟁 구역을 후보 순위로만 채우고, `jev`는 패킷을 만들 때 router
-    /// `compact` 판단을 불러 남김 확률 순으로 채운다. 모르는 값은 검사에서 걸러져 기본값으로 본다.
-    pub(crate) fn packet_select(&self) -> PacketSelect {
-        match self.text("context.select.packet") {
-            "jev" => PacketSelect::Jev,
-            _ => PacketSelect::Rrf,
+            "saturn" => ContextMode::Saturn,
+            _ => ContextMode::Provider,
         }
     }
 
@@ -396,7 +380,6 @@ impl Settings {
             cache_read: number("cache_read", DEFAULT_CACHE_READ),
             cache_write: number("cache_write", defaults.cache_write),
             cache_ttl: DEFAULT_CACHE_TTL,
-            packet_hard_percent: self.packet_hard_percent(),
             item_cap_percent: self.positive("context.item_cap_percent"),
             constraint_slot_percent: self.positive("context.constraint_slot_percent"),
             rrf_k: self.rrf_k(),
@@ -414,19 +397,6 @@ impl Settings {
     /// 합치기 상수 `context.select.rrf_k`.
     pub(crate) fn rrf_k(&self) -> u32 {
         u32::try_from(self.whole("context.select.rrf_k")).unwrap_or(u32::MAX)
-    }
-
-    /// 옛 스냅샷에 `context.packet_hard_divisor`만 있으면 `100 / 나눗수`로 읽는다.
-    fn packet_hard_percent(&self) -> u64 {
-        let old = self
-            .get("context.packet_hard_divisor")
-            .and_then(layers::divisor_to_percent)
-            .and_then(|value| value.as_u64());
-        self.get("context.packet_hard_percent")
-            .and_then(Value::as_u64)
-            .or(old)
-            .unwrap_or_else(|| self.whole("context.packet_hard_percent"))
-            .clamp(1, 100)
     }
 
     /// 새 키, 옛 스냅샷의 옛 키, 기본값 층 순서로 찾는다.
@@ -545,12 +515,12 @@ mod tests {
     }
 
     #[test]
-    fn context_mode_defaults_to_saturn_and_reads_provider() {
+    fn context_mode_defaults_to_provider_and_reads_saturn() {
         let default = snapshot("", Vec::new());
-        let provider = snapshot("[context]\nmode = \"provider\"\n", Vec::new());
+        let saturn = snapshot("[context]\nmode = \"saturn\"\n", Vec::new());
 
-        assert_eq!(default.settings.context_mode(), ContextMode::Saturn);
-        assert_eq!(provider.settings.context_mode(), ContextMode::Provider);
+        assert_eq!(default.settings.context_mode(), ContextMode::Provider);
+        assert_eq!(saturn.settings.context_mode(), ContextMode::Saturn);
     }
 
     #[test]

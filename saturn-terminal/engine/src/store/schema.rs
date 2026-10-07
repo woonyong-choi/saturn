@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 20;
+pub(crate) const SCHEMA_VERSION: u32 = 21;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -18,7 +18,7 @@ const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
 pub(crate) const MIGRATIONS: &[&str] = &[
-    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20,
+    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21,
 ];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
@@ -447,6 +447,11 @@ CREATE TABLE evidence_lookups (
     created_at INTEGER NOT NULL
 );
 CREATE INDEX evidence_lookups_chat ON evidence_lookups(chat_id);
+"#;
+
+/// 전달 패킷 항목에 보호한 대화 본문 원문의 해시를 더한다. 본문이 아닌 항목과 이관 전 행은 비어 있다.
+const V21: &str = r#"
+ALTER TABLE handoff_packet_items ADD COLUMN body_hash TEXT;
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

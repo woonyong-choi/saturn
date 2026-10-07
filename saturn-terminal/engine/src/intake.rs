@@ -133,10 +133,6 @@ impl Engine {
                 self.on_change_done(done).await;
                 return;
             }
-            JobKind::Compact { .. } => {
-                self.on_compact_done(done).await;
-                return;
-            }
         }
         let RouterDone {
             job,
