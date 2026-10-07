@@ -19,7 +19,7 @@ import tempfile
 PUBLIC = Path(__file__).resolve().parents[1]
 ROOT = PUBLIC.parents[2]
 PRIVATE = ROOT / ".local/experiments/joint-context-delivery"
-RUN = PRIVATE / "formal"
+RUN = PRIVATE / "formal-v2"
 SOURCE = ROOT / ".local/experiments/transmission-quotes/formal"
 READY = "Do not use tools or change files. Reply exactly Ready and wait for the next user input."
 
@@ -187,15 +187,23 @@ def collect_codex(folder, context, question):
         ready=first["text"].strip(),
         same_session=first["thread"] == second["thread"],
         session_id=first["thread"],
-        usages=[first["usage"], second["usage"]],
+        usages=[
+            first["usage"],
+            {
+                key: value - first["usage"].get(key, 0)
+                for key, value in second["usage"].items()
+            },
+        ],
+        cumulative_usages=[first["usage"], second["usage"]],
         tool_calls=first["tool_calls"] + second["tool_calls"],
     )
 
 
 def collect(smoke=False):
     helper = module(PUBLIC.parent / "real-context-replay/scripts/02-collect.py")
-    destination = PRIVATE / "smoke" if smoke else RUN
+    destination = PRIVATE / "smoke-v2" if smoke else RUN
     (destination / "raw").mkdir(parents=True, exist_ok=True)
+    helper.COMMANDS["claude"].append("--safe-mode")
     helper.PRIVATE = destination
     helper.collect_codex = collect_codex
     original_claude = helper.collect_claude
@@ -287,7 +295,12 @@ def verify():
                     for events in turns
                     for e in events
                     if e.get("type") == "turn.completed"
-                ] == result["usages"]
+                ] == result["cumulative_usages"]
+                assert result["usages"][0] == result["cumulative_usages"][0]
+                assert result["usages"][1] == {
+                    key: value - result["usages"][0].get(key, 0)
+                    for key, value in result["cumulative_usages"][1].items()
+                }
                 responses = [
                     [
                         e["item"]["text"]

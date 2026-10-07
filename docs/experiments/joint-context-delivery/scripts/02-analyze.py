@@ -10,7 +10,7 @@ from typing import Any
 
 PUBLIC = Path(__file__).resolve().parents[1]
 ROOT = PUBLIC.parents[2]
-RUN = ROOT / ".local/experiments/joint-context-delivery/formal"
+RUN = ROOT / ".local/experiments/joint-context-delivery/formal-v2"
 
 
 def load(path: Path) -> Any:
