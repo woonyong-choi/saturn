@@ -16,7 +16,8 @@ PRIVATE = ROOT / ".local/experiments/recall-selection"
 
 def main() -> None:
     os.umask(0o077)
-    target = PRIVATE / "load"
+    phase = os.environ.get("SATURN_RECALL_LOAD_PHASE", "load")
+    target = PRIVATE / phase
     target.mkdir(exist_ok=False)
     cases = json.loads((PRIVATE / "explicit/cases.json").read_text())
     case = next(c for c in cases if c["id"] == "learning-59")
@@ -25,7 +26,8 @@ def main() -> None:
     (target / "queries.json").write_text(json.dumps([query], ensure_ascii=False))
     binaries = {
         "baseline": PRIVATE / "baseline/engine-tests",
-        "candidate": PRIVATE / "current-engine-tests",
+        "candidate": PRIVATE
+        / os.environ.get("SATURN_RECALL_LOAD_BINARY", "current-engine-tests"),
     }
     (target / "binaries.json").write_text(
         json.dumps(
@@ -86,6 +88,7 @@ def main() -> None:
                         command=command,
                     )
                 )
+    (target / "measurements.json").write_text(json.dumps(records, indent=2) + "\n")
     groups = []
     for multiplier in [1, 10, 100]:
         for arm in binaries:
@@ -105,7 +108,7 @@ def main() -> None:
                     max_s=max(times),
                 )
             )
-    (PUBLIC / "results/load.json").write_text(
+    (PUBLIC / "results" / f"{phase}.json").write_text(
         json.dumps(dict(groups=groups, records=records), indent=2) + "\n"
     )
     print(json.dumps(groups, indent=2))
