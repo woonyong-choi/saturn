@@ -18,8 +18,6 @@ use crate::{AttachRequest, Engine, EngineError};
 /// 하위 접속으로 만든 채팅과 부모 작업의 연결.
 #[derive(Debug, Clone)]
 pub(crate) struct ChildLink {
-    /// 이 채팅을 하위 작업으로 거느린 채팅.
-    parent: ChatId,
     /// 부모 채팅에서 하위 접속을 받은 작업의 에이전트. 트리에 하위 에이전트를 올린 곳이다.
     parent_agent: AgentId,
     parent_provider: Provider,
@@ -113,7 +111,6 @@ impl Engine {
         self.children.insert(
             child,
             ChildLink {
-                parent: grant.parent,
                 parent_agent,
                 parent_provider: parent_live.provider,
                 subagent: subagent.clone(),

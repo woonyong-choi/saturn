@@ -2,7 +2,7 @@
 //! 설계: docs/design/records.md, docs/design/context-management.md
 
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId, TaskId};
+use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId};
 use saturn_protocol::state::InputState;
 use sqlx::Row;
 
@@ -15,12 +15,8 @@ pub(crate) struct LedgerRow {
     pub(crate) seq: LedgerSeq,
     pub(crate) run: RunId,
     pub(crate) session: SessionId,
-    /// 실행이 속한 작업.
-    pub(crate) task: TaskId,
     /// 입력 없이 provider가 시작한 실행이면 `None`.
     pub(crate) input: Option<String>,
-    /// 실행을 연 입력이 수정(제약 후보)으로 판단됐다. 판단 기록에서 읽는다.
-    pub(crate) is_amendment: bool,
     /// 실행이 끝난 방식. 아직 끝나지 않았으면 `None`.
     pub(crate) end: Option<RunEnd>,
     /// unix 밀리초, UTC.
@@ -133,13 +129,12 @@ impl Store {
         chat: ChatId,
         after: LedgerSeq,
     ) -> Result<Vec<LedgerRow>, StoreError> {
-        let rows = sqlx::query(&format!(
-            "SELECT e.seq, e.run_id, r.session_id, r.task_id, r.end_kind, i.text, {} AS amends, e.at, e.body FROM events e \
+        let rows = sqlx::query(
+            "SELECT e.seq, e.run_id, r.session_id, r.end_kind, i.text, e.at, e.body FROM events e \
              JOIN runs r ON r.id = e.run_id \
              LEFT JOIN inputs i ON i.id = r.input_id \
              WHERE e.chat_id = ? AND e.seq > ? ORDER BY e.seq",
-            amendment_sql("i.id"),
-        ))
+        )
         .bind(to_sql_int(chat.0))
         .bind(to_sql_int(after.0))
         .fetch_all(&self.pool)
@@ -150,9 +145,7 @@ impl Store {
                     seq: LedgerSeq(from_sql_int(row.try_get("seq")?)),
                     run: RunId(from_sql_int(row.try_get("run_id")?)),
                     session: SessionId(from_sql_int(row.try_get("session_id")?)),
-                    task: TaskId(from_sql_int(row.try_get("task_id")?)),
                     input: row.try_get("text")?,
-                    is_amendment: row.try_get("amends")?,
                     end: row
                         .try_get::<Option<String>, _>("end_kind")?
                         .map(|text| parse_run_end(&text))

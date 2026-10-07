@@ -512,7 +512,6 @@ mod tests {
                 output: None,
                 reasoning: None,
             },
-            at: SystemTime::now(),
             spans_turns: false,
         };
 

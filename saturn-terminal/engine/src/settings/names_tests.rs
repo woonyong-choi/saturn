@@ -10,14 +10,7 @@ use super::layers::{
     merge, source,
 };
 use super::{Layer, LayerSource, Screen, SettingsError};
-use crate::providers::ContextDefaults;
-
 const SETTINGS_DOC: &str = include_str!("../../../../docs/design/settings.md");
-
-const DEFAULTS: ContextDefaults = ContextDefaults {
-    window: 200_000,
-    cache_write: 1.25,
-};
 
 fn layer(layer: Layer, content: &str) -> (LayerSource, String) {
     let path = matches!(layer, Layer::User | Layer::Folder)

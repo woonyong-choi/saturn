@@ -4,11 +4,12 @@
 use std::time::SystemTime;
 
 use saturn_protocol::ids::{ChatId, InputId, Provider, RunId, SessionId};
+#[cfg(test)]
 use sqlx::Row;
 
-use super::{
-    Store, StoreError, enum_text, from_sql_int, parse_enum, sha256_hex, to_millis, to_sql_int,
-};
+#[cfg(test)]
+use super::parse_enum;
+use super::{Store, StoreError, enum_text, from_sql_int, sha256_hex, to_millis, to_sql_int};
 
 /// 전달 패킷 시도 하나의 번호.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,6 +78,7 @@ pub(crate) struct NewPacket {
 }
 
 /// 저장한 시도 하나. 항목은 따로 읽는다.
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StoredPacket {
     pub(crate) id: PacketId,
@@ -203,6 +205,7 @@ impl Store {
     ///
     /// # Errors
     /// 읽기 실패면 `Database`.
+    #[cfg(test)]
     pub(crate) async fn packets_of_chat(
         &self,
         chat: ChatId,
@@ -245,6 +248,7 @@ impl Store {
     ///
     /// # Errors
     /// 읽기 실패면 `Database`.
+    #[cfg(test)]
     pub(crate) async fn packet_items(
         &self,
         id: PacketId,
@@ -289,29 +293,6 @@ impl Store {
                     row.try_get("zone")?,
                     from_sql_int(row.try_get("ref_id")?),
                     row.try_get("body_hash")?,
-                ))
-            })
-            .collect()
-    }
-
-    /// 시도의 경쟁 구역 항목마다 `(기록 번호, 고른 방식, 들어간 모양)`. 시험이 선별 방식을 본다.
-    #[cfg(test)]
-    pub(crate) async fn packet_competing(
-        &self,
-        id: PacketId,
-    ) -> Result<Vec<(u64, String, Option<String>)>, StoreError> {
-        let rows = sqlx::query(
-            "SELECT ref_id, selector, form FROM handoff_packet_items WHERE packet_id = ? AND zone = 'Competing' ORDER BY rowid",
-        )
-        .bind(to_sql_int(id.0))
-        .fetch_all(&self.pool)
-        .await?;
-        rows.iter()
-            .map(|row| {
-                Ok((
-                    from_sql_int(row.try_get("ref_id")?),
-                    row.try_get("selector")?,
-                    row.try_get("form")?,
                 ))
             })
             .collect()

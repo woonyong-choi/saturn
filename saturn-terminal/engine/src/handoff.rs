@@ -308,6 +308,7 @@ pub(crate) fn constraint_only_source(
     })
 }
 
+#[cfg(test)]
 pub(crate) fn build_handoff(
     rows: &[LedgerRow],
     steers: &[SteeredInput],
@@ -736,7 +737,7 @@ mod tests {
         DEFAULT_CONSTRAINT_SLOT_PERCENT, DEFAULT_ITEM_CAP_PERCENT,
     };
     use saturn_protocol::event::LineRange;
-    use saturn_protocol::ids::{AgentId, TaskId};
+    use saturn_protocol::ids::AgentId;
 
     use super::*;
 
@@ -773,18 +774,11 @@ mod tests {
             seq: LedgerSeq(seq),
             run: RunId(run),
             session: SessionId(session),
-            task: TaskId(1),
             input: input.map(str::to_owned),
-            is_amendment: false,
             end: Some(RunEnd::Completed),
             at_ms: 1_700_000_000_000,
             event,
         }
-    }
-
-    fn in_task(task: u64, mut row: LedgerRow) -> LedgerRow {
-        row.task = TaskId(task);
-        row
     }
 
     fn handoff_text(rows: &[LedgerRow], pending: &Pending) -> String {
@@ -1102,19 +1096,14 @@ mod tests {
         assert!(text.contains("Agent: second"));
     }
 
-    // #592: 여러 작업의 입력도 작업과 개수에 상관없이 모두 실제 순서로 남는다
+    // #592: 입력은 개수에 상관없이 모두 실제 순서로 남는다
     #[test]
-    fn every_input_of_every_task_is_kept_in_order() {
+    fn every_input_is_kept_in_order() {
         let inputs = ["old task", "first goal", "middle step", "last step"];
         let rows: Vec<LedgerRow> = inputs
             .iter()
             .zip(1..)
-            .map(|(input, n)| {
-                in_task(
-                    n / 2 + 1,
-                    row(n, n, 5, Some(input), text_event(AgentId(1), "x")),
-                )
-            })
+            .map(|(input, n)| row(n, n, 5, Some(input), text_event(AgentId(1), "x")))
             .collect();
 
         let text = handoff_text(&rows, &Pending::default());

@@ -4,9 +4,12 @@
 use std::time::SystemTime;
 
 use saturn_protocol::ids::{ChatId, LedgerSeq};
+#[cfg(test)]
 use sqlx::Row;
 
-use super::{Store, StoreError, from_sql_int, to_millis, to_sql_int};
+#[cfg(test)]
+use super::from_sql_int;
+use super::{Store, StoreError, to_millis, to_sql_int};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum LookupKind {
@@ -48,6 +51,7 @@ impl LookupOutcome {
 }
 
 /// 저장한 조회 한 건. `units`는 검색이면 돌려준 후보 수, 읽기면 돌려준 글자 수다.
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct EvidenceLookup {
     pub(crate) kind: String,
@@ -86,6 +90,7 @@ impl Store {
     ///
     /// # Errors
     /// 읽기 실패면 `Database`.
+    #[cfg(test)]
     pub(crate) async fn evidence_lookups(
         &self,
         chat: ChatId,

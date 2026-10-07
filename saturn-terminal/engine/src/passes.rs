@@ -165,31 +165,27 @@ impl PassGate {
         self.lock().table.parent_of(chat)
     }
 
+    #[cfg(test)]
     pub(crate) fn depth_of(&self, chat: ChatId) -> Option<u32> {
         self.lock().table.depth_of(chat)
     }
 
+    #[cfg(test)]
     pub(crate) fn mode_of(&self, chat: ChatId) -> Option<Mode> {
         self.lock().table.mode_of(chat)
     }
 
+    #[cfg(test)]
     pub(crate) fn token_of(&self, chat: ChatId) -> Option<PassToken> {
         self.lock().table.token_of(chat).cloned()
     }
 
-    pub(crate) fn set_limits(&self, limits: PassLimits) {
-        let mut state = self.lock();
-        if state.table.limits() == limits {
-            return;
-        }
-        let ended = state.table.set_limits(limits);
-        finish(&mut state, ended);
-    }
-
+    #[cfg(test)]
     pub(crate) fn running_total(&self) -> u32 {
         self.lock().table.running_total()
     }
 
+    #[cfg(test)]
     pub(crate) fn queued_total(&self) -> u32 {
         self.lock().table.queued_total()
     }

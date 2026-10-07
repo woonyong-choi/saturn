@@ -18,7 +18,7 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use saturn_core::providers::{ProviderCommand, SessionHandle};
+use saturn_core::providers::ProviderCommand;
 use saturn_protocol::event::TurnOrigin;
 use saturn_protocol::ids::{Provider, SettingsRevision};
 use serde_json::Value;
@@ -27,8 +27,8 @@ use crate::secrets::Masker;
 
 pub use adapter::ProviderConnection;
 pub(crate) use adapter::{
-    Adapter, AdapterConnection, AppliedReader, BoxFuture, ContextDefaults, Descriptor, Feature,
-    INTERFACE_VERSION, PermissionInput,
+    Adapter, AdapterConnection, BoxFuture, ContextDefaults, Descriptor, Feature, INTERFACE_VERSION,
+    PermissionInput,
 };
 pub use builtin::{HookInputError, ReadScope, run_pre_tool_use};
 pub(crate) use extension::{
@@ -130,13 +130,6 @@ pub(crate) struct AppliedSettings {
     pub permission: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum SteerRoute {
-    Steer,
-    /// 실측 전 provider라 대기로 바꾼다.
-    Queue,
-}
-
 /// session마다 하나 둔다.
 #[derive(Debug, Default)]
 pub(crate) struct TurnOriginTracker {
@@ -180,15 +173,6 @@ pub(crate) fn mask_values(value: &mut Value, masker: &Masker) {
             }
         }
         _ => {}
-    }
-}
-
-/// `handle.steer_verified`가 거짓(끼워 넣기 실측 #5, #27 통과 전)이면 `Queue`.
-pub(crate) fn steer_route(handle: &SessionHandle) -> SteerRoute {
-    if handle.steer_verified {
-        SteerRoute::Steer
-    } else {
-        SteerRoute::Queue
     }
 }
 
@@ -243,17 +227,6 @@ mod tests {
 
         assert_eq!(tracker.on_turn_started(), TurnOrigin::User);
         assert_eq!(tracker.on_turn_started(), TurnOrigin::ProviderWake);
-    }
-
-    #[test]
-    fn unverified_steer_goes_to_queue() {
-        let handle = |steer_verified| SessionHandle {
-            provider_session: saturn_protocol::ids::ProviderSessionId("s".to_owned()),
-            steer_verified,
-        };
-
-        assert_eq!(steer_route(&handle(false)), SteerRoute::Queue);
-        assert_eq!(steer_route(&handle(true)), SteerRoute::Steer);
     }
 
     #[test]

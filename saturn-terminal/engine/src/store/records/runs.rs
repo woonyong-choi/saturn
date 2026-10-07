@@ -121,6 +121,7 @@ impl Store {
     }
 
     /// `idle_since`(`Instant`)는 저장하지 않는다.
+    #[cfg(test)]
     pub(crate) async fn upsert_session(&self, session: &SessionRecord) -> Result<(), StoreError> {
         self.upsert_sessions(std::slice::from_ref(session)).await
     }
@@ -202,6 +203,7 @@ impl Store {
 
     /// # Errors
     /// 저장된 JSON이 깨졌으면 `Json`.
+    #[cfg(test)]
     pub(crate) async fn events_since(
         &self,
         chat: ChatId,

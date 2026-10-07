@@ -14,7 +14,7 @@ use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelInfo, PermissionAnswer};
 use tokio::sync::mpsc;
 
-use super::{Adapter, AppliedReader, AppliedSettings, ProviderConnection, RawLine};
+use super::{Adapter, ProviderConnection, RawLine};
 use crate::masked_chain;
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::providers::LaunchSpec;
@@ -177,7 +177,6 @@ struct Shared {
 
 struct SessionView {
     group: Option<ProcessGroupId>,
-    applied: Option<AppliedReader>,
 }
 
 impl std::fmt::Debug for Shared {
@@ -272,7 +271,6 @@ impl Context {
             session.clone(),
             SessionView {
                 group: connection.process_group(session),
-                applied: connection.applied_reader(session),
             },
         );
     }
@@ -450,12 +448,6 @@ impl ProviderHandle {
     /// 모든 session이 프로세스 묶음 하나를 같이 쓰는 provider의 그 묶음.
     pub(crate) fn shared_group(&self) -> Option<ProcessGroupId> {
         self.shared.shared_group
-    }
-
-    /// 적용값을 받기 전이면 `None`.
-    pub(crate) fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
-        let reader = self.shared.sessions().get(session)?.applied.clone()?;
-        reader()
     }
 
     /// 요청을 줄 세운다. 연결 작업이 이미 끝났으면 `lost`를 결과로 보낸다.

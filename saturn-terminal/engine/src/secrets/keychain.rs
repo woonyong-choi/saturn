@@ -73,6 +73,7 @@ pub(super) enum TrustList {
     /// 빈 배열. 어떤 앱도 확인 없이 읽지 못한다.
     Empty,
     /// null. 생성한 앱이 신뢰 앱이 된다. 강화가 아니며 시험의 대조군으로만 쓴다.
+    #[cfg(test)]
     CreatorOnly,
 }
 
@@ -169,6 +170,7 @@ impl MacKeychainItem {
         let descriptor = Owned::new(cf_string(&self.service).cast()).ok_or(ItemError::Failed)?;
         let empty = match trust {
             TrustList::Empty => Some(empty_array()?),
+            #[cfg(test)]
             TrustList::CreatorOnly => None,
         };
         let trusted: CFArrayRef = empty.as_ref().map_or(ptr::null(), |array| array.0.cast());

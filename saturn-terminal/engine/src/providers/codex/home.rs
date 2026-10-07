@@ -121,6 +121,7 @@ pub(crate) struct HomeInput<'a> {
 ///
 /// # Errors
 /// 사용자 설정을 읽거나 해석하지 못하면 `ReadConfig`와 `ParseConfig`, 파일을 쓰지 못하면 `Write`.
+#[cfg(test)]
 pub(crate) fn prepare(input: HomeInput<'_>) -> Result<PreparedHome, HomeError> {
     prepare_with(input, &ExtensionLayout::NONE, ExtensionInput::default())
         .map(|(prepared, _)| prepared)

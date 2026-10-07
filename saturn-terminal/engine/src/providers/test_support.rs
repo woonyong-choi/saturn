@@ -178,10 +178,6 @@ impl FakeProvider {
         }
     }
 
-    pub(crate) fn provider(&self) -> Provider {
-        self.provider
-    }
-
     /// 끼워 넣기 실측을 통과한 provider처럼 연다.
     pub(crate) fn verify_steer(&self) {
         self.lock().steer_verified = true;
