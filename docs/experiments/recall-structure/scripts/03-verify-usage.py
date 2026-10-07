@@ -110,6 +110,17 @@ def verify():
                     input_tokens=measured,
                 )
             )
+    verify_payloads()
+    (PUBLIC / "results/usage-verification.json").write_text(
+        json.dumps(
+            dict(verified_runs=len(checked), runs=checked), ensure_ascii=False, indent=2
+        )
+        + "\n"
+    )
+    print(f"independently verified usage: {len(checked)}")
+
+
+def verify_payloads():
     for job in load(RUN / "calls-plan.json"):
         if job["arm"] != "joint":
             continue
@@ -123,13 +134,6 @@ def verify():
         )
         assert archive.encode() == packet.encode()
         assert current.encode() == original.encode()
-    (PUBLIC / "results/usage-verification.json").write_text(
-        json.dumps(
-            dict(verified_runs=len(checked), runs=checked), ensure_ascii=False, indent=2
-        )
-        + "\n"
-    )
-    print(f"independently verified usage: {len(checked)}")
 
 
 if __name__ == "__main__":

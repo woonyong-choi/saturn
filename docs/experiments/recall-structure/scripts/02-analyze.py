@@ -128,12 +128,12 @@ def observation(job, provider, questions, scoring):
         if (folder / "result.json").exists()
         else dict(status="missing", provider=provider)
     )
+    measured = result["status"] == "ok" and len(result.get("usages", [])) == 2
     valid = (
-        result["status"] == "ok"
+        measured
         and result.get("ready") == "Ready"
         and result.get("same_session") is True
         and result.get("tool_calls", 0) == 0
-        and len(result.get("usages", [])) == 2
     )
     answers = scoring.parsed(result.get("text", ""))
     checks = {
@@ -142,7 +142,6 @@ def observation(job, provider, questions, scoring):
         in [scoring.normalize(e) for e in q["expected"]]
         for q in questions[job["case"]]
     }
-    measured = result["status"] == "ok" and len(result.get("usages", [])) == 2
     inputs = scoring.tokens(result) if measured else None
     outputs = (
         sum(u.get("output_tokens", 0) for u in result["usages"]) if measured else None
