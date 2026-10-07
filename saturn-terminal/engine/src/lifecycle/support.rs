@@ -60,6 +60,20 @@ impl Flow {
     ) -> Self {
         let mut fixture = Fixture::new();
         fixture.options.run_overrides = overrides.iter().map(|item| (*item).to_owned()).collect();
+        let has_router_mode = config
+            .parse::<toml_edit::DocumentMut>()
+            .ok()
+            .and_then(|value| value.get("router")?.get("mode").cloned())
+            .is_some()
+            || overrides
+                .iter()
+                .any(|item| item.starts_with("router.mode="));
+        if !has_router_mode {
+            fixture
+                .options
+                .run_overrides
+                .push("router.mode=\"jev\"".to_owned());
+        }
         if !config.is_empty() {
             fixture.write_user_config(config);
         }

@@ -256,6 +256,7 @@ fn question_set_label(set: &QuestionSetId) -> String {
 
 fn method_text(method: Method) -> &'static str {
     match method {
+        Method::Manual => "manual",
         Method::Jev => "jev",
         Method::Saturn => "saturn",
         Method::Collect => "collect",

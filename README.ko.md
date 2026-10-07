@@ -171,7 +171,7 @@ saturn --continue
 
 ## 상태
 
-Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `saturn` 명령은 `main`에 있습니다. 가짜 provider를 쓴 테스트에서 동작하는 것은 입력 접수부터 provider 전송까지의 입력 흐름, 멈춤과 재개, Saturn 권한 규칙, `/model`, `/usage`, 파이프와 `NO_COLOR`를 위한 단순 화면 방식, TUI를 닫아도 작업 계속 실행, engine 크래시 뒤 복구, 확장을 Saturn 저장소에 설치하고 연결을 시작할 때 주입하는 것, 그리고 Saturn 안의 에이전트나 바깥의 Claude Code, Codex가 떠 있는 engine에 일을 부탁하는 하위 접속입니다. `scripts/e2e/README.md`의 확인 절차(단계 a~k)는 2026-10-04에 실제 Codex, Claude Code, router로 통과했고, 나머지는 실제 provider로 실행하지 않았습니다. 패킷에는 해제되지 않은 저장 제약이 크기 상한 안에서 실립니다. 가짜 provider 테스트로만 확인했고 실제 provider로는 아직 확인하지 않았습니다([#296](https://github.com/woonyong-choi/saturn/issues/296) 완료 조건 2). provider를 바꿀 때 패킷은 기록된 대화를 순서대로 보존하고 남은 공간에 최근 도구 기록을 넣습니다. 보내기 전에 만든 패킷과 실제 발신 글을 대조합니다. 가짜 provider 테스트는 통과했으며 실제 양방향 전환의 품질은 아직 확인하지 않았습니다([#613](https://github.com/woonyong-choi/saturn/issues/613)). 설계만 된 것은 로컬 router 모델의 채점과 학습, 서버와 데이터 공유입니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
+Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `saturn` 명령은 `main`에 있습니다. 가짜 provider를 쓴 테스트에서 동작하는 것은 입력 접수부터 provider 전송까지의 입력 흐름, 멈춤과 재개, Saturn 권한 규칙, `/model`, `/usage`, 파이프와 `NO_COLOR`를 위한 단순 화면 방식, TUI를 닫아도 작업 계속 실행, engine 크래시 뒤 복구, 확장을 Saturn 저장소에 설치하고 연결을 시작할 때 주입하는 것, 그리고 Saturn 안의 에이전트나 바깥의 Claude Code, Codex가 떠 있는 engine에 일을 부탁하는 하위 접속입니다. 이전 router 사용 절차는 2026-10-04에 실제 Codex와 Claude Code로 통과했습니다. 수동 경로는 2026-10-07에 실제 Codex와 Claude Code로 확인했습니다. Codex가 파일 세 줄을 만들고 전환 뒤 Claude가 두 줄, 다시 전환한 Codex가 한 줄을 더했습니다. 인계 패킷 두 개가 전송됐고 router 판단 기록은 0건이었습니다. 다른 실제 provider 경로는 미확인입니다. 기본 수동 입력 경로는 Jev 키를 요구하지 않습니다. 패킷에는 해제되지 않은 저장 제약이 크기 상한 안에서 실립니다. 가짜 provider 테스트로만 확인했고 실제 provider로는 아직 확인하지 않았습니다([#296](https://github.com/woonyong-choi/saturn/issues/296) 완료 조건 2). provider를 바꿀 때 패킷은 기록된 대화를 순서대로 보존하고 남은 공간에 최근 도구 기록을 넣습니다. 보내기 전에 만든 패킷과 실제 발신 글을 대조합니다. 가짜 provider 테스트와 실제 양방향 전환 한 건은 통과했으며 인계 품질의 더 넓은 범위는 측정하지 않았습니다([#613](https://github.com/woonyong-choi/saturn/issues/613)). 설계만 된 것은 로컬 router 모델의 채점과 학습, 서버와 데이터 공유입니다. 설계 문서, 결정 기록, 실험 보고서는 공개되어 있습니다. Apple Silicon macOS를 대상으로 하고 Codex CLI나 Claude Code가 필요합니다. 1.0 전까지 명령, 파일 형식, 동작이 예고 없이 바뀔 수 있습니다. 열린 설계 질문과 실험 계획은 [GitHub 이슈](https://github.com/woonyong-choi/saturn/issues)에 있고, 의견은 이슈 댓글로 받습니다.
 
 ## 비교
 
@@ -183,7 +183,7 @@ Saturn은 개발 중입니다. 메시지 타입, core 규칙, engine, TUI, `satu
 첫 대화 이후의 순서는 아직 정하지 않았습니다.
 
 1. 첫 대화: 실제 Codex와 Claude Code로 처음부터 끝까지 실행, 사용자 제약을 둔 뒤 다시 전환. (진행 중)
-2. 제약과 패킷: 제약 해제와 예외, router 답으로 정하는 패킷 순서. (다음)
+2. 제약과 패킷: 제약 해제와 예외, 원본을 보존하는 provider 전환 검증. (다음)
 3. 채팅 관리: 채팅 이름과 묶음, 작업 완료 알림. (다음)
 4. 로컬 router 모델: 판단 기록 채점, 개인 router 모델 학습, 같은 평가 세트에서 현재 router보다 나쁘지 않을 때만 교체. (나중)
 5. 서비스: 동의 기반 데이터 수집, 원격 API, 인증, 인프라. (나중)

@@ -200,6 +200,8 @@ pub trait RouterClient: Send + Sync {
 /// 판단 기록은 방식과 관계없이 전부 남긴다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Method {
+    /// 외부 router를 호출하지 않고 현재 작업과 사용자가 고른 모델을 쓴다.
+    Manual,
     /// 외부 API 기준 router.
     Jev,
     /// 확신도가 기준보다 낮으면 행동하지 않고 대체 규칙으로 간다.

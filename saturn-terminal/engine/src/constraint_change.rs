@@ -66,7 +66,9 @@ impl Engine {
             return Ok(());
         }
         let settings = self.settings.at(&self.store, record.settings).await?;
-        if !settings.constraint_auto_apply() {
+        if !settings.constraint_auto_apply()
+            || self.routers.method() == saturn_core::routers::Method::Manual
+        {
             return Ok(());
         }
         let active: Vec<(ConstraintId, String, Vec<String>)> = self

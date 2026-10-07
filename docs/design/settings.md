@@ -111,7 +111,7 @@
 | `model.mode` | `auto`, `manual` | `manual`. `auto`는 router가 새 작업의 모델을 고르는 실험 옵션이라 모델 선택 순효과 실험([#542](https://github.com/woonyong-choi/saturn/issues/542))을 통과하기 전에는 기본으로 켜지 않는다 |
 | `model.prefer` | `<provider>/<model>` 문자열 목록 | 없음. 선호하는 모델의 순서이고 `auto`일 때 품질을 확정한 후보 안에서만 우선한다. 강제 고정이 아니다([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)) |
 | `model.candidates` | `<provider>/<model>` 문자열 목록 | 없음. 있으면 router에 물을 `target_model` 후보와 그림자 후보를 이 목록 안의 모델로 제한하고 이 밖의 선택은 지원하지 않는 선택으로 본다. 모델 선택 순효과 실험([#542](https://github.com/woonyong-choi/saturn/issues/542))이 후보를 [모델 평가 근거 목록](model-evidence.md) 안으로 고정하는 실험 옵션이다 |
-| `router.mode` | `jev`, `saturn`, `collect` | `jev` |
+| `router.mode` | `manual`, `jev`, `saturn`, `collect` | `manual` |
 | `router.endpoint` | 문자열 | `https://api.typesafe.ai` |
 | `router.model` | 문자열 | `jev-1.13.0` |
 | `router.local.endpoint`, `router.local.version` | 문자열 | 없음 |
@@ -146,6 +146,7 @@
 - `agent.worktree`가 거짓이면 보조 에이전트는 같은 폴더에서 한 번에 하나씩 쓴다. 참이면 git 저장소일 때만 보조 에이전트의 쓰기를 별도 worktree에서 병렬로 하고, git 저장소가 아니면 거짓일 때와 같다. 쓰기 격리를 사용자가 켠 뒤에만 하기 위해서다. 규칙은 [입력 처리](input-handling.md)에 있다.
 - `permission.mode`는 기본 규칙 묶음이다. `edit`는 작업 폴더 안 편집을 허용하고 나머지는 묻는다. `ask`는 모두 묻고, `read-only`는 읽기만 허용하고, `full`은 `deny` 규칙을 뺀 모두를 허용한다. 모드의 뜻과 provider 대응은 [권한](permissions.md)에 있다. `full`이면 에이전트 질문 기능도 두 provider에서 끈다. 질문만 따로 정하는 키는 없다([입력 요청](input-requests.md#에이전트-질문-설정)). 층 병합에서 폴더 층의 `permission.mode`는 낮은 쪽부터 `read-only`, `ask`, `edit`, `full` 순서일 때 앞 층까지 합친 모드보다 낮은 값만 적용하고, 같거나 높은 값은 무시해 신뢰 창의 무시되는 항목(`permission.mode`)에 보이고, 병합 때 한 줄 경고에도 남는다. 채팅 층의 `/permissions`와 실행 층 `-c`에는 이 제한이 없다.
 - `permission.shell` 같은 개별 규칙은 셸 명령, 파일 편집, 파일 읽기(`ask`는 Claude의 폴더 밖 읽기 도구와 Codex의 읽기로 분류된 명령의 경로에만 닿고, `deny`는 provider의 읽기 제한으로도 번역돼 폴더 안 읽기와 셸 읽기까지 막는다. `~`나 `?[]{}\\`가 든 `deny` 패턴은 번역할 수 없어 session을 열지 않는다. [권한](permissions.md#읽기-거부의-provider-적용)), MCP 도구, subagent 실행의 허용, 묻기, 거부 규칙이다. 문자열 하나면 그 도구 전체에 적용하고, 패턴 표를 주면 패턴마다 값을 준다. 모드 기본 규칙 뒤에 사용자 층 규칙, 폴더 층 규칙, 채팅 층 규칙, 실행 층 규칙을 잇고 마지막으로 일치한 규칙이 이긴다. 단 어느 층이든 `deny`가 하나라도 일치하면 거부한다(채팅 층과 실행 층까지 넣은 것은 초안). 같은 층 안의 순서는 파일에 적힌 순서다(초안). 병합 결과의 `permission`에는 합친 모드와 이은 규칙 목록이 들어가고, 입력은 접수 때 고정한 설정 번호의 목록을 쓴다. `permission` 아래 모르는 키, 모르는 모드, `allow`, `ask`, `deny`가 아닌 값은 검사에 실패한다. 패턴 문법과 판정 흐름, provider별 번역은 [권한](permissions.md)에 있다.
+- `router.mode`가 `manual`이면 Jev 키 없이 시작하고 사용자가 선택한 모델로 보낸다. `constraint.auto_apply`가 참이어도 뜻 판단을 시작하지 않는다([router](router.md#코드와-router의-경계)).
 - `context.mode`가 `provider`이면 `sessions`는 compaction과 유휴 복귀를 판정하지 않고 provider 실행 인자에 자동 압축 안전망 값을 넣지 않는다. 같은 session은 이 기본값을 쓰고 provider 전환은 Saturn 기록에서 패킷을 만든다([맥락 정리](context-management.md#정리-모드)).
 - `context.select.rrf_k`는 근거 검색과 제약 변경 후보를 정렬할 때 쓴다. 전환 패킷에는 쓰지 않는다.
 - 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_ask`, `constraint_release`다.
