@@ -13,7 +13,7 @@ import shutil
 
 PUBLIC = Path(__file__).resolve().parents[1]
 ROOT = PUBLIC.parents[2]
-BASE = ROOT / ".local/experiments/context-recall/balanced"
+BASE = ROOT / ".local/experiments/context-recall/bounded"
 TARGET = BASE.parent / "replication"
 
 

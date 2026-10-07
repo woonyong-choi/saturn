@@ -17,7 +17,7 @@ PUBLIC = Path(__file__).resolve().parents[1]
 ROOT = PUBLIC.parents[2]
 PHASE = os.environ.get("SATURN_RECALL_PHASE", "confirmation")
 PRIVATE = ROOT / ".local/experiments/context-recall" / PHASE
-BALANCED = PHASE == "balanced"
+BALANCED = PHASE in {"balanced", "bounded"}
 BASE = ROOT / ".local/experiments/real-context-replay/corrected"
 
 
@@ -114,7 +114,11 @@ def prepare():
                 check=True,
             )
         for source in (BASE / "packets").glob("*.json"):
-            if source.read_bytes() != (PRIVATE / "packets" / source.name).read_bytes():
+            if (
+                PHASE == "balanced"
+                and source.read_bytes()
+                != (PRIVATE / "packets" / source.name).read_bytes()
+            ):
                 raise RuntimeError("original packet baseline changed")
     else:
         shutil.copytree(BASE / "packets", PRIVATE / "packets")
@@ -128,6 +132,9 @@ def prepare():
         ROOT / "saturn-terminal/engine/src/delivery.rs",
         ROOT / "saturn-terminal/core/src/sessions/ranking.rs",
         PUBLIC / "design.md",
+        PUBLIC / "balanced-design.md",
+        PUBLIC / "boundary-design.md",
+        ROOT / "saturn-terminal/core/src/sessions/packet.rs",
         PUBLIC / "scripts/01-run.py",
         PUBLIC.parent / "real-context-replay/scripts/02-collect.py",
     ]:
@@ -155,6 +162,10 @@ def collect():
         ].split("\n\n## ", 1)[0]
         + "\n\n"
     )
+    reference = json.loads((PRIVATE / "packets/learning-12-4000.json").read_text())[
+        "text"
+    ]
+    footer = "\n\n" + reference.rsplit("\n\n", 1)[-1] if PHASE == "bounded" else ""
     jobs = []
     for repeat in range(1, 2 if BALANCED else 4):
         for case in cases:
@@ -172,13 +183,19 @@ def collect():
                         + "\n\nEnd of earlier evidence. Current user input:\n"
                         + query
                     )
+                if arm == "recall" and PHASE == "bounded":
+                    query = json.loads(
+                        (PRIVATE / f"evidence/{case['id']}.json").read_text()
+                    )["input"]
                 jobs.append(
                     dict(
                         id=f"{case['id']}-r{repeat}",
                         case=case["id"],
                         repeat=repeat,
                         arm=arm,
-                        context=header + case["full"] if arm == "full" else packet,
+                        context=header + case["full"] + footer
+                        if arm == "full"
+                        else packet,
                         question=query,
                     )
                 )
@@ -226,6 +243,15 @@ def analyze():
                     and result.get("ready") == "Ready"
                     and result.get("same_session") is True
                 )
+                for raw in [folder / "ready.jsonl", folder / "answer.jsonl"]:
+                    if raw.exists():
+                        for line in raw.read_text().splitlines():
+                            event = json.loads(line)
+                            content = event.get("message", {}).get("content", [])
+                            if isinstance(content, list) and any(
+                                item.get("type") == "tool_use" for item in content
+                            ):
+                                valid = False
             answer = helper.parsed(result.get("text", ""))
             checks = {
                 q["id"]: helper.normalize(answer.get(q["id"]))
@@ -252,6 +278,19 @@ def analyze():
                     else 0,
                 )
             )
+    for record in records:
+        qs = questions[cases[record["case"]]["cluster"]]
+        record["scores_by_set"] = {
+            name: {
+                "correct": sum(
+                    record["checks"][q["id"]] for q in qs if q["set"] == name
+                )
+                if record["valid"]
+                else 0,
+                "questions": sum(q["set"] == name for q in qs),
+            }
+            for name in {q["set"] for q in qs}
+        }
     groups = []
     for provider in ["claude", "codex"]:
         full = sum(
@@ -270,7 +309,20 @@ def analyze():
                     answer_correct=sum(r["answer_correct"] for r in rows),
                     new_correct=sum(r["new_correct"] for r in rows),
                     questions=len(rows) * 8,
-                    new_questions=len(rows) * 4,
+                    new_questions=sum(
+                        r["scores_by_set"].get("new_questions", {}).get("questions", 0)
+                        for r in rows
+                    ),
+                    scores_by_set={
+                        name: {
+                            metric: sum(
+                                r["scores_by_set"].get(name, {}).get(metric, 0)
+                                for r in rows
+                            )
+                            for metric in ["correct", "questions"]
+                        }
+                        for name in ["development", "new_questions", "heldout_source"]
+                    },
                     valid_runs=sum(r["valid"] for r in rows),
                     runs=len(rows),
                     input_tokens=total,
@@ -278,7 +330,12 @@ def analyze():
                 )
             )
     summary = dict(groups=groups, records=records)
-    (PUBLIC / "results/summary.json").write_text(
+    output_name = {
+        "confirmation": "stopped-summary.json",
+        "balanced": "balanced-summary.json",
+        "replication": "replication-summary.json",
+    }.get(PHASE, "summary.json")
+    (PUBLIC / "results" / output_name).write_text(
         json.dumps(summary, ensure_ascii=False, indent=2) + "\n"
     )
     print(json.dumps(groups, ensure_ascii=False, indent=2))
