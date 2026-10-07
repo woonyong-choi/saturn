@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import statistics
@@ -167,6 +168,33 @@ def observation(job, provider, questions, scoring):
     )
 
 
+def implementation_contract():
+    private = RUN.parent
+    evidence = load(private / "implementation-verification.json")
+    preflight = load(private / "preflight.json")
+    paths = {
+        "source_sha256": private / "candidate-source.rs",
+        "baseline_binary_sha256": private / "baseline/engine-tests",
+        "candidate_binary_sha256": private / "candidate-engine-tests",
+    }
+    hashes_match = all(
+        hashlib.sha256(path.read_bytes()).hexdigest() == evidence[key]
+        for key, path in paths.items()
+    )
+    return dict(
+        **evidence,
+        hashes_match=hashes_match,
+        all_within_bound=preflight["all_within_bound"],
+        reversible=all(p["reversible"] for p in load(RUN / "payload-checks.json")),
+        passed=hashes_match
+        and evidence["tests"]["failed"] == 0
+        and evidence["tests"]["passed"] == 1924
+        and evidence["clippy_exit_code"] == 0
+        and preflight["all_within_bound"]
+        and all(p["reversible"] for p in load(RUN / "payload-checks.json")),
+    )
+
+
 def analyze():
     scoring = module(PUBLIC.parent / "real-context-replay/scripts/03-analyze.py")
     records = []
@@ -188,6 +216,7 @@ def analyze():
     (private / "records.jsonl").write_text(
         "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records)
     )
+    implementation = implementation_contract()
     result = dict(
         sample=dict(
             conditions=len(questions),
@@ -197,7 +226,8 @@ def analyze():
         planned_calls=len(records),
         actual_calls=sum(r["status"] != "missing" for r in records),
         successful_calls=sum(r["status"] == "ok" for r in records),
-        h1=all(p["reversible"] for p in load(RUN / "payload-checks.json")),
+        implementation=implementation,
+        h1=implementation["passed"],
         h2=all(c["quality"] for c in comparisons if c["after"] == "repaired"),
         h3=all(c["quality"] for c in comparisons if c["before"] == "repaired"),
         h4=all(c["cost"] for c in comparisons if c["after"] == "joint"),
