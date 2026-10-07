@@ -72,6 +72,8 @@ pub enum RoutersError {
 /// `RouterClient`는 `impl Future`를 돌려 dyn으로 못 쓰므로 enum으로 나눈다.
 #[derive(Debug)]
 pub(crate) enum ActiveRouter {
+    /// 판단 모델을 호출하지 않는 사용자 선택 경로.
+    Manual,
     /// `jev` 방식.
     Remote(RemoteRouter),
     /// `saturn` 방식.
@@ -82,6 +84,7 @@ impl ActiveRouter {
     /// 실제 모델과 버전은 설정 매핑과 `router_manifest`에만 둔다.
     pub(crate) fn router_id(&self) -> &str {
         match self {
+            Self::Manual => "manual",
             Self::Remote(_) => REMOTE_ROUTER_ID,
             Self::Local(_) => LOCAL_ROUTER_ID,
         }
@@ -90,6 +93,14 @@ impl ActiveRouter {
     /// 판단 기록에 원문이 필요해 engine은 trait의 `router` 대신 이것을 쓴다.
     pub(crate) async fn exchange(&self, request: RouterRequest) -> RouterExchange {
         match self {
+            Self::Manual => RouterExchange {
+                sent: String::new(),
+                received: None,
+                result: Err(RouterError::NoResponse),
+                started_at: SystemTime::now(),
+                elapsed: Duration::ZERO,
+                unknown_cost_calls: 0,
+            },
             Self::Remote(router) => router.exchange(request).await,
             Self::Local(router) => router.exchange(request).await,
         }
@@ -98,6 +109,7 @@ impl ActiveRouter {
     /// 외부는 고정 모델, 로컬은 router 버전.
     pub(crate) fn model(&self) -> &str {
         match self {
+            Self::Manual => "manual",
             Self::Remote(router) => router.model(),
             Self::Local(router) => router.version(),
         }
@@ -107,6 +119,7 @@ impl ActiveRouter {
 impl RouterClient for ActiveRouter {
     async fn check(&self) -> Result<(), RouterError> {
         match self {
+            Self::Manual => Ok(()),
             Self::Remote(router) => router.check().await,
             Self::Local(router) => router.check().await,
         }
@@ -114,6 +127,7 @@ impl RouterClient for ActiveRouter {
 
     async fn router(&self, request: RouterRequest) -> Result<RouterResponse, RouterError> {
         match self {
+            Self::Manual => Err(RouterError::NoResponse),
             Self::Remote(router) => router.router(request).await,
             Self::Local(router) => router.router(request).await,
         }
@@ -231,6 +245,7 @@ impl Routers {
     ) -> Result<Self, RoutersError> {
         let method = settings.method();
         let active = match method {
+            Method::Manual => ActiveRouter::Manual,
             Method::Jev => {
                 let model = settings
                     .get("router.model")
@@ -798,14 +813,14 @@ mod tests {
             .await
             .unwrap();
         let secrets = secrets_with_key(dir.path()).await;
-        let jev = load(&mut manager, &store, &home, "").await;
+        let jev = load(&mut manager, &store, &home, "[router]\nmode = \"jev\"\n").await;
         let chosen = Routers::select(&jev, Arc::clone(&secrets), Masker::default()).unwrap();
         assert_eq!(chosen.active().router_id(), "jev");
         let evil = load(
             &mut manager,
             &store,
             &home,
-            "[router]\nendpoint = \"https://evil.example\"\n",
+            "[router]\nmode = \"jev\"\nendpoint = \"https://evil.example\"\n",
         )
         .await;
         assert!(matches!(

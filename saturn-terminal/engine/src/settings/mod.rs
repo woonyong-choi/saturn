@@ -147,9 +147,10 @@ impl Settings {
     /// 사용자 전용. 옛 스냅샷의 `router.method`도 읽는다.
     pub(crate) fn method(&self) -> Method {
         match self.text_or_old("router.mode", "router.method") {
+            "jev" => Method::Jev,
             "saturn" => Method::Saturn,
             "collect" => Method::Collect,
-            _ => Method::Jev,
+            _ => Method::Manual,
         }
     }
 

@@ -7,8 +7,8 @@ use std::time::Instant;
 use saturn_core::queue::{QueueError, QueuedInput};
 use saturn_core::routers::shadow::split_shadow;
 use saturn_core::routers::{
-    ConstraintQuestion, JudgmentOutcome, RouteDecision, RouterError, RouterRequest, RouterResponse,
-    decide_route, question_ids, questions_for_input, validate,
+    ConstraintQuestion, JudgmentOutcome, Method, RouteDecision, RouterError, RouterRequest,
+    RouterResponse, decide_route, question_ids, questions_for_input, validate,
 };
 use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision, TaskId};
 use saturn_protocol::rpc::{ModelMode, Notification};
@@ -179,6 +179,7 @@ impl Engine {
         skip_relation: bool,
         task: Option<TaskId>,
     ) -> Result<InputId, EngineError> {
+        let skip_relation = skip_relation || self.routers.method() == Method::Manual;
         let workdir = self.attached_workdir(client, chat)?;
         self.open_request(chat);
         let pinned_model = self.store.chat_model(chat).await?;

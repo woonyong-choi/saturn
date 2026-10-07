@@ -36,7 +36,7 @@ on_exit = "background"
 on_done = false
 
 [router]
-mode = "jev"
+mode = "manual"
 endpoint = "https://api.typesafe.ai"
 model = "jev-1.13.0"
 
@@ -110,7 +110,10 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("tui.screen", Kind::OneOf(&["auto", "full", "plain"])),
     ("tui.on_exit", Kind::OneOf(&["background", "stop", "ask"])),
     ("notify.on_done", Kind::Flag),
-    ("router.mode", Kind::OneOf(&["jev", "saturn", "collect"])),
+    (
+        "router.mode",
+        Kind::OneOf(&["manual", "jev", "saturn", "collect"]),
+    ),
     ("router.endpoint", Kind::Text),
     (
         "router.key.info.source",
@@ -920,7 +923,7 @@ mod tests {
         let snapshot = merge(layers).unwrap();
 
         let settings = &snapshot.settings;
-        assert_eq!(settings.method(), saturn_core::routers::Method::Jev);
+        assert_eq!(settings.method(), saturn_core::routers::Method::Manual);
         assert_eq!(settings.router_endpoint(), "https://api.typesafe.ai");
         assert_eq!(settings.key_command(), None);
         assert_eq!(settings.grading_model(), Some("mine"));
