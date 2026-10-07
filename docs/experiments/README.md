@@ -43,3 +43,4 @@
 | [mvp-real-check](mvp-real-check/report.md) | 실제 Codex·Claude로 전환, 권한, 하위 에이전트, 확장 주입 확인(router 없는 경로) | [권한](../design/permissions.md), [router 키 보호](../design/router-key-security.md), [provider 연결과 session](../design/providers-and-sessions.md) | 결함 4건(#505~#508), Codex 샌드박스 밖 실행에서 키 보호 실패, router 판단은 미검증 |
 | [jev-role-efficiency](jev-role-efficiency/report.md) | 모델 선택과 후보 선별의 실제 효율 | [router](../design/router.md) | H1~H3 보류: 예비 모델 선택 7/8 동일, 제약 6/6 동일, 어휘·Jev 맥락 8/8 동일 |
 | [transmission-quotes](transmission-quotes/report.md) | 동일 전송 원문의 참조 표현 | [맥락 정리](../design/context-management.md) | H1 충족, H2·H3 보류: 재생 입력 80개 변화 0, 모델 호출 없이 후보 미채택 |
+| [joint-context-delivery](joint-context-delivery/design.md) | 인계 자료와 첫 질문의 동시 전달 | [맥락 정리](../design/context-management.md) | 측정 전 |
