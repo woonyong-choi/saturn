@@ -12,9 +12,7 @@ use saturn_core::sessions::memo::{ToolKind, tool_memo};
 use saturn_core::sessions::packet::{
     CompetingItem, Entry, Message, PacketSource, Role, Turn, TurnStatus,
 };
-use saturn_core::sessions::ranking::{
-    Candidate, DEFAULT_RRF_K, order_after_router, rank_candidates,
-};
+use saturn_core::sessions::ranking::{Candidate, order_after_router, rank_candidates};
 use saturn_core::sessions::stamp::Stamp;
 use saturn_protocol::ids::{LedgerSeq, SessionId};
 use serde::Deserialize;
@@ -157,7 +155,6 @@ pub(crate) fn budget_for(budget_tokens: u64) -> ContextBudget {
         cache_ttl: Duration::from_secs(300),
         item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
         constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
-        rrf_k: DEFAULT_RRF_K,
         evidence_lookup: false,
     }
 }

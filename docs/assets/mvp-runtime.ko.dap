@@ -1,0 +1,39 @@
+flow right
+title "Saturn 기본 실행 구조"
+subtitle "한 채팅의 원본은 engine이 저장하고 Claude와 Codex session은 교체할 수 있다"
+
+person user "사용자"
+group saturn "Saturn" direction=down {
+  box cli "CLI와 TUI" "입력, 모델 전환, 상태 표시"
+  box engine "engine" "단일 writer, session 관리"
+  box core "core" "대기열과 전환 규칙"
+  store ledger "SQLite 기록" "입력, 이벤트, 패킷 근거"
+}
+external claude "Claude Code" "stream-json"
+external codex "Codex" "app-server"
+
+user -> cli "입력과 /model"
+cli -> engine "Unix 소켓"
+engine -> ledger "먼저 기록"
+engine -> core "순서와 대상"
+engine -> claude "Claude session"
+engine -> codex "Codex session"
+claude -> engine "이벤트와 결과"
+codex -> engine "이벤트와 결과"
+engine -> cli "한 채팅의 결과"
+
+step "접수" "engine은 사용자 입력을 기록한 뒤 작업을 시작한다"
+  user -> cli
+  cli -> engine
+  engine -> ledger
+step "Claude 실행" "현재 Claude session으로 입력을 보내고 결과를 같은 채팅에 기록한다"
+  engine -> claude
+  claude -> engine
+  engine -> ledger
+step "Codex 전환" "새 Codex session은 SQLite 원본으로 만든 패킷을 먼저 받는다"
+  ledger -> engine
+  engine -> codex
+step "계속" "다음 입력과 두 provider의 결과가 한 채팅에 남는다"
+  codex -> engine
+  engine -> ledger
+  engine -> cli

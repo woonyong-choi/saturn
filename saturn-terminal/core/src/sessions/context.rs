@@ -42,8 +42,6 @@ pub struct ContextBudget {
     pub item_cap_percent: u64,
     /// 설정 `context.constraint_slot_percent`. 1~100.
     pub constraint_slot_percent: u64,
-    /// 설정 `context.select.rrf_k`.
-    pub rrf_k: u32,
     /// 설정 `context.evidence.lookup`. 참이면 패킷이 생략한 기록을 `saturn evidence`로 다시 읽는 방법을 알린다.
     pub evidence_lookup: bool,
 }
@@ -166,7 +164,6 @@ pub fn decide_return(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sessions::ranking::DEFAULT_RRF_K;
 
     fn budget() -> ContextBudget {
         ContextBudget {
@@ -178,7 +175,6 @@ mod tests {
             cache_ttl: Duration::from_secs(300),
             item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
             constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
-            rrf_k: DEFAULT_RRF_K,
             evidence_lookup: false,
         }
     }

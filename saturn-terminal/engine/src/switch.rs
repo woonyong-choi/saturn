@@ -18,8 +18,8 @@ use crate::calls::CallKind;
 use crate::dispatch::{MAX_SEND_ATTEMPTS, Start};
 use crate::flow::LiveSession;
 use crate::handoff::{
-    Handoff, HandoffOutcome, PacketEvidence, Pending, RECENT_SELECTOR, changes_of_others,
-    constraint_only_source, handoff_of, handoff_source, others_only, reduce_handoff,
+    Handoff, HandoffOutcome, PacketEvidence, Pending, changes_of_others, constraint_only_source,
+    handoff_of, handoff_source, others_only, reduce_handoff,
 };
 use crate::models::pinned_model_name;
 use crate::packets::PacketTarget;
@@ -91,8 +91,6 @@ pub(crate) struct Restart {
 pub(crate) struct Reduction {
     pub(crate) source: PacketSource,
     pub(crate) budget: ContextBudget,
-    /// 경쟁 구역을 고른 방식. 줄여 다시 만든 패킷의 근거에도 같게 남긴다.
-    pub(crate) selector: &'static str,
     /// 거절된 패킷의 추정 토큰 수.
     pub(crate) sent_tokens: u64,
 }
@@ -285,12 +283,12 @@ fn packet_parts(
     target: &SendTarget,
     outcome: &HandoffOutcome,
     source: Option<PacketSource>,
-    (budget, selector): (ContextBudget, &'static str),
+    budget: ContextBudget,
 ) -> (Option<PacketEvidence>, Option<Reduction>, PacketTiers) {
     let (HandoffOutcome::Ready(handoff), Some(source)) = (outcome, source) else {
         return (None, None, Vec::new());
     };
-    let evidence = PacketEvidence::first(handoff, &source, selector);
+    let evidence = PacketEvidence::first(handoff, &source);
     let tiers = match target {
         SendTarget::New { .. } => source.constraint_tiers.clone(),
         _ => Vec::new(),
@@ -298,7 +296,6 @@ fn packet_parts(
     let reduction = Reduction {
         source,
         budget,
-        selector,
         sent_tokens: handoff.tokens,
     };
     (Some(evidence), Some(reduction), tiers)
@@ -469,12 +466,8 @@ impl Engine {
             return Ok(plain);
         };
         let outcome = handoff_of(&source, &budget);
-        let (evidence, reduction, constraint_tiers) = packet_parts(
-            &plain.target,
-            &outcome,
-            Some(source),
-            (budget, RECENT_SELECTOR),
-        );
+        let (evidence, reduction, constraint_tiers) =
+            packet_parts(&plain.target, &outcome, Some(source), budget);
         let handoff = packet_text(record.chat, outcome)?;
         Ok(OpenPlan {
             handoff,
@@ -549,7 +542,7 @@ impl Engine {
             SendTarget::New { .. } | SendTarget::Open(_) => (full_source, full),
         };
         let (evidence, reduction, constraint_tiers) =
-            packet_parts(&target, &outcome, source, (budget, RECENT_SELECTOR));
+            packet_parts(&target, &outcome, source, budget);
         let handoff = packet_text(chat, outcome)?;
         let leaving = leaving_main(main, &plain, stale.is_some());
         Ok(OpenPlan {
