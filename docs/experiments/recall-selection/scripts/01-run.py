@@ -236,6 +236,13 @@ def prepare() -> None:
     )
 
 
+def result_folder(job: dict[str, Any], provider: str) -> Path:
+    reuse_path = RUN / "reuse.json"
+    reuse = load(reuse_path) if reuse_path.exists() else {}
+    phase = reuse.get(f"{job['id']}-{job['arm']}", RUN.name)
+    return PRIVATE / phase / "raw" / f"{provider}-{job['id']}-{job['arm']}"
+
+
 def collect() -> None:
     module = helper("02-collect.py")
     module.PRIVATE = RUN
@@ -254,7 +261,7 @@ def analyze() -> dict[str, Any]:
     records = []
     for provider in ["claude", "codex"]:
         for job in load(RUN / "calls-plan.json"):
-            folder = RUN / "raw" / f"{provider}-{job['id']}-{job['arm']}"
+            folder = result_folder(job, provider)
             result = (
                 load(folder / "result.json")
                 if (folder / "result.json").exists()
@@ -287,6 +294,7 @@ def analyze() -> dict[str, Any]:
             records.append(
                 dict(
                     provider=provider,
+                    source_phase=folder.parents[1].name,
                     case=job["case"],
                     trial=job["id"],
                     arm=job["arm"],
@@ -374,7 +382,7 @@ def verify() -> None:
             raise RuntimeError(f"sealed file changed: {relative}")
     for job in load(RUN / "calls-plan.json"):
         for provider in ["claude", "codex"]:
-            folder = RUN / "raw" / f"{provider}-{job['id']}-{job['arm']}"
+            folder = result_folder(job, provider)
             if not folder.exists():
                 continue
             if (folder / "context.txt").read_text() != job["context"] or (
