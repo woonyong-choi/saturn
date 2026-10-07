@@ -334,13 +334,28 @@ def codex_turn(folder, name, prompt, work, thread=None):
     items = [e["item"] for e in events if e.get("type") == "item.completed"]
     responses = [i["text"] for i in items if i.get("type") == "agent_message"]
     usages = [e["usage"] for e in events if e.get("type") == "turn.completed"]
-    tool_calls = sum(i.get("type") not in ["reasoning", "agent_message"] for i in items)
+    diagnostics = [
+        i
+        for i in items
+        if i.get("type") == "error"
+        and i.get("message", "").startswith(
+            "Under-development features enabled: skip_host_skill_discovery."
+        )
+    ]
+    tool_calls = sum(
+        i.get("type") not in ["reasoning", "agent_message"] and i not in diagnostics
+        for i in items
+    )
     if completed.returncode or len(ids) != 1 or not responses or len(usages) != 1:
         raise RuntimeError(
             f"Codex invalid turn: exit={completed.returncode}, threads={len(ids)}, responses={len(responses)}, usages={len(usages)}"
         )
     return dict(
-        thread=ids[0], text=responses[-1], usage=usages[0], tool_calls=tool_calls
+        thread=ids[0],
+        text=responses[-1],
+        usage=usages[0],
+        tool_calls=tool_calls,
+        diagnostics=diagnostics,
     )
 
 
@@ -361,6 +376,7 @@ def collect_codex(folder, context, question):
             },
         ],
         cumulative_usages=[first["usage"], second["usage"]],
+        diagnostics=first["diagnostics"] + second["diagnostics"],
         tool_calls=first["tool_calls"] + second["tool_calls"],
     )
 

@@ -27,6 +27,25 @@ def verify():
         for repeat in [1, 2, 3]:
             folder = SMOKE / "raw" / f"{provider}-protocol-r{repeat}-control"
             result = load(folder / "result.json")
+            actual_tool_calls = result.get("tool_calls", 0)
+            if provider == "codex":
+                raw = [
+                    json.loads(line)
+                    for name in ["ready", "answer"]
+                    for line in (folder / f"{name}.jsonl").read_text().splitlines()
+                ]
+                items = [e["item"] for e in raw if e.get("type") == "item.completed"]
+                errors = [i for i in items if i.get("type") == "error"]
+                assert all(
+                    i.get("message", "").startswith(
+                        "Under-development features enabled: skip_host_skill_discovery."
+                    )
+                    for i in errors
+                )
+                actual_tool_calls = sum(
+                    i.get("type") not in ["agent_message", "reasoning", "error"]
+                    for i in items
+                )
             valid = (
                 result["status"] == "ok"
                 and result.get("ready") == "Ready"
@@ -34,11 +53,13 @@ def verify():
             )
             valid = (
                 valid
-                and result.get("tool_calls", 0) == 0
+                and actual_tool_calls == 0
                 and score.parsed(result.get("text", "")) == {"version": "3.7.2"}
             )
             valid = valid and len(result.get("usages", [])) == 2
             checked = dict(
+                recorded_tool_calls=result.get("tool_calls", 0),
+                actual_tool_calls=actual_tool_calls,
                 provider=provider,
                 repeat=repeat,
                 valid=valid,
