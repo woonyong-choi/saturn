@@ -57,6 +57,12 @@ def analyze() -> None:
             records.append(
                 dict(
                     provider=provider,
+                    run_id=path.parent.name,
+                    trial_id=job["id"],
+                    condition=job["arm"],
+                    ts_utc=load(path.parent / "request.json")["started_at"]
+                    if (path.parent / "request.json").exists()
+                    else None,
                     case=job["case"],
                     trial=job["id"],
                     repeat=job["repeat"],
@@ -168,6 +174,50 @@ def analyze() -> None:
         ],
         records=records,
     )
+    result["protocol"] = load(RUN.parent / "protocol-summary.json")
+    result["evidence_coverage"] = load(RUN.parent / "evidence-coverage.json")
+    result["turn_usage"] = []
+    for provider in ["claude", "codex"]:
+        for arm in ["baseline", "candidate"]:
+            paths = [
+                RUN / "raw" / f"{provider}-{job['id']}-{job['arm']}" / "result.json"
+                for job in load(RUN / "calls-plan.json")
+                if job["arm"] == arm
+            ]
+            results = [load(path) for path in paths if path.exists()]
+            for index in [0, 1]:
+                complete = len(results) == len(paths) and all(
+                    r["status"] == "ok" and len(r.get("usages", [])) == 2
+                    for r in results
+                )
+                result["turn_usage"].append(
+                    dict(
+                        provider=provider,
+                        arm=arm,
+                        turn=index + 1,
+                        input_tokens=sum(
+                            scoring.tokens(
+                                dict(provider=provider, usages=[r["usages"][index]])
+                            )
+                            for r in results
+                        )
+                        if complete
+                        else None,
+                        output_tokens=sum(
+                            r["usages"][index]["output_tokens"] for r in results
+                        )
+                        if complete
+                        else None,
+                    )
+                )
+    processed = RUN.parent / "processed"
+    processed.mkdir(exist_ok=True)
+    (processed / "records.jsonl").write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in records)
+    )
+    result["records"] = [
+        {key: value for key, value in r.items() if key != "answers"} for r in records
+    ]
     result["next_stage_allowed"] = False
     result["engine_integration_verified"] = False
     (PUBLIC / "results/summary.json").write_text(
