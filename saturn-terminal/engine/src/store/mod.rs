@@ -63,6 +63,7 @@ pub(crate) use sessions::IdKind;
 #[cfg(test)]
 pub(crate) use judgments::tests::judgment as test_judgment;
 #[cfg(test)]
+#[cfg(test)]
 pub(crate) use packets::StoredPacket;
 
 pub(crate) const DB_FILE: &str = "saturn.db";
@@ -180,6 +181,7 @@ impl Store {
         Ok((store, notice))
     }
 
+    #[cfg(test)]
     pub(crate) fn db_path(&self) -> PathBuf {
         self.home.join(DB_FILE)
     }

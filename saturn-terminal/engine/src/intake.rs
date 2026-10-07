@@ -33,8 +33,6 @@ const ASKED_CONSTRAINT_Q: f64 = 1.0;
 /// 판단 한 번의 결과.
 pub(crate) struct Verdict {
     pub(crate) decision: RouteDecision,
-    /// router 호출이 재시도 뒤에도 실패해 대체 판단을 쓴 경우.
-    pub(crate) failed: bool,
 }
 
 impl Engine {
@@ -617,7 +615,6 @@ impl Engine {
         );
         Ok(Verdict {
             decision: read.decision,
-            failed: read.failed,
         })
     }
 

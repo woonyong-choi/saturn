@@ -89,7 +89,7 @@ impl Engine {
 
     pub(super) async fn handle_event(&mut self, event: RpcEvent) -> Result<(), EngineError> {
         match event {
-            RpcEvent::Connected(_) => {}
+            RpcEvent::Connected => {}
             RpcEvent::Request(client, id, request) => {
                 self.handle_request(client, id, request).await?;
             }

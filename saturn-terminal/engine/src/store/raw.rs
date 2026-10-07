@@ -1,9 +1,12 @@
 //! 실행별 원시 기록: 실행 중 이어 쓰기, 끝나면 gzip 압축, 읽을 때 자동 해제.
 //! 설계: docs/design/records.md
 
-use std::io::{Read, Write};
+#[cfg(test)]
+use std::io::Read;
+use std::io::Write;
 
 use flate2::Compression;
+#[cfg(test)]
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use std::time::SystemTime;
@@ -11,10 +14,10 @@ use std::time::SystemTime;
 use saturn_protocol::ids::{AgentId, ChatId, Provider, RunId};
 use sqlx::Row;
 
+#[cfg(test)]
+use super::parse_enum;
 use super::records::not_found;
-use super::{
-    Store, StoreError, enum_text, from_sql_int, parse_enum, sha256_hex, to_millis, to_sql_int,
-};
+use super::{Store, StoreError, enum_text, from_sql_int, sha256_hex, to_millis, to_sql_int};
 
 /// 압축이 대조 값을 바꾸지 않게 항상 압축 전 바이트로 계산한다.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -85,6 +88,7 @@ impl Store {
     }
 
     /// 채팅의 미귀속 줄을 받은 순서대로 읽는다.
+    #[cfg(test)]
     pub(crate) async fn unattributed_raw(
         &self,
         chat: ChatId,
@@ -151,6 +155,7 @@ impl Store {
     ///
     /// # Errors
     /// 해제 실패면 `Compression`, 대조가 다르면 `DigestMismatch`, 없는 실행이면 `NotFound`.
+    #[cfg(test)]
     pub(crate) async fn read_raw(&self, run: RunId) -> Result<Vec<u8>, StoreError> {
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query("SELECT raw_gzip, raw_hash, raw_size FROM runs WHERE id = ?")
@@ -176,6 +181,7 @@ impl Store {
     }
 
     /// 실행 중이면 지금까지 쓴 바이트로 계산한다.
+    #[cfg(test)]
     pub(crate) async fn raw_digest(&self, run: RunId) -> Result<RawDigest, StoreError> {
         let mut conn = self.pool.acquire().await?;
         let row = sqlx::query(

@@ -150,7 +150,7 @@ pub(crate) struct RouterExchange {
 }
 
 impl std::fmt::Debug for RouterExchange {
-    /// 원문은 쓰지 않고 길이, 결과 종류, 걸린 시간만 쓴다.
+    /// 원문은 쓰지 않고 길이, 결과 종류, 걸린 시간, 비용을 모르는 호출 수만 쓴다.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let result = match &self.result {
             Ok(_) => "ok",
@@ -166,6 +166,7 @@ impl std::fmt::Debug for RouterExchange {
             .field("received_len", &self.received.as_ref().map(String::len))
             .field("result", &result)
             .field("elapsed", &self.elapsed)
+            .field("unknown_cost_calls", &self.unknown_cost_calls)
             .finish()
     }
 }

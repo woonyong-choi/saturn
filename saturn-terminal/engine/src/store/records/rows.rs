@@ -8,7 +8,7 @@ use sqlx::Row;
 use sqlx::sqlite::SqliteRow;
 
 use super::{RunEnd, RunRecord};
-use crate::store::{StoreError, enum_text, from_millis, from_sql_int, parse_enum, to_sql_int};
+use crate::store::{StoreError, enum_text, from_sql_int, parse_enum, to_sql_int};
 
 /// 직전 누적보다 작은 칸이 있거나, 직전 누적 보고 뒤에 보고 없는 실행이 있으면 참.
 pub(super) async fn spans_turns(
@@ -74,10 +74,6 @@ pub(in crate::store) fn session_from_row(row: &SqliteRow) -> Result<SessionRecor
 }
 
 pub(super) fn run_record(row: &SqliteRow) -> Result<RunRecord, StoreError> {
-    let end = row
-        .try_get::<Option<String>, _>("end_kind")?
-        .map(|text| parse_run_end(&text))
-        .transpose()?;
     Ok(RunRecord {
         id: RunId(from_sql_int(row.try_get("id")?)),
         chat: ChatId(from_sql_int(row.try_get("chat_id")?)),
@@ -88,8 +84,11 @@ pub(super) fn run_record(row: &SqliteRow) -> Result<RunRecord, StoreError> {
         task: TaskId(from_sql_int(row.try_get("task_id")?)),
         session: SessionId(from_sql_int(row.try_get("session_id")?)),
         effect_scope: parse_enum(row.try_get("effect_scope")?)?,
-        started_at: from_millis(row.try_get("started_at")?),
-        end,
+        #[cfg(test)]
+        end: row
+            .try_get::<Option<String>, _>("end_kind")?
+            .map(|text| parse_run_end(&text))
+            .transpose()?,
     })
 }
 

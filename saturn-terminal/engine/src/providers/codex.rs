@@ -293,21 +293,11 @@ impl CodexClient {
     }
 
     /// 모르는 thread면 `None`.
+    #[cfg(test)]
     pub(crate) fn applied_settings(&self, session: &ProviderSessionId) -> Option<AppliedSettings> {
         lock(&self.threads)
             .get(session)
             .map(|thread| thread.applied.clone())
-    }
-
-    /// 연결 작업 밖에서 적용값을 읽는 함수.
-    pub(super) fn applied_reader(&self, session: &ProviderSessionId) -> super::AppliedReader {
-        let threads = Arc::clone(&self.threads);
-        let session = session.clone();
-        Arc::new(move || {
-            lock(&threads)
-                .get(&session)
-                .map(|thread| thread.applied.clone())
-        })
     }
 
     /// `Subagent(id)`는 `id.0`인 자식 thread.

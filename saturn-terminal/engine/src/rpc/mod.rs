@@ -70,7 +70,7 @@ pub struct ClientId(pub u64);
 #[derive(Debug)]
 pub(crate) enum RpcEvent {
     /// 아직 `Request::Attach` 전.
-    Connected(ClientId),
+    Connected,
     Request(ClientId, RequestId, Request),
     /// 연결 작업이 출입증과 상한을 확인해 허용한 `Request::AttachChild`.
     Child(ClientId, RequestId, Grant),
@@ -355,6 +355,7 @@ impl RpcServer {
     }
 
     /// 0이면 TUI 없음(background).
+    #[cfg(test)]
     pub(crate) fn client_count(&self) -> usize {
         self.clients.len()
     }
@@ -399,7 +400,7 @@ impl RpcServer {
             self.supervisor.clone(),
         );
         self.clients.insert(id, ClientHandle { outbox, chat: None });
-        RpcEvent::Connected(id)
+        RpcEvent::Connected
     }
 
     /// 끊긴 뒤 늦게 온 일은 버리고, `Detach`는 응답한 뒤 끊김으로 바꾼다.
@@ -533,10 +534,10 @@ mod tests {
 
     async fn connected(server: &mut RpcServer, home: &Path) -> (ClientId, TestClient) {
         let client = TestClient::connect(&home.join(SOCKET_FILE)).await;
-        let RpcEvent::Connected(id) = event(server).await else {
+        let RpcEvent::Connected = event(server).await else {
             panic!("expected Connected");
         };
-        (id, client)
+        (ClientId(server.next_client - 1), client)
     }
 
     fn notice(chat: u64) -> Notification {

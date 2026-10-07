@@ -1,21 +1,30 @@
 //! 판단 기록의 결과 신호와 물은 답 저장, 느린 조정에 쓸 `Observation` 목록 만들기.
 //! 설계: docs/design/records.md
 
+#[cfg(test)]
 use saturn_core::routers::Answer;
-use saturn_core::routers::calibration::{AskedAnswer, Observation, Signal};
+#[cfg(test)]
+use saturn_core::routers::calibration::Observation;
+use saturn_core::routers::calibration::{AskedAnswer, Signal};
 use saturn_protocol::ids::JudgmentId;
+#[cfg(test)]
 use serde::Deserialize;
+#[cfg(test)]
 use sqlx::Row;
 
-use super::records::{not_found, unknown_value};
+use super::records::not_found;
+#[cfg(test)]
+use super::records::unknown_value;
 use super::{Store, StoreError, to_sql_int};
 
+#[cfg(test)]
 #[derive(Deserialize)]
 struct StoredAnswer {
     question: String,
     answer: Answer,
 }
 
+#[cfg(test)]
 #[derive(Deserialize)]
 struct StoredThreshold {
     question: String,
@@ -81,6 +90,7 @@ impl Store {
     ///
     /// # Errors
     /// 읽기 실패면 `Database`, 저장된 JSON이나 값이 깨졌으면 `Json`이나 `Database`.
+    #[cfg(test)]
     pub(crate) async fn observations(&self) -> Result<Vec<Observation>, StoreError> {
         let rows = sqlx::query(
             "SELECT answers, thresholds, asked_with, signal, asked_answer FROM judgments \
@@ -163,6 +173,7 @@ fn signal_text(signal: Signal) -> &'static str {
     }
 }
 
+#[cfg(test)]
 fn parse_signal(text: &str) -> Result<Signal, StoreError> {
     match text {
         "Wrong" => Ok(Signal::Wrong),
@@ -179,6 +190,7 @@ fn asked_answer_text(answer: AskedAnswer) -> &'static str {
     }
 }
 
+#[cfg(test)]
 fn parse_asked_answer(text: &str) -> Result<AskedAnswer, StoreError> {
     match text {
         "Correct" => Ok(AskedAnswer::Correct),

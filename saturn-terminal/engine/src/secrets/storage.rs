@@ -46,9 +46,6 @@ pub(crate) const HARDENED_IDLE_LOCK: Duration = Duration::from_secs(10 * 60);
 /// 풀린 뒤 사용과 관계없이 이만큼 지나면 잠근다.
 pub(crate) const HARDENED_MAX_UNLOCK: Duration = Duration::from_secs(12 * 60 * 60);
 
-/// 초안 값.
-pub(crate) const LOCK_CHECK_INTERVAL: Duration = Duration::from_secs(60);
-
 const KEYCHAIN_SERVICE: &str = "saturn";
 
 const KEYCHAIN_ACCOUNT: &str = "saturn-key";
@@ -159,6 +156,7 @@ impl SecretStore {
     ///
     /// # Errors
     /// 키체인 실패면 `Keychain`, 파일 실패면 `Io`.
+    #[cfg(test)]
     pub(crate) async fn save(
         &mut self,
         key: RouterKey,
@@ -205,6 +203,7 @@ impl SecretStore {
     ///
     /// # Errors
     /// 키체인 실패면 `Keychain`, 파일 삭제 실패면 `Io`.
+    #[cfg(test)]
     pub(crate) async fn forget(&mut self) -> Result<(), SecretsError> {
         self.current = None;
         self.unlocked = None;

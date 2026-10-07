@@ -21,7 +21,7 @@ pub(crate) const MAX_SEND_ATTEMPTS: u32 = 3;
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Start {
     /// 진행 중인 턴에 끼워 넣는다.
-    Steer(AgentId),
+    Steer,
     /// 쉬는 에이전트에 새 턴으로 보낸다.
     Turn(AgentId),
     /// 새 작업을 시작한다.
@@ -45,7 +45,6 @@ pub(crate) struct Delivery {
 /// 기록 저장소에 연결을 쓰지 못한 끼워 넣기 입력.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct UnrecordedSteer {
-    pub(crate) chat: ChatId,
     pub(crate) input: InputId,
     pub(crate) run: RunId,
 }
@@ -125,7 +124,7 @@ impl Engine {
             let provider = self.flow.live.get(&agent).map(|live| live.provider);
             return self.defer_steer(chat, input, provider).await;
         };
-        let mut delivery = self.delivery(&record, Start::Steer(agent))?;
+        let mut delivery = self.delivery(&record, Start::Steer)?;
         delivery.live = Some(live.clone());
         delivery.run = self.runs.active.get(&agent).copied();
         self.mark_delivering(&delivery).await?;
@@ -229,7 +228,7 @@ impl Engine {
     fn delivery(&mut self, record: &QueuedInput, start: Start) -> Result<Delivery, EngineError> {
         let task = match start {
             Start::Task(task) => task,
-            Start::Steer(_) | Start::Turn(_) => record
+            Start::Steer | Start::Turn(_) => record
                 .task
                 .ok_or(saturn_core::queue::QueueError::NotFound(record.id))?,
         };
@@ -240,7 +239,7 @@ impl Engine {
                     .trail
                     .note_start(record.chat, task, record.id, &record.text)
             }
-            Start::Steer(_) | Start::Turn(_) => {
+            Start::Steer | Start::Turn(_) => {
                 self.flow
                     .trail
                     .note_follow_up(record.chat, task, record.id, &record.text)
@@ -253,7 +252,7 @@ impl Engine {
             start,
             task,
             live: None,
-            is_task_started: matches!(start, Start::Steer(_) | Start::Turn(_)),
+            is_task_started: matches!(start, Start::Steer | Start::Turn(_)),
             run: None,
         })
     }
@@ -274,7 +273,7 @@ impl Engine {
             Start::Turn(agent) if agent != live.agent => {
                 return Err("session belongs to another agent".to_owned());
             }
-            Start::Turn(_) | Start::Steer(_) => {}
+            Start::Turn(_) | Start::Steer => {}
         }
         Ok(())
     }
@@ -364,7 +363,7 @@ impl Engine {
     /// provider가 받았다. 작업 끝은 `finish_task`가 알린다.
     pub(crate) async fn mark_applied(&mut self, delivery: Delivery) -> Result<(), EngineError> {
         self.record_applied(&delivery).await?;
-        if !matches!(delivery.start, Start::Steer(_)) {
+        if !matches!(delivery.start, Start::Steer) {
             let provider = delivery.live.as_ref().map(|live| live.provider);
             self.notify_task(
                 delivery.chat,
@@ -402,11 +401,9 @@ impl Engine {
                 error = %self.failure_line(&error),
                 "steered input was not recorded, retrying the record only"
             );
-            self.flow.unrecorded_steers.push(UnrecordedSteer {
-                chat: delivery.chat,
-                input,
-                run,
-            });
+            self.flow
+                .unrecorded_steers
+                .push(UnrecordedSteer { input, run });
             self.notify_alert(delivery.chat, Alert::InputNotRecorded)
                 .await;
             return Ok(());
@@ -513,7 +510,7 @@ impl Engine {
     /// 시작하지 못한 새 작업은 닫고, 에이전트가 붙은 작업은 끝내 쓰기 잠금을 푼다.
     pub(crate) fn release_task(&mut self, delivery: &Delivery) {
         match (delivery.start, &delivery.live) {
-            (Start::Steer(_), _) => {}
+            (Start::Steer, _) => {}
             (Start::Turn(agent), _) => self.queue.finish_task(agent),
             (Start::Task(_), Some(live)) if delivery.is_task_started => {
                 self.queue.finish_task(live.agent);
