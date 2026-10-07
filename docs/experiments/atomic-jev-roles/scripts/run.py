@@ -271,6 +271,21 @@ def similarity(state: str) -> float:
     return len(a & b) / len(a | b) if a | b else 1.0
 
 
+def structured_signature(text: str) -> tuple[str | None, str | None, str | None, str]:
+    """Post-hoc parser for the generated format, not a preregistered baseline."""
+    run = re.search(r"\d+", text)
+    path = re.search(r"[a-z]+\.rs", text)
+    test = next((name for _, name, _ in TOPICS if name in text), None)
+    result = (
+        "failed"
+        if "실패" in text or "통과하지 못" in text or "넘어" in text
+        else "passed"
+        if "통과했다" in text
+        else "unknown"
+    )
+    return (run.group() if run else None, path.group() if path else None, test, result)
+
+
 def wilson(k: int, n: int) -> list[float]:
     if n == 0:
         return [0, 1]
@@ -335,6 +350,7 @@ def analyze() -> None:
     wins = Counter()
     misses = Counter()
     by_kind = defaultdict(Counter)
+    structured_correct = 0
     for item in confirm:
         response = responses[(item["id"], 1)]
         jev = response.get("score", -1) >= 0.5 if response["status"] == "ok" else None
@@ -348,6 +364,10 @@ def analyze() -> None:
         by_kind[item["kind"]]["jev_positive_05"] += jev is True
         by_kind[item["kind"]]["jev_positive_08"] += response.get("score", -1) >= 0.8
         grouped[item["topic"]].append((int(jc), int(cc)))
+        left, right = item["state"].split("\n", 1)
+        structured_correct += (
+            structured_signature(left) == structured_signature(right)
+        ) == item["label"]
     ids = sorted(grouped)
     rng = random.Random(54607)
     differences = []
@@ -400,6 +420,7 @@ def analyze() -> None:
                 (responses[(x["id"], 1)].get("score", -1) >= 0.8) == x["label"]
                 for x in confirm
             ),
+            "exploratory_structured_correct": structured_correct,
         },
         "repeat": {
             "agree": agreement,

@@ -53,7 +53,8 @@
         "jev_positive_08": 20
       }
     },
-    "exploratory_08_correct": 80
+    "exploratory_08_correct": 80,
+    "exploratory_structured_correct": 80
   },
   "repeat": {
     "agree": 156,
