@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import re
 import statistics
 from typing import Any
 
@@ -168,6 +169,55 @@ def analyze() -> None:
         ],
         records=records,
     )
+    private = RUN.parent
+    overlap = load(private / "cross-message-overlap.json")
+    controls = load(private / "controls/results.json")
+    control_roundtrip = load(private / "controls/roundtrip.json")
+    test_counts = {}
+    for name in ["candidate-tests", "final-tests"]:
+        path = ROOT / f".local/verification/transmission-quotes/{name}.log"
+        if path.exists():
+            counts = [
+                tuple(map(int, match))
+                for match in re.findall(
+                    r"test result: ok\. (\d+) passed; (\d+) failed; (\d+) ignored",
+                    path.read_text(),
+                )
+            ]
+            test_counts[name] = dict(
+                passed=sum(c[0] for c in counts),
+                failed=sum(c[1] for c in counts),
+                ignored=sum(c[2] for c in counts),
+            )
+    result["preflight"] = dict(
+        actual_provider_calls=result["actual_calls"],
+        identical_payloads=sum(p["identical"] for p in payloads),
+        payload_count=len(payloads),
+        baseline_chars=sum(p["baseline_chars"] for p in payloads),
+        candidate_chars=sum(p["candidate_chars"] for p in payloads),
+        by_kind=[
+            dict(
+                kind=kind,
+                count=sum(p["kind"] == kind for p in payloads),
+                baseline_chars=sum(
+                    p["baseline_chars"] for p in payloads if p["kind"] == kind
+                ),
+                candidate_chars=sum(
+                    p["candidate_chars"] for p in payloads if p["kind"] == kind
+                ),
+            )
+            for kind in ["packets", "recall"]
+        ],
+        character_reduction=0 if all(p["identical"] for p in payloads) else None,
+        cross_message_overlap_chars=sum(p["ordered_matching_chars"] for p in overlap),
+        cross_message_cases=len(overlap),
+        cross_message_overlap=overlap,
+        controls=controls,
+        control_roundtrip=control_roundtrip,
+        tests=test_counts,
+        decision="candidate not adopted; no next stage; provider quality and token counts not measured",
+        reason="all 80 real-source replay payloads are byte-identical; model output variation cannot establish a compression effect",
+    )
     (PUBLIC / "results/summary.json").write_text(
         json.dumps(result, ensure_ascii=False, indent=2) + "\n"
     )
@@ -205,8 +255,13 @@ def group(records: list[dict], provider: str, arm: str, subset: str) -> dict:
         subset=subset,
         runs=len(selected),
         valid_runs=sum(r["valid"] for r in selected),
-        correct=sum(sum(r["checks"].values()) for r in selected),
+        correct=sum(sum(r["checks"].values()) for r in selected)
+        if any(r["status"] != "missing" for r in selected)
+        else None,
         questions=sum(len(r["checks"]) for r in selected),
+        observed_questions=sum(
+            len(r["checks"]) for r in selected if r["status"] != "missing"
+        ),
     )
     for field in ["input_tokens", "output_tokens", "total_tokens"]:
         result[field] = (

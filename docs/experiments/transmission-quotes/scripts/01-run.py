@@ -296,6 +296,12 @@ def verify() -> None:
     for relative, expected in load(RUN / "seal.json").items():
         if hashlib.sha256((RUN / relative).read_bytes()).hexdigest() != expected:
             raise RuntimeError(f"sealed file changed: {relative}")
+    payload_checks()
+    for path in (PRIVATE / "controls/baseline").glob("*.json"):
+        baseline = load(path).get("text", "")
+        candidate = load(PRIVATE / "controls/candidate" / path.name).get("text", "")
+        if expand(candidate) != baseline:
+            raise RuntimeError(f"control roundtrip mismatch: {path.name}")
     raw = module(PUBLIC.parent / "real-context-replay/scripts/04-verify.py")
     meta = module(PUBLIC.parent / "context-recall/scripts/05-archive.py")
     counts = dict(planned=0, ok=0, failed=0, missing=0)

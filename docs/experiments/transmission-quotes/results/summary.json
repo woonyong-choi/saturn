@@ -1,0 +1,7773 @@
+{
+  "planned_calls": 240,
+  "actual_calls": 0,
+  "successful_calls": 0,
+  "h1": true,
+  "next_stage_allowed": false,
+  "groups": [
+    {
+      "provider": "claude",
+      "arm": "baseline",
+      "subset": "all",
+      "runs": 60,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 336,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    },
+    {
+      "provider": "claude",
+      "arm": "baseline",
+      "subset": "development",
+      "runs": 54,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 312,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    },
+    {
+      "provider": "claude",
+      "arm": "baseline",
+      "subset": "heldout",
+      "runs": 6,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 24,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    },
+    {
+      "provider": "claude",
+      "arm": "candidate",
+      "subset": "all",
+      "runs": 60,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 336,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    },
+    {
+      "provider": "claude",
+      "arm": "candidate",
+      "subset": "development",
+      "runs": 54,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 312,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    },
+    {
+      "provider": "claude",
+      "arm": "candidate",
+      "subset": "heldout",
+      "runs": 6,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 24,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    },
+    {
+      "provider": "codex",
+      "arm": "baseline",
+      "subset": "all",
+      "runs": 60,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 336,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    },
+    {
+      "provider": "codex",
+      "arm": "baseline",
+      "subset": "development",
+      "runs": 54,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 312,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    },
+    {
+      "provider": "codex",
+      "arm": "baseline",
+      "subset": "heldout",
+      "runs": 6,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 24,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    },
+    {
+      "provider": "codex",
+      "arm": "candidate",
+      "subset": "all",
+      "runs": 60,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 336,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    },
+    {
+      "provider": "codex",
+      "arm": "candidate",
+      "subset": "development",
+      "runs": 54,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 312,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    },
+    {
+      "provider": "codex",
+      "arm": "candidate",
+      "subset": "heldout",
+      "runs": 6,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 24,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null
+    }
+  ],
+  "decisions": [
+    {
+      "provider": "claude",
+      "complete": false,
+      "input_reduction": null,
+      "input_saved": null,
+      "total_saved": null,
+      "losses": 0,
+      "gains": 0,
+      "h2": false,
+      "h3": false,
+      "paired_reduction": null
+    },
+    {
+      "provider": "codex",
+      "complete": false,
+      "input_reduction": null,
+      "input_saved": null,
+      "total_saved": null,
+      "losses": 0,
+      "gains": 0,
+      "h2": false,
+      "h3": false,
+      "paired_reduction": null
+    }
+  ],
+  "paired": [
+    {
+      "provider": "claude",
+      "trial": "learning-12-r1",
+      "case": "learning-12",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "learning-12-r1",
+      "case": "learning-12",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "heldout-input-handling-r1",
+      "case": "heldout-input-handling",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "heldout-input-handling-r1",
+      "case": "heldout-input-handling",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "relay-r2",
+      "case": "relay",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "relay-r2",
+      "case": "relay",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-16-r2",
+      "case": "audit-16",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "audit-16-r2",
+      "case": "audit-16",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-batch-r2",
+      "case": "document-records-batch",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-batch-r2",
+      "case": "document-records-batch",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-settings-single-r1",
+      "case": "document-settings-single",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-settings-single-r1",
+      "case": "document-settings-single",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-8-r2",
+      "case": "audit-8",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "audit-8-r2",
+      "case": "audit-8",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "interruption-r1",
+      "case": "interruption",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "interruption-r1",
+      "case": "interruption",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "learning-12-r2",
+      "case": "learning-12",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "learning-12-r2",
+      "case": "learning-12",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "learning-30-r1",
+      "case": "learning-30",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "learning-30-r1",
+      "case": "learning-30",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-16-r1",
+      "case": "audit-16",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "audit-16-r1",
+      "case": "audit-16",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-26-r1",
+      "case": "audit-26",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "audit-26-r1",
+      "case": "audit-26",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "learning-59-r3",
+      "case": "learning-59",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "learning-59-r3",
+      "case": "learning-59",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-router-key-security-batch-r2",
+      "case": "document-router-key-security-batch",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-router-key-security-batch-r2",
+      "case": "document-router-key-security-batch",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "learning-30-r3",
+      "case": "learning-30",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "learning-30-r3",
+      "case": "learning-30",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-single-r3",
+      "case": "document-permissions-single",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-single-r3",
+      "case": "document-permissions-single",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "learning-59-r1",
+      "case": "learning-59",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "learning-59-r1",
+      "case": "learning-59",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-8-r3",
+      "case": "audit-8",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "audit-8-r3",
+      "case": "audit-8",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-batch-r1",
+      "case": "document-permissions-batch",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-batch-r1",
+      "case": "document-permissions-batch",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "notes-r3",
+      "case": "notes",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "notes-r3",
+      "case": "notes",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-single-r1",
+      "case": "document-records-single",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-single-r1",
+      "case": "document-records-single",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "relay-r3",
+      "case": "relay",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "relay-r3",
+      "case": "relay",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-settings-single-r3",
+      "case": "document-settings-single",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-settings-single-r3",
+      "case": "document-settings-single",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-single-r3",
+      "case": "document-records-single",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-single-r3",
+      "case": "document-records-single",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "design-chain-r3",
+      "case": "design-chain",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "design-chain-r3",
+      "case": "design-chain",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-16-r3",
+      "case": "audit-16",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "audit-16-r3",
+      "case": "audit-16",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-26-r2",
+      "case": "audit-26",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "audit-26-r2",
+      "case": "audit-26",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-settings-batch-r1",
+      "case": "document-settings-batch",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-settings-batch-r1",
+      "case": "document-settings-batch",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-single-r2",
+      "case": "document-records-single",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-single-r2",
+      "case": "document-records-single",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-batch-r3",
+      "case": "document-permissions-batch",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-batch-r3",
+      "case": "document-permissions-batch",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-8-r1",
+      "case": "audit-8",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "audit-8-r1",
+      "case": "audit-8",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "notes-r1",
+      "case": "notes",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "notes-r1",
+      "case": "notes",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-batch-r3",
+      "case": "document-records-batch",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-batch-r3",
+      "case": "document-records-batch",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-settings-batch-r2",
+      "case": "document-settings-batch",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-settings-batch-r2",
+      "case": "document-settings-batch",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "audit-26-r3",
+      "case": "audit-26",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "audit-26-r3",
+      "case": "audit-26",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-settings-single-r2",
+      "case": "document-settings-single",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-settings-single-r2",
+      "case": "document-settings-single",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-router-key-security-single-r2",
+      "case": "document-router-key-security-single",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-router-key-security-single-r2",
+      "case": "document-router-key-security-single",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-single-r1",
+      "case": "document-permissions-single",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-single-r1",
+      "case": "document-permissions-single",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-single-r2",
+      "case": "document-permissions-single",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-single-r2",
+      "case": "document-permissions-single",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "heldout-input-handling-r3",
+      "case": "heldout-input-handling",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "heldout-input-handling-r3",
+      "case": "heldout-input-handling",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-router-key-security-single-r3",
+      "case": "document-router-key-security-single",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-router-key-security-single-r3",
+      "case": "document-router-key-security-single",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-router-key-security-batch-r1",
+      "case": "document-router-key-security-batch",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-router-key-security-batch-r1",
+      "case": "document-router-key-security-batch",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "heldout-engine-lifecycle-r3",
+      "case": "heldout-engine-lifecycle",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "heldout-engine-lifecycle-r3",
+      "case": "heldout-engine-lifecycle",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "learning-59-r2",
+      "case": "learning-59",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "learning-59-r2",
+      "case": "learning-59",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "heldout-engine-lifecycle-r2",
+      "case": "heldout-engine-lifecycle",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "heldout-engine-lifecycle-r2",
+      "case": "heldout-engine-lifecycle",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "design-chain-r1",
+      "case": "design-chain",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "design-chain-r1",
+      "case": "design-chain",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "heldout-input-handling-r2",
+      "case": "heldout-input-handling",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "heldout-input-handling-r2",
+      "case": "heldout-input-handling",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "heldout-engine-lifecycle-r1",
+      "case": "heldout-engine-lifecycle",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "heldout-engine-lifecycle-r1",
+      "case": "heldout-engine-lifecycle",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "learning-12-r3",
+      "case": "learning-12",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "learning-12-r3",
+      "case": "learning-12",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-settings-batch-r3",
+      "case": "document-settings-batch",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-settings-batch-r3",
+      "case": "document-settings-batch",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "interruption-r2",
+      "case": "interruption",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "interruption-r2",
+      "case": "interruption",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-records-batch-r1",
+      "case": "document-records-batch",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-records-batch-r1",
+      "case": "document-records-batch",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-router-key-security-batch-r3",
+      "case": "document-router-key-security-batch",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-router-key-security-batch-r3",
+      "case": "document-router-key-security-batch",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "relay-r1",
+      "case": "relay",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "relay-r1",
+      "case": "relay",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "learning-30-r2",
+      "case": "learning-30",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "learning-30-r2",
+      "case": "learning-30",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "notes-r2",
+      "case": "notes",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "notes-r2",
+      "case": "notes",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "design-chain-r2",
+      "case": "design-chain",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "design-chain-r2",
+      "case": "design-chain",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-permissions-batch-r2",
+      "case": "document-permissions-batch",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-permissions-batch-r2",
+      "case": "document-permissions-batch",
+      "repeat": 2,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "document-router-key-security-single-r1",
+      "case": "document-router-key-security-single",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "document-router-key-security-single-r1",
+      "case": "document-router-key-security-single",
+      "repeat": 1,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "claude",
+      "trial": "interruption-r3",
+      "case": "interruption",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    },
+    {
+      "provider": "codex",
+      "trial": "interruption-r3",
+      "case": "interruption",
+      "repeat": 3,
+      "input_reduction": null,
+      "losses": [],
+      "gains": []
+    }
+  ],
+  "payloads": [
+    {
+      "kind": "packets",
+      "name": "audit-16-1000.json",
+      "baseline_chars": 3999,
+      "candidate_chars": 3999,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "audit-16-16000.json",
+      "baseline_chars": 28302,
+      "candidate_chars": 28302,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "audit-16-4000.json",
+      "baseline_chars": 15409,
+      "candidate_chars": 15409,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "audit-26-1000.json",
+      "baseline_chars": 3970,
+      "candidate_chars": 3970,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "audit-26-16000.json",
+      "baseline_chars": 38571,
+      "candidate_chars": 38571,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "audit-26-4000.json",
+      "baseline_chars": 15997,
+      "candidate_chars": 15997,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "audit-8-1000.json",
+      "baseline_chars": 3096,
+      "candidate_chars": 3096,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "audit-8-16000.json",
+      "baseline_chars": 40071,
+      "candidate_chars": 40071,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "audit-8-4000.json",
+      "baseline_chars": 8607,
+      "candidate_chars": 8607,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "design-chain-1000.json",
+      "baseline_chars": 1764,
+      "candidate_chars": 1764,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "design-chain-16000.json",
+      "baseline_chars": 18520,
+      "candidate_chars": 18520,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "design-chain-4000.json",
+      "baseline_chars": 9341,
+      "candidate_chars": 9341,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-permissions-batch-1000.json",
+      "baseline_chars": 1379,
+      "candidate_chars": 1379,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-permissions-batch-16000.json",
+      "baseline_chars": 41892,
+      "candidate_chars": 41892,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-permissions-batch-4000.json",
+      "baseline_chars": 1379,
+      "candidate_chars": 1379,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-permissions-single-1000.json",
+      "baseline_chars": 1379,
+      "candidate_chars": 1379,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-permissions-single-16000.json",
+      "baseline_chars": 41892,
+      "candidate_chars": 41892,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-permissions-single-4000.json",
+      "baseline_chars": 1379,
+      "candidate_chars": 1379,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-records-batch-1000.json",
+      "baseline_chars": 1371,
+      "candidate_chars": 1371,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-records-batch-16000.json",
+      "baseline_chars": 26948,
+      "candidate_chars": 26948,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-records-batch-4000.json",
+      "baseline_chars": 1371,
+      "candidate_chars": 1371,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-records-single-1000.json",
+      "baseline_chars": 1371,
+      "candidate_chars": 1371,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-records-single-16000.json",
+      "baseline_chars": 26948,
+      "candidate_chars": 26948,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-records-single-4000.json",
+      "baseline_chars": 1371,
+      "candidate_chars": 1371,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-router-key-security-batch-1000.json",
+      "baseline_chars": 1395,
+      "candidate_chars": 1395,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-router-key-security-batch-16000.json",
+      "baseline_chars": 19475,
+      "candidate_chars": 19475,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-router-key-security-batch-4000.json",
+      "baseline_chars": 1395,
+      "candidate_chars": 1395,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-router-key-security-single-1000.json",
+      "baseline_chars": 1395,
+      "candidate_chars": 1395,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-router-key-security-single-16000.json",
+      "baseline_chars": 19475,
+      "candidate_chars": 19475,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-router-key-security-single-4000.json",
+      "baseline_chars": 1395,
+      "candidate_chars": 1395,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-settings-batch-1000.json",
+      "baseline_chars": 1373,
+      "candidate_chars": 1373,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-settings-batch-16000.json",
+      "baseline_chars": 22730,
+      "candidate_chars": 22730,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-settings-batch-4000.json",
+      "baseline_chars": 1373,
+      "candidate_chars": 1373,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-settings-single-1000.json",
+      "baseline_chars": 1373,
+      "candidate_chars": 1373,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-settings-single-16000.json",
+      "baseline_chars": 22730,
+      "candidate_chars": 22730,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "document-settings-single-4000.json",
+      "baseline_chars": 1373,
+      "candidate_chars": 1373,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "heldout-engine-lifecycle-1000.json",
+      "baseline_chars": 1389,
+      "candidate_chars": 1389,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "heldout-engine-lifecycle-16000.json",
+      "baseline_chars": 48331,
+      "candidate_chars": 48331,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "heldout-engine-lifecycle-4000.json",
+      "baseline_chars": 1389,
+      "candidate_chars": 1389,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "heldout-input-handling-1000.json",
+      "baseline_chars": 1385,
+      "candidate_chars": 1385,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "heldout-input-handling-16000.json",
+      "baseline_chars": 30718,
+      "candidate_chars": 30718,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "heldout-input-handling-4000.json",
+      "baseline_chars": 1385,
+      "candidate_chars": 1385,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "interruption-1000.json",
+      "baseline_chars": 3936,
+      "candidate_chars": 3936,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "interruption-16000.json",
+      "baseline_chars": 24111,
+      "candidate_chars": 24111,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "interruption-4000.json",
+      "baseline_chars": 10194,
+      "candidate_chars": 10194,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "learning-12-1000.json",
+      "baseline_chars": 3960,
+      "candidate_chars": 3960,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "learning-12-16000.json",
+      "baseline_chars": 8549,
+      "candidate_chars": 8549,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "learning-12-4000.json",
+      "baseline_chars": 8549,
+      "candidate_chars": 8549,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "learning-30-1000.json",
+      "baseline_chars": 3972,
+      "candidate_chars": 3972,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "learning-30-16000.json",
+      "baseline_chars": 17307,
+      "candidate_chars": 17307,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "learning-30-4000.json",
+      "baseline_chars": 15906,
+      "candidate_chars": 15906,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "learning-59-1000.json",
+      "baseline_chars": 3997,
+      "candidate_chars": 3997,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "learning-59-16000.json",
+      "baseline_chars": 48380,
+      "candidate_chars": 48380,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "learning-59-4000.json",
+      "baseline_chars": 15924,
+      "candidate_chars": 15924,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "notes-1000.json",
+      "baseline_chars": 2224,
+      "candidate_chars": 2224,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "notes-16000.json",
+      "baseline_chars": 2224,
+      "candidate_chars": 2224,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "notes-4000.json",
+      "baseline_chars": 2224,
+      "candidate_chars": 2224,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "relay-1000.json",
+      "baseline_chars": 2644,
+      "candidate_chars": 2644,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "relay-16000.json",
+      "baseline_chars": 2644,
+      "candidate_chars": 2644,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "packets",
+      "name": "relay-4000.json",
+      "baseline_chars": 2644,
+      "candidate_chars": 2644,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "audit-16.json",
+      "baseline_chars": 7084,
+      "candidate_chars": 7084,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "audit-26.json",
+      "baseline_chars": 7115,
+      "candidate_chars": 7115,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "audit-8.json",
+      "baseline_chars": 6874,
+      "candidate_chars": 6874,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "design-chain.json",
+      "baseline_chars": 6613,
+      "candidate_chars": 6613,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "document-permissions-batch.json",
+      "baseline_chars": 3655,
+      "candidate_chars": 3655,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "document-permissions-single.json",
+      "baseline_chars": 4109,
+      "candidate_chars": 4109,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "document-records-batch.json",
+      "baseline_chars": 4085,
+      "candidate_chars": 4085,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "document-records-single.json",
+      "baseline_chars": 4035,
+      "candidate_chars": 4035,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "document-router-key-security-batch.json",
+      "baseline_chars": 3654,
+      "candidate_chars": 3654,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "document-router-key-security-single.json",
+      "baseline_chars": 4135,
+      "candidate_chars": 4135,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "document-settings-batch.json",
+      "baseline_chars": 3148,
+      "candidate_chars": 3148,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "document-settings-single.json",
+      "baseline_chars": 3831,
+      "candidate_chars": 3831,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "heldout-engine-lifecycle.json",
+      "baseline_chars": 4033,
+      "candidate_chars": 4033,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "heldout-input-handling.json",
+      "baseline_chars": 3730,
+      "candidate_chars": 3730,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "interruption.json",
+      "baseline_chars": 5557,
+      "candidate_chars": 5557,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "learning-12.json",
+      "baseline_chars": 4514,
+      "candidate_chars": 4514,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "learning-30.json",
+      "baseline_chars": 5718,
+      "candidate_chars": 5718,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "learning-59.json",
+      "baseline_chars": 7088,
+      "candidate_chars": 7088,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "notes.json",
+      "baseline_chars": 467,
+      "candidate_chars": 467,
+      "identical": true,
+      "reversible": true
+    },
+    {
+      "kind": "recall",
+      "name": "relay.json",
+      "baseline_chars": 1325,
+      "candidate_chars": 1325,
+      "identical": true,
+      "reversible": true
+    }
+  ],
+  "repeats": [
+    {
+      "provider": "claude",
+      "arm": "baseline",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 1
+    },
+    {
+      "provider": "claude",
+      "arm": "candidate",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 1
+    },
+    {
+      "provider": "codex",
+      "arm": "baseline",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 1
+    },
+    {
+      "provider": "codex",
+      "arm": "candidate",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 1
+    },
+    {
+      "provider": "claude",
+      "arm": "baseline",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 2
+    },
+    {
+      "provider": "claude",
+      "arm": "candidate",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 2
+    },
+    {
+      "provider": "codex",
+      "arm": "baseline",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 2
+    },
+    {
+      "provider": "codex",
+      "arm": "candidate",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 2
+    },
+    {
+      "provider": "claude",
+      "arm": "baseline",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 3
+    },
+    {
+      "provider": "claude",
+      "arm": "candidate",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 3
+    },
+    {
+      "provider": "codex",
+      "arm": "baseline",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 3
+    },
+    {
+      "provider": "codex",
+      "arm": "candidate",
+      "subset": "all",
+      "runs": 20,
+      "valid_runs": 0,
+      "correct": null,
+      "questions": 112,
+      "observed_questions": 0,
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "repeat": 3
+    }
+  ],
+  "records": [
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "trial": "learning-12-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "trial": "learning-12-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "trial": "learning-30-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "trial": "learning-30-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "trial": "audit-26-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "trial": "audit-26-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "trial": "relay-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "trial": "relay-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "trial": "audit-16-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "trial": "audit-16-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "trial": "learning-59-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "trial": "learning-59-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "trial": "audit-8-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "trial": "audit-8-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-single",
+      "trial": "document-records-single-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-single",
+      "trial": "document-records-single-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "trial": "interruption-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "trial": "interruption-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "trial": "learning-12-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "trial": "learning-12-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "trial": "learning-30-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "trial": "learning-30-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "trial": "audit-16-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "trial": "audit-16-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "design-chain",
+      "trial": "design-chain-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "design-chain",
+      "trial": "design-chain-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "trial": "audit-26-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "trial": "audit-26-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "trial": "notes-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "trial": "notes-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "trial": "audit-16-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "trial": "audit-16-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "trial": "learning-59-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "trial": "learning-59-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "trial": "learning-30-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "trial": "learning-30-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "trial": "learning-30-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "trial": "learning-30-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "trial": "learning-59-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "trial": "learning-59-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "trial": "audit-8-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "trial": "audit-8-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "trial": "learning-12-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "trial": "learning-12-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "trial": "interruption-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "trial": "interruption-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "trial": "notes-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "trial": "notes-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-single",
+      "trial": "document-records-single-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-single",
+      "trial": "document-records-single-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "trial": "relay-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "trial": "relay-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-single",
+      "trial": "document-records-single-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-single",
+      "trial": "document-records-single-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "trial": "notes-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "trial": "notes-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "design-chain",
+      "trial": "design-chain-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "design-chain",
+      "trial": "design-chain-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "trial": "audit-16-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "trial": "audit-16-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "trial": "audit-26-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "trial": "audit-26-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "trial": "relay-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "trial": "relay-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "trial": "audit-8-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "trial": "audit-8-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "trial": "audit-26-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "trial": "audit-26-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-single",
+      "trial": "document-records-single-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-single",
+      "trial": "document-records-single-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "trial": "learning-30-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "trial": "learning-30-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "trial": "audit-16-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "trial": "audit-16-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "trial": "audit-8-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "trial": "audit-8-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "trial": "notes-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "trial": "notes-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-single",
+      "trial": "document-records-single-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-single",
+      "trial": "document-records-single-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "trial": "audit-26-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "trial": "audit-26-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-single",
+      "trial": "document-permissions-single-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-single",
+      "trial": "document-records-single-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-single",
+      "trial": "document-records-single-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-16",
+      "trial": "audit-16-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-16",
+      "trial": "audit-16-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "trial": "relay-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "trial": "relay-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "trial": "interruption-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "trial": "interruption-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "trial": "audit-8-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "trial": "audit-8-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-26",
+      "trial": "audit-26-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-26",
+      "trial": "audit-26-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "trial": "learning-59-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "trial": "learning-59-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "trial": "learning-12-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "trial": "learning-12-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "design-chain",
+      "trial": "design-chain-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "design-chain",
+      "trial": "design-chain-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "design-chain",
+      "trial": "design-chain-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "design-chain",
+      "trial": "design-chain-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-input-handling",
+      "trial": "heldout-input-handling-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "attempts": false,
+        "rejudge": false,
+        "confidence": false,
+        "stop": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "trial": "relay-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "trial": "relay-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "trial": "learning-12-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "trial": "learning-12-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "audit-8",
+      "trial": "audit-8-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "audit-8",
+      "trial": "audit-8-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "rules": false,
+        "temporary": false,
+        "prompt": false,
+        "unknown": false,
+        "new_milestone": false,
+        "new_schema": false,
+        "new_path": false,
+        "new_compiler": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "heldout-engine-lifecycle",
+      "trial": "heldout-engine-lifecycle-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "backup": false,
+        "history": false,
+        "load": false,
+        "version": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "trial": "notes-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "trial": "notes-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-batch",
+      "trial": "document-settings-batch-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false,
+        "retry": false,
+        "deadline": false,
+        "logs": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "design-chain",
+      "trial": "design-chain-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "design-chain",
+      "trial": "design-chain-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "trial": "interruption-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "trial": "interruption-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-records-batch",
+      "trial": "document-records-batch-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "extensions": false,
+        "direct": false,
+        "active": false,
+        "changes": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-batch",
+      "trial": "document-router-key-security-batch-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false,
+        "maximum": false,
+        "mode": false,
+        "poll": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "relay",
+      "trial": "relay-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "relay",
+      "trial": "relay-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "second": false,
+        "unknown": false,
+        "new_reply": false,
+        "new_third": false,
+        "new_end": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "trial": "interruption-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "trial": "interruption-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-12",
+      "trial": "learning-12-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-12",
+      "trial": "learning-12-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "trial": "learning-59-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "trial": "learning-59-r2",
+      "repeat": 2,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-30",
+      "trial": "learning-30-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-30",
+      "trial": "learning-30-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "notes",
+      "trial": "notes-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "notes",
+      "trial": "notes-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "file": false,
+        "first": false,
+        "last": false,
+        "unknown": false,
+        "new_second": false,
+        "new_third": false,
+        "new_append": false,
+        "new_prefix": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "design-chain",
+      "trial": "design-chain-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "design-chain",
+      "trial": "design-chain-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "document": false,
+        "branch": false,
+        "status": false,
+        "push": false,
+        "depth": false,
+        "candidates": false,
+        "record_field": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-permissions-batch",
+      "trial": "document-permissions-batch-r2",
+      "repeat": 2,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "gitconfig": false,
+        "gitignore": false,
+        "precedence": false,
+        "unknown_command": false,
+        "unknown": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "learning-59",
+      "trial": "learning-59-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "learning-59",
+      "trial": "learning-59-r1",
+      "repeat": 1,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "trait": false,
+        "struct": false,
+        "greeting": false,
+        "unknown": false,
+        "new_name": false,
+        "new_field": false,
+        "new_field_type": false,
+        "new_count": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-router-key-security-single",
+      "trial": "document-router-key-security-single-r1",
+      "repeat": 1,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "idle": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "interruption",
+      "trial": "interruption-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "interruption",
+      "trial": "interruption-r3",
+      "repeat": 3,
+      "arm": "candidate",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "first_read": false,
+        "marker": false,
+        "backup": false,
+        "unknown": false,
+        "new_paragraphs": false,
+        "new_other_file": false,
+        "new_search": false,
+        "new_language": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "claude",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    },
+    {
+      "provider": "codex",
+      "case": "document-settings-single",
+      "trial": "document-settings-single-r3",
+      "repeat": 3,
+      "arm": "baseline",
+      "status": "missing",
+      "valid": false,
+      "answers": {},
+      "checks": {
+        "interval": false
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "elapsed_s": null
+    }
+  ],
+  "preflight": {
+    "actual_provider_calls": 0,
+    "identical_payloads": 80,
+    "payload_count": 80,
+    "baseline_chars": 786565,
+    "candidate_chars": 786565,
+    "by_kind": [
+      {
+        "kind": "packets",
+        "count": 60,
+        "baseline_chars": 695795,
+        "candidate_chars": 695795
+      },
+      {
+        "kind": "recall",
+        "count": 20,
+        "baseline_chars": 90770,
+        "candidate_chars": 90770
+      }
+    ],
+    "character_reduction": 0,
+    "cross_message_overlap_chars": 24503,
+    "cross_message_cases": 20,
+    "cross_message_overlap": [
+      {
+        "case": "learning-12",
+        "packet_chars": 8549,
+        "recall_chars": 4514,
+        "ordered_matching_chars": 2613,
+        "spans": [
+          {
+            "packet": 883,
+            "recall": 627,
+            "chars": 400
+          },
+          {
+            "packet": 2019,
+            "recall": 1072,
+            "chars": 263
+          },
+          {
+            "packet": 2933,
+            "recall": 1380,
+            "chars": 78
+          },
+          {
+            "packet": 4467,
+            "recall": 1488,
+            "chars": 481
+          },
+          {
+            "packet": 5150,
+            "recall": 1998,
+            "chars": 299
+          },
+          {
+            "packet": 6699,
+            "recall": 2328,
+            "chars": 533
+          },
+          {
+            "packet": 7786,
+            "recall": 2892,
+            "chars": 559
+          }
+        ]
+      },
+      {
+        "case": "learning-30",
+        "packet_chars": 15906,
+        "recall_chars": 5718,
+        "ordered_matching_chars": 3271,
+        "spans": [
+          {
+            "packet": 2373,
+            "recall": 231,
+            "chars": 174
+          },
+          {
+            "packet": 2554,
+            "recall": 2405,
+            "chars": 299
+          },
+          {
+            "packet": 4103,
+            "recall": 2735,
+            "chars": 533
+          },
+          {
+            "packet": 6193,
+            "recall": 3300,
+            "chars": 540
+          },
+          {
+            "packet": 7192,
+            "recall": 3872,
+            "chars": 461
+          },
+          {
+            "packet": 8395,
+            "recall": 4365,
+            "chars": 152
+          },
+          {
+            "packet": 8608,
+            "recall": 4547,
+            "chars": 434
+          },
+          {
+            "packet": 9115,
+            "recall": 5011,
+            "chars": 241
+          },
+          {
+            "packet": 14757,
+            "recall": 5281,
+            "chars": 437
+          }
+        ]
+      },
+      {
+        "case": "learning-59",
+        "packet_chars": 15924,
+        "recall_chars": 7088,
+        "ordered_matching_chars": 1323,
+        "spans": [
+          {
+            "packet": 827,
+            "recall": 2963,
+            "chars": 292
+          },
+          {
+            "packet": 6796,
+            "recall": 6057,
+            "chars": 1031
+          }
+        ]
+      },
+      {
+        "case": "audit-8",
+        "packet_chars": 8607,
+        "recall_chars": 6874,
+        "ordered_matching_chars": 3037,
+        "spans": [
+          {
+            "packet": 838,
+            "recall": 397,
+            "chars": 2469
+          },
+          {
+            "packet": 4434,
+            "recall": 2971,
+            "chars": 568
+          }
+        ]
+      },
+      {
+        "case": "audit-16",
+        "packet_chars": 15409,
+        "recall_chars": 7084,
+        "ordered_matching_chars": 4040,
+        "spans": [
+          {
+            "packet": 7779,
+            "recall": 156,
+            "chars": 2487
+          },
+          {
+            "packet": 10586,
+            "recall": 3827,
+            "chars": 256
+          },
+          {
+            "packet": 11176,
+            "recall": 5787,
+            "chars": 1297
+          }
+        ]
+      },
+      {
+        "case": "audit-26",
+        "packet_chars": 15997,
+        "recall_chars": 7115,
+        "ordered_matching_chars": 1095,
+        "spans": [
+          {
+            "packet": 2045,
+            "recall": 3334,
+            "chars": 271
+          },
+          {
+            "packet": 4084,
+            "recall": 3635,
+            "chars": 568
+          },
+          {
+            "packet": 8118,
+            "recall": 4234,
+            "chars": 256
+          }
+        ]
+      },
+      {
+        "case": "notes",
+        "packet_chars": 2224,
+        "recall_chars": 467,
+        "ordered_matching_chars": 146,
+        "spans": [
+          {
+            "packet": 1796,
+            "recall": 243,
+            "chars": 146
+          }
+        ]
+      },
+      {
+        "case": "relay",
+        "packet_chars": 2644,
+        "recall_chars": 1325,
+        "ordered_matching_chars": 781,
+        "spans": [
+          {
+            "packet": 730,
+            "recall": 160,
+            "chars": 126
+          },
+          {
+            "packet": 1314,
+            "recall": 329,
+            "chars": 191
+          },
+          {
+            "packet": 1666,
+            "recall": 565,
+            "chars": 178
+          },
+          {
+            "packet": 1939,
+            "recall": 772,
+            "chars": 138
+          },
+          {
+            "packet": 2292,
+            "recall": 939,
+            "chars": 148
+          }
+        ]
+      },
+      {
+        "case": "interruption",
+        "packet_chars": 10194,
+        "recall_chars": 5557,
+        "ordered_matching_chars": 1731,
+        "spans": [
+          {
+            "packet": 730,
+            "recall": 160,
+            "chars": 261
+          },
+          {
+            "packet": 1001,
+            "recall": 453,
+            "chars": 279
+          },
+          {
+            "packet": 8442,
+            "recall": 761,
+            "chars": 592
+          },
+          {
+            "packet": 9034,
+            "recall": 1384,
+            "chars": 599
+          }
+        ]
+      },
+      {
+        "case": "design-chain",
+        "packet_chars": 9341,
+        "recall_chars": 6613,
+        "ordered_matching_chars": 5968,
+        "spans": [
+          {
+            "packet": 895,
+            "recall": 371,
+            "chars": 502
+          },
+          {
+            "packet": 2504,
+            "recall": 902,
+            "chars": 1197
+          },
+          {
+            "packet": 3701,
+            "recall": 2129,
+            "chars": 534
+          },
+          {
+            "packet": 4235,
+            "recall": 2693,
+            "chars": 574
+          },
+          {
+            "packet": 4809,
+            "recall": 3297,
+            "chars": 588
+          },
+          {
+            "packet": 5805,
+            "recall": 3916,
+            "chars": 599
+          },
+          {
+            "packet": 6404,
+            "recall": 4546,
+            "chars": 321
+          },
+          {
+            "packet": 6725,
+            "recall": 4898,
+            "chars": 465
+          },
+          {
+            "packet": 7190,
+            "recall": 5394,
+            "chars": 589
+          },
+          {
+            "packet": 7779,
+            "recall": 6014,
+            "chars": 599
+          }
+        ]
+      },
+      {
+        "case": "document-permissions-batch",
+        "packet_chars": 1379,
+        "recall_chars": 3655,
+        "ordered_matching_chars": 0,
+        "spans": []
+      },
+      {
+        "case": "document-permissions-single",
+        "packet_chars": 1379,
+        "recall_chars": 4109,
+        "ordered_matching_chars": 0,
+        "spans": []
+      },
+      {
+        "case": "document-router-key-security-batch",
+        "packet_chars": 1395,
+        "recall_chars": 3654,
+        "ordered_matching_chars": 99,
+        "spans": [
+          {
+            "packet": 947,
+            "recall": 3552,
+            "chars": 99
+          }
+        ]
+      },
+      {
+        "case": "document-router-key-security-single",
+        "packet_chars": 1395,
+        "recall_chars": 4135,
+        "ordered_matching_chars": 99,
+        "spans": [
+          {
+            "packet": 947,
+            "recall": 4033,
+            "chars": 99
+          }
+        ]
+      },
+      {
+        "case": "document-settings-batch",
+        "packet_chars": 1373,
+        "recall_chars": 3148,
+        "ordered_matching_chars": 0,
+        "spans": []
+      },
+      {
+        "case": "document-settings-single",
+        "packet_chars": 1373,
+        "recall_chars": 3831,
+        "ordered_matching_chars": 0,
+        "spans": []
+      },
+      {
+        "case": "document-records-batch",
+        "packet_chars": 1371,
+        "recall_chars": 4085,
+        "ordered_matching_chars": 0,
+        "spans": []
+      },
+      {
+        "case": "document-records-single",
+        "packet_chars": 1371,
+        "recall_chars": 4035,
+        "ordered_matching_chars": 300,
+        "spans": [
+          {
+            "packet": 865,
+            "recall": 228,
+            "chars": 300
+          }
+        ]
+      },
+      {
+        "case": "heldout-input-handling",
+        "packet_chars": 1385,
+        "recall_chars": 3730,
+        "ordered_matching_chars": 0,
+        "spans": []
+      },
+      {
+        "case": "heldout-engine-lifecycle",
+        "packet_chars": 1389,
+        "recall_chars": 4033,
+        "ordered_matching_chars": 0,
+        "spans": []
+      }
+    ],
+    "controls": [
+      {
+        "case": "repeated-1000.json",
+        "before": 5124,
+        "after": 3452,
+        "changed": true
+      },
+      {
+        "case": "repeated-16000.json",
+        "before": 5124,
+        "after": 3452,
+        "changed": true
+      },
+      {
+        "case": "distinct-4000.json",
+        "before": 2396,
+        "after": 2396,
+        "changed": false
+      },
+      {
+        "case": "distinct-1000.json",
+        "before": 2396,
+        "after": 2396,
+        "changed": false
+      },
+      {
+        "case": "distinct-16000.json",
+        "before": 2396,
+        "after": 2396,
+        "changed": false
+      },
+      {
+        "case": "repeated-4000.json",
+        "before": 5124,
+        "after": 3452,
+        "changed": true
+      }
+    ],
+    "control_roundtrip": [
+      {
+        "case": "distinct-1000.json",
+        "reversible": true
+      },
+      {
+        "case": "distinct-16000.json",
+        "reversible": true
+      },
+      {
+        "case": "distinct-4000.json",
+        "reversible": true
+      },
+      {
+        "case": "repeated-1000.json",
+        "reversible": true
+      },
+      {
+        "case": "repeated-16000.json",
+        "reversible": true
+      },
+      {
+        "case": "repeated-4000.json",
+        "reversible": true
+      }
+    ],
+    "tests": {
+      "candidate-tests": {
+        "passed": 1925,
+        "failed": 0,
+        "ignored": 5
+      },
+      "final-tests": {
+        "passed": 1922,
+        "failed": 0,
+        "ignored": 5
+      }
+    },
+    "decision": "candidate not adopted; no next stage; provider quality and token counts not measured",
+    "reason": "all 80 real-source replay payloads are byte-identical; model output variation cannot establish a compression effect"
+  }
+}
