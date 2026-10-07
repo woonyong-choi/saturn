@@ -1,0 +1,75 @@
+{
+  "flow": {
+    "items": 160,
+    "calls": 320,
+    "statuses": {
+      "ok": 320
+    },
+    "human_decisive": 24,
+    "human_unsure": 16,
+    "observation_development": 40,
+    "observation_confirm": 80
+  },
+  "human": {
+    "old_correct": 22,
+    "new_correct": 16,
+    "n": 24,
+    "old_only": 8,
+    "new_only": 2,
+    "unsure_positive": 10
+  },
+  "observation": {
+    "code_threshold": 0.3,
+    "jev_correct": 60,
+    "code_correct": 60,
+    "n": 80,
+    "jev_only": 20,
+    "code_only": 20,
+    "jev_misses": 0,
+    "code_misses": 20,
+    "difference_ci95": [
+      0.0,
+      0.0
+    ],
+    "by_kind": {
+      "different_run": {
+        "count": 20,
+        "jev_positive_05": 0,
+        "jev_positive_08": 0
+      },
+      "different_test": {
+        "count": 20,
+        "jev_positive_05": 20,
+        "jev_positive_08": 0
+      },
+      "opposite_result": {
+        "count": 20,
+        "jev_positive_05": 0,
+        "jev_positive_08": 0
+      },
+      "paraphrase": {
+        "count": 20,
+        "jev_positive_05": 20,
+        "jev_positive_08": 20
+      }
+    },
+    "exploratory_08_correct": 80
+  },
+  "repeat": {
+    "agree": 156,
+    "n": 160,
+    "ci95": [
+      0.9374901071333326,
+      0.9902360074537375
+    ]
+  },
+  "usage": {
+    "input_tokens": 149508,
+    "output_tokens": 7040
+  },
+  "latency_median_ms": 339.998,
+  "latency_p95_ms": 471.643,
+  "models": {
+    "jev-1.13.0": 320
+  }
+}

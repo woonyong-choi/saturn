@@ -317,12 +317,24 @@ def analyze() -> None:
         and responses[(x["id"], 1)]["status"] == "ok"
         for x in real
     )
+    human_pairs = Counter()
+    for item in real:
+        label = item["label"] == "constraint"
+        old_hit = (item["old_score"] >= 0.5) == label
+        new_row = responses[(item["id"], 1)]
+        new_hit = new_row["status"] == "ok" and (new_row["score"] >= 0.5) == label
+        human_pairs[(old_hit, new_hit)] += 1
+    unsure = [x for x in sample if x["role"] == "constraint" and x["label"] == "unsure"]
+    unsure_positive = sum(
+        responses[(x["id"], 1)].get("score", -1) >= 0.5 for x in unsure
+    )
     confirm = [
         x for x in sample if x["role"] == "same_observation" and x["split"] == "confirm"
     ]
     grouped = defaultdict(list)
     wins = Counter()
     misses = Counter()
+    by_kind = defaultdict(Counter)
     for item in confirm:
         response = responses[(item["id"], 1)]
         jev = response.get("score", -1) >= 0.5 if response["status"] == "ok" else None
@@ -332,6 +344,9 @@ def analyze() -> None:
         wins[(jc, cc)] += 1
         misses["jev"] += item["label"] and not jc
         misses["code"] += item["label"] and not cc
+        by_kind[item["kind"]]["count"] += 1
+        by_kind[item["kind"]]["jev_positive_05"] += jev is True
+        by_kind[item["kind"]]["jev_positive_08"] += response.get("score", -1) >= 0.8
         grouped[item["topic"]].append((int(jc), int(cc)))
     ids = sorted(grouped)
     rng = random.Random(54607)
@@ -366,6 +381,9 @@ def analyze() -> None:
             "old_correct": old_correct,
             "new_correct": new_correct,
             "n": len(real),
+            "old_only": human_pairs[(True, False)],
+            "new_only": human_pairs[(False, True)],
+            "unsure_positive": unsure_positive,
         },
         "observation": {
             "code_threshold": threshold,
@@ -377,6 +395,11 @@ def analyze() -> None:
             "jev_misses": misses["jev"],
             "code_misses": misses["code"],
             "difference_ci95": [differences[49], differences[1949]],
+            "by_kind": {name: dict(counts) for name, counts in sorted(by_kind.items())},
+            "exploratory_08_correct": sum(
+                (responses[(x["id"], 1)].get("score", -1) >= 0.8) == x["label"]
+                for x in confirm
+            ),
         },
         "repeat": {
             "agree": agreement,
@@ -384,9 +407,13 @@ def analyze() -> None:
             "ci95": wilson(agreement, len(sample)),
         },
         "usage": dict(tokens),
-        "latency_median_ms": sorted(
-            r["latency_ms"] for r in responses.values() if "latency_ms" in r
-        )[len(responses) // 2],
+        "latency_median_ms": sorted(r["latency_ms"] for r in responses.values())[
+            len(responses) // 2
+        ],
+        "latency_p95_ms": sorted(r["latency_ms"] for r in responses.values())[
+            math.ceil(len(responses) * 0.95) - 1
+        ],
+        "models": dict(Counter(r.get("model") for r in responses.values())),
     }
     write_json(HERE / "results/summary.json", value)
     print(json.dumps(value, ensure_ascii=False))
@@ -405,10 +432,18 @@ def verify() -> None:
     reservations = rows(PRIVATE / "reservations.jsonl")
     responses = rows(PRIVATE / "responses.jsonl")
     keys = [(x["id"], x["repeat"]) for x in reservations]
-    if len(keys) != len(set(keys)) or set(keys) != {
-        (x["id"], x["repeat"]) for x in responses
-    }:
+    response_keys = [(x["id"], x["repeat"]) for x in responses]
+    if (
+        len(keys) != len(set(keys))
+        or len(response_keys) != len(set(response_keys))
+        or set(keys) != set(response_keys)
+    ):
         raise RuntimeError("reservation and response mismatch")
+    if any(
+        "apikey_" in (PRIVATE / name).read_text()
+        for name in ("sample.json", "responses.jsonl")
+    ):
+        raise RuntimeError("secret-shaped string in raw data")
     before = (HERE / "results/summary.json").read_bytes()
     analyze()
     if before != (HERE / "results/summary.json").read_bytes():

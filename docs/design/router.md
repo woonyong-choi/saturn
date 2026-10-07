@@ -101,6 +101,7 @@ router는 입력마다 뜻을 확률로 판단하는 작은 모델이다. 이어
 | `loop` | `is_progressing` | `noul` | 0.2 미만이면 루프 | 판단이 없으면 멈춤과 사용자 알림 |
 | `feedback` | `wrong_doc` | `noul` | `misunderstood_intent`, `code_error`와 함께 질문. 0.7 이상인 원인만 사용 | 판단이 없으면 원문 그대로 전달 |
 
+- [좁은 의미 판단 개발 실험](../experiments/atomic-jev-roles/report.md)에서 지속 제약 단일 질문과 관찰 중복 질문은 코드·기존 질문 대비 정확도 개선을 확인하지 못했다. 이 실험은 위 질문 세트의 자동 적용 근거로 쓰지 않는다.
 - `keep_current`가 0.3 미만이면 새 작업으로 본다. 0.3 이상 0.8 미만은 판단 없음과 같다.
 - [한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md)에서 직전 작업 정보를 추가하면 0.80 이진 분류 정확도가 587턴에서 +51.4%p [41.2, 57.4] 올랐다. 현재 state의 재현율은 10.1%, 정보를 추가한 state는 69.7%였다. 사전 선택 규칙의 탐색 후보는 두 조건 모두 0.50이지만 새 작업 오접합률이 70.8%·52.8%여서 운영 채택은 보류한다. 현재 idle 동작은 0.3 이상을 대체 규칙으로도 유지하므로 상단 기준값 변경만으로 처리 결과가 달라지지 않는다. 질문 곡선과 현재 처리 규칙 재생은 구분하며 기본값은 유지한다.
 - 실행 중이면 처리 방식을 `relation_to_running`과 `steer_or_spawn`으로 정한다. `refines`, `continues`면 `steer_or_spawn`의 `steer`, `queue`, `spawn`을 끼워 넣기, 대기, 새 작업으로 옮기고, `independent`면 새 작업이다. `conflicts`는 `steer_or_spawn` 답과 관계없이 끼워 넣기로 둔다. 모델이 다음 단계에서 입력을 읽고 방향을 바꾸게 하고, 끼워 넣을 수 없을 때의 확인은 [충돌 입력](input-handling.md#충돌-입력)이 정한다. 확신도가 0.6 미만이면 충돌로 보지 않고 대기로 둔다. 실행 중이 아니면 `keep_current`로 현재 에이전트 대기와 새 작업을 가른다.
