@@ -278,6 +278,7 @@ async fn run_as_new_task_moves_a_waiting_input_to_its_own_session() {
 #[tokio::test]
 async fn requests_are_answered_while_a_judgment_is_in_flight() {
     let fixture = Fixture::new();
+    fixture.write_user_config("[router]\nmode = \"jev\"\n");
     let transport = FakeTransport::new({
         let mut script = check_passes();
         script.push(idle_reply(0.95));
@@ -351,6 +352,7 @@ async fn requests_are_answered_while_a_judgment_is_in_flight() {
 #[tokio::test]
 async fn socket_submit_reports_input_and_task_states_in_order() {
     let fixture = Fixture::new();
+    fixture.write_user_config("[router]\nmode = \"jev\"\n");
     let transport = FakeTransport::new({
         let mut script = check_passes();
         script.push(idle_reply(0.95));

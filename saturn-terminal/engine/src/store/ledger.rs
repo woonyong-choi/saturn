@@ -2,7 +2,7 @@
 //! 설계: docs/design/records.md, docs/design/context-management.md
 
 use saturn_protocol::event::ProviderEvent;
-use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId, TaskId};
+use saturn_protocol::ids::{ChatId, InputId, LedgerSeq, RunId, SessionId};
 use saturn_protocol::state::InputState;
 use sqlx::Row;
 
@@ -15,8 +15,6 @@ pub(crate) struct LedgerRow {
     pub(crate) seq: LedgerSeq,
     pub(crate) run: RunId,
     pub(crate) session: SessionId,
-    /// 실행이 속한 작업.
-    pub(crate) task: TaskId,
     /// 입력 없이 provider가 시작한 실행이면 `None`.
     pub(crate) input: Option<String>,
     /// 실행이 끝난 방식. 아직 끝나지 않았으면 `None`.
@@ -35,6 +33,20 @@ pub(crate) struct SteeredInput {
     /// 입력을 적용할 때까지 채팅에 쌓인 마지막 기록 번호. 입력이 이벤트 사이 어디에 끼었는지를 나타낸다.
     pub(crate) after: LedgerSeq,
     pub(crate) text: String,
+    /// 이 입력이 수정(제약 후보)으로 판단됐다. 판단 기록에서 읽는다.
+    pub(crate) is_amendment: bool,
+}
+
+/// 입력 `input_id`의 판단 기록 중 `is_constraint` 확률이 그 판단의 `constraint_ask` 기준값 이상인 것이 있는가. 등록할지(`constraint.auto_apply`)와
+/// 상관없이 판단 기록에 남아 있어, 등록되지 않은 정정도 인계 때 수정으로 읽는다.
+fn amendment_sql(input_id: &str) -> String {
+    format!(
+        "EXISTS (SELECT 1 FROM judgments j WHERE j.input_id = {input_id} AND \
+         (SELECT json_extract(a.value, '$.answer.Noul') FROM json_each(j.answers) a \
+          WHERE json_extract(a.value, '$.question') = 'is_constraint') >= \
+         (SELECT json_extract(t.value, '$.threshold') FROM json_each(j.thresholds) t \
+          WHERE json_extract(t.value, '$.question') = 'constraint_ask'))"
+    )
 }
 
 impl Store {
@@ -86,10 +98,11 @@ impl Store {
         &self,
         chat: ChatId,
     ) -> Result<Vec<SteeredInput>, StoreError> {
-        let rows = sqlx::query(
-            "SELECT id, text, steered_run, steered_after FROM inputs \
+        let rows = sqlx::query(&format!(
+            "SELECT id, text, steered_run, steered_after, {} AS amends FROM inputs \
              WHERE chat_id = ? AND steered_run IS NOT NULL AND state = ? ORDER BY id",
-        )
+            amendment_sql("inputs.id"),
+        ))
         .bind(to_sql_int(chat.0))
         .bind(enum_text(&InputState::Applied)?)
         .fetch_all(&self.pool)
@@ -101,6 +114,7 @@ impl Store {
                     run: RunId(from_sql_int(row.try_get("steered_run")?)),
                     after: LedgerSeq(from_sql_int(row.try_get("steered_after")?)),
                     text: row.try_get("text")?,
+                    is_amendment: row.try_get("amends")?,
                 })
             })
             .collect()
@@ -116,7 +130,7 @@ impl Store {
         after: LedgerSeq,
     ) -> Result<Vec<LedgerRow>, StoreError> {
         let rows = sqlx::query(
-            "SELECT e.seq, e.run_id, r.session_id, r.task_id, r.end_kind, i.text, e.at, e.body FROM events e \
+            "SELECT e.seq, e.run_id, r.session_id, r.end_kind, i.text, e.at, e.body FROM events e \
              JOIN runs r ON r.id = e.run_id \
              LEFT JOIN inputs i ON i.id = r.input_id \
              WHERE e.chat_id = ? AND e.seq > ? ORDER BY e.seq",
@@ -131,7 +145,6 @@ impl Store {
                     seq: LedgerSeq(from_sql_int(row.try_get("seq")?)),
                     run: RunId(from_sql_int(row.try_get("run_id")?)),
                     session: SessionId(from_sql_int(row.try_get("session_id")?)),
-                    task: TaskId(from_sql_int(row.try_get("task_id")?)),
                     input: row.try_get("text")?,
                     end: row
                         .try_get::<Option<String>, _>("end_kind")?
@@ -228,6 +241,21 @@ mod tests {
         store.apply_steered(first, run).await.unwrap();
         store.append_event(run, chat, &text(1, "b")).await.unwrap();
         store.apply_steered(second, run).await.unwrap();
+        // 제약 후보 기준값 이상으로 판단된 입력만 수정이다. 등록 여부와는 상관없다
+        for (input, yes) in [(first, 0.2), (second, 0.8)] {
+            store
+                .record_judgment(&crate::store::NewJudgment {
+                    input: Some(input),
+                    answers: vec![(
+                        "is_constraint".to_owned(),
+                        saturn_core::routers::Answer::Noul(yes),
+                    )],
+                    thresholds: vec![("constraint_ask".to_owned(), 0.5)],
+                    ..crate::store::judgments::tests::judgment(chat)
+                })
+                .await
+                .unwrap();
+        }
 
         let steered = store.steered_inputs(chat).await.unwrap();
 
@@ -238,13 +266,15 @@ mod tests {
                     input: first,
                     run,
                     after: LedgerSeq(1),
-                    text: "use a branch".to_owned()
+                    text: "use a branch".to_owned(),
+                    is_amendment: false,
                 },
                 SteeredInput {
                     input: second,
                     run,
                     after: LedgerSeq(2),
-                    text: "and skip docs".to_owned()
+                    text: "and skip docs".to_owned(),
+                    is_amendment: true,
                 },
             ]
         );

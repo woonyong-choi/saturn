@@ -34,9 +34,9 @@ export type ChatNotice = "Compacted" | { "ProviderSwitched": { from: Provider, t
 /**
  * 확장 이름, 부분 종류, 부분 이름.
  */
-parts: Array<[string, ExtensionPartKind, string]>, } } | { "ExtensionInjectFailed": { extension: string, part: string | null, provider: Provider, reason: string, } } | { "DirectInstallsFound": { provider: Provider, items: Array<DirectInstallItem>, } } | { "ExtensionFailed": { name: string | null, reason: string, } } | { "ContextDeferred": { constraints: Array<string>, } } | "PacketOverflow" | { "ConstraintAdded": { rule: string, unconfirmed: boolean, } } | { "ConstraintReleased": { rule: string, } } | { "RequestSummary": { provider_tokens: Array<[Provider, number]>, router_calls: number, router_tokens: number, elapsed_ms: number, } };
+parts: Array<[string, ExtensionPartKind, string]>, } } | { "ExtensionInjectFailed": { extension: string, part: string | null, provider: Provider, reason: string, } } | { "DirectInstallsFound": { provider: Provider, items: Array<DirectInstallItem>, } } | { "ExtensionFailed": { name: string | null, reason: string, } } | { "ContextDeferred": { constraints: Array<string>, } } | { "ConstraintsOmitted": { count: number, } } | "PacketOverflow" | { "ConstraintAdded": { rule: string, unconfirmed: boolean, } } | { "ConstraintReleased": { rule: string, } } | { "ConstraintPaused": { rule: string, unconfirmed: boolean, } } | { "ConstraintExcepted": { rule: string, condition: string, } } | { "ConstraintResumed": { rule: string, } } | { "ConstraintRestored": { rule: string, } } | { "CompletionEvidence": { evidence: CompletionEvidence, } } | { "RequestSummary": { provider_tokens: Array<[Provider, number]>, router_calls: number, router_tokens: number | null, elapsed_ms: number, } };
 
-export type ClientMessage = { jsonrpc: JsonRpcVersion, id: RequestId, } & ({ "method": "Attach", "params": { chat: ChatId | null, workdir: string, env: Array<[string, string]>, overrides: Array<[string, string]>, add_dirs: Array<string>, } } | { "method": "AttachChild", "params": { pass: string, mode: string | null, } } | { "method": "AddDir", "params": { chat: ChatId, path: string, } } | { "method": "InstallExtension", "params": { chat: ChatId, source: string, } } | { "method": "RemoveExtension", "params": { chat: ChatId, name: string, } } | { "method": "ListExtensions" } | { "method": "MoveDirectExtension", "params": { chat: ChatId, provider: Provider, name: string, } } | { "method": "LoadHistory", "params": { chat: ChatId, before: LedgerSeq | null, limit: number, } } | { "method": "RenameChat", "params": { chat: ChatId, name: string, } } | { "method": "SetChatGroup", "params": { chat: ChatId, group: string | null, } } | { "method": "Version" } | { "method": "Shutdown" } | { "method": "Detach" } | { "method": "PrepareExit", "params": { chat: ChatId, } } | { "method": "SubmitInput", "params": { chat: ChatId, client_ref: number, text: string, skip_relation: boolean, } } | { "method": "SubmitToTask", "params": { chat: ChatId, client_ref: number, task: TaskId, text: string, } } | { "method": "RunAsNewTask", "params": { input: InputId, } } | { "method": "SendNow", "params": { input: InputId, } } | { "method": "AnswerStopConfirm", "params": { input: InputId, stop: boolean, } } | { "method": "CancelInput", "params": { input: InputId, } } | { "method": "Stop", "params": { chat: ChatId, } } | { "method": "StopAll" } | { "method": "Continue", "params": { chat: ChatId, task: TaskId | null, } } | { "method": "ContinueInput", "params": { input: InputId, } } | { "method": "CloseHeld", "params": { chat: ChatId, task: TaskId, } } | { "method": "AnswerPermission", "params": { request_id: string, answer: PermissionAnswer, } } | { "method": "AnswerInput", "params": { request_id: string, answer: InputAnswer, } } | { "method": "AnswerFeedback", "params": { judgment: JudgmentId, correct: boolean, } } | { "method": "AnswerConstraintAsk", "params": { ask: ConstraintAskId, answer: ConstraintAskAnswer, } } | { "method": "SubmitRouterKey", "params": { key: string, } } | { "method": "AnswerFolderTrust", "params": { path: string, fingerprint: string, apply: boolean, } } | { "method": "SetRecording", "params": { chat: ChatId, on: boolean, } } | { "method": "SetPermissionMode", "params": { chat: ChatId, mode: string, } } | { "method": "Usage", "params": { scope: UsageRange, folder: string | null, } } | { "method": "ListTasks" } | { "method": "LatestChat", "params": { folder: string, } } | { "method": "ListChats", "params": { folder: string | null, } } | { "method": "SetModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetDefaultModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetModelMode", "params": { chat: ChatId, mode: ModelMode, } } | { "method": "ListModels", "params": { chat: ChatId, provider: Provider | null, } } | { "method": "Prune", "params": { yes: boolean, plan: string | null, all: boolean, } } | { "method": "ExportJudgments", "params": { path: string, } });
+export type ClientMessage = { jsonrpc: JsonRpcVersion, id: RequestId, } & ({ "method": "Attach", "params": { chat: ChatId | null, workdir: string, env: Array<[string, string]>, overrides: Array<[string, string]>, add_dirs: Array<string>, } } | { "method": "AttachChild", "params": { pass: string, mode: string | null, } } | { "method": "AddDir", "params": { chat: ChatId, path: string, } } | { "method": "InstallExtension", "params": { chat: ChatId, source: string, } } | { "method": "RemoveExtension", "params": { chat: ChatId, name: string, } } | { "method": "ListExtensions" } | { "method": "MoveDirectExtension", "params": { chat: ChatId, provider: Provider, name: string, } } | { "method": "LoadHistory", "params": { chat: ChatId, before: LedgerSeq | null, limit: number, } } | { "method": "RenameChat", "params": { chat: ChatId, name: string, } } | { "method": "SetChatGroup", "params": { chat: ChatId, group: string | null, } } | { "method": "Version" } | { "method": "Shutdown" } | { "method": "Detach" } | { "method": "PrepareExit", "params": { chat: ChatId, } } | { "method": "SubmitInput", "params": { chat: ChatId, client_ref: number, text: string, skip_relation: boolean, } } | { "method": "SubmitToTask", "params": { chat: ChatId, client_ref: number, task: TaskId, text: string, } } | { "method": "RunAsNewTask", "params": { input: InputId, } } | { "method": "SendNow", "params": { input: InputId, } } | { "method": "AnswerStopConfirm", "params": { input: InputId, stop: boolean, } } | { "method": "CancelInput", "params": { input: InputId, } } | { "method": "Stop", "params": { chat: ChatId, } } | { "method": "StopAll" } | { "method": "Continue", "params": { chat: ChatId, task: TaskId | null, } } | { "method": "ContinueInput", "params": { input: InputId, } } | { "method": "CloseHeld", "params": { chat: ChatId, task: TaskId, } } | { "method": "AnswerPermission", "params": { request_id: string, answer: PermissionAnswer, } } | { "method": "AnswerInput", "params": { request_id: string, answer: InputAnswer, } } | { "method": "AnswerFeedback", "params": { judgment: JudgmentId, correct: boolean, } } | { "method": "AnswerConstraintAsk", "params": { ask: ConstraintAskId, answer: ConstraintAskAnswer, } } | { "method": "ReleaseConstraint", "params": { constraint: ConstraintId, revision: number, mistaken: boolean, } } | { "method": "AddConstraint", "params": { chat: ChatId, text: string, } } | { "method": "UndoConstraintChange", "params": { constraint: ConstraintId, event: number, revision: number, } } | { "method": "ListConstraints", "params": { chat: ChatId, } } | { "method": "SubmitRouterKey", "params": { key: string, } } | { "method": "AnswerFolderTrust", "params": { path: string, fingerprint: string, apply: boolean, } } | { "method": "SetRecording", "params": { chat: ChatId, on: boolean, } } | { "method": "SetPermissionMode", "params": { chat: ChatId, mode: string, } } | { "method": "Usage", "params": { scope: UsageRange, folder: string | null, } } | { "method": "EvidenceSearch", "params": { pass: string, query: string, limit: number, } } | { "method": "EvidenceRead", "params": { pass: string, id: LedgerSeq, hash: string | null, offset: number, limit: number, } } | { "method": "ListTasks" } | { "method": "LatestChat", "params": { folder: string, } } | { "method": "ListChats", "params": { folder: string | null, } } | { "method": "SetModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetDefaultModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetModelMode", "params": { chat: ChatId, mode: ModelMode, } } | { "method": "ListModels", "params": { chat: ChatId, provider: Provider | null, } } | { "method": "Prune", "params": { yes: boolean, plan: string | null, all: boolean, } } | { "method": "ExportJudgments", "params": { path: string, } });
 
 export type CommandInfo = {
 /**
@@ -44,9 +44,53 @@ export type CommandInfo = {
  */
 name: string, description: string, is_skill: boolean, };
 
+export type CompletionEvidence = { state: EvidenceState,
+/**
+ * `Unverified`일 때만 있다.
+ */
+reason: UnverifiedReason | null,
+/**
+ * `Verified`일 때만 있다.
+ */
+events: Array<number>, };
+
+export type ConstraintActor = "Router" | "User" | "Engine";
+
 export type ConstraintAskAnswer = "Yes" | "No";
 
 export type ConstraintAskId = number;
+
+export type ConstraintChangeInfo = {
+/**
+ * 변경 번호. `UndoConstraintChange`에 싣는다.
+ */
+event: number, constraint: ConstraintId, rule: string, kind: ConstraintChangeKind, actor: ConstraintActor,
+/**
+ * 지금 되돌릴 수 있다. 그 제약의 가장 최근 변경이고 되돌림이나 작업 끝으로 생긴 변경이 아니다.
+ */
+undoable: boolean,
+/**
+ * 변경 시각(unix 밀리초).
+ */
+at_ms: number, };
+
+export type ConstraintChangeKind = "Added" | "Released" | "Excepted" | "Resumed" | "Restored";
+
+export type ConstraintExceptionKind = "Once" | "Scoped";
+
+export type ConstraintId = number;
+
+export type ConstraintInfo = { id: ConstraintId, rule: string,
+/**
+ * 비어 있으면 적용 범위가 전체다.
+ */
+scope: Array<string>, status: ConstraintStatus,
+/**
+ * 열린 예외. 종류와 `Scoped`의 조건 문장.
+ */
+exception: [ConstraintExceptionKind, string | null] | null, };
+
+export type ConstraintStatus = "Candidate" | "Active" | "Released";
 
 export type DirectInstallInfo = { provider: Provider, kind: DirectKind, name: string,
 /**
@@ -67,6 +111,18 @@ export type DirectState = "Asked" | "Moved";
 export type Disposition = "Steer" | "NewTask" | "Queue";
 
 export type ErrorKind = "NotFound" | "RetryLater" | "RouterKey" | "Config" | "Failed";
+
+export type EvidenceItem = { id: LedgerSeq,
+/**
+ * 기록 시각. unix 밀리초.
+ */
+at_ms: number,
+/**
+ * 원문 글자 수. 원문 범위는 `0..chars`.
+ */
+chars: number, excerpt: string, hash: string, };
+
+export type EvidenceState = "Verified" | "Unverified" | "NotApplicable";
 
 export type ExitPlan = "Close" | { "Ask": { running: number, } } | { "Notice": { running: number, } };
 
@@ -301,7 +357,15 @@ rows: number,
 /**
  * 이 미리보기의 번호. `Prune { yes: true, plan }`에 실어 보내면 이 목록의 채팅만 지운다. 한 번만 쓸 수 있다.
  */
-plan: string, } } | { "kind": "Pruned", "data": { chats: Array<ChatListItem>, skipped: Array<PruneSkipped>, rows: number, } } | { "kind": "ExtensionList", "data": { extensions: Array<ExtensionInfo>,
+plan: string, } } | { "kind": "Pruned", "data": { chats: Array<ChatListItem>, skipped: Array<PruneSkipped>, rows: number, } } | { "kind": "EvidenceCandidates", "data": { set_hash: string, total: number, items: Array<EvidenceItem>, } } | { "kind": "EvidenceRecord", "data": { id: LedgerSeq, hash: string, chars: number, offset: number, next_offset: number | null, text: string, } } | { "kind": "Constraints", "data": { chat: ChatId, revision: number,
+/**
+ * 만든 순서. 해제된 제약도 담는다.
+ */
+constraints: Array<ConstraintInfo>,
+/**
+ * 시각순 변경 내역. 등록 확인을 거절한 `Declined`는 담지 않는다.
+ */
+changes: Array<ConstraintChangeInfo>, } } | { "kind": "ExtensionList", "data": { extensions: Array<ExtensionInfo>,
 /**
  * provider에 직접 설치돼 있는 항목. 어댑터 등록 순서대로.
  */
@@ -309,7 +373,7 @@ direct: Array<DirectInstallInfo>, } };
 
 export type QueueReason = { "AfterTask": TaskLabel } | "RouterOrder" | "RouterConnection" | "WriteTurn" | "AfterCompaction" | "AfterAllTasks" | "ConfirmStop";
 
-export type Request = { "method": "Attach", "params": { chat: ChatId | null, workdir: string, env: Array<[string, string]>, overrides: Array<[string, string]>, add_dirs: Array<string>, } } | { "method": "AttachChild", "params": { pass: string, mode: string | null, } } | { "method": "AddDir", "params": { chat: ChatId, path: string, } } | { "method": "InstallExtension", "params": { chat: ChatId, source: string, } } | { "method": "RemoveExtension", "params": { chat: ChatId, name: string, } } | { "method": "ListExtensions" } | { "method": "MoveDirectExtension", "params": { chat: ChatId, provider: Provider, name: string, } } | { "method": "LoadHistory", "params": { chat: ChatId, before: LedgerSeq | null, limit: number, } } | { "method": "RenameChat", "params": { chat: ChatId, name: string, } } | { "method": "SetChatGroup", "params": { chat: ChatId, group: string | null, } } | { "method": "Version" } | { "method": "Shutdown" } | { "method": "Detach" } | { "method": "PrepareExit", "params": { chat: ChatId, } } | { "method": "SubmitInput", "params": { chat: ChatId, client_ref: number, text: string, skip_relation: boolean, } } | { "method": "SubmitToTask", "params": { chat: ChatId, client_ref: number, task: TaskId, text: string, } } | { "method": "RunAsNewTask", "params": { input: InputId, } } | { "method": "SendNow", "params": { input: InputId, } } | { "method": "AnswerStopConfirm", "params": { input: InputId, stop: boolean, } } | { "method": "CancelInput", "params": { input: InputId, } } | { "method": "Stop", "params": { chat: ChatId, } } | { "method": "StopAll" } | { "method": "Continue", "params": { chat: ChatId, task: TaskId | null, } } | { "method": "ContinueInput", "params": { input: InputId, } } | { "method": "CloseHeld", "params": { chat: ChatId, task: TaskId, } } | { "method": "AnswerPermission", "params": { request_id: string, answer: PermissionAnswer, } } | { "method": "AnswerInput", "params": { request_id: string, answer: InputAnswer, } } | { "method": "AnswerFeedback", "params": { judgment: JudgmentId, correct: boolean, } } | { "method": "AnswerConstraintAsk", "params": { ask: ConstraintAskId, answer: ConstraintAskAnswer, } } | { "method": "SubmitRouterKey", "params": { key: string, } } | { "method": "AnswerFolderTrust", "params": { path: string, fingerprint: string, apply: boolean, } } | { "method": "SetRecording", "params": { chat: ChatId, on: boolean, } } | { "method": "SetPermissionMode", "params": { chat: ChatId, mode: string, } } | { "method": "Usage", "params": { scope: UsageRange, folder: string | null, } } | { "method": "ListTasks" } | { "method": "LatestChat", "params": { folder: string, } } | { "method": "ListChats", "params": { folder: string | null, } } | { "method": "SetModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetDefaultModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetModelMode", "params": { chat: ChatId, mode: ModelMode, } } | { "method": "ListModels", "params": { chat: ChatId, provider: Provider | null, } } | { "method": "Prune", "params": { yes: boolean, plan: string | null, all: boolean, } } | { "method": "ExportJudgments", "params": { path: string, } };
+export type Request = { "method": "Attach", "params": { chat: ChatId | null, workdir: string, env: Array<[string, string]>, overrides: Array<[string, string]>, add_dirs: Array<string>, } } | { "method": "AttachChild", "params": { pass: string, mode: string | null, } } | { "method": "AddDir", "params": { chat: ChatId, path: string, } } | { "method": "InstallExtension", "params": { chat: ChatId, source: string, } } | { "method": "RemoveExtension", "params": { chat: ChatId, name: string, } } | { "method": "ListExtensions" } | { "method": "MoveDirectExtension", "params": { chat: ChatId, provider: Provider, name: string, } } | { "method": "LoadHistory", "params": { chat: ChatId, before: LedgerSeq | null, limit: number, } } | { "method": "RenameChat", "params": { chat: ChatId, name: string, } } | { "method": "SetChatGroup", "params": { chat: ChatId, group: string | null, } } | { "method": "Version" } | { "method": "Shutdown" } | { "method": "Detach" } | { "method": "PrepareExit", "params": { chat: ChatId, } } | { "method": "SubmitInput", "params": { chat: ChatId, client_ref: number, text: string, skip_relation: boolean, } } | { "method": "SubmitToTask", "params": { chat: ChatId, client_ref: number, task: TaskId, text: string, } } | { "method": "RunAsNewTask", "params": { input: InputId, } } | { "method": "SendNow", "params": { input: InputId, } } | { "method": "AnswerStopConfirm", "params": { input: InputId, stop: boolean, } } | { "method": "CancelInput", "params": { input: InputId, } } | { "method": "Stop", "params": { chat: ChatId, } } | { "method": "StopAll" } | { "method": "Continue", "params": { chat: ChatId, task: TaskId | null, } } | { "method": "ContinueInput", "params": { input: InputId, } } | { "method": "CloseHeld", "params": { chat: ChatId, task: TaskId, } } | { "method": "AnswerPermission", "params": { request_id: string, answer: PermissionAnswer, } } | { "method": "AnswerInput", "params": { request_id: string, answer: InputAnswer, } } | { "method": "AnswerFeedback", "params": { judgment: JudgmentId, correct: boolean, } } | { "method": "AnswerConstraintAsk", "params": { ask: ConstraintAskId, answer: ConstraintAskAnswer, } } | { "method": "ReleaseConstraint", "params": { constraint: ConstraintId, revision: number, mistaken: boolean, } } | { "method": "AddConstraint", "params": { chat: ChatId, text: string, } } | { "method": "UndoConstraintChange", "params": { constraint: ConstraintId, event: number, revision: number, } } | { "method": "ListConstraints", "params": { chat: ChatId, } } | { "method": "SubmitRouterKey", "params": { key: string, } } | { "method": "AnswerFolderTrust", "params": { path: string, fingerprint: string, apply: boolean, } } | { "method": "SetRecording", "params": { chat: ChatId, on: boolean, } } | { "method": "SetPermissionMode", "params": { chat: ChatId, mode: string, } } | { "method": "Usage", "params": { scope: UsageRange, folder: string | null, } } | { "method": "EvidenceSearch", "params": { pass: string, query: string, limit: number, } } | { "method": "EvidenceRead", "params": { pass: string, id: LedgerSeq, hash: string | null, offset: number, limit: number, } } | { "method": "ListTasks" } | { "method": "LatestChat", "params": { folder: string, } } | { "method": "ListChats", "params": { folder: string | null, } } | { "method": "SetModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetDefaultModel", "params": { chat: ChatId, model: ModelChoice, } } | { "method": "SetModelMode", "params": { chat: ChatId, mode: ModelMode, } } | { "method": "ListModels", "params": { chat: ChatId, provider: Provider | null, } } | { "method": "Prune", "params": { yes: boolean, plan: string | null, all: boolean, } } | { "method": "ExportJudgments", "params": { path: string, } };
 
 export type RequestId = number;
 
@@ -399,9 +463,15 @@ changed: LineChange | null, };
 
 export type TurnOrigin = "User" | "ProviderWake";
 
+export type UnverifiedReason = "NotChecked" | "CheckFailed" | "EditedDuringCheck" | "PartialSnapshot" | "OrderUnknown" | "TreeNotIdle" | "Unmeasured";
+
 export type UsageRange = "Chat" | "Day" | "Week";
 
-export type UsageReport = { agent: AgentId, subagent: SubagentId | null, model: string | null, scope: UsageScope, input: number | null, cache_read: number | null, cache_write: number | null, output: number | null, reasoning: number | null, };
+export type UsageReport = { agent: AgentId, subagent: SubagentId | null, model: string | null, scope: UsageScope, input: number | null, cache_read: number | null, cache_write: number | null, output: number | null,
+/**
+ * 출력의 일부다(Codex `reasoningOutputTokens`). 합계에 더하지 않는다.
+ */
+reasoning: number | null, };
 
 export type UsageRow = {
 /**

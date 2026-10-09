@@ -3,38 +3,31 @@
 //! 설계: docs/design/extensions.md#provider에-직접-설치한-것
 
 use std::ffi::OsString;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use saturn_protocol::rpc::DirectKind;
 use serde_json::Value;
 
+use super::config::user_folder;
 use crate::providers::{
     DIRECT_INSTALL_LIMIT, DirectInstall, DirectOrigin, scan_command_files, scan_skill_folders,
 };
 
 /// 사용자 폴더 안의 위치. 초안.
-const USER_DIR: &str = ".claude";
 const PLUGINS_FILE: &str = "plugins/installed_plugins.json";
-/// 사용자 범위 MCP 서버가 든 파일. 홈 폴더 바로 아래에 있다.
-const USER_STATE_FILE: &str = ".claude.json";
 
 // cost: time O(n + f), heap O(n + f), stack O(1), io n + f
 // vars: n = 폴더 항목 수, f = 설정 파일 크기
 // basis: estimate
-/// `env`의 `HOME` 아래 사용자 Claude 폴더에서 읽은 항목. `HOME`이 없으면 비어 있다.
+/// `config::user_folder`가 가리키는 사용자 Claude 폴더에서 읽은 항목. 폴더를 정할 수 없으면 비어 있다.
 pub(super) fn read(env: &[(OsString, OsString)]) -> Vec<DirectInstall> {
-    let Some(home) = env
-        .iter()
-        .find(|(key, _)| key == "HOME")
-        .map(|(_, value)| PathBuf::from(value))
-    else {
+    let Some(user) = user_folder(env) else {
         return Vec::new();
     };
-    let user = home.join(USER_DIR);
-    let mut found = scan_skill_folders(&user.join("skills"));
-    found.extend(scan_command_files(&user.join("commands"), "md"));
-    found.extend(mcp_servers(&home.join(USER_STATE_FILE)));
-    found.extend(plugins(&user.join(PLUGINS_FILE)));
+    let mut found = scan_skill_folders(&user.dir.join("skills"));
+    found.extend(scan_command_files(&user.dir.join("commands"), "md"));
+    found.extend(mcp_servers(&user.state_file));
+    found.extend(plugins(&user.dir.join(PLUGINS_FILE)));
     found.truncate(DIRECT_INSTALL_LIMIT);
     found
 }
@@ -107,14 +100,15 @@ mod tests {
             r#"{"version":2,"plugins":{"kit@market":[{"scope":"user"}]}}"#,
         );
         let env = vec![("HOME".into(), home.path().as_os_str().to_owned())];
-
-        let found: Vec<(DirectKind, String)> = read(&env)
-            .into_iter()
-            .map(|item| (item.kind, item.name))
-            .collect();
+        let names = |env: &[(OsString, OsString)]| -> Vec<(DirectKind, String)> {
+            read(env)
+                .into_iter()
+                .map(|item| (item.kind, item.name))
+                .collect()
+        };
 
         assert_eq!(
-            found,
+            names(&env),
             vec![
                 (DirectKind::Skill, "commit-helper".to_owned()),
                 (DirectKind::Command, "review".to_owned()),
@@ -122,6 +116,40 @@ mod tests {
                 (DirectKind::Plugin, "kit@market".to_owned()),
             ]
         );
+
+        // CLAUDE_CONFIG_DIR가 있으면 홈 폴더 대신 그 폴더(MCP 상태 파일 포함)만 읽는다. 빈 값은 없는 것으로 본다
+        let custom = tempfile::tempdir().unwrap();
+        write(custom.path(), "skills/other/SKILL.md", "# skill");
+        write(
+            custom.path(),
+            ".claude.json",
+            r#"{"mcpServers":{"remote":{"command":"remote"}}}"#,
+        );
+        let mut with_custom = env.clone();
+        with_custom.push((
+            "CLAUDE_CONFIG_DIR".into(),
+            custom.path().as_os_str().to_owned(),
+        ));
+        assert_eq!(
+            names(&with_custom),
+            vec![
+                (DirectKind::Skill, "other".to_owned()),
+                (DirectKind::McpServer, "remote".to_owned()),
+            ]
+        );
+        let mut with_empty = env.clone();
+        with_empty.push(("CLAUDE_CONFIG_DIR".into(), OsString::new()));
+        assert_eq!(names(&with_empty), names(&env));
+        // 상대 경로는 폴더를 정하지 못하고, 없는 폴더는 항목이 없다
+        let mut with_relative = env.clone();
+        with_relative.push(("CLAUDE_CONFIG_DIR".into(), "rel".into()));
+        assert!(names(&with_relative).is_empty());
+        let mut with_missing = env;
+        with_missing.push((
+            "CLAUDE_CONFIG_DIR".into(),
+            custom.path().join("none").into_os_string(),
+        ));
+        assert!(names(&with_missing).is_empty());
     }
 
     #[test]

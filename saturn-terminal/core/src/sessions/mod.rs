@@ -2,8 +2,10 @@
 //! 설계: docs/design/providers-and-sessions.md
 
 pub mod changes;
+pub mod completion;
 pub mod constraint_slot;
 pub mod context;
+pub mod evidence;
 pub mod fragments;
 pub mod memo;
 pub mod packet;
@@ -305,6 +307,20 @@ impl SessionManager {
     pub fn mark_delivered(&mut self, session: SessionId, seq: LedgerSeq) {
         if let Some(record) = self.find_mut(session) {
             record.delivered = record.delivered.max(seq);
+        }
+    }
+
+    // cost: time O(s), heap O(1), stack O(1)
+    // vars: s = session 수
+    // basis: estimate
+    /// 재개가 다른 provider session을 열었을 때 다음 재개에 쓸 번호를 바꾼다. 없는 session이면 무시한다.
+    pub fn set_provider_session(
+        &mut self,
+        session: SessionId,
+        provider_session: ProviderSessionId,
+    ) {
+        if let Some(record) = self.find_mut(session) {
+            record.provider_session = Some(provider_session);
         }
     }
 

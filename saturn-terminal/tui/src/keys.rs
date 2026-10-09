@@ -163,5 +163,4 @@ pub(crate) enum Action {
     // 모델 선택 창
     SetDefaultModel,
     ToggleModelMode,
-    // router 버전 화면
 }

@@ -10,6 +10,7 @@ use super::support::{
 };
 use super::*;
 use crate::providers::test_support::{Call, FakeProvider};
+use crate::store::{PacketKind, PacketState, StoredPacket, sha256_hex};
 
 const FIRST_INPUT: &str = "write the cache module";
 const ANSWER: &str = "cache module written";
@@ -47,6 +48,22 @@ fn packets(fake: &FakeProvider) -> Vec<String> {
         .collect()
 }
 
+/// 채팅이 기록한 패킷 시도와 시도마다의 경쟁 구역에 원문으로 든 항목 수와 빠진 항목 수.
+async fn recorded(flow: &Flow) -> Vec<(StoredPacket, usize, usize)> {
+    let mut attempts = Vec::new();
+    for packet in flow.engine.store.packets_of_chat(flow.chat).await.unwrap() {
+        let items = flow.engine.store.packet_items(packet.id).await.unwrap();
+        let competing = items.iter().filter(|item| item.0 == "Competing");
+        let kept = competing
+            .clone()
+            .filter(|item| item.2.as_deref() == Some("Full"))
+            .count();
+        let dropped = competing.filter(|item| item.3.as_deref() == Some("budget"));
+        attempts.push((packet, kept, dropped.count()));
+    }
+    attempts
+}
+
 fn kept_tools(packet: &str) -> usize {
     CALLS
         .iter()
@@ -69,6 +86,29 @@ async fn packet_overflow_rejection_resends_once_without_the_lowest_items() {
     assert!(sent[1].len() < sent[0].len());
     assert!(kept_tools(&sent[1]) < CALLS.len());
     assert_eq!(flow.state(second), InputState::Applied);
+    let attempts = recorded(&flow).await;
+    let [
+        (first, first_kept, first_dropped),
+        (again, again_kept, again_dropped),
+    ] = &attempts[..]
+    else {
+        panic!("both attempts should be recorded: {attempts:?}");
+    };
+    for (stored, body) in [(first, &sent[0]), (again, &sent[1])] {
+        assert_eq!(stored.body_hash, sha256_hex(body.as_bytes()));
+        assert_eq!(stored.body_bytes, body.len() as u64);
+        assert_eq!(stored.input, Some(second));
+        assert_eq!(stored.provider, crate::providers::test_support::CODEX);
+    }
+    assert_eq!((first.attempt, first.state), (1, PacketState::NotSent));
+    assert_eq!((again.attempt, again.state), (2, PacketState::Sent));
+    assert_eq!(again.reduced_from, Some(first.id));
+    assert!(again_kept < first_kept, "{attempts:?}");
+    assert_eq!((*first_kept, *first_dropped), (CALLS.len(), 0));
+    assert_eq!(*again_dropped, CALLS.len() - kept_tools(&sent[1]));
+    assert_ne!(first.session, again.session);
+    assert!(again.provider_session.is_some() && first.provider_session.is_none());
+    assert!(again.run.is_some());
 }
 
 #[tokio::test]
@@ -101,9 +141,19 @@ async fn packet_overflow_after_the_reduced_resend_stops_and_tells_the_user() {
 
     assert_eq!(packets(&codex).len(), 2);
     assert_eq!(flow.state(second), InputState::Held);
+    let states: Vec<PacketState> = recorded(&flow)
+        .await
+        .iter()
+        .map(|(packet, ..)| packet.state)
+        .collect();
+    assert_eq!(states, [PacketState::NotSent, PacketState::NotSent]);
     let notice = client
         .until(|notification| match notification {
-            Notification::ChatNotice { notice, .. } => Some(notice.clone()),
+            Notification::ChatNotice { notice, .. }
+                if !matches!(notice, ChatNotice::CompletionEvidence { .. }) =>
+            {
+                Some(notice.clone())
+            }
             _ => None,
         })
         .await;
@@ -124,7 +174,11 @@ async fn packet_overflow_with_only_the_fixed_zone_over_the_target_is_not_resent(
     assert_eq!(flow.state(second), InputState::Held);
     let notice = client
         .until(|notification| match notification {
-            Notification::ChatNotice { notice, .. } => Some(notice.clone()),
+            Notification::ChatNotice { notice, .. }
+                if !matches!(notice, ChatNotice::CompletionEvidence { .. }) =>
+            {
+                Some(notice.clone())
+            }
             _ => None,
         })
         .await;
@@ -136,7 +190,8 @@ async fn packet_overflow_with_only_the_fixed_zone_over_the_target_is_not_resent(
 async fn restart_with(
     answers: impl IntoIterator<Item = Result<(), ProviderError>>,
 ) -> (Flow, Client, SessionId) {
-    let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
+    let mut flow =
+        Flow::with_config("[context]\nmode = \"saturn\"\n", vec![idle_reply(0.95)]).await;
     flow.submit(FIRST_INPUT).await;
     let agent = flow.agent();
     let old = flow.engine.flow.live[&agent].session;
@@ -157,7 +212,11 @@ async fn restart_with(
 async fn first_notice(client: &mut Client) -> ChatNotice {
     client
         .until(|notification| match notification {
-            Notification::ChatNotice { notice, .. } => Some(notice.clone()),
+            Notification::ChatNotice { notice, .. }
+                if !matches!(notice, ChatNotice::CompletionEvidence { .. }) =>
+            {
+                Some(notice.clone())
+            }
             _ => None,
         })
         .await
@@ -183,6 +242,19 @@ async fn compaction_overflow_rejection_resends_once_without_the_lowest_items() {
         SessionState::Ended
     );
     assert_eq!(first_notice(&mut client).await, ChatNotice::Compacted);
+    let attempts = recorded(&flow).await;
+    let [(first, ..), (again, ..)] = &attempts[..] else {
+        panic!("both attempts should be recorded: {attempts:?}");
+    };
+    assert_eq!(first.kind, PacketKind::Restart);
+    assert_eq!(first.input, None);
+    assert_eq!(first.body_hash, sha256_hex(sent[0].as_bytes()));
+    assert_eq!(again.body_hash, sha256_hex(sent[1].as_bytes()));
+    assert_eq!(
+        (first.state, again.state, again.reduced_from),
+        (PacketState::NotSent, PacketState::Sent, Some(first.id))
+    );
+    assert_eq!(again.session, fresh);
 }
 
 #[tokio::test]

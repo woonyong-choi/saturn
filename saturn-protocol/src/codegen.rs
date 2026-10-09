@@ -52,7 +52,13 @@ pub fn typescript() -> String {
     for (_, decl) in collector.decls {
         text.push('\n');
         text.push_str("export ");
-        text.push_str(&decl);
+        text.push_str(
+            &decl
+                .lines()
+                .map(|line| line.trim_end_matches([' ', '\t']))
+                .collect::<Vec<_>>()
+                .join("\n"),
+        );
         text.push('\n');
     }
     text.lines()

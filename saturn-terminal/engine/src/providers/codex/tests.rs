@@ -22,8 +22,8 @@ use crate::Masker;
 use crate::events::{next_arrival, start_queued_turn};
 use crate::providers::mask_values;
 use crate::providers::{
-    LaunchSpec, PermissionLaunch, ProviderConnection, ProviderTrace, SaturnDefaults,
-    UserProviderConfig,
+    LaunchSpec, PermissionLaunch, ProviderConnection, ProviderMsg, ProviderTrace, RawTap,
+    SaturnDefaults, UserProviderConfig,
 };
 
 /// 받은 요청에 schema 모양 그대로 응답한다.
@@ -83,6 +83,13 @@ while (my $line = <STDIN>) {
     # 시험이 문서 파일을 만들 때까지 응답하지 않는다
     select(undef, undef, undef, 0.02) until (($ENV{FAKE_OPEN_GATE_FILE} // "") eq "" || -e $ENV{FAKE_OPEN_GATE_FILE});
     my $model = $p->{model} // "";
+    if (($ENV{FAKE_NO_ROLLOUT} // "") ne "") {
+      if ($method eq "thread/resume") {
+        out({ id => $id, error => { code => -32600, message => "no rollout found for thread id $tid" } });
+        next;
+      }
+      $tid = "thr_new";
+    }
     if (($ENV{FAKE_REQUIRE_ADD_DIR} // "") ne "") {
       my $roots = $p->{config}{sandbox_workspace_write}{writable_roots} // [];
       if (($roots->[0] // "") ne $ENV{FAKE_REQUIRE_ADD_DIR}) {
@@ -244,6 +251,7 @@ pub(crate) fn launch(dir: &Path, env: Vec<(std::ffi::OsString, std::ffi::OsStrin
         permission: PermissionLaunch::default(),
         masker: Masker::new(Vec::new()),
         events: ProviderTrace::off(),
+        raw: RawTap::off(),
     }
 }
 
@@ -347,7 +355,16 @@ fn expected_turn_events(agent: AgentId) -> Vec<ProviderEvent> {
 #[tokio::test]
 async fn a_child_is_registered_from_the_spawn_completion_without_thread_started() {
     let dir = tempfile::tempdir().unwrap();
-    let (mut client, handle) = start(dir.path()).await;
+    let mut config = launch(dir.path(), Vec::new());
+    let (tx, mut raw_lines) = tokio::sync::mpsc::unbounded_channel();
+    config.raw = RawTap::new(
+        saturn_protocol::ids::ChatId(1),
+        config.provider,
+        tx,
+        &config.masker,
+    );
+    let mut client = CodexClient::start(config, Supervisor::new()).await.unwrap();
+    let handle = client.open_session(spec(dir.path())).await.unwrap();
     let main = handle.provider_session.clone();
 
     client.send_turn(&main, "spawn-child").await.unwrap();
@@ -384,6 +401,27 @@ async fn a_child_is_registered_from_the_spawn_completion_without_thread_started(
             },
         ]
     );
+    let mut lines = Vec::new();
+    while let Ok(ProviderMsg::Raw { raw, .. }) = raw_lines.try_recv() {
+        lines.push(raw);
+    }
+    let owner = |thread: &str| {
+        lines
+            .iter()
+            .filter(|raw| raw.provider_session.as_deref() == Some(thread))
+            .map(|raw| raw.agent)
+            .collect::<Vec<_>>()
+    };
+    assert!(owner("thr_kid").contains(&Some(agent)), "{lines:?}");
+    // 세션을 열기 전 응답은 thread가 등록되기 전이라 에이전트를 모른다
+    assert!(owner(&main.0).contains(&Some(agent)));
+    assert!(
+        owner(&main.0)
+            .iter()
+            .all(|owner| owner.is_none_or(|a| a == agent))
+    );
+    assert!(lines.iter().all(|raw| raw.is_json));
+    assert!(lines.iter().any(|raw| raw.agent.is_none()));
 }
 
 // #438
@@ -968,6 +1006,26 @@ fn user_config_reads_root_and_selected_profile() {
         read_user_config(&launch(dir.path(), Vec::new())),
         UserProviderConfig::default()
     );
+    // 빈 값은 없는 것으로 보고 HOME 아래 .codex를 읽으며, 상대 경로는 폴더를 정하지 못해 읽지 않고 거절 대상이다
+    let user = [("HOME".into(), dir.path().as_os_str().to_owned())];
+    let with = |value: &str| {
+        let mut env = user.to_vec();
+        env.push(("CODEX_HOME".into(), value.into()));
+        env
+    };
+    std::fs::create_dir_all(dir.path().join(".codex")).unwrap();
+    std::fs::write(
+        dir.path().join(".codex/config.toml"),
+        "model_auto_compact_token_limit = 1\n",
+    )
+    .unwrap();
+    assert!(read_user_config(&launch(dir.path(), with(""))).has_auto_compact);
+    assert_eq!(
+        read_user_config(&launch(dir.path(), with("codex-home"))),
+        UserProviderConfig::default()
+    );
+    assert!(super::config::relative_home(&with("codex-home")).is_some());
+    assert!(super::config::relative_home(&with("")).is_none());
 }
 
 #[test]
@@ -2354,4 +2412,30 @@ async fn thread_start_and_resume_request_workspace_write() {
 
     assert!(opened.is_ok(), "{opened:?}");
     assert!(reopened.is_ok(), "{reopened:?}");
+}
+
+// #569: 기록이 없는 thread를 재개하면 새 thread로 열고, 앞 입력은 다시 보내지 않는다
+#[tokio::test]
+async fn resume_without_rollout_opens_a_new_thread_and_resends_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let log = dir.path().join("calls.log");
+    let env = vec![
+        ("FAKE_CALL_LOG".into(), log.clone().into_os_string()),
+        ("FAKE_NO_ROLLOUT".into(), "1".into()),
+    ];
+    let mut client = CodexClient::start(launch(dir.path(), env), Supervisor::new())
+        .await
+        .unwrap();
+    let mut reopened = spec(dir.path());
+    reopened.resume = Some(ProviderSessionId("thr_main".to_owned()));
+
+    let handle = client.open_session(reopened).await.unwrap();
+
+    assert_eq!(handle.provider_session.0, "thr_new");
+    let calls = std::fs::read_to_string(&log).unwrap();
+    assert!(!calls.contains("turn/start"), "{calls}");
+    assert_eq!(
+        thread_calls(&log),
+        vec!["thread/resume thr_main", "thread/start thr_main"]
+    );
 }

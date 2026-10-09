@@ -7,12 +7,12 @@ use saturn_core::routers::calibration::AskedAnswer;
 use saturn_core::routers::constraint::{
     RegistrationAction, RegistrationVerdict, line_questions, read_lines, read_registration,
 };
-use saturn_core::routers::{JudgmentOutcome, RouterRequest, validate};
+use saturn_core::routers::{JudgmentOutcome, RouterRequest, RouterResponse, validate};
 use saturn_protocol::ids::{ChatId, ConstraintAskId, InputId, JudgmentId, SettingsRevision};
 use saturn_protocol::rpc::{ChatNotice, ConstraintAskAnswer, Notification};
 use saturn_protocol::state::InputState;
 
-use crate::flow::{RouterDone, RouterJob};
+use crate::flow::{JobKind, RouterDone, RouterJob};
 use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
 use crate::rpc::ClientId;
 use crate::settings::Settings;
@@ -51,16 +51,19 @@ impl Engine {
     // vars: q = 요청 질문 수, a = 답 수
     // basis: estimate
     /// 유효한 router 답의 `is_constraint`를 읽어 등록 계획을 만든다. 답이 없거나 형식이 틀렸거나 기준값 미만이면 `None`이다.
+    /// 자동 적용(`constraint.auto_apply`)이 꺼져 있으면 `full` 모드여도 계획을 만들지 않는다. 판단은 판단 기록에만 남고
+    /// 제약 표와 사용자 질문과 문장 나누기 호출로 이어지지 않으며, 입력 원문은 평소대로 작업과 인계 맥락에 남는다.
     pub(crate) async fn constraint_plan(
         &self,
         request: &RouterRequest,
-        exchange: &RouterExchange,
+        response: Option<&RouterResponse>,
         record: &QueuedInput,
         settings: &Settings,
     ) -> Option<ConstraintPlan> {
-        let Ok(response) = &exchange.result else {
+        if !settings.constraint_auto_apply() {
             return None;
-        };
+        }
+        let response = response?;
         if validate(request, response).is_err() {
             return None;
         }
@@ -124,7 +127,7 @@ impl Engine {
             input: record.id,
             revision: self.queue.revision(record.chat),
             retried: false,
-            lines: true,
+            kind: JobKind::Lines,
         };
         self.flow.pending_lines.insert(
             record.id,

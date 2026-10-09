@@ -18,6 +18,7 @@ use crate::keymap::Keymap;
 use crate::keys::Action;
 use crate::state::CorrectionPrompt;
 use crate::view::composer::Composer;
+use crate::view::constraints;
 use crate::view::model_picker::ModelPicker;
 use crate::view::popup::{self, Popup, PopupItem, PopupKind, PopupSuppress};
 use crate::view::prune_window::PruneWindow;
@@ -394,6 +395,7 @@ impl App {
                 path: absolute_path(&self.workdir, &path),
             }),
             SlashCommand::Extensions(action) => extensions_request(&self.workdir, chat, action),
+            SlashCommand::Constraints(action) => return self.constraints_command(action),
             SlashCommand::Send { target } => self
                 .chat
                 .queued_by_label(target)
@@ -443,7 +445,7 @@ impl App {
             SlashCommand::Model { provider } => {
                 let mut picker = ModelPicker::new(provider, self.chat.pinned_model.clone());
                 picker.default.clone_from(&self.chat.model_default);
-                picker.mode = self.chat.model_mode.unwrap_or(ModelMode::Auto);
+                picker.mode = self.chat.model_mode.unwrap_or(ModelMode::Manual);
                 self.open_window(Window::Model(picker));
                 chat.map(|chat| Request::ListModels { chat, provider })
             }
@@ -680,6 +682,24 @@ impl App {
         correction.selected = 0;
         let label = correction.label;
         self.push_cell(TranscriptCell::Correction { label, selected: 0 });
+    }
+
+    /// `/constraints`의 요청을 만든다. 채팅에 붙기 전이거나 번호가 목록과 맞지 않으면 대화 기록에 한 줄 남기고 보내지 않는다.
+    fn constraints_command(
+        &mut self,
+        action: crate::constraints::ConstraintsAction,
+    ) -> Vec<Effect> {
+        let Some(chat) = self.chat.chat else {
+            return Vec::new();
+        };
+        match self.constraints.requests(chat, action) {
+            Ok(requests) => requests.into_iter().map(Effect::Send).collect(),
+            Err(error) => {
+                let line = constraints::error_line(self.lang, error);
+                self.push_cell(TranscriptCell::Warning(line));
+                Vec::new()
+            }
+        }
     }
 
     /// 입력이 이미 보내졌거나 취소됐으면 제안을 지운다.

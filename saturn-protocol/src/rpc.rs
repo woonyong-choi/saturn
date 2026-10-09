@@ -7,14 +7,18 @@ use ts_rs::TS;
 
 use crate::event::ProviderEvent;
 use crate::ids::{
-    ChatId, ConstraintAskId, InputId, JudgmentId, LedgerSeq, Provider, SettingsRevision, TaskId,
-    TaskLabel,
+    ChatId, ConstraintAskId, ConstraintId, InputId, JudgmentId, LedgerSeq, Provider,
+    SettingsRevision, TaskId, TaskLabel,
 };
 use crate::input::{InputAnswer, InputRequest};
 use crate::state::{Disposition, InputState, QueueReason, TaskState};
 
 /// engine과 클라이언트가 주고받는 메시지 판. 요청이나 알림의 모양을 호환되지 않게 바꿀 때 올린다.
 pub const PROTOCOL_VERSION: u32 = 4;
+
+/// `saturn evidence`가 engine에 닿지 못했을 때 오류 첫머리에 붙는 표지. 괄호 안은 `read <번호>`나 `search`이다.
+/// engine이 도구 결과의 첫머리에서 읽어 닿지 못한 조회 시도를 센다. 번역하지 않는다.
+pub const EVIDENCE_UNREACHABLE_MARKER: &str = "saturn evidence unreachable";
 
 /// engine이 에이전트 작업의 환경에 넣는 출입증 변수 이름. `saturn`이 이 값으로 `AttachChild`를 보낸다.
 pub const PASS_ENV: &str = "SATURN_PASS";
@@ -40,6 +44,10 @@ pub const ATTACH_ENV_NAMES: &[&str] = &[
     "SSH_AUTH_SOCK",
     "XDG_CONFIG_HOME",
     "XDG_DATA_HOME",
+    // Claude의 사용자 설정 폴더. 어댑터가 읽는 폴더와 Claude가 읽는 폴더가 같아지려면 provider 실행 환경에 있어야 한다
+    "CLAUDE_CONFIG_DIR",
+    // Codex의 사용자 설정 폴더(읽기용). Saturn 전용 `CODEX_HOME`은 engine이 따로 만들어 provider 환경에 덮어쓴다
+    "CODEX_HOME",
     "HTTP_PROXY",
     "HTTPS_PROXY",
     "NO_PROXY",
@@ -193,6 +201,31 @@ pub enum Request {
         ask: ConstraintAskId,
         answer: ConstraintAskAnswer,
     },
+    /// 사용자가 제약 하나를 직접 영구 해제한다. `revision`은 화면이 본 채팅의 제약 revision이고 지금과 다르면 거절한다.
+    /// `mistaken`이 참이면 제약이 아니었다는 뜻의 잘못 등록으로 기록한다.
+    ReleaseConstraint {
+        constraint: ConstraintId,
+        revision: u64,
+        #[serde(default)]
+        mistaken: bool,
+    },
+    /// 사용자가 제약을 직접 등록한다. `text`는 앞뒤 공백만 떼어 원문 그대로 저장하고 의미를 판단하지 않는다.
+    /// `constraint.auto_apply`와 권한 모드를 보지 않고 바로 유효 제약이 된다. 빈 글이면 거절한다.
+    AddConstraint {
+        chat: ChatId,
+        text: String,
+    },
+    /// 제약 변경 한 건을 되돌린다. `event`는 `ListConstraints`가 알린 변경 번호이고 그 제약의 가장 최근 변경이어야 한다.
+    /// `revision`이 지금과 다르면 거절한다.
+    UndoConstraintChange {
+        constraint: ConstraintId,
+        event: u64,
+        revision: u64,
+    },
+    /// 채팅의 제약과 변경 내역을 `QueryResult::Constraints`로 돌려준다.
+    ListConstraints {
+        chat: ChatId,
+    },
     /// 기록하지 않는다(router 키).
     SubmitRouterKey {
         key: String,
@@ -218,6 +251,23 @@ pub enum Request {
     Usage {
         scope: UsageRange,
         folder: Option<String>,
+    },
+    /// 에이전트 작업 안의 `saturn`이 출입증(`pass`)을 준 채팅의 기록을 검색한다. 도구 호출과 결과 후보를 단어·파일·최근성
+    /// 순위(RRF)로 매겨 위에서 `limit`개를 `QueryResult::EvidenceCandidates`로 돌려준다. 출입증이 없거나 회수됐으면 거절한다.
+    EvidenceSearch {
+        pass: String,
+        query: String,
+        limit: u32,
+    },
+    /// 출입증을 준 채팅의 기록 한 건의 원문을 `QueryResult::EvidenceRecord`로 돌려준다. 원문은 `offset`글자부터 `limit`글자까지다.
+    /// `hash`가 있으면 후보를 본 때의 원문과 같을 때만 돌려준다. 없는 번호, 다른 채팅이나 폴더의 번호, 읽기 범위 밖 파일의
+    /// 기록, 바뀐 해시는 거절한다.
+    EvidenceRead {
+        pass: String,
+        id: LedgerSeq,
+        hash: Option<String>,
+        offset: u64,
+        limit: u64,
     },
     /// 작업 목록을 `QueryResult::Tasks`로 돌려준다.
     ListTasks,
@@ -478,7 +528,7 @@ pub enum Notification {
 
 /// 조회 요청의 답. 응답의 `result`에 실려 요청을 보낸 접속에만 간다. 명령 요청의 `result`는 `null`.
 /// 요청과 답: `LoadHistory`→`History`, `Usage`→`Usage`, `ListTasks`→`Tasks`, `LatestChat`→`LatestChat`,
-/// `ListChats`→`Chats`, `ListModels`→`Models`,
+/// `ListChats`→`Chats`, `ListConstraints`→`Constraints`, `ListModels`→`Models`,
 /// `PrepareExit`→`ExitPlan`, `Prune`→`PrunePreview`(`yes`가 거짓)나 `Pruned`(`yes`가 참).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", content = "data")]
@@ -529,12 +579,98 @@ pub enum QueryResult {
         skipped: Vec<PruneSkipped>,
         rows: u64,
     },
+    /// `EvidenceSearch`의 답. `set_hash`는 후보 집합 전체의 해시이고 `total`은 읽기 범위 안 후보 수다.
+    EvidenceCandidates {
+        set_hash: String,
+        total: u32,
+        items: Vec<EvidenceItem>,
+    },
+    /// `EvidenceRead`의 답. `next_offset`이 있으면 원문이 더 남았다.
+    EvidenceRecord {
+        id: LedgerSeq,
+        hash: String,
+        chars: u64,
+        offset: u64,
+        next_offset: Option<u64>,
+        text: String,
+    },
+    /// `ListConstraints`의 답. `revision`은 목록을 읽은 때의 채팅 제약 revision으로 변경 요청에 그대로 싣는다.
+    Constraints {
+        chat: ChatId,
+        revision: u64,
+        /// 만든 순서. 해제된 제약도 담는다.
+        constraints: Vec<ConstraintInfo>,
+        /// 시각순 변경 내역. 등록 확인을 거절한 `Declined`는 담지 않는다.
+        changes: Vec<ConstraintChangeInfo>,
+    },
     /// `ListExtensions`의 답. 설치한 순서대로.
     ExtensionList {
         extensions: Vec<ExtensionInfo>,
         /// provider에 직접 설치돼 있는 항목. 어댑터 등록 순서대로.
         direct: Vec<DirectInstallInfo>,
     },
+}
+
+/// 제약의 상태. 후보는 등록할지 묻는 중이며 패킷에는 유효 제약처럼 들어간다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ConstraintStatus {
+    Candidate,
+    Active,
+    Released,
+}
+
+/// 제약에 걸린 예외의 종류.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ConstraintExceptionKind {
+    /// 그 작업 하나 동안.
+    Once,
+    /// 사용자가 말한 조건이나 범위에서만.
+    Scoped,
+}
+
+/// 제약 하나. `rule`은 사용자 원문에서 자른 글이다.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct ConstraintInfo {
+    pub id: ConstraintId,
+    pub rule: String,
+    /// 비어 있으면 적용 범위가 전체다.
+    pub scope: Vec<String>,
+    pub status: ConstraintStatus,
+    /// 열린 예외. 종류와 `Scoped`의 조건 문장.
+    pub exception: Option<(ConstraintExceptionKind, Option<String>)>,
+}
+
+/// 제약 변경 한 건의 종류.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ConstraintChangeKind {
+    Added,
+    Released,
+    Excepted,
+    Resumed,
+    Restored,
+}
+
+/// 변경을 한 쪽.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, TS)]
+pub enum ConstraintActor {
+    Router,
+    User,
+    Engine,
+}
+
+/// 변경 내역 한 줄.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct ConstraintChangeInfo {
+    /// 변경 번호. `UndoConstraintChange`에 싣는다.
+    pub event: u64,
+    pub constraint: ConstraintId,
+    pub rule: String,
+    pub kind: ConstraintChangeKind,
+    pub actor: ConstraintActor,
+    /// 지금 되돌릴 수 있다. 그 제약의 가장 최근 변경이고 되돌림이나 작업 끝으로 생긴 변경이 아니다.
+    pub undoable: bool,
+    /// 변경 시각(unix 밀리초).
+    pub at_ms: u64,
 }
 
 /// provider에 직접 설치된 항목의 종류. 확장 부분과 달리 플러그인도 추적한다.
@@ -702,9 +838,13 @@ pub enum ChatNotice {
         name: Option<String>,
         reason: String,
     },
-    /// 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못했다. 맥락 정리를 미루고 제약 목록을 보인다.
+    /// 패킷의 고정 구역이 `P_send`도 넘어 새 session으로 옮기지 못했다. 맥락 정리를 미루고 제약 목록을 보인다.
     ContextDeferred {
         constraints: Vec<String>,
+    },
+    /// 새 session의 패킷 제약 칸이 차서 `count`개 제약을 넣지 못했다. 전체 목록은 `/constraints`에서 본다.
+    ConstraintsOmitted {
+        count: u32,
     },
     /// 새 session의 패킷이 맥락 한도로 거절됐고, 경쟁 구역을 줄여 다시 보내도 들어가지 않거나 고정 구역만으로 넘쳐 보내지 않고 멈췄다.
     PacketOverflow,
@@ -717,11 +857,36 @@ pub enum ChatNotice {
     ConstraintReleased {
         rule: String,
     },
-    /// 모든 작업이 끝난 순간의 합계.
+    /// 이번 작업 동안 제약을 멈췄다. 제약은 지우지 않았고 작업이 끝나면 다시 유효해진다(`ConstraintResumed`).
+    /// `unconfirmed`는 권한 모드 `full`이라 종류를 묻지 않고 정했다는 뜻이다.
+    ConstraintPaused {
+        rule: String,
+        unconfirmed: bool,
+    },
+    /// 사용자가 말한 조건이나 범위에서만 제약을 멈췄다. `condition`은 입력 원문의 연속된 글이다.
+    ConstraintExcepted {
+        rule: String,
+        condition: String,
+    },
+    /// 이번 작업 예외가 작업 끝으로 닫혀 제약이 다시 유효해졌다.
+    ConstraintResumed {
+        rule: String,
+    },
+    /// 사용자가 변경 한 건을 되돌렸다.
+    ConstraintRestored {
+        rule: String,
+    },
+    /// 끝난 작업의 완료 검사 근거. 작업 상태 `Done`과 따로 보내며, `ChatNotice`의 `task`가 그 작업이다. 다시 접속해도
+    /// 같은 줄이 보이도록 기록에서 되살린다.
+    CompletionEvidence {
+        evidence: crate::state::CompletionEvidence,
+    },
+    /// 모든 작업이 끝난 순간의 합계. 보고하지 않은 값은 0으로 채우지 않는다. `provider_tokens`에는 토큰을 보고한 provider만
+    /// 들어가고, `router_tokens`는 router가 토큰을 하나도 보고하지 않았으면 비어 있다.
     RequestSummary {
         provider_tokens: Vec<(crate::ids::Provider, u64)>,
         router_calls: u32,
-        router_tokens: u64,
+        router_tokens: Option<u64>,
         elapsed_ms: u64,
     },
 }
@@ -905,6 +1070,18 @@ pub struct ChatListItem {
     /// 지울(지운) 채팅의 기록 행 수. 정리 응답에서만 채우고 `ListChats`에서는 `None`.
     #[serde(default)]
     pub rows: Option<u64>,
+}
+
+/// 근거 후보 하나. `id`가 패킷 항목 앞의 기록 번호(`#41`)와 같다.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct EvidenceItem {
+    pub id: LedgerSeq,
+    /// 기록 시각. unix 밀리초.
+    pub at_ms: i64,
+    /// 원문 글자 수. 원문 범위는 `0..chars`.
+    pub chars: u64,
+    pub excerpt: String,
+    pub hash: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]

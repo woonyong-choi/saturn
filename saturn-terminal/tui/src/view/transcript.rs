@@ -12,16 +12,19 @@ use ratatui::widgets::Paragraph;
 use saturn_protocol::event::Activity;
 use saturn_protocol::ids::{InputId, Provider, TaskLabel};
 use saturn_protocol::rpc::{ChatNotice, DirectInstallInfo, ExtensionInfo};
-use saturn_protocol::state::{Disposition, InputState, TaskState};
+use saturn_protocol::state::{
+    CompletionEvidence, Disposition, EvidenceState, InputState, TaskState, UnverifiedReason,
+};
 
+use crate::constraints::{ListView, Listing};
 use crate::i18n::{self, Lang};
 use crate::labels;
 use crate::shell::ShellOutput;
 use crate::state::{InputUpdate, TaskView};
-use crate::view::extensions;
 use crate::view::start_screen::StartInfo;
 use crate::view::status_board::activity_text;
 use crate::view::{ERROR, MUTED, is_plain, wrap};
+use crate::view::{constraints, extensions};
 
 /// 초안 값.
 pub(crate) const SHELL_PREVIEW_LINES: usize = 10;
@@ -92,6 +95,8 @@ pub(crate) enum TranscriptCell {
     Warning(String),
     /// `/extensions`의 설치한 확장 목록.
     ExtensionList(Vec<ExtensionInfo>, Vec<DirectInstallInfo>),
+    /// `/constraints`의 제약 목록이나 변경 내역.
+    ConstraintList(ListView, Box<Listing>),
 }
 
 impl TranscriptCell {
@@ -127,9 +132,10 @@ impl TranscriptCell {
             | Self::Feedback { label, .. }
             | Self::Correction { label, .. }
             | Self::HeldClosed { label } => format!("{} ", labels::format(*label)),
-            Self::Shell(_) | Self::Warning(_) | Self::ExtensionList(..) => {
-                SATURN_SPEAKER.to_owned()
-            }
+            Self::Shell(_)
+            | Self::Warning(_)
+            | Self::ExtensionList(..)
+            | Self::ConstraintList(..) => SATURN_SPEAKER.to_owned(),
         };
         lines
             .into_iter()
@@ -239,6 +245,7 @@ impl TranscriptCell {
             Self::Shell(output) => shell_lines(lang, output, expanded),
             Self::Warning(text) => vec![text.clone()],
             Self::ExtensionList(list, direct) => extensions::list_lines(lang, list, direct),
+            Self::ConstraintList(view, listing) => constraints::list_lines(lang, *view, listing),
         }
     }
 
@@ -612,6 +619,65 @@ pub(crate) fn tokens_text(lang: Lang, tokens: Option<u64>) -> String {
     }
 }
 
+/// 제약 변경 줄. 규칙과 조건은 사용자 원문 그대로이고 한 줄에 맞게 줄인다.
+fn constraint_notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
+    match notice {
+        ChatNotice::ConstraintAdded { rule, unconfirmed } => {
+            let mut line = format!(
+                "{prefix}{} · {}",
+                lang.tr(i18n::CONSTRAINT_ADDED),
+                one_line(rule)
+            );
+            if *unconfirmed {
+                line.push_str(&format!(" · {}", lang.tr(i18n::CONSTRAINT_UNCONFIRMED)));
+            }
+            vec![line]
+        }
+        ChatNotice::ConstraintReleased { rule } => {
+            vec![format!(
+                "{prefix}{} · {}",
+                lang.tr(i18n::CONSTRAINT_RELEASED),
+                one_line(rule)
+            )]
+        }
+        ChatNotice::ConstraintPaused { rule, unconfirmed } => {
+            let mut line = format!(
+                "{prefix}{} · {} · {}",
+                lang.tr(i18n::CONSTRAINT_PAUSED),
+                one_line(rule),
+                lang.tr(i18n::CONSTRAINT_PAUSED_FOR_TASK)
+            );
+            if *unconfirmed {
+                line.push_str(&format!(" · {}", lang.tr(i18n::CONSTRAINT_UNCONFIRMED)));
+            }
+            vec![line]
+        }
+        ChatNotice::ConstraintExcepted { rule, condition } => {
+            vec![format!(
+                "{prefix}{} · {} · {}",
+                lang.tr(i18n::CONSTRAINT_EXCEPTED),
+                one_line(rule),
+                one_line(condition)
+            )]
+        }
+        ChatNotice::ConstraintResumed { rule } => {
+            vec![format!(
+                "{prefix}{} · {}",
+                lang.tr(i18n::CONSTRAINT_RESUMED),
+                one_line(rule)
+            )]
+        }
+        ChatNotice::ConstraintRestored { rule } => {
+            vec![format!(
+                "{prefix}{} · {}",
+                lang.tr(i18n::CONSTRAINT_RESTORED),
+                one_line(rule)
+            )]
+        }
+        _ => Vec::new(),
+    }
+}
+
 fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
     match notice {
         ChatNotice::Compacted => vec![format!("{prefix}{}", lang.tr(i18n::COMPACTED))],
@@ -624,6 +690,11 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
             );
             lines
         }
+        ChatNotice::ConstraintsOmitted { count } => vec![format!(
+            "{prefix}{}",
+            lang.tr(i18n::CONSTRAINTS_OMITTED)
+                .replace("{count}", &count.to_string())
+        )],
         ChatNotice::PacketOverflow => vec![format!("{prefix}{}", lang.tr(i18n::PACKET_OVERFLOW))],
         ChatNotice::ProviderSwitched { from, to } => {
             let (from, to) = (i18n::provider_name(*from), i18n::provider_name(*to));
@@ -639,6 +710,9 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         )],
         ChatNotice::PermissionsChanged => {
             vec![format!("{prefix}{}", lang.tr(i18n::PERMISSIONS_CHANGED))]
+        }
+        ChatNotice::CompletionEvidence { evidence } => {
+            vec![format!("{prefix}{}", evidence_line(lang, evidence))]
         }
         ChatNotice::ReadOnlyRunKept => {
             vec![format!("{prefix}{}", lang.tr(i18n::READ_ONLY_RUN_KEPT))]
@@ -685,24 +759,12 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
             }
             vec![line]
         }
-        ChatNotice::ConstraintAdded { rule, unconfirmed } => {
-            let mut line = format!(
-                "{prefix}{} · {}",
-                lang.tr(i18n::CONSTRAINT_ADDED),
-                one_line(rule)
-            );
-            if *unconfirmed {
-                line.push_str(&format!(" · {}", lang.tr(i18n::CONSTRAINT_UNCONFIRMED)));
-            }
-            vec![line]
-        }
-        ChatNotice::ConstraintReleased { rule } => {
-            vec![format!(
-                "{prefix}{} · {}",
-                lang.tr(i18n::CONSTRAINT_RELEASED),
-                one_line(rule)
-            )]
-        }
+        ChatNotice::ConstraintAdded { .. }
+        | ChatNotice::ConstraintReleased { .. }
+        | ChatNotice::ConstraintPaused { .. }
+        | ChatNotice::ConstraintExcepted { .. }
+        | ChatNotice::ConstraintResumed { .. }
+        | ChatNotice::ConstraintRestored { .. } => constraint_notice_lines(lang, prefix, notice),
         ChatNotice::ExtensionInstalled { .. }
         | ChatNotice::ExtensionRemoved { .. }
         | ChatNotice::ExtensionFailed { .. }
@@ -710,6 +772,31 @@ fn notice_lines(lang: Lang, prefix: &str, notice: &ChatNotice) -> Vec<String> {
         | ChatNotice::ExtensionPartsNotApplied { .. }
         | ChatNotice::DirectInstallsFound { .. } => extensions::notice_lines(lang, prefix, notice),
         ChatNotice::Stopped { .. } | ChatNotice::StopUnconfirmed { .. } => Vec::new(),
+    }
+}
+
+/// 완료 검사 근거 한 줄. 작업이 끝난 상태와 따로 보이고, 통과가 아니면 까닭을 적는다.
+fn evidence_line(lang: Lang, evidence: &CompletionEvidence) -> String {
+    match evidence.state {
+        EvidenceState::NotApplicable => lang.tr(i18n::EVIDENCE_NOT_APPLICABLE).to_owned(),
+        EvidenceState::Verified => {
+            let events: Vec<String> = evidence.events.iter().map(u64::to_string).collect();
+            lang.tr(i18n::EVIDENCE_VERIFIED)
+                .replace("{events}", &events.join(", "))
+        }
+        EvidenceState::Unverified => {
+            let reason = match evidence.reason {
+                Some(UnverifiedReason::CheckFailed) => i18n::EVIDENCE_CHECK_FAILED,
+                Some(UnverifiedReason::EditedDuringCheck) => i18n::EVIDENCE_EDITED_DURING_CHECK,
+                Some(UnverifiedReason::PartialSnapshot) => i18n::EVIDENCE_PARTIAL_SNAPSHOT,
+                Some(UnverifiedReason::OrderUnknown) => i18n::EVIDENCE_ORDER_UNKNOWN,
+                Some(UnverifiedReason::TreeNotIdle) => i18n::EVIDENCE_TREE_NOT_IDLE,
+                Some(UnverifiedReason::Unmeasured) => i18n::EVIDENCE_UNMEASURED,
+                Some(UnverifiedReason::NotChecked) | None => i18n::EVIDENCE_NOT_CHECKED,
+            };
+            lang.tr(i18n::EVIDENCE_UNVERIFIED)
+                .replace("{reason}", lang.tr(reason))
+        }
     }
 }
 
@@ -746,7 +833,7 @@ fn summary_line(
     lang: Lang,
     provider_tokens: &[(Provider, u64)],
     router_calls: u32,
-    router_tokens: u64,
+    router_tokens: Option<u64>,
     elapsed: Duration,
 ) -> String {
     let mut parts = vec![lang.tr(i18n::REQUEST_SUMMARY).to_string()];
@@ -764,7 +851,7 @@ fn summary_line(
     parts.push(format!(
         "{} {calls} {}",
         lang.tr(i18n::ROUTER_CALLS),
-        tokens_text(lang, Some(router_tokens))
+        tokens_text(lang, router_tokens)
     ));
     parts.push(i18n::format_elapsed(lang, elapsed));
     parts.join(" · ")
@@ -988,6 +1075,50 @@ mod tests {
     }
 
     #[test]
+    fn lines_completion_evidence_names_the_state_events_and_reason_in_both_languages() {
+        let line = |lang, state, reason, events: &[u64]| {
+            let cell = TranscriptCell::Notice {
+                label: None,
+                notice: ChatNotice::CompletionEvidence {
+                    evidence: CompletionEvidence {
+                        state,
+                        reason,
+                        events: events.to_vec(),
+                    },
+                },
+            };
+            cell.lines(lang, true, false)
+        };
+
+        assert_eq!(
+            line(Lang::Ko, EvidenceState::Verified, None, &[4, 9]),
+            vec!["완료 검사 통과 · 근거 이벤트 4, 9"]
+        );
+        assert_eq!(
+            line(Lang::En, EvidenceState::NotApplicable, None, &[]),
+            vec!["Completion check not applicable · No files changed"]
+        );
+        assert_eq!(
+            line(
+                Lang::Ko,
+                EvidenceState::Unverified,
+                Some(UnverifiedReason::CheckFailed),
+                &[]
+            ),
+            vec!["완료 검사 미확인 · 마지막 수정 뒤 검사가 실패함"]
+        );
+        assert_eq!(
+            line(
+                Lang::En,
+                EvidenceState::Unverified,
+                Some(UnverifiedReason::TreeNotIdle),
+                &[]
+            ),
+            vec!["Completion check unverified · A subagent has not finished"]
+        );
+    }
+
+    #[test]
     fn lines_permission_notices_follow_language() {
         let restarted = TranscriptCell::Notice {
             label: None,
@@ -1085,7 +1216,7 @@ mod tests {
             notice: ChatNotice::RequestSummary {
                 provider_tokens: vec![(Provider::from_static("codex"), 4_120)],
                 router_calls: 3,
-                router_tokens: 9_870,
+                router_tokens: Some(9_870),
                 elapsed_ms: 151_000,
             },
         };
@@ -1097,6 +1228,19 @@ mod tests {
         assert_eq!(
             summary.lines(Lang::Ko, true, false),
             vec!["이번 요청 · codex Token 4,120 · 라우터 3회 Token 9,870 · 2분 31초"]
+        );
+        let unreported = TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::RequestSummary {
+                provider_tokens: Vec::new(),
+                router_calls: 1,
+                router_tokens: None,
+                elapsed_ms: 3_000,
+            },
+        };
+        assert_eq!(
+            unreported.lines(Lang::Ko, true, false),
+            vec!["이번 요청 · 라우터 1회 Token - · 3초"]
         );
     }
 
@@ -1132,9 +1276,21 @@ mod tests {
         assert_eq!(
             deferred.lines(Lang::Ko, false, false),
             vec![
-                "고정 제약이 길어 맥락 정리를 미룹니다",
+                "인계 기록이 길어 전환을 미룹니다",
                 "- never touch the vendor folder"
             ]
+        );
+        let omitted = TranscriptCell::Notice {
+            label: None,
+            notice: ChatNotice::ConstraintsOmitted { count: 7 },
+        };
+        assert_eq!(
+            omitted.lines(Lang::Ko, false, false),
+            vec!["제약 7개 생략 · /constraints에서 확인하세요"]
+        );
+        assert_eq!(
+            omitted.lines(Lang::En, false, false),
+            vec!["7 constraints omitted · See /constraints"]
         );
     }
 
@@ -1169,6 +1325,44 @@ mod tests {
         assert_eq!(
             released.lines(Lang::Ko, false, false),
             vec!["제약 해제됨 · 에러 메시지는 영어로 통일해"]
+        );
+    }
+
+    #[test]
+    fn lines_constraint_exception_notices_show_kind_and_condition() {
+        let rule = "에러 메시지는 영어로 통일해".to_owned();
+        let notice = |notice| TranscriptCell::Notice {
+            label: None,
+            notice,
+        };
+        let paused = |unconfirmed| {
+            notice(ChatNotice::ConstraintPaused {
+                rule: rule.clone(),
+                unconfirmed,
+            })
+        };
+
+        assert_eq!(
+            paused(false).lines(Lang::Ko, false, false),
+            vec!["제약 잠시 해제됨 · 에러 메시지는 영어로 통일해 · 이번 작업 동안"]
+        );
+        assert_eq!(
+            paused(true).lines(Lang::En, false, false),
+            vec![
+                "Constraint paused · 에러 메시지는 영어로 통일해 · For this task · Without confirmation"
+            ]
+        );
+        assert_eq!(
+            notice(ChatNotice::ConstraintExcepted {
+                rule: rule.clone(),
+                condition: "tests 폴더에서는".to_owned(),
+            })
+            .lines(Lang::Ko, false, false),
+            vec!["제약 예외 · 에러 메시지는 영어로 통일해 · tests 폴더에서는"]
+        );
+        assert_eq!(
+            notice(ChatNotice::ConstraintResumed { rule }).lines(Lang::Ko, false, false),
+            vec!["제약 다시 유효 · 에러 메시지는 영어로 통일해"]
         );
     }
 

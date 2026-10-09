@@ -5,11 +5,11 @@ use std::time::{Duration, Instant, SystemTime};
 
 use saturn_core::sessions::LastTurn;
 use saturn_core::sessions::context::{CompactionDecision, ContextMeasure, decide};
-use saturn_protocol::ids::{AgentId, ChatId};
+use saturn_protocol::ids::{AgentId, ChatId, TaskId};
 use saturn_protocol::rpc::{ChatNotice, Notification};
 
 use crate::flow::LiveSession;
-use crate::handoff::{HandoffOutcome, handoff_of, handoff_source};
+use crate::handoff::{HandoffOutcome, PacketEvidence, handoff_of, handoff_source};
 use crate::settings::ContextMode;
 use crate::switch::Reduction;
 use crate::{Engine, EngineError};
@@ -34,7 +34,16 @@ impl Engine {
         self.clear_permissions(agent).await;
         self.record_turn_value(&live).await?;
         self.end_task(chat, agent).await?;
-        match self.compact_at_boundary(chat, &live).await {
+        self.after_turn_value(chat, &live).await
+    }
+
+    /// 맥락 정리를 판정하고, 새 session을 열지 않으면 기다리던 입력을 보낸다.
+    pub(crate) async fn after_turn_value(
+        &mut self,
+        chat: ChatId,
+        live: &LiveSession,
+    ) -> Result<(), EngineError> {
+        match self.compact_at_boundary(chat, live).await {
             // 새 session 열기를 기다린다. 끝나면 거기서 이어 간다
             Ok(true) => return Ok(()),
             Ok(false) => {}
@@ -47,7 +56,10 @@ impl Engine {
     }
 
     /// 마지막 활성 맥락과 끝 시각을 기록하고 session을 유휴로 둔다. `A`를 모르면 값을 기록하지 않는다.
-    async fn record_turn_value(&mut self, live: &LiveSession) -> Result<(), EngineError> {
+    pub(crate) async fn record_turn_value(
+        &mut self,
+        live: &LiveSession,
+    ) -> Result<(), EngineError> {
         let active = self.flow.context_tokens.get(&live.agent).copied().flatten();
         if let Some(active) = active {
             let last_turn = LastTurn {
@@ -116,16 +128,17 @@ impl Engine {
                         "packet exceeds its limit"
                     );
                 }
-                let up_to = rows.last().map_or_else(Default::default, |row| row.seq);
-                let tiers = source
-                    .as_ref()
-                    .map_or_else(Vec::new, |source| source.constraint_tiers.clone());
-                let reduction = source.map(|source| Reduction {
+                // 패킷은 재료가 있어야 만들어지므로 `Ready`면 재료가 있다
+                let Some(source) = source else {
+                    return Ok(false);
+                };
+                let evidence = PacketEvidence::first(&handoff, &source);
+                let reduction = Reduction {
                     source,
                     budget,
                     sent_tokens: handoff.tokens,
-                });
-                self.restart_session(chat, live, handoff.text, reduction, (up_to, tiers))
+                };
+                self.restart_session(chat, live, handoff.text, Some(reduction), evidence)
                     .await?;
                 return Ok(true);
             }
@@ -142,6 +155,16 @@ impl Engine {
         let notification = Notification::ChatNotice {
             chat,
             task: None,
+            notice,
+        };
+        self.rpc.broadcast(Some(chat), notification).await;
+    }
+
+    /// 끝난 작업에 붙는 알림. TUI가 그 작업 이름표 옆에 그린다.
+    pub(crate) async fn notify_chat_task(&self, chat: ChatId, task: TaskId, notice: ChatNotice) {
+        let notification = Notification::ChatNotice {
+            chat,
+            task: Some(task),
             notice,
         };
         self.rpc.broadcast(Some(chat), notification).await;

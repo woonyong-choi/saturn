@@ -3,12 +3,12 @@
 //! 설계: docs/design/extensions.md#provider에-직접-설치한-것
 
 use std::ffi::OsString;
-use std::path::PathBuf;
 
 use saturn_protocol::rpc::DirectKind;
 use serde_json::{Map, Value};
 use toml_edit::{DocumentMut, Item};
 
+use super::config::user_folder;
 use crate::providers::{
     DIRECT_INSTALL_LIMIT, DirectInstall, DirectOrigin, scan_command_files, scan_skill_folders,
 };
@@ -21,13 +21,7 @@ const SERVER_KEYS: [&str; 5] = ["command", "args", "env", "cwd", "url"];
 // basis: estimate
 /// 환경의 `CODEX_HOME`, 없으면 `HOME/.codex`에서 읽은 항목. 둘 다 없으면 비어 있다.
 pub(super) fn read(env: &[(OsString, OsString)]) -> Vec<DirectInstall> {
-    let value = |name: &str| {
-        env.iter()
-            .find(|(key, _)| key == name)
-            .map(|(_, value)| PathBuf::from(value))
-    };
-    let Some(home) = value("CODEX_HOME").or_else(|| value("HOME").map(|home| home.join(".codex")))
-    else {
+    let Some(home) = user_folder(env) else {
         return Vec::new();
     };
     let mut found = scan_skill_folders(&home.join("skills"));
@@ -174,5 +168,13 @@ mod tests {
         let names: Vec<String> = read(&env).into_iter().map(|item| item.name).collect();
 
         assert_eq!(names, vec!["b".to_owned()]);
+
+        // 빈 값은 없는 것으로 보고, 상대 경로는 폴더를 정하지 못해 비어 있다
+        let mut empty = env.clone();
+        empty[1].1 = OsString::new();
+        assert_eq!(read(&empty).len(), 1);
+        let mut relative = env;
+        relative[1].1 = "other".into();
+        assert!(read(&relative).is_empty());
     }
 }

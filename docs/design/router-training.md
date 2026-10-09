@@ -8,7 +8,9 @@
 
 ## 요약
 
-router 학습은 판단 기록과 사용자 반응으로 router를 사용자에게 맞추는 기능이다. 판단마다 기준값을 조금씩 옮기는 빠른 조정과 `/train` 때 중심값을 다시 계산하는 느린 조정이 있다. `/train`은 판단 기록을 채점하고 Saturn 모델을 학습한다. 새 모델은 승격 게이트를 통과할 때만 현재 router 버전이 된다.
+router 학습은 판단 기록과 사용자 반응으로 router를 사용자에게 맞추는 기능의 설계다. 판단마다 기준값을 조금씩 옮기는 빠른 조정과 학습 실행 때 중심값을 다시 계산하는 느린 조정의 계산이 있다. 학습 실행은 판단 기록을 채점하고 Saturn 모델을 학습한다. 새 모델은 승격 게이트를 통과할 때만 현재 router 버전이 된다.
+
+지원 상태는 다음과 같다. 학습을 실행하는 명령, 확인 창, 상태판 줄, 프로토콜 요청은 지금 없다. router 버전을 보거나 고르는 명령(`saturn router use`, `saturn router list`, TUI `/router use`)과 버전 화면, 프로토콜 요청도 없다. 이 문서에서 `/train`, `saturn router train`, `router use`로 적은 부분은 학습 실행 경로를 만들 때의 설계이고 실행할 수 있는 명령이 아니다. 결과 신호와 피드백 답은 판단 기록에 남지만 기준값과 모델을 바꾸는 경로는 실행에 연결하지 않았다. 빠른 조정과 느린 조정은 `core`의 계산 규칙과 시험으로만 있고 engine은 호출하지 않는다([#337](https://github.com/woonyong-choi/saturn/issues/337) 폐기). 실행 중 정책은 [정책 고정](router.md#정책-고정)대로 입력 접수 때의 설정 번호와 engine 시작 때의 router로 고정된다. 판단 방식 `collect`는 시작 때 설정 오류가 된다. 새 정책은 검증을 마친 뒤 사용자가 설정이나 router 버전으로 명시해 적용하며 이미 접수한 입력에 소급하지 않는다.
 
 ## 동기
 
@@ -16,12 +18,14 @@ router가 같은 기준값으로 모든 사용자를 대하면 사람마다 다�
 
 ## 예시
 
-### 틀린 판단이 기준값을 올릴 때
+### 틀린 판단 뒤에도 기준값이 그대로일 때
 
 1. router가 새 입력을 하던 작업에 이어 가는 입력으로 판단하고 engine이 끼워 넣는다.
 2. 사용자가 곧바로 그 처리를 뒤집는다.
-3. 다음 입력 3개가 지나거나 10분이 지나면 `routers`가 틀림 신호를 확정한다.
-4. 빠른 조정이 그 질문의 기준값을 중심값 ±0.05 안에서 `0.002 × (1 − α)`만큼 올린다. α는 목표 틀림 비율이다.
+3. 다음 입력 3개가 지나거나 10분이 지나면 `routers`가 틀림 신호를 확정해 판단 기록에 쓴다.
+4. 기준값은 그대로다. 신호는 나중에 채점과 학습 평가의 자료로만 쓰이고, 기준값을 바꾸려면 사용자가 설정을 고친다.
+
+아래 두 예시는 학습 실행 경로를 만들 때의 설계이고 지금은 실행할 수 없다.
 
 ### 채점할 판단이 모자랄 때
 
@@ -47,18 +51,17 @@ router 버전은 모델, 보정값, 질문별 목표 틀림 비율을 묶은 것
 - 기준값은 router 버전마다 목표 틀림 비율에서 다시 계산한다. 버전에 기준값 숫자 대신 목표를 남기기 위해서다.
 - 판단 기록마다 router 버전, 그때의 기준값, 물은 확률 q를 남기고, 결과 신호와 물은 답이 생기면 같은 기록에 채운다. 기준값 조정 계산을 나중에 다시 하기 위해서다.
 - 기준값은 설정 층에 두어 사용자 층과 폴더 층에서 조정한다. 릴리스 없이 기준값을 바꾸기 위해서다. 설정 층은 [설정](settings.md)에 있다.
-- 버전 표기는 `v3`처럼 `v`와 1 이상 정수다. 명령줄의 `saturn router use`와 `saturn router train --from`은 `3`처럼 `v`를 뺀 표기도 `v3`으로 읽고, 다른 모양은 오류로 거절한다. 설정 키가 아니다([설정](settings.md#설정-키가-없는-고정-상수)).
+- 버전 표기는 `v3`처럼 `v`와 1 이상 정수다. 설정 키가 아니다([설정](settings.md#설정-키가-없는-고정-상수)).
+- 지금은 판단 기록의 `router_version`에 판단에 쓴 router 모델 이름이 남고, 위 의미의 버전은 없다.
 - router 질문과 호출 규칙은 [router](router.md)에 있다.
 
-`/router use`은 router 버전 화면을 연다. 이 화면은 버전별 router, 보정값, ECE를 보인다. 질문별로 목표 틀림 비율, 기준값, 최근 200건의 틀림 수와 판단 수도 보인다.
+#### 버전 고르기 (설계, 미구현)
 
-| 키 | 동작 |
-|---|---|
-| `Enter` | 버전 상세 표시 |
-| `r` | 1차 영점으로 복귀, `/train --reset-thresholds`와 동일 |
-| `t` | 고른 버전에서 다시 학습, `/train --from`과 동일 |
-| `u` | 확인 한 줄 뒤 고른 버전 사용, `saturn router use`와 동일(명령줄은 `--yes`로 확인을 건너뜀) |
-| `Esc` | 화면 종료 |
+버전이 생기면 버전을 보고 고르는 경로를 새로 설계해 만든다. 아래는 그때의 초안이고 지금 실행할 수 있는 명령, 화면, 요청은 없다. 이전에 있던 `saturn router use`, `saturn router list`, `/router use`는 engine이 항상 미지원 오류를 돌려줘 쓸 수 없었으므로 [#620](https://github.com/woonyong-choi/saturn/issues/620)에서 지웠다.
+
+- 버전 목록에는 버전별 router, 보정값, ECE를 보인다. 질문별로 목표 틀림 비율, 기준값, 최근 200건의 틀림 수와 판단 수도 보인다.
+- 고른 버전은 확인 한 줄 뒤 현재 버전으로 쓴다. 이미 접수한 입력에는 소급하지 않는다.
+- 명령줄과 TUI는 같은 요청을 쓴다. 요청과 화면은 구현할 때 [engine 수명과 복구](engine-lifecycle.md)의 요청 표와 [tui](tui.md)에 함께 추가한다.
 
 ### 결과 신호
 
@@ -86,6 +89,8 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 
 ### 빠른 조정
 
+연결하지 않은 설계다. 아래 계산은 `core`에 구현과 시험이 있지만 engine 실행 경로는 호출하지 않으며, 켜려면 모의 판단이 아니라 실제 판단 기록에서 검증하고 명시적으로 적용하는 새 결정이 필요하다.
+
 1. `routers`가 판단마다 확정된 신호 하나로 기준값을 옮긴다.
 2. 옮기는 범위는 질문별 중심값 ±0.05 안이다.
 3. 신호 하나의 이동은 `0.002 × 가중 × 방향`이다. 방향은 틀림이면 `+(1 − α)`, 놓침이면 `−α`이고, α는 목표 틀림 비율이다.
@@ -101,7 +106,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 
 ### 느린 조정
 
-1. `/train`이 실행되면 `routers`가 모든 판단 기록으로 질문별 중심값을 다시 계산한다.
+1. 학습 실행 경로가 생기면 학습을 실행할 때 `routers`가 모든 판단 기록으로 질문별 중심값을 다시 계산한다.
 2. 판단 기록에서 확률 p, 그때의 기준값, 행동 여부(p가 그때의 기준값 이상이면 행동), 물었는지와 q, 결과 신호, 물은 답을 읽는다.
 3. 행동한 판단은 틀림 신호(사용자가 뒤집거나 취소)를 그대로 틀림으로 쓰고 가중은 1이다. 반응이 없으면 틀리지 않은 것으로 센다.
 4. 행동하지 않은 판단은 물은 답만 쓴다. 판단이 틀렸다는 답이면 틀림 가중이 1/q이고, 맞았다는 답이면 0이다. 묻지 않았거나 답이 없는 판단은 틀림 가중 0으로 분모에만 들어간다.
@@ -151,6 +156,8 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 
 ### `/train` 실행
 
+이 절은 구현 전 설계다. `/train`과 `saturn router train`은 지금 없다.
+
 1. 사용자가 `/train`이나 `saturn router train`을 실행한다. 명령줄은 `--yes`로 마지막 확인을 건너뛴다.
 2. engine이 지난 실행 뒤 채점 안 된 판단 수를 센다.
 3. 200건 미만이면 engine은 실행하지 않고 부족한 건수를 보인다.
@@ -161,7 +168,7 @@ TUI는 입력 에코 다음 줄에 피드백 질문을 보인다. 사용자는 `
 
 - `/train`은 지난 실행 뒤 채점 안 된 판단이 200건 이상일 때만 실행한다([#16](https://github.com/woonyong-choi/saturn/issues/16)). 적은 라벨로 한 조정은 잡음 수준이기 때문이다.
 - 7단계의 모델 학습은 누적 학습용 라벨이 1,000건 이상이고 평가용 라벨이 200건 이상일 때만 한다. 모자라면 채점과 기준값 조정까지만 하고 학습은 건너뛴다. 기준값 하나를 맞추는 것보다 모델 가중치를 학습하는 데 라벨이 더 많이 필요하기 때문이다([#16](https://github.com/woonyong-choi/saturn/issues/16)).
-- 구현 상태: 결과 신호, 빠른 조정, 느린 조정의 계산(`recenter`, `recenter_thresholds`)은 구현돼 있다. 채점 건수 미리보기, 채점 모델 호출, 학습기 실행, 승격 게이트, 기준값 되돌리기는 구현 전이다([#91](https://github.com/woonyong-choi/saturn/issues/91)).
+- 구현 상태: 결과 신호 기록은 실행 경로에 있다. 빠른 조정, 느린 조정의 계산(`recenter`)은 `core`에 구현돼 있지만 실행 경로에 연결하지 않았고 6단계의 결과도 설정에 자동으로 쓰지 않는다. 명령, 확인 창, 상태판 줄, 프로토콜 요청, 채점 건수 미리보기, 채점 모델 호출, 학습기 실행, 승격 게이트, 기준값 되돌리기는 없다([#91](https://github.com/woonyong-choi/saturn/issues/91)).
 - Saturn 모델 학습은 Python과 MLX로 한다. Apple Silicon에서 로컬로 학습하기 위해서다.
 - 판단 기록은 로컬에 쌓고, 사용자가 동의한 레코드만 서버로 올린다([결정 기록](../decisions/2026-09-29-local-first-judgment-collection.md)).
 
@@ -203,8 +210,9 @@ Saturn 모델 후보별 정확도, Brier, 지연은 [#11](https://github.com/woo
 | 느린 조정은 같은 판단 기록에서 모의 판단의 위험 곡선 계산과 같은 중심값을 낸다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_matches_simulation_s1q_on_same_records`, `recenter_matches_simulation_t1_on_same_records` |
 | 느린 조정은 되돌릴 수 없는 행동의 최저값 아래로 중심값을 내리지 않는다. | `saturn-terminal/core/src/routers/calibration/tests.rs`의 `recenter_keeps_center_within_irreversible_floor` |
 | 전체 묻는 빈도는 판단 20번에 1번을 넘지 않는다. | 많은 판단을 흘려 물은 비율이 상한 안인지 확인한다. |
+| 피드백, 취소, 실패 100건을 넣어도 활성 정책 지문, 기준값, 모델 버전이 바뀌지 않고 정책 교체 중 접수한 입력의 번호가 섞이지 않는다. | `saturn-terminal/engine/src/lifecycle/policy.rs`의 `feedback_cancel_and_failures_leave_the_active_policy_unchanged`, `inputs_keep_the_policy_they_were_accepted_under_across_swap_rollback_and_restart` |
 | 판단 기록마다 router 버전, 기준값, q를 남기고 결과 신호와 물은 답은 생긴 뒤 같은 기록에 채운다. | `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`, `saturn-terminal/engine/src/lifecycle/outcomes.rs`의 `answer_feedback_records_answer_in_judgment`, `answer_feedback_request_is_answered_through_socket` |
-| `/train`은 판단 기록으로 `Observation` 목록을 만들어 `recenter`에 넘긴다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 기록 저장과 core의 느린 조정은 각각 테스트하지만 실행 명령은 연결하지 않는다. |
+| 학습 실행은 판단 기록으로 `Observation` 목록을 만들어 `recenter`에 넘긴다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 기록 조회는 `saturn-terminal/engine/src/store/outcomes.rs`의 `observations_carry_signal_answer_and_q_of_the_judgment`가 확인한다. |
 | `/train`은 채점 안 된 판단이 200건 미만이면 실행하지 않는다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 199건에서 실행을 거절하고 200건에서 시작하는지 확인한다. |
 | 모델 학습은 학습용 라벨 1,000건 이상, 평가용 라벨 200건 이상일 때만 한다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 학습용 999건에서 학습을 건너뛰고 채점과 기준값 조정만 하는지 확인한다. |
 | 품질 게이트를 통과하지 못한 라벨은 학습용과 평가용에 들어가지 않는다. | 구현 전([#91](https://github.com/woonyong-choi/saturn/issues/91)). 순서를 바꾼 두 답이 다른 판단이 라벨에서 빠지는지 확인한다. |

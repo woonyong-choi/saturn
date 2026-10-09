@@ -100,3 +100,29 @@ fn scope_normalizes_decomposed_hangul_to_nfc() {
 
     assert_eq!(scope, vec!["문서/한글.md".to_owned()]);
 }
+
+fn rules(count: u64) -> Vec<(ConstraintId, String, Vec<String>)> {
+    (1..=count)
+        .map(|id| (ConstraintId(id), format!("rule number {id}"), Vec::new()))
+        .collect()
+}
+
+#[test]
+fn change_candidates_are_all_constraints_up_to_the_cap() {
+    let picked = pick_change_candidates(&rules(10), "아무 말");
+
+    assert_eq!(picked, (1..=10).map(ConstraintId).collect::<Vec<_>>());
+}
+
+#[test]
+fn change_candidates_over_the_cap_keep_the_word_match_and_the_newest() {
+    let mut constraints = rules(14);
+    constraints[1].1 = "always write the changelog in english".to_owned();
+
+    let picked = pick_change_candidates(&constraints, "changelog english 규칙 풀어줘");
+
+    assert_eq!(picked.len(), CHANGE_CANDIDATES_MAX);
+    assert!(picked.contains(&ConstraintId(2)));
+    assert!(picked.contains(&ConstraintId(14)));
+    assert!(picked.windows(2).all(|pair| pair[0] < pair[1]));
+}

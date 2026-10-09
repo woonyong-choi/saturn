@@ -14,7 +14,7 @@ use saturn_protocol::input::InputAnswer;
 use saturn_protocol::rpc::{ModelInfo, PermissionAnswer};
 use tokio::sync::mpsc;
 
-use super::{Adapter, ProviderConnection};
+use super::{Adapter, ProviderConnection, RawLine};
 use crate::masked_chain;
 use crate::processes::{ProcessGroupId, Supervisor};
 use crate::providers::LaunchSpec;
@@ -49,6 +49,13 @@ pub(crate) enum ProviderMsg {
         provider: Provider,
         connection: ConnectionId,
         commands: Vec<ProviderCommand>,
+    },
+    /// 연결이 받은 줄 하나. 읽는 즉시 보내므로 그 줄이 만드는 이벤트보다 먼저 온다. 어느 연결의 것인지 가르지 않는다.
+    /// 줄의 귀속은 줄 안의 에이전트로만 정한다.
+    Raw {
+        chat: ChatId,
+        provider: Provider,
+        raw: RawLine,
     },
     /// 연결의 이벤트 흐름이 끝났다.
     Closed {

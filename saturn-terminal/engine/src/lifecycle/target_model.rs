@@ -5,6 +5,9 @@ use saturn_protocol::rpc::{ModelChoice, ModelInfo};
 use saturn_protocol::state::SessionState;
 
 use super::support::{Flow, idle_reply, model_reply, turn_completed};
+
+/// 오토 모드는 실험 옵션이라 명시해야 켜진다.
+const AUTO: &str = "[model]\nmode = \"auto\"\n";
 use crate::providers::test_support::{Call, FakeProvider};
 
 /// 연결에서 받아 둔 모델 목록을 정한다.
@@ -43,7 +46,7 @@ fn last_request(flow: &Flow) -> String {
 
 #[tokio::test]
 async fn target_model_candidates_are_the_model_list_in_provider_order() {
-    let mut flow = Flow::new(vec![idle_reply(0.1)]).await;
+    let mut flow = Flow::with_config(AUTO, vec![idle_reply(0.1)]).await;
     flow.add_provider(crate::providers::test_support::CODEX);
     know_models(&mut flow, crate::providers::test_support::CODEX, &["gpt-x"]);
     know_models(
@@ -68,11 +71,29 @@ async fn target_model_candidates_are_the_model_list_in_provider_order() {
         .map(|option| text.find(option).expect("option should be listed"))
         .collect();
     assert!(positions.windows(2).all(|pair| pair[0] < pair[1]));
+
+    // `model.candidates`를 정하면 그 안의 모델만 후보에 남는다
+    let config = format!("{AUTO}candidates = [\"claude/haiku\", \"codex/gpt-x\"]\n");
+    let mut flow = Flow::with_config(&config, vec![idle_reply(0.1)]).await;
+    flow.add_provider(crate::providers::test_support::CODEX);
+    know_models(&mut flow, crate::providers::test_support::CODEX, &["gpt-x"]);
+    know_models(
+        &mut flow,
+        crate::providers::test_support::CLAUDE,
+        &["opus", "haiku"],
+    );
+    let input = flow.accept_only("hello").await;
+    let record = flow.record(input);
+    let plan = flow.engine.model_plan(record.settings).await.unwrap();
+    assert_eq!(
+        flow.engine.model_candidates(record.chat, &plan),
+        ["claude/haiku", "codex/gpt-x"]
+    );
 }
 
 #[tokio::test]
 async fn target_model_is_not_asked_before_the_model_list_arrives() {
-    let mut flow = Flow::new(vec![idle_reply(0.1)]).await;
+    let mut flow = Flow::with_config(AUTO, vec![idle_reply(0.1)]).await;
 
     flow.submit("hello").await;
 
@@ -83,7 +104,7 @@ async fn target_model_is_not_asked_before_the_model_list_arrives() {
 #[tokio::test]
 async fn target_model_chosen_by_the_router_is_applied() {
     let options = ["claude/opus", "claude/haiku", "other"];
-    let mut flow = Flow::new(vec![model_reply(0.1, &options, "claude/haiku")]).await;
+    let mut flow = Flow::with_config(AUTO, vec![model_reply(0.1, &options, "claude/haiku")]).await;
     know_models(
         &mut flow,
         crate::providers::test_support::CLAUDE,
@@ -101,7 +122,7 @@ async fn target_model_chosen_by_the_router_is_applied() {
 #[tokio::test]
 async fn target_model_picks_the_provider_of_the_chosen_model() {
     let options = ["claude/opus", "codex/gpt-x", "other"];
-    let mut flow = Flow::new(vec![model_reply(0.1, &options, "codex/gpt-x")]).await;
+    let mut flow = Flow::with_config(AUTO, vec![model_reply(0.1, &options, "codex/gpt-x")]).await;
     let codex = flow.add_provider(crate::providers::test_support::CODEX);
     know_models(&mut flow, crate::providers::test_support::CLAUDE, &["opus"]);
     know_models(&mut flow, crate::providers::test_support::CODEX, &["gpt-x"]);
@@ -115,10 +136,13 @@ async fn target_model_picks_the_provider_of_the_chosen_model() {
 #[tokio::test]
 async fn target_model_on_a_second_new_task_opens_a_session_with_that_model() {
     let options = ["claude/opus", "claude/haiku", "other"];
-    let mut flow = Flow::new(vec![
-        model_reply(0.1, &options, "claude/opus"),
-        model_reply(0.1, &options, "claude/haiku"),
-    ])
+    let mut flow = Flow::with_config(
+        AUTO,
+        vec![
+            model_reply(0.1, &options, "claude/opus"),
+            model_reply(0.1, &options, "claude/haiku"),
+        ],
+    )
     .await;
     know_models(
         &mut flow,
@@ -145,7 +169,7 @@ async fn target_model_on_a_second_new_task_opens_a_session_with_that_model() {
 
 #[tokio::test]
 async fn target_model_is_not_asked_when_the_model_is_pinned() {
-    let mut flow = Flow::new(vec![idle_reply(0.1)]).await;
+    let mut flow = Flow::with_config(AUTO, vec![idle_reply(0.1)]).await;
     know_models(
         &mut flow,
         crate::providers::test_support::CLAUDE,
@@ -165,7 +189,7 @@ async fn target_model_is_not_asked_when_the_model_is_pinned() {
 #[tokio::test]
 async fn target_model_other_keeps_the_default_model() {
     let options = ["claude/opus", "other"];
-    let mut flow = Flow::new(vec![model_reply(0.1, &options, "other")]).await;
+    let mut flow = Flow::with_config(AUTO, vec![model_reply(0.1, &options, "other")]).await;
     know_models(&mut flow, crate::providers::test_support::CLAUDE, &["opus"]);
 
     flow.submit("hello").await;
@@ -176,7 +200,7 @@ async fn target_model_other_keeps_the_default_model() {
 #[tokio::test]
 async fn target_model_outside_the_candidates_is_ignored() {
     let options = ["claude/opus", "claude/sonnet", "other"];
-    let mut flow = Flow::new(vec![model_reply(0.1, &options, "claude/sonnet")]).await;
+    let mut flow = Flow::with_config(AUTO, vec![model_reply(0.1, &options, "claude/sonnet")]).await;
     know_models(&mut flow, crate::providers::test_support::CLAUDE, &["opus"]);
 
     flow.submit("hello").await;
@@ -187,7 +211,7 @@ async fn target_model_outside_the_candidates_is_ignored() {
 #[tokio::test]
 async fn target_model_is_ignored_when_the_input_continues_current_work() {
     let options = ["claude/opus", "claude/haiku", "other"];
-    let mut flow = Flow::new(vec![model_reply(0.95, &options, "claude/haiku")]).await;
+    let mut flow = Flow::with_config(AUTO, vec![model_reply(0.95, &options, "claude/haiku")]).await;
     know_models(
         &mut flow,
         crate::providers::test_support::CLAUDE,

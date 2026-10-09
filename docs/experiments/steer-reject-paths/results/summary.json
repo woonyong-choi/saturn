@@ -1,0 +1,1059 @@
+{
+  "key_files_with_key": 0,
+  "provider_turn_requests": 102,
+  "summary": {
+    "steer_compact": {
+      "final": {
+        "Applied": 3
+      },
+      "n": 3,
+      "not_delivered_reasons": {},
+      "ok": 3,
+      "paths": {
+        "refused_queued": 3
+      },
+      "refused_reasons": {
+        "cannot steer a compact turn": 3
+      }
+    },
+    "steer_compact_burst": {
+      "final": {
+        "Applied": 12
+      },
+      "n": 12,
+      "not_delivered_reasons": {},
+      "ok": 12,
+      "paths": {
+        "refused_queued": 12
+      },
+      "refused_reasons": {
+        "cannot steer a compact turn": 12
+      }
+    },
+    "steer_compact_late": {
+      "final": {
+        "Applied": 3
+      },
+      "n": 3,
+      "not_delivered_reasons": {},
+      "ok": 3,
+      "paths": {
+        "refused_queued": 3
+      },
+      "refused_reasons": {
+        "cannot steer a compact turn": 3
+      }
+    },
+    "steer_ok": {
+      "final": {
+        "Applied": 3
+      },
+      "n": 3,
+      "not_delivered_reasons": {},
+      "ok": 3,
+      "paths": {
+        "steered": 3
+      },
+      "refused_reasons": {}
+    },
+    "steer_race": {
+      "final": {
+        "Applied": 12
+      },
+      "n": 12,
+      "not_delivered_reasons": {},
+      "ok": 12,
+      "paths": {
+        "queued_normal": 7,
+        "steered": 5
+      },
+      "refused_reasons": {}
+    },
+    "steer_review": {
+      "final": {
+        "Applied": 3
+      },
+      "n": 3,
+      "not_delivered_reasons": {},
+      "ok": 3,
+      "paths": {
+        "refused_queued": 3
+      },
+      "refused_reasons": {
+        "expected active turn id `<id>` but found `<id>`": 3
+      }
+    }
+  },
+  "trials": [
+    {
+      "cond": "steer_ok",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "steered",
+      "provider_turn_requests": 2,
+      "refused_reasons": [],
+      "rep": 1,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_ok",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "steered",
+      "provider_turn_requests": 2,
+      "refused_reasons": [],
+      "rep": 2,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_ok",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "steered",
+      "provider_turn_requests": 2,
+      "refused_reasons": [],
+      "rep": 3,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_review",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 2,
+      "refused_reasons": [
+        "expected active turn id `<id>` but found `<id>`"
+      ],
+      "rep": 1,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_review",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 2,
+      "refused_reasons": [
+        "expected active turn id `<id>` but found `<id>`"
+      ],
+      "rep": 2,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_review",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 2,
+      "refused_reasons": [
+        "expected active turn id `<id>` but found `<id>`"
+      ],
+      "rep": 3,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 1,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 2,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 3,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_late",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 1,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_late",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 2,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_late",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 3,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 1.0,
+      "ok": true,
+      "path": "steered",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 1,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 1.5,
+      "ok": true,
+      "path": "queued_normal",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 2,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 2.0,
+      "ok": true,
+      "path": "steered",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 3,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 2.5,
+      "ok": true,
+      "path": "steered",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 4,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 3.0,
+      "ok": true,
+      "path": "queued_normal",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 5,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 3.5,
+      "ok": true,
+      "path": "steered",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 6,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 4.0,
+      "ok": true,
+      "path": "queued_normal",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 7,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 4.5,
+      "ok": true,
+      "path": "queued_normal",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 8,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 5.0,
+      "ok": true,
+      "path": "queued_normal",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 9,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 5.5,
+      "ok": true,
+      "path": "steered",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 10,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 6.0,
+      "ok": true,
+      "path": "queued_normal",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 11,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_race",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": 6.5,
+      "ok": true,
+      "path": "queued_normal",
+      "provider_turn_requests": 3,
+      "refused_reasons": [],
+      "rep": 12,
+      "run": "formal",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 1,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 2,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 3,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 4,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 5,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 6,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 7,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 8,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 9,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 10,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 11,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    },
+    {
+      "cond": "steer_compact_burst",
+      "final": "Applied",
+      "inv1_applied": true,
+      "inv2_exactly_once": true,
+      "inv3_one_return": true,
+      "key_files_with_key": 0,
+      "marks": 1,
+      "not_delivered_reasons": [],
+      "offset": null,
+      "ok": true,
+      "path": "refused_queued",
+      "provider_turn_requests": 3,
+      "refused_reasons": [
+        "cannot steer a compact turn"
+      ],
+      "rep": 12,
+      "run": "formal2",
+      "settled": true,
+      "states": [
+        "Judging",
+        "Queued",
+        "Queued",
+        "Delivering",
+        "Queued",
+        "Delivering",
+        "Applied"
+      ]
+    }
+  ]
+}

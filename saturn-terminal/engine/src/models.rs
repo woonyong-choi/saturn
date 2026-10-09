@@ -49,6 +49,12 @@ pub(crate) struct ModelPlan {
     pub(crate) mode: ModelMode,
     /// 기본 모델의 `<provider>/<model>` 글. 고르지 않았거나 등록하지 않은 provider면 `None`.
     pub(crate) default: Option<String>,
+    /// 모델 선택 그림자 판단을 켰는지. 실험 옵션이다.
+    pub(crate) shadow: bool,
+    /// 선호 모델의 `<provider>/<model>` 글. 등록하지 않은 provider는 뺀다.
+    pub(crate) prefer: Vec<String>,
+    /// 후보를 이 목록으로 제한한다. 비어 있으면 제한하지 않는다. 실험 옵션이다.
+    pub(crate) candidates: Vec<String>,
 }
 
 impl ModelPlan {
@@ -59,6 +65,17 @@ impl ModelPlan {
                 .model_default()
                 .filter(|text| registry.parse_pinned(text).is_some())
                 .map(str::to_owned),
+            shadow: settings.shadow_model_selection(),
+            prefer: settings
+                .model_prefer()
+                .into_iter()
+                .filter(|text| registry.parse_pinned(text).is_some())
+                .collect(),
+            candidates: settings
+                .model_candidates()
+                .into_iter()
+                .filter(|text| registry.parse_pinned(text).is_some())
+                .collect(),
         }
     }
 }
@@ -489,14 +506,16 @@ impl Engine {
         }
     }
 
-    /// router에 물을 허용 후보. 받아 둔 목록을 기본 순서로 `<provider>/<model>` 글로 만든다.
-    pub(crate) fn model_candidates(&self, chat: ChatId) -> Vec<String> {
+    /// router에 물을 허용 후보. 받아 둔 목록을 기본 순서로 `<provider>/<model>` 글로 만들고, `model.candidates`가 있으면
+    /// 그 안의 모델만 남긴다.
+    pub(crate) fn model_candidates(&self, chat: ChatId, plan: &ModelPlan) -> Vec<String> {
         self.registry
             .ids()
             .into_iter()
             .filter_map(|provider| self.flow.models.get(&(chat, provider)))
             .flatten()
             .map(|info| Registry::pinned_text(&info.choice))
+            .filter(|text| plan.candidates.is_empty() || plan.candidates.contains(text))
             .collect()
     }
 }

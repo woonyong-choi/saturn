@@ -16,7 +16,7 @@ pub(crate) type Call = (String, Vec<(String, String)>, Option<String>);
 /// 기록한 응답을 차례로 돌려주고 받은 요청을 남긴다.
 #[derive(Debug, Default)]
 pub(crate) struct FakeTransport {
-    replies: StdMutex<VecDeque<Result<HttpReply, TransportError>>>,
+    replies: StdMutex<VecDeque<(Result<HttpReply, TransportError>, Duration)>>,
     pub(crate) calls: StdMutex<Vec<Call>>,
     /// 다음 호출 하나가 열릴 때까지 답을 미룬다.
     gate: StdMutex<Option<Arc<tokio::sync::Notify>>>,
@@ -25,7 +25,12 @@ pub(crate) struct FakeTransport {
 impl FakeTransport {
     pub(crate) fn new(replies: Vec<Result<HttpReply, TransportError>>) -> Arc<Self> {
         Arc::new(Self {
-            replies: StdMutex::new(replies.into()),
+            replies: StdMutex::new(
+                replies
+                    .into_iter()
+                    .map(|reply| (reply, Duration::ZERO))
+                    .collect(),
+            ),
             calls: StdMutex::default(),
             gate: StdMutex::default(),
         })
@@ -55,16 +60,19 @@ impl Transport for FakeTransport {
             .lock()
             .unwrap()
             .push((url.to_owned(), headers, body));
-        let reply = self
+        let (reply, delay) = self
             .replies
             .lock()
             .unwrap()
             .pop_front()
-            .unwrap_or(Err(TransportError::BeforeSend));
+            .unwrap_or((Err(TransportError::BeforeSend), Duration::ZERO));
         let gate = self.gate.lock().unwrap().take();
         Box::pin(async move {
             if let Some(gate) = gate {
                 gate.notified().await;
+            }
+            if !delay.is_zero() {
+                tokio::time::sleep(delay).await;
             }
             reply
         })

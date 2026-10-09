@@ -19,7 +19,9 @@ use tokio::sync::{mpsc, oneshot};
 use super::{AppliedSettings, OPEN_REPLY_TIMEOUT, REPLY_TIMEOUT, TurnOriginTracker};
 use crate::processes::{ProcessGroupId, Supervisor};
 use input::InputKind;
-use permission::{APPROVAL_POLICY, SANDBOX, check_applied};
+use permission::{
+    APPROVAL_POLICY, SANDBOX, check_applied, check_read_profile, read_profile_config,
+};
 
 mod adapter;
 mod config;
@@ -190,6 +192,8 @@ pub(crate) struct CodexClient {
     skill_paths: HashMap<String, String>,
     /// 첫 턴 전에 준비를 확인할 MCP 서버. 비면 확인하지 않는다.
     mcp_servers: Vec<String>,
+    /// 읽기 `deny` 규칙을 번역한 절대 경로 glob. 있으면 session마다 권한 프로필로 준다.
+    read_deny: Vec<String>,
     /// 서버가 모두 준비된 것을 확인했다.
     is_mcp_ready: bool,
     /// 쓸 수 없던 서버와 이유. 첫 session을 연 뒤 한 번 알리고 비운다.
@@ -332,6 +336,27 @@ impl CodexClient {
         }
     }
 
+    /// 열기 요청을 보낸다. 재개가 기록 없는 thread라서 거절되면 같은 값으로 새 thread를 연다. 첫 턴이 끝나기 전에 끊긴
+    /// thread라 받아 둔 입력이 없으므로 다시 보낼 것도 없다.
+    async fn open_thread(
+        &mut self,
+        method: &str,
+        mut params: Value,
+    ) -> Result<Result<Value, Value>, ProviderError> {
+        let reply = self.request(method, params.clone()).await;
+        if let Ok(Err(error)) = &reply
+            && method == "thread/resume"
+            && is_no_rollout(error)
+        {
+            tracing::warn!(thread = %params["threadId"], "codex thread has no rollout, opening a new thread");
+            if let Some(fields) = params.as_object_mut() {
+                fields.remove("threadId");
+            }
+            return self.request("thread/start", params).await;
+        }
+        reply
+    }
+
     fn ensure_thread(&self, session: &ProviderSessionId) -> Result<(), ProviderError> {
         if lock(&self.threads).contains_key(session) {
             return Ok(());
@@ -380,8 +405,12 @@ impl ProviderClient for CodexClient {
             "cwd": cwd,
             "model": spec.model,
             "approvalPolicy": APPROVAL_POLICY,
-            "sandbox": SANDBOX,
         });
+        let read_deny = self.read_deny.clone();
+        let read_deny = &read_deny;
+        if read_deny.is_empty() {
+            params["sandbox"] = json!(SANDBOX);
+        }
         let method = match &spec.resume {
             Some(thread) => {
                 self.clean_interrupted_children(&spec.interrupted_children)
@@ -391,7 +420,10 @@ impl ProviderClient for CodexClient {
             }
             None => "thread/start",
         };
-        if !spec.add_dirs.is_empty() {
+        if !read_deny.is_empty() {
+            // 읽기 거부는 권한 프로필로만 줄 수 있고 `sandbox`를 함께 주면 프로필이 무시된다
+            params["config"] = read_profile_config(read_deny, &spec.add_dirs);
+        } else if !spec.add_dirs.is_empty() {
             // app-server에는 `--add-dir` 인자가 없어 thread 설정의 쓰기 가능 폴더로 넘긴다. 읽기 전용 샌드박스에서의 효과는 실측 전이다
             let dirs: Vec<String> = spec
                 .add_dirs
@@ -400,7 +432,8 @@ impl ProviderClient for CodexClient {
                 .collect();
             params["config"] = json!({ "sandbox_workspace_write": { "writable_roots": dirs } });
         }
-        let result = match self.request(method, params).await {
+        let reply = self.open_thread(method, params).await;
+        let result = match reply {
             Ok(Ok(result)) => result,
             Ok(Err(error)) => {
                 return Err(ProviderError::NotSent {
@@ -415,7 +448,14 @@ impl ProviderClient for CodexClient {
             });
         };
         let thread = ProviderSessionId(id.to_owned());
-        if let Err(reason) = check_applied(&result) {
+        let applied_check = check_applied(&result).and_then(|()| {
+            if read_deny.is_empty() {
+                Ok(())
+            } else {
+                check_read_profile(&result)
+            }
+        });
+        if let Err(reason) = applied_check {
             self.release_unchecked_thread(&thread).await;
             return Err(ProviderError::NotSent { reason });
         }
@@ -721,6 +761,11 @@ fn is_no_active_turn(error: &Value) -> bool {
     ]
     .iter()
     .any(|pattern| message.contains(pattern))
+}
+
+/// `thread/resume`이 기록 없는 thread라서 거절했는가.
+fn is_no_rollout(error: &Value) -> bool {
+    error_message(error).contains("no rollout found")
 }
 
 fn error_message(error: &Value) -> String {

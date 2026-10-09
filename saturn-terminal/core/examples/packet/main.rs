@@ -51,7 +51,7 @@ fn main() -> anyhow::Result<()> {
 /// 패킷 글을 만든다. `--scenarios`가 없을 때만 `stdin`에서 기록을 읽는다.
 ///
 /// # Errors
-/// 입력을 읽을 수 없거나, `provider` 모드에 요약이 없거나, 고정 구역이 `P_hard`도 넘으면 오류.
+/// 입력을 읽을 수 없거나, `provider` 모드에 요약이 없거나, 고정 구역이 `P_send`도 넘으면 오류.
 fn run(args: &PacketArgs, stdin: &mut dyn Read) -> anyhow::Result<Rendered> {
     let records = read_records(args, stdin)?;
     let judgments = read_judgments(args.judgments.as_deref())?;

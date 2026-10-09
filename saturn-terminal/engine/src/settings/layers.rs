@@ -36,7 +36,7 @@ on_exit = "background"
 on_done = false
 
 [router]
-mode = "jev"
+mode = "manual"
 endpoint = "https://api.typesafe.ai"
 model = "jev-1.13.0"
 
@@ -56,22 +56,29 @@ progressing = 0.2
 feedback_cause = 0.7
 is_constraint = 0.8
 constraint_ask = 0.7
+constraint_release = 0.8
 
 [model]
-mode = "auto"
+mode = "manual"
 
 [consent]
 share_with_server = false
 
+[constraint]
+auto_apply = false
+
 [context]
 safety_percent = 70
-mode = "saturn"
+mode = "provider"
 packet_hard_percent = 20
 item_cap_percent = 30
 constraint_slot_percent = 25
 
 [context.select]
 rrf_k = 60
+
+[context.evidence]
+lookup = false
 "#;
 
 #[derive(Debug, Clone, Copy)]
@@ -103,7 +110,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("tui.screen", Kind::OneOf(&["auto", "full", "plain"])),
     ("tui.on_exit", Kind::OneOf(&["background", "stop", "ask"])),
     ("notify.on_done", Kind::Flag),
-    ("router.mode", Kind::OneOf(&["jev", "saturn"])),
+    ("router.mode", Kind::OneOf(&["manual", "jev", "saturn"])),
     ("router.endpoint", Kind::Text),
     (
         "router.key.info.source",
@@ -124,15 +131,21 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("router.thresholds.feedback_cause", Kind::Unit),
     ("router.thresholds.is_constraint", Kind::Unit),
     ("router.thresholds.constraint_ask", Kind::Unit),
+    ("router.thresholds.constraint_release", Kind::Unit),
     ("router.model", Kind::Text),
     ("router.local.endpoint", Kind::Text),
     ("router.local.version", Kind::Text),
     ("router.skip_check", Kind::Flag),
     ("model.default", Kind::Text),
     ("model.mode", Kind::OneOf(&["auto", "manual"])),
+    ("model.prefer", Kind::TextList),
+    ("model.candidates", Kind::TextList),
     ("grading.model", Kind::Text),
     ("consent.share_with_server", Kind::Flag),
     ("debug.provider_events", Kind::Flag),
+    ("constraint.auto_apply", Kind::Flag),
+    ("router.shadow.model_selection", Kind::Flag),
+    ("completion.checks", Kind::TextList),
     ("child.max_depth", Kind::Whole),
     ("child.max_concurrent", Kind::Positive),
     ("child.max_total", Kind::Positive),
@@ -144,6 +157,7 @@ pub(super) const SCHEMA: &[(&str, Kind)] = &[
     ("context.item_cap_percent", Kind::PercentFrom1),
     ("context.constraint_slot_percent", Kind::PercentFrom1),
     ("context.select.rrf_k", Kind::Whole),
+    ("context.evidence.lookup", Kind::Flag),
 ];
 
 /// provider마다 같은 모양으로 있는 키. `provider.<id>.` 뒤의 경로와 종류다.
@@ -253,6 +267,10 @@ pub(crate) enum UserOnly {
     ChildLimits,
     /// provider 원시 메시지의 모양을 파일로 남기는 디버그 기록. 저장소가 켜서 기록을 늘리지 못하게 한다.
     Debug,
+    /// router 판단으로 지속 제약을 자동 등록하는 정책. 저장소가 켜서 검증하지 않은 판단을 적용하지 못하게 한다.
+    ConstraintApply,
+    /// 모델 선택 그림자 판단. 판단 요청이 길어지는 비용이 걸려 저장소가 켜지 못하게 사용자만 정한다.
+    ShadowModel,
 }
 
 impl UserOnly {
@@ -267,6 +285,8 @@ impl UserOnly {
             Self::Retention => "retention",
             Self::ChildLimits => "child",
             Self::Debug => "debug",
+            Self::ConstraintApply => "constraint.auto_apply",
+            Self::ShadowModel => "router.shadow.model_selection",
         }
     }
 
@@ -288,6 +308,8 @@ pub(crate) const USER_ONLY: &[UserOnly] = &[
     UserOnly::Retention,
     UserOnly::ChildLimits,
     UserOnly::Debug,
+    UserOnly::ConstraintApply,
+    UserOnly::ShadowModel,
 ];
 
 /// 옛 이름과 새 이름. 옛 이름은 층마다 병합 전에 새 이름으로 옮기고 경고 한 줄을 남긴다.
@@ -899,7 +921,7 @@ mod tests {
         let snapshot = merge(layers).unwrap();
 
         let settings = &snapshot.settings;
-        assert_eq!(settings.method(), saturn_core::routers::Method::Jev);
+        assert_eq!(settings.method(), saturn_core::routers::Method::Manual);
         assert_eq!(settings.router_endpoint(), "https://api.typesafe.ai");
         assert_eq!(settings.key_command(), None);
         assert_eq!(settings.grading_model(), Some("mine"));
@@ -1019,8 +1041,12 @@ mod tests {
         assert_eq!(thresholds.resume_held, 0.85);
         assert_eq!(thresholds.file_relevant, (0.7, 0.35));
         assert_eq!(
-            (thresholds.is_constraint, thresholds.constraint_ask),
-            (0.8, 0.7)
+            (
+                thresholds.is_constraint,
+                thresholds.constraint_ask,
+                thresholds.constraint_release
+            ),
+            (0.8, 0.7, 0.8)
         );
         assert_eq!(snapshot.settings.retention().max_age, None);
         let budget = snapshot
@@ -1374,12 +1400,6 @@ mod tests {
                 "{name} is documented but rejected"
             );
         }
-        for name in documented_thresholds("- 구현 전 기준값은 ") {
-            assert!(
-                !schema_has_threshold(&name),
-                "{name} is marked as not implemented but the schema accepts it"
-            );
-        }
     }
 
     #[test]
@@ -1417,14 +1437,8 @@ mod tests {
         let budget = snapshot
             .settings
             .context_budget(crate::providers::test_support::CODEX, DEFAULTS);
-        assert_eq!(
-            (
-                budget.packet_hard_percent,
-                budget.item_cap_percent,
-                budget.rrf_k
-            ),
-            (20, 30, 60)
-        );
+        assert_eq!(budget.item_cap_percent, 30);
+        assert_eq!(snapshot.settings.rrf_k(), 60);
         let tuned = merge(vec![
             layer(Layer::Default, default_layer()),
             layer(
@@ -1436,14 +1450,8 @@ mod tests {
         let budget = tuned
             .settings
             .context_budget(crate::providers::test_support::CODEX, DEFAULTS);
-        assert_eq!(
-            (
-                budget.packet_hard_percent,
-                budget.item_cap_percent,
-                budget.rrf_k
-            ),
-            (25, 50, 10)
-        );
+        assert_eq!(budget.item_cap_percent, 50);
+        assert_eq!(tuned.settings.rrf_k(), 10);
         for bad in [
             "context.packet_hard_percent = 0\n",
             "context.item_cap_percent = 0\n",

@@ -154,6 +154,20 @@ impl Store {
                     .await?;
             return Ok(from_sql_int(count));
         }
+        sqlx::query(&format!(
+            "DELETE FROM model_selections WHERE judgment_id IN (SELECT id FROM judgments {FILTER})"
+        ))
+        .bind(before)
+        .bind(chat)
+        .execute(&self.pool)
+        .await?;
+        sqlx::query(&format!(
+            "DELETE FROM model_shadows WHERE judgment_id IN (SELECT id FROM judgments {FILTER})"
+        ))
+        .bind(before)
+        .bind(chat)
+        .execute(&self.pool)
+        .await?;
         let done = sqlx::query(&format!("DELETE FROM judgments {FILTER}"))
             .bind(before)
             .bind(chat)
@@ -173,6 +187,8 @@ impl Store {
         let rows = sqlx::query("SELECT * FROM judgments ORDER BY id")
             .fetch_all(&self.pool)
             .await?;
+        let shadows = self.model_shadows_by_judgment().await?;
+        let selections = self.model_selections_by_judgment().await?;
         let export_error = |source| StoreError::Export {
             path: path.to_path_buf(),
             source,
@@ -185,7 +201,15 @@ impl Store {
             .map_err(export_error)?;
         let mut out = std::io::BufWriter::new(file);
         for row in &rows {
-            let line = serde_json::to_string(&export_line(row)?)?;
+            let mut line = export_line(row)?;
+            let id: i64 = row.try_get("id")?;
+            line["model_shadow"] = shadows.get(&id).cloned().unwrap_or(Value::Null);
+            line["model_selection"] = selections.get(&id).cloned().unwrap_or(Value::Null);
+            line["applied"] = match row.try_get::<Option<i64>, _>("input_id")? {
+                Some(input) => self.applied_of_input(input).await?,
+                None => Value::Null,
+            };
+            let line = serde_json::to_string(&line)?;
             writeln!(out, "{line}").map_err(export_error)?;
         }
         out.flush().map_err(export_error)?;
@@ -234,6 +258,7 @@ fn question_set_label(set: &QuestionSetId) -> String {
 
 fn method_text(method: Method) -> &'static str {
     match method {
+        Method::Manual => "manual",
         Method::Jev => "jev",
         Method::Saturn => "saturn",
         Method::Collect => "collect",

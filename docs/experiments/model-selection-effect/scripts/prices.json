@@ -1,0 +1,12 @@
+{
+  "catalog_version": "2026-10-06.1",
+  "source": "saturn-terminal/engine/data/model-catalog.json at commit 6816a1b90c00a1c7be87b538153f439bb4c33b50",
+  "unit": "usd_per_million_tokens",
+  "models": [
+    {"prefix": "claude-haiku-4-5", "alias": "claude/haiku", "input": 1, "output": 5},
+    {"prefix": "claude-sonnet-5-5", "alias": "claude/sonnet", "input": 2, "output": 10},
+    {"prefix": "claude-opus-5-5", "alias": "claude/opus", "input": 4, "output": 20},
+    {"prefix": "gpt-6-luna", "alias": "codex/gpt-6-luna", "input": 0.1, "output": 0.5},
+    {"prefix": "gpt-6-astra", "alias": "codex/gpt-6-astra", "input": 10, "output": 50}
+  ]
+}

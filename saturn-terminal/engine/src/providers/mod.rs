@@ -6,6 +6,7 @@ mod builtin;
 mod claude;
 mod codex;
 mod extension;
+mod raw;
 mod registry;
 #[cfg(test)]
 pub(crate) mod test_support;
@@ -35,6 +36,8 @@ pub(crate) use extension::{
     collect_definitions, part_kind_of, place_files, scan_command_files, scan_skill_folders,
 };
 pub use extension::{InjectedPart, InjectionFailure};
+pub(crate) use raw::RawLine;
+pub use raw::RawTap;
 pub use registry::Registry;
 pub(crate) use trace::TraceHub;
 pub use trace::{Frame, ProviderTrace};
@@ -77,6 +80,8 @@ pub struct LaunchSpec {
     pub masker: Masker,
     /// 연결이 받은 원시 메시지의 모양을 남기는 손잡이. 꺼져 있으면 아무것도 하지 않는다(`debug.provider_events`).
     pub events: ProviderTrace,
+    /// 연결이 받은 줄을 변환 전 모습으로 engine에 보내 기록하는 손잡이.
+    pub raw: RawTap,
 }
 
 /// Saturn 권한 규칙과 확장을 provider 실행 설정으로 번역한 결과. 어댑터가 번역해 채운다.
@@ -97,6 +102,9 @@ pub struct PermissionLaunch {
     pub mcp_servers: Vec<String>,
     /// 권한 모드 `full`이라 에이전트 질문 기능을 뺀다. 기본(거짓)은 묻는다. 적용 방식은 어댑터가 정한다.
     pub questions_disabled: bool,
+    /// `permission.read`의 `deny` 규칙을 번역한 절대 경로 glob. 어댑터가 provider의 읽기 제한으로 넘긴다. 번역할 수 없는
+    /// 규칙이 있으면 session을 열기 전에 `NotSent`로 끝나므로 여기에는 번역된 것만 있다.
+    pub read_deny: Vec<String>,
 }
 
 /// 값 자체는 읽지 않고 있는지만 본다.
@@ -169,7 +177,7 @@ pub(crate) fn mask_values(value: &mut Value, masker: &Masker) {
 }
 
 /// provider 설정을 바꾸는 명령(모델, 권한 등)은 빼지 않는다.
-/// TODO(#41): 메인이 아닌 provider의 명령을 골랐을 때 처리 미정. 지금은 연결마다 제 목록만 돌려준다
+/// 연결마다 제 목록만 돌려준다. 다른 provider의 명령을 골라도 메인 provider에 그대로 보낸다(설계: providers-and-sessions.md).
 pub(crate) fn filter_commands(
     all: Vec<ProviderCommand>,
     excluded: &[&str],
@@ -177,6 +185,23 @@ pub(crate) fn filter_commands(
     all.into_iter()
         .filter(|command| !excluded.contains(&command.name.trim_start_matches('/')))
         .collect()
+}
+
+/// 읽기 `deny` 규칙 패턴의 지문. provider 실행 설정에 번역되는 값이 연결을 시작할 때 고정되므로, 지문이 바뀌면 연결을
+/// 다시 시작한다.
+pub(crate) fn read_deny_fingerprint(rules: &[saturn_core::permission::Rule]) -> String {
+    use saturn_core::permission::{PermissionTool, Verdict};
+    let mut text = String::new();
+    for rule in rules
+        .iter()
+        .filter(|rule| rule.tool == PermissionTool::Read && rule.verdict == Verdict::Deny)
+    {
+        text.push_str(&rule.pattern);
+        text.push('\n');
+    }
+    let mut digest = crate::store::sha256_hex(text.as_bytes());
+    digest.truncate(16);
+    digest
 }
 
 #[cfg(test)]

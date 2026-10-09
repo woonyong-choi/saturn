@@ -149,9 +149,10 @@ impl Settings {
     /// 사용자 전용. 옛 스냅샷의 `router.method`도 읽는다.
     pub(crate) fn method(&self) -> Method {
         match self.text_or_old("router.mode", "router.method") {
+            "jev" => Method::Jev,
             "saturn" => Method::Saturn,
             "collect" => Method::Collect,
-            _ => Method::Jev,
+            _ => Method::Manual,
         }
     }
 
@@ -170,6 +171,7 @@ impl Settings {
             feedback_cause: value("feedback_cause"),
             is_constraint: value("is_constraint"),
             constraint_ask: value("constraint_ask"),
+            constraint_release: value("constraint_release"),
         }
     }
 
@@ -201,6 +203,19 @@ impl Settings {
         }
     }
 
+    /// 완료 검사 근거로 인정할 검사 명령. 없으면 빈 목록이다.
+    pub(crate) fn completion_checks(&self) -> Vec<String> {
+        self.get("completion.checks")
+            .and_then(Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// 사용자 전용.
     #[cfg(test)]
     pub(crate) fn grading_model(&self) -> Option<&str> {
@@ -211,6 +226,20 @@ impl Settings {
     #[cfg(test)]
     pub(crate) fn share_with_server(&self) -> bool {
         self.lookup("consent.share_with_server")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    }
+
+    /// 사용자 전용. router 판단으로 지속 제약을 자동 등록하는지. 기본 거짓.
+    pub(crate) fn constraint_auto_apply(&self) -> bool {
+        self.lookup("constraint.auto_apply")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    }
+
+    /// 사용자 전용. 모델 선택 그림자 판단을 켰는지. 실험 옵션이라 기본 거짓이고, 켜도 실제 선택은 바뀌지 않는다.
+    pub(crate) fn shadow_model_selection(&self) -> bool {
+        self.lookup("router.shadow.model_selection")
             .and_then(Value::as_bool)
             .unwrap_or(false)
     }
@@ -279,12 +308,39 @@ impl Settings {
             .unwrap_or(false)
     }
 
-    /// 모델 선택 방식 `model.mode`. 옛 스냅샷에 없거나 모르는 값이면 오토다.
+    /// 모델 선택 방식 `model.mode`. 오토(router가 새 작업의 모델을 고름)는 실험 옵션이라 명시해야 켜지고, 없거나 모르는
+    /// 값이면 매뉴얼이다.
     pub(crate) fn model_mode(&self) -> ModelMode {
         match self.get("model.mode").and_then(Value::as_str) {
-            Some("manual") => ModelMode::Manual,
-            _ => ModelMode::Auto,
+            Some("auto") => ModelMode::Auto,
+            _ => ModelMode::Manual,
         }
+    }
+
+    /// 선호 모델 `model.prefer`(`<provider>/<model>` 글, 앞선 것이 우선). 강제 고정이 아니다.
+    pub(crate) fn model_prefer(&self) -> Vec<String> {
+        self.get("model.prefer")
+            .and_then(Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// 후보 제한 `model.candidates`(`<provider>/<model>` 글). 비어 있으면 provider가 알린 모델 모두가 후보다. 실험 옵션이다.
+    pub(crate) fn model_candidates(&self) -> Vec<String> {
+        self.get("model.candidates")
+            .and_then(Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// 기본 모델 `model.default`의 원문(`<provider>/<model>`). 고르지 않았으면 `None`.
@@ -292,11 +348,11 @@ impl Settings {
         self.get("model.default")?.as_str()
     }
 
-    /// 정리 모드 `context.mode`. 모르는 값은 검사에서 걸러져 기본값(`saturn`)으로 본다.
+    /// 정리 모드 `context.mode`. 모르는 값은 검사에서 걸러져 기본값(`provider`)으로 본다.
     pub(crate) fn context_mode(&self) -> ContextMode {
         match self.text("context.mode") {
-            "provider" => ContextMode::Provider,
-            _ => ContextMode::Saturn,
+            "saturn" => ContextMode::Saturn,
+            _ => ContextMode::Provider,
         }
     }
 
@@ -330,24 +386,22 @@ impl Settings {
             cache_read: number("cache_read", DEFAULT_CACHE_READ),
             cache_write: number("cache_write", defaults.cache_write),
             cache_ttl: DEFAULT_CACHE_TTL,
-            packet_hard_percent: self.packet_hard_percent(),
             item_cap_percent: self.positive("context.item_cap_percent"),
             constraint_slot_percent: self.positive("context.constraint_slot_percent"),
-            rrf_k: u32::try_from(self.whole("context.select.rrf_k")).unwrap_or(u32::MAX),
+            evidence_lookup: self.evidence_lookup(),
         }
     }
 
-    /// 옛 스냅샷에 `context.packet_hard_divisor`만 있으면 `100 / 나눗수`로 읽는다.
-    fn packet_hard_percent(&self) -> u64 {
-        let old = self
-            .get("context.packet_hard_divisor")
-            .and_then(layers::divisor_to_percent)
-            .and_then(|value| value.as_u64());
-        self.get("context.packet_hard_percent")
-            .and_then(Value::as_u64)
-            .or(old)
-            .unwrap_or_else(|| self.whole("context.packet_hard_percent"))
-            .clamp(1, 100)
+    /// 패킷이 생략한 기록을 다시 읽는 방법을 알릴지 `context.evidence.lookup`. 실험 옵션이라 기본 거짓.
+    pub(crate) fn evidence_lookup(&self) -> bool {
+        self.lookup("context.evidence.lookup")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    }
+
+    /// 합치기 상수 `context.select.rrf_k`.
+    pub(crate) fn rrf_k(&self) -> u32 {
+        u32::try_from(self.whole("context.select.rrf_k")).unwrap_or(u32::MAX)
     }
 
     /// 새 키, 옛 스냅샷의 옛 키, 기본값 층 순서로 찾는다.
@@ -466,12 +520,12 @@ mod tests {
     }
 
     #[test]
-    fn context_mode_defaults_to_saturn_and_reads_provider() {
+    fn context_mode_defaults_to_provider_and_reads_saturn() {
         let default = snapshot("", Vec::new());
-        let provider = snapshot("[context]\nmode = \"provider\"\n", Vec::new());
+        let saturn = snapshot("[context]\nmode = \"saturn\"\n", Vec::new());
 
-        assert_eq!(default.settings.context_mode(), ContextMode::Saturn);
-        assert_eq!(provider.settings.context_mode(), ContextMode::Provider);
+        assert_eq!(default.settings.context_mode(), ContextMode::Provider);
+        assert_eq!(saturn.settings.context_mode(), ContextMode::Saturn);
     }
 
     #[test]

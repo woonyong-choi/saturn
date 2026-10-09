@@ -5,9 +5,10 @@ use std::path::Path;
 use std::time::Instant;
 
 use saturn_core::queue::{QueueError, QueuedInput};
+use saturn_core::routers::shadow::split_shadow;
 use saturn_core::routers::{
-    ConstraintQuestion, JudgmentOutcome, RouteDecision, RouterError, RouterRequest, RouterResponse,
-    decide_route, question_ids, questions_for_input, validate,
+    ConstraintQuestion, JudgmentOutcome, Method, RouteDecision, RouterError, RouterRequest,
+    RouterResponse, decide_route, question_ids, questions_for_input, validate,
 };
 use saturn_protocol::ids::{ChatId, ChatRevision, InputId, JudgmentId, SettingsRevision, TaskId};
 use saturn_protocol::rpc::{ModelMode, Notification};
@@ -15,12 +16,15 @@ use saturn_protocol::state::{Disposition, InputState};
 
 use crate::Attachment;
 use crate::constraints::ConstraintPlan;
-use crate::flow::{Routed, RouterDone, RouterJob, Unrecorded};
+use crate::flow::{JobKind, Routed, RouterDone, RouterJob, Unrecorded};
 use crate::models::ModelPlan;
 use crate::requests::{settings_notification, trust_notification};
 use crate::routers::{RecordContext, RouterExchange, outcome_of, sanitize_state};
 use crate::rpc::ClientId;
+use crate::selection::{RouterOutcome, SelectionPlan};
 use crate::settings::{Settings, SettingsError};
+use crate::shadow::ShadowPlan;
+use crate::store::SelectionIds;
 use crate::{Engine, EngineError, masked_chain};
 
 /// 사용자에게 묻는 제약 등록의 확률 q. 구간에서는 항상 묻는다.
@@ -117,9 +121,16 @@ impl Engine {
     /// 별도 작업이 끝낸 router 호출의 결과를 받는다. 적용 직전에 채팅 revision을 비교하므로 호출이 도는 사이
     /// 멈춤이나 취소가 있었으면 결과는 버려진다. 적용하지 못한 오류는 입력을 지우지 않고 로그만 남긴다.
     pub(crate) async fn on_routed(&mut self, done: RouterDone) {
-        if done.job.lines {
-            self.on_lines_done(done).await;
-            return;
+        match done.job.kind {
+            JobKind::Route => {}
+            JobKind::Lines => {
+                self.on_lines_done(done).await;
+                return;
+            }
+            JobKind::Change => {
+                self.on_change_done(done).await;
+                return;
+            }
         }
         let RouterDone {
             job,
@@ -166,7 +177,9 @@ impl Engine {
         skip_relation: bool,
         task: Option<TaskId>,
     ) -> Result<InputId, EngineError> {
+        let skip_relation = skip_relation || self.routers.method() == Method::Manual;
         let workdir = self.attached_workdir(client, chat)?;
+        self.open_request(chat);
         let pinned_model = self.store.chat_model(chat).await?;
         let settings = self.fix_settings(client, chat, &workdir).await?;
         if let Ok(mode) = self.chat_mode(chat, settings).await {
@@ -495,7 +508,7 @@ impl Engine {
             input: record.id,
             revision,
             retried,
-            lines: false,
+            kind: JobKind::Route,
         };
         self.flow.judging.insert(record.chat, record.id);
         self.spawn_router_job(job, request);
@@ -526,33 +539,56 @@ impl Engine {
     ) -> Result<Verdict, EngineError> {
         let record = self.queued(job.input)?;
         let settings = self.settings.at(&self.store, record.settings).await?;
+        let full_sets: Vec<_> = request.sets.iter().map(|(id, _)| id.clone()).collect();
+        let active = self.routers.active();
+        let policy = crate::policy::policy_digest(
+            &settings,
+            active.router_id(),
+            active.model(),
+            &self.catalog.version,
+        );
+        tracing::debug!(%policy, "judgment policy");
         if let Some(alert) = self.routers.observe(&exchange) {
             self.notify_alert(record.chat, alert).await;
         }
-        let mut read =
-            self.read_verdict(request, &exchange, &settings, job.revision, record.settings);
+        // 그림자 질문은 실제 판단이 읽는 요청과 답에서 떼어 낸다
+        let split = split_shadow(request, exchange.result.as_ref().ok());
+        let mut shadow = self.shadow_plan(request, &split, (job.revision, policy.clone()));
+        let policy_text = policy;
+        let request = &split.request;
+        let mut read = self.read_verdict(
+            (request, split.response.as_ref()),
+            &exchange,
+            &settings,
+            (job.revision, record.settings),
+        );
         // 고정 모델은 `target_model` 선택만 대신하고 관계 판단은 그대로 받는다.
         // 고정하지 않았으면 오토 모드에서 후보 글인 router 선택을, 아니면 기본 모델을 쓴다. 둘 다 없으면 현재 모델이다
         let plan = ModelPlan::from_settings(&settings, &self.registry);
-        read.decision.model = if record.pinned_model.is_some() {
-            record.pinned_model.clone()
-        } else {
-            let routed = read
-                .decision
-                .model
-                .take()
-                .filter(|model| self.registry.parse_pinned(model).is_some())
-                .filter(|_| plan.mode == ModelMode::Auto);
-            routed.or(plan.default)
-        };
+        let routed = read.decision.model.take();
+        let selection = self.select_model(
+            (&record, &plan),
+            routed,
+            (
+                RouterOutcome {
+                    failed: read.failed,
+                    invalid: read.outcome == JudgmentOutcome::Invalid,
+                },
+                policy_text,
+            ),
+        );
+        read.decision.model = selection.model.clone();
+        if let Some(shadow) = &mut shadow {
+            shadow.decided = read.decision.model.clone();
+        }
         let fallbacks = read.fallback_reasons();
         let constraint = self
-            .constraint_plan(request, &exchange, &record, &settings)
+            .constraint_plan(request, split.response.as_ref(), &record, &settings)
             .await;
         let context = RecordContext {
             chat: record.chat,
             input: Some(record.id),
-            question_sets: request.sets.iter().map(|(id, _)| id.clone()).collect(),
+            question_sets: full_sets,
             settings: record.settings,
             fallbacks,
             outcome: read.outcome,
@@ -561,12 +597,20 @@ impl Engine {
                 .filter(ConstraintPlan::asks_user)
                 .map(|_| ASKED_CONSTRAINT_Q),
         };
+        // 등록 대상이 아닌 입력만 해제·예외 판단을 받는다. router가 답하지 못했으면 제약 판단을 모두 건너뛴다
+        let change = constraint.is_none()
+            && settings.constraint_auto_apply()
+            && exchange.result.is_ok()
+            && !job.retried;
         self.flow.unrecorded.insert(
             record.id,
             Unrecorded {
                 context,
                 exchange,
                 constraint,
+                change,
+                shadow,
+                selection,
             },
         );
         Ok(Verdict {
@@ -583,7 +627,7 @@ impl Engine {
     ) -> RouterRequest {
         // 매뉴얼 모드는 후보를 주지 않아 `target_model`을 묻지 않는다
         let candidates = match plan.mode {
-            ModelMode::Auto => self.model_candidates(record.chat),
+            ModelMode::Auto => self.model_candidates(record.chat, plan),
             ModelMode::Manual => Vec::new(),
         };
         let activity = if running { "running" } else { "idle" };
@@ -597,7 +641,7 @@ impl Engine {
             "chat: {activity}\nprevious input handled as: {previous}\n{context}\nuser input: {}",
             record.text
         );
-        RouterRequest {
+        let mut request = RouterRequest {
             model: self.routers.active().model().to_owned(),
             state: sanitize_state(&state, &self.masker),
             sets: questions_for_input(
@@ -611,16 +655,18 @@ impl Engine {
                     ConstraintQuestion::Without
                 },
             ),
-        }
+        };
+        self.add_shadow(record, plan, &mut request);
+        request
     }
 
+    /// `real`은 그림자 질문을 뗀 요청과 그 답이다.
     fn read_verdict(
         &self,
-        request: &RouterRequest,
+        (request, real): (&RouterRequest, Option<&RouterResponse>),
         exchange: &RouterExchange,
         settings: &Settings,
-        revision: ChatRevision,
-        settings_revision: SettingsRevision,
+        (revision, settings_revision): (ChatRevision, SettingsRevision),
     ) -> ReadVerdict {
         let route = |response: &RouterResponse| {
             decide_route(
@@ -644,11 +690,13 @@ impl Engine {
             }
         };
         match &exchange.result {
-            Ok(response) if validate(request, response).is_ok() => ReadVerdict {
-                decision: route(response),
-                outcome: JudgmentOutcome::Ok,
-                failed: false,
-            },
+            Ok(_) if real.is_some_and(|response| validate(request, response).is_ok()) => {
+                ReadVerdict {
+                    decision: route(real.unwrap_or(&empty_response(request))),
+                    outcome: JudgmentOutcome::Ok,
+                    failed: false,
+                }
+            }
             Ok(_) | Err(RouterError::Invalid { .. }) => invalid(),
             Err(_) => ReadVerdict {
                 decision: self
@@ -670,6 +718,7 @@ impl Engine {
         if superseded {
             unrecorded.context.outcome = JudgmentOutcome::Superseded;
         }
+        let (chat, settings) = (unrecorded.context.chat, unrecorded.context.settings);
         let recorded = self
             .routers
             .record(&self.store, unrecorded.context, &unrecorded.exchange)
@@ -681,10 +730,60 @@ impl Engine {
                 None
             }
         };
-        if let Some(plan) = unrecorded.constraint {
+        if let Some(judgment) = judgment {
+            let ids = SelectionIds {
+                judgment,
+                input,
+                chat,
+            };
+            self.record_decision_details(
+                (ids, settings),
+                (unrecorded.selection, unrecorded.shadow),
+                superseded,
+            )
+            .await;
+        }
+        self.follow_constraint_judgment(
+            input,
+            (unrecorded.constraint, unrecorded.change),
+            judgment,
+        )
+        .await;
+        judgment
+    }
+
+    /// 판단 기록에 붙는 모델 정하기 기록과 모델 판단 그림자 기록을 쓴다. 어긋난 판단은 적용하지 않은 것으로 쓴다.
+    async fn record_decision_details(
+        &self,
+        (ids, settings): (SelectionIds, SettingsRevision),
+        (selection, shadow): (SelectionPlan, Option<ShadowPlan>),
+        superseded: bool,
+    ) {
+        self.record_selection(ids, selection, !superseded).await;
+        if let Some(shadow) = shadow {
+            let SelectionIds {
+                judgment,
+                input,
+                chat,
+            } = ids;
+            self.record_shadow((judgment, input, chat, settings), shadow, superseded)
+                .await;
+        }
+    }
+
+    /// 판단 기록을 쓴 뒤 그 입력의 제약 등록을 적용하고, 등록 대상이 아니면 해제·예외 판단을 시작한다.
+    async fn follow_constraint_judgment(
+        &mut self,
+        input: InputId,
+        (plan, change): (Option<ConstraintPlan>, bool),
+        judgment: Option<JudgmentId>,
+    ) {
+        if let Some(plan) = plan {
             self.apply_constraint_plan(input, plan, judgment).await;
         }
-        judgment
+        if change {
+            self.start_change(input, false).await;
+        }
     }
 
     /// 실행 중인 에이전트가 있는 채팅이면 참.
@@ -728,8 +827,15 @@ impl ReadVerdict {
     }
 }
 
+fn empty_response(request: &RouterRequest) -> RouterResponse {
+    RouterResponse {
+        model: request.model.clone(),
+        answers: Vec::new(),
+        tokens: (0, 0),
+    }
+}
+
 /// router 없이 정하는 판단. 처리 방식은 대기이고 모델은 고정 모델을 그대로 쓴다.
-/// TODO(#168): 모델을 고정한 입력이 실행 중 도착했을 때의 처리 방식이 정해지면 대기 대신 따른다
 pub(crate) fn direct_decision(record: &QueuedInput, revision: ChatRevision) -> RouteDecision {
     // 대상 작업이 정해진 입력은 대기하지 않고 그 작업에 끼워 넣는다
     let disposition = if record.task.is_some() {
@@ -759,6 +865,10 @@ fn threshold_list(settings: &Settings) -> Vec<(String, f64)> {
         ("resume_held".to_owned(), thresholds.resume_held),
         ("is_constraint".to_owned(), thresholds.is_constraint),
         ("constraint_ask".to_owned(), thresholds.constraint_ask),
+        (
+            "constraint_release".to_owned(),
+            thresholds.constraint_release,
+        ),
     ]
 }
 

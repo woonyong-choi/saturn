@@ -174,7 +174,7 @@ impl StatusLine {
     // cost: time O(n), heap O(n), stack O(1)
     // vars: n = 줄 글자 수
     // basis: estimate
-    /// `spinner`는 실행·판단·학습 줄의 머리 글자.
+    /// `spinner`는 실행·판단 줄의 머리 글자.
     pub(crate) fn text(&self, lang: Lang, labels_visible: bool, spinner: char) -> String {
         self.text_at(lang, labels_visible, spinner, u16::MAX)
     }

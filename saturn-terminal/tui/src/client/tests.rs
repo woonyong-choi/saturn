@@ -16,6 +16,8 @@ fn notice() -> Notification {
 fn attach_env_takes_only_listed_names_and_never_the_router_key() {
     let process = [
         ("PATH", "/opt/bin:/usr/bin"),
+        ("CLAUDE_CONFIG_DIR", "/Users/me/.config/claude-test"),
+        ("CODEX_HOME", "/Users/me/.config/codex-test"),
         ("SATURN_KEY", "sk-secret"),
         ("AWS_SECRET_ACCESS_KEY", "other"),
     ];
@@ -29,7 +31,17 @@ fn attach_env_takes_only_listed_names_and_never_the_router_key() {
 
     assert_eq!(
         env,
-        vec![("PATH".to_owned(), "/opt/bin:/usr/bin".to_owned())]
+        vec![
+            ("PATH".to_owned(), "/opt/bin:/usr/bin".to_owned()),
+            (
+                "CLAUDE_CONFIG_DIR".to_owned(),
+                "/Users/me/.config/claude-test".to_owned()
+            ),
+            (
+                "CODEX_HOME".to_owned(),
+                "/Users/me/.config/codex-test".to_owned()
+            ),
+        ]
     );
 }
 
@@ -72,10 +84,7 @@ async fn send_numbers_requests_and_next_skips_responses() {
     let mut client = EngineClient::connect(&socket).await.unwrap();
 
     client.send(Request::ListTasks).await.unwrap();
-    client
-        .send(Request::ListChats { folder: None })
-        .await
-        .unwrap();
+    client.send(Request::ListTasks).await.unwrap();
     let received = client.next().await;
 
     assert_eq!(received, Some(Incoming::Notification(notice())));

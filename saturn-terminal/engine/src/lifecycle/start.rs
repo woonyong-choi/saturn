@@ -20,6 +20,27 @@ async fn start_runs_every_step_and_opens_socket() {
 }
 
 #[tokio::test]
+async fn default_manual_router_starts_without_a_key_or_external_check() {
+    let fixture = Fixture::new();
+    let env = StartEnv {
+        nested_marker: None,
+        router: None,
+        secrets: Some(fixture.secrets(false).await),
+        key_inputs: Some(Vec::new()),
+    };
+
+    let engine = fixture.start(env).await.unwrap();
+
+    assert_eq!(
+        engine.routers.method(),
+        saturn_core::routers::Method::Manual
+    );
+    assert_eq!(engine.router_gate, RouterGate::Open);
+    assert!(fixture.socket().exists());
+    assert!(!fixture.key_file().exists());
+}
+
+#[tokio::test]
 async fn start_nested_is_refused_before_lock() {
     let fixture = Fixture::new();
     let transport = FakeTransport::new(Vec::new());
@@ -72,7 +93,7 @@ async fn start_invalid_settings_without_revision_stops_before_router_and_socket(
 #[tokio::test]
 async fn start_disallowed_router_stops_before_socket() {
     let fixture = Fixture::new();
-    fixture.write_user_config("[router]\nendpoint = \"https://evil.example\"\n");
+    fixture.write_user_config("[router]\nmode = \"jev\"\nendpoint = \"https://evil.example\"\n");
     let mut env = fixture.env(true, FakeTransport::new(Vec::new())).await;
     env.router = None;
 

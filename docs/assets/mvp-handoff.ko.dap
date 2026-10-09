@@ -1,0 +1,33 @@
+flow down
+title "provider 전환 패킷"
+subtitle "기록된 대화 본문을 보존하고 남는 예산에 최근 도구 기록을 넣는다"
+
+store ledger "SQLite 원본" "역할, 기록 번호, 원문"
+box dialogue "보호 본문" "사용자 입력, 끼워 넣기, 에이전트 글"
+box open "남은 일" "대기, 보류, 결과 불명"
+box tools "경쟁 구역" "수정 파일, 최근 도구 호출과 결과"
+box packet "패킷 검사" "본문 순서와 발신 해시 확인"
+decision limit "전송 가능 상한"
+external target "새 provider session"
+box hold "전환 보류" "원본과 입력 유지"
+
+ledger -> dialogue "모든 대화 원문"
+ledger -> open "현재 상태"
+ledger -> tools "남는 예산"
+dialogue -> packet
+open -> packet
+tools -> packet
+packet -> limit
+limit -> target "이내"
+limit -> hold "초과 또는 한도 불명"
+
+step "보호" "대화 본문은 역할과 순서대로 모두 싣고 도구 기록만 예산에 맞춘다"
+  ledger -> dialogue
+  ledger -> tools
+step "검사" "실제 보내는 글과 저장한 원본의 해시와 순서를 대조한다"
+  dialogue -> packet
+  packet -> limit
+step "전송" "상한 이내면 새 session을 열고 패킷 뒤에 새 입력을 보낸다"
+  limit -> target
+step "보류" "보호 본문이 넘치거나 상한을 모르면 본문을 자르지 않는다"
+  limit -> hold

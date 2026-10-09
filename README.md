@@ -28,11 +28,11 @@ Developers who use Codex and Claude Code together lose context each time they sw
 
 ## How it works
 
-Steps 1, 2, 4, 5, and 6 run on `main`. In step 3, opening a new session with a packet works, but the router does not yet choose what goes into the packet, and Saturn does not yet ask the provider to compact. Constraints you state are recorded and carried in the packet up to a size limit, while releasing them is designed only (see Status).
+The defaults are manual input handling and provider compaction. Provider switches use a packet made from Saturn records. Automatic judgments and Saturn-managed restarts require explicit settings; their quality and cost benefits are not established for the default path.
 
 1. You run `saturn` in a repository and type a request. A background engine process stores the input in a local SQLite database before it sends anything to Codex or Claude Code.
-2. While the agent works, you type a follow-up. A router, a small model that answers yes-or-no, multiple-choice, and rating questions about your input, decides whether to add it to the running turn, start a separate task, or queue it.
-3. When the context of a session passes a set token limit and no work is running, Saturn either lets the provider compact the session or, when that costs less, starts a new session. The new session gets a packet with the goal, recent turns, and open items taken from Saturn's own record.
+2. While the agent works, you type a follow-up. The default manual path queues inputs in order without calling a router. An explicitly selected automatic mode can ask the router to judge how inputs relate.
+3. The provider handles compaction within its own session by default. When you switch providers, the new session gets a packet with the whole recorded conversation, open items, and recent tool records that fit the budget.
 4. You switch the chat from Claude Code to Codex. A chat is the conversation you see, and provider sessions open and close behind it. The new session receives only what changed since it last saw the chat.
 5. You close the terminal. The engine keeps processing the inputs you already sent, and you can attach again later.
 6. A provider asks to run a command or edit a file. Saturn applies its own permission rules instead of the provider settings, and shows an approval prompt only when a rule says to ask.
@@ -94,11 +94,11 @@ Run `saturn` in a repository. It starts the engine in the background and opens t
 saturn
 ```
 
-If Saturn has no router key, a Router key window asks for it with hidden input. `Enter` confirms and `Esc` quits `saturn`. The engine keeps running after `saturn` exits.
+If you explicitly select an automatic router mode and Saturn has no router key, a Router key window asks for it with hidden input. `Enter` confirms and `Esc` quits `saturn`. The engine keeps running after `saturn` exits.
 
 ### Provide the router key
 
-The router needs an API key. Saturn gets it by trying these in order when the engine starts, and stops at the first one that works.
+The default manual path needs no router key. If you select an automatic router mode, Saturn tries these sources in order when the engine starts and stops at the first one that works.
 
 1. The `SATURN_KEY` environment variable of the shell that starts the engine. When it is set, Saturn reads it before the saved key.
 2. The saved key. On macOS this is the keychain entry with the account `saturn-key`, which Saturn creates when you enter a key in the Router key window. On other systems it is the file `router.key` in the Saturn home with mode 0600.
@@ -130,7 +130,7 @@ Error: Router key required (router key required: router rejected the key): set t
 | 0 | Success |
 | 1 | Other failure, including answering no to a confirmation and a failed task in plain mode |
 | 2 | Usage error: change the call, for example no terminal for a picker or a nested run inside an agent without a pass |
-| 66 | Nothing to open: no chat to continue, missing folder, unknown router version |
+| 66 | Nothing to open: no chat to continue, missing folder |
 | 69 | Engine unavailable: failed to start, no answer, failed to replace, connection lost |
 | 70 | Engine internal error |
 | 75 | Not now, try later |
@@ -171,7 +171,7 @@ saturn --continue
 
 ## Status
 
-Saturn is in development. The message types, core rules, engine, TUI, and the `saturn` command are on `main`. These work in tests with fake providers: the input flow from acceptance to provider send, stop and resume, Saturn permission rules, `/model` and `/usage`, a plain screen mode for pipes and `NO_COLOR`, keeping work running after the TUI closes, recovery after an engine crash, installing extensions into the Saturn store and injecting them when a connection starts, and child connections that let an agent inside Saturn, or an outside Claude Code or Codex, ask the running engine for work. The procedure in `scripts/e2e/README.md` (steps a to k) passed against real Codex, Claude Code, and the router on 2026-10-04. The rest was not run against real providers. The packet carries stored constraints that have not been released, up to a size limit; this is tested with fake providers only and not yet against real providers ([#296](https://github.com/woonyong-choi/saturn/issues/296) condition 2). Designed but not built: ordering the packet by router answers, handoff compaction ([#380](https://github.com/woonyong-choi/saturn/issues/380)), releasing constraints and the `/constraints` screen ([#379](https://github.com/woonyong-choi/saturn/issues/379), [#381](https://github.com/woonyong-choi/saturn/issues/381)), scoring and training a local router model, and sharing data with a server. The design documents, decision records, and experiment reports are public. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
+Saturn is in development. The message types, core rules, engine, TUI, and the `saturn` command are on `main`. These work in tests with fake providers: the input flow from acceptance to provider send, stop and resume, Saturn permission rules, `/model` and `/usage`, a plain screen mode for pipes and `NO_COLOR`, keeping work running after the TUI closes, recovery after an engine crash, installing extensions into the Saturn store and injecting them when a connection starts, and child connections that let an agent inside Saturn, or an outside Claude Code or Codex, ask the running engine for work. An earlier router-based run passed against real Codex and Claude Code on 2026-10-04; the current manual path was checked on 2026-10-07 with real Codex and Claude Code. Codex created three file lines, Claude added two after a switch, and Codex added one after switching back. Both handoff packets were sent, and router judgments remained at zero. Other real-provider paths remain unverified. The default manual routing path requires no Jev key. The packet carries stored constraints that have not been released, up to a size limit; this is tested with fake providers only and not yet against real providers ([#296](https://github.com/woonyong-choi/saturn/issues/296) condition 2). On a provider switch, the packet keeps the recorded conversation in order and fills remaining space with recent tool records. The packet is checked against its source before sending. This path has fake-provider tests and one completed real two-way switch; broader handoff quality remains unmeasured ([#613](https://github.com/woonyong-choi/saturn/issues/613)). Designed but not built: scoring and training a local router model, and sharing data with a server. The design documents, decision records, and experiment reports are public. It targets macOS on Apple Silicon and needs Codex CLI or Claude Code. Commands, file formats, and behavior may change without notice before 1.0. Open design questions and planned experiments are tracked in [GitHub issues](https://github.com/woonyong-choi/saturn/issues), and comments there are welcome.
 
 ## Comparison
 
@@ -183,7 +183,7 @@ Saturn is in development. The message types, core rules, engine, TUI, and the `s
 The order after the first conversation is not fixed yet.
 
 1. First conversation: a full run against real Codex and Claude Code, including a switch back after a user constraint. (in progress)
-2. Constraints and packets: release and exceptions for constraints, packets ordered by router answers. (next)
+2. Constraints and packets: release and exceptions for constraints, and verify source-preserving provider switches. (next)
 3. Chat management: chat names and grouping, task-completion notifications. (next)
 4. Local router model: score recorded judgments, train a personal router model, and switch to it only when it is not worse than the current router on the same evaluation set. (later)
 5. Service: consent-based data collection, remote API, authentication, and infrastructure. (later)

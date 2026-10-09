@@ -29,8 +29,9 @@ impl CodexClient {
         launch: LaunchSpec,
         supervisor: Supervisor,
     ) -> Result<Self, ProviderError> {
-        let launch = with_env_overrides(launch);
+        // 사용자 설정은 덮어쓰기 전의 사용자 폴더에서 읽는다. 덮어쓴 뒤에는 `CODEX_HOME`이 전용 폴더다
         let found = read_user_config(&launch);
+        let launch = with_env_overrides(launch);
         let user = UserProviderConfig {
             has_auto_compact: launch.user_config.has_auto_compact || found.has_auto_compact,
         };
@@ -59,7 +60,11 @@ impl CodexClient {
             Arc::clone(&threads),
             Arc::clone(&approvals),
             tx,
-            (launch.masker.clone(), launch.events.clone()),
+            (
+                launch.masker.clone(),
+                launch.events.clone(),
+                launch.raw.clone(),
+            ),
         ));
         tokio::spawn(log_stderr(spawned.io.stderr, launch.masker.clone()));
         let mut client = Self {
@@ -75,6 +80,7 @@ impl CodexClient {
             commands: Vec::new(),
             skill_paths: HashMap::new(),
             mcp_servers: launch.permission.mcp_servers.clone(),
+            read_deny: launch.permission.read_deny.clone(),
             is_mcp_ready: false,
             mcp_unavailable: Vec::new(),
             mcp_ready_timeout: MCP_READY_TIMEOUT,

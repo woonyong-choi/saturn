@@ -1,8 +1,5 @@
 use super::*;
-use crate::sessions::context::{
-    DEFAULT_CONSTRAINT_SLOT_PERCENT, DEFAULT_ITEM_CAP_PERCENT, DEFAULT_PACKET_HARD_PERCENT,
-};
-use crate::sessions::ranking::DEFAULT_RRF_K;
+use crate::sessions::context::{DEFAULT_CONSTRAINT_SLOT_PERCENT, DEFAULT_ITEM_CAP_PERCENT};
 
 const CHAT: ChatId = ChatId(1);
 const NOW_SECS: u64 = 1_000_000;
@@ -16,10 +13,9 @@ fn inputs(packet: u64) -> ReturnInputs {
             cache_read: 0.1,
             cache_write: 1.25,
             cache_ttl: Duration::from_secs(300),
-            packet_hard_percent: DEFAULT_PACKET_HARD_PERCENT,
             item_cap_percent: DEFAULT_ITEM_CAP_PERCENT,
             constraint_slot_percent: DEFAULT_CONSTRAINT_SLOT_PERCENT,
-            rrf_k: DEFAULT_RRF_K,
+            evidence_lookup: false,
         },
         packet,
         now: SystemTime::UNIX_EPOCH + Duration::from_secs(NOW_SECS),

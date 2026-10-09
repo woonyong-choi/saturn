@@ -9,6 +9,7 @@ use saturn_core::permission::Rule;
 use saturn_core::providers::ProviderError;
 use saturn_protocol::ids::{AgentId, Provider, ProviderSessionId};
 
+use super::config::{relative_home, user_folder};
 use super::home::{self, HomeInput};
 use super::{CodexClient, direct};
 use crate::processes::{ProcessGroupId, Supervisor};
@@ -76,16 +77,14 @@ impl Adapter for CodexAdapter {
         &self,
         input: PermissionInput<'_>,
     ) -> Result<PermissionLaunch, ProviderError> {
-        let value = |name: &str| {
-            input
-                .env
-                .iter()
-                .find(|(key, _)| key == name)
-                .map(|(_, value)| PathBuf::from(value))
-        };
-        let user_codex_home = value("CODEX_HOME")
-            .or_else(|| value("HOME").map(|home| home.join(".codex")))
-            .unwrap_or_else(|| PathBuf::from("/.codex"));
+        if relative_home(input.env).is_some() {
+            return Err(ProviderError::NotSent {
+                reason:
+                    "CODEX_HOME is a relative path; set an absolute path to use codex with saturn"
+                        .to_owned(),
+            });
+        }
+        let user_codex_home = user_folder(input.env).unwrap_or_else(|| PathBuf::from("/.codex"));
         let (prepared, injection_failures) = home::prepare_with(
             HomeInput {
                 saturn_home: input.saturn_home,

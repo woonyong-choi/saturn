@@ -29,7 +29,7 @@ pub const RUNNING_COUNT_SUFFIX: &str = "개 실행 중";
 pub const TOKEN_UNREPORTED: &str = "Token -";
 pub const TOKEN: &str = "Token";
 
-// 상태판 판단 줄, 학습 줄
+// 상태판 판단 줄
 pub const JUDGING: &str = "판단 중";
 
 // 상태판 줄 하나 뒤에 붙는 나머지 개수. `{n}`은 개수다.
@@ -118,7 +118,21 @@ pub const MCP_UNAVAILABLE: &str =
     "{provider}의 MCP 서버를 쓸 수 없습니다 · 그 서버의 도구만 빠지고 입력은 그대로 보냅니다";
 /// `{provider}`는 끊긴 하위 에이전트를 다시 보낸 provider 이름.
 pub const INTERRUPTED_SUBAGENT_RETURNED: &str = "{provider}가 크래시로 끊긴 하위 에이전트를 다시 시작해 작업을 멈췄습니다 · 이어 가려면 /continue";
-pub const CONTEXT_DEFERRED: &str = "고정 제약이 길어 맥락 정리를 미룹니다";
+/// `{events}`는 근거 이벤트 번호를 쉼표로 이은 글, `{reason}`는 아래 `EVIDENCE_*` 이유 글.
+pub const EVIDENCE_VERIFIED: &str = "완료 검사 통과 · 근거 이벤트 {events}";
+pub const EVIDENCE_NOT_APPLICABLE: &str = "완료 검사 해당 없음 · 수정한 파일 없음";
+pub const EVIDENCE_UNVERIFIED: &str = "완료 검사 미확인 · {reason}";
+pub const EVIDENCE_NOT_CHECKED: &str =
+    "마지막 수정 뒤 설정한 검사가 돌지 않았거나 종료 코드를 알 수 없음";
+pub const EVIDENCE_CHECK_FAILED: &str = "마지막 수정 뒤 검사가 실패함";
+pub const EVIDENCE_EDITED_DURING_CHECK: &str = "검사가 도는 중에 수정이 있었음";
+pub const EVIDENCE_PARTIAL_SNAPSHOT: &str = "폴더가 커서 일부만 확인함";
+pub const EVIDENCE_ORDER_UNKNOWN: &str = "수정과 검사의 순서를 알 수 없음";
+pub const EVIDENCE_TREE_NOT_IDLE: &str = "하위 에이전트가 끝나지 않음";
+pub const EVIDENCE_UNMEASURED: &str = "수정 목록을 만들지 못함";
+pub const CONTEXT_DEFERRED: &str = "인계 기록이 길어 전환을 미룹니다";
+/// `{count}`는 패킷 제약 칸에 넣지 못한 제약 수.
+pub const CONSTRAINTS_OMITTED: &str = "제약 {count}개 생략 · /constraints에서 확인하세요";
 pub const PACKET_OVERFLOW: &str = "맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요";
 pub const SWITCHED_SUFFIX: &str = "로 전환";
 pub const REQUEST_SUMMARY: &str = "이번 요청";
@@ -138,7 +152,6 @@ pub const BUTTON_RUN: &str = "[실행]";
 pub const BUTTON_KEEP: &str = "[그대로]";
 pub const PASTED: &str = "붙여넣은 내용";
 pub const CHARS_SUFFIX: &str = "자";
-pub const COUNT_SUFFIX: &str = "건";
 
 // 바닥줄
 pub const FOOTER_HINT: &str = "/help 도움말 · Ctrl+C 멈춤";
@@ -245,6 +258,42 @@ pub const CONSTRAINT_ASK_HINT: &str = "↑↓ 이동 · Enter 선택 · Esc 나�
 pub const CONSTRAINT_ADDED: &str = "제약 등록됨";
 pub const CONSTRAINT_RELEASED: &str = "제약 해제됨";
 pub const CONSTRAINT_UNCONFIRMED: &str = "확인 없이";
+pub const CONSTRAINT_PAUSED: &str = "제약 잠시 해제됨";
+pub const CONSTRAINT_PAUSED_FOR_TASK: &str = "이번 작업 동안";
+pub const CONSTRAINT_EXCEPTED: &str = "제약 예외";
+pub const CONSTRAINT_RESUMED: &str = "제약 다시 유효";
+pub const CONSTRAINT_RESTORED: &str = "제약 되돌림";
+/// `{active}`, `{candidate}`, `{released}`는 상태별 제약 수, `{revision}`은 읽은 때의 제약 revision.
+pub const CONSTRAINTS_HEADER: &str =
+    "제약 유효 {active}개 · 후보 {candidate}개 · 해제 {released}개 · 기준 {revision}";
+pub const CONSTRAINTS_EMPTY: &str = "유효하거나 후보인 제약이 없습니다";
+pub const CONSTRAINTS_HINT: &str =
+    "/constraints add <규칙> · release <번호> · mistaken <번호> · history · undo <변경 번호>";
+pub const CONSTRAINT_TAG_ACTIVE: &str = "유효";
+pub const CONSTRAINT_TAG_CANDIDATE: &str = "후보";
+pub const CONSTRAINT_TAG_RELEASED: &str = "해제";
+pub const CONSTRAINT_SCOPE: &str = "범위";
+pub const CONSTRAINT_SCOPE_ALL: &str = "전체";
+pub const CONSTRAINT_EXCEPTION: &str = "예외";
+pub const CONSTRAINT_CANDIDATE_NOTE: &str =
+    "후보는 등록 확인을 기다리는 말이고 전환 패킷에는 유효 제약처럼 들어갑니다";
+pub const CONSTRAINT_CHANGE_ADDED: &str = "등록됨";
+pub const CONSTRAINT_CHANGE_RELEASED: &str = "해제됨";
+pub const CONSTRAINT_CHANGE_EXCEPTED: &str = "예외 걸림";
+pub const CONSTRAINT_CHANGE_RESUMED: &str = "다시 유효";
+pub const CONSTRAINT_CHANGE_RESTORED: &str = "되돌림";
+pub const CONSTRAINT_ACTOR_ROUTER: &str = "router";
+pub const CONSTRAINT_ACTOR_USER: &str = "사용자";
+pub const CONSTRAINT_ACTOR_ENGINE: &str = "Saturn";
+pub const CONSTRAINT_UNDOABLE: &str = "되돌릴 수 있음";
+pub const CONSTRAINT_HISTORY_EMPTY: &str = "제약 변경 내역이 없습니다";
+pub const CONSTRAINT_HISTORY_HINT: &str =
+    "/constraints undo <변경 번호>로 되돌릴 수 있는 변경 한 건을 되돌립니다";
+pub const CONSTRAINTS_LIST_FIRST: &str = "먼저 /constraints로 목록을 확인하세요";
+/// `{id}`는 사용자가 쓴 번호.
+pub const CONSTRAINTS_UNKNOWN: &str = "목록에 없는 번호입니다: {id}";
+pub const CONSTRAINTS_NOT_ACTIVE: &str = "유효 제약이 아니라 해제할 수 없습니다: {id}";
+pub const CONSTRAINTS_NOT_UNDOABLE: &str = "되돌릴 수 없는 변경입니다: {id}";
 pub const RESUME_TITLE: &str = "보류된 작업이 있습니다";
 pub const RESUME_CONFIRM: &str = "고른 작업 이어서";
 pub const PERMISSION_REASON: &str = "이유";
@@ -329,14 +378,11 @@ pub const PRUNE_ROWS: &str = "{n}행";
 
 /// `{provider}`와 `{model}` 자리는 호출하는 쪽이 채운다.
 pub const MODEL_PINNED: &str = "다음 입력부터 {provider} · {model} 모델로 보냅니다";
-pub const YES: &str = "예";
-pub const NO: &str = "아니오";
 pub const CANCEL: &str = "취소";
 
 // CLI 출력. `{이름}` 자리는 호출하는 쪽이 채운다.
 /// `{message}`는 engine이 준 원인.
 pub const CLI_ROUTER_KEY_REQUIRED: &str = "router 키가 필요합니다({message}): SATURN_KEY 환경 변수나 router.key.command 설정을 정한 뒤 다시 실행하세요";
-pub const CLI_CONFIRM_NEEDS_TERMINAL: &str = "확인을 받을 터미널이 없어 아무것도 바꾸지 않았습니다";
 pub const CLI_EXPORTED: &str = "판단 기록을 내보냈습니다: {path}";
 pub const CLI_PATH_UNRESOLVED: &str = "경로를 확인하지 못했습니다: {path}";
 pub const CLI_PRUNE_PLAN: &str = "지울 채팅 {chats}개 · 기록 {rows}행";
@@ -382,6 +428,10 @@ pub const CLI_CHILD_ARGS: &str = "하위 접속은 표준 입력의 글을 plain
 pub const CLI_CHILD_NO_ENGINE: &str =
     "떠 있는 engine에 접속하지 못했습니다. 하위 접속은 engine을 새로 띄우지 않습니다";
 pub const CLI_MODE_NEEDS_PASS: &str = "--mode는 에이전트 작업 안의 하위 접속에서만 쓸 수 있습니다";
+pub const CLI_EVIDENCE_NEEDS_PASS: &str = "evidence는 에이전트 작업 안에서만 쓸 수 있습니다. 출입증({pass} 변수)으로 그 채팅의 기록만 찾고 읽습니다";
+/// `{marker}`는 protocol의 `EVIDENCE_UNREACHABLE_MARKER`, `{what}`은 `read 13`이나 `search`. 앞 두 값은 engine이 읽으므로 번역하지 않는다.
+pub const CLI_EVIDENCE_UNREACHABLE: &str = "{marker} ({what}): engine에 닿지 못했습니다. 샌드박스가 파이프, `;`로 이어 붙인 명령 안의 접속을 막았을 수 있으니 `saturn evidence`를 다른 명령과 묶지 말고 한 명령으로 실행하세요. 결과를 줄이려면 --limit과 --offset을 쓰세요";
+pub const CLI_EVIDENCE_NO_ANSWER: &str = "engine이 근거 조회 결과 없이 답했습니다";
 pub const CLI_ENGINE_NOT_FOUND: &str =
     "{binary} 실행 파일을 saturn 옆이나 PATH에서 찾지 못했습니다";
 pub const CLI_ENGINE_START_FAILED: &str = "engine을 시작하지 못했습니다: {binary}";

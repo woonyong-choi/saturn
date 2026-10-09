@@ -16,12 +16,14 @@ use crate::processes::{ProcessSpec, StopOutcome};
 use crate::providers::test_support::Call;
 use crate::stop::StopDone;
 
+/// 멈춤이 알리는 일만. 요청 합계는 채팅이 쉬면 따라오는 알림이라 `request_summary` 시험이 본다.
 fn notices(seen: &[Notification]) -> Vec<ChatNotice> {
     seen.iter()
         .filter_map(|notification| match notification {
             Notification::ChatNotice { notice, .. } => Some(notice.clone()),
             _ => None,
         })
+        .filter(|notice| !matches!(notice, ChatNotice::RequestSummary { .. }))
         .collect()
 }
 

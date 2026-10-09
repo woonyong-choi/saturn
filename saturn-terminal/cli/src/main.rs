@@ -55,8 +55,21 @@ fn parse(lang: Lang) -> Result<(Cli, OpenMode), clap::Error> {
 }
 
 async fn run(lang: Lang, cli: Cli, mode: OpenMode) -> anyhow::Result<()> {
-    if let launch::Origin::Child { pass, socket } = launch::origin(lang)? {
-        return commands::child::run(lang, &cli, pass, &socket).await;
+    match (launch::origin(lang)?, &cli.command) {
+        (launch::Origin::Child { pass, socket }, Some(Command::Evidence { command })) => {
+            return commands::evidence::run(lang, command, &pass, &socket).await;
+        }
+        (launch::Origin::Child { pass, socket }, _) => {
+            return commands::child::run(lang, &cli, pass, &socket).await;
+        }
+        (launch::Origin::Outside, Some(Command::Evidence { .. })) => {
+            return Err(Exit::error(
+                ExitCode::Usage,
+                lang.tr(saturn_tui::i18n::CLI_EVIDENCE_NEEDS_PASS)
+                    .replace("{pass}", saturn_protocol::rpc::PASS_ENV),
+            ));
+        }
+        (launch::Origin::Outside, _) => {}
     }
     if cli.mode.is_some() {
         return Err(Exit::error(
@@ -77,5 +90,8 @@ async fn run(lang: Lang, cli: Cli, mode: OpenMode) -> anyhow::Result<()> {
         Some(Command::Prune(args)) => commands::prune::run(lang, &mut client, &args).await,
         Some(Command::Export(args)) => commands::export::run(lang, &mut client, &args).await,
         Some(Command::Usage(args)) => commands::usage::run(lang, &mut client, &args).await,
+        Some(Command::Evidence { .. }) => {
+            unreachable!("evidence is answered before the engine is opened")
+        }
     }
 }

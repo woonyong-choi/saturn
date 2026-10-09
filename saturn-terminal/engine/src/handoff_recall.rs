@@ -1,6 +1,6 @@
 //! 현재 질문과 겹치는 이전 session 원문을 제한된 크기로 복원한다.
 
-use saturn_core::sessions::ranking::{QueryTerms, RelevanceIndex};
+use saturn_core::sessions::ranking::{Candidate, QueryTerms, RelevanceIndex};
 
 use super::*;
 use crate::flow::LiveSession;
@@ -30,18 +30,20 @@ pub(crate) fn recall_evidence(
         .collect();
     let mut candidates = Vec::new();
     let query_terms = QueryTerms::new(query);
-    let turns = recent_turns(rows, &steers);
+    let turns = turns(rows, &steers);
     for turn in &turns {
-        let input = status_item("User", turn.status, &turn.input);
-        for (role, text) in std::iter::once(("User", input.as_str()))
-            .chain(turn.steers.iter().map(|text| ("User steer", text.as_str())))
-        {
+        for message in &turn.messages {
+            let role = match message.role {
+                Role::User => "User",
+                Role::Steer => "User steer",
+                Role::Assistant => continue,
+            };
             add_fragments(
                 &mut candidates,
                 turn.seq,
                 turn.stamp,
                 role,
-                text,
+                &message.text,
                 &query_terms,
             );
         }
@@ -58,12 +60,18 @@ pub(crate) fn recall_evidence(
     }
     let primary_count = candidates.len();
     for turn in &turns {
+        let answer: String = turn
+            .messages
+            .iter()
+            .filter(|message| message.role == Role::Assistant)
+            .map(|message| message.text.as_str())
+            .collect();
         add_fragments(
             &mut candidates,
             turn.seq,
             turn.stamp,
             "Agent",
-            &turn.answer,
+            &answer,
             &query_terms,
         );
     }
@@ -404,14 +412,13 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use saturn_protocol::ids::{AgentId, TaskId};
+    use saturn_protocol::ids::AgentId;
 
     fn record(input: &str, answer: &str) -> LedgerRow {
         LedgerRow {
             seq: LedgerSeq(17),
             run: RunId(3),
             session: SessionId(2),
-            task: TaskId(1),
             input: Some(input.to_owned()),
             end: Some(RunEnd::Completed),
             at_ms: 1,
@@ -568,6 +575,7 @@ mod tests {
             run: RunId(99),
             after: LedgerSeq(17),
             text: "secret deployment zone is mars".to_owned(),
+            is_amendment: false,
         };
         let evidence = recall_evidence(&rows, &[steer], "deployment zone", 500).unwrap();
         assert!(evidence.contains("antarctica"));

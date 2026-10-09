@@ -132,6 +132,56 @@ pub(crate) enum Command {
     Export(ExportArgs),
     /// 사용량 조회.
     Usage(UsageArgs),
+    /// 에이전트 작업 안에서 이 채팅의 기록을 찾고 패킷에서 생략된 기록의 원문을 다시 읽는다.
+    Evidence {
+        /// evidence 하위 명령.
+        #[command(subcommand)]
+        command: EvidenceCommand,
+    },
+}
+
+/// `evidence` 하위 명령.
+#[derive(Debug, Subcommand)]
+pub(crate) enum EvidenceCommand {
+    /// 검색어와 가까운 기록을 번호, 글자 수, 해시, 발췌와 함께 순위 순으로 보인다.
+    Search(EvidenceSearchArgs),
+    /// 기록 번호(`#41`의 41)의 원문을 읽는다.
+    Read(EvidenceReadArgs),
+}
+
+/// `evidence search` 인자.
+#[derive(Debug, Args)]
+pub(crate) struct EvidenceSearchArgs {
+    /// 찾을 말. 파일 이름, 명령, 오류 문구처럼 기록에 있는 글이 잘 맞는다. 따옴표 없이 여러 단어를 쓰면 공백 하나로 이어 한 검색어로 본다.
+    #[arg(value_name = "QUERY", required = true, num_args = 1..)]
+    pub(crate) query: Vec<String>,
+    /// 보일 후보 수. 50을 넘으면 50이다.
+    #[arg(long, value_name = "N", default_value_t = 10)]
+    pub(crate) limit: u32,
+}
+
+impl EvidenceSearchArgs {
+    /// 단어들을 공백 하나로 이은 검색어.
+    pub(crate) fn query(&self) -> String {
+        self.query.join(" ")
+    }
+}
+
+/// `evidence read` 인자.
+#[derive(Debug, Args)]
+pub(crate) struct EvidenceReadArgs {
+    /// 기록 번호.
+    #[arg(value_name = "ID")]
+    pub(crate) id: u64,
+    /// 검색 결과에서 본 해시. 그 뒤 원문이 바뀌었으면 거절한다.
+    #[arg(long, value_name = "HASH")]
+    pub(crate) hash: Option<String>,
+    /// 읽기 시작할 글자 위치.
+    #[arg(long, value_name = "N", default_value_t = 0)]
+    pub(crate) offset: u64,
+    /// 읽을 글자 수. 20000을 넘으면 20000이고, 더 있으면 다음 위치를 알린다.
+    #[arg(long, value_name = "N", default_value_t = 20_000)]
+    pub(crate) limit: u64,
 }
 
 /// `prune` 인자.
@@ -272,6 +322,46 @@ mod tests {
         assert_eq!(range(&["usage", "--week"]), UsageRange::Week);
         assert!(parse(&["usage", "--day", "--week"]).is_err());
         assert!(parse(&["usage", "--range", "week"]).is_err());
+    }
+
+    #[test]
+    fn evidence_search_joins_unquoted_words_into_one_query() {
+        let query = |args: &[&str]| match parse(args).unwrap().command {
+            Some(Command::Evidence {
+                command: EvidenceCommand::Search(args),
+            }) => (args.query(), args.limit),
+            other => panic!("not evidence search: {other:?}"),
+        };
+
+        assert_eq!(
+            query(&["evidence", "search", "deployment", "settings"]),
+            ("deployment settings".to_owned(), 10)
+        );
+        assert_eq!(
+            query(&["evidence", "search", "deployment settings", "--limit", "5"]),
+            ("deployment settings".to_owned(), 5)
+        );
+        assert_eq!(
+            query(&["evidence", "search", "--limit", "50", "a", "b", "c"]),
+            ("a b c".to_owned(), 50)
+        );
+        assert!(parse(&["evidence", "search"]).is_err());
+    }
+
+    #[test]
+    fn router_is_not_a_command() {
+        assert!(parse(&["router"]).is_err());
+        assert!(parse(&["router", "use", "v2"]).is_err());
+        assert!(parse(&["router", "use", "v2", "--yes"]).is_err());
+        assert!(parse(&["router", "list"]).is_err());
+        assert!(parse(&["train"]).is_err());
+    }
+
+    #[test]
+    fn router_train_is_not_a_command() {
+        assert!(parse(&["router", "train"]).is_err());
+        assert!(parse(&["router", "train", "--yes"]).is_err());
+        assert!(parse(&["router", "train", "--from", "v1"]).is_err());
     }
 
     #[test]

@@ -22,10 +22,13 @@ impl Engine {
     /// # Errors
     /// 끝나지 않은 실행을 읽지 못하면 `Store`. 실행 하나의 복구 실패는 경고로 남기고 나머지를 이어서 복구한다.
     pub(crate) async fn recover_after_crash(&mut self) -> Result<(), EngineError> {
+        // 결과를 받지 못한 패킷은 보냈는지 모르는 것으로 확정하고 다시 보내지 않는다
+        self.store.mark_unsettled_packets_unknown().await?;
         self.restore_recorded_holds().await?;
         for run in self.latest_unfinished_runs().await? {
             self.recover_run(run).await?;
         }
+        self.reconcile_task_exceptions().await;
         self.restore_constraint_asks().await?;
         self.restore_open_inputs().await
     }

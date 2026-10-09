@@ -78,6 +78,7 @@ Codex app-server 규약은 codex-cli 0.158.0의 `codex app-server generate-json-
 - 승인 요청(`item/commandExecution/requestApproval`, `item/fileChange/requestApproval`, `item/permissions/requestApproval`, 옛 이름 `execCommandApproval`·`applyPatchApproval`, `_meta.codex_approval_kind`가 있는 `mcpServer/elicitation/request`)은 요청의 JSON-RPC 번호를 숫자와 문자열 그대로 기억했다가 같은 번호로 응답한다. 번호는 `PermissionRequested`의 `request_id`로 올린다. 승인이 아닌 elicitation과 `item/tool/requestUserInput`은 `InputRequested`로 올리고 같은 방식으로 번호를 기억했다가 응답한다([입력 요청](input-requests.md)). 사용자 답을 provider 값으로 바꾸는 표는 [권한](permissions.md#허가-요청-창과-답)에 있다.
 - 채팅에 더한 폴더([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기))는 `thread/start`와 `thread/resume`의 `config`에 `sandbox_workspace_write.writable_roots`로 넘긴다(초안). app-server에는 `--add-dir`에 해당하는 인자가 없어서다. 작업 폴더 쓰기 샌드박스에서 이 값이 쓰기 가능 폴더가 된다(읽기 전용 샌드박스에서도 편집 승인 응답 뒤에는 효과가 있었다). `writable_roots`에 넣은 폴더 안 편집은 승인 응답 뒤 3/3회 적용됐다([실측](../experiments/provider-permission-real/report.md)). 값은 session을 열 때만 넘기고 열린 session에는 넣지 않아 다음 session부터 적용한다.
 - `thread/start`와 `thread/resume` 응답은 적용된 `approvalPolicy`, `approvalsReviewer`, `sandbox`(`type`과 `networkAccess`), `cwd`, `runtimeWorkspaceRoots`를 싣는다(6/6). `turn/start`의 `sandboxPolicy` 덮어쓰기는 적용됐지만(네트워크를 허용한 `curl` 3/3 성공) 덮어썼다는 알림은 없었다. `thread/settings/updated` 알림도 `turn/started`의 설정 값도 오지 않았고(0/3), 새 process의 `thread/resume`은 덮어쓰기 전 값(`networkAccess=false`)을 돌려줬다(3/3). `config/read`는 `thread/start` 인자를 반영하지 않는다(`approval_policy`, `sandbox_mode`가 비어 있음, 6/6). 그래서 적용 설정의 근거는 `thread/start`와 `thread/resume` 응답뿐이고 턴 단위 덮어쓰기는 보낸 Saturn만 안다([실측](../experiments/codex-provider-behavior/report.md)).
+- `thread/resume`이 `no rollout found`로 거절되면(첫 턴이 끝나기 전에 끊긴 thread는 기록이 없다) 어댑터가 같은 설정으로 `thread/start`를 한 번 보내 새 thread를 연다. 그 thread에는 받아 둔 입력이 없으므로 앞 입력을 다시 보내지 않는다. 열린 번호가 보관한 번호와 다르면 `engine`이 session 기록의 provider session 번호를 새 번호로 바꿔 저장해 다음 재개가 같은 오류를 반복하지 않는다. 다른 거절은 그대로 `NotSent`다.
 - `/review` 턴에서는 `turn/started` 알림의 턴 id가 `review/start` 응답과 `turn/completed`의 턴 id와 다르다(3/3). 서버가 활성으로 보는 id는 응답의 id였다. 코드는 `turn/started`의 id를 활성 턴으로 둔다(`codex/convert.rs:114`).
 - 권한은 Saturn 규칙을 전용 `CODEX_HOME`과 `thread/start` 인자로 넘기고([권한](permissions.md)), 사용자 설정은 `~/.codex/config.toml`의 루트와 선택된 프로필에서 `model_auto_compact_token_limit` 키가 있는지만 본다.
 
@@ -86,7 +87,9 @@ Claude Code 실행 인자는 Claude Code 2.1.285의 `--help`로 확인했다.
 - 새 session은 Saturn이 만든 UUID를 `--session-id`로 넘긴다. stream-json은 첫 입력 전에 `system/init`을 내지 않으므로 session id를 미리 알기 위해서다. 재개는 `--resume <id>`이고, 500ms(초안) 안에 프로그램이 끝나면 재개 실패로 본다.
 - 채팅에 더한 폴더는 `--add-dir <폴더>...` 하나로 넘긴다(Claude Code 2.1.285 `--help`의 여러 값 인자). 열린 session에는 넣지 않는다.
 - 권한은 `--permission-prompt-tool stdio`와 `--settings`의 `ask` 목록으로 Saturn 규칙에 넘기고([권한](permissions.md)), 안전망 `--autocompact` 값은 허용 범위 100000~1000000으로 맞춘다.
-- 사용자 설정은 `~/.claude/settings.json`, `<작업 폴더>/.claude/settings.json`, `settings.local.json`의 `autoCompactEnabled`와 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있는지만 본다(초안).
+- 사용자 폴더는 `CLAUDE_CONFIG_DIR`(비어 있지 않은 절대 경로)이 있으면 그 폴더, 없으면 `~/.claude`다. 설정 읽기, 직접 설치 탐색, 제외 명령 검사가 같은 함수로 이 폴더를 정하고, provider 프로세스는 같은 환경을 받아 같은 폴더를 읽는다. 상대 경로는 폴더를 정할 수 없어 session을 열지 않고 `NotSent`로 알린다. 폴더가 없거나 읽을 수 없으면 그 층의 파일이 없는 것으로 본다. 심볼릭 링크는 따라 읽는다.
+- Codex의 사용자 폴더(읽기용)는 `CODEX_HOME`(비어 있지 않은 절대 경로)이 있으면 그 폴더, 없으면 `HOME/.codex`다. 설정 읽기, 직접 설치 탐색, 전용 폴더 준비가 같은 함수로 이 폴더를 정한다. TUI가 `CODEX_HOME`을 `Attach`로 넘긴다. provider 프로세스가 받는 `CODEX_HOME`은 그 사용자 폴더가 아니라 engine이 만든 Saturn 전용 폴더(주입용)이고, 사용자 폴더는 읽기만 한다. 상대 경로는 폴더를 정할 수 없어 session을 열지 않고 `NotSent`로 알린다.
+- 사용자 설정은 사용자 폴더의 `settings.json`, `<작업 폴더>/.claude/settings.json`, `settings.local.json`의 `autoCompactEnabled`와 환경 변수 `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `DISABLE_COMPACT`가 있는지만 본다(초안).
 - 명령 목록에서 `clear`, `resume`, `exit`, `quit`를 뺀다(초안). 허가 요청은 `control_request`의 `can_use_tool`로 받고 `control_response`로 답한다. 요청의 `input`은 허용 응답의 `updatedInput`으로 되돌려 주려고 요청 번호와 함께 기억한다(`Bash`만 실측, [권한](permissions.md)).
 - 맥락 크기는 마지막 메인 `assistant` 메시지 `usage`의 입력, 캐시 읽기, 캐시 쓰기 합이다(초안).
 - interrupt 제어 응답은 10초, session 닫기 뒤 종료는 5초까지 기다리고, 넘으면 프로세스 묶음 중지로 넘어간다(초안).
@@ -102,7 +105,7 @@ Codex `turn/steer`는 실측에서 받아들여졌다([실측](../experiments/co
 | 없는 thread | `thread not found: id` |
 | 빈 `input` | `input must not be empty` |
 
-같은 두 턴에 보낸 `turn/start`는 `failed to submit turn input: ActiveTurnNotSteerable { turn_kind: Review }`(코드 -32603)로 거절돼 구조화된 정보가 없다. 지금은 Codex와 Claude 모두 어댑터의 `STEER_VERIFIED`가 거짓이라 끼워 넣기를 대기로 바꿔 처리한다([#5](https://github.com/woonyong-choi/saturn/issues/5)). 이때 TUI는 `바로 반영 준비 중`을 보인다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다. 입력을 어디로 보낼지는 [입력 처리](input-handling.md)가 정한다.
+같은 두 턴에 보낸 `turn/start`는 `failed to submit turn input: ActiveTurnNotSteerable { turn_kind: Review }`(코드 -32603)로 거절돼 구조화된 정보가 없다. 끼워 넣기를 켠 실험 빌드로 Saturn을 거쳐 재 보았다([실험](../experiments/steer-reject-paths/report.md)). 검토 턴(3/3)과 수동 압축 턴(18/18)에 끼워 넣은 입력은 `NotSent`로 대기열 맨 앞에 돌아가 그 턴이 끝난 뒤 새 턴으로 한 번 실행됐다. 검토 턴의 거절 문구는 `cannot steer a review turn`이 아니라 틀린 `expectedTurnId` 문구였다. 어댑터가 `turn/started`의 id를 활성 id로 쓰는데 검토 턴에서는 서버의 활성 id와 달라서다. 압축 요청이 받아들여진 직후 `turn/started`가 오기 전에 끼워 넣으면 활성 턴 없음으로 보고 새 턴으로 보내 `turn/start`가 거절되는 경로가 있고, 이때 입력이 거절로 끝난 예비 실행이 1건 있었다(정식 15회는 재현되지 않음, [#595](https://github.com/woonyong-choi/saturn/issues/595)로 추적). 지금은 Codex와 Claude 모두 어댑터의 `STEER_VERIFIED`가 거짓이라 끼워 넣기를 대기로 바꿔 처리한다([#5](https://github.com/woonyong-choi/saturn/issues/5)). 이때 TUI는 `바로 반영 준비 중`을 보인다. 사용자가 바로 반영되지 않는 이유를 알게 하기 위해서다. 입력을 어디로 보낼지는 [입력 처리](input-handling.md)가 정한다.
 
 ### provider 계층과 어댑터
 
@@ -241,7 +244,7 @@ provider 명령 목록에서 TUI 전용 명령과 Saturn session 명령이 대�
 
 ### 원시 이벤트 관측 기록
 
-provider가 어떤 순서로 무엇을 보내는지 실제 실행에서 보려는 디버그 전용 기록이다. 변환한 이벤트는 기록 저장소에 남지만, 변환하지 않고 버린 메시지나 변환 전의 순서는 남지 않는다. 예를 들어 Codex가 자식 등록 전에 `thread/closed`나 승인 요청을 보내는지([#438](https://github.com/woonyong-choi/saturn/issues/438))는 이 기록 없이 알 수 없다. provider 응답 원문을 run별로 모으는 기능(원시 기록, [#461](https://github.com/woonyong-choi/saturn/issues/461))은 무엇을 원시 기록으로 볼지와 귀속 정책이 정해지지 않아 이 기록의 범위가 아니다. 이 기록은 값을 남기지 않아 그 기능을 대신하지 않는다.
+provider가 어떤 순서로 무엇을 보내는지 실제 실행에서 보려는 디버그 전용 기록이다. 변환한 이벤트는 기록 저장소에 남지만, 변환하지 않고 버린 메시지나 변환 전의 순서는 남지 않는다. 예를 들어 Codex가 자식 등록 전에 `thread/closed`나 승인 요청을 보내는지([#438](https://github.com/woonyong-choi/saturn/issues/438))는 이 기록 없이 알 수 없다. provider 응답 원문을 run별로 모으는 일은 [원시 응답 수집](records.md#provider-원시-응답-수집)이 맡고, 이 기록은 값을 남기지 않아 그 일을 대신하지 않는다. 두 기록은 같은 줄을 읽는 자리에서 나오지만 따로 켜고 끈다. 원시 응답 수집은 항상 켜져 있다.
 
 1. 사용자가 사용자 설정에 `debug.provider_events = true`를 둔다. 기본은 꺼짐이고 폴더 층에서는 바꿀 수 없다([설정](settings.md)).
 2. provider 연결이 메시지 하나를 받을 때마다 어댑터가 그 메시지의 방법 이름과 자리(요청, 알림, 응답, 줄)를 정해 공통 기록기에 넘긴다.
@@ -278,21 +281,26 @@ provider가 어떤 순서로 무엇을 보내는지 실제 실행에서 보려�
 - `sessions` 기록은 session을 열 때 고른 모델(`model`)을 남긴다. 고르지 않았으면 provider 기본값이라 비어 있다. 입력의 모델이 열린 메인의 모델과 다르면 그 메인을 쓰지 않고 새 메인 session을 열어 패킷을 넘기고, 떠나는 메인은 보관한다([provider 전환](#provider-전환)). 다른 모델로 연 보관 session은 되돌아갈 때도 재개하지 않는다. 열린 session의 모델을 provider 안에서 바꾸는 방식은 쓰지 않는다. session 기록의 모델과 실제 모델이 어긋나지 않게 하기 위해서다. 같은 provider 안에서 모델만 바뀐 교체는 provider 전환 안내 줄을 남기지 않는다.
 - 맥락 정리로 여는 새 session은 이전 session의 모델을 이어 쓴다.
 - provider의 `/model` 명령은 provider 명령 목록에서 빼고 Saturn `/model`로만 처리한다. provider가 몰래 모델을 바꿔 기록과 어긋나는 일을 막기 위해서다. 모델을 고르지 않은 채 provider 설정이나 환경으로 정해진 모델은 막지 않고 추적만 한다(위 provider 실행 절).
-- router의 `target_model` 후보는 이 목록과 같다([router](router.md)). 오토 모드에서만 묻고, 기본 모델과 선택 방식은 [기본 모델과 선택 방식](#기본-모델과-선택-방식)에 있다. engine은 연결을 만들 때 받아 둔 목록을 후보로 넣고, router가 새 작업으로 판단한 입력에는 고른 모델을 그 입력의 모델로 적용하고, 이어 가기와 끼워 넣기는 현재 모델을 유지한다. 목록을 받기 전이거나 후보 밖 값이면 현재 모델로 보내고, 모델이 바뀌면 위 규칙대로 새 메인 session을 연다.
+- router의 `target_model` 후보는 이 목록과 같다([router](router.md)). 오토 모드(실험 옵션, 기본은 매뉴얼)에서만 묻고, 기본 모델과 선택 방식은 [기본 모델과 선택 방식](#기본-모델과-선택-방식)에 있다. engine은 연결을 만들 때 받아 둔 목록을 후보로 넣고, router가 새 작업으로 판단한 입력에는 고른 모델을 그 입력의 모델로 적용하고, 이어 가기와 끼워 넣기는 현재 모델을 유지한다. 목록을 받기 전이거나 후보 밖 값이면 현재 모델로 보내고, 모델이 바뀌면 위 규칙대로 새 메인 session을 연다.
 
 ### 기본 모델과 선택 방식
 
-새 작업을 어느 모델로 보낼지는 기본 모델(`model.default`)과 선택 방식(`model.mode`) 둘이 정한다([설정](settings.md#설정-키), [#338](https://github.com/woonyong-choi/saturn/issues/338) 결정). 기본 모델은 `<provider>/<model>` 글이고, 선택 방식은 오토(`auto`, 기본)와 매뉴얼(`manual`)이다.
+새 작업을 어느 모델로 보낼지는 기본 모델(`model.default`)과 선택 방식(`model.mode`) 둘이 정한다([설정](settings.md#설정-키), [#338](https://github.com/woonyong-choi/saturn/issues/338) 결정). 기본 모델은 `<provider>/<model>` 글이고, 선택 방식은 매뉴얼(`manual`, 기본)과 오토(`auto`)다. 오토는 router가 새 작업의 모델을 고르는 실험 옵션이라 사용자가 명시해야 켜지고, 모델 선택 순효과 실험([#542](https://github.com/woonyong-choi/saturn/issues/542))을 통과하기 전에는 기본으로 켜지 않는다.
 
 새 작업으로 판단된 입력의 모델은 아래 순서에서 처음 나오는 값이다. 이어 가기와 끼워 넣기는 이 순서를 타지 않고 현재 모델을 유지한다. 단 채팅에 이어 갈 메인 session이 없으면(router 판단이 실패한 첫 입력이 그렇다) 유지할 현재 모델이 없으므로 이어 가기와 끼워 넣기도 `/model` 고정, 없으면 기본 모델로 연다(router의 `target_model` 선택은 이어 가기에 쓰지 않는다). 이미 열린 메인이 있으면 판단이 실패해도 그 모델을 유지하고 기본 모델로 바꾸지 않는다([#506](https://github.com/woonyong-choi/saturn/issues/506)).
 
 | 순서 | 값 | 오토 | 매뉴얼 |
 |---|---|---|---|
 | 1 | `/model`로 채팅에 고정한 모델 | 사용 | 사용 |
-| 2 | router `target_model`이 고른 모델(확신도 0.6 이상, 후보 안) | 사용 | 확인 생략 |
-| 3 | 기본 모델 | 사용 | 사용 |
-| 4 | provider 기본값(`--model`을 넘기지 않음) | 기본 모델이 없을 때 | 기본 모델이 없을 때 |
+| 2 | router `target_model`이 고른 모델(확신도 0.6 이상, 후보 안, provider가 지금 알린 목록에 있는 모델) | 사용 | 묻지 않음 |
+| 3 | 사용자 선호(`model.prefer`) 중 품질을 확정한 후보 | 사용 | 사용 안 함 |
+| 4 | 기본 모델 | 사용 | 사용 |
+| 5 | provider 기본값(`--model`을 넘기지 않음) | 기본 모델이 없을 때 | 기본 모델이 없을 때 |
 
+- 명시 고정(`/model`)과 선호(`model.prefer`)는 다르다. 고정은 그 채팅의 모든 새 작업에 붙고 router, 선호, 품질 자료가 덮지 못한다. 선호는 강제가 아니라 [모델 평가 근거 목록](model-evidence.md)에서 품질을 확정한 후보 안의 우선순위이고, 오토 모드에서 router가 고르지 못했을 때만 기본 모델보다 앞선다. 확정하지 못한 선호(목록에 없음, 근거 부족, revision 불명)는 쓰지 않고 판단 기록에 건너뛴 이유를 남긴다. 지금은 provider가 모델의 revision을 알려 주지 않아 품질을 확정한 후보가 없으므로 선호는 기록만 남는다.
+- router가 고른 모델이 적용 직전에 provider가 알린 모델 목록에 없으면 지원하지 않는 선택(`unsupported`)으로 기록하고 선호, 기본 모델 순으로 넘어간다. 어댑터가 지원 목록으로 알리는 것은 모델 이름뿐이라 추론 깊이는 고르지 않고 provider 기본값을 따른다. 추론 깊이 조합은 어댑터가 지원 조합을 알려 줄 때 더한다.
+- 설정 `model.candidates`(실험 옵션, 기본은 비어 있음)를 정하면 router에 물을 후보와 그림자 후보를 그 목록 안의 모델로 제한하고, 목록 밖 모델을 router가 골라도 지원하지 않는 선택(`unsupported`)으로 기록한다. provider가 알린 모델이 아니면 목록에 있어도 후보가 아니다.
+- 정한 규칙(`pinned`, `router`, `preference`, `default`, `current`)과 router 선택을 쓰지 못한 이유(`manual`, `no-candidates`, `router-failed`, `invalid`, `fallback`, `unsupported`), 건너뛴 선호, 후보 지문, 정책 지문을 판단 기록과 함께 남긴다([기록 저장과 보존](records.md#판단-기록)). 판단이 어긋나 적용하지 않았으면 적용하지 않은 것으로 남긴다.
 - 매뉴얼은 `target_model` 질문만 뺀다. `keep_current` 같은 관계 판단은 오토와 똑같이 묻는다. 매뉴얼에서도 `/model` 뒤 입력이 모두 대기해 병렬 작업이 막히는 일을 피하기 위해서다([router](router.md)).
 - 기본 모델과 선택 방식은 입력을 접수할 때 고정한 설정 번호의 값을 쓴다. 설정 파일을 직접 고치면 설정 파일 감시가 병합하고 붙은 TUI에 `ModelSettings`로 알린다. 알림은 접속마다 그 접속의 실행 `-c`를 얹은 설정으로 만들고, 같은 값은 그 접속에 다시 알리지 않는다. 같은 채팅의 다른 접속에는 그 접속의 설정으로 따로 알린다.
 - engine은 채팅에 붙을 때 `ModelSettings`(`default`, `mode`)를 보낸다. `default`가 `None`이면 아직 고르지 않은 것이다.
@@ -319,11 +327,12 @@ session 교체는 같은 채팅·역할 안에서 턴이 끝난 경계에만 한
 
 - 메인 에이전트 번호는 session을 바꿔도 같게 이어 간다. 대기열의 작업이 에이전트 번호로 session을 가리키므로 번호가 달라지면 이어 갈 입력이 보낼 곳을 잃기 때문이다.
 - 각 session은 자기 provider가 낸 이벤트를 받은 것으로 친다. 이벤트를 기록할 때마다 그 session의 전달 기록 번호를 올리고 턴이 끝날 때 저장한다. 그래서 돌아온 session에는 자기가 낸 결과가 다시 붙지 않는다.
-- 패킷은 provider를 바꾸는 입력이거나 이어 갈 메인이 없는 채팅의 첫 턴(provider에는 턴 하나)으로 보낸다. 그 턴의 완료 신호는 작업 끝이 아니다. 입력이 보낸 턴의 완료만 작업 끝으로 보기 위해서다. 그 턴의 답(완료 신호 전의 메인 글)은 `engine`이 `PacketReply`로 바꿔 입력이 연 실행에 함께 기록하고, 화면의 답과 다음 패킷의 답에는 넣지 않는다. 사용자 입력의 답이 아닌 "알겠습니다" 같은 글이 입력 턴의 답과 이어 붙으면 어디까지가 입력의 답인지 알 수 없고, 같은 글이 다음 패킷에 답으로 실리기 때문이다. 패킷 턴의 도구 호출은 실제로 한 일이라 그대로 표시한다. 패킷 턴은 이미 끝난 입력의 작업을 다시 하지 않는다. 패킷 맨 앞의 지시문이 기록이 요청이 아니라고 알리고 도구 호출과 파일 변경 없이 기다리게 하며, 입력 항목마다 끝남, 진행 중, 결과 모름 상태를 적는다([맥락 정리](context-management.md#패킷-구성), [#383](https://github.com/woonyong-choi/saturn/issues/383)).
+- 패킷은 provider를 바꾸는 입력이거나 이어 갈 메인이 없는 채팅의 첫 턴(provider에는 턴 하나)으로 보낸다. 그 턴의 완료 신호는 작업 끝이 아니다. 입력이 보낸 턴의 완료만 작업 끝으로 보기 위해서다. 그 턴의 답(완료 신호 전의 메인 글)은 `engine`이 `PacketReply`로 바꿔 입력이 연 실행에 함께 기록하고, 화면의 답과 다음 패킷의 답에는 넣지 않는다. 사용자 입력의 답이 아닌 "알겠습니다" 같은 글이 입력 턴의 답과 이어 붙으면 어디까지가 입력의 답인지 알 수 없고, 같은 글이 다음 패킷에 답으로 실리기 때문이다. 패킷 턴의 도구 호출은 실제로 한 일이라 그대로 보인다. 패킷 턴은 이미 끝난 입력의 작업을 다시 하지 않는다. 패킷 맨 앞의 지시문이 기록이 요청이 아니라고 알리고 도구 호출과 파일 변경 없이 기다리게 하며, 입력 항목마다 끝남, 진행 중, 결과 모름 상태를 적는다([맥락 정리](context-management.md#패킷-구성), [#383](https://github.com/woonyong-choi/saturn/issues/383)).
+- 입력 없이 보내는 패킷(맥락 정리로 새 session을 여는 `Restart`)의 턴은 첫 이벤트가 입력 없는 실행을 연다. 그 턴의 완료 신호가 오면 이 실행을 `Completed`로 끝내고 session을 유휴로 돌린다. 끝내지 않으면 실행이 열린 채 남아 `Context compacted · Continuing` 뒤에서 화면이 멈추고 입력의 완료를 기다리는 쪽이 시간 초과가 된다([#583](https://github.com/woonyong-choi/saturn/issues/583), #7 `claude-codex` 24건 중 5건). 입력이 연 실행(전환 패킷)은 그 입력의 턴 끝이 끝낸다.
 - provider는 진행 중인 턴에 새 턴 입력이 오면 그 턴에 합쳐 완료 신호를 하나만 보낸다(Claude Code 2.1.288과 codex-cli 0.158.0에서 실측, [#318](https://github.com/woonyong-choi/saturn/issues/318)). 합쳐지면 입력의 완료 신호가 없어 작업이 끝나지 않으므로, provider 연결은 진행 중인 턴이 있을 때 받은 새 턴 입력을 줄 세워 두었다가 앞 턴의 완료 신호를 `engine`에 전달한 뒤 하나씩 보낸다. 패킷 턴과 입력 턴이 각자 완료 신호를 내므로 패킷 몫으로 센 신호 하나가 입력의 완료를 가리지 않는다. 끼워 넣기(`steer`)는 합치는 것이 목적이라 줄 세우지 않고, 멈춤은 줄 선 입력을 버린다. 줄 선 입력을 보내지 못하면 그 에이전트에 `StreamLost`를 알린다.
 - 취소 안전: 이벤트 수신은 이벤트를 꺼내기만 하고 응답을 기다리는 일을 하지 않는다. `engine`은 수신 Future를 `select`에서 언제든 버리므로, 응답을 기다리는 줄 선 입력의 전송은 `engine`이 완료 이벤트를 처리한 뒤 가지 본문에서 끝까지 기다리며 부른다. 버려진 수신이 이미 꺼낸 완료 이벤트와 전송을 함께 잃는 일([#324](https://github.com/woonyong-choi/saturn/issues/324))을 막기 위해서다.
 - 떠나는 메인은 새 session이 열린 뒤에 보관한다. 새 session을 열지 못하면 떠나는 메인은 그대로 열려 있다. provider 둘 다 열리지 않은 채팅이 생기는 일을 막기 위해서다.
-- 패킷의 고정 구역이 `P_hard`도 넘으면 새 session을 열지 않고 입력을 작업과 함께 보류하며 TUI에 `고정 제약이 길어 맥락 정리를 미룹니다`와 제약 목록을 보인다. 사용자가 `/continue`를 하면 다시 판정한다.
+- 패킷의 고정 구역이 `P_send`도 넘으면 새 session을 열지 않고 입력을 작업과 함께 보류하며 TUI에 `인계 기록이 길어 전환을 미룹니다`와 제약 목록을 보인다. 사용자가 `/continue`를 하면 다시 판정한다.
 - 패킷을 provider가 맥락 한도 초과로 거절하면 경쟁 구역을 줄여 한 번만 다시 보낸다. 줄인 패킷도 거절되거나 고정 구역만으로 넘치면 입력을 보류하고 `맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요`를 보인다([맥락 정리](context-management.md#패킷-구성)).
 - 맥락 정리로 여는 새 session의 패킷도 같은 규칙으로 줄여 한 번만 다시 보낸다. 줄인 패킷도 거절되면 보류할 입력이 없어 옛 session을 그대로 두고 `맥락 한도 초과로 멈춤` 알림만 보인다.
 - 열린 메인이 있으면 그 메인이 이어 갈 session이다. 보관 session이 더 나중에 등록돼도 열린 메인을 먼저 본다. provider를 오간 뒤 등록 순서와 열린 순서가 다르기 때문이다.
@@ -405,18 +414,29 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 
 시작 상태는 메모리에만 있다. `engine`이 죽으면 그 실행의 시작 상태를 잃으므로 크래시 복구의 확인 입력에는 목록이 없고 에이전트가 파일 상태를 직접 확인한다. 같은 폴더를 사용자나 다른 프로그램이 같은 시간에 고치면 구분하지 못하고 그 파일도 목록에 든다.
 
-### 완료 근거
+### 완료 검사 근거
 
-코드 수정 작업에서 provider가 완료를 말해도 검사가 뒤따르지 않으면 Saturn은 검증된 완료로 표시하지 않는다. [Canny의 검사 명령 판정](https://github.com/qkal/Canny/blob/f2c5e53779445d60dc4a09d2dbced2308fccb820/src/checks.ts)은 마지막 수정 뒤 성공한 검사가 있는지 확인하는 선례다. Saturn에서는 `end_task`가 이미 수집하는 `run_changes`와 `ProviderEvent::ToolResult`를 재사용한다. 별도 hook, 파일 감시기, 중복 실행 기록은 만들지 않는다.
+작업이 끝났다는 상태(`Done`)와 마지막 수정 뒤 검사가 통과했는지는 따로 보인다. `Done`은 트리가 유휴가 됐다는 뜻일 뿐 결과가 맞다는 뜻이 아니기 때문이다. 실행을 `Completed`로 닫을 때 수정 파일 목록([수정 파일 목록](#수정-파일-목록))과 그 실행의 기록된 이벤트로 근거를 가려 `ChatNotice::CompletionEvidence`로 알리고 `runs`에 남긴다. 검사를 새로 실행하거나, 검사가 통과하지 않았다고 `Stop`을 거부하거나, 입력을 다시 보내지 않는다. 멈춘 실행과 보내기 전에 실패한 실행에는 붙이지 않는다.
 
-1. `engine`은 트리 유휴 경계에서 `settle_changes`가 반환한 수정 목록과 그 실행의 도구 이벤트를 `core`의 순수 판정 함수에 건넨다. 자식이 남았거나 등록 순서를 확정하지 못했으면 검증된 완료를 표시하지 않는다([#438](https://github.com/woonyong-choi/saturn/issues/438)).
-2. 시작·종료 스냅샷이 모두 완전하고 수정이 없을 때만 `not_applicable`로 둔다. 시작 상태 누락, 부분 목록, 이벤트 읽기 실패는 `unverified`다. 수정이 있으면 마지막으로 관측한 수정 뒤에 시작해 끝난 명시적 검사 명령 중 종료 코드 0인 것을 찾는다. 검사 도중 수정, 셸이나 자식 프로세스의 수정 순서 불명, 검사 뒤 추가 수정도 `unverified`다.
-3. `TaskState::Done`은 provider 실행이 끝났다는 뜻으로 유지한다. 별도 `verification_status`를 `verified`, `unverified`, `not_applicable` 중 하나로 기록·표시하고, `unverified`에서는 `검사 미확인`을 함께 보인다. provider 답의 완료 주장을 Saturn의 검증 표시로 바꾸지 않는다. 검사를 자동 재실행하거나 원래 입력을 다시 보내지 않는다.
-4. engine 종료 또는 연결 손실로 실행 결과를 모르면 기존 `NeedsCheck`를 우선한다. 소유한 provider와 자식 프로세스가 정리됐다는 사실을 확인하기 전에는 정상 종료를 기록하지 않는다([#525](https://github.com/woonyong-choi/saturn/issues/525)). 키 보호 결함([#423](https://github.com/woonyong-choi/saturn/issues/423))은 검증 상태와 별개로 막아야 하며, 증거 수집을 이유로 비밀값을 기록하지 않는다.
+판정은 `core`의 `sessions::completion`이 가진 순수 함수이고 위에서부터 먼저 걸리는 것이 답이다.
 
-검사 명령은 Saturn의 프로젝트 설정에 명시된 실행 파일·인자·작업 폴더와 대응할 때만 인정한다. 설정이 없으면 명령을 추측하지 않고 `unverified`로 둔다. `echo cargo test`, 실패를 숨기는 `|| true`, 종료 코드를 가리는 파이프나 복합 셸은 성공 검사로 세지 않는다. 어댑터가 실제 검사 프로세스의 종료 코드를 구별하지 못해도 같은 규칙이다. 검사 대상이 전체 수정 범위에 충분한지는 자동으로 증명하지 못하므로 화면에는 `검사 통과 확인`과 확인한 명령을 보인다. `verified`는 작업의 정답 판정이 아니다.
+| 순서 | 조건 | 판정 |
+|---|---|---|
+| 1 | 실행 시작 때 폴더 상태가 없어 목록을 만들지 못했다 | 미확인, `Unmeasured` |
+| 2 | 바뀐 파일이 없고 훑기가 부분이 아니다 | 해당 없음 |
+| 3 | 훑기가 부분이다 | 미확인, `PartialSnapshot` |
+| 4 | 끝나지 않았거나 끊긴 하위 에이전트가 이벤트에 남아 있다 | 미확인, `TreeNotIdle` |
+| 5 | 인정되는 검사 명령이 설정에 없다 | 미확인, `NotChecked` |
+| 6 | 이벤트에 없는 수정이 있는데 파일을 바꿀 수 있는 셸 명령 이벤트가 하나도 없어 수정과 검사의 순서를 알 수 없다 | 미확인, `OrderUnknown` |
+| 7 | 설정한 검사마다 마지막 실행을 본다. 결과나 종료 코드가 없으면 `NotChecked`, 그 실행과 겹치는 수정 호출이 있으면 `EditedDuringCheck`, 그 뒤에 수정 호출이 있으면 `NotChecked`, 종료 코드가 0이 아니면 `CheckFailed` | 하나라도 걸리면 미확인(`CheckFailed`, `EditedDuringCheck`, `NotChecked` 순으로 앞선 까닭), 모두 통과하면 확인됨 |
 
-`turn/steer`로 들어온 뒤늦은 수정도 같은 실행의 마지막 수정으로 세며, Codex 끼워 넣기의 실제 순서는 [#5](https://github.com/woonyong-choi/saturn/issues/5)에서 확인한다. 현재 코드는 `end_task`가 수정 목록을 버리고 `Done`을 보낸다. [#530](https://github.com/woonyong-choi/saturn/issues/530)이 이 설계의 구현 단위다. Canny처럼 provider의 Stop을 거부해 검사를 강제하는 방식과 달리, 이 단계는 Saturn의 검증 표시를 제어한다. 자동 검사·재실행은 별도 사용자 권한과 종료 제어가 필요하므로 포함하지 않는다.
+- 검사 명령은 설정 `completion.checks`(문자열 목록)에 적는다. 도구 호출이 단순한 셸 명령 하나이고, 낱말 단위로 정리한 앞부분이 설정한 명령과 같을 때만 그 검사로 본다. 인자는 판정하지 않는다(`cargo test --workspace`는 `cargo test`로 본다). 파이프, `&&`, `||`, `;`, `&`, 리디렉션, 명령 치환, 괄호가 있으면 앞 명령의 실패를 숨길 수 있으므로 인정하지 않는다. 설정한 명령 자체가 이런 문법이거나 첫 낱말이 `echo`, `printf`, `true`, `false`, `:`, `exit`, `test`, `[`이면 설정이 없는 것으로 본다.
+- 수정 호출은 파일 수정 도구(`FileEdit`)와, 인정한 검사와 읽기 전용 목록(`ls`, `cat`, `rg`, `grep`, `git status`, `git diff`, `git log`)이 아닌 모든 셸 명령이다. 호출의 시작과 끝은 기록 번호로 비교한다. 결과 이벤트가 없는 셸 명령은 끝나지 않은 것으로, 결과 이벤트가 없는 파일 수정 도구는 시작과 같은 때에 끝난 것으로 본다. 시각이 아니라 기록 번호만 순서의 근거로 쓰므로 시각을 몰라도 같은 답이 난다.
+- 종료 코드는 정규화된 `ToolResult.exit_code`가 코드로 끝난 셸 명령에만 있다. 신호로 끝났거나 코드를 알 수 없으면 근거가 아니다. Claude와 Codex는 같은 `ToolCall`, `ToolResult` 값을 내므로 같은 규칙으로 판정한다.
+- 확인됨이면 근거로 쓴 검사 결과 이벤트의 기록 번호(채팅 안의 `events.seq`)를 함께 알린다.
+- 근거는 `runs`의 `evidence_state`, `evidence_reason`, `evidence_events`에 남고([기록 저장과 보존](records.md#실행별-완료-검사-근거)), TUI를 다시 붙이면 기록 조회가 같은 줄을 작업 끝 알림 뒤에 되살린다.
+- 자식 에이전트 결과는 부모의 근거로 세지 않는다. 하위 에이전트가 남아 있으면 확인됨이 아니다.
+- 알려진 한계: 검사 명령의 인자(`--help`, `--no-run` 같은 것)는 판정하지 않는다. 같은 폴더를 사용자나 다른 프로그램이 같은 시간에 고친 파일은 수정 목록에 들지만 순서를 가릴 수 없다.
 
 ### subagent 트리 추적
 
@@ -442,7 +462,7 @@ provider를 바꿀 때 대상 provider에 보관한 메인 session이 있으면 
 
 누적 범위의 직전 누적은 같은 session에서 같은 에이전트와 subagent의 앞 누적 보고에서 칸마다 찾는다. 바로 앞 보고에 그 칸이 없었거나 두 보고 사이에 부모 턴이 둘 이상 끝났으면 차이가 여러 턴에 걸친다고 표시한다. 누적이 직전보다 작으면 그 칸의 턴 값은 NULL로 두고 여러 턴에 걸친다고 표시한다. 계산할 수 없는 턴 값을 지어내지 않기 위해서다. `tree-total`은 그 턴의 트리 합계이므로 턴 범위처럼 그대로 쓴다.
 
-사용량 보고는 원값과 범위를 그대로 넘기고 0으로 채우지 않는다. Codex session 누적을 그대로 더하면 중복 계산되기 때문이다. provider가 보고하지 않은 값은 NULL로 둔다. 지어낸 값을 막기 위해서다. 캐시 토큰은 Claude `cache_read_input_tokens`와 `cache_creation_input_tokens`, Codex `cachedInputTokens`와 `cacheWriteInputTokens`를 각각 캐시 읽기와 캐시 쓰기 열에 기록한다. Claude `result.usage`는 그 턴의 메인 에이전트 사용량(`main-turn`)이다. 한 process의 두 번째 턴 값은 누적이 아니고 하위 에이전트 사용량도 들어 있지 않다. `result.modelUsage`와 `total_cost_usd`는 session 시작부터의 누적이면서 하위 에이전트를 포함한다. 메시지 줄의 `usage`는 입력 3칸이 `result.usage`와 맞지만 출력 토큰은 스트리밍 도중 값이라 맞지 않으므로 턴 값은 `result`에서만 읽는다(Claude Code 2.1.288, [실험](../experiments/claude-provider-behavior/report.md)). 현재 구현은 `claude/convert.rs` 78~90행에서 `result.usage`를 `main-turn`으로 기록하고 있어 범위가 맞다. 하위 에이전트 사용량은 `modelUsage` 누적의 차이로만 알 수 있고 아직 읽지 않는다.
+사용량 보고는 원값과 범위를 그대로 넘기고 0으로 채우지 않는다. Codex session 누적을 그대로 더하면 중복 계산되기 때문이다. provider가 보고하지 않은 값은 NULL로 둔다. 지어낸 값을 막기 위해서다. 캐시 토큰은 Claude `cache_read_input_tokens`와 `cache_creation_input_tokens`, Codex `cachedInputTokens`와 `cacheWriteInputTokens`를 각각 캐시 읽기와 캐시 쓰기 열에 기록한다. Codex `reasoningOutputTokens`는 `outputTokens`에 이미 들어 있는 값이다. OpenAI 문서는 추론 토큰이 출력 토큰으로 계산된다고 하고, Codex의 `totalTokens`도 입력과 출력의 합이어서 추론을 따로 더하지 않는다. 그래서 추론 열은 출력의 내역으로만 보이고 어떤 토큰 합계에도 더하지 않는다. Claude `result.usage`는 그 턴의 메인 에이전트 사용량(`main-turn`)이다. 한 process의 두 번째 턴 값은 누적이 아니고 하위 에이전트 사용량도 들어 있지 않다. `result.modelUsage`와 `total_cost_usd`는 session 시작부터의 누적이면서 하위 에이전트를 포함한다. 메시지 줄의 `usage`는 입력 3칸이 `result.usage`와 맞지만 출력 토큰은 스트리밍 도중 값이라 맞지 않으므로 턴 값은 `result`에서만 읽는다(Claude Code 2.1.288, [실험](../experiments/claude-provider-behavior/report.md)). 현재 구현은 `claude/convert.rs` 78~90행에서 `result.usage`를 `main-turn`으로 기록하고 있어 범위가 맞다. 하위 에이전트 사용량은 `modelUsage` 누적의 차이로만 알 수 있고 아직 읽지 않는다.
 
 ### 트리 전체 중지
 
@@ -573,11 +593,12 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | provider 전환에서 패킷을 만들고 session별 전달 기록 번호를 지킨다. | `saturn-terminal/engine/src/lifecycle/switch_round_trip.rs`의 `codex_to_claude_to_codex_hands_over_without_duplicates_or_gaps`, `switch_tells_the_user_which_provider_took_over`, `saturn-terminal/engine/src/handoff.rs`의 `packet_carries_input_answer_and_tool_result_with_session_title` |
 | 패킷 턴은 끝난 입력의 작업을 다시 실행하지 않는다. | `saturn-terminal/engine/src/handoff.rs`의 `finished_input_is_marked_finished_and_never_an_open_item`, 실제 Codex와 Claude로 `scripts/e2e/README.md` 단계 j |
 | 패킷으로 연 턴의 완료는 작업 끝이 아니다. | `saturn-terminal/engine/src/lifecycle/switch_round_trip.rs`의 `packet_turn_completion_does_not_end_the_task_on_the_new_provider`, `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `packet_turn_completion_is_not_the_end_of_the_task` |
+| 입력 없이 보낸 `Restart` 패킷의 턴이 끝나면 그 턴이 연 실행도 끝난다. | `saturn-terminal/engine/src/lifecycle/turn_end.rs`의 `context_over_the_threshold_replaces_the_session_only_at_the_turn_boundary`(패킷 턴이 도구 호출로 시작해 답하고 끝난 뒤 열린 실행이 없다) |
 | 패킷 턴에 대한 provider의 답은 기록에 `PacketReply`로 남기고, 화면의 답과 다음 패킷의 답에 넣지 않는다. | `saturn-terminal/engine/src/lifecycle/switch_round_trip.rs`의 `packet_turn_reply_is_not_shown_as_the_input_reply` |
 | Claude 백그라운드 subagent는 시작 접수 도구 결과와 부모의 `result`로 끝나지 않고, 실제 `task_notification`과 소유 작업 종료 뒤 확정 시각에 한 번만 끝나며, 확정 전에 다시 시작하면 끝이 취소된다. | `saturn-terminal/engine/src/providers/claude/background/tests.rs`(실측 `bg_none` 1회차 순서 `fixtures/background-agent.jsonl`)의 `the_launch_result_does_not_end_the_background_subagent`, `the_subagent_stays_running_after_the_parent_result_and_ends_once_at_the_real_end`, `a_restart_inside_the_settle_window_cancels_the_end`, `duplicate_and_early_notices_end_the_subagent_once`, `saturn-terminal/engine/src/providers/claude/tests.rs`의 `a_background_subagent_ends_only_after_its_notice_and_the_settle_wait`. 실제 Claude 실행 확인은 남음(#424) |
 | 진행 중인 턴에 보낸 새 턴 입력은 provider가 합치지 않게 앞 턴의 완료 뒤에 보내고, 멈추면 버린다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `a_turn_sent_during_the_packet_turn_gets_its_own_completion`, `interrupt_drops_the_turns_waiting_behind_the_running_one`, `saturn-terminal/engine/src/providers/codex/tests.rs`의 같은 이름 두 시험 |
 | 줄 선 입력의 전송이 늦어 수신 Future가 버려져도 완료 이벤트와 그 입력을 잃지 않는다. | `saturn-terminal/engine/src/providers/claude/tests.rs`와 `codex/tests.rs`의 `a_turn_sent_during_the_packet_turn_gets_its_own_completion`(`next_arrival`로 읽고, Codex는 응답이 늦고 Claude는 쓰는 중 막히는 입력) |
-| 패킷의 고정 구역이 `P_hard`를 넘으면 새 session을 열지 않고 입력을 보류한다. | `saturn-terminal/engine/src/lifecycle/switch_round_trip.rs`의 `packet_over_the_hard_limit_is_not_sent_and_the_input_is_held` |
+| 패킷의 고정 구역이 `P_send`를 넘으면 새 session을 열지 않고 입력을 보류한다. | `saturn-terminal/engine/src/lifecycle/switch_round_trip.rs`의 `packet_over_the_hard_limit_is_not_sent_and_the_input_is_held` |
 | 열린 메인이 있으면 보관 session이 더 나중에 등록돼도 열린 메인이 이어 갈 session이다. | `saturn-terminal/core/src/sessions/tests.rs`의 `live_main_prefers_the_open_main_over_a_later_registered_archive` |
 | 이벤트는 처리 전에 기록하고, 기록하지 못하면 화면과 상태에 반영하지 않는다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `event_is_recorded_before_it_reaches_the_screen_and_the_state`, `events_get_one_number_each_in_arrival_order`, `event_from_the_provider_pump_reaches_the_engine_loop` |
 | 입력 없이 시작한 턴과 늦은 이벤트, 끊긴 흐름을 기록한다. | `saturn-terminal/engine/src/lifecycle/events.rs`의 `output_after_the_turn_ended_starts_a_run_without_input`, `lost_stream_records_unobserved_and_needs_a_check`, `usage_is_recorded_as_a_usage_row_and_not_as_a_ledger_event` |
@@ -601,7 +622,7 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 고정한 모델이 session을 여는 모델과 provider를 정하고 session 기록에 남는다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `pinned_model_opens_the_session_with_that_model_and_records_it`, `pinned_model_decides_the_provider`, `saturn-terminal/engine/src/store/sessions.rs`의 `session_model_round_trips_through_live_mains` |
 | 모델이 바뀌면 새 메인 session을 열고, 같은 모델이면 열린 session을 쓴다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `changing_the_model_opens_a_new_main_session_with_a_packet`, `same_model_keeps_using_the_open_session` |
 | router가 후보를 받아 고른 모델로 보내고 새 작업으로 판단되면 그 모델의 session을 연다(메인이면 새 메인 session). 고정 모델이면 묻지 않고, 목록을 받기 전이거나 후보 밖 값이면 현재 모델을 쓴다. | `saturn-terminal/engine/src/lifecycle/target_model.rs`의 `target_model_candidates_are_the_model_list_in_provider_order`, `target_model_chosen_by_the_router_is_applied`, `target_model_picks_the_provider_of_the_chosen_model`, `target_model_on_a_second_new_task_opens_a_session_with_that_model`, `target_model_is_not_asked_when_the_model_is_pinned`, `target_model_is_not_asked_before_the_model_list_arrives`, `target_model_is_ignored_when_the_input_continues_current_work`, `target_model_other_keeps_the_default_model`, `target_model_outside_the_candidates_is_ignored` |
-| 새 작업의 모델은 채팅 고정, 오토의 router 선택, 기본 모델, provider 기본값 순으로 정하고 매뉴얼은 `target_model`을 묻지 않는다. 기본 모델과 방식은 TUI가 붙을 때 알려지고 바꾸면 사용자 설정 파일에 저장된다. | `saturn-terminal/engine/src/lifecycle/model_mode.rs`의 `default_model_receives_a_new_task_the_router_did_not_place`, `no_default_model_keeps_the_provider_default`, `auto_mode_router_choice_beats_the_default_model`, `auto_mode_falls_back_to_the_default_model_on_other`, `manual_mode_does_not_ask_target_model_and_uses_the_default_model`, `manual_mode_still_judges_the_relation_between_inputs`, `manual_mode_sends_to_the_pinned_model_instead_of_the_default`, `default_model_decides_the_provider`, `default_model_of_an_unregistered_provider_is_ignored`, `attaching_tells_the_tui_that_no_default_model_is_chosen_yet`, `attaching_tells_the_tui_the_configured_default_and_mode`, `choosing_the_default_model_writes_the_user_config_and_tells_the_tui`, `changing_the_mode_writes_the_user_config_and_applies_to_the_next_input`, `setting_the_default_from_a_client_that_is_not_attached_is_refused` |
+| 기본 설정은 매뉴얼이라 router에 모델을 묻지 않는다. 새 작업의 모델은 채팅 고정, 오토의 router 선택, 선호, 기본 모델, provider 기본값 순으로 정하고 명시 고정, 매뉴얼, 후보 없음, 무효 답, router가 고르지 않음, 장애, 지원하지 않는 선택에서 같은 대체가 동작하며 정한 규칙과 이유가 판단 기록에 남는다([`model_selection.rs`](../../saturn-terminal/engine/src/lifecycle/model_selection.rs)의 `model_selection_falls_back_in_the_fixed_order_and_records_the_rule`, `a_choice_the_provider_no_longer_lists_is_recorded_as_unsupported`, `a_preference_without_confirmed_quality_never_overrides_the_default`). 매뉴얼은 `target_model`을 묻지 않는다. 기본 모델과 방식은 TUI가 붙을 때 알려지고 바꾸면 사용자 설정 파일에 저장된다. | `saturn-terminal/engine/src/lifecycle/model_mode.rs`의 `default_model_receives_a_new_task_the_router_did_not_place`, `no_default_model_keeps_the_provider_default`, `auto_mode_router_choice_beats_the_default_model`, `auto_mode_falls_back_to_the_default_model_on_other`, `manual_mode_does_not_ask_target_model_and_uses_the_default_model`, `manual_mode_still_judges_the_relation_between_inputs`, `manual_mode_sends_to_the_pinned_model_instead_of_the_default`, `default_model_decides_the_provider`, `default_model_of_an_unregistered_provider_is_ignored`, `attaching_tells_the_tui_that_no_default_model_is_chosen_yet`, `attaching_tells_the_tui_the_configured_default_and_mode`, `choosing_the_default_model_writes_the_user_config_and_tells_the_tui`, `changing_the_mode_writes_the_user_config_and_applies_to_the_next_input`, `setting_the_default_from_a_client_that_is_not_attached_is_refused` |
 | 모델 목록은 설치된 provider 순서로 오고 provider로 거를 수 있다. Codex는 숨긴 모델을 빼고, Claude 기본은 `--model`을 넘기지 않는다. | `saturn-terminal/engine/src/lifecycle/model.rs`의 `model_list_comes_in_provider_order`, `model_list_can_be_limited_to_one_provider`, `saturn-terminal/engine/src/providers/codex/tests.rs`의 `model_list_entries_skip_hidden_models_and_fall_back_to_the_id`, `saturn-terminal/engine/src/providers/claude/tests.rs`의 `default_model_is_not_passed_to_claude` |
 | subagent의 시작과 끝을 이벤트로 추적한다. | Claude는 [실험](../experiments/claude-provider-behavior/report.md), Codex는 [실측](../experiments/codex-provider-behavior/report.md) |
 | Claude 백그라운드 subagent까지 멈춘다. | [실험](../experiments/claude-provider-behavior/report.md)에서 `interrupt`, 입력 닫기, SIGTERM 모두 3/3 확인 |
@@ -628,9 +649,12 @@ engine의 요청 처리 루프는 provider 요청이 끝나기를 기다리지 �
 | 연결 작업이 패닉해도 그 채팅이 멈춘 채 남지 않고 알림이 나간다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_connection_task_that_panics_while_sending_leaves_the_task_to_check`, `a_connection_task_that_panics_while_opening_rejects_the_input` |
 | 시작 요청을 기다리는 중 멈추면 연 session을 쓰지 않고 입력을 보류하고, 턴 시작을 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/provider_stall.rs`의 `a_stop_during_a_slow_start_holds_the_input_instead_of_sending_it` |
 | 실행 중 작업이 5분 동안 provider 이벤트가 없으면 `응답 없음 N분`을 보이고, 이벤트가 오면 지우며, 허가나 입력 요청을 기다리는 동안은 보이지 않는다. 자동으로 멈추지 않는다. | `saturn-terminal/tui/src/view/status_board.rs`의 `no_response_shows_in_minutes_after_the_threshold_without_events`, `no_response_clears_when_an_event_arrives`, `no_response_does_not_show_while_waiting_for_permission_or_input`, `no_response_text_is_translated` |
+| 기록 없는 Codex thread를 재개하면 새 thread로 열고 입력을 다시 보내지 않으며, 다른 번호가 열리면 보관한 번호를 바꿔 저장한다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `resume_without_rollout_opens_a_new_thread_and_resends_nothing`, `saturn-terminal/engine/src/lifecycle/idle_close.rs`의 `a_resume_that_opened_a_new_provider_session_keeps_the_new_id` |
 | Codex는 끊긴 자식 thread를 부모를 다시 열기 전에 보관하고 구독을 끊으며 부모는 건드리지 않는다. 끊긴 자식이 없으면 정리하지 않는다. | `saturn-terminal/engine/src/providers/codex/tests.rs`의 `interrupted_children_are_cleaned_before_the_parent_is_resumed`, `resume_without_interrupted_children_cleans_nothing` |
 | Claude 실행 환경에서 `CLAUDE_CODE_RESUME_INTERRUPTED_TURN`만 빠진다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `resume_interrupted_turn_variable_is_not_passed_to_claude` |
 | provider는 열린 id로 식별하고 어댑터 밖 공통 코드는 provider 이름으로 분기하지 않는다. | `providers/codex*`, `providers/claude*`, 시험 코드, 어댑터 등록 파일 `providers/builtin.rs`를 뺀 `saturn-terminal`과 `saturn-protocol`의 비테스트 코드에서 `rg -i "codex\|claude"`로 이름을 찾고, 남은 것이 설명 주석, 제품 소개 글, 개발용 예제(`core/examples/packet`)뿐인지 확인한다 |
+| 끝난 실행은 마지막 수정 뒤 설정한 검사가 종료 코드 0으로 끝났을 때만 확인됨이고, 수정 없음, 설정 없음, 누락, 실패, 검사 중 수정, 부분 스냅샷, 순서 불명, 하위 에이전트 잔류를 구분하며 echo와 실패를 숨기는 복합 셸은 근거가 아니다. | `saturn-terminal/core/src/sessions/completion/tests.rs`의 `evidence_is_decided_only_by_a_real_check_after_the_last_edit`, `commands_that_hide_a_failure_or_do_not_run_the_check_are_not_evidence`, `a_subagent_left_running_or_interrupted_is_never_verified` |
+| 완료 검사 근거는 `Done`과 따로 알리고 다시 붙어도 같은 줄이 보이며, 입력을 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/completion_evidence.rs`의 `a_check_after_the_last_edit_is_shown_with_its_event_and_survives_reattaching`, `an_edit_without_a_configured_check_is_unverified_and_a_clean_run_is_not_applicable`, `saturn-terminal/tui/src/view/transcript.rs`의 `lines_completion_evidence_names_the_state_events_and_reason_in_both_languages` |
 | 어댑터 파일만 더해 가짜 provider를 붙일 수 있다. | `saturn-terminal/engine/src/lifecycle/fake_provider.rs`의 `a_registered_adapter_runs_an_input_from_open_to_turn_end` |
 | 어댑터 설명자의 표시명, 실행 파일, 기본 순서, 지시 문서 이름, 맥락 기본값, 기능을 화면과 첫 입력 기본 provider, 패킷, 예산, 끼워 넣기가 쓴다. | `saturn-terminal/engine/src/providers/registry.rs`의 `descriptors_come_back_in_the_default_order`, `installed_means_an_executable_file_of_the_descriptor_on_the_given_path`, `saturn-terminal/engine/src/lifecycle/fake_provider.rs`의 `descriptor_values_reach_the_common_code`, `an_adapter_without_the_steer_feature_never_gets_a_steer`, `an_adapter_with_the_steer_feature_gets_the_steer`, `saturn-terminal/core/src/sessions/packet/tests.rs`의 `build_packet_skips_provider_docs`, `saturn-terminal/tui/src/i18n.rs`의 `provider_names_come_from_what_engine_announced`, `saturn-terminal/tui/src/app/tests.rs`의 `model_command_values_are_the_provider_ids_engine_announced` |
 | 기록 저장소의 옛 provider 값 `Codex`, `Claude`와 모델 고정 글 `codex/<model>`, `claude/<model>`이 옛 값 그대로 읽힌다. | `saturn-terminal/engine/src/store/records/tests.rs`의 `old_provider_values_read_as_open_ids`, `saturn-protocol/src/ids.rs`의 `old_stored_values_read_as_the_same_id`, `saturn-terminal/engine/src/providers/mod.rs`의 `pinned_text_keeps_the_old_provider_prefix` |

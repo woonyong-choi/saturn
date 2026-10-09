@@ -13,8 +13,8 @@ pub(crate) mod store;
 pub use processes::Supervisor;
 pub use providers::{
     Frame, HookInputError, InjectedPart, InjectionFailure, LaunchSpec, PermissionLaunch,
-    ProviderConnection, ProviderTrace, ReadScope, Registry, SaturnDefaults, UserProviderConfig,
-    run_pre_tool_use,
+    ProviderConnection, ProviderTrace, RawTap, ReadScope, Registry, SaturnDefaults,
+    UserProviderConfig, run_pre_tool_use,
 };
 pub use secrets::{Masker, pre_tool_use_hook_settings, with_read_scope};
 
@@ -24,11 +24,14 @@ mod chat_env;
 mod chat_labels;
 mod children;
 mod commands;
+mod constraint_change;
+mod constraint_manage;
 mod constraints;
 mod control;
 mod delivery;
 mod dispatch;
 mod events;
+mod evidence;
 mod exit;
 mod extensions;
 mod flow;
@@ -38,17 +41,23 @@ mod inputs;
 mod intake;
 mod judge_context;
 mod launch;
+mod model_catalog;
 mod models;
 mod outcomes;
+mod packets;
 mod passes;
 mod permission;
+mod policy;
 mod prune;
 mod recover;
+mod request_summary;
 mod requests;
 mod run_changes;
+mod selection;
 mod serve;
 mod sessions;
 mod settings_watch;
+mod shadow;
 mod startup;
 mod stop;
 mod switch;
@@ -90,6 +99,19 @@ pub const ROUTER_KEY_REQUIRED: i32 = -32001;
 /// 초안. 붙을 때 보내는 기록 수. TUI `HISTORY_PAGE`와 같다.
 const ATTACH_HISTORY: u32 = 50;
 
+/// 근거 조회를 거절한 이유.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum EvidenceRefusal {
+    #[error("pass is unknown or revoked")]
+    Pass,
+    #[error("no such record in this chat")]
+    NotFound,
+    #[error("the record changed since it was listed")]
+    Stale,
+    #[error("the record touches files outside the readable scope")]
+    Scope,
+}
+
 /// 시작 단계 오류면 원인 한 줄을 stderr에 보이고 소켓을 열지 않고 끝난다.
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
@@ -120,6 +142,12 @@ pub enum EngineError {
     /// 묻지 않은 창의 답이라 적용하지 않는다.
     #[error("no pending {what} for this answer")]
     UnexpectedAnswer { what: &'static str },
+    /// 화면이 본 제약 revision이 지금과 다르거나 대상이 유효 제약이 아니다. 목록을 새로 읽어야 한다.
+    #[error("stale constraint request: read the constraints again")]
+    StaleConstraint,
+    /// 직접 등록하려는 제약 글이 비어 있다.
+    #[error("constraint text is empty")]
+    EmptyConstraint,
     /// 채팅에 더하려는 경로가 이미 있는 폴더의 절대 경로가 아니다.
     #[error("invalid folder {path}: {reason}")]
     InvalidFolder { path: String, reason: &'static str },
@@ -147,6 +175,9 @@ pub enum EngineError {
     /// 고정 모델도 현재 provider도 없는 첫 입력인데 설치된 provider가 없다.
     #[error("no provider is installed")]
     NoProvider,
+    /// 근거 검색이나 원문 조회를 거절했다. 원문은 돌려주지 않았다.
+    #[error("evidence lookup refused: {refusal}")]
+    Evidence { refusal: EvidenceRefusal },
     #[error("rpc failed")]
     Rpc(#[from] RpcError),
     #[error("record store failed")]
@@ -176,12 +207,15 @@ impl EngineError {
             Self::ChildRejected { .. } => saturn_protocol::rpc::CHILD_REJECTED,
             Self::Unsupported { .. } => METHOD_NOT_FOUND,
             Self::UnexpectedAnswer { .. }
+            | Self::StaleConstraint
+            | Self::EmptyConstraint
             | Self::UnknownPermissionMode { .. }
             | Self::InvalidFolder { .. }
             | Self::InvalidLabel { .. }
             | Self::NoRetention
             | Self::PrunePlanUnknown
             | Self::PruneNeedsPlan
+            | Self::Evidence { .. }
             | Self::ChatNotAttached { .. }
             | Self::Store(StoreError::NotFound { .. })
             | Self::Queue(
@@ -209,12 +243,15 @@ impl EngineError {
                 | RoutersError::NotConfigured { .. }
                 | RoutersError::Settings(_),
             ) => Some(ErrorKind::Config),
-            Self::Store(StoreError::NotFound { .. }) | Self::PrunePlanUnknown => {
-                Some(ErrorKind::NotFound)
-            }
-            Self::NoProvider | Self::ChildRejected { .. } | Self::Provider(_) => {
-                Some(ErrorKind::Failed)
-            }
+            Self::Store(StoreError::NotFound { .. })
+            | Self::PrunePlanUnknown
+            | Self::Evidence {
+                refusal: EvidenceRefusal::NotFound,
+            } => Some(ErrorKind::NotFound),
+            Self::NoProvider
+            | Self::Evidence { .. }
+            | Self::ChildRejected { .. }
+            | Self::Provider(_) => Some(ErrorKind::Failed),
             _ => None,
         }
     }
@@ -349,6 +386,8 @@ pub struct Engine {
     /// 붙은 어댑터. 설명자와 연결 만들기는 모두 여기서 찾는다.
     registry: Registry,
     routers: Routers,
+    /// 배포에 묶인 모델 평가 근거 목록. 시작 때 정하고 끝까지 쓴다.
+    catalog: saturn_core::models::ModelCatalog,
     router_gate: RouterGate,
     rpc: RpcServer,
     /// 하위 접속 출입증과 상한. 연결 작업이 요청 처리 루프를 거치지 않고 함께 쓴다.

@@ -8,7 +8,7 @@ use std::time::{Duration, SystemTime};
 use super::{DB_FILE_MODE, Store, StoreError, schema_target, to_millis};
 
 /// 스키마를 바꾸면 1 올리고 이관 단계를 더한다.
-pub(crate) const SCHEMA_VERSION: u32 = 14;
+pub(crate) const SCHEMA_VERSION: u32 = 21;
 
 pub(crate) const BACKUP_RETENTION: Duration = Duration::from_secs(14 * 24 * 60 * 60);
 
@@ -17,8 +17,9 @@ const BACKUP_PREFIX: &str = "saturn-v";
 const BACKUP_SUFFIX: &str = ".db";
 
 /// `MIGRATIONS[i]`는 버전 `i`를 `i + 1`로 올리고, 길이가 `SCHEMA_VERSION`과 같아야 한다.
-pub(crate) const MIGRATIONS: &[&str] =
-    &[V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14];
+pub(crate) const MIGRATIONS: &[&str] = &[
+    V1, V2, V3, V4, V5, V6, V7, V8, V9, V10, V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21,
+];
 
 const _: () = assert!(MIGRATIONS.len() == SCHEMA_VERSION as usize);
 
@@ -332,6 +333,125 @@ CREATE TABLE direct_installs (
     seen_at INTEGER NOT NULL,
     PRIMARY KEY (provider, kind, name)
 );
+"#;
+
+/// `raw_unattributed`는 어느 실행의 것인지 알 수 없는 provider 원시 줄이다. 이관은 표만 비어 있게 더한다.
+const V15: &str = r#"
+CREATE TABLE raw_unattributed (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL,
+    agent_id INTEGER,
+    provider_session TEXT,
+    is_json INTEGER NOT NULL,
+    bytes BLOB NOT NULL,
+    received_at INTEGER NOT NULL
+);
+CREATE INDEX raw_unattributed_chat ON raw_unattributed(chat_id);
+"#;
+
+/// `handoff_packets`는 provider에 보낸 인계 패킷의 시도마다 한 행이다. 본문은 해시와 크기만 두고, `handoff_packet_items`가
+/// 패킷에 들어갔거나 빠진 재료를 기록 번호나 제약 번호로 가리킨다. 이관은 표만 비어 있게 더한다.
+const V16: &str = r#"
+CREATE TABLE handoff_packets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    attempt INTEGER NOT NULL,
+    reduced_from INTEGER,
+    session_id INTEGER NOT NULL,
+    input_id INTEGER,
+    run_id INTEGER,
+    provider TEXT NOT NULL,
+    provider_session TEXT,
+    settings_revision INTEGER NOT NULL,
+    chat_revision INTEGER NOT NULL,
+    constraint_revision INTEGER NOT NULL,
+    policy TEXT NOT NULL,
+    body_hash TEXT NOT NULL,
+    body_bytes INTEGER NOT NULL,
+    estimated_tokens INTEGER NOT NULL,
+    state TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX handoff_packets_chat ON handoff_packets(chat_id);
+CREATE INDEX handoff_packets_input ON handoff_packets(input_id);
+CREATE TABLE handoff_packet_items (
+    packet_id INTEGER NOT NULL REFERENCES handoff_packets(id) ON DELETE CASCADE,
+    zone TEXT NOT NULL,
+    ref_id INTEGER NOT NULL,
+    selector TEXT NOT NULL,
+    form TEXT,
+    reason TEXT
+);
+CREATE INDEX handoff_packet_items_packet ON handoff_packet_items(packet_id);
+"#;
+
+/// 모델 판단 그림자. 판단 기록 한 건에 한 행이고, 후보와 확률은 JSON으로 둔다.
+const V17: &str = r#"
+CREATE TABLE model_shadows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    judgment_id INTEGER NOT NULL UNIQUE,
+    input_id INTEGER NOT NULL,
+    chat_id INTEGER NOT NULL,
+    settings_revision INTEGER NOT NULL,
+    chat_revision INTEGER NOT NULL,
+    policy_digest TEXT NOT NULL,
+    catalog_version TEXT NOT NULL,
+    question_set TEXT NOT NULL,
+    candidates_hash TEXT NOT NULL,
+    candidates TEXT NOT NULL,
+    status TEXT NOT NULL,
+    applied_model TEXT,
+    request_bytes INTEGER NOT NULL
+);
+CREATE INDEX model_shadows_input ON model_shadows(input_id);
+"#;
+
+/// 실행마다 완료 검사 근거. 이관 전 실행과 근거를 가리지 않은 실행은 `evidence_state`가 비어 있다.
+const V18: &str = r#"
+ALTER TABLE runs ADD COLUMN evidence_state TEXT;
+ALTER TABLE runs ADD COLUMN evidence_reason TEXT;
+ALTER TABLE runs ADD COLUMN evidence_events TEXT;
+"#;
+
+/// 모델 정하기 기록. 판단 기록 한 건에 한 행이다.
+const V19: &str = r#"
+CREATE TABLE model_selections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    judgment_id INTEGER NOT NULL UNIQUE,
+    input_id INTEGER NOT NULL,
+    chat_id INTEGER NOT NULL,
+    source TEXT NOT NULL,
+    model TEXT,
+    reason TEXT,
+    skipped_preferences TEXT NOT NULL,
+    candidates_hash TEXT NOT NULL,
+    policy_digest TEXT NOT NULL,
+    catalog_version TEXT NOT NULL,
+    applied INTEGER NOT NULL
+);
+CREATE INDEX model_selections_input ON model_selections(input_id);
+"#;
+
+/// `evidence_lookups`는 에이전트 작업이 `saturn evidence`로 기록을 찾거나 원문을 읽은 시도마다 한 행이다. 조회한 횟수와
+/// 돌려준 양을 세는 재료이고 원문과 검색어는 두지 않는다. 이관은 표만 비어 있게 더한다.
+const V20: &str = r#"
+CREATE TABLE evidence_lookups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    record_id INTEGER,
+    outcome TEXT NOT NULL,
+    units INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX evidence_lookups_chat ON evidence_lookups(chat_id);
+"#;
+
+/// 전달 패킷 항목에 보호한 대화 본문 원문의 해시를 더한다. 본문이 아닌 항목과 이관 전 행은 비어 있다.
+const V21: &str = r#"
+ALTER TABLE handoff_packet_items ADD COLUMN body_hash TEXT;
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -698,6 +818,157 @@ mod tests {
         );
         assert!(store.held_tasks().await.unwrap().is_empty());
         assert!(store.interrupted_subagents().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v19_file_migrates_to_evidence_lookups_keeping_chats() {
+        let (dir, store) = temp_store_at(19).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (19, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        let chat = saturn_protocol::ids::ChatId(1);
+        assert_eq!(
+            store.chat_workdir(chat).await.unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.evidence_lookups(chat).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v18_file_migrates_to_model_selections_keeping_chats() {
+        let (dir, store) = temp_store_at(18).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (18, SCHEMA_VERSION));
+        assert_eq!(
+            store
+                .chat_workdir(saturn_protocol::ids::ChatId(1))
+                .await
+                .unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(
+            store
+                .model_selections_by_judgment()
+                .await
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[tokio::test]
+    async fn v17_file_migrates_to_completion_evidence_columns_keeping_runs() {
+        let (dir, store) = temp_store_at(17).await;
+        sqlx::raw_sql(
+            "INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0);
+             INSERT INTO runs (id, chat_id, task_id, agent_id, session_id, provider, effect_scope, started_at)
+             VALUES (7, 1, 3, 4, 5, 'claude', 'unobserved', 100)",
+        )
+        .execute(&store.pool)
+        .await
+        .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (17, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        // 이관 전 실행은 근거를 가리지 않았으므로 비어 있다
+        assert_eq!(
+            store
+                .run_completion(saturn_protocol::ids::RunId(7))
+                .await
+                .unwrap(),
+            None
+        );
+        let kept: (i64, i64) = sqlx::query_as("SELECT chat_id, started_at FROM runs WHERE id = 7")
+            .fetch_one(&store.pool)
+            .await
+            .unwrap();
+        assert_eq!(kept, (1, 100));
+    }
+
+    #[tokio::test]
+    async fn v16_file_migrates_to_model_shadows_keeping_chats() {
+        let (dir, store) = temp_store_at(16).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (16, SCHEMA_VERSION));
+        assert_eq!(
+            store
+                .chat_workdir(saturn_protocol::ids::ChatId(1))
+                .await
+                .unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.model_shadows_by_judgment().await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v15_file_migrates_to_handoff_packets_keeping_chats() {
+        let (dir, store) = temp_store_at(15).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (15, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        let chat = saturn_protocol::ids::ChatId(1);
+        assert_eq!(
+            store.chat_workdir(chat).await.unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.packets_of_chat(chat).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn v14_file_migrates_to_raw_unattributed_keeping_chats() {
+        let (dir, store) = temp_store_at(14).await;
+        sqlx::raw_sql("INSERT INTO chats (id, workdir, created_at) VALUES (1, '/work', 0)")
+            .execute(&store.pool)
+            .await
+            .unwrap();
+        store.pool.close().await;
+
+        let (store, notice) = Store::open(dir.path()).await.unwrap();
+
+        let notice = notice.unwrap();
+        assert_eq!((notice.from, notice.to), (14, SCHEMA_VERSION));
+        assert!(notice.backup.exists());
+        let chat = saturn_protocol::ids::ChatId(1);
+        assert_eq!(
+            store.chat_workdir(chat).await.unwrap(),
+            PathBuf::from("/work")
+        );
+        assert!(store.unattributed_raw(chat).await.unwrap().is_empty());
     }
 
     #[tokio::test]

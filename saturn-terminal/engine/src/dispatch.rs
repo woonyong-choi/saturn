@@ -185,8 +185,9 @@ impl Engine {
         start: Start,
     ) -> Result<(), EngineError> {
         let record = self.queued(input)?;
+        let planned = self.plan_open(&record, start).await;
         let delivery = self.delivery(&record, start)?;
-        let plan = match self.plan_open(&record, start).await {
+        let plan = match planned {
             Err(PlanError::Deferred(constraints)) => {
                 let notice = ChatNotice::ContextDeferred { constraints };
                 return self.hold_for_context(&delivery, notice).await;
@@ -206,7 +207,7 @@ impl Engine {
         }
     }
 
-    /// 패킷의 고정 구역이 `P_hard`도 넘거나 줄인 패킷도 맥락 한도로 거절되면 보내지 않는다. 입력은 작업과 함께 보류하고
+    /// 패킷의 고정 구역이 `P_send`도 넘거나 줄인 패킷도 맥락 한도로 거절되면 보내지 않는다. 입력은 작업과 함께 보류하고
     /// `notice`를 보인다. 사용자가 `/continue`로 다시 시도한다.
     pub(crate) async fn hold_for_context(
         &mut self,
@@ -470,6 +471,7 @@ impl Engine {
         self.warn_failure("failed to record rejected input", written);
         self.end_failed_run(&delivery).await;
         self.release_task(&delivery);
+        self.end_new_task_exceptions(&delivery).await;
         self.notify_input(delivery.input).await;
         let provider = delivery.live.as_ref().map(|live| live.provider);
         self.notify_task(
@@ -484,6 +486,13 @@ impl Engine {
             self.flow.tasks.release(delivery.task);
         }
         Ok(())
+    }
+
+    /// 시작하지 못한 새 작업의 예외를 닫는다. 알림을 받은 쪽이 끝난 작업의 상태를 곧바로 읽으므로 알림보다 먼저 끝낸다.
+    async fn end_new_task_exceptions(&mut self, delivery: &Delivery) {
+        if matches!(delivery.start, Start::Task(_)) {
+            self.end_task_exceptions(delivery.task).await;
+        }
     }
 
     async fn end_failed_run(&mut self, delivery: &Delivery) {
@@ -536,14 +545,21 @@ impl Engine {
         self.queue.finish_task(agent);
         let task = self.runs.task_of.remove(&agent);
         self.runs.chat_of.remove(&agent);
+        let mut evidence = None;
         if let Some(run) = self.runs.active.remove(&agent) {
-            self.settle_changes(run, chat, agent).await;
+            let changes = self.settle_changes(run, chat, agent).await;
+            evidence = self.settle_completion(run, chat, agent, changes).await;
             self.store.finish_run(run, RunEnd::Completed).await?;
         }
         if let Some(task) = task {
+            self.end_task_exceptions(task).await;
             let provider = self.flow.live.get(&agent).map(|live| live.provider);
             self.notify_task(chat, task, TaskState::Done, provider, None)
                 .await;
+            if let Some(evidence) = evidence {
+                self.notify_chat_task(chat, task, ChatNotice::CompletionEvidence { evidence })
+                    .await;
+            }
             self.flow.tasks.release(task);
         }
         Ok(())

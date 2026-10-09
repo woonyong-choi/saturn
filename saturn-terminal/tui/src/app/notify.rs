@@ -160,6 +160,11 @@ impl App {
             QueryResult::ExtensionList { extensions, direct } => {
                 self.push_cell(TranscriptCell::ExtensionList(extensions, direct));
             }
+            result @ QueryResult::Constraints { .. } => {
+                if let Some((view, listing)) = self.constraints.on_result(result) {
+                    self.push_cell(TranscriptCell::ConstraintList(view, Box::new(listing)));
+                }
+            }
             QueryResult::Tasks { items } => {
                 if let Some(Window::TaskList(list)) = &mut self.window {
                     list.replace(ChatGroup::from_items(items));
@@ -186,8 +191,12 @@ impl App {
                     picker.load(models);
                 }
             }
-            // TUI는 채팅 목록과 폴더의 최근 채팅을 묻지 않는다. 그런 조회는 `cli`가 붙기 전에 쓴다
-            QueryResult::LatestChat { .. } | QueryResult::Chats { .. } => {}
+            // TUI는 채팅 목록과 폴더의 최근 채팅을 묻지 않는다. 그런 조회는 `cli`가 붙기 전에 쓴다.
+            // 근거 조회는 에이전트 작업 안의 `saturn evidence`만 묻는다
+            QueryResult::LatestChat { .. }
+            | QueryResult::Chats { .. }
+            | QueryResult::EvidenceCandidates { .. }
+            | QueryResult::EvidenceRecord { .. } => {}
         }
         Vec::new()
     }

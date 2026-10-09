@@ -92,7 +92,7 @@ TUI는 위에서 아래로 대화 기록, 작업별 출력 칸, 상태판, 팝�
 | 허가 요청 창 | 작업 이름표와 provider가 붙은 제목, 요청 내용, 이유, 선택지 세 개, 허가를 기다리는 다른 작업 수 | 허가 요청 도착 |
 | 입력 요청 창 | 허가 요청 창과 같은 제목, 요청 설명, 칸 목록(포커스한 칸만 펼침), 필수 표시 `*`, 오류 한 줄, 키 안내, 답을 기다리는 다른 요청 수. URL 요청은 설명과 링크 | 입력 요청 도착 |
 | 작업 목록 화면 | 필터 전체, 확인 필요, 실행 중, 대기, 보류, 끝남, 채팅, 묶음 채팅, 폴더, 상태, 작업과 그 아래 subagent와 자식 채팅, 작업 상세(폭이 120칸을 넘으면 오른쪽 칸, 그 이하는 `Enter`로, [폭에 따른 화면](#폭에-따른-화면)). 작업 행에는 상태와 함께 대기 입력 수와 모델을 보인다. `끝남` 필터는 끝난 작업의 결과(완료, 실패)와 끝난 시각을, `채팅` 필터는 작업이 없는 채팅을 한 줄로 보인다. `전체`는 끝난 작업과 대기 입력이 없는 채팅 행을 뺀 나머지를 보인다. 키 `r`과 `g`는 한 줄 입력으로 채팅 이름과 묶음을 바꾸고 `RenameChat`, `SetChatGroup`으로 engine에 저장한다(작업 행과 채팅 행 모두). 앞뒤 공백은 지우고 비우면 이름과 묶음을 지운다. 다른 TUI가 이름이나 묶음을 바꾸면 알림을 받아 목록과 상태판을 갱신한다. 기본 범위는 현재 채팅의 기본 폴더에서 만든 채팅이고 키 `a`로 모든 폴더로 넓히고 되돌린다. 필터 줄 끝에 범위(`현재 폴더`, `모든 폴더`)를 보인다. 채팅이나 현재 폴더를 알 수 없으면 범위로 거르지 않는다(초안) | `/tasks` 실행, `engine` 상태 변경 때 선택 유지 |
-| 제약 목록 화면 | 유효 제약 줄(`번호 · 범위 · 규칙 한 줄`, 예외가 걸리면 종류와 조건), 확인 필요 줄, 마지막 전환에 들어갔는지 표시(`전환 포함`, `생략`), `Tab`으로 바꾸는 변경 내역(시각, 종류, 주체, 규칙). 키 `d` 해제, `x` 잘못 등록, `e` 예외 종류 바꾸기, `u` 되돌리기, `Esc` 닫기 | `/constraints` 실행, 제약 변경 알림 때 선택 유지 |
+| 제약 목록 | 창이 아니라 대화 기록에 쓰는 줄이다. `[유효] #번호 · 범위 · 규칙 한 줄`(예외가 걸리면 종류와 조건), `[후보] #번호 ...`(등록 확인을 기다리는 말이라 패킷에는 유효 제약처럼 들어간다는 안내 한 줄)를 색이 아니라 글자로 구별하고, 해제된 제약은 빼고 개수만 센다. `history`는 변경 내역(`#변경 번호 · #제약 번호 · 종류 · 주체 · 규칙`, 되돌릴 수 있으면 `되돌릴 수 있음`)을 시각순으로 쓴다. 헤더에 읽은 때의 제약 revision이 든다 | `/constraints`, `/constraints history` 실행, 변경 명령 뒤 자동 |
 | 전체 기록 | 도구 셀 전체와 줄인 셀을 펼친 대화 기록 | `Ctrl+T` 입력 |
 | 사용량 화면 | 새 입력, 캐시 읽기, 캐시 쓰기, 출력, 추론, router 호출과 예상 비용, 맥락 정리, 채점, 여러 턴 합계 행 끝의 `n 토큰 · n 턴`. provider·모델마다 한 행, router 한 행 | `/usage` 실행, 키 `d`, `w`로 범위 변경 |
 | 모델 선택 창 | 첫 줄 `기본 모델 claude · opus · 선택 방식 오토`(기본 모델이 없으면 `없음`), 고정할 수 있는 모델 목록(`provider · 모델 이름` 줄), 지금 고정한 모델 표시, 키 안내. 목록이 오기 전에는 불러오는 중, 비었으면 안내 한 줄 | `/model` 실행(`/model codex`처럼 provider를 주면 그 provider 모델만), 목록 알림 도착, `ModelSettings` 도착 |
@@ -106,7 +106,7 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 
 멈춤 확인 창은 하던 작업과 반대되는 입력(충돌 입력)을 provider가 끼워 넣기로 받지 않았을 때 뜬다. engine이 입력을 `ConfirmStop` 사유의 대기로 알리면 창을 띄우고, 입력이 다른 상태가 되면(다른 TUI가 먼저 답했거나 현재 작업이 끝나 다음 차례로 갔을 때) 창을 지운다. 첫 선택은 작업을 멈추지 않는 `대기`이고, `Esc`와 `Ctrl+C`도 `대기`다. 선택은 `AnswerStopConfirm`으로 보내고, 멈추는 일과 입력 실행은 engine이 한다([충돌 입력](input-handling.md#충돌-입력)). 질문과 선택지는 영어 문구가 있고, 질문은 `~할까요?` 형식을 따른다.
 
-사용량 화면은 provider·모델마다 한 행, router마다 한 행을 보인다. 행 이름은 `codex · gpt-5.6-terra`, `claude · opus`, `router · jev` 형식이고, 모델을 보고하지 않았으면 provider 이름만 쓴다. `/usage`는 인자 없이 지금 채팅의 사용량을 열고, 화면에서 `d`는 모든 채팅의 최근 24시간, `w`는 모든 채팅의 최근 7일로 바꾼다. 같은 키를 다시 누르면 지금 채팅으로 돌아가고, 범위 이름과 키 안내는 화면에 보인다. 범위는 지금부터 거슬러 센 시간이고 달력 날짜가 아니다. 각 행은 고른 범위의 합계다. `saturn usage`는 지금 폴더에서 가장 최근에 입력을 접수한 채팅의 사용량을 표로 쓰고, `--day`는 최근 24시간, `--week`는 최근 7일(모든 채팅)로 바꾼다. 두 옵션은 함께 쓸 수 없고, 그 폴더에 채팅이 없으면 오류로 끝낸다. Claude Code의 `/usage`와 `/stats`가 기간을 키로 바꿔 보는 방식을 따랐다. provider 행의 토큰은 턴 값의 합이고, session 누적 보고는 같은 계열의 직전 누적을 뺀 값을 더한다. 여러 턴을 합친 행은 끝에 `n 토큰 · n 턴`을 보이고, 턴 수는 그 행에 합친 실행 수다. 중간 보고가 빠진 누적 보고는 그사이 보고 없는 실행까지 턴으로 센다. router 행은 호출 수와 입력·출력 토큰을 보인다. 예상 비용, 맥락 정리, 채점처럼 기록 저장소에 없는 값은 `-`로 표시한다. 지어낸 값을 보이지 않기 위해서다.
+사용량 화면은 provider·모델마다 한 행, router마다 한 행을 보인다. 행 이름은 `codex · gpt-5.6-terra`, `claude · opus`, `router · jev` 형식이고, 모델을 보고하지 않았으면 provider 이름만 쓴다. `/usage`는 인자 없이 지금 채팅의 사용량을 열고, 화면에서 `d`는 모든 채팅의 최근 24시간, `w`는 모든 채팅의 최근 7일로 바꾼다. 같은 키를 다시 누르면 지금 채팅으로 돌아가고, 범위 이름과 키 안내는 화면에 보인다. 범위는 지금부터 거슬러 센 시간이고 달력 날짜가 아니다. 각 행은 고른 범위의 합계다. `saturn usage`는 지금 폴더에서 가장 최근에 입력을 접수한 채팅의 사용량을 표로 쓰고, `--day`는 최근 24시간, `--week`는 최근 7일(모든 채팅)로 바꾼다. 두 옵션은 함께 쓸 수 없고, 그 폴더에 채팅이 없으면 오류로 끝낸다. Claude Code의 `/usage`와 `/stats`가 기간을 키로 바꿔 보는 방식을 따랐다. provider 행의 토큰은 턴 값의 합이고, session 누적 보고는 같은 계열의 직전 누적을 뺀 값을 더한다. 여러 턴을 합친 행은 끝에 `n 토큰 · n 턴`을 보이고(토큰은 요청 합계와 같은 규칙) 턴 수는 그 행에 합친 실행 수다. 중간 보고가 빠진 누적 보고는 그사이 보고 없는 실행까지 턴으로 센다. router 행은 호출 수와 입력·출력 토큰을 보인다. 예상 비용, 맥락 정리, 채점처럼 기록 저장소에 없는 값은 `-`로 표시한다. 지어낸 값을 보이지 않기 위해서다.
 
 ### 작업 목록 조회
 
@@ -133,6 +133,17 @@ router 키 입력 창에서 받는 키의 처리는 [router 키 보호](router-k
 실행 줄은 `⠋ [A]  codex · gpt-5.6-luna  12초  파일 수정 중  Token 2,100`처럼 이름표, provider · 모델, 경과, 하는 일, 토큰 순서로 쓰고 칸 사이를 두 칸 띄운다. 모델 이름은 provider가 보고한 그대로 쓰고 별칭을 만들지 않는다. provider를 모르면 그 칸은 빠진다. 출력도 하는 일도 아직 없는 작업은 `작업 중`만 보인다. 토큰은 사용량 보고 전이면 `Token -`이다.
 
 파일 경로나 명령 같은 세부는 줄 안에 넣지 않고 아래에 한 단계 들여 `└ src/main.rs`처럼 보인다. 파일 작업은 경로마다, 명령은 줄마다 한 줄이다. 세부가 줄 폭보다 길거나 여러 줄이면 첫 줄만 보이고 끝을 `…`로 줄인다. 이 줄을 누르거나(마우스 클릭) 입력창이 비어 있을 때 `Enter`를 누르면 모든 줄이 펼쳐지고, 다시 누르면 접힌다. 펼친 세부는 폭에 맞게 접고 8줄을 넘으면 마지막 줄을 `…`로 닫는다. 이 `Enter`는 선택지 키 규칙과 같아서, 접고 펼칠 세부가 있고 입력창이 비어 있는 동안만 키를 가져가고 초안을 쓰기 시작하면 입력창이 받는다. 보이는 줄이 실행 줄일 때만 세부 줄이 있다.
+
+### 요청 합계
+
+요청 합계는 채팅의 모든 일이 끝난 순간 engine이 한 번 보내는 알림(`RequestSummary`)이다. 대화 기록에 `이번 요청 · codex Token 4,120 · 라우터 3회 Token 9,870 · 2분 31초` 한 줄로 남는다.
+
+- 요청은 채팅이 쉬는 동안 접수한 첫 입력에서 시작한다. 판단 중이거나 기다리거나 전달 중인 입력, 실행 중인 작업, 멈추는 중이거나 맥락 정리 중인 일이 모두 없어지면 끝난다. 끝나기 전에 접수한 입력은 같은 요청에 들어가고, 끝난 뒤 접수한 입력은 새 요청이다. 보류와 결과 모름은 사용자 확인을 기다리는 일이라 끝난 것으로 본다.
+- 합계는 화면이 세던 값이 아니라 기록 저장소의 사용량 보고에서 만든다. 요청이 시작한 뒤 그 채팅에서 시작한 실행의 보고와, 그 뒤 그 채팅의 router 호출만 센다. 그래서 다른 채팅의 사용량이 섞이지 않고, 중간에 붙은 TUI도 같은 값을 받는다. 입력이 연 실행뿐 아니라 provider가 이어 시작한 실행도 이 기간 안이면 센다.
+- 턴 값은 `/usage`와 같은 계산이다. 누적 보고는 직전 누적을 뺀 값만 더하고 subagent는 계열이 달라 한 번씩만 센다. 토큰은 실행 줄의 `Token`, `/usage` 행 끝의 `n 토큰`과 같게 새 입력, 캐시 쓰기, 출력의 합이고 캐시 읽기는 뺀다. 추론은 출력에 이미 들어 있는 값이라 더하지 않는다.
+- 보고하지 않은 값은 0으로 채우지 않는다. 토큰을 보고한 provider만 줄에 나오고, router가 토큰을 하나도 보고하지 않았으면(판단 실패 포함) `Token -`이다. 토큰도 호출도 없는 요청은 알리지 않는다.
+- 경과는 요청이 시작한 뒤 흐른 시간이다. 허가를 기다린 시간도 포함한다.
+- 하위 채팅(에이전트 작업)은 알리지 않는다. 단순 방식이 끝나는 때는 이 알림과 상관없다([단순 방식](#단순-방식)).
 
 ### 상태판 줄 순서
 
@@ -449,13 +460,14 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `[A] codex · 45초 · 실패` | 작업 실패, 다음 줄에 원인 한 줄 |
 | `[A] 결과 확인 필요 · /continue A` | 결과 불명, 보류 줄과 함께 표시 |
 | `[A] 맥락 정리 후 이어서 진행` | 맥락 정리 뒤 같은 작업 계속 |
-| `고정 제약이 길어 맥락 정리를 미룹니다` | 패킷의 고정 구역이 `P_hard`도 넘어 새 session으로 옮기지 못함, 다음 줄부터 제약 목록 |
+| `인계 기록이 길어 전환을 미룹니다` | 패킷의 고정 구역이 `P_send`도 넘어 새 session으로 옮기지 못하는 경우, 다음 줄부터 제약 목록 |
 | `제약 등록됨 · {규칙}` | 제약 등록(`Added`). 영어는 `Constraint added · {rule}`. 규칙은 사용자 원문 그대로이고 한 줄에 맞게 줄인다 |
 | `제약 등록됨 · {규칙} · 확인 없이` | 권한 모드 `full`이라 묻지 않고 등록(`Unconfirmed`). 사용자는 이 줄을 보고 해제를 요청하거나 `/constraints`로 지운다. 영어는 `Constraint added · {rule} · Without confirmation` |
 | `제약 해제됨 · {규칙}` | 해제(`Released`), 사용자 해제, 영구 해제 요청, 확인 답, 입력 취소를 같은 줄로 보임. 영어는 `Constraint released · {rule}` |
 | `제약 잠시 해제됨 · {규칙} · 이번 작업 동안` | 이번 작업 예외(`Excepted`, `Once`). 제약은 지우지 않고 그 작업 동안만 멈춘다. 확인 없이 정했으면 끝에 ` · 확인 없이`. 영어는 `Constraint paused · {rule} · For this task` |
 | `제약 예외 · {규칙} · {조건}` | 조건·범위 예외(`Excepted`, `Scoped`). 조건 문장은 사용자 원문 그대로이고 한 줄에 맞게 줄인다. 영어는 `Constraint exception · {rule} · {condition}` |
 | `제약 다시 유효 · {규칙}` | 이번 작업이 끝나 예외가 사라지고 제약이 다시 유효(`Resumed`). 영어는 `Constraint active again · {rule}` |
+| `제약 되돌림 · {규칙}` | 사용자가 `/constraints undo`로 변경 한 건을 되돌림(`Restored`). 영어는 `Constraint restored · {rule}` |
 | `제약 되돌림 · {규칙}` | 변경 되돌리기(`Restored`). 영어는 `Constraint restored · {rule}` |
 | `제약 {N}개 생략 · /constraints에서 확인하세요` | 전환 패킷의 제약 칸이 가득 차 N개를 넣지 못함. 영어는 `{N} constraints omitted · Check /constraints` |
 | `맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요` | 패킷이 맥락 한도로 거절돼 줄여 다시 보냈지만 들어가지 않거나 줄일 수 없어 보내지 않고 멈춤. 영어는 `Stopped over the context limit · Retry with /continue` |
@@ -497,7 +509,7 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | 화면 언어 | `LC_ALL`, `LC_MESSAGES`, `LANG` 중 처음 비어 있지 않은 값이 `ko`로 시작하면 한국어. 영어 문구는 `saturn-terminal/tui/src/i18n/english.rs`의 `ENGLISH`이고, `saturn` 명령도 이 표를 쓴다 |
 | 외부 에디터와 셸 | `$VISUAL`, `$EDITOR`, `vi` 순서. 셸은 `$SHELL -c`, 없으면 `sh -c`. 자식 환경에서 `SATURN_KEY` 제거. 에디터 초안 파일은 새 경로에 권한 0600으로 생성 |
 | 입력 기록 파일 | 한 줄에 입력 하나, 줄바꿈은 `\n`, 역슬래시는 `\\`, 오래된 것이 위. 쓰기 실패는 경고 로그만 남기고 계속 |
-| 결과 머리줄 토큰 | 새 입력, 캐시 쓰기, 출력, 추론의 합. 캐시 읽기는 뺀다 |
+| 결과 머리줄 토큰 | 새 입력, 캐시 쓰기, 출력의 합. 캐시 읽기는 빼고 추론은 출력에 들어 있어 더하지 않는다 |
 | 폴더 설정 신뢰 창 두 번째 선택지 | `적용하지 않고 계속` |
 | 끼워 넣기가 아닌 판단의 피드백 질문 머리 | `[B] 새 작업으로 보냄`, `[C] 대기열에 넣음` |
 | 셸 명령 셀 | 출력 앞 10줄, 전체 기록에서 전체 |
@@ -510,7 +522,7 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | `/model` | 명령 목록에 넣고 값 목록은 engine이 붙을 때 알린 provider id(`StartInfo`의 `providers`). 값 없이 실행하면 모든 provider의 모델 창이 열리고, 값을 주면 그 provider 모델만 보인다. 방향키로 고르고 `Enter`로 정한다. `Enter`로 고른 모델은 `SetModel`로 engine에 저장하고, 그 채팅의 모든 입력이 쓴다. 채팅에 붙을 때 engine이 `ModelPinned`로 알려 주므로 TUI를 다시 열거나 채팅을 옮겨도 유지된다. 안내 한 줄(`다음 입력부터 {provider} · {model} 모델로 보냅니다`)은 `ModelPinned`를 받을 때 대화 기록에 남기므로, 정한 직후와 채팅을 다시 열 때 같은 줄이 나온다. provider 고유의 `/model`은 넘기지 않고 Saturn `/model`로 처리한다([모델 고르기](providers-and-sessions.md#모델-고르기)) |
 | `/permissions` | 명령 목록에 넣고 값 목록은 `ask`, `edit`, `read-only`, `full`(초안). 값을 주면 채팅 층 모드를 바꾼다. 값 없이 실행하면 현재 모드를 보이는 동작은 아직 없다([권한](permissions.md)) |
 | `/prune` | 명령 목록에 넣고 값은 없다. 기록 정리 창을 연다. 미리보기는 `Prune { yes: false }`, 확정은 미리보기 번호를 실은 `Prune { yes: true, plan }`으로 보내며 `all`은 보내지 않는다 |
-| `/constraints` | 명령 목록에 넣고 값은 없다. 제약 목록 화면을 연다. `d`는 `ReleaseConstraint`, `x`는 잘못 등록으로 `ReleaseConstraint`, `e`는 예외 종류 바꾸기로 `ChangeConstraintException`, `u`는 `UndoConstraintChange`를 보내고 확인 창의 답은 `AnswerConstraintAsk`로 보낸다. 요청은 화면이 본 제약 revision을 싣고 낡았으면 engine이 `Stale`로 거절해 목록을 새로 읽는다(초안, [제약](constraints.md#되돌리기)) |
+| `/constraints` | 명령 목록에 넣고 값은 `add`, `release`, `mistaken`, `undo`, `history`. 값 없이 실행하면 `ListConstraints`로 읽어 제약 목록을 대화 기록에 보인다. `add <규칙>`은 앞뒤 공백만 뗀 원문 그대로 `AddConstraint`로, `release <번호>`는 `ReleaseConstraint`로, `mistaken <번호>`는 잘못 등록(`mistaken`)으로 `ReleaseConstraint`를, `undo <변경 번호>`는 `UndoConstraintChange`를 보낸다. 번호는 목록에 적힌 `#` 번호다. 해제와 되돌리기는 마지막으로 읽은 목록의 revision을 싣고 가므로 목록을 본 적이 없으면 보내지 않고 안내 한 줄만 남기며, 후보와 해제된 제약은 해제하지 못한다. 변경 요청 뒤에는 언제나 `ListConstraints`가 따라가 결과 목록을 보이고 revision을 새로 읽는다. 그 사이 다른 창이 바꿨으면 engine이 `Stale`로 거절하고 새 목록이 이어 보인다. 등록 확인 창의 답은 `AnswerConstraintAsk`로 보낸다. plain 출력도 표준 입력의 `/constraints` 줄을 같은 요청으로 처리하고 앞 명령의 목록이 와야 다음 변경을 보낸다. 예외 종류 바꾸기(`ChangeConstraintException`)와 전환에 들어갔는지 표시는 아직 없다([제약](constraints.md#되돌리기)) |
 
 ### 요구사항
 
@@ -539,7 +551,7 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | 멈춤 확인 창은 `ConfirmStop` 대기 입력이 오면 뜨고 입력이 다른 상태가 되면 지워지며, 첫 선택과 `Esc`는 `대기`이고 `멈추고 실행`은 `AnswerStopConfirm`을 보낸다. 문구에 영어가 있다. | `saturn-terminal/tui/src/app/tests.rs`의 `stop_confirm_window_opens_for_the_asking_input_and_closes_when_it_moves_on`, `stop_confirm_enter_and_escape_answer_wait_and_down_enter_answers_stop`, `saturn-terminal/tui/src/view/stop_confirm.rs`의 `render_shows_the_input_and_both_choices` |
 | 제약 확인 창은 확인 알림이 오면 뜨고 대상이 바뀌거나 다른 TUI가 답하면 지워지며, 첫 선택은 지키는 쪽이고 `Esc`는 답을 미룬다. 권한 모드 `full`이면 뜨지 않고 줄에 `확인 없이`가 붙는다. 문구에 영어가 있다. | 등록 확인은 `saturn-terminal/tui/src/app/tests.rs`의 `constraint_ask_window_opens_for_the_notification_and_enter_answers_yes`, `constraint_ask_down_and_enter_answers_no`, `constraint_ask_escape_defers_without_answering_and_shows_the_next_one`, `constraint_ask_resolved_elsewhere_closes_the_window_and_shows_the_next`, `constraint_ask_sent_again_on_attach_is_shown_once`, `saturn-terminal/tui/src/view/constraint_ask.rs`의 `render_shows_the_rule_both_choices_and_the_waiting_count`. 예외 종류 확인과 `Esc` 뒤 `/constraints`의 확인 필요 줄은 구현 전(#379, #381) |
 | 제약 등록과 해제 줄은 규칙을 한 줄로 합쳐 보이고, `full` 모드의 묻지 않은 등록은 끝에 `확인 없이`가 붙는다. | `saturn-terminal/tui/src/app/tests.rs`의 `constraint_notices_become_transcript_lines`, `saturn-terminal/tui/src/view/transcript.rs`의 `lines_constraint_added_marks_unconfirmed_registration`, `lines_constraint_rule_is_cut_to_one_line` |
-| `/constraints`는 유효 제약과 변경 내역을 보이고 `d`, `x`, `e`, `u`를 engine 요청으로 보내며 `Stale` 답에 목록을 새로 읽는다. 제약 변경 줄은 `constraint_events`에서 그려 다시 열어도 같다. | 구현 전(#381). 화면을 연 사이 제약을 바꿔 거절과 새로 읽기를, 채팅을 다시 열어 같은 줄을 확인한다. |
+| `/constraints`는 후보와 유효 제약을 글자로 구별해 한국어, 영어, plain으로 보이고, 변경 명령은 마지막으로 읽은 revision과 목록의 번호로만 보내며, 변경 뒤에는 목록을 새로 읽는다. plain 출력도 같은 요청을 보낸다. | `saturn-terminal/tui/src/app/tests.rs`의 `constraints_commands_list_then_change_with_the_revision_the_screen_showed`, `constraints_commands_refuse_a_candidate_and_numbers_the_list_does_not_have`, `constraints_history_lists_changes_with_the_undoable_mark`, `constraint_list_tells_candidate_from_active_in_both_languages_and_in_plain`, `saturn-terminal/tui/src/commands.rs`의 `parse_constraints_reads_the_list_the_rule_as_typed_and_numbers`, `saturn-terminal/tui/src/tests.rs`의 `plain_runs_constraints_commands_in_order_and_waits_for_each_list`. `Stale` 거절은 `saturn-terminal/engine/src/lifecycle/constraint_manage.rs`의 `stale_or_superseded_requests_change_nothing_across_windows_and_restart` |
 | `Ask`는 종료 확인 창을 띄우고, `멈추기`는 `StopAll`을 보낸 뒤 닫고, `Esc`와 `Ctrl+C`는 작업을 멈추지 않고 닫기를 취소한다. | `saturn-terminal/tui/src/app/tests.rs`의 `exit_plan_ask_opens_the_confirm_window_and_waits`, `exit_confirm_stop_stops_every_chat_then_quits_without_a_line`, `exit_confirm_escape_and_ctrl_c_cancel_the_exit_without_stopping_work`, `saturn-terminal/tui/src/view/exit_confirm.rs`의 `render_shows_count_and_both_choices` |
 | 작업 목록에서 채팅을 옮기면 `Detach` 없이 `Attach`만 같은 연결로 보내고, `engine`은 연결을 유지한 채 붙은 채팅만 바꾸며 떠난 채팅의 작업을 멈추지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `moving_to_another_chat_only_attaches_without_detaching`, `saturn-terminal/engine/src/lifecycle/exit.rs`의 `attach_to_another_chat_on_the_same_connection_is_not_a_detach` |
 | 작업 목록 조회는 이름표를 가진 메인 작업을 채팅 이름, 묶음, 폴더, 상태와 함께 채팅과 작업 순서로 보내고, 채팅 이름과 묶음을 바꾸면 다음 조회에 반영하며 이름이 없으면 `#채팅 번호`로 보낸다. | `saturn-terminal/engine/src/lifecycle/tasks.rs`의 `task_list_reflects_the_chat_name_and_group_after_they_change`, `task_list_lists_tasks_of_every_chat_in_chat_order` |
@@ -564,6 +576,6 @@ TUI는 키를 직접 보지 않고 동작(`Action`)만 받는다. 키를 동작�
 | 요청 거절 응답은 연결을 닫지 않고 요청 번호와 함께 클라이언트에 전달된다. | `saturn-terminal/tui/src/client/tests.rs`의 `next_returns_a_rejection_with_its_request_id_and_keeps_the_connection` |
 | 전체 화면은 거절 원인을 대화 기록에 남기고, 접수하지 못한 입력만 비어 있는 입력창에 되돌리며 다른 요청을 건드리지 않는다. | `saturn-terminal/tui/src/app/tests.rs`의 `a_rejected_input_shows_the_cause_and_comes_back_to_the_composer`, `a_rejection_changes_only_the_request_it_answers`, `a_rejection_of_another_request_is_shown_without_touching_the_composer` |
 | 단순 방식은 접수 거절만 온 채 입력이 끝나면 완료 알림 없이 거절 원인의 종료 코드로 끝나고, 접수된 입력이 남아 있으면 계속 기다린다. | `saturn-terminal/tui/src/tests.rs`의 `plain_ends_with_the_rejection_when_the_only_input_is_refused`, `plain_refused_attach_ends_instead_of_waiting_for_a_chat`, `plain_keeps_waiting_for_an_accepted_input_when_another_is_refused` |
+| 요청이 끝나면 합계를 한 번 알리고, 다음 요청과 다른 채팅의 사용량을 섞지 않으며, 늦게 붙은 TUI도 기록과 같은 값을 받는다. 보고하지 않은 값은 비운다. | `saturn-terminal/engine/src/lifecycle/request_summary.rs`의 `a_request_ends_with_one_summary_that_a_late_tui_sees_the_same_as_the_stored_totals`, `the_next_request_and_another_chat_do_not_add_into_a_summary`, `nothing_reported_is_left_out_instead_of_counted_as_zero` |
+| 요청 합계는 요청 기간의 실행과 router 호출만 세고 누적 보고는 직전 누적을 뺀 값만 더하며 다른 채팅을 세지 않고 보고하지 않은 칸을 채우지 않는다. | `saturn-terminal/engine/src/usage.rs`의 `request_totals_take_only_their_window_and_chat_and_never_fill_missing_values`, `request_totals_count_a_subagent_series_once_next_to_its_parent` |
 | 단순 방식은 실제 engine에 붙어도 입력과 그 작업이 끝나면 합계 알림 없이 끝나고, 작업 실패와 결과 모름은 종료 코드 1이며, 대기 입력, 끼워 넣은 입력, 다른 접속의 작업은 끝나는 때를 어긋나게 하지 않는다. | `saturn-terminal/engine/src/lifecycle/plain_exit.rs`의 `plain_ends_with_success_when_the_only_task_is_done`, `plain_ends_with_a_failure_when_the_provider_refuses_the_turn`, `plain_ends_with_a_failure_when_the_turn_result_is_unknown`, `plain_waits_for_a_queued_input_and_ends_after_its_task`, `plain_ends_after_the_task_that_took_a_steered_input`, `saturn-terminal/tui/src/plain.rs`의 `another_connections_task_neither_holds_the_end_nor_fails_it`, `an_input_applied_before_its_task_starts_is_not_finished_yet`, `a_task_sharing_the_label_finishing_first_does_not_end_or_fail_this_connections_wait`, `a_steer_waits_for_the_task_it_joined_not_for_one_sharing_its_label`, `a_steer_onto_a_finished_task_does_not_wait_for_another_task_sharing_its_label`, `saturn-terminal/engine/src/lifecycle/intake.rs`의 `input_notice_carries_the_task_a_steered_input_joined` |
-
-## 미해결 질문

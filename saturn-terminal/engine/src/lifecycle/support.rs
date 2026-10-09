@@ -5,7 +5,7 @@ use saturn_core::routers::{RELATION_OPTIONS, RouteDecision, SEND_OPTIONS};
 use saturn_protocol::event::{
     Activity, PermissionCall, PermissionTool, ProviderEvent, ToolCategory, ToolDetail, TurnOrigin,
 };
-use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, SubagentId};
+use saturn_protocol::ids::{AgentId, ChatId, InputId, Provider, SettingsRevision, SubagentId};
 use saturn_protocol::input::{InputAnswer, InputField, InputFieldKind, InputRequest};
 use saturn_protocol::rpc::{ModelChoice, PermissionAnswer};
 use saturn_protocol::state::InputState;
@@ -60,6 +60,20 @@ impl Flow {
     ) -> Self {
         let mut fixture = Fixture::new();
         fixture.options.run_overrides = overrides.iter().map(|item| (*item).to_owned()).collect();
+        let has_router_mode = config
+            .parse::<toml_edit::DocumentMut>()
+            .ok()
+            .and_then(|value| value.get("router")?.get("mode").cloned())
+            .is_some()
+            || overrides
+                .iter()
+                .any(|item| item.starts_with("router.mode="));
+        if !has_router_mode {
+            fixture
+                .options
+                .run_overrides
+                .push("router.mode=\"jev\"".to_owned());
+        }
         if !config.is_empty() {
             fixture.write_user_config(config);
         }
@@ -203,6 +217,7 @@ impl Flow {
             .on_provider_event(provider, event)
             .await
             .expect("event should be handled");
+        self.engine.finish_quiet_requests().await;
         self.settle().await;
     }
 
@@ -379,7 +394,7 @@ impl Flow {
     }
 
     /// 끝난 입력도 기록에 남아 있으므로 기록의 마지막 입력 번호를 본다.
-    async fn latest_input(&self) -> Option<InputId> {
+    pub(super) async fn latest_input(&self) -> Option<InputId> {
         let page = self
             .engine
             .store
@@ -398,14 +413,20 @@ impl Flow {
 
     /// 판단과 전송 없이 접수만 한다. 판단 적용 시험이 판단 차례를 직접 다루는 데 쓴다.
     pub(super) async fn accept_only(&mut self, text: &str) -> InputId {
+        let settings = self
+            .engine
+            .settings
+            .current()
+            .expect("settings should be applied at start");
+        self.accept_at(text, settings).await
+    }
+
+    /// `accept_only`와 같되 입력의 설정 번호를 정한다.
+    pub(super) async fn accept_at(&mut self, text: &str, settings: SettingsRevision) -> InputId {
         let new = NewInput {
             chat: self.chat,
             text: text.to_owned(),
-            settings: self
-                .engine
-                .settings
-                .current()
-                .expect("settings should be applied at start"),
+            settings,
             permission: Permission::Write,
             workdir: self.fixture.workdir.clone(),
             pinned_model: None,
@@ -442,7 +463,7 @@ impl Flow {
             input,
             revision,
             retried: false,
-            lines: false,
+            kind: crate::flow::JobKind::Route,
         };
         self.engine
             .finish_router(&job, &request, exchange)
@@ -453,7 +474,11 @@ impl Flow {
 
     /// 별도 작업에서 도는 router 호출과 provider 요청이 모두 돌아와 적용될 때까지 engine 루프 역할을 한다.
     pub(super) async fn settle(&mut self) {
-        while self.is_judging() || self.is_delivering() || self.is_calling() || self.is_splitting()
+        while self.is_judging()
+            || self.is_delivering()
+            || self.is_calling()
+            || self.is_splitting()
+            || self.is_changing()
         {
             let flow = &mut self.engine.flow;
             tokio::select! {
@@ -462,6 +487,7 @@ impl Flow {
                 () = tokio::time::sleep(WAIT) => panic!("router and provider results should arrive in time"),
             }
         }
+        self.engine.finish_quiet_requests().await;
     }
 
     /// provider 응답을 기다리는 전달이 있다.
@@ -477,6 +503,11 @@ impl Flow {
     /// 긴 입력의 문장 나누기 답을 기다리는 등록이 있다.
     pub(super) fn is_splitting(&self) -> bool {
         !self.engine.flow.pending_lines.is_empty()
+    }
+
+    /// 제약 해제·예외 판단의 답을 기다리는 입력이 있다.
+    pub(super) fn is_changing(&self) -> bool {
+        !self.engine.flow.pending_change.is_empty()
     }
 
     pub(super) fn is_judging(&self) -> bool {
@@ -546,6 +577,50 @@ pub(super) fn running_constraint_reply(
         None,
         Some(constraint),
     ))
+}
+
+/// 해제·예외 질문(`constraint_change`)에 대한 router 답. 선택지 `none`, `release_1`, `once_1`, `scoped_1`, `release_2`, ... 중
+/// `picked`에 확률 1을 준다.
+pub(super) fn change_reply(constraints: usize, picked: &str) -> FakeReply {
+    let options: Vec<String> = std::iter::once("none".to_owned())
+        .chain((1..=constraints).flat_map(|k| {
+            ["release", "once", "scoped"]
+                .into_iter()
+                .map(move |kind| format!("{kind}_{k}"))
+        }))
+        .collect();
+    let options: Vec<&str> = options.iter().map(String::as_str).collect();
+    ok(&json!({
+        "model": "jev-1.13.0",
+        "answers": { "constraint_change": choice(&options, picked) },
+        "usage": { "input_tokens": 10, "output_tokens": 2 },
+    })
+    .to_string())
+}
+
+/// `change_reply`와 같은 질문에 선택지별 확률을 직접 준다. `probabilities`는 `none`, `release_1`, `once_1`, `scoped_1`, ... 순서다.
+pub(super) fn change_distribution_reply(probabilities: &[f64]) -> FakeReply {
+    let count = (probabilities.len() - 1) / 3;
+    let options: Vec<String> = std::iter::once("none".to_owned())
+        .chain((1..=count).flat_map(|k| {
+            ["release", "once", "scoped"]
+                .into_iter()
+                .map(move |kind| format!("{kind}_{k}"))
+        }))
+        .collect();
+    let map: serde_json::Map<String, Value> = options
+        .iter()
+        .zip(probabilities)
+        .map(|(option, p)| (option.clone(), json!(p)))
+        .collect();
+    ok(&json!({
+        "model": "jev-1.13.0",
+        "answers": { "constraint_change": {
+            "type": "choice", "choice": "none", "probabilities": map, "confidence": 1.0,
+        } },
+        "usage": { "input_tokens": 10, "output_tokens": 2 },
+    })
+    .to_string())
 }
 
 /// 긴 입력의 문장 나누기 질문에 대한 router 답. 문장 번호 순서로 확률을 준다.

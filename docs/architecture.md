@@ -5,28 +5,23 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 ## 맥락
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/context.ko.dark.svg">
-  <img src="assets/context.ko.light.svg" alt="사용자 입력은 Saturn을 거쳐 Codex와 Claude Code로 가고, 뜻 판단은 router에 묻는다" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/mvp-runtime.ko.dark.svg">
+  <img src="assets/mvp-runtime.ko.light.svg" alt="기본 경로: 입력은 SQLite에 먼저 저장되고 Claude와 Codex session을 바꿔도 한 채팅으로 이어진다" width="100%">
 </picture>
 
 | 외부 요소 | 종류 | 주고받는 것 |
 |---|---|---|
 | Codex CLI | 외부 프로그램 | app-server 요청, 이벤트, 사용량 보고 |
 | Claude Code | 외부 프로그램 | stream-json 입력, 이벤트, 사용량 보고 |
-| router API | 외부 서비스 | 판단 질문과 선택지별 확률 |
-| 로컬 Saturn 모델 | 외부 프로그램 | 판단 질문과 선택지별 확률 |
+| router API | 외부 서비스 | 명시적으로 자동 판단 모드를 고를 때 판단 질문과 선택지별 확률 |
+| 로컬 Saturn 모델 | 외부 프로그램 | 명시적으로 로컬 판단 모드를 고를 때 판단 질문과 선택지별 확률 |
 | macOS 키체인 | 운영체제 | router 키 |
-| `SATURN_KEY` 환경 변수 | 운영체제 | 키체인 확인에 실패할 때 받는 router 키 |
-| 비밀번호 관리자 명령(`router.key.command`) | 외부 프로그램 | 키체인과 환경 변수로 받지 못할 때 표준 출력 첫 줄로 주는 router 키 |
+| `SATURN_KEY` 환경 변수 | 운영체제 | 자동 판단 모드에서 먼저 확인하는 router 키 |
+| 비밀번호 관리자 명령(`router.key.command`) | 외부 프로그램 | 환경 변수와 저장된 키로 받지 못할 때 표준 출력 첫 줄로 주는 router 키 |
 | 설정 파일 | 파일 | 사용자 설정과 폴더 설정 |
 | 확장 저장소(`~/.saturn/extensions/`) | 파일 | 사용자가 설치한 확장 원본. 설치와 조회 |
 
 ## 코드 지도
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/architecture.ko.dark.svg">
-  <img src="assets/architecture.ko.light.svg" alt="TUI와 CLI는 engine에만 붙고, engine이 core 규칙으로 provider와 router를 다룬다" width="100%">
-</picture>
 
 | 구성 요소 | 하는 일 | 기술 | 위치 |
 |---|---|---|---|
@@ -59,6 +54,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 제약 식별, 저장, 해제와 예외, 패킷 제약 칸 | [제약](design/constraints.md) |
 | 판단 질문, 기준값, 대체 규칙 | [router](design/router.md) |
 | router 키 입력, 저장, 차단 | [router 키 보호](design/router-key-security.md) |
+| 모델 근거 출처, 품질 확정, 후보 집합 | [모델 평가 근거 목록](design/model-evidence.md) |
 | 채점, 기준값 조정, 로컬 모델 승격 | [router 학습](design/router-training.md) |
 | 설정 층과 설정 번호 | [설정](design/settings.md) |
 | 스키마 이관, 보존, 삭제 | [기록 저장과 보존](design/records.md) |
@@ -67,19 +63,32 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 
 ## 실행 흐름
 
+세 그림의 원본은 `docs/assets/mvp-*.ko.dap`이다. Daphnis `d60736b`, Node.js `v26.9.0`에서 `DAPHNIS_PATH=<daphnis 작업본> node scripts/figures/render.mjs docs/assets/mvp-runtime.ko.dap docs/assets/mvp-input.ko.dap docs/assets/mvp-handoff.ko.dap`로 라이트·다크 SVG를 만들었다.
+
 ### 입력 하나의 처리
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/input-flow.ko.dark.svg">
-  <img src="assets/input-flow.ko.light.svg" alt="입력은 기록 저장소에 접수된 뒤 router 판단을 거쳐 provider로 가고, 이벤트는 다시 기록되어 tui에 결과 줄로 돌아간다" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="assets/mvp-input.ko.dark.svg">
+  <img src="assets/mvp-input.ko.light.svg" alt="기본 수동 경로: 입력을 먼저 저장하고 선택된 provider로 보낸 뒤 이벤트를 기록한다" width="100%">
 </picture>
 
 1. TUI가 입력을 engine에 보낸다.
 2. engine이 입력을 기록 저장소에 접수한다.
-3. `core`가 같은 채팅 입력의 판단 차례를 접수 순서로 정한다.
-4. engine이 router에 묻고, `core`가 판단 결과로 대상 에이전트와 처리 방식을 정한다.
-5. engine이 보내는 순간 대상 session을 고르고, 입력을 `전달 중`으로 기록한 뒤 provider에 전달한다.
-6. engine이 provider 이벤트와 사용량 보고를 기록하고 TUI에 결과 줄을 보낸다.
+3. 기본 수동 경로에서 `core`가 접수 순서를 정하고 engine이 사용자가 고른 모델의 session을 정한다.
+4. engine이 입력을 `전달 중`으로 기록한 뒤 provider에 전달한다.
+5. engine이 provider 이벤트와 사용량 보고를 기록하고 TUI에 결과 줄을 보낸다. 결과가 불명인 작업은 자동으로 다시 보내지 않는다.
+
+### provider 전환
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/mvp-handoff.ko.dark.svg">
+  <img src="assets/mvp-handoff.ko.light.svg" alt="전환 패킷은 대화 원문을 순서대로 보호하고 남은 예산에 최근 도구 기록을 담으며 한도 초과는 보류한다" width="100%">
+</picture>
+
+1. engine은 저장된 입력과 에이전트 글을 역할과 기록 순서대로 모은다.
+2. 남은 공간에 수정 파일과 최근 도구 호출·결과를 넣는다.
+3. 실제 발신 글과 저장한 본문·해시를 대조하고 새 provider session에 먼저 보낸다.
+4. 보호 본문이 전송 상한을 넘거나 상한을 알 수 없으면 자르지 않고 전환을 보류한다. 상세 규칙은 [맥락 정리](design/context-management.md)에 있다.
 
 ### TUI를 닫은 뒤
 
@@ -107,7 +116,7 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 
 ## 배치
 
-지원 환경은 Apple Silicon macOS다. Rust 2024 edition으로 빌드하고, 실행에는 Codex CLI나 Claude Code 중 하나 이상과 router API 키나 로컬 Saturn 모델이 필요하다.
+지원 환경은 Apple Silicon macOS다. Rust 2024 edition으로 빌드하고, 실행에는 Codex CLI나 Claude Code 중 하나 이상이 필요하다. 기본 수동 경로에는 router 키가 필요하지 않다.
 
 | 프로세스 | 시작 주체 | 수명 |
 |---|---|---|
@@ -141,4 +150,4 @@ Saturn은 Codex와 Claude Code를 한 채팅으로 이어 쓰게 하는 로컬 �
 | 기록 저장소 | SQLite, `sqlx` | 단일 파일과 원자 거래로 입력을 먼저 기록한다. |
 | 설정 편집 | `toml_edit` | 명령으로 설정 파일을 고칠 때 주석을 보존한다. |
 | router 키 저장 | `keyring` | macOS 키체인을 OS API로 직접 쓴다([결정 기록](decisions/2026-09-29-engine-as-router-proxy.md)). |
-| router 학습 | Python, MLX | Apple Silicon에서 로컬 학습을 실행한다. |
+| router 학습 | Python, MLX | Apple Silicon에서 로컬 학습을 실행하는 설계다. 학습을 실행하는 경로는 아직 없다. |

@@ -206,7 +206,15 @@ async fn requests_each_get_one_response_in_order() {
     let responses = drive(&mut engine, async {
         client.send(1, set_recording(chat.0)).await;
         client.send(2, set_recording(999)).await;
-        client.send(3, Request::ListTasks).await;
+        client
+            .send(
+                3,
+                Request::ListModels {
+                    chat: ChatId(chat.0),
+                    provider: None,
+                },
+            )
+            .await;
         client
             .send(
                 4,
@@ -238,7 +246,7 @@ async fn requests_each_get_one_response_in_order() {
     );
     assert_eq!(responses[0], Response::ok(RequestId(1)));
     assert_eq!(error_code(&responses[1]), INVALID_PARAMS);
-    assert!(matches!(responses[2].outcome, Outcome::Ok(_)));
+    assert_eq!(error_code(&responses[2]), INVALID_PARAMS);
     assert_eq!(responses[3], Response::ok(RequestId(4)));
     assert!(export.exists());
     assert_eq!(error_code(&responses[4]), INVALID_PARAMS);

@@ -111,6 +111,7 @@ fn default_thresholds_match_design_table() {
     assert_eq!(thresholds.feedback_cause, 0.7);
     assert_eq!(thresholds.is_constraint, 0.8);
     assert_eq!(thresholds.constraint_ask, 0.7);
+    assert_eq!(thresholds.constraint_release, 0.8);
 }
 
 #[test]
@@ -394,6 +395,26 @@ fn validate_accepts_only_well_formed_answers() {
             false,
         ),
         (
+            "sum 0.99 rounded",
+            vec![keep(), actionable(), model(vec![0.6, 0.3, 0.09])],
+            true,
+        ),
+        (
+            "sum 1.01 rounded",
+            vec![keep(), actionable(), model(vec![0.6, 0.3, 0.11])],
+            true,
+        ),
+        (
+            "sum beyond tolerance",
+            vec![keep(), actionable(), model(vec![0.6, 0.3, 0.12])],
+            false,
+        ),
+        (
+            "sum below tolerance",
+            vec![keep(), actionable(), model(vec![0.6, 0.3, 0.08])],
+            false,
+        ),
+        (
             "kind mismatch",
             vec![
                 ("keep_current", Answer::Choice(vec![0.5, 0.5])),
@@ -416,76 +437,6 @@ fn validate_accepts_only_well_formed_answers() {
             );
         }
     }
-}
-
-// cost: time O(c), heap O(c), stack O(1)
-// vars: c = 후보 수
-// basis: estimate
-#[test]
-fn compact_questions_150_candidates_ask_all() {
-    let candidates: Vec<LedgerSeq> = (0..150).map(LedgerSeq).collect();
-
-    let (set, questions) = compact_questions(&candidates);
-
-    assert_eq!(set.name, SET_COMPACT);
-    assert_eq!(questions.len(), 300);
-    assert!(
-        questions
-            .iter()
-            .any(|question| question.id == "call_0_keep")
-    );
-    assert!(
-        questions
-            .iter()
-            .any(|question| question.id == "result_149_keep")
-    );
-}
-
-// cost: time O(c), heap O(c), stack O(1)
-// vars: c = 후보 수
-// basis: estimate
-#[test]
-fn compact_requests_large_state_splits_and_every_piece_carries_state() {
-    let candidates: Vec<LedgerSeq> = (0..1_000).map(LedgerSeq).collect();
-    let state = "s".repeat(20_000);
-
-    let requests = compact_requests("jev-test", &state, &candidates).unwrap();
-
-    assert!(requests.len() > 1);
-    assert!(requests.iter().all(|request| request.state == state));
-}
-
-#[test]
-fn compact_verdicts_merges_pieces_and_skips_failed_piece() {
-    let candidates = [LedgerSeq(7), LedgerSeq(3), LedgerSeq(1)];
-    let first = response(vec![
-        ("call_7_keep", Answer::Noul(0.9)),
-        ("result_7_keep", Answer::Noul(0.1)),
-    ]);
-    let second = response(vec![("call_1_keep", Answer::Noul(0.4))]);
-
-    let verdicts = compact_verdicts(&candidates, &[first, second]);
-
-    assert_eq!(verdicts, vec![(LedgerSeq(7), 0.9), (LedgerSeq(1), 0.4)]);
-}
-
-#[test]
-fn compact_verdicts_takes_larger_of_call_and_result() {
-    let candidates = [LedgerSeq(7), LedgerSeq(3)];
-    let answers = response(vec![
-        ("call_7_keep", Answer::Noul(0.2)),
-        ("result_7_keep", Answer::Noul(0.65)),
-        ("result_3_keep", Answer::Noul(0.3)),
-    ]);
-
-    let verdicts = compact_verdicts(&candidates, &[answers]);
-
-    assert_eq!(verdicts, vec![(LedgerSeq(7), 0.65), (LedgerSeq(3), 0.3)]);
-}
-
-#[test]
-fn compact_verdicts_no_responses_is_empty() {
-    assert!(compact_verdicts(&[LedgerSeq(1)], &[]).is_empty());
 }
 
 fn constraint_request() -> RouterRequest {
@@ -596,4 +547,122 @@ fn a_missing_line_answer_fails_the_whole_line_question() {
         constraint::read_lines(&answers, 2, &Thresholds::default()),
         None
     );
+}
+
+fn change_verdict(
+    count: usize,
+    probabilities: Vec<f64>,
+    method: Method,
+) -> constraint::ChangeVerdict {
+    let (set, questions) = constraint::change_question(count);
+    let request = RouterRequest {
+        model: "router".into(),
+        state: "state".into(),
+        sets: vec![(set, questions)],
+    };
+    let answers = response(vec![("constraint_change", Answer::Choice(probabilities))]);
+    assert!(validate(&request, &answers).is_ok());
+    constraint::read_change(&request, &answers, count, &Thresholds::default(), method)
+}
+
+#[test]
+fn change_answer_reads_target_and_kind_from_the_top_option() {
+    use constraint::ChangeKind::{Once, Release, Scoped};
+    use constraint::ChangeVerdict::{Apply, None, UnsureKind};
+
+    // 선택지 순서: none, release_1, once_1, scoped_1, release_2, once_2, scoped_2
+    let table = [
+        (
+            vec![0.05, 0.9, 0.02, 0.01, 0.01, 0.01, 0.0],
+            Apply {
+                target: 0,
+                kind: Release,
+            },
+        ),
+        (
+            vec![0.02, 0.0, 0.0, 0.0, 0.02, 0.94, 0.02],
+            Apply {
+                target: 1,
+                kind: Once,
+            },
+        ),
+        (
+            vec![0.02, 0.0, 0.0, 0.0, 0.0, 0.0, 0.98],
+            Apply {
+                target: 1,
+                kind: Scoped,
+            },
+        ),
+        // 요청 확률은 0.85지만 종류 몫이 0.5/0.85 미만이라 종류를 확신하지 못한다
+        (
+            vec![0.15, 0.42, 0.38, 0.05, 0.0, 0.0, 0.0],
+            UnsureKind {
+                target: 0,
+                kind: Release,
+            },
+        ),
+        // 요청 확률 0.7은 기준 미만
+        (vec![0.3, 0.7, 0.0, 0.0, 0.0, 0.0, 0.0], None),
+        (vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], None),
+    ];
+
+    for (probabilities, expected) in table {
+        assert_eq!(
+            change_verdict(2, probabilities.clone(), Method::Jev),
+            expected,
+            "{probabilities:?}"
+        );
+    }
+}
+
+#[test]
+fn change_answer_with_a_wrong_shape_or_low_confidence_changes_nothing() {
+    use constraint::ChangeVerdict::None;
+
+    let (set, questions) = constraint::change_question(1);
+    let request = RouterRequest {
+        model: "router".into(),
+        state: "state".into(),
+        sets: vec![(set, questions)],
+    };
+    let thresholds = Thresholds::default();
+    let short = response(vec![("constraint_change", Answer::Choice(vec![0.1, 0.9]))]);
+    let noul = response(vec![("constraint_change", Answer::Noul(0.9))]);
+    let missing = response(Vec::new());
+    for answers in [&short, &noul, &missing] {
+        assert_eq!(
+            constraint::read_change(&request, answers, 1, &thresholds, Method::Jev),
+            None
+        );
+    }
+    let unasked = constraint::read_change(
+        &constraint_request(),
+        &response(vec![(
+            "constraint_change",
+            Answer::Choice(vec![0.0, 1.0, 0.0, 0.0]),
+        )]),
+        1,
+        &thresholds,
+        Method::Jev,
+    );
+    assert_eq!(unasked, None);
+    // 분포가 퍼져 확신도가 낮은 saturn 답은 요청 확률이 높아도 적용하지 않는다
+    assert_eq!(
+        change_verdict(1, vec![0.0, 0.34, 0.33, 0.33], Method::Saturn),
+        None
+    );
+}
+
+#[test]
+fn scoped_condition_is_a_contiguous_span_of_the_input() {
+    let input = "  tests 폴더에서만 영어 강제를 풀어줘  ";
+    let condition = constraint::scoped_condition(input).unwrap();
+    assert!(input.contains(&condition));
+    assert_eq!(condition, "tests 폴더에서만 영어 강제를 풀어줘");
+
+    let long = "가".repeat(500);
+    let cut = constraint::scoped_condition(&long).unwrap();
+    assert_eq!(cut.chars().count(), 200);
+    assert!(long.starts_with(&cut));
+    assert_eq!(constraint::scoped_condition("   "), None);
 }

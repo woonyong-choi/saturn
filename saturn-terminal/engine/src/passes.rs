@@ -87,6 +87,11 @@ impl PassGate {
         }
     }
 
+    /// 출입증을 준 채팅. 없거나 회수된 출입증이면 `None`.
+    pub(crate) fn chat_of(&self, token: &str) -> Option<ChatId> {
+        self.lock().table.lookup(&PassToken::new(token.to_owned()))
+    }
+
     /// 기다리던 요청이 끊겼다.
     pub(crate) fn cancel(&self, waiter: Waiter) {
         let mut state = self.lock();

@@ -54,6 +54,24 @@ pub fn literal_prefix(pattern: &str) -> String {
         .collect()
 }
 
+// cost: time O(p), heap O(p), stack O(1), alloc 2
+// vars: p = pattern 글자 수
+// basis: estimate
+/// 경로 glob으로 옮긴 패턴. `*`는 `/`도 포함하므로 `**`가 된다. glob 문자(`*?[]{}`)나 `\`가 글자로 든 패턴은 같은 뜻으로
+/// 옮길 수 없어 `None`이다.
+pub(super) fn glob_form(pattern: &str) -> Option<String> {
+    let mut glob = String::with_capacity(pattern.len());
+    for token in tokens(pattern) {
+        match token {
+            Token::Wildcard if glob.ends_with("**") => {}
+            Token::Wildcard => glob.push_str("**"),
+            Token::Literal('*' | '?' | '[' | ']' | '{' | '}' | '\\') => return None,
+            Token::Literal(c) => glob.push(c),
+        }
+    }
+    Some(glob)
+}
+
 // cost: time O(p), heap O(p), stack O(1), alloc 1
 // vars: p = pattern 글자 수
 // basis: estimate
@@ -182,6 +200,13 @@ pub(super) fn split_shell(command: &str) -> ShellParts {
         is_opaque: is_opaque || quote.is_some(),
         is_plain: is_plain && quote.is_none(),
     }
+}
+
+/// 따옴표 밖에 구분자, 리디렉션, 명령 치환이 없는 단순 명령 하나인지. 파이프, `&&`, `||`, `;`가 앞 명령의 실패를 숨기는지
+/// 판단하지 않고 모두 단순하지 않은 것으로 본다.
+pub fn is_plain_shell(command: &str) -> bool {
+    let split = split_shell(command);
+    split.is_plain && !split.is_opaque && split.parts.len() == 1
 }
 
 fn opens_substitution(c: char, next: Option<char>) -> bool {

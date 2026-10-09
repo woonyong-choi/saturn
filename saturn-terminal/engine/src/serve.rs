@@ -71,6 +71,7 @@ impl Engine {
                     self.retry_unrecorded_steers().await;
                 }
             }
+            self.finish_quiet_requests().await;
         }
         Ok(())
     }
@@ -88,7 +89,7 @@ impl Engine {
 
     pub(super) async fn handle_event(&mut self, event: RpcEvent) -> Result<(), EngineError> {
         match event {
-            RpcEvent::Connected(client) => log_connection(client),
+            RpcEvent::Connected => {}
             RpcEvent::Request(client, id, request) => {
                 self.handle_request(client, id, request).await?;
             }
@@ -148,6 +149,19 @@ impl Engine {
             Request::Usage { scope, folder } => {
                 self.usage_result(client, scope, folder.as_deref()).await?
             }
+            Request::EvidenceSearch { pass, query, limit } => {
+                self.evidence_search(&pass, &query, limit).await?
+            }
+            Request::EvidenceRead {
+                pass,
+                id,
+                hash,
+                offset,
+                limit,
+            } => {
+                self.evidence_read(&pass, (id, hash.as_deref()), (offset, limit))
+                    .await?
+            }
             Request::LatestChat { folder } => self.latest_chat_result(&folder).await?,
             Request::ListChats { folder } => self.chat_list_result(folder.as_deref()).await?,
             Request::ListTasks => self.task_list_result().await?,
@@ -155,6 +169,7 @@ impl Engine {
                 self.prune_records(client, (yes, plan, all)).await?
             }
             Request::ListExtensions => self.extension_list_result(client).await?,
+            Request::ListConstraints { chat } => self.constraint_list_result(chat).await?,
             command => {
                 self.route(client, command).await?;
                 return Ok(None);
@@ -295,6 +310,9 @@ impl Engine {
             Request::AnswerConstraintAsk { ask, answer } => {
                 self.answer_constraint_ask(client, ask, answer).await
             }
+            request @ (Request::ReleaseConstraint { .. }
+            | Request::AddConstraint { .. }
+            | Request::UndoConstraintChange { .. }) => self.route_constraint(request).await,
             Request::SubmitRouterKey { key } => self.submit_router_key(client, key).await,
             Request::AnswerFolderTrust {
                 path,
@@ -317,10 +335,13 @@ impl Engine {
             Request::LoadHistory { .. }
             | Request::PrepareExit { .. }
             | Request::Usage { .. }
+            | Request::EvidenceSearch { .. }
+            | Request::EvidenceRead { .. }
             | Request::LatestChat { .. }
             | Request::ListChats { .. }
             | Request::ListTasks
             | Request::ListExtensions
+            | Request::ListConstraints { .. }
             | Request::Prune { .. } => unreachable!("query requests are answered by dispatch"),
         }
     }
@@ -350,8 +371,4 @@ impl Engine {
         tracing::info!(count, "judgments exported");
         Ok(())
     }
-}
-
-fn log_connection(client: ClientId) {
-    tracing::debug!(client = client.0, "client connected");
 }

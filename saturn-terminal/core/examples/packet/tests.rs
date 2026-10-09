@@ -80,7 +80,8 @@ fn packet_stream_input_prints_packet_text() {
     let rendered = run_with_stdin(&["--mode", "saturn", "--budget-tokens", "800"], &input).unwrap();
 
     let text = rendered.output;
-    assert!(text.contains("## Goal and last input\n\nfix login in src/auth.rs"));
+    assert!(text.contains("## Conversation"));
+    assert!(text.contains("User: start the auth work"));
     assert!(text.contains("User: fix login in src/auth.rs\nAgent: fixed it"));
     assert!(text.contains("## Earlier records"));
     assert!(text.contains("auth file body"));
@@ -165,12 +166,12 @@ fn packet_provider_mode_without_summary_returns_error() {
 // vars: L = packet output size
 // basis: estimate
 #[test]
-fn packet_fixed_file_replaces_goal_and_open_items() {
+fn packet_fixed_file_replaces_open_items_and_keeps_every_input() {
     let dir = TempDir::new().unwrap();
     let fixed = write(
         &dir,
         "fixed.json",
-        r#"{"goal":[{"seq":1,"text":"first goal"},{"seq":8,"text":"last input"}],"open_items":[{"seq":4,"text":"pending work"}]}"#,
+        r#"{"open_items":[{"seq":4,"text":"pending work"}]}"#,
     );
     let input = stream_lines(&stream_events());
 
@@ -187,8 +188,6 @@ fn packet_fixed_file_replaces_goal_and_open_items() {
     )
     .unwrap();
 
-    assert!(rendered.output.contains("first goal"));
-    assert!(rendered.output.contains("last input"));
     assert!(rendered.output.contains("pending work"));
 }
 

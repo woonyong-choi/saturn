@@ -16,6 +16,7 @@ Developers who use Codex and Claude Code together lose context each time they sw
 - [맥락 고르기](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/context-selection.md): 후보 순위, 단어 조각, 도구 결과 메모, compact 요청
 - [제약](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/constraints.md): 제약 식별, 저장, 해제와 예외, 묻기와 되돌리기, 패킷 제약 칸
 - [router](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/router.md): 판단 질문, 답 형식, 기준값과 대체 규칙, 판단 기록
+- [모델 평가 근거 목록](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/model-evidence.md): 모델 근거 출처 구분, 품질 확정 조건, 후보 집합, 목록 배포와 정책 버전
 - [router 키 보호](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/router-key-security.md): router 키 입력, 저장, 자식 프로세스 차단
 - [router 학습](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/router-training.md): 기준값 조정, 채점, 로컬 모델 승격
 - [설정](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/design/settings.md): 설정 층, 폴더 설정 신뢰, 설정 번호
@@ -41,3 +42,4 @@ Developers who use Codex and Claude Code together lose context each time they sw
 - [전송 원문 중복](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/transmission-quotes/report.md): 동일 전송 원문의 참조 표현과 품질·전체 토큰 비교
 - [인계 자료 동시 전달](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/joint-context-delivery/report.md): 인계 시점 변경의 품질과 두 턴 전체 토큰 비교
 - [복원 구조](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/recall-structure/report.md): 번호 목록·식별자·예산 공유와 인계 전달 비교
+- [모델 선택 순효과](https://raw.githubusercontent.com/woonyong-choi/saturn/main/docs/experiments/model-selection-effect/report.md): 오토 모델 선택과 고정 모델의 품질·비용·시간 비교 결과

@@ -15,6 +15,46 @@ pub(super) const APPROVAL_POLICY: &str = "untrusted";
 /// 파일 편집은 승인 정책 `untrusted` 때문에 이 샌드박스에서도 승인 요청으로 오고, 실행 전에 Saturn 규칙이 판정한다.
 pub(super) const SANDBOX: &str = "workspace-write";
 
+/// 읽기 `deny`를 담는 권한 프로필 이름. session 설정(`config`)으로 주고 `thread` 응답의 `activePermissionProfile`로 확인한다.
+pub(super) const READ_PROFILE: &str = "saturn";
+
+/// 읽기 `deny`가 있을 때 `sandbox: workspace-write` 대신 쓰는 파일 권한. Codex는 `sandbox`를 주면 프로필을 무시하므로
+/// 같은 범위(전체 읽기, 작업 폴더와 더한 폴더와 임시 폴더 쓰기, 네트워크 없음)를 프로필로 적고 거부 경로를 더한다.
+pub(super) fn read_profile_config(
+    deny: &[String],
+    add_dirs: &[std::path::PathBuf],
+) -> serde_json::Value {
+    let mut filesystem = serde_json::Map::new();
+    filesystem.insert(":root".to_owned(), "read".into());
+    filesystem.insert(
+        ":project_roots".to_owned(),
+        serde_json::json!({ ".": "write" }),
+    );
+    filesystem.insert(":tmpdir".to_owned(), "write".into());
+    filesystem.insert(":slash_tmp".to_owned(), "write".into());
+    for dir in add_dirs {
+        filesystem.insert(dir.to_string_lossy().into_owned(), "write".into());
+    }
+    for glob in deny {
+        filesystem.insert(glob.clone(), "deny".into());
+    }
+    serde_json::json!({
+        "default_permissions": READ_PROFILE,
+        "permissions": { READ_PROFILE: { "filesystem": filesystem } },
+    })
+}
+
+/// 읽기 `deny`를 넣었는데 Codex가 그 프로필을 적용하지 않았으면 이유 한 줄. 적용하지 않은 채 읽기를 허용으로 두지 않는다.
+pub(super) fn check_read_profile(result: &Value) -> Result<(), String> {
+    let id = result["activePermissionProfile"]["id"].as_str();
+    if id == Some(READ_PROFILE) {
+        return Ok(());
+    }
+    Err(format!(
+        "codex did not apply the read deny permission profile (active: {id:?}); update codex or remove permission.read deny rules"
+    ))
+}
+
 const ELICITATION_METHOD: &str = "mcpServer/elicitation/request";
 
 /// 도구 이름을 알 수 없는 MCP 요청의 도구 자리.
@@ -289,6 +329,25 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+
+    // #520
+    #[test]
+    fn read_deny_goes_to_a_permission_profile_that_must_be_the_active_one() {
+        let config = read_profile_config(
+            &["/work/secret/**".to_owned()],
+            &[std::path::PathBuf::from("/extra")],
+        );
+
+        assert_eq!(config["default_permissions"], json!("saturn"));
+        let filesystem = &config["permissions"]["saturn"]["filesystem"];
+        assert_eq!(filesystem["/work/secret/**"], json!("deny"));
+        assert_eq!(filesystem["/extra"], json!("write"));
+        assert_eq!(filesystem[":root"], json!("read"));
+        assert!(
+            check_read_profile(&json!({ "activePermissionProfile": { "id": "saturn" } })).is_ok()
+        );
+        assert!(check_read_profile(&json!({ "activePermissionProfile": null })).is_err());
+    }
 
     #[test]
     fn applied_policy_must_be_untrusted_workspace_write_without_network() {

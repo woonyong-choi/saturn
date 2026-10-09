@@ -3,12 +3,17 @@
 
 use std::time::SystemTime;
 
-use saturn_protocol::ids::{ChatId, ConstraintAskId, ConstraintId, InputId, JudgmentId, SessionId};
+use saturn_protocol::ids::{
+    ChatId, ConstraintAskId, ConstraintId, InputId, JudgmentId, SessionId, TaskId,
+};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use sqlx::sqlite::SqliteRow;
 
 use super::{Store, StoreError, enum_text, from_sql_int, parse_enum, to_millis, to_sql_int};
+
+/// 입력에서 나오지 않은 제약(사용자가 `AddConstraint`로 직접 등록)의 입력 번호. 입력 번호는 1부터라 어느 입력과도 겹치지 않는다.
+pub(crate) const NO_INPUT: InputId = InputId(0);
 
 /// 상태를 바꾸는 이벤트가 이 표의 상태와 늘 같이 쓰인다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -24,12 +29,20 @@ pub(crate) enum ConstraintState {
 pub(crate) enum EventKind {
     Added,
     Released,
+    /// 제약을 지우지 않고 멈추는 예외를 걸었다. 종류는 `constraint_exceptions`가 말한다.
+    Excepted,
+    /// 이번 작업 예외가 작업이 끝나 닫혀 제약이 다시 유효해졌다.
+    Resumed,
+    /// 사용자가 앞 변경 한 건을 되돌렸다. 되돌린 변경은 `constraint_events.undoes`가 가리킨다.
+    Restored,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum Actor {
     Router,
     User,
+    /// 작업 끝처럼 사람도 router도 아닌 engine의 규칙이 바꿨다.
+    Engine,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -40,6 +53,8 @@ pub(crate) enum EventReason {
     InputCanceled,
     /// 권한 모드 `full`이라 묻지 않고 정한 변경이다.
     Unconfirmed,
+    /// 사용자가 제약이 아니었다고 해제했다.
+    Mistaken,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -84,6 +99,21 @@ pub(crate) struct Registered {
     pub(crate) ask: Option<ConstraintAskId>,
 }
 
+/// 예외의 종류. `Once`는 그 작업 하나 동안, `Scoped`는 사용자가 지울 때까지다.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ExceptionKind {
+    Once,
+    Scoped,
+}
+
+/// 제약에 걸린 열린 예외.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct StoredException {
+    pub(crate) kind: ExceptionKind,
+    /// `Scoped`만. 입력 원문의 연속된 글이다.
+    pub(crate) condition: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StoredConstraint {
     pub(crate) id: ConstraintId,
@@ -93,6 +123,8 @@ pub(crate) struct StoredConstraint {
     pub(crate) rule: String,
     pub(crate) scope: Vec<String>,
     pub(crate) state: ConstraintState,
+    /// 열린 예외. `constraints_of_chat`만 채우고 다른 조회는 `None`이다.
+    pub(crate) exception: Option<StoredException>,
 }
 
 /// 답을 기다리는 등록 확인. 규칙은 그 입력의 `Candidate` 전체다.
@@ -116,6 +148,76 @@ pub(crate) enum AnswerOutcome {
         registered: bool,
         rules: Vec<String>,
     },
+}
+
+/// 제약에 거는 변경. 사용자의 명령과 router의 제안이 같은 모양을 쓰고 주체(`Actor`)로 구별한다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ConstraintChange {
+    /// 영구 해제.
+    Release,
+    /// 그 작업이 끝날 때까지 멈춘다.
+    Once { task: TaskId },
+    /// 조건 문장은 입력 원문의 연속된 글이다.
+    Scoped { condition: String },
+}
+
+/// 제약 하나에 한 거래로 거는 변경.
+#[derive(Debug, Clone)]
+pub(crate) struct NewChange {
+    pub(crate) chat: ChatId,
+    pub(crate) constraint: ConstraintId,
+    pub(crate) change: ConstraintChange,
+    pub(crate) actor: Actor,
+    pub(crate) reason: Option<EventReason>,
+    /// 변경을 일으킨 입력. 사용자가 화면에서 바꿨으면 `None`.
+    pub(crate) input: Option<InputId>,
+    pub(crate) judgment: Option<JudgmentId>,
+    /// 변경을 정할 때 본 채팅의 제약 revision. 지금과 다르면 적용하지 않는다.
+    pub(crate) revision: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ChangeOutcome {
+    Applied {
+        rule: String,
+    },
+    /// 제약 revision이 달라졌다. 옛 판단이나 옛 화면으로 덮어쓰지 않는다.
+    Stale,
+    /// 없는 제약이거나 `Active`가 아니다.
+    NotActive,
+}
+
+/// 변경 되돌리기의 결과.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum UndoOutcome {
+    Applied {
+        rule: String,
+        /// 되돌린 변경을 일으킨 쪽과 그 판단 기록.
+        undone: (Actor, Option<JudgmentId>),
+    },
+    /// 제약 revision이 달라졌다.
+    Stale,
+    /// 없는 변경이거나, 그 제약의 가장 최근 변경이 아니거나, 되돌릴 수 없는 종류다.
+    NotUndoable,
+}
+
+/// 변경 내역 한 줄. 되돌릴 수 있는지는 저장소가 정한다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct StoredChange {
+    pub(crate) event: i64,
+    pub(crate) constraint: ConstraintId,
+    pub(crate) rule: String,
+    pub(crate) kind: EventKind,
+    pub(crate) actor: Actor,
+    pub(crate) undoable: bool,
+    pub(crate) at: i64,
+}
+
+/// 작업 끝으로 다시 유효해진 제약.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ResumedConstraint {
+    pub(crate) chat: ChatId,
+    pub(crate) rule: String,
 }
 
 /// 입력이 취소돼 해제한 제약의 규칙.
@@ -165,11 +267,11 @@ impl Store {
                     kind: EventKind::Added,
                     actor: new.actor,
                     reason: new.reason,
-                    input: new.input,
+                    input: (new.input != NO_INPUT).then_some(new.input),
                     judgment: new.judgment,
                     at: now,
                 };
-                insert_event(&mut tx, &added).await?;
+                let _ = insert_event(&mut tx, &added).await?;
             }
             ids.push(constraint);
         }
@@ -255,7 +357,6 @@ impl Store {
     ///
     /// # Errors
     /// 읽기 실패면 `Database`.
-    #[cfg(test)]
     pub(crate) async fn constraint_revision(&self, chat: ChatId) -> Result<u64, StoreError> {
         let revision: i64 = sqlx::query_scalar(
             "SELECT COALESCE(MAX(event_id), 0) FROM constraint_events WHERE chat_id = ?",
@@ -281,7 +382,30 @@ impl Store {
         .bind(to_sql_int(chat.0))
         .fetch_all(&self.pool)
         .await?;
-        rows.iter().map(constraint_from_row).collect()
+        let mut constraints = rows
+            .iter()
+            .map(constraint_from_row)
+            .collect::<Result<Vec<_>, _>>()?;
+        let open = sqlx::query(
+            "SELECT constraint_id, kind, condition FROM constraint_exceptions \
+             WHERE chat_id = ? AND ended_event_id IS NULL",
+        )
+        .bind(to_sql_int(chat.0))
+        .fetch_all(&self.pool)
+        .await?;
+        for row in &open {
+            let id = ConstraintId(from_sql_int(row.try_get("constraint_id")?));
+            if let Some(constraint) = constraints
+                .iter_mut()
+                .find(|constraint| constraint.id == id)
+            {
+                constraint.exception = Some(StoredException {
+                    kind: parse_enum(&row.try_get::<String, _>("kind")?)?,
+                    condition: row.try_get("condition")?,
+                });
+            }
+        }
+        Ok(constraints)
     }
 
     /// 입력에서 나온 제약을 만든 순서로.
@@ -428,11 +552,11 @@ impl Store {
                 kind,
                 actor: Actor::User,
                 reason,
-                input: candidate.input,
+                input: Some(candidate.input),
                 judgment,
                 at: now,
             };
-            insert_event(&mut tx, &event).await?;
+            let _ = insert_event(&mut tx, &event).await?;
         }
         tx.commit().await?;
         Ok(AnswerOutcome::Applied {
@@ -499,11 +623,11 @@ impl Store {
                 kind: EventKind::Released,
                 actor: Actor::User,
                 reason: Some(EventReason::InputCanceled),
-                input,
+                input: Some(input),
                 judgment: None,
                 at: now,
             };
-            insert_event(&mut tx, &event).await?;
+            let _ = insert_event(&mut tx, &event).await?;
         }
         tx.commit().await?;
         Ok(Some(CanceledConstraints {
@@ -511,6 +635,402 @@ impl Store {
             rules: live.into_iter().map(|constraint| constraint.rule).collect(),
             closed_asks,
         }))
+    }
+
+    // cost: time O(1), heap O(1), stack O(1), io 5
+    // vars: -
+    // basis: estimate
+    /// 제약 하나에 해제나 예외를 한 거래로 건다. 채팅의 제약 revision이 `revision`과 다르면 아무것도 쓰지 않고 `Stale`이다.
+    /// 대상이 `Active`가 아니면 `NotActive`이다. 열린 예외가 있으면 새 이벤트로 닫는다. 영구 해제는 `Released`로,
+    /// 예외는 제약을 `Active`로 둔 채 `Excepted` 이벤트와 예외 행을 쓴다.
+    ///
+    /// # Errors
+    /// 쓰기 실패면 `Database`이고 아무것도 쓰지 않는다.
+    pub(crate) async fn change_constraint(
+        &self,
+        new: &NewChange,
+    ) -> Result<ChangeOutcome, StoreError> {
+        let now = to_millis(SystemTime::now());
+        let mut tx = self.pool.begin().await?;
+        let current: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(MAX(event_id), 0) FROM constraint_events WHERE chat_id = ?",
+        )
+        .bind(to_sql_int(new.chat.0))
+        .fetch_one(&mut *tx)
+        .await?;
+        if from_sql_int(current) != new.revision {
+            return Ok(ChangeOutcome::Stale);
+        }
+        let row = sqlx::query(
+            "SELECT constraint_id, chat_id, input_id, line, rule, scope, state FROM constraints \
+             WHERE constraint_id = ? AND chat_id = ?",
+        )
+        .bind(to_sql_int(new.constraint.0))
+        .bind(to_sql_int(new.chat.0))
+        .fetch_optional(&mut *tx)
+        .await?;
+        let Some(constraint) = row.as_ref().map(constraint_from_row).transpose()? else {
+            return Ok(ChangeOutcome::NotActive);
+        };
+        if constraint.state != ConstraintState::Active {
+            return Ok(ChangeOutcome::NotActive);
+        }
+        let kind = match new.change {
+            ConstraintChange::Release => EventKind::Released,
+            ConstraintChange::Once { .. } | ConstraintChange::Scoped { .. } => EventKind::Excepted,
+        };
+        let event = NewEvent {
+            chat: new.chat,
+            constraint: new.constraint,
+            kind,
+            actor: new.actor,
+            reason: new.reason,
+            input: new.input,
+            judgment: new.judgment,
+            at: now,
+        };
+        let event_id = insert_event(&mut tx, &event).await?;
+        sqlx::query(
+            "UPDATE constraint_exceptions SET ended_event_id = ? \
+             WHERE constraint_id = ? AND ended_event_id IS NULL",
+        )
+        .bind(event_id)
+        .bind(to_sql_int(new.constraint.0))
+        .execute(&mut *tx)
+        .await?;
+        match &new.change {
+            ConstraintChange::Release => {
+                sqlx::query("UPDATE constraints SET state = ? WHERE constraint_id = ?")
+                    .bind(enum_text(&ConstraintState::Released)?)
+                    .bind(to_sql_int(new.constraint.0))
+                    .execute(&mut *tx)
+                    .await?;
+            }
+            ConstraintChange::Once { task } => {
+                insert_exception(
+                    &mut tx,
+                    new,
+                    ExceptionKind::Once,
+                    event_id,
+                    Some(*task),
+                    None,
+                )
+                .await?;
+            }
+            ConstraintChange::Scoped { condition } => {
+                insert_exception(
+                    &mut tx,
+                    new,
+                    ExceptionKind::Scoped,
+                    event_id,
+                    None,
+                    Some(condition),
+                )
+                .await?;
+            }
+        }
+        tx.commit().await?;
+        Ok(ChangeOutcome::Applied {
+            rule: constraint.rule,
+        })
+    }
+
+    // cost: time O(e), heap O(e), stack O(1), io e
+    // vars: e = 그 작업의 열린 이번 작업 예외 수
+    // basis: estimate
+    /// 작업이 끝났을 때 그 작업의 열린 이번 작업 예외를 한 거래로 닫고 `Resumed` 이벤트를 쓴다. 닫은 것이 없으면 빈 목록이다.
+    ///
+    /// # Errors
+    /// 쓰기 실패면 `Database`이고 아무것도 쓰지 않는다.
+    pub(crate) async fn end_task_exceptions(
+        &self,
+        task: TaskId,
+    ) -> Result<Vec<ResumedConstraint>, StoreError> {
+        let now = to_millis(SystemTime::now());
+        let mut tx = self.pool.begin().await?;
+        let rows = sqlx::query(
+            "SELECT exceptions.exception_id, exceptions.chat_id, exceptions.constraint_id, constraints.rule \
+             FROM constraint_exceptions AS exceptions \
+             JOIN constraints ON constraints.constraint_id = exceptions.constraint_id \
+             WHERE exceptions.kind = ? AND exceptions.task_id = ? AND exceptions.ended_event_id IS NULL \
+             ORDER BY exceptions.exception_id",
+        )
+        .bind(enum_text(&ExceptionKind::Once)?)
+        .bind(to_sql_int(task.0))
+        .fetch_all(&mut *tx)
+        .await?;
+        let mut resumed = Vec::with_capacity(rows.len());
+        for row in &rows {
+            let chat = ChatId(from_sql_int(row.try_get("chat_id")?));
+            let event = NewEvent {
+                chat,
+                constraint: ConstraintId(from_sql_int(row.try_get("constraint_id")?)),
+                kind: EventKind::Resumed,
+                actor: Actor::Engine,
+                reason: None,
+                input: None,
+                judgment: None,
+                at: now,
+            };
+            let event_id = insert_event(&mut tx, &event).await?;
+            sqlx::query(
+                "UPDATE constraint_exceptions SET ended_event_id = ? WHERE exception_id = ?",
+            )
+            .bind(event_id)
+            .bind(row.try_get::<i64, _>("exception_id")?)
+            .execute(&mut *tx)
+            .await?;
+            resumed.push(ResumedConstraint {
+                chat,
+                rule: row.try_get("rule")?,
+            });
+        }
+        tx.commit().await?;
+        Ok(resumed)
+    }
+
+    /// 열린 이번 작업 예외가 묶인 작업을 번호 순으로. engine을 다시 켤 때 이미 없는 작업의 예외를 닫는 데 쓴다.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Database`.
+    pub(crate) async fn open_once_exception_tasks(&self) -> Result<Vec<TaskId>, StoreError> {
+        let tasks: Vec<i64> = sqlx::query_scalar(
+            "SELECT DISTINCT task_id FROM constraint_exceptions \
+             WHERE kind = ? AND task_id IS NOT NULL AND ended_event_id IS NULL ORDER BY task_id",
+        )
+        .bind(enum_text(&ExceptionKind::Once)?)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(tasks
+            .into_iter()
+            .map(|id| TaskId(from_sql_int(id)))
+            .collect())
+    }
+
+    // cost: time O(e), heap O(e), stack O(1), io e
+    // vars: e = 채팅의 변경 이벤트 수
+    // basis: estimate
+    /// 채팅의 변경 내역을 시각순으로. 등록 확인을 거절한 `Declined`는 뺀다. 되돌릴 수 있는 줄은 그 제약의 가장 최근
+    /// 변경이면서 등록, 해제, 예외인 것이다. 작업 끝으로 생긴 `Resumed`와 되돌림 `Restored`는 되돌리지 않는다.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Database`, 저장된 값이 깨졌으면 `Json`.
+    pub(crate) async fn constraint_changes_of_chat(
+        &self,
+        chat: ChatId,
+    ) -> Result<Vec<StoredChange>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT events.event_id, events.constraint_id, events.kind, events.actor, events.reason,              events.created_at, constraints.rule              FROM constraint_events AS events              JOIN constraints ON constraints.constraint_id = events.constraint_id              WHERE events.chat_id = ? ORDER BY events.event_id",
+        )
+        .bind(to_sql_int(chat.0))
+        .fetch_all(&self.pool)
+        .await?;
+        let mut latest = std::collections::HashMap::new();
+        for row in &rows {
+            latest.insert(
+                row.try_get::<i64, _>("constraint_id")?,
+                row.try_get::<i64, _>("event_id")?,
+            );
+        }
+        let mut changes = Vec::with_capacity(rows.len());
+        for row in &rows {
+            let event: i64 = row.try_get("event_id")?;
+            let constraint: i64 = row.try_get("constraint_id")?;
+            let kind: EventKind = parse_enum(&row.try_get::<String, _>("kind")?)?;
+            let reason: Option<EventReason> = row
+                .try_get::<Option<String>, _>("reason")?
+                .map(|text| parse_enum(&text))
+                .transpose()?;
+            if reason == Some(EventReason::Declined) {
+                continue;
+            }
+            changes.push(StoredChange {
+                event,
+                constraint: ConstraintId(from_sql_int(constraint)),
+                rule: row.try_get("rule")?,
+                kind,
+                actor: parse_enum(&row.try_get::<String, _>("actor")?)?,
+                undoable: latest.get(&constraint) == Some(&event)
+                    && matches!(
+                        kind,
+                        EventKind::Added | EventKind::Released | EventKind::Excepted
+                    ),
+                at: row.try_get("created_at")?,
+            });
+        }
+        Ok(changes)
+    }
+
+    // cost: time O(1), heap O(1), stack O(1), io 6
+    // vars: -
+    // basis: estimate
+    /// 사용자가 변경 한 건을 한 거래로 되돌린다. 제약 revision이 `revision`과 다르면 `Stale`이다. 그 제약의 가장 최근
+    /// 변경이 아니거나 등록 확인 거절, 작업 끝, 되돌림 변경이면 `NotUndoable`이다. 등록의 되돌리기는 해제와 같고,
+    /// 해제의 되돌리기는 제약을 `Active`로 돌리고, 예외의 되돌리기는 예외를 닫는다. `Restored` 이벤트가 이어 쓰인다.
+    ///
+    /// # Errors
+    /// 쓰기 실패면 `Database`이고 아무것도 쓰지 않는다.
+    pub(crate) async fn undo_constraint_change(
+        &self,
+        constraint: ConstraintId,
+        event: i64,
+        revision: u64,
+    ) -> Result<UndoOutcome, StoreError> {
+        let now = to_millis(SystemTime::now());
+        let mut tx = self.pool.begin().await?;
+        let Some(chat) =
+            sqlx::query_scalar::<_, i64>("SELECT chat_id FROM constraints WHERE constraint_id = ?")
+                .bind(to_sql_int(constraint.0))
+                .fetch_optional(&mut *tx)
+                .await?
+                .map(|chat| ChatId(from_sql_int(chat)))
+        else {
+            return Ok(UndoOutcome::NotUndoable);
+        };
+        let current: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(MAX(event_id), 0) FROM constraint_events WHERE chat_id = ?",
+        )
+        .bind(to_sql_int(chat.0))
+        .fetch_one(&mut *tx)
+        .await?;
+        if from_sql_int(current) != revision {
+            return Ok(UndoOutcome::Stale);
+        }
+        let target = sqlx::query(
+            "SELECT kind, actor, reason, judgment_id FROM constraint_events              WHERE event_id = ? AND constraint_id = ?",
+        )
+        .bind(event)
+        .bind(to_sql_int(constraint.0))
+        .fetch_optional(&mut *tx)
+        .await?;
+        let latest: i64 = sqlx::query_scalar(
+            "SELECT COALESCE(MAX(event_id), 0) FROM constraint_events WHERE constraint_id = ?",
+        )
+        .bind(to_sql_int(constraint.0))
+        .fetch_one(&mut *tx)
+        .await?;
+        let Some(target) = target.filter(|_| latest == event) else {
+            return Ok(UndoOutcome::NotUndoable);
+        };
+        let kind: EventKind = parse_enum(&target.try_get::<String, _>("kind")?)?;
+        let reason: Option<EventReason> = target
+            .try_get::<Option<String>, _>("reason")?
+            .map(|text| parse_enum(&text))
+            .transpose()?;
+        let row = sqlx::query(
+            "SELECT constraint_id, chat_id, input_id, line, rule, scope, state FROM constraints              WHERE constraint_id = ?",
+        )
+        .bind(to_sql_int(constraint.0))
+        .fetch_one(&mut *tx)
+        .await?;
+        let stored = constraint_from_row(&row)?;
+        let restored_state = match (kind, stored.state) {
+            _ if reason == Some(EventReason::Declined) => None,
+            (EventKind::Added, ConstraintState::Active) => Some(ConstraintState::Released),
+            (EventKind::Released, ConstraintState::Released)
+            | (EventKind::Excepted, ConstraintState::Active) => Some(ConstraintState::Active),
+            _ => None,
+        };
+        let Some(restored_state) = restored_state else {
+            return Ok(UndoOutcome::NotUndoable);
+        };
+        let restored = NewEvent {
+            chat,
+            constraint,
+            kind: EventKind::Restored,
+            actor: Actor::User,
+            reason: None,
+            input: None,
+            judgment: None,
+            at: now,
+        };
+        let restored_event = insert_event(&mut tx, &restored).await?;
+        sqlx::query("UPDATE constraint_events SET undoes = ? WHERE event_id = ?")
+            .bind(event)
+            .bind(restored_event)
+            .execute(&mut *tx)
+            .await?;
+        if kind == EventKind::Excepted {
+            sqlx::query(
+                "UPDATE constraint_exceptions SET ended_event_id = ? \
+                 WHERE constraint_id = ? AND ended_event_id IS NULL",
+            )
+            .bind(restored_event)
+            .bind(to_sql_int(constraint.0))
+            .execute(&mut *tx)
+            .await?;
+        }
+        sqlx::query("UPDATE constraints SET state = ? WHERE constraint_id = ?")
+            .bind(enum_text(&restored_state)?)
+            .bind(to_sql_int(constraint.0))
+            .execute(&mut *tx)
+            .await?;
+        let actor = parse_enum(&target.try_get::<String, _>("actor")?)?;
+        let judgment = target
+            .try_get::<Option<i64>, _>("judgment_id")?
+            .map(|id| JudgmentId(from_sql_int(id)));
+        tx.commit().await?;
+        Ok(UndoOutcome::Applied {
+            rule: stored.rule,
+            undone: (actor, judgment),
+        })
+    }
+
+    /// 제약을 등록한 판단 기록. 사용자가 직접 등록했거나 없는 제약이면 `None`이다.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Database`.
+    pub(crate) async fn registration_judgment(
+        &self,
+        constraint: ConstraintId,
+    ) -> Result<Option<JudgmentId>, StoreError> {
+        let judgment: Option<Option<i64>> = sqlx::query_scalar(
+            "SELECT judgment_id FROM constraint_events WHERE constraint_id = ? AND kind = ? \
+             ORDER BY event_id LIMIT 1",
+        )
+        .bind(to_sql_int(constraint.0))
+        .bind(enum_text(&EventKind::Added)?)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(judgment.flatten().map(|id| JudgmentId(from_sql_int(id))))
+    }
+
+    /// 제약이 속한 채팅. 없는 제약이면 `None`이다.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Database`.
+    pub(crate) async fn chat_of_constraint(
+        &self,
+        constraint: ConstraintId,
+    ) -> Result<Option<ChatId>, StoreError> {
+        let chat: Option<i64> =
+            sqlx::query_scalar("SELECT chat_id FROM constraints WHERE constraint_id = ?")
+                .bind(to_sql_int(constraint.0))
+                .fetch_optional(&self.pool)
+                .await?;
+        Ok(chat.map(|chat| ChatId(from_sql_int(chat))))
+    }
+
+    /// 그 이벤트가 건 예외. 예외 이벤트가 아니면 `None`이다.
+    ///
+    /// # Errors
+    /// 읽기 실패면 `Database`.
+    pub(crate) async fn exception_of_event(
+        &self,
+        event: i64,
+    ) -> Result<Option<StoredException>, StoreError> {
+        let row =
+            sqlx::query("SELECT kind, condition FROM constraint_exceptions WHERE event_id = ?")
+                .bind(event)
+                .fetch_optional(&self.pool)
+                .await?;
+        row.map(|row| {
+            Ok(StoredException {
+                kind: parse_enum(&row.try_get::<String, _>("kind")?)?,
+                condition: row.try_get("condition")?,
+            })
+        })
+        .transpose()
     }
 
     /// 변경 이벤트를 쓴 순서로 `(종류, 주체, 사유, 판단 기록)`. 시험이 이벤트 행을 확인하는 데 쓴다.
@@ -542,6 +1062,29 @@ impl Store {
     }
 }
 
+async fn insert_exception(
+    tx: &mut sqlx::SqliteConnection,
+    new: &NewChange,
+    kind: ExceptionKind,
+    event: i64,
+    task: Option<TaskId>,
+    condition: Option<&String>,
+) -> Result<(), StoreError> {
+    sqlx::query(
+        "INSERT INTO constraint_exceptions (chat_id, constraint_id, kind, event_id, task_id, condition) \
+         VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .bind(to_sql_int(new.chat.0))
+    .bind(to_sql_int(new.constraint.0))
+    .bind(enum_text(&kind)?)
+    .bind(event)
+    .bind(task.map(|task| to_sql_int(task.0)))
+    .bind(condition)
+    .execute(tx)
+    .await?;
+    Ok(())
+}
+
 /// 이벤트 한 줄. 행은 이어 쓰기만 한다.
 struct NewEvent {
     chat: ChatId,
@@ -549,27 +1092,30 @@ struct NewEvent {
     kind: EventKind,
     actor: Actor,
     reason: Option<EventReason>,
-    input: InputId,
+    input: Option<InputId>,
     judgment: Option<JudgmentId>,
     at: i64,
 }
 
-async fn insert_event(tx: &mut sqlx::SqliteConnection, event: &NewEvent) -> Result<(), StoreError> {
-    sqlx::query(
+async fn insert_event(
+    tx: &mut sqlx::SqliteConnection,
+    event: &NewEvent,
+) -> Result<i64, StoreError> {
+    let id = sqlx::query_scalar(
         "INSERT INTO constraint_events (chat_id, constraint_id, kind, actor, reason, input_id, judgment_id, created_at) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING event_id",
     )
     .bind(to_sql_int(event.chat.0))
     .bind(to_sql_int(event.constraint.0))
     .bind(enum_text(&event.kind)?)
     .bind(enum_text(&event.actor)?)
     .bind(event.reason.map(|reason| enum_text(&reason)).transpose()?)
-    .bind(to_sql_int(event.input.0))
+    .bind(event.input.map(|input| to_sql_int(input.0)))
     .bind(event.judgment.map(|judgment| to_sql_int(judgment.0)))
     .bind(event.at)
-    .execute(tx)
+    .fetch_one(tx)
     .await?;
-    Ok(())
+    Ok(id)
 }
 
 fn constraint_from_row(row: &SqliteRow) -> Result<StoredConstraint, StoreError> {
@@ -584,6 +1130,7 @@ fn constraint_from_row(row: &SqliteRow) -> Result<StoredConstraint, StoreError> 
             .map(|text| text.lines().map(str::to_owned).collect())
             .unwrap_or_default(),
         state: parse_enum(&row.try_get::<String, _>("state")?)?,
+        exception: None,
     })
 }
 
@@ -824,9 +1371,9 @@ mod tests {
         let lines: Vec<(EventKind, Option<EventReason>, &str)> = entries
             .iter()
             .filter_map(|entry| match entry {
-                HistoryEntry::Constraint { kind, reason, rule } => {
-                    Some((*kind, *reason, rule.as_str()))
-                }
+                HistoryEntry::Constraint {
+                    kind, reason, rule, ..
+                } => Some((*kind, *reason, rule.as_str())),
                 _ => None,
             })
             .collect();
@@ -875,5 +1422,150 @@ mod tests {
                 .unwrap();
             assert_eq!(rows, 0, "{table}");
         }
+    }
+    fn change(
+        chat: ChatId,
+        constraint: ConstraintId,
+        change: ConstraintChange,
+        revision: u64,
+    ) -> NewChange {
+        NewChange {
+            chat,
+            constraint,
+            change,
+            actor: Actor::Router,
+            reason: None,
+            input: None,
+            judgment: None,
+            revision,
+        }
+    }
+
+    #[tokio::test]
+    async fn constraint_change_writes_nothing_for_a_stale_revision_or_an_inactive_target() {
+        let (_dir, store) = temp_store().await;
+        let (chat, input) = chat_and_input(&store).await;
+        let one = rules(&["answer in English"]);
+        let active = store
+            .register_constraints(&registration(chat, input, &one, ConstraintState::Active))
+            .await
+            .unwrap()
+            .constraints[0];
+        let candidate = store
+            .register_constraints(&registration(chat, input, &one, ConstraintState::Candidate))
+            .await
+            .unwrap()
+            .constraints[0];
+
+        let stale = store
+            .change_constraint(&change(chat, active, ConstraintChange::Release, 0))
+            .await
+            .unwrap();
+        let revision = store.constraint_revision(chat).await.unwrap();
+        let waiting = store
+            .change_constraint(&change(
+                chat,
+                candidate,
+                ConstraintChange::Release,
+                revision,
+            ))
+            .await
+            .unwrap();
+        let other_chat = store
+            .change_constraint(&change(ChatId(99), active, ConstraintChange::Release, 0))
+            .await
+            .unwrap();
+
+        assert_eq!(stale, ChangeOutcome::Stale);
+        assert_eq!(waiting, ChangeOutcome::NotActive);
+        assert_eq!(other_chat, ChangeOutcome::NotActive);
+        assert_eq!(store.constraint_revision(chat).await.unwrap(), revision);
+        let states: Vec<ConstraintState> = store
+            .constraints_of_chat(chat)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|constraint| constraint.state)
+            .collect();
+        assert_eq!(
+            states,
+            vec![ConstraintState::Active, ConstraintState::Candidate]
+        );
+    }
+
+    #[tokio::test]
+    async fn task_exceptions_end_only_with_their_task_and_a_new_change_closes_the_open_one() {
+        let (_dir, store) = temp_store().await;
+        let (chat, input) = chat_and_input(&store).await;
+        let two = rules(&["answer in English", "no unwrap"]);
+        let ids = store
+            .register_constraints(&registration(chat, input, &two, ConstraintState::Active))
+            .await
+            .unwrap()
+            .constraints;
+        let apply = |constraint, change_to| {
+            let store = &store;
+            async move {
+                let revision = store.constraint_revision(chat).await.unwrap();
+                store
+                    .change_constraint(&change(chat, constraint, change_to, revision))
+                    .await
+                    .unwrap()
+            }
+        };
+
+        apply(ids[0], ConstraintChange::Once { task: TaskId(1) }).await;
+        apply(ids[1], ConstraintChange::Once { task: TaskId(2) }).await;
+        assert_eq!(
+            store.open_once_exception_tasks().await.unwrap(),
+            vec![TaskId(1), TaskId(2)]
+        );
+        // 같은 제약의 새 예외는 앞 예외를 닫는다
+        let scoped = ConstraintChange::Scoped {
+            condition: "tests only".to_owned(),
+        };
+        apply(ids[1], scoped).await;
+        let resumed = store.end_task_exceptions(TaskId(2)).await.unwrap();
+        let first = store.end_task_exceptions(TaskId(1)).await.unwrap();
+        let again = store.end_task_exceptions(TaskId(1)).await.unwrap();
+
+        assert!(
+            resumed.is_empty(),
+            "the replaced once-exception is already closed"
+        );
+        assert_eq!(
+            first,
+            vec![ResumedConstraint {
+                chat,
+                rule: "answer in English".to_owned()
+            }]
+        );
+        assert!(again.is_empty());
+        let stored = store.constraints_of_chat(chat).await.unwrap();
+        assert_eq!(stored[0].exception, None);
+        assert_eq!(
+            stored[1].exception,
+            Some(StoredException {
+                kind: ExceptionKind::Scoped,
+                condition: Some("tests only".to_owned())
+            })
+        );
+        assert!(store.open_once_exception_tasks().await.unwrap().is_empty());
+        let kinds: Vec<(EventKind, Actor)> = store
+            .constraint_events_of_chat(chat)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|(kind, actor, ..)| (kind, actor))
+            .collect();
+        assert_eq!(
+            kinds[2..],
+            [
+                (EventKind::Excepted, Actor::Router),
+                (EventKind::Excepted, Actor::Router),
+                (EventKind::Excepted, Actor::Router),
+                (EventKind::Resumed, Actor::Engine),
+            ]
+        );
     }
 }

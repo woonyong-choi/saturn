@@ -3,6 +3,7 @@
 
 pub(crate) mod composer;
 pub(crate) mod constraint_ask;
+pub(crate) mod constraints;
 pub(crate) mod exit_confirm;
 pub(crate) mod extensions;
 pub(crate) mod folder_trust;

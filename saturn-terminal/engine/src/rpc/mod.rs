@@ -17,6 +17,7 @@ use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TrySendError;
 
 use crate::passes::PassGate;
+use crate::processes::Supervisor;
 use connection::{Connection, Outbox};
 pub(crate) use lock::EngineLock;
 #[cfg(test)]
@@ -69,7 +70,7 @@ pub struct ClientId(pub u64);
 #[derive(Debug)]
 pub(crate) enum RpcEvent {
     /// 아직 `Request::Attach` 전.
-    Connected(ClientId),
+    Connected,
     Request(ClientId, RequestId, Request),
     /// 연결 작업이 출입증과 상한을 확인해 허용한 `Request::AttachChild`.
     Child(ClientId, RequestId, Grant),
@@ -105,6 +106,8 @@ pub(crate) struct RpcServer {
     inbox_tx: mpsc::Sender<RpcEvent>,
     /// 연결 작업이 출입증을 확인하는 관문. 요청 처리 루프와 공유한다.
     gate: PassGate,
+    /// 접속한 프로세스가 provider 묶음의 자손인지 확인한다.
+    supervisor: Supervisor,
     pending_permissions: Vec<PendingPermission>,
     next_client: u64,
     last_detached_due: bool,
@@ -124,6 +127,7 @@ impl RpcServer {
         home: &Path,
         lock: EngineLock,
         gate: PassGate,
+        supervisor: Supervisor,
     ) -> Result<Self, RpcError> {
         let socket = home.join(SOCKET_FILE);
         let bind_error = |source| RpcError::Bind {
@@ -147,6 +151,7 @@ impl RpcServer {
             inbox,
             inbox_tx,
             gate,
+            supervisor,
             pending_permissions: Vec::new(),
             next_client: 0,
             last_detached_due: false,
@@ -389,9 +394,13 @@ impl RpcServer {
     fn accept(&mut self, stream: tokio::net::UnixStream) -> RpcEvent {
         let id = ClientId(self.next_client);
         self.next_client += 1;
-        let outbox = Connection::new(id, stream).spawn(self.inbox_tx.clone(), self.gate.clone());
+        let outbox = Connection::new(id, stream).spawn(
+            self.inbox_tx.clone(),
+            self.gate.clone(),
+            self.supervisor.clone(),
+        );
         self.clients.insert(id, ClientHandle { outbox, chat: None });
-        RpcEvent::Connected(id)
+        RpcEvent::Connected
     }
 
     /// 끊긴 뒤 늦게 온 일은 버리고, `Detach`는 응답한 뒤 끊김으로 바꾼다.
@@ -501,7 +510,9 @@ mod tests {
         let home = tempfile::tempdir().unwrap();
         let lock = EngineLock::acquire(home.path()).unwrap();
         let gate = PassGate::new(saturn_core::passes::PassLimits::DEFAULT);
-        let server = RpcServer::bind(home.path(), lock, gate).await.unwrap();
+        let server = RpcServer::bind(home.path(), lock, gate, Supervisor::new())
+            .await
+            .unwrap();
         (home, server)
     }
 
@@ -523,10 +534,10 @@ mod tests {
 
     async fn connected(server: &mut RpcServer, home: &Path) -> (ClientId, TestClient) {
         let client = TestClient::connect(&home.join(SOCKET_FILE)).await;
-        let RpcEvent::Connected(id) = event(server).await else {
+        let RpcEvent::Connected = event(server).await else {
             panic!("expected Connected");
         };
-        (id, client)
+        (ClientId(server.next_client - 1), client)
     }
 
     fn notice(chat: u64) -> Notification {
@@ -600,7 +611,7 @@ mod tests {
         let lock = EngineLock::acquire(home.path()).unwrap();
 
         let gate = PassGate::new(saturn_core::passes::PassLimits::DEFAULT);
-        let server = RpcServer::bind(home.path(), lock, gate).await;
+        let server = RpcServer::bind(home.path(), lock, gate, Supervisor::new()).await;
 
         assert!(server.is_ok());
     }
@@ -626,6 +637,60 @@ mod tests {
             panic!("expected ListTasks");
         };
         assert_eq!((from, request_id), (id, RequestId(9)));
+    }
+
+    // #572: 표지를 지우고 붙은 provider 자손은 출입증 없는 요청을 거절당하고, 바깥 접속은 그대로 받는다
+    #[tokio::test]
+    async fn provider_descendant_without_a_pass_is_rejected() {
+        use crate::processes::ProcessSpec;
+        use tokio::io::AsyncBufReadExt;
+
+        let (home, mut server) = server().await;
+        let line = encode_line(&ClientMessage::new(RequestId(1), Request::ListTasks)).unwrap();
+        let script = "import os, socket, sys\n\
+            s = socket.socket(socket.AF_UNIX)\n\
+            s.connect(sys.argv[1])\n\
+            s.sendall(os.environ['LINE'].encode())\n\
+            print(s.makefile().readline().strip())";
+        let spec = ProcessSpec {
+            program: "/bin/sh".into(),
+            args: vec![
+                "-c".into(),
+                "python3 -c \"$SCRIPT\" \"$SOCKET\"; true".into(),
+            ],
+            workdir: home.path().to_owned(),
+            env: [
+                ("PATH", std::env::var("PATH").unwrap_or_default()),
+                ("LINE", line),
+                ("SCRIPT", script.to_owned()),
+                (
+                    "SOCKET",
+                    home.path().join(SOCKET_FILE).display().to_string(),
+                ),
+            ]
+            .map(|(key, value)| (key.into(), value.into()))
+            .into(),
+        };
+        let spawned = server.supervisor.spawn(spec).unwrap();
+        let mut reply = BufReader::new(spawned.io.stdout).lines();
+
+        let mut requests = 0;
+        let answer = timeout(Duration::from_secs(10), async {
+            loop {
+                tokio::select! {
+                    line = reply.next_line() => break line.unwrap().unwrap(),
+                    event = server.next_event() => {
+                        requests += usize::from(matches!(event, Some(RpcEvent::Request(..))));
+                    }
+                }
+            }
+        })
+        .await
+        .unwrap();
+
+        assert_eq!(requests, 0, "the request should not reach the engine");
+        assert!(answer.contains("-32002"), "unexpected reply: {answer}");
+        assert!(answer.contains("need a pass"), "unexpected reply: {answer}");
     }
 
     #[tokio::test]

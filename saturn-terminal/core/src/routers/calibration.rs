@@ -1,4 +1,4 @@
-//! 기준값 조정, 채점 라벨 게이트, 승격 게이트의 계산 규칙(실행은 engine `training`).
+//! 기준값 조정, 채점 라벨 게이트, 승격 게이트의 계산 규칙.
 //! 설계: docs/design/router-training.md
 
 pub const DEFAULT_TARGET_WRONG_RATE: f64 = 0.05;
@@ -127,7 +127,7 @@ impl ThresholdState {
     // cost: time O(n log n), heap O(n), stack O(1), alloc 1
     // vars: n = 판단 기록 수
     // basis: estimate
-    /// `/train` 때 모든 판단 기록으로 부르며, 쓰인 결과가 `MIN_RECENTER_RESULTS`건 미만이면 하지 않고 중심값은 한 번에 이전 값 `±FAST_RANGE`까지만 움직인다.
+    /// 모든 판단 기록으로 부르며, 쓰인 결과가 `MIN_RECENTER_RESULTS`건 미만이면 하지 않고 중심값은 한 번에 이전 값 `±FAST_RANGE`까지만 움직인다.
     pub fn recenter(&mut self, records: &[Observation]) {
         let mut results = 0;
         let mut samples: Vec<(f64, f64)> = Vec::new();

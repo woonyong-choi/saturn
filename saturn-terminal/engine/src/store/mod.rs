@@ -6,11 +6,16 @@ mod chat_dirs;
 mod chat_labels;
 mod constraints;
 mod direct;
+mod evidence;
+mod evidence_lookups;
 mod extensions;
 mod history;
 mod judgments;
 mod ledger;
+mod model_selections;
+mod model_shadows;
 mod outcomes;
+mod packets;
 mod permissions;
 mod raw;
 mod records;
@@ -34,13 +39,19 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePo
 
 pub(crate) use changes::RunChanges;
 pub(crate) use constraints::{
-    Actor, AnswerOutcome, ConstraintState, EventKind, EventReason, NewRegistration, NewRule,
-    StoredAsk, StoredConstraint,
+    Actor, AnswerOutcome, ChangeOutcome, ConstraintChange, ConstraintState, EventKind, EventReason,
+    ExceptionKind, NO_INPUT, NewChange, NewRegistration, NewRule, StoredAsk, StoredConstraint,
+    StoredException, UndoOutcome,
 };
+pub(crate) use evidence_lookups::{LookupKind, LookupOutcome};
 pub(crate) use extensions::ExtensionRow;
 pub(crate) use history::HistoryEntry;
 pub(crate) use judgments::{JudgmentOutcome, NewJudgment};
 pub(crate) use ledger::{LedgerRow, SteeredInput};
+pub(crate) use model_selections::{NewModelSelection, SelectionIds, SelectionSource};
+pub(crate) use model_shadows::{NewModelShadow, ShadowCandidate, ShadowStatus};
+pub(crate) use packets::{NewPacket, PacketId, PacketItemRow, PacketKind, PacketState};
+pub(crate) use raw::UnattributedRaw;
 pub(crate) use records::{NewInput, NewRun, RunEnd, RunRecord, UsageRow};
 pub(crate) use recovery::StoredHold;
 pub(crate) use retention::{
@@ -51,6 +62,9 @@ pub(crate) use sessions::IdKind;
 
 #[cfg(test)]
 pub(crate) use judgments::tests::judgment as test_judgment;
+#[cfg(test)]
+#[cfg(test)]
+pub(crate) use packets::StoredPacket;
 
 pub(crate) const DB_FILE: &str = "saturn.db";
 
@@ -176,6 +190,12 @@ impl Store {
         self.home.join(BACKUP_DIR)
     }
 
+    /// 시험이 시각 같은 값을 직접 정해 쓸 때 쓴다.
+    #[cfg(test)]
+    pub(crate) fn pool(&self) -> &SqlitePool {
+        &self.pool
+    }
+
     /// 이 뒤의 쓰기가 모두 실패한다. 접수 기록 실패 시험이 쓴다.
     #[cfg(test)]
     pub(crate) async fn deny_writes(&self) {
@@ -255,7 +275,7 @@ fn schema_target(migrations: &[&str]) -> u32 {
 }
 
 /// 기록 저장소의 모든 시각 칸은 unix 밀리초다.
-fn to_millis(at: SystemTime) -> i64 {
+pub(crate) fn to_millis(at: SystemTime) -> i64 {
     let millis = at
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default()

@@ -9,11 +9,15 @@ use flate2::Compression;
 #[cfg(test)]
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
-use saturn_protocol::ids::RunId;
+use std::time::SystemTime;
+
+use saturn_protocol::ids::{AgentId, ChatId, Provider, RunId};
 use sqlx::Row;
 
+#[cfg(test)]
+use super::parse_enum;
 use super::records::not_found;
-use super::{Store, StoreError, from_sql_int, sha256_hex, to_sql_int};
+use super::{Store, StoreError, enum_text, from_sql_int, sha256_hex, to_millis, to_sql_int};
 
 /// 압축이 대조 값을 바꾸지 않게 항상 압축 전 바이트로 계산한다.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,12 +27,22 @@ pub(crate) struct RawDigest {
     pub size: u64,
 }
 
+/// 실행에 붙이지 못한 provider 줄.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct UnattributedRaw {
+    pub provider: Provider,
+    /// 에이전트를 찾았지만 그 에이전트의 열린 실행이 없을 때만 있다.
+    pub agent: Option<AgentId>,
+    pub provider_session: Option<String>,
+    pub is_json: bool,
+    pub bytes: Vec<u8>,
+}
+
 impl Store {
-    /// provider가 보낸 줄에 router 키가 있을 수 없어 마스킹하지 않는다.
+    /// 받는 쪽(`RawTap`)이 router 키를 가린 줄을 받아 그대로 쓴다. 여기서는 마스킹하지 않는다.
     ///
     /// # Errors
     /// 없는 실행이면 `NotFound`, 이미 압축한(끝난) 실행이면 `Database`.
-    #[cfg(test)]
     pub(crate) async fn append_raw(&self, run: RunId, chunk: &[u8]) -> Result<(), StoreError> {
         let mut tx = self.pool.begin().await?;
         let sealed: Option<bool> =
@@ -48,6 +62,57 @@ impl Store {
             .await?;
         tx.commit().await?;
         Ok(())
+    }
+
+    /// 어느 실행의 것인지 정하지 못한 줄을 따로 쌓는다. 어떤 실행에도 붙이지 않는다.
+    pub(crate) async fn append_unattributed_raw(
+        &self,
+        chat: ChatId,
+        line: &UnattributedRaw,
+    ) -> Result<(), StoreError> {
+        sqlx::query(
+            "INSERT INTO raw_unattributed \
+             (chat_id, provider, agent_id, provider_session, is_json, bytes, received_at) \
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(to_sql_int(chat.0))
+        .bind(enum_text(&line.provider)?)
+        .bind(line.agent.map(|agent| to_sql_int(agent.0)))
+        .bind(&line.provider_session)
+        .bind(line.is_json)
+        .bind(&line.bytes)
+        .bind(to_millis(SystemTime::now()))
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    /// 채팅의 미귀속 줄을 받은 순서대로 읽는다.
+    #[cfg(test)]
+    pub(crate) async fn unattributed_raw(
+        &self,
+        chat: ChatId,
+    ) -> Result<Vec<UnattributedRaw>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT provider, agent_id, provider_session, is_json, bytes FROM raw_unattributed \
+             WHERE chat_id = ? ORDER BY id",
+        )
+        .bind(to_sql_int(chat.0))
+        .fetch_all(&self.pool)
+        .await?;
+        rows.iter()
+            .map(|row| {
+                Ok(UnattributedRaw {
+                    provider: parse_enum(&row.try_get::<String, _>("provider")?)?,
+                    agent: row
+                        .try_get::<Option<i64>, _>("agent_id")?
+                        .map(|id| AgentId(from_sql_int(id))),
+                    provider_session: row.try_get("provider_session")?,
+                    is_json: row.try_get("is_json")?,
+                    bytes: row.try_get("bytes")?,
+                })
+            })
+            .collect()
     }
 
     /// 이미 압축됐으면 그대로 둔다.

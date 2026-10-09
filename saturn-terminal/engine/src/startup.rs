@@ -50,7 +50,8 @@ impl Engine {
         let settings = Self::merge_settings(&options, &store).await?;
         let verified = Self::verify_router(&options, &store, &settings, env).await?;
         let passes = PassGate::new(Self::child_limits(&settings, &store).await);
-        let rpc = Self::listen(&options, lock, passes.clone()).await?;
+        let supervisor = Supervisor::new();
+        let rpc = Self::listen(&options, lock, passes.clone(), supervisor.clone()).await?;
         let restarted = options.after_upgrade;
         Ok(Self {
             trace: crate::providers::TraceHub::new(&options.home),
@@ -59,10 +60,11 @@ impl Engine {
             settings,
             secrets: verified.secrets,
             masker: verified.masker,
-            supervisor: Supervisor::new(),
+            supervisor,
             providers: HashMap::new(),
             registry: crate::Registry::builtin(),
             routers: verified.routers,
+            catalog: crate::model_catalog::builtin(),
             router_gate: verified.gate,
             rpc,
             passes,
@@ -227,8 +229,9 @@ impl Engine {
         options: &EngineOptions,
         lock: EngineLock,
         passes: PassGate,
+        supervisor: Supervisor,
     ) -> Result<RpcServer, EngineError> {
-        Ok(RpcServer::bind(&options.home, lock, passes).await?)
+        Ok(RpcServer::bind(&options.home, lock, passes, supervisor).await?)
     }
 }
 

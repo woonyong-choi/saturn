@@ -4,14 +4,12 @@
 pub mod calibration;
 pub mod constraint;
 pub mod failure;
-pub mod split;
+pub mod shadow;
 
 use std::future::Future;
 
-use saturn_protocol::ids::{ChatRevision, LedgerSeq, SettingsRevision};
+use saturn_protocol::ids::{ChatRevision, SettingsRevision};
 use saturn_protocol::state::Disposition;
-
-use self::split::{SplitError, split_request};
 
 /// 이 값 미만이면 새 작업, 이 값부터 유지 기준 미만까지는 현재 에이전트 유지.
 pub const KEEP_CURRENT_FLOOR: f64 = 0.3;
@@ -19,10 +17,12 @@ pub const KEEP_CURRENT_FLOOR: f64 = 0.3;
 /// 확률 합이 1에서 벗어나도 되는 폭(초안).
 pub const PROBABILITY_TOLERANCE: f64 = 0.01;
 
+/// 부동소수점 뺄셈 오차만 흡수한다. 허용 폭 0.01을 넓히지 않는다.
+const FLOAT_SLACK: f64 = 1e-9;
+
 pub const SET_ROUTE: &str = "route";
 pub const SET_RELATION: &str = "relation";
 pub const SET_SEND_OPT: &str = "send-opt";
-pub const SET_COMPACT: &str = "compact";
 pub const SET_CONSTRAINT: &str = "constraint";
 
 /// 판단 기록과 대체 규칙 기록에 그대로 남는다.
@@ -32,6 +32,7 @@ pub mod question_ids {
     pub const TARGET_MODEL: &str = "target_model";
     pub const RESUME_HELD: &str = "resume_held";
     pub const IS_CONSTRAINT: &str = "is_constraint";
+    pub const CONSTRAINT_CHANGE: &str = "constraint_change";
     pub const RELATION_TO_RUNNING: &str = "relation_to_running";
     pub const STEER_OR_SPAWN: &str = "steer_or_spawn";
 }
@@ -186,7 +187,7 @@ pub trait RouterClient: Send + Sync {
     /// 실패하면 호출자는 키를 다시 받거나 Saturn을 실행하지 않는다.
     fn check(&self) -> impl Future<Output = Result<(), RouterError>> + Send;
 
-    /// 64K를 넘거나 `state`와 가장 긴 질문 합이 32K를 넘으면 구현이 `split::split_request`로 나눠 보낸다.
+    /// 64K를 넘거나 `state`와 가장 긴 질문 합이 32K를 넘으면 구현이 provider 어댑터에서 나눠 보낸다.
     ///
     /// # Errors
     /// 호출자는 `RouterError` 종류별로 대기, 대체 규칙, 재전송을 고른다.
@@ -199,6 +200,8 @@ pub trait RouterClient: Send + Sync {
 /// 판단 기록은 방식과 관계없이 전부 남긴다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Method {
+    /// 외부 router를 호출하지 않고 현재 작업과 사용자가 고른 모델을 쓴다.
+    Manual,
     /// 외부 API 기준 router.
     Jev,
     /// 확신도가 기준보다 낮으면 행동하지 않고 대체 규칙으로 간다.
@@ -229,6 +232,8 @@ pub struct Thresholds {
     pub is_constraint: f64,
     /// 이 값 이상 `is_constraint` 미만이면 등록할지 사용자에게 묻고, 문장 나누기에서는 이 값 이상인 문장을 규칙으로 쓴다.
     pub constraint_ask: f64,
+    /// `constraint_change`의 해제·예외 요청 확률이 이 값 이상이면 해제나 예외를 적용하고, 종류 확률의 하한으로도 쓴다.
+    pub constraint_release: f64,
 }
 
 impl Default for Thresholds {
@@ -245,6 +250,7 @@ impl Default for Thresholds {
             feedback_cause: 0.7,
             is_constraint: 0.8,
             constraint_ask: 0.7,
+            constraint_release: 0.8,
         }
     }
 }
@@ -341,84 +347,6 @@ pub fn questions_for_input(
         ));
     }
     sets
-}
-
-// cost: time O(n), heap O(n), stack O(1)
-// vars: n = 후보 수
-// basis: estimate
-/// 후보마다 `call_<id>_keep`과 `result_<id>_keep`을 묻는다. 후보를 줄이지 않고 전체를 넘긴다.
-pub fn compact_questions(candidates: &[LedgerSeq]) -> (QuestionSetId, Vec<Question>) {
-    let questions = candidates
-        .iter()
-        .flat_map(|seq| {
-            [
-                noul(
-                    &compact_call_id(*seq),
-                    &format!("Should tool call {} stay in the handoff context?", seq.0),
-                ),
-                noul(
-                    &compact_result_id(*seq),
-                    &format!(
-                        "Should the result of tool call {} stay in the handoff context?",
-                        seq.0
-                    ),
-                ),
-            ]
-        })
-        .collect();
-    (set_id(SET_COMPACT), questions)
-}
-
-// cost: time O(n + q), heap O(n + q·s), stack O(1), alloc 1
-// vars: n = 후보 수, q = 질문 수, s = state 글자 수
-// basis: estimate
-/// 후보 전체를 묻는 요청을 크기 한도에 맞게 나눈 목록이다. 조각마다 같은 `state`를 싣는다.
-///
-/// # Errors
-/// `state`가 너무 커서 질문 하나도 담을 수 없으면 `SplitError::QuestionTooLarge`.
-pub fn compact_requests(
-    model: &str,
-    state: &str,
-    candidates: &[LedgerSeq],
-) -> Result<Vec<RouterRequest>, SplitError> {
-    split_request(RouterRequest {
-        model: model.to_string(),
-        state: state.to_string(),
-        sets: vec![compact_questions(candidates)],
-    })
-}
-
-// cost: time O(n·r·a), heap O(n), stack O(1)
-// vars: n = 후보 수, r = 응답 수, a = 응답당 답 수
-// basis: estimate
-/// 조각마다 받은 응답에서 `call_<id>_keep`과 `result_<id>_keep` 답 중 큰 값을 `(기록 번호, P(yes))`로 모은다.
-/// 실패한 조각의 응답은 넘기지 않으며, 두 답이 모두 없거나 `noul`이 아닌 후보는 뺀다.
-pub fn compact_verdicts(
-    candidates: &[LedgerSeq],
-    responses: &[RouterResponse],
-) -> Vec<(LedgerSeq, f64)> {
-    let answers: Vec<&(String, Answer)> = responses
-        .iter()
-        .flat_map(|response| &response.answers)
-        .collect();
-    let yes_of = |id: &str| {
-        answers.iter().find_map(|(answer_id, answer)| match answer {
-            Answer::Noul(yes) if answer_id == id => Some(*yes),
-            _ => None,
-        })
-    };
-    candidates
-        .iter()
-        .filter_map(|seq| {
-            let call = yes_of(&compact_call_id(*seq));
-            let result = yes_of(&compact_result_id(*seq));
-            match (call, result) {
-                (Some(call), Some(result)) => Some((*seq, call.max(result))),
-                (Some(yes), None) | (None, Some(yes)) => Some((*seq, yes)),
-                (None, None) => None,
-            }
-        })
-        .collect()
 }
 
 /// `keep_current`를 `is_actionable`보다 먼저 읽어 이어 가는 입력이 파일 탐색으로 빠지지 않게 한다.
@@ -673,15 +601,6 @@ impl AnswerReader<'_> {
     }
 }
 
-/// 초안: 모든 세트를 1.0에서 시작한다.
-fn compact_call_id(seq: LedgerSeq) -> String {
-    format!("call_{}_keep", seq.0)
-}
-
-fn compact_result_id(seq: LedgerSeq) -> String {
-    format!("result_{}_keep", seq.0)
-}
-
 fn set_id(name: &str) -> QuestionSetId {
     set_id_at(name, 1, 0)
 }
@@ -739,7 +658,7 @@ fn check_answer(question: &Question, answer: &Answer) -> Result<(), RouterError>
     }
     let is_distribution = !matches!(answer, Answer::Noul(_));
     let sum: f64 = probabilities.iter().sum();
-    if is_distribution && (sum - 1.0).abs() > PROBABILITY_TOLERANCE {
+    if is_distribution && (sum - 1.0).abs() > PROBABILITY_TOLERANCE + FLOAT_SLACK {
         return Err(invalid(format!("probabilities do not sum to 1: {id}")));
     }
     Ok(())

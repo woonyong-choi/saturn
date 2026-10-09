@@ -15,7 +15,9 @@ use super::config::{default_args, read_user_config, with_ask_tools};
 use super::convert::{cache_ttl, detail_of, permission_call, shell_exit_code};
 use super::*;
 use crate::events::{next_arrival, start_queued_turn};
-use crate::providers::{PermissionLaunch, ProviderConnection, ProviderTrace, SaturnDefaults};
+use crate::providers::{
+    PermissionLaunch, ProviderConnection, ProviderMsg, ProviderTrace, RawTap, SaturnDefaults,
+};
 use crate::secrets::Masker;
 
 /// 파이프 버퍼(64KiB)보다 커서 쓰는 도중 막히는 턴 크기. fake가 `big:<길이>`로 답한다.
@@ -142,6 +144,7 @@ fn launch(dir: &Path, env: Vec<(OsString, OsString)>) -> LaunchSpec {
         permission: PermissionLaunch::default(),
         masker: Masker::new(Vec::new()),
         events: ProviderTrace::off(),
+        raw: RawTap::off(),
     }
 }
 
@@ -272,6 +275,13 @@ async fn stdout_hides_router_key_before_emitting_events() {
     let dir = tempfile::tempdir().unwrap();
     let mut config = launch(dir.path(), Vec::new());
     config.masker = Masker::new(vec!["sk-secret-1234".to_owned()]);
+    let (tx, mut raw_lines) = tokio::sync::mpsc::unbounded_channel();
+    config.raw = RawTap::new(
+        saturn_protocol::ids::ChatId(1),
+        config.provider,
+        tx,
+        &config.masker,
+    );
     let mut client = ClaudeClient::new(config, Supervisor::new());
     let session = client
         .open_session(spec(dir.path(), None))
@@ -284,6 +294,22 @@ async fn stdout_hides_router_key_before_emitting_events() {
 
     assert!(matches!(&events[0], ProviderEvent::Text { text, .. } if text == "[redacted]"));
     assert!(!format!("{events:?}").contains("sk-secret-1234"));
+    let mut lines = Vec::new();
+    while let Ok(ProviderMsg::Raw { raw, .. }) = raw_lines.try_recv() {
+        lines.push(raw);
+    }
+    assert!(lines.len() >= 3, "{lines:?}");
+    assert!(
+        lines
+            .iter()
+            .all(|raw| raw.agent == Some(AgentId(3)) && raw.is_json)
+    );
+    let text: String = lines
+        .iter()
+        .map(|raw| String::from_utf8_lossy(&raw.bytes).into_owned())
+        .collect();
+    assert!(!text.contains("sk-secret-1234"));
+    assert!(text.contains("[redacted]"));
     client.close_session(&session).await.unwrap();
 }
 
@@ -1034,11 +1060,19 @@ fn launch_args_enable_the_bash_sandbox_and_deny_reading_key_stores() {
     let dir = tempfile::tempdir().unwrap();
     let mut launch = launch(dir.path(), Vec::new());
     launch.key_deny_read = key_paths();
+    launch.env.push((
+        saturn_protocol::rpc::SOCKET_ENV.into(),
+        "/Users/u/.saturn/engine.sock".into(),
+    ));
     let client = ClaudeClient::new(launch, Supervisor::new());
 
     let args = client.launch_args(&spec(dir.path(), None), &SessionArg::New("id-1".to_owned()));
 
     let sandbox = &settings_arg(&args)["sandbox"];
+    assert_eq!(
+        sandbox["network"]["allowUnixSockets"],
+        json!(["/Users/u/.saturn/engine.sock"])
+    );
     assert_eq!(sandbox["enabled"], json!(true));
     assert_eq!(sandbox["allowUnsandboxedCommands"], json!(false));
     assert_eq!(sandbox["failIfUnavailable"], json!(true));
@@ -1050,6 +1084,56 @@ fn launch_args_enable_the_bash_sandbox_and_deny_reading_key_stores() {
             "/Library/Keychains"
         ])
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn launch_args_allow_the_canonical_engine_socket_behind_a_home_alias() {
+    let dir = tempfile::tempdir().unwrap();
+    let actual = dir.path().join("actual");
+    let alias = dir.path().join("alias");
+    std::fs::create_dir(&actual).unwrap();
+    std::os::unix::fs::symlink(&actual, &alias).unwrap();
+    let socket = actual.join("engine.sock");
+    let _listener = std::os::unix::net::UnixListener::bind(&socket).unwrap();
+    let alias_socket = alias.join("engine.sock");
+    let mut launch = launch(dir.path(), Vec::new());
+    launch.env.push((
+        saturn_protocol::rpc::SOCKET_ENV.into(),
+        alias_socket.clone().into_os_string(),
+    ));
+    let client = ClaudeClient::new(launch, Supervisor::new());
+
+    let args = client.launch_args(&spec(dir.path(), None), &SessionArg::New("id-1".to_owned()));
+
+    assert_eq!(
+        settings_arg(&args)["sandbox"]["network"]["allowUnixSockets"],
+        json!([alias_socket, socket.canonicalize().unwrap()])
+    );
+}
+
+// #520
+#[test]
+fn read_deny_globs_become_read_deny_rules_and_sandbox_deny_read() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut launch = launch(dir.path(), Vec::new());
+    launch.key_deny_read = key_paths();
+    launch.permission.read_deny = vec!["/work/secret/**".to_owned(), "/**/*.env".to_owned()];
+    let client = ClaudeClient::new(launch, Supervisor::new());
+
+    let args = client.launch_args(&spec(dir.path(), None), &SessionArg::New("id-1".to_owned()));
+
+    let settings = settings_arg(&args);
+    assert_eq!(
+        settings["permissions"]["deny"],
+        json!(["Read(//work/secret/**)", "Read(//**/*.env)"])
+    );
+    let deny_read = settings["sandbox"]["filesystem"]["denyRead"]
+        .as_array()
+        .unwrap();
+    assert_eq!(deny_read.len(), 5);
+    assert!(deny_read.contains(&json!("/work/secret/**")));
+    assert!(deny_read.contains(&json!("/Library/Keychains")));
 }
 
 /// 샌드박스를 켜면 Claude Code는 기본으로 Bash를 허가 요청 없이 자동 허용한다(`autoAllowBashIfSandboxed`).
@@ -1365,6 +1449,24 @@ async fn sandbox_exclusions_in_a_settings_layer_stop_the_session_only_when_not_e
             true,
         ),
         (
+            "custom config folder excludes a command",
+            "custom",
+            r#"{"sandbox":{"excludedCommands":["sh"]}}"#,
+            true,
+        ),
+        (
+            "default folder is not read when a custom folder is set",
+            "custom-ignores-home",
+            r#"{"sandbox":{"excludedCommands":["sh"]}}"#,
+            false,
+        ),
+        (
+            "relative config folder cannot be checked",
+            "relative",
+            "{}",
+            true,
+        ),
+        (
             "empty exclusions",
             "home",
             r#"{"sandbox":{"excludedCommands":[],"enabled":true}}"#,
@@ -1383,13 +1485,28 @@ async fn sandbox_exclusions_in_a_settings_layer_stop_the_session_only_when_not_e
         let home = dir.path().join("home");
         std::fs::create_dir_all(home.join(".claude")).unwrap();
         std::fs::create_dir_all(dir.path().join(".claude")).unwrap();
+        let custom = dir.path().join("custom-config");
+        std::fs::create_dir_all(&custom).unwrap();
+        let mut env = vec![("HOME".into(), home.clone().into_os_string())];
         let file = match layer {
+            "custom" => {
+                env.push(("CLAUDE_CONFIG_DIR".into(), custom.clone().into_os_string()));
+                custom.join("settings.json")
+            }
+            "custom-ignores-home" => {
+                env.push(("CLAUDE_CONFIG_DIR".into(), custom.clone().into_os_string()));
+                home.join(".claude").join("settings.json")
+            }
+            "relative" => {
+                env.push(("CLAUDE_CONFIG_DIR".into(), "custom-config".into()));
+                custom.join("settings.json")
+            }
             "home" => home.join(".claude").join("settings.json"),
             "project" => dir.path().join(".claude").join("settings.json"),
             _ => dir.path().join(".claude").join("settings.local.json"),
         };
         std::fs::write(&file, content).unwrap();
-        let launch = launch(dir.path(), vec![("HOME".into(), home.into_os_string())]);
+        let launch = launch(dir.path(), env);
         let mut client = ClaudeClient::new(launch, Supervisor::new());
 
         let opened = client.open_session(spec(dir.path(), None)).await;
@@ -1398,9 +1515,13 @@ async fn sandbox_exclusions_in_a_settings_layer_stop_the_session_only_when_not_e
             let ProviderError::NotSent { reason } = opened.unwrap_err() else {
                 panic!("{name}: expected NotSent");
             };
-            assert!(reason.contains("sandbox.excludedCommands"), "{name}");
-            assert!(reason.contains(&file.display().to_string()), "{name}");
-            assert!(!reason.contains("\"sh\""), "{name}");
+            if layer == "relative" {
+                assert!(reason.contains("CLAUDE_CONFIG_DIR"), "{name}");
+            } else {
+                assert!(reason.contains("sandbox.excludedCommands"), "{name}");
+                assert!(reason.contains(&file.display().to_string()), "{name}");
+                assert!(!reason.contains("\"sh\""), "{name}");
+            }
             assert!(client.sessions.is_empty(), "{name}");
         } else {
             assert!(opened.is_ok(), "{name}");

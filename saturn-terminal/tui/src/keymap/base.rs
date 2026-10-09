@@ -152,7 +152,6 @@ pub(super) fn table() -> Vec<Binding> {
         // 사용량 화면
         b(Action::UsageRange(UsageRange::Day), &[A::Usage], &["d"]),
         b(Action::UsageRange(UsageRange::Week), &[A::Usage], &["w"]),
-        // router 버전 화면
         // 기록 정리 창
         b(Action::PruneConfirm, &[A::PruneWindow], &["y"]),
         b(Action::Close, &[A::PruneWindow], &["ctrl+c"]),

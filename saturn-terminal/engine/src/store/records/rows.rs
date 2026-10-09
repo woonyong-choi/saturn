@@ -74,11 +74,6 @@ pub(in crate::store) fn session_from_row(row: &SqliteRow) -> Result<SessionRecor
 }
 
 pub(super) fn run_record(row: &SqliteRow) -> Result<RunRecord, StoreError> {
-    #[cfg(test)]
-    let end = row
-        .try_get::<Option<String>, _>("end_kind")?
-        .map(|text| parse_run_end(&text))
-        .transpose()?;
     Ok(RunRecord {
         id: RunId(from_sql_int(row.try_get("id")?)),
         chat: ChatId(from_sql_int(row.try_get("chat_id")?)),
@@ -90,7 +85,10 @@ pub(super) fn run_record(row: &SqliteRow) -> Result<RunRecord, StoreError> {
         session: SessionId(from_sql_int(row.try_get("session_id")?)),
         effect_scope: parse_enum(row.try_get("effect_scope")?)?,
         #[cfg(test)]
-        end,
+        end: row
+            .try_get::<Option<String>, _>("end_kind")?
+            .map(|text| parse_run_end(&text))
+            .transpose()?,
     })
 }
 

@@ -61,7 +61,7 @@
 - 설정 원본은 파일이고, 기록 저장소에는 적용된 설정의 스냅샷만 둔다. 입력마다 그때 쓴 설정을 번호로 남기기 위해서다.
 - 잠깐 들여다본 다른 폴더의 설정은 적용하지 않고 참고 자료로만 읽는다. 작업 폴더가 아닌 폴더의 설정이 실행에 섞이는 일을 막기 위해서다. 같은 이유로 `--add-dir`와 `/add-dir`로 더한 폴더의 설정 파일은 읽지 않고, 폴더 층은 채팅의 기본 폴더 것만 쓴다([engine 수명과 복구](engine-lifecycle.md#채팅-폴더와-이어-열기)).
 - 보조 에이전트는 부모 채팅의 채팅 층을 물려받는다. 보조 에이전트가 메인 에이전트와 같은 설정으로 실행되게 하기 위해서다.
-- router 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다. 기준값 조정은 [router 학습](router-training.md)에 있다.
+- router 기준값은 설정 층에 둔다. 릴리스 없이 사용자 층과 폴더 층에서 기준값을 조정하기 위해서다. 기준값은 자동으로 조정하지 않고 설정 변경으로만 바꾼다([정책 고정](router.md#정책-고정)). 기록으로 기준값을 계산하는 규칙은 [router 학습](router-training.md)에 있다.
 
 ### 이름 규칙
 
@@ -91,7 +91,7 @@
 | `context.packet_hard_divisor` | `context.packet_hard_percent` | 나눗수 `d`를 `100 / d`로(5는 20). 나누어떨어지지 않으면 버림 | 구현 |
 | `context.constraint_slot_divisor` | `context.constraint_slot_percent` | 나눗수 `d`를 `100 / d`로(4는 25) | 구현 전([#380](https://github.com/woonyong-choi/saturn/issues/380)). 키는 구현했고 이 옛 이름을 읽는 별칭은 아직 없다. 이 이름으로 저장한 스냅샷은 없다 |
 | `agents.worktree` | `agent.worktree` | 없음 | 구현 전([#335](https://github.com/woonyong-choi/saturn/issues/335)). 키와 함께 별칭도 구현 |
-| `router.key.info.source`의 `Stored`, `Env`, `Command` | `stored`, `env`, `command` | 소문자로 | 구현. 경고 없이 읽음 |
+| `router.key.info.source`의 `Stored`, `Env`, `Command` | `stored`, `env`, `command` | 소문자로 | 구현. 경고 없이 읽는다 |
 | `context.<id>.<키>` | `provider.<id>.context.<키>` | 없음 | 구현(아래 [provider 설정 키](#provider-설정-키)) |
 
 ### 설정 키
@@ -108,8 +108,10 @@
 | `permission.mode` | `ask`, `edit`, `read-only`, `full` | `edit`(초안) |
 | `permission.shell`, `permission.edit`, `permission.read`, `permission.mcp`, `permission.subagent` | `allow`, `ask`, `deny` 또는 패턴 → 값 표 | 모드를 따름 |
 | `model.default` | `<provider>/<model>` 문자열 | 없음. 처음 고르기 창이 사용자 설정 파일에 쓴다([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)) |
-| `model.mode` | `auto`, `manual` | `auto` |
-| `router.mode` | `jev`, `saturn` | `jev` |
+| `model.mode` | `auto`, `manual` | `manual`. `auto`는 router가 새 작업의 모델을 고르는 실험 옵션이라 모델 선택 순효과 실험([#542](https://github.com/woonyong-choi/saturn/issues/542))을 통과하기 전에는 기본으로 켜지 않는다 |
+| `model.prefer` | `<provider>/<model>` 문자열 목록 | 없음. 선호하는 모델의 순서이고 `auto`일 때 품질을 확정한 후보 안에서만 우선한다. 강제 고정이 아니다([기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)) |
+| `model.candidates` | `<provider>/<model>` 문자열 목록 | 없음. 있으면 router에 물을 `target_model` 후보와 그림자 후보를 이 목록 안의 모델로 제한하고 이 밖의 선택은 지원하지 않는 선택으로 본다. 모델 선택 순효과 실험([#542](https://github.com/woonyong-choi/saturn/issues/542))이 후보를 [모델 평가 근거 목록](model-evidence.md) 안으로 고정하는 실험 옵션이다 |
+| `router.mode` | `manual`, `jev`, `saturn` | `manual`.`collect`는 실행이 구현되지 않아 새 설정에서 받지 않는다 |
 | `router.endpoint` | 문자열 | `https://api.typesafe.ai` |
 | `router.model` | 문자열 | `jev-1.13.0` |
 | `router.local.endpoint`, `router.local.version` | 문자열 | 없음. endpoint는 HTTPS 루프백만 허용하고 TLS 인증서를 검증한다 |
@@ -123,15 +125,19 @@
 | `child.max_depth` | 0 이상 정수 | 2. 하위 접속의 깊이 상한이고 0이면 하위 접속을 받지 않는다([하위 접속](child-sessions.md#상한과-대기열)) |
 | `child.max_concurrent` | 1 이상 정수 | 5. 한 채팅이 동시에 거느리는 하위 접속 수 |
 | `child.max_total` | 1 이상 정수 | 10. `engine` 전체의 동시 하위 접속 수 |
+| `router.shadow.model_selection` | 참·거짓 | 거짓. 참이면 입력 처리 요청에 후보별 충분성 질문을 묶어 모델 선택을 미리 재 보고 기록한다. 실제 모델 선택에는 쓰지 않는다. 실험 옵션이고 사용자 층에서만 정한다([모델 판단 그림자](router.md#모델-판단-그림자)) |
+| `constraint.auto_apply` | 참·거짓 | 거짓. 참이면 router의 `is_constraint` 판단이 지속 제약을 자동 등록하거나 묻고 `constraint_change` 판단이 제약을 해제하거나 예외를 건다. 거짓이면 판단은 기록만 하고 제약을 만들지도 바꾸지도 않는다. 사용자의 명시 해제는 이 키와 상관없다. 사용자 층에서만 정한다([제약](constraints.md#식별-순서)) |
+| `completion.checks` | 문자열 목록 | 빈 목록. 끝난 실행의 완료 검사 근거로 인정할 검사 명령이다. 단순한 셸 명령 하나의 앞부분이 같을 때만 인정하고, 비어 있으면 수정한 실행은 늘 미확인이다([완료 검사 근거](providers-and-sessions.md#완료-검사-근거)). 폴더 층에서도 정할 수 있다 |
 | `debug.provider_events` | 참·거짓 | 거짓. 켜면 provider 연결이 받은 원시 메시지의 모양(방법 이름, 순서, ID, 필드 이름)을 값 없이 `logs/provider-events-<날짜>.log`에 남긴다([provider 연결과 session](providers-and-sessions.md#원시-이벤트-관측-기록)) |
 | `retention.max_age_days` | 1 이상 정수 | 없음(무제한 보존). `saturn prune`과 `/prune`이 오래된 채팅을 정하는 기준이기도 하다([기록](records.md)) |
 | `retention.auto_prune` | 참·거짓 | 거짓. 참이고 `max_age_days`가 있을 때만 engine 시작 때 한 번 그 기한보다 오래 쓰지 않은 채팅을 지운다. 삭제라 `max_age_days`만으로 켜지지 않는다([기록](records.md#보존과-정리)) |
 | `context.safety_percent` | 0~100 정수 | 70 |
-| `context.mode` | `saturn`, `provider` | `saturn` |
-| `context.packet_hard_percent` | 1~100 정수 | 20. engine이 읽어 패킷 크기 상한에 적용한다 |
+| `context.mode` | `saturn`, `provider` | `provider` |
+| `context.packet_hard_percent` | 1~100 정수 | 20. 값 검사만 하고 적용하지 않는다. 패킷의 전송 가능 상한 `P_send`는 `T`의 비율이 아니라 provider 창에서 정하므로(`context.<provider>.window`, `context.safety_percent`) 이 설정이 쓰이지 않는다. 이 키가 든 기존 설정 파일이 거부되지 않게 남겨 둔다 |
 | `context.item_cap_percent` | 1~100 정수 | 30. engine이 읽어 경쟁 항목 길이 상한에 적용한다 |
 | `context.constraint_slot_percent` | 1~100 정수 | 25(초안). engine이 읽어 패킷 제약 칸 상한에 적용한다 |
 | `context.select.rrf_k` | 0 이상 정수 | 60 |
+| `context.evidence.lookup` | 참·거짓 | 거짓. 참이면 경쟁 구역에서 원문 아닌 모양으로 들어가거나 빠진 기록이 있는 패킷 끝에 `saturn evidence read` 안내 한 줄을 붙인다. 실험 옵션이다([맥락 고르기](context-selection.md#근거-검색과-원문-조회)) |
 
 - `tui.on_exit`는 TUI를 닫을 때 작업을 어떻게 할지 정한다. `background`는 계속하고, `stop`은 모든 채팅의 작업을 멈춤과 같게 보류하고, `ask`는 작업이 있으면 닫기 전에 묻는다. 규칙은 [engine 수명과 복구](engine-lifecycle.md#tui-종료-뒤-동작)에 있다.
 - `model.default`는 새 작업을 보낼 기본 모델이고, `model.mode`는 새 작업의 모델을 router가 고를지(`auto`) 사용자가 정한 모델로만 보낼지(`manual`) 정한다. 두 키 모두 사용자 층, 폴더 층, 실행 층에서 정할 수 있고, 입력은 접수 때 고정한 설정 번호의 값을 쓴다. `model.default`가 `<provider>/<model>` 모양이 아니거나 등록하지 않은 provider id면 고르지 않은 것으로 보고 처음 고르기 창을 다시 연다. 모델 창은 값을 사용자 설정 파일에 쓰므로, 폴더 설정이나 `-c`가 같은 키를 정했으면 그 값이 이기고 창은 병합 결과를 보인다. 규칙은 [기본 모델과 선택 방식](providers-and-sessions.md#기본-모델과-선택-방식)에 있다.
@@ -139,12 +145,13 @@
 - `notify.on_done`은 작업이 모두 끝났을 때 알림을 보낼지 정한다. 이 문서는 키 이름과 기본값(거짓)만 정하고, 알림 동작은 [#151](https://github.com/woonyong-choi/saturn/issues/151)이 정한다. 지금은 키를 받아 저장만 한다.
 - `agent.worktree`가 거짓이면 보조 에이전트는 같은 폴더에서 한 번에 하나씩 쓴다. 참이면 git 저장소일 때만 보조 에이전트의 쓰기를 별도 worktree에서 병렬로 하고, git 저장소가 아니면 거짓일 때와 같다. 쓰기 격리를 사용자가 켠 뒤에만 하기 위해서다. 규칙은 [입력 처리](input-handling.md)에 있다.
 - `permission.mode`는 기본 규칙 묶음이다. `edit`는 작업 폴더 안 편집을 허용하고 나머지는 묻는다. `ask`는 모두 묻고, `read-only`는 읽기만 허용하고, `full`은 `deny` 규칙을 뺀 모두를 허용한다. 모드의 뜻과 provider 대응은 [권한](permissions.md)에 있다. `full`이면 에이전트 질문 기능도 두 provider에서 끈다. 질문만 따로 정하는 키는 없다([입력 요청](input-requests.md#에이전트-질문-설정)). 층 병합에서 폴더 층의 `permission.mode`는 낮은 쪽부터 `read-only`, `ask`, `edit`, `full` 순서일 때 앞 층까지 합친 모드보다 낮은 값만 적용하고, 같거나 높은 값은 무시해 신뢰 창의 무시되는 항목(`permission.mode`)에 보이고, 병합 때 한 줄 경고에도 남는다. 채팅 층의 `/permissions`와 실행 층 `-c`에는 이 제한이 없다.
-- `permission.shell` 같은 개별 규칙은 셸 명령, 파일 편집, 파일 읽기(Claude는 폴더 밖 읽기 도구, Codex는 읽기로 분류된 명령의 경로에 닿는다. 폴더 안의 읽기와 분류되지 않은 명령에는 닿지 않는다), MCP 도구, subagent 실행의 허용, 묻기, 거부 규칙이다. 문자열 하나면 그 도구 전체에 적용하고, 패턴 표를 주면 패턴마다 값을 준다. 모드 기본 규칙 뒤에 사용자 층 규칙, 폴더 층 규칙, 채팅 층 규칙, 실행 층 규칙을 잇고 마지막으로 일치한 규칙이 이긴다. 단 어느 층이든 `deny`가 하나라도 일치하면 거부한다(채팅 층과 실행 층까지 넣은 것은 초안). 같은 층 안의 순서는 파일에 적힌 순서다(초안). 병합 결과의 `permission`에는 합친 모드와 이은 규칙 목록이 들어가고, 입력은 접수 때 고정한 설정 번호의 목록을 쓴다. `permission` 아래 모르는 키, 모르는 모드, `allow`, `ask`, `deny`가 아닌 값은 검사에 실패한다. 패턴 문법과 판정 흐름, provider별 번역은 [권한](permissions.md)에 있다.
-- `context.mode`가 `provider`이면 `sessions`는 compaction과 유휴 복귀를 판정하지 않고 provider 실행 인자에 자동 압축 안전망 값을 넣지 않는다. 규칙은 [맥락 정리](context-management.md#정리-모드)에 있다. 기본은 `saturn`이다.
-- `context.select.rrf_k`는 router가 답하지 못한 항목의 순서와 같은 확률인 항목의 순서에만 쓴다.
-- 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_ask`다.
-- `is_constraint`는 자동 등록 기준값(기본 0.8), `constraint_ask`는 등록 질문의 묻는 하한(기본 0.7)이다. 권한 모드가 `full`이면 제약 질문을 묻지 않는다([제약](constraints.md#묻지-않고-진행하는-권한-모드)).
-- 구현 전 기준값은 `constraint_release`다([#379](https://github.com/woonyong-choi/saturn/issues/379)). 해제·예외 판단을 적용하는 기준값(기본 0.8)이다.
+- `permission.shell` 같은 개별 규칙은 셸 명령, 파일 편집, 파일 읽기(`ask`는 Claude의 폴더 밖 읽기 도구와 Codex의 읽기로 분류된 명령의 경로에만 닿고, `deny`는 provider의 읽기 제한으로도 번역돼 폴더 안 읽기와 셸 읽기까지 막는다. `~`나 `?[]{}\\`가 든 `deny` 패턴은 번역할 수 없어 session을 열지 않는다. [권한](permissions.md#읽기-거부의-provider-적용)), MCP 도구, subagent 실행의 허용, 묻기, 거부 규칙이다. 문자열 하나면 그 도구 전체에 적용하고, 패턴 표를 주면 패턴마다 값을 준다. 모드 기본 규칙 뒤에 사용자 층 규칙, 폴더 층 규칙, 채팅 층 규칙, 실행 층 규칙을 잇고 마지막으로 일치한 규칙이 이긴다. 단 어느 층이든 `deny`가 하나라도 일치하면 거부한다(채팅 층과 실행 층까지 넣은 것은 초안). 같은 층 안의 순서는 파일에 적힌 순서다(초안). 병합 결과의 `permission`에는 합친 모드와 이은 규칙 목록이 들어가고, 입력은 접수 때 고정한 설정 번호의 목록을 쓴다. `permission` 아래 모르는 키, 모르는 모드, `allow`, `ask`, `deny`가 아닌 값은 검사에 실패한다. 패턴 문법과 판정 흐름, provider별 번역은 [권한](permissions.md)에 있다.
+- `router.mode`가 `manual`이면 Jev 키 없이 시작하고 사용자가 선택한 모델로 보낸다. `constraint.auto_apply`가 참이어도 뜻 판단을 시작하지 않는다([router](router.md#코드와-router의-경계)).
+- `context.mode`가 `provider`이면 `sessions`는 compaction과 유휴 복귀를 판정하지 않고 provider 실행 인자에 자동 압축 안전망 값을 넣지 않는다. 같은 session은 이 기본값을 쓰고 provider 전환은 Saturn 기록에서 패킷을 만든다([맥락 정리](context-management.md#정리-모드)).
+- `context.select.rrf_k`는 근거 검색과 제약 변경 후보를 정렬할 때 쓴다. 전환 패킷에는 쓰지 않는다.
+- 기준값 이름은 `keep_current`, `is_actionable`, `min_confidence`, `resume_held`, `file_present`, `file_absent`, `context_gate`, `injection`, `progressing`, `feedback_cause`, `is_constraint`, `constraint_ask`, `constraint_release`다.
+- `is_constraint`는 자동 등록 기준값(기본 0.8), `constraint_ask`는 등록 질문의 묻는 하한(기본 0.7)이다. `constraint.auto_apply`가 거짓(기본)이면 두 값 모두 적용하지 않는다. 켠 상태에서 권한 모드가 `full`이면 제약 질문을 묻지 않는다([제약](constraints.md#묻지-않고-진행하는-권한-모드)).
+- `constraint_release`는 해제·예외 판단을 적용하는 기준값(기본 0.8)이고 종류 확률의 하한으로도 쓴다. `constraint.auto_apply`가 거짓(기본)이면 해제·예외 질문도 하지 않는다.
 - 제약 칸 상한은 `P_max`의 `context.constraint_slot_percent`%다. 규칙은 [제약](constraints.md#패킷의-제약-칸)에 있다.
 - 되돌릴 수 없는 행동의 기준값 `keep_current`, `resume_held`는 0.8 미만이면 검사에 실패한다(목록은 초안).
 - 실행 층 `-c key=value`의 값은 TOML 값 문법으로 읽고, 같은 키가 여러 번 오면 뒤 값이 이긴다. TOML 값으로 읽을 수 없는 따옴표 없는 한 단어(`permission.mode=read-only`)는 문자열로 읽는다. 공백이나 따옴표가 든 값은 TOML 문법을 지켜야 한다.
@@ -162,7 +169,7 @@
 | 설정 파일 확인 주기 | 0.5초 | [설정 변경 감지](#설정-변경-감지) |
 | engine 로그 보관 | 30일 | [engine 수명과 복구](engine-lifecycle.md) |
 
-router 버전 표기는 설정 키가 아니다. `saturn router use`와 `saturn router train --from`은 `v3`처럼 `v`와 1 이상 정수를 받고, `v`를 빼고 `3`만 써도 `v3`으로 읽는다. 다른 모양은 오류다([router 학습](router-training.md#router-버전)).
+router 버전 표기는 설정 키가 아니다. 지금은 router 버전을 고르는 명령이 없고, 판단 기록의 `router_version`에는 판단에 쓴 router 모델 이름이 남는다. 앞으로의 `v3` 표기 설계는 [router 학습](router-training.md#router-버전)에 있다.
 
 ### provider 설정 키
 
@@ -193,7 +200,7 @@ provider 고유 설정 키는 `provider.<id>.*` 열린 이름공간에 둔다. `
 | 하위 접속 상한 | [하위 접속](child-sessions.md#상한과-대기열) |
 | provider 원시 메시지 관측 기록 | [provider 연결과 session](providers-and-sessions.md#원시-이벤트-관측-기록) |
 
-사용자 전용 키는 `router.endpoint`, `router.key`, `grading.model`, `consent`, `router.mode`, `retention`, `child`, `debug`와 같거나 그 아래 키다(초안). 옛 이름 `router.method`도 새 이름으로 옮긴 뒤 같은 규칙을 받는다. `retention`은 보존 기간과 자동 삭제라 비용과 삭제가 걸려 있어 사용자만 정한다. `child`는 하위 접속 상한이라 저장소가 provider 프로세스 수를 늘리지 못하게 사용자만 정한다. `debug`는 홈 폴더에 파일을 쌓는 기록이라 저장소가 남의 홈에 기록을 늘리지 못하게 사용자만 정한다. router 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([router 키 보호](router-key-security.md)).
+사용자 전용 키는 `router.endpoint`, `router.key`, `grading.model`, `consent`, `router.mode`, `retention`, `child`, `debug`, `constraint.auto_apply`, `router.shadow.model_selection`과 같거나 그 아래 키다(초안). 옛 이름 `router.method`도 새 이름으로 옮긴 뒤 같은 규칙을 받는다. `retention`은 보존 기간과 자동 삭제라 비용과 삭제가 걸려 있어 사용자만 정한다. `child`는 하위 접속 상한이라 저장소가 provider 프로세스 수를 늘리지 못하게 사용자만 정한다. `debug`는 홈 폴더에 파일을 쌓는 기록이라 저장소가 남의 홈에 기록을 늘리지 못하게 사용자만 정한다. `constraint.auto_apply`는 검증하지 않은 판단이 지속 제약을 만드는 정책이라 저장소가 켜지 못하게 사용자만 정한다. `router.shadow.model_selection`은 판단 요청을 늘려 비용이 걸려 저장소가 켜지 못하게 사용자만 정한다. router 키 자체는 설정 파일에 두지 않는다. 설정에는 키의 출처와 끝 4자리만 남는다([router 키 보호](router-key-security.md)).
 
 ### 병합과 설정 번호
 
@@ -289,6 +296,7 @@ Saturn 설정은 provider 설정 파일을 바꾸지 않는다. 권한은 `permi
 | 폴더 층은 router 주소와 키 참조, 채점 모델, 데이터 공유 동의, 판단 방식을 바꾸지 못한다. | 폴더 설정에 이 항목을 넣어도 병합 결과가 사용자 층 값인지 확인한다. |
 | 처음 보거나 바뀐 폴더 설정은 사용자 확인 전에는 적용하지 않는다. | 지문이 바뀐 폴더 설정이 신뢰 창을 거치기 전에 병합되지 않는지 확인한다. |
 | 같은 내용의 설정은 같은 설정 번호를 쓴다. | 같은 설정으로 두 번 병합해 설정 번호가 하나만 생기는지 확인한다. |
+| 판단 기준값도 입력의 설정 번호에서 읽고, 설정을 바꿔도 접수한 입력의 값은 그대로이며 옛 설정으로 되돌리면 옛 번호를 다시 쓴다. | `saturn-terminal/engine/src/lifecycle/policy.rs`의 `inputs_keep_the_policy_they_were_accepted_under_across_swap_rollback_and_restart` |
 | 입력은 접수 때 고정한 설정 번호로 끝까지 처리한다. | 처리 중 설정을 바꿔도 그 입력의 provider 실행 값이 접수 때 값인지 확인한다. |
 | 검사에 실패한 설정은 적용하지 않고 이전 설정 번호를 쓴다. | 잘못된 폴더 설정으로 바꾼 뒤 이전 설정 번호가 유지되는지 확인한다. |
 | 시작 때 사용자 층 병합이 실패하면 접속·채팅 층이 섞이지 않은 마지막 번호로 시작한다. | 접속 `-c permission.mode=full`을 적용한 뒤 사용자 설정을 깨뜨려 다시 시작하고 시작 번호의 권한이 사용자 설정 값인지 확인한다(`saturn-terminal/engine/src/lifecycle/start.rs`의 `restart_with_broken_user_settings_does_not_adopt_a_connection_layer`). |

@@ -27,8 +27,9 @@ use crate::calls::{CallKind, Responder};
 use crate::flow::{LiveSession, NeedsCheck};
 #[cfg(test)]
 use crate::providers::ProviderConnection;
+use crate::providers::RawLine;
 use crate::rpc::ClientId;
-use crate::store::NewRun;
+use crate::store::{NewRun, RunEnd, UnattributedRaw};
 use crate::{Engine, EngineError};
 
 /// 답을 기다리는 허가 요청이 속한 곳.
@@ -144,6 +145,41 @@ impl Engine {
         }
     }
 
+    /// provider가 보낸 줄을 원시 기록에 쌓는다. 줄의 에이전트에 열린 실행이 있으면 그 실행에, 에이전트를 모르거나 열린 실행이
+    /// 없으면 어느 실행에도 붙이지 않고 미귀속 기록에 쌓는다. 지금 열린 실행이라는 이유로 추정해 붙이지 않는다. 기록하지 못해도
+    /// 이벤트 처리를 막지 않고 로그만 남긴다.
+    pub(crate) async fn on_provider_raw(&mut self, chat: ChatId, provider: Provider, raw: RawLine) {
+        let run = raw
+            .agent
+            .filter(|agent| {
+                self.flow
+                    .live
+                    .get(agent)
+                    .is_some_and(|live| live.provider == provider)
+            })
+            .and_then(|agent| self.runs.active.get(&agent).copied());
+        let stored = match run {
+            Some(run) => {
+                let mut line = raw.bytes;
+                line.push(b'\n');
+                self.store.append_raw(run, &line).await
+            }
+            None => {
+                let line = UnattributedRaw {
+                    provider,
+                    agent: raw.agent,
+                    provider_session: raw.provider_session,
+                    is_json: raw.is_json,
+                    bytes: raw.bytes,
+                };
+                self.store.append_unattributed_raw(chat, &line).await
+            }
+        };
+        if let Err(error) = stored {
+            tracing::warn!(error = %self.failure_line(&EngineError::Store(error)), "provider raw line not stored");
+        }
+    }
+
     /// 이벤트는 처리 전에 먼저 기록한다. 기록하지 못하면 화면에도 상태에도 반영하지 않는다.
     ///
     /// # Errors
@@ -187,6 +223,7 @@ impl Engine {
         let event = self.mark_packet_reply(event);
         let run = self.run_for_event(chat, &live, &event).await?;
         let seq = self.record_event(run, chat, &live, &event).await?;
+        self.note_unreachable_lookup(chat, &event).await;
         if let Some(seq) = seq {
             self.sessions.mark_delivered(live.session, seq);
         }
@@ -395,7 +432,7 @@ impl Engine {
             return self.check_stop_done(chat).await;
         }
         if is_turn_completed && self.take_packet_turn(live.agent) {
-            return Ok(());
+            return self.end_packet_wake_run(live).await;
         }
         match status {
             TreeStatus::Running => Ok(()),
@@ -409,6 +446,21 @@ impl Engine {
             }
             TreeStatus::TreeIdle => Ok(()),
         }
+    }
+
+    /// 입력 없이 보낸 패킷(맥락 정리의 `Restart`)의 턴은 첫 이벤트가 `begin_wake_run`으로 실행을 연다. 그 턴이 끝나면 이 실행도 끝내고
+    /// session을 유휴로 돌린다. 입력이 연 실행(전환 패킷)은 그 입력의 턴이 끝날 때 끝나므로 건드리지 않는다.
+    /// 작업은 이미 끝난 앞 작업이라 다시 끝내거나 알리지 않는다.
+    async fn end_packet_wake_run(&mut self, live: &LiveSession) -> Result<(), EngineError> {
+        let Some(run) = self.runs.active.get(&live.agent).copied() else {
+            return Ok(());
+        };
+        if self.run_input(live.agent).await.is_some() {
+            return Ok(());
+        }
+        self.runs.forget(live.agent);
+        self.store.finish_run(run, RunEnd::Completed).await?;
+        self.record_turn_value(live).await
     }
 
     /// 새 session의 첫 턴으로 보낸 패킷의 완료 신호면 참이고, 작업 끝으로 보지 않는다.

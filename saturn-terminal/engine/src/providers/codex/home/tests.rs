@@ -355,13 +355,18 @@ fn agent_questions_feature_is_dropped_from_profiles() {
 
 // #348
 #[test]
-fn read_rules_do_not_change_the_rules_fingerprint() {
+fn only_read_deny_rules_change_the_rules_fingerprint() {
     let shell = rule(PermissionTool::Shell, "rm *", Verdict::Deny);
     let read = rule(PermissionTool::Read, "/etc/*", Verdict::Allow);
+    let deny = rule(PermissionTool::Read, "/etc/*", Verdict::Deny);
 
     assert_eq!(
         rules_fingerprint(std::slice::from_ref(&shell)),
-        rules_fingerprint(&[shell, read])
+        rules_fingerprint(&[shell.clone(), read])
+    );
+    assert_ne!(
+        rules_fingerprint(std::slice::from_ref(&shell)),
+        rules_fingerprint(&[shell, deny])
     );
 }
 
@@ -471,6 +476,74 @@ mod extension_parts {
             .map(|failure| failure.part.as_str())
             .collect();
         assert_eq!(failed, vec!["web", "empty"]);
+    }
+
+    #[test]
+    fn connecting_again_with_the_same_extensions_reuses_the_folder_without_failures() {
+        let fixture = Fixture::new(USER_CONFIG);
+        let parts = kit_parts(&fixture._root.path().join("store"));
+        let (first, first_failures) = prepare_with_kit(&fixture, &parts, &[]);
+
+        let (second, second_failures) = prepare_with_kit(&fixture, &parts, &[]);
+
+        let names = |failures: &[InjectionFailure]| -> Vec<String> {
+            failures
+                .iter()
+                .map(|failure| failure.part.clone())
+                .collect()
+        };
+        assert_eq!(second.path, first.path);
+        assert_eq!(names(&second_failures), names(&first_failures));
+        assert_eq!(names(&second_failures), vec!["web", "empty"]);
+        assert_eq!(
+            std::fs::read_to_string(second.path.join("skills/commit-helper/SKILL.md")).unwrap(),
+            "# commit helper"
+        );
+        assert_eq!(
+            std::fs::read_to_string(second.path.join("prompts/review.md")).unwrap(),
+            "review the diff"
+        );
+    }
+
+    #[test]
+    fn a_skill_name_with_different_content_fails_while_the_same_content_does_not() {
+        let fixture = Fixture::new(USER_CONFIG);
+        let store = fixture._root.path().join("store");
+        let mut parts = kit_parts(&store);
+        write(
+            &store,
+            "same/skills/commit-helper/SKILL.md",
+            "# commit helper",
+        );
+        write(&store, "other/skills/commit-helper/SKILL.md", "# other");
+        let skill = |extension: &str| InjectedPart {
+            extension: extension.to_owned(),
+            ..part(
+                ExtensionPartKind::Skill,
+                "commit-helper",
+                store.join(extension).join("skills/commit-helper"),
+            )
+        };
+        parts.extend([skill("same"), skill("other")]);
+
+        let (home, failures) = prepare_with_kit(&fixture, &parts, &[]);
+
+        let conflicts: Vec<(&str, &str)> = failures
+            .iter()
+            .filter(|failure| failure.part == "commit-helper")
+            .map(|failure| (failure.extension.as_str(), failure.reason.as_str()))
+            .collect();
+        assert_eq!(
+            conflicts,
+            vec![(
+                "other",
+                "a skill with this name is already injected with different content"
+            )]
+        );
+        assert_eq!(
+            std::fs::read_to_string(home.path.join("skills/commit-helper/SKILL.md")).unwrap(),
+            "# commit helper"
+        );
     }
 
     #[test]

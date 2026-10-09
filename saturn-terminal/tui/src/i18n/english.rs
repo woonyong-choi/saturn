@@ -55,6 +55,59 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("제약 등록됨", "Constraint added"),
     ("제약 해제됨", "Constraint released"),
     ("확인 없이", "Without confirmation"),
+    ("제약 잠시 해제됨", "Constraint paused"),
+    ("이번 작업 동안", "For this task"),
+    ("제약 예외", "Constraint exception"),
+    ("제약 다시 유효", "Constraint active again"),
+    ("제약 되돌림", "Constraint restored"),
+    (
+        "제약 유효 {active}개 · 후보 {candidate}개 · 해제 {released}개 · 기준 {revision}",
+        "Constraints: {active} active · {candidate} candidate · {released} released · revision {revision}",
+    ),
+    (
+        "유효하거나 후보인 제약이 없습니다",
+        "No active or candidate constraints",
+    ),
+    (
+        "/constraints add <규칙> · release <번호> · mistaken <번호> · history · undo <변경 번호>",
+        "/constraints add <rule> · release <id> · mistaken <id> · history · undo <change id>",
+    ),
+    ("유효", "active"),
+    ("후보", "candidate"),
+    ("해제", "released"),
+    ("범위", "scope"),
+    ("예외", "exception"),
+    (
+        "후보는 등록 확인을 기다리는 말이고 전환 패킷에는 유효 제약처럼 들어갑니다",
+        "A candidate is waiting for your confirmation and enters the handoff packet like an active constraint",
+    ),
+    ("등록됨", "added"),
+    ("해제됨", "released"),
+    ("예외 걸림", "excepted"),
+    ("다시 유효", "active again"),
+    ("되돌림", "restored"),
+    ("router", "router"),
+    ("사용자", "user"),
+    ("Saturn", "Saturn"),
+    ("되돌릴 수 있음", "undoable"),
+    ("제약 변경 내역이 없습니다", "No constraint changes"),
+    (
+        "/constraints undo <변경 번호>로 되돌릴 수 있는 변경 한 건을 되돌립니다",
+        "/constraints undo <change id> reverts one undoable change",
+    ),
+    (
+        "먼저 /constraints로 목록을 확인하세요",
+        "Run /constraints first to see the list",
+    ),
+    ("목록에 없는 번호입니다: {id}", "Not in the list: {id}"),
+    (
+        "유효 제약이 아니라 해제할 수 없습니다: {id}",
+        "Not an active constraint, cannot release: {id}",
+    ),
+    (
+        "되돌릴 수 없는 변경입니다: {id}",
+        "This change cannot be undone: {id}",
+    ),
     (
         "↑↓ 이동 · Enter 선택 · Esc 대기",
         "↑↓ move · Enter select · Esc queue",
@@ -126,10 +179,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "Router key required ({message}): set the SATURN_KEY environment variable or the router.key.command setting, then run again",
     ),
     (
-        "확인을 받을 터미널이 없어 아무것도 바꾸지 않았습니다",
-        "No terminal available for confirmation · Nothing was changed",
-    ),
-    (
         "판단 기록을 내보냈습니다: {path}",
         "Exported judgments: {path}",
     ),
@@ -170,6 +219,14 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("열린 session", "open session"),
     ("보관한 session", "kept session"),
     ("TUI에 붙어 있음", "attached to a TUI"),
+    (
+        "evidence는 에이전트 작업 안에서만 쓸 수 있습니다. 출입증({pass} 변수)으로 그 채팅의 기록만 찾고 읽습니다",
+        "evidence only works inside an agent task. It uses the pass ({pass} variable) to search and read only that chat's records",
+    ),
+    (
+        "engine이 근거 조회 결과 없이 답했습니다",
+        "Engine answered without an evidence result",
+    ),
     (
         "engine이 사용량 표 없이 답했습니다",
         "Engine answered without a usage table",
@@ -232,6 +289,10 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     (
         "떠 있는 engine에 접속하지 못했습니다. 하위 접속은 engine을 새로 띄우지 않습니다",
         "Could not reach a running engine. A child session never starts a new engine",
+    ),
+    (
+        "{marker} ({what}): engine에 닿지 못했습니다. 샌드박스가 파이프, `;`로 이어 붙인 명령 안의 접속을 막았을 수 있으니 `saturn evidence`를 다른 명령과 묶지 말고 한 명령으로 실행하세요. 결과를 줄이려면 --limit과 --offset을 쓰세요",
+        "{marker} ({what}): could not reach the engine. The sandbox may block connections made inside a piped or `;`-chained command, so run `saturn evidence` alone as one command. To shorten the result use --limit and --offset",
     ),
     (
         "--mode는 에이전트 작업 안의 하위 접속에서만 쓸 수 있습니다",
@@ -317,13 +378,40 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "쓸 JSONL 파일 경로. engine이 이 경로에 쓴다",
         "JSONL file path to write; the engine writes to this path",
     ),
-    ("router 관리", "Manage the router"),
-    (
-        "기준값을 1차 영점으로 되돌린다",
-        "Reset thresholds to the first zero point",
-    ),
-    ("확인 없이 바꾼다", "Switch without confirmation"),
     ("사용량 조회", "Show usage"),
+    (
+        "에이전트 작업 안에서 이 채팅의 기록을 찾고 패킷에서 생략된 기록의 원문을 다시 읽는다",
+        "Inside an agent task, search this chat's records and read back the full text of records the packet left out",
+    ),
+    (
+        "검색어와 가까운 기록을 번호, 글자 수, 해시, 발췌와 함께 순위 순으로 보인다",
+        "List records close to the query in rank order with number, length, hash, and excerpt",
+    ),
+    (
+        "찾을 말. 파일 이름, 명령, 오류 문구처럼 기록에 있는 글이 잘 맞는다. 따옴표 없이 여러 단어를 쓰면 공백 하나로 이어 한 검색어로 본다",
+        "Words to look for. Text that appears in records, such as file names, commands, and error messages, matches best. Several unquoted words are joined with one space into a single query",
+    ),
+    (
+        "보일 후보 수. 50을 넘으면 50이다",
+        "Number of candidates to show. Above 50 means 50",
+    ),
+    (
+        "기록 번호(`#41`의 41)의 원문을 읽는다",
+        "Read the full text of a record by its number (the 41 in `#41`)",
+    ),
+    ("기록 번호", "Record number"),
+    (
+        "검색 결과에서 본 해시. 그 뒤 원문이 바뀌었으면 거절한다",
+        "Hash seen in the search result. Refuse if the text changed since",
+    ),
+    (
+        "읽기 시작할 글자 위치",
+        "Character position to start reading",
+    ),
+    (
+        "읽을 글자 수. 20000을 넘으면 20000이고, 더 있으면 다음 위치를 알린다",
+        "Number of characters to read. Above 20000 means 20000, and the next position is shown when more remains",
+    ),
     (
         "모든 채팅의 최근 24시간 사용량을 본다",
         "Show usage of all chats for the last 24 hours",
@@ -339,6 +427,43 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     (
         "권한 설정 변경됨 · 다음 요청부터 적용됩니다",
         "Permission settings changed · Applies from your next request",
+    ),
+    (
+        "완료 검사 통과 · 근거 이벤트 {events}",
+        "Completion check passed · Evidence events {events}",
+    ),
+    (
+        "완료 검사 해당 없음 · 수정한 파일 없음",
+        "Completion check not applicable · No files changed",
+    ),
+    (
+        "완료 검사 미확인 · {reason}",
+        "Completion check unverified · {reason}",
+    ),
+    (
+        "마지막 수정 뒤 설정한 검사가 돌지 않았거나 종료 코드를 알 수 없음",
+        "No configured check ran after the last change, or its exit code is unknown",
+    ),
+    (
+        "마지막 수정 뒤 검사가 실패함",
+        "The check failed after the last change",
+    ),
+    (
+        "검사가 도는 중에 수정이 있었음",
+        "A change happened while the check was running",
+    ),
+    (
+        "폴더가 커서 일부만 확인함",
+        "The folder was too large to scan completely",
+    ),
+    (
+        "수정과 검사의 순서를 알 수 없음",
+        "The order of the change and the check is unknown",
+    ),
+    ("하위 에이전트가 끝나지 않음", "A subagent has not finished"),
+    (
+        "수정 목록을 만들지 못함",
+        "The list of changed files could not be made",
     ),
     (
         "읽기 전용으로 접수한 작업의 쓰기를 거부함 · 쓰려면 새 입력으로 보내세요",
@@ -358,8 +483,12 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("결과 확인 필요", "Result needs check"),
     ("맥락 정리 후 이어서 진행", "Context compacted · Continuing"),
     (
-        "고정 제약이 길어 맥락 정리를 미룹니다",
-        "Pinned constraints are long, deferring context compaction",
+        "인계 기록이 길어 전환을 미룹니다",
+        "Handoff records are too long, deferring the switch",
+    ),
+    (
+        "제약 {count}개 생략 · /constraints에서 확인하세요",
+        "{count} constraints omitted · See /constraints",
     ),
     (
         "맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요",
@@ -379,7 +508,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("[그대로]", "[keep]"),
     ("붙여넣은 내용", "Pasted"),
     ("자", "chars"),
-    ("건", ""),
     ("/help 도움말 · Ctrl+C 멈춤", "/help help · Ctrl+C stop"),
     ("맥락", "Context"),
     ("맥락 미확인", "Context unknown"),
@@ -599,8 +727,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
         "다음 입력부터 {provider} · {model} 모델로 보냅니다",
         "Next inputs go to {provider} · {model}",
     ),
-    ("예", "Yes"),
-    ("아니오", "No"),
     ("취소", "Cancel"),
     ("입력 제출", "Submit"),
     ("관계 판단 없이 대기", "Queue without judging"),
@@ -627,7 +753,6 @@ pub(super) const ENGLISH: &[(&str, &str)] = &[
     ("보내기 전 입력 취소", "Cancel an input before sending"),
     ("보류 이어서", "Continue a hold"),
     ("판단 피드백", "Judgment feedback"),
-    ("판단 모델 버전", "Router versions"),
     ("판단 기록 켜기와 끄기", "Turn judgment records on or off"),
     ("권한 모드 바꾸기", "Change the permission mode"),
     ("폴더 더하기", "Add a folder to the chat"),

@@ -62,10 +62,11 @@ router 키 보호는 외부 router API 키를 provider와 subagent가 어떤 경
 |---|---|
 | 기본 | macOS 키체인에 OS API로 직접 저장 |
 | OS 저장소가 없음 | 권한 0600 파일에 저장 |
-| 강화 방식 | 신뢰 앱 없는 키체인 항목으로 저장 |
+| 강화 방식(macOS) | 신뢰 앱 목록이 빈 배열인 키체인 항목으로 저장 |
+| 강화 방식(그 밖) | 지원하지 않음. 표준 저장으로 낮추지 않고 `HardenedUnsupported`로 끝낸다 |
 
 - 키체인은 `keyring`으로 OS API를 직접 쓴다.
-- 강화 방식이면 session 시작 때 키체인 암호를 한 번 요청한다.
+- 강화 방식이면 session 시작 때 키체인에서 engine으로 키를 가져오는 순간 OS 확인 창이 한 번 뜬다. 이미 풀린 engine의 router 호출마다 창을 띄우지는 않는다.
 - 강화 방식이면 비활성 10분이나 최대 12시간 뒤 키를 잠금 상태로 바꾼다.
 - 설정에는 키의 출처와 끝 4자리만 적는다.
 - 키체인 항목의 서비스 이름은 `saturn`, 계정 이름은 `saturn-key`다.
@@ -73,7 +74,11 @@ router 키 보호는 외부 router API 키를 provider와 subagent가 어떤 경
 - 대체 파일은 같은 폴더에 새 임시 파일을 0600으로 만든 뒤 교체한다.
 - 임시 파일은 고유 이름으로 만들고 기존 `.partial` 경로의 심볼릭 링크를 따라가지 않는다.
 - engine은 강화 방식의 잠금 조건을 1분마다 확인한다(초안).
-- `keyring`은 항목의 신뢰 앱 목록을 정하지 못한다. 강화 방식 항목을 어떤 API로 만들지는 [#102](https://github.com/woonyong-choi/saturn/issues/102)에서 정하고, 그 전에는 표준 방식 항목에 잠금 시계만 더한다.
+- `keyring`은 신뢰 앱 목록을 정하지 못해 표준 항목에만 쓴다. 강화 항목은 `secrets/keychain.rs`가 `security-framework-sys`로 `SecAccessCreate`에 null이 아닌 빈 배열을 주고 `SecKeychainItemCreateFromContent`로 만든다. 폐기 예정 API 의존은 이 파일에 한정한다. null을 주면 만든 앱이 신뢰 앱이 되어 확인 창이 없다.
+- 강화 항목의 계정 이름은 `saturn-key-hardened`다. 표준 항목과 함께 있을 수 있어야 이관 중 기존 항목을 보존한다.
+- 만든 항목은 생성 성공만으로 믿지 않는다. 읽기 권한 ACL의 신뢰 앱 목록이 빈 배열인지 읽어 확인하고, 확인 창을 막은 읽기가 값을 돌려주지 않고 끝나는지 확인한다. 둘 중 하나라도 어긋나면 항목을 지우고 `HardenedUnsupported`로 끝낸다.
+- 표준 항목이 있고 강화 항목이 없으면 새 항목을 만들고 위 확인을 통과한 뒤에만 표준 항목을 지운다. 거부, 취소, 중간 실패에서는 표준 항목이 그대로 남는다.
+- 강화 항목을 읽을 때 사용자가 거부하거나 취소하거나 창을 띄울 수 없으면 `Locked`로 끝나고 session은 키 입력을 요청한다. 표준 항목으로 읽지 않는다.
 - router 주소와 키 참조는 폴더 층에서 바꿀 수 없다. 사용자 전용 항목이기 때문이다.
 
 ### `security` 명령을 쓰지 않는 이유
@@ -127,14 +132,16 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 | 환경 격리 | 자식 환경의 키 변수 | `secrets` 모듈 단위 테스트, [실험](../experiments/router-key-defense/report.md)의 환경 항목 |
 | Saturn 소유 PreToolUse 훅 | 이름이 보이는 키 저장소 조회와 파일 도구의 키 저장소 경로 | [Claude provider 실측](../experiments/claude-provider-behavior/report.md), 위 단위 테스트 |
 | provider 명령 샌드박스 | 훅이 못 읽는 형태(인코딩, 스크립트 파일, 이름 조립)를 포함한 명령의 키체인 접근 | [OS 수준 방어 실측](../experiments/router-key-defense/report.md) |
-| 키체인 접근 제어 | 보조층. 확인 창은 클릭 한 번으로 열려 단독 방어로 쓰지 않는다 | 같은 실측, 구현은 [#102](https://github.com/woonyong-choi/saturn/issues/102) |
+| 키체인 접근 제어 | 보조층. 확인 창은 클릭 한 번으로 열려 단독 방어로 쓰지 않는다 | 같은 실측, 강화 항목 구현과 실측은 [#102](https://github.com/woonyong-choi/saturn/issues/102) |
 
 ### provider 명령 샌드박스
 
 - Claude: engine은 Claude를 띄울 때마다 실행별 `--settings`에 `sandbox`를 합쳐 넘긴다. 모든 session이 대상이고, 새 session과 재개 모두 같다. 값은 `enabled: true`, `allowUnsandboxedCommands: false`, `autoAllowBashIfSandboxed: false`, `failIfUnavailable: true`, `filesystem.denyRead`이다([Claude Code 샌드박스 문서](https://code.claude.com/docs/en/sandboxing), 2026-10-04 확인). `allowUnsandboxedCommands: false`는 `dangerouslyDisableSandbox`로 샌드박스 밖에서 다시 실행하는 길을 막고, `failIfUnavailable: true`는 샌드박스를 쓸 수 없을 때 명령을 샌드박스 없이 돌리지 않고 실패하게 한다. `autoAllowBashIfSandboxed: false`는 샌드박스를 켜면 Bash가 허가 요청 없이 자동 허용되는 Claude Code 기본값을 꺼서, 모든 Bash 호출이 호스트로 와 Saturn 권한 규칙의 판정을 받게 한다([#508](https://github.com/woonyong-choi/saturn/issues/508)).
+- 샌드박스는 Unix 소켓 접속도 막는다. 에이전트 작업 안의 `saturn`(`saturn evidence`, 하위 접속)이 engine에 붙을 수 있게 실행 환경에 engine 소켓 경로(`SATURN_ENGINE_SOCKET`)가 있으면 `sandbox.network.allowUnixSockets`에 그 경로 하나만 넣는다. 다른 소켓은 계속 막힌다.
+- 샌드박스 안 명령이 허용된 소켓으로 `SATURN_PASS`와 `SATURN_AGENT`를 지우고 붙어 바깥 접속이 되는 길은 engine이 막는다. 접속을 받을 때 소켓 상대 프로세스가 provider 묶음의 자손이면 출입증을 담은 요청만 받는다([하위 접속](child-sessions.md#접속-두-종류)).
 - `denyRead` 경로는 훅이 막는 키 저장소 경로와 같은 목록이다. 사용자 `~/Library/Keychains`, `/Library/Keychains`, Saturn 홈의 `router.key`이고 링크를 푼 경로가 다르면 그것도 넣는다. 절대 경로로 적는다. 목록은 훅 정책 한 곳에서 만들어 훅과 샌드박스가 어긋나지 않게 한다.
 - 합치는 규칙: 사용자의 Claude 설정 파일은 읽지도 고치지도 않는다. 실행별 `--settings`는 훅, `permissions.ask`와 같은 값에 `sandbox`를 더하고, 설정 층끼리 배열은 합쳐지므로 사용자의 `denyRead`와 `allowWrite`는 그대로 남는다. 작업 폴더와 더한 폴더(`--add-dir`)의 쓰기는 Claude 샌드박스 기본 허용이라 Saturn 권한 규칙과 겹치는 `allowWrite`를 따로 넣지 않는다.
-- 이 겹이 막지 못하는 것: 사용자 설정의 `sandbox.excludedCommands`로 샌드박스 밖에서 도는 명령, Bash 샌드박스가 덮지 않는 Claude의 파일 도구와 MCP 서버(파일 도구는 훅이 본다). `denyRead`는 Read 도구를 막지 않는다. `excludedCommands`를 실행별 설정으로 비울 수는 없다(배열은 합쳐진다). 그래서 Claude session을 열기 전에 사용자, 프로젝트, 프로젝트 로컬 설정 파일에 비어 있지 않은 `sandbox.excludedCommands`가 있는지 보고, 있으면 session을 열지 않고 `NotSent`로 그 파일 경로와 이유를 알린다(목록 값은 알리지 않는다). 프로젝트 층 설정의 제외는 실측에서 적용되지 않았지만 어느 층에서든 보장하지 않는다. 제외를 지워야 Saturn에서 Claude를 쓸 수 있다.
+- 이 겹이 막지 못하는 것: 사용자 설정의 `sandbox.excludedCommands`로 샌드박스 밖에서 도는 명령, Bash 샌드박스가 덮지 않는 Claude의 파일 도구와 MCP 서버(파일 도구는 훅이 본다). `denyRead`는 Read 도구를 막지 않는다. `excludedCommands`를 실행별 설정으로 비울 수는 없다(배열은 합쳐진다). 그래서 Claude session을 열기 전에 사용자(`CLAUDE_CONFIG_DIR`이 있으면 그 폴더, 없으면 `~/.claude`), 프로젝트, 프로젝트 로컬 설정 파일에 비어 있지 않은 `sandbox.excludedCommands`가 있는지 보고, 있으면 session을 열지 않고 `NotSent`로 그 파일 경로와 이유를 알린다(목록 값은 알리지 않는다). 프로젝트 층 설정의 제외는 실측에서 적용되지 않았지만 어느 층에서든 보장하지 않는다. 제외를 지워야 Saturn에서 Claude를 쓸 수 있다.
 - Codex: 모든 권한 모드가 같은 구성으로 `thread/start`와 `thread/resume`에 샌드박스 `workspace-write`(작업 폴더와 더한 폴더만 쓰기, 네트워크 없음)를 주고, 응답이 다른 샌드박스를 적용했으면 첫 턴을 보내지 않는다([권한](permissions.md#codex-구성)). 사용자 Codex 설정의 `sandbox_mode`와 `sandbox_workspace_write`는 생성 설정으로 옮기지 않는다. 그래서 Saturn에서 고를 수 있는 모든 모드에서 명령은 Codex 샌드박스 안에서 돌고, 샌드박스를 끄는 `danger-full-access`는 Saturn이 고르지도 받아들이지도 않는다. 실측에서 이 샌드박스는 `:read-only`, `:workspace` 모두 키체인 조회를 막았다. 남은 경로는 샌드박스 밖 실행 승인이고 engine이 허가 판정에서 막는다. 명령 승인 요청에는 실행 범위를 직접 알리는 값이 없고, 샌드박스 밖 실행을 요청한 호출(`sandbox_permissions=require_escalated`)만 이유(`reason`)를 붙여 온다. Codex 어댑터는 `reason`이 비어 있지 않거나 `additionalPermissions`, `networkApprovalContext`가 있으면 샌드박스 밖 실행(`PermissionCall.outside_sandbox`)으로 표시하고 허가 요청 줄에 `run command outside sandbox:`로 밝힌다. 범위를 확신할 수 없는 요청은 밖으로 본다. engine의 `router_permission`은 호출마다 모드, 규칙, 항상 허용보다 먼저 키 저장소 판정(위 훅과 같은 `HookPolicy`)을 하고, 걸리면 `full`과 `allow` 규칙이 있어도 거부한다. 파일 편집과 읽기의 키 저장소 경로도 같다. 그다음 샌드박스 밖 실행 요청은 허용으로 판정돼도 사용자에게 묻는다(`full` 자동 허용, 모드 기본 규칙, 개별 `allow`, 항상 허용 모두 대신 허용하지 못한다). 하위 채팅은 묻지 않고 거부한다. 일반 작업 권한은 기존 규칙이 그대로 정하고, 키 저장소 접근은 이 예외로 분리한다. 명령 해석 한계(스크립트 파일, 이름 조립)는 샌드박스 밖에서는 훅 판정이 못 막으므로 사용자가 허가 창의 표시를 보고 정한다.
 - 샌드박스 지원 여부: macOS에서는 기본 도구로 돈다. 샌드박스를 쓸 수 없는 환경(Linux의 필수 도구 부재 등)에서 Claude는 명령 대신 시작이 실패하고, Saturn은 그 오류를 session 시작 실패로 보인다.
 
@@ -172,11 +179,13 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 | provider 원시 메시지 관측 기록에 router 키 문자열이 남지 않는다. | `saturn-terminal/engine/src/providers/trace.rs`의 `router_key_does_not_appear_even_in_names_and_ids` |
 | router 호출은 TLS 인증서 검증을 끄지 않는다. | `saturn-terminal/engine/src/routers/remote/tests.rs`의 `real_client_rejects_an_untrusted_certificate_and_sends_nothing`이 실제 reqwest 클라이언트로 자체 서명 인증서 서버를 거부하는지 확인한다. |
 | 키체인에 직접 저장한 키는 확인 창 없이 읽히지 않는다. | [#2](https://github.com/woonyong-choi/saturn/issues/2) 실험으로 확인 창 없이 읽는 경로를 확인한다. |
+| 강화 항목은 빈 신뢰 앱 목록이라 만든 프로세스를 포함해 확인 없이 읽히지 않고, null 목록 항목은 만든 프로세스가 읽는다. | `saturn-terminal/engine/src/secrets/keychain.rs`의 `empty_list_blocks_silent_read_but_null_list_does_not`(실제 로그인 키체인에 가짜 항목을 만드는 실측, `--ignored`로 실행). 확인 창을 막은 읽기로 사람 클릭 없이 판정한다. |
+| 강화 항목의 허용·거부·취소·잠금 뒤 재접근·미지원·이관 실패는 표준 저장으로 낮아지지 않는다. | `saturn-terminal/engine/src/secrets/storage.rs`의 `hardened_mode_locks_after_idle_and_max_unlock`, `hardened_unlock_outcomes_never_fall_back_to_standard`, `hardened_migration_keeps_standard_item_until_new_item_is_verified`(가짜 항목 구현으로 결과를 정함), `keychain.rs`의 `status_codes_map_to_item_errors`. 실제 확인 창의 허용 클릭과 거부·취소 클릭은 사람 입력이 필요해 실측하지 않았다. |
 | engine 실행 파일은 생성한 훅 명령(`hook pre-tool-use`)을 받아 허용과 거부를 훅 규격의 출력과 종료 코드로 돌려준다. | `saturn-terminal/engine/tests/key_hook.rs`의 `hook_command_denies_key_store_access`, `hook_command_allows_ordinary_calls_without_output`, `hook_command_blocks_unreadable_input_with_exit_code_2`, `hook_command_leaves_saturn_home_untouched` |
 | 훅은 셸·`eval`·인터프리터로 감싼 키 저장소 조회도 막고, 해석할 수 없는 명령은 막으며, 목록 밖 하위 명령은 막지 않는다. | `saturn-terminal/engine/src/secrets/hook.rs`의 `shell_wrapped_lookups_are_denied`, `quoting_and_escapes_inside_shell_strings_do_not_hide_lookups`, `separators_inside_shell_strings_are_split`, `eval_strings_are_judged_again`, `nested_shells_are_judged_down_to_the_limit`, `nesting_beyond_the_limit_is_denied`, `unparseable_commands_are_denied`, `interpreter_one_liners_naming_key_stores_are_denied`, `shells_fed_by_pipe_here_string_or_here_document_are_judged`, `interactive_security_is_denied`, `wrapped_commands_outside_the_list_are_allowed`, `quotes_comments_and_here_documents_in_ordinary_commands_are_allowed` |
 | Saturn 소유 PreToolUse 훅은 키 저장소 접근을 막는다. | Claude 직접 명령은 [실험](../experiments/claude-provider-behavior/report.md)에서 3/3 막혔고 `sh -c` 감싼 명령은 수정 전에 막지 못했다(수정 뒤 실제 provider 재측정은 아직). Codex는 [실측](../experiments/codex-provider-behavior/report.md)에서 명령 차단 3/3을 확인했고 파일 편집 도구(`apply_patch`)는 막지 못했다. |
-| Claude를 띄울 때마다(모든 모드 포함 `full`) 실행별 `--settings`에 Bash 샌드박스(`enabled`, `allowUnsandboxedCommands: false`, `autoAllowBashIfSandboxed: false`, `failIfUnavailable: true`)와 키 저장소 경로의 `filesystem.denyRead`가 들어간다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `launch_args_enable_the_bash_sandbox_and_deny_reading_key_stores`, `the_key_sandbox_stays_on_in_full_mode_and_keeps_the_other_settings`, `the_bash_sandbox_does_not_auto_allow_shell_commands`, `launch_args_add_defaults_and_hook_settings`, `saturn-terminal/engine/src/lifecycle/intake.rs`의 launch 명세 테스트 |
-| 사용자·프로젝트 Claude 설정에 비어 있지 않은 `sandbox.excludedCommands`가 있으면 session을 열지 않고 `NotSent`로 알린다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `session_does_not_open_when_a_settings_layer_excludes_commands_from_the_sandbox`, `empty_or_missing_sandbox_exclusions_do_not_stop_the_session` |
+| Claude를 띄울 때마다(모든 모드 포함 `full`) 실행별 `--settings`에 Bash 샌드박스(`enabled`, `allowUnsandboxedCommands: false`, `autoAllowBashIfSandboxed: false`, `failIfUnavailable: true`)와 키 저장소 경로의 `filesystem.denyRead`, engine 소켓 하나의 `network.allowUnixSockets`가 들어간다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `launch_args_enable_the_bash_sandbox_and_deny_reading_key_stores`, `the_key_sandbox_stays_on_in_full_mode_and_keeps_the_other_settings`, `the_bash_sandbox_does_not_auto_allow_shell_commands`, `launch_args_add_defaults_and_hook_settings`, `saturn-terminal/engine/src/lifecycle/intake.rs`의 launch 명세 테스트 |
+| 사용자·프로젝트 Claude 설정에 비어 있지 않은 `sandbox.excludedCommands`가 있으면 session을 열지 않고 `NotSent`로 알린다. | `saturn-terminal/engine/src/providers/claude/tests.rs`의 `sandbox_exclusions_in_a_settings_layer_stop_the_session_only_when_not_empty`(빈 목록, 없는 키, `CLAUDE_CONFIG_DIR` 지정, 상대 경로 사례 포함) |
 | Codex가 올린 샌드박스 밖 실행 승인은 `full` 자동 허용보다 먼저 키 저장소 판정을 받아 거부되고, 그 밖의 샌드박스 밖 실행은 허용으로 판정돼도 묻는다. | `saturn-terminal/engine/src/lifecycle/permissions.rs`의 `key_store_lookup_is_denied_before_the_mode_in_every_mode`, `key_file_access_is_denied_even_when_a_rule_allows_it`, `outside_sandbox_command_is_asked_even_in_full_mode_and_with_an_allow_rule`, `saturn-terminal/engine/src/providers/codex/permission.rs`의 `command_request_with_a_reason_or_extra_permissions_runs_outside_the_sandbox`. 실제 Codex 재확인은 #423에서 한다. |
 | Claude 샌드박스에 키체인 폴더 읽기 금지를 더하면 키체인 조회가 막히고 로그인은 유지된다. | [실험](../experiments/router-key-defense/report.md)에서 직접 조회 0/3 접근(샌드박스만 켠 경우 3/3). Saturn이 띄운 실제 session에서 거부되는지는 #423을 닫기 전에 확인한다. |
 | Codex 명령은 모든 모드에서 작업 폴더 쓰기 샌드박스 안에서 돌고, 다른 샌드박스가 적용되면 첫 턴을 보내지 않는다. | `saturn-terminal/engine/src/providers/codex/permission.rs`의 `applied_policy_must_be_untrusted_workspace_write_without_network`, [실험](../experiments/router-key-defense/report.md)에서 `:read-only`와 `:workspace` 모두 0/3 접근. 샌드박스 밖 실행 승인은 위 줄이 막는다. |
@@ -187,7 +196,7 @@ engine은 Claude를 실행할 때 Saturn 소유 PreToolUse 훅을 실행별 설�
 - 제외 목록과 훅 검사를 provider 변화에 맞춰 계속 유지한다.
 - 훅의 명령 판정은 차단 목록이라 위의 남은 한계를 근본적으로 없애지 못한다. 그 한계는 provider 명령 샌드박스가 맡는다.
 - 샌드박스를 쓸 수 없는 환경에서는 Claude session이 시작되지 않는다.
-- 강화 방식에서는 session을 시작할 때마다 키체인 암호를 입력한다.
+- 강화 방식에서는 session을 시작할 때마다 OS 확인 창에서 허용해야 한다.
 
 ## 대안
 

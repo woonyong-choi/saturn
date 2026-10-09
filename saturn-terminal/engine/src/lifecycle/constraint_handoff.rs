@@ -1,11 +1,17 @@
 //! 제약 인계 테스트: 저장한 유효 제약이 긴 대화 뒤 전환에서도 새 session의 패킷 제약 구역에 들어가고, 넣은 제약이 `packet_constraints`에 남는지 확인한다.
 //! 설계: docs/design/constraints.md#패킷의-제약-칸
 
-use saturn_protocol::ids::{ConstraintId, InputId, Provider, SessionId};
+use saturn_protocol::ids::{AgentId, ConstraintId, InputId, Provider, SessionId, TaskId};
+use saturn_protocol::rpc::{ChatNotice, Notification};
 
-use super::support::{Flow, idle_reply, text, tool_read, tool_result, turn_completed};
+use super::support::{
+    Flow, constraint_reply, idle_reply, text, tool_read, tool_result, turn_completed,
+};
 use crate::providers::test_support::{CLAUDE, CODEX, Call, FakeProvider};
-use crate::store::{Actor, ConstraintState, NewRegistration, NewRule};
+use crate::store::{
+    Actor, ConstraintChange, ConstraintState, NewChange, NewRegistration, NewRule, PacketKind,
+    PacketState, sha256_hex,
+};
 
 /// 제약 원문. 어느 입력이나 답, 파일 내용에도 나오지 않아 최근 턴으로는 맞출 수 없다.
 const RULE: &str = "Release builds must never print the internal build token";
@@ -46,7 +52,7 @@ async fn register(flow: &Flow, input: InputId, rules: &[(&str, &[&str])]) -> Vec
         .constraints
 }
 
-async fn turn(flow: &mut Flow, provider: Provider, input: &str, call: &str) -> InputId {
+pub(super) async fn turn(flow: &mut Flow, provider: Provider, input: &str, call: &str) -> InputId {
     let id = flow.submit(input).await;
     let agent = flow.agent();
     flow.event(provider, text(agent, &format!("done {call}")))
@@ -59,7 +65,7 @@ async fn turn(flow: &mut Flow, provider: Provider, input: &str, call: &str) -> I
     id
 }
 
-fn packet_of(fake: &FakeProvider) -> String {
+pub(super) fn packet_of(fake: &FakeProvider) -> String {
     fake.calls()
         .into_iter()
         .find_map(|call| match call {
@@ -91,24 +97,41 @@ async fn long_chat_then_switch(flow: &mut Flow, rules: &[(&str, &[&str])]) -> St
 
 type PacketRows = Vec<(ConstraintId, String)>;
 
+/// 새 session의 기록에 칸이 차서 빠진 제약이 있으면 대화 기록에 그 수를 알렸는지 본다. 빠진 제약이 없으면 알리지 않는 것이므로 보지 않는다.
+async fn assert_omitted_notice(client: &mut super::Client, rows: &PacketRows) {
+    let count = rows.iter().filter(|(_, tier)| tier == "Omitted").count();
+    let Some(count) = u32::try_from(count).ok().filter(|count| *count > 0) else {
+        return;
+    };
+    let notified = client
+        .until(|notification| match notification {
+            Notification::ChatNotice {
+                notice: ChatNotice::ConstraintsOmitted { count },
+                ..
+            } => Some(*count),
+            _ => None,
+        })
+        .await;
+    assert_eq!(notified, count);
+}
+
 #[tokio::test]
 async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
     struct Case {
         name: &'static str,
         config: &'static str,
         rules: Vec<(String, Vec<&'static str>)>,
-        // 패킷, Claude session 기록, Codex session 기록
-        check: fn(&str, &str, &PacketRows, &PacketRows),
+        check: fn(&str, &str, &PacketRows, &PacketRows), // 패킷, Claude session 기록, Codex session 기록
     }
     let cases = [
         Case {
-            name: "a constraint stays in the packet when it left the recent turns",
+            name: "a constraint stays in the packet next to the whole conversation",
             config: "",
             rules: vec![(RULE.to_owned(), Vec::new())],
             check: |name, packet, _, _| {
                 let (fixed, rest) = packet
-                    .split_once("## Goal and last input")
-                    .expect("goal section should exist");
+                    .split_once("## Conversation")
+                    .expect("conversation section should exist");
                 assert!(
                     fixed.contains("## Constraints and decisions"),
                     "{name}: {packet}"
@@ -118,14 +141,8 @@ async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
                     !rest.contains(RULE),
                     "{name}: rule leaked into other zones: {packet}"
                 );
-                let recent = packet.split_once("## Recent turns").unwrap().1;
-                let (recent, earlier) = recent.split_once("## Earlier records").unwrap();
                 assert!(
-                    !recent.contains("task 1 write the cache"),
-                    "{name}: {packet}"
-                );
-                assert!(
-                    earlier.contains("task 1 write the cache"),
+                    packet.contains("User: task 1 write the cache\nAgent: done c1"),
                     "{name}: {packet}"
                 );
             },
@@ -182,9 +199,8 @@ async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
             .iter()
             .map(|(rule, scope)| (rule.as_str(), scope.as_slice()))
             .collect();
-
+        let mut client = flow.client().await;
         let packet = long_chat_then_switch(&mut flow, &rules).await;
-
         let claude_rows = flow
             .engine
             .store
@@ -197,8 +213,38 @@ async fn long_chat_constraints_reach_the_new_sessions_packet_and_record() {
             .packet_constraints_of(CODEX_FIRST)
             .await
             .unwrap();
+        assert_omitted_notice(&mut client, &claude_rows).await;
         (case.check)(case.name, &packet, &claude_rows, &codex_rows);
+        assert_packet_record(&flow, &packet, &claude_rows).await;
     }
+}
+
+/// Claude가 받은 패킷의 전달 기록이 받은 글의 해시와 일치하고, 제약 칸 항목이 `packet_constraints`와 같다.
+async fn assert_packet_record(flow: &Flow, packet: &str, claude_rows: &PacketRows) {
+    let recorded = flow.engine.store.packets_of_chat(flow.chat).await.unwrap();
+    let stored = recorded
+        .iter()
+        .find(|stored| stored.session == CLAUDE_FIRST)
+        .expect("the switch packet should be recorded");
+    assert_eq!(stored.body_hash, sha256_hex(packet.as_bytes()));
+    assert_eq!(stored.body_bytes, packet.len() as u64);
+    assert_eq!((stored.kind, stored.attempt), (PacketKind::Switch, 1));
+    assert_eq!(stored.state, PacketState::Sent);
+    assert!(stored.provider_session.is_some() && stored.run.is_some());
+    let items = flow.engine.store.packet_items(stored.id).await.unwrap();
+    let in_slot: Vec<(u64, &str, Option<&str>)> = items
+        .iter()
+        .filter(|item| item.0 == "Constraints")
+        .map(|item| (item.1, item.2.as_deref().unwrap_or("-"), item.3.as_deref()))
+        .collect();
+    let expected: Vec<(u64, &str, Option<&str>)> = claude_rows
+        .iter()
+        .map(|(id, tier)| match tier.as_str() {
+            "Omitted" => (id.0, "-", Some("slot_full")),
+            tier => (id.0, tier, None),
+        })
+        .collect();
+    assert_eq!(in_slot, expected);
 }
 
 #[tokio::test]
@@ -226,5 +272,161 @@ async fn released_constraint_is_not_handed_over() {
             .await
             .unwrap()
             .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn constraint_with_an_exception_is_handed_over_with_its_exception_note() {
+    let (mut flow, _codex) = flow_with("").await;
+    flow.engine.switch_provider(flow.chat, CODEX);
+    let first = turn(&mut flow, CODEX, "task 1 write the cache", "c1").await;
+    let paused = "Keep every cache key lowercase";
+    let ids = register(&flow, first, &[(RULE, &[]), (paused, &[])]).await;
+    for (id, change) in [
+        (ids[0], ConstraintChange::Once { task: TaskId(999) }),
+        (
+            ids[1],
+            ConstraintChange::Scoped {
+                condition: "only inside tests/".to_owned(),
+            },
+        ),
+    ] {
+        let revision = flow
+            .engine
+            .store
+            .constraint_revision(flow.chat)
+            .await
+            .unwrap();
+        flow.engine
+            .store
+            .change_constraint(&NewChange {
+                chat: flow.chat,
+                constraint: id,
+                change,
+                actor: Actor::Router,
+                reason: None,
+                input: None,
+                judgment: None,
+                revision,
+            })
+            .await
+            .unwrap();
+    }
+    let claude = flow.fake.clone();
+    flow.engine.switch_provider(flow.chat, CLAUDE);
+
+    flow.submit("task 2 review the cache").await;
+
+    let packet = packet_of(&claude);
+    assert!(
+        packet.contains(&format!("{RULE} [paused for the current task]")),
+        "{packet}"
+    );
+    assert!(
+        packet.contains(&format!("{paused} [exception: only inside tests/]")),
+        "{packet}"
+    );
+}
+
+#[tokio::test]
+async fn provider_command_turn_does_not_push_a_correction_out_of_the_recent_turns() {
+    let (mut flow, _codex) = flow_with("").await;
+    flow.engine.switch_provider(flow.chat, CODEX);
+    turn(&mut flow, CODEX, "task 1 use the header X-Req-Id", "c1").await;
+    let correction = "task 2 correction: the header is X-Call-Token, drop X-Req-Id";
+    turn(&mut flow, CODEX, correction, "c2").await;
+    turn(&mut flow, CODEX, "task 3 read the docs", "c3").await;
+    turn(&mut flow, CODEX, "task 4 read the layout", "c4").await;
+    flow.submit("/compact").await;
+    let agent = flow.agent();
+    flow.event(CODEX, turn_completed(agent)).await;
+    let claude = flow.fake.clone();
+    flow.engine.switch_provider(flow.chat, CLAUDE);
+
+    flow.submit("task 4 review the cache").await;
+
+    let packet = packet_of(&claude);
+    assert!(packet.contains(correction), "{packet}");
+}
+
+// #584: 수정으로 판단된 입력은 `constraint.auto_apply`가 꺼져 등록되지 않아도, 뒤에 입력이 세 턴 넘게 쌓여도, engine을 다시 켠 뒤에도 인계 패킷에 원문으로 남는다
+#[tokio::test]
+async fn judged_correction_stays_in_the_packet_after_more_turns_and_a_restart() {
+    let mut replies = vec![idle_reply(0.95), constraint_reply(0.95, 0.85)];
+    replies.extend((0..6).map(|_| idle_reply(0.95)));
+    let mut flow = Flow::with_config("", replies).await;
+    let _codex = flow.add_provider(CODEX);
+    flow.engine.switch_provider(flow.chat, CODEX);
+    turn(&mut flow, CODEX, "task 1 use the header X-Req-Id", "c1").await;
+    let correction = "task 2 correction: the header is X-Call-Token, drop X-Req-Id";
+    turn(&mut flow, CODEX, correction, "c2").await;
+    for number in 3..=6 {
+        turn(
+            &mut flow,
+            CODEX,
+            &format!("task {number} read the part {number}"),
+            &format!("c{number}"),
+        )
+        .await;
+    }
+    let restarted = super::crash_recovery::Restarted::after_shutdown(flow).await;
+
+    let (rows, steers, changes) = restarted
+        .engine
+        .packet_material(restarted.chat)
+        .await
+        .unwrap();
+    let budget = restarted
+        .engine
+        .context_budget(restarted.chat, AgentId(1), CLAUDE)
+        .await
+        .unwrap();
+    let crate::handoff::HandoffOutcome::Ready(packet) = crate::handoff::build_handoff(
+        &rows,
+        &steers,
+        &changes,
+        &restarted.engine.pending_work(restarted.chat, None),
+        (&[], &[]),
+        &budget,
+    ) else {
+        panic!("packet should exist");
+    };
+
+    let conversation = packet.text.split("## Conversation").nth(1).unwrap();
+    assert!(
+        conversation.contains(&format!("[Finished] User: {correction}\nAgent: done c2")),
+        "{}",
+        packet.text
+    );
+    assert_eq!(
+        packet.text.matches(correction).count(),
+        1,
+        "{}",
+        packet.text
+    );
+}
+
+#[tokio::test]
+async fn new_task_session_gets_only_the_active_constraints() {
+    let mut flow = Flow::with_config("", vec![idle_reply(0.95), idle_reply(0.1)]).await;
+    let _codex = flow.add_provider(CODEX);
+    let claude = flow.fake.clone();
+    flow.engine.switch_provider(flow.chat, CODEX);
+    let first = turn(&mut flow, CODEX, "task 1 write the cache", "c1").await;
+    register(&flow, first, &[(RULE, &[])]).await;
+    flow.engine.switch_provider(flow.chat, CLAUDE);
+
+    flow.submit("an unrelated question about the invoice").await;
+
+    let packet = packet_of(&claude);
+    assert!(packet.contains(RULE), "{packet}");
+    assert!(!packet.contains("task 1 write the cache"), "{packet}");
+    assert_eq!(
+        flow.engine
+            .store
+            .packet_constraints_of(CLAUDE_FIRST)
+            .await
+            .unwrap(),
+        vec![(ConstraintId(1), "All".to_owned())]
     );
 }

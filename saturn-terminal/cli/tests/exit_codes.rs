@@ -318,7 +318,7 @@ fn engine_internal_error_exits_seventy() {
 }
 
 #[test]
-fn retry_later_exits_seventy_five() {
+fn retry_later_failure_exits_seventy_five() {
     let run = run_with_engine(&["usage"], |_| fail(INTERNAL, ErrorKind::RetryLater));
 
     assert_eq!(run.code, Some(75), "{}", run.stderr);
@@ -365,6 +365,16 @@ fn expected_failure_exits_one() {
     });
 
     assert_eq!(run.code, Some(1), "{}", run.stderr);
+}
+
+#[test]
+fn router_command_is_rejected_before_reaching_an_engine() {
+    let home = tempfile::tempdir().unwrap();
+
+    let run = saturn(home.path(), &["router", "train", "--yes"], &[], "");
+
+    assert_eq!(run.code, Some(2), "{}", run.stderr);
+    assert!(run.stderr.contains("router"), "{}", run.stderr);
 }
 
 /// engine가 입력 하나를 접수해 작업 A로 실행하고 `end`로 끝내는 순서. `RequestSummary`는 보내지 않는다.

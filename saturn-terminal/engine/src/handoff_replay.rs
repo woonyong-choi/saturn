@@ -6,14 +6,12 @@ use std::time::Duration;
 use serde::Deserialize;
 
 use super::*;
-use saturn_protocol::ids::TaskId;
 
 #[derive(Deserialize)]
 struct ReplayRow {
     seq: u64,
     run: u64,
     session: u64,
-    task: u64,
     input: Option<String>,
     end: Option<String>,
     at_ms: i64,
@@ -81,10 +79,9 @@ fn export_case(case: &Case, output: &std::path::Path) {
             cache_read: 0.1,
             cache_write: 1.25,
             cache_ttl: Duration::from_secs(300),
-            packet_hard_percent: 20,
             item_cap_percent: 30,
             constraint_slot_percent: 25,
-            rrf_k: 60,
+            evidence_lookup: false,
         };
         let result = build_handoff(&rows, &[], &[], &Pending::default(), (&[], &[]), &budget);
         let value = match result {
@@ -106,7 +103,6 @@ fn ledger_row(row: &ReplayRow) -> LedgerRow {
         seq: LedgerSeq(row.seq),
         run: RunId(row.run),
         session: SessionId(row.session),
-        task: TaskId(row.task),
         input: row.input.clone(),
         end: row.end.as_deref().map(|end| match end {
             "Completed" => RunEnd::Completed,

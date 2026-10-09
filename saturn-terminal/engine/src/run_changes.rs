@@ -4,11 +4,13 @@
 use std::path::{Path, PathBuf};
 
 use saturn_core::sessions::changes::{ChangeSet, Edit, Snapshot, attribute, diff};
+use saturn_core::sessions::completion::{EvidenceInput, judge};
 use saturn_protocol::event::{ProviderEvent, ToolCategory};
 use saturn_protocol::ids::{AgentId, ChatId, RunId};
+use saturn_protocol::state::CompletionEvidence;
 
-use crate::Engine;
 use crate::workspace::{self, Limits};
+use crate::{Engine, EngineError};
 
 /// 실행 시작 때 폴더 상태와 그때 훑은 폴더들.
 #[derive(Debug)]
@@ -64,6 +66,51 @@ impl Engine {
         let written = self.store.record_run_changes(run, chat, &changes).await;
         self.warn_failure("failed to record the changed files", written);
         Some(changes)
+    }
+
+    // cost: time O(e·c), heap O(e), stack O(1), io 2
+    // vars: e = 실행의 이벤트 수, c = 설정한 검사 수
+    // basis: estimate
+    /// 끝나는 실행의 완료 검사 근거를 가려 기록 저장소에 남기고 돌려준다. 검사는 돌리지 않고 기록된 이벤트만 본다.
+    /// 설정이나 이벤트를 읽지 못하면 로그만 남기고 `None`이라 실행 끝을 막지 않는다. 입력을 다시 보내지도 않는다.
+    pub(crate) async fn settle_completion(
+        &mut self,
+        run: RunId,
+        chat: ChatId,
+        main: AgentId,
+        changes: Option<ChangeSet>,
+    ) -> Option<CompletionEvidence> {
+        let checks = self
+            .completion_checks(chat, main)
+            .await
+            .inspect_err(|error| {
+                tracing::warn!(run = run.0, %error, "failed to read the completion checks");
+            })
+            .ok()?;
+        let events = self.store.run_events_numbered(run).await;
+        let events = events
+            .inspect_err(|error| {
+                tracing::warn!(run = run.0, %error, "failed to read the run events for the completion evidence");
+            })
+            .ok()?;
+        let evidence = judge(EvidenceInput {
+            changes: changes.as_ref(),
+            events: &events,
+            checks: &checks,
+        });
+        let written = self.store.record_completion(run, &evidence).await;
+        self.warn_failure("failed to record the completion evidence", written);
+        Some(evidence)
+    }
+
+    async fn completion_checks(
+        &self,
+        chat: ChatId,
+        main: AgentId,
+    ) -> Result<Vec<String>, EngineError> {
+        let revision = self.revision_of_agent(chat, main)?;
+        let settings = self.settings.at(&self.store, revision).await?;
+        Ok(settings.completion_checks())
     }
 
     /// 작업 폴더를 링크를 푼 경로로 쓰고, 더한 폴더가 이미 들어 있으면 겹쳐 훑지 않는다.

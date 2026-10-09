@@ -219,6 +219,28 @@ async fn the_next_input_resumes_the_closed_session_with_the_stored_id() {
     assert!(flow.engine.sessions.get(session).unwrap().delivered >= before.delivered);
 }
 
+// #569: 재개가 기록 없는 thread를 새로 열었으면 그 번호를 보관하고, 다음 재개는 새 번호로 한다
+#[tokio::test]
+async fn a_resume_that_opened_a_new_provider_session_keeps_the_new_id() {
+    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    let (_agent, session, since) = finished_turn(&mut flow).await;
+    flow.engine.check_idle(since + flow.engine.idle_grace).await;
+    flow.fake.reopen_as("replacement-thread");
+
+    flow.submit("now run the tests").await;
+
+    let stored = flow.engine.sessions.get(session).unwrap();
+    assert_eq!(
+        stored.provider_session.as_ref().unwrap().0,
+        "replacement-thread"
+    );
+    let saved = flow.engine.store.sessions(flow.chat).await.unwrap();
+    assert_eq!(
+        saved[0].provider_session.as_ref().unwrap().0,
+        "replacement-thread"
+    );
+}
+
 #[tokio::test]
 async fn closed_session_keeps_the_id_and_the_delivered_number_across_an_engine_restart() {
     let mut flow = Flow::new(vec![idle_reply(0.95)]).await;
@@ -251,7 +273,11 @@ async fn closed_session_keeps_the_id_and_the_delivered_number_across_an_engine_r
 
 #[tokio::test]
 async fn returning_to_a_closed_session_after_the_cache_window_still_judges_the_idle_return() {
-    let mut flow = Flow::new(vec![idle_reply(0.95), idle_reply(0.95)]).await;
+    let mut flow = Flow::with_config(
+        "[context]\nmode = \"saturn\"\n",
+        vec![idle_reply(0.95), idle_reply(0.95)],
+    )
+    .await;
     let (agent, old, since) = finished_turn(&mut flow).await;
     let ended_at = std::time::SystemTime::now() - Duration::from_secs(3_600);
     flow.engine.sessions.record_last_turn(

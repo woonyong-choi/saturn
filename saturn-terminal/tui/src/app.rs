@@ -161,6 +161,8 @@ pub(crate) struct App {
     pub restarting: bool,
     /// 접수 결과를 기다리는 입력 요청의 원문. 거절되면 입력창으로 돌려준다.
     sent_inputs: BTreeMap<RequestId, String>,
+    /// `/constraints`가 마지막으로 읽은 목록과 revision.
+    constraints: crate::constraints::Desk,
     /// router 키나 폴더 신뢰 창을 닫아 끝냈다.
     pub aborted: bool,
     /// 첫 대화 기록 셀이 생기면 머리 셀로 옮기고 `None`.
@@ -229,6 +231,7 @@ impl App {
             exit_notice: None,
             restarting: false,
             sent_inputs: BTreeMap::new(),
+            constraints: crate::constraints::Desk::default(),
             aborted: false,
             start: None,
             chat_folder: None,

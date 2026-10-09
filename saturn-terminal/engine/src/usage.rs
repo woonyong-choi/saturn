@@ -4,8 +4,8 @@
 use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use saturn_protocol::event::UsageScope;
-use saturn_protocol::ids::{AgentId, ChatId, RunId, SessionId, SubagentId};
+use saturn_protocol::event::{UsageScope, counted_tokens};
+use saturn_protocol::ids::{AgentId, ChatId, Provider, RunId, SessionId, SubagentId};
 use saturn_protocol::rpc::{QueryResult, UsageRange, UsageRow};
 
 use crate::providers::Registry;
@@ -148,6 +148,51 @@ async fn usage_rows(
     Ok(rows)
 }
 
+/// 요청 하나의 합계. 값이 없는 칸은 0이 아니라 비어 있다.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RequestTotals {
+    /// 토큰을 보고한 provider만, 이름 순서.
+    pub(crate) provider_tokens: Vec<(Provider, u64)>,
+    pub(crate) router_calls: u32,
+    pub(crate) router_tokens: Option<u64>,
+}
+
+/// 채팅에서 `since`(unix 밀리초) 이후에 시작한 실행의 사용량과 그 뒤의 router 호출을 합친다. 턴 값은 `/usage`와 같은 계산이라
+/// 누적 보고는 직전 누적을 뺀 값만 더하고 subagent의 보고는 계열이 달라 한 번씩만 센다.
+pub(crate) async fn request_totals(
+    store: &Store,
+    chat: ChatId,
+    since: i64,
+) -> Result<RequestTotals, StoreError> {
+    let runs = store.runs_started_since(chat, since).await?;
+    let values = turn_values(&store.all_usage_rows().await?);
+    let mut per_provider: HashMap<Provider, Option<u64>> = HashMap::new();
+    for row in store.usage_rows(UsageRange::Chat, Some(chat)).await? {
+        let Some(value) = values
+            .get(&row.id)
+            .filter(|value| runs.contains(&value.run))
+        else {
+            continue;
+        };
+        let Some(reported) = counted_tokens(value.tokens) else {
+            continue;
+        };
+        let sum = per_provider.entry(row.provider).or_default();
+        *sum = Some(sum.unwrap_or(0) + reported);
+    }
+    let mut provider_tokens: Vec<(Provider, u64)> = per_provider
+        .into_iter()
+        .filter_map(|(provider, tokens)| Some((provider, tokens?)))
+        .collect();
+    provider_tokens.sort_by_key(|(provider, _)| provider.to_string());
+    let (router_calls, router_tokens) = store.router_usage_since(chat, since).await?;
+    Ok(RequestTotals {
+        provider_tokens,
+        router_calls,
+        router_tokens,
+    })
+}
+
 /// 모델을 보고하지 않았으면 provider 이름만.
 fn who(registry: &Registry, row: &StoredUsage) -> String {
     let provider = registry.display_name(row.provider);
@@ -248,11 +293,15 @@ mod tests {
         }
 
         async fn session(&self, id: u64, provider: Provider) -> SessionId {
+            self.session_in(self.chat, id, provider).await
+        }
+
+        async fn session_in(&self, chat: ChatId, id: u64, provider: Provider) -> SessionId {
             let session = SessionId(id);
             self.store
                 .upsert_session(&SessionRecord {
                     id: session,
-                    chat: self.chat,
+                    chat,
                     agent: AgentId(1),
                     role: AgentRole::Main,
                     provider,
@@ -268,10 +317,14 @@ mod tests {
         }
 
         async fn run(&self, session: SessionId, provider: Provider) -> RunId {
+            self.run_in(self.chat, session, provider).await
+        }
+
+        async fn run_in(&self, chat: ChatId, session: SessionId, provider: Provider) -> RunId {
             let input = self
                 .store
                 .accept_input(&NewInput {
-                    chat: self.chat,
+                    chat,
                     text: "go".to_owned(),
                     settings: SettingsRevision(1),
                     permission: Permission::Write,
@@ -312,7 +365,8 @@ mod tests {
                 cache_read: None,
                 cache_write: None,
                 output,
-                reasoning: None,
+                // 추론은 출력의 일부라 요청 합계에 더해지지 않아야 한다
+                reasoning: output.map(|output| output / 2),
             };
             self.store
                 .record_usage(run, session, &report)
@@ -321,6 +375,10 @@ mod tests {
         }
 
         async fn judgment(&self, tokens: (u64, u64)) {
+            self.judgment_with(Some(tokens)).await;
+        }
+
+        async fn judgment_with(&self, tokens: Option<(u64, u64)>) {
             let masker = Masker::default();
             self.store
                 .record_judgment(&NewJudgment {
@@ -339,7 +397,7 @@ mod tests {
                     received: None,
                     answers: Vec::new(),
                     fallbacks: Vec::new(),
-                    tokens: Some(tokens),
+                    tokens,
                     started_at: SystemTime::now(),
                     elapsed: Duration::ZERO,
                     outcome: JudgmentOutcome::Ok,
@@ -414,9 +472,9 @@ mod tests {
             who,
             vec!["claude · opus", "codex · gpt-5.6-terra", "router · jev"]
         );
-        assert_eq!(rows[0].tokens, [Some(40), None, None, Some(4), None]);
+        assert_eq!(rows[0].tokens, [Some(40), None, None, Some(4), Some(2)]);
         assert_eq!(rows[0].turns, None);
-        assert_eq!(rows[1].tokens, [Some(250), None, None, Some(10), None]);
+        assert_eq!(rows[1].tokens, [Some(250), None, None, Some(10), Some(5)]);
         assert_eq!(rows[1].turns, Some(3));
         assert_eq!(rows[1].compactions, None);
         assert_eq!(rows[1].estimated_cost_micros, None);
@@ -462,5 +520,182 @@ mod tests {
         assert_eq!(values[&1].tokens[0], Some(100));
         assert_eq!(values[&2].tokens[0], None);
         assert_eq!(values[&2].previous_run, Some(Some(RunId(1))));
+    }
+
+    /// 실행과 router 호출의 시작 시각을 정해 요청 경계를 만든다.
+    async fn place(fixture: &Fixture, run: RunId, at: i64) {
+        sqlx::query("UPDATE runs SET started_at = ? WHERE id = ?")
+            .bind(at)
+            .bind(i64::try_from(run.0).unwrap())
+            .execute(fixture.store.pool())
+            .await
+            .unwrap();
+    }
+
+    async fn place_judgments(fixture: &Fixture, at: i64) {
+        sqlx::query("UPDATE judgments SET started_at = ? WHERE started_at > ?")
+            .bind(at)
+            .bind(at)
+            .execute(fixture.store.pool())
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "요청 경계마다 값을 쌓아 가는 한 이야기라 나누면 앞 값이 흩어진다"
+    )]
+    async fn request_totals_take_only_their_window_and_chat_and_never_fill_missing_values() {
+        let fixture = Fixture::new().await;
+        let other = fixture
+            .store
+            .create_chat(PathBuf::from("/other"))
+            .await
+            .unwrap();
+        let (claude, codex) = (
+            crate::providers::test_support::CLAUDE,
+            crate::providers::test_support::CODEX,
+        );
+        let claude_session = fixture.session(1, claude).await;
+        let codex_session = fixture.session(2, codex).await;
+        // 앞 요청의 실행과 router 호출
+        let earlier = fixture.run(claude_session, claude).await;
+        fixture
+            .report(
+                earlier,
+                claude_session,
+                UsageScope::MainTurn,
+                "m",
+                10,
+                Some(5),
+            )
+            .await;
+        place(&fixture, earlier, 1_000).await;
+        fixture.judgment((1, 1)).await;
+        place_judgments(&fixture, 900).await;
+        // 이 요청: 누적 보고 둘은 차이만 더한다
+        let first = fixture.run(codex_session, codex).await;
+        fixture
+            .report(
+                first,
+                codex_session,
+                UsageScope::ThreadCumulative,
+                "g",
+                100,
+                Some(20),
+            )
+            .await;
+        fixture
+            .report(
+                first,
+                codex_session,
+                UsageScope::ThreadCumulative,
+                "g",
+                160,
+                Some(40),
+            )
+            .await;
+        place(&fixture, first, 2_000).await;
+        fixture.judgment((5, 7)).await;
+        place_judgments(&fixture, 2_100).await;
+        // 다른 채팅의 같은 시간대 실행은 세지 않는다
+        let stranger = fixture.session_in(other, 3, codex).await;
+        let elsewhere = fixture.run_in(other, stranger, codex).await;
+        fixture
+            .report(
+                elsewhere,
+                stranger,
+                UsageScope::MainTurn,
+                "g",
+                1_000,
+                Some(1_000),
+            )
+            .await;
+        place(&fixture, elsewhere, 2_500).await;
+
+        let totals = request_totals(&fixture.store, fixture.chat, 2_000)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            totals,
+            RequestTotals {
+                provider_tokens: vec![(codex, 200)],
+                router_calls: 1,
+                router_tokens: Some(12),
+            }
+        );
+        // 다음 요청: 누적 값 200/60에서 앞 요청까지의 160/40을 뺀 차이만 센다. router가 토큰을 보고하지 않았다
+        let second = fixture.run(codex_session, codex).await;
+        fixture
+            .report(
+                second,
+                codex_session,
+                UsageScope::ThreadCumulative,
+                "g",
+                200,
+                Some(60),
+            )
+            .await;
+        place(&fixture, second, 3_000).await;
+        fixture.judgment_with(None).await;
+        place_judgments(&fixture, 3_100).await;
+
+        let next = request_totals(&fixture.store, fixture.chat, 3_000)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            next,
+            RequestTotals {
+                provider_tokens: vec![(codex, 60)],
+                router_calls: 1,
+                router_tokens: None,
+            }
+        );
+        let empty = request_totals(&fixture.store, fixture.chat, 9_000)
+            .await
+            .unwrap();
+        assert_eq!(empty.provider_tokens, Vec::new());
+        assert_eq!((empty.router_calls, empty.router_tokens), (0, None));
+    }
+
+    #[tokio::test]
+    async fn request_totals_count_a_subagent_series_once_next_to_its_parent() {
+        let fixture = Fixture::new().await;
+        let codex = crate::providers::test_support::CODEX;
+        let session = fixture.session(1, codex).await;
+        let run = fixture.run(session, codex).await;
+        let report = |subagent: Option<&str>, input: u64| UsageReport {
+            agent: AgentId(1),
+            subagent: subagent.map(|id| SubagentId(id.to_owned())),
+            model: Some("g".to_owned()),
+            scope: UsageScope::ThreadCumulative,
+            input: Some(input),
+            cache_read: None,
+            cache_write: None,
+            output: None,
+            reasoning: None,
+        };
+        // 부모와 자식 thread가 번갈아 누적을 보고한다. 계열이 달라 서로의 값을 빼지도 더하지도 않는다
+        for (subagent, input) in [
+            (None, 100),
+            (Some("kid"), 30),
+            (None, 160),
+            (Some("kid"), 50),
+        ] {
+            fixture
+                .store
+                .record_usage(run, session, &report(subagent, input))
+                .await
+                .unwrap();
+        }
+
+        let totals = request_totals(&fixture.store, fixture.chat, 0)
+            .await
+            .unwrap();
+
+        assert_eq!(totals.provider_tokens, vec![(codex, 160 + 50)]);
     }
 }

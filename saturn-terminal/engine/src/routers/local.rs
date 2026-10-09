@@ -188,6 +188,7 @@ mod tests {
             remote.exchange(request()).await.result,
             Err(RouterError::NoResponse)
         ));
+        assert!(matches!(remote.check().await, Err(RouterError::NoResponse)));
         assert!(transport.calls().is_empty());
     }
 }

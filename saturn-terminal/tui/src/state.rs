@@ -4,7 +4,9 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-use saturn_protocol::event::{Activity, ProviderEvent, ToolDetail, UsageReport, UsageScope};
+use saturn_protocol::event::{
+    Activity, ProviderEvent, ToolDetail, UsageReport, UsageScope, counted_tokens,
+};
 use saturn_protocol::ids::{
     AgentId, ChatId, InputId, JudgmentId, Provider, SettingsRevision, SubagentId, TaskId, TaskLabel,
 };
@@ -684,17 +686,15 @@ fn is_held(state: TaskState) -> bool {
 
 // cost: time O(1), heap O(1), stack O(1)
 // basis: estimate
-/// 합계 칸이 모두 `None`이면 `None`.
+/// 합계 칸이 모두 `None`이면 `None`. 규칙은 `counted_tokens`.
 fn report_tokens(report: &UsageReport) -> Option<u64> {
-    [
+    counted_tokens([
         report.input,
+        report.cache_read,
         report.cache_write,
         report.output,
         report.reasoning,
-    ]
-    .into_iter()
-    .flatten()
-    .reduce(|a, b| a + b)
+    ])
 }
 
 #[cfg(test)]

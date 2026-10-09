@@ -53,10 +53,11 @@ Codex와 Claude Code를 함께 쓰는 개발자는 에이전트가 일하는 중
 
 1. engine이 입력을 기록 저장소에 접수(ACK)한다.
 2. `queue`가 접수 때 그 입력의 설정 번호와 권한을 고정한다.
-3. router가 입력의 관계와 처리 방식을 판단한다. 사용자가 모델을 고정한 입력은 보낼 모델이 고정값이라 `target_model`만 묻지 않는다. 모델 선택 방식이 매뉴얼이어도 같다.
+3. 기본 수동 경로에서는 현재 작업에 대기시키고 사용자가 고른 모델을 쓴다. `router.mode`를 판단 방식으로 고른 경우에만 router가 입력의 관계와 처리 방식을 판단한다. 사용자가 모델을 고정한 입력은 `target_model`만 묻지 않는다.
 
 - 입력은 기록 저장소에 접수된 뒤에만 에이전트로 보낸다. 전달 여부를 모르는 입력이 생기는 일을 막기 위해서다.
 - 입력은 접수 때 고정한 설정 번호로 끝까지 처리한다. 처리 중 설정이 바뀌어도 한 입력을 한 설정으로 처리하기 위해서다.
+- `router.mode = "manual"`에서는 키 확인, router 호출, 판단 기록 없이 현재 작업에 대기시킨다. 대상 작업을 명시한 입력은 해당 작업에 끼워 넣는다. 새 작업과 암묵적 제약은 자동으로 판단하지 않는다. 사용자가 provider를 바꾸면 다음 입력에 앞 대화의 원본 패킷을 붙인다.
 - router에 묻는 질문과 기준값의 세부는 [router](router.md)에 있다.
 - 대상 작업이 분명한 입력(허가를 거절하고 이어 쓴 말)은 `SubmitToTask`로 받아 관계 판단 없이 그 작업에 끼워 넣는다. router를 부르지 않으므로 다른 작업으로 갈 위험이 없다. 그 작업이 이미 끝났거나 없으면 보통 입력처럼 판단한다. 이 대상은 기록 저장소에 남지 않아 engine이 접수와 전송 사이에 죽으면 복원한 입력은 대상 없이 `skip_relation` 입력처럼 대기한다.
 - router 호출이 실패하면 [router 실패](router.md#router-실패)의 재시도를 거친 뒤 판단 없이 현재 에이전트와 현재 모델로 보낸다. router 장애가 입력을 대기에 묶지 않게 하기 위해서다.
@@ -258,7 +259,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | Codex `turn/steer`가 활성 턴 없음으로 실패 | 확정 미전달로 기록하고 다시 판단하지 않고 같은 session에 `turn/start`로 보낸다. |
 | Claude 끼워 넣기 중 턴 종료 | provider가 추가 메시지를 다음 턴에 처리하므로 따로 처리하지 않는다. |
 | 보낸 뒤 결과 불명 | 자동으로 다시 보내지 않고 사용자 확인으로 넘긴다. 입력은 `전달 중`으로 두고 작업을 `결과 확인 필요`로 보이며, 실행 기록은 열어 둔다. 사용자는 `/continue <작업>`으로 확인 입력을 보내 잇는다. |
-| 패킷의 고정 구역이 `P_hard`를 넘어 새 session으로 옮기지 못함 | 보내지 않고 입력을 작업과 함께 보류하며 제약 목록을 보인다. `/continue`로 다시 시도한다. |
+| 패킷의 고정 구역이 `P_send`를 넘어 새 session으로 옮기지 못하는 경우 | 보내지 않고 입력을 작업과 함께 보류하며 제약 목록을 보인다. `/continue`로 다시 시도한다. |
 | 패킷이 맥락 한도 초과로 거절되고 줄인 패킷도 거절되거나 줄일 수 없음 | 보내지 않고 입력을 작업과 함께 보류하며 `맥락 한도 초과로 멈춤 · /continue로 다시 시도하세요`를 보인다. `/continue`로 다시 시도한다. |
 | 보내기 전 확정 실패가 3번 이어짐 | 입력을 `거절됨`으로 두고 작업을 실패로 보인다. 입력 에코에 빨간색 `거절됨`이 붙고 마지막 실패의 이유가 빨간색으로 보인다. |
 | 도구 실행의 결과를 모른 채 작업이 실패하거나 멈추거나 결과 확인 필요가 됨 | 그 도구 셀에 빨간색 `중단됨`을 보인다. 이어 갈 때 provider에 넘기는 기록에는 그 도구 결과를 오류 결과(`Interrupted before a result was recorded · It may have partially run`)로 넣는다. |
@@ -276,7 +277,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 |---|---|
 | 입력은 기록 저장소에 접수된 뒤에만 에이전트로 보낸다. | `saturn-terminal/engine/src/lifecycle/intake.rs`의 `record_write_failure_sends_nothing_anywhere`, `accepted_input_reaches_first_provider_after_it_is_recorded` |
 | 끼워 넣기가 활성 턴 없음으로 실패하면 다시 판단하지 않고 같은 session의 새 턴으로 보낸다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `steer_without_active_turn_sends_one_new_turn_without_rerouting`, `steer_new_turn_unknown_is_not_sent_again` |
-| 보낸 뒤 결과가 불명인 입력은 자동으로 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `unknown_is_never_sent_again_and_the_task_needs_check` |
+| 보낸 뒤 결과가 불명인 입력은 자동으로 다시 보내지 않는다. 끼워 넣기의 결과가 불명이어도 다시 끼워 넣거나 새 턴으로 보내거나 대기로 되돌리지 않는다. | `saturn-terminal/engine/src/lifecycle/deliver.rs`의 `unknown_is_never_sent_again_and_the_task_needs_check`, `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `steer_with_an_unknown_result_is_not_sent_again_or_requeued` |
 | 결과를 모르는 도구 실행은 `중단됨`으로 보이고 이어 가는 기록에 오류 결과로 들어간다. | `saturn-terminal/tui/src/view/transcript.rs`의 `interrupted_tool_shows_a_red_interrupted_line`, `saturn-terminal/tui/src/app/tests.rs`의 `interrupted_tool_is_marked_when_the_task_is_held_without_a_result`, `saturn-terminal/engine/src/handoff.rs`의 `interrupted_tool_call_is_an_error_result_not_a_warning`, `waiting_held_and_interrupted_inputs_are_open_items` |
 | 거절된 입력은 빨간색 `거절됨`으로 보인다. | `saturn-terminal/tui/src/view/transcript.rs`의 `rejected_input_shows_a_red_rejected_badge`, `failed_cause_is_red` |
 | 보류 입력 하나를 재개하면 그 작업의 보류 입력을 접수 순서대로 모두 재개한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `continue_input_resumes_the_task_of_that_input`, `continue_sends_held_input_and_then_a_state_check_for_the_interrupted_task` |
@@ -297,7 +298,7 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 | 충돌 입력을 provider가 받지 않으면 멈추지 않고 사용자에게 멈출지 묻고, 충돌이 아닌 입력은 묻지 않는다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `refused_conflict_steer_asks_whether_to_stop_and_does_not_stop`, `conflict_steer_to_a_provider_without_steer_asks_whether_to_stop`, `saturn-terminal/core/src/queue/tests.rs`의 `refused_steer_asks_the_user_only_for_a_conflict_input`, `deferred_steer_asks_the_user_only_for_a_conflict_input`, `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `refused_steer_is_not_sent_again_and_is_not_rejected` |
 | `대기`를 고르면 입력은 맨 앞 대기로 다음 차례에 가고, `멈추고 실행`을 고르면 기존 멈춤 규칙 뒤에 입력을 실행한다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `answering_wait_keeps_the_input_in_front_for_the_next_turn`, `answering_stop_stops_the_chat_and_then_runs_the_input`, `saturn-terminal/core/src/queue/tests.rs`의 `keep_waiting_ends_the_question_and_the_input_takes_the_next_turn`, `stop_ends_the_question_and_a_second_answer_is_refused` |
 | 묻는 중이 아닌 입력의 멈춤 확인 답은 거절한다. | `saturn-terminal/engine/src/lifecycle/conflict_steer.rs`의 `answering_without_a_question_is_refused` |
-| provider가 거절한 끼워 넣기는 다시 끼워 넣지 않고 대기열 맨 앞으로 옮겨 다음 차례에 보낸다. | `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `refused_steer_is_not_sent_again_and_is_not_rejected`, `refused_steer_goes_to_the_front_and_takes_the_next_turn`, `refused_steer_through_send_now_also_goes_to_the_front`, `saturn-terminal/core/src/queue/tests.rs`의 `refused_steer_returns_to_the_front_as_a_queued_input`, `refused_steer_needs_a_delivering_input` |
+| provider가 거절한 끼워 넣기는 다시 끼워 넣지 않고 대기열 맨 앞으로 옮겨 다음 차례에 보낸다. 턴이 끝난 뒤에 거절이나 수락 응답이 늦게 와도 같은 입력을 한 번만 보낸다. | `saturn-terminal/engine/src/lifecycle/steer_rejected.rs`의 `refused_steer_is_not_sent_again_and_is_not_rejected`, `refused_steer_goes_to_the_front_and_takes_the_next_turn`, `refused_steer_through_send_now_also_goes_to_the_front`, `refused_steer_answered_after_the_turn_ended_still_takes_one_turn`, `accepted_steer_answered_after_the_turn_ended_is_not_sent_again`, `saturn-terminal/core/src/queue/tests.rs`의 `refused_steer_returns_to_the_front_as_a_queued_input`, `refused_steer_needs_a_delivering_input` |
 | 다시 켠 `engine`은 보내지 않은 입력을 접수 순서대로 되살린다. `판단 중`은 다시 판단하고 `대기`는 대기로 보내며, 보류 작업이 있는 채팅의 입력은 보류로 두고 `전달 중`은 다시 보내지 않는다. | `saturn-terminal/engine/src/lifecycle/restore_inputs.rs`의 `waiting_inputs_are_sent_in_accept_order_after_a_clean_restart`, `judging_input_is_judged_again_and_sent_after_a_restart`, `restored_inputs_of_one_chat_are_judged_one_at_a_time_in_accept_order`, `unsent_inputs_are_held_with_the_crashed_task_and_resume_in_order`, `delivering_input_is_never_resent_after_restart` |
 | 멈춤으로 보류한 입력은 다시 켠 뒤에도 보류로 남아 `/continue`로만 보낸다. | `saturn-terminal/engine/src/lifecycle/restore_inputs.rs`의 `held_input_stays_held_after_restart_until_continue` |
 | 멈춘 작업은 자동으로 이어 가지 않고 보류한다. | `saturn-terminal/engine/src/lifecycle/stop.rs`의 `stopped_work_is_not_continued_without_a_request`, `stop_with_nothing_running_holds_the_waiting_input_at_once`, `stop_twice_signals_once` |
@@ -320,5 +321,4 @@ router는 실행 중 입력과 하던 작업의 관계를 `refines`, `continues`
 
 - 판단 요청 맥락을 실제 router로 쓴 오접합과 이어 가기 누락의 정확도. 맥락 구성은 정했고 구현했다([판단 요청 맥락](router.md#판단-요청-맥락), [#459](https://github.com/woonyong-choi/saturn/issues/459)). 기존 측정은 실험용 상태 형식으로 쟀고 구현한 형식과 같지 않다([한국어 이어 가기 실험](../experiments/continuation-judgment-korean/report.md), [오접합 실험](../experiments/continuation-misjoin/report.md), [새 작업 표본 확대](../experiments/continuation-newtask/report.md), [#6](https://github.com/woonyong-choi/saturn/issues/6)) 합친 새 작업 표본의 오접합은 2.0%이고 재현율은 71.3%였다. 구현한 상태 형식으로 두 값을 따로 다시 재는 일과 구현 방식(Jev 또는 저렴한 LLM)은 [#382](https://github.com/woonyong-choi/saturn/issues/382)의 비교 실험 뒤에 정한다.
 
-- 멈춤 명령이 진행 중인 학습도 멈출지, 학습 전용 중지를 둘지 ([#55](https://github.com/woonyong-choi/saturn/issues/55))
 - 멈춘 작업의 트리 유휴 신호가 끝내 오지 않을 때 완료 보고를 기다리는 한도 ([#464](https://github.com/woonyong-choi/saturn/issues/464))

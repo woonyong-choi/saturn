@@ -92,6 +92,8 @@ struct Script {
     steer_verified: bool,
     /// 호출을 받으면 패닉한다.
     panic_on_open: bool,
+    /// 재개 요청에도 이 번호로 새로 열었다고 답한다.
+    reopen_as: Option<ProviderSessionId>,
     panic_on_send: bool,
     stalls: HashMap<Stall, Arc<Semaphore>>,
     opened: u32,
@@ -129,7 +131,7 @@ pub(crate) fn fake_descriptor(id: Provider) -> Descriptor {
         instruction_doc: "FAKE.md",
         interface_version: INTERFACE_VERSION,
         context: ContextDefaults {
-            window: 50_000,
+            window: 200_000,
             cache_write: 2.0,
         },
         extensions: ExtensionLayout::NONE,
@@ -179,6 +181,11 @@ impl FakeProvider {
     /// 끼워 넣기 실측을 통과한 provider처럼 연다.
     pub(crate) fn verify_steer(&self) {
         self.lock().steer_verified = true;
+    }
+
+    /// 재개 요청을 받으면 기록이 없어 새로 열었다는 듯 `session` 번호로 답한다.
+    pub(crate) fn reopen_as(&self, session: &str) {
+        self.lock().reopen_as = Some(ProviderSessionId(session.to_owned()));
     }
 
     /// 다음 `open_session`에서 연결 작업이 패닉하게 한다.
@@ -284,6 +291,7 @@ impl ProviderClient for FakeProvider {
         script.opened += 1;
         let provider_session = spec
             .resume
+            .map(|resumed| script.reopen_as.clone().unwrap_or(resumed))
             .unwrap_or_else(|| ProviderSessionId(format!("fake-session-{}", script.opened)));
         Ok(SessionHandle {
             provider_session,

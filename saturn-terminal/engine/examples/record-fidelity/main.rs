@@ -10,8 +10,8 @@ use std::time::Duration;
 use anyhow::{Context, bail};
 use saturn_core::providers::{ProviderClient, SessionSpec};
 use saturn_engine::{
-    LaunchSpec, Masker, PermissionLaunch, ProviderTrace, Registry, SaturnDefaults, Supervisor,
-    UserProviderConfig,
+    LaunchSpec, Masker, PermissionLaunch, ProviderTrace, RawTap, Registry, SaturnDefaults,
+    Supervisor, UserProviderConfig,
 };
 use saturn_protocol::event::ProviderEvent;
 use saturn_protocol::ids::{AgentId, Provider, SettingsRevision};
@@ -79,6 +79,7 @@ fn launch_spec(args: &Args) -> LaunchSpec {
         permission: PermissionLaunch::default(),
         masker: Masker::new(Vec::new()),
         events: ProviderTrace::off(),
+        raw: RawTap::off(),
     }
 }
 
